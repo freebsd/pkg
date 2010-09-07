@@ -35,4 +35,5 @@ done
 : ${FILE:=/usr/ports/UPDATING}
 
 echo $*
+
 exit 0
