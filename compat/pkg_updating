@@ -10,10 +10,17 @@ while getopts "d:f:h" OPTS; do
 	case ${OPTS} in
 		d)
 		DATE=${OPTARG}
+		echo ${DATE} | egrep -q "^[0-9]{8}$"
+		if [ $? -ne 0 ]; then
+			echo "${DATE}: Bad date format" >&2
+			usage
+		fi
 		shift; shift
 		;;
 		f)
 		FILE=${OPTARG}
+		test -f ${FILE} || (echo "${FILE}: No such file or directory" >&2; usage)
+		test -r ${FILE} || (echo "${FILE}: Not readable" >&2; usage)
 		shift; shift
 		;;
 		h)
@@ -24,4 +31,8 @@ while getopts "d:f:h" OPTS; do
 		;;
 	esac
 done
+
+: ${FILE:=/usr/ports/UPDATING}
+
 echo $*
+exit 0
