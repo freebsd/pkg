@@ -1,0 +1,27 @@
+#!/bin/sh
+
+usage() {
+	echo "usage: $0 [-h] [-d YYYYMMDD] [-f file] [portname ...]" >&2
+	# Respects EX_USAGE (sysexit.h)
+	exit 64
+}
+
+while getopts "d:f:h" OPTS; do
+	case ${OPTS} in
+		d)
+		DATE=${OPTARG}
+		shift; shift
+		;;
+		f)
+		FILE=${OPTARG}
+		shift; shift
+		;;
+		h)
+		usage
+		;;
+		*)
+		usage
+		;;
+	esac
+done
+echo $*
