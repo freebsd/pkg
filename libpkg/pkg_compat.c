@@ -16,11 +16,11 @@ str_lowercase(char *str)
 
 
 static int
-pkg_compat_plist_cmd(const char *s, char **arg)
+pkg_compat_plist_cmd(char *s, char **arg)
 {
 	char cmd[FILENAME_MAX + 20];    /* 20 == fudge for max cmd len */
 	char *cp;
-	const char *sp;
+	char *sp;
 
 	strlcpy(cmd, s, sizeof(cmd));
 	str_lowercase(cmd);
@@ -36,7 +36,7 @@ pkg_compat_plist_cmd(const char *s, char **arg)
 		++cp, ++sp;
 	}
 	if (arg)
-		*arg = (char *)sp;
+		*arg = sp;
 	if (!strcmp(cmd, "cwd"))
 		return PLIST_CWD;
 	else if (!strcmp(cmd, "srcdir"))
