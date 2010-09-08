@@ -174,6 +174,13 @@ pkg_compat_converter(char *plist_str)
 	free(osrelease);
 
 	cJSON_AddNumberToObject(rootpkg, "osversion", __FreeBSD_version);
+	cJSON_AddFalseToObject(rootpkg, "automatic");
+	cJSON_AddItemToObject(rootpkg, "files", cJSON_CreateArray());
+	cJSON_AddItemToObject(rootpkg, "exec", cJSON_CreateArray());
+	cJSON_AddItemToObject(rootpkg, "unexec", cJSON_CreateArray());
+	cJSON_AddItemToObject(rootpkg, "options", cJSON_CreateArray());
+	cJSON_AddItemToObject(rootpkg, "conflicts", cJSON_CreateArray());
+	cJSON_AddItemToObject(rootpkg, "deps", cJSON_CreateArray());
 
 	pkg_compat_read_plist(rootpkg, plist_str);
 
