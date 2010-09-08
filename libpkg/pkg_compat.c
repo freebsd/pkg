@@ -110,10 +110,6 @@ pkg_compat_add_plist(cJSON *p, enum plist_t type, const char *arg)
 		case PLIST_ORIGIN:
 			cJSON_AddStringToObject(p, "origin", arg);
 			break;
-		
-		case PLIST_COMMENT:
-			cJSON_AddStringToObject(p, "comment", arg);
-			break;
 
 		default:
 			break;
@@ -200,6 +196,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	FILE *fs;
 	char *buffer;
 	char filepath[MAXPATHLEN];
+	char *tmp;
 
 	strlcpy(filepath, pkg_dbdir, MAXPATHLEN);
 	strlcat(filepath, "/", MAXPATHLEN);
@@ -219,6 +216,21 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	if (rootpkg == 0) {
 		warnx("%s: Manifest corrupted, skipping", pkgname);
 		return (0);
+	}
+
+	/* adding comment */
+	tmp = strrchr(filepath, '+');
+	tmp[0] = '\0';
+	strlcat(filepath, "+COMMENT", MAXPATHLEN);
+
+	if ((buffer = file_to_buffer(filepath)) == NULL) {
+		warn("Unable to read +COMMENT for %s", pkgname);
+	} else {
+		if (buffer[strlen(buffer) - 1 ] == '\n')
+			buffer[strlen(buffer) -1 ] = '\0';
+
+		cJSON_AddStringToObject(rootpkg, "comment", buffer);
+		free(buffer);
 	}
 
 	/* write the new manifest */
