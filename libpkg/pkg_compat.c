@@ -15,59 +15,6 @@ str_lowercase(char *str)
 }
 
 
-static struct plist *
-pkg_compat_new_plist_entry(void)
-{
-	struct plist *ret;
-
-	ret = (struct plist *)malloc(sizeof(struct plist));
-	bzero(ret, sizeof(struct plist));
-	return ret;
-}
-
-static void
-pkg_compat_delete_plist(struct oldpackage *pkg, bool all, enum plist_t type, const char *name)
-{
-	struct plist *p = pkg->head;
-
-	while (p) {
-		struct plist *pnext = p->next;
-
-		if (p->type == type && (!name || !strcmp(name, p->name))) {
-			free(p->name);
-			if (p->prev)
-				p->prev->next = pnext;
-			else
-				pkg->head = pnext;
-			if (pnext)
-				pnext->prev = p->prev;
-			else
-				pkg->tail = p->prev;
-			free(p);
-			if (!all)
-				return;
-			p = pnext;
-		}
-		else
-			p = p->next;
-	}
-}
-
-static void
-pkg_compat_free_plist(struct oldpackage *pkg)
-{
-	struct plist *p = pkg->head;
-
-	while (p) {
-		struct plist *p1 = p->next;
-
-		free(p->name);
-		free(p);
-		p = p1;
-	}
-	pkg->head = pkg->tail = NULL;
-}
-
 static int
 pkg_compat_plist_cmd(const char *s, char **arg)
 {
