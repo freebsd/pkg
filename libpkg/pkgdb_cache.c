@@ -25,14 +25,16 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	char *value;
 	char tmppath[MAXPATHLEN];
 	char contentpath[MAXPATHLEN];
+	char manifestpath[MAXPATHLEN];
 	struct cdb_make cdb_make;
 	DIR *dir;
 	struct dirent *portsdir;
 	struct stat st;
-	FILE *content;
-	char *content_buffer;
+	FILE *content, *manifest;
+	char *content_buffer = NULL;
 	cJSON *manifest_json;
 	int nb_packages = 0;
+	char *manifest_out;
 
 
 	strlcpy(tmppath, pkg_dbdir, MAXPATHLEN);
@@ -49,31 +51,67 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 		while ((portsdir = readdir(dir)) != NULL) {
 			if (strcmp(portsdir->d_name, ".") != 0 &&
 					strcmp(portsdir->d_name, "..") !=0) {
-				strlcpy(contentpath, pkg_dbdir, MAXPATHLEN);
-				strlcat(contentpath, "/", MAXPATHLEN);
-				strlcat(contentpath, portsdir->d_name, MAXPATHLEN);
-				strlcat(contentpath, "/+CONTENTS", MAXPATHLEN);
 
-				if (stat(contentpath, &st) == -1) {
-					warn("Unable to read %s informations, skipping:", portsdir->d_name);
+				if (portsdir->d_type != DT_DIR)
 					continue;
-				}
 
-				if ((content = fopen(contentpath, "r")) == NULL) {
-					warn("Unable to read %s file, skipping", contentpath);
-					continue;
-				}
+				strlcpy(manifestpath, pkg_dbdir, MAXPATHLEN);
+				strlcat(manifestpath, "/", MAXPATHLEN);
+				strlcat(manifestpath, portsdir->d_name, MAXPATHLEN);
+				strlcat(manifestpath, "/+MANIFEST", MAXPATHLEN);
 
-				content_buffer = malloc(st.st_size + 1);
-				fread(content_buffer, st.st_size, 1, content);
-				fclose(content);
+				if (stat(manifestpath, &st) == -1) {
+					warnx("No manifest for %s trying old format", portsdir->d_name);
+					strlcpy(contentpath, pkg_dbdir, MAXPATHLEN);
+					strlcat(contentpath, "/", MAXPATHLEN);
+					strlcat(contentpath, portsdir->d_name, MAXPATHLEN);
+					strlcat(contentpath, "/+CONTENTS", MAXPATHLEN);
+					if (stat(contentpath, &st) == -1 ) {
+						warn("No content for %s, should be corrupted, skipping", portsdir->d_name);
+						continue;
+					}
 
-				manifest_json = cJSON_Parse(content_buffer);
-				if (manifest_json == 0)
+					if ((content = fopen(contentpath, "r")) == NULL) {
+						warn("Unable to read %s file, skipping", contentpath);
+						continue;
+					}
+					
+					content_buffer = malloc(st.st_size + 1);
+					fread(content_buffer, st.st_size, 1, content);
+					fclose(content);
+
 					manifest_json = pkg_compat_converter(content_buffer);
+					
+					if (manifest_json == 0) {
+						warnx("%s: Manifest corrupted, skipping", portsdir->d_name);
+						continue;
+					}
 
-				if (manifest_json == 0)
-					continue; /* skipping */
+					/* writing the manifest to end
+					 * conversion */
+					manifest_out = cJSON_Print(manifest_json);
+					manifest = fopen(manifestpath, "w+");
+					fprintf(manifest, "%s", manifest_out);
+					fclose(manifest);
+
+				} else {
+
+					if ((content = fopen(manifestpath, "r")) == NULL) {
+						warn("Unable to read %s file, skipping", manifestpath);
+						continue;
+					}
+
+					content_buffer = malloc(st.st_size + 1);
+					fread(content_buffer, st.st_size, 1, content);
+					fclose(content);
+
+					manifest_json = cJSON_Parse(content_buffer);
+
+					if (manifest_json == 0) {
+						warnx("%s: Manifest corrputed, skipping", portsdir->d_name);
+						continue;
+					}
+				}
 
 				nb_packages++;
 				snprintf(key, BUFSIZ, "%d_name",nb_packages);
@@ -82,7 +120,11 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 				snprintf(key, BUFSIZ, "%d_version", nb_packages);
 				value = cJSON_GetObjectItem(manifest_json, "version")->valuestring;
 				cdb_make_add(&cdb_make, key, strlen(key), value, strlen(value));
+
 				cJSON_Delete(manifest_json);
+
+				if (content_buffer != NULL)
+					free(content_buffer);
 			}
 		}
 	}

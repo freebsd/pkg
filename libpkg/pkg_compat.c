@@ -64,6 +64,9 @@ pkg_compat_plist_cmd(char *s, char **arg)
 		} else if (!strncmp(*arg, "DEPORIGIN:", 10)) {
 			*arg += 10;
 			return PLIST_DEPORIGIN;
+		} else if (!strncmp(*arg, "MD5:", 4)) {
+			*arg += 4;
+			return PLIST_MD5;
 		}
 		return PLIST_COMMENT;
 	} else if (!strcmp(cmd, "ignore"))
