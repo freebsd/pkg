@@ -2,6 +2,8 @@
 #include <err.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/param.h>
+#include <sys/utsname.h>
 
 #include "pkg_compat.h"
 
@@ -155,7 +157,25 @@ bottom:
 cJSON *
 pkg_compat_converter(char *plist_str)
 {
+	struct utsname uts;
+	char *osrelease;
+	char *tmp;
+
 	cJSON *rootpkg = cJSON_CreateObject();
+	uname(&uts);
+	
+	cJSON_AddStringToObject(rootpkg, "arch", uts.machine);
+
+	osrelease = strdup(uts.release);
+	tmp = strrchr(osrelease, '-');
+	tmp[0] = '\0';
+
+	cJSON_AddStringToObject(rootpkg, "osrelease", osrelease);
+	free(osrelease);
+
+	cJSON_AddNumberToObject(rootpkg, "osversion", __FreeBSD_version);
+
 	pkg_compat_read_plist(rootpkg, plist_str);
-	return rootpkg;
+
+	return (rootpkg);
 }
