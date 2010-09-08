@@ -12,6 +12,7 @@
 #include <cdb.h>
 #include <cJSON.h>
 
+#include "util.h"
 #include "pkg_compat.h"
 #include "pkgdb_cache.h"
 
@@ -19,32 +20,23 @@ static cJSON *
 pkgdb_cache_load_port(const char *pkg_dbdir, char *pkgname)
 {
 	cJSON *manifest;
-	FILE *fs;
 	char manifestpath[MAXPATHLEN];
 	char *buffer;
-	struct stat st;
 
 	strlcpy(manifestpath, pkg_dbdir, MAXPATHLEN);
 	strlcat(manifestpath, "/", MAXPATHLEN);
 	strlcat(manifestpath, pkgname, MAXPATHLEN);
 	strlcat(manifestpath, "/+MANIFEST", MAXPATHLEN);
 
-	if (stat(manifestpath, &st) == -1) {
-		warnx("No manifest for %s trying old format", pkgname);
+	if ((buffer = file_to_buffer(manifestpath)) == NULL) {
+		warn("An error occured while trying to read "
+				"+MANIFEST for %s, falling back to old "
+				"+CONTENTS format", pkgname);
 		manifest = pkg_compat_convert_installed( pkg_dbdir, pkgname,
 				manifestpath);
 
 		return (manifest);
 	}
-
-	if ((fs = fopen(manifestpath, "r")) == NULL) {
-		warn("Unable to read %s file, skipping", manifestpath);
-		return (0);
-	}
-
-	buffer = malloc(st.st_size + 1);
-	fread(buffer, st.st_size, 1, fs);
-	fclose(fs);
 
 	if ((manifest = cJSON_Parse(buffer)) == 0)
 		warnx("%s: Manifest corrputed, skipping", pkgname);

@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <sys/utsname.h>
 
+#include "util.h"
 #include "pkg_compat.h"
 
 static void
@@ -196,34 +197,24 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 {
 	cJSON *rootpkg;
 	char *cjson_output;
-	char *content_buffer;
-	char filepath[MAXPATHLEN];
 	FILE *fs;
-	struct stat st;
+	char *buffer;
+	char filepath[MAXPATHLEN];
 
 	strlcpy(filepath, pkg_dbdir, MAXPATHLEN);
 	strlcat(filepath, "/", MAXPATHLEN);
 	strlcat(filepath, pkgname, MAXPATHLEN);
 	strlcat(filepath, "/+CONTENTS", MAXPATHLEN);
 
-	if (stat(filepath, &st) == -1 ) {
-		warn("No content for %s, should be corrupted, skipping",
-				pkgname);
-		return (0);
-	}
-
 	rootpkg = cJSON_CreateObject();
-	if ((fs = fopen(filepath, "r")) == NULL) {
-		warn("Unable to read %s file, skipping", filepath);
+
+	if ((buffer = file_to_buffer(filepath)) == NULL) {
+		warn("Unable to read +CONTENTS for %s", pkgname);
 		return (0);
 	}
 
-	content_buffer = malloc(st.st_size + 1);
-	fread(content_buffer, st.st_size, 1, fs);
-	fclose(fs);
-
-	rootpkg = pkg_compat_converter(content_buffer);
-	free(content_buffer);
+	rootpkg = pkg_compat_converter(buffer);
+	free(buffer);
 
 	if (rootpkg == 0) {
 		warnx("%s: Manifest corrupted, skipping", pkgname);
