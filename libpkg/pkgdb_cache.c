@@ -68,7 +68,7 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	int nb_packages = 0;
 
 	strlcpy(tmppath, pkg_dbdir, MAXPATHLEN);
-	strlcat(tmppath, "/pkgdb.cache", MAXPATHLEN);
+	strlcat(tmppath, "/pkgdb.cache-XXXXX", MAXPATHLEN);
 
 	printf("Rebuilding cache...\n");
 	fd = mkstemp(tmppath);
@@ -94,10 +94,10 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 				nb_packages++;
 				snprintf(key, BUFSIZ, "%d_name",nb_packages);
 				value = cJSON_GetObjectItem(manifest, "name")->valuestring;
-				cdb_make_add(&cdb_make, key, strlen(key), value, strlen(value));
+				ADD_CACHE(&cdb_make, key, value);
 				snprintf(key, BUFSIZ, "%d_version", nb_packages);
 				value = cJSON_GetObjectItem(manifest, "version")->valuestring;
-				cdb_make_add(&cdb_make, key, strlen(key), value, strlen(value));
+				ADD_CACHE(&cdb_make, key, value);
 
 				cJSON_Delete(manifest);
 			}
