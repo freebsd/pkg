@@ -15,7 +15,44 @@
 #include "pkg_compat.h"
 #include "pkgdb_cache.h"
 
-static void pkgdb_cache_rebuild(const char *, const char *);
+static cJSON *
+pkgdb_cache_load_port(const char *pkg_dbdir, char *pkgname)
+{
+	cJSON *manifest;
+	FILE *fs;
+	char manifestpath[MAXPATHLEN];
+	char *buffer;
+	struct stat st;
+
+	strlcpy(manifestpath, pkg_dbdir, MAXPATHLEN);
+	strlcat(manifestpath, "/", MAXPATHLEN);
+	strlcat(manifestpath, pkgname, MAXPATHLEN);
+	strlcat(manifestpath, "/+MANIFEST", MAXPATHLEN);
+
+	if (stat(manifestpath, &st) == -1) {
+		warnx("No manifest for %s trying old format", pkgname);
+		manifest = pkg_compat_convert_installed( pkg_dbdir, pkgname,
+				manifestpath);
+
+		return (manifest);
+	}
+
+	if ((fs = fopen(manifestpath, "r")) == NULL) {
+		warn("Unable to read %s file, skipping", manifestpath);
+		return (0);
+	}
+
+	buffer = malloc(st.st_size + 1);
+	fread(buffer, st.st_size, 1, fs);
+	fclose(fs);
+
+	if ((manifest = cJSON_Parse(buffer)) == 0)
+		warnx("%s: Manifest corrputed, skipping", pkgname);
+
+	free(buffer);
+
+	return (manifest);
+}
 
 static void
 pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
@@ -24,18 +61,11 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	char key[BUFSIZ];
 	char *value;
 	char tmppath[MAXPATHLEN];
-	char contentpath[MAXPATHLEN];
-	char manifestpath[MAXPATHLEN];
 	struct cdb_make cdb_make;
 	DIR *dir;
 	struct dirent *portsdir;
-	struct stat st;
-	FILE *content, *manifest;
-	char *content_buffer = NULL;
-	cJSON *manifest_json;
+	cJSON *manifest;
 	int nb_packages = 0;
-	char *manifest_out;
-
 
 	strlcpy(tmppath, pkg_dbdir, MAXPATHLEN);
 	strlcat(tmppath, "/pkgdb.cache", MAXPATHLEN);
@@ -55,76 +85,21 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 				if (portsdir->d_type != DT_DIR)
 					continue;
 
-				strlcpy(manifestpath, pkg_dbdir, MAXPATHLEN);
-				strlcat(manifestpath, "/", MAXPATHLEN);
-				strlcat(manifestpath, portsdir->d_name, MAXPATHLEN);
-				strlcat(manifestpath, "/+MANIFEST", MAXPATHLEN);
+				manifest = pkgdb_cache_load_port(pkg_dbdir,
+						portsdir->d_name);
 
-				if (stat(manifestpath, &st) == -1) {
-					warnx("No manifest for %s trying old format", portsdir->d_name);
-					strlcpy(contentpath, pkg_dbdir, MAXPATHLEN);
-					strlcat(contentpath, "/", MAXPATHLEN);
-					strlcat(contentpath, portsdir->d_name, MAXPATHLEN);
-					strlcat(contentpath, "/+CONTENTS", MAXPATHLEN);
-					if (stat(contentpath, &st) == -1 ) {
-						warn("No content for %s, should be corrupted, skipping", portsdir->d_name);
-						continue;
-					}
-
-					if ((content = fopen(contentpath, "r")) == NULL) {
-						warn("Unable to read %s file, skipping", contentpath);
-						continue;
-					}
-					
-					content_buffer = malloc(st.st_size + 1);
-					fread(content_buffer, st.st_size, 1, content);
-					fclose(content);
-
-					manifest_json = pkg_compat_converter(content_buffer);
-					
-					if (manifest_json == 0) {
-						warnx("%s: Manifest corrupted, skipping", portsdir->d_name);
-						continue;
-					}
-
-					/* writing the manifest to end
-					 * conversion */
-					manifest_out = cJSON_Print(manifest_json);
-					manifest = fopen(manifestpath, "w+");
-					fprintf(manifest, "%s", manifest_out);
-					fclose(manifest);
-
-				} else {
-
-					if ((content = fopen(manifestpath, "r")) == NULL) {
-						warn("Unable to read %s file, skipping", manifestpath);
-						continue;
-					}
-
-					content_buffer = malloc(st.st_size + 1);
-					fread(content_buffer, st.st_size, 1, content);
-					fclose(content);
-
-					manifest_json = cJSON_Parse(content_buffer);
-
-					if (manifest_json == 0) {
-						warnx("%s: Manifest corrputed, skipping", portsdir->d_name);
-						continue;
-					}
-				}
+				if (manifest == 0)
+					continue;
 
 				nb_packages++;
 				snprintf(key, BUFSIZ, "%d_name",nb_packages);
-				value = cJSON_GetObjectItem(manifest_json, "name")->valuestring;
+				value = cJSON_GetObjectItem(manifest, "name")->valuestring;
 				cdb_make_add(&cdb_make, key, strlen(key), value, strlen(value));
 				snprintf(key, BUFSIZ, "%d_version", nb_packages);
-				value = cJSON_GetObjectItem(manifest_json, "version")->valuestring;
+				value = cJSON_GetObjectItem(manifest, "version")->valuestring;
 				cdb_make_add(&cdb_make, key, strlen(key), value, strlen(value));
 
-				cJSON_Delete(manifest_json);
-
-				if (content_buffer != NULL)
-					free(content_buffer);
+				cJSON_Delete(manifest);
 			}
 		}
 	}

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
+#include <sys/stat.h>
 #include <sys/utsname.h>
 
 #include "pkg_compat.h"
@@ -186,6 +187,54 @@ pkg_compat_converter(char *plist_str)
 	cJSON_AddItemToObject(rootpkg, "deps", cJSON_CreateArray());
 
 	pkg_compat_read_plist(rootpkg, plist_str);
+
+	return (rootpkg);
+}
+
+cJSON *
+pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifestpath)
+{
+	cJSON *rootpkg;
+	char *cjson_output;
+	char *content_buffer;
+	char filepath[MAXPATHLEN];
+	FILE *fs;
+	struct stat st;
+
+	strlcpy(filepath, pkg_dbdir, MAXPATHLEN);
+	strlcat(filepath, "/", MAXPATHLEN);
+	strlcat(filepath, pkgname, MAXPATHLEN);
+	strlcat(filepath, "/+CONTENTS", MAXPATHLEN);
+
+	if (stat(filepath, &st) == -1 ) {
+		warn("No content for %s, should be corrupted, skipping",
+				pkgname);
+		return (0);
+	}
+
+	rootpkg = cJSON_CreateObject();
+	if ((fs = fopen(filepath, "r")) == NULL) {
+		warn("Unable to read %s file, skipping", filepath);
+		return (0);
+	}
+
+	content_buffer = malloc(st.st_size + 1);
+	fread(content_buffer, st.st_size, 1, fs);
+	fclose(fs);
+
+	rootpkg = pkg_compat_converter(content_buffer);
+	free(content_buffer);
+
+	if (rootpkg == 0) {
+		warnx("%s: Manifest corrupted, skipping", pkgname);
+		return (0);
+	}
+
+	/* write the new manifest */
+	cjson_output = cJSON_Print(rootpkg);
+	fs = fopen(manifestpath, "w+");
+	fprintf(fs, "%s", cjson_output);
+	fclose(fs);
 
 	return (rootpkg);
 }

@@ -31,5 +31,6 @@ struct oldpackage {
 };
 
 cJSON *pkg_compat_converter(char *);
+cJSON *pkg_compat_convert_installed(const char *, char *, char *);
 
 #endif
