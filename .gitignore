@@ -1,0 +1,8 @@
+*.o
+*.so*
+*.a
+*.po
+*.Po
+*.So
+*.core
+pkg
