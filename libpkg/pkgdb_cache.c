@@ -28,8 +28,8 @@ pkgdb_cache_load_port(const char *pkg_dbdir, char *pkgname)
 	strlcat(manifestpath, pkgname, MAXPATHLEN);
 	strlcat(manifestpath, "/+MANIFEST", MAXPATHLEN);
 
-	if ((buffer = file_to_buffer(manifestpath)) == NULL) {
-		warn("An error occured while trying to read "
+	if ((file_to_buffer(manifestpath, &buffer)) == -1) {
+		warnx("An error occured while trying to read "
 				"+MANIFEST for %s, falling back to old "
 				"+CONTENTS format", pkgname);
 		manifest = pkg_compat_convert_installed( pkg_dbdir, pkgname,

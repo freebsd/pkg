@@ -195,6 +195,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	char *cjson_output;
 	FILE *fs;
 	char *buffer;
+	off_t buffer_len;
 	char filepath[MAXPATHLEN];
 	char *tmp;
 
@@ -205,7 +206,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 
 	rootpkg = cJSON_CreateObject();
 
-	if ((buffer = file_to_buffer(filepath)) == NULL) {
+	if ((file_to_buffer(filepath, &buffer)) == -1) {
 		warn("Unable to read +CONTENTS for %s", pkgname);
 		return (0);
 	}
@@ -223,11 +224,11 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	tmp[0] = '\0';
 	strlcat(filepath, "+COMMENT", MAXPATHLEN);
 
-	if ((buffer = file_to_buffer(filepath)) == NULL) {
+	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
 		warn("Unable to read +COMMENT for %s", pkgname);
 	} else {
-		if (buffer[strlen(buffer) - 1 ] == '\n')
-			buffer[strlen(buffer) -1 ] = '\0';
+		if (buffer[buffer_len - 1 ] == '\n')
+			buffer[buffer_len -1 ] = '\0';
 
 		cJSON_AddStringToObject(rootpkg, "comment", buffer);
 		free(buffer);
