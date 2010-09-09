@@ -23,10 +23,8 @@ pkgdb_cache_load_port(const char *pkg_dbdir, char *pkgname)
 	char manifestpath[MAXPATHLEN];
 	char *buffer;
 
-	strlcpy(manifestpath, pkg_dbdir, MAXPATHLEN);
-	strlcat(manifestpath, "/", MAXPATHLEN);
-	strlcat(manifestpath, pkgname, MAXPATHLEN);
-	strlcat(manifestpath, "/+MANIFEST", MAXPATHLEN);
+	snprintf(manifestpath, sizeof(manifestpath), "%s/%s/+MANIFEST", pkg_dbdir,
+			 pkgname);
 
 	if ((file_to_buffer(manifestpath, &buffer)) == -1) {
 		warnx("An error occured while trying to read "
@@ -59,8 +57,7 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	cJSON *manifest;
 	int nb_packages = 0;
 
-	strlcpy(tmppath, pkg_dbdir, MAXPATHLEN);
-	strlcat(tmppath, "/pkgdb.cache-XXXXX", MAXPATHLEN);
+	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
 
 	printf("Rebuilding cache...\n");
 	fd = mkstemp(tmppath);
@@ -126,8 +123,7 @@ pkgdb_cache_update()
 			err(EXIT_FAILURE, "%s:", pkg_dbdir);
 	}
 
-	strlcpy(cache_path, pkg_dbdir, MAXPATHLEN);
-	strlcat(cache_path, "/pkgdb.cache", MAXPATHLEN);
+	snprintf(cache_path, sizeof(cache_path), "%s/pkgdb.cache", pkg_dbdir);
 
 	if (stat(cache_path, &cache_st) == -1) {
 		if (errno == ENOENT) {

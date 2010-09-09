@@ -199,10 +199,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	char filepath[MAXPATHLEN];
 	char *tmp;
 
-	strlcpy(filepath, pkg_dbdir, MAXPATHLEN);
-	strlcat(filepath, "/", MAXPATHLEN);
-	strlcat(filepath, pkgname, MAXPATHLEN);
-	strlcat(filepath, "/+CONTENTS", MAXPATHLEN);
+	snprintf(filepath, sizeof(filepath), "%s/%s/+CONTENTS", pkg_dbdir, pkgname);
 
 	rootpkg = cJSON_CreateObject();
 
