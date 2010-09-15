@@ -99,6 +99,7 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 	char *buf, *next, *cp = NULL;
 	char *tmp;
 
+	char *dep = NULL;
 	char *prefix = NULL;
 	char path_file[MAXPATHLEN];
 	cJSON *object;
@@ -166,7 +167,26 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 				free(tmp);
 				break;
 
+			case PLIST_PKGDEP:
+				dep = cp;
+				break;
+			case PLIST_DEPORIGIN:
+				tmp = strrchr(dep, '-');
+				tmp[0] = '\0';
+				tmp++;
+				object = cJSON_CreateObject();
+				cJSON_AddStringToObject(object, "name", dep);
+				cJSON_AddStringToObject(object, "origin", cp);
+				cJSON_AddStringToObject(object, "version", tmp);
+				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "deps"), object);
+				break;
+
+			case PLIST_DIR_RM:
+				/* IGNORING */
+				break;
+
 			default:
+				warn("====> Unknown %s", cp);
 				break;
 		}
 		buf = next;
