@@ -8,7 +8,7 @@
 
 static struct commands {
 	const char *name;
-	void (*exec_cmd)(int argc, char **argv);
+	int (*exec_cmd)(int argc, char **argv);
 } cmd[] = { 
 	{ "add", NULL },
 	{ "delete", NULL},
@@ -65,7 +65,7 @@ main(int argc, char **argv)
 		argc--;
 		argv++;
 		if (command->exec_cmd != NULL) 
-			command->exec_cmd(argc, argv);
+			return (command->exec_cmd(argc, argv));
 		else
 			printf("%s: No yet implemented\n", command->name);
 	}
@@ -80,5 +80,5 @@ main(int argc, char **argv)
 		}
 	}
 
-	return (EXIT_SUCCESS);
+	return (EX_USAGE);
 }

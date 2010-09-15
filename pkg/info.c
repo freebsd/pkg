@@ -5,7 +5,7 @@
 
 #include "info.h"
 
-void *
+int
 cmd_info(int argc, char **argv)
 {
 	struct pkg **pkgs = NULL;
@@ -15,4 +15,5 @@ cmd_info(int argc, char **argv)
 	} else {
 		printf("Not implemented yet\n");
 	}
+	return (0);
 }
