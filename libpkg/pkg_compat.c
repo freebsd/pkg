@@ -270,6 +270,18 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 		free(buffer);
 	}
 
+	/* adding description */
+	tmp = strrchr(filepath, '+');
+	tmp[0] = '\0';
+	strlcat(filepath, "+DESC", MAXPATHLEN);
+
+	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
+		warn("Unable to read +DESC for %s", pkgname);
+	} else {
+		cJSON_AddStringToObject(rootpkg, "desc", buffer);
+		free(buffer);
+	}
+
 	/* write the new manifest */
 	cjson_output = cJSON_Print(rootpkg);
 	fs = fopen(manifestpath, "w+");
