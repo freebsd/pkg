@@ -2,20 +2,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
+#include <err.h>
 
 #include "info.h"
 
 static struct commands {
 	const char *name;
-	const char *shortcut;
 	void (*exec_cmd)(int argc, char **argv);
 } cmd[] = { 
-	{ "add", "a", NULL },
-	{ "delete", "d", NULL},
-	{ "info", "i", cmd_info},
-	{ "update", "u", NULL},
-	{ "help", "h", NULL},
-	{ NULL, NULL, NULL },
+	{ "add", NULL },
+	{ "delete", NULL},
+	{ "info", cmd_info},
+	{ "install", NULL},
+	{ "update", NULL},
+	{ "help", NULL},
+	{ NULL, NULL },
 };
 
 static void
@@ -29,20 +30,51 @@ int
 main(int argc, char **argv)
 {
 	int i;
+	struct commands *command = NULL;
+	int ambiguous = 0;
 
 	if (argc < 2)
 		usage();
 
 	for (i = 0; cmd[i].name != NULL; i++) {
-		if (strncmp(argv[1], cmd[i].name, strlen(cmd[i].name)) == 0 ||
-				strncmp(argv[1], cmd[i].shortcut, strlen(cmd[i].shortcut)) == 0) {
-			argc--;
-			argv++;
-			if (cmd[i].exec_cmd != NULL)
-				cmd[i].exec_cmd(argc, argv);
-			else
-				printf("%s: No yet implemented\n", cmd[i].name);
-			break;
+		if (strlen(cmd[i].name) < strlen(argv[1]))
+			continue;
+
+		if (strncmp(argv[1], cmd[i].name, strlen(argv[1])) == 0) {
+			/* if we have the exact cmd */
+
+			if (strlen(argv[1]) == strlen(cmd[i].name)) {
+				command = &cmd[i];
+				ambiguous = 0;
+				break;
+			}
+
+			if (command != NULL) {
+				ambiguous = 1;
+			}
+			command = &cmd[i];
+		}
+	}
+
+	if (command == NULL)
+		usage();
+
+	if (ambiguous == 0) {
+		argc--;
+		argv++;
+		if (command->exec_cmd != NULL) 
+			command->exec_cmd(argc, argv);
+		else
+			printf("%s: No yet implemented\n", command->name);
+	}
+
+	if (ambiguous == 1) {
+		warnx("Ambiguous command: %s, could be:", argv[1]);
+		for (i = 0; cmd[i].name != NULL; i++) {
+			if (strlen(cmd[i].name) < strlen(argv[1]))
+				continue;
+			if (strncmp(argv[1], cmd[i].name, strlen(argv[1])) == 0)
+				warnx("\t%s",cmd[i].name);
 		}
 	}
 
