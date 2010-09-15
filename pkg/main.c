@@ -32,26 +32,28 @@ main(int argc, char **argv)
 	int i;
 	struct commands *command = NULL;
 	int ambiguous = 0;
+	size_t len;
 
 	if (argc < 2)
 		usage();
 
+	len = strlen(argv[1]);
 	for (i = 0; cmd[i].name != NULL; i++) {
-		if (strlen(cmd[i].name) < strlen(argv[1]))
-			continue;
-
-		if (strncmp(argv[1], cmd[i].name, strlen(argv[1])) == 0) {
+		if (strncmp(argv[1], cmd[i].name, len) == 0) {
 			/* if we have the exact cmd */
-
-			if (strlen(argv[1]) == strlen(cmd[i].name)) {
+			if (len == sizeof(cmd[i].name) - 1) {
 				command = &cmd[i];
 				ambiguous = 0;
 				break;
 			}
 
-			if (command != NULL) {
+			/*
+			 * we already found a partial match so `argv[1]' is
+			 * an ambigous shortcut
+			 */
+			if (command != NULL)
 				ambiguous = 1;
-			}
+
 			command = &cmd[i];
 		}
 	}
