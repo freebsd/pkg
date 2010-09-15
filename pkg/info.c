@@ -13,7 +13,7 @@ cmd_info(int argc, char **argv)
 	if (argc == 1) {
 		pkgs = pkgdb_list_packages();
 	} else {
-		printf("Not implemented yet\n");
+		printf("%s: Not implemented yet\n", argv[0]);
 	}
 	return (0);
 }

@@ -6,6 +6,8 @@
 
 #include "info.h"
 
+static void usage(void);
+
 static struct commands {
 	const char *name;
 	int (*exec_cmd)(int argc, char **argv);
