@@ -18,7 +18,6 @@ str_lowercase(char *str)
 	}
 }
 
-
 static int
 pkg_compat_plist_cmd(char *s, char **arg)
 {
@@ -94,33 +93,15 @@ pkg_compat_plist_cmd(char *s, char **arg)
 }
 
 static void
-pkg_compat_add_plist(cJSON *p, enum plist_t type, const char *arg)
-{
-	char *tmp;
-
-	switch (type) {
-		case PLIST_NAME:
-			tmp = strrchr(arg, '-');
-			tmp[0] = '\0';
-			tmp++;
-			cJSON_AddStringToObject(p, "name", arg);
-			cJSON_AddStringToObject(p, "version", tmp);
-			break;
-
-		case PLIST_ORIGIN:
-			cJSON_AddStringToObject(p, "origin", arg);
-			break;
-
-		default:
-			break;
-	}
-}
-
-static void
 pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 {
 	int cmd;
-	char *buf, *next, *cp;
+	char *buf, *next, *cp = NULL;
+	char *tmp;
+
+	char *prefix = NULL;
+	char path_file[MAXPATHLEN];
+	cJSON *object;
 
 	buf = plist_str;
 	while ((next = strchr(buf, '\n')) != NULL) {
@@ -131,25 +112,63 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 
 		if (buf[0] != '@') {
 			cmd = PLIST_FILE;
-			goto bottom;
+		} else {
+			cmd = pkg_compat_plist_cmd(buf + 1, &cp);
+			if (cmd == -1) {
+				warnx("%s: unknown command '%s'",
+						__func__, buf);
+			} else if (*cp == '\0') {
+				cp = NULL;
+				if (cmd == PLIST_PKGDEP) {
+					warnx("corrupted record (pkgdep line without argument), ignoring");
+					cmd = -1;
+				}
+			}
 		}
 
-		cmd = pkg_compat_plist_cmd(buf + 1, &cp);
-		if (cmd == -1) {
-			warnx("%s: unknown command '%s'",
-					__func__, buf);
-			goto bottom;
+		switch(cmd) {
+			case PLIST_NAME:
+				tmp = strrchr(cp, '-');
+				tmp[0] = '\0';
+				tmp++;
+				cJSON_AddStringToObject(pkg, "name", cp);
+				cJSON_AddStringToObject(pkg, "version", tmp);
+				break;
+
+			case PLIST_ORIGIN:
+				cJSON_AddStringToObject(pkg, "origin", cp);
+				break;
+
+			case PLIST_CWD:
+				prefix = cp;
+				break;
+
+			case PLIST_FILE:
+				snprintf(path_file, MAXPATHLEN, "%s/%s", prefix, buf);
+				break;
+
+			case PLIST_MD5:
+				object = cJSON_CreateObject();
+				cJSON_AddStringToObject(object, "path", path_file);
+				cJSON_AddStringToObject(object, "md5", cp);
+				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "files"), object);
+				break;
+
+			case PLIST_CMD:
+				tmp = str_replace(cp, "\%D", prefix);
+				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "exec"), cJSON_CreateString(tmp));
+				free(tmp);
+				break;
+
+			case PLIST_UNEXEC:
+				tmp = str_replace(cp, "\%D", prefix);
+				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "unexec"), cJSON_CreateString(tmp));
+				free(tmp);
+				break;
+
+			default:
+				break;
 		}
-		if (*cp == '\0') {
-			cp = NULL;
-			if (cmd == PLIST_PKGDEP) {
-				warnx("corrupted record (pkgdep line without argument), ignoring");
-				cmd = -1;
-			}
-			goto bottom;
-		}
-bottom:
-		pkg_compat_add_plist(pkg, cmd, cp);
 		buf = next;
 		buf++;
 	}
