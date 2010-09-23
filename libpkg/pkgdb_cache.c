@@ -59,8 +59,10 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 
 	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
 
-	printf("Rebuilding cache...\n");
-	fd = mkstemp(tmppath);
+	if ((fd = mkstemp(tmppath)) == -1)
+		return;
+
+	warnx("Rebuilding cache...");
 
 	cdb_make_start(&cdb_make, fd);
 
@@ -127,17 +129,15 @@ pkgdb_cache_update()
 
 	if (stat(cache_path, &cache_st) == -1) {
 		if (errno == ENOENT) {
-			if (uid == 0)
-				pkgdb_cache_rebuild(pkg_dbdir, cache_path);
+			pkgdb_cache_rebuild(pkg_dbdir, cache_path);
 			return;
-		} else {
-			err(EXIT_FAILURE, "%s:", cache_path);
 		}
+		else
+			err(EXIT_FAILURE, "%s:", cache_path);
 	}
 
 	if ( dir_st.st_mtime > cache_st.st_mtime )
-		if (uid == 0)
-			pkgdb_cache_rebuild(pkg_dbdir, cache_path);
+		pkgdb_cache_rebuild(pkg_dbdir, cache_path);
 }
 
 struct pkg **
