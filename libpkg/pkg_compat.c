@@ -85,6 +85,7 @@ pkg_compat_plist_cmd(char *s, char **arg)
 					break;
 				default:
 					return str2plist[i].val;
+					break;
 			}
 		}
 	}
@@ -180,12 +181,24 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "deps"), object);
 				break;
 
+			case PLIST_MTREE:
+			case PLIST_DISPLAY:
+				snprintf(path_file, MAXPATHLEN, "%s/%s", prefix, cp);
+				cJSON_AddStringToObject(pkg, (cmd == PLIST_MTREE) ? "mtree" : "display", path_file);
+				break;
+
+			case PLIST_CONFLICTS:
+				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "conflicts"), cJSON_CreateString(cp));
+				break;
+
 			case PLIST_DIR_RM:
+			case PLIST_COMMENT:
+			case PLIST_IGNORE:
 				/* IGNORING */
 				break;
 
 			default:
-				warn("====> Unknown %s", cp);
+				warnx("====> unparsed line: '%s'", buf);
 				break;
 		}
 		buf = next;
