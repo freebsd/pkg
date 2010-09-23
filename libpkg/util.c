@@ -52,29 +52,27 @@ file_to_buffer(const char *path, char **buffer)
 	return (st.st_size);
 }
 
-/* TODO make a cleaner version */
 char *
 str_replace(char *string, const char *find, char *replace)
 {
-	char *prev, *tmp;
-	char *new_string;
-	size_t newlen;
+	char *str, *end, *begin;
+	size_t offset, replace_len, find_len;
 
-	new_string = malloc(1);
-	new_string[0] = '\0';
-	prev = string;
-	tmp = string;
-	while ((tmp = strstr(tmp, find)) != NULL) {
-		tmp[0] = '\0';
-		tmp += strlen(find);
-		newlen = strlen(new_string) + strlen(prev) + strlen(replace) + 1;
-		new_string = realloc(new_string, newlen);
-		strlcat(new_string, prev, newlen);
-		strlcat(new_string, replace, newlen);
-		prev = tmp;
+	replace_len = strlen(replace);
+	find_len = strlen(find);
+	begin = string;
+	str = NULL;
+	offset = 0;
+
+	while ((end = strstr(begin, find)) != NULL) {
+		str = realloc(str, offset + replace_len + (end - begin));
+		memcpy(str + offset, begin, end - begin);
+		memcpy(str + offset + (end - begin), replace, replace_len);
+		offset += (end - begin + replace_len);
+		begin = end + find_len;
 	}
-	newlen = strlen(new_string) + strlen(prev) + 1;
-	strlcat(new_string, prev, newlen);
+	str = realloc(str, offset + strlen(begin) +1);
+	memcpy(str+offset, begin, strlen(begin)+1);
 
-	return new_string;
+	return (str);
 }
