@@ -9,6 +9,31 @@
 #include "util.h"
 #include "pkg_compat.h"
 
+static struct {
+	const char *key;
+	enum plist_t val;
+} str2plist[] = {
+	{"unexec", PLIST_UNEXEC },
+	{"srcdir", PLIST_SRC },
+	{"pkgdep", PLIST_PKGDEP },
+	{"owner", PLIST_CHOWN },
+	{"option", PLIST_OPTION },
+	{"noinst", PLIST_NOINST },
+	{"name", PLIST_NAME },
+	{"mtree", PLIST_MTREE },
+	{"mode", PLIST_CHMOD },
+	{"ignore_inst", PLIST_IGNORE_INST },
+	{"ignore", PLIST_IGNORE },
+	{"group", PLIST_CHGRP },
+	{"exec", PLIST_CMD },
+	{"display", PLIST_DISPLAY },
+	{"dirrm", PLIST_DIR_RM },
+	{"cwd", PLIST_CWD },
+	{"conflicts", PLIST_CONFLICTS },
+	{"comment", PLIST_COMMENT },
+	{"cd", PLIST_CWD },
+};
+
 static void
 str_lowercase(char *str)
 {
@@ -24,6 +49,7 @@ pkg_compat_plist_cmd(char *s, char **arg)
 	char cmd[FILENAME_MAX + 20];    /* 20 == fudge for max cmd len */
 	char *cp;
 	char *sp;
+	size_t i;
 
 	strlcpy(cmd, s, sizeof(cmd));
 	str_lowercase(cmd);
@@ -40,56 +66,29 @@ pkg_compat_plist_cmd(char *s, char **arg)
 	}
 	if (arg)
 		*arg = sp;
-	if (!strcmp(cmd, "cwd"))
-		return PLIST_CWD;
-	else if (!strcmp(cmd, "srcdir"))
-		return PLIST_SRC;
-	else if (!strcmp(cmd, "cd"))
-		return PLIST_CWD;
-	else if (!strcmp(cmd, "exec"))
-		return PLIST_CMD;
-	else if (!strcmp(cmd, "unexec"))
-		return PLIST_UNEXEC;
-	else if (!strcmp(cmd, "mode"))
-		return PLIST_CHMOD;
-	else if (!strcmp(cmd, "owner"))
-		return PLIST_CHOWN;
-	else if (!strcmp(cmd, "group"))
-		return PLIST_CHGRP;
-	else if (!strcmp(cmd, "noinst"))
-		return PLIST_NOINST;
-	else if (!strcmp(cmd, "comment")) {
-		if (!strncmp(*arg, "ORIGIN:", 7)) {
-			*arg += 7;
-			return PLIST_ORIGIN;
-		} else if (!strncmp(*arg, "DEPORIGIN:", 10)) {
-			*arg += 10;
-			return PLIST_DEPORIGIN;
-		} else if (!strncmp(*arg, "MD5:", 4)) {
-			*arg += 4;
-			return PLIST_MD5;
+
+	for (i = 0; i < sizeof(str2plist) / sizeof(str2plist[0]); i++) {
+		if (strcmp(cmd, str2plist[i].key) == 0) {
+			switch (str2plist[i].val) {
+				case PLIST_COMMENT:
+					if (!strncmp(*arg, "ORIGIN:", 7)) {
+						*arg += 7;
+						return PLIST_ORIGIN;
+					} else if (!strncmp(*arg, "DEPORIGIN:", 10)) {
+						*arg += 10;
+						return PLIST_DEPORIGIN;
+					} else if (!strncmp(*arg, "MD5:", 4)) {
+						*arg += 4;
+						return PLIST_MD5;
+					}
+					return PLIST_COMMENT;
+					break;
+				default:
+					return str2plist[i].val;
+			}
 		}
-		return PLIST_COMMENT;
-	} else if (!strcmp(cmd, "ignore"))
-		return PLIST_IGNORE;
-	else if (!strcmp(cmd, "ignore_inst"))
-		return PLIST_IGNORE_INST;
-	else if (!strcmp(cmd, "name"))
-		return PLIST_NAME;
-	else if (!strcmp(cmd, "display"))
-		return PLIST_DISPLAY;
-	else if (!strcmp(cmd, "pkgdep"))
-		return PLIST_PKGDEP;
-	else if (!strcmp(cmd, "conflicts"))
-		return PLIST_CONFLICTS;
-	else if (!strcmp(cmd, "mtree"))
-		return PLIST_MTREE;
-	else if (!strcmp(cmd, "dirrm"))
-		return PLIST_DIR_RM;
-	else if (!strcmp(cmd, "option"))
-		return PLIST_OPTION;
-	else
-		return -1;
+	}
+	return -1;
 }
 
 static void
