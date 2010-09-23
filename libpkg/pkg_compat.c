@@ -285,6 +285,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	cjson_output = cJSON_Print(rootpkg);
 	fs = fopen(manifestpath, "w+");
 	fprintf(fs, "%s", cjson_output);
+	free(cjson_output);
 	fclose(fs);
 
 	return (rootpkg);
