@@ -181,16 +181,12 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "deps"), object);
 				break;
 
-			case PLIST_MTREE:
-			case PLIST_DISPLAY:
-				snprintf(path_file, MAXPATHLEN, "%s/%s", prefix, cp);
-				cJSON_AddStringToObject(pkg, (cmd == PLIST_MTREE) ? "mtree" : "display", path_file);
-				break;
-
 			case PLIST_CONFLICTS:
 				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "conflicts"), cJSON_CreateString(cp));
 				break;
 
+			case PLIST_MTREE:
+			case PLIST_DISPLAY:
 			case PLIST_DIR_RM:
 			case PLIST_COMMENT:
 			case PLIST_IGNORE:
@@ -292,6 +288,17 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	} else {
 		cJSON_AddStringToObject(rootpkg, "desc", buffer);
 		free(buffer);
+	}
+
+
+	/* adding display */
+	tmp = strrchr(filepath, '+');
+	tmp[0] = '\0';
+	strlcat(filepath, "+DISPLAY", MAXPATHLEN);
+
+	/* ignore if no +DISPLAY */
+	if ((buffer_len = file_to_buffer(filepath, &buffer)) != -1) {
+		cJSON_AddStringToObject(rootpkg, "display", buffer);
 	}
 
 	/* write the new manifest */
