@@ -2,6 +2,7 @@
 #include <err.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libgen.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
@@ -244,7 +245,6 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	char *buffer;
 	off_t buffer_len;
 	char filepath[MAXPATHLEN];
-	char *tmp;
 
 	snprintf(filepath, sizeof(filepath), "%s/%s/+CONTENTS", pkg_dbdir, pkgname);
 
@@ -264,9 +264,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	}
 
 	/* adding comment */
-	tmp = strrchr(filepath, '+');
-	tmp[0] = '\0';
-	strlcat(filepath, "+COMMENT", MAXPATHLEN);
+	snprintf(filepath, sizeof(filepath), "%s/+COMMENT", dirname(filepath));
 
 	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
 		warn("Unable to read +COMMENT for %s", pkgname);
@@ -279,9 +277,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	}
 
 	/* adding description */
-	tmp = strrchr(filepath, '+');
-	tmp[0] = '\0';
-	strlcat(filepath, "+DESC", MAXPATHLEN);
+	snprintf(filepath, sizeof(filepath), "%s/+DESC", dirname(filepath));
 
 	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
 		warn("Unable to read +DESC for %s", pkgname);
@@ -292,13 +288,11 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 
 
 	/* adding display */
-	tmp = strrchr(filepath, '+');
-	tmp[0] = '\0';
-	strlcat(filepath, "+DISPLAY", MAXPATHLEN);
-
+	snprintf(filepath, sizeof(filepath), "%s/+DISPLAY", dirname(filepath));
 	/* ignore if no +DISPLAY */
 	if ((buffer_len = file_to_buffer(filepath, &buffer)) != -1) {
 		cJSON_AddStringToObject(rootpkg, "display", buffer);
+		free(buffer);
 	}
 
 	/* write the new manifest */
