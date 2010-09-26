@@ -1,11 +1,12 @@
 #ifndef _PKG_H
 #define _PKG_H
+
 struct pkg {
-	const char *name;
-	const char *version;
-	const char *origin;
-	const char *comments;
-	const char *desc;
+	char *name;
+	char *version;
+	char *origin;
+	char *comment;
+	char *desc;
 };
 
 #endif

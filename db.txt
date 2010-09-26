@@ -1,0 +1,38 @@
+pkgdb.cache HOW TO (Draft)
+key/value store using tinycdb
+
+Needs:
+- loop over all packages
+- build depend tree for a given package
+- find extra info for each packages
+- request a remote database
+
+key			value
+
+(char*)"nb_packages"		(int)nb_packages
+[...]
+(int)N		(char*) package N name
+[...]
+
+note that packages are 0-indexed
+
+(char*)$name			(int)N (package index)
+(char*)$Nv				(char*)package N version
+(char*)$Nc				(char*)package N comment
+(char*)$Nd				(char*)package N desc
+(char*)$No				(char*)package N origin
+
+__future__
+
+(char*)$Np				(char*)package N path
+		--> fetch from $PACKAGESITE/$path etc (useless ?)
+
+(char*)$Ns				(char*)package N checksum (for a package)
+(char*)$ND				(char*)"$dep0-$dep0_version $dep0-$dep0_version..." package N deps
+						} multiple values for on key ? --> TODO benchmark
+(char*)$NC				(char*)"$conflict0 $conflict1 ..." package N conflicts
+
+Why N -> name
+=> to loop over all packages
+Why name -> N
+=> to get package depends without re-looping over all packages
