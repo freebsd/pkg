@@ -286,14 +286,24 @@ pkgdb_cache_update()
 		pkgdb_cache_rebuild(pkg_dbdir, cache_path);
 }
 
+static int
+pkg_cmp(void const *a, void const *b)
+{
+	struct pkg * const *pa = a;
+	struct pkg * const *pb = b;
+	return (strcmp((*pa)->name, (*pb)->name));
+}
+
 void
 pkgdb_cache_init(struct pkgdb *db, const char *pattern)
 {
-	int count;
-	int i;
+	int count, i;
 	struct pkg *pkg;
+	struct pkg **pkgs;
+	TAILQ_HEAD(, pkg) head;
 	char *name;
 
+	TAILQ_INIT(&head);
 	TAILQ_INIT(&db->pkgs);
 	db->count = 0;
 
@@ -319,15 +329,25 @@ pkgdb_cache_init(struct pkgdb *db, const char *pattern)
 		}
 
 		if (!pattern || strncmp(name, pattern, strlen(pattern)) == 0) {
-			/* ok we find one pkg matching the pattern */
-				TAILQ_INSERT_TAIL(&db->pkgs, pkg, entry);
-				db->count++;
+			TAILQ_INSERT_TAIL(&head, pkg, entry);
+			db->count++;
 		}
 		else
 			free(pkg);
 
 		free(name);
 	}
+
+	/* sort packages */
+	pkgs = calloc(db->count, sizeof(struct pkg));
+	i = 0;
+	TAILQ_FOREACH(pkg, &head, entry)
+		pkgs[i++] = pkg;
+
+	qsort(pkgs, db->count, sizeof(*pkgs), pkg_cmp);
+
+	for (i = 0; i < (int)db->count; i++)
+		TAILQ_INSERT_TAIL(&db->pkgs, pkgs[i], entry);
 
 	return;
 }
