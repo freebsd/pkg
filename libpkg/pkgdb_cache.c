@@ -349,5 +349,7 @@ pkgdb_cache_init(struct pkgdb *db, const char *pattern)
 	for (i = 0; i < (int)db->count; i++)
 		TAILQ_INSERT_TAIL(&db->pkgs, pkgs[i], entry);
 
+	free(pkgs);
+
 	return;
 }
