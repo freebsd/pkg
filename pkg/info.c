@@ -8,24 +8,25 @@
 int
 cmd_info(int argc, char **argv)
 {
-	struct pkg **pkgs;
-	int i;
+	struct pkgdb db;
+	struct pkg *pkg;
 	(void)argc;
 
-	if ((pkgs = pkgdb_list_packages(argv[1])) == NULL)
-		return 0;
+	pkgdb_init(&db, argv[1]);
 
-	if (pkgdb_count(pkgs) == 1) {
+	if (pkgdb_count(&db) == 1) {
 		/* one match */
-		printf("Information for %s-%s\n", pkgs[0]->name, pkgs[0]->version);
-		printf("Comment:\n%s\n\n", pkgs[0]->comment);
-		printf("Description:\n%s\n\n", pkgs[0]->desc);
+		pkg = TAILQ_FIRST(&db.pkgs);
+		printf("Information for %s-%s\n", pkg->name, pkg->version);
+		printf("Comment:\n%s\n\n", pkg->comment);
+		printf("Description:\n%s\n\n", pkg->desc);
 	}
-	else {
-		for (i = 0; pkgs[i] != NULL; i++)
-			printf("%s-%s: %s\n", pkgs[i]->name, pkgs[i]->version, pkgs[i]->comment);
+	else if (pkgdb_count(&db) > 1) {
+		TAILQ_FOREACH(pkg, &db.pkgs, entry) {
+			printf("%s-%s: %s\n", pkg->name, pkg->version, pkg->comment);
+		}
 	}
 
-	pkgdb_free(pkgs);
+	pkgdb_free(&db);
 	return (0);
 }

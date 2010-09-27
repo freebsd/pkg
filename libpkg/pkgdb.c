@@ -1,51 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "pkgdb.h"
 #include "pkgdb_cache.h"
 
 
 
-struct pkg **
-pkgdb_list_packages(const char *pattern) {
+void
+pkgdb_init(struct pkgdb *db, const char *pattern) {
 	/* first check if the cache has to be rebuild */
-	struct pkg **pkgs;
-
 	pkgdb_cache_update();
-	pkgs = pkgdb_cache_list_packages(pattern);
-
-	return (pkgs);
+	return (pkgdb_cache_init(db, pattern));
 }
 
 void
-pkgdb_free(struct pkg **pkgs)
+pkgdb_free(struct pkgdb *db)
 {
-	int i;
-	struct pkg *p;
+	int fd;
+	struct pkg *pkg;
 
-	if (pkgs) {
-		for (i = 0; pkgs[i] != NULL; i++) {
-			p = pkgs[i];
-			if (p->name) free(p->name);
-			if (p->version) free(p->version);
-			if (p->comment) free(p->comment);
-			if (p->desc) free(p->desc);
-			if (p->origin) free(p->origin);
-			free(p);
-		}
-		free(pkgs);
+	fd = cdb_fileno(&db->db);
+	cdb_free(&db->db);
+	close(fd);
+
+	while (!TAILQ_EMPTY(&db->pkgs)) {
+		pkg = TAILQ_FIRST(&db->pkgs);
+		TAILQ_REMOVE(&db->pkgs, pkg, entry);
+		free(pkg);
 	}
 }
 
 size_t
-pkgdb_count(struct pkg **pkgs)
+pkgdb_count(struct pkgdb *db)
 {
-	size_t i;
-
-	if (!pkgs)
-		return 0;
-
-	for (i = 0; pkgs[i] != NULL; i++);
-	return (i);
+	return (db->count);
 }
 

@@ -9,7 +9,7 @@ Needs:
 
 key			value
 
-(char*)"nb_packages"		(int)nb_packages
+(char*)"count"		(int)nb_packages
 [...]
 (int)N		(char*) package N name
 [...]

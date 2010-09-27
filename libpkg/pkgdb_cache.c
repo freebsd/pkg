@@ -35,22 +35,11 @@ db_open(struct cdb *db, const char *path, int flags)
 	return (fd);
 }
 
-/* close a cdb db */
-static void
-db_close(struct cdb *db)
-{
-	int fd;
-
-	fd = cdb_fileno(db);
-	cdb_free(db);
-	close(fd);
-}
-
 /* query string -> string */
-static char *
+static const char *
 db_query(struct cdb *db, const char *fmt, ...)
 {
-	char *string;
+	const char *string;
 	va_list args;
 	char key[BUFSIZ];
 	size_t len;
@@ -70,10 +59,7 @@ db_query(struct cdb *db, const char *fmt, ...)
 	if (cdb_find(db, key, len) < 0)
 		return NULL;
 
-	len = cdb_datalen(db);
-	string = malloc(len+1);
-	cdb_read(db, string, len, cdb_datapos(db));
-	string[len] = '\0';
+	db_get(string, db);
 	return (string);
 }
 
@@ -89,6 +75,7 @@ db_add(struct cdb_make *db, const char *val, const char *fmt, ...)
 		return (-1);
 
 	va_start(args, fmt);
+
 	len = vsnprintf(key, sizeof(key), fmt, args);
 
 	if (len != strlen(key)) {
@@ -98,7 +85,10 @@ db_add(struct cdb_make *db, const char *val, const char *fmt, ...)
 		return (-1);
 	}
 
-	return (cdb_make_add(db, key, len, val, strlen(val)));
+	va_end(args);
+
+	/* record the last \0 */
+	return (cdb_make_add(db, key, len, val, strlen(val)+1));
 }
 
 /* query a pkg using index */
@@ -106,19 +96,16 @@ static struct pkg *
 pkg_idx_query(struct cdb *db, int idx)
 {
 	struct pkg *pkg;
-	size_t len;
 
 	if (db == NULL)
 		return NULL;
 
-	if (cdb_find(db, &idx, sizeof(idx) <= 0))
+	if (cdb_find(db, &idx, sizeof(idx)) <= 0)
 		return NULL;
 
 	pkg = malloc(sizeof(*pkg));
-	len = cdb_datalen(db);
-	pkg->name = malloc(len+1);
-	cdb_read(db, pkg->name, len, cdb_datapos(db));
-	pkg->name[len] = '\0';
+	TAILQ_INIT(&pkg->deps);
+	db_get(pkg->name, db);
 
 	pkg->version = db_query(db, PKGDB_VERSION, idx);
 	pkg->comment = db_query(db, PKGDB_COMMENT, idx);
@@ -132,7 +119,7 @@ pkg_idx_query(struct cdb *db, int idx)
 /* static struct pkg *
 pkg_query(struct cdb *db, char *name)
 {
-	int idx;
+	int *idx;
 
 	if (name == NULL || db == NULL)
 		return NULL;
@@ -140,9 +127,8 @@ pkg_query(struct cdb *db, char *name)
 	if ((cdb_find(db, name, strlen(name))) <= 0)
 		return NULL;
 
-	cdb_read(db, &idx, sizeof(idx), cdb_datapos(db));
-
-	return (pkg_idx_query(db, idx));
+	db_get(idx, db);
+	return (pkg_idx_query(db, *idx));
 }
 */
 
@@ -229,7 +215,7 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 
 				/* index -> name */
 				cdb_make_add(&cdb_make, &idx, sizeof(idx),
-						value, strlen(value));
+						value, strlen(value)+1);
 				/* name -> index */
 				cdb_make_add(&cdb_make, value, strlen(value), &idx, sizeof(idx));
 
@@ -253,7 +239,7 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	}
 
 	/* record packages len */
-	cdb_make_add(&cdb_make, "nb_packages", strlen("nb_packages"), &idx, sizeof(idx));
+	cdb_make_add(&cdb_make, PKGDB_COUNT, strlen(PKGDB_COUNT), &idx, sizeof(idx));
 
 	cdb_make_finish(&cdb_make);
 
@@ -300,46 +286,48 @@ pkgdb_cache_update()
 		pkgdb_cache_rebuild(pkg_dbdir, cache_path);
 }
 
-struct pkg **
-pkgdb_cache_list_packages(const char *pattern)
+void
+pkgdb_cache_init(struct pkgdb *db, const char *pattern)
 {
-	struct cdb db;
-	int nb_pkg, i, j;
-	char key[BUFSIZ];
-	char *val;
-	struct pkg **pkgs;
-	size_t len;
+	int count;
+	int i;
+	struct pkg *pkg;
+	char *name;
 
-	if (pkgdb_open(&db, O_RDONLY) == -1)
-		return NULL;
+	TAILQ_INIT(&db->pkgs);
+	db->count = 0;
 
-	strcpy(key, "nb_packages");
+	if (pkgdb_open(&db->db, O_RDONLY) == -1)
+		return;
 
-	if (cdb_find(&db, key, strlen(key)) <= 0) {
+	if (cdb_find(&db->db, PKGDB_COUNT, strlen(PKGDB_COUNT)) <= 0) {
 		warnx("corrupted database");
-		db_close(&db);
+		return;
 	}
 
-	cdb_read(&db, &nb_pkg, sizeof(nb_pkg), cdb_datapos(&db));
+	cdb_read(&db->db, &count, sizeof(count), cdb_datapos(&db->db));
 
-	pkgs = calloc(nb_pkg+1, sizeof(*pkgs));
+	for (i = 0; i < count; i++) {
+		/* get package */
+		if ((pkg = pkg_idx_query(&db->db, i)) == NULL)
+			continue;
 
-	for (i = 0, j = 0; i < nb_pkg; i++) {
-		cdb_find(&db, &i, sizeof(i));
-		len = cdb_datalen(&db);
-		val = malloc(len+1);
-		cdb_read(&db, val, len, cdb_datapos(&db));
-		val[len] = '\0';
-
-		if (!pattern || strncmp(val, pattern, strlen(pattern)) == 0) {
-			/* ok we find one pkg matching the pattern */
-			if ((pkgs[j] = pkg_idx_query(&db, i)) != NULL)
-				j++;
+		if (asprintf(&name, "%s-%s", pkg->name, pkg->version) == -1) {
+			warn("asprintf(%s-%s):", pkg->name, pkg->version);
+			free(pkg);
+			continue;
 		}
+
+		if (!pattern || strncmp(name, pattern, strlen(pattern)) == 0) {
+			/* ok we find one pkg matching the pattern */
+				TAILQ_INSERT_TAIL(&db->pkgs, pkg, entry);
+				db->count++;
+		}
+		else
+			free(pkg);
+
+		free(name);
 	}
-	pkgs[j] = NULL;
 
-	db_close(&db);
-
-	return (pkgs);
+	return;
 }

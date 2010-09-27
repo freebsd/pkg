@@ -4,9 +4,9 @@
 
 #define PKG_DBDIR "/var/db/pkg"
 
-struct pkg **pkgdb_list_packages(const char*pattern);
-void pkgdb_free(struct pkg **pkgs);
-size_t pkgdb_count(struct pkg **pkgs);
+void pkgdb_init(struct pkgdb *db, const char *pattern);
+void pkgdb_free(struct pkgdb *db);
+size_t pkgdb_count(struct pkgdb *db);
 
 
 #endif
