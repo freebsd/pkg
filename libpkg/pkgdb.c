@@ -5,8 +5,6 @@
 #include "pkgdb.h"
 #include "pkgdb_cache.h"
 
-
-
 void
 pkgdb_init(struct pkgdb *db, const char *pattern) {
 	/* first check if the cache has to be rebuild */

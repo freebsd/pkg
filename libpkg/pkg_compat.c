@@ -142,6 +142,8 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 				break;
 
 			case PLIST_CWD:
+				if (cp == NULL) /* workaround a bug having @cwd with no arguments */
+					break;
 				prefix = cp;
 				break;
 

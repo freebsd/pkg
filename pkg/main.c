@@ -4,6 +4,7 @@
 #include <sysexits.h>
 #include <err.h>
 
+#include "create.h"
 #include "info.h"
 
 static void usage(void);
@@ -13,6 +14,7 @@ static struct commands {
 	int (*exec_cmd)(int argc, char **argv);
 } cmd[] = { 
 	{ "add", NULL },
+	{ "create", cmd_create},
 	{ "delete", NULL},
 	{ "info", cmd_info},
 	{ "install", NULL},
