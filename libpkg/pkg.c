@@ -28,10 +28,9 @@ pkg_create_from_dir(char *path, char *root, struct archive *pkg_archive)
 	struct stat st;
 	cJSON *manifest, *files, *file;
 	char *buffer;
-	char manifestpath[MAXPATHLEN];
+	char manifestpath[MAXPATHLEN], fpath[MAXPATHLEN];
 	char *filepath;
 	void *filebuf;
-
 	struct archive *ar;
 
 	ar = archive_read_disk_new();
@@ -96,6 +95,7 @@ pkg_create_from_dir(char *path, char *root, struct archive *pkg_archive)
 	for (j = 0; j < cJSON_GetArraySize(files); j++) {
 		file = cJSON_GetArrayItem(files, j);
 		filepath = cJSON_GetObjectItem(file, "path")->valuestring;
+		snprintf(fpath, sizeof(MAXPATHLEN), "%s/%s", root, filepath);
 		archive_entry_copy_sourcepath(entry, filepath);
 
 		if (archive_read_disk_entry_from_file(ar, entry, -1, 0) != ARCHIVE_OK)
