@@ -93,7 +93,7 @@ db_add(struct cdb_make *db, const char *val, const char *fmt, ...)
 
 /* query a pkg using index */
 static struct pkg *
-pkg_idx_query(struct cdb *db, int idx)
+pkg_idx_query(struct cdb *db, size_t idx)
 {
 	struct pkg *pkg;
 
@@ -104,32 +104,78 @@ pkg_idx_query(struct cdb *db, int idx)
 		return NULL;
 
 	pkg = malloc(sizeof(*pkg));
+	pkg->idx = idx;
 	db_get(pkg->name, db);
 
 	pkg->version = db_query(db, PKGDB_VERSION, idx);
 	pkg->comment = db_query(db, PKGDB_COMMENT, idx);
 	pkg->desc    = db_query(db, PKGDB_DESC, idx);
 	pkg->origin  = db_query(db, PKGDB_ORIGIN, idx);
+	snprintf(pkg->name_version, FILENAME_MAX, "%s-%s", pkg->name, pkg->version);
 
 	return (pkg);
 }
 
-/* query pkg using name */
-/* static struct pkg *
-pkg_query(struct cdb *db, char *name)
+/* populate deps on pkg */
+static void
+pkg_get_deps(struct cdb *db, struct pkg *pkg)
 {
-	int *idx;
+	struct cdb_find cdbf;
+	size_t count = 0, idx, j, klen;
+	const char *name_version;
+	char *name, *version;
+	char key[BUFSIZ];
+	struct pkg *dep;
 
-	if (name == NULL || db == NULL)
-		return NULL;
+	if (db == NULL || pkg == NULL)
+		return;
 
-	if ((cdb_find(db, name, strlen(name))) <= 0)
-		return NULL;
+	snprintf(key, BUFSIZ, PKGDB_DEPS, pkg->idx);
+	klen = strlen(key);
 
-	db_get(idx, db);
-	return (pkg_idx_query(db, *idx));
+	cdb_findinit(&cdbf, db, key, klen);
+
+	while (cdb_findnext(&cdbf) > 0)
+		count++;
+
+	pkg->deps = calloc(count+1, sizeof(*pkg->deps));
+	pkg->deps[count] = NULL;
+
+	cdb_findinit(&cdbf, db, key, klen);
+
+	j = 0;
+	while (cdb_findnext(&cdbf) > 0) {
+		db_get(name_version, db);
+		name = strdup(name_version);
+
+		if ((version = strrchr(name, '-')) == NULL) {
+			free(name);
+			continue;
+		}
+
+		*(version++) = '\0';
+
+		/* get index */
+		if (cdb_find(db, name, strlen(name)) <= 0) {
+			free(name);
+			continue;
+		}
+		cdb_read(db, &idx, sizeof(idx), cdb_datapos(db));
+
+		/* get package */
+		if ((dep = pkg_idx_query(db, idx)) == NULL) {
+			/* partial package */
+			dep = calloc(1, sizeof(*dep));
+			strncpy(dep->name_version, name_version, FILENAME_MAX);
+			dep->errors |= PKGERR_NOT_INSTALLED;
+		} else { /* package exist */
+			if (strcmp(version, dep->version) != 0)
+				dep->errors |= PKGERR_VERSION_MISMATCH;
+			pkg_get_deps(db, dep);
+		}
+		pkg->deps[j++] = dep;
+	}
 }
-*/
 
 /* open the pkgdb.cache */
 static int
@@ -181,8 +227,8 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	struct cdb_make cdb_make;
 	DIR *dir;
 	struct dirent *portsdir;
-	cJSON *manifest, *node, *array;
-	int idx = 0, array_size, i;
+	cJSON *manifest, *node, *subnode, *array;
+	size_t idx = 0, array_size, i;
 	struct pkg pkg;
 
 	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
@@ -242,8 +288,18 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 
 				if (array && (array_size = cJSON_GetArraySize(array)) > 0) {
 					for (i = 0; i < array_size; i++) {
-						if ((node = cJSON_GetArrayItem(array, i)) != NULL && node->valuestring != NULL) {
-							db_add(&cdb_make, node->valuestring, PKGDB_DEPS, idx);
+						if ((node = cJSON_GetArrayItem(array, i)) != NULL) {
+
+							if ((subnode = cJSON_GetObjectItem(node, "name")) == NULL || subnode->valuestring == NULL)
+								continue;
+							pkg.name = subnode->valuestring;
+
+							if ((subnode = cJSON_GetObjectItem(node, "version")) == NULL && subnode->valuestring == NULL)
+								continue;
+							pkg.version = subnode->valuestring;
+
+							snprintf(pkg.name_version, FILENAME_MAX, "%s-%s", pkg.name, pkg.version);
+							db_add(&cdb_make, pkg.name_version, PKGDB_DEPS, idx);
 						}
 					}
 				}
@@ -312,13 +368,14 @@ pkg_cmp(void const *a, void const *b)
 }
 
 void
-pkgdb_cache_init(struct pkgdb *db, const char *pattern)
+pkgdb_cache_init(struct pkgdb *db, const char *pattern, unsigned char flags)
 {
-	int count, i;
+	size_t count, i;
 	size_t patlen = 0;
 	struct pkg *pkg;
 
 	db->count = 0;
+	db->flags = flags;
 
 	if (pkgdb_open(&db->db, O_RDONLY) == -1)
 		return;
@@ -340,10 +397,12 @@ pkgdb_cache_init(struct pkgdb *db, const char *pattern)
 		if ((pkg = pkg_idx_query(&db->db, i)) == NULL)
 			continue;
 
-		snprintf(pkg->name_version, FILENAME_MAX, "%s-%s", pkg->name, pkg->version);
-
-		if (!pattern || strncmp(pkg->name_version, pattern, patlen) == 0)
+		if (!pattern || strncmp(pkg->name_version, pattern, patlen) == 0) {
+			if (db->flags & PKGDB_INIT_DEPS) {
+				pkg_get_deps(&db->db, pkg);
+			}
 			db->pkgs[db->count++] = pkg;
+		}
 		else
 			free(pkg);
 	}

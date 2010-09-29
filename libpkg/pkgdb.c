@@ -9,7 +9,21 @@ void
 pkgdb_init(struct pkgdb *db, const char *pattern) {
 	/* first check if the cache has to be rebuild */
 	pkgdb_cache_update();
-	return (pkgdb_cache_init(db, pattern));
+	pkgdb_cache_init(db, pattern, 0);
+}
+
+static void
+pkg_free(struct pkgdb *db, struct pkg *pkg)
+{
+	struct pkg **deps;
+	if (db->flags & PKGDB_INIT_DEPS) {
+		if (!(pkg->errors & PKGERR_NOT_INSTALLED)) {
+			for (deps = pkg->deps; *deps != NULL; deps++) {
+				pkg_free(db, *deps);
+			}
+		}
+	}
+	free(pkg);
 }
 
 void
@@ -23,7 +37,7 @@ pkgdb_free(struct pkgdb *db)
 	close(fd);
 
 	PKGDB_FOREACH(pkg, db)
-		free(pkg);
+		pkg_free(db, pkg);
 
 	free(db->pkgs);
 }

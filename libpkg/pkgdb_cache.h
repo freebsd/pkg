@@ -2,11 +2,11 @@
 #define _PKGDB_CACHE_H
 #include "pkgdb.h"
 
-#define PKGDB_VERSION "%dv"
-#define PKGDB_COMMENT "%dc"
-#define PKGDB_DESC    "%dd"
-#define PKGDB_ORIGIN  "%do"
-#define PKGDB_DEPS    "%dD"
+#define PKGDB_VERSION "%zuv"
+#define PKGDB_COMMENT "%zuc"
+#define PKGDB_DESC    "%zud"
+#define PKGDB_ORIGIN  "%zuo"
+#define PKGDB_DEPS    "%zuD"
 #define PKGDB_COUNT   "count"
 
 /* quick db_get */
@@ -16,6 +16,6 @@
 
 
 void pkgdb_cache_update(void);
-void pkgdb_cache_init(struct pkgdb *db, const char *pattern);
+void pkgdb_cache_init(struct pkgdb *, const char *, unsigned char);
 
 #endif

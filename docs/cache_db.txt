@@ -9,14 +9,14 @@ Needs:
 
 key			value
 
-(char*)"count"		(int)nb_packages
+(char*)"count"		(size_t)nb_packages
 [...]
-(int)N		(char*) package N name
+(size_t)N		(char*) package N name
 [...]
 
 note that packages are 0-indexed
 
-(char*)$name			(int)N (package index)
+(char*)$name			(size_t)N (package index)
 (char*)$Nv				(char*)package N version
 (char*)$Nc				(char*)package N comment
 (char*)$Nd				(char*)package N desc
