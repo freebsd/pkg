@@ -68,7 +68,7 @@ main(int argc, char **argv)
 	if (ambiguous == 0) {
 		argc--;
 		argv++;
-		if (command->exec_cmd != NULL) 
+		if (command->exec_cmd != NULL)
 			return (command->exec_cmd(argc, argv));
 		else
 			printf("%s: No yet implemented\n", command->name);

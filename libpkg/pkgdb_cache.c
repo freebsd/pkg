@@ -1,6 +1,8 @@
 #include <dirent.h>
 #include <err.h>
 #include <errno.h>
+#include <fnmatch.h>
+#include <regex.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -368,14 +370,20 @@ pkg_cmp(void const *a, void const *b)
 }
 
 void
-pkgdb_cache_init(struct pkgdb *db, const char *pattern, unsigned char flags)
+pkgdb_cache_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char flags)
 {
 	size_t count, i;
-	size_t patlen = 0;
 	struct pkg *pkg;
+	regex_t re;
+	int matched;
 
 	db->count = 0;
 	db->flags = flags;
+
+	if (match != MATCH_ALL && pattern == NULL) {
+		warnx("a pattern is required");
+		return;
+	}
 
 	if (pkgdb_open(&db->db, O_RDONLY) == -1)
 		return;
@@ -386,26 +394,54 @@ pkgdb_cache_init(struct pkgdb *db, const char *pattern, unsigned char flags)
 	}
 
 	cdb_read(&db->db, &count, sizeof(count), cdb_datapos(&db->db));
-
 	db->pkgs = calloc(count+1, sizeof(struct pkg *));
 
-	if (pattern)
-		patlen = strlen(pattern);
+	/* Regex initialisation */
+	if (match == MATCH_REGEX) {
+		if (regcomp(&re, pattern, REG_BASIC | REG_NOSUB) != 0) {
+			warnx("'%s' is not a valid regular expression", pattern);
+			return;
+		}
+	} else if (match == MATCH_EREGEX) {
+		if (regcomp(&re, pattern, REG_EXTENDED | REG_NOSUB) != 0) {
+			warnx("'%s' is not a valid extended regular expression", pattern);
+			return;
+		}
+	}
 
 	for (i = 0; i < count; i++) {
 		/* get package */
 		if ((pkg = pkg_idx_query(&db->db, i)) == NULL)
 			continue;
 
-		if (!pattern || strncmp(pkg->name_version, pattern, patlen) == 0) {
-			if (db->flags & PKGDB_INIT_DEPS) {
+		matched = 1; /* non zero is false */
+		switch (match) {
+			case MATCH_ALL:
+				matched = 0;
+				break;
+			case MATCH_EXACT:
+				matched = strcmp(pkg->name_version, pattern);
+				break;
+			case MATCH_GLOB:
+				matched = fnmatch(pattern, pkg->name_version, 0);
+				break;
+			case MATCH_REGEX:
+			case MATCH_EREGEX:
+				matched = regexec(&re, pkg->name_version, 0, NULL, 0);
+				break;
+		}
+
+		if (matched == 0) {
+			if (db->flags & PKGDB_INIT_DEPS)
 				pkg_get_deps(&db->db, pkg);
-			}
 			db->pkgs[db->count++] = pkg;
 		}
 		else
 			free(pkg);
 	}
+
+	if (match == MATCH_REGEX || match == MATCH_EREGEX)
+		regfree(&re);
 
 	/* sort packages */
 	db->pkgs = realloc(db->pkgs, (db->count+1) * sizeof(struct pkg *));
