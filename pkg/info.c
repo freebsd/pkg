@@ -1,4 +1,5 @@
 #include <err.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <pkg.h>
 #include <pkgdb.h>
@@ -24,10 +25,29 @@ cmd_info(int argc, char **argv)
 {
 	struct pkgdb db;
 	struct pkg *pkg;
-	(void)argc;
+	match_t match = MATCH_EXACT;
+	int ch;
 
-	pkgdb_init(&db, argv[1]);
+	while ((ch = getopt(argc, argv, "gxX")) != -1) {
+		switch (ch) {
+			case 'g':
+				match = MATCH_GLOB;
+				break;
+			case 'x':
+				match = MATCH_REGEX;
+				break;
+			case 'X':
+				match = MATCH_EREGEX;
+				break;
+		}
+	}
+	argc -= optind;
+	argv += optind;
 
+	if (argc == 0)
+		match = MATCH_ALL;
+
+	pkgdb_init(&db, argv[0], match);
 	if (pkgdb_count(&db) == 1) {
 		/* one match */
 		pkg = db.pkgs[0];
