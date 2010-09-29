@@ -104,7 +104,6 @@ pkg_idx_query(struct cdb *db, int idx)
 		return NULL;
 
 	pkg = malloc(sizeof(*pkg));
-	TAILQ_INIT(&pkg->deps);
 	db_get(pkg->name, db);
 
 	pkg->version = db_query(db, PKGDB_VERSION, idx);
@@ -236,6 +235,7 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 				idx++;
 			}
 		}
+		closedir(dir);
 	}
 
 	/* record packages len */
@@ -298,13 +298,9 @@ void
 pkgdb_cache_init(struct pkgdb *db, const char *pattern)
 {
 	int count, i;
+	size_t patlen = 0;
 	struct pkg *pkg;
-	struct pkg **pkgs;
-	TAILQ_HEAD(, pkg) head;
-	char *name;
 
-	TAILQ_INIT(&head);
-	TAILQ_INIT(&db->pkgs);
 	db->count = 0;
 
 	if (pkgdb_open(&db->db, O_RDONLY) == -1)
@@ -317,39 +313,28 @@ pkgdb_cache_init(struct pkgdb *db, const char *pattern)
 
 	cdb_read(&db->db, &count, sizeof(count), cdb_datapos(&db->db));
 
+	db->pkgs = calloc(count+1, sizeof(struct pkg *));
+
+	if (pattern)
+		patlen = strlen(pattern);
+
 	for (i = 0; i < count; i++) {
 		/* get package */
 		if ((pkg = pkg_idx_query(&db->db, i)) == NULL)
 			continue;
 
-		if (asprintf(&name, "%s-%s", pkg->name, pkg->version) == -1) {
-			warn("asprintf(%s-%s):", pkg->name, pkg->version);
-			free(pkg);
-			continue;
-		}
+		snprintf(pkg->name_version, FILENAME_MAX, "%s-%s", pkg->name, pkg->version);
 
-		if (!pattern || strncmp(name, pattern, strlen(pattern)) == 0) {
-			TAILQ_INSERT_TAIL(&head, pkg, entry);
-			db->count++;
-		}
+		if (!pattern || strncmp(pkg->name_version, pattern, patlen) == 0)
+			db->pkgs[db->count++] = pkg;
 		else
 			free(pkg);
-
-		free(name);
 	}
 
 	/* sort packages */
-	pkgs = calloc(db->count, sizeof(struct pkg));
-	i = 0;
-	TAILQ_FOREACH(pkg, &head, entry)
-		pkgs[i++] = pkg;
-
-	qsort(pkgs, db->count, sizeof(*pkgs), pkg_cmp);
-
-	for (i = 0; i < (int)db->count; i++)
-		TAILQ_INSERT_TAIL(&db->pkgs, pkgs[i], entry);
-
-	free(pkgs);
+	db->pkgs = realloc(db->pkgs, (db->count+1) * sizeof(struct pkg *));
+	db->pkgs[db->count] = NULL;
+	qsort(db->pkgs, db->count, sizeof(struct pkg *), pkg_cmp);
 
 	return;
 }

@@ -16,14 +16,14 @@ cmd_info(int argc, char **argv)
 
 	if (pkgdb_count(&db) == 1) {
 		/* one match */
-		pkg = TAILQ_FIRST(&db.pkgs);
-		printf("Information for %s-%s\n", pkg->name, pkg->version);
+		pkg = db.pkgs[0];
+		printf("Information for %s\n", pkg->name_version);
 		printf("Comment:\n%s\n\n", pkg->comment);
 		printf("Description:\n%s\n\n", pkg->desc);
 	}
 	else if (pkgdb_count(&db) > 1) {
-		TAILQ_FOREACH(pkg, &db.pkgs, entry) {
-			printf("%s-%s: %s\n", pkg->name, pkg->version, pkg->comment);
+		PKGDB_FOREACH(pkg, &db) {
+			printf("%s: %s\n", pkg->name_version, pkg->comment);
 		}
 	}
 

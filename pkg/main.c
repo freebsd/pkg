@@ -76,12 +76,9 @@ main(int argc, char **argv)
 
 	if (ambiguous == 1) {
 		warnx("Ambiguous command: %s, could be:", argv[1]);
-		for (i = 0; cmd[i].name != NULL; i++) {
-			if (strlen(cmd[i].name) < strlen(argv[1]))
-				continue;
-			if (strncmp(argv[1], cmd[i].name, strlen(argv[1])) == 0)
+		for (i = 0; cmd[i].name != NULL; i++)
+			if (strncmp(argv[1], cmd[i].name, len) == 0)
 				warnx("\t%s",cmd[i].name);
-		}
 	}
 
 	return (EX_USAGE);

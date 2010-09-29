@@ -3,24 +3,27 @@
 
 #include <cdb.h>
 #include <stdio.h> /* for size_t */
-#include <sys/queue.h>
 
 struct pkg {
+	char name_version[FILENAME_MAX];
 	const char *name;
 	const char *version;
 	const char *origin;
 	const char *comment;
 	const char *desc;
-	TAILQ_ENTRY(pkg) entry;
-	TAILQ_HEAD(, pkg) deps;
+	struct pkg **deps; /* null-terminated */
 };
 
 struct pkgdb {
-	TAILQ_HEAD(, pkg) pkgs;
+	struct pkg **pkgs; /* null-terminated */
 	size_t count;
+	size_t i;
 	struct cdb db;
 };
 
+#define PKGDB_FOREACH(pkg, db) for ((db)->i = 0, (pkg) = (db)->pkgs[0]; \
+		(pkg) != NULL; (pkg) = (db)->pkgs[++(db)->i])
+
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
-int pkg_create(char *, pkg_formats, char *, char *);
+int pkg_create(char *, pkg_formats, const char *, const char *);
 #endif

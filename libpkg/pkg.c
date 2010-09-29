@@ -14,10 +14,10 @@
 
 #define METADATA_GLOB "+{DEINSTALL,INSTALL,MTREE_DIRS}"
 
-static int pkg_create_from_dir(char *, char *, struct archive *);
+static int pkg_create_from_dir(char *, const char *, struct archive *);
 
 static int
-pkg_create_from_dir(char *path, char *root, struct archive *pkg_archive)
+pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 {
 	struct archive_entry *entry;
 	char glob_pattern[MAXPATHLEN + sizeof(METADATA_GLOB)];
@@ -25,12 +25,10 @@ pkg_create_from_dir(char *path, char *root, struct archive *pkg_archive)
 	int fd, j;
 	size_t len, i = 0;
 	char buf[BUFSIZ];
-	struct stat st;
 	cJSON *manifest, *files, *file;
 	char *buffer;
 	char manifestpath[MAXPATHLEN], fpath[MAXPATHLEN];
 	char *filepath;
-	void *filebuf;
 	struct archive *ar;
 
 	ar = archive_read_disk_new();
@@ -121,7 +119,7 @@ pkg_create_from_dir(char *path, char *root, struct archive *pkg_archive)
 }
 
 int
-pkg_create(char *pkgname, pkg_formats format, char *outdir, char *rootdir)
+pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *rootdir)
 {
 	struct pkgdb db;
 	struct pkg *pkg;
@@ -159,10 +157,10 @@ pkg_create(char *pkgname, pkg_formats format, char *outdir, char *rootdir)
 		return (-1);
 	}
 
-	TAILQ_FOREACH(pkg, &db.pkgs, entry) {
-		printf("Creating package %s/%s-%s.%s\n", outdir, pkg->name, pkg->version, ext);
-		snprintf(pkgpath, sizeof(pkgpath), "%s/%s-%s/", pkgdb_dir ? pkgdb_dir : PKG_DBDIR, pkg->name, pkg->version);
-		snprintf(archive_path, sizeof(archive_path), "%s/%s-%s.%s", outdir, pkg->name, pkg->version, ext);
+	PKGDB_FOREACH(pkg, &db) {
+		printf("Creating package %s/%s.%s\n", outdir, pkg->name_version, ext);
+		snprintf(pkgpath, sizeof(pkgpath), "%s/%s/", pkgdb_dir ? pkgdb_dir : PKG_DBDIR, pkg->name_version);
+		snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, pkg->name_version, ext);
 
 		pkg_archive = archive_write_new();
 
