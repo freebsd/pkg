@@ -235,6 +235,7 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 				idx++;
 			}
 		}
+		closedir(dir);
 	}
 
 	/* record packages len */
