@@ -21,6 +21,7 @@ note that packages are 0-indexed
 (char*)$Nc				(char*)package N comment
 (char*)$Nd				(char*)package N desc
 (char*)$No				(char*)package N origin
+(char*)$ND				(char**)[dep0_version, dep1_version ...]
 
 __future__
 
@@ -28,8 +29,6 @@ __future__
 		--> fetch from $PACKAGESITE/$path etc (useless ?)
 
 (char*)$Ns				(char*)package N checksum (for a package)
-(char*)$ND				(char*)"$dep0-$dep0_version $dep0-$dep0_version..." package N deps
-						} multiple values for on key ? --> TODO benchmark
 (char*)$NC				(char*)"$conflict0 $conflict1 ..." package N conflicts
 
 Why N -> name

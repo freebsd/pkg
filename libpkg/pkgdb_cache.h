@@ -6,6 +6,7 @@
 #define PKGDB_COMMENT "%dc"
 #define PKGDB_DESC    "%dd"
 #define PKGDB_ORIGIN  "%do"
+#define PKGDB_DEPS    "%dD"
 #define PKGDB_COUNT   "count"
 
 /* quick db_get */

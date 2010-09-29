@@ -4,6 +4,9 @@
 #include <cdb.h>
 #include <stdio.h> /* for size_t */
 
+#define PKGERR_NOT_INSTALLED    (1<<0) /* dep not register */
+#define PKGERR_VERSION_MISMATCH (1<<1) /* dep_version != require version */
+
 struct pkg {
 	char name_version[FILENAME_MAX];
 	const char *name;
@@ -12,6 +15,7 @@ struct pkg {
 	const char *comment;
 	const char *desc;
 	struct pkg **deps; /* null-terminated */
+	unsigned char errors; /* PKGERR_* */
 };
 
 struct pkgdb {

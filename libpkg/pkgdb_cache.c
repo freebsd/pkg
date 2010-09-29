@@ -179,13 +179,13 @@ static void
 pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 {
 	int fd;
-	char *value;
 	char tmppath[MAXPATHLEN];
 	struct cdb_make cdb_make;
 	DIR *dir;
 	struct dirent *portsdir;
-	cJSON *manifest, *node;
-	int idx = 0;
+	cJSON *manifest, *node, *array;
+	int idx = 0, array_size, i;
+	struct pkg pkg;
 
 	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
 
@@ -212,28 +212,45 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 				if (manifest == 0)
 					continue;
 
-				value = cJSON_GetObjectItem(manifest, "name")->valuestring;
+				if ((node = cJSON_GetObjectItem(manifest, "name")) == NULL || node->valuestring == NULL)
+					continue;
+				pkg.name = node->valuestring;
+
+				if ((node = cJSON_GetObjectItem(manifest, "version")) == NULL || node->valuestring == NULL)
+					continue;
+				pkg.version = node->valuestring;
+
+				if ((node = cJSON_GetObjectItem(manifest, "comment")) == NULL || node->valuestring == NULL)
+					continue;
+				pkg.comment = node->valuestring;
+
+				if ((node = cJSON_GetObjectItem(manifest, "origin")) == NULL || node->valuestring == NULL)
+					continue;
+				pkg.origin = node->valuestring;
 
 				/* index -> name */
-				cdb_make_add(&cdb_make, &idx, sizeof(idx),
-						value, strlen(value)+1);
+				cdb_make_add(&cdb_make, &idx, sizeof(idx), pkg.name, strlen(pkg.name)+1);
 				/* name -> index */
-				cdb_make_add(&cdb_make, value, strlen(value), &idx, sizeof(idx));
+				cdb_make_add(&cdb_make, pkg.name, strlen(pkg.name), &idx, sizeof(idx));
 
-				value = cJSON_GetObjectItem(manifest, "version")->valuestring;
-				db_add(&cdb_make, value, PKGDB_VERSION, idx);
+				db_add(&cdb_make, pkg.version, PKGDB_VERSION, idx);
+				db_add(&cdb_make, pkg.comment, PKGDB_COMMENT, idx);
+				db_add(&cdb_make, pkg.origin, PKGDB_ORIGIN, idx);
 
-				if ((node = cJSON_GetObjectItem(manifest, "comment")) != NULL)
-					db_add(&cdb_make, node->valuestring, PKGDB_COMMENT, idx);
-
-				if ((node = cJSON_GetObjectItem(manifest, "desc")) != NULL)
+				if ((node = cJSON_GetObjectItem(manifest, "desc")) != NULL && node->valuestring != NULL)
 					db_add(&cdb_make, node->valuestring, PKGDB_DESC, idx);
 
-				if ((node = cJSON_GetObjectItem(manifest, "origin")) != NULL)
-					db_add(&cdb_make, node->valuestring, PKGDB_ORIGIN, idx);
+				array = cJSON_GetObjectItem(manifest, "deps");
+
+				if (array && (array_size = cJSON_GetArraySize(array)) > 0) {
+					for (i = 0; i < array_size; i++) {
+						if ((node = cJSON_GetArrayItem(array, i)) != NULL && node->valuestring != NULL) {
+							db_add(&cdb_make, node->valuestring, PKGDB_DEPS, idx);
+						}
+					}
+				}
 
 				cJSON_Delete(manifest);
-
 				idx++;
 			}
 		}

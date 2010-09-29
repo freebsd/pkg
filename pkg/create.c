@@ -4,7 +4,17 @@
 #include <pkgdb.h>
 
 #include "create.h"
-#define args
+
+/*
+ * options:
+ * -x: regex
+ * -g: globbing
+ * -b: backup (create from installed pkg)
+ * -r: rootdir for the package
+ * -m: path to dir where to find the +MANIFEST
+ * -f <format>: format could be txz, tgz, tbz or tar
+ * -o: output directory where to create packages by default ./ is used
+ */
 
 int
 cmd_create(int argc, char **argv)
