@@ -1,0 +1,65 @@
+{
+    "pkg_format_version": "1.0",
+    "name": "foobar",
+    "origin": "killapp/foobar",
+    "version": "1.2.3",
+    "arch": "i386",
+    "osrelease":    "8.1",
+    "osversion":    "801500",
+    "build_time", : 1282661958,
+    "comment": "Foo does bar very well!",
+    "desc": "Foo is a nice software\n\nWWW:\thttp://www.foo-bar.org",
+    "license": "ISC",
+    "automatic": false,
+    "options": [
+        "WITH_FOO": true,
+        "WITH_BAR": false
+    ],
+    "deps": [
+        {
+            "name": "gettext",
+            "origin": "devel/gettext",
+            "version": ">=1.2"
+        },
+        {
+            "name": "lua",
+            "origin": "lang/lua",
+            "version": "5.1"
+        }
+    ],
+    "conflicts": [
+    ],
+    "pre_install": [
+        "/usr/sbin/pw useradd foo",
+    ],
+    "post_install": [
+        "/sbin/ldconfig -m /usr/local/lib",
+    ],
+    "pre_upgrade": [
+    ],
+    "post_upgrade": [
+        "/usr/local/bin/foo_updatedb",
+    ],
+    "pre_uninstall": [
+    ],
+    "post_uninstall": [
+        "/sbin/ldconfig -R", 
+        "/usr/sbin/pw userdel foo",
+    ],
+    "unexec": [
+    ],
+    "exec" : [
+    ],
+    "files": [
+        {
+            "path": "bin/foobar",
+            "md5": "68b329da9893e34099c7d8ad5cb9c940",
+            "config": false
+        },
+        {
+            "path": "etc/foobar.cfg",
+            "md5": "68b329da9893e34099c7d8ad5cb9c940",
+            "config": true
+        }
+    ]
+}
