@@ -187,5 +187,7 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 		archive_write_close(pkg_archive);
 		archive_write_finish(pkg_archive);
 	}
+
+	pkgdb_free(&db);
 	return (0);
 }
