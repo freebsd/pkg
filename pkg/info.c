@@ -24,11 +24,13 @@ int
 cmd_info(int argc, char **argv)
 {
 	struct pkgdb db;
-	struct pkg *pkg;
+	struct pkg *pkg, **deps;
+	unsigned char flags = 0;
+	unsigned char opt = 0;
 	match_t match = MATCH_EXACT;
-	int ch;
+	char ch;
 
-	while ((ch = getopt(argc, argv, "gxX")) != -1) {
+	while ((ch = getopt(argc, argv, "gxXdD")) != -1) {
 		switch (ch) {
 			case 'g':
 				match = MATCH_GLOB;
@@ -39,6 +41,10 @@ cmd_info(int argc, char **argv)
 			case 'X':
 				match = MATCH_EREGEX;
 				break;
+			case 'd':
+				flags |= PKGDB_INIT_DEPS;
+				opt |= INFO_PRINT_DEPEND_LIST;
+				break;
 		}
 	}
 	argc -= optind;
@@ -47,16 +53,25 @@ cmd_info(int argc, char **argv)
 	if (argc == 0)
 		match = MATCH_ALL;
 
-	pkgdb_init(&db, argv[0], match);
-	if (pkgdb_count(&db) == 1) {
-		/* one match */
-		pkg = db.pkgs[0];
-		printf("Information for %s\n", pkg->name_version);
-		printf("Comment:\n%s\n\n", pkg->comment);
-		printf("Description:\n%s\n\n", pkg->desc);
-	}
-	else if (pkgdb_count(&db) > 1) {
-		PKGDB_FOREACH(pkg, &db) {
+	pkgdb_init(&db, argv[0], match, flags);
+
+	PKGDB_FOREACH(pkg, &db) {
+
+		if (opt & INFO_PRINT_DEPEND_LIST) {
+			printf("Informations for %s\n\n", pkg->name_version);
+			printf("Depends on:\n");
+			for (deps = pkg->deps; *deps; deps++)
+				printf("%s\n", (*deps)->name_version);
+			printf("\n\n");
+		}
+
+		else if (pkgdb_count(&db) == 1) {
+			printf("Informations for %s\n\n", pkg->name_version);
+			printf("Comment:\n%s\n\n", pkg->comment);
+			printf("Description:\n%s\n\n", pkg->desc);
+		}
+
+		else {
 			printf("%s: %s\n", pkg->name_version, pkg->comment);
 		}
 	}

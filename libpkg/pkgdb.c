@@ -6,10 +6,10 @@
 #include "pkgdb_cache.h"
 
 void
-pkgdb_init(struct pkgdb *db, const char *pattern, match_t match) {
+pkgdb_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char flags) {
 	/* first check if the cache has to be rebuild */
 	pkgdb_cache_update();
-	pkgdb_cache_init(db, pattern, match, 0);
+	pkgdb_cache_init(db, pattern, match, flags);
 }
 
 static void

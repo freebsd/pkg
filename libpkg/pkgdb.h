@@ -12,7 +12,7 @@ typedef enum _math_t {
 	MATCH_EREGEX
 } match_t;
 
-void pkgdb_init(struct pkgdb *db, const char *pattern, match_t match);
+void pkgdb_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char flags);
 void pkgdb_free(struct pkgdb *db);
 size_t pkgdb_count(struct pkgdb *db);
 
