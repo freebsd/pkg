@@ -297,8 +297,8 @@ void
 pkgdb_cache_init(struct pkgdb *db, const char *pattern)
 {
 	int count, i;
+	size_t patlen = 0;
 	struct pkg *pkg;
-	char *name;
 
 	db->count = 0;
 
@@ -314,24 +314,20 @@ pkgdb_cache_init(struct pkgdb *db, const char *pattern)
 
 	db->pkgs = calloc(count+1, sizeof(struct pkg *));
 
+	if (pattern)
+		patlen = strlen(pattern);
+
 	for (i = 0; i < count; i++) {
 		/* get package */
 		if ((pkg = pkg_idx_query(&db->db, i)) == NULL)
 			continue;
 
-		if (asprintf(&name, "%s-%s", pkg->name, pkg->version) == -1) {
-			warn("asprintf(%s-%s):", pkg->name, pkg->version);
-			free(pkg);
-			continue;
-		}
+		snprintf(pkg->name_version, FILENAME_MAX, "%s-%s", pkg->name, pkg->version);
 
-		if (!pattern || strncmp(name, pattern, strlen(pattern)) == 0) {
-			pkg->name_version = name;
+		if (!pattern || strncmp(pkg->name_version, pattern, patlen) == 0)
 			db->pkgs[db->count++] = pkg;
-		} else {
+		else
 			free(pkg);
-			free(name);
-		}
 	}
 
 	/* sort packages */

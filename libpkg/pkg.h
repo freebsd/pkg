@@ -5,7 +5,7 @@
 #include <stdio.h> /* for size_t */
 
 struct pkg {
-	char *name_version;
+	char name_version[FILENAME_MAX];
 	const char *name;
 	const char *version;
 	const char *origin;

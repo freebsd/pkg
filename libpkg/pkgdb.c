@@ -22,10 +22,9 @@ pkgdb_free(struct pkgdb *db)
 	cdb_free(&db->db);
 	close(fd);
 
-	PKGDB_FOREACH(pkg, db) {
-		free(pkg->name_version);
+	PKGDB_FOREACH(pkg, db)
 		free(pkg);
-	}
+
 	free(db->pkgs);
 }
 
