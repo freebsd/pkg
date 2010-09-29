@@ -5,6 +5,20 @@
 
 #include "info.h"
 
+/*
+ *
+ * list of options
+ * -g: glob search: TODO
+ * -x: regex search: TODO
+ * -s: show package size: TODO
+ * -S <type> : show scripts, type can be pre-install etc: TODO
+ * -d: dependency list: TODO
+ * -D: show reverse dependency list: TODO
+ * -l: list contents of a package
+ * -w <filename>: (which) finds which package the filename belongs to:
+ * -e: return 1 of the package exist otherwise 0
+ */
+
 int
 cmd_info(int argc, char **argv)
 {
