@@ -173,7 +173,7 @@ pkg_get_deps(struct cdb *db, struct pkg *pkg)
 		} else { /* package exist */
 			if (strcmp(version, dep->version) != 0)
 				dep->errors |= PKGERR_VERSION_MISMATCH;
-			pkg_get_deps(db, dep);
+			/* pkg_get_deps(db, dep); */ /* dont need to be recursive for the moment */
 		}
 		pkg->deps[j++] = dep;
 	}
