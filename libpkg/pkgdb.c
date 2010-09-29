@@ -22,11 +22,11 @@ pkgdb_free(struct pkgdb *db)
 	cdb_free(&db->db);
 	close(fd);
 
-	while (!TAILQ_EMPTY(&db->pkgs)) {
-		pkg = TAILQ_FIRST(&db->pkgs);
-		TAILQ_REMOVE(&db->pkgs, pkg, entry);
+	PKGDB_FOREACH(pkg, db) {
+		free(pkg->name_version);
 		free(pkg);
 	}
+	free(db->pkgs);
 }
 
 size_t
