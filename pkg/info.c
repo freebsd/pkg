@@ -30,6 +30,7 @@ cmd_info(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	char ch;
 
+	/* TODO: exclusive opts ? */
 	while ((ch = getopt(argc, argv, "gxXdD")) != -1) {
 		switch (ch) {
 			case 'g':
@@ -43,7 +44,11 @@ cmd_info(int argc, char **argv)
 				break;
 			case 'd':
 				flags |= PKGDB_INIT_DEPS;
-				opt |= INFO_PRINT_DEPEND_LIST;
+				opt |= INFO_PRINT_DEP;
+				break;
+			case 'D':
+				flags |= PKGDB_INIT_RDEPS;
+				opt |= INFO_PRINT_RDEP;
 				break;
 		}
 	}
@@ -57,12 +62,16 @@ cmd_info(int argc, char **argv)
 
 	PKGDB_FOREACH(pkg, &db) {
 
-		if (opt & INFO_PRINT_DEPEND_LIST) {
-			printf("Informations for %s\n\n", pkg->name_version);
-			printf("Depends on:\n");
-			for (deps = pkg->deps; *deps; deps++)
+		if (opt & INFO_PRINT_DEP) {
+			printf("%s depends on:\n", pkg->name_version);
+			for (deps = pkg->deps; *deps != NULL; deps++)
 				printf("%s\n", (*deps)->name_version);
-			printf("\n\n");
+		}
+
+		else if (opt & INFO_PRINT_RDEP) {
+			printf("%s is required for:\n", pkg->name_version);
+			for (deps = pkg->rdeps; *deps != NULL; deps++)
+				printf("%s\n", (*deps)->name_version);
 		}
 
 		else if (pkgdb_count(&db) == 1) {

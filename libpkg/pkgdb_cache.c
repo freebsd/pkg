@@ -179,6 +179,48 @@ pkg_get_deps(struct cdb *db, struct pkg *pkg)
 	}
 }
 
+/* populate rdeps on package */
+static void
+pkg_get_rdeps(struct cdb *db, struct pkg *pkg, size_t count)
+{
+	size_t i, j;
+	struct pkg *p, **deps;
+
+	if (db == NULL || pkg == NULL)
+		return;
+
+	pkg->rdeps = calloc(count+1, sizeof(struct pkg *));
+
+	for (i = 0, j = 0; i < count; i++) {
+
+		if ((p = pkg_idx_query(db, i)) == NULL)
+			continue;
+
+		pkg_get_deps(db, p);
+
+		for (deps = p->deps; *deps != NULL; deps++) {
+			if (!((*deps)->errors & PKGERR_NOT_INSTALLED)
+					&& strcmp((*deps)->name, pkg->name) == 0) {
+				pkg->rdeps[j] = p;
+				break;
+			}
+		}
+
+		/* free deps */
+		for (deps = p->deps; *deps != NULL; deps++)
+			free(*deps);
+		free(p->deps);
+
+		if (pkg->rdeps[j] == p)
+			j++;
+		else
+			free(p);
+	}
+	pkg->rdeps = realloc(pkg->rdeps, (j+1) * sizeof(struct pkg *));
+	pkg->rdeps[j] = NULL;
+	return;
+}
+
 /* open the pkgdb.cache */
 static int
 pkgdb_open(struct cdb *db, int flags)
@@ -369,13 +411,34 @@ pkg_cmp(void const *a, void const *b)
 	return (strcmp((*pa)->name, (*pb)->name));
 }
 
+static int
+pkg_match(struct pkg *pkg, const regex_t *re, const char *pattern, match_t match)
+{
+	int matched = 1;
+	switch (match) {
+		case MATCH_ALL:
+			matched = 0;
+			break;
+		case MATCH_EXACT:
+			matched = strcmp(pkg->name_version, pattern);
+			break;
+		case MATCH_GLOB:
+			matched = fnmatch(pattern, pkg->name_version, 0);
+			break;
+		case MATCH_REGEX:
+		case MATCH_EREGEX:
+			matched = regexec(re, pkg->name_version, 0, NULL, 0);
+			break;
+	}
+	return (matched);
+}
+
 void
 pkgdb_cache_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char flags)
 {
 	size_t count, i;
 	struct pkg *pkg;
 	regex_t re;
-	int matched;
 
 	db->count = 0;
 	db->flags = flags;
@@ -414,26 +477,11 @@ pkgdb_cache_init(struct pkgdb *db, const char *pattern, match_t match, unsigned 
 		if ((pkg = pkg_idx_query(&db->db, i)) == NULL)
 			continue;
 
-		matched = 1; /* non zero is false */
-		switch (match) {
-			case MATCH_ALL:
-				matched = 0;
-				break;
-			case MATCH_EXACT:
-				matched = strcmp(pkg->name_version, pattern);
-				break;
-			case MATCH_GLOB:
-				matched = fnmatch(pattern, pkg->name_version, 0);
-				break;
-			case MATCH_REGEX:
-			case MATCH_EREGEX:
-				matched = regexec(&re, pkg->name_version, 0, NULL, 0);
-				break;
-		}
-
-		if (matched == 0) {
+		if (pkg_match(pkg, &re, pattern, match) == 0) {
 			if (db->flags & PKGDB_INIT_DEPS)
 				pkg_get_deps(&db->db, pkg);
+			if (db->flags & PKGDB_INIT_RDEPS)
+				pkg_get_rdeps(&db->db, pkg, count);
 			db->pkgs[db->count++] = pkg;
 		}
 		else

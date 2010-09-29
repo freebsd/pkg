@@ -15,11 +15,13 @@ struct pkg {
 	const char *comment;
 	const char *desc;
 	struct pkg **deps; /* null-terminated */
+	struct pkg **rdeps; /* null-terminated */
 	unsigned char errors; /* PKGERR_* */
 	size_t idx; /* index on pkgdb */
 };
 
 #define PKGDB_INIT_DEPS (1<<0)
+#define PKGDB_INIT_RDEPS (1<<1)
 
 struct pkgdb {
 	struct pkg **pkgs; /* null-terminated */

@@ -30,14 +30,25 @@ void
 pkgdb_free(struct pkgdb *db)
 {
 	int fd;
-	struct pkg *pkg;
+	struct pkg *pkg, **deps;
 
 	fd = cdb_fileno(&db->db);
 	cdb_free(&db->db);
 	close(fd);
 
-	PKGDB_FOREACH(pkg, db)
-		pkg_free(db, pkg);
+	PKGDB_FOREACH(pkg, db) {
+		if (db->flags & PKGDB_INIT_DEPS) {
+			for (deps = pkg->deps; *deps != NULL; deps++)
+				free(*deps);
+			free(pkg->deps);
+		}
+		if (db->flags & PKGDB_INIT_RDEPS) {
+			for (deps = pkg->rdeps; *deps != NULL; deps++)
+				free(*deps);
+			free(pkg->rdeps);
+		}
+		free(pkg);
+	}
 
 	free(db->pkgs);
 }
