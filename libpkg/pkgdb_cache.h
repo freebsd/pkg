@@ -15,7 +15,7 @@
 	} while (0)
 
 
-void pkgdb_cache_update(void);
+void pkgdb_cache_update(struct pkgdb *db);
 void pkgdb_cache_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char flags);
 
 #endif

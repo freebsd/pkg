@@ -29,6 +29,7 @@ struct pkgdb {
 	size_t i;
 	struct cdb db;
 	unsigned char flags;
+	int lock_fd;
 };
 
 #define PKGDB_FOREACH(pkg, db) for ((db)->i = 0, (pkg) = (db)->pkgs[0]; \
