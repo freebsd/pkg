@@ -8,7 +8,7 @@
 #define PKGERR_VERSION_MISMATCH (1<<1) /* dep_version != require version */
 
 struct pkg {
-	char name_version[FILENAME_MAX];
+	const char *name_version;
 	const char *name;
 	const char *version;
 	const char *origin;

@@ -17,6 +17,7 @@ key			value
 note that packages are 0-indexed
 
 (char*)$name			(size_t)N (package index)
+(char*)$Nn				(char*)package N name+version
 (char*)$Nv				(char*)package N version
 (char*)$Nc				(char*)package N comment
 (char*)$Nd				(char*)package N desc
