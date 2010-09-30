@@ -4,7 +4,7 @@
 
 #define PKG_DBDIR "/var/db/pkg"
 
-typedef enum _math_t {
+typedef enum _match_t {
 	MATCH_ALL,
 	MATCH_EXACT,
 	MATCH_GLOB,
