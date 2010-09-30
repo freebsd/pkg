@@ -150,7 +150,7 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 
 	pkgdb_dir = getenv("PKG_DBDIR");
 
-	pkgdb_init(&db, pkgname, MATCH_EXACT);
+	pkgdb_init(&db, pkgname, MATCH_EXACT, 0);
 
 	if (pkgdb_count(&db) == 0) {
 		warnx("%s: no such package", pkgname);
