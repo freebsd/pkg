@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/file.h>
 #include <err.h>
 #include <fnmatch.h>
 #include <regex.h>
@@ -225,13 +227,49 @@ pkg_match(struct pkg *pkg, const regex_t *re, const char *pattern, match_t match
 	return (matched);
 }
 
+#define LOCK_FILE "lock"
+
+/*
+ * Acquire a lock to access the database.
+ * If `writer' is set to 1, an exclusive lock is requested so it wont mess up
+ * with other writers or readers.
+ */
+void
+pkgdb_lock(struct pkgdb *db, int writer)
+{
+	char fname[FILENAME_MAX];
+	int flags;
+
+	snprintf(fname, sizeof(fname), "%s/%s", pkgdb_get_dir(), LOCK_FILE);
+	if ((db->lock_fd = open(fname, O_RDONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IROTH)) < 0)
+		err(EXIT_FAILURE, "open(%s)", fname);
+
+	if (writer == 1)
+		flags = LOCK_EX;
+	else
+		flags = LOCK_SH;
+
+	if (flock(db->lock_fd, flags) < 0)
+		errx(EXIT_FAILURE, "unable to acquire a lock to the database");
+}
+
+void
+pkgdb_unlock(struct pkgdb *db)
+{
+	flock(db->lock_fd, LOCK_UN);
+	close(db->lock_fd);
+	db->lock_fd = -1;
+}
+
 void
 pkgdb_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char flags) {
-	/* first check if the cache has to be rebuild */
-	pkgdb_cache_update();
 	size_t count, i;
 	struct pkg *pkg;
 	regex_t re;
+
+	pkgdb_cache_update(db);
+
+	pkgdb_lock(db, 0);
 
 	db->count = 0;
 	db->flags = flags;
@@ -289,6 +327,7 @@ pkgdb_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char f
 	db->pkgs[db->count] = NULL;
 	qsort(db->pkgs, db->count, sizeof(struct pkg *), pkg_cmp);
 
+	pkgdb_unlock(db);
 	return;
 }
 

@@ -178,7 +178,7 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 }
 
 void
-pkgdb_cache_update()
+pkgdb_cache_update(struct pkgdb *db)
 {
 	const char *pkg_dbdir;
 	char cache_path[MAXPATHLEN];
@@ -200,15 +200,13 @@ pkgdb_cache_update()
 
 	snprintf(cache_path, sizeof(cache_path), "%s/pkgdb.cache", pkg_dbdir);
 
-	if (stat(cache_path, &cache_st) == -1) {
-		if (errno == ENOENT) {
-			pkgdb_cache_rebuild(pkg_dbdir, cache_path);
-			return;
-		}
-		else
-			err(EXIT_FAILURE, "%s:", cache_path);
-	}
+	errno = 0; /* Reset it in case it is set to ENOENT */
+	if (stat(cache_path, &cache_st) == -1 && errno != ENOENT)
+		err(EXIT_FAILURE, "%s:", cache_path);
 
-	if ( dir_st.st_mtime > cache_st.st_mtime )
+	if (errno == ENOENT || dir_st.st_mtime > cache_st.st_mtime) {
+		pkgdb_lock(db, 1);
 		pkgdb_cache_rebuild(pkg_dbdir, cache_path);
+		pkgdb_unlock(db);
+	}
 }

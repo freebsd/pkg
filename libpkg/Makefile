@@ -10,7 +10,7 @@ SRCS=	pkg.c pkgdb.c pkgdb_cache.c pkg_compat.c util.c
 
 CFLAGS+=  -std=c99
 CFLAGS+=  -I${.CURDIR} -I${.CURDIR}/../external/tinycdb -I${.CURDIR}/../external/cjson/
-LDADD+=   -L/usr/local/lib -L${.CURDIR}/../external/tinycdb -L${.CURDIR}/../external/cjson -lcdb -lcjson -lm -larchive -lz -lbz2 -llzma
+LDADD+=   -L${.CURDIR}/../external/tinycdb -L${.CURDIR}/../external/cjson -L/usr/local/lib -lcdb -lcjson -lm -larchive -lz -lbz2 -llzma
 
 DEBUG_FLAGS+=  -g
 .if defined(PROFILE_BUILD)
