@@ -225,13 +225,10 @@ pkg_get_rdeps(struct cdb *db, struct pkg *pkg, size_t count)
 static int
 pkgdb_open(struct cdb *db, int flags)
 {
-	char *pkgdb_dir;
 	char filepath[MAXPATHLEN];
 
-	pkgdb_dir = getenv("PKG_DBDIR");
+	snprintf(filepath, sizeof(filepath), "%s/pkgdb.cache", pkgdb_get_dir());
 
-	snprintf(filepath, sizeof(filepath), "%s/pkgdb.cache",
-			(pkgdb_dir) ? pkgdb_dir : PKG_DBDIR);
 	return (db_open(db, filepath, flags));
 }
 
@@ -373,9 +370,7 @@ pkgdb_cache_update()
 	struct stat dir_st, cache_st;
 	uid_t uid;
 
-	if ((pkg_dbdir = getenv("PKG_DBDIR")) == NULL)
-		pkg_dbdir = PKG_DBDIR;
-
+	pkg_dbdir = pkgdb_get_dir();
 	uid = getuid();
 
 	if (stat(pkg_dbdir, &dir_st) == -1) {

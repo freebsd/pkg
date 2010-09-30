@@ -123,7 +123,7 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 {
 	struct pkgdb db;
 	struct pkg *pkg;
-	char *pkgdb_dir;
+	const char *pkg_dbdir;
 	char pkgpath[MAXPATHLEN];
 	struct archive *pkg_archive;
 	char archive_path[MAXPATHLEN];
@@ -148,7 +148,7 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 			break; /* NOT REACHED */
 	}
 
-	pkgdb_dir = getenv("PKG_DBDIR");
+	pkg_dbdir = pkgdb_get_dir();
 
 	pkgdb_init(&db, pkgname, MATCH_EXACT, 0);
 
@@ -159,7 +159,7 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 
 	PKGDB_FOREACH(pkg, &db) {
 		printf("Creating package %s/%s.%s\n", outdir, pkg->name_version, ext);
-		snprintf(pkgpath, sizeof(pkgpath), "%s/%s/", pkgdb_dir ? pkgdb_dir : PKG_DBDIR, pkg->name_version);
+		snprintf(pkgpath, sizeof(pkgpath), "%s/%s/", pkg_dbdir, pkg->name_version);
 		snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, pkg->name_version, ext);
 
 		pkg_archive = archive_write_new();

@@ -15,6 +15,6 @@ typedef enum _math_t {
 void pkgdb_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char flags);
 void pkgdb_free(struct pkgdb *db);
 size_t pkgdb_count(struct pkgdb *db);
-
+const char * pkgdb_get_dir(void);
 
 #endif

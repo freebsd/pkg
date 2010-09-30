@@ -59,3 +59,14 @@ pkgdb_count(struct pkgdb *db)
 	return (db->count);
 }
 
+const char *
+pkgdb_get_dir()
+{
+	const char *pkg_dbdir;
+
+	if ((pkg_dbdir = getenv("PKG_DBDIR")) == NULL)
+		pkg_dbdir = PKG_DBDIR;
+
+	return pkg_dbdir;
+}
+
