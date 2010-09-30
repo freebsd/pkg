@@ -2,6 +2,7 @@
 #define _PKGDB_CACHE_H
 #include "pkgdb.h"
 
+#define PKGDB_NAMEVER "%zun"
 #define PKGDB_VERSION "%zuv"
 #define PKGDB_COMMENT "%zuc"
 #define PKGDB_DESC    "%zud"

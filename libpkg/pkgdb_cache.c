@@ -109,11 +109,11 @@ pkg_idx_query(struct cdb *db, size_t idx)
 	pkg->idx = idx;
 	db_get(pkg->name, db);
 
+	pkg->name_version = db_query(db, PKGDB_NAMEVER, idx);
 	pkg->version = db_query(db, PKGDB_VERSION, idx);
 	pkg->comment = db_query(db, PKGDB_COMMENT, idx);
 	pkg->desc    = db_query(db, PKGDB_DESC, idx);
 	pkg->origin  = db_query(db, PKGDB_ORIGIN, idx);
-	snprintf(pkg->name_version, FILENAME_MAX, "%s-%s", pkg->name, pkg->version);
 
 	return (pkg);
 }
@@ -162,13 +162,15 @@ pkg_get_deps(struct cdb *db, struct pkg *pkg)
 			free(name);
 			continue;
 		}
+		free(name);
+
 		cdb_read(db, &idx, sizeof(idx), cdb_datapos(db));
 
 		/* get package */
 		if ((dep = pkg_idx_query(db, idx)) == NULL) {
 			/* partial package */
 			dep = calloc(1, sizeof(*dep));
-			strncpy(dep->name_version, name_version, FILENAME_MAX);
+			dep->name_version = name_version;
 			dep->errors |= PKGERR_NOT_INSTALLED;
 		} else { /* package exist */
 			if (strcmp(version, dep->version) != 0)
@@ -264,7 +266,7 @@ static void
 pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 {
 	int fd;
-	char tmppath[MAXPATHLEN];
+	char tmppath[MAXPATHLEN], name_version[FILENAME_MAX];
 	struct cdb_make cdb_make;
 	DIR *dir;
 	struct dirent *portsdir;
@@ -318,7 +320,9 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 				/* name -> index */
 				cdb_make_add(&cdb_make, pkg.name, strlen(pkg.name), &idx, sizeof(idx));
 
-				db_add(&cdb_make, pkg.version, PKGDB_VERSION, idx);
+				snprintf(name_version, FILENAME_MAX, "%s-%s", pkg.name, pkg.version);
+
+				db_add(&cdb_make, name_version, PKGDB_NAMEVER, idx);
 				db_add(&cdb_make, pkg.comment, PKGDB_COMMENT, idx);
 				db_add(&cdb_make, pkg.origin, PKGDB_ORIGIN, idx);
 
@@ -339,8 +343,8 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 								continue;
 							pkg.version = subnode->valuestring;
 
-							snprintf(pkg.name_version, FILENAME_MAX, "%s-%s", pkg.name, pkg.version);
-							db_add(&cdb_make, pkg.name_version, PKGDB_DEPS, idx);
+							snprintf(name_version, FILENAME_MAX, "%s-%s", pkg.name, pkg.version);
+							db_add(&cdb_make, name_version, PKGDB_DEPS, idx);
 						}
 					}
 				}
