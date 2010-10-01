@@ -1,0 +1,68 @@
+typedef enum { PKG_CACHE, PKG_PORT, PKG_PACKAGE, PKG_REMOTE } pkg_t;
+
+struct pkg {
+	const char *namever;
+	const char *name;
+	const char *version;
+	const char *origin;
+	const char *comment;
+	const char *desc;
+	const char *{pre|post}-{install|deinstall|upgrade};
+	pkg_t type;
+	/* errors ? */
+	/* Draft, extra info for each possible pkg_t */
+	size_t idx;	/* index on cache if PKG_CACHE */
+	const char *path; /* PKG_PACKAGE, PKG_PORT */
+	const char *url; /* PKG_REMOTE */
+	struct pkg_manifest *manifest; /* manifest reference, plist+options, package directory etc */
+};
+
+struct pkg_file {
+	const char *path;
+	const char *md5;
+};
+
+struct pgkdb {
+	struct cdb *db;
+	size_t i; /* query count */
+	int errno;
+	char *strerror;
+	... /* extra data, cache ? */
+	/* TOMEDITATE: multi query support */
+};
+
+api usage :
+
+int pkgdb_query(struct pkgdb *, struct pkg *pkg, match_t, const char *pattern);
+A query using pkgdb_query return each time a result into "pkg" and stop with a spécific return code (< 0)
+
+for each field (namever, name, version, origin...) there is an accessor
+Example:
+pkg_name(struct pkgdb *, struct pkg *)
+pkg_dep(struct pkgdb *db, struct pkg *pkg, struct pkg *dep)
+...
+
+STUPID IDEA: why not function pointer on struct pkgdb for accessing pkgs ?
+pkgdb_query can set info on query type (remote, package, local, port) and init pointers on several function.
+db.pkg_name(&pkg);
+
+
+Big example:
+
+int
+main(void) {
+	struct pkgdb db;
+	struct pkg pkg, dep;
+	int query;
+
+	while ((query = pkgdb_query(&db, &pkg, MATCH_NONE, NULL)) > 0) {
+		printf("%s depend on:\n", pkg_namever(&pkg));
+		while (pkg_deps(&db, &pkg, &dep) > 0)
+			printf("%s\n", pkg_namever(&dep));
+		printf("\n\n");
+	}
+	if (query == PKGDB_FATAL)
+		err(1, "%s", pkgdb_strerror(&db));
+	return 0;
+}
+
