@@ -13,6 +13,7 @@
 #include "pkgdb.h"
 #include "pkgdb_cache.h"
 
+
 const char *
 pkgdb_get_dir(void)
 {
@@ -24,7 +25,7 @@ pkgdb_get_dir(void)
 	return pkg_dbdir;
 }
 
-static int
+int
 pkgdb_open(struct pkgdb *db)
 {
 	char path[MAXPATHLEN];
@@ -32,22 +33,20 @@ pkgdb_open(struct pkgdb *db)
 
 	snprintf(path, sizeof(path), "%s/pkgdb.cache", pkgdb_get_dir());
 
-	if ((fd = open(path, O_RDONLY)) == -1)
-		warn("open(%s):", path);
-	else
+	if ((fd = open(path, O_RDONLY)) != -1)
 		fd = cdb_init(&db->db, fd);
 
 	return (fd);
 }
 
-/* query formated string -> string ('\0'-terminated) */
-static const char *
+/* query formated using string key */
+const void *
 pkgdb_query(struct pkgdb *db, const char *fmt, ...)
 {
-	const char *string;
 	va_list args;
 	char key[BUFSIZ];
 	size_t len;
+	const void *val;
 
 	va_start(args, fmt);
 	len = vsnprintf(key, sizeof(key), fmt, args);
@@ -64,12 +63,12 @@ pkgdb_query(struct pkgdb *db, const char *fmt, ...)
 	if (cdb_find(&db->db, key, len) < 0)
 		return NULL;
 
-	db_get(string, &db->db);
-	return (string);
+	db_get(val, &db->db);
+	return (val);
 }
 
 /* query a pkg from db using index */
-static struct pkg *
+struct pkg *
 pkgdb_pkg_query(struct pkgdb *db, size_t idx)
 {
 	struct pkg *pkg;
@@ -82,25 +81,23 @@ pkgdb_pkg_query(struct pkgdb *db, size_t idx)
 
 	pkg = malloc(sizeof(*pkg));
 	pkg->idx = idx;
-	db_get(pkg->name, &db->db);
+	db_get(pkg->name_version, &db->db);
 
-	pkg->name_version = pkgdb_query(db, PKGDB_NAMEVER, idx);
+	pkg->name = pkgdb_query(db, PKGDB_NAME, idx);
 	pkg->version = pkgdb_query(db, PKGDB_VERSION, idx);
 	pkg->comment = pkgdb_query(db, PKGDB_COMMENT, idx);
-	pkg->desc    = pkgdb_query(db, PKGDB_DESC, idx);
-	pkg->origin  = pkgdb_query(db, PKGDB_ORIGIN, idx);
+	pkg->desc = pkgdb_query(db, PKGDB_DESC, idx);
+	pkg->origin = pkgdb_query(db, PKGDB_ORIGIN, idx);
 
 	return (pkg);
 }
 
 /* populate deps on pkg */
-static void
+void
 pkgdb_deps_query(struct pkgdb *db, struct pkg *pkg)
 {
 	struct cdb_find cdbf;
-	size_t count = 0, idx, j, klen;
-	const char *name_version;
-	char *name, *version;
+	size_t count = 0, j, klen;
 	char key[BUFSIZ];
 	struct pkg *dep;
 
@@ -122,35 +119,8 @@ pkgdb_deps_query(struct pkgdb *db, struct pkg *pkg)
 
 	j = 0;
 	while (cdb_findnext(&cdbf) > 0) {
-		db_get(name_version, &db->db);
-		name = strdup(name_version);
-
-		if ((version = strrchr(name, '-')) == NULL) {
-			free(name);
-			continue;
-		}
-
-		*(version++) = '\0';
-
-		/* get index */
-		if (cdb_find(&db->db, name, strlen(name)) <= 0) {
-			free(name);
-			continue;
-		}
-		free(name);
-
-		cdb_read(&db->db, &idx, sizeof(idx), cdb_datapos(&db->db));
-
-		/* get package */
-		if ((dep = pkgdb_pkg_query(db, idx)) == NULL) {
-			/* partial package */
-			dep = calloc(1, sizeof(*dep));
-			dep->name_version = name_version;
-			dep->errors |= PKGERR_NOT_INSTALLED;
-		} else { /* package exist */
-			if (strcmp(version, dep->version) != 0)
-				dep->errors |= PKGERR_VERSION_MISMATCH;
-		}
+		dep = calloc(1, sizeof(*dep));
+		db_get(dep->name_version, &db->db);
 		pkg->deps[j++] = dep;
 	}
 }
@@ -176,7 +146,7 @@ pkgdb_rdeps_query(struct pkgdb *db, struct pkg *pkg, size_t count)
 
 		for (deps = p->deps; *deps != NULL; deps++) {
 			if (!((*deps)->errors & PKGERR_NOT_INSTALLED)
-					&& strcmp((*deps)->name, pkg->name) == 0) {
+					&& strcmp((*deps)->name_version, pkg->name_version) == 0) {
 				pkg->rdeps[j] = p;
 				break;
 			}
@@ -227,8 +197,6 @@ pkg_match(struct pkg *pkg, const regex_t *re, const char *pattern, match_t match
 	return (matched);
 }
 
-#define LOCK_FILE "lock"
-
 /*
  * Acquire a lock to access the database.
  * If `writer' is set to 1, an exclusive lock is requested so it wont mess up
@@ -240,7 +208,7 @@ pkgdb_lock(struct pkgdb *db, int writer)
 	char fname[FILENAME_MAX];
 	int flags;
 
-	snprintf(fname, sizeof(fname), "%s/%s", pkgdb_get_dir(), LOCK_FILE);
+	snprintf(fname, sizeof(fname), "%s/%s", pkgdb_get_dir(), PKGDB_LOCK);
 	if ((db->lock_fd = open(fname, O_RDONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IROTH)) < 0)
 		err(EXIT_FAILURE, "open(%s)", fname);
 
@@ -269,6 +237,9 @@ pkgdb_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char f
 
 	pkgdb_cache_update(db);
 
+	if (pkgdb_open(db) == -1)
+		return;
+
 	pkgdb_lock(db, 0);
 
 	db->count = 0;
@@ -278,9 +249,6 @@ pkgdb_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char f
 		warnx("a pattern is required");
 		return;
 	}
-
-	if (pkgdb_open(db) == -1)
-		return;
 
 	if (cdb_find(&db->db, PKGDB_COUNT, strlen(PKGDB_COUNT)) <= 0) {
 		warnx("corrupted database");

@@ -3,6 +3,7 @@
 
 #include <cdb.h>
 #include <stdio.h> /* for size_t */
+#include <sys/time.h> /* for time_t */
 
 #define PKGERR_NOT_INSTALLED    (1<<0) /* dep not register (partial pkg with only name_version set */
 #define PKGERR_VERSION_MISMATCH (1<<1) /* dep_version != require version */
@@ -18,6 +19,8 @@ struct pkg {
 	struct pkg **rdeps; /* null-terminated */
 	unsigned char errors; /* PKGERR_* */
 	size_t idx; /* index on pkgdb */
+	void *manifest;
+	time_t mtime; /* manifest mtime */
 };
 
 #define PKGDB_INIT_DEPS (1<<0)
