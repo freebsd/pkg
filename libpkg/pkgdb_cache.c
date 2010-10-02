@@ -176,7 +176,7 @@ pkgdb_cache_rebuild(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir,
 	DIR *dir;
 	struct dirent *portsdir;
 	struct pkg *pkg, **deps;
-	size_t idx;
+	size_t idx = 0;
 
 	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
 
@@ -213,6 +213,7 @@ pkgdb_cache_rebuild(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir,
 				/* name -> index */
 				cdb_make_add(&cdb_make, pkg->name, strlen(pkg->name), &idx, sizeof(idx));
 				pkgdb_add_string(&cdb_make, pkg->name, PKGDB_NAME, idx);
+				pkgdb_add_string(&cdb_make, pkg->version, PKGDB_VERSION, idx);
 				pkgdb_add_string(&cdb_make, pkg->comment, PKGDB_COMMENT, idx);
 				pkgdb_add_string(&cdb_make, pkg->origin, PKGDB_ORIGIN, idx);
 				pkgdb_add_string(&cdb_make, pkg->desc, PKGDB_DESC, idx);
