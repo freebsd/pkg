@@ -10,7 +10,6 @@
 #define PKGDB_DESC    "%zud"
 #define PKGDB_ORIGIN  "%zuo"
 #define PKGDB_DEPS    "%zuD"
-#define PKGDB_MTIME   "%zum"
 #define PKGDB_COUNT   "count"
 
 /* quick cdb_get */

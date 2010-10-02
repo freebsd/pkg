@@ -20,7 +20,6 @@ struct pkg {
 	unsigned char errors; /* PKGERR_* */
 	size_t idx; /* index on pkgdb */
 	void *manifest;
-	time_t mtime; /* manifest mtime */
 };
 
 #define PKGDB_INIT_DEPS (1<<0)

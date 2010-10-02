@@ -38,6 +38,7 @@ pkgdb_vadd(struct cdb_make *db, const void *val, size_t vallen, const char *fmt,
 	return (cdb_make_add(db, key, len, val, vallen));
 }
 
+/*
 static int
 pkgdb_add(struct cdb_make *db, const void *val, size_t vallen, const char *fmt, ...)
 {
@@ -50,6 +51,7 @@ pkgdb_add(struct cdb_make *db, const void *val, size_t vallen, const char *fmt, 
 
 	return (ret);
 }
+*/
 
 /* add record formated string -> string (record the last \0 on value) */
 static int
@@ -114,7 +116,7 @@ pkg_from_manifest(cJSON *manifest)
 }
 
 static struct pkg *
-pkg_from_dir(struct pkgdb *db, const char *pkg_dbdir, char *pkgname)
+pkg_from_dir(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir, char *pkgname)
 {
 	cJSON *manifest;
 	char manifestpath[MAXPATHLEN];
@@ -122,7 +124,6 @@ pkg_from_dir(struct pkgdb *db, const char *pkg_dbdir, char *pkgname)
 	struct stat st;
 	struct pkg *pkg = NULL;
 	const size_t *idx;
-	const time_t *old_mtime = 0;
 
 	snprintf(manifestpath, sizeof(manifestpath), "%s/%s/+MANIFEST", pkg_dbdir,
 			pkgname);
@@ -132,14 +133,12 @@ pkg_from_dir(struct pkgdb *db, const char *pkg_dbdir, char *pkgname)
 		return NULL;
 	}
 
-	/* compare with last manifest mtime */
-	if (cdb_fileno(&db->db) != -1 &&
+	/* compare with manifest mtime */
+	if (st.st_mtime >= cache_mtime &&
+			cdb_fileno(&db->db) != -1 &&
 			(idx = pkgdb_query(db, "%s", pkgname)) != NULL &&
-			(old_mtime = pkgdb_query(db, PKGDB_MTIME, *idx)) != NULL &&
-			st.st_mtime == *old_mtime &&
 			(pkg = pkgdb_pkg_query(db, *idx)) != NULL) { /* jackpot */
 		pkgdb_deps_query(db, pkg);
-		pkg->mtime = st.st_mtime;
 		return (pkg);
 	}
 
@@ -164,14 +163,12 @@ pkg_from_dir(struct pkgdb *db, const char *pkg_dbdir, char *pkgname)
 
 	if ((pkg = pkg_from_manifest(manifest)) == NULL)
 		cJSON_Delete(manifest);
-	else
-		pkg->mtime = st.st_mtime;
 
 	return (pkg);
 }
 
 static void
-pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_path)
+pkgdb_cache_rebuild(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir, const char *cache_path)
 {
 	int fd;
 	char tmppath[MAXPATHLEN], namever[FILENAME_MAX];
@@ -203,7 +200,7 @@ pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_p
 				if (portsdir->d_type != DT_DIR)
 					continue;
 
-				pkg = pkg_from_dir(db, pkg_dbdir, portsdir->d_name);
+				pkg = pkg_from_dir(db, cache_mtime, pkg_dbdir, portsdir->d_name);
 
 				if (pkg == NULL)
 					continue;
@@ -219,7 +216,6 @@ pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_p
 				pkgdb_add_string(&cdb_make, pkg->comment, PKGDB_COMMENT, idx);
 				pkgdb_add_string(&cdb_make, pkg->origin, PKGDB_ORIGIN, idx);
 				pkgdb_add_string(&cdb_make, pkg->desc, PKGDB_DESC, idx);
-				pkgdb_add(&cdb_make, &pkg->mtime, sizeof(pkg->mtime), PKGDB_MTIME, idx);
 
 				if (pkg->deps) {
 					for (deps = pkg->deps; *deps != NULL; deps++) {
@@ -282,7 +278,7 @@ pkgdb_cache_update(struct pkgdb *db)
 
 	if (errno == ENOENT || dir_st.st_mtime > cache_st.st_mtime) {
 		pkgdb_lock(db, 1);
-		pkgdb_cache_rebuild(db, pkg_dbdir, cache_path);
+		pkgdb_cache_rebuild(db, (errno = ENOENT) ? 0 : cache_st.st_mtime, pkg_dbdir, cache_path);
 		pkgdb_unlock(db);
 	}
 }
