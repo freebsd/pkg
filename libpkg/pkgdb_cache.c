@@ -130,11 +130,8 @@ pkg_from_dir(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir, char *
 
 	if (stat(manifestpath, &st) == -1) {
 		warn("stat(%s):", manifestpath);
-		return NULL;
 	}
-
-	/* compare with manifest mtime */
-	if (st.st_mtime >= cache_mtime &&
+	else if (st.st_mtime >= cache_mtime && /* compare with manifest mtime */
 			cdb_fileno(&db->db) != -1 &&
 			(idx = pkgdb_query(db, "%s", pkgname)) != NULL &&
 			(pkg = pkgdb_pkg_query(db, *idx)) != NULL) { /* jackpot */
