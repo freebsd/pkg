@@ -10,11 +10,11 @@
     "comment": "Foo does bar very well!",
     "desc": "Foo is a nice software\n\nWWW:\thttp://www.foo-bar.org",
     "license": "ISC",
-    "automatic": false,
-    "options": [
-        "WITH_FOO": true,
-        "WITH_BAR": false
-    ],
+    "automatic": false, // true if installed to satisfy a dep, only exist in the local manifest
+    "options": {
+        "FOO": true,
+        "BAR": false
+    },
     "deps": [
         {
             "name": "gettext",
