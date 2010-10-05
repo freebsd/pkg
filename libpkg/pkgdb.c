@@ -215,6 +215,7 @@ pkgdb_unlock(struct pkgdb *db)
 int
 pkgdb_init(struct pkgdb *db, const char *pattern, match_t match)
 {
+	pkgdb_cache_update(db);
 	if (pkg_db_open(db) == -1)
 		return (-1); /* TOTO pkgdb error */
 
@@ -238,7 +239,6 @@ pkgdb_init(struct pkgdb *db, const char *pattern, match_t match)
 		}
 	}
 
-	pkgdb_cache_update(db);
 	return (0);
 }
 
