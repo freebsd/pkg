@@ -70,74 +70,14 @@ pkgdb_add_string(struct cdb_make *db, const char *val, const char *fmt, ...)
 static char*cJSON_GetString(cJSON*j,const char *k){/*cJSON style*/cJSON*n;if((n=cJSON_GetObjectItem(j,k)))return n->valuestring;return NULL;}
 
 static struct pkg *
-pkg_from_manifest(cJSON *manifest)
-{
-	cJSON *node, *array;
-	struct pkg *pkg;
-	char *dep_name;
-	char *dep_version;
-	int i, array_size, j;
-
-	pkg = calloc(1, sizeof(*pkg));
-	pkg->name = cJSON_GetString(manifest, "name");
-	pkg->version = cJSON_GetString(manifest, "version");
-	pkg->comment = cJSON_GetString(manifest, "comment");
-	pkg->origin = cJSON_GetString(manifest, "origin");
-
-	if (pkg->name == NULL || pkg->version == NULL ||
-			pkg->comment == NULL || pkg->origin == NULL) {
-		free(pkg);
-		pkg = NULL;
-	}
-	else {
-		pkg->desc = cJSON_GetString(manifest, "desc");
-
-		array = cJSON_GetObjectItem(manifest, "deps");
-
-		if (array && (array_size = cJSON_GetArraySize(array)) > 0) {
-
-			pkg->deps = calloc(array_size+1, sizeof(struct pkg *));
-
-			for (i = 0, j = 0; i < array_size; i++) {
-				if ((node = cJSON_GetArrayItem(array, i)) != NULL) {
-					dep_name = cJSON_GetString(node, "name");
-					dep_version = cJSON_GetString(node, "version");
-					if (dep_name != NULL && dep_version != NULL) {
-						pkg->deps[j] = calloc(1, sizeof(struct pkg));
-						pkg->deps[j]->name = dep_name;
-						pkg->deps[j]->version = dep_version;
-						j++;
-					}
-				}
-			}
-		}
-	}
-	return (pkg);
-}
-
-static struct pkg *
-pkg_from_dir(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir, char *pkgname)
+pkg_from_manifest(const char *pkg_dbdir, char *pkgname)
 {
 	cJSON *manifest;
 	char manifestpath[MAXPATHLEN];
 	char *buffer;
-	struct stat st;
-	struct pkg *pkg = NULL;
-	const size_t *idx;
+	struct pkg *pkg;
 
-	snprintf(manifestpath, sizeof(manifestpath), "%s/%s/+MANIFEST", pkg_dbdir,
-			pkgname);
-
-	if (stat(manifestpath, &st) == -1) {
-		warn("stat(%s):", manifestpath);
-	}
-	else if (st.st_mtime >= cache_mtime && /* compare with manifest mtime */
-			cdb_fileno(&db->db) != -1 &&
-			(idx = pkgdb_query(db, "%s", pkgname)) != NULL &&
-			(pkg = pkgdb_pkg_query(db, *idx)) != NULL) { /* jackpot */
-		pkgdb_deps_query(db, pkg);
-		return (pkg);
-	}
+	snprintf(manifestpath, sizeof(manifestpath), "%s/%s/+MANIFEST", pkg_dbdir, pkgname);
 
 	if ((file_to_buffer(manifestpath, &buffer)) == -1) {
 
@@ -158,22 +98,37 @@ pkg_from_dir(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir, char *
 		return NULL;
 	}
 
-	if ((pkg = pkg_from_manifest(manifest)) == NULL)
-		cJSON_Delete(manifest);
+	pkg = calloc(1, sizeof(*pkg));
+	pkg->name = cJSON_GetString(manifest, "name");
+	pkg->version = cJSON_GetString(manifest, "version");
+	pkg->comment = cJSON_GetString(manifest, "comment");
+	pkg->origin = cJSON_GetString(manifest, "origin");
 
+	if (pkg->name == NULL || pkg->version == NULL ||
+			pkg->comment == NULL || pkg->origin == NULL) {
+		free(pkg);
+		pkg = NULL;
+		cJSON_Delete(manifest);
+	}
+	else {
+		pkg->desc = cJSON_GetString(manifest, "desc");
+		pkg->manifest = manifest;
+	}
 	return (pkg);
 }
 
+
 static void
-pkgdb_cache_rebuild(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir, const char *cache_path)
+pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 {
 	int fd;
 	char tmppath[MAXPATHLEN], namever[FILENAME_MAX];
 	struct cdb_make cdb_make;
 	DIR *dir;
 	struct dirent *portsdir;
-	struct pkg *pkg, **deps;
-	size_t idx = 0;
+	struct pkg *pkg;
+	size_t idx = 0, idep, array_size;
+	cJSON *node, *array;
 
 	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
 
@@ -183,9 +138,6 @@ pkgdb_cache_rebuild(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir,
 	warnx("Rebuilding cache...");
 
 	cdb_make_start(&cdb_make, fd);
-
-	if (pkgdb_open(db) == -1)
-		cdb_fileno(&db->db) = -1;
 
 	/* Now go through pkg_dbdir rebuild the cache */
 
@@ -197,7 +149,7 @@ pkgdb_cache_rebuild(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir,
 				if (portsdir->d_type != DT_DIR)
 					continue;
 
-				pkg = pkg_from_dir(db, cache_mtime, pkg_dbdir, portsdir->d_name);
+				pkg = pkg_from_manifest(pkg_dbdir, portsdir->d_name);
 
 				if (pkg == NULL)
 					continue;
@@ -215,13 +167,19 @@ pkgdb_cache_rebuild(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir,
 				pkgdb_add_string(&cdb_make, pkg->origin, PKGDB_ORIGIN, idx);
 				pkgdb_add_string(&cdb_make, pkg->desc, PKGDB_DESC, idx);
 
-				if (pkg->deps) {
-					for (deps = pkg->deps; *deps != NULL; deps++) {
-						snprintf(namever, sizeof(namever), "%s-%s", (*deps)->name, (*deps)->version);
-						pkgdb_add_string(&cdb_make, namever, PKGDB_DEPS, idx);
-						free(*deps);
+				array = cJSON_GetObjectItem(pkg->manifest, "deps");
+
+				if (array && (array_size = cJSON_GetArraySize(array)) > 0) {
+					for (idep = 0; idep < array_size; idep++) {
+						if ((node = cJSON_GetArrayItem(array, idep)) != NULL) {
+							pkg->name = cJSON_GetString(node, "name");
+							pkg->version = cJSON_GetString(node, "version");
+							if (pkg->name != NULL && pkg->version != NULL) {
+								snprintf(namever, sizeof(namever), "%s-%s", pkg->name, pkg->version);
+								pkgdb_add_string(&cdb_make, namever, PKGDB_DEPS, idx, idep);
+							}
+						}
 					}
-					free(pkg->deps);
 				}
 
 				cJSON_Delete(pkg->manifest);
@@ -232,16 +190,9 @@ pkgdb_cache_rebuild(struct pkgdb *db, time_t cache_mtime, const char *pkg_dbdir,
 		closedir(dir);
 	}
 
-	/* close old db */
-	if (cdb_fileno(&db->db) != -1) {
-		close(cdb_fileno(&db->db));
-		cdb_free(&db->db);
-	}
-
 	/* record packages len */
 	cdb_make_add(&cdb_make, PKGDB_COUNT, strlen(PKGDB_COUNT), &idx, sizeof(idx));
 	cdb_make_finish(&cdb_make);
-
 	close(fd);
 	rename(tmppath, cache_path);
 	chmod(cache_path, 0644);
@@ -276,7 +227,7 @@ pkgdb_cache_update(struct pkgdb *db)
 
 	if (errno == ENOENT || dir_st.st_mtime > cache_st.st_mtime) {
 		pkgdb_lock(db, 1);
-		pkgdb_cache_rebuild(db, (errno = ENOENT) ? 0 : cache_st.st_mtime, pkg_dbdir, cache_path);
+		pkgdb_cache_rebuild(pkg_dbdir, cache_path);
 		pkgdb_unlock(db);
 	}
 }
