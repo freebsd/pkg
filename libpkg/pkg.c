@@ -28,7 +28,9 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 	size_t len, i = 0;
 	char buf[BUFSIZ];
 	char *buffer;
-	char manifestpath[MAXPATHLEN], fpath[MAXPATHLEN];
+	size_t buffer_len;
+	char mpath[MAXPATHLEN];
+	char fpath[MAXPATHLEN];
 	const char *filepath;
 	struct archive *ar;
 	struct pkg_manifest *m;
@@ -36,10 +38,10 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 	ar = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup(ar);
 
-	snprintf(manifestpath, sizeof(manifestpath), "%s+MANIFEST", path);
+	snprintf(mpath, sizeof(mpath), "%s+MANIFEST", path);
 	entry = archive_entry_new();
 
-	if ((m = pkg_manifest_load_file(manifestpath)) == NULL)
+	if ((m = pkg_manifest_load_file(mpath)) == NULL)
 		errx(EXIT_FAILURE, "Can not continue without manifest");
 
 	/* Add the metadatas */
@@ -66,15 +68,16 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 
 	/* TODO: remove automatic */
 	buffer = pkg_manifest_dump_buffer(m);
+	buffer_len = strlen(buffer);
 
-	archive_entry_copy_sourcepath(entry, manifestpath);
+	archive_entry_copy_sourcepath(entry, mpath);
 	if (archive_read_disk_entry_from_file(ar, entry, -1, 0) != ARCHIVE_OK)
 		warnx(archive_error_string(ar));
 
 	archive_entry_set_pathname(entry, "+MANIFEST");
-	archive_entry_set_size(entry, sizeof(buffer));
+	archive_entry_set_size(entry, buffer_len);
 	archive_write_header(pkg_archive, entry);
-	archive_write_data(pkg_archive, buffer, sizeof(buffer));
+	archive_write_data(pkg_archive, buffer, buffer_len);
 	archive_entry_clear(entry);
 
 	free(buffer);
