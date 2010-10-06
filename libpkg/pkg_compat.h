@@ -3,7 +3,8 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <cJSON.h>
+
+#include "pkg_manifest.h"
 
 enum plist_t {
 	PLIST_FILE, PLIST_CWD, PLIST_CMD, PLIST_CHMOD,
@@ -30,7 +31,7 @@ struct oldpackage {
 
 };
 
-cJSON *pkg_compat_converter(char *);
-cJSON *pkg_compat_convert_installed(const char *, char *, char *);
+struct pkg_manifest *pkg_compat_converter(char *);
+struct pkg_manifest *pkg_compat_convert_installed(const char *, char *, char *);
 
 #endif

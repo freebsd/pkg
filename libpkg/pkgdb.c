@@ -15,9 +15,8 @@
 
 /* theses functions request on local database (cdb) */
 static int pkg_db_open(struct pkgdb *);
-static void pkg_db_init(struct pkg *);
+static void pkg_reset(struct pkg *);
 static const void *pkg_db_query(struct cdb *, const char *, ...);
-static const char *pkg_db_namever(struct pkg *);
 static const char *pkg_db_getattr(struct pkg *, const char *);
 static int pkg_db_dep(struct pkg *, struct pkg *);
 
@@ -25,7 +24,7 @@ const char *
 pkg_namever(struct pkg *pkg)
 {
 	if (pkg->namever == NULL)
-		pkg->namever = pkg_db_namever(pkg);
+		pkg->namever = pkg_db_getattr(pkg, PKGDB_NAMEVER);
 	return (pkg->namever);
 }
 
@@ -76,7 +75,7 @@ pkg_dep(struct pkg *pkg, struct pkg *dep)
 }
 
 static void
-pkg_db_init(struct pkg *pkg)
+pkg_reset(struct pkg *pkg)
 {
 	pkg->namever = NULL;
 	pkg->name = NULL;
@@ -90,14 +89,13 @@ pkg_db_init(struct pkg *pkg)
 	pkg->db = NULL;
 }
 
-
 static int
 pkg_db_dep(struct pkg *pkg, struct pkg *dep)
 {
 	const size_t *idx;
 	int ret = -1;
 
-	pkg_db_init(dep);
+	pkg_reset(dep);
 
 	if ((dep->namever = pkg_db_query(pkg->db, PKGDB_DEPS, pkg->idx, pkg->idep)) != NULL &&
 			(idx = pkg_db_query(pkg->db, "%s", dep->namever)) != NULL) {
@@ -135,15 +133,6 @@ pkg_db_query(struct cdb *db, const char *fmt, ...)
 
 	db_get(val, db);
 	return (val);
-}
-
-static const char *
-pkg_db_namever(struct pkg *pkg)
-{
-	pkg->namever = NULL;
-	if (cdb_find(pkg->db, &pkg->idx, sizeof(pkg->idx)) > 0)
-		db_get(pkg->namever, pkg->db);
-	return (pkg->namever);
 }
 
 static const char *
@@ -276,31 +265,23 @@ pkgdb_match(struct pkgdb *db, const char *pattern)
 	return (matched);
 }
 
-
-
 int
 pkgdb_query(struct pkgdb *db, struct pkg *pkg)
 {
-	int ret = -1;
-
-	pkg_db_init(pkg);
-
+	pkg_reset(pkg);
 	pkgdb_lock(db, 0);
 
-	while (cdb_find(&db->db, &db->i, sizeof(db->i)) > 0) {
-		db_get(pkg->namever, &db->db);
-
+	while ((pkg->namever = pkg_db_query(&db->db, PKGDB_NAMEVER, db->i)) != NULL) {
 		if (pkg->namever != NULL && pkgdb_match(db, pkg->namever) == 0) {
 			pkg->idx = db->i++;
 			pkg->db = &db->db;
-			ret = 0;
-			break;
+			return (0);
 		}
 
 		db->i++;
 	}
 	pkgdb_unlock(db);
 
-	return (ret);
+	return (-1);
 }
 

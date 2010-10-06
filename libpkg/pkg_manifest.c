@@ -8,6 +8,33 @@
 #include "pkg.h"
 #include "pkg_manifest.h"
 
+enum array_type {
+	ARRAY_FILES,
+	ARRAY_DEPS,
+	ARRAY_CONFLICTS,
+	ARRAY_EXEC,
+	ARRAY_UNEXEC
+};
+
+struct pkg_manifest_array {
+	json_t *node;
+	json_t *elm;
+	unsigned int size;
+	unsigned int idx;
+	enum array_type type;
+};
+
+struct pkg_manifest {
+	json_t *json;
+	struct pkg_manifest_array array;
+};
+
+/* Helpers */
+const char * pkg_manifest_keystr(json_t *, const char *);
+void pkg_manifest_array_init(struct pkg_manifest *, enum array_type);
+const char * pkg_manifest_simplenext(struct pkg_manifest *, enum array_type,
+									 const char *);
+
 const char *
 pkg_manifest_keystr(json_t *root, const char *key)
 {
@@ -27,6 +54,29 @@ pkg_manifest_array_init(struct pkg_manifest *m, enum array_type t)
 	m->array.size = 0;
 	m->array.idx = 0;
 	m->array.type = t;
+}
+
+const char *
+pkg_manifest_simplenext(struct pkg_manifest *m, enum array_type t, const char *key)
+{
+	assert(m->array.type == t);
+
+	/* First call */
+	if (m->array.node == NULL) {
+		if ((m->array.node = json_object_get(m->json, key)) == NULL)
+			return (NULL);
+		m->array.size = json_array_size(m->array.node);
+	}
+
+	if (m->array.idx >= m->array.size)
+		return (NULL);
+
+	if ((m->array.elm = json_array_get(m->array.node, m->array.idx)) == NULL)
+		return (NULL);
+
+	m->array.idx++;
+
+	return json_string_value(m->array.elm);
 }
 
 /*
@@ -169,6 +219,18 @@ pkg_manifest_dep_version(struct pkg_manifest *m)
 }
 
 void
+pkg_manifest_conflict_init(struct pkg_manifest *m)
+{
+	pkg_manifest_array_init(m, ARRAY_CONFLICTS);
+}
+
+const char *
+pkg_manifest_conflict_next(struct pkg_manifest *m)
+{
+	return pkg_manifest_simplenext(m, ARRAY_CONFLICTS, "conflicts");
+}
+
+void
 pkg_manifest_exec_init(struct pkg_manifest *m)
 {
 	pkg_manifest_array_init(m, ARRAY_EXEC);
@@ -177,24 +239,7 @@ pkg_manifest_exec_init(struct pkg_manifest *m)
 const char *
 pkg_manifest_exec_next(struct pkg_manifest *m)
 {
-	assert(m->array.type == ARRAY_EXEC);
-
-	/* First call */
-	if (m->array.node == NULL) {
-		if ((m->array.node = json_object_get(m->json, "exec")) == NULL)
-			return (NULL);
-		m->array.size = json_array_size(m->array.node);
-	}
-
-	if (m->array.idx >= m->array.size)
-		return (NULL);
-
-	if ((m->array.elm = json_array_get(m->array.node, m->array.idx)) == NULL)
-		return (NULL);
-
-	m->array.idx++;
-
-	return json_string_value(m->array.elm);
+	return pkg_manifest_simplenext(m, ARRAY_EXEC, "exec");
 }
 
 void
@@ -206,24 +251,7 @@ pkg_manifest_unexec_init(struct pkg_manifest *m)
 const char *
 pkg_manifest_unexec_next(struct pkg_manifest *m)
 {
-	assert(m->array.type == ARRAY_UNEXEC);
-
-	/* First call */
-	if (m->array.node == NULL) {
-		if ((m->array.node = json_object_get(m->json, "unexec")) == NULL)
-			return (NULL);
-		m->array.size = json_array_size(m->array.node);
-	}
-
-	if (m->array.idx >= m->array.size)
-		return (NULL);
-
-	if ((m->array.elm = json_array_get(m->array.node, m->array.idx)) == NULL)
-		return (NULL);
-
-	m->array.idx++;
-
-	return json_string_value(m->array.elm);
+	return pkg_manifest_simplenext(m, ARRAY_UNEXEC, "unexec");
 }
 
 /* Setters */
@@ -273,6 +301,19 @@ pkg_manifest_add_dep(struct pkg_manifest *m, const char *name, const char *origi
 }
 
 void
+pkg_manifest_add_conflict(struct pkg_manifest *m, const char *value)
+{
+	json_t *array;
+
+	if ((array = json_object_get(m->json, "conflicts")) == NULL) {
+		array = json_array();
+		json_object_set_new(m->json, "conflicts", array);
+	}
+
+	json_array_append_new(array, json_string(value));
+}
+
+void
 pkg_manifest_add_exec(struct pkg_manifest *m, const char *value)
 {
 	json_t *array;
@@ -298,40 +339,63 @@ pkg_manifest_add_unexec(struct pkg_manifest *m, const char *value)
 	json_array_append_new(array, json_string(value));
 }
 
-int
-pkg_manifest_loadb(struct pkg_manifest *m, const char *buffer)
+struct pkg_manifest *
+pkg_manifest_new(void)
 {
+	struct pkg_manifest *m;
+
+	if ((m = malloc(sizeof(struct pkg_manifest))) == NULL)
+		err(EXIT_FAILURE, "malloc()");
+
+	m->json = json_object();
+
+	return (m);
+}
+
+struct pkg_manifest *
+pkg_manifest_load_buffer(const char *buffer)
+{
+	struct pkg_manifest *m;
 	json_error_t error;
+
+	if ((m = malloc(sizeof(struct pkg_manifest))) == NULL)
+		err(EXIT_FAILURE, "malloc()");
 
 	if ((m->json = json_loads(buffer, &error)) == NULL) {
 		warnx("Can not parse buffer as JSON: %s", error.text);
-		return (-1);
+		free(m);
+		return (NULL);
 	}
 
-	return (0);
+	return (m);
 }
 
-int
-pkg_manifest_loadp(struct pkg_manifest *m, const char *path)
+struct pkg_manifest *
+pkg_manifest_load_file(const char *path)
 {
+	struct pkg_manifest *m;
 	json_error_t error;
+
+	if ((m = malloc(sizeof(struct pkg_manifest))) == NULL)
+		err(EXIT_FAILURE, "malloc()");
 
 	if ((m->json = json_load_file(path, &error)) == NULL) {
 		warnx("Can not parse %s: %s", path, error.text);
-		return (-1);
+		free(m);
+		return (NULL);
 	}
 
-	return (0);
+	return (m);
 }
 
 char *
-pkg_manifest_dumpb(struct pkg_manifest *m)
+pkg_manifest_dump_buffer(struct pkg_manifest *m)
 {
 	return json_dumps(m->json, JSON_COMPACT);
 }
 
 int
-pkg_manifest_dumpp(struct pkg_manifest *m, const char *path)
+pkg_manifest_dump_file(struct pkg_manifest *m, const char *path)
 {
 	return json_dump_file(m->json, path, JSON_INDENT(2));
 }

@@ -1,14 +1,16 @@
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/utsname.h>
+
 #include <ctype.h>
 #include <err.h>
 #include <stdlib.h>
 #include <string.h>
 #include <libgen.h>
-#include <sys/param.h>
-#include <sys/stat.h>
-#include <sys/utsname.h>
 
 #include "util.h"
 #include "pkg_compat.h"
+#include "pkg_manifest.h"
 
 static struct {
 	const char *key;
@@ -94,7 +96,7 @@ pkg_compat_plist_cmd(char *s, char **arg)
 }
 
 static void
-pkg_compat_read_plist(cJSON *pkg, char *plist_str)
+pkg_compat_read_plist(struct pkg_manifest *m, char *plist_str)
 {
 	int cmd;
 	char *buf, *next, *cp = NULL;
@@ -103,7 +105,6 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 	char *dep = NULL;
 	char *prefix = NULL;
 	char path_file[MAXPATHLEN];
-	cJSON *object;
 
 	buf = plist_str;
 	while ((next = strchr(buf, '\n')) != NULL) {
@@ -133,12 +134,12 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 				tmp = strrchr(cp, '-');
 				tmp[0] = '\0';
 				tmp++;
-				cJSON_AddStringToObject(pkg, "name", cp);
-				cJSON_AddStringToObject(pkg, "version", tmp);
+				pkg_manifest_add_value(m, "name", cp);
+				pkg_manifest_add_value(m, "version", tmp);
 				break;
 
 			case PLIST_ORIGIN:
-				cJSON_AddStringToObject(pkg, "origin", cp);
+				pkg_manifest_add_value(m, "origin", cp);
 				break;
 
 			case PLIST_CWD:
@@ -152,21 +153,18 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 				break;
 
 			case PLIST_MD5:
-				object = cJSON_CreateObject();
-				cJSON_AddStringToObject(object, "path", path_file);
-				cJSON_AddStringToObject(object, "md5", cp);
-				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "files"), object);
+				pkg_manifest_add_file(m, path_file, cp);
 				break;
 
 			case PLIST_CMD:
 				tmp = str_replace(cp, "\%D", prefix);
-				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "exec"), cJSON_CreateString(tmp));
+				pkg_manifest_add_exec(m, tmp);
 				free(tmp);
 				break;
 
 			case PLIST_UNEXEC:
 				tmp = str_replace(cp, "\%D", prefix);
-				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "unexec"), cJSON_CreateString(tmp));
+				pkg_manifest_add_unexec(m, tmp);
 				free(tmp);
 				break;
 
@@ -177,15 +175,11 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 				tmp = strrchr(dep, '-');
 				tmp[0] = '\0';
 				tmp++;
-				object = cJSON_CreateObject();
-				cJSON_AddStringToObject(object, "name", dep);
-				cJSON_AddStringToObject(object, "origin", cp);
-				cJSON_AddStringToObject(object, "version", tmp);
-				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "deps"), object);
+				pkg_manifest_add_dep(m, dep, cp, tmp);
 				break;
 
 			case PLIST_CONFLICTS:
-				cJSON_AddItemToArray(cJSON_GetObjectItem(pkg, "conflicts"), cJSON_CreateString(cp));
+				pkg_manifest_add_conflict(m, cp);
 				break;
 
 			case PLIST_MTREE:
@@ -205,64 +199,55 @@ pkg_compat_read_plist(cJSON *pkg, char *plist_str)
 	}
 }
 
-cJSON *
+struct pkg_manifest *
 pkg_compat_converter(char *plist_str)
 {
+	struct pkg_manifest *m;
 	struct utsname uts;
 	char *osrelease;
 	char *tmp;
 
-	cJSON *rootpkg = cJSON_CreateObject();
+	m = pkg_manifest_new();
 	uname(&uts);
 	
-	cJSON_AddStringToObject(rootpkg, "arch", uts.machine);
+	pkg_manifest_add_value(m, "arch", uts.machine);
 
 	osrelease = strdup(uts.release);
 	tmp = strrchr(osrelease, '-');
 	tmp[0] = '\0';
 
-	cJSON_AddStringToObject(rootpkg, "osrelease", osrelease);
+	pkg_manifest_add_value(m, "osrelease", osrelease);
 	free(osrelease);
 
-	cJSON_AddNumberToObject(rootpkg, "osversion", __FreeBSD_version);
-	cJSON_AddFalseToObject(rootpkg, "automatic");
-	cJSON_AddItemToObject(rootpkg, "files", cJSON_CreateArray());
-	cJSON_AddItemToObject(rootpkg, "exec", cJSON_CreateArray());
-	cJSON_AddItemToObject(rootpkg, "unexec", cJSON_CreateArray());
-	cJSON_AddItemToObject(rootpkg, "options", cJSON_CreateArray());
-	cJSON_AddItemToObject(rootpkg, "conflicts", cJSON_CreateArray());
-	cJSON_AddItemToObject(rootpkg, "deps", cJSON_CreateArray());
+	/* TODO
+	pkg_manifest_add_value(m, "osversion", __FreeBSD_version);
+	pkg_manifest_add_value(m, "automatic");
+	*/
 
-	pkg_compat_read_plist(rootpkg, plist_str);
+	pkg_compat_read_plist(m, plist_str);
 
-	return (rootpkg);
+	return (m);
 }
 
-cJSON *
-pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifestpath)
+struct pkg_manifest *
+pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 {
-	cJSON *rootpkg;
-	char *cjson_output;
-	FILE *fs;
+	struct pkg_manifest *m;
 	char *buffer;
 	off_t buffer_len;
 	char filepath[MAXPATHLEN];
 
 	snprintf(filepath, sizeof(filepath), "%s/%s/+CONTENTS", pkg_dbdir, pkgname);
 
-	rootpkg = cJSON_CreateObject();
-
-	if ((file_to_buffer(filepath, &buffer)) == -1) {
-		warn("Unable to read +CONTENTS for %s", pkgname);
-		return (0);
+	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
+		warnx("can not read %s", filepath);
+		return (NULL);
 	}
-
-	rootpkg = pkg_compat_converter(buffer);
+	m = pkg_compat_converter(buffer);
 	free(buffer);
-
-	if (rootpkg == 0) {
+	if (m == NULL) {
 		warnx("%s: Manifest corrupted, skipping", pkgname);
-		return (0);
+		return (NULL);
 	}
 
 	/* adding comment */
@@ -274,7 +259,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 		if (buffer[buffer_len - 1 ] == '\n')
 			buffer[buffer_len -1 ] = '\0';
 
-		cJSON_AddStringToObject(rootpkg, "comment", buffer);
+		pkg_manifest_add_value(m, "comment", buffer);
 		free(buffer);
 	}
 
@@ -284,25 +269,20 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *manifes
 	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
 		warn("Unable to read +DESC for %s", pkgname);
 	} else {
-		cJSON_AddStringToObject(rootpkg, "desc", buffer);
+		pkg_manifest_add_value(m, "desc", buffer);
 		free(buffer);
 	}
-
 
 	/* adding display */
 	snprintf(filepath, sizeof(filepath), "%s/+DISPLAY", dirname(filepath));
 	/* ignore if no +DISPLAY */
 	if ((buffer_len = file_to_buffer(filepath, &buffer)) != -1) {
-		cJSON_AddStringToObject(rootpkg, "display", buffer);
+		pkg_manifest_add_value(m, "display", buffer);
 		free(buffer);
 	}
 
 	/* write the new manifest */
-	cjson_output = cJSON_Print(rootpkg);
-	fs = fopen(manifestpath, "w+");
-	fprintf(fs, "%s", cjson_output);
-	free(cjson_output);
-	fclose(fs);
+	pkg_manifest_dump_file(m, mpath);
 
-	return (rootpkg);
+	return (m);
 }

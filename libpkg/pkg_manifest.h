@@ -3,33 +3,15 @@
 
 #include <stdbool.h>
 
-#include <jansson.h>
-
-enum array_type {
-	ARRAY_FILES,
-	ARRAY_DEPS,
-	ARRAY_EXEC,
-	ARRAY_UNEXEC
-};
-
-struct pkg_manifest_array {
-	json_t *node;
-	json_t *elm;
-	unsigned int size;
-	unsigned int idx;
-	enum array_type type;
-};
-
-struct pkg_manifest {
-	json_t *json;
-	struct pkg_manifest_array array;
-};
+/* Opaque struct */
+struct pkg_manifest;
 
 /* Parser/Emitter */
-int pkg_manifest_loadb(struct pkg_manifest *, const char *);
-int pkg_manifest_loadp(struct pkg_manifest *, const char *);
-char * pkg_manifest_dumpb(struct pkg_manifest *);
-int pkg_manifest_dumpp(struct pkg_manifest *, const char *);
+struct pkg_manifest * pkg_manifest_new(void);
+struct pkg_manifest * pkg_manifest_load_buffer(const char *);
+struct pkg_manifest * pkg_manifest_load_file(const char *);
+char * pkg_manifest_dump_buffer(struct pkg_manifest *);
+int pkg_manifest_dump_file(struct pkg_manifest *, const char *);
 void pkg_manifest_free(struct pkg_manifest *);
 
 /* Getter */
@@ -47,6 +29,9 @@ const char * pkg_manifest_dep_name(struct pkg_manifest *);
 const char * pkg_manifest_dep_origin(struct pkg_manifest *);
 const char * pkg_manifest_dep_version(struct pkg_manifest *);
 
+void pkg_manifest_conflict_init(struct pkg_manifest *);
+const char * pkg_manifest_conflict_next(struct pkg_manifest *);
+
 void pkg_manifest_exec_init(struct pkg_manifest *);
 const char * pkg_manifest_exec_next(struct pkg_manifest *);
 
@@ -57,10 +42,8 @@ const char * pkg_manifest_unexec_next(struct pkg_manifest *);
 void pkg_manifest_add_value(struct pkg_manifest *, const char *, const char *);
 void pkg_manifest_add_file(struct pkg_manifest *, const char *, const char *);
 void pkg_manifest_add_dep(struct pkg_manifest *, const char *, const char *, const char *);
+void pkg_manifest_add_conflict(struct pkg_manifest *, const char *);
 void pkg_manifest_add_exec(struct pkg_manifest *, const char *);
 void pkg_manifest_add_unexec(struct pkg_manifest *, const char *);
 
-/* Helper */
-const char * pkg_manifest_keystr(json_t *, const char *);
-void pkg_manifest_array_init(struct pkg_manifest *, enum array_type);
 #endif

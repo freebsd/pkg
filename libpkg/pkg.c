@@ -1,15 +1,17 @@
-#include <err.h>
-#include <stdlib.h>
+#include <sys/stat.h>
 #include <sys/param.h>
+
 #include <archive.h>
 #include <archive_entry.h>
-#include <pkgdb.h>
+#include <err.h>
+#include <stdlib.h>
 #include <glob.h>
-#include <sys/stat.h>
 #include <libgen.h>
 #include <string.h>
 #include <fcntl.h>
-#include <cJSON.h>
+
+#include "pkg_manifest.h"
+#include "pkgdb.h"
 #include "util.h"
 
 #define METADATA_GLOB "+{DEINSTALL,INSTALL,MTREE_DIRS}"
@@ -22,14 +24,14 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 	struct archive_entry *entry;
 	char glob_pattern[MAXPATHLEN + sizeof(METADATA_GLOB)];
 	glob_t g;
-	int fd, j;
+	int fd;
 	size_t len, i = 0;
 	char buf[BUFSIZ];
-	cJSON *manifest, *files, *file;
 	char *buffer;
 	char manifestpath[MAXPATHLEN], fpath[MAXPATHLEN];
-	char *filepath;
+	const char *filepath;
 	struct archive *ar;
+	struct pkg_manifest *m;
 
 	ar = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup(ar);
@@ -37,19 +39,8 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 	snprintf(manifestpath, sizeof(manifestpath), "%s+MANIFEST", path);
 	entry = archive_entry_new();
 
-	if ((file_to_buffer(manifestpath, &buffer)) == -1) {
-		/* TODO */
-		warnx("fail");
-		return (-1);
-	}
-
-	if ((manifest = cJSON_Parse(buffer)) == 0) {
-		warnx("%s: Manifest corrupted, skipping", manifestpath);
-		free(buffer);
-		return (-1);
-	}
-
-	free(buffer);
+	if ((m = pkg_manifest_load_file(manifestpath)) == NULL)
+		errx(EXIT_FAILURE, "Can not continue without manifest");
 
 	/* Add the metadatas */
 	snprintf(glob_pattern, sizeof(glob_pattern), "%s"METADATA_GLOB, path);
@@ -72,9 +63,9 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 		}
 	}
 	globfree(&g);
-	cJSON_DeleteItemFromObject(manifest, "automatic");
 
-	buffer = cJSON_Print(manifest);
+	/* TODO: remove automatic */
+	buffer = pkg_manifest_dump_buffer(m);
 
 	archive_entry_copy_sourcepath(entry, manifestpath);
 	if (archive_read_disk_entry_from_file(ar, entry, -1, 0) != ARCHIVE_OK)
@@ -88,11 +79,9 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 
 	free(buffer);
 
-	files = cJSON_GetObjectItem(manifest, "files");
-
-	for (j = 0; j < cJSON_GetArraySize(files); j++) {
-		file = cJSON_GetArrayItem(files, j);
-		filepath = cJSON_GetObjectItem(file, "path")->valuestring;
+	pkg_manifest_file_init(m);
+	while (pkg_manifest_file_next(m) == 0) {
+		filepath = pkg_manifest_file_path(m);
 		snprintf(fpath, sizeof(MAXPATHLEN), "%s/%s", root, filepath);
 		archive_entry_copy_sourcepath(entry, filepath);
 
@@ -111,7 +100,7 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 		archive_entry_clear(entry);
 	}
 
-	cJSON_Delete(manifest);
+	pkg_manifest_free(m);
 	archive_entry_free(entry);
 	archive_read_finish(ar);
 

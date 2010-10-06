@@ -9,11 +9,11 @@
 #include <unistd.h>
 
 #include <cdb.h>
-#include <cJSON.h>
 
 #include "util.h"
 #include "pkgdb.h"
 #include "pkg_compat.h"
+#include "pkg_manifest.h"
 #include "pkgdb_cache.h"
 
 /* add record formated string */
@@ -67,68 +67,25 @@ pkgdb_add_string(struct cdb_make *db, const char *val, const char *fmt, ...)
 	return (ret);
 }
 
-static char*cJSON_GetString(cJSON*j,const char *k){/*cJSON style*/cJSON*n;if((n=cJSON_GetObjectItem(j,k)))return n->valuestring;return NULL;}
-
-static struct pkg *
-pkg_from_manifest(const char *pkg_dbdir, char *pkgname)
+static int
+pkgdb_add_int(struct cdb_make *db, const char *key, size_t val)
 {
-	cJSON *manifest;
-	char manifestpath[MAXPATHLEN];
-	char *buffer;
-	struct pkg *pkg;
-
-	snprintf(manifestpath, sizeof(manifestpath), "%s/%s/+MANIFEST", pkg_dbdir, pkgname);
-
-	if ((file_to_buffer(manifestpath, &buffer)) == -1) {
-
-		warnx("An error occured while trying to read "
-				"+MANIFEST for %s, falling back to old "
-				"+CONTENTS format", pkgname);
-
-		manifest = pkg_compat_convert_installed( pkg_dbdir, pkgname,
-				manifestpath);
-	}
-	else {
-		manifest = cJSON_Parse(buffer);
-		free(buffer);
-	}
-
-	if (manifest == NULL) {
-		warnx("%s: Manifest corrputed, skipping", pkgname);
-		return NULL;
-	}
-
-	pkg = calloc(1, sizeof(*pkg));
-	pkg->name = cJSON_GetString(manifest, "name");
-	pkg->version = cJSON_GetString(manifest, "version");
-	pkg->comment = cJSON_GetString(manifest, "comment");
-	pkg->origin = cJSON_GetString(manifest, "origin");
-
-	if (pkg->name == NULL || pkg->version == NULL ||
-			pkg->comment == NULL || pkg->origin == NULL) {
-		free(pkg);
-		pkg = NULL;
-		cJSON_Delete(manifest);
-	}
-	else {
-		pkg->desc = cJSON_GetString(manifest, "desc");
-		pkg->manifest = manifest;
-	}
-	return (pkg);
+	return cdb_make_add(db, key, strlen(key), &val, sizeof(size_t));
 }
-
 
 static void
 pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 {
 	int fd;
-	char tmppath[MAXPATHLEN], namever[FILENAME_MAX];
-	struct cdb_make cdb_make;
+	char tmppath[MAXPATHLEN];
+	char mpath[MAXPATHLEN];
+	char namever[FILENAME_MAX];
+	struct cdb_make cdb;
 	DIR *dir;
 	struct dirent *portsdir;
-	struct pkg *pkg;
-	size_t idx = 0, idep, array_size;
-	cJSON *node, *array;
+	size_t idx;
+	size_t idep;
+	struct pkg_manifest *m;
 
 	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
 
@@ -137,10 +94,10 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 
 	warnx("Rebuilding cache...");
 
-	cdb_make_start(&cdb_make, fd);
+	cdb_make_start(&cdb, fd);
 
 	/* Now go through pkg_dbdir rebuild the cache */
-
+	idx = 0;
 	if ((dir = opendir(pkg_dbdir)) != NULL) {
 		while ((portsdir = readdir(dir)) != NULL) {
 			if (strcmp(portsdir->d_name, ".") != 0 &&
@@ -149,41 +106,41 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 				if (portsdir->d_type != DT_DIR)
 					continue;
 
-				pkg = pkg_from_manifest(pkg_dbdir, portsdir->d_name);
-
-				if (pkg == NULL)
-					continue;
-
-				snprintf(namever, sizeof(namever), "%s-%s", pkg->name, pkg->version);
-				/* index -> namever */
-				cdb_make_add(&cdb_make, &idx, sizeof(idx), namever, strlen(namever)+1);
-				/* namever -> index */
-				cdb_make_add(&cdb_make, namever, strlen(namever), &idx, sizeof(idx));
-				/* name -> index */
-				cdb_make_add(&cdb_make, pkg->name, strlen(pkg->name), &idx, sizeof(idx));
-				pkgdb_add_string(&cdb_make, pkg->name, PKGDB_NAME, idx);
-				pkgdb_add_string(&cdb_make, pkg->version, PKGDB_VERSION, idx);
-				pkgdb_add_string(&cdb_make, pkg->comment, PKGDB_COMMENT, idx);
-				pkgdb_add_string(&cdb_make, pkg->origin, PKGDB_ORIGIN, idx);
-				pkgdb_add_string(&cdb_make, pkg->desc, PKGDB_DESC, idx);
-
-				array = cJSON_GetObjectItem(pkg->manifest, "deps");
-
-				if (array && (array_size = cJSON_GetArraySize(array)) > 0) {
-					for (idep = 0; idep < array_size; idep++) {
-						if ((node = cJSON_GetArrayItem(array, idep)) != NULL) {
-							pkg->name = cJSON_GetString(node, "name");
-							pkg->version = cJSON_GetString(node, "version");
-							if (pkg->name != NULL && pkg->version != NULL) {
-								snprintf(namever, sizeof(namever), "%s-%s", pkg->name, pkg->version);
-								pkgdb_add_string(&cdb_make, namever, PKGDB_DEPS, idx, idep);
-							}
-						}
+				snprintf(mpath, sizeof(mpath), "%s/%s/+MANIFEST", pkg_dbdir,
+					 	 portsdir->d_name);
+				if ((m = pkg_manifest_load_file(mpath)) == NULL) {
+					warnx("%s not found, converting old +CONTENTS file", mpath);
+					if ((m = pkg_compat_convert_installed(pkg_dbdir, portsdir->d_name, mpath))
+						== NULL) {
+						warnx("error while converting, skipping");
+						continue;
 					}
+warnx("CONVERTED!!!");
 				}
 
-				cJSON_Delete(pkg->manifest);
-				free(pkg);
+				snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_value(m, "name"),
+						 pkg_manifest_value(m, "version"));
+
+				pkgdb_add_int(&cdb, namever, idx);
+				pkgdb_add_int(&cdb, pkg_manifest_value(m, "name"), idx);
+
+				pkgdb_add_string(&cdb, namever, PKGDB_NAMEVER, idx);
+				pkgdb_add_string(&cdb, pkg_manifest_value(m, "name"), PKGDB_NAME, idx);
+				pkgdb_add_string(&cdb, pkg_manifest_value(m, "version"), PKGDB_VERSION, idx);
+				pkgdb_add_string(&cdb, pkg_manifest_value(m, "comment"), PKGDB_COMMENT, idx);
+				pkgdb_add_string(&cdb, pkg_manifest_value(m, "origin"), PKGDB_ORIGIN, idx);
+				pkgdb_add_string(&cdb, pkg_manifest_value(m, "desc"), PKGDB_DESC, idx);
+
+				idep = 0;
+				pkg_manifest_dep_init(m);
+				while (pkg_manifest_dep_next(m) == 0) {
+					snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_dep_name(m),
+							 pkg_manifest_dep_version(m));
+					pkgdb_add_string(&cdb, namever, PKGDB_DEPS, idx, idep);
+					idep++;
+				}
+
+				pkg_manifest_free(m);
 				idx++;
 			}
 		}
@@ -191,8 +148,8 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	}
 
 	/* record packages len */
-	cdb_make_add(&cdb_make, PKGDB_COUNT, strlen(PKGDB_COUNT), &idx, sizeof(idx));
-	cdb_make_finish(&cdb_make);
+	cdb_make_add(&cdb, PKGDB_COUNT, strlen(PKGDB_COUNT), &idx, sizeof(idx));
+	cdb_make_finish(&cdb);
 	close(fd);
 	rename(tmppath, cache_path);
 	chmod(cache_path, 0644);

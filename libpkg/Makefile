@@ -6,13 +6,12 @@ WARNS=		6
 SHLIBDIR?=	/usr/lib
 SHLIB_MAJOR=	0
 
-SRCS=pkg_manifest.c
-#SRCS=		pkg.c \
-#		pkgdb.c \
-#		pkgdb_cache.c \
-#		pkg_compat.c \
-#		pkg_manifest.c \
-#		util.c
+SRCS=		pkg.c \
+		pkgdb.c \
+		pkgdb_cache.c \
+		pkg_compat.c \
+		pkg_manifest.c \
+		util.c
 
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \

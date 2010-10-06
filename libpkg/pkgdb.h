@@ -4,6 +4,7 @@
 
 #define PKG_DBDIR "/var/db/pkg"
 #define PKGDB_LOCK "lock"
+#define PKGDB_NAMEVER "%zunv"
 #define PKGDB_NAME    "%zun"
 #define PKGDB_VERSION "%zuv"
 #define PKGDB_COMMENT "%zuc"
