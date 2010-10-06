@@ -13,35 +13,105 @@
 #include "pkgdb.h"
 #include "pkgdb_cache.h"
 
+/* theses functions request on local database (cdb) */
+static int pkg_db_open(struct pkgdb *);
+static void pkg_db_init(struct pkg *);
+static const void *pkg_db_query(struct cdb *, const char *, ...);
+static const char *pkg_db_namever(struct pkg *);
+static const char *pkg_db_getattr(struct pkg *, const char *);
+static int pkg_db_dep(struct pkg *, struct pkg *);
 
 const char *
-pkgdb_get_dir(void)
+pkg_namever(struct pkg *pkg)
 {
-	const char *pkg_dbdir;
+	if (pkg->namever == NULL)
+		pkg->namever = pkg_db_namever(pkg);
+	return (pkg->namever);
+}
 
-	if ((pkg_dbdir = getenv("PKG_DBDIR")) == NULL)
-		pkg_dbdir = PKG_DBDIR;
+const char *
+pkg_name(struct pkg *pkg)
+{
+	if (pkg->name == NULL)
+		pkg->name = pkg_db_getattr(pkg, PKGDB_NAME);
+	return (pkg->name);
+}
 
-	return pkg_dbdir;
+const char *
+pkg_version(struct pkg *pkg)
+{
+	if (pkg->version == NULL)
+		pkg->version = pkg_db_getattr(pkg, PKGDB_VERSION);
+	return (pkg->version);
+}
+
+const char *
+pkg_comment(struct pkg *pkg)
+{
+	if (pkg->comment == NULL)
+		pkg->comment = pkg_db_getattr(pkg, PKGDB_COMMENT);
+	return (pkg->comment);
+}
+
+const char *
+pkg_desc(struct pkg *pkg)
+{
+	if (pkg->desc == NULL)
+		pkg->desc = pkg_db_getattr(pkg, PKGDB_DESC);
+	return (pkg->desc);
+}
+
+const char *
+pkg_origin(struct pkg *pkg)
+{
+	if (pkg->origin == NULL)
+		pkg->origin = pkg_db_getattr(pkg, PKGDB_ORIGIN);
+	return (pkg->desc);
 }
 
 int
-pkgdb_open(struct pkgdb *db)
+pkg_dep(struct pkg *pkg, struct pkg *dep)
 {
-	char path[MAXPATHLEN];
-	int fd;
+	return (pkg_db_dep(pkg, dep));
+}
 
-	snprintf(path, sizeof(path), "%s/pkgdb.cache", pkgdb_get_dir());
+static void
+pkg_db_init(struct pkg *pkg)
+{
+	pkg->namever = NULL;
+	pkg->name = NULL;
+	pkg->version = NULL;
+	pkg->origin = NULL;
+	pkg->comment = NULL;
+	pkg->desc = NULL;
+	pkg->idx = -1;
+	pkg->idep = 0;
+	pkg->irdep = 0;
+	pkg->db = NULL;
+}
 
-	if ((fd = open(path, O_RDONLY)) != -1)
-		fd = cdb_init(&db->db, fd);
 
-	return (fd);
+static int
+pkg_db_dep(struct pkg *pkg, struct pkg *dep)
+{
+	const size_t *idx;
+	int ret = -1;
+
+	pkg_db_init(dep);
+
+	if ((dep->namever = pkg_db_query(pkg->db, PKGDB_DEPS, pkg->idx, pkg->idep)) != NULL &&
+			(idx = pkg_db_query(pkg->db, "%s", dep->namever)) != NULL) {
+		dep->idx = *idx;
+		dep->db = pkg->db;
+		pkg->idep++;
+		ret = 0;
+	}
+	return (ret);
 }
 
 /* query formated using string key */
-const void *
-pkgdb_query(struct pkgdb *db, const char *fmt, ...)
+static const void *
+pkg_db_query(struct cdb *db, const char *fmt, ...)
 {
 	va_list args;
 	char key[BUFSIZ];
@@ -60,141 +130,54 @@ pkgdb_query(struct pkgdb *db, const char *fmt, ...)
 
 	va_end(args);
 
-	if (cdb_find(&db->db, key, len) < 0)
+	if (cdb_find(db, key, len) <= 0)
 		return NULL;
 
-	db_get(val, &db->db);
+	db_get(val, db);
 	return (val);
 }
 
-/* query a pkg from db using index */
-struct pkg *
-pkgdb_pkg_query(struct pkgdb *db, size_t idx)
+static const char *
+pkg_db_namever(struct pkg *pkg)
 {
-	struct pkg *pkg;
-
-	if (db == NULL)
-		return NULL;
-
-	if (cdb_find(&db->db, &idx, sizeof(idx)) <= 0)
-		return NULL;
-
-	pkg = malloc(sizeof(*pkg));
-	pkg->idx = idx;
-	db_get(pkg->name_version, &db->db);
-
-	pkg->name = pkgdb_query(db, PKGDB_NAME, idx);
-	pkg->version = pkgdb_query(db, PKGDB_VERSION, idx);
-	pkg->comment = pkgdb_query(db, PKGDB_COMMENT, idx);
-	pkg->desc = pkgdb_query(db, PKGDB_DESC, idx);
-	pkg->origin = pkgdb_query(db, PKGDB_ORIGIN, idx);
-
-	return (pkg);
+	pkg->namever = NULL;
+	if (cdb_find(pkg->db, &pkg->idx, sizeof(pkg->idx)) > 0)
+		db_get(pkg->namever, pkg->db);
+	return (pkg->namever);
 }
 
-/* populate deps on pkg */
-void
-pkgdb_deps_query(struct pkgdb *db, struct pkg *pkg)
+static const char *
+pkg_db_getattr(struct pkg *pkg, const char *attr)
 {
-	struct cdb_find cdbf;
-	size_t count = 0, j, klen;
-	char key[BUFSIZ];
-	struct pkg *dep;
-
-	if (db == NULL || pkg == NULL)
-		return;
-
-	snprintf(key, BUFSIZ, PKGDB_DEPS, pkg->idx);
-	klen = strlen(key);
-
-	cdb_findinit(&cdbf, &db->db, key, klen);
-
-	while (cdb_findnext(&cdbf) > 0)
-		count++;
-
-	pkg->deps = calloc(count+1, sizeof(*pkg->deps));
-	pkg->deps[count] = NULL;
-
-	cdb_findinit(&cdbf, &db->db, key, klen);
-
-	j = 0;
-	while (cdb_findnext(&cdbf) > 0) {
-		dep = calloc(1, sizeof(*dep));
-		db_get(dep->name_version, &db->db);
-		pkg->deps[j++] = dep;
-	}
+	return (pkg_db_query(pkg->db, attr, pkg->idx));
 }
 
-/* populate rdeps on package */
-static void
-pkgdb_rdeps_query(struct pkgdb *db, struct pkg *pkg, size_t count)
+const char *
+pkgdb_get_dir(void)
 {
-	size_t i, j;
-	struct pkg *p, **deps;
+	const char *pkg_dbdir;
 
-	if (db == NULL || pkg == NULL)
-		return;
+	if ((pkg_dbdir = getenv("PKG_DBDIR")) == NULL)
+		pkg_dbdir = PKG_DBDIR;
 
-	pkg->rdeps = calloc(count+1, sizeof(struct pkg *));
-
-	for (i = 0, j = 0; i < count; i++) {
-
-		if ((p = pkgdb_pkg_query(db, i)) == NULL)
-			continue;
-
-		pkgdb_deps_query(db, p);
-
-		for (deps = p->deps; *deps != NULL; deps++) {
-			if (!((*deps)->errors & PKGERR_NOT_INSTALLED)
-					&& strcmp((*deps)->name_version, pkg->name_version) == 0) {
-				pkg->rdeps[j] = p;
-				break;
-			}
-		}
-
-		/* free deps */
-		for (deps = p->deps; *deps != NULL; deps++)
-			free(*deps);
-		free(p->deps);
-
-		if (pkg->rdeps[j] == p)
-			j++;
-		else
-			free(p);
-	}
-	pkg->rdeps = realloc(pkg->rdeps, (j+1) * sizeof(struct pkg *));
-	pkg->rdeps[j] = NULL;
-	return;
+	return pkg_dbdir;
 }
 
 static int
-pkg_cmp(void const *a, void const *b)
+pkg_db_open(struct pkgdb *db)
 {
-	struct pkg * const *pa = a;
-	struct pkg * const *pb = b;
-	return (strcmp((*pa)->name, (*pb)->name));
-}
+	char path[MAXPATHLEN];
+	int fd;
 
-static int
-pkg_match(struct pkg *pkg, const regex_t *re, const char *pattern, match_t match)
-{
-	int matched = 1;
-	switch (match) {
-		case MATCH_ALL:
-			matched = 0;
-			break;
-		case MATCH_EXACT:
-			matched = strcmp(pkg->name_version, pattern);
-			break;
-		case MATCH_GLOB:
-			matched = fnmatch(pattern, pkg->name_version, 0);
-			break;
-		case MATCH_REGEX:
-		case MATCH_EREGEX:
-			matched = regexec(re, pkg->name_version, 0, NULL, 0);
-			break;
+	snprintf(path, sizeof(path), "%s/pkgdb.cache", pkgdb_get_dir());
+
+	if ((fd = open(path, O_RDONLY)) != -1)
+		fd = cdb_init(&db->db, fd);
+	else {
+		/* TODO custom pkgdb error */
 	}
-	return (matched);
+
+	return (fd);
 }
 
 /*
@@ -229,121 +212,95 @@ pkgdb_unlock(struct pkgdb *db)
 	db->lock_fd = -1;
 }
 
-void
-pkgdb_init(struct pkgdb *db, const char *pattern, match_t match, unsigned char flags) {
-	size_t count, i;
-	struct pkg *pkg;
-	regex_t re;
-
+int
+pkgdb_init(struct pkgdb *db, const char *pattern, match_t match)
+{
 	pkgdb_cache_update(db);
+	if (pkg_db_open(db) == -1)
+		return (-1); /* TOTO pkgdb error */
 
-	if (pkgdb_open(db) == -1)
-		return;
+	db->pattern = pattern;
+	db->match = match;
+	db->i = 0;
 
-	pkgdb_lock(db, 0);
-
-	db->count = 0;
-	db->flags = flags;
-
-	if (match != MATCH_ALL && pattern == NULL) {
-		warnx("a pattern is required");
-		return;
-	}
-
-	if (cdb_find(&db->db, PKGDB_COUNT, strlen(PKGDB_COUNT)) <= 0) {
-		warnx("corrupted database");
-		return;
-	}
-
-	cdb_read(&db->db, &count, sizeof(count), cdb_datapos(&db->db));
-	db->pkgs = calloc(count+1, sizeof(struct pkg *));
+	if (match != MATCH_ALL && pattern == NULL)
+		return (-1);
 
 	/* Regex initialisation */
 	if (match == MATCH_REGEX) {
-		if (regcomp(&re, pattern, REG_BASIC | REG_NOSUB) != 0) {
+		if (regcomp(&db->re, pattern, REG_BASIC | REG_NOSUB) != 0) {
 			warnx("'%s' is not a valid regular expression", pattern);
-			return;
+			return (-1);
 		}
 	} else if (match == MATCH_EREGEX) {
-		if (regcomp(&re, pattern, REG_EXTENDED | REG_NOSUB) != 0) {
+		if (regcomp(&db->re, pattern, REG_EXTENDED | REG_NOSUB) != 0) {
 			warnx("'%s' is not a valid extended regular expression", pattern);
-			return;
+			return (-1);
 		}
 	}
 
-	for (i = 0; i < count; i++) {
-		/* get package */
-		if ((pkg = pkgdb_pkg_query(db, i)) == NULL)
-			continue;
-
-		if (pkg_match(pkg, &re, pattern, match) == 0) {
-			if (db->flags & PKGDB_INIT_DEPS)
-				pkgdb_deps_query(db, pkg);
-			if (db->flags & PKGDB_INIT_RDEPS)
-				pkgdb_rdeps_query(db, pkg, count);
-			db->pkgs[db->count++] = pkg;
-		}
-		else
-			free(pkg);
-	}
-
-	if (match == MATCH_REGEX || match == MATCH_EREGEX)
-		regfree(&re);
-
-	/* sort packages */
-	db->pkgs = realloc(db->pkgs, (db->count+1) * sizeof(struct pkg *));
-	db->pkgs[db->count] = NULL;
-	qsort(db->pkgs, db->count, sizeof(struct pkg *), pkg_cmp);
-
-	pkgdb_unlock(db);
-	return;
-}
-
-static void
-pkg_free(struct pkgdb *db, struct pkg *pkg)
-{
-	struct pkg **deps;
-	if (db->flags & PKGDB_INIT_DEPS) {
-		if (!(pkg->errors & PKGERR_NOT_INSTALLED)) {
-			for (deps = pkg->deps; *deps != NULL; deps++) {
-				pkg_free(db, *deps);
-			}
-		}
-	}
-	free(pkg);
+	return (0);
 }
 
 void
 pkgdb_free(struct pkgdb *db)
 {
-	int fd;
-	struct pkg *pkg, **deps;
-
-	fd = cdb_fileno(&db->db);
+	close(cdb_fileno(&db->db));
 	cdb_free(&db->db);
-	close(fd);
 
-	PKGDB_FOREACH(pkg, db) {
-		if (db->flags & PKGDB_INIT_DEPS) {
-			for (deps = pkg->deps; *deps != NULL; deps++)
-				free(*deps);
-			free(pkg->deps);
-		}
-		if (db->flags & PKGDB_INIT_RDEPS) {
-			for (deps = pkg->rdeps; *deps != NULL; deps++)
-				free(*deps);
-			free(pkg->rdeps);
-		}
-		free(pkg);
-	}
+	if (db->match == MATCH_REGEX || db->match == MATCH_EREGEX)
+		regfree(&db->re);
 
-	free(db->pkgs);
+	return;
 }
 
-size_t
-pkgdb_count(struct pkgdb *db)
+static int
+pkgdb_match(struct pkgdb *db, const char *pattern)
 {
-	return (db->count);
+	int matched = 1;
+	switch (db->match) {
+		case MATCH_ALL:
+			matched = 0;
+			break;
+		case MATCH_EXACT:
+			matched = strcmp(pattern, db->pattern);
+			break;
+		case MATCH_GLOB:
+			matched = fnmatch(db->pattern, pattern, 0);
+			break;
+		case MATCH_REGEX:
+		case MATCH_EREGEX:
+			matched = regexec(&db->re, pattern, 0, NULL, 0);
+			break;
+	}
+	return (matched);
 }
 
+
+
+int
+pkgdb_query(struct pkgdb *db, struct pkg *pkg)
+{
+	int ret = -1;
+
+	pkg_db_init(pkg);
+
+	pkgdb_lock(db, 0);
+
+	while (cdb_find(&db->db, &db->i, sizeof(db->i)) > 0) {
+		db_get(pkg->namever, &db->db);
+
+		if (pkg->namever != NULL && pkgdb_match(db, pkg->namever) == 0) {
+			pkg->idx = db->i++;
+			pkg->db = &db->db;
+			ret = 0;
+			break;
+		}
+
+		db->i++;
+	}
+	pkgdb_unlock(db);
+
+	return (ret);
+}
 

@@ -24,8 +24,7 @@ int
 cmd_info(int argc, char **argv)
 {
 	struct pkgdb db;
-	struct pkg *pkg, **deps;
-	unsigned char flags = 0;
+	struct pkg pkg, dep;
 	unsigned char opt = 0;
 	match_t match = MATCH_EXACT;
 	char ch;
@@ -43,11 +42,9 @@ cmd_info(int argc, char **argv)
 				match = MATCH_EREGEX;
 				break;
 			case 'd':
-				flags |= PKGDB_INIT_DEPS;
 				opt |= INFO_PRINT_DEP;
 				break;
 			case 'D':
-				flags |= PKGDB_INIT_RDEPS;
 				opt |= INFO_PRINT_RDEP;
 				break;
 		}
@@ -58,30 +55,19 @@ cmd_info(int argc, char **argv)
 	if (argc == 0)
 		match = MATCH_ALL;
 
-	pkgdb_init(&db, argv[0], match, flags);
+	pkgdb_init(&db, argv[0], match);
 
-	PKGDB_FOREACH(pkg, &db) {
-
+	while (pkgdb_query(&db, &pkg) == 0) {
 		if (opt & INFO_PRINT_DEP) {
-			printf("%s depends on:\n", pkg->name_version);
-			for (deps = pkg->deps; *deps != NULL; deps++)
-				printf("%s\n", (*deps)->name_version);
-		}
 
-		else if (opt & INFO_PRINT_RDEP) {
-			printf("%s is required for:\n", pkg->name_version);
-			for (deps = pkg->rdeps; *deps != NULL; deps++)
-				printf("%s\n", (*deps)->name_version);
-		}
+			printf("%s depends on:\n", pkg_namever(&pkg));
 
-		else if (pkgdb_count(&db) == 1) {
-			printf("Informations for %s\n\n", pkg->name_version);
-			printf("Comment:\n%s\n\n", pkg->comment);
-			printf("Description:\n%s\n\n", pkg->desc);
-		}
+			while (pkg_dep(&pkg, &dep) == 0) {
+				printf("%s\n", pkg_namever(&dep));
+			}
 
-		else {
-			printf("%s: %s\n", pkg->name_version, pkg->comment);
+		} else {
+			printf("%s: %s\n", pkg_namever(&pkg), pkg_comment(&pkg));
 		}
 	}
 

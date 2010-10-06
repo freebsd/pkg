@@ -122,7 +122,7 @@ int
 pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *rootdir)
 {
 	struct pkgdb db;
-	struct pkg *pkg;
+	struct pkg pkg;
 	const char *pkg_dbdir;
 	char pkgpath[MAXPATHLEN];
 	struct archive *pkg_archive;
@@ -150,43 +150,41 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 
 	pkg_dbdir = pkgdb_get_dir();
 
-	pkgdb_init(&db, pkgname, MATCH_EXACT, 0);
+	pkgdb_init(&db, pkgname, MATCH_EXACT);
 
-	if (pkgdb_count(&db) == 0) {
+	if (pkgdb_query(&db, &pkg) != 0) {
 		warnx("%s: no such package", pkgname);
 		return (-1);
 	}
 
-	PKGDB_FOREACH(pkg, &db) {
-		printf("Creating package %s/%s.%s\n", outdir, pkg->name_version, ext);
-		snprintf(pkgpath, sizeof(pkgpath), "%s/%s/", pkg_dbdir, pkg->name_version);
-		snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, pkg->name_version, ext);
+	printf("Creating package %s/%s.%s\n", outdir, pkg_namever(&pkg), ext);
+	snprintf(pkgpath, sizeof(pkgpath), "%s/%s/", pkg_dbdir, pkg_namever(&pkg));
+	snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, pkg_namever(&pkg), ext);
 
-		pkg_archive = archive_write_new();
+	pkg_archive = archive_write_new();
 
-		switch (format) {
-			case TAR:
-				archive_write_set_compression_none(pkg_archive);
-				break;
-			case TGZ:
-				archive_write_set_compression_gzip(pkg_archive);
-				break;
-			case TBZ:
-				archive_write_set_compression_bzip2(pkg_archive);
-				break;
-			case TXZ:
-				if (archive_write_set_compression_lzma(pkg_archive) != ARCHIVE_OK) {
-					warnx(archive_error_string(pkg_archive));
-				}
-				break;
-		}
-
-		archive_write_set_format_pax_restricted(pkg_archive);
-		archive_write_open_filename(pkg_archive, archive_path);
-		pkg_create_from_dir(pkgpath, rootdir, pkg_archive);
-		archive_write_close(pkg_archive);
-		archive_write_finish(pkg_archive);
+	switch (format) {
+		case TAR:
+			archive_write_set_compression_none(pkg_archive);
+			break;
+		case TGZ:
+			archive_write_set_compression_gzip(pkg_archive);
+			break;
+		case TBZ:
+			archive_write_set_compression_bzip2(pkg_archive);
+			break;
+		case TXZ:
+			if (archive_write_set_compression_lzma(pkg_archive) != ARCHIVE_OK) {
+				warnx(archive_error_string(pkg_archive));
+			}
+			break;
 	}
+
+	archive_write_set_format_pax_restricted(pkg_archive);
+	archive_write_open_filename(pkg_archive, archive_path);
+	pkg_create_from_dir(pkgpath, rootdir, pkg_archive);
+	archive_write_close(pkg_archive);
+	archive_write_finish(pkg_archive);
 
 	pkgdb_free(&db);
 	return (0);
