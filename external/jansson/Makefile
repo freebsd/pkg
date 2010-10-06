@@ -1,7 +1,6 @@
 LIB=		jansson
 INTERNALLIB=
-SRCS=		bench.c \
-		dump.c \
+SRCS=		dump.c \
 		hashtable.c \
 		load.c \
 		strbuffer.c \

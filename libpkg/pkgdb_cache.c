@@ -115,7 +115,6 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 						warnx("error while converting, skipping");
 						continue;
 					}
-warnx("CONVERTED!!!");
 				}
 
 				snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_value(m, "name"),
