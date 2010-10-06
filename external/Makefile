@@ -1,2 +1,4 @@
-SUBDIR= cjson tinycdb
+SUBDIR=	jansson \
+	tinycdb
+
 .include <bsd.subdir.mk>
