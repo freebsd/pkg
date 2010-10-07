@@ -81,11 +81,12 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	char mpath[MAXPATHLEN];
 	char namever[FILENAME_MAX];
 	struct cdb_make cdb;
-	DIR *dir;
-	struct dirent *portsdir;
-	size_t idx;
+	size_t idx = 0;
 	size_t idep;
-	struct pkg_manifest *m;
+	struct pkg_manifest **m = NULL;
+	DIR *dir;
+	struct dirent *pkg_dir;
+	size_t nb_pkg = 0;
 
 	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
 
@@ -93,61 +94,83 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 		return;
 
 	warnx("Rebuilding cache...");
-
 	cdb_make_start(&cdb, fd);
 
-	/* Now go through pkg_dbdir rebuild the cache */
-	idx = 0;
 	if ((dir = opendir(pkg_dbdir)) != NULL) {
-		while ((portsdir = readdir(dir)) != NULL) {
-			if (strcmp(portsdir->d_name, ".") != 0 &&
-					strcmp(portsdir->d_name, "..") !=0) {
 
-				if (portsdir->d_type != DT_DIR)
-					continue;
+		/* count potential packages */
+		while ((pkg_dir = readdir(dir)) != NULL) {
+			if (pkg_dir->d_type == DT_DIR && /* TODO stat(2) for symlinks ? */
+					strcmp(pkg_dir->d_name, ".") != 0 &&
+					strcmp(pkg_dir->d_name, "..") != 0)
+				nb_pkg++;
+		}
+
+		if (nb_pkg == 0)
+			return;
+
+		rewinddir(dir);
+		m = calloc(nb_pkg, sizeof(*m));
+		idx = 0;
+
+		while ((pkg_dir = readdir(dir)) != NULL) {
+			if (pkg_dir->d_type == DT_DIR && /* TODO stat(2) for symlinks ? */
+					strcmp(pkg_dir->d_name, ".") != 0 &&
+					strcmp(pkg_dir->d_name, "..") != 0) {
 
 				snprintf(mpath, sizeof(mpath), "%s/%s/+MANIFEST", pkg_dbdir,
-					 	 portsdir->d_name);
-				if ((m = pkg_manifest_load_file(mpath)) == NULL) {
+					 	 pkg_dir->d_name);
+
+				if ((m[idx] = pkg_manifest_load_file(mpath)) == NULL) {
 					warnx("%s not found, converting old +CONTENTS file", mpath);
-					if ((m = pkg_compat_convert_installed(pkg_dbdir, portsdir->d_name, mpath))
+					if ((m[idx] = pkg_compat_convert_installed(pkg_dbdir, pkg_dir->d_name, mpath))
 						== NULL) {
 						warnx("error while converting, skipping");
 						continue;
 					}
 				}
 
-				snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_value(m, "name"),
-						 pkg_manifest_value(m, "version"));
-
-				pkgdb_add_int(&cdb, namever, idx);
-				pkgdb_add_int(&cdb, pkg_manifest_value(m, "name"), idx);
-
-				pkgdb_add_string(&cdb, namever, PKGDB_NAMEVER, idx);
-				pkgdb_add_string(&cdb, pkg_manifest_value(m, "name"), PKGDB_NAME, idx);
-				pkgdb_add_string(&cdb, pkg_manifest_value(m, "version"), PKGDB_VERSION, idx);
-				pkgdb_add_string(&cdb, pkg_manifest_value(m, "comment"), PKGDB_COMMENT, idx);
-				pkgdb_add_string(&cdb, pkg_manifest_value(m, "origin"), PKGDB_ORIGIN, idx);
-				pkgdb_add_string(&cdb, pkg_manifest_value(m, "desc"), PKGDB_DESC, idx);
-
-				idep = 0;
-				pkg_manifest_dep_init(m);
-				while (pkg_manifest_dep_next(m) == 0) {
-					snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_dep_name(m),
-							 pkg_manifest_dep_version(m));
-					pkgdb_add_string(&cdb, namever, PKGDB_DEPS, idx, idep);
-					idep++;
-				}
-
-				pkg_manifest_free(m);
 				idx++;
 			}
+			nb_pkg = idx; /* real number of manifest loaded */
 		}
 		closedir(dir);
 	}
 
+	/* sort manifests */
+	qsort(m, nb_pkg, sizeof(struct pkg_manifest *), pkg_manifest_cmp);
+
+	for (idx = 0; idx < nb_pkg; idx++) {
+		snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_value(m[idx], "name"),
+				 pkg_manifest_value(m[idx], "version"));
+
+		pkgdb_add_int(&cdb, namever, idx);
+		pkgdb_add_int(&cdb, pkg_manifest_value(m[idx], "name"), idx);
+
+		pkgdb_add_string(&cdb, namever, PKGDB_NAMEVER, idx);
+		pkgdb_add_string(&cdb, pkg_manifest_value(m[idx], "name"), PKGDB_NAME, idx);
+		pkgdb_add_string(&cdb, pkg_manifest_value(m[idx], "version"), PKGDB_VERSION, idx);
+		pkgdb_add_string(&cdb, pkg_manifest_value(m[idx], "comment"), PKGDB_COMMENT, idx);
+		pkgdb_add_string(&cdb, pkg_manifest_value(m[idx], "origin"), PKGDB_ORIGIN, idx);
+		pkgdb_add_string(&cdb, pkg_manifest_value(m[idx], "desc"), PKGDB_DESC, idx);
+
+		idep = 0;
+		pkg_manifest_dep_init(m[idx]);
+		while (pkg_manifest_dep_next(m[idx]) == 0) {
+			snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_dep_name(m[idx]),
+					 pkg_manifest_dep_version(m[idx]));
+			pkgdb_add_string(&cdb, namever, PKGDB_DEPS, idx, idep);
+			idep++;
+		}
+
+		pkg_manifest_free(m[idx]);
+	}
+
+	if (m != NULL)
+		free(m);
+
 	/* record packages len */
-	cdb_make_add(&cdb, PKGDB_COUNT, strlen(PKGDB_COUNT), &idx, sizeof(idx));
+	cdb_make_add(&cdb, PKGDB_COUNT, strlen(PKGDB_COUNT), &nb_pkg, sizeof(nb_pkg));
 	cdb_make_finish(&cdb);
 	close(fd);
 	rename(tmppath, cache_path);

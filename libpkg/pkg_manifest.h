@@ -46,4 +46,6 @@ void pkg_manifest_add_conflict(struct pkg_manifest *, const char *);
 void pkg_manifest_add_exec(struct pkg_manifest *, const char *);
 void pkg_manifest_add_unexec(struct pkg_manifest *, const char *);
 
+int pkg_manifest_cmp(void const *, void const *);
+
 #endif

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include <jansson.h>
+#include <string.h>
 
 #include "pkg.h"
 #include "pkg_manifest.h"
@@ -405,4 +406,13 @@ pkg_manifest_free(struct pkg_manifest *m)
 {
 	json_decref(m->json);
 	free(m);
+}
+
+int
+pkg_manifest_cmp(void const *a, void const *b)
+{
+	struct pkg_manifest * const *pa = a;
+	struct pkg_manifest * const *pb = b;
+	return (strcmp(pkg_manifest_value(*pa, "name"),
+				pkg_manifest_value(*pb, "name")));
 }
