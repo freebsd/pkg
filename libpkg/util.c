@@ -4,6 +4,7 @@
 #include <sys/uio.h>
 
 #include <assert.h>
+#include <dirent.h>
 #include <err.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -75,4 +76,14 @@ str_replace(char *string, const char *find, char *replace)
 	memcpy(str+offset, begin, strlen(begin)+1);
 
 	return (str);
+}
+
+int
+select_dir(const struct dirent *dirent)
+{
+	if (dirent->d_type == DT_DIR && strcmp(dirent->d_name, ".") != 0
+		&& strcmp(dirent->d_name, "..") != 0)
+		return (1);
+
+	return (0);
 }
