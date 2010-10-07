@@ -233,7 +233,7 @@ struct pkg_manifest *
 pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 {
 	struct pkg_manifest *m;
-	char *buffer;
+	char *buffer, *dir;
 	off_t buffer_len;
 	char filepath[MAXPATHLEN];
 
@@ -251,7 +251,9 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 	}
 
 	/* adding comment */
+	dir =  dirname(filepath);
 	snprintf(filepath, sizeof(filepath), "%s/+COMMENT", dirname(filepath));
+	free(dir);
 
 	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
 		warn("Unable to read +COMMENT for %s", pkgname);
