@@ -81,12 +81,11 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	char mpath[MAXPATHLEN];
 	char namever[FILENAME_MAX];
 	struct cdb_make cdb;
-	size_t idx = 0;
 	size_t idep;
 	struct pkg_manifest **m = NULL;
 	DIR *dir;
 	struct dirent *pkg_dir;
-	size_t nb_pkg = 0;
+	size_t nb_pkg = 0, idx = 0;
 
 	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
 
@@ -111,7 +110,6 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 
 		rewinddir(dir);
 		m = calloc(nb_pkg, sizeof(*m));
-		idx = 0;
 
 		while ((pkg_dir = readdir(dir)) != NULL) {
 			if (pkg_dir->d_type == DT_DIR && /* TODO stat(2) for symlinks ? */
@@ -129,15 +127,14 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 						continue;
 					}
 				}
-
 				idx++;
 			}
-			nb_pkg = idx; /* real number of manifest loaded */
 		}
 		closedir(dir);
 	}
 
 	/* sort manifests */
+	nb_pkg = idx; /* real number of manifest loaded */
 	qsort(m, nb_pkg, sizeof(struct pkg_manifest *), pkg_manifest_cmp);
 
 	for (idx = 0; idx < nb_pkg; idx++) {
