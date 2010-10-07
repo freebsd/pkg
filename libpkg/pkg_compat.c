@@ -239,7 +239,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 
 	snprintf(filepath, sizeof(filepath), "%s/%s/+CONTENTS", pkg_dbdir, pkgname);
 
-	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
+	if (file_to_buffer(filepath, &buffer) == -1) {
 		warnx("can not read %s", filepath);
 		return (NULL);
 	}
@@ -268,7 +268,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 	/* adding description */
 	snprintf(filepath, sizeof(filepath), "%s/+DESC", dirname(filepath));
 
-	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
+	if (file_to_buffer(filepath, &buffer) == -1) {
 		warn("Unable to read +DESC for %s", pkgname);
 	} else {
 		pkg_manifest_add_value(m, "desc", buffer);
@@ -278,7 +278,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 	/* adding display */
 	snprintf(filepath, sizeof(filepath), "%s/+DISPLAY", dirname(filepath));
 	/* ignore if no +DISPLAY */
-	if ((buffer_len = file_to_buffer(filepath, &buffer)) != -1) {
+	if (file_to_buffer(filepath, &buffer) != -1) {
 		pkg_manifest_add_value(m, "display", buffer);
 		free(buffer);
 	}
