@@ -1,11 +1,13 @@
+#include <sys/param.h>
+#include <sys/stat.h>
+
 #include <dirent.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <sys/param.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cdb.h>
@@ -16,9 +18,37 @@
 #include "pkg_manifest.h"
 #include "pkgdb_cache.h"
 
+int
+pkgdb_cache_open(struct pkgdb *db)
+{
+	char path[MAXPATHLEN];
+	int fd;
+
+	snprintf(path, sizeof(path), "%s/pkgdb.cache", pkgdb_get_dir());
+
+	if ((db->cdb = malloc(sizeof(struct cdb))) == NULL)
+		err(EXIT_FAILURE, "malloc()");
+
+	if ((fd = open(path, O_RDONLY)) != -1)
+		fd = cdb_init(db->cdb, fd);
+	else {
+		/* TODO custom pkgdb error */
+	}
+
+	return (fd);
+}
+
+void
+pkgdb_cache_close(struct cdb *cdb)
+{
+	close(cdb_fileno(cdb));
+	cdb_free(cdb);
+	free(cdb);
+}
+
 /* add record formated string */
 static int
-pkgdb_vadd(struct cdb_make *db, const void *val, size_t vallen, const char *fmt, va_list args)
+pkgdb_cache_vadd(struct cdb_make *db, const void *val, size_t vallen, const char *fmt, va_list args)
 {
 	char key[BUFSIZ];
 	size_t len;
@@ -38,39 +68,75 @@ pkgdb_vadd(struct cdb_make *db, const void *val, size_t vallen, const char *fmt,
 	return (cdb_make_add(db, key, len, val, vallen));
 }
 
-/*
-static int
-pkgdb_add(struct cdb_make *db, const void *val, size_t vallen, const char *fmt, ...)
-{
-	int ret;
-	va_list args;
-
-	va_start(args, fmt);
-	ret = pkgdb_vadd(db, val, vallen, fmt, args);
-	va_end(args);
-
-	return (ret);
-}
-*/
-
 /* add record formated string -> string (record the last \0 on value) */
 static int
-pkgdb_add_string(struct cdb_make *db, const char *val, const char *fmt, ...)
+pkgdb_cache_add_string(struct cdb_make *db, const char *val, const char *fmt, ...)
 {
 	int ret;
 	va_list args;
 
 	va_start(args, fmt);
-	ret = pkgdb_vadd(db, val, strlen(val)+1, fmt, args);
+	ret = pkgdb_cache_vadd(db, val, strlen(val)+1, fmt, args);
 	va_end(args);
 
 	return (ret);
 }
 
 static int
-pkgdb_add_int(struct cdb_make *db, const char *key, size_t val)
+pkgdb_cache_add_int(struct cdb_make *db, const char *key, size_t val)
 {
 	return cdb_make_add(db, key, strlen(key), &val, sizeof(size_t));
+}
+
+const void *
+pkgdb_cache_vget(struct cdb *db, const char *fmt, ...)
+{
+	va_list args;
+	char key[BUFSIZ];
+	size_t len;
+	const void *val;
+
+	va_start(args, fmt);
+	len = vsnprintf(key, sizeof(key), fmt, args);
+
+	if (len != strlen(key)) {
+		warnx("key too long:");
+		vwarnx(fmt, args);
+		va_end(args);
+		return NULL;
+        }
+
+	va_end(args);
+
+	if (cdb_find(db, key, len) <= 0)
+		return NULL;
+
+	db_get(val, db);
+	return (val);
+}
+
+const char *
+pkgdb_cache_getattr(struct pkg *pkg, const char *attr)
+{
+	return (pkgdb_cache_vget(pkg->cdb, attr, pkg->idx));
+}
+
+int
+pkgdb_cache_dep(struct pkg *pkg, struct pkg *dep)
+{
+	const size_t *idx;
+	int ret = -1;
+
+	pkg_reset(dep);
+
+	if ((dep->namever = pkgdb_cache_vget(pkg->cdb, PKGDB_DEPS, pkg->idx, pkg->idep)) != NULL &&
+		(idx = pkgdb_cache_vget(pkg->cdb, "%s", dep->namever)) != NULL) {
+		dep->idx = *idx;
+		dep->cdb = pkg->cdb;
+		pkg->idep++;
+		ret = 0;
+	}
+	return (ret);
 }
 
 static void
@@ -121,22 +187,22 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 		snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_value(m, "name"),
 				 pkg_manifest_value(m, "version"));
 
-		pkgdb_add_int(&cdb, namever, idx);
-		pkgdb_add_int(&cdb, pkg_manifest_value(m, "name"), idx);
+		pkgdb_cache_add_int(&cdb, namever, idx);
+		pkgdb_cache_add_int(&cdb, pkg_manifest_value(m, "name"), idx);
 
-		pkgdb_add_string(&cdb, namever, PKGDB_NAMEVER, idx);
-		pkgdb_add_string(&cdb, pkg_manifest_value(m, "name"), PKGDB_NAME, idx);
-		pkgdb_add_string(&cdb, pkg_manifest_value(m, "version"), PKGDB_VERSION, idx);
-		pkgdb_add_string(&cdb, pkg_manifest_value(m, "comment"), PKGDB_COMMENT, idx);
-		pkgdb_add_string(&cdb, pkg_manifest_value(m, "origin"), PKGDB_ORIGIN, idx);
-		pkgdb_add_string(&cdb, pkg_manifest_value(m, "desc"), PKGDB_DESC, idx);
+		pkgdb_cache_add_string(&cdb, namever, PKGDB_NAMEVER, idx);
+		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "name"), PKGDB_NAME, idx);
+		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "version"), PKGDB_VERSION, idx);
+		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "comment"), PKGDB_COMMENT, idx);
+		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "origin"), PKGDB_ORIGIN, idx);
+		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "desc"), PKGDB_DESC, idx);
 
 		idep = 0;
 		pkg_manifest_dep_init(m);
 		while (pkg_manifest_dep_next(m) == 0) {
 			snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_dep_name(m),
 					 pkg_manifest_dep_version(m));
-			pkgdb_add_string(&cdb, namever, PKGDB_DEPS, idx, idep);
+			pkgdb_cache_add_string(&cdb, namever, PKGDB_DEPS, idx, idep);
 			idep++;
 		}
 

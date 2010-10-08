@@ -1,30 +1,24 @@
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/file.h>
+
+#include <err.h>
+#include <fcntl.h>
+#include <fnmatch.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/param.h>
-#include <sys/stat.h>
-#include <sys/file.h>
-#include <err.h>
-#include <fnmatch.h>
 #include <regex.h>
 
 #include "pkgdb.h"
 #include "pkgdb_cache.h"
 
-/* theses functions request on local database (cdb) */
-static int pkg_db_open(struct pkgdb *);
-static void pkg_reset(struct pkg *);
-static const void *pkg_db_query(struct cdb *, const char *, ...);
-static const char *pkg_db_getattr(struct pkg *, const char *);
-static int pkg_db_dep(struct pkg *, struct pkg *);
-
 const char *
 pkg_namever(struct pkg *pkg)
 {
 	if (pkg->namever == NULL)
-		pkg->namever = pkg_db_getattr(pkg, PKGDB_NAMEVER);
+		pkg->namever = pkgdb_cache_getattr(pkg, PKGDB_NAMEVER);
 	return (pkg->namever);
 }
 
@@ -32,7 +26,7 @@ const char *
 pkg_name(struct pkg *pkg)
 {
 	if (pkg->name == NULL)
-		pkg->name = pkg_db_getattr(pkg, PKGDB_NAME);
+		pkg->name = pkgdb_cache_getattr(pkg, PKGDB_NAME);
 	return (pkg->name);
 }
 
@@ -40,7 +34,7 @@ const char *
 pkg_version(struct pkg *pkg)
 {
 	if (pkg->version == NULL)
-		pkg->version = pkg_db_getattr(pkg, PKGDB_VERSION);
+		pkg->version = pkgdb_cache_getattr(pkg, PKGDB_VERSION);
 	return (pkg->version);
 }
 
@@ -48,7 +42,7 @@ const char *
 pkg_comment(struct pkg *pkg)
 {
 	if (pkg->comment == NULL)
-		pkg->comment = pkg_db_getattr(pkg, PKGDB_COMMENT);
+		pkg->comment = pkgdb_cache_getattr(pkg, PKGDB_COMMENT);
 	return (pkg->comment);
 }
 
@@ -56,7 +50,7 @@ const char *
 pkg_desc(struct pkg *pkg)
 {
 	if (pkg->desc == NULL)
-		pkg->desc = pkg_db_getattr(pkg, PKGDB_DESC);
+		pkg->desc = pkgdb_cache_getattr(pkg, PKGDB_DESC);
 	return (pkg->desc);
 }
 
@@ -64,17 +58,17 @@ const char *
 pkg_origin(struct pkg *pkg)
 {
 	if (pkg->origin == NULL)
-		pkg->origin = pkg_db_getattr(pkg, PKGDB_ORIGIN);
+		pkg->origin = pkgdb_cache_getattr(pkg, PKGDB_ORIGIN);
 	return (pkg->desc);
 }
 
 int
 pkg_dep(struct pkg *pkg, struct pkg *dep)
 {
-	return (pkg_db_dep(pkg, dep));
+	return (pkgdb_cache_dep(pkg, dep));
 }
 
-static void
+void
 pkg_reset(struct pkg *pkg)
 {
 	pkg->namever = NULL;
@@ -86,59 +80,7 @@ pkg_reset(struct pkg *pkg)
 	pkg->idx = -1;
 	pkg->idep = 0;
 	pkg->irdep = 0;
-	pkg->db = NULL;
-}
-
-static int
-pkg_db_dep(struct pkg *pkg, struct pkg *dep)
-{
-	const size_t *idx;
-	int ret = -1;
-
-	pkg_reset(dep);
-
-	if ((dep->namever = pkg_db_query(pkg->db, PKGDB_DEPS, pkg->idx, pkg->idep)) != NULL &&
-			(idx = pkg_db_query(pkg->db, "%s", dep->namever)) != NULL) {
-		dep->idx = *idx;
-		dep->db = pkg->db;
-		pkg->idep++;
-		ret = 0;
-	}
-	return (ret);
-}
-
-/* query formated using string key */
-static const void *
-pkg_db_query(struct cdb *db, const char *fmt, ...)
-{
-	va_list args;
-	char key[BUFSIZ];
-	size_t len;
-	const void *val;
-
-	va_start(args, fmt);
-	len = vsnprintf(key, sizeof(key), fmt, args);
-
-	if (len != strlen(key)) {
-		warnx("key too long:");
-		vwarnx(fmt, args);
-		va_end(args);
-		return NULL;
-	}
-
-	va_end(args);
-
-	if (cdb_find(db, key, len) <= 0)
-		return NULL;
-
-	db_get(val, db);
-	return (val);
-}
-
-static const char *
-pkg_db_getattr(struct pkg *pkg, const char *attr)
-{
-	return (pkg_db_query(pkg->db, attr, pkg->idx));
+	pkg->cdb = NULL;
 }
 
 const char *
@@ -150,23 +92,6 @@ pkgdb_get_dir(void)
 		pkg_dbdir = PKG_DBDIR;
 
 	return pkg_dbdir;
-}
-
-static int
-pkg_db_open(struct pkgdb *db)
-{
-	char path[MAXPATHLEN];
-	int fd;
-
-	snprintf(path, sizeof(path), "%s/pkgdb.cache", pkgdb_get_dir());
-
-	if ((fd = open(path, O_RDONLY)) != -1)
-		fd = cdb_init(&db->db, fd);
-	else {
-		/* TODO custom pkgdb error */
-	}
-
-	return (fd);
 }
 
 /*
@@ -205,7 +130,7 @@ int
 pkgdb_init(struct pkgdb *db, const char *pattern, match_t match)
 {
 	pkgdb_cache_update(db);
-	if (pkg_db_open(db) == -1)
+	if (pkgdb_cache_open(db) == -1)
 		return (-1); /* TOTO pkgdb error */
 
 	db->pattern = pattern;
@@ -234,8 +159,8 @@ pkgdb_init(struct pkgdb *db, const char *pattern, match_t match)
 void
 pkgdb_free(struct pkgdb *db)
 {
-	close(cdb_fileno(&db->db));
-	cdb_free(&db->db);
+	if (db->cdb != NULL)
+		pkgdb_cache_close(db->cdb);
 
 	if (db->match == MATCH_REGEX || db->match == MATCH_EREGEX)
 		regfree(&db->re);
@@ -271,10 +196,10 @@ pkgdb_query(struct pkgdb *db, struct pkg *pkg)
 	pkg_reset(pkg);
 	pkgdb_lock(db, 0);
 
-	while ((pkg->namever = pkg_db_query(&db->db, PKGDB_NAMEVER, db->i)) != NULL) {
+	while ((pkg->namever = pkgdb_cache_vget(db->cdb, PKGDB_NAMEVER, db->i)) != NULL) {
 		if (pkg->namever != NULL && pkgdb_match(db, pkg->namever) == 0) {
 			pkg->idx = db->i++;
-			pkg->db = &db->db;
+			pkg->cdb = db->cdb;
 			return (0);
 		}
 
