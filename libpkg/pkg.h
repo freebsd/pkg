@@ -35,7 +35,6 @@ struct pkg {
 	size_t idep; /* iterator deps */
 	size_t irdep; /* iterator rdeps */
 	struct pkgdb *pdb;
-	void *manifest; /* temp for pkgdb_cache */
 };
 
 
