@@ -7,20 +7,6 @@
 /* Opaque type */
 struct cdb;
 
-struct pkg {
-	const char *namever;
-	const char *name;
-	const char *version;
-	const char *origin;
-	const char *comment;
-	const char *desc;
-	size_t idx; /* index on pkgdb */
-	size_t idep; /* iterator deps */
-	size_t irdep; /* iterator rdeps */
-	struct cdb *cdb;
-	void *manifest; /* temp for pkgdb_cache */
-};
-
 typedef enum _match_t {
 	MATCH_ALL,
 	MATCH_EXACT,
@@ -38,9 +24,22 @@ struct pkgdb {
 	regex_t re;
 };
 
+struct pkg {
+	const char *namever;
+	const char *name;
+	const char *version;
+	const char *origin;
+	const char *comment;
+	const char *desc;
+	size_t idx; /* index on pkgdb */
+	size_t idep; /* iterator deps */
+	size_t irdep; /* iterator rdeps */
+	struct pkgdb *pdb;
+	void *manifest; /* temp for pkgdb_cache */
+};
+
+
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create(char *, pkg_formats, const char *, const char *);
-
-void pkg_reset(struct pkg*);
 
 #endif

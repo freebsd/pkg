@@ -233,11 +233,12 @@ struct pkg_manifest *
 pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 {
 	struct pkg_manifest *m;
-	char *buffer, *dir;
+	char *buffer;
 	off_t buffer_len;
-	char filepath[MAXPATHLEN];
+	char filepath[MAXPATHLEN], pkg_dir[MAXPATHLEN];
 
-	snprintf(filepath, sizeof(filepath), "%s/%s/+CONTENTS", pkg_dbdir, pkgname);
+	snprintf(pkg_dir, sizeof(pkg_dir), "%s/%s", pkg_dbdir, pkgname);
+	snprintf(filepath, sizeof(filepath), "%s/+CONTENTS", pkg_dir);
 
 	if (file_to_buffer(filepath, &buffer) == -1) {
 		warnx("can not read %s", filepath);
@@ -251,9 +252,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 	}
 
 	/* adding comment */
-	dir =  dirname(filepath);
-	snprintf(filepath, sizeof(filepath), "%s/+COMMENT", dirname(filepath));
-	free(dir);
+	snprintf(filepath, sizeof(filepath), "%s/+COMMENT", pkg_dir);
 
 	if ((buffer_len = file_to_buffer(filepath, &buffer)) == -1) {
 		warn("Unable to read +COMMENT for %s", pkgname);
@@ -266,7 +265,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 	}
 
 	/* adding description */
-	snprintf(filepath, sizeof(filepath), "%s/+DESC", dirname(filepath));
+	snprintf(filepath, sizeof(filepath), "%s/+DESC", pkg_dir);
 
 	if (file_to_buffer(filepath, &buffer) == -1) {
 		warn("Unable to read +DESC for %s", pkgname);
@@ -276,7 +275,7 @@ pkg_compat_convert_installed(const char *pkg_dbdir, char *pkgname, char *mpath)
 	}
 
 	/* adding display */
-	snprintf(filepath, sizeof(filepath), "%s/+DISPLAY", dirname(filepath));
+	snprintf(filepath, sizeof(filepath), "%s/+DISPLAY", pkg_dir);
 	/* ignore if no +DISPLAY */
 	if (file_to_buffer(filepath, &buffer) != -1) {
 		pkg_manifest_add_value(m, "display", buffer);

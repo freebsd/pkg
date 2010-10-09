@@ -3,6 +3,7 @@
 #include <sys/file.h>
 
 #include <err.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <stdlib.h>
@@ -14,57 +15,59 @@
 #include "pkgdb.h"
 #include "pkgdb_cache.h"
 
+
+#define PKGDB_LOCK "lock"
+#define PKG_DBDIR "/var/db/pkg"
+
+static const char *
+pkg_getattr(struct pkg *pkg, const char **val, const char *attr)
+{
+	if (*val == NULL)
+		*val = pkgdb_cache_getattr(pkg, attr);
+
+	return (*val);
+}
+
 const char *
 pkg_namever(struct pkg *pkg)
 {
-	if (pkg->namever == NULL)
-		pkg->namever = pkgdb_cache_getattr(pkg, PKGDB_NAMEVER);
-	return (pkg->namever);
+	return (pkg_getattr(pkg, &pkg->namever, "namever"));
 }
 
 const char *
 pkg_name(struct pkg *pkg)
 {
-	if (pkg->name == NULL)
-		pkg->name = pkgdb_cache_getattr(pkg, PKGDB_NAME);
-	return (pkg->name);
+	return (pkg_getattr(pkg, &pkg->name, "name"));
 }
 
 const char *
 pkg_version(struct pkg *pkg)
 {
-	if (pkg->version == NULL)
-		pkg->version = pkgdb_cache_getattr(pkg, PKGDB_VERSION);
-	return (pkg->version);
+	return (pkg_getattr(pkg, &pkg->version, "version"));
 }
 
 const char *
 pkg_comment(struct pkg *pkg)
 {
-	if (pkg->comment == NULL)
-		pkg->comment = pkgdb_cache_getattr(pkg, PKGDB_COMMENT);
-	return (pkg->comment);
+	return (pkg_getattr(pkg, &pkg->comment, "comment"));
 }
 
 const char *
 pkg_desc(struct pkg *pkg)
 {
-	if (pkg->desc == NULL)
-		pkg->desc = pkgdb_cache_getattr(pkg, PKGDB_DESC);
-	return (pkg->desc);
+	return (pkg_getattr(pkg, &pkg->comment, "comment"));
 }
 
 const char *
 pkg_origin(struct pkg *pkg)
 {
-	if (pkg->origin == NULL)
-		pkg->origin = pkgdb_cache_getattr(pkg, PKGDB_ORIGIN);
-	return (pkg->desc);
+	return (pkg_getattr(pkg, &pkg->origin, "origin"));
 }
 
 int
 pkg_dep(struct pkg *pkg, struct pkg *dep)
 {
+	/* call backend dep query */
 	return (pkgdb_cache_dep(pkg, dep));
 }
 
@@ -80,7 +83,7 @@ pkg_reset(struct pkg *pkg)
 	pkg->idx = -1;
 	pkg->idep = 0;
 	pkg->irdep = 0;
-	pkg->cdb = NULL;
+	pkg->pdb = NULL;
 }
 
 const char *
@@ -94,48 +97,53 @@ pkgdb_get_dir(void)
 	return pkg_dbdir;
 }
 
-/*
- * Acquire a lock to access the database.
- * If `writer' is set to 1, an exclusive lock is requested so it wont mess up
- * with other writers or readers.
- */
+/* Acquire/Release a lock to access the database. */
 void
-pkgdb_lock(struct pkgdb *db, int writer)
+pkgdb_lock(struct pkgdb *db, int flags)
 {
 	char fname[FILENAME_MAX];
-	int flags;
 
-	snprintf(fname, sizeof(fname), "%s/%s", pkgdb_get_dir(), PKGDB_LOCK);
-	if ((db->lock_fd = open(fname, O_RDONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IROTH)) < 0)
-		err(EXIT_FAILURE, "open(%s)", fname);
-
-	if (writer == 1)
-		flags = LOCK_EX;
-	else
-		flags = LOCK_SH;
+	if (db->lock_fd == -1) {
+		snprintf(fname, sizeof(fname), "%s/%s", pkgdb_get_dir(), PKGDB_LOCK);
+		if ((db->lock_fd = open(fname, O_RDONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IROTH)) < 0)
+			err(EXIT_FAILURE, "open(%s)", fname);
+	}
 
 	if (flock(db->lock_fd, flags) < 0)
 		errx(EXIT_FAILURE, "unable to acquire a lock to the database");
 }
 
-void
-pkgdb_unlock(struct pkgdb *db)
+int
+pkgdb_match(struct pkgdb *db, const char *pattern)
 {
-	flock(db->lock_fd, LOCK_UN);
-	close(db->lock_fd);
-	db->lock_fd = -1;
+	int matched = 1;
+
+	switch (db->match) {
+		case MATCH_ALL:
+			matched = 0;
+			break;
+		case MATCH_EXACT:
+			matched = strcmp(pattern, db->pattern);
+			break;
+		case MATCH_GLOB:
+			matched = fnmatch(db->pattern, pattern, 0);
+			break;
+		case MATCH_REGEX:
+		case MATCH_EREGEX:
+			matched = regexec(&db->re, pattern, 0, NULL, 0);
+			break;
+	}
+
+	return (matched);
 }
 
 int
 pkgdb_init(struct pkgdb *db, const char *pattern, match_t match)
 {
-	pkgdb_cache_update(db);
-	if (pkgdb_cache_open(db) == -1)
-		return (-1); /* TOTO pkgdb error */
-
 	db->pattern = pattern;
 	db->match = match;
 	db->i = 0;
+	db->lock_fd = -1;
 
 	if (match != MATCH_ALL && pattern == NULL)
 		return (-1);
@@ -153,60 +161,30 @@ pkgdb_init(struct pkgdb *db, const char *pattern, match_t match)
 		}
 	}
 
-	return (0);
+	/* call backend init */
+	return (pkgdb_cache_init(db));
 }
 
 void
 pkgdb_free(struct pkgdb *db)
 {
-	if (db->cdb != NULL)
-		pkgdb_cache_close(db->cdb);
-
 	if (db->match == MATCH_REGEX || db->match == MATCH_EREGEX)
 		regfree(&db->re);
 
-	return;
-}
+	if (db->lock_fd != -1)
+		close(db->lock_fd);
 
-static int
-pkgdb_match(struct pkgdb *db, const char *pattern)
-{
-	int matched = 1;
-	switch (db->match) {
-		case MATCH_ALL:
-			matched = 0;
-			break;
-		case MATCH_EXACT:
-			matched = strcmp(pattern, db->pattern);
-			break;
-		case MATCH_GLOB:
-			matched = fnmatch(db->pattern, pattern, 0);
-			break;
-		case MATCH_REGEX:
-		case MATCH_EREGEX:
-			matched = regexec(&db->re, pattern, 0, NULL, 0);
-			break;
-	}
-	return (matched);
+	/* call backend free */
+	pkgdb_cache_free(db);
+
+	return;
 }
 
 int
 pkgdb_query(struct pkgdb *db, struct pkg *pkg)
 {
 	pkg_reset(pkg);
-	pkgdb_lock(db, 0);
-
-	while ((pkg->namever = pkgdb_cache_vget(db->cdb, PKGDB_NAMEVER, db->i)) != NULL) {
-		if (pkg->namever != NULL && pkgdb_match(db, pkg->namever) == 0) {
-			pkg->idx = db->i++;
-			pkg->cdb = db->cdb;
-			return (0);
-		}
-
-		db->i++;
-	}
-	pkgdb_unlock(db);
-
-	return (-1);
+	/* call backend query */
+	return (pkgdb_cache_query(db, pkg));
 }
 

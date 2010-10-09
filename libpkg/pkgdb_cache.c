@@ -18,32 +18,69 @@
 #include "pkg_manifest.h"
 #include "pkgdb_cache.h"
 
-int
-pkgdb_cache_open(struct pkgdb *db)
+#define PKGDB_NAMEVER	"%zunv"
+#define PKGDB_NAME		"%zun"
+#define PKGDB_VERSION	"%zuv"
+#define PKGDB_COMMENT	"%zuc"
+#define PKGDB_DESC		"%zud"
+#define PKGDB_ORIGIN	"%zuo"
+#define PKGDB_DEPS		"%zuD%zu"
+#define PKGDB_COUNT		"count"
+
+static const void *pkgdb_cache_vget(struct cdb *, const char *, ...);
+static int pkgdb_cache_vadd(struct cdb_make *, const void *, size_t, const char *, va_list);
+static int pkgdb_cache_add_string(struct cdb_make *, const char *, const char *, ...);
+static int pkgdb_cache_add_int(struct cdb_make *, const char *, size_t);
+static void pkgdb_cache_update(struct pkgdb *);
+
+const char *
+pkgdb_cache_getattr(struct pkg *pkg, const char *attr)
 {
-	char path[MAXPATHLEN];
-	int fd;
+	size_t i, len;
+	const char *val;
+	struct {
+		const char *attr;
+		const char *key;
+	} attr_key_map[] = {
+		{"namever", PKGDB_NAMEVER},
+		{"name",	PKGDB_NAME},
+		{"version",	PKGDB_VERSION},
+		{"comment", PKGDB_COMMENT},
+		{"desc",	PKGDB_DESC},
+		{"origin",	PKGDB_ORIGIN}
+	};
 
-	snprintf(path, sizeof(path), "%s/pkgdb.cache", pkgdb_get_dir());
+	len = sizeof(attr_key_map) / sizeof(attr_key_map[0]);
 
-	if ((db->cdb = malloc(sizeof(struct cdb))) == NULL)
-		err(EXIT_FAILURE, "malloc()");
+	for (i = 0; i < len; i++)
+		if (strcmp(attr_key_map[i].attr, attr) == 0)
+			break;
 
-	if ((fd = open(path, O_RDONLY)) != -1)
-		fd = cdb_init(db->cdb, fd);
-	else {
-		/* TODO custom pkgdb error */
-	}
-
-	return (fd);
+	pkgdb_lock(pkg->pdb, LOCK_SH);
+	val = pkgdb_cache_vget(pkg->pdb->cdb, attr_key_map[i].key, pkg->idx);
+	pkgdb_lock(pkg->pdb, LOCK_UN);
+	return (val);
 }
 
-void
-pkgdb_cache_close(struct cdb *cdb)
+
+int
+pkgdb_cache_query(struct pkgdb *db, struct pkg *pkg)
 {
-	close(cdb_fileno(cdb));
-	cdb_free(cdb);
-	free(cdb);
+	pkgdb_lock(db, LOCK_SH);
+
+	while ((pkg->namever = pkgdb_cache_vget(db->cdb, PKGDB_NAMEVER, db->i)) != NULL) {
+		if (pkgdb_match(db, pkg->namever) == 0) {
+			pkg->idx = db->i++;
+			pkg->pdb = db;
+			pkgdb_lock(db, LOCK_UN);
+			return (0);
+		}
+
+		db->i++;
+	}
+	pkgdb_lock(db, LOCK_UN);
+
+	return (-1);
 }
 
 /* add record formated string */
@@ -88,7 +125,7 @@ pkgdb_cache_add_int(struct cdb_make *db, const char *key, size_t val)
 	return cdb_make_add(db, key, strlen(key), &val, sizeof(size_t));
 }
 
-const void *
+static const void *
 pkgdb_cache_vget(struct cdb *db, const char *fmt, ...)
 {
 	va_list args;
@@ -111,14 +148,8 @@ pkgdb_cache_vget(struct cdb *db, const char *fmt, ...)
 	if (cdb_find(db, key, len) <= 0)
 		return NULL;
 
-	db_get(val, db);
+	val = cdb_get(db, cdb_datalen(db), cdb_datapos(db));
 	return (val);
-}
-
-const char *
-pkgdb_cache_getattr(struct pkg *pkg, const char *attr)
-{
-	return (pkgdb_cache_vget(pkg->cdb, attr, pkg->idx));
 }
 
 int
@@ -129,10 +160,10 @@ pkgdb_cache_dep(struct pkg *pkg, struct pkg *dep)
 
 	pkg_reset(dep);
 
-	if ((dep->namever = pkgdb_cache_vget(pkg->cdb, PKGDB_DEPS, pkg->idx, pkg->idep)) != NULL &&
-		(idx = pkgdb_cache_vget(pkg->cdb, "%s", dep->namever)) != NULL) {
+	if ((dep->namever = pkgdb_cache_vget(pkg->pdb->cdb, PKGDB_DEPS, pkg->idx, pkg->idep)) != NULL &&
+		(idx = pkgdb_cache_vget(pkg->pdb->cdb, "%s", dep->namever)) != NULL) {
 		dep->idx = *idx;
-		dep->cdb = pkg->cdb;
+		dep->pdb = pkg->pdb;
 		pkg->idep++;
 		ret = 0;
 	}
@@ -219,7 +250,7 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	chmod(cache_path, 0644);
 }
 
-void
+static void
 pkgdb_cache_update(struct pkgdb *db)
 {
 	const char *pkg_dbdir;
@@ -247,8 +278,39 @@ pkgdb_cache_update(struct pkgdb *db)
 		err(EXIT_FAILURE, "%s:", cache_path);
 
 	if (errno == ENOENT || dir_st.st_mtime > cache_st.st_mtime) {
-		pkgdb_lock(db, 1);
+		pkgdb_lock(db, LOCK_EX);
 		pkgdb_cache_rebuild(pkg_dbdir, cache_path);
-		pkgdb_unlock(db);
+		pkgdb_lock(db, LOCK_UN);
 	}
+}
+
+int
+pkgdb_cache_init(struct pkgdb *db)
+{
+	char path[MAXPATHLEN];
+	int fd;
+
+	pkgdb_cache_update(db);
+
+	if ((db->cdb = malloc(sizeof(struct cdb))) == NULL)
+		err(EXIT_FAILURE, "malloc()");
+
+	snprintf(path, sizeof(path), "%s/pkgdb.cache", pkgdb_get_dir());
+
+	if ((fd = open(path, O_RDONLY)) != -1)
+		fd = cdb_init(db->cdb, fd);
+	else {
+		/* TODO custom pkgdb error */
+	}
+
+	return (0);
+}
+
+void
+pkgdb_cache_free(struct pkgdb *db)
+{
+	close(cdb_fileno(db->cdb));
+	cdb_free(db->cdb);
+	free(db->cdb);
+	return;
 }
