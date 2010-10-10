@@ -297,11 +297,13 @@ pkgdb_cache_init(struct pkgdb *db)
 
 	snprintf(path, sizeof(path), "%s/pkgdb.cache", pkgdb_get_dir());
 
-	if ((fd = open(path, O_RDONLY)) != -1)
-		fd = cdb_init(db->cdb, fd);
-	else {
+	if ((fd = open(path, O_RDONLY)) < 0)
 		/* TODO custom pkgdb error */
-	}
+		return (-1);
+
+	if (cdb_init(db->cdb, fd) < 0)
+		/* TODO custom pkgdb error */
+		return (-1);
 
 	return (0);
 }
