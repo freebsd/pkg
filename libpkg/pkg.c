@@ -142,10 +142,16 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 
 	pkg_dbdir = pkgdb_get_dir();
 
-	pkgdb_init(&db, pkgname, MATCH_EXACT);
+	if (pkgdb_init(&db, pkgname, MATCH_EXACT) == -1) {
+		pkgdb_warn(&db);
+		return (-1);
+	}
 
 	if (pkgdb_query(&db, &pkg) != 0) {
+		if (db.errnum > -1)
+			pkgdb_warn(&db);
 		warnx("%s: no such package", pkgname);
+		pkgdb_free(&db);
 		return (-1);
 	}
 

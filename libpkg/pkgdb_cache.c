@@ -31,7 +31,7 @@ static const void *pkgdb_cache_vget(struct cdb *, const char *, ...);
 static int pkgdb_cache_vadd(struct cdb_make *, const void *, size_t, const char *, va_list);
 static int pkgdb_cache_add_string(struct cdb_make *, const char *, const char *, ...);
 static int pkgdb_cache_add_int(struct cdb_make *, const char *, size_t);
-static void pkgdb_cache_update(struct pkgdb *);
+static int pkgdb_cache_update(struct pkgdb *);
 
 const char *
 pkgdb_cache_getattr(struct pkg *pkg, const char *attr)
@@ -47,7 +47,7 @@ pkgdb_cache_getattr(struct pkg *pkg, const char *attr)
 		{"version",	PKGDB_VERSION},
 		{"comment", PKGDB_COMMENT},
 		{"desc",	PKGDB_DESC},
-		{"origin",	PKGDB_ORIGIN}
+		{"origin",	PKGDB_ORIGIN},
 	};
 
 	len = sizeof(attr_key_map) / sizeof(attr_key_map[0]);
@@ -141,7 +141,7 @@ pkgdb_cache_vget(struct cdb *db, const char *fmt, ...)
 		vwarnx(fmt, args);
 		va_end(args);
 		return NULL;
-        }
+	}
 
 	va_end(args);
 
@@ -170,8 +170,8 @@ pkgdb_cache_dep(struct pkg *pkg, struct pkg *dep)
 	return (ret);
 }
 
-static void
-pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
+static int
+pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_path)
 {
 	int fd;
 	char tmppath[MAXPATHLEN];
@@ -187,17 +187,17 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	warnx("Rebuilding cache...");
 
 	if ((nb_pkg = scandir(pkg_dbdir, &pkg_dirs, select_dir, alphasort)) == -1) {
-		warn("scandir(%s)", pkg_dbdir);
-		return;
+		pkgdb_set_error(db, errno, "scandir(%s)", pkg_dbdir);
+		return (-1);
 	}
 
 	snprintf(tmppath, sizeof(tmppath), "%s/pkgdb.cache-XXXXX", pkg_dbdir);
 	if ((fd = mkstemp(tmppath)) == -1) {
-		warn("mkstemp(%s)", tmppath);
+		pkgdb_set_error(db, errno, "mkstemp(%s)", tmppath);
 		for (idx = 0; idx < nb_pkg; idx++)
 			free(pkg_dirs[idx]);
 		free(pkg_dirs);
-		return;
+		return (-1);
 	}
 
 	cdb_make_start(&cdb, fd);
@@ -207,10 +207,9 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 				 pkg_dirs[idx]->d_name);
 
 		if ((m = pkg_manifest_load_file(mpath)) == NULL) {
-			warnx("%s not found, converting old +CONTENTS file", mpath);
 			if ((m = pkg_compat_convert_installed(pkg_dbdir, pkg_dirs[idx]->d_name,
 				 mpath)) == NULL) {
-				warnx("error while converting, skipping");
+				warnx("error while inserting %s in cache, skipping", mpath);
 				continue;
 			}
 		}
@@ -248,40 +247,39 @@ pkgdb_cache_rebuild(const char *pkg_dbdir, const char *cache_path)
 	close(fd);
 	rename(tmppath, cache_path);
 	chmod(cache_path, 0644);
+	return (0);
 }
 
-static void
+static int
 pkgdb_cache_update(struct pkgdb *db)
 {
 	const char *pkg_dbdir;
 	char cache_path[MAXPATHLEN];
 	struct stat dir_st, cache_st;
-	uid_t uid;
+	int ret = 0;
 
 	pkg_dbdir = pkgdb_get_dir();
-	uid = getuid();
 
 	if (stat(pkg_dbdir, &dir_st) == -1) {
-		if (uid != 0)
-			err(EXIT_FAILURE, "%s:", pkg_dbdir);
-
-		if (errno == ENOENT)
-			return;
-		else
-			err(EXIT_FAILURE, "%s:", pkg_dbdir);
+		pkgdb_set_error(db, errno, "stat(%s)", pkg_dbdir);
+		return (-1);
 	}
 
 	snprintf(cache_path, sizeof(cache_path), "%s/pkgdb.cache", pkg_dbdir);
 
 	errno = 0; /* Reset it in case it is set to ENOENT */
-	if (stat(cache_path, &cache_st) == -1 && errno != ENOENT)
-		err(EXIT_FAILURE, "%s:", cache_path);
+	if (stat(cache_path, &cache_st) == -1 && errno != ENOENT) {
+		pkgdb_set_error(db, errno, "stat(%s)", cache_path);
+		return (-1);
+	}
 
 	if (errno == ENOENT || dir_st.st_mtime > cache_st.st_mtime) {
 		pkgdb_lock(db, LOCK_EX);
-		pkgdb_cache_rebuild(pkg_dbdir, cache_path);
+		ret = pkgdb_cache_rebuild(db, pkg_dbdir, cache_path);
 		pkgdb_lock(db, LOCK_UN);
 	}
+
+	return (ret);
 }
 
 int
@@ -290,7 +288,8 @@ pkgdb_cache_init(struct pkgdb *db)
 	char path[MAXPATHLEN];
 	int fd;
 
-	pkgdb_cache_update(db);
+	if (pkgdb_cache_update(db) == -1)
+		return (-1);
 
 	if ((db->cdb = malloc(sizeof(struct cdb))) == NULL)
 		err(EXIT_FAILURE, "malloc()");
@@ -303,7 +302,7 @@ pkgdb_cache_init(struct pkgdb *db)
 		/* TODO custom pkgdb error */
 	}
 
-	return (0);
+	return (fd);
 }
 
 void

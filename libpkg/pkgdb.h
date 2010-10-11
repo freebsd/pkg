@@ -21,6 +21,9 @@ void pkgdb_free(struct pkgdb *);
 const char *pkgdb_get_dir(void);
 int pkgdb_match(struct pkgdb *, const char *);
 void pkg_reset(struct pkg *);
-void pkgdb_lock(struct pkgdb *, int);
+int pkgdb_lock(struct pkgdb *, int);
+void pkgdb_set_error(struct pkgdb *, int, const char *, ...);
+void pkgdb_warn(struct pkgdb *);
+int pkgdb_errnum(struct pkgdb *);
 
 #endif

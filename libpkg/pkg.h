@@ -22,6 +22,8 @@ struct pkgdb {
 	const char *pattern;
 	match_t match;
 	regex_t re;
+	int errnum;
+	char errstring[BUFSIZ]; /* not enough ? */
 };
 
 struct pkg {

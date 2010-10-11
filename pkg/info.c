@@ -51,7 +51,10 @@ cmd_info(int argc, char **argv)
 	if (argc == 0)
 		match = MATCH_ALL;
 
-	pkgdb_init(&db, argv[0], match);
+	if (pkgdb_init(&db, argv[0], match) == -1) {
+		pkgdb_warn(&db);
+		return (-1);
+	}
 
 	while (pkgdb_query(&db, &pkg) == 0) {
 		if (opt & INFO_PRINT_DEP) {
@@ -65,6 +68,12 @@ cmd_info(int argc, char **argv)
 		} else {
 			printf("%s: %s\n", pkg_namever(&pkg), pkg_comment(&pkg));
 		}
+	}
+
+	if (db.errnum > -1) {
+		pkgdb_warn(&db);
+		pkgdb_free(&db);
+		return (-1);
 	}
 
 	pkgdb_free(&db);
