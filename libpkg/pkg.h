@@ -1,6 +1,7 @@
 #ifndef _PKG_H
 #define _PKG_H
 
+#include <stdint.h>
 #include <stdio.h> /* for size_t */
 #include <regex.h> /* regex_t */
 
@@ -33,7 +34,7 @@ struct pkg {
 	const char *origin;
 	const char *comment;
 	const char *desc;
-	size_t idx; /* index on pkgdb */
+	int32_t idx; /* index on pkgdb */
 	size_t idep; /* iterator deps */
 	size_t irdep; /* iterator rdeps */
 	struct pkgdb *pdb;

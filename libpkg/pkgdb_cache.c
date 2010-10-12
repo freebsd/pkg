@@ -5,6 +5,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
@@ -18,19 +19,19 @@
 #include "pkg_manifest.h"
 #include "pkgdb_cache.h"
 
-#define PKGDB_NAMEVER	"%zunv"
-#define PKGDB_NAME		"%zun"
-#define PKGDB_VERSION	"%zuv"
-#define PKGDB_COMMENT	"%zuc"
-#define PKGDB_DESC		"%zud"
-#define PKGDB_ORIGIN	"%zuo"
-#define PKGDB_DEPS		"%zuD%zu"
+#define PKGDB_NAMEVER	"%" PRId32 "nv"
+#define PKGDB_NAME		"%" PRId32 "n"
+#define PKGDB_VERSION	"%" PRId32 "v"
+#define PKGDB_COMMENT	"%" PRId32 "c"
+#define PKGDB_DESC		"%" PRId32 "d"
+#define PKGDB_ORIGIN	"%" PRId32 "o"
+#define PKGDB_DEPS		"%" PRId32 "D%" PRId32
 #define PKGDB_COUNT		"count"
 
 static const void *pkgdb_cache_vget(struct cdb *, const char *, ...);
 static int pkgdb_cache_vadd(struct cdb_make *, const void *, size_t, const char *, va_list);
 static int pkgdb_cache_add_string(struct cdb_make *, const char *, const char *, ...);
-static int pkgdb_cache_add_int(struct cdb_make *, const char *, size_t);
+static int pkgdb_cache_add_int(struct cdb_make *, const char *, int32_t);
 static int pkgdb_cache_update(struct pkgdb *);
 
 const char *
@@ -120,9 +121,9 @@ pkgdb_cache_add_string(struct cdb_make *db, const char *val, const char *fmt, ..
 }
 
 static int
-pkgdb_cache_add_int(struct cdb_make *db, const char *key, size_t val)
+pkgdb_cache_add_int(struct cdb_make *db, const char *key, int32_t val)
 {
-	return cdb_make_add(db, key, strlen(key), &val, sizeof(size_t));
+	return cdb_make_add(db, key, strlen(key), &val, sizeof(int32_t));
 }
 
 static const void *
@@ -180,9 +181,9 @@ pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_p
 	struct dirent **pkg_dirs;
 	struct cdb_make cdb;
 	struct pkg_manifest *m;
-	ssize_t nb_pkg;
-	ssize_t idx;
-	size_t idep;
+	int32_t nb_pkg;
+	int32_t idx;
+	int32_t idep;
 
 	warnx("Rebuilding cache...");
 
@@ -242,7 +243,7 @@ pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_p
 	free(pkg_dirs);
 
 	/* record packages len */
-	cdb_make_add(&cdb, PKGDB_COUNT, strlen(PKGDB_COUNT), &nb_pkg, sizeof(nb_pkg));
+	cdb_make_add(&cdb, PKGDB_COUNT, strlen(PKGDB_COUNT), &nb_pkg, sizeof(int32_t));
 	cdb_make_finish(&cdb);
 	close(fd);
 	rename(tmppath, cache_path);
