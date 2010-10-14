@@ -102,7 +102,7 @@ pkgdb_get_dir(void)
 int
 pkgdb_lock(struct pkgdb *db, int flags)
 {
-	char fname[FILENAME_MAX];
+	char fname[MAXPATHLEN];
 
 	if (db->lock_fd == -1) {
 		snprintf(fname, sizeof(fname), "%s/%s", pkgdb_get_dir(), PKGDB_LOCK);

@@ -57,29 +57,22 @@ pkgdb_cache_getattr(struct pkg *pkg, const char *attr)
 		if (strcmp(attr_key_map[i].attr, attr) == 0)
 			break;
 
-	pkgdb_lock(pkg->pdb, LOCK_SH);
 	val = pkgdb_cache_vget(pkg->pdb->cdb, attr_key_map[i].key, pkg->idx);
-	pkgdb_lock(pkg->pdb, LOCK_UN);
 	return (val);
 }
-
 
 int
 pkgdb_cache_query(struct pkgdb *db, struct pkg *pkg)
 {
-	pkgdb_lock(db, LOCK_SH);
-
 	while ((pkg->namever = pkgdb_cache_vget(db->cdb, PKGDB_NAMEVER, db->i)) != NULL) {
 		if (pkgdb_match(db, pkg->namever) == 0) {
 			pkg->idx = db->i++;
 			pkg->pdb = db;
-			pkgdb_lock(db, LOCK_UN);
 			return (0);
 		}
 
 		db->i++;
 	}
-	pkgdb_lock(db, LOCK_UN);
 
 	return (-1);
 }
@@ -261,6 +254,7 @@ pkgdb_cache_update(struct pkgdb *db)
 
 	pkg_dbdir = pkgdb_get_dir();
 
+	pkgdb_lock(db, LOCK_SH);
 	if (stat(pkg_dbdir, &dir_st) == -1) {
 		pkgdb_set_error(db, errno, "stat(%s)", pkg_dbdir);
 		return (-1);
@@ -275,11 +269,15 @@ pkgdb_cache_update(struct pkgdb *db)
 	}
 
 	if (errno == ENOENT || dir_st.st_mtime > cache_st.st_mtime) {
+		/*
+		* Upgrade the lock to an exclusive lock because we may convert some
+		* +CONTENTS to +MANIFEST format.
+		*/
 		pkgdb_lock(db, LOCK_EX);
 		ret = pkgdb_cache_rebuild(db, pkg_dbdir, cache_path);
-		pkgdb_lock(db, LOCK_UN);
 	}
 
+	pkgdb_lock(db, LOCK_UN);
 	return (ret);
 }
 
