@@ -40,6 +40,14 @@ struct pkg {
 	struct pkgdb *pdb;
 };
 
+void pkg_reset(struct pkg *);
+const char *pkg_namever(struct pkg *);
+const char *pkg_name(struct pkg *);
+const char *pkg_version(struct pkg *);
+const char *pkg_comment(struct pkg *);
+const char *pkg_desc(struct pkg *);
+const char *pkg_origin(struct pkg *);
+int pkg_dep(struct pkg *, struct pkg *);
 
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create(char *, pkg_formats, const char *, const char *);

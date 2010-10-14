@@ -10,6 +10,7 @@ SRCS=		pkg.c \
 		pkgdb.c \
 		pkgdb_cache.c \
 		pkg_compat.c \
+		pkg_create.c \
 		pkg_manifest.c \
 		util.c
 
