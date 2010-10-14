@@ -64,8 +64,22 @@ pkgdb_cache_getattr(struct pkg *pkg, const char *attr)
 int
 pkgdb_cache_query(struct pkgdb *db, struct pkg *pkg)
 {
+	const int32_t *idx;
+
+	/* If we are looking for an exact match, no needs to loop over all entries */
+	if (db->match == MATCH_EXACT) {
+		if (db->i == 0 && (idx = pkgdb_cache_vget(db->cdb, "%s", db->pattern)) != NULL) {
+			pkg->namever = db->pattern;
+			pkg->idx = *idx;
+			pkg->pdb = db;
+			db->i++;
+			return (0);
+		} else
+			return (-1);
+	}
+
 	while ((pkg->namever = pkgdb_cache_vget(db->cdb, PKGDB_NAMEVER, db->i)) != NULL) {
-		if (pkgdb_match(db, pkg->namever) == 0) {
+		if (db->match == MATCH_ALL || pkgdb_match(db, pkg->namever) == 0) {
 			pkg->idx = db->i++;
 			pkg->pdb = db;
 			return (0);
@@ -149,7 +163,7 @@ pkgdb_cache_vget(struct cdb *db, const char *fmt, ...)
 int
 pkgdb_cache_dep(struct pkg *pkg, struct pkg *dep)
 {
-	const size_t *idx;
+	const int32_t *idx;
 	int ret = -1;
 
 	pkg_reset(dep);

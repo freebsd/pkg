@@ -126,21 +126,10 @@ pkgdb_match(struct pkgdb *db, const char *pattern)
 {
 	int matched = 1;
 
-	switch (db->match) {
-		case MATCH_ALL:
-			matched = 0;
-			break;
-		case MATCH_EXACT:
-			matched = strcmp(pattern, db->pattern);
-			break;
-		case MATCH_GLOB:
-			matched = fnmatch(db->pattern, pattern, 0);
-			break;
-		case MATCH_REGEX:
-		case MATCH_EREGEX:
-			matched = regexec(&db->re, pattern, 0, NULL, 0);
-			break;
-	}
+	if (db->match == MATCH_GLOB)
+		matched = fnmatch(db->pattern, pattern, 0);
+	else if (db->match == MATCH_REGEX || db->match == MATCH_EREGEX)
+		matched = regexec(&db->re, pattern, 0, NULL, 0);
 
 	return (matched);
 }
