@@ -24,6 +24,7 @@ cmd_info(int argc, char **argv)
 	unsigned char opt = 0;
 	match_t match = MATCH_EXACT;
 	char ch;
+	int retcode = 0;
 
 	/* TODO: exclusive opts ? */
 	while ((ch = getopt(argc, argv, "gxXdD")) != -1) {
@@ -51,7 +52,12 @@ cmd_info(int argc, char **argv)
 	if (argc == 0)
 		match = MATCH_ALL;
 
-	if (pkgdb_init(&db, argv[0], match) == -1) {
+	if (pkgdb_open(&db) == -1) {
+		pkgdb_warn(&db);
+		return (-1);
+	}
+
+	if (pkgdb_query_init(&db, argv[0], match) == -1) {
 		pkgdb_warn(&db);
 		return (-1);
 	}
@@ -72,10 +78,10 @@ cmd_info(int argc, char **argv)
 
 	if (db.errnum > -1) {
 		pkgdb_warn(&db);
-		pkgdb_free(&db);
-		return (-1);
+		retcode = -1;
 	}
 
-	pkgdb_free(&db);
-	return (0);
+	pkgdb_query_free(&db);
+	pkgdb_close(&db);
+	return (retcode);
 }
