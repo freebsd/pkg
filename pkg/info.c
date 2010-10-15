@@ -11,7 +11,7 @@
  * list of options
  * -s: show package size: TODO
  * -S <type> : show scripts, type can be pre-install etc: TODO
- * -D: show reverse dependency list: TODO
+ * -r: show reverse dependency list
  * -l: list contents of a package
  * -w <filename>: (which) finds which package the filename belongs to:
  * -e: return 1 if the package exist otherwise 0
@@ -27,7 +27,7 @@ cmd_info(int argc, char **argv)
 	char ch;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "gxXdD")) != -1) {
+	while ((ch = getopt(argc, argv, "gxXdr")) != -1) {
 		switch (ch) {
 			case 'g':
 				match = MATCH_GLOB;
@@ -41,7 +41,7 @@ cmd_info(int argc, char **argv)
 			case 'd':
 				opt |= INFO_PRINT_DEP;
 				break;
-			case 'D':
+			case 'r':
 				opt |= INFO_PRINT_RDEP;
 				break;
 		}
