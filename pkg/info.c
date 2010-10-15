@@ -59,14 +59,14 @@ cmd_info(int argc, char **argv)
 	while (pkgdb_query(&db, &pkg) == 0) {
 		if (opt & INFO_PRINT_DEP) {
 
-			printf("%s depends on:\n", pkg_namever(&pkg));
+			printf("%s-%s depends on:\n", pkg_name(&pkg), pkg_version(&pkg));
 
 			while (pkg_dep(&pkg, &dep) == 0) {
-				printf("%s\n", pkg_namever(&dep));
+				printf("%s-%s\n", pkg_name(&dep), pkg_version(&pkg));
 			}
 
 		} else {
-			printf("%s: %s\n", pkg_namever(&pkg), pkg_comment(&pkg));
+			printf("%s-%s: %s\n", pkg_name(&pkg), pkg_version(&pkg), pkg_comment(&pkg));
 		}
 	}
 

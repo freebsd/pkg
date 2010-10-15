@@ -116,6 +116,7 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 	struct pkgdb db;
 	struct pkg pkg;
 	const char *pkg_dbdir;
+	char namever[FILENAME_MAX];
 	char pkgpath[MAXPATHLEN];
 	struct archive *pkg_archive;
 	char archive_path[MAXPATHLEN];
@@ -155,9 +156,10 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 		return (-1);
 	}
 
-	printf("Creating package %s/%s.%s\n", outdir, pkg_namever(&pkg), ext);
-	snprintf(pkgpath, sizeof(pkgpath), "%s/%s/", pkg_dbdir, pkg_namever(&pkg));
-	snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, pkg_namever(&pkg), ext);
+	snprintf(namever, sizeof(namever), "%s-%s", pkg_name(&pkg), pkg_version(&pkg));
+	printf("Creating package %s/%s.%s\n", outdir, namever, ext);
+	snprintf(pkgpath, sizeof(pkgpath), "%s/%s/", pkg_dbdir, namever);
+	snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, namever, ext);
 
 	pkg_archive = archive_write_new();
 

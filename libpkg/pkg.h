@@ -7,6 +7,7 @@
 
 /* Opaque type */
 struct cdb;
+struct pkg_manifest;
 
 typedef enum _match_t {
 	MATCH_ALL,
@@ -28,7 +29,6 @@ struct pkgdb {
 };
 
 struct pkg {
-	const char *namever;
 	const char *name;
 	const char *version;
 	const char *origin;
@@ -38,10 +38,12 @@ struct pkg {
 	size_t idep; /* iterator deps */
 	size_t irdep; /* iterator rdeps */
 	struct pkgdb *pdb;
+	struct pkg_manifest *m;
 };
 
+void pkg_from_manifest(struct pkg *, struct pkg_manifest *);
+
 void pkg_reset(struct pkg *);
-const char *pkg_namever(struct pkg *);
 const char *pkg_name(struct pkg *);
 const char *pkg_version(struct pkg *);
 const char *pkg_comment(struct pkg *);

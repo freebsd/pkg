@@ -19,7 +19,6 @@
 #include "pkg_manifest.h"
 #include "pkgdb_cache.h"
 
-#define PKGDB_NAMEVER	"%" PRId32 "nv"
 #define PKGDB_NAME		"%" PRId32 "n"
 #define PKGDB_VERSION	"%" PRId32 "v"
 #define PKGDB_COMMENT	"%" PRId32 "c"
@@ -43,7 +42,6 @@ pkgdb_cache_getattr(struct pkg *pkg, const char *attr)
 		const char *attr;
 		const char *key;
 	} attr_key_map[] = {
-		{"namever", PKGDB_NAMEVER},
 		{"name",	PKGDB_NAME},
 		{"version",	PKGDB_VERSION},
 		{"comment", PKGDB_COMMENT},
@@ -69,7 +67,7 @@ pkgdb_cache_query(struct pkgdb *db, struct pkg *pkg)
 	/* If we are looking for an exact match, no needs to loop over all entries */
 	if (db->match == MATCH_EXACT) {
 		if (db->i == 0 && (idx = pkgdb_cache_vget(db->cdb, "%s", db->pattern)) != NULL) {
-			pkg->namever = db->pattern;
+			pkg->name = db->pattern;
 			pkg->idx = *idx;
 			pkg->pdb = db;
 			db->i++;
@@ -78,8 +76,8 @@ pkgdb_cache_query(struct pkgdb *db, struct pkg *pkg)
 			return (-1);
 	}
 
-	while ((pkg->namever = pkgdb_cache_vget(db->cdb, PKGDB_NAMEVER, db->i)) != NULL) {
-		if (db->match == MATCH_ALL || pkgdb_match(db, pkg->namever) == 0) {
+	while ((pkg->name = pkgdb_cache_vget(db->cdb, PKGDB_NAME, db->i)) != NULL) {
+		if (db->match == MATCH_ALL || pkgdb_match(db, pkg->name) == 0) {
 			pkg->idx = db->i++;
 			pkg->pdb = db;
 			return (0);
@@ -166,10 +164,8 @@ pkgdb_cache_dep(struct pkg *pkg, struct pkg *dep)
 	const int32_t *idx;
 	int ret = -1;
 
-	pkg_reset(dep);
-
-	if ((dep->namever = pkgdb_cache_vget(pkg->pdb->cdb, PKGDB_DEPS, pkg->idx, pkg->idep)) != NULL &&
-		(idx = pkgdb_cache_vget(pkg->pdb->cdb, "%s", dep->namever)) != NULL) {
+	if ((dep->name = pkgdb_cache_vget(pkg->pdb->cdb, PKGDB_DEPS, pkg->idx, pkg->idep)) != NULL &&
+		(idx = pkgdb_cache_vget(pkg->pdb->cdb, "%s", dep->name)) != NULL) {
 		dep->idx = *idx;
 		dep->pdb = pkg->pdb;
 		pkg->idep++;
@@ -184,9 +180,10 @@ pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_p
 	int fd;
 	char tmppath[MAXPATHLEN];
 	char mpath[MAXPATHLEN];
-	char namever[FILENAME_MAX];
 	struct dirent **pkg_dirs;
 	struct cdb_make cdb;
+	struct pkg pkg;
+	struct pkg dep;
 	struct pkg_manifest *m;
 	int32_t nb_pkg;
 	int32_t idx;
@@ -221,26 +218,19 @@ pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_p
 				continue;
 			}
 		}
+		pkg_from_manifest(&pkg, m);
 
-		snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_value(m, "name"),
-				 pkg_manifest_value(m, "version"));
+		pkgdb_cache_add_int(&cdb, pkg_name(&pkg), idx);
 
-		pkgdb_cache_add_int(&cdb, namever, idx);
-		pkgdb_cache_add_int(&cdb, pkg_manifest_value(m, "name"), idx);
-
-		pkgdb_cache_add_string(&cdb, namever, PKGDB_NAMEVER, idx);
-		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "name"), PKGDB_NAME, idx);
-		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "version"), PKGDB_VERSION, idx);
-		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "comment"), PKGDB_COMMENT, idx);
-		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "origin"), PKGDB_ORIGIN, idx);
-		pkgdb_cache_add_string(&cdb, pkg_manifest_value(m, "desc"), PKGDB_DESC, idx);
+		pkgdb_cache_add_string(&cdb, pkg_name(&pkg), PKGDB_NAME, idx);
+		pkgdb_cache_add_string(&cdb, pkg_version(&pkg), PKGDB_VERSION, idx);
+		pkgdb_cache_add_string(&cdb, pkg_comment(&pkg), PKGDB_COMMENT, idx);
+		pkgdb_cache_add_string(&cdb, pkg_origin(&pkg), PKGDB_ORIGIN, idx);
+		pkgdb_cache_add_string(&cdb, pkg_desc(&pkg), PKGDB_DESC, idx);
 
 		idep = 0;
-		pkg_manifest_dep_init(m);
-		while (pkg_manifest_dep_next(m) == 0) {
-			snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_dep_name(m),
-					 pkg_manifest_dep_version(m));
-			pkgdb_cache_add_string(&cdb, namever, PKGDB_DEPS, idx, idep);
+		while (pkg_dep(&pkg, &dep) == 0) {
+			pkgdb_cache_add_string(&cdb, pkg_name(&dep), PKGDB_DEPS, idx, idep);
 			idep++;
 		}
 
