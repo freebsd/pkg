@@ -248,7 +248,7 @@ pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir,
 		/* Check if the data in the old cache is up-to-date */
 		if (cache_mtime > 0 && m_st.st_mtime > 0 && m_st.st_mtime < cache_mtime) {
 			/* Remove the version */
-			hyphen = strchr(pkg_dirs[idx]->d_name, '-');
+			hyphen = strrchr(pkg_dirs[idx]->d_name, '-');
 			hyphen[0] = '\0';
 
 			pkgdb_query_init(&old_db, pkg_dirs[idx]->d_name, MATCH_EXACT);
