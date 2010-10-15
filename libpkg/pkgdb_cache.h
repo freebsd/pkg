@@ -15,5 +15,6 @@ int pkgdb_cache_query(struct pkgdb *, struct pkg *);
 /* getter */
 const char *pkgdb_cache_getattr(struct pkg *, const char *);
 int pkgdb_cache_dep(struct pkg *, struct pkg *);
+int pkgdb_cache_rdep(struct pkg *, struct pkg *);
 
 #endif

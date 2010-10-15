@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <pkg.h>
 #include <pkgdb.h>
+#include <string.h>
 
 #include "info.h"
 
@@ -10,7 +11,7 @@
  * list of options
  * -s: show package size: TODO
  * -S <type> : show scripts, type can be pre-install etc: TODO
- * -D: show reverse dependency list: TODO
+ * -r: show reverse dependency list
  * -l: list contents of a package
  * -w <filename>: (which) finds which package the filename belongs to:
  * -e: return 1 if the package exist otherwise 0
@@ -27,7 +28,7 @@ cmd_info(int argc, char **argv)
 	int retcode = 0;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "gxXdD")) != -1) {
+	while ((ch = getopt(argc, argv, "gxXdr")) != -1) {
 		switch (ch) {
 			case 'g':
 				match = MATCH_GLOB;
@@ -41,7 +42,7 @@ cmd_info(int argc, char **argv)
 			case 'd':
 				opt |= INFO_PRINT_DEP;
 				break;
-			case 'D':
+			case 'r':
 				opt |= INFO_PRINT_RDEP;
 				break;
 		}
@@ -71,6 +72,13 @@ cmd_info(int argc, char **argv)
 				printf("%s-%s\n", pkg_name(&dep), pkg_version(&pkg));
 			}
 
+			printf("\n");
+		} else if (opt & INFO_PRINT_RDEP) {
+			printf("%s-%s is required by:\n", pkg_name(&pkg), pkg_version(&pkg));
+			while (pkg_rdep(&pkg, &dep) == 0) {
+				printf("%s-%s\n", pkg_name(&dep), pkg_version(&dep));
+			}
+			printf("\n");
 		} else {
 			printf("%s-%s: %s\n", pkg_name(&pkg), pkg_version(&pkg), pkg_comment(&pkg));
 		}

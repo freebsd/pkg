@@ -50,6 +50,7 @@ const char *pkg_comment(struct pkg *);
 const char *pkg_desc(struct pkg *);
 const char *pkg_origin(struct pkg *);
 int pkg_dep(struct pkg *, struct pkg *);
+int pkg_rdep(struct pkg *, struct pkg *);
 
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create(char *, pkg_formats, const char *, const char *);
