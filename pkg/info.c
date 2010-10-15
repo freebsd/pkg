@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <pkg.h>
 #include <pkgdb.h>
+#include <string.h>
 
 #include "info.h"
 
@@ -65,6 +66,13 @@ cmd_info(int argc, char **argv)
 				printf("%s-%s\n", pkg_name(&dep), pkg_version(&pkg));
 			}
 
+			printf("\n");
+		} else if (opt & INFO_PRINT_RDEP) {
+			printf("%s-%s is required by:\n", pkg_name(&pkg), pkg_version(&pkg));
+			while (pkg_rdep(&pkg, &dep) == 0) {
+				printf("%s-%s\n", pkg_name(&dep), pkg_version(&dep));
+			}
+			printf("\n");
 		} else {
 			printf("%s-%s: %s\n", pkg_name(&pkg), pkg_version(&pkg), pkg_comment(&pkg));
 		}

@@ -174,6 +174,22 @@ pkgdb_cache_dep(struct pkg *pkg, struct pkg *dep)
 	return (ret);
 }
 
+int
+pkgdb_cache_rdep(struct pkg *pkg, struct pkg *rdep) {
+	struct pkg dep;
+
+	while ((rdep->name = pkgdb_cache_vget(pkg->pdb->cdb, PKGDB_NAME, pkg->irdep)) != NULL) {
+		rdep->idx = pkg->irdep++;
+		rdep->pdb = pkg->pdb;
+		while (pkgdb_cache_dep(rdep, &dep) == 0) {
+			if (strcmp(dep.name, pkg->name) == 0)
+				return (0);
+		}
+		rdep->idep = 0;
+	}
+	return (-1);
+}
+
 static int
 pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_path)
 {

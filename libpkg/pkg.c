@@ -50,6 +50,13 @@ pkg_origin(struct pkg *pkg)
 }
 
 int
+pkg_rdep(struct pkg *pkg, struct pkg *rdep)
+{
+	pkg_reset(rdep);
+	return (pkgdb_cache_rdep(pkg, rdep));
+}
+
+int
 pkg_dep(struct pkg *pkg, struct pkg *dep)
 {
 	pkg_reset(dep);
