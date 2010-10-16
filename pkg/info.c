@@ -11,10 +11,8 @@
  * list of options
  * -s: show package size: TODO
  * -S <type> : show scripts, type can be pre-install etc: TODO
- * -r: show reverse dependency list
  * -l: list contents of a package
  * -w <filename>: (which) finds which package the filename belongs to:
- * -e: return 1 if the package exist otherwise 0
  */
 
 int
@@ -28,8 +26,11 @@ cmd_info(int argc, char **argv)
 	int retcode = 0;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "gxXdr")) != -1) {
+	while ((ch = getopt(argc, argv, "egxXdr")) != -1) {
 		switch (ch) {
+			case 'e':
+				opt |= INFO_EXISTS;
+				retcode = 1;
 			case 'g':
 				match = MATCH_GLOB;
 				break;
@@ -64,7 +65,9 @@ cmd_info(int argc, char **argv)
 	}
 
 	while (pkgdb_query(&db, &pkg) == 0) {
-		if (opt & INFO_PRINT_DEP) {
+		if (opt & INFO_EXISTS) {
+			retcode = 0;
+		} else if (opt & INFO_PRINT_DEP) {
 
 			printf("%s-%s depends on:\n", pkg_name(&pkg), pkg_version(&pkg));
 
