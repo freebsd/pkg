@@ -17,6 +17,7 @@
 #define METADATA_GLOB "+{DEINSTALL,INSTALL,MTREE_DIRS}"
 
 static int pkg_create_from_dir(char *, const char *, struct archive *);
+static const char * pkg_create_set_format(struct archive *, pkg_formats);
 
 static int
 pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
@@ -122,25 +123,6 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 	char archive_path[MAXPATHLEN];
 	const char *ext;
 
-	switch (format) {
-		case TAR:
-			ext = "tar";
-			break;
-		case TGZ:
-			ext = "tgz";
-			break;
-		case TBZ:
-			ext = "tbz";
-			break;
-		case TXZ:
-			ext = "txz";
-			break;
-		default:
-			warnx("Unsupport format");
-			return (-1);
-			break; /* NOT REACHED */
-	}
-
 	pkg_dbdir = pkgdb_get_dir();
 
 	if (pkgdb_init(&db, pkgname, MATCH_EXACT) == -1) {
@@ -156,29 +138,18 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 		return (-1);
 	}
 
+	pkg_archive = archive_write_new();
+
+	if ((ext = pkg_create_set_format(pkg_archive, format)) == NULL) {
+		archive_write_finish(pkg_archive);
+		warnx("Unsupport format");
+		return (-1);
+	}
+
 	snprintf(namever, sizeof(namever), "%s-%s", pkg_name(&pkg), pkg_version(&pkg));
 	printf("Creating package %s/%s.%s\n", outdir, namever, ext);
 	snprintf(pkgpath, sizeof(pkgpath), "%s/%s/", pkg_dbdir, namever);
 	snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, namever, ext);
-
-	pkg_archive = archive_write_new();
-
-	switch (format) {
-		case TAR:
-			archive_write_set_compression_none(pkg_archive);
-			break;
-		case TGZ:
-			archive_write_set_compression_gzip(pkg_archive);
-			break;
-		case TBZ:
-			archive_write_set_compression_bzip2(pkg_archive);
-			break;
-		case TXZ:
-			if (archive_write_set_compression_lzma(pkg_archive) != ARCHIVE_OK) {
-				warnx("%s", archive_error_string(pkg_archive));
-			}
-			break;
-	}
 
 	archive_write_set_format_pax_restricted(pkg_archive);
 	archive_write_open_filename(pkg_archive, archive_path);
@@ -188,4 +159,37 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 
 	pkgdb_free(&db);
 	return (0);
+}
+
+
+static const char *
+pkg_create_set_format(struct archive *pkg_archive, pkg_formats format)
+{
+	switch (format) {
+		case TAR:
+			archive_write_set_compression_none(pkg_archive);
+			return ("tar");
+		case TGZ:
+			if (archive_write_set_compression_gzip(pkg_archive) != ARCHIVE_OK) {
+				warnx("gzip compression is not supported trying plain tar");
+				return (pkg_create_set_format(pkg_archive, TAR));
+			} else {
+				return ("tgz");
+			}
+		case TBZ:
+			if (archive_write_set_compression_bzip2(pkg_archive) != ARCHIVE_OK) {
+				warnx("bzip2 compression is not supported trying gzip");
+				return (pkg_create_set_format(pkg_archive, TGZ));
+			} else {
+				return ("tbz");
+			}
+		case TXZ:
+			if (archive_write_set_compression_xz(pkg_archive) != ARCHIVE_OK) {
+				warnx("xs compression is not supported trying bzip2");
+				return (pkg_create_set_format(pkg_archive, TBZ));
+			} else {
+				return ("txz");
+			}
+	}
+	return (NULL);
 }
