@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include <sys/param.h>
 #include "pkgdb.h"
 #include "pkgdb_cache.h"
 #include "pkg_manifest.h"
@@ -103,4 +104,17 @@ pkg_from_manifest(struct pkg *pkg, struct pkg_manifest *m)
 
 	pkg_reset(pkg);
 	pkg->m = m;
+}
+
+void
+manifest_from_pkg(struct pkg *pkg, struct pkg_manifest **m)
+{
+	char mpath[MAXPATHLEN];
+
+	if (pkg->m != NULL) {
+		*m = pkg->m;
+	} else {
+		snprintf(mpath, sizeof(mpath), "%s/%s-%s/+MANIFEST", pkgdb_get_dir(), pkg_name(pkg), pkg_version(pkg));
+		*m = pkg_manifest_load_file(mpath);
+	}
 }

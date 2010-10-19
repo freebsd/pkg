@@ -16,13 +16,14 @@
 
 #define METADATA_GLOB "+{DEINSTALL,INSTALL,MTREE_DIRS}"
 
-static int pkg_create_from_dir(char *, const char *, struct archive *);
+static int pkg_create_from_dir(const char *, const char *, struct archive *, struct pkg *);
 static const char * pkg_create_set_format(struct archive *, pkg_formats);
 
 static int
-pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
+pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_archive, struct pkg *pkg)
 {
 	struct archive_entry *entry;
+	char *path;
 	char glob_pattern[MAXPATHLEN + sizeof(METADATA_GLOB)];
 	glob_t g;
 	int fd;
@@ -30,7 +31,6 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 	char buf[BUFSIZ];
 	char *buffer;
 	size_t buffer_len;
-	char mpath[MAXPATHLEN];
 	char fpath[MAXPATHLEN];
 	const char *filepath;
 	struct archive *ar;
@@ -39,14 +39,16 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 	ar = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup(ar);
 
-	snprintf(mpath, sizeof(mpath), "%s+MANIFEST", path);
 	entry = archive_entry_new();
 
-	if ((m = pkg_manifest_load_file(mpath)) == NULL)
-		errx(EXIT_FAILURE, "Can not continue without manifest");
+	manifest_from_pkg(pkg, &m);
 
+	path = strdup(mpath);
+	buffer = strrchr(path, '/');
+	buffer[0] = '\0';
 	/* Add the metadatas */
-	snprintf(glob_pattern, sizeof(glob_pattern), "%s"METADATA_GLOB, path);
+	snprintf(glob_pattern, sizeof(glob_pattern), "%s/"METADATA_GLOB, path);
+	free(buffer);
 	
 	if (glob(glob_pattern, GLOB_NOSORT|GLOB_BRACE, NULL, &g) == 0) {
 		for ( i = 0; i < g.gl_pathc; i++) {
@@ -112,38 +114,16 @@ pkg_create_from_dir(char *path, const char *root, struct archive *pkg_archive)
 }
 
 int
-pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *rootdir)
+pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char *rootdir, struct pkg *lpkg)
 {
-	struct pkgdb db;
-	struct pkg pkg;
-	const char *pkg_dbdir;
 	char namever[FILENAME_MAX];
-	char pkgpath[MAXPATHLEN];
 	struct archive *pkg_archive;
 	char archive_path[MAXPATHLEN];
+	struct pkg *pkg;
 	const char *ext;
+	struct pkg_manifest *m;
 
-	pkg_dbdir = pkgdb_get_dir();
-
-	if (pkgdb_open(&db) == -1) {
-		pkgdb_warn(&db);
-		return (-1);
-	}
-
-	if (pkgdb_query_init(&db, pkgname, MATCH_EXACT) == -1) {
-		pkgdb_warn(&db);
-		return (-1);
-	}
-
-	if (pkgdb_query(&db, &pkg) != 0) {
-		if (db.errnum > -1)
-			pkgdb_warn(&db);
-		warnx("%s: no such package", pkgname);
-		pkgdb_query_free(&db);
-		return (-1);
-	}
-	pkgdb_query_free(&db);
-
+	pkg = lpkg;
 	pkg_archive = archive_write_new();
 
 	if ((ext = pkg_create_set_format(pkg_archive, format)) == NULL) {
@@ -152,18 +132,23 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 		return (-1);
 	}
 
-	snprintf(namever, sizeof(namever), "%s-%s", pkg_name(&pkg), pkg_version(&pkg));
+	if (pkg == NULL) {
+		m = pkg_manifest_load_file(mpath);
+		pkg_from_manifest(pkg, m);
+	}
+
+	snprintf(namever, sizeof(namever), "%s-%s", pkg_name(pkg), pkg_version(pkg));
 	printf("Creating package %s/%s.%s\n", outdir, namever, ext);
-	snprintf(pkgpath, sizeof(pkgpath), "%s/%s/", pkg_dbdir, namever);
 	snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, namever, ext);
 
 	archive_write_set_format_pax_restricted(pkg_archive);
 	archive_write_open_filename(pkg_archive, archive_path);
-	pkg_create_from_dir(pkgpath, rootdir, pkg_archive);
+
+	pkg_create_from_dir(mpath, rootdir, pkg_archive, pkg);
+
 	archive_write_close(pkg_archive);
 	archive_write_finish(pkg_archive);
 
-	pkgdb_close(&db);
 	return (0);
 }
 

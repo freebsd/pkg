@@ -42,6 +42,7 @@ struct pkg {
 };
 
 void pkg_from_manifest(struct pkg *, struct pkg_manifest *);
+void manifest_from_pkg(struct pkg *, struct pkg_manifest **);
 
 void pkg_reset(struct pkg *);
 const char *pkg_name(struct pkg *);
@@ -53,6 +54,6 @@ int pkg_dep(struct pkg *, struct pkg *);
 int pkg_rdep(struct pkg *, struct pkg *);
 
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
-int pkg_create(char *, pkg_formats, const char *, const char *);
+int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg *);
 
 #endif
