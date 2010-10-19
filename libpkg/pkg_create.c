@@ -56,7 +56,8 @@ pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_arc
 			archive_entry_copy_sourcepath(entry, g.gl_pathv[i]);
 
 			if (archive_read_disk_entry_from_file(ar, entry, -1, 0) != ARCHIVE_OK)
-				warnx("archive_read_disk_entry_from_file(): %s", archive_error_string(ar));
+				warnx("archive_read_disk_entry_from_file(%s): %s", g.gl_pathv[i],
+					  archive_error_string(ar));
 
 			archive_entry_set_pathname(entry, basename(g.gl_pathv[i]));
 			archive_write_header(pkg_archive, entry);
@@ -75,7 +76,7 @@ pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_arc
 
 	archive_entry_copy_sourcepath(entry, mpath);
 	if (archive_read_disk_entry_from_file(ar, entry, -1, 0) != ARCHIVE_OK)
-		warnx("archive_read_disk_entry_form_file(): %s", archive_error_string(ar));
+		warnx("archive_read_disk_entry_form_file(%s): %s", mpath, archive_error_string(ar));
 
 	archive_entry_set_pathname(entry, "+MANIFEST");
 	archive_entry_set_size(entry, buffer_len);
@@ -92,7 +93,8 @@ pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_arc
 		archive_entry_copy_sourcepath(entry, filepath);
 
 		if (archive_read_disk_entry_from_file(ar, entry, -1, 0) != ARCHIVE_OK)
-			warnx("archive_read_disk_entry_from_file(): %s", archive_error_string(ar));
+			warnx("archive_read_disk_entry_from_file(%s): %s", filepath,
+				  archive_error_string(ar));
 
 		archive_entry_set_pathname(entry, filepath);
 		archive_write_header(pkg_archive, entry);
