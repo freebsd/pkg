@@ -64,7 +64,7 @@ cmd_create(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0) {
+	if (match != MATCH_ALL && argc == 0) {
 		warnx("No package provided");
 		return (-1);
 	}
