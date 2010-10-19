@@ -125,7 +125,12 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 
 	pkg_dbdir = pkgdb_get_dir();
 
-	if (pkgdb_init(&db, pkgname, MATCH_EXACT) == -1) {
+	if (pkgdb_open(&db) == -1) {
+		pkgdb_warn(&db);
+		return (-1);
+	}
+
+	if (pkgdb_query_init(&db, pkgname, MATCH_EXACT) == -1) {
 		pkgdb_warn(&db);
 		return (-1);
 	}
@@ -134,9 +139,10 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 		if (db.errnum > -1)
 			pkgdb_warn(&db);
 		warnx("%s: no such package", pkgname);
-		pkgdb_free(&db);
+		pkgdb_query_free(&db);
 		return (-1);
 	}
+	pkgdb_query_free(&db);
 
 	pkg_archive = archive_write_new();
 
@@ -157,7 +163,7 @@ pkg_create(char *pkgname, pkg_formats format, const char *outdir, const char *ro
 	archive_write_close(pkg_archive);
 	archive_write_finish(pkg_archive);
 
-	pkgdb_free(&db);
+	pkgdb_close(&db);
 	return (0);
 }
 

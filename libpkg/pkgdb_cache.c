@@ -6,9 +6,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 #include <unistd.h>
 
 #include <cdb.h>
@@ -191,16 +192,20 @@ pkgdb_cache_rdep(struct pkg *pkg, struct pkg *rdep) {
 }
 
 static int
-pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_path)
+pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir,
+					const char *cache_path, time_t cache_mtime)
 {
 	int fd;
 	char tmppath[MAXPATHLEN];
 	char mpath[MAXPATHLEN];
+	char *hyphen;
 	struct dirent **pkg_dirs;
+	struct pkgdb old_db;
+	struct stat m_st;
 	struct cdb_make cdb;
 	struct pkg pkg;
 	struct pkg dep;
-	struct pkg_manifest *m;
+	struct pkg_manifest *m = NULL;
 	int32_t nb_pkg;
 	int32_t idx;
 	int32_t idep;
@@ -221,20 +226,51 @@ pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_p
 		return (-1);
 	}
 
+	/* If we have an old db, open it now */
+	if (cache_mtime > 0 && pkgdb_open2(&old_db, false) == -1)
+		errx(EXIT_FAILURE, "can not open old db");
+
 	cdb_make_start(&cdb, fd);
 
 	for (idx = 0; idx < nb_pkg; idx++) {
 		snprintf(mpath, sizeof(mpath), "%s/%s/+MANIFEST", pkg_dbdir,
 				 pkg_dirs[idx]->d_name);
 
-		if ((m = pkg_manifest_load_file(mpath)) == NULL) {
-			if ((m = pkg_compat_convert_installed(pkg_dbdir, pkg_dirs[idx]->d_name,
-				 mpath)) == NULL) {
-				warnx("error while inserting %s in cache, skipping", mpath);
-				continue;
+		if (stat(mpath, &m_st) == -1) {
+			if (errno == ENOENT)
+				m_st.st_mtime = -1;
+			else {
+				pkgdb_set_error(db, errno, "stat(%s)", mpath);
+				return (-1);
 			}
 		}
-		pkg_from_manifest(&pkg, m);
+
+		/* Check if the data in the old cache is up-to-date */
+		if (cache_mtime > 0 && m_st.st_mtime > 0 && m_st.st_mtime < cache_mtime) {
+			/* Remove the version */
+			hyphen = strrchr(pkg_dirs[idx]->d_name, '-');
+			hyphen[0] = '\0';
+
+			pkgdb_query_init(&old_db, pkg_dirs[idx]->d_name, MATCH_EXACT);
+			if (pkgdb_query(&old_db, &pkg) != 0)
+				errx(EXIT_FAILURE, "%s not in cache, why?", pkg_dirs[idx]->d_name);
+			pkgdb_query_free(&old_db);
+		} else {
+			/* The +MANIFEST file exists, load it */
+			if (m_st.st_mtime != -1 && (m = pkg_manifest_load_file(mpath)) == NULL) {
+				warnx("skipping %s", mpath);
+				continue;
+			}
+			/* Create the +MANIFEST file via +CONTENTS */
+			if (m_st.st_mtime == -1) {
+				m = pkg_compat_convert_installed(pkg_dbdir, pkg_dirs[idx]->d_name, mpath);
+				if (m == NULL) {
+					warnx("error while converting +CONTENTS to %s, skipping", mpath);
+					continue;
+				}
+			}
+			pkg_from_manifest(&pkg, m);
+		}
 
 		pkgdb_cache_add_int(&cdb, pkg_name(&pkg), idx);
 
@@ -250,10 +286,16 @@ pkgdb_cache_rebuild(struct pkgdb *db, const char *pkg_dbdir, const char *cache_p
 			idep++;
 		}
 
-		pkg_manifest_free(m);
+		if (m != NULL) {
+			pkg_manifest_free(m);
+			m = NULL;
+		}
 		free(pkg_dirs[idx]);
 	}
 	free(pkg_dirs);
+
+	if (cache_mtime > 0)
+		pkgdb_close(&old_db);
 
 	/* record packages len */
 	cdb_make_add(&cdb, PKGDB_COUNT, strlen(PKGDB_COUNT), &nb_pkg, sizeof(int32_t));
@@ -294,7 +336,8 @@ pkgdb_cache_update(struct pkgdb *db)
 		* +CONTENTS to +MANIFEST format.
 		*/
 		pkgdb_lock(db, LOCK_EX);
-		ret = pkgdb_cache_rebuild(db, pkg_dbdir, cache_path);
+		ret = pkgdb_cache_rebuild(db, pkg_dbdir, cache_path,
+								  (errno != ENOENT) ? cache_st.st_mtime : -1);
 	}
 
 	pkgdb_lock(db, LOCK_UN);
@@ -302,12 +345,12 @@ pkgdb_cache_update(struct pkgdb *db)
 }
 
 int
-pkgdb_cache_init(struct pkgdb *db)
+pkgdb_cache_open(struct pkgdb *db, bool rebuild)
 {
 	char path[MAXPATHLEN];
 	int fd;
 
-	if (pkgdb_cache_update(db) == -1)
+	if (rebuild == true && pkgdb_cache_update(db) == -1)
 		return (-1);
 
 	if ((db->cdb = malloc(sizeof(struct cdb))) == NULL)
@@ -331,7 +374,7 @@ pkgdb_cache_init(struct pkgdb *db)
 }
 
 void
-pkgdb_cache_free(struct pkgdb *db)
+pkgdb_cache_close(struct pkgdb *db)
 {
 	close(cdb_fileno(db->cdb));
 	cdb_free(db->cdb);

@@ -68,13 +68,40 @@ pkgdb_match(struct pkgdb *db, const char *pattern)
 }
 
 int
-pkgdb_init(struct pkgdb *db, const char *pattern, match_t match)
+pkgdb_open(struct pkgdb *db)
+{
+	return (pkgdb_open2(db, true));
+}
+
+int
+pkgdb_open2(struct pkgdb *db, bool rebuild)
+{
+	db->cdb = NULL;
+	db->lock_fd = -1;
+	db->errnum = -1;
+	db->errstring[0] = '\0';
+
+	return (pkgdb_cache_open(db, rebuild));
+}
+
+void
+pkgdb_close(struct pkgdb *db)
+{
+	if (db->lock_fd != -1) {
+		pkgdb_lock(db, LOCK_UN);
+		close(db->lock_fd);
+	}
+
+	/* call backend close */
+	pkgdb_cache_close(db);
+}
+
+int
+pkgdb_query_init(struct pkgdb *db, const char *pattern, match_t match)
 {
 	db->pattern = pattern;
 	db->match = match;
 	db->i = 0;
-	db->lock_fd = -1;
-	db->errnum = -1;
 
 	if (match != MATCH_ALL && pattern == NULL) {
 		pkgdb_set_error(db, 0, "missing pattern");
@@ -94,29 +121,22 @@ pkgdb_init(struct pkgdb *db, const char *pattern, match_t match)
 		}
 	}
 
-	/* call backend init */
-	return (pkgdb_cache_init(db));
+	return (0);
 }
 
 void
-pkgdb_free(struct pkgdb *db)
+pkgdb_query_free(struct pkgdb *db)
 {
 	if (db->match == MATCH_REGEX || db->match == MATCH_EREGEX)
 		regfree(&db->re);
-
-	if (db->lock_fd != -1)
-		close(db->lock_fd);
-
-	/* call backend free */
-	pkgdb_cache_free(db);
-
-	return;
+	db->match = -1;
 }
 
 int
 pkgdb_query(struct pkgdb *db, struct pkg *pkg)
 {
 	pkg_reset(pkg);
+
 	/* call backend query */
 	return (pkgdb_cache_query(db, pkg));
 }
@@ -131,14 +151,12 @@ pkgdb_set_error(struct pkgdb *db, int errnum, const char *fmt, ...)
 	va_end(args);
 
 	db->errnum = errnum;
-	return;
 }
 
 void
 pkgdb_warn(struct pkgdb *db)
 {
 	warnx("%s %s", db->errstring, (db->errnum > 0) ? strerror(db->errnum) : "");
-	return;
 }
 
 int
