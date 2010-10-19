@@ -24,7 +24,6 @@ cmd_create(int argc, char **argv)
 	struct pkgdb db;
 	struct pkg pkg;
 
-	unsigned char opt = 0;
 	match_t match = MATCH_EXACT;
 	const char *outdir = NULL;
 	const char *format = NULL;
