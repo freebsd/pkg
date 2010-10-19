@@ -47,12 +47,13 @@ cmd_which(int argc, char **argv)
 		while (pkg_manifest_file_next(m) == 0) {
 			if (strcmp(pathabs, pkg_manifest_file_path(m)) == 0) {
 				printf("%s is owned by %s-%s\n", pathabs, pkg_name(&pkg), pkg_version(&pkg));
+				pkg_manifest_free(m);
 				pkgdb_query_free(&db);
 				pkgdb_close(&db);
 				return (0);
 			}
 		}
-
+		pkg_manifest_free(m);
 	}
 
 	warnx("No packages owns %s", pathabs);

@@ -48,7 +48,7 @@ pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_arc
 	buffer[0] = '\0';
 	/* Add the metadatas */
 	snprintf(glob_pattern, sizeof(glob_pattern), "%s/"METADATA_GLOB, path);
-	free(buffer);
+	free(path);
 	
 	if (glob(glob_pattern, GLOB_NOSORT|GLOB_BRACE, NULL, &g) == 0) {
 		for ( i = 0; i < g.gl_pathc; i++) {
