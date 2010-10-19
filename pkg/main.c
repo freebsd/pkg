@@ -6,6 +6,7 @@
 
 #include "create.h"
 #include "info.h"
+#include "which.h"
 
 static void usage(void);
 
@@ -19,6 +20,7 @@ static struct commands {
 	{ "info", cmd_info},
 	{ "install", NULL},
 	{ "update", NULL},
+	{ "which", cmd_which},
 	{ "help", NULL},
 	{ NULL, NULL },
 };
