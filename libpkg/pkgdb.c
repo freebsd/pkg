@@ -4,18 +4,16 @@
 
 #include <err.h>
 #include <errno.h>
-#include <assert.h>
 #include <fcntl.h>
-#include <fnmatch.h>
 #include <stdlib.h>
-#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <regex.h>
 
 #include <sqlite3.h>
 
 #include "pkg.h"
+#include "pkg_private.h"
 #include "pkgdb.h"
 
 #ifdef DEBUG
@@ -38,29 +36,6 @@ pkgdb_get_dir(void)
 		pkg_dbdir = PKG_DBDIR;
 
 	return pkg_dbdir;
-}
-
-/* Acquire/Release a lock to access the database. */
-int
-pkgdb_lock(struct pkgdb *db, int flags)
-{
-	char fname[MAXPATHLEN];
-
-	if (db->lock_fd == -1) {
-		snprintf(fname, sizeof(fname), "%s/%s", pkgdb_get_dir(), PKGDB_LOCK);
-
-		if ((db->lock_fd = open(fname, O_RDONLY | O_CREAT, S_IRUSR | S_IRGRP | S_IROTH)) < 0) {
-			pkgdb_set_error(db, errno, "open(%s)", fname);
-			return (-1);
-		}
-	}
-
-	if (flock(db->lock_fd, flags) < 0) {
-		pkgdb_set_error(db, errno, "unable to acquire lock on %s", fname);
-		return (-1);
-	}
-
-	return (0);
 }
 
 static void
@@ -213,12 +188,6 @@ pkgdb_open(struct pkgdb **db)
 void
 pkgdb_close(struct pkgdb *db)
 {
-	/* TODO: useful? */
-	if (db->lock_fd != -1) {
-		pkgdb_lock(db, LOCK_UN);
-		close(db->lock_fd);
-	}
-
 	sqlite3_close(db->sqlite);
 	free(db);
 }
@@ -279,8 +248,10 @@ pkgdb_query(struct pkgdb *db, struct pkg *pkg)
 
 	if (retcode == SQLITE_ROW) {
 		pkgdb_stmt_to_pkg(db->stmt, pkg);
+		pkg->pdb = db;
 		return (0);
 	} else if (retcode == SQLITE_DONE) {
+		sqlite3_reset(db->stmt);
 		return (1);
 	} else {
 		pkgdb_set_error(db, 0, "sqlite3_step(): %s", sqlite3_errmsg(db->sqlite));
@@ -291,22 +262,72 @@ pkgdb_query(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_query_which(struct pkgdb *db, const char *path, struct pkg *pkg)
 {
-	sqlite3_stmt *stmt;
 	int retcode;
 
+	pkg_reset(pkg);
 	sqlite3_prepare(db->sqlite,
 					"SELECT origin, name, version, comment, desc FROM packages, files "
 					"WHERE origin = files.package_id "
-					"AND files.path = ?1;", -1, &stmt, NULL);
-	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+					"AND files.path = ?1;", -1, &pkg->which_stmt, NULL);
+	sqlite3_bind_text(pkg->which_stmt, 1, path, -1, SQLITE_STATIC);
 
-	pkg_reset(pkg);
-	retcode = sqlite3_step(stmt);
-	if (retcode == SQLITE_ROW)
-		pkgdb_stmt_to_pkg(stmt, pkg);
+	retcode = sqlite3_step(pkg->which_stmt);
+	if (retcode == SQLITE_ROW) {
+		pkgdb_stmt_to_pkg(pkg->which_stmt, pkg);
+		pkg->pdb = db;
+	}
 
-	/*sqlite3_finalize(stmt);*/
 	return ((retcode == SQLITE_ROW) ? 0 : 1);
+}
+
+int
+pkgdb_query_dep(struct pkg *pkg, struct pkg *dep) {
+	int retcode;
+
+	if (pkg->deps_stmt == NULL) {
+		sqlite3_prepare(pkg->pdb->sqlite,
+						"SELECT p.origin, p.name, p.version, p.comment, p.desc FROM packages AS p, deps AS d "
+						"WHERE p.origin = d.origin "
+						"AND d.package_id = ?1;", -1, &pkg->deps_stmt, NULL);
+		sqlite3_bind_text(pkg->deps_stmt, 1, pkg->origin, -1, SQLITE_STATIC);
+	}
+
+	retcode = sqlite3_step(pkg->deps_stmt);
+	if (retcode == SQLITE_ROW) {
+		pkgdb_stmt_to_pkg(pkg->deps_stmt, dep);
+		dep->pdb = pkg->pdb;
+		return (0);
+	} else if (retcode == SQLITE_DONE) {
+		sqlite3_reset(pkg->deps_stmt);
+		return (1);
+	} else {
+		return (-1);
+	}
+}
+
+int
+pkgdb_query_rdep(struct pkg *pkg, struct pkg *rdep) {
+	int retcode;
+
+	if (pkg->rdeps_stmt == NULL) {
+		sqlite3_prepare(pkg->pdb->sqlite,
+						"SELECT p.origin, p.name, p.version, p.comment, p.desc FROM packages AS p, deps AS d "
+						"WHERE p.origin = d.package_id "
+						"AND d.origin = ?1;", -1, &pkg->rdeps_stmt, NULL);
+		sqlite3_bind_text(pkg->rdeps_stmt, 1, pkg->origin, -1, SQLITE_STATIC);
+	}
+
+	retcode = sqlite3_step(pkg->rdeps_stmt);
+	if (retcode == SQLITE_ROW) {
+		pkgdb_stmt_to_pkg(pkg->rdeps_stmt, rdep);
+		rdep->pdb = pkg->pdb;
+		return (0);
+	} else if (retcode == SQLITE_DONE) {
+		sqlite3_reset(pkg->rdeps_stmt);
+		return (1);
+	} else {
+		return (-1);
+	}
 }
 
 static void

@@ -11,6 +11,7 @@
 #include <fcntl.h>
 
 #include "pkg.h"
+#include "pkg_private.h"
 #include "pkg_manifest.h"
 #include "pkgdb.h"
 #include "util.h"

@@ -14,7 +14,7 @@ int
 cmd_which(int argc, char **argv)
 {
 	struct pkgdb *db;
-	struct pkg pkg;
+	struct pkg *pkg;
 	char pathabs[MAXPATHLEN];
 	char pathabsdir[MAXPATHLEN];
 	int retcode = 1;
@@ -35,11 +35,13 @@ cmd_which(int argc, char **argv)
 	realpath(dirname(argv[0]), pathabsdir);
 	snprintf(pathabs, sizeof(pathabs), "%s/%s", pathabsdir, basename(argv[0]));
 
-	if (pkgdb_query_which(db, pathabs, &pkg) == 0) {
+	pkg_new(&pkg);
+	if (pkgdb_query_which(db, pathabs, pkg) == 0) {
 		retcode = 0;
-		printf("%s was installed by package %s-%s\n", pathabs, pkg_name(&pkg), 
-			   pkg_version(&pkg));
+		printf("%s was installed by package %s-%s\n", pathabs, pkg_name(pkg),
+			   pkg_version(pkg));
 	}
+	pkg_free(pkg);
 
 	pkgdb_close(db);
 	return (retcode);

@@ -10,11 +10,12 @@ struct pkgdb {
         sqlite3 *sqlite;
 	sqlite3_stmt *stmt;
         int lock_fd;
-        size_t i; /* iterator */
         int errnum;
-        char errstring[BUFSIZ]; /* not enough ? */
+        char errstring[1024];
 };
 
+int pkgdb_query_dep(struct pkg *, struct pkg *);
+int pkgdb_query_rdep(struct pkg *, struct pkg *);
 void pkgdb_set_error(struct pkgdb *, int, const char *, ...);
 
 #endif

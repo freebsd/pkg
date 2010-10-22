@@ -2,9 +2,9 @@
 #define _PKG_H
 
 #include <stdint.h>
-#include <stdio.h> /* for size_t */
 
-struct pkg_manifest;
+struct pkg;
+struct pkgdb;
 
 typedef enum _match_t {
 	MATCH_ALL,
@@ -14,18 +14,9 @@ typedef enum _match_t {
 	MATCH_EREGEX
 } match_t;
 
-struct pkg {
-	const char *name;
-	const char *version;
-	const char *origin;
-	const char *comment;
-	const char *desc;
-	struct pkgdb *pdb;
-	struct pkg_manifest *m;
-};
-
-void pkg_from_manifest(struct pkg*, struct pkg_manifest *);
+int pkg_new(struct pkg **);
 void pkg_reset(struct pkg *);
+void pkg_free(struct pkg *);
 const char *pkg_name(struct pkg *);
 const char *pkg_version(struct pkg *);
 const char *pkg_comment(struct pkg *);
@@ -44,7 +35,6 @@ void pkgdb_query_free(struct pkgdb *);
 int pkgdb_query_which(struct pkgdb *, const char *, struct pkg *);
 
 const char *pkgdb_get_dir(void);
-int pkgdb_lock(struct pkgdb *, int);
 void pkgdb_warn(struct pkgdb *);
 int pkgdb_errnum(struct pkgdb *);
 

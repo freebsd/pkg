@@ -1,9 +1,13 @@
 #include <sys/param.h>
 
-#include <assert.h>
+#include <err.h>
+#include <stdlib.h>
+#include <strings.h>
 
 #include "pkg.h"
+#include "pkg_private.h"
 #include "pkg_manifest.h"
+#include "pkgdb.h"
 
 const char *
 pkg_name(struct pkg *pkg)
@@ -39,16 +43,23 @@ int
 pkg_rdep(struct pkg *pkg, struct pkg *rdep)
 {
 	pkg_reset(rdep);
-	(void)pkg;
-	return (-1);
+	return (pkgdb_query_rdep(pkg, rdep));
 }
 
 int
 pkg_dep(struct pkg *pkg, struct pkg *dep)
 {
 	pkg_reset(dep);
-	(void)pkg;
-	return (-1);
+	return (pkgdb_query_dep(pkg, dep));
+}
+
+int
+pkg_new(struct pkg **pkg)
+{
+	if ((*pkg = malloc(sizeof(struct pkg))) == NULL)
+		err(EXIT_FAILURE, "malloc()");
+	bzero(*pkg, sizeof(struct pkg));
+	return (0);
 }
 
 void
@@ -60,7 +71,29 @@ pkg_reset(struct pkg *pkg)
 	pkg->comment = NULL;
 	pkg->desc = NULL;
 	pkg->pdb = NULL;
-	pkg->m = NULL;
+	if (pkg->deps_stmt != NULL) {
+		sqlite3_finalize(pkg->deps_stmt);
+		pkg->deps_stmt = NULL;
+	}
+	if (pkg->rdeps_stmt != NULL) {
+		sqlite3_finalize(pkg->rdeps_stmt);
+		pkg->rdeps_stmt = NULL;
+	}
+	if (pkg->which_stmt != NULL) {
+		sqlite3_finalize(pkg->which_stmt);
+		pkg->which_stmt = NULL;
+	}
+	if (pkg->m != NULL) {
+		pkg_manifest_free(pkg->m);
+		pkg->m = NULL;
+	}
+}
+
+void
+pkg_free(struct pkg *pkg)
+{
+	pkg_reset(pkg);
+	free(pkg);
 }
 
 void

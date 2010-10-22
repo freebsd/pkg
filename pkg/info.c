@@ -18,7 +18,8 @@ int
 cmd_info(int argc, char **argv)
 {
 	struct pkgdb *db;
-	struct pkg pkg, dep;
+	struct pkg *pkg;
+	struct pkg *dep;
 	unsigned char opt = 0;
 	match_t match = MATCH_EXACT;
 	char ch;
@@ -63,30 +64,36 @@ cmd_info(int argc, char **argv)
 		return (-1);
 	}
 
-	while (pkgdb_query(db, &pkg) == 0) {
+	pkg_new(&pkg);
+	pkg_new(&dep);
+
+	while (pkgdb_query(db, pkg) == 0) {
 		if (opt & INFO_EXISTS) {
 			retcode = 0;
 		} else if (opt & INFO_PRINT_DEP) {
 
-			printf("%s-%s depends on:\n", pkg_name(&pkg), pkg_version(&pkg));
+			printf("%s-%s depends on:\n", pkg_name(pkg), pkg_version(pkg));
 
-			while (pkg_dep(&pkg, &dep) == 0) {
-				printf("%s-%s\n", pkg_name(&dep), pkg_version(&pkg));
+			while (pkg_dep(pkg, dep) == 0) {
+				printf("%s-%s\n", pkg_name(dep), pkg_version(pkg));
 			}
 
 			printf("\n");
 		} else if (opt & INFO_PRINT_RDEP) {
-			printf("%s-%s is required by:\n", pkg_name(&pkg), pkg_version(&pkg));
-			while (pkg_rdep(&pkg, &dep) == 0) {
-				printf("%s-%s\n", pkg_name(&dep), pkg_version(&dep));
+			printf("%s-%s is required by:\n", pkg_name(pkg), pkg_version(pkg));
+			while (pkg_rdep(pkg, dep) == 0) {
+				printf("%s-%s\n", pkg_name(dep), pkg_version(dep));
 			}
 			printf("\n");
 		} else {
-			printf("%s-%s: %s\n", pkg_name(&pkg), pkg_version(&pkg), pkg_comment(&pkg));
+			printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
 		}
 	}
 
-	if (pkgdb_errnum(db) > -1) {
+	pkg_free(pkg);
+	pkg_free(dep);
+
+	if (pkgdb_errnum(db) > 0) {
 		pkgdb_warn(db);
 		retcode = -1;
 	}

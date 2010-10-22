@@ -21,7 +21,7 @@ int
 cmd_create(int argc, char **argv)
 {
 	struct pkgdb *db;
-	struct pkg pkg;
+	struct pkg *pkg;
 
 	match_t match = MATCH_EXACT;
 	const char *outdir = NULL;
@@ -103,10 +103,12 @@ cmd_create(int argc, char **argv)
 			return (-1);
 		}
 
-		while (pkgdb_query(db, &pkg) == 0) {
-			snprintf(mpath, sizeof(mpath), "%s/%s-%s/+MANIFEST", pkgdb_get_dir(), pkg_name(&pkg), pkg_version(&pkg));
-			pkg_create(mpath, fmt, outdir, rootdir, &pkg);
+		pkg_new(&pkg);
+		while (pkgdb_query(db, pkg) == 0) {
+			snprintf(mpath, sizeof(mpath), "%s/%s-%s/+MANIFEST", pkgdb_get_dir(), pkg_name(pkg), pkg_version(pkg));
+			pkg_create(mpath, fmt, outdir, rootdir, pkg);
 		}
+		pkg_free(pkg);
 		pkgdb_query_free(db);
 		pkgdb_close(db);
 	} else {
