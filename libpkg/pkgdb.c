@@ -178,7 +178,6 @@ pkgdb_open(struct pkgdb **db)
 		pkgdb_init((*db)->sqlite);
 
 	(*db)->stmt = NULL;
-	(*db)->lock_fd = -1;
 	(*db)->errnum = 0;
 	(*db)->errstring[0] = '\0';
 

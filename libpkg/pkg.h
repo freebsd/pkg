@@ -1,8 +1,6 @@
 #ifndef _PKG_H
 #define _PKG_H
 
-#include <stdint.h>
-
 struct pkg;
 struct pkgdb;
 

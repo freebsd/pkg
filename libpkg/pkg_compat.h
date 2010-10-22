@@ -27,8 +27,6 @@ struct oldpackage {
 	struct plist *head, *tail;
 	const char *name;
 	const char *origin;
-
-
 };
 
 struct pkg_manifest *pkg_compat_converter(char *);
