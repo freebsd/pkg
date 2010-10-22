@@ -10,6 +10,7 @@
 #include <string.h>
 #include <fcntl.h>
 
+#include "pkg.h"
 #include "pkg_manifest.h"
 #include "pkgdb.h"
 #include "util.h"
@@ -41,7 +42,7 @@ pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_arc
 
 	entry = archive_entry_new();
 
-	manifest_from_pkg(pkg, &m);
+	pkg_manifest_from_pkg(pkg, &m);
 
 	path = strdup(mpath);
 	buffer = strrchr(path, '/');

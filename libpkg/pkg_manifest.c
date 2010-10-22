@@ -388,6 +388,15 @@ pkg_manifest_load_file(const char *path)
 	return (m);
 }
 
+int
+pkg_manifest_from_pkg(struct pkg *pkg, struct pkg_manifest **m)
+{
+	/* TODO */
+	(void)pkg;
+	(void)m;
+	return (0);
+}
+
 char *
 pkg_manifest_dump_buffer(struct pkg_manifest *m)
 {

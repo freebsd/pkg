@@ -1,7 +1,6 @@
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
-#include <pkgdb.h>
 #include <string.h>
 #include <sys/param.h>
 #include <unistd.h>
@@ -21,7 +20,7 @@
 int
 cmd_create(int argc, char **argv)
 {
-	struct pkgdb db;
+	struct pkgdb *db;
 	struct pkg pkg;
 
 	match_t match = MATCH_EXACT;
@@ -95,21 +94,21 @@ cmd_create(int argc, char **argv)
 	if (manifestdir == NULL) {
 		/* create package from local db */
 		if (pkgdb_open(&db) == -1) {
-			pkgdb_warn(&db);
+			pkgdb_warn(db);
 			return (-1);
 		}
 
-		if (pkgdb_query_init(&db, argv[0], match) == -1) {
-			pkgdb_warn(&db);
+		if (pkgdb_query_init(db, argv[0], match) == -1) {
+			pkgdb_warn(db);
 			return (-1);
 		}
 
-		while (pkgdb_query(&db, &pkg) == 0) {
+		while (pkgdb_query(db, &pkg) == 0) {
 			snprintf(mpath, sizeof(mpath), "%s/%s-%s/+MANIFEST", pkgdb_get_dir(), pkg_name(&pkg), pkg_version(&pkg));
 			pkg_create(mpath, fmt, outdir, rootdir, &pkg);
 		}
-		pkgdb_query_free(&db);
-		pkgdb_close(&db);
+		pkgdb_query_free(db);
+		pkgdb_close(db);
 	} else {
 		snprintf(mpath, sizeof(mpath), "%s/+MANIFEST", manifestdir);
 		pkg_create(mpath, fmt, outdir, rootdir, NULL);

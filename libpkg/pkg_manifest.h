@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#include "pkg.h"
+
 /* Opaque struct */
 struct pkg_manifest;
 
@@ -45,5 +47,7 @@ void pkg_manifest_add_dep(struct pkg_manifest *, const char *, const char *, con
 void pkg_manifest_add_conflict(struct pkg_manifest *, const char *);
 void pkg_manifest_add_exec(struct pkg_manifest *, const char *);
 void pkg_manifest_add_unexec(struct pkg_manifest *, const char *);
+
+int pkg_manifest_from_pkg(struct pkg *, struct pkg_manifest **);
 
 #endif

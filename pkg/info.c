@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <pkg.h>
-#include <pkgdb.h>
 #include <string.h>
 
 #include "info.h"
@@ -18,7 +17,7 @@
 int
 cmd_info(int argc, char **argv)
 {
-	struct pkgdb db;
+	struct pkgdb *db;
 	struct pkg pkg, dep;
 	unsigned char opt = 0;
 	match_t match = MATCH_EXACT;
@@ -55,16 +54,16 @@ cmd_info(int argc, char **argv)
 		match = MATCH_ALL;
 
 	if (pkgdb_open(&db) == -1) {
-		pkgdb_warn(&db);
+		pkgdb_warn(db);
 		return (-1);
 	}
 
-	if (pkgdb_query_init(&db, argv[0], match) == -1) {
-		pkgdb_warn(&db);
+	if (pkgdb_query_init(db, argv[0], match) == -1) {
+		pkgdb_warn(db);
 		return (-1);
 	}
 
-	while (pkgdb_query(&db, &pkg) == 0) {
+	while (pkgdb_query(db, &pkg) == 0) {
 		if (opt & INFO_EXISTS) {
 			retcode = 0;
 		} else if (opt & INFO_PRINT_DEP) {
@@ -87,12 +86,12 @@ cmd_info(int argc, char **argv)
 		}
 	}
 
-	if (db.errnum > -1) {
-		pkgdb_warn(&db);
+	if (pkgdb_errnum(db) > -1) {
+		pkgdb_warn(db);
 		retcode = -1;
 	}
 
-	pkgdb_query_free(&db);
-	pkgdb_close(&db);
+	pkgdb_query_free(db);
+	pkgdb_close(db);
 	return (retcode);
 }

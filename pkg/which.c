@@ -1,7 +1,6 @@
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
-#include <pkgdb.h>
 #include <pkg_manifest.h>
 #include <libgen.h>
 #include <stdlib.h>
@@ -14,11 +13,11 @@
 int
 cmd_which(int argc, char **argv)
 {
-	struct pkgdb db;
+	struct pkgdb *db;
 	struct pkg pkg;
-	struct pkg_manifest *m;
 	char pathabs[MAXPATHLEN];
 	char pathabsdir[MAXPATHLEN];
+	int retcode = 1;
 
 	if (argc < 2 || argc > 4) {
 		warnx("No file given");
@@ -29,35 +28,19 @@ cmd_which(int argc, char **argv)
 	argv++;
 
 	if (pkgdb_open(&db) == -1) {
-		pkgdb_warn(&db);
-		return (-1);
-	}
-
-	if (pkgdb_query_init(&db, NULL, MATCH_ALL) == -1) {
-		pkgdb_warn(&db);
+		pkgdb_warn(db);
 		return (-1);
 	}
 
 	realpath(dirname(argv[0]), pathabsdir);
 	snprintf(pathabs, sizeof(pathabs), "%s/%s", pathabsdir, basename(argv[0]));
 
-	while (pkgdb_query(&db, &pkg) == 0) {
-		manifest_from_pkg(&pkg, &m);
-		pkg_manifest_file_init(m);
-		while (pkg_manifest_file_next(m) == 0) {
-			if (strcmp(pathabs, pkg_manifest_file_path(m)) == 0) {
-				printf("%s is owned by %s-%s\n", pathabs, pkg_name(&pkg), pkg_version(&pkg));
-				pkg_manifest_free(m);
-				pkgdb_query_free(&db);
-				pkgdb_close(&db);
-				return (0);
-			}
-		}
-		pkg_manifest_free(m);
+	if (pkgdb_query_which(db, pathabs, &pkg) == 0) {
+		retcode = 0;
+		printf("%s was installed by package %s-%s\n", pathabs, pkg_name(&pkg), 
+			   pkg_version(&pkg));
 	}
 
-	warnx("No packages owns %s", pathabs);
-	pkgdb_query_free(&db);
-	pkgdb_close(&db);
-	return (-1);
+	pkgdb_close(db);
+	return (retcode);
 }

@@ -1,14 +1,13 @@
 .include <bsd.own.mk>
 
 LIB=		pkg
-INCS=		pkg.h pkgdb.h
+INCS=		pkg.h
 WARNS=		6
 SHLIBDIR?=	/usr/lib
 SHLIB_MAJOR=	0
 
 SRCS=		pkg.c \
 		pkgdb.c \
-		pkgdb_cache.c \
 		pkg_compat.c \
 		pkg_create.c \
 		pkg_manifest.c \
@@ -17,12 +16,15 @@ SRCS=		pkg.c \
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/jansson \
-		-I${.CURDIR}/../external/tinycdb/
+		-I${.CURDIR}/../external/sqlite \
+		-I${.CURDIR}/../external/tinycdb
 LDADD+=		-L${.CURDIR}/../external/jansson \
+		-L${.CURDIR}/../external/sqlite \
 		-L${.CURDIR}/../external/tinycdb \
 		-L/usr/local/lib \
 		-lcdb \
 		-ljansson \
+		-lsqlite3 \
 		-lm \
 		-larchive \
 		-lz \

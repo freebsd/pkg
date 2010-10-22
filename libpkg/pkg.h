@@ -3,10 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h> /* for size_t */
-#include <regex.h> /* regex_t */
 
-/* Opaque type */
-struct cdb;
 struct pkg_manifest;
 
 typedef enum _match_t {
@@ -17,33 +14,17 @@ typedef enum _match_t {
 	MATCH_EREGEX
 } match_t;
 
-struct pkgdb {
-	struct cdb *cdb;
-	int lock_fd;
-	size_t i; /* iterator */
-	const char *pattern;
-	match_t match;
-	regex_t re;
-	int errnum;
-	char errstring[BUFSIZ]; /* not enough ? */
-};
-
 struct pkg {
 	const char *name;
 	const char *version;
 	const char *origin;
 	const char *comment;
 	const char *desc;
-	int32_t idx; /* index on pkgdb */
-	size_t idep; /* iterator deps */
-	size_t irdep; /* iterator rdeps */
 	struct pkgdb *pdb;
 	struct pkg_manifest *m;
 };
 
-void pkg_from_manifest(struct pkg *, struct pkg_manifest *);
-void manifest_from_pkg(struct pkg *, struct pkg_manifest **);
-
+void pkg_from_manifest(struct pkg*, struct pkg_manifest *);
 void pkg_reset(struct pkg *);
 const char *pkg_name(struct pkg *);
 const char *pkg_version(struct pkg *);
@@ -53,6 +34,21 @@ const char *pkg_origin(struct pkg *);
 int pkg_dep(struct pkg *, struct pkg *);
 int pkg_rdep(struct pkg *, struct pkg *);
 
+/* pkgdb */
+int pkgdb_open(struct pkgdb **);
+void pkgdb_close(struct pkgdb *);
+
+int pkgdb_query_init(struct pkgdb *, const char *, match_t);
+int pkgdb_query(struct pkgdb *, struct pkg *);
+void pkgdb_query_free(struct pkgdb *);
+int pkgdb_query_which(struct pkgdb *, const char *, struct pkg *);
+
+const char *pkgdb_get_dir(void);
+int pkgdb_lock(struct pkgdb *, int);
+void pkgdb_warn(struct pkgdb *);
+int pkgdb_errnum(struct pkgdb *);
+
+/* create */
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg *);
 

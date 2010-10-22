@@ -13,12 +13,21 @@
 #include <unistd.h>
 #include <regex.h>
 
-#include "pkgdb.h"
-#include "pkgdb_cache.h"
+#include <sqlite3.h>
 
+#include "pkg.h"
+#include "pkgdb.h"
+
+#ifdef DEBUG
+#include <dirent.h>
+#include "pkg_manifest.h"
+#include "util.h"
+#endif
 
 #define PKGDB_LOCK "lock"
 #define PKG_DBDIR "/var/db/pkg"
+
+static void pkgdb_stmt_to_pkg(sqlite3_stmt *, struct pkg *);
 
 const char *
 pkgdb_get_dir(void)
@@ -54,72 +63,201 @@ pkgdb_lock(struct pkgdb *db, int flags)
 	return (0);
 }
 
-int
-pkgdb_match(struct pkgdb *db, const char *pattern)
+static void
+pkgdb_init(sqlite3 *sdb)
 {
-	int matched = 1;
+	char *errmsg;
+	const char sql[] = ""
+	"CREATE TABLE packages ("
+		"origin TEXT PRIMARY KEY,"
+		"name TEXT,"
+		"version TEXT,"
+		"comment TEXT,"
+		"desc TEXT"
+	");"
+	"CREATE TABLE options ("
+		"package_id TEXT,"
+		"name TEXT,"
+		"with INTEGER,"
+		"PRIMARY KEY (package_id,name)"
+	");"
+	"CREATE INDEX options_package ON options (package_id);"
+	"CREATE TABLE deps ("
+		"origin TEXT,"
+		"name TEXT,"
+		"version TEXT,"
+		"package_id TEXT,"
+		"PRIMARY KEY (package_id,origin)"
+	");"
+	"CREATE INDEX deps_origin ON deps (origin);"
+	"CREATE INDEX deps_package ON deps (package_id);"
+	"CREATE TABLE files ("
+		"path TEXT PRIMARY KEY,"
+		"md5 TEXT,"
+		"package_id TEXT"
+	");"
+	"CREATE INDEX files_package ON files (package_id);";
 
-	if (db->match == MATCH_GLOB)
-		matched = fnmatch(db->pattern, pattern, 0);
-	else if (db->match == MATCH_REGEX || db->match == MATCH_EREGEX)
-		matched = regexec(&db->re, pattern, 0, NULL, 0);
+	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK)
+		errx(EXIT_FAILURE, "sqlite3_exec(): %s", errmsg);
 
-	return (matched);
+#ifdef DEBUG
+	struct dirent **dirs;
+	struct pkg_manifest *m;
+	sqlite3_stmt *stmt_pkg;
+	sqlite3_stmt *stmt_dep;
+	sqlite3_stmt *stmt_file;
+	const char *dbdir;
+	char mpath[MAXPATHLEN];
+	int nb_pkg;
+	int i;
+
+	dbdir = pkgdb_get_dir();
+	nb_pkg = scandir(dbdir, &dirs, select_dir, alphasort);
+
+	sqlite3_exec(sdb, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+
+	sqlite3_prepare(sdb, "INSERT INTO packages (origin, name, version, comment, desc)"
+			"VALUES (?1, ?2, ?3, ?4, ?5);",
+			-1, &stmt_pkg, NULL);
+
+	sqlite3_prepare(sdb, "INSERT INTO deps (origin, name, version, package_id)"
+			"VALUES (?1, ?2, ?3, ?4);",
+			-1, &stmt_dep, NULL);
+
+	sqlite3_prepare(sdb, "INSERT INTO files (path, md5, package_id)"
+			"VALUES (?1, ?2, ?3);",
+			-1, &stmt_file, NULL);
+
+	for (i = 0; i < nb_pkg; i++) {
+		snprintf(mpath, sizeof(mpath), "%s/%s/+MANIFEST", dbdir, dirs[i]->d_name);
+		if ((m = pkg_manifest_load_file(mpath)) == NULL)
+			continue;
+
+		sqlite3_bind_text(stmt_pkg, 1, pkg_manifest_value(m, "origin"), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 2, pkg_manifest_value(m, "name"), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 3, pkg_manifest_value(m, "version"), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 4, pkg_manifest_value(m, "comment"), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 5, pkg_manifest_value(m, "desc"), -1, SQLITE_STATIC);
+
+		sqlite3_step(stmt_pkg);
+		sqlite3_reset(stmt_pkg);
+
+		pkg_manifest_dep_init(m);
+		while (pkg_manifest_dep_next(m) == 0) {
+			sqlite3_bind_text(stmt_dep, 1, pkg_manifest_dep_origin(m), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_dep, 2, pkg_manifest_dep_name(m), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_dep, 3, pkg_manifest_dep_version(m), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_dep, 4, pkg_manifest_value(m, "origin"), -1, SQLITE_STATIC);
+
+			sqlite3_step(stmt_dep);
+			sqlite3_reset(stmt_dep);
+		}
+
+		pkg_manifest_file_init(m);
+		while (pkg_manifest_file_next(m) == 0) {
+			sqlite3_bind_text(stmt_file, 1, pkg_manifest_file_path(m), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_file, 2, pkg_manifest_file_md5(m), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_file, 3, pkg_manifest_value(m, "origin"), -1, SQLITE_STATIC);
+
+			sqlite3_step(stmt_file);
+			sqlite3_reset(stmt_file);
+		}
+
+		pkg_manifest_free(m);
+		free(dirs[i]);
+	}
+	free(dirs);
+
+	sqlite3_finalize(stmt_pkg);
+	sqlite3_finalize(stmt_dep);
+	sqlite3_finalize(stmt_file);
+
+	sqlite3_exec(sdb, "COMMIT;", NULL, NULL, NULL);
+#endif
 }
 
 int
-pkgdb_open(struct pkgdb *db)
+pkgdb_open(struct pkgdb **db)
 {
-	return (pkgdb_open2(db, true));
-}
+	int retcode;
+	struct stat st;
+	char fpath[MAXPATHLEN];
 
-int
-pkgdb_open2(struct pkgdb *db, bool rebuild)
-{
-	db->cdb = NULL;
-	db->lock_fd = -1;
-	db->errnum = -1;
-	db->errstring[0] = '\0';
+	snprintf(fpath, sizeof(fpath), "%s/pkg.db", pkgdb_get_dir());
 
-	return (pkgdb_cache_open(db, rebuild));
+	if ((*db = malloc(sizeof(struct pkgdb))) == NULL)
+		err(EXIT_FAILURE, "malloc()");
+
+	if ((retcode = stat(fpath, &st)) == -1 && errno != ENOENT) {
+		pkgdb_set_error(*db, errno, NULL);
+		return (-1);
+	}
+
+	if (sqlite3_open(fpath, &(*db)->sqlite) != SQLITE_OK) {
+		pkgdb_set_error(*db, 0, "sqlite3_open(): %s", sqlite3_errmsg((*db)->sqlite));
+		return (-1);
+	}
+
+	if (retcode == -1)
+		pkgdb_init((*db)->sqlite);
+
+	(*db)->stmt = NULL;
+	(*db)->lock_fd = -1;
+	(*db)->errnum = 0;
+	(*db)->errstring[0] = '\0';
+
+	return (0);
 }
 
 void
 pkgdb_close(struct pkgdb *db)
 {
+	/* TODO: useful? */
 	if (db->lock_fd != -1) {
 		pkgdb_lock(db, LOCK_UN);
 		close(db->lock_fd);
 	}
 
-	/* call backend close */
-	pkgdb_cache_close(db);
+	sqlite3_close(db->sqlite);
+	free(db);
 }
 
 int
 pkgdb_query_init(struct pkgdb *db, const char *pattern, match_t match)
 {
-	db->pattern = pattern;
-	db->match = match;
-	db->i = 0;
+	char sql[BUFSIZ];
+	const char *comp = NULL;
 
 	if (match != MATCH_ALL && pattern == NULL) {
 		pkgdb_set_error(db, 0, "missing pattern");
 		return (-1);
 	}
 
-	/* Regex initialisation */
-	if (match == MATCH_REGEX) {
-		if (regcomp(&db->re, pattern, REG_BASIC | REG_NOSUB) != 0) {
-			pkgdb_set_error(db, 0, "'%s' is not a valid regular expression", pattern);
-			return (-1);
-		}
-	} else if (match == MATCH_EREGEX) {
-		if (regcomp(&db->re, pattern, REG_EXTENDED | REG_NOSUB) != 0) {
-			pkgdb_set_error(db, 0, "'%s' is not a valid extended regular expression", pattern);
-			return (-1);
-		}
+	switch (match) {
+	case MATCH_ALL:
+		comp = "";
+		break;
+	case MATCH_EXACT:
+		comp = " WHERE name = ?1";
+		break;
+	case MATCH_GLOB:
+		comp = " WHERE name GLOB ?1";
+		break;
+	case MATCH_REGEX:
+	case MATCH_EREGEX:
+		comp = " WHERE name REGEX ?1";
+		/* TODO */
+		break;
 	}
+
+	snprintf(sql, sizeof(sql),
+			"SELECT origin, name, version, comment, desc FROM packages%s;", comp);
+
+	sqlite3_prepare(db->sqlite, sql, -1, &db->stmt, NULL);
+
+	if (match != MATCH_ALL)
+		sqlite3_bind_text(db->stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
 	return (0);
 }
@@ -127,18 +265,58 @@ pkgdb_query_init(struct pkgdb *db, const char *pattern, match_t match)
 void
 pkgdb_query_free(struct pkgdb *db)
 {
-	if (db->match == MATCH_REGEX || db->match == MATCH_EREGEX)
-		regfree(&db->re);
-	db->match = -1;
+	sqlite3_finalize(db->stmt);
+	db->stmt = NULL;
 }
 
 int
 pkgdb_query(struct pkgdb *db, struct pkg *pkg)
 {
-	pkg_reset(pkg);
+	int retcode;
 
-	/* call backend query */
-	return (pkgdb_cache_query(db, pkg));
+	pkg_reset(pkg);
+	retcode = sqlite3_step(db->stmt);
+
+	if (retcode == SQLITE_ROW) {
+		pkgdb_stmt_to_pkg(db->stmt, pkg);
+		return (0);
+	} else if (retcode == SQLITE_DONE) {
+		return (1);
+	} else {
+		pkgdb_set_error(db, 0, "sqlite3_step(): %s", sqlite3_errmsg(db->sqlite));
+		return (-1);
+	}
+}
+
+int
+pkgdb_query_which(struct pkgdb *db, const char *path, struct pkg *pkg)
+{
+	sqlite3_stmt *stmt;
+	int retcode;
+
+	sqlite3_prepare(db->sqlite,
+					"SELECT origin, name, version, comment, desc FROM packages, files "
+					"WHERE origin = files.package_id "
+					"AND files.path = ?1;", -1, &stmt, NULL);
+	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+
+	pkg_reset(pkg);
+	retcode = sqlite3_step(stmt);
+	if (retcode == SQLITE_ROW)
+		pkgdb_stmt_to_pkg(stmt, pkg);
+
+	/*sqlite3_finalize(stmt);*/
+	return ((retcode == SQLITE_ROW) ? 0 : 1);
+}
+
+static void
+pkgdb_stmt_to_pkg(sqlite3_stmt *stmt, struct pkg *pkg)
+{
+		pkg->origin = sqlite3_column_text(stmt, 0);
+		pkg->name = sqlite3_column_text(stmt, 1);
+		pkg->version = sqlite3_column_text(stmt, 2);
+		pkg->comment = sqlite3_column_text(stmt, 3);
+		pkg->desc = sqlite3_column_text(stmt, 4);
 }
 
 void
