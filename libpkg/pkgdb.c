@@ -152,6 +152,7 @@ pkgdb_init(sqlite3 *sdb)
 #endif
 }
 
+/* TODO: register hook for REGEX and EREGEX */
 int
 pkgdb_open(struct pkgdb **db)
 {
@@ -213,9 +214,10 @@ pkgdb_query_init(struct pkgdb *db, const char *pattern, match_t match)
 		comp = " WHERE name GLOB ?1";
 		break;
 	case MATCH_REGEX:
-	case MATCH_EREGEX:
 		comp = " WHERE name REGEX ?1";
-		/* TODO */
+		break;
+	case MATCH_EREGEX:
+		comp = " WHERE name EREGEX ?1";
 		break;
 	}
 
