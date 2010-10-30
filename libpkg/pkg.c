@@ -56,9 +56,8 @@ pkg_dep(struct pkg *pkg, struct pkg *dep)
 int
 pkg_new(struct pkg **pkg)
 {
-	if ((*pkg = malloc(sizeof(struct pkg))) == NULL)
-		err(EXIT_FAILURE, "malloc()");
-	bzero(*pkg, sizeof(struct pkg));
+	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
+		err(EXIT_FAILURE, "calloc()");
 	return (0);
 }
 
