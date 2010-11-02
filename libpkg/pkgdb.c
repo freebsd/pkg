@@ -54,14 +54,19 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	regex = sqlite3_value_text(argv[0]);
 	str = sqlite3_value_text(argv[1]);
 
-	if (argc != 2 || str == NULL || regex == NULL)
-		sqlite3_result_error(ctx, "SQL function regex() calld with invalid arguments.\n", -1);
+	if (argc != 2 || str == NULL || regex == NULL) {
+		sqlite3_result_error(ctx, "SQL function regex() called with invalid arguments.\n", -1);
+		return;
+	}
 
 	re = (regex_t *)sqlite3_get_auxdata(ctx, 0);
 	if (re == NULL) {
 		re = malloc(sizeof(regex_t));
-		if (regcomp(re, regex, REG_BASIC | REG_NOSUB) != 0)
+		if (regcomp(re, regex, REG_BASIC | REG_NOSUB) != 0) {
+			sqlite3_result_error(ctx, "Inavlid regex\n", -1);
+			free(re);
 			return;
+		}
 
 		sqlite3_set_auxdata(ctx, 0, re, pkgdb_regex_delete);
 	}
@@ -82,13 +87,18 @@ pkgdb_eregex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	regex = sqlite3_value_text(argv[0]);
 	str = sqlite3_value_text(argv[1]);
 
-	if (argc != 2 || str == NULL || regex == NULL)
-		sqlite3_result_error(ctx, "SQL function eregex() calld with invalid arguments.\n", -1);
+	if (argc != 2 || str == NULL || regex == NULL) {
+		sqlite3_result_error(ctx, "SQL function eregex() called with invalid arguments.\n", -1);
+		return;
+	}
 
 	if ((re = (regex_t *)sqlite3_get_auxdata(ctx, 0)) == NULL) {
 		re = malloc(sizeof(regex_t));
-		if (regcomp(re, regex, REG_EXTENDED | REG_NOSUB) != 0)
+		if (regcomp(re, regex, REG_EXTENDED | REG_NOSUB) != 0) {
+			sqlite3_result_error(ctx, "Inavlid regex\n", -1);
+			free(re);
 			return;
+		}
 
 		sqlite3_set_auxdata(ctx, 0, re, pkgdb_regex_delete);
 	}
