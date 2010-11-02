@@ -47,6 +47,12 @@ pkg_rdep(struct pkg *pkg, struct pkg *rdep)
 }
 
 int
+pkg_files(struct pkg *pkg, const char **path)
+{
+	return (pkgdb_query_files(pkg, path));
+}
+
+int
 pkg_dep(struct pkg *pkg, struct pkg *dep)
 {
 	pkg_reset(dep);
@@ -81,6 +87,10 @@ pkg_reset(struct pkg *pkg)
 	if (pkg->which_stmt != NULL) {
 		sqlite3_finalize(pkg->which_stmt);
 		pkg->which_stmt = NULL;
+	}
+	if (pkg->files_stmt != NULL) {
+		sqlite3_finalize(pkg->files_stmt);
+		pkg->files_stmt = NULL;
 	}
 	if (pkg->m != NULL) {
 		pkg_manifest_free(pkg->m);

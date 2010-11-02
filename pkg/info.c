@@ -10,7 +10,6 @@
  * list of options
  * -s: show package size: TODO
  * -S <type> : show scripts, type can be pre-install etc: TODO
- * -l: list contents of a package
  * -w <filename>: (which) finds which package the filename belongs to:
  */
 
@@ -20,13 +19,14 @@ cmd_info(int argc, char **argv)
 	struct pkgdb *db;
 	struct pkg *pkg;
 	struct pkg *dep;
+	const char *path;
 	unsigned char opt = 0;
 	match_t match = MATCH_EXACT;
 	char ch;
 	int retcode = 0;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "egxXdr")) != -1) {
+	while ((ch = getopt(argc, argv, "egxXdrl")) != -1) {
 		switch (ch) {
 			case 'e':
 				opt |= INFO_EXISTS;
@@ -45,6 +45,9 @@ cmd_info(int argc, char **argv)
 				break;
 			case 'r':
 				opt |= INFO_PRINT_RDEP;
+				break;
+			case 'l':
+				opt |= INFO_LIST_FILES;
 				break;
 		}
 	}
@@ -85,6 +88,11 @@ cmd_info(int argc, char **argv)
 				printf("%s-%s\n", pkg_name(dep), pkg_version(dep));
 			}
 			printf("\n");
+		} else if (opt & INFO_LIST_FILES) {
+			printf("%s-%s owns the following files:\n", pkg_name(pkg), pkg_version(pkg));
+			while (pkg_files(pkg, &path) == 0) {
+				printf("%s\n", path);
+			}
 		} else {
 			printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
 		}

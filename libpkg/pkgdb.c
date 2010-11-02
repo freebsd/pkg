@@ -128,7 +128,7 @@ pkgdb_init(sqlite3 *sdb)
 		"name TEXT,"
 		"version TEXT,"
 		"comment TEXT,"
-		"desc TEXT",
+		"desc TEXT,"
 		"automatic INTEGER"
 	");"
 	"CREATE TABLE options ("
@@ -412,6 +412,29 @@ pkgdb_query_rdep(struct pkg *pkg, struct pkg *rdep) {
 	} else {
 		return (-1);
 	}
+}
+
+int
+pkgdb_query_files(struct pkg *pkg, const char **path) {
+	int retcode;
+
+	if (pkg->files_stmt == NULL) {
+		sqlite3_prepare(pkg->pdb->sqlite,
+						"SELECT path from files where package_id = ?1;", -1, &pkg->files_stmt, NULL);
+		sqlite3_bind_text(pkg->files_stmt, 1, pkg->origin, -1, SQLITE_STATIC);
+	}
+
+	retcode = sqlite3_step(pkg->files_stmt);
+	if (retcode == SQLITE_ROW) {
+		*path = sqlite3_column_text(pkg->files_stmt, 0);
+		return (0);
+	} else if (retcode == SQLITE_DONE) {
+		sqlite3_reset(pkg->files_stmt);
+		return (1);
+	} else {
+		return (-1);
+	}
+
 }
 
 static void
