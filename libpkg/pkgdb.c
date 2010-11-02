@@ -10,6 +10,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <regex.h>
+
 #include <sqlite3.h>
 
 #include "pkg.h"
@@ -26,6 +28,74 @@
 #define PKG_DBDIR "/var/db/pkg"
 
 static void pkgdb_stmt_to_pkg(sqlite3_stmt *, struct pkg *);
+static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_eregex(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_regex_delete(void *);
+
+static void
+pkgdb_regex_delete(void *ctx)
+{
+	regex_t *re = NULL;
+
+	if ((re = (regex_t *)sqlite3_get_auxdata(ctx, 0)) != NULL) {
+		regfree(re);
+		free(re);
+	}
+}
+
+static void
+pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	const char *regex = NULL;
+	const char *str;
+	regex_t *re;
+	int ret;
+
+	regex = sqlite3_value_text(argv[0]);
+	str = sqlite3_value_text(argv[1]);
+
+	if (argc != 2 || str == NULL || regex == NULL)
+		sqlite3_result_error(ctx, "SQL function regex() calld with invalid arguments.\n", -1);
+
+	re = (regex_t *)sqlite3_get_auxdata(ctx, 0);
+	if (re == NULL) {
+		re = malloc(sizeof(regex_t));
+		if (regcomp(re, regex, REG_BASIC | REG_NOSUB) != 0)
+			return;
+
+		sqlite3_set_auxdata(ctx, 0, re, pkgdb_regex_delete);
+	}
+
+	ret = regexec(re, str, 0, NULL, 0);
+	sqlite3_result_int(ctx, (ret != REG_NOMATCH));
+
+}
+
+static void
+pkgdb_eregex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	const char *regex = NULL;
+	const char *str;
+	regex_t *re;
+	int ret;
+
+	regex = sqlite3_value_text(argv[0]);
+	str = sqlite3_value_text(argv[1]);
+
+	if (argc != 2 || str == NULL || regex == NULL)
+		sqlite3_result_error(ctx, "SQL function eregex() calld with invalid arguments.\n", -1);
+
+	if ((re = (regex_t *)sqlite3_get_auxdata(ctx, 0)) == NULL) {
+		re = malloc(sizeof(regex_t));
+		if (regcomp(re, regex, REG_EXTENDED | REG_NOSUB) != 0)
+			return;
+
+		sqlite3_set_auxdata(ctx, 0, re, pkgdb_regex_delete);
+	}
+
+	ret = regexec(re, str, 0, NULL, 0);
+	sqlite3_result_int(ctx, (ret != REG_NOMATCH));
+}
 
 const char *
 pkgdb_get_dir(void)
@@ -214,10 +284,12 @@ pkgdb_query_init(struct pkgdb *db, const char *pattern, match_t match)
 		comp = " WHERE name GLOB ?1";
 		break;
 	case MATCH_REGEX:
-		comp = " WHERE name REGEX ?1";
+		sqlite3_create_function(db->sqlite, "regexp", 2, SQLITE_ANY, 0, pkgdb_regex, 0, 0);
+		comp = " WHERE name REGEXP ?1";
 		break;
 	case MATCH_EREGEX:
-		comp = " WHERE name EREGEX ?1";
+		sqlite3_create_function(db->sqlite, "regexp", 2, SQLITE_ANY, 0, pkgdb_eregex, 0, 0);
+		comp = " WHERE name REGEXP ?1";
 		break;
 	}
 
