@@ -128,7 +128,8 @@ pkgdb_init(sqlite3 *sdb)
 		"name TEXT,"
 		"version TEXT,"
 		"comment TEXT,"
-		"desc TEXT"
+		"desc TEXT",
+		"automatic INTEGER"
 	");"
 	"CREATE TABLE options ("
 		"package_id TEXT,"
