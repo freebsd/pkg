@@ -63,7 +63,7 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	if (re == NULL) {
 		re = malloc(sizeof(regex_t));
 		if (regcomp(re, regex, REG_BASIC | REG_NOSUB) != 0) {
-			sqlite3_result_error(ctx, "Inavlid regex\n", -1);
+			sqlite3_result_error(ctx, "Invalid regex\n", -1);
 			free(re);
 			return;
 		}
@@ -95,7 +95,7 @@ pkgdb_eregex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	if ((re = (regex_t *)sqlite3_get_auxdata(ctx, 0)) == NULL) {
 		re = malloc(sizeof(regex_t));
 		if (regcomp(re, regex, REG_EXTENDED | REG_NOSUB) != 0) {
-			sqlite3_result_error(ctx, "Inavlid regex\n", -1);
+			sqlite3_result_error(ctx, "Invalid extended regex\n", -1);
 			free(re);
 			return;
 		}
@@ -233,7 +233,6 @@ pkgdb_init(sqlite3 *sdb)
 #endif
 }
 
-/* TODO: register hook for REGEX and EREGEX */
 int
 pkgdb_open(struct pkgdb **db)
 {
@@ -258,6 +257,9 @@ pkgdb_open(struct pkgdb **db)
 
 	if (retcode == -1)
 		pkgdb_init((*db)->sqlite);
+
+	sqlite3_create_function((*db)->sqlite, "regexp", 2, SQLITE_ANY, 0, pkgdb_regex, 0, 0);
+	sqlite3_create_function((*db)->sqlite, "eregexp", 2, SQLITE_ANY, 0, pkgdb_eregex, 0, 0);
 
 	(*db)->stmt = NULL;
 	(*db)->errnum = 0;
@@ -295,12 +297,10 @@ pkgdb_query_init(struct pkgdb *db, const char *pattern, match_t match)
 		comp = " WHERE name GLOB ?1";
 		break;
 	case MATCH_REGEX:
-		sqlite3_create_function(db->sqlite, "regexp", 2, SQLITE_ANY, 0, pkgdb_regex, 0, 0);
 		comp = " WHERE name REGEXP ?1";
 		break;
 	case MATCH_EREGEX:
-		sqlite3_create_function(db->sqlite, "regexp", 2, SQLITE_ANY, 0, pkgdb_eregex, 0, 0);
-		comp = " WHERE name REGEXP ?1";
+		comp = " WHERE EREGEXP(?1, name)";
 		break;
 	}
 
