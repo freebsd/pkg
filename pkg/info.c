@@ -1,4 +1,9 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <err.h>
+#include <inttypes.h>
+#include <libutil.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <pkg.h>
@@ -6,11 +11,27 @@
 
 #include "info.h"
 
+
+static int64_t
+pkg_size(struct pkg *pkg)
+{
+	struct stat st;
+	const char *path;
+	int64_t size = 0;
+
+	while(pkg_files(pkg, &path) == 0) {
+		if (stat(path, &st) != 0) {
+			warn("stat(%s)", path);
+			continue;
+		}
+		size += st.st_size;
+	}
+	return (size);
+}
+
 /*
  * list of options
- * -s: show package size: TODO
  * -S <type> : show scripts, type can be pre-install etc: TODO
- * -w <filename>: (which) finds which package the filename belongs to:
  */
 
 int
@@ -21,12 +42,13 @@ cmd_info(int argc, char **argv)
 	struct pkg *dep;
 	const char *path;
 	unsigned char opt = 0;
+	char size[7];
 	match_t match = MATCH_EXACT;
 	char ch;
 	int retcode = 0;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "egxXdrl")) != -1) {
+	while ((ch = getopt(argc, argv, "egxXdrls")) != -1) {
 		switch (ch) {
 			case 'e':
 				opt |= INFO_EXISTS;
@@ -48,6 +70,9 @@ cmd_info(int argc, char **argv)
 				break;
 			case 'l':
 				opt |= INFO_LIST_FILES;
+				break;
+			case 's':
+				opt |= INFO_SIZE;
 				break;
 		}
 	}
@@ -93,6 +118,9 @@ cmd_info(int argc, char **argv)
 			while (pkg_files(pkg, &path) == 0) {
 				printf("%s\n", path);
 			}
+		} else if (opt & INFO_SIZE) {
+			humanize_number(size, sizeof(size), pkg_size(pkg), "B", HN_AUTOSCALE, 0);
+			printf("%s-%s size is %s\n", pkg_name(pkg), pkg_version(pkg), size);
 		} else {
 			printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
 		}
