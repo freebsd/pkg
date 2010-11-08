@@ -1,8 +1,6 @@
 #ifndef _PKGDB_H
 #define _PKGDB_H
 
-#include <sqlite3.h>
-
 struct pkgdb {
 	sqlite3 *sqlite;
 	sqlite3_stmt *stmt;

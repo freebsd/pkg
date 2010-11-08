@@ -1,8 +1,7 @@
-#include <sys/param.h>
-
 #include <err.h>
 #include <stdlib.h>
-#include <strings.h>
+
+#include <sqlite3.h>
 
 #include "pkg.h"
 #include "pkg_private.h"

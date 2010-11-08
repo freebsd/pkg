@@ -1,7 +1,4 @@
-#include <sys/param.h>
 #include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>
 
 #include <assert.h>
 #include <dirent.h>

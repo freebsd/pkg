@@ -1,4 +1,3 @@
-#include <sys/stat.h>
 #include <sys/param.h>
 
 #include <archive.h>
@@ -11,10 +10,7 @@
 #include <fcntl.h>
 
 #include "pkg.h"
-#include "pkg_private.h"
 #include "pkg_manifest.h"
-#include "pkgdb.h"
-#include "util.h"
 
 #define METADATA_GLOB "+{DEINSTALL,INSTALL,MTREE_DIRS}"
 

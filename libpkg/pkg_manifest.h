@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "pkg.h"
+struct pkg;
 
 /* Opaque struct */
 struct pkg_manifest;

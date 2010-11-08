@@ -1,8 +1,6 @@
 #ifndef _PKG_PRIVATE_H
 #define _PKG_PRIVATE_H
 
-#include <sqlite3.h>
-
 #include "pkg_manifest.h"
 
 struct pkg {
@@ -18,7 +16,5 @@ struct pkg {
 	sqlite3_stmt *files_stmt;
 	struct pkg_manifest *m;
 };
-
-void pkg_from_manifest(struct pkg*, struct pkg_manifest *);
 
 #endif

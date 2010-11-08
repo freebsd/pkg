@@ -1,12 +1,10 @@
 #include <sys/param.h>
-#include <sys/stat.h>
 #include <sys/utsname.h>
 
 #include <ctype.h>
 #include <err.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libgen.h>
 
 #include "util.h"
 #include "pkg_compat.h"

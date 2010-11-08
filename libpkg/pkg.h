@@ -3,6 +3,7 @@
 
 struct pkg;
 struct pkgdb;
+struct pkg_manifest;
 
 typedef enum _match_t {
 	MATCH_ALL,
@@ -12,9 +13,11 @@ typedef enum _match_t {
 	MATCH_EREGEX
 } match_t;
 
+/* pkg */
 int pkg_new(struct pkg **);
 void pkg_reset(struct pkg *);
 void pkg_free(struct pkg *);
+void pkg_from_manifest(struct pkg*, struct pkg_manifest *);
 const char *pkg_name(struct pkg *);
 const char *pkg_version(struct pkg *);
 const char *pkg_comment(struct pkg *);
