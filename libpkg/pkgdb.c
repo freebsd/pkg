@@ -149,7 +149,13 @@ pkgdb_init(sqlite3 *sdb)
 		"md5 TEXT,"
 		"package_id TEXT"
 	");"
-	"CREATE INDEX files_package ON files (package_id);";
+	"CREATE INDEX files_package ON files (package_id);"
+	"CREATE TABLE conflicts ("
+		"name TEXT,"
+		"package_id TEXT,"
+		"PRIMARY KEY (package_id,name)"
+	");"
+	"CREATE INDEX conflicts_package ON conflicts (package_id);";
 
 	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK)
 		errx(EXIT_FAILURE, "sqlite3_exec(): %s", errmsg);
@@ -159,8 +165,10 @@ pkgdb_init(sqlite3 *sdb)
 	struct pkg_manifest *m;
 	sqlite3_stmt *stmt_pkg;
 	sqlite3_stmt *stmt_dep;
+	sqlite3_stmt *stmt_conflicts;
 	sqlite3_stmt *stmt_file;
 	const char *dbdir;
+	const char *conflict;
 	char mpath[MAXPATHLEN];
 	int nb_pkg;
 	int i;
@@ -177,6 +185,10 @@ pkgdb_init(sqlite3 *sdb)
 	sqlite3_prepare(sdb, "INSERT INTO deps (origin, name, version, package_id)"
 			"VALUES (?1, ?2, ?3, ?4);",
 			-1, &stmt_dep, NULL);
+
+	sqlite3_prepare(sdb, "INSERT INTO conflicts (name, package_id)"
+			"VALUES (?1, ?2, ?3, ?4);",
+			-1, &stmt_conflicts, NULL);
 
 	sqlite3_prepare(sdb, "INSERT INTO files (path, md5, package_id)"
 			"VALUES (?1, ?2, ?3);",
@@ -207,6 +219,16 @@ pkgdb_init(sqlite3 *sdb)
 			sqlite3_reset(stmt_dep);
 		}
 
+		pkg_manifest_conflict_init(m);
+		while ((conflict = pkg_manifest_conflict_next(m)) != NULL) {
+			sqlite3_bind_text(stmt_conflicts, 1, conflict, -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_conflicts, 2, pkg_manifest_value(m, "origin"), -1,
+							  SQLITE_STATIC);
+
+			sqlite3_step(stmt_conflicts);
+			sqlite3_reset(stmt_conflicts);
+		}
+
 		pkg_manifest_file_init(m);
 		while (pkg_manifest_file_next(m) == 0) {
 			sqlite3_bind_text(stmt_file, 1, pkg_manifest_file_path(m), -1, SQLITE_STATIC);
@@ -224,6 +246,7 @@ pkgdb_init(sqlite3 *sdb)
 
 	sqlite3_finalize(stmt_pkg);
 	sqlite3_finalize(stmt_dep);
+	sqlite3_finalize(stmt_conflicts);
 	sqlite3_finalize(stmt_file);
 
 	sqlite3_exec(sdb, "COMMIT;", NULL, NULL, NULL);
@@ -412,18 +435,44 @@ pkgdb_query_rdep(struct pkg *pkg, struct pkg *rdep) {
 }
 
 int
-pkgdb_query_files(struct pkg *pkg, const char **path) {
+pkgdb_query_conflicts(struct pkg *pkg, struct pkg *conflict) {
+	int retcode;
+
+	if (pkg->conflicts_stmt == NULL) {
+		sqlite3_prepare(pkg->pdb->sqlite,
+						"SELECT name, origin, version FROM conflicts "
+						"WHERE package_id = ?1;", -1, &pkg->files_stmt, NULL);
+		sqlite3_bind_text(pkg->files_stmt, 1, pkg->origin, -1, SQLITE_STATIC);
+	}
+
+	retcode = sqlite3_step(pkg->files_stmt);
+	if (retcode == SQLITE_ROW) {
+		conflict->name = sqlite3_column_text(pkg->files_stmt, 0);
+		conflict->origin = sqlite3_column_text(pkg->files_stmt, 1);
+		conflict->version = sqlite3_column_text(pkg->files_stmt, 2);
+		return (0);
+	} else if (retcode == SQLITE_DONE) {
+		sqlite3_reset(pkg->files_stmt);
+		return (1);
+	} else {
+		return (-1);
+	}
+}
+
+int
+pkgdb_query_files(struct pkg *pkg, const char **path, const char **md5) {
 	int retcode;
 
 	if (pkg->files_stmt == NULL) {
 		sqlite3_prepare(pkg->pdb->sqlite,
-						"SELECT path from files where package_id = ?1;", -1, &pkg->files_stmt, NULL);
+						"SELECT path, md5 FROM files WHERE package_id = ?1;", -1, &pkg->files_stmt, NULL);
 		sqlite3_bind_text(pkg->files_stmt, 1, pkg->origin, -1, SQLITE_STATIC);
 	}
 
 	retcode = sqlite3_step(pkg->files_stmt);
 	if (retcode == SQLITE_ROW) {
 		*path = sqlite3_column_text(pkg->files_stmt, 0);
+		*md5 = sqlite3_column_text(pkg->files_stmt, 1);
 		return (0);
 	} else if (retcode == SQLITE_DONE) {
 		sqlite3_reset(pkg->files_stmt);

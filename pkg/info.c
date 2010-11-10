@@ -17,9 +17,10 @@ pkg_size(struct pkg *pkg)
 {
 	struct stat st;
 	const char *path;
+	const char *md5;
 	int64_t size = 0;
 
-	while(pkg_files(pkg, &path) == 0) {
+	while(pkg_files(pkg, &path, &md5) == 0) {
 		if (stat(path, &st) != 0) {
 			warn("stat(%s)", path);
 			continue;
@@ -41,6 +42,7 @@ cmd_info(int argc, char **argv)
 	struct pkg *pkg;
 	struct pkg *dep;
 	const char *path;
+	const char *md5;
 	unsigned char opt = 0;
 	char size[7];
 	match_t match = MATCH_EXACT;
@@ -115,7 +117,7 @@ cmd_info(int argc, char **argv)
 			printf("\n");
 		} else if (opt & INFO_LIST_FILES) {
 			printf("%s-%s owns the following files:\n", pkg_name(pkg), pkg_version(pkg));
-			while (pkg_files(pkg, &path) == 0) {
+			while (pkg_files(pkg, &path, &md5) == 0) {
 				printf("%s\n", path);
 			}
 		} else if (opt & INFO_SIZE) {

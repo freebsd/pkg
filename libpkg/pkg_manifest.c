@@ -391,9 +391,29 @@ pkg_manifest_load_file(const char *path)
 int
 pkg_manifest_from_pkg(struct pkg *pkg, struct pkg_manifest **m)
 {
-	/* TODO */
-	(void)pkg;
-	(void)m;
+	struct pkg *dep;
+	const char *path;
+	const char *md5;
+
+	*m = pkg_manifest_new();
+
+	pkg_manifest_add_value(*m, "name", pkg_name(pkg));
+	pkg_manifest_add_value(*m, "version", pkg_version(pkg));
+	pkg_manifest_add_value(*m, "origin", pkg_version(pkg));
+	pkg_manifest_add_value(*m, "comment", pkg_comment(pkg));
+	pkg_manifest_add_value(*m, "desc", pkg_desc(pkg));
+
+	pkg_new(&dep);
+	while (pkg_dep(pkg, dep) == 0) {
+		pkg_manifest_add_dep(*m, pkg_name(dep), pkg_origin(dep), pkg_version(dep));
+	}
+	pkg_free(dep);
+
+	while (pkg_files(pkg, &path, &md5) == 0) {
+		pkg_manifest_add_file(*m, path, md5);
+	}
+
+	/* TODO: conflicts, exec, unexec */
 	return (0);
 }
 

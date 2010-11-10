@@ -39,6 +39,13 @@ pkg_origin(struct pkg *pkg)
 }
 
 int
+pkg_dep(struct pkg *pkg, struct pkg *dep)
+{
+	pkg_reset(dep);
+	return (pkgdb_query_dep(pkg, dep));
+}
+
+int
 pkg_rdep(struct pkg *pkg, struct pkg *rdep)
 {
 	pkg_reset(rdep);
@@ -46,16 +53,16 @@ pkg_rdep(struct pkg *pkg, struct pkg *rdep)
 }
 
 int
-pkg_files(struct pkg *pkg, const char **path)
+pkg_conflicts(struct pkg *pkg, struct pkg *conflict)
 {
-	return (pkgdb_query_files(pkg, path));
+	pkg_reset(conflict);
+	return (pkgdb_query_rdep(pkg, conflict));
 }
 
 int
-pkg_dep(struct pkg *pkg, struct pkg *dep)
+pkg_files(struct pkg *pkg, const char **path, const char **md5)
 {
-	pkg_reset(dep);
-	return (pkgdb_query_dep(pkg, dep));
+	return (pkgdb_query_files(pkg, path, md5));
 }
 
 int

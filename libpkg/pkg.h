@@ -25,7 +25,8 @@ const char *pkg_desc(struct pkg *);
 const char *pkg_origin(struct pkg *);
 int pkg_dep(struct pkg *, struct pkg *);
 int pkg_rdep(struct pkg *, struct pkg *);
-int pkg_files(struct pkg *, const char **);
+int pkg_conflicts(struct pkg*, struct pkg*);
+int pkg_files(struct pkg *, const char **, const char **);
 
 /* pkgdb */
 int pkgdb_open(struct pkgdb **);

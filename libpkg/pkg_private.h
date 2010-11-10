@@ -12,6 +12,7 @@ struct pkg {
 	struct pkgdb *pdb;
 	sqlite3_stmt *deps_stmt;
 	sqlite3_stmt *rdeps_stmt;
+	sqlite3_stmt *conflicts_stmt;
 	sqlite3_stmt *which_stmt;
 	sqlite3_stmt *files_stmt;
 	struct pkg_manifest *m;

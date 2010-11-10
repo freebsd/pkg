@@ -14,33 +14,34 @@
 
 #define METADATA_GLOB "+{DEINSTALL,INSTALL,MTREE_DIRS}"
 
-static int pkg_create_from_dir(const char *, const char *, struct archive *, struct pkg *);
+static int pkg_create_from_dir(struct pkg_manifest *, const char *, struct archive *);
 static const char * pkg_create_set_format(struct archive *, pkg_formats);
 
 static int
-pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_archive, struct pkg *pkg)
+pkg_create_from_dir(struct pkg_manifest *m, const char *root, struct archive *pkg_archive)
 {
 	struct archive_entry *entry;
+#if 0
 	char *path;
 	char glob_pattern[MAXPATHLEN + sizeof(METADATA_GLOB)];
 	glob_t g;
+#endif
 	int fd;
-	size_t len, i = 0;
+	size_t len/*, i = 0*/;
 	char buf[BUFSIZ];
 	char *buffer;
 	size_t buffer_len;
 	char fpath[MAXPATHLEN];
 	const char *filepath;
 	struct archive *ar;
-	struct pkg_manifest *m;
 
 	ar = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup(ar);
 
 	entry = archive_entry_new();
 
-	pkg_manifest_from_pkg(pkg, &m);
-
+/* TODO: Add metadatas */
+#if 0	
 	path = strdup(mpath);
 	buffer = strrchr(path, '/');
 	buffer[0] = '\0';
@@ -67,15 +68,11 @@ pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_arc
 		}
 	}
 	globfree(&g);
-
-	/* TODO: remove automatic */
+#endif
 	buffer = pkg_manifest_dump_buffer(m);
 	buffer_len = strlen(buffer);
 
-	archive_entry_copy_sourcepath(entry, mpath);
-	if (archive_read_disk_entry_from_file(ar, entry, -1, 0) != ARCHIVE_OK)
-		warnx("archive_read_disk_entry_form_file(%s): %s", mpath, archive_error_string(ar));
-
+	archive_entry_set_filetype(entry, AE_IFREG);
 	archive_entry_set_pathname(entry, "+MANIFEST");
 	archive_entry_set_size(entry, buffer_len);
 	archive_write_header(pkg_archive, entry);
@@ -106,7 +103,6 @@ pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_arc
 		archive_entry_clear(entry);
 	}
 
-	pkg_manifest_free(m);
 	archive_entry_free(entry);
 	archive_read_finish(ar);
 
@@ -114,16 +110,14 @@ pkg_create_from_dir(const char *mpath, const char *root, struct archive *pkg_arc
 }
 
 int
-pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char *rootdir, struct pkg *lpkg)
+pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char *rootdir, struct pkg *pkg)
 {
 	char namever[FILENAME_MAX];
 	struct archive *pkg_archive;
 	char archive_path[MAXPATHLEN];
-	struct pkg *pkg;
 	const char *ext;
 	struct pkg_manifest *m;
 
-	pkg = lpkg;
 	pkg_archive = archive_write_new();
 
 	if ((ext = pkg_create_set_format(pkg_archive, format)) == NULL) {
@@ -132,9 +126,12 @@ pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char
 		return (-1);
 	}
 
-	if (pkg == NULL) {
+	if (pkg == NULL && mpath != NULL) {
 		m = pkg_manifest_load_file(mpath);
-		pkg_from_manifest(pkg, m);
+	} else if (pkg != NULL) {
+		pkg_manifest_from_pkg(pkg, &m);
+	} else {
+		err(1, "mpath or pkg required");
 	}
 
 	snprintf(namever, sizeof(namever), "%s-%s", pkg_name(pkg), pkg_version(pkg));
@@ -144,8 +141,9 @@ pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char
 	archive_write_set_format_pax_restricted(pkg_archive);
 	archive_write_open_filename(pkg_archive, archive_path);
 
-	pkg_create_from_dir(mpath, rootdir, pkg_archive, pkg);
+	pkg_create_from_dir(m, rootdir, pkg_archive);
 
+	pkg_manifest_free(m);
 	archive_write_close(pkg_archive);
 	archive_write_finish(pkg_archive);
 

@@ -10,7 +10,8 @@ struct pkgdb {
 
 int pkgdb_query_dep(struct pkg *, struct pkg *);
 int pkgdb_query_rdep(struct pkg *, struct pkg *);
-int pkgdb_query_files(struct pkg *, const char **);
+int pkgdb_query_conflicts(struct pkg *, struct pkg *);
+int pkgdb_query_files(struct pkg *, const char **, const char **);
 void pkgdb_set_error(struct pkgdb *, int, const char *, ...);
 
 #endif
