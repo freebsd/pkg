@@ -1,5 +1,4 @@
 SUBDIR=	jansson \
-	sqlite \
-	tinycdb
+	sqlite
 
 .include <bsd.subdir.mk>
