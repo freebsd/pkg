@@ -17,7 +17,7 @@
 
 #ifdef DEBUG
 #include <dirent.h>
-#include "pkg_manifest.h"
+#include "pkg_compat.h"
 #include "util.h"
 #endif
 
@@ -196,8 +196,10 @@ pkgdb_init(sqlite3 *sdb)
 
 	for (i = 0; i < nb_pkg; i++) {
 		snprintf(mpath, sizeof(mpath), "%s/%s/+MANIFEST", dbdir, dirs[i]->d_name);
-		if ((m = pkg_manifest_load_file(mpath)) == NULL)
-			continue;
+		if ((m = pkg_manifest_load_file(mpath)) == NULL &&
+                    (m = pkg_compat_convert_installed(dbdir, dirs[i]->d_name, mpath)) == NULL) {
+               continue;
+          }
 
 		sqlite3_bind_text(stmt_pkg, 1, pkg_manifest_value(m, "origin"), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 2, pkg_manifest_value(m, "name"), -1, SQLITE_STATIC);
