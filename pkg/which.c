@@ -1,7 +1,6 @@
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
-#include <pkg_manifest.h>
 #include <libgen.h>
 #include <stdlib.h>
 #include <string.h>
