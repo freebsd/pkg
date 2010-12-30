@@ -1,35 +1,70 @@
+#include <assert.h>
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
-#include <err.h>
 
 #include "create.h"
 #include "info.h"
 #include "which.h"
 
 static void usage(void);
+static void usage_help(void);
+static int exec_help(int, char **);
 
 static struct commands {
 	const char *name;
-	int (*exec_cmd)(int argc, char **argv);
+	int (*exec)(int argc, char **argv);
+	void (*usage)(void);
 } cmd[] = { 
-	{ "add", NULL },
-	{ "create", cmd_create},
-	{ "delete", NULL},
-	{ "info", cmd_info},
-	{ "install", NULL},
-	{ "update", NULL},
-	{ "which", cmd_which},
-	{ "help", NULL},
-	{ NULL, NULL },
+	{ "add", NULL, NULL},
+	{ "create", exec_create, usage_create},
+	{ "delete", NULL, NULL},
+	{ "info", exec_info, usage_info},
+	{ "install", NULL, NULL},
+	{ "update", NULL, NULL},
+	{ "which", exec_which, usage_which},
+	{ "help", exec_help, usage_help},
 };
+#define cmd_len (int)(sizeof(cmd)/sizeof(cmd[0]))
 
 static void
 usage()
 {
-	fprintf(stderr, "usage: ...");
+	fprintf(stderr, "usage: pkg <command> [<args>]\n\n"
+			"Where <command> can be:\n");
+	for (int i = 0; i < cmd_len; i++) {
+		fprintf(stderr, "  %s\n", cmd[i].name);
+	}
 	exit(EX_USAGE);
+}
+
+static void
+usage_help()
+{
+	fprintf(stderr, "help <command>\n");
+}
+
+static int
+exec_help(int argc, char **argv)
+{
+	if (argc != 2) {
+		usage_help();
+		return(EX_USAGE);
+	}
+
+	for (int i = 0; i < cmd_len; i++) {
+		if (strcmp(cmd[i].name, argv[1]) == 0) {
+			assert(cmd[i].usage != NULL);
+			cmd[i].usage();
+			return (0);
+		}
+	}
+
+	// Command name not found
+	warnx("%s is not a valid command", argv[1]);
+	return (1);
 }
 
 int
@@ -44,7 +79,7 @@ main(int argc, char **argv)
 		usage();
 
 	len = strlen(argv[1]);
-	for (i = 0; cmd[i].name != NULL; i++) {
+	for (i = 0; i < cmd_len; i++) {
 		if (strncmp(argv[1], cmd[i].name, len) == 0) {
 			/* if we have the exact cmd */
 			if (len == strlen(cmd[i].name)) {
@@ -72,15 +107,13 @@ main(int argc, char **argv)
 	if (ambiguous == 0) {
 		argc--;
 		argv++;
-		if (command->exec_cmd != NULL)
-			return (command->exec_cmd(argc, argv));
-		else
-			printf("%s: No yet implemented\n", command->name);
+		assert(command->exec != NULL);
+		return (command->exec(argc, argv));
 	}
 
 	if (ambiguous == 1) {
 		warnx("Ambiguous command: %s, could be:", argv[1]);
-		for (i = 0; cmd[i].name != NULL; i++)
+		for (i = 0; i < cmd_len; i++)
 			if (strncmp(argv[1], cmd[i].name, len) == 0)
 				warnx("\t%s",cmd[i].name);
 	}

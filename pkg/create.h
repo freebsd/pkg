@@ -1,5 +1,7 @@
 #ifndef _CREATE_H
 #define _CREATE_H
 
-int cmd_create(int argc, char **argv);
+int exec_create(int, char **);
+void usage_create(void);
+
 #endif

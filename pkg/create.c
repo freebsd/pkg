@@ -1,11 +1,21 @@
+#include <sys/param.h>
+
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
 #include <string.h>
-#include <sys/param.h>
 #include <unistd.h>
+#include <sysexits.h>
 
 #include "create.h"
+
+void
+usage_create(void)
+{
+	fprintf(stderr, "create [-gx] [-r rootdir] [-m manifest] [-f format] [-o outdir] "
+			"<pkg-name>\n"
+			"create -a [-r rootdir] [-m manifest] [-f format] [-o outdir]\n");
+}
 
 /*
  * options:
@@ -18,7 +28,7 @@
  */
 
 int
-cmd_create(int argc, char **argv)
+exec_create(int argc, char **argv)
 {
 	struct pkgdb *db;
 	struct pkg *pkg;
@@ -64,8 +74,8 @@ cmd_create(int argc, char **argv)
 	argv += optind;
 
 	if (match != MATCH_ALL && argc == 0) {
-		warnx("No package provided");
-		return (-1);
+		usage_create();
+		return (EX_USAGE);
 	}
 
 	if (rootdir == NULL)

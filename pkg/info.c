@@ -30,13 +30,20 @@ pkg_size(struct pkg *pkg)
 	return (size);
 }
 
+void
+usage_info(void)
+{
+	fprintf(stderr, "info [-egxXdrls] <pkg-name>\n"
+			"info\n");
+}
+
 /*
  * list of options
  * -S <type> : show scripts, type can be pre-install etc: TODO
  */
 
 int
-cmd_info(int argc, char **argv)
+exec_info(int argc, char **argv)
 {
 	struct pkgdb *db;
 	struct pkg *pkg;

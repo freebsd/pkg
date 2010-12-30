@@ -7,5 +7,7 @@
 #define INFO_LIST_FILES (1<<3)
 #define INFO_SIZE (1<<4)
 
-int cmd_info(int argc, char **argv);
+int exec_info(int, char **);
+void usage_info(void);
+
 #endif

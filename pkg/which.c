@@ -1,3 +1,5 @@
+#include <sys/param.h>
+
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
@@ -5,12 +7,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/param.h>
+#include <sysexits.h>
 
 #include "which.h"
 
+void
+usage_which(void)
+{
+	fprintf(stderr, "which <file>\n");
+}
+
 int
-cmd_which(int argc, char **argv)
+exec_which(int argc, char **argv)
 {
 	struct pkgdb *db;
 	struct pkg *pkg;
@@ -18,21 +26,18 @@ cmd_which(int argc, char **argv)
 	char pathabsdir[MAXPATHLEN];
 	int retcode = 1;
 
-	if (argc < 2 || argc > 4) {
-		warnx("No file given");
-		return (-1);
+	if (argc != 2) {
+		usage_which();
+		return (EX_USAGE);
 	}
-
-	argc--;
-	argv++;
 
 	if (pkgdb_open(&db) == -1) {
 		pkgdb_warn(db);
 		return (-1);
 	}
 
-	realpath(dirname(argv[0]), pathabsdir);
-	snprintf(pathabs, sizeof(pathabs), "%s/%s", pathabsdir, basename(argv[0]));
+	realpath(dirname(argv[1]), pathabsdir);
+	snprintf(pathabs, sizeof(pathabs), "%s/%s", pathabsdir, basename(argv[1]));
 
 	pkg_new(&pkg);
 	if (pkgdb_query_which(db, pathabs, pkg) == 0) {
