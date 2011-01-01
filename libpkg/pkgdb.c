@@ -3,11 +3,10 @@
 
 #include <err.h>
 #include <errno.h>
+#include <regex.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#include <regex.h>
 
 #include <sqlite3.h>
 
@@ -21,12 +20,12 @@
 #include "util.h"
 #endif
 
-#define PKGDB_LOCK "lock"
 #define PKG_DBDIR "/var/db/pkg"
 
 static void pkgdb_stmt_to_pkg(sqlite3_stmt *, struct pkg *);
-static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_eregex(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
+static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 
 static void
@@ -41,7 +40,7 @@ pkgdb_regex_delete(void *ctx)
 }
 
 static void
-pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
 {
 	const char *regex = NULL;
 	const char *str;
@@ -59,7 +58,7 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 	re = (regex_t *)sqlite3_get_auxdata(ctx, 0);
 	if (re == NULL) {
 		re = malloc(sizeof(regex_t));
-		if (regcomp(re, regex, REG_BASIC | REG_NOSUB) != 0) {
+		if (regcomp(re, regex, reg_type | REG_NOSUB) != 0) {
 			sqlite3_result_error(ctx, "Invalid regex\n", -1);
 			free(re);
 			return;
@@ -70,38 +69,18 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 
 	ret = regexec(re, str, 0, NULL, 0);
 	sqlite3_result_int(ctx, (ret != REG_NOMATCH));
-
 }
 
 static void
-pkgdb_eregex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+pkgdb_regex_basic(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
-	const char *regex = NULL;
-	const char *str;
-	regex_t *re;
-	int ret;
+	pkgdb_regex(ctx, argc, argv, REG_BASIC);
+}
 
-	regex = sqlite3_value_text(argv[0]);
-	str = sqlite3_value_text(argv[1]);
-
-	if (argc != 2 || str == NULL || regex == NULL) {
-		sqlite3_result_error(ctx, "SQL function eregex() called with invalid arguments.\n", -1);
-		return;
-	}
-
-	if ((re = (regex_t *)sqlite3_get_auxdata(ctx, 0)) == NULL) {
-		re = malloc(sizeof(regex_t));
-		if (regcomp(re, regex, REG_EXTENDED | REG_NOSUB) != 0) {
-			sqlite3_result_error(ctx, "Invalid extended regex\n", -1);
-			free(re);
-			return;
-		}
-
-		sqlite3_set_auxdata(ctx, 0, re, pkgdb_regex_delete);
-	}
-
-	ret = regexec(re, str, 0, NULL, 0);
-	sqlite3_result_int(ctx, (ret != REG_NOMATCH));
+static void
+pkgdb_regex_extended(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_regex(ctx, argc, argv, REG_EXTENDED);
 }
 
 const char *
@@ -280,8 +259,10 @@ pkgdb_open(struct pkgdb **db)
 	if (retcode == -1)
 		pkgdb_init((*db)->sqlite);
 
-	sqlite3_create_function((*db)->sqlite, "regexp", 2, SQLITE_ANY, 0, pkgdb_regex, 0, 0);
-	sqlite3_create_function((*db)->sqlite, "eregexp", 2, SQLITE_ANY, 0, pkgdb_eregex, 0, 0);
+	sqlite3_create_function((*db)->sqlite, "regexp", 2, SQLITE_ANY, NULL,
+							pkgdb_regex_basic, NULL, NULL);
+	sqlite3_create_function((*db)->sqlite, "eregexp", 2, SQLITE_ANY, NULL,
+							pkgdb_regex_extended, NULL, NULL);
 
 	(*db)->stmt = NULL;
 	(*db)->errnum = 0;
@@ -449,9 +430,9 @@ pkgdb_query_conflicts(struct pkg *pkg, struct pkg *conflict) {
 
 	retcode = sqlite3_step(pkg->files_stmt);
 	if (retcode == SQLITE_ROW) {
-		conflict->name = sqlite3_column_text(pkg->files_stmt, 0);
-		conflict->origin = sqlite3_column_text(pkg->files_stmt, 1);
-		conflict->version = sqlite3_column_text(pkg->files_stmt, 2);
+		conflict->name = strdup(sqlite3_column_text(pkg->files_stmt, 0));
+		conflict->origin = strdup(sqlite3_column_text(pkg->files_stmt, 1));
+		conflict->version = strdup(sqlite3_column_text(pkg->files_stmt, 2));
 		return (0);
 	} else if (retcode == SQLITE_DONE) {
 		sqlite3_reset(pkg->files_stmt);
@@ -482,17 +463,16 @@ pkgdb_query_files(struct pkg *pkg, const char **path, const char **md5) {
 	} else {
 		return (-1);
 	}
-
 }
 
 static void
 pkgdb_stmt_to_pkg(sqlite3_stmt *stmt, struct pkg *pkg)
 {
-		pkg->origin = sqlite3_column_text(stmt, 0);
-		pkg->name = sqlite3_column_text(stmt, 1);
-		pkg->version = sqlite3_column_text(stmt, 2);
-		pkg->comment = sqlite3_column_text(stmt, 3);
-		pkg->desc = sqlite3_column_text(stmt, 4);
+		pkg->origin = strdup(sqlite3_column_text(stmt, 0));
+		pkg->name = strdup(sqlite3_column_text(stmt, 1));
+		pkg->version = strdup(sqlite3_column_text(stmt, 2));
+		pkg->comment = strdup(sqlite3_column_text(stmt, 3));
+		pkg->desc = strdup(sqlite3_column_text(stmt, 4));
 }
 
 void

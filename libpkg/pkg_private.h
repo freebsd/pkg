@@ -4,11 +4,11 @@
 #include "pkg_manifest.h"
 
 struct pkg {
-	const char *name;
-	const char *version;
-	const char *origin;
-	const char *comment;
-	const char *desc;
+	char *name;
+	char *version;
+	char *origin;
+	char *comment;
+	char *desc;
 	struct pkgdb *pdb;
 	sqlite3_stmt *deps_stmt;
 	sqlite3_stmt *rdeps_stmt;

@@ -76,10 +76,15 @@ pkg_new(struct pkg **pkg)
 void
 pkg_reset(struct pkg *pkg)
 {
+	free(pkg->name);
 	pkg->name = NULL;
+	free(pkg->version);
 	pkg->version = NULL;
+	free(pkg->origin);
 	pkg->origin = NULL;
+	free(pkg->comment);
 	pkg->comment = NULL;
+	free(pkg->desc);
 	pkg->desc = NULL;
 	pkg->pdb = NULL;
 	if (pkg->deps_stmt != NULL) {
