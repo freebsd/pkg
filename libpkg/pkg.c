@@ -5,8 +5,10 @@
 
 #include "pkg.h"
 #include "pkg_private.h"
-#include "pkg_manifest.h"
 #include "pkgdb.h"
+#include "util.h"
+
+static void pkg_free_void(void*);
 
 const char *
 pkg_name(struct pkg *pkg)
@@ -38,31 +40,28 @@ pkg_origin(struct pkg *pkg)
 	return (pkg->origin);
 }
 
-int
-pkg_dep(struct pkg *pkg, struct pkg *dep)
+struct pkg **
+pkg_deps(struct pkg *pkg)
 {
-	pkg_reset(dep);
-	return (pkgdb_query_dep(pkg, dep));
+	return ((struct pkg **)pkg->deps.data);
 }
 
-int
-pkg_rdep(struct pkg *pkg, struct pkg *rdep)
+struct pkg **
+pkg_rdeps(struct pkg *pkg)
 {
-	pkg_reset(rdep);
-	return (pkgdb_query_rdep(pkg, rdep));
+	return ((struct pkg **)pkg->rdeps.data);
 }
 
-int
-pkg_conflicts(struct pkg *pkg, struct pkg *conflict)
+struct pkg_file **
+pkg_files(struct pkg *pkg)
 {
-	pkg_reset(conflict);
-	return (pkgdb_query_rdep(pkg, conflict));
+	return ((struct pkg_file **)pkg->files.data);
 }
 
-int
-pkg_files(struct pkg *pkg, const char **path, const char **md5)
+struct pkg_conflict **
+pkg_conflicts(struct pkg *pkg)
 {
-	return (pkgdb_query_files(pkg, path, md5));
+	return ((struct pkg_conflict **)pkg->conflicts.data);
 }
 
 int
@@ -76,48 +75,42 @@ pkg_new(struct pkg **pkg)
 void
 pkg_reset(struct pkg *pkg)
 {
-	free(pkg->name);
-	pkg->name = NULL;
-	free(pkg->version);
-	pkg->version = NULL;
-	free(pkg->origin);
-	pkg->origin = NULL;
-	free(pkg->comment);
-	pkg->comment = NULL;
+	if (pkg == NULL)
+		return;
+
+	pkg->name[0] = '\0';
+	pkg->version[0] = '\0';
+	pkg->origin[0] = '\0';
+	pkg->comment[0] = '\0';
+
 	free(pkg->desc);
 	pkg->desc = NULL;
-	pkg->pdb = NULL;
-	if (pkg->deps_stmt != NULL) {
-		sqlite3_finalize(pkg->deps_stmt);
-		pkg->deps_stmt = NULL;
-	}
-	if (pkg->rdeps_stmt != NULL) {
-		sqlite3_finalize(pkg->rdeps_stmt);
-		pkg->rdeps_stmt = NULL;
-	}
-	if (pkg->which_stmt != NULL) {
-		sqlite3_finalize(pkg->which_stmt);
-		pkg->which_stmt = NULL;
-	}
-	if (pkg->files_stmt != NULL) {
-		sqlite3_finalize(pkg->files_stmt);
-		pkg->files_stmt = NULL;
-	}
-	if (pkg->m != NULL) {
-		pkg_manifest_free(pkg->m);
-		pkg->m = NULL;
-	}
+
+	array_reset(&pkg->deps, &pkg_free_void);
+	array_reset(&pkg->rdeps, &pkg_free_void);
+	array_reset(&pkg->conflicts, &free);
+	array_reset(&pkg->files, &free);
 }
 
 void
 pkg_free(struct pkg *pkg)
 {
-	pkg_reset(pkg);
+	if (pkg == NULL)
+		return;
+
+	free(pkg->desc);
+
+	array_free(&pkg->deps, &pkg_free_void);
+	array_free(&pkg->rdeps, &pkg_free_void);
+	array_free(&pkg->conflicts, &free);
+	array_free(&pkg->files, &free);
+
 	free(pkg);
 }
 
-void
-pkg_from_manifest(struct pkg *pkg, struct pkg_manifest *m)
+static void
+pkg_free_void(void *p)
 {
-	pkg->m = m;
+	if (p != NULL)
+		pkg_free((struct pkg*) p);
 }

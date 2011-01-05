@@ -31,6 +31,7 @@ int
 exec_create(int argc, char **argv)
 {
 	struct pkgdb *db;
+	struct pkgdb_it *it;
 	struct pkg *pkg;
 
 	match_t match = MATCH_EXACT;
@@ -108,18 +109,20 @@ exec_create(int argc, char **argv)
 			return (-1);
 		}
 
-		if (pkgdb_query_init(db, argv[0], match) == -1) {
+		if ((it = pkgdb_query(db, argv[0], match)) == NULL) {
 			pkgdb_warn(db);
 			return (-1);
 		}
 
 		pkg_new(&pkg);
-		while (pkgdb_query(db, pkg) == 0) {
-			snprintf(mpath, sizeof(mpath), "%s/%s-%s/+MANIFEST", pkgdb_get_dir(), pkg_name(pkg), pkg_version(pkg));
+		while (pkgdb_it_next_pkg(it, &pkg, PKG_ALL) == 0) {
+			snprintf(mpath, sizeof(mpath), "%s/%s-%s/+MANIFEST", pkgdb_get_dir(),
+					 pkg_name(pkg), pkg_version(pkg));
+			printf("Creating package for %s-%s\n", pkg_name(pkg), pkg_version(pkg));
 			pkg_create(mpath, fmt, outdir, rootdir, pkg);
 		}
 		pkg_free(pkg);
-		pkgdb_query_free(db);
+		pkgdb_it_free(it);
 		pkgdb_close(db);
 	} else {
 		snprintf(mpath, sizeof(mpath), "%s/+MANIFEST", manifestdir);

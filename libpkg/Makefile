@@ -9,7 +9,9 @@ SHLIB_MAJOR=	0
 SRCS=		pkg.c \
 		pkgdb.c \
 		pkg_compat.c \
+		pkg_conflict.c \
 		pkg_create.c \
+		pkg_file.c \
 		pkg_manifest.c \
 		util.c
 
@@ -19,7 +21,6 @@ CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite
 LDADD+=		-L${.CURDIR}/../external/jansson \
 		-L${.CURDIR}/../external/sqlite \
-		-L${.CURDIR}/../external/tinycdb \
 		-L/usr/local/lib \
 		-ljansson \
 		-lsqlite3 \

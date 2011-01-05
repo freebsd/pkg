@@ -1,6 +1,10 @@
 #ifndef _PKGDB_H
 #define _PKGDB_H
 
+#include "pkg.h"
+
+#include "sqlite3.h"
+
 struct pkgdb {
 	sqlite3 *sqlite;
 	sqlite3_stmt *stmt;
@@ -8,10 +12,17 @@ struct pkgdb {
 	char errstring[1024];
 };
 
-int pkgdb_query_dep(struct pkg *, struct pkg *);
-int pkgdb_query_rdep(struct pkg *, struct pkg *);
-int pkgdb_query_conflicts(struct pkg *, struct pkg *);
-int pkgdb_query_files(struct pkg *, const char **, const char **);
+typedef enum _pkgdb_it_t {
+	IT_PKG,
+	IT_CONFLICT,
+	IT_FILE
+} pkgdb_it_t;
+struct pkgdb_it {
+	struct pkgdb *db;
+	sqlite3_stmt *stmt;
+	pkgdb_it_t type;
+};
+
 void pkgdb_set_error(struct pkgdb *, int, const char *, ...);
 
 #endif

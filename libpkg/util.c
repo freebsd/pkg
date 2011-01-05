@@ -10,6 +10,61 @@
 
 #include "util.h"
 
+void
+array_init(struct array *a, size_t c)
+{
+	assert(c > 0);
+
+	/* if the array is already initialized, do nothing */
+	if (a->cap > 0 && a->data != NULL)
+		return;
+
+	a->cap = c;
+	a->len = 0;
+	a->data = malloc(sizeof(void*) * a->cap);
+}
+
+void
+array_append(struct array *a, void *d)
+{
+	assert(a->cap > 0);
+	assert(a->data != NULL);
+
+	if (a->cap <= a->len) {
+		a->cap *= 2;
+		a->data = realloc(a->data, sizeof(void*) * a->cap);
+	}
+	a->data[a->len++] = d;
+}
+
+void
+array_reset(struct array *a, void (*free_elm)(void*))
+{
+	if (a->data == NULL)
+		return;
+
+	if (free_elm != NULL)
+		for (size_t i = 0; i < a->len; i++)
+			free_elm(a->data[i]);
+	a->len = 0;
+	a->data[0] = NULL;
+}
+
+void
+array_free(struct array *a, void (*free_elm)(void*))
+{
+	if (a->data == NULL)
+		return;
+
+	if (free_elm != NULL)
+		for (size_t i = 0; i < a->len; i++)
+			free_elm(a->data[i]);
+	free(a->data);
+	a->data = NULL;
+	a->len = 0;
+	a->cap = 0;
+}
+
 off_t
 file_to_buffer(const char *path, char **buffer)
 {

@@ -136,7 +136,6 @@ pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char
 
 	snprintf(namever, sizeof(namever), "%s-%s", pkg_manifest_value(m, "name"),
 			 pkg_manifest_value(m, "version"));
-	printf("Creating package %s/%s.%s\n", outdir, namever, ext);
 	snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, namever, ext);
 
 	archive_write_set_format_pax_restricted(pkg_archive);

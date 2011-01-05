@@ -2,7 +2,11 @@
 #define _PKG_H
 
 struct pkg;
+struct pkg_file;
+struct pkg_conflict;
+
 struct pkgdb;
+struct pkgdb_it;
 
 typedef enum _match_t {
 	MATCH_ALL,
@@ -21,19 +25,48 @@ const char *pkg_version(struct pkg *);
 const char *pkg_comment(struct pkg *);
 const char *pkg_desc(struct pkg *);
 const char *pkg_origin(struct pkg *);
-int pkg_dep(struct pkg *, struct pkg *);
-int pkg_rdep(struct pkg *, struct pkg *);
-int pkg_conflicts(struct pkg*, struct pkg*);
-int pkg_files(struct pkg *, const char **, const char **);
+struct pkg ** pkg_deps(struct pkg *);
+struct pkg ** pkg_rdeps(struct pkg *);
+struct pkg_file ** pkg_files(struct pkg *);
+struct pkg_conflict ** pkg_conflicts(struct pkg *);
+
+/* pkg_file */
+int pkg_file_new(struct pkg_file **);
+void pkg_file_reset(struct pkg_file *);
+void pkg_file_free(struct pkg_file *);
+const char * pkg_file_path(struct pkg_file *);
+const char * pkg_file_md5(struct pkg_file *);
+
+/* pkg_conflict */
+int pkg_conflict_new(struct pkg_conflict **);
+void pkg_conflict_reset(struct pkg_conflict *);
+void pkg_conflict_free(struct pkg_conflict *);
+const char * pkg_conflict_origin(struct pkg_conflict *);
+const char * pkg_conflict_version(struct pkg_conflict *);
+const char * pkg_conflict_name(struct pkg_conflict *);
 
 /* pkgdb */
 int pkgdb_open(struct pkgdb **);
 void pkgdb_close(struct pkgdb *);
 
-int pkgdb_query_init(struct pkgdb *, const char *, match_t);
-int pkgdb_query(struct pkgdb *, struct pkg *);
-void pkgdb_query_free(struct pkgdb *);
-int pkgdb_query_which(struct pkgdb *, const char *, struct pkg *);
+struct pkgdb_it * pkgdb_query(struct pkgdb *, const char *, match_t);
+struct pkgdb_it * pkgdb_query_which(struct pkgdb *, const char *);
+struct pkgdb_it * pkgdb_query_dep(struct pkgdb *, const char *);
+struct pkgdb_it * pkgdb_query_rdep(struct pkgdb *, const char *);
+struct pkgdb_it * pkgdb_query_conflicts(struct pkgdb *, const char *);
+struct pkgdb_it * pkgdb_query_files(struct pkgdb *, const char *);
+
+#define PKG_BASIC 0
+#define PKG_DEPS (1<<0)
+#define PKG_RDEPS (1<<1)
+#define PKG_CONFLICTS (1<<2)
+#define PKG_FILES (1<<3)
+#define PKG_ALL PKG_BASIC|PKG_DEPS|PKG_RDEPS|PKG_CONFLICTS|PKG_FILES
+
+int pkgdb_it_next_pkg(struct pkgdb_it *, struct pkg **, int);
+int pkgdb_it_next_conflict(struct pkgdb_it *, struct pkg_conflict **);
+int pkgdb_it_next_file(struct pkgdb_it *, struct pkg_file **);
+void pkgdb_it_free(struct pkgdb_it *);
 
 const char *pkgdb_get_dir(void);
 void pkgdb_warn(struct pkgdb *);

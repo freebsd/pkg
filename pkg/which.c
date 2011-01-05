@@ -21,6 +21,7 @@ int
 exec_which(int argc, char **argv)
 {
 	struct pkgdb *db;
+	struct pkgdb_it *it;
 	struct pkg *pkg;
 	char pathabs[MAXPATHLEN];
 	char pathabsdir[MAXPATHLEN];
@@ -39,8 +40,13 @@ exec_which(int argc, char **argv)
 	realpath(dirname(argv[1]), pathabsdir);
 	snprintf(pathabs, sizeof(pathabs), "%s/%s", pathabsdir, basename(argv[1]));
 
+	if ((it = pkgdb_query_which(db, pathabs)) == NULL) {
+		pkgdb_warn(db);
+		return (-1);
+	}
+
 	pkg_new(&pkg);
-	if (pkgdb_query_which(db, pathabs, pkg) == 0) {
+	if (pkgdb_it_next_pkg(it, &pkg, PKG_BASIC) == 0) {
 		retcode = 0;
 		printf("%s was installed by package %s-%s\n", pathabs, pkg_name(pkg),
 			   pkg_version(pkg));

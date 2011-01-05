@@ -391,10 +391,9 @@ pkg_manifest_load_file(const char *path)
 int
 pkg_manifest_from_pkg(struct pkg *pkg, struct pkg_manifest **m)
 {
-	struct pkg *dep;
-	const char *path;
-	const char *md5;
-
+	size_t i;
+	struct pkg **deps;
+	struct pkg_file **files;
 	*m = pkg_manifest_new();
 
 	pkg_manifest_add_value(*m, "name", pkg_name(pkg));
@@ -403,14 +402,23 @@ pkg_manifest_from_pkg(struct pkg *pkg, struct pkg_manifest **m)
 	pkg_manifest_add_value(*m, "comment", pkg_comment(pkg));
 	pkg_manifest_add_value(*m, "desc", pkg_desc(pkg));
 
-	pkg_new(&dep);
-	while (pkg_dep(pkg, dep) == 0) {
-		pkg_manifest_add_dep(*m, pkg_name(dep), pkg_origin(dep), pkg_version(dep));
+	deps = pkg_deps(pkg);
+	if (deps == NULL) {
+		warnx("Mising deps informations in pkg %s", pkg_origin(pkg));
+		return (-1);
 	}
-	pkg_free(dep);
+	for (i = 0; deps[i] != NULL; i++) {
+		pkg_manifest_add_dep(*m, pkg_name(deps[i]), pkg_origin(deps[i]),
+							 pkg_version(deps[i]));
+	}
 
-	while (pkg_files(pkg, &path, &md5) == 0) {
-		pkg_manifest_add_file(*m, path, md5);
+	files = pkg_files(pkg);
+	if (files == NULL) {
+		warnx("Missing files informations in pkg %s", pkg_origin(pkg));
+		return (-1);
+	}
+	for (i = 0; files[i] != NULL; i++) {
+		pkg_manifest_add_file(*m, pkg_file_path(files[i]), pkg_file_md5(files[i]));
 	}
 
 	/* TODO: conflicts, exec, unexec */
