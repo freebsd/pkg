@@ -263,7 +263,6 @@ pkgdb_open(struct pkgdb **db)
 	sqlite3_create_function((*db)->sqlite, "eregexp", 2, SQLITE_ANY, NULL,
 							pkgdb_regex_extended, NULL, NULL);
 
-	(*db)->stmt = NULL;
 	(*db)->errnum = 0;
 	(*db)->errstring[0] = '\0';
 
