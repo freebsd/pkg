@@ -7,7 +7,6 @@
 
 struct pkgdb {
 	sqlite3 *sqlite;
-	sqlite3_stmt *stmt;
 	int errnum;
 	char errstring[1024];
 };
