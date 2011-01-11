@@ -11,33 +11,33 @@
 static void pkg_free_void(void*);
 
 const char *
+pkg_origin(struct pkg *pkg)
+{
+	return (sbuf_data(pkg->origin));
+}
+
+const char *
 pkg_name(struct pkg *pkg)
 {
-	return (pkg->name);
+	return (sbuf_data(pkg->name));
 }
 
 const char *
 pkg_version(struct pkg *pkg)
 {
-	return (pkg->version);
+	return (sbuf_data(pkg->version));
 }
 
 const char *
 pkg_comment(struct pkg *pkg)
 {
-	return (pkg->comment);
+	return (sbuf_data(pkg->comment));
 }
 
 const char *
 pkg_desc(struct pkg *pkg)
 {
-	return (pkg->comment);
-}
-
-const char *
-pkg_origin(struct pkg *pkg)
-{
-	return (pkg->origin);
+	return (sbuf_data(pkg->comment));
 }
 
 struct pkg **
@@ -69,6 +69,13 @@ pkg_new(struct pkg **pkg)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		err(EXIT_FAILURE, "calloc()");
+
+	(*pkg)->name = sbuf_new_auto();
+	(*pkg)->version = sbuf_new_auto();
+	(*pkg)->origin = sbuf_new_auto();
+	(*pkg)->comment = sbuf_new_auto();
+	(*pkg)->desc = sbuf_new_auto();
+
 	return (0);
 }
 
@@ -78,13 +85,11 @@ pkg_reset(struct pkg *pkg)
 	if (pkg == NULL)
 		return;
 
-	pkg->name[0] = '\0';
-	pkg->version[0] = '\0';
-	pkg->origin[0] = '\0';
-	pkg->comment[0] = '\0';
-
-	free(pkg->desc);
-	pkg->desc = NULL;
+	sbuf_clear(pkg->name);
+	sbuf_clear(pkg->version);
+	sbuf_clear(pkg->origin);
+	sbuf_clear(pkg->comment);
+	sbuf_clear(pkg->desc);
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);
@@ -98,7 +103,11 @@ pkg_free(struct pkg *pkg)
 	if (pkg == NULL)
 		return;
 
-	free(pkg->desc);
+	sbuf_delete(pkg->name);
+	sbuf_delete(pkg->version);
+	sbuf_delete(pkg->origin);
+	sbuf_delete(pkg->comment);
+	sbuf_delete(pkg->desc);
 
 	array_free(&pkg->deps, &pkg_free_void);
 	array_free(&pkg->rdeps, &pkg_free_void);

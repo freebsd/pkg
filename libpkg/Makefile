@@ -28,7 +28,8 @@ LDADD+=		-L${.CURDIR}/../external/jansson \
 		-larchive \
 		-lz \
 		-lbz2 \
-		-llzma
+		-llzma \
+		-lsbuf
 
 DEBUG_FLAGS+=  -g
 .if defined(PROFILE_BUILD)

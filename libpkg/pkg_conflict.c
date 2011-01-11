@@ -6,19 +6,19 @@
 const char *
 pkg_conflict_origin(struct pkg_conflict *c)
 {
-	return (c->origin);
-}
-
-const char *
-pkg_conflict_version(struct pkg_conflict *c)
-{
-	return (c->version);
+	return (sbuf_data(c->origin));
 }
 
 const char *
 pkg_conflict_name(struct pkg_conflict *c)
 {
-	return (c->name);
+	return (sbuf_data(c->name));
+}
+
+const char *
+pkg_conflict_version(struct pkg_conflict *c)
+{
+	return (sbuf_data(c->version));
 }
 
 int
@@ -26,19 +26,28 @@ pkg_conflict_new(struct pkg_conflict **c)
 {
 	if ((*c = calloc(1, sizeof(struct pkg_conflict))))
 		return (-1);
+
+	(*c)->origin = sbuf_new_auto();
+	(*c)->name = sbuf_new_auto();
+	(*c)->version = sbuf_new_auto();
+
 	return (0);
 }
 
 void
 pkg_conflict_reset(struct pkg_conflict *c)
 {
-	c->origin[0] = '\0';
-	c->version[0] = '\0';
-	c->name[0] = '\0';
+	sbuf_clear(c->origin);
+	sbuf_clear(c->name);
+	sbuf_clear(c->version);
 }
 
 void
 pkg_conflict_free(struct pkg_conflict *c)
 {
+	sbuf_delete(c->origin);
+	sbuf_delete(c->name);
+	sbuf_delete(c->version);
+
 	free(c);
 }

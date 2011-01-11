@@ -1,14 +1,17 @@
 #ifndef _PKG_PRIVATE_H
 #define _PKG_PRIVATE_H
 
+#include <sys/types.h>
+#include <sys/sbuf.h>
+
 #include "util.h"
 
 struct pkg {
-	char name[100];
-	char version[10];
-	char origin[100];
-	char comment[150];
-	char *desc;
+	struct sbuf *origin;
+	struct sbuf *name;
+	struct sbuf *version;
+	struct sbuf *comment;
+	struct sbuf *desc;
 	struct array deps;
 	struct array rdeps;
 	struct array conflicts;
@@ -16,9 +19,9 @@ struct pkg {
 };
 
 struct pkg_conflict {
-	char name[100];
-	char version[10];
-	char origin[100];
+	struct sbuf *origin;
+	struct sbuf *name;
+	struct sbuf *version;
 };
 
 struct pkg_file {

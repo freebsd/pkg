@@ -308,16 +308,25 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg_reset(*pkg_p);
 		pkg = *pkg_p;
 
-		strlcpy(pkg->origin, sqlite3_column_text(it->stmt, 0), sizeof(pkg->origin));
-		strlcpy(pkg->name, sqlite3_column_text(it->stmt, 1), sizeof(pkg->name));
-		strlcpy(pkg->version, sqlite3_column_text(it->stmt, 2), sizeof(pkg->version));
-		strlcpy(pkg->comment, sqlite3_column_text(it->stmt, 3), sizeof(pkg->comment));
-		pkg->desc = strdup(sqlite3_column_text(it->stmt, 4));
+		sbuf_cat(pkg->origin, sqlite3_column_text(it->stmt, 0));
+		sbuf_finish(pkg->origin);
+
+		sbuf_cat(pkg->name, sqlite3_column_text(it->stmt, 1));
+		sbuf_finish(pkg->name);
+
+		sbuf_cat(pkg->version, sqlite3_column_text(it->stmt, 2));
+		sbuf_finish(pkg->version);
+
+		sbuf_cat(pkg->comment, sqlite3_column_text(it->stmt, 3));
+		sbuf_finish(pkg->comment);
+
+		sbuf_cat(pkg->desc, sqlite3_column_text(it->stmt, 4));
+		sbuf_finish(pkg->desc);
 
 		if (flags & PKG_DEPS) {
 			array_init(&pkg->deps, 10);
 
-			i = pkgdb_query_dep(it->db, pkg->origin);
+			i = pkgdb_query_dep(it->db, pkg_origin(pkg));
 			p = NULL;
 			while (pkgdb_it_next_pkg(i, &p, PKG_BASIC) == 0) {
 				array_append(&pkg->deps, p);
@@ -331,7 +340,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		if (flags & PKG_RDEPS) {
 			array_init(&pkg->rdeps, 5);
 
-			i = pkgdb_query_rdep(it->db, pkg->origin);
+			i = pkgdb_query_rdep(it->db, pkg_origin(pkg));
 			p = NULL;
 			while (pkgdb_it_next_pkg(i, &p, PKG_BASIC) == 0) {
 				array_append(&pkg->rdeps, p);
@@ -345,7 +354,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		if (flags & PKG_CONFLICTS) {
 			array_init(&pkg->conflicts, 5);
 
-			i = pkgdb_query_conflicts(it->db, pkg->origin);
+			i = pkgdb_query_conflicts(it->db, pkg_origin(pkg));
 			c = NULL;
 			while (pkgdb_it_next_conflict(i, &c) == 0) {
 				array_append(&pkg->conflicts, c);
@@ -359,7 +368,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		if (flags & PKG_FILES) {
 			array_init(&pkg->files, 10);
 
-			i = pkgdb_query_files(it->db, pkg->origin);
+			i = pkgdb_query_files(it->db, pkg_origin(pkg));
 			f = NULL;
 			while (pkgdb_it_next_file(i, &f) == 0) {
 				array_append(&pkg->files, f);
@@ -393,9 +402,14 @@ pkgdb_it_next_conflict(struct pkgdb_it *it, struct pkg_conflict **c_p)
 			pkg_conflict_reset(*c_p);
 		c = *c_p;
 
-		strlcpy(c->origin, sqlite3_column_text(it->stmt, 0), sizeof(c->origin));
-		strlcpy(c->name, sqlite3_column_text(it->stmt, 1), sizeof(c->name));
-		strlcpy(c->version, sqlite3_column_text(it->stmt, 2), sizeof(c->version));
+		sbuf_cat(c->origin, sqlite3_column_text(it->stmt, 0));
+		sbuf_finish(c->origin);
+
+		sbuf_cat(c->name, sqlite3_column_text(it->stmt, 1));
+		sbuf_finish(c->name);
+
+		sbuf_cat(c->version, sqlite3_column_text(it->stmt, 2));
+		sbuf_finish(c->version);
 		return (0);
 	case SQLITE_DONE:
 		return (1);
