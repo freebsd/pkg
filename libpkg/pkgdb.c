@@ -453,27 +453,41 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	char sql[BUFSIZ];
 	sqlite3_stmt *stmt;
 	const char *comp = NULL;
+	char *checkorigin = NULL;
 
 	if (match != MATCH_ALL && pattern == NULL) {
 		pkgdb_set_error(db, 0, "missing pattern");
 		return (NULL);
 	}
 
+	checkorigin = strchr(pattern, '/');
 	switch (match) {
 	case MATCH_ALL:
 		comp = "";
 		break;
 	case MATCH_EXACT:
-		comp = " WHERE name = ?1";
+		if (checkorigin == NULL)
+			comp = " WHERE name = ?1";
+		else
+			comp = " WHERE origin = ?1";
 		break;
 	case MATCH_GLOB:
-		comp = " WHERE name GLOB ?1";
+		if (checkorigin == NULL)
+			comp = " WHERE name GLOB ?1";
+		else
+			comp = " WHERE origin GLOB ?1";
 		break;
 	case MATCH_REGEX:
-		comp = " WHERE name REGEXP ?1";
+		if (checkorigin == NULL)
+			comp = " WHERE name REGEXP ?1";
+		else
+			comp = " WHERE origin REGEXP ?1";
 		break;
 	case MATCH_EREGEX:
-		comp = " WHERE EREGEXP(?1, name)";
+		if (checkorigin == NULL)
+			comp = " WHERE EREGEXP(?1, name)";
+		else
+			comp = " WHERE EREGEXP(?1, origin)";
 		break;
 	}
 
