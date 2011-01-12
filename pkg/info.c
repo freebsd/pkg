@@ -130,7 +130,7 @@ exec_info(int argc, char **argv)
 		match = MATCH_ALL;
 
 	/* if the last argument is a file then query directly the file */
-	if (pkg_open(argv[0], &pkg, query_flags) == 0)
+	if (argc == 1 && pkg_open(argv[0], &pkg, query_flags) == 0)
 		return (query_pkg(pkg, opt));
 
 	if (pkgdb_open(&db) == -1) {

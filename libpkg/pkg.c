@@ -4,11 +4,8 @@
 #include <archive_entry.h>
 #include <stdlib.h>
 
-#include <sqlite3.h>
-
 #include "pkg.h"
 #include "pkg_private.h"
-#include "pkgdb.h"
 #include "util.h"
 
 static void pkg_free_void(void*);
@@ -77,6 +74,8 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 	int64_t size;
 	char *buf;
 
+	(void)query_flags;
+
 	a = archive_read_new();
 	archive_read_support_compression_all(a);
 	archive_read_support_format_tar(a);
@@ -93,6 +92,7 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 	(*pkg)->type = PKG_FILE;
 
 	array_init(&(*pkg)->deps, 5);
+	array_init(&(*pkg)->files, 10);
 
 	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
 		if (!strcmp(archive_entry_pathname(ae),"+DESC")) {
@@ -118,14 +118,10 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 		}
 
 
-		if (file == NULL)
-			pkg_file_new(&file);
-		else
-			pkg_file_reset(file);
-
+		pkg_file_new(&file);
 		strlcpy(file->path, archive_entry_pathname(ae), sizeof(file->path));
-
 		array_append(&(*pkg)->files, file);
+
 		archive_read_data_skip(a);
 	}
 
