@@ -90,6 +90,9 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 	 * informations */
 
 	pkg_new(pkg);
+	(*pkg)->type = PKG_FILE;
+
+	array_init(&(*pkg)->deps, 5);
 
 	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
 		if (!strcmp(archive_entry_pathname(ae),"+DESC")) {

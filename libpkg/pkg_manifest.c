@@ -149,7 +149,43 @@ m_parse_option(struct pkg *pkg, char *buf)
 static int
 m_parse_dep(struct pkg *pkg, char *buf)
 {
-	/* TODO */
+	struct pkg *dep;
+	char *buf_ptr;
+	int nbel, i;
+	size_t next;
+
+	while (isspace(*buf))
+		buf++;
+
+	buf_ptr = buf;
+
+	nbel = split_chr(buf_ptr, ' ');
+
+	pkg_new(&dep);
+
+	next = strlen(buf_ptr);
+	for (i = 0; i <= nbel; i++) {
+		switch(i) {
+			case 0:
+				sbuf_cat(dep->name, buf_ptr);
+				sbuf_finish(dep->name);
+				break;
+			case 1:
+				sbuf_cat(dep->origin, buf_ptr);
+				sbuf_finish(dep->origin);
+				break;
+			case 2:
+				sbuf_cat(dep->version, buf_ptr);
+				sbuf_finish(dep->version);
+				break;
+		}
+		buf_ptr += next + 1;
+		next = strlen(buf_ptr);
+	}
+
+	dep->type = PKG_NOTFOUND;
+	array_append(&pkg->deps, dep);
+
 	return (0);
 }
 
