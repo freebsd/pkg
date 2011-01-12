@@ -4,11 +4,8 @@
 #include <archive_entry.h>
 #include <stdlib.h>
 
-#include <sqlite3.h>
-
 #include "pkg.h"
 #include "pkg_private.h"
-#include "pkgdb.h"
 #include "util.h"
 
 static void pkg_free_void(void*);
@@ -83,6 +80,7 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 		file_fetch(path, "/tmp/bla");
 		path = "/tmp/bla";
 	}
+	(void)query_flags;
 
 	a = archive_read_new();
 	archive_read_support_compression_all(a);
@@ -129,10 +127,9 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 
 
 		pkg_file_new(&file);
-
 		strlcpy(file->path, archive_entry_pathname(ae), sizeof(file->path));
-
 		array_append(&(*pkg)->files, file);
+
 		archive_read_data_skip(a);
 	}
 

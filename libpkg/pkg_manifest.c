@@ -89,6 +89,8 @@ static int
 m_parse_arch(struct pkg *pkg, char *buf)
 {
 	/* TODO */
+	(void)pkg;
+	(void)buf;
 	return (0);
 }
 
@@ -96,6 +98,8 @@ static int
 m_parse_osrelease(struct pkg *pkg, char *buf)
 {
 	/* TODO */
+	(void)pkg;
+	(void)buf;
 	return (0);
 }
 
@@ -103,6 +107,8 @@ static int
 m_parse_osversion(struct pkg *pkg, char *buf)
 {
 	/* TODO */
+	(void)pkg;
+	(void)buf;
 	return (0);
 }
 
@@ -110,6 +116,8 @@ static int
 m_parse_build_time(struct pkg *pkg, char *buf)
 {
 	/* TODO */
+	(void)pkg;
+	(void)buf;
 	return (0);
 }
 
@@ -117,6 +125,8 @@ static int
 m_parse_www(struct pkg *pkg, char *buf)
 {
 	/* TODO */
+	(void)pkg;
+	(void)buf;
 	return (0);
 }
 
@@ -136,6 +146,8 @@ static int
 m_parse_license(struct pkg *pkg, char *buf)
 {
 	/* TODO */
+	(void)pkg;
+	(void)buf;
 	return (0);
 }
 
@@ -143,6 +155,8 @@ static int
 m_parse_option(struct pkg *pkg, char *buf)
 {
 	/* TODO */
+	(void)pkg;
+	(void)buf;
 	return (0);
 }
 
@@ -192,18 +206,9 @@ m_parse_dep(struct pkg *pkg, char *buf)
 static int
 m_parse_conflict(struct pkg *pkg, char *buf)
 {
-/*	struct pkg_conflict *conflict;
-
-	while (isspace(*buf))
-		buf++;
-
-	int i = pkg_conflict_new(&conflict);
-	printf("%d\n", i);
-	sbuf_cat(conflict->glob, buf);
-	sbuf_finish(conflict->glob);
-
-	array_append(&pkg->conflicts, conflict);
-*/
+	/* TODO */
+	(void)pkg;
+	(void)buf;
 	return (0);
 }
 
