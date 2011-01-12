@@ -53,6 +53,8 @@ const char * pkg_conflict_name(struct pkg_conflict *);
 int pkgdb_open(struct pkgdb **);
 void pkgdb_close(struct pkgdb *);
 
+int pkgdb_register_pkg(struct pkgdb *, struct pkg *);
+
 struct pkgdb_it * pkgdb_query(struct pkgdb *, const char *, match_t);
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *, const char *);
 struct pkgdb_it * pkgdb_query_dep(struct pkgdb *, const char *);
