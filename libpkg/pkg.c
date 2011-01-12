@@ -93,6 +93,8 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 	(*pkg)->type = PKG_FILE;
 
 	array_init(&(*pkg)->deps, 5);
+	array_init(&(*pkg)->conflicts, 5);
+	array_init(&(*pkg)->files, 10);
 
 	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
 		if (!strcmp(archive_entry_pathname(ae),"+DESC")) {
@@ -118,10 +120,7 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 		}
 
 
-		if (file == NULL)
-			pkg_file_new(&file);
-		else
-			pkg_file_reset(file);
+		pkg_file_new(&file);
 
 		strlcpy(file->path, archive_entry_pathname(ae), sizeof(file->path));
 
