@@ -67,7 +67,7 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 	deps = pkg_deps(pkg);
 	pkg_new(&p);
 	for (i = 0; deps[i] != NULL; i++) {
-		it = pkgdb_query(db, pkg_name(deps[i]), MATCH_EXACT);
+		it = pkgdb_query(db, pkg_origin(deps[i]), MATCH_EXACT);
 
 		if (pkgdb_it_next_pkg(it, &p, MATCH_EXACT) == 0) {
 			p->type = PKG_INSTALLED;
