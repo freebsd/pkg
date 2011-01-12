@@ -402,14 +402,9 @@ pkgdb_it_next_conflict(struct pkgdb_it *it, struct pkg_conflict **c_p)
 			pkg_conflict_reset(*c_p);
 		c = *c_p;
 
-		sbuf_cat(c->origin, sqlite3_column_text(it->stmt, 0));
-		sbuf_finish(c->origin);
+		sbuf_cat(c->glob, sqlite3_column_text(it->stmt, 0));
+		sbuf_finish(c->glob);
 
-		sbuf_cat(c->name, sqlite3_column_text(it->stmt, 1));
-		sbuf_finish(c->name);
-
-		sbuf_cat(c->version, sqlite3_column_text(it->stmt, 2));
-		sbuf_finish(c->version);
 		return (0);
 	case SQLITE_DONE:
 		return (1);
@@ -584,4 +579,82 @@ int
 pkgdb_errnum(struct pkgdb *db)
 {
 	return (db->errnum);
+}
+
+int
+pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
+{
+	struct pkg **deps;
+	struct pkg_file **files;
+	struct pkg_conflict **conflicts;
+	sqlite3_stmt *stmt_pkg;
+	sqlite3_stmt *stmt_dep;
+	sqlite3_stmt *stmt_conflicts;
+	sqlite3_stmt *stmt_file;
+	int i;
+
+	sqlite3_exec(db->sqlite, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+
+	sqlite3_prepare(db->sqlite, "INSERT INTO packages (origin, name, version, comment, desc)"
+			"VALUES (?1, ?2, ?3, ?4, ?5);",
+			-1, &stmt_pkg, NULL);
+
+	sqlite3_prepare(db->sqlite, "INSERT INTO deps (origin, name, version, package_id)"
+			"VALUES (?1, ?2, ?3, ?4);",
+			-1, &stmt_dep, NULL);
+
+	sqlite3_prepare(db->sqlite, "INSERT INTO conflicts (name, package_id)"
+			"VALUES (?1, ?2, ?3, ?4);",
+			-1, &stmt_conflicts, NULL);
+
+	sqlite3_prepare(db->sqlite, "INSERT INTO files (path, md5, package_id)"
+			"VALUES (?1, ?2, ?3);",
+			-1, &stmt_file, NULL);
+
+	sqlite3_bind_text(stmt_pkg, 1, pkg_origin(pkg), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 2, pkg_name(pkg), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 3, pkg_version(pkg), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 4, pkg_comment(pkg), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 5, pkg_desc(pkg), -1, SQLITE_STATIC);
+
+	sqlite3_step(stmt_pkg);
+
+	deps = pkg_deps(pkg);
+
+	for (i = 0; deps[i] != NULL; i++) {
+		sqlite3_bind_text(stmt_dep, 1, pkg_origin(deps[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_dep, 2, pkg_name(deps[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_dep, 3, pkg_version(deps[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_dep, 4, pkg_comment(deps[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_dep, 5, pkg_origin(pkg), -1, SQLITE_STATIC);
+
+		sqlite3_step(stmt_dep);
+		sqlite3_reset(stmt_dep);
+	}
+
+	conflicts = pkg_conflicts(pkg);
+	for (i = 0; conflicts[i] != NULL; i++) {
+		sqlite3_bind_text(stmt_conflicts, 1, pkg_conflict_glob(conflicts[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_conflicts, 2, pkg_origin(pkg), -1, SQLITE_STATIC);
+	}
+
+
+	files = pkg_files(pkg);
+	for (i = 0; files[i] != NULL; i++) {
+		sqlite3_bind_text(stmt_file, 1, pkg_file_path(files[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_file, 2, pkg_file_md5(files[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_file, 3, pkg_origin(pkg), -1, SQLITE_STATIC);
+
+		sqlite3_step(stmt_file);
+		sqlite3_reset(stmt_file);
+	}
+
+	sqlite3_finalize(stmt_pkg);
+	sqlite3_finalize(stmt_dep);
+	sqlite3_finalize(stmt_conflicts);
+	sqlite3_finalize(stmt_file);
+
+	sqlite3_exec(db->sqlite, "COMMIT;", NULL, NULL, NULL);
+	
+	return (0);
 }

@@ -45,13 +45,13 @@ const char * pkg_file_md5(struct pkg_file *);
 int pkg_conflict_new(struct pkg_conflict **);
 void pkg_conflict_reset(struct pkg_conflict *);
 void pkg_conflict_free(struct pkg_conflict *);
-const char * pkg_conflict_origin(struct pkg_conflict *);
-const char * pkg_conflict_version(struct pkg_conflict *);
-const char * pkg_conflict_name(struct pkg_conflict *);
+const char * pkg_conflict_glob(struct pkg_conflict *);
 
 /* pkgdb */
 int pkgdb_open(struct pkgdb **);
 void pkgdb_close(struct pkgdb *);
+
+int pkgdb_register_pkg(struct pkgdb *, struct pkg *);
 
 struct pkgdb_it * pkgdb_query(struct pkgdb *, const char *, match_t);
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *, const char *);
