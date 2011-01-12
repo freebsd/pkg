@@ -33,6 +33,35 @@ pkg_size(struct pkg *pkg)
 	return (size);
 }
 
+static int
+query_pkg(struct pkg *pkg, unsigned char opt) {
+	struct pkg **deps;
+	struct pkg_file **files;
+	int i;
+
+	if (opt & INFO_PRINT_DEP) {
+		printf("%s-%s depends on: \n", pkg_name(pkg), pkg_version(pkg));
+		deps = pkg_deps(pkg);
+		for (i = 0; deps[i] != NULL; i++) {
+			printf("%s-%s\n", pkg_name(deps[i]), pkg_version(deps[i]));
+		}
+		printf("\n");
+	} else if (opt & INFO_LIST_FILES) {
+		printf("%s-%s owns the following files:\n", pkg_name(pkg), pkg_version(pkg));
+		files = pkg_files(pkg);
+
+		for (i = 0; files[i] != NULL; i++) {
+			printf("%s\n", pkg_file_path(files[i]));
+		}
+	} else {
+		printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
+	}
+
+	pkg_free(pkg);
+
+	return (0);
+}
+
 void
 usage_info(void)
 {
@@ -99,6 +128,10 @@ exec_info(int argc, char **argv)
 
 	if (argc == 0)
 		match = MATCH_ALL;
+
+	/* if the last argument is a file then query directly the file */
+	if (pkg_open(argv[0], &pkg, query_flags) == 0)
+		return (query_pkg(pkg, opt));
 
 	if (pkgdb_open(&db) == -1) {
 		pkgdb_warn(db);

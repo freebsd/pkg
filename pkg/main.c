@@ -19,7 +19,7 @@ static struct commands {
 	void (*usage)(void);
 } cmd[] = { 
 	{ "add", NULL, NULL},
-	{ "create", exec_create, usage_create},
+	{ "create", NULL, NULL},
 	{ "delete", NULL, NULL},
 	{ "info", exec_info, usage_info},
 	{ "install", NULL, NULL},

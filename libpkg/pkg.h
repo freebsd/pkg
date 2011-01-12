@@ -18,6 +18,7 @@ typedef enum _match_t {
 
 /* pkg */
 int pkg_new(struct pkg **);
+int pkg_open(const char *, struct pkg **, int);
 void pkg_reset(struct pkg *);
 void pkg_free(struct pkg *);
 const char *pkg_name(struct pkg *);
@@ -29,6 +30,9 @@ struct pkg ** pkg_deps(struct pkg *);
 struct pkg ** pkg_rdeps(struct pkg *);
 struct pkg_file ** pkg_files(struct pkg *);
 struct pkg_conflict ** pkg_conflicts(struct pkg *);
+
+/* pkg_manifest */
+int pkg_parse_manifest(struct pkg *, char *);
 
 /* pkg_file */
 int pkg_file_new(struct pkg_file **);

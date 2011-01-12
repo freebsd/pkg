@@ -6,6 +6,12 @@
 
 #include "util.h"
 
+typedef enum {
+	PKG_FILE,
+	PKG_REMOTE,
+	PKG_INSTALLED,
+	PKG_NOTFOUND
+} pkg_t;
 struct pkg {
 	struct sbuf *origin;
 	struct sbuf *name;
@@ -16,6 +22,7 @@ struct pkg {
 	struct array rdeps;
 	struct array conflicts;
 	struct array files;
+	pkg_t type;
 };
 
 struct pkg_conflict {

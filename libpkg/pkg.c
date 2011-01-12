@@ -1,4 +1,7 @@
 #include <err.h>
+#include <string.h>
+#include <archive.h>
+#include <archive_entry.h>
 #include <stdlib.h>
 
 #include <sqlite3.h>
@@ -37,7 +40,7 @@ pkg_comment(struct pkg *pkg)
 const char *
 pkg_desc(struct pkg *pkg)
 {
-	return (sbuf_data(pkg->comment));
+	return (sbuf_data(pkg->desc));
 }
 
 struct pkg **
@@ -62,6 +65,73 @@ struct pkg_conflict **
 pkg_conflicts(struct pkg *pkg)
 {
 	return ((struct pkg_conflict **)pkg->conflicts.data);
+}
+
+int
+pkg_open(const char *path, struct pkg **pkg, int query_flags)
+{
+	struct archive *a;
+	struct archive_entry *ae;
+	struct pkg_file *file = NULL;
+	int ret;
+	int64_t size;
+	char *buf;
+
+	a = archive_read_new();
+	archive_read_support_compression_all(a);
+	archive_read_support_format_tar(a);
+
+	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
+		archive_read_finish(a);
+		return (-1);
+	}
+
+	/* first patch to check is the archive is corrupted bye the way retreive
+	 * informations */
+
+	pkg_new(pkg);
+
+	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+		if (!strcmp(archive_entry_pathname(ae),"+DESC")) {
+			size = archive_entry_size(ae);
+			buf = calloc(1, size+1);
+			archive_read_data(a, buf, size);
+			sbuf_cat((*pkg)->desc, buf);
+			sbuf_finish((*pkg)->desc);
+			free(buf);
+		}
+
+		if (!strcmp(archive_entry_pathname(ae), "+MANIFEST")) {
+			size = archive_entry_size(ae);
+			buf = calloc(1, size + 1);
+			archive_read_data(a, buf, size);
+			pkg_parse_manifest(*pkg, buf);
+			free(buf);
+		}
+
+		if (archive_entry_pathname(ae)[0] == '+') {
+			archive_read_data_skip(a);
+			continue;
+		}
+
+
+		if (file == NULL)
+			pkg_file_new(&file);
+		else
+			pkg_file_reset(file);
+
+		strlcpy(file->path, archive_entry_pathname(ae), sizeof(file->path));
+
+		array_append(&(*pkg)->files, file);
+		archive_read_data_skip(a);
+	}
+
+	if (ret != ARCHIVE_EOF)
+		warn("Archive corrupted");
+
+	archive_read_finish(a);
+
+	return (0);
 }
 
 int
