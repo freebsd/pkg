@@ -402,14 +402,9 @@ pkgdb_it_next_conflict(struct pkgdb_it *it, struct pkg_conflict **c_p)
 			pkg_conflict_reset(*c_p);
 		c = *c_p;
 
-		sbuf_cat(c->origin, sqlite3_column_text(it->stmt, 0));
-		sbuf_finish(c->origin);
+		sbuf_cat(c->glob, sqlite3_column_text(it->stmt, 0));
+		sbuf_finish(c->glob);
 
-		sbuf_cat(c->name, sqlite3_column_text(it->stmt, 1));
-		sbuf_finish(c->name);
-
-		sbuf_cat(c->version, sqlite3_column_text(it->stmt, 2));
-		sbuf_finish(c->version);
 		return (0);
 	case SQLITE_DONE:
 		return (1);
@@ -591,6 +586,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg **deps;
 	struct pkg_file **files;
+	struct pkg_conflict **conflicts;
 	sqlite3_stmt *stmt_pkg;
 	sqlite3_stmt *stmt_dep;
 	sqlite3_stmt *stmt_conflicts;
@@ -635,6 +631,13 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_step(stmt_dep);
 		sqlite3_reset(stmt_dep);
 	}
+
+	conflicts = pkg_conflicts(pkg);
+	for (i = 0; conflicts[i] != NULL; i++) {
+		sqlite3_bind_text(stmt_conflicts, 1, pkg_conflict_glob(conflicts[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_conflicts, 2, pkg_origin(pkg), -1, SQLITE_STATIC);
+	}
+
 
 	files = pkg_files(pkg);
 	for (i = 0; files[i] != NULL; i++) {

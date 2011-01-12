@@ -26,9 +26,7 @@ struct pkg {
 };
 
 struct pkg_conflict {
-	struct sbuf *origin;
-	struct sbuf *name;
-	struct sbuf *version;
+	struct sbuf *glob;
 };
 
 struct pkg_file {
