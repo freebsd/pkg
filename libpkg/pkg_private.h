@@ -6,12 +6,6 @@
 
 #include "util.h"
 
-typedef enum {
-	PKG_FILE,
-	PKG_REMOTE,
-	PKG_INSTALLED,
-	PKG_NOTFOUND
-} pkg_t;
 struct pkg {
 	struct sbuf *origin;
 	struct sbuf *name;

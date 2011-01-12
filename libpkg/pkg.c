@@ -10,6 +10,11 @@
 
 static void pkg_free_void(void*);
 
+pkg_t
+pkg_type(struct pkg *pkg)
+{
+	return (pkg->type);
+}
 const char *
 pkg_origin(struct pkg *pkg)
 {
@@ -44,6 +49,36 @@ struct pkg **
 pkg_deps(struct pkg *pkg)
 {
 	return ((struct pkg **)pkg->deps.data);
+}
+
+int
+pkg_numdeps(struct pkg *pkg)
+{
+	return (pkg->deps.len);
+}
+
+int
+pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
+	struct pkg *p;
+	struct pkgdb_it *it;
+	struct pkg **deps;
+	int i;
+
+	deps = pkg_deps(pkg);
+	pkg_new(&p);
+	for (i = 0; deps[i] != NULL; i++) {
+		it = pkgdb_query(db, pkg_name(deps[i]), MATCH_EXACT);
+
+		if (pkgdb_it_next_pkg(it, &p, MATCH_EXACT) == 0) {
+			p->type = PKG_INSTALLED;
+			pkg_free(deps[i]);
+			deps[i] = p;
+		} else {
+			deps[i]->type = PKG_NOTFOUND;
+		}
+	}
+
+	return (0);
 }
 
 struct pkg **

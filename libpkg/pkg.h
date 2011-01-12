@@ -16,9 +16,17 @@ typedef enum _match_t {
 	MATCH_EREGEX
 } match_t;
 
+typedef enum {
+	PKG_FILE,
+	PKG_REMOTE,
+	PKG_INSTALLED,
+	PKG_NOTFOUND
+} pkg_t;
+
 /* pkg */
 int pkg_new(struct pkg **);
 int pkg_open(const char *, struct pkg **, int);
+pkg_t pkg_type(struct pkg *);
 void pkg_reset(struct pkg *);
 void pkg_free(struct pkg *);
 const char *pkg_name(struct pkg *);
@@ -30,6 +38,8 @@ struct pkg ** pkg_deps(struct pkg *);
 struct pkg ** pkg_rdeps(struct pkg *);
 struct pkg_file ** pkg_files(struct pkg *);
 struct pkg_conflict ** pkg_conflicts(struct pkg *);
+int pkg_numdeps(struct pkg *);
+int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
 
 /* pkg_manifest */
 int pkg_parse_manifest(struct pkg *, char *);

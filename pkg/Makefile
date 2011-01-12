@@ -2,7 +2,8 @@ PROG=	pkg
 SRCS=	main.c \
 	info.c \
 	which.c \
-	register.c
+	register.c \
+	add.c
 
 CFLAGS+=	-I${.CURDIR}/../libpkg -I${.CURDIR}/../external/tinycdb/
 LDADD+=	-L${.CURDIR}/../external -L../libpkg -lpkg -lutil

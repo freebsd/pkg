@@ -8,6 +8,7 @@
 #include "create.h"
 #include "info.h"
 #include "which.h"
+#include "add.h"
 
 static void usage(void);
 static void usage_help(void);
@@ -18,7 +19,7 @@ static struct commands {
 	int (*exec)(int argc, char **argv);
 	void (*usage)(void);
 } cmd[] = { 
-	{ "add", NULL, NULL},
+	{ "add", exec_add, usage_add},
 	{ "create", NULL, NULL},
 	{ "delete", NULL, NULL},
 	{ "info", exec_info, usage_info},
