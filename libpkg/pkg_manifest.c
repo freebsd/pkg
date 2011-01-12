@@ -192,17 +192,18 @@ m_parse_dep(struct pkg *pkg, char *buf)
 static int
 m_parse_conflict(struct pkg *pkg, char *buf)
 {
-	struct pkg_conflict *conflict;
+/*	struct pkg_conflict *conflict;
 
 	while (isspace(*buf))
 		buf++;
 
-	pkg_conflict_new(&conflict);
+	int i = pkg_conflict_new(&conflict);
+	printf("%d\n", i);
 	sbuf_cat(conflict->glob, buf);
 	sbuf_finish(conflict->glob);
 
 	array_append(&pkg->conflicts, conflict);
-
+*/
 	return (0);
 }
 

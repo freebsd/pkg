@@ -77,12 +77,20 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 	int64_t size;
 	char *buf;
 
+	/* search for http(s) or ftp(s) */
+	if (STARTS_WITH(path, "http://") || STARTS_WITH(path, "https://")
+			|| STARTS_WITH(path, "ftp://")) {
+		file_fetch(path, "/tmp/bla");
+		path = "/tmp/bla";
+	}
+
 	a = archive_read_new();
 	archive_read_support_compression_all(a);
 	archive_read_support_format_tar(a);
 
 	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
 		archive_read_finish(a);
+		printf("la");
 		return (-1);
 	}
 

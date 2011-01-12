@@ -21,5 +21,6 @@ off_t file_to_buffer(const char *path, char **buffer);
 char *str_replace(char *string, const char *find, char *replace);
 int select_dir(const struct dirent *);
 int split_chr(char *, char);
+int file_fetch(const char *, char *);
 
 #endif
