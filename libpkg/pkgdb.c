@@ -460,7 +460,9 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 		return (NULL);
 	}
 
-	checkorigin = strchr(pattern, '/');
+	if (pattern != NULL)
+		checkorigin = strchr(pattern, '/');
+
 	switch (match) {
 	case MATCH_ALL:
 		comp = "";
