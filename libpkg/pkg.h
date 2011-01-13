@@ -90,4 +90,7 @@ int pkgdb_errnum(struct pkgdb *);
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg *);
 
+/* version */
+int pkg_version_cmp(const char *, const char *);
+
 #endif

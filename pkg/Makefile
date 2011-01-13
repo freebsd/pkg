@@ -3,6 +3,7 @@ SRCS=	main.c \
 	info.c \
 	which.c \
 	register.c \
+	version.c \
 	add.c
 
 CFLAGS+=	-I${.CURDIR}/../libpkg -I${.CURDIR}/../external/tinycdb/

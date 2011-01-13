@@ -9,6 +9,7 @@
 #include "info.h"
 #include "which.h"
 #include "add.h"
+#include "version.h"
 
 static void usage(void);
 static void usage_help(void);
@@ -25,6 +26,7 @@ static struct commands {
 	{ "info", exec_info, usage_info},
 	{ "install", NULL, NULL},
 	{ "update", NULL, NULL},
+	{ "version", exec_version, usage_version},
 	{ "which", exec_which, usage_which},
 	{ "help", exec_help, usage_help},
 };

@@ -11,6 +11,7 @@ SRCS=		pkg.c \
 		pkg_conflict.c \
 		pkg_file.c \
 		pkg_manifest.c \
+		pkg_version.c \
 		util.c
 
 CFLAGS+=	-std=c99
