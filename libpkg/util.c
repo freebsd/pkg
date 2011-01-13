@@ -162,12 +162,12 @@ split_chr(char *str, char sep)
 }
 
 int
-file_fetch(const char *url, char *dest)
+file_fetch(const char *url, const char *dest)
 {
 	int fd;
 	FILE *remote = NULL;
 	struct url_stat st;
-	size_t tfetched, rfetched, wfetched;
+	off_t tfetched, rfetched, wfetched;
 	int retry = 3;
 	time_t begin_dl, now;
 	char buf[BUFSIZ], sz[8];

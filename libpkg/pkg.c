@@ -76,6 +76,7 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 		} else {
 			deps[i]->type = PKG_NOTFOUND;
 		}
+		pkgdb_it_free(it);
 	}
 
 	return (0);

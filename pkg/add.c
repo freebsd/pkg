@@ -49,6 +49,7 @@ exec_add(int argc, char **argv)
 	if (pkgdb_it_next_pkg(it, &p, PKG_BASIC) == 0) {
 		installed = true;
 	}
+	pkgdb_it_free(it);
 
 
 	if (installed) {
@@ -71,6 +72,7 @@ exec_add(int argc, char **argv)
 	if (ret != 0)
 		return (ret);
 
+	pkgdb_close(db);
 
 	return (0);
 }
