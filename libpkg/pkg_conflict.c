@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <err.h>
 
 #include "pkg.h"
 #include "pkg_private.h"
@@ -12,8 +13,8 @@ pkg_conflict_glob(struct pkg_conflict *c)
 int
 pkg_conflict_new(struct pkg_conflict **c)
 {
-	if ((*c = calloc(1, sizeof(struct pkg_conflict))))
-		return (-1);
+	if ((*c = calloc(1, sizeof(struct pkg_conflict))) == NULL)
+		err(EXIT_FAILURE, "calloc()");
 
 	(*c)->glob = sbuf_new_auto();
 

@@ -124,7 +124,6 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 
 	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
 		archive_read_finish(a);
-		printf("la");
 		return (-1);
 	}
 

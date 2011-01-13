@@ -10,6 +10,7 @@
 #include "which.h"
 #include "add.h"
 #include "version.h"
+#include "register.h"
 
 static void usage(void);
 static void usage_help(void);
@@ -29,6 +30,7 @@ static struct commands {
 	{ "version", exec_version, usage_version},
 	{ "which", exec_which, usage_which},
 	{ "help", exec_help, usage_help},
+	{ "register", exec_register, usage_register},
 };
 #define cmd_len (int)(sizeof(cmd)/sizeof(cmd[0]))
 

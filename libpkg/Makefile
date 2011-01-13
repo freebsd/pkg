@@ -9,6 +9,7 @@ SHLIB_MAJOR=	0
 SRCS=		pkg.c \
 		pkgdb.c \
 		pkg_conflict.c \
+		pkg_ports.c \
 		pkg_file.c \
 		pkg_manifest.c \
 		pkg_version.c \
