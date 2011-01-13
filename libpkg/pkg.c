@@ -60,19 +60,21 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 	int i;
 
 	deps = pkg_deps(pkg);
+	if (deps == NULL)
+		return (-1);
+
 	pkg_new(&p);
 	for (i = 0; deps[i] != NULL; i++) {
 		it = pkgdb_query(db, pkg_origin(deps[i]), MATCH_EXACT);
 
-		if (pkgdb_it_next_pkg(it, &p, MATCH_EXACT) == 0) {
-			p->type = PKG_INSTALLED;
-			pkg_free(deps[i]);
-			deps[i] = p;
+		if (pkgdb_it_next_pkg(it, &p, PKG_BASIC) == 0) {
+			deps[i]->type = PKG_INSTALLED;
 		} else {
 			deps[i]->type = PKG_NOTFOUND;
 		}
 		pkgdb_it_free(it);
 	}
+	pkg_free(p);
 
 	return (0);
 }

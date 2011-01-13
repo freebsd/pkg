@@ -25,14 +25,12 @@ static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 
 static void
-pkgdb_regex_delete(void *ctx)
+pkgdb_regex_delete(void *p)
 {
-	regex_t *re = NULL;
+	regex_t *re = (regex_t *)p;
 
-	if ((re = (regex_t *)sqlite3_get_auxdata(ctx, 0)) != NULL) {
-		regfree(re);
-		free(re);
-	}
+	regfree(re);
+	free(re);
 }
 
 static void

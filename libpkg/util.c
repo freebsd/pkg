@@ -26,6 +26,7 @@ array_init(struct array *a, size_t c)
 	a->cap = c;
 	a->len = 0;
 	a->data = malloc(sizeof(void*) * a->cap);
+	a->data[0] = NULL;
 }
 
 void

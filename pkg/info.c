@@ -19,10 +19,6 @@ pkg_size(struct pkg *pkg)
 	int64_t size = 0;
 
 	files = pkg_files(pkg);
-	if (files == NULL) {
-		warnx("Missing files informations for %s", pkg_origin(pkg));
-		return (0);
-	}
 	for (size_t i = 0; files[i] != NULL; i++) {
 		if (stat(pkg_file_path(files[i]), &st) != 0) {
 			warn("stat(%s)", pkg_file_path(files[i]));
@@ -41,18 +37,22 @@ query_pkg(struct pkg *pkg, unsigned char opt) {
 
 	if (opt & INFO_PRINT_DEP) {
 		printf("%s-%s depends on: \n", pkg_name(pkg), pkg_version(pkg));
+
 		deps = pkg_deps(pkg);
 		for (i = 0; deps[i] != NULL; i++) {
 			printf("%s-%s\n", pkg_name(deps[i]), pkg_version(deps[i]));
 		}
+
 		printf("\n");
 	} else if (opt & INFO_LIST_FILES) {
 		printf("%s-%s owns the following files:\n", pkg_name(pkg), pkg_version(pkg));
-		files = pkg_files(pkg);
 
+		files = pkg_files(pkg);
 		for (i = 0; files[i] != NULL; i++) {
 			printf("%s\n", pkg_file_path(files[i]));
 		}
+
+		printf("\n");
 	} else {
 		printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
 	}
@@ -150,7 +150,6 @@ exec_info(int argc, char **argv)
 		if (opt & INFO_EXISTS) {
 			retcode = 0;
 		} else if (opt & INFO_PRINT_DEP) {
-
 			printf("%s-%s depends on:\n", pkg_name(pkg), pkg_version(pkg));
 
 			deps = pkg_deps(pkg);
@@ -170,10 +169,13 @@ exec_info(int argc, char **argv)
 			printf("\n");
 		} else if (opt & INFO_LIST_FILES) {
 			printf("%s-%s owns the following files:\n", pkg_name(pkg), pkg_version(pkg));
+
 			files = pkg_files(pkg);
 			for (i = 0; files[i] != NULL; i++) {
 				printf("%s\n", pkg_file_path(files[i]));
 			}
+
+			printf("\n");
 		} else if (opt & INFO_SIZE) {
 			humanize_number(size, sizeof(size), pkg_size(pkg), "B", HN_AUTOSCALE, 0);
 			printf("%s-%s size is %s\n", pkg_name(pkg), pkg_version(pkg), size);
