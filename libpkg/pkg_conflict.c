@@ -29,7 +29,16 @@ pkg_conflict_reset(struct pkg_conflict *c)
 void
 pkg_conflict_free(struct pkg_conflict *c)
 {
-	sbuf_delete(c->glob);
+	if (c == NULL)
+		return;
 
+	sbuf_delete(c->glob);
 	free(c);
+}
+
+void
+pkg_conflict_free_void(void *c)
+{
+	if (c != NULL)
+		pkg_conflict_free((struct pkg_conflict *)c);
 }

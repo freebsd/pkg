@@ -52,6 +52,7 @@ exec_which(int argc, char **argv)
 			   pkg_version(pkg));
 	}
 	pkg_free(pkg);
+	pkgdb_it_free(it);
 
 	pkgdb_close(db);
 	return (retcode);
