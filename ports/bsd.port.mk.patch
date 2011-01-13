@@ -1,0 +1,31 @@
+--- /usr/ports/Mk/bsd.port.mk.prepkgng	2011-01-14 00:14:59.962893785 +0100
++++ /usr/ports/Mk/bsd.port.mk	2011-01-14 00:28:29.620436183 +0100
+@@ -2493,6 +2493,9 @@
+ 
+ .if !defined(PKG_ARGS)
+ PKG_ARGS=		-v -c -${COMMENT:Q} -d ${DESCR} -f ${TMPPLIST} -p ${PREFIX} -P "`cd ${.CURDIR} && ${MAKE} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u -t : -k 2`" ${EXTRA_PKG_ARGS} $${_LATE_PKG_ARGS}
++.if defined(PKGNG)
++PKG_ARGS+= -n ${PKGNAME}
++.endif
+ .if !defined(NO_MTREE)
+ PKG_ARGS+=		-m ${MTREE_FILE}
+ .endif
+@@ -5993,6 +5996,7 @@
+ 	fi
+ 	@${RM} -rf ${PKG_DBDIR}/${PKGNAME}
+ .endif
++.if !defined(PKGNG)
+ 	@if [ ! -d ${PKG_DBDIR}/${PKGNAME} ]; then \
+ 		${ECHO_MSG} "===>   Registering installation for ${PKGNAME}"; \
+ 		${MKDIR} ${PKG_DBDIR}/${PKGNAME}; \
+@@ -6031,6 +6035,10 @@
+ 		${RM} -f /tmp/${PKGNAME}-required-by; \
+ 	fi
+ .else
++	@${ECHO_MSG} "===>   Registering installation for ${PKGNAME}"
++	@${PKG_CMD} ${PKG_ARGS}
++.endif
++.else
+ 	@${DO_NADA}
+ .endif
+ .endif

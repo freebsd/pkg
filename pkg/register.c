@@ -28,18 +28,19 @@ exec_register(int argc, char **argv)
 	char *mtree = NULL;
 	char *depends = NULL;
 	char *conflicts = NULL;
+	char *v = NULL;
 
 	int ret = 0;
 
 	pkg_new(&pkg);
-	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:O:C:")) != -1) {
+	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:O:C:n:")) != -1) {
 		switch (ch) {
 			case 'O':
 			case 'v':
 				/* IGNORE */
 				break;
 			case 'c':
-				ret += pkg_setcomment(pkg, optarg);
+				ret += pkg_setcomment(pkg, optarg[0] == '-' ? optarg + 1 : optarg);
 				break;
 			case 'd':
 				ret += pkg_setdesc_from_file(pkg, optarg);
@@ -55,6 +56,13 @@ exec_register(int argc, char **argv)
 				break;
 			case 'm':
 				mtree = strdup(optarg);
+				break;
+			case 'n':
+				v = strrchr(optarg, '-');
+				v[0] = '\0';
+				v++;
+				ret += pkg_setname(pkg, optarg);
+				ret += pkg_setversion(pkg, v);
 				break;
 			case 'o':
 				ret += pkg_setorigin(pkg, optarg);
