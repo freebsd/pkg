@@ -520,6 +520,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	deps = pkg_deps(pkg);
 
+	if (deps != NULL)
 	for (i = 0; deps[i] != NULL; i++) {
 		sqlite3_bind_text(stmt_dep, 1, pkg_origin(deps[i]), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_dep, 2, pkg_name(deps[i]), -1, SQLITE_STATIC);
@@ -532,6 +533,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	conflicts = pkg_conflicts(pkg);
+	if (conflicts != NULL)
 	for (i = 0; conflicts[i] != NULL; i++) {
 		sqlite3_bind_text(stmt_conflicts, 1, pkg_conflict_glob(conflicts[i]), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_conflicts, 2, pkg_origin(pkg), -1, SQLITE_STATIC);
@@ -539,6 +541,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 
 	files = pkg_files(pkg);
+	if (files != NULL)
 	for (i = 0; files[i] != NULL; i++) {
 		sqlite3_bind_text(stmt_file, 1, pkg_file_path(files[i]), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(files[i]), -1, SQLITE_STATIC);

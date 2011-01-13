@@ -5,11 +5,12 @@
 #include <err.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 int
 ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 {
-	char *plist_p, *buf, *p;
+	char *plist_p, *buf, *p, *plist_buf;
 	int nbel, i;
 	size_t next;
 	char sha256[65];
@@ -22,15 +23,19 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 	if (plist == NULL)
 		return (-1);
 
+	if (file_to_buffer(plist, &plist_buf) <= 0)
+		return (-1);
+
 	if (prefix == NULL)
 		prefix = "/usr/local";
 
-	nbel = split_chr(plist, '\n');
+	nbel = split_chr(plist_buf, '\n');
 
-	next = strlen(plist);
-	plist_p = plist;
+	next = strlen(plist_buf);
+	plist_p = plist_buf;
 
 	for (i = 0; i <= nbel; i++) {
+		printf("===>%s\n", plist_p);
 		if (plist_p[0] == '@') {
 			if (STARTS_WITH(plist_p, "@cwd ")) {
 				buf = plist_p;
@@ -55,7 +60,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 			if (p)
 				pkg_addfile(pkg, path, p);
 			else {
-				warn("%s \n", path);
 				ret--;
 			}
 		}
@@ -63,6 +67,9 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 		plist_p += next + 1;
 		next = strlen(plist_p);
 	}
+
+	free(plist_buf);
+
 	return (ret);
 }
 
@@ -76,6 +83,9 @@ ports_parse_depends(struct pkg *pkg, char *depends)
 
 	if (depends == NULL)
 		return (-1);
+
+	if (depends[0] == '\0')
+		return (0);
 
 	nbel = split_chr(depends, '\n');
 
