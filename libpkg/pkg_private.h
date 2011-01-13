@@ -28,4 +28,6 @@ struct pkg_file {
 	char sha256[65];
 };
 
+void pkg_conflict_free_void(void *);
+
 #endif

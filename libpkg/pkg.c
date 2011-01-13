@@ -205,7 +205,7 @@ pkg_reset(struct pkg *pkg)
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);
-	array_reset(&pkg->conflicts, &free);
+	array_reset(&pkg->conflicts, &pkg_conflict_free_void);
 	array_reset(&pkg->files, &free);
 }
 
@@ -223,7 +223,7 @@ pkg_free(struct pkg *pkg)
 
 	array_free(&pkg->deps, &pkg_free_void);
 	array_free(&pkg->rdeps, &pkg_free_void);
-	array_free(&pkg->conflicts, &free);
+	array_free(&pkg->conflicts, &pkg_conflict_free_void);
 	array_free(&pkg->files, &free);
 
 	free(pkg);
