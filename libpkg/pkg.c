@@ -142,8 +142,7 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 			size = archive_entry_size(ae);
 			buf = calloc(1, size+1);
 			archive_read_data(a, buf, size);
-			sbuf_cat((*pkg)->desc, buf);
-			sbuf_finish((*pkg)->desc);
+			pkg_setdesc(*pkg, buf);
 			free(buf);
 		}
 
