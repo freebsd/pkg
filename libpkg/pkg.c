@@ -284,6 +284,37 @@ pkg_setcomment(struct pkg *pkg, const char *comment)
 }
 
 int
+pkg_setorigin(struct pkg *pkg, const char *origin)
+{
+	if (origin == NULL)
+		return (-1);
+
+	if (sbuf_done(pkg->origin) != 0)
+		sbuf_clear(pkg->origin);
+
+	sbuf_cat(pkg->origin, origin);
+	sbuf_finish(pkg->origin);
+
+	return (0);
+}
+
+int
+pkg_setdesc_from_file(struct pkg *pkg, const char *desc_path)
+{
+	char *buf = NULL;
+	int ret = 0;
+
+	if (file_to_buffer(desc_path, &buf) <= 0)
+		return (-1);
+
+	ret = pkg_setdesc(pkg, buf);
+
+	free(buf);
+
+	return (ret);
+}
+
+int
 pkg_setdesc(struct pkg *pkg, const char *desc)
 {
 	if (desc == NULL)
