@@ -21,13 +21,13 @@ exec_add(int argc, char **argv)
 	struct pkg *p;
 	struct pkg **deps;
 	int ret = 0;
-
 	bool installed = false;
+	int i;
 
-	int numdeps, i;
-
-	if (argc != 2)
+	if (argc != 2) {
+		usage_add();
 		return (-1);
+	}
 
 	if (pkg_open(argv[1], &pkg, 0) != 0) {
 		return (-1);
@@ -56,11 +56,10 @@ exec_add(int argc, char **argv)
 		err(1, "%s is already installed\n", pkg_name(pkg));
 	}
 
-
-	if ((numdeps = pkg_numdeps(pkg)) > 0) {
+	deps = pkg_deps(pkg);
+	if (deps != NULL) {
 		pkg_resolvdeps(pkg, db);
 
-		deps = pkg_deps(pkg);
 		for (i = 0; deps[i] != NULL; i++) {
 			if (pkg_type(deps[i]) == PKG_NOTFOUND) {
 				warnx("%s-%s: unresolved dependency %s-%s", pkg_name(pkg), pkg_version(pkg), pkg_name(deps[i]), pkg_version(deps[i]));
@@ -72,6 +71,7 @@ exec_add(int argc, char **argv)
 	if (ret != 0)
 		return (ret);
 
+	pkg_free(pkg);
 	pkgdb_close(db);
 
 	return (0);

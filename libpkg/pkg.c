@@ -15,6 +15,7 @@ pkg_type(struct pkg *pkg)
 {
 	return (pkg->type);
 }
+
 const char *
 pkg_origin(struct pkg *pkg)
 {
@@ -49,12 +50,6 @@ struct pkg **
 pkg_deps(struct pkg *pkg)
 {
 	return ((struct pkg **)pkg->deps.data);
-}
-
-int
-pkg_numdeps(struct pkg *pkg)
-{
-	return (pkg->deps.len);
 }
 
 int
@@ -158,7 +153,6 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 			archive_read_data_skip(a);
 			continue;
 		}
-
 
 		pkg_file_new(&file);
 		strlcpy(file->path, archive_entry_pathname(ae), sizeof(file->path));

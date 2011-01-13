@@ -209,6 +209,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg_reset(*pkg_p);
 		pkg = *pkg_p;
 
+		pkg->type = PKG_INSTALLED;
 		pkg_setorigin(pkg, sqlite3_column_text(it->stmt, 0));
 		pkg_setname(pkg, sqlite3_column_text(it->stmt, 1));
 		pkg_setversion(pkg, sqlite3_column_text(it->stmt, 2));

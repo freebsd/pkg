@@ -38,7 +38,6 @@ struct pkg ** pkg_deps(struct pkg *);
 struct pkg ** pkg_rdeps(struct pkg *);
 struct pkg_file ** pkg_files(struct pkg *);
 struct pkg_conflict ** pkg_conflicts(struct pkg *);
-int pkg_numdeps(struct pkg *);
 int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
 
 /* pkg setters */
