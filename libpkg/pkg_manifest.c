@@ -232,8 +232,11 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 				break;
 			}
 		}
-		buf_ptr += next + 1;
-		next = strlen(buf_ptr);
+		/* We need to compute `next' only if we are not at the end of the manifest */
+		if (i != nbl) {
+			buf_ptr += next + 1;
+			next = strlen(buf_ptr);
+		}
 	}
 
 	return (0);
