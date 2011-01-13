@@ -127,7 +127,7 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 		return (-1);
 	}
 
-	/* first patch to check is the archive is corrupted bye the way retreive
+	/* first path to check is the archive is corrupted bye the way retreive
 	 * informations */
 
 	pkg_new(pkg);
