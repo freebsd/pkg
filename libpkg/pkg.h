@@ -41,6 +41,15 @@ struct pkg_conflict ** pkg_conflicts(struct pkg *);
 int pkg_numdeps(struct pkg *);
 int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
 
+/* pkg setters */
+int pkg_setname(struct pkg *, const char *);
+int pkg_setversion(struct pkg *, const char *);
+int pkg_setcomment(struct pkg *, const char *);
+int pkg_setdesc(struct pkg *, const char *);
+int pkg_adddep(struct pkg *, struct pkg *);
+int pkg_addfile(struct pkg *, const char *, const char *);
+int pkg_addconflict(struct pkg *, const char *);
+
 /* pkg_manifest */
 int pkg_parse_manifest(struct pkg *, char *);
 
