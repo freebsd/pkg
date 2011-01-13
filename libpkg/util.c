@@ -34,11 +34,13 @@ array_append(struct array *a, void *d)
 	assert(a->cap > 0);
 	assert(a->data != NULL);
 
-	if (a->cap <= a->len) {
+	if (a->cap <= a->len + 1) {
 		a->cap *= 2;
 		a->data = realloc(a->data, sizeof(void*) * a->cap);
 	}
-	a->data[a->len++] = d;
+	a->len++;
+	a->data[a->len] = d;
+	a->data[a->len+1] = NULL;
 }
 
 void

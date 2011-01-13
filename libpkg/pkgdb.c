@@ -225,8 +225,6 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 				p = NULL;
 			}
 			pkgdb_it_free(i);
-
-			array_append(&pkg->deps, NULL);
 		}
 
 		if (flags & PKG_RDEPS) {
@@ -239,8 +237,6 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 				p = NULL;
 			}
 			pkgdb_it_free(i);
-
-			array_append(&pkg->rdeps, NULL);
 		}
 
 		if (flags & PKG_CONFLICTS) {
@@ -253,8 +249,6 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 				c = NULL;
 			}
 			pkgdb_it_free(i);
-
-			array_append(&pkg->conflicts, NULL);
 		}
 
 		if (flags & PKG_FILES) {
@@ -267,8 +261,6 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 				f = NULL;
 			}
 			pkgdb_it_free(i);
-
-			array_append(&pkg->files, NULL);
 		}
 		return (0);
 	case SQLITE_DONE:
