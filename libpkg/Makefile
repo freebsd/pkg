@@ -17,12 +17,9 @@ SRCS=		pkg.c \
 
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
-		-I${.CURDIR}/../external/jansson \
 		-I${.CURDIR}/../external/sqlite
-LDADD+=		-L${.CURDIR}/../external/jansson \
-		-L${.CURDIR}/../external/sqlite \
+LDADD+=		-L${.CURDIR}/../external/sqlite \
 		-L/usr/local/lib \
-		-ljansson \
 		-lsqlite3 \
 		-lm \
 		-larchive \
