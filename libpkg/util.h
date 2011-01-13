@@ -1,8 +1,8 @@
 #ifndef _PKG_UTIL_H
 #define _PKG_UTIL_H
 
-#include <sys/param.h>
-#include <dirent.h>
+#include <sys/types.h>
+#include <sys/sbuf.h>
 
 struct array {
 	size_t cap;
@@ -17,9 +17,13 @@ void array_append(struct array *, void *);
 void array_reset(struct array *, void (*free_elm)(void*));
 void array_free(struct array *, void (*free_elm)(void*));
 
+int sbuf_set(struct sbuf **, const char *);
+const char * sbuf_get(struct sbuf *);
+void sbuf_reset(struct sbuf *);
+void sbuf_free(struct sbuf *);
+
 off_t file_to_buffer(const char *path, char **buffer);
 char *str_replace(char *string, const char *find, char *replace);
-int select_dir(const struct dirent *);
 int split_chr(char *, char);
 int file_fetch(const char *, const char *);
 

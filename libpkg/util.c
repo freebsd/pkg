@@ -69,6 +69,45 @@ array_free(struct array *a, void (*free_elm)(void*))
 	a->cap = 0;
 }
 
+int
+sbuf_set(struct sbuf **buf, const char *str)
+{
+	if (*buf == NULL)
+		*buf = sbuf_new_auto();
+
+	if (str == NULL)
+		return (-1);
+
+	sbuf_cpy(*buf, str);
+	sbuf_finish(*buf);
+	return (0);
+}
+
+const char *
+sbuf_get(struct sbuf *buf)
+{
+	if (buf == NULL)
+		return (NULL);
+
+	return sbuf_data(buf);
+}
+
+void
+sbuf_reset(struct sbuf *buf)
+{
+	if (buf != NULL) {
+		sbuf_clear(buf);
+		sbuf_finish(buf);
+	}
+}
+
+void
+sbuf_free(struct sbuf *buf)
+{
+	if (buf != NULL)
+		sbuf_delete(buf);
+}
+
 off_t
 file_to_buffer(const char *path, char **buffer)
 {
@@ -132,16 +171,6 @@ str_replace(char *string, const char *find, char *replace)
 	memcpy(str+offset, begin, strlen(begin)+1);
 
 	return (str);
-}
-
-int
-select_dir(const struct dirent *dirent)
-{
-	if (dirent->d_type == DT_DIR && strcmp(dirent->d_name, ".") != 0
-		&& strcmp(dirent->d_name, "..") != 0)
-		return (1);
-
-	return (0);
 }
 
 int

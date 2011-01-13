@@ -18,31 +18,31 @@ pkg_type(struct pkg *pkg)
 const char *
 pkg_origin(struct pkg *pkg)
 {
-	return (sbuf_data(pkg->origin));
+	return (sbuf_get(pkg->origin));
 }
 
 const char *
 pkg_name(struct pkg *pkg)
 {
-	return (sbuf_data(pkg->name));
+	return (sbuf_get(pkg->name));
 }
 
 const char *
 pkg_version(struct pkg *pkg)
 {
-	return (sbuf_data(pkg->version));
+	return (sbuf_get(pkg->version));
 }
 
 const char *
 pkg_comment(struct pkg *pkg)
 {
-	return (sbuf_data(pkg->comment));
+	return (sbuf_get(pkg->comment));
 }
 
 const char *
 pkg_desc(struct pkg *pkg)
 {
-	return (sbuf_data(pkg->desc));
+	return (sbuf_get(pkg->desc));
 }
 
 struct pkg **
@@ -183,12 +183,6 @@ pkg_new(struct pkg **pkg)
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		err(EXIT_FAILURE, "calloc()");
 
-	(*pkg)->name = sbuf_new_auto();
-	(*pkg)->version = sbuf_new_auto();
-	(*pkg)->origin = sbuf_new_auto();
-	(*pkg)->comment = sbuf_new_auto();
-	(*pkg)->desc = sbuf_new_auto();
-
 	return (0);
 }
 
@@ -198,11 +192,11 @@ pkg_reset(struct pkg *pkg)
 	if (pkg == NULL)
 		return;
 
-	sbuf_clear(pkg->name);
-	sbuf_clear(pkg->version);
-	sbuf_clear(pkg->origin);
-	sbuf_clear(pkg->comment);
-	sbuf_clear(pkg->desc);
+	sbuf_reset(pkg->origin);
+	sbuf_reset(pkg->name);
+	sbuf_reset(pkg->version);
+	sbuf_reset(pkg->comment);
+	sbuf_reset(pkg->desc);
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);
@@ -216,11 +210,11 @@ pkg_free(struct pkg *pkg)
 	if (pkg == NULL)
 		return;
 
-	sbuf_delete(pkg->name);
-	sbuf_delete(pkg->version);
-	sbuf_delete(pkg->origin);
-	sbuf_delete(pkg->comment);
-	sbuf_delete(pkg->desc);
+	sbuf_free(pkg->name);
+	sbuf_free(pkg->version);
+	sbuf_free(pkg->origin);
+	sbuf_free(pkg->comment);
+	sbuf_free(pkg->desc);
 
 	array_free(&pkg->deps, &pkg_free_void);
 	array_free(&pkg->rdeps, &pkg_free_void);
@@ -237,65 +231,30 @@ pkg_free_void(void *p)
 		pkg_free((struct pkg*) p);
 }
 
-/* setters */
+/* Setters */
+
+int
+pkg_setorigin(struct pkg *pkg, const char *origin)
+{
+	return (sbuf_set(&pkg->origin, origin));
+}
+
 int
 pkg_setname(struct pkg *pkg, const char *name)
 {
-	if (name == NULL)
-		return (-1);
-
-	if (sbuf_done(pkg->name) != 0)
-		sbuf_clear(pkg->name);
-
-	sbuf_cat(pkg->name, name);
-	sbuf_finish(pkg->name);
-
-	return (0);
+	return (sbuf_set(&pkg->name, name));
 }
 
 int
 pkg_setversion(struct pkg *pkg, const char *version)
 {
-	if (version == NULL)
-		return (-1);
-
-	if (sbuf_done(pkg->version) != 0)
-		sbuf_clear(pkg->version);
-
-	sbuf_cat(pkg->version, version);
-	sbuf_finish(pkg->version);
-
-	return (0);
+	return (sbuf_set(&pkg->version, version));
 }
 
 int
 pkg_setcomment(struct pkg *pkg, const char *comment)
 {
-	if (comment == NULL)
-		return (-1);
-
-	if (sbuf_done(pkg->comment) != 0)
-		sbuf_clear(pkg->comment);
-
-	sbuf_cat(pkg->comment, comment);
-	sbuf_finish(pkg->comment);
-
-	return (0);
-}
-
-int
-pkg_setorigin(struct pkg *pkg, const char *origin)
-{
-	if (origin == NULL)
-		return (-1);
-
-	if (sbuf_done(pkg->origin) != 0)
-		sbuf_clear(pkg->origin);
-
-	sbuf_cat(pkg->origin, origin);
-	sbuf_finish(pkg->origin);
-
-	return (0);
+	return (sbuf_set(&pkg->comment, comment));
 }
 
 int
@@ -317,16 +276,7 @@ pkg_setdesc_from_file(struct pkg *pkg, const char *desc_path)
 int
 pkg_setdesc(struct pkg *pkg, const char *desc)
 {
-	if (desc == NULL)
-		return (-1);
-
-	if (sbuf_done(pkg->desc) != 0)
-		sbuf_clear(pkg->desc);
-
-	sbuf_cat(pkg->desc, desc);
-	sbuf_finish(pkg->desc);
-
-	return (0);
+	return (sbuf_set(&pkg->desc, desc));
 }
 
 int
@@ -368,7 +318,7 @@ pkg_addconflict(struct pkg *pkg, const char *glob)
 		return (-1);
 
 	pkg_conflict_new(&conflict);
-	sbuf_cat(conflict->glob, glob);
+	sbuf_cpy(conflict->glob, glob);
 	sbuf_finish(conflict->glob);
 
 	array_init(&pkg->conflicts, 5);

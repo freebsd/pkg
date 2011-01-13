@@ -1,6 +1,7 @@
 #ifndef _PKG_PRIVATE_H
 #define _PKG_PRIVATE_H
 
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/sbuf.h>
 

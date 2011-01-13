@@ -16,11 +16,6 @@
 #include "pkgdb.h"
 #include "util.h"
 
-#ifdef DEBUG
-#include <dirent.h>
-#include "pkg_compat.h"
-#endif
-
 #define PKG_DBDIR "/var/db/pkg"
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, pkgdb_it_t);
@@ -214,20 +209,11 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg_reset(*pkg_p);
 		pkg = *pkg_p;
 
-		sbuf_cat(pkg->origin, sqlite3_column_text(it->stmt, 0));
-		sbuf_finish(pkg->origin);
-
-		sbuf_cat(pkg->name, sqlite3_column_text(it->stmt, 1));
-		sbuf_finish(pkg->name);
-
-		sbuf_cat(pkg->version, sqlite3_column_text(it->stmt, 2));
-		sbuf_finish(pkg->version);
-
-		sbuf_cat(pkg->comment, sqlite3_column_text(it->stmt, 3));
-		sbuf_finish(pkg->comment);
-
-		sbuf_cat(pkg->desc, sqlite3_column_text(it->stmt, 4));
-		sbuf_finish(pkg->desc);
+		pkg_setorigin(pkg, sqlite3_column_text(it->stmt, 0));
+		pkg_setname(pkg, sqlite3_column_text(it->stmt, 1));
+		pkg_setversion(pkg, sqlite3_column_text(it->stmt, 2));
+		pkg_setcomment(pkg, sqlite3_column_text(it->stmt, 3));
+		pkg_setdesc(pkg, sqlite3_column_text(it->stmt, 4));
 
 		if (flags & PKG_DEPS) {
 			array_init(&pkg->deps, 10);
@@ -308,8 +294,7 @@ pkgdb_it_next_conflict(struct pkgdb_it *it, struct pkg_conflict **c_p)
 			pkg_conflict_reset(*c_p);
 		c = *c_p;
 
-		sbuf_cat(c->glob, sqlite3_column_text(it->stmt, 0));
-		sbuf_finish(c->glob);
+		sbuf_set(&c->glob, sqlite3_column_text(it->stmt, 0));
 
 		return (0);
 	case SQLITE_DONE:
