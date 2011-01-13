@@ -104,4 +104,9 @@ int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg
 /* version */
 int pkg_version_cmp(const char *, const char *);
 
+/* glue to deal with ports */
+int ports_parse_plist(struct pkg *, char *, const char *);
+int ports_parse_depends(struct pkg *, char *);
+int ports_parse_conflicts(struct pkg *, char *);
+
 #endif

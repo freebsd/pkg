@@ -5,40 +5,47 @@
 #include <pkg.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "register.h"
 
+void
+usage_register(void)
+{
+	fprintf(stderr, "register ...\n"
+			"register\n");
+}
+
 int
-cmd_register(int argc, char **argv)
+exec_register(int argc, char **argv)
 {
 	struct pkg *pkg;
+	struct pkgdb *db;
+
 	char ch;
-	char *comment = NULL;
-	char *descpath = NULL;
-	char *oldplist = NULL;
-	char *flattenedplist = NULL;
+	char *plist = NULL;
 	char *prefix = NULL;
 	char *mtree = NULL;
-	char *origin = NULL;
 	char *depends = NULL;
+	char *conflicts = NULL;
 
-(void)pkg;
-(void)flattenedplist;
+	int ret = 0;
 
-	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:O:")) != -1) {
+	pkg_new(&pkg);
+	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:O:C:")) != -1) {
 		switch (ch) {
 			case 'O':
 			case 'v':
 				/* IGNORE */
 				break;
 			case 'c':
-				comment = strdup(optarg);
+				ret += pkg_setcomment(pkg, optarg);
 				break;
 			case 'd':
-				descpath = strdup(optarg);
+				ret += pkg_setdesc_from_file(pkg, optarg);
 				break;
 			case 'f':
-				oldplist = strdup(optarg);
+				plist = strdup(optarg);
 				break;
 			case 'p':
 				prefix = strdup(optarg);
@@ -50,11 +57,60 @@ cmd_register(int argc, char **argv)
 				mtree = strdup(optarg);
 				break;
 			case 'o':
-				origin = strdup(optarg);
+				ret += pkg_setorigin(pkg, optarg);
 				break;
+			case 'C':
+				conflicts = strdup(optarg);
+				break;
+			default:
+				printf("%c\n", ch);
+				usage_register();
+				return (-1);
 		}
 	}
-	printf("%s\n", comment);
 
-	return(0);
+	if (ret < 0) {
+		pkg_free(pkg);
+		return (ret);
+	}
+
+	if (depends != NULL) {
+		ret += ports_parse_depends(pkg, depends);
+		if (ret < 0)
+			return (ret);
+	}
+
+	if (conflicts != NULL) {
+		ret += ports_parse_conflicts(pkg, conflicts);
+		if (ret < 0)
+			return (ret);
+	}
+
+	ret += ports_parse_plist(pkg, plist, prefix);
+
+	if (ret < 0)
+		return (ret);
+
+	if (prefix != NULL)
+		free(prefix);
+
+	if (plist != NULL)
+		free(plist);
+
+	if (conflicts != NULL)
+		free(conflicts);
+
+	if (depends != NULL)
+		free(depends);
+
+	if (pkgdb_open(&db) == -1) {
+		pkgdb_warn(db);
+		return (-1);
+	}
+
+	pkgdb_register_pkg(db, pkg);
+	pkgdb_close(db);
+	pkg_free(pkg);
+
+	return (0);
 }

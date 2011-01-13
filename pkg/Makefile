@@ -6,7 +6,7 @@ SRCS=	main.c \
 	version.c \
 	add.c
 
-CFLAGS+=	-I${.CURDIR}/../libpkg -I${.CURDIR}/../external/tinycdb/
+CFLAGS+=	-I${.CURDIR}/../libpkg
 LDADD+=	-L${.CURDIR}/../external -L../libpkg -lpkg -lutil
 WARNS?=	6
 NO_MAN= true

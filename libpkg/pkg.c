@@ -124,11 +124,10 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 
 	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
 		archive_read_finish(a);
-		printf("la");
 		return (-1);
 	}
 
-	/* first patch to check is the archive is corrupted bye the way retreive
+	/* first path to check is the archive is corrupted bye the way retreive
 	 * informations */
 
 	pkg_new(pkg);
