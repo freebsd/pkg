@@ -58,7 +58,7 @@ int pkg_file_new(struct pkg_file **);
 void pkg_file_reset(struct pkg_file *);
 void pkg_file_free(struct pkg_file *);
 const char * pkg_file_path(struct pkg_file *);
-const char * pkg_file_md5(struct pkg_file *);
+const char * pkg_file_sha256(struct pkg_file *);
 
 /* pkg_conflict */
 int pkg_conflict_new(struct pkg_conflict **);

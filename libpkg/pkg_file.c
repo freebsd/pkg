@@ -10,9 +10,9 @@ pkg_file_path(struct pkg_file *file)
 }
 
 const char *
-pkg_file_md5(struct pkg_file *file)
+pkg_file_sha256(struct pkg_file *file)
 {
-	return (file->md5);
+	return (file->sha256);
 }
 
 int
@@ -27,7 +27,7 @@ void
 pkg_file_reset(struct pkg_file *file)
 {
 	file->path[0] = '\0';
-	file->md5[0] = '\0';
+	file->sha256[0] = '\0';
 }
 
 void

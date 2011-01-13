@@ -124,7 +124,7 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX deps_package ON deps (package_id);"
 	"CREATE TABLE files ("
 		"path TEXT PRIMARY KEY,"
-		"md5 TEXT,"
+		"sha256 TEXT,"
 		"package_id TEXT"
 	");"
 	"CREATE INDEX files_package ON files (package_id);"
@@ -336,7 +336,7 @@ pkgdb_it_next_file(struct pkgdb_it *it, struct pkg_file **file_p)
 		file = *file_p;
 
 		strlcpy(file->path, sqlite3_column_text(it->stmt, 0), sizeof(file->path));
-		strlcpy(file->md5, sqlite3_column_text(it->stmt, 1), sizeof(file->md5));
+		strlcpy(file->sha256, sqlite3_column_text(it->stmt, 1), sizeof(file->sha256));
 		return (0);
 	case SQLITE_DONE:
 		return (1);
@@ -470,7 +470,7 @@ pkgdb_query_files(struct pkgdb *db, const char *origin) {
 	sqlite3_stmt *stmt;
 
 	sqlite3_prepare(db->sqlite,
-					"SELECT path, md5 "
+					"SELECT path, sha256 "
 					"FROM files "
 					"WHERE package_id = ?1;", -1, &stmt, NULL);
 	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
@@ -529,7 +529,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			"VALUES (?1, ?2, ?3, ?4);",
 			-1, &stmt_conflicts, NULL);
 
-	sqlite3_prepare(db->sqlite, "INSERT INTO files (path, md5, package_id)"
+	sqlite3_prepare(db->sqlite, "INSERT INTO files (path, sha256, package_id)"
 			"VALUES (?1, ?2, ?3);",
 			-1, &stmt_file, NULL);
 
@@ -564,7 +564,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	files = pkg_files(pkg);
 	for (i = 0; files[i] != NULL; i++) {
 		sqlite3_bind_text(stmt_file, 1, pkg_file_path(files[i]), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_file, 2, pkg_file_md5(files[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(files[i]), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_file, 3, pkg_origin(pkg), -1, SQLITE_STATIC);
 
 		sqlite3_step(stmt_file);

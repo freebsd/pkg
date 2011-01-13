@@ -311,16 +311,16 @@ pkg_adddep(struct pkg *pkg, struct pkg *dep)
 }
 
 int
-pkg_addfile(struct pkg *pkg, const char *path, const char *md5)
+pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 {
 	struct pkg_file *file;
-	if (path == NULL || md5 == NULL)
+	if (path == NULL || sha256 == NULL)
 		return (-1);
 
 	pkg_file_new(&file);
 
 	strlcpy(file->path, path, sizeof(file->path));
-	strlcpy(file->md5, md5, sizeof(file->md5));
+	strlcpy(file->sha256, sha256, sizeof(file->sha256));
 
 	array_init(&pkg->files, 10);
 	array_append(&pkg->files, file);
