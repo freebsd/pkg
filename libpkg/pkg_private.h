@@ -25,7 +25,7 @@ struct pkg_conflict {
 
 struct pkg_file {
 	char path[MAXPATHLEN];
-	char md5[33];
+	char sha256[65];
 };
 
 #endif

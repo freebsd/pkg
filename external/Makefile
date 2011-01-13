@@ -1,4 +1,3 @@
-SUBDIR=	jansson \
-	sqlite
+SUBDIR=	sqlite
 
 .include <bsd.subdir.mk>

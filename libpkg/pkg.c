@@ -236,3 +236,112 @@ pkg_free_void(void *p)
 	if (p != NULL)
 		pkg_free((struct pkg*) p);
 }
+
+/* setters */
+int
+pkg_setname(struct pkg *pkg, const char *name)
+{
+	if (name == NULL)
+		return (-1);
+
+	if (sbuf_done(pkg->name) != 0)
+		sbuf_clear(pkg->name);
+
+	sbuf_cat(pkg->name, name);
+	sbuf_finish(pkg->name);
+
+	return (0);
+}
+
+int
+pkg_setversion(struct pkg *pkg, const char *version)
+{
+	if (version == NULL)
+		return (-1);
+
+	if (sbuf_done(pkg->version) != 0)
+		sbuf_clear(pkg->version);
+
+	sbuf_cat(pkg->version, version);
+	sbuf_finish(pkg->version);
+
+	return (0);
+}
+
+int
+pkg_setcomment(struct pkg *pkg, const char *comment)
+{
+	if (comment == NULL)
+		return (-1);
+
+	if (sbuf_done(pkg->comment) != 0)
+		sbuf_clear(pkg->comment);
+
+	sbuf_cat(pkg->comment, comment);
+	sbuf_finish(pkg->comment);
+
+	return (0);
+}
+
+int
+pkg_setdesc(struct pkg *pkg, const char *desc)
+{
+	if (desc == NULL)
+		return (-1);
+
+	if (sbuf_done(pkg->desc) != 0)
+		sbuf_clear(pkg->desc);
+
+	sbuf_cat(pkg->desc, desc);
+	sbuf_finish(pkg->desc);
+
+	return (0);
+}
+
+int
+pkg_adddep(struct pkg *pkg, struct pkg *dep)
+{
+	if (dep == NULL)
+		return (-1);
+
+	array_init(&pkg->deps, 5);
+	array_append(&pkg->deps, dep);
+
+	return (0);
+}
+
+int
+pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
+{
+	struct pkg_file *file;
+	if (path == NULL || sha256 == NULL)
+		return (-1);
+
+	pkg_file_new(&file);
+
+	strlcpy(file->path, path, sizeof(file->path));
+	strlcpy(file->sha256, sha256, sizeof(file->sha256));
+
+	array_init(&pkg->files, 10);
+	array_append(&pkg->files, file);
+
+	return (0);
+}
+
+int
+pkg_addconflict(struct pkg *pkg, const char *glob)
+{
+	struct pkg_conflict *conflict;
+
+	if (glob == NULL)
+		return (-1);
+
+	pkg_conflict_new(&conflict);
+	sbuf_cat(conflict->glob, glob);
+	sbuf_finish(conflict->glob);
+
+	array_init(&pkg->conflicts, 5);
+	array_append(&pkg->conflicts, conflict);
+
+	return (0);
+}

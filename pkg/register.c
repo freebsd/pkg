@@ -1,9 +1,8 @@
-#include <sys/param.h>
-
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
 #include <string.h>
+#include <sys/param.h>
 #include <unistd.h>
 
 #include "register.h"
@@ -21,9 +20,6 @@ cmd_register(int argc, char **argv)
 	char *mtree = NULL;
 	char *origin = NULL;
 	char *depends = NULL;
-
-(void)pkg;
-(void)flattenedplist;
 
 	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:O:")) != -1) {
 		switch (ch) {
@@ -55,6 +51,4 @@ cmd_register(int argc, char **argv)
 		}
 	}
 	printf("%s\n", comment);
-
-	return (0);
 }
