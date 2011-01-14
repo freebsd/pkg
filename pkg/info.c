@@ -6,8 +6,10 @@
 #include <libutil.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <pkg.h>
 #include <string.h>
+#include <sysexits.h>
 
 #include "info.h"
 
@@ -89,6 +91,7 @@ exec_info(int argc, char **argv)
 	char ch;
 	size_t i;
 	int retcode = 0;
+	bool gotone = false;
 
 	/* TODO: exclusive opts ? */
 	while ((ch = getopt(argc, argv, "egxXdrlsqO")) != -1) {
@@ -149,9 +152,19 @@ exec_info(int argc, char **argv)
 		return (-1);
 	}
 
+	/* this is place for compatibility hacks */
+
+	/* ports infrastructure expects pkg info -q -O to always return 0 even
+	 * if the ports doesn't exists */
+	if (opt & INFO_ORIGIN)
+		gotone = true;
+
+
+	/* end of compatibility hacks */
 	pkg_new(&pkg);
 
 	while (pkgdb_it_next_pkg(it, &pkg, query_flags) == 0) {
+		gotone = true;
 
 		if (opt & INFO_EXISTS) {
 			retcode = 0;
@@ -201,6 +214,9 @@ exec_info(int argc, char **argv)
 		pkgdb_warn(db);
 		retcode = -1;
 	}
+
+	if (retcode == 0 && !gotone)
+		retcode = EX_SOFTWARE;
 
 	pkgdb_it_free(it);
 	pkgdb_close(db);
