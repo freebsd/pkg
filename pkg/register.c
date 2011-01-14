@@ -25,7 +25,6 @@ exec_register(int argc, char **argv)
 	char ch;
 	char *plist = NULL;
 	char *prefix = NULL;
-	char *mtree = NULL;
 	char *depends = NULL;
 	char *conflicts = NULL;
 	char *v = NULL;
@@ -43,7 +42,7 @@ exec_register(int argc, char **argv)
 				ret += pkg_set(pkg, PKG_COMMENT, optarg[0] == '-' ? optarg + 1 : optarg);
 				break;
 			case 'd':
-				ret += pkg_setdesc_from_file(pkg, optarg);
+				ret += pkg_set_from_file(pkg, PKG_DESC, optarg);
 				break;
 			case 'f':
 				plist = strdup(optarg);
@@ -55,7 +54,7 @@ exec_register(int argc, char **argv)
 				depends = strdup(optarg);
 				break;
 			case 'm':
-				mtree = strdup(optarg);
+				ret += pkg_set_from_file(pkg, PKG_MTREE, optarg);
 				break;
 			case 'n':
 				v = strrchr(optarg, '-');

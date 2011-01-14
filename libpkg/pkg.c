@@ -57,6 +57,22 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 	return (-1);
 }
 
+int
+pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
+{
+	char *buf = NULL;
+	int ret = 0;
+
+	if (file_to_buffer(path, &buf) <= 0)
+		return (-1);
+
+	ret = pkg_set(pkg, attr, buf);
+
+	free(buf);
+
+	return (ret);
+}
+
 struct pkg **
 pkg_deps(struct pkg *pkg)
 {
@@ -236,24 +252,6 @@ pkg_free_void(void *p)
 {
 	if (p != NULL)
 		pkg_free((struct pkg*) p);
-}
-
-/* specific Setters */
-
-int
-pkg_setdesc_from_file(struct pkg *pkg, const char *desc_path)
-{
-	char *buf = NULL;
-	int ret = 0;
-
-	if (file_to_buffer(desc_path, &buf) <= 0)
-		return (-1);
-
-	ret = pkg_set(pkg, PKG_DESC, buf);
-
-	free(buf);
-
-	return (ret);
 }
 
 int
