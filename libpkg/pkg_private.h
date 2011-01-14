@@ -14,6 +14,7 @@ struct pkg {
 	struct sbuf *comment;
 	struct sbuf *desc;
 	struct sbuf *mtree;
+	struct sbuf *message;
 	struct array deps;
 	struct array rdeps;
 	struct array conflicts;

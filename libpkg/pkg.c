@@ -31,6 +31,8 @@ pkg_get(struct pkg *pkg, pkg_attr attr) {
 			return (sbuf_get(pkg->desc));
 		case PKG_MTREE:
 			return (sbuf_get(pkg->mtree));
+		case PKG_MESSAGE:
+			return (sbuf_get(pkg->message));
 	}
 
 	return (NULL);
@@ -52,6 +54,8 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 			return (sbuf_set(&pkg->desc, value));
 		case PKG_MTREE:
 			return (sbuf_set(&pkg->mtree, value));
+		case PKG_MESSAGE:
+			return (sbuf_set(&pkg->message, value));
 	}
 
 	return (-1);
@@ -219,6 +223,7 @@ pkg_reset(struct pkg *pkg)
 	sbuf_reset(pkg->comment);
 	sbuf_reset(pkg->desc);
 	sbuf_reset(pkg->mtree);
+	sbuf_reset(pkg->message);
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);
@@ -238,6 +243,7 @@ pkg_free(struct pkg *pkg)
 	sbuf_free(pkg->comment);
 	sbuf_free(pkg->desc);
 	sbuf_free(pkg->mtree);
+	sbuf_free(pkg->message);
 
 	array_free(&pkg->deps, &pkg_free_void);
 	array_free(&pkg->rdeps, &pkg_free_void);

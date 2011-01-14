@@ -32,9 +32,8 @@ exec_register(int argc, char **argv)
 	int ret = 0;
 
 	pkg_new(&pkg);
-	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:O:C:n:")) != -1) {
+	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:C:n:M:")) != -1) {
 		switch (ch) {
-			case 'O':
 			case 'v':
 				/* IGNORE */
 				break;
@@ -68,6 +67,9 @@ exec_register(int argc, char **argv)
 				break;
 			case 'C':
 				conflicts = strdup(optarg);
+				break;
+			case 'M':
+				ret += pkg_set_from_file(pkg, PKG_MESSAGE, optarg);
 				break;
 			default:
 				printf("%c\n", ch);

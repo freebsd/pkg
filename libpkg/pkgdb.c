@@ -98,6 +98,7 @@ pkgdb_init(sqlite3 *sdb)
 		"comment TEXT,"
 		"desc TEXT,"
 		"mtree TEXT,"
+		"message TEXT,"
 		"automatic INTEGER"
 	");"
 	"CREATE TABLE options ("
@@ -494,8 +495,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	sqlite3_exec(db->sqlite, "BEGIN TRANSACTION;", NULL, NULL, NULL);
 
-	sqlite3_prepare(db->sqlite, "INSERT OR REPLACE INTO packages (origin, name, version, comment, desc, mtree)"
-			"VALUES (?1, ?2, ?3, ?4, ?5, ?6);",
+	sqlite3_prepare(db->sqlite, "INSERT OR REPLACE INTO packages (origin, name, version, comment, desc, mtree, message) "
+			"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
 			-1, &stmt_pkg, NULL);
 
 	sqlite3_prepare(db->sqlite, "INSERT OR REPLACE INTO deps (origin, name, version, package_id)"
@@ -515,7 +516,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 3, pkg_get(pkg, PKG_VERSION), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 4, pkg_get(pkg, PKG_COMMENT), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_DESC), -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_MTREE), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 6, pkg_get(pkg, PKG_MTREE), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_MESSAGE), -1, SQLITE_STATIC);
 
 	sqlite3_step(stmt_pkg);
 

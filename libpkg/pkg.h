@@ -24,12 +24,13 @@ typedef enum {
 } pkg_t;
 
 typedef enum {
-	PKG_ORIGIN = 0,
+	PKG_ORIGIN,
 	PKG_NAME,
 	PKG_VERSION,
 	PKG_COMMENT,
 	PKG_DESC,
-	PKG_MTREE
+	PKG_MTREE,
+	PKG_MESSAGE
 } pkg_attr;
 
 

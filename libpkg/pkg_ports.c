@@ -48,7 +48,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 			} else if (STARTS_WITH(plist_p, "@exec ")) {
 				/* TODO */
 			}else {
-				warnx("%s is deprecated, ignoring\n", plist_p);
+				warnx("%s is deprecated, ignoring", plist_p);
 			}
 		} else if (strlen(plist_p) > 0){
 			buf = plist_p;
