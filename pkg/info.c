@@ -38,16 +38,16 @@ query_pkg(struct pkg *pkg, unsigned char opt) {
 	int i;
 
 	if (opt & INFO_PRINT_DEP) {
-		printf("%s-%s depends on: \n", pkg_name(pkg), pkg_version(pkg));
+		printf("%s-%s depends on: \n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
 		deps = pkg_deps(pkg);
 		for (i = 0; deps[i] != NULL; i++) {
-			printf("%s-%s\n", pkg_name(deps[i]), pkg_version(deps[i]));
+			printf("%s-%s\n", pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION));
 		}
 
 		printf("\n");
 	} else if (opt & INFO_LIST_FILES) {
-		printf("%s-%s owns the following files:\n", pkg_name(pkg), pkg_version(pkg));
+		printf("%s-%s owns the following files:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
 		files = pkg_files(pkg);
 		for (i = 0; files[i] != NULL; i++) {
@@ -56,7 +56,7 @@ query_pkg(struct pkg *pkg, unsigned char opt) {
 
 		printf("\n");
 	} else {
-		printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
+		printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_COMMENT));
 	}
 
 	pkg_free(pkg);
@@ -172,27 +172,27 @@ exec_info(int argc, char **argv)
 		if (opt & INFO_EXISTS) {
 			retcode = 0;
 		} else if (opt & INFO_PRINT_DEP) {
-			if (!opt & INFO_QUIET)
-				printf("%s-%s depends on:\n", pkg_name(pkg), pkg_version(pkg));
+			if (opt | INFO_QUIET)
+				printf("%s-%s depends on:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
 			deps = pkg_deps(pkg);
 			for (i = 0; deps[i] != NULL; i++) {
-				printf("%s-%s\n", pkg_name(deps[i]), pkg_version(deps[i]));
+				printf("%s-%s\n", pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION));
 			}
 
-			if (!opt & INFO_QUIET)
+			if (opt | INFO_QUIET)
 				printf("\n");
 		} else if (opt & INFO_PRINT_RDEP) {
-			printf("%s-%s is required by:\n", pkg_name(pkg), pkg_version(pkg));
+			printf("%s-%s is required by:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
 			deps = pkg_rdeps(pkg);
 			for (i = 0; deps[i] != NULL; i++) {
-				printf("%s-%s\n", pkg_name(deps[i]), pkg_version(deps[i]));
+				printf("%s-%s\n", pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION));
 			}
 
 			printf("\n");
 		} else if (opt & INFO_LIST_FILES) {
-			printf("%s-%s owns the following files:\n", pkg_name(pkg), pkg_version(pkg));
+			printf("%s-%s owns the following files:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
 			files = pkg_files(pkg);
 			for (i = 0; files[i] != NULL; i++) {
@@ -202,18 +202,18 @@ exec_info(int argc, char **argv)
 			printf("\n");
 		} else if (opt & INFO_SIZE) {
 			humanize_number(size, sizeof(size), pkg_size(pkg), "B", HN_AUTOSCALE, 0);
-			printf("%s-%s size is %s\n", pkg_name(pkg), pkg_version(pkg), size);
+			printf("%s-%s size is %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), size);
 		} else if (opt & INFO_ORIGIN) {
 			if (opt & INFO_QUIET)
-				printf("%s\n", pkg_origin(pkg));
+				printf("%s\n", pkg_get(pkg, PKG_ORIGIN));
 			else
-				printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_origin(pkg));
+				printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_ORIGIN));
 
 		} else {
 			if (opt & INFO_QUIET)
-				printf("%s-%s\n", pkg_name(pkg), pkg_version(pkg));
+				printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 			else
-				printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
+				printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_COMMENT));
 		}
 	}
 	pkg_free(pkg);

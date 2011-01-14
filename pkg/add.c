@@ -39,7 +39,7 @@ exec_add(int argc, char **argv)
 	}
 
 	/* check if already installed */
-	if ((it = pkgdb_query(db, pkg_name(pkg), MATCH_EXACT)) == NULL) {
+	if ((it = pkgdb_query(db, pkg_get(pkg, PKG_ORIGIN), MATCH_EXACT)) == NULL) {
 		pkgdb_warn(db);
 		return (-1);
 	}
@@ -53,7 +53,7 @@ exec_add(int argc, char **argv)
 
 
 	if (installed) {
-		err(1, "%s is already installed\n", pkg_name(pkg));
+		err(1, "%s is already installed\n", pkg_get(pkg, PKG_NAME));
 	}
 
 	deps = pkg_deps(pkg);
@@ -62,7 +62,7 @@ exec_add(int argc, char **argv)
 
 		for (i = 0; deps[i] != NULL; i++) {
 			if (pkg_type(deps[i]) == PKG_NOTFOUND) {
-				warnx("%s-%s: unresolved dependency %s-%s", pkg_name(pkg), pkg_version(pkg), pkg_name(deps[i]), pkg_version(deps[i]));
+				warnx("%s-%s: unresolved dependency %s-%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION));
 				ret = 1;
 			}
 		}

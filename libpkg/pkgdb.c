@@ -218,7 +218,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		if (flags & PKG_DEPS) {
 			array_init(&pkg->deps, 10);
 
-			i = pkgdb_query_dep(it->db, pkg_origin(pkg));
+			i = pkgdb_query_dep(it->db, pkg_get(pkg, PKG_ORIGIN));
 			p = NULL;
 			while (pkgdb_it_next_pkg(i, &p, PKG_BASIC) == 0) {
 				array_append(&pkg->deps, p);
@@ -230,7 +230,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		if (flags & PKG_RDEPS) {
 			array_init(&pkg->rdeps, 5);
 
-			i = pkgdb_query_rdep(it->db, pkg_origin(pkg));
+			i = pkgdb_query_rdep(it->db, pkg_get(pkg, PKG_ORIGIN));
 			p = NULL;
 			while (pkgdb_it_next_pkg(i, &p, PKG_BASIC) == 0) {
 				array_append(&pkg->rdeps, p);
@@ -242,7 +242,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		if (flags & PKG_CONFLICTS) {
 			array_init(&pkg->conflicts, 5);
 
-			i = pkgdb_query_conflicts(it->db, pkg_origin(pkg));
+			i = pkgdb_query_conflicts(it->db, pkg_get(pkg, PKG_ORIGIN));
 			c = NULL;
 			while (pkgdb_it_next_conflict(i, &c) == 0) {
 				array_append(&pkg->conflicts, c);
@@ -254,7 +254,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		if (flags & PKG_FILES) {
 			array_init(&pkg->files, 10);
 
-			i = pkgdb_query_files(it->db, pkg_origin(pkg));
+			i = pkgdb_query_files(it->db, pkg_get(pkg, PKG_ORIGIN));
 			f = NULL;
 			while (pkgdb_it_next_file(i, &f) == 0) {
 				array_append(&pkg->files, f);
@@ -510,11 +510,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			"VALUES (?1, ?2, ?3);",
 			-1, &stmt_file, NULL);
 
-	sqlite3_bind_text(stmt_pkg, 1, pkg_origin(pkg), -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt_pkg, 2, pkg_name(pkg), -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt_pkg, 3, pkg_version(pkg), -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt_pkg, 4, pkg_comment(pkg), -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt_pkg, 5, pkg_desc(pkg), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 2, pkg_get(pkg, PKG_NAME), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 3, pkg_get(pkg, PKG_VERSION), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 4, pkg_get(pkg, PKG_COMMENT), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_DESC), -1, SQLITE_STATIC);
 
 	sqlite3_step(stmt_pkg);
 
@@ -522,10 +522,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (deps != NULL)
 		for (i = 0; deps[i] != NULL; i++) {
-			sqlite3_bind_text(stmt_dep, 1, pkg_origin(deps[i]), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_dep, 2, pkg_name(deps[i]), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_dep, 3, pkg_version(deps[i]), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_dep, 4, pkg_origin(pkg), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_dep, 1, pkg_get(deps[i], PKG_ORIGIN), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_dep, 2, pkg_get(deps[i], PKG_NAME), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_dep, 3, pkg_get(deps[i], PKG_VERSION), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_dep, 4, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 			sqlite3_step(stmt_dep);
 			sqlite3_reset(stmt_dep);
@@ -535,7 +535,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	if (conflicts != NULL)
 		for (i = 0; conflicts[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_conflicts, 1, pkg_conflict_glob(conflicts[i]), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_conflicts, 2, pkg_origin(pkg), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_conflicts, 2, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 		}
 
 
@@ -544,7 +544,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		for (i = 0; files[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_file, 1, pkg_file_path(files[i]), -1, SQLITE_STATIC);
 			sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(files[i]), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_file, 3, pkg_origin(pkg), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_file, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 			sqlite3_step(stmt_file);
 			sqlite3_reset(stmt_file);

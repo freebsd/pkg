@@ -10,10 +10,6 @@
 
 static void pkg_free_void(void*);
 
-#define pkg_set_str(pkg, attr, value)  do { \
-	return (sbuf_set(&(pkg)->attr, value)); \
-} while (0)
-
 pkg_t
 pkg_type(struct pkg *pkg)
 {
@@ -21,33 +17,44 @@ pkg_type(struct pkg *pkg)
 }
 
 const char *
-pkg_origin(struct pkg *pkg)
-{
-	return (sbuf_get(pkg->origin));
+pkg_get(struct pkg *pkg, pkg_attr attr) {
+	switch (attr) {
+		case PKG_NAME:
+			return (sbuf_get(pkg->name));
+		case PKG_VERSION:
+			return (sbuf_get(pkg->version));
+		case PKG_COMMENT:
+			return (sbuf_get(pkg->comment));
+		case PKG_ORIGIN:
+			return (sbuf_get(pkg->origin));
+		case PKG_DESC:
+			return (sbuf_get(pkg->desc));
+		case PKG_MTREE:
+			return (sbuf_get(pkg->mtree));
+	}
+
+	return (NULL);
 }
 
-const char *
-pkg_name(struct pkg *pkg)
+int
+pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 {
-	return (sbuf_get(pkg->name));
-}
+	switch (attr) {
+		case PKG_NAME:
+			return (sbuf_set(&pkg->name, value));
+		case PKG_VERSION:
+			return (sbuf_set(&pkg->version, value));
+		case PKG_COMMENT:
+			return (sbuf_set(&pkg->comment, value));
+		case PKG_ORIGIN:
+			return (sbuf_set(&pkg->origin, value));
+		case PKG_DESC:
+			return (sbuf_set(&pkg->desc, value));
+		case PKG_MTREE:
+			return (sbuf_set(&pkg->mtree, value));
+	}
 
-const char *
-pkg_version(struct pkg *pkg)
-{
-	return (sbuf_get(pkg->version));
-}
-
-const char *
-pkg_comment(struct pkg *pkg)
-{
-	return (sbuf_get(pkg->comment));
-}
-
-const char *
-pkg_desc(struct pkg *pkg)
-{
-	return (sbuf_get(pkg->desc));
+	return (-1);
 }
 
 struct pkg **
@@ -69,7 +76,7 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 
 	pkg_new(&p);
 	for (i = 0; deps[i] != NULL; i++) {
-		it = pkgdb_query(db, pkg_origin(deps[i]), MATCH_EXACT);
+		it = pkgdb_query(db, pkg_get(deps[i], PKG_ORIGIN), MATCH_EXACT);
 
 		if (pkgdb_it_next_pkg(it, &p, PKG_BASIC) == 0) {
 			deps[i]->type = PKG_INSTALLED;
@@ -231,34 +238,7 @@ pkg_free_void(void *p)
 		pkg_free((struct pkg*) p);
 }
 
-/* Setters */
-
-int
-pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
-{
-	switch (attr) {
-		case PKG_NAME:
-			pkg_set_str(pkg, name, value);
-			break;
-		case PKG_VERSION:
-			pkg_set_str(pkg, version, value);
-			break;
-		case PKG_COMMENT:
-			pkg_set_str(pkg, comment, value);
-			break;
-		case PKG_ORIGIN:
-			pkg_set_str(pkg, origin, value);
-			break;
-		case PKG_DESC:
-			pkg_set_str(pkg, desc, value);
-			break;
-		case PKG_MTREE:
-			pkg_set_str(pkg, mtree, value);
-			break;
-	}
-
-	return (0);
-}
+/* specific Setters */
 
 int
 pkg_setdesc_from_file(struct pkg *pkg, const char *desc_path)

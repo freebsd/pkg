@@ -48,8 +48,8 @@ exec_which(int argc, char **argv)
 	pkg_new(&pkg);
 	if (pkgdb_it_next_pkg(it, &pkg, PKG_BASIC) == 0) {
 		retcode = 0;
-		printf("%s was installed by package %s-%s\n", pathabs, pkg_name(pkg),
-			   pkg_version(pkg));
+		printf("%s was installed by package %s-%s\n", pathabs, pkg_get(pkg, PKG_NAME),
+			   pkg_get(pkg, PKG_VERSION));
 	}
 	pkg_free(pkg);
 	pkgdb_it_free(it);

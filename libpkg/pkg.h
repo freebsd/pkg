@@ -24,13 +24,14 @@ typedef enum {
 } pkg_t;
 
 typedef enum {
+	PKG_ORIGIN = 0,
 	PKG_NAME,
 	PKG_VERSION,
-	PKG_ORIGIN,
 	PKG_COMMENT,
 	PKG_DESC,
 	PKG_MTREE
 } pkg_attr;
+
 
 /* pkg */
 int pkg_new(struct pkg **);
@@ -38,11 +39,7 @@ int pkg_open(const char *, struct pkg **, int);
 pkg_t pkg_type(struct pkg *);
 void pkg_reset(struct pkg *);
 void pkg_free(struct pkg *);
-const char *pkg_name(struct pkg *);
-const char *pkg_version(struct pkg *);
-const char *pkg_comment(struct pkg *);
-const char *pkg_desc(struct pkg *);
-const char *pkg_origin(struct pkg *);
+const char *pkg_get(struct pkg *, pkg_attr);
 struct pkg ** pkg_deps(struct pkg *);
 struct pkg ** pkg_rdeps(struct pkg *);
 struct pkg_file ** pkg_files(struct pkg *);
