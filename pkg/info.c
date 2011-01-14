@@ -65,7 +65,7 @@ query_pkg(struct pkg *pkg, unsigned char opt) {
 void
 usage_info(void)
 {
-	fprintf(stderr, "info [-egxXdrls] <pkg-name>\n"
+	fprintf(stderr, "info [-egxXdrlsqO] <pkg-name>\n"
 			"info\n");
 }
 
@@ -91,7 +91,7 @@ exec_info(int argc, char **argv)
 	int retcode = 0;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "egxXdrls")) != -1) {
+	while ((ch = getopt(argc, argv, "egxXdrlsqO")) != -1) {
 		switch (ch) {
 			case 'e':
 				opt |= INFO_EXISTS;
@@ -120,6 +120,12 @@ exec_info(int argc, char **argv)
 			case 's':
 				opt |= INFO_SIZE;
 				query_flags = PKG_FILES;
+				break;
+			case 'q':
+				opt |= INFO_QUIET;
+				break;
+			case 'O':
+				opt |= INFO_ORIGIN;
 				break;
 		}
 	}
@@ -179,6 +185,12 @@ exec_info(int argc, char **argv)
 		} else if (opt & INFO_SIZE) {
 			humanize_number(size, sizeof(size), pkg_size(pkg), "B", HN_AUTOSCALE, 0);
 			printf("%s-%s size is %s\n", pkg_name(pkg), pkg_version(pkg), size);
+		} else if (opt & INFO_ORIGIN) {
+			if (opt & INFO_QUIET)
+				printf("%s\n", pkg_origin(pkg));
+			else
+				printf("%s-%s's origin: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_origin(pkg));
+
 		} else {
 			printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
 		}
