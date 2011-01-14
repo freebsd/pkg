@@ -79,9 +79,8 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 int
 ports_parse_depends(struct pkg *pkg, char *depends)
 {
-	struct pkg *dep;
 	int nbel, i;
-	char *dep_p, *buf, *v;
+	char *dep_p, *buf, *v, *name;;
 	size_t next;
 
 	if (depends == NULL)
@@ -99,22 +98,18 @@ ports_parse_depends(struct pkg *pkg, char *depends)
 	dep_p = depends;
 
 	for (i = 0; i <= nbel; i++) {
+
 		buf = dep_p;
 		split_chr(dep_p, ':');
 		v = strrchr(dep_p, '-');
 		v[0] = '\0';
 		v++;
 		
-		pkg_new(&dep);
-		pkg_setname(dep, buf);
+		name = buf;
+		buf += strlen(buf) + 1;
 		buf += strlen(buf) + 1;
 
-		pkg_setversion(dep, buf);
-		buf += strlen(buf) + 1;
-
-		pkg_setorigin(dep, buf);
-
-		pkg_adddep(pkg, dep);
+		pkg_adddep(pkg, name, buf, v);
 
 		dep_p += next + 1;
 		next = strlen(dep_p);

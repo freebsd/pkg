@@ -13,6 +13,7 @@ struct pkg {
 	struct sbuf *version;
 	struct sbuf *comment;
 	struct sbuf *desc;
+	struct sbuf *mtree;
 	struct array deps;
 	struct array rdeps;
 	struct array conflicts;

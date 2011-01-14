@@ -10,6 +10,10 @@
 
 static void pkg_free_void(void*);
 
+#define pkg_set_str(pkg, attr, value)  do { \
+	return (sbuf_set(&(pkg)->attr, value)); \
+} while (0)
+
 pkg_t
 pkg_type(struct pkg *pkg)
 {
@@ -139,7 +143,7 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 			size = archive_entry_size(ae);
 			buf = calloc(1, size+1);
 			archive_read_data(a, buf, size);
-			pkg_setdesc(*pkg, buf);
+			pkg_set(*pkg, PKG_DESC, buf);
 			free(buf);
 		}
 
@@ -191,6 +195,7 @@ pkg_reset(struct pkg *pkg)
 	sbuf_reset(pkg->version);
 	sbuf_reset(pkg->comment);
 	sbuf_reset(pkg->desc);
+	sbuf_reset(pkg->mtree);
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);
@@ -209,6 +214,7 @@ pkg_free(struct pkg *pkg)
 	sbuf_free(pkg->origin);
 	sbuf_free(pkg->comment);
 	sbuf_free(pkg->desc);
+	sbuf_free(pkg->mtree);
 
 	array_free(&pkg->deps, &pkg_free_void);
 	array_free(&pkg->rdeps, &pkg_free_void);
@@ -228,27 +234,30 @@ pkg_free_void(void *p)
 /* Setters */
 
 int
-pkg_setorigin(struct pkg *pkg, const char *origin)
+pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 {
-	return (sbuf_set(&pkg->origin, origin));
-}
+	switch (attr) {
+		case PKG_NAME:
+			pkg_set_str(pkg, name, value);
+			break;
+		case PKG_VERSION:
+			pkg_set_str(pkg, version, value);
+			break;
+		case PKG_COMMENT:
+			pkg_set_str(pkg, comment, value);
+			break;
+		case PKG_ORIGIN:
+			pkg_set_str(pkg, origin, value);
+			break;
+		case PKG_DESC:
+			pkg_set_str(pkg, desc, value);
+			break;
+		case PKG_MTREE:
+			pkg_set_str(pkg, mtree, value);
+			break;
+	}
 
-int
-pkg_setname(struct pkg *pkg, const char *name)
-{
-	return (sbuf_set(&pkg->name, name));
-}
-
-int
-pkg_setversion(struct pkg *pkg, const char *version)
-{
-	return (sbuf_set(&pkg->version, version));
-}
-
-int
-pkg_setcomment(struct pkg *pkg, const char *comment)
-{
-	return (sbuf_set(&pkg->comment, comment));
+	return (0);
 }
 
 int
@@ -260,7 +269,7 @@ pkg_setdesc_from_file(struct pkg *pkg, const char *desc_path)
 	if (file_to_buffer(desc_path, &buf) <= 0)
 		return (-1);
 
-	ret = pkg_setdesc(pkg, buf);
+	ret = pkg_set(pkg, PKG_DESC, buf);
 
 	free(buf);
 
@@ -268,16 +277,18 @@ pkg_setdesc_from_file(struct pkg *pkg, const char *desc_path)
 }
 
 int
-pkg_setdesc(struct pkg *pkg, const char *desc)
+pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version)
 {
-	return (sbuf_set(&pkg->desc, desc));
-}
+	struct pkg *dep;
 
-int
-pkg_adddep(struct pkg *pkg, struct pkg *dep)
-{
-	if (dep == NULL)
+	if (name == NULL || origin == NULL || version == NULL)
 		return (-1);
+
+	pkg_new(&dep);
+
+	pkg_set(dep, PKG_NAME, name);
+	pkg_set(dep, PKG_ORIGIN, origin);
+	pkg_set(dep, PKG_VERSION, version);
 
 	array_init(&pkg->deps, 5);
 	array_append(&pkg->deps, dep);

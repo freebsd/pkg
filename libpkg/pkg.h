@@ -23,6 +23,15 @@ typedef enum {
 	PKG_NOTFOUND
 } pkg_t;
 
+typedef enum {
+	PKG_NAME,
+	PKG_VERSION,
+	PKG_ORIGIN,
+	PKG_COMMENT,
+	PKG_DESC,
+	PKG_MTREE
+} pkg_attr;
+
 /* pkg */
 int pkg_new(struct pkg **);
 int pkg_open(const char *, struct pkg **, int);
@@ -41,13 +50,9 @@ struct pkg_conflict ** pkg_conflicts(struct pkg *);
 int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
 
 /* pkg setters */
-int pkg_setname(struct pkg *, const char *);
-int pkg_setversion(struct pkg *, const char *);
-int pkg_setcomment(struct pkg *, const char *);
-int pkg_setorigin(struct pkg *, const char *);
-int pkg_setdesc(struct pkg *, const char *);
+int pkg_set(struct pkg *, pkg_attr, const char *);
 int pkg_setdesc_from_file(struct pkg *, const char *);
-int pkg_adddep(struct pkg *, struct pkg *);
+int pkg_adddep(struct pkg *, const char *, const char *, const char *);
 int pkg_addfile(struct pkg *, const char *, const char *);
 int pkg_addconflict(struct pkg *, const char *);
 
