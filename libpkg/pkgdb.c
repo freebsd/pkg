@@ -97,6 +97,7 @@ pkgdb_init(sqlite3 *sdb)
 		"version TEXT,"
 		"comment TEXT,"
 		"desc TEXT,"
+		"mtree TEXT,"
 		"automatic INTEGER"
 	");"
 	"CREATE TABLE options ("
@@ -208,11 +209,11 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg = *pkg_p;
 
 		pkg->type = PKG_INSTALLED;
-		pkg_setorigin(pkg, sqlite3_column_text(it->stmt, 0));
-		pkg_setname(pkg, sqlite3_column_text(it->stmt, 1));
-		pkg_setversion(pkg, sqlite3_column_text(it->stmt, 2));
-		pkg_setcomment(pkg, sqlite3_column_text(it->stmt, 3));
-		pkg_setdesc(pkg, sqlite3_column_text(it->stmt, 4));
+		pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 0));
+		pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 1));
+		pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 2));
+		pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 3));
+		pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 4));
 
 		if (flags & PKG_DEPS) {
 			array_init(&pkg->deps, 10);

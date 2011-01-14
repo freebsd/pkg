@@ -40,7 +40,7 @@ exec_register(int argc, char **argv)
 				/* IGNORE */
 				break;
 			case 'c':
-				ret += pkg_setcomment(pkg, optarg[0] == '-' ? optarg + 1 : optarg);
+				ret += pkg_set(pkg, PKG_COMMENT, optarg[0] == '-' ? optarg + 1 : optarg);
 				break;
 			case 'd':
 				ret += pkg_setdesc_from_file(pkg, optarg);
@@ -61,11 +61,11 @@ exec_register(int argc, char **argv)
 				v = strrchr(optarg, '-');
 				v[0] = '\0';
 				v++;
-				ret += pkg_setname(pkg, optarg);
-				ret += pkg_setversion(pkg, v);
+				ret += pkg_set(pkg, PKG_NAME, optarg);
+				ret += pkg_set(pkg, PKG_VERSION, v);
 				break;
 			case 'o':
-				ret += pkg_setorigin(pkg, optarg);
+				ret += pkg_set(pkg, PKG_ORIGIN, optarg);
 				break;
 			case 'C':
 				conflicts = strdup(optarg);

@@ -55,7 +55,7 @@ m_parse_name(struct pkg *pkg, char *buf)
 	while (isspace(*buf))
 		buf++;
 
-	pkg_setname(pkg, buf);
+	pkg_set(pkg, PKG_NAME, buf);
 
 	return (0);
 }
@@ -66,7 +66,7 @@ m_parse_origin(struct pkg *pkg, char *buf)
 	while (isspace(*buf))
 		buf++;
 
-	pkg_setorigin(pkg, buf);
+	pkg_set(pkg, PKG_ORIGIN, buf);
 
 	return (0);
 }
@@ -77,7 +77,7 @@ m_parse_version(struct pkg *pkg, char *buf)
 	while (isspace(*buf))
 		buf++;
 
-	pkg_setversion(pkg, buf);
+	pkg_set(pkg, PKG_VERSION, buf);
 
 	return (0);
 }
@@ -133,7 +133,7 @@ m_parse_comment(struct pkg *pkg, char *buf)
 	while (isspace(*buf))
 		buf++;
 
-	pkg_setcomment(pkg, buf);
+	pkg_set(pkg, PKG_COMMENT, buf);
 
 	return (0);
 }
@@ -177,13 +177,13 @@ m_parse_dep(struct pkg *pkg, char *buf)
 	for (i = 0; i <= nbel; i++) {
 		switch(i) {
 			case 0:
-				pkg_setname(dep, buf_ptr);
+				pkg_set(dep, PKG_NAME, buf_ptr);
 				break;
 			case 1:
-				pkg_setorigin(dep, buf_ptr);
+				pkg_set(dep, PKG_ORIGIN, buf_ptr);
 				break;
 			case 2:
-				pkg_setversion(dep, buf_ptr);
+				pkg_set(dep, PKG_VERSION, buf_ptr);
 				break;
 		}
 		buf_ptr += next + 1;
