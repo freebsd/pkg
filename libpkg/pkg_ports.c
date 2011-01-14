@@ -35,7 +35,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 	plist_p = plist_buf;
 
 	for (i = 0; i <= nbel; i++) {
-		printf("===>%s\n", plist_p);
 		if (plist_p[0] == '@') {
 			if (STARTS_WITH(plist_p, "@cwd ")) {
 				buf = plist_p;
@@ -44,10 +43,14 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 					prefix = buf;
 			} else if (STARTS_WITH(plist_p, "@comment ")){
 				/* DO NOTHING: ignore the comments */
+			} else if (STARTS_WITH(plist_p, "@unexec ")) {
+				/* TODO */
+			} else if (STARTS_WITH(plist_p, "@exec ")) {
+				/* TODO */
 			}else {
-				warnx("%s is deprecated, ignoring\n", buf);
+				warnx("%s is deprecated, ignoring\n", plist_p);
 			}
-		} else {
+		} else if (strlen(plist_p) > 0){
 			buf = plist_p;
 
 			if (prefix[strlen(prefix) - 1] == '/')
