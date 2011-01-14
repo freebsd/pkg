@@ -274,10 +274,18 @@ pkg_setdesc(struct pkg *pkg, const char *desc)
 }
 
 int
-pkg_adddep(struct pkg *pkg, struct pkg *dep)
+pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version)
 {
-	if (dep == NULL)
+	struct pkg *dep;
+
+	if (name == NULL || origin == NULL || version == NULL)
 		return (-1);
+
+	pkg_new(&dep);
+
+	pkg_setname(dep, name);
+	pkg_setorigin(dep, origin);
+	pkg_setversion(dep, version);
 
 	array_init(&pkg->deps, 5);
 	array_append(&pkg->deps, dep);

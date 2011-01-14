@@ -47,7 +47,7 @@ int pkg_setcomment(struct pkg *, const char *);
 int pkg_setorigin(struct pkg *, const char *);
 int pkg_setdesc(struct pkg *, const char *);
 int pkg_setdesc_from_file(struct pkg *, const char *);
-int pkg_adddep(struct pkg *, struct pkg *);
+int pkg_adddep(struct pkg *, const char *, const char *, const char *);
 int pkg_addfile(struct pkg *, const char *, const char *);
 int pkg_addconflict(struct pkg *, const char *);
 

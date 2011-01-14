@@ -87,6 +87,12 @@ exec_register(int argc, char **argv)
 		if (ret < 0)
 			return (ret);
 	}
+	struct pkg **deps = pkg_deps(pkg);
+	if (deps != NULL) {
+		for (int i = 0; deps[i] != NULL; i++) {
+			printf("----> %s\n", pkg_name(deps[i]));
+		}
+	}
 
 	if (conflicts != NULL) {
 		ret += ports_parse_conflicts(pkg, conflicts);

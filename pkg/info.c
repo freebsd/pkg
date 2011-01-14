@@ -94,8 +94,11 @@ exec_info(int argc, char **argv)
 	bool gotone = false;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "egxXdrlsqO")) != -1) {
+	while ((ch = getopt(argc, argv, "egxXdrlsqoO")) != -1) {
 		switch (ch) {
+			case 'O':
+				opt |= INFO_ORIGIN_SEARCH;  /* this is only for ports compat */
+				break;
 			case 'e':
 				opt |= INFO_EXISTS;
 				retcode = 1;
@@ -127,7 +130,7 @@ exec_info(int argc, char **argv)
 			case 'q':
 				opt |= INFO_QUIET;
 				break;
-			case 'O':
+			case 'o':
 				opt |= INFO_ORIGIN;
 				break;
 		}
@@ -156,7 +159,7 @@ exec_info(int argc, char **argv)
 
 	/* ports infrastructure expects pkg info -q -O to always return 0 even
 	 * if the ports doesn't exists */
-	if (opt & INFO_ORIGIN)
+	if (opt & INFO_ORIGIN_SEARCH)
 		gotone = true;
 
 
@@ -202,10 +205,13 @@ exec_info(int argc, char **argv)
 			if (opt & INFO_QUIET)
 				printf("%s\n", pkg_origin(pkg));
 			else
-				printf("%s-%s's origin: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_origin(pkg));
+				printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_origin(pkg));
 
 		} else {
-			printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
+			if (opt & INFO_QUIET)
+				printf("%s-%s\n", pkg_name(pkg), pkg_version(pkg));
+			else
+				printf("%s-%s: %s\n", pkg_name(pkg), pkg_version(pkg), pkg_comment(pkg));
 		}
 	}
 	pkg_free(pkg);
@@ -215,10 +221,11 @@ exec_info(int argc, char **argv)
 		retcode = -1;
 	}
 
-	if (retcode == 0 && !gotone)
+	if (retcode == 0 && !gotone && match != MATCH_ALL)
 		retcode = EX_SOFTWARE;
 
 	pkgdb_it_free(it);
 	pkgdb_close(db);
+
 	return (retcode);
 }
