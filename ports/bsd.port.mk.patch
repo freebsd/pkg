@@ -1,5 +1,5 @@
 --- /usr/ports/Mk/bsd.port.mk.prepkgng	2011-01-14 00:14:59.962893785 +0100
-+++ /usr/ports/Mk/bsd.port.mk	2011-01-14 14:34:44.686169759 +0100
++++ /usr/ports/Mk/bsd.port.mk	2011-01-14 14:52:55.642893124 +0100
 @@ -2493,6 +2493,9 @@
  
  .if !defined(PKG_ARGS)
@@ -18,26 +18,30 @@
  ACTUAL-PACKAGE-DEPENDS?= \
  	if [ "${_LIB_RUN_DEPENDS}" != "  " ]; then \
  		origins=$$(for pkgname in ${PKG_DBDIR}/*; do \
-@@ -5579,8 +5583,17 @@
+@@ -5579,8 +5583,21 @@
  				shift 2; \
  			done; \
  		done; \
 -		[ -z "$$packagelist" ] || ${AWK} -F '( |:)' 'BEGIN { pkgname="broken_contents" } /@pkgdep / { pkgname=$$2 } /@comment DEPORIGIN:/ { printf "%s:%s\n", pkgname, $$3; pkgname="broken_contents" }' $$packagelist; \
 +		[ -z "$$packagelist" ] || ${AWK} -F '( |:)' 'BEGIN { pkgname="broken_contents" } /@pkgdep / { pkgname=$$3 } /@comment DEPORIGIN:/ { printf "%s:%s\n", pkgname, $$3; pkgname="broken_contents" }' $$packagelist; \
-+	fi
+ 	fi
 +.else
 +ACTUAL-PACKAGE-DEPENDS?= \
 +	if [ "${_LIB_RUN_DEPENDS}" != "  " ]; then \
 +		for dir in ${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,}; do \
 +			pkgname=$$(${PKG_INFO} -q $${dir\#\#${PORTSDIR}/}); \
 +			${ECHO_CMD} $$pkgname:$${dir\#\#${PORTSDIR}/}; \
++			for pkg in $$(${PKG_INFO} -d $${dir\#\#${PORTSDIR}/}); do\
++				origin=$$(${PKG_INFO} -qo $${pkg%-*}); \
++				${ECHO_CMD} $$pkg:$$origin; \
++			done; \
 +		done; \
- 	fi
++	fi
 +.endif
  
  # Print out package names.
  
-@@ -5993,6 +6006,7 @@
+@@ -5993,6 +6010,7 @@
  	fi
  	@${RM} -rf ${PKG_DBDIR}/${PKGNAME}
  .endif
@@ -45,7 +49,7 @@
  	@if [ ! -d ${PKG_DBDIR}/${PKGNAME} ]; then \
  		${ECHO_MSG} "===>   Registering installation for ${PKGNAME}"; \
  		${MKDIR} ${PKG_DBDIR}/${PKGNAME}; \
-@@ -6031,6 +6045,10 @@
+@@ -6031,6 +6049,10 @@
  		${RM} -f /tmp/${PKGNAME}-required-by; \
  	fi
  .else
