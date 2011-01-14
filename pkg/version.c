@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sysexits.h>
@@ -6,12 +7,61 @@
 
 void usage_version(void)
 {
-	fprintf(stderr, "version pkg0 pkg1\n"
-		"compare pkg0 and pkg1 versions\n");
+	fprintf(stderr, "version [-hIoqv] [-l limchar] [-L limchar] [[-X] -s string]"
+			"[-O origin] [index]\n"
+			"version -t version1 version2\n"
+			"version -T pkgname pattern\n");
 }
 
 int exec_version(int argc, char **argv)
 {
+	unsigned int opt = 0;
+	char ch;
+
+	while ((ch = getopt(argc, argv, "hIoqvlLXsOtT")) != -1) {
+		switch (ch) {
+			case 'h':
+				usage_version();
+				return (0);
+			case 'I':
+				opt |= VERSION_INDEX;
+				break;
+			case 'o':
+				opt |= VERSION_ORIGIN;
+				break;
+			case 'q':
+				opt |= VERSION_QUIET;
+				break;
+			case 'v':
+				opt |= VERSION_VERBOSE;
+				break;
+			case 'l':
+				opt |= VERSION_STATUS;
+				break;
+			case 'L':
+				opt |= VERSION_NOSTATUS;
+				break;
+			case 'X':
+				opt |= VERSION_EREGEX;
+				break;
+			case 's':
+				opt |= VERSION_STRING;
+				break;
+			case 'O':
+				opt |= VERSION_WITHORIGIN;
+				break;
+			case 't':
+				opt |= VERSION_TESTVERSION;
+				break;
+			case 'T':
+				opt |= VERSION_TESTPATTERN;
+				break;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	/* TODO: use opt */
 	if (argc != 3 || argv[1] == NULL || argv[2] == NULL) {
 		usage_version();
 		return (EX_USAGE);
