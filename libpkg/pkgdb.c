@@ -94,9 +94,9 @@ pkgdb_get_dir(void)
  * - 2: UPGRADE
  * 
  * scripts.when can be:
- * - 0: BOTH (old compat)
- * - 1: PRE
- * - 2: POST
+ * - 0: PRE
+ * - 1: POST
+ * - 2: BOTH (old compat)
  *
  * exec.type can be:
  * - 0: exec

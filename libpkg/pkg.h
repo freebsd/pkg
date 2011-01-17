@@ -4,6 +4,8 @@
 struct pkg;
 struct pkg_file;
 struct pkg_conflict;
+struct pkg_exec;
+struct pkg_script;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -33,6 +35,22 @@ typedef enum {
 	PKG_MESSAGE
 } pkg_attr;
 
+typedef enum {
+	PKG_SCRIPT_INSTALL = 0,
+	PKG_SCRIPT_DEINSTALL,
+	PKG_SCRIPT_UPGRADE
+} pkg_script_t;
+
+typedef enum {
+	PKG_PRE = 0,
+	PKG_POST,
+	PKG_BOTH
+} pkg_when_t;
+
+typedef enum {
+	PKG_EXEC = 0,
+	PKG_UNEXEC
+} pkg_exec_t;
 
 /* pkg */
 int pkg_new(struct pkg **);
@@ -69,6 +87,17 @@ int pkg_conflict_new(struct pkg_conflict **);
 void pkg_conflict_reset(struct pkg_conflict *);
 void pkg_conflict_free(struct pkg_conflict *);
 const char * pkg_conflict_glob(struct pkg_conflict *);
+
+/* pkg_exec */
+int pkg_script_new(struct pkg_script **);
+void pkg_script_reset(struct pkg_script *);
+void pkg_script_free(struct pkg_script *);
+const char *pkg_script_data(struct pkg_script *);
+
+int pkg_exec_new(struct pkg_exec **);
+void pkg_exec_reset(struct pkg_exec *);
+void pkg_exec_free(struct pkg_exec *);
+const char *pkg_exec_cmd(struct pkg_exec *);
 
 /* pkgdb */
 int pkgdb_open(struct pkgdb **);

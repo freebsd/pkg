@@ -26,6 +26,17 @@ struct pkg_conflict {
 	struct sbuf *glob;
 };
 
+struct pkg_script {
+	struct sbuf *data;
+	pkg_script_t type;
+	pkg_when_t when;
+};
+
+struct pkg_exec {
+	struct sbuf *cmd;
+	pkg_exec_t type;
+};
+
 struct pkg_file {
 	char path[MAXPATHLEN];
 	char sha256[65];
