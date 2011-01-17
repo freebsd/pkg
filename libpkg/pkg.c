@@ -41,6 +41,9 @@ pkg_get(struct pkg *pkg, pkg_attr attr) {
 int
 pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 {
+	if (value == NULL)
+		return (-1);
+
 	switch (attr) {
 		case PKG_NAME:
 			return (sbuf_set(&pkg->name, value));
@@ -323,7 +326,6 @@ pkg_addscript(struct pkg *pkg, const char *path)
 	array_append(&pkg->scripts, script);
 
 	return (0);
-
 }
 
 int
@@ -331,10 +333,7 @@ pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type)
 {
 	struct pkg_exec *exec;
 
-	if (cmd == NULL)
-		return (-1);
-
-	if (strlen(cmd) == 0)
+	if (cmd == NULL || cmd[0] == '\0')
 		return (-1);
 
 	pkg_exec_new(&exec);
@@ -353,7 +352,8 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 {
 	struct pkg *dep;
 
-	if (name == NULL || origin == NULL || version == NULL)
+	if (name == NULL || name[0] == '\0' || origin == NULL || origin[0] == '\0'
+		|| version == NULL || version[0] == '\0')
 		return (-1);
 
 	pkg_new(&dep);
@@ -372,7 +372,7 @@ int
 pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 {
 	struct pkg_file *file;
-	if (path == NULL || sha256 == NULL)
+	if (path == NULL || path[0] == '\0' || sha256 == NULL || sha256[0] == '\0')
 		return (-1);
 
 	pkg_file_new(&file);
@@ -391,12 +391,11 @@ pkg_addconflict(struct pkg *pkg, const char *glob)
 {
 	struct pkg_conflict *conflict;
 
-	if (glob == NULL)
+	if (glob == NULL || glob[0] == '\0')
 		return (-1);
 
 	pkg_conflict_new(&conflict);
-	sbuf_cpy(conflict->glob, glob);
-	sbuf_finish(conflict->glob);
+	sbuf_set(&conflict->glob, glob);
 
 	array_init(&pkg->conflicts, 5);
 	array_append(&pkg->conflicts, conflict);
