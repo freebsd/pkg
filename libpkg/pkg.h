@@ -63,6 +63,8 @@ struct pkg ** pkg_deps(struct pkg *);
 struct pkg ** pkg_rdeps(struct pkg *);
 struct pkg_file ** pkg_files(struct pkg *);
 struct pkg_conflict ** pkg_conflicts(struct pkg *);
+struct pkg_script ** pkg_scripts(struct pkg *);
+struct pkg_exec ** pkg_execs(struct pkg *);
 int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
 
 /* pkg setters */
@@ -71,6 +73,8 @@ int pkg_set_from_file(struct pkg *, pkg_attr, const char *);
 int pkg_adddep(struct pkg *, const char *, const char *, const char *);
 int pkg_addfile(struct pkg *, const char *, const char *);
 int pkg_addconflict(struct pkg *, const char *);
+int pkg_addexec(struct pkg *, const char *, pkg_exec_t);
+int pkg_addscript(struct pkg *, const char *);
 
 /* pkg_manifest */
 int pkg_parse_manifest(struct pkg *, char *);
@@ -141,5 +145,6 @@ int pkg_version_cmp(const char *, const char *);
 int ports_parse_plist(struct pkg *, char *, const char *);
 int ports_parse_depends(struct pkg *, char *);
 int ports_parse_conflicts(struct pkg *, char *);
+int ports_parse_scripts(struct pkg *, char *);
 
 #endif

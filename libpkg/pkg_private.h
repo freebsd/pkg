@@ -19,6 +19,8 @@ struct pkg {
 	struct array rdeps;
 	struct array conflicts;
 	struct array files;
+	struct array scripts;
+	struct array exec;
 	pkg_t type;
 };
 
@@ -42,5 +44,7 @@ struct pkg_file {
 };
 
 void pkg_conflict_free_void(void *);
+void pkg_script_free_void(void *);
+void pkg_exec_free_void(void *);
 
 #endif

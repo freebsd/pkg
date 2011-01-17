@@ -140,3 +140,27 @@ ports_parse_conflicts(struct pkg *pkg, char *conflicts)
 
 	return (0);
 }
+
+int
+ports_parse_scripts(struct pkg *pkg, char *scripts)
+{
+	int nbel, i;
+	char *script_p;
+	size_t next;
+
+	if (scripts == NULL)
+		return (-1);
+
+	nbel = split_chr(scripts, ' ');
+	script_p = scripts;
+
+	next = strlen(script_p);
+	for (i = 0; i <= nbel; i++) {
+		pkg_addscript(pkg, script_p);
+
+		script_p += next + 1;
+		next = strlen(script_p);
+	}
+
+	return (0);
+}

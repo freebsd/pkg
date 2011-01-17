@@ -32,7 +32,7 @@ exec_register(int argc, char **argv)
 	int ret = 0;
 
 	pkg_new(&pkg);
-	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:C:n:M:")) != -1) {
+	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:C:n:M:s:")) != -1) {
 		switch (ch) {
 			case 'v':
 				/* IGNORE */
