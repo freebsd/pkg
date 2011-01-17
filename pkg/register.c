@@ -25,8 +25,6 @@ exec_register(int argc, char **argv)
 	char ch;
 	char *plist = NULL;
 	char *prefix = NULL;
-	char *depends = NULL;
-	char *conflicts = NULL;
 	char *v = NULL;
 
 	int ret = 0;
@@ -50,7 +48,7 @@ exec_register(int argc, char **argv)
 				prefix = strdup(optarg);
 				break;
 			case 'P':
-				depends = strdup(optarg);
+				ret += ports_parse_depends(pkg, optarg);
 				break;
 			case 'm':
 				ret += pkg_set_from_file(pkg, PKG_MTREE, optarg);
@@ -66,10 +64,13 @@ exec_register(int argc, char **argv)
 				ret += pkg_set(pkg, PKG_ORIGIN, optarg);
 				break;
 			case 'C':
-				conflicts = strdup(optarg);
+				ret += ports_parse_conflicts(pkg, optarg);
 				break;
 			case 'M':
 				ret += pkg_set_from_file(pkg, PKG_MESSAGE, optarg);
+				break;
+			case 's':
+				ret += ports_parse_scripts(pkg, optarg);
 				break;
 			default:
 				printf("%c\n", ch);
@@ -83,18 +84,6 @@ exec_register(int argc, char **argv)
 		return (ret);
 	}
 
-	if (depends != NULL) {
-		ret += ports_parse_depends(pkg, depends);
-		if (ret < 0)
-			return (ret);
-	}
-
-	if (conflicts != NULL) {
-		ret += ports_parse_conflicts(pkg, conflicts);
-		if (ret < 0)
-			return (ret);
-	}
-
 	ret += ports_parse_plist(pkg, plist, prefix);
 
 	if (ret < 0)
@@ -105,12 +94,6 @@ exec_register(int argc, char **argv)
 
 	if (plist != NULL)
 		free(plist);
-
-	if (conflicts != NULL)
-		free(conflicts);
-
-	if (depends != NULL)
-		free(depends);
 
 	if (pkgdb_open(&db) == -1) {
 		pkgdb_warn(db);
