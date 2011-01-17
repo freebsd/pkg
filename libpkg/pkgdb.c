@@ -86,6 +86,24 @@ pkgdb_get_dir(void)
 	return pkg_dbdir;
 }
 
+/*
+ * in the database : 
+ * scripts.type can be:
+ * - 0: INSTALL
+ * - 1: DEINSTALL
+ * - 2: UPGRADE
+ * 
+ * scripts.when can be:
+ * - 0: BOTH (old compat)
+ * - 1: PRE
+ * - 2: POST
+ *
+ * exec.type can be:
+ * - 0: exec
+ * - 1: unexec
+ *
+ */
+
 static void
 pkgdb_init(sqlite3 *sdb)
 {
@@ -99,10 +117,24 @@ pkgdb_init(sqlite3 *sdb)
 		"desc TEXT,"
 		"mtree TEXT,"
 		"message TEXT,"
-		"automatic INTEGER"
+		"automatic INTEGER,"
+		"pkg_format_version INTEGER"
 	");"
+	"CREATE TABLE scripts ("
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
+		"script TEXT,"
+		"type INTEGER,"
+		"when INTEGER,"
+	");"
+	"CREATE INDEX scripts_package ON scripts (package_id);"
+	"CREATE TABLE exec ("
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
+		"cmd TEXT,"
+		"type INTEGER,"
+	");"
+	"CREATE INDEX exec_package ON exec (package_id);"
 	"CREATE TABLE options ("
-		"package_id TEXT,"
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
 		"name TEXT,"
 		"with INTEGER,"
 		"PRIMARY KEY (package_id,name)"
@@ -112,7 +144,7 @@ pkgdb_init(sqlite3 *sdb)
 		"origin TEXT,"
 		"name TEXT,"
 		"version TEXT,"
-		"package_id TEXT,"
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
 		"PRIMARY KEY (package_id,origin)"
 	");"
 	"CREATE INDEX deps_origin ON deps (origin);"
@@ -120,12 +152,12 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE TABLE files ("
 		"path TEXT PRIMARY KEY,"
 		"sha256 TEXT,"
-		"package_id TEXT"
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
 	");"
 	"CREATE INDEX files_package ON files (package_id);"
 	"CREATE TABLE conflicts ("
 		"name TEXT,"
-		"package_id TEXT,"
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
 		"PRIMARY KEY (package_id,name)"
 	");"
 	"CREATE INDEX conflicts_package ON conflicts (package_id);";
@@ -139,6 +171,7 @@ pkgdb_open(struct pkgdb **db)
 {
 	int retcode;
 	struct stat st;
+	char *errmsg;
 	char fpath[MAXPATHLEN];
 
 	snprintf(fpath, sizeof(fpath), "%s/pkg.db", pkgdb_get_dir());
@@ -163,6 +196,13 @@ pkgdb_open(struct pkgdb **db)
 							pkgdb_regex_basic, NULL, NULL);
 	sqlite3_create_function((*db)->sqlite, "eregexp", 2, SQLITE_ANY, NULL,
 							pkgdb_regex_extended, NULL, NULL);
+
+	/* 
+	 * allow forign key option which will allow to have clean support for
+	 * reinstalling
+	 */
+	if (sqlite3_exec((*db)->sqlite, "PRAGMA foreign_keys = ON;", NULL, NULL, &errmsg) != SQLITE_OK)
+		errx(EXIT_FAILURE, "sqlite3_exec(): %s", errmsg);
 
 	(*db)->errnum = 0;
 	(*db)->errstring[0] = '\0';
@@ -491,6 +531,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_stmt *stmt_dep;
 	sqlite3_stmt *stmt_conflicts;
 	sqlite3_stmt *stmt_file;
+	sqlite3_stmt *stmt_exec;
+	sqlite3_stmt *stmt_scripts;
 	int i;
 
 	sqlite3_exec(db->sqlite, "BEGIN TRANSACTION;", NULL, NULL, NULL);
@@ -499,17 +541,26 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
 			-1, &stmt_pkg, NULL);
 
-	sqlite3_prepare(db->sqlite, "INSERT OR REPLACE INTO deps (origin, name, version, package_id)"
+	sqlite3_prepare(db->sqlite, "INSERT INTO deps (origin, name, version, package_id)"
 			"VALUES (?1, ?2, ?3, ?4);",
 			-1, &stmt_dep, NULL);
 
-	sqlite3_prepare(db->sqlite, "INSERT OR REPLACE INTO conflicts (name, package_id)"
+	sqlite3_prepare(db->sqlite, "INSERT INTO conflicts (name, package_id)"
 			"VALUES (?1, ?2, ?3, ?4);",
 			-1, &stmt_conflicts, NULL);
 
-	sqlite3_prepare(db->sqlite, "INSERT OR REPLACE INTO files (path, sha256, package_id)"
+	sqlite3_prepare(db->sqlite, "INSERT INTO files (path, sha256, package_id)"
 			"VALUES (?1, ?2, ?3);",
 			-1, &stmt_file, NULL);
+
+	sqlite3_prepare(db->sqlite, "INSERT INTO scripts (script, type, when, package_id)"
+			"values (?1, ?2, ?3, ?4);",
+			-1, &stmt_scripts, NULL);
+
+	sqlite3_prepare(db->sqlite, "INSERT INTO exec (cmd, type, package_id)"
+			"values (?1, ?2, ?3);",
+			-1, &stmt_exec, NULL);
+
 
 	sqlite3_bind_text(stmt_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 2, pkg_get(pkg, PKG_NAME), -1, SQLITE_STATIC);
@@ -557,6 +608,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt_dep);
 	sqlite3_finalize(stmt_conflicts);
 	sqlite3_finalize(stmt_file);
+	sqlite3_finalize(stmt_exec);
+	sqlite3_finalize(stmt_scripts);
 
 	sqlite3_exec(db->sqlite, "COMMIT;", NULL, NULL, NULL);
 	
