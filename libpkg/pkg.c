@@ -289,6 +289,8 @@ pkg_addscript(struct pkg *pkg, const char *path)
 	if (file_to_buffer(path, &raw_script) <= 0)
 		return (-1);
 
+	pkg_script_new(&script);
+
 	sbuf_set(&script->data, raw_script);
 
 	filename = strrchr(path, '/');

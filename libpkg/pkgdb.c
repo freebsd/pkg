@@ -528,6 +528,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	struct pkg **deps;
 	struct pkg_file **files;
 	struct pkg_conflict **conflicts;
+	struct pkg_exec **execs;
+	struct pkg_script **scripts;
 	sqlite3_stmt *stmt_pkg;
 	sqlite3_stmt *stmt_dep;
 	sqlite3_stmt *stmt_conflicts;
@@ -605,6 +607,20 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_reset(stmt_file);
 		}
 
+	scripts = pkg_scripts(pkg);
+	if (scripts != NULL)
+		for (i = 0; scripts[i] != NULL; i++) {
+			sqlite3_bind_text(stmt_scripts, 1, pkg_script_data(scripts[i]), -1, SQLITE_STATIC);
+			sqlite3_bind_int(stmt_scripts, 2, pkg_script_type(scripts[i]));
+			sqlite3_bind_text(stmt_scripts, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+		}
+	execs = pkg_execs(pkg);
+	if (execs != NULL)
+		for (i = 0; execs[i] != NULL; i++) {
+			sqlite3_bind_text(stmt_scripts, 1, pkg_exec_cmd(execs[i]), -1, SQLITE_STATIC);
+			sqlite3_bind_int(stmt_scripts, 2, pkg_exec_type(execs[i]));
+			sqlite3_bind_text(stmt_scripts, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+		}
 	sqlite3_finalize(stmt_pkg);
 	sqlite3_finalize(stmt_dep);
 	sqlite3_finalize(stmt_conflicts);
