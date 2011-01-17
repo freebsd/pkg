@@ -29,7 +29,6 @@ struct pkg_conflict {
 struct pkg_script {
 	struct sbuf *data;
 	pkg_script_t type;
-	pkg_when_t when;
 };
 
 struct pkg_exec {

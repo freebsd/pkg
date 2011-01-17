@@ -36,16 +36,16 @@ typedef enum {
 } pkg_attr;
 
 typedef enum {
-	PKG_SCRIPT_INSTALL = 0,
+	PKG_SCRIPT_PRE_INSTALL = 0,
+	PKG_SCRIPT_POST_INSTALL,
+	PKG_SCRIPT_PRE_DEINSTALL,
+	PKG_SCRIPT_POST_DEINSTALL,
+	PKG_SCRIPT_PRE_UPGRADE,
+	PKG_SCRIPT_POST_UPGRADE,
+	PKG_SCRIPT_INSTALL,
 	PKG_SCRIPT_DEINSTALL,
 	PKG_SCRIPT_UPGRADE
 } pkg_script_t;
-
-typedef enum {
-	PKG_PRE = 0,
-	PKG_POST,
-	PKG_BOTH
-} pkg_when_t;
 
 typedef enum {
 	PKG_EXEC = 0,
@@ -93,11 +93,13 @@ int pkg_script_new(struct pkg_script **);
 void pkg_script_reset(struct pkg_script *);
 void pkg_script_free(struct pkg_script *);
 const char *pkg_script_data(struct pkg_script *);
+pkg_script_t pkg_script_type(struct pkg_script *);
 
 int pkg_exec_new(struct pkg_exec **);
 void pkg_exec_reset(struct pkg_exec *);
 void pkg_exec_free(struct pkg_exec *);
 const char *pkg_exec_cmd(struct pkg_exec *);
+pkg_exec_t pkg_exec_type(struct pkg_exec *);
 
 /* pkgdb */
 int pkgdb_open(struct pkgdb **);

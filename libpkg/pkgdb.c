@@ -89,15 +89,16 @@ pkgdb_get_dir(void)
 /*
  * in the database : 
  * scripts.type can be:
- * - 0: INSTALL
- * - 1: DEINSTALL
- * - 2: UPGRADE
+ * - 0: PRE_INSTALL
+ * - 1: POST_INSTALL
+ * - 2: PRE_DEINSTALL
+ * - 3: POST_DEINSTALL
+ * - 4: PRE_UPGRADE
+ * - 5: POST_UPGRADE
+ * - 6: INSTALL
+ * - 7: DEINSTALL
+ * - 8: UPGRADE
  * 
- * scripts.when can be:
- * - 0: PRE
- * - 1: POST
- * - 2: BOTH (old compat)
- *
  * exec.type can be:
  * - 0: exec
  * - 1: unexec
@@ -123,14 +124,14 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE TABLE scripts ("
 		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
 		"script TEXT,"
-		"type INTEGER,"
-		"when INTEGER,"
+		"type INTEGER"
+		"PRIMARY KEY (package_id, type)"
 	");"
 	"CREATE INDEX scripts_package ON scripts (package_id);"
 	"CREATE TABLE exec ("
 		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
 		"cmd TEXT,"
-		"type INTEGER,"
+		"type INTEGER"
 	");"
 	"CREATE INDEX exec_package ON exec (package_id);"
 	"CREATE TABLE options ("
