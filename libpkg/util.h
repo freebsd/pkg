@@ -23,7 +23,7 @@ void sbuf_reset(struct sbuf *);
 void sbuf_free(struct sbuf *);
 
 off_t file_to_buffer(const char *path, char **buffer);
-char *str_replace(char *string, const char *find, char *replace);
+int format_exec_cmd(char **, const char *, const char *, const char *);
 int split_chr(char *, char);
 int file_fetch(const char *, const char *);
 

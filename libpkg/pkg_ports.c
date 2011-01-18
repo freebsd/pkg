@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 int
 ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
@@ -16,6 +17,8 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 	char sha256[65];
 	char path[MAXPATHLEN];
 	int ret = 0;
+	char *last_plist_file = NULL;
+	char *cmd = NULL;
 
 	buf = NULL;
 	p = NULL;
@@ -43,15 +46,31 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 					prefix = buf;
 			} else if (STARTS_WITH(plist_p, "@comment ")){
 				/* DO NOTHING: ignore the comments */
-			} else if (STARTS_WITH(plist_p, "@unexec ")) {
-				/* TODO */
-			} else if (STARTS_WITH(plist_p, "@exec ")) {
-				/* TODO */
+			} else if (STARTS_WITH(plist_p, "@unexec ") || STARTS_WITH(plist_p, "@exec")) {
+				buf = plist_p;
+
+				while (!isspace(buf[0]))
+					buf++;
+
+				while (isspace(buf[0]))
+					buf++;
+
+				if (format_exec_cmd(&cmd, buf, prefix, last_plist_file) < 0)
+					continue;
+
+				if (plist_p[1] == 'u')
+					pkg_addexec(pkg, cmd, PKG_UNEXEC);
+				else
+					pkg_addexec(pkg, cmd, PKG_EXEC);
+
+				free(cmd);
+
 			}else {
 				warnx("%s is deprecated, ignoring", plist_p);
 			}
 		} else if (strlen(plist_p) > 0){
 			buf = plist_p;
+			last_plist_file = buf;
 
 			if (prefix[strlen(prefix) - 1] == '/')
 				snprintf(path, MAXPATHLEN, "%s%s", prefix, buf);
@@ -65,6 +84,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 			else {
 				ret--;
 			}
+
 		}
 
 		plist_p += next + 1;

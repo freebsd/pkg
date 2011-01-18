@@ -151,29 +151,57 @@ file_to_buffer(const char *path, char **buffer)
 	return (st.st_size);
 }
 
-char *
-str_replace(char *string, const char *find, char *replace)
+int
+format_exec_cmd(char **dest, const char *in, const char *prefix, const char *plist_file)
 {
-	char *str, *end, *begin;
-	size_t offset, replace_len, find_len;
+	struct sbuf *buf = sbuf_new_auto();
+	char path[MAXPATHLEN];
+	char *cp;
+	int len = 0;
 
-	replace_len = strlen(replace);
-	find_len = strlen(find);
-	begin = string;
-	str = NULL;
-	offset = 0;
+	while (in[0] != '\0') {
+		if (in[0] == '%') {
+			in++;
+			switch(in[0]) {
+				case 'D':
+					sbuf_cat(buf, prefix);
+					break;
+				case 'F':
+					sbuf_cat(buf, plist_file);
+					break;
+				case 'f':
+					if (prefix[strlen(prefix) - 1] == '/')
+						snprintf(path, MAXPATHLEN, "%s%s", prefix, plist_file);
+					else
+						snprintf(path, MAXPATHLEN, "%s/%s", prefix, plist_file);
+					cp = strrchr(path, '/');
+					cp ++;
+					sbuf_cat(buf, cp);
+					break;
+				case 'B':
+					if (prefix[strlen(prefix) - 1] == '/')
+						snprintf(path, MAXPATHLEN, "%s%s", prefix, plist_file);
+					else
+						snprintf(path, MAXPATHLEN, "%s/%s", prefix, plist_file);
+					cp = strrchr(path, '/');
+					cp[0] = '\0';
+					sbuf_cat(buf, path);
+					break;
+			}
 
-	while ((end = strstr(begin, find)) != NULL) {
-		str = realloc(str, offset + replace_len + (end - begin));
-		memcpy(str + offset, begin, end - begin);
-		memcpy(str + offset + (end - begin), replace, replace_len);
-		offset += (end - begin + replace_len);
-		begin = end + find_len;
+		} else {
+			sbuf_putc(buf, in[0]);
+		}
+
+		in++;
 	}
-	str = realloc(str, offset + strlen(begin) +1);
-	memcpy(str+offset, begin, strlen(begin)+1);
 
-	return (str);
+	sbuf_finish(buf);
+	*dest = strdup(sbuf_data(buf));
+	len = sbuf_len(buf);
+	sbuf_free(buf);
+	
+	return (0);
 }
 
 int

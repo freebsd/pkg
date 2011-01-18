@@ -122,20 +122,20 @@ pkgdb_init(sqlite3 *sdb)
 		"pkg_format_version INTEGER"
 	");"
 	"CREATE TABLE scripts ("
-		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE, "
 		"script TEXT,"
-		"type INTEGER"
+		"type INTEGER,"
 		"PRIMARY KEY (package_id, type)"
 	");"
 	"CREATE INDEX scripts_package ON scripts (package_id);"
 	"CREATE TABLE exec ("
-		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE, "
 		"cmd TEXT,"
 		"type INTEGER"
 	");"
 	"CREATE INDEX exec_package ON exec (package_id);"
 	"CREATE TABLE options ("
-		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE, "
 		"name TEXT,"
 		"with INTEGER,"
 		"PRIMARY KEY (package_id,name)"
@@ -145,7 +145,7 @@ pkgdb_init(sqlite3 *sdb)
 		"origin TEXT,"
 		"name TEXT,"
 		"version TEXT,"
-		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE, "
 		"PRIMARY KEY (package_id,origin)"
 	");"
 	"CREATE INDEX deps_origin ON deps (origin);"
@@ -158,7 +158,7 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX files_package ON files (package_id);"
 	"CREATE TABLE conflicts ("
 		"name TEXT,"
-		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE"
+		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE, "
 		"PRIMARY KEY (package_id,name)"
 	");"
 	"CREATE INDEX conflicts_package ON conflicts (package_id);";
@@ -613,13 +613,19 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_bind_text(stmt_scripts, 1, pkg_script_data(scripts[i]), -1, SQLITE_STATIC);
 			sqlite3_bind_int(stmt_scripts, 2, pkg_script_type(scripts[i]));
 			sqlite3_bind_text(stmt_scripts, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+
+			sqlite3_step(stmt_exec);
+			sqlite3_reset(stmt_exec);
 		}
 	execs = pkg_execs(pkg);
 	if (execs != NULL)
 		for (i = 0; execs[i] != NULL; i++) {
-			sqlite3_bind_text(stmt_scripts, 1, pkg_exec_cmd(execs[i]), -1, SQLITE_STATIC);
-			sqlite3_bind_int(stmt_scripts, 2, pkg_exec_type(execs[i]));
-			sqlite3_bind_text(stmt_scripts, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_exec, 1, pkg_exec_cmd(execs[i]), -1, SQLITE_STATIC);
+			sqlite3_bind_int(stmt_exec, 2, pkg_exec_type(execs[i]));
+			sqlite3_bind_text(stmt_exec, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+			
+			sqlite3_step(stmt_exec);
+			sqlite3_reset(stmt_exec);
 		}
 	sqlite3_finalize(stmt_pkg);
 	sqlite3_finalize(stmt_dep);
@@ -629,6 +635,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt_scripts);
 
 	sqlite3_exec(db->sqlite, "COMMIT;", NULL, NULL, NULL);
+
 	
 	return (0);
 }
