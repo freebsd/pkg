@@ -239,6 +239,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 	struct pkg_conflict *c;
 	struct pkg_file *f;
 	struct pkg_exec *e;
+	struct pkg_script *s;
 	struct pkgdb_it *i;
 
 	assert(it->type == IT_PKG);
@@ -315,6 +316,18 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			while (pkgdb_it_next_exec(i, &e) == 0) {
 				array_append(&pkg->exec, e);
 				e = NULL;
+			}
+			pkgdb_it_free(i);
+		}
+
+		if (flags & PKG_SCRIPTS) {
+			array_init(&pkg->scripts, 6);
+			
+			i = pkgdb_query_scripts(it->db, pkg_get(pkg, PKG_ORIGIN));
+			s = NULL;
+			while (pkgdb_it_next_script(i, &s) == 0) {
+				array_append(&pkg->scripts, s);
+				s = NULL;
 			}
 			pkgdb_it_free(i);
 		}
@@ -396,6 +409,32 @@ pkgdb_it_next_exec(struct pkgdb_it *it, struct pkg_exec **exec_p)
 			exec = *exec_p;
 			sbuf_set(&exec->cmd, sqlite3_column_text(it->stmt, 0));
 			exec->type = sqlite3_column_int(it->stmt, 1);
+			return (0);
+		case SQLITE_DONE:
+			return (1);
+		default:
+			pkgdb_set_error(it->db, 0, "sqlite3_step(): %s", sqlite3_errmsg(it->db->sqlite));
+			return (-1);
+	}
+}
+
+int
+pkgdb_it_next_script (struct pkgdb_it *it, struct pkg_script **script_p)
+{
+	struct pkg_script *script;
+
+	assert(it->type == IT_SCRIPT);
+
+	switch (sqlite3_step(it->stmt)) {
+		case SQLITE_ROW:
+			if (*script_p == NULL)
+				pkg_script_new(script_p);
+			else
+				pkg_script_reset(*script_p);
+
+			script = *script_p;
+			sbuf_set(&script->data, sqlite3_column_text(it->stmt, 0));
+			script->type = sqlite3_column_int(it->stmt, 1);
 			return (0);
 		case SQLITE_DONE:
 			return (1);
@@ -549,6 +588,19 @@ pkgdb_query_execs(struct pkgdb *db, const char *origin) {
 	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
 
 	return (pkgdb_it_new(db, stmt, IT_EXEC));
+}
+
+struct pkgdb_it *
+pkgdb_query_scripts(struct pkgdb *db, const char *origin) {
+	sqlite3_stmt *stmt;
+	sqlite3_prepare(db->sqlite,
+			"SELECT script, type "
+			"FROM scripts "
+			"WHERE package_id = ?1", -1, &stmt, NULL);
+
+	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, IT_SCRIPT));
 }
 
 void

@@ -45,9 +45,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct archive *pkg_archi
 	char buf[BUFSIZ];
 	char fpath[MAXPATHLEN];
 	struct pkg_file **files;
+	struct pkg_script **scripts;
 	struct archive *ar;
 	char *m;
 	int i;
+	const char *scriptname;
 
 	ar = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup(ar);
@@ -60,6 +62,41 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct archive *pkg_archi
 	free(m);
 	pkg_create_append_buffer(pkg_archive, entry, pkg_get(pkg, PKG_DESC), "+DESC");
 	pkg_create_append_buffer(pkg_archive, entry, pkg_get(pkg, PKG_MTREE), "+MTREE_DIRS");
+
+	if ((scripts = pkg_scripts(pkg)) != NULL) {
+		for (i = 0; scripts[i] != NULL; i++) {
+			switch (pkg_script_type(scripts[i])) {
+				case PKG_SCRIPT_PRE_INSTALL:
+					scriptname = "+PRE_INSTALL";
+					break;
+				case PKG_SCRIPT_POST_INSTALL:
+					scriptname = "+POST_INSTALL";
+					break;
+				case PKG_SCRIPT_INSTALL:
+					scriptname = "+INSTALL";
+					break;
+				case PKG_SCRIPT_PRE_DEINSTALL:
+					scriptname = "+PRE_DEINSTALL";
+					break;
+				case PKG_SCRIPT_POST_DEINSTALL:
+					scriptname = "+POST_DEINSTALL";
+					break;
+				case PKG_SCRIPT_DEINSTALL:
+					scriptname = "+DEINSTALL";
+					break;
+				case PKG_SCRIPT_PRE_UPGRADE:
+					scriptname = "+PRE_UPGRADE";
+					break;
+				case PKG_SCRIPT_POST_UPGRADE:
+					scriptname = "+POST_UPGRADE";
+					break;
+				case PKG_SCRIPT_UPGRADE:
+					scriptname = "+UPGRADE";
+					break;
+			}
+			pkg_create_append_buffer(pkg_archive, entry, pkg_script_data(scripts[i]), scriptname);
+		}
+	}
 
 	if ((files = pkg_files(pkg)) != NULL) {
 		for (i = 0; files[i] != NULL; i++) {
@@ -111,12 +148,6 @@ pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char
 		warnx("Unsupport format");
 		return (-1);
 	}
-
-	/*if (pkg == NULL && mpath != NULL) {
-		m = pkg_manifest_load_file(mpath);
-	} else {
-		err(1, "mpath or pkg required");
-	}*/
 
 	snprintf(namever, sizeof(namever), "%s-%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 	snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, namever, ext);
