@@ -14,7 +14,8 @@ struct pkgdb {
 typedef enum _pkgdb_it_t {
 	IT_PKG,
 	IT_CONFLICT,
-	IT_FILE
+	IT_FILE,
+	IT_EXEC
 } pkgdb_it_t;
 struct pkgdb_it {
 	struct pkgdb *db;

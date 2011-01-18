@@ -78,6 +78,7 @@ int pkg_addscript(struct pkg *, const char *);
 
 /* pkg_manifest */
 int pkg_parse_manifest(struct pkg *, char *);
+int pkg_emit_manifest(struct pkg *, char **);
 
 /* pkg_file */
 int pkg_file_new(struct pkg_file **);
@@ -117,17 +118,21 @@ struct pkgdb_it * pkgdb_query_dep(struct pkgdb *, const char *);
 struct pkgdb_it * pkgdb_query_rdep(struct pkgdb *, const char *);
 struct pkgdb_it * pkgdb_query_conflicts(struct pkgdb *, const char *);
 struct pkgdb_it * pkgdb_query_files(struct pkgdb *, const char *);
+struct pkgdb_it * pkgdb_query_execs(struct pkgdb *, const char *);
 
 #define PKG_BASIC 0
 #define PKG_DEPS (1<<0)
 #define PKG_RDEPS (1<<1)
 #define PKG_CONFLICTS (1<<2)
 #define PKG_FILES (1<<3)
-#define PKG_ALL PKG_BASIC|PKG_DEPS|PKG_RDEPS|PKG_CONFLICTS|PKG_FILES
+#define PKG_EXECS (1<<4)
+#define PKG_SCRIPTS (1<<5)
+#define PKG_ALL PKG_BASIC|PKG_DEPS|PKG_RDEPS|PKG_CONFLICTS|PKG_FILES|PKG_EXECS
 
 int pkgdb_it_next_pkg(struct pkgdb_it *, struct pkg **, int);
 int pkgdb_it_next_conflict(struct pkgdb_it *, struct pkg_conflict **);
 int pkgdb_it_next_file(struct pkgdb_it *, struct pkg_file **);
+int pkgdb_it_next_exec(struct pkgdb_it *, struct pkg_exec **);
 void pkgdb_it_free(struct pkgdb_it *);
 
 const char *pkgdb_get_dir(void);

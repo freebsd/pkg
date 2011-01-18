@@ -238,6 +238,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 	struct pkg *p;
 	struct pkg_conflict *c;
 	struct pkg_file *f;
+	struct pkg_exec *e;
 	struct pkgdb_it *i;
 
 	assert(it->type == IT_PKG);
@@ -256,6 +257,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 2));
 		pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 3));
 		pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 4));
+		pkg_set(pkg, PKG_MTREE, sqlite3_column_text(it->stmt, 5));
 
 		if (flags & PKG_DEPS) {
 			array_init(&pkg->deps, 10);
@@ -301,6 +303,18 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			while (pkgdb_it_next_file(i, &f) == 0) {
 				array_append(&pkg->files, f);
 				f = NULL;
+			}
+			pkgdb_it_free(i);
+		}
+
+		if (flags & PKG_EXECS) {
+			array_init(&pkg->exec, 5);
+
+			i = pkgdb_query_execs(it->db, pkg_get(pkg, PKG_ORIGIN));
+			e = NULL;
+			while (pkgdb_it_next_exec(i, &e) == 0) {
+				array_append(&pkg->exec, e);
+				e = NULL;
 			}
 			pkgdb_it_free(i);
 		}
@@ -365,6 +379,32 @@ pkgdb_it_next_file(struct pkgdb_it *it, struct pkg_file **file_p)
 	}
 }
 
+int
+pkgdb_it_next_exec(struct pkgdb_it *it, struct pkg_exec **exec_p)
+{
+	struct pkg_exec *exec;
+
+	assert(it->type == IT_EXEC);
+
+	switch (sqlite3_step(it->stmt)) {
+		case SQLITE_ROW:
+			if (*exec_p == NULL)
+				pkg_exec_new(exec_p);
+			else
+				pkg_exec_reset(*exec_p);
+
+			exec = *exec_p;
+			sbuf_set(&exec->cmd, sqlite3_column_text(it->stmt, 0));
+			exec->type = sqlite3_column_int(it->stmt, 1);
+			return (0);
+		case SQLITE_DONE:
+			return (1);
+		default:
+			pkgdb_set_error(it->db, 0, "sqlite3_step(): %s", sqlite3_errmsg(it->db->sqlite));
+			return (-1);
+	}
+}
+
 void
 pkgdb_it_free(struct pkgdb_it *it)
 {
@@ -419,7 +459,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	}
 
 	snprintf(sql, sizeof(sql),
-			"SELECT origin, name, version, comment, desc FROM packages%s;", comp);
+			"SELECT origin, name, version, comment, desc, mtree FROM packages%s;", comp);
 
 	sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL);
 
@@ -435,7 +475,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 	sqlite3_stmt *stmt;
 
 	sqlite3_prepare(db->sqlite,
-					"SELECT origin, name, version, comment, desc FROM packages, files "
+					"SELECT origin, name, version, comment, desc, mtree FROM packages, files "
 					"WHERE origin = files.package_id "
 					"AND files.path = ?1;", -1, &stmt, NULL);
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
@@ -496,6 +536,19 @@ pkgdb_query_files(struct pkgdb *db, const char *origin) {
 
 	return (pkgdb_it_new(db, stmt, IT_FILE));
 
+}
+
+struct pkgdb_it *
+pkgdb_query_execs(struct pkgdb *db, const char *origin) {
+	sqlite3_stmt *stmt;
+	sqlite3_prepare(db->sqlite, 
+			"SELECT cmd, type "
+			"FROM exec "
+			"WHERE package_id = ?1", -1, &stmt, NULL);
+
+	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, IT_EXEC));
 }
 
 void

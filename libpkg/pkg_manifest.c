@@ -241,3 +241,57 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 
 	return (0);
 }
+
+int
+pkg_emit_manifest(struct pkg *pkg, char **dest)
+{
+	struct sbuf *manifest;
+	struct pkg **deps;
+	struct pkg_conflict **conflicts;
+	struct pkg_exec **execs;
+	int i;
+	int len = 0;
+
+	manifest = sbuf_new_auto();
+
+	sbuf_printf(manifest, "@pkg_format_version 0.9\n"
+			"@name %s\n"
+			"@version %s\n"
+			"@origin %s\n"
+			"@comment %s\n",
+			pkg_get(pkg, PKG_NAME),
+			pkg_get(pkg, PKG_VERSION),
+			pkg_get(pkg, PKG_ORIGIN),
+			pkg_get(pkg, PKG_COMMENT));
+
+	if ((deps = pkg_deps(pkg)) != NULL) {
+		for (i = 0; deps[i] != NULL; i++) {
+			sbuf_printf(manifest, "@dep %s %s %s\n", 
+					pkg_get(deps[i], PKG_NAME),
+					pkg_get(deps[i], PKG_ORIGIN),
+					pkg_get(deps[i], PKG_VERSION));
+		}
+	}
+
+	if ((conflicts = pkg_conflicts(pkg)) != NULL) {
+		for (i = 0; conflicts[i] != NULL; i++) {
+			sbuf_printf(manifest, "@conflict %s\n", pkg_conflict_glob(conflicts[i]));
+		}
+	}
+
+	if ((execs = pkg_execs(pkg)) != NULL) {
+		for (i = 0; execs[i] != NULL; i++) {
+			sbuf_printf(manifest, "@%s %s\n",
+					pkg_exec_type(execs[i]) == PKG_EXEC ? "exec" : "unexec",
+					pkg_exec_cmd(execs[i]));
+		}
+	}
+
+	sbuf_finish(manifest);
+	len = sbuf_len(manifest);
+	*dest = strdup(sbuf_data(manifest));
+
+	sbuf_free(manifest);
+
+	return (len);
+}

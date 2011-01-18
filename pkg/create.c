@@ -79,9 +79,6 @@ exec_create(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (rootdir == NULL)
-		rootdir = "/";
-
 	if (outdir == NULL)
 		outdir = "./";
 
@@ -116,10 +113,8 @@ exec_create(int argc, char **argv)
 
 		pkg_new(&pkg);
 		while (pkgdb_it_next_pkg(it, &pkg, PKG_ALL) == 0) {
-			snprintf(mpath, sizeof(mpath), "%s/%s-%s/+MANIFEST", pkgdb_get_dir(),
-					 pkg_name(pkg), pkg_version(pkg));
-			printf("Creating package for %s-%s\n", pkg_name(pkg), pkg_version(pkg));
-			pkg_create(mpath, fmt, outdir, rootdir, pkg);
+			printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+			pkg_create(NULL, fmt, outdir, rootdir, pkg);
 		}
 		pkg_free(pkg);
 		pkgdb_it_free(it);
