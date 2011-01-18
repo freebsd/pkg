@@ -555,7 +555,7 @@ pkgdb_query_conflicts(struct pkgdb *db, const char *origin) {
 	sqlite3_stmt *stmt;
 
 	sqlite3_prepare(db->sqlite,
-					"SELECT name, origin, version "
+					"SELECT name "
 					"FROM conflicts "
 					"WHERE package_id = ?1;", -1, &stmt, NULL);
 	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
@@ -654,7 +654,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			-1, &stmt_dep, NULL);
 
 	sqlite3_prepare(db->sqlite, "INSERT INTO conflicts (name, package_id)"
-			"VALUES (?1, ?2, ?3, ?4);",
+			"VALUES (?1, ?2);",
 			-1, &stmt_conflicts, NULL);
 
 	sqlite3_prepare(db->sqlite, "INSERT INTO files (path, sha256, package_id)"
@@ -698,6 +698,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		for (i = 0; conflicts[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_conflicts, 1, pkg_conflict_glob(conflicts[i]), -1, SQLITE_STATIC);
 			sqlite3_bind_text(stmt_conflicts, 2, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+
+			sqlite3_step(stmt_conflicts);
+			sqlite3_reset(stmt_conflicts);
 		}
 
 
