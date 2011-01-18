@@ -172,7 +172,7 @@ exec_info(int argc, char **argv)
 		if (opt & INFO_EXISTS) {
 			retcode = 0;
 		} else if (opt & INFO_PRINT_DEP) {
-			if (opt | INFO_QUIET)
+			if (!(opt & INFO_QUIET))
 				printf("%s-%s depends on:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
 			deps = pkg_deps(pkg);
@@ -180,7 +180,7 @@ exec_info(int argc, char **argv)
 				printf("%s-%s\n", pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION));
 			}
 
-			if (opt | INFO_QUIET)
+			if (!(opt & INFO_QUIET))
 				printf("\n");
 		} else if (opt & INFO_PRINT_RDEP) {
 			printf("%s-%s is required by:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));

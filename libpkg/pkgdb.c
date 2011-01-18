@@ -556,8 +556,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			"VALUES (?1, ?2, ?3);",
 			-1, &stmt_file, NULL);
 
-	sqlite3_prepare(db->sqlite, "INSERT INTO scripts (script, type, when, package_id)"
-			"values (?1, ?2, ?3, ?4);",
+	sqlite3_prepare(db->sqlite, "INSERT INTO scripts (script, type, package_id)"
+			"values (?1, ?2, ?3);",
 			-1, &stmt_scripts, NULL);
 
 	sqlite3_prepare(db->sqlite, "INSERT INTO exec (cmd, type, package_id)"
@@ -614,8 +614,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_bind_int(stmt_scripts, 2, pkg_script_type(scripts[i]));
 			sqlite3_bind_text(stmt_scripts, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
-			sqlite3_step(stmt_exec);
-			sqlite3_reset(stmt_exec);
+			sqlite3_step(stmt_scripts);
+			sqlite3_reset(stmt_scripts);
 		}
 	execs = pkg_execs(pkg);
 	if (execs != NULL)
