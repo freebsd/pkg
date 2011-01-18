@@ -368,8 +368,10 @@ pkgdb_it_next_file(struct pkgdb_it *it, struct pkg_file **file_p)
 void
 pkgdb_it_free(struct pkgdb_it *it)
 {
-	sqlite3_finalize(it->stmt);
-	free(it);
+	if (it != NULL) {
+		sqlite3_finalize(it->stmt);
+		free(it);
+	}
 }
 
 struct pkgdb_it *
@@ -636,6 +638,26 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	sqlite3_exec(db->sqlite, "COMMIT;", NULL, NULL, NULL);
 
-	
+	return (0);
+}
+
+int
+pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
+{
+	sqlite3_stmt *stmt_del;
+	int ret;
+
+	if (db == NULL || origin == NULL)
+		return (-1);
+
+	sqlite3_prepare(db->sqlite, "DELETE FROM packages WHERE origin = ?1",
+					-1, &stmt_del, NULL);
+	sqlite3_bind_text(stmt_del, 1, origin, -1, SQLITE_STATIC);
+	ret = sqlite3_step(stmt_del);
+	sqlite3_finalize(stmt_del);
+
+	if (ret != SQLITE_DONE)
+		return (-1);
+
 	return (0);
 }

@@ -1,5 +1,6 @@
 PROG=	pkg
 SRCS=	main.c \
+	delete.c \
 	info.c \
 	which.c \
 	register.c \

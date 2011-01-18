@@ -110,6 +110,7 @@ int pkgdb_open(struct pkgdb **);
 void pkgdb_close(struct pkgdb *);
 
 int pkgdb_register_pkg(struct pkgdb *, struct pkg *);
+int pkgdb_unregister_pkg(struct pkgdb *, const char *);
 
 struct pkgdb_it * pkgdb_query(struct pkgdb *, const char *, match_t);
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *, const char *);
@@ -137,6 +138,9 @@ int pkgdb_errnum(struct pkgdb *);
 /* create */
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg *);
+
+/* delete */
+int pkg_delete(struct pkg *, struct pkgdb *, int);
 
 /* version */
 int pkg_version_cmp(const char *, const char *);

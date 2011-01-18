@@ -6,6 +6,7 @@
 #include <sysexits.h>
 
 #include "create.h"
+#include "delete.h"
 #include "info.h"
 #include "which.h"
 #include "add.h"
@@ -23,7 +24,7 @@ static struct commands {
 } cmd[] = { 
 	{ "add", exec_add, usage_add},
 	{ "create", NULL, NULL},
-	{ "delete", NULL, NULL},
+	{ "delete", exec_delete, usage_delete},
 	{ "info", exec_info, usage_info},
 	{ "install", NULL, NULL},
 	{ "update", NULL, NULL},

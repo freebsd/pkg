@@ -9,11 +9,12 @@ SHLIB_MAJOR=	0
 SRCS=		pkg.c \
 		pkgdb.c \
 		pkg_conflict.c \
-		pkg_ports.c \
+		pkg_delete.c \
+		pkg_exec.c \
 		pkg_file.c \
 		pkg_manifest.c \
+		pkg_ports.c \
 		pkg_version.c \
-		pkg_exec.c \
 		util.c
 
 CFLAGS+=	-std=c99
