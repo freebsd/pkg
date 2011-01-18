@@ -5,7 +5,8 @@ SRCS=	main.c \
 	which.c \
 	register.c \
 	version.c \
-	add.c
+	add.c \
+	create.c
 
 CFLAGS+=	-I${.CURDIR}/../libpkg
 LDADD+=	-L${.CURDIR}/../external -L../libpkg -lpkg -lutil
