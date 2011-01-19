@@ -249,6 +249,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg **deps;
 	struct pkg_conflict **conflicts;
 	struct pkg_exec **execs;
+	struct pkg_option **options;
 	int i;
 	int len = 0;
 
@@ -258,11 +259,20 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			"@name %s\n"
 			"@version %s\n"
 			"@origin %s\n"
-			"@comment %s\n",
+			"@comment %s\n"
+			"@arch %s\n"
+			"@osversion %s\n"
+			"@www %s\n"
+			"@maintainer %s\n",
 			pkg_get(pkg, PKG_NAME),
 			pkg_get(pkg, PKG_VERSION),
 			pkg_get(pkg, PKG_ORIGIN),
-			pkg_get(pkg, PKG_COMMENT));
+			pkg_get(pkg, PKG_COMMENT),
+			pkg_get(pkg, PKG_ARCH),
+			pkg_get(pkg, PKG_OSVERSION),
+			pkg_get(pkg, PKG_WWW),
+			pkg_get(pkg, PKG_MAINTAINER) ? pkg_get(pkg, PKG_MAINTAINER) : "UNKNOWN"
+			);
 
 	if ((deps = pkg_deps(pkg)) != NULL) {
 		for (i = 0; deps[i] != NULL; i++) {
@@ -284,6 +294,15 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			sbuf_printf(manifest, "@%s %s\n",
 					pkg_exec_type(execs[i]) == PKG_EXEC ? "exec" : "unexec",
 					pkg_exec_cmd(execs[i]));
+		}
+	}
+
+	if ((options = pkg_options(pkg)) != NULL)  {
+		for (i = 0; options[i] != NULL; i++) {
+			sbuf_printf(manifest, "@option %s %s\n",
+					pkg_option_opt(options[i]),
+					pkg_option_value(options[i]));
+					
 		}
 	}
 
