@@ -15,12 +15,17 @@ struct pkg {
 	struct sbuf *desc;
 	struct sbuf *mtree;
 	struct sbuf *message;
+	struct sbuf *arch;
+	struct sbuf *osversion;
+	struct sbuf *maintainer;
+	struct sbuf *www;
 	struct array deps;
 	struct array rdeps;
 	struct array conflicts;
 	struct array files;
 	struct array scripts;
 	struct array exec;
+	struct array options;
 	pkg_t type;
 };
 
@@ -43,8 +48,14 @@ struct pkg_file {
 	char sha256[65];
 };
 
+struct pkg_option {
+	struct sbuf *opt;
+	struct sbuf *value;
+};
+
 void pkg_conflict_free_void(void *);
 void pkg_script_free_void(void *);
 void pkg_exec_free_void(void *);
+void pkg_option_free_void(void *);
 
 #endif

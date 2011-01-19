@@ -30,7 +30,7 @@ exec_register(int argc, char **argv)
 	int ret = 0;
 
 	pkg_new(&pkg);
-	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:C:n:M:s:")) != -1) {
+	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:C:n:M:s:a:r:w:O:")) != -1) {
 		switch (ch) {
 			case 'v':
 				/* IGNORE */
@@ -72,12 +72,26 @@ exec_register(int argc, char **argv)
 			case 's':
 				ret += ports_parse_scripts(pkg, optarg);
 				break;
+			case 'a':
+				pkg_set(pkg, PKG_ARCH, optarg);
+				break;
+			case 'r': /* responsible */
+				pkg_set(pkg, PKG_MAINTAINER, optarg);
+				break;
+			case 'w':
+				pkg_set(pkg, PKG_WWW, optarg);
+				break;
+			case 'O':
+				/* TODO options handling */
+				break;
 			default:
 				printf("%c\n", ch);
 				usage_register();
 				return (-1);
 		}
 	}
+
+	/* TODO: missing osversion get it from uname*/
 
 	if (ret < 0) {
 		pkg_free(pkg);

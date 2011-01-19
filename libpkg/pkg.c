@@ -33,6 +33,14 @@ pkg_get(struct pkg *pkg, pkg_attr attr) {
 			return (sbuf_get(pkg->mtree));
 		case PKG_MESSAGE:
 			return (sbuf_get(pkg->message));
+		case PKG_ARCH:
+			return (sbuf_get(pkg->arch));
+		case PKG_OSVERSION:
+			return (sbuf_get(pkg->osversion));
+		case PKG_MAINTAINER:
+			return (sbuf_get(pkg->maintainer));
+		case PKG_WWW:
+			return (sbuf_get(pkg->www));
 	}
 
 	return (NULL);
@@ -59,6 +67,14 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 			return (sbuf_set(&pkg->mtree, value));
 		case PKG_MESSAGE:
 			return (sbuf_set(&pkg->message, value));
+		case PKG_ARCH:
+			return (sbuf_set(&pkg->arch, value));
+		case PKG_OSVERSION:
+			return (sbuf_set(&pkg->osversion, value));
+		case PKG_MAINTAINER:
+			return (sbuf_set(&pkg->maintainer, value));
+		case PKG_WWW:
+			return (sbuf_set(&pkg->www, value));
 	}
 
 	return (-1);
@@ -96,6 +112,12 @@ struct pkg **
 pkg_deps(struct pkg *pkg)
 {
 	return ((struct pkg **)pkg->deps.data);
+}
+
+struct pkg_option **
+pkg_options(struct pkg *pkg)
+{
+	return ((struct pkg_option **)pkg->options.data);
 }
 
 int
@@ -239,6 +261,10 @@ pkg_reset(struct pkg *pkg)
 	sbuf_reset(pkg->desc);
 	sbuf_reset(pkg->mtree);
 	sbuf_reset(pkg->message);
+	sbuf_reset(pkg->arch);
+	sbuf_reset(pkg->osversion);
+	sbuf_reset(pkg->maintainer);
+	sbuf_reset(pkg->www);
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);
@@ -246,6 +272,7 @@ pkg_reset(struct pkg *pkg)
 	array_reset(&pkg->files, &free);
 	array_reset(&pkg->scripts, &pkg_script_free_void);
 	array_reset(&pkg->exec, &pkg_exec_free_void);
+	array_reset(&pkg->options, &pkg_option_free_void);
 }
 
 void
@@ -261,6 +288,10 @@ pkg_free(struct pkg *pkg)
 	sbuf_free(pkg->desc);
 	sbuf_free(pkg->mtree);
 	sbuf_free(pkg->message);
+	sbuf_free(pkg->arch);
+	sbuf_free(pkg->osversion);
+	sbuf_free(pkg->maintainer);
+	sbuf_free(pkg->www);
 
 	array_free(&pkg->deps, &pkg_free_void);
 	array_free(&pkg->rdeps, &pkg_free_void);
@@ -268,6 +299,7 @@ pkg_free(struct pkg *pkg)
 	array_free(&pkg->files, &free);
 	array_free(&pkg->scripts, &pkg_script_free_void);
 	array_free(&pkg->exec, &pkg_exec_free_void);
+	array_free(&pkg->options, &pkg_option_free_void);
 
 	free(pkg);
 }
@@ -344,6 +376,25 @@ pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type)
 
 	array_init(&pkg->exec, 5);
 	array_append(&pkg->exec, exec);
+
+	return (0);
+}
+
+int
+pkg_addoption(struct pkg *pkg, const char *opt, const char *value)
+{
+	struct pkg_option *option;
+
+	if (opt == NULL || opt[0] == '\0' || value == NULL || value[0] == '\0')
+		return (-1);
+
+	pkg_option_new(&option);
+
+	sbuf_set(&option->opt, opt);
+	sbuf_set(&option->value, value);
+
+	array_init(&pkg->options, 5);
+	array_append(&pkg->options, option);
 
 	return (0);
 }

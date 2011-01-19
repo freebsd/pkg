@@ -32,7 +32,11 @@ typedef enum {
 	PKG_COMMENT,
 	PKG_DESC,
 	PKG_MTREE,
-	PKG_MESSAGE
+	PKG_MESSAGE,
+	PKG_ARCH,
+	PKG_OSVERSION,
+	PKG_MAINTAINER,
+	PKG_WWW
 } pkg_attr;
 
 typedef enum {
@@ -65,6 +69,7 @@ struct pkg_file ** pkg_files(struct pkg *);
 struct pkg_conflict ** pkg_conflicts(struct pkg *);
 struct pkg_script ** pkg_scripts(struct pkg *);
 struct pkg_exec ** pkg_execs(struct pkg *);
+struct pkg_option ** pkg_options(struct pkg *);
 int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
 
 /* pkg setters */
@@ -75,6 +80,7 @@ int pkg_addfile(struct pkg *, const char *, const char *);
 int pkg_addconflict(struct pkg *, const char *);
 int pkg_addexec(struct pkg *, const char *, pkg_exec_t);
 int pkg_addscript(struct pkg *, const char *);
+int pkg_addoption(struct pkg *, const char *, const char *);
 
 /* pkg_manifest */
 int pkg_parse_manifest(struct pkg *, char *);
@@ -106,6 +112,13 @@ void pkg_exec_free(struct pkg_exec *);
 const char *pkg_exec_cmd(struct pkg_exec *);
 pkg_exec_t pkg_exec_type(struct pkg_exec *);
 
+/* pkg_option */
+int pkg_option_new(struct pkg_option **);
+void pkg_option_reset(struct pkg_option *);
+void pkg_option_free(struct pkg_option *);
+const char *pkg_option_opt(struct pkg_option *);
+const char *pkg_option_value(struct pkg_option *);
+
 /* pkgdb */
 int pkgdb_open(struct pkgdb **);
 void pkgdb_close(struct pkgdb *);
@@ -121,6 +134,7 @@ struct pkgdb_it * pkgdb_query_conflicts(struct pkgdb *, const char *);
 struct pkgdb_it * pkgdb_query_files(struct pkgdb *, const char *);
 struct pkgdb_it * pkgdb_query_execs(struct pkgdb *, const char *);
 struct pkgdb_it * pkgdb_query_scripts(struct pkgdb *, const char *);
+struct pkgdb_it * pkgdb_query_options(struct pkgdb *, const char *);
 
 #define PKG_BASIC 0
 #define PKG_DEPS (1<<0)
@@ -129,13 +143,15 @@ struct pkgdb_it * pkgdb_query_scripts(struct pkgdb *, const char *);
 #define PKG_FILES (1<<3)
 #define PKG_EXECS (1<<4)
 #define PKG_SCRIPTS (1<<5)
-#define PKG_ALL PKG_BASIC|PKG_DEPS|PKG_RDEPS|PKG_CONFLICTS|PKG_FILES|PKG_EXECS|PKG_SCRIPTS
+#define PKG_OPTIONS (1<<6)
+#define PKG_ALL PKG_BASIC|PKG_DEPS|PKG_RDEPS|PKG_CONFLICTS|PKG_FILES|PKG_EXECS|PKG_SCRIPTS|PKG_OPTIONS
 
 int pkgdb_it_next_pkg(struct pkgdb_it *, struct pkg **, int);
 int pkgdb_it_next_conflict(struct pkgdb_it *, struct pkg_conflict **);
 int pkgdb_it_next_file(struct pkgdb_it *, struct pkg_file **);
 int pkgdb_it_next_exec(struct pkgdb_it *, struct pkg_exec **);
 int pkgdb_it_next_script(struct pkgdb_it *, struct pkg_script **);
+int pkgdb_it_next_option(struct pkgdb_it *, struct pkg_option **);
 void pkgdb_it_free(struct pkgdb_it *);
 
 const char *pkgdb_get_dir(void);
