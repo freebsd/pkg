@@ -142,7 +142,7 @@ pkgdb_init(sqlite3 *sdb)
 		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE, "
 		"option TEXT,"
 		"value TEXT,"
-		"PRIMARY KEY (package_id,name)"
+		"PRIMARY KEY (package_id,option)"
 	");"
 	"CREATE INDEX options_package ON options (package_id);"
 	"CREATE TABLE deps ("
@@ -547,7 +547,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	}
 
 	snprintf(sql, sizeof(sql),
-			"SELECT origin, name, version, comment, desc, mtree, message, arch, osversion, maintainer, www, FROM packages%s;", comp);
+			"SELECT origin, name, version, comment, desc, mtree, message, arch, osversion, maintainer, www FROM packages%s;", comp);
 
 	sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL);
 
@@ -563,7 +563,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 	sqlite3_stmt *stmt;
 
 	sqlite3_prepare(db->sqlite,
-					"SELECT origin, name, version, comment, desc, mtree, message, arch, osversion, maintainer, www,  FROM packages, files "
+					"SELECT origin, name, version, comment, desc, mtree, message, arch, osversion, maintainer, www  FROM packages, files "
 					"WHERE origin = files.package_id "
 					"AND files.path = ?1;", -1, &stmt, NULL);
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
@@ -709,8 +709,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	sqlite3_exec(db->sqlite, "BEGIN TRANSACTION;", NULL, NULL, NULL);
 
-	sqlite3_prepare(db->sqlite, "INSERT OR REPLACE INTO packages (origin, name, version, comment, desc, mtree, message) "
-			"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+	sqlite3_prepare(db->sqlite, "INSERT OR REPLACE INTO packages (origin, name, version, comment, desc, mtree, message, arch, osversion, maintainer, www) "
+			"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
 			-1, &stmt_pkg, NULL);
 
 	sqlite3_prepare(db->sqlite, "INSERT INTO deps (origin, name, version, package_id)"
@@ -744,6 +744,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_DESC), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 6, pkg_get(pkg, PKG_MTREE), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_MESSAGE), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_ARCH), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 10, pkg_get(pkg, PKG_MAINTAINER), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 11, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
 
 	sqlite3_step(stmt_pkg);
 

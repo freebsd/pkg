@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/utsname.h>
+#include <regex.h>
 
 #include "register.h"
 
@@ -21,11 +23,19 @@ exec_register(int argc, char **argv)
 {
 	struct pkg *pkg;
 	struct pkgdb *db;
+	struct utsname u;
+
+	regex_t preg;
+	regmatch_t *pmatch = NULL;
 
 	char ch;
 	char *plist = NULL;
 	char *prefix = NULL;
 	char *v = NULL;
+	char *arch = NULL;
+	char *www = NULL;
+	const char *desc = NULL;
+	size_t size;
 
 	int ret = 0;
 
@@ -73,13 +83,13 @@ exec_register(int argc, char **argv)
 				ret += ports_parse_scripts(pkg, optarg);
 				break;
 			case 'a':
-				pkg_set(pkg, PKG_ARCH, optarg);
+				arch = strdup(optarg);
 				break;
 			case 'r': /* responsible */
 				pkg_set(pkg, PKG_MAINTAINER, optarg);
 				break;
 			case 'w':
-				pkg_set(pkg, PKG_WWW, optarg);
+				www = strdup(optarg);
 				break;
 			case 'O':
 				ret += ports_parse_options(pkg, optarg);
@@ -91,6 +101,43 @@ exec_register(int argc, char **argv)
 		}
 	}
 
+	uname(&u);
+	if (arch == NULL) {
+		pkg_set(pkg, PKG_ARCH, u.machine);
+	} else {
+		pkg_set(pkg, PKG_ARCH, arch);
+		free(arch);
+	}
+
+	/* is www is not given then try to determine it from description */
+	if (www == NULL) {
+		desc = pkg_get(pkg, PKG_DESC);
+		regcomp(&preg, "^WWW:[:space:]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
+		pmatch = malloc(sizeof(regmatch_t) * (preg.re_nsub + 1));
+		if (regexec(&preg, desc, preg.re_nsub + 1, pmatch, 0) == 0) {
+			size = pmatch[1].rm_eo - pmatch[1].rm_so;
+			www = malloc(sizeof(char) * size + 1);
+			strncpy (www, &desc[pmatch[1].rm_so], size);
+			www[size] = '\0';
+			pkg_set(pkg, PKG_WWW, www);
+			free(www);
+
+		}
+	} else {
+		pkg_set(pkg, PKG_WWW, www);
+		free(www);
+	}
+
+
+	if (strstr(u.release, "RELEASE") == NULL) {
+		v = malloc(strlen(u.release) + 10); /* 10 should be enough */
+		snprintf(v, strlen(u.release) + 10, "%s-%d", u.release, __FreeBSD_version);
+		pkg_set(pkg, PKG_OSVERSION, v);
+		free(v);
+	} else {
+		pkg_set(pkg, PKG_OSVERSION, u.release);
+	}
+	pkg_set(pkg, PKG_ARCH, optarg);
 	/* TODO: missing osversion get it from uname*/
 
 	if (ret < 0) {
