@@ -70,7 +70,9 @@ struct pkg_conflict ** pkg_conflicts(struct pkg *);
 struct pkg_script ** pkg_scripts(struct pkg *);
 struct pkg_exec ** pkg_execs(struct pkg *);
 struct pkg_option ** pkg_options(struct pkg *);
+
 int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
+int pkg_extract(const char *filename);
 
 /* pkg setters */
 int pkg_set(struct pkg *, pkg_attr, const char *);

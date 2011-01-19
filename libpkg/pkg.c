@@ -239,6 +239,42 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 	return (0);
 }
 
+#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
+		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
+		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
+int
+pkg_extract(const char *path)
+{
+	struct archive *a;
+	struct archive_entry *ae;
+
+	int ret;
+
+	a = archive_read_new();
+	archive_read_support_compression_all(a);
+	archive_read_support_format_tar(a);
+
+	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
+		archive_read_finish(a);
+		return (-1);
+	}
+
+	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+		if (archive_entry_pathname(ae)[0] == '+') {
+			archive_read_data_skip(a);
+		} else {
+			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+		}
+	}
+
+	if (ret != ARCHIVE_EOF)
+		warn("Archive corrupted");
+
+	archive_read_finish(a);
+
+	return (0);
+}
+
 int
 pkg_new(struct pkg **pkg)
 {
@@ -413,6 +449,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	pkg_set(dep, PKG_NAME, name);
 	pkg_set(dep, PKG_ORIGIN, origin);
 	pkg_set(dep, PKG_VERSION, version);
+	dep->type = PKG_NOTFOUND;
 
 	array_init(&pkg->deps, 5);
 	array_append(&pkg->deps, dep);

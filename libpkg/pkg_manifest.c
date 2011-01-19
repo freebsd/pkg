@@ -15,15 +15,13 @@ static int m_parse_name(struct pkg *pkg, char *buf);
 static int m_parse_origin(struct pkg *pkg, char *buf);
 static int m_parse_version(struct pkg *pkg, char *buf);
 static int m_parse_arch(struct pkg *pkg, char *buf);
-static int m_parse_osrelease(struct pkg *pkg, char *buf);
 static int m_parse_osversion(struct pkg *pkg, char *buf);
-static int m_parse_build_time(struct pkg *pkg, char *buf);
 static int m_parse_www(struct pkg *pkg, char *buf);
 static int m_parse_comment(struct pkg *pkg, char *buf);
-static int m_parse_license(struct pkg *pkg, char *buf);
 static int m_parse_option(struct pkg *pkg, char *buf);
 static int m_parse_dep(struct pkg *pkg, char *buf);
 static int m_parse_conflict(struct pkg *pkg, char *buf);
+static int m_parse_maintainer(struct pkg *pkg, char *buf);
 
 #define MANIFEST_FORMAT_KEY "@pkg_format_version"
 
@@ -35,18 +33,36 @@ static struct manifest_key {
 	{ "@origin", m_parse_origin},
 	{ "@version", m_parse_version},
 	{ "@arch", m_parse_arch},
-	{ "@osrelease", m_parse_osrelease},
 	{ "@osversion", m_parse_osversion},
-	{ "@build_time", m_parse_build_time},
 	{ "@www", m_parse_www},
 	{ "@comment", m_parse_comment},
-	{ "@license", m_parse_license},
 	{ "@option", m_parse_option},
 	{ "@dep", m_parse_dep},
 	{ "@conflict", m_parse_conflict},
+	{ "@maintainer", m_parse_maintainer},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
+
+static int
+m_parse_www(struct pkg *pkg, char *buf) {
+	while (isspace(*buf))
+		buf++;
+
+	pkg_set(pkg, PKG_WWW, buf);
+
+	return (0);
+}
+
+static int
+m_parse_maintainer(struct pkg *pkg, char *buf) {
+	while (isspace(*buf))
+		buf++;
+
+	pkg_set(pkg, PKG_MAINTAINER, buf);
+
+	return (0);
+}
 
 static int
 m_parse_name(struct pkg *pkg, char *buf)
@@ -85,45 +101,22 @@ m_parse_version(struct pkg *pkg, char *buf)
 static int
 m_parse_arch(struct pkg *pkg, char *buf)
 {
-	/* TODO */
-	(void)pkg;
-	(void)buf;
-	return (0);
-}
+	while (isspace(*buf))
+		buf++;
 
-static int
-m_parse_osrelease(struct pkg *pkg, char *buf)
-{
-	/* TODO */
-	(void)pkg;
-	(void)buf;
+	pkg_set(pkg, PKG_ARCH, buf);
+
 	return (0);
 }
 
 static int
 m_parse_osversion(struct pkg *pkg, char *buf)
 {
-	/* TODO */
-	(void)pkg;
-	(void)buf;
-	return (0);
-}
+	while (isspace(*buf))
+		buf++;
 
-static int
-m_parse_build_time(struct pkg *pkg, char *buf)
-{
-	/* TODO */
-	(void)pkg;
-	(void)buf;
-	return (0);
-}
+	pkg_set(pkg, PKG_OSVERSION, buf);
 
-static int
-m_parse_www(struct pkg *pkg, char *buf)
-{
-	/* TODO */
-	(void)pkg;
-	(void)buf;
 	return (0);
 }
 
@@ -139,59 +132,54 @@ m_parse_comment(struct pkg *pkg, char *buf)
 }
 
 static int
-m_parse_license(struct pkg *pkg, char *buf)
-{
-	/* TODO */
-	(void)pkg;
-	(void)buf;
-	return (0);
-}
-
-static int
 m_parse_option(struct pkg *pkg, char *buf)
 {
-	/* TODO */
-	(void)pkg;
-	(void)buf;
+	char *value;
+
+	while (isspace(*buf))
+		buf++;
+
+	value = strrchr(buf, ' ');
+	if (value == NULL)
+		return (-1);
+
+	value[0] = '\0';
+	value++;
+
+	pkg_addoption(pkg, buf, value);
+
 	return (0);
 }
 
 static int
 m_parse_dep(struct pkg *pkg, char *buf)
 {
-	struct pkg *dep;
 	char *buf_ptr;
-	int nbel, i;
 	size_t next;
+	const char *name, *origin, *version;
 
 	while (isspace(*buf))
 		buf++;
 
 	buf_ptr = buf;
 
-	nbel = split_chr(buf_ptr, ' ');
-
-	pkg_new(&dep);
+	if (split_chr(buf_ptr, ' ') > 2)
+		return (-1);
 
 	next = strlen(buf_ptr);
-	for (i = 0; i <= nbel; i++) {
-		switch(i) {
-			case 0:
-				pkg_set(dep, PKG_NAME, buf_ptr);
-				break;
-			case 1:
-				pkg_set(dep, PKG_ORIGIN, buf_ptr);
-				break;
-			case 2:
-				pkg_set(dep, PKG_VERSION, buf_ptr);
-				break;
-		}
-		buf_ptr += next + 1;
-		next = strlen(buf_ptr);
-	}
+	name = buf_ptr;
 
-	dep->type = PKG_NOTFOUND;
-	array_append(&pkg->deps, dep);
+	buf_ptr += next + 1;
+	next = strlen(buf_ptr);
+
+	origin = buf_ptr;
+
+	buf_ptr += next + 1;
+	next = strlen(buf_ptr);
+
+	version = buf_ptr;
+
+	pkg_adddep(pkg, name, origin, version);
 
 	return (0);
 }
@@ -199,22 +187,24 @@ m_parse_dep(struct pkg *pkg, char *buf)
 static int
 m_parse_conflict(struct pkg *pkg, char *buf)
 {
-	/* TODO */
-	(void)pkg;
-	(void)buf;
+	while (isspace(*buf))
+		buf++;
+
+	pkg_addconflict(pkg, buf);
+
 	return (0);
 }
 
 int
 pkg_parse_manifest(struct pkg *pkg, char *buf)
 {
-	int nbl;
+	int nbel;
 	int i, j;
 	char *buf_ptr;
 	size_t next;
 
 
-	nbl = split_chr(buf, '\n');
+	nbel = split_chr(buf, '\n');
 
 	buf_ptr = buf;
 	if (!STARTS_WITH(buf, MANIFEST_FORMAT_KEY)) {
@@ -225,7 +215,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	next = strlen(buf_ptr);
 	buf_ptr += next + 1;
 	next = strlen(buf_ptr);
-	for (i = 1; i <= nbl; i++) {
+	for (i = 1; i <= nbel; i++) {
 		for (j = 0; j < manifest_key_len; j++) {
 			if (STARTS_WITH(buf_ptr, manifest_key[j].key)) {
 				manifest_key[j].parse(pkg, buf_ptr + strlen(manifest_key[j].key));
@@ -233,7 +223,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 			}
 		}
 		/* We need to compute `next' only if we are not at the end of the manifest */
-		if (i != nbl) {
+		if (i != nbel) {
 			buf_ptr += next + 1;
 			next = strlen(buf_ptr);
 		}
