@@ -25,13 +25,14 @@ static struct commands {
 	{ "add", exec_add, usage_add},
 	{ "create", exec_create, usage_create},
 	{ "delete", exec_delete, usage_delete},
+	{ "help", exec_help, usage_help},
 	{ "info", exec_info, usage_info},
-	{ "install", NULL, NULL},
+	{ "register", exec_register, usage_register},
+	{ "repo", NULL, NULL},
 	{ "update", NULL, NULL},
+	{ "upgrade", NULL, NULL},
 	{ "version", exec_version, usage_version},
 	{ "which", exec_which, usage_which},
-	{ "help", exec_help, usage_help},
-	{ "register", exec_register, usage_register},
 };
 #define cmd_len (int)(sizeof(cmd)/sizeof(cmd[0]))
 
