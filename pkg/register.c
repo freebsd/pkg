@@ -26,7 +26,7 @@ exec_register(int argc, char **argv)
 	struct utsname u;
 
 	regex_t preg;
-	regmatch_t *pmatch = NULL;
+	regmatch_t pmatch[2];
 
 	char ch;
 	char *plist = NULL;
@@ -113,16 +113,13 @@ exec_register(int argc, char **argv)
 	if (www == NULL) {
 		desc = pkg_get(pkg, PKG_DESC);
 		regcomp(&preg, "^WWW:[:space:]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
-		pmatch = malloc(sizeof(regmatch_t) * (preg.re_nsub + 1));
-		if (regexec(&preg, desc, preg.re_nsub + 1, pmatch, 0) == 0) {
+		if (regexec(&preg, desc, 2, pmatch, 0) == 0) {
 			size = pmatch[1].rm_eo - pmatch[1].rm_so;
-			www = malloc(sizeof(char) * size + 1);
-			strncpy (www, &desc[pmatch[1].rm_so], size);
-			www[size] = '\0';
+			www = strndup(&desc[pmatch[1].rm_so], size);
 			pkg_set(pkg, PKG_WWW, www);
 			free(www);
-
 		}
+		regfree(&preg);
 	} else {
 		pkg_set(pkg, PKG_WWW, www);
 		free(www);
