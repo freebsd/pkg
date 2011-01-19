@@ -184,3 +184,31 @@ ports_parse_scripts(struct pkg *pkg, char *scripts)
 
 	return (0);
 }
+
+int
+ports_parse_options(struct pkg *pkg, char *options)
+{
+	int nbel, i;
+	char *option_p;
+	size_t next;
+	char *value;
+
+	if (options == NULL)
+		return (-1);
+
+	nbel = split_chr(options, ' ');
+	option_p = options;
+
+	next = strlen(option_p);
+	for (i = 0; i <= nbel; i++) {
+		value = strrchr(option_p, '=');
+		value[0] = '\0';
+		value++;
+		pkg_addoption(pkg, option_p, value);
+
+		option_p += next + 1;
+		next = strlen(option_p);
+	}
+
+	return (0);
+}

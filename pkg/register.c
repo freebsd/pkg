@@ -82,7 +82,7 @@ exec_register(int argc, char **argv)
 				pkg_set(pkg, PKG_WWW, optarg);
 				break;
 			case 'O':
-				/* TODO options handling */
+				ret += ports_parse_options(pkg, optarg);
 				break;
 			default:
 				printf("%c\n", ch);
