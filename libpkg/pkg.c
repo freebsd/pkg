@@ -176,18 +176,23 @@ pkg_conflicts(struct pkg *pkg)
 }
 
 int
-pkg_open(const char *path, struct pkg **pkg, int query_flags)
+pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 {
 	struct archive *a;
 	struct archive_entry *ae;
+	struct pkg *pkg;
+	struct pkg_script *script;
 	struct pkg_file *file = NULL;
 	int ret;
 	int64_t size;
-	char *buf;
+	char *manifest;
+	const char *fpath;
+	char buf[1024];
 
 	/* search for http(s) or ftp(s) */
 	if (STARTS_WITH(path, "http://") || STARTS_WITH(path, "https://")
 			|| STARTS_WITH(path, "ftp://")) {
+		/* TODO: */
 		file_fetch(path, "/tmp/bla");
 		path = "/tmp/bla";
 	}
@@ -207,37 +212,60 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 
 	(*pkg)->type = PKG_FILE;
 
-	array_init(&(*pkg)->deps, 5);
-	array_init(&(*pkg)->conflicts, 5);
-	array_init(&(*pkg)->files, 10);
+	array_init(&pkg->scripts, 10);
+	array_init(&pkg->files, 10);
 
 	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
-		if (!strcmp(archive_entry_pathname(ae),"+DESC")) {
+		fpath = archive_entry_pathname(ae);
+
+		if (strcmp(fpath, "+MANIFEST") == 0) {
 			size = archive_entry_size(ae);
-			buf = calloc(1, size+1);
-			archive_read_data(a, buf, size);
-			pkg_set(*pkg, PKG_DESC, buf);
-			free(buf);
+			manifest = calloc(1, size + 1);
+			archive_read_data(a, manifest, size);
+			pkg_parse_manifest(pkg, manifest);
+			free(manifest);
 		}
 
-		if (!strcmp(archive_entry_pathname(ae), "+MANIFEST")) {
-			size = archive_entry_size(ae);
-			buf = calloc(1, size + 1);
-			archive_read_data(a, buf, size);
-			pkg_parse_manifest(*pkg, buf);
-			free(buf);
-		}
+#define COPY_FILE(fname, dest)												\
+	if (strcmp(fpath, fname) == 0) {										\
+		dest = sbuf_new_auto();												\
+		while ((size = archive_read_data(a, buf, sizeof(buf))) > 0 ) {		\
+			sbuf_bcat(dest, buf, size);										\
+		}																	\
+		sbuf_finish(dest);													\
+	}
 
-		if (archive_entry_pathname(ae)[0] == '+') {
-			archive_read_data_skip(a);
+		COPY_FILE("+DESC", pkg->desc)
+		COPY_FILE("+MTREE_DIRS", pkg->mtree)
+
+#define COPY_SCRIPT(sname, stype)											\
+	if (strcmp(fpath, sname) == 0) {										\
+		pkg_script_new(&script);											\
+		script->type = stype;												\
+		script->data = sbuf_new_auto();										\
+		while ((size = archive_read_data(a, buf, sizeof(buf))) > 0 ) {		\
+			sbuf_bcat(script->data, buf, size);								\
+		}																	\
+		sbuf_finish(script->data);											\
+		array_append(&pkg->scripts, script);								\
+	}
+
+		COPY_SCRIPT("+PRE_INSTALL", PKG_SCRIPT_PRE_INSTALL)
+		COPY_SCRIPT("+POST_INSTALL", PKG_SCRIPT_POST_INSTALL)
+		COPY_SCRIPT("+PRE_DEINSTALL", PKG_SCRIPT_PRE_DEINSTALL)
+		COPY_SCRIPT("+POST_DEINSTALL", PKG_SCRIPT_POST_DEINSTALL)
+		COPY_SCRIPT("+PRE_UPGRADE", PKG_SCRIPT_PRE_UPGRADE)
+		COPY_SCRIPT("+POST_UPGRADE", PKG_SCRIPT_POST_UPGRADE)
+		COPY_SCRIPT("+INSTALL", PKG_SCRIPT_INSTALL)
+		COPY_SCRIPT("+DEINSTALL", PKG_SCRIPT_DEINSTALL)
+		COPY_SCRIPT("+UPGRADE", PKG_SCRIPT_UPGRADE)
+
+		if (fpath[0] == '+')
 			continue;
-		}
 
 		pkg_file_new(&file);
 		strlcpy(file->path, archive_entry_pathname(ae), sizeof(file->path));
-		array_append(&(*pkg)->files, file);
-
-		archive_read_data_skip(a);
+		array_append(&pkg->files, file);
 	}
 
 	if (ret != ARCHIVE_EOF)

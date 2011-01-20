@@ -103,6 +103,7 @@ exec_create(int argc, char **argv)
 		/* create package from local db */
 		if (pkgdb_open(&db) == -1) {
 			pkgdb_warn(db);
+			pkgdb_close(db);
 			return (-1);
 		}
 

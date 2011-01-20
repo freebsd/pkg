@@ -190,7 +190,7 @@ pkgdb_open(struct pkgdb **db)
 
 	snprintf(fpath, sizeof(fpath), "%s/pkg.db", pkgdb_get_dir());
 
-	if ((*db = malloc(sizeof(struct pkgdb))) == NULL)
+	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL)
 		err(EXIT_FAILURE, "malloc()");
 
 	if ((retcode = stat(fpath, &st)) == -1 && errno != ENOENT) {
@@ -218,16 +218,18 @@ pkgdb_open(struct pkgdb **db)
 	if (sqlite3_exec((*db)->sqlite, "PRAGMA foreign_keys = ON;", NULL, NULL, &errmsg) != SQLITE_OK)
 		errx(EXIT_FAILURE, "sqlite3_exec(): %s", errmsg);
 
-	(*db)->errnum = 0;
-	(*db)->errstring[0] = '\0';
-
 	return (0);
 }
 
 void
 pkgdb_close(struct pkgdb *db)
 {
-	sqlite3_close(db->sqlite);
+	if (db == NULL)
+		return;
+
+	if (db->sqlite != NULL)
+		sqlite3_close(db->sqlite);
+
 	free(db);
 }
 

@@ -147,6 +147,7 @@ exec_info(int argc, char **argv)
 
 	if (pkgdb_open(&db) == -1) {
 		pkgdb_warn(db);
+		pkgdb_close(db);
 		return (-1);
 	}
 
