@@ -202,15 +202,16 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 	archive_read_support_compression_all(a);
 	archive_read_support_format_tar(a);
 
+	pkg_new(pkg_p);
+	pkg = *pkg_p;
+	pkg->type = PKG_FILE;
+
 	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK)
 		goto error;
 
 	/* first path to check is the archive is corrupted bye the way retreive
 	 * informations */
 
-	pkg_new(pkg_p);
-	pkg = *pkg_p;
-	pkg->type = PKG_FILE;
 
 	array_init(&pkg->scripts, 10);
 	array_init(&pkg->files, 10);
