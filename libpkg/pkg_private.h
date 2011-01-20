@@ -19,6 +19,7 @@ struct pkg {
 	struct sbuf *osversion;
 	struct sbuf *maintainer;
 	struct sbuf *www;
+	struct sbuf *err;
 	struct array deps;
 	struct array rdeps;
 	struct array conflicts;

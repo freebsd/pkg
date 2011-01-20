@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sys/utsname.h>
 #include <regex.h>
 
@@ -34,13 +35,16 @@ exec_register(int argc, char **argv)
 	char *v = NULL;
 	char *arch = NULL;
 	char *www = NULL;
+
 	const char *desc = NULL;
 	size_t size;
+
+	bool heuristic = false;
 
 	int ret = 0;
 
 	pkg_new(&pkg);
-	while ((ch = getopt(argc, argv, "vc:d:f:p:P:m:o:C:n:M:s:a:r:w:O:")) != -1) {
+	while ((ch = getopt(argc, argv, "vHc:d:f:p:P:m:o:C:n:M:s:a:r:w:O:")) != -1) {
 		switch (ch) {
 			case 'v':
 				/* IGNORE */
@@ -93,6 +97,9 @@ exec_register(int argc, char **argv)
 				break;
 			case 'O':
 				ret += ports_parse_options(pkg, optarg);
+				break;
+			case 'H':
+				heuristic = true;
 				break;
 			default:
 				printf("%c\n", ch);
@@ -157,6 +164,9 @@ exec_register(int argc, char **argv)
 		pkgdb_warn(db);
 		return (-1);
 	}
+
+	if (heuristic)
+		pkg_analyse_files(db, pkg);
 
 	pkgdb_register_pkg(db, pkg);
 	pkgdb_close(db);

@@ -36,7 +36,8 @@ typedef enum {
 	PKG_ARCH,
 	PKG_OSVERSION,
 	PKG_MAINTAINER,
-	PKG_WWW
+	PKG_WWW,
+	PKG_ERR
 } pkg_attr;
 
 typedef enum {
@@ -56,6 +57,13 @@ typedef enum {
 	PKG_UNEXEC
 } pkg_exec_t;
 
+typedef enum {
+	EPKG_OK = 0,
+	EPKG_END,
+	EPKG_WARNING,
+	EPKG_FATAL,
+} pkg_error_t;
+
 /* pkg */
 int pkg_new(struct pkg **);
 int pkg_open(const char *, struct pkg **, int);
@@ -63,6 +71,7 @@ pkg_t pkg_type(struct pkg *);
 void pkg_reset(struct pkg *);
 void pkg_free(struct pkg *);
 const char *pkg_get(struct pkg *, pkg_attr);
+#define pkg_errmsg(pkg) pkg_get(pkg, PKG_ERR)
 struct pkg ** pkg_deps(struct pkg *);
 struct pkg ** pkg_rdeps(struct pkg *);
 struct pkg_file ** pkg_files(struct pkg *);
@@ -72,6 +81,7 @@ struct pkg_exec ** pkg_execs(struct pkg *);
 struct pkg_option ** pkg_options(struct pkg *);
 
 int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
+int pkg_analyse_files(struct pkgdb *, struct pkg *);
 int pkg_extract(const char *filename);
 
 /* pkg setters */

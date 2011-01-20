@@ -3,6 +3,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "pkg.h"
 #include "pkg_private.h"
@@ -41,6 +42,8 @@ pkg_get(struct pkg *pkg, pkg_attr attr) {
 			return (sbuf_get(pkg->maintainer));
 		case PKG_WWW:
 			return (sbuf_get(pkg->www));
+		case PKG_ERR:
+			return (sbuf_get(pkg->err));
 	}
 
 	return (NULL);
@@ -49,8 +52,10 @@ pkg_get(struct pkg *pkg, pkg_attr attr) {
 int
 pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 {
-	if (value == NULL)
-		return (-1);
+	if (value == NULL) {
+		pkg_set(pkg, PKG_ERR, "Value can not be NULL");
+		return (EPKG_FATAL);
+	}
 
 	switch (attr) {
 		case PKG_NAME:
@@ -75,19 +80,24 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 			return (sbuf_set(&pkg->maintainer, value));
 		case PKG_WWW:
 			return (sbuf_set(&pkg->www, value));
+		case PKG_ERR:
+			return (sbuf_set(&pkg->err, value));
 	}
 
-	return (-1);
+	return (EPKG_FATAL);
 }
 
 int
 pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 {
 	char *buf = NULL;
-	int ret = 0;
+	int ret = EPKG_OK;
 
-	if (file_to_buffer(path, &buf) <= 0)
-		return (-1);
+	if (file_to_buffer(path, &buf) <= 0) {
+		sbuf_reset(pkg->err);
+		sbuf_printf(pkg->err, "Unable to read %s: %s\n", path, strerror(errno));
+		return (EPKG_FATAL);
+	}
 
 	ret = pkg_set(pkg, attr, buf);
 
@@ -187,15 +197,14 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 	archive_read_support_compression_all(a);
 	archive_read_support_format_tar(a);
 
-	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
-		archive_read_finish(a);
-		return (-1);
-	}
+	pkg_new(pkg);
+
+	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK)
+		goto error;
 
 	/* first path to check is the archive is corrupted bye the way retreive
 	 * informations */
 
-	pkg_new(pkg);
 	(*pkg)->type = PKG_FILE;
 
 	array_init(&(*pkg)->deps, 5);
@@ -232,11 +241,15 @@ pkg_open(const char *path, struct pkg **pkg, int query_flags)
 	}
 
 	if (ret != ARCHIVE_EOF)
-		warn("Archive corrupted");
+		goto error;
 
 	archive_read_finish(a);
-
 	return (0);
+
+error:
+	archive_read_finish(a);
+
+	return (EPKG_FATAL);
 }
 
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
@@ -281,6 +294,8 @@ pkg_new(struct pkg **pkg)
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		err(EXIT_FAILURE, "calloc()");
 
+	(*pkg)->err = sbuf_new_auto();
+
 	return (0);
 }
 
@@ -301,6 +316,7 @@ pkg_reset(struct pkg *pkg)
 	sbuf_reset(pkg->osversion);
 	sbuf_reset(pkg->maintainer);
 	sbuf_reset(pkg->www);
+	sbuf_reset(pkg->err);
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);
@@ -328,6 +344,7 @@ pkg_free(struct pkg *pkg)
 	sbuf_free(pkg->osversion);
 	sbuf_free(pkg->maintainer);
 	sbuf_free(pkg->www);
+	sbuf_free(pkg->err);
 
 	array_free(&pkg->deps, &pkg_free_void);
 	array_free(&pkg->rdeps, &pkg_free_void);
