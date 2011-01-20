@@ -49,7 +49,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct archive *pkg_archi
 	struct archive *ar;
 	char *m;
 	int i;
-	const char *scriptname;
+	const char *scriptname = NULL;
 
 	ar = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup(ar);
