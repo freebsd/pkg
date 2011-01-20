@@ -1,10 +1,12 @@
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <assert.h>
 #include <err.h>
 #include <errno.h>
 #include <regex.h>
+#include <sha256.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -116,7 +118,7 @@ pkgdb_init(sqlite3 *sdb)
 		"version TEXT,"
 		"comment TEXT,"
 		"desc TEXT,"
-		"mtree TEXT,"
+		"mtree_id TEXT REFERENCES mtree(id) ON DELETE CASCADE,"
 		"message TEXT,"
 		"arch TEXT,"
 		"osversion TEXT,"
@@ -165,7 +167,11 @@ pkgdb_init(sqlite3 *sdb)
 		"package_id TEXT REFERENCES packages(origin) ON DELETE CASCADE, "
 		"PRIMARY KEY (package_id,name)"
 	");"
-	"CREATE INDEX conflicts_package ON conflicts (package_id);";
+	"CREATE INDEX conflicts_package ON conflicts (package_id);"
+	"CREATE TABLE mtree ("
+		"id TEXT PRIMARY KEY,"
+		"content TEXT"
+	");";
 
 	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK)
 		errx(EXIT_FAILURE, "sqlite3_exec(): %s", errmsg);
@@ -522,32 +528,35 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 		break;
 	case MATCH_EXACT:
 		if (checkorigin == NULL)
-			comp = " WHERE name = ?1";
+			comp = " AND name = ?1";
 		else
-			comp = " WHERE origin = ?1";
+			comp = " AND origin = ?1";
 		break;
 	case MATCH_GLOB:
 		if (checkorigin == NULL)
-			comp = " WHERE name GLOB ?1";
+			comp = " AND name GLOB ?1";
 		else
-			comp = " WHERE origin GLOB ?1";
+			comp = " AND origin GLOB ?1";
 		break;
 	case MATCH_REGEX:
 		if (checkorigin == NULL)
-			comp = " WHERE name REGEXP ?1";
+			comp = " AND name REGEXP ?1";
 		else
-			comp = " WHERE origin REGEXP ?1";
+			comp = " AND origin REGEXP ?1";
 		break;
 	case MATCH_EREGEX:
 		if (checkorigin == NULL)
-			comp = " WHERE EREGEXP(?1, name)";
+			comp = " AND EREGEXP(?1, name)";
 		else
-			comp = " WHERE EREGEXP(?1, origin)";
+			comp = " AND EREGEXP(?1, origin)";
 		break;
 	}
 
 	snprintf(sql, sizeof(sql),
-			"SELECT origin, name, version, comment, desc, mtree, message, arch, osversion, maintainer, www FROM packages%s;", comp);
+			"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+				"p.message, p.arch, p.osversion, p.maintainer, p.www "
+			"FROM packages AS p, mtree AS m "
+			"WHERE m.id = p.mtree_id%s;", comp);
 
 	sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL);
 
@@ -563,9 +572,12 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 	sqlite3_stmt *stmt;
 
 	sqlite3_prepare(db->sqlite,
-					"SELECT origin, name, version, comment, desc, mtree, message, arch, osversion, maintainer, www  FROM packages, files "
-					"WHERE origin = files.package_id "
-					"AND files.path = ?1;", -1, &stmt, NULL);
+					"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+						"p.message, p.arch, p.osversion, p.maintainer, p.www "
+					"FROM packages AS p, mtree AS m, files AS f "
+					"WHERE m.id = p.mtree_id " 
+					"AND p.origin = f.package_id "
+					"AND f.path = ?1;", -1, &stmt, NULL);
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 
 	return (pkgdb_it_new(db, stmt, IT_PKG));
@@ -576,9 +588,11 @@ pkgdb_query_dep(struct pkgdb *db, const char *origin) {
 	sqlite3_stmt *stmt;
 
 	sqlite3_prepare(db->sqlite,
-					"SELECT p.origin, p.name, p.version, p.comment, p.desc "
-					"FROM packages AS p, deps AS d "
-					"WHERE p.origin = d.origin "
+					"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+						"p.message, p.arch, p.osversion, p.maintainer, p.www "
+					"FROM packages AS p, mtree AS m, deps AS d "
+					"WHERE m.id = p.mtree_id "
+					"AND p.origin = d.origin "
 					"AND d.package_id = ?1;", -1, &stmt, NULL);
 	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
 
@@ -590,9 +604,11 @@ pkgdb_query_rdep(struct pkgdb *db, const char *origin) {
 	sqlite3_stmt *stmt;
 
 	sqlite3_prepare(db->sqlite,
-					"SELECT p.origin, p.name, p.version, p.comment, p.desc "
-					"FROM packages AS p, deps AS d "
-					"WHERE p.origin = d.package_id "
+					"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+						"p.message, p.arch, p.osversion, p.maintainer, p.www "
+					"FROM packages AS p, mtree AS m, deps AS d "
+					"WHERE m.id = p.mtree_id "
+					"AND p.origin = d.package_id "
 					"AND d.origin = ?1;", -1, &stmt, NULL);
 	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
 
@@ -699,6 +715,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_script **scripts;
 	struct pkg_option **options;
 	sqlite3_stmt *stmt_pkg;
+	sqlite3_stmt *stmt_mtree;
 	sqlite3_stmt *stmt_dep;
 	sqlite3_stmt *stmt_conflicts;
 	sqlite3_stmt *stmt_file;
@@ -706,43 +723,38 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_stmt *stmt_scripts;
 	sqlite3_stmt *stmt_options;
 	int i;
+	char mtree_id[65];
+	const char *mtree;
+
+	mtree = pkg_get(pkg, PKG_MTREE);
+	SHA256_Data(mtree, strlen(mtree), mtree_id);
 
 	sqlite3_exec(db->sqlite, "BEGIN TRANSACTION;", NULL, NULL, NULL);
 
-	sqlite3_prepare(db->sqlite, "INSERT OR REPLACE INTO packages (origin, name, version, comment, desc, mtree, message, arch, osversion, maintainer, www) "
-			"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-			-1, &stmt_pkg, NULL);
+	/* First, add the mtree */
+	sqlite3_prepare(db->sqlite,
+					"INSERT OR IGNORE INTO mtree (id, content) "
+					"VALUES (?1, ?2);",
+					-1, &stmt_mtree, NULL);
 
-	sqlite3_prepare(db->sqlite, "INSERT INTO deps (origin, name, version, package_id)"
-			"VALUES (?1, ?2, ?3, ?4);",
-			-1, &stmt_dep, NULL);
+	sqlite3_bind_text(stmt_mtree, 1, mtree_id, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_mtree, 2, mtree, -1, SQLITE_STATIC);
 
-	sqlite3_prepare(db->sqlite, "INSERT INTO conflicts (name, package_id)"
-			"VALUES (?1, ?2);",
-			-1, &stmt_conflicts, NULL);
+	sqlite3_step(stmt_mtree);
+	sqlite3_finalize(stmt_mtree);
 
-	sqlite3_prepare(db->sqlite, "INSERT INTO files (path, sha256, package_id)"
-			"VALUES (?1, ?2, ?3);",
-			-1, &stmt_file, NULL);
-
-	sqlite3_prepare(db->sqlite, "INSERT INTO scripts (script, type, package_id)"
-			"values (?1, ?2, ?3);",
-			-1, &stmt_scripts, NULL);
-
-	sqlite3_prepare(db->sqlite, "INSERT INTO exec (cmd, type, package_id)"
-			"values (?1, ?2, ?3);",
-			-1, &stmt_exec, NULL);
-
-	sqlite3_prepare(db->sqlite, "INSERT INTO options (option, value, package_id)"
-			"values (?1, ?2, ?3);",
-			-1, &stmt_options, NULL);
+	/* Add the record into packages */
+	sqlite3_prepare(db->sqlite,
+					"INSERT OR REPLACE INTO packages (origin, name, version, comment, desc, mtree_id, message, arch, osversion, maintainer, www) "
+					"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
+					-1, &stmt_pkg, NULL);
 
 	sqlite3_bind_text(stmt_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 2, pkg_get(pkg, PKG_NAME), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 3, pkg_get(pkg, PKG_VERSION), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 4, pkg_get(pkg, PKG_COMMENT), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_DESC), -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt_pkg, 6, pkg_get(pkg, PKG_MTREE), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 6, mtree_id, -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_MESSAGE), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_ARCH), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_STATIC);
@@ -750,8 +762,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 11, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
 
 	sqlite3_step(stmt_pkg);
+	sqlite3_finalize(stmt_pkg);
 
-	if ((deps = pkg_deps(pkg)) != NULL)
+	if ((deps = pkg_deps(pkg)) != NULL) {
+		sqlite3_prepare(db->sqlite,
+						"INSERT INTO deps (origin, name, version, package_id) "
+						"VALUES (?1, ?2, ?3, ?4);",
+						-1, &stmt_dep, NULL);
+
 		for (i = 0; deps[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_dep, 1, pkg_get(deps[i], PKG_ORIGIN), -1, SQLITE_STATIC);
 			sqlite3_bind_text(stmt_dep, 2, pkg_get(deps[i], PKG_NAME), -1, SQLITE_STATIC);
@@ -762,7 +780,15 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_reset(stmt_dep);
 		}
 
-	if ((conflicts = pkg_conflicts(pkg)) != NULL)
+		sqlite3_finalize(stmt_dep);
+	}
+
+	if ((conflicts = pkg_conflicts(pkg)) != NULL) {
+		sqlite3_prepare(db->sqlite,
+						"INSERT INTO conflicts (name, package_id) "
+						"VALUES (?1, ?2);",
+						-1, &stmt_conflicts, NULL);
+
 		for (i = 0; conflicts[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_conflicts, 1, pkg_conflict_glob(conflicts[i]), -1, SQLITE_STATIC);
 			sqlite3_bind_text(stmt_conflicts, 2, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
@@ -771,8 +797,15 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_reset(stmt_conflicts);
 		}
 
+		sqlite3_finalize(stmt_conflicts);
+	}
 
-	if ((files = pkg_files(pkg)) != NULL)
+	if ((files = pkg_files(pkg)) != NULL) {
+		sqlite3_prepare(db->sqlite,
+						"INSERT INTO files (path, sha256, package_id) "
+						"VALUES (?1, ?2, ?3);",
+						-1, &stmt_file, NULL);
+
 		for (i = 0; files[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_file, 1, pkg_file_path(files[i]), -1, SQLITE_STATIC);
 			sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(files[i]), -1, SQLITE_STATIC);
@@ -782,7 +815,15 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_reset(stmt_file);
 		}
 
-	if ((scripts = pkg_scripts(pkg)) != NULL)
+		sqlite3_finalize(stmt_file);
+	}
+
+	if ((scripts = pkg_scripts(pkg)) != NULL) {
+		sqlite3_prepare(db->sqlite,
+						"INSERT INTO scripts (script, type, package_id) "
+						"VALUES (?1, ?2, ?3);",
+						-1, &stmt_scripts, NULL);
+
 		for (i = 0; scripts[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_scripts, 1, pkg_script_data(scripts[i]), -1, SQLITE_STATIC);
 			sqlite3_bind_int(stmt_scripts, 2, pkg_script_type(scripts[i]));
@@ -791,7 +832,16 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_step(stmt_scripts);
 			sqlite3_reset(stmt_scripts);
 		}
-	if ((execs = pkg_execs(pkg)) != NULL)
+
+		sqlite3_finalize(stmt_scripts);
+	}
+
+	if ((execs = pkg_execs(pkg)) != NULL) {
+		sqlite3_prepare(db->sqlite,
+						"INSERT INTO exec (cmd, type, package_id) "
+						"VALUES (?1, ?2, ?3);",
+						-1, &stmt_exec, NULL);
+
 		for (i = 0; execs[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_exec, 1, pkg_exec_cmd(execs[i]), -1, SQLITE_STATIC);
 			sqlite3_bind_int(stmt_exec, 2, pkg_exec_type(execs[i]));
@@ -801,7 +851,15 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_reset(stmt_exec);
 		}
 
-	if ((options = pkg_options(pkg)) != NULL)
+		sqlite3_finalize(stmt_exec);
+	}
+
+	if ((options = pkg_options(pkg)) != NULL) {
+		sqlite3_prepare(db->sqlite,
+						"INSERT INTO options (option, value, package_id) "
+						"VALUES (?1, ?2, ?3);",
+						-1, &stmt_options, NULL);
+
 		for (i = 0; options[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_options, 1, pkg_option_opt(options[i]), -1, SQLITE_STATIC);
 			sqlite3_bind_text(stmt_options, 2, pkg_option_value(options[i]), -1, SQLITE_STATIC);
@@ -811,13 +869,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			sqlite3_reset(stmt_options);
 		}
 
-	sqlite3_finalize(stmt_pkg);
-	sqlite3_finalize(stmt_dep);
-	sqlite3_finalize(stmt_conflicts);
-	sqlite3_finalize(stmt_file);
-	sqlite3_finalize(stmt_exec);
-	sqlite3_finalize(stmt_scripts);
-	sqlite3_finalize(stmt_options);
+		sqlite3_finalize(stmt_options);
+	}
 
 	sqlite3_exec(db->sqlite, "COMMIT;", NULL, NULL, NULL);
 
@@ -833,7 +886,8 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 	if (db == NULL || origin == NULL)
 		return (-1);
 
-	sqlite3_prepare(db->sqlite, "DELETE FROM packages WHERE origin = ?1",
+	sqlite3_prepare(db->sqlite,
+					"DELETE FROM packages WHERE origin = ?1;",
 					-1, &stmt_del, NULL);
 	sqlite3_bind_text(stmt_del, 1, origin, -1, SQLITE_STATIC);
 	ret = sqlite3_step(stmt_del);
