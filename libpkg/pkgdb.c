@@ -118,7 +118,7 @@ pkgdb_init(sqlite3 *sdb)
 		"version TEXT,"
 		"comment TEXT,"
 		"desc TEXT,"
-		"mtree_id TEXT REFERENCES mtree(id) ON DELETE CASCADE,"
+		"mtree_id TEXT REFERENCES mtree(id) ON DELETE RESTRICT,"
 		"message TEXT,"
 		"arch TEXT,"
 		"osversion TEXT,"
@@ -171,7 +171,10 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE TABLE mtree ("
 		"id TEXT PRIMARY KEY,"
 		"content TEXT"
-	");";
+	");"
+	"CREATE TRIGGER clean_mtree AFTER DELETE ON packages BEGIN "
+		"DELETE FROM mtree WHERE id NOT IN (SELECT DISTINCT mtree_id FROM packages);"
+	"END;";
 
 	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK)
 		errx(EXIT_FAILURE, "sqlite3_exec(): %s", errmsg);
