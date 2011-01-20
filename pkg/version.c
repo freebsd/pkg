@@ -5,7 +5,8 @@
 #include <pkg.h>
 #include "version.h"
 
-void usage_version(void)
+void
+usage_version(void)
 {
 	fprintf(stderr, "version [-hIoqv] [-l limchar] [-L limchar] [[-X] -s string]"
 			"[-O origin] [index]\n"
@@ -61,24 +62,26 @@ int exec_version(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	/* TODO: use opt */
-	if (argc != 3 || argv[1] == NULL || argv[2] == NULL) {
+	/* -t must be unique */
+	if (((opt & VERSION_TESTVERSION) && opt != VERSION_TESTVERSION) ||
+			(opt == VERSION_TESTVERSION && argc < 2)) {
 		usage_version();
 		return (EX_USAGE);
 	}
 
-	switch (pkg_version_cmp(argv[1], argv[2])) {
-		case -1:
-			printf("<\n");
-			break;
-		case 0:
-			printf("=\n");
-			break;
-		case 1:
-			printf(">\n");
-			break;
-		default:
-			break;
+	else if (opt == VERSION_TESTVERSION) {
+		switch (pkg_version_cmp(argv[0], argv[1])) {
+			case -1:
+				printf("<\n");
+				break;
+			case 0:
+				printf("=\n");
+				break;
+			case 1:
+				printf(">\n");
+				break;
+		}
 	}
+
 	return 0;
 }
