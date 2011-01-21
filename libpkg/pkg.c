@@ -507,13 +507,15 @@ int
 pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 {
 	struct pkg_file *file;
-	if (path == NULL || path[0] == '\0' || sha256 == NULL || sha256[0] == '\0')
+	if (path == NULL || path[0] == '\0')
 		return (-1);
 
 	pkg_file_new(&file);
 
 	strlcpy(file->path, path, sizeof(file->path));
-	strlcpy(file->sha256, sha256, sizeof(file->sha256));
+
+	if (sha256 != NULL)
+		strlcpy(file->sha256, sha256, sizeof(file->sha256));
 
 	array_init(&pkg->files, 10);
 	array_append(&pkg->files, file);

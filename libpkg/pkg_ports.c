@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 int
 ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
@@ -19,6 +20,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 	int ret = 0;
 	char *last_plist_file = NULL;
 	char *cmd = NULL;
+	struct stat st;
 
 	buf = NULL;
 	p = NULL;
@@ -77,14 +79,14 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 			else
 				snprintf(path, MAXPATHLEN, "%s/%s", prefix, buf);
 
-			p = SHA256_File(path, sha256);
-
-			if (p)
-				pkg_addfile(pkg, path, p);
+			if (lstat(path, &st) >= 0)
+				p = S_ISLNK(st.st_mode) ? NULL : SHA256_File(path, sha256);
 			else {
-				ret--;
+				warn("lstat(%s)", path);
+				p = NULL;
 			}
 
+			ret += pkg_addfile(pkg, path, p);
 		}
 
 		plist_p += next + 1;
