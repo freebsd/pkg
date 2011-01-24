@@ -52,6 +52,9 @@ m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr) {
 	while (isspace(*buf))
 		buf++;
 
+	if (*buf == '\0')
+		return (EPKG_FATAL);
+
 	pkg_set(pkg, attr, buf);
 
 	return (EPKG_OK);
@@ -146,8 +149,8 @@ m_parse_dep(struct pkg *pkg, char *buf)
 
 	buf_ptr = buf;
 
-	if (split_chr(buf_ptr, ' ') > 2)
-		return (-1);
+	if (split_chr(buf_ptr, ' ') != 2)
+		return (EPKG_FATAL);
 
 	next = strlen(buf_ptr);
 	name = buf_ptr;
@@ -164,7 +167,7 @@ m_parse_dep(struct pkg *pkg, char *buf)
 
 	pkg_adddep(pkg, name, origin, version);
 
-	return (0);
+	return (EPKG_OK);
 }
 
 static int
@@ -175,7 +178,7 @@ m_parse_conflict(struct pkg *pkg, char *buf)
 
 	pkg_addconflict(pkg, buf);
 
-	return (0);
+	return (EPKG_OK);
 }
 
 int
@@ -201,7 +204,8 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	for (i = 1; i <= nbel; i++) {
 		for (j = 0; j < manifest_key_len; j++) {
 			if (STARTS_WITH(buf_ptr, manifest_key[j].key)) {
-				manifest_key[j].parse(pkg, buf_ptr + strlen(manifest_key[j].key));
+				if (manifest_key[j].parse(pkg, buf_ptr + strlen(manifest_key[j].key)) != EPKG_OK)
+					return (EPKG_FATAL);
 				break;
 			}
 		}
@@ -212,7 +216,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 		}
 	}
 
-	return (0);
+	return (EPKG_OK);
 }
 
 int
@@ -249,7 +253,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 
 	if ((deps = pkg_deps(pkg)) != NULL) {
 		for (i = 0; deps[i] != NULL; i++) {
-			sbuf_printf(manifest, "@dep %s %s %s\n", 
+			sbuf_printf(manifest, "@dep %s %s %s\n",
 					pkg_get(deps[i], PKG_NAME),
 					pkg_get(deps[i], PKG_ORIGIN),
 					pkg_get(deps[i], PKG_VERSION));
