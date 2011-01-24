@@ -71,7 +71,7 @@ char wrong_manifest3[] = ""
 	"@osversion 800500\n"
 	"@www http://www.foobar.com\n"
 	"@maintainer test@pkgng.lan\n"
-	"@dep depfoo\n"
+	"@dep depfoo dep/foo 1.2\n"
 	"@dep depbar dep/bar 3.4\n"
 	"@conflict foo-*\n"
 	"@conflict \n"
@@ -79,6 +79,63 @@ char wrong_manifest3[] = ""
 	"@exec false || echo world\n"
 	"@option foo true\n"
 	"@option bar false\n";
+
+char wrong_manifest4[] = ""
+	"@pkg_format_version 0.9\n"
+	"@name foobar\n"
+	"@version 0.3\n"
+	"@origin foo/bar\n"
+	"@comment A dummy manifest\n"
+	"@arch amd64\n"
+	"@osversion 800500\n"
+	"@www http://www.foobar.com\n"
+	"@maintainer test@pkgng.lan\n"
+	"@dep depfoo dep/foo 1.2\n"
+	"@dep depbar dep/bar 3.4\n"
+	"@conflict foo-*\n"
+	"@conflict bar-*\n"
+	"@exec\n"
+	"@exec false || echo world\n"
+	"@option foo true\n"
+	"@option bar false\n";
+
+char wrong_manifest5[] = ""
+	"@pkg_format_version 0.9\n"
+	"@name foobar\n"
+	"@version 0.3\n"
+	"@origin foo/bar\n"
+	"@comment A dummy manifest\n"
+	"@arch amd64\n"
+	"@osversion 800500\n"
+	"@www http://www.foobar.com\n"
+	"@maintainer test@pkgng.lan\n"
+	"@dep depfoo dep/foo 1.2\n"
+	"@dep depbar dep/bar 3.4\n"
+	"@conflict foo-*\n"
+	"@conflict bar-*\n"
+	"@exec true && echo hello\n"
+	"@exec false || echo world\n"
+	"@option \n"
+	"@option bar false\n";
+
+char wrong_manifest6[] = ""
+	"@pkg_format_version 0.9\n"
+	"@name foobar\n"
+	"@version 0.3\n"
+	"@origin foo/bar\n"
+	"@comment A dummy manifest\n"
+	"@arch amd64\n"
+	"@osversion 800500\n"
+	"@www http://www.foobar.com\n"
+	"@maintainer test@pkgng.lan\n"
+	"@dep depfoo dep/foo 1.2\n"
+	"@dep depbar dep/bar 3.4\n"
+	"@conflict foo-*\n"
+	"@conflict bar-*\n"
+	"@exec true && echo hello\n"
+	"@exec false || echo world\n"
+	"@option foo true\n"
+	"@option bar\n";
 
 START_TEST(parse_manifest)
 {
@@ -168,8 +225,35 @@ END_TEST
 START_TEST(parse_wrong_manifest3)
 {
 	struct pkg *p;
+
 	fail_unless(pkg_new(&p) == EPKG_OK);
 	fail_unless(pkg_parse_manifest(p, wrong_manifest3) == EPKG_FATAL);
+}
+END_TEST
+
+START_TEST(parse_wrong_manifest4)
+{
+	struct pkg *p;
+
+	fail_unless(pkg_new(&p) == EPKG_OK);
+	fail_unless(pkg_parse_manifest(p, wrong_manifest4) == EPKG_FATAL);
+}
+END_TEST
+
+START_TEST(parse_wrong_manifest5)
+{
+	struct pkg *p;
+
+	fail_unless(pkg_new(&p) == EPKG_OK);
+	fail_unless(pkg_parse_manifest(p, wrong_manifest5) == EPKG_FATAL);
+}
+END_TEST
+
+START_TEST(parse_wrong_manifest6)
+{
+	struct pkg *p;
+	fail_unless(pkg_new(&p) == EPKG_OK);
+	fail_unless(pkg_parse_manifest(p, wrong_manifest6) == EPKG_FATAL);
 }
 END_TEST
 
@@ -181,6 +265,9 @@ tcase_manifest(void)
 	tcase_add_test(tc, parse_wrong_manifest1);
 	tcase_add_test(tc, parse_wrong_manifest2);
 	tcase_add_test(tc, parse_wrong_manifest3);
+	tcase_add_test(tc, parse_wrong_manifest4);
+	tcase_add_test(tc, parse_wrong_manifest5);
+	tcase_add_test(tc, parse_wrong_manifest6);
 
 	return (tc);
 }

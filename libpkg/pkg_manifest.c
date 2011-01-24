@@ -112,6 +112,9 @@ m_parse_exec(struct pkg *pkg, char *buf)
 	while (isspace(*buf))
 		buf++;
 
+	if (*buf == '\0')
+		return (EPKG_FATAL);
+
 	pkg_addexec(pkg, buf, PKG_EXEC);
 
 	return (EPKG_OK);
@@ -124,6 +127,9 @@ m_parse_option(struct pkg *pkg, char *buf)
 
 	while (isspace(*buf))
 		buf++;
+
+	if (*buf == '\0')
+		return (EPKG_FATAL);
 
 	value = strrchr(buf, ' ');
 	if (value == NULL)
@@ -175,6 +181,9 @@ m_parse_conflict(struct pkg *pkg, char *buf)
 {
 	while (isspace(*buf))
 		buf++;
+
+	if (*buf == '\0')
+		return (EPKG_FATAL);
 
 	pkg_addconflict(pkg, buf);
 
