@@ -186,7 +186,16 @@ START_TEST(parse_manifest)
 
 	execs = pkg_execs(p);
 	fail_if(execs == NULL);
-	/* TODO when this bug is resolved */
+	for (i = 0; execs[i] != NULL; i++) {
+		if (i == 0) {
+			fail_unless(pkg_exec_type(execs[i]) == PKG_EXEC);
+			fail_unless(strcmp(pkg_exec_cmd(execs[i]), "true && echo hello") == 0);
+		} else if (i == 1) {
+			fail_unless(pkg_exec_type(execs[i]) == PKG_EXEC);
+			fail_unless(strcmp(pkg_exec_cmd(execs[i]), "false || echo world") == 0);
+		}
+	}
+	fail_unless(i == 2);
 
 	options = pkg_options(p);
 	fail_if(options == NULL);
