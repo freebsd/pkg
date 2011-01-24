@@ -26,5 +26,6 @@ off_t file_to_buffer(const char *path, char **buffer);
 int format_exec_cmd(char **, const char *, const char *, const char *);
 int split_chr(char *, char);
 int file_fetch(const char *, const char *);
+int is_dir(const char *path);
 
 #endif

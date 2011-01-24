@@ -12,6 +12,7 @@
 #include "add.h"
 #include "version.h"
 #include "register.h"
+#include "repo.h"
 
 static void usage(void);
 static void usage_help(void);
@@ -28,7 +29,7 @@ static struct commands {
 	{ "help", exec_help, usage_help},
 	{ "info", exec_info, usage_info},
 	{ "register", exec_register, usage_register},
-	{ "repo", NULL, NULL},
+	{ "repo", exec_repo, usage_repo},
 	{ "update", NULL, NULL},
 	{ "upgrade", NULL, NULL},
 	{ "version", exec_version, usage_version},

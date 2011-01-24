@@ -266,6 +266,7 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 
 		pkg_file_new(&file);
 		strlcpy(file->path, archive_entry_pathname(ae), sizeof(file->path));
+		file->size = archive_entry_size(ae);
 		array_append(&pkg->files, file);
 	}
 
@@ -273,7 +274,7 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 		goto error;
 
 	archive_read_finish(a);
-	return (0);
+	return (EPKG_OK);
 
 error:
 	archive_read_finish(a);
@@ -504,7 +505,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 }
 
 int
-pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
+pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, size_t sz)
 {
 	struct pkg_file *file;
 	if (path == NULL || path[0] == '\0')
@@ -516,6 +517,8 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 
 	if (sha256 != NULL)
 		strlcpy(file->sha256, sha256, sizeof(file->sha256));
+
+	file->size = sz;
 
 	array_init(&pkg->files, 10);
 	array_append(&pkg->files, file);
