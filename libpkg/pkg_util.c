@@ -12,7 +12,7 @@
 #include <fetch.h>
 #include <libutil.h>
 
-#include "util.h"
+#include "pkg_util.h"
 
 void
 array_init(struct array *a, size_t c)

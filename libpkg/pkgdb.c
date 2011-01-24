@@ -16,7 +16,7 @@
 #include "pkg.h"
 #include "pkg_private.h"
 #include "pkgdb.h"
-#include "util.h"
+#include "pkg_util.h"
 
 #define PKG_DBDIR "/var/db/pkg"
 

@@ -19,7 +19,7 @@ SRCS=		pkg.c \
 		pkg_ports.c \
 		pkg_repo.c \
 		pkg_version.c \
-		util.c
+		pkg_util.c
 
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \

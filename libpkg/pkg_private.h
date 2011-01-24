@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/sbuf.h>
 
-#include "util.h"
+#include "pkg_util.h"
 
 struct pkg {
 	struct sbuf *origin;

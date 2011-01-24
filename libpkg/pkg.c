@@ -7,7 +7,7 @@
 
 #include "pkg.h"
 #include "pkg_private.h"
-#include "util.h"
+#include "pkg_util.h"
 
 static void pkg_free_void(void*);
 

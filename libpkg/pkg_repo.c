@@ -9,7 +9,7 @@
 
 #include "pkg.h"
 #include "pkg_private.h"
-#include "util.h"
+#include "pkg_util.h"
 
 
 int
