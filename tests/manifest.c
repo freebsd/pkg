@@ -29,7 +29,7 @@ START_TEST(parse_manifest)
 	struct pkg **deps;
 	struct pkg_conflict **conflicts;
 	struct pkg_exec **execs;
-	struct pkg_options **options;
+	struct pkg_option **options;
 	int i;
 
 	fail_unless(pkg_new(&p) == 0);
