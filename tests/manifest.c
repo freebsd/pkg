@@ -20,6 +20,8 @@ char manifest[] = ""
 	"@conflict bar-*\n"
 	"@exec true && echo hello\n"
 	"@exec false || echo world\n"
+	"@unexec true && echo good\n"
+	"@unexec false || echo bye\n"
 	"@option foo true\n"
 	"@option bar false\n";
 
@@ -187,15 +189,26 @@ START_TEST(parse_manifest)
 	execs = pkg_execs(p);
 	fail_if(execs == NULL);
 	for (i = 0; execs[i] != NULL; i++) {
-		if (i == 0) {
-			fail_unless(pkg_exec_type(execs[i]) == PKG_EXEC);
-			fail_unless(strcmp(pkg_exec_cmd(execs[i]), "true && echo hello") == 0);
-		} else if (i == 1) {
-			fail_unless(pkg_exec_type(execs[i]) == PKG_EXEC);
-			fail_unless(strcmp(pkg_exec_cmd(execs[i]), "false || echo world") == 0);
+		switch (i) {
+			case 0:
+				fail_unless(pkg_exec_type(execs[i]) == PKG_EXEC);
+				fail_unless(strcmp(pkg_exec_cmd(execs[i]), "true && echo hello") == 0);
+				break;
+			case 1:
+				fail_unless(pkg_exec_type(execs[i]) == PKG_EXEC);
+				fail_unless(strcmp(pkg_exec_cmd(execs[i]), "false || echo world") == 0);
+				break;
+			case 2:
+				fail_unless(pkg_exec_type(execs[i]) == PKG_UNEXEC);
+				fail_unless(strcmp(pkg_exec_cmd(execs[i]), "true && echo good") == 0);
+				break;
+			case 3:
+				fail_unless(pkg_exec_type(execs[i]) == PKG_UNEXEC);
+				fail_unless(strcmp(pkg_exec_cmd(execs[i]), "false || echo bye") == 0);
+				break;
 		}
 	}
-	fail_unless(i == 2);
+	fail_unless(i == 4);
 
 	options = pkg_options(p);
 	fail_if(options == NULL);

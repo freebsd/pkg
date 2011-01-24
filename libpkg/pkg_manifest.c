@@ -23,6 +23,7 @@ static int m_parse_dep(struct pkg *pkg, char *buf);
 static int m_parse_conflict(struct pkg *pkg, char *buf);
 static int m_parse_maintainer(struct pkg *pkg, char *buf);
 static int m_parse_exec(struct pkg *pkg, char *buf);
+static int m_parse_unexec(struct pkg *pkg, char *buf);
 static int m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr);
 
 #define MANIFEST_FORMAT_KEY "@pkg_format_version"
@@ -43,6 +44,7 @@ static struct manifest_key {
 	{ "@conflict", m_parse_conflict},
 	{ "@maintainer", m_parse_maintainer},
 	{ "@exec", m_parse_exec},
+	{ "@unexec", m_parse_unexec},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
@@ -116,6 +118,20 @@ m_parse_exec(struct pkg *pkg, char *buf)
 		return (EPKG_FATAL);
 
 	pkg_addexec(pkg, buf, PKG_EXEC);
+
+	return (EPKG_OK);
+}
+
+static int
+m_parse_unexec(struct pkg *pkg, char *buf)
+{
+	while (isspace(*buf))
+		buf++;
+
+	if (*buf == '\0')
+		return (EPKG_FATAL);
+
+	pkg_addexec(pkg, buf, PKG_UNEXEC);
 
 	return (EPKG_OK);
 }
