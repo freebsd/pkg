@@ -135,7 +135,7 @@ const char *pkg_option_opt(struct pkg_option *);
 const char *pkg_option_value(struct pkg_option *);
 
 /* pkg_repo */
-int pkg_create_repo(const char *, void (*)(struct pkg *, void *), void *);
+int pkg_create_repo(char *, void (*)(struct pkg *, void *), void *);
 
 /* pkgdb */
 int pkgdb_open(struct pkgdb **);

@@ -11,9 +11,8 @@
 #include "pkg_private.h"
 #include "pkg_util.h"
 
-
 int
-pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), void *data)
+pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS	*fts;
 	FTSENT	*ent;
@@ -29,7 +28,8 @@ pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), 
 
 	int i;
 
-	char *repopath[2], repodb[MAXPATHLEN];
+	char *repopath[2];
+	char repodb[MAXPATHLEN];
 
 	const char initsql[] = ""
 		"CREATE TABLE packages ("
@@ -61,7 +61,7 @@ pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), 
 	if (!is_dir(path))
 		return (EPKG_FATAL);
 
-	repopath[0] = (char *)path;
+	repopath[0] = path;
 	repopath[1] = NULL;
 
 	snprintf(repodb, MAXPATHLEN, "%s/repo.db", path);
@@ -106,42 +106,44 @@ pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), 
 
 		if (progress != NULL)
 			progress(pkg, data);
-		sqlite3_bind_text(stmt_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt_pkg, 2, pkg_get(pkg, PKG_NAME), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt_pkg, 3, pkg_get(pkg, PKG_VERSION), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt_pkg, 4, pkg_get(pkg, PKG_COMMENT), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_DESC), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt_pkg, 6, pkg_get(pkg, PKG_ARCH), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_MAINTAINER), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_WWW), -1, SQLITE_TRANSIENT);
-		sqlite3_bind_int(stmt_pkg, 11, ent->fts_statp->st_size);
 
-		sqlite3_step(stmt_pkg);
-		sqlite3_reset(stmt_pkg);
-
-		if ((deps = pkg_deps(pkg)) != NULL) {
-			for (i = 0; deps[i] != NULL; i++) {
-				sqlite3_bind_text(stmt_deps, 1, pkg_get(deps[i], PKG_ORIGIN), -1, SQLITE_TRANSIENT);
-				sqlite3_bind_text(stmt_deps, 2, pkg_get(deps[i], PKG_NAME), -1, SQLITE_TRANSIENT);
-				sqlite3_bind_text(stmt_deps, 3, pkg_get(deps[i], PKG_VERSION), -1, SQLITE_TRANSIENT);
-				sqlite3_bind_text(stmt_deps, 4, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_TRANSIENT);
-
-				sqlite3_step(stmt_deps);
-				sqlite3_reset(stmt_deps);
-			}
-		}
-
+		/* Compute the fat size (uncompressed) */
 		if ((files = pkg_files(pkg)) != NULL) {
 			for (i = 0; files[i] != NULL; i++) {
 				flatsize += pkg_file_size(files[i]);
 			}
 		}
 
+		sqlite3_bind_text(stmt_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 2, pkg_get(pkg, PKG_NAME), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 3, pkg_get(pkg, PKG_VERSION), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 4, pkg_get(pkg, PKG_COMMENT), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_DESC), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 6, pkg_get(pkg, PKG_ARCH), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_MAINTAINER), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
+		sqlite3_bind_int(stmt_pkg, 11, ent->fts_statp->st_size);
 		sqlite3_bind_int(stmt_pkg, 12, flatsize);
+
+		sqlite3_step(stmt_pkg);
+		sqlite3_reset(stmt_pkg);
+
+		if ((deps = pkg_deps(pkg)) != NULL) {
+			for (i = 0; deps[i] != NULL; i++) {
+				sqlite3_bind_text(stmt_deps, 1, pkg_get(deps[i], PKG_ORIGIN), -1, SQLITE_STATIC);
+				sqlite3_bind_text(stmt_deps, 2, pkg_get(deps[i], PKG_NAME), -1, SQLITE_STATIC);
+				sqlite3_bind_text(stmt_deps, 3, pkg_get(deps[i], PKG_VERSION), -1, SQLITE_STATIC);
+				sqlite3_bind_text(stmt_deps, 4, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+
+				sqlite3_step(stmt_deps);
+				sqlite3_reset(stmt_deps);
+			}
+		}
 
 		pkg_free(pkg);
 	}
+	fts_close(fts);
 
 	sqlite3_finalize(stmt_pkg);
 	sqlite3_finalize(stmt_deps);

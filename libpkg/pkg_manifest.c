@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <sys/sbuf.h>
 
-#include "util.h"
+#include "pkg_util.h"
 #include "pkg.h"
 #include "pkg_private.h"
 
