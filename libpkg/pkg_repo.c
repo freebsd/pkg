@@ -23,9 +23,9 @@ pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), 
 	struct pkg_file **files;
 	char *ext = NULL;
 	sqlite3 *sqlite;
-	sqlite3_stmt *stmt_files;
 	sqlite3_stmt *stmt_deps;
 	sqlite3_stmt *stmt_pkg;
+	size_t flatsize = 0;
 
 	int i;
 
@@ -43,7 +43,8 @@ pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), 
 			"maintainer TEXT,"
 			"www TEXT,"
 			"pkg_format_version INTEGER,"
-			"size INTEGER"
+			"pkgsize INTEGER,"
+			"flatsize INTEGER"
 		");"
 		"CREATE TABLE deps ("
 			"origin TEXT,"
@@ -54,14 +55,6 @@ pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), 
 		");"
 		"CREATE INDEX deps_origin ON deps (origin);"
 		"CREATE INDEX deps_package ON deps (package_id);"
-		"CREATE TABLE files ("
-			"path TEXT,"
-			"size INTEGER,"
-			"package_id TEXT REFERENCES packages(origin),"
-			"PRIMARY KEY (package_id, path)"
-		");"
-		"CREATE INDEX files_packages ON files (package_id);"
-		"CREATE INDEX files_path ON files (path);"
 		;
 
 
@@ -86,15 +79,12 @@ pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), 
 
 	sqlite3_exec(sqlite, "BEGIN TRANSACTION;", NULL, NULL, NULL);
 
-	sqlite3_prepare(sqlite, "INSERT INTO packages (origin, name, version, comment, desc, arch, osversion, maintainer, www, pkg_format_version, size) "
-			"values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
+	sqlite3_prepare(sqlite, "INSERT INTO packages (origin, name, version, comment, desc, arch, osversion, maintainer, www, pkg_format_version, pkgsize, flatsize) "
+			"values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);",
 			-1, &stmt_pkg, NULL);
 	sqlite3_prepare(sqlite, "INSERT INTO deps (origin, name, version, package_id) "
 			"values (?1, ?2, ?3, ?4);",
 			-1, &stmt_deps, NULL);
-	sqlite3_prepare(sqlite, "INSERT INTO files (path, size, package_id) "
-			"values (?1, ?2, ?3);",
-			-1, &stmt_files, NULL);
 
 	fts = fts_open(repopath, FTS_PHYSICAL, NULL);
 
@@ -112,6 +102,7 @@ pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), 
 
 		if (pkg_open(ent->fts_path, &pkg, 0) != EPKG_OK)
 			continue;
+		flatsize = 0;
 
 		if (progress != NULL)
 			progress(pkg, data);
@@ -143,20 +134,16 @@ pkg_create_repo(const char *path, void (progress)(struct pkg *pkg, void *data), 
 
 		if ((files = pkg_files(pkg)) != NULL) {
 			for (i = 0; files[i] != NULL; i++) {
-				sqlite3_bind_text(stmt_files, 1, pkg_file_path(files[i]), -1, SQLITE_TRANSIENT);
-				sqlite3_bind_int(stmt_files, 2, pkg_file_size(files[i]));
-				sqlite3_bind_text(stmt_files, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_TRANSIENT);
-
-				sqlite3_step(stmt_files);
-				sqlite3_reset(stmt_files);
+				flatsize += pkg_file_size(files[i]);
 			}
 		}
+
+		sqlite3_bind_int(stmt_pkg, 12, flatsize);
 
 		pkg_free(pkg);
 	}
 
 	sqlite3_finalize(stmt_pkg);
-	sqlite3_finalize(stmt_files);
 	sqlite3_finalize(stmt_deps);
 
 	sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, NULL);
