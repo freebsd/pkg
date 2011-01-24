@@ -230,7 +230,7 @@ file_fetch(const char *url, const char *dest)
 	off_t tfetched, rfetched, wfetched;
 	int retry = 3;
 	time_t begin_dl, now;
-	char buf[BUFSIZ], sz[8];
+	char buf[BUFSIZ];
 
 	if ((fetchStatURL(url, &st, "") < 0) || st.size == -1) {
 		/* TODO error handling */
@@ -272,7 +272,8 @@ file_fetch(const char *url, const char *dest)
 
 		tfetched +=  rfetched;
 		now = time(NULL);
-
+/* TODO: callback, this is the job of the UI */
+#if 0
 		if ((now - begin_dl) > 0)
 			humanize_number(sz, 8, (int64_t)(tfetched / (now - begin_dl)),
 					"Bps", HN_AUTOSCALE, HN_DECIMAL);
@@ -280,6 +281,7 @@ file_fetch(const char *url, const char *dest)
 			humanize_number(sz, 8, 0,
 					"Bps", HN_AUTOSCALE, HN_DECIMAL);
 		printf("\r%s\t%s %d%%", url, sz, (int)(((float)tfetched / (float)st.size) * 100));
+#endif
 	}
 	printf("\n");
 
