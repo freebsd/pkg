@@ -22,6 +22,7 @@ static int m_parse_option(struct pkg *pkg, char *buf);
 static int m_parse_dep(struct pkg *pkg, char *buf);
 static int m_parse_conflict(struct pkg *pkg, char *buf);
 static int m_parse_maintainer(struct pkg *pkg, char *buf);
+static int m_parse_exec(struct pkg *pkg, char *buf);
 static int m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr);
 
 #define MANIFEST_FORMAT_KEY "@pkg_format_version"
@@ -41,6 +42,7 @@ static struct manifest_key {
 	{ "@dep", m_parse_dep},
 	{ "@conflict", m_parse_conflict},
 	{ "@maintainer", m_parse_maintainer},
+	{ "@exec", m_parse_exec},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
@@ -102,6 +104,17 @@ m_parse_comment(struct pkg *pkg, char *buf)
 }
 
 static int
+m_parse_exec(struct pkg *pkg, char *buf)
+{
+	while (isspace(*buf))
+		buf++;
+
+	pkg_addexec(pkg, buf, PKG_EXEC);
+
+	return (EPKG_OK);
+}
+
+static int
 m_parse_option(struct pkg *pkg, char *buf)
 {
 	char *value;
@@ -111,14 +124,14 @@ m_parse_option(struct pkg *pkg, char *buf)
 
 	value = strrchr(buf, ' ');
 	if (value == NULL)
-		return (-1);
+		return (EPKG_FATAL);
 
 	value[0] = '\0';
 	value++;
 
 	pkg_addoption(pkg, buf, value);
 
-	return (0);
+	return (EPKG_OK);
 }
 
 static int
