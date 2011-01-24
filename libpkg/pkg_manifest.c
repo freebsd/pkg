@@ -22,6 +22,7 @@ static int m_parse_option(struct pkg *pkg, char *buf);
 static int m_parse_dep(struct pkg *pkg, char *buf);
 static int m_parse_conflict(struct pkg *pkg, char *buf);
 static int m_parse_maintainer(struct pkg *pkg, char *buf);
+static int m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr);
 
 #define MANIFEST_FORMAT_KEY "@pkg_format_version"
 
@@ -45,90 +46,59 @@ static struct manifest_key {
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
 
 static int
-m_parse_www(struct pkg *pkg, char *buf) {
+m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr) {
 	while (isspace(*buf))
 		buf++;
 
-	pkg_set(pkg, PKG_WWW, buf);
+	pkg_set(pkg, attr, buf);
 
-	return (0);
+	return (EPKG_OK);
+}
+
+static int
+m_parse_www(struct pkg *pkg, char *buf) {
+	return (m_parse_set_string(pkg, buf, PKG_WWW));
 }
 
 static int
 m_parse_maintainer(struct pkg *pkg, char *buf) {
-	while (isspace(*buf))
-		buf++;
-
-	pkg_set(pkg, PKG_MAINTAINER, buf);
-
-	return (0);
+	return (m_parse_set_string(pkg, buf, PKG_MAINTAINER));
 }
 
 static int
 m_parse_name(struct pkg *pkg, char *buf)
 {
-	/* remove trailing spaces */
-	while (isspace(*buf))
-		buf++;
-
-	pkg_set(pkg, PKG_NAME, buf);
-
-	return (0);
+	return (m_parse_set_string(pkg, buf, PKG_NAME));
 }
 
 static int
 m_parse_origin(struct pkg *pkg, char *buf)
 {
-	while (isspace(*buf))
-		buf++;
-
-	pkg_set(pkg, PKG_ORIGIN, buf);
-
-	return (0);
+	return (m_parse_set_string(pkg, buf, PKG_ORIGIN));
 }
 
 static int
 m_parse_version(struct pkg *pkg, char *buf)
 {
-	while (isspace(*buf))
-		buf++;
-
-	pkg_set(pkg, PKG_VERSION, buf);
-
-	return (0);
+	return (m_parse_set_string(pkg, buf, PKG_VERSION));
 }
 
 static int
 m_parse_arch(struct pkg *pkg, char *buf)
 {
-	while (isspace(*buf))
-		buf++;
-
-	pkg_set(pkg, PKG_ARCH, buf);
-
-	return (0);
+	return (m_parse_set_string(pkg, buf, PKG_ARCH));
 }
 
 static int
 m_parse_osversion(struct pkg *pkg, char *buf)
 {
-	while (isspace(*buf))
-		buf++;
-
-	pkg_set(pkg, PKG_OSVERSION, buf);
-
-	return (0);
+	return (m_parse_set_string(pkg, buf, PKG_OSVERSION));
 }
 
 static int
 m_parse_comment(struct pkg *pkg, char *buf)
 {
-	while (isspace(*buf))
-		buf++;
-
-	pkg_set(pkg, PKG_COMMENT, buf);
-
-	return (0);
+	return (m_parse_set_string(pkg, buf, PKG_COMMENT));
 }
 
 static int
