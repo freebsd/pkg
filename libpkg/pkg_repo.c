@@ -18,7 +18,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	FTSENT	*ent;
 
 	struct stat st;
-	struct pkg *pkg, **deps;
+	struct pkg *pkg = NULL;
+	struct pkg **deps;
 	struct pkg_file **files;
 	char *ext = NULL;
 	sqlite3 *sqlite;
@@ -141,9 +142,9 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			}
 		}
 
-		pkg_free(pkg);
 	}
 	fts_close(fts);
+	pkg_free(pkg);
 
 	sqlite3_finalize(stmt_pkg);
 	sqlite3_finalize(stmt_deps);
