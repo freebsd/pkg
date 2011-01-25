@@ -15,7 +15,7 @@ pkg_file_sha256(struct pkg_file *file)
 	return (file->sha256);
 }
 
-size_t
+int64_t
 pkg_file_size(struct pkg_file *file)
 {
 	return (file->size);

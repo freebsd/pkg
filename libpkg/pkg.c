@@ -505,7 +505,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 }
 
 int
-pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, size_t sz)
+pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, int64_t sz)
 {
 	struct pkg_file *file;
 	if (path == NULL || path[0] == '\0')

@@ -47,7 +47,7 @@ struct pkg_exec {
 struct pkg_file {
 	char path[MAXPATHLEN];
 	char sha256[65];
-	size_t size;
+	int64_t size;
 };
 
 struct pkg_option {

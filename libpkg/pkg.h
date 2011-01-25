@@ -90,7 +90,7 @@ int pkg_extract(const char *filename);
 int pkg_set(struct pkg *, pkg_attr, const char *);
 int pkg_set_from_file(struct pkg *, pkg_attr, const char *);
 int pkg_adddep(struct pkg *, const char *, const char *, const char *);
-int pkg_addfile(struct pkg *, const char *, const char *, size_t);
+int pkg_addfile(struct pkg *, const char *, const char *, int64_t);
 int pkg_addconflict(struct pkg *, const char *);
 int pkg_addexec(struct pkg *, const char *, pkg_exec_t);
 int pkg_addscript(struct pkg *, const char *);
@@ -106,7 +106,7 @@ void pkg_file_reset(struct pkg_file *);
 void pkg_file_free(struct pkg_file *);
 const char * pkg_file_path(struct pkg_file *);
 const char * pkg_file_sha256(struct pkg_file *);
-size_t pkg_file_size(struct pkg_file *);
+int64_t pkg_file_size(struct pkg_file *);
 
 /* pkg_conflict */
 int pkg_conflict_new(struct pkg_conflict **);

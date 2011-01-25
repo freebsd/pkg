@@ -24,7 +24,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	sqlite3 *sqlite;
 	sqlite3_stmt *stmt_deps;
 	sqlite3_stmt *stmt_pkg;
-	size_t flatsize = 0;
+	int64_t flatsize = 0;
 
 	int i;
 
@@ -123,8 +123,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_MAINTAINER), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
-		sqlite3_bind_int(stmt_pkg, 11, ent->fts_statp->st_size);
-		sqlite3_bind_int(stmt_pkg, 12, flatsize);
+		sqlite3_bind_int64(stmt_pkg, 11, ent->fts_statp->st_size);
+		sqlite3_bind_int64(stmt_pkg, 12, flatsize);
 
 		sqlite3_step(stmt_pkg);
 		sqlite3_reset(stmt_pkg);
