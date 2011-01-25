@@ -157,7 +157,6 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 	struct sbuf *buf = sbuf_new_auto();
 	char path[MAXPATHLEN];
 	char *cp;
-	int len = 0;
 
 	while (in[0] != '\0') {
 		if (in[0] == '%') {
@@ -198,7 +197,6 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 
 	sbuf_finish(buf);
 	*dest = strdup(sbuf_data(buf));
-	len = sbuf_len(buf);
 	sbuf_free(buf);
 	
 	return (0);
