@@ -183,7 +183,6 @@ m_parse_dep(struct pkg *pkg, char *buf)
 	origin = buf_ptr;
 
 	buf_ptr += next + 1;
-	next = strlen(buf_ptr);
 
 	version = buf_ptr;
 

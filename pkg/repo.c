@@ -9,7 +9,7 @@
 void
 usage_repo(void)
 {
-	fprintf(stderr, "repo ...");
+	fprintf(stderr, "repo <repo-path>\n");
 }
 
 static void

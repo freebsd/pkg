@@ -24,11 +24,11 @@ pkg_file_size(struct pkg_file *file)
 int
 pkg_file_new(struct pkg_file **file)
 {
-	if ((*file = calloc(1, sizeof(struct pkg_file))))
-		return (-1);
+	if ((*file = calloc(1, sizeof(struct pkg_file))) == NULL)
+		return (EPKG_FATAL);
 
 	(*file)->size = -1;
-	return (0);
+	return (EPKG_OK);
 }
 
 void
