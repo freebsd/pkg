@@ -1,6 +1,7 @@
 PROG=	test
 SRCS=	test.c		\
 	manifest.c	\
+	pkg.c		\
 
 CFLAGS+=-I.			\
 	-I/usr/local/include	\

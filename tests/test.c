@@ -1,6 +1,6 @@
 #include <check.h>
 
-#include "manifest.h"
+#include "tests.h"
 
 int
 main()
@@ -9,6 +9,7 @@ main()
 	Suite *s = suite_create("pkgng");
 
 	suite_add_tcase(s, tcase_manifest());
+	suite_add_tcase(s, tcase_pkg());
 
 	/* Run the tests ...*/
 	SRunner *sr = srunner_create(s);

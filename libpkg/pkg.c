@@ -18,7 +18,11 @@ pkg_type(struct pkg *pkg)
 }
 
 const char *
-pkg_get(struct pkg *pkg, pkg_attr attr) {
+pkg_get(struct pkg *pkg, pkg_attr attr)
+{
+	if (pkg == NULL)
+		return (NULL);
+
 	switch (attr) {
 		case PKG_NAME:
 			return (sbuf_get(pkg->name));
@@ -52,6 +56,9 @@ pkg_get(struct pkg *pkg, pkg_attr attr) {
 int
 pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 {
+	if (pkg == NULL)
+		return (EPKG_FATAL);
+
 	if (value == NULL) {
 		pkg_set(pkg, PKG_ERR, "Value can not be NULL");
 		return (EPKG_FATAL);
@@ -330,7 +337,7 @@ pkg_new(struct pkg **pkg)
 
 	(*pkg)->err = sbuf_new_auto();
 
-	return (0);
+	return (EPKG_OK);
 }
 
 void

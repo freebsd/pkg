@@ -2,7 +2,7 @@
 #include <pkg.h>
 #include <string.h>
 
-#include "manifest.h"
+#include "tests.h"
 
 char manifest[] = ""
 	"@pkg_format_version 0.9\n"
