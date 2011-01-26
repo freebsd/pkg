@@ -82,7 +82,7 @@ exec_info(int argc, char **argv)
 	struct pkgdb *db;
 	struct pkgdb_it *it;
 	int query_flags = PKG_BASIC;
-	struct pkg *pkg;
+	struct pkg *pkg = NULL;
 	struct pkg **deps;
 	struct pkg_file **files;
 	unsigned char opt = 0;
@@ -141,6 +141,8 @@ exec_info(int argc, char **argv)
 	if (argc == 0)
 		match = MATCH_ALL;
 
+	pkg_new(&pkg);
+
 	/* if the last argument is a file then query directly the file */
 	if (argc == 1 && pkg_open(argv[0], &pkg, query_flags) == 0)
 		return (query_pkg(pkg, opt));
@@ -163,9 +165,7 @@ exec_info(int argc, char **argv)
 	if (opt & INFO_ORIGIN_SEARCH)
 		gotone = true;
 
-
 	/* end of compatibility hacks */
-	pkg_new(&pkg);
 
 	while (pkgdb_it_next_pkg(it, &pkg, query_flags) == 0) {
 		gotone = true;

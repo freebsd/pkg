@@ -90,8 +90,10 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 			ret += pkg_addfile(pkg, path, p, -1);
 		}
 
-		plist_p += next + 1;
-		next = strlen(plist_p);
+		if (i != nbel) {
+			plist_p += next + 1;
+			next = strlen(plist_p);
+		}
 	}
 
 	free(plist_buf);
