@@ -13,6 +13,7 @@
 #include <libutil.h>
 
 #include "pkg_util.h"
+#include "pkg.h"
 
 void
 array_init(struct array *a, size_t c)
@@ -111,8 +112,8 @@ sbuf_free(struct sbuf *buf)
 		sbuf_delete(buf);
 }
 
-off_t
-file_to_buffer(const char *path, char **buffer)
+int
+file_to_buffer(const char *path, char **buffer, off_t *sz)
 {
 	int fd;
 	struct stat st;
@@ -121,26 +122,24 @@ file_to_buffer(const char *path, char **buffer)
 	assert(buffer != NULL);
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		warn("open(%s)", path);
-		return (-1);
+		return (EPKG_ERROR_OPEN);
 	}
 
 	if (fstat(fd, &st) == -1) {
-		warn("fstat(%d)", fd);
 		close(fd);
-		return (-1);
+		return (EPKG_ERROR_STAT);
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
 		warn("malloc(%llu)", (unsigned long long)st.st_size + 1);
 		close(fd);
-		return (-1);
+		return (EPKG_ERROR_MALLOC);
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		warn("read()");
 		close(fd);
-		return (-1);
+		return (EPKG_ERROR_READ);
 	}
 
 	close(fd);
@@ -148,7 +147,8 @@ file_to_buffer(const char *path, char **buffer)
 	/* NULL terminate the buffer so it can be used by stdio.h functions */
 	(*buffer)[st.st_size] = '\0';
 
-	return (st.st_size);
+	*sz = st.st_size;
+	return (EPKG_OK);
 }
 
 int

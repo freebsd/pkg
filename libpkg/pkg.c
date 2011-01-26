@@ -14,6 +14,9 @@ static void pkg_free_void(void*);
 pkg_t
 pkg_type(struct pkg *pkg)
 {
+	if (pkg == NULL)
+		return (PKG_NONE);
+
 	return (pkg->type);
 }
 
@@ -57,11 +60,11 @@ int
 pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 {
 	if (pkg == NULL)
-		return (EPKG_FATAL);
+		return (EPKG_NULL_PKG);
 
 	if (value == NULL) {
 		pkg_set(pkg, PKG_ERR, "Value can not be NULL");
-		return (EPKG_FATAL);
+		return (EPKG_NULL_VALUE);
 	}
 
 	switch (attr) {
@@ -98,13 +101,17 @@ int
 pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 {
 	char *buf = NULL;
+	off_t size = 0;
 	int ret = EPKG_OK;
 
-	if (file_to_buffer(path, &buf) <= 0) {
-		sbuf_reset(pkg->err);
-		sbuf_printf(pkg->err, "Unable to read %s: %s\n", path, strerror(errno));
-		return (EPKG_FATAL);
-	}
+	if (pkg == NULL)
+		return (EPKG_NULL_PKG);
+
+	if (path == NULL)
+		return (EPKG_NULL_VALUE);
+
+	if ((ret = file_to_buffer(path, &buf, &size)) !=  EPKG_OK)
+		return (ret);
 
 	ret = pkg_set(pkg, attr, buf);
 
@@ -116,24 +123,36 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 struct pkg_script **
 pkg_scripts(struct pkg *pkg)
 {
+	if (pkg == NULL)
+		return (NULL);
+
 	return ((struct pkg_script **)pkg->scripts.data);
 }
 
 struct pkg_exec **
 pkg_execs(struct pkg *pkg)
 {
+	if (pkg == NULL)
+		return (NULL);
+
 	return (struct pkg_exec **) pkg->exec.data;
 }
 
 struct pkg **
 pkg_deps(struct pkg *pkg)
 {
+	if (pkg == NULL)
+		return (NULL);
+
 	return ((struct pkg **)pkg->deps.data);
 }
 
 struct pkg_option **
 pkg_options(struct pkg *pkg)
 {
+	if (pkg == NULL)
+		return (NULL);
+
 	return ((struct pkg_option **)pkg->options.data);
 }
 
@@ -161,24 +180,33 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 	}
 	pkg_free(p);
 
-	return (0);
+	return (1);
 }
 
 struct pkg **
 pkg_rdeps(struct pkg *pkg)
 {
+	if (pkg == NULL)
+		return (NULL);
+
 	return ((struct pkg **)pkg->rdeps.data);
 }
 
 struct pkg_file **
 pkg_files(struct pkg *pkg)
 {
+	if (pkg == NULL)
+		return (NULL);
+
 	return ((struct pkg_file **)pkg->files.data);
 }
 
 struct pkg_conflict **
 pkg_conflicts(struct pkg *pkg)
 {
+	if (pkg == NULL)
+		return (NULL);
+
 	return ((struct pkg_conflict **)pkg->conflicts.data);
 }
 
@@ -195,6 +223,9 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 	char *manifest;
 	const char *fpath;
 	char buf[1024];
+
+	if (path == NULL)
+		return (EPKG_NULL_VALUE);
 
 	/* search for http(s) or ftp(s) */
 	if (STARTS_WITH(path, "http://") || STARTS_WITH(path, "https://")
@@ -290,7 +321,7 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 error:
 	archive_read_finish(a);
 
-	return (EPKG_FATAL);
+	return (EPKG_ERROR_ARCHIVE);
 }
 
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
@@ -411,12 +442,17 @@ pkg_addscript(struct pkg *pkg, const char *path)
 	struct pkg_script *script;
 	char *filename;
 	char *raw_script;
+	int ret = EPKG_OK;
+	off_t sz = 0;
+
+	if (pkg == NULL)
+		return (EPKG_NULL_PKG);
 
 	if (path == NULL)
-		return (-1);
+		return (EPKG_NULL_VALUE);
 
-	if (file_to_buffer(path, &raw_script) <= 0)
-		return (-1);
+	if ((ret = file_to_buffer(path, &raw_script, &sz)) != EPKG_OK)
+		return (ret);
 
 	pkg_script_new(&script);
 
@@ -445,14 +481,13 @@ pkg_addscript(struct pkg *pkg, const char *path)
 	} else if (strcmp(filename, "pkg-upgrade") == 0) {
 		script->type = PKG_SCRIPT_UPGRADE;
 	} else {
-		/* unknown script */
-		return (-1);
+		return (EPKG_UNKNOWN_SCRIPT);
 	}
 
 	array_init(&pkg->scripts, 6);
 	array_append(&pkg->scripts, script);
 
-	return (0);
+	return (EPKG_OK);
 }
 
 int
@@ -460,8 +495,11 @@ pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type)
 {
 	struct pkg_exec *exec;
 
+	if (pkg == NULL)
+		return (EPKG_NULL_PKG);
+
 	if (cmd == NULL || cmd[0] == '\0')
-		return (-1);
+		return (EPKG_NULL_VALUE);
 
 	pkg_exec_new(&exec);
 
@@ -471,7 +509,7 @@ pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type)
 	array_init(&pkg->exec, 5);
 	array_append(&pkg->exec, exec);
 
-	return (0);
+	return (EPKG_OK);
 }
 
 int
@@ -479,8 +517,11 @@ pkg_addoption(struct pkg *pkg, const char *opt, const char *value)
 {
 	struct pkg_option *option;
 
+	if (pkg == NULL)
+		return (EPKG_NULL_PKG);
+
 	if (opt == NULL || opt[0] == '\0' || value == NULL || value[0] == '\0')
-		return (-1);
+		return (EPKG_NULL_VALUE);
 
 	pkg_option_new(&option);
 
@@ -490,7 +531,7 @@ pkg_addoption(struct pkg *pkg, const char *opt, const char *value)
 	array_init(&pkg->options, 5);
 	array_append(&pkg->options, option);
 
-	return (0);
+	return (EPKG_OK);
 }
 
 int
@@ -498,9 +539,12 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 {
 	struct pkg *dep;
 
+	if (pkg == NULL)
+		return (EPKG_NULL_PKG);
+
 	if (name == NULL || name[0] == '\0' || origin == NULL || origin[0] == '\0'
 		|| version == NULL || version[0] == '\0')
-		return (-1);
+		return (EPKG_NULL_VALUE);
 
 	pkg_new(&dep);
 
@@ -512,15 +556,19 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	array_init(&pkg->deps, 5);
 	array_append(&pkg->deps, dep);
 
-	return (0);
+	return (EPKG_OK);
 }
 
 int
 pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, int64_t sz)
 {
 	struct pkg_file *file;
+
+	if (pkg == NULL)
+		return (EPKG_NULL_PKG);
+
 	if (path == NULL || path[0] == '\0')
-		return (-1);
+		return (EPKG_NULL_VALUE);
 
 	pkg_file_new(&file);
 
@@ -534,7 +582,7 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, int64_t sz)
 	array_init(&pkg->files, 10);
 	array_append(&pkg->files, file);
 
-	return (0);
+	return (EPKG_OK);
 }
 
 int
@@ -542,8 +590,11 @@ pkg_addconflict(struct pkg *pkg, const char *glob)
 {
 	struct pkg_conflict *conflict;
 
+	if (pkg == NULL)
+		return (EPKG_NULL_PKG);
+
 	if (glob == NULL || glob[0] == '\0')
-		return (-1);
+		return (EPKG_NULL_VALUE);
 
 	pkg_conflict_new(&conflict);
 	sbuf_set(&conflict->glob, glob);
@@ -551,5 +602,5 @@ pkg_addconflict(struct pkg *pkg, const char *glob)
 	array_init(&pkg->conflicts, 5);
 	array_append(&pkg->conflicts, conflict);
 
-	return (0);
+	return (EPKG_OK);
 }

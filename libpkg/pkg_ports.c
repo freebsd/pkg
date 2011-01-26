@@ -17,19 +17,20 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 	size_t next;
 	char sha256[65];
 	char path[MAXPATHLEN];
-	int ret = 0;
 	char *last_plist_file = NULL;
 	char *cmd = NULL;
 	struct stat st;
+	int ret = EPKG_OK;
+	off_t sz = 0;
 
 	buf = NULL;
 	p = NULL;
 
 	if (plist == NULL)
-		return (-1);
+		return (EPKG_NULL_VALUE);
 
-	if (file_to_buffer(plist, &plist_buf) <= 0)
-		return (-1);
+	if ((ret = file_to_buffer(plist, &plist_buf, &sz)) != EPKG_OK)
+		return (ret);
 
 	if (prefix == NULL)
 		prefix = "/usr/local";
