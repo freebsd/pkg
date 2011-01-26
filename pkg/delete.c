@@ -11,7 +11,7 @@ void
 usage_delete(void)
 {
 	fprintf(stderr, "delete [-f] <pkg-name>\n"
-			"delete -a");
+			"delete -a\n");
 }
 
 int
