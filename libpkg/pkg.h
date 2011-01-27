@@ -12,22 +12,67 @@ struct pkg_script;
 struct pkgdb;
 struct pkgdb_it;
 
-typedef enum _match_t {
+/**
+ * Specify how an argument should be used by matching functions.
+ */
+typedef enum {
+	/**
+	 * The argument does not matter, all items will be matched.
+	 */
 	MATCH_ALL,
+	/**
+	 * The argument is the exact pattern.
+	 */
 	MATCH_EXACT,
+	/**
+	 * The argument is a globbing expression.
+	 */
 	MATCH_GLOB,
+	/**
+	 * The argument is a basic regular expression.
+	 */
 	MATCH_REGEX,
+	/**
+	 * The argument is an extended regular expression.
+	 */
 	MATCH_EREGEX
 } match_t;
 
+/**
+ * The type of package.
+ */
 typedef enum {
+	/**
+	 * The pkg refers to a local file archive.
+	 */
 	PKG_FILE,
+	/**
+	 * The pkg refers to a package available of the remote repository.
+	 * @todo Document which attributes are available.
+	 */
 	PKG_REMOTE,
+	/**
+	 * The pkg refers to a localy installed package.
+	 */
 	PKG_INSTALLED,
+	/**
+	 * The pkg refers to a non installed package.
+	 * @warning That means that the pkg contains only few attributes:
+	 *   - origin
+	 *   - name
+	 *   - version
+	 */
 	PKG_NOTFOUND,
+	/**
+	 * The pkg type can not be determined.
+	 */
 	PKG_NONE,
 } pkg_t;
 
+/**
+ * Contains keys to refer to a string attribute.
+ * Used by pkg_get() and pkg_set()
+ */
 typedef enum {
 	PKG_ORIGIN,
 	PKG_NAME,
@@ -43,7 +88,10 @@ typedef enum {
 	PKG_ERR
 } pkg_attr;
 
-typedef enum {
+/**
+ * Determine the type of a pkg_script.
+ */
+typedef enum _pkg_script_t {
 	PKG_SCRIPT_PRE_INSTALL = 0,
 	PKG_SCRIPT_POST_INSTALL,
 	PKG_SCRIPT_PRE_DEINSTALL,
@@ -55,15 +103,29 @@ typedef enum {
 	PKG_SCRIPT_UPGRADE
 } pkg_script_t;
 
+/**
+ * Determine the type of a pkg_exec.
+ * @warning Legacy interface, may be removed later.
+ */
 typedef enum {
 	PKG_EXEC = 0,
 	PKG_UNEXEC
 } pkg_exec_t;
 
+/**
+ * Error type used everywhere by libpkg.
+ */
 typedef enum {
 	EPKG_OK = 0,
+	/**
+	 * No more items available (end of the loop).
+	 */
 	EPKG_END,
 	EPKG_WARNING,
+	/**
+	 * The function encountered a fatal error.
+	 * errno was set to describe the error.
+	 */
 	EPKG_FATAL,
 	EPKG_NULL_PKG,
 	EPKG_NULL_VALUE,
@@ -77,29 +139,116 @@ typedef enum {
 	EPKG_NOT_NAME,
 } pkg_error_t;
 
-/* pkg */
+/**
+ * Allocate a new pkg.
+ * Allocated pkg must be deallocated by pkg_free().
+ */
 int pkg_new(struct pkg **);
-int pkg_open(const char *, struct pkg **, int);
-pkg_t pkg_type(struct pkg *);
+
+/**
+ * Reset a pkg to its initial state.
+ * Useful to avoid sequences of pkg_new() and pkg_free().
+ */
 void pkg_reset(struct pkg *);
+
+/**
+ * Deallocate a pkg
+ */
 void pkg_free(struct pkg *);
+
+/**
+ * Open a file archive.
+ * @param path A local path or an URL.
+ * @param p A pointer to pkg allocated by pkg_new(), or if it points to a
+ * NULL pointer, the function allocate a new pkg using pkg_new().
+ * @param flags Unused.
+ */
+int pkg_open(const char *path, struct pkg **p, int flags);
+
+/**
+ * Generic getter for simple attributes.
+ * @return NULL-terminated string.
+ * @warning May return a NULL pointer.
+ */
 const char *pkg_get(struct pkg *, pkg_attr);
+
+pkg_t pkg_type(struct pkg *);
+
 #define pkg_errmsg(pkg) pkg_get(pkg, PKG_ERR)
+
+/**
+ * @return NULL-terminated array of pkg.
+ * @warning May return a NULL pointer.
+ */
 struct pkg ** pkg_deps(struct pkg *);
+
+/**
+ * Returns the reverse dependencies.
+ * That is, the packages which require this package.
+ * @return NULL-terminated array of pkg.
+ * @warning May return a NULL pointer.
+ */
 struct pkg ** pkg_rdeps(struct pkg *);
+
+/**
+ * @return NULL-terminated array of pkg_file.
+ * @warning May return a NULL pointer.
+ */
 struct pkg_file ** pkg_files(struct pkg *);
+
+/**
+ * @return NULL-terminated array of pkg_conflict.
+ * @warning May return a NULL pointer.
+ */
 struct pkg_conflict ** pkg_conflicts(struct pkg *);
+
+/**
+ * @return NULL-terminated array of pkg_script.
+ * @warning May return a NULL pointer.
+ */
 struct pkg_script ** pkg_scripts(struct pkg *);
+
+/**
+ * @return NULL-terminated array of pkg_exec.
+ * @warning May return a NULL pointer.
+ * @warning Legacy interface, may be removed later.
+ */
 struct pkg_exec ** pkg_execs(struct pkg *);
+
+/**
+ * @return NULL-terminated array of pkg_option
+ * @warning May return a NULL pointer.
+ */
 struct pkg_option ** pkg_options(struct pkg *);
 
+/**
+ * Resolve the dependencies of the package.
+ * Check if the dependencies are registered into the local database and set
+ * their type to #PKG_INSTALLED or #PKG_NOTFOUND.
+ */
 int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
+
+/**
+ * @todo Document
+ */
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
+
+/**
+ * Extract an archive.
+ * @todo This should call pkg_register()
+ */
 int pkg_extract(const char *filename);
 
-/* pkg setters */
+/**
+ * Generic setter for simple attributes.
+ */
 int pkg_set(struct pkg *, pkg_attr, const char *);
+
+/**
+ * Read the content of a file into a buffer, then call pkg_set().
+ */
 int pkg_set_from_file(struct pkg *, pkg_attr, const char *);
+
 int pkg_adddep(struct pkg *, const char *, const char *, const char *);
 int pkg_addfile(struct pkg *, const char *, const char *, int64_t);
 int pkg_addconflict(struct pkg *, const char *);
