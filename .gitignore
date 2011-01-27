@@ -5,4 +5,8 @@
 *.Po
 *.So
 *.core
+*.gmon
+*.log
 pkg/pkg
+tests/test
+docs/html/*
