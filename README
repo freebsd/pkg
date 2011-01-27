@@ -1,8 +1,8 @@
 pkgng is a binary package manager written from scratch for FreeBSD.
 
-pkgng is built on top of a new libpkg, which allow to deal to the database of
+pkgng is built on top of a new libpkg, which allow to deal with the database of
 installed packages, to deal with remote repositories, manage packages: creation,
-installation gathering informations, registrating new ports.
+installation gathering informations, registering new ports.
 
 features supported are or will be :
 - smooth integration with bsd.port.mk (see ports/bsd.port.mk.patch) which allow
@@ -19,14 +19,13 @@ features supported are or will be :
   +PREUPGRADE, +POSTUPGRADE as well as the old fashion scripts : +INSTALL
   +DEINSTALL +UPGRADE
 - new +MANIFEST (plist-like format) which new metadatas : options, arch, os
-  version, etc. files aren't listed there anymore (no need to have two times the
-  same information).
+  version, etc.
 - pkgng supports supports checking arch of the package which means that users
   won't be able to install sparc64 binary package into amd64 machines.
-- a special architecture "noarch" allows to specify when a package can be used
+- a special architecture "all" allows to specify when a package can be used
   on every architecture.
 - @dirrm and @dirrmtry are now deprecated, pkgng can discover itself which
-  directory to remove.
+  directory has to be removed.
 - new repository (apt-like feature)
 - real support for reverse dependency (no ugly +REQUIRED_BY)
 - test unit (libcheck) on libpkg.
