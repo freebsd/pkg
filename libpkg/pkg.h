@@ -137,6 +137,7 @@ typedef enum {
 	EPKG_UNKNOWN_SCRIPT,
 	EPKG_NOT_ORIGIN,
 	EPKG_NOT_NAME,
+	EPKG_ERROR_MTREE,
 } pkg_error_t;
 
 /**

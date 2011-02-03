@@ -86,6 +86,7 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 			} else {
 				sbuf_set(&pkg->mtree, "#mtree\n");
 				sbuf_cat(pkg->mtree, value);
+				sbuf_finish(pkg->mtree);
 				return (EPKG_OK);
 			}
 			return (sbuf_set(&pkg->mtree, value));
