@@ -90,7 +90,16 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 		case PKG_WWW:
 			return (sbuf_set(&pkg->www, value));
 		case PKG_PREFIX:
-			return (sbuf_set(&pkg->prefix, value));
+			/* ensure that mtree begins by #mtree so libarchive
+			 * could handle it */
+
+			if (STARTS_WITH(value, "#mtree")) {
+				return (sbuf_set(&pkg->prefix, value));
+			} else {
+				sbuf_set(&pkg->prefix, "#mtree\n");
+				sbuf_cat(pkg->prefix, value);
+				return (EPKG_OK);
+			}
 	}
 
 	return (EPKG_FATAL);
