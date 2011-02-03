@@ -85,7 +85,7 @@ typedef enum {
 	PKG_OSVERSION,
 	PKG_MAINTAINER,
 	PKG_WWW,
-	PKG_ERR
+	PKG_PREFIX
 } pkg_attr;
 
 /**
@@ -173,8 +173,6 @@ int pkg_open(const char *path, struct pkg **p, int flags);
 const char *pkg_get(struct pkg *, pkg_attr);
 
 pkg_t pkg_type(struct pkg *);
-
-#define pkg_errmsg(pkg) pkg_get(pkg, PKG_ERR)
 
 /**
  * @return NULL-terminated array of pkg.

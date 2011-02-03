@@ -20,6 +20,7 @@ struct pkg {
 	struct sbuf *maintainer;
 	struct sbuf *www;
 	struct sbuf *err;
+	struct sbuf *prefix;
 	struct array deps;
 	struct array rdeps;
 	struct array conflicts;

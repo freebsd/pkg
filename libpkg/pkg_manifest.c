@@ -24,6 +24,7 @@ static int m_parse_conflict(struct pkg *pkg, char *buf);
 static int m_parse_maintainer(struct pkg *pkg, char *buf);
 static int m_parse_exec(struct pkg *pkg, char *buf);
 static int m_parse_unexec(struct pkg *pkg, char *buf);
+static int m_parse_prefix(struct pkg *pkg, char *buf);
 static int m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr);
 
 #define MANIFEST_FORMAT_KEY "@pkg_format_version"
@@ -45,6 +46,7 @@ static struct manifest_key {
 	{ "@maintainer", m_parse_maintainer},
 	{ "@exec", m_parse_exec},
 	{ "@unexec", m_parse_unexec},
+	{ "@prefix", m_parse_prefix},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
@@ -65,6 +67,11 @@ m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr) {
 static int
 m_parse_www(struct pkg *pkg, char *buf) {
 	return (m_parse_set_string(pkg, buf, PKG_WWW));
+}
+
+static int
+m_parse_prefix(struct pkg *pkg, char *buf) {
+	return (m_parse_set_string(pkg, buf, PKG_PREFIX));
 }
 
 static int
@@ -265,6 +272,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			"@osversion %s\n"
 			"@www %s\n"
 			"@maintainer %s\n",
+			"@prefix %s\n",
 			pkg_get(pkg, PKG_NAME),
 			pkg_get(pkg, PKG_VERSION),
 			pkg_get(pkg, PKG_ORIGIN),
@@ -272,7 +280,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			pkg_get(pkg, PKG_ARCH),
 			pkg_get(pkg, PKG_OSVERSION),
 			pkg_get(pkg, PKG_WWW),
-			pkg_get(pkg, PKG_MAINTAINER) ? pkg_get(pkg, PKG_MAINTAINER) : "UNKNOWN"
+			pkg_get(pkg, PKG_MAINTAINER) ? pkg_get(pkg, PKG_MAINTAINER) : "UNKNOWN",
+			pkg_get(pkg, PKG_PREFIX)
 			);
 
 	if ((deps = pkg_deps(pkg)) != NULL) {

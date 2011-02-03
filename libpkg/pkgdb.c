@@ -124,6 +124,7 @@ pkgdb_init(sqlite3 *sdb)
 		"osversion TEXT,"
 		"maintainer TEXT,"
 		"www TEXT,"
+		"prefix TEXT,"
 		"automatic INTEGER,"
 		"pkg_format_version INTEGER"
 	");"
@@ -280,6 +281,7 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 8));
 		pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 9));
 		pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
+		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
 
 		if (flags & PKG_DEPS) {
 			array_init(&pkg->deps, 10);
@@ -559,7 +561,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 
 	snprintf(sql, sizeof(sql),
 			"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
-				"p.message, p.arch, p.osversion, p.maintainer, p.www "
+				"p.message, p.arch, p.osversion, p.maintainer, p.www, p.prefix "
 			"FROM packages AS p, mtree AS m "
 			"WHERE m.id = p.mtree_id%s;", comp);
 
@@ -578,7 +580,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 
 	sqlite3_prepare(db->sqlite,
 					"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
-						"p.message, p.arch, p.osversion, p.maintainer, p.www "
+						"p.message, p.arch, p.osversion, p.maintainer, p.www, p.prefix "
 					"FROM packages AS p, mtree AS m, files AS f "
 					"WHERE m.id = p.mtree_id " 
 					"AND p.origin = f.package_id "
@@ -750,8 +752,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	/* Add the record into packages */
 	sqlite3_prepare(db->sqlite,
-					"INSERT OR REPLACE INTO packages (origin, name, version, comment, desc, mtree_id, message, arch, osversion, maintainer, www) "
-					"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11);",
+					"INSERT OR REPLACE INTO packages (origin, name, version, comment, desc, mtree_id, message, arch, osversion, maintainer, www, prefix) "
+					"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);",
 					-1, &stmt_pkg, NULL);
 
 	sqlite3_bind_text(stmt_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
@@ -765,6 +767,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 10, pkg_get(pkg, PKG_MAINTAINER), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 11, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_pkg, 12, pkg_get(pkg, PKG_PREFIX), -1, SQLITE_STATIC);
 
 	sqlite3_step(stmt_pkg);
 	sqlite3_finalize(stmt_pkg);

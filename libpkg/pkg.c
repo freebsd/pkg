@@ -49,8 +49,8 @@ pkg_get(struct pkg *pkg, pkg_attr attr)
 			return (sbuf_get(pkg->maintainer));
 		case PKG_WWW:
 			return (sbuf_get(pkg->www));
-		case PKG_ERR:
-			return (sbuf_get(pkg->err));
+		case PKG_PREFIX:
+			return (sbuf_get(pkg->prefix));
 	}
 
 	return (NULL);
@@ -63,7 +63,6 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 		return (EPKG_NULL_PKG);
 
 	if (value == NULL) {
-		pkg_set(pkg, PKG_ERR, "Value can not be NULL");
 		return (EPKG_NULL_VALUE);
 	}
 
@@ -90,8 +89,8 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 			return (sbuf_set(&pkg->maintainer, value));
 		case PKG_WWW:
 			return (sbuf_set(&pkg->www, value));
-		case PKG_ERR:
-			return (sbuf_set(&pkg->err, value));
+		case PKG_PREFIX:
+			return (sbuf_set(&pkg->prefix, value));
 	}
 
 	return (EPKG_FATAL);
@@ -366,8 +365,6 @@ pkg_new(struct pkg **pkg)
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		err(EXIT_FAILURE, "calloc()");
 
-	(*pkg)->err = sbuf_new_auto();
-
 	return (EPKG_OK);
 }
 
@@ -388,7 +385,7 @@ pkg_reset(struct pkg *pkg)
 	sbuf_reset(pkg->osversion);
 	sbuf_reset(pkg->maintainer);
 	sbuf_reset(pkg->www);
-	sbuf_reset(pkg->err);
+	sbuf_reset(pkg->prefix);
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);
@@ -416,7 +413,7 @@ pkg_free(struct pkg *pkg)
 	sbuf_free(pkg->osversion);
 	sbuf_free(pkg->maintainer);
 	sbuf_free(pkg->www);
-	sbuf_free(pkg->err);
+	sbuf_free(pkg->prefix);
 
 	array_free(&pkg->deps, &pkg_free_void);
 	array_free(&pkg->rdeps, &pkg_free_void);
