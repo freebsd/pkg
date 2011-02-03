@@ -78,6 +78,16 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 		case PKG_DESC:
 			return (sbuf_set(&pkg->desc, value));
 		case PKG_MTREE:
+			/* ensure that mtree begins by #mtree so libarchive
+			 * could handle it */
+
+			if (STARTS_WITH(value, "#mtree")) {
+				return (sbuf_set(&pkg->mtree, value));
+			} else {
+				sbuf_set(&pkg->mtree, "#mtree\n");
+				sbuf_cat(pkg->mtree, value);
+				return (EPKG_OK);
+			}
 			return (sbuf_set(&pkg->mtree, value));
 		case PKG_MESSAGE:
 			return (sbuf_set(&pkg->message, value));
@@ -90,16 +100,7 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 		case PKG_WWW:
 			return (sbuf_set(&pkg->www, value));
 		case PKG_PREFIX:
-			/* ensure that mtree begins by #mtree so libarchive
-			 * could handle it */
-
-			if (STARTS_WITH(value, "#mtree")) {
-				return (sbuf_set(&pkg->prefix, value));
-			} else {
-				sbuf_set(&pkg->prefix, "#mtree\n");
-				sbuf_cat(pkg->prefix, value);
-				return (EPKG_OK);
-			}
+			return (sbuf_set(&pkg->prefix, value));
 	}
 
 	return (EPKG_FATAL);
