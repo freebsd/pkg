@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 
 int
-ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
+ports_parse_plist(struct pkg *pkg, char *plist)
 {
 	char *plist_p, *buf, *p, *plist_buf;
 	int nbel, i;
@@ -19,6 +19,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 	char path[MAXPATHLEN];
 	char *last_plist_file = NULL;
 	char *cmd = NULL;
+	const char *prefix = NULL;
 	struct stat st;
 	int ret = EPKG_OK;
 	off_t sz = 0;
@@ -32,8 +33,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *prefix)
 	if ((ret = file_to_buffer(plist, &plist_buf, &sz)) != EPKG_OK)
 		return (ret);
 
-	if (prefix == NULL)
-		prefix = "/usr/local";
+	prefix = pkg_get(pkg, PKG_PREFIX);
 
 	nbel = split_chr(plist_buf, '\n');
 

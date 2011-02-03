@@ -31,7 +31,6 @@ exec_register(int argc, char **argv)
 
 	char ch;
 	char *plist = NULL;
-	char *prefix = NULL;
 	char *v = NULL;
 	char *arch = NULL;
 	char *www = NULL;
@@ -59,7 +58,7 @@ exec_register(int argc, char **argv)
 				plist = strdup(optarg);
 				break;
 			case 'p':
-				prefix = strdup(optarg);
+				pkg_set(pkg, PKG_PREFIX, optarg);
 				break;
 			case 'P':
 				ret += ports_parse_depends(pkg, optarg);
@@ -149,13 +148,10 @@ exec_register(int argc, char **argv)
 		return (ret);
 	}
 
-	ret += ports_parse_plist(pkg, plist, prefix);
+	ret += ports_parse_plist(pkg, plist);
 
 	if (ret < 0)
 		return (ret);
-
-	if (prefix != NULL)
-		free(prefix);
 
 	if (plist != NULL)
 		free(plist);
