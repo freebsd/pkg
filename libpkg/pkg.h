@@ -138,6 +138,7 @@ typedef enum {
 	EPKG_NOT_ORIGIN,
 	EPKG_NOT_NAME,
 	EPKG_ERROR_MTREE,
+	EPKG_BAD_PACKAGE,
 } pkg_error_t;
 
 /**
@@ -233,10 +234,9 @@ int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
 
 /**
- * Extract an archive.
- * @todo This should call pkg_register()
+ * add a new package this will check if upgrade is needed
  */
-int pkg_extract(const char *filename);
+int pkg_add(struct pkgdb *, struct pkg *);
 
 /**
  * Generic setter for simple attributes.

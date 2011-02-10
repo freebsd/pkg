@@ -72,8 +72,7 @@ exec_add(int argc, char **argv)
 	if (ret != 0)
 		return (ret);
 
-	pkg_extract(argv[1]);
-	pkgdb_register_pkg(db, pkg);
+	pkg_add(db, pkg);
 
 	pkgdb_close(db);
 	pkg_free(pkg);

@@ -28,6 +28,7 @@ struct pkg {
 	struct array scripts;
 	struct array exec;
 	struct array options;
+	const char *path;
 	pkg_t type;
 };
 

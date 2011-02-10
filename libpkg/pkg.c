@@ -257,6 +257,7 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 
 	pkg = *pkg_p;
 	pkg->type = PKG_FILE;
+	pkg->path = path;
 
 	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK)
 		goto error;
@@ -375,6 +376,8 @@ pkg_new(struct pkg **pkg)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		err(EXIT_FAILURE, "calloc()");
+
+	(*pkg)->path = NULL;
 
 	return (EPKG_OK);
 }
