@@ -271,7 +271,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			"@arch %s\n"
 			"@osversion %s\n"
 			"@www %s\n"
-			"@maintainer %s\n",
+			"@maintainer %s\n"
 			"@prefix %s\n",
 			pkg_get(pkg, PKG_NAME),
 			pkg_get(pkg, PKG_VERSION),
