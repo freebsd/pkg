@@ -17,7 +17,7 @@ exec_add(int argc, char **argv)
 {
 	struct pkgdb *db;
 	struct pkgdb_it *it;
-	struct pkg *pkg;
+	struct pkg *pkg = NULL;
 	struct pkg *p;
 	struct pkg **deps;
 	int ret = 0;
