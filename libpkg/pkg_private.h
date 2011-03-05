@@ -21,6 +21,7 @@ struct pkg {
 	struct sbuf *www;
 	struct sbuf *err;
 	struct sbuf *prefix;
+	int64_t flatsize;
 	struct array deps;
 	struct array rdeps;
 	struct array conflicts;
@@ -49,7 +50,6 @@ struct pkg_exec {
 struct pkg_file {
 	char path[MAXPATHLEN];
 	char sha256[65];
-	int64_t size;
 };
 
 struct pkg_option {

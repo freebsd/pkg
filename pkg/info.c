@@ -1,5 +1,4 @@
 #include <sys/types.h>
-#include <sys/stat.h>
 
 #include <err.h>
 #include <inttypes.h>
@@ -12,24 +11,6 @@
 #include <sysexits.h>
 
 #include "info.h"
-
-static int64_t
-pkg_size(struct pkg *pkg)
-{
-	struct pkg_file **files;
-	struct stat st;
-	int64_t size = 0;
-
-	files = pkg_files(pkg);
-	for (size_t i = 0; files[i] != NULL; i++) {
-		if (stat(pkg_file_path(files[i]), &st) != 0) {
-			warn("stat(%s)", pkg_file_path(files[i]));
-			continue;
-		}
-		size += st.st_size;
-	}
-	return (size);
-}
 
 static int
 query_pkg(struct pkg *pkg, unsigned char opt) {
@@ -121,11 +102,10 @@ exec_info(int argc, char **argv)
 				break;
 			case 'l':
 				opt |= INFO_LIST_FILES;
-				query_flags = PKG_FILES;
+				query_flags |= PKG_FILES;
 				break;
 			case 's':
 				opt |= INFO_SIZE;
-				query_flags = PKG_FILES;
 				break;
 			case 'q':
 				opt |= INFO_QUIET;
@@ -144,8 +124,13 @@ exec_info(int argc, char **argv)
 	pkg_new(&pkg);
 
 	/* if the last argument is a file then query directly the file */
-	if (argc == 1 && pkg_open(argv[0], &pkg, query_flags) == 0)
+	if (argc == 1 && access(argv[0], F_OK) == 0) {
+		if (pkg_open(argv[0], &pkg, query_flags) != EPKG_OK) {
+			warnx("Can not read package %s", argv[0]);
+			return (-1);
+		}
 		return (query_pkg(pkg, opt));
+	}
 
 	if (pkgdb_open(&db) == -1) {
 		pkgdb_warn(db);
@@ -202,7 +187,7 @@ exec_info(int argc, char **argv)
 
 			printf("\n");
 		} else if (opt & INFO_SIZE) {
-			humanize_number(size, sizeof(size), pkg_size(pkg), "B", HN_AUTOSCALE, 0);
+			humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
 			printf("%s-%s size is %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), size);
 		} else if (opt & INFO_ORIGIN) {
 			if (opt & INFO_QUIET)

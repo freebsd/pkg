@@ -14,6 +14,7 @@ char manifest[] = ""
 	"@osversion 800500\n"
 	"@www http://www.foobar.com\n"
 	"@maintainer test@pkgng.lan\n"
+	"@flatsize 10000\n"
 	"@dep depfoo dep/foo 1.2\n"
 	"@dep depbar dep/bar 3.4\n"
 	"@conflict foo-*\n"
@@ -23,7 +24,9 @@ char manifest[] = ""
 	"@unexec true && echo good\n"
 	"@unexec false || echo bye\n"
 	"@option foo true\n"
-	"@option bar false\n";
+	"@option bar false\n"
+	"@file /usr/local/bin/foo "
+		"01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b\n";
 
 char wrong_manifest1[] = ""
 	"@pkg_format_version 0.9\n"
@@ -146,6 +149,7 @@ START_TEST(parse_manifest)
 	struct pkg_conflict **conflicts;
 	struct pkg_exec **execs;
 	struct pkg_option **options;
+	struct pkg_file **files;
 	int i;
 
 	fail_unless(pkg_new(&p) == 0);
@@ -222,6 +226,15 @@ START_TEST(parse_manifest)
 		}
 	}
 	fail_unless(i == 2);
+
+	files = pkg_files(p);
+	fail_if(files == NULL);
+	fail_unless(strcmp(pkg_file_path(files[0]), "/usr/local/bin/foo") ==
+				0);
+	fail_unless(strcmp(pkg_file_sha256(files[0]),
+				"01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
+				== 0);
+
 }
 END_TEST
 

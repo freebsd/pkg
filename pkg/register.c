@@ -1,3 +1,4 @@
+#include <sys/stat.h>
 #include <sys/param.h>
 
 #include <err.h>
@@ -11,6 +12,8 @@
 #include <regex.h>
 
 #include "register.h"
+
+static void compute_flatsize(struct pkg *pkg);
 
 void
 usage_register(void)
@@ -164,9 +167,30 @@ exec_register(int argc, char **argv)
 	if (heuristic)
 		pkg_analyse_files(db, pkg);
 
+	compute_flatsize(pkg);
+
 	pkgdb_register_pkg(db, pkg);
 	pkgdb_close(db);
 	pkg_free(pkg);
 
 	return (0);
+}
+
+static void
+compute_flatsize(struct pkg *pkg)
+{
+	struct pkg_file **files;
+	struct stat st;
+	int64_t size = 0;
+
+	files = pkg_files(pkg);
+	for (int i = 0; files[i] != NULL; i++) {
+		if (stat(pkg_file_path(files[i]), &st) != 0) {
+			warn("stat(%s)", pkg_file_path(files[i]));
+			continue;
+		}
+		size += st.st_size;
+	}
+
+	pkg_setflatsize(pkg, size);
 }

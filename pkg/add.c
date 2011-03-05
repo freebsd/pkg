@@ -72,7 +72,8 @@ exec_add(int argc, char **argv)
 	if (ret != 0)
 		return (ret);
 
-	pkg_add(db, pkg);
+	if (pkg_add(db, pkg) != EPKG_OK)
+		err(1, "installation of %s failed", argv[1]);
 
 	pkgdb_close(db);
 	pkg_free(pkg);

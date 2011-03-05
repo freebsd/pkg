@@ -26,12 +26,15 @@ subcommands:
 	  considering the files are already installed
 
 - genrepo:
-	- takes only one argument and generate two cache files (maybe more for
+	- takes only one argument and generate two databases files (maybe more for
 	  the time we will be willing to work with UPDATING and MOVED) the first
 	  repo contain every informations concerning a package except files
 	  (which will be in the second one) + it will compute and add a sha256
-	  sum for each package. the cache will be in tcdb format compressed in
-	  xz format.
+	  sum for each package.
+	  the database will be a sqlite file compressed with the xz format.
+	  the database will be signed so we can trust the sha256 of the
+	  packages, so if a package has the expected hash, it is considered
+	  trusted.
 
 - search:
 	- will search both the remote repository to gives informations

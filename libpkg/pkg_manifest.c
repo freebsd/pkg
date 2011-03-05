@@ -1,11 +1,13 @@
+#include <sys/types.h>
+#include <sys/sbuf.h>
+
 #include <assert.h>
 #include <ctype.h>
 #include <err.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/sbuf.h>
 
 #include "pkg_util.h"
 #include "pkg.h"
@@ -18,6 +20,7 @@ static int m_parse_arch(struct pkg *pkg, char *buf);
 static int m_parse_osversion(struct pkg *pkg, char *buf);
 static int m_parse_www(struct pkg *pkg, char *buf);
 static int m_parse_comment(struct pkg *pkg, char *buf);
+static int m_parse_flatsize(struct pkg *pkg, char *buf);
 static int m_parse_option(struct pkg *pkg, char *buf);
 static int m_parse_dep(struct pkg *pkg, char *buf);
 static int m_parse_conflict(struct pkg *pkg, char *buf);
@@ -25,6 +28,7 @@ static int m_parse_maintainer(struct pkg *pkg, char *buf);
 static int m_parse_exec(struct pkg *pkg, char *buf);
 static int m_parse_unexec(struct pkg *pkg, char *buf);
 static int m_parse_prefix(struct pkg *pkg, char *buf);
+static int m_parse_file(struct pkg *pkg, char *buf);
 static int m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr);
 
 #define MANIFEST_FORMAT_KEY "@pkg_format_version"
@@ -40,6 +44,7 @@ static struct manifest_key {
 	{ "@osversion", m_parse_osversion},
 	{ "@www", m_parse_www},
 	{ "@comment", m_parse_comment},
+	{ "@flatsize", m_parse_flatsize},
 	{ "@option", m_parse_option},
 	{ "@dep", m_parse_dep},
 	{ "@conflict", m_parse_conflict},
@@ -47,6 +52,7 @@ static struct manifest_key {
 	{ "@exec", m_parse_exec},
 	{ "@unexec", m_parse_unexec},
 	{ "@prefix", m_parse_prefix},
+	{ "@file", m_parse_file},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
@@ -113,6 +119,20 @@ static int
 m_parse_comment(struct pkg *pkg, char *buf)
 {
 	return (m_parse_set_string(pkg, buf, PKG_COMMENT));
+}
+
+static int
+m_parse_flatsize(struct pkg *pkg, char *buf)
+{
+	int64_t size;
+
+	size = strtoimax(buf, NULL, 10);
+
+	if (size <= 0)
+		return (EPKG_FATAL);
+
+	pkg_setflatsize(pkg, size);
+	return (EPKG_OK);
 }
 
 static int
@@ -212,6 +232,28 @@ m_parse_conflict(struct pkg *pkg, char *buf)
 	return (EPKG_OK);
 }
 
+static int
+m_parse_file(struct pkg *pkg, char *buf)
+{
+	const char *path;
+	const char *sha256;
+
+	while (isspace(*buf))
+		buf++;
+
+	if (split_chr(buf, ' ') != 1)
+		return (EPKG_FATAL);
+
+	path = buf;
+
+	buf += strlen(path) + 1;
+	sha256 = buf;
+
+	pkg_addfile(pkg, path, sha256);
+
+	return (EPKG_OK);
+}
+
 int
 pkg_parse_manifest(struct pkg *pkg, char *buf)
 {
@@ -235,8 +277,13 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	for (i = 1; i <= nbel; i++) {
 		for (j = 0; j < manifest_key_len; j++) {
 			if (STARTS_WITH(buf_ptr, manifest_key[j].key)) {
-				if (manifest_key[j].parse(pkg, buf_ptr + strlen(manifest_key[j].key)) != EPKG_OK)
+				if (manifest_key[j].parse(pkg, buf_ptr +
+					strlen(manifest_key[j].key)) != EPKG_OK) {
+
+					warnx("Error while parsing %s at line %d",
+						  manifest_key[j].key, i + 1);
 					return (EPKG_FATAL);
+				}
 				break;
 			}
 		}
@@ -258,6 +305,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_conflict **conflicts;
 	struct pkg_exec **execs;
 	struct pkg_option **options;
+	struct pkg_file **files;
 	int i;
 	int len = 0;
 
@@ -272,7 +320,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			"@osversion %s\n"
 			"@www %s\n"
 			"@maintainer %s\n"
-			"@prefix %s\n",
+			"@prefix %s\n"
+			"@flatsize %" PRId64 "\n",
 			pkg_get(pkg, PKG_NAME),
 			pkg_get(pkg, PKG_VERSION),
 			pkg_get(pkg, PKG_ORIGIN),
@@ -281,7 +330,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			pkg_get(pkg, PKG_OSVERSION),
 			pkg_get(pkg, PKG_WWW),
 			pkg_get(pkg, PKG_MAINTAINER) ? pkg_get(pkg, PKG_MAINTAINER) : "UNKNOWN",
-			pkg_get(pkg, PKG_PREFIX)
+			pkg_get(pkg, PKG_PREFIX),
+			pkg_flatsize(pkg)
 			);
 
 	if ((deps = pkg_deps(pkg)) != NULL) {
@@ -313,6 +363,13 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					pkg_option_opt(options[i]),
 					pkg_option_value(options[i]));
 					
+		}
+	}
+
+	if ((files = pkg_files(pkg)) != NULL) {
+		for (i = 0; files[i] != NULL; i++) {
+			sbuf_printf(manifest, "@file %s %s\n", pkg_file_path(files[i]),
+						pkg_file_sha256(files[i]));
 		}
 	}
 

@@ -130,6 +130,15 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 	return (ret);
 }
 
+int64_t
+pkg_flatsize(struct pkg *pkg)
+{
+	if (pkg == NULL)
+		return (-1);
+
+	return (pkg->flatsize);
+}
+
 struct pkg_script **
 pkg_scripts(struct pkg *pkg)
 {
@@ -227,7 +236,6 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 	struct archive_entry *ae;
 	struct pkg *pkg;
 	struct pkg_script *script;
-	struct pkg_file *file = NULL;
 	int ret;
 	int64_t size;
 	char *manifest;
@@ -272,12 +280,17 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
 		fpath = archive_entry_pathname(ae);
 
+		if (fpath[0] != '+')
+			break;
+
 		if (strcmp(fpath, "+MANIFEST") == 0) {
 			size = archive_entry_size(ae);
 			manifest = calloc(1, size + 1);
 			archive_read_data(a, manifest, size);
-			pkg_parse_manifest(pkg, manifest);
+			ret = pkg_parse_manifest(pkg, manifest);
 			free(manifest);
+			if (ret != EPKG_OK)
+				goto error;
 		}
 
 #define COPY_FILE(fname, dest)												\
@@ -313,18 +326,12 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 		COPY_SCRIPT("+INSTALL", PKG_SCRIPT_INSTALL)
 		COPY_SCRIPT("+DEINSTALL", PKG_SCRIPT_DEINSTALL)
 		COPY_SCRIPT("+UPGRADE", PKG_SCRIPT_UPGRADE)
-
-		if (fpath[0] == '+')
-			continue;
-
-		pkg_file_new(&file);
-		strlcpy(file->path, archive_entry_pathname(ae), sizeof(file->path));
-		file->size = archive_entry_size(ae);
-		array_append(&pkg->files, file);
 	}
 
-	if (ret != ARCHIVE_EOF)
+	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF) {
+		warnx("libarchive: %s", archive_error_string(a));
 		goto error;
+	}
 
 	archive_read_finish(a);
 	return (EPKG_OK);
@@ -340,8 +347,6 @@ pkg_new(struct pkg **pkg)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		err(EXIT_FAILURE, "calloc()");
-
-	(*pkg)->path = NULL;
 
 	return (EPKG_OK);
 }
@@ -364,6 +369,9 @@ pkg_reset(struct pkg *pkg)
 	sbuf_reset(pkg->maintainer);
 	sbuf_reset(pkg->www);
 	sbuf_reset(pkg->prefix);
+
+	pkg->flatsize = 0;
+	pkg->path = NULL;
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);
@@ -409,6 +417,19 @@ pkg_free_void(void *p)
 {
 	if (p != NULL)
 		pkg_free((struct pkg*) p);
+}
+
+int
+pkg_setflatsize(struct pkg *pkg, int64_t size)
+{
+	if (pkg == NULL)
+		return (EPKG_NULL_PKG);
+
+	if (size <= 0)
+		return (EPKG_FATAL);
+
+	pkg->flatsize = size;
+	return (EPKG_OK);
 }
 
 int
@@ -535,7 +556,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 }
 
 int
-pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, int64_t sz)
+pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 {
 	struct pkg_file *file;
 
@@ -551,8 +572,6 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, int64_t sz)
 
 	if (sha256 != NULL)
 		strlcpy(file->sha256, sha256, sizeof(file->sha256));
-
-	file->size = sz;
 
 	array_init(&pkg->files, 10);
 	array_append(&pkg->files, file);

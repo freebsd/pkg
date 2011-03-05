@@ -167,6 +167,8 @@ void pkg_free(struct pkg *);
  */
 int pkg_open(const char *path, struct pkg **p, int flags);
 
+pkg_t pkg_type(struct pkg *);
+
 /**
  * Generic getter for simple attributes.
  * @return NULL-terminated string.
@@ -174,7 +176,10 @@ int pkg_open(const char *path, struct pkg **p, int flags);
  */
 const char *pkg_get(struct pkg *, pkg_attr);
 
-pkg_t pkg_type(struct pkg *);
+/**
+ * Returns the size of the uncompressed package.
+ */
+int64_t pkg_flatsize(struct pkg *);
 
 /**
  * @return NULL-terminated array of pkg.
@@ -248,8 +253,13 @@ int pkg_set(struct pkg *, pkg_attr, const char *);
  */
 int pkg_set_from_file(struct pkg *, pkg_attr, const char *);
 
+/**
+ * Set the uncompressed size of the package.
+ */
+int pkg_setflatsize(struct pkg *, int64_t);
+
 int pkg_adddep(struct pkg *, const char *, const char *, const char *);
-int pkg_addfile(struct pkg *, const char *, const char *, int64_t);
+int pkg_addfile(struct pkg *, const char *, const char *);
 int pkg_addconflict(struct pkg *, const char *);
 int pkg_addexec(struct pkg *, const char *, pkg_exec_t);
 int pkg_addscript(struct pkg *, const char *);
@@ -265,7 +275,6 @@ void pkg_file_reset(struct pkg_file *);
 void pkg_file_free(struct pkg_file *);
 const char * pkg_file_path(struct pkg_file *);
 const char * pkg_file_sha256(struct pkg_file *);
-int64_t pkg_file_size(struct pkg_file *);
 
 /* pkg_conflict */
 int pkg_conflict_new(struct pkg_conflict **);

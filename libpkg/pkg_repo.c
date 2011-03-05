@@ -20,12 +20,10 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	struct stat st;
 	struct pkg *pkg = NULL;
 	struct pkg **deps;
-	struct pkg_file **files;
 	char *ext = NULL;
 	sqlite3 *sqlite;
 	sqlite3_stmt *stmt_deps;
 	sqlite3_stmt *stmt_pkg;
-	int64_t flatsize = 0;
 
 	int i;
 
@@ -103,17 +101,9 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 		if (pkg_open(ent->fts_path, &pkg, 0) != EPKG_OK)
 			continue;
-		flatsize = 0;
 
 		if (progress != NULL)
 			progress(pkg, data);
-
-		/* Compute the fat size (uncompressed) */
-		if ((files = pkg_files(pkg)) != NULL) {
-			for (i = 0; files[i] != NULL; i++) {
-				flatsize += pkg_file_size(files[i]);
-			}
-		}
 
 		sqlite3_bind_text(stmt_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 2, pkg_get(pkg, PKG_NAME), -1, SQLITE_STATIC);
@@ -125,7 +115,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_MAINTAINER), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_pkg, 11, ent->fts_statp->st_size);
-		sqlite3_bind_int64(stmt_pkg, 12, flatsize);
+		sqlite3_bind_int64(stmt_pkg, 12, pkg_flatsize(pkg));
 
 		sqlite3_step(stmt_pkg);
 		sqlite3_reset(stmt_pkg);

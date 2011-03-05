@@ -87,7 +87,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				p = NULL;
 			}
 
-			ret += pkg_addfile(pkg, path, p, -1);
+			ret += pkg_addfile(pkg, path, p);
 		}
 
 		if (i != nbel) {
