@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "pkg.h"
+#include "pkg_error.h"
 #include "pkg_private.h"
 
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
@@ -23,7 +24,7 @@ pkg_extract(const char *path)
 
 	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
 		archive_read_finish(a);
-		return (-1);
+		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a)));
 	}
 
 	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
@@ -34,9 +35,8 @@ pkg_extract(const char *path)
 		}
 	}
 
-	/* this should never happen */
 	if (ret != ARCHIVE_EOF)
-		return (EPKG_ERROR_ARCHIVE);
+		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a)));
 
 	archive_read_finish(a);
 
@@ -49,10 +49,11 @@ pkg_add(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_exec **execs;
 	struct pkg_script **scripts;
 	struct sbuf *script_cmd;
+	int retcode = EPKG_OK;
 	int i;
 
 	if (pkg_type(pkg) != PKG_FILE || pkg->path == NULL)
-		return (EPKG_BAD_PACKAGE);
+		return (ERROR_BAD_ARG("pkg"));
 
 	script_cmd = sbuf_new_auto();
 
@@ -78,8 +79,8 @@ pkg_add(struct pkgdb *db, struct pkg *pkg)
 			}
 		}
 
-	if (pkg_extract(pkg->path) != EPKG_OK)
-		return (EPKG_ERROR_ARCHIVE);
+	if ((retcode = pkg_extract(pkg->path)) != EPKG_OK)
+		return (retcode);
 
 	/* execute post install scripts */
 	if (scripts != NULL)

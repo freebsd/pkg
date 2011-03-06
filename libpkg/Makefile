@@ -13,6 +13,7 @@ SRCS=		pkg.c \
 		pkg_conflict.c \
 		pkg_delete.c \
 		pkg_elf.c \
+		pkg_error.c \
 		pkg_exec.c \
 		pkg_file.c \
 		pkg_manifest.c \
@@ -35,7 +36,8 @@ LDADD+=		-L${.CURDIR}/../external/sqlite \
 		-llzma \
 		-lsbuf \
 		-lfetch \
-		-lelf
+		-lelf \
+		-lpthread
 
 DEBUG_FLAGS+=  -g
 .if defined(PROFILE_BUILD)

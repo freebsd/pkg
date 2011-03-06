@@ -127,18 +127,9 @@ typedef enum {
 	 * errno was set to describe the error.
 	 */
 	EPKG_FATAL,
-	EPKG_NULL_PKG,
-	EPKG_NULL_VALUE,
-	EPKG_ERROR_MALLOC,
-	EPKG_ERROR_STAT,
-	EPKG_ERROR_OPEN,
-	EPKG_ERROR_READ,
-	EPKG_ERROR_ARCHIVE,
-	EPKG_UNKNOWN_SCRIPT,
+	EPKG_REQUIRED,
 	EPKG_NOT_ORIGIN,
 	EPKG_NOT_NAME,
-	EPKG_ERROR_MTREE,
-	EPKG_BAD_PACKAGE,
 } pkg_error_t;
 
 /**
@@ -360,5 +351,9 @@ int ports_parse_depends(struct pkg *, char *);
 int ports_parse_conflicts(struct pkg *, char *);
 int ports_parse_scripts(struct pkg *, char *);
 int ports_parse_options(struct pkg *, char *);
+
+pkg_error_t pkg_error_number(void);
+const char * pkg_error_string(void);
+void pkg_error_warn(const char *fmt, ...);
 
 #endif

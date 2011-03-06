@@ -29,7 +29,8 @@ exec_add(int argc, char **argv)
 		return (-1);
 	}
 
-	if (pkg_open(argv[1], &pkg, 0) != 0) {
+	if (pkg_open(argv[1], &pkg, 0) != EPKG_OK) {
+		pkg_error_warn("%s", argv[1]);
 		return (-1);
 	}
 
@@ -69,11 +70,12 @@ exec_add(int argc, char **argv)
 		}
 	}
 
-	if (ret != 0)
+	if (ret != 0) {
 		return (ret);
+	}
 
 	if (pkg_add(db, pkg) != EPKG_OK)
-		err(1, "installation of %s failed", argv[1]);
+		pkg_error_warn("Can not install %s", argv[1]);
 
 	pkgdb_close(db);
 	pkg_free(pkg);

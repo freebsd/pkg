@@ -1,13 +1,15 @@
-#include <pkg.h>
-#include <pkg_private.h>
+#include <sys/stat.h>
 
-#include <sha256.h>
 #include <err.h>
+#include <sha256.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <sys/stat.h>
+
+#include "pkg.h"
+#include "pkg_error.h"
+#include "pkg_private.h"
 
 int
 ports_parse_plist(struct pkg *pkg, char *plist)
@@ -27,8 +29,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	buf = NULL;
 	p = NULL;
 
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
 	if (plist == NULL)
-		return (EPKG_NULL_VALUE);
+		return (ERROR_BAD_ARG("plist"));
 
 	if ((ret = file_to_buffer(plist, &plist_buf, &sz)) != EPKG_OK)
 		return (ret);

@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "pkg.h"
+#include "pkg_error.h"
 #include "pkg_util.h"
 
 static
@@ -38,19 +39,23 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	struct sbuf *script_cmd;
 	int ret, i;
 
-	if (pkg == NULL || db == NULL)
-		return (-1);
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (db == NULL)
+		return (ERROR_BAD_ARG("db"));
 
 	rdeps = pkg_rdeps(pkg);
 	files = pkg_files(pkg);
 	prefix = pkg_get(pkg, PKG_PREFIX);
 
 	if (rdeps == NULL || files == NULL)
-		return (-1);
+		return (pkg_error_set(EPKG_FATAL, "missing deps and files infos"));
 
 	if (rdeps[0] != NULL && force == 0) {
 		warnx("%s is required by other packages", pkg_get(pkg, PKG_ORIGIN));
-		return (-1); /* TODO: special return code */
+		return (pkg_error_set(EPKG_REQUIRED, "%s is required by other"
+							  "packages", pkg_get(pkg, PKG_NAME)));
 	}
 
 	script_cmd = sbuf_new_auto();
@@ -81,7 +86,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 
 	mtree = pkg_get(pkg, PKG_MTREE);
 	if (archive_read_open_memory(a, strdup(mtree), strlen(mtree)) != ARCHIVE_OK)
-		return (EPKG_ERROR_MTREE);
+		return (pkg_error_set(EPKG_FATAL, "mtree: %s", archive_error_string(a)));
 
 	bzero(&mtreedirs, sizeof(mtreedirs));
 	array_init(&mtreedirs, 20);

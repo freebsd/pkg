@@ -20,6 +20,8 @@
 
 #define PKG_DBDIR "/var/db/pkg"
 
+/* TODO: error reporting for all the function that can fail */
+
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, pkgdb_it_t);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);

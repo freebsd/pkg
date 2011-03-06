@@ -12,8 +12,9 @@
 #include <fetch.h>
 #include <libutil.h>
 
-#include "pkg_util.h"
 #include "pkg.h"
+#include "pkg_error.h"
+#include "pkg_util.h"
 
 void
 array_init(struct array *a, size_t c)
@@ -118,28 +119,29 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 	int fd;
 	struct stat st;
 
-	assert(path != NULL);
-	assert(buffer != NULL);
+	if (path == NULL || path[0] == '\0')
+		return (ERROR_BAD_ARG("path"));
+
+	if (buffer == NULL)
+		return (ERROR_BAD_ARG("buffer"));
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		return (EPKG_ERROR_OPEN);
+		return (pkg_error_seterrno());
 	}
 
 	if (fstat(fd, &st) == -1) {
 		close(fd);
-		return (EPKG_ERROR_STAT);
+		return (pkg_error_seterrno());
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		warn("malloc(%llu)", (unsigned long long)st.st_size + 1);
 		close(fd);
-		return (EPKG_ERROR_MALLOC);
+		return (pkg_error_seterrno());
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
-		warn("read()");
 		close(fd);
-		return (EPKG_ERROR_READ);
+		return (pkg_error_seterrno());
 	}
 
 	close(fd);

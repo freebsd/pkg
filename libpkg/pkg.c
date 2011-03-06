@@ -6,6 +6,7 @@
 #include <errno.h>
 
 #include "pkg.h"
+#include "pkg_error.h"
 #include "pkg_private.h"
 #include "pkg_util.h"
 
@@ -14,8 +15,10 @@ static void pkg_free_void(void*);
 pkg_t
 pkg_type(struct pkg *pkg)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (PKG_NONE);
+	}
 
 	return (pkg->type);
 }
@@ -23,8 +26,10 @@ pkg_type(struct pkg *pkg)
 const char *
 pkg_get(struct pkg *pkg, pkg_attr attr)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (NULL);
+	}
 
 	switch (attr) {
 		case PKG_NAME:
@@ -60,11 +65,10 @@ int
 pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 {
 	if (pkg == NULL)
-		return (EPKG_NULL_PKG);
+		return (ERROR_BAD_ARG("pkg"));
 
-	if (value == NULL) {
-		return (EPKG_NULL_VALUE);
-	}
+	if (value == NULL)
+		return (ERROR_BAD_ARG("value"));
 
 	switch (attr) {
 		case PKG_NAME:
@@ -104,7 +108,7 @@ pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 			return (sbuf_set(&pkg->prefix, value));
 	}
 
-	return (EPKG_FATAL);
+	return (ERROR_BAD_ARG("attr"));
 }
 
 int
@@ -115,10 +119,10 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 	int ret = EPKG_OK;
 
 	if (pkg == NULL)
-		return (EPKG_NULL_PKG);
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (path == NULL)
-		return (EPKG_NULL_VALUE);
+		return (ERROR_BAD_ARG("path"));
 
 	if ((ret = file_to_buffer(path, &buf, &size)) !=  EPKG_OK)
 		return (ret);
@@ -133,8 +137,10 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 int64_t
 pkg_flatsize(struct pkg *pkg)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (-1);
+	}
 
 	return (pkg->flatsize);
 }
@@ -142,8 +148,10 @@ pkg_flatsize(struct pkg *pkg)
 struct pkg_script **
 pkg_scripts(struct pkg *pkg)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (NULL);
+	}
 
 	return ((struct pkg_script **)pkg->scripts.data);
 }
@@ -151,8 +159,10 @@ pkg_scripts(struct pkg *pkg)
 struct pkg_exec **
 pkg_execs(struct pkg *pkg)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (NULL);
+	}
 
 	return (struct pkg_exec **) pkg->exec.data;
 }
@@ -160,8 +170,10 @@ pkg_execs(struct pkg *pkg)
 struct pkg **
 pkg_deps(struct pkg *pkg)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (NULL);
+	}
 
 	return ((struct pkg **)pkg->deps.data);
 }
@@ -169,8 +181,10 @@ pkg_deps(struct pkg *pkg)
 struct pkg_option **
 pkg_options(struct pkg *pkg)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (NULL);
+	}
 
 	return ((struct pkg_option **)pkg->options.data);
 }
@@ -184,6 +198,7 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 
 	deps = pkg_deps(pkg);
 	if (deps == NULL)
+		// TODO: error reporting
 		return (-1);
 
 	pkg_new(&p);
@@ -199,14 +214,16 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 	}
 	pkg_free(p);
 
-	return (1);
+	return (EPKG_OK);
 }
 
 struct pkg **
 pkg_rdeps(struct pkg *pkg)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (NULL);
+	}
 
 	return ((struct pkg **)pkg->rdeps.data);
 }
@@ -214,8 +231,10 @@ pkg_rdeps(struct pkg *pkg)
 struct pkg_file **
 pkg_files(struct pkg *pkg)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (NULL);
+	}
 
 	return ((struct pkg_file **)pkg->files.data);
 }
@@ -223,8 +242,10 @@ pkg_files(struct pkg *pkg)
 struct pkg_conflict **
 pkg_conflicts(struct pkg *pkg)
 {
-	if (pkg == NULL)
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
 		return (NULL);
+	}
 
 	return ((struct pkg_conflict **)pkg->conflicts.data);
 }
@@ -236,14 +257,15 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 	struct archive_entry *ae;
 	struct pkg *pkg;
 	struct pkg_script *script;
+	pkg_error_t retcode = EPKG_OK;
 	int ret;
 	int64_t size;
 	char *manifest;
 	const char *fpath;
-	char buf[1024];
+	char buf[2048];
 
 	if (path == NULL)
-		return (EPKG_NULL_VALUE);
+		return (ERROR_BAD_ARG("path"));
 
 	/* search for http(s) or ftp(s) */
 	if (STARTS_WITH(path, "http://") || STARTS_WITH(path, "https://")
@@ -267,12 +289,13 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 	pkg->type = PKG_FILE;
 	pkg->path = path;
 
-	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK)
-		goto error;
+	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
+		archive_read_finish(a);
+		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a)));
+	}
 
 	/* first path to check is the archive is corrupted bye the way retreive
 	 * informations */
-
 
 	array_init(&pkg->scripts, 10);
 	array_init(&pkg->files, 10);
@@ -289,10 +312,13 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 			archive_read_data(a, manifest, size);
 			ret = pkg_parse_manifest(pkg, manifest);
 			free(manifest);
-			if (ret != EPKG_OK)
-				goto error;
+			if (ret != EPKG_OK) {
+				retcode = EPKG_FATAL;
+				break;
+			}
 		}
 
+		/* TODO: replace macros by loop - jlaffaye */
 #define COPY_FILE(fname, dest)												\
 	if (strcmp(fpath, fname) == 0) {										\
 		dest = sbuf_new_auto();												\
@@ -329,24 +355,18 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 	}
 
 	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF) {
-		warnx("libarchive: %s", archive_error_string(a));
-		goto error;
+		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
 	}
 
 	archive_read_finish(a);
-	return (EPKG_OK);
-
-error:
-	archive_read_finish(a);
-
-	return (EPKG_ERROR_ARCHIVE);
+	return (retcode);
 }
 
 int
 pkg_new(struct pkg **pkg)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
-		err(EXIT_FAILURE, "calloc()");
+		return(pkg_error_seterrno());
 
 	return (EPKG_OK);
 }
@@ -423,10 +443,10 @@ int
 pkg_setflatsize(struct pkg *pkg, int64_t size)
 {
 	if (pkg == NULL)
-		return (EPKG_NULL_PKG);
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (size <= 0)
-		return (EPKG_FATAL);
+		return (ERROR_BAD_ARG("size"));
 
 	pkg->flatsize = size;
 	return (EPKG_OK);
@@ -442,10 +462,10 @@ pkg_addscript(struct pkg *pkg, const char *path)
 	off_t sz = 0;
 
 	if (pkg == NULL)
-		return (EPKG_NULL_PKG);
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (path == NULL)
-		return (EPKG_NULL_VALUE);
+		return (ERROR_BAD_ARG("path"));
 
 	if ((ret = file_to_buffer(path, &raw_script, &sz)) != EPKG_OK)
 		return (ret);
@@ -477,7 +497,7 @@ pkg_addscript(struct pkg *pkg, const char *path)
 	} else if (strcmp(filename, "pkg-upgrade") == 0) {
 		script->type = PKG_SCRIPT_UPGRADE;
 	} else {
-		return (EPKG_UNKNOWN_SCRIPT);
+		return (pkg_error_set(EPKG_FATAL, "unknown script"));
 	}
 
 	array_init(&pkg->scripts, 6);
@@ -492,10 +512,10 @@ pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type)
 	struct pkg_exec *exec;
 
 	if (pkg == NULL)
-		return (EPKG_NULL_PKG);
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (cmd == NULL || cmd[0] == '\0')
-		return (EPKG_NULL_VALUE);
+		return (ERROR_BAD_ARG("cmd"));
 
 	pkg_exec_new(&exec);
 
@@ -514,10 +534,13 @@ pkg_addoption(struct pkg *pkg, const char *opt, const char *value)
 	struct pkg_option *option;
 
 	if (pkg == NULL)
-		return (EPKG_NULL_PKG);
+		return (ERROR_BAD_ARG("pkg"));
 
-	if (opt == NULL || opt[0] == '\0' || value == NULL || value[0] == '\0')
-		return (EPKG_NULL_VALUE);
+	if (opt == NULL || opt[0] == '\0')
+		return (ERROR_BAD_ARG("opt"));
+
+	if (value == NULL || value[0] == '\0')
+		return (ERROR_BAD_ARG("value"));
 
 	pkg_option_new(&option);
 
@@ -536,11 +559,16 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	struct pkg *dep;
 
 	if (pkg == NULL)
-		return (EPKG_NULL_PKG);
+		return (ERROR_BAD_ARG("pkg"));
 
-	if (name == NULL || name[0] == '\0' || origin == NULL || origin[0] == '\0'
-		|| version == NULL || version[0] == '\0')
-		return (EPKG_NULL_VALUE);
+	if (name == NULL || name[0] == '\0')
+		return (ERROR_BAD_ARG("name"));
+
+	if (origin == NULL || origin[0] == '\0')
+		return (ERROR_BAD_ARG("origin"));
+
+	if (version == NULL || version[0] == '\0')
+		return (ERROR_BAD_ARG("version"));
 
 	pkg_new(&dep);
 
@@ -561,15 +589,16 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 	struct pkg_file *file;
 
 	if (pkg == NULL)
-		return (EPKG_NULL_PKG);
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (path == NULL || path[0] == '\0')
-		return (EPKG_NULL_VALUE);
+		return (ERROR_BAD_ARG("path"));
 
 	pkg_file_new(&file);
 
 	strlcpy(file->path, path, sizeof(file->path));
 
+	/* TODO: when is it not required? - jlaffaye */
 	if (sha256 != NULL)
 		strlcpy(file->sha256, sha256, sizeof(file->sha256));
 
@@ -585,10 +614,10 @@ pkg_addconflict(struct pkg *pkg, const char *glob)
 	struct pkg_conflict *conflict;
 
 	if (pkg == NULL)
-		return (EPKG_NULL_PKG);
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (glob == NULL || glob[0] == '\0')
-		return (EPKG_NULL_VALUE);
+		return (ERROR_BAD_ARG("glob"));
 
 	pkg_conflict_new(&conflict);
 	sbuf_set(&conflict->glob, glob);
