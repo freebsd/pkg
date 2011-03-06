@@ -33,7 +33,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	const char *mtree = NULL;
 	struct archive *a;
 	struct archive_entry *ae;
-	struct array mtreedirs;
+	struct array mtreedirs = ARRAY_INIT;
 	const char *prefix;
 	char *path, *end, *fullpath;
 	struct sbuf *script_cmd;
@@ -88,7 +88,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if (archive_read_open_memory(a, strdup(mtree), strlen(mtree)) != ARCHIVE_OK)
 		return (pkg_error_set(EPKG_FATAL, "mtree: %s", archive_error_string(a)));
 
-	bzero(&mtreedirs, sizeof(mtreedirs));
 	array_init(&mtreedirs, 20);
 
 	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK)

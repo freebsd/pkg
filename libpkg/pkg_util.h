@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <sys/sbuf.h>
 
+#define ARRAY_INIT {0, 0, NULL}
+
 struct array {
 	size_t cap;
 	size_t len;

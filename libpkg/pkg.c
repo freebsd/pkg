@@ -594,13 +594,13 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 	if (path == NULL || path[0] == '\0')
 		return (ERROR_BAD_ARG("path"));
 
+	if (sha256 == NULL || strlen(sha256) != 64)
+		return (ERROR_BAD_ARG("sha256"));
+
 	pkg_file_new(&file);
 
 	strlcpy(file->path, path, sizeof(file->path));
-
-	/* TODO: when is it not required? - jlaffaye */
-	if (sha256 != NULL)
-		strlcpy(file->sha256, sha256, sizeof(file->sha256));
+	strlcpy(file->sha256, sha256, sizeof(file->sha256));
 
 	array_init(&pkg->files, 10);
 	array_append(&pkg->files, file);
