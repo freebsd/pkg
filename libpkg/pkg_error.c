@@ -95,7 +95,7 @@ pkg_error_init(void)
 	e = pthread_getspecific(pkg_error_key);
 
 	if (e == NULL) {
-		e = malloc(sizeof(e));
+		e = malloc(sizeof(struct pkg_error));
 
 		if (e == NULL)
 			err(1, "malloc()");
