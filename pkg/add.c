@@ -29,20 +29,22 @@ exec_add(int argc, char **argv)
 		return (-1);
 	}
 
-	if (pkg_open(argv[1], &pkg, 0) != EPKG_OK) {
-		pkg_error_warn("%s", argv[1]);
+	if (pkg_open(argv[1], &pkg) != EPKG_OK) {
+		pkg_error_warn("can not open file %s", argv[1]);
 		return (-1);
 	}
 
 	if (pkgdb_open(&db) != EPKG_OK) {
-		pkg_error_warn("Can not open database");
+		pkg_error_warn("can not open database");
 		pkgdb_close(db);
 		return (-1);
 	}
 
+	/* TODO: all the following stuff should be into libpkg */
+
 	/* check if already installed */
 	if ((it = pkgdb_query(db, pkg_get(pkg, PKG_ORIGIN), MATCH_EXACT)) == NULL) {
-		pkg_error_warn("");
+		pkg_error_warn("can not query the database");
 		return (-1);
 	}
 
@@ -74,7 +76,7 @@ exec_add(int argc, char **argv)
 	}
 
 	if (pkg_add(db, pkg) != EPKG_OK)
-		pkg_error_warn("Can not install %s", argv[1]);
+		pkg_error_warn("can not install %s", argv[1]);
 
 	pkgdb_close(db);
 	pkg_free(pkg);

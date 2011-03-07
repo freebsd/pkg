@@ -272,7 +272,8 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 	struct pkg_option *o;
 	struct pkgdb_it *i;
 
-	if (it->type != IT_PKG)
+
+	if (it == NULL || it->type != IT_PKG)
 		return (ERROR_BAD_ARG("it"));
 
 	switch (sqlite3_step(it->stmt)) {
@@ -393,7 +394,7 @@ pkgdb_it_next_conflict(struct pkgdb_it *it, struct pkg_conflict **c_p)
 {
 	struct pkg_conflict *c;
 
-	if (it->type != IT_CONFLICT)
+	if (it == NULL || it->type != IT_CONFLICT)
 		return (ERROR_BAD_ARG("it"));
 
 	switch (sqlite3_step(it->stmt)) {
@@ -419,7 +420,7 @@ pkgdb_it_next_file(struct pkgdb_it *it, struct pkg_file **file_p)
 {
 	struct pkg_file *file;
 
-	if (it->type != IT_FILE)
+	if (it == NULL || it->type != IT_FILE)
 		return (ERROR_BAD_ARG("it"));
 
 	switch (sqlite3_step(it->stmt)) {
@@ -445,7 +446,7 @@ pkgdb_it_next_exec(struct pkgdb_it *it, struct pkg_exec **exec_p)
 {
 	struct pkg_exec *exec;
 
-	if (it->type != IT_EXEC)
+	if (it == NULL || it->type != IT_EXEC)
 		return (ERROR_BAD_ARG("it"));
 
 	switch (sqlite3_step(it->stmt)) {
@@ -471,7 +472,7 @@ pkgdb_it_next_script (struct pkgdb_it *it, struct pkg_script **script_p)
 {
 	struct pkg_script *script;
 
-	if (it->type != IT_SCRIPT)
+	if (it == NULL || it->type != IT_SCRIPT)
 		return (ERROR_BAD_ARG("it"));
 
 	switch (sqlite3_step(it->stmt)) {
@@ -497,7 +498,7 @@ pkgdb_it_next_option (struct pkgdb_it *it, struct pkg_option **option_p)
 {
 	struct pkg_option *option;
 
-	if (it->type != IT_OPTION)
+	if (it == NULL || it->type != IT_OPTION)
 		return (ERROR_BAD_ARG("it"));
 
 	switch (sqlite3_step(it->stmt)) {

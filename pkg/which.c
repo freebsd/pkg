@@ -26,6 +26,7 @@ exec_which(int argc, char **argv)
 	char pathabs[MAXPATHLEN];
 	char pathabsdir[MAXPATHLEN];
 	int retcode = 1;
+	int ret;
 
 	if (argc != 2) {
 		usage_which();
@@ -33,7 +34,7 @@ exec_which(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db) != EPKG_OK) {
-		pkg_error_warn("Can not open database");
+		pkg_error_warn("can not open database");
 		pkgdb_close(db);
 		return (-1);
 	}
@@ -42,15 +43,18 @@ exec_which(int argc, char **argv)
 	snprintf(pathabs, sizeof(pathabs), "%s/%s", pathabsdir, basename(argv[1]));
 
 	if ((it = pkgdb_query_which(db, pathabs)) == NULL) {
-		pkg_error_warn("");
+		pkg_error_warn("can not query database");
 		return (-1);
 	}
 
 	pkg_new(&pkg);
-	if (pkgdb_it_next_pkg(it, &pkg, PKG_BASIC) == EPKG_OK) {
+	if (( ret = pkgdb_it_next_pkg(it, &pkg, PKG_BASIC)) == EPKG_OK) {
 		retcode = 0;
 		printf("%s was installed by package %s-%s\n", pathabs, pkg_get(pkg, PKG_NAME),
 			   pkg_get(pkg, PKG_VERSION));
+	} else if (ret != EPKG_END) {
+		pkg_error_warn("can not iterate over results");
+		retcode = -1;
 	}
 	pkg_free(pkg);
 	pkgdb_it_free(it);

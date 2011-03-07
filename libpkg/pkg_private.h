@@ -29,7 +29,7 @@ struct pkg {
 	struct array scripts;
 	struct array exec;
 	struct array options;
-	const char *path;
+	const char *path; /* TODO: remove */
 	pkg_t type;
 };
 

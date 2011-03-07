@@ -18,6 +18,8 @@ static const char * pkg_create_set_format(struct archive *, pkg_formats);
 static int pkg_create_from_dir(struct pkg *, const char *, struct archive *);
 static int pkg_create_append_buffer(struct archive *, struct archive_entry *, const char *, const char *);
 
+/* TODO: error reporting */
+
 static int
 pkg_create_append_buffer(struct archive *a, struct archive_entry *e, const char *buf, const char *name)
 {
@@ -160,9 +162,8 @@ pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char
 	archive_write_close(pkg_archive);
 	archive_write_finish(pkg_archive);
 
-	return (0);
+	return (EPKG_OK);
 }
-
 
 static const char *
 pkg_create_set_format(struct archive *pkg_archive, pkg_formats format)

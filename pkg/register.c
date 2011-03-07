@@ -161,7 +161,7 @@ exec_register(int argc, char **argv)
 		free(plist);
 
 	if (pkgdb_open(&db) != EPKG_OK) {
-		pkg_error_warn("Can not open database");
+		pkg_error_warn("can not open database");
 		return (-1);
 	}
 
@@ -171,7 +171,7 @@ exec_register(int argc, char **argv)
 	compute_flatsize(pkg);
 
 	if (pkgdb_register_pkg(db, pkg) != EPKG_OK) {
-		pkg_error_warn("Can not register package");
+		pkg_error_warn("can not register package");
 		retcode = 1;
 	}
 

@@ -39,11 +39,18 @@ progress(struct pkg *pkg, void *data) {
 int
 exec_repo(int argc, char **argv)
 {
-	int len=0;
+	int ret;
+	int len = 0;
+
 	if (argc != 2) {
 		usage_repo();
 		return (EX_USAGE);
 	}
 
-	return (pkg_create_repo(argv[1], progress, &len));
+	ret = pkg_create_repo(argv[1], progress, &len);
+
+	if (ret != EPKG_OK)
+		pkg_error_warn("can not create repository");
+
+	return (ret);
 }

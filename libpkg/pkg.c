@@ -254,7 +254,7 @@ pkg_conflicts(struct pkg *pkg)
 }
 
 int
-pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
+pkg_open(const char *path, struct pkg **pkg_p)
 {
 	struct archive *a;
 	struct archive_entry *ae;
@@ -277,7 +277,6 @@ pkg_open(const char *path, struct pkg **pkg_p, int query_flags)
 		file_fetch(path, "/tmp/bla");
 		path = "/tmp/bla";
 	}
-	(void)query_flags;
 
 	a = archive_read_new();
 	archive_read_support_compression_all(a);

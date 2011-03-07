@@ -42,6 +42,8 @@ exec_create(int argc, char **argv)
 	pkg_formats fmt;
 	char mpath[MAXPATHLEN];
 	char ch;
+	int retcode = 0;
+	int ret;
 
 	while ((ch = getopt(argc, argv, "agxXf:r:m:o:")) != -1) {
 		switch (ch) {
@@ -94,7 +96,7 @@ exec_create(int argc, char **argv)
 		else if (strcmp(format, "tar") == 0)
 			fmt = TAR;
 		else {
-			warnx("Unknown format %s, using txz", format);
+			warnx("unknown format %s, using txz", format);
 			fmt = TXZ;
 		}
 	}
@@ -102,27 +104,43 @@ exec_create(int argc, char **argv)
 	if (manifestdir == NULL) {
 		/* create package from local db */
 		if (pkgdb_open(&db) != EPKG_OK) {
-			pkg_error_warn("Can not open database");
+			pkg_error_warn("can not open database");
 			pkgdb_close(db);
 			return (-1);
 		}
 
 		if ((it = pkgdb_query(db, argv[0], match)) == NULL) {
-			pkg_error_warn("");
+			pkg_error_warn("can not query database");
 			return (-1);
 		}
 
 		pkg_new(&pkg);
-		while (pkgdb_it_next_pkg(it, &pkg, PKG_ALL) == EPKG_OK) {
-			printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-			pkg_create(NULL, fmt, outdir, rootdir, pkg);
+		while ((ret = pkgdb_it_next_pkg(it, &pkg, PKG_ALL)) == EPKG_OK) {
+			printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME),
+				   pkg_get(pkg, PKG_VERSION));
+
+			if (pkg_create(NULL, fmt, outdir, rootdir, pkg) != EPKG_OK) {
+				pkg_error_warn("can not create package");
+				retcode++;
+			}
 		}
+
 		pkg_free(pkg);
 		pkgdb_it_free(it);
 		pkgdb_close(db);
+
+		if (ret != EPKG_END) {
+			pkg_error_warn("can not iterate over results");
+			retcode++;
+		}
+
 	} else {
 		snprintf(mpath, sizeof(mpath), "%s/+MANIFEST", manifestdir);
-		pkg_create(mpath, fmt, outdir, rootdir, NULL);
+		if (pkg_create(mpath, fmt, outdir, rootdir, NULL) != EPKG_OK) {
+			pkg_error_warn("can not create package");
+			retcode++;
+		}
 	}
-	return (0);
+
+	return (retcode);
 }

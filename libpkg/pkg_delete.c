@@ -20,8 +20,9 @@ dircmp(char *path, struct array *a)
 			return (1);
 
 	return (0);
-} 
+}
 
+/* TODO: take an origin and not a pkg */
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 {

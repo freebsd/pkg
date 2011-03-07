@@ -43,6 +43,7 @@ pkg_extract(const char *path)
 	return (EPKG_OK);
 }
 
+/* TODO: take a path to the package archive instead of a pkg */
 int
 pkg_add(struct pkgdb *db, struct pkg *pkg)
 {

@@ -156,7 +156,7 @@ void pkg_free(struct pkg *);
  * NULL pointer, the function allocate a new pkg using pkg_new().
  * @param flags Unused.
  */
-int pkg_open(const char *path, struct pkg **p, int flags);
+int pkg_open(const char *path, struct pkg **p);
 
 pkg_t pkg_type(struct pkg *);
 

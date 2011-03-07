@@ -23,6 +23,8 @@ exec_delete(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	char *origin = NULL;
 	char ch;
+	int ret;
+	int flags = PKG_BASIC|PKG_FILES|PKG_RDEPS;
 	int force = 0;
 	int retcode = 0;
 
@@ -46,7 +48,7 @@ exec_delete(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db) != EPKG_OK) {
-		pkg_error_warn("Can not open database");
+		pkg_error_warn("can not open database");
 		pkgdb_close(db);
 		return (-1);
 	}
@@ -54,17 +56,24 @@ exec_delete(int argc, char **argv)
 	if (argc == 1)
 		origin = argv[0];
 
-	it = pkgdb_query(db, origin, match);
+	if ((it = pkgdb_query(db, origin, match)) == NULL) {
+		pkg_error_warn("Can not query database");
+		return (1);
+	}
 
 	pkg_new(&pkg);
-	while (pkgdb_it_next_pkg(it, &pkg, PKG_BASIC|PKG_FILES|PKG_RDEPS) ==
-		   EPKG_OK) {
+	while ((ret = pkgdb_it_next_pkg(it, &pkg, flags)) == EPKG_OK) {
 		if (pkg_delete(pkg, db, force) != EPKG_OK) {
 			retcode++;
-			pkg_error_warn("Can not delete %s", pkg_get(pkg, PKG_ORIGIN));
+			pkg_error_warn("can not delete %s", pkg_get(pkg, PKG_ORIGIN));
 		}
 	}
 	pkg_free(pkg);
+
+	if (ret != EPKG_END) {
+		pkg_error_warn("can not iterate over results");
+		retcode++;
+	}
 
 	pkgdb_it_free(it);
 	pkgdb_close(db);
