@@ -45,8 +45,8 @@ exec_delete(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (pkgdb_open(&db) == 1) {
-		pkgdb_warn(db);
+	if (pkgdb_open(&db) != EPKG_OK) {
+		pkg_error_warn("Can not open database");
 		pkgdb_close(db);
 		return (-1);
 	}
@@ -57,10 +57,11 @@ exec_delete(int argc, char **argv)
 	it = pkgdb_query(db, origin, match);
 
 	pkg_new(&pkg);
-	while (pkgdb_it_next_pkg(it, &pkg, PKG_BASIC|PKG_FILES|PKG_RDEPS) == 0) {
-		if (pkg_delete(pkg, db, force) != 0) {
+	while (pkgdb_it_next_pkg(it, &pkg, PKG_BASIC|PKG_FILES|PKG_RDEPS) ==
+		   EPKG_OK) {
+		if (pkg_delete(pkg, db, force) != EPKG_OK) {
 			retcode++;
-			warnx("Can not delete %s", pkg_get(pkg, PKG_ORIGIN));
+			pkg_error_warn("Can not delete %s", pkg_get(pkg, PKG_ORIGIN));
 		}
 	}
 	pkg_free(pkg);

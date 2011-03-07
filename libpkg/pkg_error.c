@@ -80,7 +80,7 @@ pkg_error_warn(const char *fmt, ...)
 	vasprintf(&str, fmt, ap);
 	va_end(ap);
 
-	fprintf(stderr, "%s: %s\n", str, pkg_error_string());
+	warnx("%s: %s\n", str, pkg_error_string());
 	free(str);
 }
 

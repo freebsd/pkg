@@ -43,6 +43,7 @@ exec_register(int argc, char **argv)
 
 	bool heuristic = false;
 
+	int retcode = 0;
 	int ret = 0;
 
 	pkg_new(&pkg);
@@ -159,8 +160,8 @@ exec_register(int argc, char **argv)
 	if (plist != NULL)
 		free(plist);
 
-	if (pkgdb_open(&db) == -1) {
-		pkgdb_warn(db);
+	if (pkgdb_open(&db) != EPKG_OK) {
+		pkg_error_warn("Can not open database");
 		return (-1);
 	}
 
@@ -169,11 +170,15 @@ exec_register(int argc, char **argv)
 
 	compute_flatsize(pkg);
 
-	pkgdb_register_pkg(db, pkg);
+	if (pkgdb_register_pkg(db, pkg) != EPKG_OK) {
+		pkg_error_warn("Can not register package");
+		retcode = 1;
+	}
+
 	pkgdb_close(db);
 	pkg_free(pkg);
 
-	return (0);
+	return (retcode);
 }
 
 static void

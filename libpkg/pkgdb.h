@@ -7,8 +7,6 @@
 
 struct pkgdb {
 	sqlite3 *sqlite;
-	int errnum;
-	char errstring[1024];
 };
 
 typedef enum _pkgdb_it_t {
@@ -19,12 +17,11 @@ typedef enum _pkgdb_it_t {
 	IT_SCRIPT,
 	IT_OPTION
 } pkgdb_it_t;
+
 struct pkgdb_it {
 	struct pkgdb *db;
 	sqlite3_stmt *stmt;
 	pkgdb_it_t type;
 };
-
-void pkgdb_set_error(struct pkgdb *, int, const char *, ...);
 
 #endif

@@ -101,19 +101,19 @@ exec_create(int argc, char **argv)
 
 	if (manifestdir == NULL) {
 		/* create package from local db */
-		if (pkgdb_open(&db) == -1) {
-			pkgdb_warn(db);
+		if (pkgdb_open(&db) != EPKG_OK) {
+			pkg_error_warn("Can not open database");
 			pkgdb_close(db);
 			return (-1);
 		}
 
 		if ((it = pkgdb_query(db, argv[0], match)) == NULL) {
-			pkgdb_warn(db);
+			pkg_error_warn("");
 			return (-1);
 		}
 
 		pkg_new(&pkg);
-		while (pkgdb_it_next_pkg(it, &pkg, PKG_ALL) == 0) {
+		while (pkgdb_it_next_pkg(it, &pkg, PKG_ALL) == EPKG_OK) {
 			printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 			pkg_create(NULL, fmt, outdir, rootdir, pkg);
 		}

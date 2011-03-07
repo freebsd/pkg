@@ -32,8 +32,8 @@ exec_which(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (pkgdb_open(&db) == -1) {
-		pkgdb_warn(db);
+	if (pkgdb_open(&db) != EPKG_OK) {
+		pkg_error_warn("Can not open database");
 		pkgdb_close(db);
 		return (-1);
 	}
@@ -42,12 +42,12 @@ exec_which(int argc, char **argv)
 	snprintf(pathabs, sizeof(pathabs), "%s/%s", pathabsdir, basename(argv[1]));
 
 	if ((it = pkgdb_query_which(db, pathabs)) == NULL) {
-		pkgdb_warn(db);
+		pkg_error_warn("");
 		return (-1);
 	}
 
 	pkg_new(&pkg);
-	if (pkgdb_it_next_pkg(it, &pkg, PKG_BASIC) == 0) {
+	if (pkgdb_it_next_pkg(it, &pkg, PKG_BASIC) == EPKG_OK) {
 		retcode = 0;
 		printf("%s was installed by package %s-%s\n", pathabs, pkg_get(pkg, PKG_NAME),
 			   pkg_get(pkg, PKG_VERSION));

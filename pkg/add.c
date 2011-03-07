@@ -34,25 +34,24 @@ exec_add(int argc, char **argv)
 		return (-1);
 	}
 
-	if (pkgdb_open(&db) == -1) {
-		pkgdb_warn(db);
+	if (pkgdb_open(&db) != EPKG_OK) {
+		pkg_error_warn("Can not open database");
 		pkgdb_close(db);
 		return (-1);
 	}
 
 	/* check if already installed */
 	if ((it = pkgdb_query(db, pkg_get(pkg, PKG_ORIGIN), MATCH_EXACT)) == NULL) {
-		pkgdb_warn(db);
+		pkg_error_warn("");
 		return (-1);
 	}
 
 	pkg_new(&p);
 
-	if (pkgdb_it_next_pkg(it, &p, PKG_BASIC) == 0) {
+	if (pkgdb_it_next_pkg(it, &p, PKG_BASIC) == EPKG_OK) {
 		installed = true;
 	}
 	pkgdb_it_free(it);
-
 
 	if (installed) {
 		err(1, "%s is already installed\n", pkg_get(pkg, PKG_NAME));

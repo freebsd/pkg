@@ -332,8 +332,6 @@ int pkgdb_it_next_option(struct pkgdb_it *, struct pkg_option **);
 void pkgdb_it_free(struct pkgdb_it *);
 
 const char *pkgdb_get_dir(void);
-void pkgdb_warn(struct pkgdb *);
-int pkgdb_errnum(struct pkgdb *);
 
 /* create */
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;

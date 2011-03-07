@@ -71,6 +71,7 @@ exec_info(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	char ch;
 	size_t i;
+	int ret;
 	int retcode = 0;
 	bool gotone = false;
 
@@ -132,14 +133,14 @@ exec_info(int argc, char **argv)
 		return (query_pkg(pkg, opt));
 	}
 
-	if (pkgdb_open(&db) == -1) {
-		pkgdb_warn(db);
+	if (pkgdb_open(&db) != EPKG_OK) {
+		pkg_error_warn("Can not open database");
 		pkgdb_close(db);
 		return (-1);
 	}
 
 	if ((it = pkgdb_query(db, argv[0], match)) == NULL) {
-		pkgdb_warn(db);
+		pkg_error_warn("");
 		return (-1);
 	}
 
@@ -152,7 +153,7 @@ exec_info(int argc, char **argv)
 
 	/* end of compatibility hacks */
 
-	while (pkgdb_it_next_pkg(it, &pkg, query_flags) == 0) {
+	while ((ret = pkgdb_it_next_pkg(it, &pkg, query_flags)) == EPKG_OK) {
 		gotone = true;
 
 		if (opt & INFO_EXISTS) {
@@ -204,8 +205,8 @@ exec_info(int argc, char **argv)
 	}
 	pkg_free(pkg);
 
-	if (pkgdb_errnum(db) > 0) {
-		pkgdb_warn(db);
+	if (ret != EPKG_END) {
+		pkg_error_warn("");
 		retcode = -1;
 	}
 
