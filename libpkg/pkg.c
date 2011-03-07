@@ -153,6 +153,7 @@ pkg_scripts(struct pkg *pkg)
 		return (NULL);
 	}
 
+	array_init(&pkg->scripts, 1);
 	return ((struct pkg_script **)pkg->scripts.data);
 }
 
@@ -164,6 +165,7 @@ pkg_execs(struct pkg *pkg)
 		return (NULL);
 	}
 
+	array_init(&pkg->exec, 1);
 	return (struct pkg_exec **) pkg->exec.data;
 }
 
@@ -175,6 +177,7 @@ pkg_deps(struct pkg *pkg)
 		return (NULL);
 	}
 
+	array_init(&pkg->deps, 1);
 	return ((struct pkg **)pkg->deps.data);
 }
 
@@ -186,6 +189,7 @@ pkg_options(struct pkg *pkg)
 		return (NULL);
 	}
 
+	array_init(&pkg->options, 1);
 	return ((struct pkg_option **)pkg->options.data);
 }
 
@@ -197,10 +201,6 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 	int i;
 
 	deps = pkg_deps(pkg);
-	if (deps == NULL)
-		// TODO: error reporting
-		return (-1);
-
 	pkg_new(&p);
 	for (i = 0; deps[i] != NULL; i++) {
 		it = pkgdb_query(db, pkg_get(deps[i], PKG_ORIGIN), MATCH_EXACT);
@@ -225,6 +225,7 @@ pkg_rdeps(struct pkg *pkg)
 		return (NULL);
 	}
 
+	array_init(&pkg->rdeps, 1);
 	return ((struct pkg **)pkg->rdeps.data);
 }
 
@@ -236,6 +237,7 @@ pkg_files(struct pkg *pkg)
 		return (NULL);
 	}
 
+	array_init(&pkg->files, 1);
 	return ((struct pkg_file **)pkg->files.data);
 }
 
@@ -247,6 +249,7 @@ pkg_conflicts(struct pkg *pkg)
 		return (NULL);
 	}
 
+	array_init(&pkg->conflicts, 1);
 	return ((struct pkg_conflict **)pkg->conflicts.data);
 }
 

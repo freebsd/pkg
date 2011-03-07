@@ -55,6 +55,7 @@ array_reset(struct array *a, void (*free_elm)(void*))
 	if (free_elm != NULL)
 		for (size_t i = 0; i < a->len; i++)
 			free_elm(a->data[i]);
+
 	a->len = 0;
 	a->data[0] = NULL;
 }
@@ -65,12 +66,10 @@ array_free(struct array *a, void (*free_elm)(void*))
 	if (a->data == NULL)
 		return;
 
-	if (free_elm != NULL)
-		for (size_t i = 0; i < a->len; i++)
-			free_elm(a->data[i]);
+	array_reset(a, free_elm);
+
 	free(a->data);
 	a->data = NULL;
-	a->len = 0;
 	a->cap = 0;
 }
 
