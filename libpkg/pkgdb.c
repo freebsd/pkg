@@ -828,7 +828,7 @@ pkgdb_pkg_loadexecs(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 
 	e = NULL;
-	while (pkgdb_it_next_exec(it, &e) == EPKG_OK) {
+	while ((ret = pkgdb_it_next_exec(it, &e)) == EPKG_OK) {
 		array_append(&pkg->exec, e);
 		e = NULL;
 	}
