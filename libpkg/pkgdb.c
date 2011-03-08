@@ -559,7 +559,7 @@ pkgdb_query_dep(struct pkgdb *db, const char *origin) {
 	sqlite3_stmt *stmt;
 	const char sql[] = ""
 		"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
-			"p.message, p.arch, p.osversion, p.maintainer, p.www "
+			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 			"p.prefix, p.flatsize "
 		"FROM packages AS p, mtree AS m, deps AS d "
 		"WHERE m.id = p.mtree_id "
@@ -581,7 +581,7 @@ pkgdb_query_rdep(struct pkgdb *db, const char *origin) {
 	sqlite3_stmt *stmt;
 	const char sql[] = ""
 		"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
-			"p.message, p.arch, p.osversion, p.maintainer, p.www "
+			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 			"p.prefix, p.flatsize "
 		"FROM packages AS p, mtree AS m, deps AS d "
 		"WHERE m.id = p.mtree_id "

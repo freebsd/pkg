@@ -22,7 +22,7 @@ static void pkg_error_init_once(void);
 static void pkg_error_key_free(void *);
 
 pkg_error_t
-pkg_error_set(pkg_error_t num, const char *fmt, ...)
+_pkg_error_set(pkg_error_t num, const char *fmt, ...)
 {
 	struct pkg_error *e;
 	va_list ap;
