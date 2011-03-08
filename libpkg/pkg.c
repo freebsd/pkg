@@ -10,8 +10,6 @@
 #include "pkg_private.h"
 #include "pkg_util.h"
 
-static void pkg_free_void(void*);
-
 pkg_t
 pkg_type(struct pkg *pkg)
 {
@@ -393,6 +391,7 @@ pkg_reset(struct pkg *pkg)
 	sbuf_reset(pkg->prefix);
 
 	pkg->flatsize = 0;
+	pkg->flags = 0;
 	pkg->path = NULL;
 
 	array_reset(&pkg->deps, &pkg_free_void);
@@ -434,7 +433,7 @@ pkg_free(struct pkg *pkg)
 	free(pkg);
 }
 
-static void
+void
 pkg_free_void(void *p)
 {
 	if (p != NULL)

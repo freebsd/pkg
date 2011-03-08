@@ -331,6 +331,14 @@ int pkgdb_it_next_script(struct pkgdb_it *, struct pkg_script **);
 int pkgdb_it_next_option(struct pkgdb_it *, struct pkg_option **);
 void pkgdb_it_free(struct pkgdb_it *);
 
+int pkgdb_pkg_loaddeps(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_pkg_loadrdeps(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_pkg_loadconflicts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_pkg_loadfiles(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_pkg_loadexecs(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_pkg_loadscripts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_pkg_loadoptions(struct pkgdb *db, struct pkg *pkg);
+
 const char *pkgdb_get_dir(void);
 
 /* create */

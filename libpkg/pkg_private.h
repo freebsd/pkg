@@ -30,6 +30,7 @@ struct pkg {
 	struct array exec;
 	struct array options;
 	const char *path; /* TODO: remove */
+	int flags;
 	pkg_t type;
 };
 
@@ -57,6 +58,7 @@ struct pkg_option {
 	struct sbuf *value;
 };
 
+void pkg_free_void(void *);
 void pkg_conflict_free_void(void *);
 void pkg_script_free_void(void *);
 void pkg_exec_free_void(void *);

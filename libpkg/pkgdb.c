@@ -264,14 +264,7 @@ int
 pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 {
 	struct pkg *pkg;
-	struct pkg *p;
-	struct pkg_conflict *c;
-	struct pkg_file *f;
-	struct pkg_exec *e;
-	struct pkg_script *s;
-	struct pkg_option *o;
-	struct pkgdb_it *i;
-
+	int ret;
 
 	if (it == NULL || it->type != IT_PKG)
 		return (ERROR_BAD_ARG("it"));
@@ -299,88 +292,34 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
 		pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
 
-		if (flags & PKG_DEPS) {
-			array_init(&pkg->deps, 10);
+		if (flags & PKG_DEPS)
+			if ((ret = pkgdb_pkg_loaddeps(it->db, pkg)) != EPKG_OK)
+				return (ret);
 
-			i = pkgdb_query_dep(it->db, pkg_get(pkg, PKG_ORIGIN));
-			p = NULL;
-			while (pkgdb_it_next_pkg(i, &p, PKG_BASIC) == EPKG_OK) {
-				array_append(&pkg->deps, p);
-				p = NULL;
-			}
-			pkgdb_it_free(i);
-		}
+		if (flags & PKG_RDEPS)
+			if ((ret = pkgdb_pkg_loadrdeps(it->db, pkg)) != EPKG_OK)
+				return (ret);
 
-		if (flags & PKG_RDEPS) {
-			array_init(&pkg->rdeps, 5);
+		if (flags & PKG_CONFLICTS)
+			if ((ret = pkgdb_pkg_loadconflicts(it->db, pkg)) != EPKG_OK)
+				return (ret);
 
-			i = pkgdb_query_rdep(it->db, pkg_get(pkg, PKG_ORIGIN));
-			p = NULL;
-			while (pkgdb_it_next_pkg(i, &p, PKG_BASIC) == EPKG_OK) {
-				array_append(&pkg->rdeps, p);
-				p = NULL;
-			}
-			pkgdb_it_free(i);
-		}
+		if (flags & PKG_FILES)
+			if ((ret = pkgdb_pkg_loadfiles(it->db, pkg)) != EPKG_OK)
+				return (ret);
 
-		if (flags & PKG_CONFLICTS) {
-			array_init(&pkg->conflicts, 5);
+		if (flags & PKG_EXECS)
+			if ((ret = pkgdb_pkg_loadexecs(it->db, pkg)) != EPKG_OK)
+				return (ret);
 
-			i = pkgdb_query_conflicts(it->db, pkg_get(pkg, PKG_ORIGIN));
-			c = NULL;
-			while (pkgdb_it_next_conflict(i, &c) == EPKG_OK) {
-				array_append(&pkg->conflicts, c);
-				c = NULL;
-			}
-			pkgdb_it_free(i);
-		}
+		if (flags & PKG_SCRIPTS)
+			if ((ret = pkgdb_pkg_loadscripts(it->db, pkg)) != EPKG_OK)
+				return (ret);
 
-		if (flags & PKG_FILES) {
-			array_init(&pkg->files, 10);
+		if (flags & PKG_OPTIONS)
+			if ((ret = pkgdb_pkg_loadoptions(it->db, pkg)) != EPKG_OK)
+				return (ret);
 
-			i = pkgdb_query_files(it->db, pkg_get(pkg, PKG_ORIGIN));
-			f = NULL;
-			while (pkgdb_it_next_file(i, &f) == EPKG_OK) {
-				array_append(&pkg->files, f);
-				f = NULL;
-			}
-			pkgdb_it_free(i);
-		}
-
-		if (flags & PKG_EXECS) {
-			array_init(&pkg->exec, 5);
-
-			i = pkgdb_query_execs(it->db, pkg_get(pkg, PKG_ORIGIN));
-			e = NULL;
-			while (pkgdb_it_next_exec(i, &e) == EPKG_OK) {
-				array_append(&pkg->exec, e);
-				e = NULL;
-			}
-			pkgdb_it_free(i);
-		}
-
-		if (flags & PKG_SCRIPTS) {
-			array_init(&pkg->scripts, 6);
-			
-			i = pkgdb_query_scripts(it->db, pkg_get(pkg, PKG_ORIGIN));
-			s = NULL;
-			while (pkgdb_it_next_script(i, &s) == EPKG_OK) {
-				array_append(&pkg->scripts, s);
-				s = NULL;
-			}
-			pkgdb_it_free(i);
-		}
-		if (flags & PKG_OPTIONS) {
-			array_init(&pkg->options, 5);
-
-			i = pkgdb_query_options(it->db, pkg_get(pkg, PKG_ORIGIN));
-			o = NULL;
-			while (pkgdb_it_next_option(i, &o) == EPKG_OK) {
-				array_append(&pkg->options, o);
-				o = NULL;
-			}
-			pkgdb_it_free(i);
-		}
 		return (EPKG_OK);
 	case SQLITE_DONE:
 		return (EPKG_END);
@@ -749,7 +688,223 @@ pkgdb_query_options(struct pkgdb *db, const char *origin) {
 	return (pkgdb_it_new(db, stmt, IT_OPTION));
 }
 
-/* TODO: error handling of this mess */
+int
+pkgdb_pkg_loaddeps(struct pkgdb *db, struct pkg *pkg)
+{
+	struct pkgdb_it *it;
+	struct pkg *p;
+	int ret;
+
+	if (pkg->flags & PKG_DEPS)
+		return (EPKG_OK);
+
+	array_init(&pkg->deps, 10);
+
+	if ((it = pkgdb_query_dep(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
+		return (EPKG_FATAL);
+
+	p = NULL;
+	while ((ret = pkgdb_it_next_pkg(it, &p, PKG_BASIC)) == EPKG_OK) {
+		array_append(&pkg->deps, p);
+		p = NULL;
+	}
+	pkgdb_it_free(it);
+
+	if (ret != EPKG_END) {
+		array_reset(&pkg->deps, &pkg_free_void);
+		return (ret);
+	}
+
+	pkg->flags |= PKG_DEPS;
+	return (EPKG_OK);
+}
+
+int
+pkgdb_pkg_loadrdeps(struct pkgdb *db, struct pkg *pkg)
+{
+	struct pkgdb_it *it;
+	struct pkg *p;
+	int ret;
+
+	if (pkg->flags & PKG_RDEPS)
+		return (EPKG_OK);
+
+	array_init(&pkg->rdeps, 5);
+
+	if ((it = pkgdb_query_rdep(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
+		return (EPKG_FATAL);
+
+	p = NULL;
+	while ((ret = pkgdb_it_next_pkg(it, &p, PKG_BASIC)) == EPKG_OK) {
+		array_append(&pkg->rdeps, p);
+		p = NULL;
+	}
+	pkgdb_it_free(it);
+
+	if (ret != EPKG_END) {
+		array_reset(&pkg->rdeps, &pkg_free_void);
+		return (ret);
+	}
+
+	pkg->flags |= PKG_RDEPS;
+	return (EPKG_OK);
+}
+
+int
+pkgdb_pkg_loadconflicts(struct pkgdb *db, struct pkg *pkg)
+{
+	struct pkgdb_it *it;
+	struct pkg_conflict *c;
+	int ret;
+
+	if (pkg->flags & PKG_CONFLICTS)
+		return (EPKG_OK);
+
+	array_init(&pkg->conflicts, 5);
+
+	if ((it = pkgdb_query_conflicts(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
+		return (EPKG_FATAL);
+
+	c = NULL;
+	while ((ret = pkgdb_it_next_conflict(it, &c)) == EPKG_OK) {
+		array_append(&pkg->conflicts, c);
+		c = NULL;
+	}
+	pkgdb_it_free(it);
+
+	if (ret != EPKG_END) {
+		array_reset(&pkg->conflicts, &pkg_conflict_free_void);
+		return (ret);
+	}
+
+	pkg->flags |= PKG_CONFLICTS;
+	return (EPKG_OK);
+}
+
+int
+pkgdb_pkg_loadfiles(struct pkgdb *db, struct pkg *pkg)
+{
+	struct pkgdb_it *it;
+	struct pkg_file *f;
+	int ret;
+
+	if (pkg->flags & PKG_FILES)
+		return (EPKG_OK);
+
+	array_init(&pkg->files, 10);
+
+	if ((it = pkgdb_query_files(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
+		return (EPKG_FATAL);
+
+	f = NULL;
+	while ((ret = pkgdb_it_next_file(it, &f)) == EPKG_OK) {
+		array_append(&pkg->files, f);
+		f = NULL;
+	}
+	pkgdb_it_free(it);
+
+	if (ret != EPKG_END) {
+		array_reset(&pkg->files, &free);
+		return (ret);
+	}
+
+	pkg->flags |= PKG_FILES;
+	return (EPKG_OK);
+}
+
+int
+pkgdb_pkg_loadexecs(struct pkgdb *db, struct pkg *pkg)
+{
+	struct pkgdb_it *it;
+	struct pkg_exec *e;
+	int ret;
+
+	if (pkg->flags & PKG_EXECS)
+		return (EPKG_OK);
+
+	array_init(&pkg->exec, 5);
+
+	if ((it = pkgdb_query_execs(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
+		return (EPKG_FATAL);
+
+	e = NULL;
+	while (pkgdb_it_next_exec(it, &e) == EPKG_OK) {
+		array_append(&pkg->exec, e);
+		e = NULL;
+	}
+	pkgdb_it_free(it);
+
+	if (ret != EPKG_END) {
+		array_reset(&pkg->exec, &pkg_exec_free_void);
+		return (ret);
+	}
+
+	pkg->flags |= PKG_EXECS;
+	return (EPKG_OK);
+}
+
+int
+pkgdb_pkg_loadscripts(struct pkgdb *db, struct pkg *pkg)
+{
+	struct pkgdb_it *it;
+	struct pkg_script *s;
+	int ret;
+
+	if (pkg->flags & PKG_SCRIPTS)
+		return (EPKG_OK);
+
+	array_init(&pkg->scripts, 6);
+
+	if ((it = pkgdb_query_scripts(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
+		return (EPKG_FATAL);
+
+	s = NULL;
+	while ((ret = pkgdb_it_next_script(it, &s)) == EPKG_OK) {
+		array_append(&pkg->scripts, s);
+		s = NULL;
+	}
+	pkgdb_it_free(it);
+
+	if (ret != EPKG_END) {
+		array_reset(&pkg->scripts, &pkg_script_free_void);
+		return (ret);
+	}
+
+	pkg->flags |= PKG_SCRIPTS;
+	return (EPKG_OK);
+}
+
+int
+pkgdb_pkg_loadoptions(struct pkgdb *db, struct pkg *pkg)
+{
+	struct pkgdb_it *it;
+	struct pkg_option *o;
+	int ret;
+
+	if (pkg->flags & PKG_OPTIONS)
+		return (EPKG_OK);
+
+	array_init(&pkg->options, 5);
+
+	if ((it = pkgdb_query_options(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
+		return (EPKG_FATAL);
+
+	o = NULL;
+	while ((ret = pkgdb_it_next_option(it, &o)) == EPKG_OK) {
+		array_append(&pkg->options, o);
+		o = NULL;
+	}
+	pkgdb_it_free(it);
+
+	if (ret != EPKG_END) {
+		array_reset(&pkg->options, &pkg_option_free_void);
+		return (ret);
+	}
+
+	pkg->flags |= PKG_OPTIONS;
+	return (EPKG_OK);
+}
+
 int
 pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 {

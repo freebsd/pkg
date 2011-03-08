@@ -22,7 +22,6 @@ dircmp(char *path, struct array *a)
 	return (0);
 }
 
-/* TODO: take an origin and not a pkg */
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 {
@@ -46,8 +45,22 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if (db == NULL)
 		return (ERROR_BAD_ARG("db"));
 
+	/*
+	 * Ensure that we have all the informations we need
+	 */
+	if ((ret = pkgdb_pkg_loadrdeps(db, pkg)) != EPKG_OK)
+		return (ret);
+	if ((ret = pkgdb_pkg_loadfiles(db, pkg)) != EPKG_OK)
+		return (ret);
+	if ((ret = pkgdb_pkg_loadscripts(db, pkg)) != EPKG_OK)
+		return (ret);
+	if ((ret = pkgdb_pkg_loadexecs(db, pkg)) != EPKG_OK)
+		return (ret);
+
 	rdeps = pkg_rdeps(pkg);
 	files = pkg_files(pkg);
+	scripts = pkg_scripts(pkg);
+	execs = pkg_execs(pkg);
 	prefix = pkg_get(pkg, PKG_PREFIX);
 
 	if (rdeps == NULL || files == NULL)
@@ -61,26 +74,26 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 
 	script_cmd = sbuf_new_auto();
 	/* execute PRE_DEINSTALL */
-	if ((scripts = pkg_scripts(pkg)) != NULL)
-		for (i = 0; scripts[i] != NULL; i++) {
-			switch (pkg_script_type(scripts[i])) {
-				case PKG_SCRIPT_DEINSTALL:
-					sbuf_reset(script_cmd);
-					sbuf_printf(script_cmd, "set -- %s-%s DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-					sbuf_finish(script_cmd);
-					system(sbuf_data(script_cmd));
-					break;
-				case PKG_SCRIPT_PRE_DEINSTALL:
-					sbuf_reset(script_cmd);
-					sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-					sbuf_finish(script_cmd);
-					system(sbuf_data(script_cmd));
-					break;
-				default:
-					/* just ignore */
-					break;
-			}
+	for (i = 0; scripts[i] != NULL; i++) {
+		switch (pkg_script_type(scripts[i])) {
+			case PKG_SCRIPT_DEINSTALL:
+				sbuf_reset(script_cmd);
+				sbuf_printf(script_cmd, "set -- %s-%s DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				sbuf_finish(script_cmd);
+				system(sbuf_data(script_cmd));
+				break;
+			case PKG_SCRIPT_PRE_DEINSTALL:
+				sbuf_reset(script_cmd);
+				sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				sbuf_finish(script_cmd);
+				system(sbuf_data(script_cmd));
+				break;
+			default:
+				/* just ignore */
+				break;
 		}
+	}
+
 	a = archive_read_new();
 	archive_read_support_compression_none(a);
 	archive_read_support_format_mtree(a);
@@ -126,34 +139,32 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	}
 	array_free(&mtreedirs, &free);
 
-	if (scripts != NULL)
-		for (i = 0; scripts[i] != NULL; i++) {
-			switch (pkg_script_type(scripts[i])) {
-				case PKG_SCRIPT_DEINSTALL:
-					sbuf_reset(script_cmd);
-					sbuf_printf(script_cmd, "set -- %s-%s POST-DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-					sbuf_finish(script_cmd);
-					system(sbuf_data(script_cmd));
-					break;
-				case PKG_SCRIPT_POST_DEINSTALL:
-					sbuf_reset(script_cmd);
-					sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-					sbuf_finish(script_cmd);
-					system(sbuf_data(script_cmd));
-					break;
-				default:
-					/* just ignore */
-					break;
-			}
+	for (i = 0; scripts[i] != NULL; i++) {
+		switch (pkg_script_type(scripts[i])) {
+			case PKG_SCRIPT_DEINSTALL:
+				sbuf_reset(script_cmd);
+				sbuf_printf(script_cmd, "set -- %s-%s POST-DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				sbuf_finish(script_cmd);
+				system(sbuf_data(script_cmd));
+				break;
+			case PKG_SCRIPT_POST_DEINSTALL:
+				sbuf_reset(script_cmd);
+				sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				sbuf_finish(script_cmd);
+				system(sbuf_data(script_cmd));
+				break;
+			default:
+				/* just ignore */
+				break;
 		}
+	}
 
 	sbuf_free(script_cmd);
 
 	/* run the @unexec */
-	if ((execs = pkg_execs(pkg)) != NULL)
-		for (i = 0; execs[i] != NULL; i++)
-			if (pkg_exec_type(execs[i]) == PKG_UNEXEC)
-				system(pkg_exec_cmd(execs[i]));
+	for (i = 0; execs[i] != NULL; i++)
+		if (pkg_exec_type(execs[i]) == PKG_UNEXEC)
+			system(pkg_exec_cmd(execs[i]));
 
 	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
 }
