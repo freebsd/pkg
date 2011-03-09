@@ -63,14 +63,9 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	execs = pkg_execs(pkg);
 	prefix = pkg_get(pkg, PKG_PREFIX);
 
-	if (rdeps == NULL || files == NULL)
-		return (pkg_error_set(EPKG_FATAL, "missing deps and files infos"));
-
-	if (rdeps[0] != NULL && force == 0) {
-		warnx("%s is required by other packages", pkg_get(pkg, PKG_ORIGIN));
-		return (pkg_error_set(EPKG_REQUIRED, "%s is required by other"
-							  "packages", pkg_get(pkg, PKG_NAME)));
-	}
+	if (rdeps[0] != NULL && force == 0)
+		return (pkg_error_set(EPKG_REQUIRED, "this package is required by "
+							  "other packages"));
 
 	script_cmd = sbuf_new_auto();
 	/* execute PRE_DEINSTALL */
@@ -106,6 +101,11 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 
 	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK)
 		array_append(&mtreedirs, strdup(archive_entry_pathname(ae)));
+
+	if (ret != ARCHIVE_EOF) {
+		array_free(&mtreedirs, &free);
+		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a)));
+	}
 
 	for (i = 0; files[i] != NULL; i++) {
 		/* check sha256 */

@@ -29,84 +29,46 @@ pkg_get(struct pkg *pkg, pkg_attr attr)
 		return (NULL);
 	}
 
-	switch (attr) {
-		case PKG_NAME:
-			return (sbuf_get(pkg->name));
-		case PKG_VERSION:
-			return (sbuf_get(pkg->version));
-		case PKG_COMMENT:
-			return (sbuf_get(pkg->comment));
-		case PKG_ORIGIN:
-			return (sbuf_get(pkg->origin));
-		case PKG_DESC:
-			return (sbuf_get(pkg->desc));
-		case PKG_MTREE:
-			return (sbuf_get(pkg->mtree));
-		case PKG_MESSAGE:
-			return (sbuf_get(pkg->message));
-		case PKG_ARCH:
-			return (sbuf_get(pkg->arch));
-		case PKG_OSVERSION:
-			return (sbuf_get(pkg->osversion));
-		case PKG_MAINTAINER:
-			return (sbuf_get(pkg->maintainer));
-		case PKG_WWW:
-			return (sbuf_get(pkg->www));
-		case PKG_PREFIX:
-			return (sbuf_get(pkg->prefix));
+	if (attr > PKG_NUM_FIELDS) {
+		ERROR_BAD_ARG("attr");
+		return (NULL);
 	}
 
-	return (NULL);
+	return (sbuf_get(pkg->fields[attr].value));
 }
 
 int
 pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
 {
+	struct sbuf **sbuf;
+
 	if (pkg == NULL)
 		return (ERROR_BAD_ARG("pkg"));
 
-	if (value == NULL)
-		return (ERROR_BAD_ARG("value"));
+	if (attr > PKG_NUM_FIELDS)
+		return (ERROR_BAD_ARG("attr"));
 
-	switch (attr) {
-		case PKG_NAME:
-			return (sbuf_set(&pkg->name, value));
-		case PKG_VERSION:
-			return (sbuf_set(&pkg->version, value));
-		case PKG_COMMENT:
-			return (sbuf_set(&pkg->comment, value));
-		case PKG_ORIGIN:
-			return (sbuf_set(&pkg->origin, value));
-		case PKG_DESC:
-			return (sbuf_set(&pkg->desc, value));
-		case PKG_MTREE:
-			/* ensure that mtree begins by #mtree so libarchive
-			 * could handle it */
-
-			if (STARTS_WITH(value, "#mtree")) {
-				return (sbuf_set(&pkg->mtree, value));
-			} else {
-				sbuf_set(&pkg->mtree, "#mtree\n");
-				sbuf_cat(pkg->mtree, value);
-				sbuf_finish(pkg->mtree);
-				return (EPKG_OK);
-			}
-			return (sbuf_set(&pkg->mtree, value));
-		case PKG_MESSAGE:
-			return (sbuf_set(&pkg->message, value));
-		case PKG_ARCH:
-			return (sbuf_set(&pkg->arch, value));
-		case PKG_OSVERSION:
-			return (sbuf_set(&pkg->osversion, value));
-		case PKG_MAINTAINER:
-			return (sbuf_set(&pkg->maintainer, value));
-		case PKG_WWW:
-			return (sbuf_set(&pkg->www, value));
-		case PKG_PREFIX:
-			return (sbuf_set(&pkg->prefix, value));
+	if (value == NULL) {
+		if (pkg->fields[attr].optional == 1)
+			value = "";
+		else
+			return (ERROR_BAD_ARG("value"));
 	}
 
-	return (ERROR_BAD_ARG("attr"));
+	sbuf = &pkg->fields[attr].value;
+
+	/*
+	 * Ensure that mtree begins with `#mtree` so libarchive
+	 * could handle it
+	 */
+	if (attr == PKG_MTREE && !STARTS_WITH(value, "#mtree")) {
+		sbuf_set(sbuf, "#mtree\n");
+		sbuf_cat(*sbuf, value);
+		sbuf_finish(*sbuf);
+		return (EPKG_OK);
+	}
+
+	return (sbuf_set(sbuf, value));
 }
 
 int
@@ -328,8 +290,8 @@ pkg_open(const char *path, struct pkg **pkg_p)
 		sbuf_finish(dest);													\
 	}
 
-		COPY_FILE("+DESC", pkg->desc)
-		COPY_FILE("+MTREE_DIRS", pkg->mtree)
+		COPY_FILE("+DESC", pkg->fields[PKG_DESC].value)
+		COPY_FILE("+MTREE_DIRS", pkg->fields[PKG_MTREE].value)
 
 #define COPY_SCRIPT(sname, stype)											\
 	if (strcmp(fpath, sname) == 0) {										\
@@ -368,6 +330,9 @@ pkg_new(struct pkg **pkg)
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		return(pkg_error_seterrno());
 
+	(*pkg)->fields[PKG_MESSAGE].optional = 1;
+	(*pkg)->fields[PKG_WWW].optional = 1;
+
 	return (EPKG_OK);
 }
 
@@ -377,18 +342,8 @@ pkg_reset(struct pkg *pkg)
 	if (pkg == NULL)
 		return;
 
-	sbuf_reset(pkg->origin);
-	sbuf_reset(pkg->name);
-	sbuf_reset(pkg->version);
-	sbuf_reset(pkg->comment);
-	sbuf_reset(pkg->desc);
-	sbuf_reset(pkg->mtree);
-	sbuf_reset(pkg->message);
-	sbuf_reset(pkg->arch);
-	sbuf_reset(pkg->osversion);
-	sbuf_reset(pkg->maintainer);
-	sbuf_reset(pkg->www);
-	sbuf_reset(pkg->prefix);
+	for (int i = 0; i < PKG_NUM_FIELDS; i++)
+		sbuf_reset(pkg->fields[i].value);
 
 	pkg->flatsize = 0;
 	pkg->flags = 0;
@@ -409,18 +364,8 @@ pkg_free(struct pkg *pkg)
 	if (pkg == NULL)
 		return;
 
-	sbuf_free(pkg->name);
-	sbuf_free(pkg->version);
-	sbuf_free(pkg->origin);
-	sbuf_free(pkg->comment);
-	sbuf_free(pkg->desc);
-	sbuf_free(pkg->mtree);
-	sbuf_free(pkg->message);
-	sbuf_free(pkg->arch);
-	sbuf_free(pkg->osversion);
-	sbuf_free(pkg->maintainer);
-	sbuf_free(pkg->www);
-	sbuf_free(pkg->prefix);
+	for (int i = 0; i < PKG_NUM_FIELDS; i++)
+		sbuf_free(pkg->fields[i].value);
 
 	array_free(&pkg->deps, &pkg_free_void);
 	array_free(&pkg->rdeps, &pkg_free_void);

@@ -7,20 +7,13 @@
 
 #include "pkg_util.h"
 
+#define PKG_NUM_FIELDS 12
+
 struct pkg {
-	struct sbuf *origin;
-	struct sbuf *name;
-	struct sbuf *version;
-	struct sbuf *comment;
-	struct sbuf *desc;
-	struct sbuf *mtree;
-	struct sbuf *message;
-	struct sbuf *arch;
-	struct sbuf *osversion;
-	struct sbuf *maintainer;
-	struct sbuf *www;
-	struct sbuf *err;
-	struct sbuf *prefix;
+	struct {
+		struct sbuf *value;
+		unsigned int optional :1;
+	} fields[PKG_NUM_FIELDS];
 	int64_t flatsize;
 	struct array deps;
 	struct array rdeps;
