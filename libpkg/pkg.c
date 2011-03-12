@@ -222,7 +222,9 @@ pkg_open(struct pkg **pkg_p, const char *path)
 
 	retcode = pkg_open2(pkg_p, &a, &ae, path);
 
-	archive_read_finish(a);
+	if (a != NULL)
+		archive_read_finish(a);
+
 	return (retcode);
 }
 

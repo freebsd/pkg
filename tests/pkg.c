@@ -24,8 +24,8 @@ START_TEST(pkg_null)
 	fail_unless(pkg_new(&p) == EPKG_OK);
 	fail_unless(pkg_set(p, PKG_NAME, NULL) == EPKG_FATAL);
 	fail_unless(pkg_set_from_file(p, PKG_NAME, NULL) == EPKG_FATAL);
-	fail_unless(pkg_open(NULL, &p, 0) == EPKG_FATAL);
-	fail_unless(pkg_open("test", &p, 0) == EPKG_FATAL);
+	fail_unless(pkg_open(&p, NULL) == EPKG_FATAL);
+	fail_unless(pkg_open(&p, "test") == EPKG_FATAL);
 	fail_unless(pkg_addscript(p, NULL) == EPKG_FATAL);
 	fail_unless(pkg_addscript(p, "./bla") == EPKG_FATAL);
 	fail_unless(pkg_addoption(p, NULL, "bar") == EPKG_FATAL);
