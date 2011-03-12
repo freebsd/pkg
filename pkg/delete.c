@@ -76,6 +76,7 @@ exec_delete(int argc, char **argv)
 	}
 
 	pkgdb_it_free(it);
+	pkgdb_compact(db);
 	pkgdb_close(db);
 	return (retcode);
 }

@@ -349,6 +349,7 @@ int pkgdb_pkg_loadexecs(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_pkg_loadscripts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_pkg_loadoptions(struct pkgdb *db, struct pkg *pkg);
 
+int pkgdb_compact(struct pkgdb *db);
 const char *pkgdb_get_dir(void);
 
 /* create */

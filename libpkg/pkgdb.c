@@ -1215,3 +1215,48 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 
 	return (EPKG_OK);
 }
+
+static int get_pragma(sqlite3 *s, const char *sql, int *res) {
+	sqlite3_stmt *stmt;
+
+	if (sqlite3_prepare(s, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (ERROR_SQLITE(s));
+
+	if (sqlite3_step(stmt) != SQLITE_ROW) {
+		sqlite3_finalize(stmt);
+		return (ERROR_SQLITE(s));
+	}
+
+	*res = sqlite3_column_int(stmt, 0);
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_compact(struct pkgdb *db)
+{
+	int page_count = 0;
+	int freelist_count = 0;
+	char *errmsg;
+	int retcode = EPKG_OK;
+	int ret;
+
+	if (db == NULL)
+		return (ERROR_BAD_ARG("db"));
+
+	ret += get_pragma(db->sqlite, "PRAGMA page_count;", &page_count);
+	ret += get_pragma(db->sqlite, "PRAGMA freelist_count;", &freelist_count);
+
+	if (ret != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (page_count / freelist_count < 0.25)
+		return (EPKG_OK);
+
+	if (sqlite3_exec(db->sqlite, "VACUUM;", NULL, NULL, &errmsg) != SQLITE_OK){
+		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
+		sqlite3_free(errmsg);
+	}
+
+	return (retcode);
+}
