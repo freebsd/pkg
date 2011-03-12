@@ -14,40 +14,27 @@ usage_repo(void)
 
 static void
 progress(struct pkg *pkg, void *data) {
+	(void)data;
 
-	char buf[BUFSIZ], pattern[BUFSIZ];
-	int *len = (int *)data;
-	int newlen;
-
-	if (pkg != NULL) {
-		snprintf(buf, BUFSIZ, "%s->%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		newlen = strlen(buf);
-
-		if (newlen > *len) {
-			*len = newlen;
-		}
-
-		snprintf(pattern, BUFSIZ, "\rAdding: %%-%ds", *len);
-
-		printf(pattern, buf);
-	} else {
-		snprintf(pattern, BUFSIZ, "\rdone: %%-%ds", *len);
-		printf(pattern, "");
-	}
+	if (pkg != NULL)
+		printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+	else
+		pkg_error_warn("");
 }
 
 int
 exec_repo(int argc, char **argv)
 {
 	int ret;
-	int len = 0;
 
 	if (argc != 2) {
 		usage_repo();
 		return (EX_USAGE);
 	}
 
-	ret = pkg_create_repo(argv[1], progress, &len);
+	printf("Generating repo.db in %s\n", argv[1]);
+	ret = pkg_create_repo(argv[1], progress, NULL);
+	printf("Done!\n");
 
 	if (ret != EPKG_OK)
 		pkg_error_warn("can not create repository");

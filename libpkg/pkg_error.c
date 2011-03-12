@@ -25,18 +25,21 @@ pkg_error_t
 _pkg_error_set(pkg_error_t num, const char *fmt, ...)
 {
 	struct pkg_error *e;
+	char *oldstring;
 	va_list ap;
 
 	e = pkg_error_init();
 
-	if (e->string != NULL)
-		free(e->string);
+	oldstring = e->string;
 
 	e->number = num;
 
 	va_start(ap, fmt);
 	vasprintf(&e->string, fmt, ap);
 	va_end(ap);
+
+	if (oldstring != NULL)
+		free(oldstring);
 
 	return (num);
 }

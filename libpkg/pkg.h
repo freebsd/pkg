@@ -121,7 +121,7 @@ typedef enum {
 	 * No more items available (end of the loop).
 	 */
 	EPKG_END,
-	EPKG_WARNING,
+	EPKG_WARN,
 	/**
 	 * The function encountered a fatal error.
 	 */

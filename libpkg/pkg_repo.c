@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "pkg.h"
+#include "pkg_error.h"
 #include "pkg_private.h"
 #include "pkg_util.h"
 
@@ -16,16 +17,18 @@
 int
 pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data)
 {
-	FTS	*fts;
-	FTSENT	*ent;
+	FTS *fts = NULL;
+	FTSENT *ent = NULL;
 
 	struct stat st;
 	struct pkg *pkg = NULL;
 	struct pkg **deps;
 	char *ext = NULL;
-	sqlite3 *sqlite;
-	sqlite3_stmt *stmt_deps;
-	sqlite3_stmt *stmt_pkg;
+	sqlite3 *sqlite = NULL;
+	sqlite3_stmt *stmt_deps = NULL;
+	sqlite3_stmt *stmt_pkg = NULL;
+	char *errmsg = NULL;
+	int retcode = EPKG_OK;
 
 	int i;
 
@@ -55,12 +58,19 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"PRIMARY KEY (package_id, origin)"
 		");"
 		"CREATE INDEX deps_origin ON deps (origin);"
-		"CREATE INDEX deps_package ON deps (package_id);"
-		;
-
+		"CREATE INDEX deps_package ON deps (package_id);";
+	const char pkgsql[] = ""
+		"INSERT INTO packages ("
+				"origin, name, version, comment, desc, arch, osversion, "
+				"maintainer, www, pkg_format_version, pkgsize, flatsize "
+		")"
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);";
+	const char depssql[] = ""
+		"INSERT INTO deps (origin, name, version, package_id) "
+		"VALUES (?1, ?2, ?3, ?4);";
 
 	if (!is_dir(path))
-		return (EPKG_FATAL);
+		return (pkg_error_set(EPKG_FATAL, "%s is not a directory", path));
 
 	repopath[0] = path;
 	repopath[1] = NULL;
@@ -69,25 +79,36 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	if (stat(repodb, &st) != -1)
 		if (unlink(repodb) != 0)
-			return (EPKG_FATAL);
+			return (pkg_error_seterrno());
 
 	if (sqlite3_open(repodb, &sqlite) != SQLITE_OK)
 		return (EPKG_FATAL);
 
+	if (sqlite3_exec(sqlite, initsql, NULL, NULL, &errmsg) != SQLITE_OK) {
+		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
+		goto cleanup;
+	}
 
-	if (sqlite3_exec(sqlite, initsql, NULL, NULL, NULL) != SQLITE_OK)
-		return (EPKG_FATAL);
+	if (sqlite3_exec(sqlite, "BEGIN TRANSACTION;", NULL, NULL, &errmsg) !=
+		SQLITE_OK) {
+		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
+		goto cleanup;
+	}
 
-	sqlite3_exec(sqlite, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+	if (sqlite3_prepare(sqlite, pkgsql, -1, &stmt_pkg, NULL) != SQLITE_OK) {
+		retcode = ERROR_SQLITE(sqlite);
+		goto cleanup;
+	}
 
-	sqlite3_prepare(sqlite, "INSERT INTO packages (origin, name, version, comment, desc, arch, osversion, maintainer, www, pkg_format_version, pkgsize, flatsize) "
-			"values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);",
-			-1, &stmt_pkg, NULL);
-	sqlite3_prepare(sqlite, "INSERT INTO deps (origin, name, version, package_id) "
-			"values (?1, ?2, ?3, ?4);",
-			-1, &stmt_deps, NULL);
+	if (sqlite3_prepare(sqlite, depssql, -1, &stmt_deps, NULL) != SQLITE_OK) {
+		retcode = ERROR_SQLITE(sqlite);
+		goto cleanup;
+	}
 
-	fts = fts_open(repopath, FTS_PHYSICAL, NULL);
+	if ((fts = fts_open(repopath, FTS_PHYSICAL, NULL)) == NULL) {
+		retcode = pkg_error_seterrno();
+		goto cleanup;
+	}
 
 	while ((ent = fts_read(fts)) != NULL) {
 		/* skip everything that is not a file */
@@ -95,14 +116,24 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			continue;
 
 		ext = strrchr(ent->fts_name, '.');
+
+		if (ext == NULL)
+			continue;
+
 		if (strcmp(ext, ".tgz") != 0 &&
 				strcmp(ext, ".tbz") != 0 &&
 				strcmp(ext, ".txz") != 0 &&
 				strcmp(ext, ".tar") != 0)
 			continue;
 
-		if (pkg_open(&pkg, ent->fts_path) != EPKG_OK)
+		if (pkg_open(&pkg, ent->fts_path) != EPKG_OK) {
+			if (progress != NULL) {
+				pkg_error_set(EPKG_WARN, "can not open %s: %s", ent->fts_name,
+							  pkg_error_string());
+				progress(NULL, data);
+			}
 			continue;
+		}
 
 		if (progress != NULL)
 			progress(pkg, data);
@@ -119,34 +150,49 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_int64(stmt_pkg, 11, ent->fts_statp->st_size);
 		sqlite3_bind_int64(stmt_pkg, 12, pkg_flatsize(pkg));
 
-		sqlite3_step(stmt_pkg);
+		if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
+			retcode = ERROR_SQLITE(sqlite);
+			goto cleanup;
+		}
 		sqlite3_reset(stmt_pkg);
 
-		if ((deps = pkg_deps(pkg)) != NULL) {
-			for (i = 0; deps[i] != NULL; i++) {
-				sqlite3_bind_text(stmt_deps, 1, pkg_get(deps[i], PKG_ORIGIN), -1, SQLITE_STATIC);
-				sqlite3_bind_text(stmt_deps, 2, pkg_get(deps[i], PKG_NAME), -1, SQLITE_STATIC);
-				sqlite3_bind_text(stmt_deps, 3, pkg_get(deps[i], PKG_VERSION), -1, SQLITE_STATIC);
-				sqlite3_bind_text(stmt_deps, 4, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+		deps = pkg_deps(pkg);
+		for (i = 0; deps[i] != NULL; i++) {
+			sqlite3_bind_text(stmt_deps, 1, pkg_get(deps[i], PKG_ORIGIN), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 2, pkg_get(deps[i], PKG_NAME), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 3, pkg_get(deps[i], PKG_VERSION), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 4, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
-				sqlite3_step(stmt_deps);
-				sqlite3_reset(stmt_deps);
+			if (sqlite3_step(stmt_deps) != SQLITE_DONE) {
+				retcode = ERROR_SQLITE(sqlite);
+				goto cleanup;
 			}
+			sqlite3_reset(stmt_deps);
 		}
 
 	}
-	fts_close(fts);
-	pkg_free(pkg);
 
-	sqlite3_finalize(stmt_pkg);
-	sqlite3_finalize(stmt_deps);
+	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK)
+		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
 
-	sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, NULL);
+	cleanup:
+	if (fts != NULL)
+		fts_close(fts);
 
-	sqlite3_close(sqlite);
+	if (pkg != NULL)
+		pkg_free(pkg);
 
-	if (progress != NULL)
-		progress(NULL, data);
+	if (stmt_pkg != NULL)
+		sqlite3_finalize(stmt_pkg);
 
-	return (EPKG_OK);
+	if (stmt_deps != NULL)
+		sqlite3_finalize(stmt_deps);
+
+	if (sqlite != NULL)
+		sqlite3_close(sqlite);
+
+	if (errmsg != NULL)
+		sqlite3_free(errmsg);
+
+	return (retcode);
 }
