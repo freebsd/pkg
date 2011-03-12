@@ -214,10 +214,21 @@ pkg_conflicts(struct pkg *pkg)
 }
 
 int
-pkg_open(const char *path, struct pkg **pkg_p)
+pkg_open(struct pkg **pkg_p, const char *path)
 {
 	struct archive *a;
 	struct archive_entry *ae;
+	int retcode;
+
+	retcode = pkg_open2(pkg_p, &a, &ae, path);
+
+	archive_read_finish(a);
+	return (retcode);
+}
+
+int
+pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path)
+{
 	struct pkg *pkg;
 	struct pkg_script *script;
 	pkg_error_t retcode = EPKG_OK;
@@ -230,17 +241,9 @@ pkg_open(const char *path, struct pkg **pkg_p)
 	if (path == NULL)
 		return (ERROR_BAD_ARG("path"));
 
-	/* search for http(s) or ftp(s) */
-	if (STARTS_WITH(path, "http://") || STARTS_WITH(path, "https://")
-			|| STARTS_WITH(path, "ftp://")) {
-		/* TODO: */
-		file_fetch(path, "/tmp/bla");
-		path = "/tmp/bla";
-	}
-
-	a = archive_read_new();
-	archive_read_support_compression_all(a);
-	archive_read_support_format_tar(a);
+	*a = archive_read_new();
+	archive_read_support_compression_all(*a);
+	archive_read_support_format_tar(*a);
 
 	if (*pkg_p == NULL)
 		pkg_new(pkg_p);
@@ -249,29 +252,25 @@ pkg_open(const char *path, struct pkg **pkg_p)
 
 	pkg = *pkg_p;
 	pkg->type = PKG_FILE;
-	pkg->path = path;
 
-	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
-		archive_read_finish(a);
-		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a)));
+	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK) {
+		archive_read_finish(*a);
+		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a)));
 	}
-
-	/* first path to check is the archive is corrupted bye the way retreive
-	 * informations */
 
 	array_init(&pkg->scripts, 10);
 	array_init(&pkg->files, 10);
 
-	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
-		fpath = archive_entry_pathname(ae);
+	while ((ret = archive_read_next_header(*a, ae)) == ARCHIVE_OK) {
+		fpath = archive_entry_pathname(*ae);
 
 		if (fpath[0] != '+')
 			break;
 
 		if (strcmp(fpath, "+MANIFEST") == 0) {
-			size = archive_entry_size(ae);
+			size = archive_entry_size(*ae);
 			manifest = calloc(1, size + 1);
-			archive_read_data(a, manifest, size);
+			archive_read_data(*a, manifest, size);
 			ret = pkg_parse_manifest(pkg, manifest);
 			free(manifest);
 			if (ret != EPKG_OK) {
@@ -284,7 +283,7 @@ pkg_open(const char *path, struct pkg **pkg_p)
 #define COPY_FILE(fname, dest)												\
 	if (strcmp(fpath, fname) == 0) {										\
 		dest = sbuf_new_auto();												\
-		while ((size = archive_read_data(a, buf, sizeof(buf))) > 0 ) {		\
+		while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0 ) {		\
 			sbuf_bcat(dest, buf, size);										\
 		}																	\
 		sbuf_finish(dest);													\
@@ -298,7 +297,7 @@ pkg_open(const char *path, struct pkg **pkg_p)
 		pkg_script_new(&script);											\
 		script->type = stype;												\
 		script->data = sbuf_new_auto();										\
-		while ((size = archive_read_data(a, buf, sizeof(buf))) > 0 ) {		\
+		while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0 ) {		\
 			sbuf_bcat(script->data, buf, size);								\
 		}																	\
 		sbuf_finish(script->data);											\
@@ -317,10 +316,9 @@ pkg_open(const char *path, struct pkg **pkg_p)
 	}
 
 	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF) {
-		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
+		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a));
 	}
 
-	archive_read_finish(a);
 	return (retcode);
 }
 
@@ -347,7 +345,6 @@ pkg_reset(struct pkg *pkg)
 
 	pkg->flatsize = 0;
 	pkg->flags = 0;
-	pkg->path = NULL;
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);

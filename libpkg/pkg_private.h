@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <sys/sbuf.h>
 
+#include <archive.h>
+
 #include "pkg_util.h"
 
 #define PKG_NUM_FIELDS 12
@@ -22,7 +24,6 @@ struct pkg {
 	struct array scripts;
 	struct array exec;
 	struct array options;
-	const char *path; /* TODO: remove */
 	int flags;
 	pkg_t type;
 };
@@ -56,5 +57,7 @@ void pkg_conflict_free_void(void *);
 void pkg_script_free_void(void *);
 void pkg_exec_free_void(void *);
 void pkg_option_free_void(void *);
+
+int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
 
 #endif

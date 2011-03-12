@@ -101,7 +101,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 				strcmp(ext, ".tar") != 0)
 			continue;
 
-		if (pkg_open(ent->fts_path, &pkg) != EPKG_OK)
+		if (pkg_open(&pkg, ent->fts_path) != EPKG_OK)
 			continue;
 
 		if (progress != NULL)

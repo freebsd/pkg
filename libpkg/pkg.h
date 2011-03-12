@@ -47,7 +47,7 @@ typedef enum {
 	 */
 	PKG_FILE,
 	/**
-	 * The pkg refers to a package available of the remote repository.
+	 * The pkg refers to a package available on the remote repository.
 	 * @todo Document which attributes are available.
 	 */
 	PKG_REMOTE,
@@ -124,10 +124,20 @@ typedef enum {
 	EPKG_WARNING,
 	/**
 	 * The function encountered a fatal error.
-	 * errno was set to describe the error.
 	 */
 	EPKG_FATAL,
+	/**
+	 * Can not delete the package because it is required by another package.
+	 */
 	EPKG_REQUIRED,
+	/**
+	 * Can not install the package because it is already installed.
+	 */
+	EPKG_INSTALLED,
+	/**
+	 * Can not install the package because some dependencies are unresolved.
+	 */
+	EPKG_DEPENDENCY,
 	EPKG_NOT_ORIGIN,
 	EPKG_NOT_NAME,
 } pkg_error_t;
@@ -150,13 +160,12 @@ void pkg_reset(struct pkg *);
 void pkg_free(struct pkg *);
 
 /**
- * Open a file archive.
- * @param path A local path or an URL.
+ * Open a package file archive and retrive informations.
  * @param p A pointer to pkg allocated by pkg_new(), or if it points to a
  * NULL pointer, the function allocate a new pkg using pkg_new().
- * @param flags Unused.
+ * @param path The path to the local package archive.
  */
-int pkg_open(const char *path, struct pkg **p);
+int pkg_open(struct pkg **p, const char *path);
 
 pkg_t pkg_type(struct pkg *);
 
@@ -230,9 +239,10 @@ int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
 
 /**
- * add a new package this will check if upgrade is needed
+ * Add a new package.
+ * @param path The path to the package archive file on the local disk
  */
-int pkg_add(struct pkgdb *, struct pkg *);
+int pkg_add(struct pkgdb *, const char *path);
 
 /**
  * Generic setter for simple attributes.

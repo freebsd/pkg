@@ -126,7 +126,7 @@ exec_info(int argc, char **argv)
 
 	/* if the last argument is a file then query directly the file */
 	if (argc == 1 && access(argv[0], F_OK) == 0) {
-		if (pkg_open(argv[0], &pkg) != EPKG_OK) {
+		if (pkg_open(&pkg, argv[0]) != EPKG_OK) {
 			warnx("can not read package %s", argv[0]);
 			return (-1);
 		}

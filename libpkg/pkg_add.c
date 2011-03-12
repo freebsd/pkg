@@ -11,54 +11,91 @@
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
 static int
-pkg_extract(const char *path)
+extract(struct archive *a, struct archive_entry *ae)
 {
-	struct archive *a;
-	struct archive_entry *ae;
-
+	int retcode = EPKG_OK;
 	int ret;
 
-	a = archive_read_new();
-	archive_read_support_compression_all(a);
-	archive_read_support_format_tar(a);
-
-	if (archive_read_open_filename(a, path, 4096) != ARCHIVE_OK) {
-		archive_read_finish(a);
-		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a)));
-	}
-
-	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
-		if (archive_entry_pathname(ae)[0] == '+') {
-			archive_read_data_skip(a);
-		} else {
-			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+	do {
+		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
+			retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
+			break;
 		}
-	}
+	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
 
 	if (ret != ARCHIVE_EOF)
-		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a)));
+		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
 
 	archive_read_finish(a);
 
-	return (EPKG_OK);
+	return (retcode);
 }
 
-/* TODO: take a path to the package archive instead of a pkg */
 int
-pkg_add(struct pkgdb *db, struct pkg *pkg)
+pkg_add(struct pkgdb *db, const char *path)
 {
+	struct archive *a;
+	struct archive_entry *ae;
+	struct pkgdb_it *it;
+	struct pkg *pkg = NULL;
+	struct pkg *p = NULL;
+	struct pkg **deps;
 	struct pkg_exec **execs;
 	struct pkg_script **scripts;
 	struct sbuf *script_cmd;
 	int retcode = EPKG_OK;
+	int ret;
 	int i;
 
-	if (pkg_type(pkg) != PKG_FILE || pkg->path == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	if (path == NULL)
+		return (ERROR_BAD_ARG("path"));
 
+	/*
+	 * Open the package archive file, read all the meta files and set the
+	 * current archive_entry to the first non-meta file.
+	 */
+	if ((retcode = pkg_open2(&pkg, &a, &ae, path)) != EPKG_OK)
+		return (retcode);
+
+	/*
+	 * Check if the package is already installed
+	 */
+	it = pkgdb_query(db, pkg_get(pkg, PKG_ORIGIN), MATCH_EXACT);
+	if (it == NULL) {
+		retcode = EPKG_FATAL;
+		goto error;
+	}
+
+	ret = pkgdb_it_next_pkg(it, &p, PKG_BASIC);
+	pkgdb_it_free(it);
+	pkg_free(p);
+
+	if (ret == EPKG_OK) {
+		retcode = pkg_error_set(EPKG_INSTALLED, "package already installed");
+		goto error;
+	} else if (ret != EPKG_END) {
+		retcode = ret;
+		goto error;
+	}
+
+	/*
+	 * Check for dependencies
+	 */
+	pkg_resolvdeps(pkg, db);
+	deps = pkg_deps(pkg);
+	for (i = 0; deps[i] != NULL; i++)
+		if (pkg_type(deps[i]) == PKG_NOTFOUND) {
+			retcode = pkg_error_set(EPKG_DEPENDENCY, "unresolved %s-%s dependency",
+								  pkg_get(deps[i], PKG_NAME),
+								  pkg_get(deps[i], PKG_VERSION));
+			goto error;
+		}
+
+	/*
+	 * Execute pre-install scripts
+	 */
 	script_cmd = sbuf_new_auto();
 
-	/* execute pre-install scripts */
 	if ((scripts = pkg_scripts(pkg)) != NULL)
 		for (i= 0; scripts[i] != NULL; i++) {
 			switch (pkg_script_type(scripts[i])) {
@@ -80,10 +117,16 @@ pkg_add(struct pkgdb *db, struct pkg *pkg)
 			}
 		}
 
-	if ((retcode = pkg_extract(pkg->path)) != EPKG_OK)
+	/*
+	 * Extract the files on disk.
+	 */
+	if ((retcode = extract(a, ae)) != EPKG_OK)
 		return (retcode);
+	a = NULL;
 
-	/* execute post install scripts */
+	/*
+	 * Execute post install scripts
+	 */
 	if (scripts != NULL)
 		for (i= 0; scripts[i] != NULL; i++) {
 			switch (pkg_script_type(scripts[i])) {
@@ -107,12 +150,18 @@ pkg_add(struct pkgdb *db, struct pkg *pkg)
 
 	sbuf_free(script_cmd);
 
-	/* execute @exec */
+	/*
+	 * Execute @exec
+	 */
 	if ((execs = pkg_execs(pkg)) != NULL)
 		for (i = 0; execs[i] != NULL; i++)
 			if (pkg_exec_type(execs[i]) == PKG_EXEC)
 				system(pkg_exec_cmd(execs[i]));
 
-
 	return (pkgdb_register_pkg(db, pkg));
+
+	error:
+		if (a != NULL)
+			archive_read_finish(a);
+		return (retcode);
 }
