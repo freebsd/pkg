@@ -1229,6 +1229,7 @@ static int get_pragma(sqlite3 *s, const char *sql, int *res) {
 
 	*res = sqlite3_column_int(stmt, 0);
 
+	sqlite3_finalize(stmt);
 	return (EPKG_OK);
 }
 
@@ -1239,18 +1240,21 @@ pkgdb_compact(struct pkgdb *db)
 	int freelist_count = 0;
 	char *errmsg;
 	int retcode = EPKG_OK;
-	int ret;
 
 	if (db == NULL)
 		return (ERROR_BAD_ARG("db"));
 
-	ret += get_pragma(db->sqlite, "PRAGMA page_count;", &page_count);
-	ret += get_pragma(db->sqlite, "PRAGMA freelist_count;", &freelist_count);
-
-	if (ret != EPKG_OK)
+	if (get_pragma(db->sqlite, "PRAGMA page_count;", &page_count) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (freelist_count == 0 || page_count / freelist_count < 0.25)
+	if (get_pragma(db->sqlite, "PRAGMA freelist_count;", &freelist_count) !=
+		EPKG_OK)
+		return (EPKG_FATAL);
+
+	/*
+	 * Only compact if we will save 25% (or more) of the current used space.
+	 */
+	if (freelist_count / (float)page_count < 0.25)
 		return (EPKG_OK);
 
 	if (sqlite3_exec(db->sqlite, "VACUUM;", NULL, NULL, &errmsg) != SQLITE_OK){

@@ -76,7 +76,10 @@ exec_delete(int argc, char **argv)
 	}
 
 	pkgdb_it_free(it);
-	pkgdb_compact(db);
+
+	if (pkgdb_compact(db) != EPKG_OK)
+		pkg_error_warn("can not compact database");
+
 	pkgdb_close(db);
 	return (retcode);
 }
