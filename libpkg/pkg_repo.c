@@ -12,8 +12,6 @@
 #include "pkg_private.h"
 #include "pkg_util.h"
 
-/* TODO: error reporting #@! */
-
 int
 pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data)
 {

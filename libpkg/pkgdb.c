@@ -1250,7 +1250,7 @@ pkgdb_compact(struct pkgdb *db)
 	if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (page_count / freelist_count < 0.25)
+	if (freelist_count == 0 || page_count / freelist_count < 0.25)
 		return (EPKG_OK);
 
 	if (sqlite3_exec(db->sqlite, "VACUUM;", NULL, NULL, &errmsg) != SQLITE_OK){
