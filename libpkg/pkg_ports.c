@@ -131,7 +131,9 @@ ports_parse_depends(struct pkg *pkg, char *depends)
 
 		buf = dep_p;
 		split_chr(dep_p, ':');
-		v = strrchr(dep_p, '-');
+
+		if ((v = strrchr(dep_p, '-')) == NULL)
+			return (pkg_error_set(EPKG_FATAL, "bad depends format"));
 		v[0] = '\0';
 		v++;
 		
@@ -141,8 +143,10 @@ ports_parse_depends(struct pkg *pkg, char *depends)
 
 		pkg_adddep(pkg, name, buf, v);
 
-		dep_p += next + 1;
-		next = strlen(dep_p);
+		if (i != nbel) {
+			dep_p += next + 1;
+			next = strlen(dep_p);
+		}
 	}
 
 	return (0);

@@ -111,6 +111,11 @@ exec_register(int argc, char **argv)
 		}
 	}
 
+	if (ret != 0) {
+		pkg_error_warn("can not parse arguments");
+		return (1);
+	}
+
 	uname(&u);
 	if (arch == NULL) {
 		pkg_set(pkg, PKG_ARCH, u.machine);
