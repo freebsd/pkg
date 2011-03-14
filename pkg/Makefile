@@ -1,17 +1,19 @@
-PROG=	pkg
-SRCS=	main.c \
-	delete.c \
-	info.c \
-	which.c \
-	register.c \
-	version.c \
-	add.c \
-	create.c \
-	repo.c
+PROG=		pkg
+SRCS=		add.c \
+		create.c \
+		delete.c \
+		info.c \
+		main.c \
+		register.c \
+		repo.c \
+		version.c \
+		which.c
 
 CFLAGS+=	-I${.CURDIR}/../libpkg
-LDADD+=	-L${.CURDIR}/../external -L../libpkg -lpkg -lutil
-WARNS?=	6
-NO_MAN= true
+LDADD+=		-L../libpkg \
+		-lpkg \
+		-lutil
+WARNS?=		6
+NO_MAN=		true
 
 .include <bsd.prog.mk>

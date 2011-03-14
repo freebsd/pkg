@@ -1,2 +1,5 @@
-SUBDIR= external libpkg pkg
+SUBDIR=	external \
+	libpkg \
+	pkg
+
 .include <bsd.subdir.mk>

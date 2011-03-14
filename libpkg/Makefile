@@ -7,10 +7,9 @@ SHLIBDIR?=	/usr/lib
 SHLIB_MAJOR=	0
 
 SRCS=		pkg.c \
-		pkgdb.c \
 		pkg_add.c \
-		pkg_create.c \
 		pkg_conflict.c \
+		pkg_create.c \
 		pkg_delete.c \
 		pkg_elf.c \
 		pkg_error.c \
@@ -20,16 +19,15 @@ SRCS=		pkg.c \
 		pkg_option.c \
 		pkg_ports.c \
 		pkg_repo.c \
+		pkg_util.c \
 		pkg_version.c \
-		pkg_util.c
+		pkgdb.c
 
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite
 LDADD+=		-L${.CURDIR}/../external/sqlite \
-		-L/usr/local/lib \
 		-lsqlite3 \
-		-lm \
 		-larchive \
 		-lz \
 		-lbz2 \
