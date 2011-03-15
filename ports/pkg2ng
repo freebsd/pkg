@@ -1,0 +1,35 @@
+#!/bin/sh
+
+ARCH=`uname -m`
+
+for PKG in `pkg_info | awk '{ print $1}'`
+do
+	echo -n "Registering ${PKG}..."
+
+	DB="/var/db/pkg/${PKG}"
+	COMMENT=`cat ${DB}/+COMMENT`
+	DESC="${DB}/+DESC"
+	MTREE="${DB}/+MTREE"
+
+	# Should check for existence and add to CMD only if true...
+	MESSAGE="${DB}/+DISPLAY"
+
+	# +CONTENTS \o/
+	DEPENDS=""
+	PLIST=""
+	ORIGIN=""
+	CONFLICTS=""
+
+	OPTIONS=""
+	SCRIPTS=""
+
+	MAINTAINER=`make -C /usr/ports/${ORIGIN} -V MAINTAINER`
+
+	CMD="pkg register -c ${COMMENT} -d ${DESC} -p /usr/local -m ${MTREE} \
+		-P ${DEPENDS} -n ${PKG} -o ${ORIGIN} -C ${CONFLICTS} \
+		-M ${MESSAGE} -s ${SCRIPTS} \
+		-a ${ARCH} -r ${MAINTAINER} -O ${OPTIONS}"
+
+	echo ${CMD}
+	echo " done"
+done
