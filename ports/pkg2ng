@@ -15,18 +15,46 @@ do
 	MESSAGE="${DB}/+DISPLAY"
 
 	# +CONTENTS \o/
-	DEPENDS=""
-	PLIST=""
-	ORIGIN=""
-	CONFLICTS=""
+	DEPENDSF=`mktemp /tmp/pkg2ng.deps.XXXXXX`
+	PLIST=`mktemp /tmp/pkg2ng.plist.XXXXXX`
+	eval `awk -v dfile=${DEPENDSF} -v pfile=${PLIST} '
+	BEGIN{
+		origin=""
+		conflicts=""
+	}
+	{
+		if ( $0 ~ /^@pkgdep/ ) {
+			dep = $2
+			getline
+			orig=$2
+			sub(/DEPORIGIN/,"",orig)
+			print dep""orig >> dfile
+		} else if ( $0 ~ /^@comment ORIGIN/ ) {
+			origin=$2
+			sub(/ORIGIN:/,"",origin)
+		} else if ( $0 ~ /^[^@]/ ) {
+			print $0 >> pfile
+		} else if ( $0 ~ /^@.*exec/) {
+			print $0 >> pfile
+		} else if ( $0 ~ /^@conflict/) {
+			conflict=conflict" "$2
+		} else if ( $0 ~ /^@cwd/) {
+			print $0 >> pfile
+		}
+	}
+	END{
+		print "export ORIGIN=\""origin"\""
+		print "export CONFLICTS=\""conflict"\""
+	}
+	' ${DB}/+CONTENTS`
 
 	OPTIONS=""
-	SCRIPTS=""
+	SCRIPTS=`ls ${DB}/+*INSTALL 2>/dev/null`
 
 	MAINTAINER=`make -C /usr/ports/${ORIGIN} -V MAINTAINER`
 
 	CMD="pkg register -c ${COMMENT} -d ${DESC} -p /usr/local -m ${MTREE} \
-		-P ${DEPENDS} -n ${PKG} -o ${ORIGIN} -C ${CONFLICTS} \
+		-P "`cat ${DEPENDSF}`" -n ${PKG} -o ${ORIGIN} -C ${CONFLICTS} \
 		-M ${MESSAGE} -s ${SCRIPTS} \
 		-a ${ARCH} -r ${MAINTAINER} -O ${OPTIONS}"
 
