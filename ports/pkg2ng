@@ -53,11 +53,12 @@ do
 
 	MAINTAINER=`make -C /usr/ports/${ORIGIN} -V MAINTAINER`
 
-	CMD="pkg register -c \"${COMMENT}\" -d ${DESC} -p /usr/local -m ${MTREE} \
+	CMD="pkg register -c ${COMMENT} -d ${DESC} -p /usr/local -m ${MTREE} \
 		-P "`cat ${DEPENDSF}`" -n ${PKG} -o ${ORIGIN} -C ${CONFLICTS} \
-		-M ${MESSAGE} -s ${SCRIPTS} \
+		-f ${PLIST} -M ${MESSAGE} -s ${SCRIPTS} \
 		-a ${ARCH} -r ${MAINTAINER} -O ${OPTIONS}"
 
+	echo ${CMD}
 	${CMD}
 
 	rm ${DEPENDSF} ${PLIST}

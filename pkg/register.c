@@ -15,13 +15,28 @@
 
 static void compute_flatsize(struct pkg *pkg);
 
+static struct {
+	pkg_attr attr;
+	const char *flag;
+} required_flags[] = {
+	{ PKG_ORIGIN, "-o"},
+	{ PKG_NAME, "-n"},
+	{ PKG_VERSION, "-n"},
+	{ PKG_COMMENT, "-c"},
+	{ PKG_DESC, "-d"},
+	{ PKG_PREFIX, "-p"},
+	{ PKG_MTREE, "-m"},
+	{ PKG_MAINTAINER, "-r"},
+	{ 0, NULL}
+};
+
 void
 usage_register(void)
 {
 	fprintf(stderr, "register -c comment -d desc -f plist_file -p prefix "
 			"-m mtree_file -n pkgname -o origin -r maintainer "
 			"[-P depends] [-C conflicts] [-M message_file] [-s scripts] "
-			"[-a arch] [-w www]"
+			"[-a arch] [-w www] [-O options] [-H]"
 			"\n");
 }
 
@@ -74,7 +89,9 @@ exec_register(int argc, char **argv)
 				ret += pkg_set_from_file(pkg, PKG_MTREE, optarg);
 				break;
 			case 'n':
-				v = strrchr(optarg, '-');
+				if ((v = strrchr(optarg, '-')) == NULL)
+					errx(1, "bad pkgname format");
+
 				v[0] = '\0';
 				v++;
 				ret += pkg_set(pkg, PKG_NAME, optarg);
@@ -118,6 +135,13 @@ exec_register(int argc, char **argv)
 		pkg_error_warn("can not parse arguments");
 		return (1);
 	}
+
+	if (plist == NULL)
+		errx(1, "missing -f flag");
+
+	for (int i = 0; required_flags[i].flag != NULL; i++)
+		if (pkg_get(pkg, required_flags[i].attr) == NULL)
+			errx(1, "missing %s flag", required_flags[i].flag);
 
 	uname(&u);
 	if (arch == NULL) {
