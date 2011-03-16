@@ -18,8 +18,11 @@ static void compute_flatsize(struct pkg *pkg);
 void
 usage_register(void)
 {
-	fprintf(stderr, "register ...\n"
-			"register\n");
+	fprintf(stderr, "register -c comment -d desc -f plist_file -p prefix "
+			"-m mtree_file -n pkgname -o origin -r maintainer "
+			"[-P depends] [-C conflicts] [-M message_file] [-s scripts] "
+			"[-a arch] [-w www]"
+			"\n");
 }
 
 int
@@ -124,7 +127,7 @@ exec_register(int argc, char **argv)
 		free(arch);
 	}
 
-	/* is www is not given then try to determine it from description */
+	/* if www is not given then try to determine it from description */
 	if (www == NULL) {
 		desc = pkg_get(pkg, PKG_DESC);
 		regcomp(&preg, "^WWW:[:space:]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
@@ -142,25 +145,20 @@ exec_register(int argc, char **argv)
 
 
 	if (strstr(u.release, "RELEASE") == NULL) {
-		v = malloc(strlen(u.release) + 10); /* 10 should be enough */
-		snprintf(v, strlen(u.release) + 10, "%s-%d", u.release, __FreeBSD_version);
+		asprintf(&v, "%s-%d", u.release, __FreeBSD_version);
 		pkg_set(pkg, PKG_OSVERSION, v);
 		free(v);
 	} else {
 		pkg_set(pkg, PKG_OSVERSION, u.release);
 	}
-	pkg_set(pkg, PKG_ARCH, optarg);
 	/* TODO: missing osversion get it from uname*/
-
-	if (ret < 0) {
-		pkg_free(pkg);
-		return (ret);
-	}
 
 	ret += ports_parse_plist(pkg, plist);
 
-	if (ret < 0)
-		return (ret);
+	if (ret != 0) {
+		pkg_error_warn("can not parse plist file");
+		return (-1);
+	}
 
 	if (plist != NULL)
 		free(plist);
