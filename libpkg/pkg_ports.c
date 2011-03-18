@@ -50,7 +50,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			if (STARTS_WITH(plist_p, "@cwd ")) {
 				buf = plist_p;
 				buf += 5;
-				if (buf != NULL)
+				/* with no arguments default to the original
+				 * prefix */
+				if (buf[0] == '\0')
+					prefix = pkg_get(pkg, PKG_PREFIX);
+				else
 					prefix = buf;
 			} else if (STARTS_WITH(plist_p, "@comment ")){
 				/* DO NOTHING: ignore the comments */
