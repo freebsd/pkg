@@ -54,6 +54,7 @@ do
 
 	MAINTAINER=`make -C /usr/ports/${ORIGIN} -V MAINTAINER`
 
+	CMD_ARGS=""
 	test -n "${DEPENDS}" && CMD_ARGS="${CMD_ARGS} -P ${DEPENDS}"
 	test -n "${SCRIPTS}" && CMD_ARGS="${CMD_ARGS} -s ${SCRIPTS}"
 	test -n "${OPTIONS}" && CMD_ARGS="${CMD_ARGS} -O ${OPTIONS}"
