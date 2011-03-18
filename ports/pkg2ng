@@ -32,7 +32,9 @@ do
 			sub(/ORIGIN:/,"",origin)
 		} else if ( $0 ~ /^[^@]/ ) {
 			print $0 >> pfile
-		} else if ( $0 ~ /^@.*exec/) {
+		} else if ( $0 ~ /^@exec/) {
+			print $0 >> pfile
+		} else if ( $0 ~ /^@unexec/) {
 			print $0 >> pfile
 		} else if ( $0 ~ /^@conflict/) {
 			conflict=conflict" "$2
