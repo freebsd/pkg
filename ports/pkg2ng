@@ -9,17 +9,15 @@ do
 	DB="/var/db/pkg/${PKG}"
 	COMMENT=`cat ${DB}/+COMMENT`
 	DESC="${DB}/+DESC"
-	MTREE="${DB}/+MTREE"
-
-	# Should check for existence and add to CMD only if true...
+	MTREE="${DB}/+MTREE_DIRS"
 	MESSAGE="${DB}/+DISPLAY"
 
-	# +CONTENTS \o/
-	DEPENDSF=`mktemp /tmp/pkg2ng.deps.XXXXXX`
+	# +CONTENTS
 	PLIST=`mktemp /tmp/pkg2ng.plist.XXXXXX`
-	eval `awk -v dfile=${DEPENDSF} -v pfile=${PLIST} '
+	eval `awk -v pfile=${PLIST} '
 	BEGIN{
 		origin=""
+		depends=""
 		conflicts=""
 	}
 	{
@@ -28,7 +26,7 @@ do
 			getline
 			orig=$2
 			sub(/DEPORIGIN/,"",orig)
-			print dep""orig >> dfile
+			depends=depends" "dep""orig
 		} else if ( $0 ~ /^@comment ORIGIN/ ) {
 			origin=$2
 			sub(/ORIGIN:/,"",origin)
@@ -44,6 +42,7 @@ do
 	}
 	END{
 		print "export ORIGIN=\""origin"\""
+		print "export DEPENDS=\""depends"\""
 		print "export CONFLICTS=\""conflict"\""
 	}
 	' ${DB}/+CONTENTS`
@@ -53,21 +52,17 @@ do
 
 	MAINTAINER=`make -C /usr/ports/${ORIGIN} -V MAINTAINER`
 
+	test -n "${DEPENDS}" && CMD_ARGS="${CMD_ARGS} -P ${DEPENDS}"
 	test -n "${SCRIPTS}" && CMD_ARGS="${CMD_ARGS} -s ${SCRIPTS}"
 	test -n "${OPTIONS}" && CMD_ARGS="${CMD_ARGS} -O ${OPTIONS}"
 	test -f "${MESSAGE}" && CMD_ARGS="${CMD_ARGS} -M ${MESSAGE}"
 	test -n "${CONFLICTS}" && CMD_ARGS="${CMD_ARGS} -C ${CONFLICTS}"
 
-	if [ -s "${DEPENDSF}" ]; then
-		pkg register -c ${COMMENT} -d ${DESC} -p /usr/local -m ${MTREE} \
-		-n ${PKG} -o ${ORIGIN} -a ${ARCH} \
-		-r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS} -P "`cat ${DEPENDSF}`"
-	else
-		pkg register -c ${COMMENT} -d ${DESC} -p /usr/local -m ${MTREE} \
-		-n ${PKG} -o ${ORIGIN} -a ${ARCH} \
-		-r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS}
-	fi
+	pkg register -c "${COMMENT}" -d ${DESC} -p /usr/local -m ${MTREE} \
+	-n ${PKG} -o ${ORIGIN} -a ${ARCH} \
+	-r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS}
 
-	rm ${DEPENDSF} ${PLIST}
+	rm ${PLIST}
+
 	echo " done"
 done
