@@ -199,10 +199,11 @@ pkgdb_open(struct pkgdb **db)
 	snprintf(fpath, sizeof(fpath), "%s/pkg.db", pkgdb_get_dir());
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL)
-		return (pkg_error_seterrno());
+		return (pkg_error_set(EPKG_FATAL, "calloc(): %s", strerror(errno)));
 
 	if ((retcode = stat(fpath, &st)) == -1 && errno != ENOENT)
-		return (pkg_error_seterrno());
+		return (pkg_error_set(EPKG_FATAL, "can not stat %s: %s", fpath,
+							  strerror(errno)));
 
 	if (sqlite3_open(fpath, &(*db)->sqlite) != SQLITE_OK)
 		return (ERROR_SQLITE((*db)->sqlite));
@@ -249,7 +250,7 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, pkgdb_it_t t)
 	struct pkgdb_it *it;
 
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_error_seterrno();
+		pkg_error_set(EPKG_FATAL, "malloc(): %s", strerror(errno));
 		sqlite3_finalize(s);
 		return (NULL);
 	}
@@ -916,14 +917,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_option **options;
 
 	sqlite3 *s;
-	sqlite3_stmt *stmt_pkg;
-	sqlite3_stmt *stmt_mtree;
-	sqlite3_stmt *stmt_dep;
-	sqlite3_stmt *stmt_conflict;
-	sqlite3_stmt *stmt_file;
-	sqlite3_stmt *stmt_exec;
-	sqlite3_stmt *stmt_script;
-	sqlite3_stmt *stmt_option;
+	sqlite3_stmt *stmt_pkg = NULL;
+	sqlite3_stmt *stmt_mtree = NULL;
+	sqlite3_stmt *stmt_dep = NULL;
+	sqlite3_stmt *stmt_conflict = NULL;
+	sqlite3_stmt *stmt_file = NULL;
+	sqlite3_stmt *stmt_exec = NULL;
+	sqlite3_stmt *stmt_script = NULL;
+	sqlite3_stmt *stmt_option = NULL;
 
 	int i;
 	int ret;
@@ -977,7 +978,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	if (sqlite3_prepare(s, sql_mtree, -1, &stmt_mtree, NULL) !=
 						SQLITE_OK) {
 		retcode = ERROR_SQLITE(s);
-		goto error;
+		goto cleanup;
 	}
 
 	sqlite3_bind_text(stmt_mtree, 1, mtree_id, -1, SQLITE_STATIC);
@@ -987,15 +988,15 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt_mtree);
 	if (ret != SQLITE_DONE) {
 		retcode = ERROR_SQLITE(s);
-		goto error;
+		goto cleanup;
 	}
 
 	/*
 	 * Insert package record
 	 */
 	if (sqlite3_prepare(s, sql_pkg, -1, &stmt_pkg, NULL) != SQLITE_OK) {
-		retcode = ERROR_SQLITE(db->sqlite);
-		goto error;
+		retcode = ERROR_SQLITE(s);
+		goto cleanup;
 	}
 
 	sqlite3_bind_text(stmt_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
@@ -1012,8 +1013,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 12, pkg_get(pkg, PKG_PREFIX), -1, SQLITE_STATIC);
 	sqlite3_bind_int64(stmt_pkg, 13, pkg_flatsize(pkg));
 
-	sqlite3_step(stmt_pkg);
-	sqlite3_finalize(stmt_pkg);
+	if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
+		retcode = ERROR_SQLITE(s);
+		goto cleanup;
+	}
 
 	/*
 	 * Insert dependencies list
@@ -1021,7 +1024,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (sqlite3_prepare(s, sql_dep, -1, &stmt_dep, NULL) != SQLITE_OK) {
 		retcode = ERROR_SQLITE(s);
-		goto error;
+		goto cleanup;
 	}
 
 	deps = pkg_deps(pkg);
@@ -1032,14 +1035,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_dep, 4, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_dep) != SQLITE_DONE) {
-			sqlite3_finalize(stmt_dep);
 			retcode = ERROR_SQLITE(s);
-			goto error;
+			goto cleanup;
 		}
 
 		sqlite3_reset(stmt_dep);
 	}
-	sqlite3_finalize(stmt_dep);
 
 	/*
 	 * Insert conflicts list
@@ -1048,7 +1049,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	if (sqlite3_prepare(s, sql_conflict, -1, &stmt_conflict, NULL) !=
 						SQLITE_OK) {
 		retcode = ERROR_SQLITE(s);
-		goto error;
+		goto cleanup;
 	}
 
 	conflicts = pkg_conflicts(pkg);
@@ -1057,15 +1058,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_conflict, 2, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_conflict) != SQLITE_DONE) {
-			sqlite3_finalize(stmt_conflict);
 			retcode = ERROR_SQLITE(s);
-			goto error;
+			goto cleanup;
 		}
 
 		sqlite3_reset(stmt_conflict);
 	}
-
-	sqlite3_finalize(stmt_conflict);
 
 	/*
 	 * Insert file
@@ -1073,7 +1071,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (sqlite3_prepare(s, sql_file, -1, &stmt_file, NULL) != SQLITE_OK) {
 		retcode = ERROR_SQLITE(s);
-		goto error;
+		goto cleanup;
 	}
 
 	files = pkg_files(pkg);
@@ -1082,16 +1080,17 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(files[i]), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_file, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
-		if (sqlite3_step(stmt_file) != SQLITE_DONE) {
-			sqlite3_finalize(stmt_file);
-			retcode = ERROR_SQLITE(s);
-			goto error;
+		if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
+			if ( ret == SQLITE_CONSTRAINT)
+				retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
+										"path with %s", pkg_file_path(files[i]));
+			else
+				retcode = ERROR_SQLITE(s);
+			goto cleanup;
 		}
 
 		sqlite3_reset(stmt_file);
 	}
-
-	sqlite3_finalize(stmt_file);
 
 	/*
 	 * Insert scripts
@@ -1099,7 +1098,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (sqlite3_prepare(s, sql_script, -1, &stmt_script, NULL) != SQLITE_OK) {
 		retcode = ERROR_SQLITE(s);
-		goto error;
+		goto cleanup;
 	}
 
 	scripts = pkg_scripts(pkg);
@@ -1109,15 +1108,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_script, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_script) != SQLITE_DONE) {
-			sqlite3_finalize(stmt_script);
 			retcode = ERROR_SQLITE(s);
-			goto error;
+			goto cleanup;
 		}
 
 		sqlite3_reset(stmt_script);
 	}
-
-	sqlite3_finalize(stmt_script);
 
 	/*
 	 * Insert execs
@@ -1125,7 +1121,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (sqlite3_prepare(s, sql_exec, -1, &stmt_exec, NULL) != SQLITE_OK) {
 		retcode = ERROR_SQLITE(s);
-		goto error;
+		goto cleanup;
 	}
 
 	execs = pkg_execs(pkg);
@@ -1135,15 +1131,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_exec, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_exec) != SQLITE_DONE) {
-			sqlite3_finalize(stmt_exec);
 			retcode = ERROR_SQLITE(s);
-			goto error;
+			goto cleanup;
 		}
 
 		sqlite3_reset(stmt_exec);
 	}
-
-	sqlite3_finalize(stmt_exec);
 
 	/*
 	 * Insert options
@@ -1152,7 +1145,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	options = pkg_options(pkg);
 	if (sqlite3_prepare(s, sql_option, -1, &stmt_option, NULL) != SQLITE_OK) {
 		retcode = ERROR_SQLITE(s);
-		goto error;
+		goto cleanup;
 	}
 
 	for (i = 0; options[i] != NULL; i++) {
@@ -1161,32 +1154,48 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_option, 3, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_option) != SQLITE_DONE) {
-			sqlite3_finalize(stmt_option);
 			retcode = ERROR_SQLITE(s);
-			goto error;
+			goto cleanup;
 		}
 
 		sqlite3_reset(stmt_option);
 	}
 
-	sqlite3_finalize(stmt_option);
-
 	/*
 	 * Register the package for real
 	 */
 	if (sqlite3_exec(s, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK) {
-		pkg_error_set(EPKG_FATAL, "sqlite: %s", errmsg);
+		retcode = pkg_error_set(EPKG_FATAL, "sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
-		return (EPKG_FATAL);
 	}
 
-	return (EPKG_OK);
+	cleanup:
+	if (retcode != EPKG_OK && sqlite3_exec(db->sqlite, "ROLLBACK;", NULL, NULL, &errmsg) !=
+		SQLITE_OK)
+		err(1, "Can not rollback: %s", errmsg);
 
-	error:
-		if (sqlite3_exec(db->sqlite, "ROLLBACK;", NULL, NULL, &errmsg) !=
-						 SQLITE_OK)
-			err(1, "Critical error: %s", errmsg);
-		return (retcode);
+	if (stmt_pkg != NULL)
+		sqlite3_finalize(stmt_pkg);
+
+	if (stmt_dep != NULL)
+		sqlite3_finalize(stmt_dep);
+
+	if (stmt_conflict != NULL)
+		sqlite3_finalize(stmt_conflict);
+
+	if (stmt_file != NULL)
+		sqlite3_finalize(stmt_file);
+
+	if (stmt_script != NULL)
+		sqlite3_finalize(stmt_script);
+
+	if (stmt_exec != NULL)
+		sqlite3_finalize(stmt_exec);
+
+	if (stmt_option != NULL)
+		sqlite3_finalize(stmt_option);
+
+	return (retcode);
 }
 
 int

@@ -58,12 +58,12 @@ do
 	test -n "${DEPENDS}" && CMD_ARGS="${CMD_ARGS} -P ${DEPENDS}"
 	test -n "${SCRIPTS}" && CMD_ARGS="${CMD_ARGS} -s ${SCRIPTS}"
 	test -n "${OPTIONS}" && CMD_ARGS="${CMD_ARGS} -O ${OPTIONS}"
+	test -f "${MTREE}" && CMD_ARGS="${CMD_ARGS} -m ${MTREE}"
 	test -f "${MESSAGE}" && CMD_ARGS="${CMD_ARGS} -M ${MESSAGE}"
 	test -n "${CONFLICTS}" && CMD_ARGS="${CMD_ARGS} -C ${CONFLICTS}"
 
-	pkg register -c "${COMMENT}" -d ${DESC} -p /usr/local -m ${MTREE} \
-	-n ${PKG} -o ${ORIGIN} -a ${ARCH} \
-	-r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS}
+	pkg register -c "${COMMENT}" -d ${DESC} -p /usr/local -n ${PKG} \
+	-o ${ORIGIN} -a ${ARCH} -r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS}
 
 	rm ${PLIST}
 

@@ -45,12 +45,6 @@ _pkg_error_set(pkg_error_t num, const char *fmt, ...)
 }
 
 pkg_error_t
-pkg_error_seterrno(void)
-{
-	return (pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
-}
-
-pkg_error_t
 pkg_error_number(void)
 {
 	struct pkg_error *e;

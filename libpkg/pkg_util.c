@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <dirent.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -125,22 +126,23 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 		return (ERROR_BAD_ARG("buffer"));
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		return (pkg_error_seterrno());
+		return (pkg_error_set(EPKG_FATAL, "can not open %s: %s", path,
+				strerror(errno)));
 	}
 
 	if (fstat(fd, &st) == -1) {
 		close(fd);
-		return (pkg_error_seterrno());
+		return (pkg_error_set(EPKG_FATAL, "fstat(): %s", strerror(errno)));
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
 		close(fd);
-		return (pkg_error_seterrno());
+		return (pkg_error_set(EPKG_FATAL, "malloc(): %s", strerror(errno)));
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		close(fd);
-		return (pkg_error_seterrno());
+		return (pkg_error_set(EPKG_FATAL, "read(): %s", strerror(errno)));
 	}
 
 	close(fd);

@@ -1,5 +1,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#include <errno.h>
 #include <fnmatch.h>
 #include <sqlite3.h>
 #include <fts.h>
@@ -77,7 +79,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	if (stat(repodb, &st) != -1)
 		if (unlink(repodb) != 0)
-			return (pkg_error_seterrno());
+			return (pkg_error_set(EPKG_FATAL, "can not unlink %s: %s", repodb,
+								  strerror(errno)));
 
 	if (sqlite3_open(repodb, &sqlite) != SQLITE_OK)
 		return (EPKG_FATAL);
@@ -104,7 +107,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	}
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL, NULL)) == NULL) {
-		retcode = pkg_error_seterrno();
+		retcode = pkg_error_set(EPKG_FATAL, "can not open %s: %s", repopath,
+								strerror(errno));
 		goto cleanup;
 	}
 

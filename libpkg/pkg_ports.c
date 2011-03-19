@@ -25,6 +25,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	struct stat st;
 	int ret = EPKG_OK;
 	off_t sz = 0;
+	int64_t flatsize = 0;
 
 	buf = NULL;
 	p = NULL;
@@ -89,9 +90,10 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			else
 				snprintf(path, MAXPATHLEN, "%s/%s", prefix, buf);
 
-			if (lstat(path, &st) >= 0)
+			if (lstat(path, &st) >= 0) {
 				p = S_ISLNK(st.st_mode) ? NULL : SHA256_File(path, sha256);
-			else {
+				flatsize += st.st_size;
+			} else {
 				warn("lstat(%s)", path);
 				p = NULL;
 			}
@@ -104,6 +106,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			next = strlen(plist_p);
 		}
 	}
+
+	pkg_setflatsize(pkg, flatsize);
 
 	free(plist_buf);
 

@@ -34,8 +34,8 @@ extract(struct archive *a, struct archive_entry *ae)
 int
 pkg_add(struct pkgdb *db, const char *path)
 {
-	struct archive *a;
-	struct archive_entry *ae;
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
 	struct pkg *p = NULL;

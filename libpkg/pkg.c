@@ -216,8 +216,8 @@ pkg_conflicts(struct pkg *pkg)
 int
 pkg_open(struct pkg **pkg_p, const char *path)
 {
-	struct archive *a;
-	struct archive_entry *ae;
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
 	int retcode;
 
 	retcode = pkg_open2(pkg_p, &a, &ae, path);
@@ -255,10 +255,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	pkg = *pkg_p;
 	pkg->type = PKG_FILE;
 
-	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK) {
-		archive_read_finish(*a);
+	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK)
 		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a)));
-	}
 
 	array_init(&pkg->scripts, 10);
 	array_init(&pkg->files, 10);
@@ -328,7 +326,7 @@ int
 pkg_new(struct pkg **pkg)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
-		return(pkg_error_seterrno());
+		return(pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
 
 	(*pkg)->fields[PKG_MESSAGE].optional = 1;
 	(*pkg)->fields[PKG_WWW].optional = 1;
