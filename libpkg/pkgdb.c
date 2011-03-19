@@ -929,7 +929,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	int i;
 	int ret;
 	int retcode = EPKG_OK;
-	char mtree_id[65];
+	char mtree_sha256[65];
+	const char *mtree_id;
 	char *errmsg;
 	const char *mtree;
 
@@ -963,8 +964,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	s = db->sqlite;
 
-	mtree = pkg_get(pkg, PKG_MTREE);
-	SHA256_Data(mtree, strlen(mtree), mtree_id);
 
 	if (sqlite3_exec(s, sql_begin, NULL, NULL, &errmsg) != SQLITE_OK) {
 		pkg_error_set(EPKG_FATAL, "sqlite: %s", errmsg);
@@ -973,22 +972,30 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	/*
-	 * Insert the mtree, if not already in the database
+	 * If this package has a mtree, insert it in the database.
+	 * Compute the mtree_id which is the sha256 of the mtree.
+	 * If there is no mtree, mtree_id is set to NULL.
 	 */
-	if (sqlite3_prepare(s, sql_mtree, -1, &stmt_mtree, NULL) !=
-						SQLITE_OK) {
-		retcode = ERROR_SQLITE(s);
-		goto cleanup;
-	}
+	mtree = pkg_get(pkg, PKG_MTREE);
+	if (mtree != NULL) {
+		mtree_id = SHA256_Data(mtree, strlen(mtree), mtree_sha256);
+		if (sqlite3_prepare(s, sql_mtree, -1, &stmt_mtree, NULL) !=
+							SQLITE_OK) {
+			retcode = ERROR_SQLITE(s);
+			goto cleanup;
+		}
 
-	sqlite3_bind_text(stmt_mtree, 1, mtree_id, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt_mtree, 2, mtree, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_mtree, 1, mtree_id, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_mtree, 2, mtree, -1, SQLITE_STATIC);
 
-	ret = sqlite3_step(stmt_mtree);
-	sqlite3_finalize(stmt_mtree);
-	if (ret != SQLITE_DONE) {
-		retcode = ERROR_SQLITE(s);
-		goto cleanup;
+		ret = sqlite3_step(stmt_mtree);
+		sqlite3_finalize(stmt_mtree);
+		if (ret != SQLITE_DONE) {
+			retcode = ERROR_SQLITE(s);
+			goto cleanup;
+		}
+	} else {
+		mtree_id = NULL;
 	}
 
 	/*
