@@ -9,8 +9,6 @@ do
 	DB="/var/db/pkg/${PKG}"
 	COMMENT=`cat ${DB}/+COMMENT`
 	DESC="${DB}/+DESC"
-	MTREE="${DB}/+MTREE_DIRS"
-	MESSAGE="${DB}/+DISPLAY"
 
 	# +CONTENTS
 	PLIST=`mktemp /tmp/pkg2ng.plist.XXXXXX`
@@ -55,12 +53,12 @@ do
 	MAINTAINER=`make -C /usr/ports/${ORIGIN} -V MAINTAINER`
 
 	CMD_ARGS=""
+	test -f ${DB}/+MTREE_DIRS && CMD_ARGS="${CMD_ARGS} -m ${DB}/+MTREE_DIRS"
+	test -f ${DB}/+DISPLAY && CMD_ARGS="${CMD_ARGS} -M ${DB}/+DISPLAY"
+	test -n "${CONFLICTS}" && CMD_ARGS="${CMD_ARGS} -C ${CONFLICTS}"
 	test -n "${DEPENDS}" && CMD_ARGS="${CMD_ARGS} -P ${DEPENDS}"
 	test -n "${SCRIPTS}" && CMD_ARGS="${CMD_ARGS} -s ${SCRIPTS}"
 	test -n "${OPTIONS}" && CMD_ARGS="${CMD_ARGS} -O ${OPTIONS}"
-	test -f "${MTREE}" && CMD_ARGS="${CMD_ARGS} -m ${MTREE}"
-	test -f "${MESSAGE}" && CMD_ARGS="${CMD_ARGS} -M ${MESSAGE}"
-	test -n "${CONFLICTS}" && CMD_ARGS="${CMD_ARGS} -C ${CONFLICTS}"
 
 	pkg register -c "${COMMENT}" -d ${DESC} -p /usr/local -n ${PKG} \
 	-o ${ORIGIN} -a ${ARCH} -r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS}
