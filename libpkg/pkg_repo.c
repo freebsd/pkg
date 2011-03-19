@@ -124,7 +124,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 				strcmp(ext, ".tar") != 0)
 			continue;
 
-		if (pkg_open(&pkg, ent->fts_path) != EPKG_OK) {
+		if (pkg_open(&pkg, ent->fts_accpath) != EPKG_OK) {
 			if (progress != NULL) {
 				pkg_error_set(EPKG_WARN, "can not open %s: %s", ent->fts_name,
 							  pkg_error_string());
