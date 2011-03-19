@@ -110,8 +110,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct archive *pkg_archi
 			archive_entry_copy_sourcepath(entry, fpath);
 
 			if (archive_read_disk_entry_from_file(ar, entry, -1, 0) != ARCHIVE_OK)
-				warnx("archive_read_disk_entry_from_file(%s): %s", fpath,
-						archive_error_string(ar));
+				warn("archive_read_disk_entry_from_file(%s)", fpath);
 
 			archive_entry_set_pathname(entry, pkg_file_path(files[i]));
 			archive_write_header(pkg_archive, entry);
