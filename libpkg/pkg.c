@@ -216,13 +216,13 @@ pkg_conflicts(struct pkg *pkg)
 int
 pkg_open(struct pkg **pkg_p, const char *path)
 {
-	struct archive *a = NULL;
-	struct archive_entry *ae = NULL;
+	struct archive *a;
+	struct archive_entry *ae;
 	int retcode;
 
 	retcode = pkg_open2(pkg_p, &a, &ae, path);
 
-	if (a != NULL)
+	if (retcode == EPKG_OK)
 		archive_read_finish(a);
 
 	return (retcode);
@@ -247,6 +247,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	archive_read_support_compression_all(*a);
 	archive_read_support_format_tar(*a);
 
+	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK) {
+		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a));
+		goto cleanup;
+	}
+
 	if (*pkg_p == NULL)
 		pkg_new(pkg_p);
 	else
@@ -254,9 +259,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 	pkg = *pkg_p;
 	pkg->type = PKG_FILE;
-
-	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK)
-		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a)));
 
 	array_init(&pkg->scripts, 10);
 	array_init(&pkg->files, 10);
@@ -275,7 +277,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 			free(manifest);
 			if (ret != EPKG_OK) {
 				retcode = EPKG_FATAL;
-				break;
+				goto cleanup;
 			}
 		}
 
@@ -315,8 +317,16 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 		COPY_SCRIPT("+UPGRADE", PKG_SCRIPT_UPGRADE)
 	}
 
-	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF) {
+	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF)
 		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a));
+
+
+	cleanup:
+	if (retcode != EPKG_OK) {
+		if (*a != NULL)
+			archive_read_finish(*a);
+		*a = NULL;
+		*ae = NULL;
 	}
 
 	return (retcode);
