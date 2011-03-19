@@ -328,7 +328,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			pkg_get(pkg, PKG_COMMENT),
 			pkg_get(pkg, PKG_ARCH),
 			pkg_get(pkg, PKG_OSVERSION),
-			pkg_get(pkg, PKG_WWW) ? pkg_get(PKG_WWW) : "UNKNOWN",
+			pkg_get(pkg, PKG_WWW) ? pkg_get(pkg, PKG_WWW) : "UNKNOWN",
 			pkg_get(pkg, PKG_MAINTAINER) ? pkg_get(pkg, PKG_MAINTAINER) : "UNKNOWN",
 			pkg_get(pkg, PKG_PREFIX),
 			pkg_flatsize(pkg)
