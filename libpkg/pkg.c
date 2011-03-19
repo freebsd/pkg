@@ -239,6 +239,32 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	char *manifest;
 	const char *fpath;
 	char buf[2048];
+	struct sbuf **sbuf;
+	int i;
+
+	struct {
+		const char *name;
+		pkg_attr attr;
+	} files[] = {
+		{ "+DESC", PKG_DESC },
+		{ "+MTREE_DIRS", PKG_MTREE },
+		{ NULL, 0 }
+	};
+	struct {
+		const char *name;
+		pkg_script_t type;
+	} scripts[] = {
+		{ "+PRE_INSTALL", PKG_SCRIPT_PRE_INSTALL },
+		{ "+POST_INSTALL", PKG_SCRIPT_POST_INSTALL },
+		{ "+PRE_DEINSTALL", PKG_SCRIPT_PRE_DEINSTALL },
+		{ "+POST_DEINSTALL", PKG_SCRIPT_POST_DEINSTALL },
+		{ "+PRE_UPGRADE", PKG_SCRIPT_PRE_UPGRADE },
+		{ "+POST_UPGRADE", PKG_SCRIPT_POST_UPGRADE },
+		{ "+INSTALL", PKG_SCRIPT_INSTALL },
+		{ "+DEINSTALL", PKG_SCRIPT_DEINSTALL },
+		{ "+UPGRADE", PKG_SCRIPT_UPGRADE },
+		{ NULL, 0 }
+	};
 
 	if (path == NULL)
 		return (ERROR_BAD_ARG("path"));
@@ -281,45 +307,37 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 			}
 		}
 
-		/* TODO: replace macros by loop - jlaffaye */
-#define COPY_FILE(fname, dest)												\
-	if (strcmp(fpath, fname) == 0) {										\
-		dest = sbuf_new_auto();												\
-		while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0 ) {		\
-			sbuf_bcat(dest, buf, size);										\
-		}																	\
-		sbuf_finish(dest);													\
-	}
+		for (i = 0; files[i].name != NULL; i++) {
+			if (strcmp(fpath, files[i].name) == 0) {
+				sbuf = &pkg->fields[files[i].attr].value;
+				if (*sbuf == NULL)
+					*sbuf = sbuf_new_auto();
+				else
+					sbuf_reset(*sbuf);
+				while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0 ) {
+					sbuf_bcat(*sbuf, buf, size);
+				}
+				sbuf_finish(*sbuf);
+			}
+		}
 
-		COPY_FILE("+DESC", pkg->fields[PKG_DESC].value)
-		COPY_FILE("+MTREE_DIRS", pkg->fields[PKG_MTREE].value)
-
-#define COPY_SCRIPT(sname, stype)											\
-	if (strcmp(fpath, sname) == 0) {										\
-		pkg_script_new(&script);											\
-		script->type = stype;												\
-		script->data = sbuf_new_auto();										\
-		while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0 ) {		\
-			sbuf_bcat(script->data, buf, size);								\
-		}																	\
-		sbuf_finish(script->data);											\
-		array_append(&pkg->scripts, script);								\
-	}
-
-		COPY_SCRIPT("+PRE_INSTALL", PKG_SCRIPT_PRE_INSTALL)
-		COPY_SCRIPT("+POST_INSTALL", PKG_SCRIPT_POST_INSTALL)
-		COPY_SCRIPT("+PRE_DEINSTALL", PKG_SCRIPT_PRE_DEINSTALL)
-		COPY_SCRIPT("+POST_DEINSTALL", PKG_SCRIPT_POST_DEINSTALL)
-		COPY_SCRIPT("+PRE_UPGRADE", PKG_SCRIPT_PRE_UPGRADE)
-		COPY_SCRIPT("+POST_UPGRADE", PKG_SCRIPT_POST_UPGRADE)
-		COPY_SCRIPT("+INSTALL", PKG_SCRIPT_INSTALL)
-		COPY_SCRIPT("+DEINSTALL", PKG_SCRIPT_DEINSTALL)
-		COPY_SCRIPT("+UPGRADE", PKG_SCRIPT_UPGRADE)
+		for (i = 0; scripts[i].name != NULL; i++) {
+			if (strcmp(fpath, scripts[i].name) == 0) {
+				pkg_script_new(&script);
+				script->type = scripts[i].type;
+				script->data = sbuf_new_auto();
+				while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0 ) {
+					sbuf_bcat(script->data, buf, size);
+				}
+				sbuf_finish(script->data);
+				array_append(&pkg->scripts, script);
+				break;
+			}
+		}
 	}
 
 	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF)
 		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a));
-
 
 	cleanup:
 	if (retcode != EPKG_OK) {

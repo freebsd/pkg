@@ -47,6 +47,7 @@ pkg_script_free_void(void *s)
 	if (s != NULL)
 		pkg_script_free((struct pkg_script *)s);
 }
+
 const char *
 pkg_exec_cmd(struct pkg_exec *exec)
 {
