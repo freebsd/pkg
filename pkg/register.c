@@ -13,8 +13,6 @@
 
 #include "register.h"
 
-static void compute_flatsize(struct pkg *pkg);
-
 static struct {
 	pkg_attr attr;
 	const char *flag;
@@ -195,8 +193,6 @@ exec_register(int argc, char **argv)
 	if (heuristic)
 		pkg_analyse_files(db, pkg);
 
-	compute_flatsize(pkg);
-
 	if (pkgdb_register_pkg(db, pkg) != EPKG_OK) {
 		pkg_error_warn("can not register package");
 		retcode = 1;
@@ -206,23 +202,4 @@ exec_register(int argc, char **argv)
 	pkg_free(pkg);
 
 	return (retcode);
-}
-
-static void
-compute_flatsize(struct pkg *pkg)
-{
-	struct pkg_file **files;
-	struct stat st;
-	int64_t size = 0;
-
-	files = pkg_files(pkg);
-	for (int i = 0; files[i] != NULL; i++) {
-		if (stat(pkg_file_path(files[i]), &st) != 0) {
-			warn("stat(%s)", pkg_file_path(files[i]));
-			continue;
-		}
-		size += st.st_size;
-	}
-
-	pkg_setflatsize(pkg, size);
 }
