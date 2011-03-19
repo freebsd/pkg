@@ -1,6 +1,8 @@
 #include <archive.h>
 #include <archive_entry.h>
+#include <libgen.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "pkg.h"
 #include "pkg_error.h"
@@ -43,6 +45,9 @@ pkg_add(struct pkgdb *db, const char *path)
 	struct pkg_exec **execs;
 	struct pkg_script **scripts;
 	struct sbuf *script_cmd;
+	char dpath[MAXPATHLEN];
+	const char *basedir;
+	const char *ext;
 	int retcode = EPKG_OK;
 	int ret;
 	int i;
@@ -83,13 +88,25 @@ pkg_add(struct pkgdb *db, const char *path)
 	 */
 	pkg_resolvdeps(pkg, db);
 	deps = pkg_deps(pkg);
-	for (i = 0; deps[i] != NULL; i++)
+	basedir = dirname(path);
+	if ((ext = strrchr(path, '.')) == NULL) {
+		retcode = pkg_error_set(EPKG_FATAL, "%s has no extension", path);
+		goto error;
+	}
+	for (i = 0; deps[i] != NULL; i++) {
 		if (pkg_type(deps[i]) == PKG_NOTFOUND) {
-			retcode = pkg_error_set(EPKG_DEPENDENCY, "unresolved %s-%s dependency",
-								  pkg_get(deps[i], PKG_NAME),
-								  pkg_get(deps[i], PKG_VERSION));
-			goto error;
+			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
+					 pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION),
+					 ext);
+
+			if (pkg_add(db, dpath) != EPKG_OK) {
+				retcode = pkg_error_set(EPKG_DEPENDENCY, "unresolved %s-%s dependency",
+										pkg_get(deps[i], PKG_NAME),
+										pkg_get(deps[i], PKG_VERSION));
+				goto error;
+			}
 		}
+	}
 
 	/*
 	 * Execute pre-install scripts
