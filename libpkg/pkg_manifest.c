@@ -130,7 +130,7 @@ m_parse_flatsize(struct pkg *pkg, char *buf)
 
 	/*
 	 * Set errno to 0 to make sure that the error we will eventually catch
-	 * later was setted bt strtoimax()
+	 * later was set by strtoimax()
 	 */
 	errno = 0;
 	size = strtoimax(buf, NULL, 10);
