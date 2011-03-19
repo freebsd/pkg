@@ -328,7 +328,7 @@ int
 pkg_new(struct pkg **pkg)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
-		return(pkg_error_seterrno());
+		return(pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
 
 	(*pkg)->fields[PKG_MESSAGE].optional = 1;
 	(*pkg)->fields[PKG_WWW].optional = 1;

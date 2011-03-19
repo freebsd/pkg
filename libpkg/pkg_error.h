@@ -15,6 +15,5 @@
 	pkg_error_set(EPKG_FATAL, "%s (sqlite)", sqlite3_errmsg(db))
 
 pkg_error_t _pkg_error_set(pkg_error_t, const char *, ...);
-pkg_error_t pkg_error_seterrno(void);
 
 #endif
