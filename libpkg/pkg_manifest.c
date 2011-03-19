@@ -4,13 +4,15 @@
 #include <assert.h>
 #include <ctype.h>
 #include <err.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "pkg_util.h"
 #include "pkg.h"
+#include "pkg_error.h"
+#include "pkg_util.h"
 #include "pkg_private.h"
 
 static int m_parse_name(struct pkg *pkg, char *buf);
@@ -126,10 +128,16 @@ m_parse_flatsize(struct pkg *pkg, char *buf)
 {
 	int64_t size;
 
+	/*
+	 * Set errno to 0 to make sure that the error we will eventually catch
+	 * later was setted bt strtoimax()
+	 */
+	errno = 0;
 	size = strtoimax(buf, NULL, 10);
 
-	if (size <= 0)
-		return (EPKG_FATAL);
+	if (errno == EINVAL || errno == ERANGE)
+		return (pkg_error_set(EPKG_FATAL, "m_parse_flatsize(): %s",
+				strerror(errno)));
 
 	pkg_setflatsize(pkg, size);
 	return (EPKG_OK);
