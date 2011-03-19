@@ -216,8 +216,8 @@ pkg_conflicts(struct pkg *pkg)
 int
 pkg_open(struct pkg **pkg_p, const char *path)
 {
-	struct archive *a;
-	struct archive_entry *ae;
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
 	int retcode;
 
 	retcode = pkg_open2(pkg_p, &a, &ae, path);
