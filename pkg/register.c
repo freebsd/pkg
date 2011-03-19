@@ -23,7 +23,6 @@ static struct {
 	{ PKG_COMMENT, "-c"},
 	{ PKG_DESC, "-d"},
 	{ PKG_PREFIX, "-p"},
-	{ PKG_MTREE, "-m"},
 	{ PKG_MAINTAINER, "-r"},
 	{ 0, NULL}
 };
