@@ -110,7 +110,7 @@ exec_register(int argc, char **argv)
 				arch = strdup(optarg);
 				break;
 			case 'r': /* responsible */
-				pkg_set(pkg, PKG_MAINTAINER, optarg);
+				ret += pkg_set(pkg, PKG_MAINTAINER, optarg);
 				break;
 			case 'w':
 				www = strdup(optarg);
@@ -157,13 +157,14 @@ exec_register(int argc, char **argv)
 			www = strndup(&desc[pmatch[1].rm_so], size);
 			pkg_set(pkg, PKG_WWW, www);
 			free(www);
+		} else {
+			pkg_set(pkg, PKG_WWW, "UNKNOWN");
 		}
 		regfree(&preg);
 	} else {
 		pkg_set(pkg, PKG_WWW, www);
 		free(www);
 	}
-
 
 	if (strstr(u.release, "RELEASE") == NULL) {
 		asprintf(&v, "%s-%d", u.release, __FreeBSD_version);
