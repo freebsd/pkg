@@ -285,19 +285,20 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg = *pkg_p;
 
 		pkg->type = PKG_INSTALLED;
-		pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 0));
-		pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 1));
-		pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 2));
-		pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 3));
-		pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 4));
-		pkg_set(pkg, PKG_MTREE, sqlite3_column_text(it->stmt, 5));
-		pkg_set(pkg, PKG_MESSAGE, sqlite3_column_text(it->stmt, 6));
-		pkg_set(pkg, PKG_ARCH, sqlite3_column_text(it->stmt, 7));
-		pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 8));
-		pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 9));
-		pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
-		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
-		pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
+		pkg->rowid = sqlite3_column_int(it->stmt, 0);
+		pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
+		pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
+		pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 3));
+		pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 4));
+		pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 5));
+		pkg_set(pkg, PKG_MTREE, sqlite3_column_text(it->stmt, 6));
+		pkg_set(pkg, PKG_MESSAGE, sqlite3_column_text(it->stmt, 7));
+		pkg_set(pkg, PKG_ARCH, sqlite3_column_text(it->stmt, 8));
+		pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 9));
+		pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 10));
+		pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 11));
+		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 12));
+		pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 13));
 
 		if (flags & PKG_DEPS)
 			if ((ret = pkgdb_pkg_loaddeps(it->db, pkg)) != EPKG_OK)
@@ -391,7 +392,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	}
 
 	snprintf(sql, sizeof(sql),
-			"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+			"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, m.content, "
 				"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 				"p.prefix, p.flatsize "
 			"FROM packages AS p, mtree AS m "
@@ -413,7 +414,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 {
 	sqlite3_stmt *stmt;
 	const char sql[] = ""
-		"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+		"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, m.content, "
 			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 			"p.prefix, p.flatsize "
 			"FROM packages AS p, mtree AS m, files AS f "
@@ -439,7 +440,7 @@ pkgdb_pkg_loaddeps(struct pkgdb *db, struct pkg *pkg)
 	struct pkg *p;
 	int ret;
 	const char sql[] = ""
-	"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+	"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, m.content, "
 		"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 		"p.prefix, p.flatsize "
 	"FROM packages AS p, mtree AS m, deps AS d "
@@ -488,7 +489,7 @@ pkgdb_pkg_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 	struct pkg *p;
 	int ret;
 	const char sql[] = ""
-		"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+		"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, m.content, "
 			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 			"p.prefix, p.flatsize "
 		"FROM packages AS p, mtree AS m, deps AS d "
