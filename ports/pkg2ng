@@ -12,7 +12,8 @@ do
 
 	# +CONTENTS
 	PLIST=`mktemp /tmp/pkg2ng.plist.XXXXXX`
-	eval `awk -v pfile=${PLIST} '
+	DEPENDS=`mktemp /tmp/pkg2ng.depends.XXXXXX`
+	eval `awk -v pfile=${PLIST} -v dfile=${DEPENDS} '
 	BEGIN{
 		origin=""
 		depends=""
@@ -24,7 +25,7 @@ do
 			getline
 			orig=$2
 			sub(/DEPORIGIN/,"",orig)
-			depends=depends" "dep""orig
+			print dep""orig >> dfile
 		} else if ( $0 ~ /^@comment ORIGIN/ ) {
 			origin=$2
 			sub(/ORIGIN:/,"",origin)
@@ -42,7 +43,6 @@ do
 	}
 	END{
 		print "export ORIGIN=\""origin"\""
-		print "export DEPENDS=\""depends"\""
 		print "export CONFLICTS=\""conflict"\""
 	}
 	' ${DB}/+CONTENTS`
@@ -56,14 +56,14 @@ do
 	test -f ${DB}/+MTREE_DIRS && CMD_ARGS="${CMD_ARGS} -m ${DB}/+MTREE_DIRS"
 	test -f ${DB}/+DISPLAY && CMD_ARGS="${CMD_ARGS} -M ${DB}/+DISPLAY"
 	test -n "${CONFLICTS}" && CMD_ARGS="${CMD_ARGS} -C ${CONFLICTS}"
-	test -n "${DEPENDS}" && CMD_ARGS="${CMD_ARGS} -P ${DEPENDS}"
 	test -n "${SCRIPTS}" && CMD_ARGS="${CMD_ARGS} -s ${SCRIPTS}"
 	test -n "${OPTIONS}" && CMD_ARGS="${CMD_ARGS} -O ${OPTIONS}"
 
 	pkg register -c "${COMMENT}" -d ${DESC} -p /usr/local -n ${PKG} \
+	-P "`cat ${DEPENDS}`" \
 	-o ${ORIGIN} -a ${ARCH} -r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS}
 
-	rm ${PLIST}
+	rm ${PLIST} ${DEPENDS}
 
 	echo " done"
 done
