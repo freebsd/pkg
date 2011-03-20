@@ -66,7 +66,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 			if ((it = pkgdb_query_which(db, map->l_name)) == NULL)
 				return (EPKG_FATAL);
 
-			if (pkgdb_it_next_pkg(it, &pkg, PKG_BASIC) == 0) {
+			if (pkgdb_it_next(it, &pkg, PKG_BASIC) == 0) {
 				found = false;
 				if (( deps = pkg_deps(pkg) ) != NULL) {
 					for (i = 0; deps[i]; i++) {

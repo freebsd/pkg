@@ -165,7 +165,7 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 	for (i = 0; deps[i] != NULL; i++) {
 		it = pkgdb_query(db, pkg_get(deps[i], PKG_ORIGIN), MATCH_EXACT);
 
-		if (pkgdb_it_next_pkg(it, &p, PKG_BASIC) == 0) {
+		if (pkgdb_it_next(it, &p, PKG_BASIC) == 0) {
 			deps[i]->type = PKG_INSTALLED;
 		} else {
 			deps[i]->type = PKG_NOTFOUND;
@@ -373,6 +373,7 @@ pkg_reset(struct pkg *pkg)
 
 	pkg->flatsize = 0;
 	pkg->flags = 0;
+	pkg->rowid = 0;
 
 	array_reset(&pkg->deps, &pkg_free_void);
 	array_reset(&pkg->rdeps, &pkg_free_void);

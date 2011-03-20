@@ -315,13 +315,6 @@ int pkgdb_unregister_pkg(struct pkgdb *, const char *);
 
 struct pkgdb_it * pkgdb_query(struct pkgdb *, const char *, match_t);
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *, const char *);
-struct pkgdb_it * pkgdb_query_dep(struct pkgdb *, const char *);
-struct pkgdb_it * pkgdb_query_rdep(struct pkgdb *, const char *);
-struct pkgdb_it * pkgdb_query_conflicts(struct pkgdb *, const char *);
-struct pkgdb_it * pkgdb_query_files(struct pkgdb *, const char *);
-struct pkgdb_it * pkgdb_query_execs(struct pkgdb *, const char *);
-struct pkgdb_it * pkgdb_query_scripts(struct pkgdb *, const char *);
-struct pkgdb_it * pkgdb_query_options(struct pkgdb *, const char *);
 
 #define PKG_BASIC 0
 #define PKG_DEPS (1<<0)
@@ -333,12 +326,7 @@ struct pkgdb_it * pkgdb_query_options(struct pkgdb *, const char *);
 #define PKG_OPTIONS (1<<6)
 #define PKG_ALL PKG_BASIC|PKG_DEPS|PKG_RDEPS|PKG_CONFLICTS|PKG_FILES|PKG_EXECS|PKG_SCRIPTS|PKG_OPTIONS
 
-int pkgdb_it_next_pkg(struct pkgdb_it *, struct pkg **, int);
-int pkgdb_it_next_conflict(struct pkgdb_it *, struct pkg_conflict **);
-int pkgdb_it_next_file(struct pkgdb_it *, struct pkg_file **);
-int pkgdb_it_next_exec(struct pkgdb_it *, struct pkg_exec **);
-int pkgdb_it_next_script(struct pkgdb_it *, struct pkg_script **);
-int pkgdb_it_next_option(struct pkgdb_it *, struct pkg_option **);
+int pkgdb_it_next(struct pkgdb_it *, struct pkg **, int);
 void pkgdb_it_free(struct pkgdb_it *);
 
 int pkgdb_pkg_loaddeps(struct pkgdb *db, struct pkg *pkg);

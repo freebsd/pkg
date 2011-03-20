@@ -25,6 +25,7 @@ struct pkg {
 	struct array exec;
 	struct array options;
 	int flags;
+	int rowid;
 	pkg_t type;
 };
 

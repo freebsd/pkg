@@ -153,7 +153,7 @@ exec_info(int argc, char **argv)
 
 	/* end of compatibility hacks */
 
-	while ((ret = pkgdb_it_next_pkg(it, &pkg, query_flags)) == EPKG_OK) {
+	while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 		gotone = true;
 
 		if (opt & INFO_EXISTS) {

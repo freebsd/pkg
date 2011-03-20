@@ -21,7 +21,7 @@
 
 #define PKG_DBDIR "/var/db/pkg"
 
-static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, pkgdb_it_t);
+static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
@@ -252,7 +252,7 @@ pkgdb_close(struct pkgdb *db)
 }
 
 static struct pkgdb_it *
-pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, pkgdb_it_t t)
+pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s)
 {
 	struct pkgdb_it *it;
 
@@ -264,17 +264,16 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, pkgdb_it_t t)
 
 	it->db = db;
 	it->stmt = s;
-	it->type = t;
 	return (it);
 }
 
 int
-pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
+pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 {
 	struct pkg *pkg;
 	int ret;
 
-	if (it == NULL || it->type != IT_PKG)
+	if (it == NULL)
 		return (ERROR_BAD_ARG("it"));
 
 	switch (sqlite3_step(it->stmt)) {
@@ -333,136 +332,6 @@ pkgdb_it_next_pkg(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		return (EPKG_END);
 	default:
 		return (ERROR_SQLITE(it->db->sqlite));
-	}
-}
-
-int
-pkgdb_it_next_conflict(struct pkgdb_it *it, struct pkg_conflict **c_p)
-{
-	struct pkg_conflict *c;
-
-	if (it == NULL || it->type != IT_CONFLICT)
-		return (ERROR_BAD_ARG("it"));
-
-	switch (sqlite3_step(it->stmt)) {
-	case SQLITE_ROW:
-		if (*c_p == NULL)
-			pkg_conflict_new(c_p);
-		else
-			pkg_conflict_reset(*c_p);
-		c = *c_p;
-
-		sbuf_set(&c->glob, sqlite3_column_text(it->stmt, 0));
-
-		return (EPKG_OK);
-	case SQLITE_DONE:
-		return (EPKG_END);
-	default:
-		return (ERROR_SQLITE(it->db->sqlite));
-	}
-}
-
-int
-pkgdb_it_next_file(struct pkgdb_it *it, struct pkg_file **file_p)
-{
-	struct pkg_file *file;
-
-	if (it == NULL || it->type != IT_FILE)
-		return (ERROR_BAD_ARG("it"));
-
-	switch (sqlite3_step(it->stmt)) {
-	case SQLITE_ROW:
-		if (*file_p == NULL)
-			pkg_file_new(file_p);
-		else
-			pkg_file_reset(*file_p);
-		file = *file_p;
-
-		strlcpy(file->path, sqlite3_column_text(it->stmt, 0), sizeof(file->path));
-		strlcpy(file->sha256, sqlite3_column_text(it->stmt, 1), sizeof(file->sha256));
-		return (EPKG_OK);
-	case SQLITE_DONE:
-		return (EPKG_END);
-	default:
-		return (ERROR_SQLITE(it->db->sqlite));
-	}
-}
-
-int
-pkgdb_it_next_exec(struct pkgdb_it *it, struct pkg_exec **exec_p)
-{
-	struct pkg_exec *exec;
-
-	if (it == NULL || it->type != IT_EXEC)
-		return (ERROR_BAD_ARG("it"));
-
-	switch (sqlite3_step(it->stmt)) {
-		case SQLITE_ROW:
-			if (*exec_p == NULL)
-				pkg_exec_new(exec_p);
-			else
-				pkg_exec_reset(*exec_p);
-
-			exec = *exec_p;
-			sbuf_set(&exec->cmd, sqlite3_column_text(it->stmt, 0));
-			exec->type = sqlite3_column_int(it->stmt, 1);
-			return (EPKG_OK);
-		case SQLITE_DONE:
-			return (EPKG_END);
-		default:
-			return (ERROR_SQLITE(it->db->sqlite));
-	}
-}
-
-int
-pkgdb_it_next_script (struct pkgdb_it *it, struct pkg_script **script_p)
-{
-	struct pkg_script *script;
-
-	if (it == NULL || it->type != IT_SCRIPT)
-		return (ERROR_BAD_ARG("it"));
-
-	switch (sqlite3_step(it->stmt)) {
-		case SQLITE_ROW:
-			if (*script_p == NULL)
-				pkg_script_new(script_p);
-			else
-				pkg_script_reset(*script_p);
-
-			script = *script_p;
-			sbuf_set(&script->data, sqlite3_column_text(it->stmt, 0));
-			script->type = sqlite3_column_int(it->stmt, 1);
-			return (EPKG_OK);
-		case SQLITE_DONE:
-			return (EPKG_END);
-		default:
-			return (ERROR_SQLITE(it->db->sqlite));
-	}
-}
-
-int
-pkgdb_it_next_option (struct pkgdb_it *it, struct pkg_option **option_p)
-{
-	struct pkg_option *option;
-
-	if (it == NULL || it->type != IT_OPTION)
-		return (ERROR_BAD_ARG("it"));
-
-	switch (sqlite3_step(it->stmt)) {
-		case SQLITE_ROW:
-			if (*option_p == NULL)
-				pkg_option_new(option_p);
-			else
-				pkg_option_reset(*option_p);
-
-			option = *option_p;
-			sbuf_set(&option->opt, sqlite3_column_text(it->stmt, 0));
-			sbuf_set(&option->value, sqlite3_column_text(it->stmt, 1));
-			return (EPKG_OK);
-		case SQLITE_DONE:
-			return (EPKG_END);
-		default:
-			return (ERROR_SQLITE(it->db->sqlite));
 	}
 }
 
@@ -526,7 +395,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 				"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 				"p.prefix, p.flatsize "
 			"FROM packages AS p, mtree AS m "
-			"WHERE m.id = p.mtree_id%s;", comp);
+			"WHERE m.rowid = p.mtree_id%s;", comp);
 
 	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -536,7 +405,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, IT_PKG));
+	return (pkgdb_it_new(db, stmt));
 }
 
 struct pkgdb_it *
@@ -548,8 +417,8 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 			"p.prefix, p.flatsize "
 			"FROM packages AS p, mtree AS m, files AS f "
-			"WHERE m.id = p.mtree_id " 
-				"AND p.origin = f.package_id "
+			"WHERE m.rowid = p.mtree_id " 
+				"AND p.rowid = f.package_id "
 				"AND f.path = ?1;";
 
 	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -559,164 +428,48 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, IT_PKG));
-}
-
-struct pkgdb_it *
-pkgdb_query_dep(struct pkgdb *db, const char *origin) {
-	sqlite3_stmt *stmt;
-	const char sql[] = ""
-		"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
-			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
-			"p.prefix, p.flatsize "
-		"FROM packages AS p, mtree AS m, deps AS d "
-		"WHERE m.id = p.mtree_id "
-			"AND p.origin = d.origin "
-			"AND d.package_id = ?1;";
-
-	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (NULL);
-	}
-
-	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new(db, stmt, IT_PKG));
-}
-
-struct pkgdb_it *
-pkgdb_query_rdep(struct pkgdb *db, const char *origin) {
-	sqlite3_stmt *stmt;
-	const char sql[] = ""
-		"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
-			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
-			"p.prefix, p.flatsize "
-		"FROM packages AS p, mtree AS m, deps AS d "
-		"WHERE m.id = p.mtree_id "
-			"AND p.origin = d.package_id "
-			"AND d.origin = ?1;";
-
-	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (NULL);
-	}
-
-	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new(db, stmt, IT_PKG));
-}
-
-struct pkgdb_it *
-pkgdb_query_conflicts(struct pkgdb *db, const char *origin) {
-	sqlite3_stmt *stmt;
-	const char sql[] = ""
-		"SELECT name "
-		"FROM conflicts "
-		"WHERE package_id = ?1;";
-
-	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (NULL);
-	}
-
-	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new(db, stmt, IT_CONFLICT));
-}
-
-struct pkgdb_it *
-pkgdb_query_files(struct pkgdb *db, const char *origin) {
-	sqlite3_stmt *stmt;
-	const char sql[] = ""
-		"SELECT path, sha256 "
-		"FROM files "
-		"WHERE package_id = ?1;";
-
-	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (NULL);
-	}
-
-	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new(db, stmt, IT_FILE));
-}
-
-struct pkgdb_it *
-pkgdb_query_execs(struct pkgdb *db, const char *origin) {
-	sqlite3_stmt *stmt;
-	const char sql[] = ""
-		"SELECT cmd, type "
-		"FROM exec "
-		"WHERE package_id = ?1";
-
-	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (NULL);
-	}
-
-	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new(db, stmt, IT_EXEC));
-}
-
-struct pkgdb_it *
-pkgdb_query_scripts(struct pkgdb *db, const char *origin) {
-	sqlite3_stmt *stmt;
-	const char sql[] = ""
-		"SELECT script, type "
-		"FROM scripts "
-		"WHERE package_id = ?1";
-
-	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (NULL);
-	}
-
-	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new(db, stmt, IT_SCRIPT));
-}
-
-struct pkgdb_it *
-pkgdb_query_options(struct pkgdb *db, const char *origin) {
-	sqlite3_stmt *stmt;
-	const char sql[] = ""
-		"SELECT option, value "
-		"FROM options "
-		"WHERE package_id = ?1";
-
-	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (NULL);
-	}
-
-	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new(db, stmt, IT_OPTION));
+	return (pkgdb_it_new(db, stmt));
 }
 
 int
 pkgdb_pkg_loaddeps(struct pkgdb *db, struct pkg *pkg)
 {
-	struct pkgdb_it *it;
+	sqlite3_stmt *stmt;
+	struct pkgdb_it it;
 	struct pkg *p;
 	int ret;
+	const char sql[] = ""
+	"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+		"p.message, p.arch, p.osversion, p.maintainer, p.www, "
+		"p.prefix, p.flatsize "
+	"FROM packages AS p, mtree AS m, deps AS d "
+	"WHERE m.rowid = p.mtree_id "
+		"AND p.origin = d.origin "
+		"AND d.package_id = ?1;";
+
+	if (pkg->type != PKG_INSTALLED)
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (pkg->flags & PKG_DEPS)
 		return (EPKG_OK);
 
 	array_init(&pkg->deps, 10);
 
-	if ((it = pkgdb_query_dep(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
-		return (EPKG_FATAL);
+	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (ERROR_SQLITE(db->sqlite));
+
+	sqlite3_bind_int(stmt, 1, pkg->rowid);
+
+	it.stmt = stmt;
+	it.db = db;
 
 	p = NULL;
-	while ((ret = pkgdb_it_next_pkg(it, &p, PKG_BASIC)) == EPKG_OK) {
+	while ((ret = pkgdb_it_next(&it, &p, PKG_BASIC)) == EPKG_OK) {
 		array_append(&pkg->deps, p);
 		p = NULL;
 	}
-	pkgdb_it_free(it);
+
+	sqlite3_finalize(stmt);
 
 	if (ret != EPKG_END) {
 		array_reset(&pkg->deps, &pkg_free_void);
@@ -730,24 +483,41 @@ pkgdb_pkg_loaddeps(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_pkg_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 {
-	struct pkgdb_it *it;
+	sqlite3_stmt *stmt;
+	struct pkgdb_it it;
 	struct pkg *p;
 	int ret;
+	const char sql[] = ""
+		"SELECT p.origin, p.name, p.version, p.comment, p.desc, m.content, "
+			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
+			"p.prefix, p.flatsize "
+		"FROM packages AS p, mtree AS m, deps AS d "
+		"WHERE m.id = p.mtree_id "
+			"AND p.rowid = d.package_id "
+			"AND d.origin = ?1;";
+
+	if (pkg->type != PKG_INSTALLED)
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (pkg->flags & PKG_RDEPS)
 		return (EPKG_OK);
 
 	array_init(&pkg->rdeps, 5);
 
-	if ((it = pkgdb_query_rdep(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
-		return (EPKG_FATAL);
+	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (ERROR_SQLITE(db->sqlite));
+
+	sqlite3_bind_text(stmt, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+
+	it.stmt = stmt;
+	it.db = db;
 
 	p = NULL;
-	while ((ret = pkgdb_it_next_pkg(it, &p, PKG_BASIC)) == EPKG_OK) {
+	while ((ret = pkgdb_it_next(&it, &p, PKG_BASIC)) == EPKG_OK) {
 		array_append(&pkg->rdeps, p);
 		p = NULL;
 	}
-	pkgdb_it_free(it);
+	sqlite3_finalize(stmt);
 
 	if (ret != EPKG_END) {
 		array_reset(&pkg->rdeps, &pkg_free_void);
@@ -761,59 +531,79 @@ pkgdb_pkg_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_pkg_loadconflicts(struct pkgdb *db, struct pkg *pkg)
 {
-	struct pkgdb_it *it;
+	sqlite3_stmt *stmt;
 	struct pkg_conflict *c;
 	int ret;
+	const char sql[] = ""
+		"SELECT name "
+		"FROM conflicts "
+		"WHERE package_id = ?1;";
+
+	if (pkg->type != PKG_INSTALLED)
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (pkg->flags & PKG_CONFLICTS)
 		return (EPKG_OK);
 
 	array_init(&pkg->conflicts, 5);
 
-	if ((it = pkgdb_query_conflicts(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
-		return (EPKG_FATAL);
+	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (ERROR_SQLITE(db->sqlite));
 
-	c = NULL;
-	while ((ret = pkgdb_it_next_conflict(it, &c)) == EPKG_OK) {
+	sqlite3_bind_int(stmt, 1, pkg->rowid);
+
+	while ((ret = sqlite3_step(stmt) == SQLITE_ROW)) {
+		pkg_conflict_new(&c);
+		sbuf_set(&c->glob, sqlite3_column_text(stmt, 0));
 		array_append(&pkg->conflicts, c);
-		c = NULL;
 	}
-	pkgdb_it_free(it);
+	sqlite3_finalize(stmt);
 
-	if (ret != EPKG_END) {
+	if (ret != SQLITE_DONE) {
 		array_reset(&pkg->conflicts, &pkg_conflict_free_void);
-		return (ret);
+		return (ERROR_SQLITE(db->sqlite));
 	}
 
 	pkg->flags |= PKG_CONFLICTS;
+
 	return (EPKG_OK);
 }
 
 int
 pkgdb_pkg_loadfiles(struct pkgdb *db, struct pkg *pkg)
 {
-	struct pkgdb_it *it;
+	sqlite3_stmt *stmt;
 	struct pkg_file *f;
 	int ret;
+	const char sql[] = ""
+		"SELECT path, sha256 "
+		"FROM files "
+		"WHERE package_id = ?1;";
+
+	if (pkg->type != PKG_INSTALLED)
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (pkg->flags & PKG_FILES)
 		return (EPKG_OK);
 
 	array_init(&pkg->files, 10);
 
-	if ((it = pkgdb_query_files(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
-		return (EPKG_FATAL);
+	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (ERROR_SQLITE(db->sqlite));
 
-	f = NULL;
-	while ((ret = pkgdb_it_next_file(it, &f)) == EPKG_OK) {
+	sqlite3_bind_int(stmt, 1, pkg->rowid);
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_file_new(&f);
+		strlcpy(f->path, sqlite3_column_text(stmt, 0), sizeof(f->path));
+		strlcpy(f->sha256, sqlite3_column_text(stmt, 1), sizeof(f->sha256));
 		array_append(&pkg->files, f);
-		f = NULL;
 	}
-	pkgdb_it_free(it);
+	sqlite3_finalize(stmt);
 
-	if (ret != EPKG_END) {
+	if (ret != SQLITE_DONE) {
 		array_reset(&pkg->files, &free);
-		return (ret);
+		return (ERROR_SQLITE(db->sqlite));
 	}
 
 	pkg->flags |= PKG_FILES;
@@ -823,28 +613,38 @@ pkgdb_pkg_loadfiles(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_pkg_loadexecs(struct pkgdb *db, struct pkg *pkg)
 {
-	struct pkgdb_it *it;
+	sqlite3_stmt *stmt;
 	struct pkg_exec *e;
 	int ret;
+	const char sql[] = ""
+		"SELECT cmd, type "
+		"FROM exec "
+		"WHERE package_id = ?1";
+
+	if (pkg->type != PKG_INSTALLED)
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (pkg->flags & PKG_EXECS)
 		return (EPKG_OK);
 
 	array_init(&pkg->exec, 5);
 
-	if ((it = pkgdb_query_execs(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
-		return (EPKG_FATAL);
+	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (ERROR_SQLITE(db->sqlite));
 
-	e = NULL;
-	while ((ret = pkgdb_it_next_exec(it, &e)) == EPKG_OK) {
+	sqlite3_bind_int(stmt, 1, pkg->rowid);
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_exec_new(&e);
+		sbuf_set(&e->cmd, sqlite3_column_text(stmt, 0));
+		e->type = sqlite3_column_int(stmt, 1);
 		array_append(&pkg->exec, e);
-		e = NULL;
 	}
-	pkgdb_it_free(it);
+	sqlite3_finalize(stmt);
 
-	if (ret != EPKG_END) {
+	if (ret != SQLITE_DONE) {
 		array_reset(&pkg->exec, &pkg_exec_free_void);
-		return (ret);
+		return (ERROR_SQLITE(db->sqlite));
 	}
 
 	pkg->flags |= PKG_EXECS;
@@ -854,28 +654,38 @@ pkgdb_pkg_loadexecs(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_pkg_loadscripts(struct pkgdb *db, struct pkg *pkg)
 {
-	struct pkgdb_it *it;
+	sqlite3_stmt *stmt;
 	struct pkg_script *s;
 	int ret;
+	const char sql[] = ""
+		"SELECT script, type "
+		"FROM scripts "
+		"WHERE package_id = ?1";
+
+	if (pkg->type != PKG_INSTALLED)
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (pkg->flags & PKG_SCRIPTS)
 		return (EPKG_OK);
 
 	array_init(&pkg->scripts, 6);
 
-	if ((it = pkgdb_query_scripts(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
-		return (EPKG_FATAL);
+	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (ERROR_SQLITE(db->sqlite));
 
-	s = NULL;
-	while ((ret = pkgdb_it_next_script(it, &s)) == EPKG_OK) {
+	sqlite3_bind_int(stmt, 1, pkg->rowid);
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_script_new(&s);
+		sbuf_set(&s->data, sqlite3_column_text(stmt, 0));
+		s->type = sqlite3_column_int(stmt, 1);
 		array_append(&pkg->scripts, s);
-		s = NULL;
 	}
-	pkgdb_it_free(it);
+	sqlite3_finalize(stmt);
 
-	if (ret != EPKG_END) {
+	if (ret != SQLITE_DONE) {
 		array_reset(&pkg->scripts, &pkg_script_free_void);
-		return (ret);
+		return (ERROR_SQLITE(db->sqlite));
 	}
 
 	pkg->flags |= PKG_SCRIPTS;
@@ -885,28 +695,38 @@ pkgdb_pkg_loadscripts(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_pkg_loadoptions(struct pkgdb *db, struct pkg *pkg)
 {
-	struct pkgdb_it *it;
+	sqlite3_stmt *stmt;
 	struct pkg_option *o;
 	int ret;
+	const char sql[] = ""
+		"SELECT option, value "
+		"FROM options "
+		"WHERE package_id = ?1";
+
+	if (pkg->type != PKG_INSTALLED)
+		return (ERROR_BAD_ARG("pkg"));
 
 	if (pkg->flags & PKG_OPTIONS)
 		return (EPKG_OK);
 
 	array_init(&pkg->options, 5);
 
-	if ((it = pkgdb_query_options(db, pkg_get(pkg, PKG_ORIGIN))) == NULL)
-		return (EPKG_FATAL);
+	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (ERROR_SQLITE(db->sqlite));
 
-	o = NULL;
-	while ((ret = pkgdb_it_next_option(it, &o)) == EPKG_OK) {
+	sqlite3_bind_int(stmt, 1, pkg->rowid);
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_option_new(&o);
+		sbuf_set(&o->opt, sqlite3_column_text(stmt, 0));
+		sbuf_set(&o->value, sqlite3_column_text(stmt, 1));
 		array_append(&pkg->options, o);
-		o = NULL;
 	}
-	pkgdb_it_free(it);
+	sqlite3_finalize(stmt);
 
-	if (ret != EPKG_END) {
+	if (ret != SQLITE_DONE) {
 		array_reset(&pkg->options, &pkg_option_free_void);
-		return (ret);
+		return (ERROR_SQLITE(db->sqlite));
 	}
 
 	pkg->flags |= PKG_OPTIONS;

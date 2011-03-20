@@ -115,7 +115,7 @@ exec_create(int argc, char **argv)
 		}
 
 		pkg_new(&pkg);
-		while ((ret = pkgdb_it_next_pkg(it, &pkg, PKG_ALL)) == EPKG_OK) {
+		while ((ret = pkgdb_it_next(it, &pkg, PKG_ALL)) == EPKG_OK) {
 			printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME),
 				   pkg_get(pkg, PKG_VERSION));
 

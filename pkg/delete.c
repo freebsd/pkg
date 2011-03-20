@@ -62,7 +62,7 @@ exec_delete(int argc, char **argv)
 	}
 
 	pkg_new(&pkg);
-	while ((ret = pkgdb_it_next_pkg(it, &pkg, flags)) == EPKG_OK) {
+	while ((ret = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
 		if (pkg_delete(pkg, db, force) != EPKG_OK) {
 			retcode++;
 			pkg_error_warn("can not delete %s", pkg_get(pkg, PKG_ORIGIN));

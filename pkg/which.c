@@ -48,7 +48,7 @@ exec_which(int argc, char **argv)
 	}
 
 	pkg_new(&pkg);
-	if (( ret = pkgdb_it_next_pkg(it, &pkg, PKG_BASIC)) == EPKG_OK) {
+	if (( ret = pkgdb_it_next(it, &pkg, PKG_BASIC)) == EPKG_OK) {
 		retcode = 0;
 		printf("%s was installed by package %s-%s\n", pathabs, pkg_get(pkg, PKG_NAME),
 			   pkg_get(pkg, PKG_VERSION));
