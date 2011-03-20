@@ -114,12 +114,13 @@ pkgdb_init(sqlite3 *sdb)
 	char *errmsg;
 	const char sql[] = ""
 	"CREATE TABLE packages ("
-		"origin TEXT PRIMARY KEY,"
+		"id INTEGER PRIMARY KEY,"
+		"origin TEXT UNIQUE,"
 		"name TEXT,"
 		"version TEXT,"
 		"comment TEXT,"
 		"desc TEXT,"
-		"mtree_id INTEGER REFERENCES mtree(rowid) ON DELETE RESTRICT"
+		"mtree_id INTEGER REFERENCES mtree(id) ON DELETE RESTRICT"
 			" ON UPDATE CASCADE,"
 		"message TEXT,"
 		"arch TEXT,"
@@ -132,7 +133,7 @@ pkgdb_init(sqlite3 *sdb)
 		"pkg_format_version INTEGER"
 	");"
 	"CREATE TABLE scripts ("
-		"package_id INTEGER REFERENCES packages(rowid) ON DELETE CASCADE"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
 		"script TEXT,"
 		"type INTEGER,"
@@ -140,14 +141,14 @@ pkgdb_init(sqlite3 *sdb)
 	");"
 	"CREATE INDEX scripts_package ON scripts(package_id);"
 	"CREATE TABLE exec ("
-		"package_id INTEGER REFERENCES packages(rowid) ON DELETE CASCADE"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
 		"cmd TEXT,"
 		"type INTEGER"
 	");"
 	"CREATE INDEX exec_package ON exec(package_id);"
 	"CREATE TABLE options ("
-		"package_id INTEGER REFERENCES packages(rowid) ON DELETE CASCADE"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
 		"option TEXT,"
 		"value TEXT,"
@@ -158,7 +159,7 @@ pkgdb_init(sqlite3 *sdb)
 		"origin TEXT,"
 		"name TEXT,"
 		"version TEXT,"
-		"package_id INTEGER REFERENCES packages(rowid) ON DELETE CASCADE"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
 		"PRIMARY KEY (package_id,origin)"
 	");"
@@ -167,19 +168,20 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE TABLE files ("
 		"path TEXT PRIMARY KEY,"
 		"sha256 TEXT,"
-		"package_id INTEGER REFERENCES packages(rowid) ON DELETE CASCADE"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE"
 	");"
 	"CREATE INDEX files_package ON files(package_id);"
 	"CREATE TABLE conflicts ("
 		"name TEXT,"
-		"package_id INTEGER REFERENCES packages(rowid) ON DELETE CASCADE"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
 		"PRIMARY KEY (package_id,name)"
 	");"
 	"CREATE INDEX conflicts_package ON conflicts(package_id);"
 	"CREATE TABLE mtree ("
-		"sha256 TEXT PRIMARY KEY,"
+		"id INTEGER PRIMARY KEY,"
+		"sha256 TEXT UNIQUE,"
 		"content TEXT"
 	");"
 	"CREATE TRIGGER clean_mtree AFTER DELETE ON packages BEGIN "
@@ -841,7 +843,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 3, pkg_get(pkg, PKG_VERSION), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 4, pkg_get(pkg, PKG_COMMENT), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_DESC), -1, SQLITE_STATIC);
-	sqlite3_bind_int64(stmt_pkg, 6, mtree_id);
+	if (mtree_id > 0)
+		sqlite3_bind_int64(stmt_pkg, 6, mtree_id);
+	else
+		sqlite3_bind_null(stmt_pkg, 6);
 	sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_MESSAGE), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_ARCH), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_STATIC);
