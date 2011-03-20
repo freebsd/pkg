@@ -71,7 +71,7 @@ pkg_add(struct pkgdb *db, const char *path)
 		goto error;
 	}
 
-	ret = pkgdb_it_next(it, &p, PKG_BASIC);
+	ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC);
 	pkgdb_it_free(it);
 	pkg_free(p);
 

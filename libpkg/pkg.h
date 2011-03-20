@@ -316,26 +316,27 @@ int pkgdb_unregister_pkg(struct pkgdb *, const char *);
 struct pkgdb_it * pkgdb_query(struct pkgdb *, const char *, match_t);
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *, const char *);
 
-#define PKG_BASIC 0
-#define PKG_DEPS (1<<0)
-#define PKG_RDEPS (1<<1)
-#define PKG_CONFLICTS (1<<2)
-#define PKG_FILES (1<<3)
-#define PKG_EXECS (1<<4)
-#define PKG_SCRIPTS (1<<5)
-#define PKG_OPTIONS (1<<6)
-#define PKG_ALL PKG_BASIC|PKG_DEPS|PKG_RDEPS|PKG_CONFLICTS|PKG_FILES|PKG_EXECS|PKG_SCRIPTS|PKG_OPTIONS
+#define PKG_LOAD_BASIC 0
+#define PKG_LOAD_DEPS (1<<0)
+#define PKG_LOAD_RDEPS (1<<1)
+#define PKG_LOAD_CONFLICTS (1<<2)
+#define PKG_LOAD_FILES (1<<3)
+#define PKG_LOAD_EXECS (1<<4)
+#define PKG_LOAD_SCRIPTS (1<<5)
+#define PKG_LOAD_OPTIONS (1<<6)
+#define PKG_LOAD_MTREE (1<<7)
 
 int pkgdb_it_next(struct pkgdb_it *, struct pkg **, int);
 void pkgdb_it_free(struct pkgdb_it *);
 
-int pkgdb_pkg_loaddeps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_pkg_loadrdeps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_pkg_loadconflicts(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_pkg_loadfiles(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_pkg_loadexecs(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_pkg_loadscripts(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_pkg_loadoptions(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadexecs(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
 
 int pkgdb_compact(struct pkgdb *db);
 const char *pkgdb_get_dir(void);

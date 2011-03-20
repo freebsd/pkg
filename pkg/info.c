@@ -62,7 +62,7 @@ exec_info(int argc, char **argv)
 {
 	struct pkgdb *db;
 	struct pkgdb_it *it;
-	int query_flags = PKG_BASIC;
+	int query_flags = PKG_LOAD_BASIC;
 	struct pkg *pkg = NULL;
 	struct pkg **deps;
 	struct pkg_file **files;
@@ -95,15 +95,15 @@ exec_info(int argc, char **argv)
 				break;
 			case 'd':
 				opt |= INFO_PRINT_DEP;
-				query_flags |= PKG_DEPS;
+				query_flags |= PKG_LOAD_DEPS;
 				break;
 			case 'r':
 				opt |= INFO_PRINT_RDEP;
-				query_flags |= PKG_RDEPS;
+				query_flags |= PKG_LOAD_RDEPS;
 				break;
 			case 'l':
 				opt |= INFO_LIST_FILES;
-				query_flags |= PKG_FILES;
+				query_flags |= PKG_LOAD_FILES;
 				break;
 			case 's':
 				opt |= INFO_SIZE;

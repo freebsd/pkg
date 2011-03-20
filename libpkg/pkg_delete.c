@@ -48,13 +48,15 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	/*
 	 * Ensure that we have all the informations we need
 	 */
-	if ((ret = pkgdb_pkg_loadrdeps(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_loadrdeps(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_pkg_loadfiles(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_loadfiles(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_pkg_loadscripts(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_loadscripts(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_pkg_loadexecs(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_loadexecs(db, pkg)) != EPKG_OK)
+		return (ret);
+	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
 	rdeps = pkg_rdeps(pkg);

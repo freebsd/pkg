@@ -142,6 +142,8 @@ pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char
 
 	(void)mpath;
 
+	/* TODO: get stuff from db */
+
 	pkg_archive = archive_write_new();
 
 	if ((ext = pkg_create_set_format(pkg_archive, format)) == NULL) {

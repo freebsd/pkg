@@ -24,7 +24,7 @@ exec_delete(int argc, char **argv)
 	char *origin = NULL;
 	char ch;
 	int ret;
-	int flags = PKG_BASIC|PKG_FILES|PKG_RDEPS;
+	int flags = PKG_LOAD_BASIC;
 	int force = 0;
 	int retcode = 0;
 
