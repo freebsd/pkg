@@ -66,7 +66,7 @@ exec_info(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkg **deps;
 	struct pkg_file **files;
-	unsigned char opt = 0;
+	unsigned int opt = 0;
 	char size[7];
 	match_t match = MATCH_EXACT;
 	char ch;
@@ -76,7 +76,7 @@ exec_info(int argc, char **argv)
 	bool gotone = false;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "egxXdrlsqoO")) != -1) {
+	while ((ch = getopt(argc, argv, "egxXdrlsqopO")) != -1) {
 		switch (ch) {
 			case 'O':
 				opt |= INFO_ORIGIN_SEARCH;  /* this is only for ports compat */
@@ -114,8 +114,12 @@ exec_info(int argc, char **argv)
 			case 'o':
 				opt |= INFO_ORIGIN;
 				break;
+			case 'p':
+				opt |= INFO_PREFIX;
+				break;
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
@@ -195,7 +199,11 @@ exec_info(int argc, char **argv)
 				printf("%s\n", pkg_get(pkg, PKG_ORIGIN));
 			else
 				printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_ORIGIN));
-
+		} else if (opt & INFO_PREFIX) {
+			if (opt & INFO_QUIET)
+				printf("%s\n", pkg_get(pkg, PKG_PREFIX));
+			else
+				printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_PREFIX));
 		} else {
 			if (opt & INFO_QUIET)
 				printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));

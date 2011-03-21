@@ -9,6 +9,7 @@
 #define INFO_QUIET (1<<5)
 #define INFO_ORIGIN (1<<6)
 #define INFO_ORIGIN_SEARCH (1<<7)
+#define INFO_PREFIX (1<<8)
 
 int exec_info(int, char **);
 void usage_info(void);
