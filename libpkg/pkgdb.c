@@ -555,7 +555,7 @@ pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg)
 
 	sqlite3_bind_int64(stmt, 1, pkg->rowid);
 
-	while ((ret = sqlite3_step(stmt) == SQLITE_ROW)) {
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_conflict_new(&c);
 		sbuf_set(&c->glob, sqlite3_column_text(stmt, 0));
 		array_append(&pkg->conflicts, c);
@@ -744,7 +744,7 @@ pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg)
 	const char sql[] = ""
 		"SELECT m.content "
 		"FROM mtree AS m, packages AS p "
-		"WHERE id = p.mtree_id "
+		"WHERE m.id = p.mtree_id "
 			" AND p.id = ?1;";
 
 	if (pkg->type != PKG_INSTALLED)

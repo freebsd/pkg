@@ -10,6 +10,7 @@
 #include <fcntl.h>
 
 #include "pkg.h"
+#include "pkg_error.h"
 #include "pkg_private.h"
 
 #define METADATA_GLOB "+{DEINSTALL,INSTALL,MTREE_DIRS}"
@@ -139,10 +140,20 @@ pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char
 	struct archive *pkg_archive;
 	char archive_path[MAXPATHLEN];
 	const char *ext;
+	int required_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES |
+						 PKG_LOAD_EXECS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
+						 PKG_LOAD_MTREE;
 
 	(void)mpath;
 
-	/* TODO: get stuff from db */
+	if (pkg->type != PKG_INSTALLED)
+		return (ERROR_BAD_ARG("pkg"));
+
+	/*
+	 * Ensure that we have all the information we need
+	 */
+	if ((pkg->flags & required_flags) != required_flags)
+		return (ERROR_BAD_ARG("pkg"));
 
 	pkg_archive = archive_write_new();
 

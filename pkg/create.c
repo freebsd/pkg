@@ -44,6 +44,9 @@ exec_create(int argc, char **argv)
 	char ch;
 	int retcode = 0;
 	int ret;
+	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES |
+					  PKG_LOAD_EXECS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
+					  PKG_LOAD_MTREE;
 
 	while ((ch = getopt(argc, argv, "agxXf:r:m:o:")) != -1) {
 		switch (ch) {
@@ -115,7 +118,7 @@ exec_create(int argc, char **argv)
 		}
 
 		pkg_new(&pkg);
-		while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME),
 				   pkg_get(pkg, PKG_VERSION));
 
