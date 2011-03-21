@@ -179,30 +179,27 @@ static const char *
 pkg_create_set_format(struct archive *pkg_archive, pkg_formats format)
 {
 	switch (format) {
+		case TXZ:
+			if (archive_write_set_compression_xz(pkg_archive) == ARCHIVE_OK) {
+				return ("txz");
+			} else {
+				warnx("xz compression is not supported, trying bzip2");
+			}
+		case TBZ:
+			if (archive_write_set_compression_bzip2(pkg_archive) == ARCHIVE_OK) {
+				return ("tbz");
+			} else {
+				warnx("bzip2 compression is not supported, trying gzip");
+			}
+		case TGZ:
+			if (archive_write_set_compression_gzip(pkg_archive) == ARCHIVE_OK) {
+				return ("tgz");
+			} else {
+				warnx("gzip compression is not supported, trying plain tar");
+			}
 		case TAR:
 			archive_write_set_compression_none(pkg_archive);
 			return ("tar");
-		case TGZ:
-			if (archive_write_set_compression_gzip(pkg_archive) != ARCHIVE_OK) {
-				warnx("gzip compression is not supported, trying plain tar");
-				return (pkg_create_set_format(pkg_archive, TAR));
-			} else {
-				return ("tgz");
-			}
-		case TBZ:
-			if (archive_write_set_compression_bzip2(pkg_archive) != ARCHIVE_OK) {
-				warnx("bzip2 compression is not supported, trying gzip");
-				return (pkg_create_set_format(pkg_archive, TGZ));
-			} else {
-				return ("tbz");
-			}
-		case TXZ:
-			if (archive_write_set_compression_xz(pkg_archive) != ARCHIVE_OK) {
-				warnx("xz compression is not supported, trying bzip2");
-				return (pkg_create_set_format(pkg_archive, TBZ));
-			} else {
-				return ("txz");
-			}
 	}
 	return (NULL);
 }
