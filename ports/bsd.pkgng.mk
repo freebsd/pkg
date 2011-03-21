@@ -87,3 +87,28 @@ fake-pkg:
 	@${DO_NADA}
 .endif
 .endif
+
+.if !target(deinstall)
+deinstall:
+.if ${UID} != 0 && !defined(INSTALL_AS_USER)
+	@${ECHO_MSG} "===>  Switching to root credentials for '${.TARGET}' target"
+	@cd ${.CURDIR} && \
+		 ${SU_CMD} "${MAKE} ${__softMAKEFLAGS} ${.TARGET}"
+	@${ECHO_MSG} "===>  Returning to user credentials"
+.else
+	@${ECHO_MSG} "===>  Deinstalling for ${PKGORIGIN}"
+	@prfx=`${PKG_INFO} -q -O ${PKGORIGIN}`; \
+	@pkgname=`${PKG_INFO} -q -O ${PKGORIGIN}`; \
+	if [ -z "$${prfx}" ]; then \
+		${ECHO_MSG} "===>   ${PKGBASE} not installed, skipping"; \
+	else \
+		if [ "x${PREFIX}" = "x$${prfx}" ]; then \
+			${ECHO_MSG} "===>   Deinstalling $${pkgname}"; \
+			${PKG_DELETE} -f $${pkgname}; \
+		else \
+			${ECHO_MSG} "===>   $${pkgname} has a different PREFIX: $${prfx}, skipping"; \
+		fi; \
+	fi
+	@${RM} -f ${INSTALL_COOKIE} ${PACKAGE_COOKIE}
+.endif
+.endif
