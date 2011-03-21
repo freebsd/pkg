@@ -129,7 +129,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct archive *pkg_archi
 	archive_entry_free(entry);
 	archive_read_finish(ar);
 
-
 	return (0);
 }
 
@@ -159,8 +158,7 @@ pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char
 
 	if ((ext = pkg_create_set_format(pkg_archive, format)) == NULL) {
 		archive_write_finish(pkg_archive);
-		warnx("Unsupport format");
-		return (-1);
+		return pkg_error_set(EPKG_FORMAT, "Unsupported format");
 	}
 
 	snprintf(namever, sizeof(namever), "%s-%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
