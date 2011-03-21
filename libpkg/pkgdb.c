@@ -26,6 +26,7 @@ static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
+static int get_pragma(sqlite3 *, const char *, int64_t *);
 
 static void
 pkgdb_regex_delete(void *p)
@@ -784,8 +785,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_option **options;
 
 	sqlite3 *s;
-	sqlite3_stmt *stmt_pkg = NULL;
+	sqlite3_stmt *stmt_sel_mtree = NULL;
 	sqlite3_stmt *stmt_mtree = NULL;
+	sqlite3_stmt *stmt_pkg = NULL;
 	sqlite3_stmt *stmt_dep = NULL;
 	sqlite3_stmt *stmt_conflict = NULL;
 	sqlite3_stmt *stmt_file = NULL;
@@ -803,8 +805,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	const char *mtree;
 
 	const char sql_begin[] = "BEGIN TRANSACTION;";
+	const char sql_sel_mtree[] = ""
+		"SELECT id "
+		"FROM mtree "
+		"WHERE sha256 = ?1;";
 	const char sql_mtree[] = ""
-		"INSERT OR IGNORE INTO mtree (sha256, content) "
+		"INSERT INTO mtree (sha256, content) "
 		"VALUES (?1, ?2);";
 	const char sql_pkg[] = ""
 		"INSERT OR REPLACE INTO packages( "
@@ -841,29 +847,54 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	/*
 	 * If this package has a mtree, insert it in the database.
-	 * Compute the mtree_id which is the sha256 of the mtree.
-	 * If there is no mtree, mtree_id is set to NULL.
+	 * Compute the sha256 of the mtree.
+	 * If there is no mtree, mtree_id is set to zero (NULL in the database).
 	 */
 	mtree = pkg_get(pkg, PKG_MTREE);
 	if (mtree != NULL) {
 		SHA256_Data(mtree, strlen(mtree), mtree_sha256);
-		if (sqlite3_prepare(s, sql_mtree, -1, &stmt_mtree, NULL) !=
-							SQLITE_OK) {
+
+		/* Try to find the mtree in the database */
+		if (sqlite3_prepare(s, sql_sel_mtree, -1, &stmt_sel_mtree, NULL)
+			!= SQLITE_OK) {
 			retcode = ERROR_SQLITE(s);
 			goto cleanup;
 		}
 
-		sqlite3_bind_text(stmt_mtree, 1, mtree_sha256, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_mtree, 2, mtree, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_sel_mtree, 1, mtree_sha256, -1, SQLITE_STATIC);
 
-		ret = sqlite3_step(stmt_mtree);
-		sqlite3_finalize(stmt_mtree);
+		ret = sqlite3_step(stmt_sel_mtree);
+		if (ret == SQLITE_ROW) {
+			mtree_id = sqlite3_column_int64(stmt_sel_mtree, 0);
+			ret = SQLITE_DONE;
+		} else if (ret == SQLITE_DONE)
+			/* no result found */
+			mtree_id = 0;
+
 		if (ret != SQLITE_DONE) {
 			retcode = ERROR_SQLITE(s);
 			goto cleanup;
 		}
 
-		mtree_id = sqlite3_last_insert_rowid(s);
+		/* if the mtree is not into the dabase, insert it */
+		if (mtree_id == 0) {
+			if (sqlite3_prepare(s, sql_mtree, -1, &stmt_mtree, NULL) !=
+								SQLITE_OK) {
+				retcode = ERROR_SQLITE(s);
+				goto cleanup;
+			}
+
+			sqlite3_bind_text(stmt_mtree, 1, mtree_sha256, -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_mtree, 2, mtree, -1, SQLITE_STATIC);
+
+			ret = sqlite3_step(stmt_mtree);
+			if (ret != SQLITE_DONE) {
+				retcode = ERROR_SQLITE(s);
+				goto cleanup;
+			}
+
+			mtree_id = sqlite3_last_insert_rowid(s);
+		}
 	} else {
 		mtree_id = 0;
 	}
@@ -1058,6 +1089,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		SQLITE_OK)
 		err(1, "Can not rollback: %s", errmsg);
 
+	if (stmt_sel_mtree != NULL)
+		sqlite3_finalize(stmt_sel_mtree);
+
+	if (stmt_mtree != NULL)
+		sqlite3_finalize(stmt_mtree);
+
 	if (stmt_pkg != NULL)
 		sqlite3_finalize(stmt_pkg);
 
@@ -1109,28 +1146,31 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 	return (EPKG_OK);
 }
 
-static int get_pragma(sqlite3 *s, const char *sql, int *res) {
+static int get_pragma(sqlite3 *s, const char *sql, int64_t *res) {
 	sqlite3_stmt *stmt;
+	int ret;
 
 	if (sqlite3_prepare(s, sql, -1, &stmt, NULL) != SQLITE_OK)
 		return (ERROR_SQLITE(s));
 
-	if (sqlite3_step(stmt) != SQLITE_ROW) {
-		sqlite3_finalize(stmt);
-		return (ERROR_SQLITE(s));
-	}
+	ret = sqlite3_step(stmt) != SQLITE_ROW;
 
-	*res = sqlite3_column_int(stmt, 0);
+	if (ret == SQLITE_ROW)
+		*res = sqlite3_column_int64(stmt, 0);
 
 	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_ROW)
+		return (ERROR_SQLITE(s));
+
 	return (EPKG_OK);
 }
 
 int
 pkgdb_compact(struct pkgdb *db)
 {
-	int page_count = 0;
-	int freelist_count = 0;
+	int64_t page_count = 0;
+	int64_t freelist_count = 0;
 	char *errmsg;
 	int retcode = EPKG_OK;
 
