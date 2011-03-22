@@ -86,25 +86,41 @@ pkg_add(struct pkgdb *db, const char *path)
 	/*
 	 * Check for dependencies
 	 */
-	pkg_resolvdeps(pkg, db);
 	deps = pkg_deps(pkg);
 	basedir = dirname(path);
 	if ((ext = strrchr(path, '.')) == NULL) {
 		retcode = pkg_error_set(EPKG_FATAL, "%s has no extension", path);
 		goto error;
 	}
+	pkg_resolvdeps(pkg, db);
 	for (i = 0; deps[i] != NULL; i++) {
 		if (pkg_type(deps[i]) == PKG_NOTFOUND) {
 			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
 					 pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION),
 					 ext);
 
-			if (pkg_add(db, dpath) != EPKG_OK) {
-				retcode = pkg_error_set(EPKG_DEPENDENCY, "unresolved %s-%s dependency",
+			if (access(dpath, F_OK) == 0) {
+				if (pkg_add(db, dpath) == EPKG_OK) {
+					/*
+					 * Recheck the deps because the last installed package may
+					 * have installed our deps too.
+					 * TODO: do not it database here.
+					 */
+					pkg_resolvdeps(pkg, db);
+				} else {
+					retcode = pkg_error_set(EPKG_FATAL, "error while "
+											"installing %s (dependency): %s",
+											dpath,
+											pkg_error_string());
+					goto error;
+				}
+			} else {
+				retcode = pkg_error_set(EPKG_DEPENDENCY, "missing %s-%s dependency",
 										pkg_get(deps[i], PKG_NAME),
 										pkg_get(deps[i], PKG_VERSION));
 				goto error;
 			}
+
 		}
 	}
 
