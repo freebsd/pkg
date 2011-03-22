@@ -5,7 +5,7 @@ installed packages, to deal with remote repositories, manage packages: creation,
 installation gathering informations, registering new ports.
 
 features supported are or will be :
-- smooth integration with bsd.port.mk (see ports/bsd.port.mk.patch) which allow
+- smooth integration with bsd.port.mk (including bsd.pkg.mk line 2486) which allow
   to have a bsd.port.mk which deal with both pkg_install and pkgng.
 - the register command can analyse elf files when registering a new port to
   discover forgotten dependency if necessary.

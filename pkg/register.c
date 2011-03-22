@@ -198,6 +198,9 @@ exec_register(int argc, char **argv)
 		retcode = 1;
 	}
 
+	if (pkg_get(pkg, PKG_MESSAGE) != NULL)
+		printf("%s\n", pkg_get(pkg, PKG_MESSAGE));
+
 	pkgdb_close(db);
 	pkg_free(pkg);
 
