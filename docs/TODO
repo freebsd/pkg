@@ -5,8 +5,6 @@ ALPHA
   and later to dowload packages from repo, and even to download the repo.db.
 that means a function with a callback to display progress.
 - pkg version (comparison against ports tree and INDEX)
-- bsd.pkgng.mk to easier testing
-- pkg register (add -F option to force registering a package already registred)
 
 BETA1
 - repo
