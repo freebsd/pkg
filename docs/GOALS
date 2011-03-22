@@ -7,7 +7,8 @@ comamnds:
 
 - pkg_*:
 	this will be shell script their goal is to be 100% compatible with
-	pkg_install they will call pkg which the good options
+	pkg_install they will call pkg which the good options (not sure it will
+	be really done in the end)
 
 subcommands:
 - add:
@@ -25,7 +26,7 @@ subcommands:
 	- should be able to only take a plist or a manifest in argument
 	  considering the files are already installed
 
-- genrepo:
+- repo:
 	- takes only one argument and generate two databases files (maybe more for
 	  the time we will be willing to work with UPDATING and MOVED) the first
 	  repo contain every informations concerning a package except files
@@ -92,12 +93,12 @@ post-upgrade
 
 they could be files +PRE-* +POST* etc
 they could be sh string in the manifest in arrays:
-"pre-nstall": [
+"pre-install": [
         "/usr/sbin/pw useradd foo",
 ],
 
 they could be both
 
-some informations could be found here if there is conflicts in the two this file
+some informations could be found here if there is conflicts in the two, this file
 is right :):
 http://wiki.freebsd.org/Pkg_install2_specs

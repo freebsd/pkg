@@ -5,10 +5,17 @@ ALPHA
   and later to dowload packages from repo, and even to download the repo.db.
 that means a function with a callback to display progress.
 - pkg version (comparison against ports tree and INDEX)
+- bsd.pkgng.mk to easier testing
+- pkg register (add -F option to force registering a package already registred)
 
-
-BETA
-- genrepo
+BETA1
+- repo
 - install from repo
 - update repo (fetch repo.db)
 - upgrade from repo (!!)
+- feature freeze
+
+BETA2
+- doc
+
+

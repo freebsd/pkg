@@ -1,3 +1,7 @@
+PKG_CMD=		/usr/sbin/pkg register
+PKG_DELETE=		/usr/sbin/pkg delete
+PKG_INFO=		/usr/sbin/pkg info
+
 PKGPREINSTALL?=		${PKGDIR}/pkg-pre-install
 PKGPOSTINSTALL?=	${PKGDIR}/pkg-post-install
 PKGPREDEINSTALL?=	${PKGDIR}/pkg-pre-deinstall
@@ -88,27 +92,162 @@ fake-pkg:
 .endif
 .endif
 
+.if !target(check-build-conflicts)
+check-build-conflicts:
+.if ( defined(CONFLICTS) || defined(CONFLICTS_BUILD) ) && !defined(DISABLE_CONFLICTS) && !defined(DEFER_CONFLICTS_CHECK)
+	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/}`; \
+	conflicts_with=; \
+	if [ -n "$${found}}" ]; then \
+		prfx=`${PKG_INFO} -q -p "$${found}"`; \
+		orgn=`${PKG_INFO} -q -o "$${found}"`; \
+		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
+			conflicts_with="$${conflicts_with} $${found}"; \
+		fi; \
+	fi; \
+	if [ -n "$${conflicts_with}" ]; then \
+		${ECHO_MSG}; \
+		${ECHO_MSG} "===>  ${PKGNAME} conflicts with installed package(s): "; \
+		for entry in $${conflicts_with}; do \
+			${ECHO_MSG} "      $${entry}"; \
+		done; \
+		${ECHO_MSG}; \
+		${ECHO_MSG} "      They will not build together."; \
+		${ECHO_MSG} "      Please remove them first with pkg delete."; \
+		exit 1;\
+	fi
+.endif
+.endif
+
+.if !target(identify-install-conflicts)
+identify-install-conflicts:
+.if ( defined(CONFLICTS) || defined(CONFLICTS_INSTALL) ) && !defined(DISABLE_CONFLICTS)
+	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
+	conflicts_with=; \
+	if [ -n "$${found}}" ]; then \
+		prfx=`${PKG_INFO} -q -p "$${found}"`; \
+		orgn=`${PKG_INFO} -q -o "$${found}"`; \
+		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
+			conflicts_with="$${conflicts_with} $${found}"; \
+		fi; \
+	fi; \
+	if [ -n "$${conflicts_with}" ]; then \
+		${ECHO_MSG}; \
+		${ECHO_MSG} "===>  ${PKGNAME} conflicts with installed package(s): "; \
+		for entry in $${conflicts_with}; do \
+			${ECHO_MSG} "      $${entry}"; \
+		done; \
+		${ECHO_MSG}; \
+		${ECHO_MSG} "      They install files into the same place."; \
+		${ECHO_MSG} "      You may want to stop build with Ctrl + C."; \
+		sleep 10; \
+	fi
+.endif
+.endif
+
+.if !target(check-install-conflicts)
+check-install-conflicts:
+.if ( defined(CONFLICTS) || defined(CONFLICTS_INSTALL) || ( defined(CONFLICTS_BUILD) && defined(DEFER_CONFLICTS_CHECK) ) ) && !defined(DISABLE_CONFLICTS) 
+.if defined(DEFER_CONFLICTS_CHECK)
+	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
+	conflicts_with=; \
+	if [ -n "$${found}}" ]; then \
+		prfx=`${PKG_INFO} -q -p "$${found}"`; \
+		orgn=`${PKG_INFO} -q -o "$${found}"`; \
+		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
+			conflicts_with="$${conflicts_with} $${entry}"; \
+		fi; \
+	fi; \
+	if [ -n "$${conflicts_with}" ]; then \
+		${ECHO_MSG}; \
+		${ECHO_MSG} "===>  ${PKGNAME} conflicts with installed package(s): "; \
+		for entry in $${conflicts_with}; do \
+			${ECHO_MSG} "      $${entry}"; \
+		done; \
+		${ECHO_MSG}; \
+		${ECHO_MSG} "      Please remove them first with pkg_delete(1)."; \
+		exit 1; \
+	fi
+.else
+	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
+	conflicts_with=; \
+	if [ -n "$${found}}" ]; then \
+		prfx=`${PKG_INFO} -q -p "$${entry}"`; \
+		orgn=`${PKG_INFO} -q -o "$${entry}"`; \
+		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
+			conflicts_with="$${conflicts_with} $${entry}"; \
+		fi; \
+	fi; \
+	if [ -n "$${conflicts_with}" ]; then \
+		${ECHO_MSG}; \
+		${ECHO_MSG} "===>  ${PKGNAME} conflicts with installed package(s): "; \
+		for entry in $${conflicts_with}; do \
+			${ECHO_MSG} "      $${entry}"; \
+		done; \
+		${ECHO_MSG}; \
+		${ECHO_MSG} "      They install files into the same place."; \
+		${ECHO_MSG} "      Please remove them first with pkg_delete(1)."; \
+		exit 1; \
+	fi
+.endif # defined(DEFER_CONFLICTS_CHECK)
+.endif
+.endif
+
+.if !target(do-package)
+do-package: ${TMPPLIST}
+	@if [ -d ${PACKAGES} ] then; \
+		if [ ! -d ${PKGREPOSITORY} ]; then \
+			if ! ${MKDIR} ${PKGREPOSITORY}; then \
+				${ECHO_MSG} "=> Can't create directory ${PKGREPOSITORY}."; \
+				exit 1; \
+			fi; \
+		fi; \
+	fi; \
+	@__softMAKEFLAGS="${__softMAKEFLAGS:S/'/'\''/g}'; \
+	if ${PKG} create -o ${PKGFILE} ${PORTNAME}; then \
+		if [ -d ${PACKAGES} ]; then \
+			cd ${.CURDIR} && eval ${MAKE} $${__softMAKEFLAGS} package-links; \
+		fi; \
+	else \
+		cd ${.CURDIR} && eval ${MAKE} $${__softMAKEFLAGS} delete-package; \
+		exit 1; \
+	fi
+.endif
+
+.if !target(check-already-installed)
+check-already-installed:
+.if !defined(NO_PKG_REGISTER) && !defined(FORCE_PKG_REGISTER)
+		@${ECHO_MSG} "===>  Checking if ${PKGORIGIN} already installed"; \
+		pkgname=`${PKG_INFO} -q ${PKGORIGIN}`; \
+		if [ -n $${pkgname} ]; then \
+			v=`${PKG_VERSION} -t $${pkgname} ${PKGNAME}`; \
+			if [ "w$${v}" = "x<" ]; then \
+				${ECHO_CMD} "===>   An older version of ${PKGORIGIN} is already installed ($${found_package})"; \
+			else \
+				${ECHO_CMD} "===>   ${PKGNAME} is already installed"; \
+			fi; \
+			${ECHO_MSG} "      You may wish to \`\`make deinstall'' and install this port again"; \
+			${ECHO_MSG} "      by \`\`make reinstall'' to upgrade it properly."; \
+			${ECHO_MSG} "      If you really wish to overwrite the old port of ${PKGORIGIN}"; \
+			${ECHO_MSG} "      without deleting it first, set the variable \"FORCE_PKG_REGISTER\""; \
+			${ECHO_MSG} "      in your environment or the \"make install\" command line."; \
+			exit 1; \
+		fi
+.else
+	@${DO_NADA}
+.endif
+.endif
+
+
 .if !target(deinstall)
 deinstall:
-.if ${UID} != 0 && !defined(INSTALL_AS_USER)
-	@${ECHO_MSG} "===>  Switching to root credentials for '${.TARGET}' target"
-	@cd ${.CURDIR} && \
-		 ${SU_CMD} "${MAKE} ${__softMAKEFLAGS} ${.TARGET}"
-	@${ECHO_MSG} "===>  Returning to user credentials"
-.else
 	@${ECHO_MSG} "===>  Deinstalling for ${PKGORIGIN}"
-	@prfx=`${PKG_INFO} -q -O ${PKGORIGIN}`; \
-	@pkgname=`${PKG_INFO} -q -O ${PKGORIGIN}`; \
-	if [ -z "$${prfx}" ]; then \
-		${ECHO_MSG} "===>   ${PKGBASE} not installed, skipping"; \
+	@if ${PKG_INFO} -e ${PKGORIGIN}; then \
+		p=`${PKG_INFO} -q ${PKGORIGIN}`; \
+		${ECHO_MSG} "===>   Deinstalling $${p}"; \
+		${PKG_DELETE} -f ${PKGORIGIN}; \
 	else \
-		if [ "x${PREFIX}" = "x$${prfx}" ]; then \
-			${ECHO_MSG} "===>   Deinstalling $${pkgname}"; \
-			${PKG_DELETE} -f $${pkgname}; \
-		else \
-			${ECHO_MSG} "===>   $${pkgname} has a different PREFIX: $${prfx}, skipping"; \
-		fi; \
+		${ECHO_MSG} "===>   ${PKGBASE} not installed, skipping"; \
 	fi
 	@${RM} -f ${INSTALL_COOKIE} ${PACKAGE_COOKIE}
 .endif
-.endif
+

@@ -100,7 +100,7 @@ exec_info(int argc, char **argv)
 	int i;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "egxXdrlsqopO")) != -1) {
+	while ((ch = getopt(argc, argv, "egxXEdrlsqopO")) != -1) {
 		switch (ch) {
 			case 'O':
 				opt |= INFO_ORIGIN_SEARCH;  /* this is only for ports compat */
@@ -132,6 +132,7 @@ exec_info(int argc, char **argv)
 			case 's':
 				opt |= INFO_SIZE;
 				break;
+			case 'E': /* ports compatibility */
 			case 'q':
 				opt |= INFO_QUIET;
 				break;
