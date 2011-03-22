@@ -12,6 +12,14 @@
 
 #include "info.h"
 
+enum sign {
+	LT,
+	LE,
+	GT,
+	GE,
+	EQ
+};
+
 static int
 print_info(struct pkg *pkg, unsigned int opt)
 {
@@ -93,11 +101,13 @@ exec_info(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	unsigned int opt = 0;
 	match_t match = MATCH_EXACT;
+	char *pkgname, *pkgversion;
 	char ch;
 	int ret;
 	int retcode = 0;
 	bool gotone = false;
 	int i;
+	int sign = 0;
 
 	/* TODO: exclusive opts ? */
 	while ((ch = getopt(argc, argv, "egxXEdrlsqopO")) != -1) {
@@ -173,7 +183,43 @@ exec_info(int argc, char **argv)
 			continue;
 		}
 
-		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
+		pkgname = argv[i];
+		pkgversion = strrchr(pkgname, '>');
+		if (pkgversion == NULL)
+			pkgversion = strrchr(pkgname, '<');
+		if (pkgversion == NULL)
+			pkgversion = strrchr(pkgname, '=');
+
+		if (pkgversion != NULL) {
+			switch (pkgversion[0]) {
+				case '>':
+					pkgversion[0] = '\0';
+					pkgversion++;
+					sign = GT;
+					if (pkgversion[0] == '=') {
+						pkgversion++;
+						sign=GE;
+					}
+					break;
+				case '<':
+					pkgversion[0] = '\0';
+					pkgversion++;
+					sign = LT;
+					if (pkgversion[0] == '=') {
+						pkgversion++;
+						sign=LE;
+					}
+					break;
+				case '=':
+					pkgversion[0] = '\0';
+					pkgversion++;
+					sign = EQ;
+					break;
+			}
+		}
+
+
+		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
 			pkg_error_warn("can not query database");
 			return (-1);
 		}
@@ -189,6 +235,28 @@ exec_info(int argc, char **argv)
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			gotone = true;
+			if (pkgversion != NULL) {
+				switch (pkg_version_cmp(pkg_get(pkg, PKG_VERSION), pkgversion)) {
+					case -1:
+						if (sign != LT && sign != LE) {
+							gotone = false;
+							continue;
+						}
+						break;
+					case 0:
+						if (sign != LE && sign != GE && sign != EQ) {
+							gotone = false;
+							continue;
+						}
+						break;
+					case 1:
+						if (sign != GT && sign != LT) {
+							gotone = false;
+							continue;
+						}
+						break;
+				}
+			}
 			if (opt & INFO_EXISTS)
 				retcode = 0;
 			else
