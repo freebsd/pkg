@@ -1,6 +1,7 @@
 PKG_CMD=		/usr/sbin/pkg register
 PKG_DELETE=		/usr/sbin/pkg delete
 PKG_INFO=		/usr/sbin/pkg info
+PKG_VERSION=		/usr/sbin/pkg version
 
 PKGPREINSTALL?=		${PKGDIR}/pkg-pre-install
 PKGPOSTINSTALL?=	${PKGDIR}/pkg-post-install
@@ -27,9 +28,6 @@ PKG_ARGS=		-v -c -${COMMENT:Q} -d ${DESCR} -f ${TMPPLIST} -p ${PREFIX} -P "`cd $
 .if !defined(NO_MTREE)
 PKG_ARGS+=		-m ${MTREE_FILE}
 .endif
-.if defined(PKGORIGIN)
-PKG_ARGS+=		-o ${PKGORIGIN}
-.endif
 .if defined(CONFLICTS) && !defined(DISABLE_CONFLICTS)
 PKG_ARGS+=		-C "${CONFLICTS}"
 .endif
@@ -37,6 +35,7 @@ PKG_ARGS+=		-C "${CONFLICTS}"
 PKG_ARGS+=		-C "${CONFLICTS_INSTALL}"
 .endif
 PKG_ARGS+= -n ${PKGNAME}
+PKG_ARGS+= -o ${PKGORIGIN}
 .if defined(MAINTAINER)
 PKG_ARGS+= -r ${MAINTAINER}
 .endif
@@ -82,11 +81,7 @@ PKG_ARGS+=	-s "${PKGSCRIPTS}"
 fake-pkg:
 .if !defined(NO_PKG_REGISTER)
 	@${ECHO_MSG} "===>   Registering installation for ${PKGNAME}"
-.if defined(FORCE_PKG_REGISTER)
-	@${PKG_CMD} ${PKG_ARGS} -F
-.else
 	@${PKG_CMD} ${PKG_ARGS}
-.endif
 .else
 	@${DO_NADA}
 .endif
@@ -217,8 +212,8 @@ do-package: ${TMPPLIST}
 check-already-installed:
 .if !defined(NO_PKG_REGISTER) && !defined(FORCE_PKG_REGISTER)
 		@${ECHO_MSG} "===>  Checking if ${PKGORIGIN} already installed"; \
-		pkgname=`${PKG_INFO} -q ${PKGORIGIN}`; \
-		if [ -n $${pkgname} ]; then \
+		pkgname=`${PKG_INFO} -q -O ${PKGORIGIN}`; \
+		if [ -n "$${pkgname}" ]; then \
 			v=`${PKG_VERSION} -t $${pkgname} ${PKGNAME}`; \
 			if [ "w$${v}" = "x<" ]; then \
 				${ECHO_CMD} "===>   An older version of ${PKGORIGIN} is already installed ($${found_package})"; \
@@ -244,7 +239,7 @@ deinstall:
 	@if ${PKG_INFO} -e ${PKGORIGIN}; then \
 		p=`${PKG_INFO} -q ${PKGORIGIN}`; \
 		${ECHO_MSG} "===>   Deinstalling $${p}"; \
-		${PKG_DELETE} -f ${PKGORIGIN}; \
+		${PKG_DELETE} -f ${PKGORIGIN} ; \
 	else \
 		${ECHO_MSG} "===>   ${PKGBASE} not installed, skipping"; \
 	fi
