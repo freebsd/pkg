@@ -235,7 +235,7 @@ exec_info(int argc, char **argv)
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			gotone = true;
-			if (pkgversion != NULL) {
+			if (pkgversion != NULL && pkgversion[0] != '0') { /* FIXME special workaround for >=0 */
 				switch (pkg_version_cmp(pkg_get(pkg, PKG_VERSION), pkgversion)) {
 					case -1:
 						if (sign != LT && sign != LE) {
