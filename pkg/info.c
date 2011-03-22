@@ -184,11 +184,15 @@ exec_info(int argc, char **argv)
 		}
 
 		pkgname = argv[i];
-		pkgversion = strrchr(pkgname, '>');
-		if (pkgversion == NULL)
-			pkgversion = strrchr(pkgname, '<');
-		if (pkgversion == NULL)
-			pkgversion = strrchr(pkgname, '=');
+
+		if (argc > 0) {
+			pkgversion = strrchr(pkgname, '>');
+			if (pkgversion == NULL)
+				pkgversion = strrchr(pkgname, '<');
+			if (pkgversion == NULL)
+				pkgversion = strrchr(pkgname, '=');
+		} else
+			pkgversion = NULL;
 
 		if (pkgversion != NULL) {
 			switch (pkgversion[0]) {
