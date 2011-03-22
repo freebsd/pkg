@@ -288,7 +288,7 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg = *pkg_p;
 
 		pkg->type = PKG_INSTALLED;
-		pkg->rowid = sqlite3_column_int(it->stmt, 0);
+		pkg->rowid = sqlite3_column_int64(it->stmt, 0);
 		pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
 		pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
 		pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 3));
@@ -761,7 +761,7 @@ pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg)
 	ret = sqlite3_step(stmt);
 	if (ret == SQLITE_ROW) {
 		sbuf_set(&pkg->fields[PKG_MTREE].value,
-				 sqlite3_column_text(stmt, 1));
+				 sqlite3_column_text(stmt, 0));
 		ret = SQLITE_DONE;
 	}
 
@@ -1153,7 +1153,7 @@ static int get_pragma(sqlite3 *s, const char *sql, int64_t *res) {
 	if (sqlite3_prepare(s, sql, -1, &stmt, NULL) != SQLITE_OK)
 		return (ERROR_SQLITE(s));
 
-	ret = sqlite3_step(stmt) != SQLITE_ROW;
+	ret = sqlite3_step(stmt);
 
 	if (ret == SQLITE_ROW)
 		*res = sqlite3_column_int64(stmt, 0);
