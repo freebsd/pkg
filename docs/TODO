@@ -6,7 +6,6 @@ ALPHA
 - add facility in libpkg to fetch files so we can use it for pkg add (client)
   and later to dowload packages from repo, and even to download the repo.db.
 that means a function with a callback to display progress.
-- pkg version (comparison against ports tree and INDEX)
 
 BETA1
 - repo
@@ -14,6 +13,7 @@ BETA1
 - update repo (fetch repo.db)
 - upgrade from repo (!!)
 - feature freeze
+- pkg version (comparison against ports tree and INDEX)
 
 BETA2
 - doc
