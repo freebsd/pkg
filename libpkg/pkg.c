@@ -222,7 +222,7 @@ pkg_open(struct pkg **pkg_p, const char *path)
 
 	retcode = pkg_open2(pkg_p, &a, &ae, path);
 
-	if (retcode == EPKG_OK)
+	if (retcode == EPKG_OK || retcode == EPKG_END)
 		archive_read_finish(a);
 
 	return (retcode);
@@ -338,6 +338,9 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF)
 		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a));
+
+	if (ret == ARCHIVE_EOF)
+		retcode = EPKG_END;
 
 	cleanup:
 	if (retcode != EPKG_OK) {

@@ -1,6 +1,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <libgen.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -13,7 +14,7 @@
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
 static int
-extract(struct archive *a, struct archive_entry *ae)
+do_extract(struct archive *a, struct archive_entry *ae)
 {
 	int retcode = EPKG_OK;
 	int ret;
@@ -27,8 +28,6 @@ extract(struct archive *a, struct archive_entry *ae)
 
 	if (ret != ARCHIVE_EOF)
 		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
-
-	archive_read_finish(a);
 
 	return (retcode);
 }
@@ -45,6 +44,7 @@ pkg_add(struct pkgdb *db, const char *path)
 	struct pkg_exec **execs;
 	struct pkg_script **scripts;
 	struct sbuf *script_cmd;
+	bool extract = true;
 	char dpath[MAXPATHLEN];
 	const char *basedir;
 	const char *ext;
@@ -58,9 +58,15 @@ pkg_add(struct pkgdb *db, const char *path)
 	/*
 	 * Open the package archive file, read all the meta files and set the
 	 * current archive_entry to the first non-meta file.
+	 * If there is no non-meta files, EPKG_END is returned.
 	 */
-	if ((retcode = pkg_open2(&pkg, &a, &ae, path)) != EPKG_OK)
-		return (retcode);
+	ret = pkg_open2(&pkg, &a, &ae, path);
+	if (ret == EPKG_END)
+		extract = false;
+	else if (ret != EPKG_OK) {
+		retcode = ret;
+		goto cleanup;
+	}
 
 	/*
 	 * Check if the package is already installed
@@ -68,7 +74,7 @@ pkg_add(struct pkgdb *db, const char *path)
 	it = pkgdb_query(db, pkg_get(pkg, PKG_ORIGIN), MATCH_EXACT);
 	if (it == NULL) {
 		retcode = EPKG_FATAL;
-		goto error;
+		goto cleanup;
 	}
 
 	ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC);
@@ -77,10 +83,10 @@ pkg_add(struct pkgdb *db, const char *path)
 
 	if (ret == EPKG_OK) {
 		retcode = pkg_error_set(EPKG_INSTALLED, "package already installed");
-		goto error;
+		goto cleanup;
 	} else if (ret != EPKG_END) {
 		retcode = ret;
-		goto error;
+		goto cleanup;
 	}
 
 	/*
@@ -90,7 +96,7 @@ pkg_add(struct pkgdb *db, const char *path)
 	basedir = dirname(path);
 	if ((ext = strrchr(path, '.')) == NULL) {
 		retcode = pkg_error_set(EPKG_FATAL, "%s has no extension", path);
-		goto error;
+		goto cleanup;
 	}
 	pkg_resolvdeps(pkg, db);
 	for (i = 0; deps[i] != NULL; i++) {
@@ -112,13 +118,13 @@ pkg_add(struct pkgdb *db, const char *path)
 											"installing %s (dependency): %s",
 											dpath,
 											pkg_error_string());
-					goto error;
+					goto cleanup;
 				}
 			} else {
 				retcode = pkg_error_set(EPKG_DEPENDENCY, "missing %s-%s dependency",
 										pkg_get(deps[i], PKG_NAME),
 										pkg_get(deps[i], PKG_VERSION));
-				goto error;
+				goto cleanup;
 			}
 
 		}
@@ -153,9 +159,8 @@ pkg_add(struct pkgdb *db, const char *path)
 	/*
 	 * Extract the files on disk.
 	 */
-	if ((retcode = extract(a, ae)) != EPKG_OK)
-		return (retcode);
-	a = NULL;
+	if (extract == true && (retcode = do_extract(a, ae)) != EPKG_OK)
+		goto cleanup;
 
 	/*
 	 * Execute post install scripts
@@ -191,10 +196,13 @@ pkg_add(struct pkgdb *db, const char *path)
 			if (pkg_exec_type(execs[i]) == PKG_EXEC)
 				system(pkg_exec_cmd(execs[i]));
 
-	return (pkgdb_register_pkg(db, pkg));
+	cleanup:
 
-	error:
-		if (a != NULL)
-			archive_read_finish(a);
-		return (retcode);
+	if (a != NULL)
+		archive_read_finish(a);
+
+	if (retcode == EPKG_OK)
+		retcode = pkgdb_register_pkg(db, pkg);
+
+	return (retcode);
 }
