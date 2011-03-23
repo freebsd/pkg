@@ -163,14 +163,16 @@ pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
 	deps = pkg_deps(pkg);
 	pkg_new(&p);
 	for (i = 0; deps[i] != NULL; i++) {
-		it = pkgdb_query(db, pkg_get(deps[i], PKG_ORIGIN), MATCH_EXACT);
+		if (deps[i]->type != PKG_INSTALLED) {
+			it = pkgdb_query(db, pkg_get(deps[i], PKG_ORIGIN), MATCH_EXACT);
 
-		if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == 0) {
-			deps[i]->type = PKG_INSTALLED;
-		} else {
-			deps[i]->type = PKG_NOTFOUND;
+			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == 0) {
+				deps[i]->type = PKG_INSTALLED;
+			} else {
+				deps[i]->type = PKG_NOTFOUND;
+			}
+			pkgdb_it_free(it);
 		}
-		pkgdb_it_free(it);
 	}
 	pkg_free(p);
 
