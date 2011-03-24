@@ -78,5 +78,9 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 	if (remote != NULL)
 		fclose(remote);
 
+	/* Remove local file if fetch failed */
+	if (retcode != EPKG_OK)
+		unlink(dest);
+
 	return (retcode);
 }
