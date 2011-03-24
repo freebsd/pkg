@@ -401,7 +401,8 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 			"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, "
 				"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 				"p.prefix, p.flatsize "
-			"FROM packages AS p%s;", comp);
+			"FROM packages AS p%s "
+			"ORDER BY p.name;", comp);
 
 	if (sqlite3_prepare(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
