@@ -10,8 +10,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <fetch.h>
-#include <libutil.h>
 
 #include "pkg.h"
 #include "pkg_error.h"
@@ -220,81 +218,6 @@ split_chr(char *str, char sep)
 	}
 
 	return nbel;
-}
-
-int
-file_fetch(const char *url, const char *dest)
-{
-	int fd;
-	FILE *remote = NULL;
-	struct url_stat st;
-	off_t tfetched, rfetched, wfetched;
-	int retry = 3;
-	time_t begin_dl, now;
-	char buf[BUFSIZ];
-
-	if ((fetchStatURL(url, &st, "") < 0) || st.size == -1) {
-		/* TODO error handling */
-		return (-1);
-	}
-
-	while (remote == NULL) {
-		remote = fetchXGetURL(url, &st, "");
-		if (remote == NULL) {
-			/* TODO err handling */
-			sleep(1);
-			--retry;
-		}
-
-		if (retry == 0) {
-			/* TODO err handling */
-			return (-1);
-		}
-	}
-
-	if (st.size > SSIZE_MAX - 1) {
-		/* TODO err handling */
-		return (-1);
-	}
-
-	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC, 0644)) == -1) {
-		/* TODO err handling */
-		return (-1);
-	}
-
-	tfetched = 0;
-	begin_dl = time(NULL);
-	while (tfetched < st.size) {
-		if ((rfetched = fread(buf, 1, sizeof(buf), remote)) < 1)
-			break;
-
-		if ((wfetched = write(fd, buf, rfetched)) != rfetched)
-			break;
-
-		tfetched +=  rfetched;
-		now = time(NULL);
-/* TODO: callback, this is the job of the UI */
-#if 0
-		if ((now - begin_dl) > 0)
-			humanize_number(sz, 8, (int64_t)(tfetched / (now - begin_dl)),
-					"Bps", HN_AUTOSCALE, HN_DECIMAL);
-		else
-			humanize_number(sz, 8, 0,
-					"Bps", HN_AUTOSCALE, HN_DECIMAL);
-		printf("\r%s\t%s %d%%", url, sz, (int)(((float)tfetched / (float)st.size) * 100));
-#endif
-	}
-	printf("\n");
-
-	if (ferror(remote)) {
-		/* TODO err handling */
-		return (-1);
-	}
-
-	close(fd);
-	fclose(remote);
-
-	return (0);
 }
 
 int

@@ -243,12 +243,6 @@ int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
 
 /**
- * Add a new package.
- * @param path The path to the package archive file on the local disk
- */
-int pkg_add(struct pkgdb *, const char *path);
-
-/**
  * Generic setter for simple attributes.
  */
 int pkg_set(struct pkg *, pkg_attr, const char *);
@@ -345,15 +339,39 @@ int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_compact(struct pkgdb *db);
 const char *pkgdb_get_dir(void);
 
-/* create */
+/**
+ * Add a new package.
+ * @param path The path to the package archive file on the local disk
+ */
+int pkg_add(struct pkgdb *, const char *path);
+
+/**
+ * Archive formats options
+ */
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
+
+/**
+ * @todo Document
+ */
 int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg *);
 
-/* delete */
+/**
+ * @todo Document
+ */
 int pkg_delete(struct pkg *, struct pkgdb *, int);
 
-/* version */
+/**
+ * @todo Document
+ */
 int pkg_version_cmp(const char *, const char *);
+
+typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
+						 time_t elapsed);
+
+/**
+ * Fetch a file
+ */
+int pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, char *);
@@ -362,8 +380,19 @@ int ports_parse_conflicts(struct pkg *, char *);
 int ports_parse_scripts(struct pkg *, char *);
 int ports_parse_options(struct pkg *, char *);
 
+/**
+ * Return the last error number
+ */
 pkg_error_t pkg_error_number(void);
+
+/**
+ * Return the last error string
+ */
 const char * pkg_error_string(void);
+
+/**
+ * Behave like warn(3), but with the pkg error instead of errno
+ */
 void pkg_error_warn(const char *fmt, ...);
 
 #endif

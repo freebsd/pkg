@@ -2,10 +2,6 @@ ALPHA
 - pkg_add (libpkg): refactor to return the struct pkg. use this pkg to display
   pkg-message in the client, and to update the status of the dependencies in
   libpkg without hitting the database.
-- pkg add (client) need to fetch files if arg is an URL
-- add facility in libpkg to fetch files so we can use it for pkg add (client)
-  and later to dowload packages from repo, and even to download the repo.db.
-that means a function with a callback to display progress.
 
 BETA1
 - repo
