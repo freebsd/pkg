@@ -9,18 +9,18 @@ features supported are or will be :
   to have a bsd.port.mk which deal with both pkg_install and pkgng.
 - the register command can analyse elf files when registering a new port to
   discover forgotten dependency if necessary.
-- the register command has to mode available : when dealing with old fashion
+- the register command has two mode available: when dealing with old fashion
   ports it just registers the package, in new mode it does everything that would
-  have been done by pkg add when installing the package : should messages,
+  have been done by pkg add when installing the package: show messages,
   executing post-install, executing @exec etc.
 - pkg add supports two mode : the old fashion one (no real upgrade support) and
   new one: upgrade scripts supported.
 - new scripts supported +PREINSTALL +POSTINSTALL, +PREDEINSTALL, +POSTDEINSTALL,
   +PREUPGRADE, +POSTUPGRADE as well as the old fashion scripts : +INSTALL
   +DEINSTALL +UPGRADE
-- new +MANIFEST (plist-like format) which new metadatas : options, arch, os
+- new +MANIFEST (plist-like format) whith new metadatas : options, arch, os
   version, etc.
-- pkgng supports supports checking arch of the package which means that users
+- pkgng supports checking arch of the package which means that users
   won't be able to install sparc64 binary package into amd64 machines.
 - a special architecture "all" allows to specify when a package can be used
   on every architecture.
