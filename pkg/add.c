@@ -28,9 +28,9 @@ fetch_status(void *data, const char *url, off_t total, off_t done, time_t elapse
 static int
 is_url(const char *pattern)
 {
-	if (strnstr(pattern, "http://", 7) == 0 ||
-		strnstr(pattern, "https://", 8) == 0 ||
-		strnstr(pattern, "ftp://", 6) == 0)
+	if (strncmp(pattern, "http://", 7) == 0 ||
+		strncmp(pattern, "https://", 8) == 0 ||
+		strncmp(pattern, "ftp://", 6) == 0)
 		return (0);
 
 	return (-1);
@@ -46,8 +46,11 @@ usage_add(void)
 int
 exec_add(int argc, char **argv)
 {
-	struct pkgdb *db;
+	struct pkgdb *db = NULL;
+	struct pkg *pkg = NULL;
 	char *file;
+	const char *message;
+	int retcode = 0;
 
 	if (argc != 2) {
 		usage_add();
@@ -56,23 +59,36 @@ exec_add(int argc, char **argv)
 
 	if (pkgdb_open(&db) != EPKG_OK) {
 		pkg_error_warn("can not open database");
-		pkgdb_close(db);
-		return (-1);
+		return (1);
 	}
 
 	if (is_url(argv[1]) == 0) {
 		asprintf(&file, "./%s", basename(argv[1]));
 		if (pkg_fetch_file(argv[1], file, NULL, &fetch_status) != EPKG_OK) {
 			pkg_error_warn("can not fetch %s", argv[1]);
-			return (1);
+			retcode = 1;
+			goto cleanup;
 		}
 	} else
 		file = argv[1];
 
-	if (pkg_add(db, file) != EPKG_OK)
+	if (pkg_add(db, file, &pkg) != EPKG_OK) {
 		pkg_error_warn("can not install %s", file);
+		retcode = 1;
+		goto cleanup;
+	}
 
-	pkgdb_close(db);
+	message = pkg_get(pkg, PKG_MESSAGE);
+	if (message != NULL && message[0] != '\0')
+		printf("%s", message);
 
-	return (0);
+	cleanup:
+
+	if (db != NULL)
+		pkgdb_close(db);
+
+	if (pkg != NULL)
+		pkg_free(pkg);
+
+	return (retcode);
 }

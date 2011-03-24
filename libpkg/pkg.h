@@ -343,7 +343,7 @@ const char *pkgdb_get_dir(void);
  * Add a new package.
  * @param path The path to the package archive file on the local disk
  */
-int pkg_add(struct pkgdb *, const char *path);
+int pkg_add(struct pkgdb *, const char *path, struct pkg **pkg);
 
 /**
  * Archive formats options

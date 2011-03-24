@@ -33,13 +33,13 @@ do_extract(struct archive *a, struct archive_entry *ae)
 }
 
 int
-pkg_add(struct pkgdb *db, const char *path)
+pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 {
 	struct archive *a;
 	struct archive_entry *ae;
 	struct pkgdb_it *it;
-	struct pkg *pkg = NULL;
 	struct pkg *p = NULL;
+	struct pkg *pkg = NULL;
 	struct pkg **deps;
 	struct pkg_exec **execs;
 	struct pkg_script **scripts;
@@ -106,7 +106,7 @@ pkg_add(struct pkgdb *db, const char *path)
 					 ext);
 
 			if (access(dpath, F_OK) == 0) {
-				if (pkg_add(db, dpath) == EPKG_OK) {
+				if (pkg_add(db, dpath, NULL) == EPKG_OK) {
 					/*
 					 * Recheck the deps because the last installed package may
 					 * have installed our deps too.
@@ -203,6 +203,11 @@ pkg_add(struct pkgdb *db, const char *path)
 
 	if (retcode == EPKG_OK)
 		retcode = pkgdb_register_pkg(db, pkg);
+
+	if (pkg_p != NULL)
+		*pkg_p = (retcode == EPKG_OK) ? pkg : NULL;
+	else
+		pkg_free(pkg);
 
 	return (retcode);
 }
