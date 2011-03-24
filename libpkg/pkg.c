@@ -220,14 +220,16 @@ pkg_open(struct pkg **pkg_p, const char *path)
 {
 	struct archive *a;
 	struct archive_entry *ae;
-	int retcode;
+	int ret;
 
-	retcode = pkg_open2(pkg_p, &a, &ae, path);
+	ret = pkg_open2(pkg_p, &a, &ae, path);
 
-	if (retcode == EPKG_OK || retcode == EPKG_END)
-		archive_read_finish(a);
+	if (ret != EPKG_OK && ret != EPKG_END)
+		return (EPKG_FATAL);
 
-	return (retcode);
+	archive_read_finish(a);
+
+	return (EPKG_OK);
 }
 
 int
@@ -345,7 +347,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 		retcode = EPKG_END;
 
 	cleanup:
-	if (retcode != EPKG_OK) {
+	if (retcode != EPKG_OK && retcode != EPKG_END) {
 		if (*a != NULL)
 			archive_read_finish(*a);
 		*a = NULL;
@@ -423,7 +425,7 @@ pkg_setflatsize(struct pkg *pkg, int64_t size)
 	if (pkg == NULL)
 		return (ERROR_BAD_ARG("pkg"));
 
-	if (size <= 0)
+	if (size < 0)
 		return (ERROR_BAD_ARG("size"));
 
 	pkg->flatsize = size;
@@ -571,10 +573,6 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 
 	if (path == NULL || path[0] == '\0')
 		return (ERROR_BAD_ARG("path"));
-
-	/* sha256 can be NULL, but if it is defined it must be a valid sha256 */
-	if (sha256 != NULL && strlen(sha256) != 64)
-		return (ERROR_BAD_ARG("sha256"));
 
 	pkg_file_new(&file);
 

@@ -27,6 +27,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	sqlite3 *sqlite = NULL;
 	sqlite3_stmt *stmt_deps = NULL;
 	sqlite3_stmt *stmt_pkg = NULL;
+	int64_t package_id;
 	char *errmsg = NULL;
 	int retcode = EPKG_OK;
 
@@ -37,7 +38,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	const char initsql[] = ""
 		"CREATE TABLE packages ("
-			"origin TEXT PRIMARY KEY,"
+			"id INTEGER PRIMARY KEY,"
+			"origin TEXT UNIQUE,"
 			"name TEXT,"
 			"version TEXT,"
 			"comment TEXT,"
@@ -54,7 +56,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"origin TEXT,"
 			"name TEXT,"
 			"version TEXT,"
-			"package_id TEXT REFERENCES packages(origin),"
+			"package_id INTEGER REFERENCES packages(id),"
 			"PRIMARY KEY (package_id, origin)"
 		");"
 		"CREATE INDEX deps_origin ON deps (origin);"
@@ -158,12 +160,14 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		}
 		sqlite3_reset(stmt_pkg);
 
+		package_id = sqlite3_last_insert_rowid(sqlite);
+
 		deps = pkg_deps(pkg);
 		for (i = 0; deps[i] != NULL; i++) {
 			sqlite3_bind_text(stmt_deps, 1, pkg_get(deps[i], PKG_ORIGIN), -1, SQLITE_STATIC);
 			sqlite3_bind_text(stmt_deps, 2, pkg_get(deps[i], PKG_NAME), -1, SQLITE_STATIC);
 			sqlite3_bind_text(stmt_deps, 3, pkg_get(deps[i], PKG_VERSION), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_deps, 4, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+			sqlite3_bind_int64(stmt_deps, 4, package_id);
 
 			if (sqlite3_step(stmt_deps) != SQLITE_DONE) {
 				retcode = ERROR_SQLITE(sqlite);
