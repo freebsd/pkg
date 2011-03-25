@@ -38,7 +38,7 @@ static struct commands {
 #define cmd_len (int)(sizeof(cmd)/sizeof(cmd[0]))
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: pkg <command> [<args>]\n\n"
 			"Where <command> can be:\n");
@@ -49,7 +49,7 @@ usage()
 }
 
 static void
-usage_help()
+usage_help(void)
 {
 	fprintf(stderr, "help <command>\n");
 }
