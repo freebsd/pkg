@@ -13,7 +13,7 @@
 
 static
 int
-dircmp(char *path, struct array *a)
+dircmp(char const * const path, struct array *a)
 {
 	for (size_t i = 0; i < a->len; i++)
 		if (strcmp(path, a->data[i]) == 0)
