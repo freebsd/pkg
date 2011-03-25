@@ -22,7 +22,7 @@ exec_delete(int argc, char **argv)
 	struct pkgdb_it *it;
 	match_t match = MATCH_EXACT;
 	char *origin = NULL;
-	char ch;
+	int ch;
 	int ret;
 	int flags = PKG_LOAD_BASIC;
 	int force = 0;

@@ -17,7 +17,7 @@ usage_version(void)
 int exec_version(int argc, char **argv)
 {
 	unsigned int opt = 0;
-	char ch;
+	int ch;
 
 	while ((ch = getopt(argc, argv, "hIoqvlLXsOtT")) != -1) {
 		switch (ch) {

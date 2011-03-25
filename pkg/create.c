@@ -41,7 +41,7 @@ exec_create(int argc, char **argv)
 	const char *manifestdir = NULL;
 	pkg_formats fmt;
 	char mpath[MAXPATHLEN];
-	char ch;
+	int ch;
 	int retcode = 0;
 	int ret;
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES |
