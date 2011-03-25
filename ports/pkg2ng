@@ -1,5 +1,11 @@
 #!/bin/sh
 
+if [ $(id -u) -ne 0 ]
+then
+	echo "This program needs to be run as root"
+	return 77	# EX_PERM
+fi
+
 ARCH=`uname -m`
 
 for PKG in $(pkg_info | cut -d ' ' -f 1)
