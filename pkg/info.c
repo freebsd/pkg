@@ -102,7 +102,7 @@ exec_info(int argc, char **argv)
 	unsigned int opt = 0;
 	match_t match = MATCH_EXACT;
 	char *pkgname, *pkgversion;
-	char ch;
+	int ch;
 	int ret;
 	int retcode = 0;
 	bool gotone = false;

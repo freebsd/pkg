@@ -47,7 +47,7 @@ exec_register(int argc, char **argv)
 	regex_t preg;
 	regmatch_t pmatch[2];
 
-	char ch;
+	int ch;
 	char *plist = NULL;
 	char *v = NULL;
 	char *arch = NULL;
