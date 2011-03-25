@@ -13,8 +13,6 @@
 #include "pkg_error.h"
 #include "pkg_private.h"
 
-#define METADATA_GLOB "+{DEINSTALL,INSTALL,MTREE_DIRS}"
-
 static const char * pkg_create_set_format(struct archive *, pkg_formats);
 static int pkg_create_from_dir(struct pkg *, const char *, struct archive *);
 static int pkg_create_append_buffer(struct archive *, struct archive_entry *, const char *, const char *);
