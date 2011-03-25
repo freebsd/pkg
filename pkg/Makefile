@@ -8,10 +8,11 @@ SRCS=		add.c \
 		repo.c \
 		version.c \
 		which.c
+BINDIR=		/usr/sbin
 
 CFLAGS+=	-I${.CURDIR}/../libpkg
 LDADD+=		-L../libpkg \
-		-lpkg \
+		-lpkgng \
 		-lutil
 WARNS?=		6
 NO_MAN=		true

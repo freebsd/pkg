@@ -17,7 +17,7 @@ static int
 do_extract(struct archive *a, struct archive_entry *ae)
 {
 	int retcode = EPKG_OK;
-	int ret;
+	int ret = 0;
 
 	do {
 		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {

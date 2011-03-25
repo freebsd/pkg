@@ -9,7 +9,7 @@ CFLAGS+=-I.			\
 LDADD+=	-L/usr/local/lib	\
 	-lcheck			\
 	-L../libpkg		\
-	-lpkg
+	-lpkgng
 NO_MAN=	true
 
 run: ${PROG}
