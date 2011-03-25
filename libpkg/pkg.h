@@ -66,7 +66,7 @@ typedef enum {
 	/**
 	 * The pkg type can not be determined.
 	 */
-	PKG_NONE,
+	PKG_NONE
 } pkg_t;
 
 /**
@@ -143,7 +143,7 @@ typedef enum {
 	 */
 	EPKG_FORMAT,
 	EPKG_NOT_ORIGIN,
-	EPKG_NOT_NAME,
+	EPKG_NOT_NAME
 } pkg_error_t;
 
 /**
