@@ -13,7 +13,7 @@
 static void
 fetch_status(void *data, const char *url, off_t total, off_t done, time_t elapsed)
 {
-	int percent;
+	unsigned int percent;
 
 	data = NULL;
 	elapsed = 0;
