@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <sysexits.h>
+#include <unistd.h>
 
 #include <pkg.h>
 
@@ -55,6 +57,11 @@ exec_add(int argc, char **argv)
 	if (argc != 2) {
 		usage_add();
 		return (-1);
+	}
+
+	if (geteuid() != 0) {
+		pkg_error_warn("adding packages can only be done as root");
+		return EX_NOPERM;
 	}
 
 	if (pkgdb_open(&db) != EPKG_OK) {

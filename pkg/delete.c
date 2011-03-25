@@ -47,6 +47,11 @@ exec_delete(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
+	if (geteuid() != 0) {
+		pkg_error_warn("deleting packages can only be done as root");
+		return EX_NOPERM;
+	}
+	
 	if (pkgdb_open(&db) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		pkgdb_close(db);
