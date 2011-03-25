@@ -1,32 +1,32 @@
 pkgng is a binary package manager written from scratch for FreeBSD.
 
-pkgng is built on top of a new libpkg, which allow to deal with the database of
-installed packages, to deal with remote repositories, manage packages: creation,
-installation gathering informations, registering new ports.
+pkgng is built on top of libpkg, a new library to interface with package registration backends.
+It abstracts package management details such as registration, remote repositories, package creation,
+updating, etc.
 
-features supported are or will be :
-- smooth integration with bsd.port.mk (including bsd.pkg.mk line 2486) which allow
-  to have a bsd.port.mk which deal with both pkg_install and pkgng.
+The planned feature set includes:
+- smooth integration with bsd.port.mk and the current pkg_* programs
 - the register command can analyse elf files when registering a new port to
-  discover forgotten dependency if necessary.
-- the register command has two mode available: when dealing with old fashion
-  ports it just registers the package, in new mode it does everything that would
-  have been done by pkg add when installing the package: show messages,
+  discover forgotten dependencies if necessary.
+- the register command has two modes available: when dealing with older
+  ports it just registers the package, in the 'new' mode it does everything that would
+  have been done by pkg_add when installing the package: show messages,
   executing post-install, executing @exec etc.
-- pkg add supports two mode : the old fashion one (no real upgrade support) and
-  new one: upgrade scripts supported.
-- new scripts supported +PREINSTALL +POSTINSTALL, +PREDEINSTALL, +POSTDEINSTALL,
-  +PREUPGRADE, +POSTUPGRADE as well as the old fashion scripts : +INSTALL
+- pkg add supports two modes : the old fashion one (no real upgrade support) and
+  new one: upgrade scripts executed.
+- supports new scripts: +PREINSTALL +POSTINSTALL, +PREDEINSTALL, +POSTDEINSTALL,
+  +PREUPGRADE, +POSTUPGRADE as well as the original scripts : +INSTALL
   +DEINSTALL +UPGRADE
-- new +MANIFEST (plist-like format) whith new metadatas : options, arch, os
+- new +MANIFEST (plist-like format) with new metadata: options, arch, os
   version, etc.
-- pkgng supports checking arch of the package which means that users
-  won't be able to install sparc64 binary package into amd64 machines.
-- a special architecture "all" allows to specify when a package can be used
-  on every architecture.
+- pkgng supports checking the arch of the package which means that users
+  won't be able to install sparc64 binary package on amd64 machines.
+- a special architecture "all" is used to specify when a package can be used
+  on every architecture. Support for lists of valid architectures is being worked on.
 - @dirrm and @dirrmtry are now deprecated, pkgng can discover itself which
   directory has to be removed.
 - new repository (apt-like feature)
+- support for the dragons in bsd.xorg.mk
 - real support for reverse dependency (no ugly +REQUIRED_BY)
-- test unit (libcheck) on libpkg.
+- unit test (libcheck) on libpkg
 - many more
