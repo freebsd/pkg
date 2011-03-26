@@ -1,104 +1,152 @@
-comamnds:
+pkgng - New version of FreeBSD's pkg_install
+
+Table of Contents:
+
+    1. Available commands of pkgng
+    2. Available subcommands of pkgng
+    3. General behaviour
+    4. New manifest format
+	4.1. During new install
+	4.2. During package deletion
+	4.3. During upgrade of a package
+    5. Additional resources
+
+
+1. Available commands of pkgng:
+-------------------------------
+
 - pkg:
-	- one command to rule them all
-	- each time pkg has to query the installed database it will try to first
-	  read the cache is the cache is too old (check but last mtime of the
-	  directory) it will regenerate the cache from installed package
+
+	- One command to rule them all
+	- Each time `pkg' has to query the package database it will try to first
+	  read the cache and if the cache is too old (check by last mtime of the
+	  directory) it will regenerate the cache for the installed packages.
 
 - pkg_*:
-	this will be shell script their goal is to be 100% compatible with
-	pkg_install they will call pkg which the good options (not sure it will
-	be really done in the end)
 
-subcommands:
+	- These will be shell scripts, which goal is to be 100% compatible with
+	  pkg_install. They will call `pkg' with the appropriate options (not sure
+	  it will be really done in the end).
+
+2. Available subcommands of pkgng:
+----------------------------------
+
 - add:
-	- installs a package if local package is given
-	- manage http/ftp url to download throught libfetch a package and try to
-	  install it.
-	- in the two previous case, if the package as not installed dependencies
-	  it will try to fetch/find them in the same place the original package
-	  was.
-	- it will manage a completely new repository format pkg add bla will
-	  check in the database of the repository if the is a bla package and
-	  install it as well as it's dependencies but the dependencies will be
-	  compute before begining the fetch install process, to be sure
-	  everything is ok.
-	- should be able to only take a plist or a manifest in argument
+
+	- Installs a package if a local package is given
+	- Manages ftp/http downloads of packages through libfetch and
+	  tries to install them.
+	- In the two previous cases, if a package does not have it's 
+	  dependencies installed, `pkgng' will try to fetch/find them in the same
+	  place as the original package was.
+	- It will manage a completely new repository format. 
+	  `pkg add <foo>' will check in the database of the repository for 
+	  package <foo> and try to install it as well as it's dependencies.
+	  Dependencies will be computed before beginning the fetch/install
+	  process to ensure that everything will be OK.
+	- Should be able to only take a plist or a manifest in argument
 	  considering the files are already installed
 
 - repo:
-	- takes only one argument and generate two databases files (maybe more for
-	  the time we will be willing to work with UPDATING and MOVED) the first
-	  repo contain every informations concerning a package except files
-	  (which will be in the second one) + it will compute and add a sha256
-	  sum for each package.
-	  the database will be a sqlite file compressed with the xz format.
-	  the database will be signed so we can trust the sha256 of the
-	  packages, so if a package has the expected hash, it is considered
+
+	- Takes only one argument and generates two database files (maybe more for
+	  the time we will be willing to work with UPDATING and MOVED).
+	  The first repo contains all information about a package, except for
+	  the files (which will be in the second one) + it will compute and 
+	  add a sha256 sum for each package.
+	- The database will be a sqlite file compressed with the xz format.
+	- The database will be signed so we can trust the sha256 of the
+	  packages, and if a package has the expected hash, it is considered
 	  trusted.
 
 - search:
-	- will search both the remote repository to gives informations
-	  to users
+
+	- Will search both of the remote repositories to provide information
+	  to the users.
 
 - info: 
-	- will give to users any informations about local package
+
+	- Will provide any information to the users about a local package.
 
 - create:
-	- will create the package in the new format (+MANIFEST) in txz (tar.xz)
-	  directly options to create tbz and tgz will be provided.
-	- it should be able to create a package for a "fakeroot" directory
+    
+	- Will create the package in the new format (+MANIFEST) in txz (tar.xz).
+	- Options for creating tbz and tgz will be provided.
+	- It should be able to create a package for a "fakeroot" directory
 	  taking a plist or a manifest in arguments (the plist is for
-	  compatibility which bsd.ports.mk
+	  compatibility with bsd.ports.mk)
 
 - delete:
-	- will delete a package normally to be able to remove the empty
-	  directories cleanly it will delete every directory (found in the path
-	  of the files) that are not in the package +MTREE (mtree contains the
-	  official hier(7)
+
+	- Will delete a package. To be able to remove the empty directories
+	  cleanly it will delete every directory (found in the path of the 
+	  files), which are not in the package +MTREE (mtree contains the 
+	  official hier(7)).
 
 - upgrade:
-	- will compute the remote repository to check is there is new upgrades
+
+	- Will compute the remote repository to check if there are new upgrades
 	  available and apply them.
 
 - update:
-	- will fetch the remote repository cache files
+
+	- Will fetch the remote repository cache files.
 
 - lint: 
-	- will check for the given package and warn the user about problems :
+
+	- Will check for the given package and warn the user about possible problems:
 	* bad prefix
 	* setuids
 	* etc
 
-General behaviour:
-the manifest contains compatibility keywords: exec, unexec which will be
-executed as there are in pkg_install but will display a warning to show the user
-exec/unexec is deprecated
+3. General behaviour:
+---------------------
 
-if install and deinstall scripts are found they will be executed as they were in
-pkg_install warning for deprecated
+The manifest contains compatibility keywords: exec, unexec which will be
+executed as they are in pkg_install, but will display a warning to show the user
+exec/unexec is deprecated.
 
-the new manifest format will have:
-in case of a new install:
-pre-install
-post-install
+If install and deinstall scripts are present they will be executed as they were in
+pkg_install, and the user will be warned that they are deprecated.
 
-in case of a pkg delete:
-pre-uninstall
-post-uninstall
+4. New manifest format
+----------------------
 
-in case of an upgrade : 
-pre-upgrade
-post-upgrade
+The new manifest format will have:
 
-they could be files +PRE-* +POST* etc
-they could be sh string in the manifest in arrays:
+    4.1. During new install
+    -----------------------
+    
+    - pre-install
+    - post-install
+
+    4.2. During package deletion
+    ----------------------------
+
+    - pre-uninstall
+    - post-uninstall
+
+    4.3. During upgrade of a package
+    --------------------------------
+
+    - pre-upgrade
+    - post-upgrade
+
+They could be files - +PRE-*, +POST-*, etc.
+
+They could be sh string in the manifest in arrays:
+
 "pre-install": [
         "/usr/sbin/pw useradd foo",
 ],
 
-they could be both
+They could be both.
 
-some informations could be found here if there is conflicts in the two, this file
-is right :):
-http://wiki.freebsd.org/Pkg_install2_specs
+5. Additional resources
+-----------------------
+
+Some information can be found here and if there are conflicts, this file
+is right one :)
+
+    - http://wiki.freebsd.org/Pkg_install2_specs
+
