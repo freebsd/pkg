@@ -8,7 +8,7 @@ fi
 
 ARCH=`uname -m`
 
-for PKG in $(pkg_info | cut -d ' ' -f 1)
+for PKG in $(pkg_info -Ea)
 do
 	echo -n "Registering ${PKG}..."
 
