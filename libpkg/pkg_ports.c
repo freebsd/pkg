@@ -223,10 +223,12 @@ ports_parse_options(struct pkg *pkg, char *options)
 
 	next = strlen(option_p);
 	for (i = 0; i <= nbel; i++) {
-		value = strrchr(option_p, '=');
-		value[0] = '\0';
-		value++;
-		pkg_addoption(pkg, option_p, value);
+
+		if ((value = strrchr(option_p, '=')) != NULL) {
+			value[0] = '\0';
+			value++;
+			pkg_addoption(pkg, option_p, value);
+		}
 
 		option_p += next + 1;
 		next = strlen(option_p);
