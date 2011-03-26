@@ -60,8 +60,8 @@ exec_add(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		pkg_error_warn("adding packages can only be done as root");
-		return EX_NOPERM;
+		warnx("adding packages can only be done as root");
+		return (EX_NOPERM);
 	}
 
 	if (pkgdb_open(&db) != EPKG_OK) {

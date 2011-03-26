@@ -48,8 +48,8 @@ exec_delete(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		pkg_error_warn("deleting packages can only be done as root");
-		return EX_NOPERM;
+		warnx("deleting packages can only be done as root");
+		return (EX_NOPERM);
 	}
 	
 	if (pkgdb_open(&db) != EPKG_OK) {
