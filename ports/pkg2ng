@@ -45,6 +45,8 @@ do
 			conflict=conflict" "$2
 		} else if ( $0 ~ /^@cwd/) {
 			print $0 >> pfile
+		} else if ( $0 ~ /^@ignore) {
+			getline
 		}
 	}
 	END{
