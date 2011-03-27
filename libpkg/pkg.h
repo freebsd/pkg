@@ -171,6 +171,11 @@ void pkg_free(struct pkg *);
  */
 int pkg_open(struct pkg **p, const char *path);
 
+
+/**
+ * @return the type of the package.
+ * @warning returns PKG_NONE on error.
+ */
 pkg_t pkg_type(struct pkg *);
 
 /**
@@ -181,13 +186,12 @@ pkg_t pkg_type(struct pkg *);
 const char *pkg_get(struct pkg *, pkg_attr);
 
 /**
- * Returns the size of the uncompressed package.
+ * @return the size of the uncompressed package.
  */
 int64_t pkg_flatsize(struct pkg *);
 
 /**
  * @return NULL-terminated array of pkg.
- * @warning May return a NULL pointer.
  */
 struct pkg ** pkg_deps(struct pkg *);
 
@@ -195,38 +199,32 @@ struct pkg ** pkg_deps(struct pkg *);
  * Returns the reverse dependencies.
  * That is, the packages which require this package.
  * @return NULL-terminated array of pkg.
- * @warning May return a NULL pointer.
  */
 struct pkg ** pkg_rdeps(struct pkg *);
 
 /**
  * @return NULL-terminated array of pkg_file.
- * @warning May return a NULL pointer.
  */
 struct pkg_file ** pkg_files(struct pkg *);
 
 /**
  * @return NULL-terminated array of pkg_conflict.
- * @warning May return a NULL pointer.
  */
 struct pkg_conflict ** pkg_conflicts(struct pkg *);
 
 /**
  * @return NULL-terminated array of pkg_script.
- * @warning May return a NULL pointer.
  */
 struct pkg_script ** pkg_scripts(struct pkg *);
 
 /**
  * @return NULL-terminated array of pkg_exec.
- * @warning May return a NULL pointer.
  * @warning Legacy interface, may be removed later.
  */
 struct pkg_exec ** pkg_execs(struct pkg *);
 
 /**
  * @return NULL-terminated array of pkg_option
- * @warning May return a NULL pointer.
  */
 struct pkg_option ** pkg_options(struct pkg *);
 
@@ -245,28 +243,72 @@ int pkg_analyse_files(struct pkgdb *, struct pkg *);
 /**
  * Generic setter for simple attributes.
  */
-int pkg_set(struct pkg *, pkg_attr, const char *);
+int pkg_set(struct pkg *pkg, pkg_attr attr, const char *value);
 
 /**
  * Read the content of a file into a buffer, then call pkg_set().
  */
-int pkg_set_from_file(struct pkg *, pkg_attr, const char *);
+int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
 
 /**
  * Set the uncompressed size of the package.
+ * @return An error code.
  */
-int pkg_setflatsize(struct pkg *, int64_t);
+int pkg_setflatsize(struct pkg *pkg, int64_t size);
 
-int pkg_adddep(struct pkg *, const char *, const char *, const char *);
-int pkg_addfile(struct pkg *, const char *, const char *);
-int pkg_addconflict(struct pkg *, const char *);
-int pkg_addexec(struct pkg *, const char *, pkg_exec_t);
-int pkg_addscript(struct pkg *, const char *);
-int pkg_addoption(struct pkg *, const char *, const char *);
+/**
+ * Allocate a new struct pkg and add it to the deps of pkg.
+ * @return An error code.
+ */
+int pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const
+			   char *version);
 
-/* pkg_manifest */
-int pkg_parse_manifest(struct pkg *, char *);
-int pkg_emit_manifest(struct pkg *, char **);
+/**
+ * Allocate a new struct pkg_file and add it to the files of pkg.
+ * @param sha256 The ascii representation of the sha256 or a NULL pointer.
+ * @return An error code.
+ */
+int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256);
+
+/**
+ * Allocate a new struct pkg_conflict and add it to the conflicts of pkg.
+ * @return An error code.
+ */
+int pkg_addconflict(struct pkg *pkg, const char *glob);
+
+/**
+ * Allocate a new struct pkg_exec and add it to the execs of pkg.
+ * @return An error code.
+ */
+int pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type);
+
+/**
+ * Allocate a new struct pkg_script and add it to the scripts of pkg.
+ * @param path The path to the script on disk.
+ @ @return An error code.
+ */
+int pkg_addscript(struct pkg *pkg, const char *path);
+
+/**
+ * Allocate a new struct pkg_option and add it to the options of pkg.
+ * @return An error code.
+ */
+int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
+
+/**
+ * Parse a manifest and set the attributes of pkg accordingly.
+ * @param buf An NULL-terminated buffer containing the manifest data.
+ * @return An error code.
+ */
+int pkg_parse_manifest(struct pkg *pkg, char *buf);
+
+/**
+ * Emit a manifest according to the attributes of pkg.
+ * @param buf A pointer which will hold the allocated buffer containing the
+ * manifest. To be free'ed.
+ * @return An error code.
+ */
+int pkg_emit_manifest(struct pkg *pkg, char **buf);
 
 /* pkg_file */
 int pkg_file_new(struct pkg_file **);
@@ -301,18 +343,50 @@ void pkg_option_free(struct pkg_option *);
 const char *pkg_option_opt(struct pkg_option *);
 const char *pkg_option_value(struct pkg_option *);
 
-/* pkg_repo */
-int pkg_create_repo(char *, void (*)(struct pkg *, void *), void *);
+/**
+ * Create a repository database.
+ * @param path The path where the repository live.
+ * @param callback A function which is called at every step of the process.
+ * @param data A pointer which is passed to the callback.
+ */
+int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *);
 
-/* pkgdb */
-int pkgdb_open(struct pkgdb **);
-void pkgdb_close(struct pkgdb *);
+/**
+ * Open the local package database.
+ * The db must be free'ed with pkgdb_close().
+ * @return An error code.
+ */
+int pkgdb_open(struct pkgdb **db);
 
-int pkgdb_register_pkg(struct pkgdb *, struct pkg *);
-int pkgdb_unregister_pkg(struct pkgdb *, const char *);
+/**
+ * Close and free the struct pkgdb.
+ */
+void pkgdb_close(struct pkgdb *db);
 
-struct pkgdb_it * pkgdb_query(struct pkgdb *, const char *, match_t);
-struct pkgdb_it * pkgdb_query_which(struct pkgdb *, const char *);
+/**
+ * Register a package to the database.
+ * @return An error code.
+ */
+int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg);
+
+/**
+ * Unregister a package from the database.
+ * @return An error code.
+ */
+int pkgdb_unregister_pkg(struct pkgdb *pkg, const char *origin);
+
+/**
+ * Query the local package database.
+ * @param type Describe how pattern should be used.
+ * @warning Returns NULL on failure.
+ */
+struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
+							  match_t type);
+
+/**
+ * @todo Return directly the struct pkg?
+ */
+struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 
 #define PKG_LOAD_BASIC 0
 #define PKG_LOAD_DEPS (1<<0)
@@ -324,7 +398,18 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *, const char *);
 #define PKG_LOAD_OPTIONS (1<<6)
 #define PKG_LOAD_MTREE (1<<7)
 
-int pkgdb_it_next(struct pkgdb_it *, struct pkg **, int);
+/**
+ * Get the next pkg.
+ * @param pkg An allocated struct pkg or a pointer to a NULL pointer. In the
+ * last case, the function take care of the allocation.
+ * @param flags OR'ed PKG_LOAD_*
+ * @return An error code.
+ */
+int pkgdb_it_next(struct pkgdb_it *, struct pkg **pkg, int flags);
+
+/**
+ * Free a struct pkgdb_it.
+ */
 void pkgdb_it_free(struct pkgdb_it *);
 
 int pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg);
@@ -336,17 +421,28 @@ int pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
 
+/**
+ * Compact the database to save space.
+ * Note that the function will really compact the database only if some
+ * internal criterias are met.
+ * @return An error code.
+ */
 int pkgdb_compact(struct pkgdb *db);
+
+/**
+ * Return the path where the database live.
+ */
 const char *pkgdb_get_dir(void);
 
 /**
- * Add a new package.
+ * Install and register a new package.
  * @param path The path to the package archive file on the local disk
+ * @return An error code.
  */
-int pkg_add(struct pkgdb *, const char *path, struct pkg **pkg);
+int pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg);
 
 /**
- * Archive formats options
+ * Archive formats options.
  */
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 
@@ -356,20 +452,28 @@ typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg *);
 
 /**
- * @todo Document
+ * Remove and unregister the package.
+ * @param force If set to one, the function will not fail if the package is
+ * required by other packages.
+ * @return An error code.
  */
-int pkg_delete(struct pkg *, struct pkgdb *, int);
+int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 
 /**
  * @todo Document
  */
 int pkg_version_cmp(const char *, const char *);
 
+/**
+ * A function used as a callback by functions which fetch files from the
+ * network.
+ */
 typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
 						 time_t elapsed);
 
 /**
- * Fetch a file
+ * Fetch a file.
+ * @return An error code.
  */
 int pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb);
 
