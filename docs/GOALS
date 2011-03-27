@@ -5,7 +5,7 @@ Table of Contents:
     1. Available commands of pkgng
     2. Available subcommands of pkgng
     3. General behaviour
-    4. New manifest format
+    4. New scripts
 	4.1. During new install
 	4.2. During package deletion
 	4.3. During upgrade of a package
@@ -17,10 +17,7 @@ Table of Contents:
 
 - pkg:
 
-	- One command to rule them all
-	- Each time `pkg' has to query the package database it will try to first
-	  read the cache and if the cache is too old (check by last mtime of the
-	  directory) it will regenerate the cache for the installed packages.
+	- One command to rule them all (see section 2)
 
 - pkg_*:
 
@@ -44,8 +41,12 @@ Table of Contents:
 	  package <foo> and try to install it as well as it's dependencies.
 	  Dependencies will be computed before beginning the fetch/install
 	  process to ensure that everything will be OK.
-	- Should be able to only take a plist or a manifest in argument
-	  considering the files are already installed
+
+- register:
+
+	- Take a plist in argument considering the files are already installed
+	  and register the package into the database. Register will display the
+	  package message.
 
 - repo:
 
@@ -61,17 +62,18 @@ Table of Contents:
 
 - search:
 
-	- Will search both of the remote repositories to provide information
+	- Will search the remote repository to provide information
 	  to the users.
 
 - info: 
 
-	- Will provide any information to the users about a local package.
+	- Will provide any information to the users about an installed package
+	  or a package archive.
 
 - create:
     
 	- Will create the package in the new format (+MANIFEST) in txz (tar.xz).
-	- Options for creating tbz and tgz will be provided.
+	- Options for creating tbz, tgz and plain tar will be provided.
 	- It should be able to create a package for a "fakeroot" directory
 	  taking a plist or a manifest in arguments (the plist is for
 	  compatibility with bsd.ports.mk)
@@ -90,7 +92,7 @@ Table of Contents:
 
 - update:
 
-	- Will fetch the remote repository cache files.
+	- Will fetch the remote repository sqlite database file.
 
 - lint: 
 
@@ -109,10 +111,10 @@ exec/unexec is deprecated.
 If install and deinstall scripts are present they will be executed as they were in
 pkg_install, and the user will be warned that they are deprecated.
 
-4. New manifest format
+4. New scripts
 ----------------------
 
-The new manifest format will have:
+The new package format will have the following (optional) shell scripts:
 
     4.1. During new install
     -----------------------
@@ -132,21 +134,9 @@ The new manifest format will have:
     - pre-upgrade
     - post-upgrade
 
-They could be files - +PRE-*, +POST-*, etc.
-
-They could be sh string in the manifest in arrays:
-
-"pre-install": [
-        "/usr/sbin/pw useradd foo",
-],
-
-They could be both.
-
 5. Additional resources
 -----------------------
 
-Some information can be found here and if there are conflicts, this file
-is right one :)
-
+The wiki page where it all started (outdated):
     - http://wiki.freebsd.org/Pkg_install2_specs
 
