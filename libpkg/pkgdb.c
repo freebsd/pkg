@@ -1086,9 +1086,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	cleanup:
-	if (retcode != EPKG_OK && sqlite3_exec(db->sqlite, "ROLLBACK;", NULL, NULL, &errmsg) !=
-		SQLITE_OK)
-		err(1, "Can not rollback: %s", errmsg);
 
 	if (stmt_sel_mtree != NULL)
 		sqlite3_finalize(stmt_sel_mtree);
@@ -1116,6 +1113,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (stmt_option != NULL)
 		sqlite3_finalize(stmt_option);
+
+	if (retcode != EPKG_OK && sqlite3_exec(db->sqlite, "ROLLBACK;", NULL, NULL, &errmsg) !=
+		SQLITE_OK)
+		err(1, "Can not rollback: %s", errmsg);
 
 	return (retcode);
 }
