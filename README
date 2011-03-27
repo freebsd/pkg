@@ -1,32 +1,64 @@
-pkgng is a binary package manager written from scratch for FreeBSD.
+pkgng - a binary package manager for FreeBSD
+============================================
+
+libpkg
+------
 
 pkgng is built on top of libpkg, a new library to interface with package registration backends.
 It abstracts package management details such as registration, remote repositories, package creation,
 updating, etc.
 
-The planned feature set includes:
-- smooth integration with bsd.port.mk and the current pkg_* programs
-- the register command can analyse elf files when registering a new port to
-  discover forgotten dependencies if necessary.
-- the register command has two modes available: when dealing with older
-  ports it just registers the package, in the 'new' mode it does everything that would
-  have been done by pkg_add when installing the package: show messages,
-  executing post-install, executing @exec etc.
-- pkg add supports two modes : the old fashion one (no real upgrade support) and
-  new one: upgrade scripts executed.
-- supports new scripts: +PREINSTALL +POSTINSTALL, +PREDEINSTALL, +POSTDEINSTALL,
-  +PREUPGRADE, +POSTUPGRADE as well as the original scripts : +INSTALL
-  +DEINSTALL +UPGRADE
-- new +MANIFEST (plist-like format) with new metadata: options, arch, os
-  version, etc.
-- pkgng supports checking the arch of the package which means that users
-  won't be able to install sparc64 binary package on amd64 machines.
-- a special architecture "all" is used to specify when a package can be used
-  on every architecture. Support for lists of valid architectures is being worked on.
-- @dirrm and @dirrmtry are now deprecated, pkgng can discover itself which
-  directory has to be removed.
-- new repository (apt-like feature)
-- support for the dragons in bsd.xorg.mk
-- real support for reverse dependency (no ugly +REQUIRED_BY)
-- unit test (libcheck) on libpkg
-- many more
+Package format
+--------------
+
+pkgng uses a new +MANIFEST file to describe a package. It is very similar to
+the old +CONTENTS file, but cleaned (no more @comment which in fact can be an
+hidden key-value!). The new manifest has new metadatas such as the
+architecture and the release it is built for, the maintainer of the package,
+the ports options it was build with.
+
+@exec and @unexec are deprecated. They are still executed but pkgng print a
+deprecation warning message.
+
+pkgng supports new scripts: +PREINSTALL +POSTINSTALL, +PREDEINSTALL, +POSTDEINSTALL,
++PREUPGRADE, +POSTUPGRADE as well as the original scripts : +INSTALL +DEINSTALL +UPGRADE
+
+The prefered compression format of pkgng for package archive is .txz. It is
+faster to decompress than bzip2, thus allow faster installation with a smaller
+archive file. Of course, pkgng can manage .tbz, .tgz and .tar archives.
+
+Local database
+--------------
+
+Once a package is installed, it is registered to a sqlite database.
+The sqlite database allow fast queries, ACID transactions.
+It also allow to query the reverse dependencies without a +REQUIRED_BY hack.
+In order to save space the MTREE is only stored once, which save 18K per
+installed package.
+
+pkgng supports a `register' command to register packages into the sqlite
+database from the ports. The register command can execute the install script,
+show pkg-message, ...
+
+Installation of a package
+-------------------------
+
+`pkg add' can install a package archive on the local disk, on a http/ftp remote
+server. If only a package name is given, it will search the remote repository
+and download and install the package if it exists. The dependencies will be
+downloaded and installed first. This is possible because we have the
+dependencies informations in the repository database.
+
+`pkg add' will check if the user attempt to install a package built for another
+arch or release.
+
+Upgrade of packages
+-------------------
+
+pkgng will compare the versions of installed packages and those available on
+the repository. It will compute the proper update order and apply them.
+
+Deletion of a package
+---------------------
+
+Directory leftover are automatically removed if they are not in the MTREE.
