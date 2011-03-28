@@ -61,4 +61,4 @@ the repository. It will compute the proper update order and apply them.
 Deletion of a package
 ---------------------
 
-Directory leftover are automatically removed if they are not in the MTREE.
+Directory leftovers are automatically removed if they are not in the MTREE.
