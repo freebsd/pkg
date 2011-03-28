@@ -206,7 +206,7 @@ pkgdb_open(struct pkgdb **db)
 	char *errmsg;
 	char fpath[MAXPATHLEN];
 
-	snprintf(fpath, sizeof(fpath), "%s/pkg.db", pkgdb_get_dir());
+	snprintf(fpath, sizeof(fpath), "%s/local.sqlite", pkgdb_get_dir());
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL)
 		return (pkg_error_set(EPKG_FATAL, "calloc(): %s", strerror(errno)));

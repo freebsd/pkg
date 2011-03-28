@@ -77,7 +77,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	repopath[0] = path;
 	repopath[1] = NULL;
 
-	snprintf(repodb, MAXPATHLEN, "%s/repo.db", path);
+	snprintf(repodb, MAXPATHLEN, "%s/repo.sqlite", path);
 
 	if (stat(repodb, &st) != -1)
 		if (unlink(repodb) != 0)
