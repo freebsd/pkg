@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sysexits.h>
 
-#include "main.c"
+#include "main.h"
 #include "create.h"
 #include "delete.h"
 #include "info.h"
