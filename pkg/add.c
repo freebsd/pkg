@@ -18,7 +18,7 @@ fetch_status(void *data, const char *url, off_t total, off_t done, time_t elapse
 	data = NULL;
 	elapsed = 0;
 
-	percent = ((float)done / (float)total) * 100;
+	percent = ((float)done / (float)total) * 100.0;
 	printf("\rFetching %s... %d%%", url, percent);
 
 	if (done == total)

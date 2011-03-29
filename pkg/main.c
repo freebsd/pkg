@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sysexits.h>
 
+#include "main.c"
 #include "create.h"
 #include "delete.h"
 #include "info.h"
@@ -59,11 +60,11 @@ exec_help(int argc, char **argv)
 {
 	if (argc != 2) {
 		usage_help();
-		return(EX_USAGE);
+		return (EX_USAGE);
 	}
 
 	for (int i = 0; i < cmd_len; i++) {
-		if (strcmp(cmd[i].name, argv[1]) == 0) {
+		if (strncmp(cmd[i].name, argv[1], CMD_MAX_LEN) == 0) {
 			assert(cmd[i].usage != NULL);
 			cmd[i].usage();
 			return (0);
@@ -86,11 +87,11 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	len = strlen(argv[1]);
+	len = strnlen(argv[1], CMD_MAX_LEN);
 	for (i = 0; i < cmd_len; i++) {
 		if (strncmp(argv[1], cmd[i].name, len) == 0) {
 			/* if we have the exact cmd */
-			if (len == strlen(cmd[i].name)) {
+			if (len == strnlen(cmd[i].name, CMD_MAX_LEN)) {
 				command = &cmd[i];
 				ambiguous = 0;
 				break;
