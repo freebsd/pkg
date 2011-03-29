@@ -14,8 +14,8 @@
 #include "register.h"
 
 static struct {
-	pkg_attr attr;
-	const char *flag;
+	const pkg_attr attr;
+	const char * const flag;
 } required_flags[] = {
 	{ PKG_ORIGIN, "-o"},
 	{ PKG_NAME, "-n"},
