@@ -1,25 +1,25 @@
 #!/bin/sh
 
-if [ $(id -u) -ne 0 ]
+if [ $( id -u ) -ne 0 ]
 then
 	echo "This program needs to be run as root"
 	return 77	# EX_PERM
 fi
 
-ARCH=`uname -m`
+ARCH=$( uname -m )
 
-for PKG in $(pkg_info -Ea)
+for PKG in $( pkg_info -Ea )
 do
-	echo -n "Registering ${PKG}..."
+	echo -n "Registering ${PKG}... "
 
 	DB="/var/db/pkg/${PKG}"
-	COMMENT=`cat ${DB}/+COMMENT`
+	COMMENT=$( cat ${DB}/+COMMENT )
 	DESC="${DB}/+DESC"
 
 	# +CONTENTS
-	PLIST=`mktemp /tmp/pkg2ng.plist.XXXXXX`
-	DEPENDS=`mktemp /tmp/pkg2ng.depends.XXXXXX`
-	eval `awk -v pfile=${PLIST} -v dfile=${DEPENDS} '
+	PLIST=$( mktemp /tmp/pkg2ng.plist.XXXXXX )
+	DEPENDS=$( mktemp /tmp/pkg2ng.depends.XXXXXX )
+	eval $( awk -v pfile=${PLIST} -v dfile=${DEPENDS} '
 	BEGIN{
 		origin=""
 		depends=""
@@ -53,12 +53,12 @@ do
 		print "export ORIGIN=\""origin"\""
 		print "export CONFLICTS=\""conflict"\""
 	}
-	' ${DB}/+CONTENTS`
+	' ${DB}/+CONTENTS )
 
 	OPTIONS=""
-	SCRIPTS=`ls ${DB}/+*INSTALL 2>/dev/null`
+	SCRIPTS=$( ls ${DB}/+*INSTALL 2>/dev/null )
 
-	MAINTAINER=`make -C /usr/ports/${ORIGIN} -V MAINTAINER`
+	MAINTAINER=$( make -C /usr/ports/${ORIGIN} -V MAINTAINER )
 
 	CMD_ARGS=""
 	test -f ${DB}/+MTREE_DIRS && CMD_ARGS="${CMD_ARGS} -m ${DB}/+MTREE_DIRS"
@@ -66,12 +66,21 @@ do
 	test -n "${CONFLICTS}" && CMD_ARGS="${CMD_ARGS} -C ${CONFLICTS}"
 	test -n "${SCRIPTS}" && CMD_ARGS="${CMD_ARGS} -s ${SCRIPTS}"
 	test -n "${OPTIONS}" && CMD_ARGS="${CMD_ARGS} -O ${OPTIONS}"
+		
+	# register a package only if it's not registered already
+	pkg info -e ${ORIGIN}
 
-	pkg register -c "${COMMENT}" -d ${DESC} -p /usr/local -n ${PKG} \
-	-P "`cat ${DEPENDS}`" \
-	-o ${ORIGIN} -a ${ARCH} -r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS}
+	if [ $? -eq 0 ]
+	then
+		echo "package is already registered."
+	else
+		pkg register -c "${COMMENT}" -d ${DESC} -p /usr/local -n ${PKG} \
+		-P "$( cat ${DEPENDS} )" \
+		-o ${ORIGIN} -a ${ARCH} -r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS}
+
+		test $? -ne 0 && echo "failed." || echo "done."
+	fi
 
 	rm ${PLIST} ${DEPENDS}
-
-	echo " done"
 done
+
