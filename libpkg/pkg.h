@@ -176,14 +176,14 @@ int pkg_open(struct pkg **p, const char *path);
  * @return the type of the package.
  * @warning returns PKG_NONE on error.
  */
-pkg_t pkg_type(struct pkg *);
+pkg_t pkg_type(struct pkg const * const);
 
 /**
  * Generic getter for simple attributes.
  * @return NULL-terminated string.
  * @warning May return a NULL pointer.
  */
-const char *pkg_get(struct pkg *, pkg_attr);
+const char *pkg_get(struct pkg const * const , const pkg_attr);
 
 /**
  * @return the size of the uncompressed package.

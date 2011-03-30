@@ -11,7 +11,7 @@
 #include "pkg_util.h"
 
 pkg_t
-pkg_type(struct pkg *pkg)
+pkg_type(struct pkg const * const pkg)
 {
 	if (pkg == NULL) {
 		ERROR_BAD_ARG("pkg");
@@ -22,7 +22,7 @@ pkg_type(struct pkg *pkg)
 }
 
 const char *
-pkg_get(struct pkg *pkg, pkg_attr attr)
+pkg_get(struct pkg const * const pkg, const pkg_attr attr)
 {
 	if (pkg == NULL) {
 		ERROR_BAD_ARG("pkg");
@@ -38,7 +38,7 @@ pkg_get(struct pkg *pkg, pkg_attr attr)
 }
 
 int
-pkg_set(struct pkg *pkg, pkg_attr attr, const char *value)
+pkg_set(struct pkg * pkg, pkg_attr attr, const char *value)
 {
 	struct sbuf **sbuf;
 
