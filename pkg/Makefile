@@ -15,6 +15,6 @@ LDADD+=		-L../libpkg \
 		-lpkgng \
 		-lutil
 WARNS?=		6
-NO_MAN=		true
+MAN=	pkg.1
 
 .include <bsd.prog.mk>
