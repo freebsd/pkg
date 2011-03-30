@@ -19,9 +19,9 @@ static void usage_help(void);
 static int exec_help(int, char **);
 
 static struct commands {
-	const char *name;
+	const char * const name;
 	int (*exec)(int argc, char **argv);
-	void (*usage)(void);
+	void (* const usage)(void);
 } cmd[] = { 
 	{ "add", exec_add, usage_add},
 	{ "create", exec_create, usage_create},
