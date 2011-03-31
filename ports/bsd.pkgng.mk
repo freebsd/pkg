@@ -92,7 +92,7 @@ check-build-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_BUILD) ) && !defined(DISABLE_CONFLICTS) && !defined(DEFER_CONFLICTS_CHECK)
 	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/}`; \
 	conflicts_with=; \
-	if [ -n "$${found}}" ]; then \
+	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${found}"`; \
 		orgn=`${PKG_INFO} -q -o "$${found}"`; \
 		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
@@ -118,7 +118,7 @@ identify-install-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_INSTALL) ) && !defined(DISABLE_CONFLICTS)
 	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
 	conflicts_with=; \
-	if [ -n "$${found}}" ]; then \
+	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${found}"`; \
 		orgn=`${PKG_INFO} -q -o "$${found}"`; \
 		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
@@ -145,7 +145,7 @@ check-install-conflicts:
 .if defined(DEFER_CONFLICTS_CHECK)
 	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
 	conflicts_with=; \
-	if [ -n "$${found}}" ]; then \
+	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${found}"`; \
 		orgn=`${PKG_INFO} -q -o "$${found}"`; \
 		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
@@ -165,7 +165,7 @@ check-install-conflicts:
 .else
 	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
 	conflicts_with=; \
-	if [ -n "$${found}}" ]; then \
+	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${entry}"`; \
 		orgn=`${PKG_INFO} -q -o "$${entry}"`; \
 		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
