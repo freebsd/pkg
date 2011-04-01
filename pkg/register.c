@@ -81,7 +81,9 @@ exec_register(int argc, char **argv)
 				ret += pkg_set_from_file(pkg, PKG_DESC, optarg);
 				break;
 			case 'f':
-				plist = strdup(optarg);
+				if ((plist = strdup(optarg)) == NULL) 
+					errx(1, "cannot allocate memory");
+
 				break;
 			case 'p':
 				pkg_set(pkg, PKG_PREFIX, optarg);
@@ -114,13 +116,17 @@ exec_register(int argc, char **argv)
 				ret += ports_parse_scripts(pkg, optarg);
 				break;
 			case 'a':
-				arch = strdup(optarg);
+				if ((arch = strdup(optarg)) == NULL)
+					errx(1, "cannot allocate memory");
+
 				break;
 			case 'r': /* responsible */
 				ret += pkg_set(pkg, PKG_MAINTAINER, optarg);
 				break;
 			case 'w':
-				www = strdup(optarg);
+				if ((www = strdup(optarg)) == NULL)
+					errx(1, "cannot allocate memory");
+
 				break;
 			case 'O':
 				ret += ports_parse_options(pkg, optarg);
