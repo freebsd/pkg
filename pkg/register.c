@@ -149,7 +149,7 @@ exec_register(int argc, char **argv)
 	if (plist == NULL)
 		errx(1, "missing -f flag");
 
-	for (int i = 0; required_flags[i].flag != NULL; i++)
+	for (unsigned int i = 0; required_flags[i].flag != NULL; i++)
 		if (pkg_get(pkg, required_flags[i].attr) == NULL)
 			errx(1, "missing %s flag", required_flags[i].flag);
 
