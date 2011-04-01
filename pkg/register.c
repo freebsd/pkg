@@ -1,10 +1,12 @@
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/param.h>
 
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
 #include <string.h>
+#include <sysexits.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -60,6 +62,11 @@ exec_register(int argc, char **argv)
 
 	int retcode = 0;
 	int ret = 0;
+
+	if (geteuid() != 0) {
+		warnx("registering packages can only be done as root");
+		return (EX_NOPERM);
+	}
 
 	pkg_new(&pkg);
 	while ((ch = getopt(argc, argv, "vHc:d:f:p:P:m:o:C:n:M:s:a:r:w:O:")) != -1) {
