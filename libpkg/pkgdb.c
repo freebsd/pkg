@@ -40,8 +40,8 @@ pkgdb_regex_delete(void *p)
 static void
 pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
 {
-	const char *regex = NULL;
-	const char *str;
+	const unsigned char *regex = NULL;
+	const unsigned char *str;
 	regex_t *re;
 	int ret;
 
