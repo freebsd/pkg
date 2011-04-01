@@ -1,3 +1,5 @@
+#include <sys/types.h>
+
 #include <err.h>
 #include <libgen.h>
 #include <stdbool.h>

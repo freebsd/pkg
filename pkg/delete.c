@@ -1,3 +1,5 @@
+#include <sys/types.h>
+
 #include <err.h>
 #include <stdio.h>
 #include <sysexits.h>
