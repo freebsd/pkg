@@ -35,7 +35,8 @@ static struct commands {
 	{ "version", exec_version, usage_version},
 	{ "which", exec_which, usage_which},
 };
-#define cmd_len (int)(sizeof(cmd)/sizeof(cmd[0]))
+
+const int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
 
 static void
 usage(void)
