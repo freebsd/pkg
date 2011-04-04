@@ -55,7 +55,11 @@ exec_which(int argc, char **argv)
 	} else if (ret != EPKG_END) {
 		pkg_error_warn("can not iterate over results");
 		retcode = -1;
+	} else {
+		printf("%s was not found in the database\n", pathabs);
+		retcode = -1;
 	}
+		
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 
