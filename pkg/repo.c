@@ -34,10 +34,11 @@ exec_repo(int argc, char **argv)
 
 	printf("Generating repo.db in %s\n", argv[1]);
 	ret = pkg_create_repo(argv[1], progress, NULL);
-	printf("Done!\n");
 
 	if (ret != EPKG_OK)
 		pkg_error_warn("can not create repository");
+	else
+		printf("Done!\n");
 
 	return (ret);
 }
