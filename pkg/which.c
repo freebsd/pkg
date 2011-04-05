@@ -14,7 +14,7 @@
 void
 usage_which(void)
 {
-	fprintf(stderr, "which <file>\n");
+	fprintf(stderr, "usage: pkg which <file>\n");
 }
 
 int

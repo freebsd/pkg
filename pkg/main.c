@@ -36,23 +36,30 @@ static struct commands {
 	{ "which", exec_which, usage_which},
 };
 
-const int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
+const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
 
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: pkg <command> [<args>]\n\n"
-			"Where <command> can be:\n");
-	for (int i = 0; i < cmd_len; i++) {
-		fprintf(stderr, "  %s\n", cmd[i].name);
-	}
+	fprintf(stderr, "usage: pkg <command> [<args>]\n\n");
+	fprintf(stderr, "For more information on the different commands"
+			" see 'pkg help <command>'\n\n");
+	fprintf(stderr, "Where <command> can be:\n");
+
+	for (unsigned int i = 0; i < cmd_len; i++) 
+		fprintf(stderr, "\t%s\n", cmd[i].name);
+
 	exit(EX_USAGE);
 }
 
 static void
 usage_help(void)
 {
-	fprintf(stderr, "help <command>\n");
+	fprintf(stderr, "usage: pkg help <command>\n\n");
+	fprintf(stderr, "Where <command> can be:\n");
+
+	for (unsigned int i = 0; i < cmd_len; i++)
+		fprintf(stderr, "\t%s\n", cmd[i].name);
 }
 
 static int
@@ -63,7 +70,7 @@ exec_help(int argc, char **argv)
 		return(EX_USAGE);
 	}
 
-	for (int i = 0; i < cmd_len; i++) {
+	for (unsigned int i = 0; i < cmd_len; i++) {
 		if (strcmp(cmd[i].name, argv[1]) == 0) {
 			assert(cmd[i].usage != NULL);
 			cmd[i].usage();
@@ -71,15 +78,16 @@ exec_help(int argc, char **argv)
 		}
 	}
 
-	// Command name not found
-	warnx("%s is not a valid command", argv[1]);
+	/* Command name not found */
+	warnx("'%s' is not a valid command", argv[1]);
+
 	return (1);
 }
 
 int
 main(int argc, char **argv)
 {
-	int i;
+	unsigned int i;
 	struct commands *command = NULL;
 	int ambiguous = -1;
 	size_t len;
@@ -121,7 +129,9 @@ main(int argc, char **argv)
 	}
 
 	if (ambiguous == 1) {
-		warnx("Ambiguous command: %s, could be:", argv[1]);
+		warnx("Ambiguous command: '%s'. See 'pkg help' for more information.", argv[1]);
+		warnx("'%s' could be one of the following:", argv[1]);
+
 		for (i = 0; i < cmd_len; i++)
 			if (strncmp(argv[1], cmd[i].name, len) == 0)
 				warnx("\t%s",cmd[i].name);
@@ -129,3 +139,4 @@ main(int argc, char **argv)
 
 	return (EX_USAGE);
 }
+

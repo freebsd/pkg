@@ -43,8 +43,12 @@ is_url(const char *pattern)
 void
 usage_add(void)
 {
-	fprintf(stderr, "add ... <pkg-name>\n"
-			"add\n");
+	fprintf(stderr, "usage: pkg add <pkg-name>\n");
+	fprintf(stderr, "       pkg add <url>://<pkg-name>\n\n"
+			"Installs a package from either a local source or remote one.\n\n"
+			"When installing from remote source you need to specify\n"
+			"the protocol to use when fetching the package.\n\n"
+			"Currently supported protocols are FTP, HTTP and HTTPS\n");
 }
 
 int
@@ -101,3 +105,4 @@ exec_add(int argc, char **argv)
 
 	return (retcode);
 }
+

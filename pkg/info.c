@@ -83,8 +83,8 @@ print_info(struct pkg *pkg, unsigned int opt)
 void
 usage_info(void)
 {
-	fprintf(stderr, "info [-egxXdrlsqO] <pkg-name>\n"
-			"info\n");
+	fprintf(stderr, "usage: pkg info\n");
+	fprintf(stderr, "       pkg info [-egxXdrlsqO] <pkg-name>\n");
 }
 
 /*
