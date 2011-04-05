@@ -12,9 +12,9 @@
 void
 usage_create(void)
 {
-	fprintf(stderr, "create [-gx] [-r rootdir] [-m manifest] [-f format] [-o outdir] "
-			"<pkg-name>\n"
-			"create -a [-r rootdir] [-m manifest] [-f format] [-o outdir]\n");
+	fprintf(stderr, "usage: pkg create [-gx] [-r rootdir] [-m manifest] [-f format] [-o outdir] "
+			"<pkg-name>\n");
+	fprintf(stderr, "       pkg create -a [-r rootdir] [-m manifest] [-f format] [-o outdir]\n");
 }
 
 /*
@@ -147,3 +147,4 @@ exec_create(int argc, char **argv)
 
 	return (retcode);
 }
+

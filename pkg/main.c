@@ -42,6 +42,8 @@ static void
 usage(void)
 {
 	fprintf(stderr, "usage: pkg <command> [<args>]\n\n");
+	fprintf(stderr, "For more information on the different commands"
+			" see 'pkg help <command>'\n\n");
 	fprintf(stderr, "Where <command> can be:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++) 
@@ -53,7 +55,7 @@ usage(void)
 static void
 usage_help(void)
 {
-	fprintf(stderr, "usage: pkg help <command>\n");
+	fprintf(stderr, "usage: pkg help <command>\n\n");
 	fprintf(stderr, "Where <command> can be:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++)
@@ -77,7 +79,7 @@ exec_help(int argc, char **argv)
 	}
 
 	/* Command name not found */
-	warnx("%s is not a valid command", argv[1]);
+	warnx("'%s' is not a valid command", argv[1]);
 
 	return (1);
 }
@@ -85,7 +87,7 @@ exec_help(int argc, char **argv)
 int
 main(int argc, char **argv)
 {
-	int i;
+	unsigned int i;
 	struct commands *command = NULL;
 	int ambiguous = -1;
 	size_t len;
@@ -127,7 +129,7 @@ main(int argc, char **argv)
 	}
 
 	if (ambiguous == 1) {
-		warnx("Ambiguous command: '%s'. See 'pkg help' for more information.");
+		warnx("Ambiguous command: '%s'. See 'pkg help' for more information.", argv[1]);
 		warnx("'%s' could be one of the following:", argv[1]);
 
 		for (i = 0; i < cmd_len; i++)

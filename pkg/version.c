@@ -8,10 +8,10 @@
 void
 usage_version(void)
 {
-	fprintf(stderr, "version [-hIoqv] [-l limchar] [-L limchar] [[-X] -s string]"
-			"[-O origin] [index]\n"
-			"version -t version1 version2\n"
-			"version -T pkgname pattern\n");
+	fprintf(stderr, "usage: pkg version [-hIoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
+	fprintf(stderr, "                   [-O origin] [index]\n");
+	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
+	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n");
 }
 
 int exec_version(int argc, char **argv)

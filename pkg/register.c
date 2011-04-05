@@ -32,11 +32,10 @@ static struct {
 void
 usage_register(void)
 {
-	fprintf(stderr, "register -c comment -d desc -f plist_file -p prefix "
-			"-m mtree_file -n pkgname -o origin -r maintainer "
-			"[-P depends] [-C conflicts] [-M message_file] [-s scripts] "
-			"[-a arch] [-w www] [-O options] [-H]"
-			"\n");
+	fprintf(stderr, "usage: pkg register -c comment -d desc -f plist_file -p prefix\n");
+	fprintf(stderr, "                    -m mtree_file -n pkgname -o origin -r maintainer\n");
+	fprintf(stderr, "                    [-P depends] [-C conflicts] [-M message_file] [-s scripts]\n");
+	fprintf(stderr, "                    [-a arch] [-w www] [-O options] [-H]\n");
 }
 
 int
