@@ -36,23 +36,28 @@ static struct commands {
 	{ "which", exec_which, usage_which},
 };
 
-const int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
+const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
 
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: pkg <command> [<args>]\n\n"
-			"Where <command> can be:\n");
-	for (int i = 0; i < cmd_len; i++) {
-		fprintf(stderr, "  %s\n", cmd[i].name);
-	}
+	fprintf(stderr, "usage: pkg <command> [<args>]\n\n");
+	fprintf(stderr, "Where <command> can be:\n");
+
+	for (unsigned int i = 0; i < cmd_len; i++) 
+		fprintf(stderr, "\t%s\n", cmd[i].name);
+
 	exit(EX_USAGE);
 }
 
 static void
 usage_help(void)
 {
-	fprintf(stderr, "help <command>\n");
+	fprintf(stderr, "usage: pkg help <command>\n");
+	fprintf(stderr, "Where <command> can be:\n");
+
+	for (unsigned int i = 0; i < cmd_len; i++)
+		fprintf(stderr, "\t%s\n", cmd[i].name);
 }
 
 static int
@@ -63,7 +68,7 @@ exec_help(int argc, char **argv)
 		return(EX_USAGE);
 	}
 
-	for (int i = 0; i < cmd_len; i++) {
+	for (unsigned int i = 0; i < cmd_len; i++) {
 		if (strcmp(cmd[i].name, argv[1]) == 0) {
 			assert(cmd[i].usage != NULL);
 			cmd[i].usage();
@@ -71,8 +76,9 @@ exec_help(int argc, char **argv)
 		}
 	}
 
-	// Command name not found
+	/* Command name not found */
 	warnx("%s is not a valid command", argv[1]);
+
 	return (1);
 }
 
@@ -129,3 +135,4 @@ main(int argc, char **argv)
 
 	return (EX_USAGE);
 }
+
