@@ -151,7 +151,7 @@ get_component(const char *position, version_component *component)
 		haspatchlevel = 1;
 		/* handle special suffixes */
 		if (isalpha(pos[1])) {
-			int i;
+			unsigned int i;
 			for (i = 0; stage[i].name; i++) {
 				if (strncasecmp(pos, stage[i].name, stage[i].namelen) == 0
 						&& !isalpha(pos[stage[i].namelen])) {
