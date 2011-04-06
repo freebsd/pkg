@@ -231,7 +231,7 @@ get_component(const char *position, version_component *component)
  * reimplemented by Oliver Eikemeier
  */
 int
-pkg_version_cmp(const char *pkg1, const char *pkg2)
+pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 {
 	const char *v1, *v2, *ve1, *ve2;
 	unsigned long e1, e2, r1, r2;

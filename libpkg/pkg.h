@@ -462,7 +462,7 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 /**
  * @todo Document
  */
-int pkg_version_cmp(const char *, const char *);
+int pkg_version_cmp(const char * const , const char * const);
 
 /**
  * A function used as a callback by functions which fetch files from the
