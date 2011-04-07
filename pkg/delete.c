@@ -13,7 +13,8 @@ void
 usage_delete(void)
 {
 	fprintf(stderr, "usage: pkg delete [-f] <pkg-name>\n");
-	fprintf(stderr, "       pkg delete -a\n");
+	fprintf(stderr, "       pkg delete -a\n\n");
+	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
 
 int

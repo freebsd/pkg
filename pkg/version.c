@@ -11,7 +11,8 @@ usage_version(void)
 	fprintf(stderr, "usage: pkg version [-hIoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
 	fprintf(stderr, "                   [-O origin] [index]\n");
 	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
-	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n");
+	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n\n");
+	fprintf(stderr, "For more information see 'pkg help version'.\n");
 }
 
 int exec_version(int argc, char **argv)

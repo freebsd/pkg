@@ -1,0 +1,93 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd April 06, 2011
+.Dt PKG-INFO 1
+.Os
+.Sh NAME
+.Nm "pkg info"
+.Nd displays information for installed packages
+.Sh SYNOPSIS
+.Nm
+.Nm
+.Op Fl egxXdrlsqO
+.Ar <pkg-name>
+.Sh DESCRIPTION
+.Nm
+is used for displaying information for installed packages.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl O
+Search is done by origin of the package.
+.Pp
+< Added only for ports compatibility - To be completed >
+.It Fl e
+Returns 0 if
+.Ar <pkg-name>
+is installed and is registered in the database, otherwise returns 1.
+Useful for checking if a package is installed or not using a 
+script.
+.It Fl g
+Treat
+.Ar <pkg-name>
+as a shell glob pattern.
+.It Fl x
+Treat
+.Ar <pkg-name>
+as a regular expression.
+.It Fl X
+Treat
+.Ar <pkg-name>
+as an extended regular expression.
+.It Fl d
+Displays the dependecies of package
+.Ar <pkg-name>
+.It Fl r
+Displays a list of packages on which
+.Ar <pkg-name>
+depends.
+.It Fl l
+Display all files installed by
+.Ar <pkg-name>
+.It Fl s
+Display the total size of files installed by
+.Ar <pkg-name>
+.It Fl E
+< To be added >
+.It Fl q
+Be ``quiet'' - < To be completed >
+.It Fl o
+< To be added >
+.It Fl p
+Display the installation prefix for each package
+matching
+.Ar <pkg-name>
+.El
+.Sh WARNING
+.Sh ENVRIOMENT
+The following envrioment variables affect the execution of
+.Nm :
+.Bl -tag -width ".Ev TMPDIR"
+.El
+.Sh FILES
+.Sh SEE ALSO
+pkg(1), pkg-create(1), pkg-add(1), pkg-delete(1), pkg-register(1), pkg-repo(1),
+pkg-update(1), pkg-upgrade(1), pkg-version(1), pkg-which(1)
+.Sh AUTHORS AND CONTRIBUTORS
+.Sh BUGS

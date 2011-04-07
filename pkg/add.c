@@ -44,11 +44,8 @@ void
 usage_add(void)
 {
 	fprintf(stderr, "usage: pkg add <pkg-name>\n");
-	fprintf(stderr, "       pkg add <url>://<pkg-name>\n\n"
-			"Installs a package from either a local source or remote one.\n\n"
-			"When installing from remote source you need to specify\n"
-			"the protocol to use when fetching the package.\n\n"
-			"Currently supported protocols are FTP, HTTP and HTTPS\n");
+	fprintf(stderr, "       pkg add <url>://<pkg-name>\n\n");
+	fprintf(stderr, "For more information see 'pkg help add'.\n");
 }
 
 int

@@ -1,0 +1,54 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd April 06, 2011
+.Dt PKG-DELETE 1
+.Os
+.Sh NAME
+.Nm "pkg delete"
+.Nd deletes a package from the database and the system
+.Sh SYNOPSIS
+.Nm
+.Op Fl a 
+.Nm
+.Op Fl f
+.Ar <pkg-name>
+.Sh DESCRIPTION
+.Nm
+is used for deleting previously installed packages and removes them from the 
+database.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl f Ar <pkg-name>
+Forces a package to be removed.
+.It Fl a
+Deletes all installed packages from the system and the database.
+.El
+.Sh WARNING
+.Sh ENVRIOMENT
+The following envrioment variables affect the execution of
+.Nm :
+.Bl -tag -width ".Ev TMPDIR"
+.El
+.Sh FILES
+.Sh SEE ALSO
+pkg(1), pkg-create(1), pkg-add(1), pkg-info(1), pkg-register(1), pkg-repo(1),
+pkg-update(1), pkg-upgrade(1), pkg-version(1), pkg-which(1)
+.Sh AUTHORS AND CONTRIBUTORS
+.Sh BUGS

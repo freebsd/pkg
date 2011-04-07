@@ -1,0 +1,86 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd April 06, 2011
+.Dt PKG-CREATE 1
+.Os
+.Sh NAME
+.Nm "pkg create"
+.Nd Creates a package
+.Sh SYNOPSIS
+.Nm
+.Op Fl gx
+.Op Fl r Ar rootdir
+.Op Fl m Ar manifest
+.Op Fl f Ar format
+.Op Fl o Ar outdir
+.Op <pkg-name>
+.Nm
+.Op Fl a
+.Op Fl r Ar rootdir
+.Op Fl m Ar manifest
+.Op Fl f Ar format
+.Op Fl o Ar outdir
+.Sh DESCRIPTION
+.Nm
+is used for creating packages.
+.Pp
+< To be completed >
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl a
+Match all packages that match
+.Ar <pkg-name>
+.It Fl g
+Treat
+.Ar <pkg-name>
+as a shell glob pattern
+.It Fl x
+Treat
+.Ar <pkg-name>
+as a regular expression
+.It Fl X
+Treat
+.Ar <pkg-name>
+as an extended regular expression
+.It Fl f
+Specify package format.
+.Pp
+Supported formats include \fB.txz\fP, \fB.tbz\fP, \fB.tgz\fP and \fB.tar\fP
+.Pp
+If no format is specified \fB.txz\fP is assumed.
+.It Fl o
+Specify output directory for package creation
+.It Fl r
+< To be added >
+.It Fl m
+Specify manifest directory
+.El
+.Sh WARNING
+.Sh ENVRIOMENT
+The following envrioment variables affect the execution of
+.Nm :
+.Bl -tag -width ".Ev TMPDIR"
+.El
+.Sh FILES
+.Sh SEE ALSO
+pkg(1), pkg-add(1), pkg-delete(1), pkg-info(1), pkg-register(1), pkg-repo(1),
+pkg-update(1), pkg-upgrade(1), pkg-version(1), pkg-which(1)
+.Sh AUTHORS AND CONTRIBUTORS
+.Sh BUGS

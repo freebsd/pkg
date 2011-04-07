@@ -14,7 +14,8 @@ usage_create(void)
 {
 	fprintf(stderr, "usage: pkg create [-gx] [-r rootdir] [-m manifest] [-f format] [-o outdir] "
 			"<pkg-name>\n");
-	fprintf(stderr, "       pkg create -a [-r rootdir] [-m manifest] [-f format] [-o outdir]\n");
+	fprintf(stderr, "       pkg create -a [-r rootdir] [-m manifest] [-f format] [-o outdir]\n\n");
+	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
 
 /*

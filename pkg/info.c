@@ -84,7 +84,8 @@ void
 usage_info(void)
 {
 	fprintf(stderr, "usage: pkg info\n");
-	fprintf(stderr, "       pkg info [-egxXdrlsqO] <pkg-name>\n");
+	fprintf(stderr, "       pkg info [-egxXdrlsqO] <pkg-name>\n\n");
+	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
 
 /*

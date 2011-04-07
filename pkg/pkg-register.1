@@ -1,0 +1,94 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd April 06, 2011
+.Dt PKG-REGISTER 1
+.Os
+.Sh NAME
+.Nm "pkg register"
+.Nd registers a package into the database
+.Sh SYNOPSIS
+.Nm
+.Op Fl v
+.Op Fl c Ar comment
+.Op Fl d Ar desc
+.Op Fl f Ar plist-file
+.Op Fl p Ar prefix
+.Op Fl m Ar mtree-file
+.Op Fl n Ar pkg-name
+.Op Fl o Ar origin
+.Op Fl r Ar maintainer
+.Op Fl P Ar depends
+.Op Fl C Ar conflicts
+.Op Fl M Ar message-file
+.Op Fl s Ar scripts
+.Op Fl a Ar arch
+.Op Fl w Ar www
+.Op Fl O options
+.Op Fl H
+.Sh DESCRIPTION
+.Nm
+is used for registering a package into the database
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl v
+Verbose mode
+.It Fl c Ar comment
+One line description of the package
+.It Fl d Ar desc
+Description of the package
+.It Fl f Ar plist-file
+Specifies the packing list file
+.It Fl m Ar mtree-file
+Specifies the mtree file
+.It Fl n Ar pkg-name
+Specifies the package name
+.It Fl o Ar origin
+Package origin
+.It Fl r Ar maintainer
+Specifies the maintainer of the package
+.It Fl P Ar depends
+Defines the list of packages that the package depends on
+.It Fl C Ar conflicts
+Defines the list of packages that the package conflicts with
+.It Fl M Ar message-file
+Specifies the message file
+.It Fl s Ar scripts
+< To be added >
+.It Fl a Ar arch
+Specifies the package arch
+.It Fl w Ar www
+Specifies the web site of the package
+.It Fl O Ar options
+< To be added >
+.It Fl H
+< To be added >
+.El
+.Sh WARNING
+.Sh ENVRIOMENT
+The following envrioment variables affect the execution of
+.Nm :
+.Bl -tag -width ".Ev TMPDIR"
+.El
+.Sh FILES
+.Sh SEE ALSO
+pkg(1), pkg-create(1), pkg-add(1), pkg-info(1), pkg-delete(1), pkg-repo(1),
+pkg-update(1), pkg-upgrade(1), pkg-version(1), pkg-which(1)
+.Sh AUTHORS AND CONTRIBUTORS
+.Sh BUGS
