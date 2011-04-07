@@ -9,7 +9,8 @@
 void
 usage_repo(void)
 {
-	fprintf(stderr, "usage: pkg repo <repo-path>\n");
+	fprintf(stderr, "usage: pkg repo <repo-path>\n\n");
+	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
 static void

@@ -35,7 +35,8 @@ usage_register(void)
 	fprintf(stderr, "usage: pkg register -c comment -d desc -f plist_file -p prefix\n");
 	fprintf(stderr, "                    -m mtree_file -n pkgname -o origin -r maintainer\n");
 	fprintf(stderr, "                    [-P depends] [-C conflicts] [-M message_file] [-s scripts]\n");
-	fprintf(stderr, "                    [-a arch] [-w www] [-O options] [-H]\n");
+	fprintf(stderr, "                    [-a arch] [-w www] [-O options] [-H]\n\n");
+	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
 
 int
@@ -95,7 +96,7 @@ exec_register(int argc, char **argv)
 				break;
 			case 'n':
 				if ((v = strrchr(optarg, '-')) == NULL)
-					errx(1, "bad pkgname format");
+					errx(EX_DATAERR, "bad pkgname format");
 
 				v[0] = '\0';
 				v++;
@@ -146,11 +147,11 @@ exec_register(int argc, char **argv)
 	}
 
 	if (plist == NULL)
-		errx(1, "missing -f flag");
+		errx(EX_USAGE, "missing -f flag");
 
 	for (unsigned int i = 0; required_flags[i].flag != NULL; i++)
 		if (pkg_get(pkg, required_flags[i].attr) == NULL)
-			errx(1, "missing %s flag", required_flags[i].flag);
+			errx(EX_USAGE, "missing %s flag", required_flags[i].flag);
 
 	uname(&u);
 	if (arch == NULL) {

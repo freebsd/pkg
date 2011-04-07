@@ -16,28 +16,64 @@
 .\" $FreeBSD$
 .\"
 .Dd March 29, 2011
-.Dt pkg
+.Dt PKG 1
 .Os
 .Sh NAME
 .Nm pkg
 .Nd a utility for manipulating packages 
 .Sh SYNOPSIS
 .Nm
+.Ar <command> Ar <flags>
 .Sh DESCRIPTION
-The 
 .Nm
-command provides an interface for registerating, upgrading,
-removing, and otherwise manipulating packages
+provides an interface for manupulating packages - registering,
+adding, removing and upgrading of packages.
+.Sh COMMANDS
+The following commands are supported by
+.Nm :
+.Bl -tag -width F1
+.It \fBhelp\fP Ar <command>
+Displays usage information.
+.Ar <command>
+.It \fBadd\fP
+Install a package from either a local source or a remote one.
+.Pp
+When installing from remote source you need to specify the
+protocol to use when fetching the package.
+.Pp
+Currently supported protocols are FTP, HTTP and HTTPS.
+.It \fBcreate\fP
+< To be added >
+.It \fBdelete\fP
+Deletes a package from the database and the system.
+.It \fBinfo\fP
+Displays information about installed packages.
+.It \fBregister\fP
+Registers a package in the database.
+.It \fBrepo\fP
+Creates a package repository.
+.Pp
+< To be completed >
+.It \fBupdate\fP
+< To be added >
+.It \fBupgrade\fP
+Upgrades a package to a newer version.
+.It \fBversion\fP
+< To be added >
+.It \fBwhich\fP
+Queries the database for package(s) that installed a specific
+file.
+.El
 .Sh WARNING
-.Sh OPTIONS
 .Sh ENVRIOMENT
 The following envrioment variables affect the execution of
 .Nm :
 .Bl -tag -width ".Ev TMPDIR"
 .It Ev TMPDIR, SQLITE_FORCE_PROXY_LOCKING, PKG_DBDIR
+.El
 .Sh FILES
 .Sh SEE ALSO
-.Sh AUTHORS AND CONTRIBUTERS
+pkg-add(1), pkg-create(1), pkg-delete(1), pkg-info(1), pkg-register(1), pkg-repo(1),
+pkg-update(1), pkg-upgrade(1), pkg-version(1), pkg-which(1)
+.Sh AUTHORS AND CONTRIBUTORS
 .Sh BUGS
-
-

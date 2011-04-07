@@ -42,12 +42,13 @@ static void
 usage(void)
 {
 	fprintf(stderr, "usage: pkg <command> [<args>]\n\n");
-	fprintf(stderr, "For more information on the different commands"
-			" see 'pkg help <command>'\n\n");
 	fprintf(stderr, "Where <command> can be:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++) 
 		fprintf(stderr, "\t%s\n", cmd[i].name);
+
+	fprintf(stderr, "\nFor more information on the different commands"
+			" see 'pkg help <command>'.\n");
 
 	exit(EX_USAGE);
 }
@@ -65,23 +66,31 @@ usage_help(void)
 static int
 exec_help(int argc, char **argv)
 {
-	if (argc != 2) {
+	char *manpage;
+
+	if ((argc != 2) || (strcmp("help", argv[1]) == 0)) {
 		usage_help();
 		return(EX_USAGE);
 	}
 
 	for (unsigned int i = 0; i < cmd_len; i++) {
 		if (strcmp(cmd[i].name, argv[1]) == 0) {
-			assert(cmd[i].usage != NULL);
-			cmd[i].usage();
+			if (asprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name) == -1)
+				errx(1, "cannot allocate memory");
+
+			system(manpage);
+			free(manpage);
+
 			return (0);
 		}
 	}
 
 	/* Command name not found */
-	warnx("'%s' is not a valid command", argv[1]);
+	warnx("'%s' is not a valid command.\n", argv[1]);
+	
+	fprintf(stderr, "See 'pkg help' for more information on the commands.\n");
 
-	return (1);
+	return (EX_USAGE);
 }
 
 int
@@ -89,7 +98,7 @@ main(int argc, char **argv)
 {
 	unsigned int i;
 	struct commands *command = NULL;
-	int ambiguous = -1;
+	unsigned int ambiguous = 0;
 	size_t len;
 
 	if (argc < 2)
@@ -109,10 +118,7 @@ main(int argc, char **argv)
 			 * we already found a partial match so `argv[1]' is
 			 * an ambiguous shortcut
 			 */
-			if (command != NULL)
-				ambiguous = 1;
-			else
-				ambiguous = 0;
+			ambiguous++;
 
 			command = &cmd[i];
 		}
@@ -128,13 +134,15 @@ main(int argc, char **argv)
 		return (command->exec(argc, argv));
 	}
 
-	if (ambiguous == 1) {
-		warnx("Ambiguous command: '%s'. See 'pkg help' for more information.", argv[1]);
-		warnx("'%s' could be one of the following:", argv[1]);
+	if (ambiguous >= 1) {
+		warnx("'%s' is not a valid command.\n", argv[1]);
+
+		fprintf(stderr, "See 'pkg help' for more information on the commands.\n\n");
+		fprintf(stderr, "Command '%s' could be %s:\n", argv[1], ( ambiguous == 1 ? "this" : "one of the following"));
 
 		for (i = 0; i < cmd_len; i++)
 			if (strncmp(argv[1], cmd[i].name, len) == 0)
-				warnx("\t%s",cmd[i].name);
+				fprintf(stderr, "\t%s\n",cmd[i].name);
 	}
 
 	return (EX_USAGE);

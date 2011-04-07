@@ -1,0 +1,93 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd April 06, 2011
+.Dt PKG-VERSION 1
+.Os
+.Sh NAME
+.Nm "pkg version"
+.Nd summarize installed versions of packages
+.Sh SYNOPSIS
+.Nm
+.Op Fl hIoqv
+.Op Fl l Ar limchar
+.Op Fl L Ar limchar
+.Oo
+.Op Fl X 
+.Fl s Ar string
+.Oc
+.Op Fl O Ar origin
+.Op Ar index
+.Nm
+.Fl t Ar version1
+.Nm
+.Fl T Ar <pkgname> Ar <pattern>
+.Sh DESCRIPTION
+.Nm
+is used for generating a report of packages installed by \fBpkg(1)\fP
+.Pp
+< To be completed >
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl h
+Displays usage information
+.It Fl I
+Use INDEX file for determining if a package is out of date
+.It Fl o
+Display package origin, instead of package name.
+.It Fl q
+Be quiet. Less output will be produced.
+.It Fl v
+Be verbose.
+.It Fl l Ar limchar
+Display only the packages which status flag matches the one specified by
+.Ar limchar
+.It Fl L Ar limchar
+Does the opposite of
+.Fl l
+flag. Displays the packages which status flag does not match the one
+specified by
+.Ar limchar
+.It Fl X 
+Treat
+.Ar string
+as an extended regular expression.
+.It Fl s Ar string
+Only display the packages that match
+.Ar string
+.It Fl O Ar origin
+Display only the packages which origin matches
+.Ar origin
+.It Fl t Ar <version1> Ar <version2>
+< To be added >
+.It Fl T Ar <pkgname> Ar <pattern>
+< To be added >
+.El
+.Sh WARNING
+.Sh ENVRIOMENT
+The following envrioment variables affect the execution of
+.Nm :
+.Bl -tag -width ".Ev TMPDIR"
+.El
+.Sh FILES
+.Sh SEE ALSO
+pkg(1), pkg-create(1), pkg-add(1), pkg-info(1), pkg-register(1), pkg-repo(1),
+pkg-update(1), pkg-upgrade(1), pkg-which(1)
+.Sh AUTHORS AND CONTRIBUTORS
+.Sh BUGS
