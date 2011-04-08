@@ -1,7 +1,6 @@
 #include <string.h>
 #include <err.h>
 #include <unistd.h>
-#include <sha256.h>
 #include <search.h>
 #include <archive.h>
 #include <archive_entry.h>
@@ -112,7 +111,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	for (i = 0; files[i] != NULL; i++) {
 		/* check sha256 */
 		if (pkg_file_sha256(files[i])[0] != '\0' &&
-			(SHA256_File(pkg_file_path(files[i]), sha256) == NULL ||
+			(sha256_file(pkg_file_path(files[i]), sha256) == -1 ||
 			strcmp(sha256, pkg_file_sha256(files[i])) != 0))
 			warnx("%s fails original SHA256 checksum, not removed",
 					pkg_file_path(files[i]));

@@ -30,6 +30,6 @@ int split_chr(char *, char);
 int file_fetch(const char *, const char *);
 int is_dir(const char *);
 
-int rsa_sign(const char *, const char *, char **);
-
+int sha256_file(const char *, char[65]);
+void sha256_str(const char *, char[65]);
 #endif

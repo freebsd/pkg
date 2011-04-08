@@ -11,6 +11,9 @@
 #include <unistd.h>
 #include <string.h>
 
+
+#include <openssl/sha.h>
+
 #include "pkg.h"
 #include "pkg_error.h"
 #include "pkg_util.h"
@@ -227,3 +230,52 @@ is_dir(const char *path)
 
 	return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
+
+static void
+sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH], char out[65])
+{
+	int i;
+	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
+		sprintf(out + (i * 2), "%02x", hash[i]);
+
+	out[64] = '\0';
+}
+
+void
+sha256_str(const char *string, char out[65])
+{
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	SHA256_CTX sha256;
+
+	SHA256_Init(&sha256);
+	SHA256_Update(&sha256, string, strlen(string));
+	SHA256_Final(hash, &sha256);
+
+	sha256_hash(hash, out);
+}
+
+int
+sha256_file(const char *path, char out[65])
+{
+	FILE *file = fopen(path, "rb");
+	char buffer[BUFSIZ];
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	int r = 0;
+	SHA256_CTX sha256;
+
+	if (!file) return -1;
+
+	SHA256_Init(&sha256);
+
+	while ((r = fread(buffer, 1, BUFSIZ, file)))
+		SHA256_Update(&sha256, buffer, r);
+
+	SHA256_Final(hash, &sha256);
+
+	sha256_hash(hash, out);
+
+	fclose(file);
+
+	return 0;
+}
+

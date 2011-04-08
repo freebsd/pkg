@@ -853,7 +853,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	 */
 	mtree = pkg_get(pkg, PKG_MTREE);
 	if (mtree != NULL) {
-		SHA256_Data(mtree, strlen(mtree), mtree_sha256);
+		sha256_str(mtree, mtree_sha256);
 
 		/* Try to find the mtree in the database */
 		if (sqlite3_prepare_v2(s, sql_sel_mtree, -1, &stmt_sel_mtree, NULL)

@@ -1,7 +1,6 @@
 #include <sys/stat.h>
 
 #include <err.h>
-#include <sha256.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,7 +90,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				snprintf(path, MAXPATHLEN, "%s/%s", prefix, buf);
 
 			if (lstat(path, &st) >= 0) {
-				p = S_ISLNK(st.st_mode) ? NULL : SHA256_File(path, sha256);
+				if (!S_ISLNK(st.st_mode) && sha256_file(path, sha256) == 0)
+					p = sha256;
+
 				flatsize += st.st_size;
 			} else {
 				warn("lstat(%s)", path);
