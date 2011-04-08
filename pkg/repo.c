@@ -9,12 +9,17 @@
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 
+#include <archive.h>
+#include <archive_entry.h>
+
+#include <fcntl.h>
+
 #include "repo.h"
 
 void
 usage_repo(void)
 {
-	fprintf(stderr, "usage: pkg repo <repo-path>\n\n");
+	fprintf(stderr, "usage: pkg repo <repo-path> <rsa-key>\n\n");
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
@@ -83,12 +88,19 @@ exec_repo(int argc, char **argv)
 
 	RSA *rsa = NULL;
 	char sha256[65];
-/*	char db_path[MAXPATHLEN];*/
+	char db_path[MAXPATHLEN];
+	char repo_data_path[MAXPATHLEN];
 	int max_len = 0;
 	unsigned char *sigret = NULL;
 	int siglen = 0;
+	struct archive_entry *entry;
+	int fd;
+	size_t len;
+	char buf[BUFSIZ];
+	struct archive *ar, *repo_archive;
 
-	if (argc < 2 && argc > 3 ) {
+
+	if (argc != 3 ) {
 		usage_repo();
 		return (EX_USAGE);
 	}
@@ -101,36 +113,63 @@ exec_repo(int argc, char **argv)
 	else
 		printf("Done!\n");
 
-	printf("sum: %s\n", sha256);
+	SSL_load_error_strings();
 
-	if (argc == 3) {
-		SSL_load_error_strings();
-
-		OpenSSL_add_all_algorithms();
-		OpenSSL_add_all_ciphers();
+	OpenSSL_add_all_algorithms();
+	OpenSSL_add_all_ciphers();
 
 
-		rsa = load_rsa_private_key( argv[2] );
+	rsa = load_rsa_private_key( argv[2] );
 
-/*		snprintf(db_path, MAXPATHLEN, "%s/repo.sqlite", argv[1]); */
+	snprintf(db_path, MAXPATHLEN, "%s/repo.sqlite", argv[1]);
 
-		max_len = RSA_size(rsa);
-		sigret = malloc(max_len + 1);
-		memset(sigret, 0, max_len);
+	max_len = RSA_size(rsa);
+	sigret = malloc(max_len + 1);
+	memset(sigret, 0, max_len);
 
-		if (RSA_sign(NID_sha1, sha256, 65, sigret, &siglen, rsa) == 0) {
-			return -1;
-		}
-		printf("signature: ");
-		for (int i = 0; i < max_len; i++)
-			 printf("%02x", sigret[i]);
-
-		printf("\n");
-		free(sigret);
-
-		RSA_free( rsa );
-		ERR_free_strings();
+	if (RSA_sign(NID_sha1, sha256, 65, sigret, &siglen, rsa) == 0) {
+		return -1;
 	}
 
+	snprintf(repo_data_path, MAXPATHLEN, "%s/repo.txz", argv[1]);
+
+	ar = archive_read_disk_new();
+	repo_archive = archive_write_new();
+	archive_write_set_compression_xz(repo_archive);
+	archive_write_set_format_pax(repo_archive);
+	archive_write_open_filename(repo_archive, repo_data_path);
+
+	archive_read_disk_set_standard_lookup(ar);
+
+	entry = archive_entry_new();
+	archive_entry_clear(entry);
+	archive_entry_set_filetype(entry, AE_IFREG);
+	archive_entry_set_pathname(entry, "signature");
+	archive_entry_set_size(entry, max_len);
+	archive_write_header(repo_archive, entry);
+	archive_write_data(repo_archive, sigret, max_len);
+	archive_entry_clear(entry);
+
+	archive_entry_copy_sourcepath(entry, db_path);
+	archive_read_disk_entry_from_file(ar, entry, -1, 0);
+	archive_entry_set_pathname(entry, "repo.sqlite");
+
+	archive_write_header(repo_archive, entry);
+	fd = open(db_path, O_RDONLY);
+	if (fd != -1) {
+		while ( (len = read(fd, buf, sizeof(buf))) > 0)
+			archive_write_data(repo_archive, buf, len);
+		close(fd);
+	}
+
+	archive_entry_free(entry);
+	archive_read_finish(ar);
+
+	archive_write_close(repo_archive);
+	archive_write_finish(repo_archive);
+
+	free(sigret);
+	RSA_free( rsa );
+	ERR_free_strings();
 	return (ret);
 }
