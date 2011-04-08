@@ -182,6 +182,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK)
 		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
 
+	cleanup:
 	if (fts != NULL)
 		fts_close(fts);
 
@@ -197,11 +198,14 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	if (sqlite != NULL)
 		sqlite3_close(sqlite);
 
-	sha256_file(repodb, sum);
-
-	cleanup:
 	if (errmsg != NULL)
 		sqlite3_free(errmsg);
+
+	if (retcode == EPKG_OK)
+		/* TODO: error checking */
+		sha256_file(repodb, sum);
+	else
+		sum[0] = '\0';
 
 	return (retcode);
 }
