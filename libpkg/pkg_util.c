@@ -257,25 +257,32 @@ sha256_str(const char *string, char out[65])
 int
 sha256_file(const char *path, char out[65])
 {
-	FILE *file = fopen(path, "rb");
+	FILE *fp;
 	char buffer[BUFSIZ];
 	unsigned char hash[SHA256_DIGEST_LENGTH];
-	int r = 0;
+	size_t r = 0;
 	SHA256_CTX sha256;
 
-	if (!file) return -1;
+	if ((fp = fopen(path, "rb")) == NULL)
+		return (pkg_error_set(EPKG_FATAL, "fopen(%s): %s", path,
+							  strerror(errno)));
 
 	SHA256_Init(&sha256);
 
-	while ((r = fread(buffer, 1, BUFSIZ, file)))
+	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
 		SHA256_Update(&sha256, buffer, r);
 
+	fclose(fp);
+
+	if (ferror(fp) != 0) {
+		out[0] = '\0';
+		return (pkg_error_set(EPKG_FATAL, "fread(%s): %s", path,
+							  strerror(errno)));
+
+	}
+
 	SHA256_Final(hash, &sha256);
-
 	sha256_hash(hash, out);
-
-	fclose(file);
-
-	return 0;
+	return (EPKG_OK);
 }
 
