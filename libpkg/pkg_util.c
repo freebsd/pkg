@@ -221,7 +221,8 @@ split_chr(char *str, char sep)
 }
 
 int
-is_dir(const char *path) {
+is_dir(const char *path)
+{
 	struct stat st;
 
 	return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));

@@ -68,7 +68,7 @@ do
 	test -n "${OPTIONS}" && CMD_ARGS="${CMD_ARGS} -O ${OPTIONS}"
 		
 	# register a package only if it's not registered already
-	if $( pkg info -e ${ORIGIN} ); then
+	if pkg info -e ${ORIGIN}; then
 		echo "package is already registered."
 	else
 		pkg register -c "${COMMENT}" -d ${DESC} -p /usr/local -n ${PKG} \
