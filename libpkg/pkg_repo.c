@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <sha256.h>
 
 #include "pkg.h"
 #include "pkg_error.h"
@@ -15,7 +16,7 @@
 #include "pkg_util.h"
 
 int
-pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data)
+pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data, char sum[65])
 {
 	FTS *fts = NULL;
 	FTSENT *ent = NULL;
@@ -181,7 +182,6 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK)
 		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
 
-	cleanup:
 	if (fts != NULL)
 		fts_close(fts);
 
@@ -197,6 +197,9 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	if (sqlite != NULL)
 		sqlite3_close(sqlite);
 
+	sha256_file(repodb, sum);
+
+	cleanup:
 	if (errmsg != NULL)
 		sqlite3_free(errmsg);
 

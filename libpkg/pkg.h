@@ -348,8 +348,9 @@ const char *pkg_option_value(struct pkg_option *);
  * @param path The path where the repository live.
  * @param callback A function which is called at every step of the process.
  * @param data A pointer which is passed to the callback.
+ * @param sum An 65 long char array to receive the sha256 sum
  */
-int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *);
+int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *, char [65]);
 
 /**
  * Open the local package database.
