@@ -272,17 +272,19 @@ sha256_file(const char *path, char out[65])
 	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
 		SHA256_Update(&sha256, buffer, r);
 
-	fclose(fp);
-
 	if (ferror(fp) != 0) {
+		fclose(fp);
 		out[0] = '\0';
 		return (pkg_error_set(EPKG_FATAL, "fread(%s): %s", path,
 							  strerror(errno)));
 
 	}
 
+	fclose(fp);
+
 	SHA256_Final(hash, &sha256);
 	sha256_hash(hash, out);
+
 	return (EPKG_OK);
 }
 
