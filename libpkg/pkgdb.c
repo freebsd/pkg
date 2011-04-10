@@ -6,7 +6,6 @@
 #include <err.h>
 #include <errno.h>
 #include <regex.h>
-#include <sha256.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
