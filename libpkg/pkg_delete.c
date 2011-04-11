@@ -1,25 +1,11 @@
 #include <string.h>
 #include <err.h>
 #include <unistd.h>
-#include <search.h>
-#include <archive.h>
-#include <archive_entry.h>
 #include <stdlib.h>
 
 #include "pkg.h"
 #include "pkg_error.h"
 #include "pkg_util.h"
-
-static
-int
-dircmp(char const * const path, struct array *a)
-{
-	for (size_t i = 0; i < a->len; i++)
-		if (strcmp(path, a->data[i]) == 0)
-			return (1);
-
-	return (0);
-}
 
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
@@ -29,12 +15,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	struct pkg_exec **execs;
 	struct pkg_script **scripts;
 	char sha256[65];
-	const char *mtree = NULL;
-	struct archive *a;
-	struct archive_entry *ae;
-	struct array mtreedirs = ARRAY_INIT;
 	const char *prefix;
-	char *path, *end, *fullpath;
 	struct sbuf *script_cmd;
 	int ret, i;
 
@@ -90,24 +71,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 		}
 	}
 
-	a = archive_read_new();
-	archive_read_support_compression_none(a);
-	archive_read_support_format_mtree(a);
-
-	mtree = pkg_get(pkg, PKG_MTREE);
-	if (archive_read_open_memory(a, strdup(mtree), strlen(mtree)) != ARCHIVE_OK)
-		return (pkg_error_set(EPKG_FATAL, "mtree: %s", archive_error_string(a)));
-
-	array_init(&mtreedirs, 20);
-
-	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK)
-		array_append(&mtreedirs, strdup(archive_entry_pathname(ae)));
-
-	if (ret != ARCHIVE_EOF) {
-		array_free(&mtreedirs, &free);
-		return (pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a)));
-	}
-
 	for (i = 0; files[i] != NULL; i++) {
 		/* check sha256 */
 		if (pkg_file_sha256(files[i])[0] != '\0' &&
@@ -117,28 +80,14 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 					pkg_file_path(files[i]));
 
 		else if (unlink(pkg_file_path(files[i])) == -1) {
-			warn("unlink(%s)", pkg_file_path(files[i]));
-			continue;
-		} else {
-			/* only delete directories that are in prefix */
-			if (STARTS_WITH(pkg_file_path(files[i]), prefix)) {
-				path = strdup(pkg_file_path(files[i]));
-				fullpath = path;
-				path += strlen(prefix) + 1;
-
-				if (path[0] == '/')
-					path++;
-
-				while ((end = strrchr(path, '/')) != NULL) {
-					end[0] = '\0';
-					if (!dircmp(path, &mtreedirs))
-						rmdir(fullpath);
-				}
-				free(fullpath);
+			if (is_dir(pkg_file_path(files[i]))) {
+				rmdir(pkg_file_path(files[i]));
+			} else {
+				warn("unlink(%s)", pkg_file_path(files[i]));
+				continue;
 			}
 		}
 	}
-	array_free(&mtreedirs, &free);
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		switch (pkg_script_type(scripts[i])) {

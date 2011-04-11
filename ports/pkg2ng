@@ -41,6 +41,10 @@ do
 			print $0 >> pfile
 		} else if ( $0 ~ /^@unexec/) {
 			print $0 >> pfile
+		} else if ( $0 ~ /^@dirrm/) {
+			print $0 >> pfile
+		} else if ( $0 ~ /^@dirrmtry/) {
+			print $0 >> pfile
 		} else if ( $0 ~ /^@conflict/) {
 			conflict=conflict" "$2
 		} else if ( $0 ~ /^@cwd/) {

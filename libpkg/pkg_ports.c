@@ -58,7 +58,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					prefix = buf;
 			} else if (STARTS_WITH(plist_p, "@comment ")){
 				/* DO NOTHING: ignore the comments */
-			} else if (STARTS_WITH(plist_p, "@unexec ") || STARTS_WITH(plist_p, "@exec")) {
+			} else if (STARTS_WITH(plist_p, "@unexec ") || STARTS_WITH(plist_p, "@exec ")) {
 				buf = plist_p;
 
 				while (!isspace(buf[0]))
@@ -77,6 +77,27 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 				free(cmd);
 
+			} else if (STARTS_WITH(plist_p, "@dirrm ") || STARTS_WITH(plist_p, "@dirrmtry ")) {
+
+				buf = plist_p;
+
+				/* remove the @dirrm or @dirrmtry */
+				while (!isspace(buf[0]))
+					buf++;
+
+				while (isspace(buf[0]))
+					buf++;
+
+				if (prefix[strlen(prefix) -1 ] == '/')
+					snprintf(path, MAXPATHLEN, "%s%s", prefix, buf);
+				else
+					snprintf(path, MAXPATHLEN, "%s/%s", prefix, buf);
+
+				if (lstat(path, &st) >= 0)
+					flatsize += st.st_size;
+
+				ret += pkg_addfile(pkg, path, NULL);
+
 			}else {
 				warnx("%s is deprecated, ignoring", plist_p);
 			}
@@ -90,7 +111,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				snprintf(path, MAXPATHLEN, "%s/%s", prefix, buf);
 
 			if (lstat(path, &st) >= 0) {
-				if (!S_ISLNK(st.st_mode) && sha256_file(path, sha256) == 0)
+				if (!S_ISLNK(st.st_mode) && !S_ISDIR(st.st_mode) && sha256_file(path, sha256) == 0)
 					p = sha256;
 
 				flatsize += st.st_size;

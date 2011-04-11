@@ -581,7 +581,8 @@ pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 	const char sql[] = ""
 		"SELECT path, sha256 "
 		"FROM files "
-		"WHERE package_id = ?1;";
+		"WHERE package_id = ?1 "
+		"ORDER BY PATH DESC";
 
 	if (pkg->type != PKG_INSTALLED)
 		return (ERROR_BAD_ARG("pkg"));
