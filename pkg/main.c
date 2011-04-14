@@ -136,11 +136,17 @@ main(int argc, char **argv)
 		return (command->exec(argc, argv));
 	}
 
-	if (ambiguous >= 1) {
+	if (ambiguous == 1 ) {
+		argc--;
+		argv++;
+		assert(command->exex != NULL);
+		return (command->exec(argc, argv));
+	}
+	if (ambiguous > 1) {
 		warnx("'%s' is not a valid command.\n", argv[1]);
 
 		fprintf(stderr, "See 'pkg help' for more information on the commands.\n\n");
-		fprintf(stderr, "Command '%s' could be %s:\n", argv[1], ( ambiguous == 1 ? "this" : "one of the following"));
+		fprintf(stderr, "Command '%s' could be one of the following:\n", argv[1]);
 
 		for (i = 0; i < cmd_len; i++)
 			if (strncmp(argv[1], cmd[i].name, len) == 0)
