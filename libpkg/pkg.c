@@ -105,6 +105,28 @@ pkg_flatsize(struct pkg *pkg)
 	return (pkg->flatsize);
 }
 
+int64_t
+pkg_new_flatsize(struct pkg *pkg)
+{
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
+		return (-1);
+	}
+
+	return (pkg->new_flatsize);
+}
+
+int64_t
+pkg_new_pkgsize(struct pkg *pkg)
+{
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
+		return (-1);
+	}
+
+	return (pkg->new_pkgsize);
+}
+
 struct pkg_script **
 pkg_scripts(struct pkg *pkg)
 {
@@ -380,6 +402,8 @@ pkg_reset(struct pkg *pkg)
 		sbuf_reset(pkg->fields[i].value);
 
 	pkg->flatsize = 0;
+	pkg->new_flatsize = 0;
+	pkg->new_pkgsize = 0;
 	pkg->flags = 0;
 	pkg->rowid = 0;
 
@@ -429,6 +453,34 @@ pkg_setflatsize(struct pkg *pkg, int64_t size)
 		return (ERROR_BAD_ARG("size"));
 
 	pkg->flatsize = size;
+	return (EPKG_OK);
+}
+
+int
+pkg_setnewflatsize(struct pkg *pkg, int64_t size)
+{
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (size <0)
+		return (ERROR_BAD_ARG("size"));
+
+	pkg->new_flatsize = size;
+
+	return (EPKG_OK);
+}
+
+int
+pkg_setnewpkgsize(struct pkg *pkg, int64_t size)
+{
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (size <0)
+		return (ERROR_BAD_ARG("size"));
+
+	pkg->new_pkgsize = size;
+
 	return (EPKG_OK);
 }
 

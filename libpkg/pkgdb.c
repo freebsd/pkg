@@ -333,8 +333,12 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			if ((ret = pkgdb_loadmtree(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
-		if (flags & PKG_LOAD_NEWVERSION)
+		if (flags & PKG_LOAD_NEWVERSION) {
 			pkg_set(pkg, PKG_NEWVERSION, sqlite3_column_text(it->stmt, 13));
+			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 14));
+			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 15));
+			pkg_set(pkg, PKG_NEWPATH, sqlite3_column_text(it->stmt, 16));
+		}
 
 		return (EPKG_OK);
 	case SQLITE_DONE:
@@ -1216,7 +1220,7 @@ pkgdb_repos_diff(struct pkgdb *db)
 	const char sql[] = ""
 		"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
 		"l.message, l.arch, l.osversion, l.maintainer, "
-		"l.www, l.prefix, l.flatsize, r.version, r.flatsize "
+		"l.www, l.prefix, l.flatsize, r.version, r.flatsize, r.pkgsize, r.path "
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "

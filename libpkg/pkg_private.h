@@ -9,7 +9,7 @@
 
 #include "pkg_util.h"
 
-#define PKG_NUM_FIELDS 13
+#define PKG_NUM_FIELDS 14
 
 struct pkg {
 	struct {
@@ -17,6 +17,8 @@ struct pkg {
 		unsigned int optional :1;
 	} fields[PKG_NUM_FIELDS];
 	int64_t flatsize;
+	int64_t new_flatsize;
+	int64_t new_pkgsize;
 	struct array deps;
 	struct array rdeps;
 	struct array conflicts;

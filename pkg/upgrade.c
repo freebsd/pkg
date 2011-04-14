@@ -30,6 +30,9 @@ exec_upgrade(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	char *packagesite = NULL;
 	int retcode = 0;
+	int64_t oldsize = 0, newsize = 0;
+	int64_t dlsize = 0;
+	char size[7];
 	properties conf;
 
 	(void) argv;
@@ -72,6 +75,9 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_NEWVERSION)) == EPKG_OK) {
+		oldsize += pkg_flatsize(pkg);
+		newsize += pkg_new_flatsize(pkg);
+		dlsize += pkg_new_pkgsize(pkg);
 		switch (pkg_version_cmp(pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION))) {
 			case -1:
 				printf("%s: upgrade from %s to %s\n", pkg_get(pkg, PKG_NAME),
@@ -83,6 +89,19 @@ exec_upgrade(int argc, char **argv)
 				break;
 		}
 	}
+	printf("\n");
+
+	if (oldsize > newsize) {
+		newsize *= -1;
+		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
+		printf("the upgrade will save %s\n", size);
+	} else {
+		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
+		printf("the upgrade will require %s more space\n", size, newsize, oldsize);
+	}
+	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+	printf("%s to be downloaded\n", size);
+
 
 	cleanup:
 	

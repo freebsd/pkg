@@ -86,7 +86,8 @@ typedef enum {
 	PKG_MAINTAINER,
 	PKG_WWW,
 	PKG_PREFIX,
-	PKG_NEWVERSION
+	PKG_NEWVERSION,
+	PKG_NEWPATH
 } pkg_attr;
 
 /**
@@ -192,6 +193,16 @@ const char *pkg_get(struct pkg const * const , const pkg_attr);
 int64_t pkg_flatsize(struct pkg *);
 
 /**
+ * @return the size of the uncompressed package, in its futur version.
+ */
+int64_t pkg_new_flatsize(struct pkg *);
+
+/**
+ * @return the size of the compressed package, in its futur version.
+ */
+int64_t pkg_new_pkgsize(struct pkg *);
+
+/**
  * @return NULL-terminated array of pkg.
  */
 struct pkg ** pkg_deps(struct pkg *);
@@ -256,6 +267,20 @@ int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
  * @return An error code.
  */
 int pkg_setflatsize(struct pkg *pkg, int64_t size);
+
+/**
+ * Set the uncompressed size of the package, in its futur version.
+ * @return An error code.
+ */
+int pkg_setnewflatsize(struct pkg *pkg, int64_t size);
+
+/**
+ * Set the compressed size of the package, in its futur version.
+ * @return An error code.
+ */
+int pkg_setnewpkgsize(struct pkg *pkg, int64_t size);
+
+
 
 /**
  * Allocate a new struct pkg and add it to the deps of pkg.
