@@ -477,6 +477,11 @@ typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
  * @return An error code.
  */
 int pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb);
+/**
+ * Fetch to a given buffer
+ * @return An error code
+ */
+int pkg_fetch_buffer(const char *url, char **buf, void *data, fetch_cb cb);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, char *);
