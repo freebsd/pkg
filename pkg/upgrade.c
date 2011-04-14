@@ -97,7 +97,7 @@ exec_upgrade(int argc, char **argv)
 		printf("the upgrade will save %s\n", size);
 	} else {
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("the upgrade will require %s more space\n", size, newsize, oldsize);
+		printf("the upgrade will require %s more space\n", size);
 	}
 	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
 	printf("%s to be downloaded\n", size);
