@@ -78,7 +78,7 @@ exec_upgrade(int argc, char **argv)
 						pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION));
 				break;
 			case 1:
-				printf("%s: downgraded from %s to %s\n", pkg_get(pkg, PKG_NAME),
+				printf("%s: downgrade from %s to %s\n", pkg_get(pkg, PKG_NAME),
 						pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION));
 				break;
 		}
