@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <libutil.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -55,6 +56,8 @@ exec_update(int argc, char **argv)
 	char *repo;
 	struct archive *a;
 	struct archive_entry *ae;
+	int fd;
+	properties conf = NULL;
 
 	(void)argv;
 	if (argc != 1) {
@@ -67,10 +70,21 @@ exec_update(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
+	if ((fd = open("/etc/pkg.conf", O_RDONLY)) > 0) {
+		conf = properties_read(fd);
+		close(fd);
+	}
+
 	packagesite = getenv("PACKAGESITE");
 
-	if (packagesite == NULL)
-		return (-2);
+	if (packagesite == NULL) {
+		packagesite = property_find(conf, "packagesite");
+		if (packagesite == NULL) {
+			pkg_error_warn("unable to determine PACKAGESITE");
+			retcode = 1;
+			goto cleanup;
+		}
+	}
 
 	if (packagesite[strlen(packagesite) - 1] == '/')
 		snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
@@ -97,5 +111,11 @@ exec_update(int argc, char **argv)
 	}
 
 	archive_read_finish(a);
+
+	cleanup:
+	
+	if (conf != NULL)
+		properties_free(conf);
+
 	return (retcode);
 }
