@@ -72,7 +72,16 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_NEWVERSION)) == EPKG_OK) {
-		printf("%s: %s -> %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION));
+		switch (pkg_version_cmp(pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION))) {
+			case -1:
+				printf("%s: upgrade from %s to %s\n", pkg_get(pkg, PKG_NAME),
+						pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION));
+				break;
+			case 1:
+				printf("%s: downgraded from %s to %s\n", pkg_get(pkg, PKG_NAME),
+						pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION));
+				break;
+		}
 	}
 
 	cleanup:
