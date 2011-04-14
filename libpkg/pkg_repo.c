@@ -31,6 +31,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	int64_t package_id;
 	char *errmsg = NULL;
 	int retcode = EPKG_OK;
+	char *pkg_path;
 
 	int i;
 
@@ -52,7 +53,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"pkg_format_version INTEGER,"
 			"pkgsize INTEGER,"
 			"flatsize INTEGER,"
-			"sum TEXT"
+			"sum TEXT,"
+			"path TEXT NOT NULL" /* relative path to the package in the repository */
 		");"
 		"CREATE TABLE deps ("
 			"origin TEXT,"
@@ -66,9 +68,10 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	const char pkgsql[] = ""
 		"INSERT INTO packages ("
 				"origin, name, version, comment, desc, arch, osversion, "
-				"maintainer, www, pkg_format_version, pkgsize, flatsize, sum "
+				"maintainer, www, pkg_format_version, pkgsize, flatsize, "
+				"sum, path"
 		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);";
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);";
 	const char depssql[] = ""
 		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
@@ -133,6 +136,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 				strcmp(ext, ".tar") != 0)
 			continue;
 
+		pkg_path = ent->fts_path;
+		pkg_path += strlen(path);
+		while (pkg_path[0] == '/' )
+			pkg_path++;
+
 		if (pkg_open(&pkg, ent->fts_accpath) != EPKG_OK) {
 			if (progress != NULL) {
 				pkg_error_set(EPKG_WARN, "can not open %s: %s", ent->fts_name,
@@ -158,6 +166,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_int64(stmt_pkg, 12, pkg_flatsize(pkg));
 		sha256_file(ent->fts_accpath, sum);
 		sqlite3_bind_text(stmt_pkg, 13, sum, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 14, pkg_path, -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
 			retcode = ERROR_SQLITE(sqlite);
