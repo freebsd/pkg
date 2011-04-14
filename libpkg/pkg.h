@@ -148,6 +148,10 @@ typedef enum {
 	EPKG_NOT_NAME
 } pkg_error_t;
 
+#define PKG_LT -1
+#define PKG_EQ 0
+#define PKG_GT 1
+
 /**
  * Allocate a new pkg.
  * Allocated pkg must be deallocated by pkg_free().

@@ -23,6 +23,8 @@
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 static int get_pragma(sqlite3 *, const char *, int64_t *);
@@ -70,6 +72,32 @@ static void
 pkgdb_regex_basic(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	pkgdb_regex(ctx, argc, argv, REG_BASIC);
+}
+
+static void
+pkgdb_pkgcmp(sqlite3_context *ctx, int argc, sqlite3_value **argv, int sign)
+{
+	const unsigned char *version1 = NULL;
+	const unsigned char *version2 = NULL;
+	if (argc != 2 || (version1 = sqlite3_value_text(argv[0])) == NULL
+			|| (version2 = sqlite3_value_text(argv[1])) == NULL) {
+		sqlite3_result_error(ctx, "Invalid comparison\n", -1);
+		return;
+	}
+
+	sqlite3_result_int(ctx, (pkg_version_cmp(version1, version2) == sign));
+}
+
+static void
+pkgdb_pkglt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_pkgcmp(ctx, argc, argv, PKG_LT);
+}
+
+static void
+pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_pkgcmp(ctx, argc, argv, PKG_GT);
 }
 
 static void
@@ -226,6 +254,10 @@ pkgdb_open(struct pkgdb **db)
 							pkgdb_regex_basic, NULL, NULL);
 	sqlite3_create_function((*db)->sqlite, "eregexp", 2, SQLITE_ANY, NULL,
 							pkgdb_regex_extended, NULL, NULL);
+	sqlite3_create_function((*db)->sqlite, "pkglt", 2, SQLITE_ANY, NULL,
+			pkgdb_pkglt, NULL, NULL);
+	sqlite3_create_function((*db)->sqlite, "pkggt", 2, SQLITE_ANY, NULL,
+			pkgdb_pkggt, NULL, NULL);
 
 	/* 
 	 * allow forign key option which will allow to have clean support for
