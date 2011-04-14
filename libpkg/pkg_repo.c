@@ -51,7 +51,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"www TEXT,"
 			"pkg_format_version INTEGER,"
 			"pkgsize INTEGER,"
-			"flatsize INTEGER"
+			"flatsize INTEGER,"
+			"sum TEXT"
 		");"
 		"CREATE TABLE deps ("
 			"origin TEXT,"
@@ -65,9 +66,9 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	const char pkgsql[] = ""
 		"INSERT INTO packages ("
 				"origin, name, version, comment, desc, arch, osversion, "
-				"maintainer, www, pkg_format_version, pkgsize, flatsize "
+				"maintainer, www, pkg_format_version, pkgsize, flatsize, sum "
 		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12);";
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);";
 	const char depssql[] = ""
 		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
@@ -116,6 +117,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	}
 
 	while ((ent = fts_read(fts)) != NULL) {
+		sum[0] = '\0';
 		/* skip everything that is not a file */
 		if (ent->fts_info != FTS_F)
 			continue;
@@ -154,6 +156,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_pkg, 11, ent->fts_statp->st_size);
 		sqlite3_bind_int64(stmt_pkg, 12, pkg_flatsize(pkg));
+		sha256_file(ent->fts_accpath, sum);
+		sqlite3_bind_text(stmt_pkg, 13, sum, -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
 			retcode = ERROR_SQLITE(sqlite);
@@ -178,6 +182,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		}
 
 	}
+		sum[0] = '\0';
 
 	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK)
 		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
