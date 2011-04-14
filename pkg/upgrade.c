@@ -69,27 +69,36 @@ exec_upgrade(int argc, char **argv)
 	}
 
 
-	if ((it = pkgdb_repos_diff(db)) == NULL) {
+	if ((it = pkgdb_query_upgrades(db)) == NULL) {
 		pkg_error_warn("can not query database");
 		goto cleanup;
 	}
 
+	printf("Packages to be upgraded: \n");
 	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_NEWVERSION)) == EPKG_OK) {
 		oldsize += pkg_flatsize(pkg);
 		newsize += pkg_new_flatsize(pkg);
 		dlsize += pkg_new_pkgsize(pkg);
-		switch (pkg_version_cmp(pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION))) {
-			case -1:
-				printf("%s: upgrade from %s to %s\n", pkg_get(pkg, PKG_NAME),
-						pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION));
-				break;
-			case 1:
-				printf("%s: downgrade from %s to %s\n", pkg_get(pkg, PKG_NAME),
-						pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION));
-				break;
-		}
+		printf("\t%s: %s -> %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg,PKG_NEWVERSION));
 	}
 	printf("\n");
+	pkgdb_it_free(it);
+
+	if ((it = pkgdb_query_downgrades(db)) == NULL) {
+		pkg_error_warn("can not query database");
+		goto cleanup;
+	}
+
+	printf("Packages to be downgraded: \n");
+	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_NEWVERSION)) == EPKG_OK) {
+		oldsize += pkg_flatsize(pkg);
+		newsize += pkg_new_flatsize(pkg);
+		dlsize += pkg_new_pkgsize(pkg);
+		printf("\t%s: %s -> %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_NEWVERSION));
+	}
+	printf("\n");
+	pkgdb_it_free(it);
+
 
 	if (oldsize > newsize) {
 		newsize *= -1;

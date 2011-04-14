@@ -1243,7 +1243,7 @@ pkgdb_compact(struct pkgdb *db)
 }
 
 struct pkgdb_it *
-pkgdb_repos_diff(struct pkgdb *db)
+pkgdb_query_upgrades(struct pkgdb *db)
 {
 
 	sqlite3_stmt *stmt;
@@ -1256,7 +1256,36 @@ pkgdb_repos_diff(struct pkgdb *db)
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
-		"AND l.version != r.version";
+		"AND PKGLT(l.version, r.version)";
+
+
+	if (sqlite3_exec(db->sqlite, "ATTACH \"/var/db/pkg/repo.sqlite\" as remote;", NULL, NULL, &errmsg) != SQLITE_OK){
+		pkg_error_set(EPKG_FATAL, "%s", errmsg);
+		sqlite3_free(errmsg);
+		return (NULL);
+	}
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (NULL);
+
+	return (pkgdb_it_new(db, stmt));
+}
+
+struct pkgdb_it *
+pkgdb_query_downgrades(struct pkgdb *db)
+{
+
+	sqlite3_stmt *stmt;
+	char *errmsg;
+
+	const char sql[] = ""
+		"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
+		"l.message, l.arch, l.osversion, l.maintainer, "
+		"l.www, l.prefix, l.flatsize, r.version, r.flatsize, r.pkgsize, r.path "
+		"FROM main.packages AS l, "
+		"remote.packages AS r "
+		"WHERE l.origin = r.origin "
+		"AND PKGGT(l.version, r.version)";
 
 
 	if (sqlite3_exec(db->sqlite, "ATTACH \"/var/db/pkg/repo.sqlite\" as remote;", NULL, NULL, &errmsg) != SQLITE_OK){

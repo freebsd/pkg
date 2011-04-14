@@ -417,7 +417,8 @@ struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
 /**
  * 
  */
-struct pkgdb_it *pkgdb_repos_diff(struct pkgdb *db);
+struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db);
+struct pkgdb_it *pkgdb_query_downgrades(struct pkgdb *db);
 
 /**
  * @todo Return directly the struct pkg?
