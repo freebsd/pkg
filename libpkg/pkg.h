@@ -85,7 +85,8 @@ typedef enum {
 	PKG_OSVERSION,
 	PKG_MAINTAINER,
 	PKG_WWW,
-	PKG_PREFIX
+	PKG_PREFIX,
+	PKG_NEWVERSION
 } pkg_attr;
 
 /**
@@ -385,6 +386,11 @@ struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
 							  match_t type);
 
 /**
+ * 
+ */
+struct pkgdb_it *pkgdb_repos_diff(struct pkgdb *db);
+
+/**
  * @todo Return directly the struct pkg?
  */
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
@@ -398,6 +404,7 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_SCRIPTS (1<<5)
 #define PKG_LOAD_OPTIONS (1<<6)
 #define PKG_LOAD_MTREE (1<<7)
+#define PKG_LOAD_NEWVERSION (1<<8)
 
 /**
  * Get the next pkg.

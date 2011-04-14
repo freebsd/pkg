@@ -333,8 +333,14 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			if ((ret = pkgdb_loadmtree(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
+		if (flags & PKG_LOAD_NEWVERSION)
+			pkg_set(pkg, PKG_NEWVERSION, sqlite3_column_text(it->stmt, 13));
+
 		return (EPKG_OK);
 	case SQLITE_DONE:
+		if (flags & PKG_LOAD_NEWVERSION)
+			sqlite3_exec(it->db->sqlite, "DETACH remote;", NULL, NULL, NULL);
+
 		return (EPKG_END);
 	default:
 		return (ERROR_SQLITE(it->db->sqlite));
@@ -1198,4 +1204,33 @@ pkgdb_compact(struct pkgdb *db)
 	}
 
 	return (retcode);
+}
+
+struct pkgdb_it *
+pkgdb_repos_diff(struct pkgdb *db)
+{
+
+	sqlite3_stmt *stmt;
+	char *errmsg;
+
+	const char sql[] = ""
+		"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
+		"l.message, l.arch, l.osversion, l.maintainer, "
+		"l.www, l.prefix, l.flatsize, r.version, r.flatsize "
+		"FROM main.packages AS l, "
+		"remote.packages AS r "
+		"WHERE l.origin = r.origin "
+		"AND l.version != r.version";
+
+
+	if (sqlite3_exec(db->sqlite, "ATTACH \"/var/db/pkg/repo.sqlite\" as remote;", NULL, NULL, &errmsg) != SQLITE_OK){
+		pkg_error_set(EPKG_FATAL, "%s", errmsg);
+		sqlite3_free(errmsg);
+		return (NULL);
+	}
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (NULL);
+
+	return (pkgdb_it_new(db, stmt));
 }

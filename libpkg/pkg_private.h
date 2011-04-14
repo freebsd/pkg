@@ -9,7 +9,7 @@
 
 #include "pkg_util.h"
 
-#define PKG_NUM_FIELDS 12
+#define PKG_NUM_FIELDS 13
 
 struct pkg {
 	struct {

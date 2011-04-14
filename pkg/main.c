@@ -12,6 +12,7 @@
 #include "add.h"
 #include "version.h"
 #include "update.h"
+#include "upgrade.h"
 #include "register.h"
 #include "repo.h"
 
@@ -32,7 +33,7 @@ static struct commands {
 	{ "register", exec_register, usage_register},
 	{ "repo", exec_repo, usage_repo},
 	{ "update", exec_update, usage_update},
-	{ "upgrade", NULL, NULL},
+	{ "upgrade", exec_upgrade, usage_upgrade},
 	{ "version", exec_version, usage_version},
 	{ "which", exec_which, usage_which},
 };
