@@ -129,20 +129,12 @@ main(int argc, char **argv)
 	if (command == NULL)
 		usage();
 
-	if (ambiguous == 0) {
+	if (ambiguous <= 1) {
 		argc--;
 		argv++;
 		assert(command->exec != NULL);
 		return (command->exec(argc, argv));
-	}
-
-	if (ambiguous == 1 ) {
-		argc--;
-		argv++;
-		assert(command->exex != NULL);
-		return (command->exec(argc, argv));
-	}
-	if (ambiguous > 1) {
+	} else {
 		warnx("'%s' is not a valid command.\n", argv[1]);
 
 		fprintf(stderr, "See 'pkg help' for more information on the commands.\n\n");
