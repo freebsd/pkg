@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/param.h>
+#include <readpassphrase.h>
 
 #include <pkg.h>
 
@@ -23,33 +24,46 @@ usage_repo(void)
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
+static const char ps[] = { '-', '\\', '|', '/' };
+
 static void
 progress(struct pkg *pkg, void *data)
 {
-	(void)data;
+	int *pos;
+
+	pos = (int *)data;
+
+	if (*pos == 3)
+		*pos = 0;
+	else
+		*pos = *pos + 1;
 
 	if (pkg != NULL)
-		printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-	else
-		pkg_error_warn("");
+		printf("\b%c", ps[*pos]);
+
+	fflush(stdout);
 }
 
 static int
 password_cb(char *buf, int size, int rwflag, void *key)
 {
 	int len;
-	char passwd[BUFSIZ];
+	char pass[BUFSIZ];
 	(void)rwflag;
+	(void)key;
 
-	printf("Enter pass phrase for '%s': ", (char *) key);
-	scanf("%s", passwd);
-	len = strlen(passwd);
+	if (readpassphrase("Enter passphrase: ", pass, BUFSIZ, RPP_ECHO_OFF) == NULL)
+		return 0;
+
+	len = strlen(pass);
 
 	if (len <= 0)  return 0;
 	if (len > size) len = size;
 
 	memset(buf, '\0', size);
-	memcpy(buf, passwd, len);
+	memcpy(buf, pass, len);
+	memset(pass, 0, BUFSIZ);
+
 	return len;
 }
 
@@ -98,6 +112,7 @@ exec_repo(int argc, char **argv)
 	size_t len;
 	char buf[BUFSIZ];
 	struct archive *ar, *repo_archive;
+	int pos = 0;
 
 
 	if (argc != 3 ) {
@@ -105,13 +120,13 @@ exec_repo(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	printf("Generating repo.sqlite in %s\n", argv[1]);
-	ret = pkg_create_repo(argv[1], progress, NULL, sha256);
+	printf("Generating repo.sqlite in %s:  ", argv[1]);
+	ret = pkg_create_repo(argv[1], progress, &pos, sha256);
 
 	if (ret != EPKG_OK)
 		pkg_error_warn("can not create repository");
 	else
-		printf("Done!\n");
+		printf("\bDone!\n");
 
 	SSL_load_error_strings();
 
