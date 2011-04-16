@@ -55,7 +55,6 @@ struct pkg_option {
 	struct sbuf *value;
 };
 
-void pkg_free_void(void *);
 void pkg_conflict_free_void(void *);
 void pkg_script_free_void(void *);
 void pkg_exec_free_void(void *);
@@ -63,4 +62,12 @@ void pkg_option_free_void(void *);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
 
+struct packing;
+
+int packing_init(struct packing **pack, const char *path, pkg_formats format);
+int packing_append_file(struct packing *pack, const char *filepath, const char *newpath);
+int packing_append_buffer(struct packing *pack, const char *buffer, const char *path, int size);
+int packing_finish(struct packing *pack);
+
+void pkg_free_void(void *);
 #endif

@@ -13,56 +13,26 @@
 #include "pkg_error.h"
 #include "pkg_private.h"
 
-static const char * pkg_create_set_format(struct archive *, pkg_formats);
-static int pkg_create_from_dir(struct pkg *, const char *, struct archive *);
-static int pkg_create_append_buffer(struct archive *, struct archive_entry *, const char *, const char *);
-
-/* TODO: error reporting */
+static int pkg_create_from_dir(struct pkg *, const char *, struct packing *);
 
 static int
-pkg_create_append_buffer(struct archive *a, struct archive_entry *e, const char *buf, const char *name)
+pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archive)
 {
-	if (name == NULL || buf == NULL || buf[0] == '\0' || name[0] == '\0')
-		return (-1);
-
-	archive_entry_clear(e);
-	archive_entry_set_filetype(e, AE_IFREG);
-	archive_entry_set_pathname(e, name);
-	archive_entry_set_size(e, strlen(buf));
-	archive_write_header(a, e);
-	archive_write_data(a, buf, strlen(buf));
-	archive_entry_clear(e);
-
-	return (0);
-
-}
-
-static int
-pkg_create_from_dir(struct pkg *pkg, const char *root, struct archive *pkg_archive)
-{
-	struct archive_entry *entry;
-	int fd;
-	size_t len;
-	char buf[BUFSIZ];
 	char fpath[MAXPATHLEN];
 	struct pkg_file **files;
 	struct pkg_script **scripts;
-	struct archive *ar;
 	char *m;
 	int i;
 	const char *scriptname = NULL;
 
-	ar = archive_read_disk_new();
-	archive_read_disk_set_standard_lookup(ar);
-
-	entry = archive_entry_new();
-
 	pkg_emit_manifest(pkg, &m);
 
-	pkg_create_append_buffer(pkg_archive, entry, m, "+MANIFEST");
+	packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
+
 	free(m);
-	pkg_create_append_buffer(pkg_archive, entry, pkg_get(pkg, PKG_DESC), "+DESC");
-	pkg_create_append_buffer(pkg_archive, entry, pkg_get(pkg, PKG_MTREE), "+MTREE_DIRS");
+
+	packing_append_buffer(pkg_archive, pkg_get(pkg, PKG_DESC), "+DESC", strlen(pkg_get(pkg, PKG_DESC)));
+	packing_append_buffer(pkg_archive, pkg_get(pkg, PKG_MTREE), "+MTREE_DIRS", strlen(pkg_get(pkg, PKG_MTREE)));
 
 	if ((scripts = pkg_scripts(pkg)) != NULL) {
 		for (i = 0; scripts[i] != NULL; i++) {
@@ -95,7 +65,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct archive *pkg_archi
 					scriptname = "+UPGRADE";
 					break;
 			}
-			pkg_create_append_buffer(pkg_archive, entry, pkg_script_data(scripts[i]), scriptname);
+			packing_append_buffer(pkg_archive, pkg_script_data(scripts[i]), scriptname, strlen(pkg_script_data(scripts[i])));
 		}
 	}
 
@@ -106,37 +76,19 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct archive *pkg_archi
 			else
 				strlcpy(fpath, pkg_file_path(files[i]), MAXPATHLEN);
 
-			archive_entry_copy_sourcepath(entry, fpath);
-
-			if (archive_read_disk_entry_from_file(ar, entry, -1, 0) != ARCHIVE_OK)
-				warn("archive_read_disk_entry_from_file(%s)", fpath);
-
-			archive_entry_set_pathname(entry, pkg_file_path(files[i]));
-			archive_write_header(pkg_archive, entry);
-			fd = open(fpath, O_RDONLY);
-			if (fd != -1) {
-				while ( (len = read(fd, buf, sizeof(buf))) > 0 )
-					archive_write_data(pkg_archive, buf, len);
-
-				close(fd);
-			}
-			archive_entry_clear(entry);
+			packing_append_file(pkg_archive, fpath, pkg_file_path(files[i]));
 		}
 	}
 
-	archive_entry_free(entry);
-	archive_read_finish(ar);
-
-	return (0);
+	return (EPKG_OK);
 }
 
 int
 pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char *rootdir, struct pkg *pkg)
 {
 	char namever[FILENAME_MAX];
-	struct archive *pkg_archive;
+	struct packing *pkg_archive;
 	char archive_path[MAXPATHLEN];
-	const char *ext;
 	int required_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES |
 						 PKG_LOAD_EXECS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 						 PKG_LOAD_MTREE;
@@ -152,52 +104,17 @@ pkg_create(const char *mpath, pkg_formats format, const char *outdir, const char
 	if ((pkg->flags & required_flags) != required_flags)
 		return (ERROR_BAD_ARG("pkg"));
 
-	pkg_archive = archive_write_new();
-
-	if ((ext = pkg_create_set_format(pkg_archive, format)) == NULL) {
-		archive_write_finish(pkg_archive);
-		return pkg_error_set(EPKG_FORMAT, "Unsupported format");
-	}
-
 	snprintf(namever, sizeof(namever), "%s-%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-	snprintf(archive_path, sizeof(archive_path), "%s/%s.%s", outdir, namever, ext);
+	snprintf(archive_path, sizeof(archive_path), "%s/%s", outdir, namever);
 
-	archive_write_set_format_pax_restricted(pkg_archive);
-	archive_write_open_filename(pkg_archive, archive_path);
+	if (packing_init(&pkg_archive, archive_path, format) != EPKG_OK) {
+		/* TODO do it smarter */
+		return pkg_error_set(EPKG_FATAL, "unable to create archive");
+	}
 
 	pkg_create_from_dir(pkg, rootdir, pkg_archive);
 
-	archive_write_close(pkg_archive);
-	archive_write_finish(pkg_archive);
+	return (packing_finish(pkg_archive));
 
 	return (EPKG_OK);
-}
-
-static const char *
-pkg_create_set_format(struct archive *pkg_archive, pkg_formats format)
-{
-	switch (format) {
-		case TXZ:
-			if (archive_write_set_compression_xz(pkg_archive) == ARCHIVE_OK) {
-				return ("txz");
-			} else {
-				warnx("xz compression is not supported, trying bzip2");
-			}
-		case TBZ:
-			if (archive_write_set_compression_bzip2(pkg_archive) == ARCHIVE_OK) {
-				return ("tbz");
-			} else {
-				warnx("bzip2 compression is not supported, trying gzip");
-			}
-		case TGZ:
-			if (archive_write_set_compression_gzip(pkg_archive) == ARCHIVE_OK) {
-				return ("tgz");
-			} else {
-				warnx("gzip compression is not supported, trying plain tar");
-			}
-		case TAR:
-			archive_write_set_compression_none(pkg_archive);
-			return ("tar");
-	}
-	return (NULL);
 }

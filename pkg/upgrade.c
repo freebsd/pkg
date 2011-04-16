@@ -33,7 +33,7 @@ exec_upgrade(int argc, char **argv)
 	int64_t oldsize = 0, newsize = 0;
 	int64_t dlsize = 0;
 	char size[7];
-	properties conf;
+	properties conf = NULL;
 
 	(void) argv;
 	if (argc != 1) {
