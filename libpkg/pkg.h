@@ -505,6 +505,11 @@ int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 
 /**
+ * Get the value of a configuration key
+ */
+const char * pkg_config(const char *key);
+
+/**
  * @todo Document
  */
 int pkg_version_cmp(const char * const , const char * const);

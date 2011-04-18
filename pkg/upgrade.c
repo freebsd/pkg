@@ -24,16 +24,13 @@ usage_upgrade(void)
 int
 exec_upgrade(int argc, char **argv)
 {
-	int fd;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
-	char *packagesite = NULL;
 	int retcode = 0;
 	int64_t oldsize = 0, newsize = 0;
 	int64_t dlsize = 0;
 	char size[7];
-	properties conf = NULL;
 
 	(void) argv;
 	if (argc != 1) {
@@ -45,23 +42,6 @@ exec_upgrade(int argc, char **argv)
 		warnx("updating the remote database can only be done as root");
 		return (EX_NOPERM);
 	}
-
-	if ((fd = open("/etc/pkg.conf", O_RDONLY)) > 0) {
-		conf = properties_read(fd);
-		close(fd);
-	}
-
-	packagesite = getenv("PACKAGESITE");
-
-	if (packagesite == NULL) {
-		packagesite = property_find(conf, "packagesite");
-		if (packagesite == NULL) {
-			pkg_error_warn("unable to determine PACKAGESITE");
-			retcode = 1;
-			goto cleanup;
-		}
-	}
-
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		pkg_error_warn("can not open database");
@@ -116,9 +96,6 @@ exec_upgrade(int argc, char **argv)
 	
 	if (db != NULL)
 		pkgdb_close(db);
-
-	if (conf != NULL)
-		properties_free(conf);
 
 	return (retcode);
 }

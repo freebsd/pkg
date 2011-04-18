@@ -50,14 +50,12 @@ int
 exec_update(int argc, char **argv)
 {
 	char url[MAXPATHLEN];
-	char *packagesite = NULL;
+	const char *packagesite = NULL;
 	int retcode = 0;
 	int size = 0;
 	char *repo;
 	struct archive *a;
 	struct archive_entry *ae;
-	int fd;
-	properties conf = NULL;
 
 	(void)argv;
 	if (argc != 1) {
@@ -70,20 +68,9 @@ exec_update(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	if ((fd = open("/etc/pkg.conf", O_RDONLY)) > 0) {
-		conf = properties_read(fd);
-		close(fd);
-	}
-
-	packagesite = getenv("PACKAGESITE");
-
-	if (packagesite == NULL) {
-		packagesite = property_find(conf, "packagesite");
-		if (packagesite == NULL) {
-			pkg_error_warn("unable to determine PACKAGESITE");
-			retcode = 1;
-			goto cleanup;
-		}
+	if ((packagesite = pkg_config("PACKAGESITE")) == NULL) {
+		warnx("unable to determine PACKAGESITE");
+		return (1);
 	}
 
 	if (packagesite[strlen(packagesite) - 1] == '/')
@@ -111,11 +98,6 @@ exec_update(int argc, char **argv)
 	}
 
 	archive_read_finish(a);
-
-	cleanup:
-	
-	if (conf != NULL)
-		properties_free(conf);
 
 	return (retcode);
 }
