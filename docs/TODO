@@ -1,7 +1,5 @@
 BETA1
 - check for osversion and arch in pkg_add()
-- repo (pkg_repo.c needs to be refactor: using struct packing, and being able to
-  sign the repository, currently done in the ui should in the lib)
 - install from repo
 - upgrade from repo (!!)
 - pkg version (comparison against ports tree and INDEX)
