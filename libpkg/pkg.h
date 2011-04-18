@@ -2,6 +2,7 @@
 #define _PKG_H
 
 #include <sys/types.h>
+#include <openssl/pem.h>
 
 struct pkg;
 struct pkg_file;
@@ -380,7 +381,8 @@ const char *pkg_option_value(struct pkg_option *);
  * @param data A pointer which is passed to the callback.
  * @param sum An 65 long char array to receive the sha256 sum
  */
-int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *, char [65]);
+int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *);
+int pkg_finish_repo(char *patj, pem_password_cb *cb, char *rsa_key_path);
 
 /**
  * Open the local package database.

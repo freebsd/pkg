@@ -8,7 +8,10 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-#include <sha256.h>
+
+#include <openssl/rsa.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
 #include "pkg.h"
 #include "pkg_error.h"
@@ -16,7 +19,7 @@
 #include "pkg_util.h"
 
 int
-pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data, char sum[65])
+pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
 	FTSENT *ent = NULL;
@@ -32,6 +35,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	char *errmsg = NULL;
 	int retcode = EPKG_OK;
 	char *pkg_path;
+	char sum[65];
 
 	int i;
 
@@ -215,11 +219,72 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	if (errmsg != NULL)
 		sqlite3_free(errmsg);
 
-	if (retcode == EPKG_OK)
-		/* TODO: error checking */
-		sha256_file(repodb, sum);
-	else
-		sum[0] = '\0';
-
 	return (retcode);
+}
+
+static RSA *
+load_rsa_private_key(char *rsa_key_path, pem_password_cb *password_cb)
+{
+	FILE *fp;
+	RSA *rsa = NULL;
+
+	if ((fp = fopen(rsa_key_path, "r")) == 0)
+		return (NULL);
+
+	if ((rsa = RSA_new()) == NULL) {
+		fclose(fp);
+		return (NULL);
+	}
+
+	if ((rsa = PEM_read_RSAPrivateKey(fp, 0, password_cb, rsa_key_path)) == NULL) {
+		fclose(fp);
+		return (NULL);
+	}
+
+	fclose(fp);
+	return (rsa);
+}
+
+int
+pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
+{
+	char repo_path[MAXPATHLEN];
+	char repo_archive[MAXPATHLEN];
+	struct packing *pack;
+	int max_len = 0;
+	unsigned char *sigret = NULL;
+	int siglen = 0;
+	RSA *rsa = NULL;
+	char sha256[65];
+
+	snprintf(repo_path, MAXPATHLEN, "%s/repo.sqlite", path);
+	snprintf(repo_archive, MAXPATHLEN, "%s/repo", path);
+
+	packing_init(&pack, repo_archive, TXZ);
+	if (rsa_key_path != NULL) {
+		SSL_load_error_strings();
+
+		OpenSSL_add_all_algorithms();
+		OpenSSL_add_all_ciphers();
+
+		rsa = load_rsa_private_key(rsa_key_path, password_cb);
+		max_len = RSA_size(rsa);
+		sigret = malloc(max_len + 1);
+		memset(sigret, 0, max_len);
+
+		sha256_file(repo_path, sha256);
+
+		if (RSA_sign(NID_sha1, sha256, 65, sigret, &siglen, rsa) == 0)
+			return pkg_error_set(EPKG_FATAL, "Unable to sign the repository");
+
+		packing_append_buffer(pack, sigret, "signature", max_len);
+
+		free(sigret);
+		RSA_free(rsa);
+		ERR_free_strings();
+	}
+	packing_append_file(pack, repo_path, "repo.sqlite");
+	packing_finish(pack);
+
+	return (EPKG_OK);
 }
