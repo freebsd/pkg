@@ -63,7 +63,7 @@ exec_upgrade(int argc, char **argv)
 	}
 
 
-	if (pkgdb_open(&db) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		return (1);
 	}

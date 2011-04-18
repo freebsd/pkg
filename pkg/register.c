@@ -198,7 +198,7 @@ exec_register(int argc, char **argv)
 	if (plist != NULL)
 		free(plist);
 
-	if (pkgdb_open(&db) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		return (-1);
 	}

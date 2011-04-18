@@ -67,7 +67,7 @@ exec_add(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	if (pkgdb_open(&db) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		return (1);
 	}

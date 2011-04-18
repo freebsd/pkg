@@ -13,6 +13,11 @@ struct pkg_script;
 struct pkgdb;
 struct pkgdb_it;
 
+typedef enum {
+	PKGDB_DEFAULT=0,
+	PKGDB_REMOTE
+} pkgdb_t;
+
 /**
  * Specify how an argument should be used by matching functions.
  */
@@ -389,7 +394,7 @@ int pkg_finish_repo(char *patj, pem_password_cb *cb, char *rsa_key_path);
  * The db must be free'ed with pkgdb_close().
  * @return An error code.
  */
-int pkgdb_open(struct pkgdb **db);
+int pkgdb_open(struct pkgdb **db, pkgdb_t remote);
 
 /**
  * Close and free the struct pkgdb.

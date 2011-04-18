@@ -107,7 +107,7 @@ exec_create(int argc, char **argv)
 
 	if (manifestdir == NULL) {
 		/* create package from local db */
-		if (pkgdb_open(&db) != EPKG_OK) {
+		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 			pkg_error_warn("can not open database");
 			pkgdb_close(db);
 			return (-1);

@@ -226,24 +226,44 @@ pkgdb_init(sqlite3 *sdb)
 }
 
 int
-pkgdb_open(struct pkgdb **db)
+pkgdb_open(struct pkgdb **db, pkgdb_t remote)
 {
 	int retcode;
 	struct stat st;
 	char *errmsg;
-	char fpath[MAXPATHLEN];
+	char localpath[MAXPATHLEN];
+	char remotepath[MAXPATHLEN];
+	char sql[BUFSIZ];
 
-	snprintf(fpath, sizeof(fpath), "%s/local.sqlite", pkgdb_get_dir());
+	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", pkgdb_get_dir());
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL)
 		return (pkg_error_set(EPKG_FATAL, "calloc(): %s", strerror(errno)));
 
-	if ((retcode = stat(fpath, &st)) == -1 && errno != ENOENT)
-		return (pkg_error_set(EPKG_FATAL, "can not stat %s: %s", fpath,
+	(*db)->remote = remote;
+
+	if ((retcode = stat(localpath, &st)) == -1 && errno != ENOENT)
+		return (pkg_error_set(EPKG_FATAL, "can not stat %s: %s", localpath,
 							  strerror(errno)));
 
-	if (sqlite3_open(fpath, &(*db)->sqlite) != SQLITE_OK)
+	if (remote == PKGDB_REMOTE) {
+		snprintf(remotepath, sizeof(localpath), "%s/repo.sqlite", pkgdb_get_dir());
+		if ((retcode = stat(remotepath, &st)) == -1 && errno != ENOENT)
+			return (pkg_error_set(EPKG_FATAL, "can not stat %s: %s", remotepath,
+						strerror(errno)));
+	}
+
+	if (sqlite3_open(localpath, &(*db)->sqlite) != SQLITE_OK)
 		return (ERROR_SQLITE((*db)->sqlite));
+
+	if (remote == PKGDB_REMOTE) {
+		sqlite3_snprintf(BUFSIZ, sql, "ATTACH \"%s\" as remote;", remotepath);
+
+		if (sqlite3_exec((*db)->sqlite, sql, NULL, NULL, &errmsg) != SQLITE_OK){
+			sqlite3_free(errmsg);
+			return ERROR_SQLITE((*db)->sqlite);
+		}
+	}
 
 	/* If the database is missing we have to initialize it */
 	if (retcode == -1)
@@ -279,8 +299,12 @@ pkgdb_close(struct pkgdb *db)
 	if (db == NULL)
 		return;
 
-	if (db->sqlite != NULL)
+	if (db->sqlite != NULL) {
+		if (db->remote == PKGDB_REMOTE)
+			sqlite3_exec(db->sqlite, "DETACH remote;", NULL, NULL, NULL);
+
 		sqlite3_close(db->sqlite);
+	}
 
 	free(db);
 }
@@ -374,9 +398,6 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 
 		return (EPKG_OK);
 	case SQLITE_DONE:
-		if (flags & PKG_LOAD_NEWVERSION)
-			sqlite3_exec(it->db->sqlite, "DETACH remote;", NULL, NULL, NULL);
-
 		return (EPKG_END);
 	default:
 		return (ERROR_SQLITE(it->db->sqlite));
@@ -1245,9 +1266,10 @@ pkgdb_compact(struct pkgdb *db)
 struct pkgdb_it *
 pkgdb_query_upgrades(struct pkgdb *db)
 {
+	if (db->remote != PKGDB_REMOTE)
+		return (NULL);
 
 	sqlite3_stmt *stmt;
-	char *errmsg;
 
 	const char sql[] = ""
 		"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
@@ -1257,13 +1279,6 @@ pkgdb_query_upgrades(struct pkgdb *db)
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
 		"AND PKGLT(l.version, r.version)";
-
-
-	if (sqlite3_exec(db->sqlite, "ATTACH \"/var/db/pkg/repo.sqlite\" as remote;", NULL, NULL, &errmsg) != SQLITE_OK){
-		pkg_error_set(EPKG_FATAL, "%s", errmsg);
-		sqlite3_free(errmsg);
-		return (NULL);
-	}
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
 		return (NULL);
@@ -1276,7 +1291,9 @@ pkgdb_query_downgrades(struct pkgdb *db)
 {
 
 	sqlite3_stmt *stmt;
-	char *errmsg;
+
+	if (db->remote != PKGDB_REMOTE)
+		return (NULL);
 
 	const char sql[] = ""
 		"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
@@ -1286,13 +1303,6 @@ pkgdb_query_downgrades(struct pkgdb *db)
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
 		"AND PKGGT(l.version, r.version)";
-
-
-	if (sqlite3_exec(db->sqlite, "ATTACH \"/var/db/pkg/repo.sqlite\" as remote;", NULL, NULL, &errmsg) != SQLITE_OK){
-		pkg_error_set(EPKG_FATAL, "%s", errmsg);
-		sqlite3_free(errmsg);
-		return (NULL);
-	}
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
 		return (NULL);

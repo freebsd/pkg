@@ -164,7 +164,7 @@ exec_info(int argc, char **argv)
 
 	pkg_new(&pkg);
 
-	if (pkgdb_open(&db) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		pkgdb_close(db);
 		return (-1);

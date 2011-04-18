@@ -7,6 +7,7 @@
 
 struct pkgdb {
 	sqlite3 *sqlite;
+	pkgdb_t remote;
 };
 
 struct pkgdb_it {
