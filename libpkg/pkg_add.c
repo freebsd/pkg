@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fnmatch.h>
+#include <errno.h>
 
 #include "pkg.h"
 #include "pkg_error.h"
@@ -18,8 +20,22 @@ do_extract(struct archive *a, struct archive_entry *ae)
 {
 	int retcode = EPKG_OK;
 	int ret = 0;
+	char path[MAXPATHLEN];
+	char *tmp;
+	struct stat st;
 
 	do {
+		strlcpy(path, archive_entry_pathname(ae), MAXPATHLEN);
+		if (fnmatch("*.pkgconf", path, 0) != FNM_NOMATCH) {
+			tmp = strrchr(path, '.');
+			tmp[0] = '\0';
+
+			if (lstat(path, &st) != ENOENT)
+				strlcat(path, ".pkgnew", MAXPATHLEN);
+
+			archive_entry_set_pathname(ae, path);
+		}
+
 		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
 			retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
 			break;
