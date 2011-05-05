@@ -288,3 +288,24 @@ sha256_file(const char *path, char out[65])
 	return (EPKG_OK);
 }
 
+int
+is_conf_file(const char *path, char newpath[MAXPATHLEN])
+{
+	size_t n;
+	char *p = NULL;
+
+	n = strlen(path);
+
+	if (n < 8)
+		return (0);
+
+	p = strrchr(path, '.');
+
+	if (p != NULL && !strcmp(p, ".pkgconf")) {
+		strlcpy(newpath, path, MAXPATHLEN);
+		newpath[n - 8] = '\0';
+		return (1);
+	}
+
+	return (0);
+}

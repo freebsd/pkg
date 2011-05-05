@@ -98,25 +98,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 				ret += pkg_addfile(pkg, path, NULL);
 
-			} else if (STARTS_WITH(plist_p, "@conf ")) {
-				buf = plist_p;
-
-				while (!isspace(buf[0]))
-					buf++;
-
-				while (isspace(buf[0]))
-					buf++;
-
-				if (prefix[strlen(prefix) -1 ] == '/')
-					snprintf(path, MAXPATHLEN, "%s%s.pkgconf", prefix, buf);
-				else
-					snprintf(path, MAXPATHLEN, "%s/%s.pkgconf", prefix, buf);
-
-				if (lstat(path, &st) > 0)
-					flatsize += st.st_size;
-
-				ret += pkg_addfile(pkg, path, NULL);
-			}else {
+			} else {
 				warnx("%s is deprecated, ignoring", plist_p);
 			}
 		} else if (strlen(plist_p) > 0){

@@ -8,8 +8,6 @@
 #include <libgen.h>
 #include <string.h>
 #include <fcntl.h>
-#include <fnmatch.h>
-#include <errno.h>
 
 #include "pkg.h"
 #include "pkg_error.h"
@@ -22,13 +20,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 {
 	char fpath[MAXPATHLEN];
 	char newpath[MAXPATHLEN];
-	char pkgnewpath[MAXPATHLEN];
 	struct pkg_file **files;
 	struct pkg_script **scripts;
 	char *m;
 	int i;
 	const char *scriptname = NULL;
-	struct stat st;
 
 	pkg_emit_manifest(pkg, &m);
 
@@ -76,27 +72,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 
 	if ((files = pkg_files(pkg)) != NULL) {
 		for (i = 0; files[i] != NULL; i++) {
-			strlcpy(newpath, pkg_file_path(files[i]), MAXPATHLEN);
-
-			/* remove .pkgconf from newpath if needed */
-			if (fnmatch("*.pkgconf", newpath, 0) != FNM_NOMATCH) {
-				m = strrchr(newpath, '.');
-				m[0] = '\0';
-			}
 
 			if (root != NULL)
 				snprintf(fpath, sizeof(MAXPATHLEN), "%s%s", root, newpath);
 			else
 				strlcpy(fpath, newpath, MAXPATHLEN);
-
-			/* 
-			 * if a .pkgnew file exists, it must be from the last
-			 * install then let's take it for the package creation
-			 */
-			snprintf(pkgnewpath, MAXPATHLEN, "%s.pkgnew", fpath);
-
-			if (lstat(pkgnewpath, &st) != ENOENT)
-				strlcpy(fpath, pkgnewpath, MAXPATHLEN);
 
 			packing_append_file(pkg_archive, fpath, pkg_file_path(files[i]));
 		}

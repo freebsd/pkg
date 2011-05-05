@@ -21,24 +21,29 @@ do_extract(struct archive *a, struct archive_entry *ae)
 	int retcode = EPKG_OK;
 	int ret = 0;
 	char path[MAXPATHLEN];
-	char *tmp;
 	struct stat st;
 
 	do {
-		strlcpy(path, archive_entry_pathname(ae), MAXPATHLEN);
-		if (fnmatch("*.pkgconf", path, 0) != FNM_NOMATCH) {
-			tmp = strrchr(path, '.');
-			tmp[0] = '\0';
-
-			if (lstat(path, &st) != ENOENT)
-				strlcat(path, ".pkgnew", MAXPATHLEN);
-
-			archive_entry_set_pathname(ae, path);
-		}
-
 		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
 			retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
 			break;
+		}
+
+		/*
+		 * if the file is a configuration file and the configuration
+		 * file does not already exist on the file system, then
+		 * extract it
+		 * ex: conf1.cfg.pkgconf:
+		 * if conf1.cfg doesn't exists create it based on
+		 * conf1.cfg.pkgconf
+		 */
+		if (is_conf_file(archive_entry_pathname(ae), path)
+		    && lstat(path, &st) == ENOENT) {
+			archive_entry_set_pathname(ae, path);
+			if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
+				retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
+				break;
+			}
 		}
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
 

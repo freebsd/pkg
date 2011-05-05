@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <sys/sbuf.h>
+#include <sys/param.h>
 
 #define ARRAY_INIT {0, 0, NULL}
 
@@ -29,6 +30,7 @@ int format_exec_cmd(char **, const char *, const char *, const char *);
 int split_chr(char *, char);
 int file_fetch(const char *, const char *);
 int is_dir(const char *);
+int is_conf_file(const char *path, char newpath[MAXPATHLEN]);
 
 int sha256_file(const char *, char[65]);
 void sha256_str(const char *, char[65]);
