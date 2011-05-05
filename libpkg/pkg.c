@@ -658,3 +658,28 @@ pkg_addconflict(struct pkg *pkg, const char *glob)
 
 	return (EPKG_OK);
 }
+
+int
+pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
+{
+	struct packing *pack;
+	struct pkg_file **files;
+	char spath[MAXPATHLEN];
+	char dpath[MAXPATHLEN];
+	int i;
+
+	if (packing_init(&pack, dest, 0) != EPKG_OK) {
+		/* TODO */
+		return (pkg_error_set(EPKG_FATAL, "unable to create archive"));
+	}
+
+	files = pkg_files(pkg);
+	for (i = 0; files[i] != NULL; i++) {
+		snprintf(spath, MAXPATHLEN, "%s%s", src, pkg_file_path(files[i]));
+		snprintf(dpath, MAXPATHLEN, "%s%s", dest, pkg_file_path(files[i]));
+		printf("%s -> %s\n", spath, dpath);
+		packing_append_file(pack, spath, dpath);
+	}
+
+	return (packing_finish(pack));
+}

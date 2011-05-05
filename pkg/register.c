@@ -35,7 +35,7 @@ usage_register(void)
 	fprintf(stderr, "usage: pkg register -c comment -d desc -f plist_file -p prefix\n");
 	fprintf(stderr, "                    -m mtree_file -n pkgname -o origin -r maintainer\n");
 	fprintf(stderr, "                    [-P depends] [-C conflicts] [-M message_file] [-s scripts]\n");
-	fprintf(stderr, "                    [-a arch] [-w www] [-O options] [-H]\n\n");
+	fprintf(stderr, "                    [-a arch] [-w www] [-O options] [-H] [-i input_dir]\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
 
@@ -54,6 +54,7 @@ exec_register(int argc, char **argv)
 	char *v = NULL;
 	char *arch = NULL;
 	char *www = NULL;
+	char *input_path = NULL;
 
 	const char *desc = NULL;
 	size_t size;
@@ -69,7 +70,7 @@ exec_register(int argc, char **argv)
 	}
 
 	pkg_new(&pkg);
-	while ((ch = getopt(argc, argv, "vHc:d:f:p:P:m:o:C:n:M:s:a:r:w:O:")) != -1) {
+	while ((ch = getopt(argc, argv, "vHc:d:f:p:P:m:o:C:n:M:s:a:r:w:O:i:")) != -1) {
 		switch (ch) {
 			case 'v':
 				/* IGNORE */
@@ -133,6 +134,10 @@ exec_register(int argc, char **argv)
 				break;
 			case 'H':
 				heuristic = true;
+				break;
+			case 'i':
+				if ((input_path = strdup(optarg)) == NULL)
+					errx(1, "cannot allocate memory");
 				break;
 			default:
 				printf("%c\n", ch);
@@ -205,6 +210,11 @@ exec_register(int argc, char **argv)
 
 	if (heuristic)
 		pkg_analyse_files(db, pkg);
+
+	if (input_path != NULL) {
+		pkg_copy_tree(pkg, input_path, "/");
+		free(input_path);
+	}
 
 	if (pkgdb_register_pkg(db, pkg) != EPKG_OK) {
 		pkg_error_warn("can not register package");

@@ -554,4 +554,10 @@ const char * pkg_error_string(void);
  */
 void pkg_error_warn(const char *fmt, ...);
 
+/**
+ * TODO
+ */
+int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
+
+
 #endif

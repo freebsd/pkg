@@ -11,10 +11,6 @@
 #include "pkg_error.h"
 #include "pkg_private.h"
 
-#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
-		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
-		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
-
 static int
 do_extract(struct archive *a, struct archive_entry *ae)
 {

@@ -34,17 +34,22 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 
 	(*pack)->entry = archive_entry_new();
 
-	(*pack)->awrite = archive_write_new();
-	archive_write_set_format_pax_restricted((*pack)->awrite);
-	if ((ext = packing_set_format((*pack)->awrite, format)) == NULL) {
-		archive_read_finish((*pack)->aread);
-		archive_write_finish((*pack)->awrite);
-		archive_entry_free((*pack)->entry);
-		return (pkg_error_set(EPKG_FORMAT, "Unsupported format"));
-	}
-	snprintf(archive_path, sizeof(archive_path), "%s.%s", path, ext);
+	if (!is_dir(path)) {
+		(*pack)->awrite = archive_write_new();
+		archive_write_set_format_pax_restricted((*pack)->awrite);
+		if ((ext = packing_set_format((*pack)->awrite, format)) == NULL) {
+			archive_read_finish((*pack)->aread);
+			archive_write_finish((*pack)->awrite);
+			archive_entry_free((*pack)->entry);
+			return (pkg_error_set(EPKG_FORMAT, "Unsupported format"));
+		}
+		snprintf(archive_path, sizeof(archive_path), "%s.%s", path, ext);
 
-	archive_write_open_filename((*pack)->awrite, archive_path);
+		archive_write_open_filename((*pack)->awrite, archive_path);
+	} else { /* pass mode directly write to the disk */
+		(*pack)->awrite = archive_write_disk_new();
+		archive_write_disk_set_options((*pack)->awrite, EXTRACT_ARCHIVE_FLAGS);
+	}
 
 	return (EPKG_OK);
 }
