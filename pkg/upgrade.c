@@ -39,7 +39,7 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("updating the remote database can only be done as root");
+		warnx("upgrading can only be done as root");
 		return (EX_NOPERM);
 	}
 
@@ -47,7 +47,6 @@ exec_upgrade(int argc, char **argv)
 		pkg_error_warn("can not open database");
 		return (1);
 	}
-
 
 	if ((it = pkgdb_query_upgrades(db)) == NULL) {
 		pkg_error_warn("can not query database");

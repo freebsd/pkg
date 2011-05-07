@@ -18,25 +18,14 @@
 #include "pkgdb.h"
 #include "pkg_util.h"
 
-#define PKG_DBDIR "/var/db/pkg"
-
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
+static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
 static int get_pragma(sqlite3 *, const char *, int64_t *);
-
-static void
-pkgdb_regex_delete(void *p)
-{
-	regex_t *re = (regex_t *)p;
-
-	regfree(re);
-	free(re);
-}
 
 static void
 pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
@@ -75,6 +64,21 @@ pkgdb_regex_basic(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 }
 
 static void
+pkgdb_regex_extended(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_regex(ctx, argc, argv, REG_EXTENDED);
+}
+
+static void
+pkgdb_regex_delete(void *p)
+{
+	regex_t *re = (regex_t *)p;
+
+	regfree(re);
+	free(re);
+}
+
+static void
 pkgdb_pkgcmp(sqlite3_context *ctx, int argc, sqlite3_value **argv, int sign)
 {
 	const unsigned char *version1 = NULL;
@@ -98,23 +102,6 @@ static void
 pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	pkgdb_pkgcmp(ctx, argc, argv, PKG_GT);
-}
-
-static void
-pkgdb_regex_extended(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	pkgdb_regex(ctx, argc, argv, REG_EXTENDED);
-}
-
-const char *
-pkgdb_get_dir(void)
-{
-	const char *pkg_dbdir;
-
-	if ((pkg_dbdir = getenv("PKG_DBDIR")) == NULL)
-		pkg_dbdir = PKG_DBDIR;
-
-	return pkg_dbdir;
 }
 
 /*
@@ -235,7 +222,8 @@ pkgdb_open(struct pkgdb **db, pkgdb_t remote)
 	char remotepath[MAXPATHLEN];
 	char sql[BUFSIZ];
 
-	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", pkgdb_get_dir());
+	snprintf(localpath, sizeof(localpath), "%s/local.sqlite",
+			 pkg_config("PKG_DBDIR"));
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL)
 		return (pkg_error_set(EPKG_FATAL, "calloc(): %s", strerror(errno)));
@@ -247,7 +235,8 @@ pkgdb_open(struct pkgdb **db, pkgdb_t remote)
 							  strerror(errno)));
 
 	if (remote == PKGDB_REMOTE) {
-		snprintf(remotepath, sizeof(localpath), "%s/repo.sqlite", pkgdb_get_dir());
+		snprintf(remotepath, sizeof(localpath), "%s/repo.sqlite",
+				 pkg_config("PKG_DBDIR"));
 		if ((retcode = stat(remotepath, &st)) == -1 && errno != ENOENT)
 			return (pkg_error_set(EPKG_FATAL, "can not stat %s: %s", remotepath,
 						strerror(errno)));

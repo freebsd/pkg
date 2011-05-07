@@ -475,11 +475,6 @@ int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_compact(struct pkgdb *db);
 
 /**
- * Return the path where the database live.
- */
-const char *pkgdb_get_dir(void);
-
-/**
  * Install and register a new package.
  * @param path The path to the package archive file on the local disk
  * @return An error code.

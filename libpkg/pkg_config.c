@@ -17,6 +17,7 @@ struct _config {
 	const char *val;
 } c[] = {
 	{ "PACKAGESITE", NULL, NULL},
+	{ "PKG_DBDIR", "/var/db/pkg", NULL},
 	{ NULL, NULL, NULL}
 };
 

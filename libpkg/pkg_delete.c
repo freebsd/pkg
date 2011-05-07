@@ -15,7 +15,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	struct pkg_exec **execs;
 	struct pkg_script **scripts;
 	char sha256[65];
-	const char *prefix;
 	struct sbuf *script_cmd;
 	int ret, i;
 
@@ -43,7 +42,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	files = pkg_files(pkg);
 	scripts = pkg_scripts(pkg);
 	execs = pkg_execs(pkg);
-	prefix = pkg_get(pkg, PKG_PREFIX);
 
 	if (rdeps[0] != NULL && force == 0)
 		return (pkg_error_set(EPKG_REQUIRED, "this package is required by "
