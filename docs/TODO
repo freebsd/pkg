@@ -1,4 +1,6 @@
 BETA1
+- converter for new package to old package and databse
+- encode setid into pkg.
 - check for osversion and arch in pkg_add()
 - install from repo
 - upgrade from repo (!!)
