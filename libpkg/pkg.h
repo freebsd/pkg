@@ -49,18 +49,27 @@ typedef enum {
  */
 typedef enum {
 	/**
+	 * The pkg type can not be determined.
+	 */
+	PKG_NONE = 0,
+
+	/**
 	 * The pkg refers to a local file archive.
 	 */
-	PKG_FILE,
+	PKG_FILE = 1 << 0,
 	/**
 	 * The pkg refers to a package available on the remote repository.
 	 * @todo Document which attributes are available.
 	 */
-	PKG_REMOTE,
+	PKG_REMOTE = 1 << 1,
 	/**
 	 * The pkg refers to a localy installed package.
 	 */
-	PKG_INSTALLED,
+	PKG_INSTALLED = 1 << 2,
+	/**
+	 * A package to be upgraded.
+	 */
+	PKG_UPGRADE = 1 << 3,
 	/**
 	 * The pkg refers to a non installed package.
 	 * @warning That means that the pkg contains only few attributes:
@@ -68,11 +77,7 @@ typedef enum {
 	 *   - name
 	 *   - version
 	 */
-	PKG_NOTFOUND,
-	/**
-	 * The pkg type can not be determined.
-	 */
-	PKG_NONE
+	PKG_NOTFOUND = 1 << 4,
 } pkg_t;
 
 /**

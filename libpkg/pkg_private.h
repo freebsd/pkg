@@ -18,6 +18,7 @@
 struct pkg {
 	struct {
 		struct sbuf *value;
+		int type; /* for which pkg_t this field is defined */
 		unsigned int optional :1;
 	} fields[PKG_NUM_FIELDS];
 	int64_t flatsize;

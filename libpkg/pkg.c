@@ -1,9 +1,10 @@
-#include <err.h>
-#include <string.h>
 #include <archive.h>
 #include <archive_entry.h>
-#include <stdlib.h>
+#include <err.h>
 #include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sysexits.h>
 
 #include "pkg.h"
 #include "pkg_error.h"
@@ -33,6 +34,9 @@ pkg_get(struct pkg const * const pkg, const pkg_attr attr)
 		ERROR_BAD_ARG("attr");
 		return (NULL);
 	}
+
+	if ((pkg->fields[attr].type & pkg->type) == 0)
+		errx(EX_SOFTWARE, "wrong usage of `attr` for this type of `pkg`");
 
 	return (sbuf_get(pkg->fields[attr].value));
 }
@@ -385,9 +389,31 @@ pkg_new(struct pkg **pkg)
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		return(pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
 
-	(*pkg)->fields[PKG_MESSAGE].optional = 1;
-	(*pkg)->fields[PKG_WWW].optional = 1;
-	(*pkg)->fields[PKG_MTREE].optional = 1;
+	struct _fields {
+		int id;
+		int type;
+		int optional;
+	} fields[] = {
+		{PKG_ORIGIN, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE|PKG_NOTFOUND, 0},
+		{PKG_NAME, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE|PKG_NOTFOUND, 0},
+		{PKG_VERSION, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE|PKG_NOTFOUND, 0},
+		{PKG_COMMENT, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_DESC, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_MTREE, PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
+		{PKG_MESSAGE, PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
+		{PKG_ARCH, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_OSVERSION, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_MAINTAINER, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_WWW, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 1},
+		{PKG_PREFIX, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_NEWVERSION, PKG_UPGRADE, 0},
+		{PKG_NEWPATH, PKG_UPGRADE, 0}
+	};
+
+	for (int i = 0; i < PKG_NUM_FIELDS; i++) {
+		(*pkg)->fields[fields[i].id].type = fields[i].type;
+		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
+	}
 
 	return (EPKG_OK);
 }
