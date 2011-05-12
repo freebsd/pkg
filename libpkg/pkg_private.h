@@ -73,6 +73,7 @@ int packing_init(struct packing **pack, const char *path, pkg_formats format);
 int packing_append_file(struct packing *pack, const char *filepath, const char *newpath);
 int packing_append_buffer(struct packing *pack, const char *buffer, const char *path, int size);
 int packing_finish(struct packing *pack);
+pkg_formats packing_format_from_string(const char *str);
 
 void pkg_free_void(void *);
 #endif

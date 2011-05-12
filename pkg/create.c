@@ -23,7 +23,7 @@ usage_create(void)
  * -x: regex
  * -g: globbing
  * -r: rootdir for the package
- * -m: path to dir where to find the +MANIFEST
+ * -m: path to dir where to find the metadata
  * -f <format>: format could be txz, tgz, tbz or tar
  * -o: output directory where to create packages by default ./ is used
  */
@@ -31,23 +31,13 @@ usage_create(void)
 int
 exec_create(int argc, char **argv)
 {
-	struct pkgdb *db;
-	struct pkgdb_it *it;
-	struct pkg *pkg;
-
 	match_t match = MATCH_EXACT;
 	const char *outdir = NULL;
 	const char *format = NULL;
 	const char *rootdir = NULL;
 	const char *manifestdir = NULL;
 	pkg_formats fmt;
-	char mpath[MAXPATHLEN];
 	int ch;
-	int retcode = 0;
-	int ret;
-	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES |
-					  PKG_LOAD_EXECS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
-					  PKG_LOAD_MTREE;
 
 	while ((ch = getopt(argc, argv, "agxXf:r:m:o:")) != -1) {
 		switch (ch) {
@@ -105,47 +95,9 @@ exec_create(int argc, char **argv)
 		}
 	}
 
-	if (manifestdir == NULL) {
-		/* create package from local db */
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-			pkg_error_warn("can not open database");
-			pkgdb_close(db);
-			return (-1);
-		}
-
-		if ((it = pkgdb_query(db, argv[0], match)) == NULL) {
-			pkg_error_warn("can not query database");
-			return (-1);
-		}
-
-		pkg_new(&pkg);
-		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-			printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME),
-				   pkg_get(pkg, PKG_VERSION));
-
-			if (pkg_create(NULL, fmt, outdir, rootdir, pkg) != EPKG_OK) {
-				pkg_error_warn("can not create package");
-				retcode++;
-			}
-		}
-
-		pkg_free(pkg);
-		pkgdb_it_free(it);
-		pkgdb_close(db);
-
-		if (ret != EPKG_END) {
-			pkg_error_warn("can not iterate over results");
-			retcode++;
-		}
-
-	} else {
-		snprintf(mpath, sizeof(mpath), "%s/+MANIFEST", manifestdir);
-		if (pkg_create(mpath, fmt, outdir, rootdir, NULL) != EPKG_OK) {
-			pkg_error_warn("can not create package");
-			retcode++;
-		}
-	}
-
-	return (retcode);
+	if (manifestdir == NULL)
+		return pkg_create_matches(argc, argv, match, fmt, outdir, rootdir);
+	else
+		return pkg_create(manifestdir, fmt, outdir, rootdir, NULL);
 }
 

@@ -142,3 +142,20 @@ packing_set_format(struct archive *a, pkg_formats format)
 	}
 	return (NULL);
 }
+
+pkg_formats
+packing_format_from_string(const char *str)
+{
+	if (str == NULL)
+		return TXZ;
+	if (strcmp(str, "txz") == 0)
+		return TXZ;
+	if (strcmp(str, "tbz") == 0)
+		return TBZ;
+	if (strcmp(str, "tgz") == 0)
+		return TGZ;
+	if (strcmp(str, "tar") == 0)
+		return TAR;
+	warnx("unknown format %s, using txz", str);
+	return TXZ;
+}
