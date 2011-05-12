@@ -493,12 +493,17 @@ typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 /**
  * @todo Document
  */
-int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg *);
+int pkg_create_installed(const char *, pkg_formats, const char *, struct pkg *);
 
 /**
  * Create packages that match
  */
 int pkg_create_matches(int, char **, match_t, pkg_formats, const char *, const char *);
+
+/**
+ * Create package from fakeroot install with a metadata directory
+ */
+int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
 
 /**
  * Remove and unregister the package.

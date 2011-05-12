@@ -13,7 +13,7 @@ void
 usage_create(void)
 {
 	fprintf(stderr, "usage: pkg create [-gx] [-r rootdir] [-m manifest] [-f format] [-o outdir] "
-			"<pkg-name>\n");
+			"<pkg> ...\n");
 	fprintf(stderr, "       pkg create -a [-r rootdir] [-m manifest] [-f format] [-o outdir]\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
@@ -98,6 +98,6 @@ exec_create(int argc, char **argv)
 	if (manifestdir == NULL)
 		return pkg_create_matches(argc, argv, match, fmt, outdir, rootdir);
 	else
-		return pkg_create(manifestdir, fmt, outdir, rootdir, NULL);
+		return pkg_create_fakeroot(outdir, fmt, rootdir, manifestdir);
 }
 
