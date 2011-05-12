@@ -39,7 +39,7 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 		if (remote == NULL) {
 			--retry;
 			if (retry == 0) {
-				pkg_error_set(EPKG_FATAL, "%s", fetchLastErrString);
+				retcode = pkg_error_set(EPKG_FATAL, "%s", fetchLastErrString);
 				goto cleanup;
 			}
 			sleep(1);
