@@ -18,7 +18,7 @@
 #include "pkgdb.h"
 #include "pkg_util.h"
 
-static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *);
+static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
@@ -299,7 +299,7 @@ pkgdb_close(struct pkgdb *db)
 }
 
 static struct pkgdb_it *
-pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s)
+pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 {
 	struct pkgdb_it *it;
 
@@ -311,6 +311,7 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s)
 
 	it->db = db;
 	it->stmt = s;
+	it->type = type;
 	return (it);
 }
 
@@ -346,6 +347,15 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
 		pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
 
+		if (it->type == IT_UPGRADE) {
+			pkg->type = PKG_UPGRADE;
+
+			pkg_set(pkg, PKG_NEWVERSION, sqlite3_column_text(it->stmt, 13));
+			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 14));
+			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 15));
+			pkg_set(pkg, PKG_NEWPATH, sqlite3_column_text(it->stmt, 16));
+		}
+
 		if (flags & PKG_LOAD_DEPS)
 			if ((ret = pkgdb_loaddeps(it->db, pkg)) != EPKG_OK)
 				return (ret);
@@ -377,13 +387,6 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		if (flags & PKG_LOAD_MTREE)
 			if ((ret = pkgdb_loadmtree(it->db, pkg)) != EPKG_OK)
 				return (ret);
-
-		if (flags & PKG_LOAD_NEWVERSION) {
-			pkg_set(pkg, PKG_NEWVERSION, sqlite3_column_text(it->stmt, 13));
-			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 14));
-			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 15));
-			pkg_set(pkg, PKG_NEWPATH, sqlite3_column_text(it->stmt, 16));
-		}
 
 		return (EPKG_OK);
 	case SQLITE_DONE:
@@ -463,7 +466,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt));
+	return (pkgdb_it_new(db, stmt, IT_LOCAL));
 }
 
 struct pkgdb_it *
@@ -485,7 +488,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt));
+	return (pkgdb_it_new(db, stmt, IT_LOCAL));
 }
 
 int
@@ -1272,7 +1275,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
 		return (NULL);
 
-	return (pkgdb_it_new(db, stmt));
+	return (pkgdb_it_new(db, stmt, IT_UPGRADE));
 }
 
 struct pkgdb_it *
@@ -1296,5 +1299,5 @@ pkgdb_query_downgrades(struct pkgdb *db)
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
 		return (NULL);
 
-	return (pkgdb_it_new(db, stmt));
+	return (pkgdb_it_new(db, stmt, IT_UPGRADE));
 }

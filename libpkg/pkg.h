@@ -446,7 +446,6 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_SCRIPTS (1<<5)
 #define PKG_LOAD_OPTIONS (1<<6)
 #define PKG_LOAD_MTREE (1<<7)
-#define PKG_LOAD_NEWVERSION (1<<8)
 
 /**
  * Get the next pkg.

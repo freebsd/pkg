@@ -54,7 +54,7 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	printf("Packages to be upgraded: \n");
-	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_NEWVERSION)) == EPKG_OK) {
+	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		oldsize += pkg_flatsize(pkg);
 		newsize += pkg_new_flatsize(pkg);
 		dlsize += pkg_new_pkgsize(pkg);
@@ -69,7 +69,7 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	printf("Packages to be downgraded: \n");
-	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_NEWVERSION)) == EPKG_OK) {
+	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		oldsize += pkg_flatsize(pkg);
 		newsize += pkg_new_flatsize(pkg);
 		dlsize += pkg_new_pkgsize(pkg);
