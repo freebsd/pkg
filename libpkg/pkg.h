@@ -496,6 +496,11 @@ typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create(const char *, pkg_formats, const char *, const char *, struct pkg *);
 
 /**
+ * Create packages that match
+ */
+int pkg_create_matches(int, char **, match_t, pkg_formats, const char *, const char *);
+
+/**
  * Remove and unregister the package.
  * @param force If set to one, the function will not fail if the package is
  * required by other packages.
