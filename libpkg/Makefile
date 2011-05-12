@@ -38,6 +38,7 @@ LDADD+=		-L${.CURDIR}/../external/sqlite \
 		-lsbuf \
 		-lfetch \
 		-lelf \
+		-lutil \
 		-lpthread
 
 DEBUG_FLAGS+=  -g

@@ -28,6 +28,7 @@ char manifest[] = ""
 	"@file /usr/local/bin/foo "
 		"01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b\n";
 
+/* Name empty */
 char wrong_manifest1[] = ""
 	"@pkg_format_version 0.9\n"
 	"@name\n"
@@ -47,6 +48,7 @@ char wrong_manifest1[] = ""
 	"@option foo true\n"
 	"@option bar false\n";
 
+/* bad dependency line */
 char wrong_manifest2[] = ""
 	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
@@ -66,6 +68,7 @@ char wrong_manifest2[] = ""
 	"@option foo true\n"
 	"@option bar false\n";
 
+/* bad conflict line */
 char wrong_manifest3[] = ""
 	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
@@ -85,6 +88,7 @@ char wrong_manifest3[] = ""
 	"@option foo true\n"
 	"@option bar false\n";
 
+/* bad exec line */
 char wrong_manifest4[] = ""
 	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
@@ -104,6 +108,7 @@ char wrong_manifest4[] = ""
 	"@option foo true\n"
 	"@option bar false\n";
 
+/* bad option line */
 char wrong_manifest5[] = ""
 	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
@@ -123,6 +128,7 @@ char wrong_manifest5[] = ""
 	"@option \n"
 	"@option bar false\n";
 
+/* bad option line */
 char wrong_manifest6[] = ""
 	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
@@ -141,6 +147,25 @@ char wrong_manifest6[] = ""
 	"@exec false || echo world\n"
 	"@option foo true\n"
 	"@option bar\n";
+
+char wrong_manifest7[] = ""
+	"@pkg_format_version 0.9\n"
+	"@name foobar\n"
+	"@version 0.3\n"
+	"@origin foo/bar\n"
+	"@comment A dummy manifest\n"
+	"@arch amd64\n"
+	"@osversion 800500\n"
+	"@www http://www.foobar.com\n"
+	"@maintainer test@pkgng.lan\n"
+	"@dep depfoo dep/foo 1.2\n"
+	"@dep depbar dep/bar 3.4\n"
+	"@conflict foo-*\n"
+	"@conflict bar-*\n"
+	"@keyword bla\n"
+	"@exec true && echo hello\n"
+	"@exec false || echo world\n"
+	"@option foo true\n";
 
 START_TEST(parse_manifest)
 {
@@ -292,6 +317,14 @@ START_TEST(parse_wrong_manifest6)
 }
 END_TEST
 
+START_TEST(parse_wrong_manifest7)
+{
+	struct pkg *p;
+	fail_unless(pkg_new(&p) == EPKG_OK);
+	fail_unless(pkg_parse_manifest(p, wrong_manifest7) == EPKG_OK);
+}
+END_TEST
+
 TCase *
 tcase_manifest(void)
 {
@@ -303,6 +336,7 @@ tcase_manifest(void)
 	tcase_add_test(tc, parse_wrong_manifest4);
 	tcase_add_test(tc, parse_wrong_manifest5);
 	tcase_add_test(tc, parse_wrong_manifest6);
+	tcase_add_test(tc, parse_wrong_manifest7);
 
 	return (tc);
 }

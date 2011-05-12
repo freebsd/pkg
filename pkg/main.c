@@ -24,7 +24,7 @@ static struct commands {
 	const char * const name;
 	int (*exec)(int argc, char **argv);
 	void (* const usage)(void);
-} cmd[] = { 
+} cmd[] = {
 	{ "add", exec_add, usage_add},
 	{ "create", exec_create, usage_create},
 	{ "delete", exec_delete, usage_delete},

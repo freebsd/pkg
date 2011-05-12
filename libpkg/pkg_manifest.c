@@ -269,7 +269,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	int i, j;
 	char *buf_ptr;
 	size_t next;
-
+	int found;
 
 	nbel = split_chr(buf, '\n');
 
@@ -283,8 +283,10 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	buf_ptr += next + 1;
 	next = strlen(buf_ptr);
 	for (i = 1; i <= nbel; i++) {
+		found = 0;
 		for (j = 0; j < manifest_key_len; j++) {
 			if (STARTS_WITH(buf_ptr, manifest_key[j].key)) {
+				found = 1;
 				if (manifest_key[j].parse(pkg, buf_ptr +
 					strlen(manifest_key[j].key)) != EPKG_OK) {
 
@@ -294,6 +296,9 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 				}
 				break;
 			}
+		}
+		if (found == 0 && buf_ptr[0] != '\0') {
+			warnx("Unknown line #%d: %s (ignored)", i + 1,  buf_ptr);
 		}
 		/* We need to compute `next' only if we are not at the end of the manifest */
 		if (i != nbel) {
