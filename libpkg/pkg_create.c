@@ -19,7 +19,6 @@ static int
 pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archive)
 {
 	char fpath[MAXPATHLEN];
-	char newpath[MAXPATHLEN];
 	struct pkg_file **files;
 	struct pkg_script **scripts;
 	char *m;
@@ -74,9 +73,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 		for (i = 0; files[i] != NULL; i++) {
 
 			if (root != NULL)
-				snprintf(fpath, sizeof(MAXPATHLEN), "%s%s", root, newpath);
+				snprintf(fpath, sizeof(MAXPATHLEN), "%s%s", root, pkg_file_path(files[i]));
 			else
-				strlcpy(fpath, newpath, MAXPATHLEN);
+				strlcpy(fpath, pkg_file_path(files[i]), MAXPATHLEN);
 
 			packing_append_file(pkg_archive, fpath, pkg_file_path(files[i]));
 		}

@@ -3,6 +3,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 
+#include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -82,7 +83,7 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 	archive_entry_copy_sourcepath(pack->entry, filepath);
 
 	if (archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, 0) != ARCHIVE_OK)
-		pkg_error_warn("archive_read_disk_entry_from_file(%s)", filepath);
+		warnx("archive_read_disk_entry_from_file(%s): %s", filepath, archive_error_string(pack->aread));
 
 	if (newpath != NULL)
 		archive_entry_set_pathname(pack->entry, newpath);
@@ -121,19 +122,19 @@ packing_set_format(struct archive *a, pkg_formats format)
 			if (archive_write_set_compression_xz(a) == ARCHIVE_OK) {
 				return ("txz");
 			} else {
-				pkg_error_warn("xz compression is not supported, trying bzip2");
+				warnx("xz compression is not supported, trying bzip2");
 			}
 		case TBZ:
 			if (archive_write_set_compression_bzip2(a) == ARCHIVE_OK) {
 				return ("tbz");
 			} else {
-				pkg_error_warn("bzip2 compression is not supported, trying gzip");
+				warnx("bzip2 compression is not supported, trying gzip");
 			}
 		case TGZ:
 			if (archive_write_set_compression_gzip(a) == ARCHIVE_OK) {
 				return ("tgz");
 			} else {
-				pkg_error_warn("gzip compression is not supported, trying plain tar");
+				warnx("gzip compression is not supported, trying plain tar");
 			}
 		case TAR:
 			archive_write_set_compression_none(a);
