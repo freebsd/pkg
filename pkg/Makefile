@@ -12,6 +12,7 @@ SRCS=		add.c \
 		which.c
 BINDIR=		/usr/sbin
 
+DEBUG_FLAGS=	-g
 CFLAGS+=	-I${.CURDIR}/../libpkg
 LDADD+=		-L../libpkg \
 		-lpkgng \
