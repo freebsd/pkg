@@ -37,6 +37,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 
 	(*pack)->aread = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup((*pack)->aread);
+	archive_read_disk_set_symlink_physical((*pack)->aread);
 
 	(*pack)->entry = archive_entry_new();
 
@@ -83,28 +84,44 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 	int fd;
 	int len;
 	char buf[BUFSIZ];
+	int retcode = EPKG_OK;
 
 	archive_entry_clear(pack->entry);
 	archive_entry_copy_sourcepath(pack->entry, filepath);
 
-	if (archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, 0) != ARCHIVE_OK)
-		warnx("archive_read_disk_entry_from_file(%s): %s", filepath, archive_error_string(pack->aread));
+	if (archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, NULL) !=
+										  ARCHIVE_OK) {
+		retcode = pkg_error_set(EPKG_FATAL,
+								"archive_read_disk_entry_from_file(%s): %s",
+								filepath, archive_error_string(pack->aread));
+		goto cleanup;
+	}
 
 	if (newpath != NULL)
 		archive_entry_set_pathname(pack->entry, newpath);
 
-	archive_write_header(pack->awrite, pack->entry);
-	fd = open(filepath, O_RDONLY);
+	if (archive_entry_filetype(pack->entry) != AE_IFREG) {
+		archive_entry_set_size(pack->entry, 0);
+	}
 
-	if (fd != -1) {
-		while ( (len = read(fd, buf, sizeof(buf))) > 0 )
+	archive_write_header(pack->awrite, pack->entry);
+
+	if (archive_entry_size(pack->entry) > 0) {
+		if ((fd = open(filepath, O_RDONLY)) < 0) {
+			retcode = pkg_error_set(EPKG_FATAL, "open(%s): %s", filepath,
+									 strerror(errno));
+			goto cleanup;
+		}
+
+		while ((len = read(fd, buf, sizeof(buf))) > 0 )
 			archive_write_data(pack->awrite, buf, len);
 
 		close(fd);
 	}
-	archive_entry_clear(pack->entry);
 
-	return (EPKG_OK);
+	cleanup:
+	archive_entry_clear(pack->entry);
+	return (retcode);
 }
 
 int
