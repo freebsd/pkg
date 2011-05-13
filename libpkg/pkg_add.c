@@ -65,6 +65,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	char dpath[MAXPATHLEN];
 	const char *basedir;
 	const char *ext;
+	int registered = 0;
 	int retcode = EPKG_OK;
 	int ret;
 	int i;
@@ -147,6 +148,13 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 		}
 	}
 
+	/* Register the package before installing it in case there are
+	 * problems that could be caught here. */
+	retcode = pkgdb_register_pkg(db, pkg);
+	registered = 1;
+	if (retcode != EPKG_OK)
+		goto cleanup;
+
 	/*
 	 * Execute pre-install scripts
 	 */
@@ -215,11 +223,11 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 
 	cleanup:
 
+	if (registered && retcode != EPKG_OK)
+		pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN));
+
 	if (a != NULL)
 		archive_read_finish(a);
-
-	if (retcode == EPKG_OK)
-		retcode = pkgdb_register_pkg(db, pkg);
 
 	if (pkg_p != NULL)
 		*pkg_p = (retcode == EPKG_OK) ? pkg : NULL;
