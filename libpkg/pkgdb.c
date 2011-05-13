@@ -213,7 +213,7 @@ pkgdb_init(sqlite3 *sdb)
 }
 
 int
-pkgdb_open(struct pkgdb **db, pkgdb_t remote)
+pkgdb_open(struct pkgdb **db, pkgdb_t remote, int mode)
 {
 	int retcode;
 	struct stat st;
@@ -221,23 +221,30 @@ pkgdb_open(struct pkgdb **db, pkgdb_t remote)
 	char localpath[MAXPATHLEN];
 	char remotepath[MAXPATHLEN];
 	char sql[BUFSIZ];
+	const char *dbdir;
 
-	snprintf(localpath, sizeof(localpath), "%s/local.sqlite",
-			 pkg_config("PKG_DBDIR"));
+	/* First check to make sure PKG_DBDIR exists before trying to use it */
+	dbdir = pkg_config("PKG_DBDIR");
+	if (eaccess(dbdir, mode) == -1)
+		return (pkg_error_set(EPKG_FATAL, "Package database directory "
+		    "%s error: %s", dbdir, strerror(errno)));
+
+	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL)
 		return (pkg_error_set(EPKG_FATAL, "calloc(): %s", strerror(errno)));
 
 	(*db)->remote = remote;
 
-	if ((retcode = stat(localpath, &st)) == -1 && errno != ENOENT)
+	retcode = stat(localpath, &st);
+	if (retcode == -1 && errno != ENOENT)
 		return (pkg_error_set(EPKG_FATAL, "can not stat %s: %s", localpath,
 							  strerror(errno)));
 
 	if (remote == PKGDB_REMOTE) {
-		snprintf(remotepath, sizeof(localpath), "%s/repo.sqlite",
-				 pkg_config("PKG_DBDIR"));
-		if ((retcode = stat(remotepath, &st)) == -1 && errno != ENOENT)
+		snprintf(remotepath, sizeof(localpath), "%s/repo.sqlite", dbdir);
+		retcode = stat(remotepath, &st);
+		if (retcode == -1 && errno != ENOENT)
 			return (pkg_error_set(EPKG_FATAL, "can not stat %s: %s", remotepath,
 						strerror(errno)));
 	}
@@ -257,7 +264,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t remote)
 	/* If the database is missing we have to initialize it */
 	if (retcode == -1)
 		if ((retcode = pkgdb_init((*db)->sqlite)) != EPKG_OK)
-			return (retcode);
+			return (ERROR_SQLITE((*db)->sqlite));
 
 	sqlite3_create_function((*db)->sqlite, "regexp", 2, SQLITE_ANY, NULL,
 							pkgdb_regex_basic, NULL, NULL);
