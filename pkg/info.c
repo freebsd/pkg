@@ -40,23 +40,27 @@ print_info(struct pkg *pkg, unsigned int opt)
 		if (!(opt & INFO_QUIET))
 			printf("\n");
 	} else if (opt & INFO_PRINT_RDEP) {
-		printf("%s-%s is required by:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		if (!(opt & INFO_QUIET))
+			printf("%s-%s is required by:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
 		deps = pkg_rdeps(pkg);
 		for (i = 0; deps[i] != NULL; i++) {
 			printf("%s-%s\n", pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION));
 		}
 
-		printf("\n");
+		if (!(opt & INFO_QUIET))
+			printf("\n");
 	} else if (opt & INFO_LIST_FILES) {
-		printf("%s-%s owns the following files:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		if (!(opt & INFO_QUIET))
+			printf("%s-%s owns the following files:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
 		files = pkg_files(pkg);
 		for (i = 0; files[i] != NULL; i++) {
 			printf("%s\n", pkg_file_path(files[i]));
 		}
 
-		printf("\n");
+		if (!(opt & INFO_QUIET))
+			printf("\n");
 	} else if (opt & INFO_SIZE) {
 		humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
 		printf("%s-%s size is %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), size);
