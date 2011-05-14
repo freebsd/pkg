@@ -182,7 +182,6 @@ void pkg_free(struct pkg *);
  */
 int pkg_open(struct pkg **p, const char *path);
 
-
 /**
  * @return the type of the package.
  * @warning returns PKG_NONE on error.
@@ -202,12 +201,12 @@ const char *pkg_get(struct pkg const * const , const pkg_attr);
 int64_t pkg_flatsize(struct pkg *);
 
 /**
- * @return the size of the uncompressed package, in its futur version.
+ * @return the size of the uncompressed new package (PKG_UPGRADE).
  */
 int64_t pkg_new_flatsize(struct pkg *);
 
 /**
- * @return the size of the compressed package, in its futur version.
+ * @return the size of the compressed new package (PKG_UPGRADE).
  */
 int64_t pkg_new_pkgsize(struct pkg *);
 
@@ -474,7 +473,9 @@ int pkgdb_compact(struct pkgdb *db);
 
 /**
  * Install and register a new package.
+ * @param db An opened pkgdb
  * @param path The path to the package archive file on the local disk
+ * @param pkg A pointer to pkg pointer (allocates a new pkg).
  * @return An error code.
  */
 int pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg);
@@ -496,6 +497,8 @@ int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
 
 /**
  * Remove and unregister the package.
+ * @param pkg An installed package to delete
+ * @param db An opened pkgdb
  * @param force If set to one, the function will not fail if the package is
  * required by other packages.
  * @return An error code.
@@ -524,6 +527,7 @@ typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
  * @return An error code.
  */
 int pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb);
+
 /**
  * Fetch to a given buffer
  * @return An error code
@@ -553,9 +557,8 @@ const char * pkg_error_string(void);
 void pkg_error_warn(const char *fmt, ...);
 
 /**
- * TODO
+ * @todo Document
  */
 int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
-
 
 #endif
