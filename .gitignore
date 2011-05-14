@@ -7,6 +7,8 @@
 *.core
 *.gmon
 *.log
+*.gz
 pkg/pkg
+pkg2legacy
 tests/test
 docs/html/*
