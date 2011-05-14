@@ -14,7 +14,8 @@ int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 {
 	struct pkg **rdeps;
-	int ret;
+	int i, ret;
+	struct sbuf *rdep_msg;
 
 	if (pkg == NULL)
 		return (ERROR_BAD_ARG("pkg"));
@@ -27,21 +28,35 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	 */
 	if ((ret = pkgdb_loadrdeps(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loadscripts(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_loadfiles(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_loadscripts(db, pkg)) != EPKG_OK)
 		return (ret);
 	if ((ret = pkgdb_loadexecs(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loadfiles(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
 		return (ret);
-
 
 	rdeps = pkg_rdeps(pkg);
 
-	if (rdeps[0] != NULL && force == 0)
-		return (pkg_error_set(EPKG_REQUIRED, "this package is required by "
-							  "other packages"));
+	if (rdeps[0] != NULL) {
+		rdep_msg = sbuf_new_auto();
+		sbuf_printf(rdep_msg, "this package is required by other packages:");
+		for (i = 0;rdeps[i] != NULL; i++) {
+			sbuf_cat(rdep_msg, " ");
+			sbuf_cat(rdep_msg, pkg_get(rdeps[i], PKG_NAME));
+		}
+		if (!force) {
+			sbuf_finish(rdep_msg);
+			ret = pkg_error_set(EPKG_REQUIRED, sbuf_get(rdep_msg));
+			sbuf_free(rdep_msg);
+			return ret;
+		}
+		sbuf_cat(rdep_msg, ", deleting anyway");
+		sbuf_finish(rdep_msg);
+		fprintf(stderr, "%s\n", sbuf_get(rdep_msg));
+		sbuf_free(rdep_msg);
+	}
 
 	if ((ret = pkg_pre_deinstall(pkg)) != EPKG_OK)
 		return (ret);
