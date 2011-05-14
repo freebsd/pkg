@@ -120,7 +120,7 @@ pkg_create_fakeroot(const char *outdir, pkg_formats format, const char *rootdir,
 	struct packing *pkg_archive = NULL;
 	char *manifest = NULL, *manifest_path = NULL;
 	int ret = ENOMEM;
-	size_t sz;
+	off_t sz;
 
 	/* Load the manifest from the metadata directory */
 	if (asprintf(&manifest_path, "%s/+MANIFEST", metadatadir) == -1)
