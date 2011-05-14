@@ -48,7 +48,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 			archive_read_finish((*pack)->aread);
 			archive_write_finish((*pack)->awrite);
 			archive_entry_free((*pack)->entry);
-			return (pkg_error_set(EPKG_FORMAT, "Unsupported format"));
+			return (pkg_error_set(EPKG_FATAL, "Unsupported format"));
 		}
 		snprintf(archive_path, sizeof(archive_path), "%s.%s", path, ext);
 

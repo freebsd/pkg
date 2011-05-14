@@ -151,12 +151,6 @@ typedef enum {
 	 * Can not install the package because some dependencies are unresolved.
 	 */
 	EPKG_DEPENDENCY,
-	/**
-	 * the format requested is not supported 
-	 */
-	EPKG_FORMAT,
-	EPKG_NOT_ORIGIN,
-	EPKG_NOT_NAME
 } pkg_error_t;
 
 #define PKG_LT -1
