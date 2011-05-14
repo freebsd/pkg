@@ -95,13 +95,13 @@ pkgdb_pkgcmp(sqlite3_context *ctx, int argc, sqlite3_value **argv, int sign)
 static void
 pkgdb_pkglt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
-	pkgdb_pkgcmp(ctx, argc, argv, PKG_LT);
+	pkgdb_pkgcmp(ctx, argc, argv, -1);
 }
 
 static void
 pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
-	pkgdb_pkgcmp(ctx, argc, argv, PKG_GT);
+	pkgdb_pkgcmp(ctx, argc, argv, 1);
 }
 
 /*
@@ -353,7 +353,7 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg_set(pkg, PKG_NEWVERSION, sqlite3_column_text(it->stmt, 13));
 			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 14));
 			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 15));
-			pkg_set(pkg, PKG_NEWPATH, sqlite3_column_text(it->stmt, 16));
+			pkg_set(pkg, PKG_URL, sqlite3_column_text(it->stmt, 16));
 		}
 
 		if (flags & PKG_LOAD_DEPS)

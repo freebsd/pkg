@@ -97,8 +97,9 @@ typedef enum {
 	PKG_MAINTAINER,
 	PKG_WWW,
 	PKG_PREFIX,
+	PKG_REPOPATH,
+	PKG_CKSUM,
 	PKG_NEWVERSION,
-	PKG_NEWPATH
 } pkg_attr;
 
 /**
@@ -153,9 +154,12 @@ typedef enum {
 	EPKG_DEPENDENCY,
 } pkg_error_t;
 
-#define PKG_LT -1
-#define PKG_EQ 0
-#define PKG_GT 1
+/**
+ * A function used as a callback by functions which fetch files from the
+ * network.
+ */
+typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
+						 time_t elapsed);
 
 /**
  * Allocate a new pkg.
@@ -505,6 +509,8 @@ int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
  */
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 
+int pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb);
+
 /**
  * Get the value of a configuration key
  */
@@ -514,13 +520,6 @@ const char * pkg_config(const char *key);
  * @todo Document
  */
 int pkg_version_cmp(const char * const , const char * const);
-
-/**
- * A function used as a callback by functions which fetch files from the
- * network.
- */
-typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
-						 time_t elapsed);
 
 /**
  * Fetch a file.
