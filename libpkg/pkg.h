@@ -401,10 +401,24 @@ int pkgdb_open(struct pkgdb **db, pkgdb_t remote, int mode);
 void pkgdb_close(struct pkgdb *db);
 
 /**
+ * Whether a package database instance has a particular flag.
+ * @return 0 if false, true otherwise
+ */
+int pkgdb_has_flag(struct pkgdb *db, int flag);
+
+/* The flags used in pkgdb_has_flag() */
+#define	PKGDB_FLAG_IN_FLIGHT	(1 << 0)
+
+/**
  * Register a package to the database.
  * @return An error code.
  */
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg);
+
+/**
+ * Complete an in-flight package registration command.
+ */
+int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 /**
  * Unregister a package from the database.
@@ -501,6 +515,16 @@ int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
  * @return An error code.
  */
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
+
+/**
+ * These functions are helpers for specific parts of pkg_delete().
+ * Generally speaking, external consumers should not use these.
+ * @return An error code on failure, or EPKG_OK.
+ */
+int pkg_pre_deinstall(struct pkg *pkg);
+int pkg_delete_files(struct pkg *pkg, int force);
+int pkg_post_deinstall(struct pkg *pkg);
+int pkg_run_unexecs(struct pkg *pkg);
 
 /**
  * Get the value of a configuration key

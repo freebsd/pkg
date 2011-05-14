@@ -6,6 +6,7 @@
 #include "sqlite3.h"
 
 struct pkgdb {
+	uint64_t flags;
 	sqlite3 *sqlite;
 	pkgdb_t remote;
 };

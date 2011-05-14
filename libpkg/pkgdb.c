@@ -838,6 +838,17 @@ pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
+pkgdb_has_flag(struct pkgdb *db, int flag)
+{
+	return (db->flags & flag);
+}
+
+#define	PKGDB_SET_FLAG(db, flag) \
+	(db)->flags |= (flag)
+#define	PKGDB_UNSET_FLAG(db, flag) \
+	(db)->flags &= ~(flag)
+
+int
 pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg **deps;
@@ -899,14 +910,19 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		"INSERT INTO options (option, value, package_id) "
 		"VALUES (?1, ?2, ?3);";
 
-	s = db->sqlite;
+	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
+		pkg_error_set(EPKG_FATAL, "tried to register a package with an in-flight SQL command");
+		return (EPKG_FATAL);
+	}
 
+	s = db->sqlite;
 
 	if (sqlite3_exec(s, sql_begin, NULL, NULL, &errmsg) != SQLITE_OK) {
 		pkg_error_set(EPKG_FATAL, "sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
 		return (EPKG_FATAL);
 	}
+	PKGDB_SET_FLAG(db, PKGDB_FLAG_IN_FLIGHT);
 
 	/*
 	 * If this package has a mtree, insert it in the database.
@@ -1139,14 +1155,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_reset(stmt_option);
 	}
 
-	/*
-	 * Register the package for real
-	 */
-	if (sqlite3_exec(s, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK) {
-		retcode = pkg_error_set(EPKG_FATAL, "sqlite: %s", errmsg);
-		sqlite3_free(errmsg);
-	}
-
 	cleanup:
 
 	if (stmt_sel_mtree != NULL)
@@ -1176,11 +1184,30 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	if (stmt_option != NULL)
 		sqlite3_finalize(stmt_option);
 
-	if (retcode != EPKG_OK && sqlite3_exec(db->sqlite, "ROLLBACK;", NULL, NULL, &errmsg) !=
-		SQLITE_OK)
-		err(1, "Can not rollback: %s", errmsg);
-
 	return (retcode);
+}
+
+int
+pkgdb_register_finale(struct pkgdb *db, int retcode)
+{
+	int ret = EPKG_OK;
+	const char *commands[] = { "COMMIT;", "ROLLBACK;", NULL };
+	const char *command;
+	char *errmsg;
+
+	if (!pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
+		ret = pkg_error_set(EPKG_FATAL, "database command not in flight");
+		return ret;
+	}
+
+	command = (retcode == EPKG_OK) ? commands[0] : commands[1];
+	if (sqlite3_exec(db->sqlite, command, NULL, NULL, &errmsg) != SQLITE_OK) {
+		ret = pkg_error_set(EPKG_FATAL, "sqlite: %s", errmsg);
+		sqlite3_free(errmsg);
+	}
+	PKGDB_UNSET_FLAG(db, PKGDB_FLAG_IN_FLIGHT);
+
+	return ret;
 }
 
 int

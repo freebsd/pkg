@@ -2,6 +2,9 @@
 #include <err.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "pkg.h"
 #include "pkg_error.h"
@@ -11,12 +14,7 @@ int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 {
 	struct pkg **rdeps;
-	struct pkg_file **files;
-	struct pkg_exec **execs;
-	struct pkg_script **scripts;
-	char sha256[65];
-	struct sbuf *script_cmd;
-	int ret, i;
+	int ret;
 
 	if (pkg == NULL)
 		return (ERROR_BAD_ARG("pkg"));
@@ -29,25 +27,114 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	 */
 	if ((ret = pkgdb_loadrdeps(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loadfiles(db, pkg)) != EPKG_OK)
-		return (ret);
 	if ((ret = pkgdb_loadscripts(db, pkg)) != EPKG_OK)
-		return (ret);
-	if ((ret = pkgdb_loadexecs(db, pkg)) != EPKG_OK)
 		return (ret);
 	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
 		return (ret);
+	if ((ret = pkgdb_loadexecs(db, pkg)) != EPKG_OK)
+		return (ret);
+	if ((ret = pkgdb_loadfiles(db, pkg)) != EPKG_OK)
+		return (ret);
+
 
 	rdeps = pkg_rdeps(pkg);
-	files = pkg_files(pkg);
-	scripts = pkg_scripts(pkg);
-	execs = pkg_execs(pkg);
 
 	if (rdeps[0] != NULL && force == 0)
 		return (pkg_error_set(EPKG_REQUIRED, "this package is required by "
 							  "other packages"));
 
+	if ((ret = pkg_pre_deinstall(pkg)) != EPKG_OK)
+		return (ret);
+
+	if ((ret = pkg_delete_files(pkg, force)) != EPKG_OK)
+		return (ret);
+
+	if ((ret = pkg_post_deinstall(pkg)) != EPKG_OK)
+		return (ret);
+
+	if ((ret = pkg_run_unexecs(pkg)) != EPKG_OK)
+		return (ret);
+
+	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
+}
+
+int
+pkg_run_unexecs(struct pkg *pkg)
+{
+	int ret = EPKG_OK;
+	int i;
+	struct pkg_exec **execs;
+
+	execs = pkg_execs(pkg);
+
+	/* run the @unexec */
+	for (i = 0; execs[i] != NULL; i++)
+		if (pkg_exec_type(execs[i]) == PKG_UNEXEC)
+			system(pkg_exec_cmd(execs[i]));
+
+	return (ret);
+}
+
+int
+pkg_delete_files(struct pkg *pkg, int force)
+{
+	int do_remove, i;
+	int ret = EPKG_OK;
+	struct pkg_file **files;
+	char sha256[65];
+	const char *path;
+	struct stat st;
+
+	files = pkg_files(pkg);
+	for (i = 0; files[i] != NULL; i++) {
+		path = pkg_file_path(files[i]);
+		/* check to make sure the file exists */
+		if (stat(path, &st) == -1) {
+			/* don't print ENOENT errors on force */
+			if (!force && errno != ENOENT)
+				warn("%s", path);
+			continue;
+		}
+		/* check sha256 */
+		do_remove = 1;
+		if (pkg_file_sha256(files[i])[0] != '\0') {
+			if (sha256_file(path, sha256) == -1) {
+				warnx("sha256 calculation failed for '%s'",
+				    pkg_file_path(files[i]));
+			} else {
+				if (strcmp(sha256, pkg_file_sha256(files[i])) != 0) {
+					if (force)
+						warnx("%s fails original SHA256 checksum", path);
+					else {
+						do_remove = 0;
+						warnx("%s fails original SHA256 checksum, not removing", path);
+					}
+				}
+			}
+		}
+		if (do_remove && unlink(pkg_file_path(files[i])) == -1) {
+			if (is_dir(pkg_file_path(files[i]))) {
+				rmdir(pkg_file_path(files[i]));
+			} else {
+				warn("unlink(%s)", pkg_file_path(files[i]));
+				continue;
+			}
+		}
+	}
+
+	return (ret);
+}
+
+int
+pkg_pre_deinstall(struct pkg *pkg)
+{
+	int ret = EPKG_OK;
+	int i;
+	struct sbuf *script_cmd;
+	struct pkg_script **scripts;
+
 	script_cmd = sbuf_new_auto();
+	scripts = pkg_scripts(pkg);
 	/* execute PRE_DEINSTALL */
 	for (i = 0; scripts[i] != NULL; i++) {
 		switch (pkg_script_type(scripts[i])) {
@@ -68,24 +155,21 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 				break;
 		}
 	}
+	sbuf_free(script_cmd);
 
-	for (i = 0; files[i] != NULL; i++) {
-		/* check sha256 */
-		if (pkg_file_sha256(files[i])[0] != '\0' &&
-			(sha256_file(pkg_file_path(files[i]), sha256) == -1 ||
-			strcmp(sha256, pkg_file_sha256(files[i])) != 0))
-			warnx("%s fails original SHA256 checksum, not removed",
-					pkg_file_path(files[i]));
+	return (ret);
+}
 
-		else if (unlink(pkg_file_path(files[i])) == -1) {
-			if (is_dir(pkg_file_path(files[i]))) {
-				rmdir(pkg_file_path(files[i]));
-			} else {
-				warn("unlink(%s)", pkg_file_path(files[i]));
-				continue;
-			}
-		}
-	}
+int
+pkg_post_deinstall(struct pkg *pkg)
+{
+	int i;
+	int ret = EPKG_OK;
+	struct sbuf *script_cmd;
+	struct pkg_script **scripts;
+
+	script_cmd = sbuf_new_auto();
+	scripts = pkg_scripts(pkg);
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		switch (pkg_script_type(scripts[i])) {
@@ -106,13 +190,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 				break;
 		}
 	}
-
 	sbuf_free(script_cmd);
 
-	/* run the @unexec */
-	for (i = 0; execs[i] != NULL; i++)
-		if (pkg_exec_type(execs[i]) == PKG_UNEXEC)
-			system(pkg_exec_cmd(execs[i]));
-
-	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
+	return (ret);
 }
