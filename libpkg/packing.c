@@ -125,51 +125,6 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 }
 
 int
-packing_append_tree(struct packing *pack, const char *treepath, const char *newroot)
-{
-	FTS *fts = NULL;
-	FTSENT *fts_e = NULL;
-	size_t treelen;
-	struct sbuf *sb;
-	char *paths[2] = { __DECONST(char *, treepath), NULL };
-
-	treelen = strlen(treepath);
-	fts = fts_open(paths, FTS_PHYSICAL | FTS_XDEV, NULL);
-	if (fts == NULL)
-		goto cleanup;
-
-	sb = sbuf_new_auto();
-	while ((fts_e = fts_read(fts)) != NULL) {
-		switch(fts_e->fts_info) {
-		case FTS_F:
-			/* Skip entries that are shorter than the tree itself */
-			if (fts_e->fts_pathlen <= treelen)
-				break;
-			sbuf_clear(sb);
-			/* Strip the prefix to obtain the target path */
-			if (newroot) /* Prepend a root if one is specified */
-				sbuf_cat(sb, newroot);
-			sbuf_cat(sb, fts_e->fts_path + treelen + 1 /* skip trailing slash */);
-			sbuf_finish(sb);
-			packing_append_file(pack, fts_e->fts_name, sbuf_get(sb));
-			break;
-		case FTS_DNR:
-		case FTS_ERR:
-		case FTS_NS:
-			/* XXX error cases, check fts_e->fts_errno and
-			 *     bubble up the call chain */
-			break;
-		default:
-			break;
-		}
-	}
-	sbuf_free(sb);
-cleanup:
-	fts_close(fts);
-	return EPKG_OK;
-}
-
-int
 packing_finish(struct packing *pack)
 {
 	archive_entry_free(pack->entry);
