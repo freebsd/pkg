@@ -37,6 +37,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 
 	(*pack)->aread = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup((*pack)->aread);
+	archive_read_disk_set_symlink_physical((*pack)->aread);
 
 	(*pack)->entry = archive_entry_new();
 
@@ -47,7 +48,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 			archive_read_finish((*pack)->aread);
 			archive_write_finish((*pack)->awrite);
 			archive_entry_free((*pack)->entry);
-			return (pkg_error_set(EPKG_FORMAT, "Unsupported format"));
+			return (pkg_error_set(EPKG_FATAL, "Unsupported format"));
 		}
 		snprintf(archive_path, sizeof(archive_path), "%s.%s", path, ext);
 
@@ -83,28 +84,89 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 	int fd;
 	int len;
 	char buf[BUFSIZ];
+	int retcode = EPKG_OK;
 
 	archive_entry_clear(pack->entry);
 	archive_entry_copy_sourcepath(pack->entry, filepath);
 
-	if (archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, 0) != ARCHIVE_OK)
-		warnx("archive_read_disk_entry_from_file(%s): %s", filepath, archive_error_string(pack->aread));
+	if (archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, NULL) !=
+										  ARCHIVE_OK) {
+		retcode = pkg_error_set(EPKG_FATAL,
+								"archive_read_disk_entry_from_file(%s): %s",
+								filepath, archive_error_string(pack->aread));
+		goto cleanup;
+	}
 
 	if (newpath != NULL)
 		archive_entry_set_pathname(pack->entry, newpath);
 
-	archive_write_header(pack->awrite, pack->entry);
-	fd = open(filepath, O_RDONLY);
+	if (archive_entry_filetype(pack->entry) != AE_IFREG) {
+		archive_entry_set_size(pack->entry, 0);
+	}
 
-	if (fd != -1) {
-		while ( (len = read(fd, buf, sizeof(buf))) > 0 )
+	archive_write_header(pack->awrite, pack->entry);
+
+	if (archive_entry_size(pack->entry) > 0) {
+		if ((fd = open(filepath, O_RDONLY)) < 0) {
+			retcode = pkg_error_set(EPKG_FATAL, "open(%s): %s", filepath,
+									 strerror(errno));
+			goto cleanup;
+		}
+
+		while ((len = read(fd, buf, sizeof(buf))) > 0 )
 			archive_write_data(pack->awrite, buf, len);
 
 		close(fd);
 	}
-	archive_entry_clear(pack->entry);
 
-	return (EPKG_OK);
+	cleanup:
+	archive_entry_clear(pack->entry);
+	return (retcode);
+}
+
+int
+packing_append_tree(struct packing *pack, const char *treepath, const char *newroot)
+{
+	FTS *fts = NULL;
+	FTSENT *fts_e = NULL;
+	size_t treelen;
+	struct sbuf *sb;
+	char *paths[2] = { __DECONST(char *, treepath), NULL };
+
+	treelen = strlen(treepath);
+	fts = fts_open(paths, FTS_PHYSICAL | FTS_XDEV, NULL);
+	if (fts == NULL)
+		goto cleanup;
+
+	sb = sbuf_new_auto();
+	while ((fts_e = fts_read(fts)) != NULL) {
+		switch(fts_e->fts_info) {
+		case FTS_F:
+			/* Skip entries that are shorter than the tree itself */
+			if (fts_e->fts_pathlen <= treelen)
+				break;
+			sbuf_clear(sb);
+			/* Strip the prefix to obtain the target path */
+			if (newroot) /* Prepend a root if one is specified */
+				sbuf_cat(sb, newroot);
+			sbuf_cat(sb, fts_e->fts_path + treelen + 1 /* skip trailing slash */);
+			sbuf_finish(sb);
+			packing_append_file(pack, fts_e->fts_name, sbuf_get(sb));
+			break;
+		case FTS_DNR:
+		case FTS_ERR:
+		case FTS_NS:
+			/* XXX error cases, check fts_e->fts_errno and
+			 *     bubble up the call chain */
+			break;
+		default:
+			break;
+		}
+	}
+	sbuf_free(sb);
+cleanup:
+	fts_close(fts);
+	return EPKG_OK;
 }
 
 int
