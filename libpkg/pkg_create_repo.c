@@ -262,6 +262,9 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 
 	packing_init(&pack, repo_archive, TXZ);
 	if (rsa_key_path != NULL) {
+		if (access(rsa_key_path, R_OK) == -1)
+			return pkg_error_set(EPKG_FATAL, "RSA key invalid: %s", strerror(errno));
+
 		SSL_load_error_strings();
 
 		OpenSSL_add_all_algorithms();

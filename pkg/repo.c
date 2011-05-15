@@ -64,11 +64,10 @@ int
 exec_repo(int argc, char **argv)
 {
 	int ret;
-
 	int pos = 0;
+	char *rsa_key;
 
-
-	if (argc != 3 ) {
+	if (argc < 2 || argc > 3) {
 		usage_repo();
 		return (EX_USAGE);
 	}
@@ -81,7 +80,8 @@ exec_repo(int argc, char **argv)
 	else
 		printf("\bDone!\n");
 
-	pkg_finish_repo(argv[1], password_cb, argv[2]);
+	rsa_key = (argc == 3) ? argv[2] : NULL;
+	pkg_finish_repo(argv[1], password_cb, rsa_key);
 
 	return (ret);
 }
