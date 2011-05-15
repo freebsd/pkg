@@ -48,7 +48,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 		}
 		if (!force) {
 			sbuf_finish(rdep_msg);
-			ret = pkg_error_set(EPKG_REQUIRED, sbuf_get(rdep_msg));
+			ret = pkg_error_set(EPKG_REQUIRED, "%s", sbuf_get(rdep_msg));
 			sbuf_free(rdep_msg);
 			return ret;
 		}
