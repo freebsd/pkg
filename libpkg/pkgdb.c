@@ -196,7 +196,6 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX conflicts_package ON conflicts(package_id);"
 	"CREATE TABLE mtree ("
 		"id INTEGER PRIMARY KEY,"
-		"sha256 TEXT UNIQUE,"
 		"content TEXT"
 	");"
 	"CREATE TRIGGER clean_mtree AFTER DELETE ON packages BEGIN "
@@ -275,7 +274,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t remote, int mode)
 	sqlite3_create_function((*db)->sqlite, "pkggt", 2, SQLITE_ANY, NULL,
 			pkgdb_pkggt, NULL, NULL);
 
-	/* 
+	/*
 	 * allow forign key option which will allow to have clean support for
 	 * reinstalling
 	 */
@@ -874,7 +873,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	int retcode = EPKG_OK;
 	int64_t package_id;
 	int64_t mtree_id;
-	char mtree_sha256[65];
 	char *errmsg;
 	const char *mtree;
 
@@ -882,10 +880,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	const char sql_sel_mtree[] = ""
 		"SELECT id "
 		"FROM mtree "
-		"WHERE sha256 = ?1;";
+		"WHERE content = ?1;";
 	const char sql_mtree[] = ""
-		"INSERT INTO mtree (sha256, content) "
-		"VALUES (?1, ?2);";
+		"INSERT INTO mtree (content) "
+		"VALUES (?1);";
 	const char sql_pkg[] = ""
 		"INSERT OR REPLACE INTO packages( "
 			"origin, name, version, comment, desc, mtree_id, message, arch, "
@@ -931,7 +929,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	 */
 	mtree = pkg_get(pkg, PKG_MTREE);
 	if (mtree != NULL) {
-		sha256_str(mtree, mtree_sha256);
 
 		/* Try to find the mtree in the database */
 		if (sqlite3_prepare_v2(s, sql_sel_mtree, -1, &stmt_sel_mtree, NULL)
@@ -940,7 +937,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			goto cleanup;
 		}
 
-		sqlite3_bind_text(stmt_sel_mtree, 1, mtree_sha256, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_sel_mtree, 1, mtree, -1, SQLITE_STATIC);
 
 		ret = sqlite3_step(stmt_sel_mtree);
 		if (ret == SQLITE_ROW) {
@@ -963,8 +960,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 				goto cleanup;
 			}
 
-			sqlite3_bind_text(stmt_mtree, 1, mtree_sha256, -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_mtree, 2, mtree, -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_mtree, 1, mtree, -1, SQLITE_STATIC);
 
 			ret = sqlite3_step(stmt_mtree);
 			if (ret != SQLITE_DONE) {
