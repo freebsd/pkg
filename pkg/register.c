@@ -221,6 +221,12 @@ exec_register(int argc, char **argv)
 		retcode = 1;
 	}
 
+	pkgdb_register_finale(db, ret);
+	if (ret != EPKG_OK) {
+		pkg_error_warn("can not register package");
+		retcode = 1;
+	}
+
 	if (pkg_get(pkg, PKG_MESSAGE) != NULL)
 		printf("%s\n", pkg_get(pkg, PKG_MESSAGE));
 

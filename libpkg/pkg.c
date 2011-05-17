@@ -415,6 +415,9 @@ pkg_new(struct pkg **pkg)
 		(*pkg)->fields[fields[i].id].type = fields[i].type;
 		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
 	}
+	/* by default set to PKG_INSTALLED */
+
+	(*pkg)->type = PKG_INSTALLED;
 
 	return (EPKG_OK);
 }
