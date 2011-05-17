@@ -152,7 +152,7 @@ pkgdb_init(sqlite3 *sdb)
 		"content TEXT UNIQUE"
 	");"
 	"CREATE TRIGGER clean_mtree AFTER DELETE ON packages BEGIN "
-		"DELETE FROM mtree WHERE rowid NOT IN (SELECT DISTINCT mtree_id FROM packages);"
+		"DELETE FROM mtree WHERE id NOT IN (SELECT DISTINCT mtree_id FROM packages);"
 	"END;"
 	"CREATE VIEW pkg_mtree AS "
 	"SELECT origin, name, version, comment, desc, mtree.content AS mtree, message, arch, osversion, "
@@ -215,6 +215,30 @@ pkgdb_init(sqlite3 *sdb)
 		"PRIMARY KEY (package_id,name)"
 	");"
 	"CREATE INDEX conflicts_package ON conflicts(package_id);"
+	"CREATE TABLE directories ("
+		"id INTEGER PRIMARY KEY, "
+		"path TEXT "
+	");"
+	"CREATE TABLE pkg_dirs_assoc ("
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE, "
+		"directory_id INTEGER REFERENCES directories(id) ON DELETE RESTRICT"
+			" ON UPDATE RESTRICT, "
+		"PRIMARY KEY (package_id, directory_id)"
+	");"
+	"CREATE VIEW pkg_dirs AS SELECT origin, path FROM packages "
+	"INNER JOIN pkg_dirs_assoc ON packages.id = pkg_dirs_assoc.package_id "
+	"INNER JOIN directories ON pkg_dirs_assoc.directory_id = directories.id;"
+	"CREATE TRIGGER pkg_dirs_clean AFTER DELETE ON packages BEGIN "
+		"DELETE from directories WHERE id NOT IN (SELECT DISTINCT directory_id FROM pkg_dirs_assoc);"
+	"END;"
+	"CREATE TRIGGER dir_insert INSTEAD OF INSERT ON pkg_dirs "
+	"FOR EACH ROW BEGIN "
+		"INSERT OR IGNORE INTO directories (path) VALUES (NEW.path);"
+		"INSERT INTO pkg_dirs_assoc (package_id, directory_id) VALUES "
+			"((SELECT id FROM packages WHERE origin = NEW.origin), "
+			"(SELECT id FROM directories WHERE path = NEW.path));"
+	"END;"
 	;
 
 	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
@@ -874,16 +898,19 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	sqlite3 *s;
 	sqlite3_stmt *stmt_pkg = NULL;
+	sqlite3_stmt *stmt_sel_pkg = NULL;
 	sqlite3_stmt *stmt_dep = NULL;
 	sqlite3_stmt *stmt_conflict = NULL;
 	sqlite3_stmt *stmt_file = NULL;
 	sqlite3_stmt *stmt_exec = NULL;
 	sqlite3_stmt *stmt_script = NULL;
 	sqlite3_stmt *stmt_option = NULL;
+	sqlite3_stmt *stmt_dirs = NULL;
 
 	int i;
 	int ret;
 	int retcode = EPKG_OK;
+	const char *path;
 	int64_t package_id;
 	char *errmsg;
 
@@ -893,6 +920,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			"origin, name, version, comment, desc, mtree, message, arch, "
 			"osversion, maintainer, www, prefix, flatsize) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);";
+	const char sql_sel_pkg[] = ""
+		"SELECT id FROM packages "
+		"WHERE origin = ?1;";
 	const char sql_dep[] = ""
 		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
@@ -911,6 +941,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	const char sql_option[] = ""
 		"INSERT INTO options (option, value, package_id) "
 		"VALUES (?1, ?2, ?3);";
+	const char sql_dir[] = ""
+		"INSERT INTO pkg_dirs(origin, path) "
+		"VALUES (?1, ?2);";
 
 	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
 		pkg_error_set(EPKG_FATAL, "tried to register a package with an in-flight SQL command");
@@ -948,20 +981,38 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_int64(stmt_pkg, 13, pkg_flatsize(pkg));
 
 	if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
-		retcode = ERROR_SQLITE(s);
+		if ( ret == SQLITE_CONSTRAINT)
+			retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
+					"pkg with %s", pkg_get(pkg, PKG_ORIGIN));
+		else
+			retcode = ERROR_SQLITE(s);
 		goto cleanup;
 	}
 
 	/*
 	 * Get the generated package_id
 	 */
-	package_id = sqlite3_last_insert_rowid(s);
+
+	if (sqlite3_prepare_v2(s, sql_sel_pkg, -1, &stmt_sel_pkg, NULL) != SQLITE_OK) {
+		retcode = ERROR_SQLITE(s);
+		goto cleanup;
+	}
+	sqlite3_bind_text(stmt_sel_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+	ret = sqlite3_step(stmt_sel_pkg);
+	if (ret == SQLITE_ROW) {
+		package_id = sqlite3_column_int64(stmt_sel_pkg, 0);
+		ret = SQLITE_DONE;
+	} else {
+		retcode = ERROR_SQLITE(s);
+		goto cleanup;
+	}
 
 	/*
 	 * Insert dependencies list
 	 */
 
 	if (sqlite3_prepare_v2(s, sql_dep, -1, &stmt_dep, NULL) != SQLITE_OK) {
+
 		retcode = ERROR_SQLITE(s);
 		goto cleanup;
 	}
@@ -973,8 +1024,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_dep, 3, pkg_get(deps[i], PKG_VERSION), -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_dep, 4, package_id);
 
-		if (sqlite3_step(stmt_dep) != SQLITE_DONE) {
-			retcode = ERROR_SQLITE(s);
+		if ((ret = sqlite3_step(stmt_dep)) != SQLITE_DONE) {
+			if ( ret == SQLITE_CONSTRAINT)
+				retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
+						"deps with %s", pkg_get(deps[i], PKG_ORIGIN));
+			else
+				retcode = ERROR_SQLITE(s);
 			goto cleanup;
 		}
 
@@ -985,8 +1040,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	 * Insert conflicts list
 	 */
 
-	if (sqlite3_prepare_v2(s, sql_conflict, -1, &stmt_conflict, NULL) !=
-						SQLITE_OK) {
+	if (sqlite3_prepare_v2(s, sql_conflict, -1, &stmt_conflict, NULL) != SQLITE_OK) {
 		retcode = ERROR_SQLITE(s);
 		goto cleanup;
 	}
@@ -997,7 +1051,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_int64(stmt_conflict, 2, package_id);
 
 		if (sqlite3_step(stmt_conflict) != SQLITE_DONE) {
-			retcode = ERROR_SQLITE(s);
+			if ( ret == SQLITE_CONSTRAINT)
+				retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
+						"conflicts with %s", pkg_conflict_glob(conflicts[i]));
+			else
+				retcode = ERROR_SQLITE(s);
 			goto cleanup;
 		}
 
@@ -1006,6 +1064,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	/*
 	 * Insert file
+	 * and dirs
 	 */
 
 	if (sqlite3_prepare_v2(s, sql_file, -1, &stmt_file, NULL) != SQLITE_OK) {
@@ -1013,22 +1072,43 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		goto cleanup;
 	}
 
+	if (sqlite3_prepare_v2(s, sql_dir, -1, &stmt_dirs, NULL) != SQLITE_OK) {
+		retcode = ERROR_SQLITE(s);
+		goto cleanup;
+	}
+
 	files = pkg_files(pkg);
 	for (i = 0; files[i] != NULL; i++) {
-		sqlite3_bind_text(stmt_file, 1, pkg_file_path(files[i]), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(files[i]), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt_file, 3, package_id);
+		path = pkg_file_path(files[i]);
+		if (path[strlen(path) - 1 ] != '/') {
+			sqlite3_bind_text(stmt_file, 1, pkg_file_path(files[i]), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(files[i]), -1, SQLITE_STATIC);
+			sqlite3_bind_int64(stmt_file, 3, package_id);
 
-		if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
-			if ( ret == SQLITE_CONSTRAINT)
-				retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
-										"path with %s", pkg_file_path(files[i]));
-			else
-				retcode = ERROR_SQLITE(s);
-			goto cleanup;
+			if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
+				if ( ret == SQLITE_CONSTRAINT)
+					retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
+							"path with %s", pkg_file_path(files[i]));
+				else
+					retcode = ERROR_SQLITE(s);
+				goto cleanup;
+			}
+			sqlite3_reset(stmt_file);
+		} else {
+			sqlite3_bind_text(stmt_dirs, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_dirs, 2, pkg_file_path(files[i]), -1, SQLITE_STATIC);
+			
+			if ((ret = sqlite3_step(stmt_dirs)) != SQLITE_DONE) {
+				if ( ret == SQLITE_CONSTRAINT)
+					retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
+							"dirs with %s", pkg_file_path(files[i]));
+				else
+					retcode = ERROR_SQLITE(s);
+				goto cleanup;
+			}
+			sqlite3_reset(stmt_dirs);
 		}
 
-		sqlite3_reset(stmt_file);
 	}
 
 	/*
@@ -1047,7 +1127,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_int64(stmt_script, 3, package_id);
 
 		if (sqlite3_step(stmt_script) != SQLITE_DONE) {
-			retcode = ERROR_SQLITE(s);
+			if ( ret == SQLITE_CONSTRAINT)
+				retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
+						"scripts with %s", pkg_script_data(scripts[i]));
+			else
+				retcode = ERROR_SQLITE(s);
 			goto cleanup;
 		}
 
@@ -1105,6 +1189,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	if (stmt_pkg != NULL)
 		sqlite3_finalize(stmt_pkg);
 
+	if (stmt_sel_pkg != NULL)
+		sqlite3_finalize(stmt_sel_pkg);
+
 	if (stmt_dep != NULL)
 		sqlite3_finalize(stmt_dep);
 
@@ -1122,6 +1209,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (stmt_option != NULL)
 		sqlite3_finalize(stmt_option);
+	
+	if (stmt_dirs != NULL)
+		sqlite3_finalize(stmt_dirs);
 
 	return (retcode);
 }

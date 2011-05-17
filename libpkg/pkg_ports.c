@@ -89,9 +89,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					buf++;
 
 				if (prefix[strlen(prefix) -1 ] == '/')
-					snprintf(path, MAXPATHLEN, "%s%s", prefix, buf);
+					snprintf(path, MAXPATHLEN, "%s%s/", prefix, buf);
 				else
-					snprintf(path, MAXPATHLEN, "%s/%s", prefix, buf);
+					snprintf(path, MAXPATHLEN, "%s/%s/", prefix, buf);
 
 				if (lstat(path, &st) >= 0)
 					flatsize += st.st_size;
