@@ -147,6 +147,27 @@ pkgdb_init(sqlite3 *sdb)
 		"automatic INTEGER,"
 		"pkg_format_version INTEGER"
 	");"
+	"CREATE TABLE mtree ("
+		"id INTEGER PRIMARY KEY,"
+		"content TEXT UNIQUE"
+	");"
+	"CREATE TRIGGER clean_mtree AFTER DELETE ON packages BEGIN "
+		"DELETE FROM mtree WHERE rowid NOT IN (SELECT DISTINCT mtree_id FROM packages);"
+	"END;"
+	"CREATE VIEW pkg_mtree AS "
+	"SELECT origin, name, version, comment, desc, mtree.content AS mtree, message, arch, osversion, "
+	"maintainer, www, prefix, flatsize, automatic, pkg_format_version FROM packages "
+	"INNER JOIN mtree ON packages.mtree_id = mtree.id;"
+	"CREATE TRIGGER pkg_insert INSTEAD OF INSERT ON pkg_mtree "
+	"FOR EACH ROW BEGIN "
+		"INSERT OR IGNORE INTO mtree (content) VALUES (NEW.mtree);"
+		"INSERT OR REPLACE INTO packages(origin, name, version, comment, desc, mtree_id, "
+		"message, arch, osversion, maintainer, www, prefix, flatsize) "
+		"VALUES (NEW.origin, NEW.name, NEW.version, NEW.comment, NEW.desc, "
+		"(SELECT id FROM mtree WHERE content = NEW.mtree), "
+		"NEW.message, NEW.arch, NEW.osversion, NEW.maintainer, NEW.www, NEW.prefix, "
+		"NEW.flatsize);"
+	"END;"
 	"CREATE TABLE scripts ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
@@ -194,13 +215,7 @@ pkgdb_init(sqlite3 *sdb)
 		"PRIMARY KEY (package_id,name)"
 	");"
 	"CREATE INDEX conflicts_package ON conflicts(package_id);"
-	"CREATE TABLE mtree ("
-		"id INTEGER PRIMARY KEY,"
-		"content TEXT"
-	");"
-	"CREATE TRIGGER clean_mtree AFTER DELETE ON packages BEGIN "
-		"DELETE FROM mtree WHERE rowid NOT IN (SELECT DISTINCT mtree_id FROM packages);"
-	"END;";
+	;
 
 	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
 		pkg_error_set(EPKG_FATAL, "sqlite: %s", errmsg);
@@ -858,8 +873,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_option **options;
 
 	sqlite3 *s;
-	sqlite3_stmt *stmt_sel_mtree = NULL;
-	sqlite3_stmt *stmt_mtree = NULL;
 	sqlite3_stmt *stmt_pkg = NULL;
 	sqlite3_stmt *stmt_dep = NULL;
 	sqlite3_stmt *stmt_conflict = NULL;
@@ -872,21 +885,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	int ret;
 	int retcode = EPKG_OK;
 	int64_t package_id;
-	int64_t mtree_id;
 	char *errmsg;
-	const char *mtree;
 
 	const char sql_begin[] = "BEGIN TRANSACTION;";
-	const char sql_sel_mtree[] = ""
-		"SELECT id "
-		"FROM mtree "
-		"WHERE content = ?1;";
-	const char sql_mtree[] = ""
-		"INSERT INTO mtree (content) "
-		"VALUES (?1);";
 	const char sql_pkg[] = ""
-		"INSERT OR REPLACE INTO packages( "
-			"origin, name, version, comment, desc, mtree_id, message, arch, "
+		"INSERT INTO pkg_mtree( "
+			"origin, name, version, comment, desc, mtree, message, arch, "
 			"osversion, maintainer, www, prefix, flatsize) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);";
 	const char sql_dep[] = ""
@@ -923,58 +927,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	PKGDB_SET_FLAG(db, PKGDB_FLAG_IN_FLIGHT);
 
 	/*
-	 * If this package has a mtree, insert it in the database.
-	 * Compute the sha256 of the mtree.
-	 * If there is no mtree, mtree_id is set to zero (NULL in the database).
-	 */
-	mtree = pkg_get(pkg, PKG_MTREE);
-	if (mtree != NULL) {
-
-		/* Try to find the mtree in the database */
-		if (sqlite3_prepare_v2(s, sql_sel_mtree, -1, &stmt_sel_mtree, NULL)
-			!= SQLITE_OK) {
-			retcode = ERROR_SQLITE(s);
-			goto cleanup;
-		}
-
-		sqlite3_bind_text(stmt_sel_mtree, 1, mtree, -1, SQLITE_STATIC);
-
-		ret = sqlite3_step(stmt_sel_mtree);
-		if (ret == SQLITE_ROW) {
-			mtree_id = sqlite3_column_int64(stmt_sel_mtree, 0);
-			ret = SQLITE_DONE;
-		} else if (ret == SQLITE_DONE)
-			/* no result found */
-			mtree_id = 0;
-
-		if (ret != SQLITE_DONE) {
-			retcode = ERROR_SQLITE(s);
-			goto cleanup;
-		}
-
-		/* if the mtree is not into the dabase, insert it */
-		if (mtree_id == 0) {
-			if (sqlite3_prepare_v2(s, sql_mtree, -1, &stmt_mtree, NULL) !=
-								SQLITE_OK) {
-				retcode = ERROR_SQLITE(s);
-				goto cleanup;
-			}
-
-			sqlite3_bind_text(stmt_mtree, 1, mtree, -1, SQLITE_STATIC);
-
-			ret = sqlite3_step(stmt_mtree);
-			if (ret != SQLITE_DONE) {
-				retcode = ERROR_SQLITE(s);
-				goto cleanup;
-			}
-
-			mtree_id = sqlite3_last_insert_rowid(s);
-		}
-	} else {
-		mtree_id = 0;
-	}
-
-	/*
 	 * Insert package record
 	 */
 	if (sqlite3_prepare_v2(s, sql_pkg, -1, &stmt_pkg, NULL) != SQLITE_OK) {
@@ -986,10 +938,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 3, pkg_get(pkg, PKG_VERSION), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 4, pkg_get(pkg, PKG_COMMENT), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_DESC), -1, SQLITE_STATIC);
-	if (mtree_id > 0)
-		sqlite3_bind_int64(stmt_pkg, 6, mtree_id);
-	else
-		sqlite3_bind_null(stmt_pkg, 6);
+	sqlite3_bind_text(stmt_pkg, 6, pkg_get(pkg, PKG_MTREE), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_MESSAGE), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_ARCH), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_STATIC);
@@ -1152,12 +1101,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	cleanup:
-
-	if (stmt_sel_mtree != NULL)
-		sqlite3_finalize(stmt_sel_mtree);
-
-	if (stmt_mtree != NULL)
-		sqlite3_finalize(stmt_mtree);
 
 	if (stmt_pkg != NULL)
 		sqlite3_finalize(stmt_pkg);
