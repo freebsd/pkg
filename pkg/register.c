@@ -35,7 +35,8 @@ usage_register(void)
 	fprintf(stderr, "usage: pkg register -c comment -d desc -f plist_file -p prefix\n");
 	fprintf(stderr, "                    -m mtree_file -n pkgname -o origin -r maintainer\n");
 	fprintf(stderr, "                    [-P depends] [-C conflicts] [-M message_file] [-s scripts]\n");
-	fprintf(stderr, "                    [-a arch] [-w www] [-O options] [-H] [-i input_dir]\n\n");
+	fprintf(stderr, "                    [-a arch] [-w www] [-O options] [-H] [-i input_dir]\n");
+	fprintf(stderr, "                    [-l]\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
 
@@ -60,6 +61,7 @@ exec_register(int argc, char **argv)
 	size_t size;
 
 	bool heuristic = false;
+	bool legacy = false;
 
 	int retcode = 0;
 	int ret = 0;
@@ -70,7 +72,7 @@ exec_register(int argc, char **argv)
 	}
 
 	pkg_new(&pkg);
-	while ((ch = getopt(argc, argv, "vHc:d:f:p:P:m:o:C:n:M:s:a:r:w:O:i:")) != -1) {
+	while ((ch = getopt(argc, argv, "vHc:d:f:p:P:m:o:C:n:M:s:a:r:w:O:i:l")) != -1) {
 		switch (ch) {
 			case 'v':
 				/* IGNORE */
@@ -138,6 +140,9 @@ exec_register(int argc, char **argv)
 			case 'i':
 				if ((input_path = strdup(optarg)) == NULL)
 					errx(1, "cannot allocate memory");
+				break;
+			case 'l':
+				legacy = true;
 				break;
 			default:
 				printf("%c\n", ch);
@@ -227,7 +232,7 @@ exec_register(int argc, char **argv)
 		retcode = 1;
 	}
 
-	if (pkg_get(pkg, PKG_MESSAGE) != NULL)
+	if (pkg_get(pkg, PKG_MESSAGE) != NULL && !legacy)
 		printf("%s\n", pkg_get(pkg, PKG_MESSAGE));
 
 	pkgdb_close(db);
