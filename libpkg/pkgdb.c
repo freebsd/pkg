@@ -980,7 +980,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 12, pkg_get(pkg, PKG_PREFIX), -1, SQLITE_STATIC);
 	sqlite3_bind_int64(stmt_pkg, 13, pkg_flatsize(pkg));
 
-	if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
+	if ((ret = sqlite3_step(stmt_pkg)) != SQLITE_DONE) {
 		if ( ret == SQLITE_CONSTRAINT)
 			retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
 					"pkg with %s", pkg_get(pkg, PKG_ORIGIN));
