@@ -110,6 +110,18 @@ pkg_delete_files(struct pkg *pkg, int force)
 				warn("%s", path);
 			continue;
 		}
+		/* Directories */
+
+		if (path[strlen(path) - 1] == '/') {
+			/*
+			 * currently do not warn on this because multiple
+			 * packages can own the same directory
+			 */
+			rmdir(path);
+			continue;
+		}
+
+		/* Regular files and links */
 		/* check sha256 */
 		do_remove = 1;
 		if (pkg_file_sha256(files[i])[0] != '\0') {
@@ -127,13 +139,10 @@ pkg_delete_files(struct pkg *pkg, int force)
 				}
 			}
 		}
+
 		if (do_remove && unlink(pkg_file_path(files[i])) == -1) {
-			if (is_dir(pkg_file_path(files[i]))) {
-				rmdir(pkg_file_path(files[i]));
-			} else {
-				warn("unlink(%s)", pkg_file_path(files[i]));
-				continue;
-			}
+			warn("unlink(%s)", pkg_file_path(files[i]));
+			continue;
 		}
 	}
 

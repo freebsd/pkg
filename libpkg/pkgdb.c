@@ -716,7 +716,6 @@ pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 		return (ERROR_SQLITE(db->sqlite));
 	}
 
-	printf("ici\n");
 	if (sqlite3_prepare_v2(db->sqlite, sqldir, -1, &stmt, NULL) != SQLITE_OK)
 		return (ERROR_SQLITE(db->sqlite));
 
