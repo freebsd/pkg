@@ -158,8 +158,11 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	/*
 	 * Extract the files on disk.
 	 */
-	if (extract == true && (retcode = do_extract(a, ae)) != EPKG_OK)
+	if (extract == true && (retcode = do_extract(a, ae)) != EPKG_OK) {
+		/* If the add failed, clean up */
+		(void) pkg_delete_files(pkg, 1);
 		goto cleanup;
+	}
 
 	/*
 	 * Execute post install scripts
@@ -169,9 +172,6 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	cleanup:
 
 	pkgdb_register_finale(db, retcode);
-	/* If the add failed, clean up */
-	if (retcode != EPKG_OK)
-		(void) pkg_delete_files(pkg, 1);
 
 	if (a != NULL)
 		archive_read_finish(a);
