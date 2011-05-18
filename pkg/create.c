@@ -35,14 +35,29 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 		return (-1);
 	}
 	pkg_new(&pkg);
-	for (i = 0;i < argc; i++) {
-		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
+	if (match != MATCH_ALL) {
+		for (i = 0;i < argc; i++) {
+			if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
+				pkg_error_warn("can not query database");
+				goto cleanup;
+			}
+			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
+				printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME),
+				    pkg_get(pkg, PKG_VERSION));
+				if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK) {
+					pkg_error_warn("can not create package");
+					retcode++;
+				}
+			}
+		}
+	} else {
+		if ((it = pkgdb_query(db, NULL, match)) == NULL) {
 			pkg_error_warn("can not query database");
 			goto cleanup;
 		}
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME),
-			    pkg_get(pkg, PKG_VERSION));
+					pkg_get(pkg, PKG_VERSION));
 			if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK) {
 				pkg_error_warn("can not create package");
 				retcode++;
