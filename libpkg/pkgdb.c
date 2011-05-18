@@ -117,10 +117,6 @@ pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
  * - 7: DEINSTALL
  * - 8: UPGRADE
  * 
- * exec.type can be:
- * - 0: exec
- * - 1: unexec
- *
  */
 
 static int
@@ -176,13 +172,6 @@ pkgdb_init(sqlite3 *sdb)
 		"PRIMARY KEY (package_id, type)"
 	");"
 	"CREATE INDEX scripts_package ON scripts(package_id);"
-	"CREATE TABLE exec ("
-		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
-			" ON UPDATE CASCADE,"
-		"cmd TEXT,"
-		"type INTEGER"
-	");"
-	"CREATE INDEX exec_package ON exec(package_id);"
 	"CREATE TABLE options ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
@@ -415,10 +404,6 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 
 		if (flags & PKG_LOAD_FILES)
 			if ((ret = pkgdb_loadfiles(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_EXECS)
-			if ((ret = pkgdb_loadexecs(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_SCRIPTS)
@@ -733,47 +718,6 @@ pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_loadexecs(struct pkgdb *db, struct pkg *pkg)
-{
-	sqlite3_stmt *stmt;
-	struct pkg_exec *e;
-	int ret;
-	const char sql[] = ""
-		"SELECT cmd, type "
-		"FROM exec "
-		"WHERE package_id = ?1";
-
-	if (pkg->type != PKG_INSTALLED)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (pkg->flags & PKG_LOAD_EXECS)
-		return (EPKG_OK);
-
-	array_init(&pkg->exec, 5);
-
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
-		return (ERROR_SQLITE(db->sqlite));
-
-	sqlite3_bind_int64(stmt, 1, pkg->rowid);
-
-	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_exec_new(&e);
-		sbuf_set(&e->cmd, sqlite3_column_text(stmt, 0));
-		e->type = sqlite3_column_int(stmt, 1);
-		array_append(&pkg->exec, e);
-	}
-	sqlite3_finalize(stmt);
-
-	if (ret != SQLITE_DONE) {
-		array_reset(&pkg->exec, &pkg_exec_free_void);
-		return (ERROR_SQLITE(db->sqlite));
-	}
-
-	pkg->flags |= PKG_LOAD_EXECS;
-	return (EPKG_OK);
-}
-
-int
 pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt;
@@ -910,7 +854,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	struct pkg **deps;
 	struct pkg_file **files;
 	struct pkg_conflict **conflicts;
-	struct pkg_exec **execs;
 	struct pkg_script **scripts;
 	struct pkg_option **options;
 
@@ -920,7 +863,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_stmt *stmt_dep = NULL;
 	sqlite3_stmt *stmt_conflict = NULL;
 	sqlite3_stmt *stmt_file = NULL;
-	sqlite3_stmt *stmt_exec = NULL;
 	sqlite3_stmt *stmt_script = NULL;
 	sqlite3_stmt *stmt_option = NULL;
 	sqlite3_stmt *stmt_dirs = NULL;
@@ -952,9 +894,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		"VALUES (?1, ?2, ?3);";
 	const char sql_script[] = ""
 		"INSERT INTO scripts (script, type, package_id) "
-		"VALUES (?1, ?2, ?3);";
-	const char sql_exec[] = ""
-		"INSERT INTO exec (cmd, type, package_id) "
 		"VALUES (?1, ?2, ?3);";
 	const char sql_option[] = ""
 		"INSERT INTO options (option, value, package_id) "
@@ -1157,29 +1096,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	/*
-	 * Insert execs
-	 */
-
-	if (sqlite3_prepare_v2(s, sql_exec, -1, &stmt_exec, NULL) != SQLITE_OK) {
-		retcode = ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
-	execs = pkg_execs(pkg);
-	for (i = 0; execs[i] != NULL; i++) {
-		sqlite3_bind_text(stmt_exec, 1, pkg_exec_cmd(execs[i]), -1, SQLITE_STATIC);
-		sqlite3_bind_int(stmt_exec, 2, pkg_exec_type(execs[i]));
-		sqlite3_bind_int64(stmt_exec, 3, package_id);
-
-		if (sqlite3_step(stmt_exec) != SQLITE_DONE) {
-			retcode = ERROR_SQLITE(s);
-			goto cleanup;
-		}
-
-		sqlite3_reset(stmt_exec);
-	}
-
-	/*
 	 * Insert options
 	 */
 
@@ -1221,9 +1137,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (stmt_script != NULL)
 		sqlite3_finalize(stmt_script);
-
-	if (stmt_exec != NULL)
-		sqlite3_finalize(stmt_exec);
 
 	if (stmt_option != NULL)
 		sqlite3_finalize(stmt_option);

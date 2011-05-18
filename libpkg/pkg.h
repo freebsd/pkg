@@ -7,7 +7,6 @@
 struct pkg;
 struct pkg_file;
 struct pkg_conflict;
-struct pkg_exec;
 struct pkg_script;
 
 struct pkgdb;
@@ -116,15 +115,6 @@ typedef enum _pkg_script_t {
 	PKG_SCRIPT_DEINSTALL,
 	PKG_SCRIPT_UPGRADE
 } pkg_script_t;
-
-/**
- * Determine the type of a pkg_exec.
- * @warning Legacy interface, may be removed later.
- */
-typedef enum {
-	PKG_EXEC = 0,
-	PKG_UNEXEC
-} pkg_exec_t;
 
 /**
  * Error type used everywhere by libpkg.
@@ -240,12 +230,6 @@ struct pkg_conflict ** pkg_conflicts(struct pkg *);
  * @return NULL-terminated array of pkg_script.
  */
 struct pkg_script ** pkg_scripts(struct pkg *);
-
-/**
- * @return NULL-terminated array of pkg_exec.
- * @warning Legacy interface, may be removed later.
- */
-struct pkg_exec ** pkg_execs(struct pkg *);
 
 /**
  * @return NULL-terminated array of pkg_option
@@ -364,12 +348,6 @@ void pkg_script_free(struct pkg_script *);
 const char *pkg_script_data(struct pkg_script *);
 pkg_script_t pkg_script_type(struct pkg_script *);
 
-int pkg_exec_new(struct pkg_exec **);
-void pkg_exec_reset(struct pkg_exec *);
-void pkg_exec_free(struct pkg_exec *);
-const char *pkg_exec_cmd(struct pkg_exec *);
-pkg_exec_t pkg_exec_type(struct pkg_exec *);
-
 /* pkg_option */
 int pkg_option_new(struct pkg_option **);
 void pkg_option_reset(struct pkg_option *);
@@ -449,7 +427,6 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_RDEPS (1<<1)
 #define PKG_LOAD_CONFLICTS (1<<2)
 #define PKG_LOAD_FILES (1<<3)
-#define PKG_LOAD_EXECS (1<<4)
 #define PKG_LOAD_SCRIPTS (1<<5)
 #define PKG_LOAD_OPTIONS (1<<6)
 #define PKG_LOAD_MTREE (1<<7)
@@ -472,7 +449,6 @@ int pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadexecs(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
@@ -527,7 +503,6 @@ int pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb);
  * @return An error code on failure, or EPKG_OK.
  */
 int pkg_delete_files(struct pkg *pkg, int force);
-int pkg_run_unexecs(struct pkg *pkg);
 
 /**
  * Get the value of a configuration key

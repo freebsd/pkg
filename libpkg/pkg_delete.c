@@ -32,8 +32,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 		return (ret);
 	if ((ret = pkgdb_loadscripts(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loadexecs(db, pkg)) != EPKG_OK)
-		return (ret);
 	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
@@ -67,27 +65,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if ((ret = pkg_script_post_deinstall(pkg)) != EPKG_OK)
 		return (ret);
 
-	if ((ret = pkg_run_unexecs(pkg)) != EPKG_OK)
-		return (ret);
-
 	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
-}
-
-int
-pkg_run_unexecs(struct pkg *pkg)
-{
-	int ret = EPKG_OK;
-	int i;
-	struct pkg_exec **execs;
-
-	execs = pkg_execs(pkg);
-
-	/* run the @unexec */
-	for (i = 0; execs[i] != NULL; i++)
-		if (pkg_exec_type(execs[i]) == PKG_UNEXEC)
-			system(pkg_exec_cmd(execs[i]));
-
-	return (ret);
 }
 
 int

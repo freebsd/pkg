@@ -58,7 +58,6 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	struct pkg *p = NULL;
 	struct pkg *pkg = NULL;
 	struct pkg **deps;
-	struct pkg_exec **execs;
 	bool extract = true;
 	char dpath[MAXPATHLEN];
 	const char *basedir;
@@ -166,14 +165,6 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	 * Execute post install scripts
 	 */
 	pkg_script_post_install(pkg);
-
-	/*
-	 * Execute @exec
-	 */
-	if ((execs = pkg_execs(pkg)) != NULL)
-		for (i = 0; execs[i] != NULL; i++)
-			if (pkg_exec_type(execs[i]) == PKG_EXEC)
-				system(pkg_exec_cmd(execs[i]));
 
 	cleanup:
 

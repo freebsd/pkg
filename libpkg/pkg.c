@@ -143,18 +143,6 @@ pkg_scripts(struct pkg *pkg)
 	return ((struct pkg_script **)pkg->scripts.data);
 }
 
-struct pkg_exec **
-pkg_execs(struct pkg *pkg)
-{
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
-	}
-
-	array_init(&pkg->exec, 1);
-	return (struct pkg_exec **) pkg->exec.data;
-}
-
 struct pkg **
 pkg_deps(struct pkg *pkg)
 {
@@ -442,7 +430,6 @@ pkg_reset(struct pkg *pkg)
 	array_reset(&pkg->conflicts, &pkg_conflict_free_void);
 	array_reset(&pkg->files, &free);
 	array_reset(&pkg->scripts, &pkg_script_free_void);
-	array_reset(&pkg->exec, &pkg_exec_free_void);
 	array_reset(&pkg->options, &pkg_option_free_void);
 }
 
@@ -460,7 +447,6 @@ pkg_free(struct pkg *pkg)
 	array_free(&pkg->conflicts, &pkg_conflict_free_void);
 	array_free(&pkg->files, &free);
 	array_free(&pkg->scripts, &pkg_script_free_void);
-	array_free(&pkg->exec, &pkg_exec_free_void);
 	array_free(&pkg->options, &pkg_option_free_void);
 
 	free(pkg);

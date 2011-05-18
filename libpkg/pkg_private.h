@@ -29,7 +29,6 @@ struct pkg {
 	struct array conflicts;
 	struct array files;
 	struct array scripts;
-	struct array exec;
 	struct array options;
 	int flags;
 	int64_t rowid;
@@ -45,11 +44,6 @@ struct pkg_script {
 	pkg_script_t type;
 };
 
-struct pkg_exec {
-	struct sbuf *cmd;
-	pkg_exec_t type;
-};
-
 struct pkg_file {
 	char path[MAXPATHLEN];
 	char sha256[65];
@@ -62,7 +56,6 @@ struct pkg_option {
 
 void pkg_conflict_free_void(void *);
 void pkg_script_free_void(void *);
-void pkg_exec_free_void(void *);
 void pkg_option_free_void(void *);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
