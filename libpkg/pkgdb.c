@@ -676,13 +676,19 @@ int
 pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt;
+
 	struct pkg_file *f;
 	int ret;
 	const char sql[] = ""
 		"SELECT path, sha256 "
 		"FROM files "
 		"WHERE package_id = ?1 "
-		"ORDER BY PATH DESC";
+		"ORDER BY PATH ASC";
+	const char sqldir[] = ""
+		"SELECT path "
+		"FROM pkg_dirs "
+		"WHERE origin = ?1 "
+		"ORDER by path DESC";
 
 	if (pkg->type != PKG_INSTALLED)
 		return (ERROR_BAD_ARG("pkg"));
@@ -709,6 +715,19 @@ pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 		array_reset(&pkg->files, &free);
 		return (ERROR_SQLITE(db->sqlite));
 	}
+
+	printf("ici\n");
+	if (sqlite3_prepare_v2(db->sqlite, sqldir, -1, &stmt, NULL) != SQLITE_OK)
+		return (ERROR_SQLITE(db->sqlite));
+
+	sqlite3_bind_text(stmt, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_file_new(&f);
+		strlcpy(f->path, sqlite3_column_text(stmt, 0), sizeof(f->path));
+		array_append(&pkg->files, f);
+	}
+	sqlite3_finalize(stmt);
 
 	pkg->flags |= PKG_LOAD_FILES;
 	return (EPKG_OK);
