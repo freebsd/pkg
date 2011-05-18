@@ -20,7 +20,7 @@ usage_delete(void)
 int
 exec_delete(int argc, char **argv)
 {
-	struct pkg *pkg;
+	struct pkg *pkg = NULL;
 	struct pkgdb *db;
 	struct pkgdb_it *it;
 	match_t match = MATCH_EXACT;
@@ -69,7 +69,6 @@ exec_delete(int argc, char **argv)
 		return (1);
 	}
 
-	pkg_new(&pkg);
 	while ((ret = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
 		if (pkg_delete(pkg, db, force) != EPKG_OK) {
 			retcode++;

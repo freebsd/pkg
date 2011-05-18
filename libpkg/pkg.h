@@ -155,13 +155,13 @@ typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
  * Allocate a new pkg.
  * Allocated pkg must be deallocated by pkg_free().
  */
-int pkg_new(struct pkg **);
+int pkg_new(struct pkg **, pkg_t type);
 
 /**
  * Reset a pkg to its initial state.
  * Useful to avoid sequences of pkg_new() and pkg_free().
  */
-void pkg_reset(struct pkg *);
+void pkg_reset(struct pkg *, pkg_t type);
 
 /**
  * Deallocate a pkg

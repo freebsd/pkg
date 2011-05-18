@@ -361,12 +361,11 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 	switch (sqlite3_step(it->stmt)) {
 	case SQLITE_ROW:
 		if (*pkg_p == NULL)
-			pkg_new(pkg_p);
+			pkg_new(pkg_p, PKG_INSTALLED);
 		else
-			pkg_reset(*pkg_p);
+			pkg_reset(*pkg_p, PKG_INSTALLED);
 		pkg = *pkg_p;
 
-		pkg->type = PKG_INSTALLED;
 		pkg->rowid = sqlite3_column_int64(it->stmt, 0);
 		pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
 		pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
