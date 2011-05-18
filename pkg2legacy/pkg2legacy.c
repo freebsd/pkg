@@ -35,7 +35,7 @@ main(int argc, char **argv)
 	char destpath[MAXPATHLEN];
 	char relativepath[MAXPATHLEN];
 	char linkpath[MAXPATHLEN];
-	char *newpath;
+	const char *newpath;
 	BZFILE *bz;
 	int bzError;
 	struct pkg **deps;
