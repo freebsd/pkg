@@ -59,8 +59,6 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	struct pkg *pkg = NULL;
 	struct pkg **deps;
 	struct pkg_exec **execs;
-	struct pkg_script **scripts;
-	struct sbuf *script_cmd;
 	bool extract = true;
 	char dpath[MAXPATHLEN];
 	const char *basedir;
@@ -156,28 +154,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	/*
 	 * Execute pre-install scripts
 	 */
-	script_cmd = sbuf_new_auto();
-
-	if ((scripts = pkg_scripts(pkg)) != NULL)
-		for (i= 0; scripts[i] != NULL; i++) {
-			switch (pkg_script_type(scripts[i])) {
-				case PKG_SCRIPT_INSTALL:
-					sbuf_reset(script_cmd);
-					sbuf_printf(script_cmd, "set -- %s-%s INSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-					sbuf_finish(script_cmd);
-					system(sbuf_data(script_cmd));
-					break;
-				case PKG_SCRIPT_PRE_INSTALL:
-					sbuf_reset(script_cmd);
-					sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-					sbuf_finish(script_cmd);
-					system(sbuf_data(script_cmd));
-					break;
-				default:
-					/* just ignore */
-					break;
-			}
-		}
+	pkg_script_pre_install(pkg);
 
 	/*
 	 * Extract the files on disk.
@@ -188,28 +165,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	/*
 	 * Execute post install scripts
 	 */
-	if (scripts != NULL)
-		for (i= 0; scripts[i] != NULL; i++) {
-			switch (pkg_script_type(scripts[i])) {
-				case PKG_SCRIPT_INSTALL:
-					sbuf_reset(script_cmd);
-					sbuf_printf(script_cmd, "set -- %s-%s POST-INSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-					sbuf_finish(script_cmd);
-					system(sbuf_data(script_cmd));
-					break;
-				case PKG_SCRIPT_POST_INSTALL:
-					sbuf_reset(script_cmd);
-					sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-					sbuf_finish(script_cmd);
-					system(sbuf_data(script_cmd));
-					break;
-				default:
-					/* just ignore */
-					break;
-			}
-		}
-
-	sbuf_free(script_cmd);
+	pkg_script_post_install(pkg);
 
 	/*
 	 * Execute @exec

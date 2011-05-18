@@ -58,13 +58,13 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 		sbuf_free(rdep_msg);
 	}
 
-	if ((ret = pkg_pre_deinstall(pkg)) != EPKG_OK)
+	if ((ret = pkg_script_pre_deinstall(pkg)) != EPKG_OK)
 		return (ret);
 
 	if ((ret = pkg_delete_files(pkg, force)) != EPKG_OK)
 		return (ret);
 
-	if ((ret = pkg_post_deinstall(pkg)) != EPKG_OK)
+	if ((ret = pkg_script_post_deinstall(pkg)) != EPKG_OK)
 		return (ret);
 
 	if ((ret = pkg_run_unexecs(pkg)) != EPKG_OK)
@@ -145,76 +145,6 @@ pkg_delete_files(struct pkg *pkg, int force)
 			continue;
 		}
 	}
-
-	return (ret);
-}
-
-int
-pkg_pre_deinstall(struct pkg *pkg)
-{
-	int ret = EPKG_OK;
-	int i;
-	struct sbuf *script_cmd;
-	struct pkg_script **scripts;
-
-	script_cmd = sbuf_new_auto();
-	scripts = pkg_scripts(pkg);
-	/* execute PRE_DEINSTALL */
-	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
-			case PKG_SCRIPT_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "set -- %s-%s DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_PRE_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* just ignore */
-				break;
-		}
-	}
-	sbuf_free(script_cmd);
-
-	return (ret);
-}
-
-int
-pkg_post_deinstall(struct pkg *pkg)
-{
-	int i;
-	int ret = EPKG_OK;
-	struct sbuf *script_cmd;
-	struct pkg_script **scripts;
-
-	script_cmd = sbuf_new_auto();
-	scripts = pkg_scripts(pkg);
-
-	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
-			case PKG_SCRIPT_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "set -- %s-%s POST-DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_POST_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* just ignore */
-				break;
-		}
-	}
-	sbuf_free(script_cmd);
 
 	return (ret);
 }

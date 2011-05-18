@@ -530,9 +530,7 @@ int pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb);
  * Generally speaking, external consumers should not use these.
  * @return An error code on failure, or EPKG_OK.
  */
-int pkg_pre_deinstall(struct pkg *pkg);
 int pkg_delete_files(struct pkg *pkg, int force);
-int pkg_post_deinstall(struct pkg *pkg);
 int pkg_run_unexecs(struct pkg *pkg);
 
 /**
@@ -584,4 +582,13 @@ void pkg_error_warn(const char *fmt, ...);
  */
 int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
 
+/**
+ * scripts handling
+ */
+int pkg_script_pre_install(struct pkg *);
+int pkg_script_post_install(struct pkg *);
+int pkg_script_pre_upgrade(struct pkg *);
+int pkg_script_post_upgrade(struct pkg *);
+int pkg_script_pre_deinstall(struct pkg *);
+int pkg_script_post_deinstall(struct pkg *);
 #endif
