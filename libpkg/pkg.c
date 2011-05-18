@@ -569,9 +569,11 @@ pkg_addscript(struct pkg *pkg, const char *path)
 }
 
 int
-pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type)
+pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type)
 {
-	struct pkg_exec *exec;
+	int i;
+	struct pkg_script **scripts;
+	struct pkg_script *p_i_script = NULL;
 
 	if (pkg == NULL)
 		return (ERROR_BAD_ARG("pkg"));
@@ -579,13 +581,28 @@ pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type)
 	if (cmd == NULL || cmd[0] == '\0')
 		return (ERROR_BAD_ARG("cmd"));
 
-	pkg_exec_new(&exec);
+	if ((scripts = pkg_scripts(pkg)) != NULL) {
+		for (i = 0; scripts[i] != NULL; i++) {
+			if (pkg_script_type(scripts[i]) == type) {
+				p_i_script = scripts[i];
+				break;
+			}
+		}
+	}
 
-	sbuf_set(&exec->cmd, cmd);
-	exec->type = type;
+	if (p_i_script != NULL) {
+		sbuf_cat(p_i_script->data, cmd);
+		sbuf_done(p_i_script->data);
+		return (EPKG_OK);
+	}
 
-	array_init(&pkg->exec, 5);
-	array_append(&pkg->exec, exec);
+	pkg_script_new(&p_i_script);
+	sbuf_set(&p_i_script->data, cmd);
+
+	p_i_script->type = type;
+
+	array_init(&pkg->scripts, 6);
+	array_append(&pkg->scripts, p_i_script);
 
 	return (EPKG_OK);
 }

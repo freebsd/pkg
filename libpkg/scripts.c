@@ -32,7 +32,7 @@ pkg_script_pre_install(struct pkg *pkg)
 		}
 	}
 
-	sbuf_clear(script_cmd);
+	sbuf_delete(script_cmd);
 
 	return (EPKG_OK);
 }
@@ -67,7 +67,7 @@ pkg_script_post_install(struct pkg *pkg)
 		}
 	}
 
-	sbuf_clear(script_cmd);
+	sbuf_delete(script_cmd);
 
 	return (EPKG_OK);
 }
@@ -102,7 +102,7 @@ pkg_script_pre_upgrade(struct pkg *pkg)
 		}
 	}
 
-	sbuf_clear(script_cmd);
+	sbuf_delete(script_cmd);
 
 	return (EPKG_OK);
 }
@@ -137,7 +137,7 @@ pkg_script_post_upgrade(struct pkg *pkg)
 		}
 	}
 
-	sbuf_clear(script_cmd);
+	sbuf_delete(script_cmd);
 
 	return (EPKG_OK);
 }
@@ -172,7 +172,7 @@ pkg_script_pre_deinstall(struct pkg *pkg)
 		}
 	}
 
-	sbuf_clear(script_cmd);
+	sbuf_delete(script_cmd);
 
 	return (EPKG_OK);
 }
@@ -207,7 +207,7 @@ pkg_script_post_deinstall(struct pkg *pkg)
 		}
 	}
 
-	sbuf_clear(script_cmd);
+	sbuf_delete(script_cmd);
 
 	return (EPKG_OK);
 }

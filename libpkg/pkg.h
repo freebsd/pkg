@@ -314,11 +314,6 @@ int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256);
  */
 int pkg_addconflict(struct pkg *pkg, const char *glob);
 
-/**
- * Allocate a new struct pkg_exec and add it to the execs of pkg.
- * @return An error code.
- */
-int pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type);
 
 /**
  * Allocate a new struct pkg_script and add it to the scripts of pkg.
@@ -326,6 +321,7 @@ int pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type);
  @ @return An error code.
  */
 int pkg_addscript(struct pkg *pkg, const char *path);
+int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type);
 
 /**
  * Allocate a new struct pkg_option and add it to the options of pkg.
