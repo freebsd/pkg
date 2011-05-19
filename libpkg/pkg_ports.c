@@ -25,6 +25,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	int ret = EPKG_OK;
 	off_t sz = 0;
 	int64_t flatsize = 0;
+	struct sbuf *exec_scripts = sbuf_new_auto();
+	struct sbuf *unexec_scripts = sbuf_new_auto();
 
 	buf = NULL;
 	p = NULL;
@@ -71,9 +73,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					continue;
 
 				if (plist_p[1] == 'u')
-					pkg_addexec(pkg, cmd, PKG_UNEXEC);
+					sbuf_printf(unexec_scripts, "%s\n", cmd);
 				else
-					pkg_addexec(pkg, cmd, PKG_EXEC);
+					sbuf_printf(exec_scripts, "%s\n", cmd);
 
 				free(cmd);
 
@@ -89,9 +91,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					buf++;
 
 				if (prefix[strlen(prefix) -1 ] == '/')
-					snprintf(path, MAXPATHLEN, "%s%s", prefix, buf);
+					snprintf(path, MAXPATHLEN, "%s%s/", prefix, buf);
 				else
-					snprintf(path, MAXPATHLEN, "%s/%s", prefix, buf);
+					snprintf(path, MAXPATHLEN, "%s/%s/", prefix, buf);
 
 				if (lstat(path, &st) >= 0)
 					flatsize += st.st_size;
@@ -130,6 +132,17 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	}
 
 	pkg_setflatsize(pkg, flatsize);
+	if (sbuf_len(exec_scripts) > 0) {
+		sbuf_done(exec_scripts);
+		pkg_appendscript(pkg, sbuf_data(exec_scripts), PKG_SCRIPT_POST_INSTALL);
+	}
+	if (sbuf_len(unexec_scripts) > 0) {
+		sbuf_done(unexec_scripts);
+		pkg_appendscript(pkg, sbuf_data(unexec_scripts), PKG_SCRIPT_POST_DEINSTALL);
+	}
+
+	sbuf_delete(exec_scripts);
+	sbuf_delete(unexec_scripts);
 
 	free(plist_buf);
 

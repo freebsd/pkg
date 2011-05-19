@@ -143,18 +143,6 @@ pkg_scripts(struct pkg *pkg)
 	return ((struct pkg_script **)pkg->scripts.data);
 }
 
-struct pkg_exec **
-pkg_execs(struct pkg *pkg)
-{
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
-	}
-
-	array_init(&pkg->exec, 1);
-	return (struct pkg_exec **) pkg->exec.data;
-}
-
 struct pkg **
 pkg_deps(struct pkg *pkg)
 {
@@ -181,18 +169,17 @@ pkg_options(struct pkg *pkg)
 
 int
 pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
-	struct pkg *p;
+	struct pkg *p = NULL;
 	struct pkgdb_it *it;
 	struct pkg **deps;
 	int i;
 
 	deps = pkg_deps(pkg);
-	pkg_new(&p);
 	for (i = 0; deps[i] != NULL; i++) {
 		if (deps[i]->type != PKG_INSTALLED) {
 			it = pkgdb_query(db, pkg_get(deps[i], PKG_ORIGIN), MATCH_EXACT);
 
-			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == 0) {
+			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				deps[i]->type = PKG_INSTALLED;
 			} else {
 				deps[i]->type = PKG_NOTFOUND;
@@ -309,9 +296,9 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	}
 
 	if (*pkg_p == NULL)
-		pkg_new(pkg_p);
+		pkg_new(pkg_p, PKG_FILE);
 	else
-		pkg_reset(*pkg_p);
+		pkg_reset(*pkg_p, PKG_FILE);
 
 	pkg = *pkg_p;
 	pkg->type = PKG_FILE;
@@ -384,7 +371,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 }
 
 int
-pkg_new(struct pkg **pkg)
+pkg_new(struct pkg **pkg, pkg_t type)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		return(pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
@@ -416,11 +403,13 @@ pkg_new(struct pkg **pkg)
 		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
 	}
 
+	(*pkg)->type = type;
+
 	return (EPKG_OK);
 }
 
 void
-pkg_reset(struct pkg *pkg)
+pkg_reset(struct pkg *pkg, pkg_t type)
 {
 	if (pkg == NULL)
 		return;
@@ -439,8 +428,9 @@ pkg_reset(struct pkg *pkg)
 	array_reset(&pkg->conflicts, &pkg_conflict_free_void);
 	array_reset(&pkg->files, &free);
 	array_reset(&pkg->scripts, &pkg_script_free_void);
-	array_reset(&pkg->exec, &pkg_exec_free_void);
 	array_reset(&pkg->options, &pkg_option_free_void);
+
+	pkg->type = type;
 }
 
 void
@@ -457,7 +447,6 @@ pkg_free(struct pkg *pkg)
 	array_free(&pkg->conflicts, &pkg_conflict_free_void);
 	array_free(&pkg->files, &free);
 	array_free(&pkg->scripts, &pkg_script_free_void);
-	array_free(&pkg->exec, &pkg_exec_free_void);
 	array_free(&pkg->options, &pkg_option_free_void);
 
 	free(pkg);
@@ -566,9 +555,11 @@ pkg_addscript(struct pkg *pkg, const char *path)
 }
 
 int
-pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type)
+pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type)
 {
-	struct pkg_exec *exec;
+	int i;
+	struct pkg_script **scripts;
+	struct pkg_script *p_i_script = NULL;
 
 	if (pkg == NULL)
 		return (ERROR_BAD_ARG("pkg"));
@@ -576,13 +567,28 @@ pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type)
 	if (cmd == NULL || cmd[0] == '\0')
 		return (ERROR_BAD_ARG("cmd"));
 
-	pkg_exec_new(&exec);
+	if ((scripts = pkg_scripts(pkg)) != NULL) {
+		for (i = 0; scripts[i] != NULL; i++) {
+			if (pkg_script_type(scripts[i]) == type) {
+				p_i_script = scripts[i];
+				break;
+			}
+		}
+	}
 
-	sbuf_set(&exec->cmd, cmd);
-	exec->type = type;
+	if (p_i_script != NULL) {
+		sbuf_cat(p_i_script->data, cmd);
+		sbuf_done(p_i_script->data);
+		return (EPKG_OK);
+	}
 
-	array_init(&pkg->exec, 5);
-	array_append(&pkg->exec, exec);
+	pkg_script_new(&p_i_script);
+	sbuf_set(&p_i_script->data, cmd);
+
+	p_i_script->type = type;
+
+	array_init(&pkg->scripts, 6);
+	array_append(&pkg->scripts, p_i_script);
 
 	return (EPKG_OK);
 }
@@ -629,12 +635,11 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	if (version == NULL || version[0] == '\0')
 		return (ERROR_BAD_ARG("version"));
 
-	pkg_new(&dep);
+	pkg_new(&dep, PKG_NOTFOUND);
 
 	pkg_set(dep, PKG_NAME, name);
 	pkg_set(dep, PKG_ORIGIN, origin);
 	pkg_set(dep, PKG_VERSION, version);
-	dep->type = PKG_NOTFOUND;
 
 	array_init(&pkg->deps, 5);
 	array_append(&pkg->deps, dep);

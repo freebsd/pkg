@@ -83,8 +83,10 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 {
 	int fd;
 	int len;
+	char linkdest[MAXPATHLEN];
 	char buf[BUFSIZ];
 	int retcode = EPKG_OK;
+	struct stat st;
 
 	archive_entry_clear(pack->entry);
 	archive_entry_copy_sourcepath(pack->entry, filepath);
@@ -95,6 +97,14 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 								"archive_read_disk_entry_from_file(%s): %s",
 								filepath, archive_error_string(pack->aread));
 		goto cleanup;
+	}
+
+	lstat(filepath, &st);
+	archive_entry_copy_stat(pack->entry, &st);
+
+	if (S_ISLNK(st.st_mode)) {
+		readlink(filepath, linkdest, MAXPATHLEN);
+		archive_entry_set_symlink(pack->entry, linkdest);
 	}
 
 	if (newpath != NULL)

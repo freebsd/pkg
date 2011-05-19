@@ -32,8 +32,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 		return (ret);
 	if ((ret = pkgdb_loadscripts(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loadexecs(db, pkg)) != EPKG_OK)
-		return (ret);
 	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
@@ -48,7 +46,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 		}
 		if (!force) {
 			sbuf_finish(rdep_msg);
-			ret = pkg_error_set(EPKG_REQUIRED, sbuf_get(rdep_msg));
+			ret = pkg_error_set(EPKG_REQUIRED, "%s", sbuf_get(rdep_msg));
 			sbuf_free(rdep_msg);
 			return ret;
 		}
@@ -58,36 +56,16 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 		sbuf_free(rdep_msg);
 	}
 
-	if ((ret = pkg_pre_deinstall(pkg)) != EPKG_OK)
+	if ((ret = pkg_script_pre_deinstall(pkg)) != EPKG_OK)
 		return (ret);
 
 	if ((ret = pkg_delete_files(pkg, force)) != EPKG_OK)
 		return (ret);
 
-	if ((ret = pkg_post_deinstall(pkg)) != EPKG_OK)
-		return (ret);
-
-	if ((ret = pkg_run_unexecs(pkg)) != EPKG_OK)
+	if ((ret = pkg_script_post_deinstall(pkg)) != EPKG_OK)
 		return (ret);
 
 	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
-}
-
-int
-pkg_run_unexecs(struct pkg *pkg)
-{
-	int ret = EPKG_OK;
-	int i;
-	struct pkg_exec **execs;
-
-	execs = pkg_execs(pkg);
-
-	/* run the @unexec */
-	for (i = 0; execs[i] != NULL; i++)
-		if (pkg_exec_type(execs[i]) == PKG_UNEXEC)
-			system(pkg_exec_cmd(execs[i]));
-
-	return (ret);
 }
 
 int
@@ -110,6 +88,18 @@ pkg_delete_files(struct pkg *pkg, int force)
 				warn("%s", path);
 			continue;
 		}
+		/* Directories */
+
+		if (path[strlen(path) - 1] == '/') {
+			/*
+			 * currently do not warn on this because multiple
+			 * packages can own the same directory
+			 */
+			rmdir(path);
+			continue;
+		}
+
+		/* Regular files and links */
 		/* check sha256 */
 		do_remove = 1;
 		if (pkg_file_sha256(files[i])[0] != '\0') {
@@ -127,85 +117,12 @@ pkg_delete_files(struct pkg *pkg, int force)
 				}
 			}
 		}
+
 		if (do_remove && unlink(pkg_file_path(files[i])) == -1) {
-			if (is_dir(pkg_file_path(files[i]))) {
-				rmdir(pkg_file_path(files[i]));
-			} else {
-				warn("unlink(%s)", pkg_file_path(files[i]));
-				continue;
-			}
+			warn("unlink(%s)", pkg_file_path(files[i]));
+			continue;
 		}
 	}
-
-	return (ret);
-}
-
-int
-pkg_pre_deinstall(struct pkg *pkg)
-{
-	int ret = EPKG_OK;
-	int i;
-	struct sbuf *script_cmd;
-	struct pkg_script **scripts;
-
-	script_cmd = sbuf_new_auto();
-	scripts = pkg_scripts(pkg);
-	/* execute PRE_DEINSTALL */
-	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
-			case PKG_SCRIPT_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "set -- %s-%s DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_PRE_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* just ignore */
-				break;
-		}
-	}
-	sbuf_free(script_cmd);
-
-	return (ret);
-}
-
-int
-pkg_post_deinstall(struct pkg *pkg)
-{
-	int i;
-	int ret = EPKG_OK;
-	struct sbuf *script_cmd;
-	struct pkg_script **scripts;
-
-	script_cmd = sbuf_new_auto();
-	scripts = pkg_scripts(pkg);
-
-	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
-			case PKG_SCRIPT_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "set -- %s-%s POST-DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_POST_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "set -- %s-%s\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* just ignore */
-				break;
-		}
-	}
-	sbuf_free(script_cmd);
 
 	return (ret);
 }

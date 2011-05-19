@@ -7,7 +7,6 @@
 struct pkg;
 struct pkg_file;
 struct pkg_conflict;
-struct pkg_exec;
 struct pkg_script;
 
 struct pkgdb;
@@ -118,15 +117,6 @@ typedef enum _pkg_script_t {
 } pkg_script_t;
 
 /**
- * Determine the type of a pkg_exec.
- * @warning Legacy interface, may be removed later.
- */
-typedef enum {
-	PKG_EXEC = 0,
-	PKG_UNEXEC
-} pkg_exec_t;
-
-/**
  * Error type used everywhere by libpkg.
  */
 typedef enum {
@@ -165,13 +155,13 @@ typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
  * Allocate a new pkg.
  * Allocated pkg must be deallocated by pkg_free().
  */
-int pkg_new(struct pkg **);
+int pkg_new(struct pkg **, pkg_t type);
 
 /**
  * Reset a pkg to its initial state.
  * Useful to avoid sequences of pkg_new() and pkg_free().
  */
-void pkg_reset(struct pkg *);
+void pkg_reset(struct pkg *, pkg_t type);
 
 /**
  * Deallocate a pkg
@@ -242,12 +232,6 @@ struct pkg_conflict ** pkg_conflicts(struct pkg *);
 struct pkg_script ** pkg_scripts(struct pkg *);
 
 /**
- * @return NULL-terminated array of pkg_exec.
- * @warning Legacy interface, may be removed later.
- */
-struct pkg_exec ** pkg_execs(struct pkg *);
-
-/**
  * @return NULL-terminated array of pkg_option
  */
 struct pkg_option ** pkg_options(struct pkg *);
@@ -314,11 +298,6 @@ int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256);
  */
 int pkg_addconflict(struct pkg *pkg, const char *glob);
 
-/**
- * Allocate a new struct pkg_exec and add it to the execs of pkg.
- * @return An error code.
- */
-int pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type);
 
 /**
  * Allocate a new struct pkg_script and add it to the scripts of pkg.
@@ -326,6 +305,7 @@ int pkg_addexec(struct pkg *pkg, const char *cmd, pkg_exec_t type);
  @ @return An error code.
  */
 int pkg_addscript(struct pkg *pkg, const char *path);
+int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type);
 
 /**
  * Allocate a new struct pkg_option and add it to the options of pkg.
@@ -367,12 +347,6 @@ void pkg_script_reset(struct pkg_script *);
 void pkg_script_free(struct pkg_script *);
 const char *pkg_script_data(struct pkg_script *);
 pkg_script_t pkg_script_type(struct pkg_script *);
-
-int pkg_exec_new(struct pkg_exec **);
-void pkg_exec_reset(struct pkg_exec *);
-void pkg_exec_free(struct pkg_exec *);
-const char *pkg_exec_cmd(struct pkg_exec *);
-pkg_exec_t pkg_exec_type(struct pkg_exec *);
 
 /* pkg_option */
 int pkg_option_new(struct pkg_option **);
@@ -453,7 +427,6 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_RDEPS (1<<1)
 #define PKG_LOAD_CONFLICTS (1<<2)
 #define PKG_LOAD_FILES (1<<3)
-#define PKG_LOAD_EXECS (1<<4)
 #define PKG_LOAD_SCRIPTS (1<<5)
 #define PKG_LOAD_OPTIONS (1<<6)
 #define PKG_LOAD_MTREE (1<<7)
@@ -476,7 +449,6 @@ int pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadexecs(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
@@ -530,10 +502,7 @@ int pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb);
  * Generally speaking, external consumers should not use these.
  * @return An error code on failure, or EPKG_OK.
  */
-int pkg_pre_deinstall(struct pkg *pkg);
 int pkg_delete_files(struct pkg *pkg, int force);
-int pkg_post_deinstall(struct pkg *pkg);
-int pkg_run_unexecs(struct pkg *pkg);
 
 /**
  * Get the value of a configuration key
@@ -584,4 +553,13 @@ void pkg_error_warn(const char *fmt, ...);
  */
 int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
 
+/**
+ * scripts handling
+ */
+int pkg_script_pre_install(struct pkg *);
+int pkg_script_post_install(struct pkg *);
+int pkg_script_pre_upgrade(struct pkg *);
+int pkg_script_post_upgrade(struct pkg *);
+int pkg_script_pre_deinstall(struct pkg *);
+int pkg_script_post_deinstall(struct pkg *);
 #endif

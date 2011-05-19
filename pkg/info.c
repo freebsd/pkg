@@ -166,8 +166,6 @@ exec_info(int argc, char **argv)
 	if (argc == 0)
 		match = MATCH_ALL;
 
-	pkg_new(&pkg);
-
 	if (pkgdb_open(&db, PKGDB_DEFAULT, R_OK) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		return (-1);

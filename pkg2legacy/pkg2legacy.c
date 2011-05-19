@@ -35,7 +35,7 @@ main(int argc, char **argv)
 	char destpath[MAXPATHLEN];
 	char relativepath[MAXPATHLEN];
 	char linkpath[MAXPATHLEN];
-	char *newpath;
+	const char *newpath;
 	BZFILE *bz;
 	int bzError;
 	struct pkg **deps;
@@ -157,11 +157,10 @@ main(int argc, char **argv)
 		sbuf_printf(sbuf, "@comment PKG_FORMAT_REVISION:1.1\n"
 				"@name %s-%s\n"
 				"@comment ORIGIN:%s\n"
-				"@cwd %s\n",
+				"@cwd /\n",
 				pkg_get(pkg, PKG_NAME),
 				pkg_get(pkg, PKG_VERSION),
-				pkg_get(pkg, PKG_ORIGIN),
-				pkg_get(pkg, PKG_PREFIX));
+				pkg_get(pkg, PKG_ORIGIN));
 
 		if ((deps = pkg_deps(pkg)) != NULL) {
 			for (i = 0; deps[i] != NULL; i++) {
@@ -198,13 +197,7 @@ main(int argc, char **argv)
 
 			size = archive_entry_size(ae);
 
-			strlcpy(destpath, archive_entry_pathname(ae), MAXPATHLEN);
-			if (strncmp(destpath, pkg_get(pkg, PKG_PREFIX), strlen(pkg_get(pkg, PKG_PREFIX))) == 0)
-				newpath = destpath + strlen(pkg_get(pkg, PKG_PREFIX));
-			else {
-				sbuf_cat(sbuf, "@cwd /");
-				newpath = destpath;
-			}
+			newpath = archive_entry_pathname(ae);
 
 			if (newpath[0] == '/')
 				newpath++;

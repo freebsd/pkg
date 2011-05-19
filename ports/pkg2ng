@@ -64,7 +64,7 @@ do
 
 	MAINTAINER=$( make -C /usr/ports/${ORIGIN} -V MAINTAINER )
 
-	CMD_ARGS=""
+	CMD_ARGS="-l"
 	test -f ${DB}/+MTREE_DIRS && CMD_ARGS="${CMD_ARGS} -m ${DB}/+MTREE_DIRS"
 	test -f ${DB}/+DISPLAY && CMD_ARGS="${CMD_ARGS} -M ${DB}/+DISPLAY"
 	test -n "${CONFLICTS}" && CMD_ARGS="${CMD_ARGS} -C ${CONFLICTS}"

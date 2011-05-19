@@ -125,13 +125,15 @@ pkg_create_fakeroot(const char *outdir, pkg_formats format, const char *rootdir,
 	/* Load the manifest from the metadata directory */
 	if (asprintf(&manifest_path, "%s/+MANIFEST", metadatadir) == -1)
 		goto cleanup;
-	pkg_new(&pkg);
-	pkg->type = PKG_FILE;
+
+	pkg_new(&pkg, PKG_FILE);
 	if (pkg == NULL)
 		goto cleanup;
+
 	ret = file_to_buffer(manifest_path, &manifest, &sz);
 	if (ret != EPKG_OK)
 		goto cleanup;
+
 	ret = pkg_parse_manifest(pkg, manifest);
 
 	/* Create the archive */
@@ -163,7 +165,7 @@ pkg_create_installed(const char *outdir, pkg_formats format, const char *rootdir
 {
 	struct packing *pkg_archive;
 	int required_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES |
-						 PKG_LOAD_EXECS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
+						 PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 						 PKG_LOAD_MTREE;
 
 	if (pkg->type != PKG_INSTALLED)

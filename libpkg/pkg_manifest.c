@@ -27,8 +27,6 @@ static int m_parse_option(struct pkg *pkg, char *buf);
 static int m_parse_dep(struct pkg *pkg, char *buf);
 static int m_parse_conflict(struct pkg *pkg, char *buf);
 static int m_parse_maintainer(struct pkg *pkg, char *buf);
-static int m_parse_exec(struct pkg *pkg, char *buf);
-static int m_parse_unexec(struct pkg *pkg, char *buf);
 static int m_parse_prefix(struct pkg *pkg, char *buf);
 static int m_parse_file(struct pkg *pkg, char *buf);
 static int m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr);
@@ -51,8 +49,6 @@ static struct manifest_key {
 	{ "@dep", m_parse_dep},
 	{ "@conflict", m_parse_conflict},
 	{ "@maintainer", m_parse_maintainer},
-	{ "@exec", m_parse_exec},
-	{ "@unexec", m_parse_unexec},
 	{ "@prefix", m_parse_prefix},
 	{ "@file", m_parse_file},
 };
@@ -140,34 +136,6 @@ m_parse_flatsize(struct pkg *pkg, char *buf)
 				strerror(errno)));
 
 	pkg_setflatsize(pkg, size);
-	return (EPKG_OK);
-}
-
-static int
-m_parse_exec(struct pkg *pkg, char *buf)
-{
-	while (isspace(*buf))
-		buf++;
-
-	if (*buf == '\0')
-		return (EPKG_FATAL);
-
-	pkg_addexec(pkg, buf, PKG_EXEC);
-
-	return (EPKG_OK);
-}
-
-static int
-m_parse_unexec(struct pkg *pkg, char *buf)
-{
-	while (isspace(*buf))
-		buf++;
-
-	if (*buf == '\0')
-		return (EPKG_FATAL);
-
-	pkg_addexec(pkg, buf, PKG_UNEXEC);
-
 	return (EPKG_OK);
 }
 
@@ -316,7 +284,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct sbuf *manifest;
 	struct pkg **deps;
 	struct pkg_conflict **conflicts;
-	struct pkg_exec **execs;
 	struct pkg_option **options;
 	struct pkg_file **files;
 	int i;
@@ -359,14 +326,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	if ((conflicts = pkg_conflicts(pkg)) != NULL) {
 		for (i = 0; conflicts[i] != NULL; i++) {
 			sbuf_printf(manifest, "@conflict %s\n", pkg_conflict_glob(conflicts[i]));
-		}
-	}
-
-	if ((execs = pkg_execs(pkg)) != NULL) {
-		for (i = 0; execs[i] != NULL; i++) {
-			sbuf_printf(manifest, "@%s %s\n",
-					pkg_exec_type(execs[i]) == PKG_EXEC ? "exec" : "unexec",
-					pkg_exec_cmd(execs[i]));
 		}
 	}
 
