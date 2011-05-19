@@ -120,7 +120,6 @@ pkg_create_fakeroot(const char *outdir, pkg_formats format, const char *rootdir,
 	struct packing *pkg_archive = NULL;
 	char *manifest = NULL, *manifest_path = NULL;
 	int ret = ENOMEM;
-	off_t sz;
 
 	/* Load the manifest from the metadata directory */
 	if (asprintf(&manifest_path, "%s/+MANIFEST", metadatadir) == -1)
@@ -130,11 +129,7 @@ pkg_create_fakeroot(const char *outdir, pkg_formats format, const char *rootdir,
 	if (pkg == NULL)
 		goto cleanup;
 
-	ret = file_to_buffer(manifest_path, &manifest, &sz);
-	if (ret != EPKG_OK)
-		goto cleanup;
-
-	ret = pkg_parse_manifest(pkg, manifest);
+	ret = pkg_load_manifest_file(pkg, manifest_path);
 
 	/* Create the archive */
 	pkg_archive = pkg_create_archive(outdir, pkg, format, 0);
