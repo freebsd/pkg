@@ -16,6 +16,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	char *plist_p, *buf, *p, *plist_buf;
 	int nbel, i;
 	size_t next;
+	size_t len;
 	char sha256[65];
 	char path[MAXPATHLEN];
 	char *last_plist_file = NULL;
@@ -24,6 +25,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	struct stat st;
 	int ret = EPKG_OK;
 	off_t sz = 0;
+	const char *slash;
 	int64_t flatsize = 0;
 	struct sbuf *exec_scripts = sbuf_new_auto();
 	struct sbuf *unexec_scripts = sbuf_new_auto();
@@ -41,6 +43,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		return (ret);
 
 	prefix = pkg_get(pkg, PKG_PREFIX);
+	slash = prefix[strlen(prefix) - 1] == '/' ? "" : "/";
 
 	nbel = split_chr(plist_buf, '\n');
 
@@ -58,9 +61,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					prefix = pkg_get(pkg, PKG_PREFIX);
 				else
 					prefix = buf;
-			} else if (STARTS_WITH(plist_p, "@comment ")){
+				slash = prefix[strlen(prefix) - 1] == '/' ? "" : "/";
+			} else if (STARTS_WITH(plist_p, "@comment ")) {
 				/* DO NOTHING: ignore the comments */
-			} else if (STARTS_WITH(plist_p, "@unexec ") || STARTS_WITH(plist_p, "@exec ")) {
+			} else if (STARTS_WITH(plist_p, "@unexec ") ||
+					   STARTS_WITH(plist_p, "@exec ")) {
 				buf = plist_p;
 
 				while (!isspace(buf[0]))
@@ -95,23 +100,21 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				while (isspace(buf[0]))
 					buf++;
 
-				while (isspace(buf[strlen(buf) -1]))
-					buf[strlen(buf) - 1] = '\0';
+				len = strlen(buf);
 
-				if (prefix[strlen(prefix) -1 ] == '/')
-					snprintf(path, MAXPATHLEN, "%s%s/", prefix, buf);
-				else
-					snprintf(path, MAXPATHLEN, "%s/%s/", prefix, buf);
+				while (isspace(buf[len - 1])) {
+					buf[len - 1] = '\0';
+					len--;
+				}
 
-				if (lstat(path, &st) >= 0)
-					flatsize += st.st_size;
+				snprintf(path, MAXPATHLEN, "%s%s%s/", prefix, slash, buf);
 
 				ret += pkg_addfile(pkg, path, NULL);
 
 			} else {
 				warnx("%s is deprecated, ignoring", plist_p);
 			}
-		} else if (strlen(plist_p) > 0){
+		} else if ((len = strlen(plist_p)) > 0){
 			buf = plist_p;
 			last_plist_file = buf;
 			sha256[0] = '\0';
@@ -120,25 +123,26 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			while (isspace(buf[0]))
 				buf++;
 
-			while (isspace(buf[strlen(buf) -1]))
-				buf[strlen(buf) - 1] = '\0';
-
-			if (prefix[strlen(prefix) - 1] == '/')
-				snprintf(path, MAXPATHLEN, "%s%s", prefix, buf);
-			else
-				snprintf(path, MAXPATHLEN, "%s/%s", prefix, buf);
-
-			if (lstat(path, &st) >= 0) {
-				if (!S_ISLNK(st.st_mode) && !S_ISDIR(st.st_mode) && sha256_file(path, sha256) == 0)
-					p = sha256;
-
-				flatsize += st.st_size;
-			} else {
-				warn("lstat(%s)", path);
-				p = NULL;
+			while (isspace(buf[len -  1])) {
+				buf[len - 1] = '\0';
+				len--;
 			}
 
-			ret += pkg_addfile(pkg, path, p);
+			snprintf(path, MAXPATHLEN, "%s%s%s", prefix, slash, buf);
+
+			if (lstat(path, &st) == 0) {
+				if (S_ISLNK(st.st_mode)) {
+					p = NULL;
+				} else {
+					flatsize += st.st_size;
+					if (sha256_file(path, sha256) != 0)
+						pkg_error_warn("can not compute sha256");
+					p = sha256;
+				}
+				ret += pkg_addfile(pkg, path, p);
+			} else {
+				warn("lstat(%s)", path);
+			}
 		}
 
 		if (i != nbel) {
