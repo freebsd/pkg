@@ -529,10 +529,6 @@ int pkg_fetch_buffer(const char *url, char **buf, void *data, fetch_cb cb);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, char *);
-int ports_parse_depends(struct pkg *, char *);
-int ports_parse_conflicts(struct pkg *, char *);
-int ports_parse_scripts(struct pkg *, char *);
-int ports_parse_options(struct pkg *, char *);
 
 /**
  * Return the last error number
