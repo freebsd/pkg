@@ -115,8 +115,11 @@ exec_info(int argc, char **argv)
 	int sign = 0;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "egxXEdrlsqopO")) != -1) {
+	while ((ch = getopt(argc, argv, "aegxXEdrlsqopO")) != -1) {
 		switch (ch) {
+			case 'a':
+				match = MATCH_ALL;
+				break;
 			case 'O':
 				opt |= INFO_ORIGIN_SEARCH;  /* this is only for ports compat */
 				break;
