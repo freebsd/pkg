@@ -156,7 +156,7 @@ pkg_script_pre_deinstall(struct pkg *pkg)
 		switch (pkg_script_type(scripts[i])) {
 			case PKG_SCRIPT_DEINSTALL:
 				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "set -- %s-%s PRE-DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				sbuf_printf(script_cmd, "set -- %s-%s DEINSTALL\n%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
