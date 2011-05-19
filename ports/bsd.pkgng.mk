@@ -2,6 +2,10 @@ PKG_CMD=		/usr/sbin/pkg register
 PKG_DELETE=		/usr/sbin/pkg delete
 PKG_INFO=		/usr/sbin/pkg info
 PKG_VERSION=		/usr/sbin/pkg version
+PKG_CREATE=		/usr/sbin/pkg create
+PKG_ADD=		/usr/sbin/pkg add
+
+PKG_SUFX=		.txz
 
 METADIR=		${WRKDIR}/.metadir
 MANIFESTF=		${METADIR}/+MANIFEST
@@ -192,16 +196,16 @@ check-install-conflicts:
 
 .if !target(do-package)
 do-package: ${TMPPLIST}
-	@if [ -d ${PACKAGES} ] then; \
+	@if [ -d ${PACKAGES} ]; then \
 		if [ ! -d ${PKGREPOSITORY} ]; then \
 			if ! ${MKDIR} ${PKGREPOSITORY}; then \
 				${ECHO_MSG} "=> Can't create directory ${PKGREPOSITORY}."; \
 				exit 1; \
 			fi; \
 		fi; \
-	fi; \
-	@__softMAKEFLAGS="${__softMAKEFLAGS:S/'/'\''/g}'; \
-	if ${PKG} create -o ${PKGFILE} ${PORTNAME}; then \
+	fi;
+	@__softMAKEFLAGS='${__softMAKEFLAGS:S/'/'\''/g}'; \
+	if ${PKG_CREATE} -o ${PKGREPOSITORY} ${PORTNAME}; then \
 		if [ -d ${PACKAGES} ]; then \
 			cd ${.CURDIR} && eval ${MAKE} $${__softMAKEFLAGS} package-links; \
 		fi; \
