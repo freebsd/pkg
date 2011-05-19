@@ -526,23 +526,32 @@ pkg_addscript(struct pkg *pkg, const char *path)
 	filename[0] = '\0';
 	filename++;
 
-	if (strcmp(filename, "pkg-pre-install") == 0) {
+	if (strcmp(filename, "pkg-pre-install") == 0 || 
+			strcmp(filename, "+PRE_INSTALL") == 0) {
 		script->type = PKG_SCRIPT_PRE_INSTALL;
-	} else if (strcmp(filename, "pkg-post-install") == 0) {
+	} else if (strcmp(filename, "pkg-post-install") == 0 ||
+			strcmp(filename, "+POST_INSTALL") == 0) {
 		script->type = PKG_SCRIPT_POST_INSTALL;
-	} else if (strcmp(filename, "pkg-install") == 0) {
+	} else if (strcmp(filename, "pkg-install") == 0 ||
+			strcmp(filename, "+INSTALL") == 0) {
 		script->type = PKG_SCRIPT_INSTALL;
-	} else if (strcmp(filename, "pkg-pre-deinstall") == 0) {
+	} else if (strcmp(filename, "pkg-pre-deinstall") == 0 ||
+			strcmp(filename, "+PRE_DEINSTALL") == 0) {
 		script->type = PKG_SCRIPT_PRE_DEINSTALL;
-	} else if (strcmp(filename, "pkg-post-deinstall") == 0) {
+	} else if (strcmp(filename, "pkg-post-deinstall") == 0 ||
+			strcmp(filename, "+POST_DEINSTALL") == 0) {
 		script->type = PKG_SCRIPT_POST_DEINSTALL;
-	} else if (strcmp(filename, "pkg-deinstall") == 0) {
+	} else if (strcmp(filename, "pkg-deinstall") == 0 ||
+			strcmp(filename, "+DEINSTALL") == 0) {
 		script->type = PKG_SCRIPT_DEINSTALL;
-	} else if (strcmp(filename, "pkg-pre-upgrade") == 0) {
+	} else if (strcmp(filename, "pkg-pre-upgrade") == 0 ||
+			strcmp(filename, "+PRE_UPGRADE") == 0) {
 		script->type = PKG_SCRIPT_PRE_UPGRADE;
-	} else if (strcmp(filename, "pkg-post-upgrade") == 0) {
+	} else if (strcmp(filename, "pkg-post-upgrade") == 0 ||
+			strcmp(filename, "+POST_UPGRADE") == 0) {
 		script->type = PKG_SCRIPT_POST_UPGRADE;
-	} else if (strcmp(filename, "pkg-upgrade") == 0) {
+	} else if (strcmp(filename, "pkg-upgrade") == 0 ||
+			strcmp(filename, "+UPGRADE") == 0) {
 		script->type = PKG_SCRIPT_UPGRADE;
 	} else {
 		return (pkg_error_set(EPKG_FATAL, "unknown script"));

@@ -319,6 +319,7 @@ int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
  * @return An error code.
  */
 int pkg_parse_manifest(struct pkg *pkg, char *buf);
+int pkg_load_manifest_file(struct pkg *pkg, const char *fpath);
 
 /**
  * Emit a manifest according to the attributes of pkg.

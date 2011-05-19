@@ -231,6 +231,23 @@ m_parse_file(struct pkg *pkg, char *buf)
 }
 
 int
+pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
+{
+	char *manifest = NULL;
+	off_t sz;
+	int ret = EPKG_OK;
+
+	if ((ret = file_to_buffer(fpath, &manifest, &sz)) != EPKG_OK)
+		return (ret);
+
+	ret = pkg_parse_manifest(pkg, manifest);
+	if (ret != EPKG_OK && manifest != NULL)
+			free(manifest);
+
+	return (ret);
+}
+
+int
 pkg_parse_manifest(struct pkg *pkg, char *buf)
 {
 	int nbel;
