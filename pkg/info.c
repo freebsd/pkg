@@ -258,7 +258,7 @@ exec_info(int argc, char **argv)
 						}
 						break;
 					case 1:
-						if (sign != GT && sign != LT) {
+						if (sign != GT && sign != GE) {
 							gotone = false;
 							continue;
 						}
