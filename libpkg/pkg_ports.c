@@ -72,10 +72,15 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				if (format_exec_cmd(&cmd, buf, prefix, last_plist_file) < 0)
 					continue;
 
-				if (plist_p[1] == 'u')
+				if (plist_p[1] == 'u') {
+					if (sbuf_len(unexec_scripts) == 0)
+						sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
 					sbuf_printf(unexec_scripts, "%s\n", cmd);
-				else
+				} else {
+					if (sbuf_len(exec_scripts) == 0)
+						sbuf_cat(exec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
 					sbuf_printf(exec_scripts, "%s\n", cmd);
+				}
 
 				free(cmd);
 
@@ -106,6 +111,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		} else if (strlen(plist_p) > 0){
 			buf = plist_p;
 			last_plist_file = buf;
+			sha256[0] = '\0';
 
 			if (prefix[strlen(prefix) - 1] == '/')
 				snprintf(path, MAXPATHLEN, "%s%s", prefix, buf);
