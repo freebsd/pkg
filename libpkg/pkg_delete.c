@@ -76,20 +76,12 @@ pkg_delete_files(struct pkg *pkg, int force)
 	struct pkg_file **files;
 	char sha256[65];
 	const char *path;
-	struct stat st;
 
 	files = pkg_files(pkg);
 	for (i = 0; files[i] != NULL; i++) {
 		path = pkg_file_path(files[i]);
-		/* check to make sure the file exists */
-		if (stat(path, &st) == -1) {
-			/* don't print ENOENT errors on force */
-			if (!force && errno != ENOENT)
-				warn("%s", path);
-			continue;
-		}
-		/* Directories */
 
+		/* Directories */
 		if (path[strlen(path) - 1] == '/') {
 			/*
 			 * currently do not warn on this because multiple
@@ -105,7 +97,7 @@ pkg_delete_files(struct pkg *pkg, int force)
 		if (pkg_file_sha256(files[i])[0] != '\0') {
 			if (sha256_file(path, sha256) == -1) {
 				warnx("sha256 calculation failed for '%s'",
-				    pkg_file_path(files[i]));
+					  path);
 			} else {
 				if (strcmp(sha256, pkg_file_sha256(files[i])) != 0) {
 					if (force)
@@ -118,8 +110,8 @@ pkg_delete_files(struct pkg *pkg, int force)
 			}
 		}
 
-		if (do_remove && unlink(pkg_file_path(files[i])) == -1) {
-			warn("unlink(%s)", pkg_file_path(files[i]));
+		if (do_remove && unlink(path) == -1) {
+			warn("unlink(%s)", path);
 			continue;
 		}
 	}
