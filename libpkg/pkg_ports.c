@@ -95,6 +95,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				while (isspace(buf[0]))
 					buf++;
 
+				while (isspace(buf[strlen(buf) -1]))
+					buf[strlen(buf) - 1] = '\0';
+
 				if (prefix[strlen(prefix) -1 ] == '/')
 					snprintf(path, MAXPATHLEN, "%s%s/", prefix, buf);
 				else
@@ -112,6 +115,13 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			buf = plist_p;
 			last_plist_file = buf;
 			sha256[0] = '\0';
+
+			/* remove spaces at the begining and at the end */
+			while (isspace(buf[0]))
+				buf++;
+
+			while (isspace(buf[strlen(buf) -1]))
+				buf[strlen(buf) - 1] = '\0';
 
 			if (prefix[strlen(prefix) - 1] == '/')
 				snprintf(path, MAXPATHLEN, "%s%s", prefix, buf);
