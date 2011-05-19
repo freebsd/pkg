@@ -169,18 +169,17 @@ pkg_options(struct pkg *pkg)
 
 int
 pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
-	struct pkg *p;
+	struct pkg *p = NULL;
 	struct pkgdb_it *it;
 	struct pkg **deps;
 	int i;
 
 	deps = pkg_deps(pkg);
-	pkg_new(&p);
 	for (i = 0; deps[i] != NULL; i++) {
 		if (deps[i]->type != PKG_INSTALLED) {
 			it = pkgdb_query(db, pkg_get(deps[i], PKG_ORIGIN), MATCH_EXACT);
 
-			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == 0) {
+			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				deps[i]->type = PKG_INSTALLED;
 			} else {
 				deps[i]->type = PKG_NOTFOUND;
@@ -297,9 +296,9 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	}
 
 	if (*pkg_p == NULL)
-		pkg_new(pkg_p);
+		pkg_new(pkg_p, PKG_FILE);
 	else
-		pkg_reset(*pkg_p);
+		pkg_reset(*pkg_p, PKG_FILE);
 
 	pkg = *pkg_p;
 	pkg->type = PKG_FILE;
@@ -372,7 +371,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 }
 
 int
-pkg_new(struct pkg **pkg)
+pkg_new(struct pkg **pkg, pkg_t type)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
 		return(pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
@@ -403,15 +402,14 @@ pkg_new(struct pkg **pkg)
 		(*pkg)->fields[fields[i].id].type = fields[i].type;
 		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
 	}
-	/* by default set to PKG_INSTALLED */
 
-	(*pkg)->type = PKG_INSTALLED;
+	(*pkg)->type = type;
 
 	return (EPKG_OK);
 }
 
 void
-pkg_reset(struct pkg *pkg)
+pkg_reset(struct pkg *pkg, pkg_t type)
 {
 	if (pkg == NULL)
 		return;
@@ -431,6 +429,8 @@ pkg_reset(struct pkg *pkg)
 	array_reset(&pkg->files, &free);
 	array_reset(&pkg->scripts, &pkg_script_free_void);
 	array_reset(&pkg->options, &pkg_option_free_void);
+
+	pkg->type = type;
 }
 
 void
@@ -644,12 +644,11 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	if (version == NULL || version[0] == '\0')
 		return (ERROR_BAD_ARG("version"));
 
-	pkg_new(&dep);
+	pkg_new(&dep, PKG_NOTFOUND);
 
 	pkg_set(dep, PKG_NAME, name);
 	pkg_set(dep, PKG_ORIGIN, origin);
 	pkg_set(dep, PKG_VERSION, version);
-	dep->type = PKG_NOTFOUND;
 
 	array_init(&pkg->deps, 5);
 	array_append(&pkg->deps, dep);

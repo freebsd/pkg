@@ -23,7 +23,7 @@ exec_which(int argc, char **argv)
 {
 	struct pkgdb *db;
 	struct pkgdb_it *it;
-	struct pkg *pkg;
+	struct pkg *pkg = NULL;
 	char pathabs[MAXPATHLEN];
 	char pathabsdir[MAXPATHLEN];
 	int retcode = 1;
@@ -48,7 +48,6 @@ exec_which(int argc, char **argv)
 		return (-1);
 	}
 
-	pkg_new(&pkg);
 	if (( ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		retcode = 0;
 		printf("%s was installed by package %s-%s\n", pathabs, pkg_get(pkg, PKG_NAME),

@@ -34,7 +34,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 		pkgdb_close(db);
 		return (-1);
 	}
-	pkg_new(&pkg);
+
 	if (match != MATCH_ALL) {
 		for (i = 0;i < argc; i++) {
 			if ((it = pkgdb_query(db, argv[i], match)) == NULL) {

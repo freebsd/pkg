@@ -14,7 +14,7 @@ static int
 analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 {
 	struct pkg **deps;
-	struct pkg *p;
+	struct pkg *p = NULL;
 	struct pkgdb_it *it = NULL;
 	Elf *e;
 	Elf_Scn *scn = NULL;
@@ -50,7 +50,6 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	data = elf_getdata(scn, NULL);
 	numdyn = shdr.sh_size / shdr.sh_entsize;
 
-	pkg_new(&p);
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL)
 			return (EPKG_FATAL);
@@ -66,7 +65,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 			if ((it = pkgdb_query_which(db, map->l_name)) == NULL)
 				return (EPKG_FATAL);
 
-			if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == 0) {
+			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				found = false;
 				if (( deps = pkg_deps(pkg) ) != NULL) {
 					for (i = 0; deps[i]; i++) {
@@ -81,7 +80,6 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 			}
 			dlclose(handle);
 		}
-		pkg_reset(p);
 		pkgdb_it_free(it);
 	}
 	pkg_free(p);

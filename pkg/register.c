@@ -55,7 +55,7 @@ exec_register(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	pkg_new(&pkg);
+	pkg_new(&pkg, PKG_INSTALLED);
 	while ((ch = getopt(argc, argv, "a:f:m:i:l")) != -1) {
 		switch (ch) {
 			case 'f':
