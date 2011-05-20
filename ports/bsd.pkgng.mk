@@ -97,7 +97,7 @@ fake-pkg:
 .if !target(check-build-conflicts)
 check-build-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_BUILD) ) && !defined(DISABLE_CONFLICTS) && !defined(DEFER_CONFLICTS_CHECK)
-	@found=`${PKG_INFO} -q -go ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/}`; \
+	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/}`; \
 	conflicts_with=; \
 	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${found}"`; \
@@ -123,7 +123,7 @@ check-build-conflicts:
 .if !target(identify-install-conflicts)
 identify-install-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_INSTALL) ) && !defined(DISABLE_CONFLICTS)
-	@found=`${PKG_INFO} -q -go ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
+	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
 	conflicts_with=; \
 	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${found}"`; \
@@ -150,7 +150,7 @@ identify-install-conflicts:
 check-install-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_INSTALL) || ( defined(CONFLICTS_BUILD) && defined(DEFER_CONFLICTS_CHECK) ) ) && !defined(DISABLE_CONFLICTS) 
 .if defined(DEFER_CONFLICTS_CHECK)
-	@found=`${PKG_INFO} -q -go ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
+	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
 	conflicts_with=; \
 	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${found}"`; \
@@ -170,7 +170,7 @@ check-install-conflicts:
 		exit 1; \
 	fi
 .else
-	@found=`${PKG_INFO} -q -go ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
+	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
 	conflicts_with=; \
 	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${entry}"`; \
