@@ -23,17 +23,19 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	struct pkg_file **files;
 	struct pkg_script **scripts;
 	char *m;
+	const char *mtree;
 	int i;
 	const char *scriptname = NULL;
 
 	pkg_emit_manifest(pkg, &m);
-
 	packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
-
 	free(m);
 
 	packing_append_buffer(pkg_archive, pkg_get(pkg, PKG_DESC), "+DESC", strlen(pkg_get(pkg, PKG_DESC)));
-	packing_append_buffer(pkg_archive, pkg_get(pkg, PKG_MTREE), "+MTREE_DIRS", strlen(pkg_get(pkg, PKG_MTREE)));
+
+	mtree = pkg_get(pkg, PKG_MTREE);
+	if (mtree != NULL)
+		packing_append_buffer(pkg_archive, mtree, "+MTREE_DIRS", strlen(mtree));
 
 	if ((scripts = pkg_scripts(pkg)) != NULL) {
 		for (i = 0; scripts[i] != NULL; i++) {

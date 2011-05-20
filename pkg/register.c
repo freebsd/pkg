@@ -15,6 +15,29 @@
 
 #include "register.h"
 
+static const char *scripts[] = {
+	"+INSTALL",
+	"+PRE_INSTALL",
+	"+POST_INSTALL",
+	"+POST_INSTALL",
+	"+DEINSTALL",
+	"+PRE_DEINSTALL",
+	"+POST_DEINSTALL",
+	"+UPGRADE",
+	"+PRE_UPGRADE",
+	"+POST_UPGRADE",
+	"pkg-install",
+	"pkg-pre-install",
+	"pkg-post-install",
+	"pkg-deinstall",
+	"pkg-pre-deinstall",
+	"pkg-post-deinstall",
+	"pkg-upgrade",
+	"pkg-pre-upgrade",
+	"pkg-post-upgrade",
+	NULL
+};
+
 void
 usage_register(void)
 {
@@ -47,6 +70,7 @@ exec_register(int argc, char **argv)
 	bool heuristic = false;
 	bool legacy = false;
 
+	int i;
 	int retcode = 0;
 	int ret = 0;
 
@@ -117,59 +141,14 @@ exec_register(int argc, char **argv)
 		pkg_error_warn("");
 
 	snprintf(fpath, MAXPATHLEN, "%s/+MTREE_DIRS", mdir);
-	if (pkg_set_from_file(pkg, PKG_MTREE, fpath) != EPKG_OK)
+	if (access(fpath, F_OK) == 0 && pkg_set_from_file(pkg, PKG_MTREE, fpath) != EPKG_OK)
 		pkg_error_warn("");
 
-	snprintf(fpath, MAXPATHLEN, "%s/+INSTALL", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/+PRE_INSTALL", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/+POST_INSTALL", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/+DEINSTALL", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/+PRE_DEINSTALL", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/+POST_DEINSTALL", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/+UPGRADE", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/+PRE_UPGRADE", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/+POST_UPGRADE", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/pkg-install", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/pkg-pre-install", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/pkg-post-install", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/pkg-pre-deinstall", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/pkg-post-deinstall", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/pkg-upgrade", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/pkg-pre-deupgrade", mdir);
-	pkg_addscript(pkg, fpath);
-
-	snprintf(fpath, MAXPATHLEN, "%s/pkg-post-deupgrade", mdir);
-	pkg_addscript(pkg, fpath);
+	for (i = 0; scripts[i] != NULL; i++) {
+		snprintf(fpath, MAXPATHLEN, "%s/%s", mdir, scripts[i]);
+		if (access(fpath, F_OK) == 0 && pkg_addscript(pkg, fpath) != EPKG_OK)
+			pkg_error_warn("");
+	}
 
 	/* if www is not given then try to determine it from description */
 	if (www == NULL) {
