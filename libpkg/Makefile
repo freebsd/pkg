@@ -43,7 +43,7 @@ LDADD+=		-L${.CURDIR}/../external/sqlite \
 		-lutil \
 		-lpthread
 
-DEBUG_FLAGS+=  -g
+DEBUG_FLAGS+=  -g -O0 -DDEBUG
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg
 .endif

@@ -52,6 +52,6 @@ do
 		}
 	fi
 
-	rm ${PLIST}
+	rm -rf ${MDIR}
 done
 

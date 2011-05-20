@@ -109,13 +109,16 @@ exec_register(int argc, char **argv)
 	}
 
 	snprintf(fpath, MAXPATHLEN, "%s/+DESC", mdir);
-	pkg_set_from_file(pkg, PKG_DESC, fpath);
+	if (pkg_set_from_file(pkg, PKG_DESC, fpath) != EPKG_OK)
+		pkg_error_warn("");
 
 	snprintf(fpath, MAXPATHLEN, "%s/+DISPLAY", mdir);
-	pkg_set_from_file(pkg, PKG_MESSAGE, fpath);
+	if (access(fpath, F_OK) == 0 && pkg_set_from_file(pkg, PKG_MESSAGE, fpath) != EPKG_OK)
+		pkg_error_warn("");
 
-	snprintf(fpath, MAXPATHLEN, "%s/+MTREE_DIR", mdir);
-	pkg_set_from_file(pkg, PKG_MTREE, mdir);
+	snprintf(fpath, MAXPATHLEN, "%s/+MTREE_DIRS", mdir);
+	if (pkg_set_from_file(pkg, PKG_MTREE, fpath) != EPKG_OK)
+		pkg_error_warn("");
 
 	snprintf(fpath, MAXPATHLEN, "%s/+INSTALL", mdir);
 	pkg_addscript(pkg, fpath);

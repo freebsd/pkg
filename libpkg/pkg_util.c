@@ -143,7 +143,7 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		close(fd);
-		return (pkg_error_set(EPKG_FATAL, "read(): %s", strerror(errno)));
+		return (pkg_error_set(EPKG_FATAL, "read(%s): %s", path, strerror(errno)));
 	}
 
 	close(fd);
