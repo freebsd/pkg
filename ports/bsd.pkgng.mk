@@ -35,7 +35,7 @@ fake-pkg:
 .if !defined(NO_PKG_REGISTER)
 	@${ECHO_MSG} "===>   Registering installation for ${PKGNAME}"
 	@${MKDIR} ${METADIR}
-	@${ECHO_CMD} "@pkg_format_version 0.9" >> ${MANIFESTF}
+	@${ECHO_CMD} "@pkg_format_version 0.9" > ${MANIFESTF}
 	@${ECHO_CMD} "@name ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" >> ${MANIFESTF}
 	@${ECHO_CMD} "@version ${PKGVERSION}" >> ${MANIFESTF}
 	@${ECHO_CMD} "@origin ${PKGORIGIN}" >> ${MANIFESTF}
