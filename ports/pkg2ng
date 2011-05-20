@@ -38,7 +38,7 @@ do
 		echo "@dep ${dep%-*} ${deporigin} ${dep##*-}" >> ${MANIFEST}
 	done
 	egrep -v "^@[pkgdep|ignore|conflicts]" ${DB}/+CONTENTS >> ${PLIST}
-	awk '/^@conflicts/ { print "@conflict $2" }' ${DB}/+CONTENTS >> ${MANIFEST}
+	awk '/^@conflicts/ { print "@conflict "$2 }' ${DB}/+CONTENTS >> ${MANIFEST}
 
 	OPTIONS=""
 
