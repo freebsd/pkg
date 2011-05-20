@@ -12,8 +12,6 @@ pkg_script_pre_install(struct pkg *pkg)
 	if ((scripts = pkg_scripts(pkg)) == NULL)
 		return (EPKG_OK);
 
-	setenv("PKG_PREFIX", pkg_get(pkg,PKG_PREFIX));
-
 	for (i = 0; scripts[i] != NULL; i++) {
 		switch (pkg_script_type(scripts[i])) {
 			case PKG_SCRIPT_INSTALL:
@@ -52,8 +50,6 @@ pkg_script_post_install(struct pkg *pkg)
 
 	if ((scripts = pkg_scripts(pkg)) == NULL)
 		return (EPKG_OK);
-
-	setenv("PKG_PREFIX", pkg_get(pkg,PKG_PREFIX));
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		switch (pkg_script_type(scripts[i])) {
@@ -133,8 +129,6 @@ pkg_script_post_upgrade(struct pkg *pkg)
 	if ((scripts = pkg_scripts(pkg)) == NULL)
 		return (EPKG_OK);
 
-	setenv("PKG_PREFIX", pkg_get(pkg,PKG_PREFIX));
-
 	for (i = 0; scripts[i] != NULL; i++) {
 		switch (pkg_script_type(scripts[i])) {
 			case PKG_SCRIPT_UPGRADE:
@@ -174,8 +168,6 @@ pkg_script_pre_deinstall(struct pkg *pkg)
 	if ((scripts = pkg_scripts(pkg)) == NULL)
 		return (EPKG_OK);
 
-	setenv("PKG_PREFIX", pkg_get(pkg,PKG_PREFIX));
-
 	for (i = 0; scripts[i] != NULL; i++) {
 		switch (pkg_script_type(scripts[i])) {
 			case PKG_SCRIPT_DEINSTALL:
@@ -214,8 +206,6 @@ pkg_script_post_deinstall(struct pkg *pkg)
 
 	if ((scripts = pkg_scripts(pkg)) == NULL)
 		return (EPKG_OK);
-
-	setenv("PKG_PREFIX", pkg_get(pkg,PKG_PREFIX));
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		switch (pkg_script_type(scripts[i])) {
