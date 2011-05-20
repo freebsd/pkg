@@ -342,7 +342,7 @@ void pkg_conflict_reset(struct pkg_conflict *);
 void pkg_conflict_free(struct pkg_conflict *);
 const char * pkg_conflict_glob(struct pkg_conflict *);
 
-/* pkg_exec */
+/* pkg_script */
 int pkg_script_new(struct pkg_script **);
 void pkg_script_reset(struct pkg_script *);
 void pkg_script_free(struct pkg_script *);

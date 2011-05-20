@@ -66,7 +66,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 					scriptname = "+UPGRADE";
 					break;
 			}
-			packing_append_buffer(pkg_archive, pkg_script_data(scripts[i]), scriptname, strlen(pkg_script_data(scripts[i])));
+			packing_append_buffer(pkg_archive, pkg_script_data(scripts[i]),
+								  scriptname, strlen(pkg_script_data(scripts[i])));
 		}
 	}
 
