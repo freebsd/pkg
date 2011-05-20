@@ -1006,7 +1006,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_conflict, 1, pkg_conflict_glob(conflicts[i]), -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_conflict, 2, package_id);
 
-		if (sqlite3_step(stmt_conflict) != SQLITE_DONE) {
+		if ((ret = sqlite3_step(stmt_conflict)) != SQLITE_DONE) {
 			if ( ret == SQLITE_CONSTRAINT)
 				retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
 						"conflicts with %s", pkg_conflict_glob(conflicts[i]));
