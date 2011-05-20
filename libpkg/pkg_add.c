@@ -171,7 +171,8 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 
 	cleanup:
 
-	pkgdb_register_finale(db, retcode);
+	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)
+		pkgdb_register_finale(db, retcode);
 
 	if (a != NULL)
 		archive_read_finish(a);
