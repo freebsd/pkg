@@ -87,7 +87,6 @@ pkg_delete_files(struct pkg *pkg, int force)
 			 * currently do not warn on this because multiple
 			 * packages can own the same directory
 			 */
-			sync();
 			rmdir(path);
 			continue;
 		}
