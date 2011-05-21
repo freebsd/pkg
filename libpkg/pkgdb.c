@@ -1249,6 +1249,26 @@ pkgdb_compact(struct pkgdb *db)
 }
 
 struct pkgdb_it *
+pkgdb_query_nv(struct pkgdb *db, char *name)
+{
+	sqlite3_stmt *stmt;
+
+	const char sql[] = ""
+		"SELECT rowid, origin, name, version, comment, desc, "
+		"message, arch, osversion, maintainer, www, "
+		"prefix, flatsize, name || \"-\" || version AS NAMEVER "
+		"FROM packages "
+		"WHERE NAMEVER GLOB ?1;";
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (NULL);
+
+	sqlite3_bind_text(stmt, 1, name, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, IT_LOCAL));
+}
+
+struct pkgdb_it *
 pkgdb_query_upgrades(struct pkgdb *db)
 {
 	if (db->remote != PKGDB_REMOTE)

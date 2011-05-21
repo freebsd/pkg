@@ -228,9 +228,16 @@ exec_info(int argc, char **argv)
 		}
 
 
-		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-			pkg_error_warn("can not query database");
-			return (-1);
+		if (opt & INFO_ORIGIN_SEARCH) {
+			if ((it = pkgdb_query_nv(db, pkgname)) == NULL) {
+				pkg_error_warn("can not query database");
+				return (-1);
+			}
+		} else {
+			if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
+				pkg_error_warn("can not query database");
+				return (-1);
+			}
 		}
 
 		/* this is place for compatibility hacks */
