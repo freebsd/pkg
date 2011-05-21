@@ -240,51 +240,49 @@ pkgdb_init(sqlite3 *sdb)
 }
 
 int
-pkgdb_open(struct pkgdb **db, pkgdb_t remote, int mode)
+pkgdb_open(struct pkgdb **db, pkgdb_t type)
 {
 	int retcode;
-	struct stat st;
 	char *errmsg;
 	char localpath[MAXPATHLEN];
 	char remotepath[MAXPATHLEN];
 	char sql[BUFSIZ];
 	const char *dbdir;
 
-	/* First check to make sure PKG_DBDIR exists before trying to use it */
 	dbdir = pkg_config("PKG_DBDIR");
-	if (eaccess(dbdir, mode) == -1)
-		return (pkg_error_set(EPKG_FATAL, "Package database directory "
-		    "%s error: %s", dbdir, strerror(errno)));
-
-	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL)
 		return (pkg_error_set(EPKG_FATAL, "calloc(): %s", strerror(errno)));
 
-	(*db)->remote = remote;
+	(*db)->type = type;
 
-	retcode = stat(localpath, &st);
-	if (retcode == -1 && errno != ENOENT)
-		return (pkg_error_set(EPKG_FATAL, "can not stat %s: %s", localpath,
-							  strerror(errno)));
-
-	if (remote == PKGDB_REMOTE) {
-		snprintf(remotepath, sizeof(localpath), "%s/repo.sqlite", dbdir);
-		retcode = stat(remotepath, &st);
-		if (retcode == -1 && errno != ENOENT)
-			return (pkg_error_set(EPKG_FATAL, "can not stat %s: %s", remotepath,
-						strerror(errno)));
+	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
+	retcode = access(localpath, R_OK);
+	if (retcode == -1) {
+		if (errno != ENOENT)
+			return (pkg_error_set(EPKG_FATAL, "%s: %s", localpath,
+								  strerror(errno)));
+		else if (eaccess(dbdir, W_OK) != 0)
+			return (pkg_error_set(EPKG_FATAL, "can not initialize database in "
+								 "%s: %s", dbdir, strerror(errno)));
 	}
 
 	if (sqlite3_open(localpath, &(*db)->sqlite) != SQLITE_OK)
 		return (ERROR_SQLITE((*db)->sqlite));
 
-	if (remote == PKGDB_REMOTE) {
-		sqlite3_snprintf(BUFSIZ, sql, "ATTACH \"%s\" as remote;", remotepath);
+	if (type == PKGDB_REMOTE) {
+		snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
 
-		if (sqlite3_exec((*db)->sqlite, sql, NULL, NULL, &errmsg) != SQLITE_OK){
+		if (access(remotepath, R_OK) != 0)
+			return (pkg_error_set(EPKG_FATAL, "repo.sqlite: %s",
+								  strerror(errno)));
+
+		sqlite3_snprintf(sizeof(sql), sql, "ATTACH \"%s\" as remote;", remotepath);
+
+		if (sqlite3_exec((*db)->sqlite, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
+			pkg_error_set(EPKG_FATAL, "%s", errmsg);
 			sqlite3_free(errmsg);
-			return ERROR_SQLITE((*db)->sqlite);
+			return (EPKG_FATAL);
 		}
 	}
 
@@ -323,7 +321,7 @@ pkgdb_close(struct pkgdb *db)
 		return;
 
 	if (db->sqlite != NULL) {
-		if (db->remote == PKGDB_REMOTE)
+		if (db->type == PKGDB_REMOTE)
 			sqlite3_exec(db->sqlite, "DETACH remote;", NULL, NULL, NULL);
 
 		sqlite3_close(db->sqlite);
@@ -1271,10 +1269,12 @@ pkgdb_query_nv(struct pkgdb *db, char *name)
 struct pkgdb_it *
 pkgdb_query_upgrades(struct pkgdb *db)
 {
-	if (db->remote != PKGDB_REMOTE)
-		return (NULL);
-
 	sqlite3_stmt *stmt;
+
+	if (db->type != PKGDB_REMOTE) {
+		pkg_error_set(EPKG_FATAL, "remote database not attached");
+		return (NULL);
+	}
 
 	const char sql[] = ""
 		"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
@@ -1285,8 +1285,10 @@ pkgdb_query_upgrades(struct pkgdb *db)
 		"WHERE l.origin = r.origin "
 		"AND PKGLT(l.version, r.version)";
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
 		return (NULL);
+	}
 
 	return (pkgdb_it_new(db, stmt, IT_UPGRADE));
 }
@@ -1297,8 +1299,10 @@ pkgdb_query_downgrades(struct pkgdb *db)
 
 	sqlite3_stmt *stmt;
 
-	if (db->remote != PKGDB_REMOTE)
+	if (db->type != PKGDB_REMOTE) {
+		pkg_error_set(EPKG_FATAL, "remote database not attached");
 		return (NULL);
+	}
 
 	const char sql[] = ""
 		"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
@@ -1309,8 +1313,10 @@ pkgdb_query_downgrades(struct pkgdb *db)
 		"WHERE l.origin = r.origin "
 		"AND PKGGT(l.version, r.version)";
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
 		return (NULL);
+	}
 
 	return (pkgdb_it_new(db, stmt, IT_UPGRADE));
 }

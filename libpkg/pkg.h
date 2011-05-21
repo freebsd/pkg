@@ -371,7 +371,7 @@ int pkg_finish_repo(char *patj, pem_password_cb *cb, char *rsa_key_path);
  * The db must be free'ed with pkgdb_close().
  * @return An error code.
  */
-int pkgdb_open(struct pkgdb **db, pkgdb_t remote, int mode);
+int pkgdb_open(struct pkgdb **db, pkgdb_t type);
 
 /**
  * Close and free the struct pkgdb.
