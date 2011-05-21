@@ -29,7 +29,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 					  PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 					  PKG_LOAD_MTREE;
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT, R_OK) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		pkgdb_close(db);
 		return (-1);

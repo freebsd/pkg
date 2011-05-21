@@ -8,7 +8,7 @@
 struct pkgdb {
 	uint64_t flags;
 	sqlite3 *sqlite;
-	pkgdb_t remote;
+	pkgdb_t type;
 };
 
 #define IT_LOCAL 0
