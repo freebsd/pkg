@@ -71,7 +71,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 int
 pkg_delete_files(struct pkg *pkg, int force)
 {
-	int do_remove, i;
+	int i;
 	int ret = EPKG_OK;
 	struct pkg_file **files;
 	char sha256[65];
@@ -93,24 +93,17 @@ pkg_delete_files(struct pkg *pkg, int force)
 
 		/* Regular files and links */
 		/* check sha256 */
-		do_remove = 1;
-		if (pkg_file_sha256(files[i])[0] != '\0') {
+		if (!force && pkg_file_sha256(files[i])[0] != '\0') {
 			if (sha256_file(path, sha256) == -1) {
 				warnx("sha256 calculation failed for '%s'",
 					  path);
-			} else {
-				if (strcmp(sha256, pkg_file_sha256(files[i])) != 0) {
-					if (force)
-						warnx("%s fails original SHA256 checksum", path);
-					else {
-						do_remove = 0;
-						warnx("%s fails original SHA256 checksum, not removing", path);
-					}
-				}
+			} else if (strcmp(sha256, pkg_file_sha256(files[i])) != 0) {
+				warnx("%s fails original SHA256 checksum, not removing", path);
+				continue;
 			}
 		}
 
-		if (do_remove && unlink(path) == -1) {
+		if (unlink(path) == -1) {
 			warn("unlink(%s)", path);
 			continue;
 		}

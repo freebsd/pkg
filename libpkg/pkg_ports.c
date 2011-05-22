@@ -83,7 +83,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					sbuf_printf(unexec_scripts, "%s\n", cmd);
 				} else {
 					if (sbuf_len(exec_scripts) == 0)
-						sbuf_cat(exec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
+						sbuf_cat(exec_scripts, "#@exec\n"); /* to be able to regenerate the @exec in pkg2legacy */
 					sbuf_printf(exec_scripts, "%s\n", cmd);
 				}
 
