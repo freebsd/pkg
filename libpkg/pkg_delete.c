@@ -10,6 +10,8 @@
 #include "pkg_error.h"
 #include "pkg_util.h"
 
+static int pkg_delete_dirs(struct pkg *pkg);
+
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 {
@@ -29,6 +31,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if ((ret = pkgdb_loadrdeps(db, pkg)) != EPKG_OK)
 		return (ret);
 	if ((ret = pkgdb_loadfiles(db, pkg)) != EPKG_OK)
+		return (ret);
+	if ((ret = pkgdb_loaddirs(db, pkg)) != EPKG_OK)
 		return (ret);
 	if ((ret = pkgdb_loadscripts(db, pkg)) != EPKG_OK)
 		return (ret);
@@ -65,6 +69,9 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if ((ret = pkg_script_post_deinstall(pkg)) != EPKG_OK)
 		return (ret);
 
+	if ((ret = pkg_delete_dirs(pkg)) != EPKG_OK)
+		return (ret);
+
 	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
 }
 
@@ -72,7 +79,6 @@ int
 pkg_delete_files(struct pkg *pkg, int force)
 {
 	int i;
-	int ret = EPKG_OK;
 	struct pkg_file **files;
 	char sha256[65];
 	const char *path;
@@ -80,16 +86,6 @@ pkg_delete_files(struct pkg *pkg, int force)
 	files = pkg_files(pkg);
 	for (i = 0; files[i] != NULL; i++) {
 		path = pkg_file_path(files[i]);
-
-		/* Directories */
-		if (path[strlen(path) - 1] == '/') {
-			/*
-			 * currently do not warn on this because multiple
-			 * packages can own the same directory
-			 */
-			rmdir(path);
-			continue;
-		}
 
 		/* Regular files and links */
 		/* check sha256 */
@@ -109,5 +105,21 @@ pkg_delete_files(struct pkg *pkg, int force)
 		}
 	}
 
-	return (ret);
+	return (EPKG_OK);
+}
+
+static int
+pkg_delete_dirs(struct pkg *pkg)
+{
+	int i;
+	const char **dirs;
+
+	dirs = pkg_dirs(pkg);
+	for (i = 0; dirs[i] != NULL; i++) {
+		if (rmdir(dirs[i]) == -1 && errno != ENOTEMPTY) {
+			warn("rmdir(%s)", dirs[i]);
+		}
+	}
+
+	return (EPKG_OK);
 }

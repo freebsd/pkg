@@ -403,6 +403,10 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			if ((ret = pkgdb_loadfiles(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
+		if (flags & PKG_LOAD_DIRS)
+			if ((ret = pkgdb_loaddirs(it->db, pkg)) != EPKG_OK)
+				return (ret);
+
 		if (flags & PKG_LOAD_SCRIPTS)
 			if ((ret = pkgdb_loadscripts(it->db, pkg)) != EPKG_OK)
 				return (ret);
@@ -666,11 +670,6 @@ pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 		"FROM files "
 		"WHERE package_id = ?1 "
 		"ORDER BY PATH ASC";
-	const char sqldir[] = ""
-		"SELECT path "
-		"FROM pkg_dirs "
-		"WHERE origin = ?1 "
-		"ORDER by path DESC";
 
 	if (pkg->type != PKG_INSTALLED)
 		return (ERROR_BAD_ARG("pkg"));
@@ -698,19 +697,45 @@ pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 		return (ERROR_SQLITE(db->sqlite));
 	}
 
-	if (sqlite3_prepare_v2(db->sqlite, sqldir, -1, &stmt, NULL) != SQLITE_OK)
+	pkg->flags |= PKG_LOAD_FILES;
+	return (EPKG_OK);
+}
+
+int
+pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg)
+{
+	sqlite3_stmt *stmt;
+	char *path;
+	int ret;
+
+	const char sql[] = ""
+		"SELECT path "
+		"FROM pkg_dirs "
+		"WHERE origin = ?1 "
+		"ORDER by path DESC";
+
+	if (pkg->flags & PKG_LOAD_DIRS)
+		return (EPKG_OK);
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
 		return (ERROR_SQLITE(db->sqlite));
+
+	array_init(&pkg->dirs, 5);
 
 	sqlite3_bind_text(stmt, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_file_new(&f);
-		strlcpy(f->path, sqlite3_column_text(stmt, 0), sizeof(f->path));
-		array_append(&pkg->files, f);
+		path = strdup(sqlite3_column_text(stmt, 0));
+		array_append(&pkg->dirs, path);
 	}
 	sqlite3_finalize(stmt);
 
-	pkg->flags |= PKG_LOAD_FILES;
+	if (ret != SQLITE_DONE) {
+		array_reset(&pkg->dirs, &free);
+		return (ERROR_SQLITE(db->sqlite));
+	}
+
+	pkg->flags |= PKG_LOAD_DIRS;
 	return (EPKG_OK);
 }
 
@@ -850,6 +875,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg **deps;
 	struct pkg_file **files;
+	const char **dirs;
 	struct pkg_conflict **conflicts;
 	struct pkg_script **scripts;
 	struct pkg_option **options;
@@ -1017,8 +1043,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	/*
-	 * Insert file
-	 * and dirs
+	 * Insert files.
 	 */
 
 	if (sqlite3_prepare_v2(s, sql_file, -1, &stmt_file, NULL) != SQLITE_OK) {
@@ -1026,43 +1051,47 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		goto cleanup;
 	}
 
+	files = pkg_files(pkg);
+	for (i = 0; files[i] != NULL; i++) {
+		path = pkg_file_path(files[i]);
+		sqlite3_bind_text(stmt_file, 1, pkg_file_path(files[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(files[i]), -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt_file, 3, package_id);
+
+		if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
+			if (ret == SQLITE_CONSTRAINT)
+				retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
+						"path with %s", pkg_file_path(files[i]));
+			else
+				retcode = ERROR_SQLITE(s);
+			goto cleanup;
+		}
+		sqlite3_reset(stmt_file);
+	}
+
+	/*
+	 * Insert dirs.
+	 */
+
 	if (sqlite3_prepare_v2(s, sql_dir, -1, &stmt_dirs, NULL) != SQLITE_OK) {
 		retcode = ERROR_SQLITE(s);
 		goto cleanup;
 	}
 
-	files = pkg_files(pkg);
-	for (i = 0; files[i] != NULL; i++) {
-		path = pkg_file_path(files[i]);
-		if (path[strlen(path) - 1 ] != '/') {
-			sqlite3_bind_text(stmt_file, 1, pkg_file_path(files[i]), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(files[i]), -1, SQLITE_STATIC);
-			sqlite3_bind_int64(stmt_file, 3, package_id);
-
-			if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
-				if ( ret == SQLITE_CONSTRAINT)
-					retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
-							"path with %s", pkg_file_path(files[i]));
-				else
-					retcode = ERROR_SQLITE(s);
-				goto cleanup;
-			}
-			sqlite3_reset(stmt_file);
-		} else {
-			sqlite3_bind_text(stmt_dirs, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_dirs, 2, pkg_file_path(files[i]), -1, SQLITE_STATIC);
+	dirs = pkg_dirs(pkg);
+	for (i = 0; dirs[i] != NULL; i++) {
+		sqlite3_bind_text(stmt_dirs, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_dirs, 2, dirs[i], -1, SQLITE_STATIC);
 			
-			if ((ret = sqlite3_step(stmt_dirs)) != SQLITE_DONE) {
-				if ( ret == SQLITE_CONSTRAINT)
-					retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
-							"dirs with %s", pkg_file_path(files[i]));
-				else
-					retcode = ERROR_SQLITE(s);
-				goto cleanup;
-			}
-			sqlite3_reset(stmt_dirs);
+		if ((ret = sqlite3_step(stmt_dirs)) != SQLITE_DONE) {
+			if ( ret == SQLITE_CONSTRAINT)
+				retcode = pkg_error_set(EPKG_FATAL, "constraint violation on "
+						"dirs with %s", dirs[i]);
+			else
+				retcode = ERROR_SQLITE(s);
+			goto cleanup;
 		}
-
+		sqlite3_reset(stmt_dirs);
 	}
 
 	/*

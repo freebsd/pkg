@@ -222,6 +222,11 @@ struct pkg ** pkg_rdeps(struct pkg *);
 struct pkg_file ** pkg_files(struct pkg *);
 
 /**
+ * @return NULL-terminated array of C strings.
+ */
+const char ** pkg_dirs(struct pkg *pkg);
+
+/**
  * @return NULL-terminated array of pkg_conflict.
  */
 struct pkg_conflict ** pkg_conflicts(struct pkg *);
@@ -291,6 +296,12 @@ int pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const
  * @return An error code.
  */
 int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256);
+
+/**
+ * Add a path
+ * @return An error code.
+ */
+int pkg_adddir(struct pkg *pkg, const char *path);
 
 /**
  * Allocate a new struct pkg_conflict and add it to the conflicts of pkg.
@@ -432,6 +443,7 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_SCRIPTS (1<<5)
 #define PKG_LOAD_OPTIONS (1<<6)
 #define PKG_LOAD_MTREE (1<<7)
+#define PKG_LOAD_DIRS (1<<8)
 
 /**
  * Get the next pkg.
@@ -451,6 +463,7 @@ int pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);

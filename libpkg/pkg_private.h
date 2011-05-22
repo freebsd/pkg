@@ -28,6 +28,7 @@ struct pkg {
 	struct array rdeps;
 	struct array conflicts;
 	struct array files;
+	struct array dirs;
 	struct array scripts;
 	struct array options;
 	int flags;

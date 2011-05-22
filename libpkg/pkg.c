@@ -216,6 +216,18 @@ pkg_files(struct pkg *pkg)
 	return ((struct pkg_file **)pkg->files.data);
 }
 
+const char **
+pkg_dirs(struct pkg *pkg)
+{
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
+		return (NULL);
+	}
+
+	array_init(&pkg->dirs, 1);
+	return ((const char **)pkg->dirs.data);
+}
+
 struct pkg_conflict **
 pkg_conflicts(struct pkg *pkg)
 {
@@ -427,6 +439,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	array_reset(&pkg->rdeps, &pkg_free_void);
 	array_reset(&pkg->conflicts, &pkg_conflict_free_void);
 	array_reset(&pkg->files, &free);
+	array_reset(&pkg->dirs, &free);
 	array_reset(&pkg->scripts, &pkg_script_free_void);
 	array_reset(&pkg->options, &pkg_option_free_void);
 
@@ -446,6 +459,7 @@ pkg_free(struct pkg *pkg)
 	array_free(&pkg->rdeps, &pkg_free_void);
 	array_free(&pkg->conflicts, &pkg_conflict_free_void);
 	array_free(&pkg->files, &free);
+	array_free(&pkg->dirs, &free);
 	array_free(&pkg->scripts, &pkg_script_free_void);
 	array_free(&pkg->options, &pkg_option_free_void);
 
@@ -676,6 +690,21 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 
 	array_init(&pkg->files, 10);
 	array_append(&pkg->files, file);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_adddir(struct pkg *pkg, const char *path)
+{
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (path == NULL || path[0] == '\0')
+		return (ERROR_BAD_ARG("path"));
+
+	array_init(&pkg->dirs, 10);
+	array_append(&pkg->dirs, strdup(path));
 
 	return (EPKG_OK);
 }

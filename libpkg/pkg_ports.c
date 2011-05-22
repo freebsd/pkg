@@ -109,7 +109,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 				snprintf(path, MAXPATHLEN, "%s%s%s/", prefix, slash, buf);
 
-				ret += pkg_addfile(pkg, path, NULL);
+				ret += pkg_adddir(pkg, path);
 
 			} else {
 				warnx("%s is deprecated, ignoring", plist_p);
