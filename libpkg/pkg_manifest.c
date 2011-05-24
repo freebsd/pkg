@@ -314,12 +314,11 @@ int
 pkg_emit_manifest(struct pkg *pkg, char **dest)
 {
 	struct sbuf *manifest;
-	struct pkg **deps;
-	struct pkg_conflict **conflicts;
-	struct pkg_option **options;
-	struct pkg_file **files;
-	const char **dirs;
-	int i;
+	struct pkg_dep *dep = NULL;
+	struct pkg_conflict *conflict = NULL;
+	struct pkg_option *option = NULL;
+	struct pkg_file *file = NULL;
+	struct pkg_dir *dir = NULL;
 	int len = 0;
 
 	manifest = sbuf_new_auto();
@@ -347,34 +346,30 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			pkg_flatsize(pkg)
 			);
 
-	deps = pkg_deps(pkg);
-	for (i = 0; deps[i] != NULL; i++) {
+	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		sbuf_printf(manifest, "@dep %s %s %s\n",
-					pkg_get(deps[i], PKG_NAME),
-					pkg_get(deps[i], PKG_ORIGIN),
-					pkg_get(deps[i], PKG_VERSION));
+					pkg_dep_name(dep),
+					pkg_dep_origin(dep),
+					pkg_dep_version(dep));
 	}
 
-	conflicts = pkg_conflicts(pkg);
-	for (i = 0; conflicts[i] != NULL; i++) {
-		sbuf_printf(manifest, "@conflict %s\n", pkg_conflict_glob(conflicts[i]));
+
+	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
+		sbuf_printf(manifest, "@conflict %s\n", pkg_conflict_glob(conflict));
 	}
 
-	options = pkg_options(pkg);
-	for (i = 0; options[i] != NULL; i++) {
-		sbuf_printf(manifest, "@option %s %s\n", pkg_option_opt(options[i]),
-					pkg_option_value(options[i]));
+	while (pkg_options(pkg, &option) == EPKG_OK) {
+		sbuf_printf(manifest, "@option %s %s\n", pkg_option_opt(option),
+					pkg_option_value(option));
 	}
 
-	files = pkg_files(pkg);
-	for (i = 0; files[i] != NULL; i++) {
-		sbuf_printf(manifest, "@file %s %s\n", pkg_file_path(files[i]),
-					pkg_file_sha256(files[i]));
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		sbuf_printf(manifest, "@file %s %s\n", pkg_file_path(file),
+					pkg_file_sha256(file));
 	}
 
-	dirs = pkg_dirs(pkg);
-	for (i = 0; dirs[i] != NULL; i++) {
-		sbuf_printf(manifest, "@dir %s\n", dirs[i]);
+	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		sbuf_printf(manifest, "@dir %s\n", pkg_dir_path(dir));
 	}
 
 	sbuf_finish(manifest);

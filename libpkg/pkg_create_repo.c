@@ -26,7 +26,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	struct stat st;
 	struct pkg *pkg = NULL;
-	struct pkg **deps;
+	struct pkg_dep *dep = NULL;
 	char *ext = NULL;
 	sqlite3 *sqlite = NULL;
 	sqlite3_stmt *stmt_deps = NULL;
@@ -36,8 +36,6 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	int retcode = EPKG_OK;
 	char *pkg_path;
 	char cksum[65];
-
-	int i;
 
 	char *repopath[2];
 	char repodb[MAXPATHLEN];
@@ -178,11 +176,10 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 		package_id = sqlite3_last_insert_rowid(sqlite);
 
-		deps = pkg_deps(pkg);
-		for (i = 0; deps[i] != NULL; i++) {
-			sqlite3_bind_text(stmt_deps, 1, pkg_get(deps[i], PKG_ORIGIN), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_deps, 2, pkg_get(deps[i], PKG_NAME), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_deps, 3, pkg_get(deps[i], PKG_VERSION), -1, SQLITE_STATIC);
+		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+			sqlite3_bind_text(stmt_deps, 1, pkg_dep_origin(dep), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 2, pkg_dep_name(dep), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 3, pkg_dep_version(dep), -1, SQLITE_STATIC);
 			sqlite3_bind_int64(stmt_deps, 4, package_id);
 
 			if (sqlite3_step(stmt_deps) != SQLITE_DONE) {

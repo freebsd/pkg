@@ -14,9 +14,9 @@
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 {
-	struct pkg **rdeps;
-	int i, ret;
-	struct sbuf *rdep_msg;
+	struct pkg_dep *rdep = NULL;
+	int ret;
+	struct sbuf *rdep_msg = NULL;
 
 	if (pkg == NULL)
 		return (ERROR_BAD_ARG("pkg"));
@@ -38,15 +38,16 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
-	rdeps = pkg_rdeps(pkg);
-
-	if (rdeps[0] != NULL) {
-		rdep_msg = sbuf_new_auto();
-		sbuf_printf(rdep_msg, "%s-%s is required by other packages:", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		for (i = 0;rdeps[i] != NULL; i++) {
-			sbuf_cat(rdep_msg, " ");
-			sbuf_printf(rdep_msg, "%s-%s", pkg_get(rdeps[i], PKG_NAME), pkg_get(rdeps[i], PKG_VERSION));
+	while (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
+		if (rdep_msg == NULL) {
+			rdep_msg = sbuf_new_auto();
+			sbuf_printf(rdep_msg, "%s-%s is required by other packages:", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 		}
+		sbuf_cat(rdep_msg, " ");
+		sbuf_printf(rdep_msg, "%s-%s", pkg_dep_name(rdep), pkg_dep_version(rdep));
+	}
+	/* If there are dependencies */
+	if (rdep_msg != NULL) {
 		if (!force) {
 			sbuf_finish(rdep_msg);
 			ret = pkg_error_set(EPKG_REQUIRED, "%s", sbuf_get(rdep_msg));
@@ -77,22 +78,20 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 int
 pkg_delete_files(struct pkg *pkg, int force)
 {
-	int i;
-	struct pkg_file **files;
+	struct pkg_file *file = NULL;
 	char sha256[65];
 	const char *path;
 
-	files = pkg_files(pkg);
-	for (i = 0; files[i] != NULL; i++) {
-		path = pkg_file_path(files[i]);
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		path = pkg_file_path(file);
 
 		/* Regular files and links */
 		/* check sha256 */
-		if (!force && pkg_file_sha256(files[i])[0] != '\0') {
+		if (!force && pkg_file_sha256(file)[0] != '\0') {
 			if (sha256_file(path, sha256) == -1) {
 				warnx("sha256 calculation failed for '%s'",
 					  path);
-			} else if (strcmp(sha256, pkg_file_sha256(files[i])) != 0) {
+			} else if (strcmp(sha256, pkg_file_sha256(file)) != 0) {
 				warnx("%s fails original SHA256 checksum, not removing", path);
 				continue;
 			}
@@ -110,13 +109,11 @@ pkg_delete_files(struct pkg *pkg, int force)
 int
 pkg_delete_dirs(struct pkg *pkg, int force)
 {
-	int i;
-	const char **dirs;
+	struct pkg_dir *dir = NULL;
 
-	dirs = pkg_dirs(pkg);
-	for (i = 0; dirs[i] != NULL; i++) {
-		if (rmdir(dirs[i]) == -1 && errno != ENOTEMPTY && force != 1) {
-			warn("rmdir(%s)", dirs[i]);
+	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		if (rmdir(pkg_dir_path(dir)) == -1 && errno != ENOTEMPTY && force != 1) {
+			warn("rmdir(%s)", pkg_dir_path(dir));
 		}
 	}
 

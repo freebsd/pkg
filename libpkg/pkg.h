@@ -5,9 +5,12 @@
 #include <openssl/pem.h>
 
 struct pkg;
+struct pkg_dep;
 struct pkg_file;
+struct pkg_dir;
 struct pkg_conflict;
 struct pkg_script;
+struct pkg_option;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -69,14 +72,6 @@ typedef enum {
 	 * A package to be upgraded.
 	 */
 	PKG_UPGRADE = 1 << 3,
-	/**
-	 * The pkg refers to a non installed package.
-	 * @warning That means that the pkg contains only few attributes:
-	 *   - origin
-	 *   - name
-	 *   - version
-	 */
-	PKG_NOTFOUND = 1 << 4,
 } pkg_t;
 
 /**
@@ -204,49 +199,56 @@ int64_t pkg_new_flatsize(struct pkg *);
  */
 int64_t pkg_new_pkgsize(struct pkg *);
 
-/**
- * @return NULL-terminated array of pkg.
- */
-struct pkg ** pkg_deps(struct pkg *);
 
 /**
- * Returns the reverse dependencies.
+ * Iterates over the dependencies of the package.
+ * @param dep Must be set to NULL for the first call.
+ * @return An error code.
+ */
+int pkg_deps(struct pkg *, struct pkg_dep **dep);
+
+/**
+ * Iterates over the reverse dependencies of the package.
  * That is, the packages which require this package.
- * @return NULL-terminated array of pkg.
+ * @param dep Must be set to NULL for the first call.
+ * @return An error code.
  */
-struct pkg ** pkg_rdeps(struct pkg *);
+int pkg_rdeps(struct pkg *, struct pkg_dep **dep);
 
 /**
- * @return NULL-terminated array of pkg_file.
+ * Iterates over the files of the package.
+ * @param file Must be set to NULL for the first call.
+ * @return An error code.
  */
-struct pkg_file ** pkg_files(struct pkg *);
+int pkg_files(struct pkg *, struct pkg_file **file);
 
 /**
- * @return NULL-terminated array of C strings.
+ * Iterates over the directories of the package.
+ * @param Must be set to NULL for the first call.
+ * @return An error code.
  */
-const char ** pkg_dirs(struct pkg *pkg);
+int pkg_dirs(struct pkg *pkg, struct pkg_dir **dir);
 
 /**
- * @return NULL-terminated array of pkg_conflict.
+ * Iterates over the conflicts of the package.
+ * @param conflict Must be set to NULL for the first call.
+ * @return An error code.
  */
-struct pkg_conflict ** pkg_conflicts(struct pkg *);
+int pkg_conflicts(struct pkg *, struct pkg_conflict **conflict);
 
 /**
- * @return NULL-terminated array of pkg_script.
+ * Iterates over the scripts of the package.
+ * @param script Must be set to NULL for the first call.
+ * @return An error code.
  */
-struct pkg_script ** pkg_scripts(struct pkg *);
+int pkg_scripts(struct pkg *, struct pkg_script **script);
 
 /**
- * @return NULL-terminated array of pkg_option
+ * Iterates over the options of the package.
+ * @param  option Must be set to NULL for the first call.
+ * @return An error code.
  */
-struct pkg_option ** pkg_options(struct pkg *);
-
-/**
- * Resolve the dependencies of the package.
- * Check if the dependencies are registered into the local database and set
- * their type to #PKG_INSTALLED or #PKG_NOTFOUND.
- */
-int pkg_resolvdeps(struct pkg *, struct pkgdb *db);
+int pkg_options(struct pkg *, struct pkg_option **option);
 
 /**
  * @todo Document
@@ -318,7 +320,13 @@ int pkg_addconflict(struct pkg *pkg, const char *glob);
  * @param path The path to the script on disk.
  @ @return An error code.
  */
-int pkg_addscript(struct pkg *pkg, const char *path);
+int pkg_addscript(struct pkg *pkg, const char *data, pkg_script_t type);
+
+/**
+ * Helper which call pkg_addscript() with the content of the file and
+ * with the correct type.
+ */
+int pkg_addscript_file(struct pkg *pkg, const char *path);
 int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type);
 
 /**
@@ -343,30 +351,24 @@ int pkg_load_manifest_file(struct pkg *pkg, const char *fpath);
  */
 int pkg_emit_manifest(struct pkg *pkg, char **buf);
 
+const char *pkg_dep_origin(struct pkg_dep *dep);
+const char *pkg_dep_name(struct pkg_dep *dep);
+const char *pkg_dep_version(struct pkg_dep *dep);
+
 /* pkg_file */
-int pkg_file_new(struct pkg_file **);
-void pkg_file_reset(struct pkg_file *);
-void pkg_file_free(struct pkg_file *);
 const char * pkg_file_path(struct pkg_file *);
 const char * pkg_file_sha256(struct pkg_file *);
 
+const char *pkg_dir_path(struct pkg_dir *);
+
 /* pkg_conflict */
-int pkg_conflict_new(struct pkg_conflict **);
-void pkg_conflict_reset(struct pkg_conflict *);
-void pkg_conflict_free(struct pkg_conflict *);
 const char * pkg_conflict_glob(struct pkg_conflict *);
 
 /* pkg_script */
-int pkg_script_new(struct pkg_script **);
-void pkg_script_reset(struct pkg_script *);
-void pkg_script_free(struct pkg_script *);
 const char *pkg_script_data(struct pkg_script *);
 pkg_script_t pkg_script_type(struct pkg_script *);
 
 /* pkg_option */
-int pkg_option_new(struct pkg_option **);
-void pkg_option_reset(struct pkg_option *);
-void pkg_option_free(struct pkg_option *);
 const char *pkg_option_opt(struct pkg_option *);
 const char *pkg_option_value(struct pkg_option *);
 

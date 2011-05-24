@@ -9,13 +9,13 @@ START_TEST(pkg_null)
 	fail_unless(pkg_set(p, PKG_NAME, "foobar") == EPKG_FATAL);
 	fail_unless(pkg_type(p) == PKG_NONE);
 	fail_unless(pkg_set_from_file(p, PKG_NAME, "path") == EPKG_FATAL);
-	fail_unless(pkg_scripts(p) == NULL);
-	fail_unless(pkg_deps(p) == NULL);
-	fail_unless(pkg_options(p) == NULL);
-	fail_unless(pkg_rdeps(p) == NULL);
-	fail_unless(pkg_files(p) == NULL);
-	fail_unless(pkg_conflicts(p) == NULL);
-	fail_unless(pkg_addscript(p, "./bla") == EPKG_FATAL);
+	fail_unless(pkg_scripts(p, NULL) == EPKG_FATAL);
+	fail_unless(pkg_deps(p, NULL) == EPKG_FATAL);
+	fail_unless(pkg_options(p, NULL) == EPKG_FATAL);
+	fail_unless(pkg_rdeps(p, NULL) == EPKG_FATAL);
+	fail_unless(pkg_files(p, NULL) == EPKG_FATAL);
+	fail_unless(pkg_conflicts(p, NULL) == EPKG_FATAL);
+	fail_unless(pkg_addscript_file(p, "./bla") == EPKG_FATAL);
 	fail_unless(pkg_addoption(p, "foo", "bar") == EPKG_FATAL);
 	fail_unless(pkg_adddep(p, "foo", "foo/bar", "123") == EPKG_FATAL);
 
@@ -24,8 +24,8 @@ START_TEST(pkg_null)
 	fail_unless(pkg_set_from_file(p, PKG_NAME, NULL) == EPKG_FATAL);
 	fail_unless(pkg_open(&p, NULL) == EPKG_FATAL);
 	fail_unless(pkg_open(&p, "test") == EPKG_FATAL);
-	fail_unless(pkg_addscript(p, NULL) == EPKG_FATAL);
-	fail_unless(pkg_addscript(p, "./bla") == EPKG_FATAL);
+	fail_unless(pkg_addscript_file(p, NULL) == EPKG_FATAL);
+	fail_unless(pkg_addscript_file(p, "./bla") == EPKG_FATAL);
 	fail_unless(pkg_addoption(p, NULL, "bar") == EPKG_FATAL);
 	fail_unless(pkg_addoption(p, "foo", NULL) == EPKG_FATAL);
 	fail_unless(pkg_adddep(p, NULL, "foo/bar", "123") == EPKG_FATAL);

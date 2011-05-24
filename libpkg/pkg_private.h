@@ -2,8 +2,9 @@
 #define _PKG_PRIVATE_H
 
 #include <sys/param.h>
-#include <sys/types.h>
+#include <sys/queue.h>
 #include <sys/sbuf.h>
+#include <sys/types.h>
 #include <stdbool.h>
 
 #include <archive.h>
@@ -26,42 +27,79 @@ struct pkg {
 	int64_t flatsize;
 	int64_t new_flatsize;
 	int64_t new_pkgsize;
-	struct array deps;
-	struct array rdeps;
-	struct array conflicts;
-	struct array files;
-	struct array dirs;
-	struct array scripts;
-	struct array options;
+	STAILQ_HEAD(deps, pkg_dep) deps;
+	STAILQ_HEAD(rdeps, pkg_dep) rdeps;
+	STAILQ_HEAD(files, pkg_file) files;
+	STAILQ_HEAD(dirs, pkg_dir) dirs;
+	STAILQ_HEAD(conflicts, pkg_conflict) conflicts;
+	STAILQ_HEAD(scripts, pkg_script) scripts;
+	STAILQ_HEAD(options, pkg_option) options;
 	int flags;
 	int64_t rowid;
 	pkg_t type;
 };
 
-struct pkg_conflict {
-	struct sbuf *glob;
-};
-
-struct pkg_script {
-	struct sbuf *data;
-	pkg_script_t type;
+struct pkg_dep {
+	struct sbuf *origin;
+	struct sbuf *name;
+	struct sbuf *version;
+	STAILQ_ENTRY(pkg_dep) next;
 };
 
 struct pkg_file {
 	char path[MAXPATHLEN];
 	char sha256[65];
+	STAILQ_ENTRY(pkg_file) next;
+};
+
+struct pkg_dir {
+	char path[MAXPATHLEN];
+	STAILQ_ENTRY(pkg_dir) next;
+};
+
+struct pkg_conflict {
+	struct sbuf *glob;
+	STAILQ_ENTRY(pkg_conflict) next;
+};
+
+struct pkg_script {
+	struct sbuf *data;
+	pkg_script_t type;
+	STAILQ_ENTRY(pkg_script) next;
 };
 
 struct pkg_option {
-	struct sbuf *opt;
+	struct sbuf *key;
 	struct sbuf *value;
+	STAILQ_ENTRY(pkg_option) next;
 };
 
-void pkg_conflict_free_void(void *);
-void pkg_script_free_void(void *);
-void pkg_option_free_void(void *);
-
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
+void pkg_freedeps(struct pkg *pkg);
+void pkg_freerdeps(struct pkg *pkg);
+void pkg_freefiles(struct pkg *pkg);
+void pkg_freedirs(struct pkg *pkg);
+void pkg_freeconflicts(struct pkg *pkg);
+void pkg_freescripts(struct pkg *pkg);
+void pkg_freeoptions(struct pkg *pkg);
+
+int pkg_dep_new(struct pkg_dep **);
+void pkg_dep_free(struct pkg_dep *);
+
+int pkg_file_new(struct pkg_file **);
+void pkg_file_free(struct pkg_file *);
+
+int pkg_dir_new(struct pkg_dir **);
+void pkg_dir_free(struct pkg_dir *);
+
+int pkg_conflict_new(struct pkg_conflict **);
+void pkg_conflict_free(struct pkg_conflict *);
+
+int pkg_script_new(struct pkg_script **);
+void pkg_script_free(struct pkg_script *);
+
+int pkg_option_new(struct pkg_option **);
+void pkg_option_free(struct pkg_option *);
 
 struct packing;
 
@@ -71,8 +109,6 @@ int packing_append_buffer(struct packing *pack, const char *buffer, const char *
 int packing_append_tree(struct packing *pack, const char *treepath, const char *newroot);
 int packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
-
-void pkg_free_void(void *);
 
 int pkg_delete_files(struct pkg *pkg, int force);
 int pkg_delete_dirs(struct pkg *pkg, int force);

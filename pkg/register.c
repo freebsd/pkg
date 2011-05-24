@@ -149,7 +149,7 @@ exec_register(int argc, char **argv)
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		snprintf(fpath, MAXPATHLEN, "%s/%s", mdir, scripts[i]);
-		if (access(fpath, F_OK) == 0 && pkg_addscript(pkg, fpath) != EPKG_OK)
+		if (access(fpath, F_OK) == 0 && pkg_addscript_file(pkg, fpath) != EPKG_OK)
 			pkg_error_warn("");
 	}
 

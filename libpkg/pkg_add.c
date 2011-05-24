@@ -12,6 +12,26 @@
 #include "pkg_private.h"
 
 static int
+dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
+	struct pkg *p = NULL;
+	struct pkgdb_it *it;
+	int ret;
+
+	it = pkgdb_query(db, pkg_dep_origin(dep), MATCH_EXACT);
+
+	if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+		ret = EPKG_OK;
+	} else {
+		ret = EPKG_FATAL;
+	}
+
+	pkgdb_it_free(it);
+	pkg_free(p);
+
+	return (ret);
+}
+
+static int
 do_extract(struct archive *a, struct archive_entry *ae)
 {
 	int retcode = EPKG_OK;
@@ -57,14 +77,13 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	struct pkgdb_it *it;
 	struct pkg *p = NULL;
 	struct pkg *pkg = NULL;
-	struct pkg **deps;
+	struct pkg_dep *dep = NULL;
 	bool extract = true;
 	char dpath[MAXPATHLEN];
 	const char *basedir;
 	const char *ext;
 	int retcode = EPKG_OK;
 	int ret;
-	int i;
 
 	if (path == NULL)
 		return (ERROR_BAD_ARG("path"));
@@ -106,28 +125,21 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	/*
 	 * Check for dependencies
 	 */
-	deps = pkg_deps(pkg);
+
 	basedir = dirname(path);
 	if ((ext = strrchr(path, '.')) == NULL) {
 		retcode = pkg_error_set(EPKG_FATAL, "%s has no extension", path);
 		goto cleanup;
 	}
-	pkg_resolvdeps(pkg, db);
-	for (i = 0; deps[i] != NULL; i++) {
-		if (pkg_type(deps[i]) == PKG_NOTFOUND) {
+
+	while (pkg_deps(pkg, &dep) == EPKG_OK) {
+		if (dep_installed(dep, db) != EPKG_OK) {
 			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
-					 pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION),
+					 pkg_dep_name(dep), pkg_dep_version(dep),
 					 ext);
 
 			if (access(dpath, F_OK) == 0) {
-				if (pkg_add(db, dpath, NULL) == EPKG_OK) {
-					/*
-					 * Recheck the deps because the last installed package may
-					 * have installed our deps too.
-					 * TODO: do not it database here.
-					 */
-					pkg_resolvdeps(pkg, db);
-				} else {
+				if (pkg_add(db, dpath, NULL) != EPKG_OK) {
 					retcode = pkg_error_set(EPKG_FATAL, "error while "
 											"installing %s (dependency): %s",
 											dpath,
@@ -136,11 +148,10 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 				}
 			} else {
 				retcode = pkg_error_set(EPKG_DEPENDENCY, "missing %s-%s dependency",
-										pkg_get(deps[i], PKG_NAME),
-										pkg_get(deps[i], PKG_VERSION));
+										pkg_dep_name(dep),
+										pkg_dep_version(dep));
 				goto cleanup;
 			}
-
 		}
 	}
 

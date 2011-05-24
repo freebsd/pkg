@@ -23,18 +23,16 @@ enum sign {
 static int
 print_info(struct pkg *pkg, unsigned int opt)
 {
-	struct pkg **deps;
-	struct pkg_file **files;
+	struct pkg_dep *dep = NULL;
+	struct pkg_file *file = NULL;
 	char size[7];
-	int i;
 
 	if (opt & INFO_PRINT_DEP) {
 		if (!(opt & INFO_QUIET))
 			printf("%s-%s depends on:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
-		deps = pkg_deps(pkg);
-		for (i = 0; deps[i] != NULL; i++) {
-			printf("%s-%s\n", pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION));
+		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+			printf("%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
 		}
 
 		if (!(opt & INFO_QUIET))
@@ -43,9 +41,8 @@ print_info(struct pkg *pkg, unsigned int opt)
 		if (!(opt & INFO_QUIET))
 			printf("%s-%s is required by:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
-		deps = pkg_rdeps(pkg);
-		for (i = 0; deps[i] != NULL; i++) {
-			printf("%s-%s\n", pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION));
+		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+			printf("%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
 		}
 
 		if (!(opt & INFO_QUIET))
@@ -54,9 +51,8 @@ print_info(struct pkg *pkg, unsigned int opt)
 		if (!(opt & INFO_QUIET))
 			printf("%s-%s owns the following files:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
-		files = pkg_files(pkg);
-		for (i = 0; files[i] != NULL; i++) {
-			printf("%s\n", pkg_file_path(files[i]));
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			printf("%s\n", pkg_file_path(file));
 		}
 
 		if (!(opt & INFO_QUIET))

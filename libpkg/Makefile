@@ -8,18 +8,15 @@ SHLIB_MAJOR=	0
 
 SRCS=		pkg.c \
 		pkg_add.c \
+		pkg_attributes.c \
 		pkg_config.c \
-		pkg_conflict.c \
 		pkg_create.c \
 		pkg_delete.c \
 		pkg_elf.c \
 		pkg_error.c \
-		pkg_file.c \
 		pkg_manifest.c \
-		pkg_option.c \
 		pkg_ports.c \
 		pkg_repo.c \
-		pkg_script.c \
 		pkg_create_repo.c \
 		pkg_util.c \
 		pkg_version.c \
