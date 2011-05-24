@@ -515,13 +515,6 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 int pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb);
 
 /**
- * These functions are helpers for specific parts of pkg_delete().
- * Generally speaking, external consumers should not use these.
- * @return An error code on failure, or EPKG_OK.
- */
-int pkg_delete_files(struct pkg *pkg, int force);
-
-/**
  * Get the value of a configuration key
  */
 const char * pkg_config(const char *key);

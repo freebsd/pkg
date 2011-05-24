@@ -160,7 +160,8 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	 */
 	if (extract == true && (retcode = do_extract(a, ae)) != EPKG_OK) {
 		/* If the add failed, clean up */
-		(void) pkg_delete_files(pkg, 1);
+		pkg_delete_files(pkg, 1);
+		pkg_delete_dirs(pkg, 1);
 		goto cleanup_reg;
 	}
 
