@@ -207,27 +207,26 @@ pkg_script_post_deinstall(struct pkg *pkg)
 	if ((scripts = pkg_scripts(pkg)) == NULL)
 		return (EPKG_OK);
 
+	/* two loops because the order matters */
 	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
-			case PKG_SCRIPT_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s POST-DEINSTALL\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_POST_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* ignored to prevent warning */
-				break;
+		if (pkg_script_type(scripts[i]) == PKG_SCRIPT_DEINSTALL) {
+			sbuf_reset(script_cmd);
+			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s POST-DEINSTALL\n%s",
+					pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
+					pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+			sbuf_finish(script_cmd);
+			system(sbuf_data(script_cmd));
+		}
+	}
+
+	for (i = 0; scripts[i] != NULL; i++) {
+		if (pkg_script_type(scripts[i]) == PKG_SCRIPT_POST_DEINSTALL) {
+			sbuf_reset(script_cmd);
+			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
+					pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
+					pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+			sbuf_finish(script_cmd);
+			system(sbuf_data(script_cmd));
 		}
 	}
 

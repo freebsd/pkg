@@ -14,6 +14,7 @@ int
 ports_parse_plist(struct pkg *pkg, char *plist)
 {
 	char *plist_p, *buf, *p, *plist_buf;
+	char comment[2];
 	int nbel, i;
 	size_t next;
 	size_t len;
@@ -78,9 +79,29 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					continue;
 
 				if (plist_p[1] == 'u') {
+					comment[0] = '\0';
+					/* workaround to detect the @dirrmtry */
+					if (STARTS_WITH(cmd, "rmdir ")) {
+						comment[0] = '#';
+						comment[1] = '\0';
+					}
 					if (sbuf_len(unexec_scripts) == 0)
 						sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
-					sbuf_printf(unexec_scripts, "%s\n", cmd);
+					sbuf_printf(unexec_scripts, "%s%s\n",comment, cmd);
+
+					/* workaround to detect the @dirrmtry */
+					if (comment[0] == '#') {
+						cmd += 6;
+						buf =strchr(cmd, ' ');
+						buf[0] = '\0';
+						while (cmd[0] == '\"')
+							cmd++;
+
+						while (cmd[strlen(cmd) -1] == '\"')
+							cmd[strlen(cmd) -1] = '\0';
+
+						ret += pkg_adddir(pkg, cmd);
+					}
 				} else {
 					if (sbuf_len(exec_scripts) == 0)
 						sbuf_cat(exec_scripts, "#@exec\n"); /* to be able to regenerate the @exec in pkg2legacy */
