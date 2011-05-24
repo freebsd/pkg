@@ -12,6 +12,7 @@
 #include "info.h"
 #include "which.h"
 #include "add.h"
+#include "autoremove.h"
 #include "version.h"
 #include "update.h"
 #include "upgrade.h"
@@ -28,6 +29,7 @@ static struct commands {
 	void (* const usage)(void);
 } cmd[] = {
 	{ "add", exec_add, usage_add},
+	{ "autoremove", exec_autoremove, usage_autoremove},
 	{ "create", exec_create, usage_create},
 	{ "delete", exec_delete, usage_delete},
 	{ "help", exec_help, usage_help},
