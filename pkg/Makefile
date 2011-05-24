@@ -3,6 +3,7 @@ SRCS=		add.c \
 		autoremove.c \
 		create.c \
 		delete.c \
+		event.c \
 		info.c \
 		main.c \
 		register.c \
