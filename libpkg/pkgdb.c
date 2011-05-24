@@ -162,7 +162,7 @@ pkgdb_init(sqlite3 *sdb)
 		"VALUES (NEW.origin, NEW.name, NEW.version, NEW.comment, NEW.desc, "
 		"(SELECT id FROM mtree WHERE content = NEW.mtree), "
 		"NEW.message, NEW.arch, NEW.osversion, NEW.maintainer, NEW.www, NEW.prefix, "
-		"NEW.flatsize NEW.automatic);"
+		"NEW.flatsize, NEW.automatic);"
 	"END;"
 	"CREATE TABLE scripts ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
@@ -1333,4 +1333,24 @@ pkgdb_query_downgrades(struct pkgdb *db)
 	}
 
 	return (pkgdb_it_new(db, stmt, IT_UPGRADE));
+}
+
+struct pkgdb_it *
+pkgdb_query_autoremove(struct pkgdb *db)
+{
+	sqlite3_stmt *stmt;
+
+	const char sql[] = ""
+		"SELECT id, origin, name, version, comment, desc, "
+		"message, arch, osversion, maintainer, www, prefix, "
+		"flatsize FROM packages WHERE automatic=1 AND "
+		"(SELECT deps.origin FROM deps where deps.origin = packages.origin) "
+		"IS NULL";
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
+	return (pkgdb_it_new(db, stmt, IT_LOCAL));
 }

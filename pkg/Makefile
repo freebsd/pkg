@@ -1,5 +1,6 @@
 PROG=		pkg
 SRCS=		add.c \
+		autoremove.c \
 		create.c \
 		delete.c \
 		info.c \

@@ -25,7 +25,7 @@ ACTUAL-PACKAGE-DEPENDS?= \
 			${ECHO_CMD} @dep $${pkgname%-*} $${dir\#\#${PORTSDIR}/} $${pkgname\#\#*-}; \
 			for pkg in $$(${PKG_INFO} -qd $${dir\#\#${PORTSDIR}/}); do\
 				origin=$$(${PKG_INFO} -qo $${pkg%-*}); \
-				${ECHO_CMD} $${pkg%-*} $$origin $${pkg\#\#*}; \
+				${ECHO_CMD} @dep $${pkg%-*} $$origin $${pkg\#\#*-}; \
 			done; \
 		done; \
 	fi
@@ -45,7 +45,7 @@ fake-pkg:
 .if defined(WWW)
 	@${ECHO_CMD} "@www ${WWW}" >> ${MANIFESTF}
 .endif
-	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u -t : -k 2 >> ${MANIFESTF}
+	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u >> ${MANIFESTF}
 .if !defined(DISABLE_CONFLICTS)
 .for conflicts in ${CONFLICTS}
 	@${ECHO_CMD} "@conflict ${conflicts}" >> ${MANIFESTF}
@@ -89,7 +89,7 @@ fake-pkg:
 	@${CP} ${MTREE_FILE} ${METADIR}/+MTREE_DIRS
 .endif
 .if defined(INSTALLS_DEPENDS)
-	@${PKG_CMD} -a -l -m ${METADIR} -f ${TMPPLIST}
+	@${PKG_CMD} -d -l -m ${METADIR} -f ${TMPPLIST}
 .else
 	@${PKG_CMD} -l -m ${METADIR} -f ${TMPPLIST}
 .endif
