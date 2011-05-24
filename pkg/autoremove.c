@@ -14,6 +14,25 @@
 
 #include "autoremove.h"
 
+static int
+query_yesno(const char *msg)
+{
+	int c, r = 0;
+
+	printf(msg);
+
+	c = getchar();
+	if (c == 'y' || c == 'Y')
+		r = 1;
+	else if (c == '\n' || c == EOF)
+		return 0;
+
+	while((c = getchar()) != '\n' && c != EOF)
+		continue;
+
+	return r;
+}
+
 void
 usage_autoremove(void)
 {
@@ -70,7 +89,24 @@ exec_autoremove(int argc, char **argv)
 		printf("the autoremove will require %s more space\n", size);
 	}
 
+	if (query_yesno("Proceed (y|N): ")) {
+		it = pkgdb_query_autoremove(db);
+		while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+			if (pkg_delete(pkg, db, 0) != EPKG_OK) {
+				retcode++;
+				pkg_error_warn("can not delete %s-%s", pkg_get(pkg, PKG_ORIGIN));
+			}
+		}
+
+	} else {
+		printf("Aborted");
+	}
+
+	if (pkgdb_compact(db) != EPKG_OK)
+		pkg_error_warn("can not compact database");
+
 	cleanup:
+	pkg_free(pkg);
 	
 	if (db != NULL)
 		pkgdb_close(db);
