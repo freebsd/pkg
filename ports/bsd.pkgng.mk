@@ -45,7 +45,7 @@ fake-pkg:
 .if defined(WWW)
 	@${ECHO_CMD} "@www ${WWW}" >> ${MANIFESTF}
 .endif
-	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u -t : -k 2 >> ${MANIFESTF}
+	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u >> ${MANIFESTF}
 .if !defined(DISABLE_CONFLICTS)
 .for conflicts in ${CONFLICTS}
 	@${ECHO_CMD} "@conflict ${conflicts}" >> ${MANIFESTF}
