@@ -1,10 +1,12 @@
 #include <assert.h>
+#include <archive.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 
+#include "pkg.h"
 #include "create.h"
 #include "delete.h"
 #include "info.h"
@@ -95,6 +97,29 @@ exec_help(int argc, char **argv)
 	return (EX_USAGE);
 }
 
+/* XXX: use varargs? */
+static int
+event_callback(pkg_event_t ev, void *arg0, void *arg1)
+{
+	struct pkg *pkg;
+	const char *str0, *str1;
+
+	switch(ev) {
+	case PKG_EVENT_INSTALL_BEGIN:
+		pkg = (struct pkg *)arg0;
+		printf("Installing %s\n", pkg_get(pkg, PKG_NAME));
+		break;
+	case PKG_EVENT_ARCHIVE_ERROR:
+		str0 = (const char *)arg0; /* file path */
+		str1 = archive_error_string(arg1);
+		fprintf(stderr, "archive error on %s: %s\n", str0, str1);
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -102,9 +127,13 @@ main(int argc, char **argv)
 	struct commands *command = NULL;
 	unsigned int ambiguous = 0;
 	size_t len;
+	struct pkg_handle *hdl;
 
 	if (argc < 2)
 		usage();
+
+	hdl = pkg_get_handle();
+	pkg_handle_set_event_callback(hdl, event_callback);
 
 	len = strlen(argv[1]);
 	for (i = 0; i < cmd_len; i++) {

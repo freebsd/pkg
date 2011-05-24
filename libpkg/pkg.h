@@ -562,4 +562,42 @@ int pkg_script_pre_upgrade(struct pkg *);
 int pkg_script_post_upgrade(struct pkg *);
 int pkg_script_pre_deinstall(struct pkg *);
 int pkg_script_post_deinstall(struct pkg *);
+
+/**
+ * Event type used to report progress or problems.
+ */
+typedef enum {
+	/* informational */
+	PKG_EVENT_INSTALL_BEGIN = 0,
+
+	/* errors */
+	PKG_EVENT_ARCHIVE_ERROR = 65536,
+} pkg_event_t;
+
+/**
+ * Package handle for global state information
+ */
+
+/**
+ * Event callback mechanism.  Events will be reported using this callback,
+ * providing an event identifier and up to two event-specific pointers.
+ */
+typedef int(*pkg_event_cb)(pkg_event_t, void *, void *);
+
+struct pkg_handle {
+	pkg_event_cb event_cb;
+};
+
+struct pkg_handle *pkg_get_handle(void);
+pkg_event_cb pkg_handle_get_event_callback(struct pkg_handle *);
+void pkg_handle_set_event_callback(struct pkg_handle *, pkg_event_cb);
+
+/* XXX maybe the event callback should also get a pointer to the handle, and
+ * just drop arg1 altogether..? */
+
+#define	pkg_emit_event(ev, arg0, arg1) \
+	__pkg_emit_event(pkg_get_handle(), ev, arg0, arg1)
+
+void __pkg_emit_event(struct pkg_handle *, pkg_event_t, void *, void *);
+
 #endif
