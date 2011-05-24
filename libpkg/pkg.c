@@ -109,6 +109,25 @@ pkg_flatsize(struct pkg *pkg)
 	return (pkg->flatsize);
 }
 
+int
+pkg_setautomatic(struct pkg *pkg)
+{
+	pkg->automatic = true;
+
+	return (EPKG_OK);
+}
+
+int
+pkg_isautomatic(struct pkg *pkg)
+{
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
+		return (-1);
+	}
+
+	return (pkg->automatic);
+}
+
 int64_t
 pkg_new_flatsize(struct pkg *pkg)
 {
@@ -415,6 +434,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
 	}
 
+	(*pkg)->automatic = false;
 	(*pkg)->type = type;
 
 	return (EPKG_OK);

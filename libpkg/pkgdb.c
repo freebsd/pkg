@@ -158,11 +158,11 @@ pkgdb_init(sqlite3 *sdb)
 	"FOR EACH ROW BEGIN "
 		"INSERT OR IGNORE INTO mtree (content) VALUES (NEW.mtree);"
 		"INSERT OR REPLACE INTO packages(origin, name, version, comment, desc, mtree_id, "
-		"message, arch, osversion, maintainer, www, prefix, flatsize) "
+		"message, arch, osversion, maintainer, www, prefix, flatsize, automatic) "
 		"VALUES (NEW.origin, NEW.name, NEW.version, NEW.comment, NEW.desc, "
 		"(SELECT id FROM mtree WHERE content = NEW.mtree), "
 		"NEW.message, NEW.arch, NEW.osversion, NEW.maintainer, NEW.www, NEW.prefix, "
-		"NEW.flatsize);"
+		"NEW.flatsize NEW.automatic);"
 	"END;"
 	"CREATE TABLE scripts ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
@@ -905,8 +905,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	const char sql_pkg[] = ""
 		"INSERT INTO pkg_mtree( "
 			"origin, name, version, comment, desc, mtree, message, arch, "
-			"osversion, maintainer, www, prefix, flatsize) "
-		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);";
+			"osversion, maintainer, www, prefix, flatsize, automatic) "
+		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);";
 	const char sql_sel_pkg[] = ""
 		"SELECT id FROM packages "
 		"WHERE origin = ?1;";
@@ -963,6 +963,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 11, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 12, pkg_get(pkg, PKG_PREFIX), -1, SQLITE_STATIC);
 	sqlite3_bind_int64(stmt_pkg, 13, pkg_flatsize(pkg));
+	sqlite3_bind_int(stmt_pkg, 14, pkg_isautomatic(pkg));
 
 	if ((ret = sqlite3_step(stmt_pkg)) != SQLITE_DONE) {
 		if ( ret == SQLITE_CONSTRAINT)

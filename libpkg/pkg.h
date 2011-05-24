@@ -263,6 +263,9 @@ int pkg_set(struct pkg *pkg, pkg_attr attr, const char *value);
  */
 int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
 
+int pkg_setautomatic(struct pkg *pkg);
+int pkg_isautomatic(struct pkg *pkg);
+
 /**
  * Set the uncompressed size of the package.
  * @return An error code.

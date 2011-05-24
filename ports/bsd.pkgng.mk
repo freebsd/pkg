@@ -88,7 +88,11 @@ fake-pkg:
 .if !defined(NO_MTREE)
 	@${CP} ${MTREE_FILE} ${METADIR}/+MTREE_DIRS
 .endif
+.if defined(INSTALLS_DEPENDS)
+	@${PKG_CMD} -a -l -m ${METADIR} -f ${TMPPLIST}
+.else
 	@${PKG_CMD} -l -m ${METADIR} -f ${TMPPLIST}
+.endif
 .else
 	@${DO_NADA}
 .endif

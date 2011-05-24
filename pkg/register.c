@@ -80,7 +80,7 @@ exec_register(int argc, char **argv)
 	}
 
 	pkg_new(&pkg, PKG_INSTALLED);
-	while ((ch = getopt(argc, argv, "a:f:m:i:l")) != -1) {
+	while ((ch = getopt(argc, argv, "a:f:m:i:ld")) != -1) {
 		switch (ch) {
 			case 'f':
 				if ((plist = strdup(optarg)) == NULL)
@@ -92,6 +92,9 @@ exec_register(int argc, char **argv)
 				break;
 			case 'a':
 				arch = strdup(optarg);
+				break;
+			case 'd':
+				pkg_setautomatic(pkg);
 				break;
 			case 'i':
 				if ((input_path = strdup(optarg)) == NULL)

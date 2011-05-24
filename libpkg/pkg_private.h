@@ -4,6 +4,7 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/sbuf.h>
+#include <stdbool.h>
 
 #include <archive.h>
 
@@ -21,6 +22,7 @@ struct pkg {
 		int type; /* for which pkg_t this field is defined */
 		unsigned int optional :1;
 	} fields[PKG_NUM_FIELDS];
+	bool automatic;
 	int64_t flatsize;
 	int64_t new_flatsize;
 	int64_t new_pkgsize;
