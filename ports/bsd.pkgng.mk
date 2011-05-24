@@ -2,6 +2,13 @@ PKG_CMD=		/usr/sbin/pkg register
 PKG_DELETE=		/usr/sbin/pkg delete
 PKG_INFO=		/usr/sbin/pkg info
 PKG_VERSION=		/usr/sbin/pkg version
+PKG_CREATE=		/usr/sbin/pkg create
+PKG_ADD=		/usr/sbin/pkg add
+
+PKG_SUFX=		.txz
+
+METADIR=		${WRKDIR}/.metadir
+MANIFESTF=		${METADIR}/+MANIFEST
 
 PKGPREINSTALL?=		${PKGDIR}/pkg-pre-install
 PKGPOSTINSTALL?=	${PKGDIR}/pkg-post-install
@@ -15,73 +22,77 @@ ACTUAL-PACKAGE-DEPENDS?= \
 	if [ "${_LIB_RUN_DEPENDS}" != "  " ]; then \
 		for dir in ${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,}; do \
 			pkgname=$$(${PKG_INFO} -q $${dir\#\#${PORTSDIR}/}); \
-			${ECHO_CMD} $$pkgname:$${dir\#\#${PORTSDIR}/}; \
+			${ECHO_CMD} @dep $${pkgname%-*} $${dir\#\#${PORTSDIR}/} $${pkgname\#\#*-}; \
 			for pkg in $$(${PKG_INFO} -qd $${dir\#\#${PORTSDIR}/}); do\
 				origin=$$(${PKG_INFO} -qo $${pkg%-*}); \
-				${ECHO_CMD} $$pkg:$$origin; \
+				${ECHO_CMD} $${pkg%-*} $$origin $${pkg\#\#*}; \
 			done; \
 		done; \
 	fi
-
-.if !defined(PKG_ARGS)
-PKG_ARGS=		-l -v -c -${COMMENT:Q} -d ${DESCR} -f ${TMPPLIST} -p ${PREFIX} -P "`cd ${.CURDIR} && ${MAKE} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u -t : -k 2`" ${EXTRA_PKG_ARGS} $${_LATE_PKG_ARGS}
-.if !defined(NO_MTREE)
-PKG_ARGS+=		-m ${MTREE_FILE}
-.endif
-.if defined(CONFLICTS) && !defined(DISABLE_CONFLICTS)
-PKG_ARGS+=		-C "${CONFLICTS}"
-.endif
-.if defined(CONFLICTS_INSTALL) && !defined(DISABLE_CONFLICTS)
-PKG_ARGS+=		-C "${CONFLICTS_INSTALL}"
-.endif
-PKG_ARGS+= -n ${PKGNAME}
-PKG_ARGS+= -o ${PKGORIGIN}
-.if defined(MAINTAINER)
-PKG_ARGS+= -r ${MAINTAINER}
-.endif
-.if defined(WWW)
-PKG_ARGS+= -w ${WWW}
-.endif
-.if exists(${PKGMESSAGE})
-PKG_ARGS+= -M ${PKGMESSAGE}
-.endif
-.if exists(${PKGINSTALL})
-PKGSCRIPTS+=	${PKGINSTALL}
-.endif
-.if exists(${PKGPREINSTALL})
-PKGSCRIPTS+=	${PKGPREINSTALL}
-.endif
-.if exists(${PKGPOSTINSTALL})
-PKGSCRIPTS+=	${PKGPOSTINSTALL}
-.endif
-.if exists(${PKGDEINSTALL})
-PKGSCRIPTS+=	${PKGDEINSTALL}
-.endif
-.if exists(${PKGPREDEINSTALL})
-PKGSCRIPTS+=	${PKGPREDEINSTALL}
-.endif
-.if exists(${PKGPOSTDEINSTALL})
-PKGSCRIPTS+=	${PKGPOSTDEINSTALL}
-.endif
-.if exists(${PKGUPGRADE})
-PKGSCRIPTS+=	${PKGUPGRADE}
-.endif
-.if exists(${PKGPREUPGRADE})
-PKGSCRIPTS+=	${PKGPREUPGRADE}
-.endif
-.if exists(${PKGPOSTUPGRADE})
-PKGSCRIPTS+=	${PKGPOSTUPGRADE}
-.endif
-.if defined(PKGSCRIPTS)
-PKG_ARGS+=	-s "${PKGSCRIPTS}"
-.endif
-.endif
 
 .if !target(fake-pkg)
 fake-pkg:
 .if !defined(NO_PKG_REGISTER)
 	@${ECHO_MSG} "===>   Registering installation for ${PKGNAME}"
-	@${PKG_CMD} ${PKG_ARGS}
+	@${MKDIR} ${METADIR}
+	@${ECHO_CMD} "@pkg_format_version 0.9" > ${MANIFESTF}
+	@${ECHO_CMD} "@name ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" >> ${MANIFESTF}
+	@${ECHO_CMD} "@version ${PKGVERSION}" >> ${MANIFESTF}
+	@${ECHO_CMD} "@origin ${PKGORIGIN}" >> ${MANIFESTF}
+	@${ECHO_CMD} "@comment ${COMMENT}" >> ${MANIFESTF}
+	@${ECHO_CMD} "@maintainer ${MAINTAINER}" >> ${MANIFESTF}
+	@${ECHO_CMD} "@prefix ${PREFIX}" >> ${MANIFESTF}
+.if defined(WWW)
+	@${ECHO_CMD} "@www ${WWW}" >> ${MANIFESTF}
+.endif
+	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u -t : -k 2 >> ${MANIFESTF}
+.if !defined(DISABLE_CONFLICTS)
+.for conflicts in ${CONFLICTS}
+	@${ECHO_CMD} "@conflict ${conflicts}" >> ${MANIFESTF}
+.endfor
+.for conflicts in ${CONFLICTS_INSTALL}
+	@${ECHO_CMD} "@conflict ${conflicts}" >> ${MANIFESTF}
+.endfor
+.endif
+.if exists(${PKGINSTALL})
+	@${CP} ${PKGINSTALL} ${METADIR}/+INSTALL
+.endif
+.if exists(${PKGPREINSTALL})
+	@${CP} ${PKGPREINSTALL} ${METADIR}/+PRE_INSTALL
+.endif
+.if exists(${PKGPOSTINSTALL})
+	@${CP} ${PKGPOSTINSTALL} ${METADIR}/+POST_INSTALL
+.endif
+.if exists(${PKGDEINSTALL})
+	@${CP} ${PKGDEINSTALL} ${METADIR}/+DEINSTALL
+.endif
+.if exists(${PKGPREDEINSTALL})
+	@${CP} ${PKGPREDEINSTALL} ${METADIR}/+PRE_DEINSTALL
+.endif
+.if exists(${PKGPOSTDEINSTALL})
+	@${CP} ${PKGPOSTDEINSTALL} ${METADIR}/+POST_DEINSTALL
+.endif
+.if exists(${PKGUPGRADE})
+	@${CP} ${PKGUPGRADE} ${METADIR}/+UPGRADE
+.endif
+.if exists(${PKGPREUPGRADE})
+	@${CP} ${PKGPREUPGRADE} ${METADIR}/+PRE_UPGRADE
+.endif
+.if exists(${PKGPOSTUPGRADE})
+	@${CP} ${PKGPOSTUPGRADE} ${METADIR}/+POST_UPGRADE
+.endif
+	@${CP} ${DESCR} ${METADIR}/+DESC
+.if exists(${PKGMESSAGE})
+	@${CP} ${PKGMESSAGE} ${METADIR}/+DISPLAY
+.endif
+.if !defined(NO_MTREE)
+	@${CP} ${MTREE_FILE} ${METADIR}/+MTREE_DIRS
+.endif
+.if defined(INSTALLS_DEPENDS)
+	@${PKG_CMD} -d -l -m ${METADIR} -f ${TMPPLIST}
+.else
+	@${PKG_CMD} -l -m ${METADIR} -f ${TMPPLIST}
+.endif
 .else
 	@${DO_NADA}
 .endif
@@ -90,7 +101,7 @@ fake-pkg:
 .if !target(check-build-conflicts)
 check-build-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_BUILD) ) && !defined(DISABLE_CONFLICTS) && !defined(DEFER_CONFLICTS_CHECK)
-	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/}`; \
+	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/}`; \
 	conflicts_with=; \
 	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${found}"`; \
@@ -116,7 +127,7 @@ check-build-conflicts:
 .if !target(identify-install-conflicts)
 identify-install-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_INSTALL) ) && !defined(DISABLE_CONFLICTS)
-	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
+	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
 	conflicts_with=; \
 	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${found}"`; \
@@ -143,7 +154,7 @@ identify-install-conflicts:
 check-install-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_INSTALL) || ( defined(CONFLICTS_BUILD) && defined(DEFER_CONFLICTS_CHECK) ) ) && !defined(DISABLE_CONFLICTS) 
 .if defined(DEFER_CONFLICTS_CHECK)
-	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
+	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
 	conflicts_with=; \
 	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${found}"`; \
@@ -163,7 +174,7 @@ check-install-conflicts:
 		exit 1; \
 	fi
 .else
-	@found=`${PKG_INFO} -q -O ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
+	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
 	conflicts_with=; \
 	if [ -n "$${found}" ]; then \
 		prfx=`${PKG_INFO} -q -p "$${entry}"`; \
@@ -189,16 +200,16 @@ check-install-conflicts:
 
 .if !target(do-package)
 do-package: ${TMPPLIST}
-	@if [ -d ${PACKAGES} ] then; \
+	@if [ -d ${PACKAGES} ]; then \
 		if [ ! -d ${PKGREPOSITORY} ]; then \
 			if ! ${MKDIR} ${PKGREPOSITORY}; then \
 				${ECHO_MSG} "=> Can't create directory ${PKGREPOSITORY}."; \
 				exit 1; \
 			fi; \
 		fi; \
-	fi; \
-	@__softMAKEFLAGS="${__softMAKEFLAGS:S/'/'\''/g}'; \
-	if ${PKG} create -o ${PKGFILE} ${PORTNAME}; then \
+	fi;
+	@__softMAKEFLAGS='${__softMAKEFLAGS:S/'/'\''/g}'; \
+	if ${PKG_CREATE} -o ${PKGREPOSITORY} ${PORTNAME}; then \
 		if [ -d ${PACKAGES} ]; then \
 			cd ${.CURDIR} && eval ${MAKE} $${__softMAKEFLAGS} package-links; \
 		fi; \

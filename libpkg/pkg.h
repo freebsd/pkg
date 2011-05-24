@@ -222,6 +222,11 @@ struct pkg ** pkg_rdeps(struct pkg *);
 struct pkg_file ** pkg_files(struct pkg *);
 
 /**
+ * @return NULL-terminated array of C strings.
+ */
+const char ** pkg_dirs(struct pkg *pkg);
+
+/**
  * @return NULL-terminated array of pkg_conflict.
  */
 struct pkg_conflict ** pkg_conflicts(struct pkg *);
@@ -258,6 +263,9 @@ int pkg_set(struct pkg *pkg, pkg_attr attr, const char *value);
  */
 int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
 
+int pkg_setautomatic(struct pkg *pkg);
+int pkg_isautomatic(struct pkg *pkg);
+
 /**
  * Set the uncompressed size of the package.
  * @return An error code.
@@ -293,6 +301,12 @@ int pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const
 int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256);
 
 /**
+ * Add a path
+ * @return An error code.
+ */
+int pkg_adddir(struct pkg *pkg, const char *path);
+
+/**
  * Allocate a new struct pkg_conflict and add it to the conflicts of pkg.
  * @return An error code.
  */
@@ -319,6 +333,7 @@ int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
  * @return An error code.
  */
 int pkg_parse_manifest(struct pkg *pkg, char *buf);
+int pkg_load_manifest_file(struct pkg *pkg, const char *fpath);
 
 /**
  * Emit a manifest according to the attributes of pkg.
@@ -341,7 +356,7 @@ void pkg_conflict_reset(struct pkg_conflict *);
 void pkg_conflict_free(struct pkg_conflict *);
 const char * pkg_conflict_glob(struct pkg_conflict *);
 
-/* pkg_exec */
+/* pkg_script */
 int pkg_script_new(struct pkg_script **);
 void pkg_script_reset(struct pkg_script *);
 void pkg_script_free(struct pkg_script *);
@@ -370,7 +385,7 @@ int pkg_finish_repo(char *patj, pem_password_cb *cb, char *rsa_key_path);
  * The db must be free'ed with pkgdb_close().
  * @return An error code.
  */
-int pkgdb_open(struct pkgdb **db, pkgdb_t remote, int mode);
+int pkgdb_open(struct pkgdb **db, pkgdb_t type);
 
 /**
  * Close and free the struct pkgdb.
@@ -430,6 +445,7 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_SCRIPTS (1<<5)
 #define PKG_LOAD_OPTIONS (1<<6)
 #define PKG_LOAD_MTREE (1<<7)
+#define PKG_LOAD_DIRS (1<<8)
 
 /**
  * Get the next pkg.
@@ -449,6 +465,7 @@ int pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
@@ -498,13 +515,6 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 int pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb);
 
 /**
- * These functions are helpers for specific parts of pkg_delete().
- * Generally speaking, external consumers should not use these.
- * @return An error code on failure, or EPKG_OK.
- */
-int pkg_delete_files(struct pkg *pkg, int force);
-
-/**
  * Get the value of a configuration key
  */
 const char * pkg_config(const char *key);
@@ -528,10 +538,6 @@ int pkg_fetch_buffer(const char *url, char **buf, void *data, fetch_cb cb);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, char *);
-int ports_parse_depends(struct pkg *, char *);
-int ports_parse_conflicts(struct pkg *, char *);
-int ports_parse_scripts(struct pkg *, char *);
-int ports_parse_options(struct pkg *, char *);
 
 /**
  * Return the last error number

@@ -15,28 +15,33 @@
 
 #include "register.h"
 
-static struct {
-	const pkg_attr attr;
-	const char * const flag;
-} required_flags[] = {
-	{ PKG_ORIGIN, "-o"},
-	{ PKG_NAME, "-n"},
-	{ PKG_VERSION, "-n"},
-	{ PKG_COMMENT, "-c"},
-	{ PKG_DESC, "-d"},
-	{ PKG_PREFIX, "-p"},
-	{ PKG_MAINTAINER, "-r"},
-	{ 0, NULL}
+static const char *scripts[] = {
+	"+INSTALL",
+	"+PRE_INSTALL",
+	"+POST_INSTALL",
+	"+POST_INSTALL",
+	"+DEINSTALL",
+	"+PRE_DEINSTALL",
+	"+POST_DEINSTALL",
+	"+UPGRADE",
+	"+PRE_UPGRADE",
+	"+POST_UPGRADE",
+	"pkg-install",
+	"pkg-pre-install",
+	"pkg-post-install",
+	"pkg-deinstall",
+	"pkg-pre-deinstall",
+	"pkg-post-deinstall",
+	"pkg-upgrade",
+	"pkg-pre-upgrade",
+	"pkg-post-upgrade",
+	NULL
 };
 
 void
 usage_register(void)
 {
-	fprintf(stderr, "usage: pkg register -c comment -d desc -f plist_file -p prefix\n");
-	fprintf(stderr, "                    -m mtree_file -n pkgname -o origin -r maintainer\n");
-	fprintf(stderr, "                    [-P depends] [-C conflicts] [-M message_file] [-s scripts]\n");
-	fprintf(stderr, "                    [-a arch] [-w www] [-O options] [-H] [-i input_dir]\n");
-	fprintf(stderr, "                    [-l]\n\n");
+	fprintf(stderr, "usage: pkg register [-l] -m <metadatadir> -f <plist_file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
 
@@ -54,8 +59,10 @@ exec_register(int argc, char **argv)
 	char *plist = NULL;
 	char *v = NULL;
 	char *arch = NULL;
+	char *mdir = NULL;
 	char *www = NULL;
 	char *input_path = NULL;
+	char fpath[MAXPATHLEN];
 
 	const char *desc = NULL;
 	size_t size;
@@ -63,6 +70,7 @@ exec_register(int argc, char **argv)
 	bool heuristic = false;
 	bool legacy = false;
 
+	int i;
 	int retcode = 0;
 	int ret = 0;
 
@@ -72,70 +80,21 @@ exec_register(int argc, char **argv)
 	}
 
 	pkg_new(&pkg, PKG_INSTALLED);
-	while ((ch = getopt(argc, argv, "vHc:d:f:p:P:m:o:C:n:M:s:a:r:w:O:i:l")) != -1) {
+	while ((ch = getopt(argc, argv, "a:f:m:i:ld")) != -1) {
 		switch (ch) {
-			case 'v':
-				/* IGNORE */
-				break;
-			case 'c':
-				ret += pkg_set(pkg, PKG_COMMENT, optarg[0] == '-' ? optarg + 1 : optarg);
-				break;
-			case 'd':
-				ret += pkg_set_from_file(pkg, PKG_DESC, optarg);
-				break;
 			case 'f':
-				if ((plist = strdup(optarg)) == NULL) 
+				if ((plist = strdup(optarg)) == NULL)
 					errx(1, "cannot allocate memory");
 
-				break;
-			case 'p':
-				pkg_set(pkg, PKG_PREFIX, optarg);
-				break;
-			case 'P':
-				ret += ports_parse_depends(pkg, optarg);
 				break;
 			case 'm':
-				ret += pkg_set_from_file(pkg, PKG_MTREE, optarg);
-				break;
-			case 'n':
-				if ((v = strrchr(optarg, '-')) == NULL)
-					errx(EX_DATAERR, "bad pkgname format");
-
-				v[0] = '\0';
-				v++;
-				ret += pkg_set(pkg, PKG_NAME, optarg);
-				ret += pkg_set(pkg, PKG_VERSION, v);
-				break;
-			case 'o':
-				ret += pkg_set(pkg, PKG_ORIGIN, optarg);
-				break;
-			case 'C':
-				ret += ports_parse_conflicts(pkg, optarg);
-				break;
-			case 'M':
-				ret += pkg_set_from_file(pkg, PKG_MESSAGE, optarg);
-				break;
-			case 's':
-				ret += ports_parse_scripts(pkg, optarg);
+				mdir = strdup(optarg);
 				break;
 			case 'a':
-				if ((arch = strdup(optarg)) == NULL)
-					errx(1, "cannot allocate memory");
-
+				arch = strdup(optarg);
 				break;
-			case 'r': /* responsible */
-				ret += pkg_set(pkg, PKG_MAINTAINER, optarg);
-				break;
-			case 'w':
-				if ((www = strdup(optarg)) == NULL)
-					errx(1, "cannot allocate memory");
-
-				break;
-			case 'O':
-				ret += ports_parse_options(pkg, optarg);
-				break;
-			case 'H':
-				heuristic = true;
+			case 'd':
+				pkg_setautomatic(pkg);
 				break;
 			case 'i':
 				if ((input_path = strdup(optarg)) == NULL)
@@ -159,16 +118,39 @@ exec_register(int argc, char **argv)
 	if (plist == NULL)
 		errx(EX_USAGE, "missing -f flag");
 
-	for (unsigned int i = 0; required_flags[i].flag != NULL; i++)
-		if (pkg_get(pkg, required_flags[i].attr) == NULL)
-			errx(EX_USAGE, "missing %s flag", required_flags[i].flag);
-
 	uname(&u);
 	if (arch == NULL) {
 		pkg_set(pkg, PKG_ARCH, u.machine);
 	} else {
 		pkg_set(pkg, PKG_ARCH, arch);
 		free(arch);
+	}
+
+	if (mdir == NULL)
+		errx(EX_USAGE, "missing -m flag");
+
+	snprintf(fpath, MAXPATHLEN, "%s/+MANIFEST", mdir);
+	if ((ret = pkg_load_manifest_file(pkg, fpath)) != EPKG_OK) {
+		pkg_error_warn("can not parse manifest %s", fpath);
+		return (EX_SOFTWARE);
+	}
+
+	snprintf(fpath, MAXPATHLEN, "%s/+DESC", mdir);
+	if (pkg_set_from_file(pkg, PKG_DESC, fpath) != EPKG_OK)
+		pkg_error_warn("");
+
+	snprintf(fpath, MAXPATHLEN, "%s/+DISPLAY", mdir);
+	if (access(fpath, F_OK) == 0 && pkg_set_from_file(pkg, PKG_MESSAGE, fpath) != EPKG_OK)
+		pkg_error_warn("");
+
+	snprintf(fpath, MAXPATHLEN, "%s/+MTREE_DIRS", mdir);
+	if (access(fpath, F_OK) == 0 && pkg_set_from_file(pkg, PKG_MTREE, fpath) != EPKG_OK)
+		pkg_error_warn("");
+
+	for (i = 0; scripts[i] != NULL; i++) {
+		snprintf(fpath, MAXPATHLEN, "%s/%s", mdir, scripts[i]);
+		if (access(fpath, F_OK) == 0 && pkg_addscript(pkg, fpath) != EPKG_OK)
+			pkg_error_warn("");
 	}
 
 	/* if www is not given then try to determine it from description */
@@ -208,7 +190,7 @@ exec_register(int argc, char **argv)
 	if (plist != NULL)
 		free(plist);
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT, R_OK|W_OK) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		return (-1);
 	}

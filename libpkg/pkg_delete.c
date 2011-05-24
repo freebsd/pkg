@@ -8,6 +8,7 @@
 
 #include "pkg.h"
 #include "pkg_error.h"
+#include "pkg_private.h"
 #include "pkg_util.h"
 
 int
@@ -30,6 +31,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 		return (ret);
 	if ((ret = pkgdb_loadfiles(db, pkg)) != EPKG_OK)
 		return (ret);
+	if ((ret = pkgdb_loaddirs(db, pkg)) != EPKG_OK)
+		return (ret);
 	if ((ret = pkgdb_loadscripts(db, pkg)) != EPKG_OK)
 		return (ret);
 	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
@@ -39,10 +42,10 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 
 	if (rdeps[0] != NULL) {
 		rdep_msg = sbuf_new_auto();
-		sbuf_printf(rdep_msg, "this package is required by other packages:");
+		sbuf_printf(rdep_msg, "%s-%s is required by other packages:", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 		for (i = 0;rdeps[i] != NULL; i++) {
 			sbuf_cat(rdep_msg, " ");
-			sbuf_cat(rdep_msg, pkg_get(rdeps[i], PKG_NAME));
+			sbuf_printf(rdep_msg, "%s-%s", pkg_get(rdeps[i], PKG_NAME), pkg_get(rdeps[i], PKG_VERSION));
 		}
 		if (!force) {
 			sbuf_finish(rdep_msg);
@@ -65,64 +68,57 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if ((ret = pkg_script_post_deinstall(pkg)) != EPKG_OK)
 		return (ret);
 
+	if ((ret = pkg_delete_dirs(pkg, force)) != EPKG_OK)
+		return (ret);
+
 	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
 }
 
 int
 pkg_delete_files(struct pkg *pkg, int force)
 {
-	int do_remove, i;
-	int ret = EPKG_OK;
+	int i;
 	struct pkg_file **files;
 	char sha256[65];
 	const char *path;
-	struct stat st;
 
 	files = pkg_files(pkg);
 	for (i = 0; files[i] != NULL; i++) {
 		path = pkg_file_path(files[i]);
-		/* check to make sure the file exists */
-		if (stat(path, &st) == -1) {
-			/* don't print ENOENT errors on force */
-			if (!force && errno != ENOENT)
-				warn("%s", path);
-			continue;
-		}
-		/* Directories */
-
-		if (path[strlen(path) - 1] == '/') {
-			/*
-			 * currently do not warn on this because multiple
-			 * packages can own the same directory
-			 */
-			rmdir(path);
-			continue;
-		}
 
 		/* Regular files and links */
 		/* check sha256 */
-		do_remove = 1;
-		if (pkg_file_sha256(files[i])[0] != '\0') {
+		if (!force && pkg_file_sha256(files[i])[0] != '\0') {
 			if (sha256_file(path, sha256) == -1) {
 				warnx("sha256 calculation failed for '%s'",
-				    pkg_file_path(files[i]));
-			} else {
-				if (strcmp(sha256, pkg_file_sha256(files[i])) != 0) {
-					if (force)
-						warnx("%s fails original SHA256 checksum", path);
-					else {
-						do_remove = 0;
-						warnx("%s fails original SHA256 checksum, not removing", path);
-					}
-				}
+					  path);
+			} else if (strcmp(sha256, pkg_file_sha256(files[i])) != 0) {
+				warnx("%s fails original SHA256 checksum, not removing", path);
+				continue;
 			}
 		}
 
-		if (do_remove && unlink(pkg_file_path(files[i])) == -1) {
-			warn("unlink(%s)", pkg_file_path(files[i]));
+		if (unlink(path) == -1) {
+			warn("unlink(%s)", path);
 			continue;
 		}
 	}
 
-	return (ret);
+	return (EPKG_OK);
+}
+
+int
+pkg_delete_dirs(struct pkg *pkg, int force)
+{
+	int i;
+	const char **dirs;
+
+	dirs = pkg_dirs(pkg);
+	for (i = 0; dirs[i] != NULL; i++) {
+		if (rmdir(dirs[i]) == -1 && errno != ENOTEMPTY && force != 1) {
+			warn("rmdir(%s)", dirs[i]);
+		}
+	}
+
+	return (EPKG_OK);
 }

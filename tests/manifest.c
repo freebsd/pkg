@@ -17,12 +17,9 @@ char manifest[] = ""
 	"@flatsize 10000\n"
 	"@dep depfoo dep/foo 1.2\n"
 	"@dep depbar dep/bar 3.4\n"
+	"@hello world\n" /* unknown keyword should not be a problem */
 	"@conflict foo-*\n"
 	"@conflict bar-*\n"
-	"@exec true && echo hello\n"
-	"@exec false || echo world\n"
-	"@unexec true && echo good\n"
-	"@unexec false || echo bye\n"
 	"@option foo true\n"
 	"@option bar false\n"
 	"@file /usr/local/bin/foo "
@@ -43,8 +40,6 @@ char wrong_manifest1[] = ""
 	"@dep depbar dep/bar 3.4\n"
 	"@conflict foo-*\n"
 	"@conflict bar-*\n"
-	"@exec true && echo hello\n"
-	"@exec false || echo world\n"
 	"@option foo true\n"
 	"@option bar false\n";
 
@@ -63,8 +58,6 @@ char wrong_manifest2[] = ""
 	"@dep depbar dep/bar 3.4\n"
 	"@conflict foo-*\n"
 	"@conflict bar-*\n"
-	"@exec true && echo hello\n"
-	"@exec false || echo world\n"
 	"@option foo true\n"
 	"@option bar false\n";
 
@@ -83,12 +76,10 @@ char wrong_manifest3[] = ""
 	"@dep depbar dep/bar 3.4\n"
 	"@conflict foo-*\n"
 	"@conflict \n"
-	"@exec true && echo hello\n"
-	"@exec false || echo world\n"
 	"@option foo true\n"
 	"@option bar false\n";
 
-/* bad exec line */
+/* bad option line */
 char wrong_manifest4[] = ""
 	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
@@ -103,9 +94,7 @@ char wrong_manifest4[] = ""
 	"@dep depbar dep/bar 3.4\n"
 	"@conflict foo-*\n"
 	"@conflict bar-*\n"
-	"@exec\n"
-	"@exec false || echo world\n"
-	"@option foo true\n"
+	"@option \n"
 	"@option bar false\n";
 
 /* bad option line */
@@ -123,62 +112,20 @@ char wrong_manifest5[] = ""
 	"@dep depbar dep/bar 3.4\n"
 	"@conflict foo-*\n"
 	"@conflict bar-*\n"
-	"@exec true && echo hello\n"
-	"@exec false || echo world\n"
-	"@option \n"
-	"@option bar false\n";
-
-/* bad option line */
-char wrong_manifest6[] = ""
-	"@pkg_format_version 0.9\n"
-	"@name foobar\n"
-	"@version 0.3\n"
-	"@origin foo/bar\n"
-	"@comment A dummy manifest\n"
-	"@arch amd64\n"
-	"@osversion 800500\n"
-	"@www http://www.foobar.com\n"
-	"@maintainer test@pkgng.lan\n"
-	"@dep depfoo dep/foo 1.2\n"
-	"@dep depbar dep/bar 3.4\n"
-	"@conflict foo-*\n"
-	"@conflict bar-*\n"
-	"@exec true && echo hello\n"
-	"@exec false || echo world\n"
 	"@option foo true\n"
 	"@option bar\n";
 
-char wrong_manifest7[] = ""
-	"@pkg_format_version 0.9\n"
-	"@name foobar\n"
-	"@version 0.3\n"
-	"@origin foo/bar\n"
-	"@comment A dummy manifest\n"
-	"@arch amd64\n"
-	"@osversion 800500\n"
-	"@www http://www.foobar.com\n"
-	"@maintainer test@pkgng.lan\n"
-	"@dep depfoo dep/foo 1.2\n"
-	"@dep depbar dep/bar 3.4\n"
-	"@conflict foo-*\n"
-	"@conflict bar-*\n"
-	"@keyword bla\n"
-	"@exec true && echo hello\n"
-	"@exec false || echo world\n"
-	"@option foo true\n";
-
 START_TEST(parse_manifest)
 {
-	struct pkg *p;
+	struct pkg *p = NULL;
 	struct pkg **deps;
 	struct pkg_conflict **conflicts;
-	struct pkg_exec **execs;
 	struct pkg_option **options;
 	struct pkg_file **files;
 	int i;
 
-	fail_unless(pkg_new(&p) == 0);
-	fail_unless(pkg_parse_manifest(p, manifest) == 0);
+	fail_unless(pkg_new(&p, PKG_FILE) == EPKG_OK);
+	fail_unless(pkg_parse_manifest(p, manifest) == EPKG_OK);
 
 	fail_unless(strcmp(pkg_get(p, PKG_NAME), "foobar") == 0);
 	fail_unless(strcmp(pkg_get(p, PKG_VERSION), "0.3") == 0);
@@ -215,30 +162,6 @@ START_TEST(parse_manifest)
 	}
 	fail_unless(i == 2);
 
-	execs = pkg_execs(p);
-	fail_if(execs == NULL);
-	for (i = 0; execs[i] != NULL; i++) {
-		switch (i) {
-			case 0:
-				fail_unless(pkg_exec_type(execs[i]) == PKG_EXEC);
-				fail_unless(strcmp(pkg_exec_cmd(execs[i]), "true && echo hello") == 0);
-				break;
-			case 1:
-				fail_unless(pkg_exec_type(execs[i]) == PKG_EXEC);
-				fail_unless(strcmp(pkg_exec_cmd(execs[i]), "false || echo world") == 0);
-				break;
-			case 2:
-				fail_unless(pkg_exec_type(execs[i]) == PKG_UNEXEC);
-				fail_unless(strcmp(pkg_exec_cmd(execs[i]), "true && echo good") == 0);
-				break;
-			case 3:
-				fail_unless(pkg_exec_type(execs[i]) == PKG_UNEXEC);
-				fail_unless(strcmp(pkg_exec_cmd(execs[i]), "false || echo bye") == 0);
-				break;
-		}
-	}
-	fail_unless(i == 4);
-
 	options = pkg_options(p);
 	fail_if(options == NULL);
 	for (i = 0; options[i] != NULL; i++) {
@@ -265,9 +188,8 @@ END_TEST
 
 START_TEST(parse_wrong_manifest1)
 {
-	struct pkg *p;
+	struct pkg *p = NULL;
 
-	fail_unless(pkg_new(&p) == EPKG_OK);
 	fail_unless(pkg_parse_manifest(p, wrong_manifest1) == EPKG_FATAL);
 
 }
@@ -275,53 +197,33 @@ END_TEST
 
 START_TEST(parse_wrong_manifest2)
 {
-	struct pkg *p;
+	struct pkg *p = NULL;
 
-	fail_unless(pkg_new(&p) == EPKG_OK);
 	fail_unless(pkg_parse_manifest(p, wrong_manifest2) == EPKG_FATAL);
 }
 END_TEST
 
 START_TEST(parse_wrong_manifest3)
 {
-	struct pkg *p;
+	struct pkg *p = NULL;
 
-	fail_unless(pkg_new(&p) == EPKG_OK);
 	fail_unless(pkg_parse_manifest(p, wrong_manifest3) == EPKG_FATAL);
 }
 END_TEST
 
 START_TEST(parse_wrong_manifest4)
 {
-	struct pkg *p;
+	struct pkg *p = NULL;
 
-	fail_unless(pkg_new(&p) == EPKG_OK);
 	fail_unless(pkg_parse_manifest(p, wrong_manifest4) == EPKG_FATAL);
 }
 END_TEST
 
 START_TEST(parse_wrong_manifest5)
 {
-	struct pkg *p;
+	struct pkg *p = NULL;
 
-	fail_unless(pkg_new(&p) == EPKG_OK);
 	fail_unless(pkg_parse_manifest(p, wrong_manifest5) == EPKG_FATAL);
-}
-END_TEST
-
-START_TEST(parse_wrong_manifest6)
-{
-	struct pkg *p;
-	fail_unless(pkg_new(&p) == EPKG_OK);
-	fail_unless(pkg_parse_manifest(p, wrong_manifest6) == EPKG_FATAL);
-}
-END_TEST
-
-START_TEST(parse_wrong_manifest7)
-{
-	struct pkg *p;
-	fail_unless(pkg_new(&p) == EPKG_OK);
-	fail_unless(pkg_parse_manifest(p, wrong_manifest7) == EPKG_OK);
 }
 END_TEST
 
@@ -335,8 +237,6 @@ tcase_manifest(void)
 	tcase_add_test(tc, parse_wrong_manifest3);
 	tcase_add_test(tc, parse_wrong_manifest4);
 	tcase_add_test(tc, parse_wrong_manifest5);
-	tcase_add_test(tc, parse_wrong_manifest6);
-	tcase_add_test(tc, parse_wrong_manifest7);
 
 	return (tc);
 }

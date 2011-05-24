@@ -105,6 +105,7 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 	archive_entry_copy_stat(pack->entry, &st);
 
 	if (S_ISLNK(st.st_mode)) {
+		bzero(linkdest, MAXPATHLEN);
 		readlink(filepath, linkdest, MAXPATHLEN);
 		archive_entry_set_symlink(pack->entry, linkdest);
 	}

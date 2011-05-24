@@ -115,8 +115,11 @@ exec_info(int argc, char **argv)
 	int sign = 0;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "egxXEdrlsqopO")) != -1) {
+	while ((ch = getopt(argc, argv, "aegxXEdrlsqopO")) != -1) {
 		switch (ch) {
+			case 'a':
+				match = MATCH_ALL;
+				break;
 			case 'O':
 				opt |= INFO_ORIGIN_SEARCH;  /* this is only for ports compat */
 				break;
@@ -166,7 +169,7 @@ exec_info(int argc, char **argv)
 	if (argc == 0)
 		match = MATCH_ALL;
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT, R_OK) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		return (-1);
 	}
@@ -224,7 +227,6 @@ exec_info(int argc, char **argv)
 			}
 		}
 
-
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
 			pkg_error_warn("can not query database");
 			return (-1);
@@ -256,7 +258,7 @@ exec_info(int argc, char **argv)
 						}
 						break;
 					case 1:
-						if (sign != GT && sign != LT) {
+						if (sign != GT && sign != GE) {
 							gotone = false;
 							continue;
 						}

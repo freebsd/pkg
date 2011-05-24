@@ -29,6 +29,7 @@ static int m_parse_conflict(struct pkg *pkg, char *buf);
 static int m_parse_maintainer(struct pkg *pkg, char *buf);
 static int m_parse_prefix(struct pkg *pkg, char *buf);
 static int m_parse_file(struct pkg *pkg, char *buf);
+static int m_parse_dir(struct pkg *pkg, char *buf);
 static int m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr);
 
 #define MANIFEST_FORMAT_KEY "@pkg_format_version"
@@ -51,6 +52,7 @@ static struct manifest_key {
 	{ "@maintainer", m_parse_maintainer},
 	{ "@prefix", m_parse_prefix},
 	{ "@file", m_parse_file},
+	{ "@dir", m_parse_dir},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
@@ -230,6 +232,36 @@ m_parse_file(struct pkg *pkg, char *buf)
 	return (EPKG_OK);
 }
 
+static int
+m_parse_dir(struct pkg *pkg, char *buf)
+{
+	while (isspace(*buf))
+		buf++;
+
+	if (*buf == '\0')
+		return (EPKG_FATAL);
+
+	pkg_adddir(pkg, buf);
+	return (EPKG_OK);
+}
+
+int
+pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
+{
+	char *manifest = NULL;
+	off_t sz;
+	int ret = EPKG_OK;
+
+	if ((ret = file_to_buffer(fpath, &manifest, &sz)) != EPKG_OK)
+		return (ret);
+
+	ret = pkg_parse_manifest(pkg, manifest);
+	if (ret != EPKG_OK && manifest != NULL)
+			free(manifest);
+
+	return (ret);
+}
+
 int
 pkg_parse_manifest(struct pkg *pkg, char *buf)
 {
@@ -286,6 +318,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_conflict **conflicts;
 	struct pkg_option **options;
 	struct pkg_file **files;
+	const char **dirs;
 	int i;
 	int len = 0;
 
@@ -314,35 +347,34 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			pkg_flatsize(pkg)
 			);
 
-	if ((deps = pkg_deps(pkg)) != NULL) {
-		for (i = 0; deps[i] != NULL; i++) {
-			sbuf_printf(manifest, "@dep %s %s %s\n",
+	deps = pkg_deps(pkg);
+	for (i = 0; deps[i] != NULL; i++) {
+		sbuf_printf(manifest, "@dep %s %s %s\n",
 					pkg_get(deps[i], PKG_NAME),
 					pkg_get(deps[i], PKG_ORIGIN),
 					pkg_get(deps[i], PKG_VERSION));
-		}
 	}
 
-	if ((conflicts = pkg_conflicts(pkg)) != NULL) {
-		for (i = 0; conflicts[i] != NULL; i++) {
-			sbuf_printf(manifest, "@conflict %s\n", pkg_conflict_glob(conflicts[i]));
-		}
+	conflicts = pkg_conflicts(pkg);
+	for (i = 0; conflicts[i] != NULL; i++) {
+		sbuf_printf(manifest, "@conflict %s\n", pkg_conflict_glob(conflicts[i]));
 	}
 
-	if ((options = pkg_options(pkg)) != NULL)  {
-		for (i = 0; options[i] != NULL; i++) {
-			sbuf_printf(manifest, "@option %s %s\n",
-					pkg_option_opt(options[i]),
+	options = pkg_options(pkg);
+	for (i = 0; options[i] != NULL; i++) {
+		sbuf_printf(manifest, "@option %s %s\n", pkg_option_opt(options[i]),
 					pkg_option_value(options[i]));
-					
-		}
 	}
 
-	if ((files = pkg_files(pkg)) != NULL) {
-		for (i = 0; files[i] != NULL; i++) {
-			sbuf_printf(manifest, "@file %s %s\n", pkg_file_path(files[i]),
-						pkg_file_sha256(files[i]));
-		}
+	files = pkg_files(pkg);
+	for (i = 0; files[i] != NULL; i++) {
+		sbuf_printf(manifest, "@file %s %s\n", pkg_file_path(files[i]),
+					pkg_file_sha256(files[i]));
+	}
+
+	dirs = pkg_dirs(pkg);
+	for (i = 0; dirs[i] != NULL; i++) {
+		sbuf_printf(manifest, "@dir %s\n", dirs[i]);
 	}
 
 	sbuf_finish(manifest);

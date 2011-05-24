@@ -55,7 +55,7 @@ exec_delete(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 	
-	if (pkgdb_open(&db, PKGDB_DEFAULT, R_OK|W_OK) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		pkgdb_close(db);
 		return (-1);

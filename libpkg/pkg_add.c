@@ -148,7 +148,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	 * problems that could be caught here. */
 	retcode = pkgdb_register_pkg(db, pkg);
 	if (retcode != EPKG_OK || pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)
-		goto cleanup;
+		goto cleanup_reg;
 
 	pkg_emit_event(PKG_EVENT_INSTALL_BEGIN, pkg, NULL);
 
@@ -162,8 +162,9 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	 */
 	if (extract == true && (retcode = do_extract(a, ae)) != EPKG_OK) {
 		/* If the add failed, clean up */
-		(void) pkg_delete_files(pkg, 1);
-		goto cleanup;
+		pkg_delete_files(pkg, 1);
+		pkg_delete_dirs(pkg, 1);
+		goto cleanup_reg;
 	}
 
 	/*
@@ -171,10 +172,10 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	 */
 	pkg_script_post_install(pkg);
 
-	cleanup:
-
+	cleanup_reg:
 	pkgdb_register_finale(db, retcode);
 
+	cleanup:
 	if (a != NULL)
 		archive_read_finish(a);
 

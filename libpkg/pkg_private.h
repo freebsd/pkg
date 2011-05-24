@@ -4,6 +4,7 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/sbuf.h>
+#include <stdbool.h>
 
 #include <archive.h>
 
@@ -21,6 +22,7 @@ struct pkg {
 		int type; /* for which pkg_t this field is defined */
 		unsigned int optional :1;
 	} fields[PKG_NUM_FIELDS];
+	bool automatic;
 	int64_t flatsize;
 	int64_t new_flatsize;
 	int64_t new_pkgsize;
@@ -28,6 +30,7 @@ struct pkg {
 	struct array rdeps;
 	struct array conflicts;
 	struct array files;
+	struct array dirs;
 	struct array scripts;
 	struct array options;
 	int flags;
@@ -70,4 +73,8 @@ int packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
 
 void pkg_free_void(void *);
+
+int pkg_delete_files(struct pkg *pkg, int force);
+int pkg_delete_dirs(struct pkg *pkg, int force);
+
 #endif

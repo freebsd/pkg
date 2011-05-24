@@ -16,72 +16,42 @@ do
 	COMMENT=$( cat ${DB}/+COMMENT )
 	DESC="${DB}/+DESC"
 
+	ORIGIN=$(pkg_info -qo ${PKG})
+	MAINTAINER=$( make -C /usr/ports/${ORIGIN} -V MAINTAINER )
 	# +CONTENTS
-	PLIST=$( mktemp /tmp/pkg2ng.plist.XXXXXX )
-	DEPENDS=$( mktemp /tmp/pkg2ng.depends.XXXXXX )
-	eval $( awk -v pfile=${PLIST} -v dfile=${DEPENDS} '
-	BEGIN{
-		origin=""
-		depends=""
-		conflicts=""
-	}
-	{
-		if ( $0 ~ /^@pkgdep/ ) {
-			dep = $2
-			getline
-			orig=$2
-			sub(/DEPORIGIN/,"",orig)
-			print dep""orig >> dfile
-		} else if ( $0 ~ /^@comment ORIGIN/ ) {
-			origin=$2
-			sub(/ORIGIN:/,"",origin)
-		} else if ( $0 ~ /^[^@]/ ) {
-			print $0 >> pfile
-		} else if ( $0 ~ /^@exec/) {
-			print $0 >> pfile
-		} else if ( $0 ~ /^@unexec/) {
-			print $0 >> pfile
-		} else if ( $0 ~ /^@dirrm/) {
-			print $0 >> pfile
-		} else if ( $0 ~ /^@dirrmtry/) {
-			print $0 >> pfile
-		} else if ( $0 ~ /^@conflict/) {
-			conflict=conflict" "$2
-		} else if ( $0 ~ /^@cwd/) {
-			print $0 >> pfile
-		} else if ( $0 ~ /^@ignore/) {
-			getline
-		}
-	}
-	END{
-		print "export ORIGIN=\""origin"\""
-		print "export CONFLICTS=\""conflict"\""
-	}
-	' ${DB}/+CONTENTS )
+	MDIR=$(mktemp -d /tmp/pkg2ngXXXXX)
+	test -f ${DB}/+DISPLAY && cp -f ${DB}/+DISPLAY ${MDIR}
+	test -f ${DB}/+MTREE_DIRS && cp -f ${DB}/+MTREE_DIRS ${MDIR}
+	test -f ${DB}/+DESC && cp -f ${DB}/+DESC ${MDIR}
+	MANIFEST=${MDIR}/+MANIFEST
+	PLIST=${MDIR}/plist
+	cp -f ${DB}/+INSTALL ${MDIR} 2>/dev/null
+	echo "@pkg_format_version 0.9" >> ${MANIFEST}
+	echo "@name ${PKG%-*}" >> ${MANIFEST}
+	echo "@version ${PKG##*-}" >> ${MANIFEST}
+	echo "@origin ${ORIGIN}" >> ${MANIFEST}
+	echo "@comment ${COMMENT}" >> ${MANIFEST}
+	echo "@maintainer ${MAINTAINER}" >> ${MANIFEST}
+	echo "@prefix /usr/local" >> ${MANIFEST}
+	pkg_info -qr ${PKG} | while read ignore dep; do
+		deporigin=$(pkg_info -qo ${dep})
+		echo "@dep ${dep%-*} ${deporigin} ${dep##*-}" >> ${MANIFEST}
+	done
+	egrep -v "^@[pkgdep|ignore|conflicts]" ${DB}/+CONTENTS >> ${PLIST}
+	awk '/^@conflicts/ { print "@conflict "$2 }' ${DB}/+CONTENTS >> ${MANIFEST}
 
 	OPTIONS=""
-	SCRIPTS=$( ls ${DB}/+*INSTALL 2>/dev/null )
 
-	MAINTAINER=$( make -C /usr/ports/${ORIGIN} -V MAINTAINER )
-
-	CMD_ARGS="-l"
-	test -f ${DB}/+MTREE_DIRS && CMD_ARGS="${CMD_ARGS} -m ${DB}/+MTREE_DIRS"
-	test -f ${DB}/+DISPLAY && CMD_ARGS="${CMD_ARGS} -M ${DB}/+DISPLAY"
-	test -n "${CONFLICTS}" && CMD_ARGS="${CMD_ARGS} -C ${CONFLICTS}"
-	test -n "${SCRIPTS}" && CMD_ARGS="${CMD_ARGS} -s ${SCRIPTS}"
-	test -n "${OPTIONS}" && CMD_ARGS="${CMD_ARGS} -O ${OPTIONS}"
-		
 	# register a package only if it's not registered already
 	if pkg info -e ${ORIGIN}; then
 		echo "package is already registered."
 	else
-		pkg register -c "${COMMENT}" -d ${DESC} -p /usr/local -n ${PKG} \
-		-P "$( cat ${DEPENDS} )" \
-		-o ${ORIGIN} -a ${ARCH} -r ${MAINTAINER} -f ${PLIST} ${CMD_ARGS}
-
-		test $? -ne 0 && echo "failed." || echo "done."
+		pkg register -l -m ${MDIR} -f ${PLIST} ${CMD_ARGS}
+		test $? -ne 0 && echo "failed." || {
+		echo "done." ; rm -rf ${MANIFEST}
+		}
 	fi
 
-	rm ${PLIST} ${DEPENDS}
+	rm -rf ${MDIR}
 done
 

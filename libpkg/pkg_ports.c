@@ -14,8 +14,10 @@ int
 ports_parse_plist(struct pkg *pkg, char *plist)
 {
 	char *plist_p, *buf, *p, *plist_buf;
+	char comment[2];
 	int nbel, i;
 	size_t next;
+	size_t len;
 	char sha256[65];
 	char path[MAXPATHLEN];
 	char *last_plist_file = NULL;
@@ -24,6 +26,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	struct stat st;
 	int ret = EPKG_OK;
 	off_t sz = 0;
+	const char *slash;
 	int64_t flatsize = 0;
 	struct sbuf *exec_scripts = sbuf_new_auto();
 	struct sbuf *unexec_scripts = sbuf_new_auto();
@@ -41,6 +44,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		return (ret);
 
 	prefix = pkg_get(pkg, PKG_PREFIX);
+	slash = prefix[strlen(prefix) - 1] == '/' ? "" : "/";
 
 	nbel = split_chr(plist_buf, '\n');
 
@@ -58,9 +62,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					prefix = pkg_get(pkg, PKG_PREFIX);
 				else
 					prefix = buf;
-			} else if (STARTS_WITH(plist_p, "@comment ")){
+				slash = prefix[strlen(prefix) - 1] == '/' ? "" : "/";
+			} else if (STARTS_WITH(plist_p, "@comment ")) {
 				/* DO NOTHING: ignore the comments */
-			} else if (STARTS_WITH(plist_p, "@unexec ") || STARTS_WITH(plist_p, "@exec ")) {
+			} else if (STARTS_WITH(plist_p, "@unexec ") ||
+					   STARTS_WITH(plist_p, "@exec ")) {
 				buf = plist_p;
 
 				while (!isspace(buf[0]))
@@ -72,10 +78,39 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				if (format_exec_cmd(&cmd, buf, prefix, last_plist_file) < 0)
 					continue;
 
-				if (plist_p[1] == 'u')
-					sbuf_printf(unexec_scripts, "%s\n", cmd);
-				else
+				if (plist_p[1] == 'u') {
+					comment[0] = '\0';
+					/* workaround to detect the @dirrmtry */
+					if (STARTS_WITH(cmd, "rmdir ")) {
+						comment[0] = '#';
+						comment[1] = '\0';
+						cmd += 6;
+					} else if (STARTS_WITH(cmd, "/bin/rmdir ")) {
+						comment[0] = '#';
+						comment[1] = '\0';
+						cmd += 11;
+					}
+					if (sbuf_len(unexec_scripts) == 0)
+						sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
+					sbuf_printf(unexec_scripts, "%s%s\n",comment, cmd);
+
+					/* workaround to detect the @dirrmtry */
+					if (comment[0] == '#') {
+						buf =strchr(cmd, ' ');
+						buf[0] = '\0';
+						while (cmd[0] == '\"')
+							cmd++;
+
+						while (cmd[strlen(cmd) -1] == '\"')
+							cmd[strlen(cmd) -1] = '\0';
+
+						ret += pkg_adddir(pkg, cmd);
+					}
+				} else {
+					if (sbuf_len(exec_scripts) == 0)
+						sbuf_cat(exec_scripts, "#@exec\n"); /* to be able to regenerate the @exec in pkg2legacy */
 					sbuf_printf(exec_scripts, "%s\n", cmd);
+				}
 
 				free(cmd);
 
@@ -90,39 +125,49 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				while (isspace(buf[0]))
 					buf++;
 
-				if (prefix[strlen(prefix) -1 ] == '/')
-					snprintf(path, MAXPATHLEN, "%s%s/", prefix, buf);
-				else
-					snprintf(path, MAXPATHLEN, "%s/%s/", prefix, buf);
+				len = strlen(buf);
 
-				if (lstat(path, &st) >= 0)
-					flatsize += st.st_size;
+				while (isspace(buf[len - 1])) {
+					buf[len - 1] = '\0';
+					len--;
+				}
 
-				ret += pkg_addfile(pkg, path, NULL);
+				snprintf(path, MAXPATHLEN, "%s%s%s/", prefix, slash, buf);
+
+				ret += pkg_adddir(pkg, path);
 
 			} else {
 				warnx("%s is deprecated, ignoring", plist_p);
 			}
-		} else if (strlen(plist_p) > 0){
+		} else if ((len = strlen(plist_p)) > 0){
 			buf = plist_p;
 			last_plist_file = buf;
+			sha256[0] = '\0';
 
-			if (prefix[strlen(prefix) - 1] == '/')
-				snprintf(path, MAXPATHLEN, "%s%s", prefix, buf);
-			else
-				snprintf(path, MAXPATHLEN, "%s/%s", prefix, buf);
+			/* remove spaces at the begining and at the end */
+			while (isspace(buf[0]))
+				buf++;
 
-			if (lstat(path, &st) >= 0) {
-				if (!S_ISLNK(st.st_mode) && !S_ISDIR(st.st_mode) && sha256_file(path, sha256) == 0)
-					p = sha256;
-
-				flatsize += st.st_size;
-			} else {
-				warn("lstat(%s)", path);
-				p = NULL;
+			while (isspace(buf[len -  1])) {
+				buf[len - 1] = '\0';
+				len--;
 			}
 
-			ret += pkg_addfile(pkg, path, p);
+			snprintf(path, MAXPATHLEN, "%s%s%s", prefix, slash, buf);
+
+			if (lstat(path, &st) == 0) {
+				if (S_ISLNK(st.st_mode)) {
+					p = NULL;
+				} else {
+					flatsize += st.st_size;
+					if (sha256_file(path, sha256) != 0)
+						pkg_error_warn("can not compute sha256");
+					p = sha256;
+				}
+				ret += pkg_addfile(pkg, path, p);
+			} else {
+				warn("lstat(%s)", path);
+			}
 		}
 
 		if (i != nbel) {
@@ -147,127 +192,4 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	free(plist_buf);
 
 	return (ret);
-}
-
-int
-ports_parse_depends(struct pkg *pkg, char *depends)
-{
-	int nbel, i;
-	char *dep_p, *buf, *v, *name;;
-	size_t next;
-
-	if (depends == NULL)
-		return (-1);
-
-	if (depends[0] == '\0')
-		return (0);
-
-	nbel = split_chr(depends, '\n');
-
-	buf = NULL;
-	v = NULL;
-
-	next = strlen(depends);
-	dep_p = depends;
-
-	for (i = 0; i <= nbel; i++) {
-
-		buf = dep_p;
-		split_chr(dep_p, ':');
-
-		if ((v = strrchr(dep_p, '-')) == NULL)
-			return (pkg_error_set(EPKG_FATAL, "bad depends format"));
-		v[0] = '\0';
-		v++;
-		
-		name = buf;
-		buf += strlen(buf) + 1;
-		buf += strlen(buf) + 1;
-
-		pkg_adddep(pkg, name, buf, v);
-
-		if (i != nbel) {
-			dep_p += next + 1;
-			next = strlen(dep_p);
-		}
-	}
-
-	return (0);
-}
-
-int
-ports_parse_conflicts(struct pkg *pkg, char *conflicts)
-{
-	int nbel, i;
-	char *conflict_p;
-	size_t next;
-
-	if (conflicts == NULL)
-		return (-1);
-
-	nbel = split_chr(conflicts, ' ');
-	conflict_p = conflicts;
-
-	next = strlen(conflict_p);
-	for (i = 0; i <= nbel; i++) {
-		pkg_addconflict(pkg, conflict_p);
-		conflict_p += next + 1;
-		next = strlen(conflict_p);
-	}
-
-	return (0);
-}
-
-int
-ports_parse_scripts(struct pkg *pkg, char *scripts)
-{
-	int nbel, i;
-	char *script_p;
-	size_t next;
-
-	if (scripts == NULL)
-		return (-1);
-
-	nbel = split_chr(scripts, ' ');
-	script_p = scripts;
-
-	next = strlen(script_p);
-	for (i = 0; i <= nbel; i++) {
-		pkg_addscript(pkg, script_p);
-
-		script_p += next + 1;
-		next = strlen(script_p);
-	}
-
-	return (0);
-}
-
-int
-ports_parse_options(struct pkg *pkg, char *options)
-{
-	int nbel, i;
-	char *option_p;
-	size_t next;
-	char *value;
-
-	if (options == NULL)
-		return (-1);
-
-	nbel = split_chr(options, ' ');
-	option_p = options;
-
-	next = strlen(option_p);
-	for (i = 0; i <= nbel; i++) {
-
-		if ((value = strrchr(option_p, '=')) != NULL) {
-			value[0] = '\0';
-			value++;
-			pkg_addoption(pkg, option_p, value);
-		}
-
-		option_p += next + 1;
-		next = strlen(option_p);
-	}
-
-	return (0);
 }

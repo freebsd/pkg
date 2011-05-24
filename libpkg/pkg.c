@@ -109,6 +109,25 @@ pkg_flatsize(struct pkg *pkg)
 	return (pkg->flatsize);
 }
 
+int
+pkg_setautomatic(struct pkg *pkg)
+{
+	pkg->automatic = true;
+
+	return (EPKG_OK);
+}
+
+int
+pkg_isautomatic(struct pkg *pkg)
+{
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
+		return (-1);
+	}
+
+	return (pkg->automatic);
+}
+
 int64_t
 pkg_new_flatsize(struct pkg *pkg)
 {
@@ -214,6 +233,18 @@ pkg_files(struct pkg *pkg)
 
 	array_init(&pkg->files, 1);
 	return ((struct pkg_file **)pkg->files.data);
+}
+
+const char **
+pkg_dirs(struct pkg *pkg)
+{
+	if (pkg == NULL) {
+		ERROR_BAD_ARG("pkg");
+		return (NULL);
+	}
+
+	array_init(&pkg->dirs, 1);
+	return ((const char **)pkg->dirs.data);
 }
 
 struct pkg_conflict **
@@ -403,6 +434,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
 	}
 
+	(*pkg)->automatic = false;
 	(*pkg)->type = type;
 
 	return (EPKG_OK);
@@ -427,6 +459,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	array_reset(&pkg->rdeps, &pkg_free_void);
 	array_reset(&pkg->conflicts, &pkg_conflict_free_void);
 	array_reset(&pkg->files, &free);
+	array_reset(&pkg->dirs, &free);
 	array_reset(&pkg->scripts, &pkg_script_free_void);
 	array_reset(&pkg->options, &pkg_option_free_void);
 
@@ -446,6 +479,7 @@ pkg_free(struct pkg *pkg)
 	array_free(&pkg->rdeps, &pkg_free_void);
 	array_free(&pkg->conflicts, &pkg_conflict_free_void);
 	array_free(&pkg->files, &free);
+	array_free(&pkg->dirs, &free);
 	array_free(&pkg->scripts, &pkg_script_free_void);
 	array_free(&pkg->options, &pkg_option_free_void);
 
@@ -526,23 +560,32 @@ pkg_addscript(struct pkg *pkg, const char *path)
 	filename[0] = '\0';
 	filename++;
 
-	if (strcmp(filename, "pkg-pre-install") == 0) {
+	if (strcmp(filename, "pkg-pre-install") == 0 || 
+			strcmp(filename, "+PRE_INSTALL") == 0) {
 		script->type = PKG_SCRIPT_PRE_INSTALL;
-	} else if (strcmp(filename, "pkg-post-install") == 0) {
+	} else if (strcmp(filename, "pkg-post-install") == 0 ||
+			strcmp(filename, "+POST_INSTALL") == 0) {
 		script->type = PKG_SCRIPT_POST_INSTALL;
-	} else if (strcmp(filename, "pkg-install") == 0) {
+	} else if (strcmp(filename, "pkg-install") == 0 ||
+			strcmp(filename, "+INSTALL") == 0) {
 		script->type = PKG_SCRIPT_INSTALL;
-	} else if (strcmp(filename, "pkg-pre-deinstall") == 0) {
+	} else if (strcmp(filename, "pkg-pre-deinstall") == 0 ||
+			strcmp(filename, "+PRE_DEINSTALL") == 0) {
 		script->type = PKG_SCRIPT_PRE_DEINSTALL;
-	} else if (strcmp(filename, "pkg-post-deinstall") == 0) {
+	} else if (strcmp(filename, "pkg-post-deinstall") == 0 ||
+			strcmp(filename, "+POST_DEINSTALL") == 0) {
 		script->type = PKG_SCRIPT_POST_DEINSTALL;
-	} else if (strcmp(filename, "pkg-deinstall") == 0) {
+	} else if (strcmp(filename, "pkg-deinstall") == 0 ||
+			strcmp(filename, "+DEINSTALL") == 0) {
 		script->type = PKG_SCRIPT_DEINSTALL;
-	} else if (strcmp(filename, "pkg-pre-upgrade") == 0) {
+	} else if (strcmp(filename, "pkg-pre-upgrade") == 0 ||
+			strcmp(filename, "+PRE_UPGRADE") == 0) {
 		script->type = PKG_SCRIPT_PRE_UPGRADE;
-	} else if (strcmp(filename, "pkg-post-upgrade") == 0) {
+	} else if (strcmp(filename, "pkg-post-upgrade") == 0 ||
+			strcmp(filename, "+POST_UPGRADE") == 0) {
 		script->type = PKG_SCRIPT_POST_UPGRADE;
-	} else if (strcmp(filename, "pkg-upgrade") == 0) {
+	} else if (strcmp(filename, "pkg-upgrade") == 0 ||
+			strcmp(filename, "+UPGRADE") == 0) {
 		script->type = PKG_SCRIPT_UPGRADE;
 	} else {
 		return (pkg_error_set(EPKG_FATAL, "unknown script"));
@@ -667,6 +710,31 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 
 	array_init(&pkg->files, 10);
 	array_append(&pkg->files, file);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_adddir(struct pkg *pkg, const char *path)
+{
+	char **dirs;
+	int i;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (path == NULL || path[0] == '\0')
+		return (ERROR_BAD_ARG("path"));
+
+	array_init(&pkg->dirs, 10);
+	dirs = (char **)pkg->dirs.data;
+	for (i = 0; dirs[i] != NULL; i++) {
+		if (strcmp(path, dirs[i]) == 0) {
+			warnx("Duplicate directory listing: %s, ignoring", path);
+			return (EPKG_OK);
+		}
+	}
+	array_append(&pkg->dirs, strdup(path));
 
 	return (EPKG_OK);
 }
