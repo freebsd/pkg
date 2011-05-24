@@ -697,6 +697,9 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 int
 pkg_adddir(struct pkg *pkg, const char *path)
 {
+	char **dirs;
+	int i;
+
 	if (pkg == NULL)
 		return (ERROR_BAD_ARG("pkg"));
 
@@ -704,6 +707,13 @@ pkg_adddir(struct pkg *pkg, const char *path)
 		return (ERROR_BAD_ARG("path"));
 
 	array_init(&pkg->dirs, 10);
+	dirs = (char **)pkg->dirs.data;
+	for (i = 0; dirs[i] != NULL; i++) {
+		if (strcmp(path, dirs[i]) == 0) {
+			warnx("Duplicate directory listing: %s, ignoring", path);
+			return (EPKG_OK);
+		}
+	}
 	array_append(&pkg->dirs, strdup(path));
 
 	return (EPKG_OK);
