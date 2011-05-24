@@ -11,6 +11,99 @@
 #include "pkg_private.h"
 #include "pkg_util.h"
 
+int
+pkg_new(struct pkg **pkg, pkg_t type)
+{
+	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
+		return(pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
+
+	struct _fields {
+		int id;
+		int type;
+		int optional;
+	} fields[] = {
+		{PKG_ORIGIN, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_NAME, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_VERSION, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_COMMENT, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_DESC, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_MTREE, PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
+		{PKG_MESSAGE, PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
+		{PKG_ARCH, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_OSVERSION, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_MAINTAINER, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_WWW, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 1},
+		{PKG_PREFIX, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+		{PKG_REPOPATH, PKG_REMOTE|PKG_UPGRADE, 0},
+		{PKG_CKSUM, PKG_REMOTE|PKG_UPGRADE, 0},
+		{PKG_NEWVERSION, PKG_UPGRADE, 0},
+	};
+
+	for (int i = 0; i < PKG_NUM_FIELDS; i++) {
+		(*pkg)->fields[fields[i].id].type = fields[i].type;
+		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
+	}
+
+	STAILQ_INIT(&(*pkg)->deps);
+	STAILQ_INIT(&(*pkg)->rdeps);
+	STAILQ_INIT(&(*pkg)->files);
+	STAILQ_INIT(&(*pkg)->dirs);
+	STAILQ_INIT(&(*pkg)->conflicts);
+	STAILQ_INIT(&(*pkg)->scripts);
+	STAILQ_INIT(&(*pkg)->options);
+
+	(*pkg)->automatic = false;
+	(*pkg)->type = type;
+
+	return (EPKG_OK);
+}
+
+void
+pkg_reset(struct pkg *pkg, pkg_t type)
+{
+	if (pkg == NULL)
+		return;
+
+	for (int i = 0; i < PKG_NUM_FIELDS; i++)
+		sbuf_reset(pkg->fields[i].value);
+
+	pkg->flatsize = 0;
+	pkg->new_flatsize = 0;
+	pkg->new_pkgsize = 0;
+	pkg->flags = 0;
+	pkg->rowid = 0;
+
+	pkg_freedeps(pkg);
+	pkg_freerdeps(pkg);
+	pkg_freefiles(pkg);
+	pkg_freedirs(pkg);
+	pkg_freeconflicts(pkg);
+	pkg_freescripts(pkg);
+	pkg_freeoptions(pkg);
+
+	pkg->type = type;
+}
+
+void
+pkg_free(struct pkg *pkg)
+{
+	if (pkg == NULL)
+		return;
+
+	for (int i = 0; i < PKG_NUM_FIELDS; i++)
+		sbuf_free(pkg->fields[i].value);
+
+	pkg_freedeps(pkg);
+	pkg_freerdeps(pkg);
+	pkg_freefiles(pkg);
+	pkg_freedirs(pkg);
+	pkg_freeconflicts(pkg);
+	pkg_freescripts(pkg);
+	pkg_freeoptions(pkg);
+
+	free(pkg);
+}
+
 pkg_t
 pkg_type(struct pkg const * const pkg)
 {
@@ -150,113 +243,476 @@ pkg_new_pkgsize(struct pkg *pkg)
 	return (pkg->new_pkgsize);
 }
 
-struct pkg_script **
-pkg_scripts(struct pkg *pkg)
+int
+pkg_setflatsize(struct pkg *pkg, int64_t size)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
-	}
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
 
-	array_init(&pkg->scripts, 1);
-	return ((struct pkg_script **)pkg->scripts.data);
-}
+	if (size < 0)
+		return (ERROR_BAD_ARG("size"));
 
-struct pkg **
-pkg_deps(struct pkg *pkg)
-{
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
-	}
-
-	array_init(&pkg->deps, 1);
-	return ((struct pkg **)pkg->deps.data);
-}
-
-struct pkg_option **
-pkg_options(struct pkg *pkg)
-{
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
-	}
-
-	array_init(&pkg->options, 1);
-	return ((struct pkg_option **)pkg->options.data);
+	pkg->flatsize = size;
+	return (EPKG_OK);
 }
 
 int
-pkg_resolvdeps(struct pkg *pkg, struct pkgdb *db) {
-	struct pkg *p = NULL;
-	struct pkgdb_it *it;
-	struct pkg **deps;
-	int i;
+pkg_setnewflatsize(struct pkg *pkg, int64_t size)
+{
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
 
-	deps = pkg_deps(pkg);
-	for (i = 0; deps[i] != NULL; i++) {
-		if (deps[i]->type != PKG_INSTALLED) {
-			it = pkgdb_query(db, pkg_get(deps[i], PKG_ORIGIN), MATCH_EXACT);
+	if (size <0)
+		return (ERROR_BAD_ARG("size"));
 
-			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-				deps[i]->type = PKG_INSTALLED;
-			} else {
-				deps[i]->type = PKG_NOTFOUND;
-			}
-			pkgdb_it_free(it);
-		}
-	}
-	pkg_free(p);
+	pkg->new_flatsize = size;
 
 	return (EPKG_OK);
 }
 
-struct pkg **
-pkg_rdeps(struct pkg *pkg)
+int
+pkg_setnewpkgsize(struct pkg *pkg, int64_t size)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
-	}
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
 
-	array_init(&pkg->rdeps, 1);
-	return ((struct pkg **)pkg->rdeps.data);
+	if (size <0)
+		return (ERROR_BAD_ARG("size"));
+
+	pkg->new_pkgsize = size;
+
+	return (EPKG_OK);
 }
 
-struct pkg_file **
-pkg_files(struct pkg *pkg)
+int
+pkg_deps(struct pkg *pkg, struct pkg_dep **d)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
-	}
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
 
-	array_init(&pkg->files, 1);
-	return ((struct pkg_file **)pkg->files.data);
+	if (*d == NULL)
+		*d = STAILQ_FIRST(&pkg->deps);
+	else
+		*d = STAILQ_NEXT(*d, next);
+
+	if (*d == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
 }
 
-const char **
-pkg_dirs(struct pkg *pkg)
+int
+pkg_rdeps(struct pkg *pkg, struct pkg_dep **d)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
-	}
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
 
-	array_init(&pkg->dirs, 1);
-	return ((const char **)pkg->dirs.data);
+	if (*d == NULL)
+		*d = STAILQ_FIRST(&pkg->rdeps);
+	else
+		*d = STAILQ_NEXT(*d, next);
+
+	if (*d == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
 }
 
-struct pkg_conflict **
-pkg_conflicts(struct pkg *pkg)
+int
+pkg_files(struct pkg *pkg, struct pkg_file **f)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (*f == NULL)
+		*f = STAILQ_FIRST(&pkg->files);
+	else
+		*f = STAILQ_NEXT(*f, next);
+
+	if (*f == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
+pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
+{
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (*d == NULL)
+		*d = STAILQ_FIRST(&pkg->dirs);
+	else
+		*d = STAILQ_NEXT(*d, next);
+
+	if (*d == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
+pkg_conflicts(struct pkg *pkg, struct pkg_conflict **c)
+{
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (*c == NULL)
+		*c = STAILQ_FIRST(&pkg->conflicts);
+	else
+		*c = STAILQ_NEXT(*c, next);
+
+	if (*c == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
+pkg_scripts(struct pkg *pkg, struct pkg_script **s)
+{
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (*s == NULL)
+		*s = STAILQ_FIRST(&pkg->scripts);
+	else
+		*s = STAILQ_NEXT(*s, next);
+
+	if (*s == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
+pkg_options(struct pkg *pkg, struct pkg_option **o)
+{
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (*o == NULL)
+		*o = STAILQ_FIRST(&pkg->options);
+	else
+		*o = STAILQ_NEXT(*o, next);
+
+	if (*o == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
+pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version)
+{
+	struct pkg_dep *d;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (name == NULL || name[0] == '\0')
+		return (ERROR_BAD_ARG("name"));
+
+	if (origin == NULL || origin[0] == '\0')
+		return (ERROR_BAD_ARG("origin"));
+
+	if (version == NULL || version[0] == '\0')
+		return (ERROR_BAD_ARG("version"));
+
+	pkg_dep_new(&d);
+
+	sbuf_set(&d->origin, origin);
+	sbuf_set(&d->name, name);
+	sbuf_set(&d->version, version);
+
+	STAILQ_INSERT_TAIL(&pkg->deps, d, next);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
+{
+	struct pkg_file *f;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (path == NULL || path[0] == '\0')
+		return (ERROR_BAD_ARG("path"));
+
+	pkg_file_new(&f);
+
+	strlcpy(f->path, path, sizeof(f->path));
+
+	if (sha256 != NULL)
+		strlcpy(f->sha256, sha256, sizeof(f->sha256));
+
+	STAILQ_INSERT_TAIL(&pkg->files, f, next);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_adddir(struct pkg *pkg, const char *path)
+{
+	struct pkg_dir *d = NULL;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (path == NULL || path[0] == '\0')
+		return (ERROR_BAD_ARG("path"));
+
+	while (pkg_dirs(pkg, &d) == EPKG_OK) {
+		if (strcmp(path, pkg_dir_path(d)) == 0) {
+			warnx("Duplicate directory listing: %s, ignoring", path);
+			return (EPKG_OK);
+		}
 	}
 
-	array_init(&pkg->conflicts, 1);
-	return ((struct pkg_conflict **)pkg->conflicts.data);
+	pkg_dir_new(&d);
+	strlcpy(d->path, path, sizeof(d->path));
+
+	STAILQ_INSERT_TAIL(&pkg->dirs, d, next);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addconflict(struct pkg *pkg, const char *glob)
+{
+	struct pkg_conflict *c;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (glob == NULL || glob[0] == '\0')
+		return (ERROR_BAD_ARG("glob"));
+
+	pkg_conflict_new(&c);
+	sbuf_set(&c->glob, glob);
+
+	STAILQ_INSERT_TAIL(&pkg->conflicts, c, next);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addscript(struct pkg *pkg, const char *data, pkg_script_t type)
+{
+	struct pkg_script *s;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	pkg_script_new(&s);
+	sbuf_set(&s->data, data);
+	s->type = type;
+
+	STAILQ_INSERT_TAIL(&pkg->scripts, s, next);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addscript_file(struct pkg *pkg, const char *path)
+{
+	char *filename;
+	char *data;
+	pkg_script_t type;
+	int ret = EPKG_OK;
+	off_t sz = 0;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (path == NULL)
+		return (ERROR_BAD_ARG("path"));
+
+	if ((ret = file_to_buffer(path, &data, &sz)) != EPKG_OK)
+		return (ret);
+
+	filename = strrchr(path, '/');
+	filename[0] = '\0';
+	filename++;
+
+	if (strcmp(filename, "pkg-pre-install") == 0 || 
+			strcmp(filename, "+PRE_INSTALL") == 0) {
+		type = PKG_SCRIPT_PRE_INSTALL;
+	} else if (strcmp(filename, "pkg-post-install") == 0 ||
+			strcmp(filename, "+POST_INSTALL") == 0) {
+		type = PKG_SCRIPT_POST_INSTALL;
+	} else if (strcmp(filename, "pkg-install") == 0 ||
+			strcmp(filename, "+INSTALL") == 0) {
+		type = PKG_SCRIPT_INSTALL;
+	} else if (strcmp(filename, "pkg-pre-deinstall") == 0 ||
+			strcmp(filename, "+PRE_DEINSTALL") == 0) {
+		type = PKG_SCRIPT_PRE_DEINSTALL;
+	} else if (strcmp(filename, "pkg-post-deinstall") == 0 ||
+			strcmp(filename, "+POST_DEINSTALL") == 0) {
+		type = PKG_SCRIPT_POST_DEINSTALL;
+	} else if (strcmp(filename, "pkg-deinstall") == 0 ||
+			strcmp(filename, "+DEINSTALL") == 0) {
+		type = PKG_SCRIPT_DEINSTALL;
+	} else if (strcmp(filename, "pkg-pre-upgrade") == 0 ||
+			strcmp(filename, "+PRE_UPGRADE") == 0) {
+		type = PKG_SCRIPT_PRE_UPGRADE;
+	} else if (strcmp(filename, "pkg-post-upgrade") == 0 ||
+			strcmp(filename, "+POST_UPGRADE") == 0) {
+		type = PKG_SCRIPT_POST_UPGRADE;
+	} else if (strcmp(filename, "pkg-upgrade") == 0 ||
+			strcmp(filename, "+UPGRADE") == 0) {
+		type = PKG_SCRIPT_UPGRADE;
+	} else {
+		return (pkg_error_set(EPKG_FATAL, "unknown script"));
+	}
+
+	ret = pkg_addscript(pkg, data, type);
+	free(data);
+	return (ret);
+}
+
+int
+pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type)
+{
+	struct pkg_script *s = NULL;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (cmd == NULL || cmd[0] == '\0')
+		return (ERROR_BAD_ARG("cmd"));
+
+	while (pkg_scripts(pkg, &s) == EPKG_OK) {
+		if (pkg_script_type(s) == type) {
+			break;
+		}
+	}
+
+	if (s != NULL) {
+		sbuf_cat(s->data, cmd);
+		sbuf_done(s->data);
+		return (EPKG_OK);
+	}
+
+	pkg_script_new(&s);
+	sbuf_set(&s->data, cmd);
+
+	s->type = type;
+
+	STAILQ_INSERT_TAIL(&pkg->scripts, s, next);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addoption(struct pkg *pkg, const char *key, const char *value)
+{
+	struct pkg_option *o;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (key == NULL || key[0] == '\0')
+		return (ERROR_BAD_ARG("opt"));
+
+	if (value == NULL || value[0] == '\0')
+		return (ERROR_BAD_ARG("value"));
+
+	pkg_option_new(&o);
+
+	sbuf_set(&o->key, key);
+	sbuf_set(&o->value, value);
+
+	STAILQ_INSERT_TAIL(&pkg->options, o, next);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_freedeps(struct pkg *pkg)
+{
+	struct pkg_dep *d;
+
+	while (!STAILQ_EMPTY(&pkg->deps)) {
+		d = STAILQ_FIRST(&pkg->deps);
+		STAILQ_REMOVE_HEAD(&pkg->deps, next);
+		pkg_dep_free(d);
+	}
+}
+
+void
+pkg_freerdeps(struct pkg *pkg)
+{
+	struct pkg_dep *d;
+
+	while (!STAILQ_EMPTY(&pkg->rdeps)) {
+		d = STAILQ_FIRST(&pkg->rdeps);
+		STAILQ_REMOVE_HEAD(&pkg->rdeps, next);
+		pkg_dep_free(d);
+	}
+}
+
+void
+pkg_freefiles(struct pkg *pkg)
+{
+	struct pkg_file *f;
+
+	while (!STAILQ_EMPTY(&pkg->files)) {
+		f = STAILQ_FIRST(&pkg->files);
+		STAILQ_REMOVE_HEAD(&pkg->files, next);
+		pkg_file_free(f);
+	}
+}
+
+void
+pkg_freedirs(struct pkg *pkg)
+{
+	struct pkg_dir *d;
+
+	while (!STAILQ_EMPTY(&pkg->dirs)) {
+		d = STAILQ_FIRST(&pkg->dirs);
+		STAILQ_REMOVE_HEAD(&pkg->dirs, next);
+		pkg_dir_free(d);
+	}
+}
+
+void
+pkg_freeconflicts(struct pkg *pkg)
+{
+	struct pkg_conflict *c;
+
+	while (!STAILQ_EMPTY(&pkg->conflicts)) {
+		c = STAILQ_FIRST(&pkg->conflicts);
+		STAILQ_REMOVE_HEAD(&pkg->conflicts, next);
+		pkg_conflict_free(c);
+	}
+}
+
+void
+pkg_freescripts(struct pkg *pkg)
+{
+	struct pkg_script *s;
+
+	while (!STAILQ_EMPTY(&pkg->scripts)) {
+		s = STAILQ_FIRST(&pkg->scripts);
+		STAILQ_REMOVE_HEAD(&pkg->scripts, next);
+		pkg_script_free(s);
+	}
+}
+
+void
+pkg_freeoptions(struct pkg *pkg)
+{
+	struct pkg_option *o;
+
+	while (!STAILQ_EMPTY(&pkg->options)) {
+		o = STAILQ_FIRST(&pkg->options);
+		STAILQ_REMOVE_HEAD(&pkg->options, next);
+		pkg_option_free(o);
+	}
 }
 
 int
@@ -334,9 +790,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	pkg = *pkg_p;
 	pkg->type = PKG_FILE;
 
-	array_init(&pkg->scripts, 10);
-	array_init(&pkg->files, 10);
-
 	while ((ret = archive_read_next_header(*a, ae)) == ARCHIVE_OK) {
 		fpath = archive_entry_pathname(*ae);
 
@@ -378,7 +831,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 					sbuf_bcat(script->data, buf, size);
 				}
 				sbuf_finish(script->data);
-				array_append(&pkg->scripts, script);
+
+				STAILQ_INSERT_TAIL(&pkg->scripts, script, next);
 				break;
 			}
 		}
@@ -402,384 +856,25 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 }
 
 int
-pkg_new(struct pkg **pkg, pkg_t type)
-{
-	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
-		return(pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
-
-	struct _fields {
-		int id;
-		int type;
-		int optional;
-	} fields[] = {
-		{PKG_ORIGIN, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE|PKG_NOTFOUND, 0},
-		{PKG_NAME, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE|PKG_NOTFOUND, 0},
-		{PKG_VERSION, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE|PKG_NOTFOUND, 0},
-		{PKG_COMMENT, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_DESC, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_MTREE, PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
-		{PKG_MESSAGE, PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
-		{PKG_ARCH, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_OSVERSION, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_MAINTAINER, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_WWW, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 1},
-		{PKG_PREFIX, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_REPOPATH, PKG_REMOTE|PKG_UPGRADE, 0},
-		{PKG_CKSUM, PKG_REMOTE|PKG_UPGRADE, 0},
-		{PKG_NEWVERSION, PKG_UPGRADE, 0},
-	};
-
-	for (int i = 0; i < PKG_NUM_FIELDS; i++) {
-		(*pkg)->fields[fields[i].id].type = fields[i].type;
-		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
-	}
-
-	(*pkg)->automatic = false;
-	(*pkg)->type = type;
-
-	return (EPKG_OK);
-}
-
-void
-pkg_reset(struct pkg *pkg, pkg_t type)
-{
-	if (pkg == NULL)
-		return;
-
-	for (int i = 0; i < PKG_NUM_FIELDS; i++)
-		sbuf_reset(pkg->fields[i].value);
-
-	pkg->flatsize = 0;
-	pkg->new_flatsize = 0;
-	pkg->new_pkgsize = 0;
-	pkg->flags = 0;
-	pkg->rowid = 0;
-
-	array_reset(&pkg->deps, &pkg_free_void);
-	array_reset(&pkg->rdeps, &pkg_free_void);
-	array_reset(&pkg->conflicts, &pkg_conflict_free_void);
-	array_reset(&pkg->files, &free);
-	array_reset(&pkg->dirs, &free);
-	array_reset(&pkg->scripts, &pkg_script_free_void);
-	array_reset(&pkg->options, &pkg_option_free_void);
-
-	pkg->type = type;
-}
-
-void
-pkg_free(struct pkg *pkg)
-{
-	if (pkg == NULL)
-		return;
-
-	for (int i = 0; i < PKG_NUM_FIELDS; i++)
-		sbuf_free(pkg->fields[i].value);
-
-	array_free(&pkg->deps, &pkg_free_void);
-	array_free(&pkg->rdeps, &pkg_free_void);
-	array_free(&pkg->conflicts, &pkg_conflict_free_void);
-	array_free(&pkg->files, &free);
-	array_free(&pkg->dirs, &free);
-	array_free(&pkg->scripts, &pkg_script_free_void);
-	array_free(&pkg->options, &pkg_option_free_void);
-
-	free(pkg);
-}
-
-void
-pkg_free_void(void *p)
-{
-	if (p != NULL)
-		pkg_free((struct pkg*) p);
-}
-
-int
-pkg_setflatsize(struct pkg *pkg, int64_t size)
-{
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (size < 0)
-		return (ERROR_BAD_ARG("size"));
-
-	pkg->flatsize = size;
-	return (EPKG_OK);
-}
-
-int
-pkg_setnewflatsize(struct pkg *pkg, int64_t size)
-{
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (size <0)
-		return (ERROR_BAD_ARG("size"));
-
-	pkg->new_flatsize = size;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_setnewpkgsize(struct pkg *pkg, int64_t size)
-{
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (size <0)
-		return (ERROR_BAD_ARG("size"));
-
-	pkg->new_pkgsize = size;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_addscript(struct pkg *pkg, const char *path)
-{
-	struct pkg_script *script;
-	char *filename;
-	char *raw_script;
-	int ret = EPKG_OK;
-	off_t sz = 0;
-
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (path == NULL)
-		return (ERROR_BAD_ARG("path"));
-
-	if ((ret = file_to_buffer(path, &raw_script, &sz)) != EPKG_OK)
-		return (ret);
-
-	pkg_script_new(&script);
-
-	sbuf_set(&script->data, raw_script);
-
-	filename = strrchr(path, '/');
-	filename[0] = '\0';
-	filename++;
-
-	if (strcmp(filename, "pkg-pre-install") == 0 || 
-			strcmp(filename, "+PRE_INSTALL") == 0) {
-		script->type = PKG_SCRIPT_PRE_INSTALL;
-	} else if (strcmp(filename, "pkg-post-install") == 0 ||
-			strcmp(filename, "+POST_INSTALL") == 0) {
-		script->type = PKG_SCRIPT_POST_INSTALL;
-	} else if (strcmp(filename, "pkg-install") == 0 ||
-			strcmp(filename, "+INSTALL") == 0) {
-		script->type = PKG_SCRIPT_INSTALL;
-	} else if (strcmp(filename, "pkg-pre-deinstall") == 0 ||
-			strcmp(filename, "+PRE_DEINSTALL") == 0) {
-		script->type = PKG_SCRIPT_PRE_DEINSTALL;
-	} else if (strcmp(filename, "pkg-post-deinstall") == 0 ||
-			strcmp(filename, "+POST_DEINSTALL") == 0) {
-		script->type = PKG_SCRIPT_POST_DEINSTALL;
-	} else if (strcmp(filename, "pkg-deinstall") == 0 ||
-			strcmp(filename, "+DEINSTALL") == 0) {
-		script->type = PKG_SCRIPT_DEINSTALL;
-	} else if (strcmp(filename, "pkg-pre-upgrade") == 0 ||
-			strcmp(filename, "+PRE_UPGRADE") == 0) {
-		script->type = PKG_SCRIPT_PRE_UPGRADE;
-	} else if (strcmp(filename, "pkg-post-upgrade") == 0 ||
-			strcmp(filename, "+POST_UPGRADE") == 0) {
-		script->type = PKG_SCRIPT_POST_UPGRADE;
-	} else if (strcmp(filename, "pkg-upgrade") == 0 ||
-			strcmp(filename, "+UPGRADE") == 0) {
-		script->type = PKG_SCRIPT_UPGRADE;
-	} else {
-		return (pkg_error_set(EPKG_FATAL, "unknown script"));
-	}
-
-	array_init(&pkg->scripts, 6);
-	array_append(&pkg->scripts, script);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type)
-{
-	int i;
-	struct pkg_script **scripts;
-	struct pkg_script *p_i_script = NULL;
-
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (cmd == NULL || cmd[0] == '\0')
-		return (ERROR_BAD_ARG("cmd"));
-
-	if ((scripts = pkg_scripts(pkg)) != NULL) {
-		for (i = 0; scripts[i] != NULL; i++) {
-			if (pkg_script_type(scripts[i]) == type) {
-				p_i_script = scripts[i];
-				break;
-			}
-		}
-	}
-
-	if (p_i_script != NULL) {
-		sbuf_cat(p_i_script->data, cmd);
-		sbuf_done(p_i_script->data);
-		return (EPKG_OK);
-	}
-
-	pkg_script_new(&p_i_script);
-	sbuf_set(&p_i_script->data, cmd);
-
-	p_i_script->type = type;
-
-	array_init(&pkg->scripts, 6);
-	array_append(&pkg->scripts, p_i_script);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_addoption(struct pkg *pkg, const char *opt, const char *value)
-{
-	struct pkg_option *option;
-
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (opt == NULL || opt[0] == '\0')
-		return (ERROR_BAD_ARG("opt"));
-
-	if (value == NULL || value[0] == '\0')
-		return (ERROR_BAD_ARG("value"));
-
-	pkg_option_new(&option);
-
-	sbuf_set(&option->opt, opt);
-	sbuf_set(&option->value, value);
-
-	array_init(&pkg->options, 5);
-	array_append(&pkg->options, option);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version)
-{
-	struct pkg *dep;
-
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (name == NULL || name[0] == '\0')
-		return (ERROR_BAD_ARG("name"));
-
-	if (origin == NULL || origin[0] == '\0')
-		return (ERROR_BAD_ARG("origin"));
-
-	if (version == NULL || version[0] == '\0')
-		return (ERROR_BAD_ARG("version"));
-
-	pkg_new(&dep, PKG_NOTFOUND);
-
-	pkg_set(dep, PKG_NAME, name);
-	pkg_set(dep, PKG_ORIGIN, origin);
-	pkg_set(dep, PKG_VERSION, version);
-
-	array_init(&pkg->deps, 5);
-	array_append(&pkg->deps, dep);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
-{
-	struct pkg_file *file;
-
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (path == NULL || path[0] == '\0')
-		return (ERROR_BAD_ARG("path"));
-
-	pkg_file_new(&file);
-
-	strlcpy(file->path, path, sizeof(file->path));
-
-	if (sha256 != NULL)
-		strlcpy(file->sha256, sha256, sizeof(file->sha256));
-
-	array_init(&pkg->files, 10);
-	array_append(&pkg->files, file);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_adddir(struct pkg *pkg, const char *path)
-{
-	char **dirs;
-	int i;
-
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (path == NULL || path[0] == '\0')
-		return (ERROR_BAD_ARG("path"));
-
-	array_init(&pkg->dirs, 10);
-	dirs = (char **)pkg->dirs.data;
-	for (i = 0; dirs[i] != NULL; i++) {
-		if (strcmp(path, dirs[i]) == 0) {
-			warnx("Duplicate directory listing: %s, ignoring", path);
-			return (EPKG_OK);
-		}
-	}
-	array_append(&pkg->dirs, strdup(path));
-
-	return (EPKG_OK);
-}
-
-int
-pkg_addconflict(struct pkg *pkg, const char *glob)
-{
-	struct pkg_conflict *conflict;
-
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (glob == NULL || glob[0] == '\0')
-		return (ERROR_BAD_ARG("glob"));
-
-	pkg_conflict_new(&conflict);
-	sbuf_set(&conflict->glob, glob);
-
-	array_init(&pkg->conflicts, 5);
-	array_append(&pkg->conflicts, conflict);
-
-	return (EPKG_OK);
-}
-
-int
 pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 {
 	struct packing *pack;
-	struct pkg_file **files;
+	struct pkg_file *file = NULL;
 	char spath[MAXPATHLEN];
 	char dpath[MAXPATHLEN];
-	int i;
 
 	if (packing_init(&pack, dest, 0) != EPKG_OK) {
 		/* TODO */
 		return (pkg_error_set(EPKG_FATAL, "unable to create archive"));
 	}
 
-	files = pkg_files(pkg);
-	for (i = 0; files[i] != NULL; i++) {
-		snprintf(spath, MAXPATHLEN, "%s%s", src, pkg_file_path(files[i]));
-		snprintf(dpath, MAXPATHLEN, "%s%s", dest, pkg_file_path(files[i]));
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		snprintf(spath, MAXPATHLEN, "%s%s", src, pkg_file_path(file));
+		snprintf(dpath, MAXPATHLEN, "%s%s", dest, pkg_file_path(file));
 		printf("%s -> %s\n", spath, dpath);
 		packing_append_file(pack, spath, dpath);
 	}
 
 	return (packing_finish(pack));
 }
+

@@ -13,7 +13,7 @@
 static int
 analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 {
-	struct pkg **deps;
+	struct pkg_dep *dep = NULL;
 	struct pkg *p = NULL;
 	struct pkgdb_it *it = NULL;
 	Elf *e;
@@ -28,7 +28,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	char *name;
 	bool found=false;
 
-	int fd, i;
+	int fd;
 
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0)
 		return (EPKG_FATAL);
@@ -67,11 +67,9 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 
 			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				found = false;
-				if (( deps = pkg_deps(pkg) ) != NULL) {
-					for (i = 0; deps[i]; i++) {
-						if (strcmp(pkg_get(deps[i], PKG_ORIGIN), pkg_get(p, PKG_ORIGIN)) == 0)
-							found = true;
-					}
+				while (pkg_deps(pkg, &dep) == EPKG_OK) {
+					if (strcmp(pkg_dep_origin(dep), pkg_get(p, PKG_ORIGIN)) == 0)
+						found = true;
 				}
 				if (!found) {
 					warnx("adding forgotten depends (%s): %s-%s", map->l_name, pkg_get(p, PKG_NAME), pkg_get(p, PKG_VERSION));
@@ -92,15 +90,13 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 int
 pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 {
-	struct pkg_file **files;
-	int i;
+	struct pkg_file *file = NULL;
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
-	if ((files = pkg_files(pkg)) != NULL)
-		for (i = 0; files[i] != NULL ; i++)
-			analyse_elf(db, pkg, pkg_file_path(files[i]));
+	while (pkg_files(pkg, &file) == EPKG_OK)
+		analyse_elf(db, pkg, pkg_file_path(file));
 
 	return (EPKG_OK);
 }

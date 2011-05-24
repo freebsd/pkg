@@ -15,11 +15,6 @@ struct array {
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
-void array_init(struct array *, size_t);
-void array_append(struct array *, void *);
-void array_reset(struct array *, void (*free_elm)(void*));
-void array_free(struct array *, void (*free_elm)(void*));
-
 int sbuf_set(struct sbuf **, const char *);
 const char * sbuf_get(struct sbuf *);
 void sbuf_reset(struct sbuf *);

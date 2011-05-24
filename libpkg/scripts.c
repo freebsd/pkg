@@ -5,20 +5,16 @@
 int
 pkg_script_pre_install(struct pkg *pkg)
 {
-	int i;
-	struct pkg_script **scripts;
+	struct pkg_script *script = NULL;
 	struct sbuf *script_cmd = sbuf_new_auto();
 
-	if ((scripts = pkg_scripts(pkg)) == NULL)
-		return (EPKG_OK);
-
-	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
+	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+		switch (pkg_script_type(script)) {
 			case PKG_SCRIPT_INSTALL:
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s PRE-INSTALL\n%s",
 					pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-					pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+					pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -26,7 +22,7 @@ pkg_script_pre_install(struct pkg *pkg)
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
 				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -44,20 +40,16 @@ pkg_script_pre_install(struct pkg *pkg)
 int
 pkg_script_post_install(struct pkg *pkg)
 {
-	int i;
-	struct pkg_script **scripts;
+	struct pkg_script *script = NULL;
 	struct sbuf *script_cmd = sbuf_new_auto();
 
-	if ((scripts = pkg_scripts(pkg)) == NULL)
-		return (EPKG_OK);
-
-	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
+	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+		switch (pkg_script_type(script)) {
 			case PKG_SCRIPT_INSTALL:
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s POST-INSTALL\n%s",
 				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -65,7 +57,7 @@ pkg_script_post_install(struct pkg *pkg)
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
 				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -83,20 +75,16 @@ pkg_script_post_install(struct pkg *pkg)
 int
 pkg_script_pre_upgrade(struct pkg *pkg)
 {
-	int i;
-	struct pkg_script **scripts;
+	struct pkg_script *script = NULL;
 	struct sbuf *script_cmd = sbuf_new_auto();
 
-	if ((scripts = pkg_scripts(pkg)) == NULL)
-		return (EPKG_OK);
-
-	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
+	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+		switch (pkg_script_type(script)) {
 			case PKG_SCRIPT_UPGRADE:
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s PRE-UPGRADE\n%s",
 				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -104,7 +92,7 @@ pkg_script_pre_upgrade(struct pkg *pkg)
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
 				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -122,20 +110,16 @@ pkg_script_pre_upgrade(struct pkg *pkg)
 int
 pkg_script_post_upgrade(struct pkg *pkg)
 {
-	int i;
-	struct pkg_script **scripts;
+	struct pkg_script *script = NULL;
 	struct sbuf *script_cmd = sbuf_new_auto();
 
-	if ((scripts = pkg_scripts(pkg)) == NULL)
-		return (EPKG_OK);
-
-	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
+	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+		switch (pkg_script_type(script)) {
 			case PKG_SCRIPT_UPGRADE:
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s POST-UPGRADE\n%s",
 				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -143,7 +127,7 @@ pkg_script_post_upgrade(struct pkg *pkg)
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
 				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -161,20 +145,16 @@ pkg_script_post_upgrade(struct pkg *pkg)
 int
 pkg_script_pre_deinstall(struct pkg *pkg)
 {
-	int i;
-	struct pkg_script **scripts;
+	struct pkg_script *script = NULL;
 	struct sbuf *script_cmd = sbuf_new_auto();
 
-	if ((scripts = pkg_scripts(pkg)) == NULL)
-		return (EPKG_OK);
-
-	for (i = 0; scripts[i] != NULL; i++) {
-		switch (pkg_script_type(scripts[i])) {
+	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+		switch (pkg_script_type(script)) {
 			case PKG_SCRIPT_DEINSTALL:
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s DEINSTALL\n%s",
 				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -182,7 +162,7 @@ pkg_script_pre_deinstall(struct pkg *pkg)
 				sbuf_reset(script_cmd);
 				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
 				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 				sbuf_finish(script_cmd);
 				system(sbuf_data(script_cmd));
 				break;
@@ -200,31 +180,27 @@ pkg_script_pre_deinstall(struct pkg *pkg)
 int
 pkg_script_post_deinstall(struct pkg *pkg)
 {
-	int i;
-	struct pkg_script **scripts;
+	struct pkg_script *script = NULL;
 	struct sbuf *script_cmd = sbuf_new_auto();
 
-	if ((scripts = pkg_scripts(pkg)) == NULL)
-		return (EPKG_OK);
-
 	/* two loops because the order matters */
-	for (i = 0; scripts[i] != NULL; i++) {
-		if (pkg_script_type(scripts[i]) == PKG_SCRIPT_DEINSTALL) {
+	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+		if (pkg_script_type(script) == PKG_SCRIPT_DEINSTALL) {
 			sbuf_reset(script_cmd);
 			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s POST-DEINSTALL\n%s",
 					pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-					pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+					pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 			sbuf_finish(script_cmd);
 			system(sbuf_data(script_cmd));
 		}
 	}
 
-	for (i = 0; scripts[i] != NULL; i++) {
-		if (pkg_script_type(scripts[i]) == PKG_SCRIPT_POST_DEINSTALL) {
+	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+		if (pkg_script_type(script) == PKG_SCRIPT_POST_DEINSTALL) {
 			sbuf_reset(script_cmd);
 			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
 					pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-					pkg_get(pkg, PKG_VERSION), pkg_script_data(scripts[i]));
+					pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
 			sbuf_finish(script_cmd);
 			system(sbuf_data(script_cmd));
 		}

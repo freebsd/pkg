@@ -20,11 +20,10 @@ static int
 pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archive)
 {
 	char fpath[MAXPATHLEN];
-	struct pkg_file **files;
-	struct pkg_script **scripts;
+	struct pkg_file *file = NULL;
+	struct pkg_script *script = NULL;
 	char *m;
 	const char *mtree;
-	int i;
 	const char *scriptname = NULL;
 
 	pkg_emit_manifest(pkg, &m);
@@ -37,52 +36,48 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	if (mtree != NULL)
 		packing_append_buffer(pkg_archive, mtree, "+MTREE_DIRS", strlen(mtree));
 
-	if ((scripts = pkg_scripts(pkg)) != NULL) {
-		for (i = 0; scripts[i] != NULL; i++) {
-			switch (pkg_script_type(scripts[i])) {
-				case PKG_SCRIPT_PRE_INSTALL:
-					scriptname = "+PRE_INSTALL";
-					break;
-				case PKG_SCRIPT_POST_INSTALL:
-					scriptname = "+POST_INSTALL";
-					break;
-				case PKG_SCRIPT_INSTALL:
-					scriptname = "+INSTALL";
-					break;
-				case PKG_SCRIPT_PRE_DEINSTALL:
-					scriptname = "+PRE_DEINSTALL";
-					break;
-				case PKG_SCRIPT_POST_DEINSTALL:
-					scriptname = "+POST_DEINSTALL";
-					break;
-				case PKG_SCRIPT_DEINSTALL:
-					scriptname = "+DEINSTALL";
-					break;
-				case PKG_SCRIPT_PRE_UPGRADE:
-					scriptname = "+PRE_UPGRADE";
-					break;
-				case PKG_SCRIPT_POST_UPGRADE:
-					scriptname = "+POST_UPGRADE";
-					break;
-				case PKG_SCRIPT_UPGRADE:
-					scriptname = "+UPGRADE";
-					break;
-			}
-			packing_append_buffer(pkg_archive, pkg_script_data(scripts[i]),
-								  scriptname, strlen(pkg_script_data(scripts[i])));
+	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+		switch (pkg_script_type(script)) {
+			case PKG_SCRIPT_PRE_INSTALL:
+				scriptname = "+PRE_INSTALL";
+				break;
+			case PKG_SCRIPT_POST_INSTALL:
+				scriptname = "+POST_INSTALL";
+				break;
+			case PKG_SCRIPT_INSTALL:
+				scriptname = "+INSTALL";
+				break;
+			case PKG_SCRIPT_PRE_DEINSTALL:
+				scriptname = "+PRE_DEINSTALL";
+				break;
+			case PKG_SCRIPT_POST_DEINSTALL:
+				scriptname = "+POST_DEINSTALL";
+				break;
+			case PKG_SCRIPT_DEINSTALL:
+				scriptname = "+DEINSTALL";
+				break;
+			case PKG_SCRIPT_PRE_UPGRADE:
+				scriptname = "+PRE_UPGRADE";
+				break;
+			case PKG_SCRIPT_POST_UPGRADE:
+				scriptname = "+POST_UPGRADE";
+				break;
+			case PKG_SCRIPT_UPGRADE:
+				scriptname = "+UPGRADE";
+				break;
 		}
+		packing_append_buffer(pkg_archive, pkg_script_data(script),
+							  scriptname, strlen(pkg_script_data(script)));
 	}
 
-	if ((files = pkg_files(pkg)) != NULL) {
-		for (i = 0; files[i] != NULL; i++) {
+	while (pkg_files(pkg, &file) == EPKG_OK) {
 
-			if (root != NULL)
-				snprintf(fpath, sizeof(MAXPATHLEN), "%s%s", root, pkg_file_path(files[i]));
-			else
-				strlcpy(fpath, pkg_file_path(files[i]), MAXPATHLEN);
+		if (root != NULL)
+			snprintf(fpath, sizeof(MAXPATHLEN), "%s%s", root, pkg_file_path(file));
+		else
+			strlcpy(fpath, pkg_file_path(file), MAXPATHLEN);
 
-			packing_append_file(pkg_archive, fpath, pkg_file_path(files[i]));
-		}
+		packing_append_file(pkg_archive, fpath, pkg_file_path(file));
 	}
 
 	return (EPKG_OK);

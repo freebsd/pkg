@@ -118,10 +118,10 @@ char wrong_manifest5[] = ""
 START_TEST(parse_manifest)
 {
 	struct pkg *p = NULL;
-	struct pkg **deps;
-	struct pkg_conflict **conflicts;
-	struct pkg_option **options;
-	struct pkg_file **files;
+	struct pkg_dep *dep = NULL;
+	struct pkg_conflict *conflict = NULL;
+	struct pkg_option *option = NULL;
+	struct pkg_file *file = NULL;
 	int i;
 
 	fail_unless(pkg_new(&p, PKG_FILE) == EPKG_OK);
@@ -136,50 +136,49 @@ START_TEST(parse_manifest)
 	fail_unless(strcmp(pkg_get(p, PKG_WWW), "http://www.foobar.com") == 0);
 	fail_unless(strcmp(pkg_get(p, PKG_MAINTAINER), "test@pkgng.lan") == 0);
 
-	deps = pkg_deps(p);
-	fail_if(deps == NULL);
-	for (i = 0; deps[i] != NULL; i++) {
+	i = 0;
+	while (pkg_deps(p, &dep) == EPKG_OK) {
 		if (i == 0) {
-			fail_unless(strcmp(pkg_get(deps[i], PKG_NAME), "depfoo") == 0);
-			fail_unless(strcmp(pkg_get(deps[i], PKG_ORIGIN), "dep/foo") == 0);
-			fail_unless(strcmp(pkg_get(deps[i], PKG_VERSION), "1.2") == 0);
+			fail_unless(strcmp(pkg_dep_name(dep), "depfoo") == 0);
+			fail_unless(strcmp(pkg_dep_origin(dep), "dep/foo") == 0);
+			fail_unless(strcmp(pkg_dep_version(dep), "1.2") == 0);
 		} else if (i == 1) {
-			fail_unless(strcmp(pkg_get(deps[i], PKG_NAME), "depbar") == 0);
-			fail_unless(strcmp(pkg_get(deps[i], PKG_ORIGIN), "dep/bar") == 0);
-			fail_unless(strcmp(pkg_get(deps[i], PKG_VERSION), "3.4") == 0);
+			fail_unless(strcmp(pkg_dep_name(dep), "depbar") == 0);
+			fail_unless(strcmp(pkg_dep_origin(dep), "dep/bar") == 0);
+			fail_unless(strcmp(pkg_dep_version(dep), "3.4") == 0);
 		}
+		i++;
 	}
 	fail_unless(i == 2);
 
-	conflicts = pkg_conflicts(p);
-	fail_if(conflicts == NULL);
-	for (i = 0; conflicts[i] != NULL; i++) {
+	i = 0;
+	while (pkg_conflicts(p, &conflict) == EPKG_OK) {
 		if (i == 0) {
-			fail_unless(strcmp(pkg_conflict_glob(conflicts[i]), "foo-*") == 0);
+			fail_unless(strcmp(pkg_conflict_glob(conflict), "foo-*") == 0);
 		} else if (i == 1) {
-			fail_unless(strcmp(pkg_conflict_glob(conflicts[i]), "bar-*") == 0);
+			fail_unless(strcmp(pkg_conflict_glob(conflict), "bar-*") == 0);
 		}
+		i++;
 	}
 	fail_unless(i == 2);
 
-	options = pkg_options(p);
-	fail_if(options == NULL);
-	for (i = 0; options[i] != NULL; i++) {
+	i = 0;
+	while (pkg_options(p, &option) == EPKG_OK) {
 		if (i == 0) {
-			fail_unless(strcmp(pkg_option_opt(options[i]), "foo") == 0);
-			fail_unless(strcmp(pkg_option_value(options[i]), "true") == 0);
+			fail_unless(strcmp(pkg_option_opt(option), "foo") == 0);
+			fail_unless(strcmp(pkg_option_value(option), "true") == 0);
 		} else if (i == 1) {
-			fail_unless(strcmp(pkg_option_opt(options[i]), "bar") == 0);
-			fail_unless(strcmp(pkg_option_value(options[i]), "false") == 0);
+			fail_unless(strcmp(pkg_option_opt(option), "bar") == 0);
+			fail_unless(strcmp(pkg_option_value(option), "false") == 0);
 		}
+		i++;
 	}
 	fail_unless(i == 2);
 
-	files = pkg_files(p);
-	fail_if(files == NULL);
-	fail_unless(strcmp(pkg_file_path(files[0]), "/usr/local/bin/foo") ==
+	fail_unless(pkg_files(p, &file) == EPKG_OK);
+	fail_unless(strcmp(pkg_file_path(file), "/usr/local/bin/foo") ==
 				0);
-	fail_unless(strcmp(pkg_file_sha256(files[0]),
+	fail_unless(strcmp(pkg_file_sha256(file),
 				"01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b")
 				== 0);
 

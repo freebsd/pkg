@@ -26,7 +26,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	struct stat st;
 	struct pkg *pkg = NULL;
-	struct pkg **deps;
+	struct pkg_dep *dep = NULL;
 	char *ext = NULL;
 	sqlite3 *sqlite = NULL;
 	sqlite3_stmt *stmt_deps = NULL;
@@ -35,9 +35,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	char *errmsg = NULL;
 	int retcode = EPKG_OK;
 	char *pkg_path;
-	char sum[65];
-
-	int i;
+	char cksum[65];
 
 	char *repopath[2];
 	char repodb[MAXPATHLEN];
@@ -54,10 +52,9 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"osversion TEXT,"
 			"maintainer TEXT,"
 			"www TEXT,"
-			"pkg_format_version INTEGER,"
 			"pkgsize INTEGER,"
 			"flatsize INTEGER,"
-			"sum TEXT,"
+			"cksum TEXT,"
 			"path TEXT NOT NULL" /* relative path to the package in the repository */
 		");"
 		"CREATE TABLE deps ("
@@ -72,10 +69,9 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	const char pkgsql[] = ""
 		"INSERT INTO packages ("
 				"origin, name, version, comment, desc, arch, osversion, "
-				"maintainer, www, pkg_format_version, pkgsize, flatsize, "
-				"sum, path"
+				"maintainer, www, pkgsize, flatsize, cksum, path"
 		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);";
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13);";
 	const char depssql[] = ""
 		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
@@ -124,7 +120,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	}
 
 	while ((ent = fts_read(fts)) != NULL) {
-		sum[0] = '\0';
+		cksum[0] = '\0';
 		/* skip everything that is not a file */
 		if (ent->fts_info != FTS_F)
 			continue;
@@ -166,11 +162,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_MAINTAINER), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt_pkg, 11, ent->fts_statp->st_size);
-		sqlite3_bind_int64(stmt_pkg, 12, pkg_flatsize(pkg));
-		sha256_file(ent->fts_accpath, sum);
-		sqlite3_bind_text(stmt_pkg, 13, sum, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 14, pkg_path, -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt_pkg, 10, ent->fts_statp->st_size);
+		sqlite3_bind_int64(stmt_pkg, 11, pkg_flatsize(pkg));
+		sha256_file(ent->fts_accpath, cksum);
+		sqlite3_bind_text(stmt_pkg, 12, cksum, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 13, pkg_path, -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
 			retcode = ERROR_SQLITE(sqlite);
@@ -180,11 +176,10 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 		package_id = sqlite3_last_insert_rowid(sqlite);
 
-		deps = pkg_deps(pkg);
-		for (i = 0; deps[i] != NULL; i++) {
-			sqlite3_bind_text(stmt_deps, 1, pkg_get(deps[i], PKG_ORIGIN), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_deps, 2, pkg_get(deps[i], PKG_NAME), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_deps, 3, pkg_get(deps[i], PKG_VERSION), -1, SQLITE_STATIC);
+		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+			sqlite3_bind_text(stmt_deps, 1, pkg_dep_origin(dep), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 2, pkg_dep_name(dep), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 3, pkg_dep_version(dep), -1, SQLITE_STATIC);
 			sqlite3_bind_int64(stmt_deps, 4, package_id);
 
 			if (sqlite3_step(stmt_deps) != SQLITE_DONE) {
@@ -195,7 +190,6 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		}
 
 	}
-		sum[0] = '\0';
 
 	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK)
 		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
