@@ -162,7 +162,7 @@ pkgdb_init(sqlite3 *sdb)
 		"VALUES (NEW.origin, NEW.name, NEW.version, NEW.comment, NEW.desc, "
 		"(SELECT id FROM mtree WHERE content = NEW.mtree), "
 		"NEW.message, NEW.arch, NEW.osversion, NEW.maintainer, NEW.www, NEW.prefix, "
-		"NEW.flatsize NEW.automatic);"
+		"NEW.flatsize, NEW.automatic);"
 	"END;"
 	"CREATE TABLE scripts ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
