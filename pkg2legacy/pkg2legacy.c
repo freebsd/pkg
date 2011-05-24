@@ -38,12 +38,11 @@ main(int argc, char **argv)
 	const char *newpath;
 	BZFILE *bz;
 	int bzError;
-	struct pkg **deps;
+	struct pkg_dep *dep = NULL;
 	struct archive *pkgng;
 	struct archive *legacypkg;
 	struct archive_entry *ae;
 	size_t size;
-	int i;
 	int r;
 
 	char *tmp;
@@ -162,15 +161,13 @@ main(int argc, char **argv)
 				pkg_get(pkg, PKG_VERSION),
 				pkg_get(pkg, PKG_ORIGIN));
 
-		if ((deps = pkg_deps(pkg)) != NULL) {
-			for (i = 0; deps[i] != NULL; i++) {
-				sbuf_printf(sbuf, "@pkgdep %s-%s\n"
+		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+			sbuf_printf(sbuf, "@pkgdep %s-%s\n"
 						"@comment DEPORIGIN:%s\n",
-						pkg_get(deps[i], PKG_NAME),
-						pkg_get(deps[i], PKG_VERSION),
-						pkg_get(deps[i], PKG_ORIGIN));
-				sbuf_printf(indexfile, "%s-%s ", pkg_get(deps[i], PKG_NAME), pkg_get(deps[i], PKG_VERSION));
-			}
+						pkg_dep_name(dep),
+						pkg_dep_version(dep),
+						pkg_dep_origin(dep));
+			sbuf_printf(indexfile, "%s-%s ", pkg_dep_name(dep), pkg_dep_version(dep));
 		}
 
 		sbuf_cat(indexfile, "|");
