@@ -458,25 +458,29 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 		break;
 	case MATCH_EXACT:
 		if (checkorigin == NULL)
-			comp = " WHERE p.name = ?1";
+			comp = " WHERE p.name = ?1 "
+				"OR p.name || \"-\" || p.version = ?1";
 		else
 			comp = " WHERE p.origin = ?1";
 		break;
 	case MATCH_GLOB:
 		if (checkorigin == NULL)
-			comp = " WHERE p.name GLOB ?1";
+			comp = " WHERE p.name GLOB ?1 "
+				"OR p.name || \"-\" || p.version GLOB ?1";
 		else
 			comp = " WHERE p.origin GLOB ?1";
 		break;
 	case MATCH_REGEX:
 		if (checkorigin == NULL)
-			comp = " WHERE p.name REGEXP ?1";
+			comp = " WHERE p.name REGEXP ?1 "
+				"OR p.name || \"-\" || p.version REGEXP ?1";
 		else
 			comp = " WHERE p.origin REGEXP ?1";
 		break;
 	case MATCH_EREGEX:
 		if (checkorigin == NULL)
-			comp = " WHERE EREGEXP(?1, p.name)";
+			comp = " WHERE EREGEXP(?1, p.name) "
+				"OR EREGEXP(?1, p.name || \"-\" || p.version)";
 		else
 			comp = " WHERE EREGEXP(?1, p.origin)";
 		break;
@@ -1273,26 +1277,6 @@ pkgdb_compact(struct pkgdb *db)
 	}
 
 	return (retcode);
-}
-
-struct pkgdb_it *
-pkgdb_query_nv(struct pkgdb *db, char *name)
-{
-	sqlite3_stmt *stmt;
-
-	const char sql[] = ""
-		"SELECT rowid, origin, name, version, comment, desc, "
-		"message, arch, osversion, maintainer, www, "
-		"prefix, flatsize, name || \"-\" || version AS NAMEVER "
-		"FROM packages "
-		"WHERE NAMEVER GLOB ?1;";
-
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
-		return (NULL);
-
-	sqlite3_bind_text(stmt, 1, name, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new(db, stmt, IT_LOCAL));
 }
 
 struct pkgdb_it *
