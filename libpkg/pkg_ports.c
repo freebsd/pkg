@@ -84,6 +84,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					if (STARTS_WITH(cmd, "rmdir ")) {
 						comment[0] = '#';
 						comment[1] = '\0';
+						cmd += 6;
+					} else if (STARTS_WITH(cmd, "/bin/rmdir ")) {
+						comment[0] = '#';
+						comment[1] = '\0';
+						cmd += 11;
 					}
 					if (sbuf_len(unexec_scripts) == 0)
 						sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
@@ -91,7 +96,6 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 					/* workaround to detect the @dirrmtry */
 					if (comment[0] == '#') {
-						cmd += 6;
 						buf =strchr(cmd, ' ');
 						buf[0] = '\0';
 						while (cmd[0] == '\"')
