@@ -8,9 +8,8 @@
 
 #include "pkg.h"
 #include "pkg_error.h"
+#include "pkg_private.h"
 #include "pkg_util.h"
-
-static int pkg_delete_dirs(struct pkg *pkg);
 
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
@@ -69,7 +68,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if ((ret = pkg_script_post_deinstall(pkg)) != EPKG_OK)
 		return (ret);
 
-	if ((ret = pkg_delete_dirs(pkg)) != EPKG_OK)
+	if ((ret = pkg_delete_dirs(pkg, force)) != EPKG_OK)
 		return (ret);
 
 	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
@@ -108,15 +107,15 @@ pkg_delete_files(struct pkg *pkg, int force)
 	return (EPKG_OK);
 }
 
-static int
-pkg_delete_dirs(struct pkg *pkg)
+int
+pkg_delete_dirs(struct pkg *pkg, int force)
 {
 	int i;
 	const char **dirs;
 
 	dirs = pkg_dirs(pkg);
 	for (i = 0; dirs[i] != NULL; i++) {
-		if (rmdir(dirs[i]) == -1 && errno != ENOTEMPTY) {
+		if (rmdir(dirs[i]) == -1 && errno != ENOTEMPTY && force != 1) {
 			warn("rmdir(%s)", dirs[i]);
 		}
 	}

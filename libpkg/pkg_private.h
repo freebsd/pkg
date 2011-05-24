@@ -71,4 +71,8 @@ int packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
 
 void pkg_free_void(void *);
+
+int pkg_delete_files(struct pkg *pkg, int force);
+int pkg_delete_dirs(struct pkg *pkg, int force);
+
 #endif
