@@ -156,7 +156,7 @@ exec_register(int argc, char **argv)
 	/* if www is not given then try to determine it from description */
 	if (www == NULL) {
 		desc = pkg_get(pkg, PKG_DESC);
-		regcomp(&preg, "^WWW:[:space:]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
+		regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
 		if (regexec(&preg, desc, 2, pmatch, 0) == 0) {
 			size = pmatch[1].rm_eo - pmatch[1].rm_so;
 			www = strndup(&desc[pmatch[1].rm_so], size);
