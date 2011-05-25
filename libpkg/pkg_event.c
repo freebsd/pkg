@@ -46,7 +46,7 @@ __pkg_emit_event(struct pkg_handle *hdl, pkg_event_t ev, int argc, ...)
 	void **argv;
 	int i;
 
-	if (hdl == NULL || hdl->event_cb == NULL)
+	if (hdl == NULL)
 		return;
 
 	pkg_event_argument_check(ev, argc);
@@ -62,4 +62,5 @@ __pkg_emit_event(struct pkg_handle *hdl, pkg_event_t ev, int argc, ...)
 
 	if (hdl->event_cb != NULL)
 		hdl->event_cb(ev, argv);
+	free(argv);
 }
