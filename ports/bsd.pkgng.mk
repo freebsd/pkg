@@ -209,7 +209,7 @@ do-package: ${TMPPLIST}
 		fi; \
 	fi;
 	@__softMAKEFLAGS='${__softMAKEFLAGS:S/'/'\''/g}'; \
-	if ${PKG_CREATE} -o ${PKGREPOSITORY} ${PORTNAME}; then \
+	if ${PKG_CREATE} -o ${PKGREPOSITORY} ${PKGNAME}; then \
 		if [ -d ${PACKAGES} ]; then \
 			cd ${.CURDIR} && eval ${MAKE} $${__softMAKEFLAGS} package-links; \
 		fi; \
