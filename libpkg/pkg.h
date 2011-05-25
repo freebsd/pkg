@@ -1,6 +1,7 @@
 #ifndef _PKG_H
 #define _PKG_H
 
+#include <stdarg.h>
 #include <sys/types.h>
 #include <openssl/pem.h>
 
@@ -591,7 +592,7 @@ typedef enum {
  * Event callback mechanism.  Events will be reported using this callback,
  * providing an event identifier and up to two event-specific pointers.
  */
-typedef int(*pkg_event_cb)(pkg_event_t, void *, void *);
+typedef int(*pkg_event_cb)(pkg_event_t, void **);
 
 struct pkg_handle {
 	pkg_event_cb event_cb;
@@ -604,9 +605,9 @@ void pkg_handle_set_event_callback(struct pkg_handle *, pkg_event_cb);
 /* XXX maybe the event callback should also get a pointer to the handle, and
  * just drop arg1 altogether..? */
 
-#define	pkg_emit_event(ev, arg0, arg1) \
-	__pkg_emit_event(pkg_get_handle(), ev, arg0, arg1)
+#define	pkg_emit_event(ev, argc, ...) \
+	__pkg_emit_event(pkg_get_handle(), ev, argc, ...)
 
-void __pkg_emit_event(struct pkg_handle *, pkg_event_t, void *, void *);
+void __pkg_emit_event(struct pkg_handle *, pkg_event_t, int, ...);
 
 #endif
