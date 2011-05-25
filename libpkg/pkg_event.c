@@ -18,7 +18,6 @@ pkg_event_argument_check(pkg_event_t ev, int argc)
 	case PKG_EVENT_INVALID_DB_STATE:
 	case PKG_EVENT_MALLOC_FAILED:
 	case PKG_EVENT_UNKNOWN_SCRIPT:
-	case PKG_EVENT_SQLITE_CONSTRAINT:
 	case PKG_EVENT_SQLITE_ERROR:
 		assert(argc == 1);
 		break;
@@ -31,6 +30,7 @@ pkg_event_argument_check(pkg_event_t ev, int argc)
 	case PKG_EVENT_PARSE_ERROR:
 	case PKG_EVENT_REPO_KEY_UNAVAIL:
 	case PKG_EVENT_REPO_KEY_UNUSABLE:
+	case PKG_EVENT_SQLITE_CONSTRAINT:
 		assert(argc == 2);
 		break;
 	case PKG_EVENT_CREATEDB_FAILED_ERRNO:
@@ -109,8 +109,7 @@ libpkg_handle_event(pkg_event_t ev, void **argv)
 		pkg_error_set(EPKG_FATAL, "RSA key %s unusable: %s", argv[0], argv[1]);
 		break;
 	case PKG_EVENT_SQLITE_CONSTRAINT:
-		/* XXX: this is not specific enough - see original usage */
-		pkg_error_set(EPKG_FATAL, "constraint violation: %s", argv[0]);
+		pkg_error_set(EPKG_FATAL, "constraint violation on %s: %s", argv[0], argv[1]);
 		break;
 	case PKG_EVENT_SQLITE_ERROR:
 		pkg_error_set(EPKG_FATAL, "sqlite: %s", argv[0]);

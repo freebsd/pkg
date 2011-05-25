@@ -928,7 +928,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if ((ret = sqlite3_step(stmt_pkg)) != SQLITE_DONE) {
 		if ( ret == SQLITE_CONSTRAINT) {
-			pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT, /*argc*/1, pkg);
+			pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT, /*argc*/2,
+			    "pkg", pkg_get(pkg, PKG_ORIGIN));
 			retcode = EPKG_FATAL;
 		} else
 			retcode = ERROR_SQLITE(s);
@@ -971,7 +972,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_dep)) != SQLITE_DONE) {
 			if ( ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT, /*argc*/1,dep);
+				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
+				    /*argc*/2, "deps", pkg_dep_origin(dep));
 				retcode = EPKG_FATAL;
 			} else
 				retcode = ERROR_SQLITE(s);
@@ -996,7 +998,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_conflict)) != SQLITE_DONE) {
 			if ( ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT, /*argc*/1, conflict);
+				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
+				    /*argc*/2, "conflicts",
+				    pkg_conflict_glob(conflict));
 				retcode = EPKG_FATAL;
 			} else
 				retcode = ERROR_SQLITE(s);
@@ -1023,7 +1027,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT, /*argc*/1, file);
+				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
+				    /*argc*/2, "path", pkg_file_path(file));
 				retcode = EPKG_FATAL;
 			} else
 				retcode = ERROR_SQLITE(s);
@@ -1047,7 +1052,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			
 		if ((ret = sqlite3_step(stmt_dirs)) != SQLITE_DONE) {
 			if ( ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT, /*argc*/1, dir);
+				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
+				    /*argc*/2, "dirs", pkg_dir_path(dir));
 				retcode = EPKG_FATAL;
 			} else
 				retcode = ERROR_SQLITE(s);
@@ -1072,7 +1078,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if (sqlite3_step(stmt_script) != SQLITE_DONE) {
 			if ( ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT, /*argc*/1, script);
+				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
+				    /*argc*/2, "scripts",
+				    pkg_script_data(script));
 				retcode = EPKG_FATAL;
 			} else
 				retcode = ERROR_SQLITE(s);
