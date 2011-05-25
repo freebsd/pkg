@@ -21,17 +21,11 @@ pkg_handle_get_event_callback(struct pkg_handle *hdl)
 	return hdl->event_cb;
 }
 
-void
-__pkg_emit_event(struct pkg_handle *hdl, pkg_event_t ev, int argc, ...)
+/* Guard-rail against incorrect number of arguments */
+static void
+pkg_event_argument_check(pkg_event_t ev, int argc)
 {
-	va_list ap;
-	void **argv;
-	int i;
 
-	if (hdl == NULL || hdl->event_cb == NULL)
-		return;
-
-	/* Guard-rail against incorrect number of arguments */
 	switch(ev) {
 	case PKG_EVENT_INSTALL_BEGIN:
 		assert(argc == 1);
@@ -42,6 +36,19 @@ __pkg_emit_event(struct pkg_handle *hdl, pkg_event_t ev, int argc, ...)
 	default:
 		break;
 	}
+}
+
+void
+__pkg_emit_event(struct pkg_handle *hdl, pkg_event_t ev, int argc, ...)
+{
+	va_list ap;
+	void **argv;
+	int i;
+
+	if (hdl == NULL || hdl->event_cb == NULL)
+		return;
+
+	pkg_event_argument_check(ev, argc);
 
 	/* Generate the argument vector to pass in. */
 	argv = calloc(argc, sizeof(void *));
