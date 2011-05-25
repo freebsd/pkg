@@ -40,6 +40,9 @@ exec_delete(int argc, char **argv)
 			case 'f':
 				force = 1;
 				break;
+			default:
+				usage_delete();
+				return (EX_USAGE);
 		}
 	}
 	argc -= optind;

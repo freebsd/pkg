@@ -99,7 +99,7 @@ exec_autoremove(int argc, char **argv)
 		}
 
 	} else {
-		printf("Aborted");
+		printf("Aborted\n");
 	}
 
 	if (pkgdb_compact(db) != EPKG_OK)

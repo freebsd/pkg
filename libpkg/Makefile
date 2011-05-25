@@ -33,9 +33,6 @@ CFLAGS+=	-I${.CURDIR} \
 LDADD+=		-L${.CURDIR}/../external/sqlite \
 		-lsqlite3 \
 		-larchive \
-		-lz \
-		-lbz2 \
-		-llzma \
 		-lsbuf \
 		-lfetch \
 		-lelf \

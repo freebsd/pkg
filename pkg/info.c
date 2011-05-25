@@ -84,7 +84,7 @@ void
 usage_info(void)
 {
 	fprintf(stderr, "usage: pkg info\n");
-	fprintf(stderr, "       pkg info [-egxXdrlsqO] <pkg-name>\n\n");
+	fprintf(stderr, "       pkg info [-aegxXdrlsqO] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
 
@@ -111,7 +111,7 @@ exec_info(int argc, char **argv)
 	int sign = 0;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "aegxXEdrlsqopO")) != -1) {
+	while ((ch = getopt(argc, argv, "aegxXEdrlsqopOf")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -156,14 +156,19 @@ exec_info(int argc, char **argv)
 			case 'p':
 				opt |= INFO_PREFIX;
 				break;
+			default:
+				usage_info();
+				return(EX_USAGE);
 		}
 	}
 
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0)
-		match = MATCH_ALL;
+	if (argc == 0 && match != MATCH_ALL) {
+		usage_info();
+		return (EX_USAGE);
+	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
