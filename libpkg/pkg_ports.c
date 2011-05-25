@@ -53,9 +53,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 	for (i = 0; i <= nbel; i++) {
 		if (plist_p[0] == '@') {
-			if (STARTS_WITH(plist_p, "@cwd ")) {
+			if (STARTS_WITH(plist_p, "@cwd")) {
 				buf = plist_p;
-				buf += 5;
+				buf += 4;
+				while (isspace(buf[0]))
+					buf++;
 				/* with no arguments default to the original
 				 * prefix */
 				if (buf[0] == '\0')
