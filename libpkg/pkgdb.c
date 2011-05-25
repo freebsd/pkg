@@ -583,7 +583,7 @@ pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_adddep(pkg, sqlite3_column_text(stmt, 0), sqlite3_column_text(stmt, 1),
+		pkg_addrdep(pkg, sqlite3_column_text(stmt, 0), sqlite3_column_text(stmt, 1),
 				   sqlite3_column_text(stmt, 2));
 	}
 	sqlite3_finalize(stmt);

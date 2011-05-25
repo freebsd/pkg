@@ -432,6 +432,34 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 }
 
 int
+pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *version)
+{
+	struct pkg_dep *d;
+
+	if (pkg == NULL)
+		return (ERROR_BAD_ARG("pkg"));
+
+	if (name == NULL || name[0] == '\0')
+		return (ERROR_BAD_ARG("name"));
+
+	if (origin == NULL || origin[0] == '\0')
+		return (ERROR_BAD_ARG("origin"));
+
+	if (version == NULL || version[0] == '\0')
+		return (ERROR_BAD_ARG("version"));
+
+	pkg_dep_new(&d);
+
+	sbuf_set(&d->origin, origin);
+	sbuf_set(&d->name, name);
+	sbuf_set(&d->version, version);
+
+	STAILQ_INSERT_TAIL(&pkg->rdeps, d, next);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 {
 	struct pkg_file *f;

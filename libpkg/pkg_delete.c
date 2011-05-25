@@ -41,7 +41,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	while (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
 		if (rdep_msg == NULL) {
 			rdep_msg = sbuf_new_auto();
-			sbuf_printf(rdep_msg, "%s-%s is required by other packages:", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+			sbuf_printf(rdep_msg, "%s-%s is required by other packages:", pkg_dep_name(rdep), pkg_dep_version(rdep));
 		}
 		sbuf_cat(rdep_msg, " ");
 		sbuf_printf(rdep_msg, "%s-%s", pkg_dep_name(rdep), pkg_dep_version(rdep));

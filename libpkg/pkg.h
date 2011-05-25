@@ -294,6 +294,8 @@ int pkg_setnewpkgsize(struct pkg *pkg, int64_t size);
  */
 int pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const
 			   char *version);
+int pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const
+			   char *version);
 
 /**
  * Allocate a new struct pkg_file and add it to the files of pkg.
