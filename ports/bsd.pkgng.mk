@@ -24,7 +24,7 @@ ACTUAL-PACKAGE-DEPENDS?= \
 			pkgname=$$(${PKG_INFO} -q $${dir\#\#${PORTSDIR}/}); \
 			${ECHO_CMD} @dep $${pkgname%-*} $${dir\#\#${PORTSDIR}/} $${pkgname\#\#*-}; \
 			for pkg in $$(${PKG_INFO} -qd $${dir\#\#${PORTSDIR}/}); do\
-				origin=$$(${PKG_INFO} -qo $${pkg%-*}); \
+				origin=$$(${PKG_INFO} -qo $${pkg}); \
 				${ECHO_CMD} @dep $${pkg%-*} $$origin $${pkg\#\#*-}; \
 			done; \
 		done; \
