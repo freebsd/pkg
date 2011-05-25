@@ -15,7 +15,7 @@ int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL) {
-		pkg_emit_event(PKG_EVENT_MALLOC_FAILED, /*argc*/1,
+		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
 		    strerror(errno));
 		return EPKG_FATAL;
 	}

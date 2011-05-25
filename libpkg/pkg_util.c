@@ -84,7 +84,7 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
 		close(fd);
-		pkg_emit_event(PKG_EVENT_MALLOC_FAILED, /*argc*/1,
+		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
 		    strerror(errno));
 		return EPKG_FATAL;
 	}

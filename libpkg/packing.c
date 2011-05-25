@@ -32,7 +32,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	const char *ext;
 
 	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
-		pkg_emit_event(PKG_EVENT_MALLOC_FAILED, /*argc*/1,
+		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
 		    strerror(errno));
 	}
 

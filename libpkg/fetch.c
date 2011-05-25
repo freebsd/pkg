@@ -40,7 +40,7 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 		if (remote == NULL) {
 			--retry;
 			if (retry == 0) {
-				pkg_emit_event(PKG_EVENT_FETCH_FAILED,
+				pkg_emit_event(PKG_EVENT_FETCH_ERROR,
 				    /*argc*/1, fetchLastErrString);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -71,7 +71,7 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 	}
 
 	if (ferror(remote)) {
-		pkg_emit_event(PKG_EVENT_FETCH_FAILED, /*argc*/1,
+		pkg_emit_event(PKG_EVENT_FETCH_ERROR, /*argc*/1,
 		    fetchLastErrString);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -110,7 +110,7 @@ pkg_fetch_buffer(const char *url, char **buffer, void *data, fetch_cb cb)
 		if (remote == NULL) {
 			--retry;
 			if (retry == 0) {
-				pkg_emit_event(PKG_EVENT_FETCH_FAILED,
+				pkg_emit_event(PKG_EVENT_FETCH_ERROR,
 				    /*argc*/1, fetchLastErrString);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -138,7 +138,7 @@ pkg_fetch_buffer(const char *url, char **buffer, void *data, fetch_cb cb)
 	}
 
 	if (ferror(remote)) {
-		pkg_emit_event(PKG_EVENT_FETCH_FAILED, /*argc*/1,
+		pkg_emit_event(PKG_EVENT_FETCH_ERROR, /*argc*/1,
 		    fetchLastErrString);
 		goto cleanup;
 	}

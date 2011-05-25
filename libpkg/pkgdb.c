@@ -252,7 +252,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	dbdir = pkg_config("PKG_DBDIR");
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL) {
-		pkg_emit_event(PKG_EVENT_MALLOC_FAILED, /*argc*/1,
+		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
 		    strerror(errno));
 		return EPKG_FATAL;
 	}
@@ -345,7 +345,7 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 	struct pkgdb_it *it;
 
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_event(PKG_EVENT_MALLOC_FAILED, /*argc*/1,
+		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
 		    strerror(errno));
 		sqlite3_finalize(s);
 		return (NULL);

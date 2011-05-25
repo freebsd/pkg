@@ -77,7 +77,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		"VALUES (?1, ?2, ?3, ?4);";
 
 	if (!is_dir(path)) {
-		pkg_emit_event(PKG_EVENT_CREATEDB_FAILED, /*argc*/2,
+		pkg_emit_event(PKG_EVENT_CREATEDB_ERROR, /*argc*/2,
 		    path, "not a directory");
 		return EPKG_FATAL;
 	}
@@ -89,7 +89,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	if (stat(repodb, &st) != -1)
 		if (unlink(repodb) != 0) {
-			pkg_emit_event(PKG_EVENT_CREATEDB_FAILED_ERRNO,
+			pkg_emit_event(PKG_EVENT_CREATEDB_ERROR_ERRNO,
 			    /*argc*/3, path, repodb, strerror(errno));
 			return EPKG_FATAL;
 		}
@@ -121,7 +121,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	}
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL, NULL)) == NULL) {
-		pkg_emit_event(PKG_EVENT_OPEN_DB_FAILED, /*argc*/2,
+		pkg_emit_event(PKG_EVENT_OPEN_DB_ERROR, /*argc*/2,
 		    repopath, strerror(errno));
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -151,7 +151,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 		if (pkg_open(&pkg, ent->fts_accpath) != EPKG_OK) {
 			if (progress != NULL) {
-				pkg_emit_event(PKG_EVENT_DB_OPEN_FAILED,
+				pkg_emit_event(PKG_EVENT_OPEN_DB_ERROR,
 				    /*argc*/2, ent->fts_name,
 				    pkg_error_string());
 				retcode = EPKG_WARN;
