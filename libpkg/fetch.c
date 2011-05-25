@@ -29,7 +29,7 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 	int retcode = EPKG_OK;
 
 	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC, 0644)) == -1) {
-		pkg_emit_event(PKG_EVENT_OPEN_FAILED, /*argc*/2, dest,
+		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "open", dest,
 		    strerror(errno));
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -55,7 +55,7 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 			break;
 
 		if (write(fd, buf, r) != r) {
-			pkg_emit_event(PKG_EVENT_WRITE_FAILED, /*argc*/2,
+			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "write",
 			    dest, strerror(errno));
 			retcode = EPKG_FATAL;
 			goto cleanup;

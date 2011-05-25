@@ -31,17 +31,15 @@ libpkg_handle_event(pkg_event_t ev, void **argv)
 		pkg_error_set(EPKG_FATAL, "archive error at %s: %s",
 		    argv[0], archive_error_string(argv[1]));
 		break;
-	case PKG_EVENT_OPEN_FAILED:
-		pkg_error_set(EPKG_FATAL, "open of %s failed: %s", argv[0], argv[1]);
+	case PKG_EVENT_IO_ERROR:
+		pkg_error_set(EPKG_FATAL, "I/O error: %s(%s): %s",
+		    /*call*/argv[0], /*arg*/argv[1], /*strerror*/argv[2]);
 		break;
 	case PKG_EVENT_FETCH_FAILED:
 		pkg_error_set(EPKG_FATAL, "%s", argv[0]);
 		break;
-	case PKG_EVENT_WRITE_FAILED:
-		pkg_error_set(EPKG_FATAL, "write(%s): %s", argv[0], argv[1]);
-		break;
 	case PKG_EVENT_MALLOC_FAILED:
-		pkg_error_set(EPKG_FATAL, "malloc: %s", argv[0]);
+		pkg_error_set(EPKG_FATAL, "allocation error: %s", argv[0]);
 		break;
 	case PKG_EVENT_UNKNOWN_SCRIPT:
 		pkg_error_set(EPKG_FATAL, "unknown script '%s'", argv[0]);
@@ -88,15 +86,6 @@ libpkg_handle_event(pkg_event_t ev, void **argv)
 	case PKG_EVENT_CKSUM_FAILED:
 		pkg_error_set(EPKG_FATAL, "package '%s' failed checksum",
 		    pkg_get(argv[0], PKG_NAME));
-		break;
-	case PKG_EVENT_FSTAT_ERROR:
-		pkg_error_set(EPKG_FATAL, "fstat(%s): %s", argv[0], argv[1]);
-		break;
-	case PKG_EVENT_READ_ERROR:
-		pkg_error_set(EPKG_FATAL, "read(%s): %s\n", argv[0], argv[1]);
-		break;
-	case PKG_EVENT_ACCESS_ERROR:
-		pkg_error_set(EPKG_FATAL, "access(%s): %s\n", argv[0], argv[1]);
 		break;
 	case PKG_EVENT_INVALID_DB_STATE:
 		pkg_error_set(EPKG_FATAL, "%s", argv[0]);

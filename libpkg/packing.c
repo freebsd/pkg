@@ -121,8 +121,8 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 
 	if (archive_entry_size(pack->entry) > 0) {
 		if ((fd = open(filepath, O_RDONLY)) < 0) {
-			pkg_emit_event(PKG_EVENT_OPEN_FAILED, /*argc*/2,
-			    filepath, strerror(errno));
+			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3,
+			    "open", filepath, strerror(errno));
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}

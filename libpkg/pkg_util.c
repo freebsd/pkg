@@ -70,15 +70,15 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 		return (ERROR_BAD_ARG("buffer"));
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		pkg_emit_event(PKG_EVENT_OPEN_ERROR, /*argc*/2, path,
-		    strerror(errno));
+		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "open",
+		    path, strerror(errno));
 		return EPKG_FATAL;
 	}
 
 	if (fstat(fd, &st) == -1) {
 		close(fd);
-		pkg_emit_event(PKG_EVENT_FSTAT_ERROR, /*argc*/2, path,
-		    strerror(errno));
+		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "fstat",
+		    path, strerror(errno));
 		return EPKG_FATAL;
 	}
 
@@ -91,7 +91,7 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		close(fd);
-		pkg_emit_event(PKG_EVENT_READ_ERROR, /*argc*/2,
+		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "read",
 		    path, strerror(errno));
 		return EPKG_FATAL;
 	}
@@ -214,7 +214,7 @@ sha256_file(const char *path, char out[65])
 	SHA256_CTX sha256;
 
 	if ((fp = fopen(path, "rb")) == NULL) {
-		pkg_emit_event(PKG_EVENT_OPEN_FAILED, /*argc*/2,
+		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "open",
 		    path, strerror(errno));
 		return EPKG_FATAL;
 	}
@@ -227,7 +227,7 @@ sha256_file(const char *path, char out[65])
 	if (ferror(fp) != 0) {
 		fclose(fp);
 		out[0] = '\0';
-		pkg_emit_event(PKG_EVENT_READ_ERROR, /*argc*/2,
+		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "read",
 		    path, strerror(errno));
 		return EPKG_FATAL;
 	}

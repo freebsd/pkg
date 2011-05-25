@@ -263,12 +263,12 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	retcode = access(localpath, R_OK);
 	if (retcode == -1) {
 		if (errno != ENOENT) {
-			pkg_emit_event(PKG_EVENT_ACCESS_ERROR, /*argc*/2,
+			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "access",
 			    localpath, strerror(errno));
 			return EPKG_FATAL;
 		}
 		else if (eaccess(dbdir, W_OK) != 0) {
-			pkg_emit_event(PKG_EVENT_ACCESS_ERROR, /*argc*/2,
+			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "eaccess",
 			    dbdir, strerror(errno));
 			return EPKG_FATAL;
 		}
@@ -281,7 +281,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 		snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
 
 		if (access(remotepath, R_OK) != 0) {
-			pkg_emit_event(PKG_EVENT_ACCESS_ERROR, /*argc*/2,
+			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "access",
 			    remotepath, strerror(errno));
 			return EPKG_FATAL;
 		}
