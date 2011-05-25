@@ -605,9 +605,9 @@ void pkg_handle_set_event_callback(struct pkg_handle *, pkg_event_cb);
 /* XXX maybe the event callback should also get a pointer to the handle, and
  * just drop arg1 altogether..? */
 
-#define	pkg_emit_event(ev, argc, ...) \
-	__pkg_emit_event(pkg_get_handle(), ev, argc, ...)
-
 void __pkg_emit_event(struct pkg_handle *, pkg_event_t, int, ...);
+
+#define	pkg_emit_event(ev, argc, argv...) \
+	__pkg_emit_event(pkg_get_handle(), ev, argc, argv)
 
 #endif
