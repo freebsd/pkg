@@ -133,9 +133,11 @@ m_parse_flatsize(struct pkg *pkg, char *buf)
 	errno = 0;
 	size = strtoimax(buf, NULL, 10);
 
-	if (errno == EINVAL || errno == ERANGE)
-		return (pkg_error_set(EPKG_FATAL, "m_parse_flatsize(): %s",
-				strerror(errno)));
+	if (errno == EINVAL || errno == ERANGE) {
+		pkg_emit_event(PKG_EVENT_PARSE_ERROR, /*argc*/2,
+		    "flatsize", strerror(errno));
+		return EPKG_FATAL;
+	}
 
 	pkg_setflatsize(pkg, size);
 	return (EPKG_OK);

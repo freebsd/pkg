@@ -15,7 +15,6 @@
 #include <stdlib.h>
 
 #include <pkg.h>
-#include <pkg_error.h>
 #include <pkg_private.h>
 
 static const char *packing_set_format(struct archive *a, pkg_formats format);
@@ -32,8 +31,10 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	char archive_path[MAXPATHLEN];
 	const char *ext;
 
-	if ((*pack = calloc(1, sizeof(struct packing))) == NULL)
-		return(pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
+	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
+		pkg_emit_event(PKG_EVENT_MALLOC_FAILED, /*argc*/1,
+		    strerror(errno));
+	}
 
 	(*pack)->aread = archive_read_disk_new();
 	archive_read_disk_set_standard_lookup((*pack)->aread);
@@ -48,7 +49,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 			archive_read_finish((*pack)->aread);
 			archive_write_finish((*pack)->awrite);
 			archive_entry_free((*pack)->entry);
-			return (pkg_error_set(EPKG_FATAL, "Unsupported format"));
+			return EPKG_FATAL; /* error set by _set_format() */
 		}
 		snprintf(archive_path, sizeof(archive_path), "%s.%s", path, ext);
 
@@ -93,10 +94,9 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 
 	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, NULL);
 	if (retcode != ARCHIVE_OK) {
-		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, 2, filepath, pack->aread);
-		retcode = pkg_error_set(EPKG_FATAL,
-								"archive_read_disk_entry_from_file(%s): %s",
-								filepath, archive_error_string(pack->aread));
+		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
+		    filepath, pack->aread);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 	retcode = EPKG_OK;
@@ -121,8 +121,9 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 
 	if (archive_entry_size(pack->entry) > 0) {
 		if ((fd = open(filepath, O_RDONLY)) < 0) {
-			retcode = pkg_error_set(EPKG_FATAL, "open(%s): %s", filepath,
-									 strerror(errno));
+			pkg_emit_event(PKG_EVENT_OPEN_FAILED, /*argc*/2,
+			    filepath, strerror(errno));
+			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 
@@ -202,19 +203,22 @@ packing_set_format(struct archive *a, pkg_formats format)
 			if (archive_write_set_compression_xz(a) == ARCHIVE_OK) {
 				return ("txz");
 			} else {
-				warnx("xz compression is not supported, trying bzip2");
+				pkg_emit_event(PKG_EVENT_ARCHIVE_COMP_UNSUP,
+				    /*argc*/2, "xz", "bzip2");
 			}
 		case TBZ:
 			if (archive_write_set_compression_bzip2(a) == ARCHIVE_OK) {
 				return ("tbz");
 			} else {
-				warnx("bzip2 compression is not supported, trying gzip");
+				pkg_emit_event(PKG_EVENT_ARCHIVE_COMP_UNSUP,
+				    /*argc*/2, "bzip2", "gzip");
 			}
 		case TGZ:
 			if (archive_write_set_compression_gzip(a) == ARCHIVE_OK) {
 				return ("tgz");
 			} else {
-				warnx("gzip compression is not supported, trying plain tar");
+				pkg_emit_event(PKG_EVENT_ARCHIVE_COMP_UNSUP,
+				    /*argc*/2, "gzip", "plain tar");
 			}
 		case TAR:
 			archive_write_set_compression_none(a);

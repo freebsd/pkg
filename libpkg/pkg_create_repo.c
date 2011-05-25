@@ -76,8 +76,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
 
-	if (!is_dir(path))
-		return (pkg_error_set(EPKG_FATAL, "%s is not a directory", path));
+	if (!is_dir(path)) {
+		pkg_emit_event(PKG_EVENT_CREATEDB_FAILED, /*argc*/2,
+		    path, "not a directory");
+		return EPKG_FATAL;
+	}
 
 	repopath[0] = path;
 	repopath[1] = NULL;
@@ -85,21 +88,25 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	snprintf(repodb, MAXPATHLEN, "%s/repo.sqlite", path);
 
 	if (stat(repodb, &st) != -1)
-		if (unlink(repodb) != 0)
-			return (pkg_error_set(EPKG_FATAL, "can not unlink %s: %s", repodb,
-								  strerror(errno)));
+		if (unlink(repodb) != 0) {
+			pkg_emit_event(PKG_EVENT_CREATEDB_FAILED_ERRNO,
+			    /*argc*/3, path, repodb, strerror(errno));
+			return EPKG_FATAL;
+		}
 
 	if (sqlite3_open(repodb, &sqlite) != SQLITE_OK)
 		return (EPKG_FATAL);
 
 	if (sqlite3_exec(sqlite, initsql, NULL, NULL, &errmsg) != SQLITE_OK) {
-		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
+		pkg_emit_event(PKG_EVENT_SQLITE_ERROR, /*argc*/1, errmsg);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (sqlite3_exec(sqlite, "BEGIN TRANSACTION;", NULL, NULL, &errmsg) !=
 		SQLITE_OK) {
-		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
+		pkg_emit_event(PKG_EVENT_SQLITE_ERROR, /*argc*/1, errmsg);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -114,8 +121,9 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	}
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL, NULL)) == NULL) {
-		retcode = pkg_error_set(EPKG_FATAL, "can not open %s: %s", repopath,
-								strerror(errno));
+		pkg_emit_event(PKG_EVENT_OPEN_DB_FAILED, /*argc*/2,
+		    repopath, strerror(errno));
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -143,8 +151,10 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 		if (pkg_open(&pkg, ent->fts_accpath) != EPKG_OK) {
 			if (progress != NULL) {
-				pkg_error_set(EPKG_WARN, "can not open %s: %s", ent->fts_name,
-							  pkg_error_string());
+				pkg_emit_event(PKG_EVENT_DB_OPEN_FAILED,
+				    /*argc*/2, ent->fts_name,
+				    pkg_error_string());
+				retcode = EPKG_WARN;
 				progress(NULL, data);
 			}
 			continue;
@@ -191,8 +201,10 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	}
 
-	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK)
-		retcode = pkg_error_set(EPKG_FATAL, "%s", errmsg);
+	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK) {
+		pkg_emit_event(PKG_EVENT_SQLITE_ERROR, /*argc*/1, errmsg);
+		retcode = EPKG_FATAL;
+	}
 
 	cleanup:
 	if (fts != NULL)
@@ -256,8 +268,11 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 
 	packing_init(&pack, repo_archive, TXZ);
 	if (rsa_key_path != NULL) {
-		if (access(rsa_key_path, R_OK) == -1)
-			return pkg_error_set(EPKG_FATAL, "RSA key invalid: %s", strerror(errno));
+		if (access(rsa_key_path, R_OK) == -1) {
+			pkg_emit_event(PKG_EVENT_REPO_KEY_UNAVAIL, /*argc*/2,
+			    rsa_key_path, strerror(errno));
+			return EPKG_FATAL;
+		}
 
 		SSL_load_error_strings();
 
@@ -271,8 +286,11 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 
 		sha256_file(repo_path, sha256);
 
-		if (RSA_sign(NID_sha1, sha256, 65, sigret, &siglen, rsa) == 0)
-			return pkg_error_set(EPKG_FATAL, "Unable to sign the repository");
+		if (RSA_sign(NID_sha1, sha256, 65, sigret, &siglen, rsa) == 0) {
+			pkg_emit_event(PKG_EVENT_REPO_KEY_UNUSABLE, /*argc*/2,
+			    rsa_key_path, ERR_get_error()); /* XXX pass back RSA errors correctly */
+			return EPKG_FATAL;
+		}
 
 		packing_append_buffer(pack, sigret, "signature", max_len);
 

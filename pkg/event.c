@@ -1,4 +1,5 @@
 #include <archive.h>
+#include <err.h>
 
 #include "pkg.h"
 #include "event.h"
@@ -14,6 +15,10 @@ event_callback(pkg_event_t ev, void **argv)
 	case PKG_EVENT_ARCHIVE_ERROR:
 		fprintf(stderr, "archive error on %s: %s\n",
 		    (const char *)argv[0], archive_error_string(argv[1]));
+		break;
+	case PKG_EVENT_ARCHIVE_COMP_UNSUP:
+		warnx("%s is not supported, trying %s",
+		    (const char *)argv[0], (const char *)argv[1]);
 		break;
 	default:
 		break;

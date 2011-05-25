@@ -14,8 +14,11 @@
 int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
-	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL)
-		return(pkg_error_set(EPKG_FATAL, "%s", strerror(errno)));
+	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL) {
+		pkg_emit_event(PKG_EVENT_MALLOC_FAILED, /*argc*/1,
+		    strerror(errno));
+		return EPKG_FATAL;
+	}
 
 	struct _fields {
 		int id;
@@ -566,7 +569,8 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 			strcmp(filename, "+UPGRADE") == 0) {
 		type = PKG_SCRIPT_UPGRADE;
 	} else {
-		return (pkg_error_set(EPKG_FATAL, "unknown script"));
+		pkg_emit_event(PKG_EVENT_UNKNOWN_SCRIPT, /*argc*/1, filename);
+		return EPKG_FATAL;
 	}
 
 	ret = pkg_addscript(pkg, data, type);
@@ -778,7 +782,9 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	archive_read_support_format_tar(*a);
 
 	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK) {
-		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a));
+		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
+		    archive_entry_pathname(*ae), *a);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -838,8 +844,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 		}
 	}
 
-	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF)
-		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(*a));
+	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF) {
+		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
+		    archive_entry_pathname(*ae), *a);
+		retcode = EPKG_FATAL;
+	}
 
 	if (ret == ARCHIVE_EOF)
 		retcode = EPKG_END;
@@ -865,7 +874,7 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 
 	if (packing_init(&pack, dest, 0) != EPKG_OK) {
 		/* TODO */
-		return (pkg_error_set(EPKG_FATAL, "unable to create archive"));
+		return EPKG_FATAL;
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {

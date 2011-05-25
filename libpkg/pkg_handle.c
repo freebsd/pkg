@@ -1,4 +1,3 @@
-#include <assert.h>
 #include "pkg.h"
 
 struct pkg_handle __pkg_handle_singleton;
@@ -19,43 +18,4 @@ pkg_event_cb
 pkg_handle_get_event_callback(struct pkg_handle *hdl)
 {
 	return hdl->event_cb;
-}
-
-/* Guard-rail against incorrect number of arguments */
-static void
-pkg_event_argument_check(pkg_event_t ev, int argc)
-{
-
-	switch(ev) {
-	case PKG_EVENT_INSTALL_BEGIN:
-		assert(argc == 1);
-		break;
-	case PKG_EVENT_ARCHIVE_ERROR:
-		assert(argc == 2);
-		break;
-	default:
-		break;
-	}
-}
-
-void
-__pkg_emit_event(struct pkg_handle *hdl, pkg_event_t ev, int argc, ...)
-{
-	va_list ap;
-	void **argv;
-	int i;
-
-	if (hdl == NULL || hdl->event_cb == NULL)
-		return;
-
-	pkg_event_argument_check(ev, argc);
-
-	/* Generate the argument vector to pass in. */
-	argv = calloc(argc, sizeof(void *));
-	va_start(ap, argc);
-	for (i = 0;i < argc; i++)
-		argv[i] = va_arg(ap, void *);
-	va_end(ap);
-
-	hdl->event_cb(ev, argv);
 }

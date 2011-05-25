@@ -41,7 +41,9 @@ do_extract(struct archive *a, struct archive_entry *ae)
 
 	do {
 		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
-			retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
+			pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
+			    archive_entry_pathname(ae), a);
+			retcode = EPKG_FATAL;
 			break;
 		}
 
@@ -57,14 +59,19 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		    && lstat(path, &st) == ENOENT) {
 			archive_entry_set_pathname(ae, path);
 			if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
-				retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
+				pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
+				    archive_entry_pathname(ae), a);
+				retcode = EPKG_FATAL;
 				break;
 			}
 		}
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
 
-	if (ret != ARCHIVE_EOF)
-		retcode = pkg_error_set(EPKG_FATAL, "%s", archive_error_string(a));
+	if (ret != ARCHIVE_EOF) {
+		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
+		    archive_entry_pathname(ae), a);
+		retcode = EPKG_FATAL;
+	}
 
 	return (retcode);
 }
@@ -112,15 +119,17 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 
 	ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC);
 	pkgdb_it_free(it);
-	pkg_free(p);
 
 	if (ret == EPKG_OK) {
-		retcode = pkg_error_set(EPKG_INSTALLED, "package already installed");
+		pkg_emit_event(PKG_EVENT_ALREADY_INSTALLED, /*argc*/1, p);
+		retcode = EPKG_INSTALLED;
 		goto cleanup;
 	} else if (ret != EPKG_END) {
 		retcode = ret;
 		goto cleanup;
 	}
+	pkg_free(p);
+	p = NULL;
 
 	/*
 	 * Check for dependencies
@@ -140,16 +149,18 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 
 			if (access(dpath, F_OK) == 0) {
 				if (pkg_add(db, dpath, NULL) != EPKG_OK) {
-					retcode = pkg_error_set(EPKG_FATAL, "error while "
-											"installing %s (dependency): %s",
-											dpath,
-											pkg_error_string());
+					/* XXX: maybe the pkg_error_string()
+					 * should be handled in the event
+					 * handler */
+					pkg_emit_event(PKG_EVENT_ERROR_INSTALLING_DEP,
+					    /*argc*/2, dpath, pkg_error_string());
+					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
 			} else {
-				retcode = pkg_error_set(EPKG_DEPENDENCY, "missing %s-%s dependency",
-										pkg_dep_name(dep),
-										pkg_dep_version(dep));
+				retcode = EPKG_FATAL;
+				pkg_emit_event(PKG_EVENT_MISSING_DEP, /*argc*/2,
+				    pkg_dep_name(dep), pkg_dep_version(dep));
 				goto cleanup;
 			}
 		}
@@ -161,7 +172,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	if (retcode != EPKG_OK || pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)
 		goto cleanup_reg;
 
-	pkg_emit_event(PKG_EVENT_INSTALL_BEGIN, 1, pkg);
+	pkg_emit_event(PKG_EVENT_INSTALL_BEGIN, /*argc*/1, pkg);
 
 	/*
 	 * Execute pre-install scripts
@@ -189,6 +200,9 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	cleanup:
 	if (a != NULL)
 		archive_read_finish(a);
+
+	if (p != NULL)
+		pkg_free(p);
 
 	if (pkg_p != NULL)
 		*pkg_p = (retcode == EPKG_OK) ? pkg : NULL;
