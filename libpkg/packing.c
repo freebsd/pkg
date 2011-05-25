@@ -93,7 +93,7 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 
 	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, NULL);
 	if (retcode != ARCHIVE_OK) {
-		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, __DECONST(char *, filepath), (void *)pack->aread);
+		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, 2, filepath, pack->aread);
 		retcode = pkg_error_set(EPKG_FATAL,
 								"archive_read_disk_entry_from_file(%s): %s",
 								filepath, archive_error_string(pack->aread));

@@ -161,7 +161,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	if (retcode != EPKG_OK || pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)
 		goto cleanup_reg;
 
-	pkg_emit_event(PKG_EVENT_INSTALL_BEGIN, pkg, NULL);
+	pkg_emit_event(PKG_EVENT_INSTALL_BEGIN, 1, pkg);
 
 	/*
 	 * Execute pre-install scripts
