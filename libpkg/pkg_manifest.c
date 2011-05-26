@@ -247,7 +247,7 @@ m_parse_dir(struct pkg *pkg, char *buf)
 	while (isspace(*buf))
 		buf++;
 
-	if (*buf == '\0')
+	if (*buf != '/')
 		return (EPKG_FATAL);
 
 	pkg_adddir(pkg, buf);
