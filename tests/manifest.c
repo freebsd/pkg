@@ -5,7 +5,6 @@
 #include "tests.h"
 
 char manifest[] = ""
-	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
 	"@version 0.3\n"
 	"@origin foo/bar\n"
@@ -22,12 +21,10 @@ char manifest[] = ""
 	"@conflict bar-*\n"
 	"@option foo true\n"
 	"@option bar false\n"
-	"@file /usr/local/bin/foo "
-		"01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b\n";
+	"@file 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b /usr/local/bin/foo\n";
 
 /* Name empty */
 char wrong_manifest1[] = ""
-	"@pkg_format_version 0.9\n"
 	"@name\n"
 	"@version 0.3\n"
 	"@origin foo/bar\n"
@@ -45,7 +42,6 @@ char wrong_manifest1[] = ""
 
 /* bad dependency line */
 char wrong_manifest2[] = ""
-	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
 	"@version 0.3\n"
 	"@origin foo/bar\n"
@@ -63,7 +59,6 @@ char wrong_manifest2[] = ""
 
 /* bad conflict line */
 char wrong_manifest3[] = ""
-	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
 	"@version 0.3\n"
 	"@origin foo/bar\n"
@@ -81,7 +76,6 @@ char wrong_manifest3[] = ""
 
 /* bad option line */
 char wrong_manifest4[] = ""
-	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
 	"@version 0.3\n"
 	"@origin foo/bar\n"
@@ -99,7 +93,6 @@ char wrong_manifest4[] = ""
 
 /* bad option line */
 char wrong_manifest5[] = ""
-	"@pkg_format_version 0.9\n"
 	"@name foobar\n"
 	"@version 0.3\n"
 	"@origin foo/bar\n"

@@ -32,27 +32,25 @@ static int m_parse_file(struct pkg *pkg, char *buf);
 static int m_parse_dir(struct pkg *pkg, char *buf);
 static int m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr);
 
-#define MANIFEST_FORMAT_KEY "@pkg_format_version"
-
 static struct manifest_key {
 	const char *key;
 	int (*parse)(struct pkg *pkg, char *buf);
 } manifest_key[] = {
-	{ "@name", m_parse_name},
-	{ "@origin", m_parse_origin},
-	{ "@version", m_parse_version},
-	{ "@arch", m_parse_arch},
-	{ "@osversion", m_parse_osversion},
-	{ "@www", m_parse_www},
-	{ "@comment", m_parse_comment},
-	{ "@flatsize", m_parse_flatsize},
-	{ "@option", m_parse_option},
-	{ "@dep", m_parse_dep},
-	{ "@conflict", m_parse_conflict},
-	{ "@maintainer", m_parse_maintainer},
-	{ "@prefix", m_parse_prefix},
-	{ "@file", m_parse_file},
-	{ "@dir", m_parse_dir},
+	{ "name:", m_parse_name},
+	{ "origin:", m_parse_origin},
+	{ "version:", m_parse_version},
+	{ "arch:", m_parse_arch},
+	{ "osversion:", m_parse_osversion},
+	{ "www:", m_parse_www},
+	{ "comment:", m_parse_comment},
+	{ "flatsize:", m_parse_flatsize},
+	{ "option:", m_parse_option},
+	{ "dep:", m_parse_dep},
+	{ "conflict:", m_parse_conflict},
+	{ "maintainer:", m_parse_maintainer},
+	{ "prefix:", m_parse_prefix},
+	{ "file:", m_parse_file},
+	{ "dir:", m_parse_dir},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
@@ -219,13 +217,24 @@ m_parse_file(struct pkg *pkg, char *buf)
 	while (isspace(*buf))
 		buf++;
 
-	if (split_chr(buf, ' ') != 1)
+	while (isspace(buf[0]))
+		buf++;
+
+	if (buf[0] == '-')
+		sha256 = NULL;
+	else
+		sha256 = buf;
+
+	while (!isspace(buf[0]))
+		buf++;
+
+	buf[0] = '\0';
+	buf++;
+
+	if (buf[0] != '/')
 		return (EPKG_FATAL);
 
 	path = buf;
-
-	buf += strlen(path) + 1;
-	sha256 = buf;
 
 	pkg_addfile(pkg, path, sha256);
 
@@ -238,7 +247,7 @@ m_parse_dir(struct pkg *pkg, char *buf)
 	while (isspace(*buf))
 		buf++;
 
-	if (*buf == '\0')
+	if (*buf != '/')
 		return (EPKG_FATAL);
 
 	pkg_adddir(pkg, buf);
@@ -274,13 +283,6 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	nbel = split_chr(buf, '\n');
 
 	buf_ptr = buf;
-	if (!STARTS_WITH(buf, MANIFEST_FORMAT_KEY)) {
-		warn("Not a package manifest");
-		return (-1);
-	}
-
-	next = strlen(buf_ptr);
-	buf_ptr += next + 1;
 	next = strlen(buf_ptr);
 	for (i = 1; i <= nbel; i++) {
 		found = 0;
@@ -323,17 +325,17 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 
 	manifest = sbuf_new_auto();
 
-	sbuf_printf(manifest, "@pkg_format_version 0.9\n"
-			"@name %s\n"
-			"@version %s\n"
-			"@origin %s\n"
-			"@comment %s\n"
-			"@arch %s\n"
-			"@osversion %s\n"
-			"@www %s\n"
-			"@maintainer %s\n"
-			"@prefix %s\n"
-			"@flatsize %" PRId64 "\n",
+	sbuf_printf(manifest,
+			"name: %s\n"
+			"version: %s\n"
+			"origin: %s\n"
+			"comment: %s\n"
+			"arch: %s\n"
+			"osversion: %s\n"
+			"www: %s\n"
+			"maintainer: %s\n"
+			"prefix: %s\n"
+			"flatsize: %" PRId64 "\n",
 			pkg_get(pkg, PKG_NAME),
 			pkg_get(pkg, PKG_VERSION),
 			pkg_get(pkg, PKG_ORIGIN),
@@ -347,7 +349,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			);
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		sbuf_printf(manifest, "@dep %s %s %s\n",
+		sbuf_printf(manifest, "dep: %s %s %s\n",
 					pkg_dep_name(dep),
 					pkg_dep_origin(dep),
 					pkg_dep_version(dep));
@@ -355,21 +357,21 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 
 
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
-		sbuf_printf(manifest, "@conflict %s\n", pkg_conflict_glob(conflict));
+		sbuf_printf(manifest, "conflict: %s\n", pkg_conflict_glob(conflict));
 	}
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		sbuf_printf(manifest, "@option %s %s\n", pkg_option_opt(option),
+		sbuf_printf(manifest, "option: %s %s\n", pkg_option_opt(option),
 					pkg_option_value(option));
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		sbuf_printf(manifest, "@file %s %s\n", pkg_file_path(file),
-					pkg_file_sha256(file));
+		sbuf_printf(manifest, "file: %s %s\n", pkg_file_sha256(file) && strlen(pkg_file_sha256(file)) > 0 ? pkg_file_sha256(file) : "-",
+					pkg_file_path(file));
 	}
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		sbuf_printf(manifest, "@dir %s\n", pkg_dir_path(dir));
+		sbuf_printf(manifest, "dir: %s\n", pkg_dir_path(dir));
 	}
 
 	sbuf_finish(manifest);
