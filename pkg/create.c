@@ -8,6 +8,7 @@
 #include <sysexits.h>
 
 #include "create.h"
+#include "utils.h"
 
 void
 usage_create(void)
@@ -139,6 +140,9 @@ exec_create(int argc, char **argv)
 
 	if (outdir == NULL)
 		outdir = "./";
+	else
+		if (mkdirs(outdir) != EPKG_OK)
+			return (EX_SOFTWARE);
 
 	if (format == NULL) {
 		fmt = TXZ;
