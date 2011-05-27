@@ -586,8 +586,7 @@ typedef enum {
 	PKG_EVENT_ALREADY_INSTALLED,
 	PKG_EVENT_CKSUM_ERROR,
 	PKG_EVENT_CONFIG_KEY_NOTFOUND,
-	PKG_EVENT_CREATEDB_ERROR,
-	PKG_EVENT_CREATEDB_ERROR_ERRNO,
+	PKG_EVENT_CREATE_DB_ERROR,
 	PKG_EVENT_DELETE_DEP_EXISTS,
 	PKG_EVENT_ERROR_INSTALLING_DEP,
 	PKG_EVENT_FETCH_ERROR,
@@ -621,9 +620,6 @@ struct pkg_handle {
 struct pkg_handle *pkg_get_handle(void);
 pkg_event_cb pkg_handle_get_event_callback(struct pkg_handle *);
 void pkg_handle_set_event_callback(struct pkg_handle *, pkg_event_cb);
-
-/* XXX maybe the event callback should also get a pointer to the handle, and
- * just drop arg1 altogether..? */
 
 void __pkg_emit_event(struct pkg_handle *, pkg_event_t, int, ...);
 

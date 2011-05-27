@@ -23,7 +23,6 @@ pkg_event_argument_check(pkg_event_t ev, int argc)
 		break;
 	case PKG_EVENT_ARCHIVE_COMP_UNSUP:
 	case PKG_EVENT_ARCHIVE_ERROR:
-	case PKG_EVENT_CREATEDB_ERROR:
 	case PKG_EVENT_ERROR_INSTALLING_DEP:
 	case PKG_EVENT_MISSING_DEP:
 	case PKG_EVENT_OPEN_DB_ERROR:
@@ -33,7 +32,7 @@ pkg_event_argument_check(pkg_event_t ev, int argc)
 	case PKG_EVENT_SQLITE_CONSTRAINT:
 		assert(argc == 2);
 		break;
-	case PKG_EVENT_CREATEDB_ERROR_ERRNO:
+	case PKG_EVENT_CREATE_DB_ERROR:
 	case PKG_EVENT_IO_ERROR:
 		assert(argc == 3);
 		break;
@@ -66,11 +65,11 @@ libpkg_handle_event(pkg_event_t ev, void **argv)
 	case PKG_EVENT_CONFIG_KEY_NOTFOUND:
 		pkg_error_set(EPKG_FATAL, "unknown configuration key `%s'", argv[0]);
 		break;
-	case PKG_EVENT_CREATEDB_ERROR:
-		pkg_error_set(EPKG_FATAL, "%s: %s", argv[0], argv[1]);
-		break;
-	case PKG_EVENT_CREATEDB_ERROR_ERRNO:
-		pkg_error_set(EPKG_FATAL, "%s(%s): %s", argv[0], argv[1], argv[2]);
+	case PKG_EVENT_CREATE_DB_ERROR:
+		if (argv[2] == NULL)
+			pkg_error_set(EPKG_FATAL, "%s: %s", argv[0], argv[1]);
+		else
+			pkg_error_set(EPKG_FATAL, "%s(%s): %s", argv[0], argv[1], argv[2]);
 		break;
 	case PKG_EVENT_DELETE_DEP_EXISTS:
 		pkg_error_set(EPKG_REQUIRED, "%s", argv[0]);

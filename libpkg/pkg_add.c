@@ -128,8 +128,6 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 		retcode = ret;
 		goto cleanup;
 	}
-	pkg_free(p);
-	p = NULL;
 
 	/*
 	 * Check for dependencies

@@ -77,8 +77,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		"VALUES (?1, ?2, ?3, ?4);";
 
 	if (!is_dir(path)) {
-		pkg_emit_event(PKG_EVENT_CREATEDB_ERROR, /*argc*/2,
-		    path, "not a directory");
+		pkg_emit_event(PKG_EVENT_CREATE_DB_ERROR, /*argc*/3,
+		    path, "not a directory", NULL);
 		return EPKG_FATAL;
 	}
 
@@ -89,7 +89,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	if (stat(repodb, &st) != -1)
 		if (unlink(repodb) != 0) {
-			pkg_emit_event(PKG_EVENT_CREATEDB_ERROR_ERRNO,
+			pkg_emit_event(PKG_EVENT_CREATE_DB_ERROR,
 			    /*argc*/3, path, repodb, strerror(errno));
 			return EPKG_FATAL;
 		}
