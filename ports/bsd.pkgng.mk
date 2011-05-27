@@ -35,23 +35,22 @@ fake-pkg:
 .if !defined(NO_PKG_REGISTER)
 	@${ECHO_MSG} "===>   Registering installation for ${PKGNAME}"
 	@${MKDIR} ${METADIR}
-	@${ECHO_CMD} "@pkg_format_version 0.9" > ${MANIFESTF}
-	@${ECHO_CMD} "@name ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" >> ${MANIFESTF}
-	@${ECHO_CMD} "@version ${PKGVERSION}" >> ${MANIFESTF}
-	@${ECHO_CMD} "@origin ${PKGORIGIN}" >> ${MANIFESTF}
-	@${ECHO_CMD} "@comment ${COMMENT}" >> ${MANIFESTF}
-	@${ECHO_CMD} "@maintainer ${MAINTAINER}" >> ${MANIFESTF}
-	@${ECHO_CMD} "@prefix ${PREFIX}" >> ${MANIFESTF}
+	@${ECHO_CMD} "name: ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" > ${MANIFESTF}
+	@${ECHO_CMD} "version: ${PKGVERSION}" >> ${MANIFESTF}
+	@${ECHO_CMD} "origin: ${PKGORIGIN}" >> ${MANIFESTF}
+	@${ECHO_CMD} "comment: ${COMMENT}" >> ${MANIFESTF}
+	@${ECHO_CMD} "maintainer: ${MAINTAINER}" >> ${MANIFESTF}
+	@${ECHO_CMD} "prefix: ${PREFIX}" >> ${MANIFESTF}
 .if defined(WWW)
-	@${ECHO_CMD} "@www ${WWW}" >> ${MANIFESTF}
+	@${ECHO_CMD} "www: ${WWW}" >> ${MANIFESTF}
 .endif
 	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u >> ${MANIFESTF}
 .if !defined(DISABLE_CONFLICTS)
 .for conflicts in ${CONFLICTS}
-	@${ECHO_CMD} "@conflict ${conflicts}" >> ${MANIFESTF}
+	@${ECHO_CMD} "conflict: ${conflicts}" >> ${MANIFESTF}
 .endfor
 .for conflicts in ${CONFLICTS_INSTALL}
-	@${ECHO_CMD} "@conflict ${conflicts}" >> ${MANIFESTF}
+	@${ECHO_CMD} "conflict: ${conflicts}" >> ${MANIFESTF}
 .endfor
 .endif
 .if exists(${PKGINSTALL})

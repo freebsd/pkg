@@ -218,9 +218,6 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE VIEW pkg_dirs AS SELECT origin, path FROM packages "
 	"INNER JOIN pkg_dirs_assoc ON packages.id = pkg_dirs_assoc.package_id "
 	"INNER JOIN directories ON pkg_dirs_assoc.directory_id = directories.id;"
-	"CREATE TRIGGER pkg_dirs_clean AFTER DELETE ON packages BEGIN "
-		"DELETE from directories WHERE id NOT IN (SELECT DISTINCT directory_id FROM pkg_dirs_assoc);"
-	"END;"
 	"CREATE TRIGGER dir_insert INSTEAD OF INSERT ON pkg_dirs "
 	"FOR EACH ROW BEGIN "
 		"INSERT OR IGNORE INTO directories (path) VALUES (NEW.path);"
@@ -596,7 +593,7 @@ pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_adddep(pkg, sqlite3_column_text(stmt, 0), sqlite3_column_text(stmt, 1),
+		pkg_addrdep(pkg, sqlite3_column_text(stmt, 0), sqlite3_column_text(stmt, 1),
 				   sqlite3_column_text(stmt, 2));
 	}
 	sqlite3_finalize(stmt);
@@ -1171,6 +1168,7 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 {
 	sqlite3_stmt *stmt_del;
 	int ret;
+	char *errmsg;
 	const char sql[] = "DELETE FROM packages WHERE origin = ?1;";
 
 	if (db == NULL)
@@ -1189,6 +1187,14 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 
 	if (ret != SQLITE_DONE)
 		return (ERROR_SQLITE(db->sqlite));
+
+	/* cleanup directories */
+	ret = sqlite3_exec(db->sqlite, "DELETE from directories WHERE id NOT IN (SELECT DISTINCT directory_id FROM pkg_dirs_assoc);", NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		ret = pkg_error_set(EPKG_FATAL, "%s", errmsg);
+		sqlite3_free(errmsg);
+		return (ret);
+	}
 
 	return (EPKG_OK);
 }

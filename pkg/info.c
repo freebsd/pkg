@@ -41,7 +41,7 @@ print_info(struct pkg *pkg, unsigned int opt)
 		if (!(opt & INFO_QUIET))
 			printf("%s-%s is required by:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
-		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 			printf("%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
 		}
 

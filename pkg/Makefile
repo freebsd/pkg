@@ -10,6 +10,7 @@ SRCS=		add.c \
 		repo.c \
 		update.c \
 		upgrade.c \
+		utils.c \
 		version.c \
 		which.c
 BINDIR=		/usr/sbin
