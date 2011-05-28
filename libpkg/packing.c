@@ -156,6 +156,7 @@ packing_append_tree(struct packing *pack, const char *treepath, const char *newr
 	while ((fts_e = fts_read(fts)) != NULL) {
 		switch(fts_e->fts_info) {
 		case FTS_F:
+		case FTS_D:
 			 /* Skip entries that are shorter than the tree itself */
 			 if (fts_e->fts_pathlen <= treelen)
 				  break;
