@@ -37,6 +37,7 @@ struct pkg {
 	int flags;
 	int64_t rowid;
 	pkg_t type;
+	STAILQ_ENTRY(pkg) next;
 };
 
 struct pkg_dep {
@@ -74,6 +75,23 @@ struct pkg_option {
 	STAILQ_ENTRY(pkg_option) next;
 };
 
+struct pkg_jobs {
+	STAILQ_HEAD(jobs, pkg) jobs;
+	LIST_HEAD(nodes, pkg_jobs_node) nodes;
+	struct pkgdb *db;
+	unsigned int resolved :1;
+	unsigned int reverse :1;
+};
+
+struct pkg_jobs_node {
+	struct pkg *pkg;
+	size_t nrefs;
+	struct pkg_jobs_node **parents; /* rdeps */
+	size_t parents_len;
+	size_t parents_cap;
+	LIST_ENTRY(pkg_jobs_node) entries;
+};
+
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
 void pkg_freedeps(struct pkg *pkg);
 void pkg_freerdeps(struct pkg *pkg);
@@ -100,6 +118,8 @@ void pkg_script_free(struct pkg_script *);
 
 int pkg_option_new(struct pkg_option **);
 void pkg_option_free(struct pkg_option *);
+
+int pkg_jobs_resolv(struct pkg_jobs *jobs, int reverse);
 
 struct packing;
 

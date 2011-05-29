@@ -11,9 +11,6 @@ struct pkgdb {
 	pkgdb_t type;
 };
 
-#define IT_LOCAL 0
-#define IT_UPGRADE 1
-
 struct pkgdb_it {
 	struct pkgdb *db;
 	sqlite3_stmt *stmt;
