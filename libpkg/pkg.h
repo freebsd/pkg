@@ -608,10 +608,5 @@ int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
 /**
  * scripts handling
  */
-int pkg_script_pre_install(struct pkg *);
-int pkg_script_post_install(struct pkg *);
-int pkg_script_pre_upgrade(struct pkg *);
-int pkg_script_post_upgrade(struct pkg *);
-int pkg_script_pre_deinstall(struct pkg *);
-int pkg_script_post_deinstall(struct pkg *);
+int pkg_script_run(struct pkg *, pkg_script_t type);
 #endif

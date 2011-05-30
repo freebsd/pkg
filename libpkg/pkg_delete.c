@@ -60,13 +60,13 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 		sbuf_free(rdep_msg);
 	}
 
-	if ((ret = pkg_script_pre_deinstall(pkg)) != EPKG_OK)
+	if ((ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL)) != EPKG_OK)
 		return (ret);
 
 	if ((ret = pkg_delete_files(pkg, force)) != EPKG_OK)
 		return (ret);
 
-	if ((ret = pkg_script_post_deinstall(pkg)) != EPKG_OK)
+	if ((ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL)) != EPKG_OK)
 		return (ret);
 
 	if ((ret = pkg_delete_dirs(pkg, force)) != EPKG_OK)

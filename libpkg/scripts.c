@@ -3,206 +3,56 @@
 #include <pkg_error.h>
 
 int
-pkg_script_pre_install(struct pkg *pkg)
+pkg_script_run(struct pkg *pkg, pkg_script_t type)
 {
 	struct pkg_script *script = NULL;
+	pkg_script_t stype;
 	struct sbuf *script_cmd = sbuf_new_auto();
+	size_t i;
 
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		switch (pkg_script_type(script)) {
-			case PKG_SCRIPT_INSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s PRE-INSTALL\n%s",
-					pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-					pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_PRE_INSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* ignored to prevent warning */
-				break;
-		}
+	struct {
+		const char *arg;
+		const pkg_script_t b;
+		const pkg_script_t a;
+	} const map[] = {
+		/* a implies b with argument arg */
+		{"PRE-INSTALL",    PKG_SCRIPT_INSTALL,   PKG_SCRIPT_PRE_INSTALL},
+		{"POST-INSTALL",   PKG_SCRIPT_INSTALL,   PKG_SCRIPT_POST_INSTALL},
+		{"PRE-UPGRADE",    PKG_SCRIPT_UPGRADE,   PKG_SCRIPT_PRE_UPGRADE},
+		{"POST-UPGRADE",   PKG_SCRIPT_UPGRADE,   PKG_SCRIPT_POST_UPGRADE},
+		{"PRE-DEINSTALL",  PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_PRE_DEINSTALL},
+		{"POST-DEINSTALL", PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_POST_DEINSTALL},
+	};
+
+	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
+		if (map[i].a == type)
+			break;
 	}
 
-	sbuf_delete(script_cmd);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_script_post_install(struct pkg *pkg)
-{
-	struct pkg_script *script = NULL;
-	struct sbuf *script_cmd = sbuf_new_auto();
+	if (map[i].a != type)
+		return (pkg_error_set(EPKG_FATAL, "bad type arg (%d)", type));
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		switch (pkg_script_type(script)) {
-			case PKG_SCRIPT_INSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s POST-INSTALL\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_POST_INSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* ignored to prevent warning */
-				break;
-		}
-	}
 
-	sbuf_delete(script_cmd);
+		stype = pkg_script_type(script);
 
-	return (EPKG_OK);
-}
-
-int
-pkg_script_pre_upgrade(struct pkg *pkg)
-{
-	struct pkg_script *script = NULL;
-	struct sbuf *script_cmd = sbuf_new_auto();
-
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		switch (pkg_script_type(script)) {
-			case PKG_SCRIPT_UPGRADE:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s PRE-UPGRADE\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_PRE_UPGRADE:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* ignored to prevent warning */
-				break;
-		}
-	}
-
-	sbuf_delete(script_cmd);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_script_post_upgrade(struct pkg *pkg)
-{
-	struct pkg_script *script = NULL;
-	struct sbuf *script_cmd = sbuf_new_auto();
-
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		switch (pkg_script_type(script)) {
-			case PKG_SCRIPT_UPGRADE:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s POST-UPGRADE\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_POST_UPGRADE:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* ignored to prevent warning */
-				break;
-		}
-	}
-
-	sbuf_delete(script_cmd);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_script_pre_deinstall(struct pkg *pkg)
-{
-	struct pkg_script *script = NULL;
-	struct sbuf *script_cmd = sbuf_new_auto();
-
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		switch (pkg_script_type(script)) {
-			case PKG_SCRIPT_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s DEINSTALL\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			case PKG_SCRIPT_PRE_DEINSTALL:
-				sbuf_reset(script_cmd);
-				sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
-				  pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				  pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-				sbuf_finish(script_cmd);
-				system(sbuf_data(script_cmd));
-				break;
-			default:
-				/* ignored to prevent warning */
-				break;
-		}
-	}
-
-	sbuf_delete(script_cmd);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_script_post_deinstall(struct pkg *pkg)
-{
-	struct pkg_script *script = NULL;
-	struct sbuf *script_cmd = sbuf_new_auto();
-
-	/* two loops because the order matters */
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		if (pkg_script_type(script) == PKG_SCRIPT_DEINSTALL) {
+		if (stype == map[i].a || stype == map[i].b) {
 			sbuf_reset(script_cmd);
-			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s POST-DEINSTALL\n%s",
-					pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-					pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
+			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s",
+				pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
+				pkg_get(pkg, PKG_VERSION));
+
+			if (stype == map[i].b) {
+				/* add arg **/
+				sbuf_cat(script_cmd, " ");
+				sbuf_cat(script_cmd, map[i].arg);
+			}
+
+			sbuf_cat(script_cmd, "\n");
+			sbuf_cat(script_cmd, pkg_script_data(script));
 			sbuf_finish(script_cmd);
 			system(sbuf_data(script_cmd));
-		}
-	}
 
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		if (pkg_script_type(script) == PKG_SCRIPT_POST_DEINSTALL) {
-			sbuf_reset(script_cmd);
-			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s\n%s",
-					pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-					pkg_get(pkg, PKG_VERSION), pkg_script_data(script));
-			sbuf_finish(script_cmd);
-			system(sbuf_data(script_cmd));
 		}
 	}
 
