@@ -73,13 +73,34 @@ int
 pkg_jobs_apply(struct pkg_jobs *j, void *data, fetch_cb fcb, status_cb scb)
 {
 	struct pkg *p = NULL;
+	struct pkg *pfile = NULL;
+	const char *cachedir;
+	char path[MAXPATHLEN];
 
 	/* Fetch */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		if (pkg_repo_fetch(p, data, fcb) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
-	(void)scb;
+
+	/* Install */
+	cachedir = pkg_config("PKG_CACHEDIR");
+	p = NULL;
+	while (pkg_jobs(j, &p) == EPKG_OK) {
+		snprintf(path, sizeof(path), "%s/%s", cachedir,
+				 pkg_get(p, PKG_REPOPATH));
+
+		if (scb != NULL)
+			scb(data, p);
+		if (pkg_add(j->db, path, &pfile) != EPKG_OK) {
+			pkg_free(pfile);
+			return (EPKG_FATAL);
+		}
+		if (scb != NULL)
+			scb(data, pfile);
+	}
+
+	pkg_free(pfile);
 	return (EPKG_OK);
 }
 

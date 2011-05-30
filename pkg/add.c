@@ -41,8 +41,19 @@ is_url(const char *pattern)
 static void
 install_status(__unused void *data, struct pkg *pkg)
 {
-	printf("Installing %s-%s...\n", pkg_get(pkg, PKG_NAME),
-		   pkg_get(pkg, PKG_VERSION));
+	const char *message;
+	pkg_t type = pkg_type(pkg);
+
+	if (type == PKG_REMOTE)
+		printf("Installing %s-%s...", pkg_get(pkg, PKG_NAME),
+			   pkg_get(pkg, PKG_VERSION));
+	if (type == PKG_FILE) {
+		printf(" Done!\n");
+		message = pkg_get(pkg, PKG_MESSAGE);
+		if (message != NULL)
+			printf("----\n%s----\n", message);
+	}
+	fflush(stdout);
 }
 
 static int
