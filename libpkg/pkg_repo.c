@@ -35,8 +35,10 @@ pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb)
 	checksum:
 	retcode = sha256_file(dest, cksum);
 	if (retcode == EPKG_OK)
-		if (strcmp(cksum, pkg_get(pkg, PKG_CKSUM)))
-			retcode = pkg_error_set(EPKG_FATAL, "failed checksum");
+		if (strcmp(cksum, pkg_get(pkg, PKG_CKSUM))) {
+			pkg_emit_event(PKG_EVENT_CKSUM_ERROR, /*argc*/1, pkg);
+			retcode = EPKG_FATAL;
+		}
 
 	cleanup:
 	if (retcode != EPKG_OK)

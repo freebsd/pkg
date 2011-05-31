@@ -5,8 +5,10 @@
 #include <string.h>
 #include <sysexits.h>
 
+#include "pkg.h"
 #include "create.h"
 #include "delete.h"
+#include "event.h"
 #include "info.h"
 #include "which.h"
 #include "add.h"
@@ -104,9 +106,13 @@ main(int argc, char **argv)
 	struct commands *command = NULL;
 	unsigned int ambiguous = 0;
 	size_t len;
+	struct pkg_handle *hdl;
 
 	if (argc < 2)
 		usage();
+
+	hdl = pkg_get_handle();
+	pkg_handle_set_event_callback(hdl, event_callback);
 
 	len = strlen(argv[1]);
 	for (i = 0; i < cmd_len; i++) {

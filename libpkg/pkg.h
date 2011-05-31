@@ -1,6 +1,7 @@
 #ifndef _PKG_H
 #define _PKG_H
 
+#include <stdarg.h>
 #include <sys/types.h>
 #include <openssl/pem.h>
 
@@ -608,5 +609,65 @@ int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
 /**
  * scripts handling
  */
+int pkg_script_pre_install(struct pkg *);
+int pkg_script_post_install(struct pkg *);
+int pkg_script_pre_upgrade(struct pkg *);
+int pkg_script_post_upgrade(struct pkg *);
+int pkg_script_pre_deinstall(struct pkg *);
+int pkg_script_post_deinstall(struct pkg *);
 int pkg_script_run(struct pkg *, pkg_script_t type);
+
+/**
+ * Event type used to report progress or problems.
+ */
+typedef enum {
+	/* informational */
+	PKG_EVENT_INSTALL_BEGIN = 0,
+
+	/* errors */
+	PKG_EVENT_ARCHIVE_COMP_UNSUP = 65536,
+	PKG_EVENT_ARCHIVE_ERROR,
+	PKG_EVENT_ALREADY_INSTALLED,
+	PKG_EVENT_CKSUM_ERROR,
+	PKG_EVENT_CONFIG_KEY_NOTFOUND,
+	PKG_EVENT_CREATE_DB_ERROR,
+	PKG_EVENT_DELETE_DEP_EXISTS,
+	PKG_EVENT_ERROR_INSTALLING_DEP,
+	PKG_EVENT_FETCH_ERROR,
+	PKG_EVENT_INVALID_DB_STATE,
+	PKG_EVENT_IO_ERROR,
+	PKG_EVENT_MALLOC_ERROR,
+	PKG_EVENT_MISSING_DEP,
+	PKG_EVENT_OPEN_DB_ERROR,
+	PKG_EVENT_PARSE_ERROR,
+	PKG_EVENT_REPO_KEY_UNAVAIL,
+	PKG_EVENT_REPO_KEY_UNUSABLE,
+	PKG_EVENT_SQLITE_CONSTRAINT,
+	PKG_EVENT_SQLITE_ERROR,
+	PKG_EVENT_UNKNOWN_SCRIPT,
+} pkg_event_t;
+
+/**
+ * Package handle for global state information
+ */
+
+/**
+ * Event callback mechanism.  Events will be reported using this callback,
+ * providing an event identifier and up to two event-specific pointers.
+ */
+typedef int(*pkg_event_cb)(pkg_event_t, void **);
+
+struct pkg_handle {
+	pkg_event_cb event_cb;
+};
+
+struct pkg_handle *pkg_get_handle(void);
+pkg_event_cb pkg_handle_get_event_callback(struct pkg_handle *);
+void pkg_handle_set_event_callback(struct pkg_handle *, pkg_event_cb);
+
+void __pkg_emit_event(struct pkg_handle *, pkg_event_t, int, ...);
+
+#define	pkg_emit_event(ev, argc, argv...) \
+	__pkg_emit_event(pkg_get_handle(), ev, argc, argv)
+
 #endif

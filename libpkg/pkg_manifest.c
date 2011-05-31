@@ -64,7 +64,6 @@ m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr) {
 		return (EPKG_FATAL);
 
 	pkg_set(pkg, attr, buf);
-
 	return (EPKG_OK);
 }
 
@@ -131,14 +130,19 @@ m_parse_flatsize(struct pkg *pkg, char *buf)
 	errno = 0;
 	size = strtoimax(buf, NULL, 10);
 
-	if (errno == EINVAL || errno == ERANGE)
-		return (pkg_error_set(EPKG_FATAL, "m_parse_flatsize(): %s",
-				strerror(errno)));
+	if (errno == EINVAL || errno == ERANGE) {
+		pkg_emit_event(PKG_EVENT_PARSE_ERROR, /*argc*/2,
+		    "flatsize", strerror(errno));
+		return EPKG_FATAL;
+	}
 
 	pkg_setflatsize(pkg, size);
 	return (EPKG_OK);
 }
 
+/**
+ * option: <key> <value>
+ */
 static int
 m_parse_option(struct pkg *pkg, char *buf)
 {
@@ -154,46 +158,43 @@ m_parse_option(struct pkg *pkg, char *buf)
 	if (value == NULL)
 		return (EPKG_FATAL);
 
-	value[0] = '\0';
-	value++;
+	*value++ = '\0';
 
 	pkg_addoption(pkg, buf, value);
-
 	return (EPKG_OK);
 }
 
+/**
+ * dep: <name> <origin> <version>
+ */
 static int
 m_parse_dep(struct pkg *pkg, char *buf)
 {
-	char *buf_ptr;
-	size_t next;
 	const char *name, *origin, *version;
 
 	while (isspace(*buf))
 		buf++;
 
-	buf_ptr = buf;
-
-	if (split_chr(buf_ptr, ' ') != 2)
+	if (split_chr(buf, ' ') != 2)
 		return (EPKG_FATAL);
 
-	next = strlen(buf_ptr);
-	name = buf_ptr;
+	name = buf;
+	while (*buf != '\0')
+		buf++;
 
-	buf_ptr += next + 1;
-	next = strlen(buf_ptr);
+	origin = buf;
+	while (*buf != '\0')
+		buf++;
 
-	origin = buf_ptr;
-
-	buf_ptr += next + 1;
-
-	version = buf_ptr;
+	version = buf;
 
 	pkg_adddep(pkg, name, origin, version);
-
 	return (EPKG_OK);
 }
 
+/**
+ * conflict: <pkgname>
+ */
 static int
 m_parse_conflict(struct pkg *pkg, char *buf)
 {
@@ -204,10 +205,12 @@ m_parse_conflict(struct pkg *pkg, char *buf)
 		return (EPKG_FATAL);
 
 	pkg_addconflict(pkg, buf);
-
 	return (EPKG_OK);
 }
 
+/**
+ * file: <sha256 checksum> <file path>
+ */
 static int
 m_parse_file(struct pkg *pkg, char *buf)
 {
@@ -217,30 +220,26 @@ m_parse_file(struct pkg *pkg, char *buf)
 	while (isspace(*buf))
 		buf++;
 
-	while (isspace(buf[0]))
+	sha256 = (*buf != '-') ? buf : NULL;
+
+	while (!isspace(*buf))
 		buf++;
 
-	if (buf[0] == '-')
-		sha256 = NULL;
-	else
-		sha256 = buf;
+	if (*(buf + 1) != '/') {
+		warnx("parse error: / expected near '%s'", buf + 1);
+		return EPKG_FATAL;
+	}
 
-	while (!isspace(buf[0]))
-		buf++;
-
-	buf[0] = '\0';
-	buf++;
-
-	if (buf[0] != '/')
-		return (EPKG_FATAL);
-
+	*buf++ = '\0';
 	path = buf;
 
 	pkg_addfile(pkg, path, sha256);
-
 	return (EPKG_OK);
 }
 
+/**
+ * dir: <dir path>
+ */
 static int
 m_parse_dir(struct pkg *pkg, char *buf)
 {

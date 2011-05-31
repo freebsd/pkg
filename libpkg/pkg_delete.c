@@ -50,7 +50,9 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if (rdep_msg != NULL) {
 		if (!force) {
 			sbuf_finish(rdep_msg);
-			ret = pkg_error_set(EPKG_REQUIRED, "%s", sbuf_get(rdep_msg));
+			pkg_emit_event(PKG_EVENT_DELETE_DEP_EXISTS, /*argc*/1,
+			    sbuf_get(rdep_msg));
+			ret = EPKG_REQUIRED;
 			sbuf_free(rdep_msg);
 			return ret;
 		}

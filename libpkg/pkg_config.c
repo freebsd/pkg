@@ -68,6 +68,6 @@ pkg_config(const char *key)
 		}
 	}
 
-	pkg_error_set(EPKG_FATAL, "unknown configuration key `%s'", key);
+	pkg_emit_event(PKG_EVENT_CONFIG_KEY_NOTFOUND, /*argc*/1, key);
 	return (NULL);
 }

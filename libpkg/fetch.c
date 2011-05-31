@@ -29,8 +29,9 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 	int retcode = EPKG_OK;
 
 	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC, 0644)) == -1) {
-		retcode = pkg_error_set(EPKG_FATAL, "open(%s): %s", dest,
-								strerror(errno));
+		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "open", dest,
+		    strerror(errno));
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -39,7 +40,9 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 		if (remote == NULL) {
 			--retry;
 			if (retry == 0) {
-				retcode = pkg_error_set(EPKG_FATAL, "%s", fetchLastErrString);
+				pkg_emit_event(PKG_EVENT_FETCH_ERROR,
+				    /*argc*/1, fetchLastErrString);
+				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 			sleep(1);
@@ -52,8 +55,9 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 			break;
 
 		if (write(fd, buf, r) != r) {
-			retcode = pkg_error_set(EPKG_FATAL, "write(%s): %s", dest,
-									strerror(errno));
+			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "write",
+			    dest, strerror(errno));
+			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 
@@ -67,7 +71,9 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 	}
 
 	if (ferror(remote)) {
-		retcode = pkg_error_set(EPKG_FATAL, "%s", fetchLastErrString);
+		pkg_emit_event(PKG_EVENT_FETCH_ERROR, /*argc*/1,
+		    fetchLastErrString);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -104,7 +110,9 @@ pkg_fetch_buffer(const char *url, char **buffer, void *data, fetch_cb cb)
 		if (remote == NULL) {
 			--retry;
 			if (retry == 0) {
-				pkg_error_set(EPKG_FATAL, "%s", fetchLastErrString);
+				pkg_emit_event(PKG_EVENT_FETCH_ERROR,
+				    /*argc*/1, fetchLastErrString);
+				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 			sleep(1);
@@ -130,7 +138,8 @@ pkg_fetch_buffer(const char *url, char **buffer, void *data, fetch_cb cb)
 	}
 
 	if (ferror(remote)) {
-		retcode = pkg_error_set(EPKG_FATAL, "%s", fetchLastErrString);
+		pkg_emit_event(PKG_EVENT_FETCH_ERROR, /*argc*/1,
+		    fetchLastErrString);
 		goto cleanup;
 	}
 
