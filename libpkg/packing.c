@@ -155,8 +155,11 @@ packing_append_tree(struct packing *pack, const char *treepath, const char *newr
 	sb = sbuf_new_auto();
 	while ((fts_e = fts_read(fts)) != NULL) {
 		switch(fts_e->fts_info) {
-		case FTS_F:
 		case FTS_D:
+		case FTS_DEFAULT:
+		case FTS_F:
+		case FTS_SL:
+		case FTS_SLNONE:
 			 /* Skip entries that are shorter than the tree itself */
 			 if (fts_e->fts_pathlen <= treelen)
 				  break;
@@ -168,6 +171,7 @@ packing_append_tree(struct packing *pack, const char *treepath, const char *newr
 			 sbuf_finish(sb);
 			 packing_append_file(pack, fts_e->fts_name, sbuf_get(sb));
 			 break;
+		case FTS_DC:
 		case FTS_DNR:
 		case FTS_ERR:
 		case FTS_NS:
