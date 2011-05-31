@@ -20,7 +20,7 @@
 .Os
 .Sh NAME
 .Nm "pkg create"
-.Nd Creates a package
+.Nd a utility for creating software package distributions
 .Sh SYNOPSIS
 .Nm
 .Op Fl gx
@@ -37,9 +37,7 @@
 .Op Fl o Ar outdir
 .Sh DESCRIPTION
 .Nm
-is used for creating packages.
-.Pp
-< To be completed >
+creates a package from the specified installed binaries
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -68,7 +66,7 @@ If no format is specified \fB.txz\fP is assumed.
 .It Fl o
 Specify output directory for package creation
 .It Fl r
-< To be added >
+Specify root directory for the package
 .It Fl m
 Specify manifest directory
 .El
@@ -83,4 +81,7 @@ The following envrioment variables affect the execution of
 pkg(1), pkg-add(1), pkg-delete(1), pkg-info(1), pkg-register(1), pkg-repo(1),
 pkg-update(1), pkg-upgrade(1), pkg-version(1), pkg-which(1)
 .Sh AUTHORS AND CONTRIBUTORS
+.An Baptiste Daroussin Aq bapt@FreeBSD.org
+.An Julien Laffaye Aq jlaffaye@FreeBSD.org
+.An Philippe Pepiot Aq phil@philpep.org
 .Sh BUGS
