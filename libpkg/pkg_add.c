@@ -175,7 +175,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	/*
 	 * Execute pre-install scripts
 	 */
-	pkg_script_pre_install(pkg);
+	pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	/*
 	 * Extract the files on disk.
@@ -190,7 +190,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	/*
 	 * Execute post install scripts
 	 */
-	pkg_script_post_install(pkg);
+	pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
 	cleanup_reg:
 	pkgdb_register_finale(db, retcode);

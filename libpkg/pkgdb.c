@@ -366,9 +366,9 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 	switch (sqlite3_step(it->stmt)) {
 	case SQLITE_ROW:
 		if (*pkg_p == NULL)
-			pkg_new(pkg_p, PKG_INSTALLED);
+			pkg_new(pkg_p, it->type);
 		else
-			pkg_reset(*pkg_p, PKG_INSTALLED);
+			pkg_reset(*pkg_p, it->type);
 		pkg = *pkg_p;
 
 		pkg->rowid = sqlite3_column_int64(it->stmt, 0);
@@ -385,7 +385,7 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
 		pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
 
-		if (it->type == IT_UPGRADE) {
+		if (it->type == PKG_UPGRADE) {
 			pkg->type = PKG_UPGRADE;
 
 			pkg_set(pkg, PKG_NEWVERSION, sqlite3_column_text(it->stmt, 13));
@@ -393,6 +393,10 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 15));
 			pkg_set(pkg, PKG_REPOPATH, sqlite3_column_text(it->stmt, 16));
 		}
+
+		/* load only for PKG_INSTALLED */
+		if (it->type != PKG_INSTALLED)
+			return (EPKG_OK);
 
 		if (flags & PKG_LOAD_DEPS)
 			if ((ret = pkgdb_loaddeps(it->db, pkg)) != EPKG_OK)
@@ -508,7 +512,82 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, IT_LOCAL));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+}
+
+struct pkg *
+pkgdb_query_remote(struct pkgdb *db, const char *pattern)
+{
+	sqlite3_stmt *stmt = NULL;
+	sqlite3_stmt *stmt_deps = NULL;
+	struct pkg *pkg = NULL;
+	int ret;
+	char sql[] = ""
+		"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, "
+			"p.arch, p.osversion, p.maintainer, p.www, p.pkgsize, "
+			"p.flatsize, p.cksum, p.path "
+		"FROM remote.packages AS p "
+		"WHERE p.origin = ?1";
+	char sql_deps[] = ""
+		"SELECT d.name, d.origin, d.version "
+		"FROM remote.deps AS d "
+		"WHERE d.package_id = ?1 "
+			"AND NOT EXISTS (SELECT 1 FROM main.packages AS p "
+			"WHERE p.origin = d.origin)";
+
+	if (db == NULL || db->type != PKGDB_REMOTE) {
+		ERROR_BAD_ARG("db");
+		return (NULL);
+	}
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
+	if (sqlite3_prepare_v2(db->sqlite, sql_deps, -1, &stmt_deps, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_STATIC);
+
+	ret = sqlite3_step(stmt);
+	if (ret != SQLITE_ROW) {
+		if (ret != SQLITE_DONE)
+			ERROR_SQLITE(db->sqlite);
+		goto cleanup;
+	}
+
+	pkg_new(&pkg, PKG_REMOTE);
+
+	pkg->rowid = sqlite3_column_int64(stmt, 0);
+	pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(stmt, 1));
+	pkg_set(pkg, PKG_NAME, sqlite3_column_text(stmt, 2));
+	pkg_set(pkg, PKG_VERSION, sqlite3_column_text(stmt, 3));
+	pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(stmt, 4));
+	pkg_set(pkg, PKG_DESC, sqlite3_column_text(stmt, 5));
+	pkg_set(pkg, PKG_ARCH, sqlite3_column_text(stmt, 6));
+	pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(stmt, 7));
+	pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(stmt, 8));
+	pkg_set(pkg, PKG_WWW, sqlite3_column_text(stmt, 9));
+	pkg_setnewpkgsize(pkg, sqlite3_column_int64(stmt, 10));
+	pkg_setnewflatsize(pkg, sqlite3_column_int64(stmt, 11));
+	pkg_set(pkg, PKG_CKSUM, sqlite3_column_text(stmt, 12));
+	pkg_set(pkg, PKG_REPOPATH, sqlite3_column_text(stmt, 13));
+
+	sqlite3_bind_int64(stmt_deps, 1, pkg->rowid);
+	while ((ret = sqlite3_step(stmt_deps)) == SQLITE_ROW) {
+		pkg_adddep(pkg, sqlite3_column_text(stmt_deps, 0),
+				   sqlite3_column_text(stmt_deps, 1),
+				   sqlite3_column_text(stmt_deps, 2));
+	}
+
+	cleanup:
+	if (stmt != NULL)
+		sqlite3_finalize(stmt);
+	if (stmt_deps != NULL)
+		sqlite3_finalize(stmt_deps);
+	return (pkg);
 }
 
 struct pkgdb_it *
@@ -530,7 +609,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, IT_LOCAL));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
 }
 
 int
@@ -1277,7 +1356,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 		return (NULL);
 	}
 
-	return (pkgdb_it_new(db, stmt, IT_UPGRADE));
+	return (pkgdb_it_new(db, stmt, PKG_UPGRADE));
 }
 
 struct pkgdb_it *
@@ -1306,7 +1385,7 @@ pkgdb_query_downgrades(struct pkgdb *db)
 		return (NULL);
 	}
 
-	return (pkgdb_it_new(db, stmt, IT_UPGRADE));
+	return (pkgdb_it_new(db, stmt, PKG_UPGRADE));
 }
 
 struct pkgdb_it *
@@ -1326,5 +1405,5 @@ pkgdb_query_autoremove(struct pkgdb *db)
 		return (NULL);
 	}
 
-	return (pkgdb_it_new(db, stmt, IT_LOCAL));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
 }

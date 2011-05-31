@@ -16,6 +16,8 @@ struct pkg_option;
 struct pkgdb;
 struct pkgdb_it;
 
+struct pkg_jobs;
+
 typedef enum {
 	PKGDB_DEFAULT=0,
 	PKGDB_REMOTE
@@ -146,6 +148,8 @@ typedef enum {
  */
 typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
 						 time_t elapsed);
+
+typedef void (*status_cb)(void *data, struct pkg *pkg);
 
 /**
  * Allocate a new pkg.
@@ -287,8 +291,6 @@ int pkg_setnewflatsize(struct pkg *pkg, int64_t size);
  */
 int pkg_setnewpkgsize(struct pkg *pkg, int64_t size);
 
-
-
 /**
  * Allocate a new struct pkg and add it to the deps of pkg.
  * @return An error code.
@@ -316,7 +318,6 @@ int pkg_adddir(struct pkg *pkg, const char *path);
  * @return An error code.
  */
 int pkg_addconflict(struct pkg *pkg, const char *glob);
-
 
 /**
  * Allocate a new struct pkg_script and add it to the scripts of pkg.
@@ -354,6 +355,7 @@ int pkg_load_manifest_file(struct pkg *pkg, const char *fpath);
  */
 int pkg_emit_manifest(struct pkg *pkg, char **buf);
 
+/* pkg_dep */
 const char *pkg_dep_origin(struct pkg_dep *dep);
 const char *pkg_dep_name(struct pkg_dep *dep);
 const char *pkg_dep_version(struct pkg_dep *dep);
@@ -432,6 +434,13 @@ struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
 							  match_t type);
 
 /**
+ * Query the remote database.
+ * @param db A pkgdb opened with PKGDB_REMOTE.
+ * @warning Returns NULL on failure.
+ */
+struct pkg * pkgdb_query_remote(struct pkgdb *db, const char *pattern);
+
+/**
  * 
  */
 struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db);
@@ -492,6 +501,38 @@ int pkgdb_compact(struct pkgdb *db);
  * @return An error code.
  */
 int pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg);
+
+/**
+ * Allocate a new pkg_jobs.
+ * @param db A pkgdb open with PKGDB_REMOTE.
+ * @return An error code.
+ */
+int pkg_jobs_new(struct pkg_jobs **jobs, struct pkgdb *db);
+
+/**
+ * Free a pkg_jobs
+ */
+void pkg_jobs_free(struct pkg_jobs *jobs);
+
+/**
+ * Add a pkg to the jobs queue.
+ * @return An error code.
+ */
+int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
+
+/**
+ * Iterates over the packages in the jobs queue.
+ * @param pkg Must be set to NULL for the first call.
+ * @return An error code.
+ */
+int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
+
+/**
+ * Apply the jobs in the queue (fetch and install).
+ * @return An error code.
+ */
+int pkg_jobs_apply(struct pkg_jobs *jobs, void *data, fetch_cb fcb,
+				   status_cb scb);
 
 /**
  * Archive formats options.
@@ -574,6 +615,7 @@ int pkg_script_pre_upgrade(struct pkg *);
 int pkg_script_post_upgrade(struct pkg *);
 int pkg_script_pre_deinstall(struct pkg *);
 int pkg_script_post_deinstall(struct pkg *);
+int pkg_script_run(struct pkg *, pkg_script_t type);
 
 /**
  * Event type used to report progress or problems.

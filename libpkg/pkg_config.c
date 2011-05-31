@@ -43,9 +43,6 @@ load_config(void)
 	}
 
 	done = 1;
-
-	if (p != NULL)
-		properties_free(p);
 }
 
 const char *
