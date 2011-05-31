@@ -22,10 +22,10 @@ ACTUAL-PACKAGE-DEPENDS?= \
 	if [ "${_LIB_RUN_DEPENDS}" != "  " ]; then \
 		for dir in ${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,}; do \
 			pkgname=$$(${PKG_INFO} -q $${dir\#\#${PORTSDIR}/}); \
-			${ECHO_CMD} @dep $${pkgname%-*} $${dir\#\#${PORTSDIR}/} $${pkgname\#\#*-}; \
+			${ECHO_CMD} dep: $${pkgname%-*} $${dir\#\#${PORTSDIR}/} $${pkgname\#\#*-}; \
 			for pkg in $$(${PKG_INFO} -qd $${dir\#\#${PORTSDIR}/}); do\
 				origin=$$(${PKG_INFO} -qo $${pkg}); \
-				${ECHO_CMD} @dep $${pkg%-*} $$origin $${pkg\#\#*-}; \
+				${ECHO_CMD} dep: $${pkg%-*} $$origin $${pkg\#\#*-}; \
 			done; \
 		done; \
 	fi
