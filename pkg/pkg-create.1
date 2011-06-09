@@ -15,74 +15,199 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 06, 2011
-.Dt PKG-CREATE 1
+.Dd June 07, 2011
 .Os
+.Dt PKG-CREATE 1
+.\" ---------------------------------------------------------------------------
 .Sh NAME
 .Nm "pkg create"
 .Nd a utility for creating software package distributions
+.\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl gx
+.Op Fl gxX
 .Op Fl r Ar rootdir
 .Op Fl m Ar manifest
 .Op Fl f Ar format
 .Op Fl o Ar outdir
-.Op <pkg-name>
+.Ar pkg-name ...
 .Nm
-.Op Fl a
+.Fl a
 .Op Fl r Ar rootdir
 .Op Fl m Ar manifest
 .Op Fl f Ar format
 .Op Fl o Ar outdir
+.\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
 .Nm
-creates a package from the specified installed binaries
+is used to create packages from binaries installed on your computer. Packages
+thus created can be distributed and subsequently installed on other machines
+using the
+.Cm pkg add
+command.
+.\" ---------------------------------------------------------------------------
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width F1
+.Bl -tag -width ".Fl m Ar manifest"
 .It Fl a
-Match all packages that match
-.Ar <pkg-name>
+Create packages for all binaries installed on your system. You can't use this
+option along with the
+.Fl g , x
+or
+.Fl X
+option.
 .It Fl g
-Treat
-.Ar <pkg-name>
-as a shell glob pattern
+Interpret
+.Ar pkg-name
+as a shell glob pattern and create package only for installed binaries whose
+name match this pattern.
 .It Fl x
-Treat
-.Ar <pkg-name>
-as a regular expression
+Like
+.Fl g ,
+but interpret
+.Ar pkg-name
+as a regular expression.
 .It Fl X
-Treat
-.Ar <pkg-name>
-as an extended regular expression
-.It Fl f
-Specify package format.
-.Pp
-Supported formats include \fB.txz\fP, \fB.tbz\fP, \fB.tgz\fP and \fB.tar\fP
-.Pp
-If no format is specified \fB.txz\fP is assumed.
-.It Fl o
-Specify output directory for package creation
-.It Fl r
-Specify root directory for the package
-.It Fl m
-Specify manifest directory
+Like
+.Fl g ,
+but interpret
+.Ar pkg-name
+as an extended regular expression.
+.It Fl r Ar rootdir
+Specify root directory for the package \" TODO: New description
+.It Fl m Ar manifest
+Specify manifest directory \" TODO: New description
+.It Fl f Ar format
+Set
+.Ar format
+as the package output format. It can be one of
+.Ar txz , tbz , tgz
+or
+.Ar tar
+which are currently the only supported format.
+If an invalid or no format is specified
+.Ar txz
+is assumed.
+.It Fl o Ar outdir
+Set
+.Ar outdir
+as the output directory. If this option is not given, all created packages will
+be saved in the current directory.
 .El
-.Sh WARNING
-.Sh ENVRIOMENT
-The following envrioment variables affect the execution of
+.\" ---------------------------------------------------------------------------
+.Sh MANIFEST FILE DETAILS
+.Bl -tag -width ".Cm www"
+.It Cm name Ar pkg-name
+This entry sets the package's name to
+.Ar pkg-name . \" TODO: Find out why there is a space after the ``.''
+Among other things, this name is used - with the version and the origin of the
+concerned package - to identify a dependency.
+.It Cm version Ar pkg-version
+This entry sets the package's version to
+.Ar pkg-version .
+.It Cm origin Ar pkg-origin
+This entry sets the package's origin to
+.Ar pkg-origin .
+This is a string of the form
+.Pa category/port-dir
+which designate the port this package was built from.
+.It Cm comment Ar comment-string
+.Ar comment-string
+is a one-line description of this package. It is the equivalent of the
+.Dv COMMENT
+variable for a port, not a way to put comments in a
+.Pa +MANIFEST
+file.
+.It Cm arch Ar cpu-type
+The architecture of the machine the package was built on.
+.Ar cpu-type
+takes values like x86, amd64...
+.It Cm osversion Ar os-version
+Version of the OS used to build the package.
+.It Cm www Ar url
+The software's official website.
+.It Cm maintainer Ar mail-address
+The maintainer's mail address.
+.It Cm prefix Ar path-prefix
+The path where the files contained in this package are installed
+.Pq usually Pa /usr/local .
+.It Cm flatsize Ar size
+The size that the files contained in this package will occupy on your system
+once uncompressed. This value does not take into account files stored in the
+package database.
+.It Cm dep Ar dep-name dep-origin dep-version
+Declare a dependency on the package which name, origin and version match
+.Ar dep-name , dep-origin
+and
+.Ar dep-version
+respectively.
+.It Cm conflict Ar pkg-glob
+Flag this package as incompatible with the one designated by
+.Ar pkg-glob .
+Conflicting packages cannot be installed on the same system as they may contain
+references to the sames files.
+.It Cm option Ar option-name option-value
+Set the option
+.Ar option-name
+to the value
+.Ar option-value .
+.It Cm file Ar sha256-hash path
+.Cm file
+entries list files included in the package. If the file is a regular one, such
+an entry contains its sha256 digest along with its path. If a packaged file is
+a link, you must use this entry's other form, as described below.
+.It Cm file Ar - path
+Same as above but for file links. The sha256 hash is replaced with a
+.Ar -
+(dash).
+.It Cm dir Ar path
+Mimics the
+.Cm file
+entry but for directories.
+.El
+.\" ---------------------------------------------------------------------------
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
 .Nm :
-.Bl -tag -width ".Ev TMPDIR"
+.Bl -tag -width ".Ev PKG_DBDIR"
+.It Ev PKG_DBDIR
+Specifies an alternative location for the installed package database.
 .El
+.\" ---------------------------------------------------------------------------
 .Sh FILES
+.Bl -tag -width ".Pa /etc/pkg.conf"
+.It Pa /etc/pkg.conf
+Systemwide configuration file. This file format and available configuration
+options are described in
+.Xr pkg_config 5 .
+.El
+.\" ---------------------------------------------------------------------------
+.\" .Sh EXAMPLES
+.\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
-pkg(1), pkg-add(1), pkg-delete(1), pkg-info(1), pkg-register(1), pkg-repo(1),
-pkg-update(1), pkg-upgrade(1), pkg-version(1), pkg-which(1)
+.Xr pkg 1 ,
+.Xr pkg-add 1 ,
+.Xr pkg-delete 1 ,
+.Xr pkg-info 1 ,
+.Xr pkg-register 1 ,
+.Xr pkg-repo 1 ,
+.Xr pkg-update 1 ,
+.Xr pkg-upgrade 1 ,
+.Xr pkg-version 1 ,
+.Xr pkg-which 1 ,
+.Xr pkg_config 5
+.\" ---------------------------------------------------------------------------
+.Sh HISTORY
+The
+.Nm
+command first appeared in
+.Fx \" TODO: Put release there
+.\" ---------------------------------------------------------------------------
 .Sh AUTHORS AND CONTRIBUTORS
 .An Baptiste Daroussin Aq bapt@FreeBSD.org
 .An Julien Laffaye Aq jlaffaye@FreeBSD.org
 .An Philippe Pepiot Aq phil@philpep.org
 .An Will Andrews Aq will@FreeBSD.org
-.Sh BUGS
+.\" ---------------------------------------------------------------------------
+.\" .Sh BUGS
