@@ -179,12 +179,10 @@ m_parse_dep(struct pkg *pkg, char *buf)
 		return (EPKG_FATAL);
 
 	name = buf;
-	while (*buf != '\0')
-		buf++;
+	buf += strlen(name) + 1;
 
 	origin = buf;
-	while (*buf != '\0')
-		buf++;
+	buf += strlen(origin) + 1;
 
 	version = buf;
 
