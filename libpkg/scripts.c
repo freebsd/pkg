@@ -30,7 +30,7 @@ pkg_script_run(struct pkg *pkg, pkg_script_t type)
 	}
 
 	if (map[i].a != type)
-		return (pkg_error_set(EPKG_FATAL, "bad type arg (%d)", type));
+		return (ERROR_BAD_ARG("type"));
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
 
