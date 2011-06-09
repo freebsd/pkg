@@ -73,7 +73,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
 		if (root != NULL)
-			snprintf(fpath, sizeof(MAXPATHLEN), "%s%s", root, pkg_file_path(file));
+			snprintf(fpath, MAXPATHLEN, "%s%s", root, pkg_file_path(file));
 		else
 			strlcpy(fpath, pkg_file_path(file), MAXPATHLEN);
 
