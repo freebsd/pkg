@@ -76,37 +76,17 @@ fake-pkg:
 	@${ECHO_CMD} "conflict: ${conflicts}" >> ${MANIFESTF}
 .endfor
 .endif
-	@if [ -f ${PKGINSTALL} ]; then \
-		${CP} ${PKGINSTALL} ${METADIR}/+INSTALL; \
-	fi
-	@if [ -f ${PKGPREINSTALL} ]; then \
-		${CP} ${PKGPREINSTALL} ${METADIR}/+PRE_INSTALL; \
-	fi
-	@if [ -f ${PKGPOSTINSTALL} ]; then \
-		${CP} ${PKGPOSTINSTALL} ${METADIR}/+POST_INSTALL; \
-	fi
-	@if [ -f ${PKGDEINSTALL} ]; then \
-		${CP} ${PKGDEINSTALL} ${METADIR}/+DEINSTALL; \
-	fi
-	@if [ -f ${PKGPREDEINSTALL} ]; then \
-		${CP} ${PKGPREDEINSTALL} ${METADIR}/+PRE_DEINSTALL; \
-	fi
-	@if [ -f ${PKGPOSTDEINSTALL} ]; then \
-		${CP} ${PKGPOSTDEINSTALL} ${METADIR}/+POST_DEINSTALL; \
-	fi
-	@if [ -f ${PKGUPGRADE} ]; then \
-		${CP} ${PKGUPGRADE} ${METADIR}/+UPGRADE; \
-	fi
-	@if [ -f ${PKGPREUPGRADE} ]; then \
-		${CP} ${PKGPREUPGRADE} ${METADIR}/+PRE_UPGRADE; \
-	fi
-	@if [ -f ${PKGPOSTUPGRADE} ]; then \
-		${CP} ${PKGPOSTUPGRADE} ${METADIR}/+POST_UPGRADE; \
-	fi
-	@${CP} ${DESCR} ${METADIR}/+DESC
-	@if [ -f ${PKGMESSAGE} ]; then \
-		${CP} ${PKGMESSAGE} ${METADIR}/+DISPLAY; \
-	fi
+	@[ -f ${PKGINSTALL} ] && ${CP} ${PKGINSTALL} ${METADIR}/+INSTALL; \
+	[ -f ${PKGPREINSTALL} ] && ${CP} ${PKGPREINSTALL} ${METADIR}/+PRE_INSTALL; \
+	[ -f ${PKGPOSTINSTALL} ] && ${CP} ${PKGPOSTINSTALL} ${METADIR}/+POST_INSTALL; \
+	[ -f ${PKGDEINSTALL} ] && ${CP} ${PKGDEINSTALL} ${METADIR}/+DEINSTALL; \
+	[ -f ${PKGPREDEINSTALL} ] && ${CP} ${PKGPREDEINSTALL} ${METADIR}/+PRE_DEINSTALL; \
+	[ -f ${PKGPOSTDEINSTALL} ] && ${CP} ${PKGPOSTDEINSTALL} ${METADIR}/+POST_DEINSTALL; \
+	[ -f ${PKGUPGRADE} ] && ${CP} ${PKGUPGRADE} ${METADIR}/+UPGRADE; \
+	[ -f ${PKGPREUPGRADE} ] && ${CP} ${PKGPREUPGRADE} ${METADIR}/+PRE_UPGRADE; \
+	[ -f ${PKGPOSTUPGRADE} ] && ${CP} ${PKGPOSTUPGRADE} ${METADIR}/+POST_UPGRADE; \
+	${CP} ${DESCR} ${METADIR}/+DESC; \
+	[ -f ${PKGMESSAGE} ] && ${CP} ${PKGMESSAGE} ${METADIR}/+DISPLAY; \
 .if !defined(NO_MTREE)
 	@${CP} ${MTREE_FILE} ${METADIR}/+MTREE_DIRS
 .endif
