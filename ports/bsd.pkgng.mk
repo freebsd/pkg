@@ -56,14 +56,14 @@ ${i:S/-//:U}=	${WRKDIR}/${SUB_FILES:M${i}*}
 .if !target(fake-pkg)
 fake-pkg:
 .if !defined(NO_PKG_REGISTER)
-	@${ECHO_MSG} "===>   Registering installation for ${PKGNAME}"
-	@${MKDIR} ${METADIR}
-	@${ECHO_CMD} "name: ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" > ${MANIFESTF}
-	@${ECHO_CMD} "version: ${PKGVERSION}" >> ${MANIFESTF}
-	@${ECHO_CMD} "origin: ${PKGORIGIN}" >> ${MANIFESTF}
-	@${ECHO_CMD} "comment: ${COMMENT}" >> ${MANIFESTF}
-	@${ECHO_CMD} "maintainer: ${MAINTAINER}" >> ${MANIFESTF}
-	@${ECHO_CMD} "prefix: ${PREFIX}" >> ${MANIFESTF}
+	@${ECHO_MSG} "===>   Regitering installation for ${PKGNAME}"; \
+	${MKDIR} ${METADIR} ; \
+	${ECHO_CMD} "name: ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" > ${MANIFESTF} ; \
+	${ECHO_CMD} "version: ${PKGVERSION}" >> ${MANIFESTF} ; \
+	${ECHO_CMD} "origin: ${PKGORIGIN}" >> ${MANIFESTF} ; \
+	${ECHO_CMD} "comment: ${COMMENT}" >> ${MANIFESTF} ; \
+	${ECHO_CMD} "maintainer: ${MAINTAINER}" >> ${MANIFESTF} ; \
+	${ECHO_CMD} "prefix: ${PREFIX}" >> ${MANIFESTF}
 .if defined(WWW)
 	@${ECHO_CMD} "www: ${WWW}" >> ${MANIFESTF}
 .endif
@@ -86,7 +86,9 @@ fake-pkg:
 	[ -f ${PKGPREUPGRADE} ] && ${CP} ${PKGPREUPGRADE} ${METADIR}/+PRE_UPGRADE; \
 	[ -f ${PKGPOSTUPGRADE} ] && ${CP} ${PKGPOSTUPGRADE} ${METADIR}/+POST_UPGRADE; \
 	${CP} ${DESCR} ${METADIR}/+DESC; \
-	[ -f ${PKGMESSAGE} ] && ${CP} ${PKGMESSAGE} ${METADIR}/+DISPLAY; \
+	if [ -f ${PKGMESSAGE} ]; then \
+	       ${CP} ${PKGMESSAGE} ${METADIR}/+DISPLAY; \
+       fi
 .if !defined(NO_MTREE)
 	@${CP} ${MTREE_FILE} ${METADIR}/+MTREE_DIRS
 .endif
