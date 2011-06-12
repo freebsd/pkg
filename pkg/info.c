@@ -166,6 +166,9 @@ exec_info(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0 && match != MATCH_ALL) {
+		/* which -O bsd.*.mk always execpt clean output */
+		if (opt & INFO_ORIGIN_SEARCH)
+			return (0);
 		usage_info();
 		return (EX_USAGE);
 	}
