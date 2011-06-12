@@ -30,6 +30,29 @@ ACTUAL-PACKAGE-DEPENDS?= \
 		done; \
 	fi
 
+
+.if !target(apply-slist)
+apply-slist:
+.if defined(SUB_FILES)
+.for file in ${SUB_FILES}
+.if !exists(${FILESDIR}/${file}.in)
+	@${ECHO_MSG} "** Missing ${FILESDIR}/${file}.in for ${PKGNAME}."; exit 1
+.else
+	@${SED} ${_SUB_LIST_TEMP} -e '/^@comment /d' ${FILESDIR}/${file}.in > ${WRKDIR}/${file}
+.endif
+.endfor
+.for i in pkg-message pkg-req \
+	pkg-install pkg-upgrade pkg-deinstall \
+	pkg-pre-install pkg-post-install \
+	pkg-pre-upgrade pkg-post-upgrade \
+	pkg-pre-deinstall pkg-post-deinstall
+.if ${SUB_FILES:M${i}*}!=""
+${i:S/-//:U}=	${WRKDIR}/${SUB_FILES:M${i}*}
+.endif
+.endfor
+.endif
+.endif
+
 .if !target(fake-pkg)
 fake-pkg:
 .if !defined(NO_PKG_REGISTER)
