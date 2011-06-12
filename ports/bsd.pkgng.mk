@@ -86,9 +86,7 @@ fake-pkg:
 	[ -f ${PKGPREUPGRADE} ] && ${CP} ${PKGPREUPGRADE} ${METADIR}/+PRE_UPGRADE; \
 	[ -f ${PKGPOSTUPGRADE} ] && ${CP} ${PKGPOSTUPGRADE} ${METADIR}/+POST_UPGRADE; \
 	${CP} ${DESCR} ${METADIR}/+DESC; \
-	if [ -f ${PKGMESSAGE} ]; then \
-	       ${CP} ${PKGMESSAGE} ${METADIR}/+DISPLAY; \
-       fi
+	[ -f ${PKGMESSAGE} ] && ${CP} ${PKGMESSAGE} ${METADIR}/+DISPLAY || return 0
 .if !defined(NO_MTREE)
 	@${CP} ${MTREE_FILE} ${METADIR}/+MTREE_DIRS
 .endif
