@@ -64,8 +64,6 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"package_id INTEGER REFERENCES packages(id),"
 			"PRIMARY KEY (package_id, origin)"
 		");"
-		"CREATE INDEX deps_origin ON deps (origin);"
-		"CREATE INDEX deps_package ON deps (package_id);";
 	const char pkgsql[] = ""
 		"INSERT INTO packages ("
 				"origin, name, version, comment, desc, arch, osversion, "
