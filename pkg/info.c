@@ -194,6 +194,14 @@ exec_info(int argc, char **argv)
 
 		pkgname = argv[i];
 
+		/*
+		 * allow to search for origin with a trailing /
+		 * likes audio/linux-vsound depending on ${PORTSDIR}/audio/sox/
+		 */
+
+		if (pkgname[strlen(pkgname) -1] == '/')
+			pkgname[strlen(pkgname) -1] = '\0';
+
 		if (argc > 0) {
 			pkgversion = strrchr(pkgname, '>');
 			if (pkgversion == NULL)

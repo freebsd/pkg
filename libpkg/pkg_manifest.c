@@ -91,6 +91,10 @@ m_parse_name(struct pkg *pkg, char *buf)
 static int
 m_parse_origin(struct pkg *pkg, char *buf)
 {
+	/* Remove trailing / if any */
+	if (buf[strlen(buf) -1] == '/')
+		buf[strlen(buf) - 1] = '\0';
+
 	return (m_parse_set_string(pkg, buf, PKG_ORIGIN));
 }
 
