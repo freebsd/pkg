@@ -49,6 +49,7 @@ typedef enum {
 	MATCH_EREGEX
 } match_t;
 
+
 /**
  * The type of package.
  */
@@ -432,6 +433,8 @@ int pkgdb_unregister_pkg(struct pkgdb *pkg, const char *origin);
  */
 struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
 							  match_t type);
+struct pkgdb_it * pkgdb_rquery(struct pkgdb *db, const char *pattern,
+		match_t type, unsigned int field);
 
 /**
  * Query the remote database.
@@ -461,6 +464,11 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_OPTIONS (1<<6)
 #define PKG_LOAD_MTREE (1<<7)
 #define PKG_LOAD_DIRS (1<<8)
+
+#define REPO_SEARCH_NAME 0
+#define REPO_SEARCH_COMMENT (1<<0)
+#define REPO_SEARCH_DESCRIPTION (1<<1)
+
 
 /**
  * Get the next pkg.

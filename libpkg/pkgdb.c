@@ -116,7 +116,6 @@ pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
  * - 6: INSTALL
  * - 7: DEINSTALL
  * - 8: UPGRADE
- * 
  */
 
 static int
@@ -1362,7 +1361,6 @@ pkgdb_query_upgrades(struct pkgdb *db)
 struct pkgdb_it *
 pkgdb_query_downgrades(struct pkgdb *db)
 {
-
 	sqlite3_stmt *stmt;
 
 	if (db->type != PKGDB_REMOTE) {
@@ -1406,4 +1404,72 @@ pkgdb_query_autoremove(struct pkgdb *db)
 	}
 
 	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+}
+
+struct pkgdb_it *
+pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int field)
+{
+	sqlite3_stmt *stmt = NULL;
+	struct sbuf *sql = sbuf_new_auto();
+
+	if (db->type != PKGDB_REMOTE) {
+		pkg_emit_event(PKG_EVENT_INVALID_DB_STATE, /*argc*/1,
+		    "remote database not attached");
+		return (NULL);
+	}
+
+	if (pattern == NULL) {
+		ERROR_BAD_ARG("pattern");
+		return (NULL);
+	}
+
+	sbuf_cat(sql, "SELECT p.rowid, p.origin, p.name, p.version, p.comment, "
+			"p.desc, p.arch, p.osversion, p.maintainer, p.www, p.pkgsize, "
+			"p.flatsize, p.cksum, p.path FROM remote.packages AS p WHERE ");
+
+	switch (match) {
+		case MATCH_ALL:
+		case MATCH_EXACT:
+			sbuf_cat(sql, "p.name LIKE ?1 ");
+			if (field & REPO_SEARCH_COMMENT)
+				sbuf_cat(sql, "OR p.comment LIKE ?1 ");
+			else if (field & REPO_SEARCH_DESCRIPTION)
+				sbuf_cat(sql, "OR p.desc LIKE ?1 ");
+			break;
+		case MATCH_GLOB:
+			sbuf_cat(sql, "p.name GLOB ?1 ");
+			if (field & REPO_SEARCH_COMMENT)
+				sbuf_cat(sql, "OR p.comment GLOB ?1 ");
+			else if (field & REPO_SEARCH_DESCRIPTION)
+				sbuf_cat(sql, "OR p.desc GLOB ?1 ");
+			break;
+		case MATCH_REGEX:
+			sbuf_cat(sql, "p.name REGEXP ?1 ");
+			if (field & REPO_SEARCH_COMMENT)
+				sbuf_cat(sql, "OR p.comment REGEXP ?1 ");
+			else if (field & REPO_SEARCH_DESCRIPTION)
+				sbuf_cat(sql, "OR p.desc REGEXP ?1 ");
+			break;
+		case MATCH_EREGEX:
+			sbuf_cat(sql, "EREGEXP(?1, p.name) ");
+			if (field & REPO_SEARCH_COMMENT)
+				sbuf_cat(sql, "OR EREGEXP(?1, p.comment) ");
+			else if (field & REPO_SEARCH_DESCRIPTION)
+				sbuf_cat(sql, "OR EREGEXP(?1, p.desc) ");
+			break;
+	}
+
+	sbuf_cat(sql, ";");
+	sbuf_finish(sql);
+
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
 }

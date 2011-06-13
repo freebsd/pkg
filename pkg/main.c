@@ -15,6 +15,7 @@
 #include "add.h"
 #include "autoremove.h"
 #include "version.h"
+#include "search.h"
 #include "update.h"
 #include "upgrade.h"
 #include "register.h"
@@ -35,6 +36,7 @@ static struct commands {
 	{ "delete", exec_delete, usage_delete},
 	{ "help", exec_help, usage_help},
 	{ "info", exec_info, usage_info},
+	{ "search", exec_search, usage_search},
 	{ "register", exec_register, usage_register},
 	{ "repo", exec_repo, usage_repo},
 	{ "update", exec_update, usage_update},

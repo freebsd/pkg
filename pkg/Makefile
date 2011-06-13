@@ -10,6 +10,7 @@ SRCS=		add.c \
 		repo.c \
 		update.c \
 		upgrade.c \
+		search.c \
 		utils.c \
 		version.c \
 		which.c
