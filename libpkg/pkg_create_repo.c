@@ -63,7 +63,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"version TEXT,"
 			"package_id INTEGER REFERENCES packages(id),"
 			"PRIMARY KEY (package_id, origin)"
-		");"
+		");";
 	const char pkgsql[] = ""
 		"INSERT INTO packages ("
 				"origin, name, version, comment, desc, arch, osversion, "
