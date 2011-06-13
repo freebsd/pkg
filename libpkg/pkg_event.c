@@ -46,7 +46,7 @@ pkg_event_argument_check(pkg_event_t ev, int argc)
  * This function's purpose is to perform global event handling.
  */
 static void
-libpkg_handle_event(pkg_event_t ev, const char *filename, int line, void **argv)
+libpkg_handle_event(struct pkg_handle *hdl, pkg_event_t ev, const char *filename, int line, void **argv)
 {
 	pkg_error_t ret = EPKG_FATAL; /* most of these are this code */
 	struct sbuf *sb;
@@ -124,7 +124,7 @@ libpkg_handle_event(pkg_event_t ev, const char *filename, int line, void **argv)
 		ret = EPKG_OK; /* unhandled error */
 		break;
 	}
-	if (filename != NULL && line >= 0)
+	if (filename != NULL && line >= 0 && pkg_handle_get_debug(hdl) > 0)
 		sbuf_printf(sb, " [at %s:%d]", filename, line);
 	sbuf_done(sb);
 	if (ret != 0)
@@ -151,7 +151,7 @@ __pkg_emit_event(struct pkg_handle *hdl, const char *filename, int line, pkg_eve
 		argv[i] = va_arg(ap, void *);
 	va_end(ap);
 
-	libpkg_handle_event(ev, filename, line, argv);
+	libpkg_handle_event(hdl, ev, filename, line, argv);
 
 	if (hdl->event_cb != NULL)
 		hdl->event_cb(ev, filename, line, argv);

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
+#include <unistd.h>
 
 #include "pkg.h"
 #include "create.h"
@@ -47,8 +48,10 @@ const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: pkg <command> [<args>]\n\n");
-	fprintf(stderr, "Where <command> can be:\n");
+	fprintf(stderr, "usage: pkg [-d] <command> [<args>]\n\n");
+	fprintf(stderr, "Global options supported:\n");
+	fprintf(stderr, "  -d: Increment debug level\n\n");
+	fprintf(stderr, "Commands supported:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++) 
 		fprintf(stderr, "\t%s\n", cmd[i].name);
@@ -107,6 +110,8 @@ main(int argc, char **argv)
 	unsigned int ambiguous = 0;
 	size_t len;
 	struct pkg_handle *hdl;
+	char ch;
+	int debug = 0;
 
 	if (argc < 2)
 		usage();
@@ -114,9 +119,25 @@ main(int argc, char **argv)
 	hdl = pkg_get_handle();
 	pkg_handle_set_event_callback(hdl, event_callback);
 
-	len = strlen(argv[1]);
+	while ((ch = getopt(argc, argv, "d")) != -1) {
+		switch(ch) {
+			case 'd':
+				debug++;
+				break;
+			default:
+				break;
+		}
+	}
+	pkg_handle_set_debug(hdl, debug);
+	argc -= optind;
+	argv += optind;
+	/* reset getopt for the next call */
+	optreset = 1;
+	optind = 1;
+
+	len = strlen(argv[0]);
 	for (i = 0; i < cmd_len; i++) {
-		if (strncmp(argv[1], cmd[i].name, len) == 0) {
+		if (strncmp(argv[0], cmd[i].name, len) == 0) {
 			/* if we have the exact cmd */
 			if (len == strlen(cmd[i].name)) {
 				command = &cmd[i];
@@ -125,7 +146,7 @@ main(int argc, char **argv)
 			}
 
 			/*
-			 * we already found a partial match so `argv[1]' is
+			 * we already found a partial match so `argv[0]' is
 			 * an ambiguous shortcut
 			 */
 			ambiguous++;
@@ -138,18 +159,16 @@ main(int argc, char **argv)
 		usage();
 
 	if (ambiguous <= 1) {
-		argc--;
-		argv++;
 		assert(command->exec != NULL);
 		return (command->exec(argc, argv));
 	} else {
-		warnx("'%s' is not a valid command.\n", argv[1]);
+		warnx("'%s' is not a valid command.\n", argv[0]);
 
 		fprintf(stderr, "See 'pkg help' for more information on the commands.\n\n");
-		fprintf(stderr, "Command '%s' could be one of the following:\n", argv[1]);
+		fprintf(stderr, "Command '%s' could be one of the following:\n", argv[0]);
 
 		for (i = 0; i < cmd_len; i++)
-			if (strncmp(argv[1], cmd[i].name, len) == 0)
+			if (strncmp(argv[0], cmd[i].name, len) == 0)
 				fprintf(stderr, "\t%s\n",cmd[i].name);
 	}
 

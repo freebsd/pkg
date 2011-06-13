@@ -19,3 +19,14 @@ pkg_handle_get_event_callback(struct pkg_handle *hdl)
 {
 	return hdl->event_cb;
 }
+
+void
+pkg_handle_set_debug(struct pkg_handle *hdl, int debug)
+{
+	hdl->debug = debug;
+}
+int
+pkg_handle_get_debug(struct pkg_handle *hdl)
+{
+	return hdl->debug;
+}

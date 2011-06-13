@@ -659,11 +659,14 @@ typedef int(*pkg_event_cb)(pkg_event_t, const char *, int, void **);
 
 struct pkg_handle {
 	pkg_event_cb event_cb;
+	int debug;
 };
 
 struct pkg_handle *pkg_get_handle(void);
 pkg_event_cb pkg_handle_get_event_callback(struct pkg_handle *);
 void pkg_handle_set_event_callback(struct pkg_handle *, pkg_event_cb);
+void pkg_handle_set_debug(struct pkg_handle *, int);
+int pkg_handle_get_debug(struct pkg_handle *);
 
 void __pkg_emit_event(struct pkg_handle *, const char *, int, pkg_event_t, int, ...);
 
