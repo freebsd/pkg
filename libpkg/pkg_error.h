@@ -1,12 +1,7 @@
 #ifndef _PKG_ERROR_H
 #define _PKG_ERROR_H
 
-#ifdef DEBUG
-#	define pkg_error_set(code, fmt, ...) \
-		_pkg_error_set(code, fmt " [at %s:%d]", ##__VA_ARGS__, __FILE__, __LINE__)
-#else
-#	define pkg_error_set _pkg_error_set
-#endif
+#define	pkg_error_set _pkg_error_set
 
 #define ERROR_BAD_ARG(name) \
 	pkg_error_set(EPKG_FATAL, "Bad argument `%s` in %s", name, __FUNCTION__)

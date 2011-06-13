@@ -655,7 +655,7 @@ typedef enum {
  * Event callback mechanism.  Events will be reported using this callback,
  * providing an event identifier and up to two event-specific pointers.
  */
-typedef int(*pkg_event_cb)(pkg_event_t, void **);
+typedef int(*pkg_event_cb)(pkg_event_t, const char *, int, void **);
 
 struct pkg_handle {
 	pkg_event_cb event_cb;
@@ -665,9 +665,9 @@ struct pkg_handle *pkg_get_handle(void);
 pkg_event_cb pkg_handle_get_event_callback(struct pkg_handle *);
 void pkg_handle_set_event_callback(struct pkg_handle *, pkg_event_cb);
 
-void __pkg_emit_event(struct pkg_handle *, pkg_event_t, int, ...);
+void __pkg_emit_event(struct pkg_handle *, const char *, int, pkg_event_t, int, ...);
 
 #define	pkg_emit_event(ev, argc, argv...) \
-	__pkg_emit_event(pkg_get_handle(), ev, argc, argv)
+	__pkg_emit_event(pkg_get_handle(), __FILE__, __LINE__, ev, argc, argv)
 
 #endif
