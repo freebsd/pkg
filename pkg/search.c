@@ -22,7 +22,6 @@ exec_search(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	int  retcode = 0;
 	unsigned int field = REPO_SEARCH_NAME;
-	char size[7];
 	int ch;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
