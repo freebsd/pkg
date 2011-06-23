@@ -10,249 +10,50 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <yaml.h>
 #include "pkg.h"
 #include "pkg_error.h"
 #include "pkg_util.h"
 #include "pkg_private.h"
 
-static int m_parse_name(struct pkg *pkg, char *buf);
-static int m_parse_origin(struct pkg *pkg, char *buf);
-static int m_parse_version(struct pkg *pkg, char *buf);
-static int m_parse_arch(struct pkg *pkg, char *buf);
-static int m_parse_osversion(struct pkg *pkg, char *buf);
-static int m_parse_www(struct pkg *pkg, char *buf);
-static int m_parse_comment(struct pkg *pkg, char *buf);
-static int m_parse_flatsize(struct pkg *pkg, char *buf);
-static int m_parse_option(struct pkg *pkg, char *buf);
-static int m_parse_dep(struct pkg *pkg, char *buf);
-static int m_parse_conflict(struct pkg *pkg, char *buf);
-static int m_parse_maintainer(struct pkg *pkg, char *buf);
-static int m_parse_prefix(struct pkg *pkg, char *buf);
-static int m_parse_file(struct pkg *pkg, char *buf);
-static int m_parse_dir(struct pkg *pkg, char *buf);
-static int m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr);
+#define PKG_UNKNOWN -1
+#define PKG_DEPS -2
+#define PKG_CONFLICTS -3
+#define PKG_FILES -4
+#define PKG_DIRS -5
+#define PKG_FLATSIZE -6
 
 static struct manifest_key {
 	const char *key;
-	int (*parse)(struct pkg *pkg, char *buf);
+	int type;
 } manifest_key[] = {
-	{ "name:", m_parse_name},
-	{ "origin:", m_parse_origin},
-	{ "version:", m_parse_version},
-	{ "arch:", m_parse_arch},
-	{ "osversion:", m_parse_osversion},
-	{ "www:", m_parse_www},
-	{ "comment:", m_parse_comment},
-	{ "flatsize:", m_parse_flatsize},
-	{ "option:", m_parse_option},
-	{ "dep:", m_parse_dep},
-	{ "conflict:", m_parse_conflict},
-	{ "maintainer:", m_parse_maintainer},
-	{ "prefix:", m_parse_prefix},
-	{ "file:", m_parse_file},
-	{ "dir:", m_parse_dir},
+	{ "name", PKG_NAME },
+	{ "origin", PKG_ORIGIN },
+	{ "version", PKG_VERSION },
+	{ "arch", PKG_ARCH },
+	{ "osversion", PKG_OSVERSION },
+	{ "www", PKG_WWW },
+	{ "comment", PKG_COMMENT},
+	{ "maintainer", PKG_MAINTAINER},
+	{ "prefix", PKG_PREFIX},
+	{ "deps", PKG_DEPS},
+	{ "conflicts", PKG_CONFLICTS},
+	{ "files", PKG_FILES},
+	{ "dirs", PKG_DIRS},
+	{ "flatsize", PKG_FLATSIZE},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
 
-static int
-m_parse_set_string(struct pkg *pkg, char *buf, pkg_attr attr) {
-	while (isspace(*buf))
-		buf++;
-
-	if (*buf == '\0')
-		return (EPKG_FATAL);
-
-	pkg_set(pkg, attr, buf);
-	return (EPKG_OK);
-}
-
-static int
-m_parse_www(struct pkg *pkg, char *buf) {
-	return (m_parse_set_string(pkg, buf, PKG_WWW));
-}
-
-static int
-m_parse_prefix(struct pkg *pkg, char *buf) {
-	return (m_parse_set_string(pkg, buf, PKG_PREFIX));
-}
-
-static int
-m_parse_maintainer(struct pkg *pkg, char *buf) {
-	return (m_parse_set_string(pkg, buf, PKG_MAINTAINER));
-}
-
-static int
-m_parse_name(struct pkg *pkg, char *buf)
-{
-	return (m_parse_set_string(pkg, buf, PKG_NAME));
-}
-
-static int
-m_parse_origin(struct pkg *pkg, char *buf)
-{
-	/* Remove trailing / if any */
-	if (buf[strlen(buf) -1] == '/')
-		buf[strlen(buf) - 1] = '\0';
-
-	return (m_parse_set_string(pkg, buf, PKG_ORIGIN));
-}
-
-static int
-m_parse_version(struct pkg *pkg, char *buf)
-{
-	return (m_parse_set_string(pkg, buf, PKG_VERSION));
-}
-
-static int
-m_parse_arch(struct pkg *pkg, char *buf)
-{
-	return (m_parse_set_string(pkg, buf, PKG_ARCH));
-}
-
-static int
-m_parse_osversion(struct pkg *pkg, char *buf)
-{
-	return (m_parse_set_string(pkg, buf, PKG_OSVERSION));
-}
-
-static int
-m_parse_comment(struct pkg *pkg, char *buf)
-{
-	return (m_parse_set_string(pkg, buf, PKG_COMMENT));
-}
-
-static int
-m_parse_flatsize(struct pkg *pkg, char *buf)
-{
-	int64_t size;
-
-	/*
-	 * Set errno to 0 to make sure that the error we will eventually catch
-	 * later was set by strtoimax()
-	 */
-	errno = 0;
-	size = strtoimax(buf, NULL, 10);
-
-	if (errno == EINVAL || errno == ERANGE) {
-		pkg_emit_event(PKG_EVENT_PARSE_ERROR, /*argc*/2,
-		    "flatsize", strerror(errno));
-		return EPKG_FATAL;
+static int manifest_type(const char *key) {
+	int i = 0;
+	
+	for (i = 0; i < manifest_key_len; i++) {
+		if (!strcasecmp(key, manifest_key[i].key))
+			return (manifest_key[i].type);
 	}
 
-	pkg_setflatsize(pkg, size);
-	return (EPKG_OK);
-}
-
-/**
- * option: <key> <value>
- */
-static int
-m_parse_option(struct pkg *pkg, char *buf)
-{
-	char *value;
-
-	while (isspace(*buf))
-		buf++;
-
-	if (*buf == '\0')
-		return (EPKG_FATAL);
-
-	value = strrchr(buf, ' ');
-	if (value == NULL)
-		return (EPKG_FATAL);
-
-	*value++ = '\0';
-
-	pkg_addoption(pkg, buf, value);
-	return (EPKG_OK);
-}
-
-/**
- * dep: <name> <origin> <version>
- */
-static int
-m_parse_dep(struct pkg *pkg, char *buf)
-{
-	const char *name, *origin, *version;
-
-	while (isspace(*buf))
-		buf++;
-
-	if (split_chr(buf, ' ') != 2)
-		return (EPKG_FATAL);
-
-	name = buf;
-	buf += strlen(name) + 1;
-
-	origin = buf;
-	buf += strlen(origin) + 1;
-
-	version = buf;
-
-	pkg_adddep(pkg, name, origin, version);
-	return (EPKG_OK);
-}
-
-/**
- * conflict: <pkgname>
- */
-static int
-m_parse_conflict(struct pkg *pkg, char *buf)
-{
-	while (isspace(*buf))
-		buf++;
-
-	if (*buf == '\0')
-		return (EPKG_FATAL);
-
-	pkg_addconflict(pkg, buf);
-	return (EPKG_OK);
-}
-
-/**
- * file: <sha256 checksum> <file path>
- */
-static int
-m_parse_file(struct pkg *pkg, char *buf)
-{
-	const char *path;
-	const char *sha256;
-
-	while (isspace(*buf))
-		buf++;
-
-	sha256 = (*buf != '-') ? buf : NULL;
-
-	while (!isspace(*buf))
-		buf++;
-
-	if (*(buf + 1) != '/') {
-		warnx("parse error: / expected near '%s'", buf + 1);
-		return EPKG_FATAL;
-	}
-
-	*buf++ = '\0';
-	path = buf;
-
-	pkg_addfile(pkg, path, sha256);
-	return (EPKG_OK);
-}
-
-/**
- * dir: <dir path>
- */
-static int
-m_parse_dir(struct pkg *pkg, char *buf)
-{
-	while (isspace(*buf))
-		buf++;
-
-	if (*buf != '/')
-		return (EPKG_FATAL);
-
-	pkg_adddir(pkg, buf);
-	return (EPKG_OK);
+	return (PKG_UNKNOWN);
 }
 
 int
@@ -275,111 +76,294 @@ pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 int
 pkg_parse_manifest(struct pkg *pkg, char *buf)
 {
-	int nbel;
-	int i, j;
-	char *buf_ptr;
-	size_t next;
-	int found;
+	yaml_parser_t parser;
+	yaml_event_t event;
+	int done = 0;
+	int level = 0;
+	bool inseq = false;
+	bool expectvalue = false;
+	char depname[BUFSIZ];
+	char key[BUFSIZ];
+	char origin[BUFSIZ];
+	char version[BUFSIZ];
+	int nbdepkeys = 0;
+	char file[MAXPATHLEN];
+	int64_t size;
+	int type;
 
-	nbel = split_chr(buf, '\n');
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input_string(&parser, buf, strlen(buf));
 
-	buf_ptr = buf;
-	next = strlen(buf_ptr);
-	for (i = 1; i <= nbel; i++) {
-		found = 0;
-		for (j = 0; j < manifest_key_len; j++) {
-			if (STARTS_WITH(buf_ptr, manifest_key[j].key)) {
-				found = 1;
-				if (manifest_key[j].parse(pkg, buf_ptr +
-					strlen(manifest_key[j].key)) != EPKG_OK) {
+	while (!done) {
+		if (!yaml_parser_parse(&parser, &event))
+			goto error;
 
-					warnx("Error while parsing %s at line %d",
-						  manifest_key[j].key, i + 1);
-					return (EPKG_FATAL);
-				}
+		done = (event.type == YAML_STREAM_END_EVENT);
+
+		switch (event.type) {
+			case YAML_STREAM_START_EVENT:
+			case YAML_DOCUMENT_START_EVENT:
+			case YAML_STREAM_END_EVENT:
+			case YAML_DOCUMENT_END_EVENT:
+				continue;
+				break; /* NOT REACHED */
+			case YAML_MAPPING_START_EVENT:
+				level++;
 				break;
-			}
-		}
-		if (found == 0 && buf_ptr[0] != '\0') {
-			warnx("Unknown line #%d: %s (ignored)", i + 1,  buf_ptr);
-		}
-		/* We need to compute `next' only if we are not at the end of the manifest */
-		if (i != nbel) {
-			buf_ptr += next + 1;
-			next = strlen(buf_ptr);
-		}
-	}
+			case YAML_MAPPING_END_EVENT:
+				level--;
+				break;
+			case YAML_SEQUENCE_START_EVENT:
+				inseq = true;
+				break;
+			case YAML_SEQUENCE_END_EVENT:
+				inseq = false;
+				break;
+			case YAML_SCALAR_EVENT:
+				if (level == 1 && !inseq && !expectvalue) {
+					if ((type = manifest_type(event.data.scalar.value)) == -1) {
+						warnx("Unknown key: %s", event.data.scalar.value);
+						break;
+					}
+					if (type >= 0 || type == PKG_FLATSIZE)
+						expectvalue = true;
+					break;
+				} else if (level == 1 && !inseq) {
+					if (type == PKG_FLATSIZE) {
+						size = strtoimax(buf, NULL, 10);
+						pkg_setflatsize(pkg, size);
+					} else {
+						pkg_set(pkg, type, event.data.scalar.value);
+					}
+					expectvalue = false;
+					break;
+				} else if (level == 1 && inseq && type == PKG_CONFLICTS) {
+					pkg_addconflict(pkg, event.data.scalar.value);
+					break;
+				} else if (level == 2 && !inseq && type == PKG_DEPS) {
+					strlcpy(depname, event.data.scalar.value, BUFSIZ);
+					nbdepkeys = 0;
+					break;
+				} else if (level == 3 && !inseq && type == PKG_DEPS && !expectvalue) {
+					strlcpy(key, event.data.scalar.value, BUFSIZ);
+					expectvalue = true;
+					break;
+				} else if (level == 3 && !inseq && type == PKG_DEPS && expectvalue) {
+					if (!strcasecmp(key, "origin"))
+						strlcpy(origin, event.data.scalar.value, BUFSIZ);
+					else if (!strcasecmp(key, "version"))
+						strlcpy(version, event.data.scalar.value, BUFSIZ);
+					expectvalue = false;
+					nbdepkeys++;
+					if (nbdepkeys == 2)
+						pkg_adddep(pkg, depname, origin, version);
+					break;
+				} else if (level == 2 && type == PKG_FILES && !expectvalue) {
+					strlcpy(file, event.data.scalar.value, MAXPATHLEN);
+					expectvalue = true;
+					break;
+				} else if (level == 2 && type == PKG_FILES && expectvalue) {
+					pkg_addfile(pkg, file, event.data.scalar.length == 65 ? event.data.scalar.value : NULL);
+					expectvalue = false;
+					break;
+				} else if (level == 1 && type == PKG_DIRS) {
+					pkg_adddir(pkg, event.data.scalar.value);
+					break;
+				}
 
-	return (EPKG_OK);
+				printf("%d, %d %d: %s\n", level, type, inseq, event.data.scalar.value);
+				break;
+		}
+
+		yaml_event_delete(&event);
+	}
+	yaml_parser_delete(&parser);
+
+	return EPKG_OK;
+error:
+	yaml_parser_delete(&parser);
+	return EPKG_FATAL;
+
+
+}
+
+static int
+yaml_write_buf(void *data, unsigned char *buffer, size_t size)
+{
+	char **dest = (char **)data;
+	*dest = malloc(size);
+	strlcpy(*dest, buffer, size);
+	return (1);
 }
 
 int
 pkg_emit_manifest(struct pkg *pkg, char **dest)
 {
-	struct sbuf *manifest;
+	yaml_emitter_t emitter;
+	yaml_event_t event;
+	char tmpbuf[BUFSIZ];
+	bool substarted = false;
 	struct pkg_dep *dep = NULL;
 	struct pkg_conflict *conflict = NULL;
 	struct pkg_option *option = NULL;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
-	int len = 0;
+	int rc = EPKG_OK;
 
-	manifest = sbuf_new_auto();
+	yaml_emitter_initialize(&emitter);
+	yaml_emitter_set_output(&emitter, yaml_write_buf, dest);
+	yaml_stream_start_event_initialize(&event, YAML_UTF8_ENCODING);
+	if (!yaml_emitter_emit(&emitter, &event))
+		goto error;
 
-	sbuf_printf(manifest,
-			"name: %s\n"
-			"version: %s\n"
-			"origin: %s\n"
-			"comment: %s\n"
-			"arch: %s\n"
-			"osversion: %s\n"
-			"www: %s\n"
-			"maintainer: %s\n"
-			"prefix: %s\n"
-			"flatsize: %" PRId64 "\n",
-			pkg_get(pkg, PKG_NAME),
-			pkg_get(pkg, PKG_VERSION),
-			pkg_get(pkg, PKG_ORIGIN),
-			pkg_get(pkg, PKG_COMMENT),
-			pkg_get(pkg, PKG_ARCH),
-			pkg_get(pkg, PKG_OSVERSION),
-			pkg_get(pkg, PKG_WWW),
-			pkg_get(pkg, PKG_MAINTAINER),
-			pkg_get(pkg, PKG_PREFIX),
-			pkg_flatsize(pkg)
-			);
+	yaml_document_start_event_initialize(&event, NULL, NULL, NULL, 1);
+	if (!yaml_emitter_emit(&emitter, &event))
+		goto error;
+
+
+#define manifest_append_key(em, ev, key) \
+	do { \
+		yaml_scalar_event_initialize(ev, NULL, NULL, __DECONST(yaml_char_t*,key), strlen(key), true, true, YAML_PLAIN_SCALAR_STYLE); \
+		yaml_emitter_emit(em, ev); \
+	} while (0)
+
+#define manifest_append_kv(em, ev, key, value) \
+	do { \
+		manifest_append_key(em, ev, key); \
+		yaml_scalar_event_initialize( ev, NULL, NULL, __DECONST(yaml_char_t*,value), strlen(value), true, true, YAML_PLAIN_SCALAR_STYLE); \
+		yaml_emitter_emit(em, ev); \
+	} while (0)
+
+#define manifest_append_value(em, ev, value) manifest_append_key(em, ev, value)
+#define manifest_start_mapping(em, ev) \
+	do { \
+		yaml_mapping_start_event_initialize(ev, NULL, NULL, 1, YAML_ANY_MAPPING_STYLE); \
+		yaml_emitter_emit(em, ev); \
+	} while (0)
+
+#define manifest_start_sequence(em, ev) \
+	do { \
+		yaml_sequence_start_event_initialize(ev, NULL, NULL, 1, YAML_ANY_MAPPING_STYLE); \
+		yaml_emitter_emit(em, ev); \
+	} while (0)
+
+#define manifest_end_mapping(em, ev) \
+	do { \
+		yaml_mapping_end_event_initialize(ev); \
+		yaml_emitter_emit(em, ev); \
+	} while (0)
+
+#define manifest_end_sequence(em, ev) \
+	do { \
+		yaml_sequence_end_event_initialize(ev); \
+		yaml_emitter_emit(em, ev); \
+	} while (0)
+
+	manifest_start_mapping(&emitter, &event);
+
+	manifest_append_kv(&emitter, &event, "name", pkg_get(pkg, PKG_NAME));
+	manifest_append_kv(&emitter, &event, "version", pkg_get(pkg, PKG_VERSION));
+	manifest_append_kv(&emitter, &event, "origin", pkg_get(pkg, PKG_ORIGIN));
+	manifest_append_kv(&emitter, &event, "comment", pkg_get(pkg, PKG_COMMENT));
+	manifest_append_kv(&emitter, &event, "arch", pkg_get(pkg, PKG_ARCH));
+	manifest_append_kv(&emitter, &event, "osversion", pkg_get(pkg, PKG_OSVERSION));
+	manifest_append_kv(&emitter, &event, "www", pkg_get(pkg, PKG_WWW));
+	manifest_append_kv(&emitter, &event, "maintainer", pkg_get(pkg, PKG_MAINTAINER));
+	manifest_append_kv(&emitter, &event, "prefix", pkg_get(pkg, PKG_PREFIX));
+	snprintf(tmpbuf, BUFSIZ, "%ld", pkg_flatsize(pkg));
+	manifest_append_kv(&emitter, &event, "flatsize", tmpbuf);
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		sbuf_printf(manifest, "dep: %s %s %s\n",
-					pkg_dep_name(dep),
-					pkg_dep_origin(dep),
-					pkg_dep_version(dep));
+		if (substarted == false) {
+			manifest_append_key(&emitter, &event, "deps");
+
+			manifest_start_mapping(&emitter, &event);
+			substarted = true;
+
+		}
+		manifest_append_value(&emitter, &event, pkg_dep_name(dep));
+
+		manifest_start_mapping(&emitter, &event);
+
+		manifest_append_kv(&emitter, &event, "origin", pkg_dep_origin(dep));
+		manifest_append_kv(&emitter, &event, "version", pkg_dep_version(dep));
+
+		manifest_end_mapping(&emitter, &event);
 	}
 
+	if (substarted == true) {
+		manifest_end_mapping(&emitter, &event);
+		substarted = false;
+	}
 
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
-		sbuf_printf(manifest, "conflict: %s\n", pkg_conflict_glob(conflict));
+		if (substarted == false) {
+			manifest_append_key(&emitter, &event, "conflicts");
+
+			manifest_start_sequence(&emitter, &event);
+			substarted = true;
+		}
+		manifest_append_value(&emitter, &event, pkg_conflict_glob(conflict));
 	}
 
-	while (pkg_options(pkg, &option) == EPKG_OK) {
+	if (substarted == true) {
+		manifest_end_sequence(&emitter, &event);
+		substarted=false;
+	}
+
+/*	while (pkg_options(pkg, &option) == EPKG_OK) {
 		sbuf_printf(manifest, "option: %s %s\n", pkg_option_opt(option),
 					pkg_option_value(option));
-	}
+	}*/
+
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		sbuf_printf(manifest, "file: %s %s\n", pkg_file_sha256(file) && strlen(pkg_file_sha256(file)) > 0 ? pkg_file_sha256(file) : "-",
-					pkg_file_path(file));
+		if (substarted == false) {
+			manifest_append_key(&emitter, &event, "files");
+
+			manifest_start_mapping(&emitter, &event);
+			substarted=true;
+		}
+		manifest_append_kv(&emitter, &event, pkg_file_path(file), pkg_file_sha256(file) && strlen(pkg_file_sha256(file)) > 0 ? pkg_file_sha256(file) : "-");
+	}
+
+	if (substarted == true) {
+		manifest_end_mapping(&emitter, &event);
+		substarted = false;
 	}
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		sbuf_printf(manifest, "dir: %s\n", pkg_dir_path(dir));
+		if (substarted == false) {
+			manifest_append_key(&emitter, &event, "dirs");
+
+			manifest_start_sequence(&emitter, &event);
+			substarted = true;
+		}
+		manifest_append_value(&emitter, &event, pkg_dir_path(dir));
 	}
 
-	sbuf_finish(manifest);
-	len = sbuf_len(manifest);
-	*dest = strdup(sbuf_data(manifest));
+	if (substarted == true) {
+		manifest_end_sequence(&emitter, &event);
+		substarted = false;
+	}
 
-	sbuf_free(manifest);
+	manifest_end_mapping(&emitter, &event);
 
-	return (len);
+	yaml_document_end_event_initialize(&event, 1);
+	if (!yaml_emitter_emit(&emitter, &event))
+		goto error;
+
+	yaml_stream_end_event_initialize(&event);
+	if (!yaml_emitter_emit(&emitter, &event))
+		goto error;
+
+	rc = EPKG_OK;
+done:
+	yaml_emitter_delete(&emitter);
+	return (rc);
+
+error:
+	rc = EPKG_FATAL;
+	goto done;
+
 }

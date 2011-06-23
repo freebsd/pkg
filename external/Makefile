@@ -1,3 +1,4 @@
-SUBDIR=	sqlite
+SUBDIR=	sqlite \
+	libyaml
 
 .include <bsd.subdir.mk>
