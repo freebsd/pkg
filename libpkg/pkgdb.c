@@ -384,6 +384,11 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
 		pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
 
+		if (it->type == PKG_REMOTE) {
+			pkg->type = PKG_REMOTE;
+			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 11));
+			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 12));
+		}
 		if (it->type == PKG_UPGRADE) {
 			pkg->type = PKG_UPGRADE;
 
@@ -1424,8 +1429,8 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 	}
 
 	sbuf_cat(sql, "SELECT p.rowid, p.origin, p.name, p.version, p.comment, "
-			"p.desc, p.arch, p.osversion, p.maintainer, p.www, p.pkgsize, "
-			"p.flatsize, p.cksum, p.path FROM remote.packages AS p WHERE ");
+			"p.desc, p.arch, p.arch, p.osversion, p.maintainer, p.www, "
+			"p.flatsize, p.pkgsize, p.cksum, p.path FROM remote.packages AS p WHERE ");
 
 	switch (match) {
 		case MATCH_ALL:

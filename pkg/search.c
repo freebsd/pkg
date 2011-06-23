@@ -76,7 +76,13 @@ exec_search(int argc, char **argv)
 		printf("Name: %s\n", pkg_get(pkg, PKG_NAME));
 		printf("Version: %s\n", pkg_get(pkg, PKG_VERSION));
 		printf("Origin: %s\n", pkg_get(pkg, PKG_ORIGIN));
+		printf("Maintainer: %s\n", pkg_get(pkg, PKG_MAINTAINER));
+		printf("WWW: %s\n", pkg_get(pkg, PKG_WWW));
 		printf("Comment: %s\n", pkg_get(pkg, PKG_COMMENT));
+		humanize_number(size, sizeof(size), pkg_new_flatsize(pkg), "B", HN_AUTOSCALE, 0);
+		printf("Flat size: %s\n", size);
+		humanize_number(size, sizeof(size), pkg_new_pkgsize(pkg), "B", HN_AUTOSCALE, 0);
+		printf("Pkg size: %s\n", size);
 		printf("\n");
 	}
 
