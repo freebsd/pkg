@@ -23,6 +23,7 @@ exec_search(int argc, char **argv)
 	int  retcode = 0;
 	unsigned int field = REPO_SEARCH_NAME;
 	int ch;
+	char size[7];
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
