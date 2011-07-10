@@ -29,6 +29,9 @@ pkg_jobs_free(struct pkg_jobs *j)
 {
 	struct pkg *p;
 
+	if (j == NULL)
+		return;
+
 	while (!STAILQ_EMPTY(&j->jobs)) {
 		p = STAILQ_FIRST(&j->jobs);
 		STAILQ_REMOVE_HEAD(&j->jobs, next);

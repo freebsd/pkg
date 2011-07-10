@@ -95,10 +95,9 @@ add_from_repo(const char *name)
 		pkg_error_warn("can not install");
 
 	cleanup:
-	if (db != NULL)
-		pkgdb_close(db);
-	if (jobs != NULL)
-		pkg_jobs_free(jobs);
+	pkgdb_close(db);
+	pkg_jobs_free(jobs);
+
 	return (EPKG_OK);
 }
 
@@ -126,10 +125,8 @@ add_from_file(const char *file)
 		printf("%s", message);
 
 	cleanup:
-	if (db != NULL)
-		pkgdb_close(db);
-	if (pkg != NULL)
-		pkg_free(pkg);
+	pkgdb_close(db);
+	pkg_free(pkg);
 
 	return (retcode);
 }

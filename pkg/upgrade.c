@@ -92,9 +92,7 @@ exec_upgrade(int argc, char **argv)
 
 
 	cleanup:
-	
-	if (db != NULL)
-		pkgdb_close(db);
+	pkgdb_close(db);
 
 	return (retcode);
 }
