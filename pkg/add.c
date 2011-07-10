@@ -98,7 +98,7 @@ add_from_repo(const char *name)
 	pkgdb_close(db);
 	pkg_jobs_free(jobs);
 
-	return (EPKG_OK);
+	return (retcode);
 }
 
 static int
