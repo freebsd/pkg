@@ -107,9 +107,7 @@ exec_autoremove(int argc, char **argv)
 
 	cleanup:
 	pkg_free(pkg);
-	
-	if (db != NULL)
-		pkgdb_close(db);
+	pkgdb_close(db);
 
 	return (retcode);
 }

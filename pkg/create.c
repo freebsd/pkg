@@ -72,12 +72,10 @@ cleanup:
 		retcode++;
 	}
 
-	if (pkg != NULL)
-		pkg_free(pkg);
-	if (it != NULL)
-		pkgdb_it_free(it);
-	if (db != NULL)
-		pkgdb_close(db);
+	pkg_free(pkg);
+	pkgdb_it_free(it);
+	pkgdb_close(db);
+
 	return retcode;
 }
 

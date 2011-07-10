@@ -88,11 +88,8 @@ exec_search(int argc, char **argv)
 	}
 
 	cleanup:
-	if (it != NULL)
-		pkgdb_it_free(it);
-
-	if (db != NULL)
-		pkgdb_close(db);
+	pkgdb_it_free(it);
+	pkgdb_close(db);
 
 	return (retcode);
 
