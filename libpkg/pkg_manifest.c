@@ -211,16 +211,22 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 {
 	yaml_parser_t parser;
 	yaml_document_t doc;
+	yaml_node_t *node;
+	int retcode = EPKG_OK;
 
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_string(&parser, buf, strlen(buf));
 	yaml_parser_load(&parser, &doc);
 
-	parse_node(pkg, yaml_document_get_root_node(&doc), &doc, -1);
+	node = yaml_document_get_root_node(&doc);
+	if (node != NULL)
+		parse_node(pkg, node, &doc, -1);
+	else
+		retcode = EPKG_FATAL;
 
 	yaml_parser_delete(&parser);
 
-	return EPKG_OK;
+	return retcode;
 }
 
 static int
