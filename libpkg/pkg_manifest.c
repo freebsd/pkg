@@ -281,7 +281,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	snprintf(tmpbuf, BUFSIZ, "%ld", pkg_flatsize(pkg));
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
 	manifest_append_kv_literal(mapping, "desc", pkg_get(pkg, PKG_DESC));
-	if (pkg_get(pkg, PKG_MESSAGE) != NULL)
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (depsmap == -1) {
@@ -380,7 +379,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		}
 		manifest_append_kv_literal(scripts, script_types, pkg_script_data(script));
 	}
-	if (pkg_get(pkg, PKG_MESSAGE) != NULL)
+	if (pkg_get(pkg, PKG_MESSAGE) != NULL && pkg_get(pkg, PKG_MESSAGE)[0] != '\0')
 		manifest_append_kv_literal(mapping, "message", pkg_get(pkg, PKG_MESSAGE));
 
 	if (!yaml_emitter_dump(&emitter, &doc))
