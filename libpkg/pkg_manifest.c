@@ -286,7 +286,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	manifest_append_kv(mapping, "www", pkg_get(pkg, PKG_WWW));
 	manifest_append_kv(mapping, "maintainer", pkg_get(pkg, PKG_MAINTAINER));
 	manifest_append_kv(mapping, "prefix", pkg_get(pkg, PKG_PREFIX));
-	snprintf(tmpbuf, BUFSIZ, "%lld", pkg_flatsize(pkg));
+	snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkg_flatsize(pkg));
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
 	manifest_append_kv_literal(mapping, "desc", pkg_get(pkg, PKG_DESC));
 
