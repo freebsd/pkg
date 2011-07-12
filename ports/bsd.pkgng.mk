@@ -67,13 +67,14 @@ fake-pkg:
 .if defined(WWW)
 	@${ECHO_CMD} "www: ${WWW}" >> ${MANIFESTF}
 .endif
-	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u >> ${MANIFESTF}
+@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print $1":\n  origin: "$2"\n version: "$3 }' >> ${MANIFESTF}
 .if !defined(DISABLE_CONFLICTS)
+	@${ECHO_CMD} "conflicts: " >> ${MANIFEST}
 .for conflicts in ${CONFLICTS}
-	@${ECHO_CMD} "conflict: ${conflicts}" >> ${MANIFESTF}
+	@${ECHO_CMD} "- ${conflicts}" >> ${MANIFESTF}
 .endfor
 .for conflicts in ${CONFLICTS_INSTALL}
-	@${ECHO_CMD} "conflict: ${conflicts}" >> ${MANIFESTF}
+	@${ECHO_CMD} "- ${conflicts}" >> ${MANIFESTF}
 .endfor
 .endif
 	@[ -f ${PKGINSTALL} ] && ${CP} ${PKGINSTALL} ${METADIR}/+INSTALL; \
