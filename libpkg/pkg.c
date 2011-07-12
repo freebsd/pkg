@@ -768,7 +768,6 @@ int
 pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path)
 {
 	struct pkg *pkg;
-	struct pkg_script *script;
 	pkg_error_t retcode = EPKG_OK;
 	int ret;
 	int64_t size;
@@ -782,23 +781,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 		const char *name;
 		pkg_attr attr;
 	} files[] = {
-		{ "+DESC", PKG_DESC },
 		{ "+MTREE_DIRS", PKG_MTREE },
-		{ NULL, 0 }
-	};
-	struct {
-		const char *name;
-		pkg_script_t type;
-	} scripts[] = {
-		{ "+PRE_INSTALL", PKG_SCRIPT_PRE_INSTALL },
-		{ "+POST_INSTALL", PKG_SCRIPT_POST_INSTALL },
-		{ "+PRE_DEINSTALL", PKG_SCRIPT_PRE_DEINSTALL },
-		{ "+POST_DEINSTALL", PKG_SCRIPT_POST_DEINSTALL },
-		{ "+PRE_UPGRADE", PKG_SCRIPT_PRE_UPGRADE },
-		{ "+POST_UPGRADE", PKG_SCRIPT_POST_UPGRADE },
-		{ "+INSTALL", PKG_SCRIPT_INSTALL },
-		{ "+DEINSTALL", PKG_SCRIPT_DEINSTALL },
-		{ "+UPGRADE", PKG_SCRIPT_UPGRADE },
 		{ NULL, 0 }
 	};
 
@@ -853,21 +836,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 					sbuf_bcat(*sbuf, buf, size);
 				}
 				sbuf_finish(*sbuf);
-			}
-		}
-
-		for (i = 0; scripts[i].name != NULL; i++) {
-			if (strcmp(fpath, scripts[i].name) == 0) {
-				pkg_script_new(&script);
-				script->type = scripts[i].type;
-				script->data = sbuf_new_auto();
-				while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0 ) {
-					sbuf_bcat(script->data, buf, size);
-				}
-				sbuf_finish(script->data);
-
-				STAILQ_INSERT_TAIL(&pkg->scripts, script, next);
-				break;
 			}
 		}
 	}
