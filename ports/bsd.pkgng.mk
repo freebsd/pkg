@@ -22,7 +22,7 @@ ACTUAL-PACKAGE-DEPENDS?= \
 	if [ "${_LIB_RUN_DEPENDS}" != "  " ]; then \
 		for dir in ${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,}; do \
 			pkgname=$$(${PKG_INFO} -q $${dir\#\#${PORTSDIR}/}); \
-			${ECHO_CMD} dep: $${pkgname%-*} $${dir\#\#${PORTSDIR}/} $${pkgname\#\#*-}; \
+			${ECHO_CMD} $${pkgname%-*} $${dir\#\#${PORTSDIR}/} $${pkgname\#\#*-}; \
 			for pkg in $$(${PKG_INFO} -qd $${dir\#\#${PORTSDIR}/}); do\
 				origin=$$(${PKG_INFO} -qo $${pkg}); \
 				${ECHO_CMD} dep: $${pkg%-*} $$origin $${pkg\#\#*-}; \
@@ -56,20 +56,21 @@ ${i:S/-//:U}=	${WRKDIR}/${SUB_FILES:M${i}*}
 .if !target(fake-pkg)
 fake-pkg:
 .if !defined(NO_PKG_REGISTER)
-	@${ECHO_MSG} "===>   Regitering installation for ${PKGNAME}"; \
-	${MKDIR} ${METADIR} ; \
-	${ECHO_CMD} "name: ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" > ${MANIFESTF} ; \
-	${ECHO_CMD} "version: ${PKGVERSION}" >> ${MANIFESTF} ; \
-	${ECHO_CMD} "origin: ${PKGORIGIN}" >> ${MANIFESTF} ; \
-	${ECHO_CMD} "comment: "${COMMENT:Q} >> ${MANIFESTF} ; \
-	${ECHO_CMD} "maintainer: ${MAINTAINER}" >> ${MANIFESTF} ; \
-	${ECHO_CMD} "prefix: ${PREFIX}" >> ${MANIFESTF}
+	@${ECHO_MSG} "===>   Regitering installation for ${PKGNAME}"
+	@${MKDIR} ${METADIR} 
+	@${ECHO_CMD} "name: ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" > ${MANIFESTF} 
+	@${ECHO_CMD} "version: ${PKGVERSION}" >> ${MANIFESTF} 
+	@${ECHO_CMD} "origin: ${PKGORIGIN}" >> ${MANIFESTF} 
+	@${ECHO_CMD} "comment: "${COMMENT:Q} >> ${MANIFESTF}
+	@${ECHO_CMD} "maintainer: ${MAINTAINER}" >> ${MANIFESTF}
+	@${ECHO_CMD} "prefix: ${PREFIX}" >> ${MANIFESTF}
 .if defined(WWW)
 	@${ECHO_CMD} "www: ${WWW}" >> ${MANIFESTF}
 .endif
-@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print $1":\n  origin: "$2"\n version: "$3 }' >> ${MANIFESTF}
+	@${ECHO_CMD} "deps: " >> ${MANIFESTF}
+	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print "  "$$1":\n    origin: "$$2"\n    version: "$$3 }' >> ${MANIFESTF}
 .if !defined(DISABLE_CONFLICTS)
-	@${ECHO_CMD} "conflicts: " >> ${MANIFEST}
+	@${ECHO_CMD} "conflicts: " >> ${MANIFESTF}
 .for conflicts in ${CONFLICTS}
 	@${ECHO_CMD} "- ${conflicts}" >> ${MANIFESTF}
 .endfor
@@ -211,13 +212,12 @@ do-package: ${TMPPLIST}
 			fi; \
 		fi; \
 	fi;
-	@__softMAKEFLAGS='${__softMAKEFLAGS:S/'/'\''/g}'; \
-	if ${PKG_CREATE} -o ${PKGREPOSITORY} ${PKGNAME}; then \
+	@if ${PKG_CREATE} -o ${PKGREPOSITORY} ${PKGNAME}; then \
 		if [ -d ${PACKAGES} ]; then \
-			cd ${.CURDIR} && eval ${MAKE} $${__softMAKEFLAGS} package-links; \
+			cd ${.CURDIR} && eval ${MAKE} package-links; \
 		fi; \
 	else \
-		cd ${.CURDIR} && eval ${MAKE} $${__softMAKEFLAGS} delete-package; \
+		cd ${.CURDIR} && eval ${MAKE} delete-package; \
 		exit 1; \
 	fi
 .endif
