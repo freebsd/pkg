@@ -47,6 +47,7 @@ static struct manifest_key {
 	{ "flatsize", PKG_FLATSIZE},
 	{ "desc", PKG_DESC },
 	{ "scripts", PKG_SCRIPTS},
+	{ "message", PKG_MESSAGE},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
@@ -280,6 +281,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	snprintf(tmpbuf, BUFSIZ, "%ld", pkg_flatsize(pkg));
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
 	manifest_append_kv_literal(mapping, "desc", pkg_get(pkg, PKG_DESC));
+	if (pkg_get(pkg, PKG_MESSAGE) != NULL)
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (depsmap == -1) {
@@ -378,6 +380,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		}
 		manifest_append_kv_literal(scripts, script_types, pkg_script_data(script));
 	}
+	if (pkg_get(pkg, PKG_MESSAGE) != NULL)
+		manifest_append_kv_literal(mapping, "message", pkg_get(pkg, PKG_MESSAGE));
 
 	if (!yaml_emitter_dump(&emitter, &doc))
 		rc = EPKG_FATAL;
