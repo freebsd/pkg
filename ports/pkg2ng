@@ -33,12 +33,14 @@ do
 	echo "comment: ${COMMENT}" >> ${MANIFEST}
 	echo "maintainer: ${MAINTAINER}" >> ${MANIFEST}
 	echo "prefix: ${PREFX##* }" >> ${MANIFEST}
+	echo "deps:" >> ${MANIFEST}
 	pkg_info -qr ${PKG} | while read ignore dep; do
 		deporigin=$(pkg_info -qo ${dep})
-		echo "dep: ${dep%-*} ${deporigin} ${dep##*-}" >> ${MANIFEST}
+		echo -e "  ${dep%-*}:\n    origin: ${deporigin}\n    version: ${dep##*-}" >> ${MANIFEST}
 	done
-	egrep -v "^@[pkgdep|ignore|conflicts]" ${DB}/+CONTENTS >> ${PLIST}
-	awk '/^@conflicts/ { print "conflict: "$2 }' ${DB}/+CONTENTS >> ${MANIFEST}
+	egrep -v "^@(name|pkgdep|ignore|conflicts|display)" ${DB}/+CONTENTS >> ${PLIST}
+	echo "conflicts:" >> ${MANIFEST}
+	awk '/^@conflicts/ { print "- "$2 }' ${DB}/+CONTENTS >> ${MANIFEST}
 
 	OPTIONS=""
 

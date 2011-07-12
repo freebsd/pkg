@@ -21,54 +21,16 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 {
 	char fpath[MAXPATHLEN];
 	struct pkg_file *file = NULL;
-	struct pkg_script *script = NULL;
 	char *m;
 	const char *mtree;
-	const char *scriptname = NULL;
 
 	pkg_emit_manifest(pkg, &m);
 	packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
 	free(m);
 
-	packing_append_buffer(pkg_archive, pkg_get(pkg, PKG_DESC), "+DESC", strlen(pkg_get(pkg, PKG_DESC)));
-
 	mtree = pkg_get(pkg, PKG_MTREE);
 	if (mtree != NULL)
 		packing_append_buffer(pkg_archive, mtree, "+MTREE_DIRS", strlen(mtree));
-
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		switch (pkg_script_type(script)) {
-			case PKG_SCRIPT_PRE_INSTALL:
-				scriptname = "+PRE_INSTALL";
-				break;
-			case PKG_SCRIPT_POST_INSTALL:
-				scriptname = "+POST_INSTALL";
-				break;
-			case PKG_SCRIPT_INSTALL:
-				scriptname = "+INSTALL";
-				break;
-			case PKG_SCRIPT_PRE_DEINSTALL:
-				scriptname = "+PRE_DEINSTALL";
-				break;
-			case PKG_SCRIPT_POST_DEINSTALL:
-				scriptname = "+POST_DEINSTALL";
-				break;
-			case PKG_SCRIPT_DEINSTALL:
-				scriptname = "+DEINSTALL";
-				break;
-			case PKG_SCRIPT_PRE_UPGRADE:
-				scriptname = "+PRE_UPGRADE";
-				break;
-			case PKG_SCRIPT_POST_UPGRADE:
-				scriptname = "+POST_UPGRADE";
-				break;
-			case PKG_SCRIPT_UPGRADE:
-				scriptname = "+UPGRADE";
-				break;
-		}
-		packing_append_buffer(pkg_archive, pkg_script_data(script),
-							  scriptname, strlen(pkg_script_data(script)));
-	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
