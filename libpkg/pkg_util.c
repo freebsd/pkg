@@ -92,8 +92,9 @@ mkdirs(const char *_path)
 int
 file_to_buffer(const char *path, char **buffer, off_t *sz)
 {
-	int fd;
+	int fd = -1;
 	struct stat st;
+	int retcode = EPKG_OK;
 
 	if (path == NULL || path[0] == '\0')
 		return (ERROR_BAD_ARG("path"));
@@ -101,40 +102,52 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 	if (buffer == NULL)
 		return (ERROR_BAD_ARG("buffer"));
 
+	if (sz == NULL)
+		return (ERROR_BAD_ARG("sz"));
+
 	if ((fd = open(path, O_RDONLY)) == -1) {
 		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "open",
 		    path, strerror(errno));
-		return EPKG_FATAL;
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	if (fstat(fd, &st) == -1) {
 		close(fd);
 		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "fstat",
 		    path, strerror(errno));
-		return EPKG_FATAL;
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
 		close(fd);
 		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
 		    strerror(errno));
-		return EPKG_FATAL;
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		close(fd);
 		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "read",
 		    path, strerror(errno));
-		return EPKG_FATAL;
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
 
-	close(fd);
+	cleanup:
+	if (fd > 0)
+		close(fd);
 
-	/* NULL terminate the buffer so it can be used by stdio.h functions */
-	(*buffer)[st.st_size] = '\0';
-
-	*sz = st.st_size;
-	return (EPKG_OK);
+	if (retcode == EPKG_OK) {
+		(*buffer)[st.st_size] = '\0';
+		*sz = st.st_size;
+	} else {
+		*buffer = NULL;
+		*sz = -1;
+	}
+	return (retcode);
 }
 
 int

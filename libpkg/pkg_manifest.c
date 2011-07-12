@@ -74,8 +74,7 @@ pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 		return (ret);
 
 	ret = pkg_parse_manifest(pkg, manifest);
-	if (ret != EPKG_OK && manifest != NULL)
-			free(manifest);
+	free(manifest);
 
 	return (ret);
 }
@@ -213,6 +212,9 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	yaml_document_t doc;
 	yaml_node_t *node;
 	int retcode = EPKG_OK;
+
+	if (buf == NULL)
+		return (ERROR_BAD_ARG(buf));
 
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_string(&parser, buf, strlen(buf));
