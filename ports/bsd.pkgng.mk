@@ -39,7 +39,7 @@ fake-pkg:
 	@${ECHO_CMD} "name: ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" > ${MANIFESTF} 
 	@${ECHO_CMD} "version: ${PKGVERSION}" >> ${MANIFESTF} 
 	@${ECHO_CMD} "origin: ${PKGORIGIN}" >> ${MANIFESTF} 
-	@${ECHO_CMD} "comment: \"${COMMENT}\"" >> ${MANIFESTF}
+	@${ECHO_CMD} "comment: \"${COMMENT:Q}\"" >> ${MANIFESTF}
 	@${ECHO_CMD} "maintainer: ${MAINTAINER}" >> ${MANIFESTF}
 	@${ECHO_CMD} "prefix: ${PREFIX}" >> ${MANIFESTF}
 .if defined(WWW)
@@ -50,10 +50,10 @@ fake-pkg:
 .if !defined(DISABLE_CONFLICTS)
 	@${ECHO_CMD} "conflicts: " >> ${MANIFESTF}
 .for conflicts in ${CONFLICTS}
-	@${ECHO_CMD} "- ${conflicts}" >> ${MANIFESTF}
+	@${ECHO_CMD} "- \"${conflicts}\"" >> ${MANIFESTF}
 .endfor
 .for conflicts in ${CONFLICTS_INSTALL}
-	@${ECHO_CMD} "- ${conflicts}" >> ${MANIFESTF}
+	@${ECHO_CMD} "- \"${conflicts}\"" >> ${MANIFESTF}
 .endfor
 .endif
 	@[ -f ${PKGINSTALL} ] && ${CP} ${PKGINSTALL} ${METADIR}/+INSTALL; \
@@ -67,7 +67,7 @@ fake-pkg:
 	[ -f ${PKGPOSTUPGRADE} ] && ${CP} ${PKGPOSTUPGRADE} ${METADIR}/+POST_UPGRADE; \
 	${CP} ${DESCR} ${METADIR}/+DESC; \
 	[ -f ${PKGMESSAGE} ] && ${CP} ${PKGMESSAGE} ${METADIR}/+DISPLAY || return 0
-.if !defined(NO_MTREE)
+.if !defined(NO_MTREE) && defined(MTREE_FILE)
 	@${CP} ${MTREE_FILE} ${METADIR}/+MTREE_DIRS
 .endif
 .if defined(INSTALLS_DEPENDS)
