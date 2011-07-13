@@ -30,7 +30,7 @@ do
 	echo "name: ${PKG%-*}" >> ${MANIFEST}
 	echo "version: ${PKG##*-}" >> ${MANIFEST}
 	echo "origin: ${ORIGIN}" >> ${MANIFEST}
-	echo "comment: ${COMMENT}" >> ${MANIFEST}
+	echo "comment: \"${COMMENT}\"" >> ${MANIFEST}
 	echo "maintainer: ${MAINTAINER}" >> ${MANIFEST}
 	echo "prefix: ${PREFX##* }" >> ${MANIFEST}
 	echo "deps:" >> ${MANIFEST}

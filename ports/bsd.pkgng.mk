@@ -25,33 +25,11 @@ ACTUAL-PACKAGE-DEPENDS?= \
 			${ECHO_CMD} $${pkgname%-*} $${dir\#\#${PORTSDIR}/} $${pkgname\#\#*-}; \
 			for pkg in $$(${PKG_INFO} -qd $${dir\#\#${PORTSDIR}/}); do\
 				origin=$$(${PKG_INFO} -qo $${pkg}); \
-				${ECHO_CMD} dep: $${pkg%-*} $$origin $${pkg\#\#*-}; \
+				${ECHO_CMD} $${pkg%-*} $$origin $${pkg\#\#*-}; \
 			done; \
 		done; \
 	fi
 
-
-.if !target(apply-slist)
-apply-slist:
-.if defined(SUB_FILES)
-.for file in ${SUB_FILES}
-.if !exists(${FILESDIR}/${file}.in)
-	@${ECHO_MSG} "** Missing ${FILESDIR}/${file}.in for ${PKGNAME}."; exit 1
-.else
-	@${SED} ${_SUB_LIST_TEMP} -e '/^@comment /d' ${FILESDIR}/${file}.in > ${WRKDIR}/${file}
-.endif
-.endfor
-.for i in pkg-message pkg-req \
-	pkg-install pkg-upgrade pkg-deinstall \
-	pkg-pre-install pkg-post-install \
-	pkg-pre-upgrade pkg-post-upgrade \
-	pkg-pre-deinstall pkg-post-deinstall
-.if ${SUB_FILES:M${i}*}!=""
-${i:S/-//:U}=	${WRKDIR}/${SUB_FILES:M${i}*}
-.endif
-.endfor
-.endif
-.endif
 
 .if !target(fake-pkg)
 fake-pkg:
@@ -61,7 +39,7 @@ fake-pkg:
 	@${ECHO_CMD} "name: ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" > ${MANIFESTF} 
 	@${ECHO_CMD} "version: ${PKGVERSION}" >> ${MANIFESTF} 
 	@${ECHO_CMD} "origin: ${PKGORIGIN}" >> ${MANIFESTF} 
-	@${ECHO_CMD} "comment: "${COMMENT:Q} >> ${MANIFESTF}
+	@${ECHO_CMD} "comment: \"${COMMENT}\"" >> ${MANIFESTF}
 	@${ECHO_CMD} "maintainer: ${MAINTAINER}" >> ${MANIFESTF}
 	@${ECHO_CMD} "prefix: ${PREFIX}" >> ${MANIFESTF}
 .if defined(WWW)
