@@ -66,4 +66,4 @@ Directory leftovers are automatically removed if they are not in the MTREE.
 Using from ports
 ----------------
 To use pkgng from ports currently we need to include bsd.pkgng.mk in bsd.port.mk
-the line before .if !defined(PKG_ARGS)
+the line before  .if defined(USE_LOCAL_MK)
