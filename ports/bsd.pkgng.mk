@@ -39,7 +39,8 @@ fake-pkg:
 	@${ECHO_CMD} "name: ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" > ${MANIFESTF} 
 	@${ECHO_CMD} "version: ${PKGVERSION}" >> ${MANIFESTF} 
 	@${ECHO_CMD} "origin: ${PKGORIGIN}" >> ${MANIFESTF} 
-	@${ECHO_CMD} "comment: \""${COMMENT:Q}"\"" >> ${MANIFESTF}
+	@${ECHO_CMD} "comment: |" >> ${MANIFESTF}
+	@${ECHO_CMD} "  "${COMMENT:Q} >> ${MANIFESTF}
 	@${ECHO_CMD} "maintainer: ${MAINTAINER}" >> ${MANIFESTF}
 	@${ECHO_CMD} "prefix: ${PREFIX}" >> ${MANIFESTF}
 .if defined(WWW)
