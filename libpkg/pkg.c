@@ -7,6 +7,7 @@
 #include <sysexits.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 #include "pkg_private.h"
 #include "pkg_util.h"
@@ -15,8 +16,7 @@ int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL) {
-		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
-		    strerror(errno));
+		EMIT_ERRNO("malloc", "");
 		return EPKG_FATAL;
 	}
 
@@ -597,7 +597,7 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 			strcmp(filename, "+UPGRADE") == 0) {
 		type = PKG_SCRIPT_UPGRADE;
 	} else {
-		pkg_emit_event(PKG_EVENT_UNKNOWN_SCRIPT, /*argc*/1, filename);
+		EMIT_PKG_ERROR("unknown script '%s'", filename);
 		return EPKG_FATAL;
 	}
 
@@ -793,8 +793,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	archive_read_support_format_tar(*a);
 
 	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK) {
-		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
-		    archive_entry_pathname(*ae), *a);
+		EMIT_PKG_ERROR("archive_read_open_filename(%s): %s", path,
+					   archive_error_string(*a));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -841,8 +841,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	}
 
 	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF) {
-		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
-		    archive_entry_pathname(*ae), *a);
+		EMIT_PKG_ERROR("archive_read_next_header(): %s",
+					   archive_error_string(*a));
 		retcode = EPKG_FATAL;
 	}
 

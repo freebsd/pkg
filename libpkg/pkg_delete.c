@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 #include "pkg_private.h"
 #include "pkg_util.h"
@@ -50,8 +51,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if (rdep_msg != NULL) {
 		if (!force) {
 			sbuf_finish(rdep_msg);
-			pkg_emit_event(PKG_EVENT_DELETE_DEP_EXISTS, /*argc*/1,
-			    sbuf_get(rdep_msg));
+			/*pkg_emit_event(PKG_EVENT_DELETE_DEP_EXISTS, 1,
+			    sbuf_get(rdep_msg));*/
 			ret = EPKG_REQUIRED;
 			sbuf_free(rdep_msg);
 			return ret;

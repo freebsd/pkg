@@ -13,6 +13,7 @@
 #include <sqlite3.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 #include "pkg_private.h"
 #include "pkgdb.h"
@@ -227,7 +228,7 @@ pkgdb_init(sqlite3 *sdb)
 	;
 
 	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
-		pkg_emit_event(PKG_EVENT_SQLITE_ERROR, /*argc*/1, errmsg);
+		EMIT_PKG_ERROR("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
 		return (EPKG_FATAL);
 	}
@@ -248,8 +249,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	dbdir = pkg_config("PKG_DBDIR");
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL) {
-		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
-		    strerror(errno));
+		EMIT_ERRNO("malloc", "");
 		return EPKG_FATAL;
 	}
 
@@ -259,13 +259,11 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	retcode = access(localpath, R_OK);
 	if (retcode == -1) {
 		if (errno != ENOENT) {
-			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "access",
-			    localpath, strerror(errno));
+			EMIT_ERRNO("access", localpath);
 			return EPKG_FATAL;
 		}
 		else if (eaccess(dbdir, W_OK) != 0) {
-			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "eaccess",
-			    dbdir, strerror(errno));
+			EMIT_ERRNO("eaccess", dbdir);
 			return EPKG_FATAL;
 		}
 	}
@@ -277,15 +275,14 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 		snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
 
 		if (access(remotepath, R_OK) != 0) {
-			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "access",
-			    remotepath, strerror(errno));
+			EMIT_ERRNO("access", remotepath);
 			return EPKG_FATAL;
 		}
 
 		sqlite3_snprintf(sizeof(sql), sql, "ATTACH \"%s\" as remote;", remotepath);
 
 		if (sqlite3_exec((*db)->sqlite, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
-			pkg_emit_event(PKG_EVENT_SQLITE_ERROR, /*argc*/1, errmsg);
+			EMIT_PKG_ERROR("sqlite: %s", errmsg);
 			sqlite3_free(errmsg);
 			return (EPKG_FATAL);
 		}
@@ -311,7 +308,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	 */
 	if (sqlite3_exec((*db)->sqlite, "PRAGMA foreign_keys = ON;", NULL, NULL,
 		&errmsg) != SQLITE_OK) {
-		pkg_emit_event(PKG_EVENT_SQLITE_ERROR, /*argc*/1, errmsg);
+		EMIT_PKG_ERROR("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
 		return (EPKG_FATAL);
 	}
@@ -341,8 +338,7 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 	struct pkgdb_it *it;
 
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
-		    strerror(errno));
+		EMIT_ERRNO("malloc", "");
 		sqlite3_finalize(s);
 		return (NULL);
 	}
@@ -970,15 +966,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		"VALUES (?1, ?2);";
 
 	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
-		pkg_emit_event(PKG_EVENT_INVALID_DB_STATE, /*argc*/1,
-		    "tried to register a package with an in-flight SQL command");
+		EMIT_PKG_ERROR("%s", "tried to register a package with an in-flight SQL command");
 		return (EPKG_FATAL);
 	}
 
 	s = db->sqlite;
 
 	if (sqlite3_exec(s, sql_begin, NULL, NULL, &errmsg) != SQLITE_OK) {
-		pkg_emit_event(PKG_EVENT_SQLITE_ERROR, /*argc*/1, errmsg);
+		EMIT_PKG_ERROR("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
 		return (EPKG_FATAL);
 	}
@@ -1007,12 +1002,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_int(stmt_pkg, 14, pkg_isautomatic(pkg));
 
 	if ((ret = sqlite3_step(stmt_pkg)) != SQLITE_DONE) {
-		if ( ret == SQLITE_CONSTRAINT) {
-			pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT, /*argc*/2,
-			    "pkg", pkg_get(pkg, PKG_ORIGIN));
-			retcode = EPKG_FATAL;
-		} else
-			retcode = ERROR_SQLITE(s);
+		retcode = ERROR_SQLITE(s);
 		goto cleanup;
 	}
 
@@ -1051,12 +1041,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_int64(stmt_dep, 4, package_id);
 
 		if ((ret = sqlite3_step(stmt_dep)) != SQLITE_DONE) {
-			if ( ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
-				    /*argc*/2, "deps", pkg_dep_origin(dep));
-				retcode = EPKG_FATAL;
-			} else
-				retcode = ERROR_SQLITE(s);
+			retcode = ERROR_SQLITE(s);
 			goto cleanup;
 		}
 
@@ -1077,13 +1062,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_int64(stmt_conflict, 2, package_id);
 
 		if ((ret = sqlite3_step(stmt_conflict)) != SQLITE_DONE) {
-			if ( ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
-				    /*argc*/2, "conflicts",
-				    pkg_conflict_glob(conflict));
-				retcode = EPKG_FATAL;
-			} else
-				retcode = ERROR_SQLITE(s);
+			retcode = ERROR_SQLITE(s);
 			goto cleanup;
 		}
 
@@ -1107,8 +1086,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
-				    /*argc*/2, "path", pkg_file_path(file));
+				    EMIT_PKG_ERROR("sqlite constraint violation on files.path:"
+								   " %s", pkg_file_path(file));
 				retcode = EPKG_FATAL;
 			} else
 				retcode = ERROR_SQLITE(s);
@@ -1132,8 +1111,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			
 		if ((ret = sqlite3_step(stmt_dirs)) != SQLITE_DONE) {
 			if ( ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
-				    /*argc*/2, "dirs", pkg_dir_path(dir));
+				EMIT_PKG_ERROR("sqlite: constraint violation on dirs.path: %s",
+			 					pkg_dir_path(dir));
 				retcode = EPKG_FATAL;
 			} else
 				retcode = ERROR_SQLITE(s);
@@ -1157,13 +1136,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_int64(stmt_script, 3, package_id);
 
 		if (sqlite3_step(stmt_script) != SQLITE_DONE) {
-			if ( ret == SQLITE_CONSTRAINT) {
-				pkg_emit_event(PKG_EVENT_SQLITE_CONSTRAINT,
-				    /*argc*/2, "scripts",
-				    pkg_script_data(script));
-				retcode = EPKG_FATAL;
-			} else
-				retcode = ERROR_SQLITE(s);
+			retcode = ERROR_SQLITE(s);
 			goto cleanup;
 		}
 
@@ -1230,14 +1203,13 @@ pkgdb_register_finale(struct pkgdb *db, int retcode)
 	char *errmsg;
 
 	if (!pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
-		pkg_emit_event(PKG_EVENT_INVALID_DB_STATE, /*argc*/1,
-		    "database command not in flight");
+		EMIT_PKG_ERROR("%s", "database command not in flight (misuse)");
 		return EPKG_FATAL;
 	}
 
 	command = (retcode == EPKG_OK) ? commands[0] : commands[1];
 	if (sqlite3_exec(db->sqlite, command, NULL, NULL, &errmsg) != SQLITE_OK) {
-		pkg_emit_event(PKG_EVENT_SQLITE_ERROR, /*argc*/1, errmsg);
+		EMIT_PKG_ERROR("sqlite: %s", errmsg);
 		ret = EPKG_FATAL;
 		sqlite3_free(errmsg);
 	}
@@ -1327,7 +1299,7 @@ pkgdb_compact(struct pkgdb *db)
 		return (EPKG_OK);
 
 	if (sqlite3_exec(db->sqlite, "VACUUM;", NULL, NULL, &errmsg) != SQLITE_OK){
-		pkg_emit_event(PKG_EVENT_SQLITE_ERROR, /*argc*/1, errmsg);
+		EMIT_PKG_ERROR("sqlite: %s", errmsg);
 		retcode = EPKG_FATAL;
 		sqlite3_free(errmsg);
 	}
@@ -1341,8 +1313,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 	sqlite3_stmt *stmt;
 
 	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_event(PKG_EVENT_INVALID_DB_STATE, /*argc*/1,
-		    "remote database not attached");
+		EMIT_PKG_ERROR("%s", "remote database not attached (misuse)");
 		return (NULL);
 	}
 
@@ -1369,8 +1340,7 @@ pkgdb_query_downgrades(struct pkgdb *db)
 	sqlite3_stmt *stmt;
 
 	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_event(PKG_EVENT_INVALID_DB_STATE, /*argc*/1,
-		    "remote database not attached");
+		EMIT_PKG_ERROR("%s", "remote database not attached (misuse)");
 		return (NULL);
 	}
 
@@ -1418,8 +1388,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 	struct sbuf *sql = sbuf_new_auto();
 
 	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_event(PKG_EVENT_INVALID_DB_STATE, /*argc*/1,
-		    "remote database not attached");
+		EMIT_PKG_ERROR("%s", "remote database not attached (misuse)");
 		return (NULL);
 	}
 

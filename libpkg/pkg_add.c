@@ -8,6 +8,7 @@
 #include <errno.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 #include "pkg_private.h"
 
@@ -41,8 +42,8 @@ do_extract(struct archive *a, struct archive_entry *ae)
 
 	do {
 		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
-			pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
-			    archive_entry_pathname(ae), a);
+			EMIT_PKG_ERROR("archive_read_extract(): %s",
+						   archive_error_string(a));
 			retcode = EPKG_FATAL;
 			break;
 		}
@@ -59,8 +60,8 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		    && lstat(path, &st) == ENOENT) {
 			archive_entry_set_pathname(ae, path);
 			if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
-				pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
-				    archive_entry_pathname(ae), a);
+				EMIT_PKG_ERROR("archive_read_extract(): %s",
+							   archive_error_string(a));
 				retcode = EPKG_FATAL;
 				break;
 			}
@@ -68,8 +69,8 @@ do_extract(struct archive *a, struct archive_entry *ae)
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
 
 	if (ret != ARCHIVE_EOF) {
-		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
-		    archive_entry_pathname(ae), a);
+		EMIT_PKG_ERROR("archive_read_next_header(): %s",
+					   archive_error_string(a));
 		retcode = EPKG_FATAL;
 	}
 
@@ -121,7 +122,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	pkgdb_it_free(it);
 
 	if (ret == EPKG_OK) {
-		pkg_emit_event(PKG_EVENT_ALREADY_INSTALLED, /*argc*/1, p);
+		EMIT_ALREADY_INSTALLED(pkg);
 		retcode = EPKG_INSTALLED;
 		goto cleanup;
 	} else if (ret != EPKG_END) {
@@ -147,18 +148,12 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 
 			if (access(dpath, F_OK) == 0) {
 				if (pkg_add(db, dpath, NULL) != EPKG_OK) {
-					/* XXX: maybe the pkg_error_string()
-					 * should be handled in the event
-					 * handler */
-					pkg_emit_event(PKG_EVENT_ERROR_INSTALLING_DEP,
-					    /*argc*/2, dpath, pkg_error_string());
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
 			} else {
 				retcode = EPKG_FATAL;
-				pkg_emit_event(PKG_EVENT_MISSING_DEP, /*argc*/2,
-				    pkg_dep_name(dep), pkg_dep_version(dep));
+				EMIT_MISSING_DEP(pkg, dep);
 				goto cleanup;
 			}
 		}
@@ -170,7 +165,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	if (retcode != EPKG_OK || pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)
 		goto cleanup_reg;
 
-	pkg_emit_event(PKG_EVENT_INSTALL_BEGIN, /*argc*/1, pkg);
+	EMIT_INSTALL_BEGIN(pkg);
 
 	/*
 	 * Execute pre-install scripts

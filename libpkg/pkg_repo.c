@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 #include "pkg_private.h"
 
@@ -47,7 +48,7 @@ pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb)
 	retcode = sha256_file(dest, cksum);
 	if (retcode == EPKG_OK)
 		if (strcmp(cksum, pkg_get(pkg, PKG_CKSUM))) {
-			pkg_emit_event(PKG_EVENT_CKSUM_ERROR, /*argc*/1, pkg);
+			EMIT_FAILED_CKSUM(pkg);
 			retcode = EPKG_FATAL;
 		}
 

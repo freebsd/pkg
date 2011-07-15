@@ -14,8 +14,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <pkg.h>
-#include <pkg_private.h>
+#include "pkg.h"
+#include "pkg_event.h"
+#include "pkg_private.h"
 
 static const char *packing_set_format(struct archive *a, pkg_formats format);
 
@@ -32,8 +33,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	const char *ext;
 
 	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
-		pkg_emit_event(PKG_EVENT_MALLOC_ERROR, /*argc*/1,
-		    strerror(errno));
+		EMIT_ERRNO("malloc", "");
 	}
 
 	(*pack)->aread = archive_read_disk_new();
@@ -94,8 +94,7 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 
 	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, NULL);
 	if (retcode != ARCHIVE_OK) {
-		pkg_emit_event(PKG_EVENT_ARCHIVE_ERROR, /*argc*/2,
-		    filepath, pack->aread);
+		EMIT_PKG_ERROR("%s: %s", filepath, archive_error_string(pack->aread));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -121,8 +120,7 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 
 	if (archive_entry_size(pack->entry) > 0) {
 		if ((fd = open(filepath, O_RDONLY)) < 0) {
-			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3,
-			    "open", filepath, strerror(errno));
+			EMIT_ERRNO("open", filepath);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -208,22 +206,19 @@ packing_set_format(struct archive *a, pkg_formats format)
 			if (archive_write_set_compression_xz(a) == ARCHIVE_OK) {
 				return ("txz");
 			} else {
-				pkg_emit_event(PKG_EVENT_ARCHIVE_COMP_UNSUP,
-				    /*argc*/2, "xz", "bzip2");
+				EMIT_PKG_ERROR("%s", "xz is not supported, trying bzip2");
 			}
 		case TBZ:
 			if (archive_write_set_compression_bzip2(a) == ARCHIVE_OK) {
 				return ("tbz");
 			} else {
-				pkg_emit_event(PKG_EVENT_ARCHIVE_COMP_UNSUP,
-				    /*argc*/2, "bzip2", "gzip");
+				EMIT_PKG_ERROR("%s", "bzip2 is not supported, trying gzip");
 			}
 		case TGZ:
 			if (archive_write_set_compression_gzip(a) == ARCHIVE_OK) {
 				return ("tgz");
 			} else {
-				pkg_emit_event(PKG_EVENT_ARCHIVE_COMP_UNSUP,
-				    /*argc*/2, "gzip", "plain tar");
+				EMIT_PKG_ERROR("%s", "gzip is not supported, trying plain tar");
 			}
 		case TAR:
 			archive_write_set_compression_none(a);

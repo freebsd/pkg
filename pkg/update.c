@@ -51,9 +51,8 @@ exec_update(int argc, char **argv)
 {
 	char url[MAXPATHLEN];
 	const char *packagesite = NULL;
+	char *tmp;
 	int retcode = 0;
-	int size = 0;
-	char *repo;
 	struct archive *a;
 	struct archive_entry *ae;
 
@@ -78,7 +77,10 @@ exec_update(int argc, char **argv)
 	else
 		snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
-	if (pkg_fetch_buffer(url, &repo, &size, &fetch_status) != EPKG_OK) {
+	
+	tmp = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
+
+	if (pkg_fetch_file(url, tmp, NULL, &fetch_status) != EPKG_OK) {
 		pkg_error_warn("can not fetch %s", url);
 		retcode = 1;
 	}
@@ -87,7 +89,7 @@ exec_update(int argc, char **argv)
 	archive_read_support_compression_all(a);
 	archive_read_support_format_tar(a);
 
-	archive_read_open_memory(a, repo, size);
+	archive_read_open_filename(a, tmp, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
@@ -98,6 +100,8 @@ exec_update(int argc, char **argv)
 	}
 
 	archive_read_finish(a);
+	unlink(tmp);
+	free(tmp);
 
 	return (retcode);
 }

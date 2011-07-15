@@ -585,12 +585,6 @@ int pkg_version_cmp(const char * const , const char * const);
  */
 int pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb);
 
-/**
- * Fetch to a given buffer
- * @return An error code
- */
-int pkg_fetch_buffer(const char *url, char **buf, void *data, fetch_cb cb);
-
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, char *);
 
@@ -631,54 +625,51 @@ int pkg_script_run(struct pkg *, pkg_script_t type);
 typedef enum {
 	/* informational */
 	PKG_EVENT_INSTALL_BEGIN = 0,
-
+	PKG_EVENT_ERROR,
+	PKG_EVENT_ERRNO,
 	/* errors */
 	PKG_EVENT_ARCHIVE_COMP_UNSUP = 65536,
-	PKG_EVENT_ARCHIVE_ERROR,
 	PKG_EVENT_ALREADY_INSTALLED,
-	PKG_EVENT_CKSUM_ERROR,
-	PKG_EVENT_CONFIG_KEY_NOTFOUND,
+	PKG_EVENT_FAILED_CKSUM,
 	PKG_EVENT_CREATE_DB_ERROR,
 	PKG_EVENT_DELETE_DEP_EXISTS,
-	PKG_EVENT_ERROR_INSTALLING_DEP,
-	PKG_EVENT_FETCH_ERROR,
-	PKG_EVENT_INVALID_DB_STATE,
-	PKG_EVENT_IO_ERROR,
-	PKG_EVENT_MALLOC_ERROR,
 	PKG_EVENT_MISSING_DEP,
-	PKG_EVENT_OPEN_DB_ERROR,
-	PKG_EVENT_PARSE_ERROR,
-	PKG_EVENT_REPO_KEY_UNAVAIL,
-	PKG_EVENT_REPO_KEY_UNUSABLE,
-	PKG_EVENT_SQLITE_CONSTRAINT,
-	PKG_EVENT_SQLITE_ERROR,
-	PKG_EVENT_UNKNOWN_SCRIPT,
 } pkg_event_t;
 
-/**
- * Package handle for global state information
- */
+struct pkg_event {
+	pkg_event_t type;
+	uint16_t line;
+	const char *file;
+	union {
+		struct {
+			const char *func;
+			const char *arg;
+		} e_errno;
+		struct {
+			char *msg;
+		} e_pkg_error;
+		struct {
+			struct pkg *pkg;
+		} e_already_installed;
+		struct {
+			struct pkg *pkg;
+		} e_begin_install;
+		struct {
+			struct pkg *pkg;
+			struct pkg_dep *dep;
+		} e_missing_dep;
+		struct {
+			struct pkg *pkg;
+		} e_failed_cksum;
+	};
+};
 
 /**
  * Event callback mechanism.  Events will be reported using this callback,
  * providing an event identifier and up to two event-specific pointers.
  */
-typedef int(*pkg_event_cb)(pkg_event_t, const char *, int, void **);
+typedef int(*pkg_event_cb)(void *, struct pkg_event *);
 
-struct pkg_handle {
-	pkg_event_cb event_cb;
-	int debug;
-};
-
-struct pkg_handle *pkg_get_handle(void);
-pkg_event_cb pkg_handle_get_event_callback(struct pkg_handle *);
-void pkg_handle_set_event_callback(struct pkg_handle *, pkg_event_cb);
-void pkg_handle_set_debug(struct pkg_handle *, int);
-int pkg_handle_get_debug(struct pkg_handle *);
-
-void __pkg_emit_event(struct pkg_handle *, const char *, int, pkg_event_t, int, ...);
-
-#define	pkg_emit_event(ev, argc, argv...) \
-	__pkg_emit_event(pkg_get_handle(), __FILE__, __LINE__, ev, argc, argv)
+void pkg_event_register(pkg_event_cb cb, void *data);
 
 #endif

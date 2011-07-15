@@ -12,6 +12,7 @@
 #include <yaml.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 #include "pkg_util.h"
 #include "pkg_private.h"

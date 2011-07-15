@@ -111,15 +111,13 @@ main(int argc, char **argv)
 	struct commands *command = NULL;
 	unsigned int ambiguous = 0;
 	size_t len;
-	struct pkg_handle *hdl;
 	char ch;
 	int debug = 0;
 
 	if (argc < 2)
 		usage();
 
-	hdl = pkg_get_handle();
-	pkg_handle_set_event_callback(hdl, event_callback);
+	pkg_event_register(&event_callback, NULL);
 
 	while ((ch = getopt(argc, argv, "d")) != -1) {
 		switch(ch) {
@@ -130,7 +128,6 @@ main(int argc, char **argv)
 				break;
 		}
 	}
-	pkg_handle_set_debug(hdl, debug);
 	argc -= optind;
 	argv += optind;
 	/* reset getopt for the next call */

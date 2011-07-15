@@ -11,6 +11,7 @@
 #include <fetch.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 
 int
@@ -29,8 +30,7 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 	int retcode = EPKG_OK;
 
 	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC, 0644)) == -1) {
-		pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "open", dest,
-		    strerror(errno));
+		EMIT_ERRNO("open", dest);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -40,8 +40,7 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 		if (remote == NULL) {
 			--retry;
 			if (retry == 0) {
-				pkg_emit_event(PKG_EVENT_FETCH_ERROR,
-				    /*argc*/1, fetchLastErrString);
+				EMIT_PKG_ERROR("%s: %s", url, fetchLastErrString);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -55,8 +54,7 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 			break;
 
 		if (write(fd, buf, r) != r) {
-			pkg_emit_event(PKG_EVENT_IO_ERROR, /*argc*/3, "write",
-			    dest, strerror(errno));
+			EMIT_ERRNO("write", dest);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -71,8 +69,7 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 	}
 
 	if (ferror(remote)) {
-		pkg_emit_event(PKG_EVENT_FETCH_ERROR, /*argc*/1,
-		    fetchLastErrString);
+		EMIT_PKG_ERROR("%s: %s", url, fetchLastErrString);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -88,65 +85,6 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 	/* Remove local file if fetch failed */
 	if (retcode != EPKG_OK)
 		unlink(dest);
-
-	return (retcode);
-}
-
-int
-pkg_fetch_buffer(const char *url, char **buffer, void *data, fetch_cb cb)
-{
-	FILE *remote = NULL;
-	struct url_stat st;
-	off_t done = 0;
-	off_t r;
-	int retry = 3;
-	time_t begin_dl;
-	time_t now;
-	time_t last = 0;
-	int retcode = EPKG_OK;
-
-	while (remote == NULL) {
-		remote = fetchXGetURL(url, &st, "");
-		if (remote == NULL) {
-			--retry;
-			if (retry == 0) {
-				pkg_emit_event(PKG_EVENT_FETCH_ERROR,
-				    /*argc*/1, fetchLastErrString);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			sleep(1);
-		}
-	}
-
-	*buffer = malloc(st.size + 1);
-
-	begin_dl = time(NULL);
-	while (done < st.size) {
-		if ((r = fread(*buffer + done, 1, 10240, remote)) < 1)
-			break;
-
-		done += r;
-
-		now = time(NULL);
-		/* Only call the callback every second */
-
-		if (cb != NULL && (now > last || done == st.size)) {
-			cb(data, url, st.size, done, (now - begin_dl));
-			last = now;
-		}
-	}
-
-	if (ferror(remote)) {
-		pkg_emit_event(PKG_EVENT_FETCH_ERROR, /*argc*/1,
-		    fetchLastErrString);
-		goto cleanup;
-	}
-
-	cleanup:
-
-	if (remote != NULL)
-		fclose(remote);
 
 	return (retcode);
 }

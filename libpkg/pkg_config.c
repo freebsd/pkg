@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 
 struct _config {
@@ -68,6 +69,5 @@ pkg_config(const char *key)
 		}
 	}
 
-	pkg_emit_event(PKG_EVENT_CONFIG_KEY_NOTFOUND, /*argc*/1, key);
 	return (NULL);
 }
