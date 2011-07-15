@@ -143,13 +143,6 @@ typedef enum {
 	EPKG_DEPENDENCY,
 } pkg_error_t;
 
-/**
- * A function used as a callback by functions which fetch files from the
- * network.
- */
-typedef void (*fetch_cb)(void *data, const char *url, off_t total, off_t done,
-						 time_t elapsed);
-
 typedef void (*status_cb)(void *data, struct pkg *pkg);
 
 /**
@@ -539,8 +532,7 @@ int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
  * Apply the jobs in the queue (fetch and install).
  * @return An error code.
  */
-int pkg_jobs_apply(struct pkg_jobs *jobs, void *data, fetch_cb fcb,
-				   status_cb scb);
+int pkg_jobs_apply(struct pkg_jobs *jobs, status_cb scb);
 
 /**
  * Archive formats options.
@@ -567,7 +559,7 @@ int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
  */
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 
-int pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb);
+int pkg_repo_fetch(struct pkg *pkg);
 
 /**
  * Get the value of a configuration key
@@ -583,7 +575,7 @@ int pkg_version_cmp(const char * const , const char * const);
  * Fetch a file.
  * @return An error code.
  */
-int pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb);
+int pkg_fetch_file(const char *url, const char *dest);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, char *);
@@ -625,9 +617,10 @@ int pkg_script_run(struct pkg *, pkg_script_t type);
 typedef enum {
 	/* informational */
 	PKG_EVENT_INSTALL_BEGIN = 0,
+	PKG_EVENT_FETCHING,
+	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
-	/* errors */
 	PKG_EVENT_ARCHIVE_COMP_UNSUP = 65536,
 	PKG_EVENT_ALREADY_INSTALLED,
 	PKG_EVENT_FAILED_CKSUM,
@@ -648,6 +641,12 @@ struct pkg_event {
 		struct {
 			char *msg;
 		} e_pkg_error;
+		struct {
+			const char *url;
+			off_t total;
+			off_t done;
+			time_t elapsed;
+		} e_fetching;
 		struct {
 			struct pkg *pkg;
 		} e_already_installed;

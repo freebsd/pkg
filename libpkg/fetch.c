@@ -15,7 +15,7 @@
 #include "pkg_error.h"
 
 int
-pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
+pkg_fetch_file(const char *url, const char *dest)
 {
 	int fd = -1;
 	FILE *remote = NULL;
@@ -62,8 +62,8 @@ pkg_fetch_file(const char *url, const char *dest, void *data, fetch_cb cb)
 		done += r;
 		now = time(NULL);
 		/* Only call the callback every second */
-		if (cb != NULL && (now > last || done == st.size)) {
-			cb(data, url, st.size, done, (now - begin_dl));
+		if (now > last || done == st.size) {
+			EMIT_FETCHING(url, st.size, done, (now - begin_dl));
 			last = now;
 		}
 	}

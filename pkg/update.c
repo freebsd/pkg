@@ -21,24 +21,6 @@
 		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
-static void
-fetch_status(void *data, const char *url, off_t total, off_t done, time_t elapsed)
-{
-	unsigned int percent;
-
-	elapsed = 0;
-
-	int *size = (int *)data;
-	*size = total;
-	percent = ((float)done / (float)total) * 100;
-	printf("\rFetching %s... %d%%", url, percent);
-
-	if (done == total)
-		printf("\n");
-
-	fflush(stdout);
-}
-
 void
 usage_update(void)
 {
@@ -77,10 +59,9 @@ exec_update(int argc, char **argv)
 	else
 		snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
-	
 	tmp = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
 
-	if (pkg_fetch_file(url, tmp, NULL, &fetch_status) != EPKG_OK) {
+	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
 		pkg_error_warn("can not fetch %s", url);
 		retcode = 1;
 	}

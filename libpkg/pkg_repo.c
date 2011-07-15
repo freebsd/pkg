@@ -9,7 +9,7 @@
 #include "pkg_private.h"
 
 int
-pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb)
+pkg_repo_fetch(struct pkg *pkg)
 {
 	char dest[MAXPATHLEN];
 	char cksum[65];
@@ -39,7 +39,7 @@ pkg_repo_fetch(struct pkg *pkg, void *data, fetch_cb cb)
 	asprintf(&url, "%s/%s", pkg_config("PACKAGESITE"),
 			 pkg_get(pkg, PKG_REPOPATH));
 
-	retcode = pkg_fetch_file(url, dest, data, cb);
+	retcode = pkg_fetch_file(url, dest);
 	free(url);
 	if (retcode != EPKG_OK)
 		goto cleanup;

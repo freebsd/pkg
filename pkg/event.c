@@ -6,6 +6,7 @@
 int
 event_callback(void *data __unused, struct pkg_event *ev)
 {
+	unsigned int percent;
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -13,6 +14,13 @@ event_callback(void *data __unused, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_ERROR:
 		warnx("%s", ev->e_pkg_error.msg);
+		break;
+	case PKG_EVENT_FETCHING:
+		percent = ((float)ev->e_fetching.done / (float)ev->e_fetching.total) * 100;
+		printf("\rFetching %s... %d%%", ev->e_fetching.url, percent);
+		if (ev->e_fetching.done == ev->e_fetching.total)
+			printf("\n");
+		fflush(stdout);
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
 		break;

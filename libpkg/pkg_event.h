@@ -34,6 +34,16 @@
 	_EV_EMIT; \
 	_EV_END
 
+#define EMIT_FETCHING(u, t, d, e) \
+	_EV_START; \
+	ev.type = PKG_EVENT_FETCHING; \
+	ev.e_fetching.url = u; \
+	ev.e_fetching.total = t; \
+	ev.e_fetching.done = d; \
+	ev.e_fetching.elapsed = e; \
+	_EV_EMIT; \
+	_EV_END
+
 #define EMIT_INSTALL_BEGIN(p) \
 	_EV_START; \
 	ev.type = PKG_EVENT_INSTALL_BEGIN; \

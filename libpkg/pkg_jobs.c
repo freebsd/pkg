@@ -73,7 +73,7 @@ pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
 }
 
 int
-pkg_jobs_apply(struct pkg_jobs *j, void *data, fetch_cb fcb, status_cb scb)
+pkg_jobs_apply(struct pkg_jobs *j, status_cb scb)
 {
 	struct pkg *p = NULL;
 	struct pkg *pfile = NULL;
@@ -82,7 +82,7 @@ pkg_jobs_apply(struct pkg_jobs *j, void *data, fetch_cb fcb, status_cb scb)
 
 	/* Fetch */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
-		if (pkg_repo_fetch(p, data, fcb) != EPKG_OK)
+		if (pkg_repo_fetch(p) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
@@ -94,13 +94,13 @@ pkg_jobs_apply(struct pkg_jobs *j, void *data, fetch_cb fcb, status_cb scb)
 				 pkg_get(p, PKG_REPOPATH));
 
 		if (scb != NULL)
-			scb(data, p);
+			scb(NULL, p);
 		if (pkg_add(j->db, path, &pfile) != EPKG_OK) {
 			pkg_free(pfile);
 			return (EPKG_FATAL);
 		}
 		if (scb != NULL)
-			scb(data, pfile);
+			scb(NULL, pfile);
 	}
 
 	pkg_free(pfile);

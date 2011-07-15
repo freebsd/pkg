@@ -12,21 +12,6 @@
 
 #include "add.h"
 
-static void
-fetch_status(__unused void *data, const char *url, off_t total, off_t done,
-			 __unused time_t elapsed)
-{
-	unsigned int percent;
-
-	percent = ((float)done / (float)total) * 100;
-	printf("\rFetching %s... %d%%", url, percent);
-
-	if (done == total)
-		printf("\n");
-
-	fflush(stdout);
-}
-
 static int
 is_url(const char *pattern)
 {
@@ -91,7 +76,7 @@ add_from_repo(const char *name)
 		printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 	}
 
-	if (pkg_jobs_apply(jobs, NULL, fetch_status, install_status) != EPKG_OK)
+	if (pkg_jobs_apply(jobs, install_status) != EPKG_OK)
 		pkg_error_warn("can not install");
 
 	cleanup:
@@ -157,7 +142,7 @@ exec_add(int argc, char **argv)
 
 	if (is_url(argv[1]) == EPKG_OK) {
 		asprintf(&name, "./%s", basename(argv[1]));
-		if (pkg_fetch_file(argv[1], name, NULL, &fetch_status) != EPKG_OK) {
+		if (pkg_fetch_file(argv[1], name) != EPKG_OK) {
 			pkg_error_warn("can not fetch %s", argv[1]);
 			return (1);
 		}
