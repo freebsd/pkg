@@ -13,7 +13,6 @@ do
 	echo -n "Registering ${PKG}... "
 
 	DB="/var/db/pkg/${PKG}"
-	COMMENT=$( cat ${DB}/+COMMENT )
 	DESC="${DB}/+DESC"
 
 	ORIGIN=$(pkg_info -qo ${PKG})
@@ -30,7 +29,8 @@ do
 	echo "name: ${PKG%-*}" >> ${MANIFEST}
 	echo "version: ${PKG##*-}" >> ${MANIFEST}
 	echo "origin: ${ORIGIN}" >> ${MANIFEST}
-	echo "comment: \"${COMMENT}\"" >> ${MANIFEST}
+	echo -n "comment: |\n  " >> ${MANIFEST}
+	cat ${DB}/+COMMENT >> ${MANIFEST}
 	echo "maintainer: ${MAINTAINER}" >> ${MANIFEST}
 	echo "prefix: ${PREFX##* }" >> ${MANIFEST}
 	echo "deps:" >> ${MANIFEST}
