@@ -45,7 +45,6 @@ do
 
 	OPTIONS=""
 
-	cat ${MANIFEST}
 	# register a package only if it's not registered already
 	if pkg info -e ${ORIGIN}; then
 		echo "package is already registered."
