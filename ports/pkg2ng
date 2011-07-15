@@ -29,7 +29,8 @@ do
 	echo "name: ${PKG%-*}" >> ${MANIFEST}
 	echo "version: ${PKG##*-}" >> ${MANIFEST}
 	echo "origin: ${ORIGIN}" >> ${MANIFEST}
-	echo -n "comment: |\n  " >> ${MANIFEST}
+	echo "comment: |" >> ${MANIFEST}
+	echo -n "  " >> ${MANIFEST}
 	cat ${DB}/+COMMENT >> ${MANIFEST}
 	echo "maintainer: ${MAINTAINER}" >> ${MANIFEST}
 	echo "prefix: ${PREFX##* }" >> ${MANIFEST}
@@ -44,6 +45,7 @@ do
 
 	OPTIONS=""
 
+	cat ${MANIFEST}
 	# register a package only if it's not registered already
 	if pkg info -e ${ORIGIN}; then
 		echo "package is already registered."
