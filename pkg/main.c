@@ -6,20 +6,22 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "pkg.h"
+#include <pkg.h>
+
+#include "add.h"
+#include "autoremove.h"
 #include "create.h"
 #include "delete.h"
 #include "event.h"
 #include "info.h"
-#include "which.h"
-#include "add.h"
-#include "autoremove.h"
-#include "version.h"
+#include "install.h"
+#include "register.h"
+#include "repo.h"
 #include "search.h"
 #include "update.h"
 #include "upgrade.h"
-#include "register.h"
-#include "repo.h"
+#include "version.h"
+#include "which.h"
 
 static void usage(void);
 static void usage_help(void);
@@ -36,6 +38,7 @@ static struct commands {
 	{ "delete", exec_delete, usage_delete},
 	{ "help", exec_help, usage_help},
 	{ "info", exec_info, usage_info},
+	{ "install", exec_install, usage_install},
 	{ "search", exec_search, usage_search},
 	{ "register", exec_register, usage_register},
 	{ "repo", exec_repo, usage_repo},

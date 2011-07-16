@@ -498,10 +498,9 @@ int pkgdb_compact(struct pkgdb *db);
  * Install and register a new package.
  * @param db An opened pkgdb
  * @param path The path to the package archive file on the local disk
- * @param pkg A pointer to pkg pointer (allocates a new pkg).
  * @return An error code.
  */
-int pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg);
+int pkg_add(struct pkgdb *db, const char *path);
 
 /**
  * Allocate a new pkg_jobs.
@@ -532,7 +531,7 @@ int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
  * Apply the jobs in the queue (fetch and install).
  * @return An error code.
  */
-int pkg_jobs_apply(struct pkg_jobs *jobs, status_cb scb);
+int pkg_jobs_apply(struct pkg_jobs *jobs);
 
 /**
  * Archive formats options.

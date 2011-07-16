@@ -78,7 +78,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 }
 
 int
-pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
+pkg_add(struct pkgdb *db, const char *path)
 {
 	struct archive *a;
 	struct archive_entry *ae;
@@ -147,7 +147,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 					 ext);
 
 			if (access(dpath, F_OK) == 0) {
-				if (pkg_add(db, dpath, NULL) != EPKG_OK) {
+				if (pkg_add(db, dpath) != EPKG_OK) {
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
@@ -197,10 +197,7 @@ pkg_add(struct pkgdb *db, const char *path, struct pkg **pkg_p)
 	if (p != NULL)
 		pkg_free(p);
 
-	if (pkg_p != NULL)
-		*pkg_p = (retcode == EPKG_OK) ? pkg : NULL;
-	else
-		pkg_free(pkg);
+	pkg_free(pkg);
 
 	return (retcode);
 }

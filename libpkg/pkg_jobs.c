@@ -73,10 +73,9 @@ pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
 }
 
 int
-pkg_jobs_apply(struct pkg_jobs *j, status_cb scb)
+pkg_jobs_apply(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
-	struct pkg *pfile = NULL;
 	const char *cachedir;
 	char path[MAXPATHLEN];
 
@@ -93,17 +92,11 @@ pkg_jobs_apply(struct pkg_jobs *j, status_cb scb)
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				 pkg_get(p, PKG_REPOPATH));
 
-		if (scb != NULL)
-			scb(NULL, p);
-		if (pkg_add(j->db, path, &pfile) != EPKG_OK) {
-			pkg_free(pfile);
+		if (pkg_add(j->db, path) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
-		if (scb != NULL)
-			scb(NULL, pfile);
 	}
 
-	pkg_free(pfile);
 	return (EPKG_OK);
 }
 

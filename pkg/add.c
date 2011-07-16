@@ -1,3 +1,4 @@
+#include <sys/param.h>
 #include <sys/types.h>
 
 #include <err.h>
@@ -23,99 +24,6 @@ is_url(const char *pattern)
 	return (EPKG_FATAL);
 }
 
-static void
-install_status(__unused void *data, struct pkg *pkg)
-{
-	const char *message;
-	pkg_t type = pkg_type(pkg);
-
-	if (type == PKG_REMOTE)
-		printf("Installing %s-%s...", pkg_get(pkg, PKG_NAME),
-			   pkg_get(pkg, PKG_VERSION));
-	if (type == PKG_FILE) {
-		printf(" Done!\n");
-		message = pkg_get(pkg, PKG_MESSAGE);
-		if (message != NULL)
-			printf("----\n%s----\n", message);
-	}
-	fflush(stdout);
-}
-
-static int
-add_from_repo(const char *name)
-{
-	struct pkg *pkg = NULL;
-	struct pkgdb *db = NULL;
-	struct pkg_jobs *jobs = NULL;
-	int retcode = EPKG_OK;
-
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		pkg_error_warn("can not open database");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (pkg_jobs_new(&jobs, db) != EPKG_OK) {
-		pkg_error_warn("pkg_jobs_new()");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((pkg = pkgdb_query_remote(db, name)) == NULL) {
-		retcode = pkg_error_number();
-		pkg_error_warn("can query the database");
-		goto cleanup;
-	}
-
-	pkg_jobs_add(jobs, pkg);
-
-	/* print a summary before applying the jobs */
-	pkg = NULL;
-	printf("The following packages will be installed:\n");
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-	}
-
-	if (pkg_jobs_apply(jobs, install_status) != EPKG_OK)
-		pkg_error_warn("can not install");
-
-	cleanup:
-	pkgdb_close(db);
-	pkg_jobs_free(jobs);
-
-	return (retcode);
-}
-
-static int
-add_from_file(const char *file)
-{
-	struct pkgdb *db = NULL;
-	struct pkg *pkg = NULL;
-	const char *message;
-	int retcode = EPKG_OK;
-
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkg_error_warn("can not open database");
-		retcode = EPKG_FATAL;
-	}
-
-	if (pkg_add(db, file, &pkg) != EPKG_OK) {
-		pkg_error_warn("can not install %s", file);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	message = pkg_get(pkg, PKG_MESSAGE);
-	if (message != NULL && message[0] != '\0')
-		printf("%s", message);
-
-	cleanup:
-	pkgdb_close(db);
-	pkg_free(pkg);
-
-	return (retcode);
-}
-
 void
 usage_add(void)
 {
@@ -127,10 +35,13 @@ usage_add(void)
 int
 exec_add(int argc, char **argv)
 {
-	char *name;
-	int retcode = 0;
+	struct pkgdb *db = NULL;
+	char path[MAXPATHLEN];
+	char *file;
+	int retcode = EPKG_OK;
+	int i;
 
-	if (argc != 2) {
+	if (argc < 2) {
 		usage_add();
 		return (-1);
 	}
@@ -140,25 +51,31 @@ exec_add(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	if (is_url(argv[1]) == EPKG_OK) {
-		asprintf(&name, "./%s", basename(argv[1]));
-		if (pkg_fetch_file(argv[1], name) != EPKG_OK) {
-			pkg_error_warn("can not fetch %s", argv[1]);
-			return (1);
-		}
-	} else
-		name = argv[1];
-
-	/* if it is a file  */
-	if (name[0] == '/' || name[0] == '.') {
-		if (access(name, F_OK) == 0) {
-			retcode = add_from_file(name);
-		} else {
-			warn("%s", name);
-		}
-	} else {
-		retcode = add_from_repo(name);
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+		pkg_error_warn("can not open database");
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
+
+	for (i = 1; i < argc; i++) {
+		if (is_url(argv[i]) == EPKG_OK) {
+			snprintf(path, sizeof(path), "./%s", basename(argv[i]));
+			if ((retcode = pkg_fetch_file(argv[i], path)) != EPKG_OK) {
+				pkg_error_warn("can not fetch %s", argv[i]);
+				continue;
+			}
+			file = path;
+		} else
+			file = argv[i];
+
+		if (pkg_add(db, file) != EPKG_OK) {
+			pkg_error_warn("can not install %s", file);
+			continue;
+		}
+	}
+
+	cleanup:
+	pkgdb_close(db);
 
 	return (retcode == EPKG_OK ? 0 : 1);
 }

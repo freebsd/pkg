@@ -5,6 +5,7 @@ SRCS=		add.c \
 		delete.c \
 		event.c \
 		info.c \
+		install.c \
 		main.c \
 		register.c \
 		repo.c \
