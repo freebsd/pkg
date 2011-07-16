@@ -616,6 +616,7 @@ int pkg_script_run(struct pkg *, pkg_script_t type);
 typedef enum {
 	/* informational */
 	PKG_EVENT_INSTALL_BEGIN = 0,
+	PKG_EVENT_INSTALL_FINISHED,
 	PKG_EVENT_FETCHING,
 	/* errors */
 	PKG_EVENT_ERROR,
@@ -651,7 +652,10 @@ struct pkg_event {
 		} e_already_installed;
 		struct {
 			struct pkg *pkg;
-		} e_begin_install;
+		} e_install_begin;
+		struct {
+			struct pkg *pkg;
+		} e_install_finished;
 		struct {
 			struct pkg *pkg;
 			struct pkg_dep *dep;

@@ -47,7 +47,14 @@
 #define EMIT_INSTALL_BEGIN(p) \
 	_EV_START; \
 	ev.type = PKG_EVENT_INSTALL_BEGIN; \
-	ev.e_begin_install.pkg = p; \
+	ev.e_install_begin.pkg = p; \
+	_EV_EMIT; \
+	_EV_END
+
+#define EMIT_INSTALL_FINISHED(p) \
+	_EV_START; \
+	ev.type = PKG_EVENT_INSTALL_FINISHED; \
+	ev.e_install_finished.pkg = p; \
 	_EV_EMIT; \
 	_EV_END
 

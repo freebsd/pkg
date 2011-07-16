@@ -187,6 +187,8 @@ pkg_add(struct pkgdb *db, const char *path)
 	 */
 	pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
+	EMIT_INSTALL_FINISHED(pkg);
+
 	cleanup_reg:
 	pkgdb_register_finale(db, retcode);
 
