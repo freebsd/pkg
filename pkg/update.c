@@ -33,7 +33,7 @@ exec_update(int argc, char **argv)
 {
 	char url[MAXPATHLEN];
 	const char *packagesite = NULL;
-	char *tmp;
+	char *tmp = NULL;
 	int retcode = 0;
 	struct archive *a;
 	struct archive_entry *ae;
@@ -64,6 +64,7 @@ exec_update(int argc, char **argv)
 	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
 		pkg_error_warn("can not fetch %s", url);
 		retcode = 1;
+		goto cleanup;
 	}
 
 	a = archive_read_new();
@@ -80,6 +81,7 @@ exec_update(int argc, char **argv)
 		}
 	}
 
+	cleanup:
 	archive_read_finish(a);
 	unlink(tmp);
 	free(tmp);
