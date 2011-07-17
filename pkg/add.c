@@ -53,8 +53,7 @@ exec_add(int argc, char **argv)
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
-		retcode = EPKG_FATAL;
-		goto cleanup;
+		return (EX_IOERR);
 	}
 
 	for (i = 1; i < argc; i++) {
@@ -74,7 +73,6 @@ exec_add(int argc, char **argv)
 		}
 	}
 
-	cleanup:
 	pkgdb_close(db);
 
 	return (retcode == EPKG_OK ? EX_OK : 1);

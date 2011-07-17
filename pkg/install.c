@@ -40,8 +40,7 @@ exec_install(int argc, char **argv)
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		pkg_error_warn("can not open database");
-		retcode = EPKG_FATAL;
-		goto cleanup;
+		return (EX_IOERR);
 	}
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
