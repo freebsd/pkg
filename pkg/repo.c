@@ -40,7 +40,7 @@ progress(struct pkg *pkg, void *data)
 static int
 password_cb(char *buf, int size, int rwflag, void *key)
 {
-	int len;
+	int len = 0;
 	char pass[BUFSIZ];
 	(void)rwflag;
 	(void)key;
@@ -57,13 +57,13 @@ password_cb(char *buf, int size, int rwflag, void *key)
 	memcpy(buf, pass, len);
 	memset(pass, 0, BUFSIZ);
 
-	return len;
+	return (len);
 }
 
 int
 exec_repo(int argc, char **argv)
 {
-	int ret;
+	int retcode = EPKG_OK;
 	int pos = 0;
 	char *rsa_key;
 
@@ -75,7 +75,7 @@ exec_repo(int argc, char **argv)
 	printf("Generating repo.sqlite in %s:  ", argv[1]);
 	ret = pkg_create_repo(argv[1], progress, &pos);
 
-	if (ret != EPKG_OK)
+	if (retcode != EPKG_OK)
 		pkg_error_warn("can not create repository");
 	else
 		printf("\bDone!\n");
@@ -83,5 +83,5 @@ exec_repo(int argc, char **argv)
 	rsa_key = (argc == 3) ? argv[2] : NULL;
 	pkg_finish_repo(argv[1], password_cb, rsa_key);
 
-	return (ret);
+	return (retcode);
 }

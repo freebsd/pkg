@@ -27,7 +27,7 @@ exec_upgrade(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
-	int retcode = 0;
+	int retcode = EPKG_OK;
 	int64_t oldsize = 0, newsize = 0;
 	int64_t dlsize = 0;
 	char size[7];
@@ -35,7 +35,7 @@ exec_upgrade(int argc, char **argv)
 	(void) argv;
 	if (argc != 1) {
 		usage_upgrade();
-		return (-1);
+		return (EX_USAGE);
 	}
 
 	if (geteuid() != 0) {
@@ -45,11 +45,12 @@ exec_upgrade(int argc, char **argv)
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		pkg_error_warn("can not open database");
-		return (1);
+		return (EX_IOERR);
 	}
 
 	if ((it = pkgdb_query_upgrades(db)) == NULL) {
 		pkg_error_warn("can not query database");
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -65,6 +66,7 @@ exec_upgrade(int argc, char **argv)
 
 	if ((it = pkgdb_query_downgrades(db)) == NULL) {
 		pkg_error_warn("can not query database");
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -77,7 +79,6 @@ exec_upgrade(int argc, char **argv)
 	}
 	printf("\n");
 	pkgdb_it_free(it);
-
 
 	if (oldsize > newsize) {
 		newsize *= -1;

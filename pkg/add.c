@@ -43,7 +43,7 @@ exec_add(int argc, char **argv)
 
 	if (argc < 2) {
 		usage_add();
-		return (-1);
+		return (EX_USAGE);
 	}
 
 	if (geteuid() != 0) {
@@ -77,6 +77,6 @@ exec_add(int argc, char **argv)
 	cleanup:
 	pkgdb_close(db);
 
-	return (retcode == EPKG_OK ? 0 : 1);
+	return (retcode == EPKG_OK ? EX_OK : 1);
 }
 

@@ -26,8 +26,7 @@ exec_which(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	char pathabs[MAXPATHLEN];
 	char pathabsdir[MAXPATHLEN];
-	int retcode = 1;
-	int ret;
+	int ret = EPKG_OK, retcode = EPKG_OK;
 
 	if (argc != 2) {
 		usage_which();
@@ -37,7 +36,7 @@ exec_which(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
 		pkgdb_close(db);
-		return (-1);
+		return (EX_IOERR);
 	}
 
 	realpath(dirname(argv[1]), pathabsdir);
@@ -45,19 +44,19 @@ exec_which(int argc, char **argv)
 
 	if ((it = pkgdb_query_which(db, pathabs)) == NULL) {
 		pkg_error_warn("can not query database");
-		return (-1);
+		return (EX_IOERR);
 	}
 
 	if (( ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		retcode = 0;
+		retcode = EPKG_OK;
 		printf("%s was installed by package %s-%s\n", pathabs, pkg_get(pkg, PKG_NAME),
 			   pkg_get(pkg, PKG_VERSION));
 	} else if (ret != EPKG_END) {
 		pkg_error_warn("can not iterate over results");
-		retcode = -1;
+		retcode = EPKG_WARN;
 	} else {
 		printf("%s was not found in the database\n", pathabs);
-		retcode = -1;
+		retcode = EPKG_WARN;
 	}
 		
 	pkg_free(pkg);

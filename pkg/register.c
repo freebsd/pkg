@@ -71,8 +71,7 @@ exec_register(int argc, char **argv)
 	bool legacy = false;
 
 	int i;
-	int retcode = 0;
-	int ret = 0;
+	int ret = EPKG_OK, retcode = EPKG_OK;
 
 	if (geteuid() != 0) {
 		warnx("registering packages can only be done as root");
@@ -106,13 +105,13 @@ exec_register(int argc, char **argv)
 			default:
 				printf("%c\n", ch);
 				usage_register();
-				return (-1);
+				return (EX_USAGE);
 		}
 	}
 
 	if (ret != 0) {
 		pkg_error_warn("can not parse arguments");
-		return (1);
+		return (EX_USAGE);
 	}
 
 	if (plist == NULL)
@@ -132,7 +131,7 @@ exec_register(int argc, char **argv)
 	snprintf(fpath, MAXPATHLEN, "%s/+MANIFEST", mdir);
 	if ((ret = pkg_load_manifest_file(pkg, fpath)) != EPKG_OK) {
 		pkg_error_warn("can not parse manifest %s", fpath);
-		return (EX_SOFTWARE);
+		return (EX_IOERR);
 	}
 
 	snprintf(fpath, MAXPATHLEN, "%s/+DESC", mdir);
@@ -182,9 +181,9 @@ exec_register(int argc, char **argv)
 
 	ret += ports_parse_plist(pkg, plist);
 
-	if (ret != 0) {
+	if (ret != EPKG_OK) {
 		pkg_error_warn("can not parse plist file");
-		return (-1);
+		return (EX_IOERR);
 	}
 
 	if (plist != NULL)
@@ -192,7 +191,7 @@ exec_register(int argc, char **argv)
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkg_error_warn("can not open database");
-		return (-1);
+		return (EX_IOERR);
 	}
 
 	if (heuristic)
@@ -205,13 +204,13 @@ exec_register(int argc, char **argv)
 
 	if (pkgdb_register_pkg(db, pkg) != EPKG_OK) {
 		pkg_error_warn("can not register package");
-		retcode = 1;
+		retcode = EPKG_FATAL;
 	}
 
 	pkgdb_register_finale(db, ret);
 	if (ret != EPKG_OK) {
 		pkg_error_warn("can not register package");
-		retcode = 1;
+		retcode = EPKG_FATAL;
 	}
 
 	if (pkg_get(pkg, PKG_MESSAGE) != NULL && !legacy)
