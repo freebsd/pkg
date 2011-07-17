@@ -1,4 +1,5 @@
 #include <pkg.h>
+#include <sysexits.h>
 
 #include "backup.h"
 
