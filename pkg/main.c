@@ -10,6 +10,7 @@
 
 #include "add.h"
 #include "autoremove.h"
+#include "backup.h"
 #include "create.h"
 #include "delete.h"
 #include "event.h"
@@ -34,6 +35,7 @@ static struct commands {
 } cmd[] = {
 	{ "add", exec_add, usage_add},
 	{ "autoremove", exec_autoremove, usage_autoremove},
+	{ "backup", exec_backup, usage_backup},
 	{ "create", exec_create, usage_create},
 	{ "delete", exec_delete, usage_delete},
 	{ "help", exec_help, usage_help},

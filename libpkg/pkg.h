@@ -396,6 +396,13 @@ int pkgdb_open(struct pkgdb **db, pkgdb_t type);
  */
 void pkgdb_close(struct pkgdb *db);
 
+/** 
+ * Dump the content of the database in yaml format
+ * only to use when mtree will be deprecated
+ */
+
+int pkgdb_dump(struct pkgdb *db, char *dest);
+
 /**
  * Whether a package database instance has a particular flag.
  * @return 0 if false, true otherwise
