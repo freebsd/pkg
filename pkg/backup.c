@@ -39,4 +39,6 @@ exec_backup(int argc, char **argv)
 	if (argv[1][1] == 'r') {
 		fprintf(stderr, "not yet implemented\n");
 	}
+
+	return (0);
 }
