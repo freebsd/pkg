@@ -15,7 +15,7 @@
 
 #include "register.h"
 
-static const char *scripts[] = {
+static const char * const scripts[] = {
 	"+INSTALL",
 	"+PRE_INSTALL",
 	"+POST_INSTALL",
