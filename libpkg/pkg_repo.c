@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h>
 #include <libgen.h>
 #include <string.h>
@@ -5,7 +6,6 @@
 
 #include "pkg.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 #include "pkg_private.h"
 
 int
@@ -17,9 +17,8 @@ pkg_repo_fetch(struct pkg *pkg)
 	char *url;
 	int retcode = EPKG_OK;
 
-	if ((pkg->type & PKG_REMOTE) != PKG_REMOTE &&
-		(pkg->type & PKG_UPGRADE) != PKG_UPGRADE)
-		return (ERROR_BAD_ARG("pkg"));
+	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE ||
+		(pkg->type & PKG_UPGRADE) == PKG_UPGRADE);
 
 	snprintf(dest, sizeof(dest), "%s/%s", pkg_config("PKG_CACHEDIR"),
 			 pkg_get(pkg, PKG_REPOPATH));
@@ -30,7 +29,8 @@ pkg_repo_fetch(struct pkg *pkg)
 
 	/* Create the dirs in cachedir */
 	if ((path = dirname(dest)) == NULL) {
-		retcode = pkg_error_set(EPKG_FATAL, "dirname(%s): %s", dest, strerror(errno));
+		EMIT_ERRNO("dirname", dest);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 	if ((retcode = mkdirs(path)) != 0)

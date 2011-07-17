@@ -174,7 +174,6 @@ exec_info(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		return (-1);
 	}
 
@@ -184,7 +183,6 @@ exec_info(int argc, char **argv)
 		/* if the argument is a file then query directly the file */
 		if (argc > 0 && access(argv[i], F_OK) == 0) {
 			if (pkg_open(&pkg, argv[i]) != EPKG_OK) {
-				warnx("can not read package %s", argv[i]);
 				return (-1);
 			}
 			print_info(pkg, opt);
@@ -240,7 +238,6 @@ exec_info(int argc, char **argv)
 		}
 
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-			pkg_error_warn("can not query database");
 			return (-1);
 		}
 
@@ -283,7 +280,6 @@ exec_info(int argc, char **argv)
 				print_info(pkg, opt);
 		}
 		if (ret != EPKG_END) {
-			pkg_error_warn("can not iterate over results");
 			retcode = -1;
 		}
 

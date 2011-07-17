@@ -1,6 +1,7 @@
-#include <pkg.h>
-#include <pkg_private.h>
-#include <pkg_error.h>
+#include <assert.h>
+
+#include "pkg.h"
+#include "pkg_private.h"
 
 int
 pkg_script_run(struct pkg *pkg, pkg_script_t type)
@@ -29,8 +30,7 @@ pkg_script_run(struct pkg *pkg, pkg_script_t type)
 			break;
 	}
 
-	if (map[i].a != type)
-		return (ERROR_BAD_ARG("type"));
+	assert(map[i].a == type);
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
 

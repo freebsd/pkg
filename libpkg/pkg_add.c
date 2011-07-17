@@ -1,5 +1,6 @@
 #include <archive.h>
 #include <archive_entry.h>
+#include <assert.h>
 #include <libgen.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -9,7 +10,6 @@
 
 #include "pkg.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 #include "pkg_private.h"
 
 static int
@@ -93,8 +93,7 @@ pkg_add(struct pkgdb *db, const char *path)
 	int retcode = EPKG_OK;
 	int ret;
 
-	if (path == NULL)
-		return (ERROR_BAD_ARG("path"));
+	assert(path != NULL);
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -136,7 +135,8 @@ pkg_add(struct pkgdb *db, const char *path)
 
 	basedir = dirname(path);
 	if ((ext = strrchr(path, '.')) == NULL) {
-		retcode = pkg_error_set(EPKG_FATAL, "%s has no extension", path);
+		EMIT_PKG_ERROR("%s has no extension", path);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 

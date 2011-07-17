@@ -2,6 +2,7 @@
 
 #include <archive.h>
 #include <archive_entry.h>
+#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <glob.h>
@@ -10,7 +11,7 @@
 #include <fcntl.h>
 
 #include "pkg.h"
-#include "pkg_error.h"
+#include "pkg_event.h"
 #include "pkg_private.h"
 
 static int pkg_create_from_dir(struct pkg *, const char *, struct packing *);
@@ -122,12 +123,13 @@ pkg_create_installed(const char *outdir, pkg_formats format, const char *rootdir
 						 PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 						 PKG_LOAD_MTREE;
 
-	if (pkg->type != PKG_INSTALLED)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg->type == PKG_INSTALLED);
 
 	pkg_archive = pkg_create_archive(outdir, pkg, format, required_flags);
-	if (pkg_archive == NULL)
-		return pkg_error_set(EPKG_FATAL, "unable to create archive"); /* XXX do better */
+	if (pkg_archive == NULL) {
+		EMIT_PKG_ERROR("%s", "unable to create archive");
+		return (EPKG_FATAL);
+	}
 
 	pkg_create_from_dir(pkg, rootdir, pkg_archive);
 

@@ -110,11 +110,6 @@ exec_register(int argc, char **argv)
 		}
 	}
 
-	if (ret != 0) {
-		pkg_error_warn("can not parse arguments");
-		return (1);
-	}
-
 	if (plist == NULL)
 		errx(EX_USAGE, "missing -f flag");
 
@@ -131,26 +126,24 @@ exec_register(int argc, char **argv)
 
 	snprintf(fpath, MAXPATHLEN, "%s/+MANIFEST", mdir);
 	if ((ret = pkg_load_manifest_file(pkg, fpath)) != EPKG_OK) {
-		pkg_error_warn("can not parse manifest %s", fpath);
 		return (EX_SOFTWARE);
 	}
 
 	snprintf(fpath, MAXPATHLEN, "%s/+DESC", mdir);
-	if (pkg_set_from_file(pkg, PKG_DESC, fpath) != EPKG_OK)
-		pkg_error_warn("");
+	pkg_set_from_file(pkg, PKG_DESC, fpath);
 
 	snprintf(fpath, MAXPATHLEN, "%s/+DISPLAY", mdir);
-	if (access(fpath, F_OK) == 0 && pkg_set_from_file(pkg, PKG_MESSAGE, fpath) != EPKG_OK)
-		pkg_error_warn("");
+	if (access(fpath, F_OK) == 0)
+		 pkg_set_from_file(pkg, PKG_MESSAGE, fpath);
 
 	snprintf(fpath, MAXPATHLEN, "%s/+MTREE_DIRS", mdir);
-	if (access(fpath, F_OK) == 0 && pkg_set_from_file(pkg, PKG_MTREE, fpath) != EPKG_OK)
-		pkg_error_warn("");
+	if (access(fpath, F_OK) == 0)
+		pkg_set_from_file(pkg, PKG_MTREE, fpath);
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		snprintf(fpath, MAXPATHLEN, "%s/%s", mdir, scripts[i]);
-		if (access(fpath, F_OK) == 0 && pkg_addscript_file(pkg, fpath) != EPKG_OK)
-			pkg_error_warn("");
+		if (access(fpath, F_OK) == 0)
+			pkg_addscript_file(pkg, fpath);
 	}
 
 	/* if www is not given then try to determine it from description */
@@ -183,7 +176,6 @@ exec_register(int argc, char **argv)
 	ret += ports_parse_plist(pkg, plist);
 
 	if (ret != 0) {
-		pkg_error_warn("can not parse plist file");
 		return (-1);
 	}
 
@@ -191,7 +183,6 @@ exec_register(int argc, char **argv)
 		free(plist);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		return (-1);
 	}
 
@@ -204,13 +195,11 @@ exec_register(int argc, char **argv)
 	}
 
 	if (pkgdb_register_pkg(db, pkg) != EPKG_OK) {
-		pkg_error_warn("can not register package");
 		retcode = 1;
 	}
 
 	pkgdb_register_finale(db, ret);
 	if (ret != EPKG_OK) {
-		pkg_error_warn("can not register package");
 		retcode = 1;
 	}
 

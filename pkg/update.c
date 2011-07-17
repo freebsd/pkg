@@ -62,7 +62,6 @@ exec_update(int argc, char **argv)
 	tmp = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
 
 	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
-		pkg_error_warn("can not fetch %s", url);
 		retcode = 1;
 		goto cleanup;
 	}

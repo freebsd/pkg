@@ -14,7 +14,6 @@
 
 #include "pkg.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 #include "pkg_util.h"
 
 int
@@ -73,7 +72,7 @@ mkdirs(const char *_path)
 
 		if (mkdir(path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
 			if (errno != EEXIST && errno != EISDIR) {
-				pkg_error_set(EPKG_FATAL, "mkdir(%s): %s", path, strerror(errno));
+				EMIT_ERRNO("mkdir", path);
 				return (EPKG_FATAL);
 			}
 
@@ -95,14 +94,9 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 	struct stat st;
 	int retcode = EPKG_OK;
 
-	if (path == NULL || path[0] == '\0')
-		return (ERROR_BAD_ARG("path"));
-
-	if (buffer == NULL)
-		return (ERROR_BAD_ARG("buffer"));
-
-	if (sz == NULL)
-		return (ERROR_BAD_ARG("sz"));
+	assert(path != NULL && path[0] != '\0');
+	assert(buffer != NULL);
+	assert(sz != NULL);
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
 		EMIT_ERRNO("open", path);

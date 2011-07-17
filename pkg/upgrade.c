@@ -44,12 +44,10 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		return (1);
 	}
 
 	if ((it = pkgdb_query_upgrades(db)) == NULL) {
-		pkg_error_warn("can not query database");
 		goto cleanup;
 	}
 
@@ -64,7 +62,6 @@ exec_upgrade(int argc, char **argv)
 	pkgdb_it_free(it);
 
 	if ((it = pkgdb_query_downgrades(db)) == NULL) {
-		pkg_error_warn("can not query database");
 		goto cleanup;
 	}
 

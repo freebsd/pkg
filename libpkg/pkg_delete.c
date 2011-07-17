@@ -1,6 +1,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -8,7 +9,6 @@
 
 #include "pkg.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 #include "pkg_private.h"
 #include "pkg_util.h"
 
@@ -18,11 +18,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	struct pkg_dep *rdep = NULL;
 	int ret;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (db == NULL)
-		return (ERROR_BAD_ARG("db"));
+	assert(pkg != NULL);
+	assert(db != NULL);
 
 	/*
 	 * Do not trust the existing entries as it may have changed if we

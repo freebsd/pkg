@@ -62,12 +62,11 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		return (1);
 	}
 
 	if ((it = pkgdb_query_autoremove(db)) == NULL) {
-		pkg_error_warn("can not query database");
+		retcode = 1;
 		goto cleanup;
 	}
 
@@ -94,7 +93,6 @@ exec_autoremove(int argc, char **argv)
 		while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 			if (pkg_delete(pkg, db, 0) != EPKG_OK) {
 				retcode++;
-				pkg_error_warn("can not delete %s-%s", pkg_get(pkg, PKG_ORIGIN));
 			}
 		}
 
@@ -102,8 +100,7 @@ exec_autoremove(int argc, char **argv)
 		printf("Aborted\n");
 	}
 
-	if (pkgdb_compact(db) != EPKG_OK)
-		pkg_error_warn("can not compact database");
+	pkgdb_compact(db);
 
 	cleanup:
 	pkg_free(pkg);

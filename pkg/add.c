@@ -52,7 +52,6 @@ exec_add(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -61,7 +60,6 @@ exec_add(int argc, char **argv)
 		if (is_url(argv[i]) == EPKG_OK) {
 			snprintf(path, sizeof(path), "./%s", basename(argv[i]));
 			if ((retcode = pkg_fetch_file(argv[i], path)) != EPKG_OK) {
-				pkg_error_warn("can not fetch %s", argv[i]);
 				continue;
 			}
 			file = path;
@@ -69,7 +67,6 @@ exec_add(int argc, char **argv)
 			file = argv[i];
 
 		if (pkg_add(db, file) != EPKG_OK) {
-			pkg_error_warn("can not install %s", file);
 			continue;
 		}
 	}

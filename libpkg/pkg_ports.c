@@ -1,5 +1,6 @@
 #include <sys/stat.h>
 
+#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +8,6 @@
 
 #include "pkg.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 #include "pkg_private.h"
 
 int
@@ -34,11 +34,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	buf = NULL;
 	p = NULL;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (plist == NULL)
-		return (ERROR_BAD_ARG("plist"));
+	assert(pkg != NULL);
+	assert(plist != NULL);
 
 	if ((ret = file_to_buffer(plist, &plist_buf, &sz)) != EPKG_OK)
 		return (ret);
@@ -169,8 +166,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					p = NULL;
 				} else {
 					flatsize += st.st_size;
-					if (sha256_file(path, sha256) != 0)
-						pkg_error_warn("can not compute sha256");
+					sha256_file(path, sha256);
 					p = sha256;
 				}
 				ret += pkg_addfile(pkg, path, p);
