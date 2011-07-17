@@ -3,7 +3,6 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <err.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -108,7 +107,10 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 				else if (!strcasecmp(subkey->data.scalar.value, "version"))
 					strlcpy(version, subval->data.scalar.value, BUFSIZ);
 				else
-					warnx("Ignoring key: (%s: %s) for dependency %s",subkey->data.scalar.value,subval->data.scalar.value, key->data.scalar.value);
+					EMIT_PKG_ERROR("Ignoring key: (%s: %s) for dependency %s",
+								   subkey->data.scalar.value,
+								   subval->data.scalar.value,
+								   key->data.scalar.value);
 				++subpair;
 			}
 			pkg_adddep(pkg, key->data.scalar.value, origin, version);
@@ -140,16 +142,21 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 			type = manifest_type(key->data.scalar.value);
 			if (type == -1) {
 				if (val->type == YAML_SCALAR_NODE)
-					warnx("Unknown line: (%s: %s)\n", key->data.scalar.value, val->data.scalar.value);
+					EMIT_PKG_ERROR("Unknown line: (%s: %s)\n",
+								   key->data.scalar.value,
+								   val->data.scalar.value);
 				else
-					warnx("Unknown key: (%s)\n", key->data.scalar.value);
+					EMIT_PKG_ERROR("Unknown key: (%s)\n",
+								   key->data.scalar.value);
 				++pair;
 				break;
 			}
 			if (val->type == YAML_SCALAR_NODE) {
 				type = manifest_type(key->data.scalar.value);
 				if (type == -1) {
-					warnx("Unknown line: (%s: %s)\n", key->data.scalar.value, val->data.scalar.value);
+					EMIT_PKG_ERROR("Unknown line: (%s: %s)\n",
+								   key->data.scalar.value,
+								   val->data.scalar.value);
 				} else if (type == PKG_FLATSIZE)
 					pkg_setflatsize(pkg, strtoimax(val->data.scalar.value, NULL, 10));
 				else

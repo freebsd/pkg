@@ -1,6 +1,5 @@
 #include <archive.h>
 #include <archive_entry.h>
-#include <err.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -132,7 +131,7 @@ pkg_get(struct pkg const * const pkg, const pkg_attr attr)
 	}
 
 	if ((pkg->fields[attr].type & pkg->type) == 0)
-		errx(EX_SOFTWARE, "wrong usage of `attr` for this type of `pkg`");
+		EMIT_PKG_ERROR("%s", "wrong usage of `attr` for this type of `pkg`");
 
 	return (sbuf_get(pkg->fields[attr].value));
 }
@@ -498,7 +497,7 @@ pkg_adddir(struct pkg *pkg, const char *path)
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
 		if (strcmp(path, pkg_dir_path(d)) == 0) {
-			warnx("Duplicate directory listing: %s, ignoring", path);
+			EMIT_PKG_ERROR("Duplicate directory listing: %s, ignoring", path);
 			return (EPKG_OK);
 		}
 	}

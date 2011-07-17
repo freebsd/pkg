@@ -1,7 +1,7 @@
-#include <err.h>
 #include <stdlib.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_private.h"
 
 /*
@@ -106,10 +106,12 @@ pkg_dir_path(struct pkg_dir *d)
 int
 pkg_conflict_new(struct pkg_conflict **c)
 {
-	if ((*c = calloc(1, sizeof(struct pkg_conflict))) == NULL)
-		err(EXIT_FAILURE, "calloc()");
+	if ((*c = calloc(1, sizeof(struct pkg_conflict))) == NULL) {
+		EMIT_ERRNO("calloc", "pkg_conflict");
+		return (EPKG_FATAL);
+	}
 
-	return (0);
+	return (EPKG_OK);
 }
 
 void
@@ -135,10 +137,12 @@ pkg_conflict_glob(struct pkg_conflict *c)
 int
 pkg_script_new(struct pkg_script **script)
 {
-	if ((*script = calloc(1, sizeof(struct pkg_script))) == NULL)
-		err(EXIT_FAILURE, "calloc()");
+	if ((*script = calloc(1, sizeof(struct pkg_script))) == NULL) {
+		EMIT_ERRNO("calloc", "pkg_script");
+		return (EPKG_FATAL);
+	}
 
-	return (0);
+	return (EPKG_OK);
 }
 
 void

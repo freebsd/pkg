@@ -4,7 +4,6 @@
 
 #include <assert.h>
 #include <dirent.h>
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>

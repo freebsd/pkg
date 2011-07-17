@@ -5,9 +5,9 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
-#include <err.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_private.h"
 
 static int
@@ -72,7 +72,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 						found = true;
 				}
 				if (!found) {
-					warnx("adding forgotten depends (%s): %s-%s", map->l_name, pkg_get(p, PKG_NAME), pkg_get(p, PKG_VERSION));
+					EMIT_PKG_ERROR("adding forgotten depends (%s): %s-%s", map->l_name, pkg_get(p, PKG_NAME), pkg_get(p, PKG_VERSION));
 					pkg_adddep(pkg, pkg_get(p, PKG_NAME), pkg_get(p, PKG_ORIGIN), pkg_get(p, PKG_VERSION));
 				}
 			}

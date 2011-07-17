@@ -1,10 +1,10 @@
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#include <errno.h>
 #include <string.h>
-#include <err.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #include "pkg.h"
 #include "pkg_event.h"

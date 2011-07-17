@@ -1,18 +1,12 @@
-#include <fcntl.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/sbuf.h>
-#include <fts.h>
 
 #include <archive.h>
 #include <archive_entry.h>
-
-#include <err.h>
-#include <errno.h>
-#include <stdio.h>
+#include <fcntl.h>
+#include <fts.h>
 #include <string.h>
-#include <stdlib.h>
 
 #include "pkg.h"
 #include "pkg_event.h"
@@ -240,6 +234,6 @@ packing_format_from_string(const char *str)
 		return TGZ;
 	if (strcmp(str, "tar") == 0)
 		return TAR;
-	warnx("unknown format %s, using txz", str);
+	EMIT_PKG_ERROR("unknown format %s, using txz", str);
 	return TXZ;
 }

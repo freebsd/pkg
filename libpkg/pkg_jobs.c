@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <err.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,8 +17,10 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	if (t == PKG_JOBS_INSTALL && db->type != PKGDB_REMOTE)
 		return (ERROR_BAD_ARG("db"));
 
-	if((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL)
-		err(1, "calloc()");
+	if((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
+		EMIT_ERRNO("calloc", "pkg_jobs");
+		return (EPKG_FATAL);
+	}
 
 	STAILQ_INIT(&(*j)->jobs);
 	LIST_INIT(&(*j)->nodes);
@@ -180,8 +181,9 @@ add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
 		if (ndep->pkg == NULL) {
 			ndep->pkg = pkgdb_query_remote(j->db, pkg_dep_origin(dep));
 			if (ndep->pkg == NULL)
-				err(1, "%s", pkg_error_string());
-			add_dep(j, ndep);
+				EMIT_MISSING_DEP(n->pkg, dep);
+			else
+				add_dep(j, ndep);
 		}
 		add_parent(ndep, n);
 	}

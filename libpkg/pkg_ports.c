@@ -1,12 +1,12 @@
 #include <sys/stat.h>
 
-#include <err.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 
 #include "pkg.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 #include "pkg_private.h"
 
@@ -146,7 +146,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				ret += pkg_adddir(pkg, path);
 
 			} else {
-				warnx("%s is deprecated, ignoring", plist_p);
+				EMIT_PKG_ERROR("%s is deprecated, ignoring", plist_p);
 			}
 		} else if ((len = strlen(plist_p)) > 0){
 			buf = plist_p;
@@ -175,7 +175,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				}
 				ret += pkg_addfile(pkg, path, p);
 			} else {
-				warn("lstat(%s)", path);
+				EMIT_ERRNO("lstat", path);
 			}
 		}
 
