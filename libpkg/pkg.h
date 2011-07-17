@@ -115,6 +115,11 @@ typedef enum _pkg_script_t {
 	PKG_SCRIPT_UPGRADE
 } pkg_script_t;
 
+typedef enum _pkg_jobs_t {
+	PKG_JOBS_INSTALL,
+	PKG_JOBS_DEINSTALL
+} pkg_jobs_t;
+
 /**
  * Error type used everywhere by libpkg.
  */
@@ -142,8 +147,6 @@ typedef enum {
 	 */
 	EPKG_DEPENDENCY,
 } pkg_error_t;
-
-typedef void (*status_cb)(void *data, struct pkg *pkg);
 
 /**
  * Allocate a new pkg.
@@ -507,7 +510,7 @@ int pkg_add(struct pkgdb *db, const char *path);
  * @param db A pkgdb open with PKGDB_REMOTE.
  * @return An error code.
  */
-int pkg_jobs_new(struct pkg_jobs **jobs, struct pkgdb *db);
+int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db);
 
 /**
  * Free a pkg_jobs
@@ -531,7 +534,7 @@ int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
  * Apply the jobs in the queue (fetch and install).
  * @return An error code.
  */
-int pkg_jobs_apply(struct pkg_jobs *jobs);
+int pkg_jobs_apply(struct pkg_jobs *jobs, int force);
 
 /**
  * Archive formats options.
@@ -625,7 +628,7 @@ typedef enum {
 	PKG_EVENT_ALREADY_INSTALLED,
 	PKG_EVENT_FAILED_CKSUM,
 	PKG_EVENT_CREATE_DB_ERROR,
-	PKG_EVENT_DELETE_DEP_EXISTS,
+	PKG_EVENT_REQUIRED,
 	PKG_EVENT_MISSING_DEP,
 } pkg_event_t;
 
@@ -660,6 +663,10 @@ struct pkg_event {
 			struct pkg *pkg;
 			struct pkg_dep *dep;
 		} e_missing_dep;
+		struct {
+			struct pkg *pkg;
+			int force;
+		} e_required;
 		struct {
 			struct pkg *pkg;
 		} e_failed_cksum;

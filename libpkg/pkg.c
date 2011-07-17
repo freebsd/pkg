@@ -673,6 +673,8 @@ pkg_freedeps(struct pkg *pkg)
 		STAILQ_REMOVE_HEAD(&pkg->deps, next);
 		pkg_dep_free(d);
 	}
+
+	pkg->flags ^= PKG_LOAD_DEPS;
 }
 
 void
@@ -685,6 +687,8 @@ pkg_freerdeps(struct pkg *pkg)
 		STAILQ_REMOVE_HEAD(&pkg->rdeps, next);
 		pkg_dep_free(d);
 	}
+
+	pkg->flags ^= PKG_LOAD_RDEPS;
 }
 
 void
@@ -697,6 +701,8 @@ pkg_freefiles(struct pkg *pkg)
 		STAILQ_REMOVE_HEAD(&pkg->files, next);
 		pkg_file_free(f);
 	}
+
+	pkg->flags ^= PKG_LOAD_FILES;
 }
 
 void
@@ -709,6 +715,8 @@ pkg_freedirs(struct pkg *pkg)
 		STAILQ_REMOVE_HEAD(&pkg->dirs, next);
 		pkg_dir_free(d);
 	}
+
+	pkg->flags ^= PKG_LOAD_DIRS;
 }
 
 void
@@ -721,6 +729,8 @@ pkg_freeconflicts(struct pkg *pkg)
 		STAILQ_REMOVE_HEAD(&pkg->conflicts, next);
 		pkg_conflict_free(c);
 	}
+
+	pkg->flags ^= PKG_LOAD_CONFLICTS;
 }
 
 void
@@ -733,6 +743,8 @@ pkg_freescripts(struct pkg *pkg)
 		STAILQ_REMOVE_HEAD(&pkg->scripts, next);
 		pkg_script_free(s);
 	}
+
+	pkg->flags ^= PKG_LOAD_SCRIPTS;
 }
 
 void
@@ -745,6 +757,8 @@ pkg_freeoptions(struct pkg *pkg)
 		STAILQ_REMOVE_HEAD(&pkg->options, next);
 		pkg_option_free(o);
 	}
+
+	pkg->flags ^= PKG_LOAD_OPTIONS;
 }
 
 int

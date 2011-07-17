@@ -44,7 +44,7 @@ exec_install(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (pkg_jobs_new(&jobs, db) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
 		pkg_error_warn("pkg_jobs_new()");
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -67,7 +67,7 @@ exec_install(int argc, char **argv)
 		printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 	}
 
-	if (pkg_jobs_apply(jobs) != EPKG_OK)
+	if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
 		pkg_error_warn("can not install");
 
 	cleanup:

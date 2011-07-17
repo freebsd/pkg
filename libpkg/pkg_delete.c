@@ -17,13 +17,18 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 {
 	struct pkg_dep *rdep = NULL;
 	int ret;
-	struct sbuf *rdep_msg = NULL;
 
 	if (pkg == NULL)
 		return (ERROR_BAD_ARG("pkg"));
 
 	if (db == NULL)
 		return (ERROR_BAD_ARG("db"));
+
+	/*
+	 * Do not trust the existing entries as it may have changed if we
+	 * delete packages in batch.
+	 */
+	pkg_freerdeps(pkg);
 
 	/*
 	 * Ensure that we have all the informations we need
@@ -39,28 +44,11 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
-	while (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
-		if (rdep_msg == NULL) {
-			rdep_msg = sbuf_new_auto();
-			sbuf_printf(rdep_msg, "%s-%s is required by other packages:", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		}
-		sbuf_cat(rdep_msg, " ");
-		sbuf_printf(rdep_msg, "%s-%s", pkg_dep_name(rdep), pkg_dep_version(rdep));
-	}
 	/* If there are dependencies */
-	if (rdep_msg != NULL) {
-		if (!force) {
-			sbuf_finish(rdep_msg);
-			/*pkg_emit_event(PKG_EVENT_DELETE_DEP_EXISTS, 1,
-			    sbuf_get(rdep_msg));*/
-			ret = EPKG_REQUIRED;
-			sbuf_free(rdep_msg);
-			return ret;
-		}
-		sbuf_cat(rdep_msg, ", deleting anyway");
-		sbuf_finish(rdep_msg);
-		fprintf(stderr, "%s\n", sbuf_get(rdep_msg));
-		sbuf_free(rdep_msg);
+	if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
+		EMIT_REQUIRED(pkg, force);
+		if (!force)
+			return (EPKG_REQUIRED);
 	}
 
 	if ((ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL)) != EPKG_OK)
@@ -92,16 +80,16 @@ pkg_delete_files(struct pkg *pkg, int force)
 		/* check sha256 */
 		if (!force && pkg_file_sha256(file)[0] != '\0') {
 			if (sha256_file(path, sha256) == -1) {
-				warnx("sha256 calculation failed for '%s'",
+				EMIT_PKG_ERROR("sha256 calculation failed for '%s'",
 					  path);
 			} else if (strcmp(sha256, pkg_file_sha256(file)) != 0) {
-				warnx("%s fails original SHA256 checksum, not removing", path);
+				EMIT_PKG_ERROR("%s fails original SHA256 checksum, not removing", path);
 				continue;
 			}
 		}
 
 		if (unlink(path) == -1) {
-			warn("unlink(%s)", path);
+			EMIT_ERRNO("unlink", path);
 			continue;
 		}
 	}
@@ -116,7 +104,7 @@ pkg_delete_dirs(struct pkg *pkg, int force)
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (rmdir(pkg_dir_path(dir)) == -1 && errno != ENOTEMPTY && force != 1) {
-			warn("rmdir(%s)", pkg_dir_path(dir));
+			EMIT_ERRNO("rmdir", pkg_dir_path(dir));
 		}
 	}
 

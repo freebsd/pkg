@@ -79,8 +79,8 @@ struct pkg_jobs {
 	STAILQ_HEAD(jobs, pkg) jobs;
 	LIST_HEAD(nodes, pkg_jobs_node) nodes;
 	struct pkgdb *db;
+	pkg_jobs_t type;
 	unsigned int resolved :1;
-	unsigned int reverse :1;
 };
 
 struct pkg_jobs_node {
@@ -119,7 +119,7 @@ void pkg_script_free(struct pkg_script *);
 int pkg_option_new(struct pkg_option **);
 void pkg_option_free(struct pkg_option *);
 
-int pkg_jobs_resolv(struct pkg_jobs *jobs, int reverse);
+int pkg_jobs_resolv(struct pkg_jobs *jobs);
 
 struct packing;
 

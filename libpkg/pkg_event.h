@@ -66,6 +66,14 @@
 	_EV_EMIT; \
 	_EV_END
 
+#define EMIT_REQUIRED(p, f) \
+	_EV_START; \
+	ev.type = PKG_EVENT_REQUIRED; \
+	ev.e_required.pkg = p; \
+	ev.e_required.force = f; \
+	_EV_EMIT; \
+	_EV_END
+
 #define EMIT_FAILED_CKSUM(p) \
 	_EV_START; \
 	ev.type = PKG_EVENT_FAILED_CKSUM; \

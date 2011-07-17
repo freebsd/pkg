@@ -5,13 +5,17 @@
 
 #include "pkg.h"
 #include "pkgdb.h"
+#include "pkg_event.h"
 #include "pkg_error.h"
 #include "pkg_private.h"
 
 int
-pkg_jobs_new(struct pkg_jobs **j, struct pkgdb *db)
+pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 {
-	if (db == NULL || db->type != PKGDB_REMOTE)
+	if (db == NULL)
+		return (ERROR_BAD_ARG("db"));
+
+	if (t == PKG_JOBS_INSTALL && db->type != PKGDB_REMOTE)
 		return (ERROR_BAD_ARG("db"));
 
 	if((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL)
@@ -20,6 +24,7 @@ pkg_jobs_new(struct pkg_jobs **j, struct pkgdb *db)
 	STAILQ_INIT(&(*j)->jobs);
 	LIST_INIT(&(*j)->nodes);
 	(*j)->db = db;
+	(*j)->type = t;
 
 	return (EPKG_OK);
 }
@@ -59,7 +64,7 @@ pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
 	if (j == NULL)
 		return (ERROR_BAD_ARG("jobs"));
 
-	pkg_jobs_resolv(j, 0);
+	pkg_jobs_resolv(j);
 
 	if (*pkg == NULL)
 		*pkg = STAILQ_FIRST(&j->jobs);
@@ -72,8 +77,8 @@ pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
 		return (EPKG_OK);
 }
 
-int
-pkg_jobs_apply(struct pkg_jobs *j)
+static int
+pkg_jobs_install(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	const char *cachedir;
@@ -100,8 +105,35 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
+static int
+pkg_jobs_deinstall(struct pkg_jobs *j, int force)
+{
+	struct pkg *p = NULL;
+	int retcode;
+
+	while (pkg_jobs(j, &p) == EPKG_OK) {
+		retcode = pkg_delete(p, j->db, force);
+		if (retcode != EPKG_OK)
+			return (retcode);
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkg_jobs_apply(struct pkg_jobs *j, int force)
+{
+	if (j->type == PKG_JOBS_INSTALL)
+		return (pkg_jobs_install(j));
+	if (j->type == PKG_JOBS_DEINSTALL)
+		return (pkg_jobs_deinstall(j, force));
+
+	EMIT_PKG_ERROR("%s", "bad jobs argument");
+	return (EPKG_FATAL);
+}
+
 static struct pkg_jobs_node *
-get_node(struct pkg_jobs *j, const char *name)
+get_node(struct pkg_jobs *j, const char *name, int create)
 {
 	struct pkg_jobs_node *n;
 
@@ -112,39 +144,61 @@ get_node(struct pkg_jobs *j, const char *name)
 		}
 	}
 
+	if (create == 0)
+		return (NULL);
+
 	n = calloc(1, sizeof(struct pkg_jobs_node));
 	LIST_INSERT_HEAD(&j->nodes, n, entries);
 	return (n);
 }
 
 static void
-add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
+add_parent(struct pkg_jobs_node *n, struct pkg_jobs_node *p)
 {
-	struct pkg_dep *d = NULL;
-	struct pkg_jobs_node *nd;
+		p->nrefs++;
 
-	while (pkg_deps(n->pkg, &d) != EPKG_END) {
-		n->nrefs++;
-		nd = get_node(j, pkg_dep_origin(d));
-
-		if (nd->pkg == NULL) {
-			/* XXX should query with origin */
-			nd->pkg = pkgdb_query_remote(j->db, pkg_dep_origin(d));
-			if (nd->pkg == NULL)
-				err(1, "%s", pkg_error_string());
-			add_dep(j, nd);
-		}
-
-		if (nd->parents_len == nd->parents_cap) {
-			if (nd->parents_cap == 0)
-				nd->parents_cap = 5;
+		if (n->parents_len == n->parents_cap) {
+			if (n->parents_cap == 0)
+				n->parents_cap = 5;
 			else
-				nd->parents_cap *= 2;
-			nd->parents = realloc(nd->parents, nd->parents_cap *
+				n->parents_cap *= 2;
+			n->parents = realloc(n->parents, n->parents_cap *
 								  sizeof(struct pkg_jobs_node));
 		}
-		nd->parents[nd->parents_len] = n;
-		nd->parents_len++;
+		n->parents[n->parents_len] = p;
+		n->parents_len++;
+}
+
+static void
+add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
+{
+	struct pkg_dep *dep = NULL;
+	struct pkg_jobs_node *ndep;
+
+	while (pkg_deps(n->pkg, &dep) != EPKG_END) {
+		ndep = get_node(j, pkg_dep_origin(dep), 1);
+		if (ndep->pkg == NULL) {
+			ndep->pkg = pkgdb_query_remote(j->db, pkg_dep_origin(dep));
+			if (ndep->pkg == NULL)
+				err(1, "%s", pkg_error_string());
+			add_dep(j, ndep);
+		}
+		add_parent(ndep, n);
+	}
+}
+
+static void
+add_rdep(struct pkg_jobs *j, struct pkg_jobs_node *n)
+{
+	struct pkg_jobs_node *nrdep;
+	struct pkg_dep *rdep = NULL;
+
+	pkgdb_loadrdeps(j->db, n->pkg);
+
+	while (pkg_rdeps(n->pkg, &rdep) == EPKG_OK) {
+		nrdep = get_node(j, pkg_dep_origin(rdep), 0);
+		if (nrdep != NULL)
+			add_parent(nrdep, n);
 	}
 }
 
@@ -156,10 +210,7 @@ remove_node(struct pkg_jobs *j, struct pkg_jobs_node *n)
 
 	assert(n->nrefs == 0);
 
-	if (j->reverse == 1)
-		STAILQ_INSERT_HEAD(&j->jobs, n->pkg, next);
-	else
-		STAILQ_INSERT_TAIL(&j->jobs, n->pkg, next);
+	STAILQ_INSERT_TAIL(&j->jobs, n->pkg, next);
 
 	LIST_REMOVE(n, entries);
 
@@ -172,7 +223,7 @@ remove_node(struct pkg_jobs *j, struct pkg_jobs_node *n)
 }
 
 int
-pkg_jobs_resolv(struct pkg_jobs *j, int reverse)
+pkg_jobs_resolv(struct pkg_jobs *j)
 {
 	struct pkg_jobs_node *n, *tmp;
 	struct pkg *p;
@@ -183,21 +234,22 @@ pkg_jobs_resolv(struct pkg_jobs *j, int reverse)
 	if (j->resolved == 1)
 		return (EPKG_OK);
 
-	j->reverse = reverse;
-
 	/* Create nodes and remove jobs form the queue */
 	while (!STAILQ_EMPTY(&j->jobs)) {
 		p = STAILQ_FIRST(&j->jobs);
 		STAILQ_REMOVE_HEAD(&j->jobs, next);
 
-		n = get_node(j, pkg_get(p, PKG_ORIGIN));
+		n = get_node(j, pkg_get(p, PKG_ORIGIN), 1);
 
 		n->pkg = p;
 	}
 
 	/* Add dependencies into nodes */
 	LIST_FOREACH(n, &j->nodes, entries) {
-		add_dep(j, n);
+		if (j->type == PKG_JOBS_INSTALL)
+			add_dep(j, n);
+		if (j->type == PKG_JOBS_DEINSTALL)
+			add_rdep(j, n);
 	}
 
 	/* Resolv !*/

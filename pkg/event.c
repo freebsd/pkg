@@ -6,6 +6,8 @@
 int
 event_callback(void *data __unused, struct pkg_event *ev)
 {
+	struct pkg *pkg = NULL;
+	struct pkg_dep *dep = NULL;
 	unsigned int percent;
 	const char *message;
 
@@ -33,6 +35,18 @@ event_callback(void *data __unused, struct pkg_event *ev)
 		message = pkg_get(ev->e_install_finished.pkg, PKG_MESSAGE);
 		if (message != NULL && message[0] != '\0')
 			printf("%s\n", message);
+		break;
+	case PKG_EVENT_REQUIRED:
+		pkg = ev->e_required.pkg;
+		fprintf(stderr, "%s-%s is required by:", pkg_get(pkg, PKG_NAME),
+				pkg_get(pkg, PKG_VERSION));
+		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
+			fprintf(stderr, " %s-%s", pkg_dep_name(dep), pkg_dep_version(dep));
+		}
+		if (ev->e_required.force == 1)
+			fprintf(stderr, ", deleting anyway\n");
+		else
+			fprintf(stderr, "\n");
 		break;
 	default:
 		break;

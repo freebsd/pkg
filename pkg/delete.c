@@ -20,22 +20,21 @@ usage_delete(void)
 int
 exec_delete(int argc, char **argv)
 {
+	struct pkg_jobs *jobs = NULL;
 	struct pkg *pkg = NULL;
-	struct pkgdb *db;
-	struct pkgdb_it *it;
+	struct pkgdb *db = NULL;
+	struct pkgdb_it *it = NULL;
 	match_t match = MATCH_EXACT;
 	char *origin = NULL;
 	int ch;
-	int ret;
 	int flags = PKG_LOAD_BASIC;
 	int force = 0;
-	int retcode = 0;
+	int retcode = EPKG_OK;
 
 	while ((ch = getopt(argc, argv, "af")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
-				force = 1;
 				break;
 			case 'f':
 				force = 1;
@@ -58,38 +57,46 @@ exec_delete(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 	
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+	if ((retcode = pkgdb_open(&db, PKGDB_DEFAULT)) != EPKG_OK) {
 		pkg_error_warn("can not open database");
-		pkgdb_close(db);
-		return (-1);
+		goto cleanup;
 	}
 
 	if (argc == 1)
 		origin = argv[0];
 
+	if ((retcode = pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db)) != EPKG_OK) {
+		pkg_error_warn("cant create jobs");
+		goto cleanup;
+	}
+
 	if ((it = pkgdb_query(db, origin, match)) == NULL) {
 		pkg_error_warn("Can not query database");
-		return (1);
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
 
-	while ((ret = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
-		if (pkg_delete(pkg, db, force) != EPKG_OK) {
-			retcode++;
-			pkg_error_warn("can not delete %s", pkg_get(pkg, PKG_ORIGIN));
-		}
+	while ((retcode = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
+		pkg_jobs_add(jobs, pkg);
+		pkg = NULL;
 	}
-	pkg_free(pkg);
 
-	if (ret != EPKG_END) {
+	if (retcode != EPKG_END) {
 		pkg_error_warn("can not iterate over results");
-		retcode++;
+		goto cleanup;
 	}
 
-	pkgdb_it_free(it);
+	if ((retcode = pkg_jobs_apply(jobs, force)) != EPKG_OK) {
+		pkg_error_warn("cant deinstall");
+		goto cleanup;
+	}
 
-	if (pkgdb_compact(db) != EPKG_OK)
+	if ((retcode = pkgdb_compact(db)) != EPKG_OK)
 		pkg_error_warn("can not compact database");
 
+	cleanup:
+	pkgdb_it_free(it);
 	pkgdb_close(db);
-	return (retcode);
+	pkg_jobs_free(jobs);
+	return (retcode == EPKG_OK ? 0 : 1);
 }
