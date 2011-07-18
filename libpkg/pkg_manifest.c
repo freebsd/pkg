@@ -151,6 +151,9 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 				break;
 			}
 			if (val->type == YAML_SCALAR_NODE) {
+				/* just ignore empty lines */
+				if (val->data.scalar.length <= 0)
+					break;
 				type = manifest_type(key->data.scalar.value);
 				if (type == -1) {
 					EMIT_PKG_ERROR("Unknown line: (%s: %s)\n",
