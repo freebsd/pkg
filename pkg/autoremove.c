@@ -46,14 +46,14 @@ exec_autoremove(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
-	int retcode = 0;
+	int retcode = EPKG_OK;
 	int64_t oldsize = 0, newsize = 0;
 	char size[7];
 
 	(void) argv;
 	if (argc != 1) {
 		usage_autoremove();
-		return (-1);
+		return (EX_USAGE);
 	}
 
 	if (geteuid() != 0) {
@@ -62,11 +62,13 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		return (1);
+		pkg_error_warn("can not open database");
+		return (EX_IOERR);
 	}
 
 	if ((it = pkgdb_query_autoremove(db)) == NULL) {
-		retcode = 1;
+		pkg_error_warn("can not query database");
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -100,7 +102,10 @@ exec_autoremove(int argc, char **argv)
 		printf("Aborted\n");
 	}
 
-	pkgdb_compact(db);
+	if (pkgdb_compact(db) != EPKG_OK) { 
+		pkg_error_warn("can not compact database");
+		retcode = EPKG_FATAL;
+	}
 
 	cleanup:
 	pkg_free(pkg);

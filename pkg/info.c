@@ -104,8 +104,7 @@ exec_info(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	char *pkgname, *pkgversion;
 	int ch;
-	int ret;
-	int retcode = 0;
+	int ret = EPKG_OK, retcode = EPKG_OK;
 	bool gotone = false;
 	int i;
 	int sign = 0;
@@ -168,13 +167,14 @@ exec_info(int argc, char **argv)
 	if (argc == 0 && match != MATCH_ALL) {
 		/* which -O bsd.*.mk always execpt clean output */
 		if (opt & INFO_ORIGIN_SEARCH)
-			return (0);
+			return (EX_OK);
 		usage_info();
 		return (EX_USAGE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		return (-1);
+		pkg_error_warn("can not open database");
+		return (EX_IOERR);
 	}
 
 	i = 0;
@@ -183,7 +183,8 @@ exec_info(int argc, char **argv)
 		/* if the argument is a file then query directly the file */
 		if (argc > 0 && access(argv[i], F_OK) == 0) {
 			if (pkg_open(&pkg, argv[i]) != EPKG_OK) {
-				return (-1);
+				warnx("can not read package %s", argv[i]);
+				return (EX_IOERR);
 			}
 			print_info(pkg, opt);
 			i++;
@@ -238,7 +239,8 @@ exec_info(int argc, char **argv)
 		}
 
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-			return (-1);
+			pkg_error_warn("can not query database");
+			return (EX_IOERR);
 		}
 
 		/* this is place for compatibility hacks */
@@ -275,7 +277,7 @@ exec_info(int argc, char **argv)
 				}
 			}
 			if (opt & INFO_EXISTS)
-				retcode = 0;
+				retcode = EPKG_OK;
 			else
 				print_info(pkg, opt);
 		}
@@ -283,7 +285,7 @@ exec_info(int argc, char **argv)
 			retcode = -1;
 		}
 
-		if (retcode == 0 && !gotone && match != MATCH_ALL)
+		if (retcode == EPKG_OK && !gotone && match != MATCH_ALL)
 			retcode = EX_SOFTWARE;
 
 		pkgdb_it_free(it);
