@@ -34,14 +34,14 @@ exec_update(int argc, char **argv)
 	char url[MAXPATHLEN];
 	const char *packagesite = NULL;
 	char *tmp = NULL;
-	int retcode = 0;
+	int retcode = EPKG_OK;
 	struct archive *a;
 	struct archive_entry *ae;
 
 	(void)argv;
 	if (argc != 1) {
 		usage_update();
-		return (-1);
+		return (EX_USAGE);
 	}
 
 	if (geteuid() != 0) {
@@ -51,7 +51,7 @@ exec_update(int argc, char **argv)
 
 	if ((packagesite = pkg_config("PACKAGESITE")) == NULL) {
 		warnx("unable to determine PACKAGESITE");
-		return (1);
+		return (EPKG_FATAL);
 	}
 
 	if (packagesite[strlen(packagesite) - 1] == '/')
@@ -62,7 +62,8 @@ exec_update(int argc, char **argv)
 	tmp = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
 
 	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
-		retcode = 1;
+		pkg_error_warn("can not fetch %s", url);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 

@@ -28,10 +28,9 @@ pkg_fetch_file(const char *url, const char *dest)
 	char buf[10240];
 	int retcode = EPKG_OK;
 
-	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC, 0644)) == -1) {
+	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0600)) == -1) {
 		EMIT_ERRNO("open", dest);
-		retcode = EPKG_FATAL;
-		goto cleanup;
+		return(EPKG_FATAL);
 	}
 
 	while (remote == NULL) {
