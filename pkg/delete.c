@@ -58,7 +58,6 @@ exec_delete(int argc, char **argv)
 	}
 	
 	if ((retcode = pkgdb_open(&db, PKGDB_DEFAULT)) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		goto cleanup;
 	}
 
@@ -66,12 +65,10 @@ exec_delete(int argc, char **argv)
 		origin = argv[0];
 
 	if ((retcode = pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db)) != EPKG_OK) {
-		pkg_error_warn("cant create jobs");
 		goto cleanup;
 	}
 
 	if ((it = pkgdb_query(db, origin, match)) == NULL) {
-		pkg_error_warn("Can not query database");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -82,17 +79,14 @@ exec_delete(int argc, char **argv)
 	}
 
 	if (retcode != EPKG_END) {
-		pkg_error_warn("can not iterate over results");
 		goto cleanup;
 	}
 
 	if ((retcode = pkg_jobs_apply(jobs, force)) != EPKG_OK) {
-		pkg_error_warn("cant deinstall");
 		goto cleanup;
 	}
 
-	if ((retcode = pkgdb_compact(db)) != EPKG_OK)
-		pkg_error_warn("can not compact database");
+	retcode = pkgdb_compact(db);
 
 	cleanup:
 	pkgdb_it_free(it);

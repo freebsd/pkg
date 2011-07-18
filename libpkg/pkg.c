@@ -1,5 +1,6 @@
 #include <archive.h>
 #include <archive_entry.h>
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -7,7 +8,6 @@
 
 #include "pkg.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 #include "pkg_private.h"
 #include "pkg_util.h"
 
@@ -109,10 +109,7 @@ pkg_free(struct pkg *pkg)
 pkg_t
 pkg_type(struct pkg const * const pkg)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (PKG_NONE);
-	}
+	assert(pkg != NULL);
 
 	return (pkg->type);
 }
@@ -120,15 +117,8 @@ pkg_type(struct pkg const * const pkg)
 const char *
 pkg_get(struct pkg const * const pkg, const pkg_attr attr)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (NULL);
-	}
-
-	if (attr > PKG_NUM_FIELDS) {
-		ERROR_BAD_ARG("attr");
-		return (NULL);
-	}
+	assert(pkg != NULL);
+	assert(attr <= PKG_NUM_FIELDS);
 
 	if ((pkg->fields[attr].type & pkg->type) == 0)
 		EMIT_PKG_ERROR("%s", "wrong usage of `attr` for this type of `pkg`");
@@ -141,18 +131,12 @@ pkg_set(struct pkg * pkg, pkg_attr attr, const char *value)
 {
 	struct sbuf **sbuf;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg != NULL);
+	assert(attr <= PKG_NUM_FIELDS);
+	assert(value != NULL || pkg->fields[attr].optional == 1);
 
-	if (attr > PKG_NUM_FIELDS)
-		return (ERROR_BAD_ARG("attr"));
-
-	if (value == NULL) {
-		if (pkg->fields[attr].optional == 1)
-			value = "";
-		else
-			return (ERROR_BAD_ARG("value"));
-	}
+	if (value == NULL)
+		value = "";
 
 	sbuf = &pkg->fields[attr].value;
 
@@ -177,11 +161,8 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 	off_t size = 0;
 	int ret = EPKG_OK;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (path == NULL)
-		return (ERROR_BAD_ARG("path"));
+	assert(pkg != NULL);
+	assert(path != NULL);
 
 	if ((ret = file_to_buffer(path, &buf, &size)) !=  EPKG_OK)
 		return (ret);
@@ -196,10 +177,7 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 int64_t
 pkg_flatsize(struct pkg *pkg)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (-1);
-	}
+	assert(pkg != NULL);
 
 	return (pkg->flatsize);
 }
@@ -215,10 +193,7 @@ pkg_setautomatic(struct pkg *pkg)
 int
 pkg_isautomatic(struct pkg *pkg)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (-1);
-	}
+	assert(pkg != NULL);
 
 	return (pkg->automatic);
 }
@@ -226,10 +201,7 @@ pkg_isautomatic(struct pkg *pkg)
 int64_t
 pkg_new_flatsize(struct pkg *pkg)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (-1);
-	}
+	assert(pkg != NULL);
 
 	return (pkg->new_flatsize);
 }
@@ -237,10 +209,7 @@ pkg_new_flatsize(struct pkg *pkg)
 int64_t
 pkg_new_pkgsize(struct pkg *pkg)
 {
-	if (pkg == NULL) {
-		ERROR_BAD_ARG("pkg");
-		return (-1);
-	}
+	assert(pkg != NULL);
 
 	return (pkg->new_pkgsize);
 }
@@ -248,11 +217,8 @@ pkg_new_pkgsize(struct pkg *pkg)
 int
 pkg_setflatsize(struct pkg *pkg, int64_t size)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (size < 0)
-		return (ERROR_BAD_ARG("size"));
+	assert(pkg != NULL);
+	assert(size >= 0);
 
 	pkg->flatsize = size;
 	return (EPKG_OK);
@@ -261,11 +227,8 @@ pkg_setflatsize(struct pkg *pkg, int64_t size)
 int
 pkg_setnewflatsize(struct pkg *pkg, int64_t size)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (size <0)
-		return (ERROR_BAD_ARG("size"));
+	assert(pkg != NULL);
+	assert(size >= 0);
 
 	pkg->new_flatsize = size;
 
@@ -275,11 +238,8 @@ pkg_setnewflatsize(struct pkg *pkg, int64_t size)
 int
 pkg_setnewpkgsize(struct pkg *pkg, int64_t size)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (size <0)
-		return (ERROR_BAD_ARG("size"));
+	assert(pkg != NULL);
+	assert(size >= 0);
 
 	pkg->new_pkgsize = size;
 
@@ -289,8 +249,7 @@ pkg_setnewpkgsize(struct pkg *pkg, int64_t size)
 int
 pkg_deps(struct pkg *pkg, struct pkg_dep **d)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg != NULL);
 
 	if (*d == NULL)
 		*d = STAILQ_FIRST(&pkg->deps);
@@ -306,8 +265,7 @@ pkg_deps(struct pkg *pkg, struct pkg_dep **d)
 int
 pkg_rdeps(struct pkg *pkg, struct pkg_dep **d)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg != NULL);
 
 	if (*d == NULL)
 		*d = STAILQ_FIRST(&pkg->rdeps);
@@ -323,8 +281,7 @@ pkg_rdeps(struct pkg *pkg, struct pkg_dep **d)
 int
 pkg_files(struct pkg *pkg, struct pkg_file **f)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg != NULL);
 
 	if (*f == NULL)
 		*f = STAILQ_FIRST(&pkg->files);
@@ -340,8 +297,7 @@ pkg_files(struct pkg *pkg, struct pkg_file **f)
 int
 pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg != NULL);
 
 	if (*d == NULL)
 		*d = STAILQ_FIRST(&pkg->dirs);
@@ -357,8 +313,7 @@ pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
 int
 pkg_conflicts(struct pkg *pkg, struct pkg_conflict **c)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg != NULL);
 
 	if (*c == NULL)
 		*c = STAILQ_FIRST(&pkg->conflicts);
@@ -374,8 +329,7 @@ pkg_conflicts(struct pkg *pkg, struct pkg_conflict **c)
 int
 pkg_scripts(struct pkg *pkg, struct pkg_script **s)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg != NULL);
 
 	if (*s == NULL)
 		*s = STAILQ_FIRST(&pkg->scripts);
@@ -391,8 +345,7 @@ pkg_scripts(struct pkg *pkg, struct pkg_script **s)
 int
 pkg_options(struct pkg *pkg, struct pkg_option **o)
 {
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg != NULL);
 
 	if (*o == NULL)
 		*o = STAILQ_FIRST(&pkg->options);
@@ -410,17 +363,10 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 {
 	struct pkg_dep *d;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (name == NULL || name[0] == '\0')
-		return (ERROR_BAD_ARG("name"));
-
-	if (origin == NULL || origin[0] == '\0')
-		return (ERROR_BAD_ARG("origin"));
-
-	if (version == NULL || version[0] == '\0')
-		return (ERROR_BAD_ARG("version"));
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+	assert(origin != NULL && origin[0] != '\0');
+	assert(version != NULL && version[0] != '\0');
 
 	pkg_dep_new(&d);
 
@@ -438,17 +384,10 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 {
 	struct pkg_dep *d;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (name == NULL || name[0] == '\0')
-		return (ERROR_BAD_ARG("name"));
-
-	if (origin == NULL || origin[0] == '\0')
-		return (ERROR_BAD_ARG("origin"));
-
-	if (version == NULL || version[0] == '\0')
-		return (ERROR_BAD_ARG("version"));
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+	assert(origin != NULL && origin[0] != '\0');
+	assert(version != NULL && version[0] != '\0');
 
 	pkg_dep_new(&d);
 
@@ -466,11 +405,8 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 {
 	struct pkg_file *f;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (path == NULL || path[0] == '\0')
-		return (ERROR_BAD_ARG("path"));
+	assert(pkg != NULL);
+	assert(path != NULL && path[0] != '\0');
 
 	pkg_file_new(&f);
 
@@ -489,11 +425,8 @@ pkg_adddir(struct pkg *pkg, const char *path)
 {
 	struct pkg_dir *d = NULL;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (path == NULL || path[0] == '\0')
-		return (ERROR_BAD_ARG("path"));
+	assert(pkg != NULL);
+	assert(path != NULL && path[0] != '\0');
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
 		if (strcmp(path, pkg_dir_path(d)) == 0) {
@@ -515,11 +448,8 @@ pkg_addconflict(struct pkg *pkg, const char *glob)
 {
 	struct pkg_conflict *c;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (glob == NULL || glob[0] == '\0')
-		return (ERROR_BAD_ARG("glob"));
+	assert(pkg != NULL);
+	assert(glob != NULL && glob[0] != '\0');
 
 	pkg_conflict_new(&c);
 	sbuf_set(&c->glob, glob);
@@ -534,8 +464,7 @@ pkg_addscript(struct pkg *pkg, const char *data, pkg_script_t type)
 {
 	struct pkg_script *s;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(pkg != NULL);
 
 	pkg_script_new(&s);
 	sbuf_set(&s->data, data);
@@ -555,11 +484,8 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 	int ret = EPKG_OK;
 	off_t sz = 0;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (path == NULL)
-		return (ERROR_BAD_ARG("path"));
+	assert(pkg != NULL);
+	assert(path != NULL);
 
 	if ((ret = file_to_buffer(path, &data, &sz)) != EPKG_OK)
 		return (ret);
@@ -610,11 +536,8 @@ pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type)
 {
 	struct pkg_script *s = NULL;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (cmd == NULL || cmd[0] == '\0')
-		return (ERROR_BAD_ARG("cmd"));
+	assert(pkg != NULL);
+	assert(cmd != NULL && cmd[0] != '\0');
 
 	while (pkg_scripts(pkg, &s) == EPKG_OK) {
 		if (pkg_script_type(s) == type) {
@@ -643,14 +566,9 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 {
 	struct pkg_option *o;
 
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
-
-	if (key == NULL || key[0] == '\0')
-		return (ERROR_BAD_ARG("opt"));
-
-	if (value == NULL || value[0] == '\0')
-		return (ERROR_BAD_ARG("value"));
+	assert(pkg != NULL);
+	assert(key != NULL && key[0] != '\0');
+	assert(value != NULL && value[0] != '\0');
 
 	pkg_option_new(&o);
 
@@ -798,8 +716,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 		{ NULL, 0 }
 	};
 
-	if (path == NULL)
-		return (ERROR_BAD_ARG("path"));
+	assert(path != NULL && path[0] != '\0');
 
 	*a = archive_read_new();
 	archive_read_support_compression_all(*a);

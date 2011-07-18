@@ -95,7 +95,6 @@ exec_autoremove(int argc, char **argv)
 		while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 			if (pkg_delete(pkg, db, 0) != EPKG_OK) {
 				retcode++;
-				pkg_error_warn("can not delete %s-%s", pkg_get(pkg, PKG_ORIGIN));
 			}
 		}
 

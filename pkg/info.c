@@ -282,7 +282,6 @@ exec_info(int argc, char **argv)
 				print_info(pkg, opt);
 		}
 		if (ret != EPKG_END) {
-			pkg_error_warn("can not iterate over results");
 			retcode = -1;
 		}
 

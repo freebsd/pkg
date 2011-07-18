@@ -135,21 +135,20 @@ exec_register(int argc, char **argv)
 	}
 
 	snprintf(fpath, MAXPATHLEN, "%s/+DESC", mdir);
-	if (pkg_set_from_file(pkg, PKG_DESC, fpath) != EPKG_OK)
-		pkg_error_warn("");
+	pkg_set_from_file(pkg, PKG_DESC, fpath);
 
 	snprintf(fpath, MAXPATHLEN, "%s/+DISPLAY", mdir);
-	if (access(fpath, F_OK) == 0 && pkg_set_from_file(pkg, PKG_MESSAGE, fpath) != EPKG_OK)
-		pkg_error_warn("");
+	if (access(fpath, F_OK) == 0)
+		 pkg_set_from_file(pkg, PKG_MESSAGE, fpath);
 
 	snprintf(fpath, MAXPATHLEN, "%s/+MTREE_DIRS", mdir);
-	if (access(fpath, F_OK) == 0 && pkg_set_from_file(pkg, PKG_MTREE, fpath) != EPKG_OK)
-		pkg_error_warn("");
+	if (access(fpath, F_OK) == 0)
+		pkg_set_from_file(pkg, PKG_MTREE, fpath);
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		snprintf(fpath, MAXPATHLEN, "%s/%s", mdir, scripts[i]);
-		if (access(fpath, F_OK) == 0 && pkg_addscript_file(pkg, fpath) != EPKG_OK)
-			pkg_error_warn("");
+		if (access(fpath, F_OK) == 0)
+			pkg_addscript_file(pkg, fpath);
 	}
 
 	/* if www is not given then try to determine it from description */

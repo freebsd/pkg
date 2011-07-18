@@ -62,13 +62,11 @@ exec_search(int argc, char **argv)
 	pattern = argv[0];
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if ((it = pkgdb_rquery(db, pattern, match, field)) == NULL) {
-		pkg_error_warn("can not query database");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}

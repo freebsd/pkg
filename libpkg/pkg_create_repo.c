@@ -15,7 +15,6 @@
 
 #include "pkg.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 #include "pkg_private.h"
 #include "pkg_util.h"
 
@@ -108,12 +107,14 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	}
 
 	if (sqlite3_prepare(sqlite, pkgsql, -1, &stmt_pkg, NULL) != SQLITE_OK) {
-		retcode = ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (sqlite3_prepare(sqlite, depssql, -1, &stmt_deps, NULL) != SQLITE_OK) {
-		retcode = ERROR_SQLITE(sqlite);
+		ERROR_SQLITE(sqlite);
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -169,7 +170,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_text(stmt_pkg, 13, pkg_path, -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
-			retcode = ERROR_SQLITE(sqlite);
+			ERROR_SQLITE(sqlite);
+			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 		sqlite3_reset(stmt_pkg);
@@ -183,7 +185,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			sqlite3_bind_int64(stmt_deps, 4, package_id);
 
 			if (sqlite3_step(stmt_deps) != SQLITE_DONE) {
-				retcode = ERROR_SQLITE(sqlite);
+				ERROR_SQLITE(sqlite);
+				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 			sqlite3_reset(stmt_deps);

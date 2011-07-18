@@ -14,7 +14,6 @@ SRCS=		pkg.c \
 		pkg_delete.c \
 		pkg_elf.c \
 		pkg_event.c \
-		pkg_error.c \
 		pkg_jobs.c \
 		pkg_manifest.c \
 		pkg_ports.c \

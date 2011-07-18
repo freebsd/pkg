@@ -12,7 +12,6 @@
 
 #include "pkg.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 #include "pkg_util.h"
 #include "pkg_private.h"
 
@@ -221,8 +220,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	yaml_node_t *node;
 	int retcode = EPKG_OK;
 
-	if (buf == NULL)
-		return (ERROR_BAD_ARG(buf));
+	assert(buf != NULL);
 
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_string(&parser, buf, strlen(buf));

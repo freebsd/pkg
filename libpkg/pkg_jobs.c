@@ -5,17 +5,13 @@
 #include "pkg.h"
 #include "pkgdb.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 #include "pkg_private.h"
 
 int
 pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 {
-	if (db == NULL)
-		return (ERROR_BAD_ARG("db"));
-
-	if (t == PKG_JOBS_INSTALL && db->type != PKGDB_REMOTE)
-		return (ERROR_BAD_ARG("db"));
+	assert(db != NULL);
+	assert(t != PKG_JOBS_INSTALL || db->type == PKGDB_REMOTE);
 
 	if((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
 		EMIT_ERRNO("calloc", "pkg_jobs");
@@ -49,10 +45,8 @@ pkg_jobs_free(struct pkg_jobs *j)
 int
 pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
 {
-	if (j == NULL)
-		return (ERROR_BAD_ARG("jobs"));
-	if (pkg == NULL)
-		return (ERROR_BAD_ARG("pkg"));
+	assert(j != NULL);
+	assert(pkg != NULL);
 
 	STAILQ_INSERT_TAIL(&j->jobs, pkg, next);
 
@@ -62,8 +56,7 @@ pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
 int
 pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
 {
-	if (j == NULL)
-		return (ERROR_BAD_ARG("jobs"));
+	assert(j != NULL);
 
 	pkg_jobs_resolv(j);
 
@@ -230,8 +223,7 @@ pkg_jobs_resolv(struct pkg_jobs *j)
 	struct pkg_jobs_node *n, *tmp;
 	struct pkg *p;
 
-	if (j == NULL)
-		return (ERROR_BAD_ARG("jobs"));
+	assert(j != NULL);
 
 	if (j->resolved == 1)
 		return (EPKG_OK);

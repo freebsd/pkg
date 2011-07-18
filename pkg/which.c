@@ -34,7 +34,6 @@ exec_which(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}

@@ -590,21 +590,6 @@ int pkg_fetch_file(const char *url, const char *dest);
 int ports_parse_plist(struct pkg *, char *);
 
 /**
- * Return the last error number
- */
-pkg_error_t pkg_error_number(void);
-
-/**
- * Return the last error string
- */
-const char * pkg_error_string(void);
-
-/**
- * Behave like warn(3), but with the pkg error instead of errno
- */
-void pkg_error_warn(const char *fmt, ...);
-
-/**
  * @todo Document
  */
 int pkg_copy_tree(struct pkg *, const char *src, const char *dest);

@@ -10,7 +10,6 @@
 
 #include "pkg.h"
 #include "pkg_event.h"
-#include "pkg_error.h"
 
 struct _config {
 	const char *key;
