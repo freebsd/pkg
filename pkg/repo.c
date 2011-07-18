@@ -76,7 +76,7 @@ exec_repo(int argc, char **argv)
 	retcode = pkg_create_repo(argv[1], progress, &pos);
 
 	if (retcode != EPKG_OK)
-		pkg_error_warn("can not create repository");
+		printf("can not create repository");
 	else
 		printf("\bDone!\n");
 

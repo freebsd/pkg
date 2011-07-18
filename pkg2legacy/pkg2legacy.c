@@ -96,7 +96,6 @@ main(int argc, char **argv)
 			continue;
 
 		if (pkg_open(&pkg, p->fts_accpath) != EPKG_OK) {
-			pkg_error_warn("Unable to open package %s (ignoring)", p->fts_accpath);
 			continue;
 		}
 

@@ -42,7 +42,6 @@ exec_which(int argc, char **argv)
 	snprintf(pathabs, sizeof(pathabs), "%s/%s", pathabsdir, basename(argv[1]));
 
 	if ((it = pkgdb_query_which(db, pathabs)) == NULL) {
-		pkg_error_warn("can not query database");
 		return (EX_IOERR);
 	}
 
@@ -51,7 +50,6 @@ exec_which(int argc, char **argv)
 		printf("%s was installed by package %s-%s\n", pathabs, pkg_get(pkg, PKG_NAME),
 			   pkg_get(pkg, PKG_VERSION));
 	} else if (ret != EPKG_END) {
-		pkg_error_warn("can not iterate over results");
 		retcode = EPKG_WARN;
 	} else {
 		printf("%s was not found in the database\n", pathabs);
