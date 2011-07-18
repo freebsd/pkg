@@ -39,7 +39,6 @@ exec_install(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		return (EX_IOERR);
 	}
 

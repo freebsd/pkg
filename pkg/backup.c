@@ -25,7 +25,6 @@ exec_backup(int argc, char **argv)
 		dest = argv[2];
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		return (EX_IOERR);
 	}
 

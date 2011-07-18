@@ -62,12 +62,10 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		return (EX_IOERR);
 	}
 
 	if ((it = pkgdb_query_autoremove(db)) == NULL) {
-		pkg_error_warn("can not query database");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -103,7 +101,6 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	if (pkgdb_compact(db) != EPKG_OK) { 
-		pkg_error_warn("can not compact database");
 		retcode = EPKG_FATAL;
 	}
 

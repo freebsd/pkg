@@ -173,7 +173,6 @@ exec_info(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkg_error_warn("can not open database");
 		return (EX_IOERR);
 	}
 
@@ -239,7 +238,6 @@ exec_info(int argc, char **argv)
 		}
 
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-			pkg_error_warn("can not query database");
 			return (EX_IOERR);
 		}
 
