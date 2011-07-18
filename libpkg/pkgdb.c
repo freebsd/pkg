@@ -247,27 +247,30 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	dbdir = pkg_config("PKG_DBDIR");
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL) {
-		EMIT_ERRNO("malloc", "");
+		EMIT_ERRNO("malloc", "pkgdb");
 		return EPKG_FATAL;
 	}
 
-	(*db)->type = type;
+	(*db)->type = PKGDB_DEFAULT;
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 	retcode = access(localpath, R_OK);
 	if (retcode == -1) {
 		if (errno != ENOENT) {
 			EMIT_ERRNO("access", localpath);
-			return EPKG_FATAL;
+			free(*db);
+			return (EPKG_FATAL);
 		}
 		else if (eaccess(dbdir, W_OK) != 0) {
 			EMIT_ERRNO("eaccess", dbdir);
-			return EPKG_FATAL;
+			free(*db);
+			return (EPKG_FATAL);
 		}
 	}
 
 	if (sqlite3_open(localpath, &(*db)->sqlite) != SQLITE_OK) {
 		ERROR_SQLITE((*db)->sqlite);
+		free(*db);
 		return (EPKG_FATAL);
 	}
 
@@ -276,7 +279,8 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 
 		if (access(remotepath, R_OK) != 0) {
 			EMIT_ERRNO("access", remotepath);
-			return EPKG_FATAL;
+			pkgdb_close(*db);
+			return (EPKG_FATAL);
 		}
 
 		sqlite3_snprintf(sizeof(sql), sql, "ATTACH \"%s\" as remote;", remotepath);
@@ -284,14 +288,18 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 		if (sqlite3_exec((*db)->sqlite, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
 			EMIT_PKG_ERROR("sqlite: %s", errmsg);
 			sqlite3_free(errmsg);
+			pkgdb_close(*db);
 			return (EPKG_FATAL);
 		}
+
+		(*db)->type = PKGDB_REMOTE;
 	}
 
 	/* If the database is missing we have to initialize it */
 	if (retcode == -1)
 		if ((retcode = pkgdb_init((*db)->sqlite)) != EPKG_OK) {
 			ERROR_SQLITE((*db)->sqlite);
+			pkgdb_close(*db);
 			return (EPKG_FATAL);
 		}
 
@@ -305,13 +313,14 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 			pkgdb_pkggt, NULL, NULL);
 
 	/*
-	 * allow forign key option which will allow to have clean support for
+	 * allow foreign key option which will allow to have clean support for
 	 * reinstalling
 	 */
 	if (sqlite3_exec((*db)->sqlite, "PRAGMA foreign_keys = ON;", NULL, NULL,
 		&errmsg) != SQLITE_OK) {
 		EMIT_PKG_ERROR("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
+		pkgdb_close(*db);
 		return (EPKG_FATAL);
 	}
 
