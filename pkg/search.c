@@ -20,7 +20,7 @@ exec_search(int argc, char **argv)
 {
 	char *pattern;
 	match_t match = MATCH_EXACT;
-	int  retcode = 0;
+	int  retcode = EPKG_OK;
 	unsigned int field = REPO_SEARCH_NAME;
 	int ch;
 	char size[7];

@@ -30,7 +30,7 @@ exec_install(int argc, char **argv)
 
 	if (argc < 2) {
 		usage_install();
-		return (-1);
+		return (EX_USAGE);
 	}
 
 	if (geteuid() != 0) {
@@ -39,8 +39,8 @@ exec_install(int argc, char **argv)
 	}
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
+		pkg_error_warn("can not open database");
+		return (EX_IOERR);
 	}
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
@@ -70,6 +70,6 @@ exec_install(int argc, char **argv)
 	pkgdb_close(db);
 	pkg_jobs_free(jobs);
 
-	return (retcode == EPKG_OK ? 0 : 1);
+	return (retcode == EPKG_OK ? EX_OK : 1);
 }
 

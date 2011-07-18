@@ -22,7 +22,7 @@ usage_create(void)
 static int
 pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const char *outdir, const char *rootdir)
 {
-	int i, ret = 0, retcode = 0;
+	int i, ret = EPKG_OK, retcode = EPKG_OK;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
@@ -32,7 +32,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
-		return (-1);
+		return (EX_IOERR);
 	}
 
 	if (match != MATCH_ALL) {
@@ -70,7 +70,7 @@ cleanup:
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
-	return retcode;
+	return (retcode);
 }
 
 /*
