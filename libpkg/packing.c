@@ -85,7 +85,11 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 	archive_entry_clear(pack->entry);
 	archive_entry_copy_sourcepath(pack->entry, filepath);
 
-	lstat(filepath, &st);
+	if (lstat(filepath, &st) != 0) {
+		EMIT_ERRNO("lstat", filepath);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
 	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1,
 												&st);
 	if (retcode != ARCHIVE_OK) {
