@@ -78,7 +78,6 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 {
 	int fd;
 	int len;
-	char linkdest[MAXPATHLEN];
 	char buf[BUFSIZ];
 	int retcode = EPKG_OK;
 	struct stat st;
@@ -86,22 +85,15 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 	archive_entry_clear(pack->entry);
 	archive_entry_copy_sourcepath(pack->entry, filepath);
 
-	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, NULL);
+	lstat(filepath, &st);
+	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1,
+												&st);
 	if (retcode != ARCHIVE_OK) {
 		EMIT_PKG_ERROR("%s: %s", filepath, archive_error_string(pack->aread));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 	retcode = EPKG_OK;
-
-	lstat(filepath, &st);
-	archive_entry_copy_stat(pack->entry, &st);
-
-	if (S_ISLNK(st.st_mode)) {
-		bzero(linkdest, MAXPATHLEN);
-		readlink(filepath, linkdest, MAXPATHLEN);
-		archive_entry_set_symlink(pack->entry, linkdest);
-	}
 
 	if (newpath != NULL)
 		archive_entry_set_pathname(pack->entry, newpath);
