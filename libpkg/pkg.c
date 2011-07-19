@@ -118,7 +118,7 @@ const char *
 pkg_get(struct pkg const * const pkg, const pkg_attr attr)
 {
 	assert(pkg != NULL);
-	assert(attr <= PKG_NUM_FIELDS);
+	assert(attr < PKG_NUM_FIELDS);
 
 	if ((pkg->fields[attr].type & pkg->type) == 0)
 		EMIT_PKG_ERROR("%s", "wrong usage of `attr` for this type of `pkg`");
@@ -132,7 +132,7 @@ pkg_set(struct pkg * pkg, pkg_attr attr, const char *value)
 	struct sbuf **sbuf;
 
 	assert(pkg != NULL);
-	assert(attr <= PKG_NUM_FIELDS);
+	assert(attr < PKG_NUM_FIELDS);
 	assert(value != NULL || pkg->fields[attr].optional == 1);
 
 	if (value == NULL)
