@@ -591,7 +591,7 @@ pkg_freedeps(struct pkg *pkg)
 		pkg_dep_free(d);
 	}
 
-	pkg->flags ^= PKG_LOAD_DEPS;
+	pkg->flags &= ~PKG_LOAD_DEPS;
 }
 
 void
@@ -605,7 +605,7 @@ pkg_freerdeps(struct pkg *pkg)
 		pkg_dep_free(d);
 	}
 
-	pkg->flags ^= PKG_LOAD_RDEPS;
+	pkg->flags &= ~PKG_LOAD_RDEPS;
 }
 
 void
@@ -619,7 +619,7 @@ pkg_freefiles(struct pkg *pkg)
 		pkg_file_free(f);
 	}
 
-	pkg->flags ^= PKG_LOAD_FILES;
+	pkg->flags &= ~PKG_LOAD_FILES;
 }
 
 void
@@ -633,7 +633,7 @@ pkg_freedirs(struct pkg *pkg)
 		pkg_dir_free(d);
 	}
 
-	pkg->flags ^= PKG_LOAD_DIRS;
+	pkg->flags &= ~PKG_LOAD_DIRS;
 }
 
 void
@@ -647,7 +647,7 @@ pkg_freeconflicts(struct pkg *pkg)
 		pkg_conflict_free(c);
 	}
 
-	pkg->flags ^= PKG_LOAD_CONFLICTS;
+	pkg->flags &= ~PKG_LOAD_CONFLICTS;
 }
 
 void
@@ -661,7 +661,7 @@ pkg_freescripts(struct pkg *pkg)
 		pkg_script_free(s);
 	}
 
-	pkg->flags ^= PKG_LOAD_SCRIPTS;
+	pkg->flags &= ~PKG_LOAD_SCRIPTS;
 }
 
 void
@@ -675,7 +675,7 @@ pkg_freeoptions(struct pkg *pkg)
 		pkg_option_free(o);
 	}
 
-	pkg->flags ^= PKG_LOAD_OPTIONS;
+	pkg->flags &= ~PKG_LOAD_OPTIONS;
 }
 
 int
