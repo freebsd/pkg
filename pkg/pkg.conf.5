@@ -1,0 +1,76 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd Jul 20, 2011
+.Dt PKG.CONF 5
+.Os
+.Sh NAME
+.Nm "pkg.conf"
+.Nd System-wide configuration file for
+.Xr pkg 1
+.Sh DESCRIPTION
+.Nm
+is the system-wide configuration file used by the
+.Xr pkg 1
+tools.
+.Pp
+The location of this file is
+.Fa /etc/pkg.conf
+.Pp
+Lines in the file beginning with a "#" or ";" are comments
+and are ignored.
+.Pp
+An option in the file is defined in the form of
+.Fa name = value
+.Sh OPTIONS
+The following options can be defined in
+.Nm :
+.Bl -tag -width F1
+.It Cm PACKAGESITE
+Specifies the remote location to use
+when fetching a database file. 
+.It Cm PKG_DBDIR
+Specifies the directory to use for storing the package
+database files. The default value for this option is
+.Fa /var/db/pkg
+.It Cm PKG_CACHEDIR
+Specifies the cache directory for packages. The default value
+for this option is
+.Fa /var/cache/pkg
+.El
+.Sh WARNING
+.Sh ENVRIOMENT
+The following envrioment variables affect the execution of
+.Xr pkg 1
+.Bl -tag -width ".Ev PACKAGESITE"
+.It Ev PACKAGESITE
+Specifies an alternative location to use when fetching a remote
+package database file.
+.El
+.Sh FILES
+.Sh SEE ALSO
+.Xr pkg 1,
+.Xr pkg-create 1,
+.Xr pkg-add 1,
+.Xr pkg-info 1,
+.Xr pkg-register 1,
+.Xr pkg-update 1,
+.Xr pkg-upgrade 1,
+.Xr pkg-version 1,
+.Xr pkg-which 1
+.Sh AUTHORS AND CONTRIBUTORS
+.Sh BUGS
