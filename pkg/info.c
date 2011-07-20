@@ -21,7 +21,7 @@ enum sign {
 };
 
 static int
-print_info(struct pkg *pkg, unsigned int opt)
+print_info(struct pkg * const pkg, unsigned int opt)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *file = NULL;

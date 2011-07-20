@@ -4,15 +4,15 @@
 #include "pkg_private.h"
 
 int
-pkg_script_run(struct pkg *pkg, pkg_script_t type)
+pkg_script_run(struct pkg * const pkg, pkg_script_t type)
 {
 	struct pkg_script *script = NULL;
 	pkg_script_t stype;
-	struct sbuf *script_cmd = sbuf_new_auto();
+	struct sbuf * const script_cmd = sbuf_new_auto();
 	size_t i;
 
 	struct {
-		const char *arg;
+		const char * const arg;
 		const pkg_script_t b;
 		const pkg_script_t a;
 	} const map[] = {
