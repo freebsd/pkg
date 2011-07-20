@@ -18,7 +18,7 @@ struct _config {
 } c[] = {
 	{ "PACKAGESITE", NULL, NULL},
 	{ "PKG_DBDIR", "/var/db/pkg", NULL},
-	{ "PKG_CACHEDIR", "/var/lib/pkg", NULL},
+	{ "PKG_CACHEDIR", "/var/cache/pkg", NULL},
 	{ NULL, NULL, NULL}
 };
 
