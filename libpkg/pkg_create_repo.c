@@ -82,7 +82,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	repopath[0] = path;
 	repopath[1] = NULL;
 
-	snprintf(repodb, MAXPATHLEN, "%s/repo.sqlite", path);
+	snprintf(repodb, MAXPATHLEN, "%s/%s", path,
+			pkg_config("PKG_DBFILE_LOCAL"));
 
 	if (stat(repodb, &st) != -1)
 		if (unlink(repodb) != 0) {
@@ -249,6 +250,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 {
 	char repo_path[MAXPATHLEN];
 	char repo_archive[MAXPATHLEN];
+	const char *repo_file = NULL;
 	struct packing *pack;
 	int max_len = 0;
 	unsigned char *sigret = NULL;
@@ -256,7 +258,9 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	RSA *rsa = NULL;
 	char sha256[65];
 
-	snprintf(repo_path, MAXPATHLEN, "%s/repo.sqlite", path);
+	repo_file = pkg_config("PKG_DBFILE_LOCAL");
+
+	snprintf(repo_path, MAXPATHLEN, "%s/%s", path, repo_file);
 	snprintf(repo_archive, MAXPATHLEN, "%s/repo", path);
 
 	packing_init(&pack, repo_archive, TXZ);
@@ -290,7 +294,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 		RSA_free(rsa);
 		ERR_free_strings();
 	}
-	packing_append_file(pack, repo_path, "repo.sqlite");
+	packing_append_file(pack, repo_path, repo_file);
 	packing_finish(pack);
 
 	return (EPKG_OK);

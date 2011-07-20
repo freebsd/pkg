@@ -8,6 +8,8 @@
 *.gmon
 *.log
 *.gz
+*~
+*.swp
 pkg/pkg
 pkg2legacy
 tests/test
