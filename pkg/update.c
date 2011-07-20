@@ -32,7 +32,9 @@ int
 exec_update(int argc, char **argv)
 {
 	char url[MAXPATHLEN];
-	const char *packagesite = NULL;
+	char repo_db[MAXPATHLEN];
+	const char *packagesite = NULL, *repo_path = NULL;
+	const char *repo_archive = NULL, *repo_file = NULL;
 	char *tmp = NULL;
 	int retcode = EPKG_OK;
 	struct archive *a;
@@ -54,10 +56,12 @@ exec_update(int argc, char **argv)
 		return (EPKG_FATAL);
 	}
 
+	repo_archive = pkg_config("PKG_REPO_ARCHIVE");
+
 	if (packagesite[strlen(packagesite) - 1] == '/')
-		snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
+		snprintf(url, MAXPATHLEN, "%s%s", packagesite, repo_archive);
 	else
-		snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
+		snprintf(url, MAXPATHLEN, "%s/%s", packagesite, repo_archive);
 
 	tmp = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
 
@@ -72,9 +76,13 @@ exec_update(int argc, char **argv)
 
 	archive_read_open_filename(a, tmp, 4096);
 
+	repo_path = pkg_config("PKG_DBDIR");
+	repo_file = pkg_config("PKG_DBFILE_REMOTE");
+	snprintf(repo_db, MAXPATHLEN, "%s/%s", repo_path, repo_file);
+
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			archive_entry_set_pathname(ae, "/var/db/pkg/repo.sqlite");
+		if (strcmp(archive_entry_pathname(ae), repo_file) == 0) {
+			archive_entry_set_pathname(ae, repo_db);
 			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
 			break;
 		}

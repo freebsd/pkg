@@ -237,12 +237,12 @@ pkgdb_init(sqlite3 *sdb)
 int
 pkgdb_open(struct pkgdb **db, pkgdb_t type)
 {
-	int retcode;
+	int retcode = EPKG_OK;
 	char *errmsg;
 	char localpath[MAXPATHLEN];
 	char remotepath[MAXPATHLEN];
 	char sql[BUFSIZ];
-	const char *dbdir;
+	const char *dbdir = NULL;
 
 	dbdir = pkg_config("PKG_DBDIR");
 
@@ -253,7 +253,8 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 
 	(*db)->type = PKGDB_DEFAULT;
 
-	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
+	snprintf(localpath, sizeof(localpath), "%s/%s", dbdir,
+			pkg_config("PKG_DBFILE_LOCAL"));
 	retcode = access(localpath, R_OK);
 	if (retcode == -1) {
 		if (errno != ENOENT) {
@@ -275,7 +276,8 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	}
 
 	if (type == PKGDB_REMOTE) {
-		snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
+		snprintf(remotepath, sizeof(remotepath), "%s/%s", dbdir,
+				pkg_config("PKG_DBFILE_REMOTE"));
 
 		if (access(remotepath, R_OK) != 0) {
 			EMIT_ERRNO("access", remotepath);

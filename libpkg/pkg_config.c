@@ -18,6 +18,9 @@ struct _config {
 } c[] = {
 	{ "PACKAGESITE", NULL, NULL},
 	{ "PKG_DBDIR", "/var/db/pkg", NULL},
+	{ "PKG_DBFILE_LOCAL", "local.sqlite", NULL },
+	{ "PKG_DBFILE_REMOTE", "repo.sqlite", NULL },
+	{ "PKG_REPO_ARCHIVE", "repo.txz", NULL },
 	{ "PKG_CACHEDIR", "/var/lib/pkg", NULL},
 	{ NULL, NULL, NULL}
 };
