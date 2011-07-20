@@ -161,8 +161,12 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 								   val->data.scalar.value);
 				} else if (type == PKG_FLATSIZE)
 					pkg_setflatsize(pkg, strtoimax(val->data.scalar.value, NULL, 10));
-				else
+				else {
+					if (val->data.scalar.value[val->data.scalar.length - 1] == '\n')
+						val->data.scalar.value[val->data.scalar.length - 1] = '\0';
+
 					pkg_set(pkg, type, val->data.scalar.value);
+				}
 			} else {
 				parse_node(pkg, val, document, type);
 			}
