@@ -34,6 +34,7 @@ MAN=	pkg.1 \
 	pkg-update.1 \
 	pkg-upgrade.1 \
 	pkg-version.1 \
-	pkg-which.1
+	pkg-which.1 \
+	pkg.conf.5
 
 .include <bsd.prog.mk>
