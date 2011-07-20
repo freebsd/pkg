@@ -1,3 +1,5 @@
+#include <sys/utsname.h>
+
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
@@ -86,6 +88,7 @@ pkg_add(struct pkgdb *db, const char *path)
 	struct pkg *p = NULL;
 	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
+	struct utsname u;
 	bool extract = true;
 	char dpath[MAXPATHLEN];
 	const char *basedir;
@@ -107,6 +110,26 @@ pkg_add(struct pkgdb *db, const char *path)
 		retcode = ret;
 		goto cleanup;
 	}
+
+	if (uname(&u) != 0) {
+		EMIT_ERRNO("uname", "");
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/*
+	 * Check the architecture
+	 */
+	if (strcmp(u.machine, pkg_get(pkg, PKG_ARCH)) != 0) {
+		EMIT_PKG_ERROR("wrong architecture: %s instead of %s",
+					   pkg_get(pkg, PKG_ARCH), u.machine);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/*
+	 * TODO: check the os version
+	 */
 
 	/*
 	 * Check if the package is already installed
