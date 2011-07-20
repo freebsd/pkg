@@ -74,7 +74,7 @@ print_info(struct pkg *pkg, unsigned int opt)
 		if (opt & INFO_QUIET)
 			printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 		else
-			printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_COMMENT));
+			printf("%s-%s: %s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_COMMENT));
 	}
 
 	return (0);
