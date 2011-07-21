@@ -14,7 +14,7 @@
 #include "add.h"
 
 static int
-is_url(const char *pattern)
+is_url(const char * const pattern)
 {
 	if (strncmp(pattern, "http://", 7) == 0 ||
 		strncmp(pattern, "https://", 8) == 0 ||
