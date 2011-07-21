@@ -20,7 +20,7 @@ usage_create(void)
 }
 
 static int
-pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const char *outdir, const char *rootdir)
+pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const char * const outdir, const char * const rootdir)
 {
 	int i, ret = EPKG_OK, retcode = EPKG_OK;
 	struct pkgdb *db = NULL;
