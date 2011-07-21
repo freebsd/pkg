@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 #include <sys/types.h>
+#include <sys/queue.h>
 #include <openssl/pem.h>
 
 struct pkg;
@@ -700,6 +701,12 @@ struct pkg_event {
 			struct pkg *pkg;
 		} e_failed_cksum;
 	};
+};
+
+struct pkg_remote_repo {
+	char *name;
+	char *url;
+	STAILQ_ENTRY(pkg_remote_repo) entries;
 };
 
 /**
