@@ -198,7 +198,7 @@ pkgdb_init(sqlite3 *sdb)
 	");"
 	"CREATE TABLE directories ("
 		"id INTEGER PRIMARY KEY, "
-		"path TEXT NOT NULL"
+		"path TEXT NOT NULL UNIQUE"
 	");"
 	"CREATE TABLE pkg_dirs_assoc ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
@@ -219,7 +219,7 @@ pkgdb_init(sqlite3 *sdb)
 	"END;"
 	"CREATE TABLE categories ("
 		"id INTEGER PRIMARY KEY, "
-		"name TEXT NOT NULL"
+		"name TEXT NOT NULL UNIQUE"
 	");"
 	"CREATE TABLE pkg_categories_assoc ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
@@ -234,7 +234,7 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE TRIGGER category_insert INSTEAD OF INSERT ON pkg_categories "
 	"FOR EACH ROW BEGIN "
 		"INSERT OR IGNORE INTO CATEGORIES (name) VALUES (NEW.name);"
-		"INSERT INTO pkg_categories_assoc (package_id, directory_id) VALUES "
+		"INSERT INTO pkg_categories_assoc (package_id, category_id) VALUES "
 			"((SELECT id FROM packages where origin = NEW.origin), "
 			"(SELECT id FROM categories WHERE name = NEW.name));"
 	"END;";
@@ -997,6 +997,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_conflict *conflict = NULL;
 	struct pkg_script *script = NULL;
 	struct pkg_option *option = NULL;
+	struct pkg_category *category = NULL;
 
 	sqlite3 *s;
 	sqlite3_stmt *stmt_pkg = NULL;
@@ -1007,6 +1008,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_stmt *stmt_script = NULL;
 	sqlite3_stmt *stmt_option = NULL;
 	sqlite3_stmt *stmt_dirs = NULL;
+	sqlite3_stmt *stmt_cat = NULL;
 
 	int ret;
 	int retcode = EPKG_FATAL;
@@ -1040,6 +1042,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		"VALUES (?1, ?2, ?3);";
 	const char sql_dir[] = ""
 		"INSERT INTO pkg_dirs(origin, path) "
+		"VALUES (?1, ?2);";
+	const char sql_category[] = ""
+		"INSERT INTO pkg_categories(origin, name) "
 		"VALUES (?1, ?2);";
 
 	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
@@ -1198,6 +1203,30 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	/*
+	 * Insert categories
+	 */
+
+	if (sqlite3_prepare_v2(s, sql_category, -1, &stmt_cat, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
+
+	while (pkg_categories(pkg, &category) == EPKG_OK) {
+		sqlite3_bind_text(stmt_cat, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_cat, 2, pkg_category_name(category), -1, SQLITE_STATIC);
+
+		if ((ret = sqlite3_step(stmt_cat)) != SQLITE_DONE) {
+			if (ret == SQLITE_CONSTRAINT) {
+				EMIT_PKG_ERROR("sqlite: constraint violation on categories.name: %s",
+						pkg_category_name(category));
+			} else
+				ERROR_SQLITE(s);
+			goto cleanup;
+		}
+		sqlite3_reset(stmt_cat);
+	}
+
+	/*
 	 * Insert scripts
 	 */
 
@@ -1268,6 +1297,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	
 	if (stmt_dirs != NULL)
 		sqlite3_finalize(stmt_dirs);
+
+	if (stmt_cat != NULL)
+		sqlite3_finalize(stmt_cat);
 
 	return (retcode);
 }

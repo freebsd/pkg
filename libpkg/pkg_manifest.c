@@ -383,7 +383,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			categories = yaml_document_add_sequence(&doc, NULL, YAML_BLOCK_SEQUENCE_STYLE);
 			yaml_document_append_mapping_pair(&doc, mapping,
 					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "categories"), 10, YAML_PLAIN_SCALAR_STYLE),
-					dirs);
+					categories);
 		}
 		yaml_document_append_sequence_item(&doc, categories,
 				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_category_name(category)), strlen(pkg_category_name(category)), YAML_PLAIN_SCALAR_STYLE));
