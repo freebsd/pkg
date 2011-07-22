@@ -18,6 +18,7 @@ do
 	ORIGIN=$(pkg_info -qo ${PKG})
 	PREFX=$(pkg_info -qp ${PKG})
 	MAINTAINER=$( make -C /usr/ports/${ORIGIN} -V MAINTAINER )
+	CATEGORIES=$( make -C /usr/ports/${ORIGIN} -V CATEGORIES )
 	# +CONTENTS
 	MDIR=$(mktemp -d /tmp/pkg2ngXXXXX)
 	test -f ${DB}/+DISPLAY && cp -f ${DB}/+DISPLAY ${MDIR}
@@ -42,6 +43,10 @@ do
 	egrep -v "^@(name|pkgdep|ignore|conflicts|display)" ${DB}/+CONTENTS >> ${PLIST}
 	echo "conflicts:" >> ${MANIFEST}
 	awk '/^@conflicts/ { print "- "$2 }' ${DB}/+CONTENTS >> ${MANIFEST}
+	echo "categories:" >> ${MANIFEST}
+	for cat in ${CATEGORIES}; do
+		echo "- $cat" >> ${MANIFEST}
+	done
 
 	OPTIONS=""
 

@@ -228,7 +228,7 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE RESTRICT, "
 		"PRIMARY KEY (package_id, category_id)"
 	");"
-	"CREATE VIEW pkg_categories AS SELECT origin, path FROM packages "
+	"CREATE VIEW pkg_categories AS SELECT origin, categories.name FROM packages "
 	"INNER JOIN pkg_categories_assoc ON packages.id = pkg_categories_assoc.package_id "
 	"INNER JOIN categories ON pkg_categories_assoc.category_id = categories.id;"
 	"CREATE TRIGGER category_insert INSTEAD OF INSERT ON pkg_categories "
