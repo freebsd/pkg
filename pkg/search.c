@@ -75,6 +75,9 @@ exec_search(int argc, char **argv)
 	if (pkg_config("PACKAGESITE") != NULL) {
 		retcode = search_remote_repo(pattern, match, field, "repo");
 	} else {
+		warnx("PACKAGESITE is not defined.");
+		warnx("Working on multiple repositories...");
+
 		pkg_remote_repo_init();
 		pkg_remote_repo_load();
 	

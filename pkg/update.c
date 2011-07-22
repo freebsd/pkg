@@ -63,6 +63,9 @@ exec_update(int argc, char **argv)
 
 		retcode = update_from_remote_repo("repo", url);
 	} else {
+		warnx("PACKAGESITE is not defined.");
+		warnx("Working on multiple repositories...");
+
 		pkg_remote_repo_init();
 		pkg_remote_repo_load();
 
