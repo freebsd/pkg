@@ -33,10 +33,11 @@ usage_update(void)
 int
 exec_update(int argc, char **argv)
 {
-	struct pkg_remote_repo *repo;
 	char url[MAXPATHLEN];
 	const char *packagesite = NULL;
 	int retcode = EPKG_OK;
+	struct pkg_repos *repos = NULL;
+	struct pkg_repos_entry *re = NULL;
 
 	(void)argv;
 	if (argc != 1) {
@@ -52,8 +53,7 @@ exec_update(int argc, char **argv)
 	/* 
 	 * If PACKAGESITE is defined fetch only the remote
 	 * database to which PACKAGESITE refers, otherwise
-	 * fetch all remote databases found in the configuration 
-	 * file.
+	 * fetch all remote databases found in the configuration file.
 	 */
 	if ((packagesite = pkg_config("PACKAGESITE")) != NULL) {
 		if (packagesite[strlen(packagesite) - 1] == '/')
@@ -63,22 +63,30 @@ exec_update(int argc, char **argv)
 
 		retcode = update_from_remote_repo("repo", url);
 	} else {
-		warnx("PACKAGESITE is not defined.");
-		warnx("Working on multiple repositories...");
+		fprintf(stderr, "\n");
+                warnx("/!\\     Working on multiple repositories     /!\\");
+                warnx("/!\\  This is an unsupported preview feature  /!\\");
+                warnx("/!\\     It can kill kittens and puppies      /!\\\n");
+		fprintf(stderr, "\n");
 
-		pkg_remote_repo_init();
-		pkg_remote_repo_load();
+		if (pkg_repos_new(&repos) != EPKG_OK)
+			return (EPKG_FATAL);
 
-		while ((repo = pkg_remote_repo_next()) != NULL) {
-			if (repo->url[strlen(repo->url) - 1] == '/')
-				snprintf(url, MAXPATHLEN, "%srepo.txz", repo->url);
+		if (pkg_repos_load(repos) != EPKG_OK)
+			return (EPKG_FATAL);
+
+		while (pkg_repos_next(repos, &re) == EPKG_OK) {
+			packagesite = pkg_repos_get_url(re);
+
+			if (packagesite[strlen(packagesite) - 1] == '/')
+				snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
 			else
-				snprintf(url, MAXPATHLEN, "%s/repo.txz", repo->url);
+				snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
-			retcode = update_from_remote_repo(repo->name, url);
+			retcode = update_from_remote_repo(pkg_repos_get_name(re), url);
 		}
 
-		pkg_remote_repo_free();
+		pkg_repos_free(repos);
 	}
 
 	return (retcode);
@@ -97,7 +105,9 @@ update_from_remote_repo(const char *name, const char *url)
 
 	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
 		retcode = EPKG_FATAL;
-		goto cleanup;
+		unlink(tmp);
+		free(tmp);
+		return (EPKG_FATAL);
 	}
 
 	a = archive_read_new();
@@ -115,8 +125,6 @@ update_from_remote_repo(const char *name, const char *url)
 			break;
 		}
 	}
-
-	cleanup:
 
 	if ( a != NULL) 
 		archive_read_finish(a);

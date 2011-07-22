@@ -29,7 +29,8 @@ exec_search(int argc, char **argv)
 	unsigned int field = REPO_SEARCH_NAME;
 	int retcode = EPKG_OK;
 	int ch;
-	struct pkg_remote_repo *repo = NULL;
+	struct pkg_repos *repos = NULL;
+	struct pkg_repos_entry *re = NULL;
 
 	while ((ch = getopt(argc, argv, "gxXcd")) != -1) {
 		switch (ch) {
@@ -75,18 +76,22 @@ exec_search(int argc, char **argv)
 	if (pkg_config("PACKAGESITE") != NULL) {
 		retcode = search_remote_repo(pattern, match, field, "repo");
 	} else {
-		warnx("PACKAGESITE is not defined.");
-		warnx("Working on multiple repositories...");
-		warnx("/!\\ This is an unsupported preview feature /!\\ ");
-		warnx("/!\\ It can kill kittens and puppies /!\\ ");
+		fprintf(stderr, "\n");
+		warnx("/!\\     Working on multiple repositories     /!\\");
+		warnx("/!\\  This is an unsupported preview feature  /!\\");
+		warnx("/!\\     It can kill kittens and puppies      /!\\");
+		fprintf(stderr, "\n");
 
-		pkg_remote_repo_init();
-		pkg_remote_repo_load();
+		if (pkg_repos_new(&repos) != EPKG_OK)
+			return (EPKG_FATAL);
+
+		if (pkg_repos_load(repos) != EPKG_OK)
+			return (EPKG_FATAL);
 	
-		while ((repo = pkg_remote_repo_next()) != NULL)
-			retcode = search_remote_repo(pattern, match, field, repo->name);
+		while (pkg_repos_next(repos, &re) == EPKG_OK)
+			retcode = search_remote_repo(pattern, match, field, pkg_repos_get_name(re));
 
-		pkg_remote_repo_free();
+		pkg_repos_free(repos);
 	}
 
 	return (retcode);
@@ -107,7 +112,7 @@ search_remote_repo(const char *pattern, match_t match, unsigned int field, const
 	if (pkgdb_open(&db, PKGDB_REMOTE, dbfile) != EPKG_OK) {
 		warnx("cannot open repository database: %s/%s\n", 
 				pkg_config("PKG_DBDIR"), dbfile);
-		return(EPKG_FATAL);
+		return (EPKG_FATAL);
 	}
 
 	if ((it = pkgdb_rquery(db, pattern, match, field)) == NULL) {
@@ -115,7 +120,7 @@ search_remote_repo(const char *pattern, match_t match, unsigned int field, const
 				pkg_config("PKG_DBDIR"), dbfile);
 		pkgdb_it_free(it);
 		pkgdb_close(db);
-		return(EPKG_FATAL);
+		return (EPKG_FATAL);
 	}
 
 	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
@@ -134,5 +139,5 @@ search_remote_repo(const char *pattern, match_t match, unsigned int field, const
 		printf("\n");
 	}
 
-	return(retcode);
+	return (retcode);
 }
