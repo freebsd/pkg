@@ -48,6 +48,10 @@ fake-pkg:
 .endif
 	@${ECHO_CMD} "deps: " >> ${MANIFESTF}
 	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print "  "$$1":\n    origin: "$$2"\n    version: "$$3 }' >> ${MANIFESTF}
+	@${ECHO_CMD} "categories: " >> ${MANIFESTF}
+.for cat in ${CATEGORIES}
+	@${ECHO_CMD} "- ${cat}" >> ${MANIFESTF}
+.endfor
 .if !defined(DISABLE_CONFLICTS)
 	@${ECHO_CMD} "conflicts: " >> ${MANIFESTF}
 .for conflicts in ${CONFLICTS}
