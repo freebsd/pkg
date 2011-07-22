@@ -20,7 +20,7 @@ event_callback(void *data __unused, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_FETCHING:
 		percent = ((float)ev->e_fetching.done / (float)ev->e_fetching.total) * 100;
-		printf("\rFetching %s... %d%%", ev->e_fetching.url, percent);
+		printf("\rFetching from %s... %d%%", ev->e_fetching.url, percent);
 		if (ev->e_fetching.done == ev->e_fetching.total)
 			printf("\n");
 		fflush(stdout);
