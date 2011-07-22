@@ -387,11 +387,12 @@ int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *);
 int pkg_finish_repo(char *patj, pem_password_cb *cb, char *rsa_key_path);
 
 /**
- * Open the local package database.
+ * Open the package database.
  * The db must be free'ed with pkgdb_close().
+ * @param dbfile Name of the package database file
  * @return An error code.
  */
-int pkgdb_open(struct pkgdb **db, pkgdb_t type);
+int pkgdb_open(struct pkgdb **db, pkgdb_t type, const char *dbfile);
 
 /**
  * Close and free the struct pkgdb.

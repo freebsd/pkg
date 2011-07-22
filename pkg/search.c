@@ -11,7 +11,7 @@
 void
 usage_search(void)
 {
-	fprintf(stderr, "usage, pkg search [-gxXcd] pattern\n");
+	fprintf(stderr, "usage: pkg search [-gxXcd] pattern\n\n");
 	fprintf(stderr, "For more information see 'pkg help search'.\n");
 }
 
@@ -61,7 +61,7 @@ exec_search(int argc, char **argv)
 
 	pattern = argv[0];
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_REMOTE, "repo.sqlite") != EPKG_OK) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
