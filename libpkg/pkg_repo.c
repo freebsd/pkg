@@ -10,11 +10,7 @@
 #include "pkg_event.h"
 #include "pkg_private.h"
 
-/*
- * Head of the remote repository tail and initializer
- */
-static STAILQ_HEAD(remote_repo, pkg_remote_repo) rrh;
-static int rrh_init;
+static int pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re);
 
 int
 pkg_repo_fetch(struct pkg *pkg)
@@ -67,25 +63,34 @@ pkg_repo_fetch(struct pkg *pkg)
 	return (retcode);
 }
 
-void
-pkg_remote_repo_init(void)
+int
+pkg_repos_new(struct pkg_repos **repos)
 {
-        STAILQ_INIT(&rrh);
-        rrh_init = 0;
+	if ((*repos = calloc(1, sizeof(struct pkg_repos))) == NULL) {
+		EMIT_ERRNO("calloc", "pkg_repos");
+		return (EPKG_FATAL);
+	}
+
+	STAILQ_INIT(&(*repos)->nodes);
+
+	return (EPKG_OK);
 }
 
 int
-pkg_remote_repo_load(void)
+pkg_repos_load(struct pkg_repos *repos)
 {
         FILE *fp;
 	char *repo_buf[MAXPATHLEN];
         char buf[MAXPATHLEN];
         char *token = NULL, *tmp = NULL;
         unsigned int count = 0, line = 0;
+	struct pkg_repos_entry *re;
+
+	assert(repos != NULL);
 
         if ((fp = fopen("/etc/pkg/repositories", "r")) == NULL) {
 		EMIT_ERRNO("fopen", "/etc/pkg/repositories");
-		return(EPKG_FATAL);
+		return (EPKG_FATAL);
 	}
 
         while (fgets(buf, MAXPATHLEN, fp)) {
@@ -108,70 +113,126 @@ pkg_remote_repo_load(void)
                         warnx("Wrong repository format at line %d (ignoring repository)", line);
                         continue;
                 }
+
+		if ((re = calloc(1, sizeof(struct pkg_repos_entry))) == NULL) {
+			EMIT_ERRNO("calloc", "pkg_repos_entry");
+			return (EPKG_FATAL);
+		}
+
+		re->name = strdup(repo_buf[0]);
+		re->url  = strdup(repo_buf[1]);
+		re->line = line;
+
+		assert(re->name != NULL && re->url != NULL);
                 
-                pkg_remote_repo_add(repo_buf[0], repo_buf[1]);
+                pkg_repos_add(repos, re);
         }
 
         fclose(fp);
 
-        return(EPKG_OK);
+        return (EPKG_OK);
 }
 
 int
-pkg_remote_repo_add(const char *name, const char *url)
+pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re)
 {
-        struct pkg_remote_repo *newrepo;
+	assert(repos != NULL && re != NULL);
 
-        if ((newrepo = calloc(1, sizeof(struct pkg_remote_repo))) == NULL) {
-                EMIT_ERRNO("calloc", "");
-		return(EPKG_FATAL);
-        }
+	if (pkg_repos_is_reserved_name(repos, re) != EPKG_OK) {
+		warnx("Repository name for '%s' is already reserved (ignoring repository at line %d)",
+				pkg_repos_get_name(re), pkg_repos_get_line(re));
 
-        newrepo->name = strdup(name);
-        newrepo->url  = strdup(url);
+		if (re->name != NULL)
+			free(re->name);
+		if (re->url != NULL)
+			free(re->url);
 
-        assert(newrepo->name != NULL && newrepo->url != NULL);
-        
-        STAILQ_INSERT_TAIL(&rrh, newrepo, entries);
+		free(re);
 
-        return(EPKG_OK);
+		return (EPKG_FATAL);
+	}
+
+        STAILQ_INSERT_TAIL(&repos->nodes, re, entries);
+
+        return (EPKG_OK);
 }
 
-struct pkg_remote_repo *
-pkg_remote_repo_next(void)
+int
+pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re)
 {
-        static struct pkg_remote_repo *next;
-        
-        if (rrh_init == 0) {
-                next = STAILQ_FIRST(&rrh);
-                rrh_init = 1;
-        } else
-                next = STAILQ_NEXT(next, entries);
+	assert(repos != NULL);
 
-        return(next);
+	if (*re == NULL)
+		*re = STAILQ_FIRST(&repos->nodes);
+	else
+		*re = STAILQ_NEXT(*re, entries);
+
+	if (*re == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+const char *
+pkg_repos_get_name(struct pkg_repos_entry *re)
+{
+	assert(re != NULL);
+
+	return (re->name);
+}
+
+const char *
+pkg_repos_get_url(struct pkg_repos_entry *re)
+{
+	assert(re != NULL);
+
+	return (re->url);
+}
+
+unsigned int
+pkg_repos_get_line(struct pkg_repos_entry *re)
+{
+	assert(re != NULL);
+
+	return(re->line);
 }
 
 void
-pkg_remote_repo_free(void)
+pkg_repos_free(struct pkg_repos *repos)
 {
-        struct pkg_remote_repo *n1, *n2;
+	struct pkg_repos_entry *re1, *re2;
 
-        n1 = STAILQ_FIRST(&rrh);
-        while (n1 != NULL) {
-                n2 = STAILQ_NEXT(n1, entries);
+        re1 = STAILQ_FIRST(&repos->nodes);
+        while (re1 != NULL) {
+                re2 = STAILQ_NEXT(re1, entries);
                 
-                if (n1->name != NULL)
-                        free(n1->name);
-                if (n1->url != NULL)
-                        free(n1->url);
+                if (re1->name != NULL)
+                        free(re1->name);
+                if (re1->url != NULL)
+                        free(re1->url);
 
-                free(n1);
-                n1 = n2;
+                free(re1);
+                re1 = re2;
         }
+
+	free(repos);
 }
 
-void
-pkg_remote_repo_reset(void)
+static int
+pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re)
 {
-        rrh_init = 0;
+	struct pkg_repos_entry *next = NULL;
+
+	/* 
+	 * Find if a repository name already exists.
+	 * NOTE: The 'repo' name is always reserved, 
+	 * as it is being used by default when 
+	 * PACKAGESITE is defined.
+	 */
+	while (pkg_repos_next(repos, &next) == EPKG_OK)
+		if ((strcmp(pkg_repos_get_name(re), pkg_repos_get_name(next)) == 0) || \
+		    (strcmp(pkg_repos_get_name(re), "repo") == 0))
+			return (EPKG_FATAL);
+
+	return (EPKG_OK);
 }
