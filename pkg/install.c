@@ -38,7 +38,7 @@ exec_install(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_REMOTE, "repo.sqlite") != EPKG_OK) {
 		return (EX_IOERR);
 	}
 

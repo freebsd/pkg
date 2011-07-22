@@ -51,7 +51,7 @@ exec_add(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT, "local.sqlite") != EPKG_OK) {
 		return (EX_IOERR);
 	}
 
