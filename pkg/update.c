@@ -26,7 +26,7 @@ static int update_from_remote_repo(const char *name, const char *url);
 void
 usage_update(void)
 {
-	fprintf(stderr, "usage pkg update\n\n");
+	fprintf(stderr, "usage: pkg update\n\n");
 	fprintf(stderr, "For more information see 'pkg help update'.\n");
 }
 
@@ -84,7 +84,7 @@ exec_update(int argc, char **argv)
 int
 update_from_remote_repo(const char *name, const char *url)
 {
-	struct archive *a;
+	struct archive *a = NULL;
 	struct archive_entry *ae;
 	char repofile[MAXPATHLEN];
 	char *tmp = NULL;
@@ -114,7 +114,10 @@ update_from_remote_repo(const char *name, const char *url)
 	}
 
 	cleanup:
-	archive_read_finish(a);
+
+	if ( a != NULL) 
+		archive_read_finish(a);
+
 	unlink(tmp);
 	free(tmp);
 
