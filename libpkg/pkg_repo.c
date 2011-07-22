@@ -10,6 +10,8 @@
 #include "pkg_event.h"
 #include "pkg_private.h"
 
+static int pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re);
+
 int
 pkg_repo_fetch(struct pkg *pkg)
 {
@@ -136,6 +138,20 @@ pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re)
 {
 	assert(repos != NULL && re != NULL);
 
+	if (pkg_repos_is_reserved_name(repos, re) != EPKG_OK) {
+		warnx("Repository name for '%s' is already reserved (ignoring repository at line %d)",
+				pkg_repos_get_name(re), pkg_repos_get_line(re));
+
+		if (re->name != NULL)
+			free(re->name);
+		if (re->url != NULL)
+			free(re->url);
+
+		free(re);
+
+		return (EPKG_FATAL);
+	}
+
         STAILQ_INSERT_TAIL(&repos->nodes, re, entries);
 
         return (EPKG_OK);
@@ -173,6 +189,14 @@ pkg_repos_get_url(struct pkg_repos_entry *re)
 	return (re->url);
 }
 
+unsigned int
+pkg_repos_get_line(struct pkg_repos_entry *re)
+{
+	assert(re != NULL);
+
+	return(re->line);
+}
+
 void
 pkg_repos_free(struct pkg_repos *repos)
 {
@@ -192,4 +216,23 @@ pkg_repos_free(struct pkg_repos *repos)
         }
 
 	free(repos);
+}
+
+static int
+pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re)
+{
+	struct pkg_repos_entry *next = NULL;
+
+	/* 
+	 * Find if a repository name already exists.
+	 * NOTE: The 'repo' name is always reserved, 
+	 * as it is being used by default when 
+	 * PACKAGESITE is defined.
+	 */
+	while (pkg_repos_next(repos, &next) == EPKG_OK)
+		if ((strcmp(pkg_repos_get_name(re), pkg_repos_get_name(next)) == 0) || \
+		    (strcmp(pkg_repos_get_name(re), "repo") == 0))
+			return (EPKG_FATAL);
+
+	return (EPKG_OK);
 }
