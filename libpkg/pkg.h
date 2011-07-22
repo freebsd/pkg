@@ -3,7 +3,6 @@
 
 #include <stdarg.h>
 #include <sys/types.h>
-#include <sys/queue.h>
 #include <openssl/pem.h>
 
 struct pkg;
@@ -14,12 +13,14 @@ struct pkg_category;
 struct pkg_conflict;
 struct pkg_script;
 struct pkg_option;
-struct pkg_remote_repo;
 
 struct pkgdb;
 struct pkgdb_it;
 
 struct pkg_jobs;
+
+struct pkg_repos;
+struct pkg_repos_entry;
 
 typedef enum {
 	PKGDB_DEFAULT=0,
@@ -592,40 +593,56 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 int pkg_repo_fetch(struct pkg *pkg);
 
 /**
- * Initializes the remote repositories
+ * Initializes the repositories object
+ * @return EPKG_OK on success, otherwise EPKG_FATAL
  */
-void pkg_remote_repo_init(void);
+int pkg_repos_new(struct pkg_repos **repos);
 
 /**
  * Loads the remote repositories from file
  * @return EPKG_OK on success, and EPKG_FATAL on error
  */
-int pkg_remote_repo_load(void);
+int pkg_repos_load(struct pkg_repos *repos);
 
 /**
- * Adds a remote repository
- * @param name Name for the repository
- * @param url URL of the remote repository
+ * Adds a repository entry to the tail
+ * @param repos A valid repository object received from pkg_repos_new()
+ * @param re A valid repository entry object
  * @return EPKG_OK on success, EPKG_FATAL on error
  */
-int pkg_remote_repo_add(const char *name, const char *url);
+int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
 
 /**
  * Get the next repository from the tail
- * @return Next repository in the tail
+ * @param repos A valid repository pointer as returned by pkg_repos_new()
+ * @param re A pointer to a repository entry to save the result. Must be set to
+ * NULL for the first repository entry
+ * @return EPKG_OK on success, EPKG_END if end of repository is reached
  */
-struct pkg_remote_repo * pkg_remote_repo_next(void);
+int pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
 
 /**
- * Free the memory used for remote repositories
+ * Returns the name associated with a repository entry object
+ * @param re A valid repository entry object
  */
-void pkg_remote_repo_free(void);
+const char * pkg_repos_get_name(struct pkg_repos_entry *re);
 
 /**
- * Resets the tails and sets the next
- * element of the tail to be first one
+ * Returns the URL associated wth a repository entry object
+ * @param re A valid repository entry object
  */
-void pkg_remote_repo_reset(void);
+const char * pkg_repos_get_url(struct pkg_repos_entry *re);
+
+/**
+ * Returns the line in the configuration where a repository is found
+ * @param re A valid repository entry
+ */
+unsigned int pkg_repos_get_line(struct pkg_repos_entry *re);
+
+/**
+ * Free the memory used by the repository objects
+ */
+void pkg_repos_free(struct pkg_repos *repos);
 
 /**
  * Get the value of a configuration key
@@ -720,12 +737,6 @@ struct pkg_event {
 			struct pkg *pkg;
 		} e_failed_cksum;
 	};
-};
-
-struct pkg_remote_repo {
-	char *name;
-	char *url;
-	STAILQ_ENTRY(pkg_remote_repo) entries;
 };
 
 /**
