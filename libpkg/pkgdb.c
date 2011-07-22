@@ -249,7 +249,7 @@ pkgdb_init(sqlite3 *sdb)
 }
 
 int
-pkgdb_open(struct pkgdb **db, pkgdb_t type)
+pkgdb_open(struct pkgdb **db, pkgdb_t type, const char *dbfile)
 {
 	int retcode;
 	char *errmsg;
@@ -289,7 +289,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	}
 
 	if (type == PKGDB_REMOTE) {
-		snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
+		snprintf(remotepath, sizeof(remotepath), "%s/%s", dbdir, dbfile);
 
 		if (access(remotepath, R_OK) != 0) {
 			EMIT_ERRNO("access", remotepath);

@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 #include <sys/types.h>
+#include <sys/queue.h>
 #include <openssl/pem.h>
 
 struct pkg;
@@ -13,6 +14,7 @@ struct pkg_category;
 struct pkg_conflict;
 struct pkg_script;
 struct pkg_option;
+struct pkg_remote_repo;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -401,11 +403,12 @@ int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *);
 int pkg_finish_repo(char *patj, pem_password_cb *cb, char *rsa_key_path);
 
 /**
- * Open the local package database.
+ * Open the package database.
  * The db must be free'ed with pkgdb_close().
+ * @param dbfile Name of the package database file
  * @return An error code.
  */
-int pkgdb_open(struct pkgdb **db, pkgdb_t type);
+int pkgdb_open(struct pkgdb **db, pkgdb_t type, const char *dbfile);
 
 /**
  * Close and free the struct pkgdb.
@@ -589,6 +592,42 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 int pkg_repo_fetch(struct pkg *pkg);
 
 /**
+ * Initializes the remote repositories
+ */
+void pkg_remote_repo_init(void);
+
+/**
+ * Loads the remote repositories from file
+ * @return EPKG_OK on success, and EPKG_FATAL on error
+ */
+int pkg_remote_repo_load(void);
+
+/**
+ * Adds a remote repository
+ * @param name Name for the repository
+ * @param url URL of the remote repository
+ * @return EPKG_OK on success, EPKG_FATAL on error
+ */
+int pkg_remote_repo_add(const char *name, const char *url);
+
+/**
+ * Get the next repository from the tail
+ * @return Next repository in the tail
+ */
+struct pkg_remote_repo * pkg_remote_repo_next(void);
+
+/**
+ * Free the memory used for remote repositories
+ */
+void pkg_remote_repo_free(void);
+
+/**
+ * Resets the tails and sets the next
+ * element of the tail to be first one
+ */
+void pkg_remote_repo_reset(void);
+
+/**
  * Get the value of a configuration key
  */
 const char * pkg_config(const char *key);
@@ -681,6 +720,12 @@ struct pkg_event {
 			struct pkg *pkg;
 		} e_failed_cksum;
 	};
+};
+
+struct pkg_remote_repo {
+	char *name;
+	char *url;
+	STAILQ_ENTRY(pkg_remote_repo) entries;
 };
 
 /**

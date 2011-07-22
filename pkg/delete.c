@@ -57,7 +57,7 @@ exec_delete(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 	
-	if ((retcode = pkgdb_open(&db, PKGDB_DEFAULT)) != EPKG_OK) {
+	if ((retcode = pkgdb_open(&db, PKGDB_DEFAULT, "local.sqlite")) != EPKG_OK) {
 		goto cleanup;
 	}
 
