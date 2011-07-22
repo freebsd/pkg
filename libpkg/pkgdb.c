@@ -127,8 +127,6 @@ pkgdb_init(sqlite3 *sdb)
 		"origin TEXT UNIQUE NOT NULL,"
 		"name TEXT NOT NULL,"
 		"version TEXT NOT NULL,"
-		"category_id INTEGER REFERENCES categories(id) ON DELETE RESTRICT"
-			" ON UPDATE CASCADE,"
 		"comment TEXT NOT NULL,"
 		"desc TEXT NOT NULL,"
 		"mtree_id INTEGER REFERENCES mtree(id) ON DELETE RESTRICT"
@@ -143,13 +141,6 @@ pkgdb_init(sqlite3 *sdb)
 		"automatic INTEGER NOT NULL,"
 		"pkg_format_version INTEGER"
 	");"
-	"CREATE TABLE categories ("
-		"id INTEGER PRIMARY KEY,"
-		"name TEXT UNIQUE"
-	");"
-	"CREATE TRIGGER clean_categories AFTER DELETE ON packages BEGIN "
-		"DELETE FROM categories WHERE id NOT IN (SELECT DISTINCT category_id FROM packages);"
-	"END;"
 	"CREATE TABLE mtree ("
 		"id INTEGER PRIMARY KEY,"
 		"content TEXT UNIQUE"
@@ -178,7 +169,6 @@ pkgdb_init(sqlite3 *sdb)
 		"type INTEGER,"
 		"PRIMARY KEY (package_id, type)"
 	");"
-	"CREATE INDEX scripts_package ON scripts(package_id);"
 	"CREATE TABLE options ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
@@ -186,7 +176,6 @@ pkgdb_init(sqlite3 *sdb)
 		"value TEXT,"
 		"PRIMARY KEY (package_id,option)"
 	");"
-	"CREATE INDEX options_package ON options(package_id);"
 	"CREATE TABLE deps ("
 		"origin TEXT NOT NULL,"
 		"name TEXT NOT NULL,"
@@ -195,22 +184,18 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE CASCADE,"
 		"PRIMARY KEY (package_id,origin)"
 	");"
-	"CREATE INDEX deps_origin ON deps(origin);"
-	"CREATE INDEX deps_package ON deps(package_id);"
 	"CREATE TABLE files ("
 		"path TEXT PRIMARY KEY,"
 		"sha256 TEXT,"
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE"
 	");"
-	"CREATE INDEX files_package ON files(package_id);"
 	"CREATE TABLE conflicts ("
 		"name TEXT NOT NULL,"
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
 		"PRIMARY KEY (package_id,name)"
 	");"
-	"CREATE INDEX conflicts_package ON conflicts(package_id);"
 	"CREATE TABLE directories ("
 		"id INTEGER PRIMARY KEY, "
 		"path TEXT NOT NULL"
@@ -232,7 +217,27 @@ pkgdb_init(sqlite3 *sdb)
 			"((SELECT id FROM packages WHERE origin = NEW.origin), "
 			"(SELECT id FROM directories WHERE path = NEW.path));"
 	"END;"
-	;
+	"CREATE TABLE categories ("
+		"id INTEGER PRIMARY KEY, "
+		"name TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_categories_assoc ("
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE, "
+		"category_id INTEGER REFERENCES categories(id) ON DELETE RESTRICT"
+			" ON UPDATE RESTRICT, "
+		"PRIMARY KEY (package_id, category_id)"
+	");"
+	"CREATE VIEW pkg_categories AS SELECT origin, path FROM packages "
+	"INNER JOIN pkg_categories_assoc ON packages.id = pkg_categories_assoc.package_id "
+	"INNER JOIN categories ON pkg_categories_assoc.category_id = categories.id;"
+	"CREATE TRIGGER category_insert INSTEAD OF INSERT ON pkg_categories "
+	"FOR EACH ROW BEGIN "
+		"INSERT OR IGNORE INTO CATEGORIES (name) VALUES (NEW.name);"
+		"INSERT INTO pkg_categories_assoc (package_id, directory_id) VALUES "
+			"((SELECT id FROM packages where origin = NEW.origin), "
+			"(SELECT id FROM categories WHERE name = NEW.name));"
+	"END;";
 
 	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
 		EMIT_PKG_ERROR("sqlite: %s", errmsg);
@@ -446,6 +451,10 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 
 		if (flags & PKG_LOAD_MTREE)
 			if ((ret = pkgdb_loadmtree(it->db, pkg)) != EPKG_OK)
+				return (ret);
+
+		if (flags & PKG_LOAD_CATEGORIES)
+			if ((ret = pkgdb_loadcategory(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		return (EPKG_OK);
@@ -774,6 +783,43 @@ pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	pkg->flags |= PKG_LOAD_DIRS;
+	return (EPKG_OK);
+}
+
+int
+pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg)
+{
+	sqlite3_stmt *stmt;
+	int ret;
+	const char sql[] = ""
+		"SELECT name "
+		"FROM pkg_categories "
+		"WHERE origin = ?1 "
+		"ORDER by name DESC";
+
+	if (pkg->flags & PKG_LOAD_CATEGORIES)
+		return (EPKG_OK);
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_text(stmt, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+
+	while (( ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_addcategory(pkg, sqlite3_column_text(stmt, 0));
+	}
+
+	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_DONE) {
+		pkg_freecategories(pkg);
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	pkg->flags |= PKG_LOAD_CATEGORIES;
 	return (EPKG_OK);
 }
 
@@ -1278,6 +1324,13 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 
 	/* cleanup directories */
 	ret = sqlite3_exec(db->sqlite, "DELETE from directories WHERE id NOT IN (SELECT DISTINCT directory_id FROM pkg_dirs_assoc);", NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		EMIT_PKG_ERROR("sqlite: %s", errmsg);
+		sqlite3_free(errmsg);
+		return (EPKG_FATAL);
+	}
+
+	ret = sqlite3_exec(db->sqlite, "DELETE from categories WHERE id NOT IN (SELECT DISTINCT category_id FROM pkg_categories_assoc);", NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		EMIT_PKG_ERROR("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
