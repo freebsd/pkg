@@ -445,7 +445,7 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 	struct pkg_category *c = NULL;
 
 	assert(pkg != NULL);
-	assert(name != NULL && path[0] != '\0');
+	assert(name != NULL && name[0] != '\0');
 
 	while (pkg_categories(pkg, &c) == EPKG_OK) {
 		if (strcmp(name, pkg_category_name(c)) == 0) {
