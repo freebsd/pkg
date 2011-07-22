@@ -98,6 +98,17 @@ struct pkg_jobs_node {
 	LIST_ENTRY(pkg_jobs_node) entries;
 };
 
+struct pkg_repos {
+	STAILQ_HEAD(repos, pkg_repos_entry) nodes;
+};
+
+struct pkg_repos_entry {
+	char *name;
+	char *url;
+	unsigned int line;
+	STAILQ_ENTRY(pkg_repos_entry) entries;
+};
+
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
 void pkg_freecategories(struct pkg *pkg);
 void pkg_freedeps(struct pkg *pkg);
