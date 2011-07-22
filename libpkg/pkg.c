@@ -46,6 +46,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
 	}
 
+	STAILQ_INIT(&(*pkg)->categories);
 	STAILQ_INIT(&(*pkg)->deps);
 	STAILQ_INIT(&(*pkg)->rdeps);
 	STAILQ_INIT(&(*pkg)->files);
@@ -75,6 +76,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg->flags = 0;
 	pkg->rowid = 0;
 
+	pkg_freecategories(pkg);
 	pkg_freedeps(pkg);
 	pkg_freerdeps(pkg);
 	pkg_freefiles(pkg);
@@ -95,6 +97,7 @@ pkg_free(struct pkg *pkg)
 	for (int i = 0; i < PKG_NUM_FIELDS; i++)
 		sbuf_free(pkg->fields[i].value);
 
+	pkg_freecategories(pkg);
 	pkg_freedeps(pkg);
 	pkg_freerdeps(pkg);
 	pkg_freefiles(pkg);
@@ -295,6 +298,22 @@ pkg_files(struct pkg *pkg, struct pkg_file **f)
 }
 
 int
+pkg_categories(struct pkg *pkg, struct pkg_category **c)
+{
+	assert(pkg != NULL);
+
+	if (*c == NULL)
+		*c = STAILQ_FIRST(&pkg->categories);
+	else
+		*c = STAILQ_NEXT(*c, next);
+
+	if (*c == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
 pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
 {
 	assert(pkg != NULL);
@@ -416,6 +435,28 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 		strlcpy(f->sha256, sha256, sizeof(f->sha256));
 
 	STAILQ_INSERT_TAIL(&pkg->files, f, next);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addcategory(struct pkg *pkg, const char *name)
+{
+	struct pkg_category *c = NULL;
+
+	assert(pkg != NULL);
+	assert(name != NULL && path[0] != '\0');
+
+	while (pkg_categories(pkg, &c) == EPKG_OK) {
+		if (strcmp(name, pkg_category_name(c)) == 0) {
+			EMIT_PKG_ERROR("Duplicate category listing: %s, ignoring", name);
+			return (EPKG_OK);
+		}
+	}
+
+	pkg_category_new(&c);
+	strlcpy(c->name, name, sizeof(c->name));
+	STAILQ_INSERT_TAIL(&pkg->categories, c, next);
 
 	return (EPKG_OK);
 }
@@ -620,6 +661,20 @@ pkg_freefiles(struct pkg *pkg)
 	}
 
 	pkg->flags &= ~PKG_LOAD_FILES;
+}
+
+void
+pkg_freecategories(struct pkg *pkg)
+{
+	struct pkg_category *c;
+
+	while (!STAILQ_EMPTY(&pkg->categories)) {
+		c = STAILQ_FIRST(&pkg->categories);
+		STAILQ_REMOVE_HEAD(&pkg->categories, next);
+		pkg_category_free(c);
+	}
+
+	pkg->flags &= ~PKG_LOAD_CATEGORIES;
 }
 
 void

@@ -13,7 +13,7 @@ pkgdb_dump(struct pkgdb *db, char *dest)
 	struct packing *pack;
 	char *m;
 	int ret;
-	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES |
+	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
 					  PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 					  PKG_LOAD_MTREE;
 

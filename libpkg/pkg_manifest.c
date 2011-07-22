@@ -22,6 +22,7 @@
 #define PKG_DIRS -5
 #define PKG_FLATSIZE -6
 #define PKG_SCRIPTS -7
+#define PKG_CATEGORIES -8
 
 static void parse_mapping(struct pkg *, yaml_node_pair_t *, yaml_document_t *, int);
 static void parse_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -200,6 +201,15 @@ parse_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *document, int pk
 					}
 
 					break;
+				case PKG_CATEGORIES:
+					item = node->data.sequence.items.start;
+					while (item < node->data.sequence.items.top) {
+						nd = yaml_document_get_node(document, *item);
+						pkg_addcategory(pkg, nd->data.scalar.value);
+						++item;
+					}
+
+					break;
 				case PKG_CONFLICTS:
 					item = node->data.sequence.items.start;
 					while (item < node->data.sequence.items.top) {
@@ -267,6 +277,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
 	struct pkg_script *script = NULL;
+	struct pkg_category *category = NULL;
 	int rc = EPKG_OK;
 	int mapping;
 	int depsmap = -1;
@@ -276,6 +287,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int dirs = -1;
 	int options = -1;
 	int scripts = -1;
+	int categories = -1;
 	const char *script_types;
 	struct sbuf *destbuf = sbuf_new_auto();
 
@@ -363,6 +375,17 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		}
 		yaml_document_append_sequence_item(&doc, dirs,
 				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_dir_path(dir)), strlen(pkg_dir_path(dir)), YAML_PLAIN_SCALAR_STYLE));
+	}
+
+	while (pkg_categories(pkg, &category) == EPKG_OK) {
+		if (categories == -1) {
+			categories = yaml_document_add_sequence(&doc, NULL, YAML_BLOCK_SEQUENCE_STYLE);
+			yaml_document_append_mapping_pair(&doc, mapping,
+					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "categories"), 10, YAML_PLAIN_SCALAR_STYLE),
+					dirs);
+		}
+		yaml_document_append_sequence_item(&doc, categories,
+				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_category_name(category)), strlen(pkg_category_name(category)), YAML_PLAIN_SCALAR_STYLE));
 	}
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {

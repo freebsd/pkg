@@ -10,6 +10,7 @@ struct pkg;
 struct pkg_dep;
 struct pkg_file;
 struct pkg_dir;
+struct pkg_category;
 struct pkg_conflict;
 struct pkg_script;
 struct pkg_option;
@@ -234,6 +235,13 @@ int pkg_files(struct pkg *, struct pkg_file **file);
 int pkg_dirs(struct pkg *pkg, struct pkg_dir **dir);
 
 /**
+ * Iterates over the categories of the package.
+ * @param Must be set to NULL for the first call.
+ * @return An error code
+ */
+int pkg_categories(struct pkg *pkg, struct pkg_category **category);
+
+/**
  * Iterates over the conflicts of the package.
  * @param conflict Must be set to NULL for the first call.
  * @return An error code.
@@ -313,6 +321,12 @@ int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256);
 int pkg_adddir(struct pkg *pkg, const char *path);
 
 /**
+ * Add a category
+ * @return An error code.
+ */
+int pkg_addcategory(struct pkg *pkg, const char *name);
+
+/**
  * Allocate a new struct pkg_conflict and add it to the conflicts of pkg.
  * @return An error code.
  */
@@ -364,6 +378,8 @@ const char * pkg_file_path(struct pkg_file *);
 const char * pkg_file_sha256(struct pkg_file *);
 
 const char *pkg_dir_path(struct pkg_dir *);
+
+const char *pkg_category_name(struct pkg_category *);
 
 /* pkg_conflict */
 const char * pkg_conflict_glob(struct pkg_conflict *);
@@ -470,6 +486,7 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_OPTIONS (1<<6)
 #define PKG_LOAD_MTREE (1<<7)
 #define PKG_LOAD_DIRS (1<<8)
+#define PKG_LOAD_CATEGORIES (1<<9)
 
 #define REPO_SEARCH_NAME 0
 #define REPO_SEARCH_COMMENT (1<<0)
@@ -498,6 +515,7 @@ int pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg);
 
 /**
  * Compact the database to save space.
