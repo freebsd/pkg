@@ -99,6 +99,27 @@ pkg_dir_path(struct pkg_dir *d)
 	return (d->path);
 }
 
+int
+pkg_category_new(struct pkg_category **c)
+{
+	if (( *c = calloc(1, sizeof(struct pkg_category))) == NULL)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+const char *
+pkg_category_name(struct pkg_category *c)
+{
+	return (c->name);
+}
+
+void
+pkg_category_free(struct pkg_category *c)
+{
+	free(c);
+}
+
 /*
  * Conflict
  */
