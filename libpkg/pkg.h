@@ -634,6 +634,12 @@ const char * pkg_repos_get_name(struct pkg_repos_entry *re);
 const char * pkg_repos_get_url(struct pkg_repos_entry *re);
 
 /**
+ * Returns the line in the configuration where a repository is found
+ * @param re A valid repository entry
+ */
+unsigned int pkg_repos_get_line(struct pkg_repos_entry *re);
+
+/**
  * Free the memory used by the repository objects
  */
 void pkg_repos_free(struct pkg_repos *repos);
