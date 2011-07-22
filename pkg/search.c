@@ -77,6 +77,8 @@ exec_search(int argc, char **argv)
 	} else {
 		warnx("PACKAGESITE is not defined.");
 		warnx("Working on multiple repositories...");
+		warnx("/!\ This is an unsupported preview feature /!\ ");
+		warnx("/!\ It can kill kittens and puppies /!\ ");
 
 		pkg_remote_repo_init();
 		pkg_remote_repo_load();
