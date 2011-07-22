@@ -16,12 +16,6 @@
 static STAILQ_HEAD(remote_repo, pkg_remote_repo) rrh;
 static int rrh_init;
 
-/**
- * Trims any leading and trailing spaces from a string
- * @todo Find a better way to deal with such cases :)
- */
-static char * trim_spaces(char *str);
-
 int
 pkg_repo_fetch(struct pkg *pkg)
 {
@@ -84,8 +78,9 @@ int
 pkg_remote_repo_load(void)
 {
         FILE *fp;
+	char *repo_buf[MAXPATHLEN];
         char buf[MAXPATHLEN];
-        char *repo_name, *repo_url, *tmp;
+        char *token = NULL, *tmp = NULL;
         unsigned int count = 0, line = 0;
 
         if ((fp = fopen("/etc/pkg/repositories", "r")) == NULL) {
@@ -94,36 +89,27 @@ pkg_remote_repo_load(void)
 	}
 
         while (fgets(buf, MAXPATHLEN, fp)) {
+                line++;
+
                 if (buf[0] == '\n' || buf[0] == '#' || buf[0] == ';')
                         continue;
 
-		repo_name = repo_url = tmp = NULL;
-
                 count = 0;
-                line++;
 
                 buf[strlen(buf) - 1] = '\0';
                 tmp = buf;
 
-                repo_name = strsep(&tmp, "=");
-                repo_url  = strsep(&tmp, "=");
+		/* get the repository entries */
+		while ((token = strsep(&tmp, " \t=")) != NULL)
+			if (*token != '\0')
+				repo_buf[count++] = token;
 
-                if ((repo_name == NULL) || (repo_url == NULL)) {
-                        warnx("Repository name or URL is missing at line %d (ignoring repository)", line);
-                        continue;
-                }
-
-                repo_name = trim_spaces(repo_name);
-                repo_url  = trim_spaces(repo_url);
-
-                if (tmp) {
+		if (count != 2) {
                         warnx("Wrong repository format at line %d (ignoring repository)", line);
                         continue;
                 }
                 
-                count++;
-
-                pkg_remote_repo_add(repo_name, repo_url);
+                pkg_remote_repo_add(repo_buf[0], repo_buf[1]);
         }
 
         fclose(fp);
@@ -188,19 +174,4 @@ void
 pkg_remote_repo_reset(void)
 {
         rrh_init = 0;
-}
-
-char *
-trim_spaces(char *str)
-{
-        char *buf;
-        int   i, len;
-
-        buf = str;
-        len = strlen(str);
-                       
-        for (i = 0; i < len && isspace(str[i]); i++, buf++) ;
-                for (i = len - 1; i >= 0 && isspace(str[i]); str[i] = '\0', i--) ;
-
-        return(buf);
 }
