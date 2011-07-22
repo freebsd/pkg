@@ -48,6 +48,7 @@ static struct manifest_key {
 	{ "desc", PKG_DESC },
 	{ "scripts", PKG_SCRIPTS},
 	{ "message", PKG_MESSAGE},
+	{ "categories", PKG_CATEGORIES},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
