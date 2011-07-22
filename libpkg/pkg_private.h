@@ -27,6 +27,7 @@ struct pkg {
 	int64_t flatsize;
 	int64_t new_flatsize;
 	int64_t new_pkgsize;
+	STAILQ_HEAD(categories, pkg_category) categories;
 	STAILQ_HEAD(deps, pkg_dep) deps;
 	STAILQ_HEAD(rdeps, pkg_dep) rdeps;
 	STAILQ_HEAD(files, pkg_file) files;
@@ -45,6 +46,11 @@ struct pkg_dep {
 	struct sbuf *name;
 	struct sbuf *version;
 	STAILQ_ENTRY(pkg_dep) next;
+};
+
+struct pkg_category {
+	char name[BUFSIZ];
+	STAILQ_ENTRY(pkg_category) next;
 };
 
 struct pkg_file {
@@ -93,6 +99,7 @@ struct pkg_jobs_node {
 };
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
+void pkg_freecategories(struct pkg *pkg);
 void pkg_freedeps(struct pkg *pkg);
 void pkg_freerdeps(struct pkg *pkg);
 void pkg_freefiles(struct pkg *pkg);
@@ -109,6 +116,9 @@ void pkg_file_free(struct pkg_file *);
 
 int pkg_dir_new(struct pkg_dir **);
 void pkg_dir_free(struct pkg_dir *);
+
+int pkg_category_new(struct pkg_category **);
+void pkg_category_free(struct pkg_category *);
 
 int pkg_conflict_new(struct pkg_conflict **);
 void pkg_conflict_free(struct pkg_conflict *);
