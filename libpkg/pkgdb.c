@@ -17,6 +17,8 @@
 #include "pkgdb.h"
 #include "pkg_util.h"
 
+#define DBVERSION 1
+
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
@@ -25,6 +27,7 @@ static void pkgdb_regex_delete(void *);
 static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
 static int get_pragma(sqlite3 *, const char *, int64_t *);
+static int pkgdb_upgrade(sqlite3 *);
 
 static void
 pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
@@ -101,6 +104,61 @@ static void
 pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	pkgdb_pkgcmp(ctx, argc, argv, 1);
+}
+
+static int
+pkgdb_upgrade(sqlite3 *sdb)
+{
+	int64_t db_version;
+	struct sbuf *sql;
+	char *errmsg;
+
+	get_pragma(sdb, "PRAGMA user_version;", &db_version);
+
+	if (db_version == DBVERSION)
+		return (EPKG_OK);
+	else if (db_version > DBVERSION)
+		return (EPKG_FATAL);
+
+	sql = sbuf_new_auto();
+
+	if (db_version < 1) {
+		/* New in version 1 */
+		sbuf_cat(sql,
+			"CREATE TABLE licenses ("
+				"id INTEGER PRIMARY KEY, "
+				"license TEXT NOT NULL UNIQUE "
+			");"
+			"CREATE TABLE pkg_licenses_assoc ("
+				"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+					" ON UPDATE CASCADE, "
+				"license_id INTEGER REFERENCES licenses(id) ON DELETE RESTRICT"
+					" ON UPDATE RESTRICT, "
+				"PRIMARY KEY (package_id, license_id)"
+			");"
+			"CREATE VIEW pkg_licenses AS SELECT origin, license FROM packages "
+			"INNER JOIN pkg_licenses_assoc ON packages.id = pkg_licenses_assoc.package_id "
+			"INNER JOIN licenses ON pkg_licenses_assoc.license_id = licenses.id;"
+			"CREATE TRIGGER license_insert INSTEAD OF INSERT ON pkg_licenses "
+			"FOR EACH ROW BEGIN "
+				"INSERT OR IGNORE INTO licenses(license) values (NEW.license);"
+				"INSERT INTO pkg_licenses_assoc(package_id, category_id) VALUES "
+					"((SELECT id FROM packages where origin = NEW.origin), "
+					"(SELECT id FROM categories WHERE name = NEW.name));"
+			"END;"
+			"PRAGMA user_version = 1;");
+		sbuf_finish(sql);
+	}
+
+
+	if (sqlite3_exec(sdb, sbuf_data(sql), NULL, NULL, &errmsg) != SQLITE_OK) {
+		EMIT_PKG_ERROR("sqlite: %s", errmsg);
+		sqlite3_free(errmsg);
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+
 }
 
 /*
@@ -237,7 +295,30 @@ pkgdb_init(sqlite3 *sdb)
 		"INSERT INTO pkg_categories_assoc (package_id, category_id) VALUES "
 			"((SELECT id FROM packages where origin = NEW.origin), "
 			"(SELECT id FROM categories WHERE name = NEW.name));"
-	"END;";
+	"END;"
+	"CREATE TABLE licenses ("
+		"id INTEGER PRIMARY KEY, "
+		"license TEXT NOT NULL UNIQUE "
+	");"
+	"CREATE TABLE pkg_licenses_assoc ("
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE, "
+		"license_id INTEGER REFERENCES licenses(id) ON DELETE RESTRICT"
+			" ON UPDATE RESTRICT, "
+		"PRIMARY KEY (package_id, license_id)"
+	");"
+	"CREATE VIEW pkg_licenses AS SELECT origin, license FROM packages "
+	"INNER JOIN pkg_licenses_assoc ON packages.id = pkg_licenses_assoc.package_id "
+	"INNER JOIN licenses ON pkg_licenses_assoc.license_id = licenses.id;"
+	"CREATE TRIGGER license_insert INSTEAD OF INSERT ON pkg_licenses "
+	"FOR EACH ROW BEGIN "
+		"INSERT OR IGNORE INTO licenses(license) values (NEW.license);"
+		"INSERT INTO pkg_licenses_assoc(package_id, category_id) VALUES "
+			"((SELECT id FROM packages where origin = NEW.origin), "
+			"(SELECT id FROM categories WHERE name = NEW.name));"
+	"END;"
+	"PRAGMA user_version = 1;"
+	;
 
 	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
 		EMIT_PKG_ERROR("sqlite: %s", errmsg);
@@ -289,6 +370,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type, const char *dbfile)
 		return (EPKG_FATAL);
 	}
 
+	pkgdb_upgrade((*db)->sqlite);
 	if (type == PKGDB_REMOTE) {
 		snprintf(remotepath, sizeof(remotepath), "%s/%s", dbdir, dbfile);
 
