@@ -282,6 +282,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type, const char *dbfile)
 		}
 	}
 
+	sqlite3_initialize();
 	if (sqlite3_open(localpath, &(*db)->sqlite) != SQLITE_OK) {
 		ERROR_SQLITE((*db)->sqlite);
 		free(*db);
@@ -353,7 +354,7 @@ pkgdb_close(struct pkgdb *db)
 
 		sqlite3_close(db->sqlite);
 	}
-
+	sqlite3_shutdown();
 	free(db);
 }
 
@@ -1126,8 +1127,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-
-		sqlite3_reset(stmt_dep);
 	}
 
 	/*
@@ -1147,8 +1146,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-
-		sqlite3_reset(stmt_conflict);
 	}
 
 	/*
@@ -1175,7 +1172,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			}
 			goto cleanup;
 		}
-		sqlite3_reset(stmt_file);
 	}
 
 	/*
@@ -1199,7 +1195,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt_dirs);
 	}
 
 	/*
@@ -1223,7 +1218,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt_cat);
 	}
 
 	/*
@@ -1244,8 +1238,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-
-		sqlite3_reset(stmt_script);
 	}
 
 	/*
@@ -1266,8 +1258,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-
-		sqlite3_reset(stmt_option);
 	}
 
 	retcode = EPKG_OK;

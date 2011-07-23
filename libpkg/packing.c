@@ -90,8 +90,7 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
-	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1,
-												&st);
+	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, &st);
 	if (retcode != ARCHIVE_OK) {
 		EMIT_PKG_ERROR("%s: %s", filepath, archive_error_string(pack->aread));
 		retcode = EPKG_FATAL;
