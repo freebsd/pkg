@@ -25,6 +25,7 @@ exec_install(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
+	struct pkg_jobs_entry *je = NULL;
 	int retcode = EPKG_OK;
 	int i;
 
@@ -42,7 +43,15 @@ exec_install(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
+
+	/* create a jobs object */
+	if (pkg_jobs_new(&jobs) != EPKG_OK) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/* create a jobs entry */
+	if (pkg_jobs_new_entry(jobs, &je, PKG_JOBS_INSTALL, db) != EPKG_OK) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -53,17 +62,17 @@ exec_install(int argc, char **argv)
 			goto cleanup;
 		}
 
-		pkg_jobs_add(jobs, pkg);
+		pkg_jobs_add(je, pkg);
 	}
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
 	printf("The following packages will be installed:\n");
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
+	while (pkg_jobs_entry(je, &pkg) == EPKG_OK) {
 		printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 	}
 
-	retcode = pkg_jobs_apply(jobs, 0);
+	retcode = pkg_jobs_apply(je, 0);
 
 	cleanup:
 	pkgdb_close(db);
