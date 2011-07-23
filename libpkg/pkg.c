@@ -188,6 +188,8 @@ pkg_flatsize(struct pkg *pkg)
 int
 pkg_setautomatic(struct pkg *pkg)
 {
+	assert(pkg != NULL);
+
 	pkg->automatic = true;
 
 	return (EPKG_OK);
