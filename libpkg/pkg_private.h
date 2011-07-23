@@ -148,6 +148,7 @@ int pkg_option_new(struct pkg_option **);
 void pkg_option_free(struct pkg_option *);
 
 int pkg_jobs_resolv(struct pkg_jobs_entry *je);
+void pkg_jobs_free_entry(struct pkg_jobs_entry *je);
 
 struct packing;
 
