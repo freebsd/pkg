@@ -228,7 +228,8 @@ pkg_repos_free(struct pkg_repos *repos)
 {
 	struct pkg_repos_entry *re1, *re2;
 
-	assert(repos != NULL);
+	if (repos == NULL)
+		return;
 
         re1 = STAILQ_FIRST(&repos->nodes);
         while (re1 != NULL) {
@@ -251,7 +252,8 @@ pkg_repos_free_in_pkg(struct pkg *pkg)
 {
 	struct pkg_repos_entry *re1, *re2;
 
-	assert(pkg != NULL);
+	if (pkg == NULL)
+		return;
 
 	re1 = STAILQ_FIRST(&pkg->repos);
 	while (re1 != NULL) {

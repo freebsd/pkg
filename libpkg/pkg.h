@@ -18,6 +18,7 @@ struct pkgdb;
 struct pkgdb_it;
 
 struct pkg_jobs;
+struct pkg_jobs_entry;
 
 struct pkg_repos;
 struct pkg_repos_entry;
@@ -535,35 +536,49 @@ int pkgdb_compact(struct pkgdb *db);
 int pkg_add(struct pkgdb *db, const char *path);
 
 /**
- * Allocate a new pkg_jobs.
+ * Create a new jobs object
+ * @return EPKG_OK on success, EPKG_FATAL on error
+ */
+int pkg_jobs_new(struct pkg_jobs **jobs);
+
+/**
+ * Allocate a new pkg_jobs_entry object.
  * @param db A pkgdb open with PKGDB_REMOTE.
  * @return An error code.
  */
-int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db);
+int pkg_jobs_new_entry(struct pkg_jobs *jobs, struct pkg_jobs_entry **je, pkg_jobs_t type, struct pkgdb *db);
 
 /**
- * Free a pkg_jobs
+ * Free a pkg_jobs object
  */
 void pkg_jobs_free(struct pkg_jobs *jobs);
 
 /**
- * Add a pkg to the jobs queue.
+ * Add a pkg to the jobs entry queue.
  * @return An error code.
  */
-int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
+int pkg_jobs_add(struct pkg_jobs_entry *je, struct pkg *pkg);
+
+/**
+ * Iterates over the jobs entry objects
+ * @param je Returns the next entry in a jobs object.
+ * Must be set to NULL for the first call.
+ * @return EPKG_OK on success, EPKG_END if end of tail is reached.
+ */
+int pkg_jobs(struct pkg_jobs *jobs, struct pkg_jobs_entry **je);
 
 /**
  * Iterates over the packages in the jobs queue.
  * @param pkg Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
+int pkg_jobs_entry(struct pkg_jobs_entry *je, struct pkg **pkg);
 
 /**
- * Apply the jobs in the queue (fetch and install).
+ * Apply the jobs in the queue (fetch/install/deinstall).
  * @return An error code.
  */
-int pkg_jobs_apply(struct pkg_jobs *jobs, int force);
+int pkg_jobs_apply(struct pkg_jobs_entry *je, int force);
 
 /**
  * Archive formats options.
