@@ -35,6 +35,7 @@ struct pkg {
 	STAILQ_HEAD(conflicts, pkg_conflict) conflicts;
 	STAILQ_HEAD(scripts, pkg_script) scripts;
 	STAILQ_HEAD(options, pkg_option) options;
+	STAILQ_HEAD(repos_entry, pkg_repos_entry) repos;
 	int flags;
 	int64_t rowid;
 	pkg_t type;

@@ -84,7 +84,7 @@ pkg_repos_load(struct pkg_repos *repos)
         char buf[MAXPATHLEN];
         char *token = NULL, *tmp = NULL;
         unsigned int count = 0, line = 0;
-	struct pkg_repos_entry *re;
+	struct pkg_repos_entry *re = NULL;
 
 	assert(repos != NULL);
 
@@ -158,12 +158,38 @@ pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re)
 }
 
 int
+pkg_repos_add_in_pkg(struct pkg *pkg, struct pkg_repos_entry *re)
+{
+	assert(pkg != NULL && re != NULL);
+
+	STAILQ_INSERT_TAIL(&pkg->repos, re, entries);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re)
 {
 	assert(repos != NULL);
 
 	if (*re == NULL)
 		*re = STAILQ_FIRST(&repos->nodes);
+	else
+		*re = STAILQ_NEXT(*re, entries);
+
+	if (*re == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
+pkg_repos_next_in_pkg(struct pkg *pkg, struct pkg_repos_entry **re)
+{
+	assert(pkg != NULL);
+
+	if (*re == NULL)
+		*re = STAILQ_FIRST(&pkg->repos);
 	else
 		*re = STAILQ_NEXT(*re, entries);
 
@@ -202,6 +228,8 @@ pkg_repos_free(struct pkg_repos *repos)
 {
 	struct pkg_repos_entry *re1, *re2;
 
+	assert(repos != NULL);
+
         re1 = STAILQ_FIRST(&repos->nodes);
         while (re1 != NULL) {
                 re2 = STAILQ_NEXT(re1, entries);
@@ -216,6 +244,27 @@ pkg_repos_free(struct pkg_repos *repos)
         }
 
 	free(repos);
+}
+
+void
+pkg_repos_free_in_pkg(struct pkg *pkg)
+{
+	struct pkg_repos_entry *re1, *re2;
+
+	assert(pkg != NULL);
+
+	re1 = STAILQ_FIRST(&pkg->repos);
+	while (re1 != NULL) {
+		re2 = STAILQ_NEXT(re1, entries);
+
+		if (re1->name != NULL)
+			free(re1->name);
+		if (re1->url != NULL)
+			free(re1->url);
+
+		free(re1);
+		re1 = re2;
+	}
 }
 
 static int
