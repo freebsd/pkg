@@ -613,6 +613,14 @@ int pkg_repos_load(struct pkg_repos *repos);
 int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
 
 /**
+ * Adds a repository entry to a package object
+ * @param pkg A valid package object
+ * @param re A valid repository entry object
+ * @return EPKG_OK on success, EPKG_FATAL on error
+ */
+int pkg_repos_add_in_pkg(struct pkg *pkg, struct pkg_repos_entry *re);
+
+/**
  * Get the next repository from the tail
  * @param repos A valid repository pointer as returned by pkg_repos_new()
  * @param re A pointer to a repository entry to save the result. Must be set to
@@ -620,6 +628,15 @@ int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
  * @return EPKG_OK on success, EPKG_END if end of repository is reached
  */
 int pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
+
+/**
+ * Get the next repository assigned to a package object
+ * @param pkg A valid package object
+ * @param re A pointer to a repository entry to save the result. Must be set to
+ * NULL for the first repository entry
+ * @return EPKG_OK on success, EPKG_END if end of repository is reached
+ */
+int pkg_repos_next_in_pkg(struct pkg *pkg, struct pkg_repos_entry **re);
 
 /**
  * Returns the name associated with a repository entry object
@@ -643,6 +660,11 @@ unsigned int pkg_repos_get_line(struct pkg_repos_entry *re);
  * Free the memory used by the repository objects
  */
 void pkg_repos_free(struct pkg_repos *repos);
+
+/**
+ * Free the memory used by the repository objects in a package
+ */
+void pkg_repos_free_in_pkg(struct pkg *pkg);
 
 /**
  * Get the value of a configuration key
