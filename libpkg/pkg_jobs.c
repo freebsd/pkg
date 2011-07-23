@@ -59,7 +59,7 @@ pkg_jobs_free(struct pkg_jobs *jm)
 	free(jm);
 }
 
-static void
+void
 pkg_jobs_free_entry(struct pkg_jobs_entry *j)
 {
 	struct pkg *p;
