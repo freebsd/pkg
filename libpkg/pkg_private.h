@@ -90,7 +90,7 @@ struct pkg_jobs {
 		pkg_jobs_t type;
 		unsigned int resolved :1;
 		STAILQ_ENTRY(pkg_jobs_entry) next;
-	};
+	} j;
 
 	STAILQ_HEAD(jobs_multi, pkg_jobs_entry) multi;
 };
@@ -110,11 +110,10 @@ struct pkg_repos {
 		char *url;
 		unsigned int line;
 		STAILQ_ENTRY(pkg_repos_entry) entries;
-	};
+	} r;
 
 	STAILQ_HEAD(repos, pkg_repos_entry) nodes;
 };
-
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
 void pkg_freecategories(struct pkg *pkg);

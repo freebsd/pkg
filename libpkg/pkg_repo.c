@@ -160,9 +160,22 @@ pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re)
 int
 pkg_repos_add_in_pkg(struct pkg *pkg, struct pkg_repos_entry *re)
 {
+	struct pkg_repos_entry *newre;
+
 	assert(pkg != NULL && re != NULL);
 
-	STAILQ_INSERT_TAIL(&pkg->repos, re, entries);
+	if ((newre = calloc(1, sizeof(struct pkg_repos_entry))) == NULL) {
+		EMIT_ERRNO("calloc", "pkg_repos_entry");
+		return (EPKG_FATAL);
+	}
+
+	newre->name = strdup(re->name);
+	newre->url  = strdup(re->url);
+	newre->line = re->line;
+
+	assert (newre->name != NULL && newre->url != NULL);
+
+	STAILQ_INSERT_TAIL(&pkg->repos, newre, entries);
 
 	return (EPKG_OK);
 }
