@@ -21,9 +21,12 @@ int
 exec_delete(int argc, char **argv)
 {
 	struct pkg_jobs *jobs = NULL;
+	struct pkg_jobs_entry *je = NULL;
+
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
+
 	match_t match = MATCH_EXACT;
 	char *origin = NULL;
 	int ch;
@@ -64,7 +67,15 @@ exec_delete(int argc, char **argv)
 	if (argc == 1)
 		origin = argv[0];
 
-	if ((retcode = pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db)) != EPKG_OK) {
+	/* create a jobs object */
+	if (pkg_jobs_new(&jobs) != EPKG_OK) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/* create a jobs entry */
+	if (pkg_jobs_new_entry(jobs, &je, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -74,7 +85,7 @@ exec_delete(int argc, char **argv)
 	}
 
 	while ((retcode = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
-		pkg_jobs_add(jobs, pkg);
+		pkg_jobs_add(je, pkg);
 		pkg = NULL;
 	}
 
@@ -82,7 +93,7 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if ((retcode = pkg_jobs_apply(jobs, force)) != EPKG_OK) {
+	if ((retcode = pkg_jobs_apply(je, force)) != EPKG_OK) {
 		goto cleanup;
 	}
 
@@ -90,7 +101,6 @@ exec_delete(int argc, char **argv)
 
 	cleanup:
 	pkgdb_it_free(it);
-	pkgdb_close(db);
 	pkg_jobs_free(jobs);
 
 	return (retcode == EPKG_OK ? EX_OK : 1);

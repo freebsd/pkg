@@ -18,6 +18,7 @@ struct pkgdb;
 struct pkgdb_it;
 
 struct pkg_jobs;
+struct pkg_jobs_entry;
 
 struct pkg_repos;
 struct pkg_repos_entry;
@@ -535,35 +536,58 @@ int pkgdb_compact(struct pkgdb *db);
 int pkg_add(struct pkgdb *db, const char *path);
 
 /**
- * Allocate a new pkg_jobs.
+ * Create a new jobs object
+ * @return EPKG_OK on success, EPKG_FATAL on error
+ */
+int pkg_jobs_new(struct pkg_jobs **jobs);
+
+/**
+ * Allocate a new pkg_jobs_entry object.
  * @param db A pkgdb open with PKGDB_REMOTE.
  * @return An error code.
  */
-int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db);
+int pkg_jobs_new_entry(struct pkg_jobs *jobs, struct pkg_jobs_entry **je, pkg_jobs_t type, struct pkgdb *db);
 
 /**
- * Free a pkg_jobs
+ * Free a pkg_jobs object
  */
 void pkg_jobs_free(struct pkg_jobs *jobs);
 
 /**
- * Add a pkg to the jobs queue.
+ * Add a pkg to the jobs entry queue.
  * @return An error code.
  */
-int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
+int pkg_jobs_add(struct pkg_jobs_entry *je, struct pkg *pkg);
+
+/**
+ * Iterates over the jobs entry objects
+ * @param je Returns the next entry in a jobs object.
+ * Must be set to NULL for the first call.
+ * @return EPKG_OK on success, EPKG_END if end of tail is reached.
+ */
+int pkg_jobs(struct pkg_jobs *jobs, struct pkg_jobs_entry **je);
 
 /**
  * Iterates over the packages in the jobs queue.
  * @param pkg Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
+int pkg_jobs_entry(struct pkg_jobs_entry *je, struct pkg **pkg);
 
 /**
- * Apply the jobs in the queue (fetch and install).
+ * Apply the jobs in the queue (fetch/install/deinstall).
  * @return An error code.
  */
-int pkg_jobs_apply(struct pkg_jobs *jobs, int force);
+int pkg_jobs_apply(struct pkg_jobs_entry *je, int force);
+
+/**
+ * Checks if a given job is already added in another jobs entry
+ * @param jobs A valid jobs object as received from pkg_jobs_new()
+ * @param pkg A package that will be checked if it exists already as a job
+ * @param res A pkg where to store the result if a package is found to exist
+ * @return EPKG_OK if the is not added yet and EPKG_FATAL otherwise
+ */
+int pkg_jobs_exists(struct pkg_jobs *jobs, struct pkg *pkg, struct pkg **res);
 
 /**
  * Archive formats options.
@@ -613,6 +637,14 @@ int pkg_repos_load(struct pkg_repos *repos);
 int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
 
 /**
+ * Adds a repository entry to a package object
+ * @param pkg A valid package object
+ * @param re A valid repository entry object
+ * @return EPKG_OK on success, EPKG_FATAL on error
+ */
+int pkg_repos_add_in_pkg(struct pkg *pkg, struct pkg_repos_entry *re);
+
+/**
  * Get the next repository from the tail
  * @param repos A valid repository pointer as returned by pkg_repos_new()
  * @param re A pointer to a repository entry to save the result. Must be set to
@@ -620,6 +652,15 @@ int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
  * @return EPKG_OK on success, EPKG_END if end of repository is reached
  */
 int pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
+
+/**
+ * Get the next repository assigned to a package object
+ * @param pkg A valid package object
+ * @param re A pointer to a repository entry to save the result. Must be set to
+ * NULL for the first repository entry
+ * @return EPKG_OK on success, EPKG_END if end of repository is reached
+ */
+int pkg_repos_next_in_pkg(struct pkg *pkg, struct pkg_repos_entry **re);
 
 /**
  * Returns the name associated with a repository entry object
@@ -643,6 +684,11 @@ unsigned int pkg_repos_get_line(struct pkg_repos_entry *re);
  * Free the memory used by the repository objects
  */
 void pkg_repos_free(struct pkg_repos *repos);
+
+/**
+ * Free the memory used by the repository objects in a package
+ */
+void pkg_repos_free_in_pkg(struct pkg *pkg);
 
 /**
  * Get the value of a configuration key

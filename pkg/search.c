@@ -137,7 +137,12 @@ search_remote_repo(const char *pattern, match_t match, unsigned int field, const
 		humanize_number(size, sizeof(size), pkg_new_pkgsize(pkg), "B", HN_AUTOSCALE, 0);
 		printf("Pkg size:   %s\n", size);
 		printf("\n");
+
 	}
+
+	pkg_free(pkg);
+	pkgdb_it_free(it);
+	pkgdb_close(db);
 
 	return (retcode);
 }
