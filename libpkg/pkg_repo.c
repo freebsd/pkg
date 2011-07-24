@@ -18,9 +18,12 @@ pkg_repo_fetch(struct pkg *pkg)
 {
 	char dest[MAXPATHLEN];
 	char cksum[65];
-	char *path;
-	char *url;
+	char *path = NULL;
+	char *url = NULL;
 	int retcode = EPKG_OK;
+	int fetch_ok = 0;
+
+	struct pkg_repos_entry *re = NULL;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE ||
 		(pkg->type & PKG_UPGRADE) == PKG_UPGRADE);
@@ -28,7 +31,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	snprintf(dest, sizeof(dest), "%s/%s", pkg_config("PKG_CACHEDIR"),
 			 pkg_get(pkg, PKG_REPOPATH));
 
-	/* If it is already in the local cachedir, dont bother to download it */
+	/* If it is already in the local cachedir, don't bother to download it */
 	if (access(dest, F_OK) == 0)
 		goto checksum;
 
@@ -41,11 +44,37 @@ pkg_repo_fetch(struct pkg *pkg)
 	if ((retcode = mkdirs(path)) != 0)
 		goto cleanup;
 
-	asprintf(&url, "%s/%s", pkg_config("PACKAGESITE"),
-			 pkg_get(pkg, PKG_REPOPATH));
+	if (pkg_config("PACKAGESITE") != NULL) {
+		asprintf(&url, "%s/%s", pkg_config("PACKAGESITE"),
+				 pkg_get(pkg, PKG_REPOPATH));
 
-	retcode = pkg_fetch_file(url, dest);
-	free(url);
+		retcode = pkg_fetch_file(url, dest);
+		free(url);
+	} else {
+		/* 
+		 * Get the repository URL from the package itself 
+		 * Working on multiple repos here.
+		 *
+		 * If a package fetch is not successful go to the next
+		 * repository in the list and give it more chance for
+		 * successful fetch :)
+		 */
+
+		re = NULL; /* starts with the first repository entry */
+		fetch_ok = EPKG_FATAL;
+		while ((pkg_repos_next_in_pkg(pkg, &re) == EPKG_OK) && fetch_ok != EPKG_OK) {
+			printf("Fetching package from repository '%s' [%s]\n",
+					pkg_repos_get_name(re),
+					pkg_repos_get_url(re));
+
+			asprintf(&url, "%s/%s", pkg_repos_get_url(re),
+					 pkg_get(pkg, PKG_REPOPATH));
+
+			fetch_ok = retcode = pkg_fetch_file(url, dest);
+			free(url);
+		}
+	}
+
 	if (retcode != EPKG_OK)
 		goto cleanup;
 
