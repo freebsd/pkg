@@ -35,6 +35,7 @@ struct pkg {
 	STAILQ_HEAD(conflicts, pkg_conflict) conflicts;
 	STAILQ_HEAD(scripts, pkg_script) scripts;
 	STAILQ_HEAD(options, pkg_option) options;
+	STAILQ_HEAD(repos_entry, pkg_repos_entry) repos;
 	int flags;
 	int64_t rowid;
 	pkg_t type;
@@ -82,11 +83,16 @@ struct pkg_option {
 };
 
 struct pkg_jobs {
-	STAILQ_HEAD(jobs, pkg) jobs;
-	LIST_HEAD(nodes, pkg_jobs_node) nodes;
-	struct pkgdb *db;
-	pkg_jobs_t type;
-	unsigned int resolved :1;
+	struct pkg_jobs_entry {
+		STAILQ_HEAD(jobs, pkg) jobs;
+		LIST_HEAD(nodes, pkg_jobs_node) nodes;
+		struct pkgdb *db;
+		pkg_jobs_t type;
+		unsigned int resolved :1;
+		STAILQ_ENTRY(pkg_jobs_entry) next;
+	} j;
+
+	STAILQ_HEAD(jobs_multi, pkg_jobs_entry) multi;
 };
 
 struct pkg_jobs_node {
@@ -99,14 +105,14 @@ struct pkg_jobs_node {
 };
 
 struct pkg_repos {
-	STAILQ_HEAD(repos, pkg_repos_entry) nodes;
-};
+	struct pkg_repos_entry {
+		char *name;
+		char *url;
+		unsigned int line;
+		STAILQ_ENTRY(pkg_repos_entry) entries;
+	} r;
 
-struct pkg_repos_entry {
-	char *name;
-	char *url;
-	unsigned int line;
-	STAILQ_ENTRY(pkg_repos_entry) entries;
+	STAILQ_HEAD(repos, pkg_repos_entry) nodes;
 };
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
@@ -140,7 +146,8 @@ void pkg_script_free(struct pkg_script *);
 int pkg_option_new(struct pkg_option **);
 void pkg_option_free(struct pkg_option *);
 
-int pkg_jobs_resolv(struct pkg_jobs *jobs);
+int pkg_jobs_resolv(struct pkg_jobs_entry *je);
+void pkg_jobs_free_entry(struct pkg_jobs_entry *je);
 
 struct packing;
 
