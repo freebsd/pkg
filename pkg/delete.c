@@ -22,9 +22,11 @@ exec_delete(int argc, char **argv)
 {
 	struct pkg_jobs *jobs = NULL;
 	struct pkg_jobs_entry *je = NULL;
+
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
+
 	match_t match = MATCH_EXACT;
 	char *origin = NULL;
 	int ch;
@@ -99,7 +101,6 @@ exec_delete(int argc, char **argv)
 
 	cleanup:
 	pkgdb_it_free(it);
-	pkgdb_close(db);
 	pkg_jobs_free(jobs);
 
 	return (retcode == EPKG_OK ? EX_OK : 1);
