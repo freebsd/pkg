@@ -122,6 +122,25 @@ pkg_jobs_entry(struct pkg_jobs_entry *je, struct pkg **pkg)
 		return (EPKG_OK);
 }
 
+int
+pkg_jobs_exists(struct pkg_jobs *jobs, struct pkg *pkg, struct pkg **res)
+{
+	struct pkg_jobs_entry *je = NULL;
+	struct pkg *p = NULL;
+
+	while (pkg_jobs(jobs, &je) == EPKG_OK) {
+		p = NULL; /* starts with the first package job */
+		while (pkg_jobs_entry(je, &p) == EPKG_OK) {
+			if (strcmp(pkg_get(p, PKG_ORIGIN), pkg_get(pkg, PKG_ORIGIN)) == 0) {
+				*res = p;
+				return (EPKG_FATAL);
+			}
+		}
+	}
+
+	return (EPKG_OK);
+}
+
 static int
 pkg_jobs_install(struct pkg_jobs_entry *je)
 {
