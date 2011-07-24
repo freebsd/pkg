@@ -581,6 +581,15 @@ int pkg_jobs_entry(struct pkg_jobs_entry *je, struct pkg **pkg);
 int pkg_jobs_apply(struct pkg_jobs_entry *je, int force);
 
 /**
+ * Checks if a given job is already added in another jobs entry
+ * @param jobs A valid jobs object as received from pkg_jobs_new()
+ * @param pkg A package that will be checked if it exists already as a job
+ * @param res A pkg where to store the result if a package is found to exist
+ * @return EPKG_OK if the is not added yet and EPKG_FATAL otherwise
+ */
+int pkg_jobs_exists(struct pkg_jobs *jobs, struct pkg *pkg, struct pkg **res);
+
+/**
  * Archive formats options.
  */
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
