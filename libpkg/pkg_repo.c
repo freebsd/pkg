@@ -11,6 +11,7 @@
 #include "pkg_private.h"
 
 static int pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re);
+static int pkg_repos_exists_in_pkg(struct pkg *pkg, struct pkg_repos_entry *re);
 
 int
 pkg_repo_fetch(struct pkg *pkg)
@@ -164,6 +165,9 @@ pkg_repos_add_in_pkg(struct pkg *pkg, struct pkg_repos_entry *re)
 
 	assert(pkg != NULL && re != NULL);
 
+	if (pkg_repos_exists_in_pkg(pkg, re) == EPKG_FATAL)
+		return (EPKG_FATAL);
+
 	if ((newre = calloc(1, sizeof(struct pkg_repos_entry))) == NULL) {
 		EMIT_ERRNO("calloc", "pkg_repos_entry");
 		return (EPKG_FATAL);
@@ -296,6 +300,18 @@ pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re)
 	while (pkg_repos_next(repos, &next) == EPKG_OK)
 		if ((strcmp(pkg_repos_get_name(re), pkg_repos_get_name(next)) == 0) || \
 		    (strcmp(pkg_repos_get_name(re), "repo") == 0))
+			return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_repos_exists_in_pkg(struct pkg *pkg, struct pkg_repos_entry *re)
+{
+	struct pkg_repos_entry *tmp = NULL;
+
+	while(pkg_repos_next_in_pkg(pkg, &tmp) == EPKG_OK)
+		if (strcmp(pkg_repos_get_name(tmp), pkg_repos_get_name(re)) == 0)
 			return (EPKG_FATAL);
 
 	return (EPKG_OK);
