@@ -320,6 +320,8 @@ pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re)
 {
 	struct pkg_repos_entry *next = NULL;
 
+	assert(repos != NULL && re != NULL);
+
 	/* 
 	 * Find if a repository name already exists.
 	 * NOTE: The 'repo' name is always reserved, 
@@ -338,6 +340,8 @@ static int
 pkg_repos_exists_in_pkg(struct pkg *pkg, struct pkg_repos_entry *re)
 {
 	struct pkg_repos_entry *tmp = NULL;
+
+	assert(pkg != NULL && re != NULL);
 
 	while(pkg_repos_next_in_pkg(pkg, &tmp) == EPKG_OK)
 		if (strcmp(pkg_repos_get_name(tmp), pkg_repos_get_name(re)) == 0)

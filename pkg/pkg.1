@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd March 29, 2011
+.Dd July 25, 2011
 .Dt PKG 1
 .Os
 .Sh NAME
@@ -33,8 +33,7 @@ The following commands are supported by
 .Nm :
 .Bl -tag -width F1
 .It \fBhelp\fP Ar <command>
-Displays usage information.
-.Ar <command>
+Displays usage information of the specified command.
 .It \fBadd\fP
 Install a package from either a local source or a remote one.
 .Pp
@@ -42,6 +41,12 @@ When installing from remote source you need to specify the
 protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
+.It \fBinstall\fP
+Installs a package from a remote package repository.
+If a package is found in more than one remote repositories,
+then installation happens from the first one. If a package
+fails to fetch from the remote repository the next one in
+the list is tried, until the package is fetched.
 .It \fBcreate\fP
 Creates a package
 .It \fBdelete\fP
@@ -55,7 +60,8 @@ Creates a package repository.
 .Pp
 < To be completed >
 .It \fBupdate\fP
-< To be added >
+Update the available remote repositories as listed in
+.Pa /etc/pkg/repositories
 .It \fBupgrade\fP
 Upgrades a package to a newer version.
 .It \fBversion\fP
@@ -72,6 +78,25 @@ The following envrioment variables affect the execution of
 .It Ev TMPDIR, SQLITE_FORCE_PROXY_LOCKING, PKG_DBDIR
 .El
 .Sh FILES
+.Bl -tag -width ".Pa /etc/pkg.conf"
+.It Pa /etc/pkg.conf
+System-wide configuration file. This file format and available configuration
+options are described in
+.Xr pkg.conf 5 .
+.El
+
+.Bl -tag -width ".Pa /etc/pkg/repositories"
+.It Pa /etc/pkg/repositories
+Global repositories file. This file contains a pair of
+.Fa name = url
+entries, each describing a remote repository, from which
+.Nm
+can fetch and install packages. The file format of the file
+is the same as described in
+.Xr pkg.conf 5
+Please refer to the included sample configuration file for example
+definitions of remote repositories.
+.El
 .Sh SEE ALSO
 .Xr pkg 1,
 .Xr pkg-create 1,
