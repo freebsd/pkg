@@ -90,8 +90,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			return EPKG_FATAL;
 		}
 
-	if (sqlite3_open(repodb, &sqlite) != SQLITE_OK)
+	sqlite3_initialize();
+	if (sqlite3_open(repodb, &sqlite) != SQLITE_OK) {
+		sqlite3_shutdown();
 		return (EPKG_FATAL);
+	}
 
 	if (sqlite3_exec(sqlite, initsql, NULL, NULL, &errmsg) != SQLITE_OK) {
 		EMIT_PKG_ERROR("sqlite: %s", errmsg);
@@ -217,6 +220,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	if (errmsg != NULL)
 		sqlite3_free(errmsg);
+
+	sqlite3_shutdown();
 
 	return (retcode);
 }
