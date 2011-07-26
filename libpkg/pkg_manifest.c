@@ -89,6 +89,11 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 	yaml_node_pair_t *subpair;
 	char origin[BUFSIZ];
 	char version[BUFSIZ];
+	char sum[65];
+	char uname[MAXLOGNAME];
+	char gname[MAXLOGNAME];
+	void *set;
+	mode_t perm;
 	pkg_script_t script_type;
 
 	key = yaml_document_get_node(document, pair->key);
@@ -96,7 +101,36 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 
 	switch (pkgtype) {
 		case PKG_FILES:
-			pkg_addfile(pkg, key->data.scalar.value, val->data.scalar.length == 65 ? val->data.scalar.value : NULL);
+			if (val->type == YAML_SCALAR_NODE) {
+				pkg_addfile(pkg, key->data.scalar.value, val->data.scalar.length == 65 ? val->data.scalar.value : NULL);
+			}else {
+				subpair = val->data.mapping.pairs.start;
+				sum[0] = '\0';
+				uname[0] = '\0';
+				gname[0] = '\0';
+				perm = 0;
+				set = NULL;
+				while (subpair < val->data.mapping.pairs.top) {
+					subkey = yaml_document_get_node(document, subpair->key);
+					subval = yaml_document_get_node(document, subpair->value);
+					if (!strcasecmp(subkey->data.scalar.value, "sum") && subval->data.scalar.length == 65)
+						strlcpy(sum, subval->data.scalar.value, 65);
+					else if (!strcasecmp(subkey->data.scalar.value, "uname") && subval->data.scalar.length <= MAXLOGNAME)
+						strlcpy(uname, subval->data.scalar.value, MAXLOGNAME);
+					else if (!strcasecmp(subkey->data.scalar.value, "gname") && subval->data.scalar.length <= MAXLOGNAME)
+						strlcpy(gname, subval->data.scalar.value, MAXLOGNAME);
+					else if (!strcasecmp(subkey->data.scalar.value, "perm") && subval->data.scalar.length > 0) {
+						if ((set = setmode(subval->data.scalar.value)) == NULL)
+							EMIT_PKG_ERROR("Not a valide mode: %s", subval->data.scalar.value);
+						else
+							perm = getmode(set, 0);
+					}
+					++subpair;
+				}
+				pkg_addfile_attr(pkg, key->data.scalar.value, sum[0] != '\0' ? sum : NULL,
+						uname[0] != '\0' ? uname : NULL, gname[0] != '\0' ? gname : NULL,
+						perm);
+			}
 			break;
 		case PKG_DEPS:
 			subpair = val->data.mapping.pairs.start;
@@ -182,9 +216,13 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 static void
 parse_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *document, int pkgtype)
 {
-	yaml_node_pair_t *pair;
+	yaml_node_pair_t *pair, *p;
 	yaml_node_item_t *item;
-	yaml_node_t *nd;
+	yaml_node_t *nd, *pk, *pv, *key, *val;
+	char uname[MAXLOGNAME];
+	char gname[MAXLOGNAME];
+	void *set;
+	mode_t perm;
 
 	switch (node->type) {
 		case YAML_SCALAR_NODE:
@@ -197,10 +235,37 @@ parse_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *document, int pk
 					item = node->data.sequence.items.start;
 					while (item < node->data.sequence.items.top) {
 						nd = yaml_document_get_node(document, *item);
-						pkg_adddir(pkg, nd->data.scalar.value);
+						if (nd->type == YAML_SCALAR_NODE)
+							pkg_adddir(pkg, nd->data.scalar.value);
+						else if (nd->type == YAML_MAPPING_NODE) {
+							uname[0] = '\0';
+							gname[0] = '\0';
+							perm = 0;
+							set = NULL;
+							p = nd->data.mapping.pairs.start;
+							pk = yaml_document_get_node(document, p->key);
+							pv = yaml_document_get_node(document, p->value);
+							pair = pv->data.mapping.pairs.start;
+							while (pair < pv->data.mapping.pairs.top) {
+								key = yaml_document_get_node(document, pair->key);
+								val = yaml_document_get_node(document, pair->value);
+								if (!strcasecmp(key->data.scalar.value, "uname") && val->data.scalar.length <= MAXLOGNAME)
+									strlcpy(uname, val->data.scalar.value, MAXLOGNAME);
+								else if (!strcasecmp(key->data.scalar.value, "gname") && val->data.scalar.length <= MAXLOGNAME)
+									strlcpy(gname, val->data.scalar.value, MAXLOGNAME);
+								else if (!strcasecmp(key->data.scalar.value, "perm") && val->data.scalar.length > 0) {
+									if ((set = setmode(val->data.scalar.value)) == NULL)
+										EMIT_PKG_ERROR("Not a valide mode: %s", val->data.scalar.value);
+									else
+										perm = getmode(set, 0);
+								}
+								++pair;
+							}
+							pkg_adddir_attr(pkg, pk->data.scalar.value, uname[0] != '\0' ? uname : NULL,
+									gname[0] != '\0' ? gname : NULL, perm);
+						}
 						++item;
 					}
-
 					break;
 				case PKG_CATEGORIES:
 					item = node->data.sequence.items.start;
