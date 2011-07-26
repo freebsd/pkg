@@ -101,7 +101,10 @@ pkg_create_fakeroot(const char *outdir, pkg_formats format, const char *rootdir,
 	if (pkg == NULL)
 		goto cleanup;
 
-	ret = pkg_load_manifest_file(pkg, manifest_path);
+	if ((ret = pkg_load_manifest_file(pkg, manifest_path)) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	/* Create the archive */
 	pkg_archive = pkg_create_archive(outdir, pkg, format, 0);
