@@ -1,5 +1,5 @@
 LIB=	yaml
-INTERALLIB=
+INTERNALLIB=
 .PATH: ${.CURDIR}/src
 SRCS=	api.c      \
 	dumper.c   \
