@@ -120,7 +120,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 				free(cmd);
 
-			} else if (STARTS_WITH(plist_p, "@dirrm ") || STARTS_WITH(plist_p, "@dirrmtry ")) {
+			} else if (STARTS_WITH(plist_p, "@dirrm ")) {
 
 				buf = plist_p;
 
@@ -139,6 +139,10 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				}
 
 				snprintf(path, MAXPATHLEN, "%s%s%s/", prefix, slash, buf);
+
+				if (sbuf_len(unexec_scripts) == 0)
+					sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
+				sbuf_printf(unexec_scripts, "#@dirrm \n", path);
 
 				ret += pkg_adddir(pkg, path);
 
