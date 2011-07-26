@@ -57,11 +57,17 @@ struct pkg_category {
 struct pkg_file {
 	char path[MAXPATHLEN];
 	char sha256[65];
+	char uname[MAXLOGNAME];
+	char gname[MAXLOGNAME];
+	mode_t perm;
 	STAILQ_ENTRY(pkg_file) next;
 };
 
 struct pkg_dir {
 	char path[MAXPATHLEN];
+	char uname[MAXLOGNAME];
+	char gname[MAXLOGNAME];
+	mode_t perm;
 	STAILQ_ENTRY(pkg_dir) next;
 };
 
@@ -153,6 +159,7 @@ struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format);
 int packing_append_file(struct packing *pack, const char *filepath, const char *newpath);
+int packing_append_file_attr(struct packing *pack, const char *filepath, const char *newpath, const char *uname, const char *gname, mode_t perm);
 int packing_append_buffer(struct packing *pack, const char *buffer, const char *path, int size);
 int packing_append_tree(struct packing *pack, const char *treepath, const char *newroot);
 int packing_finish(struct packing *pack);

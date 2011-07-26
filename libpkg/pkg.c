@@ -427,17 +427,31 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 int
 pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 {
+	return (pkg_addfile_attr(pkg, path, sha256, NULL, NULL, 0));
+}
+
+int
+pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm)
+{
 	struct pkg_file *f;
 
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
 	pkg_file_new(&f);
-
 	strlcpy(f->path, path, sizeof(f->path));
 
 	if (sha256 != NULL)
 		strlcpy(f->sha256, sha256, sizeof(f->sha256));
+
+	if (uname != NULL)
+		strlcpy(f->uname, uname, sizeof(f->uname));
+
+	if (gname != NULL)
+		strlcpy(f->gname, gname, sizeof(f->gname));
+
+	if (perm != 0)
+		f->perm = perm;
 
 	STAILQ_INSERT_TAIL(&pkg->files, f, next);
 
@@ -469,6 +483,11 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 int
 pkg_adddir(struct pkg *pkg, const char *path)
 {
+	return(pkg_adddir_attr(pkg, path, NULL, NULL, 0));
+}
+int
+pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm)
+{
 	struct pkg_dir *d = NULL;
 
 	assert(pkg != NULL);
@@ -483,6 +502,15 @@ pkg_adddir(struct pkg *pkg, const char *path)
 
 	pkg_dir_new(&d);
 	strlcpy(d->path, path, sizeof(d->path));
+
+	if (uname != NULL)
+		strlcpy(d->uname, uname, sizeof(d->uname));
+
+	if (gname != NULL)
+		strlcpy(d->gname, gname, sizeof(d->gname));
+
+	if (perm != 0)
+		d->perm = perm;
 
 	STAILQ_INSERT_TAIL(&pkg->dirs, d, next);
 

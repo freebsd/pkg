@@ -76,6 +76,13 @@ packing_append_buffer(struct packing *pack, const char *buffer, const char *path
 int
 packing_append_file(struct packing *pack, const char *filepath, const char *newpath)
 {
+	return (packing_append_file_attr(pack, filepath, newpath, NULL, NULL, 0));
+}
+
+int
+packing_append_file_attr(struct packing *pack, const char *filepath, const char *newpath,
+		const char *uname, const char *gname, mode_t perm)
+{
 	int fd;
 	int len;
 	char buf[BUFSIZ];
@@ -104,6 +111,15 @@ packing_append_file(struct packing *pack, const char *filepath, const char *newp
 	if (archive_entry_filetype(pack->entry) != AE_IFREG) {
 		archive_entry_set_size(pack->entry, 0);
 	}
+
+	if (uname != NULL)
+		archive_entry_set_uname(pack->entry, uname);
+
+	if (gname != NULL)
+		archive_entry_set_gname(pack->entry, gname);
+
+	if (perm != 0)
+		archive_entry_set_perm(pack->entry, perm);
 
 	archive_write_header(pack->awrite, pack->entry);
 

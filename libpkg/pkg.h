@@ -317,10 +317,31 @@ int pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const
 int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256);
 
 /**
+ * Allocate a new struct pkg_file and add it to the files of pkg;
+ * @param path path of the file
+ * @param sha256 The ascii representation of the sha256 or a NULL pointer.
+ * @param uname the user name of the file
+ * @param gname the group name of the file
+ * @param perm the permission
+ * @return An error code.
+ */
+int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm);
+
+/**
  * Add a path
  * @return An error code.
  */
 int pkg_adddir(struct pkg *pkg, const char *path);
+
+/**
+ * Allocate a new struct pkg_file and add it to the files of pkg;
+ * @param path path of the file
+ * @param uname the user name of the file
+ * @param gname the group name of the file
+ * @param perm the permission
+ * @return An error code.
+ */
+int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm);
 
 /**
  * Add a category
@@ -376,8 +397,8 @@ const char *pkg_dep_name(struct pkg_dep *dep);
 const char *pkg_dep_version(struct pkg_dep *dep);
 
 /* pkg_file */
-const char * pkg_file_path(struct pkg_file *);
-const char * pkg_file_sha256(struct pkg_file *);
+const char *pkg_file_path(struct pkg_file *);
+const char *pkg_file_sha256(struct pkg_file *);
 
 const char *pkg_dir_path(struct pkg_dir *);
 

@@ -40,7 +40,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 		else
 			strlcpy(fpath, pkg_file_path(file), MAXPATHLEN);
 
-		packing_append_file(pkg_archive, fpath, pkg_file_path(file));
+		packing_append_file_attr(pkg_archive, fpath, pkg_file_path(file), file->uname, file->gname, file->perm);
 	}
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
@@ -49,7 +49,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 		else
 			strlcpy(fpath, pkg_dir_path(dir), MAXPATHLEN);
 
-		packing_append_file(pkg_archive, fpath, pkg_dir_path(dir));
+		packing_append_file_attr(pkg_archive, fpath, pkg_dir_path(dir), dir->uname, dir->gname, dir->perm);
 	}
 
 	return (EPKG_OK);
