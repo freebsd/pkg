@@ -1,0 +1,91 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd July 26, 2011
+.Dt PKG-INSTALL 1
+.Os
+.Sh NAME
+.Nm "pkg install"
+.Nd install packages from remote package repositories
+.Sh SYNOPSIS
+.Nm
+.Ar <pkg-origin> <...>
+.Sh DESCRIPTION
+.Nm
+is used for installation of packages from a remote package
+repository database. It can install multiple packages 
+specified on the command-line from multiple repositories.
+.Pp
+If a package is found to exists in more than one package 
+repository the first matching repository is the one that the
+package will be first tried to be fetched from. 
+.Pp
+If fetching from the repository fails for some reason the next
+repository, which the package is found to exist is the one that is
+tried until the package is fetched, or all repositories are tried.
+.Pp
+Multiple package repositories is activated only when the environment
+variable \fBPACKAGESITE\fP is not defined.
+.Pp
+If \fBPACKAGESITE\fP is defined then only the repository to which it
+points is the one that is used during the package installations.
+.Pp
+It is always good to update your package repositories first before
+doing a remote installation using
+.Nm
+.Pp
+In order to update your remote package repositories please refer to the
+.Xr pkg-update 1
+man page.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.El
+.Sh WARNING
+.Sh ENVRIOMENT
+The following envrioment variables affect the execution of
+.Nm :
+.Bl -tag -width ".Ev PACKAGESITE"
+.It Ev PACKAGESITE
+When \fBPACKAGESITE\fP is defined
+.Nm
+will only use the remote repository to which it points. Otherwise
+.Nm
+will work on multiple repositories as listed in the
+.Pa /etc/pkg/repositories
+file. Please note that multiple remote repositories is still considered
+highly experimental.
+.El
+.Sh FILES
+.Bl -tag -width -".Pa /etc/pkg/repositories"
+.It Pa /etc/pkg/repositories
+Global repositories file. This file contains a pair of
+.Fa name = url
+entries, each describing a remote repository, from which
+.Nm
+can fetch and install packages. The file format of the file
+is the same as described in
+.Xr pkg.conf 5
+Please refer to the included sample configuration file for example
+definitions of remote repositories.
+.El
+.Sh SEE ALSO
+pkg(1), pkg-create(1), pkg-add(1), pkg-info(1), pkg-register(1), pkg-repo(1),
+pkg-upgrade(1), pkg-version(1), pkg-which(1)
+.Sh AUTHORS AND CONTRIBUTORS
+.Sh BUGS
