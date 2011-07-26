@@ -1,4 +1,5 @@
 #include <sys/param.h>
+#include <sys/stat.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -24,10 +25,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	struct pkg_dir *dir = NULL;
 	char *m;
 	const char *mtree;
-
-	pkg_emit_manifest(pkg, &m);
-	packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
-	free(m);
+	struct stat st;
+	char sha256[65];
 
 	mtree = pkg_get(pkg, PKG_MTREE);
 	if (mtree != NULL)
@@ -40,6 +39,13 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 		else
 			strlcpy(fpath, pkg_file_path(file), MAXPATHLEN);
 
+		/*
+		 * if the checksum is not provided in the manifest recompute it
+		 */
+		if (pkg_file_sha256(file) == NULL && lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
+			sha256_file(fpath, sha256);
+			strlcpy(file->sha256, sha256, 65);
+		}
 		packing_append_file_attr(pkg_archive, fpath, pkg_file_path(file), file->uname, file->gname, file->perm);
 	}
 
@@ -51,6 +57,10 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 
 		packing_append_file_attr(pkg_archive, fpath, pkg_dir_path(dir), dir->uname, dir->gname, dir->perm);
 	}
+
+	pkg_emit_manifest(pkg, &m);
+	packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
+	free(m);
 
 	return (EPKG_OK);
 }
