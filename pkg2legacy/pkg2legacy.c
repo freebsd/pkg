@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <openssl/md5.h>
+
 #include <archive.h>
 #include <archive_entry.h>
 
@@ -23,6 +25,18 @@ usage(void)
 	return (EX_USAGE);
 }
 
+static void
+md5_hash(char *string, char *md5)
+{
+	unsigned char hash[MD5_DIGEST_LENGTH];
+	int i;
+
+	MD5((const unsigned char *)string, strlen(string), hash);
+
+	for (i = 0;  i < MD5_DIGEST_LENGTH; i++)
+		sprintf(md5 + (i * 2), "%02x", hash[i]);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -30,7 +44,6 @@ main(int argc, char **argv)
 	FTS *fts;
 	FTSENT *p;
 	char *dir[2];
-	char *category;
 	char destdir[MAXPATHLEN];
 	char destpath[MAXPATHLEN];
 	char relativepath[MAXPATHLEN];
@@ -39,13 +52,17 @@ main(int argc, char **argv)
 	BZFILE *bz;
 	int bzError;
 	struct pkg_dep *dep = NULL;
+	struct pkg_category *cat = NULL;
+	struct pkg_script *script = NULL;
 	struct archive *pkgng;
 	struct archive *legacypkg;
 	struct archive_entry *ae;
+	char *tmpbuf, *next, *tofree;
 	size_t size;
 	int r;
+	int ok;
+	char md5[2*MD5_DIGEST_LENGTH+1] = "";
 
-	char *tmp;
 	char *buf;
 	struct pkg *pkg = NULL;
 
@@ -80,6 +97,8 @@ main(int argc, char **argv)
 	else
 		snprintf(destdir, MAXPATHLEN, "%s/%s", destdir, argv[2]);
 
+	snprintf(destpath, MAXPATHLEN, "%s/Latest", destdir);
+	mkdir(destpath, 0755);
 	snprintf(destpath, MAXPATHLEN, "%s/All", destdir);
 	mkdir(destpath, 0755);
 
@@ -99,10 +118,10 @@ main(int argc, char **argv)
 			continue;
 		}
 
+		printf("Generating %s-%s.tbz...", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		fflush(stdout);
+
 		archive_entry_clear(ae);
-		category = strdup(pkg_get(pkg, PKG_ORIGIN));
-		tmp = strrchr(category, '/');
-		tmp[0] = '\0';
 
 		/* prepare the indexfile */
 		sbuf_printf(indexfile, "%s-%s|" /* name */
@@ -110,27 +129,22 @@ main(int argc, char **argv)
 				"%s|" /* prefix */
 				"%s|" /* comment */
 				"/usr/ports/%s/pkg-descr|" /* origin */
-				"%s|" /*maintainer */
-				"%s|" /* categories */
-				"|", /* build depends */
+				"%s|", /*maintainer */
 				pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION),
 				pkg_get(pkg, PKG_ORIGIN),
 				pkg_get(pkg, PKG_PREFIX),
 				pkg_get(pkg, PKG_COMMENT),
 				pkg_get(pkg, PKG_ORIGIN),
-				pkg_get(pkg, PKG_MAINTAINER),
-				category /* FIXME where are the other categories */
+				pkg_get(pkg, PKG_MAINTAINER)
 			   );
+		while (pkg_categories(pkg, &cat) == EPKG_OK)
+			sbuf_printf(indexfile, "%s ", pkg_category_name(cat));
 
+		sbuf_cat(indexfile, "||");
 
-		snprintf(destpath, MAXPATHLEN, "%s/%s", destdir, category);
-		bzero(&st, sizeof(struct stat));
-		if (lstat(category, &st) != 0)
-			mkdir(destpath, 0755);
-
-		snprintf(destpath, MAXPATHLEN, "%s/%s-%s.tbz", destpath, pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		snprintf(relativepath, MAXPATHLEN, "../%s/%s-%s.tbz", category, pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		snprintf(linkpath, MAXPATHLEN, "%s/All/%s.tbz",destdir, pkg_get(pkg, PKG_NAME));
+		snprintf(destpath, MAXPATHLEN, "%s/All/%s-%s.tbz", destdir, pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		snprintf(relativepath, MAXPATHLEN, "../All/%s-%s.tbz", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		snprintf(linkpath, MAXPATHLEN, "%s/Latest/%s.tbz",destdir, pkg_get(pkg, PKG_NAME));
 
 		pkgng = archive_read_new();
 		archive_read_support_format_tar(pkgng);
@@ -155,10 +169,12 @@ main(int argc, char **argv)
 		sbuf_printf(sbuf, "@comment PKG_FORMAT_REVISION:1.1\n"
 				"@name %s-%s\n"
 				"@comment ORIGIN:%s\n"
+				"@cwd %s\n"
 				"@cwd /\n",
 				pkg_get(pkg, PKG_NAME),
 				pkg_get(pkg, PKG_VERSION),
-				pkg_get(pkg, PKG_ORIGIN));
+				pkg_get(pkg, PKG_ORIGIN),
+				pkg_get(pkg, PKG_PREFIX));
 
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			sbuf_printf(sbuf, "@pkgdep %s-%s\n"
@@ -183,6 +199,8 @@ main(int argc, char **argv)
 				else {
 					size = archive_entry_size(ae);
 					buf = malloc(size + 1);
+					md5[0] = '\0';
+					md5_hash(buf, md5);
 					archive_write_header(legacypkg, ae);
 					archive_read_data(pkgng, buf, size);
 					archive_write_data(legacypkg, buf, size);
@@ -198,15 +216,105 @@ main(int argc, char **argv)
 			if (newpath[0] == '/')
 				newpath++;
 
+			if (archive_entry_filetype(ae) == AE_IFDIR)
+				continue;
+
 			sbuf_printf(sbuf, "%s\n", newpath);
 			archive_entry_set_pathname(ae, newpath);
 			buf = malloc(size + 1);
+			md5[0] = '\0';
+			md5_hash(buf, md5);
+			sbuf_printf(sbuf, "@comment MD5:%s\n", md5);
 			archive_write_header(legacypkg, ae);
 			archive_read_data(pkgng, buf, size);
 			archive_write_data(legacypkg, buf, size);
 			free(buf);
 		}
 
+		while (pkg_scripts(pkg, &script) == EPKG_OK) {
+			archive_entry_clear(ae);
+			switch (pkg_script_type(script)) {
+				case PKG_SCRIPT_INSTALL:
+					archive_entry_set_pathname(ae, "+INSTALL");
+					archive_entry_set_filetype(ae, AE_IFREG);
+					archive_entry_set_perm(ae, 0755);
+					archive_entry_set_gname(ae, "wheel");
+					archive_entry_set_uname(ae, "root");
+					archive_entry_set_size(ae, strlen(pkg_script_data(script)));
+					archive_write_header(legacypkg, ae);
+					archive_write_data(legacypkg, pkg_script_data(script), strlen(pkg_script_data(script)));
+					break;
+				case PKG_SCRIPT_DEINSTALL:
+					archive_entry_set_pathname(ae, "+DEINSTALL");
+					archive_entry_set_filetype(ae, AE_IFREG);
+					archive_entry_set_perm(ae, 0755);
+					archive_entry_set_gname(ae, "wheel");
+					archive_entry_set_uname(ae, "root");
+					archive_entry_set_size(ae, strlen(pkg_script_data(script)));
+					archive_write_header(legacypkg, ae);
+					archive_write_data(legacypkg, pkg_script_data(script), strlen(pkg_script_data(script)));
+					break;
+				case PKG_SCRIPT_POST_INSTALL:
+					tmpbuf = strdup(pkg_script_data(script));
+					tofree = tmpbuf;
+					ok = 0;
+					while ((next = strchr(tmpbuf, '\n')) != NULL) {
+						next[0] = '\0';
+						if (!ok && strncmp(tmpbuf, "#@exec", 6) != 0) {
+							tmpbuf = next;
+							tmpbuf++;
+							continue;
+						}
+						if (!ok) {
+							ok = 1;
+							tmpbuf = next;
+							tmpbuf++;
+							continue;
+						}
+						if (tmpbuf[0] == '#')
+							tmpbuf++;
+						if (tmpbuf[1] != '@')
+							sbuf_printf(sbuf, "@exec %s\n", tmpbuf);
+						else
+							sbuf_printf(sbuf, "@dirrm %s\n", tmpbuf);
+						tmpbuf = next;
+						tmpbuf++;
+					}
+					free(tofree);
+					break;
+				case PKG_SCRIPT_POST_DEINSTALL:
+					tmpbuf = strdup(pkg_script_data(script));
+					tofree = tmpbuf;
+					ok = 0;
+					while ((next = strchr(tmpbuf, '\n')) != NULL) {
+						next[0] = '\0';
+						if (!ok && strncmp(tmpbuf, "#@unexec", 6) != 0) {
+							tmpbuf = next;
+							tmpbuf++;
+							continue;
+						}
+						if (!ok) {
+							ok = 1;
+							tmpbuf = next;
+							tmpbuf++;
+							continue;
+						}
+						if (tmpbuf[0] == '#')
+							tmpbuf++;
+						sbuf_printf(sbuf, "@unexec %s\n", tmpbuf);
+						tmpbuf = next;
+						tmpbuf++;
+					}
+					free(tofree);
+					break;
+				default:
+					/* Just ignore */
+					break;
+			};
+		}
+
+		sbuf_finish(sbuf);
+		archive_entry_clear(ae);
 		archive_entry_set_pathname(ae, "+CONTENTS");
 		archive_entry_set_filetype(ae, AE_IFREG);
 		archive_entry_set_perm(ae, 0644);
@@ -219,8 +327,16 @@ main(int argc, char **argv)
 		archive_write_finish(legacypkg);
 		archive_read_finish(pkgng);
 
-		snprintf(destpath, MAXPATHLEN, "%s/All", destdir);
 		symlink(relativepath, linkpath);
+		while (pkg_categories(pkg, &cat) == EPKG_OK) {
+			snprintf(destpath, MAXPATHLEN, "%s/%s", destdir, pkg_category_name(cat));
+			if (lstat(destpath, &st) != 0)
+				mkdir(destpath, 0755);
+			snprintf(linkpath, MAXPATHLEN, "%s/%s/%s-%s.tbz", destdir, pkg_category_name(cat), pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+			symlink(relativepath, linkpath);
+		}
+
+		printf("done\n");
 	}
 
 	snprintf(destpath, MAXPATHLEN, "%s/INDEX.bz2", destdir);
