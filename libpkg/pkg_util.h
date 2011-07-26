@@ -5,14 +5,6 @@
 #include <sys/sbuf.h>
 #include <sys/param.h>
 
-#define ARRAY_INIT {0, 0, NULL}
-
-struct array {
-	size_t cap;
-	size_t len;
-	void **data;
-};
-
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
 #define ERROR_SQLITE(db) \
