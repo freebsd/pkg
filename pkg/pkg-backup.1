@@ -1,0 +1,63 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd July 26, 2011
+.Dt PKG-BACKUP 1
+.Os
+.Sh NAME
+.Nm "pkg backup"
+.Nd backup and restore the local package database
+.Sh SYNOPSIS
+.Nm
+.Op Fl d
+.Ar <file>
+.Nm
+.Op Fl r
+.Ar <file>
+.Sh DESCRIPTION
+.Nm
+is used for backing up and restoring of the local package database.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl d Ar <file>
+Dumps the local package database to a file specified on the command-line.
+If
+.Ar -
+is specified as the argument
+.Nm
+will use stdout for it's output.
+.It Fl r Ar <file>
+Uses
+.Ar file
+in order to restore the local package database. Useful in case of a database
+crash of lost to restore your database from previously made backup.
+This option is currently not implemented.
+.El
+.Sh WARNING
+.Sh ENVRIOMENT
+The following envrioment variables affect the execution of
+.Nm :
+.Bl -tag -width ".Ev TMPDIR"
+.El
+.Sh FILES
+.Sh SEE ALSO
+pkg(1), pkg-create(1), pkg-add(1), pkg-info(1), pkg-register(1), pkg-repo(1),
+pkg-upgrade(1), pkg-version(1), pkg-which(1)
+.Sh AUTHORS AND CONTRIBUTORS
+.Sh BUGS
