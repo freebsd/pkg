@@ -21,6 +21,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 {
 	char fpath[MAXPATHLEN];
 	struct pkg_file *file = NULL;
+	struct pkg_dir *dir = NULL;
 	char *m;
 	const char *mtree;
 
@@ -40,6 +41,15 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 			strlcpy(fpath, pkg_file_path(file), MAXPATHLEN);
 
 		packing_append_file(pkg_archive, fpath, pkg_file_path(file));
+	}
+
+	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		if (root != NULL)
+			snprintf(fpath, MAXPATHLEN, "%s%s", root, pkg_dir_path(dir));
+		else
+			strlcpy(fpath, pkg_dir_path(dir), MAXPATHLEN);
+
+		packing_append_file(pkg_archive, fpath, pkg_dir_path(dir));
 	}
 
 	return (EPKG_OK);
@@ -77,6 +87,8 @@ int
 pkg_create_fakeroot(const char *outdir, pkg_formats format, const char *rootdir, const char *metadatadir)
 {
 	struct pkg *pkg = NULL;
+	struct pkg_file *file = NULL;
+	struct pkg_dir *dir = NULL;
 	struct packing *pkg_archive = NULL;
 	char *manifest = NULL, *manifest_path = NULL;
 	int ret = ENOMEM;
@@ -98,9 +110,14 @@ pkg_create_fakeroot(const char *outdir, pkg_formats format, const char *rootdir,
 		goto cleanup;
 	}
 
-	/* Now traverse the file directories, adding to the archive */
-	packing_append_tree(pkg_archive, metadatadir, NULL);
-	packing_append_tree(pkg_archive, rootdir, "/");
+	if (pkg_files(pkg, &file) != EPKG_OK && pkg_dirs(pkg, &dir) != EPKG_OK) {
+		/* Now traverse the file directories, adding to the archive */
+		packing_append_tree(pkg_archive, metadatadir, NULL);
+		packing_append_tree(pkg_archive, rootdir, "/");
+	} else {
+		pkg_create_from_dir(pkg, rootdir, pkg_archive);
+	}
+
 	ret = EPKG_OK;
 
 cleanup:
