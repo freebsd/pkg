@@ -20,15 +20,28 @@
 .Os
 .Sh NAME
 .Nm "pkg repo"
-.Nd creates a package repository
+.Nd creates a package database repository
 .Sh SYNOPSIS
 .Nm
-.Ar <repo-path>
+.Ar <repo-path> <rsa-key>
 .Sh DESCRIPTION
 .Nm
-is used for creating package repositories
+is used for creating package repositories of already
+available packages.
+.Nm
+is usefull for creating a package repository database,
+and then sharing it with other people.
 .Pp
-< To be completed >
+When
+.Nm
+is invoked it will create a package database file (repo.sqlite)
+which then can be used for remote package installations
+from
+.Xr pkg-install 1
+.Pp
+When you want to create a package database repository you need to
+specify at least the directory which contains packages in
+.Ar <repo-path>
 .Sh OPTIONS
 The following options are supported by
 .Nm :
