@@ -20,12 +20,27 @@
 .Os
 .Sh NAME
 .Nm "pkg update"
-.Nd < To be added >
+.Nd updates remote package repository databases
 .Sh SYNOPSIS
 .Nm
 .Sh DESCRIPTION
 .Nm
-< To be added >
+is used for updating from remote package repository databases.
+.Pp
+The remote repository databases to be updated are defined in the
+.Pa /etc/pkg/repositories
+file.
+A remote package repository definition is in the form of
+.Fa name = url
+where
+.Ar url
+points to the remote location of the package repository.
+.Pp
+It is always a good idea to update your remote package
+repositories before doing a remote install via
+.Xr pkg-install 1
+or upgrades via
+.Xr pkg-upgrade 1
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -35,9 +50,30 @@ The following options are supported by
 .Sh ENVRIOMENT
 The following envrioment variables affect the execution of
 .Nm :
-.Bl -tag -width ".Ev TMPDIR"
+.Bl -tag -width ".Ev PACKAGESITE"
+.It Ev PACKAGESITE
+When \fBPACKAGESITE\fP is defined
+.Nm
+will only use the remote repository to which it points. Otherwise
+.Nm
+will work on multiple repositories as listed in the
+.Pa /etc/pkg/repositories
+file. Please note that multiple remote repositories is still considered
+highly experimental.
 .El
 .Sh FILES
+.Bl -tag -width -".Pa /etc/pkg/repositories"
+.It Pa /etc/pkg/repositories
+Global repositories file. This file contains a pair of
+.Fa name = url
+entries, each describing a remote repository, from which
+.Nm
+will fetch. The file format of the file
+is the same as described in
+.Xr pkg.conf 5
+Please refer to the included sample configuration file for example
+definitions of remote repositories.
+.El
 .Sh SEE ALSO
 pkg(1), pkg-create(1), pkg-add(1), pkg-info(1), pkg-register(1), pkg-repo(1),
 pkg-upgrade(1), pkg-version(1), pkg-which(1)
