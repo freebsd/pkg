@@ -20,65 +20,41 @@
 .Os
 .Sh NAME
 .Nm "pkg register"
-.Nd registers a package into the database
+.Nd registers a package into the local package database
 .Sh SYNOPSIS
 .Nm
-.Op Fl v
-.Op Fl c Ar comment
-.Op Fl d Ar desc
-.Op Fl f Ar plist-file
-.Op Fl p Ar prefix
-.Op Fl m Ar mtree-file
-.Op Fl n Ar pkg-name
-.Op Fl o Ar origin
-.Op Fl r Ar maintainer
-.Op Fl P Ar depends
-.Op Fl C Ar conflicts
-.Op Fl M Ar message-file
-.Op Fl s Ar scripts
-.Op Fl a Ar arch
-.Op Fl w Ar www
-.Op Fl O options
-.Op Fl H
+.Op Fl ld
+.Fl f Ar <plist-file>
+.Fl m Ar <metadatadir>
+.Fl a Ar <arch>
+.Fl i Ar <input-path>
 .Sh DESCRIPTION
 .Nm
-is used for registering a package into the database
+is used for registering a package into the local package
+database
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl v
-Verbose mode
-.It Fl c Ar comment
-One line description of the package
-.It Fl d Ar desc
-Description of the package
-.It Fl f Ar plist-file
+.It Fl l
+Tells
+.Nm
+to treat the package to be registered as a legacy one (old style package)
+.It Fl d
+Mark the package for registering as orphan. Will be automatically removed
+if no other packages depend on it. For more information please refer to
+.Xr pkg-autoremove 1
+.It Fl f Ar <plist-file>
 Specifies the packing list file
-.It Fl m Ar mtree-file
-Specifies the mtree file
-.It Fl n Ar pkg-name
-Specifies the package name
-.It Fl o Ar origin
-Package origin
-.It Fl r Ar maintainer
-Specifies the maintainer of the package
-.It Fl P Ar depends
-Defines the list of packages that the package depends on
-.It Fl C Ar conflicts
-Defines the list of packages that the package conflicts with
-.It Fl M Ar message-file
-Specifies the message file
-.It Fl s Ar scripts
-< To be added >
-.It Fl a Ar arch
-Specifies the package arch
-.It Fl w Ar www
-Specifies the web site of the package
-.It Fl O Ar options
-< To be added >
-.It Fl H
-< To be added >
+.It Fl m Ar <metadatadir>
+Specifies the meta data directory to use when registering the package
+.It Fl a Ar <arch>
+Specifies the package arch. If this option is not set then the arch will
+be automatically detected upon package registration.
+.It Fl i Ar <input-path>
+Specifies the package input path.
+.Pp
+< To be completed >
 .El
 .Sh WARNING
 .Sh ENVRIOMENT
