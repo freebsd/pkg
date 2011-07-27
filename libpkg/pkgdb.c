@@ -17,7 +17,7 @@
 #include "pkgdb.h"
 #include "pkg_util.h"
 
-#define DBVERSION 1
+#define DBVERSION 3
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
@@ -150,12 +150,33 @@ pkgdb_upgrade(sqlite3 *sdb)
 		sbuf_finish(sql);
 	}
 
+	if (db_version < 2) {
+		sbuf_cat(sql, "ALTER TABLE packages ADD licenselogic INTEGER NOT NULL DEFAULT(1);"
+				"PRAGMA user_version = 2;");
+		sbuf_finish(sql);
+	}
+	if (db_version < 3) {
+		sbuf_cat(sql, "DROP VIEW pkg_licenses;"
+				"ALTER TABLE licenses RENAME TO todelete;"
+				"CREATE TABLE licenses (id INTERGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);"
+				"INSERT INTO licenses(id, name) SELECT id, license FROM todelete;"
+				"CREATE VIEW pkg_licenses AS SELECT origin, licenses.name FROM packages "
+				"INNER JOIN pkg_licenses_assoc ON packages.id = pkg_licenses_assoc.package_id "
+				"INNER JOIN licenses ON pkg_licenses_assoc.license_id = licenses.id;"
+				"DROP TABLE todelete;"
+				"PRAGMA user_version = 3;"
+			);
+		sbuf_finish(sql);
+	}
 
 	if (sqlite3_exec(sdb, sbuf_data(sql), NULL, NULL, &errmsg) != SQLITE_OK) {
 		EMIT_PKG_ERROR("sqlite: %s", errmsg);
+		sbuf_delete(sql);
 		sqlite3_free(errmsg);
 		return (EPKG_FATAL);
 	}
+
+	sbuf_delete(sql);
 
 	return (EPKG_OK);
 
@@ -197,6 +218,7 @@ pkgdb_init(sqlite3 *sdb)
 		"prefix TEXT NOT NULL,"
 		"flatsize INTEGER NOT NULL,"
 		"automatic INTEGER NOT NULL,"
+		"licenselogic INTEGER NOT NULL,"
 		"pkg_format_version INTEGER"
 	");"
 	"CREATE TABLE mtree ("
@@ -298,7 +320,7 @@ pkgdb_init(sqlite3 *sdb)
 	"END;"
 	"CREATE TABLE licenses ("
 		"id INTEGER PRIMARY KEY, "
-		"license TEXT NOT NULL UNIQUE "
+		"name TEXT NOT NULL UNIQUE "
 	");"
 	"CREATE TABLE pkg_licenses_assoc ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
@@ -317,7 +339,7 @@ pkgdb_init(sqlite3 *sdb)
 			"((SELECT id FROM packages where origin = NEW.origin), "
 			"(SELECT id FROM categories WHERE name = NEW.name));"
 	"END;"
-	"PRAGMA user_version = 1;"
+	"PRAGMA user_version = 3;"
 	;
 
 	if (sqlite3_exec(sdb, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
@@ -486,6 +508,8 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
 		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
 		pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
+		if (it->type != PKG_REMOTE && it->type != PKG_UPGRADE)
+			pkg_set_licenselogic(pkg, sqlite3_column_int64(it->stmt, 13));
 
 		if (it->type == PKG_REMOTE) {
 			pkg->type = PKG_REMOTE;
@@ -538,6 +562,10 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 
 		if (flags & PKG_LOAD_CATEGORIES)
 			if ((ret = pkgdb_loadcategory(it->db, pkg)) != EPKG_OK)
+				return (ret);
+
+		if (flags & PKG_LOAD_LICENSES)
+			if ((ret == pkgdb_loadlicense(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		return (EPKG_OK);
@@ -608,7 +636,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	snprintf(sql, sizeof(sql),
 			"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, "
 				"p.message, p.arch, p.osversion, p.maintainer, p.www, "
-				"p.prefix, p.flatsize "
+				"p.prefix, p.flatsize, p.licenselogic "
 			"FROM packages AS p%s "
 			"ORDER BY p.name;", comp);
 
@@ -870,6 +898,43 @@ pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
+pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg)
+{
+	sqlite3_stmt *stmt;
+	int ret;
+	const char sql[] = ""
+		"SELECT name "
+		"FROM pkg_licenses "
+		"WHERE origin = ?1 "
+		"ORDER by name DESC";
+
+	if (pkg->flags & PKG_LOAD_LICENSES)
+		return (EPKG_OK);
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_text(stmt, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+
+	while (( ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_addlicense(pkg, sqlite3_column_text(stmt, 0));
+	}
+
+	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_DONE) {
+		pkg_freelicenses(pkg);
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	pkg->flags |= PKG_LOAD_LICENSES;
+	return (EPKG_OK);
+}
+
+int
 pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt;
@@ -1081,6 +1146,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_script *script = NULL;
 	struct pkg_option *option = NULL;
 	struct pkg_category *category = NULL;
+	struct pkg_license *license = NULL;
 
 	sqlite3 *s;
 	sqlite3_stmt *stmt_pkg = NULL;
@@ -1092,6 +1158,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_stmt *stmt_option = NULL;
 	sqlite3_stmt *stmt_dirs = NULL;
 	sqlite3_stmt *stmt_cat = NULL;
+	sqlite3_stmt *stmt_lic = NULL;
 
 	int ret;
 	int retcode = EPKG_FATAL;
@@ -1104,7 +1171,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		"INSERT INTO pkg_mtree( "
 			"origin, name, version, comment, desc, mtree, message, arch, "
 			"osversion, maintainer, www, prefix, flatsize, automatic) "
-		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);";
+		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15);";
 	const char sql_sel_pkg[] = ""
 		"SELECT id FROM packages "
 		"WHERE origin = ?1;";
@@ -1129,6 +1196,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	const char sql_category[] = ""
 		"INSERT INTO pkg_categories(origin, name) "
 		"VALUES (?1, ?2);";
+	const char sql_license[] = ""
+		"INSERT INTO pkg_licenses(origin, name) "
+		"VALES (?1, ?2);";
 
 	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
 		EMIT_PKG_ERROR("%s", "tried to register a package with an in-flight SQL command");
@@ -1165,6 +1235,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 12, pkg_get(pkg, PKG_PREFIX), -1, SQLITE_STATIC);
 	sqlite3_bind_int64(stmt_pkg, 13, pkg_flatsize(pkg));
 	sqlite3_bind_int(stmt_pkg, 14, pkg_isautomatic(pkg));
+	sqlite3_bind_int64(stmt_pkg, 15, pkg_licenselogic(pkg));
 
 	if ((ret = sqlite3_step(stmt_pkg)) != SQLITE_DONE) {
 		ERROR_SQLITE(s);
@@ -1296,6 +1367,28 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			if (ret == SQLITE_CONSTRAINT) {
 				EMIT_PKG_ERROR("sqlite: constraint violation on categories.name: %s",
 						pkg_category_name(category));
+			} else
+				ERROR_SQLITE(s);
+			goto cleanup;
+		}
+	}
+
+	/*
+	 * Insert licenses
+	 */
+	if (sqlite3_prepare_v2(s, sql_license, -1, &stmt_lic, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
+
+	while (pkg_licenses(pkg, &license) == EPKG_OK) {
+		sqlite3_bind_text(stmt_lic, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_lic, 2, pkg_license_name(license), -1, SQLITE_STATIC);
+
+		if ((ret = sqlite3_step(stmt_lic)) != SQLITE_DONE) {
+			if (ret == SQLITE_CONSTRAINT) {
+				EMIT_PKG_ERROR("sqlite: constraint violation on licenses.name: %s",
+						pkg_license_name(license));
 			} else
 				ERROR_SQLITE(s);
 			goto cleanup;
@@ -1435,6 +1528,13 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 	}
 
 	ret = sqlite3_exec(db->sqlite, "DELETE from categories WHERE id NOT IN (SELECT DISTINCT category_id FROM pkg_categories_assoc);", NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		EMIT_PKG_ERROR("sqlite: %s", errmsg);
+		sqlite3_free(errmsg);
+		return (EPKG_FATAL);
+	}
+
+	ret = sqlite3_exec(db->sqlite, "DELETE from licenses WHERE id NOT IN (SELECT DISTINCT license_id FROM pkg_licenses_assoc);", NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
 		EMIT_PKG_ERROR("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);

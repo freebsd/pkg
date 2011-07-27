@@ -23,6 +23,8 @@
 #define PKG_FLATSIZE -6
 #define PKG_SCRIPTS -7
 #define PKG_CATEGORIES -8
+#define PKG_LICENSELOGIC -9
+#define PKG_LICENSES -10
 
 static void parse_mapping(struct pkg *, yaml_node_pair_t *, yaml_document_t *, int);
 static void parse_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -45,6 +47,8 @@ static struct manifest_key {
 	{ "files", PKG_FILES},
 	{ "dirs", PKG_DIRS},
 	{ "flatsize", PKG_FLATSIZE},
+	{ "licenselogic", PKG_LICENSELOGIC },
+	{ "licenses", PKG_LICENSES },
 	{ "desc", PKG_DESC },
 	{ "scripts", PKG_SCRIPTS},
 	{ "message", PKG_MESSAGE},
@@ -191,20 +195,33 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 				if (val->data.scalar.length <= 0)
 					break;
 				type = manifest_type(key->data.scalar.value);
-				if (type == -1) {
-					EMIT_PKG_ERROR("Unknown line: (%s: %s)\n",
-								   key->data.scalar.value,
-								   val->data.scalar.value);
-				} else if (type == PKG_FLATSIZE)
-					pkg_setflatsize(pkg, strtoimax(val->data.scalar.value, NULL, 10));
-				else {
-					while (val->data.scalar.length > 0 &&
-						   val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
-						val->data.scalar.value[val->data.scalar.length - 1] = '\0';
-						val->data.scalar.length--;
-					}
-
-					pkg_set(pkg, type, val->data.scalar.value);
+				switch (type) {
+					case -1:
+						EMIT_PKG_ERROR("Unknown line: (%s: %s)\n",
+								key->data.scalar.value,
+								val->data.scalar.value);
+						break;
+					case PKG_FLATSIZE:
+						pkg_setflatsize(pkg, strtoimax(val->data.scalar.value, NULL, 10));
+						break;
+					case PKG_LICENSELOGIC:
+						if (!strcmp(val->data.scalar.value, "single"))
+							pkg_set_licenselogic(pkg, LICENSE_SINGLE);
+						else if ( !strcmp(val->data.scalar.value, "and"))
+							pkg_set_licenselogic(pkg, LICENSE_AND);
+						else if ( !strcmp(val->data.scalar.value, "or"))
+							pkg_set_licenselogic(pkg, LICENSE_OR);
+						else
+							EMIT_PKG_ERROR("Unknown license logic: %s", val->data.scalar.value);
+						break;
+					default:
+						while (val->data.scalar.length > 0 &&
+								val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
+							val->data.scalar.value[val->data.scalar.length - 1] = '\0';
+							val->data.scalar.length--;
+						}
+						pkg_set(pkg, type, val->data.scalar.value);
+						break;
 				}
 			} else {
 				parse_node(pkg, val, document, type);
@@ -284,6 +301,13 @@ parse_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *document, int pk
 						++item;
 					}
 					break;
+				case PKG_LICENSES:
+					item = node->data.sequence.items.start;
+					while (item < node->data.sequence.items.top) {
+						nd = yaml_document_get_node(document, *item);
+						pkg_addlicense(pkg, nd->data.scalar.value);
+						++item;
+					}
 			}
 			break;
 		case YAML_MAPPING_NODE:
@@ -344,6 +368,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_dir *dir = NULL;
 	struct pkg_script *script = NULL;
 	struct pkg_category *category = NULL;
+	struct pkg_license *license = NULL;
 	int rc = EPKG_OK;
 	int mapping;
 	int depsmap = -1;
@@ -354,6 +379,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int options = -1;
 	int scripts = -1;
 	int categories = -1;
+	int licenses = -1;
 	const char *script_types;
 	struct sbuf *destbuf = sbuf_new_auto();
 
@@ -380,6 +406,28 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	manifest_append_kv(mapping, "www", pkg_get(pkg, PKG_WWW));
 	manifest_append_kv(mapping, "maintainer", pkg_get(pkg, PKG_MAINTAINER));
 	manifest_append_kv(mapping, "prefix", pkg_get(pkg, PKG_PREFIX));
+	switch (pkg_licenselogic(pkg)) {
+		case LICENSE_SINGLE:
+			manifest_append_kv(mapping, "licenselogic", "single");
+			break;
+		case LICENSE_AND:
+			manifest_append_kv(mapping, "licenselogic", "and");
+			break;
+		case LICENSE_OR:
+			manifest_append_kv(mapping, "licenselogic", "or");
+			break;
+	}
+
+	while (pkg_licenses(pkg, &license) == EPKG_OK) {
+		if (licenses == -1) {
+			licenses = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
+			yaml_document_append_mapping_pair(&doc, mapping,
+					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "licenses"), 8, YAML_PLAIN_SCALAR_STYLE), licenses);
+		}
+		yaml_document_append_sequence_item(&doc, licenses,
+				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_license_name(license)), strlen(pkg_license_name(license)), YAML_PLAIN_SCALAR_STYLE));
+	}
+
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkg_flatsize(pkg));
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
 	manifest_append_kv_literal(mapping, "desc", pkg_get(pkg, PKG_DESC));

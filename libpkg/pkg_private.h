@@ -28,6 +28,7 @@ struct pkg {
 	int64_t new_flatsize;
 	int64_t new_pkgsize;
 	STAILQ_HEAD(categories, pkg_category) categories;
+	STAILQ_HEAD(licenses, pkg_license) licenses;
 	STAILQ_HEAD(deps, pkg_dep) deps;
 	STAILQ_HEAD(rdeps, pkg_dep) rdeps;
 	STAILQ_HEAD(files, pkg_file) files;
@@ -38,6 +39,7 @@ struct pkg {
 	STAILQ_HEAD(repos_entry, pkg_repos_entry) repos;
 	int flags;
 	int64_t rowid;
+	lic_t licenselogic;
 	pkg_t type;
 	STAILQ_ENTRY(pkg) next;
 };
@@ -49,8 +51,13 @@ struct pkg_dep {
 	STAILQ_ENTRY(pkg_dep) next;
 };
 
+struct pkg_license {
+	struct sbuf *name;
+	STAILQ_ENTRY(pkg_license) next;
+};
+
 struct pkg_category {
-	char name[BUFSIZ];
+	struct sbuf *name;
 	STAILQ_ENTRY(pkg_category) next;
 };
 
@@ -122,6 +129,7 @@ struct pkg_repos {
 };
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
+void pkg_freelicenses(struct pkg *pkg);
 void pkg_freecategories(struct pkg *pkg);
 void pkg_freedeps(struct pkg *pkg);
 void pkg_freerdeps(struct pkg *pkg);
@@ -142,6 +150,9 @@ void pkg_dir_free(struct pkg_dir *);
 
 int pkg_category_new(struct pkg_category **);
 void pkg_category_free(struct pkg_category *);
+
+int pkg_license_new(struct pkg_license **);
+void pkg_license_free(struct pkg_license *);
 
 int pkg_conflict_new(struct pkg_conflict **);
 void pkg_conflict_free(struct pkg_conflict *);
