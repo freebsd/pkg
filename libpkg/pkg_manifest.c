@@ -25,6 +25,7 @@
 #define PKG_CATEGORIES -8
 #define PKG_LICENSELOGIC -9
 #define PKG_LICENSES -10
+#define PKG_OPTIONS -11
 
 static void parse_mapping(struct pkg *, yaml_node_pair_t *, yaml_document_t *, int);
 static void parse_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -53,6 +54,7 @@ static struct manifest_key {
 	{ "scripts", PKG_SCRIPTS},
 	{ "message", PKG_MESSAGE},
 	{ "categories", PKG_CATEGORIES},
+	{ "options", PKG_OPTIONS},
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
@@ -135,6 +137,9 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 						uname[0] != '\0' ? uname : NULL, gname[0] != '\0' ? gname : NULL,
 						perm);
 			}
+			break;
+		case PKG_OPTIONS:
+			pkg_addoption(pkg, key->data.scalar.value, val->data.scalar.value);
 			break;
 		case PKG_DEPS:
 			subpair = val->data.mapping.pairs.start;
