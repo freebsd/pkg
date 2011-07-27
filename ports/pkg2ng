@@ -18,7 +18,11 @@ do
 	ORIGIN=$(pkg_info -qo ${PKG})
 	PREFX=$(pkg_info -qp ${PKG})
 	MAINTAINER=$( make -C /usr/ports/${ORIGIN} -V MAINTAINER )
-	CATEGORIES=$( make -C /usr/ports/${ORIGIN} -V CATEGORIES )
+	CATEGORIES=$( make -C /usr/ports/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
+	LICENSES=$( make -C /usr/ports/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
+	CONFLICTS=$( make -C /usr/ports/${ORIGIN} -V CONFLICTS | sed -e "s/ /,/g")
+	LICLOGIC=$(make -C /usr/ports/${ORIGIN} -V LICENSE_COMB )
+
 	# +CONTENTS
 	MDIR=$(mktemp -d /tmp/pkg2ngXXXXX)
 	test -f ${DB}/+DISPLAY && cp -f ${DB}/+DISPLAY ${MDIR}
@@ -35,18 +39,16 @@ do
 	cat ${DB}/+COMMENT >> ${MANIFEST}
 	echo "maintainer: ${MAINTAINER}" >> ${MANIFEST}
 	echo "prefix: ${PREFX##* }" >> ${MANIFEST}
+	echo "licenselogic: ${LICLOGIC:-single}" >> ${MANIFEST}
+	test -n "${LICENSES}" && echo "licenses: [${LICENSES}]" >> ${MANIFEST}
 	echo "deps:" >> ${MANIFEST}
 	pkg_info -qr ${PKG} | while read ignore dep; do
 		deporigin=$(pkg_info -qo ${dep})
-		echo -e "  ${dep%-*}:\n    origin: ${deporigin}\n    version: ${dep##*-}" >> ${MANIFEST}
+		echo -e "  ${dep%-*}: { origin: \"${deporigin}\", version: \"${dep##*-}\"}" >> ${MANIFEST}
 	done
 	egrep -v "^@(name|pkgdep|ignore|conflicts|display)" ${DB}/+CONTENTS >> ${PLIST}
-	echo "conflicts:" >> ${MANIFEST}
-	awk '/^@conflicts/ { print "- "$2 }' ${DB}/+CONTENTS >> ${MANIFEST}
-	echo "categories:" >> ${MANIFEST}
-	for cat in ${CATEGORIES}; do
-		echo "- $cat" >> ${MANIFEST}
-	done
+	test -n "${CONFLICTS}" && echo "conflicts: [${CONFLICTS}] " >> ${MANIFEST}
+	test -n "${CATEGORIES}" && echo "categories: [${CATEGORIES}]" >> ${MANIFEST}
 
 	OPTIONS=""
 

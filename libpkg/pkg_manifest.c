@@ -212,9 +212,9 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 					case PKG_LICENSELOGIC:
 						if (!strcmp(val->data.scalar.value, "single"))
 							pkg_set_licenselogic(pkg, LICENSE_SINGLE);
-						else if ( !strcmp(val->data.scalar.value, "and"))
+						else if ( !strcmp(val->data.scalar.value, "and") || !strcmp(val->data.scalar.value, "dual"))
 							pkg_set_licenselogic(pkg, LICENSE_AND);
-						else if ( !strcmp(val->data.scalar.value, "or"))
+						else if ( !strcmp(val->data.scalar.value, "or") || !strcmp(val->data.scalar.value, "multi"))
 							pkg_set_licenselogic(pkg, LICENSE_OR);
 						else
 							EMIT_PKG_ERROR("Unknown license logic: %s", val->data.scalar.value);

@@ -142,7 +142,7 @@ pkgdb_upgrade(sqlite3 *sdb)
 			"CREATE TRIGGER license_insert INSTEAD OF INSERT ON pkg_licenses "
 			"FOR EACH ROW BEGIN "
 				"INSERT OR IGNORE INTO licenses(license) values (NEW.license);"
-				"INSERT INTO pkg_licenses_assoc(package_id, category_id) VALUES "
+				"INSERT INTO pkg_licenses_assoc(package_id, license_id) VALUES "
 					"((SELECT id FROM packages where origin = NEW.origin), "
 					"(SELECT id FROM categories WHERE name = NEW.name));"
 			"END;"
@@ -157,12 +157,36 @@ pkgdb_upgrade(sqlite3 *sdb)
 	}
 	if (db_version < 3) {
 		sbuf_cat(sql, "DROP VIEW pkg_licenses;"
+				"DROP TRIGGER license_insert;"
 				"ALTER TABLE licenses RENAME TO todelete;"
 				"CREATE TABLE licenses (id INTERGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);"
 				"INSERT INTO licenses(id, name) SELECT id, license FROM todelete;"
 				"CREATE VIEW pkg_licenses AS SELECT origin, licenses.name FROM packages "
 				"INNER JOIN pkg_licenses_assoc ON packages.id = pkg_licenses_assoc.package_id "
 				"INNER JOIN licenses ON pkg_licenses_assoc.license_id = licenses.id;"
+				"CREATE TRIGGER license_insert INSTEAD OF INSERT ON pkg_licenses "
+				"FOR EACH ROW BEGIN "
+					"INSERT OR IGNORE INTO licenses(name) values (NEW.name);"
+					"INSERT INTO pkg_licenses_assoc(package_id, license_id) VALUES "
+					"((SELECT id FROM packages where origin = NEW.origin), "
+					"(SELECT id FROM licenses WHERE name = NEW.name));"
+				"END;"
+				"DROP VIEW pkg_mtree;"
+				"CREATE VIEW pkg_mtree AS "
+				"SELECT origin, name, version, comment, desc, mtree.content AS mtree, message, arch, osversion, "
+				"maintainer, www, prefix, flatsize, automatic, licenselogic, pkg_format_version FROM packages "
+				"INNER JOIN mtree ON packages.mtree_id = mtree.id;"
+				"DROP TRIGGER pkg_insert;"
+				"CREATE TRIGGER pkg_insert INSTEAD OF INSERT ON pkg_mtree "
+				"FOR EACH ROW BEGIN "
+				"INSERT OR IGNORE INTO mtree (content) VALUES (NEW.mtree);"
+				"INSERT OR REPLACE INTO packages(origin, name, version, comment, desc, mtree_id, "
+				"message, arch, osversion, maintainer, www, prefix, flatsize, automatic, licenselogic) "
+				"VALUES (NEW.origin, NEW.name, NEW.version, NEW.comment, NEW.desc, "
+				"(SELECT id FROM mtree WHERE content = NEW.mtree), "
+				"NEW.message, NEW.arch, NEW.osversion, NEW.maintainer, NEW.www, NEW.prefix, "
+				"NEW.flatsize, NEW.automatic, NEW.licenselogic);"
+				"END;"
 				"DROP TABLE todelete;"
 				"PRAGMA user_version = 3;"
 			);
@@ -170,7 +194,7 @@ pkgdb_upgrade(sqlite3 *sdb)
 	}
 
 	if (sqlite3_exec(sdb, sbuf_data(sql), NULL, NULL, &errmsg) != SQLITE_OK) {
-		EMIT_PKG_ERROR("sqlite: %s", errmsg);
+		EMIT_PKG_ERROR("sqlite: error while upgrading %s", errmsg);
 		sbuf_delete(sql);
 		sqlite3_free(errmsg);
 		return (EPKG_FATAL);
@@ -230,17 +254,17 @@ pkgdb_init(sqlite3 *sdb)
 	"END;"
 	"CREATE VIEW pkg_mtree AS "
 	"SELECT origin, name, version, comment, desc, mtree.content AS mtree, message, arch, osversion, "
-	"maintainer, www, prefix, flatsize, automatic, pkg_format_version FROM packages "
+	"maintainer, www, prefix, flatsize, automatic, licenselogic, pkg_format_version FROM packages "
 	"INNER JOIN mtree ON packages.mtree_id = mtree.id;"
 	"CREATE TRIGGER pkg_insert INSTEAD OF INSERT ON pkg_mtree "
 	"FOR EACH ROW BEGIN "
 		"INSERT OR IGNORE INTO mtree (content) VALUES (NEW.mtree);"
 		"INSERT OR REPLACE INTO packages(origin, name, version, comment, desc, mtree_id, "
-		"message, arch, osversion, maintainer, www, prefix, flatsize, automatic) "
+		"message, arch, osversion, maintainer, www, prefix, flatsize, automatic, licenselogic) "
 		"VALUES (NEW.origin, NEW.name, NEW.version, NEW.comment, NEW.desc, "
 		"(SELECT id FROM mtree WHERE content = NEW.mtree), "
 		"NEW.message, NEW.arch, NEW.osversion, NEW.maintainer, NEW.www, NEW.prefix, "
-		"NEW.flatsize, NEW.automatic);"
+		"NEW.flatsize, NEW.automatic, NEW.licenselogic);"
 	"END;"
 	"CREATE TABLE scripts ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
@@ -329,15 +353,15 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE RESTRICT, "
 		"PRIMARY KEY (package_id, license_id)"
 	");"
-	"CREATE VIEW pkg_licenses AS SELECT origin, license FROM packages "
+	"CREATE VIEW pkg_licenses AS SELECT origin, licenses.name FROM packages "
 	"INNER JOIN pkg_licenses_assoc ON packages.id = pkg_licenses_assoc.package_id "
 	"INNER JOIN licenses ON pkg_licenses_assoc.license_id = licenses.id;"
 	"CREATE TRIGGER license_insert INSTEAD OF INSERT ON pkg_licenses "
 	"FOR EACH ROW BEGIN "
-		"INSERT OR IGNORE INTO licenses(license) values (NEW.license);"
-		"INSERT INTO pkg_licenses_assoc(package_id, category_id) VALUES "
+		"INSERT OR IGNORE INTO licenses(name) values (NEW.name);"
+		"INSERT INTO pkg_licenses_assoc(package_id, license_id) VALUES "
 			"((SELECT id FROM packages where origin = NEW.origin), "
-			"(SELECT id FROM categories WHERE name = NEW.name));"
+			"(SELECT id FROM licenses WHERE name = NEW.name));"
 	"END;"
 	"PRAGMA user_version = 3;"
 	;
@@ -392,7 +416,6 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type, const char *dbfile)
 		return (EPKG_FATAL);
 	}
 
-	pkgdb_upgrade((*db)->sqlite);
 	if (type == PKGDB_REMOTE) {
 		snprintf(remotepath, sizeof(remotepath), "%s/%s", dbdir, dbfile);
 
@@ -421,6 +444,8 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type, const char *dbfile)
 			pkgdb_close(*db);
 			return (EPKG_FATAL);
 		}
+
+	pkgdb_upgrade((*db)->sqlite);
 
 	sqlite3_create_function((*db)->sqlite, "regexp", 2, SQLITE_ANY, NULL,
 							pkgdb_regex_basic, NULL, NULL);
@@ -1170,7 +1195,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	const char sql_pkg[] = ""
 		"INSERT INTO pkg_mtree( "
 			"origin, name, version, comment, desc, mtree, message, arch, "
-			"osversion, maintainer, www, prefix, flatsize, automatic) "
+			"osversion, maintainer, www, prefix, flatsize, automatic, licenselogic) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15);";
 	const char sql_sel_pkg[] = ""
 		"SELECT id FROM packages "
@@ -1198,7 +1223,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		"VALUES (?1, ?2);";
 	const char sql_license[] = ""
 		"INSERT INTO pkg_licenses(origin, name) "
-		"VALES (?1, ?2);";
+		"VALUES (?1, ?2);";
 
 	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
 		EMIT_PKG_ERROR("%s", "tried to register a package with an in-flight SQL command");
@@ -1280,6 +1305,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
+		sqlite3_reset(stmt_dep);
 	}
 
 	/*
@@ -1299,6 +1325,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
+		sqlite3_reset(stmt_conflict);
 	}
 
 	/*
@@ -1318,13 +1345,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				    EMIT_PKG_ERROR("sqlite constraint violation on files.path:"
+				    EMIT_PKG_ERROR("sqlite: constraint violation on files.path:"
 								   " %s", pkg_file_path(file));
 			} else {
 				ERROR_SQLITE(s);
 			}
 			goto cleanup;
 		}
+		sqlite3_reset(stmt_file);
 	}
 
 	/*
@@ -1348,6 +1376,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
+		sqlite3_reset(stmt_dirs);
 	}
 
 	/*
@@ -1371,6 +1400,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
+		sqlite3_reset(stmt_cat);
 	}
 
 	/*
@@ -1393,6 +1423,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
+		sqlite3_reset(stmt_lic);
 	}
 
 	/*
@@ -1413,6 +1444,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
+		sqlite3_reset(stmt_script);
 	}
 
 	/*
@@ -1433,6 +1465,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
+		sqlite3_reset(stmt_option);
 	}
 
 	retcode = EPKG_OK;
