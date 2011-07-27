@@ -41,7 +41,7 @@ Search is done by origin of the package.
 Returns 0 if
 .Ar <pkg-name>
 is installed and is registered in the database, otherwise returns 1.
-Useful for checking if a package is installed or not using a 
+Useful for checking if a package is installed or not from a 
 script.
 .It Fl g
 Treat
@@ -56,7 +56,7 @@ Treat
 .Ar <pkg-name>
 as an extended regular expression.
 .It Fl d
-Displays the dependecies of package
+Displays the dependencies of package
 .Ar <pkg-name>
 .It Fl r
 Displays a list of packages on which
@@ -69,11 +69,15 @@ Display all files installed by
 Display the total size of files installed by
 .Ar <pkg-name>
 .It Fl E
-< To be added >
+< Added only for ports compatibility >
+.Pp
+< Currently not implemented >
 .It Fl q
-Be ``quiet'' - < To be completed >
+Be ``quiet'' 
 .It Fl o
-< To be added >
+Display
+.Ar pkg-name
+origin
 .It Fl p
 Display the installation prefix for each package
 matching
