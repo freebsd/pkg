@@ -392,7 +392,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					depsmap);
 		}
 
-		depkv = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
+		depkv = yaml_document_add_mapping(&doc, NULL, YAML_FLOW_MAPPING_STYLE);
 		yaml_document_append_mapping_pair(&doc, depsmap,
 				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_dep_name(dep)), strlen(pkg_dep_name(dep)), YAML_PLAIN_SCALAR_STYLE),
 				depkv);
@@ -401,9 +401,20 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		manifest_append_kv(depkv, "version", pkg_dep_version(dep));
 	}
 
+	while (pkg_categories(pkg, &category) == EPKG_OK) {
+		if (categories == -1) {
+			categories = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
+			yaml_document_append_mapping_pair(&doc, mapping,
+					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "categories"), 10, YAML_PLAIN_SCALAR_STYLE),
+					categories);
+		}
+		yaml_document_append_sequence_item(&doc, categories,
+				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_category_name(category)), strlen(pkg_category_name(category)), YAML_PLAIN_SCALAR_STYLE));
+	}
+
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
 		if (conflicts == -1) {
-			conflicts = yaml_document_add_sequence(&doc, NULL, YAML_BLOCK_SEQUENCE_STYLE);
+			conflicts = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
 			yaml_document_append_mapping_pair(&doc, mapping,
 					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "conflicts"), 9, YAML_PLAIN_SCALAR_STYLE),
 					conflicts);
@@ -414,7 +425,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		if (options == -1) {
-			options = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
+			options = yaml_document_add_mapping(&doc, NULL, YAML_FLOW_MAPPING_STYLE);
 			yaml_document_append_mapping_pair(&doc, mapping,
 					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "options"), 7, YAML_PLAIN_SCALAR_STYLE),
 					options);
@@ -441,17 +452,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		}
 		yaml_document_append_sequence_item(&doc, dirs,
 				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_dir_path(dir)), strlen(pkg_dir_path(dir)), YAML_PLAIN_SCALAR_STYLE));
-	}
-
-	while (pkg_categories(pkg, &category) == EPKG_OK) {
-		if (categories == -1) {
-			categories = yaml_document_add_sequence(&doc, NULL, YAML_BLOCK_SEQUENCE_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "categories"), 10, YAML_PLAIN_SCALAR_STYLE),
-					categories);
-		}
-		yaml_document_append_sequence_item(&doc, categories,
-				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_category_name(category)), strlen(pkg_category_name(category)), YAML_PLAIN_SCALAR_STYLE));
 	}
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {

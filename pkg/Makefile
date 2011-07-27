@@ -26,11 +26,15 @@ LDADD+=		-L../libpkg \
 WARNS?=		6
 MAN=	pkg.1 \
 	pkg-add.1 \
+	pkg-autoremove.1 \
+	pkg-backup.1 \
 	pkg-create.1 \
 	pkg-delete.1 \
 	pkg-info.1 \
+	pkg-install.1 \
 	pkg-register.1 \
 	pkg-repo.1 \
+	pkg-search.1 \
 	pkg-update.1 \
 	pkg-upgrade.1 \
 	pkg-version.1 \
