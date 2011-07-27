@@ -142,7 +142,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 				if (sbuf_len(unexec_scripts) == 0)
 					sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
-				sbuf_printf(unexec_scripts, "#@dirrm \n", path);
+				sbuf_printf(unexec_scripts, "#@dirrm %s\n", path);
 
 				ret += pkg_adddir(pkg, path);
 
