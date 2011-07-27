@@ -13,6 +13,7 @@ struct pkg_category;
 struct pkg_conflict;
 struct pkg_script;
 struct pkg_option;
+struct pkg_license;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -22,6 +23,21 @@ struct pkg_jobs_entry;
 
 struct pkg_repos;
 struct pkg_repos_entry;
+
+typedef enum {
+	/**
+	 * The license logic is OR (dual in the ports)
+	 */
+	LICENSE_OR='|',
+	/**
+	 * The license logic is AND (multi in the ports)
+	 */
+	LICENSE_AND='&',
+	/**
+	 * The licen logic un single (default in the ports)
+	 */
+	LICENSE_SINGLE=1
+} lic_t;
 
 typedef enum {
 	PKGDB_DEFAULT=0,
@@ -244,6 +260,13 @@ int pkg_dirs(struct pkg *pkg, struct pkg_dir **dir);
 int pkg_categories(struct pkg *pkg, struct pkg_category **category);
 
 /**
+ * Iterates over the licenses of the package.
+ * @param Must be set to NULL for the first call.
+ * @return An error code.
+ */
+int pkg_licenses(struct pkg *pkg, struct pkg_license **license);
+
+/**
  * Iterates over the conflicts of the package.
  * @param conflict Must be set to NULL for the first call.
  * @return An error code.
@@ -281,6 +304,16 @@ int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
 
 int pkg_setautomatic(struct pkg *pkg);
 int pkg_isautomatic(struct pkg *pkg);
+
+/**
+ * set the logic for license combinaison
+ */
+int pkg_set_licenselogic(struct pkg *pkg, lic_t licenselogic);
+
+/**
+ * get the logic for license combinaison
+ */
+lic_t pkg_licenselogic(struct pkg *pkg);
 
 /**
  * Set the uncompressed size of the package.
@@ -350,6 +383,12 @@ int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const 
 int pkg_addcategory(struct pkg *pkg, const char *name);
 
 /**
+ * Add a license
+ * @return An error code.
+ */
+int pkg_addlicense(struct pkg *pkg, const char *name);
+
+/**
  * Allocate a new struct pkg_conflict and add it to the conflicts of pkg.
  * @return An error code.
  */
@@ -403,6 +442,8 @@ const char *pkg_file_sha256(struct pkg_file *);
 const char *pkg_dir_path(struct pkg_dir *);
 
 const char *pkg_category_name(struct pkg_category *);
+
+const char *pkg_license_name(struct pkg_license *);
 
 /* pkg_conflict */
 const char * pkg_conflict_glob(struct pkg_conflict *);
@@ -510,6 +551,7 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_MTREE (1<<7)
 #define PKG_LOAD_DIRS (1<<8)
 #define PKG_LOAD_CATEGORIES (1<<9)
+#define PKG_LOAD_LICENSES (1<<10)
 
 #define REPO_SEARCH_NAME 0
 #define REPO_SEARCH_COMMENT (1<<0)
@@ -539,6 +581,7 @@ int pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg);
 
 /**
  * Compact the database to save space.

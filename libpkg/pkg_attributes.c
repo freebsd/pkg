@@ -113,12 +113,17 @@ pkg_category_new(struct pkg_category **c)
 const char *
 pkg_category_name(struct pkg_category *c)
 {
-	return (c->name);
+	return (sbuf_get(c->name));
 }
 
 void
 pkg_category_free(struct pkg_category *c)
 {
+
+	if (c == NULL)
+		return;
+
+	sbuf_free(c->name);
 	free(c);
 }
 
@@ -152,6 +157,37 @@ pkg_conflict_glob(struct pkg_conflict *c)
 {
 	return (sbuf_get(c->glob));
 }
+
+/*
+ * License
+ */
+int
+pkg_license_new(struct pkg_license **l)
+{
+	if ((*l = calloc(1, sizeof(struct pkg_license))) == NULL) {
+		EMIT_ERRNO("calloc", "pkg_license");
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+void
+pkg_license_free(struct pkg_license *l)
+{
+	if (l == NULL)
+		return;
+
+	sbuf_free(l->name);
+	free(l);
+}
+
+const char *
+pkg_license_name(struct pkg_license *l)
+{
+	return (sbuf_get(l->name));
+}
+
 
 /*
  * Script

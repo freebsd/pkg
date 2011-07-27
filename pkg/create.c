@@ -28,7 +28,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 	struct pkg *pkg = NULL;
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
 					  PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
-					  PKG_LOAD_MTREE;
+					  PKG_LOAD_MTREE | PKG_LOAD_LICENSES;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT, "local.sqlite") != EPKG_OK) {
 		pkgdb_close(db);

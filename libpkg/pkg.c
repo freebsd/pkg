@@ -46,6 +46,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
 	}
 
+	STAILQ_INIT(&(*pkg)->licenses);
 	STAILQ_INIT(&(*pkg)->categories);
 	STAILQ_INIT(&(*pkg)->deps);
 	STAILQ_INIT(&(*pkg)->rdeps);
@@ -58,6 +59,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 
 	(*pkg)->automatic = false;
 	(*pkg)->type = type;
+	(*pkg)->licenselogic = 1;
 
 	return (EPKG_OK);
 }
@@ -76,7 +78,9 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg->new_pkgsize = 0;
 	pkg->flags = 0;
 	pkg->rowid = 0;
+	pkg->licenselogic = 1;
 
+	pkg_freelicenses(pkg);
 	pkg_freecategories(pkg);
 	pkg_freedeps(pkg);
 	pkg_freerdeps(pkg);
@@ -99,6 +103,7 @@ pkg_free(struct pkg *pkg)
 	for (int i = 0; i < PKG_NUM_FIELDS; i++)
 		sbuf_free(pkg->fields[i].value);
 
+	pkg_freelicenses(pkg);
 	pkg_freecategories(pkg);
 	pkg_freedeps(pkg);
 	pkg_freerdeps(pkg);
@@ -255,6 +260,37 @@ pkg_setnewpkgsize(struct pkg *pkg, int64_t size)
 }
 
 int
+pkg_set_licenselogic(struct pkg *pkg, lic_t logic)
+{
+	pkg->licenselogic = logic;
+	return (EPKG_OK);
+}
+
+lic_t
+pkg_licenselogic(struct pkg *pkg)
+{
+	assert(pkg != NULL);
+
+	return (pkg->licenselogic);
+}
+
+int
+pkg_licenses(struct pkg *pkg, struct pkg_license **l)
+{
+	assert(pkg != NULL);
+
+	if (*l == NULL)
+		*l = STAILQ_FIRST(&pkg->licenses);
+	else
+		*l = STAILQ_NEXT(*l, next);
+
+	if (*l == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
 pkg_deps(struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
@@ -383,6 +419,28 @@ pkg_options(struct pkg *pkg, struct pkg_option **o)
 }
 
 int
+pkg_addlicense(struct pkg *pkg, const char *name)
+{
+	struct pkg_license *l;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	if (pkg->licenselogic == LICENSE_SINGLE && !STAILQ_EMPTY(&pkg->licenses)) {
+		EMIT_PKG_ERROR("%s is said a have a single license which is already set", pkg_get(pkg, PKG_NAME));
+		return (EPKG_FATAL);
+	}
+
+	pkg_license_new(&l);
+
+	sbuf_set(&l->name, name);
+
+	STAILQ_INSERT_TAIL(&pkg->licenses, l, next);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version)
 {
 	struct pkg_dep *d;
@@ -474,7 +532,9 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 	}
 
 	pkg_category_new(&c);
-	strlcpy(c->name, name, sizeof(c->name));
+
+	sbuf_set(&c->name, name);
+
 	STAILQ_INSERT_TAIL(&pkg->categories, c, next);
 
 	return (EPKG_OK);
@@ -694,6 +754,20 @@ pkg_freefiles(struct pkg *pkg)
 	}
 
 	pkg->flags &= ~PKG_LOAD_FILES;
+}
+
+void
+pkg_freelicenses(struct pkg *pkg)
+{
+	struct pkg_license *l;
+
+	while (!STAILQ_EMPTY(&pkg->licenses)) {
+		l = STAILQ_FIRST(&pkg->licenses);
+		STAILQ_REMOVE_HEAD(&pkg->licenses, next);
+		pkg_license_free(l);
+	}
+
+	pkg->flags &= ~PKG_LOAD_LICENSES;
 }
 
 void
