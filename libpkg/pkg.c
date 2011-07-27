@@ -903,7 +903,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 		fpath = archive_entry_pathname(*ae);
 
 		if (fpath[0] != '+')
-			continue;
+			break;
 
 		if (strcmp(fpath, "+MANIFEST") == 0) {
 			size = archive_entry_size(*ae);
