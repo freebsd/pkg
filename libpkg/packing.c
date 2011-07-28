@@ -29,6 +29,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 
 	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
 		EMIT_ERRNO("malloc", "");
+		return (EPKG_FATAL);
 	}
 
 	(*pack)->aread = archive_read_disk_new();
