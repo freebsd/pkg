@@ -117,8 +117,10 @@ pkgdb_upgrade(sqlite3 *sdb)
 
 	if (db_version == DBVERSION)
 		return (EPKG_OK);
-	else if (db_version > DBVERSION)
+	else if (db_version > DBVERSION) {
+		EMIT_PKG_ERROR("%s", "database version is newer than libpkg(3)");
 		return (EPKG_FATAL);
+	}
 
 	sql = sbuf_new_auto();
 

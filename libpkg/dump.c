@@ -8,7 +8,7 @@ int
 pkgdb_dump(struct pkgdb *db, char *dest)
 {
 	struct pkgdb_it *it;
-	struct pkg *pkg;
+	struct pkg *pkg = NULL;
 	struct sbuf *path;
 	struct packing *pack;
 	char *m;

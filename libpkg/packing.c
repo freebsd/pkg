@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <assert.h>
 #include <archive.h>
 #include <archive_entry.h>
 #include <fcntl.h>
@@ -194,11 +195,15 @@ cleanup:
 int
 packing_finish(struct packing *pack)
 {
+	assert(pack != NULL);
+
 	archive_entry_free(pack->entry);
 	archive_read_finish(pack->aread);
 
 	archive_write_close(pack->awrite);
 	archive_write_finish(pack->awrite);
+
+	free(pack);
 
 	return (EPKG_OK);
 }
