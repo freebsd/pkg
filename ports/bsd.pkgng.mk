@@ -34,8 +34,8 @@ ACTUAL-PACKAGE-DEPENDS?= \
 .if !target(fake-pkg)
 fake-pkg:
 .if !defined(NO_PKG_REGISTER)
-	@${ECHO_MSG} "===>   Regitering installation for ${PKGNAME}"
-	@${MKDIR} ${METADIR} 
+	@${ECHO_MSG} "===>   Registering installation for ${PKGNAME}"
+	@${MKDIR} ${METADIR}
 	@${ECHO_CMD} "name: ${PKGNAMEPREFIX}${PORTNAME}${PKGNAMESUFFIX}" > ${MANIFESTF} 
 	@${ECHO_CMD} "version: ${PKGVERSION}" >> ${MANIFESTF} 
 	@${ECHO_CMD} "origin: ${PKGORIGIN}" >> ${MANIFESTF} 
@@ -47,7 +47,7 @@ fake-pkg:
 	@${ECHO_CMD} "www: ${WWW}" >> ${MANIFESTF}
 .endif
 	@${ECHO_CMD} "deps: " >> ${MANIFESTF}
-	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print "  "$$1":\n    origin: "$$2"\n    version: "$$3 }' >> ${MANIFESTF}
+	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print "  "$$1": { origin: "$$2", version: "$$3"}" }' >> ${MANIFESTF}
 	@${ECHO_CMD} "categories: " >> ${MANIFESTF}
 .for cat in ${CATEGORIES}
 	@${ECHO_CMD} "- ${cat}" >> ${MANIFESTF}
