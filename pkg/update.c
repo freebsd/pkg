@@ -99,12 +99,10 @@ update_from_remote_repo(const char *name, const char *url)
 	struct archive_entry *ae;
 	char repofile[MAXPATHLEN];
 	char *tmp = NULL;
-	int retcode = EPKG_OK;
 
 	tmp = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
 
 	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
-		retcode = EPKG_FATAL;
 		unlink(tmp);
 		free(tmp);
 		return (EPKG_FATAL);
@@ -132,5 +130,5 @@ update_from_remote_repo(const char *name, const char *url)
 	unlink(tmp);
 	free(tmp);
 
-	return(retcode);
+	return (EPKG_OK);
 }
