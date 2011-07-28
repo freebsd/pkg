@@ -347,6 +347,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	else
 		retcode = EPKG_FATAL;
 
+	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
 
 	return retcode;
