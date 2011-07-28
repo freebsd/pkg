@@ -11,7 +11,7 @@
 #include "pkg.h"
 #include "pkg_event.h"
 
-struct _config {
+static struct _config {
 	const char *key;
 	const char *def;
 	const char *val;
