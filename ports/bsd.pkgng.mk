@@ -48,18 +48,30 @@ fake-pkg:
 .endif
 	@${ECHO_CMD} "deps: " >> ${MANIFESTF}
 	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print "  "$$1": { origin: "$$2", version: "$$3"}" }' >> ${MANIFESTF}
-	@${ECHO_CMD} "categories: " >> ${MANIFESTF}
+	@${ECHO_CMD} -n "categories: [" >> ${MANIFESTF}
 .for cat in ${CATEGORIES}
-	@${ECHO_CMD} "- ${cat}" >> ${MANIFESTF}
+	@${ECHO_CMD} -n "${cat}" >> ${MANIFESTF}
 .endfor
+	@${ECHO_CMD} "]" >> ${MANIFESTF}
+.if defined(LICENSE_COMB)
+	@${ECHO_CMD} "licenselogic: single" >> ${MANIFESTF}
+.else
+	@${ECHO_CMD} "licenselogic: ${LICENSE_COMB}" >> ${MANIFESTF}
+.endif
+	@${ECHO_CMD} -n "licenses: [" >> ${MANIFESTF}
+.for lic in ${LICENSE}
+	@${ECHO_CMD} -n "${lic}," >> ${MANIFESTF}
+.endfor
+	@${ECHO_CMD} "]"
 .if !defined(DISABLE_CONFLICTS)
-	@${ECHO_CMD} "conflicts: " >> ${MANIFESTF}
+	@${ECHO_CMD} -n "conflicts: [" >> ${MANIFESTF}
 .for conflicts in ${CONFLICTS}
-	@${ECHO_CMD} "- \"${conflicts}\"" >> ${MANIFESTF}
+	@${ECHO_CMD} -n "${conflicts}," >> ${MANIFESTF}
 .endfor
 .for conflicts in ${CONFLICTS_INSTALL}
-	@${ECHO_CMD} "- \"${conflicts}\"" >> ${MANIFESTF}
+	@${ECHO_CMD} -n "${conflicts}," >> ${MANIFESTF}
 .endfor
+	@${ECHO_CMD} "]" >> ${MANIFESTF}
 .endif
 	@[ -f ${PKGINSTALL} ] && ${CP} ${PKGINSTALL} ${METADIR}/+INSTALL; \
 	[ -f ${PKGPREINSTALL} ] && ${CP} ${PKGPREINSTALL} ${METADIR}/+PRE_INSTALL; \
