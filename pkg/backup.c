@@ -16,12 +16,12 @@ exec_backup(int argc, char **argv)
 	struct pkgdb  *db;
 	char *dest = NULL;
 
-	if (argc < 1 || argc > 2 || argv[1][0] != '-') {
+	if (argc < 2 || argc > 3 || argv[1][0] != '-') {
 		usage_backup();
 		return (EX_USAGE);
 	}
 
-	if (argc == 2)
+	if (argc == 3)
 		dest = argv[2];
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT, "local.sqlite") != EPKG_OK) {
@@ -39,7 +39,11 @@ exec_backup(int argc, char **argv)
 
 	if (argv[1][1] == 'r') {
 		fprintf(stderr, "not yet implemented\n");
+		return (EPKG_FATAL);
 	}
+
+	pkgdb_close(db);
+
 
 	return (EPKG_OK);
 }
