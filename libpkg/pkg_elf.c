@@ -47,6 +47,9 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 			break;
 	}
 
+	if  (scn == NULL)
+		return (EPKG_OK);
+
 	data = elf_getdata(scn, NULL);
 	numdyn = shdr.sh_size / shdr.sh_entsize;
 
