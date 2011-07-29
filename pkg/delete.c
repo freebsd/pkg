@@ -102,6 +102,7 @@ exec_delete(int argc, char **argv)
 	cleanup:
 	pkgdb_it_free(it);
 	pkg_jobs_free(jobs);
+	pkgdb_close(db);
 
 	return (retcode == EPKG_OK ? EX_OK : 1);
 }

@@ -168,8 +168,8 @@ exec_install(int argc, char **argv)
 	if (multi_repos == 1)
 		pkg_repos_free(repos);
 
-	/* db connections are closed by pkg_jobs_free() */
 	pkg_jobs_free(jobs);
+	pkgdb_close(db);
 
 	return (retcode == EPKG_OK ? EX_OK : 1);
 }

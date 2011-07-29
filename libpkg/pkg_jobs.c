@@ -70,7 +70,6 @@ pkg_jobs_free_entry(struct pkg_jobs_entry *j)
 	while (!STAILQ_EMPTY(&j->jobs)) {
 		p = STAILQ_FIRST(&j->jobs);
 		STAILQ_REMOVE_HEAD(&j->jobs, next);
-		pkgdb_close(j->db);
 		pkg_free(p);
 	}
 
