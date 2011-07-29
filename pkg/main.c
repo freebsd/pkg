@@ -159,8 +159,10 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (command == NULL)
+	if (command == NULL) {
 		usage();
+		return (EX_USAGE); /* Not reached but makes scanbuild happy */
+	}
 
 	if (ambiguous <= 1) {
 		assert(command->exec != NULL);
