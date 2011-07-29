@@ -592,7 +592,7 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 				return (ret);
 
 		if (flags & PKG_LOAD_LICENSES)
-			if ((ret == pkgdb_loadlicense(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_loadlicense(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		return (EPKG_OK);
@@ -1189,7 +1189,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	int ret;
 	int retcode = EPKG_FATAL;
-	const char *path;
 	int64_t package_id;
 	char *errmsg;
 
@@ -1281,7 +1280,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	ret = sqlite3_step(stmt_sel_pkg);
 	if (ret == SQLITE_ROW) {
 		package_id = sqlite3_column_int64(stmt_sel_pkg, 0);
-		ret = SQLITE_DONE;
 	} else {
 		ERROR_SQLITE(s);
 		goto cleanup;
@@ -1340,7 +1338,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		path = pkg_file_path(file);
 		sqlite3_bind_text(stmt_file, 1, pkg_file_path(file), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(file), -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_file, 3, package_id);

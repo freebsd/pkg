@@ -178,7 +178,8 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 				script_type = PKG_SCRIPT_DEINSTALL;
 			} else if (strcmp(key->data.scalar.value, "post-deinstall") == 0) {
 				script_type = PKG_SCRIPT_POST_DEINSTALL;
-			}
+			} else
+				break;
 
 			pkg_addscript(pkg, val->data.scalar.value, script_type);
 			break;
