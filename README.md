@@ -146,8 +146,8 @@ show pkg-message, ...
 <a name="pkginst"></a>
 ### Installation of packages
 
-`pkg add' can install a package archive from the local disk, on from a
-retote FTP/HTTP remote server.
+`pkg add' can install a package archive from the local disk, or from a
+remote FTP/HTTP server.
 
 If only a package name is given, it will search the remote repository
 and download and install the package if it exists. The dependencies will be
