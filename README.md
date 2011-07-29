@@ -21,7 +21,7 @@ Table of Contents:
 * [Searching in remote package repositories](#pkgsearch)
 * [Installing from remote repositories](#pkginstall)
 * [Backing up your package database](#pkgbackup)
-* [Creating a package repository](#pkgrepo)
+* [Creating a package repository](#pkgcreate)
 * [Additional resources](#resources)
 
 <a name="libpkg"></a>
