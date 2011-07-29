@@ -117,7 +117,7 @@ This allows to override the users, groups and mode of files and directories duri
 creation, like for example this allows to create a package
 containing root files without being packaged by the root user.
 
-##### MTREE
+##### MTREE\_DIRS
 
 This is optional, this is used by the package the same way it is done by the
 legacy tools which means the MTREE is extracted in prefix before each
