@@ -37,7 +37,7 @@ updating, etc.
 pkgng package format is a tar archive which can be raw, or use the following
 compression: gz, bzip2 and xz, defaulting in xz format.
 
-The tar it selft is composed in two types of elements:
+The tar it self is composed in two types of elements:
 
 * the special files at the begining of the archive, starting with a "+"
 * the datas.
@@ -101,9 +101,9 @@ Valid scripts are:
 * post-upgrade
 * upgrade
 
-Script *MUST* be in sh format nothing else would work. shebang is not necessary
+Script *MUST* be in sh format nothing else would work. shebang is not necessary.
 
-When the manifest is read by pkg\_create files and firs accept another format:
+When the manifest is read by pkg\_create files and dirs accept another format:
 
 	files:
 	  /usr/local/bin/foo, 'sha256sum'
@@ -112,20 +112,21 @@ When the manifest is read by pkg\_create files and firs accept another format:
 	- /usr/local/share/foo-1.0
 	- /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
 
-This allow to override the users,groups and mode that pkgng file find when
-trying to create the package, for example this allow to create package
-containing root files without being packaged by a root user.
+This allows to override the users, groups and mode that pkgng file find when
+This allows to override the users, groups and mode of files and directories during package
+creation, like for example this allows to create a package
+containing root files without being packaged by the root user.
 
 ##### MTREE
 
-This is optionnal, this is used by the package the same way it is done by the
+This is optional, this is used by the package the same way it is done by the
 legacy tools which means the MTREE is extracted in prefix before each
 installation.
 
-In the futur we hope that mtree will be deprecated in favour or a hier package
-or in single MTREE that won't be customisable in per package basis. because
-pkgng supports packing empty directories, per package MTREE makes no sens
-anymore
+In the future we hope that mtree will be deprecated in favour of a hier package
+or in single MTREE that won't be customisable in per package basis and because
+pkgng supports packing of empty directories, per package MTREE makes no sense
+anymore.
 
 <a name="localdb"></a>
 ### Local database
@@ -279,14 +280,17 @@ repositories, so you can actually fetch, search and install from multiple locati
 	      in the next releases of pkgng. For now upgrading can only be done from
 	      a single remote package repository.
 
-In order to use a remote repository you need to define the PACKAGESITE environment variable,
+In order to use a remote repository you need to define the _PACKAGESITE_ environment variable,
 so that it points to a remote location, which contains packages that can be installed by pkgng.
 
-If the PACKAGESITE environment variable is not defined then pkgng will work in multiple 
-repositories mode, using the repositories which are defined in the /etc/pkg/repositories file.
+_PACKAGESITE_ can also be set in the */etc/pkg.conf* configuration file.
 
-In order to work with a single remote package repository, you would define PACKAGESITE to
-your remote server with packages, like for example:
+If the _PACKAGESITE_ environment variable (or option in */etc/pkg.conf*) is not defined
+then pkgng will work in multiple repositories mode, using the repositories which are
+defined in the */etc/pkg/repositories* file.
+
+In order to work with a single remote package repository, you would define _PACKAGESITE_ to
+your remote server with packages, like for example (or use */etc/pkg.conf* to set it there):
 
 	TCSH users:
 
@@ -296,10 +300,10 @@ your remote server with packages, like for example:
 
 	# export PACKAGESITE=http://example.org/pkgng-repo/
 
-For multiple remote repositories the PACKAGESITE variable needs NOT to be defined and the
-remote package repositories should be definend in the /etc/pkg/repositories file.
+For multiple remote repositories the _PACKAGESITE_ variable needs _NOT_ to be defined and the
+remote package repositories should be definend in the */etc/pkg/repositories* file.
 
-A remote package repository in the /etc/pkg/repositories file uses the following format:
+A remote package repository in the */etc/pkg/repositories* file uses the following format:
 
 	repo-name = url
 
@@ -367,9 +371,15 @@ remote repositories fail to fetch the package.
 
 Remote installations of packages using pkgng are done by the 'pkg install' command.
 
-Here's an example installation of the Apache web server package:
+Here's an example installation of few packages:
 
 	# pkg install www/apache22
+	# pkg install zsh
+	# pkg install perl-5.12.4
+
+Or you could also install the packages using only one command, like this:
+
+	# pkg install www/apache22 zsh perl-5.12.4
 
 For more information on the remote package installs, please refer to pkg-install(1)
 
@@ -382,8 +392,8 @@ In order to backup the local package database, you should use the 'pkg backup' c
 
 	# pkg backup -d /path/to/pkgng-backup.dump
 
-The above command will dump the local package database in the /path/to/pkgng-backup.dump
-file and compress it.
+The above command will create a compressed tar archive file of
+your local package database in /path/to/pkgng-backup.dump.txz
 
 For more information on backing up your local package database, please refer to pkg-backup(1)
 
@@ -415,6 +425,8 @@ Now you can share your repo with other people by letting them know of your repos
 
 * [Buildbot for pkgng][4]
 
+* [LLVM scanbuild][6]
+
 In order to get in contact with us, you can find us in the #pkgng@FreeNode IRC channel.
 
 If you hit a bug when using pkgng, you can always submit an issue in the [pkgng issue tracker][5].
@@ -422,5 +434,6 @@ If you hit a bug when using pkgng, you can always submit an issue in the [pkgng 
 [1]: https://github.com/pkgng/pkgng
 [2]: http://wiki.freebsd.org/pkgng
 [3]: http://pkgng.unix-heaven.org/
-[4]: https://buildbot.etoilebsd.net/
+[4]: http://buildbot.etoilebsd.net/
 [5]: https://github.com/pkgng/pkgng/issues
+[6]: http://scanbuild.etoilebsd.net
