@@ -4,32 +4,32 @@ pkgng - a binary package manager for FreeBSD
 Table of Contents:
 ------------------
 
-1. libpkg
-2. pkgng package format
-3. Local Database
-4. Installation of packages
-5. Upgrades of packages
-6. Deletion of packages
-7. pkgng in Ports
-8. A quick usage introduction to pkgng
-	8.1. Installing pkgng
-	8.2. Getting help on the commands usage
-	8.3. Installing packages
-	8.4. Querying the local package database
-	8.5. Using remote package repositories
-	8.6. Updating remote repositories
-	8.7. Searching in remote package repositories
-	8.8. Installing from remote repositories
-	8.9. Backing up your package database
-9. Additional resources
+* libpkg
+* pkgng package format
+* Local Database
+* Installation of packages
+* Upgrades of packages
+* Deletion of packages
+* pkgng in Ports
+* A quick usage introduction to pkgng
+* Installing pkgng
+* Getting help on the commands usage
+* Installing packages
+* Querying the local package database
+* Using remote package repositories
+* Updating remote repositories
+* Searching in remote package repositories
+* Installing from remote repositories
+* Backing up your package database
+* Additional resources
 
-### 1. libpkg
+### libpkg
 
 pkgng is built on top of libpkg, a new library to interface with package registration backends.
 It abstracts package management details such as registration, remote repositories, package creation,
 updating, etc.
 
-### 2. pkgng package format
+### pkgng package format
 
 pkgng uses a new +MANIFEST file to describe a package. It is very similar to
 the old +CONTENTS file, but cleaned (no more @comment which in fact can be an
@@ -59,7 +59,7 @@ The prefered compression format of pkgng for package archive is .txz. It is
 faster to decompress than bzip2, thus allow faster installation with a smaller
 archive file. Of course, pkgng can manage .tbz, .tgz and .tar archives as well.
 
-### 3. Local database
+### Local database
 
 Once a package is installed, it is registered to a SQLite database.
 
@@ -73,7 +73,7 @@ pkgng supports a `register' command to register packages into the SQLite
 database from the ports. The register command can execute the install script,
 show pkg-message, ...
 
-### 4. Installation of packages
+### Installation of packages
 
 `pkg add' can install a package archive from the local disk, on from a
 retote FTP/HTTP remote server.
@@ -88,29 +88,29 @@ remote repository database.
 `pkg add' will check if the user attempts to install a package built for another
 arch or release.
 
-### 5. Upgrades of packages
+### Upgrades of packages
 
 pkgng will also support upgrades of binary packages.
 
 pkgng will compare the versions of installed packages and those available on
 the repository. It will compute the proper update order and apply them.
 
-### 6. Deletion packages
+### Deletion packages
 
 Directory leftovers are automatically removed if they are not in the MTREE.
 
-### 7. pkgng in Ports
+### pkgng in Ports
 
 To use pkgng from ports currently we need to include *bsd.pkgng.mk* in *bsd.port.mk*,
 the line before *.if defined(USE_LOCAL_MK)*
 
-### 8. A quick usage introduction to pkgng
+### A quick usage introduction to pkgng
 
 In this section of the document we will try to give a quick and dirty introduction
 on the practical usage of pkgng - installing packages, searching in remote package
 repositories, updating remote package repositories and installing from them, etc.
 
-### 8.1. Installing pkgng
+### Installing pkgng
 
 The first thing to start with is to get pkgng installed on your machine.
 
@@ -138,7 +138,7 @@ In order to register your installed packages to pkgng, execute the commands belo
 	# cd pkgng/ports
 	# sh pkg2ng
 
-### 8.2. Getting help on the commands usage
+### Getting help on the commands usage
 
 In order to get help on any of the pkgng commands you should use the 'pkg help <command>'
 command, which will take the man page of the specified command.
@@ -148,7 +148,7 @@ In order to get the available commands in pkgng, just execute 'pkg help'
 	# pkg help 
 	# pkg help <command>
 
-### 8.3. Installing packages
+### Installing packages
 
 Packages can be installed from either a local directory on the file system or from
 a remote location using the FTP/HTTP protocol in order to fetch the packages.
@@ -171,7 +171,7 @@ server example.org using the HTTP protocol for fetching the packages.
 
 For more information on installing packages on your FreeBSD system, please refer to pkg-add(1)
 
-### 8.4. Querying the local package database
+### Querying the local package database
 
 In order to get information about installed packages you need to use the 'pkg info' command.
 
@@ -184,7 +184,7 @@ To list all install/registered packages in the local database, you will use the 
 
 For more information on querying the local package database, please refer to pkg-info(1) man page.
 
-### 8.5. Using remote package repositories
+### Using remote package repositories
 
 The good thing about pkgng is that it is able to use remote package repositories.
 
@@ -237,7 +237,7 @@ Example remote repository definition might look like this:
 Please check the included sample 'repositories' file for example definitions of remote
 packages repositories and pkg.conf(5) for the file format of the file.
 
-### 8.6. Updating remote repositories
+### Updating remote repositories
 
 The first thing to do when working with remote repositories is to update from them.
 
@@ -253,7 +253,7 @@ So, to update your remote repositories, you would execute this command:
 
 For more information on the remote repositories, please refer to pkg-update(1).
 
-### 8.7. Searching in remote package repositories
+### Searching in remote package repositories
 
 You can search in the remote package repositories using the 'pkg search' command.
 
@@ -267,7 +267,7 @@ An example search for a package could be done like this:
 
 For more information on the repositories search, please refer to pkg-search(1)
 
-### 8.8. Installing from remote repositories
+### Installing from remote repositories
 
 In order to install a package from a remote repository you need to set the
 PACKAGESITE environment variable to point to the remote server.
@@ -291,7 +291,7 @@ Here's an example installation of the Apache web server package:
 
 For more information on the remote package installs, please refer to pkg-install(1)
 
-### 8.9. Backing up your package database
+### Backing up your package database
 
 It is a good idea that you backup your local package database on regular basis.
 
@@ -304,7 +304,7 @@ file and compress it.
 
 For more information on backing up your local package database, please refer to pkg-backup(1)
 
-### 9. Additional resources
+### Additional resources
 
 * The Git repository of [pkgng is hosted on Github][1]
 
