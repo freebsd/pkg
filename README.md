@@ -34,33 +34,98 @@ updating, etc.
 <a name="pkgngfmt"></a>
 ### pkgng package format
 
-pkgng uses a new +MANIFEST file to describe a package. It is very similar to
-the old +CONTENTS file, but cleaned (no more @comment which in fact can be an
-hidden key-value!). The new manifest has new metadatas such as the
-architecture and the release it is built for, the maintainer of the package,
-the ports options it was build with.
+pkgng package format is a tar archive which can be raw, or use the following
+compression: gz, bzip2 and xz, defaulting in xz format.
 
-@exec and @unexec are deprecated. They are still executed, but pkgng print a
-deprecation warning message.
+The tar it selft is composed in two types of elements:
 
-pkgng supports new scripts:
+* the special files at the begining of the archive, starting with a "+"
+* the datas.
 
-* +PREINSTALL 
-* +POSTINSTALL
-* +PREDEINSTALL
-* +POSTDEINSTALL
-* +PREUPGRADE
-* +POSTUPGRADE
+#### The metadata
 
-And as well as the original scripts: 
+pkgng supports two files for metadata:
 
-* +INSTALL
-* +DEINSTALL 
-* +UPGRADE
+* +MANIFEST
+* +MTREE\_DIRS (optional)
 
-The prefered compression format of pkgng for package archive is .txz. It is
-faster to decompress than bzip2, thus allow faster installation with a smaller
-archive file. Of course, pkgng can manage .tbz, .tgz and .tar archives as well.
+##### MANIFEST
+
+The manifest is in [YAML](http://yaml.org) format, it contains all the
+information about the package:
+
+	name: foo
+	version: 1.0
+	origin: category/foo
+	comment: this is foo package
+	arch: i386
+	osversion: 8.2-STABLE-802507
+	www: http://www.foo.org
+	maintainer: foo@bar.org
+	prefix: /usr/local
+	licenselogic: or
+	licenses: [MIT, MPL]
+	flatsize: 482120
+	desc: |-
+	  This is the descrpition
+	  Of foo
+	  
+	  A component of bar
+	categories: [bar, plop]
+	deps:
+	  libiconv: {origin: converters/libiconv, version: 1.13.1_2}
+	  perl: {origin: lang/perl5.12, version: 5.12.4 }
+	files:
+	  /usr/local/bin/foo: 'sha256sum'
+	  /usr/local/bin/i_am_a_link: '-'
+	  /usr/local/share/foo-1.0/foo.txt: 'sha256sum'
+	dirs:
+	- /usr/local/share/foo-1.0
+	scripts:
+	  post-install: |-
+	    #!/bin/sh
+	    echo post-install
+	  pre-install: |-
+	    #!/bin/sh
+	    echo pre-install
+
+Valid scripts are:
+
+* pre-install
+* post-install
+* install
+* pre-deinstall
+* post-deinstall
+* deinstall
+* pre-upgrade
+* post-upgrade
+* upgrade
+
+Script *MUST* be in sh format nothing else would work. shebang is not necessary
+
+When the manifest is read by pkg\_create files and firs accept another format:
+
+	files:
+	  /usr/local/bin/foo, 'sha256sum'
+	  /usr/local/bin/bar: {sum: 'sha256sum', uname: baruser, gname: foogroup, perm: 0644 }
+	dirs:
+	- /usr/local/share/foo-1.0
+	- /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
+
+This allow to override the users,groups and mode that pkgng file find when
+trying to create the package, for example this allow to create package
+containing root files without being packaged by a root user.
+
+##### MTREE
+
+This is optionnal, this is used by the package the same way it is done by the
+legacy tools which means the MTREE is extracted in prefix before each
+installation.
+
+In the futur we hope that mtree will be deprecated in favour or a hier package
+or in single MTREE that won't be customisable in per package basis. because
+pkgng supports packing empty directories, per package MTREE makes no sens
+anymore
 
 <a name="localdb"></a>
 ### Local database
