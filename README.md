@@ -205,6 +205,8 @@ repositories, so you can actually fetch, search and install from multiple locati
 In order to use a remote repository you need to define the PACKAGESITE environment variable,
 so that it points to a remote location, which contains packages that can be installed by pkgng.
 
+Or set PACKAGESITE in the /etc/pkg.conf file.
+
 If the PACKAGESITE environment variable is not defined then pkgng will work in multiple 
 repositories mode, using the repositories which are defined in the /etc/pkg/repositories file.
 
@@ -293,6 +295,8 @@ Remote installations of packages using pkgng are done by the 'pkg install' comma
 Here's an example installation of the Apache web server package:
 
 	# pkg install www/apache22
+	# pkg install zsh
+	# pkg install perl-5.12.4
 
 For more information on the remote package installs, please refer to pkg-install(1)
 
@@ -305,8 +309,8 @@ In order to backup the local package database, you should use the 'pkg backup' c
 
 	# pkg backup -d /path/to/pkgng-backup.dump
 
-The above command will dump the local package database in the /path/to/pkgng-backup.dump
-file and compress it.
+The above command will create /path/to/pkgng-backup.dump.txz: a tar archive xz compressed
+containing the dump of the local database.
 
 For more information on backing up your local package database, please refer to pkg-backup(1)
 
@@ -328,7 +332,11 @@ every 30min from the master pkgng repository:
 
 Buildbot for pkgng:
 
-	- https://buildbot.etoilebsd.net/
+	- http://buildbot.etoilebsd.net/
+
+LLVM scanbuild:
+
+	http://scanbuild.etoilebsd.net
 
 In order to get in contact with us, you can find us in the following IRC channel:
 
