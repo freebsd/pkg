@@ -24,7 +24,7 @@ exec_backup(int argc, char **argv)
 	if (argc == 3)
 		dest = argv[2];
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT, "local.sqlite") != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
 	}
 

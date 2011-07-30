@@ -33,7 +33,7 @@ exec_which(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT, "local.sqlite") != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
