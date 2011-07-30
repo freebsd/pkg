@@ -19,10 +19,6 @@ struct pkgdb;
 struct pkgdb_it;
 
 struct pkg_jobs;
-struct pkg_jobs_entry;
-
-struct pkg_repos;
-struct pkg_repos_entry;
 
 typedef enum {
 	/**
@@ -467,12 +463,11 @@ int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *);
 int pkg_finish_repo(char *patj, pem_password_cb *cb, char *rsa_key_path);
 
 /**
- * Open the package database.
+ * Open the local package database.
  * The db must be free'ed with pkgdb_close().
- * @param dbfile Name of the package database file
  * @return An error code.
  */
-int pkgdb_open(struct pkgdb **db, pkgdb_t type, const char *dbfile);
+int pkgdb_open(struct pkgdb **db, pkgdb_t type);
 
 /**
  * Close and free the struct pkgdb.
@@ -600,58 +595,35 @@ int pkgdb_compact(struct pkgdb *db);
 int pkg_add(struct pkgdb *db, const char *path);
 
 /**
- * Create a new jobs object
- * @return EPKG_OK on success, EPKG_FATAL on error
- */
-int pkg_jobs_new(struct pkg_jobs **jobs);
-
-/**
- * Allocate a new pkg_jobs_entry object.
+ * Allocate a new pkg_jobs.
  * @param db A pkgdb open with PKGDB_REMOTE.
  * @return An error code.
  */
-int pkg_jobs_new_entry(struct pkg_jobs *jobs, struct pkg_jobs_entry **je, pkg_jobs_t type, struct pkgdb *db);
+int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db);
 
 /**
- * Free a pkg_jobs object
+ * Free a pkg_jobs
  */
 void pkg_jobs_free(struct pkg_jobs *jobs);
 
 /**
- * Add a pkg to the jobs entry queue.
+ * Add a pkg to the jobs queue.
  * @return An error code.
  */
-int pkg_jobs_add(struct pkg_jobs_entry *je, struct pkg *pkg);
-
-/**
- * Iterates over the jobs entry objects
- * @param je Returns the next entry in a jobs object.
- * Must be set to NULL for the first call.
- * @return EPKG_OK on success, EPKG_END if end of tail is reached.
- */
-int pkg_jobs(struct pkg_jobs *jobs, struct pkg_jobs_entry **je);
+int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
 
 /**
  * Iterates over the packages in the jobs queue.
  * @param pkg Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_jobs_entry(struct pkg_jobs_entry *je, struct pkg **pkg);
+int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
 
 /**
- * Apply the jobs in the queue (fetch/install/deinstall).
+ * Apply the jobs in the queue (fetch and install).
  * @return An error code.
  */
-int pkg_jobs_apply(struct pkg_jobs_entry *je, int force);
-
-/**
- * Checks if a given job is already added in another jobs entry
- * @param jobs A valid jobs object as received from pkg_jobs_new()
- * @param pkg A package that will be checked if it exists already as a job
- * @param res A pkg where to store the result if a package is found to exist
- * @return EPKG_OK if the is not added yet and EPKG_FATAL otherwise
- */
-int pkg_jobs_exists(struct pkg_jobs *jobs, struct pkg *pkg, struct pkg **res);
+int pkg_jobs_apply(struct pkg_jobs *jobs, int force);
 
 /**
  * Archive formats options.
@@ -679,80 +651,6 @@ int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
 
 int pkg_repo_fetch(struct pkg *pkg);
-
-/**
- * Initializes the repositories object
- * @return EPKG_OK on success, otherwise EPKG_FATAL
- */
-int pkg_repos_new(struct pkg_repos **repos);
-
-/**
- * Loads the remote repositories from file
- * @return EPKG_OK on success, and EPKG_FATAL on error
- */
-int pkg_repos_load(struct pkg_repos *repos);
-
-/**
- * Adds a repository entry to the tail
- * @param repos A valid repository object received from pkg_repos_new()
- * @param re A valid repository entry object
- * @return EPKG_OK on success, EPKG_FATAL on error
- */
-int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
-
-/**
- * Adds a repository entry to a package object
- * @param pkg A valid package object
- * @param re A valid repository entry object
- * @return EPKG_OK on success, EPKG_FATAL on error
- */
-int pkg_repos_add_in_pkg(struct pkg *pkg, struct pkg_repos_entry *re);
-
-/**
- * Get the next repository from the tail
- * @param repos A valid repository pointer as returned by pkg_repos_new()
- * @param re A pointer to a repository entry to save the result. Must be set to
- * NULL for the first repository entry
- * @return EPKG_OK on success, EPKG_END if end of repository is reached
- */
-int pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
-
-/**
- * Get the next repository assigned to a package object
- * @param pkg A valid package object
- * @param re A pointer to a repository entry to save the result. Must be set to
- * NULL for the first repository entry
- * @return EPKG_OK on success, EPKG_END if end of repository is reached
- */
-int pkg_repos_next_in_pkg(struct pkg *pkg, struct pkg_repos_entry **re);
-
-/**
- * Returns the name associated with a repository entry object
- * @param re A valid repository entry object
- */
-const char * pkg_repos_get_name(struct pkg_repos_entry *re);
-
-/**
- * Returns the URL associated wth a repository entry object
- * @param re A valid repository entry object
- */
-const char * pkg_repos_get_url(struct pkg_repos_entry *re);
-
-/**
- * Returns the line in the configuration where a repository is found
- * @param re A valid repository entry
- */
-unsigned int pkg_repos_get_line(struct pkg_repos_entry *re);
-
-/**
- * Free the memory used by the repository objects
- */
-void pkg_repos_free(struct pkg_repos *repos);
-
-/**
- * Free the memory used by the repository objects in a package
- */
-void pkg_repos_free_in_pkg(struct pkg *pkg);
 
 /**
  * Get the value of a configuration key

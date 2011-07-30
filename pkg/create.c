@@ -30,7 +30,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 					  PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 					  PKG_LOAD_MTREE | PKG_LOAD_LICENSES;
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT, "local.sqlite") != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}

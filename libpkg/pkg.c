@@ -55,7 +55,6 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	STAILQ_INIT(&(*pkg)->conflicts);
 	STAILQ_INIT(&(*pkg)->scripts);
 	STAILQ_INIT(&(*pkg)->options);
-	STAILQ_INIT(&(*pkg)->repos);
 
 	(*pkg)->automatic = false;
 	(*pkg)->type = type;
@@ -89,7 +88,6 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_freeconflicts(pkg);
 	pkg_freescripts(pkg);
 	pkg_freeoptions(pkg);
-	pkg_repos_free_in_pkg(pkg);
 
 	pkg->type = type;
 }
@@ -112,7 +110,6 @@ pkg_free(struct pkg *pkg)
 	pkg_freeconflicts(pkg);
 	pkg_freescripts(pkg);
 	pkg_freeoptions(pkg);
-	pkg_repos_free_in_pkg(pkg);
 
 	free(pkg);
 }

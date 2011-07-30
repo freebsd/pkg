@@ -21,8 +21,6 @@
 		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
-static int update_from_remote_repo(const char *name, const char *url);
-
 void
 usage_update(void)
 {
@@ -35,9 +33,10 @@ exec_update(int argc, char **argv)
 {
 	char url[MAXPATHLEN];
 	const char *packagesite = NULL;
+	char *tmp = NULL;
 	int retcode = EPKG_OK;
-	struct pkg_repos *repos = NULL;
-	struct pkg_repos_entry *re = NULL;
+	struct archive *a;
+	struct archive_entry *ae;
 
 	(void)argv;
 	if (argc != 1) {
@@ -50,55 +49,15 @@ exec_update(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	/* 
-	 * If PACKAGESITE is defined fetch only the remote
-	 * database to which PACKAGESITE refers, otherwise
-	 * fetch all remote databases found in the configuration file.
-	 */
-	if ((packagesite = pkg_config("PACKAGESITE")) != NULL) {
-		if (packagesite[strlen(packagesite) - 1] == '/')
-			snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
-		else
-			snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
-
-		retcode = update_from_remote_repo("repo", url);
-	} else {
-		fprintf(stderr, "\n");
-                warnx("/!\\     Working on multiple repositories     /!\\");
-                warnx("/!\\  This is an unsupported preview feature  /!\\");
-                warnx("/!\\     It can kill kittens and puppies      /!\\\n");
-		fprintf(stderr, "\n");
-
-		if (pkg_repos_new(&repos) != EPKG_OK)
-			return (EPKG_FATAL);
-
-		if (pkg_repos_load(repos) != EPKG_OK)
-			return (EPKG_FATAL);
-
-		while (pkg_repos_next(repos, &re) == EPKG_OK) {
-			packagesite = pkg_repos_get_url(re);
-
-			if (packagesite[strlen(packagesite) - 1] == '/')
-				snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
-			else
-				snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
-
-			retcode = update_from_remote_repo(pkg_repos_get_name(re), url);
-		}
-
-		pkg_repos_free(repos);
+	if ((packagesite = pkg_config("PACKAGESITE")) == NULL) {
+		warnx("unable to determine PACKAGESITE");
+		return (EPKG_FATAL);
 	}
 
-	return (retcode);
-}
-
-int
-update_from_remote_repo(const char *name, const char *url)
-{
-	struct archive *a = NULL;
-	struct archive_entry *ae;
-	char repofile[MAXPATHLEN];
-	char *tmp = NULL;
+	if (packagesite[strlen(packagesite) - 1] == '/')
+		snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
+	else
+		snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
 	tmp = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
 
@@ -116,9 +75,7 @@ update_from_remote_repo(const char *name, const char *url)
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			snprintf(repofile, MAXPATHLEN, "%s/%s.sqlite",
-				       pkg_config("PKG_DBDIR"), name);
-			archive_entry_set_pathname(ae, repofile);
+			archive_entry_set_pathname(ae, "/var/db/pkg/repo.sqlite");
 			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
 			break;
 		}
@@ -130,5 +87,5 @@ update_from_remote_repo(const char *name, const char *url)
 	unlink(tmp);
 	free(tmp);
 
-	return (EPKG_OK);
+	return (retcode);
 }
