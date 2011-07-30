@@ -66,6 +66,11 @@ exec_search(int argc, char **argv)
 		goto cleanup;
 	}
 
+	if ((it = pkgdb_rquery(db, pattern, match, field)) == NULL) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
 	while (( retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		printf("Name: %s\n", pkg_get(pkg, PKG_NAME));
 		printf("Version: %s\n", pkg_get(pkg, PKG_VERSION));
