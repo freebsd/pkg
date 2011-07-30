@@ -1202,19 +1202,19 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		"SELECT id FROM packages "
 		"WHERE origin = ?1;";
 	const char sql_dep[] = ""
-		"INSERT INTO deps (origin, name, version, package_id) "
+		"INSERT OR ROLLBACK INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
 	const char sql_conflict[] = ""
-		"INSERT INTO conflicts (name, package_id) "
+		"INSERT OR ROLLBACK INTO conflicts (name, package_id) "
 		"VALUES (?1, ?2);";
 	const char sql_file[] = ""
-		"INSERT INTO files (path, sha256, package_id) "
+		"INSERT OR ROLLBACK INTO files (path, sha256, package_id) "
 		"VALUES (?1, ?2, ?3);";
 	const char sql_script[] = ""
-		"INSERT INTO scripts (script, type, package_id) "
+		"INSERT OR ROLLBACK INTO scripts (script, type, package_id) "
 		"VALUES (?1, ?2, ?3);";
 	const char sql_option[] = ""
-		"INSERT INTO options (option, value, package_id) "
+		"INSERT OR ROLLBACK INTO options (option, value, package_id) "
 		"VALUES (?1, ?2, ?3);";
 	const char sql_dir[] = ""
 		"INSERT INTO pkg_dirs(origin, path) "
