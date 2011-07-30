@@ -111,10 +111,15 @@ struct pkg_jobs_node {
 	LIST_ENTRY(pkg_jobs_node) entries;
 };
 
-struct pkg_remote_repo {
-	char *name;
-	char *url;
-	STAILQ_ENTRY(pkg_remote_repo) entries;
+struct pkg_repos {
+	struct pkg_repos_entry {
+		struct sbuf *name;
+		struct sbuf *url;
+		unsigned int line;
+		STAILQ_ENTRY(pkg_repos_entry) entries;
+	} re;
+
+	STAILQ_HEAD(repos_entry, pkg_repos_entry) nodes;
 };
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);

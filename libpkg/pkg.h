@@ -20,6 +20,9 @@ struct pkgdb_it;
 
 struct pkg_jobs;
 
+struct pkg_repos;
+struct pkg_repos_entry;
+
 typedef enum {
 	/**
 	 * The license logic is OR (dual in the ports)
@@ -670,6 +673,58 @@ int pkg_fetch_file(const char *url, const char *dest);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, char *);
+
+/**
+ * Initializes the repositories object
+ * @return EPKG_OK on success, otherwise EPKG_FATAL
+ */
+int pkg_repos_new(struct pkg_repos **repos);
+
+/**
+ * Loads the remote repositories from file
+ * @return EPKG_OK on success, and EPKG_FATAL on error
+ */
+int pkg_repos_load(struct pkg_repos *repos);
+
+/**
+ * Adds a repository entry
+ * @param repos A valid repository object as received from pkg_repos_new()
+ * @param re A valid repository entry object
+ * @return EPKG_OK on success and EPKG_FATAL on error
+ */
+int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
+
+/**
+ * Get the next repository
+ * @param repos A valid repository object as returned by pkg_repos_new()
+ * @param re A pointer to a repository entry to save the result. Must be set to
+ * NULL for the first repository entry
+ * @return EPKG_OK on success and EPKG_END if end of repository is reached
+ */
+int pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
+
+/**
+ * Returns the name associated with a repository entry
+ * @param re A valid repository entry object
+ */
+const char * pkg_repos_get_name(struct pkg_repos_entry *re);
+
+/**
+ * Returns the URL associated wth a repository entry
+ * @param re A valid repository entry object
+ */
+const char * pkg_repos_get_url(struct pkg_repos_entry *re);
+
+/**
+ * Returns the line in the configuration where a repository is defined
+ * @param re A valid repository entry object
+ */
+unsigned int pkg_repos_get_line(struct pkg_repos_entry *re);
+
+/**
+ * Free the memory used by the repository objects
+ */
+void pkg_repos_free(struct pkg_repos *repos);
 
 /**
  * @todo Document
