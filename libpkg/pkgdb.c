@@ -20,6 +20,7 @@
 #define DBVERSION 3
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
+static struct pkgdb_it * pkgdb_repos_new(struct pkgdb *);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
@@ -28,6 +29,7 @@ static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
 static int get_pragma(sqlite3 *, const char *, int64_t *);
 static int pkgdb_upgrade(sqlite3 *);
+static int pkgdb_rquery_build_search_query(struct sbuf *, match_t, unsigned int);
 
 static void
 pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
@@ -377,6 +379,19 @@ pkgdb_init(sqlite3 *sdb)
 	return (EPKG_OK);
 }
 
+static struct pkgdb_it *
+pkgdb_repos_new(struct pkgdb *db)
+{
+	sqlite3_stmt *stmt = NULL;
+
+	if (sqlite3_prepare_v2(db->sqlite, "PRAGMA database_list;", -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+	
+	return(pkgdb_it_new(db, stmt, PKG_REMOTE));
+}
+
 int
 pkgdb_open(struct pkgdb **db, pkgdb_t type)
 {
@@ -384,13 +399,14 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	char *errmsg = NULL;
 	char localpath[MAXPATHLEN];
 	char remotepath[MAXPATHLEN];
-	char sql[BUFSIZ];
+	char tmpbuf[BUFSIZ];
 	const char *dbdir = NULL;
+	const char *repo_name = NULL;
+	struct sbuf *sql = NULL;
+	struct pkg_repos *repos = NULL;
+	struct pkg_repos_entry *re = NULL;
 
-	if ((dbdir = pkg_config("PKG_DBDIR")) == NULL) {
-		EMIT_PKG_ERROR("PKG_DBDIR is not set", "");
-		return (EPKG_FATAL);
-	}
+	dbdir = pkg_config("PKG_DBDIR");
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL) {
 		EMIT_ERRNO("calloc", "pkgdb");
@@ -422,18 +438,68 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	}
 
 	if (type == PKGDB_REMOTE) {
-		snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
+		if (strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) {
+			fprintf(stderr, "\t/!\\		   WARNING WARNING WARNING		/!\\\n");
+			fprintf(stderr, "\t/!\\	     WORKING ON MULTIPLE REPOSITORIES		/!\\\n");
+			fprintf(stderr, "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL	/!\\\n");
+			fprintf(stderr, "\t/!\\		     YOU HAVE BEEN WARNED		/!\\\n\n");
 
-		if (access(remotepath, R_OK) != 0) {
-			EMIT_ERRNO("access", remotepath);
-			return (EPKG_FATAL);
-		}
+			if (pkg_repos_new(&repos) != EPKG_OK) {
+				EMIT_PKG_ERROR("pkg_repos_new: %s", "cannot create multi repo object");
+				return (EPKG_FATAL);
+			}
 
-		sqlite3_snprintf(sizeof(sql), sql, "ATTACH \"%s\" as remote;", remotepath);
+			if (pkg_repos_load(repos) != EPKG_OK) {
+				EMIT_PKG_ERROR("pkg_repos_load: %s", "cannot load repositories");
+				return (EPKG_FATAL);
+			}
 
-		if (sqlite3_exec((*db)->sqlite, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
-			EMIT_PKG_ERROR("sqlite: %s", errmsg);
-			return (EPKG_FATAL);
+			sql = sbuf_new_auto();
+
+			while (pkg_repos_next(repos, &re) == EPKG_OK) {
+				repo_name = pkg_repos_get_name(re);
+				snprintf(remotepath, sizeof(remotepath), "%s/%s.sqlite",
+						dbdir, repo_name);
+
+				if (access(remotepath, R_OK) != 0) {
+					EMIT_ERRNO("access", remotepath);
+					sbuf_finish(sql);
+					sbuf_delete(sql);
+					return (EPKG_FATAL);
+				}
+
+				snprintf(tmpbuf, sizeof(tmpbuf), "ATTACH '%s' AS '%s';", remotepath, repo_name);
+				sbuf_cat(sql, tmpbuf);
+			}
+
+			sbuf_finish(sql);
+
+			if (sqlite3_exec((*db)->sqlite, sbuf_get(sql), NULL, NULL, &errmsg) != SQLITE_OK) {
+				EMIT_PKG_ERROR("sqlite: %s", errmsg);
+				sbuf_delete(sql);
+				return (EPKG_FATAL);
+			}
+
+			sbuf_delete(sql);
+			pkg_repos_free(repos);
+		} else {
+			/*
+			 * Working on a single remote repository
+			 */
+
+			snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
+
+			if (access(remotepath, R_OK) != 0) {
+				EMIT_ERRNO("access", remotepath);
+				return (EPKG_FATAL);
+			}
+
+			sqlite3_snprintf(sizeof(tmpbuf), tmpbuf, "ATTACH '%s' AS remote;", remotepath);
+
+			if (sqlite3_exec((*db)->sqlite, tmpbuf, NULL, NULL, &errmsg) != SQLITE_OK) {
+				EMIT_PKG_ERROR("sqlite: %s", errmsg);
+				return (EPKG_FATAL);
+			}
 		}
 
 		(*db)->type = PKGDB_REMOTE;
@@ -476,15 +542,51 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 void
 pkgdb_close(struct pkgdb *db)
 {
+	const char *repo_name = NULL;
+	char   tmpbuf[BUFSIZ];
+	struct sbuf *sql = NULL;
+	struct pkgdb_it *dr_it = NULL;
+
 	if (db == NULL)
 		return;
 
 	if (db->sqlite != NULL) {
-		if (db->type == PKGDB_REMOTE)
-			sqlite3_exec(db->sqlite, "DETACH remote;", NULL, NULL, NULL);
+		if (db->type == PKGDB_REMOTE) {
+			if (strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) {
+				/*
+				 * Working on multiple remote repositories.
+				 * Detach the remote repositories from the main database
+				 */
+				if ((dr_it = pkgdb_repos_new(db)) == NULL) {
+					EMIT_PKG_ERROR("pkgdb_repos_new: %s", "cannot get the attached databases");
+					return;
+				}
+
+				sql = sbuf_new_auto();
+
+				while ((repo_name = pkgdb_repos_next(dr_it)) != NULL) {
+					snprintf(tmpbuf, sizeof(tmpbuf), "DETACH '%s';", repo_name);
+					sbuf_cat(sql, tmpbuf);
+				}
+
+				sbuf_finish(sql);
+
+				sqlite3_exec(db->sqlite, sbuf_get(sql), NULL, NULL, NULL);
+
+				sbuf_delete(sql);
+				pkgdb_it_free(dr_it);
+			} else {
+				/*
+				 * Working on a single remote repository.
+				 * Detach it from the main database
+				 */
+				sqlite3_exec(db->sqlite, "DETACH remote;", NULL, NULL, NULL);
+			}
+		}
 
 		sqlite3_close(db->sqlite);
 	}
+
 	sqlite3_shutdown();
 	free(db);
 }
@@ -493,6 +595,8 @@ static struct pkgdb_it *
 pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 {
 	struct pkgdb_it *it;
+
+	assert(db != NULL);
 
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
 		EMIT_ERRNO("malloc", "");
@@ -504,6 +608,32 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 	it->stmt = s;
 	it->type = type;
 	return (it);
+}
+
+const char *
+pkgdb_repos_next(struct pkgdb_it *it)
+{
+	const char *dbname = NULL;
+
+	assert(it != NULL);
+
+	/* 
+	 * Skip the 'main' and 'temp' databases
+	 */
+	switch(sqlite3_step(it->stmt)) {
+		case SQLITE_ROW:
+			dbname = sqlite3_column_text(it->stmt, 1);
+			if ((strcmp(dbname, "main") == 0) || strcmp(dbname, "temp") == 0)
+				return (pkgdb_repos_next(it));
+			else
+				return (dbname);
+			break;
+		case SQLITE_DONE:
+		default:
+			return (NULL);
+	}
+
+	return (NULL);
 }
 
 int
@@ -535,6 +665,7 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
 		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
 		pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
+
 		if (it->type != PKG_REMOTE && it->type != PKG_UPGRADE)
 			pkg_set_licenselogic(pkg, sqlite3_column_int64(it->stmt, 13));
 
@@ -1706,11 +1837,55 @@ pkgdb_query_autoremove(struct pkgdb *db)
 	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
 }
 
+static int
+pkgdb_rquery_build_search_query(struct sbuf *sql, match_t match, unsigned int field)
+{
+	switch (match) {
+		case MATCH_ALL:
+		case MATCH_EXACT:
+			sbuf_cat(sql, "name LIKE ?1 ");
+			if (field & REPO_SEARCH_COMMENT)
+				sbuf_cat(sql, "OR comment LIKE ?1 ");
+			else if (field & REPO_SEARCH_DESCRIPTION)
+				sbuf_cat(sql, "OR desc LIKE ?1 ");
+			break;
+		case MATCH_GLOB:
+			sbuf_cat(sql, "name GLOB ?1 ");
+			if (field & REPO_SEARCH_COMMENT)
+				sbuf_cat(sql, "OR comment GLOB ?1 ");
+			else if (field & REPO_SEARCH_DESCRIPTION)
+				sbuf_cat(sql, "OR desc GLOB ?1 ");
+			break;
+		case MATCH_REGEX:
+			sbuf_cat(sql, "name REGEXP ?1 ");
+			if (field & REPO_SEARCH_COMMENT)
+				sbuf_cat(sql, "OR comment REGEXP ?1 ");
+			else if (field & REPO_SEARCH_DESCRIPTION)
+				sbuf_cat(sql, "OR desc REGEXP ?1 ");
+			break;
+		case MATCH_EREGEX:
+			sbuf_cat(sql, "EREGEXP(?1, name) ");
+			if (field & REPO_SEARCH_COMMENT)
+				sbuf_cat(sql, "OR EREGEXP(?1, comment) ");
+			else if (field & REPO_SEARCH_DESCRIPTION)
+				sbuf_cat(sql, "OR EREGEXP(?1, desc) ");
+			break;
+	}
+
+	return (EPKG_OK);
+}
+
 struct pkgdb_it *
 pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int field)
 {
+	const char *dbname = NULL;
+	char tmpbuf[BUFSIZ];
 	sqlite3_stmt *stmt = NULL;
-	struct sbuf *sql = sbuf_new_auto();
+	struct sbuf *sql = NULL;
+	struct pkgdb_it *dr_it = NULL;
+	const char *basesql = "SELECT rowid, origin, name, version, comment, "
+				"desc, arch, arch, osversion, maintainer, www, "
+				"flatsize, pkgsize, cksum, path, dbname FROM ";
 
 	assert(pattern != NULL && pattern[0] != '\0');
 
@@ -1719,46 +1894,63 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 		return (NULL);
 	}
 
-	sbuf_cat(sql, "SELECT p.rowid, p.origin, p.name, p.version, p.comment, "
-			"p.desc, p.arch, p.arch, p.osversion, p.maintainer, p.www, "
-			"p.flatsize, p.pkgsize, p.cksum, p.path FROM remote.packages AS p WHERE ");
+	sql = sbuf_new_auto();
+	sbuf_cat(sql, basesql);
 
-	switch (match) {
-		case MATCH_ALL:
-		case MATCH_EXACT:
-			sbuf_cat(sql, "p.name LIKE ?1 ");
-			if (field & REPO_SEARCH_COMMENT)
-				sbuf_cat(sql, "OR p.comment LIKE ?1 ");
-			else if (field & REPO_SEARCH_DESCRIPTION)
-				sbuf_cat(sql, "OR p.desc LIKE ?1 ");
-			break;
-		case MATCH_GLOB:
-			sbuf_cat(sql, "p.name GLOB ?1 ");
-			if (field & REPO_SEARCH_COMMENT)
-				sbuf_cat(sql, "OR p.comment GLOB ?1 ");
-			else if (field & REPO_SEARCH_DESCRIPTION)
-				sbuf_cat(sql, "OR p.desc GLOB ?1 ");
-			break;
-		case MATCH_REGEX:
-			sbuf_cat(sql, "p.name REGEXP ?1 ");
-			if (field & REPO_SEARCH_COMMENT)
-				sbuf_cat(sql, "OR p.comment REGEXP ?1 ");
-			else if (field & REPO_SEARCH_DESCRIPTION)
-				sbuf_cat(sql, "OR p.desc REGEXP ?1 ");
-			break;
-		case MATCH_EREGEX:
-			sbuf_cat(sql, "EREGEXP(?1, p.name) ");
-			if (field & REPO_SEARCH_COMMENT)
-				sbuf_cat(sql, "OR EREGEXP(?1, p.comment) ");
-			else if (field & REPO_SEARCH_DESCRIPTION)
-				sbuf_cat(sql, "OR EREGEXP(?1, p.desc) ");
-			break;
+	if (strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) {
+		/*
+		 * Working on multiple remote repositories
+		 */
+
+		if ((dr_it = pkgdb_repos_new(db)) == NULL) {
+			EMIT_PKG_ERROR("%s", "cannot get the attached databases");
+			return (NULL);
+		}
+
+		/* get the first repository entry */
+		if ((dbname = pkgdb_repos_next(dr_it)) != NULL) {
+			snprintf(tmpbuf, sizeof(tmpbuf), 
+					"( SELECT rowid, origin, name, version, comment, "
+					    "desc, arch, arch, osversion, maintainer, www, "
+					    "flatsize, pkgsize, cksum, path, '%s' AS dbname FROM '%s'.packages WHERE ",
+					dbname, dbname);
+
+			sbuf_cat(sql, tmpbuf);
+			pkgdb_rquery_build_search_query(sql, match, field);
+		} else {
+			/* there are no remote databases attached */
+			sbuf_finish(sql);
+			sbuf_delete(sql);
+			pkgdb_it_free(dr_it);
+			return (NULL);
+		}
+
+		while ((dbname = pkgdb_repos_next(dr_it)) != NULL) {
+			snprintf(tmpbuf, sizeof(tmpbuf), 
+					"UNION SELECT rowid, origin, name, version, comment, "
+					    "desc, arch, arch, osversion, maintainer, www, "
+					    "flatsize, pkgsize, cksum, path, '%s' AS dbname FROM '%s'.packages WHERE ",
+					dbname, dbname);
+
+			sbuf_cat(sql, tmpbuf);
+			pkgdb_rquery_build_search_query(sql, match, field);
+		}
+
+		sbuf_cat(sql, ");");
+		sbuf_finish(sql);
+		pkgdb_it_free(dr_it);
+	} else {
+		/* 
+		 * Working on a single remote repository
+		 */
+
+		sbuf_cat(sql, "remote.packages WHERE ");
+		pkgdb_rquery_build_search_query(sql, match, field);
+		sbuf_cat(sql, ";");
+		sbuf_finish(sql);
 	}
 
-	sbuf_cat(sql, ";");
-	sbuf_finish(sql);
-
-	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
 	}

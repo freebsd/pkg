@@ -704,6 +704,15 @@ int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
 int pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
 
 /**
+ * Get the next ATTACH'ed database
+ * @param dr_it A valid pkgdb_it object as received from
+ * pkgdb_repos_new()
+ * @return A string containing the next database attached
+ * to the main one, or NULL if end of list is reached.
+ */
+const char * pkgdb_repos_next(struct pkgdb_it *dr_it);
+
+/**
  * Returns the name associated with a repository entry
  * @param re A valid repository entry object
  */
