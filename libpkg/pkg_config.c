@@ -19,6 +19,7 @@ static struct _config {
 	{ "PACKAGESITE", NULL, NULL},
 	{ "PKG_DBDIR", "/var/db/pkg", NULL},
 	{ "PKG_CACHEDIR", "/var/cache/pkg", NULL},
+	{ "PKG_MULTIREPOS", "false", NULL },
 	{ NULL, NULL, NULL}
 };
 
