@@ -87,6 +87,7 @@ exec_search(int argc, char **argv)
 	}
 
 	cleanup:
+	pkg_free(pkg);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
