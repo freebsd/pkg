@@ -380,17 +380,20 @@ pkgdb_init(sqlite3 *sdb)
 int
 pkgdb_open(struct pkgdb **db, pkgdb_t type)
 {
-	int retcode;
-	char *errmsg;
+	int retcode = EPKG_OK;
+	char *errmsg = NULL;
 	char localpath[MAXPATHLEN];
 	char remotepath[MAXPATHLEN];
 	char sql[BUFSIZ];
-	const char *dbdir;
+	const char *dbdir = NULL;
 
-	dbdir = pkg_config("PKG_DBDIR");
+	if ((dbdir = pkg_config("PKG_DBDIR")) == NULL) {
+		EMIT_PKG_ERROR("PKG_DBDIR is not set", "");
+		return (EPKG_FATAL);
+	}
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL) {
-		EMIT_ERRNO("malloc", "pkgdb");
+		EMIT_ERRNO("calloc", "pkgdb");
 		return EPKG_FATAL;
 	}
 
@@ -423,7 +426,6 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 
 		if (access(remotepath, R_OK) != 0) {
 			EMIT_ERRNO("access", remotepath);
-			pkgdb_close(*db);
 			return (EPKG_FATAL);
 		}
 
@@ -431,8 +433,6 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 
 		if (sqlite3_exec((*db)->sqlite, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
 			EMIT_PKG_ERROR("sqlite: %s", errmsg);
-			sqlite3_free(errmsg);
-			pkgdb_close(*db);
 			return (EPKG_FATAL);
 		}
 

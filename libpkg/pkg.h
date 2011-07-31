@@ -675,14 +675,14 @@ int pkg_fetch_file(const char *url, const char *dest);
 int ports_parse_plist(struct pkg *, char *);
 
 /**
- * Initializes the repositories object
- * @return EPKG_OK on success, otherwise EPKG_FATAL
+ * Creates a new repository object
+ * @return EPKG_OK on success and EPKG_FATAL on error
  */
 int pkg_repos_new(struct pkg_repos **repos);
 
 /**
  * Loads the remote repositories from file
- * @return EPKG_OK on success, and EPKG_FATAL on error
+ * @return EPKG_OK on success and EPKG_FATAL on error
  */
 int pkg_repos_load(struct pkg_repos *repos);
 
