@@ -17,6 +17,7 @@
 #include "pkgdb.h"
 #include "pkg_util.h"
 
+#include "db_upgrades.h"
 #define DBVERSION 4
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
@@ -110,11 +111,12 @@ pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 static int
 pkgdb_upgrade(sqlite3 *sdb)
 {
-	int64_t db_version;
-	struct sbuf *sql;
-	char *errmsg;
+	int64_t db_version = -1;
+	char sql[30];
+	int i;
 
-	get_pragma(sdb, "PRAGMA user_version;", &db_version);
+	if (get_pragma(sdb, "PRAGMA user_version;", &db_version) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	if (db_version == DBVERSION)
 		return (EPKG_OK);
@@ -123,107 +125,38 @@ pkgdb_upgrade(sqlite3 *sdb)
 		return (EPKG_FATAL);
 	}
 
-	sql = sbuf_new_auto();
+	while (db_version < DBVERSION) {
+		db_version++;
 
-	if (db_version < 1) {
-		/* New in version 1 */
-		sbuf_cat(sql,
-			"CREATE TABLE licenses ("
-				"id INTEGER PRIMARY KEY, "
-				"license TEXT NOT NULL UNIQUE "
-			");"
-			"CREATE TABLE pkg_licenses_assoc ("
-				"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
-					" ON UPDATE CASCADE, "
-				"license_id INTEGER REFERENCES licenses(id) ON DELETE RESTRICT"
-					" ON UPDATE RESTRICT, "
-				"PRIMARY KEY (package_id, license_id)"
-			");"
-			"CREATE VIEW pkg_licenses AS SELECT origin, license FROM packages "
-			"INNER JOIN pkg_licenses_assoc ON packages.id = pkg_licenses_assoc.package_id "
-			"INNER JOIN licenses ON pkg_licenses_assoc.license_id = licenses.id;"
-			"CREATE TRIGGER license_insert INSTEAD OF INSERT ON pkg_licenses "
-			"FOR EACH ROW BEGIN "
-				"INSERT OR IGNORE INTO licenses(license) values (NEW.license);"
-				"INSERT INTO pkg_licenses_assoc(package_id, license_id) VALUES "
-					"((SELECT id FROM packages where origin = NEW.origin), "
-					"(SELECT id FROM categories WHERE name = NEW.name));"
-			"END;"
-			"PRAGMA user_version = 1;");
-		sbuf_finish(sql);
-	}
+		i = 0;
+		while (db_upgrades[i].version != -1) {
+			if (db_upgrades[i].version == db_version) {
+				if (sql_exec(sdb, db_upgrades[i].sql) != EPKG_OK)
+					return (EPKG_FATAL);
 
-	if (db_version < 2) {
-		sbuf_cat(sql, "ALTER TABLE packages ADD licenselogic INTEGER NOT NULL DEFAULT(1);"
-				"PRAGMA user_version = 2;");
-		sbuf_finish(sql);
-	}
-	if (db_version < 3) {
-		sbuf_cat(sql, "DROP VIEW pkg_licenses;"
-				"DROP TRIGGER license_insert;"
-				"ALTER TABLE licenses RENAME TO todelete;"
-				"CREATE TABLE licenses (id INTERGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);"
-				"INSERT INTO licenses(id, name) SELECT id, license FROM todelete;"
-				"CREATE VIEW pkg_licenses AS SELECT origin, licenses.name FROM packages "
-				"INNER JOIN pkg_licenses_assoc ON packages.id = pkg_licenses_assoc.package_id "
-				"INNER JOIN licenses ON pkg_licenses_assoc.license_id = licenses.id;"
-				"CREATE TRIGGER license_insert INSTEAD OF INSERT ON pkg_licenses "
-				"FOR EACH ROW BEGIN "
-					"INSERT OR IGNORE INTO licenses(name) values (NEW.name);"
-					"INSERT INTO pkg_licenses_assoc(package_id, license_id) VALUES "
-					"((SELECT id FROM packages where origin = NEW.origin), "
-					"(SELECT id FROM licenses WHERE name = NEW.name));"
-				"END;"
-				"DROP VIEW pkg_mtree;"
-				"CREATE VIEW pkg_mtree AS "
-				"SELECT origin, name, version, comment, desc, mtree.content AS mtree, message, arch, osversion, "
-				"maintainer, www, prefix, flatsize, automatic, licenselogic, pkg_format_version FROM packages "
-				"INNER JOIN mtree ON packages.mtree_id = mtree.id;"
-				"DROP TRIGGER pkg_insert;"
-				"CREATE TRIGGER pkg_insert INSTEAD OF INSERT ON pkg_mtree "
-				"FOR EACH ROW BEGIN "
-				"INSERT OR IGNORE INTO mtree (content) VALUES (NEW.mtree);"
-				"INSERT OR REPLACE INTO packages(origin, name, version, comment, desc, mtree_id, "
-				"message, arch, osversion, maintainer, www, prefix, flatsize, automatic, licenselogic) "
-				"VALUES (NEW.origin, NEW.name, NEW.version, NEW.comment, NEW.desc, "
-				"(SELECT id FROM mtree WHERE content = NEW.mtree), "
-				"NEW.message, NEW.arch, NEW.osversion, NEW.maintainer, NEW.www, NEW.prefix, "
-				"NEW.flatsize, NEW.automatic, NEW.licenselogic);"
-				"END;"
-				"DROP TABLE todelete;"
-				"PRAGMA user_version = 3;"
-			);
-		sbuf_finish(sql);
-	}
+				i = 0;
+				break;
+			}
+			i++;
+		}
 
-	if (db_version < 4) {
-		sbuf_cat(sql, "DROP VIEW pkg_mtree;"
-				"DROP TRIGGER CLEAN_MTREE;"
-				"DROP TRIGGER pkg_insert;"
-				"DROP VIEW pkg_dirs;"
-				"DROP TRIGGER dir_insert;"
-				"ALTER TABLE pkg_dirs_assoc RENAME TO pkg_directories;"
-				"DROP VIEW pkg_categories;"
-				"DROP TRIGGER category_insert;"
-				"ALTER TABLE pkg_categories_assoc RENAME TO pkg_categories;"
-				"DROP VIEW pkg_licenses;"
-				"DROP TRIGGER licenses_insert;"
-				"ALTER TABLE pkg_licenses_assoc RENAME TO pkg_licenses;"
-				);
-		sbuf_finish(sql);
-	}
+		/*
+		 * We can't find the statements to upgrade to the next version,
+		 * maybe because the current version is too old and upgrade support has
+		 * been removed.
+		 */
+		if (i != 0) {
+			EMIT_PKG_ERROR("can not upgrade to db version %" PRId64,
+						   db_version);
+			return (EPKG_FATAL);
+		}
 
-	if (sqlite3_exec(sdb, sbuf_data(sql), NULL, NULL, &errmsg) != SQLITE_OK) {
-		EMIT_PKG_ERROR("sqlite: error while upgrading %s", errmsg);
-		sbuf_delete(sql);
-		sqlite3_free(errmsg);
-		return (EPKG_FATAL);
+		snprintf(sql, sizeof(sql), "PRAGMA user_version = %" PRId64 ";", db_version);
+		if (sql_exec(sdb, sql) != EPKG_OK)
+			return (EPKG_FATAL);
 	}
-
-	sbuf_delete(sql);
 
 	return (EPKG_OK);
-
 }
 
 /*
