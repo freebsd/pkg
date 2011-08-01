@@ -675,7 +675,8 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg->type = PKG_REMOTE;
 			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 11));
 			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 12));
-			pkg_addnewrepo(pkg, sqlite3_column_text(it->stmt, 15));
+			if ((strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) && (pkg_config("PACKAGESITE") == NULL))
+				pkg_addnewrepo(pkg, sqlite3_column_text(it->stmt, 15));
 		}
 
 		if (it->type == PKG_UPGRADE) {
@@ -1887,9 +1888,12 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = NULL;
 	struct pkgdb_it *it = NULL;
-	const char *basesql = "SELECT rowid, origin, name, version, comment, "
-				"desc, arch, arch, osversion, maintainer, www, "
-				"flatsize, pkgsize, cksum, path, dbname FROM ";
+	const char *basesql      = "SELECT rowid, origin, name, version, comment, "
+					"desc, arch, arch, osversion, maintainer, www, "
+					"flatsize, pkgsize, cksum, path ";
+	const char *multireposql = "SELECT rowid, origin, name, version, comment, "
+					"desc, arch, arch, osversion, maintainer, www, "
+					"flatsize, pkgsize, cksum, path, '%s' AS dbname FROM '%s'.packages WHERE ";
 
 	assert(pattern != NULL && pattern[0] != '\0');
 
@@ -1907,6 +1911,9 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 		 * Working on multiple remote repositories
 		 */
 
+		/* add the dbname column to the SELECT */
+		sbuf_cat(sql, ", dbname FROM ");
+
 		if ((it = pkgdb_repos_new(db)) == NULL) {
 			EMIT_PKG_ERROR("%s", "cannot get the attached databases");
 			return (NULL);
@@ -1914,11 +1921,8 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 
 		/* get the first repository entry */
 		if ((dbname = pkgdb_repos_next(it)) != NULL) {
-			snprintf(tmpbuf, sizeof(tmpbuf), 
-					"( SELECT rowid, origin, name, version, comment, "
-					    "desc, arch, arch, osversion, maintainer, www, "
-					    "flatsize, pkgsize, cksum, path, '%s' AS dbname FROM '%s'.packages WHERE ",
-					dbname, dbname);
+			sbuf_cat(sql, "(");
+			snprintf(tmpbuf, sizeof(tmpbuf), multireposql, dbname, dbname);
 
 			sbuf_cat(sql, tmpbuf);
 			pkgdb_rquery_build_search_query(sql, match, field);
@@ -1931,11 +1935,8 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 		}
 
 		while ((dbname = pkgdb_repos_next(it)) != NULL) {
-			snprintf(tmpbuf, sizeof(tmpbuf), 
-					"UNION SELECT rowid, origin, name, version, comment, "
-					    "desc, arch, arch, osversion, maintainer, www, "
-					    "flatsize, pkgsize, cksum, path, '%s' AS dbname FROM '%s'.packages WHERE ",
-					dbname, dbname);
+			sbuf_cat(sql, "UNION ");
+			snprintf(tmpbuf, sizeof(tmpbuf), multireposql, dbname, dbname);
 
 			sbuf_cat(sql, tmpbuf);
 			pkgdb_rquery_build_search_query(sql, match, field);
@@ -1949,7 +1950,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 		 * Working on a single remote repository
 		 */
 
-		sbuf_cat(sql, "remote.packages WHERE ");
+		sbuf_cat(sql, "FROM remote.packages WHERE ");
 		pkgdb_rquery_build_search_query(sql, match, field);
 		sbuf_cat(sql, ";");
 		sbuf_finish(sql);
