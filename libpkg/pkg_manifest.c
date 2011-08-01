@@ -108,8 +108,8 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 	switch (pkgtype) {
 		case PKG_FILES:
 			if (val->type == YAML_SCALAR_NODE) {
-				pkg_addfile(pkg, key->data.scalar.value, val->data.scalar.length == 65 ? val->data.scalar.value : NULL);
-			}else {
+				pkg_addfile(pkg, key->data.scalar.value, val->data.scalar.length == 64 ? val->data.scalar.value : NULL);
+			} else {
 				subpair = val->data.mapping.pairs.start;
 				sum[0] = '\0';
 				uname[0] = '\0';
@@ -119,8 +119,8 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 				while (subpair < val->data.mapping.pairs.top) {
 					subkey = yaml_document_get_node(document, subpair->key);
 					subval = yaml_document_get_node(document, subpair->value);
-					if (!strcasecmp(subkey->data.scalar.value, "sum") && subval->data.scalar.length == 65)
-						strlcpy(sum, subval->data.scalar.value, 65);
+					if (!strcasecmp(subkey->data.scalar.value, "sum") && subval->data.scalar.length == 64)
+						strlcpy(sum, subval->data.scalar.value, sizeof(sum));
 					else if (!strcasecmp(subkey->data.scalar.value, "uname") && subval->data.scalar.length <= MAXLOGNAME)
 						strlcpy(uname, subval->data.scalar.value, MAXLOGNAME);
 					else if (!strcasecmp(subkey->data.scalar.value, "gname") && subval->data.scalar.length <= MAXLOGNAME)
@@ -336,6 +336,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	yaml_node_t *node;
 	int retcode = EPKG_OK;
 
+	assert(pkg != NULL);
 	assert(buf != NULL);
 
 	yaml_parser_initialize(&parser);
