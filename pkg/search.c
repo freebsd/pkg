@@ -74,7 +74,7 @@ exec_search(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0)
+	if (((strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0)) && (pkg_config("PACKAGESITE") == NULL))
 		multi_repos = 1;
 
 	while (( retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {

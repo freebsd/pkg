@@ -438,7 +438,8 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	}
 
 	if (type == PKGDB_REMOTE) {
-		if (strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) {
+		if ((strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) && \
+				(pkg_config("PACKAGESITE") == NULL)) {
 			fprintf(stderr, "\t/!\\		   WARNING WARNING WARNING		/!\\\n");
 			fprintf(stderr, "\t/!\\	     WORKING ON MULTIPLE REPOSITORIES		/!\\\n");
 			fprintf(stderr, "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL	/!\\\n");
@@ -552,7 +553,8 @@ pkgdb_close(struct pkgdb *db)
 
 	if (db->sqlite != NULL) {
 		if (db->type == PKGDB_REMOTE) {
-			if (strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) {
+			if ((strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) && \
+					(pkg_config("PACKAGESITE") == NULL)) {
 				/*
 				 * Working on multiple remote repositories.
 				 * Detach the remote repositories from the main database
@@ -1899,7 +1901,8 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 	sql = sbuf_new_auto();
 	sbuf_cat(sql, basesql);
 
-	if (strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) {
+	if ((strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) && \
+			(pkg_config("PACKAGESITE") == NULL)) {
 		/*
 		 * Working on multiple remote repositories
 		 */
