@@ -1,7 +1,11 @@
+#include <sys/types.h>
+
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <libutil.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sysexits.h>
@@ -55,6 +59,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	STAILQ_INIT(&(*pkg)->conflicts);
 	STAILQ_INIT(&(*pkg)->scripts);
 	STAILQ_INIT(&(*pkg)->options);
+	STAILQ_INIT(&(*pkg)->repos);
 
 	(*pkg)->automatic = false;
 	(*pkg)->type = type;
@@ -88,6 +93,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_freeconflicts(pkg);
 	pkg_freescripts(pkg);
 	pkg_freeoptions(pkg);
+	pkg_freerepos(pkg);
 
 	pkg->type = type;
 }
@@ -110,6 +116,7 @@ pkg_free(struct pkg *pkg)
 	pkg_freeconflicts(pkg);
 	pkg_freescripts(pkg);
 	pkg_freeoptions(pkg);
+	pkg_freerepos(pkg);
 
 	free(pkg);
 }
@@ -837,6 +844,25 @@ pkg_freeoptions(struct pkg *pkg)
 	pkg->flags &= ~PKG_LOAD_OPTIONS;
 }
 
+void
+pkg_freerepos(struct pkg *pkg)
+{
+	struct pkg_repos_entry *re = NULL;
+
+	if (pkg == NULL)
+		return;
+
+	while (!STAILQ_EMPTY(&pkg->repos)) {
+		re = STAILQ_FIRST(&pkg->repos);
+		STAILQ_REMOVE_HEAD(&pkg->repos, entries);
+		
+		sbuf_delete(re->name);
+		sbuf_delete(re->url);
+
+		free(re);
+	}
+}
+
 int
 pkg_open(struct pkg **pkg_p, const char *path)
 {
@@ -972,3 +998,38 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	return (packing_finish(pack));
 }
 
+int
+pkg_addnewrepo(struct pkg *pkg, const char *reponame)
+{
+	struct pkg_repos_entry *re = NULL;
+	properties p = NULL;
+	int fd = -1;
+
+	assert(pkg != NULL && reponame != NULL);
+
+	if ((re = calloc(1, sizeof(struct pkg_repos_entry))) == NULL) {
+		EMIT_ERRNO("calloc", "pkg_repos_entry");
+		return (EPKG_FATAL);
+	}
+
+	/* 
+	 * We have the repo name, now we need to find it's URL
+	 * Using properties(3) here, as we know the 'key' already
+	 */
+	if ((fd = open("/etc/pkg/repositories", O_RDONLY)) < 0) {
+		EMIT_ERRNO("open", "/etc/pkg/repositories");
+		return (EPKG_FATAL);
+	}
+	
+	p = properties_read(fd);
+
+	sbuf_set(&re->name, reponame);
+	sbuf_set(&re->url, property_find(p, reponame));
+
+	STAILQ_INSERT_TAIL(&pkg->repos, re, entries);
+
+	properties_free(p);
+	close(fd);
+
+	return (EPKG_OK);
+}

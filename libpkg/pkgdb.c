@@ -444,19 +444,19 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 			fprintf(stderr, "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL	/!\\\n");
 			fprintf(stderr, "\t/!\\		     YOU HAVE BEEN WARNED		/!\\\n\n");
 
-			if (pkg_repos_new(&repos) != EPKG_OK) {
+			if (pkg_repos_conf_new(&repos) != EPKG_OK) {
 				EMIT_PKG_ERROR("pkg_repos_new: %s", "cannot create multi repo object");
 				return (EPKG_FATAL);
 			}
 
-			if (pkg_repos_load(repos) != EPKG_OK) {
+			if (pkg_repos_conf_load(repos) != EPKG_OK) {
 				EMIT_PKG_ERROR("pkg_repos_load: %s", "cannot load repositories");
 				return (EPKG_FATAL);
 			}
 
 			sql = sbuf_new_auto();
 
-			while (pkg_repos_next(repos, &re) == EPKG_OK) {
+			while (pkg_repos_conf_next(repos, &re) == EPKG_OK) {
 				repo_name = pkg_repos_get_name(re);
 				snprintf(remotepath, sizeof(remotepath), "%s/%s.sqlite",
 						dbdir, repo_name);
@@ -481,7 +481,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 			}
 
 			sbuf_delete(sql);
-			pkg_repos_free(repos);
+			pkg_repos_conf_free(repos);
 		} else {
 			/*
 			 * Working on a single remote repository
@@ -545,7 +545,7 @@ pkgdb_close(struct pkgdb *db)
 	const char *repo_name = NULL;
 	char   tmpbuf[BUFSIZ];
 	struct sbuf *sql = NULL;
-	struct pkgdb_it *dr_it = NULL;
+	struct pkgdb_it *it = NULL;
 
 	if (db == NULL)
 		return;
@@ -557,14 +557,14 @@ pkgdb_close(struct pkgdb *db)
 				 * Working on multiple remote repositories.
 				 * Detach the remote repositories from the main database
 				 */
-				if ((dr_it = pkgdb_repos_new(db)) == NULL) {
+				if ((it = pkgdb_repos_new(db)) == NULL) {
 					EMIT_PKG_ERROR("pkgdb_repos_new: %s", "cannot get the attached databases");
 					return;
 				}
 
 				sql = sbuf_new_auto();
 
-				while ((repo_name = pkgdb_repos_next(dr_it)) != NULL) {
+				while ((repo_name = pkgdb_repos_next(it)) != NULL) {
 					snprintf(tmpbuf, sizeof(tmpbuf), "DETACH '%s';", repo_name);
 					sbuf_cat(sql, tmpbuf);
 				}
@@ -574,7 +574,7 @@ pkgdb_close(struct pkgdb *db)
 				sqlite3_exec(db->sqlite, sbuf_get(sql), NULL, NULL, NULL);
 
 				sbuf_delete(sql);
-				pkgdb_it_free(dr_it);
+				pkgdb_it_free(it);
 			} else {
 				/*
 				 * Working on a single remote repository.
@@ -673,7 +673,9 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg->type = PKG_REMOTE;
 			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 11));
 			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 12));
+			pkg_addnewrepo(pkg, sqlite3_column_text(it->stmt, 15));
 		}
+
 		if (it->type == PKG_UPGRADE) {
 			pkg->type = PKG_UPGRADE;
 			pkg_set(pkg, PKG_NEWVERSION, sqlite3_column_text(it->stmt, 13));
@@ -1882,7 +1884,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 	char tmpbuf[BUFSIZ];
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = NULL;
-	struct pkgdb_it *dr_it = NULL;
+	struct pkgdb_it *it = NULL;
 	const char *basesql = "SELECT rowid, origin, name, version, comment, "
 				"desc, arch, arch, osversion, maintainer, www, "
 				"flatsize, pkgsize, cksum, path, dbname FROM ";
@@ -1902,13 +1904,13 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 		 * Working on multiple remote repositories
 		 */
 
-		if ((dr_it = pkgdb_repos_new(db)) == NULL) {
+		if ((it = pkgdb_repos_new(db)) == NULL) {
 			EMIT_PKG_ERROR("%s", "cannot get the attached databases");
 			return (NULL);
 		}
 
 		/* get the first repository entry */
-		if ((dbname = pkgdb_repos_next(dr_it)) != NULL) {
+		if ((dbname = pkgdb_repos_next(it)) != NULL) {
 			snprintf(tmpbuf, sizeof(tmpbuf), 
 					"( SELECT rowid, origin, name, version, comment, "
 					    "desc, arch, arch, osversion, maintainer, www, "
@@ -1921,11 +1923,11 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 			/* there are no remote databases attached */
 			sbuf_finish(sql);
 			sbuf_delete(sql);
-			pkgdb_it_free(dr_it);
+			pkgdb_it_free(it);
 			return (NULL);
 		}
 
-		while ((dbname = pkgdb_repos_next(dr_it)) != NULL) {
+		while ((dbname = pkgdb_repos_next(it)) != NULL) {
 			snprintf(tmpbuf, sizeof(tmpbuf), 
 					"UNION SELECT rowid, origin, name, version, comment, "
 					    "desc, arch, arch, osversion, maintainer, www, "
@@ -1938,7 +1940,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 
 		sbuf_cat(sql, ");");
 		sbuf_finish(sql);
-		pkgdb_it_free(dr_it);
+		pkgdb_it_free(it);
 	} else {
 		/* 
 		 * Working on a single remote repository

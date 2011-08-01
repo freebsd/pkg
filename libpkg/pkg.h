@@ -676,41 +676,61 @@ int ports_parse_plist(struct pkg *, char *);
 
 /**
  * Creates a new repository object
+ * This function is used creating a repository
+ * object that can later be used by pkg_repos_conf_load()
+ * for loading the repositories from file
  * @return EPKG_OK on success and EPKG_FATAL on error
  */
-int pkg_repos_new(struct pkg_repos **repos);
+int pkg_repos_conf_new(struct pkg_repos **repos);
 
 /**
  * Loads the remote repositories from file
  * @return EPKG_OK on success and EPKG_FATAL on error
  */
-int pkg_repos_load(struct pkg_repos *repos);
+int pkg_repos_conf_load(struct pkg_repos *repos);
 
 /**
- * Adds a repository entry
+ * Adds a repository entry found from the repositories file
  * @param repos A valid repository object as received from pkg_repos_new()
  * @param re A valid repository entry object
  * @return EPKG_OK on success and EPKG_FATAL on error
  */
-int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
+int pkg_repos_conf_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
 
 /**
- * Get the next repository
- * @param repos A valid repository object as returned by pkg_repos_new()
+ * Adds a new repository entry to a package object
+ * @param pkg A valid package object
+ * @param reponame The name of the repository to be added
+ * @return EPKG_OK on success and EPKG_FATAL on error
+ */
+int pkg_addnewrepo(struct pkg *pkg, const char *reponame);
+
+/**
+ * Get the next repository from the configuration file
+ * @param repos A valid repository object as returned by pkg_repos_conf_new()
  * @param re A pointer to a repository entry to save the result. Must be set to
  * NULL for the first repository entry
  * @return EPKG_OK on success and EPKG_END if end of repository is reached
  */
-int pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
+int pkg_repos_conf_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
 
 /**
- * Get the next ATTACH'ed database
+ * Get the next database, which is ATTACH'ed to the main one
  * @param dr_it A valid pkgdb_it object as received from
  * pkgdb_repos_new()
  * @return A string containing the next database attached
  * to the main one, or NULL if end of list is reached.
  */
 const char * pkgdb_repos_next(struct pkgdb_it *dr_it);
+
+/**
+ * Get the next repository entry in a package object
+ * @param pkg A valid package object
+ * @param re A pointer to a repository entry to save the result. Must be set to
+ * NULL for the first repository entry
+ * @return EPKG_OK on success and EPKG_END if end of repository is reached
+ */
+int pkg_repos_next(struct pkg *pkg, struct pkg_repos_entry **re);
 
 /**
  * Returns the name associated with a repository entry
@@ -733,7 +753,7 @@ unsigned int pkg_repos_get_line(struct pkg_repos_entry *re);
 /**
  * Free the memory used by the repository objects
  */
-void pkg_repos_free(struct pkg_repos *repos);
+void pkg_repos_conf_free(struct pkg_repos *repos);
 
 /**
  * @todo Document

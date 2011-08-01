@@ -11,6 +11,28 @@
 
 static int pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re);
 
+static int
+pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re)
+{
+        struct pkg_repos_entry *next = NULL;
+
+        assert(repos != NULL && re != NULL);
+
+        /* 
+         * Find if a repository name already exists.
+         * NOTE: The 'repo' name is always reserved, 
+         * as it is being used by default when 
+	 * working on a single remote repository,
+	 * which means that PACKAGESITE is defined
+         */
+        while (pkg_repos_conf_next(repos, &next) == EPKG_OK)
+                if ((strcmp(pkg_repos_get_name(re), pkg_repos_get_name(next)) == 0) || \
+                    (strcmp(pkg_repos_get_name(re), "repo") == 0))
+                        return (EPKG_FATAL);
+
+        return (EPKG_OK);
+}
+
 int
 pkg_repo_fetch(struct pkg *pkg)
 {
@@ -63,7 +85,7 @@ pkg_repo_fetch(struct pkg *pkg)
 }
 
 int
-pkg_repos_new(struct pkg_repos **repos)
+pkg_repos_conf_new(struct pkg_repos **repos)
 {
         if ((*repos = calloc(1, sizeof(struct pkg_repos))) == NULL) {
                 EMIT_ERRNO("calloc", "pkg_repos");
@@ -76,7 +98,7 @@ pkg_repos_new(struct pkg_repos **repos)
 }
 
 int
-pkg_repos_load(struct pkg_repos *repos)
+pkg_repos_conf_load(struct pkg_repos *repos)
 {
         FILE *fp = NULL;
         char *repo_buf[MAXPATHLEN];
@@ -123,7 +145,7 @@ pkg_repos_load(struct pkg_repos *repos)
 		sbuf_set(&re->url, repo_buf[1]);
                 re->line = line;
 
-                pkg_repos_add(repos, re);
+                pkg_repos_conf_add(repos, re);
         }
 
         fclose(fp);
@@ -132,7 +154,7 @@ pkg_repos_load(struct pkg_repos *repos)
 }
 
 int
-pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re)
+pkg_repos_conf_add(struct pkg_repos *repos, struct pkg_repos_entry *re)
 {
         assert(repos != NULL && re != NULL);
 
@@ -153,7 +175,7 @@ pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re)
 }
 
 int
-pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re)
+pkg_repos_conf_next(struct pkg_repos *repos, struct pkg_repos_entry **re)
 {
         assert(repos != NULL);
 
@@ -193,7 +215,7 @@ pkg_repos_get_line(struct pkg_repos_entry *re)
 }
 
 void
-pkg_repos_free(struct pkg_repos *repos)
+pkg_repos_conf_free(struct pkg_repos *repos)
 {
         struct pkg_repos_entry *re1, *re2;
 
@@ -214,25 +236,18 @@ pkg_repos_free(struct pkg_repos *repos)
         free(repos);
 }
 
-static int
-pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re)
+int
+pkg_repos_next(struct pkg *pkg, struct pkg_repos_entry **re)
 {
-        struct pkg_repos_entry *next = NULL;
+	assert(pkg != NULL);
 
-        assert(repos != NULL && re != NULL);
+	if (*re == NULL)
+		*re = STAILQ_FIRST(&pkg->repos);
+	else
+		*re = STAILQ_NEXT(*re, entries);
 
-        /* 
-         * Find if a repository name already exists.
-         * NOTE: The 'repo' name is always reserved, 
-         * as it is being used by default when 
-	 * working on a single remote repository,
-	 * which means that PACKAGESITE is defined
-         */
-        while (pkg_repos_next(repos, &next) == EPKG_OK)
-                if ((strcmp(pkg_repos_get_name(re), pkg_repos_get_name(next)) == 0) || \
-                    (strcmp(pkg_repos_get_name(re), "repo") == 0))
-                        return (EPKG_FATAL);
-
-        return (EPKG_OK);
+	if (*re == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
 }
-
