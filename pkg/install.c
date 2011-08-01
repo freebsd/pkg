@@ -71,11 +71,10 @@ exec_install(int argc, char **argv)
 		if (multi_repos == 1) {
 			re = NULL;
 			pkg_repos_next(pkg, &re);
-			printf(" [ in repository %s ]", pkg_repos_get_name(re));
+			printf(" [ from repository %s ]", pkg_repos_get_name(re));
 		}
 
 		printf("\n");
-
 	}
 
 	retcode = pkg_jobs_apply(jobs, 0);
