@@ -93,7 +93,6 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_freeconflicts(pkg);
 	pkg_freescripts(pkg);
 	pkg_freeoptions(pkg);
-	pkg_freerepos(pkg);
 
 	pkg->type = type;
 }
