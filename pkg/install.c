@@ -76,6 +76,7 @@ exec_install(int argc, char **argv)
 
 		printf("\n");
 	}
+	printf("\n");
 
 	retcode = pkg_jobs_apply(jobs, 0);
 

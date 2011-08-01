@@ -38,9 +38,10 @@ pkg_repo_fetch(struct pkg *pkg)
 {
 	char dest[MAXPATHLEN];
 	char cksum[65];
-	char *path;
-	char *url;
+	char *path = NULL;
+	char *url = NULL;
 	int retcode = EPKG_OK;
+	struct pkg_repos_entry *re = NULL;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE ||
 		(pkg->type & PKG_UPGRADE) == PKG_UPGRADE);
@@ -61,8 +62,22 @@ pkg_repo_fetch(struct pkg *pkg)
 	if ((retcode = mkdirs(path)) != 0)
 		goto cleanup;
 
-	asprintf(&url, "%s/%s", pkg_config("PACKAGESITE"),
+	if ((strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) && \
+			(pkg_config("PACKAGESITE") == NULL)) {
+		/* 
+		 * PACKAGESITE is not set
+		 * Get the URL from the package repository entry
+		 */
+
+		pkg_repos_next(pkg, &re);
+		
+		asprintf(&url, "%s/%s", pkg_repos_get_url(re),
+				pkg_get(pkg, PKG_REPOPATH));
+	} else {
+		/* PACKAGESITE is set */
+		asprintf(&url, "%s/%s", pkg_config("PACKAGESITE"),
 			 pkg_get(pkg, PKG_REPOPATH));
+	}
 
 	retcode = pkg_fetch_file(url, dest);
 	free(url);
