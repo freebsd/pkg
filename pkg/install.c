@@ -25,8 +25,10 @@ exec_install(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
+	struct pkg_repos_entry *re = NULL;
 	int retcode = EPKG_OK;
 	int i;
+	int multi_repos = 0;
 
 	if (argc < 2) {
 		usage_install();
@@ -59,9 +61,22 @@ exec_install(int argc, char **argv)
 	/* print a summary before applying the jobs */
 	pkg = NULL;
 	printf("The following packages will be installed:\n");
+
+	if ((strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0) && (pkg_config("PACKAGESITE") == NULL))
+		multi_repos = 1;
+
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		printf("\t%s-%s", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		
+		if (multi_repos == 1) {
+			re = NULL;
+			pkg_repos_next(pkg, &re);
+			printf(" [ from repository %s ]", pkg_repos_get_name(re));
+		}
+
+		printf("\n");
 	}
+	printf("\n");
 
 	retcode = pkg_jobs_apply(jobs, 0);
 

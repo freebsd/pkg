@@ -5,3 +5,4 @@
 PACKAGESITE	= ftp://ftp.freebsd.org/pub/pkgng
 PKG_DBDIR	= /var/db/pkg
 PKG_DBCACHE	= /var/cache/pkg
+PKG_MULTIREPOS	= false

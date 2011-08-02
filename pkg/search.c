@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 #include <libutil.h>
 #include <sysexits.h>
@@ -23,10 +24,12 @@ exec_search(int argc, char **argv)
 	int  retcode = EPKG_OK;
 	unsigned int field = REPO_SEARCH_NAME;
 	int ch;
+	int multi_repos = 0;
 	char size[7];
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
+	struct pkg_repos_entry *re = NULL;
 
 	while ((ch = getopt(argc, argv, "gxXcd")) != -1) {
 		switch (ch) {
@@ -71,21 +74,32 @@ exec_search(int argc, char **argv)
 		goto cleanup;
 	}
 
+	if (((strcmp(pkg_config("PKG_MULTIREPOS"), "true") == 0)) && (pkg_config("PACKAGESITE") == NULL))
+		multi_repos = 1;
+
 	while (( retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		printf("Name: %s\n", pkg_get(pkg, PKG_NAME));
-		printf("Version: %s\n", pkg_get(pkg, PKG_VERSION));
-		printf("Origin: %s\n", pkg_get(pkg, PKG_ORIGIN));
-		printf("Maintainer: %s\n", pkg_get(pkg, PKG_MAINTAINER));
-		printf("WWW: %s\n", pkg_get(pkg, PKG_WWW));
-		printf("Comment: %s\n", pkg_get(pkg, PKG_COMMENT));
+		printf("Name       : %s\n", pkg_get(pkg, PKG_NAME));
+		printf("Version    : %s\n", pkg_get(pkg, PKG_VERSION));
+		printf("Origin     : %s\n", pkg_get(pkg, PKG_ORIGIN));
+		printf("Arch:      : %s\n", pkg_get(pkg, PKG_ARCH));
+		printf("Maintainer : %s\n", pkg_get(pkg, PKG_MAINTAINER));
+		printf("WWW        : %s\n", pkg_get(pkg, PKG_WWW));
+		printf("Comment    : %s\n", pkg_get(pkg, PKG_COMMENT));
+
+		if (multi_repos == 1) {
+			pkg_repos_next(pkg, &re);
+			printf("Repository : %s [%s]\n", pkg_repos_get_name(re), pkg_repos_get_url(re));
+		}
+
 		humanize_number(size, sizeof(size), pkg_new_flatsize(pkg), "B", HN_AUTOSCALE, 0);
-		printf("Flat size: %s\n", size);
+		printf("Flat size  : %s\n", size);
 		humanize_number(size, sizeof(size), pkg_new_pkgsize(pkg), "B", HN_AUTOSCALE, 0);
-		printf("Pkg size: %s\n", size);
+		printf("Pkg size   : %s\n", size);
 		printf("\n");
 	}
 
 	cleanup:
+	pkg_free(pkg);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 

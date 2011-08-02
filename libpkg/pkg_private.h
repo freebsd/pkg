@@ -36,6 +36,7 @@ struct pkg {
 	STAILQ_HEAD(conflicts, pkg_conflict) conflicts;
 	STAILQ_HEAD(scripts, pkg_script) scripts;
 	STAILQ_HEAD(options, pkg_option) options;
+	STAILQ_HEAD(repos_entry, pkg_repos_entry) repos;
 	int flags;
 	int64_t rowid;
 	lic_t licenselogic;
@@ -111,10 +112,15 @@ struct pkg_jobs_node {
 	LIST_ENTRY(pkg_jobs_node) entries;
 };
 
-struct pkg_remote_repo {
-	char *name;
-	char *url;
-	STAILQ_ENTRY(pkg_remote_repo) entries;
+struct pkg_repos {
+	struct pkg_repos_entry {
+		struct sbuf *name;
+		struct sbuf *url;
+		unsigned int line;
+		STAILQ_ENTRY(pkg_repos_entry) entries;
+	} re;
+
+	STAILQ_HEAD(repos, pkg_repos_entry) nodes;
 };
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
@@ -127,6 +133,7 @@ void pkg_freedirs(struct pkg *pkg);
 void pkg_freeconflicts(struct pkg *pkg);
 void pkg_freescripts(struct pkg *pkg);
 void pkg_freeoptions(struct pkg *pkg);
+void pkg_freerepos(struct pkg *pkg);
 
 int pkg_dep_new(struct pkg_dep **);
 void pkg_dep_free(struct pkg_dep *);
