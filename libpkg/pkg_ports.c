@@ -28,8 +28,10 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	off_t sz = 0;
 	const char *slash;
 	int64_t flatsize = 0;
+	bool filestarted = false; /* ugly workaround for easy_install ports */
 	struct sbuf *exec_scripts = sbuf_new_auto();
 	struct sbuf *unexec_scripts = sbuf_new_auto();
+	struct sbuf *pre_unexec_scripts = sbuf_new_auto();
 
 	buf = NULL;
 	p = NULL;
@@ -87,9 +89,15 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 						comment[0] = '#';
 						comment[1] = '\0';
 					}
-					if (sbuf_len(unexec_scripts) == 0)
-						sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
-					sbuf_printf(unexec_scripts, "%s%s\n",comment, cmd);
+					if (filestarted) {
+						if (sbuf_len(unexec_scripts) == 0)
+							sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
+						sbuf_printf(unexec_scripts, "%s%s\n",comment, cmd);
+					} else {
+						if (sbuf_len(pre_unexec_scripts) == 0)
+							sbuf_cat(pre_unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
+						sbuf_printf(pre_unexec_scripts, "%s%s\n",comment, cmd);
+					}
 
 					/* workaround to detect the @dirrmtry */
 					if (comment[0] == '#') {
@@ -150,6 +158,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				EMIT_PKG_ERROR("%s is deprecated, ignoring", plist_p);
 			}
 		} else if ((len = strlen(plist_p)) > 0){
+			filestarted = true;
 			buf = plist_p;
 			last_plist_file = buf;
 			sha256[0] = '\0';
@@ -186,6 +195,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	}
 
 	pkg_setflatsize(pkg, flatsize);
+
+	if (sbuf_len(pre_unexec_scripts) > 0) {
+		sbuf_finish(unexec_scripts);
+		pkg_appendscript(pkg, sbuf_data(pre_unexec_scripts), PKG_SCRIPT_PRE_DEINSTALL);
+	}
 	if (sbuf_len(exec_scripts) > 0) {
 		sbuf_finish(exec_scripts);
 		pkg_appendscript(pkg, sbuf_data(exec_scripts), PKG_SCRIPT_POST_INSTALL);
@@ -195,6 +209,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		pkg_appendscript(pkg, sbuf_data(unexec_scripts), PKG_SCRIPT_POST_DEINSTALL);
 	}
 
+	sbuf_delete(pre_unexec_scripts);
 	sbuf_delete(exec_scripts);
 	sbuf_delete(unexec_scripts);
 

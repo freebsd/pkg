@@ -66,10 +66,10 @@ fake-pkg:
 .if !defined(DISABLE_CONFLICTS)
 	@${ECHO_CMD} -n "conflicts: [" >> ${MANIFESTF}
 .for conflicts in ${CONFLICTS}
-	@${ECHO_CMD} -n "${conflicts}," >> ${MANIFESTF}
+	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
 .endfor
 .for conflicts in ${CONFLICTS_INSTALL}
-	@${ECHO_CMD} -n "${conflicts}," >> ${MANIFESTF}
+	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
 .endif
