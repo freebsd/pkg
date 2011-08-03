@@ -34,8 +34,20 @@ exec_autoremove(int argc, char **argv)
 	char size[7];
 	int ch, yes = 0;
 
+	while ((ch = getopt(argc, argv, "y")) != -1) {
+		switch (ch) {
+			case 'y':
+				yes = 1;
+				break;
+			default:
+				break;
+		}
+        }
+	argc -= optind;
+	argv += optind;
+
 	(void) argv;
-	if (argc < 1 || argc > 2) {
+	if (argc != 0) {
 		usage_autoremove();
 		return (EX_USAGE);
 	}
@@ -44,18 +56,6 @@ exec_autoremove(int argc, char **argv)
 		warnx("autoremove can only be done as root");
 		return (EX_NOPERM);
 	}
-
-        while ((ch = getopt(argc, argv, "y")) != -1) {
-                switch (ch) {
-                        case 'y':
-                                yes = 1;
-                                break;
-                        default:
-                                break;
-                }
-        }
-	argc -= optind;
-	argv += optind;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
