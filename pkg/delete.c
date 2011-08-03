@@ -47,7 +47,7 @@ exec_delete(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc < 1) {
+	if (argc < 1 && match != MATCH_ALL) {
 		usage_delete();
 		return (EX_USAGE);
 	}
