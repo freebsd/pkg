@@ -9,6 +9,25 @@
 #include "utils.h"
 
 int
+query_yesno(const char *msg)
+{
+        int c, r = 0;
+
+        printf(msg);
+
+        c = getchar();
+        if (c == 'y' || c == 'Y')
+                r = 1;
+        else if (c == '\n' || c == EOF)
+                return 0;
+
+        while((c = getchar()) != '\n' && c != EOF)
+                continue;
+
+        return r;
+}
+
+int
 mkdirs(const char *_path)
 {
 	char path[MAXPATHLEN];
