@@ -13,8 +13,8 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "usage: pkg delete [-f] <pkg-name> <...>\n");
-	fprintf(stderr, "       pkg delete -a\n\n");
+	fprintf(stderr, "usage: pkg delete [-yf] <pkg-name> <...>\n");
+	fprintf(stderr, "       pkg delete [-y] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
 
@@ -29,15 +29,19 @@ exec_delete(int argc, char **argv)
 	int i, ch;
 	int flags = PKG_LOAD_BASIC;
 	int force = 0;
+	int yes = 0;
 	int retcode = EPKG_OK;
 
-	while ((ch = getopt(argc, argv, "af")) != -1) {
+	while ((ch = getopt(argc, argv, "afy")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
 				break;
 			case 'f':
 				force = 1;
+				break;
+			case 'y':
+				yes = 1;
 				break;
 			default:
 				usage_delete();
@@ -101,9 +105,11 @@ exec_delete(int argc, char **argv)
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) 
 		printf("\t%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
-	if (query_yesno("\nProceed with deinstalling packages [y/N]: ")) {
-		pkg = NULL;
-		if ((retcode = pkg_jobs_apply(jobs, force)) != EPKG_OK) 
+	if (yes == 0)
+		yes = query_yesno("\nProceed with deinstalling packages [y/N]: ");
+
+	if (yes == 1) {
+		if ((retcode = pkg_jobs_apply(jobs, force)) != EPKG_OK)
 			goto cleanup;
 	} else
 		goto cleanup;
