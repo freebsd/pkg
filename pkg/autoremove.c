@@ -18,7 +18,7 @@
 void
 usage_autoremove(void)
 {
-	fprintf(stderr, "usage pkg autoremove\n\n");
+	fprintf(stderr, "usage pkg autoremove [-y]\n\n");
 	fprintf(stderr, "For more information see 'pkg help autoremove'.\n");
 }
 
@@ -28,12 +28,14 @@ exec_autoremove(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
+	struct pkg_jobs *jobs = NULL;
 	int retcode = EPKG_OK;
 	int64_t oldsize = 0, newsize = 0;
 	char size[7];
+	int ch, yes = 0;
 
 	(void) argv;
-	if (argc != 1) {
+	if (argc < 1 || argc > 2) {
 		usage_autoremove();
 		return (EX_USAGE);
 	}
@@ -43,8 +45,25 @@ exec_autoremove(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
+        while ((ch = getopt(argc, argv, "y")) != -1) {
+                switch (ch) {
+                        case 'y':
+                                yes = 1;
+                                break;
+                        default:
+                                break;
+                }
+        }
+	argc -= optind;
+	argv += optind;
+
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
+	}
+
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
+		pkgdb_close(db);
+		return (EPKG_FATAL);
 	}
 
 	if ((it = pkgdb_query_autoremove(db)) == NULL) {
@@ -52,34 +71,41 @@ exec_autoremove(int argc, char **argv)
 		goto cleanup;
 	}
 
-	printf("Packages to be autoremoved: \n");
 	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		oldsize += pkg_flatsize(pkg);
 		newsize += pkg_new_flatsize(pkg);
-		printf("\t%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		pkg_jobs_add(jobs, pkg);
+		pkg = NULL;
 	}
-	printf("\n");
-	pkgdb_it_free(it);
 
 	if (oldsize > newsize) {
 		newsize *= -1;
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-		printf("the autoremove will save %s\n", size);
 	} else {
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("the autoremove will require %s more space\n", size);
 	}
 
-	if (query_yesno("Proceed (y|N): ")) {
-		it = pkgdb_query_autoremove(db);
-		while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-			if (pkg_delete(pkg, db, 0) != EPKG_OK) {
-				retcode++;
-			}
-		}
+	/* check if there is something to be autoremoved */
+	pkg = NULL;
+	if (pkg_jobs(jobs, &pkg) != EPKG_OK)
+		goto cleanup;
 
-	} else {
-		printf("Aborted\n");
+	pkg = NULL;
+	printf("Packages to be autoremoved: \n");
+	while (pkg_jobs(jobs, &pkg) == EPKG_OK)
+		printf("\t%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+
+	if (oldsize > newsize)
+		printf("\nThe autoremove will save %s\n", size);
+	else
+		printf("\nThe autoremove will require %s more space\n", size);
+
+	if (yes == 0)
+		yes = query_yesno("\nProceed with autoremove of packages [y/N]: ");
+
+	if (yes == 1) {
+		if ((retcode = pkg_jobs_apply(jobs, 1)) != EPKG_OK)
+			goto cleanup;
 	}
 
 	if (pkgdb_compact(db) != EPKG_OK) { 
@@ -88,6 +114,8 @@ exec_autoremove(int argc, char **argv)
 
 	cleanup:
 	pkg_free(pkg);
+	pkg_jobs_free(jobs);
+	pkgdb_it_free(it);
 	pkgdb_close(db);
 
 	return (retcode);

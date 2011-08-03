@@ -61,11 +61,11 @@ exec_delete(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 	
-	if ((retcode = pkgdb_open(&db, PKGDB_DEFAULT)) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
 
-	if ((retcode = pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db)) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EPKG_FATAL);
 	}
