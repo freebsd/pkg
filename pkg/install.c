@@ -16,7 +16,7 @@
 void
 usage_install(void)
 {
-	fprintf(stderr, "usage: pkg install <pkg-name>\n");
+	fprintf(stderr, "usage: pkg install [-y] <pkg-name> <...>\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -27,7 +27,7 @@ exec_install(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	int retcode = EPKG_OK;
-	int i;
+	int i, ch, yes = 0;
 
 	if (argc < 2) {
 		usage_install();
@@ -39,6 +39,18 @@ exec_install(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
+	while ((ch = getopt(argc, argv, "y")) != -1) {
+		switch (ch) {
+			case 'y':
+				yes = 1;
+				break;
+			default:
+				break;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		return (EX_IOERR);
 	}
@@ -48,7 +60,7 @@ exec_install(int argc, char **argv)
 		goto cleanup;
 	}
 
-	for (i = 1; i < argc; i++) {
+	for (i = 0; i < argc; i++) {
 		if ((pkg = pkgdb_query_remote(db, argv[i])) == NULL) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
@@ -64,7 +76,10 @@ exec_install(int argc, char **argv)
 		printf("\t%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 	}
 
-	if (query_yesno("\nProceed with installing packages [y/N]: "))
+	if (yes == 0)
+		yes = query_yesno("\nProceed with installing packages [y/N]: ");
+
+	if (yes == 1)
 		retcode = pkg_jobs_apply(jobs, 0);
 
 	cleanup:
