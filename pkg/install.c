@@ -10,6 +10,7 @@
 
 #include <pkg.h>
 
+#include "utils.h"
 #include "install.h"
 
 void
@@ -60,10 +61,11 @@ exec_install(int argc, char **argv)
 	pkg = NULL;
 	printf("The following packages will be installed:\n");
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		printf("\t%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 	}
 
-	retcode = pkg_jobs_apply(jobs, 0);
+	if (query_yesno("\nProceed with installing packages [y/N]: "))
+		retcode = pkg_jobs_apply(jobs, 0);
 
 	cleanup:
 	

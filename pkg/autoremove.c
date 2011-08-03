@@ -12,26 +12,8 @@
 
 #include <pkg.h>
 
+#include "utils.h"
 #include "autoremove.h"
-
-static int
-query_yesno(const char *msg)
-{
-	int c, r = 0;
-
-	printf(msg);
-
-	c = getchar();
-	if (c == 'y' || c == 'Y')
-		r = 1;
-	else if (c == '\n' || c == EOF)
-		return 0;
-
-	while((c = getchar()) != '\n' && c != EOF)
-		continue;
-
-	return r;
-}
 
 void
 usage_autoremove(void)
