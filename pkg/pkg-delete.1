@@ -23,10 +23,10 @@
 .Nd deletes a package from the database and the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl a 
+.Op Fl ay
 .Nm
-.Op Fl f
-.Ar <pkg-name>
+.Op Fl gxXyf
+.Ar <pkg-name> <...>
 .Sh DESCRIPTION
 .Nm
 is used for deleting previously installed packages and removes them from the 
@@ -35,10 +35,18 @@ database.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl f Ar <pkg-name>
-Forces a package to be removed.
+.It Fl f
+Forces packages to be removed.
 .It Fl a
 Deletes all installed packages from the system and the database.
+.It Fl y
+Assume yes when asked for confirmation before package deletion.
+.It Fl g
+Treat the package names as shell glob patterns.
+.It Fl x
+Treat the package names as regular expressions.
+.It Fl X
+Treat the package names as extended regular expressions.
 .El
 .Sh WARNING
 .Sh ENVRIOMENT
