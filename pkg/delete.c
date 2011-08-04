@@ -102,7 +102,7 @@ exec_delete(int argc, char **argv)
 
 	pkg = NULL;
 	printf("The following packages will be deinstalled:\n");
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK) 
+	while (pkg_jobs(jobs, &pkg) == EPKG_OK)
 		printf("\t%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
 	if (yes == 0)

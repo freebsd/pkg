@@ -58,6 +58,20 @@
 	_EV_EMIT; \
 	_EV_END
 
+#define EMIT_DEINSTALL_BEGIN(p) \
+	_EV_START; \
+	ev.type = PKG_EVENT_DEINSTALL_BEGIN; \
+	ev.e_deinstall_begin.pkg = p; \
+	_EV_EMIT; \
+	_EV_END
+
+#define EMIT_DEINSTALL_FINISHED(p) \
+	_EV_START; \
+	ev.type = PKG_EVENT_DEINSTALL_FINISHED; \
+	ev.e_install_finished.pkg = p; \
+	_EV_EMIT; \
+	_EV_END
+
 #define EMIT_MISSING_DEP(p, d) \
 	_EV_START; \
 	ev.type = PKG_EVENT_MISSING_DEP; \

@@ -659,6 +659,40 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 }
 
 int
+pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res)
+{
+	sqlite3_stmt *stmt;
+	int ret;
+
+	const char sql[] = ""
+		"SELECT count(package_id) FROM pkg_directories, directories "
+		"WHERE directory_id = directories.id AND directories.path = ?1;";
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_text(stmt, 1, dir, -1, SQLITE_TRANSIENT);
+
+	ret = sqlite3_step(stmt);
+
+	if (ret == SQLITE_ROW)
+		*res = sqlite3_column_int64(stmt, 0);
+
+	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_ROW) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+	
+	return (EPKG_OK);
+
+
+}
+
+int
 pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt;
@@ -1515,7 +1549,8 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 	return (EPKG_OK);
 }
 
-static int sql_exec(sqlite3 *s, const char *sql)
+static int
+sql_exec(sqlite3 *s, const char *sql)
 {
 	char *errmsg;
 
@@ -1528,7 +1563,9 @@ static int sql_exec(sqlite3 *s, const char *sql)
 	return (EPKG_OK);
 }
 
-static int get_pragma(sqlite3 *s, const char *sql, int64_t *res) {
+static int
+get_pragma(sqlite3 *s, const char *sql, int64_t *res)
+{
 	sqlite3_stmt *stmt;
 	int ret;
 
