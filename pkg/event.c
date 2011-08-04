@@ -44,6 +44,12 @@ event_callback(void *data __unused, struct pkg_event *ev)
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		printf(" done\n");
 		break;
+	case PKG_EVENT_UPGRADE_BEGIN:
+		printf("Upgrading %s from %s to %s...",
+				pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME),
+				pkg_get(ev->e_upgrade_finished.pkg, PKG_VERSION),
+				pkg_get(ev->e_upgrade_finished.pkg, PKG_NEWVERSION));
+		break;
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;
 		fprintf(stderr, "%s-%s is required by:", pkg_get(pkg, PKG_NAME),

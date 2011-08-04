@@ -134,7 +134,8 @@ typedef enum _pkg_script_t {
 
 typedef enum _pkg_jobs_t {
 	PKG_JOBS_INSTALL,
-	PKG_JOBS_DEINSTALL
+	PKG_JOBS_DEINSTALL,
+	PKG_JOBS_UPGRADE
 } pkg_jobs_t;
 
 /**
@@ -593,6 +594,7 @@ int pkgdb_compact(struct pkgdb *db);
  * @return An error code.
  */
 int pkg_add(struct pkgdb *db, const char *path);
+int pkg_add2(struct pkgdb *db, const char *path, int upgrade);
 
 /**
  * Allocate a new pkg_jobs.
@@ -649,6 +651,9 @@ int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
  * @return An error code.
  */
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
+int pkg_delete2(struct pkg *pkg, struct pkgdb *db, int force, int upgrade);
+
+int pkg_upgrade(struct pkgdb *db, struct pkg *pkg, const char *path);
 
 int pkg_repo_fetch(struct pkg *pkg);
 
@@ -696,6 +701,8 @@ typedef enum {
 	PKG_EVENT_INSTALL_FINISHED,
 	PKG_EVENT_DEINSTALL_BEGIN,
 	PKG_EVENT_DEINSTALL_FINISHED,
+	PKG_EVENT_UPGRADE_BEGIN,
+	PKG_EVENT_UPGRADE_FINISHED,
 	PKG_EVENT_FETCHING,
 	/* errors */
 	PKG_EVENT_ERROR,
@@ -738,6 +745,12 @@ struct pkg_event {
 		struct {
 			struct pkg *pkg;
 		} e_install_finished;
+		struct {
+			struct pkg *pkg;
+		} e_upgrade_begin;
+		struct {
+			struct pkg *pkg;
+		} e_upgrade_finished;
 		struct {
 			struct pkg *pkg;
 		} e_install_end;

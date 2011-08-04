@@ -72,6 +72,20 @@
 	_EV_EMIT; \
 	_EV_END
 
+#define EMIT_UPGRADE_BEGIN(p) \
+	_EV_START; \
+	ev.type = PKG_EVENT_UPGRADE_BEGIN; \
+	ev.e_upgrade_begin.pkg = p; \
+	_EV_EMIT; \
+	_EV_END
+
+#define EMIT_UPGRADE_FINISHED(p) \
+	_EV_START; \
+	ev.type = PKG_EVENT_UPGRADE_FINISHED; \
+	ev.e_upgrade_finished.pkg = p; \
+	_EV_EMIT; \
+	_EV_END
+
 #define EMIT_MISSING_DEP(p, d) \
 	_EV_START; \
 	ev.type = PKG_EVENT_MISSING_DEP; \
