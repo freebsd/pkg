@@ -82,6 +82,12 @@ do_extract(struct archive *a, struct archive_entry *ae)
 int
 pkg_add(struct pkgdb *db, const char *path)
 {
+	return (pkg_add2(db, path, false));
+}
+
+int
+pkg_add2(struct pkgdb *db, const char *path, int upgrade)
+{
 	struct archive *a;
 	struct archive_entry *ae;
 	struct pkgdb_it *it;
@@ -188,12 +194,14 @@ pkg_add(struct pkgdb *db, const char *path)
 	if (retcode != EPKG_OK || pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)
 		goto cleanup_reg;
 
-	EMIT_INSTALL_BEGIN(pkg);
+	if (!upgrade)
+		EMIT_INSTALL_BEGIN(pkg);
 
 	/*
 	 * Execute pre-install scripts
 	 */
-	pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
+	if (!upgrade)
+		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	/*
 	 * Extract the files on disk.
@@ -208,9 +216,15 @@ pkg_add(struct pkgdb *db, const char *path)
 	/*
 	 * Execute post install scripts
 	 */
-	pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+	if (upgrade)
+		pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
+	else
+		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
-	EMIT_INSTALL_FINISHED(pkg);
+	if (upgrade)
+		EMIT_UPGRADE_FINISHED(pkg);
+	else
+		EMIT_INSTALL_FINISHED(pkg);
 
 	cleanup_reg:
 	pkgdb_register_finale(db, retcode);

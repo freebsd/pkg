@@ -100,6 +100,41 @@ pkg_jobs_install(struct pkg_jobs *j)
 }
 
 static int
+pkg_jobs_upgrade(struct pkg_jobs *j)
+{
+	struct pkg *p = NULL;
+	struct pkg *oldpkg = NULL;
+	struct pkgdb_it *it;
+	const char *cachedir;
+	char path[MAXPATHLEN];
+	int retcode;
+
+	/* Fetch */
+	while (pkg_jobs(j, &p) == EPKG_OK) {
+		if (pkg_repo_fetch(p) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
+	cachedir = pkg_config("PKG_CACHEDIR");
+	p = NULL;
+	while (pkg_jobs(j, &p) == EPKG_OK) {
+		/* get the installed pkg */
+		it = pkgdb_query(j->db, pkg_get(p, PKG_ORIGIN), MATCH_EXACT);
+		pkgdb_it_next(it, &oldpkg, PKG_LOAD_BASIC);
+		snprintf(path, sizeof(path), "%s/%s", cachedir,
+				pkg_get(p, PKG_REPOPATH));
+
+		retcode = pkg_upgrade(j->db, oldpkg, path);
+		if (retcode != EPKG_OK)
+			return (retcode);
+	}
+
+	pkgdb_it_free(it);
+	pkg_free(oldpkg);
+	return (EPKG_OK);
+}
+
+static int
 pkg_jobs_deinstall(struct pkg_jobs *j, int force)
 {
 	struct pkg *p = NULL;
@@ -121,6 +156,8 @@ pkg_jobs_apply(struct pkg_jobs *j, int force)
 		return (pkg_jobs_install(j));
 	if (j->type == PKG_JOBS_DEINSTALL)
 		return (pkg_jobs_deinstall(j, force));
+	if (j->type == PKG_JOBS_UPGRADE)
+		return (pkg_jobs_upgrade(j));
 
 	EMIT_PKG_ERROR("%s", "bad jobs argument");
 	return (EPKG_FATAL);
