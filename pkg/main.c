@@ -5,6 +5,9 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <sys/param.h>
+#include <sys/jail.h>
+#include <jail.h>
 
 #include <pkg.h>
 
@@ -55,7 +58,7 @@ const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: pkg [-d] <command> [<args>]\n\n");
+	fprintf(stderr, "usage: pkg [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
 	fprintf(stderr, "Global options supported:\n");
 	fprintf(stderr, "  -d: Increment debug level\n\n");
 	fprintf(stderr, "Commands supported:\n");
@@ -115,6 +118,9 @@ main(int argc, char **argv)
 	unsigned int i;
 	struct commands *command = NULL;
 	unsigned int ambiguous = 0;
+	const char *chroot_path = NULL;
+	int jid;
+	const char *jail_str = NULL;
 	size_t len;
 	char ch;
 	int debug = 0;
@@ -124,10 +130,16 @@ main(int argc, char **argv)
 
 	pkg_event_register(&event_callback, NULL);
 
-	while ((ch = getopt(argc, argv, "d")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:")) != -1) {
 		switch(ch) {
 			case 'd':
 				debug++;
+				break;
+			case 'c':
+				chroot_path = optarg;
+				break;
+			case 'j':
+				jail_str = optarg;
 				break;
 			default:
 				break;
@@ -138,6 +150,30 @@ main(int argc, char **argv)
 	/* reset getopt for the next call */
 	optreset = 1;
 	optind = 1;
+
+	if (jail_str != NULL && chroot_path != NULL) {
+		fprintf(stderr, "-j and -c can be used at the same time\n");
+		usage();
+	}
+
+	if (chroot_path != NULL)
+		if (chroot(chroot_path) == -1)
+			errx(EX_SOFTWARE, "chroot failed");
+
+	if (jail_str != NULL) {
+		jid = jail_getid(jail_str);
+		if (jid < 0)
+			errx(1, "%s", jail_errmsg);
+
+		if (jail_attach(jid) == -1)
+			err(1, "jail_attach(%s)", jail_str);
+	}
+
+	if (jail_str != NULL || chroot_path != NULL)
+		if (chdir("/") == -1)
+			errx(EX_SOFTWARE, "chdir() failed");
+
+
 
 	len = strlen(argv[0]);
 	for (i = 0; i < cmd_len; i++) {
