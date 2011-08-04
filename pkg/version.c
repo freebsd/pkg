@@ -189,12 +189,21 @@ exec_version(int argc, char **argv)
 				printf("%-34s %c\n", pkg_get(pkg, PKG_NAME), key);
 			}
 		}
+
 	} else  {
 		fprintf(stderr, "Not yet implemented please use -I \n");
 		return (EX_SOFTWARE);
 	}
 
 cleanup:
+	while (!SLIST_EMPTY(&index)) {
+		entry = SLIST_FIRST(&index);
+		SLIST_REMOVE_HEAD(&index, next);
+		free(entry->version);
+		free(entry->origin);
+		free(entry);
+	}
+
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
