@@ -49,7 +49,7 @@ fake-pkg:
 	@${ECHO_CMD} "deps: " >> ${MANIFESTF}
 	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print "  "$$1": { origin: "$$2", version: "$$3"}" }' >> ${MANIFESTF}
 	@${ECHO_CMD} -n "categories: [" >> ${MANIFESTF}
-.for cat in ${CATEGORIES}
+.for cat in ${CATEGORIES:u}
 	@${ECHO_CMD} -n "${cat}," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
@@ -59,16 +59,16 @@ fake-pkg:
 	@${ECHO_CMD} "licenselogic: single" >> ${MANIFESTF}
 .endif
 	@${ECHO_CMD} -n "licenses: [" >> ${MANIFESTF}
-.for lic in ${LICENSE}
+.for lic in ${LICENSE:u}
 	@${ECHO_CMD} -n "${lic}," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
 .if !defined(DISABLE_CONFLICTS)
 	@${ECHO_CMD} -n "conflicts: [" >> ${MANIFESTF}
-.for conflicts in ${CONFLICTS}
+.for conflicts in ${CONFLICTS:u}
 	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
 .endfor
-.for conflicts in ${CONFLICTS_INSTALL}
+.for conflicts in ${CONFLICTS_INSTALL:u}
 	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
