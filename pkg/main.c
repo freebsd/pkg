@@ -1,3 +1,6 @@
+#include <sys/param.h>
+#include <sys/jail.h>
+
 #include <assert.h>
 #include <err.h>
 #include <stdio.h>
@@ -5,8 +8,6 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <sys/param.h>
-#include <sys/jail.h>
 #include <jail.h>
 
 #include <pkg.h>
@@ -152,7 +153,7 @@ main(int argc, char **argv)
 	optind = 1;
 
 	if (jail_str != NULL && chroot_path != NULL) {
-		fprintf(stderr, "-j and -c can be used at the same time\n");
+		fprintf(stderr, "-j and -c cannot be used at the same time\n");
 		usage();
 	}
 
@@ -172,8 +173,6 @@ main(int argc, char **argv)
 	if (jail_str != NULL || chroot_path != NULL)
 		if (chdir("/") == -1)
 			errx(EX_SOFTWARE, "chdir() failed");
-
-
 
 	len = strlen(argv[0]);
 	for (i = 0; i < cmd_len; i++) {
