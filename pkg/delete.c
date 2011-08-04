@@ -13,7 +13,7 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "usage: pkg delete [-yf] <pkg-name> <...>\n");
+	fprintf(stderr, "usage: pkg delete [-ygxXf] <pkg-name> <...>\n");
 	fprintf(stderr, "       pkg delete [-y] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
@@ -32,10 +32,19 @@ exec_delete(int argc, char **argv)
 	int yes = 0;
 	int retcode = EPKG_OK;
 
-	while ((ch = getopt(argc, argv, "afy")) != -1) {
+	while ((ch = getopt(argc, argv, "agxXfy")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
+				break;
+			case 'g':
+				match = MATCH_GLOB;
+				break;
+			case 'x':
+				match = MATCH_REGEX;
+				break;
+			case 'X':
+				match = MATCH_EREGEX;
 				break;
 			case 'f':
 				force = 1;
@@ -48,6 +57,7 @@ exec_delete(int argc, char **argv)
 				return (EX_USAGE);
 		}
 	}
+
 	argc -= optind;
 	argv += optind;
 
