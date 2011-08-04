@@ -694,6 +694,8 @@ typedef enum {
 	/* informational */
 	PKG_EVENT_INSTALL_BEGIN = 0,
 	PKG_EVENT_INSTALL_FINISHED,
+	PKG_EVENT_DEINSTALL_BEGIN,
+	PKG_EVENT_DEINSTALL_FINISHED,
 	PKG_EVENT_FETCHING,
 	/* errors */
 	PKG_EVENT_ERROR,
@@ -732,7 +734,13 @@ struct pkg_event {
 		} e_install_begin;
 		struct {
 			struct pkg *pkg;
+		} e_deinstall_begin;
+		struct {
+			struct pkg *pkg;
 		} e_install_finished;
+		struct {
+			struct pkg *pkg;
+		} e_install_end;
 		struct {
 			struct pkg *pkg;
 			struct pkg_dep *dep;

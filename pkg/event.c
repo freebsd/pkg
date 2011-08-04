@@ -36,6 +36,14 @@ event_callback(void *data __unused, struct pkg_event *ev)
 		if (message != NULL && message[0] != '\0')
 			printf("%s\n", message);
 		break;
+	case PKG_EVENT_DEINSTALL_BEGIN:
+		printf("Deinstalling %s-%s...",
+			   pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME),
+			   pkg_get(ev->e_deinstall_begin.pkg, PKG_VERSION));
+		break;
+	case PKG_EVENT_DEINSTALL_FINISHED:
+		printf(" done\n");
+		break;
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;
 		fprintf(stderr, "%s-%s is required by:", pkg_get(pkg, PKG_NAME),

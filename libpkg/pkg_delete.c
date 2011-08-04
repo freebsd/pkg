@@ -41,6 +41,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
+	EMIT_DEINSTALL_BEGIN(pkg);
 	/* If there are dependencies */
 	if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
 		EMIT_REQUIRED(pkg, force);
@@ -57,8 +58,10 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int force)
 	if ((ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL)) != EPKG_OK)
 		return (ret);
 
-	if ((ret = pkg_delete_dirs(pkg, force)) != EPKG_OK)
+	if ((ret = pkg_delete_dirs(db, pkg, force)) != EPKG_OK)
 		return (ret);
+
+	EMIT_DEINSTALL_FINISHED(pkg);
 
 	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
 }
@@ -95,14 +98,22 @@ pkg_delete_files(struct pkg *pkg, int force)
 }
 
 int
-pkg_delete_dirs(struct pkg *pkg, int force)
+pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, int force)
 {
 	struct pkg_dir *dir = NULL;
+	int64_t nbpackage;
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (rmdir(pkg_dir_path(dir)) == -1 && errno != ENOTEMPTY && force != 1) {
+		nbpackage = 0;
+
+		if (pkgdb_is_dir_used(db, pkg_dir_path(dir), &nbpackage) != EPKG_OK)
+			return (EPKG_FATAL);
+
+		if (nbpackage > 1)
+			continue;
+
+		if (rmdir(pkg_dir_path(dir)) == -1 && errno != ENOTEMPTY && force != 1)
 			EMIT_ERRNO("rmdir", pkg_dir_path(dir));
-		}
 	}
 
 	return (EPKG_OK);

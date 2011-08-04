@@ -165,6 +165,8 @@ int packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
 
 int pkg_delete_files(struct pkg *pkg, int force);
-int pkg_delete_dirs(struct pkg *pkg, int force);
+int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, int force);
+
+int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 
 #endif
