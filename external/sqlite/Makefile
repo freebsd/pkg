@@ -2,7 +2,7 @@ LIB=		sqlite3
 INTERNALLIB=
 SRCS=		sqlite3.c
 
-CFLAGS+=	-fPIC -Wno-parentheses -Wno-empty-body
+CFLAGS+=	-fPIC
 WARNS=		1
 WFORMAT=	1
 
