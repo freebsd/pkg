@@ -11,7 +11,7 @@
 #include "version.h"
 #include <string.h>
 
-static struct index_entry{
+struct index_entry {
 	char *origin;
 	char *version;
 	SLIST_ENTRY(index_entry) next;
@@ -34,8 +34,7 @@ exec_version(int argc, char **argv)
 	int ch;
 	FILE *indexfile;
 	char indexpath[MAXPATHLEN];
-	SLIST_HEAD(, index_entry) index;
-	SLIST_INIT(&index);
+	SLIST_HEAD(, index_entry) indexhead;
 	struct utsname u;
 	int rel_major_ver;
 	char *line = NULL;
@@ -114,6 +113,7 @@ exec_version(int argc, char **argv)
 				break;
 		}
 	} else if (opt & VERSION_INDEX) {
+		SLIST_INIT(&indexhead);
 		uname(&u);
 		rel_major_ver = (int) strtol(u.release, NULL, 10);
 		snprintf(indexpath, MAXPATHLEN, "%s/INDEX-%d", pkg_config("PORTSDIR"), rel_major_ver);
@@ -152,7 +152,7 @@ exec_version(int argc, char **argv)
 			entry = malloc(sizeof(struct index_entry));
 			entry->version = strdup(version);
 			entry->origin = strdup(buf);
-			SLIST_INSERT_HEAD(&index, entry, next);
+			SLIST_INSERT_HEAD(&indexhead, entry, next);
 		}
 		free(line);
 		fclose(indexfile);
@@ -165,7 +165,7 @@ exec_version(int argc, char **argv)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			key = '!';
-			SLIST_FOREACH(entry, &index, next) {
+			SLIST_FOREACH(entry, &indexhead, next) {
 				if (!strcmp(entry->origin, pkg_get(pkg, PKG_ORIGIN))) {
 					switch (pkg_version_cmp(pkg_get(pkg, PKG_VERSION), entry->version)) {
 						case -1:
@@ -196,9 +196,9 @@ exec_version(int argc, char **argv)
 	}
 
 cleanup:
-	while (!SLIST_EMPTY(&index)) {
-		entry = SLIST_FIRST(&index);
-		SLIST_REMOVE_HEAD(&index, next);
+	while (!SLIST_EMPTY(&indexhead)) {
+		entry = SLIST_FIRST(&indexhead);
+		SLIST_REMOVE_HEAD(&indexhead, next);
 		free(entry->version);
 		free(entry->origin);
 		free(entry);
