@@ -13,8 +13,7 @@ SRCS=	api.c      \
 CFLAGS+=	-fPIC \
 		-I${.CURDIR}/include \
 		-I${.CURDIR} \
-		-DHAVE_CONFIG_H \
-		-Wno-parentheses -Wno-empty-body
+		-DHAVE_CONFIG_H
 
 WARNS=		1
 
