@@ -22,7 +22,8 @@ DEBUG_FLAGS+=	-g -O0
 CFLAGS+=	-I${.CURDIR}/../libpkg
 LDADD+=		-L../libpkg \
 		-lpkgng \
-		-lutil
+		-lutil \
+		-ljail
 WARNS?=		6
 MAN=	pkg.1 \
 	pkg-add.1 \
