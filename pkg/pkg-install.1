@@ -23,7 +23,7 @@
 .Nd install packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl y
+.Op Fl ygxX
 .Ar <pkg-origin> <...>
 .Sh DESCRIPTION
 .Nm
@@ -58,6 +58,12 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl y
 Assume yes when asked for confirmation before package installation.
+.It Fl g
+Treat the package names as shell glob patterns.
+.It Fl x
+Treat the package names as regular expressions.
+.It Fl X
+Treat the package names as extended regular expressions.
 .El
 .Sh WARNING
 .Sh ENVRIOMENT
