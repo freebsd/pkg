@@ -4,7 +4,6 @@
 #include <archive_entry.h>
 #include <assert.h>
 #include <libgen.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fnmatch.h>
@@ -82,7 +81,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 int
 pkg_add(struct pkgdb *db, const char *path)
 {
-	return (pkg_add2(db, path, false));
+	return (pkg_add2(db, path, 0));
 }
 
 int
