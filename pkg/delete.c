@@ -90,6 +90,8 @@ exec_delete(int argc, char **argv)
 			pkg_jobs_add(jobs, pkg);
 			pkg = NULL;
 		}
+
+		pkgdb_it_free(it);
 	} else {
 		for (i = 0; i < argc; i++) {
 			if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
@@ -101,6 +103,8 @@ exec_delete(int argc, char **argv)
 				pkg_jobs_add(jobs, pkg);
 				pkg = NULL;
 			}
+		
+			pkgdb_it_free(it);
 		}
 	}
 
@@ -127,7 +131,6 @@ exec_delete(int argc, char **argv)
 	retcode = pkgdb_compact(db);
 
 	cleanup:
-	pkgdb_it_free(it);
 	pkgdb_close(db);
 	pkg_jobs_free(jobs);
 

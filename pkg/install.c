@@ -16,7 +16,7 @@
 void
 usage_install(void)
 {
-	fprintf(stderr, "usage: pkg install [-ygxXf] <pkg-name> <...>\n");
+	fprintf(stderr, "usage: pkg install [-ygxXf] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -81,7 +81,10 @@ exec_install(int argc, char **argv)
 		while (( retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 			pkg_jobs_add(jobs, pkgdb_query_remote(db, pkg_get(pkg, PKG_ORIGIN)));
 		}
-
+		
+		pkg_free(pkg);
+		pkg = NULL;
+		pkgdb_it_free(it);
 	}
 
 	/* print a summary before applying the jobs */
@@ -100,8 +103,6 @@ exec_install(int argc, char **argv)
 	cleanup:
 	
 	pkg_jobs_free(jobs);
-	pkgdb_it_free(it);
-	pkg_free(pkg);
 	pkgdb_close(db);
 
 	return (retcode == EPKG_OK ? EX_OK : 1);
