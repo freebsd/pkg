@@ -82,10 +82,9 @@ exec_install(int argc, char **argv)
 			pkg_jobs_add(jobs, pkgdb_query_remote(db, pkg_get(pkg, PKG_ORIGIN)));
 		}
 		
-		pkg_free(pkg);
-		pkg = NULL;
 		pkgdb_it_free(it);
 	}
+	pkg_free(pkg);
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
