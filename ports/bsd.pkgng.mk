@@ -47,7 +47,8 @@ fake-pkg:
 	@${ECHO_CMD} "www: ${WWW}" >> ${MANIFESTF}
 .endif
 	@${ECHO_CMD} "deps: " >> ${MANIFESTF}
-	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print "  "$$1": { origin: "$$2", version: "$$3"}" }' >> ${MANIFESTF}
+
+	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print "  "$$1": { origin: "$$2", version: \""$$3"\"}" }' >> ${MANIFESTF}
 	@${ECHO_CMD} -n "categories: [" >> ${MANIFESTF}
 .for cat in ${CATEGORIES:u}
 	@${ECHO_CMD} -n "${cat}," >> ${MANIFESTF}
