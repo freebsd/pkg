@@ -1,16 +1,19 @@
-#include <unistd.h>
-#include <stdlib.h>
-#define _WITH_GETLINE
-#include <stdio.h>
-#include <sysexits.h>
-#include <sys/utsname.h>
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/sbuf.h>
-#include <pkg.h>
+#include <sys/utsname.h>
+
+#define _WITH_GETLINE
 #include <err.h>
-#include "version.h"
+#include <pkg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sysexits.h>
+#include <unistd.h>
+
+#include "version.h"
 
 struct index_entry {
 	char *origin;
@@ -53,6 +56,64 @@ exec_buf(const char *cmd) {
 	return (res);
 }
 
+static void
+print_version(struct pkg *pkg, const char *source, const char *ver, char limchar, unsigned int opt)
+{
+	bool to_print = true;
+	char key;
+
+	if (ver == NULL) {
+		if (source == NULL)
+			key = '!';
+		else
+			key = '?';
+	} else {
+		switch (pkg_version_cmp(pkg_get(pkg, PKG_VERSION), ver)) {
+			case -1:
+				key = '<';
+				break;
+			case 0:
+				key = '=';
+				break;
+			case 1:
+				key = '>';
+				break;
+		}
+	}
+
+	if ((opt & VERSION_STATUS) && limchar != key) {
+		to_print = false;
+	}
+	if ((opt & VERSION_NOSTATUS) && limchar == key) {
+		to_print = false;
+	}
+
+	if (to_print == false)
+		return;
+
+	printf("%-34s %c", pkg_get(pkg, PKG_NAME), key);
+
+	if (opt & VERSION_VERBOSE) {
+		switch(key) {
+		case '<':
+			printf("   needs updating (%s has %s)", source, ver);
+			break;
+		case '=':
+			printf("   up-to-date with %s", source);
+			break;
+		case '>':
+			printf("   succeeds %s (%s has %s)", source, source, ver);
+			break;
+		case '?':
+			printf("   orphaned: %s", pkg_get(pkg, PKG_ORIGIN));
+		case '!':
+			printf("   Comparison failed");
+		}
+	}
+
+	printf("\n");
+}
+
 int
 exec_version(int argc, char **argv)
 {
@@ -77,7 +138,7 @@ exec_version(int argc, char **argv)
 	struct sbuf *cmd;
 	struct sbuf *res;
 
-	while ((ch = getopt(argc, argv, "hIoqvl:LXsOtT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIoqvl:L:XsOtT")) != -1) {
 		switch (ch) {
 			case 'h':
 				usage_version();
@@ -100,6 +161,7 @@ exec_version(int argc, char **argv)
 				break;
 			case 'L':
 				opt |= VERSION_NOSTATUS;
+				limchar = *optarg;
 				break;
 			case 'X':
 				opt |= VERSION_EREGEX;
@@ -196,26 +258,9 @@ exec_version(int argc, char **argv)
 			key = '!';
 			SLIST_FOREACH(entry, &indexhead, next) {
 				if (!strcmp(entry->origin, pkg_get(pkg, PKG_ORIGIN))) {
-					switch (pkg_version_cmp(pkg_get(pkg, PKG_VERSION), entry->version)) {
-						case -1:
-							key = '<';
-							break;
-						case 0:
-							key = '=';
-							break;
-						case 1:
-							key = '>';
-							break;
-					}
+					print_version(pkg, "index", entry->version, limchar, opt);
 					break;
 				}
-			}
-			if (opt & VERSION_STATUS) {
-				if ( limchar == key) {
-					printf("%-34s %c\n", pkg_get(pkg, PKG_NAME), key);
-				}
-			} else {
-				printf("%-34s %c\n", pkg_get(pkg, PKG_NAME), key);
 			}
 		}
 
@@ -240,25 +285,10 @@ exec_version(int argc, char **argv)
 					}
 					buf++;
 				}
-				switch(pkg_version_cmp(pkg_get(pkg, PKG_VERSION), sbuf_data(res))) {
-					case -1:
-						key = '<';
-						break;
-					case 0:
-						key = '=';
-						break;
-					case 1:
-						key = '>';
-						break;
-				}
+				print_version(pkg, "port", sbuf_data(res), limchar, opt);
 				sbuf_delete(res);
-			}
-			if (opt & VERSION_STATUS) {
-				if ( limchar == key) {
-					printf("%-34s %c\n", pkg_get(pkg, PKG_NAME), key);
-				}
 			} else {
-				printf("%-34s %c\n", pkg_get(pkg, PKG_NAME), key);
+				print_version(pkg, NULL, NULL, limchar, opt);
 			}
 			sbuf_delete(cmd);
 		}
