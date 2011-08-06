@@ -81,11 +81,11 @@ do_extract(struct archive *a, struct archive_entry *ae)
 int
 pkg_add(struct pkgdb *db, const char *path)
 {
-	return (pkg_add2(db, path, 0));
+	return (pkg_add2(db, path, 0, 0));
 }
 
 int
-pkg_add2(struct pkgdb *db, const char *path, int upgrade)
+pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 {
 	struct archive *a;
 	struct archive_entry *ae;
@@ -115,6 +115,9 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade)
 		retcode = ret;
 		goto cleanup;
 	}
+
+	if (automatic == 1)
+		pkg_setautomatic(pkg);
 
 	if (uname(&u) != 0) {
 		EMIT_ERRNO("uname", "");

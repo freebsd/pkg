@@ -91,7 +91,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				 pkg_get(p, PKG_REPOPATH));
 
-		if (pkg_add(j->db, path) != EPKG_OK) {
+		if (pkg_add2(j->db, path, 0, pkg_isautomatic(p)) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
 	}
@@ -212,8 +212,10 @@ add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
 			ndep->pkg = pkgdb_query_remote(j->db, pkg_dep_origin(dep));
 			if (ndep->pkg == NULL)
 				EMIT_MISSING_DEP(n->pkg, dep);
-			else
+			else {
+				pkg_setautomatic(ndep->pkg);
 				add_dep(j, ndep);
+			}
 		}
 		add_parent(ndep, n);
 	}

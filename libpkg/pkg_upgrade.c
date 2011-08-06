@@ -9,7 +9,7 @@ pkg_upgrade(struct pkgdb *db, struct pkg *pkg, const char *path)
 
 	if ((ret = pkg_delete2(pkg, db, 1, 0)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkg_add2(db, path, 0)) != EPKG_OK)
+	if ((ret = pkg_add2(db, path, 0,pkg_isautomatic(pkg))) != EPKG_OK)
 		return (ret);
 
 	return (EPKG_OK);
