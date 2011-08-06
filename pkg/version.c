@@ -121,6 +121,15 @@ exec_version(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (opt & VERSION_STATUS) {
+			if (limchar != '<' &&
+					limchar != '>' &&
+					limchar != '=') {
+				usage_version();
+				return (EX_USAGE);
+			}
+	}
+
 	/* -t must be unique */
 	if (((opt & VERSION_TESTVERSION) && opt != VERSION_TESTVERSION) ||
 			(opt == VERSION_TESTVERSION && argc < 2)) {
@@ -148,14 +157,6 @@ exec_version(int argc, char **argv)
 		indexfile = fopen(indexpath, "r");
 		if (!indexfile)
 			err(EX_SOFTWARE, "Unable to open %s", indexpath);
-
-		if (opt & VERSION_STATUS)
-			if (limchar != '<' &&
-					limchar != '>' &&
-					limchar != '=') {
-				usage_version();
-				return (EX_USAGE);
-			}
 
 		while ((linelen = getline(&line, &linecap, indexfile)) > 0) {
 			/* line is pkgname|portdir|... */
