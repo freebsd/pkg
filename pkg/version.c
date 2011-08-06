@@ -6,6 +6,7 @@
 #include <sys/utsname.h>
 #include <sys/param.h>
 #include <sys/queue.h>
+#include <sys/sbuf.h>
 #include <pkg.h>
 #include <err.h>
 #include "version.h"
@@ -25,6 +26,31 @@ usage_version(void)
 	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help version'.\n");
+}
+
+static struct sbuf *
+exec_buf(const char *cmd) {
+	FILE *fp;
+	char buf[BUFSIZ];
+	struct sbuf *res;
+
+	if ((fp = popen(cmd, "r")) == NULL)
+		return (NULL);
+
+	res = sbuf_new_auto();
+	while (fgets(buf, BUFSIZ, fp) != NULL)
+		sbuf_cat(res, buf);
+
+	pclose(fp);
+
+	if (sbuf_len(res) == 0) {
+		sbuf_delete(res);
+		return (NULL);
+	}
+
+	sbuf_finish(res);
+
+	return (res);
 }
 
 int
@@ -48,6 +74,8 @@ exec_version(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	char key;
 	char limchar = '-';
+	struct sbuf *cmd;
+	struct sbuf *res;
 
 	while ((ch = getopt(argc, argv, "hIoqvl:LXsOtT")) != -1) {
 		switch (ch) {
@@ -191,8 +219,48 @@ exec_version(int argc, char **argv)
 		}
 
 	} else  {
-		fprintf(stderr, "Not yet implemented please use -I \n");
-		return (EX_SOFTWARE);
+		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+			return (EX_IOERR);
+
+		if (( it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
+			goto cleanup;
+
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+			key = '!';
+			cmd = sbuf_new_auto();
+			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", pkg_config("PORTSDIR"), pkg_get(pkg, PKG_ORIGIN));
+			sbuf_finish(cmd);
+			if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
+				buf = sbuf_data(res);
+				while (*buf != '\0') {
+					if (*buf == '\n') {
+						*buf = '\0';
+						break;
+					}
+					buf++;
+				}
+				switch(pkg_version_cmp(pkg_get(pkg, PKG_VERSION), sbuf_data(res))) {
+					case -1:
+						key = '<';
+						break;
+					case 0:
+						key = '=';
+						break;
+					case 1:
+						key = '>';
+						break;
+				}
+				sbuf_delete(res);
+			}
+			if (opt & VERSION_STATUS) {
+				if ( limchar == key) {
+					printf("%-34s %c\n", pkg_get(pkg, PKG_NAME), key);
+				}
+			} else {
+				printf("%-34s %c\n", pkg_get(pkg, PKG_NAME), key);
+			}
+			sbuf_delete(cmd);
+		}
 	}
 
 cleanup:
