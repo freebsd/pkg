@@ -594,7 +594,7 @@ int pkgdb_compact(struct pkgdb *db);
  * @return An error code.
  */
 int pkg_add(struct pkgdb *db, const char *path);
-int pkg_add2(struct pkgdb *db, const char *path, int upgrade);
+int pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic);
 
 /**
  * Allocate a new pkg_jobs.
