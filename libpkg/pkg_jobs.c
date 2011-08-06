@@ -118,13 +118,16 @@ pkg_jobs_upgrade(struct pkg_jobs *j)
 	cachedir = pkg_config("PKG_CACHEDIR");
 	p = NULL;
 	while (pkg_jobs(j, &p) == EPKG_OK) {
-		/* get the installed pkg */
+		/* get the installed pkg if any */
 		it = pkgdb_query(j->db, pkg_get(p, PKG_ORIGIN), MATCH_EXACT);
-		pkgdb_it_next(it, &oldpkg, PKG_LOAD_BASIC);
-		snprintf(path, sizeof(path), "%s/%s", cachedir,
-				pkg_get(p, PKG_REPOPATH));
+		if (pkgdb_it_next(it, &oldpkg, PKG_LOAD_BASIC) == EPKG_OK) {
+			snprintf(path, sizeof(path), "%s/%s", cachedir,
+					pkg_get(p, PKG_REPOPATH));
+			retcode = pkg_upgrade(j->db, oldpkg, path);
+		} else {
+			retcode = pkg_upgrade(j->db, NULL, path);
+		}
 
-		retcode = pkg_upgrade(j->db, oldpkg, path);
 		if (retcode != EPKG_OK)
 			return (retcode);
 	}
