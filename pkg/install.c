@@ -73,7 +73,7 @@ exec_install(int argc, char **argv)
 	}
 
 	for (i = 0; i < argc; i++) {
-		if ((it = pkgdb_rquery(db, argv[i], match, REPO_SEARCH_NAME)) == NULL) {
+		if ((it = pkgdb_rquery(db, argv[i], match, FIELD_NAME)) == NULL) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}

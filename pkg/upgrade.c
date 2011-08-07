@@ -35,12 +35,6 @@ exec_upgrade(int argc, char **argv)
 	char size[7];
 	int ch, yes = 0;
 
-	(void) argv;
-	if (argc < 2) {
-		usage_upgrade();
-		return (EX_USAGE);
-	}
-
 	if (geteuid() != 0) {
 		warnx("upgrading can only be done as root");
 		return (EX_NOPERM);
@@ -57,6 +51,11 @@ exec_upgrade(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (argc != 0) {
+		usage_upgrade();
+		return (EX_USAGE);
+	}
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		return (EX_IOERR);

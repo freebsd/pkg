@@ -408,29 +408,55 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg_reset(*pkg_p, it->type);
 		pkg = *pkg_p;
 
-		pkg->rowid = sqlite3_column_int64(it->stmt, 0);
-		pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
-		pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
-		pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 3));
-		pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 4));
-		pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 5));
-		pkg_set(pkg, PKG_MESSAGE, sqlite3_column_text(it->stmt, 6));
-		pkg_set(pkg, PKG_ARCH, sqlite3_column_text(it->stmt, 7));
-		pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 8));
-		pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 9));
-		pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
-		pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
-		pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
-		if (it->type != PKG_REMOTE && it->type != PKG_UPGRADE)
+		if (it->type == PKG_INSTALLED) {
+			pkg->rowid = sqlite3_column_int64(it->stmt, 0);
+			pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
+			pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
+			pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 3));
+			pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 4));
+			pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 5));
+			pkg_set(pkg, PKG_MESSAGE, sqlite3_column_text(it->stmt, 6));
+			pkg_set(pkg, PKG_ARCH, sqlite3_column_text(it->stmt, 7));
+			pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 8));
+			pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 9));
+			pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
+			pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
+			pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
 			pkg_set_licenselogic(pkg, sqlite3_column_int64(it->stmt, 13));
+		}
 
 		if (it->type == PKG_REMOTE) {
-			pkg->type = PKG_REMOTE;
-			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 11));
+			pkg->rowid = sqlite3_column_int64(it->stmt, 0);
+			pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
+			pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
+			pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 3));
+			pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 4));
+			pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 5));
+			pkg_set(pkg, PKG_MESSAGE, sqlite3_column_text(it->stmt, 6));
+			pkg_set(pkg, PKG_ARCH, sqlite3_column_text(it->stmt, 7));
+			pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 8));
+			pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 9));
+			pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
+			pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 11));
 			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 12));
+			pkg_set(pkg, PKG_CKSUM, sqlite3_column_text(it->stmt, 13));
+			pkg_set(pkg, PKG_REPOPATH, sqlite3_column_text(it->stmt, 14));
 		}
+
 		if (it->type == PKG_UPGRADE) {
-			pkg->type = PKG_UPGRADE;
+			pkg->rowid = sqlite3_column_int64(it->stmt, 0);
+			pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
+			pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
+			pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 3));
+			pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 4));
+			pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 5));
+			pkg_set(pkg, PKG_MESSAGE, sqlite3_column_text(it->stmt, 6));
+			pkg_set(pkg, PKG_ARCH, sqlite3_column_text(it->stmt, 7));
+			pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 8));
+			pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 9));
+			pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
+			pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
+			pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
 			pkg_set(pkg, PKG_NEWVERSION, sqlite3_column_text(it->stmt, 13));
 			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 14));
 			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 15));
@@ -1688,10 +1714,12 @@ pkgdb_query_autoremove(struct pkgdb *db)
 }
 
 struct pkgdb_it *
-pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int field)
+pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field field)
 {
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = sbuf_new_auto();
+	const char *what;
+	const char *how;
 
 	assert(pattern != NULL && pattern[0] != '\0');
 
@@ -1702,40 +1730,51 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 
 	sbuf_cat(sql, "SELECT p.rowid, p.origin, p.name, p.version, p.comment, "
 			"p.desc, p.arch, p.arch, p.osversion, p.maintainer, p.www, "
-			"p.flatsize, p.pkgsize, p.cksum, p.path FROM remote.packages AS p WHERE ");
+			"p.flatsize, p.pkgsize, p.cksum, p.path FROM remote.packages AS p");
 
 	switch (match) {
 		case MATCH_ALL:
+			how = NULL;
+			break;
 		case MATCH_EXACT:
-			sbuf_cat(sql, "p.name LIKE ?1 ");
-			if (field & REPO_SEARCH_COMMENT)
-				sbuf_cat(sql, "OR p.comment LIKE ?1 ");
-			else if (field & REPO_SEARCH_DESCRIPTION)
-				sbuf_cat(sql, "OR p.desc LIKE ?1 ");
+			how = "%s = ?1";
 			break;
 		case MATCH_GLOB:
-			sbuf_cat(sql, "p.name GLOB ?1 ");
-			if (field & REPO_SEARCH_COMMENT)
-				sbuf_cat(sql, "OR p.comment GLOB ?1 ");
-			else if (field & REPO_SEARCH_DESCRIPTION)
-				sbuf_cat(sql, "OR p.desc GLOB ?1 ");
+			how = "%s GLOB ?1";
 			break;
 		case MATCH_REGEX:
-			sbuf_cat(sql, "p.name REGEXP ?1 ");
-			if (field & REPO_SEARCH_COMMENT)
-				sbuf_cat(sql, "OR p.comment REGEXP ?1 ");
-			else if (field & REPO_SEARCH_DESCRIPTION)
-				sbuf_cat(sql, "OR p.desc REGEXP ?1 ");
+			how = "%s REGEXP ?1";
 			break;
 		case MATCH_EREGEX:
-			sbuf_cat(sql, "EREGEXP(?1, p.name) ");
-			if (field & REPO_SEARCH_COMMENT)
-				sbuf_cat(sql, "OR EREGEXP(?1, p.comment) ");
-			else if (field & REPO_SEARCH_DESCRIPTION)
-				sbuf_cat(sql, "OR EREGEXP(?1, p.desc) ");
+			how = "EREGEXP(?1, %s)";
 			break;
 	}
 
+	switch(field) {
+		case FIELD_NONE:
+			what = NULL;
+			break;
+		case FIELD_ORIGIN:
+			what = "p.origin";
+			break;
+		case FIELD_NAME:
+			what = "p.name";
+			break;
+		case FIELD_NAMEVER:
+			what = "p.name || \"-\" || p.version";
+			break;
+		case FIELD_COMMENT:
+			what = "p.comment";
+			break;
+		case FIELD_DESC:
+			what = "p.desc";
+			break;
+	}
+
+	if (what != NULL && how != NULL) {
+		sbuf_cat(sql, " WHERE ");
+		sbuf_printf(sql, how, what);
+	}
 	sbuf_cat(sql, ";");
 	sbuf_finish(sql);
 

@@ -41,7 +41,7 @@ typedef enum {
 } pkgdb_t;
 
 /**
- * Specify how an argument should be used by matching functions.
+ * Specify how an argument should be used by query functions.
  */
 typedef enum {
 	/**
@@ -66,6 +66,18 @@ typedef enum {
 	MATCH_EREGEX
 } match_t;
 
+/**
+ * Specify on which field the pattern will be matched uppon.
+ */
+
+typedef enum {
+	FIELD_NONE,
+	FIELD_ORIGIN,
+	FIELD_NAME,
+	FIELD_NAMEVER,
+	FIELD_COMMENT,
+	FIELD_DESC
+} pkgdb_field;
 
 /**
  * The type of package.
@@ -548,11 +560,6 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_DIRS (1<<8)
 #define PKG_LOAD_CATEGORIES (1<<9)
 #define PKG_LOAD_LICENSES (1<<10)
-
-#define REPO_SEARCH_NAME 0
-#define REPO_SEARCH_COMMENT (1<<0)
-#define REPO_SEARCH_DESCRIPTION (1<<1)
-
 
 /**
  * Get the next pkg.

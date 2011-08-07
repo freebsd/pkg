@@ -68,5 +68,6 @@ event_callback(void *data __unused, struct pkg_event *ev)
 	default:
 		break;
 	}
+	printf("at %s:%d\n", ev->file, ev->line);
 	return 0;
 }
