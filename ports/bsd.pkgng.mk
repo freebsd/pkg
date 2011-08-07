@@ -85,8 +85,8 @@ fake-pkg:
 	[ -f ${PKGPOSTUPGRADE} ] && ${CP} ${PKGPOSTUPGRADE} ${METADIR}/+POST_UPGRADE; \
 	${CP} ${DESCR} ${METADIR}/+DESC; \
 	[ -f ${PKGMESSAGE} ] && ${CP} ${PKGMESSAGE} ${METADIR}/+DISPLAY || return 0
-.if !defined(NO_MTREE) && defined(MTREE_FILE)
-	@${CP} ${MTREE_FILE} ${METADIR}/+MTREE_DIRS
+.if !defined(NO_MTREE)
+	@[ -f ${MTREE_FILE} ] && ${CP} ${MTREE_FILE} ${METADIR}/+MTREE_DIRS || return 0
 .endif
 .if defined(INSTALLS_DEPENDS)
 	@${PKG_CMD} -d -l -m ${METADIR} -f ${TMPPLIST}

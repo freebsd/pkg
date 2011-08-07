@@ -493,6 +493,7 @@ void pkgdb_close(struct pkgdb *db);
  */
 
 int pkgdb_dump(struct pkgdb *db, char *dest);
+int pkgdb_load(struct pkgdb *db, char *dest);
 
 /**
  * Whether a package database instance has a particular flag.

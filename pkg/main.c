@@ -25,6 +25,7 @@
 #include "repo.h"
 #include "search.h"
 #include "update.h"
+#include "updating.h"
 #include "upgrade.h"
 #include "version.h"
 #include "which.h"
@@ -51,6 +52,7 @@ static struct commands {
 	{ "register", exec_register, usage_register},
 	{ "repo", exec_repo, usage_repo},
 	{ "update", exec_update, usage_update},
+	{ "updating", exec_updating, usage_updating},
 	{ "upgrade", exec_upgrade, usage_upgrade},
 	{ "version", exec_version, usage_version},
 	{ "which", exec_which, usage_which},

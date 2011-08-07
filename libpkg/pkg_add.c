@@ -6,7 +6,6 @@
 #include <libgen.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fnmatch.h>
 #include <errno.h>
 
 #include "pkg.h"
@@ -178,7 +177,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 					 ext);
 
 			if (access(dpath, F_OK) == 0) {
-				if (pkg_add(db, dpath) != EPKG_OK) {
+				if (pkg_add2(db, dpath, 0, 1) != EPKG_OK) {
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
