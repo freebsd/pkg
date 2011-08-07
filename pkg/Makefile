@@ -2,6 +2,7 @@ PROG=		pkg
 SRCS=		add.c \
 		autoremove.c \
 		backup.c \
+		clean.c \
 		create.c \
 		delete.c \
 		event.c \
