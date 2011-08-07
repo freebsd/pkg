@@ -29,6 +29,7 @@ event_callback(void *data __unused, struct pkg_event *ev)
 		printf("Installing %s-%s...",
 			   pkg_get(ev->e_install_begin.pkg, PKG_NAME),
 			   pkg_get(ev->e_install_begin.pkg, PKG_VERSION));
+		fflush(stdout);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		printf(" done\n");
@@ -40,6 +41,7 @@ event_callback(void *data __unused, struct pkg_event *ev)
 		printf("Deinstalling %s-%s...",
 			   pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME),
 			   pkg_get(ev->e_deinstall_begin.pkg, PKG_VERSION));
+		fflush(stdout);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		printf(" done\n");
@@ -49,6 +51,7 @@ event_callback(void *data __unused, struct pkg_event *ev)
 				pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME),
 				pkg_get(ev->e_upgrade_finished.pkg, PKG_VERSION),
 				pkg_get(ev->e_upgrade_finished.pkg, PKG_NEWVERSION));
+		fflush(stdout);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		printf("done\n");

@@ -2,7 +2,6 @@
 #include <sys/stat.h>
 
 #include <errno.h>
-#include <fnmatch.h>
 #include <sqlite3.h>
 #include <fts.h>
 #include <unistd.h>

@@ -24,9 +24,8 @@ exec_backup(int argc, char **argv)
 	if (argc == 3)
 		dest = argv[2];
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
-	}
 
 	if (argv[1][1] == 'd') {
 		printf("Dumping database...");
@@ -34,12 +33,15 @@ exec_backup(int argc, char **argv)
 		if (pkgdb_dump(db, dest) == EPKG_FATAL)
 			return (EPKG_FATAL);
 
-		printf("Done\n");
+		printf("done\n");
 	}
 
 	if (argv[1][1] == 'r') {
-		fprintf(stderr, "not yet implemented\n");
-		return (EPKG_FATAL);
+		printf("Restoring database...");
+		fflush(stdout);
+		if (pkgdb_load(db, dest) == EPKG_FATAL)
+			return (EPKG_FATAL);
+		printf("done\n");
 	}
 
 	pkgdb_close(db);

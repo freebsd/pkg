@@ -14,6 +14,7 @@ SRCS=		add.c \
 		update.c \
 		upgrade.c \
 		search.c \
+		updating.c \
 		utils.c \
 		version.c \
 		which.c

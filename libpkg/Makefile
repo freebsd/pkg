@@ -23,7 +23,7 @@ SRCS=		pkg.c \
 		pkg_upgrade.c \
 		pkg_version.c \
 		pkgdb.c \
-		dump.c \
+		backup.c \
 		fetch.c \
 		packing.c \
 		scripts.c
