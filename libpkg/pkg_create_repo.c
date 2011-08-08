@@ -407,7 +407,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 			return EPKG_FATAL;
 		}
 
-		packing_append_buffer(pack, sigret, "signature", max_len);
+		packing_append_buffer(pack, sigret, "signature", siglen + 1);
 
 		free(sigret);
 		RSA_free(rsa);

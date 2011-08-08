@@ -700,6 +700,7 @@ int pkg_delete2(struct pkg *pkg, struct pkgdb *db, int force, int upgrade);
 int pkg_upgrade(struct pkgdb *db, struct pkg *pkg, const char *path);
 
 int pkg_repo_fetch(struct pkg *pkg);
+int pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len);
 
 /**
  * Get the value of a configuration key
