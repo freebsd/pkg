@@ -87,7 +87,7 @@ int
 pkg_delete_files(struct pkg *pkg, int force)
 {
 	struct pkg_file *file = NULL;
-	char sha256[65];
+	char sha256[SHA224_DIGEST_LENGTH * 2 + 1];
 	const char *path;
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {

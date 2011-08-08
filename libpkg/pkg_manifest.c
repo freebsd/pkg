@@ -99,7 +99,7 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 	yaml_node_pair_t *subpair;
 	char origin[BUFSIZ];
 	char version[BUFSIZ];
-	char sum[65];
+	char sum[SHA256_DIGEST_LENGTH * 2 + 1];
 	char uname[MAXLOGNAME + 1];
 	char gname[MAXLOGNAME + 1];
 	void *set;

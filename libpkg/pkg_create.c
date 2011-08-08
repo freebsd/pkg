@@ -26,7 +26,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	char *m;
 	const char *mtree;
 	struct stat st;
-	char sha256[65];
+	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
 	/*
 	 * if the checksum is not provided in the manifest recompute it
@@ -39,7 +39,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 
 		if ((pkg_file_sha256(file) == NULL || pkg_file_sha256(file)[0] == '\0') && lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
 			sha256_file(fpath, sha256);
-			strlcpy(file->sha256, sha256, 65);
+			strlcpy(file->sha256, sha256, sizeof(file->sha256));
 		}
 
 	}

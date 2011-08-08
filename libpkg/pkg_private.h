@@ -5,9 +5,10 @@
 #include <sys/queue.h>
 #include <sys/sbuf.h>
 #include <sys/types.h>
-#include <stdbool.h>
 
 #include <archive.h>
+#include <openssl/sha.h>
+#include <stdbool.h>
 
 #include "pkg_util.h"
 
@@ -64,7 +65,7 @@ struct pkg_category {
 
 struct pkg_file {
 	char path[MAXPATHLEN +1];
-	char sha256[65];
+	char sha256[SHA256_DIGEST_LENGTH * 2 +1];
 	char uname[MAXLOGNAME +1];
 	char gname[MAXLOGNAME +1];
 	mode_t perm;

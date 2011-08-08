@@ -5,6 +5,8 @@
 #include <sys/sbuf.h>
 #include <sys/param.h>
 
+#include <openssl/sha.h>
+
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
 #define ERROR_SQLITE(db) \
@@ -23,6 +25,6 @@ int file_fetch(const char *, const char *);
 int is_dir(const char *);
 int is_conf_file(const char *path, char newpath[MAXPATHLEN]);
 
-int sha256_file(const char *, char[65]);
-void sha256_str(const char *, char[65]);
+int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
+void sha256_str(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 #endif
