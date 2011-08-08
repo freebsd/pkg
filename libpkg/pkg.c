@@ -498,7 +498,7 @@ pkg_adduser(struct pkg *pkg, const char *name)
 
 	pkg_user_new(&u);
 
-	strlcpy(u->name, name, MAXLOGNAME);
+	strlcpy(u->name, name, sizeof(u->name));
 
 	return (EPKG_OK);
 }
@@ -513,7 +513,7 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 
 	pkg_group_new(&g);
 
-	strlcpy(g->name, name, MAXLOGNAME);
+	strlcpy(g->name, name, sizeof(g->name));
 
 	return (EPKG_OK);
 }
@@ -1062,8 +1062,8 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 {
 	struct packing *pack;
 	struct pkg_file *file = NULL;
-	char spath[MAXPATHLEN];
-	char dpath[MAXPATHLEN];
+	char spath[MAXPATHLEN + 1];
+	char dpath[MAXPATHLEN + 1];
 
 	if (packing_init(&pack, dest, 0) != EPKG_OK) {
 		/* TODO */
@@ -1071,8 +1071,8 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		snprintf(spath, MAXPATHLEN, "%s%s", src, pkg_file_path(file));
-		snprintf(dpath, MAXPATHLEN, "%s%s", dest, pkg_file_path(file));
+		snprintf(spath, sizeof(spath), "%s%s", src, pkg_file_path(file));
+		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_file_path(file));
 		printf("%s -> %s\n", spath, dpath);
 		packing_append_file(pack, spath, dpath);
 	}

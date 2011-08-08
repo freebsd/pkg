@@ -24,8 +24,8 @@ exec_which(int argc, char **argv)
 	struct pkgdb *db;
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
-	char pathabs[MAXPATHLEN];
-	char pathabsdir[MAXPATHLEN];
+	char pathabs[MAXPATHLEN + 1];
+	char pathabsdir[MAXPATHLEN + 1];
 	int ret = EPKG_OK, retcode = EPKG_OK;
 
 	if (argc != 2) {

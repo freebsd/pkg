@@ -120,7 +120,7 @@ exec_version(int argc, char **argv)
 	unsigned int opt = 0;
 	int ch;
 	FILE *indexfile;
-	char indexpath[MAXPATHLEN];
+	char indexpath[MAXPATHLEN + 1];
 	SLIST_HEAD(, index_entry) indexhead;
 	struct utsname u;
 	int rel_major_ver;
@@ -215,7 +215,7 @@ exec_version(int argc, char **argv)
 		SLIST_INIT(&indexhead);
 		uname(&u);
 		rel_major_ver = (int) strtol(u.release, NULL, 10);
-		snprintf(indexpath, MAXPATHLEN, "%s/INDEX-%d", pkg_config("PORTSDIR"), rel_major_ver);
+		snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", pkg_config("PORTSDIR"), rel_major_ver);
 		indexfile = fopen(indexpath, "r");
 		if (!indexfile)
 			err(EX_SOFTWARE, "Unable to open %s", indexpath);

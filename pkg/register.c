@@ -62,7 +62,7 @@ exec_register(int argc, char **argv)
 	char *mdir = NULL;
 	char *www = NULL;
 	char *input_path = NULL;
-	char fpath[MAXPATHLEN];
+	char fpath[MAXPATHLEN + 1];
 
 	const char *desc = NULL;
 	size_t size;
@@ -123,24 +123,24 @@ exec_register(int argc, char **argv)
 	if (mdir == NULL)
 		errx(EX_USAGE, "missing -m flag");
 
-	snprintf(fpath, MAXPATHLEN, "%s/+MANIFEST", mdir);
+	snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
 	if ((ret = pkg_load_manifest_file(pkg, fpath)) != EPKG_OK) {
 		return (EX_IOERR);
 	}
 
-	snprintf(fpath, MAXPATHLEN, "%s/+DESC", mdir);
+	snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
 	pkg_set_from_file(pkg, PKG_DESC, fpath);
 
-	snprintf(fpath, MAXPATHLEN, "%s/+DISPLAY", mdir);
+	snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
 	if (access(fpath, F_OK) == 0)
 		 pkg_set_from_file(pkg, PKG_MESSAGE, fpath);
 
-	snprintf(fpath, MAXPATHLEN, "%s/+MTREE_DIRS", mdir);
+	snprintf(fpath, sizeof(fpath), "%s/+MTREE_DIRS", mdir);
 	if (access(fpath, F_OK) == 0)
 		pkg_set_from_file(pkg, PKG_MTREE, fpath);
 
 	for (i = 0; scripts[i] != NULL; i++) {
-		snprintf(fpath, MAXPATHLEN, "%s/%s", mdir, scripts[i]);
+		snprintf(fpath, sizeof(fpath), "%s/%s", mdir, scripts[i]);
 		if (access(fpath, F_OK) == 0)
 			pkg_addscript_file(pkg, fpath);
 	}
