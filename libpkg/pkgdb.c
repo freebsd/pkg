@@ -462,7 +462,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 			return (EPKG_FATAL);
 		}
 
-		sqlite3_snprintf(sizeof(sql), sql, "ATTACH \"%s\" as remote;", remotepath);
+		sqlite3_snprintf(sizeof(sql), sql, "ATTACH \"%s\" AS remote;", remotepath);
 
 		if (sql_exec((*db)->sqlite, sql) != EPKG_OK) {
 			pkgdb_close(*db);
@@ -667,7 +667,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	}
 
 	snprintf(sql, sizeof(sql),
-			"SELECT id as rowid, origin, name, version, comment, desc, "
+			"SELECT id AS rowid, origin, name, version, comment, desc, "
 				"message, arch, osversion, maintainer, www, "
 				"prefix, flatsize, licenselogic "
 			"FROM packages AS p%s "
@@ -692,9 +692,9 @@ pkgdb_query_remote(struct pkgdb *db, const char *pattern)
 	struct pkg *pkg = NULL;
 	int ret;
 	char sql[] = ""
-		"SELECT rowid, origin, name, version, comment, desc, "
+		"SELECT id AS rowid, origin, name, version, comment, desc, "
 			"arch, osversion, maintainer, www, pkgsize, "
-			"flatsize as newflatsize, cksum, path "
+			"flatsize AS newflatsize, cksum, path AS repopath "
 		"FROM remote.packages "
 		"WHERE origin = ?1";
 	char sql_deps[] = ""
@@ -1702,10 +1702,10 @@ pkgdb_query_upgrades(struct pkgdb *db)
 	}
 
 	const char sql[] = ""
-		"SELECT l.id as rowid, l.origin as origin, l.name as name, l.version as version, l.comment as comment, l.desc as desc, "
-		"l.message as message, l.arch as arch, l.osversion as osversion, l.maintainer as maintainer, "
-		"l.www as www, l.prefix as prefix, l.flatsize as flatsize, r.version as version, r.flatsize as flatsize, "
-		"r.pkgsize as pkgsize, r.path as repopath "
+		"SELECT l.id AS rowid, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
+		"l.message AS message, l.arch AS arch, l.osversion AS osversion, l.maintainer AS maintainer, "
+		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS version, r.flatsize AS flatsize, "
+		"r.pkgsize AS pkgsize, r.path AS repopath "
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
@@ -1730,10 +1730,10 @@ pkgdb_query_downgrades(struct pkgdb *db)
 	}
 
 	const char sql[] = ""
-		"SELECT l.id as rowid, l.origin as origin, l.name as name, l.version as version, l.comment as comment, l.desc as desc, "
-		"l.message as message, l.arch as arch, l.osversion as osversion, l.maintainer as maintainer, "
-		"l.www as www, l.prefix as prefix, l.flatsize as flatsize, r.version as version, r.flatsize as flatsize, "
-		"r.pkgsize as pkgsize, r.path as repopath "
+		"SELECT l.id AS rowid, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
+		"l.message AS message, l.arch AS arch, l.osversion AS osversion, l.maintainer AS maintainer, "
+		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS version, r.flatsize AS flatsize, "
+		"r.pkgsize AS pkgsize, r.path AS repopath "
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
@@ -1753,7 +1753,7 @@ pkgdb_query_autoremove(struct pkgdb *db)
 	sqlite3_stmt *stmt;
 
 	const char sql[] = ""
-		"SELECT id as rowid, origin, name, version, comment, desc, "
+		"SELECT id AS rowid, origin, name, version, comment, desc, "
 		"message, arch, osversion, maintainer, www, prefix, "
 		"flatsize FROM packages WHERE automatic=1 AND "
 		"(SELECT deps.origin FROM deps where deps.origin = packages.origin) "
@@ -1784,7 +1784,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 
 	sbuf_cat(sql, "SELECT origin, name, version, comment, "
 			"desc, arch, arch, osversion, maintainer, www, "
-			"flatsize, pkgsize, cksum, path as repopath FROM remote.packages");
+			"flatsize, pkgsize, cksum, path AS repopath FROM remote.packages");
 
 	switch (match) {
 		case MATCH_ALL:
