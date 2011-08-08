@@ -259,6 +259,7 @@ pkg_setnewpkgsize(struct pkg *pkg, int64_t size)
 int
 pkg_set_licenselogic(struct pkg *pkg, int64_t logic)
 {
+	assert(pkg != NULL);
 	pkg->licenselogic = logic;
 	return (EPKG_OK);
 }
@@ -269,6 +270,13 @@ pkg_licenselogic(struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (pkg->licenselogic);
+}
+
+int
+pkg_setrowid(struct pkg *pkg, int64_t rowid) {
+	assert(pkg != NULL);
+	pkg->rowid = rowid;
+	return (EPKG_OK);
 }
 
 int

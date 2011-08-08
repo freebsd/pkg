@@ -57,10 +57,52 @@ static struct column_int_mapping {
 	int (*set_int)(struct pkg *pkg, int64_t);
 } columns_int[] = {
 	{ "flatsize", pkg_setflatsize },
+	{ "newflatsize", pkg_setnewflatsize },
 	{ "pkgsize", pkg_setnewpkgsize },
 	{ "licenselogic", pkg_set_licenselogic},
+	{ "rowid", pkg_setrowid},
 	{ NULL, NULL}
 };
+
+static void
+populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
+	int i, icol = 0;
+	const char *colname;
+
+	for (icol = 0; icol < sqlite3_column_count(stmt); icol++) {
+		colname = sqlite3_column_name(stmt, icol);
+		switch (sqlite3_column_type(stmt, icol)) {
+			case  SQLITE_TEXT:
+				for (i = 0; columns_text[i].name != NULL; i++ ) {
+					if (!strcmp(columns_text[i].name, colname)) {
+						columns_text[i].set_text(pkg, columns_text[i].type, sqlite3_column_text(stmt, icol));
+						break;
+					}
+				}
+				if (columns_text[i].name == NULL)
+					EMIT_PKG_ERROR("Unknown column %s", colname);
+				break;
+			case SQLITE_INTEGER:
+				for (i = 0; columns_int[i].name != NULL; i++ ) {
+					if (!strcmp(columns_int[i].name, colname)) {
+						columns_int[i].set_int(pkg, sqlite3_column_int64(stmt, icol));
+						break;
+					}
+				}
+				if (columns_int[i].name == NULL)
+					EMIT_PKG_ERROR("Unknown column %s", colname);
+				break;
+			case SQLITE_BLOB:
+			case SQLITE_FLOAT:
+				EMIT_PKG_ERROR("Wrong type for column: %s", colname);
+				/* just ignore currently */
+				break;
+			case SQLITE_NULL:
+				break;
+		}
+	}
+}
+
 
 static void
 pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
@@ -428,9 +470,6 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 {
 	struct pkg *pkg;
 	int ret;
-	int icol = 0;
-	int i = 0;
-	const char *colname;
 
 	assert(it != NULL);
 
@@ -442,36 +481,7 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg_reset(*pkg_p, it->type);
 		pkg = *pkg_p;
 
-		for (icol = 0; icol < sqlite3_column_count(it->stmt); icol++) {
-			colname = sqlite3_column_name(it->stmt, icol);
-			switch (sqlite3_column_type(it->stmt, icol)) {
-				case  SQLITE_TEXT:
-					for (i = 0; columns_text[i].name != NULL; i++ ) {
-						if (!strcmp(columns_text[i].name, colname)) {
-							columns_text[i].set_text(pkg, columns_text[i].type, sqlite3_column_text(it->stmt, icol));
-							break;
-						}
-					}
-					if (columns_text[i].name == NULL)
-						EMIT_PKG_ERROR("Unknown column %s", colname);
-					break;
-				case SQLITE_INTEGER:
-					for (i = 0; columns_int[i].name != NULL; i++ ) {
-						if (!strcmp(columns_int[i].name, colname)) {
-							columns_int[i].set_int(pkg, sqlite3_column_int64(it->stmt, icol));
-							break;
-						}
-					}
-					if (columns_text[i].name == NULL)
-						EMIT_PKG_ERROR("Unknown column %s", colname);
-					break;
-				case SQLITE_BLOB:
-				case SQLITE_NULL:
-				case SQLITE_FLOAT:
-					/* just ignore currently */
-					break;
-			}
-		}
+		populate_pkg(it->stmt, pkg);
 
 		/* load only for PKG_INSTALLED */
 		if (it->type != PKG_INSTALLED)
@@ -583,7 +593,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	}
 
 	snprintf(sql, sizeof(sql),
-			"SELECT origin, name, version, comment, desc, "
+			"SELECT id as rowid, origin, name, version, comment, desc, "
 				"message, arch, osversion, maintainer, www, "
 				"prefix, flatsize, licenselogic "
 			"FROM packages AS p%s "
@@ -608,11 +618,11 @@ pkgdb_query_remote(struct pkgdb *db, const char *pattern)
 	struct pkg *pkg = NULL;
 	int ret;
 	char sql[] = ""
-		"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, "
-			"p.arch, p.osversion, p.maintainer, p.www, p.pkgsize, "
-			"p.flatsize, p.cksum, p.path "
-		"FROM remote.packages AS p "
-		"WHERE p.origin = ?1";
+		"SELECT rowid, origin, name, version, comment, desc, "
+			"arch, osversion, maintainer, www, pkgsize, "
+			"flatsize as newflatsize, cksum, path "
+		"FROM remote.packages "
+		"WHERE origin = ?1";
 	char sql_deps[] = ""
 		"SELECT d.name, d.origin, d.version "
 		"FROM remote.deps AS d "
@@ -642,20 +652,7 @@ pkgdb_query_remote(struct pkgdb *db, const char *pattern)
 
 	pkg_new(&pkg, PKG_REMOTE);
 
-	pkg->rowid = sqlite3_column_int64(stmt, 0);
-	pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(stmt, 1));
-	pkg_set(pkg, PKG_NAME, sqlite3_column_text(stmt, 2));
-	pkg_set(pkg, PKG_VERSION, sqlite3_column_text(stmt, 3));
-	pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(stmt, 4));
-	pkg_set(pkg, PKG_DESC, sqlite3_column_text(stmt, 5));
-	pkg_set(pkg, PKG_ARCH, sqlite3_column_text(stmt, 6));
-	pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(stmt, 7));
-	pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(stmt, 8));
-	pkg_set(pkg, PKG_WWW, sqlite3_column_text(stmt, 9));
-	pkg_setnewpkgsize(pkg, sqlite3_column_int64(stmt, 10));
-	pkg_setnewflatsize(pkg, sqlite3_column_int64(stmt, 11));
-	pkg_set(pkg, PKG_CKSUM, sqlite3_column_text(stmt, 12));
-	pkg_set(pkg, PKG_REPOPATH, sqlite3_column_text(stmt, 13));
+	populate_pkg(stmt, pkg);
 
 	sqlite3_bind_int64(stmt_deps, 1, pkg->rowid);
 	while ((ret = sqlite3_step(stmt_deps)) == SQLITE_ROW) {
@@ -1660,7 +1657,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 	}
 
 	const char sql[] = ""
-		"SELECT l.origin as origin, l.name as name, l.version as version, l.comment as comment, l.desc as desc, "
+		"SELECT l.id as rowid, l.origin as origin, l.name as name, l.version as version, l.comment as comment, l.desc as desc, "
 		"l.message as message, l.arch as arch, l.osversion as osversion, l.maintainer as maintainer, "
 		"l.www as www, l.prefix as prefix, l.flatsize as flatsize, r.version as version, r.flatsize as flatsize, "
 		"r.pkgsize as pkgsize, r.path as repopath "
@@ -1688,7 +1685,7 @@ pkgdb_query_downgrades(struct pkgdb *db)
 	}
 
 	const char sql[] = ""
-		"SELECT l.origin as origin, l.name as name, l.version as version, l.comment as comment, l.desc as desc, "
+		"SELECT l.id as rowid, l.origin as origin, l.name as name, l.version as version, l.comment as comment, l.desc as desc, "
 		"l.message as message, l.arch as arch, l.osversion as osversion, l.maintainer as maintainer, "
 		"l.www as www, l.prefix as prefix, l.flatsize as flatsize, r.version as version, r.flatsize as flatsize, "
 		"r.pkgsize as pkgsize, r.path as repopath "
@@ -1711,7 +1708,7 @@ pkgdb_query_autoremove(struct pkgdb *db)
 	sqlite3_stmt *stmt;
 
 	const char sql[] = ""
-		"SELECT id, origin, name, version, comment, desc, "
+		"SELECT id as rowid, origin, name, version, comment, desc, "
 		"message, arch, osversion, maintainer, www, prefix, "
 		"flatsize FROM packages WHERE automatic=1 AND "
 		"(SELECT deps.origin FROM deps where deps.origin = packages.origin) "
