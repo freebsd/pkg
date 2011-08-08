@@ -95,7 +95,7 @@ exec_update(int argc, char **argv)
 			return (EPKG_FATAL);
 		}
 	}
-	rename("/var/db/pkg/repo.sqlite.unchecked", "/var/db/pkg/repo.sqlite.unchecked");
+	rename("/var/db/pkg/repo.sqlite.unchecked", "/var/db/pkg/repo.sqlite");
 
 	if ( a != NULL)
 		archive_read_finish(a);
