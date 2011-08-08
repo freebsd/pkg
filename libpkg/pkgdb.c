@@ -218,7 +218,8 @@ static int
 pkgdb_upgrade(sqlite3 *sdb)
 {
 	int64_t db_version = -1;
-	char sql[30];
+	const char *sql_upgrade;
+	char sql_version[30];
 	int i;
 
 	if (get_pragma(sdb, "PRAGMA user_version;", &db_version) != EPKG_OK)
@@ -235,12 +236,10 @@ pkgdb_upgrade(sqlite3 *sdb)
 		db_version++;
 
 		i = 0;
+		sql_upgrade = NULL;
 		while (db_upgrades[i].version != -1) {
 			if (db_upgrades[i].version == db_version) {
-				if (sql_exec(sdb, db_upgrades[i].sql) != EPKG_OK)
-					return (EPKG_FATAL);
-
-				i = 0;
+				sql_upgrade = db_upgrades[i].sql;
 				break;
 			}
 			i++;
@@ -251,15 +250,25 @@ pkgdb_upgrade(sqlite3 *sdb)
 		 * maybe because the current version is too old and upgrade support has
 		 * been removed.
 		 */
-		if (i != 0) {
+		if (sql_upgrade == NULL) {
 			EMIT_PKG_ERROR("can not upgrade to db version %" PRId64,
 						   db_version);
 			return (EPKG_FATAL);
 		}
 
-		snprintf(sql, sizeof(sql), "PRAGMA user_version = %" PRId64 ";", db_version);
-		if (sql_exec(sdb, sql) != EPKG_OK)
+		if (sql_exec(sdb, "BEGIN;") != EPKG_OK)
 			return (EPKG_FATAL);
+
+		if (sql_exec(sdb, sql_upgrade) != EPKG_OK)
+					return (EPKG_FATAL);
+
+		snprintf(sql_version, sizeof(sql_version),
+					"PRAGMA user_version = %" PRId64 ";", db_version);
+		if (sql_exec(sdb, sql_version) != EPKG_OK)
+			return (EPKG_FATAL);
+
+		if (sql_exec(sdb, "COMMIT;") != EPKG_OK)
+			return (EPKG_OK);
 	}
 
 	return (EPKG_OK);
