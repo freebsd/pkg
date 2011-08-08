@@ -124,7 +124,7 @@ exec_info(int argc, char **argv)
 {
 	struct pkgdb *db;
 	struct pkgdb_it *it;
-	int query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES;
+	int query_flags = PKG_LOAD_BASIC;
 	struct pkg *pkg = NULL;
 	unsigned int opt = 0;
 	match_t match = MATCH_EXACT;
