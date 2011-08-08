@@ -18,7 +18,6 @@ SRCS=		pkg.c \
 		pkg_manifest.c \
 		pkg_ports.c \
 		pkg_repo.c \
-		pkg_create_repo.c \
 		pkg_util.c \
 		pkg_upgrade.c \
 		pkg_version.c \
