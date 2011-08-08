@@ -1041,7 +1041,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3 *s;
 	sqlite3_stmt *stmt_pkg = NULL;
 	sqlite3_stmt *stmt_mtree = NULL;
-	sqlite3_stmt *stmt_sel_pkg = NULL;
 	sqlite3_stmt *stmt_dep = NULL;
 	sqlite3_stmt *stmt_conflict = NULL;
 	sqlite3_stmt *stmt_file = NULL;
@@ -1068,9 +1067,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 			"mtree_id) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, "
 		"(SELECT id from mtree where content = ?15));";
-	const char sql_sel_pkg[] = ""
-		"SELECT id FROM packages "
-		"WHERE origin = ?1;";
 	const char sql_dep[] = ""
 		"INSERT OR ROLLBACK INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
@@ -1149,22 +1145,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		ERROR_SQLITE(s);
 		goto cleanup;
 	}
-	/*
-	 * Get the generated package_id
-	 */
 
-	if (sqlite3_prepare_v2(s, sql_sel_pkg, -1, &stmt_sel_pkg, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-	sqlite3_bind_text(stmt_sel_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
-	ret = sqlite3_step(stmt_sel_pkg);
-	if (ret == SQLITE_ROW) {
-		package_id = sqlite3_column_int64(stmt_sel_pkg, 0);
-	} else {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
+	package_id = sqlite3_last_insert_rowid(s);
 
 	/*
 	 * Insert dependencies list
@@ -1388,9 +1370,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (stmt_pkg != NULL)
 		sqlite3_finalize(stmt_pkg);
-
-	if (stmt_sel_pkg != NULL)
-		sqlite3_finalize(stmt_sel_pkg);
 
 	if (stmt_dep != NULL)
 		sqlite3_finalize(stmt_dep);
