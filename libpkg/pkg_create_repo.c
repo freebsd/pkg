@@ -1,12 +1,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <archive.h>
+#include <archive_entry.h>
 #include <errno.h>
-#include <sqlite3.h>
 #include <fts.h>
-#include <unistd.h>
+#include <sqlite3.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <openssl/rsa.h>
 #include <openssl/err.h>
@@ -29,6 +31,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
 	char *ext = NULL;
+
 	sqlite3 *sqlite = NULL;
 	sqlite3_stmt *stmt_deps = NULL;
 	sqlite3_stmt *stmt_pkg = NULL;
@@ -36,6 +39,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	sqlite3_stmt *stmt_lic2 = NULL;
 	sqlite3_stmt *stmt_cat1 = NULL;
 	sqlite3_stmt *stmt_cat2 = NULL;
+
 	int64_t package_id;
 	char *errmsg = NULL;
 	int retcode = EPKG_OK;

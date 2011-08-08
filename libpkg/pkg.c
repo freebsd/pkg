@@ -55,6 +55,8 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	STAILQ_INIT(&(*pkg)->conflicts);
 	STAILQ_INIT(&(*pkg)->scripts);
 	STAILQ_INIT(&(*pkg)->options);
+	STAILQ_INIT(&(*pkg)->users);
+	STAILQ_INIT(&(*pkg)->groups);
 
 	(*pkg)->automatic = false;
 	(*pkg)->type = type;
@@ -88,6 +90,8 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_freeconflicts(pkg);
 	pkg_freescripts(pkg);
 	pkg_freeoptions(pkg);
+	pkg_freeusers(pkg);
+	pkg_freegroups(pkg);
 
 	pkg->type = type;
 }
@@ -110,6 +114,8 @@ pkg_free(struct pkg *pkg)
 	pkg_freeconflicts(pkg);
 	pkg_freescripts(pkg);
 	pkg_freeoptions(pkg);
+	pkg_freeusers(pkg);
+	pkg_freegroups(pkg);
 
 	free(pkg);
 }
@@ -1001,7 +1007,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 	while ((ret = archive_read_next_header(*a, ae)) == ARCHIVE_OK) {
 		fpath = archive_entry_pathname(*ae);
-
 		if (fpath[0] != '+')
 			break;
 
