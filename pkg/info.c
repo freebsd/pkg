@@ -3,12 +3,12 @@
 #include <err.h>
 #include <inttypes.h>
 #include <libutil.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdbool.h>
 #include <pkg.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
 #include <sysexits.h>
+#include <unistd.h>
 
 #include "info.h"
 
@@ -183,6 +183,7 @@ exec_info(int argc, char **argv)
 				break;
 			case 'f':
 				opt |= INFO_FULL;
+				query_flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES;
 				break;
 			default:
 				usage_info();
