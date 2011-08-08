@@ -82,22 +82,22 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format, int 
 	/*
 	 * Ensure that we have all the information we need
 	 */
-	if ((pkg->flags & required_flags) != required_flags) {
-		printf("error: required flags not set\n");
+	assert((pkg->flags & required_flags) == required_flags);
+
+	if (mkdirs(outdir) != EPKG_OK)
 		return NULL;
-	}
 
 	if (asprintf(&pkg_path, "%s/%s-%s", outdir, pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION)) == -1) {
-		perror("asprintf");
-		return NULL; /* XXX do better */
+		EMIT_ERRNO("asprintf", "");
+		return (NULL);
 	}
-	if (packing_init(&pkg_archive, pkg_path, format) != EPKG_OK) {
-		perror("packing_init");
-		return NULL;
-	}
+
+	if (packing_init(&pkg_archive, pkg_path, format) != EPKG_OK)
+		pkg_archive = NULL;
 
 	if (pkg_path != NULL)
 		free(pkg_path);
+
 	return pkg_archive;
 }
 

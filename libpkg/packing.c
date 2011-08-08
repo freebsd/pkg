@@ -27,6 +27,8 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	char archive_path[MAXPATHLEN];
 	const char *ext;
 
+	assert(pack != NULL);
+
 	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
 		EMIT_ERRNO("malloc", "");
 		return (EPKG_FATAL);
@@ -45,6 +47,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 			archive_read_finish((*pack)->aread);
 			archive_write_finish((*pack)->awrite);
 			archive_entry_free((*pack)->entry);
+			*pack = NULL;
 			return EPKG_FATAL; /* error set by _set_format() */
 		}
 		snprintf(archive_path, sizeof(archive_path), "%s.%s", path, ext);

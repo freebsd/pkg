@@ -132,9 +132,6 @@ exec_create(int argc, char **argv)
 
 	if (outdir == NULL)
 		outdir = "./";
-	else
-		if (mkdirs(outdir) != EPKG_OK)
-			return (EX_SOFTWARE);
 
 	if (format == NULL) {
 		fmt = TXZ;
