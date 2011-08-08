@@ -163,6 +163,11 @@ pkg_set(struct pkg * pkg, pkg_attr attr, const char *value)
 }
 
 int
+pkg_setmtree(struct pkg *pkg, const char *mtree) {
+	return (pkg_set(pkg, PKG_MTREE, mtree));
+}
+
+int
 pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 {
 	char *buf = NULL;

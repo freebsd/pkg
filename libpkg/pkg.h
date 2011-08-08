@@ -305,6 +305,7 @@ int pkg_analyse_files(struct pkgdb *, struct pkg *);
  * Generic setter for simple attributes.
  */
 int pkg_set(struct pkg *pkg, pkg_attr attr, const char *value);
+int pkg_setmtree(struct pkg *pkg, const char *value);
 
 /**
  * Read the content of a file into a buffer, then call pkg_set().
