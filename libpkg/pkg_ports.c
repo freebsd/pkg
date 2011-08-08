@@ -18,7 +18,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	int nbel, i;
 	size_t next;
 	size_t len;
-	char sha256[65];
+	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	char path[MAXPATHLEN + 1];
 	char *last_plist_file = NULL;
 	char *cmd = NULL;

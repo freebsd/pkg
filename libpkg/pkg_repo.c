@@ -23,7 +23,7 @@ int
 pkg_repo_fetch(struct pkg *pkg)
 {
 	char dest[MAXPATHLEN + 1];
-	char cksum[65];
+	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	char *path;
 	char *url;
 	int retcode = EPKG_OK;
@@ -118,7 +118,7 @@ load_rsa_public_key(const char *rsa_key_path)
 int
 pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len)
 {
-	char sha256[65];
+	char sha256[SHA256_DIGEST_LENGTH *2 +1];
 	char errbuf[1024];
 	RSA *rsa = NULL;
 
@@ -132,7 +132,7 @@ pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len)
 	if (rsa == NULL)
 		return(EPKG_FATAL);
 
-	if (RSA_verify(NID_sha1, sha256, 65, sig, sig_len, rsa) == 0) {
+	if (RSA_verify(NID_sha1, sha256, sizeof(sha256), sig, sig_len, rsa) == 0) {
 		EMIT_PKG_ERROR("%s: %s", pkg_config("PUBKEY"), ERR_error_string(ERR_get_error(), errbuf));
 		return (EPKG_FATAL);
 	}
@@ -168,7 +168,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	char *errmsg = NULL;
 	int retcode = EPKG_OK;
 	char *pkg_path;
-	char cksum[65];
+	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 
 	char *repopath[2];
 	char repodb[MAXPATHLEN + 1];
@@ -478,7 +478,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	unsigned char *sigret = NULL;
 	int siglen = 0;
 	RSA *rsa = NULL;
-	char sha256[65];
+	char sha256[SHA256_DIGEST_LENGTH * 2 +1];
 
 	snprintf(repo_path, sizeof(repo_path), "%s/repo.sqlite", path);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/repo", path);
@@ -502,7 +502,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 
 		sha256_file(repo_path, sha256);
 
-		if (RSA_sign(NID_sha1, sha256, 65, sigret, &siglen, rsa) == 0) {
+		if (RSA_sign(NID_sha1, sha256, sizeof(sha256), sigret, &siglen, rsa) == 0) {
 			/* XXX pass back RSA errors correctly */
 			EMIT_PKG_ERROR("%s: %lu", rsa_key_path, ERR_get_error());
 			return EPKG_FATAL;
