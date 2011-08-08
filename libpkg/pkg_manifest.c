@@ -384,6 +384,18 @@ yaml_write_buf(void *data, unsigned char *buffer, size_t size)
 	return (1);
 }
 
+static void
+manifest_append_seqval(yaml_document_t *doc, int parent, int *seq, const char *title, const char *value)
+{
+	if (*seq == -1) {
+		*seq = yaml_document_add_sequence(doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
+		yaml_document_append_mapping_pair(doc, parent,
+				yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t*, title), strlen(title), YAML_PLAIN_SCALAR_STYLE), *seq);
+	}
+	yaml_document_append_sequence_item(doc, *seq,
+			yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t*, value), strlen(value), YAML_PLAIN_SCALAR_STYLE));
+}
+
 int
 pkg_emit_manifest(struct pkg *pkg, char **dest)
 {
@@ -402,17 +414,12 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_group *group = NULL;
 	int rc = EPKG_OK;
 	int mapping;
+	int seq = -1;
 	int depsmap = -1;
 	int depkv;
-	int conflicts = -1;
 	int files = -1;
-	int dirs = -1;
 	int options = -1;
 	int scripts = -1;
-	int categories = -1;
-	int licenses = -1;
-	int groups = -1;
-	int users = -1;
 	const char *script_types;
 	struct sbuf *destbuf = sbuf_new_auto();
 
@@ -451,15 +458,9 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			break;
 	}
 
-	while (pkg_licenses(pkg, &license) == EPKG_OK) {
-		if (licenses == -1) {
-			licenses = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "licenses"), 8, YAML_PLAIN_SCALAR_STYLE), licenses);
-		}
-		yaml_document_append_sequence_item(&doc, licenses,
-				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_license_name(license)), strlen(pkg_license_name(license)), YAML_PLAIN_SCALAR_STYLE));
-	}
+	seq = -1;
+	while (pkg_licenses(pkg, &license) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "licenses", pkg_license_name(license));
 
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkg_flatsize(pkg));
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
@@ -482,49 +483,21 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		manifest_append_kv(depkv, "version", pkg_dep_version(dep));
 	}
 
-	while (pkg_categories(pkg, &category) == EPKG_OK) {
-		if (categories == -1) {
-			categories = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "categories"), 10, YAML_PLAIN_SCALAR_STYLE),
-					categories);
-		}
-		yaml_document_append_sequence_item(&doc, categories,
-				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_category_name(category)), strlen(pkg_category_name(category)), YAML_PLAIN_SCALAR_STYLE));
-	}
+	seq = -1;
+	while (pkg_categories(pkg, &category) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "categories", pkg_category_name(category));
 
-	while (pkg_users(pkg, &user) == EPKG_OK) {
-		if ( users  == -1 ) {
-			users = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t *, "users"), 5, YAML_PLAIN_SCALAR_STYLE),
-					users);
-		}
-		yaml_document_append_sequence_item(&doc, users,
-				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_user_name(user)), strlen(pkg_user_name(user)), YAML_PLAIN_SCALAR_STYLE));
-	}
+	seq = -1;
+	while (pkg_users(pkg, &user) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "users", pkg_user_name(user));
 
-	while (pkg_groups(pkg, &group) == EPKG_OK) {
-		if ( groups  == -1 ) {
-			groups = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t *, "groups"), 6, YAML_PLAIN_SCALAR_STYLE),
-					groups);
-		}
-		yaml_document_append_sequence_item(&doc, groups,
-				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_group_name(group)), strlen(pkg_group_name(group)), YAML_PLAIN_SCALAR_STYLE));
-	}
+	seq = -1;
+	while (pkg_groups(pkg, &group) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "groups", pkg_group_name(group));
 
-	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
-		if (conflicts == -1) {
-			conflicts = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "conflicts"), 9, YAML_PLAIN_SCALAR_STYLE),
-					conflicts);
-		}
-		yaml_document_append_sequence_item(&doc, conflicts,
-				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_conflict_glob(conflict)), strlen(pkg_conflict_glob(conflict)), YAML_PLAIN_SCALAR_STYLE));
-	}
+	seq = -1;
+	while (pkg_conflicts(pkg, &conflict) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "conflicts", pkg_conflict_glob(conflict));
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		if (options == -1) {
@@ -546,16 +519,9 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		manifest_append_kv(files, pkg_file_path(file), pkg_file_sha256(file) && strlen(pkg_file_sha256(file)) > 0 ? pkg_file_sha256(file) : "-");
 	}
 
-	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (dirs == -1) {
-			dirs = yaml_document_add_sequence(&doc, NULL, YAML_BLOCK_SEQUENCE_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "dirs"), 4, YAML_PLAIN_SCALAR_STYLE),
-					dirs);
-		}
-		yaml_document_append_sequence_item(&doc, dirs,
-				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_dir_path(dir)), strlen(pkg_dir_path(dir)), YAML_PLAIN_SCALAR_STYLE));
-	}
+	seq = -1;
+	while (pkg_dirs(pkg, &dir) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "dirs", pkg_dir_path(dir));
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
 		if (scripts == -1) {
