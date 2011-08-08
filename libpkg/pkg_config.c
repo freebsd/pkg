@@ -20,6 +20,7 @@ static struct _config {
 	{ "PKG_DBDIR", "/var/db/pkg", NULL},
 	{ "PKG_CACHEDIR", "/var/cache/pkg", NULL},
 	{ "PORTSDIR", "/usr/ports", NULL },
+	{ "PUBKEY", "/etc/ssl/pkg.pub", NULL },
 	{ NULL, NULL, NULL}
 };
 

@@ -2,13 +2,13 @@
 #include <sys/types.h>
 
 #include <err.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <sysexits.h>
-#include <unistd.h>
-#include <string.h>
 #include <fcntl.h>
 #include <libutil.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sysexits.h>
+#include <unistd.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -37,6 +37,8 @@ exec_update(int argc, char **argv)
 	int retcode = EPKG_OK;
 	struct archive *a;
 	struct archive_entry *ae;
+	unsigned char *sig = NULL;
+	int siglen = 0;
 
 	(void)argv;
 	if (argc != 1) {
@@ -75,13 +77,27 @@ exec_update(int argc, char **argv)
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			archive_entry_set_pathname(ae, "/var/db/pkg/repo.sqlite");
+			archive_entry_set_pathname(ae, "/var/db/pkg/repo.sqlite.unchecked");
 			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
-			break;
+		}
+		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
+			siglen = archive_entry_size(ae);
+			sig = malloc(siglen);
+			archive_read_data(a, sig, siglen);
 		}
 	}
 
-	if ( a != NULL) 
+	if (sig != NULL) {
+		if (pkg_repo_verify( "/var/db/pkg/repo.sqlite.unchecked", sig, siglen - 1) != EPKG_OK) {
+			fprintf(stderr, "Invalid signature removing\n");
+			unlink("/var/db/pkg/repo.sqlite.unchecked");
+			free(sig);
+			return (EPKG_FATAL);
+		}
+	}
+	rename("/var/db/pkg/repo.sqlite.unchecked", "/var/db/pkg/repo.sqlite.unchecked");
+
+	if ( a != NULL)
 		archive_read_finish(a);
 
 	unlink(tmp);
