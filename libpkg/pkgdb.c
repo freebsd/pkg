@@ -417,8 +417,8 @@ int
 pkgdb_open(struct pkgdb **db, pkgdb_t type)
 {
 	int retcode;
-	char localpath[MAXPATHLEN];
-	char remotepath[MAXPATHLEN];
+	char localpath[MAXPATHLEN + 1];
+	char remotepath[MAXPATHLEN + 1];
 	char sql[BUFSIZ];
 	const char *dbdir;
 

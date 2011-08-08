@@ -31,7 +31,7 @@ usage_update(void)
 int
 exec_update(int argc, char **argv)
 {
-	char url[MAXPATHLEN];
+	char url[MAXPATHLEN + 1];
 	const char *packagesite = NULL;
 	char *tmp = NULL;
 	int retcode = EPKG_OK;
@@ -57,9 +57,9 @@ exec_update(int argc, char **argv)
 	}
 
 	if (packagesite[strlen(packagesite) - 1] == '/')
-		snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
+		snprintf(url, sizeof(url), "%srepo.txz", packagesite);
 	else
-		snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
+		snprintf(url, sizeof(url), "%s/repo.txz", packagesite);
 
 	tmp = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
 

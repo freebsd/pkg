@@ -76,7 +76,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	const char *cachedir;
-	char path[MAXPATHLEN];
+	char path[MAXPATHLEN + 1];
 
 	/* Fetch */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
@@ -106,7 +106,7 @@ pkg_jobs_upgrade(struct pkg_jobs *j)
 	struct pkg *oldpkg = NULL;
 	struct pkgdb_it *it;
 	const char *cachedir;
-	char path[MAXPATHLEN];
+	char path[MAXPATHLEN + 1];
 	int retcode;
 
 	/* Fetch */

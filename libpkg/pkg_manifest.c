@@ -100,8 +100,8 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 	char origin[BUFSIZ];
 	char version[BUFSIZ];
 	char sum[65];
-	char uname[MAXLOGNAME];
-	char gname[MAXLOGNAME];
+	char uname[MAXLOGNAME + 1];
+	char gname[MAXLOGNAME + 1];
 	void *set;
 	mode_t perm;
 	pkg_script_t script_type;
@@ -126,9 +126,9 @@ parse_mapping(struct pkg *pkg, yaml_node_pair_t *pair, yaml_document_t *document
 					if (!strcasecmp(subkey->data.scalar.value, "sum") && subval->data.scalar.length == 64)
 						strlcpy(sum, subval->data.scalar.value, sizeof(sum));
 					else if (!strcasecmp(subkey->data.scalar.value, "uname") && subval->data.scalar.length <= MAXLOGNAME)
-						strlcpy(uname, subval->data.scalar.value, MAXLOGNAME);
+						strlcpy(uname, subval->data.scalar.value, sizeof(uname));
 					else if (!strcasecmp(subkey->data.scalar.value, "gname") && subval->data.scalar.length <= MAXLOGNAME)
-						strlcpy(gname, subval->data.scalar.value, MAXLOGNAME);
+						strlcpy(gname, subval->data.scalar.value, sizeof(gname));
 					else if (!strcasecmp(subkey->data.scalar.value, "perm") && subval->data.scalar.length > 0) {
 						if ((set = setmode(subval->data.scalar.value)) == NULL)
 							EMIT_PKG_ERROR("Not a valide mode: %s", subval->data.scalar.value);
@@ -246,8 +246,8 @@ parse_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *document, int pk
 	yaml_node_pair_t *pair, *p;
 	yaml_node_item_t *item;
 	yaml_node_t *nd, *pk, *pv, *key, *val;
-	char uname[MAXLOGNAME];
-	char gname[MAXLOGNAME];
+	char uname[MAXLOGNAME + 1];
+	char gname[MAXLOGNAME + 1];
 	void *set;
 	mode_t perm;
 
@@ -277,9 +277,11 @@ parse_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *document, int pk
 								key = yaml_document_get_node(document, pair->key);
 								val = yaml_document_get_node(document, pair->value);
 								if (!strcasecmp(key->data.scalar.value, "uname") && val->data.scalar.length <= MAXLOGNAME)
-									strlcpy(uname, val->data.scalar.value, MAXLOGNAME);
+									strlcpy(uname, val->data.scalar.value,
+											sizeof(uname));
 								else if (!strcasecmp(key->data.scalar.value, "gname") && val->data.scalar.length <= MAXLOGNAME)
-									strlcpy(gname, val->data.scalar.value, MAXLOGNAME);
+									strlcpy(gname, val->data.scalar.value,
+											sizeof(gname));
 								else if (!strcasecmp(key->data.scalar.value, "perm") && val->data.scalar.length > 0) {
 									if ((set = setmode(val->data.scalar.value)) == NULL)
 										EMIT_PKG_ERROR("Not a valide mode: %s", val->data.scalar.value);

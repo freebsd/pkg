@@ -36,7 +36,7 @@ int
 exec_add(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
-	char path[MAXPATHLEN];
+	char path[MAXPATHLEN + 1];
 	char *file;
 	int retcode = EPKG_OK;
 	int i;

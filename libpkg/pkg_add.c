@@ -37,7 +37,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 {
 	int retcode = EPKG_OK;
 	int ret = 0;
-	char path[MAXPATHLEN];
+	char path[MAXPATHLEN + 1];
 	struct stat st;
 
 	do {
@@ -94,7 +94,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 	struct pkg_dep *dep = NULL;
 	struct utsname u;
 	bool extract = true;
-	char dpath[MAXPATHLEN];
+	char dpath[MAXPATHLEN + 1];
 	const char *basedir;
 	const char *ext;
 	int retcode = EPKG_OK;

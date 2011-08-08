@@ -22,7 +22,7 @@
 int
 pkg_repo_fetch(struct pkg *pkg)
 {
-	char dest[MAXPATHLEN];
+	char dest[MAXPATHLEN + 1];
 	char cksum[65];
 	char *path;
 	char *url;
@@ -171,7 +171,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	char cksum[65];
 
 	char *repopath[2];
-	char repodb[MAXPATHLEN];
+	char repodb[MAXPATHLEN + 1];
 
 	const char initsql[] = ""
 		"CREATE TABLE packages ("
@@ -244,7 +244,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	repopath[0] = path;
 	repopath[1] = NULL;
 
-	snprintf(repodb, MAXPATHLEN, "%s/repo.sqlite", path);
+	snprintf(repodb, sizeof(repodb), "%s/repo.sqlite", path);
 
 	if (stat(repodb, &st) != -1)
 		if (unlink(repodb) != 0) {
@@ -471,8 +471,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 int
 pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 {
-	char repo_path[MAXPATHLEN];
-	char repo_archive[MAXPATHLEN];
+	char repo_path[MAXPATHLEN + 1];
+	char repo_archive[MAXPATHLEN + 1];
 	struct packing *pack;
 	int max_len = 0;
 	unsigned char *sigret = NULL;
@@ -480,8 +480,8 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	RSA *rsa = NULL;
 	char sha256[65];
 
-	snprintf(repo_path, MAXPATHLEN, "%s/repo.sqlite", path);
-	snprintf(repo_archive, MAXPATHLEN, "%s/repo", path);
+	snprintf(repo_path, sizeof(repo_path), "%s/repo.sqlite", path);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/repo", path);
 
 	packing_init(&pack, repo_archive, TXZ);
 	if (rsa_key_path != NULL) {
