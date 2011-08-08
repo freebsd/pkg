@@ -58,7 +58,7 @@ sbuf_free(struct sbuf *buf)
 int
 mkdirs(const char *_path)
 {
-	char path[MAXPATHLEN];
+	char path[MAXPATHLEN + 1];
 	char *p;
 
 	strlcpy(path, _path, sizeof(path));
