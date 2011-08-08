@@ -133,7 +133,7 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	pkg_event_register(&event_callback, NULL);
+	pkg_event_register(&event_callback, &debug);
 
 	while ((ch = getopt(argc, argv, "dj:c:")) != -1) {
 		switch(ch) {
