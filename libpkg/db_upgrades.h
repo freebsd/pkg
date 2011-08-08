@@ -87,11 +87,11 @@ static struct db_upgrades {
 
 	{5,
 	"CREATE TABLE users ("
-		"id INTEGER PRIMATY KEY, "
+		"id INTEGER PRIMARY KEY, "
 		"name TEXT NOT NULL UNIQUE "
 	");"
 	"CREATE TABLE pkg_users ("
-		"package_id INTEGER REFERECES packages(id) ON DELETE CASCADE"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE, "
 		"user_id INTEGER REFERENCES users(id) ON DELETE RESTRICT"
 			" ON UPDATE RESTRICT, "
@@ -102,7 +102,7 @@ static struct db_upgrades {
 		"name TEXT NOT NULL UNIQUE "
 	");"
 	"CREATE TABLE pkg_groups ("
-		"package_id INTEGER REFERECES packages(id) ON DELETE CASCADE"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE, "
 		"group_id INTEGER REFERENCES groups(id) ON DELETE RESTRICT"
 			" ON UPDATE RESTRICT, "
