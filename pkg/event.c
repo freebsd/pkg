@@ -4,12 +4,13 @@
 #include "event.h"
 
 int
-event_callback(void *data __unused, struct pkg_event *ev)
+event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
 	unsigned int percent;
 	const char *message;
+	int *debug = data;
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -71,6 +72,9 @@ event_callback(void *data __unused, struct pkg_event *ev)
 	default:
 		break;
 	}
-	printf("at %s:%d\n", ev->file, ev->line);
+
+	if (*debug > 0)
+		printf("  at %s:%d\n", ev->file, ev->line);
+
 	return 0;
 }
