@@ -1618,10 +1618,10 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 	if (sql_exec(db->sqlite, "DELETE FROM mtree WHERE id NOT IN (SELECT DISTINCT mtree_id FROM packages);") != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (sql_exec(db->sqlite, "DELETE FROM users WHERE id NOT IN (SELECT DINSTINCT user_id FROM pkg_users);") != EPKG_OK)
+	if (sql_exec(db->sqlite, "DELETE FROM users WHERE id NOT IN (SELECT DISTINCT user_id FROM pkg_users);") != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (sql_exec(db->sqlite, "DELETE FROM groups WHERE id NOT IN (SELECT DINSTINCT group_id FROM pkg_groups);") != EPKG_OK)
+	if (sql_exec(db->sqlite, "DELETE FROM groups WHERE id NOT IN (SELECT DISTINCT group_id FROM pkg_groups);") != EPKG_OK)
 		return (EPKG_FATAL);
 
 	return (EPKG_OK);
