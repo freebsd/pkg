@@ -18,7 +18,7 @@
 #include "pkg_util.h"
 
 #include "db_upgrades.h"
-#define DBVERSION 4
+#define DBVERSION 5
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
@@ -374,7 +374,29 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE RESTRICT, "
 		"PRIMARY KEY (package_id, license_id)"
 	");"
-	"PRAGMA user_version = 4;"
+	"CREATE TABLE users ("
+		"id INTEGER PRIMATY KEY, "
+		"name TEXT NOT NULL UNIQUE "
+	");"
+	"CREATE TABLE pkg_users ("
+		"package_id INTEGER REFERECES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE, "
+		"user_id INTEGER REFERENCES users(id) ON DELETE RESTRICT"
+			" ON UPDATE RESTRICT, "
+		"UNIQUE(package_id, user_id)"
+	");"
+	"CREATE TABLE groups ("
+		"id INTEGER PRIMATY KEY, "
+		"name TEXT NOT NULL UNIQUE "
+	");"
+	"CREATE TABLE pkg_groups ("
+		"package_id INTEGER REFERECES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE, "
+		"group_id INTEGER REFERENCES groups(id) ON DELETE RESTRICT"
+			" ON UPDATE RESTRICT, "
+		"UNIQUE(package_id, group_id)"
+	");"
+	"PRAGMA user_version = 5;"
 	;
 
 	return (sql_exec(sdb, sql));
@@ -558,6 +580,14 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 
 		if (flags & PKG_LOAD_LICENSES)
 			if ((ret = pkgdb_loadlicense(it->db, pkg)) != EPKG_OK)
+				return (ret);
+
+		if (flags & PKG_LOAD_USERS)
+			if ((ret = pkgdb_loaduser(it->db, pkg)) != EPKG_OK)
+				return (ret);
+
+		if (flags & PKG_LOAD_GROUPS)
+			if ((ret = pkgdb_loadgroup(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		return (EPKG_OK);
@@ -914,6 +944,32 @@ pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
+pkgdb_loaduser(struct pkgdb *db, struct pkg *pkg)
+{
+	const char sql[] = ""
+		"SELECT users.name "
+		"FROM pkg_users, users "
+		"WHERE packagd_id ?1 "
+		"AND user_id = users.id "
+		"ORDER by name DESC";
+
+	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, pkg_freeusers));
+}
+
+int
+pkgdb_loadgroup(struct pkgdb *db, struct pkg *pkg)
+{
+	const char sql[] = ""
+		"SELECT groups.name "
+		"FROM pkg_groups, groups "
+		"WHERE packagd_id ?1 "
+		"AND group_id = groups.id "
+		"ORDER by name DESC";
+
+	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_GROUPS, pkg_addgroup, pkg_freegroups));
+}
+
+int
 pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg)
 {
 	const char sql[] = ""
@@ -1037,6 +1093,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_option *option = NULL;
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
+	struct pkg_user *user = NULL;
+	struct pkg_group *group = NULL;
 
 	sqlite3 *s;
 	sqlite3_stmt *stmt_pkg = NULL;
@@ -1052,6 +1110,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_stmt *stmt_cat = NULL;
 	sqlite3_stmt *stmt_licenses = NULL;
 	sqlite3_stmt *stmt_lic = NULL;
+	sqlite3_stmt *stmt_user = NULL;
+	sqlite3_stmt *stmt_users = NULL;
+	sqlite3_stmt *stmt_groups = NULL;
+	sqlite3_stmt *stmt_group = NULL;
 
 	int ret;
 	int retcode = EPKG_FATAL;
@@ -1094,6 +1156,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	const char sql_license[] = ""
 		"INSERT OR ROLLBACK INTO pkg_licenses(package_id, license_id) "
 		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2));";
+	const char sql_user[] = "INSERT OR IGNORE INTO users(name) VALUES(?1);";
+	const char sql_users[] = ""
+		"INSERT OR ROLLBACK INTO pkg_users(package_id, user_id) "
+		"VALUES (?1, (SELECT id FROM users WHERE name = ?2));";
+	const char sql_group[] = "INSERT OR IGNORE INTO groups(name) VALUES(?1);";
+	const char sql_groups[] = ""
+		"INSERT OR ROLLBACK INTO pkg_groups(package_id, group_id) "
+		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2));";
 
 	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
 		EMIT_PKG_ERROR("%s", "tried to register a package with an in-flight SQL command");
@@ -1320,6 +1390,72 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	/*
+	 * Insert users
+	 */
+	if (sqlite3_prepare_v2(s, sql_user, -1, &stmt_user, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
+	if (sqlite3_prepare_v2(s, sql_users, -1, &stmt_users, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
+
+	while (pkg_users(pkg, &user) == EPKG_OK) {
+		sqlite3_bind_text(stmt_user, 1, pkg_user_name(user), -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt_users, 1, package_id);
+		sqlite3_bind_text(stmt_users, 2, pkg_user_name(user), -1, SQLITE_STATIC);
+
+		if ((ret = sqlite3_step(stmt_user)) != SQLITE_DONE) {
+			if (ret == SQLITE_CONSTRAINT) {
+				EMIT_PKG_ERROR("sqlite: constraint violation on users.name: %s",
+						pkg_user_name(user));
+			} else
+				ERROR_SQLITE(s);
+			goto cleanup;
+		}
+		if (( ret = sqlite3_step(stmt_users)) != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			goto cleanup;
+		}
+		sqlite3_reset(stmt_user);
+		sqlite3_reset(stmt_users);
+	}
+
+	/*
+	 * Insert groups
+	 */
+	if (sqlite3_prepare_v2(s, sql_group, -1, &stmt_group, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
+	if (sqlite3_prepare_v2(s, sql_groups, -1, &stmt_groups, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
+
+	while (pkg_groups(pkg, &group) == EPKG_OK) {
+		sqlite3_bind_text(stmt_group, 1, pkg_group_name(group), -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt_groups, 1, package_id);
+		sqlite3_bind_text(stmt_groups, 2, pkg_group_name(group), -1, SQLITE_STATIC);
+
+		if ((ret = sqlite3_step(stmt_group)) != SQLITE_DONE) {
+			if (ret == SQLITE_CONSTRAINT) {
+				EMIT_PKG_ERROR("sqlite: constraint violation on groups.name: %s",
+						pkg_group_name(group));
+			} else
+				ERROR_SQLITE(s);
+			goto cleanup;
+		}
+		if (( ret = sqlite3_step(stmt_groups)) != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			goto cleanup;
+		}
+		sqlite3_reset(stmt_group);
+		sqlite3_reset(stmt_groups);
+	}
+
+	/*
 	 * Insert scripts
 	 */
 
@@ -1403,6 +1539,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	if (stmt_licenses != NULL)
 		sqlite3_finalize(stmt_licenses);
+
+	if (stmt_groups != NULL)
+		sqlite3_finalize(stmt_groups);
+
+	if (stmt_users != NULL)
+		sqlite3_finalize(stmt_users);
 
 	return (retcode);
 }

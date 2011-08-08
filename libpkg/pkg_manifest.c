@@ -26,6 +26,8 @@
 #define PKG_LICENSELOGIC -9
 #define PKG_LICENSES -10
 #define PKG_OPTIONS -11
+#define PKG_USERS -12
+#define PKG_GROUPS -13
 
 static void parse_mapping(struct pkg *, yaml_node_pair_t *, yaml_document_t *, int);
 static void parse_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -55,6 +57,8 @@ static struct manifest_key {
 	{ "message", PKG_MESSAGE},
 	{ "categories", PKG_CATEGORIES},
 	{ "options", PKG_OPTIONS},
+	{ "users", PKG_USERS},
+	{ "groups", PKG_GROUPS}
 };
 
 #define manifest_key_len (int)(sizeof(manifest_key)/sizeof(manifest_key[0]))
@@ -314,6 +318,23 @@ parse_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *document, int pk
 						pkg_addlicense(pkg, nd->data.scalar.value);
 						++item;
 					}
+					break;
+				case PKG_USERS:
+					item = node->data.sequence.items.start;
+					while (item < node->data.sequence.items.top) {
+						nd = yaml_document_get_node(document, *item);
+						pkg_adduser(pkg, nd->data.scalar.value);
+						++item;
+					}
+					break;
+				case PKG_GROUPS:
+					item = node->data.sequence.items.start;
+					while (item < node->data.sequence.items.top) {
+						nd = yaml_document_get_node(document, *item);
+						pkg_adduser(pkg, nd->data.scalar.value);
+						++item;
+					}
+					break;
 			}
 			break;
 		case YAML_MAPPING_NODE:
@@ -377,6 +398,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_script *script = NULL;
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
+	struct pkg_user *user = NULL;
+	struct pkg_group *group = NULL;
 	int rc = EPKG_OK;
 	int mapping;
 	int depsmap = -1;
@@ -388,6 +411,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int scripts = -1;
 	int categories = -1;
 	int licenses = -1;
+	int groups = -1;
+	int users = -1;
 	const char *script_types;
 	struct sbuf *destbuf = sbuf_new_auto();
 
@@ -466,6 +491,28 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		}
 		yaml_document_append_sequence_item(&doc, categories,
 				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_category_name(category)), strlen(pkg_category_name(category)), YAML_PLAIN_SCALAR_STYLE));
+	}
+
+	while (pkg_users(pkg, &user) == EPKG_OK) {
+		if ( users  == -1 ) {
+			users = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
+			yaml_document_append_mapping_pair(&doc, mapping,
+					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t *, "users"), 5, YAML_PLAIN_SCALAR_STYLE),
+					users);
+		}
+		yaml_document_append_sequence_item(&doc, users,
+				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_user_name(user)), strlen(pkg_user_name(user)), YAML_PLAIN_SCALAR_STYLE));
+	}
+
+	while (pkg_groups(pkg, &group) == EPKG_OK) {
+		if ( groups  == -1 ) {
+			groups = yaml_document_add_sequence(&doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
+			yaml_document_append_mapping_pair(&doc, mapping,
+					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t *, "groups"), 6, YAML_PLAIN_SCALAR_STYLE),
+					groups);
+		}
+		yaml_document_append_sequence_item(&doc, groups,
+				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_group_name(group)), strlen(pkg_group_name(group)), YAML_PLAIN_SCALAR_STYLE));
 	}
 
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {

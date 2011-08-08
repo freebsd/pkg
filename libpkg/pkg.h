@@ -14,6 +14,8 @@ struct pkg_conflict;
 struct pkg_script;
 struct pkg_option;
 struct pkg_license;
+struct pkg_user;
+struct pkg_group;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -276,6 +278,20 @@ int pkg_categories(struct pkg *pkg, struct pkg_category **category);
 int pkg_licenses(struct pkg *pkg, struct pkg_license **license);
 
 /**
+ * Iterates over the users of the package.
+ * @param Must be set to NULL for the first call.
+ * @return An error code.
+ */
+int pkg_users(struct pkg *pkg, struct pkg_user **user);
+
+/**
+ * Iterates over the groups of the package.
+ * @param Must be set to NULL for the first call.
+ * @return An error code.
+ */
+int pkg_groups(struct pkg *pkg, struct pkg_group **group);
+
+/**
  * Iterates over the conflicts of the package.
  * @param conflict Must be set to NULL for the first call.
  * @return An error code.
@@ -399,6 +415,18 @@ int pkg_addcategory(struct pkg *pkg, const char *name);
 int pkg_addlicense(struct pkg *pkg, const char *name);
 
 /**
+ * Add a user
+ * @return An error code.
+ */
+int pkg_adduser(struct pkg *pkg, const char *name);
+
+/**
+ * Add a group
+ * @return An error code.
+ */
+int pkg_addgroup(struct pkg *pkg, const char *group);
+
+/**
  * Allocate a new struct pkg_conflict and add it to the conflicts of pkg.
  * @return An error code.
  */
@@ -454,6 +482,9 @@ const char *pkg_dir_path(struct pkg_dir *);
 const char *pkg_category_name(struct pkg_category *);
 
 const char *pkg_license_name(struct pkg_license *);
+
+const char *pkg_user_name(struct pkg_user *);
+const char *pkg_group_name(struct pkg_group *);
 
 /* pkg_conflict */
 const char * pkg_conflict_glob(struct pkg_conflict *);
@@ -562,6 +593,8 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_DIRS (1<<8)
 #define PKG_LOAD_CATEGORIES (1<<9)
 #define PKG_LOAD_LICENSES (1<<10)
+#define PKG_LOAD_USERS (1<<11)
+#define PKG_LOAD_GROUPS (1<<12)
 
 /**
  * Get the next pkg.
@@ -587,6 +620,8 @@ int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loaduser(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_loadgroup(struct pkgdb *db, struct pkg *pkg);
 
 /**
  * Compact the database to save space.

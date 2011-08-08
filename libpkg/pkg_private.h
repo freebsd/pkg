@@ -36,6 +36,8 @@ struct pkg {
 	STAILQ_HEAD(conflicts, pkg_conflict) conflicts;
 	STAILQ_HEAD(scripts, pkg_script) scripts;
 	STAILQ_HEAD(options, pkg_option) options;
+	STAILQ_HEAD(users, pkg_user) users;
+	STAILQ_HEAD(groups, pkg_group) groups;
 	int flags;
 	int64_t rowid;
 	lic_t licenselogic;
@@ -117,6 +119,16 @@ struct pkg_remote_repo {
 	STAILQ_ENTRY(pkg_remote_repo) entries;
 };
 
+struct pkg_user {
+	char name[MAXLOGNAME];
+	STAILQ_ENTRY(pkg_user) next;
+};
+
+struct pkg_group {
+	char name[MAXLOGNAME];
+	STAILQ_ENTRY(pkg_group) next;
+};
+
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
 void pkg_freelicenses(struct pkg *pkg);
 void pkg_freecategories(struct pkg *pkg);
@@ -127,6 +139,8 @@ void pkg_freedirs(struct pkg *pkg);
 void pkg_freeconflicts(struct pkg *pkg);
 void pkg_freescripts(struct pkg *pkg);
 void pkg_freeoptions(struct pkg *pkg);
+void pkg_freeusers(struct pkg *pkg);
+void pkg_freegroups(struct pkg *pkg);
 
 int pkg_dep_new(struct pkg_dep **);
 void pkg_dep_free(struct pkg_dep *);
@@ -151,6 +165,12 @@ void pkg_script_free(struct pkg_script *);
 
 int pkg_option_new(struct pkg_option **);
 void pkg_option_free(struct pkg_option *);
+
+int pkg_user_new(struct pkg_user **);
+void pkg_user_free(struct pkg_user *);
+
+int pkg_group_new(struct pkg_group **);
+void pkg_group_free(struct pkg_group *);
 
 int pkg_jobs_resolv(struct pkg_jobs *jobs);
 

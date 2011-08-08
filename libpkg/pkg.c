@@ -301,6 +301,38 @@ pkg_licenses(struct pkg *pkg, struct pkg_license **l)
 }
 
 int
+pkg_users(struct pkg *pkg, struct pkg_user **u)
+{
+	assert(pkg != NULL);
+
+	if (*u == NULL)
+		*u = STAILQ_FIRST(&pkg->users);
+	else
+		*u = STAILQ_NEXT(*u, next);
+
+	if (*u == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
+pkg_groups(struct pkg *pkg, struct pkg_group **g)
+{
+	assert(pkg != NULL);
+
+	if (*g == NULL)
+		*g = STAILQ_FIRST(&pkg->groups);
+	else
+		*g = STAILQ_NEXT(*g, next);
+
+	if (*g == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
 pkg_deps(struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
@@ -446,6 +478,36 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 	sbuf_set(&l->name, name);
 
 	STAILQ_INSERT_TAIL(&pkg->licenses, l, next);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_adduser(struct pkg *pkg, const char *name)
+{
+	struct pkg_user *u;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	pkg_user_new(&u);
+
+	strlcpy(u->name, name, MAXLOGNAME);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addgroup(struct pkg *pkg, const char *name)
+{
+	struct pkg_group *g;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	pkg_group_new(&g);
+
+	strlcpy(g->name, name, MAXLOGNAME);
 
 	return (EPKG_OK);
 }
@@ -778,6 +840,34 @@ pkg_freelicenses(struct pkg *pkg)
 	}
 
 	pkg->flags &= ~PKG_LOAD_LICENSES;
+}
+
+void
+pkg_freeusers(struct pkg *pkg)
+{
+	struct pkg_user *u;
+
+	while (!STAILQ_EMPTY(&pkg->users)) {
+		u = STAILQ_FIRST(&pkg->users);
+		STAILQ_REMOVE_HEAD(&pkg->users, next);
+		pkg_user_free(u);
+	}
+
+	pkg->flags &= ~PKG_LOAD_USERS;
+}
+
+void
+pkg_freegroups(struct pkg *pkg)
+{
+	struct pkg_group *g;
+
+	while (!STAILQ_EMPTY(&pkg->groups)) {
+		g = STAILQ_FIRST(&pkg->groups);
+		STAILQ_REMOVE_HEAD(&pkg->groups, next);
+		pkg_group_free(g);
+	}
+
+	pkg->flags &= ~PKG_LOAD_GROUPS;
 }
 
 void

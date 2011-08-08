@@ -82,7 +82,32 @@ static struct db_upgrades {
 	"ALTER TABLE pkg_categories_assoc RENAME TO pkg_categories;"
 	"DROP VIEW pkg_licenses;"
 	"DROP TRIGGER licenses_insert;"
-	"ALTER TABLE pkg_licenses_assoc RENAME TO pkg_licenses;"	
+	"ALTER TABLE pkg_licenses_assoc RENAME TO pkg_licenses;"
+	},
+
+	{5,
+	"CREATE TABLE users ("
+		"id INTEGER PRIMATY KEY, "
+		"name TEXT NOT NULL UNIQUE "
+	");"
+	"CREATE TABLE pkg_users ("
+		"package_id INTEGER REFERECES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE, "
+		"user_id INTEGER REFERENCES users(id) ON DELETE RESTRICT"
+			" ON UPDATE RESTRICT, "
+		"UNIQUE(package_id, user_id)"
+	");"
+	"CREATE TABLE groups ("
+		"id INTEGER PRIMATY KEY, "
+		"name TEXT NOT NULL UNIQUE "
+	");"
+	"CREATE TABLE pkg_groups ("
+		"package_id INTEGER REFERECES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE, "
+		"group_id INTEGER REFERENCES groups(id) ON DELETE RESTRICT"
+			" ON UPDATE RESTRICT, "
+		"UNIQUE(package_id, group_id)"
+	");"
 	},
 
 	/* Mark the end of the array */
