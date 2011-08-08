@@ -98,7 +98,7 @@ static struct db_upgrades {
 		"UNIQUE(package_id, user_id)"
 	");"
 	"CREATE TABLE groups ("
-		"id INTEGER PRIMATY KEY, "
+		"id INTEGER PRIMARY KEY, "
 		"name TEXT NOT NULL UNIQUE "
 	");"
 	"CREATE TABLE pkg_groups ("
