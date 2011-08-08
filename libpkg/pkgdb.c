@@ -31,6 +31,37 @@ static int get_pragma(sqlite3 *, const char *, int64_t *);
 static int sql_exec(sqlite3 *, const char *);
 static int pkgdb_upgrade(sqlite3 *);
 
+static struct column_text_mapping {
+	const char * const name;
+	int (*set_text)(struct pkg *pkg, pkg_attr, const char *);
+	pkg_attr type;
+} columns_text[] = {
+	{ "origin", pkg_set, PKG_ORIGIN},
+	{ "name", pkg_set, PKG_NAME },
+	{ "version", pkg_set, PKG_VERSION },
+	{ "comment", pkg_set, PKG_COMMENT },
+	{ "desc", pkg_set, PKG_DESC },
+	{ "message", pkg_set, PKG_MESSAGE },
+	{ "arch", pkg_set, PKG_ARCH },
+	{ "osversion", pkg_set, PKG_OSVERSION},
+	{ "maintainer", pkg_set, PKG_MAINTAINER},
+	{ "www", pkg_set, PKG_WWW},
+	{ "prefix", pkg_set, PKG_PREFIX},
+	{ "cksum", pkg_set, PKG_CKSUM},
+	{ "repopath", pkg_set, PKG_REPOPATH},
+	{ NULL, NULL, -1 }
+};
+
+static struct column_int_mapping {
+	const char * const name;
+	int (*set_int)(struct pkg *pkg, int64_t);
+} columns_int[] = {
+	{ "flatsize", pkg_setflatsize },
+	{ "pkgsize", pkg_setnewpkgsize },
+	{ "licenselogic", pkg_set_licenselogic},
+	{ NULL, NULL}
+};
+
 static void
 pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
 {
@@ -397,6 +428,9 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 {
 	struct pkg *pkg;
 	int ret;
+	int icol = 0;
+	int i = 0;
+	const char *colname;
 
 	assert(it != NULL);
 
@@ -408,59 +442,35 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			pkg_reset(*pkg_p, it->type);
 		pkg = *pkg_p;
 
-		if (it->type == PKG_INSTALLED) {
-			pkg->rowid = sqlite3_column_int64(it->stmt, 0);
-			pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
-			pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
-			pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 3));
-			pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 4));
-			pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 5));
-			pkg_set(pkg, PKG_MESSAGE, sqlite3_column_text(it->stmt, 6));
-			pkg_set(pkg, PKG_ARCH, sqlite3_column_text(it->stmt, 7));
-			pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 8));
-			pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 9));
-			pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
-			pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
-			pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
-			pkg_set_licenselogic(pkg, sqlite3_column_int64(it->stmt, 13));
-		}
-
-		if (it->type == PKG_REMOTE) {
-			pkg->rowid = sqlite3_column_int64(it->stmt, 0);
-			pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
-			pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
-			pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 3));
-			pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 4));
-			pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 5));
-			pkg_set(pkg, PKG_MESSAGE, sqlite3_column_text(it->stmt, 6));
-			pkg_set(pkg, PKG_ARCH, sqlite3_column_text(it->stmt, 7));
-			pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 8));
-			pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 9));
-			pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
-			pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 11));
-			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 12));
-			pkg_set(pkg, PKG_CKSUM, sqlite3_column_text(it->stmt, 13));
-			pkg_set(pkg, PKG_REPOPATH, sqlite3_column_text(it->stmt, 14));
-		}
-
-		if (it->type == PKG_UPGRADE) {
-			pkg->rowid = sqlite3_column_int64(it->stmt, 0);
-			pkg_set(pkg, PKG_ORIGIN, sqlite3_column_text(it->stmt, 1));
-			pkg_set(pkg, PKG_NAME, sqlite3_column_text(it->stmt, 2));
-			pkg_set(pkg, PKG_VERSION, sqlite3_column_text(it->stmt, 3));
-			pkg_set(pkg, PKG_COMMENT, sqlite3_column_text(it->stmt, 4));
-			pkg_set(pkg, PKG_DESC, sqlite3_column_text(it->stmt, 5));
-			pkg_set(pkg, PKG_MESSAGE, sqlite3_column_text(it->stmt, 6));
-			pkg_set(pkg, PKG_ARCH, sqlite3_column_text(it->stmt, 7));
-			pkg_set(pkg, PKG_OSVERSION, sqlite3_column_text(it->stmt, 8));
-			pkg_set(pkg, PKG_MAINTAINER, sqlite3_column_text(it->stmt, 9));
-			pkg_set(pkg, PKG_WWW, sqlite3_column_text(it->stmt, 10));
-			pkg_set(pkg, PKG_PREFIX, sqlite3_column_text(it->stmt, 11));
-			pkg_setflatsize(pkg, sqlite3_column_int64(it->stmt, 12));
-			pkg_set(pkg, PKG_NEWVERSION, sqlite3_column_text(it->stmt, 13));
-			pkg_setnewflatsize(pkg, sqlite3_column_int64(it->stmt, 14));
-			pkg_setnewpkgsize(pkg, sqlite3_column_int64(it->stmt, 15));
-			pkg_set(pkg, PKG_REPOPATH, sqlite3_column_text(it->stmt, 16));
+		for (icol = 0; icol < sqlite3_column_count(it->stmt); icol++) {
+			colname = sqlite3_column_name(it->stmt, icol);
+			switch (sqlite3_column_type(it->stmt, icol)) {
+				case  SQLITE_TEXT:
+					for (i = 0; columns_text[i].name != NULL; i++ ) {
+						if (!strcmp(columns_text[i].name, colname)) {
+							columns_text[i].set_text(pkg, columns_text[i].type, sqlite3_column_text(it->stmt, icol));
+							break;
+						}
+					}
+					if (columns_text[i].name == NULL)
+						EMIT_PKG_ERROR("Unknown column %s", colname);
+					break;
+				case SQLITE_INTEGER:
+					for (i = 0; columns_int[i].name != NULL; i++ ) {
+						if (!strcmp(columns_int[i].name, colname)) {
+							columns_int[i].set_int(pkg, sqlite3_column_int64(it->stmt, icol));
+							break;
+						}
+					}
+					if (columns_text[i].name == NULL)
+						EMIT_PKG_ERROR("Unknown column %s", colname);
+					break;
+				case SQLITE_BLOB:
+				case SQLITE_NULL:
+				case SQLITE_FLOAT:
+					/* just ignore currently */
+					break;
+			}
 		}
 
 		/* load only for PKG_INSTALLED */
@@ -544,38 +554,38 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 		break;
 	case MATCH_EXACT:
 		if (checkorigin == NULL)
-			comp = " WHERE p.name = ?1 "
-				"OR p.name || \"-\" || p.version = ?1";
+			comp = " WHERE name = ?1 "
+				"OR name || \"-\" || version = ?1";
 		else
-			comp = " WHERE p.origin = ?1";
+			comp = " WHERE origin = ?1";
 		break;
 	case MATCH_GLOB:
 		if (checkorigin == NULL)
-			comp = " WHERE p.name GLOB ?1 "
-				"OR p.name || \"-\" || p.version GLOB ?1";
+			comp = " WHERE name GLOB ?1 "
+				"OR name || \"-\" || version GLOB ?1";
 		else
-			comp = " WHERE p.origin GLOB ?1";
+			comp = " WHERE origin GLOB ?1";
 		break;
 	case MATCH_REGEX:
 		if (checkorigin == NULL)
-			comp = " WHERE p.name REGEXP ?1 "
-				"OR p.name || \"-\" || p.version REGEXP ?1";
+			comp = " WHERE name REGEXP ?1 "
+				"OR name || \"-\" || version REGEXP ?1";
 		else
-			comp = " WHERE p.origin REGEXP ?1";
+			comp = " WHERE origin REGEXP ?1";
 		break;
 	case MATCH_EREGEX:
 		if (checkorigin == NULL)
-			comp = " WHERE EREGEXP(?1, p.name) "
-				"OR EREGEXP(?1, p.name || \"-\" || p.version)";
+			comp = " WHERE EREGEXP(?1, name) "
+				"OR EREGEXP(?1, name || \"-\" || version)";
 		else
-			comp = " WHERE EREGEXP(?1, p.origin)";
+			comp = " WHERE EREGEXP(?1, origin)";
 		break;
 	}
 
 	snprintf(sql, sizeof(sql),
-			"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, "
-				"p.message, p.arch, p.osversion, p.maintainer, p.www, "
-				"p.prefix, p.flatsize, p.licenselogic "
+			"SELECT origin, name, version, comment, desc, "
+				"message, arch, osversion, maintainer, www, "
+				"prefix, flatsize, licenselogic "
 			"FROM packages AS p%s "
 			"ORDER BY p.name;", comp);
 
@@ -1650,13 +1660,14 @@ pkgdb_query_upgrades(struct pkgdb *db)
 	}
 
 	const char sql[] = ""
-		"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
-		"l.message, l.arch, l.osversion, l.maintainer, "
-		"l.www, l.prefix, l.flatsize, r.version, r.flatsize, r.pkgsize, r.path "
+		"SELECT l.origin as origin, l.name as name, l.version as version, l.comment as comment, l.desc as desc, "
+		"l.message as message, l.arch as arch, l.osversion as osversion, l.maintainer as maintainer, "
+		"l.www as www, l.prefix as prefix, l.flatsize as flatsize, r.version as version, r.flatsize as flatsize, "
+		"r.pkgsize as pkgsize, r.path as repopath "
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
-		"AND PKGLT(l.version, r.version)";
+		"AND (PKGLT(l.version, r.version) || l.name != r.name)";
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -1677,9 +1688,10 @@ pkgdb_query_downgrades(struct pkgdb *db)
 	}
 
 	const char sql[] = ""
-		"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
-		"l.message, l.arch, l.osversion, l.maintainer, "
-		"l.www, l.prefix, l.flatsize, r.version, r.flatsize, r.pkgsize, r.path "
+		"SELECT l.origin as origin, l.name as name, l.version as version, l.comment as comment, l.desc as desc, "
+		"l.message as message, l.arch as arch, l.osversion as osversion, l.maintainer as maintainer, "
+		"l.www as www, l.prefix as prefix, l.flatsize as flatsize, r.version as version, r.flatsize as flatsize, "
+		"r.pkgsize as pkgsize, r.path as repopath "
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
@@ -1728,9 +1740,9 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 		return (NULL);
 	}
 
-	sbuf_cat(sql, "SELECT p.rowid, p.origin, p.name, p.version, p.comment, "
-			"p.desc, p.arch, p.arch, p.osversion, p.maintainer, p.www, "
-			"p.flatsize, p.pkgsize, p.cksum, p.path FROM remote.packages AS p");
+	sbuf_cat(sql, "SELECT origin, name, version, comment, "
+			"desc, arch, arch, osversion, maintainer, www, "
+			"flatsize, pkgsize, cksum, path as repopath FROM remote.packages");
 
 	switch (match) {
 		case MATCH_ALL:
@@ -1755,19 +1767,19 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 			what = NULL;
 			break;
 		case FIELD_ORIGIN:
-			what = "p.origin";
+			what = "origin";
 			break;
 		case FIELD_NAME:
-			what = "p.name";
+			what = "name";
 			break;
 		case FIELD_NAMEVER:
-			what = "p.name || \"-\" || p.version";
+			what = "name || \"-\" || version";
 			break;
 		case FIELD_COMMENT:
-			what = "p.comment";
+			what = "comment";
 			break;
 		case FIELD_DESC:
-			what = "p.desc";
+			what = "desc";
 			break;
 	}
 

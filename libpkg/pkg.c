@@ -257,7 +257,7 @@ pkg_setnewpkgsize(struct pkg *pkg, int64_t size)
 }
 
 int
-pkg_set_licenselogic(struct pkg *pkg, lic_t logic)
+pkg_set_licenselogic(struct pkg *pkg, int64_t logic)
 {
 	pkg->licenselogic = logic;
 	return (EPKG_OK);

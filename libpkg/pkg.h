@@ -317,7 +317,7 @@ int pkg_isautomatic(struct pkg *pkg);
 /**
  * set the logic for license combinaison
  */
-int pkg_set_licenselogic(struct pkg *pkg, lic_t licenselogic);
+int pkg_set_licenselogic(struct pkg *pkg, int64_t licenselogic);
 
 /**
  * get the logic for license combinaison
