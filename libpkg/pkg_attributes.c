@@ -188,6 +188,66 @@ pkg_license_name(struct pkg_license *l)
 	return (sbuf_get(l->name));
 }
 
+/*
+ * user
+ */
+
+int
+pkg_user_new(struct pkg_user **u)
+{
+	if ((*u = calloc(1, sizeof(struct pkg_user))) == NULL) {
+		EMIT_ERRNO("calloc", "pkg_user");
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+void
+pkg_user_free(struct pkg_user *u)
+{
+	if (u == NULL)
+		return;
+
+	free(u);
+}
+
+const char *
+pkg_user_name(struct pkg_user *u)
+{
+	return (u->name);
+}
+
+/*
+ * group
+ */
+
+int
+pkg_group_new(struct pkg_group **g)
+{
+	if ((*g = calloc(1, sizeof(struct pkg_group))) == NULL) {
+		EMIT_ERRNO("calloc", "pkg_group");
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+void
+pkg_group_free(struct pkg_group *g)
+{
+	if (g == NULL)
+		return;
+
+	free(g);
+}
+
+const char *
+pkg_group_name(struct pkg_group *g)
+{
+	return (g->name);
+}
+
 
 /*
  * Script
