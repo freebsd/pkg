@@ -63,18 +63,18 @@ struct pkg_category {
 };
 
 struct pkg_file {
-	char path[MAXPATHLEN];
+	char path[MAXPATHLEN +1];
 	char sha256[65];
-	char uname[MAXLOGNAME];
-	char gname[MAXLOGNAME];
+	char uname[MAXLOGNAME +1];
+	char gname[MAXLOGNAME +1];
 	mode_t perm;
 	STAILQ_ENTRY(pkg_file) next;
 };
 
 struct pkg_dir {
-	char path[MAXPATHLEN];
-	char uname[MAXLOGNAME];
-	char gname[MAXLOGNAME];
+	char path[MAXPATHLEN +1];
+	char uname[MAXLOGNAME +1];
+	char gname[MAXLOGNAME +1];
 	mode_t perm;
 	STAILQ_ENTRY(pkg_dir) next;
 };
@@ -120,12 +120,12 @@ struct pkg_remote_repo {
 };
 
 struct pkg_user {
-	char name[MAXLOGNAME];
+	char name[MAXLOGNAME+1];
 	STAILQ_ENTRY(pkg_user) next;
 };
 
 struct pkg_group {
-	char name[MAXLOGNAME];
+	char name[MAXLOGNAME+1];
 	STAILQ_ENTRY(pkg_group) next;
 };
 

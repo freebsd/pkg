@@ -10,6 +10,7 @@
 #define INFO_ORIGIN (1<<6)
 #define INFO_ORIGIN_SEARCH (1<<7)
 #define INFO_PREFIX (1<<8)
+#define INFO_FULL (1<<9)
 
 int exec_info(int, char **);
 void usage_info(void);
