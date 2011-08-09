@@ -50,6 +50,7 @@ static struct column_text_mapping {
 	{ "prefix", pkg_set, PKG_PREFIX},
 	{ "cksum", pkg_set, PKG_CKSUM},
 	{ "repopath", pkg_set, PKG_REPOPATH},
+	{ "newversion", pkg_set, PKG_NEWVERSION},
 	{ NULL, NULL, -1 }
 };
 
@@ -1710,12 +1711,12 @@ pkgdb_query_upgrades(struct pkgdb *db)
 	const char sql[] = ""
 		"SELECT l.id AS rowid, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
 		"l.message AS message, l.arch AS arch, l.osversion AS osversion, l.maintainer AS maintainer, "
-		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS version, r.flatsize AS flatsize, "
+		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS newversion, r.flatsize AS flatsize, "
 		"r.pkgsize AS pkgsize, r.path AS repopath "
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
-		"AND (PKGLT(l.version, r.version) || l.name != r.name)";
+		"AND PKGLT(l.version, r.version)";
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -1743,7 +1744,7 @@ pkgdb_query_downgrades(struct pkgdb *db)
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
-		"AND (PKGGT(l.version, r.version) || l.name != r.name)";
+		"AND PKGGT(l.version, r.version)";
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
