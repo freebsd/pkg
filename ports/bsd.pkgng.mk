@@ -78,12 +78,12 @@ fake-pkg:
 .for user in ${USERS:u}
 	@${ECHO_CMD} -n "${user}, " >> ${MANIFESTF}
 .endfor
-	@${ECHO_CMD} "]"
+	@${ECHO_CMD} "]" >> ${MANIFESTF}
 	@${ECHO_CMD} -n "groups: [" >> ${MANIFESTF}
 .for group in ${GROUPS:u}
 	@${ECHO_CMD} -n "${group}, " >> ${MANIFESTF}
 .endfor
-	@${ECHO_CMD} "]"
+	@${ECHO_CMD} "]" >> ${MANIFESTF}
 	@[ -f ${PKGINSTALL} ] && ${CP} ${PKGINSTALL} ${METADIR}/+INSTALL; \
 	[ -f ${PKGPREINSTALL} ] && ${CP} ${PKGPREINSTALL} ${METADIR}/+PRE_INSTALL; \
 	[ -f ${PKGPOSTINSTALL} ] && ${CP} ${PKGPOSTINSTALL} ${METADIR}/+POST_INSTALL; \
