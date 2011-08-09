@@ -437,11 +437,13 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 		if (errno != ENOENT) {
 			EMIT_ERRNO("access", localpath);
 			free(*db);
+			*db = NULL;
 			return (EPKG_FATAL);
 		}
 		else if (eaccess(dbdir, W_OK) != 0) {
 			EMIT_ERRNO("eaccess", dbdir);
 			free(*db);
+			*db = NULL;
 			return (EPKG_FATAL);
 		}
 	}
@@ -449,7 +451,8 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	sqlite3_initialize();
 	if (sqlite3_open(localpath, &(*db)->sqlite) != SQLITE_OK) {
 		ERROR_SQLITE((*db)->sqlite);
-		free(*db);
+		pkgdb_close(*db);
+		*db = NULL;
 		return (EPKG_FATAL);
 	}
 
@@ -459,6 +462,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 		if (access(remotepath, R_OK) != 0) {
 			EMIT_ERRNO("access", remotepath);
 			pkgdb_close(*db);
+			*db = NULL;
 			return (EPKG_FATAL);
 		}
 
@@ -466,6 +470,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 
 		if (sql_exec((*db)->sqlite, sql) != EPKG_OK) {
 			pkgdb_close(*db);
+			*db = NULL;
 			return (EPKG_FATAL);
 		}
 
@@ -477,6 +482,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 		if ((retcode = pkgdb_init((*db)->sqlite)) != EPKG_OK) {
 			ERROR_SQLITE((*db)->sqlite);
 			pkgdb_close(*db);
+			*db = NULL;
 			return (EPKG_FATAL);
 		}
 
