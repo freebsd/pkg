@@ -8,12 +8,12 @@
 int
 pkgdb_dump(struct pkgdb *db, char *dest)
 {
-	struct pkgdb_it *it;
+	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
-	struct sbuf *path;
-	struct packing *pack;
-	char *m;
-	int ret;
+	struct sbuf *path = NULL;
+	struct packing *pack = NULL;
+	char *m = NULL;
+	int ret = EPKG_OK;
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
 					  PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 					  PKG_LOAD_MTREE | PKG_LOAD_LICENSES;
@@ -48,12 +48,12 @@ int
 pkgdb_load(struct pkgdb *db, char *dest)
 {
 	struct pkg *pkg = NULL;
-	struct archive *a;
-	struct archive_entry *ae;
-	const char *path;
-	size_t len;
-	char *buf;
-	size_t size;
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
+	const char *path = NULL;
+	size_t len = 0;
+	char *buf = NULL;
+	size_t size = 0;
 	int retcode = EPKG_OK;
 
 	a = archive_read_new();
@@ -61,7 +61,7 @@ pkgdb_load(struct pkgdb *db, char *dest)
 	archive_read_support_format_tar(a);
 
 	if (archive_read_open_filename(a, dest, 4096) != ARCHIVE_OK) {
-		EMIT_PKG_ERROR("archiv_read_open_filename(%s): %s", path, archive_error_string(a));
+		EMIT_PKG_ERROR("archive_read_open_filename(%s): %s", dest, archive_error_string(a));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
