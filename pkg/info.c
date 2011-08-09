@@ -111,6 +111,7 @@ usage_info(void)
 {
 	fprintf(stderr, "usage: pkg info -a\n");
 	fprintf(stderr, "       pkg info [-egxXdrlsqOf] <pkg-name>\n\n");
+	fprintf(stderr, "       pkg info [-drlsqf] -F <pkg-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
 
@@ -128,15 +129,18 @@ exec_info(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	unsigned int opt = 0;
 	match_t match = MATCH_EXACT;
-	char *pkgname, *pkgversion;
+	char *pkgname;
+	char *pkgversion;
+	const char *file = NULL;
 	int ch;
-	int ret = EPKG_OK, retcode = EPKG_OK;
+	int ret = EPKG_OK;
+	int retcode = 0;
 	bool gotone = false;
 	int i;
 	int sign = 0;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "aegxXEdrlsqopOf")) != -1) {
+	while ((ch = getopt(argc, argv, "aegxXEdrlsqopOfF:")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -147,6 +151,7 @@ exec_info(int argc, char **argv)
 			case 'e':
 				opt |= INFO_EXISTS;
 				retcode = 1;
+				break;
 			case 'g':
 				match = MATCH_GLOB;
 				break;
@@ -185,6 +190,9 @@ exec_info(int argc, char **argv)
 				opt |= INFO_FULL;
 				query_flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES;
 				break;
+			case 'F':
+				file = optarg;
+				break;
 			default:
 				usage_info();
 				return(EX_USAGE);
@@ -194,12 +202,21 @@ exec_info(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0 && match != MATCH_ALL) {
+	if (argc == 0 && file == NULL && match != MATCH_ALL) {
 		/* which -O bsd.*.mk always execpt clean output */
 		if (opt & INFO_ORIGIN_SEARCH)
 			return (EX_OK);
 		usage_info();
 		return (EX_USAGE);
+	}
+
+	if (file != NULL) {
+		if (pkg_open(&pkg, file) != EPKG_OK) {
+			return (1);
+		}
+		print_info(pkg, opt);
+		pkg_free(pkg);
+		return (0);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
@@ -208,18 +225,6 @@ exec_info(int argc, char **argv)
 
 	i = 0;
 	do {
-
-		/* if the argument is a file then query directly the file */
-		if (argc > 0 && access(argv[i], F_OK) == 0) {
-			if (pkg_open(&pkg, argv[i]) != EPKG_OK) {
-				warnx("can not read package %s", argv[i]);
-				return (EX_IOERR);
-			}
-			print_info(pkg, opt);
-			i++;
-			continue;
-		}
-
 		pkgname = argv[i];
 
 		/*
@@ -305,15 +310,15 @@ exec_info(int argc, char **argv)
 				}
 			}
 			if (opt & INFO_EXISTS)
-				retcode = EPKG_OK;
+				retcode = 0;
 			else
 				print_info(pkg, opt);
 		}
 		if (ret != EPKG_END) {
-			retcode = -1;
+			retcode = 1;
 		}
 
-		if (retcode == EPKG_OK && !gotone && match != MATCH_ALL)
+		if (retcode == 0 && !gotone && match != MATCH_ALL)
 			retcode = EX_SOFTWARE;
 
 		pkgdb_it_free(it);
