@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include <openssl/err.h>
+#include <openssl/sha.h>
 #include <openssl/rsa.h>
 #include <openssl/ssl.h>
 
