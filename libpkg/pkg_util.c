@@ -223,7 +223,7 @@ sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH], char out[SHA256_DIGEST_LEN
 	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
 		sprintf(out + (i * 2), "%02x", hash[i]);
 
-	out[sizeof(out) -1] = '\0';
+	out[SHA256_DIGEST_LENGTH * 2] = '\0';
 }
 
 void
