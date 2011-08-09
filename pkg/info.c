@@ -109,8 +109,8 @@ print_info(struct pkg * const pkg, unsigned int opt)
 void
 usage_info(void)
 {
-	fprintf(stderr, "usage: pkg info\n");
-	fprintf(stderr, "       pkg info [-aegxXdrlsqOf] <pkg-name>\n\n");
+	fprintf(stderr, "usage: pkg info -a\n");
+	fprintf(stderr, "       pkg info [-egxXdrlsqOf] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
 
