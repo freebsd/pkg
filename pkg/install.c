@@ -27,7 +27,7 @@ exec_install(int argc, char **argv)
 	struct pkgdb_it *it;
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	int retcode = EPKG_OK;
+	int retcode = 1;
 	int i, ch, yes = 0;
 	match_t match = MATCH_EXACT;
 
@@ -68,23 +68,24 @@ exec_install(int argc, char **argv)
 	}
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
-		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	for (i = 0; i < argc; i++) {
 		if ((it = pkgdb_rquery(db, argv[i], match, FIELD_NAME)) == NULL) {
-			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 
-		while (( retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			pkg_jobs_add(jobs, pkgdb_query_remote(db, pkg_get(pkg, PKG_ORIGIN)));
 		}
 		
 		pkgdb_it_free(it);
 	}
 	pkg_free(pkg);
+
+	if (pkg_jobs_empty(jobs) == true)
+		goto cleanup;
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
@@ -97,12 +98,14 @@ exec_install(int argc, char **argv)
 		yes = query_yesno("\nProceed with installing packages [y/N]: ");
 
 	if (yes == 1)
-		retcode = pkg_jobs_apply(jobs, 0);
+		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
+			goto cleanup;
+
+	retcode = 0;
 
 	cleanup:
-	
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 
-	return (retcode == EPKG_OK ? EX_OK : 1);
+	return (retcode);
 }

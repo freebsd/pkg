@@ -30,7 +30,7 @@ exec_delete(int argc, char **argv)
 	int flags = PKG_LOAD_BASIC;
 	int force = 0;
 	int yes = 0;
-	int retcode = EPKG_OK;
+	int retcode = 1;
 
 	while ((ch = getopt(argc, argv, "agxXfy")) != -1) {
 		switch (ch) {
@@ -82,11 +82,10 @@ exec_delete(int argc, char **argv)
 
 	if (match == MATCH_ALL) {
 		if ((it = pkgdb_query(db, NULL, match)) == NULL) {
-			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 
-		while ((retcode = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
+		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 			pkg_jobs_add(jobs, pkg);
 			pkg = NULL;
 		}
@@ -95,11 +94,10 @@ exec_delete(int argc, char **argv)
 	} else {
 		for (i = 0; i < argc; i++) {
 			if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
-				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 
-			while ((retcode = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
+			while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 				pkg_jobs_add(jobs, pkg);
 				pkg = NULL;
 			}
@@ -109,8 +107,7 @@ exec_delete(int argc, char **argv)
 	}
 
 	/* check if we have something to deinstall */
-	pkg = NULL;
-	if ((retcode != EPKG_END) || (pkg_jobs(jobs, &pkg) != EPKG_OK)) {
+	if (pkg_jobs_empty(jobs) == true) {
 		goto cleanup;
 	}
 
@@ -128,11 +125,13 @@ exec_delete(int argc, char **argv)
 	} else
 		goto cleanup;
 
-	retcode = pkgdb_compact(db);
+	pkgdb_compact(db);
+
+	retcode = 0;
 
 	cleanup:
 	pkgdb_close(db);
 	pkg_jobs_free(jobs);
 
-	return (retcode == EPKG_OK ? EX_OK : 1);
+	return (retcode);
 }

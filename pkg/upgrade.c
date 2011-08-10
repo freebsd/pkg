@@ -29,7 +29,7 @@ exec_upgrade(int argc, char **argv)
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
 	struct pkg_jobs *jobs = NULL;
-	int retcode = EPKG_OK;
+	int retcode = 1;
 	int64_t oldsize = 0, newsize = 0;
 	int64_t dlsize = 0;
 	char size[7];
@@ -62,18 +62,23 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK) {
-		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if ((it = pkgdb_query_upgrades(db)) == NULL) {
-		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
-	printf("The following packages will be upgraded: \n");
-	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_jobs_add(jobs, pkgdb_query_remote(db, pkg_get(pkg, PKG_ORIGIN)));
+	}
+
+	if (pkg_jobs_empty(jobs) == true)
+		goto cleanup;
+
+	printf("The following packages will be upgraded: \n");
+	pkg = NULL;
+	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
 		oldsize += pkg_flatsize(pkg);
 		newsize += pkg_new_flatsize(pkg);
 		dlsize += pkg_new_pkgsize(pkg);
@@ -95,10 +100,12 @@ exec_upgrade(int argc, char **argv)
 		yes = query_yesno("\nProceed with upgrading packages [y/N]: ");
 
 	if (yes == 1)
-		retcode = pkg_jobs_apply(jobs, 0);
+		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
+			goto cleanup;
+
+	retcode = 0;
 
 	cleanup:
-
 	pkgdb_it_free(it);
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
