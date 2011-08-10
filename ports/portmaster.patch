@@ -11,7 +11,7 @@ Index: portmaster
 +	if [ -z "${use_pkgng}" ]; then
 +		$PM_SU_CMD /usr/sbin/pkg_delete $*;
 +	else
-+		$PM_SU_CMD /usr/sbin/pkg delete $*;
++		$PM_SU_CMD /usr/sbin/pkg delete -y $*;
 +	fi
 +}
  pm_rm_s           () { $PM_SU_CMD /bin/rm $*; }
@@ -254,7 +254,19 @@ Index: portmaster
  			esac
  
  			[ -z "$do_update" ] && {
-@@ -2224,7 +2308,12 @@
+@@ -1682,6 +1766,11 @@
+ 	fi
+ 
+ 	pm_cd $pkgdir || fail "Cannot cd into $pkgdir to create a package"
++	if [ -z "${use_pkgng}" ]; then
++		pm_pkg_create="pkg_create -b"
++	else
++		pm_pkg_create="pkg create "
++	fi
+ 	if $PM_SU_CMD pkg_create -b $2; then
+ 		if [ "$1" = "$pbu" ]; then
+ 			if [ -n "$BACKUP" ]; then
+@@ -2224,7 +2313,12 @@
  			fail "No entry for $origin in $PM_INDEX"
  	fi
  
@@ -268,7 +280,7 @@ Index: portmaster
  	\<)	build_l="${build_l}\tUpgrade $iport to $new_port\n" ;;
  	=)	build_l="${build_l}\tRe-install $iport\n" ;;
  	\>)	build_l="${build_l}\tDowngrade $iport to $new_port\n" ;;
-@@ -2982,7 +3071,12 @@
+@@ -2982,7 +3076,12 @@
  	/*)	echo '' ; no_valid_port ;;
  	*/*)	portdir=$argv ;;
  	\.)	portdir=${PWD##*/ports/} ;; # Not always $pd, could be symlink
@@ -282,7 +294,7 @@ Index: portmaster
  	esac
  
  	if [ -z "$portdir" -a -z "$upg_port" ]; then
-@@ -3015,11 +3109,20 @@
+@@ -3015,11 +3114,20 @@
  
  	case "$arg2" in
  	*/*)	ro_opd=$arg2 ; ro_upg_port=`iport_from_origin $ro_opd` ;;
@@ -307,7 +319,7 @@ Index: portmaster
  		fi
  		[ -n "$ro_upg_port" ] && ro_opd=`origin_from_pdb $ro_upg_port`
  	esac
-@@ -3510,7 +3613,12 @@
+@@ -3510,7 +3618,12 @@
  		pm_v "===>>> Available package ($latest_pv) matches the current version"
  	elif [ -n "$latest_pv" -a -n "$PM_PACKAGES_NEWER" ]; then
  		if [ -n "$upg_port" ]; then
@@ -321,7 +333,7 @@ Index: portmaster
  			\<)	use_package=up_newer
  				pm_v "===>>> Available package ($latest_pv)"
  				pm_v "       is newer than installed ($upg_port)" ;;
-@@ -3526,7 +3634,12 @@
+@@ -3526,7 +3639,12 @@
  			pm_v "===>>> There is a package available ($latest_pv)"
  		fi
  	elif [ -n "$latest_pv" ]; then
