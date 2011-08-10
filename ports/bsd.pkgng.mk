@@ -84,6 +84,29 @@ fake-pkg:
 	@${ECHO_CMD} -n "${group}, " >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
+	@${ECHO_CMD} -n "options: {" >> ${MANIFESTF}
+	-@if [ -e ${OPTIONSFILE} ]; then \
+		. ${OPTIONSFILE}; \
+	fi; \
+	set -- ${OPTIONS} XXX; \
+	while [ $$# -gt 3 ]; do \
+		defaultval=$$3 \
+		withvar=WITH_$$1; \
+		withoutvar=WITHOUT_$$1; \
+		withval=$$(eval ${ECHO_CMD} $$\{$${withvar}\}); \
+		withoutval=$$(eval ${ECHO_CMD} $$\{$${withoutvar}\}); \
+		if [ ! -z "$${withval}" ]; then \
+			val=on; \
+		elif [ ! -z "$${withoutval}" ]; then \
+			val=off; \
+		else \
+			val="$${defaultval}"; \
+		fi; \
+		${ECHO_MSG} -n "$$1: $${val},"; \
+		shift 3; \
+	done >> ${MANIFESTF}
+	@${ECHO_CMD} "}" >> ${MANIFESTF}
+	@${CAT} ${MANIFESTF}
 	@[ -f ${PKGINSTALL} ] && ${CP} ${PKGINSTALL} ${METADIR}/+INSTALL; \
 	[ -f ${PKGPREINSTALL} ] && ${CP} ${PKGPREINSTALL} ${METADIR}/+PRE_INSTALL; \
 	[ -f ${PKGPOSTINSTALL} ] && ${CP} ${PKGPOSTINSTALL} ${METADIR}/+POST_INSTALL; \

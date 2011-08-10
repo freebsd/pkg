@@ -621,7 +621,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "options"), 7, YAML_PLAIN_SCALAR_STYLE),
 					options);
 		}
-		manifest_append_kv(files, pkg_option_opt(option), pkg_option_value(option));
+		manifest_append_kv(options, pkg_option_opt(option), pkg_option_value(option));
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
