@@ -64,7 +64,7 @@ static struct manifest_key {
 	{ "scripts", PKG_SCRIPTS, YAML_MAPPING_NODE, parse_mapping},
 	{ "message", PKG_MESSAGE, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "options", PKG_OPTIONS, YAML_SEQUENCE_NODE, parse_mapping},
+	{ "options", PKG_OPTIONS, YAML_MAPPING_NODE, parse_mapping},
 	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ NULL, -99, -99, NULL}
