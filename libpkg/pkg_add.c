@@ -42,7 +42,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 
 	do {
 		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
-			EMIT_PKG_ERROR("archive_read_extract(): %s",
+			pkg_emit_error("archive_read_extract(): %s",
 						   archive_error_string(a));
 			retcode = EPKG_FATAL;
 			break;
@@ -60,7 +60,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		    && lstat(path, &st) == ENOENT) {
 			archive_entry_set_pathname(ae, path);
 			if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
-				EMIT_PKG_ERROR("archive_read_extract(): %s",
+				pkg_emit_error("archive_read_extract(): %s",
 							   archive_error_string(a));
 				retcode = EPKG_FATAL;
 				break;
@@ -69,7 +69,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
 
 	if (ret != ARCHIVE_EOF) {
-		EMIT_PKG_ERROR("archive_read_next_header(): %s",
+		pkg_emit_error("archive_read_next_header(): %s",
 					   archive_error_string(a));
 		retcode = EPKG_FATAL;
 	}
@@ -119,7 +119,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 		pkg_setautomatic(pkg);
 
 	if (uname(&u) != 0) {
-		EMIT_ERRNO("uname", "");
+		pkg_emit_errno("uname", "");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -128,7 +128,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 	 * Check the architecture
 	 */
 	if (strcmp(u.machine, pkg_get(pkg, PKG_ARCH)) != 0) {
-		EMIT_PKG_ERROR("wrong architecture: %s instead of %s",
+		pkg_emit_error("wrong architecture: %s instead of %s",
 					   pkg_get(pkg, PKG_ARCH), u.machine);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -151,7 +151,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 	pkgdb_it_free(it);
 
 	if (ret == EPKG_OK) {
-		EMIT_ALREADY_INSTALLED(pkg);
+		pkg_emit_already_installed(pkg);
 		retcode = EPKG_INSTALLED;
 		goto cleanup;
 	} else if (ret != EPKG_END) {
@@ -165,7 +165,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 
 	basedir = dirname(path);
 	if ((ext = strrchr(path, '.')) == NULL) {
-		EMIT_PKG_ERROR("%s has no extension", path);
+		pkg_emit_error("%s has no extension", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -183,7 +183,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 				}
 			} else {
 				retcode = EPKG_FATAL;
-				EMIT_MISSING_DEP(pkg, dep);
+				pkg_emit_missing_dep(pkg, dep);
 				goto cleanup;
 			}
 		}
@@ -196,7 +196,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 		goto cleanup_reg;
 
 	if (!upgrade)
-		EMIT_INSTALL_BEGIN(pkg);
+		pkg_emit_install_begin(pkg);
 
 	/*
 	 * Execute pre-install scripts
@@ -223,9 +223,9 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
 	if (upgrade)
-		EMIT_UPGRADE_FINISHED(pkg);
+		pkg_emit_upgrade_finished(pkg);
 	else
-		EMIT_INSTALL_FINISHED(pkg);
+		pkg_emit_install_finished(pkg);
 
 	cleanup_reg:
 	pkgdb_register_finale(db, retcode);

@@ -29,7 +29,7 @@ pkg_fetch_file(const char *url, const char *dest)
 	int retcode = EPKG_OK;
 
 	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0600)) == -1) {
-		EMIT_ERRNO("open", dest);
+		pkg_emit_errno("open", dest);
 		return(EPKG_FATAL);
 	}
 
@@ -38,7 +38,7 @@ pkg_fetch_file(const char *url, const char *dest)
 		if (remote == NULL) {
 			--retry;
 			if (retry == 0) {
-				EMIT_PKG_ERROR("%s: %s", url, fetchLastErrString);
+				pkg_emit_error("%s: %s", url, fetchLastErrString);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -52,7 +52,7 @@ pkg_fetch_file(const char *url, const char *dest)
 			break;
 
 		if (write(fd, buf, r) != r) {
-			EMIT_ERRNO("write", dest);
+			pkg_emit_errno("write", dest);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -61,13 +61,13 @@ pkg_fetch_file(const char *url, const char *dest)
 		now = time(NULL);
 		/* Only call the callback every second */
 		if (now > last || done == st.size) {
-			EMIT_FETCHING(url, st.size, done, (now - begin_dl));
+			pkg_emit_fetching(url, st.size, done, (now - begin_dl));
 			last = now;
 		}
 	}
 
 	if (ferror(remote)) {
-		EMIT_PKG_ERROR("%s: %s", url, fetchLastErrString);
+		pkg_emit_error("%s: %s", url, fetchLastErrString);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}

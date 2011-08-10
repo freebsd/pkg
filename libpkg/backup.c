@@ -61,7 +61,8 @@ pkgdb_load(struct pkgdb *db, char *dest)
 	archive_read_support_format_tar(a);
 
 	if (archive_read_open_filename(a, dest, 4096) != ARCHIVE_OK) {
-		EMIT_PKG_ERROR("archive_read_open_filename(%s): %s", dest, archive_error_string(a));
+		pkg_emit_error("archive_read_open_filename(%s): %s", dest,
+					   archive_error_string(a));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}

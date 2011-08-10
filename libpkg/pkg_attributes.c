@@ -135,7 +135,7 @@ int
 pkg_conflict_new(struct pkg_conflict **c)
 {
 	if ((*c = calloc(1, sizeof(struct pkg_conflict))) == NULL) {
-		EMIT_ERRNO("calloc", "pkg_conflict");
+		pkg_emit_errno("calloc", "pkg_conflict");
 		return (EPKG_FATAL);
 	}
 
@@ -165,7 +165,7 @@ int
 pkg_license_new(struct pkg_license **l)
 {
 	if ((*l = calloc(1, sizeof(struct pkg_license))) == NULL) {
-		EMIT_ERRNO("calloc", "pkg_license");
+		pkg_emit_errno("calloc", "pkg_license");
 		return (EPKG_FATAL);
 	}
 
@@ -196,7 +196,7 @@ int
 pkg_user_new(struct pkg_user **u)
 {
 	if ((*u = calloc(1, sizeof(struct pkg_user))) == NULL) {
-		EMIT_ERRNO("calloc", "pkg_user");
+		pkg_emit_errno("calloc", "pkg_user");
 		return (EPKG_FATAL);
 	}
 
@@ -226,7 +226,7 @@ int
 pkg_group_new(struct pkg_group **g)
 {
 	if ((*g = calloc(1, sizeof(struct pkg_group))) == NULL) {
-		EMIT_ERRNO("calloc", "pkg_group");
+		pkg_emit_errno("calloc", "pkg_group");
 		return (EPKG_FATAL);
 	}
 
@@ -257,7 +257,7 @@ int
 pkg_script_new(struct pkg_script **script)
 {
 	if ((*script = calloc(1, sizeof(struct pkg_script))) == NULL) {
-		EMIT_ERRNO("calloc", "pkg_script");
+		pkg_emit_errno("calloc", "pkg_script");
 		return (EPKG_FATAL);
 	}
 

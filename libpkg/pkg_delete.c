@@ -48,13 +48,13 @@ pkg_delete2(struct pkg *pkg, struct pkgdb *db, int force, int upgrade)
 		return (ret);
 
 	if (!upgrade)
-		EMIT_DEINSTALL_BEGIN(pkg);
+		pkg_emit_deinstall_begin(pkg);
 	else
-		EMIT_UPGRADE_BEGIN(pkg);
+		pkg_emit_upgrade_begin(pkg);
 
 	/* If there are dependencies */
 	if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
-		EMIT_REQUIRED(pkg, force);
+		pkg_emit_required(pkg, force);
 		if (!force)
 			return (EPKG_REQUIRED);
 	}
@@ -78,7 +78,7 @@ pkg_delete2(struct pkg *pkg, struct pkgdb *db, int force, int upgrade)
 		return (ret);
 
 	if (!upgrade)
-		EMIT_DEINSTALL_FINISHED(pkg);
+		pkg_emit_deinstall_finished(pkg);
 
 	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
 }
@@ -97,16 +97,17 @@ pkg_delete_files(struct pkg *pkg, int force)
 		/* check sha256 */
 		if (!force && pkg_file_sha256(file)[0] != '\0') {
 			if (sha256_file(path, sha256) == -1) {
-				EMIT_PKG_ERROR("sha256 calculation failed for '%s'",
+				pkg_emit_error("sha256 calculation failed for '%s'",
 					  path);
 			} else if (strcmp(sha256, pkg_file_sha256(file)) != 0) {
-				EMIT_PKG_ERROR("%s fails original SHA256 checksum, not removing", path);
+				pkg_emit_error("%s fails original SHA256 checksum,"
+							   " not removing", path);
 				continue;
 			}
 		}
 
 		if (unlink(path) == -1) {
-			EMIT_ERRNO("unlink", path);
+			pkg_emit_errno("unlink", path);
 			continue;
 		}
 	}
@@ -130,7 +131,7 @@ pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, int force)
 			continue;
 
 		if (rmdir(pkg_dir_path(dir)) == -1 && errno != ENOTEMPTY && force != 1)
-			EMIT_ERRNO("rmdir", pkg_dir_path(dir));
+			pkg_emit_errno("rmdir", pkg_dir_path(dir));
 	}
 
 	return (EPKG_OK);

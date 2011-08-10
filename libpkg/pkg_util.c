@@ -70,7 +70,7 @@ mkdirs(const char *_path)
 
 		if (mkdir(path, S_IRWXU | S_IRWXG | S_IRWXO) < 0)
 			if (errno != EEXIST && errno != EISDIR) {
-				EMIT_ERRNO("mkdir", path);
+				pkg_emit_errno("mkdir", path);
 				return (EPKG_FATAL);
 			}
 
@@ -97,28 +97,28 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 	assert(sz != NULL);
 
 	if ((fd = open(path, O_RDONLY)) == -1) {
-		EMIT_ERRNO("open", path);
+		pkg_emit_errno("open", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (fstat(fd, &st) == -1) {
 		close(fd);
-		EMIT_ERRNO("fstat", path);
+		pkg_emit_errno("fstat", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
 		close(fd);
-		EMIT_ERRNO("malloc", "");
+		pkg_emit_errno("malloc", "");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
 		close(fd);
-		EMIT_ERRNO("read", path);
+		pkg_emit_errno("read", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -249,7 +249,7 @@ sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	SHA256_CTX sha256;
 
 	if ((fp = fopen(path, "rb")) == NULL) {
-		EMIT_ERRNO("fopen", path);
+		pkg_emit_errno("fopen", path);
 		return EPKG_FATAL;
 	}
 
@@ -261,7 +261,7 @@ sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	if (ferror(fp) != 0) {
 		fclose(fp);
 		out[0] = '\0';
-		EMIT_ERRNO("fread", path);
+		pkg_emit_errno("fread", path);
 		return EPKG_FATAL;
 	}
 

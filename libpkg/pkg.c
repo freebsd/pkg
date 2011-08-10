@@ -15,7 +15,7 @@ int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL) {
-		EMIT_ERRNO("malloc", "");
+		pkg_emit_errno("malloc", "pkg");
 		return EPKG_FATAL;
 	}
 
@@ -135,7 +135,7 @@ pkg_get(struct pkg const * const pkg, const pkg_attr attr)
 	assert(attr < PKG_NUM_FIELDS);
 
 	if ((pkg->fields[attr].type & pkg->type) == 0)
-		EMIT_PKG_ERROR("%s", "wrong usage of `attr` for this type of `pkg`");
+		pkg_emit_error("wrong usage of `attr` for this type of `pkg`");
 
 	return (sbuf_get(pkg->fields[attr].value));
 }
@@ -475,7 +475,8 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	if (pkg->licenselogic == LICENSE_SINGLE && !STAILQ_EMPTY(&pkg->licenses)) {
-		EMIT_PKG_ERROR("%s is said a have a single license which is already set", pkg_get(pkg, PKG_NAME));
+		pkg_emit_error("%s is have a single license which is already set",
+					   pkg_get(pkg, PKG_NAME));
 		return (EPKG_FATAL);
 	}
 
@@ -604,7 +605,7 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 
 	while (pkg_categories(pkg, &c) == EPKG_OK) {
 		if (strcmp(name, pkg_category_name(c)) == 0) {
-			EMIT_PKG_ERROR("Duplicate category listing: %s, ignoring", name);
+			pkg_emit_error("duplicate category listing: %s, ignoring", name);
 			return (EPKG_OK);
 		}
 	}
@@ -633,7 +634,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
 		if (strcmp(path, pkg_dir_path(d)) == 0) {
-			EMIT_PKG_ERROR("Duplicate directory listing: %s, ignoring", path);
+			pkg_emit_error("duplicate directory listing: %s, ignoring", path);
 			return (EPKG_OK);
 		}
 	}
@@ -734,7 +735,7 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 			strcmp(filename, "+UPGRADE") == 0) {
 		type = PKG_SCRIPT_UPGRADE;
 	} else {
-		EMIT_PKG_ERROR("unknown script '%s'", filename);
+		pkg_emit_error("unknown script '%s'", filename);
 		return EPKG_FATAL;
 	}
 
@@ -991,7 +992,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	archive_read_support_format_tar(*a);
 
 	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK) {
-		EMIT_PKG_ERROR("archive_read_open_filename(%s): %s", path,
+		pkg_emit_error("archive_read_open_filename(%s): %s", path,
 					   archive_error_string(*a));
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -1038,7 +1039,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	}
 
 	if (ret != ARCHIVE_OK && ret != ARCHIVE_EOF) {
-		EMIT_PKG_ERROR("archive_read_next_header(): %s",
+		pkg_emit_error("archive_read_next_header(): %s",
 					   archive_error_string(*a));
 		retcode = EPKG_FATAL;
 	}

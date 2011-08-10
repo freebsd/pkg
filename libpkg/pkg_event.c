@@ -11,12 +11,153 @@ pkg_event_register(pkg_event_cb cb, void *data)
 	_data = data;
 }
 
-void
-pkg_emit_event(struct pkg_event *ev, const char *file, uint16_t line)
+static void
+pkg_emit_event(struct pkg_event *ev)
 {
-	ev->file = file;
-	ev->line = line;
-
 	if (_cb != NULL)
 		_cb(_data, ev);
 }
+
+void
+pkg_emit_error(const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+
+	ev.type = PKG_EVENT_ERROR;
+
+	va_start(ap, fmt);
+	vasprintf(&ev.e_pkg_error.msg, fmt, ap);
+	va_end(ap);
+
+	pkg_emit_event(&ev);
+	free(ev.e_pkg_error.msg);
+}
+
+void
+pkg_emit_errno(const char *func, const char *arg)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_ERRNO;
+	ev.e_errno.func = func;
+	ev.e_errno.arg = arg;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_already_installed(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_ALREADY_INSTALLED;
+	ev.e_already_installed.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_FETCHING;
+	ev.e_fetching.url = url;
+        ev.e_fetching.total = total;
+        ev.e_fetching.done = done;
+        ev.e_fetching.elapsed = elapsed;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_install_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_INSTALL_BEGIN;
+	ev.e_install_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_install_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_INSTALL_FINISHED;
+	ev.e_install_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_deinstall_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_DEINSTALL_BEGIN;
+	ev.e_deinstall_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_deinstall_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_DEINSTALL_FINISHED;
+	ev.e_deinstall_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_upgrade_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_UPGRADE_BEGIN;
+	ev.e_upgrade_begin.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_upgrade_finished(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_UPGRADE_FINISHED;
+	ev.e_upgrade_finished.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_missing_dep(struct pkg *p, struct pkg_dep *d)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_MISSING_DEP;
+	ev.e_missing_dep.pkg = p;
+	ev.e_missing_dep.dep = d;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_required(struct pkg *p, int force)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_REQUIRED;
+	ev.e_required.pkg = p;
+	ev.e_required.force = force;
+
+	pkg_emit_event(&ev);
+}
+
