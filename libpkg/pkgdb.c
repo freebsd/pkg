@@ -1711,7 +1711,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 	const char sql[] = ""
 		"SELECT l.id AS rowid, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
 		"l.message AS message, l.arch AS arch, l.osversion AS osversion, l.maintainer AS maintainer, "
-		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS newversion, r.flatsize AS flatsize, "
+		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS newversion, r.flatsize AS newflatsize, "
 		"r.pkgsize AS pkgsize, r.path AS repopath "
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
@@ -1739,7 +1739,7 @@ pkgdb_query_downgrades(struct pkgdb *db)
 	const char sql[] = ""
 		"SELECT l.id AS rowid, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
 		"l.message AS message, l.arch AS arch, l.osversion AS osversion, l.maintainer AS maintainer, "
-		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS version, r.flatsize AS flatsize, "
+		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS version, r.flatsize AS newflatsize, "
 		"r.pkgsize AS pkgsize, r.path AS repopath "
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
@@ -1791,7 +1791,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 
 	sbuf_cat(sql, "SELECT origin, name, version, comment, "
 			"desc, arch, arch, osversion, maintainer, www, "
-			"flatsize, pkgsize, cksum, path AS repopath FROM remote.packages");
+			"flatsize AS newflatsize, pkgsize, cksum, path AS repopath FROM remote.packages");
 
 	switch (match) {
 		case MATCH_ALL:
