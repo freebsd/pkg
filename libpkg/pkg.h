@@ -2,6 +2,7 @@
 #define _PKG_H
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <openssl/pem.h>
 
@@ -657,6 +658,11 @@ void pkg_jobs_free(struct pkg_jobs *jobs);
  * @return An error code.
  */
 int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
+
+/**
+ * Returns true if there are no jobs.
+ */
+bool pkg_jobs_empty(struct pkg_jobs *jobs);
 
 /**
  * Iterates over the packages in the jobs queue.

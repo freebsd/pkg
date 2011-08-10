@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -51,6 +52,14 @@ pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
 	STAILQ_INSERT_TAIL(&j->jobs, pkg, next);
 
 	return (EPKG_OK);
+}
+
+bool
+pkg_jobs_empty(struct pkg_jobs *j)
+{
+	assert(j != NULL);
+
+	return (STAILQ_FIRST(&j->jobs) == NULL ? true : false);
 }
 
 int
