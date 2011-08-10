@@ -1,0 +1,344 @@
+Index: portmaster
+===================================================================
+--- portmaster	(révision 224747)
++++ portmaster	(copie de travail)
+@@ -2,6 +2,7 @@
+ 
+ # Copyright (c) 2005-2011 Douglas Barton, All rights reserved
+ # Please see detailed copyright below
++set -x
+ 
+ trap trap_exit INT
+ 
+@@ -291,7 +292,13 @@
+ 			 unset -v MASTER_RB_LIST;
+ 			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
+ pm_mkdir_s        () { $PM_SU_CMD /bin/mkdir -p $1; }
+-pm_pkg_delete_s   () { $PM_SU_CMD /usr/sbin/pkg_delete $*; }
++pm_pkg_delete_s   () { 
++	if [ -z "${use_pkgng}" ]; then
++		$PM_SU_CMD /usr/sbin/pkg_delete $*;
++	else
++		$PM_SU_CMD /usr/sbin/pkg delete $*;
++	fi
++}
+ pm_rm_s           () { $PM_SU_CMD /bin/rm $*; }
+ pm_rmdir_s        () { $PM_SU_CMD /bin/rmdir $*; }
+ pm_unlink_s       () { [ -e "$1" ] && $PM_SU_CMD /bin/unlink $1; }
+@@ -494,13 +501,23 @@
+ 
+ 	pattern=`globstrip $1`
+ 
+-	glob_dirs=`find $pdb -maxdepth 1 -type d -name ${pattern}\*`
+-	case "$glob_dirs" in
+-	# Match a newline in multiple responses from find
+-	*'
+-'*)		return 2 ;;
+-	$pdb/*)	return ;;
+-	esac
++	if [ -z "${use_pkgng}" ]; then
++		glob_dirs=`find $pdb -maxdepth 1 -type d -name ${pattern}\*`
++		case "$glob_dirs" in
++		# Match a newline in multiple responses from find
++		*'
++'*)			return 2 ;;
++		$pdb/*)	return ;;
++		esac
++	else
++		glob_dirs=`pkg info -qg ${pattern}\*`
++		case "$glob_dirs" in
++		# Match a newline in multiple responses from find
++		*'
++'*)			return 2 ;;
++		*)	return ;;
++		esac
++	fi
+ 
+ 	unset glob_dirs
+ 	return 1
+@@ -509,8 +526,12 @@
+ origin_from_pdb () {
+ 	local o
+ 
++	if [ -z "${use_pkgng}" ]; then
+ 	o=`grep -m1 '@comment ORIGIN:' $pdb/$1/+CONTENTS 2>/dev/null` && {
+ 		echo ${o#@comment ORIGIN:}; return 0; }
++	else
++		pkg info -qo $1; return 0;
++	fi
+ 
+ 	case "$1" in bsdpan-*) return 3 ;; esac
+ 
+@@ -811,7 +832,11 @@
+ 		fi
+ 		unset INDEXFILE INDEXDIR
+ 
+-		PM_INDEX_PORTS=`pkg_version -Ivl\< $PM_INDEX | cut -f1 -d\<`
++		if [ -z "${use_pkgng}" ]; then
++			PM_INDEX_PORTS=`pkg_version -Ivl\< $PM_INDEX | cut -f1 -d\<`
++		else
++			PM_INDEX_PORTS=`pkg version -Ivl\< $PM_INDEX | cut -f1 -d\<`
++		fi
+ 		export PM_INDEX_PORTS
+ 
+ 		if [ -z "$pd" -o "$pd" != /usr/ports ]; then
+@@ -861,6 +886,10 @@
+ iport_from_origin () {
+ 	local sn dir
+ 
++	if [ -n "${use_pkgng}" ]; then
++		pkg info -q ${1} || return 1
++		return
++	fi
+ 	sn=${1#*/} ; sn=${sn%-*} ; sn=${sn%%[0-9]*}
+ 
+ 	if ! dir=`grep -l "@comment ORIGIN:${1}$" $pdb/${sn}*/+CONTENTS 2>/dev/null`; then
+@@ -1115,36 +1144,64 @@
+ 	echo '############' > $DI_FILES		# Make the file > 0 bytes
+ 	echo "===>>> Gathering distinfo list for installed ports"
+ 	echo ''
+-	for pkg in ${pdb}/*; do
+-		[ -d $pkg ] || continue
+-		iport=${pkg#$pdb/}
++	if [ -z "$use_pkgng" ]; then
++		for pkg in ${pdb}/*; do
++			[ -d $pkg ] || continue
++			iport=${pkg#$pdb/}
+ 
+-		origin=`origin_from_pdb $iport` || continue
++			origin=`origin_from_pdb $iport` || continue
+ 
+-		if [ ! -d "$pd/$origin" ]; then
+-			find_moved_port $origin $iport nonfatal >/dev/null
+-			[ -n "$moved_npd" ] || continue
+-			origin=$moved_npd
+-		fi
++			if [ ! -d "$pd/$origin" ]; then
++				find_moved_port $origin $iport nonfatal >/dev/null
++				[ -n "$moved_npd" ] || continue
++				origin=$moved_npd
++			fi
+ 
+-		origin="${pd}/${origin}"
++			origin="${pd}/${origin}"
+ 
+-		if [ -s "${origin}/distinfo" ]; then
+-			distinfo="${origin}/distinfo"
+-		else
+-			pm_cd $origin || continue
+-			distinfo=`pm_make -V DISTINFO_FILE`
+-			[ -n "$distinfo" ] || fail "No DISTINFO_FILE in $origin"
+-		fi
++			if [ -s "${origin}/distinfo" ]; then
++				distinfo="${origin}/distinfo"
++			else
++				pm_cd $origin || continue
++				distinfo=`pm_make -V DISTINFO_FILE`
++				[ -n "$distinfo" ] || fail "No DISTINFO_FILE in $origin"
++			fi
+ 
+-		if [ -s "$distinfo" ]; then
+-			grep '^SHA256 ' $distinfo | while read disc1 f disc2; do
+-				f=${f#(} ; f=${f%)}
+-				echo $f >> $DI_FILES
+-			done
+-		fi
+-	done
++			if [ -s "$distinfo" ]; then
++				grep '^SHA256 ' $distinfo | while read disc1 f disc2; do
++					f=${f#(} ; f=${f%)}
++					echo $f >> $DI_FILES
++				done
++			fi
++		done
++	else
++		for pkg in `pkg info -qa`; do
++			origin=`origin_from_pdb $pkg` || continue
++			if [ ! -d "$pdf/${origin}" ]; then
++				find_moved_port $origin $pkg nonfatal >/dev/null
++				[ -n "$moved_npd" ] || continue
++				origin=$moved_npd
++			fi
+ 
++			origin="$pd/${origin}"
++
++			if [ -s "${origin}/distinfo" ]; then
++				distinfo="${origin}/distinfo"
++			else
++				pm_cd $origin || continue
++				distinfo=`pm_maje -V DISTINFO_FILE`
++				[ -n "$distinfo" ] || fail "No DISTINFO_FILE in $origin"
++			fi
++
++			if [ -s "$distinfo" ]; then
++				grep '^SHA256 ' $distinfo | while read disc1 f disc2; do
++					f=${f#(}; f=${f%)}
++					echo $f >> $DI_FILES}
++				done
++			fi
++		done
++	fi
++
+ 	# Tell safe_exit that we are done
+ 	pm_unlink ${DI_FILES}-e
+ 	sed -i -e 1s/############/%%%%%%%%%%%%/ $DI_FILES
+@@ -1192,22 +1249,44 @@
+ 	local pkg
+ 	pm_v "===>>> Sorting ports by category"
+ 
+-	for pkg in $pdb/*; do
+-		if [ -s "$pkg/+REQUIRED_BY" ]; then
+-			if grep -ql '^@pkgdep ' $pkg/+CONTENTS 2>/dev/null; then
+-				branches="$branches ${pkg#$pdb/}"
++	if [ -z "${use_pkgng}" ]; then
++		for pkg in $pdb/*; do
++			if [ -s "$pkg/+REQUIRED_BY" ]; then
++				if grep -ql '^@pkgdep ' $pkg/+CONTENTS 2>/dev/null; then
++					branches="$branches ${pkg#$pdb/}"
++				else
++					trunks="$trunks ${pkg#$pdb/}"
++				fi
+ 			else
+-				trunks="$trunks ${pkg#$pdb/}"
++				if grep -ql '^@pkgdep ' $pkg/+CONTENTS 2>/dev/null; then
++					leaves="$leaves ${pkg#$pdb/}"
++				else
++					[ -d "$pkg" ] || continue
++					roots="$roots ${pkg#$pdb/}"
++				fi
+ 			fi
+-		else
+-			if grep -ql '^@pkgdep ' $pkg/+CONTENTS 2>/dev/null; then
+-				leaves="$leaves ${pkg#$pdb/}"
++		done
++	else
++		local nb_rdep
++		local nb_dep
++		for pkg in `pkg info -qa`; do
++			nb_rdep=`pkg info -qr $pkg | wc -l`
++			nb_dep=`pkg info -qr $pkg | wc -l`
++			if [ $nb_rdep -gt 0 ]; then
++				if [ $nb_dep -gt 0 ]; then
++					branches="$branches ${pkg}"
++				else
++					trunks="$trunks ${pkg}"
++				fi
+ 			else
+-				[ -d "$pkg" ] || continue
+-				roots="$roots ${pkg#$pdb/}"
++				if [ $nb_dep -gt 0 ]; then
++					leaves="$leaves ${pkg}"
++				else
++					roots="$root ${pkg}"
++				fi
+ 			fi
+-		fi
+-	done
++		done
++	fi
+ }
+ 
+ delete_empty_dist_subdirs () {
+@@ -1600,14 +1679,19 @@
+ 				unset port_ver
+ 			fi
+ 		else
+-			case `pkg_version -t $iport $port_ver` in
++			if [ -z "${use_pkgng}" ]; then
++				pkg_version="pkg_version"
++			else
++				pkg_version="pkg version"
++			fi
++			case `$pkg_version -t $iport $port_ver` in
+ 			\<)	do_update=upd_lt ;;
+ 			=)	;;	# Can be reached if same version with different options
+ 			\>)	if [ -n "$PM_VERBOSE" ]; then
+ 					echo "	===>>> Port version $port_ver does not"
+ 					echo "	===>>> seem newer than installed $iport"
+ 				fi ;;
+-			*)	fail "pkg_version -t $iport $port_ver gave an unexpected result"
++			*)	fail "$pkg_version -t $iport $port_ver gave an unexpected result"
+ 			esac
+ 
+ 			[ -z "$do_update" ] && {
+@@ -2224,7 +2308,12 @@
+ 			fail "No entry for $origin in $PM_INDEX"
+ 	fi
+ 
+-	case `pkg_version -t $iport $new_port 2>/dev/null` in
++	if [ -z "${use_pkgng}" ]; then
++		pkg_version="pkg_version"
++	else
++		pkg_version="pkg version"
++	fi
++	case `$pkg_version -t $iport $new_port 2>/dev/null` in
+ 	\<)	build_l="${build_l}\tUpgrade $iport to $new_port\n" ;;
+ 	=)	build_l="${build_l}\tRe-install $iport\n" ;;
+ 	\>)	build_l="${build_l}\tDowngrade $iport to $new_port\n" ;;
+@@ -2982,7 +3071,12 @@
+ 	/*)	echo '' ; no_valid_port ;;
+ 	*/*)	portdir=$argv ;;
+ 	\.)	portdir=${PWD##*/ports/} ;; # Not always $pd, could be symlink
+-	*)	[ -d "$pdb/$argv" ] && upg_port=$argv ;;
++	*)	if [ -z "${use_pkgng}" ]; then
++			[ -d "$pdb/$argv" ] && upg_port=$argv
++		else
++			pkg info -e $argv && upg_port=$argv
++		fi
++		;;
+ 	esac
+ 
+ 	if [ -z "$portdir" -a -z "$upg_port" ]; then
+@@ -3015,11 +3109,20 @@
+ 
+ 	case "$arg2" in
+ 	*/*)	ro_opd=$arg2 ; ro_upg_port=`iport_from_origin $ro_opd` ;;
+-	*)	if [ -d "$pdb/$arg2" ]; then
+-			ro_upg_port=$arg2
++	*)	if [ -z "${use_pkgng}" ]; then
++			if [ -d "$pdb/$arg2" ]; then
++				ro_upg_port=$arg2
++			else
++				find_glob_dirs $arg2 && ro_upg_port=${glob_dirs#$pdb/}
++				unset glob_dirs
++			fi
+ 		else
+-			find_glob_dirs $arg2 && ro_upg_port=${glob_dirs#$pdb/}
+-			unset glob_dirs
++			if pkg -e $arg2; then
++				ro_upg_port=$arg2
++			else
++				find_glob_dirs $arg2 && ro_upg_port=${glob_dirs}
++				unset glob_dirs
++			fi
+ 		fi
+ 		[ -n "$ro_upg_port" ] && ro_opd=`origin_from_pdb $ro_upg_port`
+ 	esac
+@@ -3510,7 +3613,12 @@
+ 		pm_v "===>>> Available package ($latest_pv) matches the current version"
+ 	elif [ -n "$latest_pv" -a -n "$PM_PACKAGES_NEWER" ]; then
+ 		if [ -n "$upg_port" ]; then
+-			case `pkg_version -t $upg_port $latest_pv` in
++			if [ -z "${use_pkgng}" ]; then
++				pkg_version="pkg_version"
++			else
++				pkg_version="pkg version"
++			fi
++			case `$pkg_version -t $upg_port $latest_pv` in
+ 			\<)	use_package=up_newer
+ 				pm_v "===>>> Available package ($latest_pv)"
+ 				pm_v "       is newer than installed ($upg_port)" ;;
+@@ -3526,7 +3634,12 @@
+ 			pm_v "===>>> There is a package available ($latest_pv)"
+ 		fi
+ 	elif [ -n "$latest_pv" ]; then
+-		case `pkg_version -t $new_port $latest_pv` in
++		if [ -z "${use_pkgng}" ]; then
++			pkg_version="pkg_version"
++		else
++			pkg_version="pkg version"
++		fi
++		case `$pkg_version -t $new_port $latest_pv` in
+ 		\<)	# Could happen if ports tree is out of date
+ 			use_package=up_old_tree
+ 			pm_v "===>>> Available package ($latest_pv)"

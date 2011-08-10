@@ -138,6 +138,8 @@ exec_version(int argc, char **argv)
 	struct sbuf *cmd;
 	struct sbuf *res;
 
+	SLIST_INIT(&indexhead);
+
 	while ((ch = getopt(argc, argv, "hIoqvl:L:XsOtT")) != -1) {
 		switch (ch) {
 			case 'h':
@@ -212,7 +214,6 @@ exec_version(int argc, char **argv)
 				break;
 		}
 	} else if (opt & VERSION_INDEX) {
-		SLIST_INIT(&indexhead);
 		uname(&u);
 		rel_major_ver = (int) strtol(u.release, NULL, 10);
 		snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", pkg_config("PORTSDIR"), rel_major_ver);
