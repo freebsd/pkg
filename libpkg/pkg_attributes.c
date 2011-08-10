@@ -293,16 +293,22 @@ pkg_script_type(struct pkg_script *s)
 int
 pkg_option_new(struct pkg_option **option)
 {
-	if ((*option = calloc(1, sizeof(struct pkg_option))))
-		return (-1);
-	return (0);
+	if ((*option = calloc(1, sizeof(struct pkg_option))) == NULL) {
+		pkg_emit_errno("calloc", "pkg_user");
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
 }
 
 void
 pkg_option_free(struct pkg_option *option)
 {
+	if (option == NULL)
+		return;
+
 	sbuf_free(option->key);
 	sbuf_free(option->value);
+	free(option);
 }
 
 const char *
