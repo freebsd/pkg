@@ -20,7 +20,7 @@ do
 	MAINTAINER=$( make -C /usr/ports/${ORIGIN} -V MAINTAINER )
 	CATEGORIES=$( make -C /usr/ports/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
 	LICENSES=$( make -C /usr/ports/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
-	CONFLICTS=$( make -C /usr/ports/${ORIGIN} -V CONFLICTS | sed -e "s/ /,/g")
+	CONFLICTS=$( make -C /usr/ports/${ORIGIN} -V CONFLICTS)
 	LICLOGIC=$(make -C /usr/ports/${ORIGIN} -V LICENSE_COMB )
 
 	# +CONTENTS
@@ -47,7 +47,11 @@ do
 		echo -e "  ${dep%-*}: { origin: \"${deporigin}\", version: \"${dep##*-}\"}" >> ${MANIFEST}
 	done
 	egrep -v "^@(name|pkgdep|ignore|conflicts|display)" ${DB}/+CONTENTS >> ${PLIST}
-	test -n "${CONFLICTS}" && echo "conflicts: [${CONFLICTS}] " >> ${MANIFEST}
+	echo -n "conflicts: [" >> ${MANIFEST}
+	for conflict in ${CONFLICTS}; do
+		echo -n "\"$conflict\"," >> ${MANIFEST}
+	done
+	echo "]" >> ${MANIFEST}
 	test -n "${CATEGORIES}" && echo "categories: [${CATEGORIES}]" >> ${MANIFEST}
 
 	OPTIONS=""
@@ -57,9 +61,12 @@ do
 		echo "package is already registered."
 	else
 		pkg register -l -m ${MDIR} -f ${PLIST} ${CMD_ARGS}
-		test $? -ne 0 && echo "failed." || {
-		echo "done." ; rm -rf ${MANIFEST}
-		}
+		if [ $? -ne 0 ]; then
+			echo "failed."
+			cat ${MANIFEST}
+		else
+			echo "done." ; rm -rf ${MANIFEST}
+		fi
 	fi
 
 	rm -rf ${MDIR}
