@@ -155,7 +155,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				ret += pkg_adddir(pkg, path);
 
 			} else {
-				EMIT_PKG_ERROR("%s is deprecated, ignoring", plist_p);
+				pkg_emit_error("%s is deprecated, ignoring", plist_p);
 			}
 		} else if ((len = strlen(plist_p)) > 0){
 			filestarted = true;
@@ -184,7 +184,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				}
 				ret += pkg_addfile(pkg, path, p);
 			} else {
-				EMIT_ERRNO("lstat", path);
+				pkg_emit_errno("lstat", path);
 			}
 		}
 

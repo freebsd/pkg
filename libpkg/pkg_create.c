@@ -88,7 +88,7 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format, int 
 		return NULL;
 
 	if (asprintf(&pkg_path, "%s/%s-%s", outdir, pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION)) == -1) {
-		EMIT_ERRNO("asprintf", "");
+		pkg_emit_errno("asprintf", "");
 		return (NULL);
 	}
 
@@ -165,7 +165,7 @@ pkg_create_installed(const char *outdir, pkg_formats format, const char *rootdir
 
 	pkg_archive = pkg_create_archive(outdir, pkg, format, required_flags);
 	if (pkg_archive == NULL) {
-		EMIT_PKG_ERROR("%s", "unable to create archive");
+		pkg_emit_error("unable to create archive");
 		return (EPKG_FATAL);
 	}
 

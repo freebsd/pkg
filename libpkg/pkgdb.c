@@ -114,7 +114,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 					}
 				}
 				if (columns_text[i].name == NULL)
-					EMIT_PKG_ERROR("Unknown column %s", colname);
+					pkg_emit_error("Unknown column %s", colname);
 				break;
 			case SQLITE_INTEGER:
 				for (i = 0; columns_int[i].name != NULL; i++ ) {
@@ -124,11 +124,11 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 					}
 				}
 				if (columns_int[i].name == NULL)
-					EMIT_PKG_ERROR("Unknown column %s", colname);
+					pkg_emit_error("Unknown column %s", colname);
 				break;
 			case SQLITE_BLOB:
 			case SQLITE_FLOAT:
-				EMIT_PKG_ERROR("Wrong type for column: %s", colname);
+				pkg_emit_error("Wrong type for column: %s", colname);
 				/* just ignore currently */
 				break;
 			case SQLITE_NULL:
@@ -229,7 +229,7 @@ pkgdb_upgrade(sqlite3 *sdb)
 	if (db_version == DBVERSION)
 		return (EPKG_OK);
 	else if (db_version > DBVERSION) {
-		EMIT_PKG_ERROR("%s", "database version is newer than libpkg(3)");
+		pkg_emit_error("database version is newer than libpkg(3)");
 		return (EPKG_FATAL);
 	}
 
@@ -252,7 +252,7 @@ pkgdb_upgrade(sqlite3 *sdb)
 		 * been removed.
 		 */
 		if (sql_upgrade == NULL) {
-			EMIT_PKG_ERROR("can not upgrade to db version %" PRId64,
+			pkg_emit_error("can not upgrade to db version %" PRId64,
 						   db_version);
 			return (EPKG_FATAL);
 		}
@@ -426,7 +426,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	dbdir = pkg_config("PKG_DBDIR");
 
 	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL) {
-		EMIT_ERRNO("malloc", "pkgdb");
+		pkg_emit_errno("malloc", "pkgdb");
 		return EPKG_FATAL;
 	}
 
@@ -436,13 +436,13 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 	retcode = access(localpath, R_OK);
 	if (retcode == -1) {
 		if (errno != ENOENT) {
-			EMIT_ERRNO("access", localpath);
+			pkg_emit_errno("access", localpath);
 			free(*db);
 			*db = NULL;
 			return (EPKG_FATAL);
 		}
 		else if (eaccess(dbdir, W_OK) != 0) {
-			EMIT_ERRNO("eaccess", dbdir);
+			pkg_emit_errno("eaccess", dbdir);
 			free(*db);
 			*db = NULL;
 			return (EPKG_FATAL);
@@ -461,7 +461,7 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 		snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
 
 		if (access(remotepath, R_OK) != 0) {
-			EMIT_ERRNO("access", remotepath);
+			pkg_emit_errno("access", remotepath);
 			pkgdb_close(*db);
 			*db = NULL;
 			return (EPKG_FATAL);
@@ -527,7 +527,7 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 	struct pkgdb_it *it;
 
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		EMIT_ERRNO("malloc", "");
+		pkg_emit_errno("malloc", "pkgdb_it");
 		sqlite3_finalize(s);
 		return (NULL);
 	}
@@ -1184,7 +1184,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2));";
 
 	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
-		EMIT_PKG_ERROR("%s", "tried to register a package with an in-flight SQL command");
+		pkg_emit_error("%s", "tried to register a package with an in-flight SQL command");
 		return (EPKG_FATAL);
 	}
 
@@ -1295,7 +1295,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				    EMIT_PKG_ERROR("sqlite: constraint violation on files.path:"
+				    pkg_emit_error("sqlite: constraint violation on files.path:"
 								   " %s", pkg_file_path(file));
 			} else {
 				ERROR_SQLITE(s);
@@ -1330,7 +1330,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		}
 		if ((ret = sqlite3_step(stmt_dir)) != SQLITE_DONE) {
 			if ( ret == SQLITE_CONSTRAINT) {
-				EMIT_PKG_ERROR("sqlite: constraint violation on dirs.path: %s",
+				pkg_emit_error("sqlite: constraint violation on dirs.path: %s",
 			 					pkg_dir_path(dir));
 			} else
 				ERROR_SQLITE(s);
@@ -1360,7 +1360,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_cat)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				EMIT_PKG_ERROR("sqlite: constraint violation on categories.name: %s",
+				pkg_emit_error("sqlite: constraint violation on categories.name: %s",
 						pkg_category_name(category));
 			} else
 				ERROR_SQLITE(s);
@@ -1393,7 +1393,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_lic)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				EMIT_PKG_ERROR("sqlite: constraint violation on licenses.name: %s",
+				pkg_emit_error("sqlite: constraint violation on licenses.name: %s",
 						pkg_license_name(license));
 			} else
 				ERROR_SQLITE(s);
@@ -1426,7 +1426,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_user)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				EMIT_PKG_ERROR("sqlite: constraint violation on users.name: %s",
+				pkg_emit_error("sqlite: constraint violation on users.name: %s",
 						pkg_user_name(user));
 			} else
 				ERROR_SQLITE(s);
@@ -1459,7 +1459,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 		if ((ret = sqlite3_step(stmt_group)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				EMIT_PKG_ERROR("sqlite: constraint violation on groups.name: %s",
+				pkg_emit_error("sqlite: constraint violation on groups.name: %s",
 						pkg_group_name(group));
 			} else
 				ERROR_SQLITE(s);
@@ -1575,7 +1575,7 @@ pkgdb_register_finale(struct pkgdb *db, int retcode)
 	const char *command;
 
 	if (!pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
-		EMIT_PKG_ERROR("%s", "database command not in flight (misuse)");
+		pkg_emit_error("database command not in flight (misuse)");
 		return EPKG_FATAL;
 	}
 
@@ -1640,7 +1640,7 @@ sql_exec(sqlite3 *s, const char *sql)
 	char *errmsg;
 
 	if (sqlite3_exec(s, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
-		EMIT_PKG_ERROR("sqlite: %s", errmsg);
+		pkg_emit_error("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
 		return (EPKG_FATAL);
 	}
@@ -1704,7 +1704,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 	sqlite3_stmt *stmt;
 
 	if (db->type != PKGDB_REMOTE) {
-		EMIT_PKG_ERROR("%s", "remote database not attached (misuse)");
+		pkg_emit_error("remote database not attached (misuse)");
 		return (NULL);
 	}
 
@@ -1732,7 +1732,7 @@ pkgdb_query_downgrades(struct pkgdb *db)
 	sqlite3_stmt *stmt;
 
 	if (db->type != PKGDB_REMOTE) {
-		EMIT_PKG_ERROR("%s", "remote database not attached (misuse)");
+		pkg_emit_error("remote database not attached (misuse)");
 		return (NULL);
 	}
 
@@ -1785,7 +1785,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 	assert(pattern != NULL && pattern[0] != '\0');
 
 	if (db->type != PKGDB_REMOTE) {
-		EMIT_PKG_ERROR("%s", "remote database not attached (misuse)");
+		pkg_emit_error("remote database not attached (misuse)");
 		return (NULL);
 	}
 

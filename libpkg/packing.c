@@ -30,7 +30,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	assert(pack != NULL);
 
 	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
-		EMIT_ERRNO("malloc", "");
+		pkg_emit_errno("malloc", "packing");
 		return (EPKG_FATAL);
 	}
 
@@ -98,13 +98,13 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 	archive_entry_copy_sourcepath(pack->entry, filepath);
 
 	if (lstat(filepath, &st) != 0) {
-		EMIT_ERRNO("lstat", filepath);
+		pkg_emit_errno("lstat", filepath);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, &st);
 	if (retcode != ARCHIVE_OK) {
-		EMIT_PKG_ERROR("%s: %s", filepath, archive_error_string(pack->aread));
+		pkg_emit_error("%s: %s", filepath, archive_error_string(pack->aread));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -130,7 +130,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 
 	if (archive_entry_size(pack->entry) > 0) {
 		if ((fd = open(filepath, O_RDONLY)) < 0) {
-			EMIT_ERRNO("open", filepath);
+			pkg_emit_errno("open", filepath);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -220,19 +220,19 @@ packing_set_format(struct archive *a, pkg_formats format)
 			if (archive_write_set_compression_xz(a) == ARCHIVE_OK) {
 				return ("txz");
 			} else {
-				EMIT_PKG_ERROR("%s", "xz is not supported, trying bzip2");
+				pkg_emit_error("%s", "xz is not supported, trying bzip2");
 			}
 		case TBZ:
 			if (archive_write_set_compression_bzip2(a) == ARCHIVE_OK) {
 				return ("tbz");
 			} else {
-				EMIT_PKG_ERROR("%s", "bzip2 is not supported, trying gzip");
+				pkg_emit_error("%s", "bzip2 is not supported, trying gzip");
 			}
 		case TGZ:
 			if (archive_write_set_compression_gzip(a) == ARCHIVE_OK) {
 				return ("tgz");
 			} else {
-				EMIT_PKG_ERROR("%s", "gzip is not supported, trying plain tar");
+				pkg_emit_error("%s", "gzip is not supported, trying plain tar");
 			}
 		case TAR:
 			archive_write_set_compression_none(a);
@@ -254,6 +254,6 @@ packing_format_from_string(const char *str)
 		return TGZ;
 	if (strcmp(str, "tar") == 0)
 		return TAR;
-	EMIT_PKG_ERROR("unknown format %s, using txz", str);
+	pkg_emit_error("unknown format %s, using txz", str);
 	return TXZ;
 }

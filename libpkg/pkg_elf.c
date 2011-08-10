@@ -75,7 +75,9 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 						found = true;
 				}
 				if (!found) {
-					EMIT_PKG_ERROR("adding forgotten depends (%s): %s-%s", map->l_name, pkg_get(p, PKG_NAME), pkg_get(p, PKG_VERSION));
+					pkg_emit_error("adding forgotten depends (%s): %s-%s",
+								   map->l_name, pkg_get(p, PKG_NAME),
+								   pkg_get(p, PKG_VERSION));
 					pkg_adddep(pkg, pkg_get(p, PKG_NAME), pkg_get(p, PKG_ORIGIN), pkg_get(p, PKG_VERSION));
 				}
 			}

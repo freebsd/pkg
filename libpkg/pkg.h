@@ -762,8 +762,6 @@ typedef enum {
 
 struct pkg_event {
 	pkg_event_t type;
-	uint16_t line;
-	const char *file;
 	union {
 		struct {
 			const char *func;
@@ -786,10 +784,13 @@ struct pkg_event {
 		} e_install_begin;
 		struct {
 			struct pkg *pkg;
+		} e_install_finished;
+		struct {
+			struct pkg *pkg;
 		} e_deinstall_begin;
 		struct {
 			struct pkg *pkg;
-		} e_install_finished;
+		} e_deinstall_finished;
 		struct {
 			struct pkg *pkg;
 		} e_upgrade_begin;
@@ -798,18 +799,12 @@ struct pkg_event {
 		} e_upgrade_finished;
 		struct {
 			struct pkg *pkg;
-		} e_install_end;
-		struct {
-			struct pkg *pkg;
 			struct pkg_dep *dep;
 		} e_missing_dep;
 		struct {
 			struct pkg *pkg;
 			int force;
 		} e_required;
-		struct {
-			struct pkg *pkg;
-		} e_failed_cksum;
 	};
 };
 

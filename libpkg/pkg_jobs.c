@@ -14,7 +14,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	assert(t != PKG_JOBS_INSTALL || db->type == PKGDB_REMOTE);
 
 	if((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
-		EMIT_ERRNO("calloc", "pkg_jobs");
+		pkg_emit_errno("calloc", "pkg_jobs");
 		return (EPKG_FATAL);
 	}
 
@@ -162,7 +162,7 @@ pkg_jobs_apply(struct pkg_jobs *j, int force)
 	if (j->type == PKG_JOBS_UPGRADE)
 		return (pkg_jobs_upgrade(j));
 
-	EMIT_PKG_ERROR("%s", "bad jobs argument");
+	pkg_emit_error("bad jobs argument");
 	return (EPKG_FATAL);
 }
 
@@ -214,7 +214,7 @@ add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
 		if (ndep->pkg == NULL) {
 			ndep->pkg = pkgdb_query_remote(j->db, pkg_dep_origin(dep));
 			if (ndep->pkg == NULL)
-				EMIT_MISSING_DEP(n->pkg, dep);
+				pkg_emit_missing_dep(n->pkg, dep);
 			else {
 				pkg_setautomatic(ndep->pkg);
 				add_dep(j, ndep);

@@ -10,7 +10,7 @@
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
 #define ERROR_SQLITE(db) \
-	EMIT_PKG_ERROR("sqlite: %s", sqlite3_errmsg(db))
+	pkg_emit_error("sqlite: %s", sqlite3_errmsg(db))
 
 int sbuf_set(struct sbuf **, const char *);
 const char * sbuf_get(struct sbuf *);
