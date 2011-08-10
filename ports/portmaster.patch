@@ -2,15 +2,7 @@ Index: portmaster
 ===================================================================
 --- portmaster	(révision 224747)
 +++ portmaster	(copie de travail)
-@@ -2,6 +2,7 @@
- 
- # Copyright (c) 2005-2011 Douglas Barton, All rights reserved
- # Please see detailed copyright below
-+set -x
- 
- trap trap_exit INT
- 
-@@ -291,7 +292,13 @@
+@@ -291,7 +291,13 @@
  			 unset -v MASTER_RB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
  pm_mkdir_s        () { $PM_SU_CMD /bin/mkdir -p $1; }
@@ -25,7 +17,7 @@ Index: portmaster
  pm_rm_s           () { $PM_SU_CMD /bin/rm $*; }
  pm_rmdir_s        () { $PM_SU_CMD /bin/rmdir $*; }
  pm_unlink_s       () { [ -e "$1" ] && $PM_SU_CMD /bin/unlink $1; }
-@@ -494,13 +501,23 @@
+@@ -494,13 +500,23 @@
  
  	pattern=`globstrip $1`
  
@@ -56,7 +48,7 @@ Index: portmaster
  
  	unset glob_dirs
  	return 1
-@@ -509,8 +526,12 @@
+@@ -509,8 +525,12 @@
  origin_from_pdb () {
  	local o
  
@@ -69,7 +61,7 @@ Index: portmaster
  
  	case "$1" in bsdpan-*) return 3 ;; esac
  
-@@ -811,7 +832,11 @@
+@@ -811,7 +831,11 @@
  		fi
  		unset INDEXFILE INDEXDIR
  
@@ -82,7 +74,7 @@ Index: portmaster
  		export PM_INDEX_PORTS
  
  		if [ -z "$pd" -o "$pd" != /usr/ports ]; then
-@@ -861,6 +886,10 @@
+@@ -861,6 +885,10 @@
  iport_from_origin () {
  	local sn dir
  
@@ -93,7 +85,7 @@ Index: portmaster
  	sn=${1#*/} ; sn=${sn%-*} ; sn=${sn%%[0-9]*}
  
  	if ! dir=`grep -l "@comment ORIGIN:${1}$" $pdb/${sn}*/+CONTENTS 2>/dev/null`; then
-@@ -1115,36 +1144,64 @@
+@@ -1115,36 +1143,64 @@
  	echo '############' > $DI_FILES		# Make the file > 0 bytes
  	echo "===>>> Gathering distinfo list for installed ports"
  	echo ''
@@ -182,7 +174,7 @@ Index: portmaster
  	# Tell safe_exit that we are done
  	pm_unlink ${DI_FILES}-e
  	sed -i -e 1s/############/%%%%%%%%%%%%/ $DI_FILES
-@@ -1192,22 +1249,44 @@
+@@ -1192,22 +1248,44 @@
  	local pkg
  	pm_v "===>>> Sorting ports by category"
  
@@ -239,7 +231,7 @@ Index: portmaster
  }
  
  delete_empty_dist_subdirs () {
-@@ -1600,14 +1679,19 @@
+@@ -1600,14 +1678,19 @@
  				unset port_ver
  			fi
  		else
@@ -261,7 +253,7 @@ Index: portmaster
  			esac
  
  			[ -z "$do_update" ] && {
-@@ -2224,7 +2308,12 @@
+@@ -2224,7 +2307,12 @@
  			fail "No entry for $origin in $PM_INDEX"
  	fi
  
@@ -275,7 +267,7 @@ Index: portmaster
  	\<)	build_l="${build_l}\tUpgrade $iport to $new_port\n" ;;
  	=)	build_l="${build_l}\tRe-install $iport\n" ;;
  	\>)	build_l="${build_l}\tDowngrade $iport to $new_port\n" ;;
-@@ -2982,7 +3071,12 @@
+@@ -2982,7 +3070,12 @@
  	/*)	echo '' ; no_valid_port ;;
  	*/*)	portdir=$argv ;;
  	\.)	portdir=${PWD##*/ports/} ;; # Not always $pd, could be symlink
@@ -289,7 +281,7 @@ Index: portmaster
  	esac
  
  	if [ -z "$portdir" -a -z "$upg_port" ]; then
-@@ -3015,11 +3109,20 @@
+@@ -3015,11 +3108,20 @@
  
  	case "$arg2" in
  	*/*)	ro_opd=$arg2 ; ro_upg_port=`iport_from_origin $ro_opd` ;;
@@ -314,7 +306,7 @@ Index: portmaster
  		fi
  		[ -n "$ro_upg_port" ] && ro_opd=`origin_from_pdb $ro_upg_port`
  	esac
-@@ -3510,7 +3613,12 @@
+@@ -3510,7 +3612,12 @@
  		pm_v "===>>> Available package ($latest_pv) matches the current version"
  	elif [ -n "$latest_pv" -a -n "$PM_PACKAGES_NEWER" ]; then
  		if [ -n "$upg_port" ]; then
@@ -328,7 +320,7 @@ Index: portmaster
  			\<)	use_package=up_newer
  				pm_v "===>>> Available package ($latest_pv)"
  				pm_v "       is newer than installed ($upg_port)" ;;
-@@ -3526,7 +3634,12 @@
+@@ -3526,7 +3633,12 @@
  			pm_v "===>>> There is a package available ($latest_pv)"
  		fi
  	elif [ -n "$latest_pv" ]; then
