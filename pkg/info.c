@@ -55,7 +55,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 			printf("\t%s: %s\n", pkg_option_opt(option), pkg_option_value(option));
 		humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
 		printf("Flat size: %s\n", size);
-		printf("Description:\n %s\n", pkg_get(pkg, PKG_DESC));
+		printf("Description:\n%s\n", pkg_get(pkg, PKG_DESC));
 		printf("\n");
 	} else if (opt & INFO_PRINT_DEP) {
 		if (!(opt & INFO_QUIET))
