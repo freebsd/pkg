@@ -142,7 +142,7 @@ print_query(struct pkg *pkg, char *qstr, match_t query_flags)
 			format_str(pkg, output, qstr, cat);
 			printf("%s\n", sbuf_data(output));
 		}
-	} else if (query_flags & PKG_LOAD_SCRIPTS) {
+	} else if (query_flags & PKG_LOAD_OPTIONS) {
 		while (pkg_options(pkg, &option) == EPKG_OK) {
 			format_str(pkg, output, qstr, option);
 			printf("%s\n", sbuf_data(output));
@@ -243,6 +243,7 @@ analyse_query_string(char *qstr, int *flags)
 					*flags |= PKG_LOAD_SCRIPTS;
 					break;
 				case 'O':
+					qstr++;
 					if (qstr[0] != 'k' && qstr[0] != 'v') {
 						fprintf(stderr, "Invalid query: %%O should be followed by: k or v\n");
 						return (EPKG_FATAL);
