@@ -7,6 +7,7 @@
 #include "event.h"
 
 static off_t fetched = 0;
+static char url[MAXPATHLEN+1];
 
 int
 event_callback(void *data, struct pkg_event *ev)
@@ -15,7 +16,6 @@ event_callback(void *data, struct pkg_event *ev)
 	struct pkg_dep *dep = NULL;
 	const char *message;
 	int *debug = data;
-	char p[MAXPATHLEN +1];
 	(void)debug;
 
 	switch(ev->type) {
@@ -27,8 +27,8 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_FETCHING:
 		if (fetched == 0) {
-			strlcpy(p, ev->e_fetching.url, sizeof(p));
-			start_progress_meter(p, ev->e_fetching.total, &fetched);
+			strlcpy(url, ev->e_fetching.url, sizeof(url));
+			start_progress_meter(url, ev->e_fetching.total, &fetched);
 		}
 		fetched = ev->e_fetching.done;
 		if (ev->e_fetching.done == ev->e_fetching.total) {
