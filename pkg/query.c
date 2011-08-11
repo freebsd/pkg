@@ -317,7 +317,8 @@ analyse_query_string(char *qstr, int *flags)
 void
 usage_query(void)
 {
-	fprintf(stderr, "usage: pkg query [-agxX] <query-format> <pkg-name>\n");
+	fprintf(stderr, "usage: pkg query -a <query-format>\n");
+	fprintf(stderr, "       pkg query [-gxX] <query-format> <pkg-name>\n");
 	fprintf(stderr, "For more information see 'pkg help query.\n");
 }
 
@@ -363,7 +364,7 @@ exec_query(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (argc == 1 && match != MATCH_ALL) {
+	if ((argc == 1) ^ (match == MATCH_ALL)) {
 		usage_query();
 		return (EX_USAGE);
 	}
