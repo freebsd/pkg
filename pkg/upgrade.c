@@ -73,8 +73,10 @@ exec_upgrade(int argc, char **argv)
 		pkg_jobs_add(jobs, pkgdb_query_remote(db, pkg_get(pkg, PKG_ORIGIN)));
 	}
 
-	if (pkg_jobs_empty(jobs) == true)
+	if (pkg_jobs_empty(jobs) == true) {
+		retcode = 0;
 		goto cleanup;
+	}
 
 	printf("The following packages will be upgraded: \n");
 	pkg = NULL;
