@@ -121,6 +121,7 @@ print_query(struct pkg *pkg, char *qstr, match_t query_flags)
 	struct pkg_dep *dep = NULL;
 	struct pkg_category *cat = NULL;
 	struct pkg_option *option = NULL;
+	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
 	struct pkg_license *lic = NULL;
 	struct pkg_user *user = NULL;
@@ -144,6 +145,11 @@ print_query(struct pkg *pkg, char *qstr, match_t query_flags)
 	} else if (query_flags & PKG_LOAD_SCRIPTS) {
 		while (pkg_options(pkg, &option) == EPKG_OK) {
 			format_str(pkg, output, qstr, option);
+			printf("%s\n", sbuf_data(output));
+		}
+	} else if (query_flags & PKG_LOAD_FILES) {
+		while (pkg_files(pkg, &file)) {
+			format_str(pkg, output, qstr, file);
 			printf("%s\n", sbuf_data(output));
 		}
 	} else if (query_flags & PKG_LOAD_DIRS) {
@@ -218,7 +224,7 @@ analyse_query_string(char *qstr, int *flags)
 				case 'F':
 					qstr++;
 					if (qstr[0] != 'p' && qstr[0] != 's') {
-						fprintf(stderr, "Invalid query: %%r should be followed by: p or s\n");
+						fprintf(stderr, "Invalid query: %%F should be followed by: p or s\n");
 						return (EPKG_FATAL);
 					}
 					if (multiline != 0 && multiline != 'F') {
@@ -238,7 +244,7 @@ analyse_query_string(char *qstr, int *flags)
 					break;
 				case 'O':
 					if (qstr[0] != 'k' && qstr[0] != 'v') {
-						fprintf(stderr, "Invalid query: %%r should be followed by: k or v\n");
+						fprintf(stderr, "Invalid query: %%O should be followed by: k or v\n");
 						return (EPKG_FATAL);
 					}
 					if (multiline != 0 && multiline != 'O') {
