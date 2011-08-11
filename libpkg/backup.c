@@ -93,6 +93,7 @@ pkgdb_load(struct pkgdb *db, char *dest)
 		} else 
 			continue;
 	}
+	pkgdb_register_finale(db, pkgdb_register_pkg(db, pkg ));
 
 cleanup:
 	if (a != NULL)
