@@ -556,8 +556,8 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 
 		populate_pkg(it->stmt, pkg);
 
-		/* load only for PKG_INSTALLED */
-		if (it->type != PKG_INSTALLED)
+		/* load only for PKG_INSTALLED and PKG_REMOTE */
+		if (it->type != PKG_INSTALLED && it->type != PKG_REMOTE)
 			return (EPKG_OK);
 
 		if (flags & PKG_LOAD_DEPS)
@@ -938,12 +938,22 @@ pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg)
 {
-	const char sql[] = ""
-		"SELECT name "
-		"FROM pkg_licenses, licenses "
-		"WHERE package_id = ?1 "
-		"AND license_id = licenses.id "
-		"ORDER by name DESC";
+	const char *sql;
+	if (pkg->type != PKG_REMOTE) {
+		sql = ""
+			"SELECT name "
+			"FROM main.pkg_licenses, main.licenses AS l "
+			"WHERE package_id = ?1 "
+			"AND license_id = l.id "
+			"ORDER by name DESC";
+	} else {
+		sql = ""
+			"SELECT name "
+			"FROM remote.pkg_licenses, remote.licenses AS l "
+			"WHERE package_id = ?1 "
+			"AND license_id = l.id "
+			"ORDER by name DESC";
+	}
 
 	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_LICENSES, pkg_addlicense, pkg_freelicenses));
 }
@@ -951,12 +961,22 @@ pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg)
 {
-	const char sql[] = ""
-		"SELECT categories.name "
-		"FROM pkg_categories, categories "
-		"WHERE package_id = ?1 "
-		"AND category_id = categories.id "
-		"ORDER by name DESC";
+	const char *sql;
+	if (pkg->type != PKG_REMOTE) {
+		sql = ""
+			"SELECT name "
+			"FROM main.pkg_categories, main.categories AS c "
+			"WHERE package_id = ?1 "
+			"AND category_id = c.id "
+			"ORDER by name DESC";
+	} else {
+		sql = ""
+			"SELECT name "
+			"FROM remote.pkg_categories, remote.categories AS c "
+			"WHERE package_id = ?1 "
+			"AND category_id = c.id "
+			"ORDER by name DESC";
+	}
 
 	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_CATEGORIES, pkg_addcategory, pkg_freecategories));
 }
@@ -1042,12 +1062,18 @@ pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt;
 	int ret;
-	const char sql[] = ""
+	const char *sql;
+	if (pkg->type != PKG_REMOTE) {
+		sql = ""
 		"SELECT option, value "
-		"FROM options "
+		"FROM main.options "
 		"WHERE package_id = ?1";
-
-	assert(pkg->type == PKG_INSTALLED);
+	} else {
+		sql = ""
+		"SELECT option, value "
+		"FROM remote.options "
+		"WHERE package_id = ?1";
+	}
 
 	if (pkg->flags & PKG_LOAD_OPTIONS)
 		return (EPKG_OK);
@@ -1789,8 +1815,8 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 		return (NULL);
 	}
 
-	sbuf_cat(sql, "SELECT origin, name, version, comment, "
-			"desc, arch, arch, osversion, maintainer, www, "
+	sbuf_cat(sql, "SELECT id AS rowid, origin, name, version, comment, prefix, "
+			"desc, arch, arch, osversion, maintainer, www, licenselogic, "
 			"flatsize AS newflatsize, pkgsize, cksum, path AS repopath FROM remote.packages");
 
 	switch (match) {

@@ -34,6 +34,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 		printf("Name: %s\n", pkg_get(pkg, PKG_NAME));
 		printf("Version: %s\n", pkg_get(pkg, PKG_VERSION));
 		printf("Origin: %s\n", pkg_get(pkg, PKG_ORIGIN));
+		printf("Prefix: %s\n", pkg_get(pkg, PKG_PREFIX));
 		printf("Categories:");
 		while (pkg_categories(pkg, &cat) == EPKG_OK)
 			printf(" %s", pkg_category_name(cat));
