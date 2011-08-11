@@ -44,10 +44,10 @@ main(int argc, char **argv)
 	FTS *fts;
 	FTSENT *p;
 	char *dir[2];
-	char destdir[MAXPATHLEN];
-	char destpath[MAXPATHLEN];
-	char relativepath[MAXPATHLEN];
-	char linkpath[MAXPATHLEN];
+	char destdir[MAXPATHLEN + 1];
+	char destpath[MAXPATHLEN + 1];
+	char relativepath[MAXPATHLEN + 1];
+	char linkpath[MAXPATHLEN + 1];
 	const char *newpath;
 	BZFILE *bz;
 	int bzError;
@@ -67,6 +67,7 @@ main(int argc, char **argv)
 	struct pkg *pkg = NULL;
 
 	struct sbuf *sbuf = sbuf_new_auto();
+	struct sbuf *late_sbuf = sbuf_new_auto();
 	struct sbuf *indexfile = sbuf_new_auto();
 
 	FILE *indexf;
@@ -90,16 +91,16 @@ main(int argc, char **argv)
 		errx(EX_USAGE, "legacy repository already exist");
 	}
 
-	getcwd(destdir, MAXPATHLEN);
+	getcwd(destdir, sizeof(destdir));
 
 	if (argv[2][0] == '/')
-		strlcpy(destdir, argv[2], MAXPATHLEN);
+		strlcpy(destdir, argv[2], sizeof(destdir));
 	else
-		snprintf(destdir, MAXPATHLEN, "%s/%s", destdir, argv[2]);
+		snprintf(destdir, sizeof(destdir), "%s/%s", destdir, argv[2]);
 
-	snprintf(destpath, MAXPATHLEN, "%s/Latest", destdir);
+	snprintf(destpath, sizeof(destpath), "%s/Latest", destdir);
 	mkdir(destpath, 0755);
-	snprintf(destpath, MAXPATHLEN, "%s/All", destdir);
+	snprintf(destpath, sizeof(destpath), "%s/All", destdir);
 	mkdir(destpath, 0755);
 
 	if ((fts = fts_open(dir, FTS_NOSTAT, NULL)) == NULL)
@@ -142,9 +143,9 @@ main(int argc, char **argv)
 
 		sbuf_cat(indexfile, "||");
 
-		snprintf(destpath, MAXPATHLEN, "%s/All/%s-%s.tbz", destdir, pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		snprintf(relativepath, MAXPATHLEN, "../All/%s-%s.tbz", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		snprintf(linkpath, MAXPATHLEN, "%s/Latest/%s.tbz",destdir, pkg_get(pkg, PKG_NAME));
+		snprintf(destpath, sizeof(destpath), "%s/All/%s-%s.tbz", destdir, pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		snprintf(relativepath, sizeof(relativepath), "../All/%s-%s.tbz", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		snprintf(linkpath, sizeof(linkpath), "%s/Latest/%s.tbz",destdir, pkg_get(pkg, PKG_NAME));
 
 		pkgng = archive_read_new();
 		archive_read_support_format_tar(pkgng);
@@ -166,6 +167,7 @@ main(int argc, char **argv)
 		archive_write_data(legacypkg, pkg_get(pkg, PKG_COMMENT), strlen(pkg_get(pkg, PKG_COMMENT)));
 
 		sbuf_clear(sbuf);
+		sbuf_clear(late_sbuf);
 		sbuf_printf(sbuf, "@comment PKG_FORMAT_REVISION:1.1\n"
 				"@name %s-%s\n"
 				"@comment ORIGIN:%s\n"
@@ -191,46 +193,6 @@ main(int argc, char **argv)
 				"|" /* patch depends */
 				"\n", /* fetch depends */
 				pkg_get(pkg, PKG_WWW));
-		archive_entry_clear(ae);
-		while ((r = archive_read_next_header(pkgng, &ae)) != ARCHIVE_EOF) {
-			if (archive_entry_pathname(ae)[0] == '+') {
-				if (strcmp(archive_entry_pathname(ae), "+MANIFEST") == 0)
-					continue;
-				else {
-					size = archive_entry_size(ae);
-					buf = malloc(size + 1);
-					md5[0] = '\0';
-					md5_hash(buf, md5);
-					archive_write_header(legacypkg, ae);
-					archive_read_data(pkgng, buf, size);
-					archive_write_data(legacypkg, buf, size);
-					free(buf);
-					continue;
-				}
-			}
-
-			size = archive_entry_size(ae);
-
-			newpath = archive_entry_pathname(ae);
-
-			if (newpath[0] == '/')
-				newpath++;
-
-			if (archive_entry_filetype(ae) == AE_IFDIR)
-				continue;
-
-			sbuf_printf(sbuf, "%s\n", newpath);
-			archive_entry_set_pathname(ae, newpath);
-			buf = malloc(size + 1);
-			md5[0] = '\0';
-			md5_hash(buf, md5);
-			sbuf_printf(sbuf, "@comment MD5:%s\n", md5);
-			archive_write_header(legacypkg, ae);
-			archive_read_data(pkgng, buf, size);
-			archive_write_data(legacypkg, buf, size);
-			free(buf);
-		}
-
 		while (pkg_scripts(pkg, &script) == EPKG_OK) {
 			archive_entry_clear(ae);
 			switch (pkg_script_type(script)) {
@@ -273,16 +235,44 @@ main(int argc, char **argv)
 						}
 						if (tmpbuf[0] == '#')
 							tmpbuf++;
-						if (tmpbuf[1] != '@')
-							sbuf_printf(sbuf, "@exec %s\n", tmpbuf);
+						if (tmpbuf[0] != '@')
+							sbuf_printf(late_sbuf, "@exec %s\n", tmpbuf);
 						else
-							sbuf_printf(sbuf, "@dirrm %s\n", tmpbuf);
+							sbuf_printf(late_sbuf, "%s\n", tmpbuf);
 						tmpbuf = next;
 						tmpbuf++;
 					}
 					free(tofree);
 					break;
 				case PKG_SCRIPT_POST_DEINSTALL:
+					tmpbuf = strdup(pkg_script_data(script));
+					tofree = tmpbuf;
+					ok = 0;
+					while ((next = strchr(tmpbuf, '\n')) != NULL) {
+						next[0] = '\0';
+						if (!ok && strncmp(tmpbuf, "#@unexec", 6) != 0) {
+							tmpbuf = next;
+							tmpbuf++;
+							continue;
+						}
+						if (!ok) {
+							ok = 1;
+							tmpbuf = next;
+							tmpbuf++;
+							continue;
+						}
+						if (tmpbuf[0] == '#')
+							tmpbuf++;
+						if (tmpbuf[0] != '@')
+							sbuf_printf(late_sbuf, "@unexec %s\n", tmpbuf);
+						else
+							sbuf_printf(late_sbuf, "%s\n", tmpbuf);
+						tmpbuf = next;
+						tmpbuf++;
+					}
+					free(tofree);
+					break;
+				case PKG_SCRIPT_PRE_DEINSTALL:
 					tmpbuf = strdup(pkg_script_data(script));
 					tofree = tmpbuf;
 					ok = 0;
@@ -312,7 +302,48 @@ main(int argc, char **argv)
 					break;
 			};
 		}
+		archive_entry_clear(ae);
+		while ((r = archive_read_next_header(pkgng, &ae)) != ARCHIVE_EOF) {
+			if (archive_entry_pathname(ae)[0] == '+') {
+				if (strcmp(archive_entry_pathname(ae), "+MANIFEST") == 0)
+					continue;
+				else {
+					size = archive_entry_size(ae);
+					buf = malloc(size + 1);
+					md5[0] = '\0';
+					md5_hash(buf, md5);
+					archive_write_header(legacypkg, ae);
+					archive_read_data(pkgng, buf, size);
+					archive_write_data(legacypkg, buf, size);
+					free(buf);
+					continue;
+				}
+			}
 
+			size = archive_entry_size(ae);
+
+			newpath = archive_entry_pathname(ae);
+
+			if (newpath[0] == '/')
+				newpath++;
+
+			if (archive_entry_filetype(ae) == AE_IFDIR)
+				continue;
+
+			sbuf_printf(sbuf, "%s\n", newpath);
+			archive_entry_set_pathname(ae, newpath);
+			buf = malloc(size + 1);
+			md5[0] = '\0';
+			md5_hash(buf, md5);
+			sbuf_printf(sbuf, "@comment MD5:%s\n", md5);
+			archive_write_header(legacypkg, ae);
+			archive_read_data(pkgng, buf, size);
+			archive_write_data(legacypkg, buf, size);
+			free(buf);
+		}
+
+		sbuf_finish(late_sbuf);
+		sbuf_cat(sbuf, sbuf_data(late_sbuf));
 		sbuf_finish(sbuf);
 		archive_entry_clear(ae);
 		archive_entry_set_pathname(ae, "+CONTENTS");
@@ -329,17 +360,17 @@ main(int argc, char **argv)
 
 		symlink(relativepath, linkpath);
 		while (pkg_categories(pkg, &cat) == EPKG_OK) {
-			snprintf(destpath, MAXPATHLEN, "%s/%s", destdir, pkg_category_name(cat));
+			snprintf(destpath, sizeof(destpath), "%s/%s", destdir, pkg_category_name(cat));
 			if (lstat(destpath, &st) != 0)
 				mkdir(destpath, 0755);
-			snprintf(linkpath, MAXPATHLEN, "%s/%s/%s-%s.tbz", destdir, pkg_category_name(cat), pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+			snprintf(linkpath, sizeof(linkpath), "%s/%s/%s-%s.tbz", destdir, pkg_category_name(cat), pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 			symlink(relativepath, linkpath);
 		}
 
 		printf("done\n");
 	}
 
-	snprintf(destpath, MAXPATHLEN, "%s/INDEX.bz2", destdir);
+	snprintf(destpath, sizeof(destpath), "%s/INDEX.bz2", destdir);
 	indexf = fopen(destpath, "w");
 	bz = BZ2_bzWriteOpen(&bzError, indexf, 9, 0, 0);
 	BZ2_bzWrite(&bzError, bz, sbuf_data(indexfile), sbuf_len(indexfile));
@@ -349,6 +380,7 @@ main(int argc, char **argv)
 	pkg_free(pkg);
 	sbuf_delete(indexfile);
 	sbuf_delete(sbuf);
+	sbuf_delete(late_sbuf);
 
 	return (EXIT_SUCCESS);
 }

@@ -574,10 +574,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	}
 
 	seq = -1;
-	while (pkg_licenses(pkg, &license) == EPKG_OK) {
-		printf("%s\n", pkg_license_name(license));
+	while (pkg_licenses(pkg, &license) == EPKG_OK)
 		manifest_append_seqval(&doc, mapping, &seq, "licenses", pkg_license_name(license));
-	}
 
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkg_flatsize(pkg));
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
