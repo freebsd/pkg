@@ -363,7 +363,7 @@ exec_query(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (argc == 1 && match != MATCH_ALL) {
+	if ((argc == 1) ^ (match == MATCH_ALL)) {
 		usage_query();
 		return (EX_USAGE);
 	}
