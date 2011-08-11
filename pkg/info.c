@@ -27,6 +27,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 	struct pkg_file *file = NULL;
 	struct pkg_category *cat = NULL;
 	struct pkg_license *lic = NULL;
+	struct pkg_option *option = NULL;
 	char size[7];
 
 	if (opt & INFO_FULL) {
@@ -49,6 +50,9 @@ print_info(struct pkg * const pkg, unsigned int opt)
 		printf("Maintainer: %s\n", pkg_get(pkg, PKG_MAINTAINER));
 		printf("WWW: %s\n", pkg_get(pkg, PKG_WWW));
 		printf("Comment: %s\n", pkg_get(pkg, PKG_COMMENT));
+		printf("Options: \n");
+		while (pkg_options(pkg, &option) == EPKG_OK)
+			printf("\t%s: %s\n", pkg_option_opt(option), pkg_option_value(option));
 		humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
 		printf("Flat size: %s\n", size);
 		printf("Description:\n %s\n", pkg_get(pkg, PKG_DESC));
@@ -188,7 +192,7 @@ exec_info(int argc, char **argv)
 				break;
 			case 'f':
 				opt |= INFO_FULL;
-				query_flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES;
+				query_flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS;
 				break;
 			case 'F':
 				file = optarg;

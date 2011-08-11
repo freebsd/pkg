@@ -22,6 +22,9 @@ do
 	LICENSES=$( make -C /usr/ports/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
 	CONFLICTS=$( make -C /usr/ports/${ORIGIN} -V CONFLICTS)
 	LICLOGIC=$(make -C /usr/ports/${ORIGIN} -V LICENSE_COMB )
+	OPTIONS=$(make -C /usr/ports/${ORIGIN} showconfig | awk 'BEGIN{ line=""; }!/^=/ { gsub(/=/,": ",$1); line=line" "$1","; } END{print line}')
+	USERS=$(make -C /usr/ports/${ORIGIN} -V USERS | sed -e "s/ /,/g")
+	GROUPSS=$(make -C /usr/ports/${ORIGIN} -V GROUPS | sed -e "s/ /,/g")
 
 	# +CONTENTS
 	MDIR=$(mktemp -d /tmp/pkg2ngXXXXX)
@@ -53,8 +56,9 @@ do
 	done
 	echo "]" >> ${MANIFEST}
 	test -n "${CATEGORIES}" && echo "categories: [${CATEGORIES}]" >> ${MANIFEST}
-
-	OPTIONS=""
+	test -n "${OPTIONS}" && echo "options: {${OPTIONS}}" >> ${MANIFEST}
+	test -n "${USERS}" && echo "users: [${USERS}]" >> ${MANIFEST}
+	test -n "${GROUPS}" && echo "groups: [${GROUPS}]" >> ${MANIFEST}
 
 	# register a package only if it's not registered already
 	if pkg info -e ${ORIGIN}; then
