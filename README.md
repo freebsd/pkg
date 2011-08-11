@@ -66,6 +66,9 @@ information about the package:
 	licenselogic: or
 	licenses: [MIT, MPL]
 	flatsize: 482120
+	users: [USER1, USER2]
+	groups: [GROUP1, GROUP2]
+	options: { OPT1: off, OPT2: on }
 	desc: |-
 	  This is the descrpition
 	  Of foo
@@ -177,6 +180,11 @@ Directory leftovers are automatically removed if they are not in the MTREE.
 
 To use pkgng from ports currently we need to include *bsd.pkgng.mk* in *bsd.port.mk*,
 the line before *.if defined(USE_LOCAL_MK)*
+
+You can also simply run this command after having install bsd.pkgng.mk to your
+/usr/ports/Mk diretory or the suitable PORTSDIR:
+
+	$> sed -i'' -e '/.if.*USE_LOCAL_MK.*$/{G;s/\(.if.*USE_LOCAL_MK)\)\(\n\)/.include "${PORTSDIR}\/Mk\/bsd.pkgng.mk"\2\1/;}' /usr/ports/Mk/bsd.port.mk
 
 <a name="usageintro"></a>
 ### A quick usage introduction to pkgng
