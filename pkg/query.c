@@ -148,7 +148,7 @@ print_query(struct pkg *pkg, char *qstr, match_t query_flags)
 			printf("%s\n", sbuf_data(output));
 		}
 	} else if (query_flags & PKG_LOAD_FILES) {
-		while (pkg_files(pkg, &file)) {
+		while (pkg_files(pkg, &file) == EPKG_OK) {
 			format_str(pkg, output, qstr, file);
 			printf("%s\n", sbuf_data(output));
 		}
