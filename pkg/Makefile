@@ -9,6 +9,7 @@ SRCS=		add.c \
 		info.c \
 		install.c \
 		main.c \
+		query.c \
 		register.c \
 		repo.c \
 		update.c \
