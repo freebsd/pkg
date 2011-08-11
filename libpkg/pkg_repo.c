@@ -158,6 +158,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	struct pkg_dep *dep = NULL;
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
+	struct pkg_option *option = NULL;
 	char *ext = NULL;
 
 	sqlite3 *sqlite = NULL;
@@ -167,6 +168,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	sqlite3_stmt *stmt_lic2 = NULL;
 	sqlite3_stmt *stmt_cat1 = NULL;
 	sqlite3_stmt *stmt_cat2 = NULL;
+	sqlite3_stmt *stmt_opts = NULL;
 
 	int64_t package_id;
 	char *errmsg = NULL;
@@ -222,7 +224,13 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"license_id INTEGER REFERENCES licenses(id), "
 			"UNIQUE(package_id, license_id)"
 		");"
-		"PRAGMA user_version=1;"
+		"CREATE TABLE options ("
+			"package_id INTEGER REFERENCES packages(id), "
+			"option TEXT,"
+			"value TEXT,"
+			"UNIQUE (package_id, option)"
+		");"
+		"PRAGMA user_version=2;"
 		;
 	const char pkgsql[] = ""
 		"INSERT INTO packages ("
@@ -239,6 +247,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	const char catsql[] = "INSERT OR IGNORE INTO categories(name) VALUES(?1);";
 	const char addcatsql[] = "INSERT OR ROLLBACK INTO pkg_categories(package_id, category_id) "
 		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2));";
+	const char addoption[] = "INSERT OR ROLLBACK INTO options (option, value, package_id) "
+		"VALUES (?1, ?2, ?3);";
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -294,6 +304,12 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	}
 
 	if (sqlite3_prepare_v2(sqlite, addlicsql, -1, &stmt_lic2, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	if (sqlite3_prepare_v2(sqlite, addoption, -1, &stmt_opts, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -429,6 +445,19 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			sqlite3_reset(stmt_lic1);
 			sqlite3_reset(stmt_lic2);
 		}
+		option = NULL;
+		while (pkg_options(pkg, &option) == EPKG_OK) {
+			sqlite3_bind_text(stmt_opts, 1, pkg_option_opt(option), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_opts, 2, pkg_option_value(option), -1, SQLITE_STATIC);
+			sqlite3_bind_int64(stmt_opts, 3, package_id);
+
+			if (sqlite3_step(stmt_opts) != SQLITE_DONE) {
+				ERROR_SQLITE(sqlite);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+			sqlite3_reset(stmt_opts);
+		}
 	}
 
 	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK) {
@@ -460,6 +489,9 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	if (stmt_lic2 != NULL)
 		sqlite3_finalize(stmt_lic2);
+
+	if (stmt_opts != NULL)
+		sqlite3_finalize(stmt_opts);
 
 	if (sqlite != NULL)
 		sqlite3_close(sqlite);
