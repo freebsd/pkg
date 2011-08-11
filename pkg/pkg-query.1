@@ -1,0 +1,121 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd August 11, 2011
+.Dt PKG-QUERY 1
+.Os
+.Sh NAME
+.Nm "pkg query"
+.Nd query information for installed packages
+.Sh SYNOPSIS
+.Nm
+.Fl a Ao query format Ac
+.Nm
+.Op Fl gxX 
+.Ao query format Ac Ao package pattern Ac
+.Sh DESCRIPTION
+.Nm
+is used for displaying information for installed packages.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl g
+Treat
+.Ao package pattern Ac
+as a glob pattern.
+.It Fl x
+Treat
+.Ao package pattern Ac
+as a regular expression.
+.It Fl X
+Treat
+.Ao package pattern Ac
+as an extended regular expression.
+.El
+.Sh QUERY FORMAT
+There are two type of keyword for the query format: the multiline and the normal
+one. Only one type of multiline pattern is accepted for a given query.
+.Ss Normal patterns:
+.Bl -tag -width F1
+.It \fB%n\fB
+Name of the matched package
+.It \fB%v\fB
+Version of the matched package
+.It \fB%v\fB
+Origin of the matched package
+.It \fB%p\fB
+Prefix of the matched package
+.It \fB%m\fB
+Maintainer of the matched package
+.It \fB%c\fB
+Comment of the matched package
+.It \fB%w\fB
+Home page of the matched package
+.It \fB%l\fB
+license logic of the matched package nothing for single, & for and and | for or
+.It \fB%sh\fB
+The flast size in human readable format of the matched package
+.It \fB%sb\fB
+The flast size in bytes format of the matched package
+.El
+.Ss Multilines pattern:
+.Bl -tag -width F1
+.It \fB%d[nov]\fB
+List of dependencies of the matched package, n stand for name, o for origin and
+v for version.
+.It \fB%r[nov]\fB
+List of reverse dependencies of the matched package, n stand for name, o for 
+origin and v for version.
+.It \fB%C\fB
+List of categories the matched package belong to.
+.It \fB%F[ns]\fB
+List of files of the matched package, p stand for path, s for sum.
+.It \fB%O[kv]\fB
+List of options of the matched package, k stand for key, v for value.
+.It \fB%L\fB
+List of license of the matched package.
+.It \fB%U\fB
+List of users needed for the matched package.
+.It \fB%G\fB
+List of groups needed for the matched package.
+.El
+.Sh WARNING
+.Sh ENVRIOMENT
+The following envrioment variables affect the execution of
+.Nm :
+.Bl -tag -width ".Ev TMPDIR"
+.El
+.Sh FILES
+.Sh SEE ALSO
+.Xr pkg 1 ,
+.Xr pkg-add 1 ,
+.Xr pkg-autoremove 1 ,
+.Xr pkg-search 1 ,
+.Xr pkg-backup 1 ,
+.Xr pkg-install 1 ,
+.Xr pkg-delete 1 ,
+.Xr pkg-create 1 ,
+.Xr pkg-register 1 ,
+.Xr pkg-repo 1 ,
+.Xr pkg-update 1 ,
+.Xr pkg-upgrade 1 ,
+.Xr pkg-version 1 ,
+.Xr pkg-which 1 ,
+.Xr pkg.conf 5
+.Sh AUTHORS AND CONTRIBUTORS
+.Sh BUGS

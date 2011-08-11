@@ -37,6 +37,7 @@ MAN=	pkg.1 \
 	pkg-delete.1 \
 	pkg-info.1 \
 	pkg-install.1 \
+	pkg-query.1 \
 	pkg-register.1 \
 	pkg-repo.1 \
 	pkg-search.1 \
