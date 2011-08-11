@@ -21,6 +21,7 @@
 #include "event.h"
 #include "info.h"
 #include "install.h"
+#include "query.h"
 #include "register.h"
 #include "repo.h"
 #include "search.h"
@@ -48,6 +49,7 @@ static struct commands {
 	{ "help", exec_help, usage_help},
 	{ "info", exec_info, usage_info},
 	{ "install", exec_install, usage_install},
+	{ "query", exec_query, usage_query},
 	{ "search", exec_search, usage_search},
 	{ "register", exec_register, usage_register},
 	{ "repo", exec_repo, usage_repo},
