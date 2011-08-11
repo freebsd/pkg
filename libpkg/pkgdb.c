@@ -1358,7 +1358,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_int64(stmt_cat, 1, package_id);
 		sqlite3_bind_text(stmt_cat, 2, pkg_category_name(category), -1, SQLITE_STATIC);
 
-		if ((ret = sqlite3_step(stmt_cat)) != SQLITE_DONE) {
+		if ((ret = sqlite3_step(stmt_categories)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				pkg_emit_error("sqlite: constraint violation on categories.name: %s",
 						pkg_category_name(category));
@@ -1366,7 +1366,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		if (( ret = sqlite3_step(stmt_categories)) != SQLITE_DONE) {
+		if (( ret = sqlite3_step(stmt_cat)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1391,7 +1391,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_int64(stmt_lic, 1, package_id);
 		sqlite3_bind_text(stmt_lic, 2, pkg_license_name(license), -1, SQLITE_STATIC);
 
-		if ((ret = sqlite3_step(stmt_lic)) != SQLITE_DONE) {
+		if ((ret = sqlite3_step(stmt_licenses)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				pkg_emit_error("sqlite: constraint violation on licenses.name: %s",
 						pkg_license_name(license));
@@ -1399,7 +1399,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		if (( ret = sqlite3_step(stmt_licenses)) != SQLITE_DONE) {
+		if (( ret = sqlite3_step(stmt_lic)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
