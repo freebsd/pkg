@@ -751,17 +751,17 @@ pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
 	int ret;
 	const char *sql;
 	if (pkg->type == PKG_UPGRADE || pkg->type == PKG_REMOTE) {
-		 sql = ""
-			"SELECT p.name, p.origin, p.version "
-			"FROM remote.packages AS p, remote.deps AS d "
-			"WHERE p.origin = d.origin "
-			"AND d.package_id = ?1;";
+		sql = ""
+			"SELECT d.name, d.origin, d.version "
+			"FROM remote.deps AS d "
+			"WHERE d.package_id = ?1 "
+			"AND NOT EXISTS (SELECT 1 FROM main.packages AS p "
+			"WHERE p.origin = d.origin);";
 	} else {
 		sql = ""
-			"SELECT p.name, p.origin, p.version "
-			"FROM mainpackages AS p, main.deps AS d "
-			"WHERE p.origin = d.origin "
-			"AND d.package_id = ?1;";
+			"SELECT d.name, d.origin, d.version "
+			"FROM main.deps AS d "
+			"WHERE d.package_id = ?1;";
 	}
 
 	if (pkg->flags & PKG_LOAD_DEPS)
