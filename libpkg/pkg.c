@@ -793,6 +793,30 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	return (EPKG_OK);
 }
 
+int
+pkg_list_empty(struct pkg *pkg, pkg_list list) {
+	switch (list) {
+		case PKG_DEPS:
+			return (STAILQ_EMPTY(&pkg->deps));
+		case PKG_RDEPS:
+			return (STAILQ_EMPTY(&pkg->rdeps));
+		case PKG_LICENSES:
+			return (STAILQ_EMPTY(&pkg->licenses));
+		case PKG_OPTIONS:
+			return (STAILQ_EMPTY(&pkg->options));
+		case PKG_CATEGORIES:
+			return (STAILQ_EMPTY(&pkg->categories));
+		case PKG_FILES:
+			return (STAILQ_EMPTY(&pkg->files));
+		case PKG_DIRS:
+			return (STAILQ_EMPTY(&pkg->dirs));
+		case PKG_USERS:
+			return (STAILQ_EMPTY(&pkg->users));
+		case PKG_GROUPS:
+			return (STAILQ_EMPTY(&pkg->groups));
+	}
+}
+
 void
 pkg_freedeps(struct pkg *pkg)
 {
