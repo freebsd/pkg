@@ -132,6 +132,18 @@ typedef enum {
 	PKG_NEWVERSION,
 } pkg_attr;
 
+typedef enum {
+	PKG_DEPS = 0,
+	PKG_RDEPS,
+	PKG_LICENSES,
+	PKG_OPTIONS,
+	PKG_CATEGORIES,
+	PKG_FILES,
+	PKG_DIRS,
+	PKG_USERS,
+	PKG_GROUPS
+} pkg_list;
+
 /**
  * Determine the type of a pkg_script.
  */
@@ -234,7 +246,7 @@ int64_t pkg_new_flatsize(struct pkg *);
  */
 int64_t pkg_new_pkgsize(struct pkg *);
 
-
+int pkg_list_empty(struct pkg *, pkg_list);
 /**
  * Iterates over the dependencies of the package.
  * @param dep Must be set to NULL for the first call.
