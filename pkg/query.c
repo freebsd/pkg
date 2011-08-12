@@ -141,6 +141,34 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				case 'G':
 					sbuf_cat(dest, pkg_group_name((struct pkg_group *)data));
 					break;
+				case '%':
+					sbuf_putc(dest, '%');
+					break;
+			}
+		} else  if (qstr[0] == '\\') {
+			qstr++;
+			switch (qstr[0]) {
+				case 'n':
+					sbuf_putc(dest, '\n');
+					break;
+				case 'a':
+					sbuf_putc(dest, '\a');
+					break;
+				case 'b':
+					sbuf_putc(dest, '\b');
+					break;
+				case 'f':
+					sbuf_putc(dest, '\f');
+					break;
+				case 'r':
+					sbuf_putc(dest, '\r');
+					break;
+				case '\\':
+					sbuf_putc(dest, '\\');
+					break;
+				case 't':
+					sbuf_putc(dest, '\t');
+					break;
 			}
 		} else {
 			sbuf_putc(dest, qstr[0]);
