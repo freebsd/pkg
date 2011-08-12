@@ -141,7 +141,9 @@ typedef enum {
 	PKG_FILES,
 	PKG_DIRS,
 	PKG_USERS,
-	PKG_GROUPS
+	PKG_GROUPS,
+	PKG_CONFLICTS,
+	PKG_SCRIPTS
 } pkg_list;
 
 /**

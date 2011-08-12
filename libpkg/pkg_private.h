@@ -131,17 +131,8 @@ struct pkg_group {
 };
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
-void pkg_freelicenses(struct pkg *pkg);
-void pkg_freecategories(struct pkg *pkg);
-void pkg_freedeps(struct pkg *pkg);
-void pkg_freerdeps(struct pkg *pkg);
-void pkg_freefiles(struct pkg *pkg);
-void pkg_freedirs(struct pkg *pkg);
-void pkg_freeconflicts(struct pkg *pkg);
-void pkg_freescripts(struct pkg *pkg);
-void pkg_freeoptions(struct pkg *pkg);
-void pkg_freeusers(struct pkg *pkg);
-void pkg_freegroups(struct pkg *pkg);
+
+void pkg_list_free(struct pkg *, pkg_list);
 
 int pkg_dep_new(struct pkg_dep **);
 void pkg_dep_free(struct pkg_dep *);

@@ -67,7 +67,7 @@ static struct column_int_mapping {
 };
 
 static int
-loadval(sqlite3 *db, struct pkg *pkg, const char *sql, int flags, int (*pkg_adddata)(struct pkg *pkg, const char *data), void (*pkg_freedata)(struct pkg *pkg))
+loadval(sqlite3 *db, struct pkg *pkg, const char *sql, int flags, int (*pkg_adddata)(struct pkg *pkg, const char *data), int list)
 {
 	sqlite3_stmt *stmt;
 	int ret;
@@ -89,7 +89,8 @@ loadval(sqlite3 *db, struct pkg *pkg, const char *sql, int flags, int (*pkg_addd
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		pkg_freedata(pkg);
+		if (list != -1)
+			pkg_list_empty(pkg, list);
 		ERROR_SQLITE(db);
 		return (EPKG_FATAL);
 	}
@@ -836,7 +837,7 @@ pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		pkg_freedeps(pkg);
+		pkg_list_empty(pkg, PKG_DEPS);
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
@@ -875,7 +876,7 @@ pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		pkg_freerdeps(pkg);
+		pkg_list_free(pkg, PKG_RDEPS);
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
@@ -913,7 +914,7 @@ pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		pkg_freefiles(pkg);
+		pkg_list_free(pkg, PKG_FILES);
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
@@ -932,7 +933,7 @@ pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg)
 		"AND directory_id = directories.id "
 		"ORDER by path DESC";
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_DIRS, pkg_adddir, pkg_freedirs));
+	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_DIRS, pkg_adddir, PKG_DIRS));
 }
 
 int
@@ -955,7 +956,7 @@ pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg)
 			"ORDER by name DESC";
 	}
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_LICENSES, pkg_addlicense, pkg_freelicenses));
+	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_LICENSES, pkg_addlicense, PKG_LICENSES));
 }
 
 int
@@ -978,7 +979,7 @@ pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg)
 			"ORDER by name DESC";
 	}
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_CATEGORIES, pkg_addcategory, pkg_freecategories));
+	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_CATEGORIES, pkg_addcategory, PKG_CATEGORIES));
 }
 
 int
@@ -991,7 +992,7 @@ pkgdb_loaduser(struct pkgdb *db, struct pkg *pkg)
 		"AND user_id = users.id "
 		"ORDER by name DESC";
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, pkg_freeusers));
+	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, PKG_USERS));
 }
 
 int
@@ -1004,7 +1005,7 @@ pkgdb_loadgroup(struct pkgdb *db, struct pkg *pkg)
 		"AND group_id = groups.id "
 		"ORDER by name DESC";
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_GROUPS, pkg_addgroup, pkg_freegroups));
+	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_GROUPS, pkg_addgroup, PKG_GROUPS));
 }
 
 int
@@ -1017,7 +1018,7 @@ pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg)
 
 	assert(pkg->type == PKG_INSTALLED);
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_CONFLICTS, pkg_addconflict, pkg_freeconflicts));
+	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_CONFLICTS, pkg_addconflict, PKG_CONFLICTS));
 }
 
 int
@@ -1048,7 +1049,7 @@ pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		pkg_freescripts(pkg);
+		pkg_list_free(pkg, PKG_SCRIPTS);
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
@@ -1092,7 +1093,7 @@ pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		pkg_freeoptions(pkg);
+		pkg_list_free(pkg, PKG_OPTIONS);
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
@@ -1112,7 +1113,7 @@ pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg)
 
 	assert(pkg->type == PKG_INSTALLED);
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_setmtree, NULL));
+	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_setmtree, -1));
 }
 
 int

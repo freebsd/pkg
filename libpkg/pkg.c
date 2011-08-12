@@ -68,10 +68,12 @@ pkg_new(struct pkg **pkg, pkg_t type)
 void
 pkg_reset(struct pkg *pkg, pkg_t type)
 {
+	int i;
+
 	if (pkg == NULL)
 		return;
 
-	for (int i = 0; i < PKG_NUM_FIELDS; i++)
+	for (i = 0; i < PKG_NUM_FIELDS; i++)
 		sbuf_reset(pkg->fields[i].value);
 
 	pkg->flatsize = 0;
@@ -81,17 +83,17 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg->rowid = 0;
 	pkg->licenselogic = 1;
 
-	pkg_freelicenses(pkg);
-	pkg_freecategories(pkg);
-	pkg_freedeps(pkg);
-	pkg_freerdeps(pkg);
-	pkg_freefiles(pkg);
-	pkg_freedirs(pkg);
-	pkg_freeconflicts(pkg);
-	pkg_freescripts(pkg);
-	pkg_freeoptions(pkg);
-	pkg_freeusers(pkg);
-	pkg_freegroups(pkg);
+	pkg_list_free(pkg, PKG_LICENSES);
+	pkg_list_free(pkg, PKG_CATEGORIES);
+	pkg_list_free(pkg, PKG_DEPS);
+	pkg_list_free(pkg, PKG_RDEPS);
+	pkg_list_free(pkg, PKG_FILES);
+	pkg_list_free(pkg, PKG_DIRS);
+	pkg_list_free(pkg, PKG_CONFLICTS);
+	pkg_list_free(pkg, PKG_SCRIPTS);
+	pkg_list_free(pkg, PKG_OPTIONS);
+	pkg_list_free(pkg, PKG_USERS);
+	pkg_list_free(pkg, PKG_GROUPS);
 
 	pkg->type = type;
 }
@@ -105,17 +107,17 @@ pkg_free(struct pkg *pkg)
 	for (int i = 0; i < PKG_NUM_FIELDS; i++)
 		sbuf_free(pkg->fields[i].value);
 
-	pkg_freelicenses(pkg);
-	pkg_freecategories(pkg);
-	pkg_freedeps(pkg);
-	pkg_freerdeps(pkg);
-	pkg_freefiles(pkg);
-	pkg_freedirs(pkg);
-	pkg_freeconflicts(pkg);
-	pkg_freescripts(pkg);
-	pkg_freeoptions(pkg);
-	pkg_freeusers(pkg);
-	pkg_freegroups(pkg);
+	pkg_list_free(pkg, PKG_LICENSES);
+	pkg_list_free(pkg, PKG_CATEGORIES);
+	pkg_list_free(pkg, PKG_DEPS);
+	pkg_list_free(pkg, PKG_RDEPS);
+	pkg_list_free(pkg, PKG_FILES);
+	pkg_list_free(pkg, PKG_DIRS);
+	pkg_list_free(pkg, PKG_CONFLICTS);
+	pkg_list_free(pkg, PKG_SCRIPTS);
+	pkg_list_free(pkg, PKG_OPTIONS);
+	pkg_list_free(pkg, PKG_USERS);
+	pkg_list_free(pkg, PKG_GROUPS);
 
 	free(pkg);
 }
@@ -814,161 +816,80 @@ pkg_list_empty(struct pkg *pkg, pkg_list list) {
 			return (STAILQ_EMPTY(&pkg->users));
 		case PKG_GROUPS:
 			return (STAILQ_EMPTY(&pkg->groups));
+		case PKG_CONFLICTS:
+			return (STAILQ_EMPTY(&pkg->conflicts));
+		case PKG_SCRIPTS:
+			return (STAILQ_EMPTY(&pkg->scripts));
 	}
 }
 
+#define LIST_FREE(head, data, free_func) do { \
+	while (!STAILQ_EMPTY(head)) { \
+		data = STAILQ_FIRST(head); \
+		STAILQ_REMOVE_HEAD(head, next); \
+		free_func(data); \
+	}  \
+	} while (0)
+
 void
-pkg_freedeps(struct pkg *pkg)
-{
+pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_dep *d;
-
-	while (!STAILQ_EMPTY(&pkg->deps)) {
-		d = STAILQ_FIRST(&pkg->deps);
-		STAILQ_REMOVE_HEAD(&pkg->deps, next);
-		pkg_dep_free(d);
-	}
-
-	pkg->flags &= ~PKG_LOAD_DEPS;
-}
-
-void
-pkg_freerdeps(struct pkg *pkg)
-{
-	struct pkg_dep *d;
-
-	while (!STAILQ_EMPTY(&pkg->rdeps)) {
-		d = STAILQ_FIRST(&pkg->rdeps);
-		STAILQ_REMOVE_HEAD(&pkg->rdeps, next);
-		pkg_dep_free(d);
-	}
-
-	pkg->flags &= ~PKG_LOAD_RDEPS;
-}
-
-void
-pkg_freefiles(struct pkg *pkg)
-{
-	struct pkg_file *f;
-
-	while (!STAILQ_EMPTY(&pkg->files)) {
-		f = STAILQ_FIRST(&pkg->files);
-		STAILQ_REMOVE_HEAD(&pkg->files, next);
-		pkg_file_free(f);
-	}
-
-	pkg->flags &= ~PKG_LOAD_FILES;
-}
-
-void
-pkg_freelicenses(struct pkg *pkg)
-{
-	struct pkg_license *l;
-
-	while (!STAILQ_EMPTY(&pkg->licenses)) {
-		l = STAILQ_FIRST(&pkg->licenses);
-		STAILQ_REMOVE_HEAD(&pkg->licenses, next);
-		pkg_license_free(l);
-	}
-
-	pkg->flags &= ~PKG_LOAD_LICENSES;
-}
-
-void
-pkg_freeusers(struct pkg *pkg)
-{
-	struct pkg_user *u;
-
-	while (!STAILQ_EMPTY(&pkg->users)) {
-		u = STAILQ_FIRST(&pkg->users);
-		STAILQ_REMOVE_HEAD(&pkg->users, next);
-		pkg_user_free(u);
-	}
-
-	pkg->flags &= ~PKG_LOAD_USERS;
-}
-
-void
-pkg_freegroups(struct pkg *pkg)
-{
-	struct pkg_group *g;
-
-	while (!STAILQ_EMPTY(&pkg->groups)) {
-		g = STAILQ_FIRST(&pkg->groups);
-		STAILQ_REMOVE_HEAD(&pkg->groups, next);
-		pkg_group_free(g);
-	}
-
-	pkg->flags &= ~PKG_LOAD_GROUPS;
-}
-
-void
-pkg_freecategories(struct pkg *pkg)
-{
-	struct pkg_category *c;
-
-	while (!STAILQ_EMPTY(&pkg->categories)) {
-		c = STAILQ_FIRST(&pkg->categories);
-		STAILQ_REMOVE_HEAD(&pkg->categories, next);
-		pkg_category_free(c);
-	}
-
-	pkg->flags &= ~PKG_LOAD_CATEGORIES;
-}
-
-void
-pkg_freedirs(struct pkg *pkg)
-{
-	struct pkg_dir *d;
-
-	while (!STAILQ_EMPTY(&pkg->dirs)) {
-		d = STAILQ_FIRST(&pkg->dirs);
-		STAILQ_REMOVE_HEAD(&pkg->dirs, next);
-		pkg_dir_free(d);
-	}
-
-	pkg->flags &= ~PKG_LOAD_DIRS;
-}
-
-void
-pkg_freeconflicts(struct pkg *pkg)
-{
-	struct pkg_conflict *c;
-
-	while (!STAILQ_EMPTY(&pkg->conflicts)) {
-		c = STAILQ_FIRST(&pkg->conflicts);
-		STAILQ_REMOVE_HEAD(&pkg->conflicts, next);
-		pkg_conflict_free(c);
-	}
-
-	pkg->flags &= ~PKG_LOAD_CONFLICTS;
-}
-
-void
-pkg_freescripts(struct pkg *pkg)
-{
-	struct pkg_script *s;
-
-	while (!STAILQ_EMPTY(&pkg->scripts)) {
-		s = STAILQ_FIRST(&pkg->scripts);
-		STAILQ_REMOVE_HEAD(&pkg->scripts, next);
-		pkg_script_free(s);
-	}
-
-	pkg->flags &= ~PKG_LOAD_SCRIPTS;
-}
-
-void
-pkg_freeoptions(struct pkg *pkg)
-{
 	struct pkg_option *o;
+	struct pkg_license *l;
+	struct pkg_category *c;
+	struct pkg_file *f;
+	struct pkg_dir *dir;
+	struct pkg_user *u;
+	struct pkg_group *g;
+	struct pkg_script *s;
+	struct pkg_conflict *conflict;
 
-	while (!STAILQ_EMPTY(&pkg->options)) {
-		o = STAILQ_FIRST(&pkg->options);
-		STAILQ_REMOVE_HEAD(&pkg->options, next);
-		pkg_option_free(o);
+	switch (list) {
+		case PKG_DEPS:
+			LIST_FREE(&pkg->deps, d, pkg_dep_free);
+			pkg->flags &= ~PKG_LOAD_DEPS;
+			break;
+		case PKG_RDEPS:
+			LIST_FREE(&pkg->rdeps, d, pkg_dep_free);
+			pkg->flags &= ~PKG_LOAD_RDEPS;
+			break;
+		case PKG_LICENSES:
+			LIST_FREE(&pkg->licenses, l, pkg_license_free);
+			pkg->flags &= ~PKG_LOAD_LICENSES;
+			break;
+		case PKG_OPTIONS:
+			LIST_FREE(&pkg->options, o, pkg_option_free);
+			pkg->flags &= ~PKG_LOAD_OPTIONS;
+			break;
+		case PKG_CATEGORIES:
+			LIST_FREE(&pkg->categories, c, pkg_category_free);
+			pkg->flags &= ~PKG_LOAD_CATEGORIES;
+			break;
+		case PKG_FILES:
+			LIST_FREE(&pkg->files, f, pkg_file_free);
+			pkg->flags &= ~PKG_LOAD_FILES;
+			break;
+		case PKG_DIRS:
+			LIST_FREE(&pkg->dirs, dir, pkg_dir_free);
+			pkg->flags &= ~PKG_LOAD_DIRS;
+			break;
+		case PKG_USERS:
+			LIST_FREE(&pkg->users, u, pkg_user_free);
+			pkg->flags &= ~PKG_LOAD_USERS;
+			break;
+		case PKG_GROUPS:
+			LIST_FREE(&pkg->groups, g, pkg_group_free);
+			pkg->flags &= ~PKG_LOAD_GROUPS;
+			break;
+		case PKG_SCRIPTS:
+			LIST_FREE(&pkg->scripts, s, pkg_script_free);
+			pkg->flags &= ~PKG_LOAD_SCRIPTS;
+			break;
+		case PKG_CONFLICTS:
+			LIST_FREE(&pkg->conflicts, conflict, pkg_conflict_free);
+			pkg->flags &= ~PKG_LOAD_CONFLICTS;
+			break;
 	}
-
-	pkg->flags &= ~PKG_LOAD_OPTIONS;
 }
 
 int
