@@ -1683,7 +1683,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 		"SELECT l.id AS rowid, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
 		"l.message AS message, l.arch AS arch, l.osversion AS osversion, l.maintainer AS maintainer, "
 		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS newversion, r.flatsize AS newflatsize, "
-		"r.pkgsize AS pkgsize, r.path AS repopath "
+		"r.pkgsize AS pkgsize, r.cksum AS cksum, r.path AS repopath "
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
