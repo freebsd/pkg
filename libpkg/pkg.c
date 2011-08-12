@@ -933,6 +933,7 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 {
 	struct packing *pack;
 	struct pkg_file *file = NULL;
+	struct pkg_dir *dir = NULL;
 	char spath[MAXPATHLEN + 1];
 	char dpath[MAXPATHLEN + 1];
 
@@ -941,12 +942,20 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 		return EPKG_FATAL;
 	}
 
+	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		snprintf(spath, sizeof(spath), "%s%s", src, pkg_dir_path(dir));
+		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_dir_path(dir));
+		printf("%s -> %s\n", spath, dpath);
+		packing_append_file(pack, spath, dpath);
+	}
+
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		snprintf(spath, sizeof(spath), "%s%s", src, pkg_file_path(file));
 		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_file_path(file));
 		printf("%s -> %s\n", spath, dpath);
 		packing_append_file(pack, spath, dpath);
 	}
+
 
 	return (packing_finish(pack));
 }
