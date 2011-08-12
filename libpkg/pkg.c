@@ -821,6 +821,8 @@ pkg_list_empty(struct pkg *pkg, pkg_list list) {
 		case PKG_SCRIPTS:
 			return (STAILQ_EMPTY(&pkg->scripts));
 	}
+	
+	return (0);
 }
 
 #define LIST_FREE(head, data, free_func) do { \
