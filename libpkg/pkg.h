@@ -579,13 +579,6 @@ struct pkgdb_it * pkgdb_rquery(struct pkgdb *db, const char *pattern,
 		match_t type, unsigned int field);
 
 /**
- * Query the remote database.
- * @param db A pkgdb opened with PKGDB_REMOTE.
- * @warning Returns NULL on failure.
- */
-struct pkg * pkgdb_query_remote(struct pkgdb *db, const char *pattern);
-
-/**
  * 
  */
 struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db);

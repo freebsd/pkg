@@ -217,17 +217,23 @@ add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkg_jobs_node *ndep;
+	struct pkgdb_it *it = NULL;
 
 	while (pkg_deps(n->pkg, &dep) != EPKG_END) {
 		ndep = get_node(j, pkg_dep_origin(dep), 1);
 		if (ndep->pkg == NULL) {
-			ndep->pkg = pkgdb_query_remote(j->db, pkg_dep_origin(dep));
-			if (ndep->pkg == NULL)
+			if ((it = pkgdb_rquery(j->db, pkg_dep_origin(dep), MATCH_EXACT, FIELD_ORIGIN)) == NULL) {
 				pkg_emit_missing_dep(n->pkg, dep);
-			else {
-				pkg_setautomatic(ndep->pkg);
-				add_dep(j, ndep);
+			} else {
+				if (pkgdb_it_next(it, &ndep->pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
+					pkg_setautomatic(ndep->pkg);
+					add_dep(j, ndep);
+				} else {
+					pkg_emit_missing_dep(n->pkg, dep);
+				}
 			}
+
+			pkgdb_it_free(it);
 		}
 		add_parent(ndep, n);
 	}
