@@ -69,8 +69,9 @@ exec_upgrade(int argc, char **argv)
 		goto cleanup;
 	}
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_jobs_add(jobs, pkgdb_query_remote(db, pkg_get(pkg, PKG_ORIGIN)));
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
+		pkg_jobs_add(jobs, pkg);
+		pkg = NULL;
 	}
 
 	if (pkg_jobs_empty(jobs) == true) {
