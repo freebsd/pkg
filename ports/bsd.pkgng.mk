@@ -42,7 +42,9 @@ fake-pkg:
 .endif
 	@${ECHO_CMD} "deps: " >> ${MANIFESTF}
 
+.if defined(_LIBS_RUN_DEPENDS)
 	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} >> ${MANIFESTF}
+.endif
 	@${ECHO_CMD} -n "categories: [" >> ${MANIFESTF}
 .for cat in ${CATEGORIES:u}
 	@${ECHO_CMD} -n "${cat}," >> ${MANIFESTF}
@@ -197,7 +199,7 @@ check-install-conflicts:
 .else
 	@conflicts_with=; \
 	${PKG_QUERY} -g "%n-%v %p %o" ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/} \
-	       	| while read pkgname prfx orgn; do ; \
+	       	| while read pkgname prfx orgn; do \
 		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
 			conflicts_with="$${conflicts_with} $${pkgname}"; \
 		fi; \
