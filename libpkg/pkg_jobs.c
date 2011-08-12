@@ -97,6 +97,9 @@ pkg_jobs_install(struct pkg_jobs *j)
 	cachedir = pkg_config("PKG_CACHEDIR");
 	p = NULL;
 	while (pkg_jobs(j, &p) == EPKG_OK) {
+		/* no need to reinstall package already installed */
+		if (p->type == PKG_INSTALLED)
+			continue;
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				 pkg_get(p, PKG_REPOPATH));
 
@@ -127,11 +130,14 @@ pkg_jobs_upgrade(struct pkg_jobs *j)
 	cachedir = pkg_config("PKG_CACHEDIR");
 	p = NULL;
 	while (pkg_jobs(j, &p) == EPKG_OK) {
+		/* no need to reinstall package already installed */
+		if (p->type == PKG_INSTALLED)
+			continue;
 		/* get the installed pkg if any */
 		it = pkgdb_query(j->db, pkg_get(p, PKG_ORIGIN), MATCH_EXACT);
+		snprintf(path, sizeof(path), "%s/%s", cachedir,
+				pkg_get(p, PKG_REPOPATH));
 		if (pkgdb_it_next(it, &oldpkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			snprintf(path, sizeof(path), "%s/%s", cachedir,
-					pkg_get(p, PKG_REPOPATH));
 			retcode = pkg_upgrade(j->db, oldpkg, path);
 		} else {
 			retcode = pkg_upgrade(j->db, NULL, path);
@@ -222,6 +228,7 @@ add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
 	while (pkg_deps(n->pkg, &dep) != EPKG_END) {
 		ndep = get_node(j, pkg_dep_origin(dep), 1);
 		if (ndep->pkg == NULL) {
+			/* get it from remote */
 			if ((it = pkgdb_rquery(j->db, pkg_dep_origin(dep), MATCH_EXACT, FIELD_ORIGIN)) == NULL) {
 				pkg_emit_missing_dep(n->pkg, dep);
 			} else {
@@ -297,6 +304,8 @@ pkg_jobs_resolv(struct pkg_jobs *j)
 
 	/* Add dependencies into nodes */
 	LIST_FOREACH(n, &j->nodes, entries) {
+		if (j->type == PKG_JOBS_UPGRADE)
+			add_dep(j, n);
 		if (j->type == PKG_JOBS_INSTALL)
 			add_dep(j, n);
 		if (j->type == PKG_JOBS_DEINSTALL)
