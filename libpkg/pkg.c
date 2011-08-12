@@ -292,20 +292,23 @@ pkg_setrowid(struct pkg *pkg, int64_t rowid) {
 	return (EPKG_OK);
 }
 
+#define PKG_LIST_NEXT(head, data) do { \
+		if (data == NULL) \
+			data = STAILQ_FIRST(head); \
+		else \
+			data = STAILQ_NEXT(data, next); \
+		if (data == NULL) \
+			return (EPKG_END); \
+		else \
+			return (EPKG_OK); \
+	} while (0)
+
 int
 pkg_licenses(struct pkg *pkg, struct pkg_license **l)
 {
 	assert(pkg != NULL);
 
-	if (*l == NULL)
-		*l = STAILQ_FIRST(&pkg->licenses);
-	else
-		*l = STAILQ_NEXT(*l, next);
-
-	if (*l == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->licenses, *l);
 }
 
 int
@@ -313,15 +316,7 @@ pkg_users(struct pkg *pkg, struct pkg_user **u)
 {
 	assert(pkg != NULL);
 
-	if (*u == NULL)
-		*u = STAILQ_FIRST(&pkg->users);
-	else
-		*u = STAILQ_NEXT(*u, next);
-
-	if (*u == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->users, *u);
 }
 
 int
@@ -329,15 +324,7 @@ pkg_groups(struct pkg *pkg, struct pkg_group **g)
 {
 	assert(pkg != NULL);
 
-	if (*g == NULL)
-		*g = STAILQ_FIRST(&pkg->groups);
-	else
-		*g = STAILQ_NEXT(*g, next);
-
-	if (*g == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->groups, *g);
 }
 
 int
@@ -345,15 +332,7 @@ pkg_deps(struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
 
-	if (*d == NULL)
-		*d = STAILQ_FIRST(&pkg->deps);
-	else
-		*d = STAILQ_NEXT(*d, next);
-
-	if (*d == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->deps, *d);
 }
 
 int
@@ -361,15 +340,7 @@ pkg_rdeps(struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
 
-	if (*d == NULL)
-		*d = STAILQ_FIRST(&pkg->rdeps);
-	else
-		*d = STAILQ_NEXT(*d, next);
-
-	if (*d == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->rdeps, *d);
 }
 
 int
@@ -377,15 +348,7 @@ pkg_files(struct pkg *pkg, struct pkg_file **f)
 {
 	assert(pkg != NULL);
 
-	if (*f == NULL)
-		*f = STAILQ_FIRST(&pkg->files);
-	else
-		*f = STAILQ_NEXT(*f, next);
-
-	if (*f == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->files, *f);
 }
 
 int
@@ -393,15 +356,7 @@ pkg_categories(struct pkg *pkg, struct pkg_category **c)
 {
 	assert(pkg != NULL);
 
-	if (*c == NULL)
-		*c = STAILQ_FIRST(&pkg->categories);
-	else
-		*c = STAILQ_NEXT(*c, next);
-
-	if (*c == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->categories, *c);
 }
 
 int
@@ -409,15 +364,7 @@ pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
 {
 	assert(pkg != NULL);
 
-	if (*d == NULL)
-		*d = STAILQ_FIRST(&pkg->dirs);
-	else
-		*d = STAILQ_NEXT(*d, next);
-
-	if (*d == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->dirs, *d);
 }
 
 int
@@ -425,15 +372,7 @@ pkg_conflicts(struct pkg *pkg, struct pkg_conflict **c)
 {
 	assert(pkg != NULL);
 
-	if (*c == NULL)
-		*c = STAILQ_FIRST(&pkg->conflicts);
-	else
-		*c = STAILQ_NEXT(*c, next);
-
-	if (*c == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->conflicts, *c);
 }
 
 int
@@ -441,15 +380,7 @@ pkg_scripts(struct pkg *pkg, struct pkg_script **s)
 {
 	assert(pkg != NULL);
 
-	if (*s == NULL)
-		*s = STAILQ_FIRST(&pkg->scripts);
-	else
-		*s = STAILQ_NEXT(*s, next);
-
-	if (*s == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->scripts, *s);
 }
 
 int
@@ -457,15 +388,7 @@ pkg_options(struct pkg *pkg, struct pkg_option **o)
 {
 	assert(pkg != NULL);
 
-	if (*o == NULL)
-		*o = STAILQ_FIRST(&pkg->options);
-	else
-		*o = STAILQ_NEXT(*o, next);
-
-	if (*o == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	PKG_LIST_NEXT(&pkg->options, *o);
 }
 
 int
