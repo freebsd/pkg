@@ -24,10 +24,24 @@ BINDIR=		/usr/sbin
 
 DEBUG_FLAGS+=	-g -O0
 CFLAGS+=	-I${.CURDIR}/../libpkg
-LDADD+=		-L../libpkg \
-		-lpkgng \
+LDADD+=		-L${.CURDIR}/../libpkg \
 		-lutil \
 		-ljail
+.if defined(STATIC_PKGNG)
+LDADD+=		${.CURDIR}/../libpkg/libpkgng.a \
+		-L${.CURDIR}/../external/sqlite \
+		-L${.CURDIR}/../external/libyaml \
+		-lsqlite3 \
+		-lyaml \
+		-larchive \
+		-lsbuf \
+		-lfetch \
+		-lelf \
+		-lpthread
+.else
+LDADD+=		-lpkgng
+.endif
+
 WARNS?=		6
 MAN=	pkg.1 \
 	pkg-add.1 \
@@ -37,7 +51,6 @@ MAN=	pkg.1 \
 	pkg-delete.1 \
 	pkg-info.1 \
 	pkg-install.1 \
-	pkg-query.1 \
 	pkg-register.1 \
 	pkg-repo.1 \
 	pkg-search.1 \
