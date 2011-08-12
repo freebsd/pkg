@@ -1,9 +1,10 @@
 PKG_CMD=		/usr/sbin/pkg register
-PKG_DELETE=		/usr/sbin/pkg delete
+PKG_DELETE=		/usr/sbin/pkg delete -y
 PKG_INFO=		/usr/sbin/pkg info
 PKG_VERSION=		/usr/sbin/pkg version
 PKG_CREATE=		/usr/sbin/pkg create
 PKG_ADD=		/usr/sbin/pkg add
+PKG_QUERY=		/usr/sbin/pkg query
 
 PKG_SUFX=		.txz
 
@@ -20,14 +21,7 @@ PKGUPGRADE?=		${PKGDIR}/pkg-upgrade
 
 ACTUAL-PACKAGE-DEPENDS?= \
 	if [ "${_LIB_RUN_DEPENDS}" != "  " ]; then \
-		for dir in ${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,}; do \
-			pkgname=$$(${PKG_INFO} -q $${dir\#\#${PORTSDIR}/}); \
-			${ECHO_CMD} $${pkgname%-*} $${dir\#\#${PORTSDIR}/} $${pkgname\#\#*-}; \
-			for pkg in $$(${PKG_INFO} -qd $${dir\#\#${PORTSDIR}/}); do\
-				origin=$$(${PKG_INFO} -qo $${pkg}); \
-				${ECHO_CMD} $${pkg%-*} $$origin $${pkg\#\#*-}; \
-			done; \
-		done; \
+		${PKG_QUERY} "  %n: {origin: %o, version: %v}\n  %dn { origin: %do, version: %dv}" ${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,:C,${PORTSDIR}/,,} | ${SORT} -u; \
 	fi
 
 
@@ -48,7 +42,7 @@ fake-pkg:
 .endif
 	@${ECHO_CMD} "deps: " >> ${MANIFESTF}
 
-	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u | ${AWK} '{ print "  "$$1": { origin: "$$2", version: \""$$3"\"}" }' >> ${MANIFESTF}
+	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} >> ${MANIFESTF}
 	@${ECHO_CMD} -n "categories: [" >> ${MANIFESTF}
 .for cat in ${CATEGORIES:u}
 	@${ECHO_CMD} -n "${cat}," >> ${MANIFESTF}
@@ -134,15 +128,13 @@ fake-pkg:
 .if !target(check-build-conflicts)
 check-build-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_BUILD) ) && !defined(DISABLE_CONFLICTS) && !defined(DEFER_CONFLICTS_CHECK)
-	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/}`; \
-	conflicts_with=; \
-	if [ -n "$${found}" ]; then \
-		prfx=`${PKG_INFO} -q -p "$${found}"`; \
-		orgn=`${PKG_INFO} -q -o "$${found}"`; \
+	@conflicts_with=; \
+	${PKG_QUERY} -g "%n-%v %p %o" ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/} \
+		| while read pkgname prfx orgn; do \
 		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
-			conflicts_with="$${conflicts_with} $${found}"; \
+			conflicts_with="$${conflicts_with} $${pkgname}"; \
 		fi; \
-	fi; \
+	done; \
 	if [ -n "$${conflicts_with}" ]; then \
 		${ECHO_MSG}; \
 		${ECHO_MSG} "===>  ${PKGNAME} conflicts with installed package(s): "; \
@@ -160,15 +152,13 @@ check-build-conflicts:
 .if !target(identify-install-conflicts)
 identify-install-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_INSTALL) ) && !defined(DISABLE_CONFLICTS)
-	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
-	conflicts_with=; \
-	if [ -n "$${found}" ]; then \
-		prfx=`${PKG_INFO} -q -p "$${found}"`; \
-		orgn=`${PKG_INFO} -q -o "$${found}"`; \
+	@conflicts_with=; \
+	${PKG_QUERY} -g "%n-%v %p %o" ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/} \
+		| while read pkgname prfx orgn; do \
 		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
-			conflicts_with="$${conflicts_with} $${found}"; \
+			conflicts_with="$${conflicts_with} $${pkgname}"; \
 		fi; \
-	fi; \
+	done; \
 	if [ -n "$${conflicts_with}" ]; then \
 		${ECHO_MSG}; \
 		${ECHO_MSG} "===>  ${PKGNAME} conflicts with installed package(s): "; \
@@ -187,15 +177,13 @@ identify-install-conflicts:
 check-install-conflicts:
 .if ( defined(CONFLICTS) || defined(CONFLICTS_INSTALL) || ( defined(CONFLICTS_BUILD) && defined(DEFER_CONFLICTS_CHECK) ) ) && !defined(DISABLE_CONFLICTS) 
 .if defined(DEFER_CONFLICTS_CHECK)
-	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
-	conflicts_with=; \
-	if [ -n "$${found}" ]; then \
-		prfx=`${PKG_INFO} -q -p "$${found}"`; \
-		orgn=`${PKG_INFO} -q -o "$${found}"`; \
+	@conflicts_with; \
+	${PKG_QUERY} -g "%n-%v %p %o" ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_BUILD:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/} \
+	       	| while read pkgname prfx orgn; do \
 		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
-			conflicts_with="$${conflicts_with} $${entry}"; \
+			conflicts_with="$${conflicts_with} $${pkgname}"; \
 		fi; \
-	fi; \
+	done; \
 	if [ -n "$${conflicts_with}" ]; then \
 		${ECHO_MSG}; \
 		${ECHO_MSG} "===>  ${PKGNAME} conflicts with installed package(s): "; \
@@ -207,20 +195,18 @@ check-install-conflicts:
 		exit 1; \
 	fi
 .else
-	@found=`${PKG_INFO} -q -gOo ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/}`; \
-	conflicts_with=; \
-	if [ -n "$${found}" ]; then \
-		prfx=`${PKG_INFO} -q -p "$${entry}"`; \
-		orgn=`${PKG_INFO} -q -o "$${entry}"`; \
+	@conflicts_with=; \
+	${PKG_QUERY} -g "%n-%v %p %o" ${CONFLICTS:C/.+/'&'/} ${CONFLICTS_INSTALL:C/.+/'&'/} \
+	       	| while read pkgname prfx orgn; do ; \
 		if [ "/${PREFIX}" = "/$${prfx}" -a "/${PKGORIGIN}" != "/$${orgn}" ]; then \
-			conflicts_with="$${conflicts_with} $${entry}"; \
+			conflicts_with="$${conflicts_with} $${pkgname}"; \
 		fi; \
-	fi; \
+	done; \
 	if [ -n "$${conflicts_with}" ]; then \
 		${ECHO_MSG}; \
 		${ECHO_MSG} "===>  ${PKGNAME} conflicts with installed package(s): "; \
 		for entry in $${conflicts_with}; do \
-			${ECHO_MSG} "      $${entry}"; \
+			${ECHO_MSG} "      $${found}"; \
 		done; \
 		${ECHO_MSG}; \
 		${ECHO_MSG} "      They install files into the same place."; \
