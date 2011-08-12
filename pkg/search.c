@@ -79,25 +79,31 @@ exec_search(int argc, char **argv)
 		printf("Version: %s\n", pkg_get(pkg, PKG_VERSION));
 		printf("Origin: %s\n", pkg_get(pkg, PKG_ORIGIN));
 		printf("Prefix: %s\n", pkg_get(pkg, PKG_PREFIX));
-		printf("Categories:");
-		while (pkg_categories(pkg, &cat) == EPKG_OK)
-			printf(" %s", pkg_category_name(cat));
-		printf("\n");
-		printf("Licenses: ");
-		while (pkg_licenses(pkg, &lic) == EPKG_OK) {
-			printf(" %s", pkg_license_name(lic));
-			if (pkg_licenselogic(pkg) != 1)
-				printf(" %c", pkg_licenselogic(pkg));
-			else
-				printf(" ");
+		if (!pkg_list_empty(pkg, PKG_CATEGORIES)) {
+			printf("Categories:");
+			while (pkg_categories(pkg, &cat) == EPKG_OK)
+				printf(" %s", pkg_category_name(cat));
+			printf("\n");
 		}
-		printf("\b \n");
+		if (!pkg_list_empty(pkg, PKG_LICENSES)) {
+			printf("Licenses: ");
+			while (pkg_licenses(pkg, &lic) == EPKG_OK) {
+				printf(" %s", pkg_license_name(lic));
+				if (pkg_licenselogic(pkg) != 1)
+					printf(" %c", pkg_licenselogic(pkg));
+				else
+					printf(" ");
+			}
+			printf("\b \n");
+		}
 		printf("Maintainer: %s\n", pkg_get(pkg, PKG_MAINTAINER));
 		printf("WWW: %s\n", pkg_get(pkg, PKG_WWW));
 		printf("Comment: %s\n", pkg_get(pkg, PKG_COMMENT));
-		printf("Options: \n");
-		while (pkg_options(pkg, &opt) == EPKG_OK)
-			printf("\t%s: %s\n", pkg_option_opt(opt), pkg_option_value(opt));
+		if (!pkg_list_empty(pkg, PKG_OPTIONS)) {
+			printf("Options: \n");
+			while (pkg_options(pkg, &opt) == EPKG_OK)
+				printf("\t%s: %s\n", pkg_option_opt(opt), pkg_option_value(opt));
+		}
 		humanize_number(size, sizeof(size), pkg_new_flatsize(pkg), "B", HN_AUTOSCALE, 0);
 		printf("Flat size: %s\n", size);
 		humanize_number(size, sizeof(size), pkg_new_pkgsize(pkg), "B", HN_AUTOSCALE, 0);
