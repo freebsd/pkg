@@ -21,7 +21,8 @@ PKGUPGRADE?=		${PKGDIR}/pkg-upgrade
 
 ACTUAL-PACKAGE-DEPENDS?= \
 	if [ "${_LIB_RUN_DEPENDS}" != "  " ]; then \
-		${PKG_QUERY} "  %n: {origin: %o, version: %v}\n  %dn { origin: %do, version: %dv}" ${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,:C,${PORTSDIR}/,,} | ${SORT} -u; \
+		${PKG_QUERY} "  %n: {origin: %o, version: %v}" " " ${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,:C,${PORTSDIR}/,,} ; \
+		${PKG_QUERY} "  %dn: { origin: %do, version: %dv}" " " ${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,:C,${PORTSDIR}/,,} ; \
 	fi
 
 
@@ -42,9 +43,8 @@ fake-pkg:
 .endif
 	@${ECHO_CMD} "deps: " >> ${MANIFESTF}
 
-.if defined(_LIBS_RUN_DEPENDS)
-	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} >> ${MANIFESTF}
-.endif
+	@${ECHO_CMD} "==>${_LIB_RUN_DEPENDS:C,[^:]*:([^:]*):?.*,\1,:C,${PORTSDIR}/,,}<<="
+	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | ${SORT} -u >> ${MANIFESTF}
 	@${ECHO_CMD} -n "categories: [" >> ${MANIFESTF}
 .for cat in ${CATEGORIES:u}
 	@${ECHO_CMD} -n "${cat}," >> ${MANIFESTF}
