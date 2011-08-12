@@ -1742,7 +1742,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 		"FROM main.packages AS l, "
 		"remote.packages AS r "
 		"WHERE l.origin = r.origin "
-		"AND PKGLT(l.version, r.version)";
+		"AND (PKGLT(l.version, r.version) OR (l.name != r.name))";
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
