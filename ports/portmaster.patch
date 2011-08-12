@@ -1,7 +1,7 @@
 Index: portmaster
 ===================================================================
---- portmaster	(révision 224747)
-+++ portmaster	(copie de travail)
+--- portmaster	(revision 224747)
++++ portmaster	(working copy)
 @@ -291,7 +291,13 @@
  			 unset -v MASTER_RB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -174,7 +174,7 @@ Index: portmaster
  	# Tell safe_exit that we are done
  	pm_unlink ${DI_FILES}-e
  	sed -i -e 1s/############/%%%%%%%%%%%%/ $DI_FILES
-@@ -1192,22 +1248,45 @@
+@@ -1192,22 +1248,43 @@
  	local pkg
  	pm_v "===>>> Sorting ports by category"
  
@@ -207,10 +207,9 @@ Index: portmaster
 +		local nb_rdep
 +		local nb_dep
 +		for pkg in `pkg info -qa`; do
-+			nb_rdep=`pkg info -qr $pkg | wc -l`
-+			nb_dep=`pkg info -qd $pkg | wc -l`
-+			if [ $nb_rdep -gt 0 ]; then
-+				if [ $nb_dep -gt 0 ]; then
++			eval "$(pkg query "dep=%?d\nrdep=%?r" $pkg)"
++			if [ $rdep -eq 0 ]; then
++				if [ $dep -eq 0 ]; then
 +					branches="$branches ${pkg}"
 +				else
 +					trunks="$trunks ${pkg}"
@@ -218,10 +217,9 @@ Index: portmaster
  			else
 -				[ -d "$pkg" ] || continue
 -				roots="$roots ${pkg#$pdb/}"
-+				if [ $nb_dep -gt 0 ]; then
++				if [ $dep -eq 0 ]; then
 +					leaves="$leaves ${pkg}"
 +				else
-+					pkg info -e $pkg || continue
 +					roots="$roots ${pkg}"
 +				fi
  			fi
@@ -232,7 +230,7 @@ Index: portmaster
  }
  
  delete_empty_dist_subdirs () {
-@@ -1600,14 +1679,19 @@
+@@ -1600,14 +1677,19 @@
  				unset port_ver
  			fi
  		else
@@ -254,7 +252,7 @@ Index: portmaster
  			esac
  
  			[ -z "$do_update" ] && {
-@@ -1682,6 +1766,11 @@
+@@ -1682,6 +1764,11 @@
  	fi
  
  	pm_cd $pkgdir || fail "Cannot cd into $pkgdir to create a package"
@@ -266,7 +264,7 @@ Index: portmaster
  	if $PM_SU_CMD pkg_create -b $2; then
  		if [ "$1" = "$pbu" ]; then
  			if [ -n "$BACKUP" ]; then
-@@ -2224,7 +2313,12 @@
+@@ -2224,7 +2311,12 @@
  			fail "No entry for $origin in $PM_INDEX"
  	fi
  
@@ -280,7 +278,7 @@ Index: portmaster
  	\<)	build_l="${build_l}\tUpgrade $iport to $new_port\n" ;;
  	=)	build_l="${build_l}\tRe-install $iport\n" ;;
  	\>)	build_l="${build_l}\tDowngrade $iport to $new_port\n" ;;
-@@ -2982,7 +3076,12 @@
+@@ -2982,7 +3074,12 @@
  	/*)	echo '' ; no_valid_port ;;
  	*/*)	portdir=$argv ;;
  	\.)	portdir=${PWD##*/ports/} ;; # Not always $pd, could be symlink
@@ -294,7 +292,7 @@ Index: portmaster
  	esac
  
  	if [ -z "$portdir" -a -z "$upg_port" ]; then
-@@ -3015,11 +3114,20 @@
+@@ -3015,11 +3112,20 @@
  
  	case "$arg2" in
  	*/*)	ro_opd=$arg2 ; ro_upg_port=`iport_from_origin $ro_opd` ;;
@@ -319,7 +317,7 @@ Index: portmaster
  		fi
  		[ -n "$ro_upg_port" ] && ro_opd=`origin_from_pdb $ro_upg_port`
  	esac
-@@ -3510,7 +3618,12 @@
+@@ -3510,7 +3616,12 @@
  		pm_v "===>>> Available package ($latest_pv) matches the current version"
  	elif [ -n "$latest_pv" -a -n "$PM_PACKAGES_NEWER" ]; then
  		if [ -n "$upg_port" ]; then
@@ -333,7 +331,7 @@ Index: portmaster
  			\<)	use_package=up_newer
  				pm_v "===>>> Available package ($latest_pv)"
  				pm_v "       is newer than installed ($upg_port)" ;;
-@@ -3526,7 +3639,12 @@
+@@ -3526,7 +3637,12 @@
  			pm_v "===>>> There is a package available ($latest_pv)"
  		fi
  	elif [ -n "$latest_pv" ]; then
