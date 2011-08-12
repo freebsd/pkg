@@ -72,6 +72,28 @@ license logic of the matched package nothing for single, & for and and | for or
 The flast size in human readable format of the matched package
 .It \fB%sb\fB
 The flast size in bytes format of the matched package
+.It \fB%?[drCFIDLUG]\fB
+Return 0 is the list is empty 1 is the list has informations
+.Bl -tag -width indent
+.It \fBd\fB
+for dependencies
+.It \fBd\fB
+for reverse dependencies
+.It \fBC\fB
+for categories
+.It \fBF\fB
+for files
+.It \fBO\fB
+for options
+.It \fBD\fB
+for directories
+.It \fBL\fB
+for licenses
+.It \fBU\fB
+for users
+.It \fBG\fB
+for groups
+.El
 .El
 .Ss Multilines pattern:
 .Bl -tag -width F1
