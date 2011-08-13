@@ -48,6 +48,7 @@ pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
 {
 	assert(j != NULL);
 	assert(pkg != NULL);
+	assert(j->resolved != 1);
 
 	STAILQ_INSERT_TAIL(&j->jobs, pkg, next);
 
