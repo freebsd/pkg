@@ -170,7 +170,6 @@ exec_register(int argc, char **argv)
 	} else {
 		pkg_set(pkg, PKG_OSVERSION, u.release);
 	}
-	/* TODO: missing osversion get it from uname*/
 
 	ret += ports_parse_plist(pkg, plist);
 

@@ -78,6 +78,9 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 			case 1:
 				key = '>';
 				break;
+			default:
+				key = '!';
+				break;
 		}
 	}
 
@@ -133,7 +136,6 @@ exec_version(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
-	char key;
 	char limchar = '-';
 	struct sbuf *cmd;
 	struct sbuf *res;
@@ -223,7 +225,6 @@ exec_version(int argc, char **argv)
 
 		while ((linelen = getline(&line, &linecap, indexfile)) > 0) {
 			/* line is pkgname|portdir|... */
-			buf = line;
 			buf = strchr(line, '|');
 			buf[0] = '\0';
 			buf++;
@@ -256,7 +257,6 @@ exec_version(int argc, char **argv)
 			goto cleanup;
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			key = '!';
 			SLIST_FOREACH(entry, &indexhead, next) {
 				if (!strcmp(entry->origin, pkg_get(pkg, PKG_ORIGIN))) {
 					print_version(pkg, "index", entry->version, limchar, opt);
@@ -273,7 +273,6 @@ exec_version(int argc, char **argv)
 			goto cleanup;
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			key = '!';
 			cmd = sbuf_new_auto();
 			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", pkg_config("PORTSDIR"), pkg_get(pkg, PKG_ORIGIN));
 			sbuf_finish(cmd);
