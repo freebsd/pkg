@@ -59,7 +59,9 @@ pkg_jobs_empty(struct pkg_jobs *j)
 {
 	assert(j != NULL);
 
-	return (STAILQ_FIRST(&j->jobs) == NULL ? true : false);
+	pkg_jobs_resolv(j);
+
+	return (STAILQ_EMPTY(&j->jobs));
 }
 
 int
@@ -285,7 +287,8 @@ int
 pkg_jobs_resolv(struct pkg_jobs *j)
 {
 	struct pkg_jobs_node *n, *tmp;
-	struct pkg *p;
+	struct pkg *p, *ptemp, *localp;
+	struct pkgdb_it *it = NULL;
 
 	assert(j != NULL);
 
@@ -321,5 +324,23 @@ pkg_jobs_resolv(struct pkg_jobs *j)
 	} while (!LIST_EMPTY(&j->nodes));
 
 	j->resolved = 1;
+
+	if (j->type == PKG_JOBS_DEINSTALL)
+		return (EPKG_OK);
+
+	/* Now remove packages that are already installed */
+	STAILQ_FOREACH_SAFE(p, &j->jobs, next, ptemp) {
+		localp = NULL;
+		it = NULL;
+		if ((it = pkgdb_query(j->db, pkg_get(p, PKG_ORIGIN), MATCH_EXACT)) == NULL)
+			continue;
+		if (pkgdb_it_next(it, &localp, PKG_LOAD_BASIC) == EPKG_OK)
+			if (!strcmp(pkg_get(localp, PKG_NAME), pkg_get(p, PKG_NAME)) &&
+						!strcmp(pkg_get(localp, PKG_VERSION), pkg_get(p, p->type == PKG_UPGRADE ? PKG_NEWVERSION : PKG_VERSION)))
+				STAILQ_REMOVE(&j->jobs, p, pkg, next);
+
+		pkgdb_it_free(it);
+	}
+
 	return (EPKG_OK);
 }
