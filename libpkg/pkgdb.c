@@ -754,9 +754,7 @@ pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
 		sql = ""
 			"SELECT d.name, d.origin, d.version "
 			"FROM remote.deps AS d "
-			"WHERE d.package_id = ?1 "
-			"AND NOT EXISTS (SELECT 1 FROM main.packages AS p "
-			"WHERE p.origin = d.origin);";
+			"WHERE d.package_id = ?1;";
 	} else {
 		sql = ""
 			"SELECT d.name, d.origin, d.version "
