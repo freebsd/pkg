@@ -38,9 +38,9 @@ exec_updating(int argc, char **argv)
 	char *tmp;
 	int head = 0;
 	int found = 0;
-	struct pkgdb *db;
-	struct pkg *pkg;
-	struct pkgdb_it *it;
+	struct pkgdb *db = NULL;
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it = NULL;
 	FILE *fd;
 
 	while ((ch = getopt(argc, argv, "d:f:")) != -1) {
