@@ -26,7 +26,7 @@ int
 exec_upgrade(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
-	struct pkgdb_it *it;
+	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 	struct pkg_jobs *jobs = NULL;
 	int retcode = 1;

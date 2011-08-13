@@ -119,7 +119,7 @@ pkg_jobs_upgrade(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	const char *cachedir;
 	char path[MAXPATHLEN + 1];
-	int retcode;
+	int retcode = EPKG_FATAL;;
 
 	/* Fetch */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
@@ -133,23 +133,29 @@ pkg_jobs_upgrade(struct pkg_jobs *j)
 		/* no need to reinstall package already installed */
 		if (p->type == PKG_INSTALLED)
 			continue;
+
+		snprintf(path, sizeof(path), "%s/%s", cachedir,
+			 pkg_get(p, PKG_REPOPATH));
+
 		/* get the installed pkg if any */
 		it = pkgdb_query(j->db, pkg_get(p, PKG_ORIGIN), MATCH_EXACT);
-		snprintf(path, sizeof(path), "%s/%s", cachedir,
-				pkg_get(p, PKG_REPOPATH));
 		if (pkgdb_it_next(it, &oldpkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			retcode = pkg_upgrade(j->db, oldpkg, path);
 		} else {
 			retcode = pkg_upgrade(j->db, NULL, path);
 		}
 
+		pkgdb_it_free(it);
+
 		if (retcode != EPKG_OK)
-			return (retcode);
+			goto cleanup;
 	}
 
-	pkgdb_it_free(it);
+	retcode = EPKG_OK;
+
+	cleanup:
 	pkg_free(oldpkg);
-	return (EPKG_OK);
+	return (retcode);
 }
 
 static int
