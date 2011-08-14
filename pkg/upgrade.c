@@ -85,7 +85,10 @@ exec_upgrade(int argc, char **argv)
 		oldsize += pkg_flatsize(pkg);
 		newsize += pkg_new_flatsize(pkg);
 		dlsize += pkg_new_pkgsize(pkg);
-		printf("\t%s: %s -> %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg,PKG_NEWVERSION));
+		if (pkg_type(pkg) == PKG_UPGRADE)
+			printf("\tUpgrading %s: %s -> %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg,PKG_NEWVERSION));
+		else
+			printf("\tInstalling %s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 	}
 
 	if (oldsize > newsize) {
