@@ -4,7 +4,7 @@ BINDIR=	/usr/sbin
 
 CFLAGS=	-I${.CURDIR}/../libpkg
 LDADD=	-L../libpkg \
-	-lpkgng
+	-lpkg
 WARNS?=	6
 NO_MAN=
 
