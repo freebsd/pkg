@@ -1,6 +1,6 @@
 .include <bsd.own.mk>
 
-LIB=		pkgng
+LIB=		pkg
 INCS=		pkg.h
 WARNS=		6
 SHLIBDIR?=	/usr/lib
