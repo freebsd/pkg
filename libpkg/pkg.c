@@ -841,7 +841,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	pkg_error_t retcode = EPKG_OK;
 	int ret;
 	int64_t size;
-	char *manifest;
+	char *manifest = NULL;
 	const char *fpath;
 	char buf[2048];
 	struct sbuf **sbuf;
@@ -883,10 +883,14 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 		if (strcmp(fpath, "+MANIFEST") == 0) {
 			size = archive_entry_size(*ae);
+			if (size <=0) {
+				retcode = EPKG_FATAL;
+				pkg_emit_error("%s is not a valid package: empty +MANIFEST found", path);
+				goto cleanup;
+			}
 			manifest = calloc(1, size + 1);
 			archive_read_data(*a, manifest, size);
 			ret = pkg_parse_manifest(pkg, manifest);
-			free(manifest);
 			if (ret != EPKG_OK) {
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -917,7 +921,15 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	if (ret == ARCHIVE_EOF)
 		retcode = EPKG_END;
 
+	if (manifest == NULL) {
+		retcode = EPKG_FATAL;
+		pkg_emit_error("%s is not a valid package: no +MANIFEST found", path);
+	}
+
 	cleanup:
+	if (manifest != NULL)
+		free(manifest);
+
 	if (retcode != EPKG_OK && retcode != EPKG_END) {
 		if (*a != NULL)
 			archive_read_finish(*a);
