@@ -24,7 +24,6 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	LIST_INIT(&(*j)->nodes);
 	(*j)->db = db;
 	(*j)->type = t;
-	(*j)->resolved = 0;
 
 	return (EPKG_OK);
 }
@@ -201,7 +200,7 @@ get_node(struct pkg_jobs *j, const char *name, int create)
 		return (NULL);
 
 	if ((n = calloc(1, sizeof(struct pkg_jobs_node))) == NULL) {
-		pkg_emit_errno("calloc", "get_node");
+		pkg_emit_errno("calloc", "pkg_jobs_node");
 		return (NULL);
 	}
 
@@ -219,11 +218,10 @@ add_parent(struct pkg_jobs_node *n, struct pkg_jobs_node *p)
 				n->parents_cap = 5;
 			else
 				n->parents_cap *= 2;
-			if ((n->parents = reallocf(n->parents, n->parents_cap * sizeof(struct pkg_jobs_node))) == NULL) {
-				if (errno == ENOMEM) { 
-					pkg_emit_errno("realloc", "add_parent");
+			if ((n->parents = reallocf(n->parents,
+					n->parents_cap * sizeof(struct pkg_jobs_node))) == NULL) {
+					pkg_emit_errno("realloc", "pkg_jobs_node");
 					return;
-				}
 			}
 		}
 		n->parents[n->parents_len] = p;
