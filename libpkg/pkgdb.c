@@ -747,9 +747,12 @@ pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res)
 int
 pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
 {
-	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt = NULL;
 	int ret;
-	const char *sql;
+	const char *sql = NULL;
+
+	assert(db != NULL && pkg != NULL);
+
 	if (pkg->type == PKG_UPGRADE || pkg->type == PKG_REMOTE) {
 		sql = ""
 			"SELECT d.name, d.origin, d.version "
@@ -791,7 +794,7 @@ pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 {
-	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt = NULL;
 	int ret;
 	const char sql[] = ""
 		"SELECT p.name, p.origin, p.version "
@@ -799,6 +802,7 @@ pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 		"WHERE p.rowid = d.package_id "
 			"AND d.origin = ?1;";
 
+	assert(db != NULL && pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
 	if (pkg->flags & PKG_LOAD_RDEPS)
@@ -830,7 +834,7 @@ pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 {
-	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt = NULL;
 	int ret;
 	const char sql[] = ""
 		"SELECT path, sha256 "
@@ -838,6 +842,7 @@ pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 		"WHERE package_id = ?1 "
 		"ORDER BY PATH ASC";
 
+	assert(db != NULL && pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
 	if (pkg->flags & PKG_LOAD_FILES)
@@ -875,13 +880,18 @@ pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg)
 		"AND directory_id = directories.id "
 		"ORDER by path DESC";
 
+	assert(db != NULL && pkg != NULL);
+
 	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_DIRS, pkg_adddir, PKG_DIRS));
 }
 
 int
 pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg)
 {
-	const char *sql;
+	const char *sql = NULL;
+
+	assert(db != NULL && pkg != NULL);
+
 	if (pkg->type == PKG_UPGRADE || pkg->type == PKG_REMOTE) {
 		sql = ""
 			"SELECT name "
@@ -904,7 +914,10 @@ pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg)
 {
-	const char *sql;
+	const char *sql = NULL;
+
+	assert(db != NULL && pkg != NULL);
+
 	if (pkg->type == PKG_UPGRADE || pkg->type == PKG_REMOTE) {
 		sql = ""
 			"SELECT name "
@@ -934,6 +947,8 @@ pkgdb_loaduser(struct pkgdb *db, struct pkg *pkg)
 		"AND user_id = users.id "
 		"ORDER by name DESC";
 
+	assert(db != NULL && pkg != NULL);
+
 	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, PKG_USERS));
 }
 
@@ -947,6 +962,8 @@ pkgdb_loadgroup(struct pkgdb *db, struct pkg *pkg)
 		"AND group_id = groups.id "
 		"ORDER by name DESC";
 
+	assert(db != NULL && pkg != NULL);
+
 	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_GROUPS, pkg_addgroup, PKG_GROUPS));
 }
 
@@ -958,6 +975,7 @@ pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg)
 		"FROM conflicts "
 		"WHERE package_id = ?1;";
 
+	assert(db != NULL && pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
 	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_CONFLICTS, pkg_addconflict, PKG_CONFLICTS));
@@ -966,13 +984,14 @@ pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg)
 {
-	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt = NULL;
 	int ret;
 	const char sql[] = ""
 		"SELECT script, type "
 		"FROM scripts "
 		"WHERE package_id = ?1";
 
+	assert(db != NULL && pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
 	if (pkg->flags & PKG_LOAD_SCRIPTS)
@@ -1003,9 +1022,12 @@ pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg)
 {
-	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt = NULL;
 	int ret;
-	const char *sql;
+	const char *sql = NULL;
+
+	assert(db != NULL && pkg != NULL);
+
 	if (pkg->type == PKG_UPGRADE || pkg->type == PKG_REMOTE) {
 		sql = ""
 		"SELECT option, value "
@@ -1053,6 +1075,7 @@ pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg)
 		"WHERE m.id = p.mtree_id "
 			" AND p.id = ?1;";
 
+	assert(db != NULL && pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
 	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_setmtree, -1));
