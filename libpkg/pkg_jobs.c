@@ -310,7 +310,10 @@ pkg_jobs_resolv(struct pkg_jobs *j)
 
 		n = get_node(j, pkg_get(p, PKG_ORIGIN), 1);
 
-		n->pkg = p;
+		if (n->pkg == NULL)
+			n->pkg = p;
+		else
+			pkg_free(p);
 	}
 
 	/* Add dependencies into nodes */
