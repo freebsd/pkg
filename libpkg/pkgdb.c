@@ -779,7 +779,7 @@ pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		pkg_list_empty(pkg, PKG_DEPS);
+		pkg_list_free(pkg, PKG_DEPS);
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
