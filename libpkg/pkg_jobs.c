@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -199,7 +200,11 @@ get_node(struct pkg_jobs *j, const char *name, int create)
 	if (create == 0)
 		return (NULL);
 
-	n = calloc(1, sizeof(struct pkg_jobs_node));
+	if ((n = calloc(1, sizeof(struct pkg_jobs_node))) == NULL) {
+		pkg_emit_errno("calloc", "get_node");
+		return (NULL);
+	}
+
 	LIST_INSERT_HEAD(&j->nodes, n, entries);
 	return (n);
 }
@@ -214,8 +219,12 @@ add_parent(struct pkg_jobs_node *n, struct pkg_jobs_node *p)
 				n->parents_cap = 5;
 			else
 				n->parents_cap *= 2;
-			n->parents = realloc(n->parents, n->parents_cap *
-								  sizeof(struct pkg_jobs_node));
+			if ((n->parents = reallocf(n->parents, n->parents_cap * sizeof(struct pkg_jobs_node))) == NULL) {
+				if (errno == ENOMEM) { 
+					pkg_emit_errno("realloc", "add_parent");
+					return;
+				}
+			}
 		}
 		n->parents[n->parents_len] = p;
 		n->parents_len++;
