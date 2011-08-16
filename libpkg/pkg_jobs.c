@@ -23,6 +23,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	LIST_INIT(&(*j)->nodes);
 	(*j)->db = db;
 	(*j)->type = t;
+	(*j)->resolved = 0;
 
 	return (EPKG_OK);
 }
