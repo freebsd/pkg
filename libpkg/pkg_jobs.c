@@ -101,9 +101,6 @@ pkg_jobs_install(struct pkg_jobs *j)
 	cachedir = pkg_config("PKG_CACHEDIR");
 	p = NULL;
 	while (pkg_jobs(j, &p) == EPKG_OK) {
-		/* no need to reinstall package already installed */
-		if (p->type == PKG_INSTALLED)
-			continue;
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				 pkg_get(p, PKG_REPOPATH));
 
@@ -134,10 +131,6 @@ pkg_jobs_upgrade(struct pkg_jobs *j)
 	cachedir = pkg_config("PKG_CACHEDIR");
 	p = NULL;
 	while (pkg_jobs(j, &p) == EPKG_OK) {
-		/* no need to reinstall package already installed */
-		if (p->type == PKG_INSTALLED)
-			continue;
-
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 			 pkg_get(p, PKG_REPOPATH));
 
