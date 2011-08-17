@@ -90,7 +90,7 @@ loadval(sqlite3 *db, struct pkg *pkg, const char *sql, int flags, int (*pkg_addd
 
 	if (ret != SQLITE_DONE) {
 		if (list != -1)
-			pkg_list_empty(pkg, list);
+			pkg_list_free(pkg, list);
 		ERROR_SQLITE(db);
 		return (EPKG_FATAL);
 	}
