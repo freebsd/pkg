@@ -74,7 +74,7 @@ exec_upgrade(int argc, char **argv)
 		pkg = NULL;
 	}
 
-	if (pkg_jobs_empty(jobs) == true) {
+	if (pkg_jobs_isempty(jobs)) {
 		retcode = 0;
 		goto cleanup;
 	}

@@ -248,7 +248,7 @@ int64_t pkg_new_flatsize(struct pkg *);
  */
 int64_t pkg_new_pkgsize(struct pkg *);
 
-int pkg_list_empty(struct pkg *, pkg_list);
+int pkg_list_isempty(struct pkg *, pkg_list);
 /**
  * Iterates over the dependencies of the package.
  * @param dep Must be set to NULL for the first call.
@@ -669,7 +669,7 @@ int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
 /**
  * Returns true if there are no jobs.
  */
-bool pkg_jobs_empty(struct pkg_jobs *jobs);
+int pkg_jobs_isempty(struct pkg_jobs *jobs);
 
 /**
  * Iterates over the packages in the jobs queue.

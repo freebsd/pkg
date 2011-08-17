@@ -55,8 +55,8 @@ pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
 	return (EPKG_OK);
 }
 
-bool
-pkg_jobs_empty(struct pkg_jobs *j)
+int
+pkg_jobs_isempty(struct pkg_jobs *j)
 {
 	assert(j != NULL);
 

@@ -35,13 +35,13 @@ print_info(struct pkg * const pkg, unsigned int opt)
 		printf("Version: %s\n", pkg_get(pkg, PKG_VERSION));
 		printf("Origin: %s\n", pkg_get(pkg, PKG_ORIGIN));
 		printf("Prefix: %s\n", pkg_get(pkg, PKG_PREFIX));
-		if (!pkg_list_empty(pkg, PKG_CATEGORIES)) {
+		if (!pkg_list_isempty(pkg, PKG_CATEGORIES)) {
 			printf("Categories:");
 			while (pkg_categories(pkg, &cat) == EPKG_OK)
 				printf(" %s", pkg_category_name(cat));
 			printf("\n");
 		}
-		if (!pkg_list_empty(pkg, PKG_LICENSES)) {
+		if (!pkg_list_isempty(pkg, PKG_LICENSES)) {
 			printf("Licenses: ");
 			while (pkg_licenses(pkg, &lic) == EPKG_OK) {
 				printf(" %s", pkg_license_name(lic));
@@ -55,7 +55,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 		printf("Maintainer: %s\n", pkg_get(pkg, PKG_MAINTAINER));
 		printf("WWW: %s\n", pkg_get(pkg, PKG_WWW));
 		printf("Comment: %s\n", pkg_get(pkg, PKG_COMMENT));
-		if (!pkg_list_empty(pkg, PKG_OPTIONS)) {
+		if (!pkg_list_isempty(pkg, PKG_OPTIONS)) {
 			printf("Options: \n");
 			while (pkg_options(pkg, &option) == EPKG_OK)
 				printf("\t%s: %s\n", pkg_option_opt(option), pkg_option_value(option));

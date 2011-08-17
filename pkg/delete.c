@@ -107,7 +107,7 @@ exec_delete(int argc, char **argv)
 	}
 
 	/* check if we have something to deinstall */
-	if (pkg_jobs_empty(jobs) == true) {
+	if (pkg_jobs_isempty(jobs)) {
 		goto cleanup;
 	}
 
