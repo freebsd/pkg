@@ -719,7 +719,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 }
 
 int
-pkg_list_empty(struct pkg *pkg, pkg_list list) {
+pkg_list_isempty(struct pkg *pkg, pkg_list list) {
 	switch (list) {
 		case PKG_DEPS:
 			return (STAILQ_EMPTY(&pkg->deps));

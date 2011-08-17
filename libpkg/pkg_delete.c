@@ -31,7 +31,7 @@ pkg_delete2(struct pkg *pkg, struct pkgdb *db, int force, int upgrade)
 	 * Do not trust the existing entries as it may have changed if we
 	 * delete packages in batch.
 	 */
-	pkg_list_empty(pkg, PKG_RDEPS);
+	pkg_list_free(pkg, PKG_RDEPS);
 
 	/*
 	 * Ensure that we have all the informations we need

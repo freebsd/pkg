@@ -59,34 +59,34 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					qstr++;
 					switch (qstr[0]) {
 						case 'd':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_DEPS));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_DEPS));
 							break;
 						case 'r':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_RDEPS));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_RDEPS));
 							break;
 						case 'C':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_CATEGORIES));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_CATEGORIES));
 							break;
 						case 'F':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_FILES));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_FILES));
 							break;
 						case 'O':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_OPTIONS));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_OPTIONS));
 							break;
 						case 'D':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_DIRS));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_DIRS));
 							break;
 						case 'L':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_LICENSES));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_LICENSES));
 							break;
 						case 'U':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_USERS));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_USERS));
 							break;
 						case 'G':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_GROUPS));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_GROUPS));
 							break;
 						case 'K':
-							sbuf_printf(dest, "%d", !pkg_list_empty(pkg, PKG_CONFLICTS));
+							sbuf_printf(dest, "%d", !pkg_list_isempty(pkg, PKG_CONFLICTS));
 							break;
 					}
 					break;

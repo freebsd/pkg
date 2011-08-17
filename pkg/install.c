@@ -84,7 +84,7 @@ exec_install(int argc, char **argv)
 		pkgdb_it_free(it);
 	}
 
-	if (pkg_jobs_empty(jobs) == true)
+	if (pkg_jobs_isempty(jobs))
 		goto cleanup;
 
 	/* print a summary before applying the jobs */
