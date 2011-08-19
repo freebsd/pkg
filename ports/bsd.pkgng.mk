@@ -1,6 +1,6 @@
 PKG_CMD=		/usr/sbin/pkg register
 PKG_DELETE=		/usr/sbin/pkg delete -y
-PKG_INFO=		/usr/sbin/pkg info
+PKG_INFO=		/usr/sbin/pkg info -g
 PKG_VERSION=		/usr/sbin/pkg version
 PKG_CREATE=		/usr/sbin/pkg create
 PKG_ADD=		/usr/sbin/pkg add
