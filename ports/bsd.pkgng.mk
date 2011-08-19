@@ -45,7 +45,7 @@ fake-pkg:
 
 	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | sort -u >> ${MANIFESTF}
 	@${ECHO_CMD} -n "categories: [" >> ${MANIFESTF}
-.for cat in ${CATEGORIES:u}
+.for cat in ${CATEGORIES}
 	@${ECHO_CMD} -n "${cat}," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
@@ -55,27 +55,27 @@ fake-pkg:
 	@${ECHO_CMD} "licenselogic: single" >> ${MANIFESTF}
 .endif
 	@${ECHO_CMD} -n "licenses: [" >> ${MANIFESTF}
-.for lic in ${LICENSE:u}
+.for lic in ${LICENSE}
 	@${ECHO_CMD} -n "${lic}," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
 .if !defined(DISABLE_CONFLICTS)
 	@${ECHO_CMD} -n "conflicts: [" >> ${MANIFESTF}
-.for conflicts in ${CONFLICTS:u}
+.for conflicts in ${CONFLICTS}
 	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
 .endfor
-.for conflicts in ${CONFLICTS_INSTALL:u}
+.for conflicts in ${CONFLICTS_INSTALL}
 	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
 .endif
 	@${ECHO_CMD} -n "users: [" >> ${MANIFESTF}
-.for user in ${USERS:u}
+.for user in ${USERS}
 	@${ECHO_CMD} -n "${user}, " >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
 	@${ECHO_CMD} -n "groups: [" >> ${MANIFESTF}
-.for group in ${GROUPS:u}
+.for group in ${GROUPS}
 	@${ECHO_CMD} -n "${group}, " >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
