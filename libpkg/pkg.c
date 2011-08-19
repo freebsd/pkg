@@ -394,7 +394,7 @@ pkg_options(struct pkg *pkg, struct pkg_option **o)
 int
 pkg_addlicense(struct pkg *pkg, const char *name)
 {
-	struct pkg_license *l;
+	struct pkg_license *l = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
@@ -403,6 +403,13 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 		pkg_emit_error("%s is have a single license which is already set",
 					   pkg_get(pkg, PKG_NAME));
 		return (EPKG_FATAL);
+	}
+
+	while (pkg_licenses(pkg, &l) == EPKG_END) {
+		if (!strcmp(name, pkg_license_name(l))) {
+			pkg_emit_error("duplicate license listing: %s, ignoring", name);
+			return (EPKG_OK);
+		}
 	}
 
 	pkg_license_new(&l);
@@ -417,10 +424,17 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 int
 pkg_adduser(struct pkg *pkg, const char *name)
 {
-	struct pkg_user *u;
+	struct pkg_user *u = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
+
+	while (pkg_users(pkg, &u) == EPKG_END) {
+		if (!strcmp(name, pkg_user_name(u))) {
+			pkg_emit_error("duplicate user listing: %s, ignoring", name);
+			return (EPKG_OK);
+		}
+	}
 
 	pkg_user_new(&u);
 
@@ -432,10 +446,17 @@ pkg_adduser(struct pkg *pkg, const char *name)
 int
 pkg_addgroup(struct pkg *pkg, const char *name)
 {
-	struct pkg_group *g;
+	struct pkg_group *g = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
+
+	while (pkg_groups(pkg, &g) == EPKG_END) {
+		if (!strcmp(name, pkg_group_name(g))) {
+			pkg_emit_error("duplicate user listing: %s, ignoring", name);
+			return (EPKG_OK);
+		}
+	}
 
 	pkg_group_new(&g);
 
@@ -447,12 +468,19 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 int
 pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version)
 {
-	struct pkg_dep *d;
+	struct pkg_dep *d = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 	assert(origin != NULL && origin[0] != '\0');
 	assert(version != NULL && version[0] != '\0');
+
+	while (pkg_deps(pkg, &d) == EPKG_END) {
+		if (!strcmp(origin, pkg_dep_origin(d))) {
+			pkg_emit_error("duplicate dependency listing: %s-%s, ignoring", name, version);
+			return (EPKG_OK);
+		}
+	}
 
 	pkg_dep_new(&d);
 
@@ -584,10 +612,17 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 int
 pkg_addconflict(struct pkg *pkg, const char *glob)
 {
-	struct pkg_conflict *c;
+	struct pkg_conflict *c = NULL;
 
 	assert(pkg != NULL);
 	assert(glob != NULL && glob[0] != '\0');
+
+	while (pkg_conflicts(pkg, &c) == EPKG_END) {
+		if (!strcmp(glob, pkg_conflict_glob(c))) {
+			pkg_emit_error("duplicate conflict listing: %s, ignoring", glob);
+			return (EPKG_OK);
+		}
+	}
 
 	pkg_conflict_new(&c);
 	sbuf_set(&c->glob, glob);
@@ -702,12 +737,18 @@ pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type)
 int
 pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 {
-	struct pkg_option *o;
+	struct pkg_option *o = NULL;
 
 	assert(pkg != NULL);
 	assert(key != NULL && key[0] != '\0');
 	assert(value != NULL && value[0] != '\0');
 
+	while (pkg_options(pkg, &o) == EPKG_END) {
+		if (!strcmp(key, pkg_option_opt(o))) {
+			pkg_emit_error("duplicate options listing: %s, ignoring", key);
+			return (EPKG_OK);
+		}
+	}
 	pkg_option_new(&o);
 
 	sbuf_set(&o->key, key);
