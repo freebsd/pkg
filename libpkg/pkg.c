@@ -405,7 +405,7 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 		return (EPKG_FATAL);
 	}
 
-	while (pkg_licenses(pkg, &l) == EPKG_END) {
+	while (pkg_licenses(pkg, &l) != EPKG_END) {
 		if (!strcmp(name, pkg_license_name(l))) {
 			pkg_emit_error("duplicate license listing: %s, ignoring", name);
 			return (EPKG_OK);
@@ -429,7 +429,7 @@ pkg_adduser(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	while (pkg_users(pkg, &u) == EPKG_END) {
+	while (pkg_users(pkg, &u) != EPKG_END) {
 		if (!strcmp(name, pkg_user_name(u))) {
 			pkg_emit_error("duplicate user listing: %s, ignoring", name);
 			return (EPKG_OK);
@@ -451,7 +451,7 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	while (pkg_groups(pkg, &g) == EPKG_END) {
+	while (pkg_groups(pkg, &g) != EPKG_END) {
 		if (!strcmp(name, pkg_group_name(g))) {
 			pkg_emit_error("duplicate user listing: %s, ignoring", name);
 			return (EPKG_OK);
@@ -475,7 +475,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(origin != NULL && origin[0] != '\0');
 	assert(version != NULL && version[0] != '\0');
 
-	while (pkg_deps(pkg, &d) == EPKG_END) {
+	while (pkg_deps(pkg, &d) != EPKG_END) {
 		if (!strcmp(origin, pkg_dep_origin(d))) {
 			pkg_emit_error("duplicate dependency listing: %s-%s, ignoring", name, version);
 			return (EPKG_OK);
@@ -617,7 +617,7 @@ pkg_addconflict(struct pkg *pkg, const char *glob)
 	assert(pkg != NULL);
 	assert(glob != NULL && glob[0] != '\0');
 
-	while (pkg_conflicts(pkg, &c) == EPKG_END) {
+	while (pkg_conflicts(pkg, &c) != EPKG_END) {
 		if (!strcmp(glob, pkg_conflict_glob(c))) {
 			pkg_emit_error("duplicate conflict listing: %s, ignoring", glob);
 			return (EPKG_OK);
@@ -743,7 +743,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	assert(key != NULL && key[0] != '\0');
 	assert(value != NULL && value[0] != '\0');
 
-	while (pkg_options(pkg, &o) == EPKG_END) {
+	while (pkg_options(pkg, &o) != EPKG_END) {
 		if (!strcmp(key, pkg_option_opt(o))) {
 			pkg_emit_error("duplicate options listing: %s, ignoring", key);
 			return (EPKG_OK);
