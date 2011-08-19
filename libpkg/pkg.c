@@ -523,10 +523,17 @@ pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
 int
 pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm)
 {
-	struct pkg_file *f;
+	struct pkg_file *f = NULL;
 
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
+
+	while (pkg_files(pkg, &f) != EPKG_END) {
+		if (!strcmp(path, pkg_file_path(f))) {
+			pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_path(f));
+			return (EPKG_OK);
+		}
+	}
 
 	pkg_file_new(&f);
 	strlcpy(f->path, path, sizeof(f->path));
