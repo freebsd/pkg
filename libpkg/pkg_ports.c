@@ -110,8 +110,6 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 						while (isspace(buf[0]))
 							buf++;
 
-						buf[0] = '\0';
-
 						for (j = strlen(buf) - 1; j > 0 && isspace(buf[j]); j--)
 							buf[j] = '\0';
 
