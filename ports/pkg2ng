@@ -16,6 +16,11 @@ do
 	DESC="${DB}/+DESC"
 
 	ORIGIN=$(pkg_info -qo ${PKG})
+	# register a package only if it's not registered already
+	if pkg info -e ${ORIGIN}; then
+        echo "package is already registered."
+        continue
+	fi
 	PREFX=$(pkg_info -qp ${PKG})
 	MAINTAINER=$( make -C /usr/ports/${ORIGIN} -V MAINTAINER )
 	CATEGORIES=$( make -C /usr/ports/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
@@ -60,17 +65,12 @@ do
 	test -n "${USERS}" && echo "users: [${USERS}]" >> ${MANIFEST}
 	test -n "${GROUPS}" && echo "groups: [${GROUPS}]" >> ${MANIFEST}
 
-	# register a package only if it's not registered already
-	if pkg info -e ${ORIGIN}; then
-		echo "package is already registered."
+	pkg register -l -m ${MDIR} -f ${PLIST} ${CMD_ARGS}
+	if [ $? -ne 0 ]; then
+		echo "failed."
+		cat ${MANIFEST}
 	else
-		pkg register -l -m ${MDIR} -f ${PLIST} ${CMD_ARGS}
-		if [ $? -ne 0 ]; then
-			echo "failed."
-			cat ${MANIFEST}
-		else
-			echo "done." ; rm -rf ${MANIFEST}
-		fi
+		echo "done." ; rm -rf ${MANIFEST}
 	fi
 
 	rm -rf ${MDIR}
