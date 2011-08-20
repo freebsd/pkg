@@ -1,6 +1,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/param.h>
+#include <sys/utsname.h>
 
 #include <err.h>
 #include <stdio.h>
@@ -10,7 +11,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <sys/utsname.h>
 #include <regex.h>
 
 #include "register.h"
@@ -48,11 +48,11 @@ usage_register(void)
 int
 exec_register(int argc, char **argv)
 {
-	struct pkg *pkg;
-	struct pkgdb *db;
-	struct utsname u;
+	struct pkg *pkg = NULL;
+	struct pkgdb *db = NULL;
+	struct utsname u = NULL;
 
-	regex_t preg;
+	regex_t preg = NULL;
 	regmatch_t pmatch[2];
 
 	int ch;
