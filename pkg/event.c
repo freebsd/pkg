@@ -79,6 +79,11 @@ event_callback(void *data, struct pkg_event *ev)
 		else
 			fprintf(stderr, "\n");
 		break;
+	case PKG_EVENT_ALREADY_INSTALLED:
+		printf("%s-%s already installed\n",
+				pkg_get(ev->e_already_installed.pkg, PKG_NAME),
+				pkg_get(ev->e_already_installed.pkg, PKG_VERSION));
+		break;
 	default:
 		break;
 	}
