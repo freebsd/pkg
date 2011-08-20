@@ -453,7 +453,7 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 
 	while (pkg_groups(pkg, &g) != EPKG_END) {
 		if (!strcmp(name, pkg_group_name(g))) {
-			pkg_emit_error("duplicate user listing: %s, ignoring", name);
+			pkg_emit_error("duplicate group listing: %s, ignoring", name);
 			return (EPKG_OK);
 		}
 	}
