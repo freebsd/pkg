@@ -50,9 +50,9 @@ exec_register(int argc, char **argv)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
-	struct utsname u;
+	struct utsname u = NULL;
 
-	regex_t preg;
+	regex_t preg = NULL;
 	regmatch_t pmatch[2];
 
 	int ch;

@@ -1,14 +1,11 @@
-#include <sys/param.h>
 #include <sys/utsname.h>
 
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
 #include <libgen.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sysexits.h>
 #include <errno.h>
 
 #include "pkg.h"
@@ -18,15 +15,15 @@
 static int
 dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
 	struct pkg *p = NULL;
-	struct pkgdb_it *it = NULL;
-	int ret = EX_OK;
+	struct pkgdb_it *it;
+	int ret;
 
 	it = pkgdb_query(db, pkg_dep_origin(dep), MATCH_EXACT);
 
 	if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-		ret = EX_OK;
+		ret = EPKG_OK;
 	} else {
-		ret = EX_IOERR;
+		ret = EPKG_FATAL;
 	}
 
 	pkgdb_it_free(it);
@@ -38,8 +35,8 @@ dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
 static int
 do_extract(struct archive *a, struct archive_entry *ae)
 {
-	int retcode = EX_OK;
-	int ret = EX_OK;
+	int retcode = EPKG_OK;
+	int ret = 0;
 	char path[MAXPATHLEN + 1];
 	struct stat st;
 
@@ -47,7 +44,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
 			pkg_emit_error("archive_read_extract(): %s",
 						   archive_error_string(a));
-			retcode = EX_IOERR;
+			retcode = EPKG_FATAL;
 			break;
 		}
 
@@ -65,7 +62,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 			if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
 				pkg_emit_error("archive_read_extract(): %s",
 							   archive_error_string(a));
-				retcode = EX_IOERR;
+				retcode = EPKG_FATAL;
 				break;
 			}
 		}
@@ -74,7 +71,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 	if (ret != ARCHIVE_EOF) {
 		pkg_emit_error("archive_read_next_header(): %s",
 					   archive_error_string(a));
-		retcode = EX_IOERR;
+		retcode = EPKG_FATAL;
 	}
 
 	return (retcode);
@@ -89,22 +86,20 @@ pkg_add(struct pkgdb *db, const char *path)
 int
 pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 {
-	struct archive *a = NULL;
-	struct archive_entry *ae = NULL;
-	struct pkgdb_it *it = NULL;
+	struct archive *a;
+	struct archive_entry *ae;
+	struct pkgdb_it *it;
 	struct pkg *p = NULL;
 	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
 	struct utsname u;
 	bool extract = true;
 	char dpath[MAXPATHLEN + 1];
-	const char *basedir = NULL;
-	const char *ext = NULL;
-	char *osversion = NULL;
-	int retcode = EX_OK;
-	int ret = EPKG_OK;
+	const char *basedir;
+	const char *ext;
+	int retcode = EPKG_OK;
+	int ret;
 
-	assert(db != NULL);
 	assert(path != NULL);
 
 	/*
@@ -125,7 +120,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 
 	if (uname(&u) != 0) {
 		pkg_emit_errno("uname", "");
-		retcode = EX_OSERR;
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -135,31 +130,20 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 	if (strcmp(u.machine, pkg_get(pkg, PKG_ARCH)) != 0) {
 		pkg_emit_error("wrong architecture: %s instead of %s",
 					   pkg_get(pkg, PKG_ARCH), u.machine);
-		retcode = EX_CONFIG;
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	/*
-	 * Check for OSVERSION
+	 * TODO: check the os version
 	 */
-	if (strstr(u.release, "RELEASE") == NULL)
-		asprintf(&osversion, "%s-%d", u.release, __FreeBSD_version);
-	else
-		asprintf(&osversion, "%s", u.release);
-
-	if (strcmp(osversion, pkg_get(pkg, PKG_OSVERSION)) != 0) {
-		pkg_emit_error("wrong OSVERSION: %s instead of %s",
-				pkg_get(pkg, PKG_OSVERSION), osversion);
-		retcode = EX_CONFIG;
-		goto cleanup;
-	}
 
 	/*
 	 * Check if the package is already installed
 	 */
 	it = pkgdb_query(db, pkg_get(pkg, PKG_ORIGIN), MATCH_EXACT);
 	if (it == NULL) {
-		retcode = EX_IOERR;
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -168,7 +152,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 
 	if (ret == EPKG_OK) {
 		pkg_emit_already_installed(pkg);
-		retcode = EX_OK;
+		retcode = EPKG_INSTALLED;
 		goto cleanup;
 	} else if (ret != EPKG_END) {
 		retcode = ret;
@@ -182,7 +166,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 	basedir = dirname(path);
 	if ((ext = strrchr(path, '.')) == NULL) {
 		pkg_emit_error("%s has no extension", path);
-		retcode = EX_OSERR;
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -194,7 +178,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 
 			if (access(dpath, F_OK) == 0) {
 				if (pkg_add2(db, dpath, 0, 1) != EPKG_OK) {
-					retcode = EX_OSERR;
+					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
 			} else {
@@ -252,9 +236,6 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 
 	if (p != NULL)
 		pkg_free(p);
-
-	if (osversion != NULL)
-		free(osversion);
 
 	pkg_free(pkg);
 
