@@ -90,6 +90,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 						comment[0] = '#';
 						comment[1] = '\0';
 					}
+					if (strchr(cmd,'-') || strchr(cmd, '*'))
+						comment[0] = '\0';
+
 					if (filestarted) {
 						if (sbuf_len(unexec_scripts) == 0)
 							sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
