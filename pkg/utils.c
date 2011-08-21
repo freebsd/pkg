@@ -39,20 +39,20 @@ print_info(struct pkg * const pkg, unsigned int opt)
         char size[7];
 
         if (opt & INFO_FULL) {
-                printf("Name        : %s\n", pkg_get(pkg, PKG_NAME));
-                printf("Version     : %s\n", pkg_get(pkg, PKG_VERSION));
-                printf("Origin      : %s\n", pkg_get(pkg, PKG_ORIGIN));
-                printf("Prefix      : %s\n", pkg_get(pkg, PKG_PREFIX));
+                printf("%-15s: %s\n", "Name", pkg_get(pkg, PKG_NAME));
+                printf("%-15s: %s\n", "Version", pkg_get(pkg, PKG_VERSION));
+                printf("%-15s: %s\n", "Origin", pkg_get(pkg, PKG_ORIGIN));
+                printf("%-15s: %s\n", "Prefix", pkg_get(pkg, PKG_PREFIX));
 
                 if (!pkg_list_isempty(pkg, PKG_CATEGORIES)) {
-                        printf("Categories  :");
+                        printf("%-15s:", "Categories");
                         while (pkg_categories(pkg, &cat) == EPKG_OK)
                                 printf(" %s", pkg_category_name(cat));
                         printf("\n");
                 }
 
                 if (!pkg_list_isempty(pkg, PKG_LICENSES)) {
-                        printf("Licenses    :");
+                        printf("%-15s:", "Licenses");
                         while (pkg_licenses(pkg, &lic) == EPKG_OK) {
                                 printf(" %s", pkg_license_name(lic));
                                 if (pkg_licenselogic(pkg) != 1)
@@ -62,27 +62,27 @@ print_info(struct pkg * const pkg, unsigned int opt)
                         }
                         printf("\b \n");
                 }
-                printf("Maintainer  : %s\n", pkg_get(pkg, PKG_MAINTAINER));
-                printf("WWW         : %s\n", pkg_get(pkg, PKG_WWW));
-                printf("Comment     : %s\n", pkg_get(pkg, PKG_COMMENT));
+                printf("%-15s: %s\n", "Maintainer", pkg_get(pkg, PKG_MAINTAINER));
+                printf("%-15s: %s\n", "WWW", pkg_get(pkg, PKG_WWW));
+                printf("%-15s: %s\n", "Comment", pkg_get(pkg, PKG_COMMENT));
 
                 if (!pkg_list_isempty(pkg, PKG_OPTIONS)) {
-                        printf("Options      : \n");
+                        printf("%-15s: \n", "Options");
                         while (pkg_options(pkg, &option) == EPKG_OK)
                                 printf("\t%s: %s\n", pkg_option_opt(option), pkg_option_value(option));
                 }
 
 		if (pkg_type(pkg) == PKG_INSTALLED) {
 			humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
-			printf("Flat size   : %s\n", size);
+			printf("%-15s: %s\n", "Flat size", size);
 		} else {
 			humanize_number(size, sizeof(size), pkg_new_flatsize(pkg), "B", HN_AUTOSCALE, 0);
-			printf("Flat size   : %s\n", size);
+			printf("%-15s: %s\n", "Flat size", size);
 			humanize_number(size, sizeof(size), pkg_new_pkgsize(pkg), "B", HN_AUTOSCALE, 0);
-			printf("Pkg size    : %s\n", size);
+			printf("%-15s: %s\n", "Pkg size", size);
 		}
 
-                printf("Description :\n%s\n", pkg_get(pkg, PKG_DESC));
+                printf("%-15s: \n%s\n", "Description", pkg_get(pkg, PKG_DESC));
                 printf("\n");
         } else if (opt & INFO_PRINT_DEP) {
                 if (!(opt & INFO_QUIET))
