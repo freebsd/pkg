@@ -345,7 +345,7 @@ pkg_jobs_resolv(struct pkg_jobs *j)
 		if ((it = pkgdb_query(j->db, pkg_get(p, PKG_ORIGIN), MATCH_EXACT)) == NULL)
 			continue;
 		if (pkgdb_it_next(it, &localp, PKG_LOAD_BASIC) == EPKG_OK)
-			if (!strcmp(pkg_get(localp, PKG_NAME), pkg_get(p, PKG_NAME)) && \
+			if (!strcmp(pkg_get(localp, PKG_NAME), pkg_get(p, PKG_NAME)) &&
 					!strcmp(pkg_get(localp, PKG_VERSION), pkg_get(p, p->type == PKG_UPGRADE ? PKG_NEWVERSION : PKG_VERSION))) {
 				STAILQ_REMOVE(&j->jobs, p, pkg, next);
 				pkg_free(p);
