@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <yaml.h>
-#include <wchar.h>
 
 #include "pkg.h"
 #include "pkg_event.h"
@@ -543,12 +542,12 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	yaml_emitter_set_output(&emitter, yaml_write_buf, destbuf);
 
 #define manifest_append_kv(map, key, val) yaml_document_append_mapping_pair(&doc, map, \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), wcslen(__DECONST(wchar_t*,key)), YAML_PLAIN_SCALAR_STYLE), \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, val), wcslen(__DECONST(wchar_t*,val)), YAML_PLAIN_SCALAR_STYLE));
+		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), strlen(key), YAML_PLAIN_SCALAR_STYLE), \
+		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, val), strlen(val), YAML_PLAIN_SCALAR_STYLE));
 
 #define manifest_append_kv_literal(map, key, val) yaml_document_append_mapping_pair(&doc, map, \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), wcslen(__DECONST(wchar_t*,key)), YAML_PLAIN_SCALAR_STYLE), \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, val), wcslen(__DECONST(wchar_t*,val)), YAML_LITERAL_SCALAR_STYLE));
+		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), strlen(key), YAML_PLAIN_SCALAR_STYLE), \
+		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, val), strlen(val), YAML_LITERAL_SCALAR_STYLE));
 
 	yaml_document_initialize(&doc, NULL, NULL, NULL, 1, 1);
 	mapping = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
