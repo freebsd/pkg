@@ -2,7 +2,6 @@
 
 #include <err.h>
 #include <inttypes.h>
-#include <libutil.h>
 #include <pkg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -11,6 +10,7 @@
 #include <unistd.h>
 
 #include "info.h"
+#include "utils.h"
 
 enum sign {
 	LT,
@@ -20,107 +20,11 @@ enum sign {
 	EQ
 };
 
-static int
-print_info(struct pkg * const pkg, unsigned int opt)
-{
-	struct pkg_dep *dep = NULL;
-	struct pkg_file *file = NULL;
-	struct pkg_category *cat = NULL;
-	struct pkg_license *lic = NULL;
-	struct pkg_option *option = NULL;
-	char size[7];
-
-	if (opt & INFO_FULL) {
-		printf("Name: %s\n", pkg_get(pkg, PKG_NAME));
-		printf("Version: %s\n", pkg_get(pkg, PKG_VERSION));
-		printf("Origin: %s\n", pkg_get(pkg, PKG_ORIGIN));
-		printf("Prefix: %s\n", pkg_get(pkg, PKG_PREFIX));
-		if (!pkg_list_isempty(pkg, PKG_CATEGORIES)) {
-			printf("Categories:");
-			while (pkg_categories(pkg, &cat) == EPKG_OK)
-				printf(" %s", pkg_category_name(cat));
-			printf("\n");
-		}
-		if (!pkg_list_isempty(pkg, PKG_LICENSES)) {
-			printf("Licenses: ");
-			while (pkg_licenses(pkg, &lic) == EPKG_OK) {
-				printf(" %s", pkg_license_name(lic));
-				if (pkg_licenselogic(pkg) != 1)
-					printf(" %c", pkg_licenselogic(pkg));
-				else
-					printf(" ");
-			}
-			printf("\b \n");
-		}
-		printf("Maintainer: %s\n", pkg_get(pkg, PKG_MAINTAINER));
-		printf("WWW: %s\n", pkg_get(pkg, PKG_WWW));
-		printf("Comment: %s\n", pkg_get(pkg, PKG_COMMENT));
-		if (!pkg_list_isempty(pkg, PKG_OPTIONS)) {
-			printf("Options: \n");
-			while (pkg_options(pkg, &option) == EPKG_OK)
-				printf("\t%s: %s\n", pkg_option_opt(option), pkg_option_value(option));
-		}
-		humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
-		printf("Flat size: %s\n", size);
-		printf("Description:\n%s\n", pkg_get(pkg, PKG_DESC));
-		printf("\n");
-	} else if (opt & INFO_PRINT_DEP) {
-		if (!(opt & INFO_QUIET))
-			printf("%s-%s depends on:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-
-		while (pkg_deps(pkg, &dep) == EPKG_OK) {
-			printf("%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
-		}
-
-		if (!(opt & INFO_QUIET))
-			printf("\n");
-	} else if (opt & INFO_PRINT_RDEP) {
-		if (!(opt & INFO_QUIET))
-			printf("%s-%s is required by:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-
-		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-			printf("%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
-		}
-
-		if (!(opt & INFO_QUIET))
-			printf("\n");
-	} else if (opt & INFO_LIST_FILES) {
-		if (!(opt & INFO_QUIET))
-			printf("%s-%s owns the following files:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-
-		while (pkg_files(pkg, &file) == EPKG_OK) {
-			printf("%s\n", pkg_file_path(file));
-		}
-
-		if (!(opt & INFO_QUIET))
-			printf("\n");
-	} else if (opt & INFO_SIZE) {
-		humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
-		printf("%s-%s size is %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), size);
-	} else if (opt & INFO_ORIGIN) {
-		if (opt & INFO_QUIET)
-			printf("%s\n", pkg_get(pkg, PKG_ORIGIN));
-		else
-			printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_ORIGIN));
-	} else if (opt & INFO_PREFIX) {
-		if (opt & INFO_QUIET)
-			printf("%s\n", pkg_get(pkg, PKG_PREFIX));
-		else
-			printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_PREFIX));
-	} else {
-		if (opt & INFO_QUIET)
-			printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		else
-			printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_COMMENT));
-	}
-
-	return (0);
-}
-
 void
 usage_info(void)
 {
-	fprintf(stderr, "usage: pkg info -a\n");
+	fprintf(stderr, "usage: pkg info <pkg-name>\n");
+	fprintf(stderr, "       pkg info -a\n");
 	fprintf(stderr, "       pkg info [-egxXdrlsqOf] <pkg-name>\n");
 	fprintf(stderr, "       pkg info [-drlsqf] -F <pkg-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
