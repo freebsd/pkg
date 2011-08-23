@@ -3,12 +3,14 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <wctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <yaml.h>
+#include <wchar.h>
 
 #include "pkg.h"
 #include "pkg_event.h"
@@ -86,16 +88,65 @@ pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 	return (ret);
 }
 
+
+static int32_t
+decode_unicode_escape(const char *str)
+{
+	int i;
+	int32_t value = 0;
+
+	assert(str[0] == 'u');
+
+	for(i = 1; i <= 4; i++) {
+		char c = str[i];
+		value <<= 4;
+		if(isdigit(c))
+			value += c - '0';
+		else if(islower(c))
+			value += c - 'a' + 10;
+		else if(isupper(c))
+			value += c - 'A' + 10;
+		else
+			assert(0);
+	}
+
+	return value;
+}
+
+static void
+unescape_non_ascii(struct sbuf *sbuf, const char *key) {
+	size_t len = strlen(key);
+	size_t i = 0;
+
+	for (i = 0; i < len; i++) {
+		if (key[i] == '\\' && key[i+1] == 'u') {
+			sbuf_putc(sbuf, decode_unicode_escape(key + i + 1));
+			i+=5;
+		} else {
+			sbuf_putc(sbuf, key[i]);
+		}
+	}
+	sbuf_finish(sbuf);
+}
+
+
 static int
 pkg_set_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *doc, int attr)
 {
+	struct sbuf *buf = sbuf_new_auto();
+	int ret;
+
 	while (val->data.scalar.length > 0 &&
 			val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
 		val->data.scalar.value[val->data.scalar.length - 1] = '\0';
 		val->data.scalar.length--;
 	}
 
-	return (pkg_set(pkg, attr, val->data.scalar.value));
+	unescape_non_ascii(buf, val->data.scalar.value);
+	ret = pkg_set(pkg, attr, sbuf_data(buf));
+	sbuf_delete(buf);
+
+	return (ret);
 }
 
 static int
@@ -184,6 +235,7 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc, int at
 static int
 parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr)
 {
+	struct sbuf *tmp = sbuf_new_auto();
 	yaml_node_pair_t *pair;
 	yaml_node_t *key;
 	yaml_node_t *val;
@@ -216,9 +268,11 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 					pkg_set_dirs_from_node(pkg, val, doc, key->data.scalar.value);
 				break;
 			case PKG_FILES:
-				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
-					pkg_addfile(pkg, key->data.scalar.value, val->data.scalar.length == 64 ? val->data.scalar.value : NULL);
-				else if (val->type == YAML_MAPPING_NODE)
+				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
+					sbuf_clear(tmp);
+					unescape_non_ascii(tmp, key->data.scalar.value);
+					pkg_addfile(pkg, sbuf_data(tmp), val->data.scalar.length == 64 ? val->data.scalar.value : NULL);
+				} else if (val->type == YAML_MAPPING_NODE)
 					pkg_set_files_from_node(pkg, val, doc, key->data.scalar.value);
 				else
 					pkg_emit_error("Skipping malformed files %s",
@@ -265,6 +319,8 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 
 		++pair;
 	}
+
+	sbuf_delete(tmp);
 	return (EPKG_OK);
 }
 
@@ -511,6 +567,29 @@ manifest_append_seqval(yaml_document_t *doc, int parent, int *seq, const char *t
 			yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t*, value), strlen(value), YAML_PLAIN_SCALAR_STYLE));
 }
 
+static void
+escape_non_ascii(struct sbuf *sbuf, const char *key) {
+	size_t i = 0;
+	size_t wsize = 0;
+	wchar_t *wstring;
+
+	sbuf_clear(sbuf);
+	wsize = mbstowcs(NULL, key, MB_CUR_MAX );
+
+	wstring = malloc((wsize + 1) * sizeof(wchar_t));
+	wsize = mbstowcs(wstring, key, strlen(key) + 1);
+	wstring[wsize] = 0;
+	for (i = 0; i < wcslen(wstring); i++) {
+		if (!iswascii(wstring[i])) {
+			sbuf_printf(sbuf, "\\u%.4x", wstring[i]);
+		} else {
+			sbuf_putc(sbuf, wstring[i]);
+		}
+		sbuf_finish(sbuf);
+	}
+	sbuf_finish(sbuf);
+}
+
 int
 pkg_emit_manifest(struct pkg *pkg, char **dest)
 {
@@ -527,6 +606,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_license *license = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
+	struct sbuf *tmpsbuf = sbuf_new_auto();
 	int rc = EPKG_OK;
 	int mapping;
 	int seq = -1;
@@ -539,6 +619,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct sbuf *destbuf = sbuf_new_auto();
 
 	yaml_emitter_initialize(&emitter);
+	yaml_emitter_set_unicode(&emitter, 1);
 	yaml_emitter_set_output(&emitter, yaml_write_buf, destbuf);
 
 #define manifest_append_kv(map, key, val) yaml_document_append_mapping_pair(&doc, map, \
@@ -579,7 +660,9 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkg_flatsize(pkg));
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
-	manifest_append_kv_literal(mapping, "desc", pkg_get(pkg, PKG_DESC));
+	escape_non_ascii(tmpsbuf, pkg_get(pkg, PKG_DESC));
+	manifest_append_kv_literal(mapping, "desc",sbuf_data(tmpsbuf));
+	sbuf_clear(tmpsbuf);
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (depsmap == -1) {
@@ -631,7 +714,9 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "files"), 5, YAML_PLAIN_SCALAR_STYLE),
 					files);
 		}
-		manifest_append_kv(files, pkg_file_path(file), pkg_file_sha256(file) && strlen(pkg_file_sha256(file)) > 0 ? pkg_file_sha256(file) : "-");
+		escape_non_ascii(tmpsbuf, pkg_file_path(file));
+		manifest_append_kv(files, sbuf_data(tmpsbuf), pkg_file_sha256(file) && strlen(pkg_file_sha256(file)) > 0 ? pkg_file_sha256(file) : "-");
+		sbuf_clear(tmpsbuf);
 	}
 
 	seq = -1;
@@ -641,7 +726,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
 		if (scripts == -1) {
 			scripts = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping, 
+			yaml_document_append_mapping_pair(&doc, mapping,
 					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "scripts"), 7, YAML_PLAIN_SCALAR_STYLE),
 					scripts);
 		}
@@ -682,11 +767,11 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	if (!yaml_emitter_dump(&emitter, &doc))
 		rc = EPKG_FATAL;
 
+	sbuf_delete(tmpsbuf);
 	sbuf_finish(destbuf);
 	*dest = strdup(sbuf_data(destbuf));
 	sbuf_delete(destbuf);
 
 	yaml_emitter_delete(&emitter);
 	return (rc);
-
 }
