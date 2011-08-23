@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd July 26, 2011
+.Dd Aug 23, 2011
 .Dt PKG-SEARCH 1
 .Os
 .Sh NAME
@@ -23,31 +23,24 @@
 .Nd searches in remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl gxXcd
+.Ar pkg-name
+.Nm
+.Op Fl fDsqop
+.Ar pkg-name
+.Nm
+.Op Fl gxXcdfDsqop
 .Ar pattern
 .Sh DESCRIPTION
 .Nm
-is used for searching in a remote package repository.
+is used for searching in the remote package repositories
+and displays the requested information for the matching
+packages.
 .Pp
 .Nm
-will search for a given pattern in the remote package
-repositories as defined in
+will search for the given pattern in the remote package
+repositories, which are defined in the
 .Fa /etc/pkg/repositories
-.Pp
-Please note that you need first to fetch/update the remote repositories
-before using
-.Nm
-.Pp
-For more information on fetching the remote package repositories
-please refer to
-.Xr pkg-update 1
-.Pp
-Multiple package repositories is activated only when the environment
-variable \fBPACKAGESITE\fP is not defined. Please note that multiple remote
-repositories feature is still considered highly experimental.
-.Pp
-If \fBPACKAGESITE\fP is defined then only the repository to which it points is
-the one that is used during the package search.
+file.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -72,6 +65,23 @@ in the package comment one-line description.
 Search for
 .Ar pattern
 in the package desription.
+.It Fl f
+Displays full information about the matching packages.
+.It Fl D
+Displays the dependencies of
+.Ar pattern
+.It Fl s
+Displays the size of the package
+.It Fl q
+Be ``quiet''. Prints only the requested information without
+displaying many hints.
+.It Fl o
+Displays
+.Ar pattern
+origin.
+.It Fl p
+Displays the installation prefix for each package matching
+.Ar pattern
 .El
 .Sh WARNING
 .Sh ENVRIOMENT
@@ -85,8 +95,7 @@ will only use the remote repository to which it points. Otherwise
 .Nm
 will work on multiple repositories as listed in the
 .Pa /etc/pkg/repositories
-file. Please note that multiple remote repositories is still considered
-highly experimental.
+file. 
 .El
 .Sh FILES
 .Bl -tag -width -".Pa /etc/pkg/repositories"
@@ -95,11 +104,10 @@ Global repositories file. This file contains a pair of
 .Fa name = url
 entries, each describing a remote repository, from which
 .Nm
-will search for the specified pattern. The file format of the file
-is the same as described in
-.Xr pkg.conf 5
-Please refer to the included sample configuration file for example
-definitions of remote repositories.
+will search for the specified pattern. The file format of the file is
+described in the 
+.Xr pkg-repositories 5
+man page.
 .El
 .Sh FILES
 .Sh SEE ALSO
@@ -117,8 +125,7 @@ definitions of remote repositories.
 .Xr pkg-upgrade 1 ,
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
-.Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS
+.Xr pkg.conf 5 ,
+.Xr pkg-repositories 5
 .Sh AUTHORS AND CONTRIBUTORS
 .Sh BUGS
