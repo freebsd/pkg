@@ -15,38 +15,41 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 06, 2011
+.Dd Aug 23, 2011
 .Dt PKG-INFO 1
 .Os
 .Sh NAME
 .Nm "pkg info"
-.Nd displays information for installed packages
+.Nd displays information for packages
 .Sh SYNOPSIS
+.Nm
+.Ar <pkg-name>
 .Nm
 .Fl a
 .Nm
-.Op Fl egxXdrlsqO
+.Op Fl egxXEdrlsqopOfF
 .Ar <pkg-name>
 .Nm
 .Op Fl drlsq
 .Fl F Ar <pkg-file>
 .Sh DESCRIPTION
 .Nm
-is used for displaying information for installed packages.
+is used for displaying information for packages.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl O
-Search is done by origin of the package.
-.Pp
-< Added only for ports compatibility - To be completed >
+.It Fl a
+Displays all installed packages
+.It Fl f
+Displays full information about the packages
+matching
+.Ar <pkg-name>
 .It Fl e
 Returns 0 if
 .Ar <pkg-name>
 is installed and is registered in the database, otherwise returns 1.
-Useful for checking if a package is installed or not from a 
-script.
+Useful for checking if a package is installed or not.
 .It Fl g
 Treat
 .Ar <pkg-name>
@@ -67,25 +70,33 @@ Displays a list of packages on which
 .Ar <pkg-name>
 depends.
 .It Fl l
-Display all files installed by
+Displays all files installed by
 .Ar <pkg-name>
 .It Fl s
-Display the total size of files installed by
+Displays the total size of files installed by
 .Ar <pkg-name>
-.It Fl E
-< Added only for ports compatibility >
-.Pp
-< Currently not implemented >
 .It Fl q
-Be ``quiet'' 
+Be ``quiet''. Prints only the requested information
+without displaying many hints.
+.It Fl O
+Search is done by the
+.Ar <pkg-name>
+origin. Added only for Ports compatibility.
+.Pp
+.It Fl E
+Currently not implemented. Added only for Ports
+compatibility
 .It Fl o
-Display
-.Ar pkg-name
+Displays
+.Ar <pkg-name>
 origin
 .It Fl p
-Display the installation prefix for each package
+Displays the installation prefix for each package
 matching
 .Ar <pkg-name>
+.It Fl F Ar <pkg-file>
+Displays information from the package archive
+.Ar <pkg-file>
 .El
 .Sh WARNING
 .Sh ENVRIOMENT
@@ -109,6 +120,7 @@ The following envrioment variables affect the execution of
 .Xr pkg-upgrade 1 ,
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
-.Xr pkg.conf 5
+.Xr pkg.conf 5 ,
+.Xr pkg-repositories 5
 .Sh AUTHORS AND CONTRIBUTORS
 .Sh BUGS
