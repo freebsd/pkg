@@ -83,7 +83,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				if (plist_p[1] == 'u') {
 					comment[0] = '\0';
 					/* workaround to detect the @dirrmtry */
-/*					if (STARTS_WITH(cmd, "rmdir ")) {
+					if (STARTS_WITH(cmd, "rmdir ")) {
 						comment[0] = '#';
 						comment[1] = '\0';
 					} else if (STARTS_WITH(cmd, "/bin/rmdir ")) {
@@ -92,7 +92,6 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					}
 					if (strchr(cmd,'-') || strchr(cmd, '*'))
 						comment[0] = '\0';
-						*/
 
 					if (filestarted) {
 						if (sbuf_len(unexec_scripts) == 0)
