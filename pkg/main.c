@@ -68,11 +68,13 @@ usage(void)
 {
 	fprintf(stderr, "usage: pkg [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
 	fprintf(stderr, "Global options supported:\n");
-	fprintf(stderr, "  -d: Increment debug level\n\n");
+	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
+	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(1) inside a jail(8)");
+	fprintf(stderr, "\t%-15s%s\n\n", "-c", "Execute pkg(1) inside a chroot(8)");
 	fprintf(stderr, "Commands supported:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++) 
-		fprintf(stderr, "\t%-15s %s\n", cmd[i].name, cmd[i].desc);
+		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
 	fprintf(stderr, "\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
