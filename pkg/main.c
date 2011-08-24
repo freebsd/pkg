@@ -37,27 +37,28 @@ static int exec_help(int, char **);
 
 static struct commands {
 	const char * const name;
+	const char * const desc;
 	int (*exec)(int argc, char **argv);
 	void (* const usage)(void);
 } cmd[] = {
-	{ "add", exec_add, usage_add},
-	{ "autoremove", exec_autoremove, usage_autoremove},
-	{ "backup", exec_backup, usage_backup},
-	{ "clean", exec_clean, usage_clean},
-	{ "create", exec_create, usage_create},
-	{ "delete", exec_delete, usage_delete},
-	{ "help", exec_help, usage_help},
-	{ "info", exec_info, usage_info},
-	{ "install", exec_install, usage_install},
-	{ "query", exec_query, usage_query},
-	{ "search", exec_search, usage_search},
-	{ "register", exec_register, usage_register},
-	{ "repo", exec_repo, usage_repo},
-	{ "update", exec_update, usage_update},
-	{ "updating", exec_updating, usage_updating},
-	{ "upgrade", exec_upgrade, usage_upgrade},
-	{ "version", exec_version, usage_version},
-	{ "which", exec_which, usage_which},
+	{ "add", "Registers a package and installs it on the system", exec_add, usage_add},
+	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
+	{ "backup", "Backup and restore the local package database", exec_backup, usage_backup},
+	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
+	{ "create", "Creates software package distributions", exec_create, usage_create},
+	{ "delete", "Deletes packages from the database and the system", exec_delete, usage_delete},
+	{ "help", "Displays help information", exec_help, usage_help},
+	{ "info", "Displays information for installed packages", exec_info, usage_info},
+	{ "install", "Installs packages from remote package repositories", exec_install, usage_install},
+	{ "query", "Query information for installed packages", exec_query, usage_query},
+	{ "search", "Performs a search in remote package repositories", exec_search, usage_search},
+	{ "register", "Registers a package into the local package database", exec_register, usage_register},
+	{ "repo", "Creates a package database repository", exec_repo, usage_repo},
+	{ "update", "Updates remote package repository databases", exec_update, usage_update},
+	{ "updating", "Displays UPDATING information for a package", exec_updating, usage_updating},
+	{ "upgrade", "Performs upgrades of package software distributions", exec_upgrade, usage_upgrade},
+	{ "version", "Summarize installed versions of packages", exec_version, usage_version},
+	{ "which", "Displays which package installed a specific file", exec_which, usage_which},
 };
 
 const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
@@ -71,7 +72,7 @@ usage(void)
 	fprintf(stderr, "Commands supported:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++) 
-		fprintf(stderr, "\t%s\n", cmd[i].name);
+		fprintf(stderr, "\t%-15s %s\n", cmd[i].name, cmd[i].desc);
 
 	fprintf(stderr, "\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
