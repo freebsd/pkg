@@ -154,7 +154,7 @@ pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 static int
 pkg_set_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *doc, int attr)
 {
-	int ret;
+	int ret = EPKG_OK;
 
 	while (val->data.scalar.length > 0 &&
 			val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
@@ -162,7 +162,7 @@ pkg_set_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *d
 		val->data.scalar.length--;
 	}
 
-	urldecode(val->data.scalar.value, &pkg->fields[attr].value);
+	ret = urldecode(val->data.scalar.value, &pkg->fields[attr].value);
 
 	return (ret);
 }
