@@ -72,6 +72,69 @@ static struct manifest_key {
 	{ NULL, -99, -99, NULL}
 };
 
+static int
+urlencode(const char *src, struct sbuf **dest)
+{
+	size_t len;
+	size_t i;
+
+	if (*dest == NULL)
+		*dest = sbuf_new_auto();
+	else
+		sbuf_clear(*dest);
+
+	len = strlen(src);
+	for (i = 0; i < len; i++) {
+		if (!isascii(src[i]) || src[i] == '%')
+			sbuf_printf(*dest, "%%%.2x", (unsigned char)src[i]);
+		else
+			sbuf_putc(*dest, src[i]);
+	}
+	sbuf_finish(*dest);
+
+	return (EPKG_OK);
+}
+
+
+static int
+urldecode(const char *src, struct sbuf **dest)
+{
+	size_t len;
+	size_t i;
+	char c;
+	char hex[] = {'\0', '\0', '\0'};
+
+	if (*dest == NULL)
+		*dest = sbuf_new_auto();
+	else
+		sbuf_reset(*dest);
+
+	len = strlen(src);
+	for (i = 0; i < len; i++) {
+		if (src[i] != '%') {
+			sbuf_putc(*dest, src[i]);
+		} else {
+			if (i + 2 > len) {
+				pkg_emit_error("unexpected end of string");
+				return (EPKG_FATAL);
+			}
+
+			hex[0] = src[++i];
+			hex[1] = src[++i];
+			errno = 0;
+			c = strtol(hex, NULL, 16);
+			if (errno != 0) {
+				pkg_emit_errno("strtol()", hex);
+				return (EPKG_FATAL);
+			}
+			sbuf_putc(*dest, c);
+		}
+	}
+	sbuf_finish(*dest);
+
+	return (EPKG_OK);
+}
+
 int
 pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 {
@@ -88,52 +151,9 @@ pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 	return (ret);
 }
 
-
-static int32_t
-decode_unicode_escape(const char *str)
-{
-	int i;
-	int32_t value = 0;
-
-	assert(str[0] == 'u');
-
-	for(i = 1; i <= 4; i++) {
-		char c = str[i];
-		value <<= 4;
-		if(isdigit(c))
-			value += c - '0';
-		else if(islower(c))
-			value += c - 'a' + 10;
-		else if(isupper(c))
-			value += c - 'A' + 10;
-		else
-			assert(0);
-	}
-
-	return value;
-}
-
-static void
-unescape_non_ascii(struct sbuf *sbuf, const char *key) {
-	size_t len = strlen(key);
-	size_t i = 0;
-
-	for (i = 0; i < len; i++) {
-		if (key[i] == '\\' && key[i+1] == 'u') {
-			sbuf_putc(sbuf, decode_unicode_escape(key + i + 1));
-			i+=5;
-		} else {
-			sbuf_putc(sbuf, key[i]);
-		}
-	}
-	sbuf_finish(sbuf);
-}
-
-
 static int
 pkg_set_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *doc, int attr)
 {
-	struct sbuf *buf = sbuf_new_auto();
 	int ret;
 
 	while (val->data.scalar.length > 0 &&
@@ -142,9 +162,7 @@ pkg_set_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *d
 		val->data.scalar.length--;
 	}
 
-	unescape_non_ascii(buf, val->data.scalar.value);
-	ret = pkg_set(pkg, attr, sbuf_data(buf));
-	sbuf_delete(buf);
+	urldecode(val->data.scalar.value, &pkg->fields[attr].value);
 
 	return (ret);
 }
@@ -235,7 +253,7 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc, int at
 static int
 parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr)
 {
-	struct sbuf *tmp = sbuf_new_auto();
+	struct sbuf *tmp = NULL;
 	yaml_node_pair_t *pair;
 	yaml_node_t *key;
 	yaml_node_t *val;
@@ -269,8 +287,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 				break;
 			case PKG_FILES:
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
-					sbuf_clear(tmp);
-					unescape_non_ascii(tmp, key->data.scalar.value);
+					urldecode(key->data.scalar.value, &tmp);
 					pkg_addfile(pkg, sbuf_data(tmp), val->data.scalar.length == 64 ? val->data.scalar.value : NULL);
 				} else if (val->type == YAML_MAPPING_NODE)
 					pkg_set_files_from_node(pkg, val, doc, key->data.scalar.value);
@@ -320,7 +337,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 		++pair;
 	}
 
-	sbuf_delete(tmp);
+	sbuf_free(tmp);
 	return (EPKG_OK);
 }
 
@@ -567,29 +584,6 @@ manifest_append_seqval(yaml_document_t *doc, int parent, int *seq, const char *t
 			yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t*, value), strlen(value), YAML_PLAIN_SCALAR_STYLE));
 }
 
-static void
-escape_non_ascii(struct sbuf *sbuf, const char *key) {
-	size_t i = 0;
-	size_t wsize = 0;
-	wchar_t *wstring;
-
-	sbuf_clear(sbuf);
-	wsize = mbstowcs(NULL, key, MB_CUR_MAX );
-
-	wstring = malloc((wsize + 1) * sizeof(wchar_t));
-	wsize = mbstowcs(wstring, key, strlen(key) + 1);
-	wstring[wsize] = 0;
-	for (i = 0; i < wcslen(wstring); i++) {
-		if (!iswascii(wstring[i])) {
-			sbuf_printf(sbuf, "\\u%.4x", wstring[i]);
-		} else {
-			sbuf_putc(sbuf, wstring[i]);
-		}
-		sbuf_finish(sbuf);
-	}
-	sbuf_finish(sbuf);
-}
-
 int
 pkg_emit_manifest(struct pkg *pkg, char **dest)
 {
@@ -606,7 +600,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_license *license = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
-	struct sbuf *tmpsbuf = sbuf_new_auto();
+	struct sbuf *tmpsbuf = NULL;
 	int rc = EPKG_OK;
 	int mapping;
 	int seq = -1;
@@ -660,9 +654,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkg_flatsize(pkg));
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
-	escape_non_ascii(tmpsbuf, pkg_get(pkg, PKG_DESC));
-	manifest_append_kv_literal(mapping, "desc",sbuf_data(tmpsbuf));
-	sbuf_clear(tmpsbuf);
+	urlencode(pkg_get(pkg, PKG_DESC), &tmpsbuf);
+	manifest_append_kv_literal(mapping, "desc", sbuf_data(tmpsbuf));
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (depsmap == -1) {
@@ -714,9 +707,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "files"), 5, YAML_PLAIN_SCALAR_STYLE),
 					files);
 		}
-		escape_non_ascii(tmpsbuf, pkg_file_path(file));
+		urlencode(pkg_file_path(file), &tmpsbuf);
 		manifest_append_kv(files, sbuf_data(tmpsbuf), pkg_file_sha256(file) && strlen(pkg_file_sha256(file)) > 0 ? pkg_file_sha256(file) : "-");
-		sbuf_clear(tmpsbuf);
 	}
 
 	seq = -1;
@@ -767,7 +759,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	if (!yaml_emitter_dump(&emitter, &doc))
 		rc = EPKG_FATAL;
 
-	sbuf_delete(tmpsbuf);
+	sbuf_free(tmpsbuf);
 	sbuf_finish(destbuf);
 	*dest = strdup(sbuf_data(destbuf));
 	sbuf_delete(destbuf);
