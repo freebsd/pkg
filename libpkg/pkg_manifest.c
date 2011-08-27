@@ -343,13 +343,13 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 
 static int
 pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, const char *filename) {
-	yaml_node_pair_t *pair;
-	yaml_node_t *key;
-	yaml_node_t *val;
+	yaml_node_pair_t *pair = NULL;
+	yaml_node_t *key = NULL;
+	yaml_node_t *val = NULL;
 	const char *sum = NULL;
 	const char *uname = NULL;
 	const char *gname = NULL;
-	void *set;
+	void *set = NULL;
 	mode_t perm = 0;
 
 	pair = item->data.mapping.pairs.start;
@@ -609,7 +609,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int files = -1;
 	int options = -1;
 	int scripts = -1;
-	const char *script_types;
+	const char *script_types = NULL;
 	struct sbuf *destbuf = sbuf_new_auto();
 
 	yaml_emitter_initialize(&emitter);

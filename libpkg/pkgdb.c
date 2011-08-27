@@ -1771,8 +1771,8 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 {
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = sbuf_new_auto();
-	const char *what;
-	const char *how;
+	const char *what = NULL;
+	const char *how = NULL;
 
 	assert(pattern != NULL && pattern[0] != '\0');
 
