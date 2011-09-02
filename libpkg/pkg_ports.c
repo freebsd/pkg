@@ -132,7 +132,6 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 						while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
 							strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 							buf+=pmatch[1].rm_eo;
-							printf("%s\n", path);
 							ret += pkg_adddir(pkg, path);
 						}
 
