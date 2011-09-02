@@ -72,7 +72,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
                                 printf("\t%s: %s\n", pkg_option_opt(option), pkg_option_value(option));
                 }
 
-		if (pkg_type(pkg) == PKG_INSTALLED) {
+		if (pkg_type(pkg) == PKG_INSTALLED || pkg_type(pkg) == PKG_FILE) {
 			humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
 			printf("%-15s: %s\n", "Flat size", size);
 		} else {
