@@ -92,6 +92,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 	int len;
 	char buf[BUFSIZ];
 	int retcode = EPKG_OK;
+	int ret;
 	struct stat st;
 
 	archive_entry_clear(pack->entry);
@@ -102,13 +103,19 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
-	retcode = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1, &st);
-	if (retcode != ARCHIVE_OK) {
-		pkg_emit_error("%s: %s", filepath, archive_error_string(pack->aread));
-		retcode = EPKG_FATAL;
-		goto cleanup;
+
+	if (st.st_nlink > 1 && S_ISREG(st.st_mode)) {
+		archive_entry_set_hardlink(pack->entry, filepath);
+	} else {
+		ret = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1,
+												&st);
+		if (ret != ARCHIVE_OK) {
+			pkg_emit_error("%s: %s", filepath,
+							archive_error_string(pack->aread));
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
-	retcode = EPKG_OK;
 
 	if (newpath != NULL)
 		archive_entry_set_pathname(pack->entry, newpath);
