@@ -1,3 +1,4 @@
+#include <sys/types.h>
 #include <sys/stat.h>
 
 #include <assert.h>
@@ -11,6 +12,13 @@
 #include "pkg_event.h"
 #include "pkg_private.h"
 
+
+struct hardlinks {
+	ino_t *inodes;
+	size_t len;
+	size_t cap;
+};
+
 int
 ports_parse_plist(struct pkg *pkg, char *plist)
 {
@@ -19,7 +27,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	int nbel, i;
 	size_t next;
 	size_t len;
-	/*size_t j;*/
+	size_t j;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	char path[MAXPATHLEN + 1];
 	char *last_plist_file = NULL;
@@ -30,6 +38,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	off_t sz = 0;
 	const char *slash;
 	int64_t flatsize = 0;
+	struct hardlinks hardlinks = {NULL, 0, 0};
+	bool regular;
 	bool filestarted = false; /* ugly workaround for easy_install ports */
 	struct sbuf *exec_scripts = sbuf_new_auto();
 	struct sbuf *unexec_scripts = sbuf_new_auto();
@@ -197,9 +207,32 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			snprintf(path, sizeof(path), "%s%s%s", prefix, slash, buf);
 
 			if (lstat(path, &st) == 0) {
+				p = NULL;
+				regular = true;
+
 				if (S_ISLNK(st.st_mode)) {
-					p = NULL;
-				} else {
+					regular = false;
+				}
+				/* Special case for hardlinks */
+				if (st.st_nlink > 1) {
+					for (j = 0; j < hardlinks.len; j++) {
+						if (hardlinks.inodes[j] == st.st_ino) {
+							regular = false;
+							break;
+						}
+					}
+					/* This is the first time we see this hardlink */
+					if (regular == true) {
+						if (hardlinks.cap <= hardlinks.len) {
+							hardlinks.cap += 10;
+							hardlinks.inodes = reallocf(hardlinks.inodes,
+														hardlinks.cap);
+						}
+						hardlinks.inodes[hardlinks.len++] = st.st_ino;
+					}
+				}
+
+				if (regular) {
 					flatsize += st.st_size;
 					sha256_file(path, sha256);
 					p = sha256;
@@ -235,6 +268,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	sbuf_delete(pre_unexec_scripts);
 	sbuf_delete(exec_scripts);
 	sbuf_delete(unexec_scripts);
+	free(hardlinks.inodes);
 
 	free(plist_buf);
 
