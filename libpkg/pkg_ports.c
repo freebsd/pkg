@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <regex.h>
 
 #include "pkg.h"
 #include "pkg_event.h"
@@ -18,7 +19,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	int nbel, i;
 	size_t next;
 	size_t len;
-	size_t j;
+	/*size_t j;*/
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	char path[MAXPATHLEN + 1];
 	char *last_plist_file = NULL;
@@ -33,6 +34,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	struct sbuf *exec_scripts = sbuf_new_auto();
 	struct sbuf *unexec_scripts = sbuf_new_auto();
 	struct sbuf *pre_unexec_scripts = sbuf_new_auto();
+	regex_t preg;
+	regmatch_t pmatch[2];
+
+/*	regcomp(&preg, "[[:space:]](/[[:graph:]/]+)|\"(/[^\"]+)", REG_EXTENDED);*/
+	regcomp(&preg, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
 
 	buf = NULL;
 	p = NULL;
@@ -83,14 +89,15 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				if (plist_p[1] == 'u') {
 					comment[0] = '\0';
 					/* workaround to detect the @dirrmtry */
-					if (STARTS_WITH(cmd, "rmdir ")) {
+					if (STARTS_WITH(cmd, "rmdir \"")) {
 						comment[0] = '#';
 						comment[1] = '\0';
-					} else if (STARTS_WITH(cmd, "/bin/rmdir ")) {
+					} else if (STARTS_WITH(cmd, "/bin/rmdir \"")) {
 						comment[0] = '#';
 						comment[1] = '\0';
 					}
-					if (strchr(cmd,'-') || strchr(cmd, '*'))
+					/* remove the glob */
+					if (strchr(cmd, '*'))
 						comment[0] = '\0';
 
 					if (filestarted) {
@@ -107,10 +114,19 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					if (comment[0] == '#') {
 						buf = cmd;
 
+						/* remove the @dirrm{,try}
+						 * command */
 						while (!isspace(buf[0]))
 							buf++;
 
-						while (isspace(buf[0]))
+						while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
+							strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
+							buf+=pmatch[1].rm_eo;
+							printf("%s\n", path);
+							ret += pkg_adddir(pkg, path);
+						}
+
+/*						while (isspace(buf[0]))
 							buf++;
 
 						for (j = 0; j < strlen(buf); j++) {
@@ -124,7 +140,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 						for (j = strlen(buf) - 1; j > 0 && buf[j] == '"'; j--)
 							buf[j] = '\0';
 
-						ret += pkg_adddir(pkg, buf);
+						ret += pkg_adddir(pkg, buf);*/
 					}
 				} else {
 					if (sbuf_len(exec_scripts) == 0)
@@ -215,6 +231,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		pkg_appendscript(pkg, sbuf_data(unexec_scripts), PKG_SCRIPT_POST_DEINSTALL);
 	}
 
+	regfree(&preg);
 	sbuf_delete(pre_unexec_scripts);
 	sbuf_delete(exec_scripts);
 	sbuf_delete(unexec_scripts);
