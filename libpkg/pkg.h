@@ -213,6 +213,11 @@ void pkg_reset(struct pkg *, pkg_t type);
 void pkg_free(struct pkg *);
 
 /**
+ * Check if a package is valid according to its type.
+ */
+int pkg_isvalid(struct pkg *);
+
+/**
  * Open a package file archive and retrive informations.
  * @param p A pointer to pkg allocated by pkg_new(), or if it points to a
  * NULL pointer, the function allocate a new pkg using pkg_new().
