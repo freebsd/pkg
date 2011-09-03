@@ -44,11 +44,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	struct sbuf *exec_scripts = sbuf_new_auto();
 	struct sbuf *unexec_scripts = sbuf_new_auto();
 	struct sbuf *pre_unexec_scripts = sbuf_new_auto();
-	regex_t preg;
+	regex_t preg1, preg2;
 	regmatch_t pmatch[2];
 
-/*	regcomp(&preg, "[[:space:]](/[[:graph:]/]+)|\"(/[^\"]+)", REG_EXTENDED);*/
-	regcomp(&preg, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
+	regcomp(&preg1, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
+	regcomp(&preg2, "[[:space:]](/[[:graph:]/]+)", REG_EXTENDED);
 
 	buf = NULL;
 	p = NULL;
@@ -99,16 +99,30 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				if (plist_p[1] == 'u') {
 					comment[0] = '\0';
 					/* workaround to detect the @dirrmtry */
-					if (STARTS_WITH(cmd, "rmdir \"")) {
+					if (STARTS_WITH(cmd, "rmdir ")) {
 						comment[0] = '#';
 						comment[1] = '\0';
-					} else if (STARTS_WITH(cmd, "/bin/rmdir \"")) {
+					} else if (STARTS_WITH(cmd, "/bin/rmdir ")) {
 						comment[0] = '#';
 						comment[1] = '\0';
 					}
-					/* remove the glob */
+					/* remove the glob if any */
 					if (strchr(cmd, '*'))
 						comment[0] = '\0';
+
+					buf = cmd;
+
+					/* start remove mkdir -? */
+					/* remove the command */
+					while (!isspace(buf[0]))
+						buf++;
+
+					while (isspace(buf[0]))
+						buf++;
+
+					if (buf[0] == '-')
+						comment[0] = '\0';
+					/* end remove mkdir -? */
 
 					if (filestarted) {
 						if (sbuf_len(unexec_scripts) == 0)
@@ -129,10 +143,22 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 						while (!isspace(buf[0]))
 							buf++;
 
-						while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
-							strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
-							buf+=pmatch[1].rm_eo;
-							ret += pkg_adddir(pkg, path);
+						if (strchr(buf, '"')) {
+							while (regexec(&preg1, buf, 2, pmatch, 0) == 0) {
+								strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
+								buf+=pmatch[1].rm_eo;
+								if (!strcmp(path, "/dev/null"))
+									continue;
+								ret += pkg_adddir(pkg, path);
+							}
+						} else {
+							while (regexec(&preg2, buf, 2, pmatch, 0) == 0) {
+								strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
+								buf+=pmatch[1].rm_eo;
+								if (!strcmp(path, "/dev/null"))
+									continue;
+								ret += pkg_adddir(pkg, path);
+							}
 						}
 
 /*						while (isspace(buf[0]))
@@ -263,7 +289,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		pkg_appendscript(pkg, sbuf_data(unexec_scripts), PKG_SCRIPT_POST_DEINSTALL);
 	}
 
-	regfree(&preg);
+	regfree(&preg1);
+	regfree(&preg2);
 	sbuf_delete(pre_unexec_scripts);
 	sbuf_delete(exec_scripts);
 	sbuf_delete(unexec_scripts);
