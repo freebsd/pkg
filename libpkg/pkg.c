@@ -11,39 +11,33 @@
 #include "pkg_private.h"
 #include "pkg_util.h"
 
+static struct _fields {
+	int type;
+	int optional;
+} fields[] = {
+	[PKG_ORIGIN] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+	[PKG_NAME] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+	[PKG_VERSION] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+	[PKG_COMMENT] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+	[PKG_DESC] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+	[PKG_MTREE] = {PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
+	[PKG_MESSAGE] = {PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
+	[PKG_ARCH] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+	[PKG_OSVERSION] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+	[PKG_MAINTAINER] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+	[PKG_WWW] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 1},
+	[PKG_PREFIX] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
+	[PKG_REPOPATH] = {PKG_REMOTE|PKG_UPGRADE, 0},
+	[PKG_CKSUM] = {PKG_REMOTE|PKG_UPGRADE, 0},
+	[PKG_NEWVERSION] = {PKG_UPGRADE, 0},
+};
+
 int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL) {
 		pkg_emit_errno("malloc", "pkg");
 		return EPKG_FATAL;
-	}
-
-	struct _fields {
-		int id;
-		int type;
-		int optional;
-	} fields[] = {
-		{PKG_ORIGIN, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_NAME, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_VERSION, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_COMMENT, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_DESC, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_MTREE, PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
-		{PKG_MESSAGE, PKG_FILE|PKG_INSTALLED|PKG_UPGRADE, 1},
-		{PKG_ARCH, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_OSVERSION, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_MAINTAINER, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_WWW, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 1},
-		{PKG_PREFIX, PKG_FILE|PKG_REMOTE|PKG_INSTALLED|PKG_UPGRADE, 0},
-		{PKG_REPOPATH, PKG_REMOTE|PKG_UPGRADE, 0},
-		{PKG_CKSUM, PKG_REMOTE|PKG_UPGRADE, 0},
-		{PKG_NEWVERSION, PKG_UPGRADE, 0},
-	};
-
-	for (int i = 0; i < PKG_NUM_FIELDS; i++) {
-		(*pkg)->fields[fields[i].id].type = fields[i].type;
-		(*pkg)->fields[fields[i].id].optional = fields[i].optional;
 	}
 
 	STAILQ_INIT(&(*pkg)->licenses);
@@ -74,7 +68,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 		return;
 
 	for (i = 0; i < PKG_NUM_FIELDS; i++)
-		sbuf_reset(pkg->fields[i].value);
+		sbuf_reset(pkg->fields[i]);
 
 	pkg->flatsize = 0;
 	pkg->new_flatsize = 0;
@@ -105,7 +99,7 @@ pkg_free(struct pkg *pkg)
 		return;
 
 	for (int i = 0; i < PKG_NUM_FIELDS; i++)
-		sbuf_free(pkg->fields[i].value);
+		sbuf_free(pkg->fields[i]);
 
 	pkg_list_free(pkg, PKG_LICENSES);
 	pkg_list_free(pkg, PKG_CATEGORIES);
@@ -130,16 +124,37 @@ pkg_type(struct pkg const * const pkg)
 	return (pkg->type);
 }
 
+int
+pkg_isvalid(struct pkg *pkg)
+{
+	int ret = EPKG_OK;
+	int i;
+
+	if (pkg->type == 0) {
+		pkg_emit_error("package type undefinied");
+		return (EPKG_FATAL);
+	}
+
+	for (i = 0; i < PKG_NUM_FIELDS; i++) {
+		if (fields[i].type & pkg->type && fields[i].optional == 0) {
+			if (pkg->fields[i] == NULL || sbuf_get(pkg->fields[i])[0] == '\0')
+				ret = EPKG_FATAL;
+		}
+	}
+
+	return (ret);
+}
+
 const char *
 pkg_get(struct pkg const * const pkg, const pkg_attr attr)
 {
 	assert(pkg != NULL);
 	assert(attr < PKG_NUM_FIELDS);
 
-	if ((pkg->fields[attr].type & pkg->type) == 0)
+	if ((fields[attr].type & pkg->type) == 0)
 		pkg_emit_error("wrong usage of `attr` for this type of `pkg`");
 
-	return (sbuf_get(pkg->fields[attr].value));
+	return (sbuf_get(pkg->fields[attr]));
 }
 
 int
@@ -149,12 +164,12 @@ pkg_set(struct pkg * pkg, pkg_attr attr, const char *value)
 
 	assert(pkg != NULL);
 	assert(attr < PKG_NUM_FIELDS);
-	assert(value != NULL || pkg->fields[attr].optional == 1);
+	assert(value != NULL || fields[attr].optional == 1);
 
 	if (value == NULL)
 		value = "";
 
-	sbuf = &pkg->fields[attr].value;
+	sbuf = &pkg->fields[attr];
 
 	/*
 	 * Ensure that mtree begins with `#mtree` so libarchive
@@ -947,7 +962,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 		for (i = 0; files[i].name != NULL; i++) {
 			if (strcmp(fpath, files[i].name) == 0) {
-				sbuf = &pkg->fields[files[i].attr].value;
+				sbuf = &pkg->fields[files[i].attr];
 				if (*sbuf == NULL)
 					*sbuf = sbuf_new_auto();
 				else

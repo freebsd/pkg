@@ -19,11 +19,7 @@
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
 struct pkg {
-	struct {
-		struct sbuf *value;
-		int type; /* for which pkg_t this field is defined */
-		unsigned int optional :1;
-	} fields[PKG_NUM_FIELDS];
+	struct sbuf * fields[PKG_NUM_FIELDS];
 	bool automatic;
 	int64_t flatsize;
 	int64_t new_flatsize;

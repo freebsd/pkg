@@ -162,7 +162,7 @@ pkg_set_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *d
 		val->data.scalar.length--;
 	}
 
-	ret = urldecode(val->data.scalar.value, &pkg->fields[attr].value);
+	ret = urldecode(val->data.scalar.value, &pkg->fields[attr]);
 
 	return (ret);
 }
