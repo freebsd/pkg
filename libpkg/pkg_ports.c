@@ -107,22 +107,24 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 						comment[1] = '\0';
 					}
 					/* remove the glob if any */
-					if (strchr(cmd, '*'))
+					if (comment[0] == '#') {
+						if (strchr(cmd, '*'))
 						comment[0] = '\0';
 
-					buf = cmd;
+						buf = cmd;
 
-					/* start remove mkdir -? */
-					/* remove the command */
-					while (!isspace(buf[0]))
-						buf++;
+						/* start remove mkdir -? */
+						/* remove the command */
+						while (!isspace(buf[0]))
+							buf++;
 
-					while (isspace(buf[0]))
-						buf++;
+						while (isspace(buf[0]))
+							buf++;
 
-					if (buf[0] == '-')
-						comment[0] = '\0';
-					/* end remove mkdir -? */
+						if (buf[0] == '-')
+							comment[0] = '\0';
+						/* end remove mkdir -? */
+					}
 
 					if (filestarted) {
 						if (sbuf_len(unexec_scripts) == 0)
@@ -143,7 +145,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 						while (!isspace(buf[0]))
 							buf++;
 
-						if (strchr(buf, '"')) {
+						split_chr(buf, '|');
+
+						if (strstr(buf, "\"/")) {
 							while (regexec(&preg1, buf, 2, pmatch, 0) == 0) {
 								strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 								buf+=pmatch[1].rm_eo;
