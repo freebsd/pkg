@@ -2,9 +2,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <assert.h>
 #include <archive.h>
 #include <archive_entry.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <fts.h>
 #include <string.h>
@@ -18,7 +18,7 @@ static const char *packing_set_format(struct archive *a, pkg_formats format);
 struct packing {
 	struct archive *aread;
 	struct archive *awrite;
-	struct archive_entry *entry;
+	struct archive_entry_linkresolver *resolver;
 };
 
 int
@@ -38,15 +38,12 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	archive_read_disk_set_standard_lookup((*pack)->aread);
 	archive_read_disk_set_symlink_physical((*pack)->aread);
 
-	(*pack)->entry = archive_entry_new();
-
 	if (!is_dir(path)) {
 		(*pack)->awrite = archive_write_new();
 		archive_write_set_format_pax_restricted((*pack)->awrite);
 		if ((ext = packing_set_format((*pack)->awrite, format)) == NULL) {
 			archive_read_finish((*pack)->aread);
 			archive_write_finish((*pack)->awrite);
-			archive_entry_free((*pack)->entry);
 			*pack = NULL;
 			return EPKG_FATAL; /* error set by _set_format() */
 		}
@@ -58,22 +55,28 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 		archive_write_disk_set_options((*pack)->awrite, EXTRACT_ARCHIVE_FLAGS);
 	}
 
+	(*pack)->resolver = archive_entry_linkresolver_new();
+	archive_entry_linkresolver_set_strategy((*pack)->resolver, archive_format((*pack)->awrite));
 	return (EPKG_OK);
 }
 
 int
 packing_append_buffer(struct packing *pack, const char *buffer, const char *path, int size)
 {
-	archive_entry_clear(pack->entry);
-	archive_entry_set_filetype(pack->entry, AE_IFREG);
-	archive_entry_set_perm(pack->entry, 0644);
-	archive_entry_set_gname(pack->entry, "wheel");
-	archive_entry_set_uname(pack->entry, "root");
-	archive_entry_set_pathname(pack->entry, path);
-	archive_entry_set_size(pack->entry, size);
-	archive_write_header(pack->awrite, pack->entry);
+	struct archive_entry *entry;
+
+	entry = archive_entry_new();
+	archive_entry_clear(entry);
+	archive_entry_set_filetype(entry, AE_IFREG);
+	archive_entry_set_perm(entry, 0644);
+	archive_entry_set_gname(entry, "wheel");
+	archive_entry_set_uname(entry, "root");
+	archive_entry_set_pathname(entry, path);
+	archive_entry_set_size(entry, size);
+	archive_write_header(pack->awrite, entry);
 	archive_write_data(pack->awrite, buffer, size);
-	archive_entry_clear(pack->entry);
+
+	archive_entry_free(entry);
 
 	return (EPKG_OK);
 }
@@ -94,9 +97,10 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 	int retcode = EPKG_OK;
 	int ret;
 	struct stat st;
+	struct archive_entry *entry, *sparse_entry;
 
-	archive_entry_clear(pack->entry);
-	archive_entry_copy_sourcepath(pack->entry, filepath);
+	entry = archive_entry_new();
+	archive_entry_copy_sourcepath(entry, filepath);
 
 	if (lstat(filepath, &st) != 0) {
 		pkg_emit_errno("lstat", filepath);
@@ -104,38 +108,39 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 		goto cleanup;
 	}
 
-	if (st.st_nlink > 1 && S_ISREG(st.st_mode)) {
-		archive_entry_set_hardlink(pack->entry, filepath);
-	} else {
-		ret = archive_read_disk_entry_from_file(pack->aread, pack->entry, -1,
-												&st);
-		if (ret != ARCHIVE_OK) {
-			pkg_emit_error("%s: %s", filepath,
-							archive_error_string(pack->aread));
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
+	ret = archive_read_disk_entry_from_file(pack->aread, entry, -1,
+			&st);
+	if (ret != ARCHIVE_OK) {
+		pkg_emit_error("%s: %s", filepath,
+				archive_error_string(pack->aread));
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	if (newpath != NULL)
-		archive_entry_set_pathname(pack->entry, newpath);
+		archive_entry_set_pathname(entry, newpath);
 
-	if (archive_entry_filetype(pack->entry) != AE_IFREG) {
-		archive_entry_set_size(pack->entry, 0);
+	if (archive_entry_filetype(entry) != AE_IFREG) {
+		archive_entry_set_size(entry, 0);
 	}
 
 	if (uname != NULL)
-		archive_entry_set_uname(pack->entry, uname);
+		archive_entry_set_uname(entry, uname);
 
 	if (gname != NULL)
-		archive_entry_set_gname(pack->entry, gname);
+		archive_entry_set_gname(entry, gname);
 
 	if (perm != 0)
-		archive_entry_set_perm(pack->entry, perm);
+		archive_entry_set_perm(entry, perm);
 
-	archive_write_header(pack->awrite, pack->entry);
+	archive_entry_linkify(pack->resolver, &entry, &sparse_entry);
 
-	if (archive_entry_size(pack->entry) > 0) {
+	if (sparse_entry != NULL && entry == NULL)
+		entry = sparse_entry;
+
+	archive_write_header(pack->awrite, entry);
+
+	if (archive_entry_size(entry) > 0) {
 		if ((fd = open(filepath, O_RDONLY)) < 0) {
 			pkg_emit_errno("open", filepath);
 			retcode = EPKG_FATAL;
@@ -149,7 +154,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 	}
 
 	cleanup:
-	archive_entry_clear(pack->entry);
+	archive_entry_free(entry);
 	return (retcode);
 }
 
@@ -208,7 +213,6 @@ packing_finish(struct packing *pack)
 {
 	assert(pack != NULL);
 
-	archive_entry_free(pack->entry);
 	archive_read_finish(pack->aread);
 
 	archive_write_close(pack->awrite);
