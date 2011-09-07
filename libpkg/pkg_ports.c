@@ -2,11 +2,12 @@
 #include <sys/stat.h>
 
 #include <assert.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
 #include <regex.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "pkg.h"
 #include "pkg_event.h"
@@ -44,6 +45,10 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	struct sbuf *exec_scripts = sbuf_new_auto();
 	struct sbuf *unexec_scripts = sbuf_new_auto();
 	struct sbuf *pre_unexec_scripts = sbuf_new_auto();
+	void *set = NULL;
+	const char *uname = NULL;
+	const char *gname = NULL;
+	mode_t perm=0;
 	regex_t preg1, preg2;
 	regmatch_t pmatch[2];
 
@@ -153,7 +158,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 								buf+=pmatch[1].rm_eo;
 								if (!strcmp(path, "/dev/null"))
 									continue;
-								ret += pkg_adddir(pkg, path);
+								ret += pkg_adddir_attr(pkg, path, uname, gname, perm);
 							}
 						} else {
 							while (regexec(&preg2, buf, 2, pmatch, 0) == 0) {
@@ -161,25 +166,10 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 								buf+=pmatch[1].rm_eo;
 								if (!strcmp(path, "/dev/null"))
 									continue;
-								ret += pkg_adddir(pkg, path);
+								ret += pkg_adddir_attr(pkg, path, uname, gname, perm);
 							}
 						}
 
-/*						while (isspace(buf[0]))
-							buf++;
-
-						for (j = 0; j < strlen(buf); j++) {
-							if (isspace(buf[j]))
-								buf[j]= '\0';
-						}
-
-						while (buf[0] == '"')
-							buf++;
-
-						for (j = strlen(buf) - 1; j > 0 && buf[j] == '"'; j--)
-							buf[j] = '\0';
-
-						ret += pkg_adddir(pkg, buf);*/
 					}
 				} else {
 					if (sbuf_len(exec_scripts) == 0)
@@ -213,8 +203,44 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
 				sbuf_printf(unexec_scripts, "#@dirrm %s\n", path);
 
-				ret += pkg_adddir(pkg, path);
+				ret += pkg_adddir_attr(pkg, path, uname, gname, perm);
 
+			} else if (STARTS_WITH(plist_p, "@mode")) {
+				buf = plist_p;
+				buf += 5;
+				while (isspace(buf[0]))
+					buf++;
+
+				if (buf[0] == '\0') {
+					perm = 0;
+				} else {
+					if ((set = setmode(buf)) == NULL) {
+						pkg_emit_error("%s wrong @mode value", buf);
+						perm = 0;
+					} else {
+						getmode(set, 0);
+					}
+				}
+			} else if (STARTS_WITH(plist_p, "@owner")) {
+				buf = plist_p;
+				buf += 6;
+				while (isspace(buf[0]))
+					buf++;
+
+				if (buf[0])
+					uname = NULL;
+				else
+					uname = buf;
+			} else if (STARTS_WITH(plist_p, "@group")) {
+				buf = plist_p;
+				buf += 6;
+				while (isspace(buf[0]))
+					buf++;
+
+				if (buf[0])
+					gname = NULL;
+				else
+					gname = buf;
 			} else {
 				pkg_emit_error("%s is deprecated, ignoring", plist_p);
 			}
@@ -266,7 +292,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					sha256_file(path, sha256);
 					p = sha256;
 				}
-				ret += pkg_addfile(pkg, path, p);
+				ret += pkg_addfile_attr(pkg, path, p, uname, gname, perm);
 			} else {
 				pkg_emit_errno("lstat", path);
 			}
