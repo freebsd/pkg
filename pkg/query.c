@@ -156,7 +156,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 						sbuf_cat(dest, pkg_file_sha256((struct pkg_file *)data));
 					break;
 				case 'S':
-					/* TODO */
+					sbuf_cat(dest, pkg_script_data((struct pkg_script *)data));	
 					break;
 				case 'O':
 					qstr++;
@@ -229,6 +229,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
 	struct pkg_conflict *conflict = NULL;
+	struct pkg_script *scripts = NULL;
 
 	switch (multiline) {
 		case 'd':
@@ -288,6 +289,12 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		case 'K':
 			while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
 				format_str(pkg, output, qstr, conflict);
+				printf("%s\n", sbuf_data(output));
+			}
+			break;
+		case 'S':
+			while (pkg_scripts(pkg, &scripts) == EPKG_OK) {
+				format_str(pkg, output, qstr, scripts);
 				printf("%s\n", sbuf_data(output));
 			}
 			break;
