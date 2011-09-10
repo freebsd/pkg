@@ -354,7 +354,7 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%L' at the same time\n", *multiline);
 						return (EPKG_FATAL);
 					}
-					*multiline = 'M';
+					*multiline = 'L';
 					*flags |= PKG_LOAD_LICENSES;
 					break;
 				case 'U':
@@ -391,7 +391,7 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 				case '?':
 					qstr++;
 					if (qstr[0] != 'd' && qstr[0] != 'r' && qstr[0] != 'C' &&
-							qstr[0] != 'F' && qstr[0] != '0' &&
+							qstr[0] != 'F' && qstr[0] != 'O' &&
 							qstr[0] != 'D' && qstr[0] != 'L' &&
 							qstr[0] != 'U' && qstr[0] != 'G' &&
 							qstr[0] != 'K' ) {
