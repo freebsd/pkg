@@ -340,7 +340,7 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 					}
 
 					/* if this is a multiline flag */
-					if (q_flags[i].multiline == 1)
+					if (q_flags[i].multiline == 1) {
 						if (*multiline != 0 && *multiline != q_flags[i].flag) {
 							fprintf(stderr, "Invalid query: you cannot query '%%%c' and '%%%c' at the same time\n",
 									*multiline, q_flags[i].flag);
@@ -348,6 +348,7 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 						} else {
 							*multiline = q_flags[i].flag;
 						}
+					}
 
 					/* handle the '?' flag cases */
 					if (q_flags[i].flag == '?') {
