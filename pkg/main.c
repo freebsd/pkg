@@ -157,6 +157,10 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (argc == 0)
+		usage();
+
 	/* reset getopt for the next call */
 	optreset = 1;
 	optind = 1;
