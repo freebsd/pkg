@@ -5,6 +5,7 @@
 #include <libutil.h>
 #include <pkg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -456,7 +457,7 @@ void
 usage_query(void)
 {
 	fprintf(stderr, "usage: pkg query -a <query-format>\n");
-	fprintf(stderr, "       pkg query [-gxX] <query-format> <pkg-name>\n");
+	fprintf(stderr, "       pkg query [-gxX] <query-format> <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help query.\n");
 }
 
