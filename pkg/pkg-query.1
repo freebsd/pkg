@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd August 11, 2011
+.Dd Sep 11, 2011
 .Dt PKG-QUERY 1
 .Os
 .Sh NAME
@@ -24,6 +24,8 @@
 .Sh SYNOPSIS
 .Nm
 .Fl a Ao query format Ac
+.Nm
+.Fl f Ao pkg-name Ac Ao query-format Ac
 .Nm
 .Op Fl gxX 
 .Ao query format Ac Ao package pattern Ac
@@ -34,6 +36,11 @@ is used for displaying information for installed packages.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl a
+Match all packages from the database
+.It Fl f Ar pkg-name
+Display information only for the package file
+.Ar pkg-name
 .It Fl g
 Treat
 .Ao package pattern Ac
@@ -118,7 +125,9 @@ List of users needed for the matched package.
 .It \fB%G\fB
 List of groups needed for the matched package.
 .It \fB%K\fB
-List of conflicts registred with the matched package.
+List of conflicts registered with the matched package.
+.It \fB%S\fB
+List of scripts for the matching packages - install, deinstall, etc.
 .El
 .Sh WARNING
 .Sh ENVRIOMENT
