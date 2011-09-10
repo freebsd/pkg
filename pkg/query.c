@@ -12,6 +12,38 @@
 
 #include "query.h"
 
+static struct query_flags {
+        const char flag;
+        const char *options;
+        const unsigned multiline;
+        const int dbflags;
+} q_flags[] = {
+        { 'd', "nov",		1, PKG_LOAD_DEPS },
+        { 'r', "nov",		1, PKG_LOAD_RDEPS },
+        { 'C', "",		1, PKG_LOAD_CATEGORIES },
+        { 'F', "ps",		1, PKG_LOAD_FILES }, 
+        { 'S', "",		1, PKG_LOAD_SCRIPTS },
+        { 'O', "kv",		1, PKG_LOAD_OPTIONS },
+        { 'D', "",		1, PKG_LOAD_DIRS },
+        { 'L', "",		1, PKG_LOAD_LICENSES },
+        { 'U', "",		1, PKG_LOAD_USERS },
+        { 'G', "",		1, PKG_LOAD_GROUPS },
+        { 'K', "",		1, PKG_LOAD_CONFLICTS },
+	{ '?', "drCFODLUGK",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+        { 's', "hb",		0, PKG_LOAD_BASIC }, 
+        { 'n', "",		0, PKG_LOAD_BASIC },
+        { 'v', "",		0, PKG_LOAD_BASIC },
+        { 'o', "",		0, PKG_LOAD_BASIC },
+        { 'p', "",		0, PKG_LOAD_BASIC },
+        { 'm', "",		0, PKG_LOAD_BASIC },
+        { 'c', "",		0, PKG_LOAD_BASIC },
+        { 'w', "",		0, PKG_LOAD_BASIC },
+        { 'l', "",		0, PKG_LOAD_BASIC },
+        { 'a', "",		0, PKG_LOAD_BASIC },
+};
+
+const unsigned int flags_len = (sizeof(q_flags)/sizeof(q_flags[0]));
+
 static void
 format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 {
@@ -269,190 +301,81 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 static int
 analyse_query_string(char *qstr, int *flags, char *multiline)
 {
+	unsigned int i, j, k;
+	unsigned int valid_flag = 0;
+	unsigned int valid_opts = 0;
+
 	while (qstr[0] != '\0') {
 		if (qstr[0] == '%') {
 			qstr++;
-			switch (qstr[0]) {
-				case 'd':
-					qstr++;
-					if (qstr[0] != 'n' && qstr[0] != 'o' && qstr[0] != 'v') {
-						fprintf(stderr, "Invalid query: %%d should be followed by: n, o or v\n");
-						return (EPKG_FATAL);
-					}
-					if (*multiline != 0 && *multiline != 'd') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%d' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'd';
-					*flags |= PKG_LOAD_DEPS;
-					break;
-				case 'r':
-					qstr++;
-					if (qstr[0] != 'n' && qstr[0] != 'o' && qstr[0] != 'v') {
-						fprintf(stderr, "Invalid query: %%r should be followed by: n, o or v\n");
-						return (EPKG_FATAL);
-					}
-					if (*multiline != 0 && *multiline != 'r') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%r' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'r';
-					*flags |= PKG_LOAD_RDEPS;
-					break;
-				case 'C':
-					if (*multiline != 0 && *multiline != 'C') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%c' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'C';
-					*flags |= PKG_LOAD_CATEGORIES;
-					break;
-				case 'F':
-					qstr++;
-					if (qstr[0] != 'p' && qstr[0] != 's') {
-						fprintf(stderr, "Invalid query: %%F should be followed by: p or s\n");
-						return (EPKG_FATAL);
-					}
-					if (*multiline != 0 && *multiline != 'F') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%F' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'F';
-					*flags |= PKG_LOAD_FILES;
-					break;
-				case 'S':
-					if (*multiline != 0 && *multiline != 'S') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%S' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'S';
-					*flags |= PKG_LOAD_SCRIPTS;
-					break;
-				case 'O':
-					qstr++;
-					if (qstr[0] != 'k' && qstr[0] != 'v') {
-						fprintf(stderr, "Invalid query: %%O should be followed by: k or v\n");
-						return (EPKG_FATAL);
-					}
-					if (*multiline != 0 && *multiline != 'O') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%O' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'O';
-					*flags |= PKG_LOAD_OPTIONS;
-					break;
-				case 'D':
-					if (*multiline != 0 && *multiline != 'D') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%D' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'D';
-					*flags |= PKG_LOAD_DIRS;
-					break;
-				case 'L':
-					if (*multiline != 0 && *multiline != 'L') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%L' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'L';
-					*flags |= PKG_LOAD_LICENSES;
-					break;
-				case 'U':
-					if (*multiline != 0 && *multiline != 'U') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%U' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'U';
-					*flags |= PKG_LOAD_USERS;
-					break;
-				case 'G':
-					if (*multiline != 0 && *multiline != 'G') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%G' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'G';
-					*flags |= PKG_LOAD_GROUPS;
-					break;
-				case 'K':
-					if (*multiline != 0 && *multiline != 'K') {
-						fprintf(stderr, "Invalid query format string, you can't query '%%%c' and '%%K' at the same time\n", *multiline);
-						return (EPKG_FATAL);
-					}
-					*multiline = 'K';
-					*flags |= PKG_LOAD_CONFLICTS;
-					break;
-				case 's':
-					qstr++;
-					if (qstr[0] != 'h' && qstr[0] != 'b') {
-						fprintf(stderr, "Invalid query: %%s should be followed by: h or b\n");
-						return (EPKG_FATAL);
-					}
-					break;
-				case '?':
-					qstr++;
-					if (qstr[0] != 'd' && qstr[0] != 'r' && qstr[0] != 'C' &&
-							qstr[0] != 'F' && qstr[0] != 'O' &&
-							qstr[0] != 'D' && qstr[0] != 'L' &&
-							qstr[0] != 'U' && qstr[0] != 'G' &&
-							qstr[0] != 'K' ) {
-						fprintf(stderr, "Invalid query: %%? should be followed by: d, r, C, F, O, D, L, U, G or K\n");
-						return (EPKG_FATAL);
-					}
-					switch (qstr[0]) {
-						case 'd':
-							*flags |= PKG_LOAD_DEPS;
-							break;
-						case 'r':
-							*flags |= PKG_LOAD_RDEPS;
-							break;
-						case 'C':
-							*flags |= PKG_LOAD_CATEGORIES;
-							break;
-						case 'F':
-							*flags |= PKG_LOAD_FILES;
-							break;
-						case 'O':
-							*flags |= PKG_LOAD_OPTIONS;
-							break;
-						case 'D':
-							*flags |= PKG_LOAD_DIRS;
-							break;
-						case 'L':
-							*flags |= PKG_LOAD_LICENSES;
-							break;
-						case 'U':
-							*flags |= PKG_LOAD_USERS;
-							break;
-						case 'G':
-							*flags |= PKG_LOAD_GROUPS;
-							break;
-						case 'K':
-							*flags |= PKG_LOAD_CONFLICTS;
-							break;
+			valid_flag = 0;
+	
+			for (i = 0; i < flags_len; i++) {
+				/* found the flag */
+				if (qstr[0] == q_flags[i].flag) {
+					valid_flag = 1;
+					
+					/* if the flag is followed by additional options */
+					if (q_flags[i].options[0] != '\0') {
+						qstr++;
+						valid_opts = 0;
+
+						for (j = 0; j < strlen(q_flags[i].options); j++) {
+							if (qstr[0] == q_flags[i].options[j]) {
+								valid_opts = 1;
+								break;
+							}
+						}
+						
+						if (valid_opts == 0) {
+							fprintf(stderr, "Invalid query: '%%%c' should be followed by:", q_flags[i].flag);
+
+							for (j = 0; j < strlen(q_flags[i].options); j++)
+								fprintf(stderr, " %c%c", q_flags[i].options[j],
+										q_flags[i].options[j + 1] == '\0' ?
+										'\n' : ',');
+
+							return (EPKG_FATAL);
+						}
 					}
 
-					break;
-				case 'n':
-				case 'v':
-				case 'o':
-				case 'p':
-				case 'm':
-				case 'c':
-				case 'w':
-				case 'l':
-				case 'a':
-					/* this is ok */
-					break;
-				default:
-					fprintf(stderr, "Unkown query format key: '%%%c'\n", qstr[0]);
-					return (EPKG_FATAL);
+					/* if this is a multiline flag */
+					if (q_flags[i].multiline == 1)
+						if (*multiline != 0 && *multiline != q_flags[i].flag) {
+							fprintf(stderr, "Invalid query: you cannot query '%%%c' and '%%%c' at the same time\n",
+									*multiline, q_flags[i].flag);
+							return (EPKG_FATAL);
+						} else {
+							*multiline = q_flags[i].flag;
+						}
+
+					/* handle the '?' flag cases */
+					if (q_flags[i].flag == '?') {
+						for (k = 0; k < flags_len; k++) 
+							if (q_flags[k].flag == q_flags[i].options[j]) {
+								*flags |= q_flags[k].dbflags;
+								break;
+							}
+					} else {
+						*flags |= q_flags[i].dbflags;
+					}
+
+					break; /* don't iterate over the rest of the flags */
+				}
+			}
+
+			if (valid_flag == 0) {
+				fprintf(stderr, "Unkown query format key: '%%%c'\n", qstr[0]);
+				return (EPKG_FATAL);
 			}
 		}
+		
 		qstr++;
 	}
 
 	return (EPKG_OK);
 }
+
 void
 usage_query(void)
 {
