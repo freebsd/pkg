@@ -549,5 +549,8 @@ exec_query(int argc, char **argv)
 		}
 	}
 
+	pkg_free(pkg);
+	pkgdb_close(db);
+
 	return (retcode);
 }
