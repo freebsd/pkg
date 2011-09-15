@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd Sep 11, 2011
+.Dd Sep 15, 2011
 .Dt PKG-QUERY 1
 .Os
 .Sh NAME
@@ -28,10 +28,10 @@
 .Fl f Ao pkg-name Ac Ao query-format Ac
 .Nm
 .Op Fl gxX 
-.Ao query format Ac Ao package pattern Ac
+.Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
-is used for displaying information for installed packages.
+is used for displaying information about packages.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -43,15 +43,15 @@ Display information only for the package file
 .Ar pkg-name
 .It Fl g
 Treat
-.Ao package pattern Ac
+.Ao pattern Ac
 as a glob pattern.
 .It Fl x
 Treat
-.Ao package pattern Ac
+.Ao pattern Ac
 as a regular expression.
 .It Fl X
 Treat
-.Ao package pattern Ac
+.Ao pattern Ac
 as an extended regular expression.
 .El
 .Sh QUERY FORMAT
@@ -63,7 +63,7 @@ one. Only one type of multiline pattern is accepted for a given query.
 Name of the matched package
 .It \fB%v\fB
 Version of the matched package
-.It \fB%v\fB
+.It \fB%o\fB
 Origin of the matched package
 .It \fB%p\fB
 Prefix of the matched package
@@ -74,17 +74,19 @@ Comment of the matched package
 .It \fB%w\fB
 Home page of the matched package
 .It \fB%l\fB
-license logic of the matched package nothing for single, & for and and | for or
+license logic of the matched package - nothing for single, & for AND, and | for OR
 .It \fB%sh\fB
-The flast size in human readable format of the matched package
+The flat size in human readable format of the matched package
 .It \fB%sb\fB
-The flast size in bytes format of the matched package
+The flat size in bytes of the matched package
+.It \fB%a\fB
+Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
 .It \fB%?[drCFIDLUG]\fB
-Return 0 is the list is empty 1 is the list has informations
+Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It \fBd\fB
 for dependencies
-.It \fBd\fB
+.It \fBr\fB
 for reverse dependencies
 .It \fBC\fB
 for categories
@@ -103,31 +105,31 @@ for groups
 .It \fBK\fB
 for conflicts
 .El
-.El
-.Ss Multilines pattern:
+.Ss Multiline patterns:
 .Bl -tag -width F1
 .It \fB%d[nov]\fB
-List of dependencies of the matched package, n stand for name, o for origin and
-v for version.
+Expands to the list of dependencies for the matched package, where \fBn\fP stand for the package name,
+\fBo\fP for the package origin, and \fBv\fP for the package version.
 .It \fB%r[nov]\fB
-List of reverse dependencies of the matched package, n stand for name, o for 
-origin and v for version.
+Expands to the list of reverse dependencies for the matched package, where \fBn\fP stand for the
+package name, \fBo\fP for the package origin, and \fBv\fP for the package version.
 .It \fB%C\fB
-List of categories the matched package belong to.
-.It \fB%F[ns]\fB
-List of files of the matched package, p stand for path, s for sum.
+Expands to the list of categories the matched package belongs to.
+.It \fB%F[ps]\fB
+Expands to the list of files of the matched package, where \fBp\fP stand for path, and \fBs\fP for sum.
 .It \fB%O[kv]\fB
-List of options of the matched package, k stand for key, v for value.
+Expands to the list of options of the matched package, where \fBk\fP stand for option key,
+and \fBv\fP for option value.
 .It \fB%L\fB
-List of license of the matched package.
+Expands to the list of license(s) for the matched package.
 .It \fB%U\fB
-List of users needed for the matched package.
+Expands to the list of users needed by the matched package.
 .It \fB%G\fB
-List of groups needed for the matched package.
+Expands to the list of groups needed by the matched package.
 .It \fB%K\fB
-List of conflicts registered with the matched package.
+Expands to the list of conflicts registered by the matched package.
 .It \fB%S\fB
-List of scripts for the matching packages - install, deinstall, etc.
+Expands to the list of scripts for the matching packages - install, deinstall, etc.
 .El
 .Sh WARNING
 .Sh ENVRIOMENT
