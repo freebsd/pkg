@@ -132,7 +132,7 @@ main(int argc, char **argv)
 	int jid;
 	const char *jail_str = NULL;
 	size_t len;
-	char ch;
+	signed char ch;
 	int debug = 0;
 
 	if (argc < 2)
