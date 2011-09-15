@@ -83,23 +83,23 @@ exec_register(int argc, char **argv)
 		switch (ch) {
 			case 'f':
 				if ((plist = strdup(optarg)) == NULL)
-					errx(1, "cannot allocate memory");
+					err(1, "cannot allocate memory");
 
 				break;
 			case 'm':
 				if ((mdir = strdup(optarg)) == NULL)
-					errx(1, "cannot allocate memory");
+					err(1, "cannot allocate memory");
 				break;
 			case 'a':
 				if ((arch = strdup(optarg)) == NULL)
-					errx(1, "cannot allocate memory");
+					err(1, "cannot allocate memory");
 				break;
 			case 'd':
 				pkg_setautomatic(pkg);
 				break;
 			case 'i':
 				if ((input_path = strdup(optarg)) == NULL)
-					errx(1, "cannot allocate memory");
+					err(1, "cannot allocate memory");
 				break;
 			case 'l':
 				legacy = true;
