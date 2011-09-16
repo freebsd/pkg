@@ -31,7 +31,7 @@ exec_install(int argc, char **argv)
 	int i, ch, yes = 0;
 	match_t match = MATCH_EXACT;
 
-	while ((ch = getopt(argc, argv, "ygxXf")) != -1) {
+	while ((ch = getopt(argc, argv, "ygxX")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = 1;
