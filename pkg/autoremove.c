@@ -85,9 +85,7 @@ exec_autoremove(int argc, char **argv)
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
 	}
 
-	/* check if there is something to be autoremoved */
-	pkg = NULL;
-	if (pkg_jobs(jobs, &pkg) != EPKG_OK)
+	if (pkg_jobs_isempty(jobs))
 		goto cleanup;
 
 	pkg = NULL;
