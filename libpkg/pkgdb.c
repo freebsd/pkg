@@ -693,7 +693,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 {
 	sqlite3_stmt *stmt;
 	const char sql[] = ""
-		"SELECT p.rowid, p.origin, p.name, p.version, p.comment, p.desc, "
+		"SELECT p.id as rowid, p.origin, p.name, p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 			"p.prefix, p.flatsize "
 			"FROM packages AS p, files AS f "
