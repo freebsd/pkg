@@ -18,7 +18,7 @@
 #include "pkg_util.h"
 
 #include "db_upgrades.h"
-#define DBVERSION 5
+#define DBVERSION 6
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
@@ -362,6 +362,7 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE CASCADE,"
 		"directory_id INTEGER REFERENCES directories(id) ON DELETE RESTRICT"
 			" ON UPDATE RESTRICT,"
+		"try INTEGER,"
 		"PRIMARY KEY (package_id, directory_id)"
 	");"
 	"CREATE TABLE categories ("
@@ -408,7 +409,7 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE RESTRICT,"
 		"UNIQUE(package_id, group_id)"
 	");"
-	"PRAGMA user_version = 5;"
+	"PRAGMA user_version = 6;"
 	"COMMIT;"
 	;
 
@@ -874,15 +875,40 @@ int
 pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg)
 {
 	const char sql[] = ""
-		"SELECT path "
+		"SELECT path, try "
 		"FROM pkg_directories, directories "
 		"WHERE package_id = ?1 "
 		"AND directory_id = directories.id "
 		"ORDER by path DESC";
+	sqlite3_stmt *stmt;
+	int ret;
 
 	assert(db != NULL && pkg != NULL);
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_DIRS, pkg_adddir, PKG_DIRS));
+	if (pkg->flags & PKG_LOAD_DIRS)
+		return (EPKG_OK);
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_int64(stmt, 1, pkg->rowid);
+
+	while (( ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_adddir(pkg, sqlite3_column_text(stmt, 0), sqlite3_column_int(stmt, 1));
+	}
+
+	sqlite3_finalize(stmt);
+	if (ret != SQLITE_DONE) {
+		pkg_list_free(pkg, PKG_DIRS);
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	pkg->flags |= PKG_LOAD_DIRS;
+
+	return (EPKG_OK);
 }
 
 int
@@ -1155,9 +1181,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		"INSERT OR ROLLBACK INTO options (option, value, package_id) "
 		"VALUES (?1, ?2, ?3);";
 	const char sql_dir[] = ""
-		"INSERT OR ROLLBACK INTO pkg_directories(package_id, directory_id) "
+		"INSERT OR ROLLBACK INTO pkg_directories(package_id, directory_id, try) "
 		"VALUES (?1, "
-		"(SELECT id FROM directories WHERE path = ?2));";
+		"(SELECT id FROM directories WHERE path = ?2), ?3);";
 	const char sql_cat[] = "INSERT OR IGNORE INTO categories(name) VALUES(?1);";
 	const char sql_category[] = ""
 		"INSERT OR ROLLBACK INTO pkg_categories(package_id, category_id) "
@@ -1315,6 +1341,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_dirs, 1, pkg_dir_path(dir), -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_dir, 1, package_id);
 		sqlite3_bind_text(stmt_dir, 2, pkg_dir_path(dir), -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt_dir, 1, pkg_dir_try(dir));
 			
 		if ((ret = sqlite3_step(stmt_dirs)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);

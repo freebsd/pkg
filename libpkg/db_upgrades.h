@@ -109,6 +109,10 @@ static struct db_upgrades {
 		"UNIQUE(package_id, group_id)"
 	");"
 	},
+	{6,
+	"ALTER TABLE pkg_directories ADD try INTEGER;"
+	"UPDATE pkg_directories SET try = 1;"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL },

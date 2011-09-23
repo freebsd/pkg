@@ -595,12 +595,12 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_adddir(struct pkg *pkg, const char *path)
+pkg_adddir(struct pkg *pkg, const char *path, int try)
 {
-	return(pkg_adddir_attr(pkg, path, NULL, NULL, 0));
+	return(pkg_adddir_attr(pkg, path, NULL, NULL, 0, try));
 }
 int
-pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm)
+pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, int try)
 {
 	struct pkg_dir *d = NULL;
 
@@ -625,6 +625,8 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 
 	if (perm != 0)
 		d->perm = perm;
+
+	d->try = try;
 
 	STAILQ_INSERT_TAIL(&pkg->dirs, d, next);
 
