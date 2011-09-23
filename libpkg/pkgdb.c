@@ -1341,7 +1341,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_bind_text(stmt_dirs, 1, pkg_dir_path(dir), -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_dir, 1, package_id);
 		sqlite3_bind_text(stmt_dir, 2, pkg_dir_path(dir), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt_dir, 1, pkg_dir_try(dir));
+		sqlite3_bind_int64(stmt_dir, 3, pkg_dir_try(dir));
 			
 		if ((ret = sqlite3_step(stmt_dirs)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
