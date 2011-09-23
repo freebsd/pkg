@@ -18,6 +18,7 @@ PKGPOSTDEINSTALL?=	${PKGDIR}/pkg-post-deinstall
 PKGPREUPGRADE?=		${PKGDIR}/pkg-pre-upgrade
 PKGPOSTUPGRADE?=	${PKGDIR}/pkg-post-upgrade
 PKGUPGRADE?=		${PKGDIR}/pkg-upgrade
+PLIST_REINPLACE:=	${PLIST_REINPLACE:Ndirrmtry}
 
 ACTUAL-PACKAGE-DEPENDS?= \
 	if [ "${_LIB_RUN_DEPENDS}" != "  " ]; then \
@@ -45,7 +46,7 @@ fake-pkg:
 
 	@${MAKE} -C ${.CURDIR} actual-package-depends | ${GREP} -v -E ${PKG_IGNORE_DEPENDS} | sort -u >> ${MANIFESTF}
 	@${ECHO_CMD} -n "categories: [" >> ${MANIFESTF}
-.for cat in ${CATEGORIES}
+.for cat in ${CATEGORIES:u}
 	@${ECHO_CMD} -n "${cat}," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
@@ -55,27 +56,27 @@ fake-pkg:
 	@${ECHO_CMD} "licenselogic: single" >> ${MANIFESTF}
 .endif
 	@${ECHO_CMD} -n "licenses: [" >> ${MANIFESTF}
-.for lic in ${LICENSE}
+.for lic in ${LICENSE:u}
 	@${ECHO_CMD} -n "${lic}," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
 .if !defined(DISABLE_CONFLICTS)
 	@${ECHO_CMD} -n "conflicts: [" >> ${MANIFESTF}
-.for conflicts in ${CONFLICTS}
+.for conflicts in ${CONFLICTS:u}
 	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
 .endfor
-.for conflicts in ${CONFLICTS_INSTALL}
+.for conflicts in ${CONFLICTS_INSTALL:u}
 	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
 .endif
 	@${ECHO_CMD} -n "users: [" >> ${MANIFESTF}
-.for user in ${USERS}
+.for user in ${USERS:u}
 	@${ECHO_CMD} -n "${user}, " >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
 	@${ECHO_CMD} -n "groups: [" >> ${MANIFESTF}
-.for group in ${GROUPS}
+.for group in ${GROUPS:u}
 	@${ECHO_CMD} -n "${group}, " >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
