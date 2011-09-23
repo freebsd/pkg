@@ -158,7 +158,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 								buf+=pmatch[1].rm_eo;
 								if (!strcmp(path, "/dev/null"))
 									continue;
-								ret += pkg_adddir_attr(pkg, path, uname, gname, perm);
+								ret += pkg_adddir_attr(pkg, path, uname, gname, perm, 1);
 							}
 						} else {
 							while (regexec(&preg2, buf, 2, pmatch, 0) == 0) {
@@ -166,7 +166,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 								buf+=pmatch[1].rm_eo;
 								if (!strcmp(path, "/dev/null"))
 									continue;
-								ret += pkg_adddir_attr(pkg, path, uname, gname, perm);
+								ret += pkg_adddir_attr(pkg, path, uname, gname, perm, 1);
 							}
 						}
 
@@ -179,7 +179,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 				free(cmd);
 
-			} else if (STARTS_WITH(plist_p, "@dirrm ")) {
+			} else if (STARTS_WITH(plist_p, "@dirrm ") || STARTS_WITH(plist_p, "@dirrmtry ")) {
 
 				buf = plist_p;
 
@@ -201,9 +201,15 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 				if (sbuf_len(unexec_scripts) == 0)
 					sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
-				sbuf_printf(unexec_scripts, "#@dirrm %s\n", path);
 
-				ret += pkg_adddir_attr(pkg, path, uname, gname, perm);
+				if (plist_p[6] == 't') {
+					sbuf_printf(unexec_scripts, "#@unexec /bin/rmdir \"%s\" || true\n", path);
+					ret += pkg_adddir_attr(pkg, path, uname, gname, perm, 1);
+				} else {
+					sbuf_printf(unexec_scripts, "#@dirrm %s\n", path);
+					ret += pkg_adddir_attr(pkg, path, uname, gname, perm, 0);
+				}
+
 
 			} else if (STARTS_WITH(plist_p, "@mode")) {
 				buf = plist_p;

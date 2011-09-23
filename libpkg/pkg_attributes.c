@@ -85,6 +85,7 @@ pkg_dir_new(struct pkg_dir **d)
 		return (EPKG_FATAL);
 
 	(*d)->perm = 0;
+	(*d)->try = 0;
 
 	return (EPKG_OK);
 }
@@ -99,6 +100,12 @@ const char *
 pkg_dir_path(struct pkg_dir *d)
 {
 	return (d->path);
+}
+
+int
+pkg_dir_try(struct pkg_dir *d)
+{
+	return (d->try);
 }
 
 int

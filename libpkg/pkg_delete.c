@@ -130,8 +130,13 @@ pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, int force)
 		if (nbpackage > 1)
 			continue;
 
-		if (rmdir(pkg_dir_path(dir)) == -1 && errno != ENOTEMPTY && force != 1)
-			pkg_emit_errno("rmdir", pkg_dir_path(dir));
+		if (pkg_dir_try(dir)) {
+			if (rmdir(pkg_dir_path(dir)) == -1 && errno != ENOTEMPTY && force != 1)
+				pkg_emit_errno("rmdir", pkg_dir_path(dir));
+		} else {
+			if (rmdir(pkg_dir_path(dir)) == -1 && force != 1)
+				pkg_emit_errno("rmdir", pkg_dir_path(dir));
+		}
 	}
 
 	return (EPKG_OK);

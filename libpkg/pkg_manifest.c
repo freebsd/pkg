@@ -30,6 +30,7 @@
 #define PKG_OPTIONS -11
 #define PKG_USERS -12
 #define PKG_GROUPS -13
+#define PKG_DIRECTORIES -14
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_flatsize_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -59,6 +60,7 @@ static struct manifest_key {
 	{ "conflicts", PKG_CONFLICTS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "files", PKG_FILES, YAML_MAPPING_NODE, parse_mapping},
 	{ "dirs", PKG_DIRS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "directories", PKG_DIRECTORIES, YAML_MAPPING_NODE, parse_mapping},
 	{ "flatsize", -1, YAML_SCALAR_NODE, pkg_set_flatsize_from_node},
 	{ "licenselogic", -1, YAML_SCALAR_NODE, pkg_set_licenselogic_from_node},
 	{ "licenses", PKG_LICENSES, YAML_SEQUENCE_NODE, parse_sequence},
@@ -239,7 +241,7 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc, int at
 				break;
 			case PKG_DIRS:
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
-					pkg_adddir(pkg, val->data.scalar.value);
+					pkg_adddir(pkg, val->data.scalar.value, 1);
 				else if (val->type == YAML_MAPPING_NODE)
 					parse_mapping(pkg, val, doc, attr);
 				else
@@ -285,6 +287,18 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 				else
 					pkg_set_dirs_from_node(pkg, val, doc, key->data.scalar.value);
 				break;
+			case PKG_DIRECTORIES:
+				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
+					if (val->data.scalar.value[0] == 'y')
+						pkg_adddir(pkg, key->data.scalar.value, 1);
+					else
+						pkg_adddir(pkg, key->data.scalar.value, 0);
+				} else if (val->type == YAML_MAPPING_NODE) {
+					pkg_set_dirs_from_node(pkg, val, doc, key->data.scalar.value);
+				} else {
+					pkg_emit_error("Skipping malformed directories %s",
+								   key->data.scalar.value);
+				}
 			case PKG_FILES:
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
 					urldecode(key->data.scalar.value, &tmp);
@@ -400,6 +414,7 @@ pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 	const char *gname = NULL;
 	void *set;
 	mode_t perm = 0;
+	int try = 1;
 
 	pair = item->data.mapping.pairs.start;
 	while (pair < item->data.mapping.pairs.top) {
@@ -426,6 +441,11 @@ pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 				pkg_emit_error("Not a valide mode: %s", val->data.scalar.value);
 			else
 				perm = getmode(set, 0);
+		} else if (!strcasecmp(key->data.scalar.value, "try")) {
+			if (val->data.scalar.value[0] == 'n' || val->data.scalar.value[0] == 'y')
+				try = val->data.scalar.value[0];
+			else
+				pkg_emit_error("Wrong value for try: %s, expected 'y' or 'n'");
 		} else {
 			pkg_emit_error("Skipping unknown key for dir(%s): %s", dirname,
 						   key->data.scalar.value);
@@ -434,7 +454,7 @@ pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 		++pair;
 	}
 
-	pkg_adddir_attr(pkg, dirname, uname, gname, perm);
+	pkg_adddir_attr(pkg, dirname, uname, gname, perm, try);
 
 	return (EPKG_OK);
 }
@@ -607,6 +627,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int depsmap = -1;
 	int depkv;
 	int files = -1;
+	int dirs = -1;
 	int options = -1;
 	int scripts = -1;
 	const char *script_types = NULL;
@@ -712,8 +733,15 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	}
 
 	seq = -1;
-	while (pkg_dirs(pkg, &dir) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "dirs", pkg_dir_path(dir));
+	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		if (dirs == -1) {
+			dirs = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
+			yaml_document_append_mapping_pair(&doc, mapping,
+					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "directories"), 11, YAML_PLAIN_SCALAR_STYLE),
+					dirs);
+		}
+		manifest_append_kv(dirs, pkg_dir_path(dir), pkg_dir_try(dir) ? "y" : "n");
+	}
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
 		if (scripts == -1) {
