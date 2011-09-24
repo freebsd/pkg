@@ -1781,9 +1781,25 @@ pkgdb_query_autoremove(struct pkgdb *db)
 	const char sql[] = ""
 		"SELECT id AS rowid, origin, name, version, comment, desc, "
 		"message, arch, osversion, maintainer, www, prefix, "
-		"flatsize FROM packages WHERE automatic=1 AND "
-		"(SELECT deps.origin FROM deps where deps.origin = packages.origin) "
-		"IS NULL";
+		"flatsize FROM packages WHERE id IN (SELECT pkgid FROM autoremove);";
+
+	if (sql_exec(db->sqlite, "ATTACH ':memory:' AS memdb;") != EPKG_OK)
+		return (NULL);
+
+	sql_exec(db->sqlite, "DROP TABLE IF EXISTS memdb.autoremove; "
+			"CREATE TABLE IF NOT EXISTS memdb.autoremove ("
+			"origin TEXT UNIQUE NOT NULL, pkgid INTEGER);");
+
+	while (1) {
+		sql_exec(db->sqlite, "INSERT OR IGNORE into memdb.autoremove(origin, pkgid)"
+				"SELECT distinct origin, id FROM packages WHERE automatic=1 AND "
+				"origin NOT IN (SELECT DISTINCT deps.origin FROM deps WHERE "
+				"deps.package_id not in (select pkgid from  autoremove) and deps.origin = packages.origin);"
+			);
+		if (sqlite3_changes(db->sqlite) == 0)
+			break;
+
+	}
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
