@@ -1790,16 +1790,13 @@ pkgdb_query_autoremove(struct pkgdb *db)
 			"CREATE TABLE IF NOT EXISTS memdb.autoremove ("
 			"origin TEXT UNIQUE NOT NULL, pkgid INTEGER);");
 
-	while (1) {
+	do {
 		sql_exec(db->sqlite, "INSERT OR IGNORE into memdb.autoremove(origin, pkgid)"
 				"SELECT distinct origin, id FROM packages WHERE automatic=1 AND "
 				"origin NOT IN (SELECT DISTINCT deps.origin FROM deps WHERE "
 				"deps.package_id not in (select pkgid from  autoremove) and deps.origin = packages.origin);"
 			);
-		if (sqlite3_changes(db->sqlite) == 0)
-			break;
-
-	}
+	} while (sqlite3_changes(db->sqlite) != 0);
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
