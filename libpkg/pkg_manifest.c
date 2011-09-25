@@ -289,10 +289,11 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 				break;
 			case PKG_DIRECTORIES:
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
+					urldecode(key->data.scalar.value, &tmp);
 					if (val->data.scalar.value[0] == 'y')
-						pkg_adddir(pkg, key->data.scalar.value, 1);
+						pkg_adddir(pkg, sbuf_data(tmp), 1);
 					else
-						pkg_adddir(pkg, key->data.scalar.value, 0);
+						pkg_adddir(pkg, sbuf_data(tmp), 0);
 				} else if (val->type == YAML_MAPPING_NODE) {
 					pkg_set_dirs_from_node(pkg, val, doc, key->data.scalar.value);
 				} else {
@@ -741,7 +742,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "directories"), 11, YAML_PLAIN_SCALAR_STYLE),
 					dirs);
 		}
-		manifest_append_kv(dirs, pkg_dir_path(dir), pkg_dir_try(dir) ? "y" : "n");
+		urlencode(pkg_dir_path(dir), &tmpsbuf);
+		manifest_append_kv(dirs, sbuf_data(tmpsbuf), pkg_dir_try(dir) ? "y" : "n");
 	}
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
