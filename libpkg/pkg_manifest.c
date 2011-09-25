@@ -299,6 +299,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 					pkg_emit_error("Skipping malformed directories %s",
 								   key->data.scalar.value);
 				}
+				break;
 			case PKG_FILES:
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
 					urldecode(key->data.scalar.value, &tmp);
