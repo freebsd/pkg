@@ -1783,15 +1783,12 @@ pkgdb_query_autoremove(struct pkgdb *db)
 		"message, arch, osversion, maintainer, www, prefix, "
 		"flatsize FROM packages WHERE id IN (SELECT pkgid FROM autoremove);";
 
-	if (sql_exec(db->sqlite, "ATTACH ':memory:' AS memdb;") != EPKG_OK)
-		return (NULL);
-
-	sql_exec(db->sqlite, "DROP TABLE IF EXISTS memdb.autoremove; "
-			"CREATE TABLE IF NOT EXISTS memdb.autoremove ("
+	sql_exec(db->sqlite, "DROP TABLE IF EXISTS autoremove; "
+			"CREATE TEMPORARY TABLE IF NOT EXISTS autoremove ("
 			"origin TEXT UNIQUE NOT NULL, pkgid INTEGER);");
 
 	do {
-		sql_exec(db->sqlite, "INSERT OR IGNORE into memdb.autoremove(origin, pkgid)"
+		sql_exec(db->sqlite, "INSERT OR IGNORE into autoremove(origin, pkgid)"
 				"SELECT distinct origin, id FROM packages WHERE automatic=1 AND "
 				"origin NOT IN (SELECT DISTINCT deps.origin FROM deps WHERE "
 				"deps.package_id not in (select pkgid from  autoremove) and deps.origin = packages.origin);"
