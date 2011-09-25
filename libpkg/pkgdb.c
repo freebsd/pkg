@@ -618,6 +618,9 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 void
 pkgdb_it_free(struct pkgdb_it *it)
 {
+
+	sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; ");
+
 	if (it != NULL) {
 		sqlite3_finalize(it->stmt);
 		free(it);
