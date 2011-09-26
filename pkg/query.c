@@ -448,7 +448,7 @@ exec_query(int argc, char **argv)
 		return (EX_USAGE);
 
 	if (pkgname != NULL) {
-		if (pkg_open(&pkg, pkgname) != EPKG_OK) {
+		if (pkg_open(&pkg, pkgname, NULL) != EPKG_OK) {
 			return (1);
 		}
 		

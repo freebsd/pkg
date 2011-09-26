@@ -126,7 +126,7 @@ exec_info(int argc, char **argv)
 	}
 
 	if (file != NULL) {
-		if (pkg_open(&pkg, file) != EPKG_OK) {
+		if (pkg_open(&pkg, file, NULL) != EPKG_OK) {
 			return (1);
 		}
 		print_info(pkg, opt);

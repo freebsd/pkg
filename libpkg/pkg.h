@@ -3,6 +3,7 @@
 
 #include <stdarg.h>
 #include <stdbool.h>
+#include <sys/sbuf.h>
 #include <sys/types.h>
 #include <openssl/pem.h>
 
@@ -219,7 +220,7 @@ int pkg_isvalid(struct pkg *);
  * NULL pointer, the function allocate a new pkg using pkg_new().
  * @param path The path to the local package archive.
  */
-int pkg_open(struct pkg **p, const char *path);
+int pkg_open(struct pkg **p, const char *path, struct sbuf *mbuf);
 
 /**
  * @return the type of the package.
