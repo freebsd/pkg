@@ -28,11 +28,9 @@ static void pkgdb_regex_delete(void *);
 static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
 static int get_pragma(sqlite3 *, const char *, int64_t *);
-static int sql_exec(sqlite3 *, const char *);
 static int pkgdb_upgrade(sqlite3 *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
 static int create_temporary_pkgjobs(sqlite3 *);
-static int64_t sql_is_rw(sqlite3 *);
 
 static struct column_text_mapping {
 	const char * const name;
@@ -1670,7 +1668,7 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 	return (EPKG_OK);
 }
 
-static int
+int
 sql_exec(sqlite3 *s, const char *sql)
 {
 	char *errmsg;
@@ -1710,7 +1708,7 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res)
 	return (EPKG_OK);
 }
 
-static int64_t
+int64_t
 sql_is_rw(sqlite3 *s)
 {
 	int64_t rw=0;

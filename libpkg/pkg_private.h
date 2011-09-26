@@ -180,4 +180,8 @@ int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 
 int pkg_setrowid(struct pkg *, int64_t rowid);
 
+/* pkgdb commands */
+int sql_exec(sqlite3 *, const char *);
+int64_t sql_is_rw(sqlite3 *);
+
 #endif
