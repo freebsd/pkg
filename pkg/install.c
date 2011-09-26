@@ -83,8 +83,11 @@ exec_install(int argc, char **argv)
 		pkg = NULL;
 	}
 
-	if (pkg_jobs_isempty(jobs))
+	if (pkg_jobs_isempty(jobs)) {
+		printf("Nothing to do\n");
+		retcode = 0;
 		goto cleanup;
+	}
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
