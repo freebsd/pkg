@@ -30,8 +30,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	const char *packagesite = NULL;
 	int retcode = EPKG_OK;
 
-	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE ||
-		(pkg->type & PKG_UPGRADE) == PKG_UPGRADE);
+	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
 	if ((packagesite = pkg_config("PACKAGESITE")) == NULL) {
 		pkg_emit_error("pkg_repo_fetch(): %s", "PACKAGESITE is not defined");

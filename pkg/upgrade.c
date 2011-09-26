@@ -61,7 +61,7 @@ exec_upgrade(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
 		goto cleanup;
 	}
 
@@ -82,13 +82,15 @@ exec_upgrade(int argc, char **argv)
 	printf("The following packages will be upgraded: \n");
 	pkg = NULL;
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		oldsize += pkg_flatsize(pkg);
-		newsize += pkg_new_flatsize(pkg);
 		dlsize += pkg_new_pkgsize(pkg);
-		if (pkg_type(pkg) == PKG_UPGRADE)
+		if (pkg_get(pkg, PKG_NEWVERSION) != NULL) {
 			printf("\tUpgrading %s: %s -> %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg,PKG_NEWVERSION));
-		else
+			oldsize += pkg_flatsize(pkg);
+			newsize += pkg_new_flatsize(pkg);
+		} else {
+			newsize += pkg_flatsize(pkg);
 			printf("\tInstalling %s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		}
 	}
 
 	if (oldsize > newsize) {
