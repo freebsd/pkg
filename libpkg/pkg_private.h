@@ -7,6 +7,7 @@
 #include <sys/types.h>
 
 #include <archive.h>
+#include <sqlite3.h>
 #include <openssl/sha.h>
 #include <stdbool.h>
 
@@ -127,7 +128,7 @@ struct pkg_group {
 	STAILQ_ENTRY(pkg_group) next;
 };
 
-int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
+int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path, struct sbuf *mbuf);
 
 void pkg_list_free(struct pkg *, pkg_list);
 

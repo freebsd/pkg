@@ -169,6 +169,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
 	struct pkg_option *option = NULL;
+	struct sbuf *manifest = sbuf_new_auto();
 	char *ext = NULL;
 
 	sqlite3 *sqlite = NULL;
@@ -358,11 +359,10 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		while (pkg_path[0] == '/' )
 			pkg_path++;
 
-		if (pkg_open(&pkg, ent->fts_accpath) != EPKG_OK) {
+		if (pkg_open(&pkg, ent->fts_accpath, manifest) != EPKG_OK) {
 			retcode = EPKG_WARN;
 			continue;
 		}
-
 		if (progress != NULL)
 			progress(pkg, data);
 
@@ -501,6 +501,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	if (errmsg != NULL)
 		sqlite3_free(errmsg);
+
+	sbuf_delete(manifest);
 
 	sqlite3_shutdown();
 

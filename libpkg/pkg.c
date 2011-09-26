@@ -883,13 +883,13 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 }
 
 int
-pkg_open(struct pkg **pkg_p, const char *path)
+pkg_open(struct pkg **pkg_p, const char *path, struct sbuf *mbuf)
 {
 	struct archive *a;
 	struct archive_entry *ae;
 	int ret;
 
-	ret = pkg_open2(pkg_p, &a, &ae, path);
+	ret = pkg_open2(pkg_p, &a, &ae, path, mbuf);
 
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
@@ -900,15 +900,15 @@ pkg_open(struct pkg **pkg_p, const char *path)
 }
 
 int
-pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path)
+pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path, struct sbuf *mbuf)
 {
 	struct pkg *pkg;
 	pkg_error_t retcode = EPKG_OK;
 	int ret;
 	int64_t size;
-	char *manifest = NULL;
+	struct sbuf *manifest = mbuf;
 	const char *fpath;
-	char buf[2048];
+	char buf[BUFSIZ];
 	struct sbuf **sbuf;
 	int i;
 
@@ -921,6 +921,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	};
 
 	assert(path != NULL && path[0] != '\0');
+
+	if (manifest == NULL)
+		manifest = sbuf_new_auto();
+	else
+		sbuf_clear(manifest);
 
 	*a = archive_read_new();
 	archive_read_support_compression_all(*a);
@@ -953,9 +958,14 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 				pkg_emit_error("%s is not a valid package: empty +MANIFEST found", path);
 				goto cleanup;
 			}
-			manifest = calloc(1, size + 1);
-			archive_read_data(*a, manifest, size);
-			ret = pkg_parse_manifest(pkg, manifest);
+
+			while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0) {
+				sbuf_bcat(manifest, buf, size);
+			}
+
+			sbuf_finish(manifest);
+
+			ret = pkg_parse_manifest(pkg, sbuf_data(manifest));
 			if (ret != EPKG_OK) {
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -986,14 +996,16 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	if (ret == ARCHIVE_EOF)
 		retcode = EPKG_END;
 
-	if (manifest == NULL) {
+	if (sbuf_len(manifest) == 0) {
 		retcode = EPKG_FATAL;
 		pkg_emit_error("%s is not a valid package: no +MANIFEST found", path);
 	}
 
 	cleanup:
-	if (manifest != NULL)
-		free(manifest);
+	if (mbuf == NULL)
+		sbuf_delete(manifest);
+	else
+		sbuf_clear(manifest);
 
 	if (retcode != EPKG_OK && retcode != EPKG_END) {
 		if (*a != NULL)
