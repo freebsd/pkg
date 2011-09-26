@@ -1821,6 +1821,9 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 	sqlite3_finalize(stmt);
 	sbuf_clear(sql);
 
+	/* Remove packages already installed and in the latest version */
+	sql_exec(db->sqlite, "delete from pkgjobs where (select origin from main.packages where origin=pkgjobs.origin and version=jobs.version) IS NOT NULL;");
+
 	/* Append dependencies */
 	do {
 		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
@@ -1830,7 +1833,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 				"r.arch, r.osversion, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
 				"r.cksum, r.path, 1 FROM remote.packages AS r, main.packages AS l, pkgjobs AS j, "
 				"remote.deps AS d WHERE r.origin = d.origin AND d.package_id = j.pkgid AND "
-				"((l.origin = r.origin AND l.version != r.version) OR (r.origin NOT IN (select origin from main.packages)));");
+				"((l.origin = r.origin AND PKGLT(l.version, r.version)) OR (r.origin NOT IN (select origin from main.packages)));");
 	} while (sqlite3_changes(db->sqlite) != 0);
 
 	sbuf_delete(sql);
