@@ -1,10 +1,10 @@
 #ifndef _PKG_H
 #define _PKG_H
 
+#include <sys/types.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <sys/sbuf.h>
-#include <sys/types.h>
 #include <openssl/pem.h>
 
 struct pkg;
