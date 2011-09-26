@@ -115,7 +115,7 @@ main(int argc, char **argv)
 		if (p->fts_info != FTS_F)
 			continue;
 
-		if (pkg_open(&pkg, p->fts_accpath) != EPKG_OK) {
+		if (pkg_open(&pkg, p->fts_accpath, NULL) != EPKG_OK) {
 			continue;
 		}
 
