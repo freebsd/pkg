@@ -240,10 +240,10 @@ pkgdb_upgrade(sqlite3 *sdb)
 	}
 
 	while (db_version < DBVERSION) {
-		if (!sql_is_rw(sdb)) {
+		/*if (!sql_is_rw(sdb)) {
 			pkg_emit_error("The database is outdated and opened readonly");
 			return (EPKG_FATAL);
-		}
+		}*/
 		db_version++;
 
 		i = 0;
