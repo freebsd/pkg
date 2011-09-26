@@ -85,8 +85,11 @@ exec_autoremove(int argc, char **argv)
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
 	}
 
-	if (pkg_jobs_isempty(jobs))
+	if (pkg_jobs_isempty(jobs)) {
+		printf("Nothing to do");
+		retcode = 0;
 		goto cleanup;
+	}
 
 	pkg = NULL;
 	printf("Packages to be autoremoved: \n");
