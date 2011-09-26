@@ -28,7 +28,7 @@ static void pkgdb_regex_delete(void *);
 static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
 static int get_pragma(sqlite3 *, const char *, int64_t *);
-static int pkgdb_upgrade(sqlite3 *);
+static int pkgdb_upgrade(struct pkgdb *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
 static int create_temporary_pkgjobs(sqlite3 *);
 
@@ -222,14 +222,14 @@ pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 }
 
 static int
-pkgdb_upgrade(sqlite3 *sdb)
+pkgdb_upgrade(struct pkgdb *db)
 {
 	int64_t db_version = -1;
 	const char *sql_upgrade;
 	char sql_version[30];
 	int i;
 
-	if (get_pragma(sdb, "PRAGMA user_version;", &db_version) != EPKG_OK)
+	if (get_pragma(db->sqlite, "PRAGMA user_version;", &db_version) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if (db_version == DBVERSION)
@@ -240,7 +240,7 @@ pkgdb_upgrade(sqlite3 *sdb)
 	}
 
 	while (db_version < DBVERSION) {
-		if (!sql_is_rw(sdb)) {
+		if (db->writable != 1) {
 			pkg_emit_error("The database is outdated and opened readonly");
 			return (EPKG_FATAL);
 		}
@@ -267,18 +267,18 @@ pkgdb_upgrade(sqlite3 *sdb)
 			return (EPKG_FATAL);
 		}
 
-		if (sql_exec(sdb, "BEGIN;") != EPKG_OK)
+		if (sql_exec(db->sqlite, "BEGIN;") != EPKG_OK)
 			return (EPKG_FATAL);
 
-		if (sql_exec(sdb, sql_upgrade) != EPKG_OK)
+		if (sql_exec(db->sqlite, sql_upgrade) != EPKG_OK)
 					return (EPKG_FATAL);
 
 		snprintf(sql_version, sizeof(sql_version),
 					"PRAGMA user_version = %" PRId64 ";", db_version);
-		if (sql_exec(sdb, sql_version) != EPKG_OK)
+		if (sql_exec(db->sqlite, sql_version) != EPKG_OK)
 			return (EPKG_FATAL);
 
-		if (sql_exec(sdb, "COMMIT;") != EPKG_OK)
+		if (sql_exec(db->sqlite, "COMMIT;") != EPKG_OK)
 			return (EPKG_OK);
 	}
 
@@ -426,45 +426,84 @@ pkgdb_init(sqlite3 *sdb)
 }
 
 int
-pkgdb_open(struct pkgdb **db, pkgdb_t type)
+pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 {
-	int retcode;
+	struct pkgdb *db;
 	char localpath[MAXPATHLEN + 1];
 	char remotepath[MAXPATHLEN + 1];
 	char sql[BUFSIZ];
 	const char *dbdir;
+	bool create = false;
+
+	/*
+	 * Set the pointer to NULL now. Change it to the real pointer just
+	 * before returning, when we know that we succeeded.
+	 */
+	*db_p = NULL;
 
 	dbdir = pkg_config("PKG_DBDIR");
 
-	if ((*db = calloc(1, sizeof(struct pkgdb))) == NULL) {
+	if ((db = calloc(1, sizeof(struct pkgdb))) == NULL) {
 		pkg_emit_errno("malloc", "pkgdb");
 		return EPKG_FATAL;
 	}
 
-	(*db)->type = PKGDB_DEFAULT;
+	db->type = type;
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
-	retcode = access(localpath, R_OK);
-	if (retcode == -1) {
+
+	if (eaccess(localpath, R_OK) != 0) {
 		if (errno != ENOENT) {
 			pkg_emit_errno("access", localpath);
-			free(*db);
-			*db = NULL;
+			pkgdb_close(db);
 			return (EPKG_FATAL);
-		}
-		else if (eaccess(dbdir, W_OK) != 0) {
+		} else if (eaccess(dbdir, W_OK) != 0) {
+			/* If we need to create the db but can not write to it, fail early */
 			pkg_emit_errno("eaccess", dbdir);
-			free(*db);
-			*db = NULL;
+			pkgdb_close(db);
 			return (EPKG_FATAL);
+		} else {
+			create = true;
 		}
 	}
-
+	
 	sqlite3_initialize();
-	if (sqlite3_open(localpath, &(*db)->sqlite) != SQLITE_OK) {
-		ERROR_SQLITE((*db)->sqlite);
-		pkgdb_close(*db);
-		*db = NULL;
+	if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		pkgdb_close(db);
+		return (EPKG_FATAL);
+	}
+
+	/* If the database is missing we have to initialize it */
+	if (create == true)
+		if (pkgdb_init(db->sqlite) != EPKG_OK) {
+			pkgdb_close(db);
+			return (EPKG_FATAL);
+		}
+
+	if (eaccess(localpath, W_OK) == 0)
+		db->writable = 1;
+
+	if (pkgdb_upgrade(db) != EPKG_OK) {
+		pkgdb_close(db);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_create_function(db->sqlite, "regexp", 2, SQLITE_ANY, NULL,
+							pkgdb_regex_basic, NULL, NULL);
+	sqlite3_create_function(db->sqlite, "eregexp", 2, SQLITE_ANY, NULL,
+							pkgdb_regex_extended, NULL, NULL);
+	sqlite3_create_function(db->sqlite, "pkglt", 2, SQLITE_ANY, NULL,
+			pkgdb_pkglt, NULL, NULL);
+	sqlite3_create_function(db->sqlite, "pkggt", 2, SQLITE_ANY, NULL,
+			pkgdb_pkggt, NULL, NULL);
+
+	/*
+	 * allow foreign key option which will allow to have clean support for
+	 * reinstalling
+	 */
+	if (sql_exec(db->sqlite, "PRAGMA foreign_keys = ON;") != EPKG_OK) {
+		pkgdb_close(db);
 		return (EPKG_FATAL);
 	}
 
@@ -473,47 +512,20 @@ pkgdb_open(struct pkgdb **db, pkgdb_t type)
 
 		if (access(remotepath, R_OK) != 0) {
 			pkg_emit_errno("access", remotepath);
-			pkgdb_close(*db);
-			*db = NULL;
+			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
 
 		sqlite3_snprintf(sizeof(sql), sql, "ATTACH \"%s\" AS remote;", remotepath);
 
-		if (sql_exec((*db)->sqlite, sql) != EPKG_OK) {
-			pkgdb_close(*db);
-			*db = NULL;
+		if (sql_exec(db->sqlite, sql) != EPKG_OK) {
+			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
-
-		(*db)->type = PKGDB_REMOTE;
 	}
 
-	/* If the database is missing we have to initialize it */
-	if (retcode == -1)
-		if ((retcode = pkgdb_init((*db)->sqlite)) != EPKG_OK) {
-			ERROR_SQLITE((*db)->sqlite);
-			pkgdb_close(*db);
-			*db = NULL;
-			return (EPKG_FATAL);
-		}
-
-	pkgdb_upgrade((*db)->sqlite);
-
-	sqlite3_create_function((*db)->sqlite, "regexp", 2, SQLITE_ANY, NULL,
-							pkgdb_regex_basic, NULL, NULL);
-	sqlite3_create_function((*db)->sqlite, "eregexp", 2, SQLITE_ANY, NULL,
-							pkgdb_regex_extended, NULL, NULL);
-	sqlite3_create_function((*db)->sqlite, "pkglt", 2, SQLITE_ANY, NULL,
-			pkgdb_pkglt, NULL, NULL);
-	sqlite3_create_function((*db)->sqlite, "pkggt", 2, SQLITE_ANY, NULL,
-			pkgdb_pkggt, NULL, NULL);
-
-	/*
-	 * allow foreign key option which will allow to have clean support for
-	 * reinstalling
-	 */
-	return (sql_exec((*db)->sqlite, "PRAGMA foreign_keys = ON;"));
+	*db_p = db;
+	return (EPKG_OK);
 }
 
 void
@@ -628,7 +640,7 @@ void
 pkgdb_it_free(struct pkgdb_it *it)
 {
 
-	if (sql_is_rw(it->db->sqlite)) {
+	if (it->db->writable == 1) {
 		sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
 			"DROP TABLE IF EXISTS pkgjobs");
 	}
@@ -1706,16 +1718,6 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res)
 	}
 
 	return (EPKG_OK);
-}
-
-int64_t
-sql_is_rw(sqlite3 *s)
-{
-	int64_t rw=0;
-
-	get_pragma(s, "PRAGMA writable_schema;", &rw);
-
-	return (rw);
 }
 
 int
