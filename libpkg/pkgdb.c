@@ -31,6 +31,7 @@ static int get_pragma(sqlite3 *, const char *, int64_t *);
 static int sql_exec(sqlite3 *, const char *);
 static int pkgdb_upgrade(sqlite3 *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
+static int create_temporary_pkgjobs(sqlite3 *);
 
 static struct column_text_mapping {
 	const char * const name;
@@ -123,6 +124,11 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 						columns_int[i].set_int(pkg, sqlite3_column_int64(stmt, icol));
 						break;
 					}
+				}
+				if (strcmp(colname, "automatic") == 0) {
+					if (sqlite3_column_int64(stmt, icol) == 1)
+						pkg_setautomatic(pkg);
+					break;
 				}
 				if (columns_int[i].name == NULL)
 					pkg_emit_error("Unknown column %s", colname);
@@ -619,7 +625,8 @@ void
 pkgdb_it_free(struct pkgdb_it *it)
 {
 
-	sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; ");
+	sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
+			"DROP TABLE IF EXISTS pkgjobs");
 
 	if (it != NULL) {
 		sqlite3_finalize(it->stmt);
@@ -757,7 +764,7 @@ pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
 
 	assert(db != NULL && pkg != NULL);
 
-	if (pkg->type == PKG_UPGRADE || pkg->type == PKG_REMOTE) {
+	if (pkg->type == PKG_REMOTE) {
 		sql = ""
 			"SELECT d.name, d.origin, d.version "
 			"FROM remote.deps AS d "
@@ -921,7 +928,7 @@ pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg)
 
 	assert(db != NULL && pkg != NULL);
 
-	if (pkg->type == PKG_UPGRADE || pkg->type == PKG_REMOTE) {
+	if (pkg->type == PKG_REMOTE) {
 		sql = ""
 			"SELECT name "
 			"FROM remote.pkg_licenses, remote.licenses AS l "
@@ -947,7 +954,7 @@ pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg)
 
 	assert(db != NULL && pkg != NULL);
 
-	if (pkg->type == PKG_UPGRADE || pkg->type == PKG_REMOTE) {
+	if (pkg->type == PKG_REMOTE) {
 		sql = ""
 			"SELECT name "
 			"FROM remote.pkg_categories, remote.categories AS c "
@@ -1057,7 +1064,7 @@ pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg)
 
 	assert(db != NULL && pkg != NULL);
 
-	if (pkg->type == PKG_UPGRADE || pkg->type == PKG_REMOTE) {
+	if (pkg->type == PKG_REMOTE) {
 		sql = ""
 		"SELECT option, value "
 		"FROM remote.options "
@@ -1720,6 +1727,117 @@ pkgdb_compact(struct pkgdb *db)
 	return (sql_exec(db->sqlite, "VACUUM;"));
 }
 
+static int
+create_temporary_pkgjobs(sqlite3 *s)
+{
+	int ret;
+
+	ret = sql_exec(s, "DROP TABLE IF EXISTS pkgjobs;"
+			"CREATE TEMPORARY TABLE IF NOT EXISTS pkgjobs (pkgid INTEGER, "
+			"origin TEXT UNIQUE NOT NULL, name TEXT, version TEXT, "
+			"comment TEXT, desc TEXT, message TEXT, "
+			"arch TEXT, osversion TEXT, maintainer TEXT, "
+			"www TEXT, prefix TEXT, flatsize INTEGER, newversion TEXT, "
+			"newflatsize INTEGER, pkgsize INTEGER, cksum TEXT, repopath TEXT, automatic INTEGER);");
+
+	return (ret);
+}
+
+struct pkgdb_it *
+pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
+{
+	sqlite3_stmt *stmt = NULL;;
+	int i = 0;
+	struct sbuf *sql = sbuf_new_auto();
+	const char *how = NULL;
+
+	const char finalsql[] = "select pkgid as rowid, origin, name, version, "
+		"comment, desc, message, arch, osversion, maintainer, "
+		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+		"cksum, repopath, automatic FROM pkgjobs;";
+
+	if (db->type != PKGDB_REMOTE) {
+		pkg_emit_error("remote database not attached (misuse)");
+		return (NULL);
+	}
+
+	sbuf_cat(sql, "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
+			"cksum, repopath, automatic) "
+			"SELECT id, origin, name, version, comment, desc, "
+			"arch, osversion, maintainer, www, prefix, flatsize, pkgsize, "
+			"cksum, path, 0 FROM remote.packages WHERE ");
+
+	switch (match) {
+		case MATCH_ALL:
+			how = NULL;
+			break;
+		case MATCH_EXACT:
+			how = "%s = ?1";
+			break;
+		case MATCH_GLOB:
+			how = "%s GLOB ?1";
+			break;
+		case MATCH_REGEX:
+			how = "%s REGEXP ?1";
+			break;
+		case MATCH_EREGEX:
+			how = "EREGEXP(?1, %s)";
+			break;
+	}
+
+	create_temporary_pkgjobs(db->sqlite);
+
+	sbuf_printf(sql, how, "name");
+	sbuf_cat(sql, " OR ");
+	sbuf_printf(sql, how, "origin");
+	sbuf_cat(sql, " OR ");
+	sbuf_printf(sql, how, "name || \"-\" || version");
+
+	for (i = 0; i < nbpkgs; i++) {
+		if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			return (NULL);
+		}
+		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_TRANSIENT);
+		while (sqlite3_step(stmt) != SQLITE_DONE);
+	}
+
+	sqlite3_finalize(stmt);
+	sbuf_clear(sql);
+
+	/* Append dependencies */
+	do {
+		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+				"osversion, maintainer, www, prefix, flatsize, pkgsize, "
+				"cksum, repopath, automatic) "
+				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
+				"r.arch, r.osversion, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
+				"r.cksum, r.path, 1 FROM remote.packages AS r, main.packages AS l, pkgjobs AS j, "
+				"remote.deps AS d WHERE r.origin = d.origin AND d.package_id = j.pkgid AND "
+				"((l.origin = r.origin AND l.version != r.version) OR (r.origin NOT IN (select origin from main.packages)));");
+	} while (sqlite3_changes(db->sqlite) != 0);
+
+	sbuf_delete(sql);
+
+	/* Determine if there is an upgrade needed */
+	sql_exec(db->sqlite, "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
+			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+			"cksum, repopath, automatic) "
+			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
+			"l.osversion, l.maintainer, l.www, l.prefix, l.flatsize, r.version AS newversion, "
+			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
+			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin "
+			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
+
+	if (sqlite3_prepare_v2(db->sqlite, finalsql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+}
+
 struct pkgdb_it *
 pkgdb_query_upgrades(struct pkgdb *db)
 {
@@ -1730,22 +1848,43 @@ pkgdb_query_upgrades(struct pkgdb *db)
 		return (NULL);
 	}
 
-	const char sql[] = ""
-		"SELECT l.id AS rowid, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
-		"l.message AS message, l.arch AS arch, l.osversion AS osversion, l.maintainer AS maintainer, "
-		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS newversion, r.flatsize AS newflatsize, "
-		"r.pkgsize AS pkgsize, r.cksum AS cksum, r.path AS repopath "
-		"FROM main.packages AS l, "
-		"remote.packages AS r "
-		"WHERE l.origin = r.origin "
-		"AND (PKGLT(l.version, r.version) OR (l.name != r.name))";
+	const char sql[] = "select pkgid as rowid, origin, name, version, "
+		"comment, desc, message, arch, osversion, maintainer, "
+		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+		"cksum, repopath, automatic FROM pkgjobs;";
+
+	create_temporary_pkgjobs(db->sqlite);
+
+	sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
+			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+			"cksum, repopath, automatic) "
+			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
+			"l.message, l.arch, l.osversion, l.maintainer, "
+			"l.www, l.prefix, l.flatsize, r.version AS newversion, r.flatsize AS newflatsize, "
+			"r.pkgsize, r.cksum, r.path AS repopath, l.automatic "
+			"FROM main.packages AS l, "
+			"remote.packages AS r "
+			"WHERE l.origin = r.origin "
+			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
+
+	do {
+		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
+			"cksum, repopath, automatic)"
+			"SELECT DISTINCT id, origin, name, version, comment, desc, arch, osversion, maintainer, www, prefix, flatsize, "
+			"pkgsize, cksum, path as repopath, 1 FROM remote.packages WHERE origin IN ("
+			"SELECT DISTINCT deps.origin FROM remote.deps as deps, pkgjobs WHERE deps.package_id = pkgjobs.pkgid and "
+			"deps.origin NOT IN (SELECT DISTINCT origin from pkgjobs) AND deps.origin NOT IN (SELECT DISTINCT origin from main.packages)"
+			");");
+	} while (sqlite3_changes(db->sqlite) != 0);
+
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
 	}
 
-	return (pkgdb_it_new(db, stmt, PKG_UPGRADE));
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
 }
 
 struct pkgdb_it *
@@ -1773,7 +1912,7 @@ pkgdb_query_downgrades(struct pkgdb *db)
 		return (NULL);
 	}
 
-	return (pkgdb_it_new(db, stmt, PKG_UPGRADE));
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
 }
 
 struct pkgdb_it *

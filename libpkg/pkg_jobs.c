@@ -103,55 +103,17 @@ pkg_jobs_install(struct pkg_jobs *j)
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				 pkg_get(p, PKG_REPOPATH));
 
-		if (pkg_add2(j->db, path, 0, pkg_isautomatic(p)) != EPKG_OK) {
-			return (EPKG_FATAL);
+		if (pkg_get(p, PKG_NEWVERSION) != NULL) {
+			p->type = PKG_INSTALLED;
+			if (pkg_delete2(p, j->db, 1, 0) != EPKG_OK)
+				return (EPKG_FATAL);
 		}
+
+		if (pkg_add2(j->db, path, 0, pkg_isautomatic(p)) != EPKG_OK)
+			return (EPKG_FATAL);
 	}
 
 	return (EPKG_OK);
-}
-
-static int
-pkg_jobs_upgrade(struct pkg_jobs *j)
-{
-	struct pkg *p = NULL;
-	struct pkg *oldpkg = NULL;
-	struct pkgdb_it *it;
-	const char *cachedir;
-	char path[MAXPATHLEN + 1];
-	int retcode = EPKG_FATAL;;
-
-	/* Fetch */
-	while (pkg_jobs(j, &p) == EPKG_OK) {
-		if (pkg_repo_fetch(p) != EPKG_OK)
-			return (EPKG_FATAL);
-	}
-
-	cachedir = pkg_config("PKG_CACHEDIR");
-	p = NULL;
-	while (pkg_jobs(j, &p) == EPKG_OK) {
-		snprintf(path, sizeof(path), "%s/%s", cachedir,
-			 pkg_get(p, PKG_REPOPATH));
-
-		/* get the installed pkg if any */
-		it = pkgdb_query(j->db, pkg_get(p, PKG_ORIGIN), MATCH_EXACT);
-		if (pkgdb_it_next(it, &oldpkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			retcode = pkg_upgrade(j->db, oldpkg, path);
-		} else {
-			retcode = pkg_upgrade(j->db, NULL, path);
-		}
-
-		pkgdb_it_free(it);
-
-		if (retcode != EPKG_OK)
-			goto cleanup;
-	}
-
-	retcode = EPKG_OK;
-
-	cleanup:
-	pkg_free(oldpkg);
-	return (retcode);
 }
 
 static int
@@ -176,8 +138,6 @@ pkg_jobs_apply(struct pkg_jobs *j, int force)
 		return (pkg_jobs_install(j));
 	if (j->type == PKG_JOBS_DEINSTALL)
 		return (pkg_jobs_deinstall(j, force));
-	if (j->type == PKG_JOBS_UPGRADE)
-		return (pkg_jobs_upgrade(j));
 
 	pkg_emit_error("bad jobs argument");
 	return (EPKG_FATAL);
@@ -228,34 +188,6 @@ add_parent(struct pkg_jobs_node *n, struct pkg_jobs_node *p)
 }
 
 static void
-add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
-{
-	struct pkg_dep *dep = NULL;
-	struct pkg_jobs_node *ndep;
-	struct pkgdb_it *it = NULL;
-
-	while (pkg_deps(n->pkg, &dep) != EPKG_END) {
-		ndep = get_node(j, pkg_dep_origin(dep), 1);
-		if (ndep->pkg == NULL) {
-			/* get it from remote */
-			if ((it = pkgdb_rquery(j->db, pkg_dep_origin(dep), MATCH_EXACT, FIELD_ORIGIN)) == NULL) {
-				pkg_emit_missing_dep(n->pkg, dep);
-			} else {
-				if (pkgdb_it_next(it, &ndep->pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
-					pkg_setautomatic(ndep->pkg);
-					add_dep(j, ndep);
-				} else {
-					pkg_emit_missing_dep(n->pkg, dep);
-				}
-			}
-
-			pkgdb_it_free(it);
-		}
-		add_parent(ndep, n);
-	}
-}
-
-static void
 add_rdep(struct pkg_jobs *j, struct pkg_jobs_node *n)
 {
 	struct pkg_jobs_node *nrdep;
@@ -294,8 +226,7 @@ int
 pkg_jobs_resolv(struct pkg_jobs *j)
 {
 	struct pkg_jobs_node *n, *tmp;
-	struct pkg *p, *ptemp, *localp;
-	struct pkgdb_it *it = NULL;
+	struct pkg *p;
 
 	assert(j != NULL);
 
@@ -317,10 +248,6 @@ pkg_jobs_resolv(struct pkg_jobs *j)
 
 	/* Add dependencies into nodes */
 	LIST_FOREACH(n, &j->nodes, entries) {
-		if (j->type == PKG_JOBS_UPGRADE)
-			add_dep(j, n);
-		if (j->type == PKG_JOBS_INSTALL)
-			add_dep(j, n);
 		if (j->type == PKG_JOBS_DEINSTALL)
 			add_rdep(j, n);
 	}
@@ -334,26 +261,6 @@ pkg_jobs_resolv(struct pkg_jobs *j)
 	} while (!LIST_EMPTY(&j->nodes));
 
 	j->resolved = 1;
-
-	if (j->type == PKG_JOBS_DEINSTALL)
-		return (EPKG_OK);
-
-	/* Now remove packages that are already installed */
-	STAILQ_FOREACH_SAFE(p, &j->jobs, next, ptemp) {
-		localp = NULL;
-		it = NULL;
-		if ((it = pkgdb_query(j->db, pkg_get(p, PKG_ORIGIN), MATCH_EXACT)) == NULL)
-			continue;
-		if (pkgdb_it_next(it, &localp, PKG_LOAD_BASIC) == EPKG_OK)
-			if (!strcmp(pkg_get(localp, PKG_NAME), pkg_get(p, PKG_NAME)) &&
-					!strcmp(pkg_get(localp, PKG_VERSION), pkg_get(p, p->type == PKG_UPGRADE ? PKG_NEWVERSION : PKG_VERSION))) {
-				STAILQ_REMOVE(&j->jobs, p, pkg, next);
-				pkg_free(p);
-			}
-
-		pkg_free(localp);
-		pkgdb_it_free(it);
-	}
 
 	return (EPKG_OK);
 }
