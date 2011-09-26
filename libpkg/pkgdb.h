@@ -9,6 +9,7 @@ struct pkgdb {
 	uint64_t flags;
 	sqlite3 *sqlite;
 	pkgdb_t type;
+	unsigned int writable :1;
 };
 
 struct pkgdb_it {
