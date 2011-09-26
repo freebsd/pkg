@@ -86,7 +86,7 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	if (pkg_jobs_isempty(jobs)) {
-		printf("Nothing to do");
+		printf("Nothing to do\n");
 		retcode = 0;
 		goto cleanup;
 	}
