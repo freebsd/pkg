@@ -281,19 +281,12 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_shutdown();
 		return (EPKG_FATAL);
 	}
-
-	if (sqlite3_exec(sqlite, initsql, NULL, NULL, &errmsg) != SQLITE_OK) {
-		pkg_emit_error("sqlite: %s", errmsg);
-		retcode = EPKG_FATAL;
+	
+	if ((retcode = sql_exec(sqlite, initsql)) != EPKG_OK)
 		goto cleanup;
-	}
 
-	if (sqlite3_exec(sqlite, "BEGIN TRANSACTION;", NULL, NULL, &errmsg) !=
-		SQLITE_OK) {
-		pkg_emit_error("sqlite: %s", errmsg);
-		retcode = EPKG_FATAL;
+	if ((retcode = sql_exec(sqlite, "BEGIN TRANSACTION;")) != EPKG_OK)
 		goto cleanup;
-	}
 
 	if (sqlite3_prepare_v2(sqlite, pkgsql, -1, &stmt_pkg, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite);
