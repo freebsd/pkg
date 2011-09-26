@@ -32,6 +32,7 @@ static int sql_exec(sqlite3 *, const char *);
 static int pkgdb_upgrade(sqlite3 *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
 static int create_temporary_pkgjobs(sqlite3 *);
+static int64_t sql_is_rw(sqlite3 *);
 
 static struct column_text_mapping {
 	const char * const name;
@@ -241,6 +242,10 @@ pkgdb_upgrade(sqlite3 *sdb)
 	}
 
 	while (db_version < DBVERSION) {
+		if (!sql_is_rw(sdb)) {
+			pkg_emit_error("The database is outdated and opened readonly");
+			return (EPKG_FATAL);
+		}
 		db_version++;
 
 		i = 0;
@@ -625,8 +630,10 @@ void
 pkgdb_it_free(struct pkgdb_it *it)
 {
 
-	sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
+	if (sql_is_rw(it->db->sqlite)) {
+		sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
 			"DROP TABLE IF EXISTS pkgjobs");
+	}
 
 	if (it != NULL) {
 		sqlite3_finalize(it->stmt);
@@ -1701,6 +1708,16 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res)
 	}
 
 	return (EPKG_OK);
+}
+
+static int64_t
+sql_is_rw(sqlite3 *s)
+{
+	int64_t rw=0;
+
+	get_pragma(s, "PRAGMA writable_schema;", &rw);
+
+	return (rw);
 }
 
 int
