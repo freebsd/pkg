@@ -1833,9 +1833,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 				"cksum, repopath, automatic) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
 				"r.arch, r.osversion, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
-				"r.cksum, r.path, 1 FROM remote.packages AS r, main.packages AS l, pkgjobs AS j, "
-				"remote.deps AS d WHERE r.origin = d.origin AND d.package_id = j.pkgid AND "
-				"((l.origin = r.origin AND PKGLT(l.version, r.version)) OR (r.origin NOT IN (select origin from main.packages)));");
+				"r.cksum, r.path, 1 "
+				"from remote.packages AS r where r.origin IN "
+				"(SELECT d.origin from remote.deps AS d, pkgjobs as j WHERE d.package_id = j.pkgid) "
+				"AND (SELECT origin from main.packages WHERE origin=r.origin AND version=r.version) IS NULL;");
 	} while (sqlite3_changes(db->sqlite) != 0);
 
 	sbuf_delete(sql);
