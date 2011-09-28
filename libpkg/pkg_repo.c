@@ -25,6 +25,7 @@ pkg_repo_fetch(struct pkg *pkg)
 {
 	char dest[MAXPATHLEN + 1];
 	char url[MAXPATHLEN + 1];
+	int fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	char *path = NULL;
 	const char *packagesite = NULL;
@@ -62,6 +63,7 @@ pkg_repo_fetch(struct pkg *pkg)
 				pkg_get(pkg, PKG_REPOPATH));
 
 	retcode = pkg_fetch_file(url, dest);
+	fetched = 1;
 
 	if (retcode != EPKG_OK)
 		goto cleanup;
@@ -70,9 +72,16 @@ pkg_repo_fetch(struct pkg *pkg)
 	retcode = sha256_file(dest, cksum);
 	if (retcode == EPKG_OK)
 		if (strcmp(cksum, pkg_get(pkg, PKG_CKSUM))) {
-			pkg_emit_error("%s-%s failed checksum from repository",
-						   pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-			retcode = EPKG_FATAL;
+			if (fetched == 1) {
+				pkg_emit_error("%s-%s failed checksum from repository",
+						pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+				retcode = EPKG_FATAL;
+			} else {
+				pkg_emit_error("cached package %s-%s: checksum mismatch, fetching from remote",
+						pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+				unlink(dest);
+				return (pkg_repo_fetch(pkg));
+			}
 		}
 
 	cleanup:
