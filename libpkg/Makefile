@@ -3,6 +3,7 @@
 LIB=		pkg
 INCS=		pkg.h
 WARNS=		6
+LOCALBASE?=	/usr/local
 SHLIBDIR?=	/usr/lib
 SHLIB_MAJOR=	0
 
@@ -32,6 +33,7 @@ CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/libyaml/include
 LDADD+=		-L${.CURDIR}/../external/sqlite \
 		-L${.CURDIR}/../external/libyaml \
+		-L${LOCALBASE}/lib \
 		-lsqlite3 \
 		-lyaml \
 		-larchive \
