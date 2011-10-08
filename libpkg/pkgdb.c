@@ -639,16 +639,16 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 void
 pkgdb_it_free(struct pkgdb_it *it)
 {
+	if (it == NULL)
+		return;
 
 	if (it->db->writable == 1) {
 		sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
 			"DROP TABLE IF EXISTS pkgjobs");
 	}
 
-	if (it != NULL) {
-		sqlite3_finalize(it->stmt);
-		free(it);
-	}
+	sqlite3_finalize(it->stmt);
+	free(it);
 }
 
 struct pkgdb_it *
