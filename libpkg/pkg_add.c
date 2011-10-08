@@ -56,7 +56,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		 * if conf1.cfg doesn't exists create it based on
 		 * conf1.cfg.pkgconf
 		 */
-		if (is_conf_file(archive_entry_pathname(ae), path)
+		if (is_conf_file(archive_entry_pathname(ae), path, sizeof(path))
 		    && lstat(path, &st) == ENOENT) {
 			archive_entry_set_pathname(ae, path);
 			if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {

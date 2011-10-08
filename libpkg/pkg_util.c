@@ -274,7 +274,7 @@ sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 }
 
 int
-is_conf_file(const char *path, char newpath[MAXPATHLEN + 1])
+is_conf_file(const char *path, char *newpath, size_t len)
 {
 	size_t n;
 	char *p = NULL;
@@ -287,7 +287,7 @@ is_conf_file(const char *path, char newpath[MAXPATHLEN + 1])
 	p = strrchr(path, '.');
 
 	if (p != NULL && !strcmp(p, ".pkgconf")) {
-		strlcpy(newpath, path, sizeof(newpath));
+		strlcpy(newpath, path, len);
 		newpath[n - 8] = '\0';
 		return (1);
 	}

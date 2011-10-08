@@ -23,7 +23,7 @@ int format_exec_cmd(char **, const char *, const char *, const char *);
 int split_chr(char *, char);
 int file_fetch(const char *, const char *);
 int is_dir(const char *);
-int is_conf_file(const char *path, char newpath[MAXPATHLEN]);
+int is_conf_file(const char *path, char *newpath, size_t len);
 
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 void sha256_str(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
