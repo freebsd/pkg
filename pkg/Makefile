@@ -29,11 +29,11 @@ STATIC_PKGNG=	yes
 .endif
 
 CFLAGS+=	-I${.CURDIR}/../libpkg
-LDADD+=		-L${.CURDIR}/../libpkg \
+LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lutil \
 		-ljail
 .if defined(STATIC_PKGNG)
-LDADD+=		${.CURDIR}/../libpkg/libpkg.a \
+LDADD+=		${.OBJDIR}/../libpkg/libpkg.a \
 		-L${.CURDIR}/../external/sqlite \
 		-L${.CURDIR}/../external/libyaml \
 		-lsqlite3 \
