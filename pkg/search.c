@@ -94,6 +94,7 @@ exec_search(int argc, char **argv)
 	while ((retcode = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK)
 		print_info(pkg, opt);
 
+	pkg_free(pkg);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
