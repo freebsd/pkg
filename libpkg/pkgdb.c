@@ -1010,7 +1010,7 @@ pkgdb_loaduser(struct pkgdb *db, struct pkg *pkg)
 	const char sql[] = ""
 		"SELECT users.name "
 		"FROM pkg_users, users "
-		"WHERE packagd_id ?1 "
+		"WHERE package_id ?1 "
 		"AND user_id = users.id "
 		"ORDER by name DESC";
 
@@ -1025,7 +1025,7 @@ pkgdb_loadgroup(struct pkgdb *db, struct pkg *pkg)
 	const char sql[] = ""
 		"SELECT groups.name "
 		"FROM pkg_groups, groups "
-		"WHERE packagd_id ?1 "
+		"WHERE package_id ?1 "
 		"AND group_id = groups.id "
 		"ORDER by name DESC";
 
