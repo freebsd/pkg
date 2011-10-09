@@ -126,6 +126,7 @@ exec_install(int argc, char **argv)
 
 	cleanup:
 	pkg_jobs_free(jobs);
+	pkgdb_it_free(it);
 	pkgdb_close(db);
 
 	return (retcode);
