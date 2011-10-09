@@ -73,6 +73,8 @@ loadval(sqlite3 *db, struct pkg *pkg, const char *sql, int flags, int (*pkg_addd
 	sqlite3_stmt *stmt;
 	int ret;
 
+	assert(db != NULL && pkg != NULL);
+
 	if (pkg->flags & flags)
 		return (EPKG_OK);
 
@@ -104,6 +106,8 @@ static void
 populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	int i, icol = 0;
 	const char *colname;
+
+	assert(stmt != NULL);
 
 	for (icol = 0; icol < sqlite3_column_count(stmt); icol++) {
 		colname = sqlite3_column_name(stmt, icol);
@@ -229,6 +233,8 @@ pkgdb_upgrade(struct pkgdb *db)
 	const char *sql_upgrade;
 	char sql_version[30];
 	int i;
+
+	assert(db != NULL);
 
 	if (get_pragma(db->sqlite, "PRAGMA user_version;", &db_version) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -550,6 +556,8 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 {
 	struct pkgdb_it *it;
 
+	assert(db != NULL && s != NULL);
+
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
 		pkg_emit_errno("malloc", "pkgdb_it");
 		sqlite3_finalize(s);
@@ -660,6 +668,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	const char *comp = NULL;
 	char *checkorigin = NULL;
 
+	assert(db != NULL);
 	assert(match == MATCH_ALL || pattern != NULL);
 
 	if (pattern != NULL)
@@ -729,6 +738,8 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 			"WHERE p.rowid = f.package_id "
 				"AND f.path = ?1;";
 
+	assert(db != NULL);
+
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
@@ -748,6 +759,8 @@ pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res)
 	const char sql[] = ""
 		"SELECT count(package_id) FROM pkg_directories, directories "
 		"WHERE directory_id = directories.id AND directories.path = ?1;";
+
+	assert(db != NULL);
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -1138,6 +1151,8 @@ pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_has_flag(struct pkgdb *db, int flag)
 {
+	assert(db != NULL);
+
 	return (db->flags & flag);
 }
 
@@ -1228,6 +1243,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	const char sql_groups[] = ""
 		"INSERT OR ROLLBACK INTO pkg_groups(package_id, group_id) "
 		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2));";
+
+	assert(db != NULL);
 
 	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
 		pkg_emit_error("%s", "tried to register a package with an in-flight SQL command");
@@ -1621,9 +1638,11 @@ pkgdb_register_finale(struct pkgdb *db, int retcode)
 	const char *commands[] = { "COMMIT;", "ROLLBACK;", NULL };
 	const char *command;
 
+	assert(db != NULL);
+
 	if (!pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
 		pkg_emit_error("database command not in flight (misuse)");
-		return EPKG_FATAL;
+		return (EPKG_FATAL);
 	}
 
 	command = (retcode == EPKG_OK) ? commands[0] : commands[1];
@@ -1631,7 +1650,7 @@ pkgdb_register_finale(struct pkgdb *db, int retcode)
 
 	PKGDB_UNSET_FLAG(db, PKGDB_FLAG_IN_FLIGHT);
 
-	return ret;
+	return (ret);
 }
 
 int
@@ -1686,6 +1705,8 @@ sql_exec(sqlite3 *s, const char *sql)
 {
 	char *errmsg;
 
+	assert(s != NULL && sql != NULL);
+
 	if (sqlite3_exec(s, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
 		pkg_emit_error("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
@@ -1700,6 +1721,8 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res)
 {
 	sqlite3_stmt *stmt;
 	int ret;
+
+	assert(s != NULL && sql != NULL);
 
 	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(s);
@@ -1750,6 +1773,8 @@ create_temporary_pkgjobs(sqlite3 *s)
 {
 	int ret;
 
+	assert(s != NULL);
+
 	ret = sql_exec(s, "DROP TABLE IF EXISTS pkgjobs;"
 			"CREATE TEMPORARY TABLE IF NOT EXISTS pkgjobs (pkgid INTEGER, "
 			"origin TEXT UNIQUE NOT NULL, name TEXT, version TEXT, "
@@ -1773,6 +1798,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 		"comment, desc, message, arch, osversion, maintainer, "
 		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
 		"cksum, repopath, automatic FROM pkgjobs;";
+
+	assert(db != NULL);
 
 	if (db->type != PKGDB_REMOTE) {
 		pkg_emit_error("remote database not attached (misuse)");
@@ -1863,7 +1890,9 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 struct pkgdb_it *
 pkgdb_query_upgrades(struct pkgdb *db)
 {
-	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt = NULL;
+
+	assert(db != NULL);
 
 	if (db->type != PKGDB_REMOTE) {
 		pkg_emit_error("remote database not attached (misuse)");
@@ -1912,7 +1941,9 @@ pkgdb_query_upgrades(struct pkgdb *db)
 struct pkgdb_it *
 pkgdb_query_downgrades(struct pkgdb *db)
 {
-	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt = NULL;
+
+	assert(db != NULL);
 
 	if (db->type != PKGDB_REMOTE) {
 		pkg_emit_error("remote database not attached (misuse)");
@@ -1940,7 +1971,9 @@ pkgdb_query_downgrades(struct pkgdb *db)
 struct pkgdb_it *
 pkgdb_query_autoremove(struct pkgdb *db)
 {
-	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt = NULL;
+
+	assert(db != NULL);
 
 	const char sql[] = ""
 		"SELECT id AS rowid, origin, name, version, comment, desc, "
@@ -1975,6 +2008,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 	const char *what = NULL;
 	const char *how = NULL;
 
+	assert(db != NULL);
 	assert(pattern != NULL && pattern[0] != '\0');
 
 	if (db->type != PKGDB_REMOTE) {
