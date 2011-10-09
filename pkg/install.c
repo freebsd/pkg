@@ -17,7 +17,7 @@
 void
 usage_install(void)
 {
-	fprintf(stderr, "usage: pkg install [-ygxXf] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg install [-ygxX] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
