@@ -1794,10 +1794,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 	struct sbuf *sql = sbuf_new_auto();
 	const char *how = NULL;
 
-	const char finalsql[] = "select pkgid as rowid, origin, name, version, "
-		"comment, desc, message, arch, osversion, maintainer, "
-		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-		"cksum, repopath, automatic FROM pkgjobs;";
+	const char finalsql[] = "SELECT r.id AS rowid, r.origin, r.name, r.version, "
+		"r.comment, r.desc, p.message, r.arch, r.osversion, r.maintainer, "
+		"r.www, r.prefix, r.flatsize, p.newversion, p.newflatsize, r.pkgsize, "
+		"r.cksum, r.path as repopath, p.automatic FROM remote.packages AS r, pkgjobs AS p WHERE pkgid=id ";
 
 	assert(db != NULL);
 
@@ -1806,12 +1806,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 		return (NULL);
 	}
 
-	sbuf_cat(sql, "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic) "
-			"SELECT id, origin, name, version, comment, desc, "
-			"arch, osversion, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, path, 0 FROM remote.packages WHERE ");
+	sbuf_cat(sql, "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
+			"flatsize, pkgsize, automatic) "
+			"SELECT id, origin, name, version, "
+			"flatsize, pkgsize, 0 FROM remote.packages WHERE ");
 
 	switch (match) {
 		case MATCH_ALL:
@@ -1852,30 +1850,29 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 	sbuf_clear(sql);
 
 	/* Remove packages already installed and in the latest version */
-	sql_exec(db->sqlite, "delete from pkgjobs where (select origin from main.packages where origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
+	sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
 
 	/* Append dependencies */
 	do {
-		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-				"osversion, maintainer, www, prefix, flatsize, pkgsize, "
-				"cksum, repopath, automatic) "
-				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
-				"r.arch, r.osversion, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
-				"r.cksum, r.path, 1 "
+		sql_exec(db->sqlite, "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
+				"flatsize, pkgsize, "
+				"automatic) "
+				"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
+				"r.flatsize, r.pkgsize, 1 "
 				"from remote.packages AS r where r.origin IN "
 				"(SELECT d.origin from remote.deps AS d, pkgjobs as j WHERE d.package_id = j.pkgid) "
-				"AND (SELECT origin from main.packages WHERE origin=r.origin AND version=r.version) IS NULL;");
+				"AND (SELECT p.origin from main.packages as p WHERE p.origin=r.origin AND version=r.version) IS NULL;");
 	} while (sqlite3_changes(db->sqlite) != 0);
 
 	sbuf_delete(sql);
 
 	/* Determine if there is an upgrade needed */
-	sql_exec(db->sqlite, "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
-			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-			"cksum, repopath, automatic) "
-			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
-			"l.osversion, l.maintainer, l.www, l.prefix, l.flatsize, r.version AS newversion, "
-			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
+	sql_exec(db->sqlite, "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, "
+			"flatsize, newversion, newflatsize, pkgsize, "
+			" automatic) "
+			"SELECT l.id, l.origin, l.name, l.version, "
+			"l.flatsize, r.version AS newversion, "
+			"r.flatsize AS newflatsize, r.pkgsize, r.automatic "
 			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin "
 			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
 
