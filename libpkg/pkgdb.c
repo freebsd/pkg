@@ -2069,3 +2069,66 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 
 	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
 }
+
+int
+pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
+{
+	sqlite3_stmt *stmt = NULL;
+	struct pkg_file *file = NULL;
+	const char sql[] = "INSERT INTO integritycheck (name, origin, version, path)"
+		"values (?1, ?2, ?3, ?4);";
+
+	assert( db != NULL && p != NULL);
+
+	sql_exec(db->sqlite, "CREATE IF NOT EXISTS temporary table integritycheck ( "
+			"name TEXT, "
+			"origin TEXT, "
+			"version TEXT, "
+			"path TEXT );"
+		);
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+	while (pkg_files(p, &file) == EPKG_OK) {
+		sqlite3_bind_text(stmt, 1, pkg_get(p, PKG_NAME), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt, 2, pkg_get(p, PKG_ORIGIN), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt, 3, pkg_get(p, PKG_VERSION), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt, 4, pkg_file_path(file), -1, SQLITE_STATIC);
+
+		if (sqlite3_step(stmt) != SQLITE_DONE) {
+			ERROR_SQLITE(db->sqlite);
+			sqlite3_finalize(stmt);
+			return (EPKG_FATAL);
+		}
+		sqlite3_reset(stmt);
+	}
+	sqlite3_finalize(stmt);
+	return (EPKG_OK);
+}
+
+int
+pkgdb_integrity_check(struct pkgdb *db)
+{
+	int ret = EPKG_OK;
+	sqlite3_stmt *stmt;
+	assert (db != NULL);
+
+	if (sqlite3_prepare_v2(db->sqlite, 
+		"SELECT path, COUNT(path) AS NumOccurrences "
+		"FROM integritycheck GROUP BY path  HAVING ( COUNT(path) > 1  );",
+		-1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	while (sqlite3_step(stmt) != SQLITE_DONE) {
+		pkg_emit_error("Conflict detected for file %s", sqlite3_column_text(stmt, 1));
+		ret = EPKG_FATAL;
+	}
+
+	sqlite3_finalize(stmt);
+
+	return (ret);
+}

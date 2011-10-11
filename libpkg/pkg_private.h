@@ -179,6 +179,9 @@ int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, int force);
 
 int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 
+int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p);
+int pkgdb_integrity_check(struct pkgdb *db);
+
 int pkg_setrowid(struct pkg *, int64_t rowid);
 
 /* pkgdb commands */
