@@ -2130,5 +2130,6 @@ pkgdb_integrity_check(struct pkgdb *db)
 
 	sqlite3_finalize(stmt);
 
+	sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck");
 	return (ret);
 }
