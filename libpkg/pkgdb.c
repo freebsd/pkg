@@ -1778,10 +1778,8 @@ create_temporary_pkgjobs(sqlite3 *s)
 	ret = sql_exec(s, "DROP TABLE IF EXISTS pkgjobs;"
 			"CREATE TEMPORARY TABLE IF NOT EXISTS pkgjobs (pkgid INTEGER, "
 			"origin TEXT UNIQUE NOT NULL, name TEXT, version TEXT, "
-			"comment TEXT, desc TEXT, message TEXT, "
-			"arch TEXT, osversion TEXT, maintainer TEXT, "
-			"www TEXT, prefix TEXT, flatsize INTEGER, newversion TEXT, "
-			"newflatsize INTEGER, pkgsize INTEGER, cksum TEXT, repopath TEXT, automatic INTEGER);");
+			"flatsize INTEGER, newversion TEXT, "
+			"newflatsize INTEGER, pkgsize INTEGER, automatic INTEGER);");
 
 	return (ret);
 }
@@ -1795,7 +1793,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 	const char *how = NULL;
 
 	const char finalsql[] = "SELECT r.id AS rowid, r.origin, r.name, r.version, "
-		"r.comment, r.desc, p.message, r.arch, r.osversion, r.maintainer, "
+		"r.comment, r.desc, r.arch, r.osversion, r.maintainer, "
 		"r.www, r.prefix, r.flatsize, p.newversion, p.newflatsize, r.pkgsize, "
 		"r.cksum, r.path as repopath, p.automatic FROM remote.packages AS r, pkgjobs AS p WHERE pkgid=id ";
 
@@ -1896,31 +1894,28 @@ pkgdb_query_upgrades(struct pkgdb *db)
 		return (NULL);
 	}
 
-	const char sql[] = "select pkgid as rowid, origin, name, version, "
-		"comment, desc, message, arch, osversion, maintainer, "
-		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-		"cksum, repopath, automatic FROM pkgjobs;";
+	const char sql[] = "select r.id as rowid, r.origin, r.name, r.version, "
+		"r.comment, r.desc, r.arch, r.osversion, r.maintainer, "
+		"r.www, r.prefix, r.flatsize, p.newversion, p.newflatsize, r.pkgsize, "
+		"r.cksum, r.path as repopath, p.automatic FROM remote.packages AS r, pkgjobs AS p;";
 
 	create_temporary_pkgjobs(db->sqlite);
 
-	sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
-			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-			"cksum, repopath, automatic) "
-			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
-			"l.message, l.arch, l.osversion, l.maintainer, "
-			"l.www, l.prefix, l.flatsize, r.version AS newversion, r.flatsize AS newflatsize, "
-			"r.pkgsize, r.cksum, r.path AS repopath, l.automatic "
+	sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, "
+			"flatsize, newversion, newflatsize, pkgsize, automatic) "
+			"SELECT l.id, l.origin, l.name, l.version, "
+			" l.flatsize, r.version, r.flatsize , "
+			"r.pkgsize, l.automatic "
 			"FROM main.packages AS l, "
 			"remote.packages AS r "
 			"WHERE l.origin = r.origin "
 			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
 
 	do {
-		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic)"
-			"SELECT DISTINCT id, origin, name, version, comment, desc, arch, osversion, maintainer, www, prefix, flatsize, "
-			"pkgsize, cksum, path as repopath, 1 FROM remote.packages WHERE origin IN ("
+		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, "
+			"flatsize, pkgsize, automatic)"
+			"SELECT DISTINCT id, origin, name, version, flatsize, "
+			"pkgsize, 1 FROM remote.packages WHERE origin IN ("
 			"SELECT DISTINCT deps.origin FROM remote.deps as deps, pkgjobs WHERE deps.package_id = pkgjobs.pkgid and "
 			"deps.origin NOT IN (SELECT DISTINCT origin from pkgjobs) AND deps.origin NOT IN (SELECT DISTINCT origin from main.packages)"
 			");");
