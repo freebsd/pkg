@@ -1778,8 +1778,10 @@ create_temporary_pkgjobs(sqlite3 *s)
 	ret = sql_exec(s, "DROP TABLE IF EXISTS pkgjobs;"
 			"CREATE TEMPORARY TABLE IF NOT EXISTS pkgjobs (pkgid INTEGER, "
 			"origin TEXT UNIQUE NOT NULL, name TEXT, version TEXT, "
-			"flatsize INTEGER, newversion TEXT, "
-			"newflatsize INTEGER, pkgsize INTEGER, automatic INTEGER);");
+			"comment TEXT, desc TEXT, message TEXT, "
+			"arch TEXT, osversion TEXT, maintainer TEXT, "
+			"www TEXT, prefix TEXT, flatsize INTEGER, newversion TEXT, "
+			"newflatsize INTEGER, pkgsize INTEGER, cksum TEXT, repopath TEXT, automatic INTEGER);");
 
 	return (ret);
 }
@@ -1792,10 +1794,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 	struct sbuf *sql = sbuf_new_auto();
 	const char *how = NULL;
 
-	const char finalsql[] = "SELECT r.id AS rowid, r.origin, r.name, r.version, "
-		"r.comment, r.desc, r.arch, r.osversion, r.maintainer, "
-		"r.www, r.prefix, r.flatsize, p.newversion, p.newflatsize, r.pkgsize, "
-		"r.cksum, r.path as repopath, p.automatic FROM remote.packages AS r, pkgjobs AS p WHERE pkgid=id ";
+	const char finalsql[] = "select pkgid as rowid, origin, name, version, "
+		"comment, desc, message, arch, osversion, maintainer, "
+		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+		"cksum, repopath, automatic FROM pkgjobs;";
 
 	assert(db != NULL);
 
@@ -1804,10 +1806,12 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 		return (NULL);
 	}
 
-	sbuf_cat(sql, "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
-			"flatsize, pkgsize, automatic) "
-			"SELECT id, origin, name, version, "
-			"flatsize, pkgsize, 0 FROM remote.packages WHERE ");
+	sbuf_cat(sql, "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
+			"cksum, repopath, automatic) "
+			"SELECT id, origin, name, version, comment, desc, "
+			"arch, osversion, maintainer, www, prefix, flatsize, pkgsize, "
+			"cksum, path, 0 FROM remote.packages WHERE ");
 
 	switch (match) {
 		case MATCH_ALL:
@@ -1852,11 +1856,12 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 
 	/* Append dependencies */
 	do {
-		sql_exec(db->sqlite, "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
-				"flatsize, pkgsize, "
-				"automatic) "
-				"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
-				"r.flatsize, r.pkgsize, 1 "
+		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+				"osversion, maintainer, www, prefix, flatsize, pkgsize, "
+				"cksum, repopath, automatic) "
+				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
+				"r.arch, r.osversion, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
+				"r.cksum, r.path, 1 "
 				"from remote.packages AS r where r.origin IN "
 				"(SELECT d.origin from remote.deps AS d, pkgjobs as j WHERE d.package_id = j.pkgid) "
 				"AND (SELECT p.origin from main.packages as p WHERE p.origin=r.origin AND version=r.version) IS NULL;");
@@ -1865,12 +1870,12 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 	sbuf_delete(sql);
 
 	/* Determine if there is an upgrade needed */
-	sql_exec(db->sqlite, "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, "
-			"flatsize, newversion, newflatsize, pkgsize, "
-			" automatic) "
-			"SELECT l.id, l.origin, l.name, l.version, "
-			"l.flatsize, r.version AS newversion, "
-			"r.flatsize AS newflatsize, r.pkgsize, r.automatic "
+	sql_exec(db->sqlite, "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
+			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+			"cksum, repopath, automatic) "
+			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
+			"l.osversion, l.maintainer, l.www, l.prefix, l.flatsize, r.version AS newversion, "
+			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
 			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin "
 			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
 
@@ -1894,28 +1899,31 @@ pkgdb_query_upgrades(struct pkgdb *db)
 		return (NULL);
 	}
 
-	const char sql[] = "select r.id as rowid, r.origin, r.name, r.version, "
-		"r.comment, r.desc, r.arch, r.osversion, r.maintainer, "
-		"r.www, r.prefix, r.flatsize, p.newversion, p.newflatsize, r.pkgsize, "
-		"r.cksum, r.path as repopath, p.automatic FROM remote.packages AS r, pkgjobs AS p;";
+	const char sql[] = "select pkgid as rowid, origin, name, version, "
+		"comment, desc, message, arch, osversion, maintainer, "
+		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+		"cksum, repopath, automatic FROM pkgjobs;";
 
 	create_temporary_pkgjobs(db->sqlite);
 
-	sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, "
-			"flatsize, newversion, newflatsize, pkgsize, automatic) "
-			"SELECT l.id, l.origin, l.name, l.version, "
-			" l.flatsize, r.version, r.flatsize , "
-			"r.pkgsize, l.automatic "
+	sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
+			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+			"cksum, repopath, automatic) "
+			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
+			"l.message, l.arch, l.osversion, l.maintainer, "
+			"l.www, l.prefix, l.flatsize, r.version AS newversion, r.flatsize AS newflatsize, "
+			"r.pkgsize, r.cksum, r.path AS repopath, l.automatic "
 			"FROM main.packages AS l, "
 			"remote.packages AS r "
 			"WHERE l.origin = r.origin "
 			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
 
 	do {
-		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, "
-			"flatsize, pkgsize, automatic)"
-			"SELECT DISTINCT id, origin, name, version, flatsize, "
-			"pkgsize, 1 FROM remote.packages WHERE origin IN ("
+		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
+			"cksum, repopath, automatic)"
+			"SELECT DISTINCT id, origin, name, version, comment, desc, arch, osversion, maintainer, www, prefix, flatsize, "
+			"pkgsize, cksum, path as repopath, 1 FROM remote.packages WHERE origin IN ("
 			"SELECT DISTINCT deps.origin FROM remote.deps as deps, pkgjobs WHERE deps.package_id = pkgjobs.pkgid and "
 			"deps.origin NOT IN (SELECT DISTINCT origin from pkgjobs) AND deps.origin NOT IN (SELECT DISTINCT origin from main.packages)"
 			");");
@@ -2080,7 +2088,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 
 	assert( db != NULL && p != NULL);
 
-	sql_exec(db->sqlite, "CREATE IF NOT EXISTS temporary table integritycheck ( "
+	sql_exec(db->sqlite, "CREATE TEMPORARY TABLE IF NOT EXISTS integritycheck ( "
 			"name TEXT, "
 			"origin TEXT, "
 			"version TEXT, "
@@ -2115,7 +2123,8 @@ pkgdb_integrity_check(struct pkgdb *db)
 	sqlite3_stmt *stmt;
 	assert (db != NULL);
 
-	if (sqlite3_prepare_v2(db->sqlite, 
+	/* First simple check: two packages should provide the same file */
+	if (sqlite3_prepare_v2(db->sqlite,
 		"SELECT path, COUNT(path) AS NumOccurrences "
 		"FROM integritycheck GROUP BY path  HAVING ( COUNT(path) > 1  );",
 		-1, &stmt, NULL) != SQLITE_OK) {
@@ -2124,12 +2133,34 @@ pkgdb_integrity_check(struct pkgdb *db)
 	}
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
-		pkg_emit_error("Conflict detected for file %s", sqlite3_column_text(stmt, 1));
+		pkg_emit_error("Conflict detected in packages for file %s %d", sqlite3_column_text(stmt, 0), sqlite3_column_int(stmt, 1));
+		ret = EPKG_FATAL;
+	}
+
+	sqlite3_finalize(stmt);
+
+	/*
+	 * Be sure that none of the installed packages conflicts with the new
+	 * set of packages
+	 */
+	if (sqlite3_prepare_v2(db->sqlite,
+		"SELECT path FROM files, main.packages, integrifycheck "
+		"WHERE files.path = integritycheck.path AND "
+		"main.packages.id = files.packages_id AND "
+		"main.packages.origin NOT IN (select origin from integrifycheck);",
+		-1, &stmt, NULL), SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	while (sqlite3_step(stmt) != SQLITE_DONE) {
+		pkg_emit_error("Conflict detected with local for file %s", sqlite3_column_text(stmt, 1));
 		ret = EPKG_FATAL;
 	}
 
 	sqlite3_finalize(stmt);
 
 	sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck");
+
 	return (ret);
 }

@@ -99,7 +99,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	cachedir = pkg_config("PKG_CACHEDIR");
 	p = NULL;
 	/* integrity checking */
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+/*	while (pkg_jobs(j, &p) == EPKG_OK) {
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				pkg_get(p, PKG_REPOPATH));
 		if (pkg_open(&p, path, NULL) != EPKG_OK) {
@@ -110,7 +110,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 	if (pkgdb_integrity_check(j->db) != EPKG_OK)
 		return (EPKG_FATAL);
-
+*/
 	/* Install */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
