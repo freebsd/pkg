@@ -188,6 +188,21 @@ add_parent(struct pkg_jobs_node *n, struct pkg_jobs_node *p)
 }
 
 static void
+add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
+{
+	struct pkg_dep *dep = NULL;
+	struct pkg_jobs_node *ndep;
+
+	pkgdb_loaddeps(j->db, n->pkg);
+
+	while (pkg_deps(n->pkg, &dep) == EPKG_OK) {
+		ndep = get_node(j, pkg_dep_origin(dep), 0);
+		if (ndep != NULL)
+			add_parent(ndep, n);
+	}
+}
+
+static void
 add_rdep(struct pkg_jobs *j, struct pkg_jobs_node *n)
 {
 	struct pkg_jobs_node *nrdep;
@@ -250,6 +265,8 @@ pkg_jobs_resolv(struct pkg_jobs *j)
 	LIST_FOREACH(n, &j->nodes, entries) {
 		if (j->type == PKG_JOBS_DEINSTALL)
 			add_rdep(j, n);
+		else
+			add_dep(j, n);
 	}
 
 	/* Resolv !*/
