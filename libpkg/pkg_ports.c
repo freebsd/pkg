@@ -24,6 +24,7 @@ struct hardlinks {
 int
 ports_parse_plist(struct pkg *pkg, char *plist)
 {
+	bool ignore_next = false;
 	char *plist_p, *buf, *p, *plist_buf;
 	char comment[2];
 	int nbel, i;
@@ -74,6 +75,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	plist_p = plist_buf;
 
 	for (i = 0; i <= nbel; i++) {
+		if (ignore_next)
+			continue;
+
 		if (plist_p[0] == '@') {
 			if (STARTS_WITH(plist_p, "@cwd")) {
 				buf = plist_p;
@@ -87,6 +91,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				else
 					prefix = buf;
 				slash = prefix[strlen(prefix) - 1] == '/' ? "" : "/";
+			} else if (STARTS_WITH(plist_p, "@ignore")) {
+				/* ignore the next line */
+				ignore_next = true;
 			} else if (STARTS_WITH(plist_p, "@comment ")) {
 				/* DO NOTHING: ignore the comments */
 			} else if (STARTS_WITH(plist_p, "@unexec ") ||
