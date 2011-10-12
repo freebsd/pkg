@@ -87,8 +87,10 @@ static int
 pkg_jobs_install(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
+	struct sbuf *buf = sbuf_new_auto();
 	const char *cachedir;
 	char path[MAXPATHLEN + 1];
+	int ret = EPKG_OK;
 
 	/* Fetch */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
@@ -99,20 +101,27 @@ pkg_jobs_install(struct pkg_jobs *j)
 	cachedir = pkg_config("PKG_CACHEDIR");
 	p = NULL;
 	/* integrity checking */
-/*	while (pkg_jobs(j, &p) == EPKG_OK) {
+	pkg_emit_integritycheck_begin();
+
+	while (pkg_jobs(j, &p) == EPKG_OK) {
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				pkg_get(p, PKG_REPOPATH));
-		if (pkg_open(&p, path, NULL) != EPKG_OK) {
+		if (pkg_open(&p, path, buf) != EPKG_OK)
 			return (EPKG_FATAL);
-		}
-		pkgdb_integrity_append(j->db, p);
+
+		ret = pkgdb_integrity_append(j->db, p);
 	}
 
-	if (pkgdb_integrity_check(j->db) != EPKG_OK)
+	sbuf_delete(buf);
+
+	if (pkgdb_integrity_check(j->db) != EPKG_OK || ret != EPKG_OK)
 		return (EPKG_FATAL);
-*/
+
+	pkg_emit_integritycheck_finished();
+	p = NULL;
 	/* Install */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
+		printf("%s\n", path);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				 pkg_get(p, PKG_REPOPATH));
 

@@ -48,6 +48,13 @@ event_callback(void *data, struct pkg_event *ev)
 		if (message != NULL && message[0] != '\0')
 			printf("%s\n", message);
 		break;
+	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
+		printf("Checking integrity...");
+		fflush(stdout);
+		break;
+	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
+		printf(" done\n");
+		break;
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		printf("Deinstalling %s-%s...",
 			   pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME),
