@@ -212,7 +212,7 @@ void pkg_free(struct pkg *);
 /**
  * Check if a package is valid according to its type.
  */
-int pkg_isvalid(struct pkg *);
+int pkg_is_valid(struct pkg *);
 
 /**
  * Open a package file archive and retrive informations.
@@ -250,7 +250,7 @@ int64_t pkg_new_flatsize(struct pkg *);
  */
 int64_t pkg_new_pkgsize(struct pkg *);
 
-int pkg_list_isempty(struct pkg *, pkg_list);
+int pkg_list_is_empty(struct pkg *, pkg_list);
 /**
  * Iterates over the dependencies of the package.
  * @param dep Must be set to NULL for the first call.
@@ -338,7 +338,7 @@ int pkg_analyse_files(struct pkgdb *, struct pkg *);
  * Generic setter for simple attributes.
  */
 int pkg_set(struct pkg *pkg, pkg_attr attr, const char *value);
-int pkg_setmtree(struct pkg *pkg, const char *value);
+int pkg_set_mtree(struct pkg *pkg, const char *value);
 
 /**
  * Read the content of a file into a buffer, then call pkg_set().
@@ -622,18 +622,18 @@ int pkgdb_it_next(struct pkgdb_it *, struct pkg **pkg, int flags);
  */
 void pkgdb_it_free(struct pkgdb_it *);
 
-int pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loaduser(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_loadgroup(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_files(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_options(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_category(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_license(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 
 /**
  * Compact the database to save space.
@@ -673,7 +673,7 @@ int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
 /**
  * Returns true if there are no jobs.
  */
-int pkg_jobs_isempty(struct pkg_jobs *jobs);
+int pkg_jobs_is_empty(struct pkg_jobs *jobs);
 
 /**
  * Iterates over the packages in the jobs queue.

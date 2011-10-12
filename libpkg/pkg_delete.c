@@ -36,15 +36,15 @@ pkg_delete2(struct pkg *pkg, struct pkgdb *db, int force, int upgrade)
 	/*
 	 * Ensure that we have all the informations we need
 	 */
-	if ((ret = pkgdb_loadrdeps(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_load_rdeps(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loadfiles(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_load_files(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loaddirs(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_load_dirs(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loadscripts(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_load_scripts(db, pkg)) != EPKG_OK)
 		return (ret);
-	if ((ret = pkgdb_loadmtree(db, pkg)) != EPKG_OK)
+	if ((ret = pkgdb_load_mtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
 	if (!upgrade)

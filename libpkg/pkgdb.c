@@ -68,7 +68,7 @@ static struct column_int_mapping {
 };
 
 static int
-loadval(sqlite3 *db, struct pkg *pkg, const char *sql, int flags, int (*pkg_adddata)(struct pkg *pkg, const char *data), int list)
+load_val(sqlite3 *db, struct pkg *pkg, const char *sql, int flags, int (*pkg_adddata)(struct pkg *pkg, const char *data), int list)
 {
 	sqlite3_stmt *stmt;
 	int ret;
@@ -589,51 +589,51 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 		populate_pkg(it->stmt, pkg);
 
 		if (flags & PKG_LOAD_DEPS)
-			if ((ret = pkgdb_loaddeps(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_deps(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_RDEPS)
-			if ((ret = pkgdb_loadrdeps(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_rdeps(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_CONFLICTS)
-			if ((ret = pkgdb_loadconflicts(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_conflicts(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_FILES)
-			if ((ret = pkgdb_loadfiles(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_files(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_DIRS)
-			if ((ret = pkgdb_loaddirs(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_dirs(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_SCRIPTS)
-			if ((ret = pkgdb_loadscripts(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_scripts(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_OPTIONS)
-			if ((ret = pkgdb_loadoptions(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_options(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_MTREE)
-			if ((ret = pkgdb_loadmtree(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_mtree(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_CATEGORIES)
-			if ((ret = pkgdb_loadcategory(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_category(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_LICENSES)
-			if ((ret = pkgdb_loadlicense(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_license(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_USERS)
-			if ((ret = pkgdb_loaduser(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_user(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_GROUPS)
-			if ((ret = pkgdb_loadgroup(it->db, pkg)) != EPKG_OK)
+			if ((ret = pkgdb_load_group(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		return (EPKG_OK);
@@ -787,7 +787,7 @@ pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res)
 }
 
 int
-pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt = NULL;
 	int ret;
@@ -834,7 +834,7 @@ pkgdb_loaddeps(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt = NULL;
 	int ret;
@@ -874,7 +874,7 @@ pkgdb_loadrdeps(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_files(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt = NULL;
 	int ret;
@@ -913,7 +913,7 @@ pkgdb_loadfiles(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 {
 	const char sql[] = ""
 		"SELECT path, try "
@@ -953,7 +953,7 @@ pkgdb_loaddirs(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_license(struct pkgdb *db, struct pkg *pkg)
 {
 	const char *sql = NULL;
 
@@ -975,11 +975,11 @@ pkgdb_loadlicense(struct pkgdb *db, struct pkg *pkg)
 			"ORDER by name DESC";
 	}
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_LICENSES, pkg_addlicense, PKG_LICENSES));
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_LICENSES, pkg_addlicense, PKG_LICENSES));
 }
 
 int
-pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_category(struct pkgdb *db, struct pkg *pkg)
 {
 	const char *sql = NULL;
 
@@ -1001,11 +1001,11 @@ pkgdb_loadcategory(struct pkgdb *db, struct pkg *pkg)
 			"ORDER by name DESC";
 	}
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_CATEGORIES, pkg_addcategory, PKG_CATEGORIES));
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_CATEGORIES, pkg_addcategory, PKG_CATEGORIES));
 }
 
 int
-pkgdb_loaduser(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_user(struct pkgdb *db, struct pkg *pkg)
 {
 	const char sql[] = ""
 		"SELECT users.name "
@@ -1016,11 +1016,11 @@ pkgdb_loaduser(struct pkgdb *db, struct pkg *pkg)
 
 	assert(db != NULL && pkg != NULL);
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, PKG_USERS));
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, PKG_USERS));
 }
 
 int
-pkgdb_loadgroup(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_group(struct pkgdb *db, struct pkg *pkg)
 {
 	const char sql[] = ""
 		"SELECT groups.name "
@@ -1031,11 +1031,11 @@ pkgdb_loadgroup(struct pkgdb *db, struct pkg *pkg)
 
 	assert(db != NULL && pkg != NULL);
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_GROUPS, pkg_addgroup, PKG_GROUPS));
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_GROUPS, pkg_addgroup, PKG_GROUPS));
 }
 
 int
-pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg)
 {
 	const char sql[] = ""
 		"SELECT name "
@@ -1045,11 +1045,11 @@ pkgdb_loadconflicts(struct pkgdb *db, struct pkg *pkg)
 	assert(db != NULL && pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_CONFLICTS, pkg_addconflict, PKG_CONFLICTS));
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_CONFLICTS, pkg_addconflict, PKG_CONFLICTS));
 }
 
 int
-pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt = NULL;
 	int ret;
@@ -1087,7 +1087,7 @@ pkgdb_loadscripts(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt = NULL;
 	int ret;
@@ -1134,7 +1134,7 @@ pkgdb_loadoptions(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg)
 {
 	const char sql[] = ""
 		"SELECT m.content "
@@ -1145,7 +1145,7 @@ pkgdb_loadmtree(struct pkgdb *db, struct pkg *pkg)
 	assert(db != NULL && pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
 
-	return (loadval(db->sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_setmtree, -1));
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_set_mtree, -1));
 }
 
 int

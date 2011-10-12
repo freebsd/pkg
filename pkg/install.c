@@ -83,7 +83,7 @@ exec_install(int argc, char **argv)
 		pkg = NULL;
 	}
 
-	if (pkg_jobs_isempty(jobs)) {
+	if (pkg_jobs_is_empty(jobs)) {
 		printf("Nothing to do\n");
 		retcode = 0;
 		goto cleanup;
@@ -113,7 +113,7 @@ exec_install(int argc, char **argv)
 		printf("\nthe installation will require %s more space\n", size);
 	}
 	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-	printf("%s to be downloaded\n", size);
+	printf("%s to be download_ed\n", size);
  
 	if (yes == 0)
 		yes = query_yesno("\nProceed with installing packages [y/N]: ");

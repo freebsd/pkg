@@ -125,7 +125,7 @@ pkg_type(struct pkg const * const pkg)
 }
 
 int
-pkg_isvalid(struct pkg *pkg)
+pkg_is_valid(struct pkg *pkg)
 {
 	int ret = EPKG_OK;
 	int i;
@@ -186,7 +186,7 @@ pkg_set(struct pkg * pkg, pkg_attr attr, const char *value)
 }
 
 int
-pkg_setmtree(struct pkg *pkg, const char *mtree) {
+pkg_set_mtree(struct pkg *pkg, const char *mtree) {
 	return (pkg_set(pkg, PKG_MTREE, mtree));
 }
 
@@ -784,7 +784,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 }
 
 int
-pkg_list_isempty(struct pkg *pkg, pkg_list list) {
+pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 	switch (list) {
 		case PKG_DEPS:
 			return (STAILQ_EMPTY(&pkg->deps));
