@@ -131,7 +131,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 				return (EPKG_FATAL);
 		}
 
-		if (pkg_add2(j->db, path, 0, pkg_isautomatic(p)) != EPKG_OK)
+		if (pkg_add2(j->db, path, 0, pkg_is_automatic(p)) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 

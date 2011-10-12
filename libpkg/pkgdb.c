@@ -59,11 +59,11 @@ static struct column_int_mapping {
 	const char * const name;
 	int (*set_int)(struct pkg *pkg, int64_t);
 } columns_int[] = {
-	{ "flatsize", pkg_setflatsize },
-	{ "newflatsize", pkg_setnewflatsize },
-	{ "pkgsize", pkg_setnewpkgsize },
+	{ "flatsize", pkg_set_flatsize },
+	{ "newflatsize", pkg_set_newflatsize },
+	{ "pkgsize", pkg_set_newpkgsize },
 	{ "licenselogic", pkg_set_licenselogic},
-	{ "rowid", pkg_setrowid},
+	{ "rowid", pkg_set_rowid},
 	{ NULL, NULL}
 };
 
@@ -131,7 +131,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 				}
 				if (strcmp(colname, "automatic") == 0) {
 					if (sqlite3_column_int64(stmt, icol) == 1)
-						pkg_setautomatic(pkg);
+						pkg_set_automatic(pkg);
 					break;
 				}
 				if (columns_int[i].name == NULL)
@@ -1288,7 +1288,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_text(stmt_pkg, 10, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt_pkg, 11, pkg_get(pkg, PKG_PREFIX), -1, SQLITE_STATIC);
 	sqlite3_bind_int64(stmt_pkg, 12, pkg_flatsize(pkg));
-	sqlite3_bind_int(stmt_pkg, 13, pkg_isautomatic(pkg));
+	sqlite3_bind_int(stmt_pkg, 13, pkg_is_automatic(pkg));
 	sqlite3_bind_int64(stmt_pkg, 14, pkg_licenselogic(pkg));
 	sqlite3_bind_text(stmt_pkg, 15, pkg_get(pkg, PKG_MTREE), -1, SQLITE_STATIC);
 

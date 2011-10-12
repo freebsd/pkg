@@ -181,7 +181,7 @@ pkg_set_flatsize_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_docu
 		return (EPKG_FATAL);
 	}
 
-	return (pkg_setflatsize(pkg, flatsize));
+	return (pkg_set_flatsize(pkg, flatsize));
 }
 static int
 pkg_set_licenselogic_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *doc, __unused int attr)

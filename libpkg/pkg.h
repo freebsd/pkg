@@ -345,8 +345,8 @@ int pkg_set_mtree(struct pkg *pkg, const char *value);
  */
 int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
 
-int pkg_setautomatic(struct pkg *pkg);
-int pkg_isautomatic(struct pkg *pkg);
+int pkg_set_automatic(struct pkg *pkg);
+int pkg_is_automatic(struct pkg *pkg);
 
 /**
  * set the logic for license combinaison
@@ -362,19 +362,19 @@ lic_t pkg_licenselogic(struct pkg *pkg);
  * Set the uncompressed size of the package.
  * @return An error code.
  */
-int pkg_setflatsize(struct pkg *pkg, int64_t size);
+int pkg_set_flatsize(struct pkg *pkg, int64_t size);
 
 /**
  * Set the uncompressed size of the package, in its futur version.
  * @return An error code.
  */
-int pkg_setnewflatsize(struct pkg *pkg, int64_t size);
+int pkg_set_newflatsize(struct pkg *pkg, int64_t size);
 
 /**
  * Set the compressed size of the package, in its futur version.
  * @return An error code.
  */
-int pkg_setnewpkgsize(struct pkg *pkg, int64_t size);
+int pkg_set_newpkgsize(struct pkg *pkg, int64_t size);
 
 /**
  * Allocate a new struct pkg and add it to the deps of pkg.
@@ -555,7 +555,7 @@ int pkgdb_has_flag(struct pkgdb *db, int flag);
 #define	PKGDB_FLAG_IN_FLIGHT	(1 << 0)
 
 /**
- * Register a package to the database.
+ * register a package to the database.
  * @return An error code.
  */
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg);
