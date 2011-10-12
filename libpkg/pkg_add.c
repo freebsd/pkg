@@ -117,7 +117,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 	}
 
 	if (automatic == 1)
-		pkg_setautomatic(pkg);
+		pkg_set_automatic(pkg);
 
 	if (uname(&u) != 0) {
 		pkg_emit_errno("uname", "");
@@ -190,7 +190,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 		}
 	}
 
-	/* Register the package before installing it in case there are
+	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
 	retcode = pkgdb_register_pkg(db, pkg);
 	if (retcode != EPKG_OK || pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)

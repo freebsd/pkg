@@ -41,7 +41,7 @@ static struct commands {
 	int (*exec)(int argc, char **argv);
 	void (* const usage)(void);
 } cmd[] = {
-	{ "add", "Registers a package and installs it on the system", exec_add, usage_add},
+	{ "add", "registers a package and installs it on the system", exec_add, usage_add},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
 	{ "backup", "Backup and restore the local package database", exec_backup, usage_backup},
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},

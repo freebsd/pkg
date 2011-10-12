@@ -77,7 +77,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_cat(dest, pkg_get(pkg, PKG_WWW));
 					break;
 				case 'a':
-					sbuf_printf(dest, "%d", pkg_isautomatic(pkg));
+					sbuf_printf(dest, "%d", pkg_is_automatic(pkg));
 					break;
 				case 's':
 					qstr++;
