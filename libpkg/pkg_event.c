@@ -94,6 +94,24 @@ pkg_emit_install_finished(struct pkg *p)
 }
 
 void
+pkg_emit_integritycheck_begin(void)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_INTEGRITYCHECK_BEGIN;
+	
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_integritycheck_finished(void)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_INTEGRITYCHECK_FINISHED;
+	
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_deinstall_begin(struct pkg *p)
 {
 	struct pkg_event ev;

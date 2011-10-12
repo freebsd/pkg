@@ -13,5 +13,7 @@ void pkg_emit_upgrade_begin(struct pkg *p);
 void pkg_emit_upgrade_finished(struct pkg *p);
 void pkg_emit_missing_dep(struct pkg *p, struct pkg_dep *d);
 void pkg_emit_required(struct pkg *p, int force);
+void pkg_emit_integritycheck_begin(void);
+void pkg_emit_integritycheck_finished(void);
 
 #endif

@@ -735,7 +735,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 			"p.prefix, p.flatsize "
 			"FROM packages AS p, files AS f "
-			"WHERE p.rowid = f.package_id "
+			"WHERE p.id = f.package_id "
 				"AND f.path = ?1;";
 
 	assert(db != NULL);
@@ -2081,18 +2081,24 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 int
 pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 {
+	int ret = EPKG_OK;
+
 	sqlite3_stmt *stmt = NULL;
+	sqlite3_stmt *stmt_conflicts = NULL;
 	struct pkg_file *file = NULL;
+	struct sbuf *conflictmsg = sbuf_new_auto();
+
 	const char sql[] = "INSERT INTO integritycheck (name, origin, version, path)"
 		"values (?1, ?2, ?3, ?4);";
+	const char sql_conflicts[] = "SELECT name, version from integritycheck where path=?1;";
 
 	assert( db != NULL && p != NULL);
 
-	sql_exec(db->sqlite, "CREATE TEMPORARY TABLE IF NOT EXISTS integritycheck ( "
+	sql_exec(db->sqlite, "CREATE TEMP TABLE IF NOT EXISTS integritycheck ( "
 			"name TEXT, "
 			"origin TEXT, "
 			"version TEXT, "
-			"path TEXT );"
+			"path TEXT UNIQUE);"
 		);
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -2106,14 +2112,36 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 		sqlite3_bind_text(stmt, 4, pkg_file_path(file), -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
-			ERROR_SQLITE(db->sqlite);
-			sqlite3_finalize(stmt);
-			return (EPKG_FATAL);
+			sbuf_clear(conflictmsg);
+			sbuf_printf(conflictmsg, "WARNING: %s-%s conflict on %s with: \n",
+					pkg_get(p, PKG_NAME), pkg_get(p, PKG_VERSION),
+					pkg_file_path(file));
+
+			if (sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt_conflicts, NULL) != SQLITE_OK) {
+				ERROR_SQLITE(db->sqlite);
+				sqlite3_finalize(stmt);
+				sbuf_delete(conflictmsg);
+				return (EPKG_FATAL);
+			}
+
+			sqlite3_bind_text(stmt_conflicts, 1, pkg_file_path(file), -1, SQLITE_STATIC);
+
+			while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
+				sbuf_printf(conflictmsg, "\t- %s-%s\n",
+						sqlite3_column_text(stmt_conflicts, 0),
+						sqlite3_column_text(stmt_conflicts, 1));
+			}
+			sqlite3_finalize(stmt_conflicts);
+			sbuf_finish(conflictmsg);
+			pkg_emit_error(sbuf_data(conflictmsg));
+			ret = EPKG_FATAL;
 		}
 		sqlite3_reset(stmt);
 	}
 	sqlite3_finalize(stmt);
-	return (EPKG_OK);
+	sbuf_delete(conflictmsg);
+
+	return (ret);
 }
 
 int
@@ -2121,44 +2149,69 @@ pkgdb_integrity_check(struct pkgdb *db)
 {
 	int ret = EPKG_OK;
 	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt_conflicts;
+	struct sbuf *conflictmsg = sbuf_new_auto();
 	assert (db != NULL);
 
-	/* First simple check: two packages should provide the same file */
+	const char sql_local_conflict[] = "SELECT p.name, p.version FROM packages AS p, files AS f "
+		"WHERE p.id = f.package_id AND f.path = ?1;";
+
+	const char sql_conflicts[] = "SELECT name, version from integritycheck where path=?1;";
+
 	if (sqlite3_prepare_v2(db->sqlite,
-		"SELECT path, COUNT(path) AS NumOccurrences "
-		"FROM integritycheck GROUP BY path  HAVING ( COUNT(path) > 1  );",
+		"SELECT path, COUNT(path) from ("
+		"SELECT path from integritycheck UNION ALL "
+		"SELECT path from files, main.packages AS p where p.id=package_id and p.origin NOT IN (SELECT origin from integritycheck)"
+		") GROUP BY path HAVING (COUNT(path) > 1 );",
 		-1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
-		pkg_emit_error("Conflict detected in packages for file %s %d", sqlite3_column_text(stmt, 0), sqlite3_column_int(stmt, 1));
+		sbuf_clear(conflictmsg);
+
+		if (sqlite3_prepare_v2(db->sqlite, sql_local_conflict, -1, &stmt_conflicts, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			sqlite3_finalize(stmt);
+			sbuf_delete(conflictmsg);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_bind_text(stmt_conflicts, 1, sqlite3_column_text(stmt, 0), -1, SQLITE_STATIC);
+
+		sqlite3_step(stmt_conflicts);
+
+		sbuf_printf(conflictmsg, "WARNING: locally installed %s-%s conflicts on %s with:\n",
+				sqlite3_column_text(stmt_conflicts, 0),
+				sqlite3_column_text(stmt_conflicts, 1),
+				sqlite3_column_text(stmt, 0)
+				);
+		
+		sqlite3_finalize(stmt_conflicts);
+
+		if (sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt_conflicts, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			sqlite3_finalize(stmt);
+			sbuf_delete(conflictmsg);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_bind_text(stmt_conflicts, 1, sqlite3_column_text(stmt, 0), -1, SQLITE_STATIC);
+
+		while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
+			sbuf_printf(conflictmsg, "\t- %s-%s\n",
+					sqlite3_column_text(stmt_conflicts, 0),
+					sqlite3_column_text(stmt_conflicts, 1));
+		}
+		sqlite3_finalize(stmt_conflicts);
+		sbuf_finish(conflictmsg);
+		pkg_emit_error(sbuf_data(conflictmsg));
 		ret = EPKG_FATAL;
 	}
 
 	sqlite3_finalize(stmt);
-
-	/*
-	 * Be sure that none of the installed packages conflicts with the new
-	 * set of packages
-	 */
-	if (sqlite3_prepare_v2(db->sqlite,
-		"SELECT path FROM files, main.packages, integrifycheck "
-		"WHERE files.path = integritycheck.path AND "
-		"main.packages.id = files.packages_id AND "
-		"main.packages.origin NOT IN (select origin from integrifycheck);",
-		-1, &stmt, NULL), SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (EPKG_FATAL);
-	}
-
-	while (sqlite3_step(stmt) != SQLITE_DONE) {
-		pkg_emit_error("Conflict detected with local for file %s", sqlite3_column_text(stmt, 1));
-		ret = EPKG_FATAL;
-	}
-
-	sqlite3_finalize(stmt);
+	sbuf_delete(conflictmsg);
 
 	sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck");
 
