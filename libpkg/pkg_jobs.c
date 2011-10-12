@@ -56,7 +56,7 @@ pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
 }
 
 int
-pkg_jobs_isempty(struct pkg_jobs *j)
+pkg_jobs_is_empty(struct pkg_jobs *j)
 {
 	assert(j != NULL);
 
@@ -215,7 +215,7 @@ add_dep(struct pkg_jobs *j, struct pkg_jobs_node *n)
 	struct pkg_dep *dep = NULL;
 	struct pkg_jobs_node *ndep;
 
-	pkgdb_loaddeps(j->db, n->pkg);
+	pkgdb_load_deps(j->db, n->pkg);
 
 	while (pkg_deps(n->pkg, &dep) == EPKG_OK) {
 		ndep = get_node(j, pkg_dep_origin(dep), 0);
@@ -230,7 +230,7 @@ add_rdep(struct pkg_jobs *j, struct pkg_jobs_node *n)
 	struct pkg_jobs_node *nrdep;
 	struct pkg_dep *rdep = NULL;
 
-	pkgdb_loadrdeps(j->db, n->pkg);
+	pkgdb_load_rdeps(j->db, n->pkg);
 
 	while (pkg_rdeps(n->pkg, &rdep) == EPKG_OK) {
 		nrdep = get_node(j, pkg_dep_origin(rdep), 0);
