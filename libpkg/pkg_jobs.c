@@ -87,6 +87,7 @@ static int
 pkg_jobs_install(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
+	struct pkg *pkg = NULL;
 	struct sbuf *buf = sbuf_new_auto();
 	const char *cachedir;
 	char path[MAXPATHLEN + 1];
@@ -106,12 +107,13 @@ pkg_jobs_install(struct pkg_jobs *j)
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				pkg_get(p, PKG_REPOPATH));
-		if (pkg_open(&p, path, buf) != EPKG_OK)
+		if (pkg_open(&pkg, path, buf) != EPKG_OK)
 			return (EPKG_FATAL);
 
-		ret = pkgdb_integrity_append(j->db, p);
+		ret = pkgdb_integrity_append(j->db, pkg);
 	}
 
+	pkg_free(pkg);
 	sbuf_delete(buf);
 
 	if (pkgdb_integrity_check(j->db) != EPKG_OK || ret != EPKG_OK)
