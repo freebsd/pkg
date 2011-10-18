@@ -272,6 +272,11 @@ pkg_jobs_resolv(struct pkg_jobs *j)
 	if (j->resolved == 1)
 		return (EPKG_OK);
 
+	if (j->type == PKG_JOBS_DEINSTALL) {
+		j->resolved = 1;
+		return (EPKG_OK);
+	}
+
 	/* Create nodes and remove jobs form the queue */
 	while (!STAILQ_EMPTY(&j->jobs)) {
 		p = STAILQ_FIRST(&j->jobs);

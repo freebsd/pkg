@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <libutil.h>
 
 #include <pkg.h>
 
@@ -13,7 +14,7 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "usage: pkg delete [-ygxXf] <pkg-name> <...>\n");
+	fprintf(stderr, "usage: pkg delete [-ygxXfr] <pkg-name> <...>\n");
 	fprintf(stderr, "       pkg delete [-y] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
@@ -26,13 +27,16 @@ exec_delete(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	match_t match = MATCH_EXACT;
-	int i, ch;
+	int ch;
 	int flags = PKG_LOAD_BASIC;
 	int force = 0;
 	int yes = 0;
 	int retcode = 1;
+	int recursive = 0;
+	int64_t oldsize = 0, newsize = 0;
+	char size[7];
 
-	while ((ch = getopt(argc, argv, "agxXfy")) != -1) {
+	while ((ch = getopt(argc, argv, "agxXfyr")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -51,6 +55,9 @@ exec_delete(int argc, char **argv)
 				break;
 			case 'y':
 				yes = 1;
+				break;
+			case 'r':
+				recursive = 1;
 				break;
 			default:
 				usage_delete();
@@ -80,30 +87,14 @@ exec_delete(int argc, char **argv)
 		return (EPKG_FATAL);
 	}
 
-	if (match == MATCH_ALL) {
-		if ((it = pkgdb_query(db, NULL, match)) == NULL) {
-			goto cleanup;
-		}
+	if ((it = pkgdb_query_delete(db, match, argc, argv, recursive)) == NULL)
+		goto cleanup;
 
-		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-			pkg_jobs_add(jobs, pkg);
-			pkg = NULL;
-		}
-
-		pkgdb_it_free(it);
-	} else {
-		for (i = 0; i < argc; i++) {
-			if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
-				goto cleanup;
-			}
-
-			while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-				pkg_jobs_add(jobs, pkg);
-				pkg = NULL;
-			}
-		
-			pkgdb_it_free(it);
-		}
+	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+		oldsize += pkg_flatsize(pkg);
+		newsize += pkg_new_flatsize(pkg);
+		pkg_jobs_add(jobs, pkg);
+		pkg = NULL;
 	}
 
 	/* check if we have something to deinstall */
@@ -113,11 +104,22 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 	}
 
+	if (oldsize > newsize) {
+		newsize *= -1;
+		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
+	} else {
+		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
+	}
+
 	pkg = NULL;
 	printf("The following packages will be deinstalled:\n");
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK)
 		printf("\t%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
+	if (oldsize > newsize)
+		printf("\nThe deinstallation will save %s\n", size);
+	else
+		printf("\nThe deinstallation will require %s more space\n", size);
 	if (yes == 0)
 		yes = query_yesno("\nProceed with deinstalling packages [y/N]: ");
 
