@@ -585,6 +585,7 @@ struct pkgdb_it * pkgdb_rquery(struct pkgdb *db, const char *pattern,
  * 
  */
 struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs);
+struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
 struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db);
 struct pkgdb_it *pkgdb_query_downgrades(struct pkgdb *db);
 struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);

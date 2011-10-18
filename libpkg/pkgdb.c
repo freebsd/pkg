@@ -64,6 +64,7 @@ static struct column_int_mapping {
 	{ "pkgsize", pkg_set_newpkgsize },
 	{ "licenselogic", pkg_set_licenselogic},
 	{ "rowid", pkg_set_rowid},
+	{ "weight", NULL },
 	{ NULL, NULL}
 };
 
@@ -125,7 +126,8 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			case SQLITE_INTEGER:
 				for (i = 0; columns_int[i].name != NULL; i++ ) {
 					if (!strcmp(columns_int[i].name, colname)) {
-						columns_int[i].set_int(pkg, sqlite3_column_int64(stmt, icol));
+						if (columns_int[i].set_int != NULL)
+							columns_int[i].set_int(pkg, sqlite3_column_int64(stmt, icol));
 						break;
 					}
 				}
@@ -1984,30 +1986,109 @@ struct pkgdb_it *
 pkgdb_query_autoremove(struct pkgdb *db)
 {
 	sqlite3_stmt *stmt = NULL;
+	int weight = 0;
 
 	assert(db != NULL);
 
 	const char sql[] = ""
-		"SELECT id AS rowid, origin, name, version, comment, desc, "
+		"SELECT id AS rowid, p.origin, name, version, comment, desc, "
 		"message, arch, osversion, maintainer, www, prefix, "
-		"flatsize FROM packages WHERE id IN (SELECT pkgid FROM autoremove);";
+		"flatsize FROM packages as p, autoremove where id = pkgid ORDER BY weight ASC;";
 
 	sql_exec(db->sqlite, "DROP TABLE IF EXISTS autoremove; "
 			"CREATE TEMPORARY TABLE IF NOT EXISTS autoremove ("
-			"origin TEXT UNIQUE NOT NULL, pkgid INTEGER);");
+			"origin TEXT UNIQUE NOT NULL, pkgid INTEGER, weight INTEGER);");
 
 	do {
-		sql_exec(db->sqlite, "INSERT OR IGNORE into autoremove(origin, pkgid)"
-				"SELECT distinct origin, id FROM packages WHERE automatic=1 AND "
+		sql_exec(db->sqlite, "INSERT OR IGNORE into autoremove(origin, pkgid, weight) "
+				"SELECT distinct origin, id, %d FROM packages WHERE automatic=1 AND "
 				"origin NOT IN (SELECT DISTINCT deps.origin FROM deps WHERE "
 				"deps.package_id not in (select pkgid from  autoremove) and deps.origin = packages.origin);"
-			);
+				, weight);
+		weight++;
 	} while (sqlite3_changes(db->sqlite) != 0);
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
 	}
+
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+}
+
+struct pkgdb_it *
+pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int recursive)
+{
+	sqlite3_stmt *stmt;
+
+	struct sbuf *sql = sbuf_new_auto();
+	const char *how = NULL;
+	int i = 0;
+
+	assert(db != NULL);
+
+	const char sqlsel[] = ""
+		"SELECT id AS rowid, p.origin, name, version, comment, desc, "
+		"message, arch, osversion, maintainer, www, prefix, "
+		"flatsize, (select count(*) from deps AS d where d.origin=del.origin) as weight FROM packages as p, delete_job as del where id = pkgid "
+		"ORDER BY weight ASC;";
+
+	sbuf_cat(sql, "INSERT OR IGNORE INTO delete_job (origin, pkgid) "
+			"SELECT p.origin, p.id FROM packages as p, deps as d WHERE p.origin = d.origin AND ");
+
+	switch (match) {
+		case MATCH_ALL:
+			how = NULL;
+			break;
+		case MATCH_EXACT:
+			how = "%s = ?1";
+			break;
+		case MATCH_GLOB:
+			how = "%s GLOB ?1";
+			break;
+		case MATCH_REGEX:
+			how = "%s REGEXP ?1";
+			break;
+		case MATCH_EREGEX:
+			how = "EREGEXP(?1, %s)";
+			break;
+	}
+
+	sql_exec(db->sqlite, "DROP TABLE IF EXISTS delete_job; "
+			"CREATE TEMPORARY TABLE IF NOT EXISTS delete_job ("
+			"origin TEXT UNIQUE NOT NULL, pkgid INTEGER);"
+			);
+
+	sbuf_printf(sql, how, "p.name");
+	sbuf_cat(sql, " OR ");
+	sbuf_printf(sql, how, "p.origin" );
+	sbuf_cat(sql, " OR ");
+	sbuf_printf(sql, how, "p.name || \"-\" || p.version");
+
+	for (i = 0; i < nbpkgs; i++) {
+		if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			return (NULL);
+		}
+		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_TRANSIENT);
+		while (sqlite3_step(stmt) != SQLITE_DONE);
+	}
+
+	sqlite3_finalize(stmt);
+
+	if (recursive) {
+		do {
+			sql_exec(db->sqlite, "INSERT OR IGNORE INTO delete_job(origin, pkgid) "
+					"SELECT p.origin, p.id FROM deps AS d, packages AS p, delete_job AS del WHERE "
+					"d.origin=del.origin AND p.id = d.package_id");
+		} while (sqlite3_changes(db->sqlite) != 0);
+	}
+
+	if (sqlite3_prepare_v2(db->sqlite, sqlsel, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
 
 	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
 }
