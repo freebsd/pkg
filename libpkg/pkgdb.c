@@ -231,7 +231,6 @@ pkgdb_upgrade(struct pkgdb *db)
 {
 	int64_t db_version = -1;
 	const char *sql_upgrade;
-	char sql_version[30];
 	int i;
 
 	assert(db != NULL);
@@ -280,9 +279,7 @@ pkgdb_upgrade(struct pkgdb *db)
 		if (sql_exec(db->sqlite, sql_upgrade) != EPKG_OK)
 					return (EPKG_FATAL);
 
-		snprintf(sql_version, sizeof(sql_version),
-					"PRAGMA user_version = %" PRId64 ";", db_version);
-		if (sql_exec(db->sqlite, sql_version) != EPKG_OK)
+		if (sql_exec(db->sqlite, "PRAGMA user_version = %" PRId64 ";", db_version) != EPKG_OK)
 			return (EPKG_FATAL);
 
 		if (sql_exec(db->sqlite, "COMMIT;") != EPKG_OK)
@@ -438,7 +435,6 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	struct pkgdb *db;
 	char localpath[MAXPATHLEN + 1];
 	char remotepath[MAXPATHLEN + 1];
-	char sql[BUFSIZ];
 	const char *dbdir;
 	bool create = false;
 
@@ -523,9 +519,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			return (EPKG_FATAL);
 		}
 
-		sqlite3_snprintf(sizeof(sql), sql, "ATTACH \"%s\" AS remote;", remotepath);
-
-		if (sql_exec(db->sqlite, sql) != EPKG_OK) {
+		if (sql_exec(db->sqlite, "ATTACH \"%s\" AS remote;", remotepath) != EPKG_OK) {
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
@@ -1701,19 +1695,37 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 }
 
 int
-sql_exec(sqlite3 *s, const char *sql)
+sql_exec(sqlite3 *s, const char *sql, ...)
 {
+	va_list ap;
+	const char *sql_to_exec;
+	struct sbuf *buf = NULL;
 	char *errmsg;
+	int ret = EPKG_OK;
 
 	assert(s != NULL && sql != NULL);
+	if (strchr(sql, '%') != NULL) {
+		va_start(ap, sql);
+		buf = sbuf_new_auto();
+		sbuf_vprintf(buf, sql, ap);
+		va_end(ap);
+		sbuf_finish(buf);
+		sql_to_exec = sbuf_data(buf);
+	} else {
+		sql_to_exec = sql;
+	}
 
-	if (sqlite3_exec(s, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
+	if (sqlite3_exec(s, sql_to_exec, NULL, NULL, &errmsg) != SQLITE_OK) {
 		pkg_emit_error("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
+		ret = EPKG_FATAL;
 		return (EPKG_FATAL);
 	}
 
-	return (EPKG_OK);
+	if (buf != NULL)
+		sbuf_delete(buf);
+
+	return (ret);
 }
 
 static int
