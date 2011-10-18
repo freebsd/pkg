@@ -64,6 +64,7 @@ static struct column_int_mapping {
 	{ "pkgsize", pkg_set_newpkgsize },
 	{ "licenselogic", pkg_set_licenselogic},
 	{ "rowid", pkg_set_rowid},
+	{ "id", pkg_set_rowid },
 	{ "weight", NULL },
 	{ NULL, NULL}
 };
@@ -279,7 +280,7 @@ pkgdb_upgrade(struct pkgdb *db)
 			return (EPKG_FATAL);
 
 		if (sql_exec(db->sqlite, sql_upgrade) != EPKG_OK)
-					return (EPKG_FATAL);
+			return (EPKG_FATAL);
 
 		if (sql_exec(db->sqlite, "PRAGMA user_version = %" PRId64 ";", db_version) != EPKG_OK)
 			return (EPKG_FATAL);
@@ -706,7 +707,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	}
 
 	snprintf(sql, sizeof(sql),
-			"SELECT id AS rowid, origin, name, version, comment, desc, "
+			"SELECT id, origin, name, version, comment, desc, "
 				"message, arch, osversion, maintainer, www, "
 				"prefix, flatsize, licenselogic "
 			"FROM packages AS p%s "
@@ -728,7 +729,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 {
 	sqlite3_stmt *stmt;
 	const char sql[] = ""
-		"SELECT p.id as rowid, p.origin, p.name, p.version, p.comment, p.desc, "
+		"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
 			"p.prefix, p.flatsize "
 			"FROM packages AS p, files AS f "
@@ -838,7 +839,7 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 	const char sql[] = ""
 		"SELECT p.name, p.origin, p.version "
 		"FROM packages AS p, deps AS d "
-		"WHERE p.rowid = d.package_id "
+		"WHERE p.id = d.package_id "
 			"AND d.origin = ?1;";
 
 	assert(db != NULL && pkg != NULL);
@@ -1809,7 +1810,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 	struct sbuf *sql = sbuf_new_auto();
 	const char *how = NULL;
 
-	const char finalsql[] = "select pkgid as rowid, origin, name, version, "
+	const char finalsql[] = "select pkgid as id, origin, name, version, "
 		"comment, desc, message, arch, osversion, maintainer, "
 		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
 		"cksum, repopath, automatic FROM pkgjobs;";
@@ -1914,7 +1915,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 		return (NULL);
 	}
 
-	const char sql[] = "select pkgid as rowid, origin, name, version, "
+	const char sql[] = "select pkgid as id, origin, name, version, "
 		"comment, desc, message, arch, osversion, maintainer, "
 		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
 		"cksum, repopath, automatic FROM pkgjobs;";
@@ -1966,7 +1967,7 @@ pkgdb_query_downgrades(struct pkgdb *db)
 	}
 
 	const char sql[] = ""
-		"SELECT l.id AS rowid, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
+		"SELECT l.id, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
 		"l.message AS message, l.arch AS arch, l.osversion AS osversion, l.maintainer AS maintainer, "
 		"l.www AS www, l.prefix AS prefix, l.flatsize AS flatsize, r.version AS version, r.flatsize AS newflatsize, "
 		"r.pkgsize AS pkgsize, r.path AS repopath "
@@ -1992,7 +1993,7 @@ pkgdb_query_autoremove(struct pkgdb *db)
 	assert(db != NULL);
 
 	const char sql[] = ""
-		"SELECT id AS rowid, p.origin, name, version, comment, desc, "
+		"SELECT id, p.origin, name, version, comment, desc, "
 		"message, arch, osversion, maintainer, www, prefix, "
 		"flatsize FROM packages as p, autoremove where id = pkgid ORDER BY weight ASC;";
 
@@ -2029,7 +2030,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 	assert(db != NULL);
 
 	const char sqlsel[] = ""
-		"SELECT id AS rowid, p.origin, name, version, comment, desc, "
+		"SELECT id, p.origin, name, version, comment, desc, "
 		"message, arch, osversion, maintainer, www, prefix, "
 		"flatsize, (select count(*) from deps AS d where d.origin=del.origin) as weight FROM packages as p, delete_job as del where id = pkgid "
 		"ORDER BY weight ASC;";
@@ -2110,7 +2111,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, pkgdb_field f
 		return (NULL);
 	}
 
-	sbuf_cat(sql, "SELECT id AS rowid, origin, name, version, comment, prefix, "
+	sbuf_cat(sql, "SELECT id, origin, name, version, comment, prefix, "
 			"desc, arch, arch, osversion, maintainer, www, licenselogic, "
 			"flatsize AS newflatsize, pkgsize, cksum, path AS repopath FROM remote.packages");
 
