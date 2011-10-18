@@ -185,6 +185,6 @@ int pkgdb_integrity_check(struct pkgdb *db);
 int pkg_set_rowid(struct pkg *, int64_t rowid);
 
 /* pkgdb commands */
-int sql_exec(sqlite3 *, const char *);
+int sql_exec(sqlite3 *, const char *, ...);
 
 #endif
