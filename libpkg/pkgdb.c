@@ -1860,7 +1860,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 			ERROR_SQLITE(db->sqlite);
 			return (NULL);
 		}
-		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_TRANSIENT);
+		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
 		while (sqlite3_step(stmt) != SQLITE_DONE);
 	}
 
@@ -2072,7 +2072,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 			ERROR_SQLITE(db->sqlite);
 			return (NULL);
 		}
-		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_TRANSIENT);
+		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
 		while (sqlite3_step(stmt) != SQLITE_DONE);
 	}
 
