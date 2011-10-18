@@ -649,6 +649,7 @@ pkgdb_it_free(struct pkgdb_it *it)
 
 	if (it->db->writable == 1) {
 		sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
+			"DROP TABLE IF EXISTS delete_job; "
 			"DROP TABLE IF EXISTS pkgjobs");
 	}
 
