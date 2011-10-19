@@ -2034,7 +2034,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 		"ORDER BY weight ASC;";
 
 	sbuf_cat(sql, "INSERT OR IGNORE INTO delete_job (origin, pkgid) "
-			"SELECT p.origin, p.id FROM packages as p WHERE ");
+			"SELECT p.origin, p.id FROM packages as p ");
 
 	switch (match) {
 		case MATCH_ALL:
@@ -2059,13 +2059,23 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 			"origin TEXT UNIQUE NOT NULL, pkgid INTEGER);"
 			);
 
-	sbuf_printf(sql, how, "p.name");
-	sbuf_cat(sql, " OR ");
-	sbuf_printf(sql, how, "p.origin");
-	sbuf_cat(sql, " OR ");
-	sbuf_printf(sql, how, "p.name || \"-\" || p.version");
+	if (how != NULL) {
+		sbuf_cat(sql, " WHERE ");
+		sbuf_printf(sql, how, "p.name");
+		sbuf_cat(sql, " OR ");
+		sbuf_printf(sql, how, "p.origin");
+		sbuf_cat(sql, " OR ");
+		sbuf_printf(sql, how, "p.name || \"-\" || p.version");
 
-	for (i = 0; i < nbpkgs; i++) {
+		for (i = 0; i < nbpkgs; i++) {
+			if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+				ERROR_SQLITE(db->sqlite);
+				return (NULL);
+			}
+			sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
+			while (sqlite3_step(stmt) != SQLITE_DONE);
+		}
+	} else {
 		if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite);
 			return (NULL);
