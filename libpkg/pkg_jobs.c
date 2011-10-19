@@ -118,7 +118,6 @@ pkg_jobs_install(struct pkg_jobs *j)
 	p = NULL;
 	/* Install */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
-		printf("%s\n", path);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 				 pkg_get(p, PKG_REPOPATH));
 
