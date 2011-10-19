@@ -19,7 +19,7 @@
 #include "pkg_util.h"
 
 #include "db_upgrades.h"
-#define DBVERSION 6
+#define DBVERSION 7
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
@@ -425,7 +425,8 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE RESTRICT,"
 		"UNIQUE(package_id, group_id)"
 	");"
-	"PRAGMA user_version = 6;"
+	"CREATE INDEX deporigini on deps(origin);"
+	"PRAGMA user_version = 7;"
 	"COMMIT;"
 	;
 
@@ -2003,9 +2004,8 @@ pkgdb_query_autoremove(struct pkgdb *db)
 		sql_exec(db->sqlite, "INSERT OR IGNORE into autoremove(origin, pkgid, weight) "
 				"SELECT distinct origin, id, %d FROM packages WHERE automatic=1 AND "
 				"origin NOT IN (SELECT DISTINCT deps.origin FROM deps WHERE "
-				"deps.package_id not in (select pkgid from  autoremove) and deps.origin = packages.origin);"
+				" deps.origin = packages.origin);"
 				, weight);
-		weight++;
 	} while (sqlite3_changes(db->sqlite) != 0);
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
