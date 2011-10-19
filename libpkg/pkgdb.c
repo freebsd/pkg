@@ -1812,7 +1812,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 	const char finalsql[] = "select pkgid as id, origin, name, version, "
 		"comment, desc, message, arch, osversion, maintainer, "
 		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-		"cksum, repopath, automatic FROM pkgjobs;";
+		"cksum, repopath, automatic, (select count(*) from remote.deps as d where d.origin = pkgjobs.origin) as weight FROM pkgjobs order by weight DESC;";
 
 	assert(db != NULL);
 
@@ -1917,7 +1917,7 @@ pkgdb_query_upgrades(struct pkgdb *db)
 	const char sql[] = "select pkgid as id, origin, name, version, "
 		"comment, desc, message, arch, osversion, maintainer, "
 		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-		"cksum, repopath, automatic FROM pkgjobs;";
+		"cksum, repopath, automatic, (select count(*) from remote.deps as d where d.origin = pkgjobs.origin) as weight FROM pkgjobs order by weight DESC;";
 
 	create_temporary_pkgjobs(db->sqlite);
 
