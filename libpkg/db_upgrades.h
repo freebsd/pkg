@@ -113,6 +113,9 @@ static struct db_upgrades {
 	"ALTER TABLE pkg_directories ADD try INTEGER;"
 	"UPDATE pkg_directories SET try = 1;"
 	},
+	{7,
+	"CREATE INDEX deporigini on deps(origin);"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL },
