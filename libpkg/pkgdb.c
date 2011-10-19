@@ -2034,7 +2034,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 		"ORDER BY weight ASC;";
 
 	sbuf_cat(sql, "INSERT OR IGNORE INTO delete_job (origin, pkgid) "
-			"SELECT p.origin, p.id FROM packages as p, deps as d WHERE p.origin = d.origin AND ");
+			"SELECT p.origin, p.id FROM packages as p WHERE ");
 
 	switch (match) {
 		case MATCH_ALL:
@@ -2061,7 +2061,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 
 	sbuf_printf(sql, how, "p.name");
 	sbuf_cat(sql, " OR ");
-	sbuf_printf(sql, how, "p.origin" );
+	sbuf_printf(sql, how, "p.origin");
 	sbuf_cat(sql, " OR ");
 	sbuf_printf(sql, how, "p.name || \"-\" || p.version");
 
