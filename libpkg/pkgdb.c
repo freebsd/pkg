@@ -522,7 +522,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			return (EPKG_FATAL);
 		}
 
-		if (sql_exec(db->sqlite, "ATTACH \"%s\" AS remote;", remotepath) != EPKG_OK) {
+		if (sql_exec(db->sqlite, "ATTACH '%q' AS remote;", remotepath) != EPKG_OK) {
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
@@ -1703,18 +1703,16 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 {
 	va_list ap;
 	const char *sql_to_exec;
-	struct sbuf *buf = NULL;
+	char *sqlbuf = NULL;
 	char *errmsg;
 	int ret = EPKG_OK;
 
 	assert(s != NULL && sql != NULL);
 	if (strchr(sql, '%') != NULL) {
 		va_start(ap, sql);
-		buf = sbuf_new_auto();
-		sbuf_vprintf(buf, sql, ap);
+		sqlbuf = sqlite3_vmprintf(sql, ap);
 		va_end(ap);
-		sbuf_finish(buf);
-		sql_to_exec = sbuf_data(buf);
+		sql_to_exec = sqlbuf;
 	} else {
 		sql_to_exec = sql;
 	}
@@ -1726,8 +1724,8 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 		return (EPKG_FATAL);
 	}
 
-	if (buf != NULL)
-		sbuf_delete(buf);
+	if (sqlbuf != NULL)
+		free(sqlbuf);
 
 	return (ret);
 }
