@@ -1871,7 +1871,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs)
 
 	/* Append dependencies */
 	do {
-		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+		sql_exec(db->sqlite, "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 				"osversion, maintainer, www, prefix, flatsize, pkgsize, "
 				"cksum, repopath, automatic) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
