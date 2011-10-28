@@ -194,12 +194,7 @@ exec_register(int argc, char **argv)
 		free(input_path);
 	}
 
-	if (pkgdb_register_pkg(db, pkg) != EPKG_OK) {
-		retcode = EPKG_FATAL;
-	}
-
-	pkgdb_register_finale(db, ret);
-	if (ret != EPKG_OK) {
+	if (pkgdb_register_pkg(db, pkg, 1) != EPKG_OK) {
 		retcode = EPKG_FATAL;
 	}
 

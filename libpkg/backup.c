@@ -76,7 +76,7 @@ pkgdb_load(struct pkgdb *db, char *dest)
 			if (pkg == NULL) {
 				pkg_new(&pkg, PKG_FILE);
 			} else {
-				pkgdb_register_finale(db, pkgdb_register_pkg(db, pkg ));
+				pkgdb_register_finale(db, pkgdb_register_pkg(db, pkg, 0));
 				pkg_reset(pkg, PKG_FILE);
 			}
 			size = archive_entry_size(ae);
@@ -93,7 +93,7 @@ pkgdb_load(struct pkgdb *db, char *dest)
 		} else 
 			continue;
 	}
-	pkgdb_register_finale(db, pkgdb_register_pkg(db, pkg ));
+	pkgdb_register_pkg(db, pkg, 1);
 
 cleanup:
 	if (a != NULL)

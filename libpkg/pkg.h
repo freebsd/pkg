@@ -558,7 +558,7 @@ int pkgdb_has_flag(struct pkgdb *db, int flag);
  * register a package to the database.
  * @return An error code.
  */
-int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete);
 
 /**
  * Complete an in-flight package registration command.

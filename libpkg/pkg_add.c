@@ -192,17 +192,17 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
-	retcode = pkgdb_register_pkg(db, pkg);
+	if (upgrade == 0)
+		retcode = pkgdb_register_pkg(db, pkg, 0);
+	else
+		retcode = pkgdb_register_pkg(db, pkg, 1);
 	if (retcode != EPKG_OK || pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)
 		goto cleanup_reg;
-
-	if (!upgrade)
-		pkg_emit_install_begin(pkg);
 
 	/*
 	 * Execute pre-install scripts
 	 */
-	if (!upgrade)
+	if (upgrade != 2)
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	/*
@@ -218,18 +218,14 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 	/*
 	 * Execute post install scripts
 	 */
-	if (upgrade)
+	if (upgrade == 2)
 		pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 	else
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
-	if (upgrade)
-		pkg_emit_upgrade_finished(pkg);
-	else
-		pkg_emit_install_finished(pkg);
-
 	cleanup_reg:
-	pkgdb_register_finale(db, retcode);
+	if (upgrade == 0)
+		pkgdb_register_finale(db, retcode);
 
 	cleanup:
 	if (a != NULL)

@@ -72,7 +72,7 @@ event_callback(void *data, struct pkg_event *ev)
 		fflush(stdout);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
-		printf("done\n");
+		printf(" done\n");
 		break;
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;
