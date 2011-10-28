@@ -91,6 +91,9 @@ pkg_delete_files(struct pkg *pkg, int force)
 	const char *path;
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
+		if (file->keep == 1)
+			continue;
+
 		path = pkg_file_path(file);
 
 		/* Regular files and links */
@@ -122,6 +125,9 @@ pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, int force)
 	int64_t nbpackage;
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		if (dir->keep == 1)
+			continue;
+
 		nbpackage = 0;
 
 		if (pkgdb_is_dir_used(db, pkg_dir_path(dir), &nbpackage) != EPKG_OK)

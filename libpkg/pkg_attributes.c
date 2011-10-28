@@ -53,6 +53,9 @@ pkg_file_new(struct pkg_file **file)
 	if ((*file = calloc(1, sizeof(struct pkg_file))) == NULL)
 		return (EPKG_FATAL);
 
+	(*file)->perm = 0;
+	(*file)->keep = 0;
+
 	return (EPKG_OK);
 }
 
@@ -85,6 +88,7 @@ pkg_dir_new(struct pkg_dir **d)
 		return (EPKG_FATAL);
 
 	(*d)->perm = 0;
+	(*d)->keep = 0;
 	(*d)->try = 0;
 
 	return (EPKG_OK);

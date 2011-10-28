@@ -1161,7 +1161,7 @@ pkgdb_has_flag(struct pkgdb *db, int flag)
 	(db)->flags &= ~(flag)
 
 int
-pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
+pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *file = NULL;
@@ -1245,14 +1245,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg)
 
 	assert(db != NULL);
 
-	if (pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
+	if (!complete && pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
 		pkg_emit_error("%s", "tried to register a package with an in-flight SQL command");
 		return (EPKG_FATAL);
 	}
 
 	s = db->sqlite;
 
-	if (sql_exec(s, sql_begin) != EPKG_OK)
+	if (!complete && sql_exec(s, sql_begin) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	PKGDB_SET_FLAG(db, PKGDB_FLAG_IN_FLIGHT);
@@ -1921,29 +1921,38 @@ pkgdb_query_upgrades(struct pkgdb *db)
 
 	create_temporary_pkgjobs(db->sqlite);
 
-	sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
-			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-			"cksum, repopath, automatic) "
-			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, "
-			"l.message, l.arch, l.osversion, l.maintainer, "
-			"l.www, l.prefix, l.flatsize, r.version AS newversion, r.flatsize AS newflatsize, "
-			"r.pkgsize, r.cksum, r.path AS repopath, l.automatic "
-			"FROM main.packages AS l, "
-			"remote.packages AS r "
-			"WHERE l.origin = r.origin "
-			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
-
-	do {
-		sql_exec(db->sqlite, "INSERT INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+	sql_exec(db->sqlite,  "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic)"
-			"SELECT DISTINCT id, origin, name, version, comment, desc, arch, osversion, maintainer, www, prefix, flatsize, "
-			"pkgsize, cksum, path as repopath, 1 FROM remote.packages WHERE origin IN ("
-			"SELECT DISTINCT deps.origin FROM remote.deps as deps, pkgjobs WHERE deps.package_id = pkgjobs.pkgid and "
-			"deps.origin NOT IN (SELECT DISTINCT origin from pkgjobs) AND deps.origin NOT IN (SELECT DISTINCT origin from main.packages)"
-			");");
+			"cksum, repopath, automatic) "
+			"SELECT id, origin, name, version, comment, desc, "
+			"arch, osversion, maintainer, www, prefix, flatsize, pkgsize, "
+			"cksum, path, 0 FROM remote.packages WHERE origin IN (select origin from main.packages)");
+
+	/* Remove packages already installed and in the latest version */
+	sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
+
+	/* Append dependencies */
+	do {
+		sql_exec(db->sqlite, "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+				"osversion, maintainer, www, prefix, flatsize, pkgsize, "
+				"cksum, repopath, automatic) "
+				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
+				"r.arch, r.osversion, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
+				"r.cksum, r.path, 1 "
+				"from remote.packages AS r where r.origin IN "
+				"(SELECT d.origin from remote.deps AS d, pkgjobs as j WHERE d.package_id = j.pkgid) "
+				"AND (SELECT p.origin from main.packages as p WHERE p.origin=r.origin AND version=r.version) IS NULL;");
 	} while (sqlite3_changes(db->sqlite) != 0);
 
+	/* Determine if there is an upgrade needed */
+	sql_exec(db->sqlite, "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
+			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+			"cksum, repopath, automatic) "
+			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
+			"l.osversion, l.maintainer, l.www, l.prefix, l.flatsize, r.version AS newversion, "
+			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
+			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin "
+			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -2316,7 +2325,29 @@ pkgdb_integrity_check(struct pkgdb *db)
 	sqlite3_finalize(stmt);
 	sbuf_delete(conflictmsg);
 
-	sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck");
+/*	sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck");*/
 
 	return (ret);
 }
+
+struct pkgdb_it *
+pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin)
+{
+       sqlite3_stmt *stmt;
+
+       assert(db != NULL && origin != NULL);
+
+       const char sql_conflicts [] = "SELECT DISTINCT p.id as rowid, p.origin, p.name, p.version, p.prefix "
+               "FROM packages AS p, files AS f, integritycheck AS i "
+               "WHERE p.id = f.package_id AND f.path = i.path AND i.origin = ?1";
+
+       if (sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL) != SQLITE_OK) {
+               ERROR_SQLITE(db->sqlite);
+               return (NULL);
+       }
+
+       sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
+
+       return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+}
+

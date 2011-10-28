@@ -65,6 +65,7 @@ struct pkg_file {
 	char sha256[SHA256_DIGEST_LENGTH * 2 +1];
 	char uname[MAXLOGNAME +1];
 	char gname[MAXLOGNAME +1];
+	int keep;
 	mode_t perm;
 	STAILQ_ENTRY(pkg_file) next;
 };
@@ -74,6 +75,7 @@ struct pkg_dir {
 	char uname[MAXLOGNAME +1];
 	char gname[MAXLOGNAME +1];
 	mode_t perm;
+	int keep;
 	int try;
 	STAILQ_ENTRY(pkg_dir) next;
 };
@@ -97,10 +99,8 @@ struct pkg_option {
 
 struct pkg_jobs {
 	STAILQ_HEAD(jobs, pkg) jobs;
-	LIST_HEAD(nodes, pkg_jobs_node) nodes;
 	struct pkgdb *db;
 	pkg_jobs_t type;
-	unsigned int resolved :1;
 };
 
 struct pkg_jobs_node {
@@ -181,6 +181,7 @@ int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 
 int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p);
 int pkgdb_integrity_check(struct pkgdb *db);
+struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin);
 
 int pkg_set_rowid(struct pkg *, int64_t rowid);
 
