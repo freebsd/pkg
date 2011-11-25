@@ -650,8 +650,11 @@ int pkgdb_compact(struct pkgdb *db);
  * @param path The path to the package archive file on the local disk
  * @return An error code.
  */
-int pkg_add(struct pkgdb *db, const char *path);
-int pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic);
+int pkg_add(struct pkgdb *db, const char *path, int flags);
+
+#define PKG_ADD_UPGRADE (1 << 0)
+#define PKG_ADD_UPGRADE_NEW (1 << 1)
+#define PKG_ADD_AUTOMATIC (1 << 2)
 
 /**
  * Allocate a new pkg_jobs.
@@ -712,8 +715,9 @@ int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
  * required by other packages.
  * @return An error code.
  */
-int pkg_delete(struct pkg *pkg, struct pkgdb *db, int force);
-int pkg_delete2(struct pkg *pkg, struct pkgdb *db, int force, int upgrade);
+int pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags);
+#define PKG_DELETE_FORCE (1<<0)
+#define PKG_DELETE_UPGRADE (1<<0)
 
 int pkg_repo_fetch(struct pkg *pkg);
 int pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len);
