@@ -79,13 +79,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 }
 
 int
-pkg_add(struct pkgdb *db, const char *path)
-{
-	return (pkg_add2(db, path, 0, 0));
-}
-
-int
-pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
+pkg_add(struct pkgdb *db, const char *path, int flags)
 {
 	struct archive *a;
 	struct archive_entry *ae;
@@ -116,7 +110,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 		goto cleanup;
 	}
 
-	if (automatic == 1)
+	if (flags & PKG_ADD_AUTOMATIC)
 		pkg_set_automatic(pkg);
 
 	if (uname(&u) != 0) {
@@ -178,7 +172,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 					 ext);
 
 			if (access(dpath, F_OK) == 0) {
-				if (pkg_add2(db, dpath, 0, 1) != EPKG_OK) {
+				if (pkg_add(db, dpath, PKG_ADD_AUTOMATIC) != EPKG_OK) {
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
@@ -192,7 +186,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
-	if (upgrade == 0)
+	if (flags & PKG_ADD_UPGRADE)
 		retcode = pkgdb_register_pkg(db, pkg, 0);
 	else
 		retcode = pkgdb_register_pkg(db, pkg, 1);
@@ -202,7 +196,7 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 	/*
 	 * Execute pre-install scripts
 	 */
-	if (upgrade != 2)
+	if (flags ^ PKG_ADD_UPGRADE_NEW)
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	/*
@@ -218,13 +212,13 @@ pkg_add2(struct pkgdb *db, const char *path, int upgrade, int automatic)
 	/*
 	 * Execute post install scripts
 	 */
-	if (upgrade == 2)
+	if (flags & PKG_ADD_UPGRADE_NEW)
 		pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 	else
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
 	cleanup_reg:
-	if (upgrade == 0)
+	if (flags ^ PKG_ADD_UPGRADE)
 		pkgdb_register_finale(db, retcode);
 
 	cleanup:

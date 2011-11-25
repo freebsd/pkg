@@ -124,6 +124,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	const char *cachedir;
 	char path[MAXPATHLEN + 1];
 	int ret = EPKG_OK;
+	int flags = 0;
 
 	STAILQ_INIT(&pkg_queue);
 
@@ -159,6 +160,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	/* Install */
 	sql_exec(j->db->sqlite, "SAVEPOINT upgrade;");
 	while (pkg_jobs(j, &p) == EPKG_OK) {
+		flags = 0;
 		it = pkgdb_integrity_conflict_local(j->db, pkg_get(p, PKG_ORIGIN));
 
 		if (it != NULL) {
@@ -194,7 +196,11 @@ pkg_jobs_install(struct pkg_jobs *j)
 			}
 		}
 
-		if (pkg_add2(j->db, path, 1, pkg_is_automatic(p)) != EPKG_OK) {
+		flags |= PKG_ADD_UPGRADE;
+		if (pkg_is_automatic(p))
+			flags |= PKG_ADD_AUTOMATIC;
+
+		if (pkg_add(j->db, path, flags) != EPKG_OK) {
 			sql_exec(j->db->sqlite, "ROLLBACK TO upgrade;");
 			return (EPKG_FATAL);
 		}

@@ -65,7 +65,7 @@ exec_add(int argc, char **argv)
 		} else
 			file = argv[i];
 
-		if (pkg_add(db, file) != EPKG_OK) {
+		if (pkg_add(db, file, 0) != EPKG_OK) {
 			continue;
 		}
 	}
