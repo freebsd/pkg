@@ -14,7 +14,7 @@ query_yesno(const char *msg)
 {
         int c, r = 0;
 
-        printf(msg);
+        printf("%s", msg);
 
         c = getchar();
         if (c == 'y' || c == 'Y')
