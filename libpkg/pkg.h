@@ -717,7 +717,7 @@ int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
  */
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags);
 #define PKG_DELETE_FORCE (1<<0)
-#define PKG_DELETE_UPGRADE (1<<0)
+#define PKG_DELETE_UPGRADE (1<<1)
 
 int pkg_repo_fetch(struct pkg *pkg);
 int pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len);
