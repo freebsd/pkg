@@ -229,7 +229,10 @@ pkg_jobs_deinstall(struct pkg_jobs *j, int force)
 	int retcode;
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
-		retcode = pkg_delete(p, j->db, force);
+		if (force)
+			retcode = pkg_delete(p, j->db, PKG_DELETE_FORCE);
+		else
+			retcode = pkg_delete(p, j->db, 0);
 		if (retcode != EPKG_OK)
 			return (retcode);
 	}
