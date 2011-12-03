@@ -212,13 +212,13 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	/*
 	 * Execute post install scripts
 	 */
-	if ((flags & PKG_ADD_UPGRADE) == 0)
+	if (flags & PKG_ADD_UPGRADE_NEW)
 		pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 	else
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
 	cleanup_reg:
-	if (flags ^ PKG_ADD_UPGRADE)
+	if ((flags & PKG_ADD_UPGRADE) == 0)
 		pkgdb_register_finale(db, retcode);
 
 	cleanup:
