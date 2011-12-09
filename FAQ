@@ -1,0 +1,2 @@
+Q: Is there an equivalent for pkg-orphan/pkg_cutleaves with pkgng?
+A: pkg autoremove is what you are looking for
