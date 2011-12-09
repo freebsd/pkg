@@ -838,4 +838,7 @@ typedef int(*pkg_event_cb)(void *, struct pkg_event *);
 
 void pkg_event_register(pkg_event_cb cb, void *data);
 
+int pkg_stop_rc_scripts(struct pkg *);
+int pkg_start_rc_scripts(struct pkg *);
+
 #endif

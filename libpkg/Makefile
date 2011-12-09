@@ -24,7 +24,8 @@ SRCS=		pkg.c \
 		backup.c \
 		fetch.c \
 		packing.c \
-		scripts.c
+		scripts.c \
+		rcscripts.c
 
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \

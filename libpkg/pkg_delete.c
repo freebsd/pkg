@@ -17,6 +17,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 {
 	struct pkg_dep *rdep = NULL;
 	int ret;
+	const char *handle_rc = NULL;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
@@ -52,6 +53,14 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 		if (flags ^ PKG_DELETE_FORCE)
 			return (EPKG_REQUIRED);
 	}
+
+	/*
+	 * stop the different related services if the users do want that
+	 * and that the service is running
+	 */
+	handle_rc = pkg_config("HANDLE_RC_SCRIPTS");
+	if (handle_rc && ((strcmp(handle_rc, "yes") == 0) || (strcmp(handle_rc, "YES") == 0)))
+		pkg_stop_rc_scripts(pkg);
 
 	if (flags & PKG_DELETE_UPGRADE) {
 		if (( ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_UPGRADE)) != EPKG_OK )
