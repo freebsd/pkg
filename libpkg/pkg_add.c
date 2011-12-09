@@ -218,14 +218,6 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	else
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
-	/*
-	 * start the different related services if the users do want that
-	 * and that the service is running
-	 */
-	handle_rc = pkg_config("HANDLE_RC_SCRIPTS");
-	if (handle_rc && ((strcmp(handle_rc, "yes") == 0) || (strcmp(handle_rc, "YES") == 0)))
-		pkg_start_rc_scripts(pkg);
-
 	cleanup_reg:
 	if ((flags & PKG_ADD_UPGRADE) == 0)
 		pkgdb_register_finale(db, retcode);
