@@ -134,6 +134,7 @@ main(int argc, char **argv)
 	size_t len;
 	signed char ch;
 	int debug = 0;
+	int ret = EX_USAGE;
 
 	if (argc < 2)
 		usage();
@@ -187,6 +188,8 @@ main(int argc, char **argv)
 		if (chdir("/") == -1)
 			errx(EX_SOFTWARE, "chdir() failed");
 
+	pkg_init(NULL);
+
 	len = strlen(argv[0]);
 	for (i = 0; i < cmd_len; i++) {
 		if (strncmp(argv[0], cmd[i].name, len) == 0) {
@@ -208,13 +211,14 @@ main(int argc, char **argv)
 	}
 
 	if (command == NULL) {
+		pkg_shutdown();
 		usage();
-		return (EX_USAGE); /* Not reached but makes scanbuild happy */
+		return (ret); /* Not reached but makes scanbuild happy */
 	}
 
 	if (ambiguous <= 1) {
 		assert(command->exec != NULL);
-		return (command->exec(argc, argv));
+		ret = command->exec(argc, argv);
 	} else {
 		warnx("'%s' is not a valid command.\n", argv[0]);
 
@@ -226,6 +230,7 @@ main(int argc, char **argv)
 				fprintf(stderr, "\t%s\n",cmd[i].name);
 	}
 
-	return (EX_USAGE);
+	pkg_shutdown();
+	return (ret);
 }
 

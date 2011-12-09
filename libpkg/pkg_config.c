@@ -1,12 +1,10 @@
 #include <sys/types.h>
 
+#include <assert.h>
 #include <err.h>
-#include <fcntl.h>
-#include <libutil.h>
-#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <yaml.h>
 
 #include "pkg.h"
 #include "pkg_event.h"
@@ -25,27 +23,54 @@ static struct _config {
 	{ NULL, NULL, NULL}
 };
 
-static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-static int done = 0;
+struct _pkg_config {
+	int parser_init;
+	int doc_init;
+	yaml_parser_t parser;
+	yaml_document_t doc;
+	struct _config *c;
+};
+
+static struct _pkg_config *conf = NULL;
 
 static void
-load_config(void)
+parse_configuration(yaml_node_t *node)
 {
-	properties p = NULL;
-	int fd;
 	int i;
+	yaml_node_pair_t *pair;
+	yaml_node_t *key;
+	yaml_node_t *val;
 
-	if ((fd = open("/etc/pkg.conf", O_RDONLY)) > 0) {
-		p = properties_read(fd);
-		close(fd);
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		key = yaml_document_get_node(&conf->doc, pair->key);
+		val = yaml_document_get_node(&conf->doc, pair->value);
+
+		if (key->data.scalar.length <= 0) {
+			/* ignoring silently */
+			++pair;
+			continue;
+		}
+
+		if (val->type == YAML_NO_NODE || ( val->type == YAML_SCALAR_NODE && val->data.scalar.length <= 0)) {
+			/* silently skip on purpose */
+			++pair;
+			continue;
+		}
+		for (i = 0; conf->c[i].key != NULL; i++) {
+			if (!strcasecmp(key->data.scalar.value, conf->c[i].key)) {
+				if (conf->c[i].val != NULL) {
+					/* skip env var already set */
+					++pair;
+					continue;
+				}
+				conf->c[i].val = val->data.scalar.value;
+				break;
+			}
+		}
+		/* unknown values are just silently skipped */
+		++pair;
 	}
-
-	for (i = 0; c[i].key != NULL; i++) {
-		if ((c[i].val = getenv(c[i].key)) == NULL && p != NULL)
-			c[i].val = property_find(p, c[i].key);
-	}
-
-	done = 1;
 }
 
 const char *
@@ -53,23 +78,73 @@ pkg_config(const char *key)
 {
 	int i;
 
-	if (done == 0) {
-		if (pthread_mutex_lock(&m) != 0)
-			err(1, "pthread_mutex_lock()");
-		if (done == 0)
-			load_config();
-		if (pthread_mutex_unlock(&m) != 0)
-			err(1, "pthread_mutex_unlock()");
-	}
+	assert(conf != NULL);
 
-	for (i = 0; c[i].key != NULL; i++) {
-		if (strcmp(c[i].key, key) == 0) {
-			if (c[i].val != NULL)
-				return (c[i].val);
+	for (i = 0; conf->c[i].key != NULL; i++) {
+		if (strcmp(conf->c[i].key, key) == 0) {
+			if (conf->c[i].val != NULL)
+				return (conf->c[i].val);
 			else
-				return (c[i].def);
+				return (conf->c[i].def);
 		}
 	}
 
 	return (NULL);
+}
+
+int
+pkg_init(const char *path)
+{
+	FILE *conffile;
+	yaml_node_t *node;
+	int i;
+
+	assert(conf == NULL);
+
+	conf = malloc(sizeof(struct _pkg_config));
+	conf->c = c;
+
+	/* first fill with environment variables */
+
+	for (i = 0; conf->c[i].key != NULL; i++)
+		conf->c[i].val = getenv(conf->c[i].key);
+
+	if (path == NULL)
+		path = "/etc/pkg.conf";
+
+	conffile = fopen(path, "r");
+
+	if (conffile == NULL)
+		return (EPKG_OK);
+
+	yaml_parser_initialize(&conf->parser);
+	yaml_parser_set_input_file(&conf->parser, conffile);
+	yaml_parser_load(&conf->parser, &conf->doc);
+
+	node = yaml_document_get_root_node(&conf->doc);
+	if (node != NULL) {
+		if (node->type != YAML_MAPPING_NODE) {
+			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
+		} else {
+			conf->doc_init = 1;
+			parse_configuration(node);
+		}
+	} else {
+		pkg_emit_error("Invalid configuration format, ignoring the configuration file");
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkg_shutdown(void)
+{
+	assert(conf != NULL);
+
+	yaml_document_delete(&conf->doc);
+	yaml_parser_delete(&conf->parser);
+
+	free(conf);
+
+	return (EPKG_OK);
 }
