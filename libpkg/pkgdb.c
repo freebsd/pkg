@@ -1627,6 +1627,16 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	if (stmt_users != NULL)
 		sqlite3_finalize(stmt_users);
 
+	if (!complete) {
+		/*
+		 * start the different related services if the users do want that
+		 * and that the service is running
+		 */
+		handle_rc = pkg_config("HANDLE_RC_SCRIPTS");
+		if (handle_rc && ((strcmp(handle_rc, "yes") == 0) || (strcmp(handle_rc, "YES") == 0)))
+			pkg_start_rc_scripts(pkg);
+	}
+
 	return (retcode);
 }
 
@@ -1648,6 +1658,14 @@ pkgdb_register_finale(struct pkgdb *db, int retcode)
 	ret = sql_exec(db->sqlite, command);
 
 	PKGDB_UNSET_FLAG(db, PKGDB_FLAG_IN_FLIGHT);
+
+	/*
+	 * start the different related services if the users do want that
+	 * and that the service is running
+	 */
+	handle_rc = pkg_config("HANDLE_RC_SCRIPTS");
+	if (handle_rc && ((strcmp(handle_rc, "yes") == 0) || (strcmp(handle_rc, "YES") == 0)))
+		pkg_start_rc_scripts(pkg);
 
 	return (ret);
 }
