@@ -19,6 +19,7 @@ PKGPREUPGRADE?=		${PKGDIR}/pkg-pre-upgrade
 PKGPOSTUPGRADE?=	${PKGDIR}/pkg-post-upgrade
 PKGUPGRADE?=		${PKGDIR}/pkg-upgrade
 PLIST_REINPLACE:=	${PLIST_REINPLACE:Ndirrmtry}
+PLIST_REINPLACE:=	${PLIST_REINPLACE:Nstopdaemon}
 
 ACTUAL-PACKAGE-DEPENDS?= \
 	if [ "${_LIB_RUN_DEPENDS}" != "  " ]; then \
