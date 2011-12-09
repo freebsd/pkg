@@ -92,7 +92,6 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	char dpath[MAXPATHLEN + 1];
 	const char *basedir;
 	const char *ext;
-	const char *handle_rc = NULL;
 	int retcode = EPKG_OK;
 	int ret;
 
