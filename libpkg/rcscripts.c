@@ -67,6 +67,9 @@ rc_stop(const char *rc_file)
 	int fd;
 	pid_t pid;
 
+	if (rc_file == NULL)
+		return (0);
+
 	switch ((pid = fork())) {
 		case -1:
 			return (-1);
@@ -120,6 +123,9 @@ rc_start(const char *rc_file)
 {
 	int pstat;
 	pid_t pid;
+
+	if (rc_file == NULL)
+		return (0);
 
 	switch ((pid = fork())) {
 		case -1:
