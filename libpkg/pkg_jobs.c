@@ -1,4 +1,8 @@
+#include <sys/param.h>
+#include <sys/mount.h>
+
 #include <assert.h>
+#include <libutil.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -125,10 +129,31 @@ pkg_jobs_install(struct pkg_jobs *j)
 	char path[MAXPATHLEN + 1];
 	int ret = EPKG_OK;
 	int flags = 0;
+	int64_t dlsize = 0;
+	struct statfs fs;
+	char dlsz[7];
+	char fsz[7];
 
 	STAILQ_INIT(&pkg_queue);
 
+	/* check for available size to fetch */
+	while (pkg_jobs(j, &p) == EPKG_OK)
+		dlsize += pkg_new_pkgsize(p);
+
+	if  (statfs(pkg_config("PKG_CACHEDIR"), &fs) == -1) {
+		pkg_emit_errno("statfs", pkg_config("PKG_CACHEDIR"));
+		return (EPKG_FATAL);
+	}
+
+	if (dlsize > ((int64_t)fs.f_bsize * (int64_t)fs.f_bfree)) {
+		humanize_number(dlsz, sizeof(dlsz), dlsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(fsz, sizeof(fsz), (int64_t)fs.f_bsize * (int64_t)fs.f_bfree, "B", HN_AUTOSCALE, 0);
+		pkg_emit_error("Not enough space in %s, needed %s available %s", pkg_config("PKG_CACHEDIR"), dlsz, fsz);
+		return (EPKG_FATAL);
+	}
+		
 	/* Fetch */
+	p = NULL;
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		if (pkg_repo_fetch(p) != EPKG_OK)
 			return (EPKG_FATAL);
