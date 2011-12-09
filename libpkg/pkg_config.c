@@ -24,8 +24,6 @@ static struct _config {
 };
 
 struct _pkg_config {
-	int parser_init;
-	int doc_init;
 	yaml_parser_t parser;
 	yaml_document_t doc;
 	struct _config *c;
@@ -126,7 +124,6 @@ pkg_init(const char *path)
 		if (node->type != YAML_MAPPING_NODE) {
 			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
 		} else {
-			conf->doc_init = 1;
 			parse_configuration(node);
 		}
 	} else {
