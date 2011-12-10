@@ -5,6 +5,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <libutil.h>
+#include <string.h>
 
 #include <pkg.h>
 
@@ -35,6 +36,7 @@ exec_delete(int argc, char **argv)
 	int recursive = 0;
 	int64_t oldsize = 0, newsize = 0;
 	char size[7];
+	const char *assume_yes = NULL;
 
 	while ((ch = getopt(argc, argv, "agxXfyr")) != -1) {
 		switch (ch) {
@@ -120,6 +122,11 @@ exec_delete(int argc, char **argv)
 		printf("\nThe deinstallation will save %s\n", size);
 	else
 		printf("\nThe deinstallation will require %s more space\n", size);
+
+	assume_yes = pkg_config("ASSUME_ALWAYS_YES");
+	if (assume_yes && (strcasecmp(assume_yes, "yes") == 0))
+	    yes = 1;
+
 	if (yes == 0)
 		yes = query_yesno("\nProceed with deinstalling packages [y/N]: ");
 

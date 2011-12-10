@@ -33,6 +33,7 @@ exec_autoremove(int argc, char **argv)
 	int64_t oldsize = 0, newsize = 0;
 	char size[7];
 	int ch, yes = 0;
+	const char *assume_yes = NULL;
 
 	while ((ch = getopt(argc, argv, "y")) != -1) {
 		switch (ch) {
@@ -100,6 +101,10 @@ exec_autoremove(int argc, char **argv)
 		printf("\nThe autoremove will save %s\n", size);
 	else
 		printf("\nThe autoremove will require %s more space\n", size);
+
+	assume_yes = pkg_config("ASSUME_ALWAYS_YES");
+	if (assume_yes && (strcasecmp(assume_yes, "yes") == 0))
+	    yes = 1;
 
 	if (yes == 0)
 		yes = query_yesno("\nProceed with autoremove of packages [y/N]: ");
