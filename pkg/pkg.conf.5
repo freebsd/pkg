@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd Jul 20, 2011
+.Dd Dec 10, 2011
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -28,14 +28,17 @@ is the system-wide configuration file used by the
 .Xr pkg 1
 tools.
 .Pp
-The location of this file is
+The default location of this file is
 .Fa /etc/pkg.conf
 .Pp
-Lines in the file beginning with a "#" or ";" are comments
+Lines in the file beginning with a "#" are comments
 and are ignored.
 .Pp
-An option in the file is defined in the form of
-.Fa name = value
+The file is in YAML format and currently only supports
+the
+.Fa name : value
+notation, but will be extended in the future to support
+more options.
 .Sh OPTIONS
 The following options can be defined in
 .Nm :
@@ -51,16 +54,31 @@ database files. The default value for this option is
 Specifies the cache directory for packages. The default value
 for this option is
 .Fa /var/cache/pkg
+.It Cm PORTSDIR
+Specifies the location to the Ports directory. The default value
+for this option is
+.Fa /usr/ports
+.It Cm PUBKEY
+Specifies the location to the public RSA key used for signing the
+repository database. The default value for this file is
+.Fa /etc/ssl/pkg.conf
+.It Cm HANDLE_RC_SCRIPTS
+This option when set to
+.Fa YES
+will automatically do start/stop of services during package
+installation and deinstallation. Default value of this option is
+set to
+.Fa NO
 .El
 .Sh WARNING
 .Sh ENVRIOMENT
 The following envrioment variables affect the execution of
 .Xr pkg 1
-.Bl -tag -width ".Ev PACKAGESITE"
-.It Ev PACKAGESITE
-Specifies an alternative location to use when fetching a remote
-package database file.
-.El
+.Pp
+An environment variable with the name of the configuration file
+always overrides the value of an option set in
+.Fa /etc/pkg.conf
+file.
 .Sh FILES
 .Sh SEE ALSO
 .Xr pkg 1 ,

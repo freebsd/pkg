@@ -2,6 +2,9 @@
 # For more information on the file format and 
 # options please refer to the pkg.conf(5) man page
 
-PACKAGESITE	= ftp://ftp.freebsd.org/pub/pkgng
-PKG_DBDIR	= /var/db/pkg
-PKG_DBCACHE	= /var/cache/pkg
+PACKAGESITE	    : ftp://ftp.freebsd.org/pub/pkgng
+PKG_DBDIR	    : /var/db/pkg
+PKG_CACHEDIR	    : /var/cache/pkg
+PORTSDIR	    : /usr/ports
+PUBKEY		    : /etc/ssl/pkg.conf
+HANDLE_RC_SCRIPTS   : NO
