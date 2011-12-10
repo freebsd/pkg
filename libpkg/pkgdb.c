@@ -1634,7 +1634,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 * and that the service is running
 	 */
 	handle_rc = pkg_config("HANDLE_RC_SCRIPTS");
-	if (handle_rc && ((strcmp(handle_rc, "yes") == 0) || (strcmp(handle_rc, "YES") == 0)))
+	if (handle_rc && (strcasecmp(handle_rc, "yes") == 0))
 		pkg_start_rc_scripts(pkg);
 
 	return (retcode);

@@ -59,7 +59,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 	 * and that the service is running
 	 */
 	handle_rc = pkg_config("HANDLE_RC_SCRIPTS");
-	if (handle_rc && ((strcmp(handle_rc, "yes") == 0) || (strcmp(handle_rc, "YES") == 0)))
+	if (handle_rc && (strcasecmp(handle_rc, "yes") == 0))
 		pkg_stop_rc_scripts(pkg);
 
 	if (flags & PKG_DELETE_UPGRADE) {
