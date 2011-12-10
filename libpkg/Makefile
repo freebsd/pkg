@@ -6,6 +6,7 @@ WARNS=		6
 SHLIBDIR?=	/usr/lib
 SHLIB_MAJOR=	0
 
+#gr_utils.c has to be deleted as soon as it goes in base
 SRCS=		pkg.c \
 		pkg_add.c \
 		pkg_attributes.c \
@@ -25,7 +26,9 @@ SRCS=		pkg.c \
 		fetch.c \
 		packing.c \
 		scripts.c \
-		rcscripts.c
+		rcscripts.c \
+		usergroup.c \
+		gr_util.c
 
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \

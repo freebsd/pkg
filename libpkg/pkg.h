@@ -444,6 +444,18 @@ int pkg_adduser(struct pkg *pkg, const char *name);
 int pkg_addgroup(struct pkg *pkg, const char *group);
 
 /**
+ * Add a user
+ * @return An error code.
+ */
+int pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr);
+
+/**
+ * Add a gid
+ * @return an error code
+ */
+int pkg_addgid(struct pkg *pkg, const char *group, const char *gidstr);
+
+/**
  * Allocate a new struct pkg_conflict and add it to the conflicts of pkg.
  * @return An error code.
  */
@@ -502,7 +514,9 @@ const char *pkg_category_name(struct pkg_category *);
 const char *pkg_license_name(struct pkg_license *);
 
 const char *pkg_user_name(struct pkg_user *);
+const char *pkg_user_uidstr(struct pkg_user *);
 const char *pkg_group_name(struct pkg_group *);
+const char *pkg_group_gidstr(struct pkg_group *);
 
 /* pkg_conflict */
 const char * pkg_conflict_glob(struct pkg_conflict *);
@@ -844,5 +858,8 @@ int pkg_start_rc_scripts(struct pkg *);
 
 int pkg_init(const char *);
 int pkg_shutdown(void);
+
+int pkg_add_user_group(struct pkg *pkg);
+int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
 
 #endif

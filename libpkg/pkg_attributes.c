@@ -229,6 +229,12 @@ pkg_user_name(struct pkg_user *u)
 	return (u->name);
 }
 
+const char *
+pkg_user_uidstr(struct pkg_user *u)
+{
+	return (u->uidstr);
+}
+
 /*
  * group
  */
@@ -257,6 +263,12 @@ const char *
 pkg_group_name(struct pkg_group *g)
 {
 	return (g->name);
+}
+
+const char *
+pkg_group_gidstr(struct pkg_group *g)
+{
+	return (g->gidstr);
 }
 
 

@@ -5,6 +5,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <regex.h>
+#include <grp.h>
+#include <pwd.h>
+#include <libutil.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -1006,31 +1009,58 @@ pkgdb_load_category(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_load_user(struct pkgdb *db, struct pkg *pkg)
 {
+	struct pkg_user *u = NULL;
+	struct passwd *pwd = NULL;
+	int ret;
+
 	const char sql[] = ""
 		"SELECT users.name "
 		"FROM pkg_users, users "
-		"WHERE package_id ?1 "
+		"WHERE package_id = ?1 "
 		"AND user_id = users.id "
 		"ORDER by name DESC";
 
 	assert(db != NULL && pkg != NULL);
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, PKG_USERS));
+	ret = load_val(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, PKG_USERS);
+
+	/* get user uidstr from local database */
+	while (pkg_users(pkg, &u) == EPKG_OK) {
+		pwd = getpwnam(pkg_user_name(u));
+		if (pwd == NULL)
+			continue;
+		strlcpy(u->uidstr, pw_make(pwd), sizeof(u->uidstr));
+	}
+
+	return (ret);
 }
 
 int
 pkgdb_load_group(struct pkgdb *db, struct pkg *pkg)
 {
+	struct pkg_group *g = NULL;
+	struct group * grp = NULL;
+	int ret;
+
 	const char sql[] = ""
 		"SELECT groups.name "
 		"FROM pkg_groups, groups "
-		"WHERE package_id ?1 "
+		"WHERE package_id = ?1 "
 		"AND group_id = groups.id "
 		"ORDER by name DESC";
 
 	assert(db != NULL && pkg != NULL);
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_GROUPS, pkg_addgroup, PKG_GROUPS));
+	ret = load_val(db->sqlite, pkg, sql, PKG_LOAD_GROUPS, pkg_addgroup, PKG_GROUPS);
+
+	while (pkg_groups(pkg, &g) == EPKG_OK) {
+		grp = getgrnam(pkg_group_name(g));
+		if (grp == NULL)
+			continue;
+		strlcpy(g->gidstr, gr_make(grp), sizeof(g->gidstr));
+	}
+
+	return (ret);
 }
 
 int
@@ -1700,9 +1730,11 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 	if (sql_exec(db->sqlite, "DELETE FROM mtree WHERE id NOT IN (SELECT DISTINCT mtree_id FROM packages);") != EPKG_OK)
 		return (EPKG_FATAL);
 
+	/* TODO print the users that are not used anymore */
 	if (sql_exec(db->sqlite, "DELETE FROM users WHERE id NOT IN (SELECT DISTINCT user_id FROM pkg_users);") != EPKG_OK)
 		return (EPKG_FATAL);
 
+	/* TODO print the groups trhat are not used anymore */
 	if (sql_exec(db->sqlite, "DELETE FROM groups WHERE id NOT IN (SELECT DISTINCT group_id FROM pkg_groups);") != EPKG_OK)
 		return (EPKG_FATAL);
 

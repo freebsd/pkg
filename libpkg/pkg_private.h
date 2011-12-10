@@ -120,11 +120,13 @@ struct pkg_remote_repo {
 
 struct pkg_user {
 	char name[MAXLOGNAME+1];
+	char uidstr[8192]; /* taken from pw_util.c */
 	STAILQ_ENTRY(pkg_user) next;
 };
 
 struct pkg_group {
 	char name[MAXLOGNAME+1];
+	char gidstr[8192]; /* taken from gw_util.c */
 	STAILQ_ENTRY(pkg_group) next;
 };
 

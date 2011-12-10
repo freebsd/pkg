@@ -190,6 +190,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 		retcode = pkgdb_register_pkg(db, pkg, 0);
 	else
 		retcode = pkgdb_register_pkg(db, pkg, 1);
+
 	if (retcode != EPKG_OK || pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)
 		goto cleanup_reg;
 
@@ -198,6 +199,9 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	 */
 	if ((flags & PKG_ADD_UPGRADE_NEW) == 0)
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
+
+	/* add the user and group if necessary */
+	pkg_add_user_group(pkg);
 
 	/*
 	 * Extract the files on disk.

@@ -437,7 +437,7 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_adduser(struct pkg *pkg, const char *name)
+pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr)
 {
 	struct pkg_user *u = NULL;
 
@@ -455,11 +455,24 @@ pkg_adduser(struct pkg *pkg, const char *name)
 
 	strlcpy(u->name, name, sizeof(u->name));
 
+	if (uidstr != NULL)
+		strlcpy(u->uidstr, uidstr, sizeof(u->uidstr));
+	else
+		u->uidstr[0] = '\0';
+
+	STAILQ_INSERT_TAIL(&pkg->users, u, next);
+
 	return (EPKG_OK);
 }
 
 int
-pkg_addgroup(struct pkg *pkg, const char *name)
+pkg_adduser(struct pkg *pkg, const char *name)
+{
+	return (pkg_adduid(pkg, name, NULL));
+}
+
+int
+pkg_addgid(struct pkg *pkg, const char *name, const char *gidstr)
 {
 	struct pkg_group *g = NULL;
 
@@ -476,8 +489,20 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 	pkg_group_new(&g);
 
 	strlcpy(g->name, name, sizeof(g->name));
+	if (gidstr != NULL)
+		strlcpy(g->gidstr, gidstr, sizeof(g->gidstr));
+	else
+		g->gidstr[0] = '\0';
+
+	STAILQ_INSERT_TAIL(&pkg->groups, g, next);
 
 	return (EPKG_OK);
+}
+
+int
+pkg_addgroup(struct pkg *pkg, const char *name)
+{
+	return (pkg_addgid(pkg, name, NULL));
 }
 
 int
