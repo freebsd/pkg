@@ -69,7 +69,8 @@ static struct manifest_key {
 	{ "message", PKG_MESSAGE, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "options", PKG_OPTIONS, YAML_MAPPING_NODE, parse_mapping},
-	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence}, /* compatibility with old format */
+	{ "users", PKG_USERS, YAML_MAPPING_NODE, parse_mapping},
 	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ NULL, -99, -99, NULL}
 };
@@ -228,16 +229,20 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc, int at
 					pkg_addlicense(pkg, val->data.scalar.value);
 				break;
 			case PKG_USERS:
-				if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0)
-					pkg_emit_error("Skipping malformed license");
-				else
+				if (val->type == YAML_SCALAR_NODE || val->data.scalar.length <= 0)
 					pkg_adduser(pkg, val->data.scalar.value);
+				else if (val->type == YAML_MAPPING_NODE)
+					parse_mapping(pkg, val, doc, attr);
+				else
+					pkg_emit_error("Skipping malformed license");
 				break;
 			case PKG_GROUPS:
-				if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0)
-					pkg_emit_error("Skipping malformed license");
-				else
+				if (val->type == YAML_SCALAR_NODE || val->data.scalar.length <= 0)
 					pkg_addgroup(pkg, val->data.scalar.value);
+				else if (val->type == YAML_MAPPING_NODE)
+					parse_mapping(pkg, val, doc, attr);
+				else
+					pkg_emit_error("Skipping malformed license");
 				break;
 			case PKG_DIRS:
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
@@ -262,6 +267,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 	pkg_script_t script_type;
 
 	pair = item->data.mapping.pairs.start;
+
 	while (pair < item->data.mapping.pairs.top) {
 		key = yaml_document_get_node(doc, pair->key);
 		val = yaml_document_get_node(doc, pair->value);
@@ -286,6 +292,20 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 								   key->data.scalar.value);
 				else
 					pkg_set_dirs_from_node(pkg, val, doc, key->data.scalar.value);
+				break;
+			case PKG_USERS:
+				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
+					pkg_adduid(pkg, key->data.scalar.value, val->data.scalar.value);
+				else
+					pkg_emit_error("Skipping malformed users %s",
+							key->data.scalar.value);
+				break;
+			case PKG_GROUPS:
+				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
+					pkg_addgid(pkg, key->data.scalar.value, val->data.scalar.value);
+				else
+					pkg_emit_error("Skipping malformed groups %s",
+							key->data.scalar.value);
 				break;
 			case PKG_DIRECTORIES:
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
@@ -535,12 +555,8 @@ parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
 			if (!strcasecmp(key->data.scalar.value, manifest_key[i].key)) {
 				if (val->type == manifest_key[i].valid_type) {
 					retcode = manifest_key[i].parse_data(pkg, val, doc, manifest_key[i].type);
-				} else {
-					pkg_emit_error("Unsupported format for key: %s",
-								   key->data.scalar.value);
-					retcode = EPKG_FATAL;
+					break;
 				}
-				break;
 			}
 
 			if (manifest_key[i].key == NULL)
@@ -630,6 +646,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int depkv;
 	int files = -1;
 	int dirs = -1;
+	int users = -1;
+	int groups = -1;
 	int options = -1;
 	int scripts = -1;
 	const char *script_types = NULL;
@@ -701,13 +719,25 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	while (pkg_categories(pkg, &category) == EPKG_OK)
 		manifest_append_seqval(&doc, mapping, &seq, "categories", pkg_category_name(category));
 
-	seq = -1;
-	while (pkg_users(pkg, &user) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "users", pkg_user_name(user));
+	while (pkg_users(pkg, &user) == EPKG_OK) {
+		if (users == -1) {
+			users = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
+			yaml_document_append_mapping_pair(&doc, mapping,
+					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "users"), 5, YAML_PLAIN_SCALAR_STYLE),
+					users);
+		}
+		manifest_append_kv(users, pkg_user_name(user), user->uidstr);
+	}
 
-	seq = -1;
-	while (pkg_groups(pkg, &group) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "groups", pkg_group_name(group));
+	while (pkg_groups(pkg, &group) == EPKG_OK) {
+		if (groups == -1) {
+			groups = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
+			yaml_document_append_mapping_pair(&doc, mapping,
+					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "groups"), 6, YAML_PLAIN_SCALAR_STYLE),
+					groups);
+		}
+		manifest_append_kv(groups, pkg_group_name(group), group->gidstr);
+	}
 
 	seq = -1;
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK)
