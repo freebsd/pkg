@@ -8,3 +8,4 @@ PKG_CACHEDIR	    : /var/cache/pkg
 PORTSDIR	    : /usr/ports
 PUBKEY		    : /etc/ssl/pkg.conf
 HANDLE_RC_SCRIPTS   : NO
+ASSUME_ALWAYS_YES   : NO
