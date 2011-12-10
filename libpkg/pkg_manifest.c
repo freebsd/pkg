@@ -72,6 +72,7 @@ static struct manifest_key {
 	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence}, /* compatibility with old format */
 	{ "users", PKG_USERS, YAML_MAPPING_NODE, parse_mapping},
 	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping}, /* compatibility with old format */
 	{ NULL, -99, -99, NULL}
 };
 
