@@ -1,3 +1,5 @@
+#include <sys/types.h> /* needed type libutl.h on 8.X */
+
 #include <grp.h>
 #include <pwd.h>
 #include <libutil.h>
