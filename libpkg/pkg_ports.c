@@ -293,9 +293,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					/* This is the first time we see this hardlink */
 					if (regular == true) {
 						if (hardlinks.cap <= hardlinks.len) {
-							hardlinks.cap += 10;
+							hardlinks.cap += BUFSIZ;
 							hardlinks.inodes = reallocf(hardlinks.inodes,
-														hardlinks.cap);
+								hardlinks.cap * sizeof(ino_t));
 						}
 						hardlinks.inodes[hardlinks.len++] = st.st_ino;
 					}
