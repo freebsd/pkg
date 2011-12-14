@@ -31,6 +31,8 @@
 #include "version.h"
 #include "which.h"
 
+#define PKGVERSION "1.0-alpha2+"
+
 static void usage(void);
 static void usage_help(void);
 static int exec_help(int, char **);
@@ -141,7 +143,7 @@ main(int argc, char **argv)
 
 	pkg_event_register(&event_callback, &debug);
 
-	while ((ch = getopt(argc, argv, "dj:c:")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:v")) != -1) {
 		switch(ch) {
 			case 'd':
 				debug++;
@@ -152,6 +154,10 @@ main(int argc, char **argv)
 			case 'j':
 				jail_str = optarg;
 				break;
+			case 'v':
+				printf(PKGVERSION" "GITHASH"\n");
+				exit(EXIT_SUCCESS);
+				break; /* NOT REACHED */
 			default:
 				break;
 		}
