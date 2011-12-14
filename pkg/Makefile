@@ -22,6 +22,11 @@ SRCS=		add.c \
 		which.c
 BINDIR=		/usr/sbin
 
+.if exists(../.git)
+GITHASH!=	git rev-parse HEAD
+CFLAGS+=	-DGITHASH=\"${GITHASH}\"
+.endif
+
 DEBUG_FLAGS+=	-g -O0
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg
