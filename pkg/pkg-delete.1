@@ -52,7 +52,15 @@ Treat the package names as extended regular expressions.
 .Sh ENVRIOMENT
 The following envrioment variables affect the execution of
 .Nm :
-.Bl -tag -width ".Ev TMPDIR"
+.Bl -tag -width ".Ev ASSUME_ALWAYS_YES"
+.It Ev ASSUME_ALWAYS_YES
+When this option is set to
+.Fa YES
+pkgng will automatically assume "yes" to all questions
+which require confirmation before doing anything, as if it
+the
+.Fl y
+flag was specified.
 .El
 .Sh FILES
 .Sh SEE ALSO

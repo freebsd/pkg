@@ -55,6 +55,14 @@ file. Please note that multiple remote repositories is still considered
 highly experimental. Currently multiple package repositories is not
 implemented yet in
 .Nm
+.It Ev ASSUME_ALWAYS_YES
+When this option is set to
+.Fa YES
+pkgng will automatically assume "yes" to all questions
+which require confirmation before doing anything, as if it
+the
+.Fl y
+flag was specified.
 .El
 .Sh FILES
 .Bl -tag -width -".Pa /etc/pkg/repositories"
