@@ -423,7 +423,9 @@ pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc
 
 		++pair;
 	}
-	pkg_addfile_attr(pkg, key->data.scalar.value, sum, uname, gname, perm);
+
+	if (key != NULL)
+	    pkg_addfile_attr(pkg, key->data.scalar.value, sum, uname, gname, perm);
 
 	return (EPKG_OK);
 }

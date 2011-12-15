@@ -25,7 +25,7 @@ int
 exec_install(int argc, char **argv)
 {
 	struct pkg *pkg = NULL;
-	struct pkgdb_it *it;
+	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	int retcode = 1;
