@@ -2070,7 +2070,7 @@ pkgdb_query_autoremove(struct pkgdb *db)
 struct pkgdb_it *
 pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int recursive)
 {
-	sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt = NULL;
 
 	struct sbuf *sql = sbuf_new_auto();
 	const char *how = NULL;
