@@ -58,7 +58,7 @@ Yes, `pkgA` will automatically notice the change.
 
 The documented (README) way to create a new repository creates all packages in one directory. 
 
-This is different from earlier repository format (separate directories). Will pkgng adapt the old format?
+This is different from earlier repository format, which creates it in separate directories.
 
 Pkgng doesn not depend on a hierarchy, it recursively finds the packages from the provided directory entry.
 
@@ -72,4 +72,4 @@ The default hierarchy has lots of symlinks which should just be ignored and thus
 
 Hee is how to do that:
 
-    sh -c 'find . -name "*.txz" -exec pkg query -f {} %o \;' | uniq -d
+    sh -c 'find . -name "*.txz" -exec pkg query -f {} %o \;' | sort | uniq -d
