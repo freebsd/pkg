@@ -34,7 +34,7 @@ typedef enum {
 	 */
 	LICENSE_AND='&',
 	/**
-	 * The licen logic un single (default in the ports)
+	 * The license logic un single (default in the ports)
 	 */
 	LICENSE_SINGLE=1
 } lic_t;
