@@ -13,6 +13,7 @@
 #include <pkg.h>
 
 #include "add.h"
+#include "audit.h"
 #include "autoremove.h"
 #include "backup.h"
 #include "clean.h"
@@ -43,7 +44,8 @@ static struct commands {
 	int (*exec)(int argc, char **argv);
 	void (* const usage)(void);
 } cmd[] = {
-	{ "add", "registers a package and installs it on the system", exec_add, usage_add},
+	{ "add", "Registers a package and installs it on the system", exec_add, usage_add},
+	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
 	{ "backup", "Backup and restore the local package database", exec_backup, usage_backup},
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
