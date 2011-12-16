@@ -13,7 +13,7 @@
 
 #include "pkg_util.h"
 
-#define PKG_NUM_FIELDS 15
+#define PKG_NUM_FIELDS 17
 
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
 		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
@@ -112,10 +112,17 @@ struct pkg_jobs_node {
 	LIST_ENTRY(pkg_jobs_node) entries;
 };
 
-struct pkg_remote_repo {
-	char *name;
-	char *url;
-	STAILQ_ENTRY(pkg_remote_repo) entries;
+struct pkg_repos {
+	struct pkg_repos_entry {
+		struct sbuf *name;
+		struct sbuf *url;
+		unsigned int line;
+		unsigned int switched :1;
+		STAILQ_ENTRY(pkg_repos_entry) entries;
+	} re;
+
+	unsigned int switchable :1;
+	STAILQ_HEAD(repos, pkg_repos_entry) nodes;
 };
 
 struct pkg_user {

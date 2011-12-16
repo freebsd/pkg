@@ -24,6 +24,9 @@ struct pkgdb_it;
 
 struct pkg_jobs;
 
+struct pkg_repos;
+struct pkg_repos_entry;
+
 typedef enum {
 	/**
 	 * The license logic is OR (dual in the ports)
@@ -127,6 +130,8 @@ typedef enum {
 	PKG_REPOPATH,
 	PKG_CKSUM,
 	PKG_NEWVERSION,
+	PKG_REPONAME,
+	PKG_REPOURL
 } pkg_attr;
 
 typedef enum {
@@ -593,15 +598,15 @@ int pkgdb_unregister_pkg(struct pkgdb *pkg, const char *origin);
 struct pkgdb_it * pkgdb_query(struct pkgdb *db, const char *pattern,
 							  match_t type);
 struct pkgdb_it * pkgdb_rquery(struct pkgdb *db, const char *pattern,
-		match_t type, unsigned int field);
+		match_t type, unsigned int field, const char *reponame);
 
 /**
  * 
  */
-struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs);
+struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame);
+struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame);
+struct pkgdb_it *pkgdb_query_downgrades(struct pkgdb *db, const char *reponame);
 struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
-struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db);
-struct pkgdb_it *pkgdb_query_downgrades(struct pkgdb *db);
 struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
 
 /**
@@ -754,6 +759,105 @@ int pkg_fetch_file(const char *url, const char *dest);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, char *);
+
+/**
+ * Creates a new repository object
+ * This function is used for creating a repository
+ * object that can later be used by pkg_repos_load()
+ * for loading the repositories from file and pkg_repos_next()
+ * for iterating over the repositories tail.
+ * @return EPKG_OK on success and EPKG_FATAL on error
+ */
+int pkg_repos_new(struct pkg_repos **repos);
+
+/**
+ * Loads the remote repositories from file
+ * @param repos A valid repository object as received from pkg_repos_new()
+ * @return EPKG_OK on success and EPKG_FATAL on error
+ */
+int pkg_repos_load(struct pkg_repos *repos);
+
+/**
+ * Adds a repository entry found from the repositories file to the tail
+ * @param repos A valid repository object as returned by pkg_repos_new()
+ * @param re A valid repository entry object
+ * @return EPKG_OK on success and EPKG_FATAL on error
+ */
+int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
+
+/**
+ * Get the next repository from the configuration file
+ * @param repos A valid repository object as returned by pkg_repos_new()
+ * @param re A pointer to a repository entry to save the result. Must be set to
+ * NULL for the first repository entry
+ * @return EPKG_OK on success and EPKG_END if end of tail is reached
+ */
+int pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
+
+/**
+ * Switches to a single repository while running in multi-repos mode
+ * @param repos A valid repository object as returned by pkg_repos_new()
+ * @param reponame The name of the repository to switch to
+ * @return EPKG_OK if switching to reponame was successful and EPKG_FATAL
+ * in case of error, e.g. repository does not exists
+ */
+int pkg_repos_switch(struct pkg_repos *repos, const char *reponame);
+
+/**
+ * Switches back to multi-repos mode and resets any switchable repos
+ * @param repos A valid repository object as returned by pkg_repos_new()
+ * @return EPKG_OK on success
+ */
+int pkg_repos_switch_reset(struct pkg_repos *repos);
+
+/**
+ * Frees the memory used by the repository objects
+ * @param repos A valid repository object as returned by pkg_repos_new()
+ */
+void pkg_repos_free(struct pkg_repos *repos);
+
+/**
+ * Check if an attached repository exists
+ * @param repos A valid repository object as returned by pkg_repos_new()
+ * @param reponame The name of the repository to be checked
+ * @return EPKG_OK if repository exists and EPKG_FATAL otherwise
+ */
+int pkg_repos_exists(struct pkg_repos *repos, const char *reponame);
+
+/**
+ * Returns the name associated with a repository entry
+ * @param re A valid repository entry object
+ */
+const char * pkg_repos_get_name(struct pkg_repos_entry *re);
+
+/**
+ * Returns the URL associated wth a repository entry
+ * @param re A valid repository entry object
+ */
+const char * pkg_repos_get_url(struct pkg_repos_entry *re);
+
+/**
+ * Returns the line from the configuration file where a repository is defined
+ * @param re A valid repository entry object
+ */
+unsigned int pkg_repos_get_line(struct pkg_repos_entry *re);
+
+/**
+ * Returns the next database, which is ATTACH'ed to the main one
+ * @param it A valid pkgdb_it object as received from
+ * pkgdb_repos_new() call
+ * @return A string containing the next database attached
+ * to the main one, or NULL if end of list is reached.
+ */
+const char * pkgdb_repos_next(struct pkgdb_it *it);
+
+/**
+ * Adds the URL associated with a repository to a package object
+ * @param pkg A valid package object
+ * @param reponame The name of the repository (attached database)
+ * @return EPKG_OK on success and EPKG_FATAL on error
+ */
+int pkg_add_repo_url(struct pkg *pkg, const char *reponame);
 
 /**
  * @todo Document

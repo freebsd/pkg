@@ -18,7 +18,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage pkg upgrade [-y]\n");
+	fprintf(stderr, "usage pkg upgrade [-r reponame] [-y]\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -29,6 +29,7 @@ exec_upgrade(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 	struct pkg_jobs *jobs = NULL;
+	const char *reponame = NULL;
 	int retcode = 1;
 	int64_t oldsize = 0, newsize = 0;
 	int64_t dlsize = 0;
@@ -41,10 +42,13 @@ exec_upgrade(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	while ((ch = getopt(argc, argv, "y")) != -1) {
+	while ((ch = getopt(argc, argv, "yr:")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = 1;
+				break;
+			case 'r':
+				reponame = optarg;
 				break;
 			default:
 				break;
@@ -66,7 +70,7 @@ exec_upgrade(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if ((it = pkgdb_query_upgrades(db)) == NULL) {
+	if ((it = pkgdb_query_upgrades(db, reponame)) == NULL) {
 		goto cleanup;
 	}
 
