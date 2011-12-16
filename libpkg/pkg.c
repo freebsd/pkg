@@ -1,7 +1,11 @@
+#include <sys/types.h>
+
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <libutil.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sysexits.h>
@@ -30,6 +34,8 @@ static struct _fields {
 	[PKG_REPOPATH] = {PKG_REMOTE, 0},
 	[PKG_CKSUM] = {PKG_REMOTE, 0},
 	[PKG_NEWVERSION] = {PKG_REMOTE, 1},
+	[PKG_REPONAME] = {PKG_REMOTE, 1},
+	[PKG_REPOURL] = {PKG_REMOTE, 1},
 };
 
 int
@@ -181,6 +187,12 @@ pkg_set(struct pkg * pkg, pkg_attr attr, const char *value)
 		sbuf_finish(*sbuf);
 		return (EPKG_OK);
 	}
+
+	/* 
+	 * Insert the repository URL as well when inserting the repo name
+	 */
+	if (attr == PKG_REPONAME)
+		pkg_add_repo_url(pkg, value);
 
 	return (sbuf_set(sbuf, value));
 }
@@ -1074,3 +1086,29 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	return (packing_finish(pack));
 }
 
+int
+pkg_add_repo_url(struct pkg *pkg, const char *reponame)
+{
+	properties p = NULL;
+	int fd = -1;
+
+	assert(pkg != NULL && reponame != NULL);
+
+	/* 
+	 * We have the repo name, now we need to find it's URL
+	 * Using properties(3) here, as we know the 'key' already
+	 */
+	if ((fd = open("/etc/pkg/repositories", O_RDONLY)) < 0) {
+		pkg_emit_errno("open", "/etc/pkg/repositories");
+		return (EPKG_FATAL);
+	}
+
+	p = properties_read(fd);
+
+	pkg_set(pkg, PKG_REPOURL, property_find(p, reponame));
+
+	properties_free(p);
+	close(fd);
+
+	return (EPKG_OK);
+}

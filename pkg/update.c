@@ -21,47 +21,22 @@
 		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
-void
-usage_update(void)
-{
-	fprintf(stderr, "usage: pkg update\n\n");
-	fprintf(stderr, "For more information see 'pkg help update'.\n");
-}
+static int update_from_remote_repo(const char *name, const char *url);
 
-int
-exec_update(int argc, char **argv)
+static int
+update_from_remote_repo(const char *name, const char *url)
 {
-	char url[MAXPATHLEN + 1];
-	const char *packagesite = NULL;
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
+	char repofile[MAXPATHLEN];
+	char repofile_unchecked[MAXPATHLEN];
 	char *tmp = NULL;
-	int retcode = EPKG_OK;
-	struct archive *a;
-	struct archive_entry *ae;
+	const char *dbdir = NULL;
 	unsigned char *sig = NULL;
 	int siglen = 0;
 
-	(void)argv;
-	if (argc != 1) {
-		usage_update();
-		return (EX_USAGE);
-	}
-
-	if (geteuid() != 0) {
-		warnx("updating the remote database can only be done as root");
-		return (EX_NOPERM);
-	}
-
-	if ((packagesite = pkg_config("PACKAGESITE")) == NULL) {
-		warnx("unable to determine PACKAGESITE");
-		return (EPKG_FATAL);
-	}
-
-	if (packagesite[strlen(packagesite) - 1] == '/')
-		snprintf(url, sizeof(url), "%srepo.txz", packagesite);
-	else
-		snprintf(url, sizeof(url), "%s/repo.txz", packagesite);
-
-	tmp = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
+	tmp   = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
+	dbdir = pkg_config("PKG_DBDIR");
 
 	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
 		unlink(tmp);
@@ -77,7 +52,9 @@ exec_update(int argc, char **argv)
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			archive_entry_set_pathname(ae, "/var/db/pkg/repo.sqlite.unchecked");
+			snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
+			snprintf(repofile_unchecked, sizeof(repofile_unchecked), "%s.unchecked", repofile);
+			archive_entry_set_pathname(ae, repofile_unchecked);
 			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
 		}
 		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
@@ -88,20 +65,96 @@ exec_update(int argc, char **argv)
 	}
 
 	if (sig != NULL) {
-		if (pkg_repo_verify( "/var/db/pkg/repo.sqlite.unchecked", sig, siglen - 1) != EPKG_OK) {
-			fprintf(stderr, "Invalid signature removing\n");
-			unlink("/var/db/pkg/repo.sqlite.unchecked");
+		if (pkg_repo_verify(repofile_unchecked, sig, siglen - 1) != EPKG_OK) {
+			warnx("Invalid signature, removing repository.\n");
+			unlink(repofile_unchecked);
 			free(sig);
 			return (EPKG_FATAL);
 		}
 	}
-	rename("/var/db/pkg/repo.sqlite.unchecked", "/var/db/pkg/repo.sqlite");
 
-	if ( a != NULL)
+	rename(repofile_unchecked, repofile);
+
+	if (a != NULL)
 		archive_read_finish(a);
 
 	unlink(tmp);
 	free(tmp);
+
+	return (EPKG_OK);
+}
+
+void
+usage_update(void)
+{
+	fprintf(stderr, "usage: pkg update\n\n");
+	fprintf(stderr, "For more information see 'pkg help update'.\n");
+}
+
+int
+exec_update(int argc, char **argv)
+{
+	char url[MAXPATHLEN];
+	const char *packagesite = NULL;
+	int retcode = EPKG_OK;
+	struct pkg_repos *repos = NULL;
+	struct pkg_repos_entry *re = NULL;
+	const char *multirepos_enabled = NULL;
+
+	(void)argv;
+	if (argc != 1) {
+		usage_update();
+		return (EX_USAGE);
+	}
+
+	if (geteuid() != 0) {
+		warnx("updating the remote database can only be done as root");
+		return (EX_NOPERM);
+	}
+
+	/* 
+	 * Fetch remote databases.
+	 */
+	multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+
+	if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") != 0)) {
+		/*
+		 * Single remote database
+		 */
+
+		if ((packagesite = pkg_config("PACKAGESITE")) == NULL) {
+			warnx("PACKAGESITE is not defined.");
+			return (1);
+		}
+
+		if (packagesite[strlen(packagesite) - 1] == '/')
+			snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
+		else
+			snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
+
+		retcode = update_from_remote_repo("repo", url);
+	} else {
+		if (pkg_repos_new(&repos) != EPKG_OK)
+			return (1);
+
+		if (pkg_repos_load(repos) != EPKG_OK) {
+			pkg_repos_free(repos);
+			return (1);
+		}
+
+		while (pkg_repos_next(repos, &re) == EPKG_OK) {
+			packagesite = pkg_repos_get_url(re);
+
+			if (packagesite[strlen(packagesite) - 1] == '/')
+				snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
+			else
+				snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
+
+			retcode = update_from_remote_repo(pkg_repos_get_name(re), url);
+		}
+
+		pkg_repos_free(repos);
+	}
 
 	return (retcode);
 }

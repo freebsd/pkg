@@ -1,7 +1,10 @@
 # Repositories file for pkgng
 # This file should be installed in /etc/pkg/repositories
 # For more information on the format of this files
-# please refer to pkg(1) man page
+# please refer to the pkg-repositories(1) man page
+
+# default repository (should be set to an official pkgng repository)
+default		=	ftp://ftp.FreeBSD.org/pkgng/
 
 # dnaeon's i386 repository
 dnaeon-i386	=	http://unix-heaven.org/FreeBSD/pkgng/dnaeon-i386/

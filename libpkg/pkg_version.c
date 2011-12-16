@@ -1,8 +1,10 @@
-#include <err.h>
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+
 #include "pkg.h"
+#include "pkg_event.h"
 
 /*
  * split_version(pkgname, endname, epoch, revision) returns a pointer to
@@ -20,8 +22,10 @@ split_version(const char *pkgname, const char **endname, unsigned long *epoch, u
 	const char *versionstr;
 	const char *endversionstr;
 
-	if (pkgname == NULL)
-		errx(2, "%s: Passed NULL pkgname.", __func__);
+	if (pkgname == NULL) {
+		pkg_emit_error("%s: Passed NULL pkgname.", __func__);
+		return (NULL);
+	}
 
 	/* Look for the last '-' the the pkgname */
 	ch = strrchr(pkgname, '-');
@@ -122,8 +126,10 @@ get_component(const char *position, version_component *component)
 	const char *pos = position;
 	int hasstage = 0, haspatchlevel = 0;
 
-	if (!pos)
-		errx(2, "%s: Passed NULL position.", __func__);
+	if (!pos) {
+		pkg_emit_error("%s: Passed NULL position.", __func__);
+		return (NULL);
+	}
 
 	/* handle version number */
 	if (isdigit(*pos)) {
@@ -240,6 +246,8 @@ pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 	v1 = split_version(pkg1, &ve1, &e1, &r1);
 	v2 = split_version(pkg2, &ve2, &e2, &r2);
 
+	assert (v1 != NULL && v2 != NULL);
+
 	/* Check epoch, port version, and port revision, in that order. */
 	if (e1 != e2) {
 		result = (e1 < e2 ? -1 : 1);
@@ -256,11 +264,13 @@ pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 			version_component vc2 = {0, 0, 0};
 			if (v1 < ve1 && *v1 != '+') {
 				v1 = get_component(v1, &vc1);
+				assert (v1 != NULL);
 			} else {
 				block_v1 = 1;
 			}
 			if (v2 < ve2 && *v2 != '+') {
 				v2 = get_component(v2, &vc2);
+				assert (v2 != NULL);
 			} else {
 				block_v2 = 1;
 			}

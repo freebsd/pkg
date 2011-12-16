@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include <unistd.h>
 #include <sysexits.h>
 
@@ -11,26 +12,27 @@
 void
 usage_search(void)
 {
-	fprintf(stderr, "usage: pkg search <pkg-name>\n");
-	fprintf(stderr, "       pkg search [-fDsqop] <pkg-name>\n");
-	fprintf(stderr, "       pkg search [-gxXcdfDsqop] <pattern>\n\n");
+	fprintf(stderr, "usage: pkg search [-r reponame] <pkg-name>\n");
+	fprintf(stderr, "       pkg search [-r reponame] [-fDsqop] <pkg-name>\n");
+	fprintf(stderr, "       pkg search [-r reponame] [-gxXcdfDsqop] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help search'.\n");
 }
 
 int
 exec_search(int argc, char **argv)
 {
+	const char *pattern = NULL;
+	const char *reponame = NULL;
 	int retcode = EPKG_OK, ch;
 	int flags = PKG_LOAD_BASIC;
 	unsigned int opt = 0;
 	match_t match = MATCH_EXACT;
 	pkgdb_field field = FIELD_NAME;
-	const char *pattern = NULL;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 
-	while ((ch = getopt(argc, argv, "gxXcdfDsqop")) != -1) {
+	while ((ch = getopt(argc, argv, "gxXcdr:fDsqop")) != -1) {
 		switch (ch) {
 			case 'g':
 				match = MATCH_GLOB;
@@ -47,6 +49,8 @@ exec_search(int argc, char **argv)
 			case 'd':
 				field = FIELD_DESC;
 				break;
+			case 'r':
+				reponame = optarg;
 			case 'f':
 				opt |= INFO_FULL;
 				flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS;
@@ -86,7 +90,7 @@ exec_search(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
 
-	if ((it = pkgdb_rquery(db, pattern, match, field)) == NULL) {
+	if ((it = pkgdb_rquery(db, pattern, match, field, reponame)) == NULL) {
 		pkgdb_close(db);
 		return (1);
 	}

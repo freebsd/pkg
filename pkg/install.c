@@ -17,7 +17,7 @@
 void
 usage_install(void)
 {
-	fprintf(stderr, "usage: pkg install [-ygxX] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg install [-r reponame] [-ygxX] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -28,6 +28,7 @@ exec_install(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
+	const char *reponame = NULL;
 	int retcode = 1;
 	int ch, yes = 0;
 	int64_t dlsize = 0;
@@ -36,7 +37,7 @@ exec_install(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	const char *assume_yes = NULL;
 
-	while ((ch = getopt(argc, argv, "ygxX")) != -1) {
+	while ((ch = getopt(argc, argv, "ygxXr:")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = 1;
@@ -49,6 +50,9 @@ exec_install(int argc, char **argv)
 				break;
 			case 'X':
 				match = MATCH_EREGEX;
+				break;
+			case 'r':
+				reponame = optarg;
 				break;
 			default:
 				usage_install();
@@ -76,7 +80,7 @@ exec_install(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if ((it = pkgdb_query_installs(db, match, argc, argv)) == NULL)
+	if ((it = pkgdb_query_installs(db, match, argc, argv, reponame)) == NULL)
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
@@ -93,6 +97,7 @@ exec_install(int argc, char **argv)
 	/* print a summary before applying the jobs */
 	pkg = NULL;
 	printf("The following packages will be installed:\n");
+
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
 		dlsize += pkg_new_pkgsize(pkg);
 		if (pkg_get(pkg, PKG_NEWVERSION) != NULL) {
