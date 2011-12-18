@@ -23,6 +23,7 @@
 .Nd a utility for manipulating packages 
 .Sh SYNOPSIS
 .Nm
+.Op Fl v
 .Op Fl d
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
 .Ao command Ac Ao Ar flags Ac
@@ -34,6 +35,9 @@ adding, removing and upgrading of packages.
 The following options are supported by
 .Nm:
 .Bl -tag -width indent
+.It Fl v
+Displays the current version of
+.Nm
 .It Fl d
 Show debug informations
 .It Fl j Ao jail name or id Ac
