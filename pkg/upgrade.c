@@ -34,8 +34,8 @@ exec_upgrade(int argc, char **argv)
 	int64_t oldsize = 0, newsize = 0;
 	int64_t dlsize = 0;
 	char size[7];
-	int ch, yes = 0;
-	const char *assume_yes = NULL;
+	int ch;
+	bool yes = false;
 
 	if (geteuid() != 0) {
 		warnx("upgrading can only be done as root");
@@ -45,7 +45,7 @@ exec_upgrade(int argc, char **argv)
 	while ((ch = getopt(argc, argv, "yr:")) != -1) {
 		switch (ch) {
 			case 'y':
-				yes = 1;
+				yes = true;
 				break;
 			case 'r':
 				reponame = optarg;
@@ -110,14 +110,12 @@ exec_upgrade(int argc, char **argv)
 	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
 	printf("%s to be downloaded\n", size);
 
-	assume_yes = pkg_config("ASSUME_ALWAYS_YES");
-	if (assume_yes && (strcasecmp(assume_yes, "yes") == 0))
-	    yes = 1;
-
-	if (yes == 0)
+	if (yes == false)
+		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	if (yes == false)
 		yes = query_yesno("\nProceed with upgrading packages [y/N]: ");
 
-	if (yes == 1)
+	if (yes == true)
 		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
 			goto cleanup;
 

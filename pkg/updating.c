@@ -81,8 +81,14 @@ exec_updating(int argc, char **argv)
 	/* TODO missing per port */
 	}
 
-	if (updatingfile == NULL)
-		asprintf(&updatingfile, "%s/UPDATING", pkg_config("PORTSDIR"));
+	if (updatingfile == NULL) {
+		const char *portsdir;
+		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK) {
+			warnx("Cant get portsdir config entry");
+			return (1);
+		}
+		asprintf(&updatingfile, "%s/UPDATING", portsdir);
+	}
 
 	fd = fopen(updatingfile, "r");
 	if (fd == NULL)

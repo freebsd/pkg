@@ -73,12 +73,16 @@ pkg_repo_fetch(struct pkg *pkg)
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	char *path = NULL;
 	const char *packagesite = NULL;
+	const char *cachedir = NULL;
+	bool multirepos_enabled = false;
 	int retcode = EPKG_OK;
-	const char *multirepos_enabled = NULL;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
-	snprintf(dest, sizeof(dest), "%s/%s", pkg_config("PKG_CACHEDIR"),
+	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	snprintf(dest, sizeof(dest), "%s/%s", cachedir,
 			 pkg_get(pkg, PKG_REPOPATH));
 
 	/* If it is already in the local cachedir, dont bother to download it */
@@ -100,12 +104,12 @@ pkg_repo_fetch(struct pkg *pkg)
 	 * For a single attached database the repository URL should be
 	 * defined by PACKAGESITE.
 	 */
-	multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
-	if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") == 0)) {
+	if (multirepos_enabled) {
 		packagesite = pkg_get(pkg, PKG_REPOURL);
 	} else {
-		packagesite = pkg_config("PACKAGESITE");
+		pkg_config_string(PKG_CONFIG_REPO, &packagesite);
 	}
 
 	if (packagesite == NULL) {
@@ -405,6 +409,7 @@ pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len)
 {
 	char sha256[SHA256_DIGEST_LENGTH *2 +1];
 	char errbuf[1024];
+	const char *repokey = NULL;
 	RSA *rsa = NULL;
 
 	sha256_file(path, sha256);
@@ -413,12 +418,15 @@ pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len)
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
-	rsa = load_rsa_public_key(pkg_config("PUBKEY"));
+	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	rsa = load_rsa_public_key(repokey);
 	if (rsa == NULL)
 		return(EPKG_FATAL);
 
 	if (RSA_verify(NID_sha1, sha256, sizeof(sha256), sig, sig_len, rsa) == 0) {
-		pkg_emit_error("%s: %s", pkg_config("PUBKEY"),
+		pkg_emit_error("%s: %s", repokey,
 					   ERR_error_string(ERR_get_error(), errbuf));
 		return (EPKG_FATAL);
 	}

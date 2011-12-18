@@ -141,7 +141,8 @@ pkg_jobs_install(struct pkg_jobs *j)
 	while (pkg_jobs(j, &p) == EPKG_OK)
 		dlsize += pkg_new_pkgsize(p);
 
-	cachedir = pkg_config("PKG_CACHEDIR");
+	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	while (statfs(cachedir, &fs) == -1) {
 		if (errno == ENOENT) {
@@ -156,7 +157,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	if (dlsize > ((int64_t)fs.f_bsize * (int64_t)fs.f_bfree)) {
 		humanize_number(dlsz, sizeof(dlsz), dlsize, "B", HN_AUTOSCALE, 0);
 		humanize_number(fsz, sizeof(fsz), (int64_t)fs.f_bsize * (int64_t)fs.f_bfree, "B", HN_AUTOSCALE, 0);
-		pkg_emit_error("Not enough space in %s, needed %s available %s", pkg_config("PKG_CACHEDIR"), dlsz, fsz);
+		pkg_emit_error("Not enough space in %s, needed %s available %s", cachedir, dlsz, fsz);
 		return (EPKG_FATAL);
 	}
 		

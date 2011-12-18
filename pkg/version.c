@@ -139,6 +139,7 @@ exec_version(int argc, char **argv)
 	char limchar = '-';
 	struct sbuf *cmd;
 	struct sbuf *res;
+	const char *portsdir;
 
 	SLIST_INIT(&indexhead);
 
@@ -187,6 +188,9 @@ exec_version(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
+		err(1, "Can not get portsdir config entry");
+
 	if (opt & VERSION_STATUS) {
 			if (limchar != '<' &&
 					limchar != '>' &&
@@ -218,7 +222,7 @@ exec_version(int argc, char **argv)
 	} else if (opt & VERSION_INDEX) {
 		uname(&u);
 		rel_major_ver = (int) strtol(u.release, NULL, 10);
-		snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", pkg_config("PORTSDIR"), rel_major_ver);
+		snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", portsdir, rel_major_ver);
 		indexfile = fopen(indexpath, "r");
 		if (!indexfile)
 			err(EX_SOFTWARE, "Unable to open %s", indexpath);
@@ -274,7 +278,7 @@ exec_version(int argc, char **argv)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			cmd = sbuf_new_auto();
-			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", pkg_config("PORTSDIR"), pkg_get(pkg, PKG_ORIGIN));
+			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, pkg_get(pkg, PKG_ORIGIN));
 			sbuf_finish(cmd);
 			if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
 				buf = sbuf_data(res);

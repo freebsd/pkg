@@ -36,7 +36,11 @@ update_from_remote_repo(const char *name, const char *url)
 	int siglen = 0;
 
 	tmp   = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
-	dbdir = pkg_config("PKG_DBDIR");
+
+	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
+		warnx("Cant get dbdir config entry");
+		return (EPKG_FATAL);
+	}
 
 	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
 		unlink(tmp);
@@ -99,6 +103,7 @@ exec_update(int argc, char **argv)
 	int retcode = EPKG_OK;
 	struct pkg_repos *repos = NULL;
 	struct pkg_repos_entry *re = NULL;
+	bool multi_repos = false;
 
 	(void)argv;
 	if (argc != 1) {
@@ -115,13 +120,15 @@ exec_update(int argc, char **argv)
 	 * Fetch remote databases.
 	 */
 
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multi_repos);
+
 	/* single repository */
-	if (pkg_config("PKG_MULTIREPOS") == NULL) {
+	if (multi_repos) {
 		/*
 		 * Single remote database
 		 */
 
-		if ((packagesite = pkg_config("PACKAGESITE")) == NULL) {
+		if (pkg_config_string(PKG_CONFIG_REPO, &packagesite) != EPKG_OK) {
 			warnx("PACKAGESITE is not defined.");
 			return (1);
 		}

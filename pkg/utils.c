@@ -9,18 +9,19 @@
 
 #include "utils.h"
 
-int
+bool
 query_yesno(const char *msg)
 {
-        int c, r = 0;
+        int c;
+	bool r = false;
 
         printf("%s", msg);
 
         c = getchar();
         if (c == 'y' || c == 'Y')
-                r = 1;
+                r = true;
         else if (c == '\n' || c == EOF)
-                return 0;
+                return false;
 
         while((c = getchar()) != '\n' && c != EOF)
                 continue;
@@ -36,7 +37,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
         struct pkg_category *cat = NULL;
         struct pkg_license *lic = NULL;
         struct pkg_option *option = NULL;
-	const char *multirepos_enabled = NULL;
+	bool multirepos_enabled = false;
         char size[7];
 
         if (opt & INFO_FULL) {
@@ -46,9 +47,9 @@ print_info(struct pkg * const pkg, unsigned int opt)
                 printf("%-15s: %s\n", "Prefix", pkg_get(pkg, PKG_PREFIX));
 
 		if (pkg_type(pkg) == PKG_REMOTE) {
-			multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+			pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
-			if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") == 0)) {
+			if (multirepos_enabled) {
 				printf("%-15s: %s [%s]\n", "Repository",
 						pkg_get(pkg, PKG_REPONAME),
 						pkg_get(pkg, PKG_REPOURL));
