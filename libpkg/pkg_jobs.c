@@ -2,6 +2,7 @@
 #include <sys/mount.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <libutil.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -140,9 +141,16 @@ pkg_jobs_install(struct pkg_jobs *j)
 	while (pkg_jobs(j, &p) == EPKG_OK)
 		dlsize += pkg_new_pkgsize(p);
 
-	if  (statfs(pkg_config("PKG_CACHEDIR"), &fs) == -1) {
-		pkg_emit_errno("statfs", pkg_config("PKG_CACHEDIR"));
-		return (EPKG_FATAL);
+	cachedir = pkg_config("PKG_CACHEDIR");
+
+	while (statfs(cachedir, &fs) == -1) {
+		if (errno == ENOENT) {
+			if (mkdirs(cachedir) != EPKG_OK)
+				return (EPKG_FATAL);
+		} else {
+			pkg_emit_errno("statfs", cachedir);
+			return (EPKG_FATAL);
+		}
 	}
 
 	if (dlsize > ((int64_t)fs.f_bsize * (int64_t)fs.f_bfree)) {
@@ -159,7 +167,6 @@ pkg_jobs_install(struct pkg_jobs *j)
 			return (EPKG_FATAL);
 	}
 
-	cachedir = pkg_config("PKG_CACHEDIR");
 	p = NULL;
 	/* integrity checking */
 	pkg_emit_integritycheck_begin();

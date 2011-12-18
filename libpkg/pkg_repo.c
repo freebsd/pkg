@@ -92,7 +92,7 @@ pkg_repo_fetch(struct pkg *pkg)
 		goto cleanup;
 	}
 
-	if ((retcode = mkdirs(path)) != 0)
+	if ((retcode = mkdirs(path)) != EPKG_OK)
 		goto cleanup;
 
 	/* 
