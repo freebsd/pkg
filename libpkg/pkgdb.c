@@ -1897,9 +1897,11 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 	const char *sql_to_exec;
 	char *sqlbuf = NULL;
 	char *errmsg;
-	int ret = EPKG_OK;
+	int ret = EPKG_FATAL;
 
-	assert(s != NULL && sql != NULL);
+	assert(s != NULL);
+	assert(sql != NULL);
+
 	if (strchr(sql, '%') != NULL) {
 		va_start(ap, sql);
 		sqlbuf = sqlite3_vmprintf(sql, ap);
@@ -1912,10 +1914,12 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 	if (sqlite3_exec(s, sql_to_exec, NULL, NULL, &errmsg) != SQLITE_OK) {
 		pkg_emit_error("sqlite: %s", errmsg);
 		sqlite3_free(errmsg);
-		ret = EPKG_FATAL;
-		return (EPKG_FATAL);
+		goto cleanup;
 	}
 
+	ret = EPKG_OK;
+
+	cleanup:
 	if (sqlbuf != NULL)
 		free(sqlbuf);
 
