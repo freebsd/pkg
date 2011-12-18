@@ -152,6 +152,8 @@ pkg_config_bool(pkg_config_key key, bool *val)
 {
 	const char *str;
 
+	*val = false;
+
 	if (parsed != true) {
 		pkg_emit_error("pkg_init() must be called before pkg_config_bool()");
 		return (EPKG_FATAL);
@@ -165,8 +167,6 @@ pkg_config_bool(pkg_config_key key, bool *val)
 	str = c[key].val;
 	if (str != NULL && strcasecmp(str, "yes"))
 		*val = true;
-	else
-		*val = false;
 
 	return (EPKG_OK);
 }
