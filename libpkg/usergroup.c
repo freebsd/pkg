@@ -134,7 +134,7 @@ pkg_add_user_group(struct pkg *pkg)
 		struct group *grlocal;
 		struct group *grnew;
 		int i, j;
-		int nx;
+		int nx = 0;
 
 		if (g->gidstr[strlen(g->gidstr) - 1] == ':')
 			continue; /* no members, next */
