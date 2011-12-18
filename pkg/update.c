@@ -117,7 +117,7 @@ exec_update(int argc, char **argv)
 	 */
 	multirepos_enabled = pkg_config("PKG_MULTIREPOS");
 
-	if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") != 0)) {
+	if ((multirepos_enabled == NULL) || (strcasecmp(multirepos_enabled, "yes") != 0)) {
 		/*
 		 * Single remote database
 		 */
