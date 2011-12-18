@@ -25,8 +25,8 @@ BINDIR=		/usr/sbin
 
 .if exists(../.git)
 GITHASH!=	git rev-parse HEAD
-CFLAGS+=	-DGITHASH=\"${GITHASH}\"
 .endif
+CFLAGS+=	-DGITHASH=\"${GITHASH}\"
 
 DEBUG_FLAGS+=	-g -O0
 .if defined(PROFILE_BUILD)
