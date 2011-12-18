@@ -74,6 +74,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	char *path = NULL;
 	const char *packagesite = NULL;
 	int retcode = EPKG_OK;
+	const char *multirepos_enabled = NULL;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
@@ -99,7 +100,9 @@ pkg_repo_fetch(struct pkg *pkg)
 	 * For a single attached database the repository URL should be
 	 * defined by PACKAGESITE.
 	 */
-	if (strcasecmp(pkg_config("PKG_MULTIREPOS"), "yes") == 0) {
+	multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+
+	if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") == 0)) {
 		packagesite = pkg_get(pkg, PKG_REPOURL);
 	} else {
 		packagesite = pkg_config("PACKAGESITE");
