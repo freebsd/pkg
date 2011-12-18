@@ -33,6 +33,9 @@
 #include "which.h"
 
 #define PKGVERSION "1.0-alpha2+"
+#ifndef GITHASH
+#define GITHASH "unknown"
+#endif
 
 static void usage(void);
 static void usage_help(void);
@@ -158,7 +161,7 @@ main(int argc, char **argv)
 				jail_str = optarg;
 				break;
 			case 'v':
-				printf(PKGVERSION" "GITHASH"\n");
+				printf("%s %s\n", PKGVERSION, GITHASH);
 				exit(EXIT_SUCCESS);
 				break; /* NOT REACHED */
 			default:
@@ -197,7 +200,8 @@ main(int argc, char **argv)
 		if (chdir("/") == -1)
 			errx(EX_SOFTWARE, "chdir() failed");
 
-	pkg_init(NULL);
+	if (pkg_init(NULL) != EPKG_OK)
+		errx(EX_SOFTWARE, "can not parse configuration file");
 
 	len = strlen(argv[0]);
 	for (i = 0; i < cmd_len; i++) {
