@@ -102,5 +102,7 @@ exec_search(int argc, char **argv)
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
+	retcode = ((retcode == EPKG_OK) || (retcode == EPKG_END)) ? EX_OK : 1;
+
 	return (retcode);
 }
