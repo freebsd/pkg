@@ -12,7 +12,7 @@
 #define INFO_PREFIX (1<<8)
 #define INFO_FULL (1<<9)
 
-int query_yesno(const char *msg);
+bool query_yesno(const char *msg);
 int print_info(struct pkg * const pkg, unsigned int opt);
 
 #endif

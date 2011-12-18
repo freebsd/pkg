@@ -494,7 +494,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	char remotepath[MAXPATHLEN + 1];
 	const char *dbdir = NULL;
 	const char *repo_name = NULL;
-	const char *multirepos_enabled = NULL;
+	bool multirepos_enabled = false;
 	struct sbuf *sql = sbuf_new_auto();
 	bool create = false;
 
@@ -504,7 +504,8 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	 */
 	*db_p = NULL;
 
-	dbdir = pkg_config("PKG_DBDIR");
+	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	if ((db = calloc(1, sizeof(struct pkgdb))) == NULL) {
 		pkg_emit_errno("malloc", "pkgdb");
@@ -571,9 +572,9 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	}
 
 	if (type == PKGDB_REMOTE) {
-		multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+		pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
-		if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") == 0)) {
+		if (multirepos_enabled) {
 			fprintf(stderr, "\t/!\\		   WARNING WARNING WARNING		/!\\\n");
 			fprintf(stderr, "\t/!\\	     WORKING ON MULTIPLE REPOSITORIES		/!\\\n");
 			fprintf(stderr, "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL	/!\\\n");
@@ -666,16 +667,16 @@ pkgdb_close(struct pkgdb *db)
 	struct pkg_repos *repos = NULL;
 	struct pkg_repos_entry *re = NULL;
 	struct sbuf *sql = NULL;
-	const char *multirepos_enabled = NULL;
+	bool multirepos_enabled = false;
 
 	if (db == NULL)
 		return;
 
 	if (db->sqlite != NULL) {
 		if (db->type == PKGDB_REMOTE) {
-			multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+			pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
-			if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") == 0)) {
+			if (multirepos_enabled) {
 				/*
 				 * Working on multiple remote repositories.
 				 * Detach the remote repositories from the main database
@@ -1376,7 +1377,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	int retcode = EPKG_FATAL;
 	int64_t package_id;
 
-	const char *handle_rc = NULL;
+	bool handle_rc = false;
 
 	const char sql_begin[] = "BEGIN;";
 	const char sql_mtree[] = "INSERT OR IGNORE INTO mtree(content) VALUES(?1);";
@@ -1812,8 +1813,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 * start the different related services if the users do want that
 	 * and that the service is running
 	 */
-	handle_rc = pkg_config("HANDLE_RC_SCRIPTS");
-	if (handle_rc && (strcasecmp(handle_rc, "yes") == 0))
+	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+	if (handle_rc)
 		pkg_start_rc_scripts(pkg);
 
 	return (retcode);
@@ -2006,7 +2007,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	struct sbuf *sql = sbuf_new_auto();
 	const char *how = NULL;
 	const char *reponame = NULL;
-	const char *multirepos_enabled = NULL;
+	bool multirepos_enabled = false;
 
 	const char finalsql[] = "SELECT pkgid AS id, origin, name, version, "
 		"comment, desc, message, arch, osversion, maintainer, "
@@ -2039,9 +2040,9 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	}
 
 	/* Working on multiple repositories */
-	multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
-	if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") == 0)) {
+	if (multirepos_enabled) {
 		if (repo != NULL) {
 			if (pkgdb_repos_new(db, &repos) != EPKG_OK) {
 				pkg_emit_error("cannot get the attached databases");
@@ -2148,7 +2149,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = sbuf_new_auto();
 	const char *reponame = NULL;
-	const char *multirepos_enabled = NULL;
+	bool multirepos_enabled = false;
 
 	assert(db != NULL);
 
@@ -2190,9 +2191,9 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))";
 
 	/* Working on multiple repositories */
-	multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
-	if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") == 0)) {
+	if (multirepos_enabled) {
 		if (repo != NULL) {
 			if (pkgdb_repos_new(db, &repos) != EPKG_OK) {
 				pkg_emit_error("cannot get the attached databases");
@@ -2257,7 +2258,7 @@ pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
 	struct sbuf *sql = sbuf_new_auto();
 	const char *reponame = NULL;
 	sqlite3_stmt *stmt = NULL;
-	const char *multirepos_enabled = NULL;
+	bool multirepos_enabled = false;
 
 	assert(db != NULL);
 
@@ -2277,9 +2278,9 @@ pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
 		"AND PKGGT(l.version, r.version)";
 
 	/* Working on multiple repositories */
-	multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
-	if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") == 0)) {
+	if (multirepos_enabled) {
 		if (repo != NULL) {
 			if (pkgdb_repos_new(db, &repos) != EPKG_OK) {
 				pkg_emit_error("cannot get the attached databases");
@@ -2495,7 +2496,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 	struct sbuf *sql = NULL;
 	struct pkg_repos *repos = NULL;
 	struct pkg_repos_entry *re = NULL;
-	const char *multirepos_enabled = NULL;
+	bool multirepos_enabled = false;
 	const char *basesql = ""
 				"SELECT id, origin, name, version, comment, "
 					"prefix, desc, arch, osversion, maintainer, www, "
@@ -2518,9 +2519,9 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 	sql = sbuf_new_auto();
 	sbuf_cat(sql, basesql);
 
-	multirepos_enabled = pkg_config("PKG_MULTIREPOS");
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 	    
-	if (multirepos_enabled && (strcasecmp(multirepos_enabled, "yes") == 0)) {
+	if (multirepos_enabled) {
 		/*
 		 * Working on multiple remote repositories
 		 */

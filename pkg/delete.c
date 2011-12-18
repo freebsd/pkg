@@ -31,12 +31,11 @@ exec_delete(int argc, char **argv)
 	int ch;
 	int flags = PKG_LOAD_BASIC;
 	int force = 0;
-	int yes = 0;
+	bool yes = false;
 	int retcode = 1;
 	int recursive = 0;
 	int64_t oldsize = 0, newsize = 0;
 	char size[7];
-	const char *assume_yes = NULL;
 
 	while ((ch = getopt(argc, argv, "agxXfyr")) != -1) {
 		switch (ch) {
@@ -56,7 +55,7 @@ exec_delete(int argc, char **argv)
 				force = 1;
 				break;
 			case 'y':
-				yes = 1;
+				yes = true;
 				break;
 			case 'r':
 				recursive = 1;
@@ -123,14 +122,12 @@ exec_delete(int argc, char **argv)
 	else
 		printf("\nThe deinstallation will require %s more space\n", size);
 
-	assume_yes = pkg_config("ASSUME_ALWAYS_YES");
-	if (assume_yes && (strcasecmp(assume_yes, "yes") == 0))
-	    yes = 1;
-
-	if (yes == 0)
+	if (yes == false)
+		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	if (yes == false)
 		yes = query_yesno("\nProceed with deinstalling packages [y/N]: ");
 
-	if (yes == 1) {
+	if (yes == true) {
 		if ((retcode = pkg_jobs_apply(jobs, force)) != EPKG_OK)
 			goto cleanup;
 	} else

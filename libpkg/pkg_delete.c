@@ -17,7 +17,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 {
 	struct pkg_dep *rdep = NULL;
 	int ret;
-	const char *handle_rc = NULL;
+	bool handle_rc = false;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
@@ -58,8 +58,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 	 * stop the different related services if the users do want that
 	 * and that the service is running
 	 */
-	handle_rc = pkg_config("HANDLE_RC_SCRIPTS");
-	if (handle_rc && (strcasecmp(handle_rc, "yes") == 0))
+	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+	if (handle_rc)
 		pkg_stop_rc_scripts(pkg);
 
 	if (flags & PKG_DELETE_UPGRADE) {

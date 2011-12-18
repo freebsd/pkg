@@ -123,8 +123,7 @@ exec_audit(int argc, char **argv)
 	struct pkg *p = NULL;
 #endif
 
-	db_dir = pkg_config("PKG_DBDIR");
-	if (db_dir == NULL) {
+	if (pkg_config_string(PKG_CONFIG_DBDIR, &db_dir) != EPKG_OK) {
 		warnx("PKG_DBIR is missing");
 		return (1);
 	}

@@ -27,6 +27,8 @@ struct pkg_jobs;
 struct pkg_repos;
 struct pkg_repos_entry;
 
+struct pkg_config_kv;
+
 typedef enum {
 	/**
 	 * The license logic is OR (dual in the ports)
@@ -168,6 +170,17 @@ typedef enum _pkg_jobs_t {
 	PKG_JOBS_DEINSTALL,
 	PKG_JOBS_UPGRADE
 } pkg_jobs_t;
+
+typedef enum _pkg_config_key {
+	PKG_CONFIG_REPO = 0,
+	PKG_CONFIG_DBDIR = 1,
+	PKG_CONFIG_CACHEDIR = 2,
+	PKG_CONFIG_PORTSDIR = 3,
+	PKG_CONFIG_REPOKEY = 4,
+	PKG_CONFIG_MULTIREPOS = 5,
+	PKG_CONFIG_HANDLE_RC_SCRIPTS = 6,
+	PKG_CONFIG_ASSUME_ALWAYS_YES = 7,
+} pkg_config_key;
 
 /**
  * Error type used everywhere by libpkg.
@@ -744,7 +757,9 @@ int pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len);
 /**
  * Get the value of a configuration key
  */
-const char * pkg_config(const char *key);
+int pkg_config_string(pkg_config_key key, const char **value);
+int pkg_config_bool(pkg_config_key key, bool *value);
+int pkg_config_list(pkg_config_key key, struct pkg_config_kv **kv);
 
 /**
  * @todo Document
