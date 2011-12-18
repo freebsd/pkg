@@ -204,7 +204,7 @@ pkg_init(const char *path)
 	yaml_parser_t parser;
 	yaml_document_t doc;
 	yaml_node_t *node;
-	int i;
+	size_t i;
 
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
@@ -212,8 +212,7 @@ pkg_init(const char *path)
 	}
 
 	/* first fill with environment variables */
-
-	for (i = 0; c[i].key != NULL; i++)
+	for (i = 0; i < c_size; i++)
 		c[i].val = getenv(c[i].key);
 
 	if (path == NULL)
