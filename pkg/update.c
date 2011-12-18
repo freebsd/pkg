@@ -99,7 +99,6 @@ exec_update(int argc, char **argv)
 	int retcode = EPKG_OK;
 	struct pkg_repos *repos = NULL;
 	struct pkg_repos_entry *re = NULL;
-	const char *multirepos_enabled = NULL;
 
 	(void)argv;
 	if (argc != 1) {
@@ -115,9 +114,9 @@ exec_update(int argc, char **argv)
 	/* 
 	 * Fetch remote databases.
 	 */
-	multirepos_enabled = pkg_config("PKG_MULTIREPOS");
 
-	if ((multirepos_enabled == NULL) || (strcasecmp(multirepos_enabled, "yes") != 0)) {
+	/* single repository */
+	if (pkg_config("PKG_MULTIREPOS") == NULL) {
 		/*
 		 * Single remote database
 		 */
@@ -134,6 +133,7 @@ exec_update(int argc, char **argv)
 
 		retcode = update_from_remote_repo("repo", url);
 	} else {
+		/* multiple repositories */
 		if (pkg_repos_new(&repos) != EPKG_OK)
 			return (1);
 
