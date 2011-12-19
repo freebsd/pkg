@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/queue.h>
 
+#include <assert.h>
 #include <err.h>
 #include <stdlib.h>
 #include <string.h>
@@ -78,7 +79,13 @@ static struct config_entry c[] = {
 		"ASSUME_ALWAYS_YES",
 		NULL,
 		{ NULL }
-	}, 
+	},
+	[PKG_CONFIG_REPOS] = {
+		LIST,
+		"REPOS",
+		"NULL",
+		{ NULL }
+	}
 };
 
 static bool parsed = false;
@@ -195,6 +202,22 @@ pkg_config_list(pkg_config_key key, struct pkg_config_kv **kv)
 		return (EPKG_END);
 	else
 		return (EPKG_OK);
+}
+
+const char *
+pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type)
+{
+	assert(kv != NULL);
+
+	switch (type) {
+		case PKG_CONFIG_KV_KEY:
+			return (kv->key);
+			break;
+		case PKG_CONFIG_KV_VALUE:
+			return (kv->value);
+			break;
+	}
+	return (NULL);
 }
 
 int

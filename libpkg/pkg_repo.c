@@ -21,21 +21,18 @@
 #include "pkg_event.h"
 #include "pkg_private.h"
 
-static int pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re);
-
-static int
-pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re)
+static bool
+pkg_repos_is_reserved_name(struct pkg_repos *repos, const char *repo_name)
 {
-        struct pkg_repos_entry *next = NULL;
-	const  char *repo_name = NULL;
+	struct pkg_repos_entry *next = NULL;
 
-        assert(repos != NULL && re != NULL);
+	assert(repos != NULL && repo_name != NULL);
 
-        /* 
-         * Find if a repository name already exists.
+	/* 
+	 * Find if a repository name already exists.
 	 *
-         * NOTE1: The 'repo' name is always reserved, 
-         * as it is being used by default when 
+	 * NOTE1: The 'repo' name is always reserved, 
+	 * as it is being used by default when 
 	 * working on a single remote repository,
 	 * which means that PACKAGESITE is defined.
 	 *
@@ -47,21 +44,19 @@ pkg_repos_is_reserved_name(struct pkg_repos *repos, struct pkg_repos_entry *re)
 	 *
 	 * NOTE3: The 'local' name is always reserved,
 	 * because this is the name of the local database.
-         */
-	
-	repo_name = pkg_repos_get_name(re);
+	 */
 
 	if ((strcmp(repo_name, "repo") == 0) ||
 	    (strcmp(repo_name, "main") == 0) ||
 	    (strcmp(repo_name, "temp") == 0) ||
 	    (strcmp(repo_name, "local") == 0))
-		return (EPKG_FATAL);
+		return (true);
 
-        while (pkg_repos_next(repos, &next) == EPKG_OK)
-                if ((strcmp(repo_name, pkg_repos_get_name(next)) == 0))
-                        return (EPKG_FATAL);
+	while (pkg_repos_next(repos, &next) == EPKG_OK)
+		if ((strcmp(repo_name, pkg_repos_get_name(next)) == 0))
+			return (true);
 
-        return (EPKG_OK);
+        return (false);
 }
 
 int
@@ -169,130 +164,52 @@ pkg_repos_new(struct pkg_repos **repos)
 int
 pkg_repos_load(struct pkg_repos *repos)
 {
-        FILE *fp = NULL;
-        char *repo_buf[MAXPATHLEN];
-        char buf[MAXPATHLEN];
-        char *token = NULL, *tmp = NULL;
-        unsigned int count = 0, line = 0;
-        struct pkg_repos_entry *re = NULL;
+	struct pkg_config_kv *repokv;
+	struct pkg_repos_entry *re;
+	const char *repo_name;
 
         assert(repos != NULL);
 
-        if ((fp = fopen("/etc/pkg/repositories", "r")) == NULL) {
-                pkg_emit_errno("fopen", "/etc/pkg/repositories");
-                return (EPKG_FATAL);
-        }
+	while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
+		repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
+		if (pkg_repos_is_reserved_name(repos, repo_name)) {
+			pkg_emit_error("Repository name '%s' is already reserved, ignoring",
+                                repo_name);
+			continue;
+		}
 
-        while (fgets(buf, MAXPATHLEN, fp)) {
-                line++;
+		if ((re = calloc(1, sizeof(struct pkg_repos_entry))) == NULL) {
+			pkg_emit_errno("calloc", "pkg_repos_entry");
+			 return (EPKG_FATAL);
+		 }
 
-                if (buf[0] == '\n' || buf[0] == '#' || buf[0] == ';')
-                        continue;
+		re->name = repo_name;
+		re->url = pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE);
 
-                count = 0;
-
-                buf[strlen(buf) - 1] = '\0';
-                tmp = buf;
-
-                /* get the repository entries */
-                while ((token = strsep(&tmp, " \t=")) != NULL)
-                        if (*token != '\0')
-                                repo_buf[count++] = token;
-
-		/* only name and url are needed for the repository */
-                if (count != 2) {
-                        pkg_emit_error("Wrong repository format at line %d (ignoring repository)", line);
-                        continue;
-                }
-
-                if ((re = calloc(1, sizeof(struct pkg_repos_entry))) == NULL) {
-                        pkg_emit_errno("calloc", "pkg_repos_entry");
-                        return (EPKG_FATAL);
-                }
-
-		sbuf_set(&re->name, repo_buf[0]);
-		sbuf_set(&re->url, repo_buf[1]);
-                re->line = line;
-
-                pkg_repos_add(repos, re);
-        }
-
-        fclose(fp);
-
-        return (EPKG_OK);
-}
-
-int
-pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re)
-{
-        assert(repos != NULL && re != NULL);
-
-        if (pkg_repos_is_reserved_name(repos, re) != EPKG_OK) {
-                pkg_emit_error("Repository name '%s' is already reserved (ignoring repository at line %d)",
-                                pkg_repos_get_name(re), pkg_repos_get_line(re));
-
-                sbuf_free(re->name);
-		sbuf_free(re->url);
-                free(re);
-
-                return (EPKG_FATAL);
-        }
-
-        STAILQ_INSERT_TAIL(&repos->nodes, re, entries);
-
-        return (EPKG_OK);
-}
-
-int
-pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re)
-{
-        assert(repos != NULL);
-
-        if (*re == NULL)
-                *re = STAILQ_FIRST(&repos->nodes);
-        else
-                *re = STAILQ_NEXT(*re, entries);
-
-        if (*re == NULL)
-                return (EPKG_END);
-
-	 /* Check if we have switched to a repo */
-	if (repos->switchable == 1) {
-		if ((*re)->switched == 1)
-			return (EPKG_OK);
-		else
-			return(pkg_repos_next(repos, re));
+		pkg_repos_add(repos, re);
 	}
 
 	return (EPKG_OK);
 }
 
-int
-pkg_repos_switch(struct pkg_repos *repos, const char *reponame)
+void
+pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re)
 {
-	struct pkg_repos_entry *re = NULL;
-
-	pkg_repos_switch_reset(repos);
-
-	while (pkg_repos_next(repos, &re) == EPKG_OK)
-		if (strcmp(reponame, pkg_repos_get_name(re)) == 0) {
-			repos->switchable = 1;
-			re->switched = 1;
-			return (EPKG_OK);
-		}
-
-	return (EPKG_FATAL);
+		STAILQ_INSERT_TAIL(&repos->nodes, re, entries);
 }
 
 int
-pkg_repos_switch_reset(struct pkg_repos *repos)
+pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re)
 {
-	struct pkg_repos_entry *re = NULL;
+	assert(repos != NULL);
 
-	repos->switchable = 0;
+	if (*re == NULL)
+		*re = STAILQ_FIRST(&repos->nodes);
+	else
+		*re = STAILQ_NEXT(*re, entries);
 
-	while (pkg_repos_next(repos, &re) == EPKG_OK)
-		re->switched = 0;
+	if (*re == NULL)
+		return (EPKG_END);
 
 	return (EPKG_OK);
 }
@@ -302,7 +219,7 @@ pkg_repos_get_name(struct pkg_repos_entry *re)
 {
         assert(re != NULL);
 
-        return (sbuf_get(re->name));
+        return (re->name);
 }
 
 const char *
@@ -310,53 +227,24 @@ pkg_repos_get_url(struct pkg_repos_entry *re)
 {
         assert(re != NULL);
 
-        return (sbuf_get(re->url));
-}
-
-unsigned int
-pkg_repos_get_line(struct pkg_repos_entry *re)
-{
-        assert(re != NULL);
-
-        return(re->line);
-}
-
-int
-pkg_repos_exists(struct pkg_repos *repos, const char *reponame)
-{
-	struct pkg_repos_entry *re = NULL;
-	bool exists = false;
-
-	while (pkg_repos_next(repos, &re) == EPKG_OK) {
-		if (strcmp(pkg_repos_get_name(re), reponame) == 0) {
-			exists = true;
-			break;
-		}
-	}
-
-	return (exists == true ? EPKG_OK : EPKG_FATAL);
+        return (re->url);
 }
 
 void
 pkg_repos_free(struct pkg_repos *repos)
 {
-        struct pkg_repos_entry *re1, *re2;
+	struct pkg_repos_entry *re;
 
-        if (repos == NULL)
-                return;
+	if (repos == NULL)
+		return;
 
-        re1 = STAILQ_FIRST(&repos->nodes);
-        while (re1 != NULL) {
-                re2 = STAILQ_NEXT(re1, entries);
-                
-		sbuf_free(re1->name);
-		sbuf_free(re1->url);
-                free(re1);
+	while (!STAILQ_EMPTY(&repos->nodes)) {
+		re = STAILQ_FIRST(&repos->nodes);
+		STAILQ_REMOVE_HEAD(&repos->nodes, entries);
+		free(re);
+	}
 
-                re1 = re2;
-        }
-
-        free(repos);
+	free(repos);
 }
 
 static RSA *

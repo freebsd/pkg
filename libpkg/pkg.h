@@ -203,7 +203,13 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_MULTIREPOS = 5,
 	PKG_CONFIG_HANDLE_RC_SCRIPTS = 6,
 	PKG_CONFIG_ASSUME_ALWAYS_YES = 7,
+	PKG_CONFIG_REPOS = 8
 } pkg_config_key;
+
+typedef enum {
+	PKG_CONFIG_KV_KEY,
+	PKG_CONFIG_KV_VALUE
+} pkg_config_kv_t;
 
 /**
  * Error type used everywhere by libpkg.
@@ -738,6 +744,7 @@ int pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len);
 int pkg_config_string(pkg_config_key key, const char **value);
 int pkg_config_bool(pkg_config_key key, bool *value);
 int pkg_config_list(pkg_config_key key, struct pkg_config_kv **kv);
+const char *pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type);
 
 /**
  * @todo Document
@@ -774,9 +781,9 @@ int pkg_repos_load(struct pkg_repos *repos);
  * Adds a repository entry found from the repositories file to the tail
  * @param repos A valid repository object as returned by pkg_repos_new()
  * @param re A valid repository entry object
- * @return EPKG_OK on success and EPKG_FATAL on error
+ * @return nothing
  */
-int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
+void pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
 
 /**
  * Get the next repository from the configuration file
@@ -786,22 +793,6 @@ int pkg_repos_add(struct pkg_repos *repos, struct pkg_repos_entry *re);
  * @return EPKG_OK on success and EPKG_END if end of tail is reached
  */
 int pkg_repos_next(struct pkg_repos *repos, struct pkg_repos_entry **re);
-
-/**
- * Switches to a single repository while running in multi-repos mode
- * @param repos A valid repository object as returned by pkg_repos_new()
- * @param reponame The name of the repository to switch to
- * @return EPKG_OK if switching to reponame was successful and EPKG_FATAL
- * in case of error, e.g. repository does not exists
- */
-int pkg_repos_switch(struct pkg_repos *repos, const char *reponame);
-
-/**
- * Switches back to multi-repos mode and resets any switchable repos
- * @param repos A valid repository object as returned by pkg_repos_new()
- * @return EPKG_OK on success
- */
-int pkg_repos_switch_reset(struct pkg_repos *repos);
 
 /**
  * Frees the memory used by the repository objects
