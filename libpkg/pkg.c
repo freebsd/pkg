@@ -528,7 +528,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(version != NULL && version[0] != '\0');
 
 	while (pkg_deps(pkg, &d) != EPKG_END) {
-		if (!strcmp(origin, pkg_dep_origin(d))) {
+		if (!strcmp(origin, pkg_dep_get(d, PKG_DEP_ORIGIN))) {
 			pkg_emit_error("duplicate dependency listing: %s-%s, ignoring", name, version);
 			return (EPKG_OK);
 		}

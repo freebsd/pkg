@@ -130,20 +130,20 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				case 'd':
 					qstr++;
 					if (qstr[0] == 'n')
-						sbuf_cat(dest, pkg_dep_name((struct pkg_dep *)data));
+						sbuf_cat(dest, pkg_dep_get((struct pkg_dep *)data, PKG_DEP_NAME));
 					else if (qstr[0] == 'o')
-						sbuf_cat(dest, pkg_dep_origin((struct pkg_dep *)data));
+						sbuf_cat(dest, pkg_dep_get((struct pkg_dep *)data, PKG_DEP_ORIGIN));
 					else if (qstr[0] == 'v')
-						sbuf_cat(dest, pkg_dep_version((struct pkg_dep *)data));
+						sbuf_cat(dest, pkg_dep_get((struct pkg_dep *)data, PKG_DEP_VERSION));
 					break;
 				case 'r':
 					qstr++;
 					if (qstr[0] == 'n')
-						sbuf_cat(dest, pkg_dep_name((struct pkg_dep *)data));
+						sbuf_cat(dest, pkg_dep_get((struct pkg_dep *)data, PKG_DEP_NAME));
 					else if (qstr[0] == 'o')
-						sbuf_cat(dest, pkg_dep_origin((struct pkg_dep *)data));
+						sbuf_cat(dest, pkg_dep_get((struct pkg_dep *)data, PKG_DEP_ORIGIN));
 					else if (qstr[0] == 'v')
-						sbuf_cat(dest, pkg_dep_version((struct pkg_dep *)data));
+						sbuf_cat(dest, pkg_dep_get((struct pkg_dep *)data, PKG_DEP_VERSION));
 					break;
 				case 'C':
 					sbuf_cat(dest, pkg_category_name((struct pkg_category *)data));

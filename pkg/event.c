@@ -79,7 +79,7 @@ event_callback(void *data, struct pkg_event *ev)
 		fprintf(stderr, "%s-%s is required by:", pkg_get(pkg, PKG_NAME),
 				pkg_get(pkg, PKG_VERSION));
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-			fprintf(stderr, " %s-%s", pkg_dep_name(dep), pkg_dep_version(dep));
+			fprintf(stderr, " %s-%s", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_ORIGIN));
 		}
 		if (ev->e_required.force == 1)
 			fprintf(stderr, ", deleting anyway\n");
