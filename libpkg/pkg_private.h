@@ -114,14 +114,11 @@ struct pkg_jobs_node {
 
 struct pkg_repos {
 	struct pkg_repos_entry {
-		struct sbuf *name;
-		struct sbuf *url;
-		unsigned int line;
-		unsigned int switched :1;
+		const char *name;
+		const char *url;
 		STAILQ_ENTRY(pkg_repos_entry) entries;
 	} re;
 
-	unsigned int switchable :1;
 	STAILQ_HEAD(repos, pkg_repos_entry) nodes;
 };
 
