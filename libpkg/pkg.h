@@ -138,7 +138,8 @@ typedef enum {
 	PKG_NEW_FLATSIZE,
 	PKG_NEW_PKGSIZE,
 	PKG_LICENSE_LOGIC,
-	PKG_AUTOMATIC
+	PKG_AUTOMATIC,
+	PKG_ROWID,
 } pkg_attr;
 
 /**
@@ -363,38 +364,15 @@ int pkg_analyse_files(struct pkgdb *, struct pkg *);
 /**
  * Generic setter for simple attributes.
  */
-int pkg_set(struct pkg *pkg, pkg_attr attr, const char *value);
-int pkg_set_mtree(struct pkg *pkg, const char *value);
+int pkg_set2(struct pkg *pkg, ...);
+#define pkg_set(pkg, ...) pkg_set2(pkg, __VA_ARGS__, -1)
+
+/*int pkg_set(struct pkg *pkg, pkg_attr attr, const char *value);*/
 
 /**
  * Read the content of a file into a buffer, then call pkg_set().
  */
 int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
-
-int pkg_set_automatic(struct pkg *pkg);
-
-/**
- * set the logic for license combinaison
- */
-int pkg_set_licenselogic(struct pkg *pkg, int64_t licenselogic);
-
-/**
- * Set the uncompressed size of the package.
- * @return An error code.
- */
-int pkg_set_flatsize(struct pkg *pkg, int64_t size);
-
-/**
- * Set the uncompressed size of the package, in its futur version.
- * @return An error code.
- */
-int pkg_set_newflatsize(struct pkg *pkg, int64_t size);
-
-/**
- * Set the compressed size of the package, in its futur version.
- * @return An error code.
- */
-int pkg_set_newpkgsize(struct pkg *pkg, int64_t size);
 
 /**
  * Allocate a new struct pkg and add it to the deps of pkg.

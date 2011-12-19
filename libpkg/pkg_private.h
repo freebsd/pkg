@@ -192,7 +192,7 @@ int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p);
 int pkgdb_integrity_check(struct pkgdb *db);
 struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin);
 
-int pkg_set_rowid(struct pkg *, int64_t rowid);
+int pkg_set_mtree(struct pkg *, const char *mtree);
 
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);

@@ -96,7 +96,7 @@ exec_register(int argc, char **argv)
 					err(1, "cannot allocate memory");
 				break;
 			case 'd':
-				pkg_set_automatic(pkg);
+				pkg_set(pkg, PKG_AUTOMATIC, true);
 				break;
 			case 'i':
 				if ((input_path = strdup(optarg)) == NULL)
@@ -199,7 +199,7 @@ exec_register(int argc, char **argv)
 		retcode = EPKG_FATAL;
 	}
 
-	pkg_get(pkg, PKG_MESSAGE, message);
+	pkg_get(pkg, PKG_MESSAGE, &message);
 	if (message != NULL && !legacy)
 		printf("%s\n", message);
 

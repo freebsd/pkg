@@ -93,6 +93,7 @@ exec_delete(int argc, char **argv)
 
 	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 		int64_t flatsize, newflatsize;
+		pkg_get(pkg, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize);
 		oldsize += flatsize;
 		newsize += newflatsize;
 		pkg_jobs_add(jobs, pkg);
