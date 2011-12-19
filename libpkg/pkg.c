@@ -581,8 +581,8 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 	assert(path != NULL && path[0] != '\0');
 
 	while (pkg_files(pkg, &f) != EPKG_END) {
-		if (!strcmp(path, pkg_file_path(f))) {
-			pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_path(f));
+		if (!strcmp(path, pkg_file_get(f, PKG_FILE_PATH))) {
+			pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_get(f, PKG_FILE_PATH));
 			return (EPKG_OK);
 		}
 	}
@@ -591,7 +591,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 	strlcpy(f->path, path, sizeof(f->path));
 
 	if (sha256 != NULL)
-		strlcpy(f->sha256, sha256, sizeof(f->sha256));
+		strlcpy(f->sum, sha256, sizeof(f->sum));
 
 	if (uname != NULL)
 		strlcpy(f->uname, uname, sizeof(f->uname));
@@ -1076,8 +1076,8 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		snprintf(spath, sizeof(spath), "%s%s", src, pkg_file_path(file));
-		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_file_path(file));
+		snprintf(spath, sizeof(spath), "%s%s", src, pkg_file_get(file, PKG_FILE_PATH));
+		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_file_get(file, PKG_FILE_PATH));
 		printf("%s -> %s\n", spath, dpath);
 		packing_append_file(pack, spath, dpath);
 	}

@@ -94,7 +94,7 @@ pkg_jobs_keep_files_to_del(struct pkg *p1, struct pkg *p2)
 
 		f2 = NULL;
 		while (pkg_files(p2, &f2)) {
-			if (strcmp(pkg_file_path(f1), pkg_file_path(f2)) == 0) {
+			if (strcmp(pkg_file_get(f1, PKG_FILE_PATH), pkg_file_get(f2, PKG_FILE_PATH)) == 0) {
 				f1->keep = 1;
 				break;
 			}

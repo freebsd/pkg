@@ -147,6 +147,13 @@ typedef enum {
 } pkg_dep_attr;
 
 typedef enum {
+	PKG_FILE_PATH = 0,
+	PKG_FILE_SUM,
+	PKG_FILE_UNAME,
+	PKG_FILE_GNAME
+} pkg_file_attr;
+
+typedef enum {
 	PKG_DEPS = 0,
 	PKG_RDEPS,
 	PKG_LICENSES,
@@ -529,8 +536,7 @@ int pkg_emit_manifest(struct pkg *pkg, char **buf);
 const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
 
 /* pkg_file */
-const char *pkg_file_path(struct pkg_file *);
-const char *pkg_file_sha256(struct pkg_file *);
+const char *pkg_file_get(struct pkg_file const * const, const pkg_file_attr);
 
 const char *pkg_dir_path(struct pkg_dir *);
 int pkg_dir_try(struct pkg_dir *);

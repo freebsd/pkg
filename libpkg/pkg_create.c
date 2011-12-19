@@ -33,13 +33,13 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	 */
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_path(file));
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_get(file, PKG_FILE_PATH));
 		else
-			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
+			strlcpy(fpath, pkg_file_get(file, PKG_FILE_PATH), sizeof(fpath));
 
-		if ((pkg_file_sha256(file) == NULL || pkg_file_sha256(file)[0] == '\0') && lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
+		if ((pkg_file_get(file, PKG_FILE_SUM) == NULL || pkg_file_get(file, PKG_FILE_SUM)[0] == '\0') && lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
 			sha256_file(fpath, sha256);
-			strlcpy(file->sha256, sha256, sizeof(file->sha256));
+			strlcpy(file->sum, sha256, sizeof(file->sum));
 		}
 
 	}
@@ -54,11 +54,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_path(file));
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_get(file, PKG_FILE_PATH));
 		else
-			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
+			strlcpy(fpath, pkg_file_get(file, PKG_FILE_PATH), sizeof(fpath));
 
-		packing_append_file_attr(pkg_archive, fpath, pkg_file_path(file), file->uname, file->gname, file->perm);
+		packing_append_file_attr(pkg_archive, fpath, pkg_file_get(file, PKG_FILE_PATH), file->uname, file->gname, file->perm);
 	}
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {

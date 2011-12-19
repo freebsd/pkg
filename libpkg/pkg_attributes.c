@@ -70,15 +70,27 @@ pkg_file_free(struct pkg_file *file)
 }
 
 const char *
-pkg_file_path(struct pkg_file *file)
+pkg_file_get(struct pkg_file const * const f, const pkg_file_attr attr)
 {
-	return (file->path);
-}
+	assert(f != NULL);
 
-const char *
-pkg_file_sha256(struct pkg_file *file)
-{
-	return (file->sha256);
+	switch (attr) {
+		case PKG_FILE_PATH:
+			return (f->path);
+			break;
+		case PKG_FILE_SUM:
+			return (f->sum);
+			break;
+		case PKG_FILE_UNAME:
+			return (f->uname);
+			break;
+		case PKG_FILE_GNAME:
+			return (f->gname);
+			break;
+		default:
+			return (NULL);
+			break;
+	}
 }
 
 /*

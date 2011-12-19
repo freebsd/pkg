@@ -62,7 +62,7 @@ struct pkg_category {
 
 struct pkg_file {
 	char path[MAXPATHLEN +1];
-	char sha256[SHA256_DIGEST_LENGTH * 2 +1];
+	char sum[SHA256_DIGEST_LENGTH * 2 +1];
 	char uname[MAXLOGNAME +1];
 	char gname[MAXLOGNAME +1];
 	int keep;
