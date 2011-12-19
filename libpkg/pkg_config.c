@@ -95,9 +95,10 @@ static void
 parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 {
 	size_t i;
-	yaml_node_pair_t *pair;
-	yaml_node_t *key;
-	yaml_node_t *val;
+	struct pkg_config_kv *kv;
+	yaml_node_pair_t *pair, *subpair;
+	yaml_node_t *key, *subkey;
+	yaml_node_t *val, *subval;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
@@ -122,7 +123,25 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 					++pair;
 					continue;
 				}
-				c[i].val = strdup(val->data.scalar.value);
+				if (val->type == YAML_SCALAR_NODE) {
+					c[i].val = strdup(val->data.scalar.value);
+				} else if (val->type == YAML_MAPPING_NODE) {
+					subpair = val->data.mapping.pairs.start;
+					SLIST_INIT(&c[i].list);
+					while (subpair < val->data.mapping.pairs.top) {
+						subkey = yaml_document_get_node(doc, subpair->key);
+						subval = yaml_document_get_node(doc, subpair->value);
+						if (subkey->type != YAML_SCALAR_NODE || subval->type != YAML_SCALAR_NODE) {
+							++subpair;
+							continue;
+						}
+						kv = malloc(sizeof(struct pkg_config_kv));
+						kv->key = strdup(subkey->data.scalar.value);
+						kv->value = strdup(subval->data.scalar.value);
+						SLIST_INSERT_HEAD(&(c[i].list), kv, next);
+						++subpair;
+					}
+				}
 				break;
 			}
 		}
@@ -191,8 +210,7 @@ pkg_config_list(pkg_config_key key, struct pkg_config_kv **kv)
 		return (EPKG_FATAL);
 	}
 
-	if (kv == NULL)
-	{
+	if (*kv == NULL) {
 		*kv = SLIST_FIRST(&(c[key].list));
 	} else {
 		*kv = SLIST_NEXT(*kv, next);
