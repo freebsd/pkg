@@ -678,9 +678,9 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 		dep = NULL;
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
-			sqlite3_bind_text(stmt_deps, 1, pkg_dep_origin(dep), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_deps, 2, pkg_dep_name(dep), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_deps, 3, pkg_dep_version(dep), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 1, pkg_dep_get(dep, PKG_DEP_ORIGIN), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 2, pkg_dep_get(dep, PKG_DEP_NAME), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_deps, 3, pkg_dep_get(dep, PKG_DEP_VERSION), -1, SQLITE_STATIC);
 			sqlite3_bind_int64(stmt_deps, 4, package_id);
 
 			if (sqlite3_step(stmt_deps) != SQLITE_DONE) {

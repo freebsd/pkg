@@ -1491,9 +1491,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		sqlite3_bind_text(stmt_dep, 1, pkg_dep_origin(dep), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_dep, 2, pkg_dep_name(dep), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_dep, 3, pkg_dep_version(dep), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_dep, 1, pkg_dep_get(dep, PKG_DEP_ORIGIN), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_dep, 2, pkg_dep_get(dep, PKG_DEP_NAME), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_dep, 3, pkg_dep_get(dep, PKG_DEP_VERSION), -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_dep, 4, package_id);
 
 		if ((ret = sqlite3_step(stmt_dep)) != SQLITE_DONE) {

@@ -136,6 +136,16 @@ typedef enum {
 	PKG_REPOURL
 } pkg_attr;
 
+/**
+ * contains keys to refer to a string attribute
+ * Used by pkg_dep_get()
+ */
+typedef enum {
+	PKG_DEP_NAME = 0,
+	PKG_DEP_ORIGIN,
+	PKG_DEP_VERSION
+} pkg_dep_attr;
+
 typedef enum {
 	PKG_DEPS = 0,
 	PKG_RDEPS,
@@ -516,9 +526,7 @@ int pkg_load_manifest_file(struct pkg *pkg, const char *fpath);
 int pkg_emit_manifest(struct pkg *pkg, char **buf);
 
 /* pkg_dep */
-const char *pkg_dep_origin(struct pkg_dep *dep);
-const char *pkg_dep_name(struct pkg_dep *dep);
-const char *pkg_dep_version(struct pkg_dep *dep);
+const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
 
 /* pkg_file */
 const char *pkg_file_path(struct pkg_file *);

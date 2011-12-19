@@ -71,7 +71,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				found = false;
 				while (pkg_deps(pkg, &dep) == EPKG_OK) {
-					if (strcmp(pkg_dep_origin(dep), pkg_get(p, PKG_ORIGIN)) == 0)
+					if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), pkg_get(p, PKG_ORIGIN)) == 0)
 						found = true;
 				}
 				if (!found) {

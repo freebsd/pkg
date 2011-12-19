@@ -181,10 +181,10 @@ main(int argc, char **argv)
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			sbuf_printf(sbuf, "@pkgdep %s-%s\n"
 						"@comment DEPORIGIN:%s\n",
-						pkg_dep_name(dep),
-						pkg_dep_version(dep),
-						pkg_dep_origin(dep));
-			sbuf_printf(indexfile, "%s-%s ", pkg_dep_name(dep), pkg_dep_version(dep));
+						pkg_dep_get(dep, PKG_DEP_NAME),
+						pkg_dep_get(dep, PKG_DEP_VERSION),
+						pkg_dep_get(dep, PKG_DEP_NAME));
+			sbuf_printf(indexfile, "%s-%s ", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
 		}
 
 		sbuf_cat(indexfile, "|");

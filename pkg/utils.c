@@ -101,7 +101,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
                         printf("%s-%s depends on:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
                 while (pkg_deps(pkg, &dep) == EPKG_OK) {
-                        printf("%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
+                        printf("%s-%s\n", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
                 }
 
                 if (!(opt & INFO_QUIET))
@@ -111,7 +111,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
                         printf("%s-%s is required by:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
                 while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-                        printf("%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
+                        printf("%s-%s\n", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
                 }
 
                 if (!(opt & INFO_QUIET))

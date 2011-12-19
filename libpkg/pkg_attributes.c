@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 
 #include "pkg.h"
@@ -26,21 +27,24 @@ pkg_dep_free(struct pkg_dep *d)
 }
 
 const char *
-pkg_dep_origin(struct pkg_dep *d)
+pkg_dep_get(struct pkg_dep const * const d, const pkg_dep_attr attr)
 {
-	return (sbuf_get(d->origin));
-}
+	assert(d != NULL);
 
-const char *
-pkg_dep_name(struct pkg_dep *d)
-{
-	return (sbuf_get(d->name));
-}
-
-const char *
-pkg_dep_version(struct pkg_dep *d)
-{
-	return (sbuf_get(d->version));
+	switch (attr) {
+		case PKG_DEP_NAME:
+			return (sbuf_get(d->name));
+			break;
+		case PKG_DEP_ORIGIN:
+			return (sbuf_get(d->origin));
+			break;
+		case PKG_DEP_VERSION:
+			return (sbuf_get(d->version));
+			break;
+		default:
+			return (NULL);
+			break;
+	}
 }
 
 /*
