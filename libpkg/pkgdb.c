@@ -437,7 +437,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	bool multirepos_enabled = false;
 	struct sbuf *sql = sbuf_new_auto();
 	bool create = false;
-	struct pkg_config_kv *repokv;
+	struct pkg_config_kv *repokv = NULL;
 
 	/*
 	 * Set the pointer to NULL now. Change it to the real pointer just
