@@ -183,17 +183,17 @@ pkg_set_flatsize_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_docu
 		return (EPKG_FATAL);
 	}
 
-	return (pkg_set_flatsize(pkg, flatsize));
+	return (pkg_set(pkg, PKG_FLATSIZE, flatsize));
 }
 static int
 pkg_set_licenselogic_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *doc, __unused int attr)
 {
 	if (!strcmp(val->data.scalar.value, "single"))
-		pkg_set_licenselogic(pkg, LICENSE_SINGLE);
+		pkg_set(pkg, PKG_LICENSE_LOGIC, LICENSE_SINGLE);
 	else if ( !strcmp(val->data.scalar.value, "and") || !strcmp(val->data.scalar.value, "dual"))
-		pkg_set_licenselogic(pkg, LICENSE_AND);
+		pkg_set(pkg, PKG_LICENSE_LOGIC, LICENSE_AND);
 	else if ( !strcmp(val->data.scalar.value, "or") || !strcmp(val->data.scalar.value, "multi"))
-		pkg_set_licenselogic(pkg, LICENSE_OR);
+		pkg_set(pkg, PKG_LICENSE_LOGIC, LICENSE_OR);
 	else {
 		pkg_emit_error("Unknown license logic: %s", val->data.scalar.value);
 		return (EPKG_FATAL);
@@ -676,10 +676,10 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	mapping = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin, PKG_COMMENT, &comment,
-	    PKG_ARCH, &pkgarch, PKG_OSVERSION, osversion, PKG_WWW, &www,
+	    PKG_ARCH, &pkgarch, PKG_OSVERSION, &osversion, PKG_WWW, &www,
 	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
-	    PKG_FLATSIZE, &flatsize);
+	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message, PKG_VERSION, &version);
 	manifest_append_kv(mapping, "name", name);
 	manifest_append_kv(mapping, "version", version);
 	manifest_append_kv(mapping, "origin", pkgorigin);

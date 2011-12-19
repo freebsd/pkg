@@ -84,7 +84,7 @@ pkg_repo_fetch(struct pkg *pkg)
 		return (EPKG_FATAL);
 
 	pkg_get(pkg, PKG_REPOPATH, &repopath, PKG_REPOURL, &repourl,
-	    PKG_CKSUM, &sum);
+	    PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
 
 	/* If it is already in the local cachedir, dont bother to download it */
 	if (access(dest, F_OK) == 0)
@@ -660,7 +660,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		    PKG_COMMENT, &comment, PKG_DESC, &desc, PKG_ARCH, &arch,
 		    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_PREFIX, &prefix,
 		    PKG_FLATSIZE, &flatsize, PKG_LICENSE_LOGIC, &licenselogic,
-		    -1);
+		    PKG_OSVERSION, &osversion);
+
 		sqlite3_bind_text(stmt_pkg, 1, origin, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 2, name, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 3, version, -1, SQLITE_STATIC);

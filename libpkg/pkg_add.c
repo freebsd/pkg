@@ -113,7 +113,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	}
 
 	if (flags & PKG_ADD_AUTOMATIC)
-		pkg_set_automatic(pkg);
+		pkg_set(pkg, PKG_AUTOMATIC, true);
 
 	if (uname(&u) != 0) {
 		pkg_emit_errno("uname", "");

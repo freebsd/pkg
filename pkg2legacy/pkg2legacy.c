@@ -109,6 +109,8 @@ main(int argc, char **argv)
 	ae = archive_entry_new();
 
 	while ((p = fts_read(fts)) != NULL) {
+		const char *name, *version, *origin, *prefix, *comment, *maintainer;
+		const char *www;
 		if (!strcmp(p->fts_name, "repo.txz"))
 			continue;
 
@@ -119,7 +121,12 @@ main(int argc, char **argv)
 			continue;
 		}
 
-		printf("Generating %s-%s.tbz...", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version,
+		    PKG_ORIGIN, &origin, PKG_PREFIX, &prefix, PKG_COMMENT, &comment,
+		    PKG_MAINTAINER, &maintainer, PKG_WWW, &www);
+
+
+		printf("Generating %s-%s.tbz...", name, version);
 		fflush(stdout);
 
 		archive_entry_clear(ae);
@@ -131,21 +138,17 @@ main(int argc, char **argv)
 				"%s|" /* comment */
 				"/usr/ports/%s/pkg-descr|" /* origin */
 				"%s|", /*maintainer */
-				pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION),
-				pkg_get(pkg, PKG_ORIGIN),
-				pkg_get(pkg, PKG_PREFIX),
-				pkg_get(pkg, PKG_COMMENT),
-				pkg_get(pkg, PKG_ORIGIN),
-				pkg_get(pkg, PKG_MAINTAINER)
+				name, version, origin, prefix,
+				comment, origin, maintainer
 			   );
 		while (pkg_categories(pkg, &cat) == EPKG_OK)
 			sbuf_printf(indexfile, "%s ", pkg_category_name(cat));
 
 		sbuf_cat(indexfile, "||");
 
-		snprintf(destpath, sizeof(destpath), "%s/All/%s-%s.tbz", destdir, pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		snprintf(relativepath, sizeof(relativepath), "../All/%s-%s.tbz", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-		snprintf(linkpath, sizeof(linkpath), "%s/Latest/%s.tbz",destdir, pkg_get(pkg, PKG_NAME));
+		snprintf(destpath, sizeof(destpath), "%s/All/%s-%s.tbz", destdir, name, version);
+		snprintf(relativepath, sizeof(relativepath), "../All/%s-%s.tbz", name, version);
+		snprintf(linkpath, sizeof(linkpath), "%s/Latest/%s.tbz",destdir, name);
 
 		pkgng = archive_read_new();
 		archive_read_support_format_tar(pkgng);
@@ -162,9 +165,9 @@ main(int argc, char **argv)
 		archive_entry_set_perm(ae, 0644);
 		archive_entry_set_gname(ae, "wheel");
 		archive_entry_set_uname(ae, "root");
-		archive_entry_set_size(ae, strlen(pkg_get(pkg, PKG_COMMENT)));
+		archive_entry_set_size(ae, strlen(comment));
 		archive_write_header(legacypkg, ae);
-		archive_write_data(legacypkg, pkg_get(pkg, PKG_COMMENT), strlen(pkg_get(pkg, PKG_COMMENT)));
+		archive_write_data(legacypkg, comment, strlen(comment));
 
 		sbuf_clear(sbuf);
 		sbuf_clear(late_sbuf);
@@ -173,10 +176,7 @@ main(int argc, char **argv)
 				"@comment ORIGIN:%s\n"
 				"@cwd %s\n"
 				"@cwd /\n",
-				pkg_get(pkg, PKG_NAME),
-				pkg_get(pkg, PKG_VERSION),
-				pkg_get(pkg, PKG_ORIGIN),
-				pkg_get(pkg, PKG_PREFIX));
+				name, version, origin, prefix);
 
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			sbuf_printf(sbuf, "@pkgdep %s-%s\n"
@@ -192,7 +192,7 @@ main(int argc, char **argv)
 				"|" /* extract depends */
 				"|" /* patch depends */
 				"\n", /* fetch depends */
-				pkg_get(pkg, PKG_WWW));
+				www);
 		while (pkg_scripts(pkg, &script) == EPKG_OK) {
 			archive_entry_clear(ae);
 			switch (pkg_script_type(script)) {
@@ -363,7 +363,7 @@ main(int argc, char **argv)
 			snprintf(destpath, sizeof(destpath), "%s/%s", destdir, pkg_category_name(cat));
 			if (lstat(destpath, &st) != 0)
 				mkdir(destpath, 0755);
-			snprintf(linkpath, sizeof(linkpath), "%s/%s/%s-%s.tbz", destdir, pkg_category_name(cat), pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+			snprintf(linkpath, sizeof(linkpath), "%s/%s/%s-%s.tbz", destdir, pkg_category_name(cat), name, version);
 			symlink(relativepath, linkpath);
 		}
 

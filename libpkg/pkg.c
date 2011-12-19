@@ -177,6 +177,9 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 			case PKG_AUTOMATIC:
 				*va_arg(ap, bool *) = pkg->automatic;
 				break;
+			case PKG_ROWID:
+				*va_arg(ap, int64_t *) = pkg->rowid;
+				break;
 			default:
 				va_arg(ap, void *); /* ignore */
 				break;
@@ -201,44 +204,82 @@ pkg_get2(struct pkg const *const pkg, ...)
 	return (ret);
 }
 
-int
-pkg_set(struct pkg * pkg, pkg_attr attr, const char *value)
+static int
+pkg_vset(struct pkg *pkg, va_list ap)
 {
-	struct sbuf **sbuf;
+	int attr;
 
-	assert(pkg != NULL);
-	assert(attr < PKG_NUM_FIELDS);
-	assert(value != NULL || fields[attr].optional == 1);
+	while ((attr = va_arg(ap, int)) != -1) {
+		if (attr < PKG_NUM_FIELDS) {
+			struct sbuf **sbuf;
+			const char *str = va_arg(ap, const char *);
 
-	if (value == NULL)
-		value = "";
+			sbuf = &pkg->fields[attr];
 
-	sbuf = &pkg->fields[attr];
+			if (str == NULL)
+				str = "";
 
-	/*
-	 * Ensure that mtree begins with `#mtree` so libarchive
-	 * could handle it
-	 */
-	if (attr == PKG_MTREE && !STARTS_WITH(value, "#mtree")) {
-		sbuf_set(sbuf, "#mtree\n");
-		sbuf_cat(*sbuf, value);
-		sbuf_finish(*sbuf);
-		return (EPKG_OK);
+			if (attr == PKG_MTREE && !STARTS_WITH(str, "#mtree")) {
+				sbuf_set(sbuf, "#mtree\n");
+				sbuf_cat(*sbuf, str);
+				sbuf_finish(*sbuf);
+				continue;
+			}
+
+			if (attr == PKG_REPONAME)
+				pkg_add_repo_url(pkg, str);
+
+			sbuf_set(sbuf, str);
+			continue;
+		}
+		switch (attr) {
+			case PKG_AUTOMATIC:
+				pkg->automatic = va_arg(ap, int);
+				break;
+			case PKG_LICENSE_LOGIC:
+				pkg->licenselogic = va_arg(ap, lic_t);
+				break;
+			case PKG_FLATSIZE:
+				pkg->flatsize = va_arg(ap, int64_t);
+				break;
+			case PKG_NEW_FLATSIZE:
+				pkg->new_flatsize = va_arg(ap, int64_t);
+				break;
+			case PKG_NEW_PKGSIZE:
+				pkg->new_pkgsize = va_arg(ap, int64_t);
+				break;
+			case PKG_ROWID:
+				pkg->rowid = va_arg(ap, int64_t);
+				break;
+			default:
+				va_arg(ap, void *); /* ignore */
+				break;
+		}
 	}
 
-	/* 
-	 * Insert the repository URL as well when inserting the repo name
-	 */
-	if (attr == PKG_REPONAME)
-		pkg_add_repo_url(pkg, value);
+	return (EPKG_OK);
+}
 
-	return (sbuf_set(sbuf, value));
+int
+pkg_set2(struct pkg *pkg, ...)
+{
+	int ret = EPKG_OK;
+	va_list ap;
+
+	assert(pkg != NULL);
+
+	va_start(ap, pkg);
+	ret = pkg_vset(pkg, ap);
+	va_end(ap);
+
+	return (ret);
 }
 
 int
 pkg_set_mtree(struct pkg *pkg, const char *mtree) {
 	return (pkg_set(pkg, PKG_MTREE, mtree));
 }
+
 
 int
 pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
@@ -258,63 +299,6 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 	free(buf);
 
 	return (ret);
-}
-
-int
-pkg_set_automatic(struct pkg *pkg)
-{
-	assert(pkg != NULL);
-
-	pkg->automatic = true;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_set_flatsize(struct pkg *pkg, int64_t size)
-{
-	assert(pkg != NULL);
-	assert(size >= 0);
-
-	pkg->flatsize = size;
-	return (EPKG_OK);
-}
-
-int
-pkg_set_newflatsize(struct pkg *pkg, int64_t size)
-{
-	assert(pkg != NULL);
-	assert(size >= 0);
-
-	pkg->new_flatsize = size;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_set_newpkgsize(struct pkg *pkg, int64_t size)
-{
-	assert(pkg != NULL);
-	assert(size >= 0);
-
-	pkg->new_pkgsize = size;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_set_licenselogic(struct pkg *pkg, int64_t logic)
-{
-	assert(pkg != NULL);
-	pkg->licenselogic = logic;
-	return (EPKG_OK);
-}
-
-int
-pkg_set_rowid(struct pkg *pkg, int64_t rowid) {
-	assert(pkg != NULL);
-	pkg->rowid = rowid;
-	return (EPKG_OK);
 }
 
 #define PKG_LIST_NEXT(head, data) do { \

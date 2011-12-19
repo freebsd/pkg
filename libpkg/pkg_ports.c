@@ -318,7 +318,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		}
 	}
 
-	pkg_set_flatsize(pkg, flatsize);
+	pkg_set(pkg, PKG_FLATSIZE, flatsize);
 
 	if (sbuf_len(pre_unexec_scripts) > 0) {
 		sbuf_finish(unexec_scripts);

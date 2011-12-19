@@ -282,6 +282,7 @@ exec_version(int argc, char **argv)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			cmd = sbuf_new_auto();
+			pkg_get(pkg, PKG_ORIGIN, &origin);
 			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
 			sbuf_finish(cmd);
 			if ((res = exec_buf(sbuf_data(cmd))) != NULL) {

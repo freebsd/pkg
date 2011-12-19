@@ -38,41 +38,33 @@ static int pkgdb_repos_new(struct pkgdb *, struct pkg_repos **);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
 static int create_temporary_pkgjobs(sqlite3 *);
 
-static struct column_text_mapping {
+static struct column_mapping {
 	const char * const name;
-	int (*set_text)(struct pkg *pkg, pkg_attr, const char *);
 	pkg_attr type;
-} columns_text[] = {
-	{ "origin", pkg_set, PKG_ORIGIN},
-	{ "name", pkg_set, PKG_NAME },
-	{ "version", pkg_set, PKG_VERSION },
-	{ "comment", pkg_set, PKG_COMMENT },
-	{ "desc", pkg_set, PKG_DESC },
-	{ "message", pkg_set, PKG_MESSAGE },
-	{ "arch", pkg_set, PKG_ARCH },
-	{ "osversion", pkg_set, PKG_OSVERSION},
-	{ "maintainer", pkg_set, PKG_MAINTAINER},
-	{ "www", pkg_set, PKG_WWW},
-	{ "prefix", pkg_set, PKG_PREFIX},
-	{ "cksum", pkg_set, PKG_CKSUM},
-	{ "repopath", pkg_set, PKG_REPOPATH},
-	{ "dbname", pkg_set, PKG_REPONAME},
-	{ "newversion", pkg_set, PKG_NEWVERSION},
-	{ NULL, NULL, -1 }
-};
-
-static struct column_int_mapping {
-	const char * const name;
-	int (*set_int)(struct pkg *pkg, int64_t);
-} columns_int[] = {
-	{ "flatsize", pkg_set_flatsize },
-	{ "newflatsize", pkg_set_newflatsize },
-	{ "pkgsize", pkg_set_newpkgsize },
-	{ "licenselogic", pkg_set_licenselogic},
-	{ "rowid", pkg_set_rowid},
-	{ "id", pkg_set_rowid },
-	{ "weight", NULL },
-	{ NULL, NULL}
+} columns[] = {
+	{ "origin", PKG_ORIGIN},
+	{ "name", PKG_NAME },
+	{ "version", PKG_VERSION },
+	{ "comment", PKG_COMMENT },
+	{ "desc", PKG_DESC },
+	{ "message", PKG_MESSAGE },
+	{ "arch", PKG_ARCH },
+	{ "osversion", PKG_OSVERSION},
+	{ "maintainer", PKG_MAINTAINER},
+	{ "www", PKG_WWW},
+	{ "prefix", PKG_PREFIX},
+	{ "cksum", PKG_CKSUM},
+	{ "repopath", PKG_REPOPATH},
+	{ "dbname", PKG_REPONAME},
+	{ "newversion", PKG_NEWVERSION},
+	{ "flatsize", PKG_FLATSIZE },
+	{ "newflatsize", PKG_NEW_FLATSIZE },
+	{ "pkgsize", PKG_NEW_PKGSIZE },
+	{ "licenselogic", PKG_LICENSE_LOGIC},
+	{ "rowid", PKG_ROWID},
+	{ "id", PKG_ROWID },
+	{ "weight", -1 },
+	{ NULL, -1 }
 };
 
 static int
@@ -121,29 +113,23 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 		colname = sqlite3_column_name(stmt, icol);
 		switch (sqlite3_column_type(stmt, icol)) {
 			case SQLITE_TEXT:
-				for (i = 0; columns_text[i].name != NULL; i++ ) {
-					if (!strcmp(columns_text[i].name, colname)) {
-						columns_text[i].set_text(pkg, columns_text[i].type, sqlite3_column_text(stmt, icol));
+				for (i = 0; columns[i].name != NULL; i++ ) {
+					if (!strcmp(columns[i].name, colname)) {
+						pkg_set(pkg, columns[i].type, sqlite3_column_text(stmt, icol));
 						break;
 					}
 				}
-				if (columns_text[i].name == NULL)
+				if (columns[i].name == NULL)
 					pkg_emit_error("Unknown column %s", colname);
 				break;
 			case SQLITE_INTEGER:
-				for (i = 0; columns_int[i].name != NULL; i++ ) {
-					if (!strcmp(columns_int[i].name, colname)) {
-						if (columns_int[i].set_int != NULL)
-							columns_int[i].set_int(pkg, sqlite3_column_int64(stmt, icol));
+				for (i = 0; columns[i].name != NULL; i++ ) {
+					if (!strcmp(columns[i].name, colname)) {
+						pkg_set(pkg, columns[i].type, sqlite3_column_int64(stmt, icol));
 						break;
 					}
 				}
-				if (strcmp(colname, "automatic") == 0) {
-					if (sqlite3_column_int64(stmt, icol) == 1)
-						pkg_set_automatic(pkg);
-					break;
-				}
-				if (columns_int[i].name == NULL)
+				if (columns[i].name == NULL)
 					pkg_emit_error("Unknown column %s", colname);
 				break;
 			case SQLITE_BLOB:
@@ -1464,7 +1450,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	    PKG_COMMENT, &comment, PKG_DESC, &desc, PKG_MESSAGE, &message,
 	    PKG_ARCH, &arch, PKG_OSVERSION, &osversion, PKG_MAINTAINER, &maintainer,
 	    PKG_WWW, &www, PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
-	    PKG_AUTOMATIC, &automatic, PKG_LICENSE_LOGIC, &licenselogic);
+	    PKG_AUTOMATIC, &automatic, PKG_LICENSE_LOGIC, &licenselogic,
+	    PKG_NAME, &name);
 
 	sqlite3_bind_text(stmt_mtree, 1, mtree, -1, SQLITE_STATIC);
 
