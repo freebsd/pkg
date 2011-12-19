@@ -151,16 +151,54 @@ pkg_is_valid(struct pkg *pkg)
 	return (ret);
 }
 
-const char *
-pkg_get(struct pkg const * const pkg, const pkg_attr attr)
+static int
+pkg_vget(struct pkg const *const pkg, va_list ap)
 {
+	int attr;
+
+	while ((attr = va_arg(ap, int)) != -1) {
+		if (attr < PKG_NUM_FIELDS) {
+			*va_arg(ap, const char **) = sbuf_get(pkg->fields[attr]);
+			continue;
+		}
+		switch (attr) {
+			case PKG_FLATSIZE:
+				*va_arg(ap, int64_t *) = pkg->flatsize;
+				break;
+			case PKG_NEW_FLATSIZE:
+				*va_arg(ap, int64_t *) = pkg->new_flatsize;
+				break;
+			case PKG_NEW_PKGSIZE:
+				*va_arg(ap, int64_t *) = pkg->new_pkgsize;
+				break;
+			case PKG_LICENSE_LOGIC:
+				*va_arg(ap, lic_t *) = pkg->licenselogic;
+				break;
+			case PKG_AUTOMATIC:
+				*va_arg(ap, bool *) = pkg->automatic;
+				break;
+			default:
+				va_arg(ap, void *); /* ignore */
+				break;
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkg_get2(struct pkg const *const pkg, ...)
+{
+	int ret = EPKG_OK;
+	va_list ap;
+
 	assert(pkg != NULL);
-	assert(attr < PKG_NUM_FIELDS);
 
-	if ((fields[attr].type & pkg->type) == 0)
-		pkg_emit_error("wrong usage of `attr` for this type of `pkg`");
+	va_start(ap, pkg);
+	ret = pkg_vget(pkg, ap);
+	va_end(ap);
 
-	return (sbuf_get(pkg->fields[attr]));
+	return (ret);
 }
 
 int
@@ -222,14 +260,6 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 	return (ret);
 }
 
-int64_t
-pkg_flatsize(struct pkg *pkg)
-{
-	assert(pkg != NULL);
-
-	return (pkg->flatsize);
-}
-
 int
 pkg_set_automatic(struct pkg *pkg)
 {
@@ -238,30 +268,6 @@ pkg_set_automatic(struct pkg *pkg)
 	pkg->automatic = true;
 
 	return (EPKG_OK);
-}
-
-int
-pkg_is_automatic(struct pkg *pkg)
-{
-	assert(pkg != NULL);
-
-	return (pkg->automatic);
-}
-
-int64_t
-pkg_new_flatsize(struct pkg *pkg)
-{
-	assert(pkg != NULL);
-
-	return (pkg->new_flatsize);
-}
-
-int64_t
-pkg_new_pkgsize(struct pkg *pkg)
-{
-	assert(pkg != NULL);
-
-	return (pkg->new_pkgsize);
 }
 
 int
@@ -302,14 +308,6 @@ pkg_set_licenselogic(struct pkg *pkg, int64_t logic)
 	assert(pkg != NULL);
 	pkg->licenselogic = logic;
 	return (EPKG_OK);
-}
-
-lic_t
-pkg_licenselogic(struct pkg *pkg)
-{
-	assert(pkg != NULL);
-
-	return (pkg->licenselogic);
 }
 
 int
@@ -425,10 +423,12 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
+	const char *pkgname;
 
 	if (pkg->licenselogic == LICENSE_SINGLE && !STAILQ_EMPTY(&pkg->licenses)) {
+		pkg_get(pkg, PKG_NAME, &pkgname);
 		pkg_emit_error("%s is have a single license which is already set",
-					   pkg_get(pkg, PKG_NAME));
+		    pkgname);
 		return (EPKG_FATAL);
 	}
 

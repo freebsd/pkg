@@ -21,8 +21,11 @@ pkg_stop_rc_scripts(struct pkg *pkg)
 	const char *rcfile;
 	size_t len = 0;
 	int ret = 0;
+	const char *prefix;
 
-	snprintf(rc_d_path, PATH_MAX, "%s/etc/rc.d/", pkg_get(pkg, PKG_PREFIX));
+	pkg_get(pkg, PKG_PREFIX, &prefix, -1);
+
+	snprintf(rc_d_path, PATH_MAX, "%s/etc/rc.d/", prefix);
 	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
@@ -45,8 +48,10 @@ pkg_start_rc_scripts(struct pkg *pkg)
 	const char *rcfile;
 	size_t len = 0;
 	int ret = 0;
+	const char *prefix;
 
-	snprintf(rc_d_path, PATH_MAX, "%s/etc/rc.d/", pkg_get(pkg, PKG_PREFIX));
+	pkg_get(pkg, PKG_PREFIX, &prefix);
+	snprintf(rc_d_path, PATH_MAX, "%s/etc/rc.d/", prefix);
 	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {

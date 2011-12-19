@@ -10,6 +10,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script_t type)
 	pkg_script_t stype;
 	struct sbuf * const script_cmd = sbuf_new_auto();
 	size_t i;
+	const char *name, *prefix, *version;
 
 	struct {
 		const char * const arg;
@@ -25,6 +26,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script_t type)
 		{"POST-DEINSTALL", PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_POST_DEINSTALL},
 	};
 
+	pkg_get(pkg, PKG_PREFIX, &prefix, PKG_NAME, &name, PKG_VERSION, &version);
+
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if (map[i].a == type)
 			break;
@@ -39,8 +42,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script_t type)
 		if (stype == map[i].a || stype == map[i].b) {
 			sbuf_reset(script_cmd);
 			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s",
-				pkg_get(pkg, PKG_PREFIX), pkg_get(pkg, PKG_NAME),
-				pkg_get(pkg, PKG_VERSION));
+			    prefix, name, version);
 
 			if (stype == map[i].b) {
 				/* add arg **/

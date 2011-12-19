@@ -32,27 +32,36 @@ query_yesno(const char *msg)
 int
 print_info(struct pkg * const pkg, unsigned int opt)
 {
-        struct pkg_dep *dep = NULL;
-        struct pkg_file *file = NULL;
-        struct pkg_category *cat = NULL;
-        struct pkg_license *lic = NULL;
-        struct pkg_option *option = NULL;
+	struct pkg_dep *dep = NULL;
+	struct pkg_file *file = NULL;
+	struct pkg_category *cat = NULL;
+	struct pkg_license *lic = NULL;
+	struct pkg_option *option = NULL;
 	bool multirepos_enabled = false;
-        char size[7];
+	char size[7];
+	const char *name, *version, *prefix, *origin, *reponame, *repourl;
+	const char *maintainer, *www, *comment, *desc;
+	int64_t flatsize, newflatsize, newpkgsize;
+	lic_t licenselogic;
+
+	pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_PREFIX, &prefix,
+	    PKG_ORIGIN, &origin, PKG_REPONAME, &reponame, PKG_REPOURL, &repourl,
+	    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_COMMENT, &comment,
+	    PKG_DESC, &desc, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize,
+	    PKG_NEW_PKGSIZE, &newpkgsize, PKG_LICENSE_LOGIC, &licenselogic);
 
         if (opt & INFO_FULL) {
-                printf("%-15s: %s\n", "Name", pkg_get(pkg, PKG_NAME));
-                printf("%-15s: %s\n", "Version", pkg_get(pkg, PKG_VERSION));
-                printf("%-15s: %s\n", "Origin", pkg_get(pkg, PKG_ORIGIN));
-                printf("%-15s: %s\n", "Prefix", pkg_get(pkg, PKG_PREFIX));
+		printf("%-15s: %s\n", "Name", name);
+		printf("%-15s: %s\n", "Version", version);
+		printf("%-15s: %s\n", "Origin", origin);
+		printf("%-15s: %s\n", "Prefix", prefix);
 
 		if (pkg_type(pkg) == PKG_REMOTE) {
 			pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
 			if (multirepos_enabled) {
 				printf("%-15s: %s [%s]\n", "Repository",
-						pkg_get(pkg, PKG_REPONAME),
-						pkg_get(pkg, PKG_REPOURL));
+						reponame, repourl);
 			}
 		}
 
@@ -63,20 +72,21 @@ print_info(struct pkg * const pkg, unsigned int opt)
                         printf("\n");
                 }
 
-                if (!pkg_list_is_empty(pkg, PKG_LICENSES)) {
-                        printf("%-15s:", "Licenses");
-                        while (pkg_licenses(pkg, &lic) == EPKG_OK) {
-                                printf(" %s", pkg_license_name(lic));
-                                if (pkg_licenselogic(pkg) != 1)
-                                        printf(" %c", pkg_licenselogic(pkg));
-                                else
-                                        printf(" ");
-                        }
-                        printf("\b \n");
-                }
-                printf("%-15s: %s\n", "Maintainer", pkg_get(pkg, PKG_MAINTAINER));
-                printf("%-15s: %s\n", "WWW", pkg_get(pkg, PKG_WWW));
-                printf("%-15s: %s\n", "Comment", pkg_get(pkg, PKG_COMMENT));
+		if (!pkg_list_is_empty(pkg, PKG_LICENSES)) {
+			printf("%-15s:", "Licenses");
+			while (pkg_licenses(pkg, &lic) == EPKG_OK) {
+				printf(" %s", pkg_license_name(lic));
+				if (licenselogic != 1)
+					printf(" %c", licenselogic);
+				else
+					printf(" ");
+			}
+			printf("\b \n");
+		}
+
+		printf("%-15s: %s\n", "Maintainer", maintainer);
+		printf("%-15s: %s\n", "WWW", www);
+		printf("%-15s: %s\n", "Comment", comment);
 
                 if (!pkg_list_is_empty(pkg, PKG_OPTIONS)) {
                         printf("%-15s: \n", "Options");
@@ -85,20 +95,20 @@ print_info(struct pkg * const pkg, unsigned int opt)
                 }
 
 		if (pkg_type(pkg) == PKG_INSTALLED || pkg_type(pkg) == PKG_FILE) {
-			humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
+			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
 			printf("%-15s: %s\n", "Flat size", size);
 		} else {
-			humanize_number(size, sizeof(size), pkg_new_flatsize(pkg), "B", HN_AUTOSCALE, 0);
+			humanize_number(size, sizeof(size), newflatsize, "B", HN_AUTOSCALE, 0);
 			printf("%-15s: %s\n", "Flat size", size);
-			humanize_number(size, sizeof(size), pkg_new_pkgsize(pkg), "B", HN_AUTOSCALE, 0);
+			humanize_number(size, sizeof(size), newpkgsize, "B", HN_AUTOSCALE, 0);
 			printf("%-15s: %s\n", "Pkg size", size);
 		}
 
-                printf("%-15s: \n%s\n", "Description", pkg_get(pkg, PKG_DESC));
-                printf("\n");
-        } else if (opt & INFO_PRINT_DEP) {
-                if (!(opt & INFO_QUIET))
-                        printf("%s-%s depends on:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		printf("%-15s: \n%s\n", "Description", desc);
+		printf("\n");
+	} else if (opt & INFO_PRINT_DEP) {
+		if (!(opt & INFO_QUIET))
+			printf("%s-%s depends on:\n", name, version);
 
                 while (pkg_deps(pkg, &dep) == EPKG_OK) {
                         printf("%s-%s\n", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
@@ -106,9 +116,9 @@ print_info(struct pkg * const pkg, unsigned int opt)
 
                 if (!(opt & INFO_QUIET))
                         printf("\n");
-        } else if (opt & INFO_PRINT_RDEP) {
-                if (!(opt & INFO_QUIET))
-                        printf("%s-%s is required by:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+	} else if (opt & INFO_PRINT_RDEP) {
+		if (!(opt & INFO_QUIET))
+			printf("%s-%s is required by:\n", name, version);
 
                 while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
                         printf("%s-%s\n", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
@@ -116,9 +126,9 @@ print_info(struct pkg * const pkg, unsigned int opt)
 
                 if (!(opt & INFO_QUIET))
                         printf("\n");
-        } else if (opt & INFO_LIST_FILES) {
-                if (!(opt & INFO_QUIET))
-                        printf("%s-%s owns the following files:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+	} else if (opt & INFO_LIST_FILES) {
+		if (!(opt & INFO_QUIET))
+			printf("%s-%s owns the following files:\n", name, version);
 
                 while (pkg_files(pkg, &file) == EPKG_OK) {
                         printf("%s\n", pkg_file_get(file, PKG_FILE_PATH));
@@ -128,29 +138,29 @@ print_info(struct pkg * const pkg, unsigned int opt)
                         printf("\n");
         } else if (opt & INFO_SIZE) {
 		if (pkg_type(pkg) == PKG_INSTALLED) {
-			humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
-			printf("%s-%s size is: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), size);
+			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
+			printf("%s-%s size is: %s\n", name, version, size);
 		} else {
-			humanize_number(size, sizeof(size), pkg_new_flatsize(pkg), "B", HN_AUTOSCALE, 0);
-			printf("%s-%s flat size is: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), size);
-			humanize_number(size, sizeof(size), pkg_new_pkgsize(pkg), "B", HN_AUTOSCALE, 0);
-			printf("%s-%s package size is: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), size);
+			humanize_number(size, sizeof(size), newflatsize, "B", HN_AUTOSCALE, 0);
+			printf("%s-%s flat size is: %s\n", name, version, size);
+			humanize_number(size, sizeof(size), newpkgsize, "B", HN_AUTOSCALE, 0);
+			printf("%s-%s package size is: %s\n", name, version, size);
 		}
         } else if (opt & INFO_ORIGIN) {
                 if (opt & INFO_QUIET)
-                        printf("%s\n", pkg_get(pkg, PKG_ORIGIN));
+                        printf("%s\n", origin);
                 else
-                        printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_ORIGIN));
+                        printf("%s-%s: %s\n", name, version, origin);
         } else if (opt & INFO_PREFIX) {
                 if (opt & INFO_QUIET)
-                        printf("%s\n", pkg_get(pkg, PKG_PREFIX));
+                        printf("%s\n", prefix);
                 else
-                        printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_PREFIX));
+                        printf("%s-%s: %s\n", name, version, prefix);
         } else {
                 if (opt & INFO_QUIET)
-                        printf("%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+                        printf("%s-%s\n", name, version);
                 else
-                        printf("%s-%s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg, PKG_COMMENT));
+                        printf("%s-%s: %s\n", name, version, comment);
         }
 
         return (0);

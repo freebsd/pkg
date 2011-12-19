@@ -61,14 +61,16 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 {
 	bool to_print = true;
 	char key;
+	const char *version, *name, *origin;
 
+	pkg_get(pkg, PKG_VERSION, &version, PKG_NAME, &name, PKG_ORIGIN, &origin);
 	if (ver == NULL) {
 		if (source == NULL)
 			key = '!';
 		else
 			key = '?';
 	} else {
-		switch (pkg_version_cmp(pkg_get(pkg, PKG_VERSION), ver)) {
+		switch (pkg_version_cmp(version, ver)) {
 			case -1:
 				key = '<';
 				break;
@@ -94,7 +96,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 	if (to_print == false)
 		return;
 
-	printf("%-34s %c", pkg_get(pkg, PKG_NAME), key);
+	printf("%-34s %c", name, key);
 
 	if (opt & VERSION_VERBOSE) {
 		switch(key) {
@@ -108,7 +110,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 			printf("   succeeds %s (%s has %s)", source, source, ver);
 			break;
 		case '?':
-			printf("   orphaned: %s", pkg_get(pkg, PKG_ORIGIN));
+			printf("   orphaned: %s", origin);
 		case '!':
 			printf("   Comparison failed");
 		}
@@ -140,6 +142,7 @@ exec_version(int argc, char **argv)
 	struct sbuf *cmd;
 	struct sbuf *res;
 	const char *portsdir;
+	const char *origin;
 
 	SLIST_INIT(&indexhead);
 
@@ -262,7 +265,8 @@ exec_version(int argc, char **argv)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			SLIST_FOREACH(entry, &indexhead, next) {
-				if (!strcmp(entry->origin, pkg_get(pkg, PKG_ORIGIN))) {
+				pkg_get(pkg, PKG_ORIGIN, &origin);
+				if (!strcmp(entry->origin, origin)) {
 					print_version(pkg, "index", entry->version, limchar, opt);
 					break;
 				}
@@ -278,7 +282,7 @@ exec_version(int argc, char **argv)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			cmd = sbuf_new_auto();
-			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, pkg_get(pkg, PKG_ORIGIN));
+			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
 			sbuf_finish(cmd);
 			if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
 				buf = sbuf_data(res);

@@ -99,14 +99,19 @@ exec_install(int argc, char **argv)
 	printf("The following packages will be installed:\n");
 
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		dlsize += pkg_new_pkgsize(pkg);
-		if (pkg_get(pkg, PKG_NEWVERSION) != NULL) {
-			printf("\tUpgrading %s: %s -> %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION), pkg_get(pkg,PKG_NEWVERSION));
-			oldsize += pkg_flatsize(pkg);
-			newsize += pkg_new_flatsize(pkg);
+		const char *name, *version, *newversion;
+		int64_t flatsize, newflatsize, pkgsize;
+		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
+		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
+		    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
+		dlsize += pkgsize;
+		if (newversion != NULL) {
+			printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+			oldsize += flatsize;
+			newsize += flatsize;
 		} else {
-			newsize += pkg_flatsize(pkg);
-			printf("\tInstalling %s: %s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+			newsize += flatsize;
+			printf("\tInstalling %s: %s\n", name, version);
 		}
 	}
 

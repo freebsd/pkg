@@ -66,7 +66,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	if ((ret = file_to_buffer(plist, &plist_buf, &sz)) != EPKG_OK)
 		return (ret);
 
-	prefix = pkg_get(pkg, PKG_PREFIX);
+	pkg_get(pkg, PKG_PREFIX, &prefix);
 	slash = prefix[strlen(prefix) - 1] == '/' ? "" : "/";
 
 	nbel = split_chr(plist_buf, '\n');
@@ -87,7 +87,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				/* with no arguments default to the original
 				 * prefix */
 				if (buf[0] == '\0')
-					prefix = pkg_get(pkg, PKG_PREFIX);
+					pkg_get(pkg, PKG_PREFIX, &prefix);
 				else
 					prefix = buf;
 				slash = prefix[strlen(prefix) - 1] == '/' ? "" : "/";

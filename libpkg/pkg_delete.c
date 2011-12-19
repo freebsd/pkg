@@ -18,6 +18,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 	struct pkg_dep *rdep = NULL;
 	int ret;
 	bool handle_rc = false;
+	const char *origin;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
@@ -83,7 +84,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 	if (flags ^ PKG_DELETE_UPGRADE)
 		pkg_emit_deinstall_finished(pkg);
 
-	return (pkgdb_unregister_pkg(db, pkg_get(pkg, PKG_ORIGIN)));
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	return (pkgdb_unregister_pkg(db, origin));
 }
 
 int

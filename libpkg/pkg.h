@@ -133,7 +133,12 @@ typedef enum {
 	PKG_CKSUM,
 	PKG_NEWVERSION,
 	PKG_REPONAME,
-	PKG_REPOURL
+	PKG_REPOURL, /* end of fields */
+	PKG_FLATSIZE,
+	PKG_NEW_FLATSIZE,
+	PKG_NEW_PKGSIZE,
+	PKG_LICENSE_LOGIC,
+	PKG_AUTOMATIC
 } pkg_attr;
 
 /**
@@ -268,22 +273,8 @@ pkg_t pkg_type(struct pkg const * const);
  * @return NULL-terminated string.
  * @warning May return a NULL pointer.
  */
-const char *pkg_get(struct pkg const * const , const pkg_attr);
-
-/**
- * @return the size of the uncompressed package.
- */
-int64_t pkg_flatsize(struct pkg *);
-
-/**
- * @return the size of the uncompressed new package (PKG_REMOTE).
- */
-int64_t pkg_new_flatsize(struct pkg *);
-
-/**
- * @return the size of the compressed new package (PKG_REMOTE).
- */
-int64_t pkg_new_pkgsize(struct pkg *);
+int pkg_get2(struct pkg const *const, ...);
+#define pkg_get(pkg, ...) pkg_get2(pkg, __VA_ARGS__, -1)
 
 int pkg_list_is_empty(struct pkg *, pkg_list);
 /**
@@ -381,17 +372,11 @@ int pkg_set_mtree(struct pkg *pkg, const char *value);
 int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
 
 int pkg_set_automatic(struct pkg *pkg);
-int pkg_is_automatic(struct pkg *pkg);
 
 /**
  * set the logic for license combinaison
  */
 int pkg_set_licenselogic(struct pkg *pkg, int64_t licenselogic);
-
-/**
- * get the logic for license combinaison
- */
-lic_t pkg_licenselogic(struct pkg *pkg);
 
 /**
  * Set the uncompressed size of the package.
@@ -420,6 +405,7 @@ int pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const
 int pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const
 			   char *version);
 
+//int pkg_addfile(struct pkg *, const char *fmt);
 /**
  * Allocate a new struct pkg_file and add it to the files of pkg.
  * @param sha256 The ascii representation of the sha256 or a NULL pointer.

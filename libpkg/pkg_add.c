@@ -81,6 +81,8 @@ do_extract(struct archive *a, struct archive_entry *ae)
 int
 pkg_add(struct pkgdb *db, const char *path, int flags)
 {
+	const char *arch;
+	const char *origin;
 	struct archive *a;
 	struct archive_entry *ae;
 	struct pkgdb_it *it;
@@ -122,9 +124,12 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	/*
 	 * Check the architecture
 	 */
-	if (strcmp(u.machine, pkg_get(pkg, PKG_ARCH)) != 0) {
+
+	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin);
+
+	if (strcmp(u.machine, arch) != 0) {
 		pkg_emit_error("wrong architecture: %s instead of %s",
-					   pkg_get(pkg, PKG_ARCH), u.machine);
+		    arch, u.machine);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -136,7 +141,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	/*
 	 * Check if the package is already installed
 	 */
-	it = pkgdb_query(db, pkg_get(pkg, PKG_ORIGIN), MATCH_EXACT);
+	it = pkgdb_query(db, origin, MATCH_EXACT);
 	if (it == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;

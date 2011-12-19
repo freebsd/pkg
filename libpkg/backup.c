@@ -27,15 +27,18 @@ pkgdb_dump(struct pkgdb *db, char *dest)
 	}
 
 	while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
+		const char *name, *version, *mtree;
+
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_MTREE, &mtree);
 		pkg_emit_manifest(pkg, &m);
 		sbuf_clear(path);
-		sbuf_printf(path, "%s-%s.yaml", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+		sbuf_printf(path, "%s-%s.yaml", name, version);
 		packing_append_buffer(pack, m, sbuf_data(path), strlen(m));
 		free(m);
-		if (pkg_get(pkg, PKG_MTREE) != NULL) {
+		if (mtree != NULL) {
 			sbuf_clear(path);
-			sbuf_printf(path, "%s-%s.mtree", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
-			packing_append_buffer(pack, pkg_get(pkg, PKG_MTREE), sbuf_data(path), strlen(pkg_get(pkg, PKG_MTREE)));
+			sbuf_printf(path, "%s-%s.mtree", name, version);
+			packing_append_buffer(pack, mtree, sbuf_data(path), strlen(mtree));
 		}
 	}
 

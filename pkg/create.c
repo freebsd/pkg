@@ -26,6 +26,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
+	const char *name, *version;
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
 					  PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 					  PKG_LOAD_MTREE | PKG_LOAD_LICENSES | PKG_LOAD_USERS | PKG_LOAD_GROUPS;
@@ -41,11 +42,10 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 				goto cleanup;
 			}
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-				printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME),
-				    pkg_get(pkg, PKG_VERSION));
-				if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK) {
+				pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+				printf("Creating package for %s-%s\n", name, version);
+				if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK)
 					retcode++;
-				}
 			}
 		}
 	} else {
@@ -53,11 +53,10 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 			goto cleanup;
 		}
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-			printf("Creating package for %s-%s\n", pkg_get(pkg, PKG_NAME),
-					pkg_get(pkg, PKG_VERSION));
-			if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK) {
+			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+			printf("Creating package for %s-%s\n", name, version);
+			if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK)
 				retcode++;
-			}
 		}
 	}
 

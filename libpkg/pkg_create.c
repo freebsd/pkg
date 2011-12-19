@@ -48,7 +48,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
 	free(m);
 
-	mtree = pkg_get(pkg, PKG_MTREE);
+	pkg_get(pkg, PKG_MTREE, &mtree);
 	if (mtree != NULL)
 		packing_append_buffer(pkg_archive, mtree, "+MTREE_DIRS", strlen(mtree));
 
@@ -78,6 +78,7 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format, int 
 {
 	char *pkg_path = NULL;
 	struct packing *pkg_archive = NULL;
+	const char *pkgname, *pkgversion;
 
 	/*
 	 * Ensure that we have all the information we need
@@ -87,7 +88,8 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format, int 
 	if (mkdirs(outdir) != EPKG_OK)
 		return NULL;
 
-	if (asprintf(&pkg_path, "%s/%s-%s", outdir, pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION)) == -1) {
+	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
+	if (asprintf(&pkg_path, "%s/%s-%s", outdir, pkgname, pkgversion) == -1) {
 		pkg_emit_errno("asprintf", "");
 		return (NULL);
 	}

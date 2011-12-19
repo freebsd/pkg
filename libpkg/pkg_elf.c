@@ -21,6 +21,8 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	GElf_Shdr shdr;
 	Elf_Data *data;
 	GElf_Dyn *dyn, dyn_mem;
+
+	const char *pkgorigin, *pkgname, *pkgversion;
 	size_t numdyn;
 	size_t dynidx;
 	void *handle;
@@ -30,6 +32,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 
 	int fd;
 
+	pkg_get(pkg, PKG_ORIGIN, &pkgorigin, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0)
 		return (EPKG_FATAL);
 
@@ -71,14 +74,13 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				found = false;
 				while (pkg_deps(pkg, &dep) == EPKG_OK) {
-					if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), pkg_get(p, PKG_ORIGIN)) == 0)
+					if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), pkgorigin) == 0)
 						found = true;
 				}
 				if (!found) {
 					pkg_emit_error("adding forgotten depends (%s): %s-%s",
-								   map->l_name, pkg_get(p, PKG_NAME),
-								   pkg_get(p, PKG_VERSION));
-					pkg_adddep(pkg, pkg_get(p, PKG_NAME), pkg_get(p, PKG_ORIGIN), pkg_get(p, PKG_VERSION));
+					    map->l_name, pkgname, pkgversion);
+					pkg_adddep(pkg, pkgname, pkgorigin, pkgversion);
 				}
 			}
 			dlclose(handle);
