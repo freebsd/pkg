@@ -101,7 +101,7 @@ exec_update(int argc, char **argv)
 	char url[MAXPATHLEN];
 	const char *packagesite = NULL;
 	const char *repo_name;
-	struct pkg_config_kv *repokv;
+	struct pkg_config_kv *repokv = NULL;
 	int retcode = EPKG_OK;
 	bool multi_repos = false;
 
