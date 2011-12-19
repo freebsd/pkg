@@ -430,8 +430,6 @@ int
 pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 {
 	struct pkgdb *db = NULL;
-	struct pkg_repos *repos = NULL;
-	struct pkg_repos_entry *re = NULL;
 	char localpath[MAXPATHLEN + 1];
 	char remotepath[MAXPATHLEN + 1];
 	const char *dbdir = NULL;
@@ -439,6 +437,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	bool multirepos_enabled = false;
 	struct sbuf *sql = sbuf_new_auto();
 	bool create = false;
+	struct pkg_config_kv *repokv;
 
 	/*
 	 * Set the pointer to NULL now. Change it to the real pointer just
@@ -522,59 +521,40 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			fprintf(stderr, "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL	/!\\\n");
 			fprintf(stderr, "\t/!\\		     YOU HAVE BEEN WARNED		/!\\\n\n");
 
-			if (pkg_repos_new(&repos) != EPKG_OK) {
-				pkg_emit_error("cannot create multi repo object");
-				pkgdb_close(db);
-				return (EPKG_FATAL);
-			}
 
-			if (pkg_repos_load(repos) != EPKG_OK) {
-				pkg_emit_error("cannot load repositories");
-				pkgdb_close(db);
-				pkg_repos_free(repos);
-				return (EPKG_FATAL);
-			}
+			while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
+				repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
+				/* is is a reserved name ?*/
+				if ((strcmp(repo_name, "repo") == 0) ||
+				    (strcmp(repo_name, "main") == 0) ||
+				    (strcmp(repo_name, "temp") == 0) ||
+				    (strcmp(repo_name, "local") == 0))
+					continue;
 
-			while (pkg_repos_next(repos, &re) == EPKG_OK) {
-				repo_name = pkg_repos_get_name(re);
+				/* is it already attached ?*/
+				if (is_attached(db->sqlite, repo_name)) {
+					pkg_emit_error("%s is already listed, ignoring");
+					continue;
+				}
 
 				snprintf(remotepath, sizeof(remotepath), "%s/%s.sqlite",
 						dbdir, repo_name);
 
 				if (access(remotepath, R_OK) != 0) {
 					pkg_emit_errno("access", remotepath);
-					sbuf_finish(sql);
 					sbuf_delete(sql);
 					pkgdb_close(db);
-					pkg_repos_free(repos);
 					return (EPKG_FATAL);
 				}
 
 				sbuf_printf(sql, "ATTACH '%s' AS '%s';", remotepath, repo_name);
+				if (sql_exec(db->sqlite, sbuf_get(sql)) != EPKG_OK) {
+					sbuf_delete(sql);
+					pkgdb_close(db);
+					return (EPKG_FATAL);
+				}
 			}
 
-			sbuf_finish(sql);
-
-			/* 
-			 * Check if a default repo is defined.
-			 */
-			if (pkg_repos_exists(repos, "default")) {
-				pkg_emit_error("no default repository defined");
-				pkgdb_close(db);
-				sbuf_delete(sql);
-				pkg_repos_free(repos);
-				return(EPKG_FATAL);
-			}
-
-			if (sql_exec(db->sqlite, sbuf_get(sql)) != EPKG_OK) {
-				sbuf_finish(sql);
-				sbuf_delete(sql);
-				pkgdb_close(db);
-				pkg_repos_free(repos);
-				return (EPKG_FATAL);
-			}
-
-			pkg_repos_free(repos);
 		} else {
 			/*
 			 * Working on a single remote repository

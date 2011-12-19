@@ -100,9 +100,9 @@ exec_update(int argc, char **argv)
 {
 	char url[MAXPATHLEN];
 	const char *packagesite = NULL;
+	const char *repo_name;
+	struct pkg_config_kv *repokv;
 	int retcode = EPKG_OK;
-	struct pkg_repos *repos = NULL;
-	struct pkg_repos_entry *re = NULL;
 	bool multi_repos = false;
 
 	(void)argv;
@@ -141,26 +141,17 @@ exec_update(int argc, char **argv)
 		retcode = update_from_remote_repo("repo", url);
 	} else {
 		/* multiple repositories */
-		if (pkg_repos_new(&repos) != EPKG_OK)
-			return (1);
-
-		if (pkg_repos_load(repos) != EPKG_OK) {
-			pkg_repos_free(repos);
-			return (1);
-		}
-
-		while (pkg_repos_next(repos, &re) == EPKG_OK) {
-			packagesite = pkg_repos_get_url(re);
+		while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
+			repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
+			packagesite = pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE);
 
 			if (packagesite[strlen(packagesite) - 1] == '/')
 				snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
 			else
 				snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
-			retcode = update_from_remote_repo(pkg_repos_get_name(re), url);
+			retcode = update_from_remote_repo(repo_name, url);
 		}
-
-		pkg_repos_free(repos);
 	}
 
 	return (retcode);
