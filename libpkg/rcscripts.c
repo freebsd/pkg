@@ -26,8 +26,8 @@ pkg_stop_rc_scripts(struct pkg *pkg)
 	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (strncmp(rc_d_path, pkg_file_path(file), len) == 0) {
-			rcfile = pkg_file_path(file);
+		if (strncmp(rc_d_path, pkg_file_get(file, PKG_FILE_PATH), len) == 0) {
+			rcfile = pkg_file_get(file, PKG_FILE_PATH);
 			rcfile += len;
 
 			ret += rc_stop(rcfile);
@@ -50,8 +50,8 @@ pkg_start_rc_scripts(struct pkg *pkg)
 	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (strncmp(rc_d_path, pkg_file_path(file), len) == 0) {
-			rcfile = pkg_file_path(file);
+		if (strncmp(rc_d_path, pkg_file_get(file, PKG_FILE_PATH), len) == 0) {
+			rcfile = pkg_file_get(file, PKG_FILE_PATH);
 			rcfile += len;
 
 			ret += rc_start(rcfile);

@@ -121,7 +121,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
                         printf("%s-%s owns the following files:\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
 
                 while (pkg_files(pkg, &file) == EPKG_OK) {
-                        printf("%s\n", pkg_file_path(file));
+                        printf("%s\n", pkg_file_get(file, PKG_FILE_PATH));
                 }
 
                 if (!(opt & INFO_QUIET))

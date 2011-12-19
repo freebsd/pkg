@@ -1533,14 +1533,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		sqlite3_bind_text(stmt_file, 1, pkg_file_path(file), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_file, 2, pkg_file_sha256(file), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_file, 1, pkg_file_get(file, PKG_FILE_PATH), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_file, 2, pkg_file_get(file, PKG_FILE_SUM), -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_file, 3, package_id);
 
 		if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				    pkg_emit_error("sqlite: constraint violation on files.path:"
-								   " %s", pkg_file_path(file));
+								   " %s", pkg_file_get(file, PKG_FILE_PATH));
 			} else {
 				ERROR_SQLITE(s);
 			}
@@ -2618,13 +2618,13 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 		sqlite3_bind_text(stmt, 1, pkg_get(p, PKG_NAME), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt, 2, pkg_get(p, PKG_ORIGIN), -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt, 3, pkg_get(p, PKG_VERSION), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt, 4, pkg_file_path(file), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt, 4, pkg_file_get(file, PKG_FILE_PATH), -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
 			sbuf_clear(conflictmsg);
 			sbuf_printf(conflictmsg, "WARNING: %s-%s conflict on %s with: \n",
 					pkg_get(p, PKG_NAME), pkg_get(p, PKG_VERSION),
-					pkg_file_path(file));
+					pkg_file_get(file, PKG_FILE_PATH));
 
 			if (sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt_conflicts, NULL) != SQLITE_OK) {
 				ERROR_SQLITE(db->sqlite);
@@ -2633,7 +2633,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 				return (EPKG_FATAL);
 			}
 
-			sqlite3_bind_text(stmt_conflicts, 1, pkg_file_path(file), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_conflicts, 1, pkg_file_get(file, PKG_FILE_PATH), -1, SQLITE_STATIC);
 
 			while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
 				sbuf_printf(conflictmsg, "\t- %s-%s\n",

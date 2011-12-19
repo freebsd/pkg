@@ -101,7 +101,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 
 	while (pkg_files(pkg, &file) == EPKG_OK)
-		analyse_elf(db, pkg, pkg_file_path(file));
+		analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH));
 
 	return (EPKG_OK);
 }

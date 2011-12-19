@@ -151,9 +151,9 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				case 'F':
 					qstr++;
 					if (qstr[0] == 'p')
-						sbuf_cat(dest, pkg_file_path((struct pkg_file *)data));
+						sbuf_cat(dest, pkg_file_get((struct pkg_file *)data, PKG_FILE_PATH));
 					else if (qstr[0] == 's')
-						sbuf_cat(dest, pkg_file_sha256((struct pkg_file *)data));
+						sbuf_cat(dest, pkg_file_get((struct pkg_file *)data, PKG_FILE_SUM));
 					break;
 				case 'S':
 					sbuf_cat(dest, pkg_script_data((struct pkg_script *)data));	

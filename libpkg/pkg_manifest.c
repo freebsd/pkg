@@ -763,8 +763,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "files"), 5, YAML_PLAIN_SCALAR_STYLE),
 					files);
 		}
-		urlencode(pkg_file_path(file), &tmpsbuf);
-		manifest_append_kv(files, sbuf_data(tmpsbuf), pkg_file_sha256(file) && strlen(pkg_file_sha256(file)) > 0 ? pkg_file_sha256(file) : "-");
+		urlencode(pkg_file_get(file, PKG_FILE_PATH), &tmpsbuf);
+		manifest_append_kv(files, sbuf_data(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-");
 	}
 
 	seq = -1;
