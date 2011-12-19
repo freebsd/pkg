@@ -22,15 +22,13 @@
 #define PKG_CONFLICTS -3
 #define PKG_FILES -4
 #define PKG_DIRS -5
-#define PKG_FLATSIZE -6
-#define PKG_SCRIPTS -7
-#define PKG_CATEGORIES -8
-#define PKG_LICENSELOGIC -9
-#define PKG_LICENSES -10
-#define PKG_OPTIONS -11
-#define PKG_USERS -12
-#define PKG_GROUPS -13
-#define PKG_DIRECTORIES -14
+#define PKG_SCRIPTS -6
+#define PKG_CATEGORIES -7
+#define PKG_LICENSES -8
+#define PKG_OPTIONS -9
+#define PKG_USERS -10
+#define PKG_GROUPS -11
+#define PKG_DIRECTORIES -12
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_flatsize_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
