@@ -138,8 +138,11 @@ pkg_jobs_install(struct pkg_jobs *j)
 	STAILQ_INIT(&pkg_queue);
 
 	/* check for available size to fetch */
-	while (pkg_jobs(j, &p) == EPKG_OK)
-		dlsize += pkg_new_pkgsize(p);
+	while (pkg_jobs(j, &p) == EPKG_OK) {
+		int64_t pkgsize;
+		pkg_get(pkg, PKG_NEW_PKGSIZE, &pkgsize);
+		dlsize += pkgsize;
+	}
 
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -173,8 +176,11 @@ pkg_jobs_install(struct pkg_jobs *j)
 	pkg_emit_integritycheck_begin();
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
+		const char *pkgrepopath;
+
+		pkg_get(pkg, PKG_REPOPATH, &pkgrepopath, -1);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
-				pkg_get(p, PKG_REPOPATH));
+		    pkgrepopath);
 		if (pkg_open(&pkg, path, buf) != EPKG_OK)
 			return (EPKG_FATAL);
 
@@ -193,24 +199,29 @@ pkg_jobs_install(struct pkg_jobs *j)
 	/* Install */
 	sql_exec(j->db->sqlite, "SAVEPOINT upgrade;");
 	while (pkg_jobs(j, &p) == EPKG_OK) {
+		const char *pkgorigin, *pkgrepopath, *newversion, *origin;
+		bool automatic;
 		flags = 0;
-		it = pkgdb_integrity_conflict_local(j->db, pkg_get(p, PKG_ORIGIN));
+
+		pkg_get(p, PKG_ORIGIN, &pkgorigin, PKG_REPOPATH, &pkgrepopath,
+		    PKG_NEWVERSION, &newversion, PKG_AUTOMATIC, &automatic);
+		it = pkgdb_integrity_conflict_local(j->db, pkgorigin);
 
 		if (it != NULL) {
 			pkg = NULL;
 			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS) == EPKG_OK) {
 				STAILQ_INSERT_TAIL(&pkg_queue, pkg, next);
 				pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
-				pkgdb_unregister_pkg(j->db, pkg_get(pkg, PKG_ORIGIN));
+				pkg_get(pkg, PKG_ORIGIN, &origin);
+				pkgdb_unregister_pkg(j->db, origin);
 				pkg = NULL;
 			}
 			pkgdb_it_free(it);
 		}
-		snprintf(path, sizeof(path), "%s/%s", cachedir,
-				 pkg_get(p, PKG_REPOPATH));
+		snprintf(path, sizeof(path), "%s/%s", cachedir, pkgrepopath);
 
 		pkg_open(&newpkg, path, NULL);
-		if (pkg_get(p, PKG_NEWVERSION) != NULL) {
+		if (newversion != NULL) {
 			pkg_emit_upgrade_begin(p);
 		} else {
 			pkg_emit_install_begin(newpkg);
@@ -219,7 +230,8 @@ pkg_jobs_install(struct pkg_jobs *j)
 			pkg_jobs_keep_files_to_del(pkg, newpkg);
 
 		STAILQ_FOREACH_SAFE(pkg, &pkg_queue, next, pkg_temp) {
-			if (strcmp(pkg_get(p, PKG_ORIGIN), pkg_get(pkg, PKG_ORIGIN)) == 0) {
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			if (strcmp(pkgorigin, origin) == 0) {
 				STAILQ_REMOVE(&pkg_queue, pkg, pkg, next);
 				pkg_delete_files(pkg, 1);
 				pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
@@ -230,7 +242,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		}
 
 		flags |= PKG_ADD_UPGRADE;
-		if (pkg_is_automatic(p))
+		if (automatic)
 			flags |= PKG_ADD_AUTOMATIC;
 
 		if (pkg_add(j->db, path, flags) != EPKG_OK) {
@@ -238,7 +250,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 			return (EPKG_FATAL);
 		}
 
-		if (pkg_get(p, PKG_NEWVERSION) != NULL)
+		if (newversion != NULL)
 			pkg_emit_upgrade_finished(p);
 		else
 			pkg_emit_install_finished(newpkg);

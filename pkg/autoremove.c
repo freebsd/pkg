@@ -31,6 +31,7 @@ exec_autoremove(int argc, char **argv)
 	struct pkg_jobs *jobs = NULL;
 	int retcode = EPKG_OK;
 	int64_t oldsize = 0, newsize = 0;
+	int64_t flatsize, newflatsize;
 	char size[7];
 	int ch;
 	bool yes = false;
@@ -73,8 +74,9 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		oldsize += pkg_flatsize(pkg);
-		newsize += pkg_new_flatsize(pkg);
+		pkg_get(pkg, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize);
+		oldsize += flatsize;
+		newsize += newflatsize;
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}
@@ -94,8 +96,11 @@ exec_autoremove(int argc, char **argv)
 
 	pkg = NULL;
 	printf("Packages to be autoremoved: \n");
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK)
-		printf("\t%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
+		const char *name, *version;
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		printf("\t%s-%s\n", name, version);
+	}
 
 	if (oldsize > newsize)
 		printf("\nThe autoremove will save %s\n", size);

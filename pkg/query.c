@@ -48,6 +48,10 @@ static void
 format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 {
 	char size[7];
+	const char *tmp;
+	bool automatic;
+	int64_t flatsize;
+	lic_t licenselogic;
 
 	sbuf_clear(dest);
 
@@ -56,36 +60,45 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 			qstr++;
 			switch (qstr[0]) {
 				case 'n':
-					sbuf_cat(dest, pkg_get(pkg, PKG_NAME));
+					pkg_get(pkg, PKG_NAME, &tmp);
+					sbuf_cat(dest, tmp);
 					break;
 				case 'v':
-					sbuf_cat(dest, pkg_get(pkg, PKG_VERSION));
+					pkg_get(pkg, PKG_VERSION, &tmp);
+					sbuf_cat(dest, tmp);
 					break;
 				case 'o':
-					sbuf_cat(dest, pkg_get(pkg, PKG_ORIGIN));
+					pkg_get(pkg, PKG_ORIGIN, &tmp);
+					sbuf_cat(dest, tmp);
 					break;
 				case 'p':
-					sbuf_cat(dest, pkg_get(pkg, PKG_PREFIX));
+					pkg_get(pkg, PKG_PREFIX, &tmp);
+					sbuf_cat(dest, tmp);
 					break;
 				case 'm':
-					sbuf_cat(dest, pkg_get(pkg, PKG_MAINTAINER));
+					pkg_get(pkg, PKG_MAINTAINER, &tmp);
+					sbuf_cat(dest, tmp);
 					break;
 				case 'c':
-					sbuf_cat(dest, pkg_get(pkg, PKG_COMMENT));
+					pkg_get(pkg, PKG_COMMENT, &tmp);
+					sbuf_cat(dest, tmp);
 					break;
 				case 'w':
-					sbuf_cat(dest, pkg_get(pkg, PKG_WWW));
+					pkg_get(pkg, PKG_WWW, &tmp);
+					sbuf_cat(dest, tmp);
 					break;
 				case 'a':
-					sbuf_printf(dest, "%d", pkg_is_automatic(pkg));
+					pkg_get(pkg, PKG_AUTOMATIC, &automatic);
+					sbuf_printf(dest, "%d", automatic);
 					break;
 				case 's':
 					qstr++;
+					pkg_get(pkg, PKG_FLATSIZE, &flatsize);
 					if (qstr[0] == 'h') {
-						humanize_number(size, sizeof(size), pkg_flatsize(pkg), "B", HN_AUTOSCALE, 0);
+						humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
 						sbuf_cat(dest, size);
 					} else if (qstr[0] == 'b') {
-						sbuf_printf(dest, "%" PRId64, pkg_flatsize(pkg));
+						sbuf_printf(dest, "%" PRId64, flatsize);
 					}
 					break;
 				case '?':
@@ -124,8 +137,18 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					}
 					break;
 				case 'l':
-					if (pkg_licenselogic(pkg))
-						sbuf_putc(dest, pkg_licenselogic(pkg));
+					pkg_get(pkg, PKG_LICENSE_LOGIC, &licenselogic);
+					switch (licenselogic) {
+						case LICENSE_SINGLE:
+							sbuf_cat(dest, "single");
+							break;
+						case LICENSE_OR:
+							sbuf_cat(dest, "or");
+							break;
+						case LICENSE_AND:
+							sbuf_cat(dest, "and");
+							break;
+					}
 					break;
 				case 'd':
 					qstr++;

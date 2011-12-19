@@ -655,6 +655,10 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int scripts = -1;
 	const char *script_types = NULL;
 	struct sbuf *destbuf = sbuf_new_auto();
+	const char *name, *version, *pkgorigin, *comment, *pkgarch, *osversion, *www, *pkgmaintainer, *prefix;
+	const char *desc, *message;
+	lic_t licenselogic;
+	int64_t flatsize;
 
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_unicode(&emitter, 1);
@@ -671,16 +675,21 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	yaml_document_initialize(&doc, NULL, NULL, NULL, 1, 1);
 	mapping = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
 
-	manifest_append_kv(mapping, "name", pkg_get(pkg, PKG_NAME));
-	manifest_append_kv(mapping, "version", pkg_get(pkg, PKG_VERSION));
-	manifest_append_kv(mapping, "origin", pkg_get(pkg, PKG_ORIGIN));
-	manifest_append_kv(mapping, "comment", pkg_get(pkg, PKG_COMMENT));
-	manifest_append_kv(mapping, "arch", pkg_get(pkg, PKG_ARCH));
-	manifest_append_kv(mapping, "osversion", pkg_get(pkg, PKG_OSVERSION));
-	manifest_append_kv(mapping, "www", pkg_get(pkg, PKG_WWW));
-	manifest_append_kv(mapping, "maintainer", pkg_get(pkg, PKG_MAINTAINER));
-	manifest_append_kv(mapping, "prefix", pkg_get(pkg, PKG_PREFIX));
-	switch (pkg_licenselogic(pkg)) {
+	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin, PKG_COMMENT, &comment,
+	    PKG_ARCH, &pkgarch, PKG_OSVERSION, osversion, PKG_WWW, &www,
+	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
+	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
+	    PKG_FLATSIZE, &flatsize);
+	manifest_append_kv(mapping, "name", name);
+	manifest_append_kv(mapping, "version", version);
+	manifest_append_kv(mapping, "origin", pkgorigin);
+	manifest_append_kv(mapping, "comment", comment);
+	manifest_append_kv(mapping, "arch", pkgarch);
+	manifest_append_kv(mapping, "osversion", osversion);
+	manifest_append_kv(mapping, "www", www);
+	manifest_append_kv(mapping, "maintainer", pkgmaintainer);
+	manifest_append_kv(mapping, "prefix", prefix);
+	switch (licenselogic) {
 		case LICENSE_SINGLE:
 			manifest_append_kv(mapping, "licenselogic", "single");
 			break;
@@ -696,9 +705,9 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	while (pkg_licenses(pkg, &license) == EPKG_OK)
 		manifest_append_seqval(&doc, mapping, &seq, "licenses", pkg_license_name(license));
 
-	snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkg_flatsize(pkg));
+	snprintf(tmpbuf, BUFSIZ, "%" PRId64, flatsize);
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
-	urlencode(pkg_get(pkg, PKG_DESC), &tmpsbuf);
+	urlencode(desc, &tmpsbuf);
 	manifest_append_kv_literal(mapping, "desc", sbuf_data(tmpsbuf));
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
@@ -817,8 +826,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		}
 		manifest_append_kv_literal(scripts, script_types, pkg_script_data(script));
 	}
-	if (pkg_get(pkg, PKG_MESSAGE) != NULL && pkg_get(pkg, PKG_MESSAGE)[0] != '\0')
-		manifest_append_kv_literal(mapping, "message", pkg_get(pkg, PKG_MESSAGE));
+	if (message != NULL && *message != '\0')
+		manifest_append_kv_literal(mapping, "message", message);
 
 	if (!yaml_emitter_dump(&emitter, &doc))
 		rc = EPKG_FATAL;

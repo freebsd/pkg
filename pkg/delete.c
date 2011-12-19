@@ -92,8 +92,9 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-		oldsize += pkg_flatsize(pkg);
-		newsize += pkg_new_flatsize(pkg);
+		int64_t flatsize, newflatsize;
+		oldsize += flatsize;
+		newsize += newflatsize;
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}
@@ -114,8 +115,12 @@ exec_delete(int argc, char **argv)
 
 	pkg = NULL;
 	printf("The following packages will be deinstalled:\n");
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK)
-		printf("\t%s-%s\n", pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
+		const char *name, *version;
+
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		printf("\t%s-%s\n", name, version);
+	}
 
 	if (oldsize > newsize)
 		printf("\nThe deinstallation will save %s\n", size);
@@ -137,7 +142,7 @@ exec_delete(int argc, char **argv)
 
 	retcode = 0;
 
-	cleanup:
+cleanup:
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 	pkg_jobs_free(jobs);

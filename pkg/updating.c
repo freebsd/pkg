@@ -41,6 +41,7 @@ exec_updating(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
+	const char *origin;
 	FILE *fd;
 
 	while ((ch = getopt(argc, argv, "d:f:")) != -1) {
@@ -74,7 +75,8 @@ exec_updating(int argc, char **argv)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			port = malloc(sizeof(struct installed_ports));
-			port->origin = strdup(pkg_get(pkg, PKG_ORIGIN));
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			port->origin = strdup(origin);
 			SLIST_INSERT_HEAD(&origins, port, next);
 		}
 	} else {

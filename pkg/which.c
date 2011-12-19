@@ -27,6 +27,7 @@ exec_which(int argc, char **argv)
 	char pathabs[MAXPATHLEN + 1];
 	char pathabsdir[MAXPATHLEN + 1];
 	int ret = EPKG_OK, retcode = EPKG_OK;
+	const char *name, *version;
 
 	if (argc != 2) {
 		usage_which();
@@ -47,8 +48,8 @@ exec_which(int argc, char **argv)
 
 	if (( ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		retcode = EPKG_OK;
-		printf("%s was installed by package %s-%s\n", pathabs, pkg_get(pkg, PKG_NAME),
-			   pkg_get(pkg, PKG_VERSION));
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		printf("%s was installed by package %s-%s\n", pathabs, name, version);
 	} else if (ret != EPKG_END) {
 		retcode = EPKG_WARN;
 	} else {

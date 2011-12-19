@@ -64,6 +64,7 @@ exec_register(int argc, char **argv)
 	char *input_path = NULL;
 	char fpath[MAXPATHLEN + 1];
 
+	const char *message;
 	const char *desc = NULL;
 	size_t size;
 
@@ -149,7 +150,7 @@ exec_register(int argc, char **argv)
 
 	/* if www is not given then try to determine it from description */
 	if (www == NULL) {
-		desc = pkg_get(pkg, PKG_DESC);
+		pkg_get(pkg, PKG_DESC, &desc);
 		regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
 		if (regexec(&preg, desc, 2, pmatch, 0) == 0) {
 			size = pmatch[1].rm_eo - pmatch[1].rm_so;
@@ -198,8 +199,9 @@ exec_register(int argc, char **argv)
 		retcode = EPKG_FATAL;
 	}
 
-	if (pkg_get(pkg, PKG_MESSAGE) != NULL && !legacy)
-		printf("%s\n", pkg_get(pkg, PKG_MESSAGE));
+	pkg_get(pkg, PKG_MESSAGE, message);
+	if (message != NULL && !legacy)
+		printf("%s\n", message);
 
 	pkgdb_close(db);
 	pkg_free(pkg);

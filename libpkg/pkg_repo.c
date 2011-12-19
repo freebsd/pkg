@@ -76,14 +76,15 @@ pkg_repo_fetch(struct pkg *pkg)
 	const char *cachedir = NULL;
 	bool multirepos_enabled = false;
 	int retcode = EPKG_OK;
+	const char *repopath, *repourl, *sum, *name, *version;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	snprintf(dest, sizeof(dest), "%s/%s", cachedir,
-			 pkg_get(pkg, PKG_REPOPATH));
+	pkg_get(pkg, PKG_REPOPATH, &repopath, PKG_REPOURL, &repourl,
+	    PKG_CKSUM, &sum);
 
 	/* If it is already in the local cachedir, dont bother to download it */
 	if (access(dest, F_OK) == 0)
@@ -107,7 +108,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
 	if (multirepos_enabled) {
-		packagesite = pkg_get(pkg, PKG_REPOURL);
+		packagesite = repourl;
 	} else {
 		pkg_config_string(PKG_CONFIG_REPO, &packagesite);
 	}
@@ -119,9 +120,9 @@ pkg_repo_fetch(struct pkg *pkg)
 	}
 
 	if (packagesite[strlen(packagesite) - 1] == '/')
-		snprintf(url, sizeof(url), "%s%s", packagesite, pkg_get(pkg, PKG_REPOPATH));
+		snprintf(url, sizeof(url), "%s%s", packagesite, repopath);
 	else
-		snprintf(url, sizeof(url), "%s/%s", packagesite, pkg_get(pkg, PKG_REPOPATH));
+		snprintf(url, sizeof(url), "%s/%s", packagesite, repopath);
 
 	retcode = pkg_fetch_file(url, dest);
 	fetched = 1;
@@ -132,14 +133,14 @@ pkg_repo_fetch(struct pkg *pkg)
 	checksum:
 	retcode = sha256_file(dest, cksum);
 	if (retcode == EPKG_OK)
-		if (strcmp(cksum, pkg_get(pkg, PKG_CKSUM))) {
+		if (strcmp(cksum, sum)) {
 			if (fetched == 1) {
 				pkg_emit_error("%s-%s failed checksum from repository",
-						pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+				    name, version);
 				retcode = EPKG_FATAL;
 			} else {
 				pkg_emit_error("cached package %s-%s: checksum mismatch, fetching from remote",
-						pkg_get(pkg, PKG_NAME), pkg_get(pkg, PKG_VERSION));
+				    name, version);
 				unlink(dest);
 				return (pkg_repo_fetch(pkg));
 			}
@@ -155,14 +156,14 @@ pkg_repo_fetch(struct pkg *pkg)
 int
 pkg_repos_new(struct pkg_repos **repos)
 {
-        if ((*repos = calloc(1, sizeof(struct pkg_repos))) == NULL) {
-                pkg_emit_errno("calloc", "pkg_repos");
-                return (EPKG_FATAL);
-        }
+	if ((*repos = calloc(1, sizeof(struct pkg_repos))) == NULL) {
+		pkg_emit_errno("calloc", "pkg_repos");
+		return (EPKG_FATAL);
+	}
 
-        STAILQ_INIT(&(*repos)->nodes);
+	STAILQ_INIT(&(*repos)->nodes);
 
-        return (EPKG_OK);
+	return (EPKG_OK);
 }
 
 int
@@ -618,6 +619,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	}
 
 	while ((ent = fts_read(fts)) != NULL) {
+		const char *name, *version, *origin, *comment, *desc;
+		const char *arch, *osversion, *maintainer, *www, *prefix;
+		int64_t flatsize;
+		lic_t licenselogic;
+
 		cksum[0] = '\0';
 		/* skip everything that is not a file */
 		if (ent->fts_info != FTS_F)
@@ -650,20 +656,25 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		if (progress != NULL)
 			progress(pkg, data);
 
-		sqlite3_bind_text(stmt_pkg, 1, pkg_get(pkg, PKG_ORIGIN), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 2, pkg_get(pkg, PKG_NAME), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 3, pkg_get(pkg, PKG_VERSION), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 4, pkg_get(pkg, PKG_COMMENT), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 5, pkg_get(pkg, PKG_DESC), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 6, pkg_get(pkg, PKG_ARCH), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 7, pkg_get(pkg, PKG_OSVERSION), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 8, pkg_get(pkg, PKG_MAINTAINER), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 9, pkg_get(pkg, PKG_WWW), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 10, pkg_get(pkg, PKG_PREFIX), -1, SQLITE_STATIC);
+		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name, PKG_VERSION, &version,
+		    PKG_COMMENT, &comment, PKG_DESC, &desc, PKG_ARCH, &arch,
+		    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_PREFIX, &prefix,
+		    PKG_FLATSIZE, &flatsize, PKG_LICENSE_LOGIC, &licenselogic,
+		    -1);
+		sqlite3_bind_text(stmt_pkg, 1, origin, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 2, name, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 3, version, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 4, comment, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 5, desc, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 6, arch, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 7, osversion, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 8, maintainer, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 9, www, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 10, prefix, -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_pkg, 11, ent->fts_statp->st_size);
-		sqlite3_bind_int64(stmt_pkg, 12, pkg_flatsize(pkg));
+		sqlite3_bind_int64(stmt_pkg, 12, flatsize);
 		sha256_file(ent->fts_accpath, cksum);
-		sqlite3_bind_int64(stmt_pkg, 13, pkg_licenselogic(pkg));
+		sqlite3_bind_int64(stmt_pkg, 13, licenselogic);
 		sqlite3_bind_text(stmt_pkg, 14, cksum, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 15, pkg_path, -1, SQLITE_STATIC);
 

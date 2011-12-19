@@ -17,6 +17,7 @@ event_callback(void *data, struct pkg_event *ev)
 	const char *message;
 	int *debug = data;
 	(void)debug;
+	const char *name, *version, *newversion;
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -37,14 +38,13 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
-		printf("Installing %s-%s...",
-			   pkg_get(ev->e_install_begin.pkg, PKG_NAME),
-			   pkg_get(ev->e_install_begin.pkg, PKG_VERSION));
+		pkg_get(ev->e_install_begin.pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		printf("Installing %s-%s...", name, version);
 		fflush(stdout);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		printf(" done\n");
-		message = pkg_get(ev->e_install_finished.pkg, PKG_MESSAGE);
+		pkg_get(ev->e_install_finished.pkg, PKG_MESSAGE, &message);
 		if (message != NULL && message[0] != '\0')
 			printf("%s\n", message);
 		break;
@@ -56,19 +56,17 @@ event_callback(void *data, struct pkg_event *ev)
 		printf(" done\n");
 		break;
 	case PKG_EVENT_DEINSTALL_BEGIN:
-		printf("Deinstalling %s-%s...",
-			   pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME),
-			   pkg_get(ev->e_deinstall_begin.pkg, PKG_VERSION));
+		pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		printf("Deinstalling %s-%s...", name, version);
 		fflush(stdout);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		printf(" done\n");
 		break;
 	case PKG_EVENT_UPGRADE_BEGIN:
-		printf("Upgrading %s from %s to %s...",
-				pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME),
-				pkg_get(ev->e_upgrade_finished.pkg, PKG_VERSION),
-				pkg_get(ev->e_upgrade_finished.pkg, PKG_NEWVERSION));
+		pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name, PKG_VERSION, &version,
+		    PKG_NEWVERSION, &newversion);
+		printf("Upgrading %s from %s to %s...", name, version, newversion);
 		fflush(stdout);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
@@ -76,8 +74,8 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;
-		fprintf(stderr, "%s-%s is required by:", pkg_get(pkg, PKG_NAME),
-				pkg_get(pkg, PKG_VERSION));
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		fprintf(stderr, "%s-%s is required by:", name, version);
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 			fprintf(stderr, " %s-%s", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_ORIGIN));
 		}
@@ -87,9 +85,8 @@ event_callback(void *data, struct pkg_event *ev)
 			fprintf(stderr, "\n");
 		break;
 	case PKG_EVENT_ALREADY_INSTALLED:
-		printf("%s-%s already installed\n",
-				pkg_get(ev->e_already_installed.pkg, PKG_NAME),
-				pkg_get(ev->e_already_installed.pkg, PKG_VERSION));
+		pkg_get(ev->e_already_installed.pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		printf("%s-%s already installed\n", name, version);
 		break;
 	default:
 		break;
