@@ -112,16 +112,6 @@ struct pkg_jobs_node {
 	LIST_ENTRY(pkg_jobs_node) entries;
 };
 
-struct pkg_repos {
-	struct pkg_repos_entry {
-		const char *name;
-		const char *url;
-		STAILQ_ENTRY(pkg_repos_entry) entries;
-	} re;
-
-	STAILQ_HEAD(repos, pkg_repos_entry) nodes;
-};
-
 struct pkg_user {
 	char name[MAXLOGNAME+1];
 	char uidstr[8192]; /* taken from pw_util.c */

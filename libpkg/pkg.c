@@ -38,6 +38,9 @@ static struct _fields {
 	[PKG_REPOURL] = {PKG_REMOTE, 1},
 };
 
+static int pkg_add_repo_url(struct pkg *pkg, const char *reponame);
+
+
 int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
@@ -1070,29 +1073,17 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	return (packing_finish(pack));
 }
 
-int
+static int
 pkg_add_repo_url(struct pkg *pkg, const char *reponame)
 {
-	properties p = NULL;
-	int fd = -1;
+	struct pkg_config_kv *repokv = NULL;
 
-	assert(pkg != NULL && reponame != NULL);
-
-	/* 
-	 * We have the repo name, now we need to find it's URL
-	 * Using properties(3) here, as we know the 'key' already
-	 */
-	if ((fd = open("/etc/pkg/repositories", O_RDONLY)) < 0) {
-		pkg_emit_errno("open", "/etc/pkg/repositories");
-		return (EPKG_FATAL);
+	while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
+		if (strcmp(reponame, pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY)) == 0) {
+			pkg_set(pkg, PKG_REPOURL, pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE));
+			return (EPKG_OK);
+		}
 	}
 
-	p = properties_read(fd);
-
-	pkg_set(pkg, PKG_REPOURL, property_find(p, reponame));
-
-	properties_free(p);
-	close(fd);
-
-	return (EPKG_OK);
+	return (EPKG_FATAL);
 }
