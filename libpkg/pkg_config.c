@@ -261,6 +261,7 @@ pkg_init(const char *path)
 
 	if ((fp = fopen(path, "r")) == NULL) {
 		/* no configuration present */
+		parsed = true;
 		return (EPKG_OK);
 	}
 
