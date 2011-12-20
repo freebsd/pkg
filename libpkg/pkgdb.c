@@ -1853,7 +1853,7 @@ is_attached(sqlite3 *s, const char *name)
 	}
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
-		dbname = sqlite3_column_text(stmt, 0);
+		dbname = sqlite3_column_text(stmt, 1);
 		if (!strcmp(dbname, name)) {
 			sqlite3_finalize(stmt);
 			return (true);
