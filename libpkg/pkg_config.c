@@ -170,6 +170,9 @@ pkg_config_string(pkg_config_key key, const char **val)
 	if (*val == NULL)
 		*val = c[key].def;
 
+	if (*val == NULL)
+		return (EPKG_FATAL);
+
 	return (EPKG_OK);
 }
 
