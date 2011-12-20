@@ -260,8 +260,8 @@ pkg_init(const char *path)
 		path = "/etc/pkg.conf";
 
 	if ((fp = fopen(path, "r")) == NULL) {
-		pkg_emit_errno("fopen", path);
-		return (EPKG_FATAL);
+		/* no configuration present */
+		return (EPKG_OK);
 	}
 
 	yaml_parser_initialize(&parser);
