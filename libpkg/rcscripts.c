@@ -19,6 +19,7 @@ pkg_stop_rc_scripts(struct pkg *pkg)
 	struct pkg_file *file = NULL;
 	char rc_d_path[PATH_MAX + 1];
 	const char *rcfile;
+	const char *rc;
 	size_t len = 0;
 	int ret = 0;
 	const char *prefix;
@@ -32,7 +33,8 @@ pkg_stop_rc_scripts(struct pkg *pkg)
 		if (strncmp(rc_d_path, pkg_file_get(file, PKG_FILE_PATH), len) == 0) {
 			rcfile = pkg_file_get(file, PKG_FILE_PATH);
 			rcfile += len;
-
+			rc = strrchr(rcfile, '/');
+			rc++;
 			ret += rc_stop(rcfile);
 		}
 	}
@@ -46,6 +48,7 @@ pkg_start_rc_scripts(struct pkg *pkg)
 	struct pkg_file *file = NULL;
 	char rc_d_path[PATH_MAX + 1];
 	const char *rcfile;
+	const char *rc;
 	size_t len = 0;
 	int ret = 0;
 	const char *prefix;
@@ -58,7 +61,8 @@ pkg_start_rc_scripts(struct pkg *pkg)
 		if (strncmp(rc_d_path, pkg_file_get(file, PKG_FILE_PATH), len) == 0) {
 			rcfile = pkg_file_get(file, PKG_FILE_PATH);
 			rcfile += len;
-
+			rc = strrchr(rcfile, '/');
+			rc++;
 			ret += rc_start(rcfile);
 		}
 	}
