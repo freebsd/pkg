@@ -1884,7 +1884,7 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql) {
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		dbname = sqlite3_column_text(stmt, 1);
-		if (strcmp(dbname, "main") == 0 || strcmp(dbname, "temp") == 0)
+		if ((strcmp(dbname, "main") == 0) || (strcmp(dbname, "temp") == 0))
 			continue;
 
 		if (!first) {
@@ -1918,7 +1918,8 @@ pkgdb_detach_remotes(sqlite3 *s)
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		dbname = sqlite3_column_text(stmt, 1);
-		if (strcmp(dbname, "main") == 0)
+		if ((strcmp(dbname, "main") == 0) ||
+		    (strcmp(dbname, "temp") == 0))
 			continue;
 
 		sbuf_clear(sql);
