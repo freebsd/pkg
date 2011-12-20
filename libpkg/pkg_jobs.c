@@ -140,7 +140,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	/* check for available size to fetch */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		int64_t pkgsize;
-		pkg_get(pkg, PKG_NEW_PKGSIZE, &pkgsize);
+		pkg_get(p, PKG_NEW_PKGSIZE, &pkgsize);
 		dlsize += pkgsize;
 	}
 
@@ -178,7 +178,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		const char *pkgrepopath;
 
-		pkg_get(pkg, PKG_REPOPATH, &pkgrepopath, -1);
+		pkg_get(p, PKG_REPOPATH, &pkgrepopath, -1);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 		    pkgrepopath);
 		if (pkg_open(&pkg, path, buf) != EPKG_OK)
