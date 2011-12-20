@@ -38,9 +38,6 @@ static struct _fields {
 	[PKG_REPOURL] = {PKG_REMOTE, 1},
 };
 
-static int pkg_add_repo_url(struct pkg *pkg, const char *reponame);
-
-
 int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
@@ -210,6 +207,9 @@ pkg_get2(struct pkg const *const pkg, ...)
 static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
+	struct pkg_config_kv *repokv = NULL;
+	char *reponame = NULL;
+	char *repourl = NULL;
 	int attr;
 
 	while ((attr = va_arg(ap, int)) > 0) {
@@ -229,8 +229,13 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				continue;
 			}
 
-			if (attr == PKG_REPONAME)
-				pkg_add_repo_url(pkg, str);
+			if (attr == PKG_REPONAME) {
+				pkg_get(pkg, PKG_REPONAME, &reponame, PKG_REPOURL, &repourl);
+				while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
+					if (strcmp(reponame, pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY)) == 0) 
+						pkg_set(pkg, PKG_REPOURL, pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE));
+				}
+			}
 
 			sbuf_set(sbuf, str);
 			continue;
@@ -1071,19 +1076,4 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 
 
 	return (packing_finish(pack));
-}
-
-static int
-pkg_add_repo_url(struct pkg *pkg, const char *reponame)
-{
-	struct pkg_config_kv *repokv = NULL;
-
-	while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
-		if (strcmp(reponame, pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY)) == 0) {
-			pkg_set(pkg, PKG_REPOURL, pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE));
-			return (EPKG_OK);
-		}
-	}
-
-	return (EPKG_FATAL);
 }
