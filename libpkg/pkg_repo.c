@@ -43,6 +43,8 @@ pkg_repo_fetch(struct pkg *pkg)
 	pkg_get(pkg, PKG_REPOPATH, &repopath, PKG_REPOURL, &repourl,
 	    PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
 
+	snprintf(dest, sizeof(dest), "%s/%s", cachedir, repopath);
+
 	/* If it is already in the local cachedir, dont bother to download it */
 	if (access(dest, F_OK) == 0)
 		goto checksum;
