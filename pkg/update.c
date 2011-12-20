@@ -127,8 +127,10 @@ exec_update(int argc, char **argv)
 		/*
 		 * Single remote database
 		 */
-
-		if (pkg_config_string(PKG_CONFIG_REPO, &packagesite) != EPKG_OK) {
+		
+		pkg_config_string(PKG_CONFIG_REPO, &packagesite);
+		
+		if (packagesite == NULL) {
 			warnx("PACKAGESITE is not defined.");
 			return (1);
 		}
