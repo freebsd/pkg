@@ -62,6 +62,7 @@ static struct column_mapping {
 	{ "newflatsize", PKG_NEW_FLATSIZE },
 	{ "pkgsize", PKG_NEW_PKGSIZE },
 	{ "licenselogic", PKG_LICENSE_LOGIC},
+	{ "automatic", PKG_AUTOMATIC},
 	{ "rowid", PKG_ROWID},
 	{ "id", PKG_ROWID },
 	{ "weight", -1 },
@@ -855,6 +856,9 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 	assert(db != NULL && pkg != NULL);
 
 	pkg_get(pkg, PKG_REPOURL, &repourl);
+
+	if (repourl == NULL)
+		repourl = "remote";
 
 	if (pkg->type == PKG_REMOTE)
 		snprintf(sql, sizeof(sql), basesql, repourl);
@@ -2059,7 +2063,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		reponame = "remote";
 	}
 
-	sbuf_printf(sql, main_sql, reponame, reponame); 
+	sbuf_printf(sql, main_sql, reponame, reponame);
 
 	switch (match) {
 		case MATCH_ALL:
