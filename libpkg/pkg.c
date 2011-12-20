@@ -159,7 +159,7 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 {
 	int attr;
 
-	while ((attr = va_arg(ap, int)) != -1) {
+	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr < PKG_NUM_FIELDS) {
 			*va_arg(ap, const char **) = sbuf_get(pkg->fields[attr]);
 			continue;
@@ -212,7 +212,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 {
 	int attr;
 
-	while ((attr = va_arg(ap, int)) != -1) {
+	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr < PKG_NUM_FIELDS) {
 			struct sbuf **sbuf;
 			const char *str = va_arg(ap, const char *);

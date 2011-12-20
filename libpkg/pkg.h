@@ -117,7 +117,7 @@ typedef enum {
  * Used by pkg_get() and pkg_set()
  */
 typedef enum {
-	PKG_ORIGIN = 0,
+	PKG_ORIGIN = 1,
 	PKG_NAME,
 	PKG_VERSION,
 	PKG_COMMENT,
