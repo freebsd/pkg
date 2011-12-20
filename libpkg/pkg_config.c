@@ -188,7 +188,10 @@ pkg_config_bool(pkg_config_key key, bool *val)
 		return (EPKG_FATAL);
 	}
 
-	if (c[key].val != NULL && strcasecmp(c[key].val, "yes") == 0)
+	if (c[key].val != NULL && (
+	    strcasecmp(c[key].val, "yes") == 0 ||
+	    strcasecmp(c[key].val, "true" ) == 0 ||
+	    strcasecmp(c[key].val, "on" ) == 0))
 		*val = true;
 
 	return (EPKG_OK);
