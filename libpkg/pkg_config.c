@@ -246,6 +246,7 @@ pkg_init(const char *path)
 	yaml_document_t doc;
 	yaml_node_t *node;
 	size_t i;
+	const char *val = NULL;
 
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
@@ -253,8 +254,12 @@ pkg_init(const char *path)
 	}
 
 	/* first fill with environment variables */
-	for (i = 0; i < c_size; i++)
-		c[i].val = getenv(c[i].key);
+	for (i = 0; i < c_size; i++) {
+		val = getenv(c[i].key);
+
+		if (val != NULL)
+			c[i].val = strdup(val);
+	}
 
 	if (path == NULL)
 		path = "/etc/pkg.conf";
