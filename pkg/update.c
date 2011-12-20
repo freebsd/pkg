@@ -123,7 +123,7 @@ exec_update(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multi_repos);
 
 	/* single repository */
-	if (multi_repos) {
+	if (!multi_repos) {
 		/*
 		 * Single remote database
 		 */

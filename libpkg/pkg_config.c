@@ -176,8 +176,6 @@ pkg_config_string(pkg_config_key key, const char **val)
 int
 pkg_config_bool(pkg_config_key key, bool *val)
 {
-	const char *str;
-
 	*val = false;
 
 	if (parsed != true) {
@@ -190,8 +188,7 @@ pkg_config_bool(pkg_config_key key, bool *val)
 		return (EPKG_FATAL);
 	}
 
-	str = c[key].val;
-	if (str != NULL && strcasecmp(str, "yes"))
+	if (c[key].val != NULL && strcasecmp(c[key].val, "yes") == 0)
 		*val = true;
 
 	return (EPKG_OK);
