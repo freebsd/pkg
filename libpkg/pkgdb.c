@@ -547,6 +547,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 					return (EPKG_FATAL);
 				}
 
+				sbuf_clear(sql);
 				sbuf_printf(sql, "ATTACH '%s' AS '%s';", remotepath, repo_name);
 				if (sql_exec(db->sqlite, sbuf_get(sql)) != EPKG_OK) {
 					sbuf_delete(sql);
@@ -577,6 +578,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			}
 		}
 	}
+
 
 	sbuf_delete(sql);
 	*db_p = db;
@@ -1867,6 +1869,7 @@ static int
 sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql) {
 	sqlite3_stmt *stmt;
 	const char *dbname;
+	bool first = true;
 
 	assert(s != NULL);
 
@@ -1875,20 +1878,21 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql) {
 		return (EPKG_FATAL);
 	}
 
-	sql = sbuf_new_auto();
-
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
-		dbname = sqlite3_column_text(stmt, 0);
+		dbname = sqlite3_column_text(stmt, 1);
 		if (strcmp(dbname, "main") == 0 || strcmp(dbname, "temp") == 0)
 			continue;
 
-		sbuf_cat(sql, " UNION ALL ");
+		if (!first) {
+			sbuf_cat(sql, " UNION ALL ");
+		} else {
+			first = false;
+		}
 		sbuf_printf(sql, multireposql, dbname, dbname);
 	}
 
 	sqlite3_finalize(stmt);
 
-	sbuf_delete(sql);
 	return (EPKG_OK);
 }
 
@@ -1909,11 +1913,12 @@ pkgdb_detach_remotes(sqlite3 *s)
 	sql = sbuf_new_auto();
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
-		dbname = sqlite3_column_text(stmt, 0);
+		dbname = sqlite3_column_text(stmt, 1);
 		if (strcmp(dbname, "main") == 0)
 			continue;
 
-		sbuf_printf(sql, "DETACH '%s';", sqlite3_column_text(stmt, 0));
+		sbuf_clear(sql);
+		sbuf_printf(sql, "DETACH '%s';", dbname);
 		sbuf_finish(sql);
 		sql_exec(s, sbuf_get(sql));
 	}
@@ -2487,7 +2492,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 	sbuf_cat(sql, basesql);
 
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-	    
+
 	if (multirepos_enabled) {
 		/*
 		 * Working on multiple remote repositories
