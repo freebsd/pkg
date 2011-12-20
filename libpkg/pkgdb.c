@@ -2049,7 +2049,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 
 	if (multirepos_enabled) {
 		if (repo != NULL) {
-			if (!is_attached(db->sqlite, "repo")) {
+			if (!is_attached(db->sqlite, repo)) {
 				pkg_emit_error("repository '%s' does not exists", repo);
 				return (NULL);
 			}
