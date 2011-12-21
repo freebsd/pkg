@@ -44,6 +44,8 @@ print_info(struct pkg * const pkg, unsigned int opt)
 	int64_t flatsize, newflatsize, newpkgsize;
 	lic_t licenselogic;
 
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
+
 	pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_PREFIX, &prefix,
 	    PKG_ORIGIN, &origin, PKG_REPONAME, &reponame, PKG_REPOURL, &repourl,
 	    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_COMMENT, &comment,
@@ -56,14 +58,8 @@ print_info(struct pkg * const pkg, unsigned int opt)
 		printf("%-15s: %s\n", "Origin", origin);
 		printf("%-15s: %s\n", "Prefix", prefix);
 
-		if (pkg_type(pkg) == PKG_REMOTE) {
-			pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
-			if (multirepos_enabled) {
-				printf("%-15s: %s [%s]\n", "Repository",
-						reponame, repourl);
-			}
-		}
+		if ((pkg_type(pkg) == PKG_REMOTE) && multirepos_enabled)
+			printf("%-15s: %s [%s]\n", "Repository", reponame, repourl);
 
                 if (!pkg_list_is_empty(pkg, PKG_CATEGORIES)) {
                         printf("%-15s:", "Categories");
@@ -159,8 +155,12 @@ print_info(struct pkg * const pkg, unsigned int opt)
         } else {
                 if (opt & INFO_QUIET)
                         printf("%s-%s\n", name, version);
-                else
-                        printf("%s-%s: %s\n", name, version, comment);
+                else {
+			if (multirepos_enabled)
+				printf("%s-%s [repository: %s]: %s\n", name, version, reponame, comment);
+			else
+				printf("%s-%s: %s\n", name, version, comment);
+		}
         }
 
         return (0);
