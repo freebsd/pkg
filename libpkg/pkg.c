@@ -208,8 +208,6 @@ static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
 	struct pkg_config_kv *repokv = NULL;
-	char *reponame = NULL;
-	char *repourl = NULL;
 	bool multirepos_enabled = false;
 	int attr;
 
@@ -233,9 +231,8 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			}
 
 			if (attr == PKG_REPONAME && multirepos_enabled) {
-				pkg_get(pkg, PKG_REPONAME, &reponame, PKG_REPOURL, &repourl);
 				while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
-					if (strcmp(reponame, pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY)) == 0) 
+					if (strcmp(str, pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY)) == 0)
 						pkg_set(pkg, PKG_REPOURL, pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE));
 				}
 			}
