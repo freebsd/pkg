@@ -824,8 +824,10 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		}
 		manifest_append_kv_literal(scripts, script_types, pkg_script_data(script));
 	}
-	if (message != NULL && *message != '\0')
-		manifest_append_kv_literal(mapping, "message", message);
+	if (message != NULL && *message != '\0') {
+		urlencode(desc, &tmpsbuf);
+		manifest_append_kv_literal(mapping, "message", sbuf_data(tmpsbuf));
+	}
 
 	if (!yaml_emitter_dump(&emitter, &doc))
 		rc = EPKG_FATAL;
