@@ -156,7 +156,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
                 if (opt & INFO_QUIET)
                         printf("%s-%s\n", name, version);
                 else {
-			if (multirepos_enabled)
+			if ((pkg_type(pkg) == PKG_REMOTE) && multirepos_enabled)
 				printf("%s-%s [repository: %s]: %s\n", name, version, reponame, comment);
 			else
 				printf("%s-%s: %s\n", name, version, comment);
