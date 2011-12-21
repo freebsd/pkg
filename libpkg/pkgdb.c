@@ -847,7 +847,7 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_stmt *stmt = NULL;
 	int ret = EPKG_OK;
 	char sql[BUFSIZ];
-	const char *repourl;
+	const char *reponame = NULL;
 	const char *basesql = "" 
 			"SELECT d.name, d.origin, d.version "
 			"FROM '%s'.deps AS d "
@@ -855,13 +855,10 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 
 	assert(db != NULL && pkg != NULL);
 
-	pkg_get(pkg, PKG_REPOURL, &repourl);
-
-	if (repourl == NULL)
-		repourl = "remote";
+	pkg_get(pkg, PKG_REPONAME, &reponame);
 
 	if (pkg->type == PKG_REMOTE)
-		snprintf(sql, sizeof(sql), basesql, repourl);
+		snprintf(sql, sizeof(sql), basesql, reponame);
 	else
 		snprintf(sql, sizeof(sql), basesql, "main");
 
