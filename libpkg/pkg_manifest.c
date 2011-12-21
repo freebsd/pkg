@@ -126,10 +126,14 @@ urldecode(const char *src, struct sbuf **dest)
 			errno = 0;
 			c = strtol(hex, NULL, 16);
 			if (errno != 0) {
-				pkg_emit_errno("strtol()", hex);
-				return (EPKG_FATAL);
+				/* 
+				 * if it fails consider this is not a urlencoded
+				 * information
+				 */
+				sbuf_printf(*dest, "%%%s", hex);
+			} else {
+				sbuf_putc(*dest, c);
 			}
-			sbuf_putc(*dest, c);
 		}
 	}
 	sbuf_finish(*dest);
