@@ -23,7 +23,7 @@ SRCS=		add.c \
 		which.c
 BINDIR=		/usr/sbin
 
-.if exists(../.git)
+.if exists(../.git) && exists(/usr/local/bin/git)
 GITHASH!=	git rev-parse HEAD
 CFLAGS+=	-DGITHASH=\"${GITHASH}\"
 .endif
