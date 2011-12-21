@@ -436,7 +436,6 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	const char *dbdir = NULL;
 	const char *repo_name = NULL;
 	bool multirepos_enabled = false;
-	struct sbuf *sql = sbuf_new_auto();
 	bool create = false;
 	struct pkg_config_kv *repokv = NULL;
 
@@ -522,17 +521,17 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			fprintf(stderr, "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL	/!\\\n");
 			fprintf(stderr, "\t/!\\		     YOU HAVE BEEN WARNED		/!\\\n\n");
 
-
 			while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
 				repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
-				/* is is a reserved name ?*/
+
+				/* is it a reserved name? */
 				if ((strcmp(repo_name, "repo") == 0) ||
 				    (strcmp(repo_name, "main") == 0) ||
 				    (strcmp(repo_name, "temp") == 0) ||
 				    (strcmp(repo_name, "local") == 0))
 					continue;
 
-				/* is it already attached ?*/
+				/* is it already attached? */
 				if (is_attached(db->sqlite, repo_name)) {
 					pkg_emit_error("%s is already listed, ignoring");
 					continue;
@@ -543,20 +542,15 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 
 				if (access(remotepath, R_OK) != 0) {
 					pkg_emit_errno("access", remotepath);
-					sbuf_delete(sql);
 					pkgdb_close(db);
 					return (EPKG_FATAL);
 				}
-
-				sbuf_clear(sql);
-				sbuf_printf(sql, "ATTACH '%s' AS '%s';", remotepath, repo_name);
-				if (sql_exec(db->sqlite, sbuf_get(sql)) != EPKG_OK) {
-					sbuf_delete(sql);
+				
+				if (sql_exec(db->sqlite, "ATTACH '%q' AS '%q';", remotepath, repo_name) != EPKG_OK) {
 					pkgdb_close(db);
 					return (EPKG_FATAL);
 				}
 			}
-
 		} else {
 			/*
 			 * Working on a single remote repository
@@ -569,19 +563,14 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 				pkgdb_close(db);
 				return (EPKG_FATAL);
 			}
-
-			sbuf_printf(sql, "ATTACH '%s' AS 'remote';", remotepath);
-			sbuf_finish(sql);
-
-			if (sql_exec(db->sqlite, sbuf_get(sql)) != EPKG_OK) {
+			
+			if (sql_exec(db->sqlite, "ATTACH '%q' AS 'remote';", remotepath) != EPKG_OK) {
 				pkgdb_close(db);
 				return (EPKG_FATAL);
 			}
 		}
 	}
 
-
-	sbuf_delete(sql);
 	*db_p = db;
 	return (EPKG_OK);
 }
