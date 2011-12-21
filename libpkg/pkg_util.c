@@ -153,7 +153,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 					break;
 				case 'F':
 					if (plist_file == NULL) {
-						pkg_emit_error("No files defined \%F couldn't be expanded, ignoring %s", in);
+						pkg_emit_error("No files defined %%F couldn't be expanded, ignoring %s", in);
 						sbuf_finish(buf);
 						sbuf_free(buf);
 						return (EPKG_FATAL);
@@ -162,7 +162,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 					break;
 				case 'f':
 					if (plist_file == NULL) {
-						pkg_emit_error("No files defined \%f couldn't be expanded, ignoring %s", in);
+						pkg_emit_error("No files defined %%f couldn't be expanded, ignoring %s", in);
 						sbuf_finish(buf);
 						sbuf_free(buf);
 						return (EPKG_FATAL);
@@ -177,7 +177,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 					break;
 				case 'B':
 					if (plist_file == NULL) {
-						pkg_emit_error("No files defined \%B couldn't be expanded, ignoring %s", in);
+						pkg_emit_error("No files defined %%B couldn't be expanded, ignoring %s", in);
 						sbuf_finish(buf);
 						sbuf_free(buf);
 						return (EPKG_FATAL);
