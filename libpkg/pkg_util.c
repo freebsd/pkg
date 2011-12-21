@@ -152,9 +152,21 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 					sbuf_cat(buf, prefix);
 					break;
 				case 'F':
+					if (plist_file == NULL) {
+						pkg_emit_error("No files defined \%F couldn't be expanded, ignoring %s", in);
+						sbuf_finish(buf);
+						sbuf_free(buf);
+						return (EPKG_FATAL);
+					}
 					sbuf_cat(buf, plist_file);
 					break;
 				case 'f':
+					if (plist_file == NULL) {
+						pkg_emit_error("No files defined \%f couldn't be expanded, ignoring %s", in);
+						sbuf_finish(buf);
+						sbuf_free(buf);
+						return (EPKG_FATAL);
+					}
 					if (prefix[strlen(prefix) - 1] == '/')
 						snprintf(path, sizeof(path), "%s%s", prefix, plist_file);
 					else
@@ -164,6 +176,12 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 					sbuf_cat(buf, cp);
 					break;
 				case 'B':
+					if (plist_file == NULL) {
+						pkg_emit_error("No files defined \%B couldn't be expanded, ignoring %s", in);
+						sbuf_finish(buf);
+						sbuf_free(buf);
+						return (EPKG_FATAL);
+					}
 					if (prefix[strlen(prefix) - 1] == '/')
 						snprintf(path, sizeof(path), "%s%s", prefix, plist_file);
 					else
@@ -188,7 +206,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 	*dest = strdup(sbuf_data(buf));
 	sbuf_free(buf);
 	
-	return (0);
+	return (EPKG_OK);
 }
 
 int

@@ -106,7 +106,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				while (isspace(buf[0]))
 					buf++;
 
-				if (format_exec_cmd(&cmd, buf, prefix, last_plist_file) < 0)
+				if (format_exec_cmd(&cmd, buf, prefix, last_plist_file) != EPKG_OK)
 					continue;
 
 				if (plist_p[1] == 'u') {
