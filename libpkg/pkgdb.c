@@ -550,6 +550,13 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 					pkgdb_close(db);
 					return (EPKG_FATAL);
 				}
+
+				/* check if default repository exists */
+				if (!is_attached(db->sqlite, "default")) {
+					pkg_emit_error("no default repository defined");
+					pkgdb_close(db);
+					return (EPKG_FATAL);
+				}
 			}
 		} else {
 			/*
