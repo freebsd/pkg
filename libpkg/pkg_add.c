@@ -112,6 +112,11 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 		goto cleanup;
 	}
 
+	if (pkg_is_valid(pkg) != EPKG_OK) {
+		pkg_emit_error("the package is not valid");
+		return (EPKG_FATAL);
+	}
+
 	if (flags & PKG_ADD_AUTOMATIC)
 		pkg_set(pkg, PKG_AUTOMATIC, true);
 
