@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <err.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -268,6 +269,10 @@ pkg_init(const char *path)
 		path = "/etc/pkg.conf";
 
 	if ((fp = fopen(path, "r")) == NULL) {
+		if (errno != ENOENT) {
+			pkg_emit_errno("fopen", path);
+			return (EPKG_FATAL);
+		}
 		/* no configuration present */
 		parsed = true;
 		return (EPKG_OK);
@@ -317,6 +322,8 @@ pkg_shutdown(void)
 		pkg_emit_error("pkg_shutdown() must be called after pkg_init()");
 		return (EPKG_FATAL);
 	}
+
+	parsed = false;
 
 	return (EPKG_OK);
 }
