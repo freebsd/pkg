@@ -182,6 +182,9 @@ exec_info(int argc, char **argv)
 				case '=':
 					pkgversion[0] = '\0';
 					pkgversion++;
+					/* compatibility pkg_info accept == and = the same way */
+					if (pkgversion[0] == '=')
+						pkgversion++;
 					sign = EQ;
 					break;
 			}
