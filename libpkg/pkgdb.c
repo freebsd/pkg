@@ -533,7 +533,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 
 				/* is it already attached? */
 				if (is_attached(db->sqlite, repo_name)) {
-					pkg_emit_error("%s is already listed, ignoring");
+					pkg_emit_error("repository '%s' is already listed, ignoring", repo_name);
 					continue;
 				}
 
