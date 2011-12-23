@@ -16,7 +16,8 @@ Table of Contents:
 * [Getting help on the commands usage](#pkghelp)
 * [Installing packages](#pkgadd)
 * [Querying the local package database](#pkginfo)
-* [Using remote package repositories](#pkgrepos)
+* [Working with a remote package repository](#pkgrepos)
+* [Working with multiple remote package repositories](#multirepos)
 * [Updating remote repositories](#pkgupdate)
 * [Searching in remote package repositories](#pkgsearch)
 * [Installing from remote repositories](#pkginstall)
@@ -37,7 +38,7 @@ updating, etc.
 pkgng package format is a tar archive which can be raw, or use the following
 compression: gz, bzip2 and xz, defaulting in xz format.
 
-The tar it self is composed in two types of elements:
+The tar itself is composed in two types of elements:
 
 * the special files at the begining of the archive, starting with a "+"
 * the datas.
@@ -272,30 +273,16 @@ To list all install/registered packages in the local database, you will use the 
 For more information on querying the local package database, please refer to pkg-info(1) man page.
 
 <a name="pkgrepos"></a>
-### Using remote package repositories
+### Working with a remote package repository
 
-The good thing about pkgng is that it is able to use remote package repositories.
+pkgng is able to work with remote package repositories as well.
 
 A remote package repository contains a collection of packages which can be
 fetched, searched and installed into your systems.
 
-The other good thing of pkgng is that it is able to work with multiple remote
-repositories, so you can actually fetch, search and install from multiple locations!
-
-	NOTE: Multple remote repositories are currently considered experimental.
-	      Currently multiple remote repositories can be used to fetch, search and
-	      install packages from. Upgrading from multiple repositories will be available
-	      in the next releases of pkgng. For now upgrading can only be done from
-	      a single remote package repository.
-
 In order to use a remote repository you need to define the _PACKAGESITE_ environment variable,
-so that it points to a remote location, which contains packages that can be installed by pkgng.
-
-_PACKAGESITE_ can also be set in the */etc/pkg.conf* configuration file.
-
-If the _PACKAGESITE_ environment variable (or option in */etc/pkg.conf*) is not defined
-then pkgng will work in multiple repositories mode, using the repositories which are
-defined in the */etc/pkg/repositories* file.
+so that it points to a remote location, which contains packages that can be installed by pkgng,
+or set _PACKAGESITE_ in the *pkg.conf(5)* configuration file.
 
 In order to work with a single remote package repository, you would define _PACKAGESITE_ to
 your remote server with packages, like for example (or use */etc/pkg.conf* to set it there):
@@ -308,25 +295,61 @@ your remote server with packages, like for example (or use */etc/pkg.conf* to se
 
 	# export PACKAGESITE=http://example.org/pkgng-repo/
 
-For multiple remote repositories the _PACKAGESITE_ variable needs _NOT_ to be defined and the
-remote package repositories should be definend in the */etc/pkg/repositories* file.
+Then fetch the remote repository using the below command:
 
-A remote package repository in the */etc/pkg/repositories* file uses the following format:
+	# pkg update
 
-	repo-name = url
+This would fetch the remote package database to your local system. Now in order to install
+packages from the remote repository, you would use the `pkg install` command:
 
-The file format is the same as described in pkg.conf(5).
+	# pkg install zsh cfengine3
 
-Example remote repository definition might look like this:
-	
-	# dnaeon's repo of i386 packages
-	dnaeon-i386   = http://unix-heaven.org/FreeBSD/dnaeon-i386/
-	
-	# dnaeon's repo of amd64 packages
-	dnaeon-amd64  = http://unix-heaven.org/FreeBSD/dnaeon-amd64/
+<a name="multirepos"></a>
+### Working with multiple remote repositories
 
-Please check the included sample 'repositories' file for example definitions of remote
-packages repositories and pkg.conf(5) for the file format of the file.
+pkgng is also able to work with multiple remote repositories. In the previous section
+we are using only a single remote repository, which is defined by the *PACKAGESITE* option.
+
+In order to be able to work with multiple remote repositories and instead of changing 
+each time *PACKAGESITE*, you can tell pkg(1) to work in multi-repos mode as well.
+
+To do this, simply enable multi-repos in *pkg.conf(5)* like this:
+
+	# echo "PKG_MULTIREPOS : YES" >> /etc/pkg.conf
+
+The next thing is to define your remote repositories in the *pkg.conf(5)* file.
+
+Below is a part from example configuration file, which defines three remote repositories - *repo1*, *repo2* and
+the *default* repository.
+
+	repos:
+	  default : http://example.org/pkgng/
+	  repo1 : http://somewhere.org/pkgng/repo1/
+	  repo2 : http://somewhere.org/pkgng/repo2/
+
+It is important that you always define a *default* repository - this is the repository that is being
+used when no remote repositories are specified via the `-r <repo>` flag.
+
+Next, fetch the remote repositories:
+
+	# pkg update
+
+And now you can install from the remote repositories using the `pkg install` command like this:
+
+	# pkg install -r repo1 zsh cfengine3
+
+Below you can find publically available repositories for pkgng that you can use:
+
+* http://repos.etoilebsd.net/
+* http://www.unix-heaven.org/FreeBSD/pkgng/repository/
+
+Example repo entries in *pkg.conf(5)* would look like this:
+
+	  bapt : http://repos.etoilebsd.net/9-amd64-20111222/
+	  dnaeon : http://www.unix-heaven.org/FreeBSD/pkgng/repository/9-amd64-20111222/
+
+If you want to mirror the repositories and make them public as well, please get in contact with us, so that we
+can add your repository to the list as well :)
 
 <a name="pkgupdate"></a>
 ### Updating remote repositories

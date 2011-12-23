@@ -14,6 +14,7 @@ Table of Contents
 * [The repository format of pkgng is different from the old one. Will pkgng adapt the old format too?](#8)
 * [Does `pkg repo` include symlinked packages?](#9)
 * [How do I know if I have packages with the same origin?](#10)
+* [How to start working with multi-repos in pkgng?](#11)
 
 <a name="1"></a>
 ### Q: Is there an equivalent for pkg-orphan/pkg_cutleaves with pkgng?
@@ -73,3 +74,9 @@ The default hierarchy has lots of symlinks which should just be ignored and thus
 Hee is how to do that:
 
     sh -c 'find . -name "*.txz" -exec pkg query -f {} %o \;' | sort | uniq -d
+
+<a name="11"></a>
+### Q: How to start working with multi-repos in pkgng?
+
+Please refer to the [README](https://github.com/pkgng/pkgng/blob/master/README.md#multirepos), which explains
+how to enable and get started with multi-repos in pkgng.
