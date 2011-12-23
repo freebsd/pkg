@@ -2,6 +2,7 @@
 # For more information on the file format and 
 # options please refer to the pkg.conf(5) man page
 
+# Configuration options
 PACKAGESITE	    : ftp://ftp.freebsd.org/pub/pkgng
 PKG_DBDIR	    : /var/db/pkg
 PKG_CACHEDIR	    : /var/cache/pkg
@@ -10,3 +11,10 @@ PUBKEY		    : /etc/ssl/pkg.conf
 HANDLE_RC_SCRIPTS   : NO
 PKG_MULTIREPOS	    : NO
 ASSUME_ALWAYS_YES   : NO
+
+# Repository definitions
+repos:
+  default : http://example.org/pkgng/
+  repo1 : http://somewhere.org/pkgng/repo1/
+  repo2 : http://somewhere.org/pkgng/repo2/
+
