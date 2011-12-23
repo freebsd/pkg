@@ -369,7 +369,8 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 					break;
 				}
 
-				pkg_addscript(pkg, val->data.scalar.value, script_type);
+				urldecode(key->data.scalar.value, &tmp);
+				pkg_addscript(pkg, sbuf_data(tmp), script_type);
 				break;
 		}
 
@@ -826,7 +827,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 				script_types = "post-deinstall";
 				break;
 		}
-		manifest_append_kv_literal(scripts, script_types, pkg_script_data(script));
+		urlencode(pkg_script_data(script), &tmpsbuf);
+		manifest_append_kv_literal(scripts, script_types, sbuf_data(tmpsbuf));
 	}
 	if (message != NULL && *message != '\0') {
 		urlencode(desc, &tmpsbuf);
