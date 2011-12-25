@@ -179,7 +179,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 				free(cmd);
 
-			} else if (STARTS_WITH(plist_p, "@dirrm ") || STARTS_WITH(plist_p, "@dirrmtry ")) {
+			} else if (STARTS_WITH(plist_p, "@dirrm")) {
+				/* dirrm or dirrmtry */
 
 				buf = plist_p;
 
