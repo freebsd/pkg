@@ -77,7 +77,14 @@ Display only the packages which origin matches
 .It Fl t Ar <version1> Ar <version2>
 < To be added >
 .It Fl T Ar <pkgname> Ar <pattern>
-< To be added >
+Compare
+.Ar <pkgname>
+against shell glob
+.Ar <pattern> and set exit code accordingly.
+.Fl T
+can also be used in `filter mode':
+When one of the arguments is `-', standard input is used, and lines
+with matching package names/patterns are echoed to standard output.
 .El
 .Sh WARNING
 .Sh ENVRIOMENT
