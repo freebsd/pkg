@@ -280,7 +280,7 @@ exec_version(int argc, char **argv)
 		return (EX_USAGE);
 	
 	} else if (opt == VERSION_TESTPATTERN) {
-		return fnmatch(argv[0], argv[1], 0);
+		return fnmatch(argv[1], argv[0], 0);
 		
 	} else  {
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
