@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <fnmatch.h>
 
 #include "version.h"
 
@@ -208,9 +209,8 @@ exec_version(int argc, char **argv)
 			(opt == VERSION_TESTVERSION && argc < 2)) {
 		usage_version();
 		return (EX_USAGE);
-	}
-
-	else if (opt == VERSION_TESTVERSION) {
+	
+	} else if (opt == VERSION_TESTVERSION) {
 		switch (pkg_version_cmp(argv[0], argv[1])) {
 			case -1:
 				printf("<\n");
@@ -273,6 +273,15 @@ exec_version(int argc, char **argv)
 			}
 		}
 
+	/* -T must be unique */
+	} else if (((opt & VERSION_TESTPATTERN) && opt != VERSION_TESTPATTERN) ||
+			(opt == VERSION_TESTPATTERN && argc != 2)) {
+		usage_version();
+		return (EX_USAGE);
+	
+	} else if (opt == VERSION_TESTPATTERN) {
+		return fnmatch(argv[0], argv[1], 0);
+		
 	} else  {
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 			return (EX_IOERR);
@@ -302,7 +311,7 @@ exec_version(int argc, char **argv)
 			sbuf_delete(cmd);
 		}
 	}
-
+	
 cleanup:
 	while (!SLIST_EMPTY(&indexhead)) {
 		entry = SLIST_FIRST(&indexhead);
