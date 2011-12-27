@@ -130,6 +130,7 @@ exec_version(int argc, char **argv)
 	SLIST_HEAD(, index_entry) indexhead;
 	struct utsname u;
 	int rel_major_ver;
+	int retval;
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
@@ -280,7 +281,24 @@ exec_version(int argc, char **argv)
 		return (EX_USAGE);
 	
 	} else if (opt == VERSION_TESTPATTERN) {
-		return fnmatch(argv[1], argv[0], 0);
+		if (strcmp(argv[0], "-") == 0) {
+			ch = 0; /* pattern from stdin */
+		} else if (strcmp(argv[1], "-") == 0) {
+			ch = 1; /* pkgname from stdin */
+		} else return fnmatch(argv[1], argv[0], 0);
+		
+		retval = FNM_NOMATCH;
+		
+		while ((linelen = getline(&line, &linecap, stdin)) > 0) {
+			line[linelen - 1] = '\0'; /* Strip trailing newline */
+			if ((ch == 0 && (fnmatch(argv[1], line, 0) == 0))
+				|| (ch == 1 && (fnmatch(line, argv[0], 0) == 0))) {
+				retval = EPKG_OK;
+				printf("%.*s\n", (int)linelen, line);
+			}
+		}
+		
+		return (retval);
 		
 	} else  {
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
