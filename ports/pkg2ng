@@ -1,5 +1,7 @@
 #!/bin/sh
 
+: "${PORTSDIR:=/usr/ports}"
+
 if [ $( id -u ) -ne 0 ]
 then
 	echo "This program needs to be run as root"
@@ -22,14 +24,14 @@ do
         continue
 	fi
 	PREFX=$(pkg_info -qp ${PKG})
-	MAINTAINER=$( make -C /usr/ports/${ORIGIN} -V MAINTAINER )
-	CATEGORIES=$( make -C /usr/ports/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
-	LICENSES=$( make -C /usr/ports/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
-	CONFLICTS=$( make -C /usr/ports/${ORIGIN} -V CONFLICTS)
-	LICLOGIC=$(make -C /usr/ports/${ORIGIN} -V LICENSE_COMB )
-	OPTIONS=$(make -C /usr/ports/${ORIGIN} showconfig | awk 'BEGIN{ line=""; }!/^=/ { gsub(/=/,": ",$1); line=line" "$1","; } END{print line}')
-	USERS=$(make -C /usr/ports/${ORIGIN} -V USERS | sed -e "s/ /,/g")
-	GROUPSS=$(make -C /usr/ports/${ORIGIN} -V GROUPS | sed -e "s/ /,/g")
+	MAINTAINER=$( make -C ${PORTSDIR}/${ORIGIN} -V MAINTAINER )
+	CATEGORIES=$( make -C ${PORTSDIR}/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
+	LICENSES=$( make -C ${PORTSDIR}/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
+	CONFLICTS=$( make -C ${PORTSDIR}/${ORIGIN} -V CONFLICTS)
+	LICLOGIC=$(make -C ${PORTSDIR}/${ORIGIN} -V LICENSE_COMB )
+	OPTIONS=$(make -C ${PORTSDIR}/${ORIGIN} showconfig | awk 'BEGIN{ line=""; }!/^=/ { gsub(/=/,": ",$1); line=line" "$1","; } END{print line}')
+	USERS=$(make -C ${PORTSDIR}/${ORIGIN} -V USERS | sed -e "s/ /,/g")
+	GROUPSS=$(make -C ${PORTSDIR}/${ORIGIN} -V GROUPS | sed -e "s/ /,/g")
 
 	# +CONTENTS
 	MDIR=$(mktemp -d /tmp/pkg2ngXXXXX)
