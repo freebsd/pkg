@@ -369,7 +369,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 					break;
 				}
 
-				urldecode(key->data.scalar.value, &tmp);
+				urldecode(val->data.scalar.value, &tmp);
 				pkg_addscript(pkg, sbuf_data(tmp), script_type);
 				break;
 		}
