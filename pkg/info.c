@@ -180,11 +180,11 @@ exec_info(int argc, char **argv)
 					}
 					break;
 				case '=':
+					/* compatibility pkg_info accept == and = the same way */
+					if (pkgname[0] != '=' && pkgversion[-1] == '=')
+						pkgversion[-1] = '\0';
 					pkgversion[0] = '\0';
 					pkgversion++;
-					/* compatibility pkg_info accept == and = the same way */
-					if (pkgversion[0] == '=')
-						pkgversion++;
 					sign = EQ;
 					break;
 			}
@@ -208,7 +208,7 @@ exec_info(int argc, char **argv)
 			const char *version;
 
 			pkg_get(pkg, PKG_VERSION, &version);
-			if (pkgversion != NULL && pkgversion[0] != '0') { /* FIXME special workaround for >=0 */
+			if (pkgversion != NULL) {
 				switch (pkg_version_cmp(version, pkgversion)) {
 					case -1:
 						if (sign != LT && sign != LE) {
