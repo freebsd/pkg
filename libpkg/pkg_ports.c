@@ -198,7 +198,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					len--;
 				}
 
-				if (path[0] == '/')
+				if (buf[0] == '/')
 					snprintf(path, sizeof(path), "%s/", buf);
 				else
 					snprintf(path, sizeof(path), "%s%s%s/", prefix, slash, buf);
