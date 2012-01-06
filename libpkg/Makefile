@@ -27,8 +27,13 @@ SRCS=		pkg.c \
 		packing.c \
 		scripts.c \
 		rcscripts.c \
-		usergroup.c \
-		gr_util.c
+		usergroup.c
+
+OSVERSION!=	awk '/^\#define[[:blank:]]__FreeBSD_version/ {print $$3}' /usr/include/sys/param.h
+
+.if ${OSVERSION} < 1000000
+SRC+=	gr_util.c
+.endif
 
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
