@@ -16,6 +16,7 @@
 #include "audit.h"
 #include "autoremove.h"
 #include "backup.h"
+#include "check.h"
 #include "clean.h"
 #include "create.h"
 #include "delete.h"
@@ -51,6 +52,7 @@ static struct commands {
 	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
 	{ "backup", "Backup and restore the local package database", exec_backup, usage_backup},
+	{ "check", "Check for missing dependencies and database consistency", exec_check, usage_check},
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
 	{ "create", "Creates software package distributions", exec_create, usage_create},
 	{ "delete", "Deletes packages from the database and the system", exec_delete, usage_delete},
