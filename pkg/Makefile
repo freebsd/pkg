@@ -3,6 +3,7 @@ SRCS=		add.c \
 		audit.c \
 		autoremove.c \
 		backup.c \
+		check.c \
 		clean.c \
 		create.c \
 		delete.c \
