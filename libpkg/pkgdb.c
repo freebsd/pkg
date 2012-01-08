@@ -459,12 +459,12 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 
 	if (eaccess(localpath, R_OK) != 0) {
 		if (errno != ENOENT) {
-			pkg_emit_errno("access", localpath);
+			pkg_emit_errno("Unable to create local database ", localpath);
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		} else if (eaccess(dbdir, W_OK) != 0) {
 			/* If we need to create the db but can not write to it, fail early */
-			pkg_emit_errno("eaccess", dbdir);
+			pkg_emit_errno("Unable to create local database ", dbdir);
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		} else {
