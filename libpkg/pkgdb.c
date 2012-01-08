@@ -2011,21 +2011,21 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		"comment, desc, message, arch, osversion, maintainer, "
 		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
 		"cksum, repopath, automatic, (select count(*) FROM '%s'.deps as d WHERE d.origin = pkgjobs.origin) as weight, "
-		"dbname FROM pkgjobs ORDER BY weight DESC;";
+		"'%s' AS dbname FROM pkgjobs ORDER BY weight DESC;";
        
 	const char main_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic, dbname) "
+			"cksum, repopath, automatic) "
 			"SELECT id, origin, name, version, comment, desc, "
 			"arch, osversion, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, path, 0, '%s' FROM '%s'.packages WHERE ";
+			"cksum, path, 0 FROM '%s'.packages WHERE ";
 
 	const char deps_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 				"osversion, maintainer, www, prefix, flatsize, pkgsize, "
-				"cksum, repopath, automatic, dbname) "
+				"cksum, repopath, automatic) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
 				"r.arch, r.osversion, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
-				"r.cksum, r.path, 1, '%s' "
+				"r.cksum, r.path, 1 "
 				"FROM '%s'.packages AS r where r.origin IN "
 				"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j WHERE d.package_id = j.pkgid) "
 				"AND (SELECT origin FROM main.packages WHERE origin=r.origin AND version=r.version) IS NULL;";
@@ -2057,7 +2057,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		reponame = "remote";
 	}
 
-	sbuf_printf(sql, main_sql, reponame, reponame);
+	sbuf_printf(sql, main_sql, reponame);
 
 	switch (match) {
 		case MATCH_ALL:
@@ -2102,7 +2102,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 
 	/* Append dependencies */
 	sbuf_reset(sql);
-	sbuf_printf(sql, deps_sql, reponame, reponame, reponame);
+	sbuf_printf(sql, deps_sql, reponame, reponame);
 
 	do {
 		sql_exec(db->sqlite, sbuf_get(sql));
@@ -2120,7 +2120,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, finalsql, reponame);
+	sbuf_printf(sql, finalsql, reponame, reponame);
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
