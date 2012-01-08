@@ -2159,14 +2159,14 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 			"cksum, repopath, automatic, dbname) "
 			"SELECT id, origin, name, version, comment, desc, "
 			"arch, osversion, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, path, 0, '%s' FROM '%s'.packages WHERE origin IN (select origin from main.packages)";
+			"cksum, path, 0 FROM '%s'.packages WHERE origin IN (select origin from main.packages)";
 
 	const char pkgjobs_sql_2[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 				"osversion, maintainer, www, prefix, flatsize, pkgsize, "
-				"cksum, repopath, automatic, dbname) "
+				"cksum, repopath, automatic) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
 				"r.arch, r.osversion, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
-				"r.cksum, r.path, 1, '%s' AS dbname "
+				"r.cksum, r.path, 1 "
 				"FROM '%s'.packages AS r where r.origin IN "
 				"(SELECT d.origin from '%s'.deps AS d, pkgjobs as j WHERE d.package_id = j.pkgid) "
 				"AND (SELECT p.origin from main.packages as p WHERE p.origin=r.origin AND version=r.version) IS NULL;";
@@ -2202,14 +2202,14 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 
 	create_temporary_pkgjobs(db->sqlite);
 
-	sbuf_printf(sql, pkgjobs_sql_1, reponame, reponame);
+	sbuf_printf(sql, pkgjobs_sql_1, reponame);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	/* Remove packages already installed and in the latest version */
 	sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame, reponame);
+	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame);
 
 	do {
 		sql_exec(db->sqlite, sbuf_get(sql));
