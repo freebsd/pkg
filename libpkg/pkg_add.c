@@ -91,6 +91,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	struct pkg_dep *dep = NULL;
 	struct utsname u;
 	bool extract = true;
+	bool handle_rc = false;
 	char dpath[MAXPATHLEN + 1];
 	const char *basedir;
 	const char *ext;
@@ -230,6 +231,15 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 		pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 	else
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+
+	/*
+	 * start the different related services if the users do want that
+	 * and that the service is running
+	 */
+
+	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+	if (handle_rc)
+		pkg_start_rc_scripts(pkg);
 
 	cleanup_reg:
 	if ((flags & PKG_ADD_UPGRADE) == 0)

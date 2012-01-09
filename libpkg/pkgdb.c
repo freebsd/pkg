@@ -1272,8 +1272,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	int retcode = EPKG_FATAL;
 	int64_t package_id;
 
-	bool handle_rc = false;
-
 	const char sql_begin[] = "BEGIN;";
 	const char sql_mtree[] = "INSERT OR IGNORE INTO mtree(content) VALUES(?1);";
 	const char sql_dirs[] = "INSERT OR IGNORE INTO directories(path) VALUES(?1);";
@@ -1717,14 +1715,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	if (stmt_users != NULL)
 		sqlite3_finalize(stmt_users);
-
-	/*
-	 * start the different related services if the users do want that
-	 * and that the service is running
-	 */
-	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
-	if (handle_rc)
-		pkg_start_rc_scripts(pkg);
 
 	return (retcode);
 }
