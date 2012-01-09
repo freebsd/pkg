@@ -158,9 +158,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					}
 
 					/* more workarounds */
-					if (strstr(buf, "rmdir") || strstr(buf, "kldxref"))
+					if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
+					    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
+					    strstr(cmd, "fc-cache") || strstr(cmd, "rm ")) {
 						post_unexec_append(post_unexec_scripts, "%s%s\n", comment, cmd);
-					else
+					} else
 						sbuf_printf(unexec_scripts, "%s%s\n",comment, cmd);
 
 					/* workaround to detect the @dirrmtry */
@@ -194,9 +196,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 					}
 				} else {
-					if (sbuf_len(exec_scripts) == 0)
-						sbuf_cat(exec_scripts, "#@exec\n"); /* to be able to regenerate the @exec in pkg2legacy */
-					sbuf_printf(exec_scripts, "%s\n", cmd);
+					exec_append(exec_scripts, "%s\n", cmd);
 				}
 
 				free(cmd);
@@ -352,8 +352,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		sbuf_finish(unexec_scripts);
 		post_unexec_append(post_unexec_scripts, sbuf_data(unexec_scripts), "");
 		sbuf_finish(post_unexec_scripts);
-		pkg_appendscript(pkg, sbuf_data(post_unexec_scripts), PKG_SCRIPT_POST_DEINSTALL);
 	}
+	if (sbuf_len(post_unexec_scripts) > 0)
+		pkg_appendscript(pkg, sbuf_data(post_unexec_scripts), PKG_SCRIPT_POST_DEINSTALL);
 
 	regfree(&preg1);
 	regfree(&preg2);
