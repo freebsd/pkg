@@ -21,6 +21,24 @@ struct hardlinks {
 	size_t cap;
 };
 
+static void
+sbuf_append(struct sbuf *buf, const char *comment, const char *str, ...)
+{
+	va_list ap;
+
+	va_start(ap, str);
+
+	if (sbuf_len(buf) == 0)
+		sbuf_printf(buf, "#@%s\n", comment);
+
+	sbuf_vprintf(buf, str, ap);
+	va_end(ap);
+}
+
+#define post_unexec_append(buf, str, ...) sbuf_append(buf, "unexec", str, __VA_ARGS__)
+#define pre_unexec_append(buf, str, ...) sbuf_append(buf, "unexec", str, __VA_ARGS__)
+#define exec_append(buf, str, ...) sbuf_append(buf, "exec", str, __VA_ARGS__)
+
 int
 ports_parse_plist(struct pkg *pkg, char *plist)
 {
@@ -139,7 +157,11 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 						/* end remove mkdir -? */
 					}
 
-					sbuf_printf(unexec_scripts, "%s%s\n",comment, cmd);
+					/* more workarounds */
+					if (strstr(buf, "rmdir") || strstr(buf, "kldxref"))
+						post_unexec_append(post_unexec_scripts, "%s%s\n", comment, cmd);
+					else
+						sbuf_printf(unexec_scripts, "%s%s\n",comment, cmd);
 
 					/* workaround to detect the @dirrmtry */
 					if (comment[0] == '#') {
@@ -205,10 +227,10 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 
 				if (plist_p[6] == 't') {
-					sbuf_printf(unexec_scripts, "#@unexec /bin/rmdir \"%s\" || true\n", path);
+					post_unexec_append(post_unexec_scripts, "#@unexec /bin/rmdir \"%s\" || true\n", path);
 					ret += pkg_adddir_attr(pkg, path, uname, gname, perm, 1);
 				} else {
-					sbuf_printf(unexec_scripts, "#@dirrm %s\n", path);
+					post_unexec_append(post_unexec_scripts, "#@dirrm \"%s\" || true\n", path);
 					ret += pkg_adddir_attr(pkg, path, uname, gname, perm, 0);
 				}
 
@@ -254,11 +276,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			}
 		} else if ((len = strlen(plist_p)) > 0){
 			if (sbuf_len(unexec_scripts) > 0) {
-				if (sbuf_len(unexec_scripts) == 0)
-					sbuf_cat(unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
-
 				sbuf_finish(unexec_scripts);
-				sbuf_cat(pre_unexec_scripts, sbuf_data(unexec_scripts));
+				pre_unexec_append(pre_unexec_scripts, sbuf_data(unexec_scripts), "");
 				sbuf_reset(unexec_scripts);
 			}
 			buf = plist_p;
@@ -330,9 +349,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		pkg_appendscript(pkg, sbuf_data(exec_scripts), PKG_SCRIPT_POST_INSTALL);
 	}
 	if (sbuf_len(unexec_scripts) > 0) {
-		sbuf_cat(post_unexec_scripts, "#@unexec\n"); /* to be able to regenerate the @unexec in pkg2legacy */
 		sbuf_finish(unexec_scripts);
-		sbuf_cat(post_unexec_scripts, sbuf_data(unexec_scripts));
+		post_unexec_append(post_unexec_scripts, sbuf_data(unexec_scripts), "");
 		sbuf_finish(post_unexec_scripts);
 		pkg_appendscript(pkg, sbuf_data(post_unexec_scripts), PKG_SCRIPT_POST_DEINSTALL);
 	}
