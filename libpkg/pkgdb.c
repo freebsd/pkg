@@ -2156,7 +2156,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 		
 	const char pkgjobs_sql_1[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic, dbname) "
+			"cksum, repopath, automatic) "
 			"SELECT id, origin, name, version, comment, desc, "
 			"arch, osversion, maintainer, www, prefix, flatsize, pkgsize, "
 			"cksum, path, 0 FROM '%s'.packages WHERE origin IN (select origin from main.packages)";
