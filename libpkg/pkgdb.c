@@ -1054,8 +1054,8 @@ pkgdb_load_category(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_load_user(struct pkgdb *db, struct pkg *pkg)
 {
-	struct pkg_user *u = NULL;
-	struct passwd *pwd = NULL;
+	/*struct pkg_user *u = NULL;
+	struct passwd *pwd = NULL;*/
 	int ret;
 
 	const char sql[] = ""
@@ -1069,13 +1069,13 @@ pkgdb_load_user(struct pkgdb *db, struct pkg *pkg)
 
 	ret = load_val(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, PKG_USERS);
 
-	/* get user uidstr from local database */
-	while (pkg_users(pkg, &u) == EPKG_OK) {
+	/* TODO get user uidstr from local database */
+/*	while (pkg_users(pkg, &u) == EPKG_OK) {
 		pwd = getpwnam(pkg_user_name(u));
 		if (pwd == NULL)
 			continue;
 		strlcpy(u->uidstr, pw_make(pwd), sizeof(u->uidstr));
-	}
+	}*/
 
 	return (ret);
 }

@@ -212,7 +212,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	/* add the user and group if necessary */
-	pkg_add_user_group(pkg);
+	/* pkg_add_user_group(pkg); */
 
 	/*
 	 * Extract the files on disk.
