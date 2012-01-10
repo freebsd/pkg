@@ -205,11 +205,20 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 		pkg_get(p, PKG_ORIGIN, &pkgorigin, PKG_REPOPATH, &pkgrepopath,
 		    PKG_NEWVERSION, &newversion, PKG_AUTOMATIC, &automatic);
+
 		if (newversion != NULL) {
-				STAILQ_INSERT_TAIL(&pkg_queue, p, next);
-				pkg_script_run(p, PKG_SCRIPT_PRE_DEINSTALL);
-				pkg_get(pkg, PKG_ORIGIN, &origin);
-				pkgdb_unregister_pkg(j->db, origin);
+			pkg = NULL;
+			it = pkgdb_query(j->db, pkgorigin, MATCH_EXACT);
+			if (it != NULL) {
+				if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS) == EPKG_OK) {
+					STAILQ_INSERT_TAIL(&pkg_queue, pkg, next);
+					pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
+					pkg_get(pkg, PKG_ORIGIN, &origin);
+					pkgdb_unregister_pkg(j->db, origin);
+					pkg = NULL;
+				}
+				pkgdb_it_free(it);
+			}
 		}
 
 		it = pkgdb_integrity_conflict_local(j->db, pkgorigin);

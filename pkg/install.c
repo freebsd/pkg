@@ -87,6 +87,7 @@ exec_install(int argc, char **argv)
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}
+	pkgdb_it_free(it);
 
 	if (pkg_jobs_is_empty(jobs)) {
 		printf("Nothing to do\n");
@@ -139,7 +140,6 @@ exec_install(int argc, char **argv)
 
 	cleanup:
 	pkg_jobs_free(jobs);
-	pkgdb_it_free(it);
 	pkgdb_close(db);
 
 	return (retcode);
