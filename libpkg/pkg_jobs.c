@@ -205,6 +205,13 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 		pkg_get(p, PKG_ORIGIN, &pkgorigin, PKG_REPOPATH, &pkgrepopath,
 		    PKG_NEWVERSION, &newversion, PKG_AUTOMATIC, &automatic);
+		if (newversion != NULL) {
+				STAILQ_INSERT_TAIL(&pkg_queue, p, next);
+				pkg_script_run(p, PKG_SCRIPT_PRE_DEINSTALL);
+				pkg_get(pkg, PKG_ORIGIN, &origin);
+				pkgdb_unregister_pkg(j->db, origin);
+		}
+
 		it = pkgdb_integrity_conflict_local(j->db, pkgorigin);
 
 		if (it != NULL) {
