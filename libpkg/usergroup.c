@@ -167,6 +167,8 @@ pkg_add_user_group(struct pkg *pkg)
 						grnew = gr_dup(grlocal);
 					}
 
+					if (nx == 0)
+						grnew->gr_mem = NULL;
 					nx++;
 					grnew->gr_mem = reallocf(grnew->gr_mem, sizeof(*grnew->gr_mem) * (nx + 1));
 					grnew->gr_mem[nx - 1] = __DECONST(char *, pkg_user_name(u));
