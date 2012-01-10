@@ -160,7 +160,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					/* more workarounds */
 					if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
 					    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
-					    strstr(cmd, "fc-cache") || strstr(cmd, "rm ")) {
+					    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
+					    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache")) {
 						post_unexec_append(post_unexec_scripts, "%s%s\n", comment, cmd);
 					} else
 						sbuf_printf(unexec_scripts, "%s%s\n",comment, cmd);
