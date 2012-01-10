@@ -2681,7 +2681,7 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin)
 
        const char sql_conflicts [] = "SELECT DISTINCT p.id as rowid, p.origin, p.name, p.version, p.prefix "
                "FROM packages AS p, files AS f, integritycheck AS i "
-               "WHERE (p.id = f.package_id AND f.path = i.path AND i.origin = ?1) OR p.origin = ?1";
+               "WHERE p.id = f.package_id AND f.path = i.path AND i.origin = ?1";
 
        if (sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL) != SQLITE_OK) {
                ERROR_SQLITE(db->sqlite);
