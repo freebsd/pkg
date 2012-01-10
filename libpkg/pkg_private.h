@@ -31,7 +31,6 @@ struct pkg {
 	STAILQ_HEAD(rdeps, pkg_dep) rdeps;
 	STAILQ_HEAD(files, pkg_file) files;
 	STAILQ_HEAD(dirs, pkg_dir) dirs;
-	STAILQ_HEAD(conflicts, pkg_conflict) conflicts;
 	STAILQ_HEAD(scripts, pkg_script) scripts;
 	STAILQ_HEAD(options, pkg_option) options;
 	STAILQ_HEAD(users, pkg_user) users;
@@ -78,11 +77,6 @@ struct pkg_dir {
 	int keep;
 	int try;
 	STAILQ_ENTRY(pkg_dir) next;
-};
-
-struct pkg_conflict {
-	struct sbuf *glob;
-	STAILQ_ENTRY(pkg_conflict) next;
 };
 
 struct pkg_script {
@@ -142,9 +136,6 @@ void pkg_category_free(struct pkg_category *);
 
 int pkg_license_new(struct pkg_license **);
 void pkg_license_free(struct pkg_license *);
-
-int pkg_conflict_new(struct pkg_conflict **);
-void pkg_conflict_free(struct pkg_conflict *);
 
 int pkg_script_new(struct pkg_script **);
 void pkg_script_free(struct pkg_script *);

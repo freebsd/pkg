@@ -52,7 +52,6 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	STAILQ_INIT(&(*pkg)->rdeps);
 	STAILQ_INIT(&(*pkg)->files);
 	STAILQ_INIT(&(*pkg)->dirs);
-	STAILQ_INIT(&(*pkg)->conflicts);
 	STAILQ_INIT(&(*pkg)->scripts);
 	STAILQ_INIT(&(*pkg)->options);
 	STAILQ_INIT(&(*pkg)->users);
@@ -88,7 +87,6 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_RDEPS);
 	pkg_list_free(pkg, PKG_FILES);
 	pkg_list_free(pkg, PKG_DIRS);
-	pkg_list_free(pkg, PKG_CONFLICTS);
 	pkg_list_free(pkg, PKG_SCRIPTS);
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
@@ -113,7 +111,6 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_RDEPS);
 	pkg_list_free(pkg, PKG_FILES);
 	pkg_list_free(pkg, PKG_DIRS);
-	pkg_list_free(pkg, PKG_CONFLICTS);
 	pkg_list_free(pkg, PKG_SCRIPTS);
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
@@ -382,14 +379,6 @@ pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
 	assert(pkg != NULL);
 
 	PKG_LIST_NEXT(&pkg->dirs, *d);
-}
-
-int
-pkg_conflicts(struct pkg *pkg, struct pkg_conflict **c)
-{
-	assert(pkg != NULL);
-
-	PKG_LIST_NEXT(&pkg->conflicts, *c);
 }
 
 int
@@ -663,29 +652,6 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 }
 
 int
-pkg_addconflict(struct pkg *pkg, const char *glob)
-{
-	struct pkg_conflict *c = NULL;
-
-	assert(pkg != NULL);
-	assert(glob != NULL && glob[0] != '\0');
-
-	while (pkg_conflicts(pkg, &c) != EPKG_END) {
-		if (!strcmp(glob, pkg_conflict_glob(c))) {
-			pkg_emit_error("duplicate conflict listing: %s, ignoring", glob);
-			return (EPKG_OK);
-		}
-	}
-
-	pkg_conflict_new(&c);
-	sbuf_set(&c->glob, glob);
-
-	STAILQ_INSERT_TAIL(&pkg->conflicts, c, next);
-
-	return (EPKG_OK);
-}
-
-int
 pkg_addscript(struct pkg *pkg, const char *data, pkg_script_t type)
 {
 	struct pkg_script *s;
@@ -833,8 +799,6 @@ pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 			return (STAILQ_EMPTY(&pkg->users));
 		case PKG_GROUPS:
 			return (STAILQ_EMPTY(&pkg->groups));
-		case PKG_CONFLICTS:
-			return (STAILQ_EMPTY(&pkg->conflicts));
 		case PKG_SCRIPTS:
 			return (STAILQ_EMPTY(&pkg->scripts));
 	}
@@ -861,7 +825,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_user *u;
 	struct pkg_group *g;
 	struct pkg_script *s;
-	struct pkg_conflict *conflict;
 
 	switch (list) {
 		case PKG_DEPS:
@@ -903,10 +866,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		case PKG_SCRIPTS:
 			LIST_FREE(&pkg->scripts, s, pkg_script_free);
 			pkg->flags &= ~PKG_LOAD_SCRIPTS;
-			break;
-		case PKG_CONFLICTS:
-			LIST_FREE(&pkg->conflicts, conflict, pkg_conflict_free);
-			pkg->flags &= ~PKG_LOAD_CONFLICTS;
 			break;
 	}
 }

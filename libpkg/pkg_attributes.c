@@ -155,37 +155,6 @@ pkg_category_free(struct pkg_category *c)
 }
 
 /*
- * Conflict
- */
-
-int
-pkg_conflict_new(struct pkg_conflict **c)
-{
-	if ((*c = calloc(1, sizeof(struct pkg_conflict))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_conflict");
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_conflict_free(struct pkg_conflict *c)
-{
-	if (c == NULL)
-		return;
-
-	sbuf_free(c->glob);
-	free(c);
-}
-
-const char *
-pkg_conflict_glob(struct pkg_conflict *c)
-{
-	return (sbuf_get(c->glob));
-}
-
-/*
  * License
  */
 int

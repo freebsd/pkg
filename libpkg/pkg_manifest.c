@@ -19,16 +19,15 @@
 
 #define PKG_UNKNOWN -1
 #define PKG_DEPS -2
-#define PKG_CONFLICTS -3
-#define PKG_FILES -4
-#define PKG_DIRS -5
-#define PKG_SCRIPTS -6
-#define PKG_CATEGORIES -7
-#define PKG_LICENSES -8
-#define PKG_OPTIONS -9
-#define PKG_USERS -10
-#define PKG_GROUPS -11
-#define PKG_DIRECTORIES -12
+#define PKG_FILES -3
+#define PKG_DIRS -4
+#define PKG_SCRIPTS -5
+#define PKG_CATEGORIES -6
+#define PKG_LICENSES -7
+#define PKG_OPTIONS -8
+#define PKG_USERS -9
+#define PKG_GROUPS -10
+#define PKG_DIRECTORIES -11
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_flatsize_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -55,7 +54,6 @@ static struct manifest_key {
 	{ "maintainer", PKG_MAINTAINER, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "prefix", PKG_PREFIX, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "deps", PKG_DEPS, YAML_MAPPING_NODE, parse_mapping},
-	{ "conflicts", PKG_CONFLICTS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "files", PKG_FILES, YAML_MAPPING_NODE, parse_mapping},
 	{ "dirs", PKG_DIRS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "directories", PKG_DIRECTORIES, YAML_MAPPING_NODE, parse_mapping},
@@ -213,12 +211,6 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc, int at
 	while (item < node->data.sequence.items.top) {
 		val = yaml_document_get_node(doc, *item);
 		switch (attr) {
-			case PKG_CONFLICTS:
-				if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0)
-					pkg_emit_error("Skipping malformed conflict");
-				else
-					pkg_addconflict(pkg, val->data.scalar.value);
-				break;
 			case PKG_CATEGORIES:
 				if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0)
 					pkg_emit_error("Skipping malformed category");
@@ -635,7 +627,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	yaml_document_t doc;
 	char tmpbuf[BUFSIZ];
 	struct pkg_dep *dep = NULL;
-	struct pkg_conflict *conflict = NULL;
 	struct pkg_option *option = NULL;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
@@ -753,10 +744,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		}
 		manifest_append_kv(groups, pkg_group_name(group), group->gidstr);
 	}
-
-	seq = -1;
-	while (pkg_conflicts(pkg, &conflict) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "conflicts", pkg_conflict_glob(conflict));
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		if (options == -1) {

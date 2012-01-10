@@ -12,7 +12,6 @@ struct pkg_dep;
 struct pkg_file;
 struct pkg_dir;
 struct pkg_category;
-struct pkg_conflict;
 struct pkg_script;
 struct pkg_option;
 struct pkg_license;
@@ -169,7 +168,6 @@ typedef enum {
 	PKG_DIRS,
 	PKG_USERS,
 	PKG_GROUPS,
-	PKG_CONFLICTS,
 	PKG_SCRIPTS
 } pkg_list;
 
@@ -342,13 +340,6 @@ int pkg_users(struct pkg *pkg, struct pkg_user **user);
 int pkg_groups(struct pkg *pkg, struct pkg_group **group);
 
 /**
- * Iterates over the conflicts of the package.
- * @param conflict Must be set to NULL for the first call.
- * @return An error code.
- */
-int pkg_conflicts(struct pkg *, struct pkg_conflict **conflict);
-
-/**
  * Iterates over the scripts of the package.
  * @param script Must be set to NULL for the first call.
  * @return An error code.
@@ -461,12 +452,6 @@ int pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr);
 int pkg_addgid(struct pkg *pkg, const char *group, const char *gidstr);
 
 /**
- * Allocate a new struct pkg_conflict and add it to the conflicts of pkg.
- * @return An error code.
- */
-int pkg_addconflict(struct pkg *pkg, const char *glob);
-
-/**
  * Allocate a new struct pkg_script and add it to the scripts of pkg.
  * @param path The path to the script on disk.
  @ @return An error code.
@@ -519,9 +504,6 @@ const char *pkg_user_name(struct pkg_user *);
 const char *pkg_user_uidstr(struct pkg_user *);
 const char *pkg_group_name(struct pkg_group *);
 const char *pkg_group_gidstr(struct pkg_group *);
-
-/* pkg_conflict */
-const char * pkg_conflict_glob(struct pkg_conflict *);
 
 /* pkg_script */
 const char *pkg_script_data(struct pkg_script *);
@@ -614,16 +596,15 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_BASIC 0
 #define PKG_LOAD_DEPS (1<<0)
 #define PKG_LOAD_RDEPS (1<<1)
-#define PKG_LOAD_CONFLICTS (1<<2)
-#define PKG_LOAD_FILES (1<<3)
-#define PKG_LOAD_SCRIPTS (1<<5)
-#define PKG_LOAD_OPTIONS (1<<6)
-#define PKG_LOAD_MTREE (1<<7)
-#define PKG_LOAD_DIRS (1<<8)
-#define PKG_LOAD_CATEGORIES (1<<9)
-#define PKG_LOAD_LICENSES (1<<10)
-#define PKG_LOAD_USERS (1<<11)
-#define PKG_LOAD_GROUPS (1<<12)
+#define PKG_LOAD_FILES (1<<2)
+#define PKG_LOAD_SCRIPTS (1<<3)
+#define PKG_LOAD_OPTIONS (1<<4)
+#define PKG_LOAD_MTREE (1<<5)
+#define PKG_LOAD_DIRS (1<<6)
+#define PKG_LOAD_CATEGORIES (1<<7)
+#define PKG_LOAD_LICENSES (1<<8)
+#define PKG_LOAD_USERS (1<<9)
+#define PKG_LOAD_GROUPS (1<<10)
 
 /**
  * Get the next pkg.
@@ -641,7 +622,6 @@ void pkgdb_it_free(struct pkgdb_it *);
 
 int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_files(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg);

@@ -159,9 +159,9 @@ int
 pkg_create_installed(const char *outdir, pkg_formats format, const char *rootdir, struct pkg *pkg)
 {
 	struct packing *pkg_archive;
-	int required_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
-						 PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
-						 PKG_LOAD_MTREE | PKG_LOAD_LICENSES;
+	int required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
+	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
+	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES;
 
 	assert(pkg->type == PKG_INSTALLED);
 
