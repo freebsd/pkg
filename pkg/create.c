@@ -27,9 +27,9 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 	const char *name, *version;
-	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_CONFLICTS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
-					  PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
-					  PKG_LOAD_MTREE | PKG_LOAD_LICENSES | PKG_LOAD_USERS | PKG_LOAD_GROUPS;
+	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
+	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
+	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES | PKG_LOAD_USERS | PKG_LOAD_GROUPS;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);

@@ -357,12 +357,6 @@ pkgdb_init(sqlite3 *sdb)
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE"
 	");"
-	"CREATE TABLE conflicts ("
-		"name TEXT NOT NULL,"
-		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
-			" ON UPDATE CASCADE,"
-		"PRIMARY KEY (package_id,name)"
-	");"
 	"CREATE TABLE directories ("
 		"id INTEGER PRIMARY KEY,"
 		"path TEXT NOT NULL UNIQUE"
@@ -644,10 +638,6 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 
 		if (flags & PKG_LOAD_RDEPS)
 			if ((ret = pkgdb_load_rdeps(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_CONFLICTS)
-			if ((ret = pkgdb_load_conflicts(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
 		if (flags & PKG_LOAD_FILES)
@@ -1109,20 +1099,6 @@ pkgdb_load_group(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg)
-{
-	const char sql[] = ""
-		"SELECT name "
-		"FROM conflicts "
-		"WHERE package_id = ?1;";
-
-	assert(db != NULL && pkg != NULL);
-	assert(pkg->type == PKG_INSTALLED);
-
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_CONFLICTS, pkg_addconflict, PKG_CONFLICTS));
-}
-
-int
 pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt = NULL;
@@ -1241,7 +1217,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
-	struct pkg_conflict *conflict = NULL;
 	struct pkg_script *script = NULL;
 	struct pkg_option *option = NULL;
 	struct pkg_category *category = NULL;
@@ -1253,7 +1228,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	sqlite3_stmt *stmt_pkg = NULL;
 	sqlite3_stmt *stmt_mtree = NULL;
 	sqlite3_stmt *stmt_dep = NULL;
-	sqlite3_stmt *stmt_conflict = NULL;
 	sqlite3_stmt *stmt_file = NULL;
 	sqlite3_stmt *stmt_script = NULL;
 	sqlite3_stmt *stmt_option = NULL;
@@ -1285,9 +1259,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	const char sql_dep[] = ""
 		"INSERT OR ROLLBACK INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
-	const char sql_conflict[] = ""
-		"INSERT OR ROLLBACK INTO conflicts (name, package_id) "
-		"VALUES (?1, ?2);";
 	const char sql_file[] = ""
 		"INSERT OR ROLLBACK INTO files (path, sha256, package_id) "
 		"VALUES (?1, ?2, ?3);";
@@ -1408,26 +1379,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			goto cleanup;
 		}
 		sqlite3_reset(stmt_dep);
-	}
-
-	/*
-	 * Insert conflicts list
-	 */
-
-	if (sqlite3_prepare_v2(s, sql_conflict, -1, &stmt_conflict, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
-	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
-		sqlite3_bind_text(stmt_conflict, 1, pkg_conflict_glob(conflict), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt_conflict, 2, package_id);
-
-		if ((ret = sqlite3_step(stmt_conflict)) != SQLITE_DONE) {
-			ERROR_SQLITE(s);
-			goto cleanup;
-		}
-		sqlite3_reset(stmt_conflict);
 	}
 
 	/*
@@ -1679,9 +1630,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	if (stmt_dep != NULL)
 		sqlite3_finalize(stmt_dep);
-
-	if (stmt_conflict != NULL)
-		sqlite3_finalize(stmt_conflict);
 
 	if (stmt_file != NULL)
 		sqlite3_finalize(stmt_file);

@@ -61,16 +61,6 @@ fake-pkg:
 	@${ECHO_CMD} -n "${lic}," >> ${MANIFESTF}
 .endfor
 	@${ECHO_CMD} "]" >> ${MANIFESTF}
-.if !defined(DISABLE_CONFLICTS)
-	@${ECHO_CMD} -n "conflicts: [" >> ${MANIFESTF}
-.for conflicts in ${CONFLICTS:u}
-	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
-.endfor
-.for conflicts in ${CONFLICTS_INSTALL:u}
-	@${ECHO_CMD} -n "\"${conflicts}\"," >> ${MANIFESTF}
-.endfor
-	@${ECHO_CMD} "]" >> ${MANIFESTF}
-.endif
 	@${ECHO_CMD} -n "users: [" >> ${MANIFESTF}
 .for user in ${USERS:u}
 	@${ECHO_CMD} -n "${user}, " >> ${MANIFESTF}

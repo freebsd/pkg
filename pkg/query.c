@@ -28,7 +28,6 @@ static struct query_flags {
         { 'L', "",		1, PKG_LOAD_LICENSES },
         { 'U', "",		1, PKG_LOAD_USERS },
         { 'G', "",		1, PKG_LOAD_GROUPS },
-        { 'K', "",		1, PKG_LOAD_CONFLICTS },
 	{ '?', "drCFODLUGK",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
         { 's', "hb",		0, PKG_LOAD_BASIC }, 
         { 'n', "",		0, PKG_LOAD_BASIC },
@@ -131,9 +130,6 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 						case 'G':
 							sbuf_printf(dest, "%d", !pkg_list_is_empty(pkg, PKG_GROUPS));
 							break;
-						case 'K':
-							sbuf_printf(dest, "%d", !pkg_list_is_empty(pkg, PKG_CONFLICTS));
-							break;
 					}
 					break;
 				case 'l':
@@ -200,9 +196,6 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				case 'G':
 					sbuf_cat(dest, pkg_group_name((struct pkg_group *)data));
 					break;
-				case 'K':
-					sbuf_cat(dest, pkg_conflict_glob((struct pkg_conflict *)data));
-					break;
 				case '%':
 					sbuf_putc(dest, '%');
 					break;
@@ -251,7 +244,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_license *lic = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
-	struct pkg_conflict *conflict = NULL;
 	struct pkg_script *scripts = NULL;
 
 	switch (multiline) {
@@ -306,12 +298,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		case 'G':
 			while (pkg_users(pkg, &user) == EPKG_OK) {
 				format_str(pkg, output, qstr, group);
-				printf("%s\n", sbuf_data(output));
-			}
-			break;
-		case 'K':
-			while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
-				format_str(pkg, output, qstr, conflict);
 				printf("%s\n", sbuf_data(output));
 			}
 			break;
