@@ -27,7 +27,6 @@ do
 	MAINTAINER=$( make -C ${PORTSDIR}/${ORIGIN} -V MAINTAINER )
 	CATEGORIES=$( make -C ${PORTSDIR}/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
 	LICENSES=$( make -C ${PORTSDIR}/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
-	CONFLICTS=$( make -C ${PORTSDIR}/${ORIGIN} -V CONFLICTS)
 	LICLOGIC=$(make -C ${PORTSDIR}/${ORIGIN} -V LICENSE_COMB )
 	OPTIONS=$(make -C ${PORTSDIR}/${ORIGIN} showconfig | awk 'BEGIN{ line=""; }!/^=/ { gsub(/=/,": ",$1); line=line" "$1","; } END{print line}')
 	USERS=$(make -C ${PORTSDIR}/${ORIGIN} -V USERS | sed -e "s/ /,/g")
@@ -57,11 +56,6 @@ do
 		echo -e "  ${dep%-*}: { origin: \"${deporigin}\", version: \"${dep##*-}\"}" >> ${MANIFEST}
 	done
 	egrep -v "^@(name|pkgdep|ignore|conflicts|display)" ${DB}/+CONTENTS >> ${PLIST}
-	echo -n "conflicts: [" >> ${MANIFEST}
-	for conflict in ${CONFLICTS}; do
-		echo -n "\"$conflict\"," >> ${MANIFEST}
-	done
-	echo "]" >> ${MANIFEST}
 	test -n "${CATEGORIES}" && echo "categories: [${CATEGORIES}]" >> ${MANIFEST}
 	test -n "${OPTIONS}" && echo "options: {${OPTIONS}}" >> ${MANIFEST}
 	test -n "${USERS}" && echo "users: [${USERS}]" >> ${MANIFEST}
