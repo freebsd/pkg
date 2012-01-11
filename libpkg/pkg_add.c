@@ -43,10 +43,20 @@ do_extract(struct archive *a, struct archive_entry *ae)
 
 	do {
 		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
-			pkg_emit_error("archive_read_extract(): %s",
-						   archive_error_string(a));
-			retcode = EPKG_FATAL;
-			break;
+			/*
+			 * show error except when the failure is during
+			 * extracting a directory and that the directory already
+			 * exists.
+			 * this allow to install packages linux_base from
+			 * package for example
+			 */
+			if (!(archive_entry_filetype(ae) == AE_IFDIR &&
+			    is_dir(archive_entry_path(ae)))) {
+				pkg_emit_error("archive_read_extract(): %s",
+				    archive_error_string(a));
+				retcode = EPKG_FATAL;
+				break;
+			}
 		}
 
 		/*
