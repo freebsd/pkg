@@ -23,7 +23,7 @@
 #include "pkg_util.h"
 
 #include "db_upgrades.h"
-#define DBVERSION 7
+#define DBVERSION 8
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
