@@ -58,20 +58,19 @@ exec_add(int argc, char **argv)
 	for (i = 1; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
 			snprintf(path, sizeof(path), "./%s", basename(argv[i]));
-			if ((retcode = pkg_fetch_file(argv[i], path)) != EPKG_OK) {
-				continue;
-			}
+			if ((retcode = pkg_fetch_file(argv[i], path)) != EPKG_OK)
+				break;
+
 			file = path;
 		} else
 			file = argv[i];
 
-		if (pkg_add(db, file, 0) != EPKG_OK) {
-			continue;
-		}
+		if ((retcode = pkg_add(db, file, 0)) != EPKG_OK)
+			break;
 	}
 
 	pkgdb_close(db);
 
-	return (retcode == EPKG_OK ? EX_OK : 1);
+	return (retcode == EPKG_OK ? EX_OK : EX_SOFTWARE);
 }
 
