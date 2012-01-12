@@ -51,7 +51,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 			 * package for example
 			 */
 			if (!(archive_entry_filetype(ae) == AE_IFDIR &&
-			    is_dir(archive_entry_path(ae)))) {
+			    is_dir(archive_entry_pathname(ae)))) {
 				pkg_emit_error("archive_read_extract(): %s",
 				    archive_error_string(a));
 				retcode = EPKG_FATAL;
