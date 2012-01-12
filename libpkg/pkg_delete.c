@@ -127,19 +127,23 @@ int
 pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, int force)
 {
 	struct pkg_dir *dir = NULL;
-	int64_t nbpackage;
+/*	int64_t nbpackage; */
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (dir->keep == 1)
 			continue;
 
-		nbpackage = 0;
+		/* 
+		 * To reactivate when stage install will be in otherwise
+		 * This code left cruft on server because sometime package 
+		 */
+/*		nbpackage = 0;
 
-		if (pkgdb_is_dir_used(db, pkg_dir_path(dir), &nbpackage) != EPKG_OK)
+		if (pkgdb_is_dir_used(db, pkg_dir_path(dir), &nbpackage) != EPKG_OK) 
 			return (EPKG_FATAL);
 
 		if (nbpackage > 1)
-			continue;
+			continue; */
 
 		if (pkg_dir_try(dir)) {
 			if (rmdir(pkg_dir_path(dir)) == -1 && errno != ENOTEMPTY && force != 1)
