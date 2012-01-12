@@ -116,6 +116,9 @@ static struct db_upgrades {
 	{7,
 	"CREATE INDEX deporigini on deps(origin);"
 	},
+	{8,
+	"DROP TABLE conflicts;"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL },
