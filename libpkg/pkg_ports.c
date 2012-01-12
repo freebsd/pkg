@@ -22,14 +22,14 @@ struct hardlinks {
 };
 
 static void
-sbuf_append(struct sbuf *buf, const char *comment, const char *str, ...)
+sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...)
 {
 	va_list ap;
 
 	va_start(ap, str);
 
-	if (sbuf_len(buf) == 0)
-		sbuf_printf(buf, "#@%s\n", comment);
+/*	if (sbuf_len(buf) == 0)
+		sbuf_printf(buf, "#@%s\n", comment);*/
 
 	sbuf_vprintf(buf, str, ap);
 	va_end(ap);
@@ -162,7 +162,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
 					    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
 					    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache")) {
-						post_unexec_append(post_unexec_scripts, "%s%s\n", comment, cmd);
+						if (comment[0] != '#')
+							post_unexec_append(post_unexec_scripts, "%s%s\n", comment, cmd);
 					} else
 						sbuf_printf(unexec_scripts, "%s%s\n",comment, cmd);
 
@@ -228,10 +229,10 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 
 				if (plist_p[6] == 't') {
-					post_unexec_append(post_unexec_scripts, "#@unexec /bin/rmdir \"%s\" || true\n", path);
+					//post_unexec_append(post_unexec_scripts, "#@unexec /bin/rmdir \"%s\" || true\n", path);
 					ret += pkg_adddir_attr(pkg, path, uname, gname, perm, 1);
 				} else {
-					post_unexec_append(post_unexec_scripts, "#@dirrm \"%s\" || true\n", path);
+					//post_unexec_append(post_unexec_scripts, "#@dirrm \"%s\" || true\n", path);
 					ret += pkg_adddir_attr(pkg, path, uname, gname, perm, 0);
 				}
 
