@@ -414,7 +414,7 @@ pkgdb_init(sqlite3 *sdb)
 		"UNIQUE(package_id, group_id)"
 	");"
 	"CREATE INDEX deporigini on deps(origin);"
-	"PRAGMA user_version = 7;"
+	"PRAGMA user_version = 8;"
 	"COMMIT;"
 	;
 
