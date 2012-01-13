@@ -124,7 +124,7 @@ pkg_delete_files(struct pkg *pkg, int force)
 }
 
 int
-pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, int force)
+pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, int force)
 {
 	struct pkg_dir *dir = NULL;
 /*	int64_t nbpackage; */
