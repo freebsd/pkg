@@ -158,10 +158,15 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					}
 
 					/* more workarounds */
+					/* -uninstall is for gnome stuff
+					 * glib-compile-schemas, scrollkeeper,
+					 * and gconftool2
+					 */
 					if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
 					    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
 					    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
-					    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache")) {
+					    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache") ||
+					    strstr(cmd, "-uninstall")) {
 						if (comment[0] != '#')
 							post_unexec_append(post_unexec_scripts, "%s%s\n", comment, cmd);
 					} else
