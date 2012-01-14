@@ -3,7 +3,10 @@
 
 #define _WITH_GETLINE
 
+#include <archive.h>
+#include <archive_entry.h>
 #include <err.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,20 +34,57 @@ usage_audit(void)
 }
 
 static int
-fetch_and_extract(const char *audit_file)
+fetch_and_extract(const char *src, const char *dest)
 {
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
+	int fd = -1;
 	const char *tmp = "/tmp/auditfile.tbz";
-	if (pkg_fetch_file(AUDIT_URL, tmp) != EPKG_OK) {
+	int retcode = EPKG_FATAL;
+	int ret;
+
+	if (pkg_fetch_file(src, tmp) != EPKG_OK) {
 		warnx("Can't fetch audit file");
-		return (1);
+		goto cleanup;
 	}
-	/* TODO: extract!!! */
-	return (1);
 
-	audit_file = NULL;
+	a = archive_read_new();
+	archive_read_support_compression_all(a);
+	archive_read_support_format_tar(a);
+
+	if (archive_read_open_filename(a, tmp, 4096) != ARCHIVE_OK) {
+		warnx("archive_read_open_filename(%s): %s",
+				tmp, archive_error_string(a));
+		goto cleanup;
+	}
+
+	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+		fd = open(dest, O_RDWR|O_CREAT|O_TRUNC,
+				S_IRUSR|S_IRGRP|S_IROTH);
+		if (fd < 0) {
+			warn("open(%s)", dest);
+			goto cleanup;
+		}
+
+		if (archive_read_data_into_fd(a, fd) != ARCHIVE_OK) {
+			warnx("archive_read_data_into_fd(%s): %s",
+					dest, archive_error_string(a));
+			goto cleanup;
+		}
+	}
+
+	retcode = EPKG_OK;
+
+	cleanup:
 	unlink(tmp);
+	if (a != NULL)
+		archive_read_finish(a);
+	if (ae != NULL)
+		archive_entry_free(ae);
+	if (fd > 0)
+		close(fd);
 
-	return (0);
+	return (retcode);
 }
 
 static int
@@ -140,7 +180,7 @@ exec_audit(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (fetch == true && fetch_and_extract(audit_file) != 0)
+	if (fetch == true && fetch_and_extract(AUDIT_URL, audit_file) != 0)
 		return (1);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
