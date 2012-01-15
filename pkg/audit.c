@@ -18,8 +18,20 @@
 
 #define AUDIT_URL "http://portaudit.FreeBSD.org/auditfile.tbz"
 
+#define EQ 1
+#define LT 2
+#define LTE 3
+#define GT 4
+#define GTE 5
+struct version_entry {
+	char *version;
+	int type;
+};
+
 struct audit_entry {
-	char *pattern;
+	char *pkgname;
+	struct version_entry v1;
+	struct version_entry v2;
 	char *url;
 	char *desc;
 	SLIST_ENTRY(audit_entry) next;
@@ -87,6 +99,59 @@ fetch_and_extract(const char *src, const char *dest)
 	return (retcode);
 }
 
+/* Fuuuu */
+static void
+parse_pattern(struct audit_entry *e, char *pattern, size_t len)
+{
+	size_t i;
+	char *start = pattern;
+	char *end;
+	char **dest = &e->pkgname;
+	char **next_dest = NULL;
+	struct version_entry *v = &e->v1;
+	int skipnext;
+	int type;
+	for (i = 0; i < len; i++) {
+		type = 0;
+		skipnext = 0;
+		if (pattern[i] == '=') {
+			type = EQ;
+		}
+		if (pattern[i] == '<') {
+			if (pattern[i+1] == '=') {
+				skipnext = 1;
+				type = LTE;
+			} else {
+				type = LT;
+			}
+		}
+		if (pattern[i] == '>') {
+			if (pattern[i+1] == '=') {
+				skipnext = 1;
+				type = GTE;
+			} else {
+				type = GT;
+			}
+		}
+
+		if (type != 0) {
+			v->type = type;
+			next_dest = &v->version;
+			v = &e->v2;
+		}
+
+		if (next_dest != NULL || i == len - 1) {
+			end = pattern + i;
+			*dest = strndup(start, end - start);
+
+			i += skipnext;
+			start = pattern + i + 1;
+			dest = next_dest;
+			next_dest = NULL;
+		}
+	}
+}
+
 static int
 parse_db(const char *path, struct audit_head *h)
 {
@@ -95,17 +160,20 @@ parse_db(const char *path, struct audit_head *h)
 	size_t linecap = 0;
 	ssize_t linelen;
 	char *line = NULL;
-	const char *column;
+	char *column;
 	uint8_t column_id;
 
 	if ((fp = fopen(path, "r")) == NULL)
 	{
 		warn("fopen(%s)", path);
-		return 1;
+		return EPKG_FATAL;
 	}
 
 	while ((linelen = getline(&line, &linecap, fp)) > 0) {
 		column_id = 0;
+
+		if (line[0] == '#')
+			continue;
 
 		if ((e = calloc(1, sizeof(struct audit_entry))) == NULL)
 			err(1, "calloc(audit_entry)");
@@ -114,7 +182,7 @@ parse_db(const char *path, struct audit_head *h)
 		{
 			switch (column_id) {
 				case 0:
-					e->pattern = strdup(column);
+					parse_pattern(e, column, linelen);
 					break;
 				case 1:
 					e->url = strdup(column);
@@ -127,11 +195,69 @@ parse_db(const char *path, struct audit_head *h)
 			}
 			column_id++;
 		}
-
 		SLIST_INSERT_HEAD(h, e, next);
 	}
 
-	return 0;
+	return EPKG_OK;
+}
+
+static bool
+match_version(const char *pkgversion, struct version_entry *v)
+{
+	bool res = false;
+
+	/*
+	 * Return true so it is easier for the caller to handle case where there is
+	 * only one version to match: the missing one will always match.
+	 */ 
+	if (v->version == NULL)
+		return true;
+
+	switch (pkg_version_cmp(pkgversion, v->version)) {
+		case -1:
+			if (v->type == LT || v->type == LTE)
+				res = true;
+			break;
+		case 0:
+			if (v->type == EQ || v->type == LTE || v->type == GTE)
+				res = true;
+			break;
+		case 1:
+			if (v->type == GT || v->type == GTE)
+				res = true;
+			break;
+	}
+	return res;
+}
+
+static bool
+is_vulnerable(struct audit_head *h, struct pkg *pkg)
+{
+	struct audit_entry *e;
+	const char *pkgname;
+	const char *pkgversion;
+	bool res = false, res1, res2;
+
+	pkg_get(pkg,
+		PKG_NAME, &pkgname,
+		PKG_VERSION, &pkgversion
+	);
+
+	SLIST_FOREACH(e, h, next) {
+		if (strcmp(pkgname, e->pkgname) != 0)
+			continue;
+
+		res1 = match_version(pkgversion, &e->v1);
+		res2 = match_version(pkgversion, &e->v2);
+		if (res1 && res2) {
+			res = true;
+			printf("%s-%s is vulnerable\n", pkgname, pkgversion);
+			printf("%s\n", e->desc);
+			printf("WWW: %s\n\n", e->url);
+		}
+	}
+
+	return res;
 }
 
 static void
@@ -142,7 +268,8 @@ free_audit_list(struct audit_head *h)
 	while (!SLIST_EMPTY(h)) {
 		e = SLIST_FIRST(h);
 		SLIST_REMOVE_HEAD(h, next);
-		free(e->pattern);
+		free(e->v1.version);
+		free(e->v2.version);
 		free(e->url);
 		free(e->desc);
 	}
@@ -151,24 +278,22 @@ free_audit_list(struct audit_head *h)
 int
 exec_audit(int argc, char **argv)
 {
+	struct audit_head h = SLIST_HEAD_INITIALIZER();
 	struct pkgdb *db = NULL;
+	struct pkgdb_it *it = NULL;
+	struct pkg *pkg = NULL;
 	const char *db_dir;
 	char audit_file[MAXPATHLEN + 1];
+	unsigned int vuln = 0;
 	bool fetch = false;
 	int ch;
-	struct pkgdb_it *it = NULL;
-	struct audit_head h = SLIST_HEAD_INITIALIZER();
-#if 0
-	struct pkg *pkg = NULL;
-	struct pkg *p = NULL;
-#endif
+	int ret;
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &db_dir) != EPKG_OK) {
 		warnx("PKG_DBIR is missing");
 		return (1);
 	}
 	snprintf(audit_file, sizeof(audit_file), "%s/auditfile", db_dir);
-
 
 	while ((ch = getopt(argc, argv, "F")) != -1) {
 		switch (ch) {
@@ -180,8 +305,11 @@ exec_audit(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (fetch == true && fetch_and_extract(AUDIT_URL, audit_file) != 0)
-		return (1);
+	if (fetch == true) {
+	       	if (fetch_and_extract(AUDIT_URL, audit_file) != EPKG_OK) {
+			return (1);
+		}
+	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (1);
@@ -192,19 +320,26 @@ exec_audit(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (parse_db(audit_file, &h) != 0) {
+	if (parse_db(audit_file, &h) != EPKG_OK) {
 		warnx("Can not parse and load audit db");
 		goto cleanup;
 	}
 
-	/* TODO: do it! seriously!! */
+	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+		if (is_vulnerable(&h, pkg)) {
+			vuln++;
+		}
+	}
 
+	printf("%u problem(s) in your installed packages found.\n", vuln);
 
 cleanup:
 	if (db != NULL)
 		pkgdb_close(db);
 	if (it != NULL)
 		pkgdb_it_free(it);
+	if (pkg != NULL)
+		pkg_free(pkg);
 	free_audit_list(&h);
 
 	return (0);
