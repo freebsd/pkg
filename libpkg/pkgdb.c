@@ -1199,19 +1199,6 @@ pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_has_flag(struct pkgdb *db, int flag)
-{
-	assert(db != NULL);
-
-	return (db->flags & flag);
-}
-
-#define	PKGDB_SET_FLAG(db, flag) \
-	(db)->flags |= (flag)
-#define	PKGDB_UNSET_FLAG(db, flag) \
-	(db)->flags &= ~(flag)
-
-int
 pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 {
 	struct pkg_dep *dep = NULL;
@@ -1298,17 +1285,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	assert(db != NULL);
 
-	if (!complete && pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
-		pkg_emit_error("%s", "tried to register a package with an in-flight SQL command");
-		return (EPKG_FATAL);
-	}
-
 	s = db->sqlite;
 
 	if (!complete && sql_exec(s, sql_begin) != EPKG_OK)
 		return (EPKG_FATAL);
-
-	PKGDB_SET_FLAG(db, PKGDB_FLAG_IN_FLIGHT);
 
 	/* insert mtree record if any */
 	if (sqlite3_prepare_v2(s, sql_mtree, -1, &stmt_mtree, NULL) != SQLITE_OK) {
@@ -1671,20 +1651,12 @@ int
 pkgdb_register_finale(struct pkgdb *db, int retcode)
 {
 	int ret = EPKG_OK;
-	const char *commands[] = { "COMMIT;", "ROLLBACK;", NULL };
-	const char *command;
+	const char *cmd;
 
 	assert(db != NULL);
 
-	if (!pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT)) {
-		pkg_emit_error("database command not in flight (misuse)");
-		return (EPKG_FATAL);
-	}
-
-	command = (retcode == EPKG_OK) ? commands[0] : commands[1];
-	ret = sql_exec(db->sqlite, command);
-
-	PKGDB_UNSET_FLAG(db, PKGDB_FLAG_IN_FLIGHT);
+	cmd = (retcode == EPKG_OK) ? "COMMIT;" : "ROLLBACK;";
+	ret = sql_exec(db->sqlite, cmd);
 
 	return (ret);
 }
