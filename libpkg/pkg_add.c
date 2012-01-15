@@ -212,8 +212,8 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	else
 		retcode = pkgdb_register_pkg(db, pkg, 1);
 
-	if (retcode != EPKG_OK || pkgdb_has_flag(db, PKGDB_FLAG_IN_FLIGHT) == 0)
-		goto cleanup_reg;
+	if (retcode != EPKG_OK)
+		goto cleanup;
 
 	/*
 	 * Execute pre-install scripts

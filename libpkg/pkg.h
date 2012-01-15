@@ -544,22 +544,13 @@ int pkgdb_dump(struct pkgdb *db, char *dest);
 int pkgdb_load(struct pkgdb *db, char *dest);
 
 /**
- * Whether a package database instance has a particular flag.
- * @return 0 if false, true otherwise
- */
-int pkgdb_has_flag(struct pkgdb *db, int flag);
-
-/* The flags used in pkgdb_has_flag() */
-#define	PKGDB_FLAG_IN_FLIGHT	(1 << 0)
-
-/**
- * register a package to the database.
+ * Register a package to the database.
  * @return An error code.
  */
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete);
 
 /**
- * Complete an in-flight package registration command.
+ * Commit or rollback the package to the database..
  */
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
