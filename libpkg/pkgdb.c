@@ -1386,13 +1386,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 				if (( ret = pkgdb_it_next(it, &pkg2, PKG_LOAD_BASIC)) == EPKG_OK) {
 					pkg_get(pkg2, PKG_NAME, &name2, PKG_VERSION, &version2);
 					pkg_emit_error("%s-%s conflicts with %s-%s"
-								   " (installs files into the same place). "
-								   " Problematic file: %s",
-								name, version, name2, version2,
-								pkg_file_get(file, PKG_FILE_PATH));
+					    " (installs files into the same place). "
+					    " Problematic file: %s",
+					    name, version, name2, version2,
+					    pkg_file_get(file, PKG_FILE_PATH));
 				} else {
 					ERROR_SQLITE(s);
 				}
+				pkgdb_it_free(it);
 			} else {
 				ERROR_SQLITE(s);
 			}
