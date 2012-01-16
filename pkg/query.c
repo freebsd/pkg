@@ -399,7 +399,7 @@ usage_query(void)
 	fprintf(stderr, "usage: pkg query -a <query-format>\n");
 	fprintf(stderr, "       pkg query -f <pkg-name> <query-format>\n");
 	fprintf(stderr, "       pkg query [-gxX] <query-format> <pattern> <...>\n\n");
-	fprintf(stderr, "For more information see 'pkg help query.\n");
+	fprintf(stderr, "For more information see 'pkg help query.'\n");
 }
 
 int
