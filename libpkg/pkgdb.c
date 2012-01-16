@@ -1201,6 +1201,7 @@ pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 {
+	struct pkg *pkg2 = NULL;
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
@@ -1210,6 +1211,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkg_license *license = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
+	struct pkgdb_it *it = NULL;
 
 	sqlite3 *s;
 	sqlite3_stmt *stmt_pkg = NULL;
@@ -1276,7 +1278,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		"INSERT OR ROLLBACK INTO pkg_groups(package_id, group_id) "
 		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2));";
 
-	const char *mtree, *origin, *name, *version, *comment, *desc, *message;
+	const char *mtree, *origin, *name, *version, *name2, *version2;
+	const char *comment, *desc, *message;
 	const char *arch, *osversion, *maintainer, *www, *prefix;
 
 	bool automatic;
@@ -1377,8 +1380,19 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 		if ((ret = sqlite3_step(stmt_file)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				    pkg_emit_error("sqlite: constraint violation on files.path:"
-								   " %s", pkg_file_get(file, PKG_FILE_PATH));
+				if ((it = pkgdb_query_which(db, pkg_file_get(file, PKG_FILE_PATH))) == NULL) {
+					ERROR_SQLITE(s);
+				}
+				if (( ret = pkgdb_it_next(it, &pkg2, PKG_LOAD_BASIC)) == EPKG_OK) {
+					pkg_get(pkg2, PKG_NAME, &name2, PKG_VERSION, &version2);
+					pkg_emit_error("%s-%s conflicts with %s-%s"
+								   " (installs files into the same place). "
+								   " Problematic file: %s",
+								name, version, name2, version2,
+								pkg_file_get(file, PKG_FILE_PATH));
+				} else {
+					ERROR_SQLITE(s);
+				}
 			} else {
 				ERROR_SQLITE(s);
 			}
