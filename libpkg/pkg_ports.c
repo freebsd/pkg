@@ -161,7 +161,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 					if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
 					    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
 					    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
-					    strstr(cmd, "fonts.scale")) {
+					    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache") ||
+					    strstr(cmd, "update-desktop-database") || strstr(cmd, "update-mime-database")) {
 						if (comment[0] != '#')
 							post_unexec_append(post_unexec_scripts, "%s%s\n", comment, cmd);
 					} else
