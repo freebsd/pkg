@@ -1390,6 +1390,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 					    " Problematic file: %s",
 					    name, version, name2, version2,
 					    pkg_file_get(file, PKG_FILE_PATH));
+					pkg_free(pkg2);
 				} else {
 					ERROR_SQLITE(s);
 				}
