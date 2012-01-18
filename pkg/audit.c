@@ -7,6 +7,7 @@
 #include <archive_entry.h>
 #include <err.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -244,7 +245,7 @@ is_vulnerable(struct audit_head *h, struct pkg *pkg)
 	);
 
 	SLIST_FOREACH(e, h, next) {
-		if (strcmp(pkgname, e->pkgname) != 0)
+		if (fnmatch(e->pkgname, pkgname, 0) != 0)
 			continue;
 
 		res1 = match_version(pkgversion, &e->v1);
