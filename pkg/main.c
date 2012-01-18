@@ -33,7 +33,7 @@
 #include "version.h"
 #include "which.h"
 
-#define PKGVERSION "1.0-alpha2+"
+#define PKGVERSION "1.0-beta1"
 #ifndef GITHASH
 #define GITHASH "unknown"
 #endif
