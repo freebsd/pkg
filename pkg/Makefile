@@ -1,4 +1,4 @@
-PROG=		pkg
+PROG?=		pkg
 SRCS=		add.c \
 		audit.c \
 		autoremove.c \
@@ -32,27 +32,14 @@ CFLAGS+=	-DGITHASH=\"${GITHASH}\"
 DEBUG_FLAGS+=	-g -O0
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg
-STATIC_PKGNG=	yes
 .endif
 
 CFLAGS+=	-I${.CURDIR}/../libpkg
 LDADD+=		-L${.OBJDIR}/../libpkg \
+		-lpkg \
 		-lutil \
-		-ljail
-.if defined(STATIC_PKGNG)
-LDADD+=		${.OBJDIR}/../libpkg/libpkg.a \
-		-L${.CURDIR}/../external/sqlite \
-		-L${.CURDIR}/../external/libyaml \
-		-lsqlite3 \
-		-lyaml \
-		-larchive \
-		-lsbuf \
-		-lfetch \
-		-lelf \
-		-lpthread
-.else
-LDADD+=		-lpkg
-.endif
+		-ljail \
+		${LDADD_STATIC}
 
 WARNS?=		6
 MAN=	pkg.1 \
