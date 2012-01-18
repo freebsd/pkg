@@ -1,10 +1,11 @@
-PKG_CMD=		/usr/sbin/pkg register
-PKG_DELETE=		/usr/sbin/pkg delete -y
-PKG_INFO=		/usr/sbin/pkg info -g
-PKG_VERSION=		/usr/sbin/pkg version
-PKG_CREATE=		/usr/sbin/pkg create
-PKG_ADD=		/usr/sbin/pkg add
-PKG_QUERY=		/usr/sbin/pkg query
+PKG_BIN?=		${LOCALBASE}/sbin/pkg
+PKG_CMD=		${PKG_BIN} register
+PKG_DELETE=		${PKG_BIN} delete -y
+PKG_INFO=		${PKG_BIN} info -g
+PKG_VERSION=		${PKG_BIN} version
+PKG_CREATE=		${PKG_BIN} create
+PKG_ADD=		${PKG_BIN} add
+PKG_QUERY=		${PKG_BIN} query
 
 PKG_SUFX=		.txz
 

@@ -22,7 +22,9 @@ SRCS=		add.c \
 		utils.c \
 		version.c \
 		which.c
-BINDIR=		/usr/sbin
+PREFIX?=	/usr/local
+BINDIR=		${PREFIX}/sbin
+MANDIR=		${PREFIX}/man/man
 
 .if exists(../.git) && exists(/usr/local/bin/git)
 GITHASH!=	git rev-parse HEAD

@@ -3,7 +3,8 @@
 LIB=		pkg
 INCS=		pkg.h
 WARNS=		6
-SHLIBDIR?=	/usr/lib
+PREFIX?=	/usr/local
+LIBDIR=		${PREFIX}/lib
 SHLIB_MAJOR=	0
 
 #gr_utils.c has to be deleted as soon as it goes in base
