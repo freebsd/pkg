@@ -5,6 +5,7 @@ INCS=		pkg.h
 WARNS=		6
 PREFIX?=	/usr/local
 LIBDIR=		${PREFIX}/lib
+INCLUDEDIR=	${PREFIX}/include
 SHLIB_MAJOR=	0
 
 #gr_utils.c has to be deleted as soon as it goes in base
