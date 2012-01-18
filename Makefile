@@ -1,6 +1,6 @@
 SUBDIR=	external \
 	libpkg \
 	pkg \
-	pkg2legacy
+	pkg-static
 
 .include <bsd.subdir.mk>
