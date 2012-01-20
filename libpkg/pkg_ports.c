@@ -41,6 +41,8 @@ struct plist {
 	bool ignore_next;
 	int64_t flatsize;
 	struct hardlinks *hardlinks;
+	regex_t *preg1;
+	regex_t *preg2;
 	mode_t perm;
 	STAILQ_HEAD(keywords, keyword) keywords;
 };
@@ -221,6 +223,103 @@ ignore_next(struct plist *p, __unused char *line)
 	return (EPKG_OK);
 }
 
+static int
+meta_exec(struct plist *p, char *line, bool unexec)
+{
+	char *cmd, *buf;
+	char comment[2];
+	char path[MAXPATHLEN + 1];
+	regmatch_t pmatch[2];
+
+	if (format_exec_cmd(&cmd, line, p->prefix, p->last_file) != EPKG_OK)
+		return (EPKG_OK);
+
+	if (unexec) {
+		comment[0] = '\0';
+		/* workaround to detect the @dirrmtry */
+		if (STARTS_WITH(cmd, "rmdir ")) {
+			comment[0] = '#';
+			comment[1] = '\0';
+		} else if (STARTS_WITH(cmd, "/bin/rmdir ")) {
+			comment[0] = '#';
+			comment[1] = '\0';
+		}
+		/* remove the glob if any */
+		if (comment[0] == '#') {
+			if (strchr(cmd, '*'))
+				comment[0] = '\0';
+
+			buf = cmd;
+
+			/* start remove mkdir -? */
+			/* remove the command */
+			while (!isspace(buf[0]))
+				buf++;
+
+			while (isspace(buf[0]))
+				buf++;
+
+			if (buf[0] == '-')
+				comment[0] = '\0';
+			/* end remove mkdir -? */
+		}
+
+		if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
+		    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
+		    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
+		    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache") ||
+		    strstr(cmd, "update-desktop-database") || strstr(cmd, "update-mime-database")) {
+			if (comment[0] != '#')
+				post_unexec_append(p->post_unexec_scripts, "%s%s\n", comment, cmd);
+		} else {
+			sbuf_printf(p->unexec_scripts, "%s%s\n",comment, cmd);
+		}
+		if (comment[0] == '#') {
+			buf = cmd;
+
+			/* remove the @dirrm{,try}
+			 * command */
+			while (!isspace(buf[0]))
+				buf++;
+
+			split_chr(buf, '|');
+
+			if (strstr(buf, "\"/")) {
+				while (regexec(p->preg1, buf, 2, pmatch, 0) == 0) {
+					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
+					buf+=pmatch[1].rm_eo;
+					if (!strcmp(path, "/dev/null"))
+						continue;
+					dirrmtry(p, path);
+				}
+			} else {
+				while (regexec(p->preg2, buf, 2, pmatch, 0) == 0) {
+					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
+					buf+=pmatch[1].rm_eo;
+					if (!strcmp(path, "/dev/null"))
+						continue;
+					dirrmtry(p, path);
+				}
+			}
+		}
+	} else {
+		exec_append(p->exec_scripts, "%s\n", cmd);
+	}
+	return (EPKG_OK);
+}
+
+static int
+exec(struct plist *p, char *line)
+{
+	return (meta_exec(p, line, false));
+}
+
+static int
+unexec(struct plist *p, char *line)
+{
+	return (meta_exec(p, line, true));
+}
+
 static void
 populate_keywords(struct plist *p)
 {
@@ -266,7 +365,7 @@ populate_keywords(struct plist *p)
 	/* @dirrmtry */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "comment";
+	k->keyword = "dirrmtry";
 	STAILQ_INIT(&k->actions);
 	a->perform = dirrmtry;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
@@ -299,7 +398,23 @@ populate_keywords(struct plist *p)
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
 	STAILQ_INSERT_TAIL(&p->keywords, k, next);
 
+	/* @exec */
+	k = malloc(sizeof(struct keyword));
+	a = malloc(sizeof(struct action));
+	k->keyword = "exec";
+	STAILQ_INIT(&k->actions);
+	a->perform = exec;
+	STAILQ_INSERT_TAIL(&k->actions, a, next);
+	STAILQ_INSERT_TAIL(&p->keywords, k, next);
 
+	/* @unexec */
+	k = malloc(sizeof(struct keyword));
+	a = malloc(sizeof(struct action));
+	k->keyword = "unexec";
+	STAILQ_INIT(&k->actions);
+	a->perform = unexec;
+	STAILQ_INSERT_TAIL(&k->actions, a, next);
+	STAILQ_INSERT_TAIL(&p->keywords, k, next);
 }
 
 static void
@@ -345,18 +460,14 @@ int
 ports_parse_plist(struct pkg *pkg, char *plist)
 {
 	char *plist_p, *buf, *p, *plist_buf;
-	char comment[2];
 	int nbel, i;
 	size_t next;
 	size_t len;
-	char path[MAXPATHLEN + 1];
-	char *cmd = NULL;
 	int ret = EPKG_OK;
 	off_t sz = 0;
 	int64_t flatsize = 0;
 	struct hardlinks hardlinks = {NULL, 0, 0};
 	regex_t preg1, preg2;
-	regmatch_t pmatch[2];
 	struct plist pplist;
 
 	assert(pkg != NULL);
@@ -383,6 +494,9 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	regcomp(&preg1, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
 	regcomp(&preg2, "[[:space:]](/[[:graph:]/]+)", REG_EXTENDED);
 
+	pplist.preg1 = &preg1;
+	pplist.preg2 = &preg2;
+
 	buf = NULL;
 	p = NULL;
 
@@ -404,113 +518,22 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		}
 
 		if (plist_p[0] == '@') {
-			if (STARTS_WITH(plist_p, "@unexec ") ||
-			    STARTS_WITH(plist_p, "@exec ")) {
-				buf = plist_p;
+			char *keyword = plist_p;
 
-				while (!isspace(buf[0]))
-					buf++;
+			keyword++; /* skip the @ */
+			buf = keyword;
+			while (!(isspace(buf[0]) || buf[0] == '\0'))
+				buf++;
 
-				while (isspace(buf[0]))
-					buf++;
-
-				if (format_exec_cmd(&cmd, buf, pplist.prefix, pplist.last_file) != EPKG_OK)
-					continue;
-
-				if (plist_p[1] == 'u') {
-					comment[0] = '\0';
-					/* workaround to detect the @dirrmtry */
-					if (STARTS_WITH(cmd, "rmdir ")) {
-						comment[0] = '#';
-						comment[1] = '\0';
-					} else if (STARTS_WITH(cmd, "/bin/rmdir ")) {
-						comment[0] = '#';
-						comment[1] = '\0';
-					}
-					/* remove the glob if any */
-					if (comment[0] == '#') {
-						if (strchr(cmd, '*'))
-						comment[0] = '\0';
-
-						buf = cmd;
-
-						/* start remove mkdir -? */
-						/* remove the command */
-						while (!isspace(buf[0]))
-							buf++;
-
-						while (isspace(buf[0]))
-							buf++;
-
-						if (buf[0] == '-')
-							comment[0] = '\0';
-						/* end remove mkdir -? */
-					}
-
-					/* more workarounds */
-					if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
-					    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
-					    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
-					    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache") ||
-					    strstr(cmd, "update-desktop-database") || strstr(cmd, "update-mime-database")) {
-						if (comment[0] != '#')
-							post_unexec_append(pplist.post_unexec_scripts, "%s%s\n", comment, cmd);
-					} else
-						sbuf_printf(pplist.unexec_scripts, "%s%s\n",comment, cmd);
-
-					/* workaround to detect the @dirrmtry */
-					if (comment[0] == '#') {
-						buf = cmd;
-
-						/* remove the @dirrm{,try}
-						 * command */
-						while (!isspace(buf[0]))
-							buf++;
-
-						split_chr(buf, '|');
-
-						if (strstr(buf, "\"/")) {
-							while (regexec(&preg1, buf, 2, pmatch, 0) == 0) {
-								strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
-								buf+=pmatch[1].rm_eo;
-								if (!strcmp(path, "/dev/null"))
-									continue;
-								ret += pkg_adddir_attr(pkg, path, pplist.uname, pplist.gname, pplist.perm, 1);
-							}
-						} else {
-							while (regexec(&preg2, buf, 2, pmatch, 0) == 0) {
-								strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
-								buf+=pmatch[1].rm_eo;
-								if (!strcmp(path, "/dev/null"))
-									continue;
-								ret += pkg_adddir_attr(pkg, path, pplist.uname, pplist.gname, pplist.perm, 1);
-							}
-						}
-
-					}
-				} else {
-					exec_append(pplist.exec_scripts, "%s\n", cmd);
-				}
-
-				free(cmd);
-			} else {
-				char *keyword = plist_p;
-
-				keyword++; /* skip the @ */
-				buf = keyword;
-				while (!(isspace(buf[0]) || buf[0] == '\0'))
-					buf++;
-
-				if (buf[0] != '\0') {
-					buf[0] = '\0';
-					buf++;
-				}
-				/* trim write spaces */
-				while (isspace(buf[0]))
-					buf++;
-				if (parse_keywords(&pplist, keyword, buf) != EPKG_OK)
-					pkg_emit_error("unknown keyword %s, ignoring %s", keyword, plist_p);
+			if (buf[0] != '\0') {
+				buf[0] = '\0';
+				buf++;
 			}
+			/* trim write spaces */
+			while (isspace(buf[0]))
+				buf++;
+			if (parse_keywords(&pplist, keyword, buf) != EPKG_OK)
+				pkg_emit_error("unknown keyword %s, ignoring %s", keyword, plist_p);
 		} else if ((len = strlen(plist_p)) > 0){
 			if (sbuf_len(pplist.unexec_scripts) > 0) {
 				sbuf_finish(pplist.unexec_scripts);
