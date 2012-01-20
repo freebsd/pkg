@@ -201,7 +201,8 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_MULTIREPOS = 5,
 	PKG_CONFIG_HANDLE_RC_SCRIPTS = 6,
 	PKG_CONFIG_ASSUME_ALWAYS_YES = 7,
-	PKG_CONFIG_REPOS = 8
+	PKG_CONFIG_REPOS = 8,
+	PKG_CONFIG_PLIST_KEYWORDS_DIR = 9
 } pkg_config_key;
 
 typedef enum {

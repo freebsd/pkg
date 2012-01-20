@@ -3,12 +3,14 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <yaml.h>
 
 #include "pkg.h"
 #include "pkg_event.h"
@@ -30,10 +32,13 @@ struct keyword {
 struct plist {
 	char *last_file;
 	const char *prefix;
-	struct sbuf *exec_scripts;
-	struct sbuf *unexec_scripts;
-	struct sbuf *pre_unexec_scripts;
-	struct sbuf *post_unexec_scripts;
+	struct sbuf *unexec_buf;
+	struct sbuf *pre_install_buf;
+	struct sbuf *post_install_buf;
+	struct sbuf *pre_deinstall_buf;
+	struct sbuf *post_deinstall_buf;
+	struct sbuf *pre_upgrade_buf;
+	struct sbuf *post_upgrade_buf;
 	struct pkg *pkg;
 	const char *uname;
 	const char *gname;
@@ -50,6 +55,32 @@ struct plist {
 struct action {
 	int (*perform)(struct plist *, char *);
 	STAILQ_ENTRY(action) next;
+};
+
+static int setprefix(struct plist *, char *);
+static int dirrm(struct plist *, char *);
+static int dirrmtry(struct plist *, char *);
+static int file(struct plist *, char *);
+static int setmod(struct plist *, char *);
+static int setowner(struct plist *, char *);
+static int setgroup(struct plist *, char *);
+static int ignore_next(struct plist *, char *);
+static int ignore(struct plist *, char *);
+
+static struct action_cmd {
+	const char *name;
+	int (*perform)(struct plist *, char *);
+} list_actions[] = {
+	{ "setprefix", setprefix },
+	{ "dirrm", dirrm },
+	{ "dirrmtry", dirrm },
+	{ "file", file },
+	{ "setmode", setmod },
+	{ "setowner", setowner },
+	{ "setgroup", setgroup },
+	{ "ignore", ignore },
+	{ "ignore_next", ignore_next },
+	{ NULL, NULL }
 };
 
 static void
@@ -270,9 +301,9 @@ meta_exec(struct plist *p, char *line, bool unexec)
 		    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache") ||
 		    strstr(cmd, "update-desktop-database") || strstr(cmd, "update-mime-database")) {
 			if (comment[0] != '#')
-				post_unexec_append(p->post_unexec_scripts, "%s%s\n", comment, cmd);
+				post_unexec_append(p->post_deinstall_buf, "%s%s\n", comment, cmd);
 		} else {
-			sbuf_printf(p->unexec_scripts, "%s%s\n",comment, cmd);
+			sbuf_printf(p->unexec_buf, "%s%s\n",comment, cmd);
 		}
 		if (comment[0] == '#') {
 			buf = cmd;
@@ -303,7 +334,7 @@ meta_exec(struct plist *p, char *line, bool unexec)
 			}
 		}
 	} else {
-		exec_append(p->exec_scripts, "%s\n", cmd);
+		exec_append(p->post_install_buf, "%s\n", cmd);
 	}
 	return (EPKG_OK);
 }
@@ -436,6 +467,155 @@ plist_free(struct plist *plist)
 }
 
 static int
+parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *line)
+{
+	yaml_node_item_t *item;
+	yaml_node_t *val;
+	int i;
+
+	if (node->type != YAML_SEQUENCE_NODE) {
+		pkg_emit_error("Malformed actions, skipping");
+		return EPKG_FATAL;
+	}
+
+	item = node->data.sequence.items.start;
+	while (item < node->data.sequence.items.top) {
+		val = yaml_document_get_node(doc, *item);
+		if (val->type != YAML_SCALAR_NODE) {
+			pkg_emit_error("Skipping malformed action");
+			++item;
+			continue;
+		}
+
+		for (i = 0; list_actions[i].name != NULL; i++) {
+			if (!strcasecmp(val->data.scalar.value, list_actions[i].name)) {
+				list_actions[i].perform(p, line);
+				break;
+			}
+		}
+		++item;
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *line)
+{
+	yaml_node_pair_t *pair;
+	yaml_node_t *key, *val;
+
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		key = yaml_document_get_node(doc, pair->key);
+		val = yaml_document_get_node(doc, pair->value);
+		if (key->data.scalar.length <= 0) {
+			++pair; /* ignore silently */
+			continue;
+		}
+
+		if (!strcasecmp(key->data.scalar.value, "actions")) {
+			parse_actions(doc, val, p, line);
+			++pair;
+			continue;
+		}
+
+		if (!strcasecmp(key->data.scalar.value, "pre-install")) {
+			if (val->data.scalar.length != 0)
+				sbuf_printf(p->pre_install_buf, val->data.scalar.value, line);
+			++pair;
+			continue;
+		}
+
+		if (!strcasecmp(key->data.scalar.value, "post-install")) {
+			if (val->data.scalar.length != 0)
+				sbuf_printf(p->post_install_buf, val->data.scalar.value, line);
+			++pair;
+			continue;
+		}
+
+		if (!strcasecmp(key->data.scalar.value, "pre-deinstall")) {
+			if (val->data.scalar.length != 0)
+				sbuf_printf(p->pre_deinstall_buf, val->data.scalar.value, line);
+			++pair;
+			continue;
+		}
+
+		if (!strcasecmp(key->data.scalar.value, "post-deinstall")) {
+			if (val->data.scalar.length != 0)
+				sbuf_printf(p->post_deinstall_buf, val->data.scalar.value, line);
+			++pair;
+			continue;
+		}
+
+		if (!strcasecmp(key->data.scalar.value, "pre-upgrade")) {
+			if (val->data.scalar.length != 0)
+				sbuf_printf(p->pre_upgrade_buf, val->data.scalar.value, line);
+			++pair;
+			continue;
+		}
+
+		if (!strcasecmp(key->data.scalar.value, "post-upgrade")) {
+			if (val->data.scalar.length != 0)
+				sbuf_printf(p->post_upgrade_buf, val->data.scalar.value, line);
+			++pair;
+			continue;
+		}
+		++pair;
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+external_keyword(struct plist *plist, char *keyword, char *line)
+{
+	const char *keyword_dir = NULL;
+	char keyfile_path[MAXPATHLEN];
+	FILE *fp;
+	int ret = EPKG_FATAL;
+	yaml_parser_t parser;
+	yaml_document_t doc;
+	yaml_node_t *node;
+
+	pkg_config_string(PKG_CONFIG_PLIST_KEYWORDS_DIR, &keyword_dir);
+	if (keyword_dir == NULL) {
+		pkg_config_string(PKG_CONFIG_PORTSDIR, &keyword_dir);
+		snprintf(keyfile_path, sizeof(keyfile_path), "%s/Keywords/%s.yaml", keyword_dir, keyword);
+	} else {
+		snprintf(keyfile_path, sizeof(keyfile_path), "%s/%s.yaml", keyword_dir, keyword);
+	}
+
+	if ((fp = fopen(keyfile_path, "r")) == NULL) {
+		if (errno != ENOENT)
+			pkg_emit_errno("Unable to open keyword definition", keyfile_path);
+
+		return (EPKG_FATAL);
+	}
+
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input_file(&parser, fp);
+	yaml_parser_load(&parser, &doc);
+
+	node = yaml_document_get_root_node(&doc);
+	if (node != NULL) {
+		if (node->type != YAML_MAPPING_NODE) {
+			pkg_emit_error("Invalid keyword file format: %s", keyfile_path);
+		} else {
+			ret = parse_and_apply_keyword_file(&doc, node, plist, line);
+		}
+	} else {
+		pkg_emit_error("Invalid keyword file format: %s", keyfile_path);
+	}
+
+	yaml_document_delete(&doc);
+	yaml_parser_delete(&parser);
+
+	return (ret);
+
+}
+
+static int
 parse_keywords(struct plist *plist, char *keyword, char *line)
 {
 	struct keyword *k;
@@ -453,13 +633,28 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 		}
 	}
 
-	return (ret);
+	/*
+	 * if we are it means the keyword as not been found
+	 * maybe it is defined externally
+	 * let's try to find it
+	 */
+	return (external_keyword(plist, keyword, line));
+}
+
+static void
+flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
+{
+	if (sbuf_len(buf) > 0) {
+		sbuf_finish(buf);
+		pkg_appendscript(p, sbuf_data(buf), type);
+	}
+	sbuf_delete(buf);
 }
 
 int
 ports_parse_plist(struct pkg *pkg, char *plist)
 {
-	char *plist_p, *buf, *p, *plist_buf;
+	char *plist_p, *buf, *plist_buf;
 	int nbel, i;
 	size_t next;
 	size_t len;
@@ -475,10 +670,13 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 	pplist.last_file = NULL;
 	pplist.prefix = NULL;
-	pplist.exec_scripts = sbuf_new_auto();
-	pplist.unexec_scripts = sbuf_new_auto();
-	pplist.pre_unexec_scripts = sbuf_new_auto();
-	pplist.post_unexec_scripts = sbuf_new_auto();
+	pplist.unexec_buf = sbuf_new_auto();
+	pplist.pre_install_buf = sbuf_new_auto();
+	pplist.post_install_buf = sbuf_new_auto();
+	pplist.pre_deinstall_buf = sbuf_new_auto();
+	pplist.post_deinstall_buf = sbuf_new_auto();
+	pplist.pre_upgrade_buf = sbuf_new_auto();
+	pplist.post_upgrade_buf = sbuf_new_auto();
 	pplist.uname = NULL;
 	pplist.gname = NULL;
 	pplist.perm = 0;
@@ -498,7 +696,6 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	pplist.preg2 = &preg2;
 
 	buf = NULL;
-	p = NULL;
 
 	if ((ret = file_to_buffer(plist, &plist_buf, &sz)) != EPKG_OK)
 		return (ret);
@@ -535,10 +732,10 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			if (parse_keywords(&pplist, keyword, buf) != EPKG_OK)
 				pkg_emit_error("unknown keyword %s, ignoring %s", keyword, plist_p);
 		} else if ((len = strlen(plist_p)) > 0){
-			if (sbuf_len(pplist.unexec_scripts) > 0) {
-				sbuf_finish(pplist.unexec_scripts);
-				pre_unexec_append(pplist.pre_unexec_scripts, sbuf_data(pplist.unexec_scripts), "");
-				sbuf_reset(pplist.unexec_scripts);
+			if (sbuf_len(pplist.unexec_buf) > 0) {
+				sbuf_finish(pplist.unexec_buf);
+				pre_unexec_append(pplist.pre_deinstall_buf, sbuf_data(pplist.unexec_buf), "");
+				sbuf_reset(pplist.unexec_buf);
 			}
 			buf = plist_p;
 			pplist.last_file = buf;
@@ -558,27 +755,17 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 	pkg_set(pkg, PKG_FLATSIZE, flatsize);
 
-	if (sbuf_len(pplist.pre_unexec_scripts) > 0) {
-		sbuf_finish(pplist.pre_unexec_scripts);
-		pkg_appendscript(pkg, sbuf_data(pplist.pre_unexec_scripts), PKG_SCRIPT_PRE_DEINSTALL);
-	}
-	if (sbuf_len(pplist.exec_scripts) > 0) {
-		sbuf_finish(pplist.exec_scripts);
-		pkg_appendscript(pkg, sbuf_data(pplist.exec_scripts), PKG_SCRIPT_POST_INSTALL);
-	}
-	if (sbuf_len(pplist.unexec_scripts) > 0) {
-		sbuf_finish(pplist.unexec_scripts);
-		post_unexec_append(pplist.post_unexec_scripts, sbuf_data(pplist.unexec_scripts), "");
-		sbuf_finish(pplist.post_unexec_scripts);
-	}
-	if (sbuf_len(pplist.post_unexec_scripts) > 0)
-		pkg_appendscript(pkg, sbuf_data(pplist.post_unexec_scripts), PKG_SCRIPT_POST_DEINSTALL);
+	flush_script_buffer(pplist.pre_install_buf, pkg, PKG_SCRIPT_PRE_INSTALL);
+	flush_script_buffer(pplist.post_install_buf, pkg, PKG_SCRIPT_POST_INSTALL);
+	flush_script_buffer(pplist.pre_deinstall_buf, pkg, PKG_SCRIPT_PRE_DEINSTALL);
+	flush_script_buffer(pplist.unexec_buf, pkg, PKG_SCRIPT_POST_DEINSTALL);
+	flush_script_buffer(pplist.post_deinstall_buf, pkg, PKG_SCRIPT_POST_DEINSTALL);
+	flush_script_buffer(pplist.pre_upgrade_buf, pkg, PKG_SCRIPT_PRE_UPGRADE);
+	flush_script_buffer(pplist.post_upgrade_buf, pkg, PKG_SCRIPT_POST_UPGRADE);
 
 	regfree(&preg1);
 	regfree(&preg2);
-	sbuf_delete(pplist.pre_unexec_scripts);
-	sbuf_delete(pplist.exec_scripts);
-	sbuf_delete(pplist.unexec_scripts);
+
 	free(hardlinks.inodes);
 
 	free(plist_buf);

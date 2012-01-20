@@ -86,6 +86,12 @@ static struct config_entry c[] = {
 		"REPOS",
 		"NULL",
 		{ NULL }
+	},
+	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
+		STRING,
+		"PLIST_KEYWORDS_DIR",
+		NULL,
+		{ NULL }
 	}
 };
 
