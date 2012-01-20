@@ -244,6 +244,24 @@ populate_keywords(struct plist *p)
 
 }
 
+static void
+keyword_free(struct keyword *k)
+{
+	struct action *a;
+
+	LIST_FREE(&k->actions, a, free);
+
+	free(k);
+}
+
+static void
+plist_free(struct plist *plist)
+{
+	struct keyword *k;
+	LIST_FREE(&plist->keywords, k, keyword_free);
+	return;
+}
+
 static int
 parse_keywords(struct plist *plist, char *keyword, char *line)
 {
@@ -525,6 +543,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	free(hardlinks.inodes);
 
 	free(plist_buf);
+	plist_free(&pplist);
 
 	return (ret);
 }
