@@ -262,7 +262,7 @@ meta_exec(struct plist *p, char *line, bool unexec)
 	char path[MAXPATHLEN + 1];
 	regmatch_t pmatch[2];
 
-	if (format_exec_cmd(&cmd, line, p->prefix, p->last_file) != EPKG_OK)
+	if (format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL) != EPKG_OK)
 		return (EPKG_OK);
 
 	if (unexec) {
@@ -504,6 +504,7 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 {
 	yaml_node_pair_t *pair;
 	yaml_node_t *key, *val;
+	char *cmd;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
@@ -521,43 +522,61 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "pre-install")) {
-			if (val->data.scalar.length != 0)
-				sbuf_printf(p->pre_install_buf, val->data.scalar.value, line);
+			if (val->data.scalar.length != 0) {
+				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				sbuf_cat(p->pre_install_buf, cmd);
+				free(cmd);
+			}
 			++pair;
 			continue;
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "post-install")) {
-			if (val->data.scalar.length != 0)
-				sbuf_printf(p->post_install_buf, val->data.scalar.value, line);
+			if (val->data.scalar.length != 0) {
+				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				sbuf_cat(p->post_install_buf, cmd);
+				free(cmd);
+			}
 			++pair;
 			continue;
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "pre-deinstall")) {
-			if (val->data.scalar.length != 0)
-				sbuf_printf(p->pre_deinstall_buf, val->data.scalar.value, line);
+			if (val->data.scalar.length != 0) {
+				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				sbuf_cat(p->pre_deinstall_buf, cmd);
+				free(cmd);
+			}
 			++pair;
 			continue;
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "post-deinstall")) {
-			if (val->data.scalar.length != 0)
-				sbuf_printf(p->post_deinstall_buf, val->data.scalar.value, line);
+			if (val->data.scalar.length != 0) { 
+				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				sbuf_cat(p->post_deinstall_buf, cmd);
+				free(cmd);
+			}
 			++pair;
 			continue;
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "pre-upgrade")) {
-			if (val->data.scalar.length != 0)
-				sbuf_printf(p->pre_upgrade_buf, val->data.scalar.value, line);
+			if (val->data.scalar.length != 0) {
+				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				sbuf_cat(p->pre_upgrade_buf, cmd);
+				free(cmd);
+			}
 			++pair;
 			continue;
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "post-upgrade")) {
-			if (val->data.scalar.length != 0)
-				sbuf_printf(p->post_upgrade_buf, val->data.scalar.value, line);
+			if (val->data.scalar.length != 0) {
+				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				sbuf_cat(p->post_upgrade_buf, cmd);
+				free(cmd);
+			}
 			++pair;
 			continue;
 		}

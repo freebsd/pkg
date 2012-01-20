@@ -138,7 +138,7 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 }
 
 int
-format_exec_cmd(char **dest, const char *in, const char *prefix, const char *plist_file)
+format_exec_cmd(char **dest, const char *in, const char *prefix, const char *plist_file, char *line)
 {
 	struct sbuf *buf = sbuf_new_auto();
 	char path[MAXPATHLEN + 1];
@@ -190,7 +190,19 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 					cp[0] = '\0';
 					sbuf_cat(buf, path);
 					break;
+				case '@':
+					if (line != NULL) {
+						sbuf_cat(buf, line);
+						break;
+					}
+
+					/*
+					 * no break here because if line is not
+					 * given (default exec) %@ does not
+					 * exists
+					 */
 				default:
+					sbuf_putc(buf, '%');
 					sbuf_putc(buf, in[0]);
 					break;
 			}
