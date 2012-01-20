@@ -806,14 +806,6 @@ pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 	return (0);
 }
 
-#define LIST_FREE(head, data, free_func) do { \
-	while (!STAILQ_EMPTY(head)) { \
-		data = STAILQ_FIRST(head); \
-		STAILQ_REMOVE_HEAD(head, next); \
-		free_func(data); \
-	}  \
-	} while (0)
-
 void
 pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_dep *d;

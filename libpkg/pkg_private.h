@@ -19,6 +19,14 @@
 		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
+#define LIST_FREE(head, data, free_func) do { \
+	while (!STAILQ_EMPTY(head)) { \
+		data = STAILQ_FIRST(head); \
+		STAILQ_REMOVE_HEAD(head, next); \
+		free_func(data); \
+	}  \
+	} while (0)
+
 struct pkg {
 	struct sbuf * fields[PKG_NUM_FIELDS];
 	bool automatic;
