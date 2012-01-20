@@ -19,7 +19,7 @@ void sbuf_free(struct sbuf *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
-int format_exec_cmd(char **, const char *, const char *, const char *);
+int format_exec_cmd(char **, const char *, const char *, const char *, char *);
 int split_chr(char *, char);
 int file_fetch(const char *, const char *);
 int is_dir(const char *);
