@@ -39,6 +39,8 @@ struct plist {
 	const char *gname;
 	const char *slash;
 	bool ignore_next;
+	int64_t flatsize;
+	struct hardlinks *hardlinks;
 	mode_t perm;
 	STAILQ_HEAD(keywords, keyword) keywords;
 };
@@ -108,6 +110,62 @@ static int
 dirrmtry(struct plist *p, char *line)
 {
 	return (meta_dirrm(p, line, true));
+}
+
+static int
+file(struct plist *p, char *line)
+{
+	size_t len, i;
+	char path[MAXPATHLEN];
+	struct stat st;
+	char *buf;
+	bool regular = false;
+	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+
+	len = strlen(line);
+
+	while (isspace(line[len - 1]))
+		line[len - 1] = '\0';
+
+	if (line[0] == '/')
+		snprintf(path, sizeof(path), "%s", line);
+	else
+		snprintf(path, sizeof(path), "%s%s%s", p->prefix, p->slash, line);
+
+	if (lstat(path, &st) == 0) {
+		buf = NULL;
+		regular = true;
+
+		if (S_ISLNK(st.st_mode))
+			regular = false;
+
+		/* special case for hardlinks */
+		if (st.st_nlink > 1) {
+			for (i = 0; i < p->hardlinks->len; i++) {
+				if (p->hardlinks->inodes[i] == st.st_ino) {
+					regular = false;
+					break;
+				}
+			}
+			if (regular) {
+				if (p->hardlinks->cap <= p->hardlinks->len) {
+					p->hardlinks->inodes = reallocf(p->hardlinks->inodes,
+					    p->hardlinks->cap * sizeof(ino_t));
+				}
+				p->hardlinks->inodes[p->hardlinks->len++] = st.st_ino;
+			}
+		}
+
+		if (regular) {
+			p->flatsize += st.st_size;
+			sha256_file(path, sha256);
+			buf = sha256;
+		}
+		return (pkg_addfile_attr(p->pkg, path, buf, p->uname, p->gname, p->perm));
+	}
+
+	pkg_emit_errno("lstat", path);
+	return (EPKG_OK);
 }
 
 static int
@@ -291,16 +349,12 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	int nbel, i;
 	size_t next;
 	size_t len;
-	size_t j;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	char path[MAXPATHLEN + 1];
 	char *cmd = NULL;
-	struct stat st;
 	int ret = EPKG_OK;
 	off_t sz = 0;
 	int64_t flatsize = 0;
 	struct hardlinks hardlinks = {NULL, 0, 0};
-	bool regular;
 	regex_t preg1, preg2;
 	regmatch_t pmatch[2];
 	struct plist pplist;
@@ -320,6 +374,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	pplist.pkg = pkg;
 	pplist.slash = "";
 	pplist.ignore_next = false;
+	pplist.hardlinks = &hardlinks;
+	pplist.flatsize = 0;
 	STAILQ_INIT(&pplist.keywords);
 
 	populate_keywords(&pplist);
@@ -439,10 +495,12 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 				free(cmd);
 			} else {
 				char *keyword = plist_p;
+
 				keyword++; /* skip the @ */
 				buf = keyword;
 				while (!(isspace(buf[0]) || buf[0] == '\0'))
 					buf++;
+
 				if (buf[0] != '\0') {
 					buf[0] = '\0';
 					buf++;
@@ -461,54 +519,12 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			}
 			buf = plist_p;
 			pplist.last_file = buf;
-			sha256[0] = '\0';
 
 			/* remove spaces at the begining and at the end */
 			while (isspace(buf[0]))
 				buf++;
 
-			while (isspace(buf[len -  1])) {
-				buf[len - 1] = '\0';
-				len--;
-			}
-
-			snprintf(path, sizeof(path), "%s%s%s", pplist.prefix, pplist.slash, buf);
-
-			if (lstat(path, &st) == 0) {
-				p = NULL;
-				regular = true;
-
-				if (S_ISLNK(st.st_mode)) {
-					regular = false;
-				}
-				/* Special case for hardlinks */
-				if (st.st_nlink > 1) {
-					for (j = 0; j < hardlinks.len; j++) {
-						if (hardlinks.inodes[j] == st.st_ino) {
-							regular = false;
-							break;
-						}
-					}
-					/* This is the first time we see this hardlink */
-					if (regular == true) {
-						if (hardlinks.cap <= hardlinks.len) {
-							hardlinks.cap += BUFSIZ;
-							hardlinks.inodes = reallocf(hardlinks.inodes,
-								hardlinks.cap * sizeof(ino_t));
-						}
-						hardlinks.inodes[hardlinks.len++] = st.st_ino;
-					}
-				}
-
-				if (regular) {
-					flatsize += st.st_size;
-					sha256_file(path, sha256);
-					p = sha256;
-				}
-				ret += pkg_addfile_attr(pkg, path, p, pplist.uname, pplist.gname, pplist.perm);
-			} else {
-				pkg_emit_errno("lstat", path);
-			}
+			file(&pplist, buf);
 		}
 
 		if (i != nbel) {
