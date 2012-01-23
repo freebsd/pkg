@@ -725,7 +725,14 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	while (pkg_categories(pkg, &category) == EPKG_OK)
 		manifest_append_seqval(&doc, mapping, &seq, "categories", pkg_category_name(category));
 
-	while (pkg_users(pkg, &user) == EPKG_OK) {
+	seq = -1;
+	while (pkg_users(pkg, &user) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "users", pkg_user_name(user));
+
+	seq = -1;
+	while (pkg_groups(pkg, &group) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "groups", pkg_group_name(group));
+/*	while (pkg_users(pkg, &user) == EPKG_OK) {
 		if (users == -1) {
 			users = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
 			yaml_document_append_mapping_pair(&doc, mapping,
@@ -743,7 +750,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					groups);
 		}
 		manifest_append_kv(groups, pkg_group_name(group), group->gidstr);
-	}
+	}*/
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		if (options == -1) {
