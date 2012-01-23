@@ -45,7 +45,7 @@ exec_info(int argc, char **argv)
 	unsigned int opt = 0;
 	match_t match = MATCH_EXACT;
 	char *pkgname;
-	char *pkgversion;
+	char *pkgversion, *pkgversion2;
 	const char *file = NULL;
 	int ch;
 	int ret = EPKG_OK;
@@ -53,6 +53,7 @@ exec_info(int argc, char **argv)
 	bool gotone = false;
 	int i;
 	int sign = 0;
+	int sign2 = 0;
 
 	/* TODO: exclusive opts ? */
 	while ((ch = getopt(argc, argv, "aegxXEdrlsqopOfF:")) != -1) {
@@ -189,6 +190,49 @@ exec_info(int argc, char **argv)
 					break;
 			}
 		}
+		/*
+		 * pkgversion 2 is because we should be able to match
+		 * llwm>=2.9<3.1.*
+		 */
+		if (argc > 0) {
+			pkgversion2 = strrchr(pkgname, '>');
+			if (pkgversion2 == NULL)
+				pkgversion2 = strrchr(pkgname, '<');
+			if (pkgversion2 == NULL)
+				pkgversion2 = strrchr(pkgname, '=');
+		} else
+			pkgversion2 = NULL;
+
+		if (pkgversion2 != NULL) {
+			switch (pkgversion2[0]) {
+				case '>':
+					pkgversion2[0] = '\0';
+					pkgversion2++;
+					sign2 = GT;
+					if (pkgversion2[0] == '=') {
+						pkgversion2++;
+						sign2=GE;
+					}
+					break;
+				case '<':
+					pkgversion2[0] = '\0';
+					pkgversion2++;
+					sign2 = LT;
+					if (pkgversion2[0] == '=') {
+						pkgversion2++;
+						sign2=LE;
+					}
+					break;
+				case '=':
+					/* compatibility pkg_info accept == and = the same way */
+					if (pkgname[0] != '=' && pkgversion2[-1] == '=')
+						pkgversion2[-1] = '\0';
+					pkgversion2[0] = '\0';
+					pkgversion2++;
+					sign = EQ;
+					break;
+			}
+		}
 
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
 			return (EX_IOERR);
@@ -224,6 +268,28 @@ exec_info(int argc, char **argv)
 						break;
 					case 1:
 						if (sign != GT && sign != GE) {
+							gotone = false;
+							continue;
+						}
+						break;
+				}
+			}
+			if (pkgversion2 != NULL) {
+				switch(pkg_version_cmp(version, pkgversion2)) {
+					case -1:
+						if (sign2 != LT && sign2 != LE) {
+							gotone = false;
+							continue;
+						}
+						break;
+					case 0:
+						if (sign2 != LE && sign2 != GE && sign2 != EQ) {
+							gotone = false;
+							continue;
+						}
+						break;
+					case 1:
+						if (sign2 != GT && sign2 != GE) {
 							gotone = false;
 							continue;
 						}
