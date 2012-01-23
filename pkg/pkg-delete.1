@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 06, 2011
+.Dd January 23, 2012
 .Dt PKG-DELETE 1
 .Os
 .Sh NAME
@@ -48,7 +48,6 @@ Treat the package names as regular expressions.
 .It Fl X
 Treat the package names as extended regular expressions.
 .El
-.Sh WARNING
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm :
@@ -63,6 +62,8 @@ the
 flag was specified.
 .El
 .Sh FILES
+See
+.Xr pkg.conf 5
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
@@ -79,5 +80,3 @@ flag was specified.
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd June 07, 2011
+.Dd January 23, 2012
 .Os
 .Dt PKG-CREATE 1
 .\" ---------------------------------------------------------------------------
@@ -176,14 +176,8 @@ Specifies an alternative location for the installed package database.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh FILES
-.Bl -tag -width ".Pa /etc/pkg.conf"
-.It Pa /etc/pkg.conf
-System-wide configuration file. This file format and available configuration
-options are described in
-.Xr pkg.conf 5 .
-.El
-.\" ---------------------------------------------------------------------------
-.\" .Sh EXAMPLES
+See
+.Xr pkg.conf 5
 .\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg 1 ,
@@ -201,17 +195,3 @@ options are described in
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.\" ---------------------------------------------------------------------------
-.Sh HISTORY
-The
-.Nm
-command first appeared in
-.Fx \" TODO: Put release there
-.\" ---------------------------------------------------------------------------
-.Sh AUTHORS AND CONTRIBUTORS
-.An Baptiste Daroussin Aq bapt@FreeBSD.org
-.An Julien Laffaye Aq jlaffaye@FreeBSD.org
-.An Philippe Pepiot Aq phil@philpep.org
-.An Will Andrews Aq will@FreeBSD.org
-.\" ---------------------------------------------------------------------------
-.\" .Sh BUGS
