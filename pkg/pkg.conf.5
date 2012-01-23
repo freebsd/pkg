@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd Dec 10, 2011
+.Dd January 23, 2012
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -29,7 +29,7 @@ is the system-wide configuration file used by the
 tools.
 .Pp
 The default location of this file is
-.Fa /etc/pkg.conf
+.Fa /usr/local/etc/pkg.conf
 .Pp
 Lines in the file beginning with a "#" are comments
 and are ignored.
@@ -72,7 +72,10 @@ repository database. The default value for this file is
 .It Cm HANDLE_RC_SCRIPTS(boolean)
 This option when enabled
 will automatically perform start/stop of services during package
-installation and deinstallation. By default this option is disabled.
+installation and deinstallation. Services are started on installation only
+if they are enabled in
+.Fa /etc/rc.conf .
+By default this option is disabled.
 .It Cm ASSUME_ALWAYS_YES(boolean)
 This option when enabled
 .Xr pkg 1
@@ -86,17 +89,17 @@ This option when enabled will tell
 .Xr pkg 1
 to work in mutliple repositories mode. For example repositories
 definitions, please have a look at the sample configuration file.
+.It Cm PLIST_KEYWORS_DIR(string)
+????
 .El
-.Sh WARNING
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Xr pkg 1
 .Pp
 An environment variable with the name of the configuration file
 always overrides the value of an option set in
-.Fa /etc/pkg.conf
+.Xr pkg.conf 5 
 file.
-.Sh FILES
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
@@ -111,6 +114,4 @@ file.
 .Xr pkg-update 1 ,
 .Xr pkg-upgrade 1 ,
 .Xr pkg-version 1 ,
-.Xr pkg-which 1 ,
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS
+.Xr pkg-which 1

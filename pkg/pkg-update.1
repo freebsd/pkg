@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 06, 2011
+.Dd January 23, 2012
 .Dt PKG-UPDATE 1
 .Os
 .Sh NAME
@@ -28,25 +28,19 @@
 is used for updating from remote package repository databases.
 .Pp
 The remote repository databases to be updated are defined in the
-.Pa /etc/pkg/repositories
+.Xr pkg.conf 5
 file.
-A remote package repository definition is in the form of
-.Fa name = url
-where
-.Ar url
-points to the remote location of the package repository.
 .Pp
 It is always a good idea to update your remote package
 repositories before doing a remote install via
 .Xr pkg-install 1
 or upgrades via
-.Xr pkg-upgrade 1
+.Xr pkg-upgrade 1 .
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
 .El
-.Sh WARNING
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm :
@@ -57,23 +51,13 @@ When \fBPACKAGESITE\fP is defined
 will only use the remote repository to which it points. Otherwise
 .Nm
 will work on multiple repositories as listed in the
-.Pa /etc/pkg/repositories
+.Xr pkg.conf 5
 file. Please note that multiple remote repositories is still considered
 highly experimental.
 .El
 .Sh FILES
-.Bl -tag -width -".Pa /etc/pkg/repositories"
-.It Pa /etc/pkg/repositories
-Global repositories file. This file contains a pair of
-.Fa name = url
-entries, each describing a remote repository, from which
-.Nm
-will fetch. The file format of the file
-is the same as described in
+See
 .Xr pkg.conf 5
-Please refer to the included sample configuration file for example
-definitions of remote repositories.
-.El
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
@@ -90,5 +74,3 @@ definitions of remote repositories.
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS

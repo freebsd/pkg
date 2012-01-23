@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 06, 2011
+.Dd January 23, 2012
 .Dt PKG-UPGRADE 1
 .Os
 .Sh NAME
@@ -42,7 +42,6 @@ The following options are supported by
 .It Fl y
 Assume yes when asked for confirmation before package installation.
 .El
-.Sh WARNING
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm :
@@ -68,17 +67,8 @@ the
 flag was specified.
 .El
 .Sh FILES
-.Bl -tag -width -".Pa /etc/pkg/repositories"
-.It Pa /etc/pkg/repositories
-Global repositories file. This file contains a pair of
-.Fa name = url
-entries, each describing a remote repository, from which
-.Nm
-can fetch and upgrade packages. The file format of the file
-is the same as described in
+See
 .Xr pkg.conf 5
-Please refer to the included sample configuration file for example
-definitions of remote repositories.
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
@@ -95,5 +85,3 @@ definitions of remote repositories.
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS
