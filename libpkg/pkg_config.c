@@ -272,7 +272,7 @@ pkg_init(const char *path)
 	}
 
 	if (path == NULL)
-		path = "/etc/pkg.conf";
+		path = PREFIX"/etc/pkg.conf";
 
 	if ((fp = fopen(path, "r")) == NULL) {
 		if (errno != ENOENT) {
