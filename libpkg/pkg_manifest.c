@@ -643,8 +643,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int depkv;
 	int files = -1;
 	int dirs = -1;
-	int users = -1;
-	int groups = -1;
+/*	int users = -1;
+	int groups = -1;*/
 	int options = -1;
 	int scripts = -1;
 	const char *script_types = NULL;
