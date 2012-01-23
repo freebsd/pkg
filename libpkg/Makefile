@@ -52,6 +52,8 @@ LDADD+=		-L${.CURDIR}/../external/sqlite \
 		-lutil \
 		-lpthread
 
+CFLAGS+=	-DPREFIX=\"${PREFIX}\"
+
 DEBUG_FLAGS+=  -g -O0
 STRIP=
 .if defined(PROFILE_BUILD)
