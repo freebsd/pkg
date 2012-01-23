@@ -229,7 +229,7 @@ exec_info(int argc, char **argv)
 						pkgversion2[-1] = '\0';
 					pkgversion2[0] = '\0';
 					pkgversion2++;
-					sign = EQ;
+					sign2 = EQ;
 					break;
 			}
 		}
