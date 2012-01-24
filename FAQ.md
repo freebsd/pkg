@@ -87,11 +87,11 @@ Please refer to the [README](https://github.com/pkgng/pkgng/blob/master/README.m
 The number one reason is the XZ compression, which is slow.
 
 <a name="13"></a>
-### Q: Does pkgng work wit portaudit?
+### Q: Does pkgng work with portaudit?
 
 No, pkgng uses internal `pkg audit` command.
 
 <a name="14"></a>
 ### Q: When will pkgng be the default package manager of FreeBSD?
 
-In FreeBSD version 9.1.
+Possibly in version 9.1.
