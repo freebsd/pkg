@@ -45,13 +45,13 @@ exec_info(int argc, char **argv)
 	unsigned int opt = 0;
 	match_t match = MATCH_EXACT;
 	char *pkgname;
-	char *pkgversion, *pkgversion2;
+	char *pkgversion = NULL, *pkgversion2 = NULL;
 	const char *file = NULL;
 	int ch;
 	int ret = EPKG_OK;
 	int retcode = 0;
 	bool gotone = false;
-	int i;
+	int i, j;
 	int sign = 0;
 	int sign2 = 0;
 
@@ -152,87 +152,79 @@ exec_info(int argc, char **argv)
 			pkgname[strlen(pkgname) -1] = '\0';
 
 		if (argc > 0) {
-			pkgversion = strrchr(pkgname, '>');
-			if (pkgversion == NULL)
-				pkgversion = strrchr(pkgname, '<');
-			if (pkgversion == NULL)
-				pkgversion = strrchr(pkgname, '=');
+			j=0;
+			while (pkgname[j] != '\0') {
+				if (pkgname[j] == '<') {
+					if (pkgversion) {
+						pkgversion2 = pkgname + j;
+						sign2 = LT;
+						pkgversion2[0] = '\0';
+						pkgversion2++;
+						if (pkgversion2[0] == '=') {
+							pkgversion2++;
+							sign=LE;
+							j++;
+						}
+					} else {
+						pkgversion = pkgname + j;
+						sign = LT;
+						pkgversion[0] = '\0';
+						pkgversion++;
+						if (pkgversion[0] == '=') {
+							pkgversion++;
+							sign=LE;
+							j++;
+						}
+					}
+				} else if (pkgname[j] == '>') {
+					if (pkgversion) {
+						pkgversion2 = pkgname + j;
+						sign2 = GT;
+						pkgversion2[0] = '\0';
+						pkgversion2++;
+						if (pkgversion2[0] == '=') {
+							pkgversion2++;
+							sign=GE;
+							j++;
+						}
+					} else {
+						pkgversion = pkgname + j;
+						sign = GT;
+						pkgversion[0] = '\0';
+						pkgversion++;
+						if (pkgversion[0] == '=') {
+							pkgversion++;
+							sign=GE;
+							j++;
+						}
+					}
+				} else if (pkgname[j] == '=') {
+					if (pkgversion) {
+						pkgversion2 = pkgname + j;
+						sign2 = EQ;
+						pkgversion2[0] = '\0';
+						pkgversion2++;
+						if (pkgversion2[0] == '=') {
+							pkgversion2++;
+							sign=EQ;
+							j++;
+						}
+					} else {
+						pkgversion = pkgname + j;
+						sign = EQ;
+						pkgversion[0] = '\0';
+						pkgversion++;
+						if (pkgversion[0] == '=') {
+							pkgversion++;
+							sign=EQ;
+							j++;
+						}
+					}
+				}
+				j++;
+			}
 		} else
 			pkgversion = NULL;
-
-		if (pkgversion != NULL) {
-			switch (pkgversion[0]) {
-				case '>':
-					pkgversion[0] = '\0';
-					pkgversion++;
-					sign = GT;
-					if (pkgversion[0] == '=') {
-						pkgversion++;
-						sign=GE;
-					}
-					break;
-				case '<':
-					pkgversion[0] = '\0';
-					pkgversion++;
-					sign = LT;
-					if (pkgversion[0] == '=') {
-						pkgversion++;
-						sign=LE;
-					}
-					break;
-				case '=':
-					/* compatibility pkg_info accept == and = the same way */
-					if (pkgname[0] != '=' && pkgversion[-1] == '=')
-						pkgversion[-1] = '\0';
-					pkgversion[0] = '\0';
-					pkgversion++;
-					sign = EQ;
-					break;
-			}
-		}
-		/*
-		 * pkgversion 2 is because we should be able to match
-		 * llwm>=2.9<3.1.*
-		 */
-		if (argc > 0) {
-			pkgversion2 = strrchr(pkgname, '>');
-			if (pkgversion2 == NULL)
-				pkgversion2 = strrchr(pkgname, '<');
-			if (pkgversion2 == NULL)
-				pkgversion2 = strrchr(pkgname, '=');
-		} else
-			pkgversion2 = NULL;
-
-		if (pkgversion2 != NULL) {
-			switch (pkgversion2[0]) {
-				case '>':
-					pkgversion2[0] = '\0';
-					pkgversion2++;
-					sign2 = GT;
-					if (pkgversion2[0] == '=') {
-						pkgversion2++;
-						sign2=GE;
-					}
-					break;
-				case '<':
-					pkgversion2[0] = '\0';
-					pkgversion2++;
-					sign2 = LT;
-					if (pkgversion2[0] == '=') {
-						pkgversion2++;
-						sign2=LE;
-					}
-					break;
-				case '=':
-					/* compatibility pkg_info accept == and = the same way */
-					if (pkgname[0] != '=' && pkgversion2[-1] == '=')
-						pkgversion2[-1] = '\0';
-					pkgversion2[0] = '\0';
-					pkgversion2++;
-					sign2 = EQ;
-					break;
-			}
-		}
 
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
 			return (EX_IOERR);
