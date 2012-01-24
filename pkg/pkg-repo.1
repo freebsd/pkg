@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 06, 2011
+.Dd January 24, 2012
 .Dt PKG-REPO 1
 .Os
 .Sh NAME
@@ -37,7 +37,7 @@ When
 is invoked it will create a package database file (repo.sqlite)
 which then can be used for remote package installations
 from
-.Xr pkg-install 1
+.Xr pkg-install 1 .
 .Pp
 When you want to create a package database repository you need to
 specify at least the directory which contains packages in
@@ -47,13 +47,18 @@ The following options are supported by
 .Nm :
 .Bl -tag -width F1
 .El
-.Sh WARNING
-.Sh ENVRIOMENT
-The following envrioment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev TMPDIR"
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It PUBKEY
 .El
 .Sh FILES
+See
+.Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
@@ -70,5 +75,3 @@ The following envrioment variables affect the execution of
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS

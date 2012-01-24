@@ -15,23 +15,26 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd July 25, 2011
+.Dd January 24, 2012
 .Dt PKG 1
 .Os
+.\" ---------------------------------------------------------------------------
 .Sh NAME
 .Nm pkg
 .Nd a utility for manipulating packages 
+.\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
 .Op Fl v
 .Op Fl d
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
 .Ao command Ac Ao Ar flags Ac
+.\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
 provides an interface for manupulating packages - registering,
 adding, removing and upgrading of packages.
+.\" ---------------------------------------------------------------------------
 .Sh OPTIONS
-.Pp
 The following options are supported by
 .Nm:
 .Bl -tag -width indent
@@ -51,6 +54,7 @@ will chroot in the
 .Ao chroot path Ac
 Environment
 .El
+.\" ---------------------------------------------------------------------------
 .Sh COMMANDS
 The following commands are supported by
 .Nm :
@@ -58,36 +62,51 @@ The following commands are supported by
 .It \fBhelp\fP Ar <command>
 Displays usage information of the specified command.
 .It \fBadd\fP
-Install a package from either a local source or a remote one.
+Installs a package from either a local source or a remote one.
 .Pp
 When installing from remote source you need to specify the
 protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
+.It \fBaudit\fP
+< To be added >
 .It \fBautoremove\fP
 Deletes packages not depended on by anyother packages and that were
 automatically installed.
-.It \fBinstall\fP
-Installs a package from a remote package repository.
-If a package is found in more than one remote repositories,
-then installation happens from the first one. If a package
-fails to fetch from the remote repository the next one in
-the list is tried, until the package is fetched.
+.It \fBbackup\fP
+Dumps the local package database to a file specified on the command-line.
+.It \fBcheck\fP
+< To be added >
+.It \fBclean\fP
+< To be added >
 .It \fBcreate\fP
 Creates a package
 .It \fBdelete\fP
 Deletes a package from the database and the system.
 .It \fBinfo\fP
 Displays information about installed packages.
+.It \fBinstall\fP
+Installs a package from a remote package repository.
+If a package is found in more than one remote repositories,
+then installation happens from the first one. If a package
+fails to fetch from the remote repository the next one in
+the list is tried, until the package is fetched.
+.It \fBquery\fP
+Is used for displaying information about packages.
 .It \fBregister\fP
 Registers a package in the database.
 .It \fBrepo\fP
 Creates a package repository.
 .Pp
 < To be completed >
+.It \fBsearch\fP
+Will search for the given pattern in the remote package
+repositories.
 .It \fBupdate\fP
 Update the available remote repositories as listed in
-.Pa /etc/pkg/repositories
+.Xr pkg.conf 5 .
+.It \fBupdating\fP
+< To be added >
 .It \fBupgrade\fP
 Upgrades a package to a newer version.
 .It \fBversion\fP
@@ -96,32 +115,17 @@ Upgrades a package to a newer version.
 Queries the database for package(s) that installed a specific
 file.
 .El
-.Sh WARNING
-.Sh ENVRIOMENT
-The following envrioment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev TMPDIR"
-.It Ev TMPDIR, SQLITE_FORCE_PROXY_LOCKING, PKG_DBDIR
-.El
-.Sh FILES
-.Bl -tag -width ".Pa /etc/pkg.conf"
-.It Pa /etc/pkg.conf
-System-wide configuration file. This file format and available configuration
-options are described in
+.\" ---------------------------------------------------------------------------
+.Sh ENVIRONMENT
+The list of environment variables that affect the execution of
+.Nm 
+is in 
 .Xr pkg.conf 5 .
-.El
-.Bl -tag -width ".Pa /etc/pkg/repositories"
-.It Pa /etc/pkg/repositories
-Global repositories file. This file contains a pair of
-.Fa name = url
-entries, each describing a remote repository, from which
-.Nm
-can fetch and install packages. The file format of the file
-is the same as described in
-.Xr pkg.conf 5
-Please refer to the included sample configuration file for example
-definitions of remote repositories.
-.El
+.\" ---------------------------------------------------------------------------
+.Sh FILES
+See 
+.Xr pkg.conf 5 .
+.\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg-autoremove 1 ,
 .Xr pkg-search 1 ,
@@ -136,5 +140,19 @@ definitions of remote repositories.
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
+.\" ---------------------------------------------------------------------------
+.Sh HISTORY
+The
+.Nm
+command first appeared in
+.Fx \" TODO: Put release there
+.\" ---------------------------------------------------------------------------
 .Sh AUTHORS AND CONTRIBUTORS
+.An Baptiste Daroussin Aq bapt@FreeBSD.org
+.An Julien Laffaye Aq jlaffaye@FreeBSD.org
+.An Philippe Pepiot Aq phil@philpep.org
+.An Will Andrews Aq will@FreeBSD.org
+.An Marin Atanasov Nikolov Aq dnaeon@gmail.com
+.\" ---------------------------------------------------------------------------
 .Sh BUGS
+There might be some left.

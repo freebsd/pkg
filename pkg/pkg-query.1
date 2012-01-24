@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd Sep 15, 2011
+.Dd January 24, 2012
 .Dt PKG-QUERY 1
 .Os
 .Sh NAME
@@ -127,13 +127,18 @@ Expands to the list of groups needed by the matched package.
 .It \fB%S\fB
 Expands to the list of scripts for the matching packages - install, deinstall, etc.
 .El
-.Sh WARNING
-.Sh ENVRIOMENT
-The following envrioment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev TMPDIR"
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.IT PKG_DBDIR
 .El
 .Sh FILES
+See
+.Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
@@ -150,5 +155,3 @@ The following envrioment variables affect the execution of
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS

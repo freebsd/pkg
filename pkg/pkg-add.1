@@ -15,12 +15,12 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 06, 2011
+.Dd January 24, 2012
 .Dt PKG-ADD 1
 .Os
 .Sh NAME
 .Nm "pkg add"
-.Nd Registeres a package and installs it on the system
+.Nd Registers a package and installs it on the system
 .Sh SYNOPSIS
 .Nm
 .Ar <pkg-name>
@@ -28,9 +28,9 @@
 .Ar <url>://<pkg-name>
 .Sh DESCRIPTION
 .Nm
-installs a package from either a local source or remote one.
+installs a package from either a local source or a remote one.
 .Pp
-When installing from remote source you need to specify
+When installing from a remote source you need to specify
 the protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
@@ -39,13 +39,21 @@ The following options are supported by
 .Nm :
 .Bl -tag -width F1
 .El
-.Sh WARNING
-.Sh ENVRIOMENT
-The following envrioment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev TMPDIR"
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev ASSUME_ALWAYS_YES
+.It Ev HANDLE_RC_SCRIPTS
+.It Ev PKG_DBDIR
 .El
+.P
 .Sh FILES
+See 
+.Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-create 1 ,
@@ -62,5 +70,3 @@ The following envrioment variables affect the execution of
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS
