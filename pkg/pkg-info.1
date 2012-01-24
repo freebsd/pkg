@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 23, 2012
+.Dd January 24, 2012
 .Dt PKG-INFO 1
 .Os
 .Sh NAME
@@ -100,12 +100,16 @@ Displays information from the package archive
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev TMPDIR"
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It PKG_DBDIR
 .El
 .Sh FILES
 See
-.Xr pkg.conf 5
+.Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,

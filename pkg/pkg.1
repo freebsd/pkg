@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 23, 2012
+.Dd January 24, 2012
 .Dt PKG 1
 .Os
 .\" ---------------------------------------------------------------------------
@@ -69,16 +69,16 @@ protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
 .It \fBaudit\fP
-????
+< To be added >
 .It \fBautoremove\fP
 Deletes packages not depended on by anyother packages and that were
 automatically installed.
 .It \fBbackup\fP
 Dumps the local package database to a file specified on the command-line.
 .It \fBcheck\fP
-????
+< To be added >
 .It \fBclean\fP
-????
+< To be added >
 .It \fBcreate\fP
 Creates a package
 .It \fBdelete\fP
@@ -106,7 +106,7 @@ repositories.
 Update the available remote repositories as listed in
 .Xr pkg.conf 5 .
 .It \fBupdating\fP
-????
+< To be added >
 .It \fBupgrade\fP
 Upgrades a package to a newer version.
 .It \fBversion\fP
@@ -117,18 +117,14 @@ file.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
-The following environment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev PKG_DBDIR"
-.It Ev PKG_DBDIR
-.El
-See 
-.Xr pkg.conf 5
-for explanation.
+The list of environment variables that affect the execution of
+.Nm 
+is in 
+.Xr pkg.conf 5 .
 .\" ---------------------------------------------------------------------------
 .Sh FILES
 See 
-.Xr pkg.conf 5
+.Xr pkg.conf 5 .
 .\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg-autoremove 1 ,
