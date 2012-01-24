@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 23, 2012
+.Dd January 24, 2012
 .Dt PKG-UPDATE 1
 .Os
 .Sh NAME
@@ -43,21 +43,18 @@ The following options are supported by
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev PACKAGESITE"
-.It Ev PACKAGESITE
-When \fBPACKAGESITE\fP is defined
-.Nm
-will only use the remote repository to which it points. Otherwise
-.Nm
-will work on multiple repositories as listed in the
+.Nm .
+See 
 .Xr pkg.conf 5
-file. Please note that multiple remote repositories is still considered
-highly experimental.
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PACKAGESITE
+.It Ev PKG_DBDIR
+.It Ev PKG_MULTIREPOS
 .El
 .Sh FILES
 See
-.Xr pkg.conf 5
+.Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,

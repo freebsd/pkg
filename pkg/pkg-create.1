@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 23, 2012
+.Dd January 24, 2012
 .Os
 .Dt PKG-CREATE 1
 .\" ---------------------------------------------------------------------------
@@ -169,15 +169,19 @@ entry but for directories.
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev PKG_DBDIR"
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
-Specifies an alternative location for the installed package database.
+.It Ev PLIST_KEYWORDS_DIR
+.It Ev PORTSDIR
 .El
 .\" ---------------------------------------------------------------------------
 .Sh FILES
 See
-.Xr pkg.conf 5
+.Xr pkg.conf 5 .
 .\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg 1 ,

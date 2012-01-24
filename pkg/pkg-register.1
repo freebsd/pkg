@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 23, 2012
+.Dd January 24, 2012
 .Dt PKG-REGISTER 1
 .Os
 .Sh NAME
@@ -30,8 +30,7 @@
 .Fl i Ar <input-path>
 .Sh DESCRIPTION
 .Nm
-is used for registering a package into the local package
-database
+is used for registering a package into the local package database.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -58,12 +57,16 @@ Specifies the package input path.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev TMPDIR"
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It PKG_DBDIR
 .El
 .Sh FILES
 See
-.Xr pkg.conf 5
+.Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
