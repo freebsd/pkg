@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd June 07, 2011
+.Dd January 24, 2012
 .Os
 .Dt PKG-CREATE 1
 .\" ---------------------------------------------------------------------------
@@ -169,21 +169,19 @@ entry but for directories.
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev PKG_DBDIR"
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
-Specifies an alternative location for the installed package database.
+.It Ev PLIST_KEYWORDS_DIR
+.It Ev PORTSDIR
 .El
 .\" ---------------------------------------------------------------------------
 .Sh FILES
-.Bl -tag -width ".Pa /etc/pkg.conf"
-.It Pa /etc/pkg.conf
-System-wide configuration file. This file format and available configuration
-options are described in
+See
 .Xr pkg.conf 5 .
-.El
-.\" ---------------------------------------------------------------------------
-.\" .Sh EXAMPLES
 .\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg 1 ,
@@ -201,17 +199,3 @@ options are described in
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.\" ---------------------------------------------------------------------------
-.Sh HISTORY
-The
-.Nm
-command first appeared in
-.Fx \" TODO: Put release there
-.\" ---------------------------------------------------------------------------
-.Sh AUTHORS AND CONTRIBUTORS
-.An Baptiste Daroussin Aq bapt@FreeBSD.org
-.An Julien Laffaye Aq jlaffaye@FreeBSD.org
-.An Philippe Pepiot Aq phil@philpep.org
-.An Will Andrews Aq will@FreeBSD.org
-.\" ---------------------------------------------------------------------------
-.\" .Sh BUGS

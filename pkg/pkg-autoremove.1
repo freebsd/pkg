@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd July 26, 2011
+.Dd January 24, 2012
 .Dt PKG-AUTOREMOVE 1
 .Os
 .Sh NAME
@@ -35,21 +35,20 @@ The following options are supported by
 .It Fl y
 Assume yes when asked for confirmation before package autoremoval.
 .El
-.Sh WARNING
-.Sh ENVRIOMENT
-The following envrioment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev ASSUME_ALWAYS_YES"
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev ASSUME_ALWAYS_YES
-When this option is set to
-.Fa YES
-pkgng will automatically assume "yes" to all questions
-which require confirmation before doing anything, as if it
-the
-.Fl y
-flag was specified.
+.It Ev HANDLE_RC_SCRIPTS
+.It Ev PKG_DBDIR
 .El
 .Sh FILES
+See
+.Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
@@ -66,5 +65,3 @@ flag was specified.
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS
