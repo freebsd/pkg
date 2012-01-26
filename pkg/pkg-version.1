@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 06, 2011
+.Dd January 24, 2012
 .Dt PKG-VERSION 1
 .Os
 .Sh NAME
@@ -86,13 +86,19 @@ can also be used in `filter mode':
 When one of the arguments is `-', standard input is used, and lines
 with matching package names/patterns are echoed to standard output.
 .El
-.Sh WARNING
-.Sh ENVRIOMENT
-The following envrioment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev TMPDIR"
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It PKG_DBDIR
+.It PORTSDIR
 .El
 .Sh FILES
+See
+.Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
@@ -109,5 +115,3 @@ The following envrioment variables affect the execution of
 .Xr pkg-create 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS

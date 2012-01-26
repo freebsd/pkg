@@ -15,6 +15,9 @@ Table of Contents
 * [Does `pkg repo` include symlinked packages?](#9)
 * [How do I know if I have packages with the same origin?](#10)
 * [How to start working with multi-repos in pkgng?](#11)
+* [Why `pkg create` is slow?](#12)
+* [Does pkgng work wit portaudit?](#13)
+* [When will pkgng be the default package manager?](#14)
 
 <a name="1"></a>
 ### Q: Is there an equivalent for pkg-orphan/pkg_cutleaves with pkgng?
@@ -48,9 +51,7 @@ New flags are: `pkg info -d` for depends on, and `pkg info -r` for reverse depen
 Currently not, but it is in the todo list.
 
 <a name="7"></a>
-### Q: How pkgng deals with dependencies?
-
-If `pkgA-1.0` depends on `pkgB-1.0` and `pkgB-1.0` is updated to `pkgB-2.0`, will `pkgA` notice the change?
+### Q: How pkgng deals with dependencies? If `pkgA-1.0` depends on `pkgB-1.0` and `pkgB-1.0` is updated to `pkgB-2.0`, will `pkgA` notice the change?
 
 Yes, `pkgA` will automatically notice the change.
 
@@ -71,12 +72,26 @@ The default hierarchy has lots of symlinks which should just be ignored and thus
 <a name="10"></a>
 ### Q: How do I know if I have packages with the same origin?
 
-Hee is how to do that:
+Here is how to do that:
 
     sh -c 'find . -name "*.txz" -exec pkg query -f {} %o \;' | sort | uniq -d
 
 <a name="11"></a>
 ### Q: How to start working with multi-repos in pkgng?
 
-Please refer to the [README](https://github.com/pkgng/pkgng/blob/master/README.md#multirepos), which explains
-how to enable and get started with multi-repos in pkgng.
+Please refer to the [README](https://github.com/pkgng/pkgng/blob/master/README.md#multirepos), which explains how to enable and get started with multi-repos in pkgng.
+
+<a name="12"></a>
+### Q: Why `pkg create` is slow?
+
+The number one reason is the XZ compression, which is slow.
+
+<a name="13"></a>
+### Q: Does pkgng work with portaudit?
+
+No, pkgng uses internal `pkg audit` command.
+
+<a name="14"></a>
+### Q: When will pkgng be the default package manager of FreeBSD?
+
+Possibly in version 9.1.

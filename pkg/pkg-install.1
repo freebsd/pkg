@@ -15,12 +15,12 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd July 26, 2011
+.Dd January 24, 2012
 .Dt PKG-INSTALL 1
 .Os
 .Sh NAME
 .Nm "pkg install"
-.Nd install packages from remote package repositories
+.Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
 .Op Fl ygxX
@@ -65,41 +65,23 @@ Treat the package names as regular expressions.
 .It Fl X
 Treat the package names as extended regular expressions.
 .El
-.Sh WARNING
-.Sh ENVRIOMENT
-The following envrioment variables affect the execution of
-.Nm :
-.Bl -tag -width ".Ev PACKAGESITE"
-.It Ev PACKAGESITE
-When \fBPACKAGESITE\fP is defined
-.Nm
-will only use the remote repository to which it points. Otherwise
-.Nm
-will work on multiple repositories as listed in the
-.Pa /etc/pkg/repositories
-file. Please note that multiple remote repositories is still considered
-highly experimental.
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See 
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev ASSUME_ALWAYS_YES
-When this option is set to
-.Fa YES
-pkgng will automatically assume "yes" to all questions
-which require confirmation before doing anything, as if it
-the
-.Fl y
-flag was specified.
+.It Ev HANDLE_RC_SCRIPTS
+.It Ev PACKAGESITE
+.It Ev PKG_CACHEDIR
+.It Ev PKG_DBDIR
+.It Ev PKG_MULTIREPOS
 .El
 .Sh FILES
-.Bl -tag -width -".Pa /etc/pkg/repositories"
-.It Pa /etc/pkg/repositories
-Global repositories file. This file contains a pair of
-.Fa name = url
-entries, each describing a remote repository, from which
-.Nm
-can fetch and install packages. The file format of the file
-is the same as described in
-.Xr pkg.conf 5
-Please refer to the included sample configuration file for example
-definitions of remote repositories.
+See 
+.Xr pkg.conf 5 .
 .El
 .Sh SEE ALSO
 .Xr pkg 1 ,
@@ -117,5 +99,3 @@ definitions of remote repositories.
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
-.Sh AUTHORS AND CONTRIBUTORS
-.Sh BUGS
