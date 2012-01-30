@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-30 16:50:10.000000000 +0100
-+++ portmaster	2012-01-31 00:40:42.791159044 +0100
++++ portmaster	2012-01-31 00:44:18.931087624 +0100
 @@ -286,7 +286,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -86,7 +86,7 @@
  	done
  }
  
-+#userless with pkgng
++# useless with pkgng
  check_dependency_files () {
  	# Global: grep_deps
  	local origin iport ro_opd
@@ -123,33 +123,9 @@
 +				[ -n "$moved_npd" ] || continue
 +				origin=$moved_npd
 +			fi
-+
-+			origin="${pd}/${origin}"
-+
-+			if [ -s "${origin}/distinfo" ]; then
-+				distinfo="${origin}/distinfo"
-+			else
-+				pm_cd $origin || continue
-+				distinfo=`pm_make -V DISTINFO_FILE`
-+				[ -n "$distinfo" ] || fail "No DISTINFO_FILE in $origin"
-+			fi
-+
-+			if [ -s "$distinfo" ]; then
-+				grep '^SHA256 ' $distinfo | while read disc1 f disc2; do
-+					f=${f#(} ; f=${f%)}
-+					echo $f >> $DI_FILES
-+				done
-+			fi
-+		done
-+	else
-+		pkg query -a "%n-%v %o" | while read pkg origin; do
-+			if [ ! -d "$pd/${origin}" ]; then
-+				find_moved_port $origin $pkg nonfatal >/dev/null
-+				[ -n "$moved_npd" ] || continue
-+				origin=$moved_npd
-+			fi
  
- 		origin="${pd}/${origin}"
+-		origin="${pd}/${origin}"
++			origin="${pd}/${origin}"
  
 -		if [ -s "${origin}/distinfo" ]; then
 -			distinfo="${origin}/distinfo"
@@ -173,6 +149,31 @@
 -			done
 -		fi
 -	done
++			if [ -s "$distinfo" ]; then
++				grep '^SHA256 ' $distinfo | while read disc1 f disc2; do
++					f=${f#(} ; f=${f%)}
++					echo $f >> $DI_FILES
++				done
++			fi
++		done
++	else
++		pkg query -a "%n-%v %o" | while read pkg origin; do
++			if [ ! -d "$pd/${origin}" ]; then
++				find_moved_port $origin $pkg nonfatal >/dev/null
++				[ -n "$moved_npd" ] || continue
++				origin=$moved_npd
++			fi
++
++			origin="${pd}/${origin}"
++
++			if [ -s "${origin}/distinfo" ]; then
++				distinfo="${origin}/distinfo"
++			else
++				pm_cd $origin || continue
++				distinfo=`pm_make -V DISTINFO_FILE`
++				[ -n "$distinfo" ] || fail "No DISTINFO_FILE in $origin"
++			fi
++
 +			if [ -s "$distinfo" ]; then
 +				grep '^SHA256 ' $distinfo | while read disc1 f disc2; do
 +					f=${f#(} ; f=${f%)}
