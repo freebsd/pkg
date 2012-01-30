@@ -360,7 +360,7 @@
 +		if [ -z "$use_pkgng" ]; then
 +			pkg_info $iport
 +		else
-+			pkg info $iport
++			pkg info -f $iport
 +		fi
  
  		get_answer_yn n "\t===>>> ${iport} is no longer depended on, delete"
