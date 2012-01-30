@@ -511,7 +511,7 @@
  
  		unset temp
 -		for file in `pkg_info -q -L $UPGRADE_PORT |
-+		if [ -z "$usr_pkgng" ]; then
++		if [ -z "$use_pkgng" ]; then
 +			pkglist="pkg_info -q -L"
 +		else
 +			pkglist="pkg info -q -l"
@@ -525,7 +525,7 @@
  if [ -z "$temp" ] && [ -d "$LOCALBASE_COMPAT" ]; then
  	unset files
 -	for file in `pkg_info -q -L $new_port`; do
-+	if [ -z "$usr_pkgng" ]; then
++	if [ -z "$use_pkgng" ]; then
 +		pkglist="pkg_info -q -L"
 +	else
 +		pkglist="pkg info -q -l"
