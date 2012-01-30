@@ -23,7 +23,7 @@
 +	if [ -z "${use_pkgng}" ]; then
 +		glob_dirs=`find $pdb -maxdepth 1 -type d -name ${pattern}\*`
 +	else
-+		glob_dirs=`pkg info -qg ${pattern}\*`
++		glob_dirs=`pkg query -g "%n-%v" ${pattern}\*`
 +	fi
  	case "$glob_dirs" in
  	# Match a newline in multiple responses from find
@@ -42,7 +42,7 @@
  	o=`grep -m1 '@comment ORIGIN:' $pdb/$1/+CONTENTS 2>/dev/null` && {
  		echo ${o#@comment ORIGIN:}; return 0; }
 +	else
-+		pkg info -qo $1; return 0;
++		pkg query "%o" $1; return 0;
 +	fi
  
  	case "$1" in bsdpan-*) return 3 ;; esac
@@ -230,7 +230,7 @@
 -			fail Empty origin in $package
 -		origin=${origin#@comment ORIGIN:}
 +		if [ -n "$use_pkgng" ]; then
-+			origin=`pkg query -f $package "%o"` || fail Empty origin in $package
++			origin=`pkg query "%o" $package` || fail Empty origin in $package
 +		else
 +			origin=`tar -O -zxvf $package '+CONTENTS' 2>/dev/null | grep '@comment ORIGIN:'` ||
 +				fail Empty origin in $package
@@ -387,7 +387,7 @@
 +				if [ -z "${use_pkgng}" ]; then
 +					confl_p=`pkg_info -I $glob 2>/dev/null`
 +				else
-+					confl_p=`pkg info -qg $glob 2>/dev/null` 
++					confl_p=`pkg query -g "%n-%v" $glob 2>/dev/null`
 +				fi
  				if [ -n "$confl_p" ]; then
  					confl_p=${confl_p%% *}
@@ -514,7 +514,7 @@
 +		if [ -z "$use_pkgng" ]; then
 +			pkglist="pkg_info -q -L"
 +		else
-+			pkglist="pkg info -q -l"
++			pkglist="pkg query %Fp"
 +		fi
 +		for file in `$pkglist $UPGRADE_PORT |
  		    sort - $ldconfig_out | uniq -d`; do
@@ -528,7 +528,7 @@
 +	if [ -z "$use_pkgng" ]; then
 +		pkglist="pkg_info -q -L"
 +	else
-+		pkglist="pkg info -q -l"
++		pkglist="pkg query %Fp"
 +	fi
 +	for file in `$pkglist $new_port`; do
  		[ -f "${LOCALBASE_COMPAT}/${file##*/}" ] &&
