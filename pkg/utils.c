@@ -38,6 +38,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 	struct pkg_license *lic = NULL;
 	struct pkg_option *option = NULL;
 	bool multirepos_enabled = false;
+	char *m;
 	char size[7];
 	const char *name, *version, *prefix, *origin, *reponame, *repourl;
 	const char *maintainer, *www, *comment, *desc;
@@ -52,7 +53,11 @@ print_info(struct pkg * const pkg, unsigned int opt)
 	    PKG_DESC, &desc, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize,
 	    PKG_NEW_PKGSIZE, &newpkgsize, PKG_LICENSE_LOGIC, &licenselogic);
 
-        if (opt & INFO_FULL) {
+	if (opt & INFO_RAW) {
+		pkg_emit_manifest(pkg, &m);
+		printf("%s\n", m);
+		free(m);
+	} else if (opt & INFO_FULL) {
 		printf("%-15s: %s\n", "Name", name);
 		printf("%-15s: %s\n", "Version", version);
 		printf("%-15s: %s\n", "Origin", origin);

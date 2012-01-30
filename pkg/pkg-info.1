@@ -27,7 +27,7 @@
 .Nm
 .Fl a
 .Nm
-.Op Fl egxXEdrlsqopOfF
+.Op Fl egxXEdrlsqopOfRF
 .Ar <pkg-name>
 .Nm
 .Op Fl drlsq
@@ -44,6 +44,9 @@ Displays all installed packages
 .It Fl f
 Displays full information about the packages
 matching
+.Ar <pkg-name>
+.It Fl R
+Display the full yaml (raw) about the packages matching
 .Ar <pkg-name>
 .It Fl e
 Returns 0 if
