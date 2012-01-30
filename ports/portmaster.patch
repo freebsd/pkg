@@ -9,7 +9,7 @@
 +	if [ -z "${use_pkgng}" ]; then
 +		$PM_SU_CMD /usr/sbin/pkg_delete $*;
 +	else
-+		$PM_SU_CMD /usr/sbin/pkg delete -y $*;
++		$PM_SU_CMD /usr/local/sbin/pkg delete -y $*;
 +	fi
 +}
  pm_rm_s           () { $PM_SU_CMD /bin/rm $*; }
@@ -397,7 +397,7 @@
  
  		for dep in $build_only_dl_g; do
 +			if [ -n "${use_pkgng}" ]; then
-+				[ `pkg query "%?r"` = "0" ] || temp_bodlg="$temp_bodlg $dep"
++				[ "`pkg query "%?r" $dep`" = "0" ] || temp_bodlg="$temp_bodlg $dep"
 +				continue
 +			fi
  			grep -q "@comment DEPORIGIN:${dep#$pd/}$" $pdb/*/+CONTENTS ||
@@ -514,7 +514,7 @@
 +		if [ -z "$usr_pkgng" ]; then
 +			pkglist="pkg_info -q -L"
 +		else
-+			pkglist="pkg info -q -l -a"
++			pkglist="pkg info -q -l"
 +		fi
 +		for file in `$pkglist $UPGRADE_PORT |
  		    sort - $ldconfig_out | uniq -d`; do
@@ -528,7 +528,7 @@
 +	if [ -z "$usr_pkgng" ]; then
 +		pkglist="pkg_info -q -L"
 +	else
-+		pkglist="pkg info -q -l -a"
++		pkglist="pkg info -q -l"
 +	fi
 +	for file in `$pkglist $new_port`; do
  		[ -f "${LOCALBASE_COMPAT}/${file##*/}" ] &&
