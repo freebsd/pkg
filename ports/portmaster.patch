@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-30 16:50:10.000000000 +0100
-+++ portmaster	2012-01-31 00:36:20.441090045 +0100
++++ portmaster	2012-01-31 00:40:42.791159044 +0100
 @@ -286,7 +286,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -469,7 +469,7 @@
  		else
 -			find_glob_dirs $arg2 && ro_upg_port=${glob_dirs#$pdb/}
 -			unset glob_dirs
-+			if pkg -e $arg2; then
++			if pkg info -e $arg2; then
 +				ro_upg_port=$arg2
 +			else
 +				find_glob_dirs $arg2 && ro_upg_port=${glob_dirs}
