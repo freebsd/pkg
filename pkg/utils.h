@@ -11,6 +11,7 @@
 #define INFO_ORIGIN_SEARCH (1<<7)
 #define INFO_PREFIX (1<<8)
 #define INFO_FULL (1<<9)
+#define INFO_RAW (1<<10)
 
 bool query_yesno(const char *msg);
 int print_info(struct pkg * const pkg, unsigned int opt);
