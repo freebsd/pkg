@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-01-31 13:42:03.841298704 +0100
++++ portmaster	2012-01-31 16:08:39.524095995 +0100
 @@ -292,7 +292,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -398,11 +398,12 @@
  
  	echo "===>>> Checking $port_dbdir"
  
-@@ -1610,14 +1726,19 @@
+@@ -1610,14 +1726,20 @@
  				unset port_ver
  			fi
  		else
 -			case `pkg_version -t $iport $port_ver` in
++			local pkg_version
 +			if [ -z "$use_pkgng" ]; then
 +				pkg_version="pkg_version"
 +			else
@@ -420,7 +421,7 @@
  			esac
  
  			[ -z "$do_update" ] && {
-@@ -1689,7 +1810,13 @@
+@@ -1689,7 +1811,13 @@
  	fi
  
  	pm_cd $pkgdir || fail "Cannot cd into $pkgdir to create a package"
@@ -435,7 +436,7 @@
  		if [ "$1" = "$pbu" ]; then
  			if [ -n "$BACKUP" ]; then
  				echo "	===>>> Package saved to $1" ; echo ''
-@@ -2028,19 +2155,28 @@
+@@ -2028,19 +2156,28 @@
  fi
  
  if [ -n "$EXPUNGE" ]; then
@@ -474,17 +475,17 @@
  	if [ -n "$deplist" ]; then
  		echo "===>>> Warning: Ports with dependencies on ${EXPUNGE}:"
  		for dep in $deplist; do
-@@ -2048,7 +2184,8 @@
+@@ -2048,7 +2185,8 @@
  		done
  		get_answer_yn n "\n\t===>>> Delete this dependency data"
  		case "$?" in
 -		0)	for f in $deplist; do
-+		0)	[ -n "$use_pkgng" ] && exit 0
++		0)	[ -n "$use_pkgng" ] && exit 0 #TODO
 +			for f in $deplist; do
  				update_contents delete $f $origin
  			done ;;
  		*)	exit 1 ;;
-@@ -2058,8 +2195,13 @@
+@@ -2058,8 +2196,13 @@
  	[ -n "$BACKUP" ] && { init_packages ; pm_pkg_create $pbu $EXPUNGE; }
  	[ -z "$DONT_SCRUB_DISTFILES" ] && { delete_all_distfiles $origin; delete_dist_list; }
  
@@ -500,7 +501,7 @@
  
  	echo '' ; echo "===>>> Running ${0##*/} -s $ARGS"
  	exec $0 -s $ARGS
-@@ -2069,13 +2211,22 @@
+@@ -2069,13 +2212,22 @@
  if [ -n "$CLEAN_STALE" ]; then
  	[ -z "$no_del_list" ] && export no_del_list=':'
  
@@ -525,7 +526,7 @@
  		if [ -n "$deplist" ]; then
  			echo ''
  			echo "===>>> Warning: Unrecorded dependencies on ${iport}:"
-@@ -2088,22 +2239,32 @@
+@@ -2088,22 +2240,32 @@
  			continue
  		fi
  
@@ -566,11 +567,12 @@
  		esac
  	done
  	exit 0
-@@ -2243,7 +2404,12 @@
+@@ -2243,7 +2405,13 @@
  			fail "No entry for $origin in $PM_INDEX"
  	fi
  
 -	case `pkg_version -t $iport $new_port 2>/dev/null` in
++	local pkg_version
 +	if [ -z "$use_pkgng" ]; then
 +		pkg_version="pkg_version"
 +	else
@@ -580,7 +582,7 @@
  	\<)	build_l="${build_l}\tUpgrade $iport to $new_port\n" ;;
  	=)	build_l="${build_l}\tRe-install $iport\n" ;;
  	\>)	build_l="${build_l}\tDowngrade $iport to $new_port\n" ;;
-@@ -2466,7 +2632,11 @@
+@@ -2466,7 +2634,11 @@
  				fail "Cannot cd to $d_port"
  			fi
  			for glob in $conflicts; do
