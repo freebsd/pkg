@@ -38,7 +38,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 			strlcpy(fpath, pkg_file_get(file, PKG_FILE_PATH), sizeof(fpath));
 
 		if ((pkg_file_get(file, PKG_FILE_SUM) == NULL || pkg_file_get(file, PKG_FILE_SUM)[0] == '\0') && lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
-			sha256_file(fpath, sha256);
+			if (sha256_file(fpath, sha256) != EPKG_OK)
+				return (EPKG_FATAL);
 			strlcpy(file->sum, sha256, sizeof(file->sum));
 		}
 
