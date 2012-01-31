@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-01-31 17:20:59.131313028 +0100
++++ portmaster	2012-01-31 17:36:35.101180808 +0100
 @@ -292,7 +292,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -661,7 +661,26 @@
  
  		pm_v "===>>> $req_by depends on $PM_URB_IPORTS"
  
-@@ -2806,9 +2998,16 @@
+@@ -2697,12 +2889,16 @@
+ 			else
+ 				fail "$pd/${port} does not exist"
+ 			fi ;;
+-		*)	if [ -d "$pdb/$port" ]; then
++		*)	if [ -z "$use_pkgng" -a -d "$pdb/$port" ]; then
+ 				worklist_temp="$worklist_temp $port"
+ 			else
+ 				find_glob_dirs $port
+ 				case $? in
+-				1)	fail "$pdb/$port does not exist" ;;
++				1)	if [ -z "$use_pkgng" ]; then
++						fail "$pdb/$port does not exist"
++					else
++						fail "$port is not installed" ;;
++					fi
+ 				*)	local dir
+ 					for dir in $glob_dirs; do
+ 					worklist_temp="$worklist_temp ${dir#$pdb/}"
+@@ -2806,9 +3002,16 @@
  		*/*)	origin=$port ;;
  		*)	# If an installed version does not exist at this
  			# point it probably got updated as a dependency
@@ -681,7 +700,7 @@
  			fi
  			origin=`origin_from_pdb $port` ;;
  		esac
-@@ -3036,7 +3235,12 @@
+@@ -3036,7 +3239,12 @@
  	/*)	echo '' ; no_valid_port ;;
  	*/*)	portdir=$argv ;;
  	\.)	portdir=${PWD##*/ports/} ;; # Not always $pd, could be symlink
@@ -695,7 +714,7 @@
  	esac
  
  	if [ -z "$portdir" -a -z "$upg_port" ]; then
-@@ -3069,11 +3273,20 @@
+@@ -3069,11 +3277,20 @@
  
  	case "$arg2" in
  	*/*)	ro_opd=$arg2 ; ro_upg_port=`iport_from_origin $ro_opd` ;;
@@ -720,7 +739,7 @@
  		fi
  		[ -n "$ro_upg_port" ] && ro_opd=`origin_from_pdb $ro_upg_port`
  	esac
-@@ -3525,7 +3738,12 @@
+@@ -3525,7 +3742,12 @@
  		pm_v "===>>> Available package ($latest_pv) matches the current version"
  	elif [ -n "$latest_pv" -a -n "$PM_PACKAGES_NEWER" ]; then
  		if [ -n "$upg_port" ]; then
@@ -734,7 +753,7 @@
  			\<)	use_package=up_newer
  				pm_v "===>>> Available package ($latest_pv)"
  				pm_v "       is newer than installed ($upg_port)" ;;
-@@ -3541,7 +3759,12 @@
+@@ -3541,7 +3763,12 @@
  			pm_v "===>>> There is a package available ($latest_pv)"
  		fi
  	elif [ -n "$latest_pv" ]; then
@@ -748,7 +767,7 @@
  		\<)	# Could happen if ports tree is out of date
  			use_package=up_old_tree
  			pm_v "===>>> Available package ($latest_pv)"
-@@ -3640,7 +3863,12 @@
+@@ -3640,7 +3867,12 @@
  		    grep -v ^$LOCALBASE_COMPAT > $ldconfig_out
  
  		unset temp
@@ -762,7 +781,7 @@
  		    sort - $ldconfig_out | uniq -d`; do
  			temp="${temp}$file "
  		done
-@@ -3743,29 +3971,32 @@
+@@ -3743,29 +3975,32 @@
  	fi
  fi
  
@@ -818,7 +837,7 @@
  if [ -n "$preserve_dir" ]; then
  	rmdir $preserve_dir 2>/dev/null
  	unset preserve_dir preserve_port_files
-@@ -3781,7 +4012,12 @@
+@@ -3781,7 +4016,12 @@
  temp=`find $LOCALBASE_COMPAT -type d -empty 2>/dev/null`
  if [ -z "$temp" ] && [ -d "$LOCALBASE_COMPAT" ]; then
  	unset files
@@ -832,7 +851,7 @@
  		[ -f "${LOCALBASE_COMPAT}/${file##*/}" ] &&
  			files="${files}${LOCALBASE_COMPAT}/${file##*/} "
  	done
-@@ -3844,7 +4080,8 @@
+@@ -3844,7 +4084,8 @@
  	/bin/unlink $dist_list_temp ; unset ds dist_list_temp
  fi
  
@@ -842,7 +861,7 @@
  	if grep -q DEPORIGIN $pdb/$new_port/+CONTENTS; then
  		echo "===>>> Updating dependencies for $new_port to match installed versions"
  		update_contents $pdb/$new_port/+CONTENTS
-@@ -3879,27 +4116,29 @@
+@@ -3879,27 +4120,29 @@
  	echo ''
  fi
  
