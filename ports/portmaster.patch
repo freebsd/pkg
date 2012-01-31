@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-01-31 17:55:18.251309595 +0100
++++ portmaster	2012-01-31 19:24:34.071175659 +0100
 @@ -292,7 +292,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -681,8 +681,8 @@
 +				1)	if [ -z "$use_pkgng" ]; then
 +						fail "$pdb/$port does not exist"
 +					else
-+						fail "$port is not installed" ;;
-+					fi
++						fail "$port is not installed"
++					fi ;;
  				*)	local dir
  					for dir in $glob_dirs; do
  					worklist_temp="$worklist_temp ${dir#$pdb/}"
