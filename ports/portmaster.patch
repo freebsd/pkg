@@ -307,7 +307,7 @@
  fi	# [ -n "$CLEAN_PACKAGES" ]
  
  if [ -n "$CHECK_DEPENDS" ]; then
-+	[ -n "$use_pkgng" ] && exit 0 # this is useless with pkgng"
++	[ -n "$use_pkgng" ] && exit 0 # this is useless with pkgng
  	PM_VERBOSE=pmv_check_depends
  IFS='
  '
