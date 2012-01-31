@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-01-31 20:15:02.891236908 +0100
++++ portmaster	2012-01-31 20:50:47.941362077 +0100
 @@ -292,7 +292,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -423,6 +423,24 @@
  
  	echo "===>>> Checking $port_dbdir"
  
+@@ -1570,7 +1696,7 @@
+ 
+ 	if [ -z "$do_update" -a -z "$skip" -a -z "$PM_INDEX_ONLY" ] && [ -d "$pd/$origin" ]; then
+ 		if ! pm_cd $pd/$origin; then
+-			if [ -e "$pdb/$iport/+IGNOREME" ]; then
++			if [ -z "$use_pkgng" -a -e "$pdb/$iport/+IGNOREME" ]; then
+ 				echo "	===>>> Warning: Unable to cd to $pd/$origin"
+ 				echo "	===>>> Continuing due to $pdb/$iport/+IGNOREME"
+ 				echo ''
+@@ -1587,7 +1713,7 @@
+ 
+ 		# If the port has moved and no +IGNOREME, we have to update it
+ 		if [ -n "$moved_npd" ]; then
+-			if [ ! -e "$pdb/$iport/+IGNOREME" ]; then
++			if [ -n "$use_pkgng" -o ! -e "$pdb/$iport/+IGNOREME" ]; then
+ 				do_update=do_update_moved
+ 			else
+ 				echo "	===>>> Continuing due to $pdb/$iport/+IGNOREME"
 @@ -1610,14 +1736,20 @@
  				unset port_ver
  			fi
@@ -446,6 +464,15 @@
  			esac
  
  			[ -z "$do_update" ] && {
+@@ -1633,7 +1765,7 @@
+ 	if [ -n "$LIST_PLUS" ]; then
+ 		if [ -z "$moved_npd" ]; then
+ 			echo "	===>>> New version available: $port_ver"
+-			[ -e "$pdb/$iport/+IGNOREME" ] &&
++			[ -z "$use_pkgng" -a -e "$pdb/$iport/+IGNOREME" ] &&
+ 				echo "	===>>> +IGNOREME file is present for $1"
+ 			pm_cd_pd $origin && check_state
+ 			num_updates=$(( $num_updates + 1 ))
 @@ -1689,7 +1821,13 @@
  	fi
  
