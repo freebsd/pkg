@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-30 16:50:10.000000000 +0100
-+++ portmaster	2012-01-31 00:44:18.931087624 +0100
++++ portmaster	2012-01-31 01:09:46.311276030 +0100
 @@ -286,7 +286,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -448,7 +448,7 @@
 +	*)	if [ -z "$use_pkgng" ]; then
 +			[ -d "$pdb/$argv" ] && upg_port=$argv
 +		else
-+			pkg info -e $argv && upg_port=$argv
++			pkg info -e $argv && upg_port=`pkg query "%n-%v" $argv`
 +		fi
 +		;;
  	esac
