@@ -179,13 +179,10 @@ Directory leftovers are automatically removed if they are not in the MTREE.
 <a name="pkgngports"></a>
 ### pkgng in Ports
 
-To use pkgng from ports currently we need to include *bsd.pkgng.mk* in *bsd.port.mk*,
-the line before *.if defined(USE_LOCAL_MK)*
+pkgng beta1 is now in the ports tree. To get it: 
 
-You can also simply run this command after having install bsd.pkgng.mk to your
-/usr/ports/Mk diretory or the suitable PORTSDIR:
-
-	$> sed -i'' -e '/.if.*USE_LOCAL_MK.*$/{G;s/\(.if.*USE_LOCAL_MK)\)\(\n\)/.include "${PORTSDIR}\/Mk\/bsd.pkgng.mk"\2\1/;}' /usr/ports/Mk/bsd.port.mk
+	$ make -C /usr/ports/ports-mgmt/pkg
+	$ echo "WITH_PKGNG=yes" >> /etc/make.conf
 
 <a name="usageintro"></a>
 ### A quick usage introduction to pkgng
@@ -216,7 +213,8 @@ Once you have the pkgng sources, installing it is fairly easy:
 
 Now you should have pkgng installed on your system.
 
-Transferring your packages to pkgng is done by the ports/pkg2ng script.
+Transferring your packages to pkgng is done by the ports/pkg2ng script (also
+installed by the port
 
 In order to register your installed packages to pkgng, execute the commands below:
 
