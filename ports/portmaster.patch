@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-01-31 19:24:34.071175659 +0100
++++ portmaster	2012-01-31 19:38:17.011178257 +0100
 @@ -292,7 +292,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -754,7 +754,17 @@
  			echo "       or a port directory from $pd"
  			echo ''
  			echo "       $ro_opd does not seem to be installed,"
-@@ -3525,7 +3742,12 @@
+@@ -3117,7 +3334,8 @@
+ fi
+ [ -z "$upg_port" -a -z "$REPLACE_ORIGIN" ] && upg_port=`iport_from_origin ${portdir}`
+ 
+-if [ -e "$pdb/$upg_port/+IGNOREME" ]; then
++#TODO?
++if [ -z "$use_pkgng" -a -e "$pdb/$upg_port/+IGNOREME" ]; then
+ 	# Adding to CUR_DEPS means we will not get here in the build unless -G
+ 	if [ -z "$PM_BUILDING" ]; then
+ 		# Only need to prompt for this once if -ai
+@@ -3525,7 +3743,12 @@
  		pm_v "===>>> Available package ($latest_pv) matches the current version"
  	elif [ -n "$latest_pv" -a -n "$PM_PACKAGES_NEWER" ]; then
  		if [ -n "$upg_port" ]; then
@@ -768,7 +778,7 @@
  			\<)	use_package=up_newer
  				pm_v "===>>> Available package ($latest_pv)"
  				pm_v "       is newer than installed ($upg_port)" ;;
-@@ -3541,7 +3763,12 @@
+@@ -3541,7 +3764,12 @@
  			pm_v "===>>> There is a package available ($latest_pv)"
  		fi
  	elif [ -n "$latest_pv" ]; then
@@ -782,7 +792,7 @@
  		\<)	# Could happen if ports tree is out of date
  			use_package=up_old_tree
  			pm_v "===>>> Available package ($latest_pv)"
-@@ -3640,7 +3867,12 @@
+@@ -3640,7 +3868,12 @@
  		    grep -v ^$LOCALBASE_COMPAT > $ldconfig_out
  
  		unset temp
@@ -796,7 +806,7 @@
  		    sort - $ldconfig_out | uniq -d`; do
  			temp="${temp}$file "
  		done
-@@ -3743,29 +3975,32 @@
+@@ -3743,29 +3976,32 @@
  	fi
  fi
  
@@ -852,7 +862,7 @@
  if [ -n "$preserve_dir" ]; then
  	rmdir $preserve_dir 2>/dev/null
  	unset preserve_dir preserve_port_files
-@@ -3781,7 +4016,12 @@
+@@ -3781,7 +4017,12 @@
  temp=`find $LOCALBASE_COMPAT -type d -empty 2>/dev/null`
  if [ -z "$temp" ] && [ -d "$LOCALBASE_COMPAT" ]; then
  	unset files
@@ -866,7 +876,7 @@
  		[ -f "${LOCALBASE_COMPAT}/${file##*/}" ] &&
  			files="${files}${LOCALBASE_COMPAT}/${file##*/} "
  	done
-@@ -3844,7 +4084,8 @@
+@@ -3844,7 +4085,8 @@
  	/bin/unlink $dist_list_temp ; unset ds dist_list_temp
  fi
  
@@ -876,7 +886,7 @@
  	if grep -q DEPORIGIN $pdb/$new_port/+CONTENTS; then
  		echo "===>>> Updating dependencies for $new_port to match installed versions"
  		update_contents $pdb/$new_port/+CONTENTS
-@@ -3879,27 +4120,29 @@
+@@ -3879,27 +4121,29 @@
  	echo ''
  fi
  
