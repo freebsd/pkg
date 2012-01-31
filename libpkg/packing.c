@@ -49,7 +49,15 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 		}
 		snprintf(archive_path, sizeof(archive_path), "%s.%s", path, ext);
 
-		archive_write_open_filename((*pack)->awrite, archive_path);
+		if (archive_write_open_filename(
+		    (*pack)->awrite, archive_path) != ARCHIVE_OK ) {
+			pkg_emit_errno("archive_write_open_filename",
+			    archive_path);
+			archive_read_finish((*pack)->aread);
+			archive_write_finish((*pack)->awrite);
+			*pack = NULL;
+			return EPKG_FATAL;
+		}
 	} else { /* pass mode directly write to the disk */
 		(*pack)->awrite = archive_write_disk_new();
 		archive_write_disk_set_options((*pack)->awrite, EXTRACT_ARCHIVE_FLAGS);
