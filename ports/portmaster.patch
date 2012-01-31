@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-02-01 00:46:07.961169887 +0100
++++ portmaster	2012-02-01 00:47:54.861175039 +0100
 @@ -292,7 +292,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -932,7 +932,7 @@
  
 -if [ -n "$use_package" ]; then
 +# pkgng does not need this
-+if [ -n "$use_package" -a -z "$use_pkgng" ]; then
++if [ -z "$use_pkgng" -a -n "$use_package" ]; then
  	if grep -q DEPORIGIN $pdb/$new_port/+CONTENTS; then
  		echo "===>>> Updating dependencies for $new_port to match installed versions"
  		update_contents $pdb/$new_port/+CONTENTS
