@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-02-01 04:03:18.071183931 +0100
++++ portmaster	2012-02-01 04:16:54.301178769 +0100
 @@ -292,7 +292,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -557,7 +557,7 @@
  	[ -z "$no_del_list" ] && export no_del_list=':'
  
 -	for file in `find $pdb -type f -name \+REQUIRED_BY -empty` ; do
-+	#TODO: will use pkg autoremove when it works
++	#TODO: to be replaced by pkg autoremove?
 +	if [ -z "$use_pkgng" ]; then
 +		find_stale_ports="find $pdb -type f -name \+REQUIRED_BY -empty"
 +	else
