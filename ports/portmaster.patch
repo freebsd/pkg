@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-02-01 00:47:54.861175039 +0100
++++ portmaster	2012-02-01 01:09:30.801173884 +0100
 @@ -292,7 +292,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -21,7 +21,7 @@
  
 -	glob_dirs=`find $pdb -maxdepth 1 -type d -name ${pattern}\*`
 +	if [ -z "$use_pkgng" ]; then
-+		glob_dirs=`find $pdb -maxdepth 1 -type d -name ${pattern}\*`
++		glob_dirs=`find $pdb -depth 1 -type d -name ${pattern}\*`
 +	else
 +		glob_dirs=`pkg query -g "%n-%v" ${pattern}\*`
 +	fi
