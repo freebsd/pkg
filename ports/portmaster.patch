@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-02-01 21:25:50.050460217 +0100
++++ portmaster	2012-02-01 22:20:03.810386156 +0100
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
@@ -594,7 +594,7 @@
  		get_answer_yn n "\n\t===>>> Delete this dependency data"
  		case "$?" in
 -		0)	for f in $deplist; do
-+		0)	[ -n "$use_pkgng" ] && exit 0 #TODO
++		0)	[ -n "$use_pkgng" ] && exit 1 #TODO
 +			for f in $deplist; do
  				update_contents delete $f $origin
  			done ;;
