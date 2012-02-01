@@ -28,21 +28,25 @@
 .Sh DESCRIPTION
 .Nm
 is used for installation of packages from a remote package
-repository database. It can install multiple packages 
+repository database. It can install multiple packages
 specified on the command-line from multiple repositories.
 .Pp
-If a package is found to exists in more than one package 
+If a package is found to exists in more than one package
 repository the first matching repository is the one that the
-package will be first tried to be fetched from. 
+package will be first tried to be fetched from.
 .Pp
 If fetching from the repository fails for some reason the next
 repository, which the package is found to exist is the one that is
 tried until the package is fetched, or all repositories are tried.
 .Pp
 Multiple package repositories is activated only when the environment
-variable \fBPACKAGESITE\fP is not defined.
+variable
+.Ev PACKAGESITE
+is not defined.
 .Pp
-If \fBPACKAGESITE\fP is defined then only the repository to which it
+If
+.Ev PACKAGESITE
+is defined then only the repository to which it
 points is the one that is used during the package installations.
 .Pp
 It is always good to update your package repositories first before
@@ -68,7 +72,7 @@ Treat the package names as extended regular expressions.
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
-See 
+See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
@@ -80,9 +84,8 @@ for further description.
 .It Ev PKG_MULTIREPOS
 .El
 .Sh FILES
-See 
+See
 .Xr pkg.conf 5 .
-.El
 .Sh SEE ALSO
 .Xr pkg 1 ,
 .Xr pkg-add 1 ,
