@@ -27,7 +27,7 @@
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
 .Oo
-.Op Fl X 
+.Op Fl X
 .Fl s Ar string
 .Oc
 .Op Fl O Ar origin
@@ -38,7 +38,8 @@
 .Fl T Ar <pkgname> Ar <pattern>
 .Sh DESCRIPTION
 .Nm
-is used for generating a report of packages installed by \fBpkg(1)\fP
+is used for generating a report of packages installed by
+.Xr pkg 1 .
 .Pp
 < To be completed >
 .Sh OPTIONS
@@ -64,7 +65,7 @@ Does the opposite of
 flag. Displays the packages which status flag does not match the one
 specified by
 .Ar limchar
-.It Fl X 
+.It Fl X
 Treat
 .Ar string
 as an extended regular expression.
@@ -89,7 +90,7 @@ with matching package names/patterns are echoed to standard output.
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
-See 
+See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"

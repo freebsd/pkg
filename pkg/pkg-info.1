@@ -40,19 +40,18 @@ The following options are supported by
 .Nm :
 .Bl -tag -width F1
 .It Fl a
-Displays all installed packages
+Display all installed packages.
 .It Fl f
-Displays full information about the packages
-matching
-.Ar <pkg-name>
+Display full information about the packages matching
+.Ar <pkg-name> .
 .It Fl R
 Display the full yaml (raw) about the packages matching
-.Ar <pkg-name>
+.Ar <pkg-name> .
 .It Fl e
-Returns 0 if
+If
 .Ar <pkg-name>
-is installed and is registered in the database, otherwise returns 1.
-Useful for checking if a package is installed or not.
+is installed and registered in the database, return 0, otherwise return 1.
+Useful for checking whether the package is installed.
 .It Fl g
 Treat
 .Ar <pkg-name>
@@ -66,45 +65,43 @@ Treat
 .Ar <pkg-name>
 as an extended regular expression.
 .It Fl d
-Displays the dependencies of package
-.Ar <pkg-name>
+Display the list of packages which depend on
+.Ar <pkg-name> .
 .It Fl r
-Displays a list of packages on which
-.Ar <pkg-name>
-depends.
+Display the list of packages required by
+.Ar <pkg-name> .
 .It Fl l
-Displays all files installed by
-.Ar <pkg-name>
+Display all files installed by
+.Ar <pkg-name> .
 .It Fl s
-Displays the total size of files installed by
+Display the total size of files installed by
 .Ar <pkg-name>
 .It Fl q
-Be ``quiet''. Prints only the requested information
-without displaying many hints.
+Be
+.Dq quiet .
+Prints only the requested information without displaying many hints.
 .It Fl O
 Search is done by the
 .Ar <pkg-name>
 origin. Added only for Ports compatibility.
 .Pp
 .It Fl E
-Currently not implemented. Added only for Ports
-compatibility
+Currently not implemented. Added only for Ports compatibility.
 .It Fl o
-Displays
+Display
 .Ar <pkg-name>
-origin
+origin.
 .It Fl p
-Displays the installation prefix for each package
-matching
-.Ar <pkg-name>
+Display the installation prefix for each package matching
+.Ar <pkg-name> .
 .It Fl F Ar <pkg-file>
 Displays information from the package archive
-.Ar <pkg-file>
+.Ar <pkg-file> .
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
-See 
+See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
