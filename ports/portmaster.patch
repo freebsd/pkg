@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-02-01 01:09:30.801173884 +0100
++++ portmaster	2012-02-01 04:03:18.071183931 +0100
 @@ -292,7 +292,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
@@ -856,7 +856,46 @@
  		    sort - $ldconfig_out | uniq -d`; do
  			temp="${temp}$file "
  		done
-@@ -3743,29 +3985,32 @@
+@@ -3663,6 +3905,7 @@
+ 
+ 	if [ -n "$REPLACE_ORIGIN" -a -n "$ro_upg_port" ]; then
+ 		# Delete any existing versions of the old port
++		upg_orphan=`pkg query "%a" $ro_upg_port`
+ 		pm_sv "Running pkg_delete for $ro_upg_port"
+ 		pm_pkg_delete_s -f $ro_upg_port
+ 	fi
+@@ -3681,6 +3924,7 @@
+ 			unset preserve_port files
+ 		esac
+ 
++		upg_orphan=`pkg query "%a" $upg_port`
+ 		pm_sv "Running pkg_delete for $upg_port"
+ 		pm_pkg_delete_s -f $upg_port
+ 	fi
+@@ -3726,9 +3970,21 @@
+ 		unset port_log_args
+ 	fi
+ 
++	if [ -z "$REPLACE_ORIGIN" -a "${upg_orphan:-1}" -eq 1 ]; then
++		if [ -n "$PM_MULTI_PORTS" ]; then
++			case "$PM_MULTI_PORTS" in
++			*:${upg_port:-EMPTY}:*)	upg_orphan=0 ;;
++			*:${portdir}:*)		upg_orphan=0 ;;
++			esac
++		else
++			[ "$$" -eq "$PM_PARENT_PID" ] && upg_orphan=0
++		fi
++	fi
++	[ "${upg_orphan:-1}" -eq 1 ] && upg_orphan_flag="-DINSTALLS_DEPENDS"
+ 	# Defining NO_DEPENDS ensures that we will control the installation
+ 	# of the depends, not bsd.port.mk.
+-	eval pm_make_s -DNO_DEPENDS install $port_log_args || install_failed $new_port
++	eval pm_make_s ${upg_orphan_flag:-""} -DNO_DEPENDS install $port_log_args || install_failed $new_port
++	unset upg_orphan ; unset upg_orphan_flag
+ else
+ 	[ -n "$local_package" ] && ppd=${LOCAL_PACKAGEDIR}/All
+ 
+@@ -3743,29 +3999,32 @@
  	fi
  fi
  
@@ -912,7 +951,7 @@
  if [ -n "$preserve_dir" ]; then
  	rmdir $preserve_dir 2>/dev/null
  	unset preserve_dir preserve_port_files
-@@ -3781,7 +4026,12 @@
+@@ -3781,7 +4040,12 @@
  temp=`find $LOCALBASE_COMPAT -type d -empty 2>/dev/null`
  if [ -z "$temp" ] && [ -d "$LOCALBASE_COMPAT" ]; then
  	unset files
@@ -926,7 +965,7 @@
  		[ -f "${LOCALBASE_COMPAT}/${file##*/}" ] &&
  			files="${files}${LOCALBASE_COMPAT}/${file##*/} "
  	done
-@@ -3844,7 +4094,8 @@
+@@ -3844,7 +4108,8 @@
  	/bin/unlink $dist_list_temp ; unset ds dist_list_temp
  fi
  
@@ -936,7 +975,7 @@
  	if grep -q DEPORIGIN $pdb/$new_port/+CONTENTS; then
  		echo "===>>> Updating dependencies for $new_port to match installed versions"
  		update_contents $pdb/$new_port/+CONTENTS
-@@ -3879,27 +4130,29 @@
+@@ -3879,27 +4144,29 @@
  	echo ''
  fi
  
