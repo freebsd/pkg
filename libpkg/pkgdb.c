@@ -752,7 +752,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	snprintf(sql, sizeof(sql),
 			"SELECT id, origin, name, version, comment, desc, "
 				"message, arch, osversion, maintainer, www, "
-				"prefix, flatsize, licenselogic "
+				"prefix, flatsize, licenselogic, automatic "
 			"FROM packages AS p%s "
 			"ORDER BY p.name;", comp);
 
