@@ -306,9 +306,9 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
 					urldecode(key->data.scalar.value, &tmp);
 					if (val->data.scalar.value[0] == 'y')
-						pkg_adddir(pkg, sbuf_data(tmp), 1);
+						pkg_adddir(pkg, sbuf_get(tmp), 1);
 					else
-						pkg_adddir(pkg, sbuf_data(tmp), 0);
+						pkg_adddir(pkg, sbuf_get(tmp), 0);
 				} else if (val->type == YAML_MAPPING_NODE) {
 					pkg_set_dirs_from_node(pkg, val, doc, key->data.scalar.value);
 				} else {
@@ -319,7 +319,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 			case PKG_FILES:
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
 					urldecode(key->data.scalar.value, &tmp);
-					pkg_addfile(pkg, sbuf_data(tmp), val->data.scalar.length == 64 ? val->data.scalar.value : NULL);
+					pkg_addfile(pkg, sbuf_get(tmp), val->data.scalar.length == 64 ? val->data.scalar.value : NULL);
 				} else if (val->type == YAML_MAPPING_NODE)
 					pkg_set_files_from_node(pkg, val, doc, key->data.scalar.value);
 				else
@@ -362,7 +362,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 				}
 
 				urldecode(val->data.scalar.value, &tmp);
-				pkg_addscript(pkg, sbuf_data(tmp), script_type);
+				pkg_addscript(pkg, sbuf_get(tmp), script_type);
 				break;
 		}
 
@@ -702,7 +702,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, flatsize);
 	manifest_append_kv(mapping, "flatsize", tmpbuf);
 	urlencode(desc, &tmpsbuf);
-	manifest_append_kv_literal(mapping, "desc", sbuf_data(tmpsbuf));
+	manifest_append_kv_literal(mapping, "desc", sbuf_get(tmpsbuf));
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (depsmap == -1) {
@@ -770,7 +770,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					files);
 		}
 		urlencode(pkg_file_get(file, PKG_FILE_PATH), &tmpsbuf);
-		manifest_append_kv(files, sbuf_data(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-");
+		manifest_append_kv(files, sbuf_get(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-");
 	}
 
 	seq = -1;
@@ -782,7 +782,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 					dirs);
 		}
 		urlencode(pkg_dir_path(dir), &tmpsbuf);
-		manifest_append_kv(dirs, sbuf_data(tmpsbuf), pkg_dir_try(dir) ? "y" : "n");
+		manifest_append_kv(dirs, sbuf_get(tmpsbuf), pkg_dir_try(dir) ? "y" : "n");
 	}
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
@@ -822,11 +822,11 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 				break;
 		}
 		urlencode(pkg_script_data(script), &tmpsbuf);
-		manifest_append_kv_literal(scripts, script_types, sbuf_data(tmpsbuf));
+		manifest_append_kv_literal(scripts, script_types, sbuf_get(tmpsbuf));
 	}
 	if (message != NULL && *message != '\0') {
 		urlencode(desc, &tmpsbuf);
-		manifest_append_kv_literal(mapping, "message", sbuf_data(tmpsbuf));
+		manifest_append_kv_literal(mapping, "message", sbuf_get(tmpsbuf));
 	}
 
 	if (!yaml_emitter_dump(&emitter, &doc))
@@ -834,7 +834,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 
 	sbuf_free(tmpsbuf);
 	sbuf_finish(destbuf);
-	*dest = strdup(sbuf_data(destbuf));
+	*dest = strdup(sbuf_get(destbuf));
 	sbuf_delete(destbuf);
 
 	yaml_emitter_delete(&emitter);

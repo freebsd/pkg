@@ -33,12 +33,14 @@ pkgdb_dump(struct pkgdb *db, char *dest)
 		pkg_emit_manifest(pkg, &m);
 		sbuf_clear(path);
 		sbuf_printf(path, "%s-%s.yaml", name, version);
-		packing_append_buffer(pack, m, sbuf_data(path), strlen(m));
+		sbuf_finish(path);
+		packing_append_buffer(pack, m, sbuf_get(path), strlen(m));
 		free(m);
 		if (mtree != NULL) {
 			sbuf_clear(path);
 			sbuf_printf(path, "%s-%s.mtree", name, version);
-			packing_append_buffer(pack, mtree, sbuf_data(path), strlen(mtree));
+			sbuf_finish(path);
+			packing_append_buffer(pack, mtree, sbuf_get(path), strlen(mtree));
 		}
 	}
 
