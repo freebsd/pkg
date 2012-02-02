@@ -1844,7 +1844,7 @@ pkgdb_detach_remotes(sqlite3 *s)
 		sbuf_clear(sql);
 		sbuf_printf(sql, "DETACH '%s';", dbname);
 		sbuf_finish(sql);
-		sql_exec(s, sbuf_get(sql));
+		sql_exec(s, sbuf_data(sql));
 	}
 
 	sqlite3_finalize(stmt);
@@ -2033,7 +2033,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	sbuf_finish(sql);
 
 	do {
-		sql_exec(db->sqlite, sbuf_get(sql));
+		sql_exec(db->sqlite, sbuf_data(sql));
 	} while (sqlite3_changes(db->sqlite) != 0);
 
 
@@ -2051,7 +2051,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	sbuf_printf(sql, finalsql, reponame, reponame);
 	sbuf_finish(sql);
 
-	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
 	}
@@ -2132,7 +2132,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 
 	sbuf_printf(sql, pkgjobs_sql_1, reponame);
 	sbuf_finish(sql);
-	sql_exec(db->sqlite, sbuf_get(sql));
+	sql_exec(db->sqlite, sbuf_data(sql));
 
 	/* Remove packages already installed and in the latest version */
 	sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
@@ -2142,7 +2142,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 	sbuf_finish(sql);
 
 	do {
-		sql_exec(db->sqlite, sbuf_get(sql));
+		sql_exec(db->sqlite, sbuf_data(sql));
 	} while (sqlite3_changes(db->sqlite) != 0);
 
 	/* Determine if there is an upgrade needed */
@@ -2152,7 +2152,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 	sbuf_printf(sql, finalsql, reponame, reponame);
 	sbuf_finish(sql);
 
-	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
 	}
@@ -2210,7 +2210,7 @@ pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
 	sbuf_printf(sql, finalsql, reponame, reponame);
 	sbuf_finish(sql);
 
-	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
 	}
@@ -2458,7 +2458,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 		sbuf_finish(sql);
 	}
 
-	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
 	}

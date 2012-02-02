@@ -197,7 +197,7 @@ packing_append_tree(struct packing *pack, const char *treepath, const char *newr
 				  sbuf_cat(sb, newroot);
 			 sbuf_cat(sb, fts_e->fts_path + treelen + 1 /* skip trailing slash */);
 			 sbuf_finish(sb);
-			 packing_append_file(pack, fts_e->fts_name, sbuf_get(sb));
+			 packing_append_file(pack, fts_e->fts_name, sbuf_data(sb));
 			 break;
 		case FTS_DC:
 		case FTS_DNR:
