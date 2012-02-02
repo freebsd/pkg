@@ -16,7 +16,7 @@ Table of Contents
 * [How do I know if I have packages with the same origin?](#10)
 * [How to start working with multi-repos in pkgng?](#11)
 * [Why `pkg create` is slow?](#12)
-* [Does pkgng work wit portaudit?](#13)
+* [Does pkgng work with portaudit?](#13)
 * [When will pkgng be the default package manager?](#14)
 
 <a name="1"></a>
