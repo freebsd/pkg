@@ -69,8 +69,16 @@ static void
 add_missing_dep(struct pkg_dep *d, struct deps_head *dh)
 {
 	struct deps_entry *e = NULL;
+	const char *origin = NULL;
 
 	assert(d != NULL);
+
+	/* do not add duplicate entries in the queue */
+	STAILQ_FOREACH(e, dh, next) {
+		origin = pkg_dep_get(d, PKG_DEP_ORIGIN);
+		if (strcmp(e->origin, origin) == 0)
+			return;
+	}
 
 	if ((e = calloc(1, sizeof(struct deps_entry))) == NULL)
 		err(1, "calloc(deps_entry)");
@@ -252,7 +260,7 @@ exec_check(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("fixing package database can only be done as root");
+		warnx("fixing the package database can only be done as root");
 		return (EX_NOPERM);
 	}
 
@@ -275,7 +283,7 @@ exec_check(int argc, char **argv)
 		if (yes == false) 
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 		if (yes == false)
-			yes = query_yesno("\nTry to fix the missing dependencies [y/N]: ");
+			yes = query_yesno("\n>>> Try to fix the missing dependencies [y/N]: ");
 
 		if (yes == true) {
 			fix_deps(db, &dh, nbpkgs);
