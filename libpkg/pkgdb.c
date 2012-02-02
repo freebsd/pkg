@@ -2010,9 +2010,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	sbuf_printf(sql, how, "origin");
 	sbuf_cat(sql, " OR ");
 	sbuf_printf(sql, how, "name || \"-\" || version");
+	sbuf_finish(sql);
 
 	for (i = 0; i < nbpkgs; i++) {
-		if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+		if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite);
 			return (NULL);
 		}
@@ -2297,9 +2298,10 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 		sbuf_printf(sql, how, "p.origin");
 		sbuf_cat(sql, " OR ");
 		sbuf_printf(sql, how, "p.name || \"-\" || p.version");
+		sbuf_finish(sql);
 
 		for (i = 0; i < nbpkgs; i++) {
-			if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+			if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 				ERROR_SQLITE(db->sqlite);
 				return (NULL);
 			}
@@ -2307,7 +2309,8 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 			while (sqlite3_step(stmt) != SQLITE_DONE);
 		}
 	} else {
-		if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+		sbuf_finish(sql);
+		if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite);
 			return (NULL);
 		}
@@ -2523,7 +2526,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 			}
 			sqlite3_finalize(stmt_conflicts);
 			sbuf_finish(conflictmsg);
-			pkg_emit_error(sbuf_data(conflictmsg));
+			pkg_emit_error(sbuf_get(conflictmsg));
 			ret = EPKG_FATAL;
 		}
 		sqlite3_reset(stmt);
@@ -2596,7 +2599,7 @@ pkgdb_integrity_check(struct pkgdb *db)
 		}
 		sqlite3_finalize(stmt_conflicts);
 		sbuf_finish(conflictmsg);
-		pkg_emit_error(sbuf_data(conflictmsg));
+		pkg_emit_error(sbuf_get(conflictmsg));
 		ret = EPKG_FATAL;
 	}
 

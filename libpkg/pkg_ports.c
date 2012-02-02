@@ -665,7 +665,7 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 {
 	if (sbuf_len(buf) > 0) {
 		sbuf_finish(buf);
-		pkg_appendscript(p, sbuf_data(buf), type);
+		pkg_appendscript(p, sbuf_get(buf), type);
 	}
 	sbuf_delete(buf);
 }
@@ -753,7 +753,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		} else if ((len = strlen(plist_p)) > 0){
 			if (sbuf_len(pplist.unexec_buf) > 0) {
 				sbuf_finish(pplist.unexec_buf);
-				pre_unexec_append(pplist.pre_deinstall_buf, sbuf_data(pplist.unexec_buf), "");
+				pre_unexec_append(pplist.pre_deinstall_buf,
+				    sbuf_get(pplist.unexec_buf), "");
 				sbuf_reset(pplist.unexec_buf);
 			}
 			buf = plist_p;

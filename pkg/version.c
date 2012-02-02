@@ -6,6 +6,7 @@
 #define _WITH_GETLINE
 #include <err.h>
 #include <pkg.h>
+#include <pkg_util.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -314,8 +315,8 @@ exec_version(int argc, char **argv)
 			pkg_get(pkg, PKG_ORIGIN, &origin);
 			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
 			sbuf_finish(cmd);
-			if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
-				buf = sbuf_data(res);
+			if ((res = exec_buf(sbuf_get(cmd))) != NULL) {
+				buf = sbuf_get(res);
 				while (*buf != '\0') {
 					if (*buf == '\n') {
 						*buf = '\0';
@@ -323,7 +324,7 @@ exec_version(int argc, char **argv)
 					}
 					buf++;
 				}
-				print_version(pkg, "port", sbuf_data(res), limchar, opt);
+				print_version(pkg, "port", sbuf_get(res), limchar, opt);
 				sbuf_delete(res);
 			} else {
 				print_version(pkg, NULL, NULL, limchar, opt);
