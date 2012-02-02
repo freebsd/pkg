@@ -34,6 +34,8 @@ sbuf_get(struct sbuf *buf)
 	if (buf == NULL)
 		return (NULL);
 
+	sbuf_finish(buf);
+
 	return sbuf_data(buf);
 }
 
