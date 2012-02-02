@@ -155,7 +155,8 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr < PKG_NUM_FIELDS) {
-			*va_arg(ap, const char **) = sbuf_get(pkg->fields[attr]);
+			*va_arg(ap, const char **) = (pkg->fields[attr] != NULL)?
+			    sbuf_get(pkg->fields[attr]) : NULL;
 			continue;
 		}
 		switch (attr) {
