@@ -59,29 +59,29 @@ There are two type of keyword for the query format: the multiline and the normal
 one. Only one type of multiline pattern is accepted for a given query.
 .Ss Normal patterns:
 .Bl -tag -width F1
-.It Cm %n
+.It Cm \&%n
 Name of the matched package
-.It Cm %v
+.It Cm \&%v
 Version of the matched package
-.It Cm %o
+.It Cm \&%o
 Origin of the matched package
-.It Cm %p
+.It Cm \&%p
 Prefix of the matched package
-.It Cm %m
+.It Cm \&%m
 Maintainer of the matched package
-.It Cm %c
+.It Cm \&%c
 Comment of the matched package
-.It Cm %w
+.It Cm \&%w
 Home page of the matched package
-.It Cm %l
+.It Cm \&%l
 license logic of the matched package - nothing for single, & for AND, and | for OR
-.It Cm %sh
+.It Cm \&%sh
 The flat size in human readable format of the matched package
-.It Cm %sb
+.It Cm \&%sb
 The flat size in bytes of the matched package
-.It Cm %a
+.It Cm \&%a
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
-.It Cm %? Ns Op drCFIDLUG
+.It Cm \&%? Ns Op drCFIDLUG
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It Cm d
@@ -106,7 +106,7 @@ for groups
 .El
 .Ss Multiline patterns:
 .Bl -tag -width F1
-.It Cm %d Ns Op nov
+.It Cm \&%d Ns Op nov
 Expands to the list of dependencies for the matched package, where
 .Cm n
 stands for the package name,
@@ -114,7 +114,7 @@ stands for the package name,
 for the package origin, and
 .Cm v
 for the package version.
-.It Cm %r Ns Op nov
+.It Cm \&%r Ns Op nov
 Expands to the list of reverse dependencies for the matched package, where
 .Cm n
 stands for the package name,
@@ -122,27 +122,27 @@ stands for the package name,
 for the package origin, and
 .Cm v
 for the package version.
-.It Cm %C
+.It Cm \&%C
 Expands to the list of categories the matched package belongs to.
-.It Cm %F Ns Op ps
+.It Cm \&%F Ns Op ps
 Expands to the list of files of the matched package, where
 .Cm p
 stands for path, and
 .Cm s
 for sum.
-.It Cm %O Ns Op kv
+.It Cm \&%O Ns Op kv
 Expands to the list of options of the matched package, where
 .Cm k
 stands for option key, and
 .Cm v
 for option value.
-.It Cm %L
+.It Cm \&%L
 Expands to the list of license(s) for the matched package.
-.It Cm %U
+.It Cm \&%U
 Expands to the list of users needed by the matched package.
-.It Cm %G
+.It Cm \&%G
 Expands to the list of groups needed by the matched package.
-.It Cm %S
+.It Cm \&%S
 Expands to the list of scripts for the matching packages - install, deinstall, etc.
 .El
 .Sh ENVIRONMENT
