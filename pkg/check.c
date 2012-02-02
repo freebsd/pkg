@@ -27,7 +27,7 @@ STAILQ_HEAD(deps_head, deps_entry);
 static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_head *dh);
 static void add_missing_dep(struct pkg_dep *d, struct deps_head *dh);
 static void deps_free(struct deps_head *dh);
-static void fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs);
+static void fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes);
 static void check_summary(struct pkgdb *db, struct deps_head *dh);
 
 static int
@@ -106,7 +106,7 @@ deps_free(struct deps_head *dh)
 }
 
 static void
-fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs)
+fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
@@ -172,12 +172,16 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs)
                 printf("\nthe installation will save %s\n", size);
         } else {
                 humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-                printf("\nthe installation will require %s more space\n", size);
+                printf("\nThe installation will require %s more space\n", size);
         }
         humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
         printf("%s to be downloaded\n", size);
 
-	pkg_jobs_apply(jobs, 0);
+	if (yes == false)
+		yes = query_yesno("\n>>> Try to fix the missing dependencies [y/N]: ");
+
+	if (yes == true)
+		pkg_jobs_apply(jobs, 0);
 
 	free(pkgs);
 	pkg_free(pkg);
@@ -278,17 +282,12 @@ exec_check(int argc, char **argv)
 		nbpkgs += check_deps(db, pkg, &dh);
 
 	if (nbpkgs > 0) {
-		printf("\n>>> Missing package dependencies were detected.\n");
-
 		if (yes == false) 
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-		if (yes == false)
-			yes = query_yesno("\n>>> Try to fix the missing dependencies [y/N]: ");
 
-		if (yes == true) {
-			fix_deps(db, &dh, nbpkgs);
-			check_summary(db, &dh);
-		}
+		printf("\n>>> Missing package dependencies were detected.\n\n");
+		fix_deps(db, &dh, nbpkgs, yes);
+		check_summary(db, &dh);
 	}
 
 	deps_free(&dh);
