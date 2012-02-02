@@ -1,11 +1,11 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-02-02 18:38:26.884559999 +0100
++++ portmaster	2012-02-02 21:21:31.064480991 +0100
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
  				pm_find_s $pdb -type f -name PM_UPGRADE_DONE_FLAG -delete
 +				[ -n "$use_pkgng" ] &&
-+					pm_find_s $pdb -type d -depth 1 -empty -exec rmdir '{}' \; 2>/dev/null
++					pm_find_s $pdb -type d -depth 1 -empty ! -path \*\.zfs/\* -delete 2>/dev/null
  			fi
  		fi
  		if [ -z "$BACKUP" -a -z "$NO_BACKUP" -a -n "$NB_DELETE" ]; then
