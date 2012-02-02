@@ -28,13 +28,15 @@ sbuf_set(struct sbuf **buf, const char *str)
 	return (0);
 }
 
-const char *
+char *
 sbuf_get(struct sbuf *buf)
 {
 	if (buf == NULL)
 		return (NULL);
 
-	return sbuf_data(buf);
+	assert((buf->s_flags & SBUF_FINISHED) == SBUF_FINISHED);
+
+	return (buf->s_buf);
 }
 
 void

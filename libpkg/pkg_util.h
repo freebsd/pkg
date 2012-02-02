@@ -13,7 +13,7 @@
 	pkg_emit_error("sqlite: %s", sqlite3_errmsg(db))
 
 int sbuf_set(struct sbuf **, const char *);
-const char * sbuf_get(struct sbuf *);
+char * sbuf_get(struct sbuf *);
 void sbuf_reset(struct sbuf *);
 void sbuf_free(struct sbuf *);
 

@@ -4,6 +4,7 @@
 #include <inttypes.h>
 #include <libutil.h>
 #include <pkg.h>
+#include <pkg_util.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -250,66 +251,66 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		case 'd':
 			while (pkg_deps(pkg, &dep) == EPKG_OK) {
 				format_str(pkg, output, qstr, dep);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 				break;
 		}
 		case 'r':
 			while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 				format_str(pkg, output, qstr, dep);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 			}
 			break;
 		case 'C':
 			while (pkg_categories(pkg, &cat) == EPKG_OK) {
 				format_str(pkg, output, qstr, cat);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 			}
 			break;
 		case 'O':
 			while (pkg_options(pkg, &option) == EPKG_OK) {
 				format_str(pkg, output, qstr, option);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 			}
 			break;
 		case 'F':
 			while (pkg_files(pkg, &file) == EPKG_OK) {
 				format_str(pkg, output, qstr, file);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 			}
 			break;
 		case 'D':
 			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 				format_str(pkg, output, qstr, dir);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 			}
 			break;
 		case 'L':
 			while (pkg_licenses(pkg, &lic) == EPKG_OK) {
 				format_str(pkg, output, qstr, lic);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 			}
 			break;
 		case 'U':
 			while (pkg_users(pkg, &user) == EPKG_OK) {
 				format_str(pkg, output, qstr, user);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 			}
 			break;
 		case 'G':
 			while (pkg_users(pkg, &user) == EPKG_OK) {
 				format_str(pkg, output, qstr, group);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 			}
 			break;
 		case 'S':
 			while (pkg_scripts(pkg, &scripts) == EPKG_OK) {
 				format_str(pkg, output, qstr, scripts);
-				printf("%s\n", sbuf_data(output));
+				printf("%s\n", sbuf_get(output));
 			}
 			break;
 		default:
 			format_str(pkg, output, qstr, dep);
-			printf("%s\n", sbuf_data(output));
+			printf("%s\n", sbuf_get(output));
 			break;
 	}
 	sbuf_delete(output);
