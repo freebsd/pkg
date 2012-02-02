@@ -945,7 +945,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 			sbuf_finish(manifest);
 
-			ret = pkg_parse_manifest(pkg, sbuf_data(manifest));
+			ret = pkg_parse_manifest(pkg, sbuf_get(manifest));
 			if (ret != EPKG_OK) {
 				retcode = EPKG_FATAL;
 				goto cleanup;

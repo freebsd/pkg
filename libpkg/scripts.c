@@ -53,7 +53,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script_t type)
 			sbuf_cat(script_cmd, "\n");
 			sbuf_cat(script_cmd, pkg_script_data(script));
 			sbuf_finish(script_cmd);
-			system(sbuf_data(script_cmd));
+			system(sbuf_get(script_cmd));
 		}
 	}
 
