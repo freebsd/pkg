@@ -10,5 +10,6 @@
 *.gz
 pkg/pkg
 pkg2legacy
+pkg-static/pkg-static
 tests/test
 docs/html/*
