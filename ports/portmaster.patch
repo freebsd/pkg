@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-02-02 21:21:31.064480991 +0100
++++ portmaster	2012-02-03 01:07:00.434482218 +0100
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
@@ -973,7 +973,7 @@
  		pm_sv "Running pkg_delete for $upg_port"
  		pm_pkg_delete_s -f $upg_port
  	fi
-@@ -3726,9 +3989,21 @@
+@@ -3726,6 +3989,18 @@
  		unset port_log_args
  	fi
  
@@ -987,15 +987,11 @@
 +			[ "$$" -eq "$PM_PARENT_PID" ] && np_orphan=0
 +		fi
 +	fi
-+	[ "${np_orphan:-1}" -eq 1 ] && np_orphan_flg="-DINSTALLS_DEPENDS"
++	[ "${np_orphan:-1}" -eq 1 ] && PM_MAKE_ARGS="${PM_MAKE_ARGS} -DINSTALLS_DEPENDS"
++	unset np_orphan
  	# Defining NO_DEPENDS ensures that we will control the installation
  	# of the depends, not bsd.port.mk.
--	eval pm_make_s -DNO_DEPENDS install $port_log_args || install_failed $new_port
-+	eval pm_make_s -DNO_DEPENDS ${np_orphan_flg:-""} install $port_log_args || install_failed $new_port
-+	unset np_orphan ; unset np_orphan_flg
- else
- 	[ -n "$local_package" ] && ppd=${LOCAL_PACKAGEDIR}/All
- 
+ 	eval pm_make_s -DNO_DEPENDS install $port_log_args || install_failed $new_port
 @@ -3743,29 +4018,32 @@
  	fi
  fi
