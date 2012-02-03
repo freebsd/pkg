@@ -1,5 +1,5 @@
 --- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-02-03 01:07:00.434482218 +0100
++++ portmaster	2012-02-03 02:06:11.674431339 +0100
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
@@ -884,7 +884,7 @@
  			ro_upg_port=$arg2
  		else
  			find_glob_dirs $arg2 && ro_upg_port=${glob_dirs#$pdb/}
-@@ -3080,9 +3316,18 @@
+@@ -3080,12 +3316,21 @@
  	unset arg2
  
  	if [ -z "$ro_upg_port" ]; then
@@ -904,7 +904,11 @@
 +			fi
  			echo "       or a port directory from $pd"
  			echo ''
- 			echo "       $ro_opd does not seem to be installed,"
+-			echo "       $ro_opd does not seem to be installed,"
++			echo "       $arg2 does not seem to be installed,"
+ 			echo '       or listed as a dependency'
+ 			echo '' ; no_valid_port
+ 		fi
 @@ -3117,7 +3362,7 @@
  fi
  [ -z "$upg_port" -a -z "$REPLACE_ORIGIN" ] && upg_port=`iport_from_origin ${portdir}`
