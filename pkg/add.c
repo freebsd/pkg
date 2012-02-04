@@ -12,6 +12,7 @@
 #include <pkg.h>
 
 #include "add.h"
+#include "pkg_event.h"
 
 static int
 is_url(const char * const pattern)
@@ -40,6 +41,7 @@ exec_add(int argc, char **argv)
 	char *file;
 	int retcode = EPKG_OK;
 	int i;
+	struct pkg *p = NULL;
 
 	if (argc < 2) {
 		usage_add();
@@ -64,9 +66,16 @@ exec_add(int argc, char **argv)
 			file = path;
 		} else
 			file = argv[i];
+			
+		pkg_open(&p, file, NULL);
+		pkg_emit_install_begin(p);
 
 		if ((retcode = pkg_add(db, file, 0)) != EPKG_OK)
 			break;
+		
+		if (retcode == EPKG_OK)
+			pkg_emit_install_finished(p);
+
 	}
 
 	pkgdb_close(db);
