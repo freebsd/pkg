@@ -92,6 +92,12 @@ static struct config_entry c[] = {
 		"PLIST_KEYWORDS_DIR",
 		NULL,
 		{ NULL }
+	},
+	[PKG_CONFIG_SYSLOG] = {
+		BOOL,
+		"SYSLOG",
+		"YES",
+		{ NULL }
 	}
 };
 
@@ -201,8 +207,15 @@ pkg_config_bool(pkg_config_key key, bool *val)
 	if (c[key].val != NULL && (
 	    strcasecmp(c[key].val, "yes") == 0 ||
 	    strcasecmp(c[key].val, "true" ) == 0 ||
-	    strcasecmp(c[key].val, "on" ) == 0))
+	    strcasecmp(c[key].val, "on" ) == 0)) {
 		*val = true;
+	}
+	else if (c[key].val == NULL && c[key].def != NULL && (
+	    strcasecmp(c[key].def, "yes") == 0 ||
+	    strcasecmp(c[key].def, "true" ) == 0 ||
+	    strcasecmp(c[key].def, "on" ) == 0)) {
+			*val = true;
+	}
 
 	return (EPKG_OK);
 }
