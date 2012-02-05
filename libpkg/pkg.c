@@ -740,7 +740,7 @@ pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type)
 
 	if (s != NULL) {
 		sbuf_cat(s->data, cmd);
-		sbuf_done(s->data);
+		sbuf_finish(s->data);
 		return (EPKG_OK);
 	}
 
