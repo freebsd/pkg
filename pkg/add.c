@@ -78,6 +78,8 @@ exec_add(int argc, char **argv)
 				sbuf_printf(failedpkgs, ", ");
 			failedpkgcount++;
 		}
+		else
+			pkg_emit_install_finished(p);
 
 	}
 
