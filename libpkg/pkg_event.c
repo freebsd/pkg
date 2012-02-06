@@ -1,3 +1,5 @@
+#include <syslog.h>
+
 #include "pkg.h"
 #include "pkg_event.h"
 
@@ -86,9 +88,17 @@ void
 pkg_emit_install_finished(struct pkg *p)
 {
 	struct pkg_event ev;
+	bool syslog_enabled = false;
+	char *name, *version;
 
 	ev.type = PKG_EVENT_INSTALL_FINISHED;
 	ev.e_install_finished.pkg = p;
+
+	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
+	if (syslog_enabled) {
+		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
+		syslog(LOG_NOTICE, "%s-%s installed", name, version);
+	}
 
 	pkg_emit_event(&ev);
 }
@@ -126,9 +136,17 @@ void
 pkg_emit_deinstall_finished(struct pkg *p)
 {
 	struct pkg_event ev;
+	bool syslog_enabled = false;
+	char *name, *version;
 
 	ev.type = PKG_EVENT_DEINSTALL_FINISHED;
 	ev.e_deinstall_finished.pkg = p;
+
+	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
+	if (syslog_enabled) {
+		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
+		syslog(LOG_NOTICE, "%s-%s deinstalled", name, version);
+	}
 
 	pkg_emit_event(&ev);
 }
@@ -148,9 +166,17 @@ void
 pkg_emit_upgrade_finished(struct pkg *p)
 {
 	struct pkg_event ev;
+	bool syslog_enabled = false;
+	char *name, *version, *newversion;
 
 	ev.type = PKG_EVENT_UPGRADE_FINISHED;
 	ev.e_upgrade_finished.pkg = p;
+
+	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
+	if (syslog_enabled) {
+		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version, PKG_NEWVERSION, &newversion);
+		syslog(LOG_NOTICE, "%s upgraded: %s -> %s ", name, version, newversion);
+	}
 
 	pkg_emit_event(&ev);
 }
