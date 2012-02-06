@@ -36,10 +36,12 @@ int
 exec_add(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
+	struct sbuf *failedpkgs = sbuf_new_auto();
 	char path[MAXPATHLEN + 1];
 	char *file;
 	int retcode = EPKG_OK;
 	int i;
+	int failedpkgcount = 0;
 
 	if (argc < 2) {
 		usage_add();
@@ -65,11 +67,22 @@ exec_add(int argc, char **argv)
 		} else
 			file = argv[i];
 
-		if ((retcode = pkg_add(db, file, 0)) != EPKG_OK)
-			break;
+		if ((retcode = pkg_add(db, file, 0)) != EPKG_OK) {
+			sbuf_cat(failedpkgs, argv[i]);
+			if (i != argc - 1)
+				sbuf_printf(failedpkgs, ", ");
+			failedpkgcount++;
+		}
+
 	}
 
 	pkgdb_close(db);
+	
+	if(failedpkgcount > 0) {
+		sbuf_finish(failedpkgs);
+		printf("Failed to install the following %d package(s): %s.\n", failedpkgcount, sbuf_data(failedpkgs));
+	}
+	sbuf_delete(failedpkgs);
 
 	return (retcode == EPKG_OK ? EX_OK : EX_SOFTWARE);
 }
