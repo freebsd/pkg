@@ -33,6 +33,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script_t type)
 			break;
 	}
 
+	assert(i < sizeof(map) / sizeof(map[0]));
 	assert(map[i].a == type);
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
