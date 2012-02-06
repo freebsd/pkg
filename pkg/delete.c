@@ -110,7 +110,8 @@ exec_delete(int argc, char **argv)
 	if (oldsize > newsize) {
 		newsize *= -1;
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-	} else {
+	}
+	else if (newsize > oldsize) {
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
 	}
 
@@ -125,7 +126,7 @@ exec_delete(int argc, char **argv)
 
 	if (oldsize > newsize)
 		printf("\nThe deinstallation will save %s\n", size);
-	else
+	else if (newsize > oldsize)
 		printf("\nThe deinstallation will require %s more space\n", size);
 
 	if (yes == false)
