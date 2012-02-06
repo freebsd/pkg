@@ -31,9 +31,8 @@ sbuf_set(struct sbuf **buf, const char *str)
 char *
 sbuf_get(struct sbuf *buf)
 {
-	if (buf == NULL)
-		return (NULL);
 
+	assert(buf != NULL);
 	assert((buf->s_flags & SBUF_FINISHED) == SBUF_FINISHED);
 
 	return (buf->s_buf);
