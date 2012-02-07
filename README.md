@@ -336,15 +336,10 @@ And now you can install from the remote repositories using the `pkg install` com
 
 	# pkg install -r repo1 zsh cfengine3
 
-Below you can find publically available repositories for pkgng that you can use:
-
-* http://repos.etoilebsd.net/
-* http://www.unix-heaven.org/FreeBSD/pkgng/repository/
-
 Example repo entries in *pkg.conf(5)* would look like this:
 
-	  bapt : http://repos.etoilebsd.net/9-amd64-20111222/
-	  dnaeon : http://www.unix-heaven.org/FreeBSD/pkgng/repository/9-amd64-20111222/
+	  default : http://example.com/repos
+	  second : http://somewhere.com/repos
 
 If you want to mirror the repositories and make them public as well, please get in contact with us, so that we
 can add your repository to the list as well :)
