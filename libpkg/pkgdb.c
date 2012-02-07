@@ -1928,6 +1928,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 {
 	sqlite3_stmt *stmt = NULL;
 	int i = 0;
+	int ret = 0;
+	int matches = 0;
 	struct sbuf *sql = sbuf_new_auto();
 	const char *how = NULL;
 	const char *reponame = NULL;
@@ -1938,7 +1940,9 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
 		"cksum, repopath, automatic, (select count(*) FROM '%s'.deps as d WHERE d.origin = pkgjobs.origin) as weight, "
 		"'%s' AS dbname FROM pkgjobs ORDER BY weight DESC;";
-       
+
+	const char check_sql[] = "SELECT * FROM '%s'.packages WHERE ";
+
 	const char main_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 			"osversion, maintainer, www, prefix, flatsize, pkgsize, "
 			"cksum, repopath, automatic) "
@@ -1983,8 +1987,6 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		reponame = "remote";
 	}
 
-	sbuf_printf(sql, main_sql, reponame);
-
 	switch (match) {
 		case MATCH_ALL:
 			how = NULL;
@@ -2003,8 +2005,38 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 			break;
 	}
 
+	/* Check if packages are found from the remote repository */
+	sbuf_printf(sql, check_sql, reponame);
+	sbuf_printf(sql, how, "name");
+	sbuf_cat(sql, " OR ");
+	sbuf_printf(sql, how, "origin");
+	sbuf_cat(sql, " OR ");
+	sbuf_printf(sql, how, "name || \"-\" || version");
+	sbuf_finish(sql);
+
+	for (i = 0; i < nbpkgs; i++) {
+		if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			return (NULL);
+		}
+		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
+		matches = 0;
+		while ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+			if (ret == SQLITE_ROW)
+				matches++;
+		}
+		if (!matches)
+			printf("Pattern %s not found from the repository\n", pkgs[i]);
+	}
+
+	sqlite3_finalize(stmt);
+	sbuf_clear(sql);
+
+	/* Add packages to pkgjobs */
 	create_temporary_pkgjobs(db->sqlite);
 
+	sbuf_reset(sql);
+	sbuf_printf(sql, main_sql, reponame);
 	sbuf_printf(sql, how, "name");
 	sbuf_cat(sql, " OR ");
 	sbuf_printf(sql, how, "origin");
