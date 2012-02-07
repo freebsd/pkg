@@ -485,10 +485,6 @@ exec_query(int argc, char **argv)
 		for (i = 1; i < argc; i++) {
 			pkgname = argv[i];
 
-			/* remove trailing / is any for origin */
-			if (argc > 0 && pkgname[strlen(pkgname) -1] == '/')
-				pkgname[strlen(pkgname) -1] = '\0';
-
 			if ((it = pkgdb_query(db, pkgname, match)) == NULL)
 				return (EX_IOERR);
 
