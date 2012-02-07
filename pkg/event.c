@@ -1,7 +1,6 @@
 #include <sys/param.h>
 #include <string.h>
 #include <err.h>
-#include <syslog.h>
 #include <stdarg.h>
 
 #include "pkg.h"
@@ -20,9 +19,6 @@ event_callback(void *data, struct pkg_event *ev)
 	int *debug = data;
 	(void)debug;
 	const char *name, *version, *newversion;
-	bool syslog_enabled;
-
-	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -49,12 +45,9 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		printf(" done\n");
-		pkg_get(ev->e_install_finished.pkg, PKG_MESSAGE, &message,
-			PKG_NAME, &name, PKG_VERSION, &version);
+		pkg_get(ev->e_install_finished.pkg, PKG_MESSAGE, &message);
 		if (message != NULL && message[0] != '\0')
 			printf("%s\n", message);
-		if (syslog_enabled)
-			syslog(LOG_NOTICE, "Installed: %s-%s", name, version);
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		printf("Checking integrity...");
@@ -70,11 +63,6 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		printf(" done\n");
-		if (syslog_enabled) {
-			pkg_get(ev->e_deinstall_finished.pkg, PKG_NAME, &name,
-				PKG_VERSION, &version);
-			syslog(LOG_NOTICE, "Deinstalled: %s-%s", name, version);
-		}
 		break;
 	case PKG_EVENT_UPGRADE_BEGIN:
 		pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name, PKG_VERSION, &version,
@@ -84,12 +72,6 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		printf(" done\n");
-		if (syslog_enabled) {
-			pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name,
-				PKG_VERSION, &version, PKG_NEWVERSION, &newversion);
-			syslog(LOG_NOTICE, "Upgrading: %s-%s to %s-%s",
-				name, version, name, newversion);
-		}
 		break;
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;

@@ -613,18 +613,6 @@ int pkgdb_it_next(struct pkgdb_it *, struct pkg **pkg, int flags);
  */
 void pkgdb_it_free(struct pkgdb_it *);
 
-int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_files(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_options(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_category(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_license(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
-
 /**
  * Compact the database to save space.
  * Note that the function will really compact the database only if some
@@ -696,19 +684,6 @@ int pkg_create_installed(const char *, pkg_formats, const char *, struct pkg *);
  */
 int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
 
-/**
- * Remove and unregister the package.
- * @param pkg An installed package to delete
- * @param db An opened pkgdb
- * @param force If set to one, the function will not fail if the package is
- * required by other packages.
- * @return An error code.
- */
-int pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags);
-#define PKG_DELETE_FORCE (1<<0)
-#define PKG_DELETE_UPGRADE (1<<1)
-
-int pkg_repo_fetch(struct pkg *pkg);
 int pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len);
 
 /**
@@ -737,17 +712,6 @@ int ports_parse_plist(struct pkg *, char *);
  * @todo Document
  */
 int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
-
-/**
- * scripts handling
- */
-int pkg_script_pre_install(struct pkg *);
-int pkg_script_post_install(struct pkg *);
-int pkg_script_pre_upgrade(struct pkg *);
-int pkg_script_post_upgrade(struct pkg *);
-int pkg_script_pre_deinstall(struct pkg *);
-int pkg_script_post_deinstall(struct pkg *);
-int pkg_script_run(struct pkg *, pkg_script_t type);
 
 /**
  * Event type used to report progress or problems.
@@ -830,14 +794,7 @@ typedef int(*pkg_event_cb)(void *, struct pkg_event *);
 
 void pkg_event_register(pkg_event_cb cb, void *data);
 
-int pkg_stop_rc_scripts(struct pkg *);
-int pkg_start_rc_scripts(struct pkg *);
-
-
 int pkg_init(const char *);
 int pkg_shutdown(void);
-
-int pkg_add_user_group(struct pkg *pkg);
-int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
 
 #endif

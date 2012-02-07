@@ -126,6 +126,28 @@ struct pkg_group {
 	STAILQ_ENTRY(pkg_group) next;
 };
 
+/**
+ * Remove and unregister the package.
+ * @param pkg An installed package to delete
+ * @param db An opened pkgdb
+ * @param force If set to one, the function will not fail if the package is
+ * required by other packages.
+ * @return An error code.
+ */
+int pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags);
+#define PKG_DELETE_FORCE (1<<0)
+#define PKG_DELETE_UPGRADE (1<<1)
+
+int pkg_repo_fetch(struct pkg *pkg);
+
+int pkg_stop_rc_scripts(struct pkg *);
+int pkg_start_rc_scripts(struct pkg *);
+
+int pkg_script_run(struct pkg *, pkg_script_t type);
+
+int pkg_add_user_group(struct pkg *pkg);
+int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
+
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path, struct sbuf *mbuf);
 
 void pkg_list_free(struct pkg *, pkg_list);
@@ -182,5 +204,18 @@ int pkg_set_mtree(struct pkg *, const char *mtree);
 
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);
+
+int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_files(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_options(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_category(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_license(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
+
 
 #endif
