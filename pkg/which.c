@@ -10,6 +10,7 @@
 #include <sysexits.h>
 
 #include "which.h"
+#include "utils.h"
 
 void
 usage_which(void)
@@ -25,7 +26,6 @@ exec_which(int argc, char **argv)
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
 	char pathabs[MAXPATHLEN + 1];
-	char pathabsdir[MAXPATHLEN + 1];
 	int ret = EPKG_OK, retcode = EPKG_OK;
 	const char *name, *version;
 
@@ -39,8 +39,7 @@ exec_which(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	realpath(dirname(argv[1]), pathabsdir);
-	snprintf(pathabs, sizeof(pathabs), "%s/%s", pathabsdir, basename(argv[1]));
+	absolutepath(argv[1], strlen(argv[1]), pathabs, sizeof(pathabs));
 
 	if ((it = pkgdb_query_which(db, pathabs)) == NULL) {
 		return (EX_IOERR);

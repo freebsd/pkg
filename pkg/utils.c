@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <libutil.h>
 #include <string.h>
+#include <unistd.h>
 #include <pkg.h>
 
 #include "utils.h"
@@ -28,6 +29,73 @@ query_yesno(const char *msg)
 
         return r;
 }
+
+char *
+absolutepath(const char *src, size_t src_len, char *dest, size_t dest_len) {
+	char * res;
+	size_t res_len, res_size, len;;
+	char pwd[MAXPATHLEN];
+	const char *ptr = src;
+	const char *next;
+	const char *slash;
+
+	if (src_len != 0 && src[0] != '/') {
+		if (getcwd(pwd, sizeof(pwd)) == NULL)
+			return NULL;
+
+		res_len = strlen(pwd);
+		res_size = res_len + 1 + src_len + 1;
+		res = malloc(res_size);
+		strlcpy(res, pwd, res_size);
+	} else {
+		res_size = (src_len > 0 ? src_len : 1) + 1;
+		res = malloc(res_size);
+		res_len = 0;
+	}
+
+	next = src;
+	for (ptr = src; next != NULL ; ptr = next + 1) {
+		next = strchr(ptr, '/');
+
+		if (next != NULL)
+			len = next - ptr;
+		else
+			len = strlen(ptr);
+
+		switch(len) {
+			case 2:
+				if (ptr[0] == '.' && ptr[1] == '.') {
+					slash = strrchr(res, '/');
+					if (slash != NULL) {
+						res_len = slash - res;
+						res[res_len] = '\0';
+					}
+					continue;
+				}
+				break;
+			case 1:
+				if (ptr[0] == '.')
+					continue;
+
+				break;
+			case 0:
+				continue;
+		}
+		res[res_len++] = '/';
+		strlcpy(res + res_len, ptr, res_size);
+		res_len += len;
+		res[res_len] = '\0';
+	}
+
+	if (res_len == 0)
+		strlcpy(res, "/", res_size);
+
+	strlcpy(dest, res, dest_len);
+	free(res);
+
+	return &dest[0];
+}
+
 
 int
 print_info(struct pkg * const pkg, unsigned int opt)
