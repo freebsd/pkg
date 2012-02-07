@@ -30,12 +30,16 @@ update_from_remote_repo(const char *name, const char *url)
 	struct archive_entry *ae = NULL;
 	char repofile[MAXPATHLEN];
 	char repofile_unchecked[MAXPATHLEN];
-	char *tmp = NULL;
+	char tmp[21];
 	const char *dbdir = NULL;
 	unsigned char *sig = NULL;
 	int siglen = 0;
 
-	tmp   = mktemp(strdup("/tmp/repo.txz.XXXXXX"));
+	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
+	if (mktemp(tmp) == NULL) {
+		warnx("Could not create temporary file %s, aborting update.\n", tmp);
+		return (EPKG_FATAL);
+	}
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
 		warnx("Cant get dbdir config entry");
@@ -44,7 +48,6 @@ update_from_remote_repo(const char *name, const char *url)
 
 	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
 		unlink(tmp);
-		free(tmp);
 		return (EPKG_FATAL);
 	}
 
@@ -83,7 +86,6 @@ update_from_remote_repo(const char *name, const char *url)
 		archive_read_finish(a);
 
 	unlink(tmp);
-	free(tmp);
 
 	return (EPKG_OK);
 }
