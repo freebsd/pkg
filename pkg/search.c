@@ -86,6 +86,8 @@ exec_search(int argc, char **argv)
 	}
 
 	pattern = argv[0];
+	if (strchr(pattern, '/') != NULL)
+		field = FIELD_ORIGIN;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
