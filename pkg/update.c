@@ -34,6 +34,7 @@ update_from_remote_repo(const char *name, const char *url)
 	const char *dbdir = NULL;
 	unsigned char *sig = NULL;
 	int siglen = 0;
+	int rc = EPKG_OK;
 
 	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
 	if (mktemp(tmp) == NULL) {
@@ -79,18 +80,20 @@ update_from_remote_repo(const char *name, const char *url)
 			warnx("Invalid signature, removing repository.\n");
 			unlink(repofile_unchecked);
 			free(sig);
-			return (EPKG_FATAL);
+			rc = EPKG_FATAL;
+			goto cleanup;
 		}
 	}
 
 	rename(repofile_unchecked, repofile);
 
+cleanup:
 	if (a != NULL)
 		archive_read_finish(a);
 
-	unlink(tmp);
+	(void)unlink(tmp);
 
-	return (EPKG_OK);
+	return (rc);
 }
 
 void
