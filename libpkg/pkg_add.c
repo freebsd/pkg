@@ -122,6 +122,8 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 		retcode = ret;
 		goto cleanup;
 	}
+	if ((flags & PKG_ADD_UPGRADE) == 0)
+		pkg_emit_install_begin(pkg);
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
@@ -254,6 +256,9 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	cleanup_reg:
 	if ((flags & PKG_ADD_UPGRADE) == 0)
 		pkgdb_register_finale(db, retcode);
+
+	if (retcode == EPKG_OK && (flags & PKG_ADD_UPGRADE) == 0)
+		pkg_emit_install_finished(p);
 
 	cleanup:
 	if (a != NULL)
