@@ -39,7 +39,7 @@ exec_which(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	absolutepath(argv[1], strlen(argv[1]), pathabs, sizeof(pathabs));
+	absolutepath(argv[1], pathabs, sizeof(pathabs));
 
 	if ((it = pkgdb_query_which(db, pathabs)) == NULL) {
 		return (EX_IOERR);

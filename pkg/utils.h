@@ -15,6 +15,6 @@
 
 bool query_yesno(const char *msg);
 int print_info(struct pkg * const pkg, unsigned int opt);
-char *absolutepath(const char *src, size_t src_len, char *dest, size_t dest_len);
+char *absolutepath(const char *src, char *dest, size_t dest_len);
 
 #endif
