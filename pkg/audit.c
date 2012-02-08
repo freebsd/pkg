@@ -92,8 +92,6 @@ fetch_and_extract(const char *src, const char *dest)
 	unlink(tmp);
 	if (a != NULL)
 		archive_read_finish(a);
-	if (ae != NULL)
-		archive_entry_free(ae);
 	if (fd > 0)
 		close(fd);
 
