@@ -31,7 +31,7 @@ query_yesno(const char *msg)
 }
 
 char *
-absolutepath(const char *src, size_t src_len, char *dest, size_t dest_len) {
+absolutepath(const char *src, char *dest, size_t dest_len) {
 	char * res;
 	size_t res_len, res_size, len;;
 	char pwd[MAXPATHLEN];
@@ -39,16 +39,18 @@ absolutepath(const char *src, size_t src_len, char *dest, size_t dest_len) {
 	const char *next;
 	const char *slash;
 
-	if (src_len != 0 && src[0] != '/') {
+	len = strlen(src);
+
+	if (len != 0 && src[0] != '/') {
 		if (getcwd(pwd, sizeof(pwd)) == NULL)
 			return NULL;
 
 		res_len = strlen(pwd);
-		res_size = res_len + 1 + src_len + 1;
+		res_size = res_len + 1 + len + 1;
 		res = malloc(res_size);
 		strlcpy(res, pwd, res_size);
 	} else {
-		res_size = (src_len > 0 ? src_len : 1) + 1;
+		res_size = (len > 0 ? len : 1) + 1;
 		res = malloc(res_size);
 		res_len = 0;
 	}
