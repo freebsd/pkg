@@ -104,7 +104,7 @@ rc_stop(const char *rc_file)
 			return (-1);
 	}
 
-	if (pstat != 0)
+	if (WEXITSTATUS(pstat) != 0)
 		return (0);
 
 	switch ((pid = fork())) {
@@ -125,7 +125,7 @@ rc_stop(const char *rc_file)
 			return (-1);
 	}
 
-	return (pstat);
+	return (WEXITSTATUS(pstat));
 }
 
 static int
@@ -155,7 +155,7 @@ rc_start(const char *rc_file)
 			return (-1);
 	}
 
-	return (pstat);
+	return (WEXITSTATUS(pstat));
 }
 
 
