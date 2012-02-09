@@ -9,8 +9,7 @@
 
 #include <pkg.h>
 
-#include "utils.h"
-#include "delete.h"
+#include "pkgcli.h"
 
 void
 usage_delete(void)

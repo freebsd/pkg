@@ -9,7 +9,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "updating.h"
+#include "pkgcli.h"
 
 struct installed_ports {
 	char *origin;

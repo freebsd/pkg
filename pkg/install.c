@@ -11,8 +11,7 @@
 
 #include <pkg.h>
 
-#include "utils.h"
-#include "install.h"
+#include "pkgcli.h"
 
 void
 usage_install(void)
@@ -127,12 +126,12 @@ exec_install(int argc, char **argv)
 	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
 	printf("%s to be downloaded\n", size);
 
-	if (yes == false) 
+	if (!yes)
 		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-	if (yes == false)
+	if (!yes)
 		yes = query_yesno("\nProceed with installing packages [y/N]: ");
 
-	if (yes == true)
+	if (yes)
 		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
 			goto cleanup;
 

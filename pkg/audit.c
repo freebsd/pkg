@@ -15,7 +15,7 @@
 
 #include <pkg.h>
 
-#include "audit.h"
+#include "pkgcli.h"
 
 #define AUDIT_URL "http://portaudit.FreeBSD.org/auditfile.tbz"
 

@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include <regex.h>
 
-#include "register.h"
+#include "pkgcli.h"
 
 static const char * const scripts[] = {
 	"+INSTALL",

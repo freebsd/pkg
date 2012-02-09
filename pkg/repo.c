@@ -5,10 +5,9 @@
 #include <readpassphrase.h>
 
 #include <pkg.h>
-
 #include <fcntl.h>
 
-#include "repo.h"
+#include "pkgcli.h"
 
 void
 usage_repo(void)

@@ -5,7 +5,7 @@
 
 #include "pkg.h"
 #include "progressmeter.h"
-#include "event.h"
+#include "pkgcli.h"
 
 static off_t fetched = 0;
 static char url[MAXPATHLEN+1];

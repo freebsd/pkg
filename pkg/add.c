@@ -11,7 +11,7 @@
 
 #include <pkg.h>
 
-#include "add.h"
+#include "pkgcli.h"
 
 static int
 is_url(const char * const pattern)

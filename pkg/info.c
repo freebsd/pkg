@@ -9,8 +9,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "info.h"
-#include "utils.h"
+#include "pkgcli.h"
 
 enum sign {
 	LT,

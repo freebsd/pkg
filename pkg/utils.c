@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <pkg.h>
 
-#include "utils.h"
+#include "pkgcli.h"
 
 bool
 query_yesno(const char *msg)
