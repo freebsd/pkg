@@ -28,7 +28,7 @@ MANDIR=		${PREFIX}/man/man
 
 .if exists(../.git) && exists(/usr/local/bin/git)
 GITHASH!=	git rev-parse HEAD
-CFLAGS+=	-DGITHASH=\"${GITHASH}\"
+CFLAGS+=	-DGITHASH="\" ${GITHASH}\""
 .endif
 
 DEBUG_FLAGS+=	-g -O0

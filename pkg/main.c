@@ -12,30 +12,11 @@
 
 #include <pkg.h>
 
-#include "add.h"
-#include "audit.h"
-#include "autoremove.h"
-#include "backup.h"
-#include "check.h"
-#include "clean.h"
-#include "create.h"
-#include "delete.h"
-#include "event.h"
-#include "info.h"
-#include "install.h"
-#include "query.h"
-#include "register.h"
-#include "repo.h"
-#include "search.h"
-#include "update.h"
-#include "updating.h"
-#include "upgrade.h"
-#include "version.h"
-#include "which.h"
+#include "pkgcli.h"
 
 #define PKGVERSION "1.0-beta1"
 #ifndef GITHASH
-#define GITHASH "unknown"
+#define GITHASH ""
 #endif
 
 static void usage(void);
@@ -163,7 +144,7 @@ main(int argc, char **argv)
 				jail_str = optarg;
 				break;
 			case 'v':
-				printf("%s %s\n", PKGVERSION, GITHASH);
+				printf(PKGVERSION""GITHASH"\n");
 				exit(EXIT_SUCCESS);
 				break; /* NOT REACHED */
 			default:

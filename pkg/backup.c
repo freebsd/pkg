@@ -1,7 +1,7 @@
 #include <pkg.h>
 #include <sysexits.h>
 
-#include "backup.h"
+#include "pkgcli.h"
 
 void
 usage_backup(void)

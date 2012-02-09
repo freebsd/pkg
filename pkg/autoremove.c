@@ -12,8 +12,7 @@
 
 #include <pkg.h>
 
-#include "utils.h"
-#include "autoremove.h"
+#include "pkgcli.h"
 
 void
 usage_autoremove(void)

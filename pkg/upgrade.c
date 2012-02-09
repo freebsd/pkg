@@ -12,8 +12,7 @@
 
 #include <pkg.h>
 
-#include "upgrade.h"
-#include "utils.h"
+#include "pkgcli.h"
 
 void
 usage_upgrade(void)

@@ -15,7 +15,7 @@
 
 #include <pkg.h>
 
-#include "update.h"
+#include "pkgcli.h"
 
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
 		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \

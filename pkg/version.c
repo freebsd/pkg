@@ -15,7 +15,7 @@
 #include <unistd.h>
 #include <fnmatch.h>
 
-#include "version.h"
+#include "pkgcli.h"
 
 struct index_entry {
 	char *origin;

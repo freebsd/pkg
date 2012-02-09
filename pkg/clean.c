@@ -8,7 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "clean.h"
+#include "pkgcli.h"
 
 void
 usage_clean(void)

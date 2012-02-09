@@ -11,7 +11,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include "query.h"
+#include "pkgcli.h"
 
 static struct query_flags {
         const char flag;

@@ -12,8 +12,7 @@
 
 #include <pkg.h>
 
-#include "check.h"
-#include "utils.h"
+#include "pkgcli.h"
 
 struct deps_entry {
 	char *name;

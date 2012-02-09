@@ -7,8 +7,7 @@
 #include <unistd.h>
 #include <sysexits.h>
 
-#include "create.h"
-#include "utils.h"
+#include "pkgcli.h"
 
 void
 usage_create(void)

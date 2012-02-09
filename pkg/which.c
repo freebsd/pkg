@@ -9,8 +9,7 @@
 #include <unistd.h>
 #include <sysexits.h>
 
-#include "which.h"
-#include "utils.h"
+#include "pkgcli.h"
 
 void
 usage_which(void)

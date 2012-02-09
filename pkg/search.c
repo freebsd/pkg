@@ -6,8 +6,7 @@
 
 #include <pkg.h>
 
-#include "search.h"
-#include "utils.h"
+#include "pkgcli.h"
 
 void
 usage_search(void)
