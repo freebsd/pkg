@@ -9,6 +9,7 @@
 
 static off_t fetched = 0;
 static char url[MAXPATHLEN+1];
+struct sbuf *messages = NULL;
 
 int
 event_callback(void *data, struct pkg_event *ev)
@@ -46,8 +47,11 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INSTALL_FINISHED:
 		printf(" done\n");
 		pkg_get(ev->e_install_finished.pkg, PKG_MESSAGE, &message);
-		if (message != NULL && message[0] != '\0')
-			printf("%s\n", message);
+		if (message != NULL && message[0] != '\0') {
+			if (messages == NULL)
+				messages = sbuf_new_auto();
+			sbuf_cat(messages, message);
+		}
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		printf("Checking integrity...");
@@ -88,6 +92,10 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_ALREADY_INSTALLED:
 		pkg_get(ev->e_already_installed.pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		printf("%s-%s already installed\n", name, version);
+		break;
+	case PKG_EVENT_MISSING_DEP:
+		printf("missing dependency %s-%s", pkg_dep_get(ev->e_missing_dep.dep, PKG_DEP_NAME),
+		    pkg_dep_get(ev->e_missing_dep.dep, PKG_DEP_VERSION));
 		break;
 	default:
 		break;
