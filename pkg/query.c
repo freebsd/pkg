@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/sbuf.h>
 
+#include <err.h>
 #include <inttypes.h>
 #include <libutil.h>
 #include <pkg.h>
@@ -464,11 +465,19 @@ exec_query(int argc, char **argv)
 		
 		print_query(pkg, argv[0], multiline);
 		pkg_free(pkg);
-		return (0);
+		return (EXIT_SUCCESS);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (EX_IOERR);
+	ret = pkgdb_open(&db, PKGDB_DEFAULT);
+	if (ret == EPKG_ENODB) {
+		if (geteuid() == 0)
+			err(EX_IOERR, "Unable to create local database");
+
+		if (match == MATCH_ALL)
+			return (EXIT_SUCCESS);
+
+		return (EXIT_FAILURE);
+	}
 
 	if (match == MATCH_ALL) {
 		if ((it = pkgdb_query(db, NULL, match)) == NULL)
