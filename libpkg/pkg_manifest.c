@@ -825,7 +825,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		manifest_append_kv_literal(scripts, script_types, sbuf_get(tmpsbuf));
 	}
 	if (message != NULL && *message != '\0') {
-		urlencode(desc, &tmpsbuf);
+		urlencode(message, &tmpsbuf);
 		manifest_append_kv_literal(mapping, "message", sbuf_get(tmpsbuf));
 	}
 
