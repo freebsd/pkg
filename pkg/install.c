@@ -135,6 +135,11 @@ exec_install(int argc, char **argv)
 		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
 			goto cleanup;
 
+	if (messages != NULL) {
+		sbuf_finish(messages);
+		printf("%s", sbuf_data(messages));
+	}
+
 	retcode = 0;
 
 	cleanup:

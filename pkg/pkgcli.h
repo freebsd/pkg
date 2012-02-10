@@ -108,4 +108,6 @@ int print_info(struct pkg * const pkg, unsigned int opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
 
 int event_callback(void *data, struct pkg_event *ev);
+
+extern struct sbuf *messages;
 #endif
