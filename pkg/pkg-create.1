@@ -25,14 +25,14 @@
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl gxX
+.Op Fl gxXn
 .Op Fl r Ar rootdir
 .Op Fl m Ar manifest
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Ar pkg-name ...
 .Nm
-.Fl a
+.Fl an
 .Op Fl r Ar rootdir
 .Op Fl m Ar manifest
 .Op Fl f Ar format
@@ -94,6 +94,8 @@ Set
 .Ar outdir
 as the output directory. If this option is not given, all created packages will
 be saved in the current directory.
+.It Fl n
+Do not overwrite already existing packages
 .El
 .\" ---------------------------------------------------------------------------
 .Sh MANIFEST FILE DETAILS
