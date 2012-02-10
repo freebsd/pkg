@@ -258,7 +258,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 		pkgdb_register_finale(db, retcode);
 
 	if (retcode == EPKG_OK && (flags & PKG_ADD_UPGRADE) == 0)
-		pkg_emit_install_finished(p);
+		pkg_emit_install_finished(pkg);
 
 	cleanup:
 	if (a != NULL)
