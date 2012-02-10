@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sysexits.h>
 
 #include <pkg.h>
 
@@ -163,10 +164,7 @@ parse_db(const char *path, struct audit_head *h)
 	uint8_t column_id;
 
 	if ((fp = fopen(path, "r")) == NULL)
-	{
-		warn("fopen(%s)", path);
-		return EPKG_FATAL;
-	}
+		return (EPKG_FATAL);
 
 	while ((linelen = getline(&line, &linecap, fp)) > 0) {
 		column_id = 0;
@@ -310,8 +308,15 @@ exec_audit(int argc, char **argv)
 		}
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-		return (1);
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+		/*
+		 * if the database doesn't exist a normal user can't create it
+		 * it just means there is no package
+		 */
+		if (geteuid() == 0)
+			err(EX_IOERR, "Unable to create local database");
+		return (EXIT_SUCCESS);
+	}
 
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 	{
@@ -320,7 +325,8 @@ exec_audit(int argc, char **argv)
 	}
 
 	if (parse_db(audit_file, &h) != EPKG_OK) {
-		warnx("Can not parse and load audit db");
+		warnx("unable to open audit file, try running pkg audit -F first");
+		ret = EX_DATAERR;
 		goto cleanup;
 	}
 
@@ -341,5 +347,5 @@ cleanup:
 		pkg_free(pkg);
 	free_audit_list(&h);
 
-	return (0);
+	return (ret);
 }
