@@ -237,6 +237,10 @@ typedef enum {
 	 * Can not install the package because some dependencies are unresolved.
 	 */
 	EPKG_DEPENDENCY,
+	/**
+	 * Can not create local database
+	 */
+	EPKG_ENODB,
 } pkg_error_t;
 
 /**

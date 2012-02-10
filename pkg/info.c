@@ -138,9 +138,22 @@ exec_info(int argc, char **argv)
 		return (0);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		return (EX_IOERR);
+	ret = pkgdb_open(&db, PKGDB_DEFAULT);
+	if (ret == EPKG_ENODB) {
+		if (geteuid() == 0)
+			err(EX_IOERR, "Unable to create local database");
+
+		if (match == MATCH_ALL)
+			return (EXIT_SUCCESS);
+
+		if ((opt & INFO_QUIET) == 0)
+			printf("No package installed\n");
+
+		return (EXIT_FAILURE);
 	}
+
+	if (ret != EPKG_OK)
+		return (EX_IOERR);
 
 	i = 0;
 	do {
