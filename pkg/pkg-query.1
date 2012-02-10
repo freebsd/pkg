@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 24, 2012
+.Dd Februrary 11, 2012
 .Dt PKG-QUERY 1
 .Os
 .Sh NAME
@@ -81,6 +81,8 @@ The flat size in human readable format of the matched package
 The flat size in bytes of the matched package
 .It Cm \&%a
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
+.It Cm \&%M
+message contain in the matched package
 .It Cm \&%? Ns Op drCFIDLUG
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent

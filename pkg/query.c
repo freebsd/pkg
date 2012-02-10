@@ -41,6 +41,7 @@ static struct query_flags {
         { 'w', "",		0, PKG_LOAD_BASIC },
         { 'l', "",		0, PKG_LOAD_BASIC },
         { 'a', "",		0, PKG_LOAD_BASIC },
+        { 'M', "",		0, PKG_LOAD_BASIC },
 };
 
 const unsigned int flags_len = (sizeof(q_flags)/sizeof(q_flags[0]));
@@ -197,6 +198,11 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					break;
 				case 'G':
 					sbuf_cat(dest, pkg_group_name((struct pkg_group *)data));
+					break;
+				case 'M':
+					pkg_get(pkg, PKG_MESSAGE, &tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
 					break;
 				case '%':
 					sbuf_putc(dest, '%');
