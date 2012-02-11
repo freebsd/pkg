@@ -6,6 +6,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <stdbool.h>
@@ -325,7 +326,10 @@ exec_audit(int argc, char **argv)
 	}
 
 	if (parse_db(audit_file, &h) != EPKG_OK) {
-		warnx("unable to open audit file, try running pkg audit -F first");
+		if (errno == ENOENT)
+			warnx("unable to open audit file, try running pkg audit -F first");
+		else
+			warn("unable to open audit file %s", audit_file);
 		ret = EX_DATAERR;
 		goto cleanup;
 	}
