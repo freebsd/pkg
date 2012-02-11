@@ -14,7 +14,7 @@
 
 #include "pkgcli.h"
 
-#define PKGVERSION "1.0-beta2"
+#define PKGVERSION "1.0-beta3"
 #ifndef GITHASH
 #define GITHASH ""
 #endif
