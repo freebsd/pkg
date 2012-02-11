@@ -9,7 +9,10 @@ INCLUDEDIR=	${PREFIX}/include
 SHLIB_MAJOR=	0
 
 #gr_utils.c has to be deleted as soon as it goes in base
-SRCS=		pkg.c \
+SRCS=		backup.c \
+		fetch.c \
+		packing.c \
+		pkg.c \
 		pkg_add.c \
 		pkg_attributes.c \
 		pkg_config.c \
@@ -21,15 +24,12 @@ SRCS=		pkg.c \
 		pkg_manifest.c \
 		pkg_ports.c \
 		pkg_repo.c \
-		pkg_util.c \
 		pkg_version.c \
 		pkgdb.c \
-		backup.c \
-		fetch.c \
-		packing.c \
-		scripts.c \
 		rcscripts.c \
-		usergroup.c
+		scripts.c \
+		usergroup.c \
+		utils.c
 
 OSVERSION!=	awk '/^\#define[[:blank:]]__FreeBSD_version/ {print $$3}' /usr/include/sys/param.h
 

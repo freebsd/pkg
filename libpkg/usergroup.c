@@ -7,11 +7,11 @@
 #include <string.h>
 
 #if __FreeBSD_version < 1000000
-#include "gr_util.h"
+#include "private/gr_util.h"
 #endif
 #include "pkg.h"
-#include "pkg_event.h"
-#include "pkg_private.h"
+#include "private/event.h"
+#include "private/pkg.h"
 
 int
 pkg_add_user_group(struct pkg *pkg)

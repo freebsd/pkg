@@ -12,8 +12,8 @@
 #include <fcntl.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
-#include "pkg_private.h"
+#include "private/event.h"
+#include "private/pkg.h"
 
 static int pkg_create_from_dir(struct pkg *, const char *, struct packing *);
 

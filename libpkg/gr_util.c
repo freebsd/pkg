@@ -16,7 +16,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "gr_util.h"
+#include "private/gr_util.h"
 
 static int lockfd = -1;
 static char group_dir[PATH_MAX];

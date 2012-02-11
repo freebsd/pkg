@@ -7,8 +7,8 @@
 #include <string.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
-#include "pkg_private.h"
+#include "private/event.h"
+#include "private/pkg.h"
 
 static int
 analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)

@@ -13,8 +13,8 @@
 #include <yaml.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
-#include "pkg_private.h"
+#include "private/event.h"
+#include "private/pkg.h"
 
 
 struct hardlinks {

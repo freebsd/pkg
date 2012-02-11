@@ -1,7 +1,7 @@
 #include <assert.h>
 
 #include "pkg.h"
-#include "pkg_private.h"
+#include "private/pkg.h"
 
 int
 pkg_script_run(struct pkg * const pkg, pkg_script_t type)

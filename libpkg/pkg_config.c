@@ -10,7 +10,7 @@
 #include <yaml.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
+#include "private/event.h"
 
 #define STRING 0
 #define BOOL 1
