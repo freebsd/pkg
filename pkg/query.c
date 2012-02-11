@@ -498,13 +498,16 @@ exec_query(int argc, char **argv)
 		pkgdb_it_free(it);
 	} else {
 		for (i = 1; i < argc; i++) {
+			bool gotone = false;
 			pkgname = argv[i];
 
 			if ((it = pkgdb_query(db, pkgname, match)) == NULL)
 				return (EX_IOERR);
 
-			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
+			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
+				gotone = true;
 				print_query(pkg, argv[0], multiline);
+			}
 
 			if (ret != EPKG_END) {
 				retcode = EX_SOFTWARE;
@@ -512,6 +515,10 @@ exec_query(int argc, char **argv)
 			}
 
 			pkgdb_it_free(it);
+			if (!gotone) {
+				warnx("No package(s) matching %s", argv[i]);
+				retcode = EX_SOFTWARE;
+			}
 		}
 	}
 
