@@ -4,7 +4,7 @@
 #include <ctype.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
+#include "private/event.h"
 
 /*
  * split_version(pkgname, endname, epoch, revision) returns a pointer to

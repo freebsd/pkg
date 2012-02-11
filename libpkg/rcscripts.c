@@ -8,8 +8,8 @@
 #include <unistd.h>
 
 #include "pkg.h"
-#include "pkg_private.h"
-#include "pkg_event.h"
+#include "private/event.h"
+#include "private/pkg.h"
 
 static int rc_stop(const char *);
 static int rc_start(const char *);

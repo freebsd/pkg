@@ -1,7 +1,7 @@
 #include <syslog.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
+#include "private/event.h"
 
 static pkg_event_cb _cb = NULL;
 static void *_data = NULL;

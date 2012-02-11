@@ -10,8 +10,8 @@
 #include <errno.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
-#include "pkg_private.h"
+#include "private/event.h"
+#include "private/pkg.h"
 
 static int
 dep_installed(struct pkg_dep *dep, struct pkgdb *db) {

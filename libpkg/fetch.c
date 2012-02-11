@@ -11,7 +11,7 @@
 #include <fetch.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
+#include "private/event.h"
 
 int
 pkg_fetch_file(const char *url, const char *dest)

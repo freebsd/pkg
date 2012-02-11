@@ -13,9 +13,9 @@
 #include <wchar.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
-#include "pkg_util.h"
-#include "pkg_private.h"
+#include "private/event.h"
+#include "private/pkg.h"
+#include "private/utils.h"
 
 #define PKG_UNKNOWN -1
 #define PKG_DEPS -2

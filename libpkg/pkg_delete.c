@@ -8,9 +8,9 @@
 #include <stdlib.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
-#include "pkg_private.h"
-#include "pkg_util.h"
+#include "private/event.h"
+#include "private/pkg.h"
+#include "private/utils.h"
 
 int
 pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)

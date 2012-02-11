@@ -11,7 +11,7 @@
 #include <openssl/sha.h>
 #include <stdbool.h>
 
-#include "pkg_util.h"
+#include "private/utils.h"
 
 #define PKG_NUM_FIELDS 18
 

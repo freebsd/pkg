@@ -2,8 +2,8 @@
 #include <string.h>
 
 #include "pkg.h"
-#include "pkg_private.h"
-#include "pkg_event.h"
+#include "private/event.h"
+#include "private/pkg.h"
 
 int
 pkgdb_dump(struct pkgdb *db, char *dest)

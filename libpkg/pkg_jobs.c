@@ -9,9 +9,9 @@
 #include <string.h>
 
 #include "pkg.h"
-#include "pkgdb.h"
-#include "pkg_event.h"
-#include "pkg_private.h"
+#include "private/event.h"
+#include "private/pkg.h"
+#include "private/pkgdb.h"
 
 int
 pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)

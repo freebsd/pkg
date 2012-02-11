@@ -10,8 +10,8 @@
 #include <string.h>
 
 #include "pkg.h"
-#include "pkg_event.h"
-#include "pkg_private.h"
+#include "private/event.h"
+#include "private/pkg.h"
 
 static const char *packing_set_format(struct archive *a, pkg_formats format);
 
