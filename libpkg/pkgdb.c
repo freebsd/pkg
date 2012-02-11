@@ -2130,6 +2130,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 	create_temporary_pkgjobs(db->sqlite);
 
 	sbuf_printf(sql, pkgjobs_sql_1, reponame);
+	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	/* Remove packages already installed and in the latest version */
@@ -2137,6 +2138,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 
 	sbuf_reset(sql);
 	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame);
+	sbuf_finish(sql);
 
 	do {
 		sql_exec(db->sqlite, sbuf_get(sql));
@@ -2147,13 +2149,13 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 
 	sbuf_reset(sql);
 	sbuf_printf(sql, finalsql, reponame, reponame);
+	sbuf_finish(sql);
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
 	}
 
-	sbuf_finish(sql);
 	sbuf_delete(sql);
 
 	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
