@@ -157,6 +157,7 @@ exec_info(int argc, char **argv)
 
 	i = 0;
 	do {
+		gotone = false;
 		pkgname = argv[i];
 
 		/*
@@ -313,8 +314,10 @@ exec_info(int argc, char **argv)
 			retcode = 1;
 		}
 
-		if (retcode == 0 && !gotone && match != MATCH_ALL)
+		if (retcode == 0 && !gotone && match != MATCH_ALL) {
+			warnx("No package(s) matching %s", argv[i]);
 			retcode = EX_SOFTWARE;
+		}
 
 		pkgdb_it_free(it);
 
