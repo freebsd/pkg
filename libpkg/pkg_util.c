@@ -33,9 +33,10 @@ sbuf_get(struct sbuf *buf)
 {
 
 	assert(buf != NULL);
-	assert((buf->s_flags & SBUF_FINISHED) == SBUF_FINISHED);
+	if (sbuf_done(buf) == 0)
+		sbuf_finish(buf);
 
-	return (buf->s_buf);
+	return (sbuf_data(buf));
 }
 
 void
