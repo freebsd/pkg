@@ -15,47 +15,66 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 24, 2012
-.Dt PKG-ADD 1
+.Dd February 12, 2012
+.Dt PKG-UPDATING 1
 .Os
 .Sh NAME
-.Nm "pkg add"
-.Nd Registers a package and installs it on the system
+.Nm "pkg updating"
+.Nd displays UPDATING entries of software packages
 .Sh SYNOPSIS
 .Nm
-.Ar <pkg-name>
+.Op Fl d Ar date
+.Op Fl f Ar file
+.Op Ar pkg-name ...
 .Nm
-.Ar <url>://<pkg-name>
 .Sh DESCRIPTION
+The
 .Nm
-installs a package from either a local source or a remote one.
-.Pp
-When installing from a remote source you need to specify
-the protocol to use when fetching the package.
-.Pp
-Currently supported protocols are FTP, HTTP and HTTPS.
+command scans the installed ports and show all UPDATING entries that affect one
+of the installed ports. Alternative a list of pkg-names could be passed.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Ar pkg-name ...
+UPDATING entries for the named packages are displayed.
+.It Fl d Ar date
+Only entries newer than
+.Ar date
+are shown. Use a YYYYMMDD date format.
+.It Fl f Ar file 
+Defines a alternative location of the UPDATING
+.Ar file .
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
-.Nm .
-See
-.Xr pkg.conf 5
-for further description.
-.Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It Ev ASSUME_ALWAYS_YES
-.It Ev HANDLE_RC_SCRIPTS
-.It Ev PKG_DBDIR
+.Nm :
+.Bl -tag -width F1
+.It Ev PORTSDIR
+Location of the ports tree.
 .El
+.Sh EXAMPLES
+Shows all entries of all installed ports:
+.Dl % pkg updating
+.Pp
+Shows all entries of all installed ports since 2012-01-01:
+.Dl % pkg updating -d 20120101
+.Pp
+Shows all entries for all apache and mysql ports:
+.Dl % pkg updating apache mysql
+.Pp
+Shows all apache entries since 2012-01-01:
+.Dl % pkg updating -d 20120101 apache
+.Pp
+Defines that the UPDATING file is in /tmp and shows all entries of all
+installed ports:
+.Dl % pkg updating -f /tmp/UPDATING
 .Sh FILES
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 1 ,
-.Xr pkg-create 1 ,
+.Xr pkg-add 1 ,
 .Xr pkg-autoremove 1 ,
 .Xr pkg-search 1 ,
 .Xr pkg-backup 1 ,
@@ -65,8 +84,8 @@ See
 .Xr pkg-register 1 ,
 .Xr pkg-repo 1 ,
 .Xr pkg-update 1 ,
-.Xr pkg-updating 1 ,
 .Xr pkg-upgrade 1 ,
+.Xr pkg-create 1 ,
 .Xr pkg-version 1 ,
 .Xr pkg-which 1 ,
 .Xr pkg.conf 5
