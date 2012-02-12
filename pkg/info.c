@@ -315,7 +315,8 @@ exec_info(int argc, char **argv)
 		}
 
 		if (retcode == 0 && !gotone && match != MATCH_ALL) {
-			warnx("No package(s) matching %s", argv[i]);
+			if ((opt & INFO_QUIET) == 0)
+				warnx("No package(s) matching %s", argv[i]);
 			retcode = EX_SOFTWARE;
 		}
 

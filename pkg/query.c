@@ -475,13 +475,13 @@ exec_query(int argc, char **argv)
 
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret == EPKG_ENODB) {
-		if (geteuid() == 0)
+		if (geteuid() == 0) {
 			err(EX_IOERR, "Unable to create local database");
+			return (EXIT_FAILURE);
+		}
 
-		if (match == MATCH_ALL)
-			return (EXIT_SUCCESS);
-
-		return (EXIT_FAILURE);
+		/* do not fail if run as a user */
+		return (EXIT_SUCCESS);
 	}
 
 	if (match == MATCH_ALL) {
@@ -497,16 +497,13 @@ exec_query(int argc, char **argv)
 		pkgdb_it_free(it);
 	} else {
 		for (i = 1; i < argc; i++) {
-			bool gotone = false;
 			pkgname = argv[i];
 
 			if ((it = pkgdb_query(db, pkgname, match)) == NULL)
 				return (EX_IOERR);
 
-			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-				gotone = true;
+			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
 				print_query(pkg, argv[0], multiline);
-			}
 
 			if (ret != EPKG_END) {
 				retcode = EX_SOFTWARE;
@@ -514,10 +511,6 @@ exec_query(int argc, char **argv)
 			}
 
 			pkgdb_it_free(it);
-			if (!gotone) {
-				warnx("No package(s) matching %s", argv[i]);
-				retcode = EX_SOFTWARE;
-			}
 		}
 	}
 
