@@ -679,7 +679,6 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	size_t len;
 	int ret = EPKG_OK;
 	off_t sz = 0;
-	int64_t flatsize = 0;
 	struct hardlinks hardlinks = {NULL, 0, 0};
 	regex_t preg1, preg2;
 	struct plist pplist;
@@ -773,7 +772,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 		}
 	}
 
-	pkg_set(pkg, PKG_FLATSIZE, flatsize);
+	pkg_set(pkg, PKG_FLATSIZE, pplist.flatsize);
 
 	flush_script_buffer(pplist.pre_install_buf, pkg, PKG_SCRIPT_PRE_INSTALL);
 	flush_script_buffer(pplist.post_install_buf, pkg, PKG_SCRIPT_POST_INSTALL);
