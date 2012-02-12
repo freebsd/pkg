@@ -50,7 +50,7 @@ event_callback(void *data, struct pkg_event *ev)
 		if (message != NULL && message[0] != '\0') {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
-			sbuf_cat(messages, message);
+			sbuf_printf(messages, "%s\n", message);
 		}
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
