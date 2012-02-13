@@ -63,6 +63,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 	bool to_print = true;
 	char key;
 	const char *version, *name, *origin;
+	char *namever = NULL;
 
 	pkg_get(pkg, PKG_VERSION, &version, PKG_NAME, &name, PKG_ORIGIN, &origin);
 	if (ver == NULL) {
@@ -97,7 +98,9 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 	if (to_print == false)
 		return;
 
-	printf("%-34s %c", name, key);
+	asprintf(&namever, "%s-%s", name, version);	
+	printf("%-34s %c", namever, key);
+	free(namever);
 
 	if (opt & VERSION_VERBOSE) {
 		switch(key) {
