@@ -12,24 +12,30 @@
 .\"    documentation and/or other materials provided with the distribution.
 .\"
 .\"
-.\"     @(#)pkg.1
+.\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd January 24, 2012
-.Dt PKG-WHICH 1
+.Dd February 16, 2012
+.Dt PKG-ADD 8
 .Os
 .Sh NAME
-.Nm "pkg which"
-.Nd displays which package installed a specific file
+.Nm "pkg add"
+.Nd Registers a package and installs it on the system
 .Sh SYNOPSIS
 .Nm
-.Ar <file>
+.Ar <pkg-name>
+.Nm
+.Ar <url>://<pkg-name>
 .Sh DESCRIPTION
 .Nm
-is used for displaying the package that installed
-.Ar <file>
+installs a package from either a local source or a remote one.
+.Pp
+When installing from a remote source you need to specify
+the protocol to use when fetching the package.
+.Pp
+Currently supported protocols are FTP, HTTP and HTTPS.
 .Sh OPTIONS
-The following commands are supported by
+The following options are supported by
 .Nm :
 .Bl -tag -width F1
 .El
@@ -40,25 +46,27 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It PKG_DBDIR
+.It Ev ASSUME_ALWAYS_YES
+.It Ev HANDLE_RC_SCRIPTS
+.It Ev PKG_DBDIR
 .El
 .Sh FILES
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
-.Xr pkg 1 ,
-.Xr pkg-add 1 ,
-.Xr pkg-autoremove 1 ,
-.Xr pkg-search 1 ,
-.Xr pkg-backup 1 ,
-.Xr pkg-install 1 ,
-.Xr pkg-delete 1 ,
-.Xr pkg-info 1 ,
-.Xr pkg-register 1 ,
-.Xr pkg-repo 1 ,
-.Xr pkg-update 1 ,
-.Xr pkg-updating 1 ,
-.Xr pkg-upgrade 1 ,
-.Xr pkg-version 1 ,
-.Xr pkg-create 1 ,
+.Xr pkg 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8 ,
 .Xr pkg.conf 5

@@ -44,23 +44,23 @@ LDADD+=		-L${.OBJDIR}/../libpkg \
 		${LDADD_STATIC}
 
 WARNS?=		6
-MAN=	pkg.1 \
-	pkg-add.1 \
-	pkg-autoremove.1 \
-	pkg-backup.1 \
-	pkg-create.1 \
-	pkg-delete.1 \
-	pkg-info.1 \
-	pkg-install.1 \
-	pkg-query.1 \
-	pkg-register.1 \
-	pkg-repo.1 \
-	pkg-search.1 \
-	pkg-update.1 \
-	pkg-updating.1 \
-	pkg-upgrade.1 \
-	pkg-version.1 \
-	pkg-which.1 \
+MAN=	pkg.8 \
+	pkg-add.8 \
+	pkg-autoremove.8 \
+	pkg-backup.8 \
+	pkg-create.8 \
+	pkg-delete.8 \
+	pkg-info.8 \
+	pkg-install.8 \
+	pkg-query.8 \
+	pkg-register.8 \
+	pkg-repo.8 \
+	pkg-search.8 \
+	pkg-update.8 \
+	pkg-updating.8 \
+	pkg-upgrade.8 \
+	pkg-version.8 \
+	pkg-which.8 \
 	pkg.conf.5
 
 .include <bsd.prog.mk>

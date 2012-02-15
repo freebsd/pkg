@@ -12,41 +12,28 @@
 .\"    documentation and/or other materials provided with the distribution.
 .\"
 .\"
-.\"     @(#)pkg.1
+.\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd January 24, 2012
-.Dt PKG-BACKUP 1
+.Dd February 16, 2012
+.Dt PKG-AUTOREMOVE 8
 .Os
 .Sh NAME
-.Nm "pkg backup"
-.Nd backup and restore the local package database
+.Nm "pkg autoremove"
+.Nd removes orphan packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl d
-.Ar <file>
-.Nm
-.Op Fl r
-.Ar <file>
+.Op Fl y
 .Sh DESCRIPTION
 .Nm
-is used for backing up and restoring of the local package database.
+is used for removing orphan packages, which were installed
+during a dependencies resolving and are no longer needed.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl d Ar <file>
-Dumps the local package database to a file specified on the command-line.
-If
-.Ar -
-is specified as the argument
-.Nm
-will use stdout for it's output.
-.It Fl r Ar <file>
-Uses
-.Ar file
-in order to restore the local package database. Useful in case of a database
-crash of lost to restore your database from previously made backup.
+.It Fl y
+Assume yes when asked for confirmation before package autoremoval.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -55,25 +42,27 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It PKG_DBDIR
+.It Ev ASSUME_ALWAYS_YES
+.It Ev HANDLE_RC_SCRIPTS
+.It Ev PKG_DBDIR
 .El
 .Sh FILES
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
-.Xr pkg 1 ,
-.Xr pkg-add 1 ,
-.Xr pkg-autoremove 1 ,
-.Xr pkg-search 1 ,
-.Xr pkg-create 1 ,
-.Xr pkg-install 1 ,
-.Xr pkg-delete 1 ,
-.Xr pkg-info 1 ,
-.Xr pkg-register 1 ,
-.Xr pkg-repo 1 ,
-.Xr pkg-update 1 ,
-.Xr pkg-updating 1 ,
-.Xr pkg-upgrade 1 ,
-.Xr pkg-version 1 ,
-.Xr pkg-which 1 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8 ,
 .Xr pkg.conf 5

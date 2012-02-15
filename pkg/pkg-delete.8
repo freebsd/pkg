@@ -5,7 +5,7 @@
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
-.\" 1. Redistributions of source code must retain the above copyright
+.\" 8. Redistributions of source code must retain the above copyright
 .\"    notice, this list of conditions and the following disclaimer.
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
@@ -15,32 +15,38 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 24, 2012
-.Dt PKG-UPGRADE 1
+.Dd February 16, 2012
+.Dt PKG-DELETE 8
 .Os
 .Sh NAME
-.Nm "pkg upgrade"
-.Nd performs upgrades of package software distributions
+.Nm "pkg delete"
+.Nd deletes a package from the database and the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl y
+.Op Fl ay
+.Nm
+.Op Fl yfgxX
+.Ar <pkg-name> <...>
 .Sh DESCRIPTION
 .Nm
-is used for upgrading of package software distributions.
-.Pp
-Currently only one remote package repository database can be
-used during package upgrades as defined by the environment variable
-.Ev PACKAGESITE .
-.Pp
-Soon enough
-.Nm
-will be able to perform package upgrades from multiple repositories.
+is used for deleting previously installed packages and removes them from the
+database.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl f
+Forces packages to be removed.
+.It Fl a
+Deletes all installed packages from the system and the database.
 .It Fl y
-Assume yes when asked for confirmation before package installation.
+Assume yes when asked for confirmation before package deletion.
+.It Fl g
+Treat the package names as shell glob patterns.
+.It Fl x
+Treat the package names as regular expressions.
+.It Fl X
+Treat the package names as extended regular expressions.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -51,28 +57,25 @@ for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev ASSUME_ALWAYS_YES
 .It Ev HANDLE_RC_SCRIPTS
-.It Ev PACKAGESITE
-.It Ev PKG_CACHEDIR
 .It Ev PKG_DBDIR
-.It Ev PKG_MULTIREPOS
 .El
 .Sh FILES
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
-.Xr pkg 1 ,
-.Xr pkg-add 1 ,
-.Xr pkg-autoremove 1 ,
-.Xr pkg-search 1 ,
-.Xr pkg-backup 1 ,
-.Xr pkg-install 1 ,
-.Xr pkg-delete 1 ,
-.Xr pkg-info 1 ,
-.Xr pkg-register 1 ,
-.Xr pkg-repo 1 ,
-.Xr pkg-update 1 ,
-.Xr pkg-updating 1 ,
-.Xr pkg-create 1 ,
-.Xr pkg-version 1 ,
-.Xr pkg-which 1 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8 ,
 .Xr pkg.conf 5
