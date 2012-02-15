@@ -195,9 +195,8 @@ exec_register(int argc, char **argv)
 		free(input_path);
 	}
 
-	if (pkgdb_register_pkg(db, pkg, 1) != EPKG_OK) {
-		retcode = EPKG_FATAL;
-	}
+	retcode = pkgdb_register_pkg(db, pkg, 0);
+	pkgdb_register_finale(db, retcode);
 
 	pkg_get(pkg, PKG_MESSAGE, &message);
 	if (message != NULL && !legacy)
