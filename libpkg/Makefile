@@ -33,7 +33,7 @@ SRCS=		backup.c \
 
 OSVERSION!=	awk '/^\#define[[:blank:]]__FreeBSD_version/ {print $$3}' /usr/include/sys/param.h
 
-.if ${OSVERSION} < 1000000
+.if ${OSVERSION} < 1000003
 SRCS+=	gr_util.c
 .endif
 

@@ -6,7 +6,7 @@
 #include <libutil.h>
 #include <string.h>
 
-#if __FreeBSD_version < 1000000
+#if __FreeBSD_version < 1000003
 #include "private/gr_util.h"
 #endif
 #include "pkg.h"
