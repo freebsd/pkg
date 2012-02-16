@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl ygxX
+.Op Fl yfgxX
 .Ar <pkg-origin> <...>
 .Sh DESCRIPTION
 .Nm
@@ -68,6 +68,8 @@ Treat the package names as shell glob patterns.
 Treat the package names as regular expressions.
 .It Fl X
 Treat the package names as extended regular expressions.
+.It Fl f
+Force the reinstallation of the package if already installed.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

@@ -175,7 +175,17 @@ pkg_emit_upgrade_finished(struct pkg *p)
 	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
 	if (syslog_enabled) {
 		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version, PKG_NEWVERSION, &newversion);
-		syslog(LOG_NOTICE, "%s upgraded: %s -> %s ", name, version, newversion);
+		switch (pkg_version_cmp(version, newversion)) {
+			case 1:
+				syslog(LOG_NOTICE, "%s downgraded: %s -> %s ", name, version, newversion);
+				break;
+			case 0:
+				syslog(LOG_NOTICE, "%s reinstalled: %s -> %s ", name, version, newversion);
+				break;
+			case -1:
+				syslog(LOG_NOTICE, "%s reinstalled: %s -> %s ", name, version, newversion);
+				break;
+		}
 	}
 
 	pkg_emit_event(&ev);
