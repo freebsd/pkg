@@ -50,7 +50,9 @@ exec_upgrade(int argc, char **argv)
 				reponame = optarg;
 				break;
 			default:
-				break;
+				usage_upgrade();
+				return (EX_USAGE);
+				break; /* NOT REACHED */
 		}
 	}
 	argc -= optind;
