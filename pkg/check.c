@@ -26,7 +26,7 @@ STAILQ_HEAD(deps_head, deps_entry);
 static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_head *dh);
 static void add_missing_dep(struct pkg_dep *d, struct deps_head *dh);
 static void deps_free(struct deps_head *dh);
-static void fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes);
+static int fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes);
 static void check_summary(struct pkgdb *db, struct deps_head *dh);
 
 static int
@@ -104,7 +104,7 @@ deps_free(struct deps_head *dh)
 	}
 }
 
-static void
+static int
 fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 {
 	struct pkg *pkg = NULL;
@@ -126,8 +126,12 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	STAILQ_FOREACH(e, dh, next)
 		pkgs[i++] = e->origin;
 
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+		return (EPKG_FATAL);;
+
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		free(pkgs);
+
 
         if ((it = pkgdb_query_installs(db, MATCH_EXACT, nbpkgs, pkgs, NULL)) == NULL) {
 		free(pkgs);
@@ -141,7 +145,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 
         if (pkg_jobs_is_empty(jobs)) {
                 printf("\n>>> Not able to find packages for installation.\n\n");
-		return;
+		return (EPKG_FATAL);
         }
 
         /* print a summary before applying the jobs */
@@ -186,6 +190,8 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	pkg_free(pkg);
 	pkg_jobs_free(jobs);
 	pkgdb_it_free(it);
+
+	return (EPKG_OK);
 }
 
 static void
@@ -238,6 +244,7 @@ exec_check(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
 	int retcode = EX_OK;
+	int ret;
 	int ch;
 	bool yes = false;
 	int nbpkgs = 0;
@@ -262,14 +269,16 @@ exec_check(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (geteuid() != 0) {
-		warnx("fixing the package database can only be done as root");
-		return (EX_NOPERM);
+	ret = pkgdb_open(&db, PKGDB_DEFAULT);
+	if (ret == EPKG_ENODB) {
+		if (geteuid() == 0)
+			err(EX_IOERR, "Unable to create local database");
+
+		return (retcode);
 	}
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+	if (ret != EPKG_OK)
 		return (EX_IOERR);
-	}
 
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
 		pkgdb_close(db);
@@ -280,13 +289,14 @@ exec_check(int argc, char **argv)
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) 
 		nbpkgs += check_deps(db, pkg, &dh);
 
-	if (nbpkgs > 0) {
+	if (geteuid() == 0 && nbpkgs > 0) {
 		if (yes == false) 
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 		printf("\n>>> Missing package dependencies were detected.\n\n");
-		fix_deps(db, &dh, nbpkgs, yes);
-		check_summary(db, &dh);
+		ret = fix_deps(db, &dh, nbpkgs, yes);
+		if (ret == EPKG_OK)
+			check_summary(db, &dh);
 	}
 
 	deps_free(&dh);

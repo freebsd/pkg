@@ -13,7 +13,7 @@ usage_backup(void)
 int
 exec_backup(int argc, char **argv)
 {
-	struct pkgdb  *db;
+	struct pkgdb  *db = NULL;
 	char *dest = NULL;
 
 	if (argc < 2 || argc > 3 || argv[1][0] != '-') {
