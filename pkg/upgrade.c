@@ -102,7 +102,17 @@ exec_upgrade(int argc, char **argv)
 		    PKG_FLATSIZE, &flatsize);
 		dlsize += newpkgsize;
 		if (newversion != NULL) {
-			printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+			switch (pkg_version_cmp(version, newversion)) {
+				case 1:
+					printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
+					break;
+				case 0:
+					printf("\tReinstalling %s-%s\n", name, version);
+					break;
+				case -1:
+					printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+					break;
+			}
 			oldsize += flatsize;
 			newsize += newflatsize;
 		} else {

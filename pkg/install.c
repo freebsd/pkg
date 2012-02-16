@@ -16,7 +16,7 @@
 void
 usage_install(void)
 {
-	fprintf(stderr, "usage: pkg install [-r reponame] [-ygxX] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg install [-r reponame] [-yfgxX] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -35,8 +35,9 @@ exec_install(int argc, char **argv)
 	int64_t oldsize = 0, newsize = 0;
 	char size[7];
 	match_t match = MATCH_EXACT;
+	bool force = false;
 
-	while ((ch = getopt(argc, argv, "ygxXr:")) != -1) {
+	while ((ch = getopt(argc, argv, "yfgxXr:")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = true;
@@ -52,6 +53,9 @@ exec_install(int argc, char **argv)
 				break;
 			case 'r':
 				reponame = optarg;
+				break;
+			case 'f':
+				force = true;
 				break;
 			default:
 				usage_install();
@@ -79,7 +83,7 @@ exec_install(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if ((it = pkgdb_query_installs(db, match, argc, argv, reponame)) == NULL)
+	if ((it = pkgdb_query_installs(db, match, argc, argv, reponame, force)) == NULL)
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
@@ -106,9 +110,19 @@ exec_install(int argc, char **argv)
 		    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
 		dlsize += pkgsize;
 		if (newversion != NULL) {
-			printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+			switch (pkg_version_cmp(version, newversion)) {
+				case 1:
+					printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
+					break;
+				case 0:
+					printf("\tReinstalling %s-%s\n", name, version);
+					break;
+				case -1:
+					printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+					break;
+			}
 			oldsize += flatsize;
-			newsize += flatsize;
+			newsize += newflatsize;
 		} else {
 			newsize += flatsize;
 			printf("\tInstalling %s: %s\n", name, version);

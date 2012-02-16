@@ -73,7 +73,17 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_BEGIN:
 		pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name, PKG_VERSION, &version,
 		    PKG_NEWVERSION, &newversion);
-		printf("Upgrading %s from %s to %s...", name, version, newversion);
+		switch (pkg_version_cmp(version, newversion)) {
+			case 1:
+				printf("Downgrading %s from %s to %s...", name, version, newversion);
+				break;
+			case 0:
+				printf("Reinstalling %s-%s", name, version);
+				break;
+			case -1:
+				printf("Upgrading %s from %s to %s...", name, version, newversion);
+				break;
+		}
 		fflush(stdout);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:

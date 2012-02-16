@@ -23,7 +23,7 @@
 .Nd performs upgrades of package software distributions
 .Sh SYNOPSIS
 .Nm
-.Op Fl y
+.Op Fl yf
 .Sh DESCRIPTION
 .Nm
 is used for upgrading of package software distributions.
@@ -41,6 +41,8 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl y
 Assume yes when asked for confirmation before package installation.
+.It Fl f
+Force reinstalling/upgrading the whole set of packages
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

@@ -1921,14 +1921,14 @@ create_temporary_pkgjobs(sqlite3 *s)
 			"comment TEXT, desc TEXT, message TEXT, "
 			"arch TEXT, osversion TEXT, maintainer TEXT, "
 			"www TEXT, prefix TEXT, flatsize INTEGER, newversion TEXT, "
-			"newflatsize INTEGER, pkgsize INTEGER, cksum TEXT, repopath TEXT, automatic INTEGER, "
+			"newflatsize INTEGER, pkgsize INTEGER, cksum TEXT, repopath TEXT, automatic INTEGER, weight INTEGER"
 			"dbname TEXT);");
 
 	return (ret);
 }
 
 struct pkgdb_it *
-pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, const char *repo)
+pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, const char *repo, bool force)
 {
 	sqlite3_stmt *stmt = NULL;
 	int i = 0;
@@ -1940,7 +1940,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	const char finalsql[] = "SELECT pkgid AS id, origin, name, version, "
 		"comment, desc, message, arch, osversion, maintainer, "
 		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-		"cksum, repopath, automatic, (select count(*) FROM '%s'.deps as d WHERE d.origin = pkgjobs.origin) as weight, "
+		"cksum, repopath, automatic, weight, "
 		"'%s' AS dbname FROM pkgjobs ORDER BY weight DESC;";
        
 	const char main_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
@@ -1959,6 +1959,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 				"FROM '%s'.packages AS r where r.origin IN "
 				"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j WHERE d.package_id = j.pkgid) "
 				"AND (SELECT origin FROM main.packages WHERE origin=r.origin AND version=r.version) IS NULL;";
+
+	const char weight_sql[] = "UPDATE pkgjobs set weight=(select count(*) from '%s'.deps as d where d.origin=pkgjobs.origin)";
 
 	assert(db != NULL);
 
@@ -2029,11 +2031,13 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	sbuf_clear(sql);
 
 	/* Remove packages already installed and in the latest version */
-	sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
+	if (!force)
+		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
 
 	/* Append dependencies */
 	sbuf_reset(sql);
 	sbuf_printf(sql, deps_sql, reponame, reponame);
+	sbuf_finish(sql);
 
 	do {
 		sql_exec(db->sqlite, sbuf_get(sql));
@@ -2047,11 +2051,19 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
 			"l.osversion, l.maintainer, l.www, l.prefix, l.flatsize, r.version AS newversion, "
 			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
-			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin "
-			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))");
+			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin ");
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, finalsql, reponame, reponame);
+	sbuf_printf(sql, weight_sql, reponame);
+	sbuf_finish(sql);
+
+	sql_exec(db->sqlite, sbuf_get(sql));
+
+	sql_exec(db->sqlite, "UPDATE pkgjobs set weight=100000 where origin=\"ports-mgmt/pkg\"");
+
+	sbuf_reset(sql);
+	sbuf_printf(sql, finalsql, reponame);
+	sbuf_finish(sql);
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -2082,7 +2094,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	const char finalsql[] = "select pkgid as id, origin, name, version, "
 		"comment, desc, message, arch, osversion, maintainer, "
 		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-		"cksum, repopath, automatic, (select count(*) from '%s'.deps as d where d.origin = pkgjobs.origin) as weight, "
+		"cksum, repopath, automatic, weight, "
 		"'%s' AS dbname FROM pkgjobs order by weight DESC;";
 		
 	const char pkgjobs_sql_1[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
@@ -2122,6 +2134,8 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin";
 	}
 
+	const char weight_sql[] = "UPDATE pkgjobs set weight=(select count(*) from '%s'.deps as d where d.origin=pkgjobs.origin)";
+
 	/* Working on multiple repositories */
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
@@ -2149,7 +2163,8 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	/* Remove packages already installed and in the latest version */
-	sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
+	if (!all)
+		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
 
 	sbuf_reset(sql);
 	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame);
@@ -2163,7 +2178,15 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	sql_exec(db->sqlite, pkgjobs_sql_3);
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, finalsql, reponame, reponame);
+	sbuf_printf(sql, weight_sql, reponame);
+	sbuf_finish(sql);
+
+	sql_exec(db->sqlite, sbuf_get(sql));
+
+	sql_exec(db->sqlite, "UPDATE pkgjobs set weight=100000 where origin=\"ports-mgmt/pkg\"");
+
+	sbuf_reset(sql);
+	sbuf_printf(sql, finalsql, reponame);
 	sbuf_finish(sql);
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
