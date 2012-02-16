@@ -1,7 +1,9 @@
 #include <sys/param.h>
+#include <sys/types.h>
 #include <string.h>
 #include <err.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 #include "pkg.h"
 #include "progressmeter.h"
@@ -94,8 +96,16 @@ event_callback(void *data, struct pkg_event *ev)
 		printf("%s-%s already installed\n", name, version);
 		break;
 	case PKG_EVENT_MISSING_DEP:
-		printf("missing dependency %s-%s", pkg_dep_get(ev->e_missing_dep.dep, PKG_DEP_NAME),
+		fprintf(stderr, "missing dependency %s-%s", pkg_dep_get(ev->e_missing_dep.dep, PKG_DEP_NAME),
 		    pkg_dep_get(ev->e_missing_dep.dep, PKG_DEP_VERSION));
+		break;
+	case PKG_EVENT_NOREMOTEDB:
+		fprintf(stderr, "Unable to open remote database \"%s\", try running `%s update` first\n", ev->e_remotedb.repo, getprogname());
+		break;
+	case PKG_EVENT_NOLOCALDB:
+		/* only cares if run as root */
+		if (geteuid() == 0)
+			fprintf(stderr, "Unable to create local database");
 		break;
 	default:
 		break;

@@ -456,10 +456,12 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 
 		if (eaccess(localpath, R_OK) != 0) {
 			if (errno != ENOENT) {
+				pkg_emit_nolocaldb();
 				pkgdb_close(db);
 				return (EPKG_ENODB);
 			} else if (eaccess(dbdir, W_OK) != 0) {
 				/* If we need to create the db but can not write to it, fail early */
+				pkg_emit_nolocaldb();
 				pkgdb_close(db);
 				return (EPKG_ENODB);
 			} else {
@@ -537,7 +539,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 						dbdir, repo_name);
 
 				if (access(remotepath, R_OK) != 0) {
-					pkg_emit_error("Unable to remote database %s, try running `%s update` first ", remotepath, getprogname());
+					pkg_emit_noremotedb(repo_name);
 					pkgdb_close(db);
 					return (EPKG_ENODB);
 				}
@@ -562,7 +564,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
 
 			if (access(remotepath, R_OK) != 0) {
-				pkg_emit_error("Unable to remote database %s, try running `%s update` first ", remotepath, getprogname());
+				pkg_emit_noremotedb("default");
 				pkgdb_close(db);
 				return (EPKG_ENODB);
 			}

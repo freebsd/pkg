@@ -740,6 +740,8 @@ typedef enum {
 	PKG_EVENT_CREATE_DB_ERROR,
 	PKG_EVENT_REQUIRED,
 	PKG_EVENT_MISSING_DEP,
+	PKG_EVENT_NOREMOTEDB,
+	PKG_EVENT_NOLOCALDB,
 } pkg_event_t;
 
 struct pkg_event {
@@ -787,6 +789,9 @@ struct pkg_event {
 			struct pkg *pkg;
 			int force;
 		} e_required;
+		struct {
+			const char *repo;
+		} e_remotedb;
 	};
 };
 

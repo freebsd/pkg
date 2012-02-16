@@ -315,7 +315,7 @@ exec_audit(int argc, char **argv)
 		 * it just means there is no package
 		 */
 		if (geteuid() == 0)
-			err(EX_IOERR, "Unable to create local database");
+			return (EX_IOERR);
 		return (EXIT_SUCCESS);
 	}
 

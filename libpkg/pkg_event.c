@@ -108,7 +108,7 @@ pkg_emit_integritycheck_begin(void)
 {
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_INTEGRITYCHECK_BEGIN;
-	
+
 	pkg_emit_event(&ev);
 }
 
@@ -117,7 +117,7 @@ pkg_emit_integritycheck_finished(void)
 {
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_INTEGRITYCHECK_FINISHED;
-	
+
 	pkg_emit_event(&ev);
 }
 
@@ -205,3 +205,22 @@ pkg_emit_required(struct pkg *p, int force)
 	pkg_emit_event(&ev);
 }
 
+void
+pkg_emit_nolocaldb(void)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_NOLOCALDB;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_noremotedb(const char *repo)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_NOREMOTEDB;
+
+	ev.e_remotedb.repo = repo;
+
+	pkg_emit_event(&ev);
+}

@@ -15,5 +15,7 @@ void pkg_emit_missing_dep(struct pkg *p, struct pkg_dep *d);
 void pkg_emit_required(struct pkg *p, int force);
 void pkg_emit_integritycheck_begin(void);
 void pkg_emit_integritycheck_finished(void);
+void pkg_emit_noremotedb(const char *);
+void pkg_emit_nolocaldb(void);
 
 #endif
