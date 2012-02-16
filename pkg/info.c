@@ -141,7 +141,7 @@ exec_info(int argc, char **argv)
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret == EPKG_ENODB) {
 		if (geteuid() == 0)
-			err(EX_IOERR, "Unable to create local database");
+			return (EX_IOERR);
 
 		if (match == MATCH_ALL)
 			return (EXIT_SUCCESS);

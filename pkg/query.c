@@ -475,10 +475,8 @@ exec_query(int argc, char **argv)
 
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret == EPKG_ENODB) {
-		if (geteuid() == 0) {
-			err(EX_IOERR, "Unable to create local database");
-			return (EXIT_FAILURE);
-		}
+		if (geteuid() == 0)
+			return (EX_IOERR);
 
 		/* do not fail if run as a user */
 		return (EXIT_SUCCESS);
