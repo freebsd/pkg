@@ -17,7 +17,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage pkg upgrade [-r reponame] [-y]\n");
+	fprintf(stderr, "usage pkg upgrade [-r reponame] [-yf]\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -35,19 +35,23 @@ exec_upgrade(int argc, char **argv)
 	char size[7];
 	int ch;
 	bool yes = false;
+	bool all = false;
 
 	if (geteuid() != 0) {
 		warnx("upgrading can only be done as root");
 		return (EX_NOPERM);
 	}
 
-	while ((ch = getopt(argc, argv, "yr:")) != -1) {
+	while ((ch = getopt(argc, argv, "yr:f")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = true;
 				break;
 			case 'r':
 				reponame = optarg;
+				break;
+			case 'f':
+				all = true;
 				break;
 			default:
 				usage_upgrade();
@@ -71,7 +75,7 @@ exec_upgrade(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if ((it = pkgdb_query_upgrades(db, reponame)) == NULL) {
+	if ((it = pkgdb_query_upgrades(db, reponame, all)) == NULL) {
 		goto cleanup;
 	}
 

@@ -2065,7 +2065,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 }
 
 struct pkgdb_it *
-pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
+pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 {
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = sbuf_new_auto();
@@ -2102,7 +2102,9 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 				"(SELECT d.origin from '%s'.deps AS d, pkgjobs as j WHERE d.package_id = j.pkgid) "
 				"AND (SELECT p.origin from main.packages as p WHERE p.origin=r.origin AND version=r.version) IS NULL;";
 
-	const char pkgjobs_sql_3[] = "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
+	const char *pkgjobs_sql_3;
+	if (!all) {
+		pkgjobs_sql_3 = "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
 			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
 			"cksum, repopath, automatic) "
 			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
@@ -2110,6 +2112,15 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo)
 			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
 			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin "
 			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))";
+	} else {
+		pkgjobs_sql_3 = "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
+			"osversion, maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
+			"cksum, repopath, automatic) "
+			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
+			"l.osversion, l.maintainer, l.www, l.prefix, l.flatsize, r.version AS newversion, "
+			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
+			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin";
+	}
 
 	/* Working on multiple repositories */
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
