@@ -425,6 +425,7 @@ int
 pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 {
 	struct pkgdb *db = NULL;
+	bool reopen = false;
 	char localpath[MAXPATHLEN + 1];
 	char remotepath[MAXPATHLEN + 1];
 	const char *dbdir = NULL;
@@ -433,77 +434,78 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	bool create = false;
 	struct pkg_config_kv *repokv = NULL;
 
-	/*
-	 * Set the pointer to NULL now. Change it to the real pointer just
-	 * before returning, when we know that we succeeded.
-	 */
-	*db_p = NULL;
+	if (*db_p != NULL) {
+		reopen = true;
+		db = *db_p;
+		if (db->type == type)
+			return (EPKG_OK);
+	}
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if ((db = calloc(1, sizeof(struct pkgdb))) == NULL) {
+	if (!reopen && (db = calloc(1, sizeof(struct pkgdb))) == NULL) {
 		pkg_emit_errno("malloc", "pkgdb");
 		return EPKG_FATAL;
 	}
 
 	db->type = type;
 
-	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
+	if (!reopen) {
+		snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 
-	if (eaccess(localpath, R_OK) != 0) {
-		if (errno != ENOENT) {
-			/*pkg_emit_errno("Unable to create local database ", localpath);*/
-			pkgdb_close(db);
-			return (EPKG_ENODB);
-		} else if (eaccess(dbdir, W_OK) != 0) {
-			/* If we need to create the db but can not write to it, fail early */
-			/*pkg_emit_errno("Unable to create local database ", dbdir);*/
-			pkgdb_close(db);
-			return (EPKG_ENODB);
-		} else {
-			create = true;
+		if (eaccess(localpath, R_OK) != 0) {
+			if (errno != ENOENT) {
+				pkgdb_close(db);
+				return (EPKG_ENODB);
+			} else if (eaccess(dbdir, W_OK) != 0) {
+				/* If we need to create the db but can not write to it, fail early */
+				pkgdb_close(db);
+				return (EPKG_ENODB);
+			} else {
+				create = true;
+			}
 		}
-	}
-	
-	sqlite3_initialize();
-	if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		pkgdb_close(db);
-		return (EPKG_FATAL);
-	}
 
-	/* If the database is missing we have to initialize it */
-	if (create == true)
-		if (pkgdb_init(db->sqlite) != EPKG_OK) {
+		sqlite3_initialize();
+		if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
 
-	if (eaccess(localpath, W_OK) == 0)
-		db->writable = 1;
+		/* If the database is missing we have to initialize it */
+		if (create == true)
+			if (pkgdb_init(db->sqlite) != EPKG_OK) {
+				pkgdb_close(db);
+				return (EPKG_FATAL);
+			}
 
-	if (pkgdb_upgrade(db) != EPKG_OK) {
-		pkgdb_close(db);
-		return (EPKG_FATAL);
-	}
+		if (eaccess(localpath, W_OK) == 0)
+			db->writable = 1;
 
-	sqlite3_create_function(db->sqlite, "regexp", 2, SQLITE_ANY, NULL,
-							pkgdb_regex_basic, NULL, NULL);
-	sqlite3_create_function(db->sqlite, "eregexp", 2, SQLITE_ANY, NULL,
-							pkgdb_regex_extended, NULL, NULL);
-	sqlite3_create_function(db->sqlite, "pkglt", 2, SQLITE_ANY, NULL,
-			pkgdb_pkglt, NULL, NULL);
-	sqlite3_create_function(db->sqlite, "pkggt", 2, SQLITE_ANY, NULL,
-			pkgdb_pkggt, NULL, NULL);
+		if (pkgdb_upgrade(db) != EPKG_OK) {
+			pkgdb_close(db);
+			return (EPKG_FATAL);
+		}
 
-	/*
-	 * allow foreign key option which will allow to have clean support for
-	 * reinstalling
-	 */
-	if (sql_exec(db->sqlite, "PRAGMA foreign_keys = ON;") != EPKG_OK) {
-		pkgdb_close(db);
-		return (EPKG_FATAL);
+		sqlite3_create_function(db->sqlite, "regexp", 2, SQLITE_ANY, NULL,
+				pkgdb_regex_basic, NULL, NULL);
+		sqlite3_create_function(db->sqlite, "eregexp", 2, SQLITE_ANY, NULL,
+				pkgdb_regex_extended, NULL, NULL);
+		sqlite3_create_function(db->sqlite, "pkglt", 2, SQLITE_ANY, NULL,
+				pkgdb_pkglt, NULL, NULL);
+		sqlite3_create_function(db->sqlite, "pkggt", 2, SQLITE_ANY, NULL,
+				pkgdb_pkggt, NULL, NULL);
+
+		/*
+		 * allow foreign key option which will allow to have clean support for
+		 * reinstalling
+		 */
+		if (sql_exec(db->sqlite, "PRAGMA foreign_keys = ON;") != EPKG_OK) {
+			pkgdb_close(db);
+			return (EPKG_FATAL);
+		}
 	}
 
 	if (type == PKGDB_REMOTE) {
@@ -535,9 +537,9 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 						dbdir, repo_name);
 
 				if (access(remotepath, R_OK) != 0) {
-					pkg_emit_errno("access", remotepath);
+					pkg_emit_error("Unable to remote database %s, try running `%s update` first ", remotepath, getprogname());
 					pkgdb_close(db);
-					return (EPKG_FATAL);
+					return (EPKG_ENODB);
 				}
 				
 				if (sql_exec(db->sqlite, "ATTACH '%q' AS '%q';", remotepath, repo_name) != EPKG_OK) {
@@ -560,9 +562,9 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
 
 			if (access(remotepath, R_OK) != 0) {
-				pkg_emit_errno("access", remotepath);
+				pkg_emit_error("Unable to remote database %s, try running `%s update` first ", remotepath, getprogname());
 				pkgdb_close(db);
-				return (EPKG_FATAL);
+				return (EPKG_ENODB);
 			}
 			
 			if (sql_exec(db->sqlite, "ATTACH '%q' AS 'remote';", remotepath) != EPKG_OK) {

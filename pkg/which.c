@@ -21,8 +21,8 @@ usage_which(void)
 int
 exec_which(int argc, char **argv)
 {
-	struct pkgdb *db;
-	struct pkgdb_it *it;
+	struct pkgdb *db = NULL;
+	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 	char pathabs[MAXPATHLEN + 1];
 	int ret = EPKG_OK, retcode = EPKG_OK;
