@@ -285,11 +285,11 @@ exec_audit(int argc, char **argv)
 	unsigned int vuln = 0;
 	bool fetch = false;
 	int ch;
-	int ret;
+	int ret = EX_OK;
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &db_dir) != EPKG_OK) {
 		warnx("PKG_DBIR is missing");
-		return (1);
+		return (EX_CONFIG);
 	}
 	snprintf(audit_file, sizeof(audit_file), "%s/auditfile", db_dir);
 
@@ -305,7 +305,7 @@ exec_audit(int argc, char **argv)
 
 	if (fetch == true) {
 	       	if (fetch_and_extract(AUDIT_URL, audit_file) != EPKG_OK) {
-			return (1);
+			return (EX_IOERR);
 		}
 	}
 
@@ -316,12 +316,13 @@ exec_audit(int argc, char **argv)
 		 */
 		if (geteuid() == 0)
 			return (EX_IOERR);
-		return (EXIT_SUCCESS);
+		return (EX_OK);
 	}
 
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 	{
 		warnx("Can not query local database");
+		ret = EX_IOERR;
 		goto cleanup;
 	}
 
@@ -343,12 +344,9 @@ exec_audit(int argc, char **argv)
 	printf("%u problem(s) in your installed packages found.\n", vuln);
 
 cleanup:
-	if (db != NULL)
-		pkgdb_close(db);
-	if (it != NULL)
-		pkgdb_it_free(it);
-	if (pkg != NULL)
-		pkg_free(pkg);
+	pkgdb_close(db);
+	pkgdb_it_free(it);
+	pkg_free(pkg);
 	free_audit_list(&h);
 
 	return (ret);
