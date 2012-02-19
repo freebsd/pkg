@@ -46,7 +46,7 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh)
 
 	while (pkg_deps(p, &dep) == EPKG_OK) {
 		if ((it = pkgdb_query(db, pkg_dep_get(dep, PKG_DEP_ORIGIN), MATCH_EXACT)) == NULL)
-			return (0);;
+			return (0);
 		
 		/* do we have a missing dependency? */
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
@@ -293,7 +293,8 @@ exec_check(int argc, char **argv)
 		if (yes == false) 
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
-		printf("\n>>> Missing package dependencies were detected.\n\n");
+		printf("\n>>> Missing package dependencies were detected.\n");
+		printf(">>> Found %d issue(s) in total with your package database.\n\n", nbpkgs);
 		ret = fix_deps(db, &dh, nbpkgs, yes);
 		if (ret == EPKG_OK)
 			check_summary(db, &dh);
