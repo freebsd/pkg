@@ -45,7 +45,7 @@ SLIST_HEAD(audit_head, audit_entry);
 void
 usage_audit(void)
 {
-	fprintf(stderr, "usage: pkg audit [-F]\n");
+	fprintf(stderr, "usage: pkg audit [-F] <pattern>\n");
 }
 
 static int
@@ -281,6 +281,8 @@ exec_audit(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 	const char *db_dir;
+	char *name;
+	char *version;
 	char audit_file[MAXPATHLEN + 1];
 	unsigned int vuln = 0;
 	bool fetch = false;
@@ -298,15 +300,49 @@ exec_audit(int argc, char **argv)
 			case 'F':
 				fetch = true;
 				break;
+			default:
+				usage_audit();
+				return(EX_USAGE);
 		}
 	}
 	argc -= optind;
 	argv += optind;
 
 	if (fetch == true) {
-	       	if (fetch_and_extract(AUDIT_URL, audit_file) != EPKG_OK) {
+		if (fetch_and_extract(AUDIT_URL, audit_file) != EPKG_OK) {
 			return (EX_IOERR);
 		}
+	}
+
+	if (argc > 2) {
+		usage_audit();
+		return (EX_USAGE);
+	}
+
+	if (argc == 1) {
+		name = argv[0];
+		version = strrchr(name, '-');
+		if (version == NULL)
+			err(EX_USAGE, "bad package name format: %s", name);
+		version[0] = '\0';
+		version++;
+		pkg_new(&pkg, PKG_FILE);
+		pkg_set(pkg,
+		    PKG_NAME, name,
+		    PKG_VERSION, version);
+		if (parse_db(audit_file, &h) != EPKG_OK) {
+			if (errno == ENOENT)
+				warnx("unable to open audit file, try running pkg audit -F first");
+			else
+				warn("unable to open audit file %s", audit_file);
+			ret = EX_DATAERR;
+			goto cleanup;
+		}
+		if (is_vulnerable(&h, pkg))
+			ret = 1;
+		else
+			ret = EX_OK;
+		goto cleanup;
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
