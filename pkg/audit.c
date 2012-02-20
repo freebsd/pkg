@@ -338,10 +338,7 @@ exec_audit(int argc, char **argv)
 			ret = EX_DATAERR;
 			goto cleanup;
 		}
-		if (is_vulnerable(&h, pkg))
-			ret = 1;
-		else
-			ret = EX_OK;
+		is_vulnerable(&h, pkg);
 		goto cleanup;
 	}
 
