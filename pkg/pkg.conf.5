@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 24, 2012
+.Dd February 23, 2012
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -90,23 +90,27 @@ definitions, please have a look at the sample configuration file.
 .It Cm PORTSDIR(string)
 Specifies the location to the Ports directory. The default value
 for this option is
+.It Cm SYSLOG(boolean)
+This option is enabled by default, log all the
+installation/deinstallation/upgrade operation via syslog(3)
 .Fa /usr/ports
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration 
 file always overrides the value of an option set in the file.
 .Sh SEE ALSO
-.Xr pkg 1 ,
-.Xr pkg-add 1 ,
-.Xr pkg-autoremove 1 ,
-.Xr pkg-search 1 ,
-.Xr pkg-backup 1 ,
-.Xr pkg-install 1 ,
-.Xr pkg-delete 1 ,
-.Xr pkg-info 1 ,
-.Xr pkg-register 1 ,
-.Xr pkg-repo 1 ,
-.Xr pkg-update 1 ,
-.Xr pkg-upgrade 1 ,
-.Xr pkg-version 1 ,
-.Xr pkg-which 1
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-update 8 ,
+.Xr Pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
