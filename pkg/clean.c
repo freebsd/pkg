@@ -77,7 +77,7 @@ exec_clean(int argc, char **argv)
 
 		ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC);
 		to_delete = false;
-		pkg_get(pkg, PKG_REPOPATH, &pkgrepopath);
+		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		if (ret == EPKG_FATAL) {
 			warnx("skipping %s", ent->fts_path);
 			continue;
