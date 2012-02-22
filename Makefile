@@ -1,6 +1,9 @@
 SUBDIR=	external \
 	libpkg \
-	pkg \
-	pkg-static
+	pkg
+
+.if !defined(NOSTATIC)
+SUBDIR+=	pkg-static
+.endif
 
 .include <bsd.subdir.mk>
