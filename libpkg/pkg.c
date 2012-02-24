@@ -614,12 +614,12 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_adddir(struct pkg *pkg, const char *path, int try)
+pkg_adddir(struct pkg *pkg, const char *path, bool try)
 {
 	return(pkg_adddir_attr(pkg, path, NULL, NULL, 0, try));
 }
 int
-pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, int try)
+pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try)
 {
 	struct pkg_dir *d = NULL;
 

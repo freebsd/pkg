@@ -105,7 +105,7 @@ pkg_dir_new(struct pkg_dir **d)
 
 	(*d)->perm = 0;
 	(*d)->keep = 0;
-	(*d)->try = 0;
+	(*d)->try = false;
 
 	return (EPKG_OK);
 }
@@ -122,7 +122,7 @@ pkg_dir_path(struct pkg_dir *d)
 	return (d->path);
 }
 
-int
+bool
 pkg_dir_try(struct pkg_dir *d)
 {
 	return (d->try);

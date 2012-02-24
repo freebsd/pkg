@@ -434,7 +434,7 @@ pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 	const char *gname = NULL;
 	void *set;
 	mode_t perm = 0;
-	int try = 1;
+	bool try = false;
 
 	pair = item->data.mapping.pairs.start;
 	while (pair < item->data.mapping.pairs.top) {
@@ -462,10 +462,12 @@ pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 			else
 				perm = getmode(set, 0);
 		} else if (!strcasecmp(key->data.scalar.value, "try")) {
-			if (val->data.scalar.value[0] == 'n' || val->data.scalar.value[0] == 'y')
-				try = val->data.scalar.value[0];
+			if (val->data.scalar.value[0] == 'n')
+				try = false;
+			else if (val->data.scalar.value[0] == 'y')
+				try = true;
 			else
-				pkg_emit_error("Wrong value for try: %s, expected 'y' or 'n'");
+				pkg_emit_error("Wrong value for try: %s, expected 'y' or 'n'", val->data.scalar.value);
 		} else {
 			pkg_emit_error("Skipping unknown key for dir(%s): %s", dirname,
 						   key->data.scalar.value);

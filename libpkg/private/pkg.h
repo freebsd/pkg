@@ -83,7 +83,7 @@ struct pkg_dir {
 	char gname[MAXLOGNAME +1];
 	mode_t perm;
 	int keep;
-	int try;
+	bool try;
 	STAILQ_ENTRY(pkg_dir) next;
 };
 
