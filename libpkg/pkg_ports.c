@@ -46,8 +46,8 @@ struct plist {
 	bool ignore_next;
 	int64_t flatsize;
 	struct hardlinks *hardlinks;
-	regex_t *preg1;
-	regex_t *preg2;
+	regex_t preg1;
+	regex_t preg2;
 	mode_t perm;
 	STAILQ_HEAD(keywords, keyword) keywords;
 };
@@ -316,7 +316,7 @@ meta_exec(struct plist *p, char *line, bool unexec)
 			split_chr(buf, '|');
 
 			if (strstr(buf, "\"/")) {
-				while (regexec(p->preg1, buf, 2, pmatch, 0) == 0) {
+				while (regexec(&p->preg1, buf, 2, pmatch, 0) == 0) {
 					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
@@ -324,7 +324,7 @@ meta_exec(struct plist *p, char *line, bool unexec)
 					dirrmtry(p, path);
 				}
 			} else {
-				while (regexec(p->preg2, buf, 2, pmatch, 0) == 0) {
+				while (regexec(&p->preg2, buf, 2, pmatch, 0) == 0) {
 					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
@@ -680,7 +680,6 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	int ret = EPKG_OK;
 	off_t sz = 0;
 	struct hardlinks hardlinks = {NULL, 0, 0};
-	regex_t preg1, preg2;
 	struct plist pplist;
 
 	assert(pkg != NULL);
@@ -707,11 +706,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 	populate_keywords(&pplist);
 
-	regcomp(&preg1, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
-	regcomp(&preg2, "[[:space:]](/[[:graph:]/]+)", REG_EXTENDED);
-
-	pplist.preg1 = &preg1;
-	pplist.preg2 = &preg2;
+	regcomp(&pplist.preg1, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
+	regcomp(&pplist.preg2, "[[:space:]](/[[:graph:]/]+)", REG_EXTENDED);
 
 	buf = NULL;
 
@@ -782,8 +778,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	flush_script_buffer(pplist.pre_upgrade_buf, pkg, PKG_SCRIPT_PRE_UPGRADE);
 	flush_script_buffer(pplist.post_upgrade_buf, pkg, PKG_SCRIPT_POST_UPGRADE);
 
-	regfree(&preg1);
-	regfree(&preg2);
+	regfree(&pplist.preg1);
+	regfree(&pplist.preg2);
 
 	free(hardlinks.inodes);
 
