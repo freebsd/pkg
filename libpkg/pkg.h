@@ -409,7 +409,7 @@ int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, cons
  * Add a path
  * @return An error code.
  */
-int pkg_adddir(struct pkg *pkg, const char *path, int try);
+int pkg_adddir(struct pkg *pkg, const char *path, bool try);
 
 /**
  * Allocate a new struct pkg_file and add it to the files of pkg;
@@ -419,7 +419,7 @@ int pkg_adddir(struct pkg *pkg, const char *path, int try);
  * @param perm the permission
  * @return An error code.
  */
-int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, int try);
+int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try);
 
 /**
  * Add a category
@@ -500,7 +500,7 @@ const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
 const char *pkg_file_get(struct pkg_file const * const, const pkg_file_attr);
 
 const char *pkg_dir_path(struct pkg_dir *);
-int pkg_dir_try(struct pkg_dir *);
+bool pkg_dir_try(struct pkg_dir *);
 
 const char *pkg_category_name(struct pkg_category *);
 
