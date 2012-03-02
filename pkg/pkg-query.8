@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd March 2, 2012
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -26,6 +26,8 @@
 .Fl a Ao query format Ac
 .Nm
 .Fl f Ao pkg-name Ac Ao query-format Ac
+.Nm
+.Fl e Ao evaluation-condition Ac Ao query-format Ac
 .Nm
 .Op Fl gxX
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
@@ -147,6 +149,38 @@ Expands to the list of groups needed by the matched package.
 .It Cm \&%S
 Expands to the list of scripts for the matching packages - install, deinstall, etc.
 .El
+.Sh EVALUATION FORMAT
+.Ss Variables
+.Bl -tag -width F1
+.It Cm \&%n
+Name of the package (type string)
+.It Cm \&%o
+Origin of the package (type string)
+.It Cm \&%p
+Prefix of the package (type string)
+.It Cm \&%m
+Maintainer of the package (type string)
+.It Cm \&%c
+Comment of the package (type string)
+.It Cm \&%w
+WWW address of the package (type string)
+.It Cm \&%s
+Flatsize of the package (type integer)
+.It Cm \&%a
+Automatic status of the package (type integer)
+.It Cm \&%M
+Message of the package (type string)
+.El
+.Ss Operators
+.Bl -tag -width F1
+.It Cm ~
+String glob pattern matching
+.It Cm > Ns Op =
+Integer comparison
+.It Cm > Ns Op =
+Integer comparison
+.It Cm = Ns Op =
+Integer or string comparison
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .

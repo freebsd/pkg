@@ -772,6 +772,30 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 }
 
 struct pkgdb_it *
+pkgdb_query_condition(struct pkgdb *db, const char *condition)
+{
+	char sql[BUFSIZ];
+	sqlite3_stmt *stmt;
+
+	assert(db != NULL);
+	assert (condition != NULL);
+
+	snprintf(sql, sizeof(sql),
+	    "SELECT id, origin, name, version, comment, desc, "
+	        "message, arch, osversion, maintainer, www, "
+	        "prefix, flatsize, licenselogic, automatic "
+	    "FROM packages AS p WHERE %s "
+	    "ORDER BY p.name;", condition);
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+}
+
+struct pkgdb_it *
 pkgdb_query_which(struct pkgdb *db, const char *path)
 {
 	sqlite3_stmt *stmt;
