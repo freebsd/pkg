@@ -54,6 +54,10 @@ int exec_register(int argc, char **argv);
 int exec_repo(int, char **);
 void usage_repo(void);
 
+/* pkg set */
+int exec_set(int, char **);
+void usage_set(void);
+
 /* pkg search */
 int exec_search(int, char **);
 void usage_search(void);
@@ -103,7 +107,7 @@ void usage_which(void);
 #define INFO_FULL (1<<9)
 #define INFO_RAW (1<<10)
 
-bool query_yesno(const char *msg);
+bool query_yesno(const char *msg, ...);
 int print_info(struct pkg * const pkg, unsigned int opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
 

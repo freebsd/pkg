@@ -6,28 +6,33 @@
 #include <libutil.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdarg.h>
 #include <pkg.h>
 
 #include "pkgcli.h"
 
 bool
-query_yesno(const char *msg)
+query_yesno(const char *msg, ...)
 {
-        int c;
+	int c;
 	bool r = false;
+	va_list ap;
 
-        printf("%s", msg);
+	va_start(ap, msg);
+	vprintf(msg, ap);
+	va_end(ap);
 
-        c = getchar();
-        if (c == 'y' || c == 'Y')
-                r = true;
-        else if (c == '\n' || c == EOF)
-                return false;
 
-        while((c = getchar()) != '\n' && c != EOF)
-                continue;
+	c = getchar();
+	if (c == 'y' || c == 'Y')
+		r = true;
+	else if (c == '\n' || c == EOF)
+		return false;
 
-        return r;
+	while((c = getchar()) != '\n' && c != EOF)
+		continue;
+
+	return r;
 }
 
 char *

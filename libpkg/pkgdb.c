@@ -2701,6 +2701,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 {
 	int attr;
 	char sql[BUFSIZ];
+	int automatic;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		switch (attr) {
@@ -2710,15 +2711,12 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 				sql_exec(db->sqlite, sql);
 				break;
 			case PKG_AUTOMATIC:
-				if (va_arg(ap, int) == 0) {
-					snprintf(sql, BUFSIZ, "update packages set automatic=0 where id=%"PRId64";", id);
-					sql_exec(db->sqlite, sql);
-					break;
-				} else if (va_arg(ap, int) == 1) {
-					snprintf(sql, BUFSIZ, "update packages set automatic=1 where id=%"PRId64";", id);
-					sql_exec(db->sqlite, sql);
-					break;
-				}
+				automatic = va_arg(ap, int);
+				if (automatic != 0 && automatic != 1)
+					continue;
+				snprintf(sql, BUFSIZ, "update packages set automatic=%d where id=%"PRId64";", automatic, id);
+				sql_exec(db->sqlite, sql);
+				break;
 		}
 	}
 	return (EPKG_OK);
