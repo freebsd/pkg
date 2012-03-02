@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/sbuf.h>
 
+#include <ctype.h>
 #include <err.h>
 #include <inttypes.h>
 #include <libutil.h>
@@ -42,6 +43,18 @@ static struct query_flags {
         { 'a', "",		0, PKG_LOAD_BASIC },
         { 'M', "",		0, PKG_LOAD_BASIC },
 };
+
+typedef enum {
+	NONE,
+	NEXT_IS_INT,
+	OPERATOR_INT,
+	INT,
+	NEXT_IS_STRING,
+	OPERATOR_STRING,
+	STRING,
+	QUOTEDSTRING,
+	SQUOTEDSTRING
+} type_t;
 
 const unsigned int flags_len = (sizeof(q_flags)/sizeof(q_flags[0]));
 
@@ -321,6 +334,154 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	}
 	sbuf_delete(output);
 }
+
+static int
+format_sql_condition(const char *str, struct sbuf *sqlcond)
+{
+	type_t state = NONE;
+	while (str[0] != '\0') {
+		if (state == NONE) {
+			if (str[0] == '%') {
+				str++;
+				switch (str[0]) {
+					case 'n':
+						sbuf_cat(sqlcond, "name");
+						state = OPERATOR_STRING;
+						break;
+					case 'o':
+						sbuf_cat(sqlcond, "origin");
+						state = OPERATOR_STRING;
+						break;
+					case 'p':
+						sbuf_cat(sqlcond, "prefix");
+						state = OPERATOR_STRING;
+						break;
+					case 'm':
+						sbuf_cat(sqlcond, "maintainer");
+						state = OPERATOR_STRING;
+						break;
+					case 'c':
+						sbuf_cat(sqlcond, "comment");
+						state = OPERATOR_STRING;
+						break;
+					case 'w':
+						sbuf_cat(sqlcond, "www");
+						state = OPERATOR_STRING;
+						break;
+					case 's':
+						sbuf_cat(sqlcond, "flatsize");
+						state = OPERATOR_INT;
+						break;
+					case 'a':
+						sbuf_cat(sqlcond, "automatic");
+						state = OPERATOR_INT;
+						break;
+					case 'M':
+						sbuf_cat(sqlcond, "message");
+						state = OPERATOR_STRING;
+						break;
+					default:
+						fprintf(stderr, "malformed evaluation string");
+						return (EPKG_FATAL);
+				}
+			} else {
+				if (str[0] == '|' && str[1] == '|') {
+					str++;
+					sbuf_cat(sqlcond, " OR ");
+				} else if (str[0] == '&' && str[1] == '&') {
+					str++;
+					sbuf_cat(sqlcond, " AND ");
+				} else {
+					sbuf_putc(sqlcond, str[0]);
+				}
+			}
+		} else if (state == OPERATOR_STRING || state == OPERATOR_INT) {
+			/* only operators or space are allowed here */
+			if (isspace(str[0])) {
+				sbuf_putc(sqlcond, str[0]);
+			} else if (str[0] == '~' ) {
+				if (state != OPERATOR_STRING) {
+					fprintf(stderr, "~ expected only for string testing");
+					return (EPKG_FATAL);
+				}
+				state = NEXT_IS_STRING;
+				sbuf_cat(sqlcond, " GLOB ");
+			} else if (str[0] == '>' || str[0] == '<') {
+				if (state != OPERATOR_INT) {
+					fprintf(stderr, "> expected only for integers");
+					return (EPKG_FATAL);
+				}
+				state = NEXT_IS_INT;
+				sbuf_putc(sqlcond, str[0]);
+				if (str[1] == '=') {
+					str++;
+					sbuf_putc(sqlcond, str[0]);
+				}
+			} else if (str[0] == '=') {
+				if (state == OPERATOR_STRING) {
+					state = NEXT_IS_STRING;
+				} else {
+					state = NEXT_IS_INT;
+				}
+				sbuf_putc(sqlcond, str[0]);
+				if (str[1] == '=') {
+					str++;
+					sbuf_putc(sqlcond, str[0]);
+				}
+			}
+		} else if (state == NEXT_IS_STRING || state == NEXT_IS_INT) {
+			if (isspace(str[0])) {
+				sbuf_putc(sqlcond, str[0]);
+			} else {
+				if (state == NEXT_IS_STRING) {
+					if (str[0] == '"') {
+						state = QUOTEDSTRING;
+					} else if (str[0] == '\'') {
+						state = SQUOTEDSTRING;
+					} else {
+						sbuf_putc(sqlcond, '"');
+						state = STRING;
+					}
+					sbuf_putc(sqlcond, str[0]);
+				} else {
+					if (!isnumber(str[0])) {
+						fprintf(stderr, "a number is expected got %c\n", str[0]);
+						return (EPKG_FATAL);
+					}
+					state = INT;
+					sbuf_putc(sqlcond, str[0]);
+				}
+			}
+		} else if (state == INT) {
+			if (isspace(str[0])) {
+				state = NONE;
+			} else if (!isnumber(str[0])) {
+				fprintf(stderr, "a number is expected %c\n", str[0]);
+				return (EPKG_FATAL);
+			}
+			sbuf_putc(sqlcond, str[0]);
+		} else if ( state == STRING ) {
+			if (isspace(str[0])) {
+				sbuf_putc(sqlcond, '"');
+				state = NONE;
+			}
+			sbuf_putc(sqlcond, str[0]);
+		} else if (state == QUOTEDSTRING) {
+			if (str[0] == '"')
+				state = NONE;
+			sbuf_putc(sqlcond, str[0]);
+		} else if (state == SQUOTEDSTRING) {
+			if (str[0] == '"')
+				state = NONE;
+			sbuf_putc(sqlcond, str[0]);
+		}
+		str++;
+	}
+	if (state == STRING)
+		sbuf_putc(sqlcond, '"');
+	return (EPKG_OK);
+}
+
 static int
 analyse_query_string(char *qstr, int *flags, char *multiline)
 {
@@ -405,6 +566,7 @@ usage_query(void)
 {
 	fprintf(stderr, "usage: pkg query -a <query-format>\n");
 	fprintf(stderr, "       pkg query -f <pkg-name> <query-format>\n");
+	fprintf(stderr, "       pkg query -e <evaluation> <query-format>\n");
 	fprintf(stderr, "       pkg query [-gxX] <query-format> <pattern> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help query.'\n");
 }
@@ -423,8 +585,10 @@ exec_query(int argc, char **argv)
 	int retcode = EXIT_SUCCESS;
 	int i;
 	char multiline = 0;
+	char *condition = NULL;
+	struct sbuf *sqlcond = NULL;
 
-	while ((ch = getopt(argc, argv, "agxXf:")) != -1) {
+	while ((ch = getopt(argc, argv, "agxXf:e:")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -441,6 +605,9 @@ exec_query(int argc, char **argv)
 			case 'f':
 				pkgname = optarg;
 				break;
+			case 'e':
+				condition = optarg;
+				break;
 			default:
 				usage_query();
 				return (EX_USAGE);
@@ -455,7 +622,7 @@ exec_query(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if ((argc == 1) ^ (match == MATCH_ALL) && pkgname == NULL) {
+	if ((argc == 1) ^ (match == MATCH_ALL) && pkgname == NULL && condition == NULL) {
 		usage_query();
 		return (EX_USAGE);
 	}
@@ -473,12 +640,34 @@ exec_query(int argc, char **argv)
 		return (EXIT_SUCCESS);
 	}
 
+	if (condition != NULL) {
+		sqlcond = sbuf_new_auto();
+		if (format_sql_condition(condition, sqlcond) != EPKG_OK)
+			return (EX_USAGE);
+	}
+
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret == EPKG_ENODB) {
 		if (geteuid() == 0)
 			return (EX_IOERR);
 
 		/* do not fail if run as a user */
+		return (EXIT_SUCCESS);
+	}
+
+	if (condition != NULL) {
+		sbuf_finish(sqlcond);
+		if ((it = pkgdb_query_condition(db, sbuf_data(sqlcond))) == NULL)
+			return (EX_IOERR);
+
+		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
+			print_query(pkg, argv[0], multiline);
+
+		pkgdb_it_free(it);
+
+		if (ret != EPKG_END)
+			return (EX_SOFTWARE);
+
 		return (EXIT_SUCCESS);
 	}
 
