@@ -611,7 +611,7 @@ void
 usage_query(void)
 {
 	fprintf(stderr, "usage: pkg query -a <query-format>\n");
-	fprintf(stderr, "       pkg query -f <pkg-name> <query-format>\n");
+	fprintf(stderr, "       pkg query -F <pkg-name> <query-format>\n");
 	fprintf(stderr, "       pkg query -e <evaluation> <query-format>\n");
 	fprintf(stderr, "       pkg query [-gxX] <query-format> <pattern> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help query.'\n");
@@ -634,7 +634,7 @@ exec_query(int argc, char **argv)
 	char *condition = NULL;
 	struct sbuf *sqlcond = NULL;
 
-	while ((ch = getopt(argc, argv, "agxXf:e:")) != -1) {
+	while ((ch = getopt(argc, argv, "agxXF:e:")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -648,7 +648,7 @@ exec_query(int argc, char **argv)
 			case 'X':
 				match = MATCH_EREGEX;
 				break;
-			case 'f':
+			case 'F':
 				pkgname = optarg;
 				break;
 			case 'e':
