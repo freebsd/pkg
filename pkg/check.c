@@ -232,7 +232,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-yagdxXs] <pattern>\n\n");
+	fprintf(stderr, "usage: pkg check [-yagdxXsr] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -249,12 +249,15 @@ exec_check(int argc, char **argv)
 	bool yes = false;
 	bool dcheck = false;
 	bool checksums = true;
+	bool recomputeflatsize = false;
 	int nbpkgs = 0;
+	int64_t flatsize;
+	int64_t newflatsize;
 	int i;
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagdxXs")) != -1) {
+	while ((ch = getopt(argc, argv, "yagdxXsr")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -276,6 +279,11 @@ exec_check(int argc, char **argv)
 				break;
 			case 's':
 				checksums = true;
+				break;
+			case 'r':
+				recomputeflatsize = true;
+				if (geteuid() != 0)
+					errx(EX_USAGE, "Needs to be root to recompute the flatsize");
 				break;
 			default:
 				usage_check();
@@ -314,6 +322,13 @@ exec_check(int argc, char **argv)
 				nbpkgs += check_deps(db, pkg, &dh);
 			if (checksums)
 				pkg_test_filesum(pkg);
+			if (recomputeflatsize) {
+				newflatsize = pkg_recompute_flatsize(pkg);
+				pkg_get(pkg, PKG_FLATSIZE, &flatsize);
+				printf(" %ld\n", newflatsize);
+				if (newflatsize != flatsize)
+					pkgdb_set(db, pkg, PKG_FLATSIZE, newflatsize);
+			}
 		}
 
 		if (geteuid() == 0 && nbpkgs > 0) {
