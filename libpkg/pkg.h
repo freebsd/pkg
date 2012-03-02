@@ -370,7 +370,8 @@ int pkg_analyse_files(struct pkgdb *, struct pkg *);
 int pkg_set2(struct pkg *pkg, ...);
 #define pkg_set(pkg, ...) pkg_set2(pkg, __VA_ARGS__, -1)
 
-/*int pkg_set(struct pkg *pkg, pkg_attr attr, const char *value);*/
+int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
+#define pkgdb_set(db, pkg, ...) pkgdb_set2(db, pkg, __VA_ARGS__, -1)
 
 /**
  * Read the content of a file into a buffer, then call pkg_set().
@@ -814,6 +815,6 @@ int pkg_init(const char *);
 int pkg_shutdown(void);
 
 void pkg_test_filesum(struct pkg *);
-int pkg_recompute_flatsize(struct pkg *);
+int64_t pkg_recompute_flatsize(struct pkg *);
 
 #endif

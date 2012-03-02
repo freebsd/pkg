@@ -2678,21 +2678,66 @@ pkgdb_integrity_check(struct pkgdb *db)
 struct pkgdb_it *
 pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin)
 {
-       sqlite3_stmt *stmt;
+	sqlite3_stmt *stmt;
 
-       assert(db != NULL && origin != NULL);
+	assert(db != NULL && origin != NULL);
 
-       const char sql_conflicts [] = "SELECT DISTINCT p.id as rowid, p.origin, p.name, p.version, p.prefix "
-               "FROM packages AS p, files AS f, integritycheck AS i "
-               "WHERE p.id = f.package_id AND f.path = i.path AND i.origin = ?1";
+	const char sql_conflicts [] = "SELECT DISTINCT p.id as rowid, p.origin, p.name, p.version, p.prefix "
+		"FROM packages AS p, files AS f, integritycheck AS i "
+		"WHERE p.id = f.package_id AND f.path = i.path AND i.origin = ?1";
 
-       if (sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL) != SQLITE_OK) {
-               ERROR_SQLITE(db->sqlite);
-               return (NULL);
-       }
+	if (sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
 
-       sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
 
-       return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
 }
 
+static int
+pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
+{
+	int attr;
+	char sql[BUFSIZ];
+
+	while ((attr = va_arg(ap, int)) > 0) {
+		switch (attr) {
+			case PKG_FLATSIZE:
+				snprintf(sql, BUFSIZ, "update packages set flatsize=%"PRId64" where id=%"PRId64";",
+				    va_arg(ap, int64_t), id);
+				sql_exec(db->sqlite, sql);
+				break;
+			case PKG_AUTOMATIC:
+				if (va_arg(ap, int) == 0) {
+					snprintf(sql, BUFSIZ, "update packages set automatic=0 where id=%"PRId64";", id);
+					sql_exec(db->sqlite, sql);
+					break;
+				} else if (va_arg(ap, int) == 1) {
+					snprintf(sql, BUFSIZ, "update packages set automatic=1 where id=%"PRId64";", id);
+					sql_exec(db->sqlite, sql);
+					break;
+				}
+		}
+	}
+	return (EPKG_OK);
+}
+
+int
+pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...)
+{
+	int ret = EPKG_OK;
+	int64_t id;
+
+	va_list ap;
+
+	assert(pkg != NULL);
+
+	va_start(ap, pkg);
+	pkg_get(pkg, PKG_ROWID, &id);
+	ret = pkgdb_vset(db, id, ap);
+	va_end(ap);
+
+	return (ret);
+}

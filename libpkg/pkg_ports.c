@@ -16,13 +16,6 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
-
-struct hardlinks {
-	ino_t *inodes;
-	size_t len;
-	size_t cap;
-};
-
 struct keyword {
 	const char *keyword;
 	STAILQ_HEAD(actions, action) actions;

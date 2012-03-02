@@ -126,6 +126,12 @@ struct pkg_group {
 	STAILQ_ENTRY(pkg_group) next;
 };
 
+struct hardlinks {
+	ino_t *inodes;
+	size_t len;
+	size_t cap;
+};
+
 /**
  * Remove and unregister the package.
  * @param pkg An installed package to delete

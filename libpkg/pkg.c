@@ -1051,3 +1051,45 @@ pkg_test_filesum(struct pkg *pkg)
 		}
 	}
 }
+
+int64_t
+pkg_recompute_flatsize(struct pkg *pkg)
+{
+	struct pkg_file *f = NULL;
+	const char *path;
+	struct hardlinks hl = { NULL, 0, 0 };
+	int64_t flatsize = 0;
+	struct stat st;
+	bool regular = false;
+	size_t i;
+
+	while (pkg_files(pkg, &f) == EPKG_OK) {
+		path = pkg_file_get(f, PKG_FILE_PATH);
+		if (lstat(path, &st) == 0) {
+			regular = true;
+			if (S_ISLNK(st.st_mode))
+				regular = false;
+
+			/* special case for hardlinks */
+			if (st.st_nlink > 1) {
+				for (i = 0; i < hl.len; i++) {
+					if (hl.inodes[i] == st.st_ino) {
+						regular = false;
+						break;
+					}
+				}
+				if (regular) {
+					if (hl.cap <= hl.len) {
+						hl.inodes = reallocf(hl.inodes,
+						    hl.cap * sizeof(ino_t));
+					}
+					hl.inodes[hl.len++] = st.st_ino;
+				}
+			}
+
+			if (regular)
+				flatsize += st.st_size;
+		}
+	}
+	return (flatsize);
+}
