@@ -132,53 +132,52 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		free(pkgs);
 
-
-        if ((it = pkgdb_query_installs(db, MATCH_EXACT, nbpkgs, pkgs, NULL, false)) == NULL) {
+	if ((it = pkgdb_query_installs(db, MATCH_EXACT, nbpkgs, pkgs, NULL, false)) == NULL) {
 		free(pkgs);
 		pkg_jobs_free(jobs);
 	}
 
-        while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
-                pkg_jobs_add(jobs, pkg);
-                pkg = NULL;
-        }
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
+		pkg_jobs_add(jobs, pkg);
+		pkg = NULL;
+	}
 
-        if (pkg_jobs_is_empty(jobs)) {
-                printf("\n>>> Not able to find packages for installation.\n\n");
+	if (pkg_jobs_is_empty(jobs)) {
+		printf("\n>>> Not able to find packages for installation.\n\n");
 		return (EPKG_FATAL);
-        }
+	}
 
-        /* print a summary before applying the jobs */
-        pkg = NULL;
-        printf("The following packages will be installed:\n");
+	/* print a summary before applying the jobs */
+	pkg = NULL;
+	printf("The following packages will be installed:\n");
 
-        while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-                const char *name, *version, *newversion;
-                int64_t flatsize, newflatsize, pkgsize;
-                pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
-                    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
-                    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
-                dlsize += pkgsize;
-                if (newversion != NULL) {
-                        printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
-                        oldsize += flatsize;
-                        newsize += flatsize;
-                } else {
-                        newsize += flatsize;
-                        printf("\tInstalling %s: %s\n", name, version);
-                }
-        }
+	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
+		const char *name, *version, *newversion;
+		int64_t flatsize, newflatsize, pkgsize;
+		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
+		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
+		    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
+		dlsize += pkgsize;
+		if (newversion != NULL) {
+			printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+			oldsize += flatsize;
+			newsize += flatsize;
+		} else {
+			newsize += flatsize;
+			printf("\tInstalling %s: %s\n", name, version);
+		}
+	}
 
-        if (oldsize > newsize) {
-                newsize *= -1;
-                humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-                printf("\nthe installation will save %s\n", size);
-        } else {
-                humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-                printf("\nThe installation will require %s more space\n", size);
-        }
-        humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-        printf("%s to be downloaded\n", size);
+	if (oldsize > newsize) {
+		newsize *= -1;
+		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
+		printf("\nthe installation will save %s\n", size);
+	} else {
+		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
+		printf("\nThe installation will require %s more space\n", size);
+	}
+	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+	printf("%s to be downloaded\n", size);
 
 	if (yes == false)
 		yes = query_yesno("\n>>> Try to fix the missing dependencies [y/N]: ");
@@ -233,7 +232,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-y]\n\n");
+	fprintf(stderr, "usage: pkg check [-yagdxXs] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -243,18 +242,40 @@ exec_check(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
+	match_t match = MATCH_EXACT;
 	int retcode = EX_OK;
 	int ret;
 	int ch;
 	bool yes = false;
+	bool dcheck = false;
+	bool checksums = true;
 	int nbpkgs = 0;
+	int i;
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "y")) != -1) {
+	while ((ch = getopt(argc, argv, "yagdxXs")) != -1) {
 		switch (ch) {
+			case 'a':
+				match = MATCH_ALL;
+				break;
+			case 'x':
+				match = MATCH_REGEX;
+				break;
+			case 'X':
+				match = MATCH_EREGEX;
+				break;
+			case 'g':
+				match = MATCH_GLOB;
+				break;
 			case 'y':
 				yes = true;
+				break;
+			case 'd':
+				dcheck = true;
+				break;
+			case 's':
+				checksums = true;
 				break;
 			default:
 				usage_check();
@@ -264,7 +285,7 @@ exec_check(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 0) {
+	if (argc == 0 && match != MATCH_ALL) {
 		usage_check();
 		return (EX_USAGE);
 	}
@@ -280,29 +301,37 @@ exec_check(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
-	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
-		pkgdb_close(db);
-		return (EX_IOERR);
-	}
+	i = 0;
+	do {
+		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
+			pkgdb_close(db);
+			return (EX_IOERR);
+		}
 
-	/* check for missing dependencies */
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) 
-		nbpkgs += check_deps(db, pkg, &dh);
+		/* check for missing dependencies */
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_FILES) == EPKG_OK) {
+			if (dcheck)
+				nbpkgs += check_deps(db, pkg, &dh);
+			if (checksums)
+				pkg_test_filesum(pkg);
+		}
 
-	if (geteuid() == 0 && nbpkgs > 0) {
-		if (yes == false) 
-			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+		if (geteuid() == 0 && nbpkgs > 0) {
+			if (yes == false) 
+				pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
-		printf("\n>>> Missing package dependencies were detected.\n");
-		printf(">>> Found %d issue(s) in total with your package database.\n\n", nbpkgs);
-		ret = fix_deps(db, &dh, nbpkgs, yes);
-		if (ret == EPKG_OK)
-			check_summary(db, &dh);
-	}
+			printf("\n>>> Missing package dependencies were detected.\n");
+			printf(">>> Found %d issue(s) in total with your package database.\n\n", nbpkgs);
+			ret = fix_deps(db, &dh, nbpkgs, yes);
+			if (ret == EPKG_OK)
+				check_summary(db, &dh);
+		}
+		pkgdb_it_free(it);
+		i++;
+	} while (i < argc);
 
 	deps_free(&dh);
 	pkg_free(pkg);
-	pkgdb_it_free(it);
 	pkgdb_close(db);
 
 	return (retcode);

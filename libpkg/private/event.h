@@ -17,5 +17,6 @@ void pkg_emit_integritycheck_begin(void);
 void pkg_emit_integritycheck_finished(void);
 void pkg_emit_noremotedb(const char *);
 void pkg_emit_nolocaldb(void);
+void pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum);
 
 #endif

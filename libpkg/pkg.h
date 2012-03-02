@@ -743,6 +743,7 @@ typedef enum {
 	PKG_EVENT_MISSING_DEP,
 	PKG_EVENT_NOREMOTEDB,
 	PKG_EVENT_NOLOCALDB,
+	PKG_EVENT_FILE_MISMATCH,
 } pkg_event_t;
 
 struct pkg_event {
@@ -793,6 +794,11 @@ struct pkg_event {
 		struct {
 			const char *repo;
 		} e_remotedb;
+		struct {
+			struct pkg *pkg;
+			struct pkg_file *file;
+			const char *newsum;
+		} e_file_mismatch;
 	};
 };
 
@@ -806,5 +812,8 @@ void pkg_event_register(pkg_event_cb cb, void *data);
 
 int pkg_init(const char *);
 int pkg_shutdown(void);
+
+void pkg_test_filesum(struct pkg *);
+int pkg_recompute_flatsize(struct pkg *);
 
 #endif
