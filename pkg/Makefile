@@ -57,6 +57,7 @@ MAN=	pkg.8 \
 	pkg-register.8 \
 	pkg-repo.8 \
 	pkg-search.8 \
+	pkg-set.8 \
 	pkg-update.8 \
 	pkg-updating.8 \
 	pkg-upgrade.8 \
