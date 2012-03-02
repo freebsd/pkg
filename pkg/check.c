@@ -352,7 +352,6 @@ exec_check(int argc, char **argv)
 			if (recomputeflatsize) {
 				newflatsize = pkg_recompute_flatsize(pkg);
 				pkg_get(pkg, PKG_FLATSIZE, &flatsize);
-				printf(" %ld\n", newflatsize);
 				if (newflatsize != flatsize)
 					pkgdb_set(db, pkg, PKG_FLATSIZE, newflatsize);
 			}
