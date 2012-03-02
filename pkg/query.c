@@ -340,6 +340,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 {
 	type_t state = NONE;
 	while (str[0] != '\0') {
+		if (str[0] == ';') {
+			fprintf(stderr, "';' is forbidden in evaluation format");
+			return (EPKG_FATAL);
+		}
 		if (state == NONE) {
 			if (str[0] == '%') {
 				str++;
