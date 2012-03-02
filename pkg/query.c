@@ -389,14 +389,28 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 						return (EPKG_FATAL);
 				}
 			} else {
-				if (str[0] == '|' && str[1] == '|') {
-					str++;
-					sbuf_cat(sqlcond, " OR ");
-				} else if (str[0] == '&' && str[1] == '&') {
-					str++;
-					sbuf_cat(sqlcond, " AND ");
-				} else {
-					sbuf_putc(sqlcond, str[0]);
+				switch (str[0]) {
+					case '(':
+					case ')':
+					case ' ':
+					case '\t':
+						sbuf_putc(sqlcond, str[0]);
+						break;
+					case '|':
+						if (str[1] == '|') {
+							str++;
+							sbuf_cat(sqlcond, " OR ");
+							break;
+						}
+					case '&':
+						if (str[1] == '&') {
+							str++;
+							sbuf_cat(sqlcond, " AND ");
+							break;
+						}
+					default:
+						fprintf(stderr, "unexpected character %c\n", str[0]);
+						return (EPKG_FATAL);
 				}
 			}
 		} else if (state == OPERATOR_STRING || state == OPERATOR_INT) {
@@ -483,6 +497,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 	}
 	if (state == STRING)
 		sbuf_putc(sqlcond, '"');
+
 	return (EPKG_OK);
 }
 
