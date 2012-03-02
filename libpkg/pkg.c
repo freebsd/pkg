@@ -618,6 +618,7 @@ pkg_adddir(struct pkg *pkg, const char *path, bool try)
 {
 	return(pkg_adddir_attr(pkg, path, NULL, NULL, 0, try));
 }
+
 int
 pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try)
 {
@@ -1028,4 +1029,25 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 
 
 	return (packing_finish(pack));
+}
+
+void
+pkg_test_filesum(struct pkg *pkg)
+{
+	struct pkg_file *f = NULL;
+	const char *path;
+	const char *sum;
+	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+
+	assert(pkg != NULL);
+
+	while (pkg_files(pkg, &f) == EPKG_OK) {
+		path = pkg_file_get(f, PKG_FILE_PATH);
+		sum = pkg_file_get(f, PKG_FILE_SUM);
+		if (*sum != '\0') {
+			sha256_file(path, sha256);
+			if (strcmp(sha256, sum) != 0)
+				pkg_emit_file_mismatch(pkg, f, sum);
+		}
+	}
 }

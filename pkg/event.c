@@ -115,8 +115,11 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_NOLOCALDB:
 		/* only cares if run as root */
 		if (geteuid() == 0)
-			fprintf(stderr, "Unable to create local database");
+			fprintf(stderr, "Unable to create local database\n");
 		break;
+	case PKG_EVENT_FILE_MISMATCH:
+		pkg_get(ev->e_file_mismatch.pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name, version, pkg_file_get(ev->e_file_mismatch.file, PKG_FILE_PATH));
 	default:
 		break;
 	}
