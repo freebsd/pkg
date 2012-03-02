@@ -42,6 +42,7 @@ static struct commands {
 	{ "install", "Installs packages from remote package repositories", exec_install, usage_install},
 	{ "query", "Query information for installed packages", exec_query, usage_query},
 	{ "search", "Performs a search in remote package repositories", exec_search, usage_search},
+	{ "set", "Modify local database informations", exec_set, usage_set},
 	{ "register", "Registers a package into the local package database", exec_register, usage_register},
 	{ "repo", "Creates a package database repository", exec_repo, usage_repo},
 	{ "update", "Updates remote package repository databases", exec_update, usage_update},
