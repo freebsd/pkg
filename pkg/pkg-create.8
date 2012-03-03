@@ -40,8 +40,8 @@
 .\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
 .Nm
-is used to create packages from binaries installed on your computer. Packages
-thus created can be distributed and subsequently installed on other machines
+is used to create packages from binaries installed on your computer.
+Packages thus created can be distributed and subsequently installed on other machines
 using the
 .Cm pkg add
 command.
@@ -51,8 +51,8 @@ The following options are supported by
 .Nm :
 .Bl -tag -width ".Fl m Ar manifest"
 .It Fl a
-Create packages for all binaries installed on your system. You can't use this
-option along with the
+Create packages for all binaries installed on your system.
+You can't use this option along with the
 .Fl g , x
 or
 .Fl X
@@ -81,7 +81,8 @@ Specify manifest directory \" TODO: New description
 .It Fl f Ar format
 Set
 .Ar format
-as the package output format. It can be one of
+as the package output format.
+It can be one of
 .Ar txz , tbz , tgz
 or
 .Ar tar
@@ -92,7 +93,8 @@ is assumed.
 .It Fl o Ar outdir
 Set
 .Ar outdir
-as the output directory. If this option is not given, all created packages will
+as the output directory.
+If this option is not given, all created packages will
 be saved in the current directory.
 .It Fl n
 Do not overwrite already existing packages
@@ -116,7 +118,8 @@ This is a string of the form
 which designate the port this package was built from.
 .It Cm comment Ar comment-string
 .Ar comment-string
-is a one-line description of this package. It is the equivalent of the
+is a one-line description of this package.
+It is the equivalent of the
 .Dv COMMENT
 variable for a port, not a way to put comments in a
 .Pa +MANIFEST
@@ -136,7 +139,8 @@ The path where the files contained in this package are installed
 .Pq usually Pa /usr/local .
 .It Cm flatsize Ar size
 The size that the files contained in this package will occupy on your system
-once uncompressed. This value does not take into account files stored in the
+once uncompressed.
+This value does not take into account files stored in the
 package database.
 .It Cm dep Ar dep-name dep-origin dep-version
 Declare a dependency on the package which name, origin and version match
@@ -156,11 +160,14 @@ to the value
 .Ar option-value .
 .It Cm file Ar sha256-hash path
 .Cm file
-entries list files included in the package. If the file is a regular one, such
-an entry contains its sha256 digest along with its path. If a packaged file is
+entries list files included in the package.
+If the file is a regular one, such
+an entry contains its sha256 digest along with its path.
+If a packaged file is
 a link, you must use this entry's other form, as described below.
 .It Cm file Ar - path
-Same as above but for file links. The sha256 hash is replaced with a
+Same as above but for file links.
+The sha256 hash is replaced with a
 .Ar -
 (dash).
 .It Cm dir Ar path
