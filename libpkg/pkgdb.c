@@ -2330,7 +2330,8 @@ pkgdb_query_autoremove(struct pkgdb *db)
 		sql_exec(db->sqlite, "INSERT OR IGNORE into autoremove(origin, pkgid, weight) "
 				"SELECT distinct origin, id, %d FROM packages WHERE automatic=1 AND "
 				"origin NOT IN (SELECT DISTINCT deps.origin FROM deps WHERE "
-				" deps.origin = packages.origin);"
+				" deps.origin = packages.origin AND package_id NOT IN "
+				" (select pkgid from autoremove));"
 				, weight);
 	} while (sqlite3_changes(db->sqlite) != 0);
 
