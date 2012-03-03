@@ -210,7 +210,7 @@ pkg_emit_upgrade_finished(struct pkg *p)
 				syslog(LOG_NOTICE, "%s reinstalled: %s -> %s ", name, version, newversion);
 				break;
 			case -1:
-				syslog(LOG_NOTICE, "%s reinstalled: %s -> %s ", name, version, newversion);
+				syslog(LOG_NOTICE, "%s upgraded: %s -> %s ", name, version, newversion);
 				break;
 		}
 	}
