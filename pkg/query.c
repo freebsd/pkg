@@ -535,6 +535,8 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 	unsigned int valid_flag = 0;
 	unsigned int valid_opts = 0;
 
+	j = 0; /* shut up scanbuild */
+
 	while (qstr[0] != '\0') {
 		if (qstr[0] == '%') {
 			qstr++;
