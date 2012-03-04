@@ -27,12 +27,16 @@
 #include <err.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 
 #include <pkg.h>
 
 #include "pkgcli.h"
+
+#define AUTOMATIC 1<<0
+#define ORIGIN 1<<1
 
 void
 usage_set(void)
@@ -56,8 +60,13 @@ exec_set(int argc, char **argv)
 	const char *errstr;
 	const char *name;
 	const char *version;
+	char *neworigin = NULL;
+	char *oldorigin = NULL;
+	char *chgoriginstr = NULL;
+	unsigned int loads = PKG_LOAD_BASIC;
+	unsigned int sets = 0;
 
-	while ((ch = getopt(argc, argv, "ya:kxXg")) != -1) {
+	while ((ch = getopt(argc, argv, "ya:kxXgo:")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = true;
@@ -72,9 +81,27 @@ exec_set(int argc, char **argv)
 				match = MATCH_GLOB;
 				break;
 			case 'a':
+				sets |= AUTOMATIC;
 				newautomatic = strtonum(optarg, 0, 1, &errstr);
 				if (errstr)
-					errx(EX_USAGE, "Wrong value for -a expecting 0 or 1, got: %s", errstr);
+					errx(EX_USAGE, "Wrong value for -a expecting 0 or 1, got: %s (%s)", optarg, errstr);
+				break;
+			case 'o':
+				sets |= ORIGIN;
+				loads |= PKG_LOAD_DEPS;
+				chgoriginstr = optarg;
+				oldorigin = strdup(optarg);
+				neworigin = strrchr(oldorigin, ':');
+				if (neworigin == NULL) {
+					free(oldorigin);
+					errx(EX_USAGE, "Wrong format for -o expecting oldorigin:neworigin, got %s", optarg);
+				}
+				*neworigin = '\0';
+				neworigin++;
+				if (strrchr(oldorigin, '/') == NULL || strrchr(neworigin, '/') == NULL) {
+					free(oldorigin);
+					errx(EX_USAGE, "Bad origin format, got %s", optarg);
+				}
 				break;
 			default:
 				usage_set();
@@ -85,7 +112,7 @@ exec_set(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc < 1 || newautomatic == -1) {
+	if (argc < 1 || (newautomatic == -1 && neworigin == NULL)) {
 		usage_set();
 		return (EX_USAGE);
 	}
@@ -98,31 +125,68 @@ exec_set(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	i = 0;
-	do {
-		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
+	if (neworigin != NULL) {
+		if ((it = pkgdb_query(db, neworigin, MATCH_EXACT)) == NULL) {
 			pkgdb_close(db);
 			return (EX_IOERR);
 		}
 
-		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			pkg_get(pkg, PKG_AUTOMATIC, &automatic);
-			if (automatic == newautomatic)
-				continue;
-			if (!yes)
-				pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-			if (!yes) {
-				pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-				if (newautomatic)
-					yes = query_yesno("Mark %s-%s as automatically installed? [y/N]: ", name, version);
-				else
-					yes = query_yesno("Mark %s-%s as not automatically installed? [y/N]: ", name, version);
-			}
-			if (yes)
-				pkgdb_set(db, pkg, PKG_AUTOMATIC, newautomatic);
+		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
+			fprintf(stderr, "%s not installed", neworigin);
+			free(oldorigin);
+			pkgdb_it_free(it);
+			pkgdb_close(db);
+			return (EX_SOFTWARE);
 		}
+		pkgdb_it_free(it);
+	}
+	i = 0;
+	do {
+		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+
+		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
+			if (oldorigin != NULL)
+				free(oldorigin);
+			pkgdb_close(db);
+			return (EX_IOERR);
+		}
+
+		while (pkgdb_it_next(it, &pkg, loads) == EPKG_OK) {
+			if ((sets & AUTOMATIC) == AUTOMATIC) {
+				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
+				if (automatic == newautomatic)
+					continue;
+				if (!yes) {
+					pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+					if (newautomatic)
+						yes = query_yesno("Mark %s-%s as automatically installed? [y/N]: ", name, version);
+					else
+						yes = query_yesno("Mark %s-%s as not automatically installed? [y/N]: ", name, version);
+				}
+				if (yes)
+					pkgdb_set(db, pkg, PKG_AUTOMATIC, newautomatic);
+			}
+			if ((sets & ORIGIN) == ORIGIN) {
+				struct pkg_dep *d = NULL;
+				pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+				while (pkg_deps(pkg, &d) == EPKG_OK) {
+					if (strcmp(pkg_dep_get(d, PKG_DEP_ORIGIN), oldorigin) == 0) {
+						if (!yes)
+							yes = query_yesno("%s-%s: change %s dependency to %s? [y/N]: ", name, version, oldorigin, neworigin);
+						if (yes)
+							pkgdb_set(db, pkg, PKG_DEP_ORIGIN, chgoriginstr);
+					}
+				}
+			}
+		}
+		pkgdb_it_free(it);
 		i++;
 	} while (i < argc);
+
+	if (oldorigin != NULL)
+		free(oldorigin);
+	pkg_free(pkg);
+	pkgdb_close(db);
 
 	return (EXIT_SUCCESS);
 }

@@ -24,6 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl a Op Ar 01
+.Op Fl o Ar <oldorigin>:<neworigin>
 .Op Fl y
 .Op Fl xXg
 .Ar <pkg-name>
@@ -39,6 +40,8 @@ The following options are supported by
 Assume yes when asked for confirmation before package autoremoval.
 .It Fl a Op 01
 Set automatic flag to the package: 0 is not automatic, 1 is automatic
+.It Fl o Op <olorigin>:<neworigin>
+Change the dependency origin of a given dependency
 .It Fl x
 Assume pkg-name is a regex
 .It Fl X

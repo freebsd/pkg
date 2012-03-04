@@ -2733,6 +2733,8 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 	int attr;
 	char sql[BUFSIZ];
 	int automatic;
+	char *oldorigin;
+	char *neworigin;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		switch (attr) {
@@ -2746,6 +2748,26 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 				if (automatic != 0 && automatic != 1)
 					continue;
 				snprintf(sql, BUFSIZ, "update packages set automatic=%d where id=%"PRId64";", automatic, id);
+				sql_exec(db->sqlite, sql);
+				break;
+			case PKG_DEP_ORIGIN:
+				oldorigin = va_arg(ap, char *);
+				neworigin = strrchr(oldorigin, ':');
+				if (neworigin == NULL) {
+					pkg_emit_error("Wrong origin format expecting oldorigin:neworigin, got %s, oldorigin");
+					return (EPKG_FATAL);
+				}
+				*neworigin = '\0';
+				neworigin++;
+				if (strrchr(oldorigin, '/') == NULL || strrchr(neworigin, '/') == NULL) {
+					pkg_emit_error("Wrong origin format expecting oldorigin:neworigin");
+					return (EPKG_FATAL);
+				}
+				sqlite3_snprintf(BUFSIZ, sql, "update deps set origin='%q', "
+				    "name=(select name from packages where origin='%q'), "
+				    "version=(select version from packages where origin='%q') "
+				    "WHERE package_id=%d AND origin='%q';",
+				    neworigin, neworigin, neworigin, id, oldorigin);
 				sql_exec(db->sqlite, sql);
 				break;
 		}
