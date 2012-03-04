@@ -53,7 +53,7 @@
 #include "private/utils.h"
 
 #include "private/db_upgrades.h"
-#define DBVERSION 8
+#define DBVERSION 9
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
@@ -375,8 +375,6 @@ pkgdb_init(sqlite3 *sdb)
 	");"
 	"CREATE TABLE deps ("
 		"origin TEXT NOT NULL,"
-		"name TEXT NOT NULL,"
-		"version TEXT NOT NULL,"
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
 		"PRIMARY KEY (package_id,origin)"
@@ -892,19 +890,24 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 	int ret = EPKG_OK;
 	char sql[BUFSIZ];
 	const char *reponame = NULL;
-	const char *basesql = "" 
-			"SELECT d.name, d.origin, d.version "
-			"FROM '%s'.deps AS d "
-			"WHERE d.package_id = ?1;";
 
 	assert(db != NULL && pkg != NULL);
 
 	pkg_get(pkg, PKG_REPONAME, &reponame);
 
-	if (pkg->type == PKG_REMOTE)
-		snprintf(sql, sizeof(sql), basesql, reponame);
-	else
-		snprintf(sql, sizeof(sql), basesql, "main");
+	if (pkg->type == PKG_REMOTE) {
+		sqlite3_snprintf(sizeof(sql), sql, ""
+		    "SELECT d.name, d.origin, d.version "
+		    "FROM '%q'.deps AS d "
+		    "WHERE d.package_id = ?1;"
+		    , reponame);
+	} else {
+		sqlite3_snprintf(sizeof(sql), sql, ""
+		    "SELECT p.name, d.origin, p.version "
+		    "FROM main.deps AS d, main.packages AS p "
+		    "WHERE d.package_id = ?1 AND d.origin = p.origin;"
+		    );
+	}
 
 	if (pkg->flags & PKG_LOAD_DEPS)
 		return (EPKG_OK);
@@ -1304,8 +1307,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, "
 		"(SELECT id from mtree where content = ?15));";
 	const char sql_dep[] = ""
-		"INSERT OR ROLLBACK INTO deps (origin, name, version, package_id) "
-		"VALUES (?1, ?2, ?3, ?4);";
+		"INSERT OR ROLLBACK INTO deps (origin, package_id) "
+		"VALUES (?1, ?2);";
 	const char sql_file[] = ""
 		"INSERT OR ROLLBACK INTO files (path, sha256, package_id) "
 		"VALUES (?1, ?2, ?3);";
@@ -1411,9 +1414,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		sqlite3_bind_text(stmt_dep, 1, pkg_dep_get(dep, PKG_DEP_ORIGIN), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_dep, 2, pkg_dep_get(dep, PKG_DEP_NAME), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_dep, 3, pkg_dep_get(dep, PKG_DEP_VERSION), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt_dep, 4, package_id);
+		sqlite3_bind_int64(stmt_dep, 2, package_id);
 
 		if ((ret = sqlite3_step(stmt_dep)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
@@ -2764,10 +2765,8 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 					return (EPKG_FATAL);
 				}
 				sqlite3_snprintf(BUFSIZ, sql, "update deps set origin='%q', "
-				    "name=(select name from packages where origin='%q'), "
-				    "version=(select version from packages where origin='%q') "
 				    "WHERE package_id=%d AND origin='%q';",
-				    neworigin, neworigin, neworigin, id, oldorigin);
+				    neworigin, id, oldorigin);
 				sql_exec(db->sqlite, sql);
 				break;
 		}

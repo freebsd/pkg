@@ -146,6 +146,19 @@ static struct db_upgrades {
 	{8,
 	"DROP TABLE conflicts;"
 	},
+	{9,
+	"ALTER TABLE deps RENAME TO depold;"
+	"DROP INDEX IF EXISTS deporigini; "
+	"CREATE TABLE deps ("
+		"origin TEXT NOT NULL, "
+		"package_id INTEGER REFERENCES packages(id) "
+		"ON DELETE CASCADE ON UPDATE CASCADE, "
+		"PRIMARY KEY (package_id,origin)"
+	");"
+	"INSERT INTO DEPS SELECT origin, package_id FROM depold;"
+	"CREATE INDEX deporigini on deps(origin);"
+	"DROP TABLE depold;"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL },
