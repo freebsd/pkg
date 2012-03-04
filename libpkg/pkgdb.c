@@ -2755,7 +2755,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 				oldorigin = va_arg(ap, char *);
 				neworigin = strrchr(oldorigin, ':');
 				if (neworigin == NULL) {
-					pkg_emit_error("Wrong origin format expecting oldorigin:neworigin, got %s, oldorigin");
+					pkg_emit_error("Wrong origin format expecting oldorigin:neworigin, got %s", oldorigin);
 					return (EPKG_FATAL);
 				}
 				*neworigin = '\0';
