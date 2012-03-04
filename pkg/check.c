@@ -275,7 +275,7 @@ exec_check(int argc, char **argv)
 	int ch;
 	bool yes = false;
 	bool dcheck = false;
-	bool checksums = true;
+	bool checksums = false;
 	bool recomputeflatsize = false;
 	int nbpkgs = 0;
 	int64_t flatsize;
