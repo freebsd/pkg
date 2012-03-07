@@ -51,7 +51,7 @@ pkg_stop_rc_scripts(struct pkg *pkg)
 	int ret = 0;
 	const char *prefix;
 
-	pkg_get(pkg, PKG_PREFIX, &prefix, -1);
+	pkg_get(pkg, PKG_PREFIX, &prefix);
 
 	snprintf(rc_d_path, PATH_MAX, "%s/etc/rc.d/", prefix);
 	len = strlen(rc_d_path);

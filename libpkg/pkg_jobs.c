@@ -207,7 +207,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		const char *pkgrepopath;
 
-		pkg_get(p, PKG_REPOPATH, &pkgrepopath, -1);
+		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 		    pkgrepopath);
 		if (pkg_open(&pkg, path, buf) != EPKG_OK)
