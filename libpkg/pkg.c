@@ -267,7 +267,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 		}
 		switch (attr) {
 			case PKG_AUTOMATIC:
-				pkg->automatic = va_arg(ap, int);
+				pkg->automatic = (int)va_arg(ap, int64_t);
 				break;
 			case PKG_LICENSE_LOGIC:
 				pkg->licenselogic = (lic_t)va_arg(ap, int64_t);
