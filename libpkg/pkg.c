@@ -270,7 +270,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				pkg->automatic = va_arg(ap, int);
 				break;
 			case PKG_LICENSE_LOGIC:
-				pkg->licenselogic = va_arg(ap, lic_t);
+				pkg->licenselogic = (lic_t)va_arg(ap, int64_t);
 				break;
 			case PKG_FLATSIZE:
 				pkg->flatsize = va_arg(ap, int64_t);
