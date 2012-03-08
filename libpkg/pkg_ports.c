@@ -66,8 +66,6 @@ struct plist {
 	bool ignore_next;
 	int64_t flatsize;
 	struct hardlinks *hardlinks;
-	regex_t preg1;
-	regex_t preg2;
 	mode_t perm;
 	STAILQ_HEAD(keywords, keyword) keywords;
 };
@@ -327,6 +325,9 @@ meta_exec(struct plist *p, char *line, bool unexec)
 		}
 		if (comment[0] == '#') {
 			buf = cmd;
+			regex_t preg;
+
+
 
 			/* remove the @dirrm{,try}
 			 * command */
@@ -336,7 +337,8 @@ meta_exec(struct plist *p, char *line, bool unexec)
 			split_chr(buf, '|');
 
 			if (strstr(buf, "\"/")) {
-				while (regexec(&p->preg1, buf, 2, pmatch, 0) == 0) {
+				regcomp(&preg, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
+				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
 					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
@@ -344,7 +346,8 @@ meta_exec(struct plist *p, char *line, bool unexec)
 					dirrmtry(p, path);
 				}
 			} else {
-				while (regexec(&p->preg2, buf, 2, pmatch, 0) == 0) {
+				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)", REG_EXTENDED);
+				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
 					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
@@ -352,6 +355,8 @@ meta_exec(struct plist *p, char *line, bool unexec)
 					dirrmtry(p, path);
 				}
 			}
+			regfree(&preg);
+
 		}
 	} else {
 		exec_append(p->post_install_buf, "%s\n", cmd);
@@ -726,9 +731,6 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 	populate_keywords(&pplist);
 
-	regcomp(&pplist.preg1, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
-	regcomp(&pplist.preg2, "[[:space:]](/[[:graph:]/]+)", REG_EXTENDED);
-
 	buf = NULL;
 
 	if ((ret = file_to_buffer(plist, &plist_buf, &sz)) != EPKG_OK)
@@ -797,9 +799,6 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	flush_script_buffer(pplist.post_deinstall_buf, pkg, PKG_SCRIPT_POST_DEINSTALL);
 	flush_script_buffer(pplist.pre_upgrade_buf, pkg, PKG_SCRIPT_PRE_UPGRADE);
 	flush_script_buffer(pplist.post_upgrade_buf, pkg, PKG_SCRIPT_POST_UPGRADE);
-
-	regfree(&pplist.preg1);
-	regfree(&pplist.preg2);
 
 	free(hardlinks.inodes);
 
