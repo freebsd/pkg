@@ -3,8 +3,8 @@ PROG=pkg-static
 STATIC_PKGNG=	yes
 NO_SHARED?=	yes
 NO_MAN=		yes
-LDADD_STATIC=	-L${.CURDIR}/../external/sqlite \
-		-L${.CURDIR}/../external/libyaml \
+LDADD_STATIC=	-L${.OBJDIR}/../external/sqlite \
+		-L${.OBJDIR}/../external/libyaml \
 		-lsqlite3 \
 		-lyaml \
 		-larchive \

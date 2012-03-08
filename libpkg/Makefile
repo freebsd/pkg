@@ -41,8 +41,8 @@ CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
 		-I${.CURDIR}/../external/libyaml/include
-LDADD+=		-L${.CURDIR}/../external/sqlite \
-		-L${.CURDIR}/../external/libyaml \
+LDADD+=		-L${.OBJDIR}/../external/sqlite \
+		-L${.OBJDIR}/../external/libyaml \
 		-lsqlite3 \
 		-lyaml \
 		-larchive \
