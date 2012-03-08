@@ -216,11 +216,11 @@ static int
 pkg_set_licenselogic_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *doc, __unused int attr)
 {
 	if (!strcmp(val->data.scalar.value, "single"))
-		pkg_set(pkg, PKG_LICENSE_LOGIC, LICENSE_SINGLE);
+		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t) LICENSE_SINGLE);
 	else if ( !strcmp(val->data.scalar.value, "and") || !strcmp(val->data.scalar.value, "dual"))
-		pkg_set(pkg, PKG_LICENSE_LOGIC, LICENSE_AND);
+		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_AND);
 	else if ( !strcmp(val->data.scalar.value, "or") || !strcmp(val->data.scalar.value, "multi"))
-		pkg_set(pkg, PKG_LICENSE_LOGIC, LICENSE_OR);
+		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_OR);
 	else {
 		pkg_emit_error("Unknown license logic: %s", val->data.scalar.value);
 		return (EPKG_FATAL);
