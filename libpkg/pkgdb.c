@@ -1288,6 +1288,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	sqlite3_stmt *stmt_users = NULL;
 	sqlite3_stmt *stmt_groups = NULL;
 	sqlite3_stmt *stmt_group = NULL;
+	sqlite3_stmt *stmt_upd_deps = NULL;
 
 	int ret;
 	int retcode = EPKG_FATAL;
@@ -1335,6 +1336,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	const char sql_groups[] = ""
 		"INSERT OR ROLLBACK INTO pkg_groups(package_id, group_id) "
 		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2));";
+	const char sql_deps_update[] = ""
+		"UPDATE deps SET NAME=?1 , VERSION=?2 WHERE ORIGIN=?3;";
 
 	const char *mtree, *origin, *name, *version, *name2, *version2;
 	const char *comment, *desc, *message;
@@ -1398,6 +1401,25 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	}
 
 	package_id = sqlite3_last_insert_rowid(s);
+
+	/*
+	 * update dep informations on packages that depends on the insert
+	 * package
+	 */
+
+	if (sqlite3_prepare_v2(s, sql_deps_update, -1, &stmt_upd_deps, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
+
+	sqlite3_bind_text(stmt_upd_deps, 1, name, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_upd_deps, 2, version, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt_upd_deps, 3, origin, -1, SQLITE_STATIC);
+
+	if ((ret = sqlite3_step(stmt_upd_deps)) != SQLITE_DONE) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
 
 	/*
 	 * Insert dependencies list
@@ -1717,6 +1739,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	if (stmt_users != NULL)
 		sqlite3_finalize(stmt_users);
+	
+	if (stmt_upd_deps != NULL)
+		sqlite3_finalize(stmt_upd_deps);
 
 	return (retcode);
 }
