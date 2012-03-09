@@ -473,6 +473,19 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 					str++;
 					sbuf_putc(sqlcond, str[0]);
 				}
+			} else if (str[0] == '!') {
+				if (str[1] != '=') {
+					fprintf(stderr, "expecting = after !");
+					return (EPKG_FATAL);
+				}
+				if (state == OPERATOR_STRING) {
+					state = NEXT_IS_STRING;
+				} else {
+					state = NEXT_IS_INT;
+				}
+				sbuf_putc(sqlcond, str[0]);
+				str++;
+				sbuf_putc(sqlcond, str[0]);
 			}
 		} else if (state == NEXT_IS_STRING || state == NEXT_IS_INT) {
 			if (isspace(str[0])) {
