@@ -24,13 +24,18 @@ do
         continue
 	fi
 	PREFX=$(pkg_info -qp ${PKG})
-	MAINTAINER=$( make -C ${PORTSDIR}/${ORIGIN} -V MAINTAINER )
-	CATEGORIES=$( make -C ${PORTSDIR}/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
-	LICENSES=$( make -C ${PORTSDIR}/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
-	LICLOGIC=$(make -C ${PORTSDIR}/${ORIGIN} -V LICENSE_COMB )
-	OPTIONS=$(make -C ${PORTSDIR}/${ORIGIN} showconfig | awk 'BEGIN{ line=""; }!/^=/ { gsub(/=/,": ",$1); line=line" "$1","; } END{print line}')
-	USERS=$(make -C ${PORTSDIR}/${ORIGIN} -V USERS | sed -e "s/ /,/g")
-	GROUPSS=$(make -C ${PORTSDIR}/${ORIGIN} -V GROUPS | sed -e "s/ /,/g")
+	if [ -d ${PORTSDIR} ]; then
+		MAINTAINER=$( make -C ${PORTSDIR}/${ORIGIN} -V MAINTAINER )
+		CATEGORIES=$( make -C ${PORTSDIR}/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
+		LICENSES=$( make -C ${PORTSDIR}/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
+		LICLOGIC=$(make -C ${PORTSDIR}/${ORIGIN} -V LICENSE_COMB )
+		OPTIONS=$(make -C ${PORTSDIR}/${ORIGIN} showconfig | awk 'BEGIN{ line=""; }!/^=/ { gsub(/=/,": ",$1); line=line" "$1","; } END{print line}')
+		USERS=$(make -C ${PORTSDIR}/${ORIGIN} -V USERS | sed -e "s/ /,/g")
+		GROUPS=$(make -C ${PORTSDIR}/${ORIGIN} -V GROUPS | sed -e "s/ /,/g")
+	else
+		MAINTAINER="unknown"
+		CATEGORIES=${ORIGIN#*/}
+	fi
 
 	# +CONTENTS
 	MDIR=$(mktemp -d /tmp/pkg2ngXXXXX)
