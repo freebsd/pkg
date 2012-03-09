@@ -199,7 +199,10 @@ file(struct plist *p, char *line)
 				}
 			}
 			if (regular) {
+				/* Maybe (re)allocate p->hardlinks. */
 				if (p->hardlinks->cap <= p->hardlinks->len) {
+					p->hardlinks->cap |= 1;
+					p->hardlinks->cap *= 2;
 					p->hardlinks->inodes = reallocf(p->hardlinks->inodes,
 					    p->hardlinks->cap * sizeof(ino_t));
 				}

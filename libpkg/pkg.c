@@ -1106,7 +1106,10 @@ pkg_recompute_flatsize(struct pkg *pkg)
 					}
 				}
 				if (regular) {
+					/* Maybe reallocate p->hardlinks. */
 					if (hl.cap <= hl.len) {
+						hl.cap |= 1;
+						hl.cap *= 2;
 						hl.inodes = reallocf(hl.inodes,
 						    hl.cap * sizeof(ino_t));
 					}
