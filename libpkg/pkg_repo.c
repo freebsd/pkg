@@ -345,6 +345,12 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		return (EPKG_FATAL);
 	}
 	
+	if ((retcode = sql_exec(sqlite, "PRAGMA synchronous=off;")) != EPKG_OK)
+		goto cleanup;
+
+	if ((retcode = sql_exec(sqlite, "PRAGMA journal_mode=memory")) != EPKG_OK)
+		goto cleanup;
+
 	if ((retcode = sql_exec(sqlite, initsql)) != EPKG_OK)
 		goto cleanup;
 
