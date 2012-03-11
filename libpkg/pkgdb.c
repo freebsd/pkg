@@ -2646,7 +2646,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 			}
 			sqlite3_finalize(stmt_conflicts);
 			sbuf_finish(conflictmsg);
-			pkg_emit_error(sbuf_get(conflictmsg));
+			pkg_emit_error("%s", sbuf_get(conflictmsg));
 			ret = EPKG_FATAL;
 		}
 		sqlite3_reset(stmt);
@@ -2719,7 +2719,7 @@ pkgdb_integrity_check(struct pkgdb *db)
 		}
 		sqlite3_finalize(stmt_conflicts);
 		sbuf_finish(conflictmsg);
-		pkg_emit_error(sbuf_get(conflictmsg));
+		pkg_emit_error("%s", sbuf_get(conflictmsg));
 		ret = EPKG_FATAL;
 	}
 
