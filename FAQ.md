@@ -4,6 +4,7 @@ pkgng - Frequently Asked Questions (FAQ)
 Table of Contents
 -----------------
 
+* [How can I start using pkgng?](#0)
 * [Is there an equivalent for pkg-orphan/pkg_cutleaves with pkgng?](#1)
 * [How pkgng is different from the FreeBSD pkg_* tools? What is the motivation behind pkgng?](#2)
 * [How pkgng is different from PC-BSD PBI packages?](#3)
@@ -18,6 +19,23 @@ Table of Contents
 * [Why `pkg create` is slow?](#12)
 * [Does pkgng work with portaudit?](#13)
 * [When will pkgng be the default package manager?](#14)
+* [How can I use pkgng with portmaster?](#15)
+
+<a name="0"></a>
+### Q: How can I start using pkgng?
+
+In order to start using pkgng, please follow the steps below.
+
+Install ports-mgmt/pkg:
+
+        # make -C /usr/ports/ports-mgmt/pkg
+        # echo "WITH_PKGNG=yes" >> /etc/make.conf
+
+Now register all packages you have in the pkgng database:
+
+	# pkg2ng
+
+And that was it. Please read the man pages for more information on the commands.
 
 <a name="1"></a>
 ### Q: Is there an equivalent for pkg-orphan/pkg_cutleaves with pkgng?
@@ -95,3 +113,22 @@ No, pkgng uses internal `pkg audit` command.
 ### Q: When will pkgng be the default package manager of FreeBSD?
 
 Possibly in version 9.1.
+
+<a name="15"></a>
+### How can I use pkgng with portmaster?
+
+First make sure you have the latest portmaster patch from the Github repo.
+
+The latest patch can be found here:
+
+* [ports/portmaster.patch](https://github.com/pkgng/pkgng/blob/master/ports/portmaster.patch)
+
+Now patch portmaster:
+
+	# cd /usr/local/sbin && patch < /path/to/pkgng/ports/portmaster.patch
+
+Enable pkgng in portmaster:
+
+	# echo "use_pkgng=yes" >> /usr/local/etc/portmaster.rc
+
+That was it.
