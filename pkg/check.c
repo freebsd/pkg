@@ -270,6 +270,7 @@ exec_check(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
 	match_t match = MATCH_EXACT;
+	int flags = PKG_LOAD_BASIC;
 	int retcode = EX_OK;
 	int ret;
 	int ch;
@@ -303,9 +304,11 @@ exec_check(int argc, char **argv)
 				break;
 			case 'd':
 				dcheck = true;
+				flags |= PKG_LOAD_DEPS;
 				break;
 			case 's':
 				checksums = true;
+				flags |= PKG_LOAD_FILES;
 				break;
 			case 'r':
 				recomputeflatsize = true;
@@ -344,7 +347,7 @@ exec_check(int argc, char **argv)
 		}
 
 		/* check for missing dependencies */
-		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_FILES) == EPKG_OK) {
+		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 			if (dcheck)
 				nbpkgs += check_deps(db, pkg, &dh);
 			if (checksums)
