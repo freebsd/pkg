@@ -324,7 +324,7 @@ exec_check(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0 && match != MATCH_ALL) {
+	if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recomputeflatsize)) {
 		usage_check();
 		return (EX_USAGE);
 	}
