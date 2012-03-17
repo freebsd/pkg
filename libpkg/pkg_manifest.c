@@ -668,14 +668,10 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int rc = EPKG_OK;
 	int mapping;
 	int seq = -1;
-	int depsmap = -1;
+	int map = -1;
 	int depkv;
-	int files = -1;
-	int dirs = -1;
 /*	int users = -1;
 	int groups = -1;*/
-	int options = -1;
-	int scripts = -1;
 	const char *script_types = NULL;
 	struct sbuf *destbuf = sbuf_new_auto();
 	const char *name, *version, *pkgorigin, *comment, *pkgarch, *osversion, *www, *pkgmaintainer, *prefix;
@@ -735,12 +731,13 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	urlencode(desc, &tmpsbuf);
 	manifest_append_kv(mapping, "desc", sbuf_get(tmpsbuf), LITERAL);
 
+	map = -1;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (depsmap == -1)
-			manifest_append_map(depsmap, mapping, "deps", BLOCK);
+		if (map == -1)
+			manifest_append_map(map, mapping, "deps", BLOCK);
 
 		depkv = yaml_document_add_mapping(&doc, NULL, YAML_FLOW_MAPPING_STYLE);
-		yaml_document_append_mapping_pair(&doc, depsmap,
+		yaml_document_append_mapping_pair(&doc, map,
 				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_dep_get(dep, PKG_DEP_NAME)), strlen(pkg_dep_get(dep, PKG_DEP_NAME)), YAML_PLAIN_SCALAR_STYLE),
 				depkv);
 
@@ -779,30 +776,34 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		manifest_append_kv(groups, pkg_group_name(group), group->gidstr);
 	}*/
 
+	map = -1;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (options == -1)
-			manifest_append_map(options, mapping, "options", FLOW);
-		manifest_append_kv(options, pkg_option_opt(option), pkg_option_value(option), PLAIN);
+		if (map == -1)
+			manifest_append_map(map, mapping, "options", FLOW);
+		manifest_append_kv(map, pkg_option_opt(option), pkg_option_value(option), PLAIN);
 	}
 
+	map = -1;
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (files == -1)
-			manifest_append_map(files, mapping, "files", BLOCK);
+		if (map == -1)
+			manifest_append_map(map, mapping, "files", BLOCK);
 		urlencode(pkg_file_get(file, PKG_FILE_PATH), &tmpsbuf);
-		manifest_append_kv(files, sbuf_get(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-", PLAIN);
+		manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-", PLAIN);
 	}
 
 	seq = -1;
+	map = -1;
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (dirs == -1)
-			manifest_append_map(dirs, mapping, "directories", BLOCK);
+		if (map == -1)
+			manifest_append_map(map, mapping, "directories", BLOCK);
 		urlencode(pkg_dir_path(dir), &tmpsbuf);
-		manifest_append_kv(dirs, sbuf_get(tmpsbuf), pkg_dir_try(dir) ? "y" : "n", PLAIN);
+		manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_dir_try(dir) ? "y" : "n", PLAIN);
 	}
 
+	map = -1;
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		if (scripts == -1)
-			manifest_append_map(scripts, mapping, "scripts", BLOCK);
+		if (map == -1)
+			manifest_append_map(map, mapping, "scripts", BLOCK);
 
 		switch (pkg_script_type(script)) {
 			case PKG_SCRIPT_PRE_INSTALL:
@@ -834,7 +835,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 				break;
 		}
 		urlencode(pkg_script_data(script), &tmpsbuf);
-		manifest_append_kv(scripts, script_types, sbuf_get(tmpsbuf), LITERAL);
+		manifest_append_kv(map, script_types, sbuf_get(tmpsbuf), LITERAL);
 	}
 	if (message != NULL && *message != '\0') {
 		urlencode(message, &tmpsbuf);
