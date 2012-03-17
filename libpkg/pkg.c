@@ -1082,7 +1082,6 @@ pkg_recompute_flatsize(struct pkg *pkg)
 	int64_t flatsize = 0;
 	struct stat st;
 	bool regular = false;
-	size_t i;
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		path = pkg_file_get(f, PKG_FILE_PATH);
@@ -1092,24 +1091,8 @@ pkg_recompute_flatsize(struct pkg *pkg)
 				regular = false;
 
 			/* special case for hardlinks */
-			if (st.st_nlink > 1) {
-				for (i = 0; i < hl.len; i++) {
-					if (hl.inodes[i] == st.st_ino) {
-						regular = false;
-						break;
-					}
-				}
-				if (regular) {
-					/* Maybe reallocate p->hardlinks. */
-					if (hl.cap <= hl.len) {
-						hl.cap |= 1;
-						hl.cap *= 2;
-						hl.inodes = reallocf(hl.inodes,
-						    hl.cap * sizeof(ino_t));
-					}
-					hl.inodes[hl.len++] = st.st_ino;
-				}
-			}
+			if (st.st_nlink > 1)
+				regular = is_hardlink(&hl, &st);
 
 			if (regular)
 				flatsize += st.st_size;

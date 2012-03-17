@@ -39,6 +39,12 @@
 #define ERROR_SQLITE(db) \
 	pkg_emit_error("sqlite: %s", sqlite3_errmsg(db))
 
+struct hardlinks {
+	ino_t *inodes;
+	size_t len;
+	size_t cap;
+};
+
 void sbuf_init(struct sbuf **);
 int sbuf_set(struct sbuf **, const char *);
 char * sbuf_get(struct sbuf *);
@@ -55,4 +61,6 @@ int is_conf_file(const char *path, char *newpath, size_t len);
 
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 void sha256_str(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
+
+bool is_hardlink(struct hardlinks *hl, struct stat *st);
 #endif

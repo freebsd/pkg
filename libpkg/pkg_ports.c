@@ -166,7 +166,7 @@ dirrmtry(struct plist *p, char *line)
 static int
 file(struct plist *p, char *line)
 {
-	size_t len, i;
+	size_t len;
 	char path[MAXPATHLEN];
 	struct stat st;
 	char *buf;
@@ -191,24 +191,8 @@ file(struct plist *p, char *line)
 			regular = false;
 
 		/* special case for hardlinks */
-		if (st.st_nlink > 1) {
-			for (i = 0; i < p->hardlinks->len; i++) {
-				if (p->hardlinks->inodes[i] == st.st_ino) {
-					regular = false;
-					break;
-				}
-			}
-			if (regular) {
-				/* Maybe (re)allocate p->hardlinks. */
-				if (p->hardlinks->cap <= p->hardlinks->len) {
-					p->hardlinks->cap |= 1;
-					p->hardlinks->cap *= 2;
-					p->hardlinks->inodes = reallocf(p->hardlinks->inodes,
-					    p->hardlinks->cap * sizeof(ino_t));
-				}
-				p->hardlinks->inodes[p->hardlinks->len++] = st.st_ino;
-			}
-		}
+		if (st.st_nlink > 1)
+			regular = is_hardlink(p->hardlinks, &st);
 
 		if (regular) {
 			p->flatsize += st.st_size;
