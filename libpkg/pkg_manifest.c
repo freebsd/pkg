@@ -695,6 +695,12 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), strlen(key), YAML_PLAIN_SCALAR_STYLE), \
 		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, val), strlen(val), YAML_LITERAL_SCALAR_STYLE));
 
+#define manifest_append_map(id, map, key, block) do { \
+	id = yaml_document_add_mapping(&doc, NULL, YAML_##block##_MAPPING_STYLE); \
+	yaml_document_append_mapping_pair(&doc, map, \
+		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), strlen(key), YAML_PLAIN_SCALAR_STYLE), id); \
+	} while (0)
+
 	yaml_document_initialize(&doc, NULL, NULL, NULL, 1, 1);
 	mapping = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
 
@@ -734,12 +740,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	manifest_append_kv_literal(mapping, "desc", sbuf_get(tmpsbuf));
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (depsmap == -1) {
-			depsmap = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "deps"), 4, YAML_PLAIN_SCALAR_STYLE),
-					depsmap);
-		}
+		if (depsmap == -1)
+			manifest_append_map(depsmap, mapping, "deps", BLOCK);
 
 		depkv = yaml_document_add_mapping(&doc, NULL, YAML_FLOW_MAPPING_STYLE);
 		yaml_document_append_mapping_pair(&doc, depsmap,
@@ -782,45 +784,30 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	}*/
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (options == -1) {
-			options = yaml_document_add_mapping(&doc, NULL, YAML_FLOW_MAPPING_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "options"), 7, YAML_PLAIN_SCALAR_STYLE),
-					options);
-		}
+		if (options == -1)
+			manifest_append_map(options, mapping, "options", FLOW);
 		manifest_append_kv(options, pkg_option_opt(option), pkg_option_value(option));
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (files == -1) {
-			files = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "files"), 5, YAML_PLAIN_SCALAR_STYLE),
-					files);
-		}
+		if (files == -1)
+			manifest_append_map(files, mapping, "files", BLOCK);
 		urlencode(pkg_file_get(file, PKG_FILE_PATH), &tmpsbuf);
 		manifest_append_kv(files, sbuf_get(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-");
 	}
 
 	seq = -1;
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (dirs == -1) {
-			dirs = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "directories"), 11, YAML_PLAIN_SCALAR_STYLE),
-					dirs);
-		}
+		if (dirs == -1)
+			manifest_append_map(dirs, mapping, "directories", BLOCK);
 		urlencode(pkg_dir_path(dir), &tmpsbuf);
 		manifest_append_kv(dirs, sbuf_get(tmpsbuf), pkg_dir_try(dir) ? "y" : "n");
 	}
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		if (scripts == -1) {
-			scripts = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "scripts"), 7, YAML_PLAIN_SCALAR_STYLE),
-					scripts);
-		}
+		if (scripts == -1)
+			manifest_append_map(scripts, mapping, "scripts", BLOCK);
+
 		switch (pkg_script_type(script)) {
 			case PKG_SCRIPT_PRE_INSTALL:
 				script_types = "pre-install";
