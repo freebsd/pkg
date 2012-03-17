@@ -107,10 +107,6 @@ sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...
 	va_list ap;
 
 	va_start(ap, str);
-
-/*	if (sbuf_len(buf) == 0)
-		sbuf_printf(buf, "#@%s\n", comment);*/
-
 	sbuf_vprintf(buf, str, ap);
 	va_end(ap);
 }
@@ -314,8 +310,6 @@ meta_exec(struct plist *p, char *line, bool unexec)
 			buf = cmd;
 			regex_t preg;
 
-
-
 			/* remove the @dirrm{,try}
 			 * command */
 			while (!isspace(buf[0]))
@@ -475,7 +469,6 @@ plist_free(struct plist *plist)
 {
 	struct keyword *k;
 	LIST_FREE(&plist->keywords, k, keyword_free);
-	return;
 }
 
 static int
