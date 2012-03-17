@@ -931,10 +931,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 	assert(path != NULL && path[0] != '\0');
 
-	if (manifest == NULL)
-		manifest = sbuf_new_auto();
-	else
-		sbuf_clear(manifest);
+	sbuf_init(&manifest);
 
 	*a = archive_read_new();
 	archive_read_support_compression_all(*a);

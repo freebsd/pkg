@@ -41,6 +41,15 @@
 #include "private/event.h"
 #include "private/utils.h"
 
+void
+sbuf_init(struct sbuf **buf)
+{
+	if (*buf == NULL)
+		*buf = sbuf_new_auto();
+	else
+		sbuf_clear(*buf);
+}
+
 int
 sbuf_set(struct sbuf **buf, const char *str)
 {

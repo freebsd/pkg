@@ -105,10 +105,7 @@ urlencode(const char *src, struct sbuf **dest)
 	size_t len;
 	size_t i;
 
-	if (*dest == NULL)
-		*dest = sbuf_new_auto();
-	else
-		sbuf_clear(*dest);
+	sbuf_init(dest);
 
 	len = strlen(src);
 	for (i = 0; i < len; i++) {
@@ -131,10 +128,7 @@ urldecode(const char *src, struct sbuf **dest)
 	char c;
 	char hex[] = {'\0', '\0', '\0'};
 
-	if (*dest == NULL)
-		*dest = sbuf_new_auto();
-	else
-		sbuf_reset(*dest);
+	sbuf_init(dest);
 
 	len = strlen(src);
 	for (i = 0; i < len; i++) {

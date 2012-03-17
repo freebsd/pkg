@@ -39,6 +39,7 @@
 #define ERROR_SQLITE(db) \
 	pkg_emit_error("sqlite: %s", sqlite3_errmsg(db))
 
+void sbuf_init(struct sbuf **);
 int sbuf_set(struct sbuf **, const char *);
 char * sbuf_get(struct sbuf *);
 void sbuf_reset(struct sbuf *);
