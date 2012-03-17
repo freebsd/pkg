@@ -28,10 +28,9 @@
  */
 
 #include <sys/param.h>
-#include <sys/types.h>
-#include <string.h>
+
 #include <err.h>
-#include <stdarg.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "pkg.h"

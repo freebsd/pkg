@@ -26,14 +26,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-
 #include <err.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
 #include <libutil.h>
-#include <string.h>
 
 #include <pkg.h>
 

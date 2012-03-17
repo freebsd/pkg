@@ -30,14 +30,11 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <wctype.h>
 #include <errno.h>
-#include <inttypes.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <yaml.h>
-#include <wchar.h>
 
 #include "pkg.h"
 #include "private/event.h"

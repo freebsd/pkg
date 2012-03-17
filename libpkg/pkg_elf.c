@@ -34,7 +34,6 @@
 
 #include "pkg.h"
 #include "private/event.h"
-#include "private/pkg.h"
 
 static int
 analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)

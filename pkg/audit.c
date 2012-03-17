@@ -30,7 +30,6 @@
 #define _WITH_GETLINE
 
 #include <archive.h>
-#include <archive_entry.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -42,7 +41,6 @@
 #include <sysexits.h>
 
 #include <pkg.h>
-
 #include "pkgcli.h"
 
 #define AUDIT_URL "http://portaudit.FreeBSD.org/auditfile.tbz"

@@ -27,11 +27,8 @@
  */
 
 #include <sys/param.h>
-#include <sys/types.h>
 
 #include <err.h>
-#include <fcntl.h>
-#include <libutil.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

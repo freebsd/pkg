@@ -27,11 +27,9 @@
 #include <sysexits.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/param.h>
 #include <readpassphrase.h>
 
 #include <pkg.h>
-#include <fcntl.h>
 
 #include "pkgcli.h"
 

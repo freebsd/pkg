@@ -28,13 +28,9 @@
 
 #include <sys/param.h>
 
-#include <err.h>
 #include <stdio.h>
 #include <pkg.h>
-#include <libgen.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sysexits.h>
 
 #include "pkgcli.h"

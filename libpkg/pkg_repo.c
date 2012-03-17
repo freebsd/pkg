@@ -27,12 +27,8 @@
  */
 
 #include <sys/stat.h>
-#include <sys/types.h>
 
-#include <archive.h>
-#include <archive_entry.h>
 #include <assert.h>
-#include <errno.h>
 #include <fts.h>
 #include <libgen.h>
 #include <sqlite3.h>

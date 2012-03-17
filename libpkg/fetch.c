@@ -26,14 +26,10 @@
 
 #include <sys/param.h>
 
-#include <errno.h>
 #include <fcntl.h>
-#include <libgen.h>
 #include <stdio.h>
-#include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <stdlib.h>
 #include <fetch.h>
 
 #include "pkg.h"

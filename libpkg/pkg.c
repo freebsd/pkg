@@ -25,17 +25,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <libutil.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sysexits.h>
 
 #include "pkg.h"
 #include "private/event.h"

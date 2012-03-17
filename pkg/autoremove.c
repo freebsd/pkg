@@ -25,16 +25,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/types.h>
-
 #include <err.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
 #include <libutil.h>
 
 #include <pkg.h>

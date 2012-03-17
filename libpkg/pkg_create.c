@@ -28,15 +28,10 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <archive.h>
-#include <archive_entry.h>
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <glob.h>
-#include <libgen.h>
 #include <string.h>
-#include <fcntl.h>
 
 #include "pkg.h"
 #include "private/event.h"

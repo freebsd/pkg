@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <syslog.h>
 #include <sys/param.h>
 #include <sys/mount.h>
 

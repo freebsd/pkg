@@ -24,8 +24,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/param.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 
 #include <errno.h>
@@ -34,7 +32,6 @@
 #include <unistd.h>
 
 #include "pkg.h"
-#include "private/event.h"
 #include "private/pkg.h"
 
 static int rc_stop(const char *);

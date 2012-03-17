@@ -26,8 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/utsname.h>
 

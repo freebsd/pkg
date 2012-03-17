@@ -26,11 +26,9 @@
  */
 
 #include <sys/param.h>
-#include <sys/types.h>
 
 #include <err.h>
 #include <libgen.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sysexits.h>

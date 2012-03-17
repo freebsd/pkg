@@ -27,10 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-
 #include <err.h>
-#include <inttypes.h>
 #include <pkg.h>
 #include <stdbool.h>
 #include <stdio.h>
