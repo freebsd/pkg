@@ -736,11 +736,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		if (map == -1)
 			manifest_append_map(map, mapping, "deps", BLOCK);
 
-		depkv = yaml_document_add_mapping(&doc, NULL, YAML_FLOW_MAPPING_STYLE);
-		yaml_document_append_mapping_pair(&doc, map,
-				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_dep_get(dep, PKG_DEP_NAME)), strlen(pkg_dep_get(dep, PKG_DEP_NAME)), YAML_PLAIN_SCALAR_STYLE),
-				depkv);
-
+		manifest_append_map(depkv, map, pkg_dep_get(dep, PKG_DEP_NAME), FLOW);
 		manifest_append_kv(depkv, "origin", pkg_dep_get(dep, PKG_DEP_ORIGIN), PLAIN);
 		manifest_append_kv(depkv, "version", pkg_dep_get(dep, PKG_DEP_VERSION), PLAIN);
 	}
