@@ -86,7 +86,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 
 	(*pkg)->automatic = false;
 	(*pkg)->type = type;
-	(*pkg)->licenselogic = 1;
+	(*pkg)->licenselogic = LICENSE_SINGLE;
 
 	return (EPKG_OK);
 }
@@ -106,7 +106,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg->new_flatsize = 0;
 	pkg->new_pkgsize = 0;
 	pkg->automatic = false;
-	pkg->licenselogic = 1;
+	pkg->licenselogic = LICENSE_SINGLE;
 
 	pkg_list_free(pkg, PKG_LICENSES);
 	pkg_list_free(pkg, PKG_CATEGORIES);
@@ -157,7 +157,6 @@ pkg_type(struct pkg const * const pkg)
 int
 pkg_is_valid(struct pkg *pkg)
 {
-	int ret = EPKG_OK;
 	int i;
 
 	if (pkg->type == 0) {
@@ -168,11 +167,11 @@ pkg_is_valid(struct pkg *pkg)
 	for (i = 0; i < PKG_NUM_FIELDS; i++) {
 		if (fields[i].type & pkg->type && fields[i].optional == 0) {
 			if (pkg->fields[i] == NULL || sbuf_get(pkg->fields[i])[0] == '\0')
-				ret = EPKG_FATAL;
+				return (EPKG_FATAL);
 		}
 	}
 
-	return (ret);
+	return (EPKG_OK);
 }
 
 static int
