@@ -687,13 +687,9 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	yaml_emitter_set_unicode(&emitter, 1);
 	yaml_emitter_set_output(&emitter, yaml_write_buf, destbuf);
 
-#define manifest_append_kv(map, key, val) yaml_document_append_mapping_pair(&doc, map, \
+#define manifest_append_kv(map, key, val, style) yaml_document_append_mapping_pair(&doc, map, \
 		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), strlen(key), YAML_PLAIN_SCALAR_STYLE), \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, val), strlen(val), YAML_PLAIN_SCALAR_STYLE));
-
-#define manifest_append_kv_literal(map, key, val) yaml_document_append_mapping_pair(&doc, map, \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), strlen(key), YAML_PLAIN_SCALAR_STYLE), \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, val), strlen(val), YAML_LITERAL_SCALAR_STYLE));
+		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, val), strlen(val), YAML_##style##_SCALAR_STYLE));
 
 #define manifest_append_map(id, map, key, block) do { \
 	id = yaml_document_add_mapping(&doc, NULL, YAML_##block##_MAPPING_STYLE); \
@@ -709,24 +705,24 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message, PKG_VERSION, &version);
-	manifest_append_kv(mapping, "name", name);
-	manifest_append_kv(mapping, "version", version);
-	manifest_append_kv(mapping, "origin", pkgorigin);
-	manifest_append_kv(mapping, "comment", comment);
-	manifest_append_kv(mapping, "arch", pkgarch);
-	manifest_append_kv(mapping, "osversion", osversion);
-	manifest_append_kv(mapping, "www", www);
-	manifest_append_kv(mapping, "maintainer", pkgmaintainer);
-	manifest_append_kv(mapping, "prefix", prefix);
+	manifest_append_kv(mapping, "name", name, PLAIN);
+	manifest_append_kv(mapping, "version", version, PLAIN);
+	manifest_append_kv(mapping, "origin", pkgorigin, PLAIN);
+	manifest_append_kv(mapping, "comment", comment, PLAIN);
+	manifest_append_kv(mapping, "arch", pkgarch, PLAIN);
+	manifest_append_kv(mapping, "osversion", osversion, PLAIN);
+	manifest_append_kv(mapping, "www", www, PLAIN);
+	manifest_append_kv(mapping, "maintainer", pkgmaintainer, PLAIN);
+	manifest_append_kv(mapping, "prefix", prefix, PLAIN);
 	switch (licenselogic) {
 		case LICENSE_SINGLE:
-			manifest_append_kv(mapping, "licenselogic", "single");
+			manifest_append_kv(mapping, "licenselogic", "single", PLAIN);
 			break;
 		case LICENSE_AND:
-			manifest_append_kv(mapping, "licenselogic", "and");
+			manifest_append_kv(mapping, "licenselogic", "and", PLAIN);
 			break;
 		case LICENSE_OR:
-			manifest_append_kv(mapping, "licenselogic", "or");
+			manifest_append_kv(mapping, "licenselogic", "or", PLAIN);
 			break;
 	}
 
@@ -735,9 +731,9 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		manifest_append_seqval(&doc, mapping, &seq, "licenses", pkg_license_name(license));
 
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, flatsize);
-	manifest_append_kv(mapping, "flatsize", tmpbuf);
+	manifest_append_kv(mapping, "flatsize", tmpbuf, PLAIN);
 	urlencode(desc, &tmpsbuf);
-	manifest_append_kv_literal(mapping, "desc", sbuf_get(tmpsbuf));
+	manifest_append_kv(mapping, "desc", sbuf_get(tmpsbuf), LITERAL);
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (depsmap == -1)
@@ -748,8 +744,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 				yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, pkg_dep_get(dep, PKG_DEP_NAME)), strlen(pkg_dep_get(dep, PKG_DEP_NAME)), YAML_PLAIN_SCALAR_STYLE),
 				depkv);
 
-		manifest_append_kv(depkv, "origin", pkg_dep_get(dep, PKG_DEP_ORIGIN));
-		manifest_append_kv(depkv, "version", pkg_dep_get(dep, PKG_DEP_VERSION));
+		manifest_append_kv(depkv, "origin", pkg_dep_get(dep, PKG_DEP_ORIGIN), PLAIN);
+		manifest_append_kv(depkv, "version", pkg_dep_get(dep, PKG_DEP_VERSION), PLAIN);
 	}
 
 	seq = -1;
@@ -786,14 +782,14 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		if (options == -1)
 			manifest_append_map(options, mapping, "options", FLOW);
-		manifest_append_kv(options, pkg_option_opt(option), pkg_option_value(option));
+		manifest_append_kv(options, pkg_option_opt(option), pkg_option_value(option), PLAIN);
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (files == -1)
 			manifest_append_map(files, mapping, "files", BLOCK);
 		urlencode(pkg_file_get(file, PKG_FILE_PATH), &tmpsbuf);
-		manifest_append_kv(files, sbuf_get(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-");
+		manifest_append_kv(files, sbuf_get(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-", PLAIN);
 	}
 
 	seq = -1;
@@ -801,7 +797,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		if (dirs == -1)
 			manifest_append_map(dirs, mapping, "directories", BLOCK);
 		urlencode(pkg_dir_path(dir), &tmpsbuf);
-		manifest_append_kv(dirs, sbuf_get(tmpsbuf), pkg_dir_try(dir) ? "y" : "n");
+		manifest_append_kv(dirs, sbuf_get(tmpsbuf), pkg_dir_try(dir) ? "y" : "n", PLAIN);
 	}
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
@@ -838,11 +834,11 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 				break;
 		}
 		urlencode(pkg_script_data(script), &tmpsbuf);
-		manifest_append_kv_literal(scripts, script_types, sbuf_get(tmpsbuf));
+		manifest_append_kv(scripts, script_types, sbuf_get(tmpsbuf), LITERAL);
 	}
 	if (message != NULL && *message != '\0') {
 		urlencode(message, &tmpsbuf);
-		manifest_append_kv_literal(mapping, "message", sbuf_get(tmpsbuf));
+		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf), LITERAL);
 	}
 
 	if (!yaml_emitter_dump(&emitter, &doc))
