@@ -159,10 +159,10 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 		archive_entry_set_size(entry, 0);
 	}
 
-	if (uname != NULL)
+	if (uname != NULL && uname[0] != '\0')
 		archive_entry_set_uname(entry, uname);
 
-	if (gname != NULL)
+	if (gname != NULL && gname[0] != '\0')
 		archive_entry_set_gname(entry, gname);
 
 	if (perm != 0)
