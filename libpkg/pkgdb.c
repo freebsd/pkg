@@ -51,6 +51,11 @@
 #include "private/db_upgrades.h"
 #define DBVERSION 8
 
+#define sql_clean_stmt(stmt) do { \
+		if (stmt != NULL) \
+			sqlite3_finalize(stmt); \
+	} while (0)
+
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
@@ -1290,7 +1295,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	int retcode = EPKG_FATAL;
 	int64_t package_id;
 
-	const char sql_begin[] = "BEGIN;";
 	const char sql_mtree[] = "INSERT OR IGNORE INTO mtree(content) VALUES(?1);";
 	const char sql_dirs[] = "INSERT OR IGNORE INTO directories(path) VALUES(?1);";
 	const char sql_pkg[] = ""
@@ -1347,7 +1351,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	s = db->sqlite;
 
-	if (!complete && sql_exec(s, sql_begin) != EPKG_OK)
+	if (!complete && sql_exec(s, "BEGIN;") != EPKG_OK)
 		return (EPKG_FATAL);
 
 	/* insert mtree record if any */
@@ -1694,50 +1698,22 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	cleanup:
 
-	if (stmt_mtree != NULL)
-		sqlite3_finalize(stmt_mtree);
-
-	if (stmt_pkg != NULL)
-		sqlite3_finalize(stmt_pkg);
-
-	if (stmt_dep != NULL)
-		sqlite3_finalize(stmt_dep);
-
-	if (stmt_file != NULL)
-		sqlite3_finalize(stmt_file);
-
-	if (stmt_script != NULL)
-		sqlite3_finalize(stmt_script);
-
-	if (stmt_option != NULL)
-		sqlite3_finalize(stmt_option);
-	
-	if (stmt_dirs != NULL)
-		sqlite3_finalize(stmt_dirs);
-
-	if (stmt_dir != NULL)
-		sqlite3_finalize(stmt_dir);
-
-	if (stmt_cat != NULL)
-		sqlite3_finalize(stmt_cat);
-
-	if (stmt_categories != NULL)
-		sqlite3_finalize(stmt_categories);
-
-	if (stmt_lic != NULL)
-		sqlite3_finalize(stmt_lic);
-
-	if (stmt_licenses != NULL)
-		sqlite3_finalize(stmt_licenses);
-
-	if (stmt_groups != NULL)
-		sqlite3_finalize(stmt_groups);
-
-	if (stmt_users != NULL)
-		sqlite3_finalize(stmt_users);
-	
-	if (stmt_upd_deps != NULL)
-		sqlite3_finalize(stmt_upd_deps);
+	sql_clean_stmt(stmt_mtree);
+	sql_clean_stmt(stmt_pkg);
+	sql_clean_stmt(stmt_dep);
+	sql_clean_stmt(stmt_file);
+	sql_clean_stmt(stmt_script);
+	sql_clean_stmt(stmt_option);
+	sql_clean_stmt(stmt_dirs);
+	sql_clean_stmt(stmt_dir);
+	sql_clean_stmt(stmt_cat);
+	sql_clean_stmt(stmt_categories);
+	sql_clean_stmt(stmt_lic);
+	sql_clean_stmt(stmt_lic);
+	sql_clean_stmt(stmt_licenses);
+	sql_clean_stmt(stmt_groups);
+	sql_clean_stmt(stmt_users);
+	sql_clean_stmt(stmt_upd_deps);
 
 	return (retcode);
 }
