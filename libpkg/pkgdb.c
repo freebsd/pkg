@@ -481,9 +481,6 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE RESTRICT,"
 		"PRIMARY KEY (package_id, shlib_id)"
 	");"
-
-	/* Mark the end of the array */
-
 	"CREATE INDEX deporigini on deps(origin);"
 	"PRAGMA user_version = 11;"
 	"COMMIT;"
@@ -912,7 +909,7 @@ pkgdb_query_shlib(struct pkgdb *db, const char *shlib)
 			"p.prefix, p.flatsize, p.time, p.infos "
 			"FROM packages AS p, pkg_shlibs AS ps, shlibs AS s "
 			"WHERE p.id = ps.package_id "
-				"AND ps.shlib_id = s.id "
+	  			"AND ps.shlib_id = s.id "
 				"AND s.name = ?1;";
 
 	assert(db != NULL);
@@ -1374,8 +1371,25 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkgdb_it *it = NULL;
 
 	sqlite3 *s;
-	sqlite3_stmt *stmt = NULL;
-	sqlite3_stmt *stmt2 = NULL;
+	sqlite3_stmt *stmt_pkg = NULL;
+	sqlite3_stmt *stmt_mtree = NULL;
+	sqlite3_stmt *stmt_dep = NULL;
+	sqlite3_stmt *stmt_file = NULL;
+	sqlite3_stmt *stmt_script = NULL;
+	sqlite3_stmt *stmt_option = NULL;
+	sqlite3_stmt *stmt_dirs = NULL;
+	sqlite3_stmt *stmt_dir = NULL;
+	sqlite3_stmt *stmt_categories = NULL;
+	sqlite3_stmt *stmt_cat = NULL;
+	sqlite3_stmt *stmt_licenses = NULL;
+	sqlite3_stmt *stmt_lic = NULL;
+	sqlite3_stmt *stmt_user = NULL;
+	sqlite3_stmt *stmt_users = NULL;
+	sqlite3_stmt *stmt_groups = NULL;
+	sqlite3_stmt *stmt_group = NULL;
+	sqlite3_stmt *stmt_shlibs = NULL;
+	sqlite3_stmt *stmt_shlib = NULL;
+	sqlite3_stmt *stmt_upd_deps = NULL;
 
 	int ret;
 	int retcode = EPKG_FATAL;
@@ -1894,10 +1908,24 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	cleanup:
 
-	if (stmt != NULL)
-		sqlite3_finalize(stmt);
-	if (stmt2 != NULL)
-		sqlite3_finalize(stmt2);
+	sql_clean_stmt(stmt_mtree);
+	sql_clean_stmt(stmt_pkg);
+	sql_clean_stmt(stmt_dep);
+	sql_clean_stmt(stmt_file);
+	sql_clean_stmt(stmt_script);
+	sql_clean_stmt(stmt_option);
+	sql_clean_stmt(stmt_dirs);
+	sql_clean_stmt(stmt_dir);
+	sql_clean_stmt(stmt_cat);
+	sql_clean_stmt(stmt_categories);
+	sql_clean_stmt(stmt_lic);
+	sql_clean_stmt(stmt_lic);
+	sql_clean_stmt(stmt_licenses);
+	sql_clean_stmt(stmt_groups);
+	sql_clean_stmt(stmt_users);
+	sql_clean_stmt(stmt_upd_deps);
+	sql_clean_stmt(stmt_shlib);
+	sql_clean_stmt(stmt_shlibs);
 
 	return (retcode);
 }
