@@ -394,15 +394,26 @@ int pkg_options(struct pkg *, struct pkg_option **option);
 
 /**
  * Iterates over the shared libraries used by the package.
- * @param Must be set to NULL for the first call.
+ * @param shlib must be set to NULL for the first call.
  * @return An error code
  */
 int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
 
 /**
- * @todo Document
+ * Iterate over all of the files within the package.  Determine which
+ * are ELF format executables or shared objects, and extract the names
+ * of any shared libraries those depend on.  If pkg_analyse_action is
+ * PKG_ANALYSE_ADD_MISSING_DEPS, determine which (if any) package
+ * supplied the shared library and add that package to the
+ * dependencies of pkg if not already known.  If pkg_analyse_action
+ * is PKG_ANALYSE_REGISTER_SHLIBS, register the names of all shared
+ * libraries required by pkg files in the database.
+ * @return An error code
  */
-int pkg_analyse_files(struct pkgdb *, struct pkg *);
+
+typedef enum { PKG_ANALYSE_ADD_MISSING_DEPS, PKG_ANALYSE_REGISTER_SHLIBS } pkg_analyse_action;
+
+int pkg_analyse_files(struct pkgdb *, struct pkg *, pkg_analyse_action);
 
 /**
  * Generic setter for simple attributes.
