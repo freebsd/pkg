@@ -77,6 +77,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	STAILQ_INIT(&(*pkg)->options);
 	STAILQ_INIT(&(*pkg)->users);
 	STAILQ_INIT(&(*pkg)->groups);
+	STAILQ_INIT(&(*pkg)->shlibs);
 
 	(*pkg)->automatic = false;
 	(*pkg)->type = type;
@@ -112,6 +113,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
 	pkg_list_free(pkg, PKG_GROUPS);
+	pkg_list_free(pkg, PKG_SHLIBS);
 
 	pkg->rowid = 0;
 	pkg->type = type;
@@ -136,6 +138,7 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
 	pkg_list_free(pkg, PKG_GROUPS);
+	pkg_list_free(pkg, PKG_SHLIBS);
 
 	free(pkg);
 }
@@ -416,6 +419,15 @@ pkg_options(struct pkg *pkg, struct pkg_option **o)
 	assert(pkg != NULL);
 
 	PKG_LIST_NEXT(&pkg->options, *o);
+}
+
+int
+
+pkg_shlibs(struct pkg *pkg, struct pkg_shlib **s)
+{
+	assert(pkg != NULL);
+
+	PKG_LIST_NEXT(&pkg->shlibs, *s);
 }
 
 int
@@ -801,6 +813,30 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 }
 
 int
+pkg_addshlib(struct pkg *pkg, const char *name)
+{
+	struct pkg_shlib *s = NULL;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	while (pkg_shlibs(pkg, &s) == EPKG_OK) {
+		if (strcmp(name, pkg_shlib_name(s)) == 0) {
+			pkg_emit_error("duplicate shared library listing: %s, ignoring", name);
+			return (EPKG_OK);
+		}
+	}
+
+	pkg_shlib_new(&s);
+
+	sbuf_set(&s->name, name);
+
+	STAILQ_INSERT_TAIL(&pkg->shlibs, s, next);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 	switch (list) {
 		case PKG_DEPS:
@@ -823,6 +859,8 @@ pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 			return (STAILQ_EMPTY(&pkg->groups));
 		case PKG_SCRIPTS:
 			return (STAILQ_EMPTY(&pkg->scripts));
+		case PKG_SHLIBS:
+			return (STAILQ_EMPTY(&pkg->shlibs));
 	}
 	
 	return (0);
@@ -839,6 +877,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_user *u;
 	struct pkg_group *g;
 	struct pkg_script *s;
+	struct pkg_shlib *sl;
 
 	switch (list) {
 		case PKG_DEPS:
@@ -880,6 +919,10 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		case PKG_SCRIPTS:
 			LIST_FREE(&pkg->scripts, s, pkg_script_free);
 			pkg->flags &= ~PKG_LOAD_SCRIPTS;
+			break;
+		case PKG_SHLIBS:
+			LIST_FREE(&pkg->shlibs, sl, pkg_shlib_free);
+			pkg->flags &= ~PKG_LOAD_SHLIBS;
 			break;
 	}
 }

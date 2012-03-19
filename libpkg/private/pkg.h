@@ -70,6 +70,7 @@ struct pkg {
 	STAILQ_HEAD(options, pkg_option) options;
 	STAILQ_HEAD(users, pkg_user) users;
 	STAILQ_HEAD(groups, pkg_group) groups;
+	STAILQ_HEAD(shlibs, pkg_shlib) shlibs;
 	int flags;
 	int64_t rowid;
 	lic_t licenselogic;
@@ -153,6 +154,11 @@ struct pkg_group {
 	STAILQ_ENTRY(pkg_group) next;
 };
 
+struct pkg_shlib {
+	struct sbuf *name;
+	STAILQ_ENTRY(pkg_shlib) next;
+};
+
 /**
  * Remove and unregister the package.
  * @param pkg An installed package to delete
@@ -208,6 +214,9 @@ void pkg_group_free(struct pkg_group *);
 
 int pkg_jobs_resolv(struct pkg_jobs *jobs);
 
+int pkg_shlib_new(struct pkg_shlib **);
+void pkg_shlib_free(struct pkg_shlib *);
+
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format);
@@ -243,6 +252,6 @@ int pkgdb_load_category(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_license(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
-
+int pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg);
 
 #endif

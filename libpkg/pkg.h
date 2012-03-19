@@ -47,6 +47,7 @@ struct pkg_option;
 struct pkg_license;
 struct pkg_user;
 struct pkg_group;
+struct pkg_shlib;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -198,7 +199,8 @@ typedef enum {
 	PKG_DIRS,
 	PKG_USERS,
 	PKG_GROUPS,
-	PKG_SCRIPTS
+	PKG_SCRIPTS,
+	PKG_SHLIBS
 } pkg_list;
 
 /**
@@ -390,6 +392,13 @@ int pkg_scripts(struct pkg *, struct pkg_script **script);
 int pkg_options(struct pkg *, struct pkg_option **option);
 
 /**
+ * Iterates over the shared libraries used by the package.
+ * @param Must be set to NULL for the first call.
+ * @return An error code
+ */
+int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
+
+/**
  * @todo Document
  */
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
@@ -509,6 +518,12 @@ int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type);
 int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
 
 /**
+ * Add a shared library
+ * @return An error code.
+ */
+int pkg_addshlib(struct pkg *pkg, const char *name);
+
+/**
  * Parse a manifest and set the attributes of pkg accordingly.
  * @param buf An NULL-terminated buffer containing the manifest data.
  * @return An error code.
@@ -549,6 +564,9 @@ pkg_script_t pkg_script_type(struct pkg_script *);
 /* pkg_option */
 const char *pkg_option_opt(struct pkg_option *);
 const char *pkg_option_value(struct pkg_option *);
+
+/* pkg_shlib */
+const char *pkg_shlib_name(struct pkg_shlib *);
 
 /**
  * Create a repository database.
@@ -622,6 +640,8 @@ struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
  */
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 
+struct pkgdb_it * pkgdb_query_shlib(struct pkgdb *db, const char *shlib);
+
 #define PKG_LOAD_BASIC 0
 #define PKG_LOAD_DEPS (1<<0)
 #define PKG_LOAD_RDEPS (1<<1)
@@ -634,6 +654,7 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 #define PKG_LOAD_LICENSES (1<<8)
 #define PKG_LOAD_USERS (1<<9)
 #define PKG_LOAD_GROUPS (1<<10)
+#define PKG_LOAD_SHLIBS (1<<11)
 
 /**
  * Get the next pkg.

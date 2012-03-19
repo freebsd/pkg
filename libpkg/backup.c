@@ -42,7 +42,7 @@ pkgdb_dump(struct pkgdb *db, char *dest)
 	int ret = EPKG_OK;
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
 	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
-	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES;
+	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES | PKG_LOAD_SHLIBS;
 
 	packing_init(&pack, dest ? dest : "./pkgdump", TXZ);
 

@@ -106,6 +106,8 @@ for licenses
 for users
 .It Cm G
 for groups
+.It Cm B
+for shared libraries
 .El
 .El
 .Ss Multiline patterns:
@@ -148,6 +150,8 @@ Expands to the list of users needed by the matched package.
 Expands to the list of groups needed by the matched package.
 .It Cm \&%S
 Expands to the list of scripts for the matching packages - install, deinstall, etc.
+.It Cm \&%B
+Expands to the list of shared libraries used by programs from the matched package.
 .El
 .Sh EVALUATION FORMAT
 .Ss Variables
