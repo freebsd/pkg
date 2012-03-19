@@ -230,9 +230,10 @@ get_system_pkgarch(char *dest, size_t sz)
 
 	switch (elfhdr.e_machine) {
 		case EM_ARM:
-			snprintf(dest + strlen(dest), sz - strlen(dest), "-%s_%s",
+			snprintf(dest + strlen(dest), sz - strlen(dest), "-%s_%s_%s",
 			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-			    (elfhdr.e_flags &  0xFF000000) > 0 ? "eabi" : "oabi");
+			    (elfhdr.e_flags &  0x80) > 0 ? "eabi" : "oabi",
+			    (elfhdr.e_flags & 0x200) > 0 ? "softfp" : "vfp");
 			break;
 		case EM_MIPS:
 			snprintf(dest + strlen(dest), sz - strlen(dest), "-%s",
