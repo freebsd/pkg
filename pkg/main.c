@@ -74,6 +74,7 @@ static struct commands {
 	{ "set", "Modify local database informations", exec_set, usage_set},
 	{ "register", "Registers a package into the local package database", exec_register, usage_register},
 	{ "repo", "Creates a package database repository", exec_repo, usage_repo},
+	{ "shlib", "Displays which package links against a specific shared library", exec_shlib, usage_shlib},
 	{ "update", "Updates remote package repository databases", exec_update, usage_update},
 	{ "updating", "Displays UPDATING information for a package", exec_updating, usage_updating},
 	{ "upgrade", "Performs upgrades of package software distributions", exec_upgrade, usage_upgrade},

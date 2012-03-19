@@ -88,6 +88,11 @@ void usage_set(void);
 int exec_search(int, char **);
 void usage_search(void);
 
+/* pkg shlib */
+int exec_shlib(int, char **);
+void usage_shlib(void);
+char *sanatize(char *, const char *, size_t);
+
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);
@@ -132,6 +137,7 @@ void usage_which(void);
 #define INFO_PREFIX (1<<8)
 #define INFO_FULL (1<<9)
 #define INFO_RAW (1<<10)
+#define INFO_LIST_SHLIBS (1<<11)
 
 bool query_yesno(const char *msg, ...);
 int print_info(struct pkg * const pkg, unsigned int opt);

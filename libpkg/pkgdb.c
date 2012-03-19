@@ -49,7 +49,7 @@
 #include "private/utils.h"
 
 #include "private/db_upgrades.h"
-#define DBVERSION 8
+#define DBVERSION 9
 
 #define sql_clean_stmt(stmt) do { \
 		if (stmt != NULL) \
@@ -444,8 +444,19 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE RESTRICT,"
 		"UNIQUE(package_id, group_id)"
 	");"
+	"CREATE TABLE shlibs ("
+	        "id INTEGER PRIMARY KEY,"
+	        "name TEXT NOT NULL UNIQUE"
+	");"
+	"CREATE TABLE pkg_shlibs ("
+	        "package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+	                " ON UPDATE CASCADE,"
+	        "shlib_id INTEGER REFERENCES shlibs(id) ON DELETE RESTRICT"
+	  		" ON UPDATE RESTRICT,"
+		"PRIMARY KEY (package_id, shlib_id)"
+	");"
 	"CREATE INDEX deporigini on deps(origin);"
-	"PRAGMA user_version = 8;"
+	"PRAGMA user_version = 9;"
 	"COMMIT;"
 	;
 
@@ -711,6 +722,10 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 			if ((ret = pkgdb_load_group(it->db, pkg)) != EPKG_OK)
 				return (ret);
 
+		if (flags & PKG_LOAD_SHLIBS)
+			if ((ret = pkgdb_load_shlib(it->db, pkg)) != EPKG_OK)
+				return (ret);
+
 		return (EPKG_OK);
 	case SQLITE_DONE:
 		return (EPKG_END);
@@ -846,6 +861,31 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 	}
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+}
+
+struct pkgdb_it *
+pkgdb_query_shlib(struct pkgdb *db, const char *shlib)
+{
+	sqlite3_stmt *stmt;
+	const char sql[] = ""
+		"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
+			"p.message, p.arch, p.osversion, p.maintainer, p.www, "
+			"p.prefix, p.flatsize "
+			"FROM packages AS p, pkg_shlibs AS ps, shlibs AS s "
+			"WHERE p.id = ps.package_id "
+	  			"AND ps.shlib_id = s.id "
+				"AND s.name = ?1;";
+
+	assert(db != NULL);
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
+	sqlite3_bind_text(stmt, 1, shlib, -1, SQLITE_TRANSIENT);
 
 	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
 }
@@ -1158,6 +1198,29 @@ pkgdb_load_group(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
+pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg)
+{
+	char sql[BUFSIZ];
+	const char *reponame = NULL;
+	const char *basesql = ""
+			"SELECT name "
+			"FROM '%s'.pkg_shlibs, '%s'.shlibs AS s "
+			"WHERE package_id = ?1 "
+			"AND shlib_id = s.id "
+			"ORDER by name DESC";
+
+	assert(db != NULL && pkg != NULL);
+
+	if (pkg->type == PKG_REMOTE) {
+		pkg_get(pkg, PKG_REPONAME, &reponame);
+		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
+	} else
+		snprintf(sql, sizeof(sql), basesql, "main", "main");
+
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_SHLIBS, pkg_addshlib, PKG_SHLIBS));
+}
+
+int
 pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt *stmt = NULL;
@@ -1270,6 +1333,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkg_license *license = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
+	struct pkg_shlib *shlib = NULL;
 	struct pkgdb_it *it = NULL;
 
 	sqlite3 *s;
@@ -1289,6 +1353,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	sqlite3_stmt *stmt_users = NULL;
 	sqlite3_stmt *stmt_groups = NULL;
 	sqlite3_stmt *stmt_group = NULL;
+	sqlite3_stmt *stmt_shlibs = NULL;
+	sqlite3_stmt *stmt_shlib = NULL;
 	sqlite3_stmt *stmt_upd_deps = NULL;
 
 	int ret;
@@ -1336,6 +1402,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	const char sql_groups[] = ""
 		"INSERT OR ROLLBACK INTO pkg_groups(package_id, group_id) "
 		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2));";
+	const char sql_shlib[] = "INSERT OR IGNORE INTO shlibs(name) VALUES(?1);";
+	const char sql_shlibs[] = ""
+		"INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
+		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))";
 	const char sql_deps_update[] = ""
 		"UPDATE deps SET NAME=?1 , VERSION=?2 WHERE ORIGIN=?3;";
 
@@ -1694,6 +1764,41 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		sqlite3_reset(stmt_option);
 	}
 
+
+	/*
+	 * Insert shlibs
+	 */
+
+	if (sqlite3_prepare_v2(s, sql_shlib, -1, &stmt_shlib, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
+	if (sqlite3_prepare_v2(s, sql_shlibs, -1, &stmt_shlibs, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		goto cleanup;
+	}
+
+	while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+		sqlite3_bind_text(stmt_shlib, 1, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt_shlibs, 1, package_id);
+		sqlite3_bind_text(stmt_shlibs, 2, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
+
+		if ((ret = sqlite3_step(stmt_shlib)) != SQLITE_DONE) {
+			if (ret == SQLITE_CONSTRAINT) {
+				pkg_emit_error("sqlite: constraint violation on shlibs.name: %s",
+						pkg_shlib_name(shlib));
+			} else
+				ERROR_SQLITE(s);
+			goto cleanup;
+		}
+		if (( ret = sqlite3_step(stmt_shlibs)) != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			goto cleanup;
+		}
+		sqlite3_reset(stmt_shlib);
+		sqlite3_reset(stmt_shlibs);
+	}
+
 	retcode = EPKG_OK;
 
 	cleanup:
@@ -1714,6 +1819,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	sql_clean_stmt(stmt_groups);
 	sql_clean_stmt(stmt_users);
 	sql_clean_stmt(stmt_upd_deps);
+	sql_clean_stmt(stmt_shlib);
+	sql_clean_stmt(stmt_shlibs);
 
 	return (retcode);
 }
@@ -1776,6 +1883,9 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 
 	/* TODO print the groups trhat are not used anymore */
 	if (sql_exec(db->sqlite, "DELETE FROM groups WHERE id NOT IN (SELECT DISTINCT group_id FROM pkg_groups);") != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (sql_exec(db->sqlite, "DELETE FROM shlibs WHERE id NOT IN (SELECT DISTINCT shlib_id FROM pkg_shlibs);") != EPKG_OK)
 		return (EPKG_FATAL);
 
 	return (EPKG_OK);

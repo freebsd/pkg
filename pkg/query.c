@@ -56,7 +56,8 @@ static struct query_flags {
         { 'L', "",		1, PKG_LOAD_LICENSES },
         { 'U', "",		1, PKG_LOAD_USERS },
         { 'G', "",		1, PKG_LOAD_GROUPS },
-	{ '?', "drCFODLUGK",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ 'B', "",              1, PKG_LOAD_SHLIBS },
+	{ '?', "drCFODLUGBK",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
         { 's', "hb",		0, PKG_LOAD_BASIC }, 
         { 'n', "",		0, PKG_LOAD_BASIC },
         { 'v', "",		0, PKG_LOAD_BASIC },
@@ -171,6 +172,9 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 						case 'G':
 							sbuf_printf(dest, "%d", !pkg_list_is_empty(pkg, PKG_GROUPS));
 							break;
+						case 'B':
+							sbuf_printf(dest, "%d", !pkg_list_is_empty(pkg, PKG_SHLIBS));
+							break;
 					}
 					break;
 				case 'l':
@@ -237,6 +241,9 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				case 'G':
 					sbuf_cat(dest, pkg_group_name((struct pkg_group *)data));
 					break;
+				case 'B':
+					sbuf_cat(dest, pkg_shlib_name((struct pkg_shlib *)data));
+					break;
 				case 'M':
 					pkg_get(pkg, PKG_MESSAGE, &tmp);
 					if (tmp != NULL)
@@ -278,6 +285,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 	}
 	sbuf_finish(dest);
 }
+
 static void
 print_query(struct pkg *pkg, char *qstr, char multiline)
 {
@@ -291,6 +299,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
 	struct pkg_script *scripts = NULL;
+	struct pkg_shlib *shlib = NULL;
 
 	switch (multiline) {
 		case 'd':
@@ -350,6 +359,12 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		case 'S':
 			while (pkg_scripts(pkg, &scripts) == EPKG_OK) {
 				format_str(pkg, output, qstr, scripts);
+				printf("%s\n", sbuf_data(output));
+			}
+			break;
+		case 'B':
+			while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+				format_str(pkg, output, qstr, shlib);
 				printf("%s\n", sbuf_data(output));
 			}
 			break;

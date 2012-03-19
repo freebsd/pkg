@@ -146,6 +146,19 @@ static struct db_upgrades {
 	{8,
 	"DROP TABLE conflicts;"
 	},
+	{9,
+        "CREATE TABLE shlibs ("
+                "id INTEGER PRIMARY KEY,"
+                "name TEXT NOT NULL UNIQUE"
+        ");"
+        "CREATE TABLE pkg_shlibs ("
+                "package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+                        " ON UPDATE CASCADE,"
+                "shlib_id INTEGER REFERENCES shlibs(id) ON DELETE RESTRICT"
+                        " ON UPDATE RESTRICT,"
+                "PRIMARY KEY (package_id, shlib_id)"
+        ");"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL },

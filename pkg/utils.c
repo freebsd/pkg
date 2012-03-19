@@ -137,6 +137,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 	struct pkg_category *cat = NULL;
 	struct pkg_license *lic = NULL;
 	struct pkg_option *option = NULL;
+	struct pkg_shlib *shlib = NULL;
 	bool multirepos_enabled = false;
 	char *m;
 	char size[7];
@@ -151,7 +152,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 	    PKG_ORIGIN, &origin, PKG_REPONAME, &reponame, PKG_REPOURL, &repourl,
 	    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_COMMENT, &comment,
 	    PKG_DESC, &desc, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize,
-	    PKG_NEW_PKGSIZE, &newpkgsize, PKG_LICENSE_LOGIC, &licenselogic);
+		PKG_NEW_PKGSIZE, &newpkgsize, PKG_LICENSE_LOGIC, &licenselogic);
 
 	if (opt & INFO_RAW) {
 		pkg_emit_manifest(pkg, &m);
@@ -195,6 +196,13 @@ print_info(struct pkg * const pkg, unsigned int opt)
                                 printf("\t%s: %s\n", pkg_option_opt(option), pkg_option_value(option));
                 }
 
+		if (!pkg_list_is_empty(pkg, PKG_SHLIBS)) {
+			printf("%-15s:", "SharedLibraries");
+			while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
+				printf(" %s", pkg_shlib_name(shlib));
+			printf("\n");
+		}
+
 		if (pkg_type(pkg) == PKG_INSTALLED || pkg_type(pkg) == PKG_FILE) {
 			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
 			printf("%-15s: %s\n", "Flat size", size);
@@ -233,6 +241,16 @@ print_info(struct pkg * const pkg, unsigned int opt)
 
                 while (pkg_files(pkg, &file) == EPKG_OK) {
                         printf("%s\n", pkg_file_get(file, PKG_FILE_PATH));
+                }
+
+                if (!(opt & INFO_QUIET))
+                        printf("\n");
+	} else if (opt & INFO_LIST_SHLIBS) {
+		if (!(opt & INFO_QUIET))
+			printf("%s-%s uses the following shared libraries:\n", name, version);
+
+                while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+                        printf("%s\n", pkg_shlib_name(shlib));
                 }
 
                 if (!(opt & INFO_QUIET))
