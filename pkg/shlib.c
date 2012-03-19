@@ -50,7 +50,7 @@ usage_shlib(void)
 }
 
 char*
-sanatize(char *target, const char *source, size_t size)
+sanitize(char *target, const char *source, size_t size)
 {
 	size_t i;
 	int s;
@@ -87,7 +87,7 @@ exec_shlib(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (sanatize(libname, argv[1], sizeof(libname)) == NULL) {
+	if (sanitize(libname, argv[1], sizeof(libname)) == NULL) {
 		usage_shlib();
 		return (EX_USAGE);
 	}
