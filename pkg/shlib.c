@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
@@ -47,7 +50,7 @@ usage_shlib(void)
 }
 
 char*
-sanitize(char *target, const char *source, size_t size)
+sanatize(char *target, const char *source, size_t size)
 {
 	size_t i;
 	int s;
@@ -84,7 +87,7 @@ exec_shlib(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (sanitize(libname, argv[1], sizeof(libname)) == NULL) {
+	if (sanatize(libname, argv[1], sizeof(libname)) == NULL) {
 		usage_shlib();
 		return (EX_USAGE);
 	}
