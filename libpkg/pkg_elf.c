@@ -111,7 +111,7 @@ register_shlibs(__unused struct pkgdb *db, struct pkg *pkg, const char *name)
 
 static int
 analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath,
-	    int(*lib_handler)(struct pkgdb*, struct pkg*, const char*))
+	    int(*analyse_action)(struct pkgdb*, struct pkg*, const char*))
 {
 	Elf *e;
 	Elf_Scn *scn = NULL;
@@ -157,7 +157,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath,
 
 		name = elf_strptr(e, shdr.sh_link, dyn->d_un.d_val);
 
-		if ( lib_handler(db, pkg, name) != EPKG_OK )
+		if (analyse_action(db, pkg, name) != EPKG_OK)
 			break;			
 	}
 	pkg_free(p);
