@@ -297,6 +297,10 @@ pkg_init(const char *path)
 	yaml_node_t *node;
 	size_t i;
 	const char *val = NULL;
+	char pkgarch[BUFSIZ];
+
+	get_system_pkgarch(pkgarch, BUFSIZ);
+	printf("%s\n", pkgarch);
 
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
