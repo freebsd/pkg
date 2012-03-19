@@ -204,7 +204,7 @@ exec_register(int argc, char **argv)
 	}
 
 	if (heuristic)
-		pkg_analyse_files(db, pkg);
+		pkg_analyse_files(db, pkg, PKG_ANALYSE_ADD_MISSING_DEPS);
 
 	if (input_path != NULL) {
 		pkg_copy_tree(pkg, input_path, "/");

@@ -29,6 +29,7 @@
 #include <sys/elf_common.h>
 
 #include <ctype.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <gelf.h>
@@ -43,28 +44,87 @@
 #include "private/elf_tables.h"
 
 static int
-analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
+add_forgotten_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkg *p = NULL;
 	struct pkgdb_it *it = NULL;
-	Elf *e = NULL;
+	const char *pkgorigin, *pkgname, *pkgversion;
+	Link_map *map;
+	bool found = false;
+	void *handle;
+
+	handle = dlopen(name, RTLD_LAZY);
+	if (handle == NULL) {
+		pkg_emit_error("accessing shared library %s failed -- %s", name, dlerror());
+		return (EPKG_FATAL);
+	}
+
+	dlinfo(handle, RTLD_DI_LINKMAP, &map);
+
+	if ((it = pkgdb_query_which(db, map->l_name)) == NULL) {
+		dlclose(handle);
+		return (EPKG_OK); /* shlib not from any pkg */
+	}
+	if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+		found = false;
+		pkg_get(pkg, PKG_ORIGIN, &pkgorigin);
+		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+			if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), pkgorigin) == 0) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			pkg_get(p, PKG_ORIGIN, &pkgorigin, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
+			pkg_emit_error("adding forgotten depends (%s): %s-%s",
+				       map->l_name, pkgname, pkgversion);
+			pkg_adddep(pkg, pkgname, pkgorigin, pkgversion);
+		}
+		pkg_free(p);
+	}
+	dlclose(handle);
+	pkgdb_it_free(it);
+
+	return (EPKG_OK);
+}
+
+static int
+register_shlibs(__unused struct pkgdb *db, struct pkg *pkg, const char *name)
+{
+	struct pkg_shlib *s = NULL;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	while (pkg_shlibs(pkg, &s) == EPKG_OK) {
+		if (strcmp(name, pkg_shlib_name(s)) == 0) {
+			/* already registered, but that's OK */
+			return (EPKG_OK);
+		}
+	}
+	pkg_shlib_new(&s);
+	sbuf_set(&s->name, name);
+	STAILQ_INSERT_TAIL(&pkg->shlibs, s, next);
+	return (EPKG_OK);
+}
+
+static int
+analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath,
+	    int(*lib_handler)(struct pkgdb*, struct pkg*, const char*))
+{
+	Elf *e;
 	Elf_Scn *scn = NULL;
 	GElf_Shdr shdr;
 	Elf_Data *data;
 	GElf_Dyn *dyn, dyn_mem;
 
-	const char *pkgorigin, *pkgname, *pkgversion;
 	size_t numdyn;
 	size_t dynidx;
-	void *handle;
-	Link_map *map;
 	char *name;
-	bool found=false;
 
 	int fd;
 
-	pkg_get(pkg, PKG_ORIGIN, &pkgorigin, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0)
 		return (EPKG_FATAL);
 
@@ -96,28 +156,9 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 			continue;
 
 		name = elf_strptr(e, shdr.sh_link, dyn->d_un.d_val);
-		handle = dlopen(name, RTLD_LAZY);
 
-		if (handle != NULL) {
-			dlinfo(handle, RTLD_DI_LINKMAP, &map);
-			if ((it = pkgdb_query_which(db, map->l_name)) == NULL)
-				return (EPKG_FATAL);
-
-			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-				found = false;
-				while (pkg_deps(pkg, &dep) == EPKG_OK) {
-					if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), pkgorigin) == 0)
-						found = true;
-				}
-				if (!found) {
-					pkg_emit_error("adding forgotten depends (%s): %s-%s",
-					    map->l_name, pkgname, pkgversion);
-					pkg_adddep(pkg, pkgname, pkgorigin, pkgversion);
-				}
-			}
-			dlclose(handle);
-		}
-		pkgdb_it_free(it);
+		if ( lib_handler(db, pkg, name) != EPKG_OK )
+			break;			
 	}
 	pkg_free(p);
 	if (e != NULL)
@@ -129,15 +170,23 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 }
 
 int
-pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
+pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, pkg_analyse_action action)
 {
 	struct pkg_file *file = NULL;
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
-	while (pkg_files(pkg, &file) == EPKG_OK)
-		analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH));
+	switch (action) {
+		case PKG_ANALYSE_ADD_MISSING_DEPS:
+			while (pkg_files(pkg, &file) == EPKG_OK)
+				analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH), add_forgotten_depends);
+			break;
+		case PKG_ANALYSE_REGISTER_SHLIBS:
+			while (pkg_files(pkg, &file) == EPKG_OK)
+				analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH), register_shlibs);
+			break;
+	}
 
 	return (EPKG_OK);
 }
