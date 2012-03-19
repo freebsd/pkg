@@ -91,7 +91,7 @@ void usage_search(void);
 /* pkg shlib */
 int exec_shlib(int, char **);
 void usage_shlib(void);
-char *sanitize(char *, const char *, size_t);
+char *sanatize(char *, const char *, size_t);
 
 /* pkg update */
 int exec_update(int, char **);
