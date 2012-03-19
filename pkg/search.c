@@ -79,7 +79,7 @@ exec_search(int argc, char **argv)
 				reponame = optarg;
 			case 'f':
 				opt |= INFO_FULL;
-				flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS;
+				flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS;
 				break;
 			case 'D':
 				opt |= INFO_PRINT_DEP;

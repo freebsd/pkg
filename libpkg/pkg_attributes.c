@@ -357,3 +357,32 @@ pkg_option_value(struct pkg_option *option)
 {
 	return (sbuf_get(option->value));
 }
+
+/*
+ * Shared Libraries
+ */
+int
+pkg_shlib_new(struct pkg_shlib **sl)
+{
+	if (( *sl = calloc(1, sizeof(struct pkg_shlib))) == NULL)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+const char *
+pkg_shlib_name(struct pkg_shlib *sl)
+{
+	return (sbuf_get(sl->name));
+}
+
+void
+pkg_shlib_free(struct pkg_shlib *sl)
+{
+
+	if (sl == NULL)
+		return;
+
+	sbuf_free(sl->name);
+	free(sl);
+}

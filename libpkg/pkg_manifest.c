@@ -52,6 +52,7 @@
 #define PKG_USERS -9
 #define PKG_GROUPS -10
 #define PKG_DIRECTORIES -11
+#define PKG_SHLIBS -12
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_flatsize_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -93,6 +94,7 @@ static struct manifest_key {
 	{ "users", PKG_USERS, YAML_MAPPING_NODE, parse_mapping},
 	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping}, /* compatibility with old format */
+	{ "shlibs", PKG_SHLIBS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ NULL, -99, -99, NULL}
 };
 
@@ -264,6 +266,12 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc, int at
 					parse_mapping(pkg, val, doc, attr);
 				else
 					pkg_emit_error("Skipping malformed dirs");
+				break;
+			case PKG_SHLIBS:
+				if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0)
+					pkg_emit_error("Skipping malformed shared library");
+				else 
+					pkg_addshlib(pkg, val->data.scalar.value);
 		}
 		++item;
 	}
@@ -655,6 +663,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_license *license = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
+	struct pkg_shlib *shlib = NULL;
 	struct sbuf *tmpsbuf = NULL;
 	int rc = EPKG_OK;
 	int mapping;
@@ -763,6 +772,10 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		manifest_append_kv(groups, pkg_group_name(group), group->gidstr);
 	}*/
 
+	seq = -1;
+	while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "shlibs", pkg_shlib_name(shlib));
+ 
 	map = -1;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		if (map == -1)
