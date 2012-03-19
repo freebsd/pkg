@@ -24,6 +24,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/endian.h>
+#include <sys/types.h>
+#include <sys/elf_common.h>
+
+#include <ctype.h>
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <gelf.h>
@@ -33,7 +38,9 @@
 #include <string.h>
 
 #include "pkg.h"
+#include "private/pkg.h"
 #include "private/event.h"
+#include "private/elf_tables.h"
 
 static int
 analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
@@ -131,4 +138,113 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 		analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH));
 
 	return (EPKG_OK);
+}
+
+static const char *
+elf_corres_to_string(struct _elf_corres* m, int e)
+{
+	int i = 0;
+
+	for (i = 0; m[i].string != NULL; i++)
+		if (m[i].elf_nb == e)
+			return (m[i].string);
+
+	return ("unknown");
+}
+
+
+int
+get_system_pkgarch(char *dest, size_t sz)
+{
+	Elf *elf = NULL;
+	GElf_Ehdr elfhdr;
+	GElf_Shdr shdr;
+	Elf_Data *data;
+	Elf_Note note;
+	Elf_Scn *scn = NULL;
+	int fd;
+	char *src;
+	char *osname;
+	uint32_t version;
+	int ret = EPKG_OK;
+	int i;
+
+	if (elf_version(EV_CURRENT) == EV_NONE) {
+		pkg_emit_error("ELF library initialization failed: %s", elf_errmsg(-1));
+		return (EPKG_FATAL);
+	}
+
+	if ((fd = open("/bin/sh", O_RDONLY)) < 0) {
+		pkg_emit_errno("open()", "");
+		return (EPKG_FATAL);
+	}
+
+	if ((elf = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
+		ret = EPKG_FATAL;
+		pkg_emit_error("elf_begin() failed: %s.", elf_errmsg(-1)); 
+		goto cleanup;
+	}
+
+	if (gelf_getehdr(elf, &elfhdr) == NULL) {
+		ret = EPKG_FATAL;
+		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
+		goto cleanup;
+	}
+
+	while ((scn = elf_nextscn(elf, scn)) != NULL) {
+		if (gelf_getshdr(scn, &shdr) != &shdr) {
+			ret = EPKG_FATAL;
+			pkg_emit_error("getshdr() failed: %s.", elf_errmsg(-1));
+			goto cleanup;
+		}
+
+		if (shdr.sh_type == SHT_NOTE)
+			break;
+	}
+
+	if (scn == NULL) {
+		ret = EPKG_FATAL;
+		pkg_emit_error("fail to get the note section");
+		goto cleanup;
+	}
+
+	data = elf_getdata(scn, NULL);
+	src = data->d_buf;
+	memcpy(&note, src, sizeof(Elf_Note));
+	src += sizeof(Elf_Note);
+	osname = src;
+	src += roundup2(note.n_namesz, 4);
+	if (elfhdr.e_ident[EI_DATA] == ELFDATA2MSB)
+		version = be32dec(src);
+	else
+		version = le32dec(src);
+
+	for (i = 0; osname[i] != '\0'; i++)
+		osname[i] = (char)tolower(osname[i]);
+
+	snprintf(dest, sz, "%s-%s-%s-%d",
+	    elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
+	    elf_corres_to_string(wordsize_corres, (int)elfhdr.e_ident[EI_CLASS]),
+	    osname,
+	    version / 100000);
+
+	switch (elfhdr.e_machine) {
+		case EM_ARM:
+			snprintf(dest + strlen(dest), sz - strlen(dest), "-%s_%s",
+			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
+			    (elfhdr.e_flags &  0xFF000000) > 0 ? "eabi" : "oabi");
+			break;
+		case EM_MIPS:
+			snprintf(dest + strlen(dest), sz - strlen(dest), "-%s",
+			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]));
+	}
+
+	printf("%s\n", dest);
+
+cleanup:
+	if (elf != NULL)
+		elf_end(elf);
+
+	close(fd);
+	return (ret);
 }

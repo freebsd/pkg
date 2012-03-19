@@ -254,4 +254,6 @@ int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg);
 
+int get_system_pkgarch( char *dest, size_t sz);
+
 #endif

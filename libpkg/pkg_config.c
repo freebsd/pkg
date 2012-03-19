@@ -36,6 +36,7 @@
 #include <yaml.h>
 
 #include "pkg.h"
+#include "private/pkg.h"
 #include "private/event.h"
 
 #define STRING 0
