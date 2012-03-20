@@ -267,9 +267,9 @@ get_system_pkgarch(char *dest, size_t sz)
 				abi = "n32";
 			} else if ((elfhdr.e_flags & 0x00001000) > 0) {
 				abi = "o32";
-			} else if (elfhdr.e_ident[EI_DATA]) {
+			} else if (elfhdr.e_ident[EI_DATA] == ELFCLASS32) {
 				abi = "o32";
-			} else if (elfhdr.e_ident[EI_DATA]){
+			} else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64){
 				abi = "n64";
 			}
 			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
