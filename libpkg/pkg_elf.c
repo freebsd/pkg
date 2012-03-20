@@ -48,7 +48,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	struct pkg_dep *dep = NULL;
 	struct pkg *p = NULL;
 	struct pkgdb_it *it = NULL;
-	Elf *e;
+	Elf *e = NULL;
 	Elf_Scn *scn = NULL;
 	GElf_Shdr shdr;
 	Elf_Data *data;
@@ -120,6 +120,8 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		pkgdb_it_free(it);
 	}
 	pkg_free(p);
+	if (e != NULL)
+		elf_end(e);
 	close(fd);
 
 	return (EPKG_OK);
