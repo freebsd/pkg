@@ -133,6 +133,7 @@ analyse_elf(const char *fpath, const char ***namelist)
 
 	size_t numdyn;
 	size_t dynidx;
+	const char *osname;
 	const char **name;
 
 	int fd;
@@ -144,6 +145,7 @@ analyse_elf(const char *fpath, const char ***namelist)
 		close(fd);
 		return (EPKG_FATAL);
 	}
+
 	if (elf_kind(e) != ELF_K_ELF) {
 		close(fd);
 		return (EPKG_END); /* Not an elf file: no results */
@@ -153,6 +155,31 @@ analyse_elf(const char *fpath, const char ***namelist)
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			close(fd);
 			return (EPKG_FATAL);
+		}
+		if (shdr.sh_type == SHT_NOTE)
+			break;
+	}
+
+	if  (scn == NULL) {
+		ret = EPKG_FATAL;
+		pkg_emit_error("failed to get the note section for %s", fpath);
+		goto cleanup;
+	}
+
+	data = elf_getdata(scn, NULL);
+        osname = (const char *) data->d_buf + sizeof(Elf_Note);
+	if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
+		ret = EPKG_END;	/* Foreign (probably linux) ELF object */
+		pkg_emit_error("ingnoring %s ELF object", osname);
+		goto cleanup;
+	}
+
+	scn = NULL;
+	while (( scn = elf_nextscn(e, scn)) != NULL) {
+		if (gelf_getshdr(scn, &shdr) != &shdr) {
+			ret = EPKG_FATAL;
+			pkg_emit_error("getshdr() failed: %s", elf_errmsg(-1));
+			goto cleanup;
 		}
 		if (shdr.sh_type == SHT_DYNAMIC)
 			break;
