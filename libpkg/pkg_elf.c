@@ -185,10 +185,9 @@ analyse_elf(const char *fpath, const char ***namelist)
 		name++;
 	}
 
-	pkg_free(p);
-	if (e != NULL)
+cleanup:
+	if ( e != NULL)
 		elf_end(e);
-	*name = NULL;
 	close(fd);
 
 	return (EPKG_OK);
