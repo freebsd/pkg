@@ -199,12 +199,16 @@ exec_register(int argc, char **argv)
 	if (plist != NULL)
 		free(plist);
 
+	if (pkg_register_shlibs(pkg) != EPKG_OK) {
+		return (EX_IOERR);
+	}
+
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
 	}
 
 	if (heuristic)
-		pkg_analyse_files(db, pkg, PKG_ANALYSE_ADD_MISSING_DEPS);
+		pkg_analyse_files(db, pkg);
 
 	if (input_path != NULL) {
 		pkg_copy_tree(pkg, input_path, "/");

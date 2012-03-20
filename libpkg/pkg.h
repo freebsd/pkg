@@ -400,20 +400,47 @@ int pkg_options(struct pkg *, struct pkg_option **option);
 int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
 
 /**
- * Iterate over all of the files within the package.  Determine which
- * are ELF format executables or shared objects, and extract the names
- * of any shared libraries those depend on.  If pkg_analyse_action is
- * PKG_ANALYSE_ADD_MISSING_DEPS, determine which (if any) package
- * supplied the shared library and add that package to the
- * dependencies of pkg if not already known.  If pkg_analyse_action
- * is PKG_ANALYSE_REGISTER_SHLIBS, register the names of all shared
- * libraries required by pkg files in the database.
+ * Initialise the ELF libraries for pkg_register_shlibs_for_file() 
+ * or pkg_analyse_one_file()
  * @return An error code
  */
 
-typedef enum { PKG_ANALYSE_ADD_MISSING_DEPS, PKG_ANALYSE_REGISTER_SHLIBS } pkg_analyse_action;
+int pkg_analyse_init(void);
 
-int pkg_analyse_files(struct pkgdb *, struct pkg *, pkg_analyse_action);
+/**
+ * Register the shared libraries used by fname, which is one of the
+ * files belonging to pkg.
+ * @return An error code
+ */
+
+int pkg_register_shlibs_for_file(struct pkg *pkg, const char *fname);
+
+/**
+ * Iterate over all of the files within the package pkg, registering
+ * the shared libraries used by each of them.
+ * @return An error code
+ */
+
+int pkg_register_shlibs(struct pkg *pkg);
+
+/**
+ * Analyse one file fname, which belongs to package pkg.  If it is an
+ * ELF format executable or shared library, ensure that all of the
+ * packages providing shared objects used by the file are added to the
+ * pkg dependency list.
+ * @return An error code
+ */
+
+int pkg_analyse_one_file(struct pkgdb *db, struct pkg *pkg, const char *fname);
+
+/**
+ * Iterate over all of the files within the package pkg, ensuring the
+ * dependency list contains all applicable packages providing the
+ * shared objects used by pkg.
+ * @return An error code
+ */
+
+int pkg_analyse_files(struct pkgdb *, struct pkg *);
 
 /**
  * Generic setter for simple attributes.
