@@ -170,6 +170,7 @@ get_system_pkgarch(char *dest, size_t sz)
 	uint32_t version;
 	int ret = EPKG_OK;
 	int i;
+	const char *abi;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s", elf_errmsg(-1));
@@ -224,22 +225,39 @@ get_system_pkgarch(char *dest, size_t sz)
 	for (i = 0; osname[i] != '\0'; i++)
 		osname[i] = (char)tolower(osname[i]);
 
-	snprintf(dest, sz, "%s-%s-%s-%d",
-	    elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
-	    elf_corres_to_string(wordsize_corres, (int)elfhdr.e_ident[EI_CLASS]),
+	snprintf(dest, sz, "%s:%d:%s:%s",
 	    osname,
-	    version / 100000);
+	    version / 100000,
+	    elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
+	    elf_corres_to_string(wordsize_corres, (int)elfhdr.e_ident[EI_CLASS]));
 
 	switch (elfhdr.e_machine) {
 		case EM_ARM:
-			snprintf(dest + strlen(dest), sz - strlen(dest), "-%s_%s_%s",
+			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
 			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
 			    (elfhdr.e_flags &  0x80) > 0 ? "eabi" : "oabi",
 			    (elfhdr.e_flags & 0x200) > 0 ? "softfp" : "vfp");
 			break;
 		case EM_MIPS:
-			snprintf(dest + strlen(dest), sz - strlen(dest), "-%s",
-			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]));
+			/*
+			 * this is taken from binutils sources:
+			 * include/elf/mips.h
+			 * mapping is figured out from binutils:
+			 * gas/config/tc-mips.c
+			 */
+			if ((elfhdr.e_flags & 0x00000020) > 0) {
+				abi = "n32";
+			} else if ((elfhdr.e_flags & 0x00001000) > 0) {
+				abi = "o32";
+			} else if ((elfhdr.e_flags & 0x00002000) > 0) {
+				abi = "o64";
+			} else {
+				abi = "n64";
+			}
+			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
+			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
+			    abi);
+			break;
 	}
 
 cleanup:
