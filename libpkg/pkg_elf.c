@@ -242,8 +242,6 @@ get_system_pkgarch(char *dest, size_t sz)
 			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]));
 	}
 
-	printf("%s\n", dest);
-
 cleanup:
 	if (elf != NULL)
 		elf_end(elf);
