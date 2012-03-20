@@ -148,6 +148,9 @@ exec_info(int argc, char **argv)
 		}
 	}
 
+	if (argc == 1)
+		match = MATCH_ALL;
+
 	argc -= optind;
 	argv += optind;
 
