@@ -233,10 +233,28 @@ get_system_pkgarch(char *dest, size_t sz)
 
 	switch (elfhdr.e_machine) {
 		case EM_ARM:
-			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+			if ((elfhdr.e_flags & 0x03) > 0 ||
+			    (elfhdr.e_flags & 0x04) > 0 ||
+			    (elfhdr.e_flags & 0x05) > 0) {
+				abi = "armv5";
+			} else if ((elfhdr.e_flags & 0x06) > 0 ||
+			    (elfhdr.e_flags & 0x07) > 0 ||
+			    (elfhdr.e_flags & 0x08) > 0 ||
+			    (elfhdr.e_flags & 0x09) > 0 ||
+			    (elfhdr.e_flags & 0x0B) > 0 ||
+			    (elfhdr.e_flags & 0x0C) > 0) {
+				abi = "armv6";
+			} else if ((elfhdr.e_flags & 0x0A) > 0 ||
+			    (elfhdr.e_flags & 0x0D) > 0) {
+				abi = "armv7";
+			} else {
+				abi = "unknown";
+			}
+			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s:%s",
 			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
 			    (elfhdr.e_flags &  0x80) > 0 ? "eabi" : "oabi",
-			    (elfhdr.e_flags & 0x200) > 0 ? "softfp" : "vfp");
+			    (elfhdr.e_flags & 0x200) > 0 ? "softfp" : "vfp",
+			    abi);
 			break;
 		case EM_MIPS:
 			/*
@@ -249,9 +267,9 @@ get_system_pkgarch(char *dest, size_t sz)
 				abi = "n32";
 			} else if ((elfhdr.e_flags & 0x00001000) > 0) {
 				abi = "o32";
-			} else if ((elfhdr.e_flags & 0x00002000) > 0) {
-				abi = "o64";
-			} else {
+			} else if (elfhdr.e_ident[EI_DATA]) {
+				abi = "o32";
+			} else if (elfhdr.e_ident[EI_DATA]){
 				abi = "n64";
 			}
 			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
