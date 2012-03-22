@@ -1814,7 +1814,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	sql_clean_stmt(stmt_cat);
 	sql_clean_stmt(stmt_categories);
 	sql_clean_stmt(stmt_lic);
-	sql_clean_stmt(stmt_lic);
 	sql_clean_stmt(stmt_licenses);
 	sql_clean_stmt(stmt_groups);
 	sql_clean_stmt(stmt_users);
