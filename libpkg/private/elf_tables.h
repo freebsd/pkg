@@ -59,5 +59,14 @@ struct _elf_corres os_corres[] = {
 	{ -1, NULL }
 };
 
+#define EF_MIPS_ABI	0x0000F000
+#define E_MIPS_ABI_O32	0x00001000
+#define E_MIPS_ABI_N32	0x00000020
+
+#define EF_ARM_NEW_ABI	0x80
+#define EF_ARM_OLD_ABI	0x100
+
+#define EF_ARM_SOFT_FLOAT	0x200
+#define EF_ARM_VFP_FLOAT	0x400
 
 #endif /* ELF_TABLES_H_ */

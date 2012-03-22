@@ -233,28 +233,10 @@ get_system_pkgarch(char *dest, size_t sz)
 
 	switch (elfhdr.e_machine) {
 		case EM_ARM:
-			if ((elfhdr.e_flags & 0x03) > 0 ||
-			    (elfhdr.e_flags & 0x04) > 0 ||
-			    (elfhdr.e_flags & 0x05) > 0) {
-				abi = "armv5";
-			} else if ((elfhdr.e_flags & 0x06) > 0 ||
-			    (elfhdr.e_flags & 0x07) > 0 ||
-			    (elfhdr.e_flags & 0x08) > 0 ||
-			    (elfhdr.e_flags & 0x09) > 0 ||
-			    (elfhdr.e_flags & 0x0B) > 0 ||
-			    (elfhdr.e_flags & 0x0C) > 0) {
-				abi = "armv6";
-			} else if ((elfhdr.e_flags & 0x0A) > 0 ||
-			    (elfhdr.e_flags & 0x0D) > 0) {
-				abi = "armv7";
-			} else {
-				abi = "unknown";
-			}
-			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s:%s",
+			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
 			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-			    (elfhdr.e_flags &  0x80) > 0 ? "eabi" : "oabi",
-			    (elfhdr.e_flags & 0x200) > 0 ? "softfp" : "vfp",
-			    abi);
+			    (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
+			    (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
 			break;
 		case EM_MIPS:
 			/*
@@ -263,14 +245,19 @@ get_system_pkgarch(char *dest, size_t sz)
 			 * mapping is figured out from binutils:
 			 * gas/config/tc-mips.c
 			 */
-			if ((elfhdr.e_flags & 0x00000020) > 0) {
-				abi = "n32";
-			} else if ((elfhdr.e_flags & 0x00001000) > 0) {
-				abi = "o32";
-			} else if (elfhdr.e_ident[EI_DATA] == ELFCLASS32) {
-				abi = "o32";
-			} else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64){
-				abi = "n64";
+			switch (elfhdr.e_flags & EF_MIPS_ABI) {
+				case E_MIPS_ABI_O32:
+					abi = "o32";
+					break;
+				case E_MIPS_ABI_N32:
+					abi = "n32";
+					break;
+				default:
+					if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
+						abi = "o32";
+					else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
+						abi = "n64";
+					break;
 			}
 			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
 			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
