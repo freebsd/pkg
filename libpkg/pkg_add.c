@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
+#include <fnmatch.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -126,7 +127,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	struct pkg *p = NULL;
 	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
-	struct utsname u;
+	char myarch[BUFSIZ];
 	bool extract = true;
 	bool handle_rc = false;
 	char dpath[MAXPATHLEN + 1];
@@ -160,28 +161,19 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	if (flags & PKG_ADD_AUTOMATIC)
 		pkg_set(pkg, PKG_AUTOMATIC, true);
 
-	if (uname(&u) != 0) {
-		pkg_emit_errno("uname", "");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
 	/*
 	 * Check the architecture
 	 */
 
+	pkg_get_myarch(myarch, BUFSIZ);
 	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin);
 
-	if (strcmp(u.machine, arch) != 0) {
+	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH) {
 		pkg_emit_error("wrong architecture: %s instead of %s",
-		    arch, u.machine);
+		    arch, myarch);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
-
-	/*
-	 * TODO: check the os version
-	 */
 
 	/*
 	 * Check if the package is already installed
