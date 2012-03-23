@@ -155,7 +155,6 @@ typedef enum {
 	PKG_MTREE,
 	PKG_MESSAGE,
 	PKG_ARCH,
-	PKG_OSVERSION,
 	PKG_MAINTAINER,
 	PKG_WWW,
 	PKG_PREFIX,
@@ -868,4 +867,5 @@ int pkg_shutdown(void);
 void pkg_test_filesum(struct pkg *);
 int64_t pkg_recompute_flatsize(struct pkg *);
 
+int pkg_get_myarch(char *pkgarch, size_t sz);
 #endif

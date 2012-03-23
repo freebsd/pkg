@@ -156,7 +156,7 @@ elf_corres_to_string(struct _elf_corres* m, int e)
 
 
 int
-get_system_pkgarch(char *dest, size_t sz)
+pkg_get_myarch(char *dest, size_t sz)
 {
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;

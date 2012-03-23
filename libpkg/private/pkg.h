@@ -40,7 +40,7 @@
 
 #include "private/utils.h"
 
-#define PKG_NUM_FIELDS 18
+#define PKG_NUM_FIELDS 17
 
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
 		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
@@ -253,7 +253,5 @@ int pkgdb_load_license(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg);
-
-int get_system_pkgarch( char *dest, size_t sz);
 
 #endif

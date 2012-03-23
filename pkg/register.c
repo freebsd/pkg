@@ -27,7 +27,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/utsname.h>
 
 #include <err.h>
 #include <stdio.h>
@@ -76,15 +75,14 @@ exec_register(int argc, char **argv)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
-	struct utsname u;
 
 	regex_t preg;
 	regmatch_t pmatch[2];
 
 	int ch;
 	char *plist = NULL;
-	char *v = NULL;
 	char *arch = NULL;
+	char myarch[BUFSIZ];
 	char *mdir = NULL;
 	char *www = NULL;
 	char *input_path = NULL;
@@ -141,9 +139,9 @@ exec_register(int argc, char **argv)
 	if (plist == NULL)
 		errx(EX_USAGE, "missing -f flag");
 
-	uname(&u);
 	if (arch == NULL) {
-		pkg_set(pkg, PKG_ARCH, u.machine);
+		pkg_get_myarch(myarch, BUFSIZ);
+		pkg_set(pkg, PKG_ARCH, myarch);
 	} else {
 		pkg_set(pkg, PKG_ARCH, arch);
 		free(arch);
@@ -190,14 +188,6 @@ exec_register(int argc, char **argv)
 	} else {
 		pkg_set(pkg, PKG_WWW, www);
 		free(www);
-	}
-
-	if (strstr(u.release, "RELEASE") == NULL) {
-		asprintf(&v, "%s-%d", u.release, __FreeBSD_version);
-		pkg_set(pkg, PKG_OSVERSION, v);
-		free(v);
-	} else {
-		pkg_set(pkg, PKG_OSVERSION, u.release);
 	}
 
 	ret += ports_parse_plist(pkg, plist);

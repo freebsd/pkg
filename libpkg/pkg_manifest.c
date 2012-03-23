@@ -73,7 +73,6 @@ static struct manifest_key {
 	{ "origin", PKG_ORIGIN, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "version", PKG_VERSION, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "arch", PKG_ARCH, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "osversion", PKG_OSVERSION, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "www", PKG_WWW, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "comment", PKG_COMMENT, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "maintainer", PKG_MAINTAINER, YAML_SCALAR_NODE, pkg_set_from_node},
@@ -674,7 +673,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int groups = -1;*/
 	const char *script_types = NULL;
 	struct sbuf *destbuf = sbuf_new_auto();
-	const char *name, *version, *pkgorigin, *comment, *pkgarch, *osversion, *www, *pkgmaintainer, *prefix;
+	const char *name, *version, *pkgorigin, *comment, *pkgarch, *www, *pkgmaintainer, *prefix;
 	const char *desc, *message;
 	lic_t licenselogic;
 	int64_t flatsize;
@@ -697,7 +696,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	mapping = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin, PKG_COMMENT, &comment,
-	    PKG_ARCH, &pkgarch, PKG_OSVERSION, &osversion, PKG_WWW, &www,
+	    PKG_ARCH, &pkgarch, PKG_WWW, &www,
 	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message, PKG_VERSION, &version);
@@ -706,7 +705,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	manifest_append_kv(mapping, "origin", pkgorigin, PLAIN);
 	manifest_append_kv(mapping, "comment", comment, PLAIN);
 	manifest_append_kv(mapping, "arch", pkgarch, PLAIN);
-	manifest_append_kv(mapping, "osversion", osversion, PLAIN);
 	manifest_append_kv(mapping, "www", www, PLAIN);
 	manifest_append_kv(mapping, "maintainer", pkgmaintainer, PLAIN);
 	manifest_append_kv(mapping, "prefix", prefix, PLAIN);

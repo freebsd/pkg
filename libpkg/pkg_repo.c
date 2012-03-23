@@ -260,7 +260,6 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"comment TEXT NOT NULL,"
 			"desc TEXT NOT NULL,"
 			"arch TEXT NOT NULL,"
-			"osversion TEXT NOT NULL,"
 			"maintainer TEXT NOT NULL,"
 			"www TEXT,"
 			"prefix TEXT NOT NULL,"
@@ -315,10 +314,10 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		;
 	const char pkgsql[] = ""
 		"INSERT INTO packages ("
-				"origin, name, version, comment, desc, arch, osversion, "
+				"origin, name, version, comment, desc, arch, "
 				"maintainer, www, prefix, pkgsize, flatsize, licenselogic, cksum, path"
 		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15);";
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);";
 	const char depssql[] = ""
 		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
@@ -430,7 +429,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 	while ((ent = fts_read(fts)) != NULL) {
 		const char *name, *version, *origin, *comment, *desc;
-		const char *arch, *osversion, *maintainer, *www, *prefix;
+		const char *arch, *maintainer, *www, *prefix;
 		int64_t flatsize;
 		lic_t licenselogic;
 
@@ -469,8 +468,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name, PKG_VERSION, &version,
 		    PKG_COMMENT, &comment, PKG_DESC, &desc, PKG_ARCH, &arch,
 		    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_PREFIX, &prefix,
-		    PKG_FLATSIZE, &flatsize, PKG_LICENSE_LOGIC, &licenselogic,
-		    PKG_OSVERSION, &osversion);
+		    PKG_FLATSIZE, &flatsize, PKG_LICENSE_LOGIC, &licenselogic);
 
 		sqlite3_bind_text(stmt_pkg, 1, origin, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 2, name, -1, SQLITE_STATIC);
@@ -478,16 +476,15 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_text(stmt_pkg, 4, comment, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 5, desc, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 6, arch, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 7, osversion, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 8, maintainer, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 9, www, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 10, prefix, -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt_pkg, 11, ent->fts_statp->st_size);
-		sqlite3_bind_int64(stmt_pkg, 12, flatsize);
+		sqlite3_bind_text(stmt_pkg, 7, maintainer, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 8, www, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 9, prefix, -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt_pkg, 10, ent->fts_statp->st_size);
+		sqlite3_bind_int64(stmt_pkg, 11, flatsize);
 		sha256_file(ent->fts_accpath, cksum);
-		sqlite3_bind_int64(stmt_pkg, 13, licenselogic);
-		sqlite3_bind_text(stmt_pkg, 14, cksum, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 15, pkg_path, -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt_pkg, 12, licenselogic);
+		sqlite3_bind_text(stmt_pkg, 13, cksum, -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt_pkg, 14, pkg_path, -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite);
