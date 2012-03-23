@@ -149,6 +149,11 @@ analyse_elf(const char *fpath, const char ***namelist)
 		ret = EPKG_END; /* Empty file: no results */
 		goto cleanup;
 	}
+	if (!S_ISREG(sb.st_mode)) {
+		ret = EPKG_END;	/* Not a regular file */
+		pkg_emit_error("Warning: %s not a regular file\n", fpath);
+		goto cleanup;
+	}
 	if (( e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("elf_begin() for %s failed: %s", fpath, elf_errmsg(-1)); 
