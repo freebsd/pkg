@@ -160,18 +160,14 @@ analyse_elf(const char *fpath, const char ***namelist)
 			break;
 	}
 
-	if  (scn == NULL) {
-		ret = EPKG_FATAL;
-		pkg_emit_error("failed to get the note section for %s", fpath);
-		goto cleanup;
-	}
-
-	data = elf_getdata(scn, NULL);
-        osname = (const char *) data->d_buf + sizeof(Elf_Note);
-	if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
-		ret = EPKG_END;	/* Foreign (probably linux) ELF object */
-		pkg_emit_error("ingnoring %s ELF object", osname);
-		goto cleanup;
+	if  (scn != NULL) { /* Assume FreeBSD native if no note section */
+		data = elf_getdata(scn, NULL);
+		osname = (const char *) data->d_buf + sizeof(Elf_Note);
+		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
+			ret = EPKG_END;	/* Foreign (probably linux) ELF object */
+			pkg_emit_error("ingnoring %s ELF object", osname);
+			goto cleanup;
+		}
 	}
 
 	scn = NULL;
