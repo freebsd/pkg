@@ -180,7 +180,7 @@ analyse_elf(const char *fpath, const char ***namelist)
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
 		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
 			ret = EPKG_END;	/* Foreign (probably linux) ELF object */
-			pkg_emit_error("ignoring %s ELF object", osname);
+			pkg_emit_error("Not registering shlibs for %s ELF object %s", osname, fpath);
 			goto cleanup;
 		}
 	}
