@@ -45,15 +45,12 @@ static int
 dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
-	int ret;
+	int ret = EPKG_FATAL;
 
 	it = pkgdb_query(db, pkg_dep_get(dep, PKG_DEP_ORIGIN), MATCH_EXACT);
 
-	if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+	if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK)
 		ret = EPKG_OK;
-	} else {
-		ret = EPKG_FATAL;
-	}
 
 	pkgdb_it_free(it);
 	pkg_free(p);
