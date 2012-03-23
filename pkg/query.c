@@ -41,34 +41,36 @@
 #include "pkgcli.h"
 
 static struct query_flags {
-        const char flag;
-        const char *options;
-        const unsigned multiline;
-        const int dbflags;
+	const char flag;
+	const char *options;
+	const unsigned multiline;
+	const int dbflags;
 } q_flags[] = {
-        { 'd', "nov",		1, PKG_LOAD_DEPS },
-        { 'r', "nov",		1, PKG_LOAD_RDEPS },
-        { 'C', "",		1, PKG_LOAD_CATEGORIES },
-        { 'F', "ps",		1, PKG_LOAD_FILES }, 
-        { 'S', "",		1, PKG_LOAD_SCRIPTS },
-        { 'O', "kv",		1, PKG_LOAD_OPTIONS },
-        { 'D', "",		1, PKG_LOAD_DIRS },
-        { 'L', "",		1, PKG_LOAD_LICENSES },
-        { 'U', "",		1, PKG_LOAD_USERS },
-        { 'G', "",		1, PKG_LOAD_GROUPS },
-	{ 'B', "",              1, PKG_LOAD_SHLIBS },
+	{ 'd', "nov",		1, PKG_LOAD_DEPS },
+	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
+	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
+	{ 'F', "ps",		1, PKG_LOAD_FILES }, 
+	{ 'S', "",		1, PKG_LOAD_SCRIPTS },
+	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
+	{ 'D', "",		1, PKG_LOAD_DIRS },
+	{ 'L', "",		1, PKG_LOAD_LICENSES },
+	{ 'U', "",		1, PKG_LOAD_USERS },
+	{ 'G', "",		1, PKG_LOAD_GROUPS },
+	{ 'B', "",		1, PKG_LOAD_SHLIBS },
 	{ '?', "drCFODLUGBK",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
-        { 's', "hb",		0, PKG_LOAD_BASIC }, 
-        { 'n', "",		0, PKG_LOAD_BASIC },
-        { 'v', "",		0, PKG_LOAD_BASIC },
-        { 'o', "",		0, PKG_LOAD_BASIC },
-        { 'p', "",		0, PKG_LOAD_BASIC },
-        { 'm', "",		0, PKG_LOAD_BASIC },
-        { 'c', "",		0, PKG_LOAD_BASIC },
-        { 'w', "",		0, PKG_LOAD_BASIC },
-        { 'l', "",		0, PKG_LOAD_BASIC },
-        { 'a', "",		0, PKG_LOAD_BASIC },
-        { 'M', "",		0, PKG_LOAD_BASIC },
+	{ 's', "hb",		0, PKG_LOAD_BASIC }, 
+	{ 'n', "",		0, PKG_LOAD_BASIC },
+	{ 'v', "",		0, PKG_LOAD_BASIC },
+	{ 'o', "",		0, PKG_LOAD_BASIC },
+	{ 'p', "",		0, PKG_LOAD_BASIC },
+	{ 'm', "",		0, PKG_LOAD_BASIC },
+	{ 'c', "",		0, PKG_LOAD_BASIC },
+	{ 'w', "",		0, PKG_LOAD_BASIC },
+	{ 'l', "",		0, PKG_LOAD_BASIC },
+	{ 'a', "",		0, PKG_LOAD_BASIC },
+	{ 'M', "",		0, PKG_LOAD_BASIC },
+	{ 'i', "",		0, PKG_LOAD_BASIC },
+	{ 't', "",		0, PKG_LOAD_BASIC },
 };
 
 typedef enum {
@@ -92,6 +94,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 	const char *tmp;
 	bool automatic;
 	int64_t flatsize;
+	int64_t time;
 	lic_t licenselogic;
 
 	sbuf_clear(dest);
@@ -102,35 +105,51 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 			switch (qstr[0]) {
 				case 'n':
 					pkg_get(pkg, PKG_NAME, &tmp);
-					sbuf_cat(dest, tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
 					break;
 				case 'v':
 					pkg_get(pkg, PKG_VERSION, &tmp);
-					sbuf_cat(dest, tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
 					break;
 				case 'o':
 					pkg_get(pkg, PKG_ORIGIN, &tmp);
-					sbuf_cat(dest, tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
 					break;
 				case 'p':
 					pkg_get(pkg, PKG_PREFIX, &tmp);
-					sbuf_cat(dest, tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
 					break;
 				case 'm':
 					pkg_get(pkg, PKG_MAINTAINER, &tmp);
-					sbuf_cat(dest, tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
 					break;
 				case 'c':
 					pkg_get(pkg, PKG_COMMENT, &tmp);
-					sbuf_cat(dest, tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
 					break;
 				case 'w':
 					pkg_get(pkg, PKG_WWW, &tmp);
-					sbuf_cat(dest, tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
+					break;
+				case 'i':
+					pkg_get(pkg, PKG_INFOS, &tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
 					break;
 				case 'a':
 					pkg_get(pkg, PKG_AUTOMATIC, &automatic);
 					sbuf_printf(dest, "%d", automatic);
+					break;
+				case 't':
+					pkg_get(pkg, PKG_TIME, &time);
+					sbuf_printf(dest, "%" PRId64, time);
 					break;
 				case 's':
 					qstr++;
@@ -424,6 +443,14 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 					case 'M':
 						sbuf_cat(sqlcond, "message");
 						state = OPERATOR_STRING;
+						break;
+					case 'i':
+						sbuf_cat(sqlcond, "infos");
+						state = OPERATOR_STRING;
+						break;
+					case 't':
+						sbuf_cat(sqlcond, "time");
+						state = OPERATOR_INT;
 						break;
 					default:
 						fprintf(stderr, "malformed evaluation string");
@@ -729,6 +756,9 @@ exec_query(int argc, char **argv)
 		/* do not fail if run as a user */
 		return (EXIT_SUCCESS);
 	}
+
+	if (ret != EPKG_OK)
+		return (EX_IOERR);
 
 	if (condition != NULL) {
 		sbuf_finish(sqlcond);

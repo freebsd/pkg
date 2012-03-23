@@ -87,6 +87,7 @@ static struct manifest_key {
 	{ "desc", PKG_DESC, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "scripts", PKG_SCRIPTS, YAML_MAPPING_NODE, parse_mapping},
 	{ "message", PKG_MESSAGE, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "infos", PKG_INFOS, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "options", PKG_OPTIONS, YAML_MAPPING_NODE, parse_mapping},
 	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence}, /* compatibility with old format */
@@ -674,7 +675,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	const char *script_types = NULL;
 	struct sbuf *destbuf = sbuf_new_auto();
 	const char *name, *version, *pkgorigin, *comment, *pkgarch, *www, *pkgmaintainer, *prefix;
-	const char *desc, *message;
+	const char *desc, *message, *infos;
 	lic_t licenselogic;
 	int64_t flatsize;
 
@@ -699,7 +700,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	    PKG_ARCH, &pkgarch, PKG_WWW, &www,
 	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
-	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message, PKG_VERSION, &version);
+	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message, PKG_VERSION, &version,
+	    PKG_INFOS, &infos);
 	manifest_append_kv(mapping, "name", name, PLAIN);
 	manifest_append_kv(mapping, "version", version, PLAIN);
 	manifest_append_kv(mapping, "origin", pkgorigin, PLAIN);
@@ -835,6 +837,11 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		urlencode(pkg_script_data(script), &tmpsbuf);
 		manifest_append_kv(map, script_types, sbuf_get(tmpsbuf), LITERAL);
 	}
+	if (infos != NULL && *infos != '\0') {
+		urlencode(infos, &tmpsbuf);
+		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf), LITERAL);
+	}
+
 	if (message != NULL && *message != '\0') {
 		urlencode(message, &tmpsbuf);
 		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf), LITERAL);

@@ -51,6 +51,7 @@ static struct _fields {
 	[PKG_MAINTAINER] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_WWW] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
 	[PKG_PREFIX] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_INFOS] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
 	[PKG_REPOPATH] = {PKG_REMOTE, 0},
 	[PKG_CKSUM] = {PKG_REMOTE, 0},
 	[PKG_NEWVERSION] = {PKG_REMOTE, 1},
@@ -99,6 +100,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg->flatsize = 0;
 	pkg->new_flatsize = 0;
 	pkg->new_pkgsize = 0;
+	pkg->time = 0;
 	pkg->automatic = false;
 	pkg->licenselogic = LICENSE_SINGLE;
 
@@ -197,6 +199,9 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 			case PKG_AUTOMATIC:
 				*va_arg(ap, bool *) = pkg->automatic;
 				break;
+			case PKG_TIME:
+				*va_arg(ap, int64_t *) = pkg->time;
+				break;
 			case PKG_ROWID:
 				*va_arg(ap, int64_t *) = pkg->rowid;
 				break;
@@ -275,6 +280,9 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				break;
 			case PKG_NEW_PKGSIZE:
 				pkg->new_pkgsize = va_arg(ap, int64_t);
+				break;
+			case PKG_TIME:
+				pkg->time = va_arg(ap, int64_t);
 				break;
 			case PKG_ROWID:
 				pkg->rowid = va_arg(ap, int64_t);

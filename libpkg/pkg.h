@@ -158,6 +158,7 @@ typedef enum {
 	PKG_MAINTAINER,
 	PKG_WWW,
 	PKG_PREFIX,
+	PKG_INFOS,
 	PKG_REPOPATH,
 	PKG_CKSUM,
 	PKG_NEWVERSION,
@@ -169,6 +170,7 @@ typedef enum {
 	PKG_LICENSE_LOGIC,
 	PKG_AUTOMATIC,
 	PKG_ROWID,
+	PKG_TIME,
 } pkg_attr;
 
 /**

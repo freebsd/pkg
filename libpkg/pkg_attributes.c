@@ -379,7 +379,6 @@ pkg_shlib_name(struct pkg_shlib *sl)
 void
 pkg_shlib_free(struct pkg_shlib *sl)
 {
-
 	if (sl == NULL)
 		return;
 

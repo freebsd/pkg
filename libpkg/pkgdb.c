@@ -49,7 +49,7 @@
 #include "private/utils.h"
 
 #include "private/db_upgrades.h"
-#define DBVERSION 10
+#define DBVERSION 11
 
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
@@ -88,6 +88,8 @@ static struct column_mapping {
 	{ "pkgsize", PKG_NEW_PKGSIZE },
 	{ "licenselogic", PKG_LICENSE_LOGIC},
 	{ "automatic", PKG_AUTOMATIC},
+	{ "time", PKG_TIME},
+	{ "infos", PKG_INFOS},
 	{ "rowid", PKG_ROWID},
 	{ "id", PKG_ROWID },
 	{ "weight", -1 },
@@ -222,6 +224,17 @@ pkgdb_regex_delete(void *p)
 }
 
 static void
+pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
+{
+	if (argc != 0) {
+		sqlite3_result_error(ctx, "Invalid usage of now() no arguments expected\n", -1);
+		return;
+	}
+
+	sqlite3_result_int64(ctx, (int64_t)time(NULL));
+}
+
+static void
 pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	const unsigned char *arch = NULL;
@@ -323,7 +336,7 @@ pkgdb_upgrade(struct pkgdb *db)
 			return (EPKG_FATAL);
 
 		if (sql_exec(db->sqlite, "COMMIT;") != EPKG_OK)
-			return (EPKG_OK);
+			return (EPKG_FATAL);
 	}
 
 	return (EPKG_OK);
@@ -365,6 +378,8 @@ pkgdb_init(sqlite3 *sdb)
 		"flatsize INTEGER NOT NULL,"
 		"automatic INTEGER NOT NULL,"
 		"licenselogic INTEGER NOT NULL,"
+		"infos TEXT, "
+		"time INTEGER, "
 		"pkg_format_version INTEGER"
 	");"
 	"CREATE TABLE mtree ("
@@ -456,21 +471,21 @@ pkgdb_init(sqlite3 *sdb)
 		"UNIQUE(package_id, group_id)"
 	");"
 	"CREATE TABLE shlibs ("
-	        "id INTEGER PRIMARY KEY,"
-	        "name TEXT NOT NULL UNIQUE"
+		"id INTEGER PRIMARY KEY,"
+		"name TEXT NOT NULL UNIQUE"
 	");"
 	"CREATE TABLE pkg_shlibs ("
-	        "package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
-	                " ON UPDATE CASCADE,"
-	        "shlib_id INTEGER REFERENCES shlibs(id) ON DELETE RESTRICT"
-	                " ON UPDATE RESTRICT,"
+		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
+			" ON UPDATE CASCADE,"
+		"shlib_id INTEGER REFERENCES shlibs(id) ON DELETE RESTRICT"
+			" ON UPDATE RESTRICT,"
 		"PRIMARY KEY (package_id, shlib_id)"
 	");"
 
 	/* Mark the end of the array */
 
 	"CREATE INDEX deporigini on deps(origin);"
-	"PRAGMA user_version = 10;"
+	"PRAGMA user_version = 11;"
 	"COMMIT;"
 	;
 
@@ -542,6 +557,8 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 		if (eaccess(localpath, W_OK) == 0)
 			db->writable = 1;
 
+		sqlite3_create_function(db->sqlite, "now", 0, SQLITE_ANY, NULL,
+				pkgdb_now, NULL, NULL);
 		sqlite3_create_function(db->sqlite, "myarch", 0, SQLITE_ANY, NULL,
 				pkgdb_myarch, NULL, NULL);
 		sqlite3_create_function(db->sqlite, "myarch", 1, SQLITE_ANY, NULL,
@@ -820,7 +837,8 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	snprintf(sql, sizeof(sql),
 			"SELECT id, origin, name, version, comment, desc, "
 				"message, arch, maintainer, www, "
-				"prefix, flatsize, licenselogic, automatic "
+				"prefix, flatsize, licenselogic, automatic, "
+				"time, infos "
 			"FROM packages AS p%s "
 			"ORDER BY p.name;", comp);
 
@@ -848,6 +866,7 @@ pkgdb_query_condition(struct pkgdb *db, const char *condition)
 	    "SELECT id, origin, name, version, comment, desc, "
 	        "message, arch, maintainer, www, "
 	        "prefix, flatsize, licenselogic, automatic "
+		"time, infos "
 	    "FROM packages AS p WHERE %s "
 	    "ORDER BY p.name;", condition);
 
@@ -866,7 +885,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 	const char sql[] = ""
 		"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
-			"p.prefix, p.flatsize "
+			"p.prefix, p.flatsize, p.time, p.infos "
 			"FROM packages AS p, files AS f "
 			"WHERE p.id = f.package_id "
 				"AND f.path = ?1;";
@@ -890,7 +909,7 @@ pkgdb_query_shlib(struct pkgdb *db, const char *shlib)
 	const char sql[] = ""
 		"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
-			"p.prefix, p.flatsize "
+			"p.prefix, p.flatsize, p.time, p.infos "
 			"FROM packages AS p, pkg_shlibs AS ps, shlibs AS s "
 			"WHERE p.id = ps.package_id "
 				"AND ps.shlib_id = s.id "
@@ -1368,9 +1387,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		"INSERT OR REPLACE INTO packages( "
 			"origin, name, version, comment, desc, message, arch, "
 			"maintainer, www, prefix, flatsize, automatic, licenselogic, "
-			"mtree_id) "
+			"mtree_id, infos, time) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 13, "
-		"(SELECT id from mtree where content = ?14));";
+		"(SELECT id from mtree where content = ?14), ?15, now());";
 	const char sql_dep[] = ""
 		"INSERT OR ROLLBACK INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
@@ -1411,7 +1430,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		"UPDATE deps SET NAME=?1 , VERSION=?2 WHERE ORIGIN=?3;";
 
 	const char *mtree, *origin, *name, *version, *name2, *version2;
-	const char *comment, *desc, *message;
+	const char *comment, *desc, *message, *infos;
 	const char *arch, *maintainer, *www, *prefix;
 
 	bool automatic;
@@ -1436,7 +1455,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	    PKG_ARCH, &arch, PKG_MAINTAINER, &maintainer,
 	    PKG_WWW, &www, PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
 	    PKG_AUTOMATIC, &automatic, PKG_LICENSE_LOGIC, &licenselogic,
-	    PKG_NAME, &name);
+	    PKG_NAME, &name, PKG_INFOS, &infos);
 
 	sqlite3_bind_text(stmt, 1, mtree, -1, SQLITE_STATIC);
 
@@ -1466,6 +1485,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	sqlite3_bind_int(stmt, 12, automatic);
 	sqlite3_bind_int64(stmt, 13, licenselogic);
 	sqlite3_bind_text(stmt, 14, mtree, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 15, infos, -1, SQLITE_STATIC);
 
 	if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
 		ERROR_SQLITE(s);
@@ -2459,7 +2479,7 @@ pkgdb_query_autoremove(struct pkgdb *db)
 		sql_exec(db->sqlite, "INSERT OR IGNORE into autoremove(origin, pkgid, weight) "
 				"SELECT distinct origin, id, %d FROM packages WHERE automatic=1 AND "
 				"origin NOT IN (SELECT DISTINCT deps.origin FROM deps WHERE "
-				" deps.origin = pkgs.origin AND package_id NOT IN "
+				" deps.origin = packages.origin AND package_id NOT IN "
 				" (select pkgid from autoremove));"
 				, weight);
 	} while (sqlite3_changes(db->sqlite) != 0);

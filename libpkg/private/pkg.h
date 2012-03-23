@@ -40,7 +40,7 @@
 
 #include "private/utils.h"
 
-#define PKG_NUM_FIELDS 17
+#define PKG_NUM_FIELDS 18
 
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
 		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
@@ -73,6 +73,7 @@ struct pkg {
 	STAILQ_HEAD(shlibs, pkg_shlib) shlibs;
 	int flags;
 	int64_t rowid;
+	int64_t time;
 	lic_t licenselogic;
 	pkg_t type;
 	STAILQ_ENTRY(pkg) next;
