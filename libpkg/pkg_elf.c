@@ -27,6 +27,7 @@
 #include <sys/endian.h>
 #include <sys/types.h>
 #include <sys/elf_common.h>
+#include <sys/stat.h>
 
 #include <ctype.h>
 #include <assert.h>
@@ -130,6 +131,7 @@ analyse_elf(const char *fpath, const char ***namelist)
 	GElf_Shdr shdr;
 	Elf_Data *data;
 	GElf_Dyn *dyn, dyn_mem;
+	struct stat sb;
 
 	size_t numdyn;
 	size_t dynidx;
@@ -140,10 +142,17 @@ analyse_elf(const char *fpath, const char ***namelist)
 
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0)
 		return (EPKG_FATAL);
-
+	}
+	if (fstat(fd, &sb) != 0)
+		pkg_emit_errno("fstat() failed for %s", fpath);
+	if (sb.st_size == 0) {
+		ret = EPKG_END; /* Empty file: no results */
+		goto cleanup;
+	}
 	if (( e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
-		close(fd);
-		return (EPKG_FATAL);
+		ret = EPKG_FATAL;
+		pkg_emit_error("elf_begin() for %s failed: %s", fpath, elf_errmsg(-1)); 
+		goto cleanup;
 	}
 
 	if (elf_kind(e) != ELF_K_ELF) {
@@ -153,8 +162,9 @@ analyse_elf(const char *fpath, const char ***namelist)
 
 	while (( scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
-			close(fd);
-			return (EPKG_FATAL);
+			ret = EPKG_FATAL;
+			pkg_emit_error("getshdr() for %s failed: %s", fpath, elf_errmsg(-1));
+			goto cleanup;
 		}
 		if (shdr.sh_type == SHT_NOTE)
 			break;
@@ -165,7 +175,7 @@ analyse_elf(const char *fpath, const char ***namelist)
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
 		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
 			ret = EPKG_END;	/* Foreign (probably linux) ELF object */
-			pkg_emit_error("ingnoring %s ELF object", osname);
+			pkg_emit_error("ignoring %s ELF object", osname);
 			goto cleanup;
 		}
 	}
@@ -174,7 +184,7 @@ analyse_elf(const char *fpath, const char ***namelist)
 	while (( scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
-			pkg_emit_error("getshdr() failed: %s", elf_errmsg(-1));
+			pkg_emit_error("getshdr() failed for %s: %s", fpath, elf_errmsg(-1));
 			goto cleanup;
 		}
 		if (shdr.sh_type == SHT_DYNAMIC)
@@ -197,8 +207,9 @@ analyse_elf(const char *fpath, const char ***namelist)
 
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
-			close(fd);
-			return (EPKG_FATAL);
+			ret = EPKG_FATAL;
+			pkg_emit_error("getdyn() failed for %s: %s", fpath, elf_errmsg(-1)); 
+			goto cleanup;
 		}
 
 		if (dyn->d_tag != DT_NEEDED)
