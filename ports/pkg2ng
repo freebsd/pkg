@@ -34,7 +34,7 @@ do
 		GROUPS=$(make -C ${PORTSDIR}/${ORIGIN} -V GROUPS | sed -e "s/ /,/g")
 	else
 		MAINTAINER="unknown"
-		CATEGORIES=${ORIGIN#*/}
+		CATEGORIES=${ORIGIN%/*}
 	fi
 
 	# +CONTENTS
