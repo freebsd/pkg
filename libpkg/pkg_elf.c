@@ -124,10 +124,12 @@ add_forgotten_depends(struct pkgdb *db, struct pkg *pkg, const char *namelist[])
 }
 
 static int
-analyse_elf(const char *fpath, const char ***namelist) 
+analyse_elf(const char *fpath, const char ***namelist)
 {
 	Elf *e;
 	Elf_Scn *scn = NULL;
+	Elf_Scn *note = NULL;
+	Elf_Scn *dynamic = NULL;
 	GElf_Shdr shdr;
 	Elf_Data *data;
 	GElf_Dyn *dyn, dyn_mem;
@@ -146,15 +148,12 @@ analyse_elf(const char *fpath, const char ***namelist)
 	}
 	if (fstat(fd, &sb) != 0)
 		pkg_emit_errno("fstat() failed for %s", fpath);
-	if (sb.st_size == 0) {
+	/* ignore empty files and non regular files */
+	if (sb.st_size == 0 || !S_ISREG(sb.st_mode)) {
 		ret = EPKG_END; /* Empty file: no results */
 		goto cleanup;
 	}
-	if (!S_ISREG(sb.st_mode)) {
-		ret = EPKG_END;	/* Not a regular file */
-		pkg_emit_error("Warning: %s not a regular file\n", fpath);
-		goto cleanup;
-	}
+
 	if (( e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("elf_begin() for %s failed: %s", fpath, elf_errmsg(-1)); 
@@ -172,42 +171,39 @@ analyse_elf(const char *fpath, const char ***namelist)
 			pkg_emit_error("getshdr() for %s failed: %s", fpath, elf_errmsg(-1));
 			goto cleanup;
 		}
-		if (shdr.sh_type == SHT_NOTE)
+		switch (shdr.sh_type) {
+			case SHT_NOTE:
+				note = scn;
+			case SHT_DYNAMIC:
+				dynamic = scn;
+		}
+
+		if (note != NULL && dynamic != NULL)
 			break;
 	}
 
-	if  (scn != NULL) { /* Assume FreeBSD native if no note section */
-		data = elf_getdata(scn, NULL);
-		osname = (const char *) data->d_buf + sizeof(Elf_Note);
-		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
-			ret = EPKG_END;	/* Foreign (probably linux) ELF object */
-			pkg_emit_error("Not registering shlibs for %s ELF object %s", osname, fpath);
-			goto cleanup;
-		}
+	/*
+	 * note == NULL means no freebsd
+	 * dynamic == NULL means not a dynamic linked elf
+	 */
+	if (dynamic == NULL || note == NULL) {
+		ret = EPKG_END;
+		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	scn = NULL;
-	while (( scn = elf_nextscn(e, scn)) != NULL) {
-		if (gelf_getshdr(scn, &shdr) != &shdr) {
-			ret = EPKG_FATAL;
-			pkg_emit_error("getshdr() failed for %s: %s", fpath, elf_errmsg(-1));
-			goto cleanup;
-		}
-		if (shdr.sh_type == SHT_DYNAMIC)
-			break;
+	data = elf_getdata(note, NULL);
+	osname = (const char *) data->d_buf + sizeof(Elf_Note);
+	if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
+		ret = EPKG_END;	/* Foreign (probably linux) ELF object */
+		goto cleanup;
 	}
 
-	if  (scn == NULL) {
-		close(fd);
-		return (EPKG_END); /* not dynamically linked: no results */
-	}
-
-	data = elf_getdata(scn, NULL);
+	data = elf_getdata(dynamic, NULL);
 	numdyn = shdr.sh_size / shdr.sh_entsize;
 
 	if ( (*namelist = calloc(numdyn + 1, sizeof(**namelist))) == NULL ) {
-		close(fd);
-		return (EPKG_FATAL);
+		ret = EPKG_FATAL;
+		goto cleanup;
 	}
 	name = *namelist;
 
