@@ -1855,43 +1855,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	stmt = NULL;
 	stmt2 = NULL;
 
-
-	/*
-	 * Insert shlibs
-	 */
-
-	if (sqlite3_prepare_v2(s, sql_shlib, -1, &stmt_shlib, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-	if (sqlite3_prepare_v2(s, sql_shlibs, -1, &stmt_shlibs, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
-	while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
-		sqlite3_bind_text(stmt, 1, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt2, 1, package_id);
-		sqlite3_bind_text(stmt2, 2, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
-
-		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on shlibs.name: %s",
-						pkg_shlib_name(shlib));
-			} else
-				ERROR_SQLITE(s);
-			goto cleanup;
-		}
-		if (( ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
-			ERROR_SQLITE(s);
-			goto cleanup;
-		}
-		sqlite3_reset(stmt);
-		sqlite3_reset(stmt2);
-	}
-	stmt = NULL;
-	stmt2 = NULL;
-
 	retcode = EPKG_OK;
 
 	cleanup:
