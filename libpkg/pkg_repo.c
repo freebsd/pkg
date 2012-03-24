@@ -247,6 +247,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	int retcode = EPKG_OK;
 	char *pkg_path;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
+	int ret;
 
 	char *repopath[2];
 	char repodb[MAXPATHLEN + 1];
@@ -301,7 +302,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"value TEXT,"
 			"UNIQUE (package_id, option)"
 		");"
-	  	"CREATE TABLE shlibs ("
+		"CREATE TABLE shlibs ("
 			"id INTEGER PRIMARY KEY,"
 			"name TEXT NOT NULL UNIQUE "
 		");"
@@ -486,8 +487,12 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_text(stmt_pkg, 13, cksum, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 14, pkg_path, -1, SQLITE_STATIC);
 
-		if (sqlite3_step(stmt_pkg) != SQLITE_DONE) {
-			ERROR_SQLITE(sqlite);
+		if ((ret = sqlite3_step(stmt_pkg)) != SQLITE_DONE) {
+			if (ret == SQLITE_CONSTRAINT) {
+				pkg_emit_error("Another package already provides %s", origin);
+			} else {
+				ERROR_SQLITE(sqlite);
+			}
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
