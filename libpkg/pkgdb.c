@@ -481,6 +481,9 @@ pkgdb_init(sqlite3 *sdb)
 			" ON UPDATE RESTRICT,"
 		"PRIMARY KEY (package_id, shlib_id)"
 	");"
+
+	/* Mark the end of the array */
+
 	"CREATE INDEX deporigini on deps(origin);"
 	"PRAGMA user_version = 11;"
 	"COMMIT;"
@@ -909,7 +912,7 @@ pkgdb_query_shlib(struct pkgdb *db, const char *shlib)
 			"p.prefix, p.flatsize, p.time, p.infos "
 			"FROM packages AS p, pkg_shlibs AS ps, shlibs AS s "
 			"WHERE p.id = ps.package_id "
-	  			"AND ps.shlib_id = s.id "
+				"AND ps.shlib_id = s.id "
 				"AND s.name = ?1;";
 
 	assert(db != NULL);
@@ -1370,26 +1373,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkg_shlib *shlib = NULL;
 	struct pkgdb_it *it = NULL;
 
-	sqlite3 *s;
-	sqlite3_stmt *stmt_pkg = NULL;
-	sqlite3_stmt *stmt_mtree = NULL;
-	sqlite3_stmt *stmt_dep = NULL;
-	sqlite3_stmt *stmt_file = NULL;
-	sqlite3_stmt *stmt_script = NULL;
-	sqlite3_stmt *stmt_option = NULL;
-	sqlite3_stmt *stmt_dirs = NULL;
-	sqlite3_stmt *stmt_dir = NULL;
-	sqlite3_stmt *stmt_categories = NULL;
-	sqlite3_stmt *stmt_cat = NULL;
-	sqlite3_stmt *stmt_licenses = NULL;
-	sqlite3_stmt *stmt_lic = NULL;
-	sqlite3_stmt *stmt_user = NULL;
-	sqlite3_stmt *stmt_users = NULL;
-	sqlite3_stmt *stmt_groups = NULL;
-	sqlite3_stmt *stmt_group = NULL;
-	sqlite3_stmt *stmt_shlibs = NULL;
-	sqlite3_stmt *stmt_shlib = NULL;
-	sqlite3_stmt *stmt_upd_deps = NULL;
+	sqlite3 *s
+	sqlite3_stmt *stmt = NULL;
+	sqlite3_stmt *stmt2 = NULL;
 
 	int ret;
 	int retcode = EPKG_FATAL;
@@ -1884,11 +1870,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	}
 
 	while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
-		sqlite3_bind_text(stmt_shlib, 1, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt_shlibs, 1, package_id);
-		sqlite3_bind_text(stmt_shlibs, 2, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt, 1, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt2, 1, package_id);
+		sqlite3_bind_text(stmt2, 2, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
 
-		if ((ret = sqlite3_step(stmt_shlib)) != SQLITE_DONE) {
+		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				pkg_emit_error("sqlite: constraint violation on shlibs.name: %s",
 						pkg_shlib_name(shlib));
@@ -1896,36 +1882,24 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		if (( ret = sqlite3_step(stmt_shlibs)) != SQLITE_DONE) {
+		if (( ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt_shlib);
-		sqlite3_reset(stmt_shlibs);
+		sqlite3_reset(stmt);
+		sqlite3_reset(stmt2);
 	}
+	stmt = NULL;
+	stmt2 = NULL;
 
 	retcode = EPKG_OK;
 
 	cleanup:
 
-	sql_clean_stmt(stmt_mtree);
-	sql_clean_stmt(stmt_pkg);
-	sql_clean_stmt(stmt_dep);
-	sql_clean_stmt(stmt_file);
-	sql_clean_stmt(stmt_script);
-	sql_clean_stmt(stmt_option);
-	sql_clean_stmt(stmt_dirs);
-	sql_clean_stmt(stmt_dir);
-	sql_clean_stmt(stmt_cat);
-	sql_clean_stmt(stmt_categories);
-	sql_clean_stmt(stmt_lic);
-	sql_clean_stmt(stmt_lic);
-	sql_clean_stmt(stmt_licenses);
-	sql_clean_stmt(stmt_groups);
-	sql_clean_stmt(stmt_users);
-	sql_clean_stmt(stmt_upd_deps);
-	sql_clean_stmt(stmt_shlib);
-	sql_clean_stmt(stmt_shlibs);
+	if (stmt != NULL)
+		sqlite3_finalize(stmt);
+	if (stmt2 != NULL)
+		sqlite3_finalize(stmt2);
 
 	return (retcode);
 }
