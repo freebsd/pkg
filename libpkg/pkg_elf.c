@@ -132,6 +132,7 @@ analyse_elf(const char *fpath, const char ***namelist)
 	Elf_Data *data;
 	GElf_Dyn *dyn, dyn_mem;
 	struct stat sb;
+	int ret = EPKG_OK;
 
 	size_t numdyn;
 	size_t dynidx;
@@ -140,7 +141,7 @@ analyse_elf(const char *fpath, const char ***namelist)
 
 	int fd;
 
-	if ((fd = open(fpath, O_RDONLY, 0)) < 0)
+	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
 		return (EPKG_FATAL);
 	}
 	if (fstat(fd, &sb) != 0)
@@ -229,7 +230,7 @@ cleanup:
 		elf_end(e);
 	close(fd);
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 int

@@ -67,8 +67,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 			strlcpy(file->sum, sha256, sizeof(file->sum));
 		}
 
-		if (pkg_register_shlibs_for_file(pkg, fpath) != EPKG_OK)
-			return (EPKG_FATAL);
+/*		if (pkg_register_shlibs_for_file(pkg, fpath) != EPKG_OK)
+			return (EPKG_FATAL);*/
 	}
 
 	pkg_emit_manifest(pkg, &m);
