@@ -125,6 +125,18 @@ static struct config_entry c[] = {
 		"SYSLOG",
 		"YES",
 		{ NULL }
+	},
+	[PKG_CONFIG_SHLIBS] = {
+		BOOL,
+		"SHLIBS",
+		"NO",
+		{ NULL }
+	},
+	[PKG_CONFIG_AUTODEPS] = {
+		BOOL,
+		"AUTODEPS",
+		"NO",
+		{ NULL }
 	}
 };
 

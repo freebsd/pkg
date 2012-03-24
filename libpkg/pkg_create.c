@@ -50,8 +50,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	struct stat st;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
-	pkg_analyse_init();
-
 	/*
 	 * if the checksum is not provided in the manifest recompute it
 	 */
@@ -66,9 +64,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 				return (EPKG_FATAL);
 			strlcpy(file->sum, sha256, sizeof(file->sum));
 		}
-
-/*		if (pkg_register_shlibs_for_file(pkg, fpath) != EPKG_OK)
-			return (EPKG_FATAL);*/
 	}
 
 	pkg_emit_manifest(pkg, &m);

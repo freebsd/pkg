@@ -11,7 +11,9 @@ PUBKEY		    : /etc/ssl/pkg.conf
 HANDLE_RC_SCRIPTS   : NO
 PKG_MULTIREPOS	    : NO
 ASSUME_ALWAYS_YES   : NO
-SYSLOG          : YES
+SYSLOG		    : YES
+SHLIBS		    : NO
+AUTODEPS	    : NO
 
 # Repository definitions
 repos:

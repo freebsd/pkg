@@ -828,10 +828,9 @@ pkg_addshlib(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	while (pkg_shlibs(pkg, &s) == EPKG_OK) {
-		if (strcmp(name, pkg_shlib_name(s)) == 0) {
-			pkg_emit_error("duplicate shared library listing: %s, ignoring", name);
+		/* silently ignore duplicates in case of shlibs */
+		if (strcmp(name, pkg_shlib_name(s)) == 0)
 			return (EPKG_OK);
-		}
 	}
 
 	pkg_shlib_new(&s);

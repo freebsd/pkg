@@ -45,86 +45,72 @@
 #include "private/elf_tables.h"
 
 static int
-register_shlibs(struct pkg *pkg, const char *namelist[])
-{
-	struct pkg_shlib *s;
-	const char **name;
-	bool found;
-
-	assert(pkg != NULL);
-
-	for (name = namelist; *name != NULL; name++) {
-		s = NULL;
-		found = false;
-		while (pkg_shlibs(pkg, &s) == EPKG_OK) {
-			if (strcmp(*name, pkg_shlib_name(s)) == 0) {
-				/* already registered, but that's OK */
-				found = true;
-				break;
-			}
-		}
-		if ( !found ) {
-			pkg_shlib_new(&s);
-			sbuf_set(&s->name, *name);
-			STAILQ_INSERT_TAIL(&pkg->shlibs, s, next);
-		}
-	}
-	return (EPKG_OK);
-}
-
-static int
-add_forgotten_depends(struct pkgdb *db, struct pkg *pkg, const char *namelist[])
+test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *d;
 	Link_map *map;
 	const char *deporigin, *depname, *depversion;
-	const char **name;
 	bool found;
 	void *handle;
+	bool shlibs = false;
+	bool autodeps = false;
 
-	for (name = namelist; *name != NULL; name++) {
-		handle = dlopen(*name, RTLD_LAZY);
-		if (handle == NULL) {
-			pkg_emit_error("accessing shared library %s failed -- %s", name, dlerror());
-			return (EPKG_FATAL);
-		}
+	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
-		dlinfo(handle, RTLD_DI_LINKMAP, &map);
-
-		if ((it = pkgdb_query_which(db, map->l_name)) == NULL) {
-			dlclose(handle);
-			break; /* shlib not from any pkg */
-		}
-		d = NULL;
-		if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
-			found = false;
-			pkg_get(d, PKG_ORIGIN, &deporigin, PKG_NAME, &depname, PKG_VERSION, &depversion);
-
-			dep = NULL;
-			found = false;
-			while (pkg_deps(pkg, &dep) == EPKG_OK) {
-				if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), deporigin) == 0) {
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				pkg_emit_error("adding forgotten depends (%s): %s-%s",
-					       map->l_name, depname, depversion);
-				pkg_adddep(pkg, depname, deporigin, depversion);
-			}
-			pkg_free(d);
-		}
-		dlclose(handle);
-		pkgdb_it_free(it);
+	if ((handle = dlopen(name, RTLD_LAZY)) == NULL) {
+		pkg_emit_error("accessing shared library %s failed -- %s", name, dlerror());
+		return (EPKG_FATAL);
 	}
+
+	dlinfo(handle, RTLD_DI_LINKMAP, &map);
+
+	/* match /lib, /lib32, /usr/lib and /usr/lib32 */
+	if (strncmp(map->l_name, "/lib", 4) == 0 || strncmp(map->l_name, "/usr/lib", 7) == 0) {
+		/* ignore libs from base */
+		dlclose(handle);
+		return (EPKG_OK);
+	}
+
+	if (shlibs)
+		pkg_addshlib(pkg, name);
+
+	if (!autodeps)
+		return (EPKG_OK);
+
+	if ((it = pkgdb_query_which(db, map->l_name)) == NULL) {
+		dlclose(handle);
+		return (EPKG_OK);
+	}
+	d = NULL;
+	if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
+		found = false;
+		pkg_get(d, PKG_ORIGIN, &deporigin, PKG_NAME, &depname, PKG_VERSION, &depversion);
+
+		dep = NULL;
+		found = false;
+		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+			if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), deporigin) == 0) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			pkg_emit_error("adding forgotten depends (%s): %s-%s",
+					map->l_name, depname, depversion);
+			pkg_adddep(pkg, depname, deporigin, depversion);
+		}
+		pkg_free(d);
+	}
+	dlclose(handle);
+	pkgdb_it_free(it);
 	return (EPKG_OK);
 }
 
 static int
-analyse_elf(const char *fpath, const char ***namelist)
+analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 {
 	Elf *e;
 	Elf_Scn *scn = NULL;
@@ -135,14 +121,17 @@ analyse_elf(const char *fpath, const char ***namelist)
 	GElf_Dyn *dyn, dyn_mem;
 	struct stat sb;
 	int ret = EPKG_OK;
+	bool shlibs = false;
+	bool autodeps = false;
 
 	size_t numdyn;
 	size_t dynidx;
 	const char *osname;
-	const char **name;
 
 	int fd;
 
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
 		return (EPKG_FATAL);
 	}
@@ -201,12 +190,6 @@ analyse_elf(const char *fpath, const char ***namelist)
 	data = elf_getdata(dynamic, NULL);
 	numdyn = shdr.sh_size / shdr.sh_entsize;
 
-	if ( (*namelist = calloc(numdyn + 1, sizeof(**namelist))) == NULL ) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-	name = *namelist;
-
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
 			ret = EPKG_FATAL;
@@ -217,8 +200,7 @@ analyse_elf(const char *fpath, const char ***namelist)
 		if (dyn->d_tag != DT_NEEDED)
 			continue;
 
-		*name = elf_strptr(e, shdr.sh_link, dyn->d_un.d_val);
-		name++;
+		test_depends(db, pkg, elf_strptr(e, shdr.sh_link, dyn->d_un.d_val));
 	}
 
 cleanup:
@@ -230,86 +212,25 @@ cleanup:
 }
 
 int
-pkg_analyse_init(void)
-{
-	if (elf_version(EV_CURRENT) == EV_NONE)
-		return (EPKG_FATAL);
-	return (EPKG_OK);
-}
-
-int
-pkg_register_shlibs_for_file(struct pkg *pkg, const char *fname)
-{
-	const char **namelist = NULL;
-	int ret = EPKG_OK;
-
-	switch (analyse_elf(fname, &namelist)) {
-		case EPKG_OK:
-			ret = register_shlibs(pkg, namelist);
-			break;
-		case EPKG_END:
-			break; /* File not dynamically linked  */
-		case EPKG_FATAL:
-			ret = EPKG_FATAL;
-			break;
-	}
-	if (namelist != NULL)
-		free(namelist);
-
-	return (ret);
-}
-
-int
-pkg_register_shlibs(struct pkg *pkg)
-{
-	struct pkg_file *file = NULL;
-	int ret = EPKG_OK;
-
-	if (elf_version(EV_CURRENT) == EV_NONE)
-		return (EPKG_FATAL);
-
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if ((ret = pkg_register_shlibs_for_file(pkg, pkg_file_get(file, PKG_FILE_PATH))) != EPKG_OK)
-			break;
-	}
-	return (EPKG_OK);
-}
-
-int
-pkg_analyse_one_file(struct pkgdb *db, struct pkg *pkg, const char *fname)
-{
-	const char **namelist = NULL;
-	int ret = EPKG_OK;
-
-	switch (analyse_elf(fname, &namelist)) {
-		case EPKG_OK:
-			ret = add_forgotten_depends(db, pkg, namelist);
-			break;
-		case EPKG_END:
-			break; /* File not dynamically linked  */
-		case EPKG_FATAL:
-			ret = EPKG_FATAL;
-			break;
-	}
-	if (namelist != NULL)
-		free(namelist);
-
-	return (ret);
-}
-
-int
 pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
+	bool shlibs = false;
+	bool autodeps = false;
+
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
+
+	if (!autodeps && !shlibs)
+		return (EPKG_OK);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if ((ret = pkg_analyse_one_file(db, pkg, pkg_file_get(file, PKG_FILE_PATH))) != EPKG_OK)
-			break;
-	}
+	while (pkg_files(pkg, &file) == EPKG_OK)
+		analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH));
+
 	return (ret);
 }
 
