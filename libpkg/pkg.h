@@ -394,14 +394,52 @@ int pkg_options(struct pkg *, struct pkg_option **option);
 
 /**
  * Iterates over the shared libraries used by the package.
- * @param Must be set to NULL for the first call.
+ * @param shlib must be set to NULL for the first call.
  * @return An error code
  */
 int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
 
 /**
- * @todo Document
+ * Initialise the ELF libraries for pkg_register_shlibs_for_file() 
+ * or pkg_analyse_one_file()
+ * @return An error code
  */
+
+int pkg_analyse_init(void);
+
+/**
+ * Register the shared libraries used by fname, which is one of the
+ * files belonging to pkg.
+ * @return An error code
+ */
+
+int pkg_register_shlibs_for_file(struct pkg *pkg, const char *fname);
+
+/**
+ * Iterate over all of the files within the package pkg, registering
+ * the shared libraries used by each of them.
+ * @return An error code
+ */
+
+int pkg_register_shlibs(struct pkg *pkg);
+
+/**
+ * Analyse one file fname, which belongs to package pkg.  If it is an
+ * ELF format executable or shared library, ensure that all of the
+ * packages providing shared objects used by the file are added to the
+ * pkg dependency list.
+ * @return An error code
+ */
+
+int pkg_analyse_one_file(struct pkgdb *db, struct pkg *pkg, const char *fname);
+
+/**
+ * Iterate over all of the files within the package pkg, ensuring the
+ * dependency list contains all applicable packages providing the
+ * shared objects used by pkg.
+ * @return An error code
+ */
+
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
 
 /**

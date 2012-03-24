@@ -27,8 +27,10 @@
 #include <sys/endian.h>
 #include <sys/types.h>
 #include <sys/elf_common.h>
+#include <sys/stat.h>
 
 #include <ctype.h>
+#include <assert.h>
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <gelf.h>
@@ -43,103 +45,278 @@
 #include "private/elf_tables.h"
 
 static int
-analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
+register_shlibs(struct pkg *pkg, const char *namelist[])
+{
+	struct pkg_shlib *s;
+	const char **name;
+	bool found;
+
+	assert(pkg != NULL);
+
+	for (name = namelist; *name != NULL; name++) {
+		s = NULL;
+		found = false;
+		while (pkg_shlibs(pkg, &s) == EPKG_OK) {
+			if (strcmp(*name, pkg_shlib_name(s)) == 0) {
+				/* already registered, but that's OK */
+				found = true;
+				break;
+			}
+		}
+		if ( !found ) {
+			pkg_shlib_new(&s);
+			sbuf_set(&s->name, *name);
+			STAILQ_INSERT_TAIL(&pkg->shlibs, s, next);
+		}
+	}
+	return (EPKG_OK);
+}
+
+static int
+add_forgotten_depends(struct pkgdb *db, struct pkg *pkg, const char *namelist[])
 {
 	struct pkg_dep *dep = NULL;
-	struct pkg *p = NULL;
 	struct pkgdb_it *it = NULL;
-	Elf *e = NULL;
+	struct pkg *d;
+	Link_map *map;
+	const char *deporigin, *depname, *depversion;
+	const char **name;
+	bool found;
+	void *handle;
+
+	for (name = namelist; *name != NULL; name++) {
+		handle = dlopen(*name, RTLD_LAZY);
+		if (handle == NULL) {
+			pkg_emit_error("accessing shared library %s failed -- %s", name, dlerror());
+			return (EPKG_FATAL);
+		}
+
+		dlinfo(handle, RTLD_DI_LINKMAP, &map);
+
+		if ((it = pkgdb_query_which(db, map->l_name)) == NULL) {
+			dlclose(handle);
+			break; /* shlib not from any pkg */
+		}
+		d = NULL;
+		if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
+			found = false;
+			pkg_get(d, PKG_ORIGIN, &deporigin, PKG_NAME, &depname, PKG_VERSION, &depversion);
+
+			dep = NULL;
+			found = false;
+			while (pkg_deps(pkg, &dep) == EPKG_OK) {
+				if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), deporigin) == 0) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				pkg_emit_error("adding forgotten depends (%s): %s-%s",
+					       map->l_name, depname, depversion);
+				pkg_adddep(pkg, depname, deporigin, depversion);
+			}
+			pkg_free(d);
+		}
+		dlclose(handle);
+		pkgdb_it_free(it);
+	}
+	return (EPKG_OK);
+}
+
+static int
+analyse_elf(const char *fpath, const char ***namelist) 
+{
+	Elf *e;
 	Elf_Scn *scn = NULL;
 	GElf_Shdr shdr;
 	Elf_Data *data;
 	GElf_Dyn *dyn, dyn_mem;
+	struct stat sb;
 
-	const char *pkgorigin, *pkgname, *pkgversion;
 	size_t numdyn;
 	size_t dynidx;
-	void *handle;
-	Link_map *map;
-	char *name;
-	bool found=false;
+	const char *osname;
+	const char **name;
 
 	int fd;
+	int ret = EPKG_OK;
 
-	pkg_get(pkg, PKG_ORIGIN, &pkgorigin, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
-	if ((fd = open(fpath, O_RDONLY, 0)) < 0)
+	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
+		pkg_emit_errno("open() of %s failed", fpath);
 		return (EPKG_FATAL);
+	}
+	if (fstat(fd, &sb) != 0)
+		pkg_emit_errno("fstat() failed for %s", fpath);
+	if (sb.st_size == 0) {
+		ret = EPKG_END; /* Empty file: no results */
+		goto cleanup;
+	}
+	if (!S_ISREG(sb.st_mode)) {
+		ret = EPKG_END;	/* Not a regular file */
+		pkg_emit_error("Warning: %s not a regular file\n", fpath);
+		goto cleanup;
+	}
+	if (( e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
+		ret = EPKG_FATAL;
+		pkg_emit_error("elf_begin() for %s failed: %s", fpath, elf_errmsg(-1)); 
+		goto cleanup;
+	}
 
-	if (( e = elf_begin(fd, ELF_C_READ, NULL)) == NULL)
-		return (EPKG_FATAL);
-
-	if (elf_kind(e) != ELF_K_ELF)
-		return (EPKG_FATAL);
+	if (elf_kind(e) != ELF_K_ELF) {
+		ret = EPKG_END; /* Not an elf file: no results */
+		goto cleanup;
+	}
 
 	while (( scn = elf_nextscn(e, scn)) != NULL) {
-		if (gelf_getshdr(scn, &shdr) != &shdr)
-			return (EPKG_FATAL);
+		if (gelf_getshdr(scn, &shdr) != &shdr) {
+			ret = EPKG_FATAL;
+			pkg_emit_error("getshdr() for %s failed: %s", fpath, elf_errmsg(-1));
+			goto cleanup;
+		}
+		if (shdr.sh_type == SHT_NOTE)
+			break;
+	}
 
+	if  (scn != NULL) { /* Assume FreeBSD native if no note section */
+		data = elf_getdata(scn, NULL);
+		osname = (const char *) data->d_buf + sizeof(Elf_Note);
+		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
+			ret = EPKG_END;	/* Foreign (probably linux) ELF object */
+			pkg_emit_error("Not registering shlibs for %s ELF object %s", osname, fpath);
+			goto cleanup;
+		}
+	}
+
+	scn = NULL;
+	while (( scn = elf_nextscn(e, scn)) != NULL) {
+		if (gelf_getshdr(scn, &shdr) != &shdr) {
+			ret = EPKG_FATAL;
+			pkg_emit_error("getshdr() failed for %s: %s", fpath, elf_errmsg(-1));
+			goto cleanup;
+		}
 		if (shdr.sh_type == SHT_DYNAMIC)
 			break;
 	}
 
-	if  (scn == NULL)
-		return (EPKG_OK);
+	if  (scn == NULL) {
+		ret = EPKG_END; /* not dynamically linked: no results */
+		goto cleanup;
+	}
 
 	data = elf_getdata(scn, NULL);
 	numdyn = shdr.sh_size / shdr.sh_entsize;
 
+	if ( (*namelist = calloc(numdyn + 1, sizeof(**namelist))) == NULL ) {
+		ret = EPKG_FATAL;
+		pkg_emit_errno("calloc()", "");
+		goto cleanup;
+	}
+	name = *namelist;
+
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
-		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL)
-			return (EPKG_FATAL);
+		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
+			ret = EPKG_FATAL;
+			pkg_emit_error("getdyn() failed for %s: %s", fpath, elf_errmsg(-1)); 
+			goto cleanup;
+		}
 
 		if (dyn->d_tag != DT_NEEDED)
 			continue;
 
-		name = elf_strptr(e, shdr.sh_link, dyn->d_un.d_val);
-		handle = dlopen(name, RTLD_LAZY);
-
-		if (handle != NULL) {
-			dlinfo(handle, RTLD_DI_LINKMAP, &map);
-			if ((it = pkgdb_query_which(db, map->l_name)) == NULL)
-				return (EPKG_FATAL);
-
-			if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-				found = false;
-				while (pkg_deps(pkg, &dep) == EPKG_OK) {
-					if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), pkgorigin) == 0)
-						found = true;
-				}
-				if (!found) {
-					pkg_emit_error("adding forgotten depends (%s): %s-%s",
-					    map->l_name, pkgname, pkgversion);
-					pkg_adddep(pkg, pkgname, pkgorigin, pkgversion);
-				}
-			}
-			dlclose(handle);
-		}
-		pkgdb_it_free(it);
+		*name = elf_strptr(e, shdr.sh_link, dyn->d_un.d_val);
+		name++;
 	}
-	pkg_free(p);
-	if (e != NULL)
+
+cleanup:
+	if ( e != NULL)
 		elf_end(e);
 	close(fd);
 
-	return (EPKG_OK);
+	return (ret);
+}
 
+int
+pkg_analyse_init(void)
+{
+	if (elf_version(EV_CURRENT) == EV_NONE)
+		return (EPKG_FATAL);
+	return (EPKG_OK);
+}
+
+int
+pkg_register_shlibs_for_file(struct pkg *pkg, const char *fname)
+{
+	const char **namelist = NULL;
+	int ret = EPKG_OK;
+
+	switch (analyse_elf(fname, &namelist)) {
+		case EPKG_OK:
+			ret = register_shlibs(pkg, namelist);
+			break;
+		case EPKG_END:
+			break; /* File not dynamically linked  */
+		case EPKG_FATAL:
+			ret = EPKG_FATAL;
+			break;
+	}
+	if (namelist != NULL)
+		free(namelist);
+
+	return (ret);
+}
+
+int
+pkg_register_shlibs(struct pkg *pkg)
+{
+	struct pkg_file *file = NULL;
+	int ret = EPKG_OK;
+
+	if (elf_version(EV_CURRENT) == EV_NONE)
+		return (EPKG_FATAL);
+
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		if ((ret = pkg_register_shlibs_for_file(pkg, pkg_file_get(file, PKG_FILE_PATH))) != EPKG_OK)
+			break;
+	}
+	return (ret);
+}
+
+int
+pkg_analyse_one_file(struct pkgdb *db, struct pkg *pkg, const char *fname)
+{
+	const char **namelist = NULL;
+	int ret = EPKG_OK;
+
+	switch (analyse_elf(fname, &namelist)) {
+		case EPKG_OK:
+			ret = add_forgotten_depends(db, pkg, namelist);
+			break;
+		case EPKG_END:
+			break; /* File not dynamically linked  */
+		case EPKG_FATAL:
+			ret = EPKG_FATAL;
+			break;
+	}
+	if (namelist != NULL)
+		free(namelist);
+
+	return (ret);
 }
 
 int
 pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *file = NULL;
+	int ret = EPKG_OK;
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
-	while (pkg_files(pkg, &file) == EPKG_OK)
-		analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH));
-
-	return (EPKG_OK);
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		if ((ret = pkg_analyse_one_file(db, pkg, pkg_file_get(file, PKG_FILE_PATH))) != EPKG_OK)
+			break;
+	}
+	return (ret);
 }
 
 static const char *

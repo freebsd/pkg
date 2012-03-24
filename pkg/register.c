@@ -199,6 +199,10 @@ exec_register(int argc, char **argv)
 	if (plist != NULL)
 		free(plist);
 
+	if (pkg_register_shlibs(pkg) != EPKG_OK) {
+		return (EX_IOERR);
+	}
+
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
 	}
