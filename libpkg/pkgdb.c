@@ -1373,7 +1373,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkg_shlib *shlib = NULL;
 	struct pkgdb_it *it = NULL;
 
-	sqlite3 *s
+	sqlite3 *s;
 	sqlite3_stmt *stmt = NULL;
 	sqlite3_stmt *stmt2 = NULL;
 
