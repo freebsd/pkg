@@ -139,8 +139,10 @@ analyse_elf(const char *fpath, const char ***namelist)
 	const char **name;
 
 	int fd;
+	int ret = EPKG_OK;
 
-	if ((fd = open(fpath, O_RDONLY, 0)) < 0)
+	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
+		pkg_emit_errno("open() of %s failed", fpath);
 		return (EPKG_FATAL);
 	}
 	if (fstat(fd, &sb) != 0)
@@ -161,8 +163,8 @@ analyse_elf(const char *fpath, const char ***namelist)
 	}
 
 	if (elf_kind(e) != ELF_K_ELF) {
-		close(fd);
-		return (EPKG_END); /* Not an elf file: no results */
+		ret = EPKG_END; /* Not an elf file: no results */
+		goto cleanup;
 	}
 
 	while (( scn = elf_nextscn(e, scn)) != NULL) {
@@ -197,16 +199,17 @@ analyse_elf(const char *fpath, const char ***namelist)
 	}
 
 	if  (scn == NULL) {
-		close(fd);
-		return (EPKG_END); /* not dynamically linked: no results */
+		ret = EPKG_END; /* not dynamically linked: no results */
+		goto cleanup;
 	}
 
 	data = elf_getdata(scn, NULL);
 	numdyn = shdr.sh_size / shdr.sh_entsize;
 
 	if ( (*namelist = calloc(numdyn + 1, sizeof(**namelist))) == NULL ) {
-		close(fd);
-		return (EPKG_FATAL);
+		ret = EPKG_FATAL;
+		pkg_emit_errno("calloc()", "");
+		goto cleanup;
 	}
 	name = *namelist;
 
@@ -229,7 +232,7 @@ cleanup:
 		elf_end(e);
 	close(fd);
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 int
@@ -275,7 +278,7 @@ pkg_register_shlibs(struct pkg *pkg)
 		if ((ret = pkg_register_shlibs_for_file(pkg, pkg_file_get(file, PKG_FILE_PATH))) != EPKG_OK)
 			break;
 	}
-	return (EPKG_OK);
+	return (ret);
 }
 
 int
