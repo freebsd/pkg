@@ -113,6 +113,7 @@ static int
 analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 {
 	Elf *e;
+	GElf_Ehdr elfhdr;
 	Elf_Scn *scn = NULL;
 	Elf_Scn *note = NULL;
 	Elf_Scn *dynamic = NULL;
@@ -154,6 +155,12 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		return (EPKG_END); /* Not an elf file: no results */
 	}
 
+	if (gelf_getehdr(e, &elfhdr) == NULL) {
+		ret = EPKG_FATAL;
+		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
+		goto cleanup;
+	}
+
 	while (( scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
@@ -175,9 +182,15 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	 * note == NULL means no freebsd
 	 * dynamic == NULL means not a dynamic linked elf
 	 */
-	if (dynamic == NULL || note == NULL) {
+	if (dynamic == NULL) {
 		ret = EPKG_END;
 		goto cleanup; /* not a dynamically linked elf: no results */
+	}
+
+	/* some freebsd binaries doesn't have notes like some perl modules */
+	if (note == NULL && elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD) {
+		ret = EPKG_END;
+		goto cleanup;
 	}
 
 	data = elf_getdata(note, NULL);
