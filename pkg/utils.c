@@ -63,7 +63,7 @@ query_yesno(const char *msg, ...)
 char *
 absolutepath(const char *src, char *dest, size_t dest_len) {
 	char * res;
-	size_t res_len, res_size, len;;
+	size_t res_len, res_size, len;
 	char pwd[MAXPATHLEN];
 	const char *ptr = src;
 	const char *next;

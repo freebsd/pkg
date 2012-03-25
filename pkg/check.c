@@ -154,7 +154,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		pkgs[i++] = e->origin;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
-		return (EPKG_FATAL);;
+		return (EPKG_FATAL);
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		free(pkgs);

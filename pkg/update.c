@@ -60,7 +60,7 @@ update_from_remote_repo(const char *name, const char *url)
 	unsigned char *sig = NULL;
 	int siglen = 0;
 	int rc = EPKG_OK;
-	bool alwayssigned = false;;
+	bool alwayssigned = false;
 
 	pkg_config_bool(PKG_CONFIG_SIGNED_REPOS, &alwayssigned);
 	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
