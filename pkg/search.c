@@ -57,6 +57,7 @@ exec_search(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
+	bool atleastone = false;
 
 	while ((ch = getopt(argc, argv, "gxXcdr:fDsqop")) != -1) {
 		switch (ch) {
@@ -123,14 +124,19 @@ exec_search(int argc, char **argv)
 		return (1);
 	}
 
-	while ((retcode = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK)
+	while ((retcode = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
 		print_info(pkg, opt);
+		atleastone = true;
+	}
 
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
-	retcode = ((retcode == EPKG_OK) || (retcode == EPKG_END)) ? EX_OK : 1;
+	if (!atleastone)
+		retcode = EXIT_FAILURE;
+	else
+		retcode = ((retcode == EPKG_OK) || (retcode == EPKG_END)) ? EXIT_SUCCESS : EXIT_FAILURE;
 
 	return (retcode);
 }

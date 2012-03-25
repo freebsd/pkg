@@ -126,8 +126,13 @@ exec_delete(int argc, char **argv)
 
 	/* check if we have something to deinstall */
 	if (pkg_jobs_is_empty(jobs)) {
-		printf("Nothing to do\n");
-		retcode = 0;
+		if (argc == 0) {
+			printf("Nothing to do\n");
+			retcode = EXIT_SUCCESS;
+		} else {
+			fprintf(stderr, "Package(s) not found\n");
+			retcode = EXIT_FAILURE;
+		}
 		goto cleanup;
 	}
 

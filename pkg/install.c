@@ -125,8 +125,8 @@ exec_install(int argc, char **argv)
 			printf("Nothing to do\n");
 			retcode = EXIT_SUCCESS;
 		} else {
-			fprintf(stderr, "Package(s) not found in the repositories");
-			retcode = EX_DATAERR;
+			fprintf(stderr, "Package(s) not found in the repositories\n");
+			retcode = EXIT_FAILURE;
 		}
 		goto cleanup;
 	}
