@@ -60,7 +60,9 @@ update_from_remote_repo(const char *name, const char *url)
 	unsigned char *sig = NULL;
 	int siglen = 0;
 	int rc = EPKG_OK;
+	bool alwayssigned = false;;
 
+	pkg_config_bool(PKG_CONFIG_SIGNED_REPOS, &alwayssigned);
 	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
 	if (mktemp(tmp) == NULL) {
 		warnx("Could not create temporary file %s, aborting update.\n", tmp);
@@ -108,6 +110,14 @@ update_from_remote_repo(const char *name, const char *url)
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
+	} else {
+		if (alwayssigned) {
+			warnx("No signature found in the repository, this is mandatory");
+			rc = EPKG_FATAL;
+			unlink(repofile_unchecked);
+			goto cleanup;
+		}
+
 	}
 
 	rename(repofile_unchecked, repofile);

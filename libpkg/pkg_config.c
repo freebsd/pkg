@@ -137,6 +137,12 @@ static struct config_entry c[] = {
 		"AUTODEPS",
 		"NO",
 		{ NULL }
+	},
+	[PKG_CONFIG_SIGNED_REPOS] = {
+		BOOL,
+		"SIGNED_REPOS",
+		"NO",
+		{ NULL }
 	}
 };
 
