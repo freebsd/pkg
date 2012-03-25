@@ -27,6 +27,8 @@
 #ifndef _PKGCLI_H
 #define _PKGCLI_H
 
+extern bool quiet;
+
 /* pkg add */
 int exec_add(int, char **);
 void usage_add(void);

@@ -48,7 +48,7 @@ event_callback(void *data, struct pkg_event *ev)
 	struct pkg_dep *dep = NULL;
 	const char *message;
 	int *debug = data;
-	(void)debug;
+	(void) debug;
 	const char *name, *version, *newversion;
 
 	switch(ev->type) {
@@ -59,6 +59,8 @@ event_callback(void *data, struct pkg_event *ev)
 		warnx("%s", ev->e_pkg_error.msg);
 		break;
 	case PKG_EVENT_FETCHING:
+		if (quiet)
+			break;
 		if (fetched == 0) {
 			strlcpy(url, ev->e_fetching.url, sizeof(url));
 			start_progress_meter(url, ev->e_fetching.total, &fetched);
@@ -70,11 +72,15 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		break;
 	case PKG_EVENT_INSTALL_BEGIN:
+		if (quiet)
+			break;
 		pkg_get(ev->e_install_begin.pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		printf("Installing %s-%s...", name, version);
 		fflush(stdout);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
+		if (quiet)
+			break;
 		printf(" done\n");
 		pkg_get(ev->e_install_finished.pkg, PKG_MESSAGE, &message);
 		if (message != NULL && message[0] != '\0') {
@@ -84,21 +90,31 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
+		if (quiet)
+			break;
 		printf("Checking integrity...");
 		fflush(stdout);
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
+		if (quiet)
+			break;
 		printf(" done\n");
 		break;
 	case PKG_EVENT_DEINSTALL_BEGIN:
+		if (quiet)
+			break;
 		pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		printf("Deinstalling %s-%s...", name, version);
 		fflush(stdout);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
+		if (quiet)
+			break;
 		printf(" done\n");
 		break;
 	case PKG_EVENT_UPGRADE_BEGIN:
+		if (quiet)
+			break;
 		pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name, PKG_VERSION, &version,
 		    PKG_NEWVERSION, &newversion);
 		switch (pkg_version_cmp(version, newversion)) {
@@ -115,6 +131,8 @@ event_callback(void *data, struct pkg_event *ev)
 		fflush(stdout);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
+		if (quiet)
+			break;
 		printf(" done\n");
 		break;
 	case PKG_EVENT_REQUIRED:

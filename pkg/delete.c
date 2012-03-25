@@ -127,7 +127,8 @@ exec_delete(int argc, char **argv)
 	/* check if we have something to deinstall */
 	if (pkg_jobs_is_empty(jobs)) {
 		if (argc == 0) {
-			printf("Nothing to do\n");
+			if (!quiet)
+				printf("Nothing to do\n");
 			retcode = EXIT_SUCCESS;
 		} else {
 			fprintf(stderr, "Package(s) not found\n");
@@ -145,25 +146,27 @@ exec_delete(int argc, char **argv)
 	}
 
 	pkg = NULL;
-	printf("The following packages will be deinstalled:\n");
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		const char *name, *version;
+	if (!quiet) {
+		printf("The following packages will be deinstalled:\n");
+		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
+			const char *name, *version;
 
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		printf("\t%s-%s\n", name, version);
+			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+			printf("\t%s-%s\n", name, version);
+		}
+
+		if (oldsize > newsize)
+			printf("\nThe deinstallation will save %s\n", size);
+		else if (newsize > oldsize)
+			printf("\nThe deinstallation will require %s more space\n", size);
+
+		if (!yes)
+			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+		if (!yes)
+			yes = query_yesno("\nProceed with deinstalling packages [y/N]: ");
+
 	}
-
-	if (oldsize > newsize)
-		printf("\nThe deinstallation will save %s\n", size);
-	else if (newsize > oldsize)
-		printf("\nThe deinstallation will require %s more space\n", size);
-
-	if (yes == false)
-		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-	if (yes == false)
-		yes = query_yesno("\nProceed with deinstalling packages [y/N]: ");
-
-	if (yes == true) {
+	if (yes) {
 		if ((retcode = pkg_jobs_apply(jobs, force)) != EPKG_OK)
 			goto cleanup;
 	} else

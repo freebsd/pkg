@@ -122,7 +122,8 @@ exec_install(int argc, char **argv)
 
 	if (pkg_jobs_is_empty(jobs)) {
 		if (argc == 0) {
-			printf("Nothing to do\n");
+			if (!quiet)
+				printf("Nothing to do\n");
 			retcode = EXIT_SUCCESS;
 		} else {
 			fprintf(stderr, "Package(s) not found in the repositories\n");
@@ -133,50 +134,52 @@ exec_install(int argc, char **argv)
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
-	printf("The following packages will be installed:\n");
+	if (!quiet) {
+		printf("The following packages will be installed:\n");
 
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		const char *name, *version, *newversion;
-		int64_t flatsize, newflatsize, pkgsize;
-		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
-		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
-		    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
-		dlsize += pkgsize;
-		if (newversion != NULL) {
-			switch (pkg_version_cmp(version, newversion)) {
-				case 1:
-					printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
-					break;
-				case 0:
-					printf("\tReinstalling %s-%s\n", name, version);
-					break;
-				case -1:
-					printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
-					break;
+		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
+			const char *name, *version, *newversion;
+			int64_t flatsize, newflatsize, pkgsize;
+			pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
+					PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
+					PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
+			dlsize += pkgsize;
+			if (newversion != NULL) {
+				switch (pkg_version_cmp(version, newversion)) {
+					case 1:
+						printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
+						break;
+					case 0:
+						printf("\tReinstalling %s-%s\n", name, version);
+						break;
+					case -1:
+						printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+						break;
+				}
+				oldsize += flatsize;
+				newsize += newflatsize;
+			} else {
+				newsize += flatsize;
+				printf("\tInstalling %s: %s\n", name, version);
 			}
-			oldsize += flatsize;
-			newsize += newflatsize;
-		} else {
-			newsize += flatsize;
-			printf("\tInstalling %s: %s\n", name, version);
 		}
-	}
 
-	if (oldsize > newsize) {
-		newsize *= -1;
-		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-		printf("\nthe installation will save %s\n", size);
-	} else {
-		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("\nthe installation will require %s more space\n", size);
-	}
-	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-	printf("%s to be downloaded\n", size);
+		if (oldsize > newsize) {
+			newsize *= -1;
+			humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
+			printf("\nthe installation will save %s\n", size);
+		} else {
+			humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
+			printf("\nthe installation will require %s more space\n", size);
+		}
+		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+		printf("%s to be downloaded\n", size);
 
-	if (!yes)
-		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-	if (!yes)
-		yes = query_yesno("\nProceed with installing packages [y/N]: ");
+		if (!yes)
+			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+		if (!yes)
+			yes = query_yesno("\nProceed with installing packages [y/N]: ");
+	}
 
 	if (yes)
 		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)

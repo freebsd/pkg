@@ -106,56 +106,59 @@ exec_upgrade(int argc, char **argv)
 	pkgdb_it_free(it);
 
 	if (pkg_jobs_is_empty(jobs)) {
-		printf("Nothing to do\n");
-		retcode = 0;
+		if (!quiet)
+			printf("Nothing to do\n");
+		retcode = EXIT_SUCCESS;
 		goto cleanup;
 	}
 
-	printf("The following packages will be upgraded: \n");
 	pkg = NULL;
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		const char *newversion, *name, *version;
-		int64_t newpkgsize, flatsize, newflatsize;
+	if (!quiet) {
+		printf("The following packages will be upgraded: \n");
+		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
+			const char *newversion, *name, *version;
+			int64_t newpkgsize, flatsize, newflatsize;
 
-		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name, PKG_VERSION, &version,
-		    PKG_NEW_PKGSIZE, &newpkgsize, PKG_NEW_FLATSIZE, &newflatsize,
-		    PKG_FLATSIZE, &flatsize);
-		dlsize += newpkgsize;
-		if (newversion != NULL) {
-			switch (pkg_version_cmp(version, newversion)) {
-				case 1:
-					printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
-					break;
-				case 0:
-					printf("\tReinstalling %s-%s\n", name, version);
-					break;
-				case -1:
-					printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
-					break;
+			pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name, PKG_VERSION, &version,
+					PKG_NEW_PKGSIZE, &newpkgsize, PKG_NEW_FLATSIZE, &newflatsize,
+					PKG_FLATSIZE, &flatsize);
+			dlsize += newpkgsize;
+			if (newversion != NULL) {
+				switch (pkg_version_cmp(version, newversion)) {
+					case 1:
+						printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
+						break;
+					case 0:
+						printf("\tReinstalling %s-%s\n", name, version);
+						break;
+					case -1:
+						printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+						break;
+				}
+				oldsize += flatsize;
+				newsize += newflatsize;
+			} else {
+				newsize += flatsize;
+				printf("\tInstalling %s: %s\n", name, version);
 			}
-			oldsize += flatsize;
-			newsize += newflatsize;
-		} else {
-			newsize += flatsize;
-			printf("\tInstalling %s: %s\n", name, version);
 		}
-	}
 
-	if (oldsize > newsize) {
-		newsize *= -1;
-		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-		printf("\nthe upgrade will save %s\n", size);
-	} else {
-		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("\nthe upgrade will require %s more space\n", size);
-	}
-	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-	printf("%s to be downloaded\n", size);
+		if (oldsize > newsize) {
+			newsize *= -1;
+			humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
+			printf("\nthe upgrade will save %s\n", size);
+		} else {
+			humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
+			printf("\nthe upgrade will require %s more space\n", size);
+		}
+		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+		printf("%s to be downloaded\n", size);
 
-	if (!yes)
-		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-	if (!yes)
-		yes = query_yesno("\nProceed with upgrading packages [y/N]: ");
+		if (!yes)
+			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+		if (!yes)
+			yes = query_yesno("\nProceed with upgrading packages [y/N]: ");
+	}
 
 	if (yes)
 		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
@@ -166,7 +169,7 @@ exec_upgrade(int argc, char **argv)
 		printf("%s", sbuf_data(messages));
 	}
 
-	retcode = 0;
+	retcode = EXIT_SUCCESS;
 
 	cleanup:
 	pkg_jobs_free(jobs);

@@ -51,6 +51,7 @@
 static void usage(void);
 static void usage_help(void);
 static int exec_help(int, char **);
+bool quiet = false;
 
 static struct commands {
 	const char * const name;
@@ -89,6 +90,7 @@ usage(void)
 {
 	fprintf(stderr, "usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
 	fprintf(stderr, "Global options supported:\n");
+	fprintf(stderr, "\t%-15s%s\n", "-q", "Quiet has much as possible");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
 	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(1) inside a jail(8)");
 	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
@@ -156,14 +158,12 @@ main(int argc, char **argv)
 	size_t len;
 	signed char ch;
 	int debug = 0;
-	int ret = EX_USAGE;
+	int ret = EXIT_SUCCESS;
 
 	if (argc < 2)
 		usage();
 
-	pkg_event_register(&event_callback, &debug);
-
-	while ((ch = getopt(argc, argv, "dj:c:v")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:vq")) != -1) {
 		switch(ch) {
 			case 'd':
 				debug++;
@@ -178,6 +178,9 @@ main(int argc, char **argv)
 				printf(PKGVERSION""GITHASH"\n");
 				exit(EXIT_SUCCESS);
 				break; /* NOT REACHED */
+			case 'q':
+				quiet = true;
+				break;
 			default:
 				break;
 		}
@@ -187,6 +190,8 @@ main(int argc, char **argv)
 
 	if (argc == 0)
 		usage();
+
+	pkg_event_register(&event_callback, &debug);
 
 	/* reset getopt for the next call */
 	optreset = 1;
