@@ -206,8 +206,8 @@ exec_create(int argc, char **argv)
 	}
 
 	if (manifestdir == NULL)
-		return pkg_create_matches(argc, argv, match, fmt, outdir, rootdir, overwrite);
+		return pkg_create_matches(argc, argv, match, fmt, outdir, rootdir, overwrite) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE;
 	else
-		return pkg_create_fakeroot(outdir, fmt, rootdir, manifestdir);
+		return pkg_create_fakeroot(outdir, fmt, rootdir, manifestdir) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
