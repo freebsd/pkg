@@ -94,7 +94,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 	const char *tmp;
 	bool automatic;
 	int64_t flatsize;
-	int64_t time;
+	int64_t timestamp;
 	lic_t licenselogic;
 
 	sbuf_clear(dest);
@@ -148,8 +148,8 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_printf(dest, "%d", automatic);
 					break;
 				case 't':
-					pkg_get(pkg, PKG_TIME, &time);
-					sbuf_printf(dest, "%" PRId64, time);
+					pkg_get(pkg, PKG_TIME, &timestamp);
+					sbuf_printf(dest, "%" PRId64, timestamp);
 					break;
 				case 's':
 					qstr++;
