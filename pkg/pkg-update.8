@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd March 26, 2012
 .Dt PKG-UPDATE 8
 .Os
 .Sh NAME
@@ -23,6 +23,7 @@
 .Nd updates remote package repository databases
 .Sh SYNOPSIS
 .Nm
+.Op Fl q
 .Sh DESCRIPTION
 .Nm
 is used for updating from remote package repository databases.
@@ -40,6 +41,8 @@ or upgrades via
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl q
+Force quiet output
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

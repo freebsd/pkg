@@ -38,7 +38,7 @@
 void
 usage_autoremove(void)
 {
-	fprintf(stderr, "usage pkg autoremove [-y]\n\n");
+	fprintf(stderr, "usage pkg autoremove [-yq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help autoremove'.\n");
 }
 
@@ -56,8 +56,11 @@ exec_autoremove(int argc, char **argv)
 	int ch;
 	bool yes = false;
 
-	while ((ch = getopt(argc, argv, "y")) != -1) {
+	while ((ch = getopt(argc, argv, "yq")) != -1) {
 		switch (ch) {
+			case 'q':
+				quiet = true;
+				break;
 			case 'y':
 				yes = true;
 				break;
@@ -115,24 +118,26 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	pkg = NULL;
-	printf("Packages to be autoremoved: \n");
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		const char *name, *version;
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		printf("\t%s-%s\n", name, version);
+	if (!quiet) {
+		printf("Packages to be autoremoved: \n");
+		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
+			const char *name, *version;
+			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+			printf("\t%s-%s\n", name, version);
+		}
+
+		if (oldsize > newsize)
+			printf("\nThe autoremove will save %s\n", size);
+		else
+			printf("\nThe autoremove will require %s more space\n", size);
+
+		if (!yes)
+			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+		if (!yes)
+			yes = query_yesno("\nProceed with autoremove of packages [y/N]: ");
 	}
 
-	if (oldsize > newsize)
-		printf("\nThe autoremove will save %s\n", size);
-	else
-		printf("\nThe autoremove will require %s more space\n", size);
-
-	if (yes == false)
-		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-	if (yes == false)
-		yes = query_yesno("\nProceed with autoremove of packages [y/N]: ");
-
-	if (yes == true) {
+	if (yes) {
 		if ((retcode = pkg_jobs_apply(jobs, 1)) != EPKG_OK)
 			goto cleanup;
 	}

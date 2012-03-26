@@ -90,7 +90,6 @@ usage(void)
 {
 	fprintf(stderr, "usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
 	fprintf(stderr, "Global options supported:\n");
-	fprintf(stderr, "\t%-15s%s\n", "-q", "Quiet has much as possible");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
 	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(1) inside a jail(8)");
 	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
@@ -178,9 +177,6 @@ main(int argc, char **argv)
 				printf(PKGVERSION""GITHASH"\n");
 				exit(EXIT_SUCCESS);
 				break; /* NOT REACHED */
-			case 'q':
-				quiet = true;
-				break;
 			default:
 				break;
 		}

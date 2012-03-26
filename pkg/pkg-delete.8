@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd march 26, 2012
 .Dt PKG-DELETE 8
 .Os
 .Sh NAME
@@ -25,7 +25,7 @@
 .Nm
 .Op Fl ay
 .Nm
-.Op Fl yfgxX
+.Op Fl yqfgxX
 .Ar <pkg-name> <...>
 .Sh DESCRIPTION
 .Nm
@@ -47,6 +47,8 @@ Treat the package names as shell glob patterns.
 Treat the package names as regular expressions.
 .It Fl X
 Treat the package names as extended regular expressions.
+.It Fl q
+Force quiet output
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

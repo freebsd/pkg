@@ -37,7 +37,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage pkg upgrade [-r reponame] [-yf]\n");
+	fprintf(stderr, "usage pkg upgrade [-r reponame] [-yfq]\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -62,13 +62,16 @@ exec_upgrade(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	while ((ch = getopt(argc, argv, "yr:f")) != -1) {
+	while ((ch = getopt(argc, argv, "yr:fq")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = true;
 				break;
 			case 'r':
 				reponame = optarg;
+				break;
+			case 'q':
+				quiet = true;
 				break;
 			case 'f':
 				all = true;

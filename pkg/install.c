@@ -44,7 +44,7 @@
 void
 usage_install(void)
 {
-	fprintf(stderr, "usage: pkg install [-r reponame] [-yfgxX] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg install [-r reponame] [-yqfgxX] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -65,7 +65,7 @@ exec_install(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	bool force = false;
 
-	while ((ch = getopt(argc, argv, "yfgxXr:")) != -1) {
+	while ((ch = getopt(argc, argv, "yfgxXr:q")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = true;
@@ -84,6 +84,9 @@ exec_install(int argc, char **argv)
 				break;
 			case 'f':
 				force = true;
+				break;
+			case 'q':
+				quiet = true;
 				break;
 			default:
 				usage_install();

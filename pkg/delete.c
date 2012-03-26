@@ -39,8 +39,8 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "usage: pkg delete [-ygxXfr] <pkg-name> <...>\n");
-	fprintf(stderr, "       pkg delete [-y] -a\n\n");
+	fprintf(stderr, "usage: pkg delete [-yqgxXfr] <pkg-name> <...>\n");
+	fprintf(stderr, "       pkg delete [-yq] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
 
@@ -77,6 +77,9 @@ exec_delete(int argc, char **argv)
 				break;
 			case 'f':
 				force = 1;
+				break;
+			case 'q':
+				quiet = true;
 				break;
 			case 'y':
 				yes = true;

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd March 26, 2012
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl yfgxX
+.Op Fl yqfgxX
 .Ar <pkg-origin> <...>
 .Sh DESCRIPTION
 .Nm
@@ -71,6 +71,8 @@ Treat the package names as regular expressions.
 Treat the package names as extended regular expressions.
 .It Fl f
 Force the reinstallation of the package if already installed.
+.It Fl q
+Force quiet output.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

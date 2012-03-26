@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd March 26, 2012
 .Dt PKG-AUTOREMOVE 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd removes orphan packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl y
+.Op Fl yq
 .Sh DESCRIPTION
 .Nm
 is used for removing orphan packages, which were installed
@@ -34,6 +34,8 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl y
 Assume yes when asked for confirmation before package autoremoval.
+.It Fl q
+Force quiet output
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
