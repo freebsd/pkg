@@ -84,11 +84,11 @@ The flat size in human readable format of the matched package
 .It Cm \&%sb
 The flat size in bytes of the matched package
 .It Cm \&%a
-Returns 8 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
+Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
 .It Cm \&%M
 message contain in the matched package
 .It Cm \&%? Ns Op drCFIDLUG
-Returns 0 if the list is empty and 8 if the list has information to display
+Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It Cm d
 for dependencies
