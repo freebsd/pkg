@@ -448,7 +448,7 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 
 	if (pkg->licenselogic == LICENSE_SINGLE && !STAILQ_EMPTY(&pkg->licenses)) {
 		pkg_get(pkg, PKG_NAME, &pkgname);
-		pkg_emit_error("%s is have a single license which is already set",
+		pkg_emit_error("%s have a single license which is already set",
 		    pkgname);
 		return (EPKG_FATAL);
 	}
