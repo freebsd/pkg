@@ -260,6 +260,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"version TEXT NOT NULL,"
 			"comment TEXT NOT NULL,"
 			"desc TEXT NOT NULL,"
+			"osversion TEXT,"
 			"arch TEXT NOT NULL,"
 			"maintainer TEXT NOT NULL,"
 			"www TEXT,"
