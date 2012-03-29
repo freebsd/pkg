@@ -1388,7 +1388,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			"origin, name, version, comment, desc, message, arch, "
 			"maintainer, www, prefix, flatsize, automatic, licenselogic, "
 			"mtree_id, infos, time) "
-		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, 13, "
+		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, "
 		"(SELECT id from mtree where content = ?14), ?15, now());";
 	const char sql_dep[] = ""
 		"INSERT OR ROLLBACK INTO deps (origin, name, version, package_id) "
