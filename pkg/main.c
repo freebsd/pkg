@@ -43,7 +43,7 @@
 
 #include "pkgcli.h"
 
-#define PKGVERSION "1.0-beta8"
+#define PKGVERSION "1.0-beta9"
 #ifndef GITHASH
 #define GITHASH ""
 #endif
