@@ -227,6 +227,9 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 					cp[0] = '\0';
 					sbuf_cat(buf, path);
 					break;
+				case '%':
+					sbuf_putc(buf, '%');
+					break;
 				case '@':
 					if (line != NULL) {
 						sbuf_cat(buf, line);
@@ -238,9 +241,6 @@ format_exec_cmd(char **dest, const char *in, const char *prefix, const char *pli
 					 * given (default exec) %@ does not
 					 * exists
 					 */
-				case '%':
-					sbuf_putc(buf, '%');
-					break;
 				default:
 					sbuf_putc(buf, '%');
 					sbuf_putc(buf, in[0]);
