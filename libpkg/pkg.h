@@ -578,6 +578,14 @@ const char *pkg_option_value(struct pkg_option *);
 const char *pkg_shlib_name(struct pkg_shlib *);
 
 /**
+ * @param db A pointer to a struct pkgdb object
+ * @param origin Package origin
+ * @return EPKG_OK if the package is installed,
+ * and != EPKG_OK if the package is not installed or an error occurred
+ */
+int pkg_is_installed(struct pkgdb *db, const char *origin); 
+
+/**
  * Create a repository database.
  * @param path The path where the repository live.
  * @param callback A function which is called at every step of the process.

@@ -120,8 +120,6 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	const char *origin;
 	struct archive *a;
 	struct archive_entry *ae;
-	struct pkgdb_it *it;
-	struct pkg *p = NULL;
 	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
 	char myarch[BUFSIZ];
@@ -175,14 +173,8 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	/*
 	 * Check if the package is already installed
 	 */
-	it = pkgdb_query(db, origin, MATCH_EXACT);
-	if (it == NULL) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
 
-	ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC);
-	pkgdb_it_free(it);
+	ret = pkg_is_installed(db, origin);
 
 	if (ret == EPKG_OK) {
 		pkg_emit_already_installed(pkg);
@@ -279,9 +271,6 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	cleanup:
 	if (a != NULL)
 		archive_read_finish(a);
-
-	if (p != NULL)
-		pkg_free(p);
 
 	pkg_free(pkg);
 

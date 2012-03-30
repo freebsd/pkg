@@ -59,9 +59,7 @@ static void check_summary(struct pkgdb *db, struct deps_head *dh);
 static int
 check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh)
 {
-	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
-	struct pkgdb_it *it = NULL;
 	char *name, *version, *origin;
 	int nbpkgs = 0;
 
@@ -72,22 +70,15 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh)
 	pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version, PKG_ORIGIN, &origin);
 
 	while (pkg_deps(p, &dep) == EPKG_OK) {
-		if ((it = pkgdb_query(db, pkg_dep_get(dep, PKG_DEP_ORIGIN), MATCH_EXACT)) == NULL)
-			return (0);
-		
 		/* do we have a missing dependency? */
-		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_get(dep, PKG_DEP_ORIGIN)) != EPKG_OK) {
 			printf("%s has a missing dependency: %s\n", origin,
-					pkg_dep_get(dep, PKG_DEP_ORIGIN)),
+			       pkg_dep_get(dep, PKG_DEP_ORIGIN)),
 			add_missing_dep(dep, dh);
 			nbpkgs++;
 		}
-
-		pkgdb_it_free(it);
 	}
 	
-	pkg_free(pkg);
-
 	return (nbpkgs);
 }
 

@@ -1142,3 +1142,21 @@ pkg_recompute_flatsize(struct pkg *pkg)
 	}
 	return (flatsize);
 }
+
+int
+pkg_is_installed(struct pkgdb *db, const char *origin)
+{
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it = NULL;
+	int ret = EPKG_FATAL;
+
+	if ((it = pkgdb_query(db, origin, MATCH_EXACT)) == NULL)
+		return (EPKG_FATAL);
+
+	ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC);
+
+	pkg_free(pkg);
+	pkgdb_it_free(it);
+
+	return (ret);
+}
