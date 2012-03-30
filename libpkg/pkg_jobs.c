@@ -265,6 +265,13 @@ pkg_jobs_install(struct pkg_jobs *j)
 				STAILQ_INSERT_TAIL(&pkg_queue, pkg, next);
 				pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
 				pkg_get(pkg, PKG_ORIGIN, &origin);
+				/*
+				 * stop the different related services if the users do want that
+				 * and that the service is running
+				 */
+				pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+				if (handle_rc)
+					pkg_stop_rc_scripts(pkg);
 				pkgdb_unregister_pkg(j->db, origin);
 				pkg = NULL;
 			}
