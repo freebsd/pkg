@@ -313,6 +313,7 @@ exec_check(int argc, char **argv)
 				break;
 			case 'r':
 				recomputeflatsize = true;
+				flags |= PKG_LOAD_FILES;
 				if (geteuid() != 0)
 					errx(EX_USAGE, "Needs to be root to recompute the flatsize");
 				break;
