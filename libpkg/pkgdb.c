@@ -64,6 +64,7 @@ static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
 static int create_temporary_pkgjobs(sqlite3 *);
 static void pkgdb_detach_remotes(sqlite3 *);
 static bool is_attached(sqlite3 *, const char *);
+static void report_already_installed(sqlite3 *);
 
 static struct column_mapping {
 	const char * const name;
@@ -2030,6 +2031,30 @@ is_attached(sqlite3 *s, const char *name)
 	return (false);
 }
 
+static void
+report_already_installed(sqlite3 *s)
+{
+	sqlite3_stmt *stmt = NULL;
+	const char *origin = NULL;
+	const char *sql = "SELECT origin FROM pkgjobs WHERE "
+		"(SELECT p.origin FROM main.packages AS p WHERE "
+		"p.origin=pkgjobs.origin AND p.version=pkgjobs.version) IS NOT NULL;";
+	
+	assert(s != NULL);
+
+	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(s);
+		return;
+	}
+
+	while (sqlite3_step(stmt) != SQLITE_DONE) {
+		origin = sqlite3_column_text(stmt, 0);
+		printf("%s is already installed and at the latest version\n", origin);
+	}
+
+	sqlite3_finalize(stmt);
+}
+
 static int
 sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql) {
 	sqlite3_stmt *stmt;
@@ -2268,9 +2293,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	sqlite3_finalize(stmt);
 	sbuf_clear(sql);
 
-	/* Remove packages already installed and in the latest version */
+	/* Report and remove packages already installed and at the latest version */
+	report_already_installed(db->sqlite);
 	if (!force)
-		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and version=pkgjobs.version) IS NOT NULL;");
+		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and p.version=pkgjobs.version) IS NOT NULL;");
 
 	/* Append dependencies */
 	sbuf_reset(sql);
