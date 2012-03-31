@@ -38,7 +38,7 @@ static int rc_stop(const char *);
 static int rc_start(const char *);
 
 int
-pkg_stop_rc_scripts(struct pkg *pkg)
+pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 {
 	struct pkg_file *file = NULL;
 	char rc_d_path[PATH_MAX + 1];
@@ -59,37 +59,17 @@ pkg_stop_rc_scripts(struct pkg *pkg)
 			rcfile += len;
 			rc = strrchr(rcfile, '/');
 			rc++;
-			ret += rc_stop(rcfile);
+			switch (attr) {
+			case PKG_RC_START:
+				ret += rc_start(rcfile);
+				break;
+			case PKG_RC_STOP:
+				ret += rc_stop(rcfile);
+				break;
+			}
 		}
 	}
 
-	return (ret);
-}
-
-int
-pkg_start_rc_scripts(struct pkg *pkg)
-{
-	struct pkg_file *file = NULL;
-	char rc_d_path[PATH_MAX + 1];
-	const char *rcfile;
-	const char *rc;
-	size_t len = 0;
-	int ret = 0;
-	const char *prefix;
-
-	pkg_get(pkg, PKG_PREFIX, &prefix);
-	snprintf(rc_d_path, PATH_MAX, "%s/etc/rc.d/", prefix);
-	len = strlen(rc_d_path);
-
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (strncmp(rc_d_path, pkg_file_get(file, PKG_FILE_PATH), len) == 0) {
-			rcfile = pkg_file_get(file, PKG_FILE_PATH);
-			rcfile += len;
-			rc = strrchr(rcfile, '/');
-			rc++;
-			ret += rc_start(rcfile);
-		}
-	}
 	return (ret);
 }
 
@@ -109,7 +89,7 @@ rc_stop(const char *rc_file)
 		case 0:
 			/* child */
 			/*
-			 * We don't need to see the out put
+			 * We don't need to see the output
 			 */
 			fd = open("/dev/null", O_WRONLY);
 			dup2(fd, STDERR_FILENO);

@@ -249,7 +249,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 					 */
 					pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
 					if (handle_rc)
-						pkg_stop_rc_scripts(pkg);
+						pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 					pkgdb_unregister_pkg(j->db, origin);
 					pkg = NULL;
 				}
@@ -271,7 +271,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 				 */
 				pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
 				if (handle_rc)
-					pkg_stop_rc_scripts(pkg);
+					pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 				pkgdb_unregister_pkg(j->db, origin);
 				pkg = NULL;
 			}

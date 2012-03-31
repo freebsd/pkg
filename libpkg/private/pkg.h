@@ -174,8 +174,7 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags);
 
 int pkg_repo_fetch(struct pkg *pkg);
 
-int pkg_stop_rc_scripts(struct pkg *);
-int pkg_start_rc_scripts(struct pkg *);
+int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
 int pkg_script_run(struct pkg *, pkg_script_t type);
 
