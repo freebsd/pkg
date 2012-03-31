@@ -2049,7 +2049,7 @@ report_already_installed(sqlite3 *s)
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		origin = sqlite3_column_text(stmt, 0);
-		printf("%s is already installed and at the latest version\n", origin);
+		pkg_emit_error("%s is already installed and at the latest version", origin);
 	}
 
 	sqlite3_finalize(stmt);
@@ -2288,6 +2288,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		}
 		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
 		while (sqlite3_step(stmt) != SQLITE_DONE);
+
+		/* report if package was not found in the database */
+		if (sqlite3_changes(db->sqlite) == 0)
+			pkg_emit_error("Package '%s' was not found in the repositories", pkgs[i]);
 	}
 
 	sqlite3_finalize(stmt);

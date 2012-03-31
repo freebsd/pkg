@@ -123,17 +123,8 @@ exec_install(int argc, char **argv)
 	}
 	pkgdb_it_free(it);
 
-	if (pkg_jobs_is_empty(jobs)) {
-		if (argc == 0) {
-			if (!quiet)
-				printf("Nothing to do\n");
-			retcode = EXIT_SUCCESS;
-		} else {
-			fprintf(stderr, "Package(s) not found in the repositories\n");
-			retcode = EXIT_FAILURE;
-		}
+	if (pkg_jobs_is_empty(jobs))
 		goto cleanup;
-	}
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
