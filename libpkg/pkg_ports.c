@@ -726,6 +726,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	for (i = 0; i <= nbel; i++) {
 		if (pplist.ignore_next) {
 			pplist.ignore_next = false;
+			plist_p += next + 1;
+			next = strlen(plist_p);
 			continue;
 		}
 
