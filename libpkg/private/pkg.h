@@ -161,6 +161,14 @@ struct pkg_shlib {
 };
 
 /**
+ * rc script actions
+ */
+typedef enum {
+	PKG_RC_START = 0,
+	PKG_RC_STOP
+} pkg_rc_attr;
+
+/**
  * Remove and unregister the package.
  * @param pkg An installed package to delete
  * @param db An opened pkgdb

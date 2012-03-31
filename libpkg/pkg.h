@@ -280,14 +280,6 @@ typedef enum {
 } pkg_error_t;
 
 /**
- * rc script actions
- */
-typedef enum {
-	PKG_RC_START = 0,
-	PKG_RC_STOP
-} pkg_rc_attr;
-
-/**
  * Allocate a new pkg.
  * Allocated pkg must be deallocated by pkg_free().
  */
