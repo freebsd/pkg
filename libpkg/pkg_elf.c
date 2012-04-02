@@ -77,8 +77,10 @@ test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 	if (shlibs)
 		pkg_addshlib(pkg, name);
 
-	if (!autodeps)
+	if (!autodeps) {
+		dlclose(handle);
 		return (EPKG_OK);
+	}
 
 	if ((it = pkgdb_query_which(db, map->l_name)) == NULL) {
 		dlclose(handle);
@@ -122,17 +124,14 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	GElf_Dyn *dyn, dyn_mem;
 	struct stat sb;
 	int ret = EPKG_OK;
-	bool shlibs = false;
-	bool autodeps = false;
 
 	size_t numdyn;
+	size_t sh_link;
 	size_t dynidx;
 	const char *osname;
 
 	int fd;
 
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
-	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
 		return (EPKG_FATAL);
 	}
@@ -170,8 +169,11 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		switch (shdr.sh_type) {
 			case SHT_NOTE:
 				note = scn;
+				break;
 			case SHT_DYNAMIC:
 				dynamic = scn;
+				sh_link = shdr.sh_link;
+				numdyn = shdr.sh_size / shdr.sh_entsize;
 		}
 
 		if (note != NULL && dynamic != NULL)
@@ -187,21 +189,22 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	/* some freebsd binaries doesn't have notes like some perl modules */
-	if (note == NULL && elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD) {
-		ret = EPKG_END;
-		goto cleanup;
-	}
-
-	data = elf_getdata(note, NULL);
-	osname = (const char *) data->d_buf + sizeof(Elf_Note);
-	if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
-		ret = EPKG_END;	/* Foreign (probably linux) ELF object */
-		goto cleanup;
+	/* some freebsd binaries don't have notes like some perl modules */
+	if (note != NULL) {
+		data = elf_getdata(note, NULL);
+		osname = (const char *) data->d_buf + sizeof(Elf_Note);
+		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0) {
+			ret = EPKG_END;	/* Foreign (probably linux) ELF object */
+			goto cleanup;
+		}
+	} else {
+		if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD) {
+			ret = EPKG_END;
+			goto cleanup;
+		}
 	}
 
 	data = elf_getdata(dynamic, NULL);
-	numdyn = shdr.sh_size / shdr.sh_entsize;
 
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
@@ -213,7 +216,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		if (dyn->d_tag != DT_NEEDED)
 			continue;
 
-		test_depends(db, pkg, elf_strptr(e, shdr.sh_link, dyn->d_un.d_val));
+		test_depends(db, pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
 	}
 
 cleanup:
