@@ -28,6 +28,7 @@
 #include <sys/param.h>
 
 #include <err.h>
+#include <errno.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <string.h>
@@ -90,8 +91,20 @@ exec_add(int argc, char **argv)
 				break;
 
 			file = path;
-		} else
+		} else {
 			file = argv[i];
+			if (access(file, F_OK) != 0) {
+				warn("%s",file);
+				if (errno == ENOENT)
+					warnx("Did you mean pkg install %s?", file);
+				sbuf_cat(failedpkgs, argv[i]);
+				if (i != argc - 1)
+					sbuf_printf(failedpkgs, ", ");
+				failedpkgcount++;
+				continue;
+			}
+
+		}
 			
 		pkg_open(&p, file, NULL);
 
