@@ -157,7 +157,12 @@ main(int argc, char **argv)
 	size_t len;
 	signed char ch;
 	int debug = 0;
+	int version = 0;
 	int ret = EXIT_SUCCESS;
+	char myarch[BUFSIZ];
+	const char *buf = NULL;
+	bool b;
+	struct pkg_config_kv *kv = NULL;
 
 	if (argc < 2)
 		usage();
@@ -174,8 +179,7 @@ main(int argc, char **argv)
 				jail_str = optarg;
 				break;
 			case 'v':
-				printf(PKGVERSION""GITHASH"\n");
-				exit(EXIT_SUCCESS);
+				version++;
 				break; /* NOT REACHED */
 			default:
 				break;
@@ -184,7 +188,11 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0)
+	if (version == 1) {
+		printf(PKGVERSION""GITHASH"\n");
+		exit(EXIT_SUCCESS);
+	}
+	if (argc == 0 && version == 0)
 		usage();
 
 	pkg_event_register(&event_callback, &debug);
@@ -217,6 +225,45 @@ main(int argc, char **argv)
 
 	if (pkg_init(NULL) != EPKG_OK)
 		errx(EX_SOFTWARE, "can not parse configuration file");
+
+	if (version > 1) {
+		printf("version: "PKGVERSION""GITHASH"\n");
+		pkg_get_myarch(myarch, BUFSIZ);
+		printf("abi: %s\n", myarch);
+		pkg_config_string(PKG_CONFIG_DBDIR, &buf);
+		printf("db dir: %s\n", buf);
+		pkg_config_string(PKG_CONFIG_CACHEDIR, &buf);
+		printf("cache dir: %s\n", buf);
+		pkg_config_string(PKG_CONFIG_PORTSDIR, &buf);
+		printf("ports dir: %s\n", buf);
+		pkg_config_bool(PKG_CONFIG_SYSLOG, &b);
+		printf("Log into syslog: %s\n", b ? "yes": "no");
+		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &b);
+		printf("Assume always yes: %s\n", b ? "yes" : "no");
+		if (version > 2) {
+			pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &b);
+			printf("Handle rc scripts: %s\n", b ? "yes" : "no");
+			pkg_config_bool(PKG_CONFIG_SHLIBS, &b);
+			printf("Track shlibs: %s\n", b ? "yes" : "no");
+			pkg_config_bool(PKG_CONFIG_AUTODEPS, &b);
+			printf("Automatic depdency tracking: %s\n", b ? "yes": "no");
+			pkg_config_string(PKG_CONFIG_PLIST_KEYWORDS_DIR, &buf);
+			printf("Custom keywords directory: %s\n", buf ? buf : "none");
+		}
+		pkg_config_bool(PKG_CONFIG_MULTIREPOS, &b);
+		if (b) {
+			printf("Repositories:\n");
+			while (pkg_config_list(PKG_CONFIG_REPOS, &kv) == EPKG_OK) {
+				printf("             - %s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
+				    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
+			}
+		} else {
+			pkg_config_string(PKG_CONFIG_REPO, &buf);
+			printf("Repository: %s\n", buf ? buf : "none");
+		}
+		pkg_shutdown();
+		exit(EXIT_SUCCESS);
+	}
 
 	len = strlen(argv[0]);
 	for (i = 0; i < cmd_len; i++) {
