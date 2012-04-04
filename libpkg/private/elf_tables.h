@@ -69,4 +69,7 @@ struct _elf_corres os_corres[] = {
 #define EF_ARM_SOFT_FLOAT	0x200
 #define EF_ARM_VFP_FLOAT	0x400
 
+#define NT_VERSION	1
+#define NT_ARCH	2
+
 #endif /* ELF_TABLES_H_ */

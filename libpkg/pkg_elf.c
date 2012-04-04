@@ -273,9 +273,9 @@ pkg_get_myarch(char *dest, size_t sz)
 	Elf_Note note;
 	Elf_Scn *scn = NULL;
 	int fd;
-	char *src;
+	char *src = NULL;
 	char *osname;
-	uint32_t version;
+	uint32_t version = 0;
 	int ret = EPKG_OK;
 	int i;
 	const char *abi;
@@ -321,10 +321,15 @@ pkg_get_myarch(char *dest, size_t sz)
 
 	data = elf_getdata(scn, NULL);
 	src = data->d_buf;
-	memcpy(&note, src, sizeof(Elf_Note));
-	src += sizeof(Elf_Note);
+	while (1) {
+		memcpy(&note, src, sizeof(Elf_Note));
+		src += sizeof(Elf_Note);
+		if (note.n_type == NT_VERSION)
+			break;
+		src += note.n_namesz + note.n_descsz;
+	}
 	osname = src;
-	src += roundup2(note.n_namesz, 4);
+	src += note.n_namesz;
 	if (elfhdr.e_ident[EI_DATA] == ELFDATA2MSB)
 		version = be32dec(src);
 	else
