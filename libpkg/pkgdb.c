@@ -642,7 +642,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			snprintf(remotepath, sizeof(remotepath), "%s/repo.sqlite", dbdir);
 
 			if (access(remotepath, R_OK) != 0) {
-				pkg_emit_noremotedb("default");
+				pkg_emit_noremotedb("repo");
 				pkgdb_close(db);
 				return (EPKG_ENODB);
 			}
