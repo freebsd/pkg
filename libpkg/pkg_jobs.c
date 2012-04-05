@@ -152,78 +152,21 @@ pkg_jobs_install(struct pkg_jobs *j)
 	struct pkg *newpkg = NULL;
 	struct pkg *pkg_temp = NULL;
 	struct pkgdb_it *it = NULL;
-	struct sbuf *buf = sbuf_new_auto();
 	STAILQ_HEAD(,pkg) pkg_queue;
-	const char *cachedir;
 	char path[MAXPATHLEN + 1];
-	int ret = EPKG_OK;
+	const char *cachedir = NULL;
 	int flags = 0;
-	int64_t dlsize = 0;
-	struct statfs fs;
-	char dlsz[7];
-	char fsz[7];
+
 	bool handle_rc = false;
 
 	STAILQ_INIT(&pkg_queue);
 
-	/* check for available size to fetch */
-	while (pkg_jobs(j, &p) == EPKG_OK) {
-		int64_t pkgsize;
-		pkg_get(p, PKG_NEW_PKGSIZE, &pkgsize);
-		dlsize += pkgsize;
-	}
+	/* Fetch */
+	pkg_jobs_fetch(j);
 
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
-
-	while (statfs(cachedir, &fs) == -1) {
-		if (errno == ENOENT) {
-			if (mkdirs(cachedir) != EPKG_OK)
-				return (EPKG_FATAL);
-		} else {
-			pkg_emit_errno("statfs", cachedir);
-			return (EPKG_FATAL);
-		}
-	}
-
-	if (dlsize > ((int64_t)fs.f_bsize * (int64_t)fs.f_bfree)) {
-		humanize_number(dlsz, sizeof(dlsz), dlsize, "B", HN_AUTOSCALE, 0);
-		humanize_number(fsz, sizeof(fsz), (int64_t)fs.f_bsize * (int64_t)fs.f_bfree, "B", HN_AUTOSCALE, 0);
-		pkg_emit_error("Not enough space in %s, needed %s available %s", cachedir, dlsz, fsz);
-		return (EPKG_FATAL);
-	}
-		
-	/* Fetch */
-	p = NULL;
-	while (pkg_jobs(j, &p) == EPKG_OK) {
-		if (pkg_repo_fetch(p) != EPKG_OK)
-			return (EPKG_FATAL);
-	}
-
-	p = NULL;
-	/* integrity checking */
-	pkg_emit_integritycheck_begin();
-
-	while (pkg_jobs(j, &p) == EPKG_OK) {
-		const char *pkgrepopath;
-
-		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
-		snprintf(path, sizeof(path), "%s/%s", cachedir,
-		    pkgrepopath);
-		if (pkg_open(&pkg, path, buf) != EPKG_OK)
-			return (EPKG_FATAL);
-
-		if (pkgdb_integrity_append(j->db, pkg) != EPKG_OK)
-			ret = EPKG_FATAL;
-	}
-
-	pkg_free(pkg);
-	sbuf_delete(buf);
-
-	if (pkgdb_integrity_check(j->db) != EPKG_OK || ret != EPKG_OK)
-		return (EPKG_FATAL);
-
-	pkg_emit_integritycheck_finished();
+	
 	p = NULL;
 	/* Install */
 	sql_exec(j->db->sqlite, "SAVEPOINT upgrade;");
@@ -354,4 +297,79 @@ pkg_jobs_apply(struct pkg_jobs *j, int force)
 
 	pkg_emit_error("bad jobs argument");
 	return (EPKG_FATAL);
+}
+
+int pkg_jobs_fetch(struct pkg_jobs *j)
+{
+	struct pkg *p = NULL;
+	struct pkg *pkg = NULL;
+	struct sbuf *buf = sbuf_new_auto();
+	struct statfs fs;
+	char path[MAXPATHLEN + 1];
+	int64_t dlsize = 0;
+	const char *cachedir = NULL;
+	char dlsz[7];
+	char fsz[7];
+	int ret = EPKG_OK;
+	
+	/* check for available size to fetch */
+	while (pkg_jobs(j, &p) == EPKG_OK) {
+		int64_t pkgsize;
+		pkg_get(p, PKG_NEW_PKGSIZE, &pkgsize);
+		dlsize += pkgsize;
+	}
+
+	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	while (statfs(cachedir, &fs) == -1) {
+		if (errno == ENOENT) {
+			if (mkdirs(cachedir) != EPKG_OK)
+				return (EPKG_FATAL);
+		} else {
+			pkg_emit_errno("statfs", cachedir);
+			return (EPKG_FATAL);
+		}
+	}
+
+	if (dlsize > ((int64_t)fs.f_bsize * (int64_t)fs.f_bfree)) {
+		humanize_number(dlsz, sizeof(dlsz), dlsize, "B", HN_AUTOSCALE, 0);
+		humanize_number(fsz, sizeof(fsz), (int64_t)fs.f_bsize * (int64_t)fs.f_bfree, "B", HN_AUTOSCALE, 0);
+		pkg_emit_error("Not enough space in %s, needed %s available %s", cachedir, dlsz, fsz);
+		return (EPKG_FATAL);
+	}
+		
+	/* Fetch */
+	p = NULL;
+	while (pkg_jobs(j, &p) == EPKG_OK) {
+		if (pkg_repo_fetch(p) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
+	p = NULL;
+	/* integrity checking */
+	pkg_emit_integritycheck_begin();
+
+	while (pkg_jobs(j, &p) == EPKG_OK) {
+		const char *pkgrepopath;
+
+		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
+		snprintf(path, sizeof(path), "%s/%s", cachedir,
+		    pkgrepopath);
+		if (pkg_open(&pkg, path, buf) != EPKG_OK)
+			return (EPKG_FATAL);
+
+		if (pkgdb_integrity_append(j->db, pkg) != EPKG_OK)
+			ret = EPKG_FATAL;
+	}
+
+	pkg_free(pkg);
+	sbuf_delete(buf);
+
+	if (pkgdb_integrity_check(j->db) != EPKG_OK || ret != EPKG_OK)
+		return (EPKG_FATAL);
+
+	pkg_emit_integritycheck_finished();
+
+	return (EPKG_OK);
 }
