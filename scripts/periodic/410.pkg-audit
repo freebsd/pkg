@@ -39,7 +39,7 @@ if [ -r /etc/defaults/periodic.conf ]; then
 fi
 
 # Compute PKG_DBDIR from the config file.
-if [ -z "${PKG_DBDIR}" ]; then
+if [ -z "${PKG_DBDIR}" ] && [ -f /usr/local/etc/pkg.conf ]; then
   PKG_DBDIR=`sed -ne 's/PKG_DBDIR[[:space:]]*:[[:space:]]*\(.*\)/\1/pI' 
              < /usr/local/etc/pkg.conf`
 fi
