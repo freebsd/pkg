@@ -1523,7 +1523,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 
 	if (sqlite3_prepare_v2(s, sql_dep, -1, &stmt, NULL) != SQLITE_OK) {
-		printf("prout\n");
 		ERROR_SQLITE(s);
 		goto cleanup;
 	}
