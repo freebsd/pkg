@@ -28,6 +28,7 @@
 
 #include <sys/stat.h>
 
+#include <archive_entry.h>
 #include <assert.h>
 #include <fts.h>
 #include <libgen.h>
@@ -215,13 +216,31 @@ pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len)
 	return (EPKG_OK);
 }
 
+static void
+file_exists(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
+{
+	char fpath[MAXPATHLEN];
+	sqlite3 *db = sqlite3_context_db_handle(ctx);
+	char *path = dirname(sqlite3_db_filename(db, "main"));
+	if (argc != 1) {
+		sqlite3_result_error(ctx, "Need one argument", -1);
+		return;
+	}
+
+	snprintf(fpath, MAXPATHLEN, "%s/%s", path, sqlite3_value_text(argv[0]));
+
+	if (access(fpath, F_OK) == 0)
+			sqlite3_result_int(ctx, 1);
+	else
+			sqlite3_result_int(ctx, 0);
+}
+
 int
 pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
 	FTSENT *ent = NULL;
 
-	struct stat st;
 	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
 	struct pkg_category *category = NULL;
@@ -247,10 +266,15 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	int retcode = EPKG_OK;
 	char *pkg_path;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
+	bool incremental = false;
 	int ret;
 
 	char *repopath[2];
 	char repodb[MAXPATHLEN + 1];
+	char repopack[MAXPATHLEN + 1];
+
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
 
 	const char initsql[] = ""
 		"CREATE TABLE packages ("
@@ -344,30 +368,53 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	repopath[1] = NULL;
 
 	snprintf(repodb, sizeof(repodb), "%s/repo.sqlite", path);
+	snprintf(repopack, sizeof(repopack), "%s/repo.txz", path);
 
-	if (stat(repodb, &st) != -1)
-		if (unlink(repodb) != 0) {
-			pkg_emit_errno("unlink", path);
-			return EPKG_FATAL;
+	if (access(repopack, F_OK) == 0) {
+		a = archive_read_new();
+		archive_read_support_compression_all(a);
+		archive_read_support_format_tar(a);
+		if (archive_read_open_filename(a, repopack, 4096) != ARCHIVE_OK) {
+			/* if we can't unpack it it won't be useful for us */
+			unlink(repopack);
+		} else {
+			while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
+				if (!strcmp(archive_entry_pathname(ae), "repo.sqlite")) {
+					archive_entry_set_pathname(ae, repodb);
+					archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+					break;
+				}
+			}
 		}
+		if (a != NULL)
+			archive_read_finish(a);
+	}
+
+	if (access(repodb, F_OK) == 0)
+		incremental = true;
 
 	sqlite3_initialize();
 	if (sqlite3_open(repodb, &sqlite) != SQLITE_OK) {
 		sqlite3_shutdown();
 		return (EPKG_FATAL);
 	}
-	
+
+	sqlite3_create_function(sqlite, "file_exists", 1, SQLITE_ANY, NULL, file_exists, NULL, NULL);
 	if ((retcode = sql_exec(sqlite, "PRAGMA synchronous=off;")) != EPKG_OK)
 		goto cleanup;
 
 	if ((retcode = sql_exec(sqlite, "PRAGMA journal_mode=memory")) != EPKG_OK)
 		goto cleanup;
 
-	if ((retcode = sql_exec(sqlite, initsql)) != EPKG_OK)
+	if (!incremental && (retcode = sql_exec(sqlite, initsql)) != EPKG_OK)
 		goto cleanup;
 
 	if ((retcode = sql_exec(sqlite, "BEGIN TRANSACTION;")) != EPKG_OK)
 		goto cleanup;
+
+	/* remove everything that is not anymore in the repository */
+	if (incremental)
+		sql_exec(sqlite, "delete from packages where not file_exists(path);");
 
 	if (sqlite3_prepare_v2(sqlite, pkgsql, -1, &stmt_pkg, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite);
@@ -459,6 +506,28 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		while (pkg_path[0] == '/' )
 			pkg_path++;
 
+		sha256_file(ent->fts_accpath, cksum);
+		/* do not add if package if already in base */
+		if (incremental) {
+			sqlite3_stmt *stmt;
+			if (sqlite3_prepare_v2(sqlite, "select count(*) from packages where path=?1 and cksum=?2;",
+			        -1, &stmt, NULL) != SQLITE_OK) {
+				goto cleanup;
+			}
+			sqlite3_bind_text(stmt, 1, pkg_path, -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt, 2, cksum, -1, SQLITE_STATIC);
+
+			if (sqlite3_step(stmt) != SQLITE_ROW) {
+				ERROR_SQLITE(sqlite);
+				goto cleanup;
+			}
+			if (sqlite3_column_int(stmt, 0) == 1) {
+				sqlite3_finalize(stmt);
+				continue;
+			}
+			sqlite3_finalize(stmt);
+		}
+
 		if (pkg_open(&pkg, ent->fts_accpath, manifest) != EPKG_OK) {
 			retcode = EPKG_WARN;
 			continue;
@@ -483,7 +552,6 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		sqlite3_bind_text(stmt_pkg, 9, prefix, -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt_pkg, 10, ent->fts_statp->st_size);
 		sqlite3_bind_int64(stmt_pkg, 11, flatsize);
-		sha256_file(ent->fts_accpath, cksum);
 		sqlite3_bind_int64(stmt_pkg, 12, licenselogic);
 		sqlite3_bind_text(stmt_pkg, 13, cksum, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt_pkg, 14, pkg_path, -1, SQLITE_STATIC);
