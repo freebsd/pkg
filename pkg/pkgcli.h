@@ -146,7 +146,7 @@ void usage_which(void);
 #define INFO_LIST_SHLIBS (1<<11)
 
 bool query_yesno(const char *msg, ...);
-int print_info(struct pkg * const pkg, unsigned int opt);
+void print_info(struct pkg * const pkg, unsigned int opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
 void print_jobs_summary(struct pkg_jobs *j, pkg_jobs_t type, const char *msg, ...);
 

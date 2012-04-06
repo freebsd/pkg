@@ -127,7 +127,7 @@ absolutepath(const char *src, char *dest, size_t dest_len) {
 	return &dest[0];
 }
 
-int
+void
 print_info(struct pkg * const pkg, unsigned int opt)
 {
 	struct pkg_dep *dep = NULL;
@@ -283,8 +283,6 @@ print_info(struct pkg * const pkg, unsigned int opt)
 				printf("%s-%s: %s\n", name, version, comment);
 		}
         }
-
-        return (0);
 }
 
 void
