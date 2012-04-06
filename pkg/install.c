@@ -59,9 +59,7 @@ exec_install(int argc, char **argv)
 	int retcode = 1;
 	int ch;
 	bool yes = false;
-	int64_t dlsize = 0;
-	int64_t oldsize = 0, newsize = 0;
-	char size[7];
+
 	match_t match = MATCH_EXACT;
 	bool force = false;
 
@@ -129,45 +127,7 @@ exec_install(int argc, char **argv)
 	/* print a summary before applying the jobs */
 	pkg = NULL;
 	if (!quiet) {
-		printf("The following packages will be installed:\n");
-
-		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-			const char *name, *version, *newversion;
-			int64_t flatsize, newflatsize, pkgsize;
-			pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
-					PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
-					PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
-			dlsize += pkgsize;
-			if (newversion != NULL) {
-				switch (pkg_version_cmp(version, newversion)) {
-					case 1:
-						printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
-						break;
-					case 0:
-						printf("\tReinstalling %s-%s\n", name, version);
-						break;
-					case -1:
-						printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
-						break;
-				}
-				oldsize += flatsize;
-				newsize += newflatsize;
-			} else {
-				newsize += flatsize;
-				printf("\tInstalling %s: %s\n", name, version);
-			}
-		}
-
-		if (oldsize > newsize) {
-			newsize *= -1;
-			humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-			printf("\nthe installation will save %s\n", size);
-		} else {
-			humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-			printf("\nthe installation will require %s more space\n", size);
-		}
-		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-		printf("%s to be downloaded\n", size);
+		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following packages will be installed:\n");
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);

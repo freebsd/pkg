@@ -47,7 +47,6 @@ query_yesno(const char *msg, ...)
 	vprintf(msg, ap);
 	va_end(ap);
 
-
 	c = getchar();
 	if (c == 'y' || c == 'Y')
 		r = true;
@@ -127,7 +126,6 @@ absolutepath(const char *src, char *dest, size_t dest_len) {
 
 	return &dest[0];
 }
-
 
 int
 print_info(struct pkg * const pkg, unsigned int opt)
@@ -287,4 +285,68 @@ print_info(struct pkg * const pkg, unsigned int opt)
         }
 
         return (0);
+}
+
+void
+print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
+{
+	struct pkg *pkg = NULL;
+	const char *name, *version, *newversion;
+	int64_t dlsize, oldsize, newsize;
+	int64_t flatsize, newflatsize, pkgsize;
+	char size[7];
+	va_list ap;
+
+	va_start(ap, msg);
+	vprintf(msg, ap);
+	va_end(ap);
+
+	dlsize = oldsize = newsize = 0;
+	flatsize = newflatsize = pkgsize = 0;
+	name = version = newversion = NULL;
+	
+	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
+		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
+			PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
+			PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
+
+		dlsize += pkgsize;
+
+		/* Install/Upgrade */
+		if (type == PKG_JOBS_INSTALL) {
+			if (newversion != NULL) {
+				switch (pkg_version_cmp(version, newversion)) {
+				case 1:
+					printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
+					break;
+				case 0:
+					printf("\tReinstalling %s-%s\n", name, version);
+					break;
+				case -1:
+					printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+					break;
+				}
+				oldsize += flatsize;
+				newsize += newflatsize;
+			} else {
+				newsize += flatsize;
+				printf("\tInstalling %s: %s\n", name, version);
+			}
+		}
+
+		/* Delete */
+
+		/* Fetch */
+	}
+
+	if (oldsize > newsize) {
+		newsize *= -1;
+		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
+		printf("\nthe installation will save %s\n", size);
+	} else {
+		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
+		printf("\nthe installation will require %s more space\n", size);
+	}
+	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+	printf("%s to be downloaded\n", size);
 }
