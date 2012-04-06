@@ -114,7 +114,7 @@ exec_upgrade(int argc, char **argv)
 
 	pkg = NULL;
 	if (!quiet) {
-		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following packages will be upgraded:\n");
+		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following packages will be upgraded:\n\n");
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);

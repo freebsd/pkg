@@ -383,6 +383,6 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 
 	if ((type == PKG_JOBS_INSTALL) || (type == PKG_JOBS_FETCH)) {
 		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-		printf("%s to be downloaded\n", size);
+		printf("\n%s to be downloaded\n", size);
 	}
 }

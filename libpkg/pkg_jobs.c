@@ -294,6 +294,8 @@ pkg_jobs_apply(struct pkg_jobs *j, int force)
 		return (pkg_jobs_install(j));
 	if (j->type == PKG_JOBS_DEINSTALL)
 		return (pkg_jobs_deinstall(j, force));
+	if (j->type == PKG_JOBS_FETCH)
+		return (pkg_jobs_fetch(j));
 
 	pkg_emit_error("bad jobs argument");
 	return (EPKG_FATAL);

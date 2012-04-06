@@ -127,7 +127,7 @@ exec_install(int argc, char **argv)
 	/* print a summary before applying the jobs */
 	pkg = NULL;
 	if (!quiet) {
-		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following packages will be installed:\n");
+		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following packages will be installed:\n\n");
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
