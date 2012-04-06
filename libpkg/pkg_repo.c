@@ -61,8 +61,6 @@ pkg_repo_fetch(struct pkg *pkg)
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
-	memset(url, 0, MAXPATHLEN  + 1 );
-	memset(dest, 0, MAXPATHLEN + 1);
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
 
