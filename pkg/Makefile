@@ -23,7 +23,8 @@ SRCS=		add.c \
 		updating.c \
 		utils.c \
 		version.c \
-		which.c
+		which.c \
+		fetch.c
 PREFIX?=	/usr/local
 BINDIR=		${PREFIX}/sbin
 MANDIR=		${PREFIX}/man/man

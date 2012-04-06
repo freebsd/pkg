@@ -81,6 +81,7 @@ static struct commands {
 	{ "upgrade", "Performs upgrades of package software distributions", exec_upgrade, usage_upgrade},
 	{ "version", "Summarize installed versions of packages", exec_version, usage_version},
 	{ "which", "Displays which package installed a specific file", exec_which, usage_which},
+	{ "fetch", "Fetches packages from a remote repository", exec_fetch, usage_fetch},
 };
 
 const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));

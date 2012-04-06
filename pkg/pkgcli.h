@@ -107,6 +107,10 @@ void usage_updating(void);
 int exec_upgrade(int, char **);
 void usage_upgrade(void);
 
+/* pkg fetch */
+int exec_fetch(int, char **);
+void usage_fetch(void);
+
 /* pkg version */
 #define VERSION_INDEX (1<<0)
 #define VERSION_ORIGIN (1<<1)

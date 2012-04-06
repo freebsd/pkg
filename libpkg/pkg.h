@@ -222,7 +222,8 @@ typedef enum _pkg_script_t {
 typedef enum _pkg_jobs_t {
 	PKG_JOBS_INSTALL,
 	PKG_JOBS_DEINSTALL,
-	PKG_JOBS_UPGRADE
+	PKG_JOBS_UPGRADE,
+	PKG_JOBS_FETCH
 } pkg_jobs_t;
 
 typedef enum _pkg_config_key {
@@ -651,6 +652,7 @@ struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame, bo
 struct pkgdb_it *pkgdb_query_downgrades(struct pkgdb *db, const char *reponame);
 struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
 struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
+struct pkgdb_it *pkgdb_query_fetch(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame);
 
 /**
  * @todo Return directly the struct pkg?

@@ -2971,3 +2971,136 @@ pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...)
 
 	return (ret);
 }
+
+struct pkgdb_it *
+pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, const char *repo)
+{
+	sqlite3_stmt *stmt = NULL;
+	int i = 0;
+	struct sbuf *sql = sbuf_new_auto();
+	const char *how = NULL;
+	const char *reponame = NULL;
+	bool multirepos_enabled = false;
+
+	const char finalsql[] = "SELECT pkgid AS id, origin, name, version, "
+		"flatsize, newversion, newflatsize, pkgsize, cksum, repopath, "
+		"'%s' AS dbname FROM pkgjobs ORDER BY weight DESC;";
+	
+	const char main_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
+			"flatsize, pkgsize, cksum, repopath) "
+			"SELECT id, origin, name, version, flatsize, pkgsize, "
+			"cksum, path FROM '%s'.packages WHERE ";
+
+	const char deps_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
+				"flatsize, pkgsize, cksum, repopath) "
+				"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
+				"r.flatsize, r.pkgsize, r.cksum, r.path "
+				"FROM '%s'.packages AS r where r.origin IN "
+				"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j WHERE d.package_id = j.pkgid) "
+				"AND (SELECT origin FROM main.packages WHERE origin=r.origin AND version=r.version) IS NULL;";
+
+	const char weight_sql[] = "UPDATE pkgjobs SET weight=(SELECT count(*) FROM '%s'.deps AS d WHERE d.origin=pkgjobs.origin)";
+
+	assert(db != NULL);
+
+	if (db->type != PKGDB_REMOTE) {
+		pkg_emit_error("remote database not attached (misuse)");
+		return (NULL);
+	}
+
+	/* Working on multiple repositories */
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
+
+	if (multirepos_enabled) {
+		if (repo != NULL) {
+			if (!is_attached(db->sqlite, repo)) {
+				pkg_emit_error("repository '%s' does not exists", repo);
+				return (NULL);
+			}
+
+			reponame = repo;
+		} else {
+			/* default repository in multi-repos is 'default' */
+			reponame = "default";
+		}
+	} else {
+		/* default repository in single-repo is 'remote' */
+		reponame = "remote";
+	}
+
+	sbuf_printf(sql, main_sql, reponame);
+
+	switch (match) {
+		case MATCH_ALL:
+			how = NULL;
+			break;
+		case MATCH_EXACT:
+			how = "%s = ?1";
+			break;
+		case MATCH_GLOB:
+			how = "%s GLOB ?1";
+			break;
+		case MATCH_REGEX:
+			how = "%s REGEXP ?1";
+			break;
+		case MATCH_EREGEX:
+			how = "EREGEXP(?1, %s)";
+			break;
+	}
+
+	create_temporary_pkgjobs(db->sqlite);
+
+	sbuf_printf(sql, how, "name");
+	sbuf_cat(sql, " OR ");
+	sbuf_printf(sql, how, "origin");
+	sbuf_cat(sql, " OR ");
+	sbuf_printf(sql, how, "name || \"-\" || version");
+	sbuf_finish(sql);
+
+	for (i = 0; i < nbpkgs; i++) {
+		if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			return (NULL);
+		}
+		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
+		while (sqlite3_step(stmt) != SQLITE_DONE);
+
+		/* report if package was not found in the database */
+		if (sqlite3_changes(db->sqlite) == 0)
+			pkg_emit_error("Package '%s' was not found in the repositories", pkgs[i]);
+	}
+
+	sqlite3_finalize(stmt);
+	sbuf_clear(sql);
+
+	/* Append dependencies */
+	sbuf_reset(sql);
+	sbuf_printf(sql, deps_sql, reponame, reponame);
+	sbuf_finish(sql);
+
+	do {
+		sql_exec(db->sqlite, sbuf_get(sql));
+	} while (sqlite3_changes(db->sqlite) != 0);
+
+	sbuf_reset(sql);
+	sbuf_printf(sql, weight_sql, reponame);
+	sbuf_finish(sql);
+
+	/* Set weight */
+	sql_exec(db->sqlite, sbuf_get(sql));
+
+	/* Execute final SQL */
+	sbuf_reset(sql);
+	sbuf_printf(sql, finalsql, reponame);
+	sbuf_finish(sql);
+
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
+	sbuf_finish(sql);
+	sbuf_delete(sql);
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+}
