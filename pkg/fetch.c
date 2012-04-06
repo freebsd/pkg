@@ -42,7 +42,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxX] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxXa] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
 }
 
@@ -59,10 +59,13 @@ exec_fetch(int argc, char **argv)
 	bool yes = false;
 	match_t match = MATCH_EXACT;
 
-	while ((ch = getopt(argc, argv, "ygxXr:q")) != -1) {
+	while ((ch = getopt(argc, argv, "ygxXr:qa")) != -1) {
 		switch (ch) {
 		case 'y':
 			yes = true;
+			break;
+		case 'a':
+			match = MATCH_ALL;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
@@ -87,11 +90,12 @@ exec_fetch(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 	
-	if (argc < 1) {
+	if (argc < 1 && match != MATCH_ALL) {
 		usage_fetch();
 		return (EX_USAGE);
 	}
 
+	/* TODO: Allow the user to specify an output directory via -o outdir */
 	if (geteuid() != 0) {
 		warnx("fetching packages can only be done as root");
 		return (EX_NOPERM);

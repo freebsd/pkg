@@ -2988,7 +2988,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 	const char main_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 			"flatsize, pkgsize, cksum, repopath) "
 			"SELECT id, origin, name, version, flatsize, pkgsize, "
-			"cksum, path FROM '%s'.packages WHERE ";
+			"cksum, path FROM '%s'.packages ";
 
 	const char deps_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 				"flatsize, pkgsize, cksum, repopath) "
@@ -3049,26 +3049,37 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 
 	create_temporary_pkgjobs(db->sqlite);
 
-	sbuf_printf(sql, how, "name");
-	sbuf_cat(sql, " OR ");
-	sbuf_printf(sql, how, "origin");
-	sbuf_cat(sql, " OR ");
-	sbuf_printf(sql, how, "name || \"-\" || version");
-	sbuf_finish(sql);
-
-	for (i = 0; i < nbpkgs; i++) {
+	if (how != NULL) {
+		sbuf_cat(sql, " WHERE ");
+		sbuf_printf(sql, how, "name");
+		sbuf_cat(sql, " OR ");
+		sbuf_printf(sql, how, "origin");
+		sbuf_cat(sql, " OR ");
+		sbuf_printf(sql, how, "name || \"-\" || version");
+		sbuf_finish(sql);
+		
+		for (i = 0; i < nbpkgs; i++) {
+			if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
+				ERROR_SQLITE(db->sqlite);
+				return (NULL);
+			}
+			sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
+			while (sqlite3_step(stmt) != SQLITE_DONE);
+			
+			/* report if package was not found in the database */
+			if (sqlite3_changes(db->sqlite) == 0)
+				pkg_emit_error("Package '%s' was not found in the repositories", pkgs[i]);
+		}
+	} else {
+		sbuf_finish(sql);
 		if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite);
 			return (NULL);
 		}
 		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
 		while (sqlite3_step(stmt) != SQLITE_DONE);
-
-		/* report if package was not found in the database */
-		if (sqlite3_changes(db->sqlite) == 0)
-			pkg_emit_error("Package '%s' was not found in the repositories", pkgs[i]);
 	}
-
+	
 	sqlite3_finalize(stmt);
 	sbuf_clear(sql);
 
