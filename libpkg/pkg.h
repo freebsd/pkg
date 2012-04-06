@@ -745,13 +745,6 @@ int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
 int pkg_jobs_apply(struct pkg_jobs *jobs, int force);
 
 /**
- * Fetches packages from remote repository
- * @param j A valid pkg_jobs object
- * @return EPKG_OK on success, and EPKG_FATAL on error
- */
-int pkg_jobs_fetch(struct pkg_jobs *j);
-
-/**
  * Archive formats options.
  */
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;

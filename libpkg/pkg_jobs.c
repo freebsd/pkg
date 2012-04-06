@@ -41,6 +41,8 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
+static int pkg_jobs_fetch(struct pkg_jobs *j);
+
 int
 pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 {
@@ -301,7 +303,8 @@ pkg_jobs_apply(struct pkg_jobs *j, int force)
 	return (EPKG_FATAL);
 }
 
-int pkg_jobs_fetch(struct pkg_jobs *j)
+static int
+pkg_jobs_fetch(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	struct pkg *pkg = NULL;
