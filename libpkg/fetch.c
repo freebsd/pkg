@@ -36,7 +36,7 @@
 #include "private/event.h"
 
 int
-pkg_fetch_file(const char *url, const char *dest)
+pkg_fetch_file(const char *url, const char *dest, time_t t)
 {
 	int fd = -1;
 	FILE *remote = NULL;
@@ -65,6 +65,12 @@ pkg_fetch_file(const char *url, const char *dest)
 				goto cleanup;
 			}
 			sleep(1);
+		}
+	}
+	if (t != 0) {
+		if (st.mtime <= t) {
+			retcode = EPKG_UPTODATE;
+			goto cleanup;
 		}
 	}
 

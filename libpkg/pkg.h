@@ -277,6 +277,10 @@ typedef enum {
 	 * Can not create local database
 	 */
 	EPKG_ENODB,
+	/**
+	 * local file newer than remote
+	 */
+	EPKG_UPTODATE,
 } pkg_error_t;
 
 /**
@@ -778,7 +782,7 @@ int pkg_version_cmp(const char * const , const char * const);
  * Fetch a file.
  * @return An error code.
  */
-int pkg_fetch_file(const char *url, const char *dest);
+int pkg_fetch_file(const char *url, const char *dest, time_t t);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, char *);

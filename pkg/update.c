@@ -74,7 +74,7 @@ update_from_remote_repo(const char *name, const char *url)
 		return (EPKG_FATAL);
 	}
 
-	if (pkg_fetch_file(url, tmp) != EPKG_OK) {
+	if (pkg_fetch_file(url, tmp, 0) != EPKG_OK) {
 		/*
 		 * No need to unlink(tmp) here as it is already
 		 * done in pkg_fetch_file() in case fetch failed.

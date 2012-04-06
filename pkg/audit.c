@@ -26,6 +26,7 @@
 
 #include <sys/param.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 
 #define _WITH_GETLINE
 
@@ -81,10 +82,22 @@ fetch_and_extract(const char *src, const char *dest)
 	const char *tmp = "/tmp/auditfile.tbz";
 	int retcode = EPKG_FATAL;
 	int ret;
+	time_t t = 0;
+	struct stat st;
 
-	if (pkg_fetch_file(src, tmp) != EPKG_OK) {
-		warnx("Can't fetch audit file");
-		goto cleanup;
+	if (stat(dest, &st) != -1) {
+		t = st.st_mtime;
+	}
+	switch (pkg_fetch_file(src, tmp, t)) {
+		case EPKG_OK:
+			break;
+		case EPKG_UPTODATE:
+			printf("audit file uptodate\n");
+			retcode = EPKG_OK;
+			goto cleanup;
+		default:
+			warnx("Can't fetch audit file");
+			goto cleanup;
 	}
 
 	a = archive_read_new();
