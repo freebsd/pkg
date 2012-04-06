@@ -310,10 +310,11 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 			PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
 			PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
 
-		dlsize += pkgsize;
+		switch (type) {
+		case PKG_JOBS_INSTALL:
+		case PKG_JOBS_UPGRADE:
+			dlsize += pkgsize;
 
-		/* Install/Upgrade */
-		if (type == PKG_JOBS_INSTALL) {
 			if (newversion != NULL) {
 				switch (pkg_version_cmp(version, newversion)) {
 				case 1:
@@ -332,21 +333,56 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 				newsize += flatsize;
 				printf("\tInstalling %s: %s\n", name, version);
 			}
+			break;
+		case PKG_JOBS_DEINSTALL:
+			oldsize += flatsize;
+			newsize += newflatsize;
+			
+			printf("\t%s-%s\n", name, version);
+			break;
+		case PKG_JOBS_FETCH:
+			dlsize += pkgsize;
+
+			printf("\t%s-%s\n", name, version);
+			break;
 		}
-
-		/* Delete */
-
-		/* Fetch */
 	}
 
 	if (oldsize > newsize) {
 		newsize *= -1;
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-		printf("\nthe installation will save %s\n", size);
-	} else {
+
+		switch (type) {
+		case PKG_JOBS_INSTALL:
+		case PKG_JOBS_UPGRADE:
+			printf("\nThe installation will save %s\n", size);
+			break;
+		case PKG_JOBS_DEINSTALL:
+			printf("\nThe deinstallation will save %s\n", size);
+			break;
+		case PKG_JOBS_FETCH:
+			/* nothing to report here */
+			break;
+		}
+	} else if (newsize > oldsize) {
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("\nthe installation will require %s more space\n", size);
+
+		switch (type) {
+		case PKG_JOBS_INSTALL:
+		case PKG_JOBS_UPGRADE:
+			printf("\nThe installation will require %s more space\n", size);
+			break;
+		case PKG_JOBS_DEINSTALL:
+			printf("\nThe deinstallation will require %s more space\n", size);
+			break;
+		case PKG_JOBS_FETCH:
+			/* nothing to report here */
+			break;
+		}
 	}
-	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-	printf("%s to be downloaded\n", size);
+
+	if ((type == PKG_JOBS_INSTALL) || (type == PKG_JOBS_FETCH)) {
+		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+		printf("%s to be downloaded\n", size);
+	}
 }

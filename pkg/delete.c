@@ -58,8 +58,6 @@ exec_delete(int argc, char **argv)
 	bool yes = false;
 	int retcode = 1;
 	int recursive = 0;
-	int64_t oldsize = 0, newsize = 0;
-	char size[7];
 
 	while ((ch = getopt(argc, argv, "agxXfyr")) != -1) {
 		switch (ch) {
@@ -119,10 +117,6 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-		int64_t flatsize, newflatsize;
-		pkg_get(pkg, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize);
-		oldsize += flatsize;
-		newsize += newflatsize;
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}
@@ -140,28 +134,9 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (oldsize > newsize) {
-		newsize *= -1;
-		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-	}
-	else if (newsize > oldsize) {
-		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-	}
-
 	pkg = NULL;
 	if (!quiet) {
-		printf("The following packages will be deinstalled:\n");
-		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-			const char *name, *version;
-
-			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-			printf("\t%s-%s\n", name, version);
-		}
-
-		if (oldsize > newsize)
-			printf("\nThe deinstallation will save %s\n", size);
-		else if (newsize > oldsize)
-			printf("\nThe deinstallation will require %s more space\n", size);
+		print_jobs_summary(jobs, PKG_JOBS_DEINSTALL, "The following packages will be deinstalled:\n");
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
