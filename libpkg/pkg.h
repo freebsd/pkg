@@ -222,7 +222,6 @@ typedef enum _pkg_script_t {
 typedef enum _pkg_jobs_t {
 	PKG_JOBS_INSTALL,
 	PKG_JOBS_DEINSTALL,
-	PKG_JOBS_UPGRADE,
 	PKG_JOBS_FETCH
 } pkg_jobs_t;
 

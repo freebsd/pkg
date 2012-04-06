@@ -312,7 +312,6 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 
 		switch (type) {
 		case PKG_JOBS_INSTALL:
-		case PKG_JOBS_UPGRADE:
 			dlsize += pkgsize;
 
 			if (newversion != NULL) {
@@ -354,7 +353,6 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 
 		switch (type) {
 		case PKG_JOBS_INSTALL:
-		case PKG_JOBS_UPGRADE:
 			printf("\nThe installation will save %s\n", size);
 			break;
 		case PKG_JOBS_DEINSTALL:
@@ -369,7 +367,6 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 
 		switch (type) {
 		case PKG_JOBS_INSTALL:
-		case PKG_JOBS_UPGRADE:
 			printf("\nThe installation will require %s more space\n", size);
 			break;
 		case PKG_JOBS_DEINSTALL:
