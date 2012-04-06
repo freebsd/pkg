@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/stat.h>
 #include <sys/param.h>
 
 #include <err.h>
@@ -61,6 +62,8 @@ update_from_remote_repo(const char *name, const char *url)
 	int siglen = 0;
 	int rc = EPKG_OK;
 	bool alwayssigned = false;
+	struct stat st;
+	time_t t = 0;
 
 	pkg_config_bool(PKG_CONFIG_SIGNED_REPOS, &alwayssigned);
 	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
@@ -74,12 +77,21 @@ update_from_remote_repo(const char *name, const char *url)
 		return (EPKG_FATAL);
 	}
 
-	if (pkg_fetch_file(url, tmp, 0) != EPKG_OK) {
+	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
+	if (stat(repofile, &st) != -1) {
+		t = st.st_mtime;
+		/* add 10 minutes to the timestap because repo.sqlite is
+		 * always newer than repo.txz, 10 minutes should be enough
+		 */
+		t += 600;
+	}
+
+	if ((rc = pkg_fetch_file(url, tmp, t)) != EPKG_OK) {
 		/*
 		 * No need to unlink(tmp) here as it is already
 		 * done in pkg_fetch_file() in case fetch failed.
 		 */
-		return (EPKG_FATAL);
+		return (rc);
 	}
 
 	a = archive_read_new();
@@ -90,7 +102,6 @@ update_from_remote_repo(const char *name, const char *url)
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
 			snprintf(repofile_unchecked, sizeof(repofile_unchecked), "%s.unchecked", repofile);
 			archive_entry_set_pathname(ae, repofile_unchecked);
 			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
@@ -184,6 +195,10 @@ exec_update(int argc, char **argv)
 			snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
 		retcode = update_from_remote_repo("repo", url);
+		if (retcode == EPKG_UPTODATE) {
+			printf("Remote repository uptodate no need to upgrade\n");
+			retcode = EPKG_OK;
+		}
 	} else {
 		/* multiple repositories */
 		while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
@@ -196,6 +211,10 @@ exec_update(int argc, char **argv)
 				snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
 			retcode = update_from_remote_repo(repo_name, url);
+			if (retcode == EPKG_UPTODATE) {
+				printf("%s repository uptodate no need to upgrade\n", repo_name);
+				retcode = EPKG_OK;
+			}
 		}
 	}
 
