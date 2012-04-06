@@ -105,7 +105,7 @@ exec_upgrade(int argc, char **argv)
 		if (!quiet) {
 			print_jobs_summary(jobs, PKG_JOBS_INSTALL,
 			    "An upgrade of pkg as been found it needs to be installed first.\n"
-			    "After this upgrade it is recommanded that you do a full upgrade using:\n"
+			    "After this upgrade it is recommended that you do a full upgrade using:\n"
 			    " pkg upgrade\n\n");
 			if (!yes)
 				pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
