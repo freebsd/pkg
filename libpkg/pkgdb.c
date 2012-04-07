@@ -1964,7 +1964,7 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 
 	cleanup:
 	if (sqlbuf != NULL)
-		free(sqlbuf);
+		sqlite3_free(sqlbuf);
 
 	return (ret);
 }
