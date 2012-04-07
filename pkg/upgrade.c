@@ -96,7 +96,7 @@ exec_upgrade(int argc, char **argv)
 		goto cleanup;
 	}
 
-	pkgargs[0] = (char *)"pkg";
+	pkgargs[0] = __DECONST(char *,"pkg");
 	if ((it = pkgdb_query_installs(db, MATCH_EXACT, 1, pkgargs, reponame, false)) != NULL) {
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
 			pkg_jobs_add(jobs, pkg);
