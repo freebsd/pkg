@@ -148,6 +148,8 @@ event_callback(void *data, struct pkg_event *ev)
 			fprintf(stderr, "\n");
 		break;
 	case PKG_EVENT_ALREADY_INSTALLED:
+		if (quiet)
+			break;
 		pkg_get(ev->e_already_installed.pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		printf("%s-%s already installed\n", name, version);
 		break;
@@ -162,6 +164,10 @@ event_callback(void *data, struct pkg_event *ev)
 		/* only cares if run as root */
 		if (geteuid() == 0)
 			fprintf(stderr, "Unable to create local database\n");
+		break;
+	case PKG_EVENT_NEWPKGVERSION:
+		printf("New version of pkg detected, it needs to be installed first.\n"
+			"After this upgrade it is recommended that you do a full upgrade using: 'pkg upgrade'\n\n");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg_get(ev->e_file_mismatch.pkg, PKG_NAME, &name, PKG_VERSION, &version);

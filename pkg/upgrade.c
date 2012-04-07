@@ -49,7 +49,6 @@ exec_upgrade(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
-	char *pkgargs[1];
 	int retcode = 1;
 	int ch;
 	bool yes = false;
@@ -93,34 +92,6 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
-		goto cleanup;
-	}
-
-	pkgargs[0] = __DECONST(char *,"pkg");
-	if ((it = pkgdb_query_installs(db, MATCH_EXACT, 1, pkgargs, reponame, false)) != NULL) {
-		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
-			pkg_jobs_add(jobs, pkg);
-			pkg = NULL;
-		}
-		if (!quiet) {
-			print_jobs_summary(jobs, PKG_JOBS_INSTALL,
-			    "An upgrade of pkg as been found it needs to be installed first.\n"
-			    "After this upgrade it is recommended that you do a full upgrade using:\n"
-			    " pkg upgrade\n\n");
-			if (!yes)
-				pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-			if (!yes)
-				yes = query_yesno("\nProceed with upgrading [y/N]: ");
-		}
-		if (yes)
-			if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
-				goto cleanup;
-
-		if (messages != NULL) {
-			sbuf_finish(messages);
-			printf("%s", sbuf_data(messages));
-		}
-		retcode = 0;
 		goto cleanup;
 	}
 

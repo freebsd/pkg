@@ -263,6 +263,15 @@ pkg_emit_noremotedb(const char *repo)
 }
 
 void
+pkg_emit_newpkgversion(void)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_NEWPKGVERSION;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum) {
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_FILE_MISMATCH;
