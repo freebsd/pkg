@@ -67,6 +67,7 @@ static struct commands {
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
 	{ "create", "Creates software package distributions", exec_create, usage_create},
 	{ "delete", "Deletes packages from the database and the system", exec_delete, usage_delete},
+	{ "fetch", "Fetches packages from a remote repository", exec_fetch, usage_fetch},
 	{ "help", "Displays help information", exec_help, usage_help},
 	{ "info", "Displays information for installed packages", exec_info, usage_info},
 	{ "install", "Installs packages from remote package repositories", exec_install, usage_install},
@@ -81,7 +82,6 @@ static struct commands {
 	{ "upgrade", "Performs upgrades of package software distributions", exec_upgrade, usage_upgrade},
 	{ "version", "Summarize installed versions of packages", exec_version, usage_version},
 	{ "which", "Displays which package installed a specific file", exec_which, usage_which},
-	{ "fetch", "Fetches packages from a remote repository", exec_fetch, usage_fetch},
 };
 
 const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
