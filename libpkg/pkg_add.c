@@ -117,12 +117,12 @@ int
 pkg_add(struct pkgdb *db, const char *path, int flags)
 {
 	const char *arch;
+	const char *myarch;
 	const char *origin;
 	struct archive *a;
 	struct archive_entry *ae;
 	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
-	char myarch[BUFSIZ];
 	bool extract = true;
 	bool handle_rc = false;
 	char dpath[MAXPATHLEN + 1];
@@ -160,7 +160,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	 * Check the architecture
 	 */
 
-	pkg_get_myarch(myarch, BUFSIZ);
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin);
 
 	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH) {

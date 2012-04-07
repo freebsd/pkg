@@ -101,6 +101,8 @@ Analyse the elf to add dependencies (share libraries) that may have been
 forgotten by the maintainer. default: off
 .It Cm SIGNED_REPOS(boolean)
 All the remote repositories should be signed. default: off
+.It Cm ABI(string)
+the abi of the package you want to install, by default the /bin/sh abi is used
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration 

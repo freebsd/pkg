@@ -59,6 +59,8 @@ struct config_entry {
 	};
 };
 
+static char myabi[BUFSIZ];
+
 static struct config_entry c[] = {
 	[PKG_CONFIG_REPO] = {
 		STRING,
@@ -142,6 +144,12 @@ static struct config_entry c[] = {
 		BOOL,
 		"SIGNED_REPOS",
 		"NO",
+		{ NULL }
+	},
+	[PKG_CONFIG_ABI] = {
+		STRING,
+		"ABI",
+		myabi,
 		{ NULL }
 	}
 };
@@ -316,6 +324,7 @@ pkg_init(const char *path)
 	size_t i;
 	const char *val = NULL;
 
+	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);

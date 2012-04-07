@@ -160,7 +160,6 @@ main(int argc, char **argv)
 	int debug = 0;
 	int version = 0;
 	int ret = EXIT_SUCCESS;
-	char myarch[BUFSIZ];
 	const char *buf = NULL;
 	bool b;
 	struct pkg_config_kv *kv = NULL;
@@ -229,8 +228,8 @@ main(int argc, char **argv)
 
 	if (version > 1) {
 		printf("version: "PKGVERSION""GITHASH"\n");
-		pkg_get_myarch(myarch, BUFSIZ);
-		printf("abi: %s\n", myarch);
+		pkg_config_string(PKG_CONFIG_ABI, &buf);
+		printf("abi: %s\n", buf);
 		pkg_config_string(PKG_CONFIG_DBDIR, &buf);
 		printf("db dir: %s\n", buf);
 		pkg_config_string(PKG_CONFIG_CACHEDIR, &buf);

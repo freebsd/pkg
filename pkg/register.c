@@ -139,6 +139,10 @@ exec_register(int argc, char **argv)
 		errx(EX_USAGE, "missing -f flag");
 
 	if (arch == NULL) {
+		/*
+		 * do not take the one from configuration on purpose
+		 * but the real abi of the package
+		 */
 		pkg_get_myarch(myarch, BUFSIZ);
 		pkg_set(pkg, PKG_ARCH, myarch);
 	} else {
