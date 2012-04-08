@@ -40,7 +40,7 @@ usage_search(void)
 {
 	fprintf(stderr, "usage: pkg search [-r reponame] <pkg-name>\n");
 	fprintf(stderr, "       pkg search [-r reponame] [-fDsqop] <pkg-name>\n");
-	fprintf(stderr, "       pkg search [-r reponame] [-gxXcdfDsqop] <pattern>\n\n");
+	fprintf(stderr, "       pkg search [-r reponame] [-egxXcdfDsqop] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help search'.\n");
 }
 
@@ -52,7 +52,7 @@ exec_search(int argc, char **argv)
 	int retcode = EPKG_OK, ch;
 	int flags = PKG_LOAD_BASIC;
 	unsigned int opt = 0;
-	match_t match = MATCH_EXACT;
+	match_t match = MATCH_REGEX;
 	pkgdb_field field = FIELD_NAME;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
@@ -61,6 +61,9 @@ exec_search(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "gxXcdr:fDsqop")) != -1) {
 		switch (ch) {
+			case 'e':
+				match = MATCH_EXACT;
+				break;
 			case 'g':
 				match = MATCH_GLOB;
 				break;
