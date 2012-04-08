@@ -29,6 +29,7 @@
 
 #include <sys/param.h>
 #include <sys/jail.h>
+#include <sys/stat.h>
 
 #include <assert.h>
 #include <err.h>
@@ -195,6 +196,7 @@ main(int argc, char **argv)
 	if (argc == 0 && version == 0)
 		usage();
 
+	umask(022);
 	pkg_event_register(&event_callback, &debug);
 
 	/* reset getopt for the next call */
