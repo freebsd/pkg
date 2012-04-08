@@ -52,6 +52,10 @@ LDADD+=		-L${.OBJDIR}/../external/sqlite \
 		-lutil \
 		-lpthread
 
+.if exists(/usr/include/edit/readline/readline.h)
+LDADD+=		-ledit
+.endif
+
 CFLAGS+=	-DPREFIX=\"${PREFIX}\"
 
 DEBUG_FLAGS+=  -g -O0

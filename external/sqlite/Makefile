@@ -7,6 +7,10 @@ CFLAGS+=	-fPIC
 WARNS=		1
 WFORMAT=	1
 
+.if exists(/usr/include/edit/readline/readline.h)
+CFLAGS+=	-DHAVE_READLINE=1 \
+		-I/usr/include/edit
+.endif
 # http://www.sqlite.org/compile.html
 CFLAGS+=	-DSQLITE_OMIT_AUTOVACUUM \
 		-DSQLITE_OMIT_BLOB_LITERAL \

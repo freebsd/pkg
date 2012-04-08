@@ -18,6 +18,11 @@ LDADD_STATIC=	-L${.OBJDIR}/../external/sqlite \
 		-lbz2 \
 		-llzma
 
+.if exists(/usr/include/edit/readline/readline.h)
+LDADD_STATIC+=	-ledit \
+		-lncursesw
+.endif
+
 .PATH:		${.CURDIR}/../pkg/
 
 .include "${.CURDIR}/../pkg/Makefile"
