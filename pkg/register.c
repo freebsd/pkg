@@ -213,8 +213,7 @@ exec_register(int argc, char **argv)
 		free(input_path);
 	}
 
-	retcode = pkgdb_register_pkg(db, pkg, 0);
-	pkgdb_register_finale(db, retcode);
+	retcode = pkgdb_register_ports(db, pkg);
 
 	pkg_get(pkg, PKG_MESSAGE, &message);
 	if (message != NULL && !legacy)

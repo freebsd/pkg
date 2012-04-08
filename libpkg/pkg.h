@@ -621,15 +621,11 @@ int pkgdb_dump(struct pkgdb *db, char *dest);
 int pkgdb_load(struct pkgdb *db, char *dest);
 
 /**
- * Register a package to the database.
+ * Register a ports to the database.
  * @return An error code.
  */
-int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete);
 
-/**
- * Commit or rollback the package to the database..
- */
-int pkgdb_register_finale(struct pkgdb *db, int retcode);
+int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg);
 
 /**
  * Unregister a package from the database.

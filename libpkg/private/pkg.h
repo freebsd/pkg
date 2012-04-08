@@ -262,4 +262,7 @@ int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg);
 
+int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete);
+int pkgdb_register_finale(struct pkgdb *db, int retcode);
+
 #endif

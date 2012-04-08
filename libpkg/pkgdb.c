@@ -1882,6 +1882,20 @@ pkgdb_register_finale(struct pkgdb *db, int retcode)
 }
 
 int
+pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg)
+{
+	int ret;
+	pkg_emit_install_begin(pkg);
+
+	ret = pkgdb_register_pkg(db, pkg, 0);
+	if (ret == EPKG_OK)
+		pkg_emit_install_finished(pkg);
+
+	pkgdb_register_finale(db, ret);
+	return (ret);
+}
+
+int
 pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 {
 	sqlite3_stmt *stmt_del;
