@@ -300,7 +300,7 @@ pkgdb_upgrade(struct pkgdb *db)
 	}
 
 	while (db_version < DBVERSION) {
-		if (db->writable != 1) {
+		if (!sqlite3_db_readonly(db->sqlite, "main")) {
 			pkg_emit_error("The database is outdated and opened readonly");
 			return (EPKG_FATAL);
 		}
@@ -555,9 +555,6 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 				return (EPKG_FATAL);
 			}
 
-		if (eaccess(localpath, W_OK) == 0)
-			db->writable = 1;
-
 		sqlite3_create_function(db->sqlite, "now", 0, SQLITE_ANY, NULL,
 				pkgdb_now, NULL, NULL);
 		sqlite3_create_function(db->sqlite, "myarch", 0, SQLITE_ANY, NULL,
@@ -777,7 +774,7 @@ pkgdb_it_free(struct pkgdb_it *it)
 	if (it == NULL)
 		return;
 
-	if (it->db->writable == 1) {
+	if (!sqlite3_db_readonly(it->db->sqlite, "main")) {
 		sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
 			"DROP TABLE IF EXISTS delete_job; "
 			"DROP TABLE IF EXISTS pkgjobs");

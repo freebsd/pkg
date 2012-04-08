@@ -35,7 +35,6 @@
 struct pkgdb {
 	sqlite3 *sqlite;
 	pkgdb_t type;
-	unsigned int writable :1;
 };
 
 struct pkgdb_it {
