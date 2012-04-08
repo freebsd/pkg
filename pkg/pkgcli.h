@@ -111,6 +111,10 @@ void usage_upgrade(void);
 int exec_fetch(int, char **);
 void usage_fetch(void);
 
+/* pkg shell */
+int exec_shell(int, char **);
+void usage_shell(void);
+
 /* pkg version */
 #define VERSION_INDEX (1<<0)
 #define VERSION_ORIGIN (1<<1)

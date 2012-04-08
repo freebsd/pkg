@@ -43,4 +43,5 @@ struct pkgdb_it {
 	int type;
 };
 
+void pkgshell_open(const char **r);
 #endif

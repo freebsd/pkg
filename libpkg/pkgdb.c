@@ -66,6 +66,8 @@ static void pkgdb_detach_remotes(sqlite3 *);
 static bool is_attached(sqlite3 *, const char *);
 static void report_already_installed(sqlite3 *);
 
+extern int sqlite3_shell(int, char**);
+
 static struct column_mapping {
 	const char * const name;
 	pkg_attr type;
@@ -3213,4 +3215,48 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 	sbuf_delete(sql);
 
 	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+}
+
+/* for the sqlite3 shell */
+static int
+sqlcmd_init(sqlite3 *db, __unused const char **err, __unused const void *noused)
+{
+		sqlite3_create_function(db, "now", 0, SQLITE_ANY, NULL,
+				pkgdb_now, NULL, NULL);
+		sqlite3_create_function(db, "myarch", 0, SQLITE_ANY, NULL,
+				pkgdb_myarch, NULL, NULL);
+		sqlite3_create_function(db, "myarch", 1, SQLITE_ANY, NULL,
+				pkgdb_myarch, NULL, NULL);
+		sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL,
+				pkgdb_regex_basic, NULL, NULL);
+		sqlite3_create_function(db, "eregexp", 2, SQLITE_ANY, NULL,
+				pkgdb_regex_extended, NULL, NULL);
+		sqlite3_create_function(db, "pkglt", 2, SQLITE_ANY, NULL,
+				pkgdb_pkglt, NULL, NULL);
+		sqlite3_create_function(db, "pkggt", 2, SQLITE_ANY, NULL,
+				pkgdb_pkggt, NULL, NULL);
+		
+		return SQLITE_OK;
+}
+
+void
+pkgdb_cmd(int argc, char **argv)
+{
+	sqlite3_initialize();
+	sqlite3_shell(argc, argv);
+}
+
+void
+pkgshell_open(const char **reponame)
+{
+	char localpath[MAXPATHLEN + 1];
+	const char *dbdir;
+
+	sqlite3_auto_extension((void(*)(void))sqlcmd_init);
+
+	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
+		return;
+
+	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
+	*reponame = strdup(localpath);
 }
