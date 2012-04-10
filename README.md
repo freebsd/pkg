@@ -253,7 +253,7 @@ protocol. In order to do that you could use a command similar to the following:
 This will also install the package foo-1.2.3 and it's dependencies from the remote
 server example.org using the HTTP protocol for fetching the packages.
 
-For more information on installing packages on your FreeBSD system, please refer to pkg-add(1)
+For more information on installing packages on your FreeBSD system, please refer to *pkg-add(1)*
 
 <a name="pkginfo"></a>
 ### Querying the local package database
@@ -267,7 +267,7 @@ To list all install/registered packages in the local database, you will use the 
 
 	# pkg info -a
 
-For more information on querying the local package database, please refer to pkg-info(1) man page.
+For more information on querying the local package database, please refer to *pkg-info(1)* man page.
 
 <a name="pkgrepos"></a>
 ### Working with a remote package repository
@@ -308,7 +308,7 @@ pkgng is also able to work with multiple remote repositories. In the previous se
 we are using only a single remote repository, which is defined by the _PACKAGESITE_ option.
 
 In order to be able to work with multiple remote repositories and instead of changing 
-each time _PACKAGESITE_, you can tell pkg(1) to work in multi-repos mode as well.
+each time _PACKAGESITE_, you can tell *pkg(1)* to work in multi-repos mode as well.
 
 To do this, simply enable multi-repos in *pkg.conf(5)* like this:
 
@@ -358,7 +358,7 @@ So, to update your remote repositories, you would execute this command:
 
 	# pkg update
 
-For more information on the remote repositories, please refer to pkg-update(1).
+For more information on the remote repositories, please refer to *pkg-update(1)*.
 
 <a name="pkgsearch"></a>
 ### Searching in remote package repositories
@@ -373,7 +373,7 @@ An example search for a package could be done like this:
 
 	# pkg search -x apache
 
-For more information on the repositories search, please refer to pkg-search(1)
+For more information on the repositories search, please refer to *pkg-search(1)*
 
 <a name="pkginstall"></a>
 ### Installing from remote repositories
@@ -404,7 +404,7 @@ Or you could also install the packages using only one command, like this:
 
 	# pkg install www/apache22 zsh perl-5.12.4
 
-For more information on the remote package installs, please refer to pkg-install(1)
+For more information on the remote package installs, please refer to *pkg-install(1)*
 
 <a name="pkgbackup"></a>
 ### Backing up your package database
@@ -418,7 +418,7 @@ In order to backup the local package database, you should use the `pkg backup` c
 The above command will create a compressed tar archive file of
 your local package database in /path/to/pkgng-backup.dump.txz
 
-For more information on backing up your local package database, please refer to pkg-backup(1)
+For more information on backing up your local package database, please refer to *pkg-backup(1)*
 
 <a name="pkgcreate"></a>
 ### Creating a package repository
