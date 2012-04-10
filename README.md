@@ -142,14 +142,14 @@ It also allow to query the reverse dependencies without a __+REQUIRED_BY__ hack.
 In order to save space the MTREE is only stored once, which save 18K per
 installed package.
 
-pkgng supports a `register' command to register packages into the SQLite
+pkgng supports a `register` command to register packages into the SQLite
 database from the ports. The register command can execute the install script,
 show pkg-message, ...
 
 <a name="pkginst"></a>
 ### Installation of packages
 
-`pkg add' can install a package archive from the local disk, or from a
+`pkg add` can install a package archive from the local disk, or from a
 remote FTP/HTTP server.
 
 If only a package name is given, it will search the remote repository
@@ -159,7 +159,7 @@ downloaded and installed first.
 This is possible because we have the dependencies informations in the 
 remote repository database.
 
-`pkg add' will check if the user attempts to install a package built for another
+`pkg add` will check if the user attempts to install a package built for another
 arch or release.
 
 <a name="pkgupg"></a>
@@ -223,10 +223,10 @@ In order to register your installed packages to pkgng, execute the commands belo
 <a name="pkghelp"></a>
 ### Getting help on the commands usage
 
-In order to get help on any of the pkgng commands you should use the 'pkg help <command>'
+In order to get help on any of the pkgng commands you should use the `pkg help <command>`
 command, which will take the man page of the specified command.
 
-In order to get the available commands in pkgng, just execute 'pkg help'
+In order to get the available commands in pkgng, just execute `pkg help`
 
 	# pkg help 
 	# pkg help <command>
@@ -258,9 +258,9 @@ For more information on installing packages on your FreeBSD system, please refer
 <a name="pkginfo"></a>
 ### Querying the local package database
 
-In order to get information about installed packages you need to use the 'pkg info' command.
+In order to get information about installed packages you need to use the `pkg info` command.
 
-'pkg info' will query the local package database and display you information about the
+`pkg info` will query the local package database and display you information about the
 package you are intrested in.
 
 To list all install/registered packages in the local database, you will use the following command:
@@ -348,7 +348,7 @@ can add your repository to the list as well :)
 
 The first thing to do when working with remote repositories is to update from them.
 
-Updating remote repositories is done by the 'pkg update' command.
+Updating remote repositories is done by the `pkg update` command.
 
 If PACKAGESITE environment variable is defined to point to a remote package
 repository then only this repository will be updated. Otherwise all remote 
@@ -363,10 +363,10 @@ For more information on the remote repositories, please refer to pkg-update(1).
 <a name="pkgsearch"></a>
 ### Searching in remote package repositories
 
-You can search in the remote package repositories using the 'pkg search' command.
+You can search in the remote package repositories using the `pkg search` command.
 
 In order to search in multiple package repositories the enviornment variable
-PACKAGESITE should NOT be defined, in which case 'pkg search' will query 
+PACKAGESITE should NOT be defined, in which case `pkg search` will query
 the remote package databases found in the /etc/pkg/repositories file.
 
 An example search for a package could be done like this:
@@ -392,7 +392,7 @@ then the next repository which contains the package is the one that is tried.
 The process continues until the package is fetched and installed, or all 
 remote repositories fail to fetch the package.
 
-Remote installations of packages using pkgng are done by the 'pkg install' command.
+Remote installations of packages using pkgng are done by the `pkg install` command.
 
 Here's an example installation of few packages:
 
@@ -411,7 +411,7 @@ For more information on the remote package installs, please refer to pkg-install
 
 It is a good idea that you backup your local package database on regular basis.
 
-In order to backup the local package database, you should use the 'pkg backup' command.
+In order to backup the local package database, you should use the `pkg backup` command.
 
 	# pkg backup -d /path/to/pkgng-backup.dump
 
@@ -425,7 +425,7 @@ For more information on backing up your local package database, please refer to 
 
 You can also use pkgng, so that you create a package repository.
 
-In order to create a package repository you need to use the 'pkg create' command.
+In order to create a package repository you need to use the `pkg create` command.
 
 Here's an example that will create a repository of all your currently installed packages:
 
