@@ -116,7 +116,6 @@ When the manifest is read by pkg\_create files and dirs accept another format:
 	- /usr/local/share/foo-1.0
 	- /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
 
-This allows to override the users, groups and mode that pkgng file find when
 This allows to override the users, groups and mode of files and directories during package
 creation, like for example this allows to create a package
 containing root files without being packaged by the root user.
@@ -143,14 +142,14 @@ It also allow to query the reverse dependencies without a __+REQUIRED_BY__ hack.
 In order to save space the MTREE is only stored once, which save 18K per
 installed package.
 
-pkgng supports a `register' command to register packages into the SQLite
+pkgng supports a `register` command to register packages into the SQLite
 database from the ports. The register command can execute the install script,
 show pkg-message, ...
 
 <a name="pkginst"></a>
 ### Installation of packages
 
-`pkg add' can install a package archive from the local disk, or from a
+`pkg add` can install a package archive from the local disk, or from a
 remote FTP/HTTP server.
 
 If only a package name is given, it will search the remote repository
@@ -160,7 +159,7 @@ downloaded and installed first.
 This is possible because we have the dependencies informations in the 
 remote repository database.
 
-`pkg add' will check if the user attempts to install a package built for another
+`pkg add` will check if the user attempts to install a package built for another
 arch or release.
 
 <a name="pkgupg"></a>
@@ -224,10 +223,10 @@ In order to register your installed packages to pkgng, execute the commands belo
 <a name="pkghelp"></a>
 ### Getting help on the commands usage
 
-In order to get help on any of the pkgng commands you should use the 'pkg help <command>'
+In order to get help on any of the pkgng commands you should use the `pkg help <command>`
 command, which will take the man page of the specified command.
 
-In order to get the available commands in pkgng, just execute 'pkg help'
+In order to get the available commands in pkgng, just execute `pkg help`
 
 	# pkg help 
 	# pkg help <command>
@@ -254,21 +253,21 @@ protocol. In order to do that you could use a command similar to the following:
 This will also install the package foo-1.2.3 and it's dependencies from the remote
 server example.org using the HTTP protocol for fetching the packages.
 
-For more information on installing packages on your FreeBSD system, please refer to pkg-add(1)
+For more information on installing packages on your FreeBSD system, please refer to *pkg-add(1)*
 
 <a name="pkginfo"></a>
 ### Querying the local package database
 
-In order to get information about installed packages you need to use the 'pkg info' command.
+In order to get information about installed packages you need to use the `pkg info` command.
 
-'pkg info' will query the local package database and display you information about the
+`pkg info` will query the local package database and display you information about the
 package you are intrested in.
 
 To list all install/registered packages in the local database, you will use the following command:
 
 	# pkg info -a
 
-For more information on querying the local package database, please refer to pkg-info(1) man page.
+For more information on querying the local package database, please refer to *pkg-info(1)* man page.
 
 <a name="pkgrepos"></a>
 ### Working with a remote package repository
@@ -306,10 +305,10 @@ packages from the remote repository, you would use the `pkg install` command:
 ### Working with multiple remote repositories
 
 pkgng is also able to work with multiple remote repositories. In the previous section
-we are using only a single remote repository, which is defined by the *PACKAGESITE* option.
+we are using only a single remote repository, which is defined by the _PACKAGESITE_ option.
 
 In order to be able to work with multiple remote repositories and instead of changing 
-each time *PACKAGESITE*, you can tell pkg(1) to work in multi-repos mode as well.
+each time _PACKAGESITE_, you can tell *pkg(1)* to work in multi-repos mode as well.
 
 To do this, simply enable multi-repos in *pkg.conf(5)* like this:
 
@@ -349,9 +348,9 @@ can add your repository to the list as well :)
 
 The first thing to do when working with remote repositories is to update from them.
 
-Updating remote repositories is done by the 'pkg update' command.
+Updating remote repositories is done by the `pkg update` command.
 
-If PACKAGESITE environment variable is defined to point to a remote package
+If _PACKAGESITE_ environment variable is defined to point to a remote package
 repository then only this repository will be updated. Otherwise all remote 
 repositories defined in the /etc/pkg/repositories file will be updated.
 
@@ -359,30 +358,30 @@ So, to update your remote repositories, you would execute this command:
 
 	# pkg update
 
-For more information on the remote repositories, please refer to pkg-update(1).
+For more information on the remote repositories, please refer to *pkg-update(1)*.
 
 <a name="pkgsearch"></a>
 ### Searching in remote package repositories
 
-You can search in the remote package repositories using the 'pkg search' command.
+You can search in the remote package repositories using the `pkg search` command.
 
 In order to search in multiple package repositories the enviornment variable
-PACKAGESITE should NOT be defined, in which case 'pkg search' will query 
+_PACKAGESITE_ should NOT be defined, in which case `pkg search` will query
 the remote package databases found in the /etc/pkg/repositories file.
 
 An example search for a package could be done like this:
 
 	# pkg search -x apache
 
-For more information on the repositories search, please refer to pkg-search(1)
+For more information on the repositories search, please refer to *pkg-search(1)*
 
 <a name="pkginstall"></a>
 ### Installing from remote repositories
 
 In order to install a package from a remote repository you need to set the
-PACKAGESITE environment variable to point to the remote server.
+_PACKAGESITE_ environment variable to point to the remote server.
 
-If PACKAGESITE is not defined then the installation process will use
+If _PACKAGESITE_ is not defined then the installation process will use
 multiple repositories as defined in the /etc/pkg/repositories file.
 
 During installation from multiple repositories the first repository
@@ -393,7 +392,7 @@ then the next repository which contains the package is the one that is tried.
 The process continues until the package is fetched and installed, or all 
 remote repositories fail to fetch the package.
 
-Remote installations of packages using pkgng are done by the 'pkg install' command.
+Remote installations of packages using pkgng are done by the `pkg install` command.
 
 Here's an example installation of few packages:
 
@@ -405,28 +404,28 @@ Or you could also install the packages using only one command, like this:
 
 	# pkg install www/apache22 zsh perl-5.12.4
 
-For more information on the remote package installs, please refer to pkg-install(1)
+For more information on the remote package installs, please refer to *pkg-install(1)*
 
 <a name="pkgbackup"></a>
 ### Backing up your package database
 
 It is a good idea that you backup your local package database on regular basis.
 
-In order to backup the local package database, you should use the 'pkg backup' command.
+In order to backup the local package database, you should use the `pkg backup` command.
 
 	# pkg backup -d /path/to/pkgng-backup.dump
 
 The above command will create a compressed tar archive file of
 your local package database in /path/to/pkgng-backup.dump.txz
 
-For more information on backing up your local package database, please refer to pkg-backup(1)
+For more information on backing up your local package database, please refer to *pkg-backup(1)*
 
 <a name="pkgcreate"></a>
 ### Creating a package repository
 
 You can also use pkgng, so that you create a package repository.
 
-In order to create a package repository you need to use the 'pkg create' command.
+In order to create a package repository you need to use the `pkg create` command.
 
 Here's an example that will create a repository of all your currently installed packages:
 
