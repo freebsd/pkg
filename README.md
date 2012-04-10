@@ -305,10 +305,10 @@ packages from the remote repository, you would use the `pkg install` command:
 ### Working with multiple remote repositories
 
 pkgng is also able to work with multiple remote repositories. In the previous section
-we are using only a single remote repository, which is defined by the *PACKAGESITE* option.
+we are using only a single remote repository, which is defined by the _PACKAGESITE_ option.
 
 In order to be able to work with multiple remote repositories and instead of changing 
-each time *PACKAGESITE*, you can tell pkg(1) to work in multi-repos mode as well.
+each time _PACKAGESITE_, you can tell pkg(1) to work in multi-repos mode as well.
 
 To do this, simply enable multi-repos in *pkg.conf(5)* like this:
 
@@ -350,7 +350,7 @@ The first thing to do when working with remote repositories is to update from th
 
 Updating remote repositories is done by the `pkg update` command.
 
-If PACKAGESITE environment variable is defined to point to a remote package
+If _PACKAGESITE_ environment variable is defined to point to a remote package
 repository then only this repository will be updated. Otherwise all remote 
 repositories defined in the /etc/pkg/repositories file will be updated.
 
@@ -366,7 +366,7 @@ For more information on the remote repositories, please refer to pkg-update(1).
 You can search in the remote package repositories using the `pkg search` command.
 
 In order to search in multiple package repositories the enviornment variable
-PACKAGESITE should NOT be defined, in which case `pkg search` will query
+_PACKAGESITE_ should NOT be defined, in which case `pkg search` will query
 the remote package databases found in the /etc/pkg/repositories file.
 
 An example search for a package could be done like this:
@@ -379,9 +379,9 @@ For more information on the repositories search, please refer to pkg-search(1)
 ### Installing from remote repositories
 
 In order to install a package from a remote repository you need to set the
-PACKAGESITE environment variable to point to the remote server.
+_PACKAGESITE_ environment variable to point to the remote server.
 
-If PACKAGESITE is not defined then the installation process will use
+If _PACKAGESITE_ is not defined then the installation process will use
 multiple repositories as defined in the /etc/pkg/repositories file.
 
 During installation from multiple repositories the first repository
