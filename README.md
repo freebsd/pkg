@@ -116,7 +116,6 @@ When the manifest is read by pkg\_create files and dirs accept another format:
 	- /usr/local/share/foo-1.0
 	- /path/to/directory: {uname: foouser, gname: foogroup, perm: 0755}
 
-This allows to override the users, groups and mode that pkgng file find when
 This allows to override the users, groups and mode of files and directories during package
 creation, like for example this allows to create a package
 containing root files without being packaged by the root user.
