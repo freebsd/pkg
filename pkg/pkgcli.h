@@ -122,11 +122,9 @@ void usage_shell(void);
 #define VERSION_VERBOSE (1<<3)
 #define VERSION_STATUS (1<<4)
 #define VERSION_NOSTATUS (1<<5)
-#define VERSION_EREGEX (1<<6)
-#define VERSION_STRING (1<<7)
-#define VERSION_WITHORIGIN (1<<8)
-#define VERSION_TESTVERSION (1<<9)
-#define VERSION_TESTPATTERN (1<<10)
+#define VERSION_WITHORIGIN (1<<7)
+#define VERSION_TESTVERSION (1<<8)
+#define VERSION_TESTPATTERN (1<<9)
 
 int exec_version(int, char **);
 void usage_version(void);

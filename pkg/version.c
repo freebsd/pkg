@@ -177,10 +177,12 @@ exec_version(int argc, char **argv)
 	struct sbuf *res;
 	const char *portsdir;
 	const char *origin;
+	match_t match = MATCH_ALL;
+	char *pattern=NULL;
 
 	SLIST_INIT(&indexhead);
 
-	while ((ch = getopt(argc, argv, "hIoqvl:L:XsOtT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIoqvl:L:X:x:g:e:OtT")) != -1) {
 		switch (ch) {
 			case 'h':
 				usage_version();
@@ -206,10 +208,20 @@ exec_version(int argc, char **argv)
 				limchar = *optarg;
 				break;
 			case 'X':
-				opt |= VERSION_EREGEX;
+				match = MATCH_EREGEX;
+				pattern = optarg;
 				break;
-			case 's':
-				opt |= VERSION_STRING;
+			case 'x':
+				match = MATCH_REGEX;
+				pattern = optarg;
+				break;
+			case 'g':
+				match = MATCH_GLOB;
+				pattern = optarg;
+				break;
+			case 'e':
+				match = MATCH_EXACT;
+				pattern = optarg;
 				break;
 			case 'O':
 				opt |= VERSION_WITHORIGIN;
@@ -293,7 +305,7 @@ exec_version(int argc, char **argv)
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 			return (EX_IOERR);
 
-		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
+		if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
@@ -338,7 +350,7 @@ exec_version(int argc, char **argv)
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 			return (EX_IOERR);
 
-		if (( it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
+		if (( it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
