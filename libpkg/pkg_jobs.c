@@ -164,7 +164,8 @@ pkg_jobs_install(struct pkg_jobs *j)
 	STAILQ_INIT(&pkg_queue);
 
 	/* Fetch */
-	pkg_jobs_fetch(j);
+	if (pkg_jobs_fetch(j) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
