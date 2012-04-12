@@ -510,21 +510,32 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		/* do not add if package if already in base */
 		if (incremental) {
 			sqlite3_stmt *stmt;
-			if (sqlite3_prepare_v2(sqlite, "select count(*) from packages where path=?1 and cksum=?2;",
+			if (sqlite3_prepare_v2(sqlite, "select count(*), cksum from packages where path=?1;",
 			        -1, &stmt, NULL) != SQLITE_OK) {
 				goto cleanup;
 			}
 			sqlite3_bind_text(stmt, 1, pkg_path, -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt, 2, cksum, -1, SQLITE_STATIC);
 
 			if (sqlite3_step(stmt) != SQLITE_ROW) {
 				ERROR_SQLITE(sqlite);
 				goto cleanup;
 			}
-			if (sqlite3_column_int(stmt, 0) == 1) {
+			if (sqlite3_column_int(stmt, 0) > 0) {
+				if (strcmp(sqlite3_column_text(stmt, 1), cksum) == 0) {
+					sqlite3_finalize(stmt);
+					continue;
+				}
+
 				sqlite3_finalize(stmt);
-				continue;
+				if (sqlite3_prepare_v2(sqlite, "delete from packages where path=?1;",
+							-1, &stmt, NULL) != SQLITE_OK) {
+					goto cleanup;
+				}
+
+				sqlite3_bind_text(stmt, 1, pkg_path, -1, SQLITE_STATIC);
+				sqlite3_step(stmt);
 			}
+
 			sqlite3_finalize(stmt);
 		}
 
