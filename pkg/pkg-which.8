@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd April 12, 2012
 .Dt PKG-WHICH 8
 .Os
 .Sh NAME
@@ -23,15 +23,20 @@
 .Nd displays which package installed a specific file
 .Sh SYNOPSIS
 .Nm
+.Op Fl qo
 .Ar <file>
 .Sh DESCRIPTION
 .Nm
 is used for displaying the package that installed
 .Ar <file>
 .Sh OPTIONS
-The following commands are supported by
+The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl q
+Be quiet
+.It Fl o
+Shows the origin of the package instead of name-version
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
