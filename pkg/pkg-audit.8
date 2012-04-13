@@ -24,6 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl F
+.Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
 checks installed packages for known vulnerabilities and generates reports
@@ -39,6 +40,9 @@ required for operation.
 If you have a vulnerable package installed, you are advised to update or
 deinstall it immediately.
 .Pp
+Supplying a
+.Ar <pkg-name>
+will audit only that package.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
