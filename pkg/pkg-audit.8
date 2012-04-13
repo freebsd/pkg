@@ -15,39 +15,49 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 2, 2012
-.Dt PKG-SET 8
+.Dd April 12, 2012
+.Dt PKG-AUDIT 8
 .Os
 .Sh NAME
-.Nm "pkg set"
-.Nd modify information in the installed database
+.Nm "pkg audit"
+.Nd Audits installed packages against known vulnerabilities.
 .Sh SYNOPSIS
 .Nm
-.Op Fl a Op Ar 01
-.Op Fl o Ar <oldorigin>:<neworigin>
-.Op Fl y
-.Op Fl xXg
+.Op Fl F
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
-is used to modify information concerning installed packages, should be used with
-caution
+checks installed packages for known vulnerabilities and generates reports
+including references to security advisories. Its intended audience is system
+administrators and individual users.
+.Pp
+.Nm
+uses a database maintained by port committers and the FreeBSD security team
+to check if security advisories for any installed packages exist.
+Note that a current ports tree (or any local copy of the ports tree) is not
+required for operation.
+.Pp
+If you have a vulnerable package installed, you are advised to update or
+deinstall it immediately.
+.Pp
+Supplying a
+.Ar <pkg-name>
+will audit only that package.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl y
-Assume yes when asked for confirmation before package autoremoval.
-.It Fl a Op 01
-Set automatic flag to the package: 0 is not automatic, 1 is automatic
-.It Fl o Op <oldorigin>:<neworigin>
-Change the dependency origin of a given dependency
-.It Fl x
-Assume pkg-name is a regex
-.It Fl X
-Assume pkg-name is an extended regex
-.It Fl g
-Assume pkg-name is a glob
+.It Fl F
+Fetch the database before checking.
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It PKG_DBDIR
 .El
 .Sh FILES
 See
@@ -56,19 +66,19 @@ See
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
 .Xr pkg-autoremove 8 ,
-.Xr pkg-audit 8 ,
-.Xr pkg-create 8 ,
 .Xr pkg-search 8 ,
 .Xr pkg-backup 8 ,
 .Xr pkg-install 8 ,
-.Xr pkg-delete 8 ,
 .Xr pkg-info 8 ,
 .Xr pkg-check 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-create 8 ,
 .Xr pkg-register 8 ,
 .Xr pkg-repo 8 ,
+.Xe pkg-set 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,
 .Xr pkg-which 8 ,
-.Xr pkg.conf 5
+.Xr pkg.conf 5 ,
