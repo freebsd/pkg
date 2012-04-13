@@ -53,6 +53,7 @@ MAN=	pkg.8 \
 	pkg-add.8 \
 	pkg-autoremove.8 \
 	pkg-backup.8 \
+	pkg-check.8 \
 	pkg-create.8 \
 	pkg-delete.8 \
 	pkg-info.8 \

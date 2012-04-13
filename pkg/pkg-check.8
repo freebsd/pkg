@@ -1,0 +1,90 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\" $FreeBSD$
+.\"
+.Dd April 12, 2012
+.Dt PKG-CHECK 8
+.Os
+.Sh NAME
+.Nm "pkg check"
+.Nd sanity checks installed packages
+.Sh SYNOPSIS
+.Nm
+.Op Fl yadsr
+.Nm
+.Op Fl ygxXdsr
+.Ar <pattern>
+.Sh DESCRIPTION
+.Nm
+is used to check for and install missing dependencies, find invalid checksums, or recompute sizes of installed packages.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl a
+Process all packages.
+.It Fl y
+Assume yes when asked for confirmation before installing missing dependencies.
+.It Fl d
+Check for missing dependencies of matched packages.
+.It Fl s
+Show matched packages that do not match the stored checksum.
+.It Fl r
+Recomputes the flat size in bytes of the matched packages.
+.It Fl g
+Treat
+.Ar <pkg-name>
+as a shell glob pattern.
+.It Fl x
+Treat
+.Ar <pkg-name>
+as a regular expression.
+.It Fl X
+Treat
+.Ar <pkg-name>
+as an extended regular expression.
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It PKG_DBDIR
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xe pkg-set 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8 ,
+.Xr pkg.conf 5 ,
