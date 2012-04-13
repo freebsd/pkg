@@ -137,6 +137,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 	struct pkg_option *option = NULL;
 	struct pkg_shlib *shlib = NULL;
 	bool multirepos_enabled = false;
+	char buf[BUFSIZ];
 	char *m;
 	char size[7];
 	const char *name, *version, *prefix, *origin, *reponame, *repourl;
@@ -277,10 +278,11 @@ print_info(struct pkg * const pkg, unsigned int opt)
                 if (opt & INFO_QUIET)
                         printf("%s-%s\n", name, version);
                 else {
+			snprintf(buf, BUFSIZ, "%s-%s", name, version);
 			if ((pkg_type(pkg) == PKG_REMOTE) && multirepos_enabled)
-				printf("%s-%s [repository: %s]: %s\n", name, version, reponame, comment);
+				printf("%-30s [repository: %s]: %s\n", buf, reponame, comment);
 			else
-				printf("%s-%s: %s\n", name, version, comment);
+				printf("%-30s %s\n", buf, comment);
 		}
         }
 }
