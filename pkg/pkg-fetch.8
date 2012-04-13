@@ -15,27 +15,50 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 26, 2012
-.Dt PKG-AUTOREMOVE 8
+.Dd April 12, 2012
+.Dt PKG-FETCH 8
 .Os
 .Sh NAME
-.Nm "pkg autoremove"
-.Nd removes orphan packages
+.Nm "pkg fetch"
+.Nd Fetches remote packages.
 .Sh SYNOPSIS
 .Nm
-.Op Fl yq
+.Op Fl r Ar reponame
+.Op Fl yqgxXa
+.Ar <pkg-name>
+.Op ...
 .Sh DESCRIPTION
 .Nm
-is used for removing orphan packages, which were installed
-during a dependencies resolving and are no longer needed.
+is used to download binary packages from a remote repository.
+.Pp
+One or more packages, or patterns can be specified.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl a
+Fetch all packages.
 .It Fl y
-Assume yes when asked for confirmation before package autoremoval.
+Assume yes when asked for confirmation before fetching packages.
 .It Fl q
-Force quiet output
+Quiet mode. Show less output.
+.It Fl r Ar reponame
+Fetches packages from the given
+.Ar reponame
+if multiple repo support is enabled. See
+.Xr pkg.conf 5 .
+.It Fl g
+Treat
+.Ar <pkg-name>
+as a shell glob pattern.
+.It Fl x
+Treat
+.Ar <pkg-name>
+as a regular expression.
+.It Fl X
+Treat
+.Ar <pkg-name>
+as an extended regular expression.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -44,22 +67,21 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It Ev ASSUME_ALWAYS_YES
-.It Ev HANDLE_RC_SCRIPTS
-.It Ev PKG_DBDIR
+.It PKG_DBDIR
 .El
 .Sh FILES
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
+.Xe pkg-set 8 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
 .Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
-.Xr pkg-fetch 8 ,
 .Xr pkg-info 8 ,
 .Xr pkg-install 8 ,
 .Xr pkg-query 8 ,
