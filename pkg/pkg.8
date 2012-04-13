@@ -69,20 +69,22 @@ protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
 .It Ic audit
-< To be added >
+Audits installed packages against known vulnerabilities.
 .It Ic autoremove
 Delete packages which were automatically installed as dependencies and are not
 required anymore.
 .It Ic backup
 Dump the local package database to a file specified on the command-line.
 .It Ic check
-< To be added >
+Sanity checks installed packages.
 .It Ic clean
 < To be added >
 .It Ic create
 Create a package
 .It Ic delete
 Delete a package from the database and the system.
+.It Ic fetch
+Fetches packages from a remote repository.
 .It Ic info
 Display information about installed packages.
 .It Ic install
@@ -97,24 +99,26 @@ Query information about installed packages.
 .It Ic register
 Register a package in the database.
 .It Ic repo
-Create a package repository.
-.Pp
-< To be completed >
+Create a local package repository for remote usage.
 .It Ic shell
 Fires up a sqlite shell open on the local database, be very careful with this
 command
 .It Ic search
 Search for the given pattern in the remote package
 repositories.
+.It Ic set
+Modify information in the installed database.
+.It Ic shlib
+Displays which packages link to a specific shared library.
 .It Ic update
 Update the available remote repositories as listed in
 .Xr pkg.conf 5 .
 .It Ic updating
-< To be added >
+Displays UPDATING entries of installed packages.
 .It Ic upgrade
 Upgrade a package to a newer version.
 .It Ic version
-< To be added >
+Summarize installed versions of packages.
 .It Ic which
 Query the database for package(s) that installed a specific
 file.
@@ -132,18 +136,21 @@ See
 .\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg-add 8 ,
-.Xr pkg-autoremove 8 ,
 .Xr pkg-audit 8 ,
-.Xr pkg-search 8 ,
+.Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,
-.Xr pkg-install 8 ,
-.Xr pkg-delete 8 ,
-.Xr pkg-info 8 ,
 .Xr pkg-check 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
 .Xr pkg-query 8 ,
 .Xr pkg-register 8 ,
 .Xr pkg-repo 8 ,
+.Xr pkg-search 8 ,
 .Xr pkg-set 8 ,
+.Xr pkg-shlib 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,
