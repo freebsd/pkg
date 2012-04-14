@@ -55,6 +55,7 @@ MAN=	pkg.8 \
 	pkg-autoremove.8 \
 	pkg-backup.8 \
 	pkg-check.8 \
+	pkg-clean.8 \
 	pkg-create.8 \
 	pkg-delete.8 \
 	pkg-fetch.8 \
@@ -65,6 +66,7 @@ MAN=	pkg.8 \
 	pkg-repo.8 \
 	pkg-search.8 \
 	pkg-set.8 \
+	pkg-shell.8 \
 	pkg-shlib.8 \
 	pkg-update.8 \
 	pkg-updating.8 \

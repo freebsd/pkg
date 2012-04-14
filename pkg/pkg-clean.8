@@ -15,39 +15,27 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 2, 2012
-.Dt PKG-SET 8
+.Dd April 13, 2012
+.Dt PKG-CLEAN 8
 .Os
 .Sh NAME
-.Nm "pkg set"
-.Nd modify information in the installed database
+.Nm "pkg clean"
+.Nd Cleans the local cache of fetched remote packages.
 .Sh SYNOPSIS
 .Nm
-.Op Fl a Op Ar 01
-.Op Fl o Ar <oldorigin>:<neworigin>
-.Op Fl y
-.Op Fl xXg
-.Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
-is used to modify information concerning installed packages, should be used with
-caution
-.Sh OPTIONS
-The following options are supported by
-.Nm :
-.Bl -tag -width F1
-.It Fl y
-Assume yes when asked for confirmation before package autoremoval.
-.It Fl a Op 01
-Set automatic flag to the package: 0 is not automatic, 1 is automatic
-.It Fl o Op <oldorigin>:<neworigin>
-Change the dependency origin of a given dependency
-.It Fl x
-Assume pkg-name is a regex
-.It Fl X
-Assume pkg-name is an extended regex
-.It Fl g
-Assume pkg-name is a glob
+is used to cleanup the local cache of remote packages.
+It will remove packages that are out-of-date, as well as packages that are no longer provided.
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It PKG_DBDIR
+.It PKG_CONFIG_CACHEDIR
 .El
 .Sh FILES
 See
@@ -59,7 +47,6 @@ See
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
-.Xr pkg-clean 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,
@@ -69,6 +56,7 @@ See
 .Xr pkg-register 8 ,
 .Xr pkg-repo 8 ,
 .Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
 .Xr pkg-update 8 ,

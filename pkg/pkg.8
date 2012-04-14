@@ -78,7 +78,7 @@ Dump the local package database to a file specified on the command-line.
 .It Ic check
 Sanity checks installed packages.
 .It Ic clean
-< To be added >
+Cleans the local cache of fetched remote packages.
 .It Ic create
 Create a package
 .It Ic delete
@@ -101,8 +101,8 @@ Register a package in the database.
 .It Ic repo
 Create a local package repository for remote usage.
 .It Ic shell
-Fires up a sqlite shell open on the local database, be very careful with this
-command
+Fires up a sqlite shell to the local or remote database.
+Extreme care should be taken when using this command.
 .It Ic search
 Search for the given pattern in the remote package
 repositories.
@@ -140,6 +140,7 @@ See
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,
@@ -150,6 +151,7 @@ See
 .Xr pkg-repo 8 ,
 .Xr pkg-search 8 ,
 .Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
