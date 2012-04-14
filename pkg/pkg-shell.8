@@ -15,40 +15,16 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
-.Dt PKG-BACKUP 8
+.Dd April 13, 2012
+.Dt PKG-SHELL 8
 .Os
 .Sh NAME
-.Nm "pkg backup"
-.Nd backup and restore the local package database
-.Sh SYNOPSIS
-.Nm
-.Op Fl d
-.Ar <file>
-.Nm
-.Op Fl r
-.Ar <file>
+.Nm "pkg shell"
+.Nd interact with the pkg database
 .Sh DESCRIPTION
 .Nm
-is used for backing up and restoring of the local package database.
-.Sh OPTIONS
-The following options are supported by
-.Nm :
-.Bl -tag -width F1
-.It Fl d Ar <file>
-Dumps the local package database to a file specified on the command-line.
-If
-.Ar -
-is specified as the argument
-.Nm
-will use stdout for it's output.
-.It Fl r Ar <file>
-Uses
-.Ar file
-in order to restore the local package database.
-Useful in case of a database
-crash of lost to restore your database from previously made backup.
-.El
+is used to interact with the local or remote database through a sqlite3 console.
+Extreme care should be taken when using this command.
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
@@ -62,10 +38,12 @@ for further description.
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
+.Xe pkg-set 8 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
@@ -77,7 +55,6 @@ See
 .Xr pkg-repo 8 ,
 .Xr pkg-search 8 ,
 .Xr pkg-set 8 ,
-.Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
