@@ -1,5 +1,5 @@
---- portmaster.orig	2012-01-31 03:17:17.681285114 +0100
-+++ portmaster	2012-02-03 04:19:47.404428436 +0100
+--- portmaster.sh.in.orig	2012-04-11 15:54:46.654580382 +0200
++++ portmaster.sh.in	2012-04-11 15:55:04.204455356 +0200
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
