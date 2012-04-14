@@ -311,22 +311,29 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct sbuf *buf = sbuf_new_auto();
 	struct statfs fs;
+	struct stat st;
 	char path[MAXPATHLEN + 1];
 	int64_t dlsize = 0;
 	const char *cachedir = NULL;
+	const char *repopath = NULL;
+	char cachedpath[MAXPATHLEN];
 	char dlsz[7];
 	char fsz[7];
 	int ret = EPKG_OK;
 	
+	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
+		return (EPKG_FATAL);
+
 	/* check for available size to fetch */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		int64_t pkgsize;
-		pkg_get(p, PKG_NEW_PKGSIZE, &pkgsize);
-		dlsize += pkgsize;
+		pkg_get(p, PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, repopath);
+		snprintf(cachedpath, MAXPATHLEN, "%s/%s", cachedir, repopath);
+		if (stat(cachedpath, &st) == -1)
+			dlsize += pkgsize;
+		else
+			dlsize += pkgsize - st.st_size;
 	}
-
-	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
-		return (EPKG_FATAL);
 
 	while (statfs(cachedir, &fs) == -1) {
 		if (errno == ENOENT) {
