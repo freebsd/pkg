@@ -115,7 +115,7 @@ rc_stop(const char *rc_file)
 			return (-1);
 		case 0:
 			/* child */
-			execl("/usr/sbin/service", "service", rc_file, "forcestop", (char *)NULL);
+			execl("/usr/sbin/service", "service", rc_file, "stop", (char *)NULL);
 			_exit(1);
 			/* NOT REACHED */
 		default:
