@@ -38,7 +38,7 @@
 void
 usage_clean(void)
 {
-	fprintf(stderr, "usage: pkg clean [-n]\n");
+	fprintf(stderr, "usage: pkg clean\n");
 }
 
 int
