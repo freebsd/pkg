@@ -65,6 +65,7 @@ static int create_temporary_pkgjobs(sqlite3 *);
 static void pkgdb_detach_remotes(sqlite3 *);
 static bool is_attached(sqlite3 *, const char *);
 static void report_already_installed(sqlite3 *);
+static int sqlcmd_init(sqlite3 *db, __unused const char **err, __unused const void *noused);
 
 extern int sqlite3_shell(int, char**);
 
@@ -557,20 +558,8 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 				return (EPKG_FATAL);
 			}
 
-		sqlite3_create_function(db->sqlite, "now", 0, SQLITE_ANY, NULL,
-				pkgdb_now, NULL, NULL);
-		sqlite3_create_function(db->sqlite, "myarch", 0, SQLITE_ANY, NULL,
-				pkgdb_myarch, NULL, NULL);
-		sqlite3_create_function(db->sqlite, "myarch", 1, SQLITE_ANY, NULL,
-				pkgdb_myarch, NULL, NULL);
-		sqlite3_create_function(db->sqlite, "regexp", 2, SQLITE_ANY, NULL,
-				pkgdb_regex_basic, NULL, NULL);
-		sqlite3_create_function(db->sqlite, "eregexp", 2, SQLITE_ANY, NULL,
-				pkgdb_regex_extended, NULL, NULL);
-		sqlite3_create_function(db->sqlite, "pkglt", 2, SQLITE_ANY, NULL,
-				pkgdb_pkglt, NULL, NULL);
-		sqlite3_create_function(db->sqlite, "pkggt", 2, SQLITE_ANY, NULL,
-				pkgdb_pkggt, NULL, NULL);
+		/* Create our functions */
+		sqlcmd_init(db->sqlite, NULL, NULL);
 
 		if (pkgdb_upgrade(db) != EPKG_OK) {
 			pkgdb_close(db);
@@ -3217,7 +3206,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
 }
 
-/* for the sqlite3 shell */
+/* create our custom functions in the sqlite3 connection. Used both in the shell and pkgdb_open */
 static int
 sqlcmd_init(sqlite3 *db, __unused const char **err, __unused const void *noused)
 {
