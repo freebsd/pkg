@@ -353,10 +353,10 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 
 		switch (type) {
 		case PKG_JOBS_INSTALL:
-			printf("\nThe installation will save %s\n", size);
+			printf("\nThe installation will free %s\n", size);
 			break;
 		case PKG_JOBS_DEINSTALL:
-			printf("\nThe deinstallation will save %s\n", size);
+			printf("\nThe deinstallation will free %s\n", size);
 			break;
 		case PKG_JOBS_FETCH:
 			/* nothing to report here */

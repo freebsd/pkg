@@ -127,7 +127,7 @@ exec_autoremove(int argc, char **argv)
 		}
 
 		if (oldsize > newsize)
-			printf("\nThe autoremove will save %s\n", size);
+			printf("\nThe autoremove will free %s\n", size);
 		else
 			printf("\nThe autoremove will require %s more space\n", size);
 

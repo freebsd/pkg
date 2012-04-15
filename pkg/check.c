@@ -189,7 +189,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	if (oldsize > newsize) {
 		newsize *= -1;
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-		printf("\nthe installation will save %s\n", size);
+		printf("\nthe installation will free %s\n", size);
 	} else {
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
 		printf("\nThe installation will require %s more space\n", size);
