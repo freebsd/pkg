@@ -27,6 +27,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/stat.h>
 
 #include <libutil.h>
 #include <string.h>
@@ -291,7 +292,9 @@ void
 print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 {
 	struct pkg *pkg = NULL;
-	const char *name, *version, *newversion;
+	char path[MAXPATHLEN];
+	struct stat st;
+	const char *name, *version, *newversion, *pkgrepopath, *cachedir;
 	int64_t dlsize, oldsize, newsize;
 	int64_t flatsize, newflatsize, pkgsize;
 	char size[7];
@@ -305,14 +308,20 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 	flatsize = newflatsize = pkgsize = 0;
 	name = version = newversion = NULL;
 	
+	pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir);
+
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
 		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
-			PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
-			PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
+		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
+		    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize,
+		    PKG_REPOPATH, &pkgrepopath);
 
 		switch (type) {
 		case PKG_JOBS_INSTALL:
 			dlsize += pkgsize;
+			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
+			if (stat(path, &st) != -1)
+				dlsize -= st.st_size;
 
 			if (newversion != NULL) {
 				switch (pkg_version_cmp(version, newversion)) {
@@ -341,6 +350,9 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 			break;
 		case PKG_JOBS_FETCH:
 			dlsize += pkgsize;
+			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
+			if (stat(path, &st) != -1)
+				dlsize -= st.st_size;
 
 			printf("\t%s-%s\n", name, version);
 			break;
