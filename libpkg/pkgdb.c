@@ -3021,17 +3021,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 				break;
 			case PKG_DEP_ORIGIN:
 				oldorigin = va_arg(ap, char *);
-				neworigin = strrchr(oldorigin, ':');
-				if (neworigin == NULL) {
-					pkg_emit_error("Wrong origin format expecting oldorigin:neworigin, got %s", oldorigin);
-					return (EPKG_FATAL);
-				}
-				*neworigin = '\0';
-				neworigin++;
-				if (strrchr(oldorigin, '/') == NULL || strrchr(neworigin, '/') == NULL) {
-					pkg_emit_error("Wrong origin format expecting oldorigin:neworigin");
-					return (EPKG_FATAL);
-				}
+				neworigin = va_arg(ap, char *);
 				sqlite3_snprintf(BUFSIZ, sql, "update deps set origin='%q', "
 				    "name=(select name from packages where origin='%q'), "
 				    "version=(select version from packages where origin='%q') "
