@@ -23,38 +23,48 @@
 .Nd sanity checks installed packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl yadsr
+.Fl d
+.Op Fl y
+.Op Fl a | gxX Ar <pattern>
 .Nm
-.Op Fl ygxXdsr
-.Ar <pattern>
+.Fl r
+.Op Fl y
+.Op Fl a | gxX Ar <pattern>
+.Nm
+.Fl s
+.Op Fl y
+.Op Fl a | gxX Ar <pattern>
 .Sh DESCRIPTION
 .Nm
-is used to check for and install missing dependencies, find invalid checksums, or recompute sizes of installed packages.
+.Fl d
+is used to check for and install missing dependencies.
+.Pp
+.Nm
+.Fl r
+is used to recompute sizes of installed packages.
+.Pp
+.Nm
+.Fl s
+is used to find invalid checksums for installed packages.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl a
-Process all packages.
 .It Fl y
 Assume yes when asked for confirmation before installing missing dependencies.
-.It Fl d
-Check for missing dependencies of matched packages.
-.It Fl s
-Show matched packages that do not match the stored checksum.
-.It Fl r
-Recomputes the flat size in bytes of the matched packages.
+.It Fl a
+Process all packages.
 .It Fl g
 Treat
-.Ar <pkg-name>
+.Ar <pattern>
 as a shell glob pattern.
 .It Fl x
 Treat
-.Ar <pkg-name>
+.Ar <pattern>
 as a regular expression.
 .It Fl X
 Treat
-.Ar <pkg-name>
+.Ar <pattern>
 as an extended regular expression.
 .El
 .Sh ENVIRONMENT
