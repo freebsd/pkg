@@ -142,7 +142,8 @@ exec_set(int argc, char **argv)
 	}
 	i = 0;
 	do {
-		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+		if (!yes)
+			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			if (oldorigin != NULL)
