@@ -12,15 +12,13 @@ ARCH=$( uname -m )
 
 for PKG in $( pkg_info -Ea )
 do
-	echo -n "Registering ${PKG}... "
-
 	DB="/var/db/pkg/${PKG}"
 	DESC="${DB}/+DESC"
 
 	ORIGIN=$(pkg_info -qo ${PKG})
 	# register a package only if it's not registered already
 	if pkg info -e ${ORIGIN}; then
-        echo "package is already registered."
+        echo "${PKG} is already registered."
         continue
 	fi
 	PREFX=$(pkg_info -qp ${PKG})
@@ -68,10 +66,10 @@ do
 
 	pkg register -l -m ${MDIR} -f ${PLIST} ${CMD_ARGS}
 	if [ $? -ne 0 ]; then
-		echo "failed."
+		echo "Registration of ${PKG} failed."
 		cat ${MANIFEST}
 	else
-		echo "done." ; rm -rf ${MANIFEST}
+		rm -rf ${MANIFEST}
 	fi
 
 	rm -rf ${MDIR}
