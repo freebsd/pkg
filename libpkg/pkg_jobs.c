@@ -327,7 +327,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	/* check for available size to fetch */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		int64_t pkgsize;
-		pkg_get(p, PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, repopath);
+		pkg_get(p, PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
 		snprintf(cachedpath, MAXPATHLEN, "%s/%s", cachedir, repopath);
 		if (stat(cachedpath, &st) == -1)
 			dlsize += pkgsize;
