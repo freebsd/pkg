@@ -2774,18 +2774,17 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 
 		/* close the UNIONs and build the search query */
 		sbuf_cat(sql, ") WHERE ");
-		pkgdb_rquery_build_search_query(sql, match, field);
-		sbuf_finish(sql);
 	} else {
 		/* 
 		 * Working on a single remote repository
 		 */
 
 		sbuf_cat(sql, ", 'remote' AS dbname FROM remote.packages WHERE ");
-		pkgdb_rquery_build_search_query(sql, match, field);
-		sbuf_cat(sql, ";");
-		sbuf_finish(sql);
 	}
+
+	pkgdb_rquery_build_search_query(sql, match, field);
+	sbuf_cat(sql, ";");
+	sbuf_finish(sql);
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
