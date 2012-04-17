@@ -40,12 +40,7 @@
 
 #include "pkgcli.h"
 
-static struct query_flags {
-	const char flag;
-	const char *options;
-	const unsigned multiline;
-	const int dbflags;
-} q_flags[] = {
+static struct query_flags accepted_query_flags[] = {
 	{ 'd', "nov",		1, PKG_LOAD_DEPS },
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
@@ -72,20 +67,6 @@ static struct query_flags {
 	{ 'i', "",		0, PKG_LOAD_BASIC },
 	{ 't', "",		0, PKG_LOAD_BASIC },
 };
-
-typedef enum {
-	NONE,
-	NEXT_IS_INT,
-	OPERATOR_INT,
-	INT,
-	NEXT_IS_STRING,
-	OPERATOR_STRING,
-	STRING,
-	QUOTEDSTRING,
-	SQUOTEDSTRING
-} type_t;
-
-const unsigned int flags_len = (sizeof(q_flags)/sizeof(q_flags[0]));
 
 static void
 format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
@@ -305,7 +286,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 	sbuf_finish(dest);
 }
 
-static void
+void
 print_query(struct pkg *pkg, char *qstr, char multiline)
 {
 	struct sbuf *output = sbuf_new_auto();
@@ -395,7 +376,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	sbuf_delete(output);
 }
 
-static int
+int
 format_sql_condition(const char *str, struct sbuf *sqlcond)
 {
 	type_t state = NONE;
@@ -582,8 +563,8 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 	return (EPKG_OK);
 }
 
-static int
-analyse_query_string(char *qstr, int *flags, char *multiline)
+int
+analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int q_flags_len, int *flags, char *multiline)
 {
 	unsigned int i, j, k;
 	unsigned int valid_flag = 0;
@@ -596,7 +577,7 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 			qstr++;
 			valid_flag = 0;
 	
-			for (i = 0; i < flags_len; i++) {
+			for (i = 0; i < q_flags_len; i++) {
 				/* found the flag */
 				if (qstr[0] == q_flags[i].flag) {
 					valid_flag = 1;
@@ -638,7 +619,7 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 
 					/* handle the '?' flag cases */
 					if (q_flags[i].flag == '?') {
-						for (k = 0; k < flags_len; k++) 
+						for (k = 0; k < q_flags_len; k++)
 							if (q_flags[k].flag == q_flags[i].options[j]) {
 								*flags |= q_flags[k].dbflags;
 								break;
@@ -689,6 +670,7 @@ exec_query(int argc, char **argv)
 	char multiline = 0;
 	char *condition = NULL;
 	struct sbuf *sqlcond = NULL;
+	const unsigned int q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
 
 	while ((ch = getopt(argc, argv, "agxXF:e:")) != -1) {
 		switch (ch) {
@@ -729,7 +711,7 @@ exec_query(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (analyse_query_string(argv[0], &query_flags, &multiline) != EPKG_OK)
+	if (analyse_query_string(argv[0], accepted_query_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK)
 		return (EX_USAGE);
 
 	if (pkgname != NULL) {

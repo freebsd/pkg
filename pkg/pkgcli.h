@@ -155,4 +155,30 @@ void print_jobs_summary(struct pkg_jobs *j, pkg_jobs_t type, const char *msg, ..
 int event_callback(void *data, struct pkg_event *ev);
 
 extern struct sbuf *messages;
+
+
+/* pkg-query / pkg-rquery */
+struct query_flags {
+	const char flag;
+	const char *options;
+	const unsigned multiline;
+	const int dbflags;
+};
+
+typedef enum {
+	NONE,
+	NEXT_IS_INT,
+	OPERATOR_INT,
+	INT,
+	NEXT_IS_STRING,
+	OPERATOR_STRING,
+	STRING,
+	QUOTEDSTRING,
+	SQUOTEDSTRING
+} type_t;
+
+void print_query(struct pkg *pkg, char *qstr, char multiline);
+int format_sql_condition(const char *str, struct sbuf *sqlcond);
+int analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int q_flags_len, int *flags, char *multiline);
+
 #endif
