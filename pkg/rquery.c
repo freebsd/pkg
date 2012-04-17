@@ -65,10 +65,10 @@ static struct query_flags accepted_rquery_flags[] = {
 void
 usage_rquery(void)
 {
-	fprintf(stderr, "usage: pkg rquery -a <query-format>\n");
-	fprintf(stderr, "       pkg rquery -F <pkg-name> <query-format>\n");
-	fprintf(stderr, "       pkg rquery -e <evaluation> <query-format>\n");
-	fprintf(stderr, "       pkg rquery [-gxX] <query-format> <pattern> <...>\n\n");
+	fprintf(stderr, "usage: pkg rquery -a [-r reponame] <query-format>\n");
+	fprintf(stderr, "       pkg rquery -F <pkg-name> [-r reponame] <query-format>\n");
+	fprintf(stderr, "       pkg rquery -e <evaluation> [-r reponame] <query-format>\n");
+	fprintf(stderr, "       pkg rquery [-gxX] [-r reponame] <query-format> <pattern> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help rquery.'\n");
 }
 
@@ -89,8 +89,9 @@ exec_rquery(int argc, char **argv)
 	char *condition = NULL;
 	struct sbuf *sqlcond = NULL;
 	const unsigned int q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
+	const char *reponame = NULL;
 
-	while ((ch = getopt(argc, argv, "agxXF:e:")) != -1) {
+	while ((ch = getopt(argc, argv, "agxXF:e:r:")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -109,6 +110,9 @@ exec_rquery(int argc, char **argv)
 				break;
 			case 'e':
 				condition = optarg;
+				break;
+			case 'r':
+				reponame = optarg;
 				break;
 			default:
 				usage_query();
@@ -177,7 +181,7 @@ exec_rquery(int argc, char **argv)
 	}
 
 	if (match == MATCH_ALL) {
-		if ((it = pkgdb_rquery(db, NULL, match, NULL)) == NULL)
+		if ((it = pkgdb_rquery(db, NULL, match, reponame)) == NULL)
 			return (EX_IOERR);
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
@@ -191,7 +195,7 @@ exec_rquery(int argc, char **argv)
 		for (i = 1; i < argc; i++) {
 			pkgname = argv[i];
 
-			if ((it = pkgdb_rquery(db, pkgname, match, NULL)) == NULL)
+			if ((it = pkgdb_rquery(db, pkgname, match, reponame)) == NULL)
 				return (EX_IOERR);
 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)

@@ -23,13 +23,20 @@
 .Nd query information from remote repositories
 .Sh SYNOPSIS
 .Nm
-.Fl a Ao query format Ac
+.Fl a
+.Op Fl r Ar reponame
+.Ao query-format Ac
 .Nm
-.Fl F Ao pkg-name Ac Ao query-format Ac
+.Fl F Ao pkg-name Ac
+.Op Fl r Ar reponame
+.Ao query-format Ac
 .Nm
-.Fl e Ao evaluation-condition Ac Ao query-format Ac
+.Fl e Ao evaluation-condition Ac
+.Op Fl r Ar reponame
+.Ao query-format Ac
 .Nm
 .Op Fl gxX
+.Op Fl r Ar reponame
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
@@ -43,6 +50,12 @@ Match all packages from the database
 .It Fl F Ar pkg-name
 Display information only for the package file
 .Ar pkg-name
+.It Fl r Ar reponame
+Fetches packages from the given
+.Ar reponame
+if multiple repo support is enabled.
+See
+.Xr pkg.conf 5 .
 .It Fl g
 Treat
 .Ao pattern Ac
@@ -73,7 +86,7 @@ Prefix of the matched package
 Maintainer of the matched package
 .It Cm \&%c
 Comment of the matched package
-.It cm \&%i
+.It Cm \&%i
 Additionnal information about the package
 .It Cm \&%w
 Home page of the matched package
