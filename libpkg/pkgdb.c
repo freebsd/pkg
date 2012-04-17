@@ -1165,6 +1165,7 @@ pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 	int ret;
 
 	assert(db != NULL && pkg != NULL);
+	assert(pkg->type == PKG_INSTALLED);
 
 	if (pkg->flags & PKG_LOAD_DIRS)
 		return (EPKG_OK);
@@ -1253,6 +1254,7 @@ pkgdb_load_user(struct pkgdb *db, struct pkg *pkg)
 		"ORDER by name DESC";
 
 	assert(db != NULL && pkg != NULL);
+	assert(pkg->type == PKG_INSTALLED);
 
 	ret = load_val(db->sqlite, pkg, sql, PKG_LOAD_USERS, pkg_adduser, PKG_USERS);
 
@@ -1282,6 +1284,7 @@ pkgdb_load_group(struct pkgdb *db, struct pkg *pkg)
 		"ORDER by name DESC";
 
 	assert(db != NULL && pkg != NULL);
+	assert(pkg->type == PKG_INSTALLED);
 
 	ret = load_val(db->sqlite, pkg, sql, PKG_LOAD_GROUPS, pkg_addgroup, PKG_GROUPS);
 
