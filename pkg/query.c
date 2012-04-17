@@ -99,6 +99,11 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					if (tmp != NULL)
 						sbuf_cat(dest, tmp);
 					break;
+				case 'R':
+					pkg_get(pkg, PKG_REPONAME, &tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
+					break;
 				case 'p':
 					pkg_get(pkg, PKG_PREFIX, &tmp);
 					if (tmp != NULL)

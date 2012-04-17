@@ -51,6 +51,7 @@ static struct query_flags accepted_rquery_flags[] = {
 	{ 'n', "",		0, PKG_LOAD_BASIC },
 	{ 'v', "",		0, PKG_LOAD_BASIC },
 	{ 'o', "",		0, PKG_LOAD_BASIC },
+	{ 'R', "",		0, PKG_LOAD_BASIC },
 	{ 'p', "",		0, PKG_LOAD_BASIC },
 	{ 'm', "",		0, PKG_LOAD_BASIC },
 	{ 'c', "",		0, PKG_LOAD_BASIC },
