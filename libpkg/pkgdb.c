@@ -135,6 +135,41 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, int flags, int (*pkg_add
 	return (EPKG_OK);
 }
 
+static const char *
+pkgdb_get_reponame(struct pkgdb *db, const char *repo)
+{
+	const char *reponame = NULL;
+	bool multirepos_enabled = false;
+
+	if (db->type != PKGDB_REMOTE) {
+		pkg_emit_error("remote database not attached (misuse)");
+		return (NULL);
+	}
+
+
+	/* Working on multiple repositories */
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
+
+	if (multirepos_enabled) {
+		if (repo != NULL) {
+			if (!is_attached(db->sqlite, repo)) {
+				pkg_emit_error("repository '%s' does not exists", repo);
+				return (NULL);
+			}
+
+			reponame = repo;
+		} else {
+			/* default repository in multi-repos is 'default' */
+			reponame = "default";
+		}
+	} else {
+		/* default repository in single-repo is 'remote' */
+		reponame = "remote";
+	}
+
+	return (reponame);
+}
+
 static void
 populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	int i, icol = 0;
@@ -2161,7 +2196,6 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 {
 	struct sbuf *sql = sbuf_new_auto();
 	const char *reponame = NULL;
-	bool multirepos_enabled;
 	sqlite3_stmt *stmt = NULL;
 
 	const char finalsql[] = "SELECT pkgid AS id, origin, name, version, "
@@ -2184,24 +2218,8 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 		return (NULL);
 	}
 
-	/* Working on multiple repositories */
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
-	if (multirepos_enabled) {
-		if (repo != NULL) {
-			if (!is_attached(db->sqlite, repo)) {
-				pkg_emit_error("repository '%s' does not exists", repo);
-				return (NULL);
-			}
-
-			reponame = repo;
-		} else {
-			/* default repository in multi-repos is 'default' */
-			reponame = "default";
-		}
-	} else {
-		/* default repository in single-repo is 'remote' */
-		reponame = "remote";
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+		return (NULL);
 	}
 
 	sbuf_printf(sql, main_sql, reponame);
@@ -2242,7 +2260,6 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	struct sbuf *sql = sbuf_new_auto();
 	const char *how = NULL;
 	const char *reponame = NULL;
-	bool multirepos_enabled = false;
 
 	if ((it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
 		pkg_emit_newpkgversion();
@@ -2281,24 +2298,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		return (NULL);
 	}
 
-	/* Working on multiple repositories */
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
-	if (multirepos_enabled) {
-		if (repo != NULL) {
-			if (!is_attached(db->sqlite, repo)) {
-				pkg_emit_error("repository '%s' does not exists", repo);
-				return (NULL);
-			}
-
-			reponame = repo;
-		} else {
-			/* default repository in multi-repos is 'default' */
-			reponame = "default";
-		}
-	} else {
-		/* default repository in single-repo is 'remote' */
-		reponame = "remote";
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+		return (NULL);
 	}
 
 	sbuf_printf(sql, main_sql, reponame);
@@ -2399,7 +2400,6 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = sbuf_new_auto();
 	const char *reponame = NULL;
-	bool multirepos_enabled = false;
 	struct pkgdb_it *it;
 
 	if ((it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
@@ -2459,24 +2459,8 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	const char weight_sql[] = "UPDATE pkgjobs set weight=(select count(*) from '%s'.deps as d where d.origin=pkgjobs.origin)";
 
-	/* Working on multiple repositories */
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
-	if (multirepos_enabled) {
-		if (repo != NULL) {
-			if (!is_attached(db->sqlite, repo)) {
-				pkg_emit_error("repository '%s' does not exists", repo);
-				return (NULL);
-			}
-
-			reponame = repo;
-		} else {
-			/* default repository in multi-repos is 'default' */
-			reponame = "default";
-		}
-	} else {
-		/* default repository in single-repo is 'remote' */
-		reponame = "remote";
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+		return (NULL);
 	}
 
 	create_temporary_pkgjobs(db->sqlite);
@@ -2528,7 +2512,6 @@ pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
 	struct sbuf *sql = sbuf_new_auto();
 	const char *reponame = NULL;
 	sqlite3_stmt *stmt = NULL;
-	bool multirepos_enabled = false;
 
 	assert(db != NULL);
 
@@ -2547,24 +2530,8 @@ pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
 		"WHERE l.origin = r.origin "
 		"AND PKGGT(l.version, r.version)";
 
-	/* Working on multiple repositories */
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
-	if (multirepos_enabled) {
-		if (repo != NULL) {
-			if (!is_attached(db->sqlite, repo)) {
-				pkg_emit_error("repository '%s' does not exists", repo);
-				return (NULL);
-			}
-
-			reponame = repo;
-		} else {
-			/* default repository in multi-repos is 'default' */
-			reponame = "default";
-		}
-	} else {
-		/* default repository in single-repo is 'remote' */
-		reponame = "remote";
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+		return (NULL);
 	}
 
 	sbuf_printf(sql, finalsql, reponame, reponame);
@@ -3060,7 +3027,6 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 	struct sbuf *sql = sbuf_new_auto();
 	const char *how = NULL;
 	const char *reponame = NULL;
-	bool multirepos_enabled = false;
 
 	const char finalsql[] = "SELECT pkgid AS id, origin, name, version, "
 		"flatsize, newversion, newflatsize, pkgsize, cksum, repopath, "
@@ -3088,24 +3054,8 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 		return (NULL);
 	}
 
-	/* Working on multiple repositories */
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
-	if (multirepos_enabled) {
-		if (repo != NULL) {
-			if (!is_attached(db->sqlite, repo)) {
-				pkg_emit_error("repository '%s' does not exists", repo);
-				return (NULL);
-			}
-
-			reponame = repo;
-		} else {
-			/* default repository in multi-repos is 'default' */
-			reponame = "default";
-		}
-	} else {
-		/* default repository in single-repo is 'remote' */
-		reponame = "remote";
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+		return (NULL);
 	}
 
 	sbuf_printf(sql, main_sql, reponame);
