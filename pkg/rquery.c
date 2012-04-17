@@ -1,0 +1,213 @@
+/*
+ * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer
+ *    in this position and unchanged.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <sys/types.h>
+#include <sys/sbuf.h>
+
+#include <ctype.h>
+#include <inttypes.h>
+#include <libutil.h>
+#include <pkg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sysexits.h>
+#include <unistd.h>
+
+#include "pkgcli.h"
+
+static struct query_flags accepted_rquery_flags[] = {
+	{ 'd', "nov",		1, PKG_LOAD_DEPS },
+	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
+	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
+	{ 'L', "",		1, PKG_LOAD_LICENSES },
+	{ 'B', "",		1, PKG_LOAD_SHLIBS },
+	{ '?', "drCOLB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ 's', "hb",		0, PKG_LOAD_BASIC },
+	{ 'n', "",		0, PKG_LOAD_BASIC },
+	{ 'v', "",		0, PKG_LOAD_BASIC },
+	{ 'o', "",		0, PKG_LOAD_BASIC },
+	{ 'p', "",		0, PKG_LOAD_BASIC },
+	{ 'm', "",		0, PKG_LOAD_BASIC },
+	{ 'c', "",		0, PKG_LOAD_BASIC },
+	{ 'w', "",		0, PKG_LOAD_BASIC },
+	{ 'l', "",		0, PKG_LOAD_BASIC },
+	{ 'a', "",		0, PKG_LOAD_BASIC },
+	{ 'M', "",		0, PKG_LOAD_BASIC },
+	{ 'i', "",		0, PKG_LOAD_BASIC },
+	{ 't', "",		0, PKG_LOAD_BASIC },
+};
+
+void
+usage_rquery(void)
+{
+	fprintf(stderr, "usage: pkg rquery -a <query-format>\n");
+	fprintf(stderr, "       pkg rquery -F <pkg-name> <query-format>\n");
+	fprintf(stderr, "       pkg rquery -e <evaluation> <query-format>\n");
+	fprintf(stderr, "       pkg rquery [-gxX] <query-format> <pattern> <...>\n\n");
+	fprintf(stderr, "For more information see 'pkg help rquery.'\n");
+}
+
+int
+exec_rquery(int argc, char **argv)
+{
+	struct pkgdb *db = NULL;
+	struct pkgdb_it *it = NULL;
+	struct pkg *pkg = NULL;
+	char *pkgname = NULL;
+	int query_flags = PKG_LOAD_BASIC;
+	match_t match = MATCH_EXACT;
+	int ch;
+	int ret = EPKG_OK;
+	int retcode = EXIT_SUCCESS;
+	int i;
+	char multiline = 0;
+	char *condition = NULL;
+	struct sbuf *sqlcond = NULL;
+	const unsigned int q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
+
+	while ((ch = getopt(argc, argv, "agxXF:e:")) != -1) {
+		switch (ch) {
+			case 'a':
+				match = MATCH_ALL;
+				break;
+			case 'g':
+				match = MATCH_GLOB;
+				break;
+			case 'x':
+				match = MATCH_REGEX;
+				break;
+			case 'X':
+				match = MATCH_EREGEX;
+				break;
+			case 'F':
+				pkgname = optarg;
+				break;
+			case 'e':
+				condition = optarg;
+				break;
+			default:
+				usage_query();
+				return (EX_USAGE);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+
+	if (argc == 0) {
+		usage_query();
+		return (EX_USAGE);
+	}
+
+	if ((argc == 1) ^ (match == MATCH_ALL) && pkgname == NULL && condition == NULL) {
+		usage_query();
+		return (EX_USAGE);
+	}
+
+	if (analyse_query_string(argv[0], accepted_rquery_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK)
+		return (EX_USAGE);
+
+	if (pkgname != NULL) {
+		if (pkg_open(&pkg, pkgname, NULL) != EPKG_OK) {
+			return (1);
+		}
+
+		print_query(pkg, argv[0], multiline);
+		pkg_free(pkg);
+		return (EXIT_SUCCESS);
+	}
+
+	if (condition != NULL) {
+		sqlcond = sbuf_new_auto();
+		if (format_sql_condition(condition, sqlcond) != EPKG_OK)
+			return (EX_USAGE);
+	}
+
+	ret = pkgdb_open(&db, PKGDB_REMOTE);
+	if (ret == EPKG_ENODB) {
+		if (geteuid() == 0)
+			return (EX_IOERR);
+
+		/* do not fail if run as a user */
+		return (EXIT_SUCCESS);
+	}
+
+	if (ret != EPKG_OK)
+		return (EX_IOERR);
+
+	if (condition != NULL) {
+		sbuf_finish(sqlcond);
+		if ((it = pkgdb_query_condition(db, sbuf_data(sqlcond))) == NULL)
+			return (EX_IOERR);
+
+		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
+			print_query(pkg, argv[0], multiline);
+
+		pkgdb_it_free(it);
+
+		if (ret != EPKG_END)
+			return (EX_SOFTWARE);
+
+		return (EXIT_SUCCESS);
+	}
+
+	if (match == MATCH_ALL) {
+		if ((it = pkgdb_rquery(db, NULL, match, NULL)) == NULL)
+			return (EX_IOERR);
+
+		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
+			print_query(pkg, argv[0],  multiline);
+
+		if (ret != EPKG_END)
+			retcode = EX_SOFTWARE;
+
+		pkgdb_it_free(it);
+	} else {
+		for (i = 1; i < argc; i++) {
+			pkgname = argv[i];
+
+			if ((it = pkgdb_rquery(db, pkgname, match, NULL)) == NULL)
+				return (EX_IOERR);
+
+			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
+				print_query(pkg, argv[0], multiline);
+
+			if (ret != EPKG_END) {
+				retcode = EX_SOFTWARE;
+				break;
+			}
+
+			pkgdb_it_free(it);
+		}
+	}
+
+	pkg_free(pkg);
+	pkgdb_close(db);
+
+	return (retcode);
+}

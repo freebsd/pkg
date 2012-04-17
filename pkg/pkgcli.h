@@ -82,6 +82,10 @@ int exec_register(int argc, char **argv);
 int exec_repo(int, char **);
 void usage_repo(void);
 
+/* pkg rquery */
+int exec_rquery(int, char **);
+void usage_rquery(void);
+
 /* pkg set */
 int exec_set(int, char **);
 void usage_set(void);

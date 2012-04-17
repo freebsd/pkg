@@ -2677,6 +2677,63 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
 }
 
+struct pkgdb_it *
+pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *repo)
+{
+	sqlite3_stmt *stmt = NULL;
+	struct sbuf *sql = NULL;
+	bool multirepos_enabled = false;
+	const char *reponame = NULL;
+	const char *comp = NULL;
+	char basesql[BUFSIZ];
+
+	assert(db != NULL);
+	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
+
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+		return (NULL);
+	}
+
+	sql = sbuf_new_auto();
+	comp = pkgdb_get_pattern_query(pattern, match);
+	snprintf(basesql, BUFSIZ,
+				"SELECT id, origin, name, version, comment, "
+				"prefix, desc, arch, maintainer, www, "
+				"licenselogic, flatsize AS newflatsize, pkgsize, "
+				"cksum, path AS repopath, '%%s' AS dbname "
+				"FROM '%%s'.packages p %s ",
+				comp);
+
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
+
+	/*
+	 * Working on multiple remote repositories
+	 */
+	if (multirepos_enabled && !strcmp(reponame, "default")) {
+		/* duplicate the query via UNION for all the attached databases */
+		if (sql_on_all_attached_db(db->sqlite, sql, basesql) != EPKG_OK)
+			return (NULL);
+	} else {
+		sbuf_printf(sql, basesql, reponame, reponame);
+	}
+
+	sbuf_cat(sql, " ORDER BY name;");
+	sbuf_finish(sql);
+
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	if (match != MATCH_ALL)
+		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+}
+
+
 static int
 pkgdb_search_build_search_query(struct sbuf *sql, match_t match, unsigned int field)
 {

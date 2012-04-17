@@ -15,6 +15,7 @@ SRCS=		add.c \
 		query.c \
 		register.c \
 		repo.c \
+		rquery.c \
 		update.c \
 		upgrade.c \
 		search.c \
@@ -64,6 +65,7 @@ MAN=	pkg.8 \
 	pkg-query.8 \
 	pkg-register.8 \
 	pkg-repo.8 \
+	pkg-rquery.8 \
 	pkg-search.8 \
 	pkg-set.8 \
 	pkg-shell.8 \
