@@ -93,7 +93,7 @@ exec_clean(int argc, char **argv)
 		}
 
 		pkg_get(pkg, PKG_ORIGIN, &origin);
-		it = pkgdb_rquery(db, origin, MATCH_EXACT, FIELD_ORIGIN, NULL);
+		it = pkgdb_search(db, origin, MATCH_EXACT, FIELD_ORIGIN, NULL);
 
 		if (it == NULL) {
 			warnx("skipping %s", ent->fts_path);

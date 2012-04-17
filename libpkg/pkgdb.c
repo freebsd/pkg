@@ -2676,7 +2676,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 }
 
 static int
-pkgdb_rquery_build_search_query(struct sbuf *sql, match_t match, unsigned int field)
+pkgdb_search_build_search_query(struct sbuf *sql, match_t match, unsigned int field)
 {
 	const char *how = NULL;
 	const char *what = NULL;
@@ -2711,7 +2711,7 @@ pkgdb_rquery_build_search_query(struct sbuf *sql, match_t match, unsigned int fi
 }
 
 struct pkgdb_it *
-pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int field, const char *reponame)
+pkgdb_search(struct pkgdb *db, const char *pattern, match_t match, unsigned int field, const char *reponame)
 {
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = NULL;
@@ -2771,7 +2771,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 		sbuf_cat(sql, ", 'remote' AS dbname FROM remote.packages WHERE ");
 	}
 
-	pkgdb_rquery_build_search_query(sql, match, field);
+	pkgdb_search_build_search_query(sql, match, field);
 	sbuf_cat(sql, ";");
 	sbuf_finish(sql);
 
