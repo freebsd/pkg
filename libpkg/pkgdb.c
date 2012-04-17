@@ -810,6 +810,32 @@ pkgdb_it_free(struct pkgdb_it *it)
 	free(it);
 }
 
+static const char *
+pkgdb_get_match_how(match_t match)
+{
+	const char *how = NULL;
+
+	switch (match) {
+		case MATCH_ALL:
+			how = NULL;
+			break;
+		case MATCH_EXACT:
+			how = "%s = ?1";
+			break;
+		case MATCH_GLOB:
+			how = "%s GLOB ?1";
+			break;
+		case MATCH_REGEX:
+			how = "%s REGEXP ?1";
+			break;
+		case MATCH_EREGEX:
+			how = "EREGEXP(?1, %s)";
+			break;
+	}
+
+	return (how);
+}
+
 struct pkgdb_it *
 pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 {
@@ -2304,23 +2330,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 
 	sbuf_printf(sql, main_sql, reponame);
 
-	switch (match) {
-		case MATCH_ALL:
-			how = NULL;
-			break;
-		case MATCH_EXACT:
-			how = "%s = ?1";
-			break;
-		case MATCH_GLOB:
-			how = "%s GLOB ?1";
-			break;
-		case MATCH_REGEX:
-			how = "%s REGEXP ?1";
-			break;
-		case MATCH_EREGEX:
-			how = "EREGEXP(?1, %s)";
-			break;
-	}
+	how = pkgdb_get_match_how(match);
 
 	create_temporary_pkgjobs(db->sqlite);
 
@@ -2599,23 +2609,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 	sbuf_cat(sql, "INSERT OR IGNORE INTO delete_job (origin, pkgid) "
 			"SELECT p.origin, p.id FROM packages as p ");
 
-	switch (match) {
-		case MATCH_ALL:
-			how = NULL;
-			break;
-		case MATCH_EXACT:
-			how = "%s = ?1";
-			break;
-		case MATCH_GLOB:
-			how = "%s GLOB ?1";
-			break;
-		case MATCH_REGEX:
-			how = "%s REGEXP ?1";
-			break;
-		case MATCH_EREGEX:
-			how = "EREGEXP(?1, %s)";
-			break;
-	}
+	how = pkgdb_get_match_how(match);
 
 	sql_exec(db->sqlite, "DROP TABLE IF EXISTS delete_job; "
 			"CREATE TEMPORARY TABLE IF NOT EXISTS delete_job ("
@@ -2676,23 +2670,7 @@ pkgdb_rquery_build_search_query(struct sbuf *sql, match_t match, unsigned int fi
 	const char *how = NULL;
 	const char *what = NULL;
 
-	switch (match) {
-		case MATCH_ALL:
-			how = NULL;
-			break;
-		case MATCH_EXACT:
-			how = "%s = ?1";
-			break;
-		case MATCH_GLOB:
-			how = "%s GLOB ?1";
-			break;
-		case MATCH_REGEX:
-			how = "%s REGEXP ?1";
-			break;
-		case MATCH_EREGEX:
-			how = "EREGEXP(?1, %s)";
-			break;
-	}
+	how = pkgdb_get_match_how(match);
 
 	switch(field) {
 		case FIELD_NONE:
@@ -3059,23 +3037,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 
 	sbuf_printf(sql, main_sql, reponame);
 
-	switch (match) {
-		case MATCH_ALL:
-			how = NULL;
-			break;
-		case MATCH_EXACT:
-			how = "%s = ?1";
-			break;
-		case MATCH_GLOB:
-			how = "%s GLOB ?1";
-			break;
-		case MATCH_REGEX:
-			how = "%s REGEXP ?1";
-			break;
-		case MATCH_EREGEX:
-			how = "EREGEXP(?1, %s)";
-			break;
-	}
+	how = pkgdb_get_match_how(match);
 
 	create_temporary_pkgjobs(db->sqlite);
 
