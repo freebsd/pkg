@@ -811,44 +811,14 @@ pkgdb_it_free(struct pkgdb_it *it)
 }
 
 static const char *
-pkgdb_get_match_how(match_t match)
+pkgdb_get_pattern_query(const char *pattern, match_t match)
 {
-	const char *how = NULL;
-
-	switch (match) {
-		case MATCH_ALL:
-			how = NULL;
-			break;
-		case MATCH_EXACT:
-			how = "%s = ?1";
-			break;
-		case MATCH_GLOB:
-			how = "%s GLOB ?1";
-			break;
-		case MATCH_REGEX:
-			how = "%s REGEXP ?1";
-			break;
-		case MATCH_EREGEX:
-			how = "EREGEXP(?1, %s)";
-			break;
-	}
-
-	return (how);
-}
-
-struct pkgdb_it *
-pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
-{
-	char sql[BUFSIZ];
-	sqlite3_stmt *stmt;
-	const char *comp = NULL;
 	char *checkorigin = NULL;
+	const char *comp = NULL;
 
-	assert(db != NULL);
-	assert(match == MATCH_ALL || pattern != NULL);
-
-	if (pattern != NULL)
+	if (pattern != NULL) {
 		checkorigin = strchr(pattern, '/');
+	}
 
 	switch (match) {
 	case MATCH_ALL:
@@ -883,6 +853,47 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 			comp = " WHERE EREGEXP(?1, origin)";
 		break;
 	}
+
+	return (comp);
+}
+
+static const char *
+pkgdb_get_match_how(match_t match)
+{
+	const char *how = NULL;
+
+	switch (match) {
+		case MATCH_ALL:
+			how = NULL;
+			break;
+		case MATCH_EXACT:
+			how = "%s = ?1";
+			break;
+		case MATCH_GLOB:
+			how = "%s GLOB ?1";
+			break;
+		case MATCH_REGEX:
+			how = "%s REGEXP ?1";
+			break;
+		case MATCH_EREGEX:
+			how = "EREGEXP(?1, %s)";
+			break;
+	}
+
+	return (how);
+}
+
+struct pkgdb_it *
+pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
+{
+	char sql[BUFSIZ];
+	sqlite3_stmt *stmt;
+	const char *comp = NULL;
+
+	assert(db != NULL);
+	assert(match == MATCH_ALL || pattern != NULL);
+
+	comp = pkgdb_get_pattern_query(pattern, match);
 
 	snprintf(sql, sizeof(sql),
 			"SELECT id, origin, name, version, comment, desc, "
