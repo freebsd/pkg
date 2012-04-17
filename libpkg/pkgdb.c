@@ -1038,15 +1038,14 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 
 	assert(db != NULL && pkg != NULL);
 
-	pkg_get(pkg, PKG_REPONAME, &reponame);
-
-	if (pkg->type == PKG_REMOTE)
-		snprintf(sql, sizeof(sql), basesql, reponame);
-	else
-		snprintf(sql, sizeof(sql), basesql, "main");
-
 	if (pkg->flags & PKG_LOAD_DEPS)
 		return (EPKG_OK);
+
+	if (pkg->type == PKG_REMOTE) {
+		pkg_get(pkg, PKG_REPONAME, &reponame);
+		snprintf(sql, sizeof(sql), basesql, reponame);
+	} else
+		snprintf(sql, sizeof(sql), basesql, "main");
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
