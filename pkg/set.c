@@ -62,7 +62,6 @@ exec_set(int argc, char **argv)
 	const char *version;
 	char *neworigin = NULL;
 	char *oldorigin = NULL;
-	char *chgoriginstr = NULL;
 	unsigned int loads = PKG_LOAD_BASIC;
 	unsigned int sets = 0;
 
@@ -89,7 +88,6 @@ exec_set(int argc, char **argv)
 			case 'o':
 				sets |= ORIGIN;
 				loads |= PKG_LOAD_DEPS;
-				chgoriginstr = optarg;
 				oldorigin = strdup(optarg);
 				neworigin = strrchr(oldorigin, ':');
 				if (neworigin == NULL) {
