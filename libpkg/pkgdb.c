@@ -159,6 +159,10 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 			reponame = "default";
 		}
 	} else {
+		if (repo != NULL) {
+			pkg_emit_error("PKG_MULTIREPOS is not enabled. -r flag not supported.", repo);
+			return (NULL);
+		}
 		/* default repository in single-repo is 'remote' */
 		reponame = "remote";
 	}
