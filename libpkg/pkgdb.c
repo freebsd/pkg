@@ -141,11 +141,7 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 	const char *reponame = NULL;
 	bool multirepos_enabled = false;
 
-	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_error("remote database not attached (misuse)");
-		return (NULL);
-	}
-
+	assert(db->type == PKGDB_REMOTE);
 
 	/* Working on multiple repositories */
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
@@ -1042,6 +1038,7 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_OK);
 
 	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
 		snprintf(sql, sizeof(sql), basesql, reponame);
 	} else
@@ -1090,6 +1087,7 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_OK);
 
 	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
 		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
 	} else
@@ -1214,6 +1212,7 @@ pkgdb_load_license(struct pkgdb *db, struct pkg *pkg)
 	assert(db != NULL && pkg != NULL);
 
 	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
 		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
 	} else
@@ -1237,6 +1236,7 @@ pkgdb_load_category(struct pkgdb *db, struct pkg *pkg)
 	assert(db != NULL && pkg != NULL);
 
 	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
 		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
 	} else
@@ -1319,6 +1319,7 @@ pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg)
 	assert(db != NULL && pkg != NULL);
 
 	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
 		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
 	} else
@@ -1383,6 +1384,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_OK);
 
 	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
 		snprintf(sql, sizeof(sql), basesql, reponame);
 	} else {
@@ -2258,11 +2260,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 			"cksum, path, 0 FROM '%s'.packages WHERE origin='ports-mgmt/pkg';";
 
 	assert(db != NULL);
-
-	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_error("remote database not attached (misuse)");
-		return (NULL);
-	}
+	assert(db->type == PKGDB_REMOTE);
 
 	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
 		return (NULL);
@@ -2338,11 +2336,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	const char weight_sql[] = "UPDATE pkgjobs set weight=(select count(*) from '%s'.deps as d where d.origin=pkgjobs.origin)";
 
 	assert(db != NULL);
-
-	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_error("remote database not attached (misuse)");
-		return (NULL);
-	}
+	assert(db->type == PKGDB_REMOTE);
 
 	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
 		return (NULL);
@@ -2438,11 +2432,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	}
 
 	assert(db != NULL);
-
-	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_error("remote database not attached (misuse)");
-		return (NULL);
-	}
+	assert(db->type == PKGDB_REMOTE);
 
 	const char finalsql[] = "select pkgid as id, origin, name, version, "
 		"comment, desc, message, arch, maintainer, "
@@ -2544,11 +2534,7 @@ pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
 	sqlite3_stmt *stmt = NULL;
 
 	assert(db != NULL);
-
-	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_error("remote database not attached (misuse)");
-		return (NULL);
-	}
+	assert(db->type == PKGDB_REMOTE);
 
 	const char finalsql[] = ""
 		"SELECT l.id, l.origin AS origin, l.name AS name, l.version AS version, l.comment AS comment, l.desc AS desc, "
@@ -2794,12 +2780,10 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 					"cksum, path AS repopath, '%s' AS dbname "
 					"FROM '%s'.packages ";
 
+	assert(db != NULL);
 	assert(pattern != NULL && pattern[0] != '\0');
+	assert(db->type == PKGDB_REMOTE);
 
-	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_error("%s", "remote database not attached (misuse)");
-		return (NULL);
-	}
 
 	sql = sbuf_new_auto();
 	sbuf_cat(sql, basesql);
@@ -3102,11 +3086,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 	const char weight_sql[] = "UPDATE pkgjobs SET weight=(SELECT count(*) FROM '%s'.deps AS d WHERE d.origin=pkgjobs.origin)";
 
 	assert(db != NULL);
-
-	if (db->type != PKGDB_REMOTE) {
-		pkg_emit_error("remote database not attached (misuse)");
-		return (NULL);
-	}
+	assert(db->type == PKGDB_REMOTE);
 
 	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
 		return (NULL);
