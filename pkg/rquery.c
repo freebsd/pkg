@@ -68,7 +68,6 @@ void
 usage_rquery(void)
 {
 	fprintf(stderr, "usage: pkg rquery -a [-r reponame] <query-format>\n");
-	fprintf(stderr, "       pkg rquery -F <pkg-name> [-r reponame] <query-format>\n");
 	fprintf(stderr, "       pkg rquery -e <evaluation> [-r reponame] <query-format>\n");
 	fprintf(stderr, "       pkg rquery [-gxX] [-r reponame] <query-format> <pattern> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help rquery.'\n");
@@ -93,7 +92,7 @@ exec_rquery(int argc, char **argv)
 	const unsigned int q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
 	const char *reponame = NULL;
 
-	while ((ch = getopt(argc, argv, "agxXF:e:r:")) != -1) {
+	while ((ch = getopt(argc, argv, "agxXe:r:")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -106,9 +105,6 @@ exec_rquery(int argc, char **argv)
 				break;
 			case 'X':
 				match = MATCH_EREGEX;
-				break;
-			case 'F':
-				pkgname = optarg;
 				break;
 			case 'e':
 				condition = optarg;
@@ -130,23 +126,13 @@ exec_rquery(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if ((argc == 1) ^ (match == MATCH_ALL) && pkgname == NULL && condition == NULL) {
+	if ((argc == 1) ^ (match == MATCH_ALL) && condition == NULL) {
 		usage_query();
 		return (EX_USAGE);
 	}
 
 	if (analyse_query_string(argv[0], accepted_rquery_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK)
 		return (EX_USAGE);
-
-	if (pkgname != NULL) {
-		if (pkg_open(&pkg, pkgname, NULL) != EPKG_OK) {
-			return (1);
-		}
-
-		print_query(pkg, argv[0], multiline);
-		pkg_free(pkg);
-		return (EXIT_SUCCESS);
-	}
 
 	if (condition != NULL) {
 		sqlcond = sbuf_new_auto();
