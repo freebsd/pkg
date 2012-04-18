@@ -2769,7 +2769,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 				"SELECT id, origin, name, version, comment, "
 					"prefix, desc, arch, maintainer, www, "
 					"licenselogic, flatsize, pkgsize, "
-					"cksum, path AS repopath, '%s' AS dbname "
+					"cksum, path, '%s' AS dbname "
 					"FROM '%s'.packages ";
 
 	assert(pattern != NULL && pattern[0] != '\0');
