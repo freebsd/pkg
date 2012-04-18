@@ -1076,17 +1076,24 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_stmt *stmt = NULL;
 	int ret;
 	const char *origin;
-	const char sql[] = ""
+	const char *reponame = NULL;
+	char sql[BUFSIZ];
+	const char *basesql = ""
 		"SELECT p.name, p.origin, p.version "
-		"FROM packages AS p, deps AS d "
+		"FROM '%s'.packages AS p, '%s'.deps AS d "
 		"WHERE p.id = d.package_id "
 			"AND d.origin = ?1;";
 
 	assert(db != NULL && pkg != NULL);
-	assert(pkg->type == PKG_INSTALLED);
 
 	if (pkg->flags & PKG_LOAD_RDEPS)
 		return (EPKG_OK);
+
+	if (pkg->type == PKG_REMOTE) {
+		pkg_get(pkg, PKG_REPONAME, &reponame);
+		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
+	} else
+		snprintf(sql, sizeof(sql), basesql, "main", "main");
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);

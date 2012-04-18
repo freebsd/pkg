@@ -42,6 +42,7 @@
 
 static struct query_flags accepted_rquery_flags[] = {
 	{ 'd', "nov",		1, PKG_LOAD_DEPS },
+	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
 	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
