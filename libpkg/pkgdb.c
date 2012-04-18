@@ -303,7 +303,7 @@ pkgdb_upgrade(struct pkgdb *db)
 	}
 
 	while (db_version < DBVERSION) {
-		if (!sqlite3_db_readonly(db->sqlite, "main")) {
+		if (sqlite3_db_readonly(db->sqlite, "main")) {
 			pkg_emit_error("The database is outdated and opened readonly");
 			return (EPKG_FATAL);
 		}
