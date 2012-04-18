@@ -149,7 +149,7 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 	if (multirepos_enabled) {
 		if (repo != NULL) {
 			if (!is_attached(db->sqlite, repo)) {
-				pkg_emit_error("repository '%s' does not exists", repo);
+				pkg_emit_error("repository '%s' does not exist.", repo);
 				return (NULL);
 			}
 
