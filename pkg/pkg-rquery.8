@@ -16,26 +16,29 @@
 .\" $FreeBSD$
 .\"
 .Dd March 2, 2012
-.Dt PKG-QUERY 8
+.Dt PKG-RQUERY 8
 .Os
 .Sh NAME
-.Nm "pkg query"
-.Nd query information for installed packages
+.Nm "pkg rquery"
+.Nd query information from remote repositories
 .Sh SYNOPSIS
 .Nm
 .Ao query-format Ac Ao pkg-name Ac
 .Nm
-.Fl a Ao query-format Ac
+.Fl a
+.Op Fl r Ar reponame
+.Ao query-format Ac
 .Nm
-.Fl F Ao pkg-name Ac Ao query-format Ac
-.Nm
-.Fl e Ao evaluation-condition Ac Ao query-format Ac
+.Fl e Ao evaluation-condition Ac
+.Op Fl r Ar reponame
+.Ao query-format Ac
 .Nm
 .Op Fl gxX
+.Op Fl r Ar reponame
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
-is used for displaying information about packages.
+is used for displaying information about remote packages.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -46,9 +49,12 @@ Match all packages from the database
 Match packages using the given
 .Ar evaluation-condition.
 See EVALUATION FORMAT for details.
-.It Fl F Ar pkg-name
-Display information only for the package file
-.Ar pkg-name
+.It Fl r Ar reponame
+Fetches packages from the given
+.Ar reponame
+if multiple repo support is enabled.
+See
+.Xr pkg.conf 5 .
 .It Fl g
 Treat
 .Ao pattern Ac
@@ -67,6 +73,8 @@ There are two type of keyword for the query format: the multiline and the normal
 one. Only one type of multiline pattern is accepted for a given query.
 .Ss Normal patterns:
 .Bl -tag -width F1
+.It Cm \&%R
+Name of the repository package is in
 .It Cm \&%n
 Name of the matched package
 .It Cm \&%v
@@ -93,7 +101,7 @@ The flat size in bytes of the matched package
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
 .It Cm \&%M
 message contain in the matched package
-.It Cm \&%? Ns Op drCFODLUGB
+.It Cm \&%? Ns Op dCOLB
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It Cm d
@@ -102,18 +110,10 @@ for dependencies
 for reverse dependencies
 .It Cm C
 for categories
-.It Cm F
-for files
 .It Cm O
 for options
-.It Cm D
-for directories
 .It Cm L
 for licenses
-.It Cm U
-for users
-.It Cm G
-for groups
 .It Cm B
 for shared libraries
 .El
@@ -128,22 +128,8 @@ stands for the package name,
 for the package origin, and
 .Cm v
 for the package version.
-.It Cm \&%r Ns Op nov
-Expands to the list of reverse dependencies for the matched package, where
-.Cm n
-stands for the package name,
-.Cm o
-for the package origin, and
-.Cm v
-for the package version.
 .It Cm \&%C
 Expands to the list of categories the matched package belongs to.
-.It Cm \&%F Ns Op ps
-Expands to the list of files of the matched package, where
-.Cm p
-stands for path, and
-.Cm s
-for sum.
 .It Cm \&%O Ns Op kv
 Expands to the list of options of the matched package, where
 .Cm k
@@ -152,12 +138,6 @@ stands for option key, and
 for option value.
 .It Cm \&%L
 Expands to the list of license(s) for the matched package.
-.It Cm \&%U
-Expands to the list of users needed by the matched package.
-.It Cm \&%G
-Expands to the list of groups needed by the matched package.
-.It Cm \&%S
-Expands to the list of scripts for the matching packages - install, deinstall, etc.
 .It Cm \&%B
 Expands to the list of shared libraries used by programs from the matched package.
 .El
@@ -218,9 +198,9 @@ See
 .Xr pkg-fetch 8 ,
 .Xr pkg-info 8 ,
 .Xr pkg-install 8 ,
+.Xr pkg-query 8 ,
 .Xr pkg-register 8 ,
 .Xr pkg-repo 8 ,
-.Xr pkg-rquery 8 ,
 .Xr pkg-search 8 ,
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,

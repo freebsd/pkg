@@ -122,7 +122,7 @@ exec_search(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
 
-	if ((it = pkgdb_rquery(db, pattern, match, field, reponame)) == NULL) {
+	if ((it = pkgdb_search(db, pattern, match, field, reponame)) == NULL) {
 		pkgdb_close(db);
 		return (1);
 	}
