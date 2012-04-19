@@ -115,7 +115,7 @@ exec_rquery(int argc, char **argv)
 				reponame = optarg;
 				break;
 			default:
-				usage_query();
+				usage_rquery();
 				return (EX_USAGE);
 		}
 	}
@@ -124,12 +124,12 @@ exec_rquery(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0) {
-		usage_query();
+		usage_rquery();
 		return (EX_USAGE);
 	}
 
 	if ((argc == 1) ^ (match == MATCH_ALL) && condition == NULL) {
-		usage_query();
+		usage_rquery();
 		return (EX_USAGE);
 	}
 
