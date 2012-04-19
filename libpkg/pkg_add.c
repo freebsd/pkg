@@ -166,8 +166,10 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH) {
 		pkg_emit_error("wrong architecture: %s instead of %s",
 		    arch, myarch);
-		retcode = EPKG_FATAL;
-		goto cleanup;
+		if ((flags & PKG_ADD_FORCE) == 0) {
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 	/*
