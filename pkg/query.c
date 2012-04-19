@@ -666,7 +666,8 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 void
 usage_query(void)
 {
-	fprintf(stderr, "usage: pkg query -a <query-format>\n");
+	fprintf(stderr, "usage: pkg query <query-format> <pkg-name>\n");
+	fprintf(stderr, "       pkg query -a <query-format>\n");
 	fprintf(stderr, "       pkg query -F <pkg-name> <query-format>\n");
 	fprintf(stderr, "       pkg query -e <evaluation> <query-format>\n");
 	fprintf(stderr, "       pkg query [-gxX] <query-format> <pattern> <...>\n\n");
