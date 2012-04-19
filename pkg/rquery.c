@@ -107,6 +107,7 @@ exec_rquery(int argc, char **argv)
 				match = MATCH_EREGEX;
 				break;
 			case 'e':
+				match = MATCH_CONDITION;
 				condition = optarg;
 				break;
 			case 'r':
@@ -138,6 +139,7 @@ exec_rquery(int argc, char **argv)
 		sqlcond = sbuf_new_auto();
 		if (format_sql_condition(condition, sqlcond) != EPKG_OK)
 			return (EX_USAGE);
+		sbuf_finish(sqlcond);
 	}
 
 	ret = pkgdb_open(&db, PKGDB_REMOTE);
@@ -152,24 +154,11 @@ exec_rquery(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
-	if (condition != NULL) {
-		sbuf_finish(sqlcond);
-		if ((it = pkgdb_query_condition(db, sbuf_data(sqlcond))) == NULL)
-			return (EX_IOERR);
-
-		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
-			print_query(pkg, argv[0], multiline);
-
-		pkgdb_it_free(it);
-
-		if (ret != EPKG_END)
-			return (EX_SOFTWARE);
-
-		return (EXIT_SUCCESS);
-	}
-
-	if (match == MATCH_ALL) {
-		if ((it = pkgdb_rquery(db, NULL, match, reponame)) == NULL)
+	if (match == MATCH_ALL || match == MATCH_CONDITION) {
+		const char *condition_sql = NULL;
+		if (match == MATCH_CONDITION && sqlcond)
+			condition_sql = sbuf_data(sqlcond);
+		if ((it = pkgdb_rquery(db, condition_sql, match, reponame)) == NULL)
 			return (EX_IOERR);
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)

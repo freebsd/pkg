@@ -852,6 +852,9 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		else
 			comp = " WHERE EREGEXP(?1, origin)";
 		break;
+	case MATCH_CONDITION:
+		comp = pattern;
+		break;
 	}
 
 	return (comp);
@@ -878,6 +881,10 @@ pkgdb_get_match_how(match_t match)
 		case MATCH_EREGEX:
 			how = "EREGEXP(?1, %s)";
 			break;
+		case MATCH_CONDITION:
+			/* This case should not be called by pkgdb_get_match_how() */
+			assert(0);
+			break;
 	}
 
 	return (how);
@@ -891,7 +898,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	const char *comp = NULL;
 
 	assert(db != NULL);
-	assert(match == MATCH_ALL || pattern != NULL);
+	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
 
 	comp = pkgdb_get_pattern_query(pattern, match);
 
@@ -908,33 +915,8 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 		return (NULL);
 	}
 
-	if (match != MATCH_ALL)
+	if (match != MATCH_ALL && match != MATCH_CONDITION)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
-
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
-}
-
-struct pkgdb_it *
-pkgdb_query_condition(struct pkgdb *db, const char *condition)
-{
-	char sql[BUFSIZ];
-	sqlite3_stmt *stmt;
-
-	assert(db != NULL);
-	assert (condition != NULL);
-
-	snprintf(sql, sizeof(sql),
-	    "SELECT id, origin, name, version, comment, desc, "
-	        "message, arch, maintainer, www, "
-	        "prefix, flatsize, licenselogic, automatic "
-		"time, infos "
-	    "FROM packages AS p WHERE %s "
-	    "ORDER BY p.name;", condition);
-
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (NULL);
-	}
 
 	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
 }
@@ -2682,7 +2664,12 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 	bool multirepos_enabled = false;
 	const char *reponame = NULL;
 	const char *comp = NULL;
-	char basesql[BUFSIZ];
+	char basesql[BUFSIZ] = ""
+				"SELECT id, origin, name, version, comment, "
+				"prefix, desc, arch, maintainer, www, "
+				"licenselogic, flatsize AS newflatsize, pkgsize, "
+				"cksum, path AS repopath, '%s' AS dbname "
+				"FROM '%s'.packages p";
 
 	assert(db != NULL);
 	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
@@ -2693,13 +2680,9 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 
 	sql = sbuf_new_auto();
 	comp = pkgdb_get_pattern_query(pattern, match);
-	snprintf(basesql, BUFSIZ,
-				"SELECT id, origin, name, version, comment, "
-				"prefix, desc, arch, maintainer, www, "
-				"licenselogic, flatsize AS newflatsize, pkgsize, "
-				"cksum, path AS repopath, '%%s' AS dbname "
-				"FROM '%%s'.packages p %s ",
-				comp);
+	if (comp && comp[0]) {
+		strlcat(basesql, comp, sizeof(basesql));
+	}
 
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
@@ -2724,7 +2707,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 
 	sbuf_delete(sql);
 
-	if (match != MATCH_ALL)
+	if (match != MATCH_ALL && match != MATCH_CONDITION)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
 	return (pkgdb_it_new(db, stmt, PKG_REMOTE));

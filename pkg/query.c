@@ -385,6 +385,7 @@ int
 format_sql_condition(const char *str, struct sbuf *sqlcond)
 {
 	type_t state = NONE;
+	sbuf_cat(sqlcond, " WHERE ");
 	while (str[0] != '\0') {
 		if (str[0] == ';') {
 			fprintf(stderr, "';' is forbidden in evaluation format");
@@ -695,6 +696,7 @@ exec_query(int argc, char **argv)
 				pkgname = optarg;
 				break;
 			case 'e':
+				match = MATCH_CONDITION;
 				condition = optarg;
 				break;
 			default:
@@ -733,6 +735,7 @@ exec_query(int argc, char **argv)
 		sqlcond = sbuf_new_auto();
 		if (format_sql_condition(condition, sqlcond) != EPKG_OK)
 			return (EX_USAGE);
+		sbuf_finish(sqlcond);
 	}
 
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
@@ -747,24 +750,11 @@ exec_query(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
-	if (condition != NULL) {
-		sbuf_finish(sqlcond);
-		if ((it = pkgdb_query_condition(db, sbuf_data(sqlcond))) == NULL)
-			return (EX_IOERR);
-
-		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
-			print_query(pkg, argv[0], multiline);
-
-		pkgdb_it_free(it);
-
-		if (ret != EPKG_END)
-			return (EX_SOFTWARE);
-
-		return (EXIT_SUCCESS);
-	}
-
-	if (match == MATCH_ALL) {
-		if ((it = pkgdb_query(db, NULL, match)) == NULL)
+	if (match == MATCH_ALL || match == MATCH_CONDITION) {
+		const char *condition_sql = NULL;
+		if (match == MATCH_CONDITION && sqlcond)
+			condition_sql = sbuf_data(sqlcond);
+		if ((it = pkgdb_query(db, condition_sql, match)) == NULL)
 			return (EX_IOERR);
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
