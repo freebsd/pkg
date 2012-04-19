@@ -40,12 +40,7 @@
 
 #include "pkgcli.h"
 
-static struct query_flags {
-	const char flag;
-	const char *options;
-	const unsigned multiline;
-	const int dbflags;
-} q_flags[] = {
+static struct query_flags accepted_query_flags[] = {
 	{ 'd', "nov",		1, PKG_LOAD_DEPS },
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
@@ -72,20 +67,6 @@ static struct query_flags {
 	{ 'i', "",		0, PKG_LOAD_BASIC },
 	{ 't', "",		0, PKG_LOAD_BASIC },
 };
-
-typedef enum {
-	NONE,
-	NEXT_IS_INT,
-	OPERATOR_INT,
-	INT,
-	NEXT_IS_STRING,
-	OPERATOR_STRING,
-	STRING,
-	QUOTEDSTRING,
-	SQUOTEDSTRING
-} type_t;
-
-const unsigned int flags_len = (sizeof(q_flags)/sizeof(q_flags[0]));
 
 static void
 format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
@@ -115,6 +96,11 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					break;
 				case 'o':
 					pkg_get(pkg, PKG_ORIGIN, &tmp);
+					if (tmp != NULL)
+						sbuf_cat(dest, tmp);
+					break;
+				case 'R':
+					pkg_get(pkg, PKG_REPONAME, &tmp);
 					if (tmp != NULL)
 						sbuf_cat(dest, tmp);
 					break;
@@ -305,7 +291,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 	sbuf_finish(dest);
 }
 
-static void
+void
 print_query(struct pkg *pkg, char *qstr, char multiline)
 {
 	struct sbuf *output = sbuf_new_auto();
@@ -395,10 +381,11 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	sbuf_delete(output);
 }
 
-static int
+int
 format_sql_condition(const char *str, struct sbuf *sqlcond)
 {
 	type_t state = NONE;
+	sbuf_cat(sqlcond, " WHERE ");
 	while (str[0] != '\0') {
 		if (str[0] == ';') {
 			fprintf(stderr, "';' is forbidden in evaluation format");
@@ -582,8 +569,8 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 	return (EPKG_OK);
 }
 
-static int
-analyse_query_string(char *qstr, int *flags, char *multiline)
+int
+analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int q_flags_len, int *flags, char *multiline)
 {
 	unsigned int i, j, k;
 	unsigned int valid_flag = 0;
@@ -596,7 +583,7 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 			qstr++;
 			valid_flag = 0;
 	
-			for (i = 0; i < flags_len; i++) {
+			for (i = 0; i < q_flags_len; i++) {
 				/* found the flag */
 				if (qstr[0] == q_flags[i].flag) {
 					valid_flag = 1;
@@ -638,7 +625,7 @@ analyse_query_string(char *qstr, int *flags, char *multiline)
 
 					/* handle the '?' flag cases */
 					if (q_flags[i].flag == '?') {
-						for (k = 0; k < flags_len; k++) 
+						for (k = 0; k < q_flags_len; k++)
 							if (q_flags[k].flag == q_flags[i].options[j]) {
 								*flags |= q_flags[k].dbflags;
 								break;
@@ -690,6 +677,7 @@ exec_query(int argc, char **argv)
 	char multiline = 0;
 	char *condition = NULL;
 	struct sbuf *sqlcond = NULL;
+	const unsigned int q_flags_len = (sizeof(accepted_query_flags)/sizeof(accepted_query_flags[0]));
 
 	while ((ch = getopt(argc, argv, "agxXF:e:")) != -1) {
 		switch (ch) {
@@ -709,6 +697,7 @@ exec_query(int argc, char **argv)
 				pkgname = optarg;
 				break;
 			case 'e':
+				match = MATCH_CONDITION;
 				condition = optarg;
 				break;
 			default:
@@ -730,7 +719,7 @@ exec_query(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (analyse_query_string(argv[0], &query_flags, &multiline) != EPKG_OK)
+	if (analyse_query_string(argv[0], accepted_query_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK)
 		return (EX_USAGE);
 
 	if (pkgname != NULL) {
@@ -747,6 +736,7 @@ exec_query(int argc, char **argv)
 		sqlcond = sbuf_new_auto();
 		if (format_sql_condition(condition, sqlcond) != EPKG_OK)
 			return (EX_USAGE);
+		sbuf_finish(sqlcond);
 	}
 
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
@@ -761,24 +751,11 @@ exec_query(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
-	if (condition != NULL) {
-		sbuf_finish(sqlcond);
-		if ((it = pkgdb_query_condition(db, sbuf_data(sqlcond))) == NULL)
-			return (EX_IOERR);
-
-		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
-			print_query(pkg, argv[0], multiline);
-
-		pkgdb_it_free(it);
-
-		if (ret != EPKG_END)
-			return (EX_SOFTWARE);
-
-		return (EXIT_SUCCESS);
-	}
-
-	if (match == MATCH_ALL) {
-		if ((it = pkgdb_query(db, NULL, match)) == NULL)
+	if (match == MATCH_ALL || match == MATCH_CONDITION) {
+		const char *condition_sql = NULL;
+		if (match == MATCH_CONDITION && sqlcond)
+			condition_sql = sbuf_data(sqlcond);
+		if ((it = pkgdb_query(db, condition_sql, match)) == NULL)
 			return (EX_IOERR);
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
