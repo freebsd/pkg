@@ -57,7 +57,7 @@ static struct query_flags {
 	{ 'U', "",		1, PKG_LOAD_USERS },
 	{ 'G', "",		1, PKG_LOAD_GROUPS },
 	{ 'B', "",		1, PKG_LOAD_SHLIBS },
-	{ '?', "drCFODLUGBK",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ '?', "drCFODLUGB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC }, 
 	{ 'n', "",		0, PKG_LOAD_BASIC },
 	{ 'v', "",		0, PKG_LOAD_BASIC },

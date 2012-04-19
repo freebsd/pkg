@@ -40,6 +40,10 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Match all packages from the database
+.It Fl e
+Match packages using the given
+.Ar evaluation-condition.
+See EVALUATION FORMAT for details.
 .It Fl F Ar pkg-name
 Display information only for the package file
 .Ar pkg-name
@@ -73,7 +77,7 @@ Prefix of the matched package
 Maintainer of the matched package
 .It Cm \&%c
 Comment of the matched package
-.It cm \&%i
+.It Cm \&%i
 Additionnal information about the package
 .It Cm \&%w
 Home page of the matched package
@@ -87,7 +91,7 @@ The flat size in bytes of the matched package
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
 .It Cm \&%M
 message contain in the matched package
-.It Cm \&%? Ns Op drCFIDLUG
+.It Cm \&%? Ns Op drCFODLUGB
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It Cm d
