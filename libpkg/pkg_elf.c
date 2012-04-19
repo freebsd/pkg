@@ -286,7 +286,8 @@ pkg_get_myarch(char *dest, size_t sz)
 	}
 
 	if ((fd = open("/bin/sh", O_RDONLY)) < 0) {
-		pkg_emit_errno("open()", "");
+		pkg_emit_errno("open", "/bin/sh");
+		snprintf(dest, sz, "%s", "unknown");
 		return (EPKG_FATAL);
 	}
 

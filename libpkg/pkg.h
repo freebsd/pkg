@@ -708,6 +708,7 @@ int pkg_add(struct pkgdb *db, const char *path, int flags);
 #define PKG_ADD_UPGRADE (1 << 0)
 #define PKG_ADD_UPGRADE_NEW (1 << 1)
 #define PKG_ADD_AUTOMATIC (1 << 2)
+#define PKG_ADD_FORCE (1 << 3)
 
 /**
  * Allocate a new pkg_jobs.
