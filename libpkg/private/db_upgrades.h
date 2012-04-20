@@ -219,6 +219,19 @@ static struct db_upgrades {
 		"FROM oldpkgs;"
 	"DROP TABLE oldpkgs;"
 	},
+	{12,
+	"CREATE INDEX scripts_package_id ON scripts (package_id);"
+	"CREATE INDEX options_package_id ON options (package_id);"
+	"CREATE INDEX deps_package_id ON deps (package_id);"
+	"CREATE INDEX files_package_id ON files (package_id);"
+	"CREATE INDEX pkg_directories_package_id ON pkg_directories (package_id);"
+	"CREATE INDEX pkg_categories_package_id ON pkg_categories (package_id);"
+	"CREATE INDEX pkg_licenses_package_id ON pkg_licenses (package_id);"
+	"CREATE INDEX pkg_users_package_id ON pkg_users (package_id);"
+	"CREATE INDEX pkg_groups_package_id ON pkg_groups (package_id);"
+	"CREATE INDEX pkg_shlibs_package_id ON pkg_shlibs (package_id);"
+	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL },
