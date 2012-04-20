@@ -448,9 +448,10 @@ int pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const
 /**
  * Allocate a new struct pkg_file and add it to the files of pkg.
  * @param sha256 The ascii representation of the sha256 or a NULL pointer.
+ * @param check_duplicates ensure no duplicate files are added to the pkg?
  * @return An error code.
  */
-int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256);
+int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, bool check_duplicates);
 
 /**
  * Allocate a new struct pkg_file and add it to the files of pkg;
@@ -459,9 +460,10 @@ int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256);
  * @param uname the user name of the file
  * @param gname the group name of the file
  * @param perm the permission
+ * @param check_duplicates ensure no duplicate files are added to the pkg?
  * @return An error code.
  */
-int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm);
+int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm, bool check_duplicates);
 
 /**
  * Add a path

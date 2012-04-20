@@ -588,23 +588,25 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 }
 
 int
-pkg_addfile(struct pkg *pkg, const char *path, const char *sha256)
+pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, bool check_duplicates)
 {
-	return (pkg_addfile_attr(pkg, path, sha256, NULL, NULL, 0));
+	return (pkg_addfile_attr(pkg, path, sha256, NULL, NULL, 0, check_duplicates));
 }
 
 int
-pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm)
+pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm, bool check_duplicates)
 {
 	struct pkg_file *f = NULL;
 
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
-	while (pkg_files(pkg, &f) != EPKG_END) {
-		if (!strcmp(path, pkg_file_get(f, PKG_FILE_PATH))) {
-			pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_get(f, PKG_FILE_PATH));
-			return (EPKG_OK);
+	if (check_duplicates) {
+		while (pkg_files(pkg, &f) != EPKG_END) {
+			if (!strcmp(path, pkg_file_get(f, PKG_FILE_PATH))) {
+				pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_get(f, PKG_FILE_PATH));
+				return (EPKG_OK);
+			}
 		}
 	}
 

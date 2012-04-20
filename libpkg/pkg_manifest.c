@@ -345,7 +345,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 			case PKG_FILES:
 				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
 					urldecode(key->data.scalar.value, &tmp);
-					pkg_addfile(pkg, sbuf_get(tmp), val->data.scalar.length == 64 ? val->data.scalar.value : NULL);
+					pkg_addfile(pkg, sbuf_get(tmp), val->data.scalar.length == 64 ? val->data.scalar.value : NULL, true);
 				} else if (val->type == YAML_MAPPING_NODE)
 					pkg_set_files_from_node(pkg, val, doc, key->data.scalar.value);
 				else
@@ -446,7 +446,7 @@ pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc
 	}
 
 	if (key != NULL)
-	    pkg_addfile_attr(pkg, key->data.scalar.value, sum, uname, gname, perm);
+	    pkg_addfile_attr(pkg, key->data.scalar.value, sum, uname, gname, perm, true);
 
 	return (EPKG_OK);
 }
