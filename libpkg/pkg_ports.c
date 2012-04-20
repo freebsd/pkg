@@ -194,7 +194,7 @@ file(struct plist *p, char *line)
 			sha256_file(path, sha256);
 			buf = sha256;
 		}
-		return (pkg_addfile_attr(p->pkg, path, buf, p->uname, p->gname, p->perm));
+		return (pkg_addfile_attr(p->pkg, path, buf, p->uname, p->gname, p->perm, true));
 	}
 
 	pkg_emit_errno("lstat", path);

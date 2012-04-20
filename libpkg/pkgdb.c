@@ -1128,7 +1128,7 @@ pkgdb_load_files(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_bind_int64(stmt, 1, pkg->rowid);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_addfile(pkg, sqlite3_column_text(stmt, 0), sqlite3_column_text(stmt, 1));
+		pkg_addfile(pkg, sqlite3_column_text(stmt, 0), sqlite3_column_text(stmt, 1), false);
 	}
 	sqlite3_finalize(stmt);
 
