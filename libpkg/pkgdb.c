@@ -2253,12 +2253,13 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 		"cksum, repopath, automatic, weight, "
 		"'%s' AS dbname FROM pkgjobs;";
 
-	const char main_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-			"maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic) "
-			"SELECT id, origin, name, version, comment, desc, "
-			"arch, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, path, 0 FROM '%s'.packages WHERE origin='ports-mgmt/pkg';";
+	const char main_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, newversion, comment, desc, arch, "
+			"maintainer, www, prefix, newflatsize, pkgsize, "
+			"version, flatsize, cksum, repopath, automatic) "
+			"SELECT p.id, p.origin, p.name, p.version as newversion, p.comment, p.desc, "
+			"p.arch, p.maintainer, p.www, p.prefix, p.flatsize as newflatsize, p.pkgsize, "
+			"l.version as version, l.flatsize as flatsize, "
+			"p.cksum, p.path, 0 FROM '%s'.packages as p, packages as l WHERE p.origin='ports-mgmt/pkg' AND l.origin='ports-mgmt/pkg';";
 
 	assert(db != NULL);
 	assert(db->type == PKGDB_REMOTE);
@@ -2273,9 +2274,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
-	sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE pkgjobs.origin = "
-	    "(SELECT packages.origin FROM packages WHERE packages.origin = pkgjobs.origin "
-	    "and (PKGGT(packages.version, pkgjobs.version) OR packages.version = pkgjobs.version));");
+	sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE PKGLT(version, newversion) OR version == newversion;");
 
 	if (sqlite3_changes(db->sqlite) > 0) {
 		sbuf_delete(sql);
