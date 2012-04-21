@@ -156,8 +156,8 @@ exec_updating(int argc, char **argv)
 	}
 	fclose(fd);
 cleanup:
-	pkgdb_close(db);
 	pkgdb_it_free(it);
+	pkgdb_close(db);
 	pkg_free(pkg);
 
 	return (EXIT_SUCCESS);
