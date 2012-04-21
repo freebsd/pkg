@@ -250,7 +250,7 @@ main(int argc, char **argv)
 			pkg_config_bool(PKG_CONFIG_SHLIBS, &b);
 			printf("Track shlibs: %s\n", b ? "yes" : "no");
 			pkg_config_bool(PKG_CONFIG_AUTODEPS, &b);
-			printf("Automatic depdency tracking: %s\n", b ? "yes": "no");
+			printf("Automatic dependency tracking: %s\n", b ? "yes": "no");
 			pkg_config_string(PKG_CONFIG_PLIST_KEYWORDS_DIR, &buf);
 			printf("Custom keywords directory: %s\n", buf ? buf : "none");
 		}
