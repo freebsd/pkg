@@ -414,8 +414,8 @@ exec_audit(int argc, char **argv)
 	printf("%u problem(s) in your installed packages found.\n", vuln);
 
 cleanup:
-	pkgdb_close(db);
 	pkgdb_it_free(it);
+	pkgdb_close(db);
 	pkg_free(pkg);
 	free_audit_list(&h);
 
