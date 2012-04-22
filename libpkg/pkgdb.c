@@ -3208,3 +3208,15 @@ pkgshell_open(const char **reponame)
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 	*reponame = strdup(localpath);
 }
+
+int
+pkgdb_lock(struct pkgdb *db)
+{
+	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
+}
+
+int
+pkgdb_unlock(struct pkgdb *db)
+{
+	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
+}

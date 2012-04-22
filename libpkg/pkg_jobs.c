@@ -49,6 +49,9 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	assert(db != NULL);
 	assert(t != PKG_JOBS_INSTALL || db->type == PKGDB_REMOTE);
 
+	if (pkgdb_lock(db) != EPKG_OK)
+		return (EPKG_FATAL);
+
 	if((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
 		pkg_emit_errno("calloc", "pkg_jobs");
 		return (EPKG_FATAL);
@@ -68,6 +71,8 @@ pkg_jobs_free(struct pkg_jobs *j)
 
 	if (j == NULL)
 		return;
+
+	pkgdb_unlock(j->db);
 
 	while (!STAILQ_EMPTY(&j->jobs)) {
 		p = STAILQ_FIRST(&j->jobs);
@@ -295,15 +300,24 @@ pkg_jobs_deinstall(struct pkg_jobs *j, int force)
 int
 pkg_jobs_apply(struct pkg_jobs *j, int force)
 {
-	if (j->type == PKG_JOBS_INSTALL)
-		return (pkg_jobs_install(j, force));
-	if (j->type == PKG_JOBS_DEINSTALL)
-		return (pkg_jobs_deinstall(j, force));
-	if (j->type == PKG_JOBS_FETCH)
-		return (pkg_jobs_fetch(j));
+	int rc;
 
-	pkg_emit_error("bad jobs argument");
-	return (EPKG_FATAL);
+	switch (j->type) {
+		case PKG_JOBS_INSTALL:
+			rc = pkg_jobs_install(j, force);
+			break;
+		case PKG_JOBS_DEINSTALL:
+			rc = pkg_jobs_deinstall(j, force);
+			break;
+		case PKG_JOBS_FETCH:
+			rc = pkg_jobs_fetch(j);
+			break;
+		default:
+			rc = EPKG_FATAL;
+			pkg_emit_error("bad jobs argument");
+	}
+
+	return (rc);
 }
 
 static int
