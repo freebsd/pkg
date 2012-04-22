@@ -155,9 +155,9 @@ exec_delete(int argc, char **argv)
 	retcode = 0;
 
 cleanup:
+	pkg_jobs_free(jobs);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
-	pkg_jobs_free(jobs);
 
 	return (retcode);
 }
