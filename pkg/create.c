@@ -191,6 +191,8 @@ exec_create(int argc, char **argv)
 	if (format == NULL) {
 		fmt = TXZ;
 	} else {
+		if (format[0] == '.')
+			++format;
 		if (strcmp(format, "txz") == 0)
 			fmt = TXZ;
 		else if (strcmp(format, "tbz") == 0)
