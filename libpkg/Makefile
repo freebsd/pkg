@@ -52,7 +52,7 @@ LDADD+=		-L${.OBJDIR}/../external/sqlite \
 		-lutil \
 		-lpthread
 
-.if exists(/usr/include/edit/readline/readline.h) || exists(/usr/include/readline/readline.h)
+.if exists(/usr/include/edit/readline/readline.h)
 LDADD+=		-ledit
 .endif
 

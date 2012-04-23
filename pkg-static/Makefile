@@ -18,7 +18,7 @@ LDADD_STATIC=	-L${.OBJDIR}/../external/sqlite \
 		-lbz2 \
 		-llzma
 
-.if exists(/usr/include/edit/readline/readline.h) || exists(/usr/include/readline/readline.h)
+.if exists(/usr/include/edit/readline/readline.h)
 LDADD_STATIC+=	-ledit \
 		-lncursesw
 .endif
