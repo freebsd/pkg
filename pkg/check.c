@@ -250,7 +250,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-dsr] [-y] [-a | -gxX <pattern>]\n");
+	fprintf(stderr, "usage: pkg check [-dsr] [-vy] [-a | -gxX <pattern>]\n");
 	fprintf(stderr, "\nFor more information see 'pkg help check'.\n");
 }
 
@@ -273,10 +273,11 @@ exec_check(int argc, char **argv)
 	int64_t flatsize;
 	int64_t newflatsize;
 	int i;
+	int verbose = 0;
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagdxXsr")) != -1) {
+	while ((ch = getopt(argc, argv, "yagdxXsrv")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -306,6 +307,9 @@ exec_check(int argc, char **argv)
 				flags |= PKG_LOAD_FILES;
 				if (geteuid() != 0)
 					errx(EX_USAGE, "Needs to be root to recompute the flatsize");
+				break;
+			case 'v':
+				verbose = 1;
 				break;
 			default:
 				usage_check();
@@ -341,13 +345,26 @@ exec_check(int argc, char **argv)
 			return (EX_IOERR);
 		}
 
-		/* check for missing dependencies */
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-			if (dcheck)
+			const char *pkgname = NULL;
+			pkg_get(pkg, PKG_NAME, &pkgname);
+			/* check for missing dependencies */
+			if (dcheck) {
+				if (verbose) {
+					printf("Checking dependencies: %s\n", pkgname);
+				}
 				nbpkgs += check_deps(db, pkg, &dh);
-			if (checksums)
+			}
+			if (checksums) {
+				if (verbose) {
+					printf("Checking checksums: %s\n", pkgname);
+				}
 				pkg_test_filesum(pkg);
+			}
 			if (recomputeflatsize) {
+				if (verbose) {
+					printf("Recomputing size: %s\n", pkgname);
+				}
 				newflatsize = pkg_recompute_flatsize(pkg);
 				pkg_get(pkg, PKG_FLATSIZE, &flatsize);
 				if (newflatsize != flatsize)
