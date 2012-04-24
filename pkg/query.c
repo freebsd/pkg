@@ -654,7 +654,7 @@ void
 usage_query(void)
 {
 	fprintf(stderr, "usage: pkg query <query-format> <pkg-name>\n");
-	fprintf(stderr, "       pkg query -a <query-format>\n");
+	fprintf(stderr, "       pkg query [-a] <query-format>\n");
 	fprintf(stderr, "       pkg query -F <pkg-name> <query-format>\n");
 	fprintf(stderr, "       pkg query -e <evaluation> <query-format>\n");
 	fprintf(stderr, "       pkg query [-gxX] <query-format> <pattern> <...>\n\n");
@@ -714,7 +714,10 @@ exec_query(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if ((argc == 1) ^ (match == MATCH_ALL) && pkgname == NULL && condition == NULL) {
+	/* Default to all packages if no pkg provided */
+	if (argc == 1 && pkgname == NULL && condition == NULL) {
+		match = MATCH_ALL;
+	} else if ((argc == 1) ^ (match == MATCH_ALL) && pkgname == NULL && condition == NULL) {
 		usage_query();
 		return (EX_USAGE);
 	}

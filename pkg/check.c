@@ -317,7 +317,10 @@ exec_check(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recomputeflatsize)) {
+	/* Default to all packages if no pkg provided */
+	if (argc == 0 && (dcheck || checksums || recomputeflatsize)) {
+		match = MATCH_ALL;
+	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recomputeflatsize)) {
 		usage_check();
 		return (EX_USAGE);
 	}

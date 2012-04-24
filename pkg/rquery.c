@@ -67,7 +67,7 @@ void
 usage_rquery(void)
 {
 	fprintf(stderr, "usage: pkg rquery [-r reponame] <query-format> <pkg-name>\n");
-	fprintf(stderr, "       pkg rquery -a [-r reponame] <query-format>\n");
+	fprintf(stderr, "       pkg rquery [-a] [-r reponame] <query-format>\n");
 	fprintf(stderr, "       pkg rquery -e <evaluation> [-r reponame] <query-format>\n");
 	fprintf(stderr, "       pkg rquery [-gxX] [-r reponame] <query-format> <pattern> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help rquery.'\n");
@@ -127,7 +127,10 @@ exec_rquery(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if ((argc == 1) ^ (match == MATCH_ALL) && condition == NULL) {
+	/* Default to all packages if no pkg provided */
+	if (argc == 1 && pkgname == NULL && condition == NULL) {
+		match = MATCH_ALL;
+	} else if ((argc == 1) ^ (match == MATCH_ALL) && condition == NULL) {
 		usage_rquery();
 		return (EX_USAGE);
 	}
