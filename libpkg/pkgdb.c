@@ -858,9 +858,8 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 	char *checkorigin = NULL;
 	const char *comp = NULL;
 
-	if (pattern != NULL) {
+	if (pattern != NULL)
 		checkorigin = strchr(pattern, '/');
-	}
 
 	switch (match) {
 	case MATCH_ALL:
@@ -2292,9 +2291,8 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	assert(db != NULL);
 	assert(db->type == PKGDB_REMOTE);
 
-	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL)
 		return (NULL);
-	}
 
 	sql = sbuf_new_auto();
 	sbuf_printf(sql, main_sql, reponame);
@@ -2374,9 +2372,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	assert(db != NULL);
 	assert(db->type == PKGDB_REMOTE);
 
-	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL)
 		return (NULL);
-	}
 
 	sql = sbuf_new_auto();
 	sbuf_printf(sql, main_sql, reponame);
@@ -2518,9 +2515,8 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	const char weight_sql[] = "UPDATE pkgjobs set weight=(select count(*) from '%s'.deps as d where d.origin=pkgjobs.origin)";
 
-	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL)
 		return (NULL);
-	}
 
 	sql = sbuf_new_auto();
 	create_temporary_pkgjobs(db->sqlite);
@@ -2587,9 +2583,8 @@ pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
 		"WHERE l.origin = r.origin "
 		"AND PKGGT(l.version, r.version)";
 
-	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL)
 		return (NULL);
-	}
 
 	sql = sbuf_new_auto();
 	sbuf_printf(sql, finalsql, reponame, reponame);
@@ -2735,15 +2730,13 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 	assert(db != NULL);
 	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
 
-	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL)
 		return (NULL);
-	}
 
 	sql = sbuf_new_auto();
 	comp = pkgdb_get_pattern_query(pattern, match);
-	if (comp && comp[0]) {
+	if (comp && comp[0])
 		strlcat(basesql, comp, sizeof(basesql));
-	}
 
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
@@ -2756,9 +2749,8 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 			sbuf_delete(sql);
 			return (NULL);
 		}
-	} else {
+	} else
 		sbuf_printf(sql, basesql, reponame, reponame);
-	}
 
 	sbuf_cat(sql, " ORDER BY name;");
 	sbuf_finish(sql);
@@ -3148,9 +3140,8 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 	assert(db != NULL);
 	assert(db->type == PKGDB_REMOTE);
 
-	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL)
 		return (NULL);
-	}
 
 	sql = sbuf_new_auto();
 	sbuf_printf(sql, main_sql, reponame);

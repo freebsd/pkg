@@ -321,21 +321,18 @@ exec_check(int argc, char **argv)
 			pkg_get(pkg, PKG_NAME, &pkgname);
 			/* check for missing dependencies */
 			if (dcheck) {
-				if (verbose) {
+				if (verbose)
 					printf("Checking dependencies: %s\n", pkgname);
-				}
 				nbpkgs += check_deps(db, pkg, &dh);
 			}
 			if (checksums) {
-				if (verbose) {
+				if (verbose)
 					printf("Checking checksums: %s\n", pkgname);
-				}
 				pkg_test_filesum(pkg);
 			}
 			if (recomputeflatsize) {
-				if (verbose) {
+				if (verbose)
 					printf("Recomputing size: %s\n", pkgname);
-				}
 				newflatsize = pkg_recompute_flatsize(pkg);
 				pkg_get(pkg, PKG_FLATSIZE, &flatsize);
 				if (newflatsize != flatsize)

@@ -174,9 +174,8 @@ exec_set(int argc, char **argv)
 						if (!pkg_yes)
 							pkg_yes = query_yesno("%s-%s: change %s dependency to %s? [y/N]: ", name, version, oldorigin, neworigin);
 						if (pkg_yes) {
-							if (pkgdb_set(db, pkg, PKG_DEP_ORIGIN, oldorigin, neworigin) != EPKG_OK) {
+							if (pkgdb_set(db, pkg, PKG_DEP_ORIGIN, oldorigin, neworigin) != EPKG_OK)
 								return (EPKG_FATAL);
-							}
 						}
 					}
 				}
