@@ -2681,7 +2681,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 	char basesql[BUFSIZ] = ""
 				"SELECT id, origin, name, version, comment, "
 				"prefix, desc, arch, maintainer, www, "
-				"licenselogic, flatsize AS newflatsize, pkgsize, "
+				"licenselogic, flatsize, pkgsize, "
 				"cksum, path AS repopath, '%s' AS dbname "
 				"FROM '%s'.packages p";
 
