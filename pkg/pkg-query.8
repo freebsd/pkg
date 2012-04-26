@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 2, 2012
+.Dd April 25, 2012
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -94,6 +94,8 @@ The flat size in bytes of the matched package
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
 .It Cm \&%M
 message contain in the matched package
+.It Cm \&%t
+Timestamp that the package was installed
 .It Cm \&%? Ns Op drCFODLUGB
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
@@ -145,6 +147,8 @@ Expands to the list of files of the matched package, where
 stands for path, and
 .Cm s
 for sum.
+.It Cm \&%D
+Expands to the list of directories of the matched package.
 .It Cm \&%O Ns Op kv
 Expands to the list of options of the matched package, where
 .Cm k
@@ -183,6 +187,10 @@ Flatsize of the package (type integer)
 Automatic status of the package (type integer)
 .It Cm \&%M
 Message of the package (type string)
+.It Cm \&%t
+Timestamp that the package was installed
+.It Cm \&%i
+Additionnal information about the package
 .El
 .Ss Operators
 .Bl -tag -width F1
