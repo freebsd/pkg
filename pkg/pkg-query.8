@@ -86,10 +86,12 @@ Additionnal information about the package
 Home page of the matched package
 .It Cm \&%l
 license logic of the matched package - nothing for single, & for AND, and | for OR
-.It Cm \&%sh
-The flat size in human readable format of the matched package
-.It Cm \&%sb
-The flat size in bytes of the matched package
+.It Cm \&%s Ns Op bh
+The flat size of the matched package, where
+.Cm b
+is in bytes, and
+.Cm h
+is in human readable format.
 .It Cm \&%a
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
 .It Cm \&%M
