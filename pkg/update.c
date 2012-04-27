@@ -196,7 +196,7 @@ exec_update(int argc, char **argv)
 
 		retcode = update_from_remote_repo("repo", url);
 		if (retcode == EPKG_UPTODATE) {
-			printf("Remote repository uptodate no need to upgrade\n");
+			printf("Remote repository up-to-date, no need to upgrade\n");
 			retcode = EPKG_OK;
 		}
 	} else {
@@ -212,7 +212,7 @@ exec_update(int argc, char **argv)
 
 			retcode = update_from_remote_repo(repo_name, url);
 			if (retcode == EPKG_UPTODATE) {
-				printf("%s repository uptodate no need to upgrade\n", repo_name);
+				printf("%s repository up-to-date, no need to upgrade\n", repo_name);
 				retcode = EPKG_OK;
 			}
 		}

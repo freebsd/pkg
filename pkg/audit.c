@@ -92,7 +92,7 @@ fetch_and_extract(const char *src, const char *dest)
 		case EPKG_OK:
 			break;
 		case EPKG_UPTODATE:
-			printf("audit file uptodate\n");
+			printf("audit file up-to-date\n");
 			retcode = EPKG_OK;
 			goto cleanup;
 		default:
