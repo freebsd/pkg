@@ -145,7 +145,7 @@ cleanup:
 void
 usage_update(void)
 {
-	fprintf(stderr, "usage: pkg update\n\n");
+	fprintf(stderr, "usage: pkg update [-q]\n\n");
 	fprintf(stderr, "For more information see 'pkg help update'.\n");
 }
 
@@ -158,9 +158,22 @@ exec_update(int argc, char **argv)
 	struct pkg_config_kv *repokv = NULL;
 	int retcode = EPKG_OK;
 	bool multi_repos = false;
+	int ch;
 
-	(void)argv;
-	if (argc != 1) {
+	while ((ch = getopt(argc, argv, "q")) != -1) {
+		switch (ch) {
+			case 'q':
+				quiet = true;
+				break;
+			default:
+				usage_update();
+				return (EX_USAGE);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 0) {
 		usage_update();
 		return (EX_USAGE);
 	}
@@ -196,7 +209,8 @@ exec_update(int argc, char **argv)
 
 		retcode = update_from_remote_repo("repo", url);
 		if (retcode == EPKG_UPTODATE) {
-			printf("Remote repository up-to-date, no need to upgrade\n");
+			if (!quiet)
+				printf("Remote repository up-to-date, no need to upgrade\n");
 			retcode = EPKG_OK;
 		}
 	} else {
@@ -212,7 +226,8 @@ exec_update(int argc, char **argv)
 
 			retcode = update_from_remote_repo(repo_name, url);
 			if (retcode == EPKG_UPTODATE) {
-				printf("%s repository up-to-date, no need to upgrade\n", repo_name);
+				if (!quiet)
+					printf("%s repository up-to-date, no need to upgrade\n", repo_name);
 				retcode = EPKG_OK;
 			}
 		}
