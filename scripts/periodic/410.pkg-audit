@@ -56,11 +56,11 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 		echo
                 echo "Checking for packages with security vulnerabilities:"
                 echo
-		then=`stat -f '%m' "${auditfile}"` || rc=3
+		then=`stat -f '%m' "${auditfile}" 2> /dev/null` || rc=3
 		now=`date +%s` || rc=3
-		[ $rc -ne 0 ] && break
 		# Add 10 minutes of padding since the check is in seconds.
-		if [ $(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
+		if [ $rc -ne 0 -o \
+			$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
 			-le $(( ${now} - ${then} + 600 )) ]; then
 			echo "Fetching a current audit database:"
 			echo
