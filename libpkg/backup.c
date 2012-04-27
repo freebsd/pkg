@@ -46,12 +46,12 @@ pkgdb_dump(struct pkgdb *db, char *dest)
 
 	packing_init(&pack, dest ? dest : "./pkgdump", TXZ);
 
-	path = sbuf_new_auto();
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
 		/* TODO handle errors */
 		return (EPKG_FATAL);
 	}
 
+	path = sbuf_new_auto();
 	while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 		const char *name, *version, *mtree;
 

@@ -247,7 +247,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	struct pkg_license *license = NULL;
 	struct pkg_option *option = NULL;
 	struct pkg_shlib *shlib = NULL;
-	struct sbuf *manifest = sbuf_new_auto();
+	struct sbuf *manifest = NULL;
 	char *ext = NULL;
 
 	sqlite3 *sqlite = NULL;
@@ -476,6 +476,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		goto cleanup;
 	}
 
+	manifest = sbuf_new_auto();
 	while ((ent = fts_read(fts)) != NULL) {
 		const char *name, *version, *origin, *comment, *desc;
 		const char *arch, *maintainer, *www, *prefix;
@@ -717,7 +718,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	if (errmsg != NULL)
 		sqlite3_free(errmsg);
 
-	sbuf_delete(manifest);
+	sbuf_free(manifest);
 
 	sqlite3_shutdown();
 

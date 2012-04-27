@@ -62,7 +62,7 @@ int
 exec_add(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
-	struct sbuf *failedpkgs = sbuf_new_auto();
+	struct sbuf *failedpkgs = NULL;
 	char path[MAXPATHLEN + 1];
 	char *file;
 	int retcode = EPKG_OK;
@@ -84,6 +84,7 @@ exec_add(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
+	failedpkgs = sbuf_new_auto();
 	for (i = 1; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
 			snprintf(path, sizeof(path), "./%s", basename(argv[i]));

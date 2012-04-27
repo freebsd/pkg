@@ -2243,7 +2243,7 @@ create_temporary_pkgjobs(sqlite3 *s)
 static struct pkgdb_it *
 pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 {
-	struct sbuf *sql = sbuf_new_auto();
+	struct sbuf *sql = NULL;
 	const char *reponame = NULL;
 	sqlite3_stmt *stmt = NULL;
 
@@ -2268,6 +2268,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 		return (NULL);
 	}
 
+	sql = sbuf_new_auto();
 	sbuf_printf(sql, main_sql, reponame);
 
 	create_temporary_pkgjobs(db->sqlite);
@@ -2287,6 +2288,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
 		return (NULL);
 	}
 
@@ -2301,7 +2303,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	sqlite3_stmt *stmt = NULL;
 	struct pkgdb_it *it;
 	int i = 0;
-	struct sbuf *sql = sbuf_new_auto();
+	struct sbuf *sql = NULL;
 	const char *how = NULL;
 	const char *reponame = NULL;
 
@@ -2342,6 +2344,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		return (NULL);
 	}
 
+	sql = sbuf_new_auto();
 	sbuf_printf(sql, main_sql, reponame);
 
 	how = pkgdb_get_match_how(match);
@@ -2358,6 +2361,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	for (i = 0; i < nbpkgs; i++) {
 		if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite);
+			sbuf_delete(sql);
 			return (NULL);
 		}
 		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
@@ -2409,6 +2413,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
 		return (NULL);
 	}
 
@@ -2422,7 +2427,7 @@ struct pkgdb_it *
 pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 {
 	sqlite3_stmt *stmt = NULL;
-	struct sbuf *sql = sbuf_new_auto();
+	struct sbuf *sql = NULL;
 	const char *reponame = NULL;
 	struct pkgdb_it *it;
 
@@ -2483,6 +2488,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 		return (NULL);
 	}
 
+	sql = sbuf_new_auto();
 	create_temporary_pkgjobs(db->sqlite);
 
 	sbuf_printf(sql, pkgjobs_sql_1, reponame);
@@ -2518,6 +2524,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
 		return (NULL);
 	}
 
@@ -2529,7 +2536,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 struct pkgdb_it *
 pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
 {
-	struct sbuf *sql = sbuf_new_auto();
+	struct sbuf *sql = NULL;
 	const char *reponame = NULL;
 	sqlite3_stmt *stmt = NULL;
 
@@ -2550,13 +2557,16 @@ pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
 		return (NULL);
 	}
 
+	sql = sbuf_new_auto();
 	sbuf_printf(sql, finalsql, reponame, reponame);
 	sbuf_finish(sql);
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
 		return (NULL);
 	}
+	sbuf_delete(sql);
 
 	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
 }
@@ -2634,6 +2644,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 		for (i = 0; i < nbpkgs; i++) {
 			if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 				ERROR_SQLITE(db->sqlite);
+				sbuf_delete(sql);
 				return (NULL);
 			}
 			sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
@@ -2643,6 +2654,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 		sbuf_finish(sql);
 		if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite);
+			sbuf_delete(sql);
 			return (NULL);
 		}
 		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
@@ -2661,6 +2673,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, int
 
 	if (sqlite3_prepare_v2(db->sqlite, sqlsel, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
 		return (NULL);
 	}
 
@@ -2705,8 +2718,10 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 	 */
 	if (multirepos_enabled && !strcmp(reponame, "default")) {
 		/* duplicate the query via UNION for all the attached databases */
-		if (sql_on_all_attached_db(db->sqlite, sql, basesql) != EPKG_OK)
+		if (sql_on_all_attached_db(db->sqlite, sql, basesql) != EPKG_OK) {
+			sbuf_delete(sql);
 			return (NULL);
+		}
 	} else {
 		sbuf_printf(sql, basesql, reponame, reponame);
 	}
@@ -2716,6 +2731,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
 		return (NULL);
 	}
 
@@ -2804,12 +2820,15 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 				sbuf_printf(sql, multireposql, reponame, reponame);
 			} else {
 				pkg_emit_error("Repository %s can't be loaded", reponame);
+				sbuf_delete(sql);
 				return (NULL);
 			}
 		} else {
 			/* test on all the attached databases */
-			if (sql_on_all_attached_db(db->sqlite, sql, multireposql) != EPKG_OK)
+			if (sql_on_all_attached_db(db->sqlite, sql, multireposql) != EPKG_OK) {
+				sbuf_delete(sql);
 				return (NULL);
+			}
 		}
 
 		/* close the UNIONs and build the search query */
@@ -2828,6 +2847,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
 		return (NULL);
 	}
 
@@ -2846,7 +2866,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 	sqlite3_stmt *stmt = NULL;
 	sqlite3_stmt *stmt_conflicts = NULL;
 	struct pkg_file *file = NULL;
-	struct sbuf *conflictmsg = sbuf_new_auto();
+	struct sbuf *conflictmsg = NULL;
 
 	const char sql[] = "INSERT INTO integritycheck (name, origin, version, path)"
 		"values (?1, ?2, ?3, ?4);";
@@ -2865,6 +2885,9 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
+
+	conflictmsg = sbuf_new_auto();
+
 	while (pkg_files(p, &file) == EPKG_OK) {
 		const char *name, *origin, *version;
 
@@ -2913,7 +2936,7 @@ pkgdb_integrity_check(struct pkgdb *db)
 	int ret = EPKG_OK;
 	sqlite3_stmt *stmt;
 	sqlite3_stmt *stmt_conflicts;
-	struct sbuf *conflictmsg = sbuf_new_auto();
+	struct sbuf *conflictmsg = NULL;
 	assert (db != NULL);
 
 	const char sql_local_conflict[] = "SELECT p.name, p.version FROM packages AS p, files AS f "
@@ -2930,6 +2953,8 @@ pkgdb_integrity_check(struct pkgdb *db)
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
+
+	conflictmsg = sbuf_new_auto();
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		sbuf_clear(conflictmsg);
@@ -3063,7 +3088,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 {
 	sqlite3_stmt *stmt = NULL;
 	int i = 0;
-	struct sbuf *sql = sbuf_new_auto();
+	struct sbuf *sql = NULL;
 	const char *how = NULL;
 	const char *reponame = NULL;
 
@@ -3093,6 +3118,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 		return (NULL);
 	}
 
+	sql = sbuf_new_auto();
 	sbuf_printf(sql, main_sql, reponame);
 
 	how = pkgdb_get_match_how(match);
@@ -3111,6 +3137,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 		for (i = 0; i < nbpkgs; i++) {
 			if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 				ERROR_SQLITE(db->sqlite);
+				sbuf_delete(sql);
 				return (NULL);
 			}
 			sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
@@ -3124,6 +3151,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 		sbuf_finish(sql);
 		if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite);
+			sbuf_delete(sql);
 			return (NULL);
 		}
 		sqlite3_bind_text(stmt, 1, pkgs[i], -1, SQLITE_STATIC);
@@ -3156,6 +3184,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
 		return (NULL);
 	}
 
