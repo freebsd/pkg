@@ -43,9 +43,7 @@ if [ -z "${PKG_DBDIR}" ] && [ -f /usr/local/etc/pkg.conf ]; then
   PKG_DBDIR=`awk 'toupper($1) ~ /PKG_DBDIR/ { print $3 }' \
              < /usr/local/etc/pkg.conf`
 fi
-if [ -z "${PKG_DBDIR}" ]; then
-  PKG_DBDIR="/var/db/pkg"
-fi
+: ${PKG_DBDIR="/var/db/pkg"}
 auditfile="${PKG_DBDIR}/auditfile"
 
 rc=0
@@ -55,28 +53,20 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 	*)
 		echo
                 echo "Checking for packages with security vulnerabilities:"
-                echo
 		then=`stat -f '%m' "${auditfile}" 2> /dev/null` || rc=3
 		now=`date +%s` || rc=3
 		# Add 10 minutes of padding since the check is in seconds.
 		if [ $rc -ne 0 -o \
 			$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
 			-le $(( ${now} - ${then} + 600 )) ]; then
-			echo "Fetching a current audit database:"
-			echo
-			/usr/local/sbin/pkg audit -F || { \
-			  rc=$?; [ $rc -lt 3 ] && rc=3; \
+			/usr/local/sbin/pkg audit -F || {
+			  rc=$?; [ $rc -lt 3 ] && rc=3
 			}
-			# then=`stat -f '%m' "${auditfile}"` || rc=3
 		else
-			# Creation date of db: /usr/local/sbin/portaudit -d
-			echo -n "Database created: "; 
+			echo -n "Database fetched: ";
 			date -r "${then}" || rc=3
-			echo
-			echo "Checking for packages with security vulnerabilities:"
-			echo
-			/usr/local/sbin/pkg audit || { \
-			  rc=$?; [ $rc -lt 3 ] && rc=3; \
+			/usr/local/sbin/pkg audit || {
+			  rc=$?; [ $rc -lt 3 ] && rc=3
 			}
 		fi
 		;;
