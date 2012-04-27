@@ -40,7 +40,7 @@ fi
 
 # Compute PKG_DBDIR from the config file.
 if [ -z "${PKG_DBDIR}" ] && [ -f /usr/local/etc/pkg.conf ]; then
-  PKG_DBDIR=`sed -ne 's/PKG_DBDIR[[:space:]]*:[[:space:]]*\(.*\)/\1/pI' 
+  PKG_DBDIR=`awk 'toupper($1) ~ /PKG_DBDIR/ { print $3 }' \
              < /usr/local/etc/pkg.conf`
 fi
 if [ -z "${PKG_DBDIR}" ]; then
