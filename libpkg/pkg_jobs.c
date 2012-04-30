@@ -163,6 +163,7 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 	char path[MAXPATHLEN + 1];
 	const char *cachedir = NULL;
 	int flags = 0;
+	int retcode = EPKG_FATAL;
 
 	bool handle_rc = false;
 
@@ -259,7 +260,7 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 
 		if (pkg_add(j->db, path, flags) != EPKG_OK) {
 			sql_exec(j->db->sqlite, "ROLLBACK TO upgrade;");
-			return (EPKG_FATAL);
+			goto cleanup;
 		}
 
 		if (newversion != NULL)
@@ -272,11 +273,14 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 			sql_exec(j->db->sqlite, "SAVEPOINT upgrade;");
 		}
 	}
-	sql_exec(j->db->sqlite, "RELEASE upgrade;");
 
+	retcode = EPKG_OK;
+
+	cleanup:
+	sql_exec(j->db->sqlite, "RELEASE upgrade;");
 	pkg_free(newpkg);
 
-	return (EPKG_OK);
+	return (retcode);
 }
 
 static int
