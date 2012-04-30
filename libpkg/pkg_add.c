@@ -204,7 +204,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 					 pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION),
 					 ext);
 
-			if (access(dpath, F_OK) == 0) {
+			if ((flags & PKG_ADD_UPGRADE) == 0 && access(dpath, F_OK) == 0) {
 				if (pkg_add(db, dpath, PKG_ADD_AUTOMATIC) != EPKG_OK) {
 					retcode = EPKG_FATAL;
 					goto cleanup;

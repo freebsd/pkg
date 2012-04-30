@@ -52,7 +52,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	if (pkgdb_lock(db) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
+	if ((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
 		pkg_emit_errno("calloc", "pkg_jobs");
 		return (EPKG_FATAL);
 	}
