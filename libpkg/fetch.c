@@ -50,7 +50,7 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 	char buf[10240];
 	int retcode = EPKG_OK;
 
-	fetchTimeout = 1;
+	fetchTimeout = 30;
 
 	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0600)) == -1) {
 		pkg_emit_errno("open", dest);
