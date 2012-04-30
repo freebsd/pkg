@@ -37,7 +37,7 @@
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
 #define ERROR_SQLITE(db) \
-	pkg_emit_error("sqlite: %s %d", sqlite3_errmsg(db), __LINE__)
+	pkg_emit_error("sqlite: %s (%s:%d)", sqlite3_errmsg(db), __FILE__, __LINE__)
 
 struct hardlinks {
 	ino_t *inodes;
