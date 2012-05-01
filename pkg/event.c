@@ -50,6 +50,7 @@ event_callback(void *data, struct pkg_event *ev)
 	int *debug = data;
 	(void) debug;
 	const char *name, *version, *newversion;
+	const char *filename;
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -62,7 +63,14 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		if (fetched == 0) {
-			strlcpy(url, ev->e_fetching.url, sizeof(url));
+			filename = strrchr(ev->e_fetching.url, '/');
+			if (filename != NULL) {
+				filename++;
+			} else {
+				// We failed at beeing smart, display the entire url
+				filename = ev->e_fetching.url;
+			}
+			strlcpy(url, filename, sizeof(url));
 			start_progress_meter(url, ev->e_fetching.total, &fetched);
 		}
 		fetched = ev->e_fetching.done;
