@@ -49,6 +49,27 @@
 
 static int update_from_remote_repo(const char *name, const char *url);
 
+/* Add indexes to the repo */
+static int
+remote_add_indexes(const char *reponame)
+{
+	struct pkgdb *db = NULL;
+	int ret = EPKG_FATAL;
+
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+		goto cleanup;
+
+	/* Initialize the remote remote */
+	if (pkgdb_remote_init(db, reponame) != EPKG_OK)
+		goto cleanup;
+
+	ret = EPKG_OK;
+cleanup:
+	if (db)
+		pkgdb_close(db);
+	return (ret);
+}
+
 static int
 update_from_remote_repo(const char *name, const char *url)
 {
@@ -133,6 +154,8 @@ update_from_remote_repo(const char *name, const char *url)
 
 	rename(repofile_unchecked, repofile);
 
+	if ((rc = remote_add_indexes(name)) != EPKG_OK)
+		goto cleanup;
 cleanup:
 	if (a != NULL)
 		archive_read_finish(a);

@@ -618,6 +618,11 @@ int pkgdb_open(struct pkgdb **db, pkgdb_t type);
  */
 void pkgdb_close(struct pkgdb *db);
 
+/**
+ * Initialize the local cache of the remote database with indicies
+ */
+int pkgdb_remote_init(struct pkgdb *db, const char *reponame);
+
 /** 
  * Dump the content of the database in yaml format
  * only to use when mtree will be deprecated

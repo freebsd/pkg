@@ -543,6 +543,33 @@ pkgdb_init(sqlite3 *sdb)
 	return (sql_exec(sdb, sql));
 }
 
+/**
+ * Initialize the local cache of the remote database with indicies
+ */
+int
+pkgdb_remote_init(struct pkgdb *db, const char *repo)
+{
+	struct sbuf *sql = NULL;
+	const char *reponame = NULL;
+	int ret;
+	const char init_sql[] = ""
+	"BEGIN;"
+	"CREATE INDEX '%s'.deps_origin on deps(origin);"
+	"COMMIT;"
+	;
+
+	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL) {
+		return (EPKG_FATAL);
+	}
+
+	sql = sbuf_new_auto();
+	sbuf_printf(sql, init_sql, reponame);
+
+	ret = sql_exec(db->sqlite, sbuf_data(sql));
+	sbuf_delete(sql);
+	return (ret);
+}
+
 int
 pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 {
