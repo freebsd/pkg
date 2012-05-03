@@ -2362,7 +2362,12 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 				"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j WHERE d.package_id = j.pkgid) "
 				"AND (SELECT origin FROM main.packages WHERE origin=r.origin AND version=r.version) IS NULL;";
 
-	const char weight_sql[] = "UPDATE pkgjobs set weight=(select count(*) from '%s'.deps as d where d.origin=pkgjobs.origin)";
+	const char weight_sql[] = "UPDATE pkgjobs SET weight=("
+		"SELECT COUNT(*) FROM '%s'.deps AS d, '%s'.packages AS p, pkgjobs AS j "
+			"WHERE d.origin = pkgjobs.origin "
+				"AND d.package_id = p.id "
+				"AND p.origin = j.origin"
+		");";
 
 	assert(db != NULL);
 	assert(db->type == PKGDB_REMOTE);
@@ -2427,7 +2432,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin ");
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, weight_sql, reponame);
+	sbuf_printf(sql, weight_sql, reponame, reponame);
 	sbuf_finish(sql);
 
 	sql_exec(db->sqlite, sbuf_get(sql));
