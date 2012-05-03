@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd May 2, 2012
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd creates a package database repository
 .Sh SYNOPSIS
 .Nm
-.Ar <repo-path> <rsa-key>
+.Ao Ar repo-path Ac Op Ar rsa-key
 .Sh DESCRIPTION
 .Nm
 is used for creating package repositories of already
@@ -41,7 +41,11 @@ from
 .Pp
 When you want to create a package database repository you need to
 specify at least the directory which contains packages in
-.Ar <repo-path>
+.Ar repo-path .
+.Pp
+To sign the repository, specify the path to an RSA private key for the
+.Ar rsa-key
+argument.
 .Sh OPTIONS
 The following options are supported by
 .Nm :

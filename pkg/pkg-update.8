@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 26, 2012
+.Dd May 2, 2012
 .Dt PKG-UPDATE 8
 .Os
 .Sh NAME
@@ -37,6 +37,17 @@ repositories before doing a remote install via
 .Xr pkg-install 8
 or upgrades via
 .Xr pkg-upgrade 8 .
+.Pp
+.Ss Signed repositories
+If the repository is signed and
+.Ev PUBKEY
+is defined, it will be verified after being downloaded.
+If
+.Ev SIGNED_REPOS
+is enabled, the repository will be required to be signed to be valid or it will be discarded.
+See
+.Xr pkg.conf 5
+for more information on these variables.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -54,6 +65,8 @@ for further description.
 .It Ev PACKAGESITE
 .It Ev PKG_DBDIR
 .It Ev PKG_MULTIREPOS
+.It Ev SIGNED_REPOS
+.It Ev PUBKEY
 .El
 .Sh FILES
 See
