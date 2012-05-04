@@ -2285,8 +2285,9 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 			"version, flatsize, cksum, repopath, automatic) "
 			"SELECT p.id, p.origin, p.name, p.version as newversion, p.comment, p.desc, "
 			"p.arch, p.maintainer, p.www, p.prefix, p.flatsize as newflatsize, p.pkgsize, "
-			"l.version as version, l.flatsize as flatsize, "
-			"p.cksum, p.path, 0 FROM '%s'.packages as p, packages as l WHERE p.origin='ports-mgmt/pkg' AND l.origin='ports-mgmt/pkg';";
+			/* If not installed from a port, insert the running version in */
+			"COALESCE(l.version, '" PKG_PORTVERSION "') as version, COALESCE(l.flatsize, p.flatsize) as flatsize, "
+			"p.cksum, p.path, 0 FROM '%s'.packages as p LEFT JOIN packages as l ON p.origin = l.origin WHERE p.origin='ports-mgmt/pkg';";
 
 	assert(db != NULL);
 	assert(db->type == PKGDB_REMOTE);
@@ -2302,7 +2303,8 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
-	sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE PKGLT(version, newversion) OR version == newversion;");
+	/* Delete where the current version is higher than the remote version */
+	sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE PKGGT(version, newversion) OR version == newversion;");
 
 	if (sqlite3_changes(db->sqlite) > 0) {
 		sbuf_delete(sql);
