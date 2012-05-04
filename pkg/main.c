@@ -191,7 +191,7 @@ main(int argc, char **argv)
 				break;
 			case 'v':
 				version++;
-				break; /* NOT REACHED */
+				break;
 			default:
 				break;
 		}
