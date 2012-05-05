@@ -260,6 +260,8 @@ main(int argc, char **argv)
 			printf("Automatic dependency tracking: %s\n", b ? "yes": "no");
 			pkg_config_string(PKG_CONFIG_PLIST_KEYWORDS_DIR, &buf);
 			printf("Custom keywords directory: %s\n", buf ? buf : "none");
+			pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &b);
+			printf("Developer mode: %s\n", b ? "yes" : "no");
 		}
 		pkg_config_bool(PKG_CONFIG_MULTIREPOS, &b);
 		if (b) {

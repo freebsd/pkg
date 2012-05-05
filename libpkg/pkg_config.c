@@ -151,6 +151,12 @@ static struct config_entry c[] = {
 		"ABI",
 		myabi,
 		{ NULL }
+	},
+	[PKG_CONFIG_DEVELOPER_MODE] = {
+		BOOL,
+		"DEVELOPER_MODE",
+		"NO",
+		{ NULL }
 	}
 };
 

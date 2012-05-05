@@ -166,6 +166,7 @@ file(struct plist *p, char *line)
 	struct stat st;
 	char *buf;
 	bool regular = false;
+	bool developer;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
 	len = strlen(line);
@@ -198,7 +199,8 @@ file(struct plist *p, char *line)
 	}
 
 	pkg_emit_errno("lstat", path);
-	return (EPKG_OK);
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+	return (developer ? EPKG_FATAL : EPKG_OK);
 }
 
 static int

@@ -46,7 +46,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
 	char *m;
+	int ret;
 	const char *mtree;
+	bool developer;
 	struct stat st;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
@@ -80,7 +82,10 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 		else
 			strlcpy(fpath, pkg_file_get(file, PKG_FILE_PATH), sizeof(fpath));
 
-		packing_append_file_attr(pkg_archive, fpath, pkg_file_get(file, PKG_FILE_PATH), file->uname, file->gname, file->perm);
+		ret = packing_append_file_attr(pkg_archive, fpath, pkg_file_get(file, PKG_FILE_PATH), file->uname, file->gname, file->perm);
+		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		if (developer && ret != EPKG_OK)
+			return (ret);
 	}
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
@@ -89,7 +94,10 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 		else
 			strlcpy(fpath, pkg_dir_path(dir), sizeof(fpath));
 
-		packing_append_file_attr(pkg_archive, fpath, pkg_dir_path(dir), dir->uname, dir->gname, dir->perm);
+		ret = packing_append_file_attr(pkg_archive, fpath, pkg_dir_path(dir), dir->uname, dir->gname, dir->perm);
+		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		if (developer && ret != EPKG_OK)
+			return (ret);
 	}
 
 	return (EPKG_OK);
