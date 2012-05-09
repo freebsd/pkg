@@ -51,7 +51,7 @@ struct deps_entry {
 STAILQ_HEAD(deps_head, deps_entry);
 
 static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_head *dh);
-static void add_missing_dep(struct pkg_dep *d, struct deps_head *dh);
+static void add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs);
 static void deps_free(struct deps_head *dh);
 static int fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes);
 static void check_summary(struct pkgdb *db, struct deps_head *dh);
@@ -74,8 +74,7 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh)
 		if (pkg_is_installed(db, pkg_dep_get(dep, PKG_DEP_ORIGIN)) != EPKG_OK) {
 			printf("%s has a missing dependency: %s\n", origin,
 			       pkg_dep_get(dep, PKG_DEP_ORIGIN)),
-			add_missing_dep(dep, dh);
-			nbpkgs++;
+			add_missing_dep(dep, dh, &nbpkgs);
 		}
 	}
 	
@@ -83,7 +82,7 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh)
 }
 
 static void
-add_missing_dep(struct pkg_dep *d, struct deps_head *dh)
+add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs)
 {
 	struct deps_entry *e = NULL;
 	const char *origin = NULL;
@@ -91,11 +90,11 @@ add_missing_dep(struct pkg_dep *d, struct deps_head *dh)
 	assert(d != NULL);
 
 	/* do not add duplicate entries in the queue */
-	STAILQ_FOREACH(e, dh, next) {
-		origin = pkg_dep_get(d, PKG_DEP_ORIGIN);
+	origin = pkg_dep_get(d, PKG_DEP_ORIGIN);
+
+	STAILQ_FOREACH(e, dh, next)
 		if (strcmp(e->origin, origin) == 0)
 			return;
-	}
 
 	if ((e = calloc(1, sizeof(struct deps_entry))) == NULL)
 		err(1, "calloc(deps_entry)");
@@ -103,6 +102,8 @@ add_missing_dep(struct pkg_dep *d, struct deps_head *dh)
 	e->name = strdup(pkg_dep_get(d, PKG_DEP_NAME));
 	e->version = strdup(pkg_dep_get(d, PKG_DEP_VERSION));
 	e->origin = strdup(pkg_dep_get(d, PKG_DEP_ORIGIN));
+
+	(*nbpkgs)++;
 
 	STAILQ_INSERT_TAIL(dh, e, next);
 }
@@ -130,9 +131,6 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	struct pkg_jobs *jobs = NULL;
 	struct deps_entry *e = NULL;
 	char **pkgs = NULL;
-	int64_t dlsize = 0;
-	int64_t oldsize = 0, newsize = 0;
-	char size[7];
 	int i = 0;
 
 	assert(db != NULL);
@@ -167,36 +165,9 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
-	printf("The following packages will be installed:\n");
 
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		const char *name, *version, *newversion;
-		int64_t flatsize, newflatsize, pkgsize;
-		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
-		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
-		    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize);
-		dlsize += pkgsize;
-		if (newversion != NULL) {
-			printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
-			oldsize += flatsize;
-			newsize += flatsize;
-		} else {
-			newsize += flatsize;
-			printf("\tInstalling %s: %s\n", name, version);
-		}
-	}
-
-	if (oldsize > newsize) {
-		newsize *= -1;
-		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-		printf("\nthe installation will free %s\n", size);
-	} else {
-		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("\nThe installation will require %s more space\n", size);
-	}
-	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-	printf("%s to be downloaded\n", size);
-
+	print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following packages will be installed:\n\n");
+	
 	if (yes == false)
 		yes = query_yesno("\n>>> Try to fix the missing dependencies [y/N]: ");
 
