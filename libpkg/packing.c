@@ -167,6 +167,11 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 	if (perm != 0)
 		archive_entry_set_perm(entry, perm);
 
+	archive_entry_unset_atime(entry);
+	archive_entry_unset_ctime(entry);
+	archive_entry_unset_mtime(entry);
+	archive_entry_unset_birthtime(entry);
+
 	archive_entry_linkify(pack->resolver, &entry, &sparse_entry);
 
 	if (sparse_entry != NULL && entry == NULL)
