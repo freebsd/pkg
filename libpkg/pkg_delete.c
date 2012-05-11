@@ -130,10 +130,9 @@ pkg_delete_files(struct pkg *pkg, int force)
 		/* Regular files and links */
 		/* check sha256 */
 		if (!force && pkg_file_get(file, PKG_FILE_SUM)[0] != '\0') {
-			if (sha256_file(path, sha256) == -1) {
-				pkg_emit_error("sha256 calculation failed for '%s'",
-					  path);
-			} else if (strcmp(sha256, pkg_file_get(file, PKG_FILE_SUM)) != 0) {
+			if (sha256_file(path, sha256) != EPKG_OK)
+				continue;
+			if (strcmp(sha256, pkg_file_get(file, PKG_FILE_SUM)) != 0) {
 				pkg_emit_error("%s fails original SHA256 checksum,"
 							   " not removing", path);
 				continue;
