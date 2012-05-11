@@ -76,7 +76,7 @@ Yes, `pkgA` will automatically notice the change.
 <a name="8"></a>
 ### Q: The repository format of pkgng is different from the old one. Will pkgng adapt the old format too?
 
-The documented (README) way to create a new repository creates all packages in one directory. 
+The documented (README) way to create a new repository creates all packages in one directory.
 
 This is different from earlier repository format, which creates it in separate directories.
 

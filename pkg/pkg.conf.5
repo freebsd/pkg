@@ -34,7 +34,8 @@ The default location of this file is
 Lines in the file beginning with a "#" are comments
 and are ignored.
 .Pp
-The file is in YAML format. For more information on the syntax of YAML,
+The file is in YAML format.
+For more information on the syntax of YAML,
 please visit the official YAML website - http://www.yaml.org/.
 .Pp
 The following types of options are recognized -
@@ -57,15 +58,18 @@ will automatically assume "yes" to all questions
 which require user confirmation before doing anything, as if it
 the
 .Fl y
-flag was specified. By default this option is disabled.
+flag was specified.
+By default this option is disabled.
 .It Cm PUBKEY(string)
 Specifies the location to the public RSA key used for signing the
-repository database. The default value for this file is
+repository database.
+The default value for this file is
 .Fa /etc/ssl/pkg.conf
 .It Cm HANDLE_RC_SCRIPTS(boolean)
 This option when enabled
 will automatically perform start/stop of services during package
-installation and deinstallation. Services are started on installation only
+installation and deinstallation.
+Services are started on installation only
 if they are enabled in
 .Fa /etc/rc.conf .
 By default this option is disabled.
@@ -73,39 +77,46 @@ By default this option is disabled.
 Specifies the remote location to use
 when fetching the database file and packages.
 .It Cm PKG_CACHEDIR: string
-Specifies the cache directory for packages. The default value
+Specifies the cache directory for packages.
+The default value
 for this option is
 .Fa /var/cache/pkg
 .It Cm PKG_DBDIR: string
 Specifies the directory to use for storing the package
-database files. The default value for this option is
+database files.
+The default value for this option is
 .Fa /var/db/pkg
 .It Cm PKG_MULTIREPOS: boolean
 This option when enabled will tell
 .Xr pkg 1
-to work in multiple repositories mode. For example repositories
+to work in multiple repositories mode.
+For example repositories
 definitions, please have a look at the sample configuration file.
 .It Cm PLIST_KEYWORS_DIR: string
 < To be added >
 .It Cm PORTSDIR: string
-Specifies the location to the Ports directory. The default value
+Specifies the location to the Ports directory.
+The default value
 for this option is
 .Fa /usr/ports
 .It Cm SYSLOG: boolean
 This option is enabled by default, log all the
 installation/deinstallation/upgrade operation via syslog(3)
 .It Cm SHLIBS: boolean
-Analyse elf and track all shared libraries needed by the packages. default: off
+Analyse elf and track all shared libraries needed by the packages.
+default: off
 .It Cm AUTODEPS: boolean
 Analyse the elf to add dependencies (shared libraries) that may have been
-forgotten by the maintainer. default: off
+forgotten by the maintainer.
+default: off
 .It Cm SIGNED_REPOS: boolean
-All the remote repositories should be signed. default: off
+All the remote repositories should be signed.
+default: off
 .It Cm ABI: string
 the abi of the package you want to install, by default the /bin/sh abi is used
 .El
 .Sh ENVIRONMENT
-An environment variable with the same name as the option in the configuration 
+An environment variable with the same name as the option in the configuration
 file always overrides the value of an option set in the file.
 .Sh SEE ALSO
 .Xr pkg 8 ,

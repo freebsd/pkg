@@ -40,8 +40,8 @@ compression: gz, bzip2 and xz, defaulting in xz format.
 
 The tar itself is composed in two types of elements:
 
-* the special files at the begining of the archive, starting with a "+"
-* the datas.
+* the special files at the beginning of the archive, starting with a "+"
+* the data.
 
 #### The metadata
 
@@ -129,7 +129,7 @@ installation.
 In the future we hope that mtree will be deprecated in favour of a hier package
 or in single MTREE that won't be customisable in per package basis and because
 pkgng supports packing of empty directories, per package MTREE makes no sense
-anymore.
+any more.
 
 <a name="localdb"></a>
 ### Local database
@@ -154,9 +154,9 @@ remote FTP/HTTP server.
 
 If only a package name is given, it will search the remote repository
 and download and install the package if it exists. The dependencies will be
-downloaded and installed first. 
+downloaded and installed first.
 
-This is possible because we have the dependencies informations in the 
+This is possible because we have the dependency information in the
 remote repository database.
 
 `pkg add` will check if the user attempts to install a package built for another
@@ -178,7 +178,7 @@ Directory leftovers are automatically removed if they are not in the MTREE.
 <a name="pkgngports"></a>
 ### pkgng in Ports
 
-pkgng beta1 is now in the ports tree. To get it: 
+pkgng beta1 is now in the ports tree. To get it:
 
 	$ make -C /usr/ports/ports-mgmt/pkg
 	$ echo "WITH_PKGNG=yes" >> /etc/make.conf
@@ -228,7 +228,7 @@ command, which will take the man page of the specified command.
 
 In order to get the available commands in pkgng, just execute `pkg help`
 
-	# pkg help 
+	# pkg help
 	# pkg help <command>
 
 <a name="pkgadd"></a>
@@ -307,7 +307,7 @@ packages from the remote repository, you would use the `pkg install` command:
 pkgng is also able to work with multiple remote repositories. In the previous section
 we are using only a single remote repository, which is defined by the _PACKAGESITE_ option.
 
-In order to be able to work with multiple remote repositories and instead of changing 
+In order to be able to work with multiple remote repositories and instead of changing
 each time _PACKAGESITE_, you can tell *pkg(1)* to work in multi-repos mode as well.
 
 To do this, simply enable multi-repos in *pkg.conf(5)* like this:
@@ -351,7 +351,7 @@ The first thing to do when working with remote repositories is to update from th
 Updating remote repositories is done by the `pkg update` command.
 
 If _PACKAGESITE_ environment variable is defined to point to a remote package
-repository then only this repository will be updated. Otherwise all remote 
+repository then only this repository will be updated. Otherwise all remote
 repositories defined in the /etc/pkg/repositories file will be updated.
 
 So, to update your remote repositories, you would execute this command:
@@ -365,7 +365,7 @@ For more information on the remote repositories, please refer to *pkg-update(1)*
 
 You can search in the remote package repositories using the `pkg search` command.
 
-In order to search in multiple package repositories the enviornment variable
+In order to search in multiple package repositories the environment variable
 _PACKAGESITE_ should NOT be defined, in which case `pkg search` will query
 the remote package databases found in the /etc/pkg/repositories file.
 
@@ -385,11 +385,11 @@ If _PACKAGESITE_ is not defined then the installation process will use
 multiple repositories as defined in the /etc/pkg/repositories file.
 
 During installation from multiple repositories the first repository
-that is found to has the package is the first one that pkgng will use 
+that is found to has the package is the first one that pkgng will use
 during the installation. If that repository is not accessible for some reason,
 then the next repository which contains the package is the one that is tried.
 
-The process continues until the package is fetched and installed, or all 
+The process continues until the package is fetched and installed, or all
 remote repositories fail to fetch the package.
 
 Remote installations of packages using pkgng are done by the `pkg install` command.
@@ -431,7 +431,7 @@ Here's an example that will create a repository of all your currently installed 
 
 	# cd /path/with/enough/space
 	# pkg create -a
-	# pkg repo . 
+	# pkg repo .
 
 The above commands will create a repository of all packages on your system.
 
@@ -442,9 +442,9 @@ Now you can share your repo with other people by letting them know of your repos
 
 * The Git repository of [pkgng is hosted on Github][1]
 
-* The [pkgng Wiki page][2] 
+* The [pkgng Wiki page][2]
 
-* [Doxygen documentation for libpkg][3] 
+* [Doxygen documentation for libpkg][3]
 
 * [Buildbot for pkgng][4]
 
