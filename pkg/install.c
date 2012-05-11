@@ -27,6 +27,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/param.h>
 
 #include <err.h>
 #include <libgen.h>
@@ -51,14 +52,19 @@ usage_install(void)
 int
 exec_install(int argc, char **argv)
 {
+	char url[MAXPATHLEN];
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
+	const char *repo_name = NULL;
+	const char *packagesite = NULL;
+	struct pkg_config_kv *repokv = NULL;
 	int retcode = 1;
 	int ch;
 	bool yes = false;
+	bool multi_repos = false;
 
 	match_t match = MATCH_EXACT;
 	bool force = false;
@@ -103,6 +109,46 @@ exec_install(int argc, char **argv)
 		warnx("installing packages can only be done as root");
 		return (EX_NOPERM);
 	}
+
+	/* first update the remote repositories if needed */
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multi_repos);
+	if (!multi_repos) {
+		/*
+		 * Single remote database
+		 */
+		pkg_config_string(PKG_CONFIG_REPO, &packagesite);
+		if (packagesite == NULL) {
+			warnx("PACKAGESITE is not defined.");
+			return (1);
+		}
+
+		if (packagesite[strlen(packagesite) - 1] == '/')
+			snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
+		else
+			snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
+
+		retcode = pkg_update("repo", url);
+		if (retcode == EPKG_UPTODATE)
+			retcode = EPKG_OK;
+	} else {
+		/* multiple repositories */
+		while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
+			repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
+			packagesite = pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE);
+
+			if (packagesite[strlen(packagesite) - 1] == '/')
+				snprintf(url, MAXPATHLEN, "%srepo.txz", packagesite);
+			else
+				snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
+
+			retcode = pkg_update(repo_name, url);
+			if (retcode == EPKG_UPTODATE) {
+				retcode = EPKG_OK;
+			}
+		}
+	}
+	if (retcode != EPKG_OK)
+		return (retcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		return (EX_IOERR);
