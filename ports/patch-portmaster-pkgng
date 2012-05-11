@@ -1,5 +1,5 @@
 --- portmaster.sh.in.orig	2012-04-11 15:54:46.654580382 +0200
-+++ portmaster.sh.in	2012-05-12 01:31:04.220228317 +0200
++++ portmaster.sh.in	2012-05-12 01:33:25.980215949 +0200
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
@@ -141,7 +141,7 @@
  	if [ -n "$PM_PACKAGES" -o -n "$PM_PACKAGES_BUILD" ]; then
 +		if [ -n "$use_pkgng" ]; then
 +			unset PM_PACKAGES PM_PACKAGES_BUILD PM_PACKAGES_LOCAL PM_PACKAGES_NEWER PM_ALWAYS_FETCH PM_DELETE_PACKAGES
-+			echo "===>>> Package installation support cannot be used with pkgng yet,"
++			echo "===>>> Package installation support cannot be used with pkg(8) yet,"
 +			echo "       it will be disabled"
 +			echo ''
 +		fi
