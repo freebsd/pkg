@@ -36,134 +36,9 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include <archive.h>
-#include <archive_entry.h>
-
 #include <pkg.h>
 
 #include "pkgcli.h"
-
-#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
-		ARCHIVE_EXTRACT_TIME  |ARCHIVE_EXTRACT_ACL | \
-		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
-
-static int update_from_remote_repo(const char *name, const char *url);
-
-/* Add indexes to the repo */
-static int
-remote_add_indexes(const char *reponame)
-{
-	struct pkgdb *db = NULL;
-	int ret = EPKG_FATAL;
-
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
-		goto cleanup;
-
-	/* Initialize the remote remote */
-	if (pkgdb_remote_init(db, reponame) != EPKG_OK)
-		goto cleanup;
-
-	ret = EPKG_OK;
-cleanup:
-	if (db)
-		pkgdb_close(db);
-	return (ret);
-}
-
-static int
-update_from_remote_repo(const char *name, const char *url)
-{
-	struct archive *a = NULL;
-	struct archive_entry *ae = NULL;
-	char repofile[MAXPATHLEN];
-	char repofile_unchecked[MAXPATHLEN];
-	char tmp[21];
-	const char *dbdir = NULL;
-	unsigned char *sig = NULL;
-	int siglen = 0;
-	int rc = EPKG_OK;
-	bool alwayssigned = false;
-	struct stat st;
-	time_t t = 0;
-
-	pkg_config_bool(PKG_CONFIG_SIGNED_REPOS, &alwayssigned);
-	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
-	if (mktemp(tmp) == NULL) {
-		warnx("Could not create temporary file %s, aborting update.\n", tmp);
-		return (EPKG_FATAL);
-	}
-
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
-		warnx("Cant get dbdir config entry");
-		return (EPKG_FATAL);
-	}
-
-	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
-	if (stat(repofile, &st) != -1) {
-		t = st.st_mtime;
-		/* add 10 minutes to the timestap because repo.sqlite is
-		 * always newer than repo.txz, 10 minutes should be enough
-		 */
-		t += 600;
-	}
-
-	if ((rc = pkg_fetch_file(url, tmp, t)) != EPKG_OK) {
-		/*
-		 * No need to unlink(tmp) here as it is already
-		 * done in pkg_fetch_file() in case fetch failed.
-		 */
-		return (rc);
-	}
-
-	a = archive_read_new();
-	archive_read_support_compression_all(a);
-	archive_read_support_format_tar(a);
-
-	archive_read_open_filename(a, tmp, 4096);
-
-	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			snprintf(repofile_unchecked, sizeof(repofile_unchecked), "%s.unchecked", repofile);
-			archive_entry_set_pathname(ae, repofile_unchecked);
-			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
-		}
-		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
-			siglen = archive_entry_size(ae);
-			sig = malloc(siglen);
-			archive_read_data(a, sig, siglen);
-		}
-	}
-
-	if (sig != NULL) {
-		if (pkg_repo_verify(repofile_unchecked, sig, siglen - 1) != EPKG_OK) {
-			warnx("Invalid signature, removing repository.\n");
-			unlink(repofile_unchecked);
-			free(sig);
-			rc = EPKG_FATAL;
-			goto cleanup;
-		}
-	} else {
-		if (alwayssigned) {
-			warnx("No signature found in the repository, this is mandatory");
-			rc = EPKG_FATAL;
-			unlink(repofile_unchecked);
-			goto cleanup;
-		}
-
-	}
-
-	rename(repofile_unchecked, repofile);
-
-	if ((rc = remote_add_indexes(name)) != EPKG_OK)
-		goto cleanup;
-cleanup:
-	if (a != NULL)
-		archive_read_finish(a);
-
-	(void)unlink(tmp);
-
-	return (rc);
-}
 
 void
 usage_update(void)
@@ -230,7 +105,7 @@ exec_update(int argc, char **argv)
 		else
 			snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
-		retcode = update_from_remote_repo("repo", url);
+		retcode = pkg_update("repo", url);
 		if (retcode == EPKG_UPTODATE) {
 			if (!quiet)
 				printf("Remote repository up-to-date, no need to upgrade\n");
@@ -247,7 +122,7 @@ exec_update(int argc, char **argv)
 			else
 				snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
-			retcode = update_from_remote_repo(repo_name, url);
+			retcode = pkg_update(repo_name, url);
 			if (retcode == EPKG_UPTODATE) {
 				if (!quiet)
 					printf("%s repository up-to-date, no need to upgrade\n", repo_name);

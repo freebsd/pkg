@@ -89,7 +89,7 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_REPOKEY] = {
 		STRING,
 		"PUBKEY",
-		"/etc/ssl/pkg.pub",
+		NULL,
 		{ NULL }
 	},
 	[PKG_CONFIG_MULTIREPOS] = {
@@ -241,9 +241,6 @@ pkg_config_string(pkg_config_key key, const char **val)
 
 	if (*val == NULL)
 		*val = c[key].def;
-
-	if (*val == NULL)
-		return (EPKG_FATAL);
 
 	return (EPKG_OK);
 }

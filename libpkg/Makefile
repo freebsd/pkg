@@ -27,7 +27,9 @@ SRCS=		backup.c \
 		pkg_version.c \
 		pkgdb.c \
 		rcscripts.c \
+		rsa.c \
 		scripts.c \
+		update.c \
 		usergroup.c \
 		utils.c
 

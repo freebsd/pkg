@@ -610,7 +610,7 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
  * @param sum An 65 long char array to receive the sha256 sum
  */
 int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *);
-int pkg_finish_repo(char *patj, pem_password_cb *cb, char *rsa_key_path);
+int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path);
 
 /**
  * Open the local package database.
@@ -778,7 +778,10 @@ int pkg_create_installed(const char *, pkg_formats, const char *, struct pkg *);
  */
 int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
 
-int pkg_repo_verify(const char *path, unsigned char *sig, unsigned int sig_len);
+/**
+ * Download the latest repo db file and checks its signature if any
+ */
+int pkg_update(const char *name, const char *packagesite);
 
 /**
  * Get the value of a configuration key
