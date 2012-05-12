@@ -1,5 +1,5 @@
 --- portmaster.sh.in.orig	2012-04-11 15:54:46.654580382 +0200
-+++ portmaster.sh.in	2012-05-12 11:46:09.860217439 +0200
++++ portmaster.sh.in	2012-05-12 11:58:18.680216854 +0200
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
@@ -110,7 +110,7 @@
 +			if [ -z "$use_pkgng" ]; then
 +				echo "	===>>> No ORIGIN in $pdb/$1/+CONTENTS" >&2
 +			else
-+				# an error above doesn't necessarily mean there's
++				# An error above doesn't necessarily mean there's
 +				# a problem in +MANIFEST, so don't mention it
 +				echo "	===>>> No origin available for $1" >&2
 +			fi
@@ -123,7 +123,7 @@
 +		if [ -z "$use_pkgng" ]; then
 +			echo "	===>>> No ORIGIN in $pdb/$1/+CONTENTS" >&2
 +		else
-+			# same as above
++			# Same as above
 +			echo "	===>>> No origin available for $1" >&2
 +		fi
  		echo '' >&2
@@ -187,30 +187,26 @@
  	sn=${1#*/} ; sn=${sn%-*} ; sn=${sn%%[0-9]*}
  
  	if ! dir=`grep -l "@comment ORIGIN:${1}$" $pdb/${sn}*/+CONTENTS 2>/dev/null`; then
-@@ -903,9 +964,11 @@
+@@ -903,7 +964,9 @@
  	done
  }
  
-+# useless with pkgng
++# Useless with pkgng
  check_dependency_files () {
++	[ -n "$use_pkgng" ] && return
  	# Global: grep_deps
  	local origin iport ro_opd
-+	[ -n "$use_pkgng" ] && return
  
- 	origin=$1 ; iport=$2
- 
-@@ -985,9 +1048,11 @@
+@@ -985,7 +1048,9 @@
  	fi
  }
  
-+# also useless with pkgng
++# Also useless with pkgng
  update_contents () {
++	[ -n "$use_pkgng" ] && return
  	local IFS delete contents origin n_port old_origin iport new_cont
  	local o_seen line d_missing d_origin d_iport prev_line answer
-+	[ -n "$use_pkgng" ] && return
  
- # To prevent words in a line being treated individually
- IFS='
 @@ -1083,7 +1148,7 @@
  	for l in `grep "^$sf|" $pd/MOVED`; do
  		case "$l" in
@@ -375,18 +371,16 @@
  }
  
  delete_empty_dist_subdirs () {
-@@ -1269,9 +1381,11 @@
+@@ -1269,7 +1381,9 @@
  	esac
  }
  
-+# useless with pkgng
++# Useless with pkgng
  update_required_by () {
++	[ -n "$use_pkgng" ] && /bin/unlink $grep_deps && unset grep_deps && return
  	# Global: grep_deps
  	local do_update
-+	[ -n "$use_pkgng" ] && /bin/unlink $grep_deps && unset grep_deps && return
  
- 	if [ -e "$pdb/$1/+REQUIRED_BY" ]; then
- 		sort $pdb/$1/+REQUIRED_BY | cmp -s $grep_deps - || do_update=do_update
 @@ -1324,11 +1438,15 @@
  
  	echo "===>>> Checking for stale packages"
@@ -775,7 +769,7 @@
  		rundeps=`gen_dep_list run-depends-list`
  
  		for dep in $d_port_list; do
-+			# if the port is already installed, do not mark
++			# If the port is already installed, do not mark
 +			# it as a build-only dependency, or it will be
 +			# installed by package and/or removed
 +			if [ -z "$use_pkgng" ]; then
@@ -1029,7 +1023,7 @@
  			unset preserve_port files
  		esac
  
-+		# orphan state of $ro_upg_port has precedence
++		# Orphan state of $ro_upg_port has precedence
 +		: ${np_orphan:=`pkg query "%a" $upg_port`}
  		pm_sv "Running pkg_delete for $upg_port"
  		pm_pkg_delete_s -f $upg_port
