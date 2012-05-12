@@ -1,5 +1,14 @@
 --- portmaster.sh.in.orig	2012-05-12 12:32:59.760289065 +0200
-+++ portmaster.sh.in	2012-05-12 12:33:31.460348741 +0200
++++ portmaster.sh.in	2012-05-12 12:47:04.510208108 +0200
+@@ -49,7 +49,7 @@
+ #=============== Begin functions we always want to have ===============
+ 
+ version () {
+-	echo '' ; echo "===>>> Version 3.11"
++	echo '' ; echo "===>>> Version 3.11 (pkgng patch 1.0)"
+ 	#svn='$FreeBSD: user/dougb/portmaster/portmaster 228452 2011-12-13 06:51:56Z dougb $'
+ }
+ 
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
