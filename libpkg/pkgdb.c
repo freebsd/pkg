@@ -1490,40 +1490,40 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, "
 		"(SELECT id from mtree where content = ?14), ?15, now());";
 	const char sql_dep[] = ""
-		"INSERT OR ROLLBACK INTO deps (origin, name, version, package_id) "
+		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4);";
 	const char sql_file[] = ""
-		"INSERT OR ROLLBACK INTO files (path, sha256, package_id) "
+		"INSERT INTO files (path, sha256, package_id) "
 		"VALUES (?1, ?2, ?3);";
 	const char sql_script[] = ""
-		"INSERT OR ROLLBACK INTO scripts (script, type, package_id) "
+		"INSERT INTO scripts (script, type, package_id) "
 		"VALUES (?1, ?2, ?3);";
 	const char sql_option[] = ""
-		"INSERT OR ROLLBACK INTO options (option, value, package_id) "
+		"INSERT INTO options (option, value, package_id) "
 		"VALUES (?1, ?2, ?3);";
 	const char sql_dir[] = ""
-		"INSERT OR ROLLBACK INTO pkg_directories(package_id, directory_id, try) "
+		"INSERT INTO pkg_directories(package_id, directory_id, try) "
 		"VALUES (?1, "
 		"(SELECT id FROM directories WHERE path = ?2), ?3);";
 	const char sql_cat[] = "INSERT OR IGNORE INTO categories(name) VALUES(?1);";
 	const char sql_category[] = ""
-		"INSERT OR ROLLBACK INTO pkg_categories(package_id, category_id) "
+		"INSERT INTO pkg_categories(package_id, category_id) "
 		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2));";
 	const char sql_lic[] = "INSERT OR IGNORE INTO licenses(name) VALUES(?1);";
 	const char sql_license[] = ""
-		"INSERT OR ROLLBACK INTO pkg_licenses(package_id, license_id) "
+		"INSERT INTO pkg_licenses(package_id, license_id) "
 		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2));";
 	const char sql_user[] = "INSERT OR IGNORE INTO users(name) VALUES(?1);";
 	const char sql_users[] = ""
-		"INSERT OR ROLLBACK INTO pkg_users(package_id, user_id) "
+		"INSERT INTO pkg_users(package_id, user_id) "
 		"VALUES (?1, (SELECT id FROM users WHERE name = ?2));";
 	const char sql_group[] = "INSERT OR IGNORE INTO groups(name) VALUES(?1);";
 	const char sql_groups[] = ""
-		"INSERT OR ROLLBACK INTO pkg_groups(package_id, group_id) "
+		"INSERT INTO pkg_groups(package_id, group_id) "
 		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2));";
 	const char sql_shlib[] = "INSERT OR IGNORE INTO shlibs(name) VALUES(?1);";
 	const char sql_shlibs[] = ""
-		"INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
+		"INSERT INTO pkg_shlibs(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))";
 	const char sql_deps_update[] = ""
 		"UPDATE deps SET NAME=?1 , VERSION=?2 WHERE ORIGIN=?3;";
