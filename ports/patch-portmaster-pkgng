@@ -1,5 +1,5 @@
---- portmaster.sh.in.orig	2012-04-11 15:54:46.654580382 +0200
-+++ portmaster.sh.in	2012-05-12 11:58:18.680216854 +0200
+--- portmaster.sh.in.orig	2012-05-12 12:32:59.760289065 +0200
++++ portmaster.sh.in	2012-05-12 12:33:31.460348741 +0200
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
@@ -1103,7 +1103,7 @@
  if [ -n "$preserve_dir" ]; then
  	rmdir $preserve_dir 2>/dev/null
  	unset preserve_dir preserve_port_files
-@@ -3781,7 +4089,12 @@
+@@ -3781,14 +4089,19 @@
  temp=`find $LOCALBASE_COMPAT -type d -empty 2>/dev/null`
  if [ -z "$temp" ] && [ -d "$LOCALBASE_COMPAT" ]; then
  	unset files
@@ -1117,6 +1117,14 @@
  		[ -f "${LOCALBASE_COMPAT}/${file##*/}" ] &&
  			files="${files}${LOCALBASE_COMPAT}/${file##*/} "
  	done
+ 
+ 	if [ -n "$files" ]; then
+ 		pm_sv Removing old shared libraries, and running ldconfig
+-		pm_rm_s $files
++		pm_rm_s `make -V FILES:O:u FILES="$files"`
+ 		$PM_SU_CMD /etc/rc.d/ldconfig start > /dev/null
+ 	fi
+ 	unset temp file files
 @@ -3844,7 +4157,8 @@
  	/bin/unlink $dist_list_temp ; unset ds dist_list_temp
  fi
