@@ -1,5 +1,5 @@
 --- portmaster.sh.in.orig	2012-04-11 15:54:46.654580382 +0200
-+++ portmaster.sh.in	2012-05-12 01:33:25.980215949 +0200
++++ portmaster.sh.in	2012-05-12 02:28:27.410208398 +0200
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
@@ -9,7 +9,21 @@
  			fi
  		fi
  		if [ -z "$BACKUP" -a -z "$NO_BACKUP" -a -n "$NB_DELETE" ]; then
-@@ -212,10 +214,14 @@
+@@ -165,7 +167,12 @@
+ 
+ 		: ${PAGER:='less -e'}
+ 		( for f in $DISPLAY_LIST; do
+-			echo "===>>> pkg-message for $f" ; cat $pdb/$f/+DISPLAY ; echo ''
++			echo "===>>> pkg-message for $f"
++			if [ -z "$use_pkgng" ]; then
++				cat $pdb/$f/+DISPLAY ; echo ''
++			else
++				pkg query "%M" $f
++			fi
+ 		done
+ 		echo "===>>> Done displaying pkg-message files" ; echo '' ) | $PAGER ;;
+ 	esac
+@@ -212,10 +219,14 @@
  	if [ -n "$build_deps_il" ]; then
  		echo "===>>> Deleting installed build-only dependencies"
  		cd
@@ -28,7 +42,7 @@
  		echo ''
  	fi
  
-@@ -292,7 +298,13 @@
+@@ -292,7 +303,13 @@
  			 unset -v PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
  pm_mkdir_s        () { $PM_SU_CMD /bin/mkdir -p $1; }
@@ -43,7 +57,7 @@
  pm_rm_s           () { $PM_SU_CMD /bin/rm $*; }
  pm_rmdir_s        () { $PM_SU_CMD /bin/rmdir $*; }
  pm_unlink_s       () { [ -e "$1" ] && $PM_SU_CMD /bin/unlink $1; }
-@@ -340,6 +352,10 @@
+@@ -340,6 +357,10 @@
  	[ -z "$port_dbdir" ] &&
  		port_dbdir=`pm_make_b -f/usr/share/mk/bsd.port.mk -V PORT_DBDIR 2>/dev/null`
  	[ -n "$port_dbdir" ] && export port_dbdir
@@ -54,7 +68,7 @@
  fi
  
  usage () {
-@@ -496,12 +512,17 @@
+@@ -496,12 +517,17 @@
  
  	pattern=`globstrip $1`
  
@@ -74,7 +88,7 @@
  	esac
  
  	unset glob_dirs
-@@ -511,20 +532,35 @@
+@@ -511,20 +537,35 @@
  origin_from_pdb () {
  	local o
  
@@ -115,7 +129,7 @@
  		echo '' >&2
  	fi
  	return 1
-@@ -666,12 +702,17 @@
+@@ -666,12 +707,17 @@
  	o)	REPLACE_ORIGIN=oopt ;;
  	p)	fail 'The -p option has been deprecated' ;;
  	r)	PM_URB=ropt
@@ -135,7 +149,7 @@
  			2)	fail 'The argument to -r must match only one port' ;;
  			esac
  		fi
-@@ -753,6 +794,12 @@
+@@ -753,6 +799,12 @@
  	    fail 'The -[ar] options are not compatible with other updates'
  
  	if [ -n "$PM_PACKAGES" -o -n "$PM_PACKAGES_BUILD" ]; then
@@ -148,7 +162,7 @@
  		[ `/sbin/sysctl -n kern.osreldate 2>/dev/null` -lt 600400 ] &&
  			fail Package installation support requires FreeBSD 6.4 or newer
  	fi
-@@ -818,7 +865,12 @@
+@@ -818,7 +870,12 @@
  		fi
  		unset INDEXFILE INDEXDIR
  
@@ -162,7 +176,7 @@
  		export PM_INDEX_PORTS
  
  		if [ -z "$pd" -o "$pd" != /usr/ports ]; then
-@@ -875,6 +927,10 @@
+@@ -875,6 +932,10 @@
  iport_from_origin () {
  	local sn dir
  
@@ -173,7 +187,7 @@
  	sn=${1#*/} ; sn=${sn%-*} ; sn=${sn%%[0-9]*}
  
  	if ! dir=`grep -l "@comment ORIGIN:${1}$" $pdb/${sn}*/+CONTENTS 2>/dev/null`; then
-@@ -903,9 +959,11 @@
+@@ -903,9 +964,11 @@
  	done
  }
  
@@ -185,7 +199,7 @@
  
  	origin=$1 ; iport=$2
  
-@@ -985,9 +1043,11 @@
+@@ -985,9 +1048,11 @@
  	fi
  }
  
@@ -197,7 +211,7 @@
  
  # To prevent words in a line being treated individually
  IFS='
-@@ -1083,7 +1143,7 @@
+@@ -1083,7 +1148,7 @@
  	for l in `grep "^$sf|" $pd/MOVED`; do
  		case "$l" in
  		${sf}\|\|*) [ -n "$iport" ] || iport=`iport_from_origin $sf`
@@ -206,7 +220,7 @@
  				if [ -n "$PM_VERBOSE" ]; then
  					echo ''
  					echo "	===>>> The $sf port has been deleted"
-@@ -1118,7 +1178,7 @@
+@@ -1118,7 +1183,7 @@
  		echo ''
  
  		[ -n "$iport" ] || iport=`iport_from_origin $sf`
@@ -215,7 +229,7 @@
  	fi
  	return 0
  }
-@@ -1129,35 +1189,62 @@
+@@ -1129,35 +1194,62 @@
  	echo '############' > $DI_FILES		# Make the file > 0 bytes
  	echo "===>>> Gathering distinfo list for installed ports"
  	echo ''
@@ -302,7 +316,7 @@
  
  	# Tell safe_exit that we are done
  	pm_unlink ${DI_FILES}-e
-@@ -1203,25 +1290,45 @@
+@@ -1203,25 +1295,45 @@
  }
  
  ports_by_category () {
@@ -361,7 +375,7 @@
  }
  
  delete_empty_dist_subdirs () {
-@@ -1269,9 +1376,11 @@
+@@ -1269,9 +1381,11 @@
  	esac
  }
  
@@ -373,7 +387,7 @@
  
  	if [ -e "$pdb/$1/+REQUIRED_BY" ]; then
  		sort $pdb/$1/+REQUIRED_BY | cmp -s $grep_deps - || do_update=do_update
-@@ -1324,11 +1433,15 @@
+@@ -1324,11 +1438,15 @@
  
  	echo "===>>> Checking for stale packages"
  	for package in `find $PACKAGES -type f | sort`; do
@@ -392,7 +406,7 @@
  
  		if [ -z "$PM_INDEX" ]; then
  			if [ -d "$pd/$origin" ]; then
-@@ -1344,16 +1457,28 @@
+@@ -1344,16 +1462,28 @@
  		fi
  
  		if [ -n "$port_ver" ]; then
@@ -430,7 +444,7 @@
  				fi
  				unset port_ver
  				continue
-@@ -1364,10 +1489,18 @@
+@@ -1364,10 +1494,18 @@
  
  			unset port_ver
  
@@ -452,7 +466,7 @@
  			fi
  		fi
  
-@@ -1406,6 +1539,7 @@
+@@ -1406,6 +1544,7 @@
  fi	# [ -n "$CLEAN_PACKAGES" ]
  
  if [ -n "$CHECK_DEPENDS" ]; then
@@ -460,7 +474,7 @@
  	PM_VERBOSE=pmv_check_depends
  IFS='
  '
-@@ -1452,24 +1586,42 @@
+@@ -1452,24 +1591,42 @@
  	unique_list=':'
  
  	echo "===>>> Building list of installed port names"; echo ''
@@ -518,7 +532,7 @@
  
  	echo "===>>> Checking $port_dbdir"
  
-@@ -1570,7 +1722,7 @@
+@@ -1570,7 +1727,7 @@
  
  	if [ -z "$do_update" -a -z "$skip" -a -z "$PM_INDEX_ONLY" ] && [ -d "$pd/$origin" ]; then
  		if ! pm_cd $pd/$origin; then
@@ -527,7 +541,7 @@
  				echo "	===>>> Warning: Unable to cd to $pd/$origin"
  				echo "	===>>> Continuing due to $pdb/$iport/+IGNOREME"
  				echo ''
-@@ -1587,13 +1739,13 @@
+@@ -1587,13 +1744,13 @@
  
  		# If the port has moved and no +IGNOREME, we have to update it
  		if [ -n "$moved_npd" ]; then
@@ -544,7 +558,7 @@
  			fi
  		fi
  	fi
-@@ -1610,14 +1762,20 @@
+@@ -1610,14 +1767,20 @@
  				unset port_ver
  			fi
  		else
@@ -567,7 +581,7 @@
  			esac
  
  			[ -z "$do_update" ] && {
-@@ -1633,8 +1791,9 @@
+@@ -1633,8 +1796,9 @@
  	if [ -n "$LIST_PLUS" ]; then
  		if [ -z "$moved_npd" ]; then
  			echo "	===>>> New version available: $port_ver"
@@ -578,7 +592,7 @@
  			pm_cd_pd $origin && check_state
  			num_updates=$(( $num_updates + 1 ))
  		else
-@@ -1689,7 +1848,13 @@
+@@ -1689,7 +1853,13 @@
  	fi
  
  	pm_cd $pkgdir || fail "Cannot cd into $pkgdir to create a package"
@@ -593,7 +607,7 @@
  		if [ "$1" = "$pbu" ]; then
  			if [ -n "$BACKUP" ]; then
  				echo "	===>>> Package saved to $1" ; echo ''
-@@ -2028,10 +2193,14 @@
+@@ -2028,10 +2198,14 @@
  fi
  
  if [ -n "$EXPUNGE" ]; then
@@ -610,7 +624,7 @@
  		2)	echo "===>>> $EXPUNGE matched multiple ports"
  			fail "The -e option works with only one port at a time" ;;
  		0)	EXPUNGE=${glob_dirs#$pdb/}
-@@ -2040,15 +2209,24 @@
+@@ -2040,15 +2214,24 @@
  	fi
  
  	origin=`origin_from_pdb $EXPUNGE`
@@ -640,7 +654,7 @@
  				update_contents delete $f $origin
  			done ;;
  		*)	exit 1 ;;
-@@ -2058,8 +2236,13 @@
+@@ -2058,8 +2241,13 @@
  	[ -n "$BACKUP" ] && { init_packages ; pm_pkg_create $pbu $EXPUNGE; }
  	[ -z "$DONT_SCRUB_DISTFILES" ] && { delete_all_distfiles $origin; delete_dist_list; }
  
@@ -656,7 +670,7 @@
  
  	echo '' ; echo "===>>> Running ${0##*/} -s $ARGS"
  	exec $0 -s $ARGS
-@@ -2069,13 +2252,21 @@
+@@ -2069,13 +2257,21 @@
  if [ -n "$CLEAN_STALE" ]; then
  	[ -z "$no_del_list" ] && export no_del_list=':'
  
@@ -680,7 +694,7 @@
  		if [ -n "$deplist" ]; then
  			echo ''
  			echo "===>>> Warning: Unrecorded dependencies on ${iport}:"
-@@ -2088,22 +2279,32 @@
+@@ -2088,22 +2284,32 @@
  			continue
  		fi
  
@@ -721,7 +735,7 @@
  		esac
  	done
  	exit 0
-@@ -2126,7 +2327,7 @@
+@@ -2126,7 +2332,7 @@
  	# to go out to the disk if we don't have to.
  	[ -z "$RESTART" ] && return 1
  
@@ -730,7 +744,7 @@
  		return 1
  	else
  		already_done $1
-@@ -2143,7 +2344,7 @@
+@@ -2143,7 +2349,7 @@
  	case "$INTERACTIVE_YES" in *:${1}:*) return 0 ;; esac
  	case "$INTERACTIVE_NO" in *:${1}:*) return 1 ;; esac
  
@@ -739,7 +753,7 @@
  		echo ''
  		echo "===>>> +IGNOREME file is present for $1"
  		echo ''
-@@ -2243,7 +2444,13 @@
+@@ -2243,7 +2449,13 @@
  			fail "No entry for $origin in $PM_INDEX"
  	fi
  
@@ -754,7 +768,7 @@
  	\<)	build_l="${build_l}\tUpgrade $iport to $new_port\n" ;;
  	=)	build_l="${build_l}\tRe-install $iport\n" ;;
  	\>)	build_l="${build_l}\tDowngrade $iport to $new_port\n" ;;
-@@ -2397,6 +2604,18 @@
+@@ -2397,6 +2609,18 @@
  		rundeps=`gen_dep_list run-depends-list`
  
  		for dep in $d_port_list; do
@@ -773,7 +787,7 @@
  			case "$rundeps" in
  			*" ${dep} "*|*${dep}*)
  				varname=`echo ${dep#$pd/} | sed 's#[-+/\.]#_#g'`
-@@ -2466,7 +2685,11 @@
+@@ -2466,7 +2690,11 @@
  				fail "Cannot cd to $d_port"
  			fi
  			for glob in $conflicts; do
@@ -786,7 +800,7 @@
  				if [ -n "$confl_p" ]; then
  					confl_p=${confl_p%% *}
  					echo ''
-@@ -2601,8 +2824,13 @@
+@@ -2601,8 +2829,13 @@
  		done
  
  		for dep in $build_only_dl_g; do
@@ -802,7 +816,7 @@
  		done
  
  		build_only_dl_g=" `uniquify_list $temp_bodlg` "
-@@ -2626,7 +2854,7 @@
+@@ -2626,7 +2859,7 @@
  
  urb_update () {
  	# Global: PM_URB_UP
@@ -811,7 +825,7 @@
  
  	verb=checking ; [ -n "$1" ] && verb=updating
  
-@@ -2636,15 +2864,25 @@
+@@ -2636,15 +2869,25 @@
  	echo ''
  
  	for origin in $PM_URB_ORIGINS; do
@@ -844,7 +858,7 @@
  	done
  
  	if [ -n "$PM_URB_LIST" ]; then
-@@ -2656,7 +2894,11 @@
+@@ -2656,7 +2899,11 @@
  
  	for req_by in $PM_URB_LIST; do
  		# Probably not needed, but JIC
@@ -857,7 +871,7 @@
  
  		pm_v "===>>> $req_by depends on $PM_URB_IPORTS"
  
-@@ -2697,12 +2939,16 @@
+@@ -2697,12 +2944,16 @@
  			else
  				fail "$pd/${port} does not exist"
  			fi ;;
@@ -876,7 +890,7 @@
  				*)	local dir
  					for dir in $glob_dirs; do
  					worklist_temp="$worklist_temp ${dir#$pdb/}"
-@@ -2806,9 +3052,16 @@
+@@ -2806,9 +3057,16 @@
  		*/*)	origin=$port ;;
  		*)	# If an installed version does not exist at this
  			# point it probably got updated as a dependency
@@ -896,7 +910,7 @@
  			fi
  			origin=`origin_from_pdb $port` ;;
  		esac
-@@ -3032,11 +3285,16 @@
+@@ -3032,11 +3290,16 @@
  	case "$argv" in
  	'')	echo '' ; no_valid_port ;;
  	$pd/*)	portdir=${argv#$pd/} ;;
@@ -915,7 +929,7 @@
  	esac
  
  	if [ -z "$portdir" -a -z "$upg_port" ]; then
-@@ -3069,7 +3327,7 @@
+@@ -3069,7 +3332,7 @@
  
  	case "$arg2" in
  	*/*)	ro_opd=$arg2 ; ro_upg_port=`iport_from_origin $ro_opd` ;;
@@ -924,7 +938,7 @@
  			ro_upg_port=$arg2
  		else
  			find_glob_dirs $arg2 && ro_upg_port=${glob_dirs#$pdb/}
-@@ -3080,12 +3338,21 @@
+@@ -3080,12 +3343,21 @@
  	unset arg2
  
  	if [ -z "$ro_upg_port" ]; then
@@ -949,7 +963,7 @@
  			echo '       or listed as a dependency'
  			echo '' ; no_valid_port
  		fi
-@@ -3117,7 +3384,7 @@
+@@ -3117,7 +3389,7 @@
  fi
  [ -z "$upg_port" -a -z "$REPLACE_ORIGIN" ] && upg_port=`iport_from_origin ${portdir}`
  
@@ -958,7 +972,7 @@
  	# Adding to CUR_DEPS means we will not get here in the build unless -G
  	if [ -z "$PM_BUILDING" ]; then
  		# Only need to prompt for this once if -ai
-@@ -3525,7 +3792,12 @@
+@@ -3525,7 +3797,12 @@
  		pm_v "===>>> Available package ($latest_pv) matches the current version"
  	elif [ -n "$latest_pv" -a -n "$PM_PACKAGES_NEWER" ]; then
  		if [ -n "$upg_port" ]; then
@@ -972,7 +986,7 @@
  			\<)	use_package=up_newer
  				pm_v "===>>> Available package ($latest_pv)"
  				pm_v "       is newer than installed ($upg_port)" ;;
-@@ -3541,7 +3813,12 @@
+@@ -3541,7 +3818,12 @@
  			pm_v "===>>> There is a package available ($latest_pv)"
  		fi
  	elif [ -n "$latest_pv" ]; then
@@ -986,7 +1000,7 @@
  		\<)	# Could happen if ports tree is out of date
  			use_package=up_old_tree
  			pm_v "===>>> Available package ($latest_pv)"
-@@ -3640,7 +3917,12 @@
+@@ -3640,7 +3922,12 @@
  		    grep -v ^$LOCALBASE_COMPAT > $ldconfig_out
  
  		unset temp
@@ -1000,7 +1014,7 @@
  		    sort - $ldconfig_out | uniq -d`; do
  			temp="${temp}$file "
  		done
-@@ -3663,6 +3945,7 @@
+@@ -3663,6 +3950,7 @@
  
  	if [ -n "$REPLACE_ORIGIN" -a -n "$ro_upg_port" ]; then
  		# Delete any existing versions of the old port
@@ -1008,7 +1022,7 @@
  		pm_sv "Running pkg_delete for $ro_upg_port"
  		pm_pkg_delete_s -f $ro_upg_port
  	fi
-@@ -3681,6 +3964,8 @@
+@@ -3681,6 +3969,8 @@
  			unset preserve_port files
  		esac
  
@@ -1017,7 +1031,7 @@
  		pm_sv "Running pkg_delete for $upg_port"
  		pm_pkg_delete_s -f $upg_port
  	fi
-@@ -3726,6 +4011,18 @@
+@@ -3726,6 +4016,18 @@
  		unset port_log_args
  	fi
  
@@ -1036,7 +1050,7 @@
  	# Defining NO_DEPENDS ensures that we will control the installation
  	# of the depends, not bsd.port.mk.
  	eval pm_make_s -DNO_DEPENDS install $port_log_args || install_failed $new_port
-@@ -3743,29 +4040,32 @@
+@@ -3743,29 +4045,32 @@
  	fi
  fi
  
@@ -1092,7 +1106,7 @@
  if [ -n "$preserve_dir" ]; then
  	rmdir $preserve_dir 2>/dev/null
  	unset preserve_dir preserve_port_files
-@@ -3781,7 +4081,12 @@
+@@ -3781,7 +4086,12 @@
  temp=`find $LOCALBASE_COMPAT -type d -empty 2>/dev/null`
  if [ -z "$temp" ] && [ -d "$LOCALBASE_COMPAT" ]; then
  	unset files
@@ -1106,7 +1120,7 @@
  		[ -f "${LOCALBASE_COMPAT}/${file##*/}" ] &&
  			files="${files}${LOCALBASE_COMPAT}/${file##*/} "
  	done
-@@ -3844,7 +4149,8 @@
+@@ -3844,7 +4154,8 @@
  	/bin/unlink $dist_list_temp ; unset ds dist_list_temp
  fi
  
@@ -1116,7 +1130,7 @@
  	if grep -q DEPORIGIN $pdb/$new_port/+CONTENTS; then
  		echo "===>>> Updating dependencies for $new_port to match installed versions"
  		update_contents $pdb/$new_port/+CONTENTS
-@@ -3879,27 +4185,29 @@
+@@ -3879,27 +4190,29 @@
  	echo ''
  fi
  
@@ -1166,7 +1180,16 @@
  fi
  
  if [ -n "$upg_port" ]; then
-@@ -3924,6 +4232,7 @@
+@@ -3917,13 +4230,15 @@
+ fi
+ 
+ INSTALLED_LIST="${INSTALLED_LIST}\t${ilist}\n"
+-[ -e "$pdb/$new_port/+DISPLAY" ] && DISPLAY_LIST="${DISPLAY_LIST}$new_port "
++[ -z "$use_pkgng" -a -e "$pdb/$new_port/+DISPLAY" -o -n "$use_pkgng" -a -n "`pkg query "%M" $new_port`" ] &&
++	DISPLAY_LIST="${DISPLAY_LIST}$new_port "
+ CUR_DEPS="${CUR_DEPS}${new_port}:${portdir}:"
+ 
+ [ -n "$HIDE_BUILD" -a -n "$port_log" ] && pm_unlink $port_log
  
  [ -n "$PM_URB" -o -n "$PM_URB_UP" ] && PM_URB_DONE="${PM_URB_DONE}${new_port}:"
  [ -n "$PM_URB" -o -n "$PM_URB_UP" -o -n "$PM_FORCE" ] &&
