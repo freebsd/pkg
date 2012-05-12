@@ -1,5 +1,5 @@
 --- portmaster.sh.in.orig	2012-05-12 12:32:59.760289065 +0200
-+++ portmaster.sh.in	2012-05-12 12:47:04.510208108 +0200
++++ portmaster.sh.in	2012-05-12 15:53:06.560563067 +0200
 @@ -49,7 +49,7 @@
  #=============== Begin functions we always want to have ===============
  
@@ -164,7 +164,7 @@
  	if [ -n "$PM_PACKAGES" -o -n "$PM_PACKAGES_BUILD" ]; then
 +		if [ -n "$use_pkgng" ]; then
 +			unset PM_PACKAGES PM_PACKAGES_BUILD PM_PACKAGES_LOCAL PM_PACKAGES_NEWER PM_ALWAYS_FETCH PM_DELETE_PACKAGES
-+			echo "===>>> Package installation support cannot be used with pkg(8) yet,"
++			echo "===>>> Package installation support cannot be used with pkgng yet,"
 +			echo "       it will be disabled"
 +			echo ''
 +		fi
