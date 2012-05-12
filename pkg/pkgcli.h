@@ -151,6 +151,7 @@ void usage_which(void);
 #define INFO_FULL (1<<9)
 #define INFO_RAW (1<<10)
 #define INFO_LIST_SHLIBS (1<<11)
+#define INFO_PRINT_MESSAGE (1<<12)
 
 bool query_yesno(const char *msg, ...);
 void print_info(struct pkg * const pkg, unsigned int opt);

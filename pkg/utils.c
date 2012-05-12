@@ -142,7 +142,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 	char *m;
 	char size[7];
 	const char *name, *version, *prefix, *origin, *reponame, *repourl;
-	const char *maintainer, *www, *comment, *desc;
+	const char *maintainer, *www, *comment, *desc, *message;
 	int64_t flatsize, newflatsize, newpkgsize;
 	lic_t licenselogic;
 
@@ -152,7 +152,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 	    PKG_ORIGIN, &origin, PKG_REPONAME, &reponame, PKG_REPOURL, &repourl,
 	    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_COMMENT, &comment,
 	    PKG_DESC, &desc, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize,
-		PKG_NEW_PKGSIZE, &newpkgsize, PKG_LICENSE_LOGIC, &licenselogic);
+		PKG_NEW_PKGSIZE, &newpkgsize, PKG_LICENSE_LOGIC, &licenselogic, PKG_MESSAGE, &message);
 
 	if (opt & INFO_RAW) {
 		pkg_emit_manifest(pkg, &m);
@@ -225,6 +225,9 @@ print_info(struct pkg * const pkg, unsigned int opt)
 
                 if (!(opt & INFO_QUIET))
                         printf("\n");
+	} else if (opt & INFO_PRINT_MESSAGE) {
+		if (message)
+			printf("%s", message);
 	} else if (opt & INFO_PRINT_RDEP) {
 		if (!(opt & INFO_QUIET))
 			printf("%s-%s is required by:\n", name, version);

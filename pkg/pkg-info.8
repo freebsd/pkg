@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd May 12, 2012
 .Dt PKG-INFO 8
 .Os
 .Sh NAME
@@ -27,7 +27,7 @@
 .Nm
 .Fl a
 .Nm
-.Op Fl egxXEdrlsqopOfRF
+.Op Fl eDgxXEdrlsqopOfRF
 .Ar <pkg-name>
 .Nm
 .Op Fl drlsq
@@ -52,6 +52,8 @@ If
 .Ar <pkg-name>
 is installed and registered in the database, return 0, otherwise return 1.
 Useful for checking whether the package is installed.
+.It Fl D
+Show the pkg-message for matching packages.
 .It Fl g
 Treat
 .Ar <pkg-name>
