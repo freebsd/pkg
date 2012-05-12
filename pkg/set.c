@@ -41,7 +41,7 @@
 void
 usage_set(void)
 {
-	fprintf(stderr, "usage pkg set -a [01] -yxXg <pattern>\n\n");
+	fprintf(stderr, "usage pkg set [-a] [-A [01]] -yxXg <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
@@ -65,10 +65,13 @@ exec_set(int argc, char **argv)
 	unsigned int loads = PKG_LOAD_BASIC;
 	unsigned int sets = 0;
 
-	while ((ch = getopt(argc, argv, "ya:kxXgo:")) != -1) {
+	while ((ch = getopt(argc, argv, "ayA:kxXgo:")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes_flag = true;
+				break;
+			case 'a':
+				match = MATCH_ALL;
 				break;
 			case 'x':
 				match = MATCH_REGEX;
@@ -79,11 +82,11 @@ exec_set(int argc, char **argv)
 			case 'g':
 				match = MATCH_GLOB;
 				break;
-			case 'a':
+			case 'A':
 				sets |= AUTOMATIC;
 				newautomatic = strtonum(optarg, 0, 1, &errstr);
 				if (errstr)
-					errx(EX_USAGE, "Wrong value for -a expecting 0 or 1, got: %s (%s)", optarg, errstr);
+					errx(EX_USAGE, "Wrong value for -A expecting 0 or 1, got: %s (%s)", optarg, errstr);
 				break;
 			case 'o':
 				sets |= ORIGIN;
@@ -110,7 +113,7 @@ exec_set(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc < 1 || (newautomatic == -1 && neworigin == NULL)) {
+	if ((argc < 1 && match != MATCH_ALL) || (newautomatic == -1 && neworigin == NULL)) {
 		usage_set();
 		return (EX_USAGE);
 	}

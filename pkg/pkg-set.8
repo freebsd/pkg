@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 2, 2012
+.Dd May 12, 2012
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -23,7 +23,8 @@
 .Nd modify information in the installed database
 .Sh SYNOPSIS
 .Nm
-.Op Fl a Op Ar 01
+.Op Fl a
+.Op Fl A Op Ar 01
 .Op Fl o Ar <oldorigin>:<neworigin>
 .Op Fl y
 .Op Fl xXg
@@ -38,7 +39,9 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl y
 Assume yes when asked for confirmation before package autoremoval.
-.It Fl a Op 01
+.It Fl a
+Match on all installed packages.
+.It Fl A Op 01
 Set automatic flag to the package: 0 is not automatic, 1 is automatic
 .It Fl o Op <oldorigin>:<neworigin>
 Change the dependency origin of a given dependency
