@@ -53,7 +53,7 @@ exec_set(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	int ch;
 	int i;
-	bool yes = false;
+	bool yes_flag = false;
 	match_t match = MATCH_EXACT;
 	int newautomatic = -1;
 	bool automatic = false;
@@ -68,7 +68,7 @@ exec_set(int argc, char **argv)
 	while ((ch = getopt(argc, argv, "ya:kxXgo:")) != -1) {
 		switch (ch) {
 			case 'y':
-				yes = true;
+				yes_flag = true;
 				break;
 			case 'x':
 				match = MATCH_REGEX;
@@ -140,8 +140,8 @@ exec_set(int argc, char **argv)
 	}
 	i = 0;
 	do {
-		if (!yes)
-			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+		if (!yes_flag)
+			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes_flag);
 
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			if (oldorigin != NULL)
@@ -151,6 +151,7 @@ exec_set(int argc, char **argv)
 		}
 
 		while (pkgdb_it_next(it, &pkg, loads) == EPKG_OK) {
+			bool yes = yes_flag;
 			if ((sets & AUTOMATIC) == AUTOMATIC) {
 				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
 				if (automatic == newautomatic)
@@ -170,10 +171,9 @@ exec_set(int argc, char **argv)
 				pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 				while (pkg_deps(pkg, &d) == EPKG_OK) {
 					if (strcmp(pkg_dep_get(d, PKG_DEP_ORIGIN), oldorigin) == 0) {
-						bool pkg_yes = yes;
-						if (!pkg_yes)
-							pkg_yes = query_yesno("%s-%s: change %s dependency to %s? [y/N]: ", name, version, oldorigin, neworigin);
-						if (pkg_yes) {
+						if (!yes)
+							yes = query_yesno("%s-%s: change %s dependency to %s? [y/N]: ", name, version, oldorigin, neworigin);
+						if (yes) {
 							if (pkgdb_set(db, pkg, PKG_DEP_ORIGIN, oldorigin, neworigin) != EPKG_OK)
 								return (EPKG_FATAL);
 						}
