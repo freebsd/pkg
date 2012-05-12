@@ -1,5 +1,5 @@
 --- portmaster.sh.in.orig	2012-05-12 12:32:59.760289065 +0200
-+++ portmaster.sh.in	2012-05-12 15:53:06.560563067 +0200
++++ portmaster.sh.in	2012-05-12 16:10:44.050502931 +0200
 @@ -49,7 +49,7 @@
  #=============== Begin functions we always want to have ===============
  
@@ -18,20 +18,24 @@
  			fi
  		fi
  		if [ -z "$BACKUP" -a -z "$NO_BACKUP" -a -n "$NB_DELETE" ]; then
-@@ -165,7 +167,12 @@
+@@ -164,9 +166,14 @@
+ 		fi
  
  		: ${PAGER:='less -e'}
- 		( for f in $DISPLAY_LIST; do
+-		( for f in $DISPLAY_LIST; do
 -			echo "===>>> pkg-message for $f" ; cat $pdb/$f/+DISPLAY ; echo ''
-+			echo "===>>> pkg-message for $f"
-+			if [ -z "$use_pkgng" ]; then
+-		done
++		( if [ -z "$use_pkgng" ]; then
++			for f in $DISPLAY_LIST; do
++				echo "===>>> pkg-message for $f"
 +				cat $pdb/$f/+DISPLAY ; echo ''
-+			else
-+				pkg query "%M" $f
-+			fi
- 		done
++			done
++		else
++			pkg query "===>>> pkg-message for %n-%v\n%M" $DISPLAY_LIST
++		fi
  		echo "===>>> Done displaying pkg-message files" ; echo '' ) | $PAGER ;;
  	esac
+ 
 @@ -212,10 +219,14 @@
  	if [ -n "$build_deps_il" ]; then
  		echo "===>>> Deleting installed build-only dependencies"
