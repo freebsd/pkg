@@ -1,5 +1,5 @@
 --- portmaster.sh.in.orig	2012-04-11 15:54:46.654580382 +0200
-+++ portmaster.sh.in	2012-05-12 11:45:39.770273162 +0200
++++ portmaster.sh.in	2012-05-12 11:46:09.860217439 +0200
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
@@ -1142,7 +1142,7 @@
  		echo "	===>>> Package saved to $PACKAGES/All" ; echo ''
  	else
  		pm_pkg_create $PACKAGES $new_port
-@@ -3879,27 +4193,29 @@
+@@ -3879,27 +4193,34 @@
  	echo ''
  fi
  
@@ -1189,10 +1189,15 @@
 -	update_required_by $new_port
 +		update_required_by $new_port
 +	fi
++else
++	if [ -n "$ro_opd" ]; then
++		echo "===>>> Updating dependency entry for $new_port in each dependent port"
++		pkg set -yo $ro_opd:$portdir -g "*"
++	fi
  fi
  
  if [ -n "$upg_port" ]; then
-@@ -3917,13 +4233,15 @@
+@@ -3917,13 +4238,15 @@
  fi
  
  INSTALLED_LIST="${INSTALLED_LIST}\t${ilist}\n"
