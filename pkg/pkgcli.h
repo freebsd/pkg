@@ -102,6 +102,7 @@ char *sanitize(char *, const char *, size_t);
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);
+int pkgcli_update(void);
 
 /* pkg updating */
 int exec_updating(int, char **);

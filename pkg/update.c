@@ -40,50 +40,17 @@
 
 #include "pkgcli.h"
 
-void
-usage_update(void)
-{
-	fprintf(stderr, "usage: pkg update [-q]\n\n");
-	fprintf(stderr, "For more information see 'pkg help update'.\n");
-}
-
+/**
+ * Fetch remote databases.
+ */
 int
-exec_update(int argc, char **argv)
-{
+pkgcli_update(void) {
 	char url[MAXPATHLEN];
 	const char *packagesite = NULL;
 	const char *repo_name;
-	struct pkg_config_kv *repokv = NULL;
-	int retcode = EPKG_OK;
 	bool multi_repos = false;
-	int ch;
-
-	while ((ch = getopt(argc, argv, "q")) != -1) {
-		switch (ch) {
-			case 'q':
-				quiet = true;
-				break;
-			default:
-				usage_update();
-				return (EX_USAGE);
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc != 0) {
-		usage_update();
-		return (EX_USAGE);
-	}
-
-	if (geteuid() != 0) {
-		warnx("updating the remote database can only be done as root");
-		return (EX_NOPERM);
-	}
-
-	/* 
-	 * Fetch remote databases.
-	 */
+	struct pkg_config_kv *repokv = NULL;
+	int retcode;
 
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multi_repos);
 
@@ -130,6 +97,48 @@ exec_update(int argc, char **argv)
 			}
 		}
 	}
+
+	return (retcode);
+}
+
+
+void
+usage_update(void)
+{
+	fprintf(stderr, "usage: pkg update [-q]\n\n");
+	fprintf(stderr, "For more information see 'pkg help update'.\n");
+}
+
+int
+exec_update(int argc, char **argv)
+{
+	int retcode = EPKG_OK;
+	int ch;
+
+	while ((ch = getopt(argc, argv, "q")) != -1) {
+		switch (ch) {
+			case 'q':
+				quiet = true;
+				break;
+			default:
+				usage_update();
+				return (EX_USAGE);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc != 0) {
+		usage_update();
+		return (EX_USAGE);
+	}
+
+	if (geteuid() != 0) {
+		warnx("updating the remote database can only be done as root");
+		return (EX_NOPERM);
+	}
+
+	retcode = pkgcli_update();
 
 	return (retcode);
 }
