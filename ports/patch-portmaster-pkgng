@@ -1,5 +1,5 @@
 --- portmaster.sh.in.orig	2012-04-11 15:54:46.654580382 +0200
-+++ portmaster.sh.in	2012-05-12 03:01:54.700212725 +0200
++++ portmaster.sh.in	2012-05-12 11:45:39.770273162 +0200
 @@ -125,6 +125,8 @@
  			if [ -n "$files" ]; then
  				pm_sv Deleting \'install complete\' flags
@@ -1133,6 +1133,15 @@
  	if grep -q DEPORIGIN $pdb/$new_port/+CONTENTS; then
  		echo "===>>> Updating dependencies for $new_port to match installed versions"
  		update_contents $pdb/$new_port/+CONTENTS
+@@ -3866,7 +4180,7 @@
+ if [ -n "$MAKE_PACKAGE" ]; then
+ 	if [ -z "$use_package" ]; then
+ 		echo "===>>> Creating a package for new version $new_port"
+-		pm_make_s package >/dev/null || fail "Package creation of $new_port failed"
++		pm_make_s -D_OPTIONS_OK package >/dev/null || fail "Package creation of $new_port failed"
+ 		echo "	===>>> Package saved to $PACKAGES/All" ; echo ''
+ 	else
+ 		pm_pkg_create $PACKAGES $new_port
 @@ -3879,27 +4193,29 @@
  	echo ''
  fi
