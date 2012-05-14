@@ -75,3 +75,5 @@ do
 	rm -rf ${MDIR}
 done
 
+# Delete the portupgrade pkgdb to avoid discrepencies. It will be auto recreated.
+rm -f /var/db/pkg/pkgdb.db > /dev/null 2>&1
