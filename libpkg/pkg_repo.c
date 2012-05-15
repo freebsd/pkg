@@ -663,7 +663,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 
 		free(sigret);
 	}
-	packing_append_file(pack, repo_path, "repo.sqlite");
+	packing_append_file_attr(pack, repo_path, "repo.sqlite", "root", "wheel", 0644);
 	unlink(repo_path);
 	packing_finish(pack);
 
