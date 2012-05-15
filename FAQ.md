@@ -122,15 +122,16 @@ First make sure you have the latest portmaster patch from the Github repo.
 
 The latest patch can be found here:
 
-* [ports/portmaster.patch](https://github.com/pkgng/pkgng/blob/master/ports/portmaster.patch)
+* [ports/portmaster.patch](https://github.com/pkgng/pkgng/blob/master/ports/patch-portmaster-pkgng)
 
 Now patch portmaster:
 
-	# cd /usr/local/sbin && patch < /path/to/pkgng/ports/portmaster.patch
+	# cp patch-portmaster-pkgng /usr/ports/ports-mgmt/portmaster/files
+	# make -C /usr/ports/ports-mgmt/portmaster clean deinstall reinstall
 
 Enable pkgng in portmaster:
 
-	# echo "use_pkgng=yes" >> /usr/local/etc/portmaster.rc
+	# echo "WITH_PKGNG=yes" >> /etc/make.conf
 
 That was it.
 <a name="16"></a>
