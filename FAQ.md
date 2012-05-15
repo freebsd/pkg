@@ -122,7 +122,7 @@ First make sure you have the latest portmaster patch from the Github repo.
 
 The latest patch can be found here:
 
-* [ports/portmaster.patch](https://github.com/pkgng/pkgng/blob/master/ports/patch-portmaster-pkgng)
+* [ports/patch-portmaster-pkgng](https://github.com/pkgng/pkgng/blob/master/ports/patch-portmaster-pkgng)
 
 Now patch portmaster:
 
