@@ -116,7 +116,7 @@ No, pkgng uses internal `pkg audit` command.
 Possibly in version 9.1.
 
 <a name="15"></a>
-### How can I use pkgng with portmaster?
+### Q: How can I use pkgng with portmaster?
 
 First make sure you have the latest portmaster patch from the Github repo.
 
@@ -135,7 +135,7 @@ Enable pkgng in portmaster:
 
 That was it.
 <a name="16"></a>
-### How can I use pkgng with portupgrade?
+### Q: How can I use pkgng with portupgrade?
 
 Currently only **ports-mgmt/portupgrade-devel** supports pkgng.
 
