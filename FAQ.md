@@ -6,17 +6,17 @@ Table of Contents
 
 * [How can I start using pkgng?](#0)
 * [Is there an equivalent for pkg-orphan/pkg_cutleaves with pkgng?](#1)
-* [How pkgng is different from the FreeBSD pkg_* tools? What is the motivation behind pkgng?](#2)
-* [How pkgng is different from PC-BSD PBI packages?](#3)
+* [How is pkgng different from the FreeBSD pkg_* tools? What is the motivation behind pkgng?](#2)
+* [How is pkgng different from PC-BSD PBI packages?](#3)
 * [What is the difference between `pkg delete -y` and `pkg delete -f`?](#4)
 * [Where is `pkg info -R`, the old `pkg_info` had `-R`?](#5)
 * [Can pkgng replace a package with an another version, eg. pkg upgrade pkg-1.0 pkg-2.0?](#6)
-* [How pkgng deals with dependencies?](#7)
+* [How does pkgng deal with dependencies?](#7)
 * [The repository format of pkgng is different from the old one. Will pkgng adapt the old format too?](#8)
 * [Does `pkg repo` include symlinked packages?](#9)
 * [How do I know if I have packages with the same origin?](#10)
 * [How to start working with multi-repos in pkgng?](#11)
-* [Why `pkg create` is slow?](#12)
+* [Why is `pkg create` slow?](#12)
 * [Does pkgng work with portaudit?](#13)
 * [When will pkgng be the default package manager?](#14)
 * [How can I use pkgng with portmaster?](#15)
@@ -44,12 +44,12 @@ And that was it. Please read the man pages for more information on the commands.
 `pkg autoremove` is what you are looking for.
 
 <a name="2"></a>
-### Q: How pkgng is different from the FreeBSD pkg_* tools? What is the motivation behind pkgng?
+### Q: How is pkgng different from the FreeBSD pkg_* tools? What is the motivation behind pkgng?
 
 The [README](https://github.com/pkgng/pkgng/blob/master/README.md) should explain all of that :)
 
 <a name="3"></a>
-### Q: How pkgng is different from PC-BSD PBI packages?
+### Q: How is pkgng different from PC-BSD PBI packages?
 
 PBI are flat/complete packages, where pkgng do package ports as there are.
 
@@ -70,7 +70,7 @@ New flags are: `pkg info -d` for depends on, and `pkg info -r` for reverse depen
 Currently not, but it is in the todo list.
 
 <a name="7"></a>
-### Q: How pkgng deals with dependencies? If `pkgA-1.0` depends on `pkgB-1.0` and `pkgB-1.0` is updated to `pkgB-2.0`, will `pkgA` notice the change?
+### Q: How does pkgng deal with dependencies? If `pkgA-1.0` depends on `pkgB-1.0` and `pkgB-1.0` is updated to `pkgB-2.0`, will `pkgA` notice the change?
 
 Yes, `pkgA` will automatically notice the change.
 
@@ -101,7 +101,7 @@ Here is how to do that:
 Please refer to the [README](https://github.com/pkgng/pkgng/blob/master/README.md#multirepos), which explains how to enable and get started with multi-repos in pkgng.
 
 <a name="12"></a>
-### Q: Why `pkg create` is slow?
+### Q: Why is `pkg create` slow?
 
 The number one reason is the XZ compression, which is slow.
 
