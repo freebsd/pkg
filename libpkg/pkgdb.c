@@ -2301,9 +2301,17 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
+	/* If no rows were INSERTED then pkg is not listed in the remote remo
+	 * so there's nothing to upgrade to.  */
+	if (sqlite3_changes(db->sqlite) == 0) {
+		sbuf_delete(sql);
+		return NULL;
+	}
+
 	/* Delete where the current version is higher than the remote version */
 	sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE PKGGT(version, newversion) OR version == newversion;");
 
+	/* Return NULL if pkg was deleted */
 	if (sqlite3_changes(db->sqlite) > 0) {
 		sbuf_delete(sql);
 		return NULL;
