@@ -20,6 +20,7 @@ Table of Contents
 * [Does pkgng work with portaudit?](#13)
 * [When will pkgng be the default package manager?](#14)
 * [How can I use pkgng with portmaster?](#15)
+* [How can I use pkgng with portupgrade?](#16)
 
 <a name="0"></a>
 ### Q: How can I start using pkgng?
@@ -132,3 +133,13 @@ Enable pkgng in portmaster:
 	# echo "use_pkgng=yes" >> /usr/local/etc/portmaster.rc
 
 That was it.
+<a name="16"></a>
+### How can I use pkgng with portupgrade?
+
+Currently only **ports-mgmt/portupgrade-devel** supports pkgng.
+
+    # portupgrade -f -o ports-mgmt/portupgrade-devel ports-mgmt/portupgrade
+    # echo "WITH_PKGNG=yes" >> /etc/make.conf
+    # pkg2ng
+
+More information can be found in the portupgrade [NEWS](https://github.com/pkgtools/pkgtools/blob/master/NEWS.md) file.
