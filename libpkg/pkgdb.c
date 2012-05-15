@@ -2272,6 +2272,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	struct sbuf *sql = NULL;
 	const char *reponame = NULL;
 	sqlite3_stmt *stmt = NULL;
+	struct pkgdb_it *it = NULL;
 
 	const char finalsql[] = "SELECT pkgid AS id, origin, name, version, "
 		"comment, desc, message, arch, maintainer, "
@@ -2304,8 +2305,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	/* If no rows were INSERTED then pkg is not listed in the remote remo
 	 * so there's nothing to upgrade to.  */
 	if (sqlite3_changes(db->sqlite) == 0) {
-		sbuf_delete(sql);
-		return NULL;
+		goto cleanup;
 	}
 
 	/* Delete where the current version is higher than the remote version */
@@ -2313,8 +2313,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 
 	/* Return NULL if pkg was deleted */
 	if (sqlite3_changes(db->sqlite) > 0) {
-		sbuf_delete(sql);
-		return NULL;
+		goto cleanup;
 	}
 	/* Final SQL */
 	sbuf_reset(sql);
@@ -2323,13 +2322,15 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
-		sbuf_delete(sql);
-		return (NULL);
+		goto cleanup;
 	}
 
+	it = pkgdb_it_new(db, stmt, PKG_REMOTE);
+
+cleanup:
 	sbuf_delete(sql);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+	return (it);
 }
 
 struct pkgdb_it *
