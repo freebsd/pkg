@@ -52,6 +52,9 @@ pkgcli_update(void) {
 	struct pkg_config_kv *repokv = NULL;
 	int retcode;
 
+	if (!quiet)
+		printf("Updating remote repository\n");
+
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multi_repos);
 
 	/* single repository */
