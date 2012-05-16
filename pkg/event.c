@@ -84,7 +84,6 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		pkg_get(ev->e_install_begin.pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		printf("Installing %s-%s...", name, version);
-		fflush(stdout);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
@@ -101,7 +100,6 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		printf("Checking integrity...");
-		fflush(stdout);
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
 		if (quiet)
@@ -113,7 +111,6 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		printf("Deinstalling %s-%s...", name, version);
-		fflush(stdout);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
@@ -136,7 +133,6 @@ event_callback(void *data, struct pkg_event *ev)
 				printf("Upgrading %s from %s to %s...", name, version, newversion);
 				break;
 		}
-		fflush(stdout);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)

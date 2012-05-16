@@ -56,8 +56,6 @@ progress(struct pkg *pkg, void *data)
 
 	if (pkg != NULL)
 		printf("\b%c", ps[*pos]);
-
-	fflush(stdout);
 }
 
 static int
