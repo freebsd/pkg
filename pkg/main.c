@@ -173,6 +173,9 @@ main(int argc, char **argv)
 	const char *buf = NULL;
 	bool b;
 	struct pkg_config_kv *kv = NULL;
+	
+	// Set stdout unbuffered
+        setvbuf(stdout, NULL, _IONBF, 0);
 
 	if (argc < 2)
 		usage();

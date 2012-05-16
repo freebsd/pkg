@@ -95,14 +95,16 @@ exec_repo(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	printf("Generating repo.sqlite in %s:  ", argv[1]);
 	retcode = pkg_create_repo(argv[1], progress, &pos);
+	printf("Generating repo.sqlite in %s:  ", argv[1]);
 
-	if (retcode != EPKG_OK)
+	if (retcode != EPKG_OK) {
 		printf("can not create repository");
-	else
-		printf("\bDone!\n");
-
+		return (retcode);
+	} else {
+		printf("\bdone!\n");
+	}
+	
 	rsa_key = (argc == 3) ? argv[2] : NULL;
 	pkg_finish_repo(argv[1], password_cb, rsa_key);
 

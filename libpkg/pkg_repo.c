@@ -650,6 +650,11 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	struct packing *pack;
 	unsigned char *sigret = NULL;
 	unsigned int siglen = 0;
+	
+	if (!is_dir(path)) {
+	    pkg_emit_error("%s is not a directory", path);
+	    return EPKG_FATAL;
+	}
 
 	snprintf(repo_path, sizeof(repo_path), "%s/repo.sqlite", path);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/repo", path);
