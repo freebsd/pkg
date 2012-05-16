@@ -2302,7 +2302,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
-	/* If no rows were INSERTED then pkg is not listed in the remote remo
+	/* If no rows were INSERTED then pkg is not listed in the remote repo
 	 * so there's nothing to upgrade to.  */
 	if (sqlite3_changes(db->sqlite) == 0) {
 		goto cleanup;
