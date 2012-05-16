@@ -57,9 +57,10 @@ exec_fetch(int argc, char **argv)
 	int retcode = EXIT_FAILURE;
 	int ch;
 	bool yes = false;
+	bool auto_update = true;
 	match_t match = MATCH_EXACT;
 
-	while ((ch = getopt(argc, argv, "ygxXr:qa")) != -1) {
+	while ((ch = getopt(argc, argv, "ygxXr:qaL")) != -1) {
 		switch (ch) {
 		case 'y':
 			yes = true;
@@ -82,6 +83,9 @@ exec_fetch(int argc, char **argv)
 		case 'q':
 			quiet = true;
 			break;
+		case 'L':
+			auto_update = false;
+			break;
 		default:
 			usage_fetch();
 			return (EX_USAGE);
@@ -102,7 +106,7 @@ exec_fetch(int argc, char **argv)
 	}
 
 	/* first update the remote repositories if needed */
-	if ((retcode = pkgcli_update()) != EPKG_OK)
+	if (auto_update && (retcode = pkgcli_update()) != EPKG_OK)
 		return (retcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {

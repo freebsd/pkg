@@ -53,13 +53,14 @@ exec_upgrade(int argc, char **argv)
 	int ch;
 	bool yes = false;
 	bool all = false;
+	bool auto_update = true;
 
 	if (geteuid() != 0) {
 		warnx("upgrading can only be done as root");
 		return (EX_NOPERM);
 	}
 
-	while ((ch = getopt(argc, argv, "yr:fq")) != -1) {
+	while ((ch = getopt(argc, argv, "yr:fqL")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = true;
@@ -72,6 +73,9 @@ exec_upgrade(int argc, char **argv)
 				break;
 			case 'f':
 				all = true;
+				break;
+			case 'L':
+				auto_update = false;
 				break;
 			default:
 				usage_upgrade();
@@ -88,7 +92,7 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	/* first update the remote repositories if needed */
-	if ((retcode = pkgcli_update()) != EPKG_OK)
+	if (auto_update && (retcode = pkgcli_update()) != EPKG_OK)
 		return (retcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {

@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl yqfgxX
+.Op Fl yqfgxXL
 .Ar <pkg-origin> <...>
 .Sh DESCRIPTION
 .Nm
@@ -56,6 +56,9 @@ doing a remote installation using
 .Pp
 The remote repository will automatically be updated using
 .Xr pkg-update 8 .
+This can be disabled with the
+.Fl L
+flag.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -72,6 +75,10 @@ Treat the package names as extended regular expressions.
 Force the reinstallation of the package if already installed.
 .It Fl q
 Force quiet output.
+.It Fl L
+Don't auto update the remote database with
+.Xr pkg-update 8 .
+Use the local cache only.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

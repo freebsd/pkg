@@ -59,11 +59,12 @@ exec_install(int argc, char **argv)
 	int retcode = 1;
 	int ch;
 	bool yes = false;
+	bool auto_update = true;
 
 	match_t match = MATCH_EXACT;
 	bool force = false;
 
-	while ((ch = getopt(argc, argv, "yfgxXr:q")) != -1) {
+	while ((ch = getopt(argc, argv, "yfgxXr:qL")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = true;
@@ -86,6 +87,9 @@ exec_install(int argc, char **argv)
 			case 'q':
 				quiet = true;
 				break;
+			case 'L':
+				auto_update = false;
+				break;
 			default:
 				usage_install();
 				return (EX_USAGE);
@@ -105,7 +109,7 @@ exec_install(int argc, char **argv)
 	}
 
 	/* first update the remote repositories if needed */
-	if ((retcode = pkgcli_update()) != EPKG_OK)
+	if (auto_update && (retcode = pkgcli_update()) != EPKG_OK)
 		return (retcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {

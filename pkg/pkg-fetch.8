@@ -24,7 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
-.Op Fl yqgxXa
+.Op Fl yqgxXaL
 .Ar <pkg-name>
 .Op ...
 .Sh DESCRIPTION
@@ -35,6 +35,9 @@ One or more packages, or patterns can be specified.
 .Pp
 The remote repository will automatically be updated using
 .Xr pkg-update 8 .
+This can be disabled with the
+.Fl L
+flag.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -64,6 +67,10 @@ as a regular expression.
 Treat
 .Ar <pkg-name>
 as an extended regular expression.
+.It Fl L
+Don't auto update the remote database with
+.Xr pkg-update 8 .
+Use the local cache only.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
