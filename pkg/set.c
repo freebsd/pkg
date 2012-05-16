@@ -54,6 +54,7 @@ exec_set(int argc, char **argv)
 	int ch;
 	int i;
 	bool yes_flag = false;
+	bool yes = yes_flag;
 	match_t match = MATCH_EXACT;
 	int newautomatic = -1;
 	bool automatic = false;
@@ -91,6 +92,7 @@ exec_set(int argc, char **argv)
 			case 'o':
 				sets |= ORIGIN;
 				loads |= PKG_LOAD_DEPS;
+				match = MATCH_ALL;
 				oldorigin = strdup(optarg);
 				neworigin = strrchr(oldorigin, ':');
 				if (neworigin == NULL) {
@@ -126,26 +128,36 @@ exec_set(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (neworigin != NULL) {
-		if ((it = pkgdb_query(db, neworigin, MATCH_EXACT)) == NULL) {
+	if (!yes_flag)
+		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes_flag);
+
+	if (oldorigin != NULL) {
+		yes = yes_flag;
+		match = MATCH_ALL;
+		if ((it = pkgdb_query(db, oldorigin, MATCH_EXACT)) == NULL) {
 			pkgdb_close(db);
 			return (EX_IOERR);
 		}
 
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
-			fprintf(stderr, "%s not installed", neworigin);
+			fprintf(stderr, "%s not installed\n", oldorigin);
 			free(oldorigin);
 			pkgdb_it_free(it);
 			pkgdb_close(db);
 			return (EX_SOFTWARE);
 		}
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		if (!yes)
+			yes = query_yesno("Change origin from %s to %s for %s-%s? [y/N]: ",
+			    oldorigin, neworigin, name, version);
+		if (yes) {
+			if (pkgdb_set(db, pkg, PKG_SET_ORIGIN, neworigin) != EPKG_OK)
+				return (EPKG_FATAL);
+		}
 		pkgdb_it_free(it);
 	}
 	i = 0;
 	do {
-		if (!yes_flag)
-			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes_flag);
-
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			if (oldorigin != NULL)
 				free(oldorigin);
@@ -154,7 +166,7 @@ exec_set(int argc, char **argv)
 		}
 
 		while (pkgdb_it_next(it, &pkg, loads) == EPKG_OK) {
-			bool yes = yes_flag;
+			yes = yes_flag;
 			if ((sets & AUTOMATIC) == AUTOMATIC) {
 				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
 				if (automatic == newautomatic)
@@ -167,20 +179,17 @@ exec_set(int argc, char **argv)
 						yes = query_yesno("Mark %s-%s as not automatically installed? [y/N]: ", name, version);
 				}
 				if (yes)
-					pkgdb_set(db, pkg, PKG_AUTOMATIC, newautomatic);
+					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, newautomatic);
 			}
 			if ((sets & ORIGIN) == ORIGIN) {
 				struct pkg_dep *d = NULL;
-				pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 				while (pkg_deps(pkg, &d) == EPKG_OK) {
-					if (strcmp(pkg_dep_get(d, PKG_DEP_ORIGIN), oldorigin) == 0) {
-						if (!yes)
-							yes = query_yesno("%s-%s: change %s dependency to %s? [y/N]: ", name, version, oldorigin, neworigin);
-						if (yes) {
-							if (pkgdb_set(db, pkg, PKG_DEP_ORIGIN, oldorigin, neworigin) != EPKG_OK)
-								return (EPKG_FATAL);
-						}
-					}
+					/*
+					 * Do not query user has he has already
+					 * been queried
+					 */
+					if (pkgdb_set(db, pkg, PKG_SET_DEPORIGIN, oldorigin, neworigin) != EPKG_OK)
+						return (EPKG_FATAL);
 				}
 			}
 		}

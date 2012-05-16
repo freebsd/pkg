@@ -182,6 +182,13 @@ typedef enum {
 	PKG_TIME,
 } pkg_attr;
 
+typedef enum {
+	PKG_SET_FLATSIZE = 1,
+	PKG_SET_AUTOMATIC,
+	PKG_SET_DEPORIGIN,
+	PKG_SET_ORIGIN
+} pkg_set_attr;
+
 /**
  * contains keys to refer to a string attribute
  * Used by pkg_dep_get()

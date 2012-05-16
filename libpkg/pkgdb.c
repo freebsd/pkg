@@ -3073,19 +3073,19 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		switch (attr) {
-			case PKG_FLATSIZE:
+			case PKG_SET_FLATSIZE:
 				snprintf(sql, BUFSIZ, "update packages set flatsize=%"PRId64" where id=%"PRId64";",
 				    va_arg(ap, int64_t), id);
 				sql_exec(db->sqlite, sql);
 				break;
-			case PKG_AUTOMATIC:
+			case PKG_SET_AUTOMATIC:
 				automatic = va_arg(ap, int);
 				if (automatic != 0 && automatic != 1)
 					continue;
 				snprintf(sql, BUFSIZ, "update packages set automatic=%d where id=%"PRId64";", automatic, id);
 				sql_exec(db->sqlite, sql);
 				break;
-			case PKG_DEP_ORIGIN:
+			case PKG_SET_DEPORIGIN:
 				oldorigin = va_arg(ap, char *);
 				neworigin = va_arg(ap, char *);
 				sqlite3_snprintf(BUFSIZ, sql, "update deps set origin='%q', "
@@ -3095,6 +3095,12 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 				    neworigin, neworigin, neworigin, id, oldorigin);
 				sql_exec(db->sqlite, sql);
 				break;
+			case PKG_SET_ORIGIN:
+				neworigin = va_arg(ap, char *);
+				sqlite3_snprintf(BUFSIZ, sql, "update packages set origin='%q' where id='%d';", neworigin, id);
+				sql_exec(db->sqlite, sql);
+				break;
+
 		}
 	}
 	return (EPKG_OK);
