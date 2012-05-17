@@ -165,10 +165,11 @@ pkg_is_valid(struct pkg *pkg)
 
 	for (i = 0; i < PKG_NUM_FIELDS; i++) {
 		if (fields[i].type & pkg->type && fields[i].optional == 0) {
-			if (pkg->fields[i] == NULL || sbuf_get(pkg->fields[i])[0] == '\0')
+			if (pkg->fields[i] == NULL || sbuf_get(pkg->fields[i])[0] == '\0') {
 				pkg_emit_error("package field incomplete: %s",
 				    fields[i].human_desc);
 				return (EPKG_FATAL);
+			}
 		}
 	}
 

@@ -1538,6 +1538,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	assert(db != NULL);
 
+	if (pkg_is_valid(pkg) != EPKG_OK) {
+		pkg_emit_error("the package is not valid");
+		return (EPKG_FATAL);
+	}
+
 	s = db->sqlite;
 
 	if (!complete && sql_exec(s, "BEGIN;") != EPKG_OK)

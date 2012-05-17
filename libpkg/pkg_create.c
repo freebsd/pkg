@@ -52,6 +52,10 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	struct stat st;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
+	if (pkg_is_valid(pkg) != EPKG_OK) {
+		pkg_emit_error("the package is not valid");
+		return (EPKG_FATAL);
+	}
 	/*
 	 * if the checksum is not provided in the manifest recompute it
 	 */
