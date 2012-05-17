@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd March 24, 2012
+.Dd May 18, 2012
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -51,7 +51,7 @@ and
 The following options can be defined in
 .Nm :
 .Bl -tag -width ".Cm ASSUME_ALWAYS_YES(boolean)"
-.It Cm ASSUME_ALWAYS_YES(boolean)
+.It Cm ASSUME_ALWAYS_YES: boolean
 When this option is enabled
 .Xr pkg 1
 will automatically assume "yes" to all questions
@@ -60,12 +60,12 @@ the
 .Fl y
 flag was specified.
 By default this option is disabled.
-.It Cm PUBKEY(string)
+.It Cm PUBKEY: string
 Specifies the location to the public RSA key used for signing the
 repository database.
 The default value for this file is
 .Fa /etc/ssl/pkg.conf
-.It Cm HANDLE_RC_SCRIPTS(boolean)
+.It Cm HANDLE_RC_SCRIPTS: boolean
 This option when enabled
 will automatically perform start/stop of services during package
 installation and deinstallation.
