@@ -37,26 +37,27 @@
 #include "private/utils.h"
 
 static struct _fields {
+	const char *human_desc;
 	int type;
 	int optional;
 } fields[] = {
-	[PKG_ORIGIN] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_NAME] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_VERSION] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_COMMENT] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_DESC] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_MTREE] = {PKG_FILE|PKG_INSTALLED, 1},
-	[PKG_MESSAGE] = {PKG_FILE|PKG_INSTALLED, 1},
-	[PKG_ARCH] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_MAINTAINER] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_WWW] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
-	[PKG_PREFIX] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_INFOS] = {PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
-	[PKG_REPOPATH] = {PKG_REMOTE, 0},
-	[PKG_CKSUM] = {PKG_REMOTE, 0},
-	[PKG_NEWVERSION] = {PKG_REMOTE, 1},
-	[PKG_REPONAME] = {PKG_REMOTE, 1},
-	[PKG_REPOURL] = {PKG_REMOTE, 1},
+	[PKG_ORIGIN] = {"origin", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_NAME] = {"name", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_VERSION] = {"version", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_COMMENT] = {"comment", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_DESC] = {"description", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_MTREE] = {"mtree", PKG_FILE|PKG_INSTALLED, 1},
+	[PKG_MESSAGE] = {"message", PKG_FILE|PKG_INSTALLED, 1},
+	[PKG_ARCH] = {"architecture", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_MAINTAINER] = {"maintainer", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_WWW] = {"www", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
+	[PKG_PREFIX] = {"prefix", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_INFOS] = {"information", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
+	[PKG_REPOPATH] = {"repopath", PKG_REMOTE, 0},
+	[PKG_CKSUM] = {"checksum", PKG_REMOTE, 0},
+	[PKG_NEWVERSION] = {"newversion", PKG_REMOTE, 1},
+	[PKG_REPONAME] = {"reponame", PKG_REMOTE, 1},
+	[PKG_REPOURL] = {"repourl", PKG_REMOTE, 1},
 };
 
 int
@@ -158,13 +159,15 @@ pkg_is_valid(struct pkg *pkg)
 	int i;
 
 	if (pkg->type == 0) {
-		pkg_emit_error("package type undefinied");
+		pkg_emit_error("package type undefined");
 		return (EPKG_FATAL);
 	}
 
 	for (i = 0; i < PKG_NUM_FIELDS; i++) {
 		if (fields[i].type & pkg->type && fields[i].optional == 0) {
 			if (pkg->fields[i] == NULL || sbuf_get(pkg->fields[i])[0] == '\0')
+				pkg_emit_error("package field incomplete: %s",
+				    fields[i].human_desc);
 				return (EPKG_FATAL);
 		}
 	}
