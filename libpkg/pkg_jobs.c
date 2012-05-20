@@ -128,7 +128,7 @@ pkg_jobs_keep_files_to_del(struct pkg *p1, struct pkg *p2)
 			continue;
 
 		f2 = NULL;
-		while (pkg_files(p2, &f2)) {
+		while (pkg_files(p2, &f2) == EPKG_OK) {
 			if (strcmp(pkg_file_get(f1, PKG_FILE_PATH), pkg_file_get(f2, PKG_FILE_PATH)) == 0) {
 				f1->keep = 1;
 				break;
@@ -140,7 +140,7 @@ pkg_jobs_keep_files_to_del(struct pkg *p1, struct pkg *p2)
 		if (d1->keep == 1)
 			continue;
 		d2 = NULL;
-		while (pkg_dirs(p2, &d2)) {
+		while (pkg_dirs(p2, &d2) == EPKG_OK) {
 			if (strcmp(pkg_dir_path(d1), pkg_dir_path(d2)) == 0) {
 				d1->keep = 1;
 				break;
