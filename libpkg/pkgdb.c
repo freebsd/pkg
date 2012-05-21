@@ -2527,7 +2527,12 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin";
 	}
 
-	const char weight_sql[] = "UPDATE pkgjobs set weight=(select count(*) from '%s'.deps as d where d.origin=pkgjobs.origin)";
+	const char weight_sql[] = "UPDATE pkgjobs SET weight=("
+		"SELECT COUNT(*) FROM '%s'.deps AS d, '%s'.packages AS p, pkgjobs AS j "
+			"WHERE d.origin = pkgjobs.origin "
+				"AND d.package_id = p.id "
+				"AND p.origin = j.origin"
+		");";
 
 	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL)
 		return (NULL);
@@ -2555,7 +2560,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	sql_exec(db->sqlite, pkgjobs_sql_3);
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, weight_sql, reponame);
+	sbuf_printf(sql, weight_sql, reponame, reponame);
 	sbuf_finish(sql);
 
 	sql_exec(db->sqlite, sbuf_get(sql));
