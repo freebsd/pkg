@@ -42,7 +42,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqdgxXadL] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxXadL] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
 }
 
