@@ -42,7 +42,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxXa] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqdgxXadL] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
 }
 
@@ -56,11 +56,12 @@ exec_fetch(int argc, char **argv)
 	const char *reponame = NULL;
 	int retcode = EXIT_FAILURE;
 	int ch;
+	int flags = PKG_LOAD_BASIC;
 	bool yes = false;
 	bool auto_update = true;
 	match_t match = MATCH_EXACT;
 
-	while ((ch = getopt(argc, argv, "ygxXr:qaL")) != -1) {
+	while ((ch = getopt(argc, argv, "ygxXr:qaLd")) != -1) {
 		switch (ch) {
 		case 'y':
 			yes = true;
@@ -85,6 +86,9 @@ exec_fetch(int argc, char **argv)
 			break;
 		case 'L':
 			auto_update = false;
+			break;
+		case 'd':
+			flags |= PKG_LOAD_DEPS;
 			break;
 		default:
 			usage_fetch();
@@ -117,10 +121,10 @@ exec_fetch(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if ((it = pkgdb_query_fetch(db, match, argc, argv, reponame)) == NULL)
+	if ((it = pkgdb_query_fetch(db, match, argc, argv, reponame, flags)) == NULL)
 		goto cleanup;
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}

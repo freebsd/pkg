@@ -3135,7 +3135,7 @@ pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...)
 }
 
 struct pkgdb_it *
-pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, const char *repo)
+pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, const char *repo, int flags)
 {
 	sqlite3_stmt *stmt = NULL;
 	int i = 0;
@@ -3212,14 +3212,16 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 	sbuf_clear(sql);
 
 	/* Append dependencies */
-	sbuf_reset(sql);
-	sbuf_printf(sql, deps_sql, reponame, reponame);
-	sbuf_finish(sql);
-
-	do {
-		sql_exec(db->sqlite, sbuf_get(sql));
-	} while (sqlite3_changes(db->sqlite) != 0);
-
+	if (flags & PKG_LOAD_DEPS) {
+		sbuf_reset(sql);
+		sbuf_printf(sql, deps_sql, reponame, reponame);
+		sbuf_finish(sql);
+		
+		do {
+			sql_exec(db->sqlite, sbuf_get(sql));
+		} while (sqlite3_changes(db->sqlite) != 0);
+	}
+		
 	sbuf_reset(sql);
 	sbuf_printf(sql, weight_sql, reponame);
 	sbuf_finish(sql);
