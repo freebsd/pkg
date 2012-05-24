@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 12, 2012
+.Dd May 24, 2012
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -24,7 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
-.Op Fl yqgxXaL
+.Op Fl yqgxXadL
 .Ar <pkg-name>
 .Op ...
 .Sh DESCRIPTION
@@ -71,6 +71,8 @@ as an extended regular expression.
 Don't auto update the remote database with
 .Xr pkg-update 8 .
 Use the local cache only.
+.It Fl d
+Fetch the package and it's dependencies as well.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
