@@ -181,7 +181,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	}
 
 	/*
-	 * note == NULL means no freebsd
+	 * note == NULL usually means a shared object for use with dlopen(3)
 	 * dynamic == NULL means not a dynamic linked elf
 	 */
 	if (dynamic == NULL) {
@@ -189,7 +189,6 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	/* some freebsd binaries don't have notes like some perl modules */
 	if (note != NULL) {
 		data = elf_getdata(note, NULL);
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
