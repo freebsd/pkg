@@ -21,6 +21,7 @@ Table of Contents
 * [When will pkgng be the default package manager?](#14)
 * [How can I use pkgng with portmaster?](#15)
 * [How can I use pkgng with portupgrade?](#16)
+* [pkgng does not work it says: /usr/local/sbin/pkg: Undefined symbol "pkg_event_register"](#17)
 
 <a name="0"></a>
 ### Q: How can I start using pkgng?
@@ -144,3 +145,12 @@ Currently only **ports-mgmt/portupgrade-devel** supports pkgng.
     # pkg2ng
 
 More information can be found in the portupgrade [NEWS](https://github.com/pkgtools/pkgtools/blob/master/NEWS.md) file.
+
+<a name="17"></a>
+### Q: pkgng does not work it says: /usr/local/sbin/pkg: Undefined symbol "pkg_event_register"
+
+You should have forgotten make delete-old-libs when you upgraded your system.
+
+during 9-CURRENT life the pkg_install tools has been splitted to provide a
+shared library: libpkg.so.0 and this has been reverted, this error message means
+that this library is still on your system, please check /usr/lib/libpkg.so.0
