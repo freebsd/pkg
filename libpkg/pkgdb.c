@@ -2441,7 +2441,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 			"cksum, repopath, automatic) "
 			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
 			"l.maintainer, l.www, l.prefix, l.flatsize, r.version AS newversion, "
-			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
+			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, l.automatic "
 			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin ");
 
 	sbuf_reset(sql);
@@ -2514,7 +2514,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"cksum, repopath, automatic) "
 			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
 			"l.maintainer, l.www, l.prefix, l.flatsize, r.version AS newversion, "
-			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
+			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, l.automatic "
 			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin "
 			"AND (PKGLT(l.version, r.version) OR (l.name != r.name))";
 	} else {
@@ -2523,7 +2523,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"cksum, repopath, automatic) "
 			"SELECT l.id, l.origin, l.name, l.version, l.comment, l.desc, l.message, l.arch, "
 			"l.maintainer, l.www, l.prefix, l.flatsize, r.version AS newversion, "
-			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, r.automatic "
+			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, r.repopath, l.automatic "
 			"FROM main.packages AS l, pkgjobs AS r WHERE l.origin = r.origin";
 	}
 
