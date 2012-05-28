@@ -93,6 +93,7 @@ exec_register(int argc, char **argv)
 	size_t size;
 
 	bool legacy = false;
+	bool arch_indep = false;
 
 	int i;
 	int ret = EPKG_OK, retcode = EPKG_OK;
@@ -138,17 +139,7 @@ exec_register(int argc, char **argv)
 	if (plist == NULL)
 		errx(EX_USAGE, "missing -f flag");
 
-	if (arch == NULL) {
-		/*
-		 * do not take the one from configuration on purpose
-		 * but the real abi of the package
-		 */
-		pkg_get_myarch(myarch, BUFSIZ);
-		pkg_set(pkg, PKG_ARCH, myarch);
-	} else {
-		pkg_set(pkg, PKG_ARCH, arch);
-		free(arch);
-	}
+	pkg_config_bool(PKG_CONFIG_ARCH_INDEP, &arch_indep);
 
 	if (mdir == NULL)
 		errx(EX_USAGE, "missing -m flag");
@@ -207,6 +198,26 @@ exec_register(int argc, char **argv)
 	}
 
 	pkg_analyse_files(db, pkg);
+
+	if (arch == NULL) {
+		/*
+		 * do not take the one from configuration on purpose
+		 * but the real abi of the package.
+		 *
+		 * Don't label any package as arch-indep unless arch_indep
+		 * is set: default to treating everything as
+		 * architecture dependent.
+		 */
+		if (arch_indep && pkg_is_arch_indep(pkg) == EPKG_OK)
+			pkg_get_myarch_indep(myarch, BUFSIZ);
+		else
+			pkg_get_myarch(myarch, BUFSIZ);
+
+		pkg_set(pkg, PKG_ARCH, myarch);
+	} else {
+		pkg_set(pkg, PKG_ARCH, arch);
+		free(arch);
+	}
 
 	if (input_path != NULL) {
 		pkg_copy_tree(pkg, input_path, "/");

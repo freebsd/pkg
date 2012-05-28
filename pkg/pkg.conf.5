@@ -111,6 +111,11 @@ forgotten by the maintainer.
 default: off
 .It Cm ABI: string
 the abi of the package you want to install, by default the /bin/sh abi is used
+.It Cm ARCH_INDEP: boolean
+Analyse package contents to detect when it consists entirely of
+architecture independent files (ie. no ELF objects are contained
+within it)
+default: off
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration

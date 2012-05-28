@@ -257,6 +257,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_AUTODEPS = 12,
 	PKG_CONFIG_ABI = 13,
 	PKG_CONFIG_DEVELOPER_MODE = 14,
+	PKG_CONFIG_ARCH_INDEP = 15,
 } pkg_config_key;
 
 typedef enum {
@@ -325,6 +326,11 @@ void pkg_free(struct pkg *);
  * Check if a package is valid according to its type.
  */
 int pkg_is_valid(struct pkg *);
+
+/**
+ * Check if a package is marked architecture independent
+ */
+int pkg_is_arch_indep(struct pkg *);
 
 /**
  * Open a package file archive and retrive informations.
@@ -435,6 +441,8 @@ int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
  * It respects the SHLIBS and AUTODEPS options from configuration
  * @return An error code
  */
+
+#define PKG_CONTAINS_ARCH_DEP (1<<24) /* Don't conflict with PKG_LOAD_* q.v. */
 
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
 /**
@@ -930,6 +938,7 @@ void pkg_test_filesum(struct pkg *);
 void pkg_recompute(struct pkgdb *, struct pkg *);
 
 int pkg_get_myarch(char *pkgarch, size_t sz);
+int pkg_get_myarch_indep(char *pkgarch, size_t sz);
 
 void pkgdb_cmd(int argc, char **argv);
 #endif

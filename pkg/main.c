@@ -266,6 +266,8 @@ main(int argc, char **argv)
 			printf("Custom keywords directory: %s\n", buf ? buf : "none");
 			pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &b);
 			printf("Developer mode: %s\n", b ? "yes" : "no");
+			pkg_config_bool(PKG_CONFIG_ARCH_INDEP, &b);
+			printf("Detect achitecture independence: %s\n", b ? "yes" : "no");
 		}
 		pkg_config_bool(PKG_CONFIG_MULTIREPOS, &b);
 		if (b) {
