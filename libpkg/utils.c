@@ -370,16 +370,16 @@ bool is_hardlink(struct hardlinks *hl, struct stat *st)
 	size_t i;
 
 	for (i = 0; i < hl->len; i++) {
-		if (hl->inodes[i] == st->st_ino) {
-			if (hl->cap <= hl->len) {
-				hl->cap |= 1;
-				hl->cap *= 2;
-				hl->inodes = reallocf(hl->inodes,
-						hl->cap * sizeof(ino_t));
-			}
-			hl->inodes[hl->len++] = st->st_ino;
-			return false;
-		}
+		if (hl->inodes[i] == st->st_ino)
+			return (false);
 	}
-	return true;
+	if (hl->cap <= hl->len) {
+		hl->cap |= 1;
+		hl->cap *= 2;
+		hl->inodes = reallocf(hl->inodes,
+				hl->cap * sizeof(ino_t));
+	}
+	hl->inodes[hl->len++] = st->st_ino;
+
+	return (true);
 }
