@@ -75,6 +75,7 @@ static struct commands {
 	{ "search", "Performs a search in remote package repositories", exec_search, usage_search},
 	{ "set", "Modify local database informations", exec_set, usage_set},
 	{ "register", "Registers a package into the local package database", exec_register, usage_register},
+	{ "remove", "Deletes packages from the database and the system", exec_delete, usage_delete},
 	{ "repo", "Creates a package database repository", exec_repo, usage_repo},
 	{ "rquery", "Query information from the remote repository", exec_rquery, usage_rquery},
 	{ "shell", "Open a debug shell", exec_shell, usage_shell},
