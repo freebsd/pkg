@@ -1085,14 +1085,12 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		snprintf(spath, sizeof(spath), "%s%s", src, pkg_dir_path(dir));
 		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_dir_path(dir));
-		printf("%s -> %s\n", spath, dpath);
 		packing_append_file(pack, spath, dpath);
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		snprintf(spath, sizeof(spath), "%s%s", src, pkg_file_get(file, PKG_FILE_PATH));
 		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_file_get(file, PKG_FILE_PATH));
-		printf("%s -> %s\n", spath, dpath);
 		packing_append_file(pack, spath, dpath);
 	}
 
