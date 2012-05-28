@@ -760,11 +760,30 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 	return (it);
 }
 
+static struct load_on_flag {
+	int flag;
+	int (*load)(struct pkgdb *db, struct pkg *p);
+} load_on_flag[] = {
+	{ PKG_LOAD_DEPS, pkgdb_load_deps },
+	{ PKG_LOAD_RDEPS, pkgdb_load_rdeps },
+	{ PKG_LOAD_FILES, pkgdb_load_files },
+	{ PKG_LOAD_DIRS, pkgdb_load_dirs },
+	{ PKG_LOAD_SCRIPTS, pkgdb_load_scripts },
+	{ PKG_LOAD_OPTIONS, pkgdb_load_options },
+	{ PKG_LOAD_MTREE, pkgdb_load_mtree },
+	{ PKG_LOAD_CATEGORIES, pkgdb_load_category },
+	{ PKG_LOAD_LICENSES, pkgdb_load_license },
+	{ PKG_LOAD_USERS, pkgdb_load_user },
+	{ PKG_LOAD_GROUPS, pkgdb_load_group },
+	{ PKG_LOAD_SHLIBS, pkgdb_load_shlib },
+	{ -1, NULL }
+};
 
 int
 pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 {
 	struct pkg *pkg;
+	int i;
 	int ret;
 
 	assert(it != NULL);
@@ -779,53 +798,11 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, int flags)
 
 		populate_pkg(it->stmt, pkg);
 
-		if (flags & PKG_LOAD_DEPS)
-			if ((ret = pkgdb_load_deps(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_RDEPS)
-			if ((ret = pkgdb_load_rdeps(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_FILES)
-			if ((ret = pkgdb_load_files(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_DIRS)
-			if ((ret = pkgdb_load_dirs(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_SCRIPTS)
-			if ((ret = pkgdb_load_scripts(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_OPTIONS)
-			if ((ret = pkgdb_load_options(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_MTREE)
-			if ((ret = pkgdb_load_mtree(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_CATEGORIES)
-			if ((ret = pkgdb_load_category(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_LICENSES)
-			if ((ret = pkgdb_load_license(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_USERS)
-			if ((ret = pkgdb_load_user(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_GROUPS)
-			if ((ret = pkgdb_load_group(it->db, pkg)) != EPKG_OK)
-				return (ret);
-
-		if (flags & PKG_LOAD_SHLIBS)
-			if ((ret = pkgdb_load_shlib(it->db, pkg)) != EPKG_OK)
-				return (ret);
+		for (i = 0; load_on_flag[i].load != NULL; i++) {
+			if (flags & load_on_flag[i].flag)
+				if ((ret = load_on_flag[i].load(it->db, pkg)) != EPKG_OK)
+					return (ret);
+		}
 
 		return (EPKG_OK);
 	case SQLITE_DONE:
