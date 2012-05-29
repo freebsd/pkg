@@ -363,7 +363,7 @@ get_myarch(char *dest, size_t sz, bool arch_indep)
 		snprintf(dest, sz, "%s:%d:%s",
 			 osname,
 			 version / 100000,
-			 "arch-indep");
+			 "*");
 	} else {
 		snprintf(dest, sz, "%s:%d:%s:%s",
 			 osname,
