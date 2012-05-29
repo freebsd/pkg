@@ -152,7 +152,7 @@ pkg_update(const char *name, const char *packagesite)
 				goto cleanup;
 			}
 		} else {
-			pkg_emit_error("No signature found in the repository, this is mandatory");
+			pkg_emit_error("No signature found in the repository. This is mandatory as PKG_CONFIG_SIGNED_REPOS is enabled.");
 			rc = EPKG_FATAL;
 			unlink(repofile_unchecked);
 			goto cleanup;
