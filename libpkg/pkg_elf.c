@@ -114,7 +114,7 @@ test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 static int
 analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 {
-	Elf *e;
+	Elf *e = NULL;
 	GElf_Ehdr elfhdr;
 	Elf_Scn *scn = NULL;
 	Elf_Scn *note = NULL;
