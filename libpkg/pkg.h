@@ -444,6 +444,16 @@ int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
 #define pkgdb_set(db, pkg, ...) pkgdb_set2(db, pkg, __VA_ARGS__, -1)
 
 /**
+ * update the checksum of a file in the database (and the object)
+ * XXX I don't think this function should be part of a public API.
+ * @param db A pointer to a struct pkgdb object
+ * @param file A pointer to a struct pkg_file object
+ * @param sha256 The new checksum
+ * @return An error code
+ */
+int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256);
+
+/**
  * Read the content of a file into a buffer, then call pkg_set().
  */
 int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
@@ -914,7 +924,7 @@ int pkg_init(const char *);
 int pkg_shutdown(void);
 
 void pkg_test_filesum(struct pkg *);
-int64_t pkg_recompute_flatsize(struct pkg *);
+void pkg_recompute(struct pkgdb *, struct pkg *);
 
 int pkg_get_myarch(char *pkgarch, size_t sz);
 
