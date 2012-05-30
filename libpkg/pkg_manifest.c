@@ -693,7 +693,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), strlen(key), YAML_PLAIN_SCALAR_STYLE), id); \
 	} while (0)
 
-	yaml_document_initialize(&doc, NULL, NULL, NULL, 1, 1);
+	yaml_document_initialize(&doc, NULL, NULL, NULL, 0, 1);
 	mapping = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin, PKG_COMMENT, &comment,
