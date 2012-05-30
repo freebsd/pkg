@@ -93,7 +93,7 @@ exec_register(int argc, char **argv)
 	size_t size;
 
 	bool legacy = false;
-	bool arch_indep = false;
+	bool developer = false;
 
 	int i;
 	int ret = EPKG_OK, retcode = EPKG_OK;
@@ -102,6 +102,8 @@ exec_register(int argc, char **argv)
 		warnx("registering packages can only be done as root");
 		return (EX_NOPERM);
 	}
+
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
 	pkg_new(&pkg, PKG_INSTALLED);
 	while ((ch = getopt(argc, argv, "a:f:m:i:ld")) != -1) {
@@ -138,8 +140,6 @@ exec_register(int argc, char **argv)
 
 	if (plist == NULL)
 		errx(EX_USAGE, "missing -f flag");
-
-	pkg_config_bool(PKG_CONFIG_ARCH_INDEP, &arch_indep);
 
 	if (mdir == NULL)
 		errx(EX_USAGE, "missing -m flag");
@@ -203,21 +203,16 @@ exec_register(int argc, char **argv)
 		/*
 		 * do not take the one from configuration on purpose
 		 * but the real abi of the package.
-		 *
-		 * Don't label any package as arch-indep unless arch_indep
-		 * is set: default to treating everything as
-		 * architecture dependent.
 		 */
-		if (arch_indep && pkg_is_arch_indep(pkg) == EPKG_OK)
-			pkg_get_myarch_indep(myarch, BUFSIZ);
-		else
-			pkg_get_myarch(myarch, BUFSIZ);
-
+		pkg_get_myarch(myarch, BUFSIZ);
 		pkg_set(pkg, PKG_ARCH, myarch);
 	} else {
 		pkg_set(pkg, PKG_ARCH, arch);
 		free(arch);
 	}
+
+	if (developer)
+		pkg_suggest_arch(pkg, arch);
 
 	if (input_path != NULL) {
 		pkg_copy_tree(pkg, input_path, "/");

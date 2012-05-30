@@ -132,11 +132,11 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 
 	bool shlibs = false;
 	bool autodeps = false;
-	bool arch_indep = false;
+	bool developer = false;
 
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
-	pkg_config_bool(PKG_CONFIG_ARCH_INDEP, &arch_indep);
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
 	int fd;
 
@@ -162,8 +162,8 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		return (EPKG_END); /* Not an elf file: no results */
 	}
 
-	if (arch_indep)
-		pkg->flags |= PKG_CONTAINS_ARCH_DEP;
+	if (developer)
+		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
 
 	if (!autodeps && !shlibs) {
 	   ret = EPKG_OK;
@@ -242,32 +242,63 @@ cleanup:
 	return (ret);
 }
 
+static int
+analyse_fpath(struct pkg *pkg, const char *fpath)
+{
+	const char *dot;
+
+	dot = strrchr(fpath, '.');
+
+	if (dot == NULL)	/* No extension */
+		return (EPKG_OK);
+
+	if (dot[1] == 'a' && dot[2] == '\0')
+		pkg->flags |= PKG_CONTAINS_STATIC_LIBS;
+
+	if ((dot[1] == 'l' && dot[2] == 'a' && dot[3] == '\0') ||
+	    (dot[1] == 'h' && dot[2] == '\0'))
+		pkg->flags |= PKG_CONTAINS_H_OR_LA;
+
+	return (EPKG_OK);
+}
+
 int
 pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
+	const char *fpath;
 	bool shlibs = false;
 	bool autodeps = false;
-	bool arch_indep = false;
+	bool developer = false;
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
-	pkg_config_bool(PKG_CONFIG_ARCH_INDEP, &arch_indep);
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
-	if (!autodeps && !shlibs && !arch_indep)
+	if (!autodeps && !shlibs && !developer)
 		return (EPKG_OK);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
-	if (arch_indep)
-		pkg->flags &= ~PKG_CONTAINS_ARCH_DEP; /* Assume no architecture dependence, for contradiction */
+	/* Assume no architecture dependence, for contradiction */
+	if (developer)
+		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
+				PKG_CONTAINS_STATIC_LIBS |
+				PKG_CONTAINS_H_OR_LA);
 
-	while (pkg_files(pkg, &file) == EPKG_OK)
-		analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH));
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		fpath = pkg_file_get(file, PKG_FILE_PATH);
+		ret = analyse_elf(db, pkg, fpath);
+		if (developer) {
+			if ( ret != EPKG_OK && ret != EPKG_END )
+				return (ret);
+			analyse_fpath(pkg, fpath);
+		}
+	}
 
-	return (ret);
+	return (EPKG_OK);
 }
 
 static const char *
@@ -424,4 +455,22 @@ int
 pkg_get_myarch_indep(char *dest, size_t sz)
 {
 	return (get_myarch(dest, sz, true));
+}
+
+int
+pkg_suggest_arch(struct pkg *pkg, const char *arch)
+{
+	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
+		/* Definitely has to be arch specific */
+		pkg_emit_error("Package installs architecture specific files");
+	} else {
+		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
+			/* Could well be arch specific */
+			pkg_emit_error("Warning: package installs C/C++ headers or libtool library files, which are frequently architecture specific.");
+		} else {
+			/* Might be arch independent */
+			pkg_emit_error("No architecture specific files found (which doesn't mean there aren't any) -- test before marking as architecture independent");
+		}
+	}
+	return (EPKG_OK);
 }
