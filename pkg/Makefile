@@ -77,4 +77,6 @@ MAN=	pkg.8 \
 	pkg-which.8 \
 	pkg.conf.5
 
+MLINKS=	pkg-delete.8 pkg-remove.8
+
 .include <bsd.prog.mk>
