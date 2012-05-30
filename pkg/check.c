@@ -239,10 +239,8 @@ exec_check(int argc, char **argv)
 	bool yes = false;
 	bool dcheck = false;
 	bool checksums = false;
-	bool recomputeflatsize = false;
+	bool recompute = false;
 	int nbpkgs = 0;
-	int64_t flatsize;
-	int64_t newflatsize;
 	int i;
 	int verbose = 0;
 
@@ -274,10 +272,10 @@ exec_check(int argc, char **argv)
 				flags |= PKG_LOAD_FILES;
 				break;
 			case 'r':
-				recomputeflatsize = true;
+				recompute = true;
 				flags |= PKG_LOAD_FILES;
 				if (geteuid() != 0)
-					errx(EX_USAGE, "Needs to be root to recompute the flatsize");
+					errx(EX_USAGE, "Needs to be root to recompute the checksums and size");
 				break;
 			case 'v':
 				verbose = 1;
@@ -291,9 +289,9 @@ exec_check(int argc, char **argv)
 	argv += optind;
 
 	/* Default to all packages if no pkg provided */
-	if (argc == 0 && (dcheck || checksums || recomputeflatsize)) {
+	if (argc == 0 && (dcheck || checksums || recompute)) {
 		match = MATCH_ALL;
-	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recomputeflatsize)) {
+	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recompute)) {
 		usage_check();
 		return (EX_USAGE);
 	}
@@ -330,13 +328,10 @@ exec_check(int argc, char **argv)
 					printf("Checking checksums: %s\n", pkgname);
 				pkg_test_filesum(pkg);
 			}
-			if (recomputeflatsize) {
+			if (recompute) {
 				if (verbose)
-					printf("Recomputing size: %s\n", pkgname);
-				newflatsize = pkg_recompute_flatsize(pkg);
-				pkg_get(pkg, PKG_FLATSIZE, &flatsize);
-				if (newflatsize != flatsize)
-					pkgdb_set(db, pkg, PKG_SET_FLATSIZE, newflatsize);
+					printf("Recomputing size and sums: %s\n", pkgname);
+				pkg_recompute(db, pkg);
 			}
 		}
 
