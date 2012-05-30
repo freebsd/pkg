@@ -3111,6 +3111,31 @@ pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...)
 	return (ret);
 }
 
+int
+pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256)
+{
+	sqlite3_stmt *stmt = NULL;
+	const char sql_file_update[] = ""
+		"UPDATE files SET sha256=?1 WHERE path=?2";
+
+	if (sqlite3_prepare_v2(db->sqlite, sql_file_update, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+	sqlite3_bind_text(stmt, 1, sha256, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, pkg_file_get(file, PKG_FILE_PATH), -1, SQLITE_STATIC);
+
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		ERROR_SQLITE(db->sqlite);
+		sqlite3_finalize(stmt);
+		return (EPKG_FATAL);
+	}
+	sqlite3_finalize(stmt);
+	strlcpy(file->sum, sha256, sizeof(file->sum));
+
+	return (EPKG_OK);
+}
+
 struct pkgdb_it *
 pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, const char *repo, int flags)
 {
