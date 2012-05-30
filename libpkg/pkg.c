@@ -1119,22 +1119,29 @@ pkg_test_filesum(struct pkg *pkg)
 	}
 }
 
-int64_t
-pkg_recompute_flatsize(struct pkg *pkg)
+void
+pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
 	const char *path;
 	struct hardlinks hl = { NULL, 0, 0 };
 	int64_t flatsize = 0;
+	int64_t oldflatsize;
 	struct stat st;
 	bool regular = false;
+	const char *sum;
+	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		path = pkg_file_get(f, PKG_FILE_PATH);
+		sum = pkg_file_get(f, PKG_FILE_SUM);
 		if (lstat(path, &st) == 0) {
 			regular = true;
-			if (S_ISLNK(st.st_mode))
+			if (S_ISLNK(st.st_mode)) {
 				regular = false;
+				*sha256 = '\0';
+			} else
+				sha256_file(path, sha256);
 
 			/* special case for hardlinks */
 			if (st.st_nlink > 1)
@@ -1143,8 +1150,13 @@ pkg_recompute_flatsize(struct pkg *pkg)
 			if (regular)
 				flatsize += st.st_size;
 		}
+		if (strcmp(sha256, sum) != 0)
+			pkgdb_file_set_cksum(db, f, sha256);
 	}
-	return (flatsize);
+
+	pkg_get(pkg, PKG_FLATSIZE, &oldflatsize);
+	if (flatsize != oldflatsize)
+		pkgdb_set(db, pkg, PKG_SET_FLATSIZE, flatsize);
 }
 
 int
