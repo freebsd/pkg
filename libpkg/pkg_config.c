@@ -157,6 +157,12 @@ static struct config_entry c[] = {
 		"DEVELOPER_MODE",
 		"NO",
 		{ NULL }
+	},
+	[PKG_CONFIG_ARCH_INDEP] = {
+		BOOL,
+		"ARCH_INDEP",
+		"NO",
+		{ NULL }
 	}
 };
 

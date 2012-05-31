@@ -176,6 +176,15 @@ pkg_is_valid(struct pkg *pkg)
 	return (EPKG_OK);
 }
 
+int
+pkg_is_arch_indep(struct pkg *pkg)
+{
+	if (pkg->flags & PKG_CONTAINS_ARCH_DEP)
+		return EPKG_FATAL;
+	else
+		return EPKG_OK;
+}
+
 static int
 pkg_vget(struct pkg const *const pkg, va_list ap)
 {

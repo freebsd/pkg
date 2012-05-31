@@ -130,6 +130,14 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	size_t dynidx;
 	const char *osname;
 
+	bool shlibs = false;
+	bool autodeps = false;
+	bool arch_indep = false;
+
+	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+	pkg_config_bool(PKG_CONFIG_ARCH_INDEP, &arch_indep);
+
 	int fd;
 
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
@@ -152,6 +160,14 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	if (elf_kind(e) != ELF_K_ELF) {
 		close(fd);
 		return (EPKG_END); /* Not an elf file: no results */
+	}
+
+	if (arch_indep)
+		pkg->flags |= PKG_CONTAINS_ARCH_DEP;
+
+	if (!autodeps && !shlibs) {
+	   ret = EPKG_OK;
+	   goto cleanup;
 	}
 
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
@@ -181,7 +197,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	}
 
 	/*
-	 * note == NULL means no freebsd
+	 * note == NULL usually means a shared object for use with dlopen(3)
 	 * dynamic == NULL means not a dynamic linked elf
 	 */
 	if (dynamic == NULL) {
@@ -189,7 +205,6 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	/* some freebsd binaries don't have notes like some perl modules */
 	if (note != NULL) {
 		data = elf_getdata(note, NULL);
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
@@ -234,15 +249,20 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	int ret = EPKG_OK;
 	bool shlibs = false;
 	bool autodeps = false;
+	bool arch_indep = false;
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
+	pkg_config_bool(PKG_CONFIG_ARCH_INDEP, &arch_indep);
 
-	if (!autodeps && !shlibs)
+	if (!autodeps && !shlibs && !arch_indep)
 		return (EPKG_OK);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
+
+	if (arch_indep)
+		pkg->flags &= ~PKG_CONTAINS_ARCH_DEP; /* Assume no architecture dependence, for contradiction */
 
 	while (pkg_files(pkg, &file) == EPKG_OK)
 		analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH));
@@ -263,8 +283,8 @@ elf_corres_to_string(struct _elf_corres* m, int e)
 }
 
 
-int
-pkg_get_myarch(char *dest, size_t sz)
+static int
+get_myarch(char *dest, size_t sz, bool arch_indep)
 {
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
@@ -339,44 +359,51 @@ pkg_get_myarch(char *dest, size_t sz)
 	for (i = 0; osname[i] != '\0'; i++)
 		osname[i] = (char)tolower(osname[i]);
 
-	snprintf(dest, sz, "%s:%d:%s:%s",
-	    osname,
-	    version / 100000,
-	    elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
-	    elf_corres_to_string(wordsize_corres, (int)elfhdr.e_ident[EI_CLASS]));
+	if (arch_indep) {
+		snprintf(dest, sz, "%s:%d:%s",
+			 osname,
+			 version / 100000,
+			 "arch-indep");
+	} else {
+		snprintf(dest, sz, "%s:%d:%s:%s",
+			 osname,
+			 version / 100000,
+			 elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
+			 elf_corres_to_string(wordsize_corres, (int)elfhdr.e_ident[EI_CLASS]));
 
-	switch (elfhdr.e_machine) {
-		case EM_ARM:
-			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
-			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-			    (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
-			    (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
-			break;
-		case EM_MIPS:
-			/*
-			 * this is taken from binutils sources:
-			 * include/elf/mips.h
-			 * mapping is figured out from binutils:
-			 * gas/config/tc-mips.c
-			 */
-			switch (elfhdr.e_flags & EF_MIPS_ABI) {
-				case E_MIPS_ABI_O32:
-					abi = "o32";
-					break;
-				case E_MIPS_ABI_N32:
-					abi = "n32";
-					break;
-				default:
-					if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
+		switch (elfhdr.e_machine) {
+			case EM_ARM:
+				snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+					 elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
+					 (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
+					 (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
+				break;
+			case EM_MIPS:
+				/*
+				 * this is taken from binutils sources:
+				 * include/elf/mips.h
+				 * mapping is figured out from binutils:
+				 * gas/config/tc-mips.c
+				 */
+				switch (elfhdr.e_flags & EF_MIPS_ABI) {
+					case E_MIPS_ABI_O32:
 						abi = "o32";
-					else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
-						abi = "n64";
-					break;
-			}
-			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
-			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-			    abi);
-			break;
+						break;
+					case E_MIPS_ABI_N32:
+						abi = "n32";
+						break;
+					default:
+						if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
+							abi = "o32";
+						else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
+							abi = "n64";
+						break;
+				}
+				snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
+					 elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
+					 abi);
+				break;
+		}
 	}
 
 cleanup:
@@ -385,4 +412,16 @@ cleanup:
 
 	close(fd);
 	return (ret);
+}
+
+int
+pkg_get_myarch(char *dest, size_t sz)
+{
+	return (get_myarch(dest, sz, false));
+}
+
+int
+pkg_get_myarch_indep(char *dest, size_t sz)
+{
+	return (get_myarch(dest, sz, true));
 }
