@@ -525,10 +525,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 					} else if (str[0] == '\'') {
 						state = SQUOTEDSTRING;
 					} else {
-						sbuf_putc(sqlcond, '"');
 						state = STRING;
+						str--;
 					}
-					sbuf_putc(sqlcond, str[0]);
+					sbuf_putc(sqlcond, '\'');
 				} else {
 					if (!isnumber(str[0])) {
 						fprintf(stderr, "a number is expected got %c\n", str[0]);
@@ -546,25 +546,22 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 				return (EPKG_FATAL);
 			}
 			sbuf_putc(sqlcond, str[0]);
-		} else if ( state == STRING ) {
-			if (isspace(str[0])) {
-				sbuf_putc(sqlcond, '"');
+		} else if (state == STRING || state == QUOTEDSTRING || state == SQUOTEDSTRING) {
+			if ((state == STRING && isspace(str[0])) ||
+			    (state == QUOTEDSTRING && str[0] == '"') ||
+			    (state == SQUOTEDSTRING && str[0] == '\'')) {
+				sbuf_putc(sqlcond, '\'');
 				state = NONE;
+			} else {
+				sbuf_putc(sqlcond, str[0]);
+				if (str[0] == '\'')
+					sbuf_putc(sqlcond, str[0]);
 			}
-			sbuf_putc(sqlcond, str[0]);
-		} else if (state == QUOTEDSTRING) {
-			if (str[0] == '"')
-				state = NONE;
-			sbuf_putc(sqlcond, str[0]);
-		} else if (state == SQUOTEDSTRING) {
-			if (str[0] == '"')
-				state = NONE;
-			sbuf_putc(sqlcond, str[0]);
 		}
 		str++;
 	}
 	if (state == STRING)
-		sbuf_putc(sqlcond, '"');
+		sbuf_putc(sqlcond, '\'');
 
 	return (EPKG_OK);
 }
