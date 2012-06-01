@@ -514,6 +514,9 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 				sbuf_putc(sqlcond, str[0]);
 				str++;
 				sbuf_putc(sqlcond, str[0]);
+			} else {
+				fprintf(stderr, "an operator is expected, got %c\n", str[0]);
+				return (EPKG_FATAL);
 			}
 		} else if (state == NEXT_IS_STRING || state == NEXT_IS_INT) {
 			if (isspace(str[0])) {
