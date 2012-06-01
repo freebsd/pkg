@@ -562,6 +562,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 	}
 	if (state == STRING)
 		sbuf_putc(sqlcond, '\'');
+	else if (state != NONE && state != INT) {
+		fprintf(stderr, "unexpected end of expression\n");
+		return (EPKG_FATAL);
+	}
 
 	return (EPKG_OK);
 }
