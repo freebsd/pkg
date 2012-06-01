@@ -381,10 +381,22 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	sbuf_delete(output);
 }
 
+typedef enum {
+	NONE,
+	NEXT_IS_INT,
+	OPERATOR_INT,
+	INT,
+	NEXT_IS_STRING,
+	OPERATOR_STRING,
+	STRING,
+	QUOTEDSTRING,
+	SQUOTEDSTRING
+} state_t;
+
 int
 format_sql_condition(const char *str, struct sbuf *sqlcond)
 {
-	type_t state = NONE;
+	state_t state = NONE;
 	sbuf_cat(sqlcond, " WHERE ");
 	while (str[0] != '\0') {
 		if (state == NONE) {
