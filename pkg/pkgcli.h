@@ -171,18 +171,6 @@ struct query_flags {
 	const int dbflags;
 };
 
-typedef enum {
-	NONE,
-	NEXT_IS_INT,
-	OPERATOR_INT,
-	INT,
-	NEXT_IS_STRING,
-	OPERATOR_STRING,
-	STRING,
-	QUOTEDSTRING,
-	SQUOTEDSTRING
-} type_t;
-
 void print_query(struct pkg *pkg, char *qstr, char multiline);
 int format_sql_condition(const char *str, struct sbuf *sqlcond);
 int analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int q_flags_len, int *flags, char *multiline);
