@@ -390,13 +390,16 @@ typedef enum {
 	OPERATOR_STRING,
 	STRING,
 	QUOTEDSTRING,
-	SQUOTEDSTRING
+	SQUOTEDSTRING,
+	POST_EXPR,
 } state_t;
 
 int
 format_sql_condition(const char *str, struct sbuf *sqlcond)
 {
 	state_t state = NONE;
+	unsigned int bracket_level = 0;
+
 	sbuf_cat(sqlcond, " WHERE ");
 	while (str[0] != '\0') {
 		if (state == NONE) {
@@ -454,28 +457,53 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 			} else {
 				switch (str[0]) {
 					case '(':
-					case ')':
+						bracket_level++;
 						sbuf_putc(sqlcond, str[0]);
 						break;
 					case ' ':
 					case '\t':
 						break;
-					case '|':
-						if (str[1] == '|') {
-							str++;
-							sbuf_cat(sqlcond, " OR ");
-							break;
-						}
-					case '&':
-						if (str[1] == '&') {
-							str++;
-							sbuf_cat(sqlcond, " AND ");
-							break;
-						}
 					default:
 						fprintf(stderr, "unexpected character %c\n", str[0]);
 						return (EPKG_FATAL);
 				}
+			}
+		} else if (state == POST_EXPR) {
+			switch (str[0]) {
+				case ')':
+					if (bracket_level == 0) {
+						fprintf(stderr, "too many closing brackets.\n");
+						return (EPKG_FATAL);
+					}
+					bracket_level--;
+					sbuf_putc(sqlcond, str[0]);
+					break;
+				case ' ':
+				case '\t':
+					break;
+				case '|':
+					if (str[1] == '|') {
+						str++;
+						state = NONE;
+						sbuf_cat(sqlcond, " OR ");
+						break;
+					} else {
+						fprintf(stderr, "unexpected character %c\n", str[1]);
+						return (EPKG_FATAL);
+					}
+				case '&':
+					if (str[1] == '&') {
+						str++;
+						state = NONE;
+						sbuf_cat(sqlcond, " AND ");
+						break;
+					} else {
+						fprintf(stderr, "unexpected character %c\n", str[1]);
+						return (EPKG_FATAL);
+					}
+				default:
+					fprintf(stderr, "unexpected character %c\n", str[0]);
+					return (EPKG_FATAL);
 			}
 		} else if (state == OPERATOR_STRING || state == OPERATOR_INT) {
 			/* only operators or space are allowed here */
@@ -552,7 +580,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 			}
 		} else if (state == INT) {
 			if (isspace(str[0])) {
-				state = NONE;
+				state = POST_EXPR;
 			} else if (!isnumber(str[0])) {
 				fprintf(stderr, "a number is expected %c\n", str[0]);
 				return (EPKG_FATAL);
@@ -564,7 +592,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 			    (state == QUOTEDSTRING && str[0] == '"') ||
 			    (state == SQUOTEDSTRING && str[0] == '\'')) {
 				sbuf_putc(sqlcond, '\'');
-				state = NONE;
+				state = POST_EXPR;
 			} else {
 				sbuf_putc(sqlcond, str[0]);
 				if (str[0] == '\'')
@@ -573,10 +601,16 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 		}
 		str++;
 	}
-	if (state == STRING)
+	if (state == STRING) {
 		sbuf_putc(sqlcond, '\'');
-	else if (state != NONE && state != INT) {
+		state = POST_EXPR;
+	}
+
+	if (state != POST_EXPR && state != INT) {
 		fprintf(stderr, "unexpected end of expression\n");
+		return (EPKG_FATAL);
+	} else if (bracket_level > 0) {
+		fprintf(stderr, "unexpected end of expression (too many open brackets)\n");
 		return (EPKG_FATAL);
 	}
 
