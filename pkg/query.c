@@ -579,11 +579,9 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 				}
 			}
 		} else if (state == INT) {
-			if (isspace(str[0])) {
+			if (!isnumber(str[0])) {
 				state = POST_EXPR;
-			} else if (!isnumber(str[0])) {
-				fprintf(stderr, "a number is expected %c\n", str[0]);
-				return (EPKG_FATAL);
+				str--;
 			} else {
 				sbuf_putc(sqlcond, str[0]);
 			}
