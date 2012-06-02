@@ -77,13 +77,11 @@ pkg_update(const char *name, const char *packagesite)
 	unsigned char *sig = NULL;
 	int siglen = 0;
 	int rc = EPKG_FATAL;
-	bool alwayssigned = false;
 	struct stat st;
 	time_t t = 0;
 
 	snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
-	pkg_config_bool(PKG_CONFIG_SIGNED_REPOS, &alwayssigned);
 	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
 	if (mktemp(tmp) == NULL) {
 		pkg_emit_error("Could not create temporary file %s, aborting update.\n", tmp);
@@ -152,7 +150,8 @@ pkg_update(const char *name, const char *packagesite)
 				goto cleanup;
 			}
 		} else {
-			pkg_emit_error("No signature found in the repository. This is mandatory as SIGNED_REPOS is enabled in pkg.conf.");
+			pkg_emit_error("No signature found in the repository."
+						   "Can not validate against %s key.", repokey);
 			rc = EPKG_FATAL;
 			unlink(repofile_unchecked);
 			goto cleanup;
