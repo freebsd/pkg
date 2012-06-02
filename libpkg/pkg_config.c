@@ -140,12 +140,6 @@ static struct config_entry c[] = {
 		"NO",
 		{ NULL }
 	},
-	[PKG_CONFIG_SIGNED_REPOS] = {
-		BOOL,
-		"SIGNED_REPOS",
-		"NO",
-		{ NULL }
-	},
 	[PKG_CONFIG_ABI] = {
 		STRING,
 		"ABI",
