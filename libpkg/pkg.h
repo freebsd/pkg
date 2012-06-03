@@ -37,10 +37,10 @@
 #include <sys/sbuf.h>
 #include <openssl/pem.h>
 
-#define PKGVERSION "1.0-beta14"
+#define PKGVERSION "1.0-beta15"
 /* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg version comparison
  * in pkgdb_query_newpkgversion() */
-#define PKG_PORTVERSION "1.0.b14"
+#define PKG_PORTVERSION "1.0.b15"
 
 struct pkg;
 struct pkg_dep;
@@ -255,9 +255,8 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_SYSLOG = 10,
 	PKG_CONFIG_SHLIBS = 11,
 	PKG_CONFIG_AUTODEPS = 12,
-	PKG_CONFIG_SIGNED_REPOS = 13,
-	PKG_CONFIG_ABI = 14,
-	PKG_CONFIG_DEVELOPER_MODE = 15,
+	PKG_CONFIG_ABI = 13,
+	PKG_CONFIG_DEVELOPER_MODE = 14,
 } pkg_config_key;
 
 typedef enum {

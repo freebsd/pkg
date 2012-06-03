@@ -97,7 +97,7 @@ exec_repo(int argc, char **argv)
 	printf("Generating repo.sqlite in %s:  ", argv[1]);
 
 	if (retcode != EPKG_OK) {
-		printf("can not create repository");
+		printf("can not create repository\n");
 		return (retcode);
 	} else {
 		printf("\bdone!\n");

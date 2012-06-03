@@ -116,6 +116,10 @@ exec_search(int argc, char **argv)
 	}
 
 	pattern = argv[0];
+	if (pattern[0] == '\0') {
+		fprintf(stderr, "Pattern should not be empty\n");
+		return (EX_USAGE);
+	}
 	if (strchr(pattern, '/') != NULL)
 		field = FIELD_ORIGIN;
 

@@ -196,6 +196,11 @@ exec_info(int argc, char **argv)
 	do {
 		gotone = false;
 		pkgname = argv[i];
+		if (match != MATCH_ALL && pkgname[0] == '\0') {
+			fprintf(stderr, "Pattern should not be empty\n");
+			i++;
+			continue;
+		}
 
 		/*
 		 * allow to search for origin with a trailing /
