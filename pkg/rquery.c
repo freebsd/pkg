@@ -89,6 +89,7 @@ exec_rquery(int argc, char **argv)
 	struct sbuf *sqlcond = NULL;
 	const unsigned int q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
 	const char *reponame = NULL;
+	bool onematched = false;
 
 	while ((ch = getopt(argc, argv, "agxXe:r:")) != -1) {
 		switch (ch) {
@@ -176,8 +177,10 @@ exec_rquery(int argc, char **argv)
 			if ((it = pkgdb_rquery(db, pkgname, match, reponame)) == NULL)
 				return (EX_IOERR);
 
-			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
+			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
+				onematched = true;
 				print_query(pkg, argv[0], multiline);
+			}
 
 			if (ret != EPKG_END) {
 				retcode = EX_SOFTWARE;
@@ -186,6 +189,8 @@ exec_rquery(int argc, char **argv)
 
 			pkgdb_it_free(it);
 		}
+		if (!onematched)
+			retcode = EXIT_FAILURE;
 	}
 
 	pkg_free(pkg);
