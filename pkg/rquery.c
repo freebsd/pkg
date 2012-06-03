@@ -126,7 +126,7 @@ exec_rquery(int argc, char **argv)
 	}
 
 	/* Default to all packages if no pkg provided */
-	if (argc == 1 && pkgname == NULL && condition == NULL) {
+	if (argc == 1 && pkgname == NULL && condition == NULL && match == MATCH_EXACT) {
 		match = MATCH_ALL;
 	} else if ((argc == 1) ^ (match == MATCH_ALL) && condition == NULL) {
 		usage_rquery();
