@@ -42,8 +42,9 @@
 
 #define PKG_NUM_FIELDS 18
 
-#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM| \
-		ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
+#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM | \
+		ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_ACL | \
+		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
 #define LIST_FREE(head, data, free_func) do { \
 	while (!STAILQ_EMPTY(head)) { \
@@ -143,14 +144,12 @@ struct pkg_jobs_node {
 };
 
 struct pkg_user {
-	char name[MAXLOGNAME+1];
-	char uidstr[8192]; /* taken from pw_util.c */
+	char name[8192];/* taken from pw_util.c */
 	STAILQ_ENTRY(pkg_user) next;
 };
 
 struct pkg_group {
-	char name[MAXLOGNAME+1];
-	char gidstr[8192]; /* taken from gw_util.c */
+	char name[8192]; /* taken from gw_util.c */
 	STAILQ_ENTRY(pkg_group) next;
 };
 
