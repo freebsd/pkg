@@ -144,12 +144,14 @@ struct pkg_jobs_node {
 };
 
 struct pkg_user {
-	char name[8192];/* taken from pw_util.c */
+	char name[MAXLOGNAME+1];
+	char uidstr[8192];/* taken from pw_util.c */
 	STAILQ_ENTRY(pkg_user) next;
 };
 
 struct pkg_group {
-	char name[8192]; /* taken from gw_util.c */
+	char name[MAXLOGNAME+1];
+	char gidstr[8192]; /* taken from gw_util.c */
 	STAILQ_ENTRY(pkg_group) next;
 };
 
