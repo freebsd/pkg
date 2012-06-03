@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd June 6, 2012
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -46,8 +46,19 @@ Show debug information
 .It Fl j Ao jail name or id Ac
 .Nm
 will execute in the given
-.Ao jail name or id Ac
+.Ao jail name or id Ac ,
+where
+.Em name
+matches
+.Dq Cm jls Ar name
+and
+.Em id
+matches
+.Dq Cm jls Ar jid .
+See
 .Xr jail 8
+and
+.Xr jls 8 .
 .It Fl c Ao chroot path Ac
 .Nm
 will chroot in the
