@@ -150,7 +150,8 @@ struct pkg_user {
 };
 
 struct pkg_group {
-	char name[8192]; /* taken from gw_util.c */
+	char name[MAXLOGNAME+1];
+	char gidstr[8192]; /* taken from gw_util.c */
 	STAILQ_ENTRY(pkg_group) next;
 };
 
