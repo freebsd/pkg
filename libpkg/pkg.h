@@ -447,7 +447,7 @@ int pkg_analyse_files(struct pkgdb *, struct pkg *);
  * Suggest if a package could be marked architecture independent or
  * not.
  */
-int pkg_suggest_arch(struct pkg *, const char *);
+int pkg_suggest_arch(struct pkg *, const char *, bool);
 
 /**
  * Generic setter for simple attributes.
