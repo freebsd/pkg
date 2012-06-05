@@ -458,8 +458,13 @@ pkg_get_myarch_indep(char *dest, size_t sz)
 }
 
 int
-pkg_suggest_arch(struct pkg *pkg, const char *arch)
+pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
 {
+	bool iswildcard;
+
+	/* Is a wildcard arch already in use? */
+
+
 	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
 		/* Definitely has to be arch specific */
 		pkg_emit_error("Package installs architecture specific files");

@@ -205,14 +205,15 @@ exec_register(int argc, char **argv)
 		 * but the real abi of the package.
 		 */
 		pkg_get_myarch(myarch, BUFSIZ);
+		if (developer)
+			pkg_suggest_arch(pkg, myarch, true);
 		pkg_set(pkg, PKG_ARCH, myarch);
 	} else {
+		if (developer)
+			pkg_suggest_arch(pkg, arch, false);
 		pkg_set(pkg, PKG_ARCH, arch);
 		free(arch);
 	}
-
-	if (developer)
-		pkg_suggest_arch(pkg, arch);
 
 	if (input_path != NULL) {
 		pkg_copy_tree(pkg, input_path, "/");
