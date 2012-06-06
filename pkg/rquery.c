@@ -139,7 +139,7 @@ exec_rquery(int argc, char **argv)
 
 	if (condition != NULL) {
 		sqlcond = sbuf_new_auto();
-		if (format_sql_condition(condition, sqlcond) != EPKG_OK)
+		if (format_sql_condition(condition, sqlcond, true) != EPKG_OK)
 			return (EX_USAGE);
 		sbuf_finish(sqlcond);
 	}
