@@ -314,8 +314,8 @@ elf_corres_to_string(struct _elf_corres* m, int e)
 }
 
 
-static int
-get_myarch(char *dest, size_t sz, bool arch_indep)
+int
+pkg_get_myarch(char *dest, size_t sz)
 {
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
@@ -390,51 +390,44 @@ get_myarch(char *dest, size_t sz, bool arch_indep)
 	for (i = 0; osname[i] != '\0'; i++)
 		osname[i] = (char)tolower(osname[i]);
 
-	if (arch_indep) {
-		snprintf(dest, sz, "%s:%d:%s",
-			 osname,
-			 version / 100000,
-			 "*");
-	} else {
-		snprintf(dest, sz, "%s:%d:%s:%s",
-			 osname,
-			 version / 100000,
-			 elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
-			 elf_corres_to_string(wordsize_corres, (int)elfhdr.e_ident[EI_CLASS]));
+	snprintf(dest, sz, "%s:%d:%s:%s",
+	    osname,
+	    version / 100000,
+	    elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
+	    elf_corres_to_string(wordsize_corres, (int)elfhdr.e_ident[EI_CLASS]));
 
-		switch (elfhdr.e_machine) {
-			case EM_ARM:
-				snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
-					 elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-					 (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
-					 (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
-				break;
-			case EM_MIPS:
-				/*
-				 * this is taken from binutils sources:
-				 * include/elf/mips.h
-				 * mapping is figured out from binutils:
-				 * gas/config/tc-mips.c
-				 */
-				switch (elfhdr.e_flags & EF_MIPS_ABI) {
-					case E_MIPS_ABI_O32:
+	switch (elfhdr.e_machine) {
+		case EM_ARM:
+			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
+			    (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
+			    (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
+			break;
+		case EM_MIPS:
+			/*
+			 * this is taken from binutils sources:
+			 * include/elf/mips.h
+			 * mapping is figured out from binutils:
+			 * gas/config/tc-mips.c
+			 */
+			switch (elfhdr.e_flags & EF_MIPS_ABI) {
+				case E_MIPS_ABI_O32:
+					abi = "o32";
+					break;
+				case E_MIPS_ABI_N32:
+					abi = "n32";
+					break;
+				default:
+					if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
 						abi = "o32";
-						break;
-					case E_MIPS_ABI_N32:
-						abi = "n32";
-						break;
-					default:
-						if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
-							abi = "o32";
-						else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
-							abi = "n64";
-						break;
-				}
-				snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
-					 elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-					 abi);
-				break;
-		}
+					else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
+						abi = "n64";
+					break;
+			}
+			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
+			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
+			    abi);
+			break;
 	}
 
 cleanup:
@@ -443,18 +436,6 @@ cleanup:
 
 	close(fd);
 	return (ret);
-}
-
-int
-pkg_get_myarch(char *dest, size_t sz)
-{
-	return (get_myarch(dest, sz, false));
-}
-
-int
-pkg_get_myarch_indep(char *dest, size_t sz)
-{
-	return (get_myarch(dest, sz, true));
 }
 
 int
