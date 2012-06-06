@@ -938,7 +938,6 @@ void pkg_test_filesum(struct pkg *);
 void pkg_recompute(struct pkgdb *, struct pkg *);
 
 int pkg_get_myarch(char *pkgarch, size_t sz);
-int pkg_get_myarch_indep(char *pkgarch, size_t sz);
 
 void pkgdb_cmd(int argc, char **argv);
 #endif
