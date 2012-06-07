@@ -177,7 +177,7 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 			continue;
 		}
 
-		if (val->type == YAML_NO_NODE || ( val->type == YAML_SCALAR_NODE && val->data.scalar.length <= 0)) {
+		if (val->type == YAML_NO_NODE || (val->type == YAML_SCALAR_NODE && val->data.scalar.length <= 0)) {
 			/* silently skip on purpose */
 			++pair;
 			continue;
@@ -256,14 +256,14 @@ pkg_config_bool(pkg_config_key key, bool *val)
 
 	if (c[key].val != NULL && (
 	    strcasecmp(c[key].val, "yes") == 0 ||
-	    strcasecmp(c[key].val, "true" ) == 0 ||
-	    strcasecmp(c[key].val, "on" ) == 0)) {
+	    strcasecmp(c[key].val, "true") == 0 ||
+	    strcasecmp(c[key].val, "on") == 0)) {
 		*val = true;
 	}
 	else if (c[key].val == NULL && c[key].def != NULL && (
 	    strcasecmp(c[key].def, "yes") == 0 ||
-	    strcasecmp(c[key].def, "true" ) == 0 ||
-	    strcasecmp(c[key].def, "on" ) == 0)) {
+	    strcasecmp(c[key].def, "true") == 0 ||
+	    strcasecmp(c[key].def, "on") == 0)) {
 			*val = true;
 	}
 

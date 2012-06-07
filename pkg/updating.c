@@ -95,7 +95,7 @@ exec_updating(int argc, char **argv)
 
 	SLIST_INIT(&origins);
 	if (argc == 0) {
-		if (( it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
+		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 			goto cleanup;
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {

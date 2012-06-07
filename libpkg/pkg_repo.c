@@ -429,7 +429,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 		pkg_path = ent->fts_path;
 		pkg_path += strlen(path);
-		while (pkg_path[0] == '/' )
+		while (pkg_path[0] == '/')
 			pkg_path++;
 
 		sha256_file(ent->fts_accpath, cksum);

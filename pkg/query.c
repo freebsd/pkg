@@ -472,7 +472,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 			/* only operators or space are allowed here */
 			if (isspace(str[0])) {
 				sbuf_putc(sqlcond, str[0]);
-			} else if (str[0] == '~' ) {
+			} else if (str[0] == '~') {
 				if (state != OPERATOR_STRING) {
 					fprintf(stderr, "~ expected only for string testing");
 					return (EPKG_FATAL);
@@ -546,7 +546,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 				return (EPKG_FATAL);
 			}
 			sbuf_putc(sqlcond, str[0]);
-		} else if ( state == STRING ) {
+		} else if (state == STRING) {
 			if (isspace(str[0])) {
 				sbuf_putc(sqlcond, '"');
 				state = NONE;

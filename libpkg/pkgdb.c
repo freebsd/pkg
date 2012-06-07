@@ -118,7 +118,7 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, int flags, int (*pkg_add
 
 	sqlite3_bind_int64(stmt, 1, pkg->rowid);
 
-	while (( ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddata(pkg, sqlite3_column_text(stmt, 0));
 	}
 
@@ -181,7 +181,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 		colname = sqlite3_column_name(stmt, icol);
 		switch (sqlite3_column_type(stmt, icol)) {
 			case SQLITE_TEXT:
-				for (i = 0; columns[i].name != NULL; i++ ) {
+				for (i = 0; columns[i].name != NULL; i++) {
 					if (!strcmp(columns[i].name, colname)) {
 						pkg_set(pkg, columns[i].type, sqlite3_column_text(stmt, icol));
 						break;
@@ -191,7 +191,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 					pkg_emit_error("Unknown column %s", colname);
 				break;
 			case SQLITE_INTEGER:
-				for (i = 0; columns[i].name != NULL; i++ ) {
+				for (i = 0; columns[i].name != NULL; i++) {
 					if (!strcmp(columns[i].name, colname)) {
 						pkg_set(pkg, columns[i].type, sqlite3_column_int64(stmt, icol));
 						break;
@@ -1185,7 +1185,7 @@ pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 
 	sqlite3_bind_int64(stmt, 1, pkg->rowid);
 
-	while (( ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddir(pkg, sqlite3_column_text(stmt, 0), sqlite3_column_int(stmt, 1));
 	}
 
@@ -1641,7 +1641,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 				if ((it = pkgdb_query_which(db, pkg_file_get(file, PKG_FILE_PATH))) == NULL) {
 					ERROR_SQLITE(s);
 				}
-				if (( ret = pkgdb_it_next(it, &pkg2, PKG_LOAD_BASIC)) == EPKG_OK) {
+				if ((ret = pkgdb_it_next(it, &pkg2, PKG_LOAD_BASIC)) == EPKG_OK) {
 					pkg_get(pkg2, PKG_NAME, &name2, PKG_VERSION, &version2);
 					pkg_emit_error("%s-%s conflicts with %s-%s"
 					    " (installs files into the same place). "
@@ -1688,7 +1688,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			goto cleanup;
 		}
 		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
-			if ( ret == SQLITE_CONSTRAINT) {
+			if (ret == SQLITE_CONSTRAINT) {
 				pkg_emit_error("A package is already providing this directory: %s", pkg_dir_path(dir));
 			} else
 				ERROR_SQLITE(s);
@@ -1728,7 +1728,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		if (( ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1765,7 +1765,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		if (( ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1802,7 +1802,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		if (( ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
+		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1839,7 +1839,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		if (( ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
+		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1923,7 +1923,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		if (( ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
+		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -2894,7 +2894,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 		"values (?1, ?2, ?3, ?4);";
 	const char sql_conflicts[] = "SELECT name, version from integritycheck where path=?1;";
 
-	assert( db != NULL && p != NULL);
+	assert(db != NULL && p != NULL);
 
 	sql_exec(db->sqlite, "CREATE TEMP TABLE IF NOT EXISTS integritycheck ( "
 			"name TEXT, "

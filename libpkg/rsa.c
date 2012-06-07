@@ -69,7 +69,7 @@ _load_rsa_public_key(const char *rsa_key_path)
 		return (NULL);
 	}
 
-	if (!PEM_read_RSA_PUBKEY( fp, &rsa, NULL, NULL )) {
+	if (!PEM_read_RSA_PUBKEY(fp, &rsa, NULL, NULL)) {
 		pkg_emit_error("error reading public key(%s): %s", rsa_key_path,
 					   ERR_error_string(ERR_get_error(), errbuf));
 		fclose(fp);

@@ -76,7 +76,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 		snprintf(archive_path, sizeof(archive_path), "%s.%s", path, ext);
 
 		if (archive_write_open_filename(
-		    (*pack)->awrite, archive_path) != ARCHIVE_OK ) {
+		    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
 			pkg_emit_errno("archive_write_open_filename",
 			    archive_path);
 			archive_read_finish((*pack)->aread);
@@ -202,7 +202,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 			goto cleanup;
 		}
 
-		while ((len = read(fd, buf, sizeof(buf))) > 0 )
+		while ((len = read(fd, buf, sizeof(buf))) > 0)
 			archive_write_data(pack->awrite, buf, len);
 
 		close(fd);

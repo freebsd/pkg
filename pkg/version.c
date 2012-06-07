@@ -350,7 +350,7 @@ exec_version(int argc, char **argv)
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 			return (EX_IOERR);
 
-		if (( it = pkgdb_query(db, pattern, match)) == NULL)
+		if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {

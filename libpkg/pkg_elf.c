@@ -151,7 +151,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		goto cleanup;
 	}
 
-	if (( e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
+	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("elf_begin() for %s failed: %s", fpath, elf_errmsg(-1)); 
 		goto cleanup;
@@ -176,7 +176,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		goto cleanup;
 	}
 
-	while (( scn = elf_nextscn(e, scn)) != NULL) {
+	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getshdr() for %s failed: %s", fpath, elf_errmsg(-1));
@@ -235,7 +235,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	}
 
 cleanup:
-	if ( e != NULL)
+	if (e != NULL)
 		elf_end(e);
 	close(fd);
 
@@ -292,7 +292,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 		fpath = pkg_file_get(file, PKG_FILE_PATH);
 		ret = analyse_elf(db, pkg, fpath);
 		if (developer) {
-			if ( ret != EPKG_OK && ret != EPKG_END )
+			if (ret != EPKG_OK && ret != EPKG_END)
 				return (ret);
 			analyse_fpath(pkg, fpath);
 		}
