@@ -723,6 +723,7 @@ struct pkgdb_it * pkgdb_query_shlib(struct pkgdb *db, const char *shlib);
 #define PKG_LOAD_USERS (1<<9)
 #define PKG_LOAD_GROUPS (1<<10)
 #define PKG_LOAD_SHLIBS (1<<11)
+/* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**
  * Get the next pkg.
