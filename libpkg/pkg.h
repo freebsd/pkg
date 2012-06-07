@@ -432,7 +432,19 @@ int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
  * @return An error code
  */
 
+ /* Don't conflict with PKG_LOAD_* q.v. */
+#define PKG_CONTAINS_ELF_OBJECTS (1<<24)
+#define PKG_CONTAINS_STATIC_LIBS (1<<25)
+#define PKG_CONTAINS_H_OR_LA (1<<26)
+
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
+
+/**
+ * Suggest if a package could be marked architecture independent or
+ * not.
+ */
+int pkg_suggest_arch(struct pkg *, const char *, bool);
+
 /**
  * Generic setter for simple attributes.
  */
