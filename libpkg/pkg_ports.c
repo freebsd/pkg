@@ -50,6 +50,7 @@ struct keyword {
 
 struct plist {
 	char *last_file;
+	const char *stage;
 	const char *prefix;
 	struct sbuf *unexec_buf;
 	struct sbuf *pre_install_buf;
@@ -132,6 +133,10 @@ meta_dirrm(struct plist *p, char *line, bool try)
 {
 	size_t len;
 	char path[MAXPATHLEN];
+	char stagedpath[MAXPATHLEN];
+	char *testpath;
+	struct stat st;
+	bool developer;
 
 	len = strlen(line);
 
@@ -143,7 +148,23 @@ meta_dirrm(struct plist *p, char *line, bool try)
 	else
 		snprintf(path, sizeof(path), "%s%s%s/", p->prefix, p->slash, line);
 
-	return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname, p->perm, try));
+	testpath = path;
+
+	if (p->stage != NULL) {
+		snprintf(stagedpath, sizeof(stagedpath), "%s%s", p->stage, path);
+		testpath = stagedpath;
+	}
+
+	if (lstat(testpath, &st) == 0)
+		return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname, p->perm, try));
+
+	pkg_emit_errno("lstat", path);
+	if (p->stage != NULL)
+		return (EPKG_FATAL);
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+	if (developer)
+		return (EPKG_FATAL);
+	return (EPKG_OK);
 }
 
 static int
@@ -163,6 +184,8 @@ file(struct plist *p, char *line)
 {
 	size_t len;
 	char path[MAXPATHLEN];
+	char stagedpath[MAXPATHLEN];
+	char *testpath;
 	struct stat st;
 	char *buf;
 	bool regular = false;
@@ -178,8 +201,14 @@ file(struct plist *p, char *line)
 		snprintf(path, sizeof(path), "%s", line);
 	else
 		snprintf(path, sizeof(path), "%s%s%s", p->prefix, p->slash, line);
+	testpath = path;
 
-	if (lstat(path, &st) == 0) {
+	if (p->stage != NULL) {
+		snprintf(stagedpath, sizeof(stagedpath), "%s%s", p->stage, path);
+		testpath = stagedpath;
+	}
+
+	if (lstat(testpath, &st) == 0) {
 		buf = NULL;
 		regular = true;
 
@@ -199,8 +228,12 @@ file(struct plist *p, char *line)
 	}
 
 	pkg_emit_errno("lstat", path);
+	if (p->stage != NULL)
+		return (EPKG_FATAL);
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-	return (developer ? EPKG_FATAL : EPKG_OK);
+	if (developer)
+		return (EPKG_FATAL);
+	return (EPKG_OK);
 }
 
 static int
@@ -598,7 +631,7 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
 	FILE *fp;
-	int ret = EPKG_FATAL;
+	int ret = EPKG_UNKNOWN;
 	yaml_parser_t parser;
 	yaml_document_t doc;
 	yaml_node_t *node;
@@ -677,7 +710,7 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 }
 
 int
-ports_parse_plist(struct pkg *pkg, char *plist)
+ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 {
 	char *plist_p, *buf, *plist_buf;
 	int nbel, i;
@@ -693,6 +726,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 	pplist.last_file = NULL;
 	pplist.prefix = NULL;
+	pplist.stage = stage;
 	pplist.unexec_buf = sbuf_new_auto();
 	pplist.pre_install_buf = sbuf_new_auto();
 	pplist.post_install_buf = sbuf_new_auto();
@@ -748,8 +782,13 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			/* trim write spaces */
 			while (isspace(buf[0]))
 				buf++;
-			if (parse_keywords(&pplist, keyword, buf) != EPKG_OK)
+			switch (parse_keywords(&pplist, keyword, buf)) {
+			case EPKG_UNKNOWN:
 				pkg_emit_error("unknown keyword %s, ignoring %s", keyword, plist_p);
+				break;
+			case EPKG_FATAL:
+				ret = EPKG_FATAL;
+			}
 		} else if ((len = strlen(plist_p)) > 0){
 			if (sbuf_len(pplist.unexec_buf) > 0) {
 				sbuf_finish(pplist.unexec_buf);
@@ -764,7 +803,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			while (isspace(buf[0]))
 				buf++;
 
-			file(&pplist, buf);
+			if (file(&pplist, buf) != EPKG_OK)
+				ret = EPKG_FATAL;
 		}
 
 		if (i != nbel) {

@@ -298,6 +298,10 @@ typedef enum {
 	 * local file newer than remote
 	 */
 	EPKG_UPTODATE,
+	/** 
+	 * unkown keyword
+	 */
+	EPKG_UNKNOWN,
 } pkg_error_t;
 
 /**
@@ -819,7 +823,7 @@ int pkg_version_cmp(const char * const , const char * const);
 int pkg_fetch_file(const char *url, const char *dest, time_t t);
 
 /* glue to deal with ports */
-int ports_parse_plist(struct pkg *, char *);
+int ports_parse_plist(struct pkg *, char *, const char *);
 
 /**
  * @todo Document

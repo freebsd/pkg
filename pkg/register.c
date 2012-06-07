@@ -193,7 +193,7 @@ exec_register(int argc, char **argv)
 		free(www);
 	}
 
-	ret += ports_parse_plist(pkg, plist);
+	ret += ports_parse_plist(pkg, plist, input_path);
 
 	if (ret != EPKG_OK) {
 		return (EX_IOERR);
