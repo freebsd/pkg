@@ -807,9 +807,9 @@ typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create_installed(const char *, pkg_formats, const char *, struct pkg *);
 
 /**
- * Create package from fakeroot install with a metadata directory
+ * Create package from stage install with a metadata directory
  */
-int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
+int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *);
 
 /**
  * Download the latest repo db file and checks its signature if any
