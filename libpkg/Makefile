@@ -33,9 +33,9 @@ SRCS=		backup.c \
 		usergroup.c \
 		utils.c
 
-OSVERSION!=	awk '/^\#define[[:blank:]]__FreeBSD_version/ {print $$3}' /usr/include/sys/param.h
+HAVE_GRUTILS!=	grep -q gr_copy /usr/include/libutil.h && echo yes
 
-.if ${OSVERSION} < 1000003
+.if ${HAVE_GRUTILS} != yes
 SRCS+=	gr_util.c
 .endif
 
