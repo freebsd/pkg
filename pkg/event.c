@@ -162,16 +162,16 @@ event_callback(void *data, struct pkg_event *ev)
 		    pkg_dep_get(ev->e_missing_dep.dep, PKG_DEP_VERSION));
 		break;
 	case PKG_EVENT_NOREMOTEDB:
-		fprintf(stderr, "Unable to open remote database \"%s\", try running `%s update` first\n", ev->e_remotedb.repo, getprogname());
+		fprintf(stderr, "Unable to open remote database \"%s\". Try running '%s update' first.\n", ev->e_remotedb.repo, getprogname());
 		break;
 	case PKG_EVENT_NOLOCALDB:
 		/* only cares if run as root */
 		if (geteuid() == 0)
-			fprintf(stderr, "Unable to create local database\n");
+			fprintf(stderr, "Unable to create local database!\n");
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
 		printf("New version of pkg detected, it needs to be installed first.\n"
-			"After this upgrade it is recommended that you do a full upgrade using: 'pkg upgrade'\n\n");
+		       "After this upgrade it is recommended that you do a full upgrade using: 'pkg upgrade'\n\n");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg_get(ev->e_file_mismatch.pkg, PKG_NAME, &name, PKG_VERSION, &version);

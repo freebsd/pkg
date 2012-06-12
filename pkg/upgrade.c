@@ -37,7 +37,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage pkg upgrade [-r reponame] [-yfqL]\n");
+	fprintf(stderr, "usage: pkg upgrade [-r reponame] [-yfqL]\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -56,7 +56,7 @@ exec_upgrade(int argc, char **argv)
 	bool auto_update = true;
 
 	if (geteuid() != 0) {
-		warnx("upgrading can only be done as root");
+		warnx("Upgrading can only be done as root");
 		return (EX_NOPERM);
 	}
 

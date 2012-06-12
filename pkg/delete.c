@@ -125,10 +125,10 @@ exec_delete(int argc, char **argv)
 	if (pkg_jobs_is_empty(jobs)) {
 		if (argc == 0) {
 			if (!quiet)
-				printf("Nothing to do\n");
+				printf("Nothing to do.\n");
 			retcode = EXIT_SUCCESS;
 		} else {
-			fprintf(stderr, "Package(s) not found\n");
+			fprintf(stderr, "Package(s) not found!\n");
 			retcode = EXIT_FAILURE;
 		}
 		goto cleanup;

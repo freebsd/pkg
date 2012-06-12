@@ -105,7 +105,7 @@ exec_fetch(int argc, char **argv)
 
 	/* TODO: Allow the user to specify an output directory via -o outdir */
 	if (geteuid() != 0) {
-		warnx("fetching packages can only be done as root");
+		warnx("Fetching packages can only be done as root");
 		return (EX_NOPERM);
 	}
 

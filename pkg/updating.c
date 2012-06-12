@@ -116,7 +116,7 @@ exec_updating(int argc, char **argv)
 	if (updatingfile == NULL) {
 		const char *portsdir;
 		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK) {
-			warnx("Cant get portsdir config entry");
+			warnx("Cannot get portsdir config entry!");
 			return (1);
 		}
 		asprintf(&updatingfile, "%s/UPDATING", portsdir);

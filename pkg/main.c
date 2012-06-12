@@ -175,7 +175,7 @@ main(int argc, char **argv)
 	bool b;
 	struct pkg_config_kv *kv = NULL;
 	
-	// Set stdout unbuffered
+	/* Set stdout unbuffered */
         setvbuf(stdout, NULL, _IONBF, 0);
 
 	if (argc < 2)
@@ -217,13 +217,13 @@ main(int argc, char **argv)
 	optind = 1;
 
 	if (jail_str != NULL && chroot_path != NULL) {
-		fprintf(stderr, "-j and -c cannot be used at the same time\n");
+		fprintf(stderr, "-j and -c cannot be used at the same time!\n");
 		usage();
 	}
 
 	if (chroot_path != NULL)
 		if (chroot(chroot_path) == -1)
-			errx(EX_SOFTWARE, "chroot failed");
+			errx(EX_SOFTWARE, "chroot failed!");
 
 	if (jail_str != NULL) {
 		jid = jail_getid(jail_str);
@@ -239,7 +239,7 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "chdir() failed");
 
 	if (pkg_init(NULL) != EPKG_OK)
-		errx(EX_SOFTWARE, "can not parse configuration file");
+		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 	if (version > 1) {
 		printf("version: "PKGVERSION""GITHASH"\n");
