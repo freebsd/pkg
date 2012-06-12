@@ -33,7 +33,9 @@
 void
 usage_backup(void)
 {
-	fprintf(stderr, "usage: pkg backup -[d|r] dest\n");
+	fprintf(stderr, "usage: pkg backup [-d] <dest_file>\n");
+	fprintf(stderr, "       pkg backup -\n");
+	fprintf(stderr, "       pkg backup -r <src_file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help backup'.\n");
 }
 
@@ -59,14 +61,14 @@ exec_backup(int argc, char **argv)
 		if (pkgdb_dump(db, dest) == EPKG_FATAL)
 			return (EPKG_FATAL);
 
-		printf("done\n");
+		printf(" done\n");
 	}
 
 	if (argv[1][1] == 'r') {
 		printf("Restoring database...");
 		if (pkgdb_load(db, dest) == EPKG_FATAL)
 			return (EPKG_FATAL);
-		printf("done\n");
+		printf(" done\n");
 	}
 
 	pkgdb_close(db);

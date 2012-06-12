@@ -104,7 +104,7 @@ exec_install(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("installing packages can only be done as root");
+		warnx("Installing packages can only be done as root");
 		return (EX_NOPERM);
 	}
 

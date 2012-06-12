@@ -238,7 +238,7 @@ exec_version(int argc, char **argv)
 	argv += optind;
 
 	if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
-		err(1, "Can not get portsdir config entry");
+		err(1, "Cannot get portsdir config entry!");
 
 	if (opt & VERSION_STATUS) {
 			if (limchar != '<' &&
@@ -273,7 +273,7 @@ exec_version(int argc, char **argv)
 		snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", portsdir, rel_major_ver);
 		indexfile = fopen(indexpath, "r");
 		if (!indexfile)
-			err(EX_SOFTWARE, "Unable to open %s", indexpath);
+			err(EX_SOFTWARE, "Unable to open %s!", indexpath);
 
 		while ((linelen = getline(&line, &linecap, indexfile)) > 0) {
 			/* line is pkgname|portdir|... */

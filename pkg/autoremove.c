@@ -38,7 +38,7 @@
 void
 usage_autoremove(void)
 {
-	fprintf(stderr, "usage pkg autoremove [-yq]\n\n");
+	fprintf(stderr, "usage: pkg autoremove [-yq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help autoremove'.\n");
 }
 
@@ -112,7 +112,7 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	if (pkg_jobs_is_empty(jobs)) {
-		printf("Nothing to do\n");
+		printf("Nothing to do.\n");
 		retcode = 0;
 		goto cleanup;
 	}
@@ -127,14 +127,14 @@ exec_autoremove(int argc, char **argv)
 		}
 
 		if (oldsize > newsize)
-			printf("\nThe autoremove will free %s\n", size);
+			printf("\nThe autoremoval will free %s\n", size);
 		else
-			printf("\nThe autoremove will require %s more space\n", size);
+			printf("\nThe autoremoval will require %s more space\n", size);
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 		if (!yes)
-			yes = query_yesno("\nProceed with autoremove of packages [y/N]: ");
+			yes = query_yesno("\nProceed with autoremoval of packages [y/N]: ");
 	}
 
 	if (yes) {

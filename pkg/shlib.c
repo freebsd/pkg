@@ -109,7 +109,7 @@ exec_shlib(int argc, char **argv)
         if (ret != EPKG_END) {
 		retcode = EPKG_WARN;
 	} else if (count == 0) {
-		printf("%s was not found in the database\n", libname);
+		printf("%s was not found in the database.\n", libname);
 		retcode = EPKG_WARN;
 	}
 		

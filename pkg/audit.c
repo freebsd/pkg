@@ -70,7 +70,8 @@ SLIST_HEAD(audit_head, audit_entry);
 void
 usage_audit(void)
 {
-	fprintf(stderr, "usage: pkg audit [-F] <pattern>\n");
+	fprintf(stderr, "usage: pkg audit [-F] <pattern>\n\n");
+	fprintf(stderr, "For more information see 'pkg help add'.\n");
 }
 
 static int
@@ -92,11 +93,11 @@ fetch_and_extract(const char *src, const char *dest)
 		case EPKG_OK:
 			break;
 		case EPKG_UPTODATE:
-			printf("audit file up-to-date\n");
+			printf("Audit file up-to-date.\n");
 			retcode = EPKG_OK;
 			goto cleanup;
 		default:
-			warnx("Can't fetch audit file");
+			warnx("Cannot fetch audit file!");
 			goto cleanup;
 	}
 
@@ -286,7 +287,7 @@ is_vulnerable(struct audit_head *h, struct pkg *pkg)
 		res2 = match_version(pkgversion, &e->v2);
 		if (res1 && res2) {
 			res = true;
-			printf("%s-%s is vulnerable\n", pkgname, pkgversion);
+			printf("%s-%s is vulnerable:\n", pkgname, pkgversion);
 			printf("%s\n", e->desc);
 			printf("WWW: %s\n\n", e->url);
 		}
@@ -369,7 +370,7 @@ exec_audit(int argc, char **argv)
 		    PKG_VERSION, version);
 		if (parse_db(audit_file, &h) != EPKG_OK) {
 			if (errno == ENOENT)
-				warnx("unable to open audit file, try running pkg audit -F first");
+				warnx("unable to open audit file, try running 'pkg audit -F' first");
 			else
 				warn("unable to open audit file %s", audit_file);
 			ret = EX_DATAERR;
@@ -391,14 +392,14 @@ exec_audit(int argc, char **argv)
 
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 	{
-		warnx("Can not query local database");
+		warnx("cannot query local database");
 		ret = EX_IOERR;
 		goto cleanup;
 	}
 
 	if (parse_db(audit_file, &h) != EPKG_OK) {
 		if (errno == ENOENT)
-			warnx("unable to open audit file, try running pkg audit -F first");
+			warnx("unable to open audit file, try running 'pkg audit -F' first");
 		else
 			warn("unable to open audit file %s", audit_file);
 		ret = EX_DATAERR;

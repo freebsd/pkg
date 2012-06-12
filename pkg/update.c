@@ -126,7 +126,7 @@ exec_update(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("updating the remote database can only be done as root");
+		warnx("Updating the remote database can only be done as root");
 		return (EX_NOPERM);
 	}
 
