@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd June 2, 2012
+.Dd June 12, 2012
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -119,6 +119,12 @@ suggestions to the output of
 as an aide to port maintainers, including indicating when the port
 might be marked as architecture independent.
 default: off
+.It Cm PORTAUDIT_SITE: string
+Specifies the remote location to use
+when fetching the portaudit database.
+See
+.Xr pkg-audit 8
+for more information.
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration

@@ -44,8 +44,6 @@
 #include <pkg.h>
 #include "pkgcli.h"
 
-#define AUDIT_URL "http://portaudit.FreeBSD.org/auditfile.tbz"
-
 #define EQ 1
 #define LT 2
 #define LTE 3
@@ -326,6 +324,7 @@ exec_audit(int argc, char **argv)
 	bool fetch = false;
 	int ch;
 	int ret = EX_OK;
+	const char *portaudit_site = NULL;
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &db_dir) != EPKG_OK) {
 		warnx("PKG_DBIR is missing");
@@ -347,7 +346,10 @@ exec_audit(int argc, char **argv)
 	argv += optind;
 
 	if (fetch == true) {
-		if (fetch_and_extract(AUDIT_URL, audit_file) != EPKG_OK) {
+		if (pkg_config_string(PKG_CONFIG_PORTAUDIT_SITE, &portaudit_site) != EPKG_OK) {
+			return (EPKG_FATAL);
+		}
+		if (fetch_and_extract(portaudit_site, audit_file) != EPKG_OK) {
 			return (EX_IOERR);
 		}
 	}

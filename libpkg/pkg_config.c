@@ -151,7 +151,13 @@ static struct config_entry c[] = {
 		"DEVELOPER_MODE",
 		"NO",
 		{ NULL }
-	}
+	},
+	[PKG_CONFIG_PORTAUDIT_SITE] = {
+		STRING,
+		"PORTAUDIT_SITE",
+		"http://portaudit.FreeBSD.org/auditfile.tbz",
+		{ NULL }
+	},
 };
 
 static bool parsed = false;
