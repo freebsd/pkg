@@ -66,7 +66,7 @@ static const char * const scripts[] = {
 void
 usage_register(void)
 {
-	fprintf(stderr, "usage: pkg register [-ld] [-a <arch>] [-i <input-path>]"
+	fprintf(stderr, "usage: pkg register [-ld] [-i <input-path>]"
 	                " -m <metadatadir> -f <plist-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
@@ -107,7 +107,7 @@ exec_register(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
 	pkg_new(&pkg, PKG_INSTALLED);
-	while ((ch = getopt(argc, argv, "a:f:m:i:ld")) != -1) {
+	while ((ch = getopt(argc, argv, "f:m:i:ld")) != -1) {
 		switch (ch) {
 			case 'f':
 				if ((plist = strdup(optarg)) == NULL)
@@ -116,10 +116,6 @@ exec_register(int argc, char **argv)
 				break;
 			case 'm':
 				if ((mdir = strdup(optarg)) == NULL)
-					err(1, "cannot allocate memory");
-				break;
-			case 'a':
-				if ((arch = strdup(optarg)) == NULL)
 					err(1, "cannot allocate memory");
 				break;
 			case 'd':
@@ -200,6 +196,7 @@ exec_register(int argc, char **argv)
 
 	pkg_analyse_files(db, pkg);
 
+	pkg_get(pkg, PKG_ARCH, &arch);
 	if (arch == NULL) {
 		/*
 		 * do not take the one from configuration on purpose
@@ -212,8 +209,6 @@ exec_register(int argc, char **argv)
 	} else {
 		if (developer)
 			pkg_suggest_arch(pkg, arch, false);
-		pkg_set(pkg, PKG_ARCH, arch);
-		free(arch);
 	}
 
 	if (input_path != NULL) {
