@@ -59,11 +59,28 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES | PKG_LOAD_USERS |
 	    PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
+	const char *format;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
+
+	switch (fmt) {
+		case TXZ:
+			format = "txz";
+			break;
+		case TBZ:
+			format = "tbz";
+			break;
+		case TGZ:
+			format = "tgz";
+			break;
+		case TAR:
+			format = "tar";
+			break;
+	}
+
 
 	if (match != MATCH_ALL) {
 		for (i = 0;i < argc; i++) {
@@ -73,22 +90,6 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 				pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 				if (!overwrite) {
-					const char *format;
-					switch (fmt) {
-					case TXZ:
-						format = "txz";
-						break;
-					case TBZ:
-						format = "tbz";
-						break;
-					case TGZ:
-						format = "tgz";
-						break;
-					case TAR:
-						format = "tar";
-						break;
-					}
-
 					snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
 					if (access(pkgpath, F_OK) == 0) {
 						printf("%s-%s already packaged skipping...\n", name, version);
@@ -106,6 +107,13 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 		}
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+			if (!overwrite) {
+				snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
+				if (access(pkgpath, F_OK) == 0) {
+					printf("%s-%s already packaged skipping...\n", name, version);
+					continue;
+				}
+			}
 			printf("Creating package for %s-%s\n", name, version);
 			if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK)
 				retcode++;
