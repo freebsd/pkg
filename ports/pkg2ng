@@ -9,6 +9,7 @@ then
 fi
 
 ARCH=$( uname -m )
+failed_pkgs=""
 
 for PKG in $( pkg_info -Ea )
 do
@@ -66,14 +67,22 @@ do
 
 	pkg register -l -m ${MDIR} -f ${PLIST} ${CMD_ARGS}
 	if [ $? -ne 0 ]; then
-		echo "Registration of ${PKG} failed."
+		echo "Registration of ${PKG} failed." >&2
 		cat ${MANIFEST}
+		failed_pkgs="${failed_pkgs} ${PKG}"
 	else
 		rm -rf ${MANIFEST}
 	fi
 
 	rm -rf ${MDIR}
 done
+
+
+if [ -n "${failed_pkgs}" ]; then
+	echo "" >&2
+	echo "!!! Some packages failed to register !!!" >&2
+	echo "Failed packages: ${failed_pkgs}" >&2
+fi
 
 # Delete the portupgrade pkgdb to avoid discrepencies. It will be auto recreated.
 rm -f /var/db/pkg/pkgdb.db > /dev/null 2>&1
