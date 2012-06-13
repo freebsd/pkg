@@ -41,7 +41,7 @@
 void
 usage_set(void)
 {
-	fprintf(stderr, "usage: pkg set [-a] [-A [01]] -yxXg <pattern>\n\n");
+	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-xXg] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
