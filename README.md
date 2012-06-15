@@ -282,7 +282,7 @@ so that it points to a remote location, which contains packages that can be inst
 or set _PACKAGESITE_ in the *pkg.conf(5)* configuration file.
 
 In order to work with a single remote package repository, you would define _PACKAGESITE_ to
-your remote server with packages, like for example (or use */etc/pkg.conf* to set it there):
+your remote server with packages, like for example (or use ${LOCALBASE}/etc/pkg.conf* to set it there):
 
 	TCSH users:
 
@@ -312,7 +312,7 @@ each time _PACKAGESITE_, you can tell *pkg(1)* to work in multi-repos mode as we
 
 To do this, simply enable multi-repos in *pkg.conf(5)* like this:
 
-	# echo "PKG_MULTIREPOS : YES" >> /etc/pkg.conf
+	# echo "PKG_MULTIREPOS : YES" >> /usr/local/etc/pkg.conf
 
 The next thing is to define your remote repositories in the *pkg.conf(5)* file.
 
