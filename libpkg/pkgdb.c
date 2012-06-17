@@ -584,13 +584,9 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	struct pkg_config_kv *repokv = NULL;
 
 	if (*db_p != NULL) {
+		assert((*db_p)->lock_count == 0);
 		reopen = true;
 		db = *db_p;
-		if (db->lock_count) {
-			db->lock_count = 1;
-			if (pkgdb_unlock(db) != EPKG_OK)
-				return (EPKG_FATAL);
-		}
 		if (db->type == type)
 			return (EPKG_OK);
 	}
@@ -736,10 +732,7 @@ pkgdb_close(struct pkgdb *db)
 		return;
 
 	if (db->sqlite != NULL) {
-		if (db->lock_count) {
-			db->lock_count = 1;
-			pkgdb_unlock(db);  /* Unlock failure is not terminal */
-		}
+		assert(db->lock_count == 0);
 		if (db->type == PKGDB_REMOTE) {
 			pkgdb_detach_remotes(db->sqlite);
 		}
