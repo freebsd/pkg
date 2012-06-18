@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -27,6 +27,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/queue.h>
 
 #include <err.h>
 #include <stdio.h>
@@ -36,6 +37,13 @@
 #include <sysexits.h>
 
 #include "pkgcli.h"
+
+struct pkg_entry {
+	struct pkg *pkg;
+	STAILQ_ENTRY(pkg_entry) next;
+};
+
+STAILQ_HEAD(pkg_head, pkg_entry);
 
 void
 usage_create(void)
@@ -53,6 +61,8 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
+	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
+	struct pkg_entry *e = NULL;
 	const char *name, *version;
 	char pkgpath[MAXPATHLEN];
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
@@ -81,52 +91,49 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 			break;
 	}
 
-
-	if (match != MATCH_ALL) {
-		for (i = 0;i < argc; i++) {
-			if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
+	for (i = 0; i < argc || match == MATCH_ALL; i++) {
+		if (match == MATCH_ALL) {
+			if ((it == pkgdb_query(db, NULL, match)) == NULL)
 				goto cleanup;
-			}
-			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-				pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-				if (!overwrite) {
-					snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
-					if (access(pkgpath, F_OK) == 0) {
-						printf("%s-%s already packaged skipping...\n", name, version);
-						continue;
-					}
-				}
-				printf("Creating package for %s-%s\n", name, version);
-				if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK)
-					retcode++;
-			}
-		}
-	} else {
-		if ((it = pkgdb_query(db, NULL, match)) == NULL) {
-			goto cleanup;
-		}
+			match = !MATCH_ALL;
+		} else
+			if ((it == pkgdb_query(db, argv[i], match)) == NULL)
+				goto cleanup;
+
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-			if (!overwrite) {
-				snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
-				if (access(pkgpath, F_OK) == 0) {
-					printf("%s-%s already packaged skipping...\n", name, version);
-					continue;
-				}
-			}
-			printf("Creating package for %s-%s\n", name, version);
-			if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK)
-				retcode++;
+			if ((e = malloc(sizeof(struct pkg_entry)) == NULL))
+				err(1, "malloc(pkg_entry)");
+			e->pkg = pkg;
+			pkg = NULL;
+			STAILQ_INSERT_TAIL(&head, e, next);
 		}
+		pkgdb_it_free(it);
+		if (ret != EPKG_END)
+			retcode++;
+	}
+
+	while (!STAILQ_EMPTY(&head)) {
+		e = STAILQ_FIRST(&head);
+		STAILQ_REMOVE_HEAD(&head, next);
+
+		pkg_get(e->pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		if (!overwrite) {
+			snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
+			if (access(pkgpath, F_OK) == 0) {
+				printf("%s-%s already packaged skipping...\n", name, version);
+				pkg_free(pkg);
+				free(e);
+				continue;
+			}
+		}
+		printf("Creating package for %s-%s\n", name, version);
+		if (pkg_create_installed(outdir, fmt, rootdir, e->pkg) != EPKG_OK)
+			retcode++;
+		pkg_free(pkg);
+		free(e);
 	}
 
 cleanup:
-	if (ret != EPKG_END) {
-		retcode++;
-	}
-
-	pkg_free(pkg);
-	pkgdb_it_free(it);
 	pkgdb_close(db);
 
 	return (retcode);
