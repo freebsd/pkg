@@ -332,8 +332,11 @@ exec_audit(int argc, char **argv)
 	}
 	snprintf(audit_file, sizeof(audit_file), "%s/auditfile", db_dir);
 
-	while ((ch = getopt(argc, argv, "F")) != -1) {
+	while ((ch = getopt(argc, argv, "qF")) != -1) {
 		switch (ch) {
+			case 'q':
+				quiet = true;
+				break;
 			case 'F':
 				fetch = true;
 				break;
