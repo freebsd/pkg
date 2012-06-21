@@ -93,15 +93,16 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
 		if (match == MATCH_ALL) {
-			if ((it == pkgdb_query(db, NULL, match)) == NULL)
+			printf("Loading package list...\n");
+			if ((it = pkgdb_query(db, NULL, match)) == NULL)
 				goto cleanup;
 			match = !MATCH_ALL;
 		} else
-			if ((it == pkgdb_query(db, argv[i], match)) == NULL)
+			if ((it = pkgdb_query(db, argv[i], match)) == NULL)
 				goto cleanup;
 
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-			if ((e = malloc(sizeof(struct pkg_entry)) == NULL))
+			if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
 				err(1, "malloc(pkg_entry)");
 			e->pkg = pkg;
 			pkg = NULL;
