@@ -121,7 +121,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 			snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
 			if (access(pkgpath, F_OK) == 0) {
 				printf("%s-%s already packaged skipping...\n", name, version);
-				pkg_free(pkg);
+				pkg_free(e->pkg);
 				free(e);
 				continue;
 			}
@@ -129,7 +129,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 		printf("Creating package for %s-%s\n", name, version);
 		if (pkg_create_installed(outdir, fmt, rootdir, e->pkg) != EPKG_OK)
 			retcode++;
-		pkg_free(pkg);
+		pkg_free(e->pkg);
 		free(e);
 	}
 
