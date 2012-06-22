@@ -493,7 +493,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							default:
-								fprintf(stderr, "malformed evaluation string\n");
+								fprintf(stderr, "malformed evaluation string");
 								return (EPKG_FATAL);
 						}
 						state = OPERATOR_INT;
