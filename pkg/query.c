@@ -356,7 +356,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			}
 			break;
 		case 'G':
-			while (pkg_users(pkg, &user) == EPKG_OK) {
+			while (pkg_groups(pkg, &group) == EPKG_OK) {
 				format_str(pkg, output, qstr, group);
 				printf("%s\n", sbuf_data(output));
 			}
