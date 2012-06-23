@@ -26,7 +26,8 @@ SRCS=		add.c \
 		version.c \
 		which.c \
 		fetch.c \
-		shell.c
+		shell.c \
+		stats.c
 
 PREFIX?=	/usr/local
 BINDIR=		${PREFIX}/sbin

@@ -80,6 +80,7 @@ static struct commands {
 	{ "rquery", "Query information from the remote repository", exec_rquery, usage_rquery},
 	{ "shell", "Open a debug shell", exec_shell, usage_shell},
 	{ "shlib", "Displays which package links against a specific shared library", exec_shlib, usage_shlib},
+	{ "stats", "Display package database statistics", exec_stats, usage_stats},
 	{ "update", "Updates remote package repository databases", exec_update, usage_update},
 	{ "updating", "Displays UPDATING information for a package", exec_updating, usage_updating},
 	{ "upgrade", "Performs upgrades of package software distributions", exec_upgrade, usage_upgrade},

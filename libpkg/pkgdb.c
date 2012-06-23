@@ -3303,3 +3303,35 @@ pkgdb_unlock(struct pkgdb *db)
 {
 	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
 }
+
+int64_t
+pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
+{
+	sqlite3_stmt *stmt = NULL;
+	const char *sql = NULL;
+	int64_t stats = 0;
+
+	assert(db != NULL);
+
+	switch(type) {
+	case PKG_STATS_INSTALLED:
+		sql = "SELECT COUNT(p.id) FROM main.packages AS p;";
+		break;
+	case PKG_STATS_INSTALLED_SIZE:
+		sql = "SELECT SUM(p.flatsize) FROM main.packages AS p;";
+		break;
+	}
+
+	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (-1);
+	}
+	
+	while (sqlite3_step(stmt) != SQLITE_DONE) {
+		stats = sqlite3_column_int64(stmt, 0);
+	}
+
+	sqlite3_finalize(stmt);
+
+	return (stats);
+}
