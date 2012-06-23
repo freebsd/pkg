@@ -28,6 +28,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <libutil.h>
 
 #include <pkg.h>
 
@@ -44,6 +45,8 @@ int
 exec_stats(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
+	int64_t flatsize = 0;
+	char size[7];
 	int retcode = EX_OK;
 	int ch;
 
@@ -68,11 +71,15 @@ exec_stats(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
 	}
-
-       	printf("installed packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_INSTALLED));
 	
+	printf("Local package database:\n");
+       	printf("\tIstalled packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_INSTALLED));
+
+	flatsize = pkgdb_stats(db, PKG_STATS_INSTALLED_SIZE);
+	humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
+	printf("\tDisk space occupied: %s\n", size);
 	
 	pkgdb_close(db);
-
+	
 	return (retcode);
 }
