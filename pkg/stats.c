@@ -81,7 +81,7 @@ exec_stats(int argc, char **argv)
 
 	printf("Remote package database(s):\n");
 	printf("\tPackages available: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_COUNT));
-	
+
 	flatsize = pkgdb_stats(db, PKG_STATS_REMOTE_SIZE);
 	humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
 	printf("\tTotal size of packages: %s\n", size);

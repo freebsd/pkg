@@ -2114,10 +2114,11 @@ report_already_installed(sqlite3 *s)
 }
 
 static int
-sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql) {
+sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql, bool union_all) {
 	sqlite3_stmt *stmt;
 	const char *dbname;
 	bool first = true;
+	const char *union_buf = NULL;
 
 	assert(s != NULL);
 
@@ -2126,13 +2127,20 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql) {
 		return (EPKG_FATAL);
 	}
 
+	/* 'UNION' or 'UNION ALL' ? */
+	if (union_all == false) {
+		union_buf = " UNION ";
+	} else {
+		union_buf = " UNION ALL ";
+	}
+		
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		dbname = sqlite3_column_text(stmt, 1);
 		if ((strcmp(dbname, "main") == 0) || (strcmp(dbname, "temp") == 0))
 			continue;
 
 		if (!first) {
-			sbuf_cat(sql, " UNION ALL ");
+			sbuf_cat(sql, union_buf);
 		} else {
 			first = false;
 		}
@@ -2741,7 +2749,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 	 */
 	if (multirepos_enabled && !strcmp(reponame, "default")) {
 		/* duplicate the query via UNION for all the attached databases */
-		if (sql_on_all_attached_db(db->sqlite, sql, basesql) != EPKG_OK) {
+		if (sql_on_all_attached_db(db->sqlite, sql, basesql, true) != EPKG_OK) {
 			sbuf_delete(sql);
 			return (NULL);
 		}
@@ -2847,7 +2855,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 			}
 		} else {
 			/* test on all the attached databases */
-			if (sql_on_all_attached_db(db->sqlite, sql, multireposql) != EPKG_OK) {
+			if (sql_on_all_attached_db(db->sqlite, sql, multireposql, true) != EPKG_OK) {
 				sbuf_delete(sql);
 				return (NULL);
 			}
@@ -3308,27 +3316,47 @@ int64_t
 pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 {
 	sqlite3_stmt *stmt = NULL;
-	const char *sql = NULL;
 	int64_t stats = 0;
+	struct sbuf *sql = NULL;
 
 	assert(db != NULL);
 
+	sql = sbuf_new_auto();
+	
 	switch(type) {
 	case PKG_STATS_LOCAL_COUNT:
-		sql = "SELECT COUNT(p.id) FROM main.packages AS p;";
+		sbuf_cat(sql, "SELECT COUNT(id) FROM main.packages;");
 		break;
 	case PKG_STATS_LOCAL_SIZE:
-		sql = "SELECT SUM(p.flatsize) FROM main.packages AS p;";
+		sbuf_cat(sql, "SELECT SUM(flatsize) FROM main.packages;");
 		break;
 	case PKG_STATS_REMOTE_COUNT:
-		sql = "SELECT COUNT(r.id) FROM remote.packages AS r;";
+		sbuf_cat(sql, "SELECT COUNT(c) FROM ");
+
+		/* open parentheses for the compound statement */
+		sbuf_cat(sql, "(");
+
+		/* execute on all databases */
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT origin AS c FROM '%s'.packages", false);
+
+		/* close parentheses for the compound statement */
+		sbuf_cat(sql, ")");
 		break;
 	case PKG_STATS_REMOTE_SIZE:
-		sql = "SELECT SUM(r.flatsize) FROM remote.packages AS r;";
+		sbuf_cat(sql, "SELECT SUM(s) FROM ");
+
+		/* open parentheses for the compound statement */
+		sbuf_cat(sql, "(");
+
+		/* execute on all databases */
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT flatsize AS s FROM '%s'.packages", false);
+
+		/* close parentheses for the compound statement */
+		sbuf_cat(sql, ")");
 		break;
 	}
-
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+	
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (-1);
 	}
@@ -3337,6 +3365,8 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		stats = sqlite3_column_int64(stmt, 0);
 	}
 
+	sbuf_finish(sql);
+	sbuf_delete(sql);
 	sqlite3_finalize(stmt);
 
 	return (stats);
