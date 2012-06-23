@@ -73,7 +73,7 @@ exec_stats(int argc, char **argv)
 	}
 	
 	printf("Local package database:\n");
-       	printf("\tIstalled packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_INSTALLED));
+       	printf("\tInstalled packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_INSTALLED));
 
 	flatsize = pkgdb_stats(db, PKG_STATS_INSTALLED_SIZE);
 	humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
