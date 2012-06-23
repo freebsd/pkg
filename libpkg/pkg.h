@@ -266,8 +266,10 @@ typedef enum {
 } pkg_config_kv_t;
 
 typedef enum _pkg_stats_t {
-	PKG_STATS_INSTALLED = 0,
-	PKG_STATS_INSTALLED_SIZE,
+	PKG_STATS_LOCAL_COUNT = 0,
+	PKG_STATS_LOCAL_SIZE,
+	PKG_STATS_REMOTE_COUNT,
+	PKG_STATS_REMOTE_SIZE,
 } pkg_stats_t;
 
 /**

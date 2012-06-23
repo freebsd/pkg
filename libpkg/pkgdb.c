@@ -3314,11 +3314,17 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	assert(db != NULL);
 
 	switch(type) {
-	case PKG_STATS_INSTALLED:
+	case PKG_STATS_LOCAL_COUNT:
 		sql = "SELECT COUNT(p.id) FROM main.packages AS p;";
 		break;
-	case PKG_STATS_INSTALLED_SIZE:
+	case PKG_STATS_LOCAL_SIZE:
 		sql = "SELECT SUM(p.flatsize) FROM main.packages AS p;";
+		break;
+	case PKG_STATS_REMOTE_COUNT:
+		sql = "SELECT COUNT(r.id) FROM remote.packages AS r;";
+		break;
+	case PKG_STATS_REMOTE_SIZE:
+		sql = "SELECT SUM(r.flatsize) FROM remote.packages AS r;";
 		break;
 	}
 

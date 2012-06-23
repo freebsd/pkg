@@ -68,16 +68,23 @@ exec_stats(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		return (EX_IOERR);
 	}
 	
 	printf("Local package database:\n");
-       	printf("\tInstalled packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_INSTALLED));
+       	printf("\tInstalled packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_LOCAL_COUNT));
 
-	flatsize = pkgdb_stats(db, PKG_STATS_INSTALLED_SIZE);
+	flatsize = pkgdb_stats(db, PKG_STATS_LOCAL_SIZE);
 	humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
-	printf("\tDisk space occupied: %s\n", size);
+	printf("\tDisk space occupied: %s\n\n", size);
+
+	printf("Remote package database(s):\n");
+	printf("\tPackages available: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_COUNT));
+	
+	flatsize = pkgdb_stats(db, PKG_STATS_REMOTE_SIZE);
+	humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
+	printf("\tTotal size of packages: %s\n", size);
 	
 	pkgdb_close(db);
 	
