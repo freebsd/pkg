@@ -3361,6 +3361,18 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		/* close parentheses for the compound statement */
 		sbuf_printf(sql, ");");
 		break;
+	case PKG_STATS_REMOTE_REPOS:
+		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
+		
+		/* open parentheses for the compound statement */
+		sbuf_printf(sql, "(");
+		
+		/* execute on all databases */
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT '%1$s' AS c", " UNION ALL ");
+
+		/* close parentheses for the compound statement */
+		sbuf_printf(sql, ");");
+		break;
 	}
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {

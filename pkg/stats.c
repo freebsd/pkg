@@ -80,6 +80,7 @@ exec_stats(int argc, char **argv)
 	printf("\tDisk space occupied: %s\n\n", size);
 
 	printf("Remote package database(s):\n");
+	printf("\tNumber of repositories: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_REPOS));
 	printf("\tPackages available: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_COUNT));
 	printf("\tUnique packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_UNIQUE));
 

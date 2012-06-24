@@ -271,6 +271,7 @@ typedef enum _pkg_stats_t {
 	PKG_STATS_REMOTE_COUNT,
 	PKG_STATS_REMOTE_UNIQUE,
 	PKG_STATS_REMOTE_SIZE,
+	PKG_STATS_REMOTE_REPOS,
 } pkg_stats_t;
 
 /**
