@@ -3380,6 +3380,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	}
 
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+		sbuf_free(sql);
 		ERROR_SQLITE(db->sqlite);
 		return (-1);
 	}
@@ -3390,7 +3391,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 
 
 	sbuf_finish(sql);
-	sbuf_delete(sql);
+	sbuf_free(sql);
 	sqlite3_finalize(stmt);
 
 	return (stats);
