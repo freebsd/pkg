@@ -3320,37 +3320,49 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	
 	switch(type) {
 	case PKG_STATS_LOCAL_COUNT:
-		sbuf_cat(sql, "SELECT COUNT(id) FROM main.packages;");
+		sbuf_printf(sql, "SELECT COUNT(id) FROM main.packages;");
 		break;
 	case PKG_STATS_LOCAL_SIZE:
-		sbuf_cat(sql, "SELECT SUM(flatsize) FROM main.packages;");
+		sbuf_printf(sql, "SELECT SUM(flatsize) FROM main.packages;");
 		break;
-	case PKG_STATS_REMOTE_COUNT:
-		sbuf_cat(sql, "SELECT COUNT(c) FROM ");
+	case PKG_STATS_REMOTE_UNIQUE:
+		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
 
 		/* open parentheses for the compound statement */
-		sbuf_cat(sql, "(");
+		sbuf_printf(sql, "(");
 
 		/* execute on all databases */
-		sql_on_all_attached_db(db->sqlite, sql, "SELECT origin AS c FROM '%1$s'.packages", " UNION ALL ");
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT origin AS c FROM '%1$s'.packages", " UNION ");
 
 		/* close parentheses for the compound statement */
-		sbuf_cat(sql, ")");
+		sbuf_printf(sql, ");");
+		break;
+	case PKG_STATS_REMOTE_COUNT:
+		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
+		
+		/* open parentheses for the compound statement */
+		sbuf_printf(sql, "(");
+		
+		/* execute on all databases */
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT origin AS c FROM '%1$s'.packages", " UNION ALL ");
+		
+		/* close parentheses for the compound statement */
+		sbuf_printf(sql, ");");
 		break;
 	case PKG_STATS_REMOTE_SIZE:
-		sbuf_cat(sql, "SELECT SUM(s) FROM ");
+		sbuf_printf(sql, "SELECT SUM(s) FROM ");
 
 		/* open parentheses for the compound statement */
-		sbuf_cat(sql, "(");
+		sbuf_printf(sql, "(");
 
 		/* execute on all databases */
 		sql_on_all_attached_db(db->sqlite, sql, "SELECT flatsize AS s FROM '%1$s'.packages", " UNION ALL ");
 
 		/* close parentheses for the compound statement */
-		sbuf_cat(sql, ")");
+		sbuf_printf(sql, ");");
 		break;
 	}
-	
+
 	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (-1);
@@ -3359,6 +3371,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		stats = sqlite3_column_int64(stmt, 0);
 	}
+
 
 	sbuf_finish(sql);
 	sbuf_delete(sql);
