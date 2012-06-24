@@ -2114,37 +2114,32 @@ report_already_installed(sqlite3 *s)
 }
 
 static int
-sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql, bool union_all) {
+sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql, const char *compound) {
 	sqlite3_stmt *stmt;
 	const char *dbname;
 	bool first = true;
-	const char *union_buf = NULL;
 
 	assert(s != NULL);
+	assert(compound != NULL);
 
 	if (sqlite3_prepare_v2(s, "PRAGMA database_list;", -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(s);
 		return (EPKG_FATAL);
 	}
 
-	/* 'UNION' or 'UNION ALL' ? */
-	if (union_all == false) {
-		union_buf = " UNION ";
-	} else {
-		union_buf = " UNION ALL ";
-	}
-		
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		dbname = sqlite3_column_text(stmt, 1);
 		if ((strcmp(dbname, "main") == 0) || (strcmp(dbname, "temp") == 0))
 			continue;
 
 		if (!first) {
-			sbuf_cat(sql, union_buf);
+			sbuf_cat(sql, compound);
 		} else {
 			first = false;
 		}
-		sbuf_printf(sql, multireposql, dbname, dbname);
+
+		/* replace any occurences of the dbname in the resulting SQL */
+		sbuf_printf(sql, multireposql, dbname);
 	}
 
 	sqlite3_finalize(stmt);
@@ -2728,8 +2723,8 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 				"SELECT id, origin, name, version, comment, "
 				"prefix, desc, arch, maintainer, www, "
 				"licenselogic, flatsize, pkgsize, "
-				"cksum, path AS repopath, '%s' AS dbname "
-				"FROM '%s'.packages p";
+				"cksum, path AS repopath, '%1$s' AS dbname "
+				"FROM '%1$s'.packages p";
 
 	assert(db != NULL);
 	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
@@ -2749,7 +2744,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 	 */
 	if (multirepos_enabled && !strcmp(reponame, "default")) {
 		/* duplicate the query via UNION for all the attached databases */
-		if (sql_on_all_attached_db(db->sqlite, sql, basesql, true) != EPKG_OK) {
+		if (sql_on_all_attached_db(db->sqlite, sql, basesql, " UNION ALL ") != EPKG_OK) {
 			sbuf_delete(sql);
 			return (NULL);
 		}
@@ -2824,8 +2819,8 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 				"SELECT id, origin, name, version, comment, "
 					"prefix, desc, arch, maintainer, www, "
 					"licenselogic, flatsize, pkgsize, "
-					"cksum, path, '%s' AS dbname "
-					"FROM '%s'.packages ";
+					"cksum, path, '%1$s' AS dbname "
+					"FROM '%1$s'.packages ";
 
 	assert(db != NULL);
 	assert(pattern != NULL && pattern[0] != '\0');
@@ -2855,7 +2850,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 			}
 		} else {
 			/* test on all the attached databases */
-			if (sql_on_all_attached_db(db->sqlite, sql, multireposql, true) != EPKG_OK) {
+			if (sql_on_all_attached_db(db->sqlite, sql, multireposql, " UNION ALL ") != EPKG_OK) {
 				sbuf_delete(sql);
 				return (NULL);
 			}
@@ -3337,7 +3332,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		sbuf_cat(sql, "(");
 
 		/* execute on all databases */
-		sql_on_all_attached_db(db->sqlite, sql, "SELECT origin AS c FROM '%s'.packages", false);
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT origin AS c FROM '%1$s'.packages", " UNION ALL ");
 
 		/* close parentheses for the compound statement */
 		sbuf_cat(sql, ")");
@@ -3349,7 +3344,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		sbuf_cat(sql, "(");
 
 		/* execute on all databases */
-		sql_on_all_attached_db(db->sqlite, sql, "SELECT flatsize AS s FROM '%s'.packages", false);
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT flatsize AS s FROM '%1$s'.packages", " UNION ALL ");
 
 		/* close parentheses for the compound statement */
 		sbuf_cat(sql, ")");
