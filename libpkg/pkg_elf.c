@@ -57,6 +57,12 @@ test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 	bool shlibs = false;
 	bool autodeps = false;
 
+#ifdef STATIC_LINKAGE
+	/* If we're compiled using static linkage, ie. as pkg-static,
+	   calls to dlopen(3) will fail, so bail out immediately. */
+	return (EPKG_OK);
+#endif
+
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
