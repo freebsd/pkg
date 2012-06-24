@@ -176,7 +176,7 @@ struct query_flags {
 };
 
 void print_query(struct pkg *pkg, char *qstr, char multiline);
-int format_sql_condition(const char *str, struct sbuf *sqlcond);
+int format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote);
 int analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int q_flags_len, int *flags, char *multiline);
 
 #endif

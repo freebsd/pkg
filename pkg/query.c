@@ -356,7 +356,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			}
 			break;
 		case 'G':
-			while (pkg_users(pkg, &user) == EPKG_OK) {
+			while (pkg_groups(pkg, &group) == EPKG_OK) {
 				format_str(pkg, output, qstr, group);
 				printf("%s\n", sbuf_data(output));
 			}
@@ -395,7 +395,7 @@ typedef enum {
 } state_t;
 
 int
-format_sql_condition(const char *str, struct sbuf *sqlcond)
+format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 {
 	state_t state = NONE;
 	unsigned int bracket_level = 0;
@@ -435,23 +435,72 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 						state = OPERATOR_INT;
 						break;
 					case 'a':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "automatic");
 						state = OPERATOR_INT;
 						break;
 					case 'M':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "message");
 						state = OPERATOR_STRING;
 						break;
 					case 'i':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "infos");
 						state = OPERATOR_STRING;
 						break;
 					case 't':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "time");
 						state = OPERATOR_INT;
 						break;
+					case '#':
+						str++;
+						const char *dbstr = for_remote ? "%1$s." : "";
+						switch (str[0]) {
+							case 'd':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sdeps AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'r':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sdeps AS d WHERE d.origin=p.origin)", dbstr);
+								break;
+							case 'C':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_categories AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'F':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sfiles AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'O':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %soptions AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'D':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_directories AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'L':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_licenses AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'U':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_users AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'G':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_groups AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'B':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							default:
+								fprintf(stderr, "malformed evaluation string\n");
+								return (EPKG_FATAL);
+						}
+						state = OPERATOR_INT;
+						break;
 					default:
-						fprintf(stderr, "malformed evaluation string");
+bad_option:
+						fprintf(stderr, "malformed evaluation string\n");
 						return (EPKG_FATAL);
 				}
 			} else {
@@ -511,14 +560,14 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 				/* do nothing */
 			} else if (str[0] == '~' ) {
 				if (state != OPERATOR_STRING) {
-					fprintf(stderr, "~ expected only for string testing");
+					fprintf(stderr, "~ expected only for string testing\n");
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_STRING;
 				sbuf_cat(sqlcond, " GLOB ");
 			} else if (str[0] == '>' || str[0] == '<') {
 				if (state != OPERATOR_INT) {
-					fprintf(stderr, "> expected only for integers");
+					fprintf(stderr, "> expected only for integers\n");
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_INT;
@@ -540,7 +589,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 				}
 			} else if (str[0] == '!') {
 				if (str[1] != '=') {
-					fprintf(stderr, "expecting = after !");
+					fprintf(stderr, "expecting = after !\n");
 					return (EPKG_FATAL);
 				}
 				if (state == OPERATOR_STRING) {
@@ -594,6 +643,8 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 			} else {
 				sbuf_putc(sqlcond, str[0]);
 				if (str[0] == '\'')
+					sbuf_putc(sqlcond, str[0]);
+				else if (str[0] == '%' && for_remote)
 					sbuf_putc(sqlcond, str[0]);
 			}
 		}
@@ -783,7 +834,7 @@ exec_query(int argc, char **argv)
 
 	if (condition != NULL) {
 		sqlcond = sbuf_new_auto();
-		if (format_sql_condition(condition, sqlcond) != EPKG_OK) {
+		if (format_sql_condition(condition, sqlcond, false) != EPKG_OK) {
 			sbuf_delete(sqlcond);
 			return (EX_USAGE);
 		}
