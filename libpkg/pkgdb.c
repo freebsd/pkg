@@ -3298,12 +3298,16 @@ pkgshell_open(const char **reponame)
 int
 pkgdb_lock(struct pkgdb *db)
 {
+	assert(db != NULL);
+	
 	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
 }
 
 int
 pkgdb_unlock(struct pkgdb *db)
 {
+	assert(db != NULL);
+	
 	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
 }
 
