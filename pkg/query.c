@@ -493,14 +493,14 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							default:
-								fprintf(stderr, "malformed evaluation string");
+								fprintf(stderr, "malformed evaluation string\n");
 								return (EPKG_FATAL);
 						}
 						state = OPERATOR_INT;
 						break;
 					default:
 bad_option:
-						fprintf(stderr, "malformed evaluation string");
+						fprintf(stderr, "malformed evaluation string\n");
 						return (EPKG_FATAL);
 				}
 			} else {
@@ -560,14 +560,14 @@ bad_option:
 				/* do nothing */
 			} else if (str[0] == '~' ) {
 				if (state != OPERATOR_STRING) {
-					fprintf(stderr, "~ expected only for string testing");
+					fprintf(stderr, "~ expected only for string testing\n");
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_STRING;
 				sbuf_cat(sqlcond, " GLOB ");
 			} else if (str[0] == '>' || str[0] == '<') {
 				if (state != OPERATOR_INT) {
-					fprintf(stderr, "> expected only for integers");
+					fprintf(stderr, "> expected only for integers\n");
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_INT;
@@ -589,7 +589,7 @@ bad_option:
 				}
 			} else if (str[0] == '!') {
 				if (str[1] != '=') {
-					fprintf(stderr, "expecting = after !");
+					fprintf(stderr, "expecting = after !\n");
 					return (EPKG_FATAL);
 				}
 				if (state == OPERATOR_STRING) {
