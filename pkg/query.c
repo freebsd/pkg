@@ -458,6 +458,46 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 						sbuf_cat(sqlcond, "time");
 						state = OPERATOR_INT;
 						break;
+					case '#':
+						str++;
+						const char *dbstr = for_remote ? "%1$s." : "";
+						switch (str[0]) {
+							case 'd':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sdeps AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'r':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sdeps AS d WHERE d.origin=p.origin)", dbstr);
+								break;
+							case 'C':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_categories AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'F':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sfiles AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'O':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %soptions AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'D':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_directories AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'L':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_licenses AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'U':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_users AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'G':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_groups AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'B':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							default:
+								fprintf(stderr, "malformed evaluation string");
+								return (EPKG_FATAL);
+						}
+						state = OPERATOR_INT;
+						break;
 					default:
 bad_option:
 						fprintf(stderr, "malformed evaluation string");
