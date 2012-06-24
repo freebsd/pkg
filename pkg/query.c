@@ -395,7 +395,7 @@ typedef enum {
 } state_t;
 
 int
-format_sql_condition(const char *str, struct sbuf *sqlcond)
+format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 {
 	state_t state = NONE;
 	unsigned int bracket_level = 0;
@@ -435,22 +435,31 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 						state = OPERATOR_INT;
 						break;
 					case 'a':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "automatic");
 						state = OPERATOR_INT;
 						break;
 					case 'M':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "message");
 						state = OPERATOR_STRING;
 						break;
 					case 'i':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "infos");
 						state = OPERATOR_STRING;
 						break;
 					case 't':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "time");
 						state = OPERATOR_INT;
 						break;
 					default:
+bad_option:
 						fprintf(stderr, "malformed evaluation string");
 						return (EPKG_FATAL);
 				}
@@ -594,6 +603,8 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 			} else {
 				sbuf_putc(sqlcond, str[0]);
 				if (str[0] == '\'')
+					sbuf_putc(sqlcond, str[0]);
+				else if (str[0] == '%' && for_remote)
 					sbuf_putc(sqlcond, str[0]);
 			}
 		}
@@ -783,7 +794,7 @@ exec_query(int argc, char **argv)
 
 	if (condition != NULL) {
 		sqlcond = sbuf_new_auto();
-		if (format_sql_condition(condition, sqlcond) != EPKG_OK) {
+		if (format_sql_condition(condition, sqlcond, false) != EPKG_OK) {
 			sbuf_delete(sqlcond);
 			return (EX_USAGE);
 		}
