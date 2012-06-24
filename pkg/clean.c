@@ -38,7 +38,8 @@
 void
 usage_clean(void)
 {
-	fprintf(stderr, "usage: pkg clean\n");
+	fprintf(stderr, "usage: pkg clean\n\n");
+	fprintf(stderr, "For more information see 'pkg help clean'.\n");
 }
 
 int
@@ -61,7 +62,7 @@ exec_clean(int argc, char **argv)
 	(void)argv;
 
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK) {
-		warnx("Cant get cachedir config entry");
+		warnx("Cannot get cachedir config entry");
 		return 1;
 	}
 
@@ -100,17 +101,17 @@ exec_clean(int argc, char **argv)
 			continue;
 		}
 
-		ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC);
-		to_delete = false;
-		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
-		if (ret == EPKG_FATAL) {
+		if ((ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC)) == EPKG_FATAL) {
 			warnx("skipping %s", ent->fts_path);
 			continue;
-		} else if (ret == EPKG_END) {
+		}
+		to_delete = false;
+		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
+		if (ret == EPKG_END) {
 			to_delete = true;
-			printf("%s does not exist anymore, deleting\n", repopath);
+			printf("%s does not exist anymore, deleting it\n", repopath);
 		} else if (strcmp(repopath, pkgrepopath)) {
-			printf("%s is out-of-date, deleting\n", repopath);
+			printf("%s is out-of-date, deleting it\n", repopath);
 			to_delete = true;
 		}
 

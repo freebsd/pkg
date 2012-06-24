@@ -40,7 +40,7 @@
 #define PKGVERSION "1.0-beta15"
 /* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg version comparison
  * in pkgdb_query_newpkgversion() */
-#define PKG_PORTVERSION "1.0.b15"
+#define PKG_PORTVERSION "1.0.b15_3"
 
 struct pkg;
 struct pkg_dep;
@@ -257,12 +257,22 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_AUTODEPS = 12,
 	PKG_CONFIG_ABI = 13,
 	PKG_CONFIG_DEVELOPER_MODE = 14,
+	PKG_CONFIG_PORTAUDIT_SITE = 15,
 } pkg_config_key;
 
 typedef enum {
 	PKG_CONFIG_KV_KEY,
 	PKG_CONFIG_KV_VALUE
 } pkg_config_kv_t;
+
+typedef enum _pkg_stats_t {
+	PKG_STATS_LOCAL_COUNT = 0,
+	PKG_STATS_LOCAL_SIZE,
+	PKG_STATS_REMOTE_COUNT,
+	PKG_STATS_REMOTE_UNIQUE,
+	PKG_STATS_REMOTE_SIZE,
+	PKG_STATS_REMOTE_REPOS,
+} pkg_stats_t;
 
 /**
  * Error type used everywhere by libpkg.
@@ -298,6 +308,10 @@ typedef enum {
 	 * local file newer than remote
 	 */
 	EPKG_UPTODATE,
+	/** 
+	 * unkown keyword
+	 */
+	EPKG_UNKNOWN,
 } pkg_error_t;
 
 /**
@@ -432,7 +446,19 @@ int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
  * @return An error code
  */
 
+ /* Don't conflict with PKG_LOAD_* q.v. */
+#define PKG_CONTAINS_ELF_OBJECTS (1<<24)
+#define PKG_CONTAINS_STATIC_LIBS (1<<25)
+#define PKG_CONTAINS_H_OR_LA (1<<26)
+
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
+
+/**
+ * Suggest if a package could be marked architecture independent or
+ * not.
+ */
+int pkg_suggest_arch(struct pkg *, const char *, bool);
+
 /**
  * Generic setter for simple attributes.
  */
@@ -707,6 +733,7 @@ struct pkgdb_it * pkgdb_query_shlib(struct pkgdb *db, const char *shlib);
 #define PKG_LOAD_USERS (1<<9)
 #define PKG_LOAD_GROUPS (1<<10)
 #define PKG_LOAD_SHLIBS (1<<11)
+/* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**
  * Get the next pkg.
@@ -790,14 +817,22 @@ typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 int pkg_create_installed(const char *, pkg_formats, const char *, struct pkg *);
 
 /**
- * Create package from fakeroot install with a metadata directory
+ * Create package from stage install with a metadata directory
  */
-int pkg_create_fakeroot(const char *, pkg_formats, const char *, const char *);
+int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *);
 
 /**
  * Download the latest repo db file and checks its signature if any
  */
 int pkg_update(const char *name, const char *packagesite);
+
+/**
+ * Get statistics information from the package database(s)
+ * @param db A valid database object as returned by pkgdb_open()
+ * @param type Type of statistics to be returned
+ * @return The statistic information requested
+ */
+int64_t pkgdb_stats(struct pkgdb *db, pkg_stats_t type);
 
 /**
  * Get the value of a configuration key
@@ -819,7 +854,7 @@ int pkg_version_cmp(const char * const , const char * const);
 int pkg_fetch_file(const char *url, const char *dest, time_t t);
 
 /* glue to deal with ports */
-int ports_parse_plist(struct pkg *, char *);
+int ports_parse_plist(struct pkg *, char *, const char *);
 
 /**
  * @todo Document

@@ -66,7 +66,8 @@ static const char * const scripts[] = {
 void
 usage_register(void)
 {
-	fprintf(stderr, "usage: pkg register [-ld] [-a <arch>] [-i <input-path>] -m <metadatadir> -f <plist-file>\n\n");
+	fprintf(stderr, "usage: pkg register [-ld] [-i <input-path>]"
+	                " -m <metadatadir> -f <plist-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
 
@@ -93,6 +94,7 @@ exec_register(int argc, char **argv)
 	size_t size;
 
 	bool legacy = false;
+	bool developer = false;
 
 	int i;
 	int ret = EPKG_OK, retcode = EPKG_OK;
@@ -102,8 +104,10 @@ exec_register(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+
 	pkg_new(&pkg, PKG_INSTALLED);
-	while ((ch = getopt(argc, argv, "a:f:m:i:ld")) != -1) {
+	while ((ch = getopt(argc, argv, "f:m:i:ld")) != -1) {
 		switch (ch) {
 			case 'f':
 				if ((plist = strdup(optarg)) == NULL)
@@ -112,10 +116,6 @@ exec_register(int argc, char **argv)
 				break;
 			case 'm':
 				if ((mdir = strdup(optarg)) == NULL)
-					err(1, "cannot allocate memory");
-				break;
-			case 'a':
-				if ((arch = strdup(optarg)) == NULL)
 					err(1, "cannot allocate memory");
 				break;
 			case 'd':
@@ -137,18 +137,6 @@ exec_register(int argc, char **argv)
 
 	if (plist == NULL)
 		errx(EX_USAGE, "missing -f flag");
-
-	if (arch == NULL) {
-		/*
-		 * do not take the one from configuration on purpose
-		 * but the real abi of the package
-		 */
-		pkg_get_myarch(myarch, BUFSIZ);
-		pkg_set(pkg, PKG_ARCH, myarch);
-	} else {
-		pkg_set(pkg, PKG_ARCH, arch);
-		free(arch);
-	}
 
 	if (mdir == NULL)
 		errx(EX_USAGE, "missing -m flag");
@@ -193,7 +181,7 @@ exec_register(int argc, char **argv)
 		free(www);
 	}
 
-	ret += ports_parse_plist(pkg, plist);
+	ret += ports_parse_plist(pkg, plist, input_path);
 
 	if (ret != EPKG_OK) {
 		return (EX_IOERR);
@@ -207,6 +195,21 @@ exec_register(int argc, char **argv)
 	}
 
 	pkg_analyse_files(db, pkg);
+
+	pkg_get(pkg, PKG_ARCH, &arch);
+	if (arch == NULL) {
+		/*
+		 * do not take the one from configuration on purpose
+		 * but the real abi of the package.
+		 */
+		pkg_get_myarch(myarch, BUFSIZ);
+		if (developer)
+			pkg_suggest_arch(pkg, myarch, true);
+		pkg_set(pkg, PKG_ARCH, myarch);
+	} else {
+		if (developer)
+			pkg_suggest_arch(pkg, arch, false);
+	}
 
 	if (input_path != NULL) {
 		pkg_copy_tree(pkg, input_path, "/");

@@ -44,7 +44,7 @@
 void
 usage_install(void)
 {
-	fprintf(stderr, "usage: pkg install [-r reponame] [-yqfgxX] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg install [-r reponame] [-yqfgxXL] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -104,7 +104,7 @@ exec_install(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("installing packages can only be done as root");
+		warnx("Installing packages can only be done as root");
 		return (EX_NOPERM);
 	}
 

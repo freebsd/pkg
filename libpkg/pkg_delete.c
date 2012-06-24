@@ -90,7 +90,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 
 	if (flags & PKG_DELETE_UPGRADE) {
-		if (( ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_UPGRADE)) != EPKG_OK )
+		if ((ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_UPGRADE)) != EPKG_OK)
 			return (ret);
 	} else {
 		if ((ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL)) != EPKG_OK)

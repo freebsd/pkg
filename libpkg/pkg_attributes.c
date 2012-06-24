@@ -158,7 +158,7 @@ pkg_dir_try(struct pkg_dir *d)
 int
 pkg_category_new(struct pkg_category **c)
 {
-	if (( *c = calloc(1, sizeof(struct pkg_category))) == NULL)
+	if ((*c = calloc(1, sizeof(struct pkg_category))) == NULL)
 		return (EPKG_FATAL);
 
 	return (EPKG_OK);
@@ -364,7 +364,7 @@ pkg_option_value(struct pkg_option *option)
 int
 pkg_shlib_new(struct pkg_shlib **sl)
 {
-	if (( *sl = calloc(1, sizeof(struct pkg_shlib))) == NULL)
+	if ((*sl = calloc(1, sizeof(struct pkg_shlib))) == NULL)
 		return (EPKG_FATAL);
 
 	return (EPKG_OK);

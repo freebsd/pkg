@@ -464,7 +464,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 							break;
 						}
 					default:
-						fprintf(stderr, "unexpected character %c\n", str[0]);
+						fprintf(stderr, "unexpected character: %c\n", str[0]);
 						return (EPKG_FATAL);
 				}
 			}
@@ -472,7 +472,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 			/* only operators or space are allowed here */
 			if (isspace(str[0])) {
 				sbuf_putc(sqlcond, str[0]);
-			} else if (str[0] == '~' ) {
+			} else if (str[0] == '~') {
 				if (state != OPERATOR_STRING) {
 					fprintf(stderr, "~ expected only for string testing");
 					return (EPKG_FATAL);
@@ -531,7 +531,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 					sbuf_putc(sqlcond, str[0]);
 				} else {
 					if (!isnumber(str[0])) {
-						fprintf(stderr, "a number is expected got %c\n", str[0]);
+						fprintf(stderr, "a number is expected, got: %c\n", str[0]);
 						return (EPKG_FATAL);
 					}
 					state = INT;
@@ -542,11 +542,11 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 			if (isspace(str[0])) {
 				state = NONE;
 			} else if (!isnumber(str[0])) {
-				fprintf(stderr, "a number is expected %c\n", str[0]);
+				fprintf(stderr, "a number is expected, got: %c\n", str[0]);
 				return (EPKG_FATAL);
 			}
 			sbuf_putc(sqlcond, str[0]);
-		} else if ( state == STRING ) {
+		} else if (state == STRING) {
 			if (isspace(str[0])) {
 				sbuf_putc(sqlcond, '"');
 				state = NONE;

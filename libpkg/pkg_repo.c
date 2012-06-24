@@ -330,8 +330,16 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		goto cleanup;
 
 	/* remove everything that is not anymore in the repository */
-	if (incremental)
-		sql_exec(sqlite, "delete from packages where not file_exists(path);");
+	if (incremental) {
+		sql_exec(sqlite, "DELETE FROM packages WHERE NOT FILE_EXISTS(path);");
+		sql_exec(sqlite, "DELETE FROM deps WHERE package_id NOT IN (SELECT package_id FROM packages);");
+		sql_exec(sqlite, "DELETE FROM pkg_categories WHERE package_id NOT IN (SELECT package_id FROM packages);");
+		sql_exec(sqlite, "DELETE FROM categories WHERE id NOT IN (SELECT category_id FROM pkg_categories);");
+		sql_exec(sqlite, "DELETE FROM pkg_licenses WHERE package_id NOT IN (SELECT package_id FROM packages);");
+		sql_exec(sqlite, "DELETE FROM licenses WHERE id NOT IN (SELECT license_id FROM pkg_licenses);");
+		sql_exec(sqlite, "DELETE FROM options WHERE package_id NOT IN (SELECT package_id FROM packages);");
+		sql_exec(sqlite, "DELETE FROM pkg_shlibs WHERE package_id NOT IN (SELECT package_id FROM packages);");
+	}
 
 	if (sqlite3_prepare_v2(sqlite, pkgsql, -1, &stmt_pkg, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite);
@@ -421,7 +429,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 
 		pkg_path = ent->fts_path;
 		pkg_path += strlen(path);
-		while (pkg_path[0] == '/' )
+		while (pkg_path[0] == '/')
 			pkg_path++;
 
 		sha256_file(ent->fts_accpath, cksum);

@@ -99,6 +99,10 @@ int exec_shlib(int, char **);
 void usage_shlib(void);
 char *sanitize(char *, const char *, size_t);
 
+/* pkg stats */
+int exec_stats(int, char **);
+void usage_stats(void);
+
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);

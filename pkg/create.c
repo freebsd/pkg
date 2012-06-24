@@ -40,7 +40,7 @@
 void
 usage_create(void)
 {
-	fprintf(stderr, "usage: pkg create [-gx] [-n] [-r rootdir] [-m manifest] [-f format] [-o outdir] "
+	fprintf(stderr, "usage: pkg create [-gx] [-n] [-r rootdir] [-m manifest] [-f format] [-o outdir] [-p plist]"
 			"<pkg> ...\n");
 	fprintf(stderr, "       pkg create -a [-n] [-r rootdir] [-m manifest] [-f format] [-o outdir]\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
@@ -59,11 +59,28 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
 	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES | PKG_LOAD_USERS |
 	    PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
+	const char *format;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
+
+	switch (fmt) {
+		case TXZ:
+			format = "txz";
+			break;
+		case TBZ:
+			format = "tbz";
+			break;
+		case TGZ:
+			format = "tgz";
+			break;
+		case TAR:
+			format = "tar";
+			break;
+	}
+
 
 	if (match != MATCH_ALL) {
 		for (i = 0;i < argc; i++) {
@@ -73,22 +90,6 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 				pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 				if (!overwrite) {
-					const char *format;
-					switch (fmt) {
-						case TXZ:
-							format = "txz";
-							break;
-						case TBZ:
-							format = "tbz";
-							break;
-						case TGZ:
-							format = "tgz";
-							break;
-						case TAR:
-							format = "tar";
-							break;
-					}
-
 					snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
 					if (access(pkgpath, F_OK) == 0) {
 						printf("%s-%s already packaged skipping...\n", name, version);
@@ -106,6 +107,13 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 		}
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+			if (!overwrite) {
+				snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
+				if (access(pkgpath, F_OK) == 0) {
+					printf("%s-%s already packaged skipping...\n", name, version);
+					continue;
+				}
+			}
 			printf("Creating package for %s-%s\n", name, version);
 			if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK)
 				retcode++;
@@ -142,39 +150,43 @@ exec_create(int argc, char **argv)
 	const char *format = NULL;
 	const char *rootdir = NULL;
 	const char *manifestdir = NULL;
+	char *plist = NULL;
 	bool overwrite = true;
 	pkg_formats fmt;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "agxXf:r:m:o:n")) != -1) {
+	while ((ch = getopt(argc, argv, "agxXf:r:m:o:np:")) != -1) {
 		switch (ch) {
-			case 'a':
-				match = MATCH_ALL;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'f':
-				format = optarg;
-				break;
-			case 'o':
-				outdir = optarg;
-				break;
-			case 'r':
-				rootdir = optarg;
-				break;
-			case 'm':
-				manifestdir = optarg;
-				break;
-			case 'n':
-				overwrite = false;
-				break;
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'f':
+			format = optarg;
+			break;
+		case 'o':
+			outdir = optarg;
+			break;
+		case 'r':
+			rootdir = optarg;
+			break;
+		case 'm':
+			manifestdir = optarg;
+			break;
+		case 'n':
+			overwrite = false;
+			break;
+		case 'p':
+			plist = optarg;
+			break;
 		}
 	}
 	argc -= optind;
@@ -210,6 +222,6 @@ exec_create(int argc, char **argv)
 	if (manifestdir == NULL)
 		return pkg_create_matches(argc, argv, match, fmt, outdir, rootdir, overwrite) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE;
 	else
-		return pkg_create_fakeroot(outdir, fmt, rootdir, manifestdir) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+		return pkg_create_staged(outdir, fmt, rootdir, manifestdir, plist) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 

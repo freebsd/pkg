@@ -130,6 +130,14 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	size_t dynidx;
 	const char *osname;
 
+	bool shlibs = false;
+	bool autodeps = false;
+	bool developer = false;
+
+	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+
 	int fd;
 
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
@@ -143,7 +151,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		goto cleanup;
 	}
 
-	if (( e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
+	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("elf_begin() for %s failed: %s", fpath, elf_errmsg(-1)); 
 		goto cleanup;
@@ -154,13 +162,21 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		return (EPKG_END); /* Not an elf file: no results */
 	}
 
+	if (developer)
+		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
+
+	if (!autodeps && !shlibs) {
+	   ret = EPKG_OK;
+	   goto cleanup;
+	}
+
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
 		goto cleanup;
 	}
 
-	while (( scn = elf_nextscn(e, scn)) != NULL) {
+	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getshdr() for %s failed: %s", fpath, elf_errmsg(-1));
@@ -181,7 +197,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	}
 
 	/*
-	 * note == NULL means no freebsd
+	 * note == NULL usually means a shared object for use with dlopen(3)
 	 * dynamic == NULL means not a dynamic linked elf
 	 */
 	if (dynamic == NULL) {
@@ -189,7 +205,6 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	/* some freebsd binaries don't have notes like some perl modules */
 	if (note != NULL) {
 		data = elf_getdata(note, NULL);
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
@@ -220,11 +235,31 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	}
 
 cleanup:
-	if ( e != NULL)
+	if (e != NULL)
 		elf_end(e);
 	close(fd);
 
 	return (ret);
+}
+
+static int
+analyse_fpath(struct pkg *pkg, const char *fpath)
+{
+	const char *dot;
+
+	dot = strrchr(fpath, '.');
+
+	if (dot == NULL)	/* No extension */
+		return (EPKG_OK);
+
+	if (dot[1] == 'a' && dot[2] == '\0')
+		pkg->flags |= PKG_CONTAINS_STATIC_LIBS;
+
+	if ((dot[1] == 'l' && dot[2] == 'a' && dot[3] == '\0') ||
+	    (dot[1] == 'h' && dot[2] == '\0'))
+		pkg->flags |= PKG_CONTAINS_H_OR_LA;
+
+	return (EPKG_OK);
 }
 
 int
@@ -232,22 +267,38 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
+	const char *fpath;
 	bool shlibs = false;
 	bool autodeps = false;
+	bool developer = false;
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
-	if (!autodeps && !shlibs)
+	if (!autodeps && !shlibs && !developer)
 		return (EPKG_OK);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
-	while (pkg_files(pkg, &file) == EPKG_OK)
-		analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH));
+	/* Assume no architecture dependence, for contradiction */
+	if (developer)
+		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
+				PKG_CONTAINS_STATIC_LIBS |
+				PKG_CONTAINS_H_OR_LA);
 
-	return (ret);
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		fpath = pkg_file_get(file, PKG_FILE_PATH);
+		ret = analyse_elf(db, pkg, fpath);
+		if (developer) {
+			if (ret != EPKG_OK && ret != EPKG_END)
+				return (ret);
+			analyse_fpath(pkg, fpath);
+		}
+	}
+
+	return (EPKG_OK);
 }
 
 static const char *
@@ -385,4 +436,36 @@ cleanup:
 
 	close(fd);
 	return (ret);
+}
+
+int
+pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
+{
+	bool iswildcard;
+
+	iswildcard = (strchr(arch, 'c') != NULL);
+
+	if (iswildcard && isdefault)
+		pkg_emit_error("Configuration error: arch \"%s\" cannot use wildcards as default", arch);
+
+	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
+		if (iswildcard) {
+			/* Definitely has to be arch specific */
+			pkg_emit_error("Error: arch \"%s\" -- package installs architecture specific files", arch);
+		}
+	} else {
+		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
+			if (iswildcard) {
+				/* Could well be arch specific */
+				pkg_emit_error("Warning: arch \"%s\" -- package installs C/C++ headers or libtool files,\n"
+					       "**** which are often architecture specific.", arch);
+			}
+		} else {
+			/* Might be arch independent */
+			if (!iswildcard)
+				pkg_emit_error("Notice: arch \"%s\" -- no architecture specific files found:\n"
+					       "**** could this package use a wildcard architecture?", arch);
+		}
+	}
+	return (EPKG_OK);
 }

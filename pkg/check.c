@@ -143,7 +143,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		pkgs[i++] = e->origin;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
-		return (EPKG_FATAL);
+		return (EPKG_ENODB);
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		free(pkgs);
@@ -159,7 +159,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	}
 
 	if (pkg_jobs_is_empty(jobs)) {
-		printf("\n>>> Not able to find packages for installation.\n\n");
+		printf("\n>>> Unable to find packages for installation.\n\n");
 		return (EPKG_FATAL);
 	}
 
@@ -221,8 +221,8 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-dsr] [-vy] [-a | -gxX <pattern>]\n");
-	fprintf(stderr, "\nFor more information see 'pkg help check'.\n");
+	fprintf(stderr, "usage: pkg check [-dsr] [-vy] [-a | -gxX <pattern>]\n\n");
+	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
 int
@@ -275,7 +275,8 @@ exec_check(int argc, char **argv)
 				recompute = true;
 				flags |= PKG_LOAD_FILES;
 				if (geteuid() != 0)
-					errx(EX_USAGE, "Needs to be root to recompute the checksums and size");
+					errx(EX_USAGE, "recomputing the checksums"
+					    " and size can only be done as root");
 				break;
 			case 'v':
 				verbose = 1;
@@ -330,7 +331,7 @@ exec_check(int argc, char **argv)
 			}
 			if (recompute) {
 				if (verbose)
-					printf("Recomputing size and sums: %s\n", pkgname);
+					printf("Recomputing size and checksums: %s\n", pkgname);
 				pkg_recompute(db, pkg);
 			}
 		}
@@ -344,6 +345,10 @@ exec_check(int argc, char **argv)
 			ret = fix_deps(db, &dh, nbpkgs, yes);
 			if (ret == EPKG_OK)
 				check_summary(db, &dh);
+			else if (ret == EPKG_ENODB) {
+				db = NULL;
+				return (EX_IOERR);
+			}
 		}
 		pkgdb_it_free(it);
 		i++;

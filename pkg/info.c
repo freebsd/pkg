@@ -184,7 +184,7 @@ exec_info(int argc, char **argv)
 			return (EXIT_SUCCESS);
 
 		if ((opt & INFO_QUIET) == 0)
-			printf("No package installed\n");
+			printf("No packages installed.\n");
 
 		return (EXIT_FAILURE);
 	}
@@ -197,7 +197,7 @@ exec_info(int argc, char **argv)
 		gotone = false;
 		pkgname = argv[i];
 		if (match != MATCH_ALL && pkgname[0] == '\0') {
-			fprintf(stderr, "Pattern should not be empty\n");
+			fprintf(stderr, "Pattern must not be empty.\n");
 			i++;
 			continue;
 		}

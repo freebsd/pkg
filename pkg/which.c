@@ -85,7 +85,7 @@ exec_which(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (( ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+	if ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		retcode = EPKG_OK;
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_ORIGIN, &origin);
 		if (quiet && orig)

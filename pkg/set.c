@@ -41,7 +41,7 @@
 void
 usage_set(void)
 {
-	fprintf(stderr, "usage pkg set [-a] [-A [01]] -yxXg <pattern>\n\n");
+	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-xXg] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
@@ -87,7 +87,7 @@ exec_set(int argc, char **argv)
 				sets |= AUTOMATIC;
 				newautomatic = strtonum(optarg, 0, 1, &errstr);
 				if (errstr)
-					errx(EX_USAGE, "Wrong value for -A expecting 0 or 1, got: %s (%s)", optarg, errstr);
+					errx(EX_USAGE, "Wrong value for -A. Expecting 0 or 1, got: %s (%s)", optarg, errstr);
 				break;
 			case 'o':
 				sets |= ORIGIN;
@@ -97,13 +97,13 @@ exec_set(int argc, char **argv)
 				neworigin = strrchr(oldorigin, ':');
 				if (neworigin == NULL) {
 					free(oldorigin);
-					errx(EX_USAGE, "Wrong format for -o expecting oldorigin:neworigin, got %s", optarg);
+					errx(EX_USAGE, "Wrong format for -o. Expecting oldorigin:neworigin, got: %s", optarg);
 				}
 				*neworigin = '\0';
 				neworigin++;
 				if (strrchr(oldorigin, '/') == NULL || strrchr(neworigin, '/') == NULL) {
 					free(oldorigin);
-					errx(EX_USAGE, "Bad origin format, got %s", optarg);
+					errx(EX_USAGE, "Bad origin format, got: %s", optarg);
 				}
 				break;
 			default:
@@ -121,7 +121,7 @@ exec_set(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("modifying local database can only be done as root");
+		warnx("Modifying local database can only be done as root");
 		return (EX_NOPERM);
 	}
 
@@ -185,8 +185,8 @@ exec_set(int argc, char **argv)
 				struct pkg_dep *d = NULL;
 				while (pkg_deps(pkg, &d) == EPKG_OK) {
 					/*
-					 * Do not query user has he has already
-					 * been queried
+					 * Do not query user when he has already
+					 * been queried.
 					 */
 					if (pkgdb_set(db, pkg, PKG_SET_DEPORIGIN, oldorigin, neworigin) != EPKG_OK)
 						return (EPKG_FATAL);

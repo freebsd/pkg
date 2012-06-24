@@ -14,6 +14,7 @@ ASSUME_ALWAYS_YES   : NO
 SYSLOG		    : YES
 SHLIBS		    : NO
 AUTODEPS	    : NO
+PORTAUDIT_SITE	    : http://portaudit.FreeBSD.org/auditfile.tbz
 
 # Repository definitions
 repos:

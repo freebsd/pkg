@@ -1030,7 +1030,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 			if (strcmp(fpath, files[i].name) == 0) {
 				sbuf = &pkg->fields[files[i].attr];
 				sbuf_init(sbuf);
-				while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0 ) {
+				while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0) {
 					sbuf_bcat(*sbuf, buf, size);
 				}
 				sbuf_finish(*sbuf);

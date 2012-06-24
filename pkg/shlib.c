@@ -98,7 +98,7 @@ exec_shlib(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	while (( ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		if (count == 0)
 			printf("%s is linked to by the folowing packages:\n", libname);
 		count++;
@@ -109,7 +109,7 @@ exec_shlib(int argc, char **argv)
         if (ret != EPKG_END) {
 		retcode = EPKG_WARN;
 	} else if (count == 0) {
-		printf("%s was not found in the database\n", libname);
+		printf("%s was not found in the database.\n", libname);
 		retcode = EPKG_WARN;
 	}
 		

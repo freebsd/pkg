@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd June 14, 2012
 .Dt PKG-REGISTER 8
 .Os
 .Sh NAME
@@ -26,7 +26,6 @@
 .Op Fl ld
 .Fl f Ar <plist-file>
 .Fl m Ar <metadatadir>
-.Fl a Ar <arch>
 .Fl i Ar <input-path>
 .Sh DESCRIPTION
 .Nm
@@ -48,10 +47,6 @@ For more information please refer to
 Specifies the packing list file
 .It Fl m Ar <metadatadir>
 Specifies the meta data directory to use when registering the package
-.It Fl a Ar <arch>
-Specifies the package arch.
-If this option is not set then the arch will
-be automatically detected upon package registration.
 .It Fl i Ar <input-path>
 Specifies the package input path.
 .Pp
@@ -89,6 +84,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

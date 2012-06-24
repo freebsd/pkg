@@ -30,6 +30,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <regex.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -137,27 +138,123 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format, int 
 	return pkg_archive;
 }
 
+static const char * const scripts[] = {
+	"+INSTALL",
+	"+PRE_INSTALL",
+	"+POST_INSTALL",
+	"+POST_INSTALL",
+	"+DEINSTALL",
+	"+PRE_DEINSTALL",
+	"+POST_DEINSTALL",
+	"+UPGRADE",
+	"+PRE_UPGRADE",
+	"+POST_UPGRADE",
+	"pkg-install",
+	"pkg-pre-install",
+	"pkg-post-install",
+	"pkg-deinstall",
+	"pkg-pre-deinstall",
+	"pkg-post-deinstall",
+	"pkg-upgrade",
+	"pkg-pre-upgrade",
+	"pkg-post-upgrade",
+	NULL
+};
+
 int
-pkg_create_fakeroot(const char *outdir, pkg_formats format, const char *rootdir, const char *metadatadir)
+pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir, const char *metadatadir, char *plist)
 {
 	struct pkg *pkg = NULL;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
 	struct packing *pkg_archive = NULL;
-	char *manifest = NULL, *manifest_path = NULL;
+	char *manifest = NULL;
+	char path[MAXPATHLEN];
+	char arch[BUFSIZ];
 	int ret = ENOMEM;
+	char *buf;
+	int i;
+	regex_t preg;
+	regmatch_t pmatch[2];
+	size_t size;
+	char *www;
 
 	/* Load the manifest from the metadata directory */
-	if (asprintf(&manifest_path, "%s/+MANIFEST", metadatadir) == -1)
+	if (snprintf(path, sizeof(path), "%s/+MANIFEST", metadatadir) == -1)
 		goto cleanup;
 
 	pkg_new(&pkg, PKG_FILE);
 	if (pkg == NULL)
 		goto cleanup;
 
-	if ((ret = pkg_load_manifest_file(pkg, manifest_path)) != EPKG_OK) {
+	if ((ret = pkg_load_manifest_file(pkg, path)) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
+	}
+
+	/* if no descriptions provided then try to get it from a file */
+
+	pkg_get(pkg, PKG_DESC, &buf);
+	if (buf == NULL) {
+		if (snprintf(path, sizeof(path), "%s/+DESC", metadatadir) == -1)
+			goto cleanup;
+		if (access(path, F_OK) == 0)
+			pkg_set_from_file(pkg, PKG_DESC, path);
+	}
+
+	/* if no message try to get it from a file */
+	pkg_get(pkg, PKG_MESSAGE, &buf);
+	if (buf == NULL) {
+		if (snprintf(path, sizeof(path), "%s/+DISPLAY", metadatadir) == -1)
+			goto cleanup;
+		if (access(path, F_OK) == 0)
+			pkg_set_from_file(pkg, PKG_MESSAGE, path);
+	}
+
+	/* if no arch autodetermine it */
+	pkg_get(pkg, PKG_ARCH, &buf);
+	if (buf == NULL) {
+		pkg_get_myarch(arch, BUFSIZ);
+		pkg_set(pkg, PKG_ARCH, arch);
+	}
+
+	/* if no mtree try to get it from a file */
+	pkg_get(pkg, PKG_MTREE, &buf);
+	if (buf == NULL) {
+		if (snprintf(path, sizeof(path), "%s/+MTREE_DIRS", metadatadir) == -1)
+			goto cleanup;
+		if (access(path, F_OK) == 0)
+			pkg_set_from_file(pkg, PKG_MTREE, path);
+	}
+
+	for (i = 0; scripts[i] != NULL; i++) {
+		snprintf(path, sizeof(path), "%s/%s", metadatadir, scripts[i]);
+		if (access(path, F_OK) == 0)
+			pkg_addscript_file(pkg, path);
+	}
+
+	if (plist != NULL && ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/* if www is not given then try to determine it from description */
+	pkg_get(pkg, PKG_WWW, &www);
+	if (www == NULL) {
+		pkg_get(pkg, PKG_DESC, &buf);
+		regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
+		if (regexec(&preg, buf, 2, pmatch, 0) == 0) {
+			size = pmatch[1].rm_eo - pmatch[1].rm_so;
+			www = strndup(&buf[pmatch[1].rm_so], size);
+			pkg_set(pkg, PKG_WWW, www);
+			free(www);
+		} else {
+			pkg_set(pkg, PKG_WWW, "UNKNOWN");
+		}
+		regfree(&preg);
+	} else {
+		pkg_set(pkg, PKG_WWW, www);
+		free(www);
 	}
 
 	/* Create the archive */
@@ -180,8 +277,6 @@ pkg_create_fakeroot(const char *outdir, pkg_formats format, const char *rootdir,
 cleanup:
 	if (pkg != NULL)
 		free(pkg);
-	if (manifest_path != NULL)
-		free(manifest_path);
 	if (manifest != NULL)
 		free(manifest);
 	if (ret == EPKG_OK)
