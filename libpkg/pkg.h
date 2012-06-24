@@ -40,7 +40,7 @@
 #define PKGVERSION "1.0-beta15"
 /* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg version comparison
  * in pkgdb_query_newpkgversion() */
-#define PKG_PORTVERSION "1.0.b15_2"
+#define PKG_PORTVERSION "1.0.b15_3"
 
 struct pkg;
 struct pkg_dep;
