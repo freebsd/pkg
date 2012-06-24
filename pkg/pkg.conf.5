@@ -104,10 +104,20 @@ This option is enabled by default, log all the
 installation/deinstallation/upgrade operation via syslog(3)
 .It Cm SHLIBS: boolean
 Analyse elf and track all shared libraries needed by the packages.
+This option is silently ignored by
+.Xr pkg-static 8
+since it relies on
+.Xr dlopen 3
+which is unavailable to statically linked programs.
 default: off
 .It Cm AUTODEPS: boolean
 Analyse the elf to add dependencies (shared libraries) that may have been
 forgotten by the maintainer.
+This option is silently ignored by
+.Xr pkg-static 8
+since it relies on
+.Xr dlopen 3
+which is unavailable to statically linked programs.
 default: off
 .It Cm ABI: string
 the abi of the package you want to install, by default the /bin/sh abi is used
