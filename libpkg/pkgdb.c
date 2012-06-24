@@ -3299,7 +3299,7 @@ int
 pkgdb_lock(struct pkgdb *db)
 {
 	assert(db != NULL);
-	
+
 	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
 }
 
@@ -3307,7 +3307,7 @@ int
 pkgdb_unlock(struct pkgdb *db)
 {
 	assert(db != NULL);
-	
+
 	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
 }
 
@@ -3321,7 +3321,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	assert(db != NULL);
 
 	sql = sbuf_new_auto();
-	
+
 	switch(type) {
 	case PKG_STATS_LOCAL_COUNT:
 		sbuf_printf(sql, "SELECT COUNT(id) FROM main.packages;");
@@ -3343,13 +3343,13 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		break;
 	case PKG_STATS_REMOTE_COUNT:
 		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
-		
+
 		/* open parentheses for the compound statement */
 		sbuf_printf(sql, "(");
-		
+
 		/* execute on all databases */
 		sql_on_all_attached_db(db->sqlite, sql, "SELECT origin AS c FROM '%1$s'.packages", " UNION ALL ");
-		
+
 		/* close parentheses for the compound statement */
 		sbuf_printf(sql, ");");
 		break;
@@ -3367,10 +3367,10 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		break;
 	case PKG_STATS_REMOTE_REPOS:
 		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
-		
+
 		/* open parentheses for the compound statement */
 		sbuf_printf(sql, "(");
-		
+
 		/* execute on all databases */
 		sql_on_all_attached_db(db->sqlite, sql, "SELECT '%1$s' AS c", " UNION ALL ");
 
@@ -3383,7 +3383,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		ERROR_SQLITE(db->sqlite);
 		return (-1);
 	}
-	
+
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		stats = sqlite3_column_int64(stmt, 0);
 	}
