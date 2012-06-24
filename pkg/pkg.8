@@ -110,9 +110,6 @@ Query information about installed packages.
 Register a package in the database.
 .It Ic repo
 Create a local package repository for remote usage.
-.It Ic shell
-Fires up a sqlite shell to the local or remote database.
-Extreme care should be taken when using this command.
 .It Ic rquery
 Query information for remote repositories.
 .It Ic search
@@ -120,8 +117,13 @@ Search for the given pattern in the remote package
 repositories.
 .It Ic set
 Modify information in the installed database.
+.It Ic shell
+Fires up a sqlite shell to the local or remote database.
+Extreme care should be taken when using this command.
 .It Ic shlib
 Displays which packages link to a specific shared library.
+.It Ic stats
+Display package database statistics.
 .It Ic update
 Update the available remote repositories as listed in
 .Xr pkg.conf 5 .

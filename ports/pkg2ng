@@ -23,7 +23,7 @@ do
         continue
 	fi
 	PREFX=$(pkg_info -qp ${PKG})
-	if [ -d ${PORTSDIR} ]; then
+	if [ -d ${PORTSDIR}/${ORIGIN} ]; then
 		MAINTAINER=$( make -C ${PORTSDIR}/${ORIGIN} -V MAINTAINER )
 		CATEGORIES=$( make -C ${PORTSDIR}/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
 		LICENSES=$( make -C ${PORTSDIR}/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
