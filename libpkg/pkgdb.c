@@ -51,6 +51,10 @@
 #include "private/db_upgrades.h"
 #define DBVERSION 12
 
+#define PKGGT	0<<1
+#define PKGLT	0<<2
+#define PKGEQ	0<<3
+
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
@@ -58,6 +62,8 @@ static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_pkgle(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_pkgge(sqlite3_context *, int, sqlite3_value **);
 static int get_pragma(sqlite3 *, const char *, int64_t *);
 static int pkgdb_upgrade(struct pkgdb *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
@@ -297,25 +303,54 @@ pkgdb_pkgcmp(sqlite3_context *ctx, int argc, sqlite3_value **argv, int sign)
 {
 	const unsigned char *version1 = NULL;
 	const unsigned char *version2 = NULL;
+	int res = 0;
+
 	if (argc != 2 || (version1 = sqlite3_value_text(argv[0])) == NULL
 			|| (version2 = sqlite3_value_text(argv[1])) == NULL) {
 		sqlite3_result_error(ctx, "Invalid comparison\n", -1);
 		return;
 	}
 
-	sqlite3_result_int(ctx, (pkg_version_cmp(version1, version2) == sign));
+	switch(pkg_version_cmp(version1, version2)) {
+	case -1:
+		if ((sign & PKGLT) == PKGLT)
+			res = 1;
+		break;
+	case 0:
+		if ((sign & PKGEQ) == PKGLT)
+			res = 1;
+		break;
+	case 1:
+		if ((sign & PKGGT) == PKGGT)
+			res = 1;
+		break;
+	}
+
+	sqlite3_result_int(ctx, res);
 }
 
 static void
 pkgdb_pkglt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
-	pkgdb_pkgcmp(ctx, argc, argv, -1);
+	pkgdb_pkgcmp(ctx, argc, argv, PKGLT);
 }
 
 static void
 pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
-	pkgdb_pkgcmp(ctx, argc, argv, 1);
+	pkgdb_pkgcmp(ctx, argc, argv, PKGGT);
+}
+
+static void
+pkgdb_pkgle(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_pkgcmp(ctx, argc, argv, PKGLT|PKGEQ);
+}
+
+static void
+pkgdb_pkgge(sqlite3_context * ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_pkgcmp(ctx, argc, argv, PKGGT|PKGEQ);
 }
 
 static int
@@ -2526,7 +2561,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	/* Remove packages already installed and in the latest version */
 	if (!all)
-		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and (p.version=pkgjobs.version or PKGGT(p.version, pkgjobs.version)) and p.name = pkgjobs.name) IS NOT NULL;");
+		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and PKGLE(p.version,pkgjobs.version) and p.name = pkgjobs.name) IS NOT NULL;");
 
 	sbuf_reset(sql);
 	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame);
@@ -3256,19 +3291,23 @@ static int
 sqlcmd_init(sqlite3 *db, __unused const char **err, __unused const void *noused)
 {
 		sqlite3_create_function(db, "now", 0, SQLITE_ANY, NULL,
-				pkgdb_now, NULL, NULL);
+		    pkgdb_now, NULL, NULL);
 		sqlite3_create_function(db, "myarch", 0, SQLITE_ANY, NULL,
-				pkgdb_myarch, NULL, NULL);
+		    pkgdb_myarch, NULL, NULL);
 		sqlite3_create_function(db, "myarch", 1, SQLITE_ANY, NULL,
-				pkgdb_myarch, NULL, NULL);
+		    pkgdb_myarch, NULL, NULL);
 		sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL,
-				pkgdb_regex_basic, NULL, NULL);
+		    pkgdb_regex_basic, NULL, NULL);
 		sqlite3_create_function(db, "eregexp", 2, SQLITE_ANY, NULL,
-				pkgdb_regex_extended, NULL, NULL);
+		    pkgdb_regex_extended, NULL, NULL);
 		sqlite3_create_function(db, "pkglt", 2, SQLITE_ANY, NULL,
-				pkgdb_pkglt, NULL, NULL);
+		    pkgdb_pkglt, NULL, NULL);
 		sqlite3_create_function(db, "pkggt", 2, SQLITE_ANY, NULL,
-				pkgdb_pkggt, NULL, NULL);
+		    pkgdb_pkggt, NULL, NULL);
+		sqlite3_create_function(db, "pkgge", 2, SQLITE_ANY, NULL,
+		    pkgdb_pkgge, NULL, NULL);
+		sqlite3_create_function(db, "pkgle", 2, SQLITE_ANY, NULL,
+		    pkgdb_pkgle, NULL, NULL);
 
 		return SQLITE_OK;
 }
