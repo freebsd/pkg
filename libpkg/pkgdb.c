@@ -317,7 +317,7 @@ pkgdb_pkgcmp(sqlite3_context *ctx, int argc, sqlite3_value **argv, int sign)
 			res = 1;
 		break;
 	case 0:
-		if ((sign & PKGEQ) == PKGLT)
+		if ((sign & PKGEQ) == PKGEQ)
 			res = 1;
 		break;
 	case 1:
@@ -3256,12 +3256,12 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, cons
 		sbuf_reset(sql);
 		sbuf_printf(sql, deps_sql, reponame, reponame);
 		sbuf_finish(sql);
-		
+
 		do {
 			sql_exec(db->sqlite, sbuf_get(sql));
 		} while (sqlite3_changes(db->sqlite) != 0);
 	}
-		
+
 	sbuf_reset(sql);
 	sbuf_printf(sql, weight_sql, reponame);
 	sbuf_finish(sql);
