@@ -3,22 +3,22 @@
 # options please refer to the pkg.conf(5) man page
 
 # Configuration options
-PACKAGESITE	    : ftp://ftp.freebsd.org/pub/pkgng
-PKG_DBDIR	    : /var/db/pkg
-PKG_CACHEDIR	    : /var/cache/pkg
-PORTSDIR	    : /usr/ports
-PUBKEY		    : /etc/ssl/pkg.conf
-HANDLE_RC_SCRIPTS   : NO
-PKG_MULTIREPOS	    : NO
-ASSUME_ALWAYS_YES   : NO
-SYSLOG		    : YES
-SHLIBS		    : NO
-AUTODEPS	    : NO
-PORTAUDIT_SITE	    : http://portaudit.FreeBSD.org/auditfile.tbz
+PACKAGESITE	    : http://pkgbeta.freebsd.org/freebsd-9-amd64
+#PKG_DBDIR	    : /var/db/pkg
+#PKG_CACHEDIR	    : /var/cache/pkg
+#PORTSDIR	    : /usr/ports
+#PUBKEY		    : /etc/ssl/pkg.conf
+#HANDLE_RC_SCRIPTS   : NO
+#PKG_MULTIREPOS	    : NO
+#ASSUME_ALWAYS_YES   : NO
+#SYSLOG		    : YES
+#SHLIBS		    : NO
+#AUTODEPS	    : NO
+#PORTAUDIT_SITE	    : http://portaudit.FreeBSD.org/auditfile.tbz
 
 # Repository definitions
-repos:
-  default : http://example.org/pkgng/
-  repo1 : http://somewhere.org/pkgng/repo1/
-  repo2 : http://somewhere.org/pkgng/repo2/
+#repos:
+#  default : http://example.org/pkgng/
+#  repo1 : http://somewhere.org/pkgng/repo1/
+#  repo2 : http://somewhere.org/pkgng/repo2/
 
