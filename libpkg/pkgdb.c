@@ -2526,7 +2526,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	/* Remove packages already installed and in the latest version */
 	if (!all)
-		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and p.version=pkgjobs.version and p.name = pkgjobs.name) IS NOT NULL;");
+		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and (p.version=pkgjobs.version or PKGGT(p.version, pkgjobs.version)) and p.name = pkgjobs.name) IS NOT NULL;");
 
 	sbuf_reset(sql);
 	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame);
