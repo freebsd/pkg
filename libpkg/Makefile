@@ -37,6 +37,8 @@ HAVE_GRUTILS!=	grep -q gr_copy /usr/include/libutil.h && echo yes || echo no
 
 .if ${HAVE_GRUTILS} != yes
 SRCS+=	gr_util.c
+.else
+CFLAGS+=	-DHAVE_GRUTILS
 .endif
 
 CFLAGS+=	-std=c99
