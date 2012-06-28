@@ -2285,7 +2285,7 @@ create_temporary_pkgjobs(sqlite3 *s)
 			"comment TEXT, desc TEXT, message TEXT, "
 			"arch TEXT, maintainer TEXT, "
 			"www TEXT, prefix TEXT, flatsize INTEGER, newversion TEXT, "
-			"newflatsize INTEGER, pkgsize INTEGER, cksum TEXT, repopath TEXT, automatic INTEGER, weight INTEGER"
+			"newflatsize INTEGER, pkgsize INTEGER, cksum TEXT, repopath TEXT, automatic INTEGER, weight INTEGER, "
 			"dbname TEXT, opts TEXT);");
 
 	return (ret);
