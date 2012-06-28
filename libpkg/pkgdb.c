@@ -619,6 +619,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	struct pkg_config_kv *repokv = NULL;
 
 	if (*db_p != NULL) {
+		assert((*db_p)->lock_count == 0);
 		reopen = true;
 		db = *db_p;
 		if (db->type == type)
@@ -634,6 +635,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	}
 
 	db->type = type;
+	db->lock_count = 0;
 
 	if (!reopen) {
 		snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
@@ -765,6 +767,7 @@ pkgdb_close(struct pkgdb *db)
 		return;
 
 	if (db->sqlite != NULL) {
+		assert(db->lock_count == 0);
 		if (db->type == PKGDB_REMOTE) {
 			pkgdb_detach_remotes(db->sqlite);
 		}
@@ -3352,17 +3355,23 @@ pkgshell_open(const char **reponame)
 int
 pkgdb_lock(struct pkgdb *db)
 {
-	assert(db != NULL);
-
-	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
+        assert(db != NULL);
+	assert(db->lock_count >= 0);
+	if (!(db->lock_count++))
+		return sql_exec(db->sqlite, "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
+	else
+		return (EPKG_OK);
 }
 
 int
 pkgdb_unlock(struct pkgdb *db)
 {
-	assert(db != NULL);
-
-	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
+        assert(db != NULL);
+	assert(db->lock_count >= 1);
+	if (!(--db->lock_count))
+		return sql_exec(db->sqlite, "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
+	else
+		return (EPKG_OK);
 }
 
 int64_t
