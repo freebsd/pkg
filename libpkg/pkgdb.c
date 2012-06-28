@@ -619,6 +619,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	struct pkg_config_kv *repokv = NULL;
 
 	if (*db_p != NULL) {
+		assert((*db_p)->lock_count == 0);
 		reopen = true;
 		db = *db_p;
 		if (db->type == type)
@@ -634,6 +635,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	}
 
 	db->type = type;
+	db->lock_count = 0;
 
 	if (!reopen) {
 		snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
@@ -765,6 +767,7 @@ pkgdb_close(struct pkgdb *db)
 		return;
 
 	if (db->sqlite != NULL) {
+		assert(db->lock_count == 0);
 		if (db->type == PKGDB_REMOTE) {
 			pkgdb_detach_remotes(db->sqlite);
 		}
@@ -2281,7 +2284,7 @@ create_temporary_pkgjobs(sqlite3 *s)
 			"arch TEXT, maintainer TEXT, "
 			"www TEXT, prefix TEXT, flatsize INTEGER, newversion TEXT, "
 			"newflatsize INTEGER, pkgsize INTEGER, cksum TEXT, repopath TEXT, automatic INTEGER, weight INTEGER"
-			"dbname TEXT);");
+			"dbname TEXT, opts TEXT);");
 
 	return (ret);
 }
@@ -2376,10 +2379,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 
 	const char main_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 			"maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic) "
+			"cksum, repopath, automatic, opts) "
 			"SELECT id, origin, name, version, comment, desc, "
 			"arch, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, path, 0 FROM '%s'.packages WHERE ";
+			"cksum, path, 0, (select group_concat(option) from '%s'.options WHERE package_id=id AND value='on') FROM '%s'.packages WHERE ";
 
 	const char deps_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 				"maintainer, www, prefix, flatsize, pkgsize, "
@@ -2405,7 +2408,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		return (NULL);
 
 	sql = sbuf_new_auto();
-	sbuf_printf(sql, main_sql, reponame);
+	sbuf_printf(sql, main_sql, reponame, reponame);
 
 	how = pkgdb_get_match_how(match);
 
@@ -2437,8 +2440,14 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 
 	/* Report and remove packages already installed and at the latest version */
 	report_already_installed(db->sqlite);
-	if (!force)
-		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and p.version=pkgjobs.version and p.name = pkgjobs.name) IS NOT NULL;");
+	if (!force) {
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE PKGLT(p.version, pkgjobs.version)) IS NOT NULL; ");
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE "
+		    "p.origin=pkgjobs.origin AND PKGLE(p.version,pkgjobs.version) AND p.name = pkgjobs.name "
+		    "AND ( ((SELECT group_concat(option) FROM main.options WHERE package_id=p.id AND value='on') IS NULL AND pkgjobs.opts IS NULL) OR (SELECT group_concat(option) FROM main.options WHERE package_id=p.id AND value='on') == pkgjobs.opts)) IS NOT NULL;");
+	}
 
 	/* Append dependencies */
 	sbuf_reset(sql);
@@ -2507,17 +2516,20 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	const char pkgjobs_sql_1[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 			"maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic) "
+			"cksum, repopath, automatic, opts) "
 			"SELECT id, origin, name, version, comment, desc, "
 			"arch, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, path, 0 FROM '%s'.packages WHERE origin IN (select origin from main.packages)";
+			"cksum, path, 0 ,"
+			"(select group_concat(option) from '%s'.options WHERE package_id=id AND value='on') "
+			"FROM '%s'.packages WHERE origin IN (select origin from main.packages)";
 
 	const char pkgjobs_sql_2[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 				"maintainer, www, prefix, flatsize, pkgsize, "
-				"cksum, repopath, automatic) "
+				"cksum, repopath, automatic, opts) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
 				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
-				"r.cksum, r.path, 1 "
+				"r.cksum, r.path, 1, "
+				"(select group_concat(option) from '%s'.options WHERE package_id=r.id AND value='on') "
 				"FROM '%s'.packages AS r where r.origin IN "
 				"(SELECT d.origin from '%s'.deps AS d, pkgjobs as j WHERE d.package_id = j.pkgid) "
 				"AND (SELECT p.origin from main.packages as p WHERE p.origin=r.origin AND version=r.version) IS NULL;";
@@ -2555,16 +2567,22 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	sql = sbuf_new_auto();
 	create_temporary_pkgjobs(db->sqlite);
 
-	sbuf_printf(sql, pkgjobs_sql_1, reponame);
+	sbuf_printf(sql, pkgjobs_sql_1, reponame, reponame);
 	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	/* Remove packages already installed and in the latest version */
-	if (!all)
-		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and PKGLE(p.version,pkgjobs.version) and p.name = pkgjobs.name) IS NOT NULL;");
+	if (!all) {
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE PKGLT(p.version, pkgjobs.version)) IS NOT NULL; ");
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE "
+		    "p.origin=pkgjobs.origin AND PKGLE(p.version,pkgjobs.version) AND p.name = pkgjobs.name "
+		    "AND ( ((SELECT group_concat(option) FROM main.options WHERE package_id=p.id AND value='on') IS NULL AND pkgjobs.opts IS NULL) OR (SELECT group_concat(option) FROM main.options WHERE package_id=p.id AND value='on') == pkgjobs.opts)) IS NOT NULL;");
+	}
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame);
+	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame, reponame);
 	sbuf_finish(sql);
 
 	do {
@@ -3337,17 +3355,23 @@ pkgshell_open(const char **reponame)
 int
 pkgdb_lock(struct pkgdb *db)
 {
-	assert(db != NULL);
-
-	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
+        assert(db != NULL);
+	assert(db->lock_count >= 0);
+	if (!(db->lock_count++))
+		return sql_exec(db->sqlite, "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
+	else
+		return (EPKG_OK);
 }
 
 int
 pkgdb_unlock(struct pkgdb *db)
 {
-	assert(db != NULL);
-
-	return sql_exec(db->sqlite, "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
+        assert(db != NULL);
+	assert(db->lock_count >= 1);
+	if (!(--db->lock_count))
+		return sql_exec(db->sqlite, "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
+	else
+		return (EPKG_OK);
 }
 
 int64_t
