@@ -2438,7 +2438,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 	/* Report and remove packages already installed and at the latest version */
 	report_already_installed(db->sqlite);
 	if (!force)
-		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and p.version=pkgjobs.version and p.name = pkgjobs.name) IS NOT NULL;");
+		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and PKGLE(p.version,pkgjobs.version) and p.name = pkgjobs.name) IS NOT NULL;");
 
 	/* Append dependencies */
 	sbuf_reset(sql);
