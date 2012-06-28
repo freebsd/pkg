@@ -74,54 +74,54 @@ static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
 		"origin, name, version, comment, desc, arch, maintainer, www, "
 		"prefix, pkgsize, flatsize, licenselogic, cksum, path"
 		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);",
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
 		"TTTTTTTTTIIITT"
 	},
 	/* DEPS */
 	{
 		NULL,
 		"INSERT INTO deps (origin, name, version, package_id) "
-		"VALUES (?1, ?2, ?3, ?4);",
+		"VALUES (?1, ?2, ?3, ?4)",
 		"TTTI"
 	},
 	/* CAT1 */
 	{
 		NULL,
-		"INSERT OR IGNORE INTO categories(name) VALUES(?1);",
+		"INSERT OR IGNORE INTO categories(name) VALUES(?1)",
 		"T"
 	},
 	/* CAT2 */
 	{
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_categories(package_id, category_id) "
-		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2));",
+		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2))",
 		"IT"
 
 	},
 	/* LIC1 */
 	{
 		NULL,
-		"INSERT OR IGNORE INTO licenses(name) VALUES(?1);",
+		"INSERT OR IGNORE INTO licenses(name) VALUES(?1)",
 		"T"
 	},
 	/* LIC2 */
 	{
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_licenses(package_id, license_id) "
-		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2));",
+		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2))",
 		"IT"
 	},
 	/* OPTS */
 	{
 		NULL,
 		"INSERT OR ROLLBACK INTO options (option, value, package_id) "
-		"VALUES (?1, ?2, ?3);",
+		"VALUES (?1, ?2, ?3)",
 		"TTI"
 	},
 	/* SHLIB1 */
 	{
 		NULL,
-		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1);",
+		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
 		"T"
 	},
 	/* SHLIB2 */
