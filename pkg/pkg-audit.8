@@ -23,7 +23,7 @@
 .Nd Audits installed packages against known vulnerabilities.
 .Sh SYNOPSIS
 .Nm
-.Op Fl F
+.Op Fl Fq
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
@@ -56,6 +56,10 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl F
 Fetch the database before checking.
+.It Fl q
+Be ``quiet''.
+Prints only the requested information without
+displaying many hints.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -91,6 +95,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

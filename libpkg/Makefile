@@ -37,12 +37,15 @@ HAVE_GRUTILS!=	grep -q gr_copy /usr/include/libutil.h && echo yes || echo no
 
 .if ${HAVE_GRUTILS} != yes
 SRCS+=	gr_util.c
+.else
+CFLAGS+=	-DHAVE_GRUTILS
 .endif
 
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
 		-I${.CURDIR}/../external/libyaml/include
+STATIC_CFLAGS+=	-DSTATIC_LINKAGE
 LDADD+=		-L${.OBJDIR}/../external/sqlite \
 		-L${.OBJDIR}/../external/libyaml \
 		-lsqlite3 \

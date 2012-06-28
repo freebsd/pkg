@@ -101,13 +101,13 @@ exec_clean(int argc, char **argv)
 			continue;
 		}
 
-		ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC);
-		to_delete = false;
-		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
-		if (ret == EPKG_FATAL) {
+		if ((ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC)) == EPKG_FATAL) {
 			warnx("skipping %s", ent->fts_path);
 			continue;
-		} else if (ret == EPKG_END) {
+		}
+		to_delete = false;
+		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
+		if (ret == EPKG_END) {
 			to_delete = true;
 			printf("%s does not exist anymore, deleting it\n", repopath);
 		} else if (strcmp(repopath, pkgrepopath)) {

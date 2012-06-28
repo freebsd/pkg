@@ -356,7 +356,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			}
 			break;
 		case 'G':
-			while (pkg_users(pkg, &user) == EPKG_OK) {
+			while (pkg_groups(pkg, &group) == EPKG_OK) {
 				format_str(pkg, output, qstr, group);
 				printf("%s\n", sbuf_data(output));
 			}
@@ -381,16 +381,27 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	sbuf_delete(output);
 }
 
+typedef enum {
+	NONE,
+	NEXT_IS_INT,
+	OPERATOR_INT,
+	INT,
+	NEXT_IS_STRING,
+	OPERATOR_STRING,
+	STRING,
+	QUOTEDSTRING,
+	SQUOTEDSTRING,
+	POST_EXPR,
+} state_t;
+
 int
-format_sql_condition(const char *str, struct sbuf *sqlcond)
+format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 {
-	type_t state = NONE;
+	state_t state = NONE;
+	unsigned int bracket_level = 0;
+
 	sbuf_cat(sqlcond, " WHERE ");
 	while (str[0] != '\0') {
-		if (str[0] == ';') {
-			fprintf(stderr, "';' is forbidden in evaluation format");
-			return (EPKG_FATAL);
-		}
 		if (state == NONE) {
 			if (str[0] == '%') {
 				str++;
@@ -424,64 +435,146 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 						state = OPERATOR_INT;
 						break;
 					case 'a':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "automatic");
 						state = OPERATOR_INT;
 						break;
 					case 'M':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "message");
 						state = OPERATOR_STRING;
 						break;
 					case 'i':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "infos");
 						state = OPERATOR_STRING;
 						break;
 					case 't':
+						if (for_remote)
+							goto bad_option;
 						sbuf_cat(sqlcond, "time");
 						state = OPERATOR_INT;
 						break;
+					case '#':
+						str++;
+						const char *dbstr = for_remote ? "%1$s." : "";
+						switch (str[0]) {
+							case 'd':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sdeps AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'r':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sdeps AS d WHERE d.origin=p.origin)", dbstr);
+								break;
+							case 'C':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_categories AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'F':
+								if (for_remote)
+									goto bad_option;
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sfiles AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'O':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %soptions AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'D':
+								if (for_remote)
+									goto bad_option;
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_directories AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'L':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_licenses AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'U':
+								if (for_remote)
+									goto bad_option;
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_users AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'G':
+								if (for_remote)
+									goto bad_option;
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_groups AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							case 'B':
+								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs AS d WHERE d.package_id=p.id)", dbstr);
+								break;
+							default:
+								goto bad_option;
+						}
+						state = OPERATOR_INT;
+						break;
 					default:
-						fprintf(stderr, "malformed evaluation string");
+bad_option:
+						fprintf(stderr, "malformed evaluation string\n");
 						return (EPKG_FATAL);
 				}
 			} else {
 				switch (str[0]) {
 					case '(':
-					case ')':
-					case ' ':
-					case '\t':
+						bracket_level++;
 						sbuf_putc(sqlcond, str[0]);
 						break;
-					case '|':
-						if (str[1] == '|') {
-							str++;
-							sbuf_cat(sqlcond, " OR ");
-							break;
-						}
-					case '&':
-						if (str[1] == '&') {
-							str++;
-							sbuf_cat(sqlcond, " AND ");
-							break;
-						}
+					case ' ':
+					case '\t':
+						break;
 					default:
 						fprintf(stderr, "unexpected character: %c\n", str[0]);
 						return (EPKG_FATAL);
 				}
 			}
+		} else if (state == POST_EXPR) {
+			switch (str[0]) {
+				case ')':
+					if (bracket_level == 0) {
+						fprintf(stderr, "too many closing brackets.\n");
+						return (EPKG_FATAL);
+					}
+					bracket_level--;
+					sbuf_putc(sqlcond, str[0]);
+					break;
+				case ' ':
+				case '\t':
+					break;
+				case '|':
+					if (str[1] == '|') {
+						str++;
+						state = NONE;
+						sbuf_cat(sqlcond, " OR ");
+						break;
+					} else {
+						fprintf(stderr, "unexpected character %c\n", str[1]);
+						return (EPKG_FATAL);
+					}
+				case '&':
+					if (str[1] == '&') {
+						str++;
+						state = NONE;
+						sbuf_cat(sqlcond, " AND ");
+						break;
+					} else {
+						fprintf(stderr, "unexpected character %c\n", str[1]);
+						return (EPKG_FATAL);
+					}
+				default:
+					fprintf(stderr, "unexpected character %c\n", str[0]);
+					return (EPKG_FATAL);
+			}
 		} else if (state == OPERATOR_STRING || state == OPERATOR_INT) {
 			/* only operators or space are allowed here */
 			if (isspace(str[0])) {
-				sbuf_putc(sqlcond, str[0]);
-			} else if (str[0] == '~') {
+				/* do nothing */
+			} else if (str[0] == '~' ) {
 				if (state != OPERATOR_STRING) {
-					fprintf(stderr, "~ expected only for string testing");
+					fprintf(stderr, "~ expected only for string testing\n");
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_STRING;
 				sbuf_cat(sqlcond, " GLOB ");
 			} else if (str[0] == '>' || str[0] == '<') {
 				if (state != OPERATOR_INT) {
-					fprintf(stderr, "> expected only for integers");
+					fprintf(stderr, "> expected only for integers\n");
 					return (EPKG_FATAL);
 				}
 				state = NEXT_IS_INT;
@@ -503,7 +596,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 				}
 			} else if (str[0] == '!') {
 				if (str[1] != '=') {
-					fprintf(stderr, "expecting = after !");
+					fprintf(stderr, "expecting = after !\n");
 					return (EPKG_FATAL);
 				}
 				if (state == OPERATOR_STRING) {
@@ -514,10 +607,13 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 				sbuf_putc(sqlcond, str[0]);
 				str++;
 				sbuf_putc(sqlcond, str[0]);
+			} else {
+				fprintf(stderr, "an operator is expected, got %c\n", str[0]);
+				return (EPKG_FATAL);
 			}
 		} else if (state == NEXT_IS_STRING || state == NEXT_IS_INT) {
 			if (isspace(str[0])) {
-				sbuf_putc(sqlcond, str[0]);
+				/* do nothing */
 			} else {
 				if (state == NEXT_IS_STRING) {
 					if (str[0] == '"') {
@@ -525,10 +621,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 					} else if (str[0] == '\'') {
 						state = SQUOTEDSTRING;
 					} else {
-						sbuf_putc(sqlcond, '"');
 						state = STRING;
+						str--;
 					}
-					sbuf_putc(sqlcond, str[0]);
+					sbuf_putc(sqlcond, '\'');
 				} else {
 					if (!isnumber(str[0])) {
 						fprintf(stderr, "a number is expected, got: %c\n", str[0]);
@@ -539,32 +635,40 @@ format_sql_condition(const char *str, struct sbuf *sqlcond)
 				}
 			}
 		} else if (state == INT) {
-			if (isspace(str[0])) {
-				state = NONE;
-			} else if (!isnumber(str[0])) {
-				fprintf(stderr, "a number is expected, got: %c\n", str[0]);
-				return (EPKG_FATAL);
+			if (!isnumber(str[0])) {
+				state = POST_EXPR;
+				str--;
+			} else {
+				sbuf_putc(sqlcond, str[0]);
 			}
-			sbuf_putc(sqlcond, str[0]);
-		} else if (state == STRING) {
-			if (isspace(str[0])) {
-				sbuf_putc(sqlcond, '"');
-				state = NONE;
+		} else if (state == STRING || state == QUOTEDSTRING || state == SQUOTEDSTRING) {
+			if ((state == STRING && isspace(str[0])) ||
+			    (state == QUOTEDSTRING && str[0] == '"') ||
+			    (state == SQUOTEDSTRING && str[0] == '\'')) {
+				sbuf_putc(sqlcond, '\'');
+				state = POST_EXPR;
+			} else {
+				sbuf_putc(sqlcond, str[0]);
+				if (str[0] == '\'')
+					sbuf_putc(sqlcond, str[0]);
+				else if (str[0] == '%' && for_remote)
+					sbuf_putc(sqlcond, str[0]);
 			}
-			sbuf_putc(sqlcond, str[0]);
-		} else if (state == QUOTEDSTRING) {
-			if (str[0] == '"')
-				state = NONE;
-			sbuf_putc(sqlcond, str[0]);
-		} else if (state == SQUOTEDSTRING) {
-			if (str[0] == '"')
-				state = NONE;
-			sbuf_putc(sqlcond, str[0]);
 		}
 		str++;
 	}
-	if (state == STRING)
-		sbuf_putc(sqlcond, '"');
+	if (state == STRING) {
+		sbuf_putc(sqlcond, '\'');
+		state = POST_EXPR;
+	}
+
+	if (state != POST_EXPR && state != INT) {
+		fprintf(stderr, "unexpected end of expression\n");
+		return (EPKG_FATAL);
+	} else if (bracket_level > 0) {
+		fprintf(stderr, "unexpected end of expression (too many open brackets)\n");
+		return (EPKG_FATAL);
+	}
 
 	return (EPKG_OK);
 }
@@ -737,7 +841,7 @@ exec_query(int argc, char **argv)
 
 	if (condition != NULL) {
 		sqlcond = sbuf_new_auto();
-		if (format_sql_condition(condition, sqlcond) != EPKG_OK) {
+		if (format_sql_condition(condition, sqlcond, false) != EPKG_OK) {
 			sbuf_delete(sqlcond);
 			return (EX_USAGE);
 		}

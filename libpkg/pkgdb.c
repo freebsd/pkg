@@ -51,6 +51,10 @@
 #include "private/db_upgrades.h"
 #define DBVERSION 12
 
+#define PKGGT	0<<1
+#define PKGLT	0<<2
+#define PKGEQ	0<<3
+
 static struct pkgdb_it * pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
 static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
@@ -58,6 +62,8 @@ static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_pkgle(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_pkgge(sqlite3_context *, int, sqlite3_value **);
 static int get_pragma(sqlite3 *, const char *, int64_t *);
 static int pkgdb_upgrade(struct pkgdb *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
@@ -297,25 +303,54 @@ pkgdb_pkgcmp(sqlite3_context *ctx, int argc, sqlite3_value **argv, int sign)
 {
 	const unsigned char *version1 = NULL;
 	const unsigned char *version2 = NULL;
+	int res = 0;
+
 	if (argc != 2 || (version1 = sqlite3_value_text(argv[0])) == NULL
 			|| (version2 = sqlite3_value_text(argv[1])) == NULL) {
 		sqlite3_result_error(ctx, "Invalid comparison\n", -1);
 		return;
 	}
 
-	sqlite3_result_int(ctx, (pkg_version_cmp(version1, version2) == sign));
+	switch(pkg_version_cmp(version1, version2)) {
+	case -1:
+		if ((sign & PKGLT) == PKGLT)
+			res = 1;
+		break;
+	case 0:
+		if ((sign & PKGEQ) == PKGEQ)
+			res = 1;
+		break;
+	case 1:
+		if ((sign & PKGGT) == PKGGT)
+			res = 1;
+		break;
+	}
+
+	sqlite3_result_int(ctx, res);
 }
 
 static void
 pkgdb_pkglt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
-	pkgdb_pkgcmp(ctx, argc, argv, -1);
+	pkgdb_pkgcmp(ctx, argc, argv, PKGLT);
 }
 
 static void
 pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
-	pkgdb_pkgcmp(ctx, argc, argv, 1);
+	pkgdb_pkgcmp(ctx, argc, argv, PKGGT);
+}
+
+static void
+pkgdb_pkgle(sqlite3_context *ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_pkgcmp(ctx, argc, argv, PKGLT|PKGEQ);
+}
+
+static void
+pkgdb_pkgge(sqlite3_context * ctx, int argc, sqlite3_value **argv)
+{
+	pkgdb_pkgcmp(ctx, argc, argv, PKGGT|PKGEQ);
 }
 
 static int
@@ -2117,12 +2152,13 @@ report_already_installed(sqlite3 *s)
 }
 
 static int
-sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql) {
+sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql, const char *compound) {
 	sqlite3_stmt *stmt;
 	const char *dbname;
 	bool first = true;
 
 	assert(s != NULL);
+	assert(compound != NULL);
 
 	if (sqlite3_prepare_v2(s, "PRAGMA database_list;", -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(s);
@@ -2135,11 +2171,13 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql) {
 			continue;
 
 		if (!first) {
-			sbuf_cat(sql, " UNION ALL ");
+			sbuf_cat(sql, compound);
 		} else {
 			first = false;
 		}
-		sbuf_printf(sql, multireposql, dbname, dbname);
+
+		/* replace any occurences of the dbname in the resulting SQL */
+		sbuf_printf(sql, multireposql, dbname);
 	}
 
 	sqlite3_finalize(stmt);
@@ -2246,7 +2284,7 @@ create_temporary_pkgjobs(sqlite3 *s)
 			"arch TEXT, maintainer TEXT, "
 			"www TEXT, prefix TEXT, flatsize INTEGER, newversion TEXT, "
 			"newflatsize INTEGER, pkgsize INTEGER, cksum TEXT, repopath TEXT, automatic INTEGER, weight INTEGER"
-			"dbname TEXT);");
+			"dbname TEXT, opts TEXT);");
 
 	return (ret);
 }
@@ -2341,10 +2379,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 
 	const char main_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 			"maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic) "
+			"cksum, repopath, automatic, opts) "
 			"SELECT id, origin, name, version, comment, desc, "
 			"arch, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, path, 0 FROM '%s'.packages WHERE ";
+			"cksum, path, 0, (select group_concat(option) from '%s'.options WHERE package_id=id AND value='on') FROM '%s'.packages WHERE ";
 
 	const char deps_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 				"maintainer, www, prefix, flatsize, pkgsize, "
@@ -2370,7 +2408,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		return (NULL);
 
 	sql = sbuf_new_auto();
-	sbuf_printf(sql, main_sql, reponame);
+	sbuf_printf(sql, main_sql, reponame, reponame);
 
 	how = pkgdb_get_match_how(match);
 
@@ -2402,8 +2440,14 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 
 	/* Report and remove packages already installed and at the latest version */
 	report_already_installed(db->sqlite);
-	if (!force)
-		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and p.version=pkgjobs.version and p.name = pkgjobs.name) IS NOT NULL;");
+	if (!force) {
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE PKGLT(p.version, pkgjobs.version)) IS NOT NULL; ");
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE "
+		    "p.origin=pkgjobs.origin AND PKGLE(p.version,pkgjobs.version) AND p.name = pkgjobs.name "
+		    "AND ( ((SELECT group_concat(option) FROM main.options WHERE package_id=p.id AND value='on') IS NULL AND pkgjobs.opts IS NULL) OR (SELECT group_concat(option) FROM main.options WHERE package_id=p.id AND value='on') == pkgjobs.opts)) IS NOT NULL;");
+	}
 
 	/* Append dependencies */
 	sbuf_reset(sql);
@@ -2472,17 +2516,20 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	const char pkgjobs_sql_1[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 			"maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, repopath, automatic) "
+			"cksum, repopath, automatic, opts) "
 			"SELECT id, origin, name, version, comment, desc, "
 			"arch, maintainer, www, prefix, flatsize, pkgsize, "
-			"cksum, path, 0 FROM '%s'.packages WHERE origin IN (select origin from main.packages)";
+			"cksum, path, 0 ,"
+			"(select group_concat(option) from '%s'.options WHERE package_id=id AND value='on') "
+			"FROM '%s'.packages WHERE origin IN (select origin from main.packages)";
 
 	const char pkgjobs_sql_2[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
 				"maintainer, www, prefix, flatsize, pkgsize, "
-				"cksum, repopath, automatic) "
+				"cksum, repopath, automatic, opts) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
 				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
-				"r.cksum, r.path, 1 "
+				"r.cksum, r.path, 1, "
+				"(select group_concat(option) from '%s'.options WHERE package_id=r.id AND value='on') "
 				"FROM '%s'.packages AS r where r.origin IN "
 				"(SELECT d.origin from '%s'.deps AS d, pkgjobs as j WHERE d.package_id = j.pkgid) "
 				"AND (SELECT p.origin from main.packages as p WHERE p.origin=r.origin AND version=r.version) IS NULL;";
@@ -2520,16 +2567,22 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	sql = sbuf_new_auto();
 	create_temporary_pkgjobs(db->sqlite);
 
-	sbuf_printf(sql, pkgjobs_sql_1, reponame);
+	sbuf_printf(sql, pkgjobs_sql_1, reponame, reponame);
 	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	/* Remove packages already installed and in the latest version */
-	if (!all)
-		sql_exec(db->sqlite, "DELETE from pkgjobs where (select p.origin from main.packages as p where p.origin=pkgjobs.origin and p.version=pkgjobs.version and p.name = pkgjobs.name) IS NOT NULL;");
+	if (!all) {
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE PKGLT(p.version, pkgjobs.version)) IS NOT NULL; ");
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE "
+		    "p.origin=pkgjobs.origin AND PKGLE(p.version,pkgjobs.version) AND p.name = pkgjobs.name "
+		    "AND ( ((SELECT group_concat(option) FROM main.options WHERE package_id=p.id AND value='on') IS NULL AND pkgjobs.opts IS NULL) OR (SELECT group_concat(option) FROM main.options WHERE package_id=p.id AND value='on') == pkgjobs.opts)) IS NOT NULL;");
+	}
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame);
+	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame, reponame);
 	sbuf_finish(sql);
 
 	do {
@@ -2723,8 +2776,8 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 				"SELECT id, origin, name, version, comment, "
 				"prefix, desc, arch, maintainer, www, "
 				"licenselogic, flatsize, pkgsize, "
-				"cksum, path AS repopath, '%s' AS dbname "
-				"FROM '%s'.packages p";
+				"cksum, path AS repopath, '%1$s' AS dbname "
+				"FROM '%1$s'.packages p";
 
 	assert(db != NULL);
 	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
@@ -2744,7 +2797,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match, const char *r
 	 */
 	if (multirepos_enabled && !strcmp(reponame, "default")) {
 		/* duplicate the query via UNION for all the attached databases */
-		if (sql_on_all_attached_db(db->sqlite, sql, basesql) != EPKG_OK) {
+		if (sql_on_all_attached_db(db->sqlite, sql, basesql, " UNION ALL ") != EPKG_OK) {
 			sbuf_delete(sql);
 			return (NULL);
 		}
@@ -2819,8 +2872,8 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 				"SELECT id, origin, name, version, comment, "
 					"prefix, desc, arch, maintainer, www, "
 					"licenselogic, flatsize, pkgsize, "
-					"cksum, path, '%s' AS dbname "
-					"FROM '%s'.packages ";
+					"cksum, path, '%1$s' AS dbname "
+					"FROM '%1$s'.packages ";
 
 	assert(db != NULL);
 	assert(pattern != NULL && pattern[0] != '\0');
@@ -2850,7 +2903,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match, unsigned int 
 			}
 		} else {
 			/* test on all the attached databases */
-			if (sql_on_all_attached_db(db->sqlite, sql, multireposql) != EPKG_OK) {
+			if (sql_on_all_attached_db(db->sqlite, sql, multireposql, " UNION ALL ") != EPKG_OK) {
 				sbuf_delete(sql);
 				return (NULL);
 			}
@@ -3256,19 +3309,23 @@ static int
 sqlcmd_init(sqlite3 *db, __unused const char **err, __unused const void *noused)
 {
 		sqlite3_create_function(db, "now", 0, SQLITE_ANY, NULL,
-				pkgdb_now, NULL, NULL);
+		    pkgdb_now, NULL, NULL);
 		sqlite3_create_function(db, "myarch", 0, SQLITE_ANY, NULL,
-				pkgdb_myarch, NULL, NULL);
+		    pkgdb_myarch, NULL, NULL);
 		sqlite3_create_function(db, "myarch", 1, SQLITE_ANY, NULL,
-				pkgdb_myarch, NULL, NULL);
+		    pkgdb_myarch, NULL, NULL);
 		sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL,
-				pkgdb_regex_basic, NULL, NULL);
+		    pkgdb_regex_basic, NULL, NULL);
 		sqlite3_create_function(db, "eregexp", 2, SQLITE_ANY, NULL,
-				pkgdb_regex_extended, NULL, NULL);
+		    pkgdb_regex_extended, NULL, NULL);
 		sqlite3_create_function(db, "pkglt", 2, SQLITE_ANY, NULL,
-				pkgdb_pkglt, NULL, NULL);
+		    pkgdb_pkglt, NULL, NULL);
 		sqlite3_create_function(db, "pkggt", 2, SQLITE_ANY, NULL,
-				pkgdb_pkggt, NULL, NULL);
+		    pkgdb_pkggt, NULL, NULL);
+		sqlite3_create_function(db, "pkgge", 2, SQLITE_ANY, NULL,
+		    pkgdb_pkgge, NULL, NULL);
+		sqlite3_create_function(db, "pkgle", 2, SQLITE_ANY, NULL,
+		    pkgdb_pkgle, NULL, NULL);
 
 		return SQLITE_OK;
 }
@@ -3298,6 +3355,7 @@ pkgshell_open(const char **reponame)
 int
 pkgdb_lock(struct pkgdb *db)
 {
+        assert(db != NULL);
 	assert(db->lock_count >= 0);
 	if (!(db->lock_count++))
 		return sql_exec(db->sqlite, "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
@@ -3308,9 +3366,96 @@ pkgdb_lock(struct pkgdb *db)
 int
 pkgdb_unlock(struct pkgdb *db)
 {
+        assert(db != NULL);
 	assert(db->lock_count >= 1);
 	if (!(--db->lock_count))
 		return sql_exec(db->sqlite, "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
 	else
 		return (EPKG_OK);
+}
+
+int64_t
+pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
+{
+	sqlite3_stmt *stmt = NULL;
+	int64_t stats = 0;
+	struct sbuf *sql = NULL;
+
+	assert(db != NULL);
+
+	sql = sbuf_new_auto();
+
+	switch(type) {
+	case PKG_STATS_LOCAL_COUNT:
+		sbuf_printf(sql, "SELECT COUNT(id) FROM main.packages;");
+		break;
+	case PKG_STATS_LOCAL_SIZE:
+		sbuf_printf(sql, "SELECT SUM(flatsize) FROM main.packages;");
+		break;
+	case PKG_STATS_REMOTE_UNIQUE:
+		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
+
+		/* open parentheses for the compound statement */
+		sbuf_printf(sql, "(");
+
+		/* execute on all databases */
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT origin AS c FROM '%1$s'.packages", " UNION ");
+
+		/* close parentheses for the compound statement */
+		sbuf_printf(sql, ");");
+		break;
+	case PKG_STATS_REMOTE_COUNT:
+		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
+
+		/* open parentheses for the compound statement */
+		sbuf_printf(sql, "(");
+
+		/* execute on all databases */
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT origin AS c FROM '%1$s'.packages", " UNION ALL ");
+
+		/* close parentheses for the compound statement */
+		sbuf_printf(sql, ");");
+		break;
+	case PKG_STATS_REMOTE_SIZE:
+		sbuf_printf(sql, "SELECT SUM(s) FROM ");
+
+		/* open parentheses for the compound statement */
+		sbuf_printf(sql, "(");
+
+		/* execute on all databases */
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT flatsize AS s FROM '%1$s'.packages", " UNION ALL ");
+
+		/* close parentheses for the compound statement */
+		sbuf_printf(sql, ");");
+		break;
+	case PKG_STATS_REMOTE_REPOS:
+		sbuf_printf(sql, "SELECT COUNT(c) FROM ");
+
+		/* open parentheses for the compound statement */
+		sbuf_printf(sql, "(");
+
+		/* execute on all databases */
+		sql_on_all_attached_db(db->sqlite, sql, "SELECT '%1$s' AS c", " UNION ALL ");
+
+		/* close parentheses for the compound statement */
+		sbuf_printf(sql, ");");
+		break;
+	}
+
+	if (sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL) != SQLITE_OK) {
+		sbuf_free(sql);
+		ERROR_SQLITE(db->sqlite);
+		return (-1);
+	}
+
+	while (sqlite3_step(stmt) != SQLITE_DONE) {
+		stats = sqlite3_column_int64(stmt, 0);
+	}
+
+
+	sbuf_finish(sql);
+	sbuf_free(sql);
+	sqlite3_finalize(stmt);
+
+	return (stats);
 }

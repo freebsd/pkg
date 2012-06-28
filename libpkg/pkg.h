@@ -37,10 +37,10 @@
 #include <sys/sbuf.h>
 #include <openssl/pem.h>
 
-#define PKGVERSION "1.0-beta15"
+#define PKGVERSION "1.0-beta16"
 /* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg version comparison
  * in pkgdb_query_newpkgversion() */
-#define PKG_PORTVERSION "1.0.b15_2"
+#define PKG_PORTVERSION "1.0.b16"
 
 struct pkg;
 struct pkg_dep;
@@ -173,7 +173,7 @@ typedef enum {
 	PKG_NEWVERSION,
 	PKG_REPONAME,
 	PKG_REPOURL, /* end of fields */
-	PKG_FLATSIZE,
+	PKG_FLATSIZE=64,
 	PKG_NEW_FLATSIZE,
 	PKG_NEW_PKGSIZE,
 	PKG_LICENSE_LOGIC,
@@ -264,6 +264,15 @@ typedef enum {
 	PKG_CONFIG_KV_KEY,
 	PKG_CONFIG_KV_VALUE
 } pkg_config_kv_t;
+
+typedef enum _pkg_stats_t {
+	PKG_STATS_LOCAL_COUNT = 0,
+	PKG_STATS_LOCAL_SIZE,
+	PKG_STATS_REMOTE_COUNT,
+	PKG_STATS_REMOTE_UNIQUE,
+	PKG_STATS_REMOTE_SIZE,
+	PKG_STATS_REMOTE_REPOS,
+} pkg_stats_t;
 
 /**
  * Error type used everywhere by libpkg.
@@ -816,6 +825,14 @@ int pkg_create_staged(const char *, pkg_formats, const char *, const char *, cha
  * Download the latest repo db file and checks its signature if any
  */
 int pkg_update(const char *name, const char *packagesite);
+
+/**
+ * Get statistics information from the package database(s)
+ * @param db A valid database object as returned by pkgdb_open()
+ * @param type Type of statistics to be returned
+ * @return The statistic information requested
+ */
+int64_t pkgdb_stats(struct pkgdb *db, pkg_stats_t type);
 
 /**
  * Get the value of a configuration key

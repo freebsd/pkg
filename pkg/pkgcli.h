@@ -99,6 +99,10 @@ int exec_shlib(int, char **);
 void usage_shlib(void);
 char *sanitize(char *, const char *, size_t);
 
+/* pkg stats */
+int exec_stats(int, char **);
+void usage_stats(void);
+
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);
@@ -171,20 +175,8 @@ struct query_flags {
 	const int dbflags;
 };
 
-typedef enum {
-	NONE,
-	NEXT_IS_INT,
-	OPERATOR_INT,
-	INT,
-	NEXT_IS_STRING,
-	OPERATOR_STRING,
-	STRING,
-	QUOTEDSTRING,
-	SQUOTEDSTRING
-} type_t;
-
 void print_query(struct pkg *pkg, char *qstr, char multiline);
-int format_sql_condition(const char *str, struct sbuf *sqlcond);
+int format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote);
 int analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int q_flags_len, int *flags, char *multiline);
 
 #endif

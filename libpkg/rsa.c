@@ -129,6 +129,11 @@ rsa_sign(char *path, pem_password_cb *password_cb, char *rsa_key_path,
 	OpenSSL_add_all_ciphers();
 
 	rsa = _load_rsa_private_key(rsa_key_path, password_cb);
+	if (rsa == NULL) {
+		pkg_emit_error("can't load key from %s", rsa_key_path);
+		return EPKG_FATAL;
+	}
+
 	max_len = RSA_size(rsa);
 	*sigret = calloc(1, max_len + 1);
 
