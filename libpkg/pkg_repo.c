@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -523,7 +524,7 @@ maybe_delete_conflicting(const char *origin, const char *version,
 		break;
 	case 0:
 	case 1:
-		pkg_emit_error("\nduplicate package origin: package %s is not "
+		pkg_emit_error("duplicate package origin: package %s is not "
 			       "newer than version %s already in repo for "
 			       "origin %s", pkg_path, oversion, origin);
 		ret = EPKG_END;	/* keep what is already in the repo */
