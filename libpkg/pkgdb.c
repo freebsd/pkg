@@ -2135,8 +2135,8 @@ report_already_installed(sqlite3 *s)
 	const char *sql = "SELECT origin FROM pkgjobs WHERE "
 		"(SELECT p.origin FROM main.packages AS p WHERE "
 		"p.origin=pkgjobs.origin AND p.version=pkgjobs.version "
-		"AND (((SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) IS NULL "
-		"AND pkgjobs.opts IS NULL) OR (SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) == pkgjobs.opts)) IS NOT NULL;";
+		"AND (SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) IS pkgjobs.opts) "
+		"IS NOT NULL;";
 
 	assert(s != NULL);
 
@@ -2448,8 +2448,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
 		    "(SELECT p.origin FROM main.packages AS p WHERE "
 		    "p.origin=pkgjobs.origin AND PKGLE(p.version,pkgjobs.version) AND p.name = pkgjobs.name "
-		    "AND ( ((SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) IS NULL "
-		    "AND pkgjobs.opts IS NULL) OR (SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) == pkgjobs.opts)) IS NOT NULL;");
+		    "AND (SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) IS pkgjobs.opts) "
+		    "IS NOT NULL;");
 	}
 
 	/* Append dependencies */
@@ -2579,8 +2579,8 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
 		    "(SELECT p.origin FROM main.packages AS p WHERE "
 		    "p.origin=pkgjobs.origin AND PKGLE(p.version,pkgjobs.version) AND p.name = pkgjobs.name "
-		    "AND ( ((SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) IS NULL "
-		    "AND pkgjobs.opts IS NULL) OR (SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) == pkgjobs.opts)) IS NOT NULL;");
+		    "AND (SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) IS pkgjobs.opts) "
+		    "IS NOT NULL;");
 	}
 
 	sbuf_reset(sql);
