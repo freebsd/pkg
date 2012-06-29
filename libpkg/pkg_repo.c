@@ -42,6 +42,117 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 
+typedef enum _sql_prstmt_index_t {
+	PKG = 0,
+	DEPS,
+	CAT1,
+	CAT2,
+	LIC1,
+	LIC2,
+	OPTS,
+	SHLIB1,
+	SHLIB2,
+	EXISTS,
+	VERSION,
+	DELETE,
+	PRSTMT_LAST
+} sql_prstmt_index_t;
+
+typedef struct _sql_prstmt_t {
+	sqlite3_stmt *stmt;
+	const char *sql;
+	const char *argtypes;
+} sql_prstmt_t;
+
+#define STMT(x) (sql_prepared_statements[(x)].stmt)
+#define SQL(x)  (sql_prepared_statements[(x)].sql)
+
+static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
+	/* PKG */
+	{
+		NULL,
+		"INSERT INTO packages ("
+		"origin, name, version, comment, desc, arch, maintainer, www, "
+		"prefix, pkgsize, flatsize, licenselogic, cksum, path"
+		")"
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+		"TTTTTTTTTIIITT"
+	},
+	/* DEPS */
+	{
+		NULL,
+		"INSERT INTO deps (origin, name, version, package_id) "
+		"VALUES (?1, ?2, ?3, ?4)",
+		"TTTI"
+	},
+	/* CAT1 */
+	{
+		NULL,
+		"INSERT OR IGNORE INTO categories(name) VALUES(?1)",
+		"T"
+	},
+	/* CAT2 */
+	{
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_categories(package_id, category_id) "
+		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2))",
+		"IT"
+
+	},
+	/* LIC1 */
+	{
+		NULL,
+		"INSERT OR IGNORE INTO licenses(name) VALUES(?1)",
+		"T"
+	},
+	/* LIC2 */
+	{
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_licenses(package_id, license_id) "
+		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2))",
+		"IT"
+	},
+	/* OPTS */
+	{
+		NULL,
+		"INSERT OR ROLLBACK INTO options (option, value, package_id) "
+		"VALUES (?1, ?2, ?3)",
+		"TTI"
+	},
+	/* SHLIB1 */
+	{
+		NULL,
+		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
+		"T"
+	},
+	/* SHLIB2 */
+	{
+		NULL, 
+		"INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
+		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
+		"IT"
+	},
+	/* EXISTS */
+	{
+		NULL,
+		"SELECT count(*) FROM packages WHERE cksum=?1",
+		"T"
+	},
+	/* VERSION */
+	{
+		NULL,
+		"SELECT version FROM packages WHERE origin=?1",
+		"T"
+	},
+	/* DELETE */
+	{
+		NULL,
+		"DELETE FROM packages WHERE origin=?1",
+		"T"
+	}
+	/* PRSTMT_LAST */
+};
+
 int
 pkg_repo_fetch(struct pkg *pkg)
 {
@@ -66,7 +177,8 @@ pkg_repo_fetch(struct pkg *pkg)
 
 	snprintf(dest, sizeof(dest), "%s/%s", cachedir, repopath);
 
-	/* If it is already in the local cachedir, dont bother to download it */
+	/* If it is already in the local cachedir, dont bother to
+	 * download it */
 	if (access(dest, F_OK) == 0)
 		goto checksum;
 
@@ -152,46 +264,37 @@ file_exists(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 			sqlite3_result_int(ctx, 0);
 }
 
-int
-pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data)
+static int
+get_repo_user_version(sqlite3 *sqlite, int *repouver)
 {
-	FTS *fts = NULL;
-	FTSENT *ent = NULL;
+	sqlite3_stmt *stmt;
+	int retcode;
 
-	struct pkg *pkg = NULL;
-	struct pkg_dep *dep = NULL;
-	struct pkg_category *category = NULL;
-	struct pkg_license *license = NULL;
-	struct pkg_option *option = NULL;
-	struct pkg_shlib *shlib = NULL;
-	struct sbuf *manifest = NULL;
-	char *ext = NULL;
+	if (sqlite3_prepare_v2(sqlite, "PRAGMA user_version", -1, &stmt, NULL)
+	    != SQLITE_OK)
+	{
+		ERROR_SQLITE(sqlite);
+		return (EPKG_FATAL);
+	}
 
-	sqlite3 *sqlite = NULL;
-	sqlite3_stmt *stmt_deps = NULL;
-	sqlite3_stmt *stmt_pkg = NULL;
-	sqlite3_stmt *stmt_lic1 = NULL;
-	sqlite3_stmt *stmt_lic2 = NULL;
-	sqlite3_stmt *stmt_cat1 = NULL;
-	sqlite3_stmt *stmt_cat2 = NULL;
-	sqlite3_stmt *stmt_opts = NULL;
-	sqlite3_stmt *stmt_shlib1 = NULL;
-	sqlite3_stmt *stmt_shlib2 = NULL;
+	if (sqlite3_step(stmt) == SQLITE_ROW) {
+		*repouver = sqlite3_column_int(stmt, 0);
+		retcode = EPKG_OK;
+	} else {
+		*repouver = -1;
+		retcode = EPKG_FATAL;
+	}
+	sqlite3_finalize(stmt);
+	return (retcode);
+}
 
-	int64_t package_id;
-	char *errmsg = NULL;
-	int retcode = EPKG_OK;
-	char *pkg_path;
-	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
+static int
+initialize_repo(const char *repodb, sqlite3 **sqlite)
+{
 	bool incremental = false;
-	int ret;
-
-	char *repopath[2];
-	char repodb[MAXPATHLEN + 1];
-	char repopack[MAXPATHLEN + 1];
-
-	struct archive *a = NULL;
-	struct archive_entry *ae = NULL;
+	bool db_not_open;
+	int repouver;
+	int retcode = EPKG_OK;
 
 	const char initsql[] = ""
 		"CREATE TABLE packages ("
@@ -217,7 +320,8 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"origin TEXT,"
 			"name TEXT,"
 			"version TEXT,"
-			"package_id INTEGER REFERENCES packages(id),"
+			"package_id INTEGER REFERENCES packages(id)"
+		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
 			"UNIQUE(package_id, origin)"
 		");"
 		"CREATE TABLE categories ("
@@ -225,8 +329,10 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"name TEXT NOT NULL UNIQUE "
 		");"
 		"CREATE TABLE pkg_categories ("
-			"package_id INTEGER REFERENCES packages(id), "
-			"category_id INTEGER REFERENCES categories(id), "
+			"package_id INTEGER REFERENCES packages(id)"
+		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
+			"category_id INTEGER REFERENCES categories(id)"
+			"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 			"UNIQUE(package_id, category_id)"
 		");"
 		"CREATE TABLE licenses ("
@@ -234,12 +340,15 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"name TEXT NOT NULL UNIQUE"
 		");"
 		"CREATE TABLE pkg_licenses ("
-			"package_id INTEGER REFERENCES packages(id), "
-			"license_id INTEGER REFERENCES licenses(id), "
+			"package_id INTEGER REFERENCES packages(id)"
+		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
+			"license_id INTEGER REFERENCES licenses(id)"
+			"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 			"UNIQUE(package_id, license_id)"
 		");"
 		"CREATE TABLE options ("
-			"package_id INTEGER REFERENCES packages(id), "
+			"package_id INTEGER REFERENCES packages(id)"
+		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
 			"option TEXT,"
 			"value TEXT,"
 			"UNIQUE (package_id, option)"
@@ -249,40 +358,224 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			"name TEXT NOT NULL UNIQUE "
 		");"
 		"CREATE TABLE pkg_shlibs ("
-			"package_id INTEGER REFERENCES packages(id), "
-			"shlib_id INTEGER REFERENCES shlibs(id), "
+			"package_id INTEGER REFERENCES packages(id)"
+		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
+			"shlib_id INTEGER REFERENCES shlibs(id)"
+			"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 			"UNIQUE(package_id, shlib_id)"
 		");"
-		"PRAGMA user_version=2;"
+		"PRAGMA user_version=%d;"
 		;
-	const char pkgsql[] = ""
-		"INSERT INTO packages ("
-				"origin, name, version, comment, desc, arch, "
-				"maintainer, www, prefix, pkgsize, flatsize, licenselogic, cksum, path"
-		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14);";
-	const char depssql[] = ""
-		"INSERT INTO deps (origin, name, version, package_id) "
-		"VALUES (?1, ?2, ?3, ?4);";
-	const char licsql[] = "INSERT OR IGNORE INTO licenses(name) VALUES(?1);";
-	const char addlicsql[] = "INSERT OR ROLLBACK INTO pkg_licenses(package_id, license_id) "
-		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2));";
-	const char catsql[] = "INSERT OR IGNORE INTO categories(name) VALUES(?1);";
-	const char addcatsql[] = "INSERT OR ROLLBACK INTO pkg_categories(package_id, category_id) "
-		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2));";
-	const char addoption[] = "INSERT OR ROLLBACK INTO options (option, value, package_id) "
-		"VALUES (?1, ?2, ?3);";
-	const char shlibsql[] = "INSERT OR IGNORE INTO shlibs(name) VALUES(?1);";
-	const char addshlibsql[] = "INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
-		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))";
+
+#define REPO_USER_VERSION 3
+
+	if (access(repodb, F_OK) == 0)
+		incremental = true;
+
+	sqlite3_initialize();
+	db_not_open = true;
+	while (db_not_open) {
+		if (sqlite3_open(repodb, sqlite) != SQLITE_OK) {
+			sqlite3_shutdown();
+			return (EPKG_FATAL);
+		}
+
+		db_not_open = false;
+
+		/* If the schema is too old, then we cannot do an incremental
+		   update.  Delete the existing repo, and promote this to a
+		   full update */
+		if (incremental) {
+			if (get_repo_user_version(*sqlite, &repouver) != EPKG_OK)
+				return (EPKG_FATAL);
+			if (repouver != REPO_USER_VERSION) {
+				pkg_emit_error("updating repo user version "
+					"from %d to %d", repouver,
+					REPO_USER_VERSION);
+				sqlite3_close(*sqlite);
+				unlink(repodb);
+				incremental = false;
+				db_not_open = true;
+			}
+		}
+	}
+
+	sqlite3_create_function(*sqlite, "file_exists", 1, SQLITE_ANY, NULL,
+				file_exists, NULL, NULL);
+
+	if ((retcode = sql_exec(*sqlite, "PRAGMA synchronous=off")) != EPKG_OK)
+		return (retcode);
+
+	if ((retcode = sql_exec(*sqlite, "PRAGMA journal_mode=memory")) != EPKG_OK)
+		return (retcode);
+
+	if ((retcode = sql_exec(*sqlite, "PRAGMA foreign_keys=on")) != EPKG_OK)
+		return (retcode);
+
+	if (!incremental && (retcode = sql_exec(*sqlite, initsql, REPO_USER_VERSION)) != EPKG_OK)
+		return (retcode);
+
+	if ((retcode = sql_exec(*sqlite, "BEGIN TRANSACTION")) != EPKG_OK)
+		return (retcode);
+
+	/* remove anything that is no longer in the repository. */
+	if (incremental) {
+		sql_exec(*sqlite, "DELETE FROM packages WHERE NOT FILE_EXISTS(path)");
+		sql_exec(*sqlite, "DELETE FROM categories WHERE id NOT IN (SELECT category_id FROM pkg_categories);");
+		sql_exec(*sqlite, "DELETE FROM licenses WHERE id NOT IN (SELECT license_id FROM pkg_licenses);");
+		sql_exec(*sqlite, "DELETE FROM shlibs WHERE id NOT IN (SELECT shlib_id FROM pkg_shlibs);");
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+initialize_prepared_statements(sqlite3 *sqlite)
+{
+	sql_prstmt_index_t i;
+	int retcode = EPKG_OK;
+
+	for (i = 0; i < PRSTMT_LAST; i++)
+	{
+		if (sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL)
+		    != SQLITE_OK)
+		{
+			ERROR_SQLITE(sqlite);
+			retcode = EPKG_FATAL;
+			break;
+		}
+	}
+	return (retcode);
+}
+
+static int
+run_prepared_statement(sql_prstmt_index_t s, ...)
+{
+	int retcode;	/* Returns SQLITE error code */
+	va_list ap;
+	sqlite3_stmt *stmt;
+	int i;
+	const char *argtypes;
+
+	stmt = STMT(s);
+	argtypes = sql_prepared_statements[s].argtypes;
+
+	sqlite3_reset(stmt);
+
+	va_start(ap, s);
+
+	for (i = 0; argtypes[i] != '\0'; i++)
+	{
+		switch (argtypes[i]) {
+		case 'T':
+			sqlite3_bind_text(stmt, i + 1, va_arg(ap, const char*),
+					  -1, SQLITE_STATIC);
+			break;
+		case 'I':
+			sqlite3_bind_int64(stmt, i + 1, va_arg(ap, int64_t));
+			break;
+		}
+	}
+
+	va_end(ap);
+
+	retcode = sqlite3_step(stmt);
+
+	return (retcode);
+}
+
+static void
+finalize_prepared_statements(void)
+{
+	sql_prstmt_index_t i;
+
+	for (i = 0; i < PRSTMT_LAST; i++)
+	{
+		if (STMT(i) != NULL) {
+			sqlite3_finalize(STMT(i));
+			STMT(i) = NULL;
+		}
+	}
+	return;
+}
+
+static int
+maybe_delete_conflicting(const char *origin, const char *version,
+			 const char *pkg_path)
+{
+	int ret;
+	const char *oversion;
+
+	if (run_prepared_statement(VERSION, origin) != SQLITE_ROW)
+		return (EPKG_FATAL); /* sqlite error */
+	oversion = sqlite3_column_text(STMT(VERSION), 0);
+	switch(pkg_version_cmp(oversion, version))
+	{
+	case -1:
+		pkg_emit_error("duplicate package origin: replacing older "
+			       "version %s in repo with package %s for "
+			       "origin %s", oversion, pkg_path, origin);
+
+		if (run_prepared_statement(DELETE, origin) != SQLITE_DONE)
+			return (EPKG_FATAL); /* sqlite error */
+
+		ret = EPKG_OK;	/* conflict cleared */
+		break;
+	case 0:
+	case 1:
+		pkg_emit_error("\nduplicate package origin: package %s is not "
+			       "newer than version %s already in repo for "
+			       "origin %s", pkg_path, oversion, origin);
+		ret = EPKG_END;	/* keep what is already in the repo */
+		break;
+	}
+	return (ret);	
+}
+
+int
+pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data)
+{
+	FTS *fts = NULL;
+	FTSENT *ent = NULL;
+
+	struct pkg *pkg = NULL;
+	struct pkg_dep *dep = NULL;
+	struct pkg_category *category = NULL;
+	struct pkg_license *license = NULL;
+	struct pkg_option *option = NULL;
+	struct pkg_shlib *shlib = NULL;
+	struct sbuf *manifest = NULL;
+	char *ext = NULL;
+
+	sqlite3 *sqlite = NULL;
+
+	int64_t package_id;
+	char *errmsg = NULL;
+	int retcode = EPKG_OK;
+	char *pkg_path;
+	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
+	int ret;
+
+	char *repopath[2];
+	char repodb[MAXPATHLEN + 1];
+	char repopack[MAXPATHLEN + 1];
+
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
-		return EPKG_FATAL;
+		return (EPKG_FATAL);
 	}
 
 	repopath[0] = path;
 	repopath[1] = NULL;
+
+	if ((fts = fts_open(repopath, FTS_PHYSICAL, NULL)) == NULL) {
+		pkg_emit_errno("fts_open", path);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	snprintf(repodb, sizeof(repodb), "%s/repo.sqlite", path);
 	snprintf(repopack, sizeof(repopack), "%s/repo.txz", path);
@@ -307,99 +600,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			archive_read_finish(a);
 	}
 
-	if (access(repodb, F_OK) == 0)
-		incremental = true;
-
-	sqlite3_initialize();
-	if (sqlite3_open(repodb, &sqlite) != SQLITE_OK) {
-		sqlite3_shutdown();
-		return (EPKG_FATAL);
-	}
-
-	sqlite3_create_function(sqlite, "file_exists", 1, SQLITE_ANY, NULL, file_exists, NULL, NULL);
-	if ((retcode = sql_exec(sqlite, "PRAGMA synchronous=off;")) != EPKG_OK)
+	if ((retcode = initialize_repo(repodb, &sqlite)) != EPKG_OK)
 		goto cleanup;
 
-	if ((retcode = sql_exec(sqlite, "PRAGMA journal_mode=memory")) != EPKG_OK)
+	if ((retcode = initialize_prepared_statements(sqlite)) != EPKG_OK)
 		goto cleanup;
-
-	if (!incremental && (retcode = sql_exec(sqlite, initsql)) != EPKG_OK)
-		goto cleanup;
-
-	if ((retcode = sql_exec(sqlite, "BEGIN TRANSACTION;")) != EPKG_OK)
-		goto cleanup;
-
-	/* remove everything that is not anymore in the repository */
-	if (incremental) {
-		sql_exec(sqlite, "DELETE FROM packages WHERE NOT FILE_EXISTS(path);");
-		sql_exec(sqlite, "DELETE FROM deps WHERE package_id NOT IN (SELECT id FROM packages);");
-		sql_exec(sqlite, "DELETE FROM pkg_categories WHERE package_id NOT IN (SELECT id FROM packages);");
-		sql_exec(sqlite, "DELETE FROM categories WHERE id NOT IN (SELECT category_id FROM pkg_categories);");
-		sql_exec(sqlite, "DELETE FROM pkg_licenses WHERE package_id NOT IN (SELECT id FROM packages);");
-		sql_exec(sqlite, "DELETE FROM licenses WHERE id NOT IN (SELECT license_id FROM pkg_licenses);");
-		sql_exec(sqlite, "DELETE FROM options WHERE package_id NOT IN (SELECT id FROM packages);");
-		sql_exec(sqlite, "DELETE FROM pkg_shlibs WHERE package_id NOT IN (SELECT id FROM packages);");
-	}
-
-	if (sqlite3_prepare_v2(sqlite, pkgsql, -1, &stmt_pkg, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (sqlite3_prepare_v2(sqlite, depssql, -1, &stmt_deps, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (sqlite3_prepare_v2(sqlite, licsql, -1, &stmt_lic1, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (sqlite3_prepare_v2(sqlite, addlicsql, -1, &stmt_lic2, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (sqlite3_prepare_v2(sqlite, addoption, -1, &stmt_opts, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((fts = fts_open(repopath, FTS_PHYSICAL, NULL)) == NULL) {
-		pkg_emit_errno("fts_open", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (sqlite3_prepare_v2(sqlite, catsql, -1, &stmt_cat1, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (sqlite3_prepare_v2(sqlite, addcatsql, -1, &stmt_cat2, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (sqlite3_prepare_v2(sqlite, shlibsql, -1, &stmt_shlib1, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (sqlite3_prepare_v2(sqlite, addshlibsql, -1, &stmt_shlib2, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
 
 	manifest = sbuf_new_auto();
 	while ((ent = fts_read(fts)) != NULL) {
@@ -408,7 +613,6 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		int64_t flatsize;
 		lic_t licenselogic;
 
-		cksum[0] = '\0';
 		/* skip everything that is not a file */
 		if (ent->fts_info != FTS_F)
 			continue;
@@ -432,37 +636,18 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		while (pkg_path[0] == '/')
 			pkg_path++;
 
+		cksum[0] = '\0';
 		sha256_file(ent->fts_accpath, cksum);
-		/* do not add if package if already in base */
-		if (incremental) {
-			sqlite3_stmt *stmt;
-			if (sqlite3_prepare_v2(sqlite, "select count(*), cksum from packages where path=?1;",
-			        -1, &stmt, NULL) != SQLITE_OK) {
-				goto cleanup;
-			}
-			sqlite3_bind_text(stmt, 1, pkg_path, -1, SQLITE_STATIC);
 
-			if (sqlite3_step(stmt) != SQLITE_ROW) {
-				ERROR_SQLITE(sqlite);
-				goto cleanup;
-			}
-			if (sqlite3_column_int(stmt, 0) > 0) {
-				if (strcmp(sqlite3_column_text(stmt, 1), cksum) == 0) {
-					sqlite3_finalize(stmt);
-					continue;
-				}
+		/* do not add if package if already in repodb
+		   (possibly at a different pkg_path) */
 
-				sqlite3_finalize(stmt);
-				if (sqlite3_prepare_v2(sqlite, "delete from packages where path=?1;",
-							-1, &stmt, NULL) != SQLITE_OK) {
-					goto cleanup;
-				}
-
-				sqlite3_bind_text(stmt, 1, pkg_path, -1, SQLITE_STATIC);
-				sqlite3_step(stmt);
-			}
-
-			sqlite3_finalize(stmt);
+		if (run_prepared_statement(EXISTS, cksum) != SQLITE_ROW) {
+			ERROR_SQLITE(sqlite);
+			goto cleanup;
+		}
+		if (sqlite3_column_int(STMT(EXISTS), 0) > 0) {
+			continue;
 		}
 
 		if (pkg_open(&pkg, ent->fts_accpath, manifest) != EPKG_OK) {
@@ -478,123 +663,109 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_PREFIX, &prefix,
 		    PKG_FLATSIZE, &flatsize, PKG_LICENSE_LOGIC, &licenselogic);
 
-		sqlite3_bind_text(stmt_pkg, 1, origin, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 2, name, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 3, version, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 4, comment, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 5, desc, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 6, arch, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 7, maintainer, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 8, www, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 9, prefix, -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt_pkg, 10, ent->fts_statp->st_size);
-		sqlite3_bind_int64(stmt_pkg, 11, flatsize);
-		sqlite3_bind_int64(stmt_pkg, 12, licenselogic);
-		sqlite3_bind_text(stmt_pkg, 13, cksum, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt_pkg, 14, pkg_path, -1, SQLITE_STATIC);
-
-		if ((ret = sqlite3_step(stmt_pkg)) != SQLITE_DONE) {
+	try_again:
+		if ((ret = run_prepared_statement(PKG, origin, name, version,
+		    comment, desc, arch, maintainer, www, prefix,
+		    ent->fts_statp->st_size, flatsize, licenselogic, cksum,
+		    pkg_path)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("Another package already provides %s", origin);
+				switch(maybe_delete_conflicting(origin,
+				    version, pkg_path)) 
+				{
+				case EPKG_FATAL: /* sqlite error */
+					ERROR_SQLITE(sqlite);
+					retcode = EPKG_FATAL;
+					goto cleanup;
+					break;
+				case EPKG_END: /* repo already has newer */
+					continue;
+					break;
+				default: /* conflict cleared, try again */
+					goto try_again;
+					break;
+				}
 			} else {
 				ERROR_SQLITE(sqlite);
+				retcode = EPKG_FATAL;
+				goto cleanup;
 			}
-			retcode = EPKG_FATAL;
-			goto cleanup;
 		}
-		sqlite3_reset(stmt_pkg);
 
 		package_id = sqlite3_last_insert_rowid(sqlite);
 
 		dep = NULL;
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
-			sqlite3_bind_text(stmt_deps, 1, pkg_dep_get(dep, PKG_DEP_ORIGIN), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_deps, 2, pkg_dep_get(dep, PKG_DEP_NAME), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_deps, 3, pkg_dep_get(dep, PKG_DEP_VERSION), -1, SQLITE_STATIC);
-			sqlite3_bind_int64(stmt_deps, 4, package_id);
-
-			if (sqlite3_step(stmt_deps) != SQLITE_DONE) {
+			if (run_prepared_statement(DEPS, 
+			    pkg_dep_get(dep, PKG_DEP_ORIGIN),
+			    pkg_dep_get(dep, PKG_DEP_NAME),
+			    pkg_dep_get(dep, PKG_DEP_VERSION),
+			    package_id) != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-			sqlite3_reset(stmt_deps);
 		}
 
 		category = NULL;
 		while (pkg_categories(pkg, &category) == EPKG_OK) {
-			sqlite3_bind_text(stmt_cat1, 1, pkg_category_name(category), -1, SQLITE_STATIC);
-			sqlite3_bind_int64(stmt_cat2, 1, package_id);
-			sqlite3_bind_text(stmt_cat2, 2, pkg_category_name(category), -1, SQLITE_STATIC);
-
-			if (sqlite3_step(stmt_cat1) != SQLITE_DONE) {
+			if (run_prepared_statement(CAT1,
+			    pkg_category_name(category)) != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 
-			if (sqlite3_step(stmt_cat2) != SQLITE_DONE) {
+			if (run_prepared_statement(CAT2, package_id,
+			    pkg_category_name(category)) != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-			sqlite3_reset(stmt_cat1);
-			sqlite3_reset(stmt_cat2);
 		}
 
 		license = NULL;
 		while (pkg_licenses(pkg, &license) == EPKG_OK) {
-			sqlite3_bind_text(stmt_lic1, 1, pkg_license_name(license), -1, SQLITE_STATIC);
-			sqlite3_bind_int64(stmt_lic2, 1, package_id);
-			sqlite3_bind_text(stmt_lic2, 2, pkg_license_name(license), -1, SQLITE_STATIC);
-
-			if (sqlite3_step(stmt_lic1) != SQLITE_DONE) {
+			if (run_prepared_statement(LIC1,
+			    pkg_license_name(license)) != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 
-			if (sqlite3_step(stmt_lic2) != SQLITE_DONE) {
+			if (run_prepared_statement(LIC2, package_id,
+			    pkg_license_name(license)) != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-			sqlite3_reset(stmt_lic1);
-			sqlite3_reset(stmt_lic2);
 		}
 		option = NULL;
 		while (pkg_options(pkg, &option) == EPKG_OK) {
-			sqlite3_bind_text(stmt_opts, 1, pkg_option_opt(option), -1, SQLITE_STATIC);
-			sqlite3_bind_text(stmt_opts, 2, pkg_option_value(option), -1, SQLITE_STATIC);
-			sqlite3_bind_int64(stmt_opts, 3, package_id);
-
-			if (sqlite3_step(stmt_opts) != SQLITE_DONE) {
+			if (run_prepared_statement(OPTS,
+			    pkg_option_opt(option),
+			    pkg_option_value(option),
+			    package_id) != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-			sqlite3_reset(stmt_opts);
 		}
 
 		shlib = NULL;
 		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
-			sqlite3_bind_text(stmt_shlib1, 1, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
-			sqlite3_bind_int64(stmt_shlib2, 1, package_id);
-			sqlite3_bind_text(stmt_shlib2, 2, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
-
-			if (sqlite3_step(stmt_shlib1) != SQLITE_DONE) {
+			if (run_prepared_statement(SHLIB1,
+			    pkg_shlib_name(shlib)) != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
 
-			if (sqlite3_step(stmt_shlib2) != SQLITE_DONE) {
+			if (run_prepared_statement(SHLIB2, package_id,
+			    pkg_shlib_name(shlib)) != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-			sqlite3_reset(stmt_shlib1);
-			sqlite3_reset(stmt_shlib2);
 		}
 	}
 
@@ -610,32 +781,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 	if (pkg != NULL)
 		pkg_free(pkg);
 
-	if (stmt_pkg != NULL)
-		sqlite3_finalize(stmt_pkg);
-
-	if (stmt_deps != NULL)
-		sqlite3_finalize(stmt_deps);
-
-	if (stmt_cat1 != NULL)
-		sqlite3_finalize(stmt_cat1);
-
-	if (stmt_cat2 != NULL)
-		sqlite3_finalize(stmt_cat2);
-
-	if (stmt_lic1 != NULL)
-		sqlite3_finalize(stmt_lic1);
-
-	if (stmt_lic2 != NULL)
-		sqlite3_finalize(stmt_lic2);
-
-	if (stmt_opts != NULL)
-		sqlite3_finalize(stmt_opts);
-
-	if (stmt_shlib1 != NULL)
-		sqlite3_finalize(stmt_shlib1);
-
-	if (stmt_shlib2 != NULL)
-		sqlite3_finalize(stmt_shlib2);
+	finalize_prepared_statements();
 
 	if (sqlite != NULL)
 		sqlite3_close(sqlite);
@@ -661,7 +807,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	
 	if (!is_dir(path)) {
 	    pkg_emit_error("%s is not a directory", path);
-	    return EPKG_FATAL;
+	    return (EPKG_FATAL);
 	}
 
 	snprintf(repo_path, sizeof(repo_path), "%s/repo.sqlite", path);
