@@ -648,7 +648,7 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 		if (errno != ENOENT)
 			pkg_emit_errno("Unable to open keyword definition", keyfile_path);
 
-		return (EPKG_FATAL);
+		return (EPKG_UNKNOWN);
 	}
 
 	yaml_parser_initialize(&parser);
@@ -788,6 +788,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 				break;
 			case EPKG_FATAL:
 				ret = EPKG_FATAL;
+				break;
 			}
 		} else if ((len = strlen(plist_p)) > 0){
 			if (sbuf_len(pplist.unexec_buf) > 0) {
