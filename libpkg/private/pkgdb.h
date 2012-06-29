@@ -48,4 +48,5 @@ int pkgdb_lock(struct pkgdb *db);
 int pkgdb_unlock(struct pkgdb *db);
 
 void pkgshell_open(const char **r);
+
 #endif
