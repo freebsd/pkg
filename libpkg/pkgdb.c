@@ -4,6 +4,7 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,6 +73,9 @@ static void pkgdb_detach_remotes(sqlite3 *);
 static bool is_attached(sqlite3 *, const char *);
 static void report_already_installed(sqlite3 *);
 static int sqlcmd_init(sqlite3 *db, __unused const char **err, __unused const void *noused);
+static int prstmt_initialize(struct pkgdb *db);
+/* static int run_prstmt(sql_prstmt_index_t s, ...); */
+static void prstmt_finalize(struct pkgdb *db);
 
 extern int sqlite3_shell(int, char**);
 
@@ -571,11 +575,11 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_shlibs_package_id ON pkg_shlibs (package_id);"
 	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
 
-	"PRAGMA user_version = 12;"
+	"PRAGMA user_version = %d;"
 	"COMMIT;"
 	;
 
-	return (sql_exec(sdb, sql));
+	return (sql_exec(sdb, sql, DBVERSION));
 }
 
 /**
@@ -636,6 +640,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 
 	db->type = type;
 	db->lock_count = 0;
+	db->prstmt_initialized = false;
 
 	if (!reopen) {
 		snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
@@ -765,6 +770,9 @@ pkgdb_close(struct pkgdb *db)
 {
 	if (db == NULL)
 		return;
+
+	if (db->prstmt_initialized)
+		prstmt_finalize(db);
 
 	if (db->sqlite != NULL) {
 		assert(db->lock_count == 0);
@@ -1471,6 +1479,233 @@ pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg)
 	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_set_mtree, -1));
 }
 
+typedef enum _sql_prstmt_index_t {
+	MTREE = 0,
+	PKG,
+	DEPS_UPDATE,
+	DEPS,
+	FILES,
+	DIRS1,
+	DIRS2,
+	CATEGORY1,
+	CATEGORY2,
+	LICENSES1,
+	LICENSES2,
+	USERS1,
+	USERS2,
+	GROUPS1,
+	GROUPS2,
+	SCRIPTS,
+	OPTIONS,
+	SHLIBS1,
+	SHLIBS2,
+	PRSTMT_LAST,
+} sql_prstmt_index_t;
+
+typedef struct _sql_prstmt_t {
+	sqlite3_stmt *stmt;
+	const char *sql;
+	const char *argtypes;
+} sql_prstmt_t;
+
+#define STMT(x) (sql_prepared_statements[(x)].stmt)
+#define SQL(x)  (sql_prepared_statements[(x)].sql)
+
+static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
+	[MTREE] = {
+		NULL,
+		"INSERT OR IGNORE INTO mtree(content) VALUES(?1)",
+		"T"
+	},
+	[PKG] = {
+		NULL,
+		"INSERT OR REPLACE INTO packages( "
+			"origin, name, version, comment, desc, message, arch, "
+			"maintainer, www, prefix, flatsize, automatic, licenselogic, "
+			"mtree_id, infos, time) "
+		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, "
+		"(SELECT id from mtree where content = ?14), ?15, now())",
+		"TTTTTTTTTTIiITT",
+	},
+	[DEPS_UPDATE] = {
+		NULL,
+		"UPDATE deps SET name=?1, version=?2 WHERE origin=?3;",
+		"TTT",
+	},
+	[DEPS] = {
+		NULL,
+		"INSERT INTO deps (origin, name, version, package_id) "
+		"VALUES (?1, ?2, ?3, ?4)",
+		"TTTI",
+	},
+	[FILES] = {
+		NULL,
+		"INSERT INTO files (path, sha256, package_id) "
+		"VALUES (?1, ?2, ?3)",
+		"TTI",
+	},
+	[DIRS1] = {
+		NULL,
+		"INSERT OR IGNORE INTO directories(path) VALUES(?1)",
+		"T",
+	},
+	[DIRS2] = {
+		NULL,
+		"INSERT INTO pkg_directories(package_id, directory_id, try) "
+		"VALUES (?1, "
+		"(SELECT id FROM directories WHERE path = ?2), ?3)",
+		"ITI",
+	},
+	[CATEGORY1] = {
+		NULL,
+		"INSERT OR IGNORE INTO categories(name) VALUES(?1)",
+		"T",
+	},
+	[CATEGORY2] = {
+		NULL,
+		"INSERT INTO pkg_categories(package_id, category_id) "
+		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2))",
+		"IT",
+	},
+	[LICENSES1] = {
+		NULL,
+		"INSERT OR IGNORE INTO licenses(name) VALUES(?1)",
+		"T",
+	},
+	[LICENSES2] = {
+		NULL,
+		"INSERT INTO pkg_licenses(package_id, license_id) "
+		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2))",
+		"IT",
+	},
+	[USERS1] = {
+		NULL,
+		"INSERT OR IGNORE INTO users(name) VALUES(?1)",
+		"T",
+	},
+	[USERS2] = {
+		NULL,
+		"INSERT INTO pkg_users(package_id, user_id) "
+		"VALUES (?1, (SELECT id FROM users WHERE name = ?2))",
+		"IT",
+	},
+	[GROUPS1] = {
+		NULL,
+		"INSERT OR IGNORE INTO groups(name) VALUES(?1)",
+		"T",
+	},
+	[GROUPS2] = {
+		NULL,
+		"INSERT INTO pkg_groups(package_id, group_id) "
+		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2))",
+		"IT",
+	},
+	[SCRIPTS] = {
+		NULL,
+		"INSERT INTO scripts (script, type, package_id) "
+		"VALUES (?1, ?2, ?3)",
+		"TiI",
+	},
+	[OPTIONS] = {
+		NULL,
+		"INSERT INTO options (option, value, package_id) "
+		"VALUES (?1, ?2, ?3)",
+		"TTI",
+	},
+	[SHLIBS1] = {
+		NULL,
+		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
+		"T",
+	},
+	[SHLIBS2] = {
+		NULL,
+		"INSERT INTO pkg_shlibs(package_id, shlib_id) "
+		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
+		"IT",
+	},
+	/* PRSTMT_LAST */
+};
+
+static int
+prstmt_initialize(struct pkgdb *db)
+{
+	sql_prstmt_index_t i;
+	sqlite3 *sqlite;
+
+	assert(db != NULL);
+
+	sqlite = db->sqlite;
+
+	for (i = 0; i < PRSTMT_LAST; i++)
+	{
+		if (sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL)
+		    != SQLITE_OK)
+		{
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+	}
+	db->prstmt_initialized = true;
+
+	return (EPKG_OK);
+}
+
+static int
+run_prstmt(sql_prstmt_index_t s, ...)
+{
+	int retcode;	/* Returns SQLITE error code */
+	va_list ap;
+	sqlite3_stmt *stmt;
+	int i;
+	const char *argtypes;
+
+	stmt = STMT(s);
+	argtypes = sql_prepared_statements[s].argtypes;
+
+	sqlite3_reset(stmt);
+
+	va_start(ap, s);
+
+	for (i = 0; argtypes[i] != '\0'; i++)
+	{
+		switch (argtypes[i]) {
+		case 'T':
+			sqlite3_bind_text(stmt, i + 1, va_arg(ap, const char*),
+					  -1, SQLITE_STATIC);
+			break;
+		case 'I':
+			sqlite3_bind_int64(stmt, i + 1, va_arg(ap, int64_t));
+			break;
+		case 'i':
+			sqlite3_bind_int(stmt, i + 1, va_arg(ap, int));
+			break;
+		}
+	}
+
+	va_end(ap);
+
+	retcode = sqlite3_step(stmt);
+
+	return (retcode);
+}
+
+static void
+prstmt_finalize(struct pkgdb *db)
+{
+	sql_prstmt_index_t i;
+
+	for (i = 0; i < PRSTMT_LAST; i++)
+	{
+		if (STMT(i) != NULL) {
+			sqlite3_finalize(STMT(i));
+			STMT(i) = NULL;
+		}
+	}
+	db->prstmt_initialized = false;
+	return;
+}
+
+
 int
 pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 {
@@ -1488,60 +1723,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkgdb_it *it = NULL;
 
 	sqlite3 *s;
-	sqlite3_stmt *stmt = NULL;
-	sqlite3_stmt *stmt2 = NULL;
 
 	int ret;
 	int retcode = EPKG_FATAL;
 	int64_t package_id;
-
-	const char sql_mtree[] = "INSERT OR IGNORE INTO mtree(content) VALUES(?1);";
-	const char sql_dirs[] = "INSERT OR IGNORE INTO directories(path) VALUES(?1);";
-	const char sql_pkg[] = ""
-		"INSERT OR REPLACE INTO packages( "
-			"origin, name, version, comment, desc, message, arch, "
-			"maintainer, www, prefix, flatsize, automatic, licenselogic, "
-			"mtree_id, infos, time) "
-		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, "
-		"(SELECT id from mtree where content = ?14), ?15, now());";
-	const char sql_dep[] = ""
-		"INSERT INTO deps (origin, name, version, package_id) "
-		"VALUES (?1, ?2, ?3, ?4);";
-	const char sql_file[] = ""
-		"INSERT INTO files (path, sha256, package_id) "
-		"VALUES (?1, ?2, ?3);";
-	const char sql_script[] = ""
-		"INSERT INTO scripts (script, type, package_id) "
-		"VALUES (?1, ?2, ?3);";
-	const char sql_option[] = ""
-		"INSERT INTO options (option, value, package_id) "
-		"VALUES (?1, ?2, ?3);";
-	const char sql_dir[] = ""
-		"INSERT INTO pkg_directories(package_id, directory_id, try) "
-		"VALUES (?1, "
-		"(SELECT id FROM directories WHERE path = ?2), ?3);";
-	const char sql_cat[] = "INSERT OR IGNORE INTO categories(name) VALUES(?1);";
-	const char sql_category[] = ""
-		"INSERT INTO pkg_categories(package_id, category_id) "
-		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2));";
-	const char sql_lic[] = "INSERT OR IGNORE INTO licenses(name) VALUES(?1);";
-	const char sql_license[] = ""
-		"INSERT INTO pkg_licenses(package_id, license_id) "
-		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2));";
-	const char sql_user[] = "INSERT OR IGNORE INTO users(name) VALUES(?1);";
-	const char sql_users[] = ""
-		"INSERT INTO pkg_users(package_id, user_id) "
-		"VALUES (?1, (SELECT id FROM users WHERE name = ?2));";
-	const char sql_group[] = "INSERT OR IGNORE INTO groups(name) VALUES(?1);";
-	const char sql_groups[] = ""
-		"INSERT INTO pkg_groups(package_id, group_id) "
-		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2));";
-	const char sql_shlib[] = "INSERT OR IGNORE INTO shlibs(name) VALUES(?1);";
-	const char sql_shlibs[] = ""
-		"INSERT INTO pkg_shlibs(package_id, shlib_id) "
-		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))";
-	const char sql_deps_update[] = ""
-		"UPDATE deps SET NAME=?1 , VERSION=?2 WHERE ORIGIN=?3;";
 
 	const char *mtree, *origin, *name, *version, *name2, *version2;
 	const char *comment, *desc, *message, *infos;
@@ -1558,16 +1743,13 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		return (EPKG_FATAL);
 	}
 
+	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
+		return (EPKG_FATAL);
+
 	s = db->sqlite;
 
 	if (!complete && sql_exec(s, "BEGIN;") != EPKG_OK)
 		return (EPKG_FATAL);
-
-	/* insert mtree record if any */
-	if (sqlite3_prepare_v2(s, sql_mtree, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
 
 	pkg_get(pkg, PKG_MTREE, &mtree, PKG_ORIGIN, &origin, PKG_VERSION, &version,
 	    PKG_COMMENT, &comment, PKG_DESC, &desc, PKG_MESSAGE, &message,
@@ -1576,105 +1758,62 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	    PKG_AUTOMATIC, &automatic, PKG_LICENSE_LOGIC, &licenselogic,
 	    PKG_NAME, &name, PKG_INFOS, &infos);
 
-	sqlite3_bind_text(stmt, 1, mtree, -1, SQLITE_STATIC);
+	/*
+	 * Insert mtree record
+	 */
 
-	if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+	if (run_prstmt(MTREE, mtree) != SQLITE_DONE) {
 		ERROR_SQLITE(s);
 		goto cleanup;
 	}
-	sqlite3_finalize(stmt);
-	stmt = NULL;
 
-	/* Insert package record */
-	if (sqlite3_prepare_v2(s, sql_pkg, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 2, name, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 3, version, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 4, comment, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 5, desc, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 6, message, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 7, arch, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 8, maintainer, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 9, www,  -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 10, prefix, -1, SQLITE_STATIC);
-	sqlite3_bind_int64(stmt, 11, flatsize);
-	sqlite3_bind_int(stmt, 12, automatic);
-	sqlite3_bind_int64(stmt, 13, licenselogic);
-	sqlite3_bind_text(stmt, 14, mtree, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 15, infos, -1, SQLITE_STATIC);
-
-	if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+	/*
+	 * Insert package record
+	 */
+	if (run_prstmt(PKG, origin, name, version, comment, desc, message, arch,
+	    maintainer, www, prefix, flatsize, automatic, licenselogic, mtree, infos)
+	    != SQLITE_DONE)
+	{
 		ERROR_SQLITE(s);
 		goto cleanup;
 	}
 
 	package_id = sqlite3_last_insert_rowid(s);
-	sqlite3_finalize(stmt);
-	stmt = NULL;
 
 	/*
 	 * update dep informations on packages that depends on the insert
 	 * package
 	 */
 
-	if (sqlite3_prepare_v2(s, sql_deps_update, -1, &stmt, NULL) != SQLITE_OK) {
+	if (run_prstmt(DEPS_UPDATE, name, version, origin)
+	    != SQLITE_DONE)
+	{
 		ERROR_SQLITE(s);
 		goto cleanup;
 	}
-
-	sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 2, version, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 3, origin, -1, SQLITE_STATIC);
-
-	if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-	sqlite3_finalize(stmt);
-	stmt = NULL;
 
 	/*
 	 * Insert dependencies list
 	 */
 
-	if (sqlite3_prepare_v2(s, sql_dep, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		sqlite3_bind_text(stmt, 1, pkg_dep_get(dep, PKG_DEP_ORIGIN), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt, 2, pkg_dep_get(dep, PKG_DEP_NAME), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt, 3, pkg_dep_get(dep, PKG_DEP_VERSION), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt, 4, package_id);
-
-		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+		if (run_prstmt(DEPS, pkg_dep_get(dep, PKG_DEP_ORIGIN),
+		    pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION),
+		    package_id) != SQLITE_DONE)
+		{
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt);
 	}
-	sqlite3_finalize(stmt);
-	stmt = NULL;
 
 	/*
 	 * Insert files.
 	 */
 
-	if (sqlite3_prepare_v2(s, sql_file, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		sqlite3_bind_text(stmt, 1, pkg_file_get(file, PKG_FILE_PATH), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt, 2, pkg_file_get(file, PKG_FILE_SUM), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt, 3, package_id);
-
-		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+		if ((ret = run_prstmt(FILES, pkg_file_get(file, PKG_FILE_PATH),
+		    pkg_file_get(file, PKG_FILE_SUM), package_id)) != SQLITE_DONE)
+		{
 			if (ret == SQLITE_CONSTRAINT) {
 				if ((it = pkgdb_query_which(db, pkg_file_get(file, PKG_FILE_PATH))) == NULL) {
 					ERROR_SQLITE(s);
@@ -1696,291 +1835,138 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			}
 			goto cleanup;
 		}
-		sqlite3_reset(stmt);
 	}
-	sqlite3_finalize(stmt);
-	stmt = NULL;
 
 	/*
 	 * Insert dirs.
 	 */
 
-	if (sqlite3_prepare_v2(s, sql_dirs, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
-	if (sqlite3_prepare_v2(s, sql_dir, -1, &stmt2, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		sqlite3_bind_text(stmt, 1, pkg_dir_path(dir), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt2, 1, package_id);
-		sqlite3_bind_text(stmt2, 2, pkg_dir_path(dir), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt2, 3, pkg_dir_try(dir));
-
-		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+		if (run_prstmt(DIRS1, pkg_dir_path(dir)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
+		if ((ret = run_prstmt(DIRS2, package_id, pkg_dir_path(dir),
+		    pkg_dir_try(dir))) != SQLITE_DONE)
+		{
 			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("A package is already providing this directory: %s", pkg_dir_path(dir));
+				pkg_emit_error("Another package is already providing "
+					       "directory: %s", pkg_dir_path(dir));
 			} else
 				ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt2);
-		sqlite3_reset(stmt);
 	}
-	sqlite3_finalize(stmt2);
-	sqlite3_finalize(stmt);
-	stmt = NULL;
-	stmt2 = NULL;
 
 	/*
 	 * Insert categories
 	 */
 
-	if (sqlite3_prepare_v2(s, sql_category, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-	if (sqlite3_prepare_v2(s, sql_cat, -1, &stmt2, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
 	while (pkg_categories(pkg, &category) == EPKG_OK) {
-		sqlite3_bind_text(stmt2, 1, pkg_category_name(category), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt, 1, package_id);
-		sqlite3_bind_text(stmt, 2, pkg_category_name(category), -1, SQLITE_STATIC);
-
-		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on categories.name: %s",
-						pkg_category_name(category));
-			} else
-				ERROR_SQLITE(s);
-			goto cleanup;
-		}
-		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+		if (run_prstmt(CATEGORY1, pkg_category_name(category))
+		    != SQLITE_DONE
+		    &&
+		    run_prstmt(CATEGORY2, package_id, pkg_category_name(category))
+		    != SQLITE_DONE)
+		{
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt);
-		sqlite3_reset(stmt2);
 	}
-	sqlite3_finalize(stmt2);
-	sqlite3_finalize(stmt);
-	stmt = NULL;
-	stmt2 = NULL;
 
 	/*
 	 * Insert licenses
 	 */
-	if (sqlite3_prepare_v2(s, sql_lic, -1, &stmt2, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-	if (sqlite3_prepare_v2(s, sql_license, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
 
 	while (pkg_licenses(pkg, &license) == EPKG_OK) {
-		sqlite3_bind_text(stmt2, 1, pkg_license_name(license), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt, 1, package_id);
-		sqlite3_bind_text(stmt, 2, pkg_license_name(license), -1, SQLITE_STATIC);
-
-		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on licenses.name: %s",
-						pkg_license_name(license));
-			} else
-				ERROR_SQLITE(s);
-			goto cleanup;
-		}
-		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
+		if (run_prstmt(LICENSES1, pkg_license_name(license))
+		    != SQLITE_DONE
+		    &&
+		    run_prstmt(LICENSES2, package_id, pkg_license_name(license))
+		    != SQLITE_DONE)
+		{
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt);
-		sqlite3_reset(stmt2);
 	}
-	sqlite3_finalize(stmt2);
-	sqlite3_finalize(stmt);
-	stmt = NULL;
-	stmt2 = NULL;
 
 	/*
 	 * Insert users
 	 */
-	if (sqlite3_prepare_v2(s, sql_user, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-	if (sqlite3_prepare_v2(s, sql_users, -1, &stmt2, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
 
 	while (pkg_users(pkg, &user) == EPKG_OK) {
-		sqlite3_bind_text(stmt, 1, pkg_user_name(user), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt2, 1, package_id);
-		sqlite3_bind_text(stmt2, 2, pkg_user_name(user), -1, SQLITE_STATIC);
-
-		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on users.name: %s",
-						pkg_user_name(user));
-			} else
-				ERROR_SQLITE(s);
-			goto cleanup;
-		}
-		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
+		if (run_prstmt(USERS1, pkg_user_name(user))
+		    != SQLITE_DONE
+		    &&
+		    run_prstmt(USERS2, package_id, pkg_user_name(user))
+		    != SQLITE_DONE)
+		{
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt);
-		sqlite3_reset(stmt2);
 	}
-	sqlite3_finalize(stmt2);
-	sqlite3_finalize(stmt);
-	stmt = NULL;
-	stmt2 = NULL;
 
 	/*
 	 * Insert groups
 	 */
-	if (sqlite3_prepare_v2(s, sql_group, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-	if (sqlite3_prepare_v2(s, sql_groups, -1, &stmt2, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
 
 	while (pkg_groups(pkg, &group) == EPKG_OK) {
-		sqlite3_bind_text(stmt, 1, pkg_group_name(group), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt2, 1, package_id);
-		sqlite3_bind_text(stmt2, 2, pkg_group_name(group), -1, SQLITE_STATIC);
-
-		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on groups.name: %s",
-						pkg_group_name(group));
-			} else
-				ERROR_SQLITE(s);
-			goto cleanup;
-		}
-		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
+		if (run_prstmt(GROUPS1, pkg_group_name(group))
+		    != SQLITE_DONE
+		    &&
+		    run_prstmt(GROUPS2, package_id, pkg_group_name(group))
+		    != SQLITE_DONE)
+		{
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt);
-		sqlite3_reset(stmt2);
 	}
-	sqlite3_finalize(stmt2);
-	sqlite3_finalize(stmt);
-	stmt = NULL;
-	stmt2 = NULL;
 
 	/*
 	 * Insert scripts
 	 */
 
-	if (sqlite3_prepare_v2(s, sql_script, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		sqlite3_bind_text(stmt, 1, pkg_script_data(script), -1, SQLITE_STATIC);
-		sqlite3_bind_int(stmt, 2, pkg_script_type(script));
-		sqlite3_bind_int64(stmt, 3, package_id);
-
-		if (sqlite3_step(stmt) != SQLITE_DONE) {
+		if (run_prstmt(SCRIPTS, pkg_script_data(script),
+		    pkg_script_type(script), package_id) != SQLITE_DONE)
+		{
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt);
 	}
-	sqlite3_finalize(stmt);
-	stmt = NULL;
 
 	/*
 	 * Insert options
 	 */
 
-	if (sqlite3_prepare_v2(s, sql_option, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		sqlite3_bind_text(stmt, 1, pkg_option_opt(option), -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt, 2, pkg_option_value(option), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt, 3, package_id);
-
-		if (sqlite3_step(stmt) != SQLITE_DONE) {
+		if (run_prstmt(OPTIONS, pkg_option_opt(option),
+		    pkg_option_value(option), package_id) != SQLITE_DONE)
+		{
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt);
 	}
-	sqlite3_finalize(stmt);
-	stmt = NULL;
 
 	/*
 	 * Insert shlibs
 	 */
 
-	if (sqlite3_prepare_v2(s, sql_shlib, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-	if (sqlite3_prepare_v2(s, sql_shlibs, -1, &stmt2, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
-		goto cleanup;
-	}
-
 	while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
-		sqlite3_bind_text(stmt, 1, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
-		sqlite3_bind_int64(stmt2, 1, package_id);
-		sqlite3_bind_text(stmt2, 2, pkg_shlib_name(shlib), -1, SQLITE_STATIC);
-
-		if ((ret = sqlite3_step(stmt)) != SQLITE_DONE) {
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on shlibs.name: %s",
-						pkg_shlib_name(shlib));
-			} else
-				ERROR_SQLITE(s);
-			goto cleanup;
-		}
-		if ((ret = sqlite3_step(stmt2)) != SQLITE_DONE) {
+		if (run_prstmt(SHLIBS1, pkg_shlib_name(shlib))
+		    != SQLITE_DONE
+		    &&
+		    run_prstmt(SHLIBS2, package_id, pkg_shlib_name(shlib))
+		    != SQLITE_DONE)
+		{
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		sqlite3_reset(stmt);
-		sqlite3_reset(stmt2);
 	}
-	sqlite3_finalize(stmt);
-	sqlite3_finalize(stmt2);
-	stmt = NULL;
-	stmt2 = NULL;
 
 	retcode = EPKG_OK;
 
 	cleanup:
-
-	if (stmt != NULL)
-		sqlite3_finalize(stmt);
-	if (stmt2 != NULL)
-		sqlite3_finalize(stmt2);
 
 	return (retcode);
 }
