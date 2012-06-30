@@ -56,7 +56,7 @@ typedef enum _sql_prstmt_index_t {
 	EXISTS,
 	VERSION,
 	DELETE,
-	PRSTMT_LAST
+	PRSTMT_LAST,
 } sql_prstmt_index_t;
 
 typedef struct _sql_prstmt_t {
@@ -69,88 +69,75 @@ typedef struct _sql_prstmt_t {
 #define SQL(x)  (sql_prepared_statements[(x)].sql)
 
 static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
-	/* PKG */
-	{
+	[PKG] = {
 		NULL,
 		"INSERT INTO packages ("
 		"origin, name, version, comment, desc, arch, maintainer, www, "
 		"prefix, pkgsize, flatsize, licenselogic, cksum, path"
 		")"
 		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
-		"TTTTTTTTTIIITT"
+		"TTTTTTTTTIIITT",
 	},
-	/* DEPS */
-	{
+	[DEPS] = {
 		NULL,
 		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4)",
-		"TTTI"
+		"TTTI",
 	},
-	/* CAT1 */
-	{
+	[CAT1] = {
 		NULL,
 		"INSERT OR IGNORE INTO categories(name) VALUES(?1)",
-		"T"
+		"T",
 	},
-	/* CAT2 */
-	{
+	[CAT2] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_categories(package_id, category_id) "
 		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2))",
-		"IT"
-
+		"IT",
 	},
-	/* LIC1 */
-	{
+	[LIC1] = {
 		NULL,
 		"INSERT OR IGNORE INTO licenses(name) VALUES(?1)",
-		"T"
+		"T",
 	},
-	/* LIC2 */
-	{
+	[LIC2] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_licenses(package_id, license_id) "
 		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2))",
-		"IT"
+		"IT",
 	},
-	/* OPTS */
-	{
+	[OPTS] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO options (option, value, package_id) "
 		"VALUES (?1, ?2, ?3)",
-		"TTI"
+		"TTI",
 	},
-	/* SHLIB1 */
-	{
+	[SHLIB1] = {
 		NULL,
 		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
-		"T"
+		"T",
 	},
-	/* SHLIB2 */
-	{
+	[SHLIB2] = {
 		NULL, 
 		"INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
-		"IT"
+		"IT",
 	},
-	/* EXISTS */
-	{
+	[EXISTS] = {
 		NULL,
 		"SELECT count(*) FROM packages WHERE cksum=?1",
-		"T"
+		"T",
 	},
-	/* VERSION */
-	{
+	[VERSION] = {
 		NULL,
 		"SELECT version FROM packages WHERE origin=?1",
-		"T"
+		"T",
 	},
-	/* DELETE */
-	{
+	[DELETE] = {
 		NULL,
 		"DELETE FROM packages WHERE origin=?1",
-		"T"
-	}
+		"T",
+	},
 	/* PRSTMT_LAST */
 };
 
