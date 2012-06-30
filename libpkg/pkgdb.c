@@ -1863,14 +1863,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 
 	while (pkg_categories(pkg, &category) == EPKG_OK) {
-		if ((ret = run_prstmt(CATEGORY1, pkg_category_name(category)))
+		if (run_prstmt(CATEGORY1, pkg_category_name(category))
 		    != SQLITE_DONE)
 		{
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on categories.name: %s",
-						pkg_category_name(category));
-			} else
-				ERROR_SQLITE(s);
+			ERROR_SQLITE(s);
 			goto cleanup;
 		}
 		if (run_prstmt(CATEGORY2, package_id, pkg_category_name(category))
@@ -1886,14 +1882,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 
 	while (pkg_licenses(pkg, &license) == EPKG_OK) {
-		if ((ret = run_prstmt(LICENSES1, pkg_license_name(license)))
+		if (run_prstmt(LICENSES1, pkg_license_name(license))
 		    != SQLITE_DONE)
 		{
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on licenses.name: %s",
-						pkg_license_name(license));
-			} else
-				ERROR_SQLITE(s);
+			ERROR_SQLITE(s);
 			goto cleanup;
 		}
 		if (run_prstmt(LICENSES2, package_id, pkg_license_name(license))
@@ -1909,14 +1901,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 
 	while (pkg_users(pkg, &user) == EPKG_OK) {
-		if ((ret = run_prstmt(USERS1, pkg_user_name(user)))
+		if (run_prstmt(USERS1, pkg_user_name(user))
 		    != SQLITE_DONE)
 		{
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on users.name: %s",
-						pkg_user_name(user));
-			} else
-				ERROR_SQLITE(s);
+			ERROR_SQLITE(s);
 			goto cleanup;
 		}
 		if (run_prstmt(USERS2, package_id, pkg_user_name(user))
@@ -1932,14 +1920,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 
 	while (pkg_groups(pkg, &group) == EPKG_OK) {
-		if ((ret = run_prstmt(GROUPS1, pkg_group_name(group)))
+		if (run_prstmt(GROUPS1, pkg_group_name(group))
 		    != SQLITE_DONE)
 		{
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on groups.name: %s",
-						pkg_group_name(group));
-			} else
-				ERROR_SQLITE(s);
+			ERROR_SQLITE(s);
 			goto cleanup;
 		}
 		if (run_prstmt(GROUPS2, package_id, pkg_group_name(group))
@@ -1981,14 +1965,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 
 	while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
-		if ((ret = run_prstmt(SHLIBS1, pkg_shlib_name(shlib)))
+		if (run_prstmt(SHLIBS1, pkg_shlib_name(shlib))
 		    != SQLITE_DONE)
 		{
-			if (ret == SQLITE_CONSTRAINT) {
-				pkg_emit_error("sqlite: constraint violation on shlibs.name: %s",
-						pkg_shlib_name(shlib));
-			} else
-				ERROR_SQLITE(s);
+			ERROR_SQLITE(s);
 			goto cleanup;
 		}
 		if (run_prstmt(SHLIBS2, package_id, pkg_shlib_name(shlib))
