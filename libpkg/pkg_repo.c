@@ -59,15 +59,6 @@ typedef enum _sql_prstmt_index_t {
 	PRSTMT_LAST,
 } sql_prstmt_index_t;
 
-typedef struct _sql_prstmt_t {
-	sqlite3_stmt *stmt;
-	const char *sql;
-	const char *argtypes;
-} sql_prstmt_t;
-
-#define STMT(x) (sql_prepared_statements[(x)].stmt)
-#define SQL(x)  (sql_prepared_statements[(x)].sql)
-
 static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
 	[PKG] = {
 		NULL,

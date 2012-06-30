@@ -160,6 +160,18 @@ struct pkg_shlib {
 	STAILQ_ENTRY(pkg_shlib) next;
 };
 
+
+/* sql helpers */
+
+typedef struct _sql_prstmt_t {
+	sqlite3_stmt *stmt;
+	const char *sql;
+	const char *argtypes;
+} sql_prstmt_t;
+
+#define STMT(x) (sql_prepared_statements[(x)].stmt)
+#define SQL(x)  (sql_prepared_statements[(x)].sql)
+
 /**
  * rc script actions
  */
