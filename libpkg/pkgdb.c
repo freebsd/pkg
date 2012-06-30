@@ -1763,8 +1763,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 	if (run_prstmt(PKG, origin, name, version, comment, desc, message, arch,
 	    maintainer, www, prefix, flatsize, automatic, licenselogic, mtree, infos)
-	    != SQLITE_DONE)
-	{
+	    != SQLITE_DONE) {
 		ERROR_SQLITE(s);
 		goto cleanup;
 	}
@@ -1777,8 +1776,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 
 	if (run_prstmt(DEPS_UPDATE, name, version, origin)
-	    != SQLITE_DONE)
-	{
+	    != SQLITE_DONE) {
 		ERROR_SQLITE(s);
 		goto cleanup;
 	}
@@ -1790,8 +1788,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (run_prstmt(DEPS, pkg_dep_get(dep, PKG_DEP_ORIGIN),
 		    pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION),
-		    package_id) != SQLITE_DONE)
-		{
+		    package_id) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1803,8 +1800,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if ((ret = run_prstmt(FILES, pkg_file_get(file, PKG_FILE_PATH),
-		    pkg_file_get(file, PKG_FILE_SUM), package_id)) != SQLITE_DONE)
-		{
+		    pkg_file_get(file, PKG_FILE_SUM), package_id)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				if ((it = pkgdb_query_which(db, pkg_file_get(file, PKG_FILE_PATH))) == NULL) {
 					ERROR_SQLITE(s);
@@ -1838,8 +1834,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			goto cleanup;
 		}
 		if ((ret = run_prstmt(DIRS2, package_id, pkg_dir_path(dir),
-		    pkg_dir_try(dir))) != SQLITE_DONE)
-		{
+		    pkg_dir_try(dir))) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				pkg_emit_error("Another package is already providing "
 					       "directory: %s", pkg_dir_path(dir));
@@ -1858,8 +1853,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		    != SQLITE_DONE
 		    &&
 		    run_prstmt(CATEGORY2, package_id, pkg_category_name(category))
-		    != SQLITE_DONE)
-		{
+		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1874,8 +1868,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		    != SQLITE_DONE
 		    &&
 		    run_prstmt(LICENSES2, package_id, pkg_license_name(license))
-		    != SQLITE_DONE)
-		{
+		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1890,8 +1883,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		    != SQLITE_DONE
 		    &&
 		    run_prstmt(USERS2, package_id, pkg_user_name(user))
-		    != SQLITE_DONE)
-		{
+		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1919,8 +1911,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	while (pkg_scripts(pkg, &script) == EPKG_OK) {
 		if (run_prstmt(SCRIPTS, pkg_script_data(script),
-		    pkg_script_type(script), package_id) != SQLITE_DONE)
-		{
+		    pkg_script_type(script), package_id) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1932,8 +1923,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		if (run_prstmt(OPTIONS, pkg_option_opt(option),
-		    pkg_option_value(option), package_id) != SQLITE_DONE)
-		{
+		    pkg_option_value(option), package_id) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -1948,8 +1938,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		    != SQLITE_DONE
 		    &&
 		    run_prstmt(SHLIBS2, package_id, pkg_shlib_name(shlib))
-		    != SQLITE_DONE)
-		{
+		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
