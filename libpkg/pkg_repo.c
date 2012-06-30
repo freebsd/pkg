@@ -697,14 +697,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		category = NULL;
 		while (pkg_categories(pkg, &category) == EPKG_OK) {
 			if (run_prepared_statement(CAT1,
-			    pkg_category_name(category)) != SQLITE_DONE) {
-				ERROR_SQLITE(sqlite);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-
-			if (run_prepared_statement(CAT2, package_id,
-			    pkg_category_name(category)) != SQLITE_DONE) {
+			    pkg_category_name(category)) != SQLITE_DONE
+			    &&
+			    run_prepared_statement(CAT2, package_id,
+			    pkg_category_name(category)) != SQLITE_DONE)
+			{
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -714,14 +711,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		license = NULL;
 		while (pkg_licenses(pkg, &license) == EPKG_OK) {
 			if (run_prepared_statement(LIC1,
-			    pkg_license_name(license)) != SQLITE_DONE) {
-				ERROR_SQLITE(sqlite);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-
-			if (run_prepared_statement(LIC2, package_id,
-			    pkg_license_name(license)) != SQLITE_DONE) {
+			    pkg_license_name(license)) != SQLITE_DONE
+			    &&
+			    run_prepared_statement(LIC2, package_id,
+			    pkg_license_name(license)) != SQLITE_DONE)
+			{
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -742,14 +736,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		shlib = NULL;
 		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
 			if (run_prepared_statement(SHLIB1,
-			    pkg_shlib_name(shlib)) != SQLITE_DONE) {
-				ERROR_SQLITE(sqlite);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-
-			if (run_prepared_statement(SHLIB2, package_id,
-			    pkg_shlib_name(shlib)) != SQLITE_DONE) {
+			    pkg_shlib_name(shlib)) != SQLITE_DONE
+			    &&
+			    run_prepared_statement(SHLIB2, package_id,
+			    pkg_shlib_name(shlib)) != SQLITE_DONE)
+			{
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
