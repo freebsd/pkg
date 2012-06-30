@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -55,7 +56,7 @@ typedef enum _sql_prstmt_index_t {
 	EXISTS,
 	VERSION,
 	DELETE,
-	PRSTMT_LAST
+	PRSTMT_LAST,
 } sql_prstmt_index_t;
 
 typedef struct _sql_prstmt_t {
@@ -68,88 +69,75 @@ typedef struct _sql_prstmt_t {
 #define SQL(x)  (sql_prepared_statements[(x)].sql)
 
 static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
-	/* PKG */
-	{
+	[PKG] = {
 		NULL,
 		"INSERT INTO packages ("
 		"origin, name, version, comment, desc, arch, maintainer, www, "
 		"prefix, pkgsize, flatsize, licenselogic, cksum, path"
 		")"
 		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
-		"TTTTTTTTTIIITT"
+		"TTTTTTTTTIIITT",
 	},
-	/* DEPS */
-	{
+	[DEPS] = {
 		NULL,
 		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4)",
-		"TTTI"
+		"TTTI",
 	},
-	/* CAT1 */
-	{
+	[CAT1] = {
 		NULL,
 		"INSERT OR IGNORE INTO categories(name) VALUES(?1)",
-		"T"
+		"T",
 	},
-	/* CAT2 */
-	{
+	[CAT2] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_categories(package_id, category_id) "
 		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2))",
-		"IT"
-
+		"IT",
 	},
-	/* LIC1 */
-	{
+	[LIC1] = {
 		NULL,
 		"INSERT OR IGNORE INTO licenses(name) VALUES(?1)",
-		"T"
+		"T",
 	},
-	/* LIC2 */
-	{
+	[LIC2] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_licenses(package_id, license_id) "
 		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2))",
-		"IT"
+		"IT",
 	},
-	/* OPTS */
-	{
+	[OPTS] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO options (option, value, package_id) "
 		"VALUES (?1, ?2, ?3)",
-		"TTI"
+		"TTI",
 	},
-	/* SHLIB1 */
-	{
+	[SHLIB1] = {
 		NULL,
 		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
-		"T"
+		"T",
 	},
-	/* SHLIB2 */
-	{
+	[SHLIB2] = {
 		NULL, 
 		"INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
-		"IT"
+		"IT",
 	},
-	/* EXISTS */
-	{
+	[EXISTS] = {
 		NULL,
 		"SELECT count(*) FROM packages WHERE cksum=?1",
-		"T"
+		"T",
 	},
-	/* VERSION */
-	{
+	[VERSION] = {
 		NULL,
 		"SELECT version FROM packages WHERE origin=?1",
-		"T"
+		"T",
 	},
-	/* DELETE */
-	{
+	[DELETE] = {
 		NULL,
 		"DELETE FROM packages WHERE origin=?1",
-		"T"
-	}
+		"T",
+	},
 	/* PRSTMT_LAST */
 };
 
@@ -523,7 +511,7 @@ maybe_delete_conflicting(const char *origin, const char *version,
 		break;
 	case 0:
 	case 1:
-		pkg_emit_error("\nduplicate package origin: package %s is not "
+		pkg_emit_error("duplicate package origin: package %s is not "
 			       "newer than version %s already in repo for "
 			       "origin %s", pkg_path, oversion, origin);
 		ret = EPKG_END;	/* keep what is already in the repo */
@@ -709,14 +697,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		category = NULL;
 		while (pkg_categories(pkg, &category) == EPKG_OK) {
 			if (run_prepared_statement(CAT1,
-			    pkg_category_name(category)) != SQLITE_DONE) {
-				ERROR_SQLITE(sqlite);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-
-			if (run_prepared_statement(CAT2, package_id,
-			    pkg_category_name(category)) != SQLITE_DONE) {
+			    pkg_category_name(category)) != SQLITE_DONE
+			    &&
+			    run_prepared_statement(CAT2, package_id,
+			    pkg_category_name(category)) != SQLITE_DONE)
+			{
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -726,14 +711,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		license = NULL;
 		while (pkg_licenses(pkg, &license) == EPKG_OK) {
 			if (run_prepared_statement(LIC1,
-			    pkg_license_name(license)) != SQLITE_DONE) {
-				ERROR_SQLITE(sqlite);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-
-			if (run_prepared_statement(LIC2, package_id,
-			    pkg_license_name(license)) != SQLITE_DONE) {
+			    pkg_license_name(license)) != SQLITE_DONE
+			    &&
+			    run_prepared_statement(LIC2, package_id,
+			    pkg_license_name(license)) != SQLITE_DONE)
+			{
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -754,14 +736,11 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 		shlib = NULL;
 		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
 			if (run_prepared_statement(SHLIB1,
-			    pkg_shlib_name(shlib)) != SQLITE_DONE) {
-				ERROR_SQLITE(sqlite);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-
-			if (run_prepared_statement(SHLIB2, package_id,
-			    pkg_shlib_name(shlib)) != SQLITE_DONE) {
+			    pkg_shlib_name(shlib)) != SQLITE_DONE
+			    &&
+			    run_prepared_statement(SHLIB2, package_id,
+			    pkg_shlib_name(shlib)) != SQLITE_DONE)
+			{
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
