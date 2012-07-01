@@ -848,19 +848,19 @@ pkg_check_repo_version(struct pkgdb *db, const char *database)
 	if (reposcver == 2)
 		reposcver = 2000;
 
-	if (reposcver < REPO_SCHEMA_VERSION) {
-		pkg_emit_error("Repo %s (schema version %d) is too old - need at "
-			       "least schema %d", database, reposcver,
+	if (reposcver > REPO_SCHEMA_VERSION) {
+		pkg_emit_error("Repo %s (schema version %d) is too new - we can "
+			       "accept at most version %d", database, reposcver,
 			       REPO_SCHEMA_VERSION);
 		return (EPKG_REPOSCHEMA);
 	}
 	
 	repomajor = reposcver / 1000;
 
-	if (repomajor > REPO_SCHEMA_MAJOR) {
-		pkg_emit_error("Repo %s (schema version %d) is too new - we can "
-			       "accept at most version %d", database, reposcver,
-			       (REPO_SCHEMA_MAJOR + 1) * 1000 - 1);
+	if (repomajor < REPO_SCHEMA_MAJOR) {
+		pkg_emit_error("Repo %s (schema version %d) is too old - need at "
+			       "least schema %d", database, reposcver,
+			       REPO_SCHEMA_MAJOR * 1000);
 		return (EPKG_REPOSCHEMA);
 	}
 
