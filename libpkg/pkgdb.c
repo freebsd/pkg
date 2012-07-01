@@ -740,7 +740,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 					pkgdb_close(db);
 					return (EPKG_FATAL);
 					break;
-				case EPKG_REPOVERSION:
+				case EPKG_REPOSCHEMA:
 					if (sql_exec(db->sqlite, "DETACH DATABSE '%q'", repo_name) != EPKG_OK) {
 						pkgdb_close(db);
 						return (EPKG_FATAL);

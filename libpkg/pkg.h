@@ -315,7 +315,7 @@ typedef enum {
 	/**
 	 * repo DB schema incompatible version
 	 */
-	EPKG_REPOVERSION,
+	EPKG_REPOSCHEMA,
 } pkg_error_t;
 
 /**
