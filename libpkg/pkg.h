@@ -312,6 +312,10 @@ typedef enum {
 	 * unkown keyword
 	 */
 	EPKG_UNKNOWN,
+	/**
+	 * repo DB schema incompatible version
+	 */
+	EPKG_REPOVERSION,
 } pkg_error_t;
 
 /**

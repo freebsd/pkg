@@ -621,6 +621,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	bool multirepos_enabled = false;
 	bool create = false;
 	struct pkg_config_kv *repokv = NULL;
+	int ret;
 
 	if (*db_p != NULL) {
 		assert((*db_p)->lock_count == 0);
@@ -734,6 +735,21 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 					return (EPKG_FATAL);
 				}
 
+				switch(pkg_check_repo_version(db, repo_name)) {
+				case EPKG_FATAL:
+					pkgdb_close(db);
+					return (EPKG_FATAL);
+					break;
+				case EPKG_REPOVERSION:
+					if (sql_exec(db->sqlite, "DETACH DATABSE '%q'", repo_name) != EPKG_OK) {
+						pkgdb_close(db);
+						return (EPKG_FATAL);
+					}
+					break;
+				default:
+					break;
+				}
+
 				/* check if default repository exists */
 				if (!is_attached(db->sqlite, "default")) {
 					pkg_emit_error("no default repository defined");
@@ -757,6 +773,11 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			if (sql_exec(db->sqlite, "ATTACH '%q' AS 'remote';", remotepath) != EPKG_OK) {
 				pkgdb_close(db);
 				return (EPKG_FATAL);
+			}
+
+			if ((ret = pkg_check_repo_version(db, "remote")) != EPKG_OK) {
+				pkgdb_close(db);
+				return (ret);
 			}
 		}
 	}

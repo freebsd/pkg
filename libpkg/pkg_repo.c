@@ -42,6 +42,17 @@
 #include "private/event.h"
 #include "private/utils.h"
 #include "private/pkg.h"
+#include "private/pkgdb.h"
+
+/* The current package repo schema revision */
+#define REPO_SCHEMA 3
+
+/* The oldest repo schema version compatible with pkg install et al
+ * where REPO_COMPAT <= REPO_SCHEMA */ 
+#define REPO_COMPAT 2
+
+/* Composite version encoding both of the above */
+#define REPO_VERSION (REPO_COMPAT * 1000 + REPO_SCHEMA)
 
 typedef enum _sql_prstmt_index {
 	PKG = 0,
@@ -244,13 +255,18 @@ file_exists(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 }
 
 static int
-get_repo_user_version(sqlite3 *sqlite, int *repouver)
+get_repo_user_version(sqlite3 *sqlite, const char *database, int *repouver)
 {
 	sqlite3_stmt *stmt;
 	int retcode;
+	char sql[BUFSIZ];
+	const char *fmt = "PRAGMA %s.user_version";
 
-	if (sqlite3_prepare_v2(sqlite, "PRAGMA user_version", -1, &stmt, NULL)
-	    != SQLITE_OK)
+	assert(database != NULL);
+
+	snprintf(sql, sizeof(sql), fmt, database);
+
+	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
 	{
 		ERROR_SQLITE(sqlite);
 		return (EPKG_FATAL);
@@ -346,8 +362,6 @@ initialize_repo(const char *repodb, sqlite3 **sqlite)
 		"PRAGMA user_version=%d;"
 		;
 
-#define REPO_USER_VERSION 3
-
 	if (access(repodb, F_OK) == 0)
 		incremental = true;
 
@@ -365,12 +379,12 @@ initialize_repo(const char *repodb, sqlite3 **sqlite)
 		   update.  Delete the existing repo, and promote this to a
 		   full update */
 		if (incremental) {
-			if (get_repo_user_version(*sqlite, &repouver) != EPKG_OK)
+			if (get_repo_user_version(*sqlite, "main", &repouver) != EPKG_OK)
 				return (EPKG_FATAL);
-			if (repouver != REPO_USER_VERSION) {
-				pkg_emit_error("updating repo user version "
+			if (repouver != REPO_VERSION) {
+				pkg_emit_error("updating repo schema version "
 					"from %d to %d", repouver,
-					REPO_USER_VERSION);
+					REPO_VERSION);
 				sqlite3_close(*sqlite);
 				unlink(repodb);
 				incremental = false;
@@ -391,7 +405,7 @@ initialize_repo(const char *repodb, sqlite3 **sqlite)
 	if ((retcode = sql_exec(*sqlite, "PRAGMA foreign_keys=on")) != EPKG_OK)
 		return (retcode);
 
-	if (!incremental && (retcode = sql_exec(*sqlite, initsql, REPO_USER_VERSION)) != EPKG_OK)
+	if (!incremental && (retcode = sql_exec(*sqlite, initsql, REPO_VERSION)) != EPKG_OK)
 		return (retcode);
 
 	if ((retcode = sql_exec(*sqlite, "BEGIN TRANSACTION")) != EPKG_OK)
@@ -795,6 +809,50 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	packing_append_file_attr(pack, repo_path, "repo.sqlite", "root", "wheel", 0644);
 	unlink(repo_path);
 	packing_finish(pack);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_check_repo_version(struct pkgdb *db, const char *database)
+{
+	int repouver;
+	int repocompat;
+	int ret;
+
+	assert(db != NULL);
+	assert(database != NULL);
+
+	if ((ret = get_repo_user_version(db->sqlite, database, &repouver))
+	    != EPKG_OK)
+		return (ret);	/* sqlite error */
+
+	/* 
+	 * If the local pkgng uses a repo schema ahead or behind of
+	 * the version used to create the repo, we may still be able
+	 * use it for reading (ie pkg install), but pkg repo can't
+	 * do an incremental update unless the actual schema matches
+	 * the compiled in schema version.
+	 *
+	 * Encode the compatible and actual repo schema versions in
+	 * the database user version. 
+	 */
+
+	repocompat = repouver / 1000;
+
+	if (repocompat < REPO_COMPAT) {
+		pkg_emit_error("Repo %s (version %ld) is too old - need at "
+			       "least version %ld", database, repouver,
+			       REPO_COMPAT * 1000);
+		return (EPKG_REPOVERSION);
+	}
+	
+	if (repocompat > REPO_COMPAT) {
+		pkg_emit_error("Repo %s (version %ld) is too new - we can "
+			       "accept at most version %ld", database, repouver,
+			       (REPO_COMPAT + 1) * 1000 - 1);
+		return (EPKG_REPOVERSION);
+	}
 
 	return (EPKG_OK);
 }
