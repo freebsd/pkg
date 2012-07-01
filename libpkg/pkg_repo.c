@@ -43,7 +43,7 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 
-typedef enum _sql_prstmt_index_t {
+typedef enum _sql_prstmt_index {
 	PKG = 0,
 	DEPS,
 	CAT1,
@@ -57,9 +57,9 @@ typedef enum _sql_prstmt_index_t {
 	VERSION,
 	DELETE,
 	PRSTMT_LAST,
-} sql_prstmt_index_t;
+} sql_prstmt_index;
 
-static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
+static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[PKG] = {
 		NULL,
 		"INSERT INTO packages ("
@@ -411,7 +411,7 @@ initialize_repo(const char *repodb, sqlite3 **sqlite)
 static int
 initialize_prepared_statements(sqlite3 *sqlite)
 {
-	sql_prstmt_index_t i;
+	sql_prstmt_index i;
 	int retcode = EPKG_OK;
 
 	for (i = 0; i < PRSTMT_LAST; i++)
@@ -428,7 +428,7 @@ initialize_prepared_statements(sqlite3 *sqlite)
 }
 
 static int
-run_prepared_statement(sql_prstmt_index_t s, ...)
+run_prepared_statement(sql_prstmt_index s, ...)
 {
 	int retcode;	/* Returns SQLITE error code */
 	va_list ap;
@@ -466,7 +466,7 @@ run_prepared_statement(sql_prstmt_index_t s, ...)
 static void
 finalize_prepared_statements(void)
 {
-	sql_prstmt_index_t i;
+	sql_prstmt_index i;
 
 	for (i = 0; i < PRSTMT_LAST; i++)
 	{

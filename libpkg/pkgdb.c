@@ -74,7 +74,7 @@ static bool is_attached(sqlite3 *, const char *);
 static void report_already_installed(sqlite3 *);
 static int sqlcmd_init(sqlite3 *db, __unused const char **err, __unused const void *noused);
 static int prstmt_initialize(struct pkgdb *db);
-/* static int run_prstmt(sql_prstmt_index_t s, ...); */
+/* static int run_prstmt(sql_prstmt_index s, ...); */
 static void prstmt_finalize(struct pkgdb *db);
 
 extern int sqlite3_shell(int, char**);
@@ -1479,7 +1479,7 @@ pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg)
 	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_set_mtree, -1));
 }
 
-typedef enum _sql_prstmt_index_t {
+typedef enum _sql_prstmt_index {
 	MTREE = 0,
 	PKG,
 	DEPS_UPDATE,
@@ -1500,9 +1500,9 @@ typedef enum _sql_prstmt_index_t {
 	SHLIBS1,
 	SHLIBS2,
 	PRSTMT_LAST,
-} sql_prstmt_index_t;
+} sql_prstmt_index;
 
-static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
+static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[MTREE] = {
 		NULL,
 		"INSERT OR IGNORE INTO mtree(content) VALUES(?1)",
@@ -1620,7 +1620,7 @@ static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
 static int
 prstmt_initialize(struct pkgdb *db)
 {
-	sql_prstmt_index_t i;
+	sql_prstmt_index i;
 	sqlite3 *sqlite;
 
 	assert(db != NULL);
@@ -1642,7 +1642,7 @@ prstmt_initialize(struct pkgdb *db)
 }
 
 static int
-run_prstmt(sql_prstmt_index_t s, ...)
+run_prstmt(sql_prstmt_index s, ...)
 {
 	int retcode;	/* Returns SQLITE error code */
 	va_list ap;
@@ -1683,7 +1683,7 @@ run_prstmt(sql_prstmt_index_t s, ...)
 static void
 prstmt_finalize(struct pkgdb *db)
 {
-	sql_prstmt_index_t i;
+	sql_prstmt_index i;
 
 	for (i = 0; i < PRSTMT_LAST; i++)
 	{

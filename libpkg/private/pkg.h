@@ -163,11 +163,11 @@ struct pkg_shlib {
 
 /* sql helpers */
 
-typedef struct _sql_prstmt_t {
+typedef struct _sql_prstmt {
 	sqlite3_stmt *stmt;
 	const char *sql;
 	const char *argtypes;
-} sql_prstmt_t;
+} sql_prstmt;
 
 #define STMT(x) (sql_prepared_statements[(x)].stmt)
 #define SQL(x)  (sql_prepared_statements[(x)].sql)
