@@ -730,7 +730,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 					return (EPKG_ENODB);
 				}
 
-				if (sql_exec(db->sqlite, "ATTACH '%q' AS '%q';", remotepath, repo_name) != EPKG_OK) {
+				if (sql_exec(db->sqlite, "ATTACH '%s' AS '%s';", remotepath, repo_name) != EPKG_OK) {
 					pkgdb_close(db);
 					return (EPKG_FATAL);
 				}
@@ -741,7 +741,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 					return (EPKG_FATAL);
 					break;
 				case EPKG_REPOSCHEMA:
-					if (sql_exec(db->sqlite, "DETACH DATABSE '%q'", repo_name) != EPKG_OK) {
+					if (sql_exec(db->sqlite, "DETACH DATABASE '%s'", repo_name) != EPKG_OK) {
 						pkgdb_close(db);
 						return (EPKG_FATAL);
 					}
