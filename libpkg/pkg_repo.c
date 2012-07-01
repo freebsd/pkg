@@ -843,6 +843,10 @@ pkg_check_repo_version(struct pkgdb *db, const char *database)
 	 * pkgng
 	 */
 
+	/* --- Temporary ---- Grandfather in the old repo schema version
+	   so this patch doesn't immediately invalidate all the repos out there */
+	if (reposcver == 2)
+		reposcver = 2000;
 
 	if (reposcver < REPO_SCHEMA_VERSION) {
 		pkg_emit_error("Repo %s (schema version %d) is too old - need at "
