@@ -1506,7 +1506,7 @@ static sql_prstmt_t sql_prepared_statements[PRSTMT_LAST] = {
 	[MTREE] = {
 		NULL,
 		"INSERT OR IGNORE INTO mtree(content) VALUES(?1)",
-		"T"
+		"T",
 	},
 	[PKG] = {
 		NULL,
