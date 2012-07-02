@@ -20,36 +20,55 @@
 .Os
 .Sh NAME
 .Nm "pkg repo"
-.Nd creates a package database repository
+.Nd creates a package repository catalogue
 .Sh SYNOPSIS
 .Nm
+.Op Fl fq
 .Ao Ar repo-path Ac Op Ar rsa-key
 .Sh DESCRIPTION
 .Nm
-is used for creating package repositories of already
-available packages.
+is used for creating a catalogue of the available
+packages in a repository.
 .Nm
-is useful for creating a package repository database,
-and then sharing it with other people.
+catalogues are necessary for sharing your package repository with
+other people.
 .Pp
 When
 .Nm
-is invoked it will create a package database file (repo.sqlite)
-which then can be used for remote package installations
-from
+is invoked it creates a package repository catalogue (repo.sqlite),
+with an optional cryptographic signature, as a compressed tarball
+(repo.txz).
+Repository users download and cache this on their local machines,
+for fast lookup of available packages by programs such as
 .Xr pkg-install 8 .
 .Pp
-When you want to create a package database repository you need to
-specify at least the directory which contains packages in
+To create a package repository catalogue you must specify the
+top-level directory where all the packages are stored as
 .Ar repo-path .
+.Nm 
+will search the filesystem beneath
+.Ar repo-path
+to find all the packages it contains.
+Symbolic links are ignored, and only the most recent package for each
+origin is included in the catalogue.
+If a catalogue already exists, it will be updated incrementally with
+any changes to the package collection.
+This is a significant time savings for large package repositories.
 .Pp
-To sign the repository, specify the path to an RSA private key for the
+Optionally you may sign the repository catalogue by specifying the
+path to an RSA private key as the
 .Ar rsa-key
 argument.
+Signing the catalogue is strongly recommended.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl q
+Force quiet output
+.It Fl f
+Force a full rebuild of the package catalogue, discarding any previous
+content
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

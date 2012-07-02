@@ -651,11 +651,12 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
 /**
  * Create a repository database.
  * @param path The path where the repository live.
+ * @param force If true, rebuild the repository catalogue from scratch
  * @param callback A function which is called at every step of the process.
  * @param data A pointer which is passed to the callback.
  * @param sum An 65 long char array to receive the sha256 sum
  */
-int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *);
+int pkg_create_repo(char *path, bool force, void (*callback)(struct pkg *, void *), void *);
 int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path);
 
 /**
@@ -827,8 +828,9 @@ int pkg_create_staged(const char *, pkg_formats, const char *, const char *, cha
 
 /**
  * Download the latest repo db file and checks its signature if any
+ * @param force Always download the repo catalogue
  */
-int pkg_update(const char *name, const char *packagesite);
+int pkg_update(const char *name, const char *packagesite, bool force);
 
 /**
  * Get statistics information from the package database(s)
