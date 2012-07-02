@@ -849,6 +849,8 @@ pkg_check_repo_version(struct pkgdb *db, const char *database)
 	   so this patch doesn't immediately invalidate all the repos out there */
 	if (reposcver == 2)
 		reposcver = 2000;
+	if (reposcver == 3)
+		reposcver = 2001;
 
 	if (reposcver > REPO_SCHEMA_VERSION) {
 		pkg_emit_error("Repo %s (schema version %d) is too new - we can "
