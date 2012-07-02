@@ -45,7 +45,6 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
 	{ 'F', "ps",		1, PKG_LOAD_FILES }, 
-	{ 'S', "",		1, PKG_LOAD_SCRIPTS },
 	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
 	{ 'D', "",		1, PKG_LOAD_DIRS },
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
@@ -224,9 +223,6 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					else if (qstr[0] == 's')
 						sbuf_cat(dest, pkg_file_get((struct pkg_file *)data, PKG_FILE_SUM));
 					break;
-				case 'S':
-					sbuf_cat(dest, pkg_script_data((struct pkg_script *)data));	
-					break;
 				case 'O':
 					qstr++;
 					if (qstr[0] == 'k')
@@ -303,7 +299,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_license *lic = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
-	struct pkg_script *scripts = NULL;
 	struct pkg_shlib *shlib = NULL;
 
 	switch (multiline) {
@@ -358,12 +353,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		case 'G':
 			while (pkg_groups(pkg, &group) == EPKG_OK) {
 				format_str(pkg, output, qstr, group);
-				printf("%s\n", sbuf_data(output));
-			}
-			break;
-		case 'S':
-			while (pkg_scripts(pkg, &scripts) == EPKG_OK) {
-				format_str(pkg, output, qstr, scripts);
 				printf("%s\n", sbuf_data(output));
 			}
 			break;

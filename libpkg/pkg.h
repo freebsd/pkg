@@ -47,7 +47,6 @@ struct pkg_dep;
 struct pkg_file;
 struct pkg_dir;
 struct pkg_category;
-struct pkg_script;
 struct pkg_option;
 struct pkg_license;
 struct pkg_user;
@@ -216,14 +215,13 @@ typedef enum {
 	PKG_DIRS,
 	PKG_USERS,
 	PKG_GROUPS,
-	PKG_SCRIPTS,
 	PKG_SHLIBS
 } pkg_list;
 
 /**
  * Determine the type of a pkg_script.
  */
-typedef enum _pkg_script_t {
+typedef enum {
 	PKG_SCRIPT_PRE_INSTALL = 0,
 	PKG_SCRIPT_POST_INSTALL,
 	PKG_SCRIPT_PRE_DEINSTALL,
@@ -233,7 +231,7 @@ typedef enum _pkg_script_t {
 	PKG_SCRIPT_INSTALL,
 	PKG_SCRIPT_DEINSTALL,
 	PKG_SCRIPT_UPGRADE
-} pkg_script_t;
+} pkg_script;
 
 typedef enum _pkg_jobs_t {
 	PKG_JOBS_INSTALL,
@@ -421,13 +419,6 @@ int pkg_users(struct pkg *pkg, struct pkg_user **user);
 int pkg_groups(struct pkg *pkg, struct pkg_group **group);
 
 /**
- * Iterates over the scripts of the package.
- * @param script Must be set to NULL for the first call.
- * @return An error code.
- */
-int pkg_scripts(struct pkg *, struct pkg_script **script);
-
-/**
  * Iterates over the options of the package.
  * @param  option Must be set to NULL for the first call.
  * @return An error code.
@@ -574,14 +565,14 @@ int pkg_addgid(struct pkg *pkg, const char *group, const char *gidstr);
  * @param path The path to the script on disk.
  @ @return An error code.
  */
-int pkg_addscript(struct pkg *pkg, const char *data, pkg_script_t type);
+int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
 
 /**
  * Helper which call pkg_addscript() with the content of the file and
  * with the correct type.
  */
 int pkg_addscript_file(struct pkg *pkg, const char *path);
-int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type);
+int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
 
 /**
  * Allocate a new struct pkg_option and add it to the options of pkg.
@@ -630,8 +621,7 @@ const char *pkg_group_name(struct pkg_group *);
 const char *pkg_group_gidstr(struct pkg_group *);
 
 /* pkg_script */
-const char *pkg_script_data(struct pkg_script *);
-pkg_script_t pkg_script_type(struct pkg_script *);
+const char *pkg_script_get(struct pkg *, pkg_script type);
 
 /* pkg_option */
 const char *pkg_option_opt(struct pkg_option *);

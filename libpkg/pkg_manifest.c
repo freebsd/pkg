@@ -285,7 +285,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 	yaml_node_pair_t *pair;
 	yaml_node_t *key;
 	yaml_node_t *val;
-	pkg_script_t script_type;
+	pkg_script script_type;
 
 	pair = item->data.mapping.pairs.start;
 
@@ -658,7 +658,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_option *option = NULL;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
-	struct pkg_script *script = NULL;
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
 	struct pkg_user *user = NULL;
@@ -670,6 +669,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int seq = -1;
 	int map = -1;
 	int depkv;
+	int i;
 /*	int users = -1;
 	int groups = -1;*/
 	const char *script_types = NULL;
@@ -801,11 +801,14 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	}
 
 	map = -1;
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
 		if (map == -1)
 			manifest_append_map(map, mapping, "scripts", BLOCK);
 
-		switch (pkg_script_type(script)) {
+		if (pkg_script_get(pkg, i) == NULL)
+			continue;
+
+		switch (i) {
 			case PKG_SCRIPT_PRE_INSTALL:
 				script_types = "pre-install";
 				break;
@@ -834,7 +837,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 				script_types = "post-deinstall";
 				break;
 		}
-		urlencode(pkg_script_data(script), &tmpsbuf);
+		urlencode(pkg_script_get(pkg, i), &tmpsbuf);
 		manifest_append_kv(map, script_types, sbuf_get(tmpsbuf), LITERAL);
 	}
 	if (infos != NULL && *infos != '\0') {

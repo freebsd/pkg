@@ -1428,7 +1428,6 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_DONE) {
-		pkg_list_free(pkg, PKG_SCRIPTS);
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
@@ -1722,7 +1721,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
-	struct pkg_script *script = NULL;
 	struct pkg_option *option = NULL;
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
@@ -1742,6 +1740,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	const char *arch, *maintainer, *www, *prefix;
 
 	int64_t automatic, flatsize, licenselogic;
+	int i;
 
 	assert(db != NULL);
 
@@ -1925,9 +1924,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 * Insert scripts
 	 */
 
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-		if (run_prstmt(SCRIPTS, pkg_script_data(script),
-		    pkg_script_type(script), package_id) != SQLITE_DONE) {
+	for (i = 0; i < PKG_NUM_FIELDS; i++) {
+		if (pkg_script_get(pkg, i) == NULL)
+			continue;
+		if (run_prstmt(SCRIPTS, pkg_script_get(pkg, i),
+		    i, package_id) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}

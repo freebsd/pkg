@@ -283,42 +283,13 @@ pkg_group_gidstr(struct pkg_group *g)
 	return (g->gidstr);
 }
 
-
-/*
- * Script
- */
-
-int
-pkg_script_new(struct pkg_script **script)
-{
-	if ((*script = calloc(1, sizeof(struct pkg_script))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_script");
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_script_free(struct pkg_script *script)
-{
-	if (script == NULL)
-		return;
-
-	sbuf_free(script->data);
-	free(script);
-}
-
 const char *
-pkg_script_data(struct pkg_script *s)
+pkg_script_get(struct pkg *p, pkg_script i)
 {
-	return (sbuf_get(s->data));
-}
+	if (p->scripts[i] == NULL)
+		return (NULL);
 
-pkg_script_t
-pkg_script_type(struct pkg_script *s)
-{
-	return (s->type);
+	return (sbuf_get(p->scripts[i]));
 }
 
 /*
