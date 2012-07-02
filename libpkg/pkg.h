@@ -37,10 +37,10 @@
 #include <sys/sbuf.h>
 #include <openssl/pem.h>
 
-#define PKGVERSION "1.0-beta16"
+#define PKGVERSION "1.0-beta17"
 /* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg version comparison
  * in pkgdb_query_newpkgversion() */
-#define PKG_PORTVERSION "1.0.b16"
+#define PKG_PORTVERSION "1.0.b17"
 
 struct pkg;
 struct pkg_dep;

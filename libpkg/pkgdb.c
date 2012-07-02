@@ -1537,7 +1537,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 			"mtree_id, infos, time) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, "
 		"(SELECT id from mtree where content = ?14), ?15, now())",
-		"TTTTTTTTTTIiITT",
+		"TTTTTTTTTTIIITT",
 	},
 	[DEPS_UPDATE] = {
 		NULL,
@@ -1688,9 +1688,6 @@ run_prstmt(sql_prstmt_index s, ...)
 		case 'I':
 			sqlite3_bind_int64(stmt, i + 1, va_arg(ap, int64_t));
 			break;
-		case 'i':
-			sqlite3_bind_int(stmt, i + 1, va_arg(ap, int));
-			break;
 		}
 	}
 
@@ -1744,9 +1741,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	const char *comment, *desc, *message, *infos;
 	const char *arch, *maintainer, *www, *prefix;
 
-	bool automatic;
-	int64_t flatsize;
-	lic_t licenselogic;
+	int64_t automatic, flatsize, licenselogic;
 
 	assert(db != NULL);
 
