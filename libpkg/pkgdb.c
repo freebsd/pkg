@@ -1724,8 +1724,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	const char *arch, *maintainer, *www, *prefix;
 
 	bool automatic;
-	int64_t flatsize;
-	lic_t licenselogic;
+	int64_t flatsize, licenselogic;
 
 	assert(db != NULL);
 
