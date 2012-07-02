@@ -106,7 +106,7 @@ void usage_stats(void);
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);
-int pkgcli_update(void);
+int pkgcli_update(bool);
 
 /* pkg updating */
 int exec_updating(int, char **);

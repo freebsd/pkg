@@ -109,7 +109,7 @@ exec_install(int argc, char **argv)
 	}
 
 	/* first update the remote repositories if needed */
-	if (auto_update && (retcode = pkgcli_update()) != EPKG_OK)
+	if (auto_update && (retcode = pkgcli_update(false)) != EPKG_OK)
 		return (retcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {

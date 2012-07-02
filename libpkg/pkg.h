@@ -823,8 +823,9 @@ int pkg_create_staged(const char *, pkg_formats, const char *, const char *, cha
 
 /**
  * Download the latest repo db file and checks its signature if any
+ * @param force Always download the repo catalogue
  */
-int pkg_update(const char *name, const char *packagesite);
+int pkg_update(const char *name, const char *packagesite, bool force);
 
 /**
  * Get statistics information from the package database(s)
