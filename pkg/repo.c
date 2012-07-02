@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <readpassphrase.h>
+#include <unistd.h>
 
 #include <pkg.h>
 
@@ -36,7 +37,7 @@
 void
 usage_repo(void)
 {
-	fprintf(stderr, "usage: pkg repo <repo-path> <rsa-key>\n\n");
+	fprintf(stderr, "usage: pkg repo [-fq] <repo-path> <rsa-key>\n\n");
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
@@ -86,25 +87,47 @@ exec_repo(int argc, char **argv)
 {
 	int retcode = EPKG_OK;
 	int pos = 0;
+	int ch;
 	char *rsa_key;
+	bool force = false;
 
-	if (argc < 2 || argc > 3) {
+        while ((ch = getopt(argc, argv, "fq")) != -1) {
+                switch (ch) {
+		case 'q':
+			quiet = true;
+			break;
+		case 'f':
+			force = true;
+			break;
+		default:
+			usage_repo();
+			return (EX_USAGE);
+                }
+        }
+        argc -= optind;
+        argv += optind;
+
+	if (argc < 1 || argc > 2) {
 		usage_repo();
 		return (EX_USAGE);
 	}
 
-	printf("Generating repo.sqlite in %s:  ", argv[1]);
-	retcode = pkg_create_repo(argv[1], progress, &pos);
+	if (!quiet) {
+		printf("Generating repo.sqlite in %s:  ", argv[0]);
+		retcode = pkg_create_repo(argv[0], force, progress, &pos);
+	} else
+		retcode = pkg_create_repo(argv[0], force, NULL, NULL);
 
 	if (retcode != EPKG_OK) {
-		printf("cannot create repository\n");
+		printf("cannot create repository catalogue\n");
 		return (retcode);
 	} else {
-		printf("\bdone!\n");
+		if (!quiet)
+			printf("\bdone!\n");
 	}
 	
-	rsa_key = (argc == 3) ? argv[2] : NULL;
-	pkg_finish_repo(argv[1], password_cb, rsa_key);
+	rsa_key = (argc == 2) ? argv[1] : NULL;
+	pkg_finish_repo(argv[0], password_cb, rsa_key);
 
 	return (retcode);
 }

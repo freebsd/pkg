@@ -268,7 +268,7 @@ get_repo_user_version(sqlite3 *sqlite, int *repouver)
 }
 
 static int
-initialize_repo(const char *repodb, sqlite3 **sqlite)
+initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 {
 	bool incremental = false;
 	bool db_not_open;
@@ -361,16 +361,18 @@ initialize_repo(const char *repodb, sqlite3 **sqlite)
 
 		db_not_open = false;
 
-		/* If the schema is too old, then we cannot do an incremental
-		   update.  Delete the existing repo, and promote this to a
+		/* If the schema is too old, or we're forcing a full
+		   update, then we cannot do an incremental update.
+		   Delete the existing repo, and promote this to a
 		   full update */
 		if (incremental) {
 			if (get_repo_user_version(*sqlite, &repouver) != EPKG_OK)
 				return (EPKG_FATAL);
-			if (repouver != REPO_USER_VERSION) {
-				pkg_emit_error("updating repo user version "
-					"from %d to %d", repouver,
-					REPO_USER_VERSION);
+			if (force || repouver != REPO_USER_VERSION) {
+				if (repouver != REPO_USER_VERSION)
+					pkg_emit_error("updating repo user version "
+					     "from %d to %d", repouver,
+					     REPO_USER_VERSION);
 				sqlite3_close(*sqlite);
 				unlink(repodb);
 				incremental = false;
@@ -512,7 +514,7 @@ maybe_delete_conflicting(const char *origin, const char *version,
 }
 
 int
-pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *data)
+pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
 	FTSENT *ent = NULL;
@@ -579,7 +581,7 @@ pkg_create_repo(char *path, void (progress)(struct pkg *pkg, void *data), void *
 			archive_read_finish(a);
 	}
 
-	if ((retcode = initialize_repo(repodb, &sqlite)) != EPKG_OK)
+	if ((retcode = initialize_repo(repodb, force, &sqlite)) != EPKG_OK)
 		goto cleanup;
 
 	if ((retcode = initialize_prepared_statements(sqlite)) != EPKG_OK)
