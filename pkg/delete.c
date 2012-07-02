@@ -59,7 +59,7 @@ exec_delete(int argc, char **argv)
 	int retcode = 1;
 	int recursive = 0;
 
-	while ((ch = getopt(argc, argv, "aqgxXfyr")) != -1) {
+	while ((ch = getopt(argc, argv, "aqgxXfyR")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -82,7 +82,7 @@ exec_delete(int argc, char **argv)
 			case 'y':
 				yes = true;
 				break;
-			case 'r':
+			case 'R':
 				recursive = 1;
 				break;
 			default:
