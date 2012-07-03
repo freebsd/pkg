@@ -429,6 +429,8 @@ pkg_shutdown(void)
 				break;
 			case LIST:
 				break;
+			case INTEGER:
+				break;
 			default:
 				err(1, "unknown config entry type");
 			}
