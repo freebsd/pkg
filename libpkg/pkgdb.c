@@ -1615,7 +1615,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT INTO scripts (script, type, package_id) "
 		"VALUES (?1, ?2, ?3)",
-		"TiI",
+		"TII",
 	},
 	[OPTIONS] = {
 		NULL,
@@ -1740,7 +1740,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	const char *arch, *maintainer, *www, *prefix;
 
 	int64_t automatic, flatsize, licenselogic;
-	int i;
+	int64_t i;
 
 	assert(db != NULL);
 
@@ -1927,6 +1927,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
 		if (pkg_script_get(pkg, i) == NULL)
 			continue;
+
 		if (run_prstmt(SCRIPTS, pkg_script_get(pkg, i),
 		    i, package_id) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
