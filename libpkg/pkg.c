@@ -769,15 +769,12 @@ pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type)
 	assert(pkg != NULL);
 	assert(cmd != NULL && cmd[0] != '\0');
 
+	if (pkg_script_get(pkg, type) == NULL)
+		return (pkg_addscript(pkg, cmd, type));
+
 	s = &pkg->scripts[type];
-
-	if (s != NULL) {
-		sbuf_cat(*s, cmd);
-		sbuf_finish(*s);
-		return (EPKG_OK);
-	}
-
-	sbuf_set(s, cmd);
+	sbuf_cat(*s, cmd);
+	sbuf_finish(*s);
 
 	return (EPKG_OK);
 }
