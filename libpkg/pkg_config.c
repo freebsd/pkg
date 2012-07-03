@@ -279,6 +279,7 @@ pkg_config_int64(pkg_config_key key, int64_t *val)
 		if (errstr != NULL) {
 			pkg_emit_error("Unable to convert %s to int64: %s",
 			    c[key].val, errstr);
+			return (EPKG_FATAL);
 		}
 	}
 	return (EPKG_OK);
