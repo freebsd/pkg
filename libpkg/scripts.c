@@ -63,7 +63,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	assert(map[i].a == type);
 
 	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
-
+		if (pkg_script_get(pkg, i) == NULL)
+			continue;
 		if (i == map[i].a || i == map[i].b) {
 			sbuf_reset(script_cmd);
 			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s",
