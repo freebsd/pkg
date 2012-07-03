@@ -158,6 +158,12 @@ static struct config_entry c[] = {
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
 		{ NULL }
 	},
+	[PKG_CONFIG_SRV_MIRROR] = {
+		BOOL,
+		"SRV_MIRRORS",
+		"NO",
+		{ NULL }
+	},
 };
 
 static bool parsed = false;
