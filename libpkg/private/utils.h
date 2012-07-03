@@ -32,6 +32,7 @@
 #include <sys/sbuf.h>
 #include <sys/param.h>
 
+#include <openssl/pem.h>
 #include <openssl/sha.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)

@@ -24,18 +24,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
-
 #include <sys/param.h>
+#include <sys/stat.h> /* for private.utils.h */
 #include <sys/types.h>
 
+#include <stdbool.h> /* for private/utils.h */
 #include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
 #include <arpa/nameser.h>
 #include <resolv.h>
-#include <libutil.h>
+#include "private/utils.h"
 
 typedef union {
 	HEADER hdr;
