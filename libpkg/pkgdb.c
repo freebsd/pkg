@@ -1924,7 +1924,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 * Insert scripts
 	 */
 
-	for (i = 0; i < PKG_NUM_FIELDS; i++) {
+	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
 		if (pkg_script_get(pkg, i) == NULL)
 			continue;
 		if (run_prstmt(SCRIPTS, pkg_script_get(pkg, i),
