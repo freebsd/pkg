@@ -42,6 +42,7 @@
 #define STRING 0
 #define BOOL 1
 #define LIST 2
+#define INTEGER 3
 
 struct pkg_config_kv {
 	char *key;
@@ -164,6 +165,12 @@ static struct config_entry c[] = {
 		"NO",
 		{ NULL }
 	},
+	[PKG_CONFIG_FETCH_RETRY] = {
+		INTEGER,
+		"FETCH_RETRY",
+		"3",
+		{ NULL }
+	},
 };
 
 static bool parsed = false;
@@ -248,6 +255,32 @@ pkg_config_string(pkg_config_key key, const char **val)
 	if (*val == NULL)
 		*val = c[key].def;
 
+	return (EPKG_OK);
+}
+
+int
+pkg_config_int64(pkg_config_key key, int64_t *val)
+{
+	const char *errstr = NULL;
+
+	*val = 0;
+
+	if (parsed != true) {
+		pkg_emit_error("pkg_init() must be called before pkg_config_int64()");
+		return (EPKG_FATAL);
+	}
+
+	if (c[key].type != INTEGER) {
+		pkg_emit_error("this config entry is not an integer");
+		return (EPKG_FATAL);
+	}
+	if (c[key].val != NULL) {
+		*val = strtonum(c[key].val, 0, INT64_MAX, &errstr);
+		if (errstr != NULL) {
+			pkg_emit_error("Unable to convert %s to int64: %s",
+			    c[key].val, errstr);
+		}
+	}
 	return (EPKG_OK);
 }
 

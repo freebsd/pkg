@@ -257,6 +257,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_DEVELOPER_MODE = 14,
 	PKG_CONFIG_PORTAUDIT_SITE = 15,
 	PKG_CONFIG_SRV_MIRROR = 16,
+	PKG_CONFIG_FETCH_RETRY = 17,
 } pkg_config_key;
 
 typedef enum {
@@ -838,6 +839,7 @@ int pkg_config_string(pkg_config_key key, const char **value);
 int pkg_config_bool(pkg_config_key key, bool *value);
 int pkg_config_list(pkg_config_key key, struct pkg_config_kv **kv);
 const char *pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type);
+int pkg_config_int64(pkg_config_key key, int64_t *value);
 
 /**
  * @todo Document
