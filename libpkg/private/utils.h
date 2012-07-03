@@ -45,6 +45,17 @@ struct hardlinks {
 	size_t cap;
 };
 
+struct dns_srvinfo {
+	unsigned int type;
+	unsigned int class;
+	unsigned int ttl;
+	unsigned int priority;
+	unsigned int weight;
+	unsigned int port;
+	char host[MAXHOSTNAMELEN];
+	struct dns_srvinfo *next;
+};
+
 void sbuf_init(struct sbuf **);
 int sbuf_set(struct sbuf **, const char *);
 char * sbuf_get(struct sbuf *);
@@ -68,4 +79,8 @@ int rsa_verify(const char *path, const char *key,
 		unsigned char *sig, unsigned int sig_len);
 
 bool is_hardlink(struct hardlinks *hl, struct stat *st);
+
+struct dns_srvinfo *
+	dns_getsrvinfo(const char *zone);
+
 #endif

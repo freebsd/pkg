@@ -10,6 +10,7 @@ SHLIB_MAJOR=	0
 
 #gr_utils.c has to be deleted as soon as it goes in base
 SRCS=		backup.c \
+		dns_utils.c \
 		fetch.c \
 		packing.c \
 		pkg.c \
