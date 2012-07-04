@@ -987,7 +987,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 
 	comp = pkgdb_get_pattern_query(pattern, match);
 
-	snprintf(sql, sizeof(sql),
+	sqlite3_snprintf(sizeof(sql), sql,
 			"SELECT id, origin, name, version, comment, desc, "
 				"message, arch, maintainer, www, "
 				"prefix, flatsize, licenselogic, automatic, "
@@ -1100,7 +1100,7 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 	const char *reponame = NULL;
 	const char *basesql = ""
 			"SELECT d.name, d.origin, d.version "
-			"FROM '%s'.deps AS d "
+			"FROM %Q.deps AS d "
 			"WHERE d.package_id = ?1;";
 
 	assert(db != NULL && pkg != NULL);
@@ -1111,9 +1111,9 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		snprintf(sql, sizeof(sql), basesql, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame);
 	} else
-		snprintf(sql, sizeof(sql), basesql, "main");
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main");
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -1148,7 +1148,7 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 	char sql[BUFSIZ];
 	const char *basesql = ""
 		"SELECT p.name, p.origin, p.version "
-		"FROM '%s'.packages AS p, '%s'.deps AS d "
+		"FROM %Q.packages AS p, %Q.deps AS d "
 		"WHERE p.id = d.package_id "
 			"AND d.origin = ?1;";
 
@@ -1160,9 +1160,9 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
 	} else
-		snprintf(sql, sizeof(sql), basesql, "main", "main");
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -1275,7 +1275,7 @@ pkgdb_load_license(struct pkgdb *db, struct pkg *pkg)
 	const char *reponame = NULL;
 	const char *basesql = ""
 			"SELECT name "
-			"FROM '%s'.pkg_licenses, '%s'.licenses AS l "
+			"FROM %Q.pkg_licenses, %Q.licenses AS l "
 			"WHERE package_id = ?1 "
 			"AND license_id = l.id "
 			"ORDER by name DESC";
@@ -1285,9 +1285,9 @@ pkgdb_load_license(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
 	} else
-		snprintf(sql, sizeof(sql), basesql, "main", "main");
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
 	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_LICENSES, pkg_addlicense, PKG_LICENSES));
 }
@@ -1299,7 +1299,7 @@ pkgdb_load_category(struct pkgdb *db, struct pkg *pkg)
 	const char *reponame = NULL;
 	const char *basesql = ""
 			"SELECT name "
-			"FROM '%s'.pkg_categories, '%s'.categories AS c "
+			"FROM %Q.pkg_categories, %Q.categories AS c "
 			"WHERE package_id = ?1 "
 			"AND category_id = c.id "
 			"ORDER by name DESC";
@@ -1309,9 +1309,9 @@ pkgdb_load_category(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
 	} else
-		snprintf(sql, sizeof(sql), basesql, "main", "main");
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
 	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_CATEGORIES, pkg_addcategory, PKG_CATEGORIES));
 }
@@ -1382,7 +1382,7 @@ pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg)
 	const char *reponame = NULL;
 	const char *basesql = ""
 			"SELECT name "
-			"FROM '%s'.pkg_shlibs, '%s'.shlibs AS s "
+			"FROM %Q.pkg_shlibs, %Q.shlibs AS s "
 			"WHERE package_id = ?1 "
 			"AND shlib_id = s.id "
 			"ORDER by name DESC";
@@ -1392,9 +1392,9 @@ pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		snprintf(sql, sizeof(sql), basesql, reponame, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
 	} else
-		snprintf(sql, sizeof(sql), basesql, "main", "main");
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
 	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_SHLIBS, pkg_addshlib, PKG_SHLIBS));
 }
@@ -1445,7 +1445,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 	char sql[BUFSIZ];
 	const char *basesql = ""
 		"SELECT option, value "
-		"FROM '%s'.options "
+		"FROM %Q.options "
 		"WHERE package_id = ?1";
 
 	assert(db != NULL && pkg != NULL);
@@ -1456,9 +1456,9 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		snprintf(sql, sizeof(sql), basesql, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame);
 	} else {
-		snprintf(sql, sizeof(sql), basesql, "main");
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main");
 	}
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -3102,43 +3102,66 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin)
 static int
 pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 {
-	int attr;
-	char sql[BUFSIZ];
-	int automatic;
+	pkg_set_attr attr;
+	sqlite3_stmt *stmt;
+	int64_t automatic, flatsize;
 	char *oldorigin;
 	char *neworigin;
 
+	/* Ensure there is an entry for each of the pkg_set_attr enum values */
+	const char *sql[PKG_SET_ORIGIN + 1] = {
+		[PKG_SET_FLATSIZE]  = "UPDATE packages SET flatsize=?1 WHERE id=?2",
+		[PKG_SET_AUTOMATIC] = "UPDATE packages SET automatic=?1 WHERE id=?2",
+		[PKG_SET_DEPORIGIN] = "UPDATE deps SET origin=?1, "
+					"name=(SELECT name FROM packages WHERE origin=?1), "
+					"version=(SELECT version FROM packages WHERE origin=?1), "
+					"WHERE package_id=?2 AND origin=?3",
+		[PKG_SET_ORIGIN]    = "UPDATE packages SET origin=?1 WHERE id=?2",
+	};
+
 	while ((attr = va_arg(ap, int)) > 0) {
+		if (sqlite3_prepare_v2(db->sqlite, sql[attr], -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			return (EPKG_FATAL);
+		}
+
 		switch (attr) {
 			case PKG_SET_FLATSIZE:
-				snprintf(sql, BUFSIZ, "update packages set flatsize=%"PRId64" where id=%"PRId64";",
-				    va_arg(ap, int64_t), id);
-				sql_exec(db->sqlite, sql);
+				flatsize = va_arg(ap, int64_t);
+				sqlite3_bind_int64(stmt, 1, flatsize);
+				sqlite3_bind_int64(stmt, 2, id);
 				break;
 			case PKG_SET_AUTOMATIC:
-				automatic = va_arg(ap, int);
-				if (automatic != 0 && automatic != 1)
+				automatic = (int64_t)va_arg(ap, int);
+				if (automatic != 0 && automatic != 1) {
+					sqlite3_finalize(stmt);
 					continue;
-				snprintf(sql, BUFSIZ, "update packages set automatic=%d where id=%"PRId64";", automatic, id);
-				sql_exec(db->sqlite, sql);
+				}
+				sqlite3_bind_int64(stmt, 1, automatic);
+				sqlite3_bind_int64(stmt, 2, id);
 				break;
 			case PKG_SET_DEPORIGIN:
 				oldorigin = va_arg(ap, char *);
 				neworigin = va_arg(ap, char *);
-				sqlite3_snprintf(BUFSIZ, sql, "update deps set origin='%q', "
-				    "name=(select name from packages where origin='%q'), "
-				    "version=(select version from packages where origin='%q') "
-				    "WHERE package_id=%d AND origin='%q';",
-				    neworigin, neworigin, neworigin, id, oldorigin);
-				sql_exec(db->sqlite, sql);
+				sqlite3_bind_text(stmt, 1, neworigin, -1, SQLITE_STATIC);
+				sqlite3_bind_int64(stmt, 2, id);
+				sqlite3_bind_text(stmt, 3, oldorigin, -1, SQLITE_STATIC);
 				break;
 			case PKG_SET_ORIGIN:
 				neworigin = va_arg(ap, char *);
-				sqlite3_snprintf(BUFSIZ, sql, "update packages set origin='%q' where id='%d';", neworigin, id);
-				sql_exec(db->sqlite, sql);
+				sqlite3_bind_text(stmt, 1, neworigin, -1, SQLITE_STATIC);
+				sqlite3_bind_int64(stmt, 2, id);
 				break;
 
 		}
+
+		if (sqlite3_step(stmt) != SQLITE_DONE) {
+			ERROR_SQLITE(db->sqlite);
+			sqlite3_finalize(stmt);
+			return (EPKG_FATAL);
+		}
+		
+		sqlite3_finalize(stmt);
 	}
 	return (EPKG_OK);
 }

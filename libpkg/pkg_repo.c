@@ -260,11 +260,11 @@ get_repo_user_version(sqlite3 *sqlite, const char *database, int *reposcver)
 	sqlite3_stmt *stmt;
 	int retcode;
 	char sql[BUFSIZ];
-	const char *fmt = "PRAGMA \"%s\".user_version";
+	const char *fmt = "PRAGMA %Q.user_version";
 
 	assert(database != NULL);
 
-	snprintf(sql, sizeof(sql), fmt, database);
+	sqlite3_snprintf(sizeof(sql), sql, fmt, database);
 
 	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
 	{
