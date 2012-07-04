@@ -191,20 +191,29 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 		val = yaml_document_get_node(doc, pair->value);
 
 		if (key->data.scalar.length <= 0) {
-			/* ignoring silently */
+			/* 
+			 * ignoring silently empty keys can be empty lines or user mistakes
+			 */
 			++pair;
 			continue;
 		}
 
 		if (val->type == YAML_NO_NODE || (val->type == YAML_SCALAR_NODE && val->data.scalar.length <= 0)) {
-			/* silently skip on purpose */
+			/*
+			 * silently skip on purpose to allow user to leave
+			 * empty lines for examples without complaining
+			 */
 			++pair;
 			continue;
 		}
 		for (i = 0; i < c_size; i++) {
 			if (!strcasecmp(key->data.scalar.value, c[i].key)) {
 				if (c[i].val != NULL) {
-					/* skip env var already set */
+					/*
+					 * skip env var already set
+					 * Env vars have the priority over the
+					 * configuration files
+					 */
 					++pair;
 					continue;
 				}
