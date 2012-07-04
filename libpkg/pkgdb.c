@@ -3102,7 +3102,7 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin)
 static int
 pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 {
-	pkg_set_attr attr;
+	int attr;
 	sqlite3_stmt *stmt;
 	int64_t automatic, flatsize;
 	char *oldorigin;
@@ -3152,7 +3152,6 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 				sqlite3_bind_text(stmt, 1, neworigin, -1, SQLITE_STATIC);
 				sqlite3_bind_int64(stmt, 2, id);
 				break;
-
 		}
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
