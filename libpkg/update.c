@@ -99,9 +99,9 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	else {
 		if (stat(repofile, &st) != -1) {
 			t = st.st_mtime;
-			/* add 1 minute to the timestap because
+			/* add 1 minute to the timestamp because
 			 * repo.sqlite is always newer than repo.txz,
-			 * 10 minutes should be enough
+			 * 1 minute should be enough.
 			 */
 			t += 60;
 		}
