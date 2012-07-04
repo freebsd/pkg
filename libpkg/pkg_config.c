@@ -239,7 +239,10 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 				break;
 			}
 		}
-		/* unknown values are just silently skipped */
+		/*
+		 * unknown values are just silently ignored, because we don't
+		 * care about them
+		 */
 		++pair;
 	}
 }
