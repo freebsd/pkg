@@ -82,4 +82,10 @@ MAN=	pkg.8 \
 MLINKS=	pkg-delete.8 pkg-remove.8 \
 	pkg.8 pkg-static.8
 
+.PHONY: fix-xrefs
+
+fix-xrefs:
+	@./fix-xrefs ${MAN}
+
+
 .include <bsd.prog.mk>
