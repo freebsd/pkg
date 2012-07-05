@@ -56,7 +56,7 @@ exec_delete(int argc, char **argv)
 	int flags = PKG_LOAD_BASIC;
 	int force = 0;
 	bool yes = false;
-	int retcode = 1;
+	int retcode = EX_SOFTWARE;
 	int recursive = 0;
 
 	while ((ch = getopt(argc, argv, "aqgxXfyR")) != -1) {
@@ -110,7 +110,7 @@ exec_delete(int argc, char **argv)
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
 		pkgdb_close(db);
-		return (EPKG_FATAL);
+		return (EX_IOERR);
 	}
 
 	if ((it = pkgdb_query_delete(db, match, argc, argv, recursive)) == NULL)
@@ -126,10 +126,10 @@ exec_delete(int argc, char **argv)
 		if (argc == 0) {
 			if (!quiet)
 				printf("Nothing to do.\n");
-			retcode = EXIT_SUCCESS;
+			retcode = EX_OK;
 		} else {
 			fprintf(stderr, "Package(s) not found!\n");
-			retcode = EXIT_FAILURE;
+			retcode = EX_DATAERR;
 		}
 		goto cleanup;
 	}
@@ -152,7 +152,7 @@ exec_delete(int argc, char **argv)
 
 	pkgdb_compact(db);
 
-	retcode = 0;
+	retcode = EX_OK;
 
 cleanup:
 	pkg_jobs_free(jobs);
