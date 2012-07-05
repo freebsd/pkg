@@ -186,7 +186,7 @@ exec_version(int argc, char **argv)
 		switch (ch) {
 			case 'h':
 				usage_version();
-				return (0);
+				return (EX_OK);
 			case 'I':
 				opt |= VERSION_INDEX;
 				break;
@@ -389,5 +389,5 @@ cleanup:
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
-	return (EPKG_OK);
+	return (EX_OK);
 }
