@@ -85,7 +85,7 @@ password_cb(char *buf, int size, int rwflag, void *key)
 int
 exec_repo(int argc, char **argv)
 {
-	int retcode = EPKG_OK;
+	int ret;
 	int pos = 0;
 	int ch;
 	char *rsa_key;
@@ -114,13 +114,13 @@ exec_repo(int argc, char **argv)
 
 	if (!quiet) {
 		printf("Generating repo.sqlite in %s:  ", argv[0]);
-		retcode = pkg_create_repo(argv[0], force, progress, &pos);
+		ret = pkg_create_repo(argv[0], force, progress, &pos);
 	} else
-		retcode = pkg_create_repo(argv[0], force, NULL, NULL);
+		ret = pkg_create_repo(argv[0], force, NULL, NULL);
 
-	if (retcode != EPKG_OK) {
+	if (ret != EPKG_OK) {
 		printf("cannot create repository catalogue\n");
-		return (retcode);
+		return (EX_IOERR);
 	} else {
 		if (!quiet)
 			printf("\bdone!\n");
@@ -129,5 +129,5 @@ exec_repo(int argc, char **argv)
 	rsa_key = (argc == 2) ? argv[1] : NULL;
 	pkg_finish_repo(argv[0], password_cb, rsa_key);
 
-	return (retcode);
+	return (EX_OK);
 }
