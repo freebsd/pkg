@@ -141,10 +141,10 @@ exec_search(int argc, char **argv)
 	pkgdb_close(db);
 
 	if (!atleastone)
-		ret = EPKG_ERROR;
-	else
-		if (ret == EPKG_END)
-			ret = EPKG_OK;
+		ret = EPKG_FATAL;
+
+	if (ret == EPKG_END)
+		ret = EPKG_OK;
 
 	return ((ret == EPKG_OK) ? EX_OK : EX_SOFTWARE);
 }
