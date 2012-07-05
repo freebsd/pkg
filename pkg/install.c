@@ -56,7 +56,7 @@ exec_install(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
-	int retcode = 1;
+	int retcode = EX_SOFTWARE;
 	int ch;
 	bool yes = false;
 	bool auto_update = true;
@@ -152,7 +152,7 @@ exec_install(int argc, char **argv)
 		printf("%s", sbuf_data(messages));
 	}
 
-	retcode = 0;
+	retcode = EX_OK;
 
 	cleanup:
 	pkg_jobs_free(jobs);

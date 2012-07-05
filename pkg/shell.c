@@ -25,7 +25,9 @@
  */
 
 #include <stdio.h>
+#include <sysexits.h>
 #include <unistd.h>
+
 #include <pkg.h>
 
 #include "pkgcli.h"
@@ -41,5 +43,5 @@ int
 exec_shell(int argc, char **argv)
 {
 	pkgdb_cmd(argc, argv);
-	return EXIT_SUCCESS;
+	return (EX_OK);
 }
