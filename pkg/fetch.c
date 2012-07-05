@@ -54,7 +54,7 @@ exec_fetch(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
-	int retcode = EXIT_FAILURE;
+	int retcode = EX_SOFTWARE;
 	int ch;
 	int flags = PKG_LOAD_BASIC;
 	bool yes = false;
@@ -147,7 +147,7 @@ exec_fetch(int argc, char **argv)
 		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
 			goto cleanup;
 
-	retcode = EXIT_SUCCESS;
+	retcode = EX_OK;
 
 	cleanup:
 	pkg_jobs_free(jobs);
