@@ -104,7 +104,7 @@ usage_update(void)
 int
 exec_update(int argc, char **argv)
 {
-	int retcode = EPKG_OK;
+	int ret;
 	int ch;
 	bool force = false;
 
@@ -134,7 +134,7 @@ exec_update(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	retcode = pkgcli_update(force);
+	ret = pkgcli_update(force);
 
-	return (retcode);
+	return ((ret == EPKG_OK) ? EX_OK : EX_SOFTWARE);
 }
