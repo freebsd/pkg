@@ -765,7 +765,7 @@ exec_query(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	int ch;
 	int ret = EPKG_OK;
-	int retcode = EXIT_SUCCESS;
+	int retcode = EX_OK;
 	int i;
 	char multiline = 0;
 	char *condition = NULL;
@@ -820,12 +820,12 @@ exec_query(int argc, char **argv)
 
 	if (pkgname != NULL) {
 		if (pkg_open(&pkg, pkgname, NULL) != EPKG_OK) {
-			return (1);
+			return (EX_IOERR);
 		}
 		
 		print_query(pkg, argv[0], multiline);
 		pkg_free(pkg);
-		return (EXIT_SUCCESS);
+		return (EX_OK);
 	}
 
 	if (condition != NULL) {
@@ -843,7 +843,7 @@ exec_query(int argc, char **argv)
 			return (EX_IOERR);
 
 		/* do not fail if run as a user */
-		return (EXIT_SUCCESS);
+		return (EX_OK);
 	}
 
 	if (ret != EPKG_OK)

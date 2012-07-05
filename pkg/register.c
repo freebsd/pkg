@@ -97,7 +97,7 @@ exec_register(int argc, char **argv)
 	bool developer = false;
 
 	int i;
-	int ret = EPKG_OK, retcode = EPKG_OK;
+	int ret = EPKG_OK, retcode = EX_OK;
 
 	if (geteuid() != 0) {
 		warnx("registering packages can only be done as root");
@@ -216,7 +216,8 @@ exec_register(int argc, char **argv)
 		free(input_path);
 	}
 
-	retcode = pkgdb_register_ports(db, pkg);
+	if (pkgdb_register_ports(db, pkg) != EPKG_OK)
+		retcode = EX_SOFTWARE;
 
 	pkg_get(pkg, PKG_MESSAGE, &message);
 	if (message != NULL && !legacy)
