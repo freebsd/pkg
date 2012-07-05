@@ -47,7 +47,6 @@ exec_stats(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	int64_t flatsize = 0;
 	char size[7];
-	int retcode = EX_OK;
 	int ch;
 
 	while ((ch = getopt(argc, argv, "q")) != -1) {
@@ -90,5 +89,5 @@ exec_stats(int argc, char **argv)
 
 	pkgdb_close(db);
 
-	return (retcode);
+	return (EX_OK);
 }
