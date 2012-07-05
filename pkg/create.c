@@ -228,8 +228,8 @@ exec_create(int argc, char **argv)
 	}
 
 	if (manifestdir == NULL)
-		return pkg_create_matches(argc, argv, match, fmt, outdir, rootdir, overwrite) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+		return pkg_create_matches(argc, argv, match, fmt, outdir, rootdir, overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE;
 	else
-		return pkg_create_staged(outdir, fmt, rootdir, manifestdir, plist) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+		return pkg_create_staged(outdir, fmt, rootdir, manifestdir, plist) == EPKG_OK ? EX_OK : EX_SOFTWARE;
 }
 
