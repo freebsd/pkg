@@ -152,7 +152,7 @@ exec_set(int argc, char **argv)
 			    oldorigin, neworigin, name, version);
 		if (yes) {
 			if (pkgdb_set(db, pkg, PKG_SET_ORIGIN, neworigin) != EPKG_OK)
-				return (EPKG_FATAL);
+				return (EX_IOERR);
 		}
 		pkgdb_it_free(it);
 	}
@@ -189,7 +189,7 @@ exec_set(int argc, char **argv)
 					 * been queried.
 					 */
 					if (pkgdb_set(db, pkg, PKG_SET_DEPORIGIN, oldorigin, neworigin) != EPKG_OK)
-						return (EPKG_FATAL);
+						return (EX_IOERR);
 				}
 			}
 		}
@@ -202,5 +202,5 @@ exec_set(int argc, char **argv)
 	pkg_free(pkg);
 	pkgdb_close(db);
 
-	return (EXIT_SUCCESS);
+	return (EX_OK);
 }
