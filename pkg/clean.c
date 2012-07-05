@@ -31,6 +31,7 @@
 #include <pkg.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include "pkgcli.h"
@@ -55,7 +56,7 @@ exec_clean(int argc, char **argv)
 	char *paths[2];
 	char *repopath;
 	bool to_delete;
-	int retcode = 1;
+	int retcode = EX_SOFTWARE;
 	int ret;
 
 	(void)argc;
@@ -123,7 +124,7 @@ exec_clean(int argc, char **argv)
 		pkgdb_it_free(it);
 	}
 
-	retcode = 0;
+	retcode = EX_OK;
 
 	cleanup:
 	if (pkg != NULL)
