@@ -605,7 +605,8 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 	while ((ent = fts_read(fts)) != NULL) {
 		const char *name, *version, *origin, *comment, *desc;
 		const char *arch, *maintainer, *www, *prefix;
-		int64_t flatsize, licenselogic;
+		int64_t flatsize;
+		lic_t licenselogic;
 
 		/* skip everything that is not a file */
 		if (ent->fts_info != FTS_F)
@@ -660,7 +661,7 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 	try_again:
 		if ((ret = run_prepared_statement(PKG, origin, name, version,
 		    comment, desc, arch, maintainer, www, prefix,
-		    ent->fts_statp->st_size, flatsize, licenselogic, cksum,
+		    ent->fts_statp->st_size, flatsize, (int64_t)licenselogic, cksum,
 		    pkg_path)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				switch(maybe_delete_conflicting(origin,
