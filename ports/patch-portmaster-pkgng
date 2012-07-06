@@ -1205,7 +1205,7 @@ $FreeBSD$
 +else
 +	if [ -n "$ro_opd" ]; then
 +		echo "===>>> Updating dependency entry for $new_port in each dependent port"
-+		pkg set -yo $ro_opd:$portdir -g "*"
++		pkg set -yo $ro_opd:$portdir
 +	fi
  fi
  
