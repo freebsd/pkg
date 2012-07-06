@@ -49,7 +49,7 @@ exec_search(int argc, char **argv)
 {
 	const char *pattern = NULL;
 	const char *reponame = NULL;
-	int retcode = EPKG_OK, ch;
+	int ret = EPKG_OK, ch;
 	int flags = PKG_LOAD_BASIC;
 	unsigned int opt = 0;
 	match_t match = MATCH_REGEX;
@@ -128,10 +128,10 @@ exec_search(int argc, char **argv)
 
 	if ((it = pkgdb_search(db, pattern, match, field, reponame)) == NULL) {
 		pkgdb_close(db);
-		return (1);
+		return (EX_IOERR);
 	}
 
-	while ((retcode = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
+	while ((ret = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
 		print_info(pkg, opt);
 		atleastone = true;
 	}
@@ -141,9 +141,10 @@ exec_search(int argc, char **argv)
 	pkgdb_close(db);
 
 	if (!atleastone)
-		retcode = EXIT_FAILURE;
-	else
-		retcode = ((retcode == EPKG_OK) || (retcode == EPKG_END)) ? EXIT_SUCCESS : EXIT_FAILURE;
+		ret = EPKG_FATAL;
 
-	return (retcode);
+	if (ret == EPKG_END)
+		ret = EPKG_OK;
+
+	return ((ret == EPKG_OK) ? EX_OK : EX_SOFTWARE);
 }

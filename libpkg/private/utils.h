@@ -32,6 +32,7 @@
 #include <sys/sbuf.h>
 #include <sys/param.h>
 
+#include <openssl/pem.h>
 #include <openssl/sha.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
@@ -43,6 +44,17 @@ struct hardlinks {
 	ino_t *inodes;
 	size_t len;
 	size_t cap;
+};
+
+struct dns_srvinfo {
+	unsigned int type;
+	unsigned int class;
+	unsigned int ttl;
+	unsigned int priority;
+	unsigned int weight;
+	unsigned int port;
+	char host[MAXHOSTNAMELEN];
+	struct dns_srvinfo *next;
 };
 
 void sbuf_init(struct sbuf **);
@@ -68,4 +80,8 @@ int rsa_verify(const char *path, const char *key,
 		unsigned char *sig, unsigned int sig_len);
 
 bool is_hardlink(struct hardlinks *hl, struct stat *st);
+
+struct dns_srvinfo *
+	dns_getsrvinfo(const char *zone);
+
 #endif

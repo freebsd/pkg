@@ -58,7 +58,7 @@ exec_backup(int argc, char **argv)
 	if (argv[1][1] == 'd') {
 		printf("Dumping database...");
 		if (pkgdb_dump(db, dest) == EPKG_FATAL)
-			return (EPKG_FATAL);
+			return (EX_IOERR);
 
 		printf(" done\n");
 	}
@@ -66,12 +66,11 @@ exec_backup(int argc, char **argv)
 	if (argv[1][1] == 'r') {
 		printf("Restoring database...");
 		if (pkgdb_load(db, dest) == EPKG_FATAL)
-			return (EPKG_FATAL);
+			return (EX_IOERR);
 		printf(" done\n");
 	}
 
 	pkgdb_close(db);
 
-
-	return (EPKG_OK);
+	return (EX_OK);
 }

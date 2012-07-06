@@ -29,41 +29,88 @@
 .Sh DESCRIPTION
 .Nm
 is used for installation of packages from a remote package
-repository database.
-It can install multiple packages
-specified on the command-line from multiple repositories.
+repository.
+Multiple package names can be specified on the command line, either
+explicitly or by matching against package names in the repository
+catalogues using shell globbing; standard- or extended regular
+expressions.
 .Pp
-If a package is found to exists in more than one package
-repository the first matching repository is the one that the
-package will be first tried to be fetched from.
-.Pp
-If fetching from the repository fails for some reason the next
-repository, which the package is found to exist is the one that is
-tried until the package is fetched, or all repositories are tried.
-.Pp
-Multiple package repositories is activated only when the environment
-variable
-.Ev PACKAGESITE
-is not defined.
-.Pp
-If
-.Ev PACKAGESITE
-is defined then only the repository to which it
-points is the one that is used during the package installations.
-.Pp
-It is always good to update your package repositories first before
-doing a remote installation using
+.Nm 
+creates a work-list of all the package installations to do.
+Any already installed and up to date packages will be dropped from the
+list unless the
+.Fl f
+(force) option is supplied, in which case those packages will be
+reinstalled.
+The dependencies of packages in the list are examined and any missing
+packages are added to the list for installation.
+Such implicitly added packages are flagged as candidates for
+autoremoval.
+See
+.Xr pkg-autoremove 8
+for details.
+Any already installed but out of date packages, either named on the
+command line or from the sum of all their dependencies are added to
+the work list as upgrade jobs.
+The work list is sorted into dependency order and
 .Nm
+will present it to the user for approval before proceeding, unless
+overridden by the
+.Fl y
+option or the
+.Cm ASSUME_ALWAYS_YES 
+setting in
+.Fa pkg.conf .
 .Pp
-The remote repository will automatically be updated using
-.Xr pkg-update 8 .
-This can be disabled with the
+Autoremoval flags are sticky, and will persist over reinstallation or
+upgrade of the packages concerned, even if subsequently the packages
+are named explicitly on a command line.
+See
+.Xr pkg-query 8
+for finding the autoremoval status of a package, and
+.Xr pkg-set 8
+for modifying it.
+.Pp
+.Nm
+can install packages from multiple repositories.
+Repository catalogues will be downloaded from all listed repositories.
+The order in which repositories are listed in
+.Fa pkg.conf
+is significant.
+If a package is found to exist in more than one repository, package
+fetching will be attempted from each repository listed as containing
+the package in the order specified in
+.Fa pkg.conf ,
+until either the package has been successfully downloaded or all
+the repositories have been tried.
+.Pp
+Multiple package repository support is only activated when neither the
+environment variable
+.Ev PACKAGESITE
+nor the equivalent
+.Cm PACKAGESITE
+configuration setting are defined.
+When
+.Ev PACKAGESITE
+is defined only the referenced repository will be used.
+.Pp
+Package repository catalogues will be automatically updated whenever
+.Xr pkg-update 8
+is run, unless disabled by the
 .Fl L
 flag.
+Updating repository catalogues is highly recommended before doing any
+package installation with
+.Nm .
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl r Op reponame
+In multi-repo mode, override the
+.Fa pkg.conf
+ordering and only attempt to download packages from the named
+repository.
 .It Fl y
 Assume yes when asked for confirmation before package installation.
 .It Fl g
@@ -77,9 +124,9 @@ Force the reinstallation of the package if already installed.
 .It Fl q
 Force quiet output.
 .It Fl L
-Don't auto update the remote database with
+Don't auto update repository catalogues with
 .Xr pkg-update 8 .
-Use the local cache only.
+Use the locally cached copies only.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -115,7 +162,7 @@ See
 .Xr pkg-repo 8 ,
 .Xr pkg-rquery 8 ,
 .Xr pkg-search 8 ,
-.Xr pkg-set 8,
+.Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
 .Xr pkg-stats 8 ,

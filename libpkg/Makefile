@@ -10,6 +10,7 @@ SHLIB_MAJOR=	0
 
 #gr_utils.c has to be deleted as soon as it goes in base
 SRCS=		backup.c \
+		dns_utils.c \
 		fetch.c \
 		packing.c \
 		pkg.c \
@@ -37,6 +38,8 @@ HAVE_GRUTILS!=	grep -q gr_copy /usr/include/libutil.h && echo yes || echo no
 
 .if ${HAVE_GRUTILS} != yes
 SRCS+=	gr_util.c
+.else
+CFLAGS+=	-DHAVE_GRUTILS
 .endif
 
 CFLAGS+=	-std=c99

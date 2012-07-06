@@ -37,17 +37,16 @@
 #include <sys/sbuf.h>
 #include <openssl/pem.h>
 
-#define PKGVERSION "1.0-beta15"
+#define PKGVERSION "1.0-rc1"
 /* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg version comparison
  * in pkgdb_query_newpkgversion() */
-#define PKG_PORTVERSION "1.0.b15_3"
+#define PKG_PORTVERSION "1.0.r1"
 
 struct pkg;
 struct pkg_dep;
 struct pkg_file;
 struct pkg_dir;
 struct pkg_category;
-struct pkg_script;
 struct pkg_option;
 struct pkg_license;
 struct pkg_user;
@@ -173,7 +172,7 @@ typedef enum {
 	PKG_NEWVERSION,
 	PKG_REPONAME,
 	PKG_REPOURL, /* end of fields */
-	PKG_FLATSIZE,
+	PKG_FLATSIZE=64,
 	PKG_NEW_FLATSIZE,
 	PKG_NEW_PKGSIZE,
 	PKG_LICENSE_LOGIC,
@@ -216,14 +215,13 @@ typedef enum {
 	PKG_DIRS,
 	PKG_USERS,
 	PKG_GROUPS,
-	PKG_SCRIPTS,
 	PKG_SHLIBS
 } pkg_list;
 
 /**
  * Determine the type of a pkg_script.
  */
-typedef enum _pkg_script_t {
+typedef enum {
 	PKG_SCRIPT_PRE_INSTALL = 0,
 	PKG_SCRIPT_POST_INSTALL,
 	PKG_SCRIPT_PRE_DEINSTALL,
@@ -233,7 +231,7 @@ typedef enum _pkg_script_t {
 	PKG_SCRIPT_INSTALL,
 	PKG_SCRIPT_DEINSTALL,
 	PKG_SCRIPT_UPGRADE
-} pkg_script_t;
+} pkg_script;
 
 typedef enum _pkg_jobs_t {
 	PKG_JOBS_INSTALL,
@@ -258,6 +256,8 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_ABI = 13,
 	PKG_CONFIG_DEVELOPER_MODE = 14,
 	PKG_CONFIG_PORTAUDIT_SITE = 15,
+	PKG_CONFIG_SRV_MIRROR = 16,
+	PKG_CONFIG_FETCH_RETRY = 17,
 } pkg_config_key;
 
 typedef enum {
@@ -312,6 +312,10 @@ typedef enum {
 	 * unkown keyword
 	 */
 	EPKG_UNKNOWN,
+	/**
+	 * repo DB schema incompatible version
+	 */
+	EPKG_REPOSCHEMA,
 } pkg_error_t;
 
 /**
@@ -415,13 +419,6 @@ int pkg_users(struct pkg *pkg, struct pkg_user **user);
  * @return An error code.
  */
 int pkg_groups(struct pkg *pkg, struct pkg_group **group);
-
-/**
- * Iterates over the scripts of the package.
- * @param script Must be set to NULL for the first call.
- * @return An error code.
- */
-int pkg_scripts(struct pkg *, struct pkg_script **script);
 
 /**
  * Iterates over the options of the package.
@@ -570,14 +567,14 @@ int pkg_addgid(struct pkg *pkg, const char *group, const char *gidstr);
  * @param path The path to the script on disk.
  @ @return An error code.
  */
-int pkg_addscript(struct pkg *pkg, const char *data, pkg_script_t type);
+int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
 
 /**
  * Helper which call pkg_addscript() with the content of the file and
  * with the correct type.
  */
 int pkg_addscript_file(struct pkg *pkg, const char *path);
-int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type);
+int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
 
 /**
  * Allocate a new struct pkg_option and add it to the options of pkg.
@@ -626,8 +623,7 @@ const char *pkg_group_name(struct pkg_group *);
 const char *pkg_group_gidstr(struct pkg_group *);
 
 /* pkg_script */
-const char *pkg_script_data(struct pkg_script *);
-pkg_script_t pkg_script_type(struct pkg_script *);
+const char *pkg_script_get(struct pkg *, pkg_script type);
 
 /* pkg_option */
 const char *pkg_option_opt(struct pkg_option *);
@@ -647,11 +643,12 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
 /**
  * Create a repository database.
  * @param path The path where the repository live.
+ * @param force If true, rebuild the repository catalogue from scratch
  * @param callback A function which is called at every step of the process.
  * @param data A pointer which is passed to the callback.
  * @param sum An 65 long char array to receive the sha256 sum
  */
-int pkg_create_repo(char *path, void (*callback)(struct pkg *, void *), void *);
+int pkg_create_repo(char *path, bool force, void (*callback)(struct pkg *, void *), void *);
 int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path);
 
 /**
@@ -823,8 +820,9 @@ int pkg_create_staged(const char *, pkg_formats, const char *, const char *, cha
 
 /**
  * Download the latest repo db file and checks its signature if any
+ * @param force Always download the repo catalogue
  */
-int pkg_update(const char *name, const char *packagesite);
+int pkg_update(const char *name, const char *packagesite, bool force);
 
 /**
  * Get statistics information from the package database(s)
@@ -841,6 +839,7 @@ int pkg_config_string(pkg_config_key key, const char **value);
 int pkg_config_bool(pkg_config_key key, bool *value);
 int pkg_config_list(pkg_config_key key, struct pkg_config_kv **kv);
 const char *pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type);
+int pkg_config_int64(pkg_config_key key, int64_t *value);
 
 /**
  * @todo Document

@@ -20,26 +20,31 @@
 .Os
 .Sh NAME
 .Nm "pkg update"
-.Nd updates remote package repository databases
+.Nd updates the local copy of a repository catalogue from the remote package
+repository
 .Sh SYNOPSIS
 .Nm
-.Op Fl q
+.Op Fl fq
 .Sh DESCRIPTION
 .Nm
-is used for updating from remote package repository databases.
+is used for updating the local copy of a repository catalogue from the remote
+package repository database.
+Updates to catalogues are normally downloaded
+only when the master copy on the remote package repository is newer than the
+local copy.
 .Pp
-The remote repository databases to be updated are defined in the
+The remote repository catalogues to be updated are defined in the
 .Xr pkg.conf 5
 file.
 .Pp
 It is always a good idea to update your remote package
-repositories before doing a remote install via
+repository catalogues before doing a remote install via
 .Xr pkg-install 8
 or upgrades via
 .Xr pkg-upgrade 8 .
 .Pp
 .Ss Signed repositories
-If the repository is signed and
+If the repository catalogue is signed and
 .Ev PUBKEY
 is defined, it will be verified after being downloaded.
 See
@@ -51,6 +56,9 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl q
 Force quiet output
+.It Fl f
+Force a full download of the repository catalogue without regard to the
+respective ages of the local and remote copies of the catalogue
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

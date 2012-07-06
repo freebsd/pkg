@@ -94,7 +94,11 @@ The default hierarchy has lots of symlinks which should just be ignored and thus
 
 Here is how to do that:
 
-    sh -c 'find . -name "*.txz" -exec pkg query -f {} %o \;' | sort | uniq -d
+    sh -c 'find . -type f -name "*-*.txz" -exec pkg query -F {} %o \;' | sort | uniq -d
+
+As of beta17, `pkg repo` will emit a warning message and ignore any
+older versions if it finds multiple packages from the same origin
+when building a repo.
 
 <a name="11"></a>
 ### Q: How to start working with multi-repos in pkgng?

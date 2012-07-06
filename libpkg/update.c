@@ -64,7 +64,7 @@ remote_add_indexes(const char *reponame)
 }
 
 int
-pkg_update(const char *name, const char *packagesite)
+pkg_update(const char *name, const char *packagesite, bool force)
 {
 	char url[MAXPATHLEN];
 	struct archive *a = NULL;
@@ -94,12 +94,17 @@ pkg_update(const char *name, const char *packagesite)
 	}
 
 	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
-	if (stat(repofile, &st) != -1) {
-		t = st.st_mtime;
-		/* add 10 minutes to the timestap because repo.sqlite is
-		 * always newer than repo.txz, 10 minutes should be enough
-		 */
-		t += 600;
+	if (force)
+		t = 0;		/* Always fetch */
+	else {
+		if (stat(repofile, &st) != -1) {
+			t = st.st_mtime;
+			/* add 1 minute to the timestamp because
+			 * repo.sqlite is always newer than repo.txz,
+			 * 10 minutes should be enough
+			 */
+			t += 60;
+		}
 	}
 
 	if ((rc = pkg_fetch_file(url, tmp, t)) != EPKG_OK) {

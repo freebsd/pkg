@@ -90,7 +90,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	}
 
 	(*pack)->resolver = archive_entry_linkresolver_new();
-	archive_entry_linkresolver_set_strategy((*pack)->resolver, archive_format((*pack)->awrite));
+	archive_entry_linkresolver_set_strategy((*pack)->resolver, ARCHIVE_FORMAT_TAR_PAX_RESTRICTED);
 	return (EPKG_OK);
 }
 

@@ -181,12 +181,12 @@ exec_info(int argc, char **argv)
 			return (EX_IOERR);
 
 		if (match == MATCH_ALL)
-			return (EXIT_SUCCESS);
+			return (EX_OK);
 
 		if ((opt & INFO_QUIET) == 0)
 			printf("No packages installed.\n");
 
-		return (EXIT_FAILURE);
+		return (EX_UNAVAILABLE);
 	}
 
 	if (ret != EPKG_OK)
@@ -348,15 +348,15 @@ exec_info(int argc, char **argv)
 				}
 			}
 			if (opt & INFO_EXISTS)
-				retcode = 0;
+				retcode = EX_OK;
 			else
 				print_info(pkg, opt);
 		}
 		if (ret != EPKG_END) {
-			retcode = 1;
+			retcode = EX_IOERR;
 		}
 
-		if (retcode == 0 && !gotone && match != MATCH_ALL) {
+		if (retcode == EX_OK && !gotone && match != MATCH_ALL) {
 			if ((opt & INFO_QUIET) == 0)
 				warnx("No package(s) matching %s", argv[i]);
 			retcode = EX_SOFTWARE;

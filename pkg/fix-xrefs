@@ -1,0 +1,52 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use autodie;
+use feature qw(switch);
+
+require 5.10.1;
+
+$0 =~ s@.*/@@;
+
+MAIN:
+{
+    my @xrefs;
+    my $see_also;
+
+    @xrefs = map { (my $x = $_) =~ s/^(\S+)\.(\d)/.Xr $1 $2/; $x } @ARGV;
+
+    eval {
+        for my $man (@ARGV)
+        {
+            open READ,  "<$man";
+            open WRITE, ">$man.new";
+
+            $see_also = undef;
+
+            while (<READ>) {
+                if (/^\.Sh SEE ALSO/) {
+                    $see_also = 1;
+                    print WRITE $_;
+                    print WRITE join( " ,\n", grep { !/$man/ } @xrefs ), "\n";
+                    next;
+                }
+                if ( $see_also && /^\.Xr/ ) {
+                    next;
+                }
+                print WRITE $_;
+            }
+            close READ;
+            close WRITE;
+
+	    rename "$man.new", $man;
+        }
+    };
+    given ($@) {
+        when (undef)  { exit 0; }
+        when ('')     { exit 0; }
+        when ('open') { die "$0: open() failed -- $@\n"; }
+        default       { die "$0: Error -- $@\n"; }
+    }
+    exit 0;
+}

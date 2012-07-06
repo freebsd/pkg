@@ -45,7 +45,6 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
 	{ 'F', "ps",		1, PKG_LOAD_FILES }, 
-	{ 'S', "",		1, PKG_LOAD_SCRIPTS },
 	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
 	{ 'D', "",		1, PKG_LOAD_DIRS },
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
@@ -224,9 +223,6 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					else if (qstr[0] == 's')
 						sbuf_cat(dest, pkg_file_get((struct pkg_file *)data, PKG_FILE_SUM));
 					break;
-				case 'S':
-					sbuf_cat(dest, pkg_script_data((struct pkg_script *)data));	
-					break;
 				case 'O':
 					qstr++;
 					if (qstr[0] == 'k')
@@ -303,7 +299,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_license *lic = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
-	struct pkg_script *scripts = NULL;
 	struct pkg_shlib *shlib = NULL;
 
 	switch (multiline) {
@@ -358,12 +353,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		case 'G':
 			while (pkg_groups(pkg, &group) == EPKG_OK) {
 				format_str(pkg, output, qstr, group);
-				printf("%s\n", sbuf_data(output));
-			}
-			break;
-		case 'S':
-			while (pkg_scripts(pkg, &scripts) == EPKG_OK) {
-				format_str(pkg, output, qstr, scripts);
 				printf("%s\n", sbuf_data(output));
 			}
 			break;
@@ -472,29 +461,36 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_categories AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							case 'F':
+								if (for_remote)
+									goto bad_option;
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sfiles AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							case 'O':
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %soptions AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							case 'D':
+								if (for_remote)
+									goto bad_option;
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_directories AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							case 'L':
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_licenses AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							case 'U':
+								if (for_remote)
+									goto bad_option;
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_users AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							case 'G':
+								if (for_remote)
+									goto bad_option;
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_groups AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							case 'B':
 								sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs AS d WHERE d.package_id=p.id)", dbstr);
 								break;
 							default:
-								fprintf(stderr, "malformed evaluation string\n");
-								return (EPKG_FATAL);
+								goto bad_option;
 						}
 						state = OPERATOR_INT;
 						break;
@@ -769,7 +765,7 @@ exec_query(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	int ch;
 	int ret = EPKG_OK;
-	int retcode = EXIT_SUCCESS;
+	int retcode = EX_OK;
 	int i;
 	char multiline = 0;
 	char *condition = NULL;
@@ -824,12 +820,12 @@ exec_query(int argc, char **argv)
 
 	if (pkgname != NULL) {
 		if (pkg_open(&pkg, pkgname, NULL) != EPKG_OK) {
-			return (1);
+			return (EX_IOERR);
 		}
 		
 		print_query(pkg, argv[0], multiline);
 		pkg_free(pkg);
-		return (EXIT_SUCCESS);
+		return (EX_OK);
 	}
 
 	if (condition != NULL) {
@@ -847,7 +843,7 @@ exec_query(int argc, char **argv)
 			return (EX_IOERR);
 
 		/* do not fail if run as a user */
-		return (EXIT_SUCCESS);
+		return (EX_OK);
 	}
 
 	if (ret != EPKG_OK)

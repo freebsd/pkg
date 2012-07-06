@@ -41,6 +41,7 @@
 #include "private/utils.h"
 
 #define PKG_NUM_FIELDS 18
+#define PKG_NUM_SCRIPTS 8
 
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM | \
 		ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_ACL | \
@@ -60,13 +61,13 @@ struct pkg {
 	int64_t flatsize;
 	int64_t new_flatsize;
 	int64_t new_pkgsize;
+	struct sbuf * scripts[PKG_NUM_SCRIPTS];
 	STAILQ_HEAD(categories, pkg_category) categories;
 	STAILQ_HEAD(licenses, pkg_license) licenses;
 	STAILQ_HEAD(deps, pkg_dep) deps;
 	STAILQ_HEAD(rdeps, pkg_dep) rdeps;
 	STAILQ_HEAD(files, pkg_file) files;
 	STAILQ_HEAD(dirs, pkg_dir) dirs;
-	STAILQ_HEAD(scripts, pkg_script) scripts;
 	STAILQ_HEAD(options, pkg_option) options;
 	STAILQ_HEAD(users, pkg_user) users;
 	STAILQ_HEAD(groups, pkg_group) groups;
@@ -116,12 +117,6 @@ struct pkg_dir {
 	STAILQ_ENTRY(pkg_dir) next;
 };
 
-struct pkg_script {
-	struct sbuf *data;
-	pkg_script_t type;
-	STAILQ_ENTRY(pkg_script) next;
-};
-
 struct pkg_option {
 	struct sbuf *key;
 	struct sbuf *value;
@@ -160,6 +155,18 @@ struct pkg_shlib {
 	STAILQ_ENTRY(pkg_shlib) next;
 };
 
+
+/* sql helpers */
+
+typedef struct _sql_prstmt {
+	sqlite3_stmt *stmt;
+	const char *sql;
+	const char *argtypes;
+} sql_prstmt;
+
+#define STMT(x) (sql_prepared_statements[(x)].stmt)
+#define SQL(x)  (sql_prepared_statements[(x)].sql)
+
 /**
  * rc script actions
  */
@@ -184,7 +191,7 @@ int pkg_repo_fetch(struct pkg *pkg);
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
-int pkg_script_run(struct pkg *, pkg_script_t type);
+int pkg_script_run(struct pkg *, pkg_script type);
 
 int pkg_add_user_group(struct pkg *pkg);
 int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
@@ -207,9 +214,6 @@ void pkg_category_free(struct pkg_category *);
 
 int pkg_license_new(struct pkg_license **);
 void pkg_license_free(struct pkg_license *);
-
-int pkg_script_new(struct pkg_script **);
-void pkg_script_free(struct pkg_script *);
 
 int pkg_option_new(struct pkg_option **);
 void pkg_option_free(struct pkg_option *);
@@ -245,6 +249,9 @@ int pkgdb_integrity_check(struct pkgdb *db);
 struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin);
 
 int pkg_set_mtree(struct pkg *, const char *mtree);
+
+/* pkg repo related */
+int pkg_check_repo_version(struct pkgdb *db, const char *database);
 
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);

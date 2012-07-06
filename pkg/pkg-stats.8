@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd June 24, 2012
+.Dd July 6, 2012
 .Dt PKG-STATS 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd package database statistics
 .Sh SYNOPSIS
 .Nm
-.Op Fl q
+.Op Fl qlr
 .Sh DESCRIPTION
 .Nm
 is used to display different statistics about the package databases.
@@ -34,6 +34,10 @@ The following options are supported by
 .It Fl q
 Quiet mode.
 Show less output.
+.It Fl l
+Display stats only for the local package database.
+.It Fl r
+Display stats only for the remote package database(s).
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -47,12 +51,12 @@ for further description.
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
-.Xr pkg-set 8 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,

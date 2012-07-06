@@ -71,6 +71,7 @@ MAN=	pkg.8 \
 	pkg-set.8 \
 	pkg-shell.8 \
 	pkg-shlib.8 \
+	pkg-stats.8 \
 	pkg-update.8 \
 	pkg-updating.8 \
 	pkg-upgrade.8 \
@@ -80,5 +81,11 @@ MAN=	pkg.8 \
 
 MLINKS=	pkg-delete.8 pkg-remove.8 \
 	pkg.8 pkg-static.8
+
+.PHONY: fix-xrefs
+
+fix-xrefs:
+	@./fix-xrefs ${MAN}
+
 
 .include <bsd.prog.mk>

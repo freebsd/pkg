@@ -171,7 +171,7 @@ main(int argc, char **argv)
 	signed char ch;
 	int debug = 0;
 	int version = 0;
-	int ret = EXIT_SUCCESS;
+	int ret = EX_OK;
 	const char *buf = NULL;
 	bool b;
 	struct pkg_config_kv *kv = NULL;
@@ -205,7 +205,7 @@ main(int argc, char **argv)
 
 	if (version == 1) {
 		printf(PKGVERSION""GITHASH"\n");
-		exit(EXIT_SUCCESS);
+		exit(EX_OK);
 	}
 	if (argc == 0 && version == 0)
 		usage();
@@ -280,7 +280,7 @@ main(int argc, char **argv)
 			printf("Repository: %s\n", buf ? buf : "none");
 		}
 		pkg_shutdown();
-		exit(EXIT_SUCCESS);
+		exit(EX_OK);
 	}
 
 	len = strlen(argv[0]);

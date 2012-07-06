@@ -100,13 +100,16 @@ void usage_shlib(void);
 char *sanitize(char *, const char *, size_t);
 
 /* pkg stats */
+#define STATS_LOCAL (1<<0)
+#define STATS_REMOTE (1<<1)
+
 int exec_stats(int, char **);
 void usage_stats(void);
 
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);
-int pkgcli_update(void);
+int pkgcli_update(bool);
 
 /* pkg updating */
 int exec_updating(int, char **);

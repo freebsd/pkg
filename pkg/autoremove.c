@@ -88,7 +88,7 @@ exec_autoremove(int argc, char **argv)
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
 		pkgdb_close(db);
-		return (EPKG_FATAL);
+		return (EX_IOERR);
 	}
 
 	if ((it = pkgdb_query_autoremove(db)) == NULL) {
@@ -152,5 +152,5 @@ exec_autoremove(int argc, char **argv)
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
-	return (retcode);
+	return ((retcode == EPKG_OK) ? EX_OK : EX_SOFTWARE);
 }

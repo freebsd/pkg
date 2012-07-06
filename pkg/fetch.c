@@ -42,7 +42,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxXadL] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxXaRL] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
 }
 
@@ -54,14 +54,14 @@ exec_fetch(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
-	int retcode = EXIT_FAILURE;
+	int retcode = EX_SOFTWARE;
 	int ch;
 	int flags = PKG_LOAD_BASIC;
 	bool yes = false;
 	bool auto_update = true;
 	match_t match = MATCH_EXACT;
 
-	while ((ch = getopt(argc, argv, "ygxXr:qaLd")) != -1) {
+	while ((ch = getopt(argc, argv, "ygxXr:qaLR")) != -1) {
 		switch (ch) {
 		case 'y':
 			yes = true;
@@ -87,7 +87,7 @@ exec_fetch(int argc, char **argv)
 		case 'L':
 			auto_update = false;
 			break;
-		case 'd':
+		case 'R':
 			flags |= PKG_LOAD_DEPS;
 			break;
 		default:
@@ -110,7 +110,7 @@ exec_fetch(int argc, char **argv)
 	}
 
 	/* first update the remote repositories if needed */
-	if (auto_update && (retcode = pkgcli_update()) != EPKG_OK)
+	if (auto_update && (retcode = pkgcli_update(false)) != EPKG_OK)
 		return (retcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
@@ -147,7 +147,7 @@ exec_fetch(int argc, char **argv)
 		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
 			goto cleanup;
 
-	retcode = EXIT_SUCCESS;
+	retcode = EX_OK;
 
 	cleanup:
 	pkg_jobs_free(jobs);

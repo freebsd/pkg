@@ -42,6 +42,7 @@
 #define STRING 0
 #define BOOL 1
 #define LIST 2
+#define INTEGER 3
 
 struct pkg_config_kv {
 	char *key;
@@ -158,6 +159,18 @@ static struct config_entry c[] = {
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
 		{ NULL }
 	},
+	[PKG_CONFIG_SRV_MIRROR] = {
+		BOOL,
+		"SRV_MIRRORS",
+		"NO",
+		{ NULL }
+	},
+	[PKG_CONFIG_FETCH_RETRY] = {
+		INTEGER,
+		"FETCH_RETRY",
+		"3",
+		{ NULL }
+	},
 };
 
 static bool parsed = false;
@@ -178,20 +191,29 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 		val = yaml_document_get_node(doc, pair->value);
 
 		if (key->data.scalar.length <= 0) {
-			/* ignoring silently */
+			/* 
+			 * ignoring silently empty keys can be empty lines or user mistakes
+			 */
 			++pair;
 			continue;
 		}
 
 		if (val->type == YAML_NO_NODE || (val->type == YAML_SCALAR_NODE && val->data.scalar.length <= 0)) {
-			/* silently skip on purpose */
+			/*
+			 * silently skip on purpose to allow user to leave
+			 * empty lines for examples without complaining
+			 */
 			++pair;
 			continue;
 		}
 		for (i = 0; i < c_size; i++) {
 			if (!strcasecmp(key->data.scalar.value, c[i].key)) {
 				if (c[i].val != NULL) {
-					/* skip env var already set */
+					/*
+					 * skip env var already set
+					 * Env vars have the priority over the
+					 * configuration files
+					 */
 					++pair;
 					continue;
 				}
@@ -217,7 +239,10 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 				break;
 			}
 		}
-		/* unknown values are just silently skipped */
+		/*
+		 * unknown values are just silently ignored, because we don't
+		 * care about them
+		 */
 		++pair;
 	}
 }
@@ -242,6 +267,33 @@ pkg_config_string(pkg_config_key key, const char **val)
 	if (*val == NULL)
 		*val = c[key].def;
 
+	return (EPKG_OK);
+}
+
+int
+pkg_config_int64(pkg_config_key key, int64_t *val)
+{
+	const char *errstr = NULL;
+
+	*val = 0;
+
+	if (parsed != true) {
+		pkg_emit_error("pkg_init() must be called before pkg_config_int64()");
+		return (EPKG_FATAL);
+	}
+
+	if (c[key].type != INTEGER) {
+		pkg_emit_error("this config entry is not an integer");
+		return (EPKG_FATAL);
+	}
+	if (c[key].val != NULL) {
+		*val = strtonum(c[key].val, 0, INT64_MAX, &errstr);
+		if (errstr != NULL) {
+			pkg_emit_error("Unable to convert %s to int64: %s",
+			    c[key].val, errstr);
+			return (EPKG_FATAL);
+		}
+	}
 	return (EPKG_OK);
 }
 
@@ -389,6 +441,8 @@ pkg_shutdown(void)
 				free(c[i].val);
 				break;
 			case LIST:
+				break;
+			case INTEGER:
 				break;
 			default:
 				err(1, "unknown config entry type");

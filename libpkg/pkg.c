@@ -74,7 +74,6 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	STAILQ_INIT(&(*pkg)->rdeps);
 	STAILQ_INIT(&(*pkg)->files);
 	STAILQ_INIT(&(*pkg)->dirs);
-	STAILQ_INIT(&(*pkg)->scripts);
 	STAILQ_INIT(&(*pkg)->options);
 	STAILQ_INIT(&(*pkg)->users);
 	STAILQ_INIT(&(*pkg)->groups);
@@ -98,6 +97,9 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	for (i = 0; i < PKG_NUM_FIELDS; i++)
 		sbuf_reset(pkg->fields[i]);
 
+	for (i = 0; i < PKG_NUM_SCRIPTS; i++)
+		sbuf_reset(pkg->scripts[i]);
+
 	pkg->flatsize = 0;
 	pkg->new_flatsize = 0;
 	pkg->new_pkgsize = 0;
@@ -111,7 +113,6 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_RDEPS);
 	pkg_list_free(pkg, PKG_FILES);
 	pkg_list_free(pkg, PKG_DIRS);
-	pkg_list_free(pkg, PKG_SCRIPTS);
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
 	pkg_list_free(pkg, PKG_GROUPS);
@@ -130,13 +131,15 @@ pkg_free(struct pkg *pkg)
 	for (int i = 0; i < PKG_NUM_FIELDS; i++)
 		sbuf_free(pkg->fields[i]);
 
+	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
+		sbuf_free(pkg->scripts[i]);
+
 	pkg_list_free(pkg, PKG_LICENSES);
 	pkg_list_free(pkg, PKG_CATEGORIES);
 	pkg_list_free(pkg, PKG_DEPS);
 	pkg_list_free(pkg, PKG_RDEPS);
 	pkg_list_free(pkg, PKG_FILES);
 	pkg_list_free(pkg, PKG_DIRS);
-	pkg_list_free(pkg, PKG_SCRIPTS);
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
 	pkg_list_free(pkg, PKG_GROUPS);
@@ -417,14 +420,6 @@ pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
 }
 
 int
-pkg_scripts(struct pkg *pkg, struct pkg_script **s)
-{
-	assert(pkg != NULL);
-
-	PKG_LIST_NEXT(&pkg->scripts, *s);
-}
-
-int
 pkg_options(struct pkg *pkg, struct pkg_option **o)
 {
 	assert(pkg != NULL);
@@ -699,17 +694,13 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 }
 
 int
-pkg_addscript(struct pkg *pkg, const char *data, pkg_script_t type)
+pkg_addscript(struct pkg *pkg, const char *data, pkg_script type)
 {
-	struct pkg_script *s;
+	struct sbuf **sbuf;
 
 	assert(pkg != NULL);
-
-	pkg_script_new(&s);
-	sbuf_set(&s->data, data);
-	s->type = type;
-
-	STAILQ_INSERT_TAIL(&pkg->scripts, s, next);
+	sbuf = &pkg->scripts[type];
+	sbuf_set(sbuf, data);
 
 	return (EPKG_OK);
 }
@@ -719,7 +710,7 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 {
 	char *filename;
 	char *data;
-	pkg_script_t type;
+	pkg_script type;
 	int ret = EPKG_OK;
 	off_t sz = 0;
 
@@ -771,31 +762,19 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 }
 
 int
-pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script_t type)
+pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type)
 {
-	struct pkg_script *s = NULL;
+	struct sbuf **s;
 
 	assert(pkg != NULL);
 	assert(cmd != NULL && cmd[0] != '\0');
 
-	while (pkg_scripts(pkg, &s) == EPKG_OK) {
-		if (pkg_script_type(s) == type) {
-			break;
-		}
-	}
+	if (pkg_script_get(pkg, type) == NULL)
+		return (pkg_addscript(pkg, cmd, type));
 
-	if (s != NULL) {
-		sbuf_cat(s->data, cmd);
-		sbuf_finish(s->data);
-		return (EPKG_OK);
-	}
-
-	pkg_script_new(&s);
-	sbuf_set(&s->data, cmd);
-
-	s->type = type;
-
-	STAILQ_INSERT_TAIL(&pkg->scripts, s, next);
+	s = &pkg->scripts[type];
+	sbuf_cat(*s, cmd);
+	sbuf_finish(*s);
 
 	return (EPKG_OK);
 }
@@ -869,8 +848,6 @@ pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 			return (STAILQ_EMPTY(&pkg->users));
 		case PKG_GROUPS:
 			return (STAILQ_EMPTY(&pkg->groups));
-		case PKG_SCRIPTS:
-			return (STAILQ_EMPTY(&pkg->scripts));
 		case PKG_SHLIBS:
 			return (STAILQ_EMPTY(&pkg->shlibs));
 	}
@@ -888,7 +865,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_dir *dir;
 	struct pkg_user *u;
 	struct pkg_group *g;
-	struct pkg_script *s;
 	struct pkg_shlib *sl;
 
 	switch (list) {
@@ -927,10 +903,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		case PKG_GROUPS:
 			LIST_FREE(&pkg->groups, g, pkg_group_free);
 			pkg->flags &= ~PKG_LOAD_GROUPS;
-			break;
-		case PKG_SCRIPTS:
-			LIST_FREE(&pkg->scripts, s, pkg_script_free);
-			pkg->flags &= ~PKG_LOAD_SCRIPTS;
 			break;
 		case PKG_SHLIBS:
 			LIST_FREE(&pkg->shlibs, sl, pkg_shlib_free);

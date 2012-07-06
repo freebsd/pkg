@@ -233,7 +233,6 @@ exec_check(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
-	int retcode = EX_OK;
 	int ret;
 	int ch;
 	bool yes = false;
@@ -302,7 +301,7 @@ exec_check(int argc, char **argv)
 		if (geteuid() == 0)
 			return (EX_IOERR);
 
-		return (retcode);
+		return (EX_OK);
 	}
 
 	if (ret != EPKG_OK)
@@ -358,5 +357,5 @@ exec_check(int argc, char **argv)
 	pkg_free(pkg);
 	pkgdb_close(db);
 
-	return (retcode);
+	return (EX_OK);
 }
