@@ -47,7 +47,7 @@ dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
 	struct pkgdb_it *it;
 	int ret = EPKG_FATAL;
 
-	it = pkgdb_query(db, pkg_dep_get(dep, PKG_DEP_ORIGIN), MATCH_EXACT);
+	it = pkgdb_query(db, pkg_dep_origin(dep), MATCH_EXACT);
 
 	if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK)
 		ret = EPKG_OK;
@@ -201,7 +201,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (dep_installed(dep, db) != EPKG_OK) {
 			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
-					 pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION),
+					 pkg_dep_name(dep), pkg_dep_version(dep),
 					 ext);
 
 			if ((flags & PKG_ADD_UPGRADE) == 0 && access(dpath, F_OK) == 0) {

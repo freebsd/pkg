@@ -220,7 +220,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 			printf("%s-%s depends on:\n", name, version);
 
                 while (pkg_deps(pkg, &dep) == EPKG_OK) {
-                        printf("%s-%s\n", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
+                        printf("%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
                 }
 
                 if (!(opt & INFO_QUIET))
@@ -233,7 +233,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 			printf("%s-%s is required by:\n", name, version);
 
                 while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-                        printf("%s-%s\n", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
+                        printf("%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
                 }
 
                 if (!(opt & INFO_QUIET))
@@ -243,7 +243,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
 			printf("%s-%s owns the following files:\n", name, version);
 
                 while (pkg_files(pkg, &file) == EPKG_OK) {
-                        printf("%s\n", pkg_file_get(file, PKG_FILE_PATH));
+                        printf("%s\n", pkg_file_path(file));
                 }
 
                 if (!(opt & INFO_QUIET))

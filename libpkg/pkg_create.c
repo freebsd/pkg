@@ -62,11 +62,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	 */
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_get(file, PKG_FILE_PATH));
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_path(file));
 		else
-			strlcpy(fpath, pkg_file_get(file, PKG_FILE_PATH), sizeof(fpath));
+			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
 
-		if ((pkg_file_get(file, PKG_FILE_SUM) == NULL || pkg_file_get(file, PKG_FILE_SUM)[0] == '\0') && lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
+		if ((pkg_file_cksum(file) == NULL || pkg_file_cksum(file)[0] == '\0') && lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
 			if (sha256_file(fpath, sha256) != EPKG_OK)
 				return (EPKG_FATAL);
 			strlcpy(file->sum, sha256, sizeof(file->sum));
@@ -83,11 +83,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_get(file, PKG_FILE_PATH));
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_path(file));
 		else
-			strlcpy(fpath, pkg_file_get(file, PKG_FILE_PATH), sizeof(fpath));
+			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
 
-		ret = packing_append_file_attr(pkg_archive, fpath, pkg_file_get(file, PKG_FILE_PATH), file->uname, file->gname, file->perm);
+		ret = packing_append_file_attr(pkg_archive, fpath, pkg_file_path(file), file->uname, file->gname, file->perm);
 		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 		if (developer && ret != EPKG_OK)
 			return (ret);

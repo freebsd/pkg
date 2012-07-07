@@ -736,9 +736,9 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		if (map == -1)
 			manifest_append_map(map, mapping, "deps", BLOCK);
 
-		manifest_append_map(depkv, map, pkg_dep_get(dep, PKG_DEP_NAME), FLOW);
-		manifest_append_kv(depkv, "origin", pkg_dep_get(dep, PKG_DEP_ORIGIN), PLAIN);
-		manifest_append_kv(depkv, "version", pkg_dep_get(dep, PKG_DEP_VERSION), PLAIN);
+		manifest_append_map(depkv, map, pkg_dep_name(dep), FLOW);
+		manifest_append_kv(depkv, "origin", pkg_dep_origin(dep), PLAIN);
+		manifest_append_kv(depkv, "version", pkg_dep_version(dep), PLAIN);
 	}
 
 	seq = -1;
@@ -787,8 +787,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (map == -1)
 			manifest_append_map(map, mapping, "files", BLOCK);
-		urlencode(pkg_file_get(file, PKG_FILE_PATH), &tmpsbuf);
-		manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-", PLAIN);
+		urlencode(pkg_file_path(file), &tmpsbuf);
+		manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_file_cksum(file) && strlen(pkg_file_cksum(file)) > 0 ? pkg_file_cksum(file) : "-", PLAIN);
 	}
 
 	seq = -1;

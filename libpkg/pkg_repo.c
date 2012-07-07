@@ -690,9 +690,9 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 		dep = NULL;
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			if (run_prepared_statement(DEPS, 
-			    pkg_dep_get(dep, PKG_DEP_ORIGIN),
-			    pkg_dep_get(dep, PKG_DEP_NAME),
-			    pkg_dep_get(dep, PKG_DEP_VERSION),
+			    pkg_dep_origin(dep),
+			    pkg_dep_name(dep),
+			    pkg_dep_version(dep),
 			    package_id) != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;

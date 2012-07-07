@@ -144,7 +144,7 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		fprintf(stderr, "%s-%s is required by:", name, version);
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-			fprintf(stderr, " %s-%s", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
+			fprintf(stderr, " %s-%s", pkg_dep_name(dep), pkg_dep_version(dep));
 		}
 		if (ev->e_required.force == 1)
 			fprintf(stderr, ", deleting anyway\n");
@@ -158,8 +158,8 @@ event_callback(void *data, struct pkg_event *ev)
 		printf("%s-%s already installed\n", name, version);
 		break;
 	case PKG_EVENT_MISSING_DEP:
-		fprintf(stderr, "missing dependency %s-%s", pkg_dep_get(ev->e_missing_dep.dep, PKG_DEP_NAME),
-		    pkg_dep_get(ev->e_missing_dep.dep, PKG_DEP_VERSION));
+		fprintf(stderr, "missing dependency %s-%s", pkg_dep_name(ev->e_missing_dep.dep),
+		    pkg_dep_version(ev->e_missing_dep.dep));
 		break;
 	case PKG_EVENT_NOREMOTEDB:
 		fprintf(stderr, "Unable to open remote database \"%s\". Try running '%s update' first.\n", ev->e_remotedb.repo, getprogname());
@@ -175,7 +175,7 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg_get(ev->e_file_mismatch.pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name, version, pkg_file_get(ev->e_file_mismatch.file, PKG_FILE_PATH));
+		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name, version, pkg_file_path(ev->e_file_mismatch.file));
 	default:
 		break;
 	}

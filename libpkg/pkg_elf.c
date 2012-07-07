@@ -100,7 +100,7 @@ test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 		dep = NULL;
 		found = false;
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
-			if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), deporigin) == 0) {
+			if (strcmp(pkg_dep_origin(dep), deporigin) == 0) {
 				found = true;
 				break;
 			}
@@ -295,7 +295,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 				PKG_CONTAINS_H_OR_LA);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		fpath = pkg_file_get(file, PKG_FILE_PATH);
+		fpath = pkg_file_path(file);
 		ret = analyse_elf(db, pkg, fpath);
 		if (developer) {
 			if (ret != EPKG_OK && ret != EPKG_END)
