@@ -33,12 +33,12 @@ Updates to catalogues are normally downloaded
 only when the master copy on the remote package repository is newer than the
 local copy.
 .Pp
-The remote repository catalogues to be updated are defined in the
+The repository catalogues to be updated are defined in the
 .Xr pkg.conf 5
 file.
 .Pp
-It is always a good idea to update your remote package
-repository catalogues before doing a remote install via
+It is always a good idea to update your package repository catalogues
+before doing a remote install via
 .Xr pkg-install 8
 or upgrades via
 .Xr pkg-upgrade 8 .
@@ -46,7 +46,7 @@ or upgrades via
 .Ss Signed repositories
 If the repository catalogue is signed and
 .Ev PUBKEY
-is defined, it will be verified after being downloaded.
+is defined, the signature will be verified after download.
 See
 .Xr pkg.conf 5
 for more information.
