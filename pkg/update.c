@@ -41,7 +41,7 @@
 #include "pkgcli.h"
 
 /**
- * Fetch remote databases.
+ * Fetch repository calalogues.
  */
 int
 pkgcli_update(bool force) {
@@ -52,7 +52,7 @@ pkgcli_update(bool force) {
 	int retcode;
 
 	if (!quiet)
-		printf("Updating remote repository\n");
+		printf("Updating repository catalogue\n");
 
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multi_repos);
 
@@ -72,7 +72,8 @@ pkgcli_update(bool force) {
 		retcode = pkg_update("repo", packagesite, force);
 		if (retcode == EPKG_UPTODATE) {
 			if (!quiet)
-				printf("Remote repository up-to-date, no need to upgrade\n");
+				printf("Repository catalogue is up-to-date, "
+				       "no need to fetch fresh copy\n");
 			retcode = EPKG_OK;
 		}
 	} else {
@@ -84,7 +85,9 @@ pkgcli_update(bool force) {
 			retcode = pkg_update(repo_name, packagesite, force);
 			if (retcode == EPKG_UPTODATE) {
 				if (!quiet)
-					printf("%s repository up-to-date, no need to upgrade\n", repo_name);
+					printf("%s repository catalogue is "
+					       "up-to-date, no need to fetch "
+					       "fresh copy\n", repo_name);
 				retcode = EPKG_OK;
 			}
 		}
@@ -130,7 +133,7 @@ exec_update(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("Updating the remote database can only be done as root");
+		warnx("Updating repository catalogues can only be done as root");
 		return (EX_NOPERM);
 	}
 

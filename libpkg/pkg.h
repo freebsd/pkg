@@ -607,30 +607,49 @@ int pkg_emit_manifest(struct pkg *pkg, char **buf);
 /* pkg_dep */
 const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
 
+const char *pkg_dep_name(struct pkg_dep const * const);
+const char *pkg_dep_origin(struct pkg_dep const * const);
+const char *pkg_dep_version(struct pkg_dep const * const);
+
 /* pkg_file */
 const char *pkg_file_get(struct pkg_file const * const, const pkg_file_attr);
 
-const char *pkg_dir_path(struct pkg_dir *);
-bool pkg_dir_try(struct pkg_dir *);
+const char *pkg_file_path(struct pkg_file const * const);
+const char *pkg_file_cksum(struct pkg_file const * const);
+const char *pkg_file_uname(struct pkg_file const * const);
+const char *pkg_file_gname(struct pkg_file const * const);
+mode_t pkg_file_mode(struct pkg_file const * const);
 
-const char *pkg_category_name(struct pkg_category *);
+/* pkg_dir */
+const char *pkg_dir_path(struct pkg_dir const * const);
+const char *pkg_dir_uname(struct pkg_dir const * const);
+const char *pkg_dir_gname(struct pkg_dir const * const);
+mode_t pkg_dir_mode(struct pkg_dir const * const);
+bool pkg_dir_try(struct pkg_dir const * const);
 
-const char *pkg_license_name(struct pkg_license *);
+/* pkg_category */
+const char *pkg_category_name(struct pkg_category const * const);
 
-const char *pkg_user_name(struct pkg_user *);
-const char *pkg_user_uidstr(struct pkg_user *);
-const char *pkg_group_name(struct pkg_group *);
-const char *pkg_group_gidstr(struct pkg_group *);
+/* pkg_license */
+const char *pkg_license_name(struct pkg_license const * const);
+
+/* pkg_user */
+const char *pkg_user_name(struct pkg_user const * const);
+const char *pkg_user_uidstr(struct pkg_user const * const);
+
+/* pkg_group */
+const char *pkg_group_name(struct pkg_group const * const);
+const char *pkg_group_gidstr(struct pkg_group const * const);
 
 /* pkg_script */
-const char *pkg_script_get(struct pkg *, pkg_script type);
+const char *pkg_script_get(struct pkg const * const, pkg_script);
 
 /* pkg_option */
-const char *pkg_option_opt(struct pkg_option *);
-const char *pkg_option_value(struct pkg_option *);
+const char *pkg_option_opt(struct pkg_option const * const);
+const char *pkg_option_value(struct pkg_option const * const);
 
 /* pkg_shlib */
-const char *pkg_shlib_name(struct pkg_shlib *);
+const char *pkg_shlib_name(struct pkg_shlib const * const);
 
 /**
  * @param db A pointer to a struct pkgdb object

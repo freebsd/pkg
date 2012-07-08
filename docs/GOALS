@@ -62,7 +62,7 @@ Table of Contents:
 
 - search:
 
-	- Will search the remote repository to provide information
+	- Will search the repository catalogue to provide information
 	  to the users.
 
 - info: 
@@ -87,8 +87,8 @@ Table of Contents:
 
 - upgrade:
 
-	- Will compute the remote repository to check if there are new upgrades
-	  available and apply them.
+	- Will examine the repository catalogue to check if there are
+	  any upgrades available and apply them.
 
 - update:
 

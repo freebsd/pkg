@@ -71,9 +71,9 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh)
 
 	while (pkg_deps(p, &dep) == EPKG_OK) {
 		/* do we have a missing dependency? */
-		if (pkg_is_installed(db, pkg_dep_get(dep, PKG_DEP_ORIGIN)) != EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
 			printf("%s has a missing dependency: %s\n", origin,
-			       pkg_dep_get(dep, PKG_DEP_ORIGIN)),
+			       pkg_dep_origin(dep)),
 			add_missing_dep(dep, dh, &nbpkgs);
 		}
 	}
@@ -90,7 +90,7 @@ add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs)
 	assert(d != NULL);
 
 	/* do not add duplicate entries in the queue */
-	origin = pkg_dep_get(d, PKG_DEP_ORIGIN);
+	origin = pkg_dep_origin(d);
 
 	STAILQ_FOREACH(e, dh, next)
 		if (strcmp(e->origin, origin) == 0)
@@ -99,9 +99,9 @@ add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs)
 	if ((e = calloc(1, sizeof(struct deps_entry))) == NULL)
 		err(1, "calloc(deps_entry)");
 
-	e->name = strdup(pkg_dep_get(d, PKG_DEP_NAME));
-	e->version = strdup(pkg_dep_get(d, PKG_DEP_VERSION));
-	e->origin = strdup(pkg_dep_get(d, PKG_DEP_ORIGIN));
+	e->name = strdup(pkg_dep_name(d));
+	e->version = strdup(pkg_dep_version(d));
+	e->origin = strdup(pkg_dep_origin(d));
 
 	(*nbpkgs)++;
 

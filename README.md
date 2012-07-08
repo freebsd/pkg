@@ -152,12 +152,12 @@ show pkg-message, ...
 `pkg add` can install a package archive from the local disk, or from a
 remote FTP/HTTP server.
 
-If only a package name is given, it will search the remote repository
+If only a package name is given, it will search the repository catalogue
 and download and install the package if it exists. The dependencies will be
 downloaded and installed first.
 
 This is possible because we have the dependency information in the
-remote repository database.
+catalogue of the remote repository.
 
 `pkg add` will check if the user attempts to install a package built for another
 arch or release.
@@ -292,7 +292,7 @@ your remote server with packages, like for example (or use ${LOCALBASE}/etc/pkg.
 
 	# export PACKAGESITE=http://example.org/pkgng-repo/
 
-Then fetch the remote repository using the below command:
+Then fetch the repository catalogue using the command:
 
 	# pkg update
 
@@ -308,7 +308,7 @@ pkgng is also able to work with multiple remote repositories. In the previous se
 we are using only a single remote repository, which is defined by the _PACKAGESITE_ option.
 
 In order to be able to work with multiple remote repositories and instead of changing
-each time _PACKAGESITE_, you can tell *pkg(1)* to work in multi-repos mode as well.
+_PACKAGESITE_ each time, you can tell *pkg(1)* to work in multi-repos mode as well.
 
 To do this, simply enable multi-repos in *pkg.conf(5)* like this:
 
@@ -327,7 +327,7 @@ the *default* repository.
 It is important that you always define a *default* repository - this is the repository that is being
 used when no remote repositories are specified via the `-r <repo>` flag.
 
-Next, fetch the remote repositories:
+Next, fetch all the repository catalogues:
 
 	# pkg update
 

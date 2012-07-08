@@ -1801,8 +1801,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (run_prstmt(DEPS, pkg_dep_get(dep, PKG_DEP_ORIGIN),
-		    pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION),
+		if (run_prstmt(DEPS, pkg_dep_origin(dep),
+		    pkg_dep_name(dep), pkg_dep_version(dep),
 		    package_id) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
@@ -1814,10 +1814,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 */
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if ((ret = run_prstmt(FILES, pkg_file_get(file, PKG_FILE_PATH),
-		    pkg_file_get(file, PKG_FILE_SUM), package_id)) != SQLITE_DONE) {
+		if ((ret = run_prstmt(FILES, pkg_file_path(file),
+		    pkg_file_cksum(file), package_id)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
-				if ((it = pkgdb_query_which(db, pkg_file_get(file, PKG_FILE_PATH))) == NULL) {
+				if ((it = pkgdb_query_which(db, pkg_file_path(file))) == NULL) {
 					ERROR_SQLITE(s);
 				}
 				if ((ret = pkgdb_it_next(it, &pkg2, PKG_LOAD_BASIC)) == EPKG_OK) {
@@ -1826,7 +1826,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 					    " (installs files into the same place). "
 					    " Problematic file: %s",
 					    name, version, name2, version2,
-					    pkg_file_get(file, PKG_FILE_PATH));
+					    pkg_file_path(file));
 					pkg_free(pkg2);
 				} else {
 					ERROR_SQLITE(s);
@@ -2967,13 +2967,13 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 		sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt, 2, origin, -1, SQLITE_STATIC);
 		sqlite3_bind_text(stmt, 3, version, -1, SQLITE_STATIC);
-		sqlite3_bind_text(stmt, 4, pkg_file_get(file, PKG_FILE_PATH), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt, 4, pkg_file_path(file), -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
 			sbuf_clear(conflictmsg);
 			sbuf_printf(conflictmsg, "WARNING: %s-%s conflict on %s with: \n",
 			    name, version,
-			    pkg_file_get(file, PKG_FILE_PATH));
+			    pkg_file_path(file));
 
 			if (sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt_conflicts, NULL) != SQLITE_OK) {
 				ERROR_SQLITE(db->sqlite);
@@ -2982,7 +2982,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 				return (EPKG_FATAL);
 			}
 
-			sqlite3_bind_text(stmt_conflicts, 1, pkg_file_get(file, PKG_FILE_PATH), -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt_conflicts, 1, pkg_file_path(file), -1, SQLITE_STATIC);
 
 			while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
 				sbuf_printf(conflictmsg, "\t- %s-%s\n",
@@ -3195,7 +3195,7 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256
 		return (EPKG_FATAL);
 	}
 	sqlite3_bind_text(stmt, 1, sha256, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 2, pkg_file_get(file, PKG_FILE_PATH), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, pkg_file_path(file), -1, SQLITE_STATIC);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
 		ERROR_SQLITE(db->sqlite);

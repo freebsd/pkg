@@ -74,6 +74,30 @@ pkg_dep_get(struct pkg_dep const * const d, const pkg_dep_attr attr)
 	}
 }
 
+const char *
+pkg_dep_name(struct pkg_dep const * const d)
+{
+	assert( d != NULL);
+
+	return (sbuf_get(d->name));
+}
+
+const char *
+pkg_dep_origin(struct pkg_dep const * const d)
+{
+	assert( d != NULL);
+
+	return (sbuf_get(d->origin));
+}
+
+const char *
+pkg_dep_version(struct pkg_dep const * const d)
+{
+	assert( d != NULL);
+
+	return (sbuf_get(d->version));
+}
+
 /*
  * File
  */
@@ -120,6 +144,46 @@ pkg_file_get(struct pkg_file const * const f, const pkg_file_attr attr)
 	}
 }
 
+const char *
+pkg_file_path(struct pkg_file const * const f)
+{
+	assert(f != NULL);
+
+	return (f->path);
+}
+
+const char *
+pkg_file_cksum(struct pkg_file const * const f)
+{
+	assert(f != NULL);
+
+	return (f->sum);
+}
+
+const char *
+pkg_file_uname(struct pkg_file const * const f)
+{
+	assert(f != NULL);
+
+	return (f->uname);
+}
+
+const char *
+pkg_file_gname(struct pkg_file const * const f)
+{
+	assert(f != NULL);
+
+	return (f->gname);
+}
+
+mode_t
+pkg_file_mode(struct pkg_file const * const f)
+{
+	assert(f != NULL);
+
+	return (f->perm);
+}
+
 /*
  * Dir
  */
@@ -144,16 +208,48 @@ pkg_dir_free(struct pkg_dir *d)
 }
 
 const char *
-pkg_dir_path(struct pkg_dir *d)
+pkg_dir_path(struct pkg_dir const * const d)
 {
+	assert(d != NULL);
+
 	return (d->path);
 }
 
-bool
-pkg_dir_try(struct pkg_dir *d)
+const char *
+pkg_dir_uname(struct pkg_dir const * const d)
 {
+	assert(d != NULL);
+
+	return (d->uname);
+}
+
+const char *
+pkg_dir_gname(struct pkg_dir const * const d)
+{
+	assert(d != NULL);
+
+	return (d->gname);
+}
+
+mode_t
+pkg_dir_mode(struct pkg_dir const * const d)
+{
+	assert(d != NULL);
+
+	return (d->perm);
+}
+
+bool
+pkg_dir_try(struct pkg_dir const * const d)
+{
+	assert(d != NULL);
+
 	return (d->try);
 }
+
+/*
+ * Category
+ */
 
 int
 pkg_category_new(struct pkg_category **c)
@@ -165,8 +261,10 @@ pkg_category_new(struct pkg_category **c)
 }
 
 const char *
-pkg_category_name(struct pkg_category *c)
+pkg_category_name(struct pkg_category const * const c)
 {
+	assert(c != NULL);
+
 	return (sbuf_get(c->name));
 }
 
@@ -206,13 +304,15 @@ pkg_license_free(struct pkg_license *l)
 }
 
 const char *
-pkg_license_name(struct pkg_license *l)
+pkg_license_name(struct pkg_license const * const l)
 {
+	assert(l != NULL);
+
 	return (sbuf_get(l->name));
 }
 
 /*
- * user
+ * User
  */
 
 int
@@ -236,19 +336,23 @@ pkg_user_free(struct pkg_user *u)
 }
 
 const char *
-pkg_user_name(struct pkg_user *u)
+pkg_user_name(struct pkg_user const * const u)
 {
+	assert(u != NULL);
+
 	return (u->name);
 }
 
 const char *
-pkg_user_uidstr(struct pkg_user *u)
+pkg_user_uidstr(struct pkg_user const * const u)
 {
+	assert(u != NULL);
+
 	return (u->uidstr);
 }
 
 /*
- * group
+ * Group
  */
 
 int
@@ -272,19 +376,27 @@ pkg_group_free(struct pkg_group *g)
 }
 
 const char *
-pkg_group_name(struct pkg_group *g)
+pkg_group_name(struct pkg_group const * const g)
 {
+	assert(g != NULL);
+
 	return (g->name);
 }
 
 const char *
-pkg_group_gidstr(struct pkg_group *g)
+pkg_group_gidstr(struct pkg_group const * const g)
 {
+	assert(g != NULL);
+
 	return (g->gidstr);
 }
 
+/*
+ * Script
+ */
+
 const char *
-pkg_script_get(struct pkg *p, pkg_script i)
+pkg_script_get(struct pkg const * const p, pkg_script i)
 {
 	if (p->scripts[i] == NULL)
 		return (NULL);
@@ -318,14 +430,18 @@ pkg_option_free(struct pkg_option *option)
 }
 
 const char *
-pkg_option_opt(struct pkg_option *option)
+pkg_option_opt(struct pkg_option const * const option)
 {
+	assert(option != NULL);
+
 	return (sbuf_get(option->key));
 }
 
 const char *
-pkg_option_value(struct pkg_option *option)
+pkg_option_value(struct pkg_option const * const option)
 {
+	assert(option != NULL);
+
 	return (sbuf_get(option->value));
 }
 
@@ -341,12 +457,6 @@ pkg_shlib_new(struct pkg_shlib **sl)
 	return (EPKG_OK);
 }
 
-const char *
-pkg_shlib_name(struct pkg_shlib *sl)
-{
-	return (sbuf_get(sl->name));
-}
-
 void
 pkg_shlib_free(struct pkg_shlib *sl)
 {
@@ -355,4 +465,12 @@ pkg_shlib_free(struct pkg_shlib *sl)
 
 	sbuf_free(sl->name);
 	free(sl);
+}
+
+const char *
+pkg_shlib_name(struct pkg_shlib const * const sl)
+{
+	assert(sl != NULL);
+
+	return (sbuf_get(sl->name));
 }

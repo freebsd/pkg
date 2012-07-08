@@ -548,7 +548,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(version != NULL && version[0] != '\0');
 
 	while (pkg_deps(pkg, &d) != EPKG_END) {
-		if (!strcmp(origin, pkg_dep_get(d, PKG_DEP_ORIGIN))) {
+		if (!strcmp(origin, pkg_dep_origin(d))) {
 			pkg_emit_error("duplicate dependency listing: %s-%s, ignoring", name, version);
 			return (EPKG_OK);
 		}
@@ -602,8 +602,8 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 
 	if (check_duplicates) {
 		while (pkg_files(pkg, &f) != EPKG_END) {
-			if (!strcmp(path, pkg_file_get(f, PKG_FILE_PATH))) {
-				pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_get(f, PKG_FILE_PATH));
+			if (!strcmp(path, pkg_file_path(f))) {
+				pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_path(f));
 				return (EPKG_OK);
 			}
 		}
@@ -1061,8 +1061,8 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		snprintf(spath, sizeof(spath), "%s%s", src, pkg_file_get(file, PKG_FILE_PATH));
-		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_file_get(file, PKG_FILE_PATH));
+		snprintf(spath, sizeof(spath), "%s%s", src, pkg_file_path(file));
+		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_file_path(file));
 		packing_append_file(pack, spath, dpath);
 	}
 
@@ -1081,8 +1081,8 @@ pkg_test_filesum(struct pkg *pkg)
 	assert(pkg != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		path = pkg_file_get(f, PKG_FILE_PATH);
-		sum = pkg_file_get(f, PKG_FILE_SUM);
+		path = pkg_file_path(f);
+		sum = pkg_file_cksum(f);
 		if (*sum != '\0') {
 			sha256_file(path, sha256);
 			if (strcmp(sha256, sum) != 0)
@@ -1105,8 +1105,8 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		path = pkg_file_get(f, PKG_FILE_PATH);
-		sum = pkg_file_get(f, PKG_FILE_SUM);
+		path = pkg_file_path(f);
+		sum = pkg_file_cksum(f);
 		if (lstat(path, &st) == 0) {
 			regular = true;
 			if (S_ISLNK(st.st_mode)) {
