@@ -175,80 +175,88 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 }
 
 int
-format_exec_cmd(char **dest, const char *in, const char *prefix, const char *plist_file, char *line)
+format_exec_cmd(char **dest, const char *in, const char *prefix,
+    const char *plist_file, char *line)
 {
 	struct sbuf *buf = sbuf_new_auto();
 	char path[MAXPATHLEN + 1];
 	char *cp;
 
 	while (in[0] != '\0') {
-		if (in[0] == '%') {
+		if (in[0] != '%') {
+			sbuf_putc(buf, in[0]);
 			in++;
-			switch(in[0]) {
-				case 'D':
-					sbuf_cat(buf, prefix);
-					break;
-				case 'F':
-					if (plist_file == NULL) {
-						pkg_emit_error("No files defined %%F couldn't be expanded, ignoring %s", in);
-						sbuf_finish(buf);
-						sbuf_free(buf);
-						return (EPKG_FATAL);
-					}
-					sbuf_cat(buf, plist_file);
-					break;
-				case 'f':
-					if (plist_file == NULL) {
-						pkg_emit_error("No files defined %%f couldn't be expanded, ignoring %s", in);
-						sbuf_finish(buf);
-						sbuf_free(buf);
-						return (EPKG_FATAL);
-					}
-					if (prefix[strlen(prefix) - 1] == '/')
-						snprintf(path, sizeof(path), "%s%s", prefix, plist_file);
-					else
-						snprintf(path, sizeof(path), "%s/%s", prefix, plist_file);
-					cp = strrchr(path, '/');
-					cp ++;
-					sbuf_cat(buf, cp);
-					break;
-				case 'B':
-					if (plist_file == NULL) {
-						pkg_emit_error("No files defined %%B couldn't be expanded, ignoring %s", in);
-						sbuf_finish(buf);
-						sbuf_free(buf);
-						return (EPKG_FATAL);
-					}
-					if (prefix[strlen(prefix) - 1] == '/')
-						snprintf(path, sizeof(path), "%s%s", prefix, plist_file);
-					else
-						snprintf(path, sizeof(path), "%s/%s", prefix, plist_file);
-					cp = strrchr(path, '/');
-					cp[0] = '\0';
-					sbuf_cat(buf, path);
-					break;
-				case '%':
-					sbuf_putc(buf, '%');
-					break;
-				case '@':
-					if (line != NULL) {
-						sbuf_cat(buf, line);
-						break;
-					}
-
-					/*
-					 * no break here because if line is not
-					 * given (default exec) %@ does not
-					 * exists
-					 */
-				default:
-					sbuf_putc(buf, '%');
-					sbuf_putc(buf, in[0]);
-					break;
+			continue;
+		}
+		in++;
+		switch(in[0]) {
+		case 'D':
+			sbuf_cat(buf, prefix);
+			break;
+		case 'F':
+			if (plist_file == NULL) {
+				pkg_emit_error("No files defined %%F couldn't "
+				    "be expanded, ignoring %s", in);
+				sbuf_finish(buf);
+				sbuf_free(buf);
+				return (EPKG_FATAL);
+			}
+			sbuf_cat(buf, plist_file);
+			break;
+		case 'f':
+			if (plist_file == NULL) {
+				pkg_emit_error("No files defined %%f couldn't "
+				    "be expanded, ignoring %s", in);
+				sbuf_finish(buf);
+				sbuf_free(buf);
+				return (EPKG_FATAL);
+			}
+			if (prefix[strlen(prefix) - 1] == '/')
+				snprintf(path, sizeof(path), "%s%s",
+				    prefix, plist_file);
+			else
+				snprintf(path, sizeof(path), "%s/%s",
+				    prefix, plist_file);
+			cp = strrchr(path, '/');
+			cp ++;
+			sbuf_cat(buf, cp);
+			break;
+		case 'B':
+			if (plist_file == NULL) {
+				pkg_emit_error("No files defined %%B couldn't "
+				    "be expanded, ignoring %s", in);
+				sbuf_finish(buf);
+				sbuf_free(buf);
+				return (EPKG_FATAL);
+			}
+			if (prefix[strlen(prefix) - 1] == '/')
+				snprintf(path, sizeof(path), "%s%s", prefix,
+				    plist_file);
+			else
+				snprintf(path, sizeof(path), "%s/%s", prefix,
+				    plist_file);
+			cp = strrchr(path, '/');
+			cp[0] = '\0';
+			sbuf_cat(buf, path);
+			break;
+		case '%':
+			sbuf_putc(buf, '%');
+			break;
+		case '@':
+			if (line != NULL) {
+				sbuf_cat(buf, line);
+				break;
 			}
 
-		} else {
+			/*
+			 * no break here because if line is not
+			 * given (default exec) %@ does not
+			 * exists
+			 */
+		default:
+			sbuf_putc(buf, '%');
 			sbuf_putc(buf, in[0]);
+			break;
 		}
 
 		in++;
@@ -287,7 +295,8 @@ is_dir(const char *path)
 }
 
 static void
-sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH], char out[SHA256_DIGEST_LENGTH * 2 + 1])
+sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH],
+    char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
 	int i;
 	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)

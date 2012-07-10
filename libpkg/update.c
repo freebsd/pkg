@@ -76,7 +76,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	const char *repokey;
 	unsigned char *sig = NULL;
 	int siglen = 0;
-	int rc = EPKG_FATAL;
+	int rc = EPKG_FATAL, ret;
 	struct stat st;
 	time_t t = 0;
 
@@ -84,7 +84,8 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
 	if (mktemp(tmp) == NULL) {
-		pkg_emit_error("Could not create temporary file %s, aborting update.\n", tmp);
+		pkg_emit_error("Could not create temporary file %s, "
+		    "aborting update.\n", tmp);
 		return (EPKG_FATAL);
 	}
 
@@ -123,7 +124,8 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			snprintf(repofile_unchecked, sizeof(repofile_unchecked), "%s.unchecked", repofile);
+			snprintf(repofile_unchecked, sizeof(repofile_unchecked),
+			    "%s.unchecked", repofile);
 			archive_entry_set_pathname(ae, repofile_unchecked);
 
 			/*
@@ -147,16 +149,19 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	if (repokey != NULL) {
 		if (sig != NULL) {
-			if (rsa_verify(repofile_unchecked, repokey, sig, siglen - 1) != EPKG_OK) {
-				pkg_emit_error("Invalid signature, removing repository.\n");
+			ret = rsa_verify(repofile_unchecked, repokey,
+			    sig, siglen - 1);
+			if (ret != EPKG_OK) {
+				pkg_emit_error("Invalid signature, "
+				    "removing repository.\n");
 				unlink(repofile_unchecked);
 				free(sig);
 				rc = EPKG_FATAL;
 				goto cleanup;
 			}
 		} else {
-			pkg_emit_error("No signature found in the repository."
-						   "Can not validate against %s key.", repokey);
+			pkg_emit_error("No signature found in the repository.  "
+			    "Can not validate against %s key.", repokey);
 			rc = EPKG_FATAL;
 			unlink(repofile_unchecked);
 			goto cleanup;

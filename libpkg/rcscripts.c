@@ -94,7 +94,8 @@ rc_stop(const char *rc_file)
 			fd = open("/dev/null", O_WRONLY);
 			dup2(fd, STDERR_FILENO);
 			dup2(fd, STDOUT_FILENO);
-			execl("/usr/sbin/service", "service", rc_file, "onestatus", (char *)NULL);
+			execl("/usr/sbin/service", "service", rc_file,
+			    "onestatus", (char *)NULL);
 			_exit(1);
 			/* NOT REACHED */
 		default:
@@ -115,7 +116,8 @@ rc_stop(const char *rc_file)
 			return (-1);
 		case 0:
 			/* child */
-			execl("/usr/sbin/service", "service", rc_file, "stop", (char *)NULL);
+			execl("/usr/sbin/service", "service",
+			    rc_file, "stop", (char *)NULL);
 			_exit(1);
 			/* NOT REACHED */
 		default:
@@ -145,7 +147,8 @@ rc_start(const char *rc_file)
 			return (-1);
 		case 0:
 			/* child */
-			execl("/usr/sbin/service", "service", rc_file, "quietstart", (char *)NULL);
+			execl("/usr/sbin/service", "service", rc_file,
+			    "quietstart", (char *)NULL);
 			_exit(1);
 			/* NOT REACHED */
 		default:

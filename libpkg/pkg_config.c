@@ -177,18 +177,39 @@ static bool parsed = false;
 static size_t c_size = sizeof(c) / sizeof(struct config_entry);
 
 static void
+parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, size_t ent)
+{
+	yaml_node_pair_t *subpair = map->data.mapping.pairs.start;
+	yaml_node_t *subkey, *subval;
+	struct pkg_config_kv *kv;
+
+	STAILQ_INIT(&c[ent].list);
+	while (subpair < map->data.mapping.pairs.top) {
+		subkey = yaml_document_get_node(doc, subpair->key);
+		subval = yaml_document_get_node(doc, subpair->value);
+		if (subkey->type != YAML_SCALAR_NODE ||
+		    subval->type != YAML_SCALAR_NODE) {
+			++subpair;
+			continue;
+		}
+		kv = malloc(sizeof(struct pkg_config_kv));
+		kv->key = strdup(subkey->data.scalar.value);
+		kv->value = strdup(subval->data.scalar.value);
+		STAILQ_INSERT_TAIL(&(c[ent].list), kv, next);
+		++subpair;
+	}
+}
+
+static void
 parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 {
-	size_t i;
-	struct pkg_config_kv *kv;
-	yaml_node_pair_t *pair, *subpair;
-	yaml_node_t *key, *subkey;
-	yaml_node_t *val, *subval;
+	size_t ent;
+	yaml_node_pair_t *pair;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
+		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
+		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
 
 		if (key->data.scalar.length <= 0) {
 			/* 
@@ -198,7 +219,9 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 			continue;
 		}
 
-		if (val->type == YAML_NO_NODE || (val->type == YAML_SCALAR_NODE && val->data.scalar.length <= 0)) {
+		if (val->type == YAML_NO_NODE ||
+		    (val->type == YAML_SCALAR_NODE &&
+		     val->data.scalar.length <= 0)) {
 			/*
 			 * silently skip on purpose to allow user to leave
 			 * empty lines for examples without complaining
@@ -206,38 +229,21 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 			++pair;
 			continue;
 		}
-		for (i = 0; i < c_size; i++) {
-			if (!strcasecmp(key->data.scalar.value, c[i].key)) {
-				if (c[i].val != NULL) {
-					/*
-					 * skip env var already set
-					 * Env vars have the priority over the
-					 * configuration files
-					 */
-					++pair;
-					continue;
-				}
-				if (val->type == YAML_SCALAR_NODE) {
-					c[i].val = strdup(val->data.scalar.value);
-				} else if (val->type == YAML_MAPPING_NODE) {
-					subpair = val->data.mapping.pairs.start;
-					STAILQ_INIT(&c[i].list);
-					while (subpair < val->data.mapping.pairs.top) {
-						subkey = yaml_document_get_node(doc, subpair->key);
-						subval = yaml_document_get_node(doc, subpair->value);
-						if (subkey->type != YAML_SCALAR_NODE || subval->type != YAML_SCALAR_NODE) {
-							++subpair;
-							continue;
-						}
-						kv = malloc(sizeof(struct pkg_config_kv));
-						kv->key = strdup(subkey->data.scalar.value);
-						kv->value = strdup(subval->data.scalar.value);
-						STAILQ_INSERT_TAIL(&(c[i].list), kv, next);
-						++subpair;
-					}
-				}
-				break;
+		for (ent = 0; ent < c_size; ent++) {
+			if (strcasecmp(key->data.scalar.value, c[ent].key))
+				continue;
+			if (c[ent].val != NULL) {
+				/*
+				 * skip env var already set
+				 * Env vars have priority over config files
+				 */
+				++pair;
+				continue;
 			}
+			if (val->type == YAML_SCALAR_NODE)
+				c[ent].val = strdup(val->data.scalar.value);
+			else if (val->type == YAML_MAPPING_NODE)
+				parse_config_mapping(doc, val, ent);
 		}
 		/*
 		 * unknown values are just silently ignored, because we don't

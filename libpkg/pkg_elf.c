@@ -67,14 +67,16 @@ test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
 	if ((handle = dlopen(name, RTLD_LAZY)) == NULL) {
-		pkg_emit_error("accessing shared library %s failed -- %s", name, dlerror());
+		pkg_emit_error("accessing shared library %s failed -- %s",
+		    name, dlerror());
 		return (EPKG_FATAL);
 	}
 
 	dlinfo(handle, RTLD_DI_LINKMAP, &map);
 
 	/* match /lib, /lib32, /usr/lib and /usr/lib32 */
-	if (strncmp(map->l_name, "/lib", 4) == 0 || strncmp(map->l_name, "/usr/lib", 7) == 0) {
+	if (strncmp(map->l_name, "/lib", 4) == 0 ||
+	    strncmp(map->l_name, "/usr/lib", 7) == 0) {
 		/* ignore libs from base */
 		dlclose(handle);
 		return (EPKG_OK);
@@ -95,7 +97,8 @@ test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 	d = NULL;
 	if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
 		found = false;
-		pkg_get(d, PKG_ORIGIN, &deporigin, PKG_NAME, &depname, PKG_VERSION, &depversion);
+		pkg_get(d, PKG_ORIGIN, &deporigin, PKG_NAME, &depname,
+		    PKG_VERSION, &depversion);
 
 		dep = NULL;
 		found = false;
@@ -159,7 +162,8 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 
 	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
-		pkg_emit_error("elf_begin() for %s failed: %s", fpath, elf_errmsg(-1)); 
+		pkg_emit_error("elf_begin() for %s failed: %s", fpath,
+		    elf_errmsg(-1)); 
 		goto cleanup;
 	}
 
@@ -185,7 +189,8 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
-			pkg_emit_error("getshdr() for %s failed: %s", fpath, elf_errmsg(-1));
+			pkg_emit_error("getshdr() for %s failed: %s", fpath,
+			    elf_errmsg(-1));
 			goto cleanup;
 		}
 		switch (shdr.sh_type) {
@@ -230,7 +235,8 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
 			ret = EPKG_FATAL;
-			pkg_emit_error("getdyn() failed for %s: %s", fpath, elf_errmsg(-1)); 
+			pkg_emit_error("getdyn() failed for %s: %s", fpath,
+			    elf_errmsg(-1)); 
 			goto cleanup;
 		}
 
@@ -335,10 +341,11 @@ pkg_get_myarch(char *dest, size_t sz)
 	uint32_t version = 0;
 	int ret = EPKG_OK;
 	int i;
-	const char *abi;
+	const char *abi, *endian_corres_str, *wordsize_corres_str;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
-		pkg_emit_error("ELF library initialization failed: %s", elf_errmsg(-1));
+		pkg_emit_error("ELF library initialization failed: %s",
+		    elf_errmsg(-1));
 		return (EPKG_FATAL);
 	}
 
@@ -396,44 +403,53 @@ pkg_get_myarch(char *dest, size_t sz)
 	for (i = 0; osname[i] != '\0'; i++)
 		osname[i] = (char)tolower(osname[i]);
 
+	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
+	    (int)elfhdr.e_ident[EI_CLASS]);
+
 	snprintf(dest, sz, "%s:%d:%s:%s",
-	    osname,
-	    version / 100000,
+	    osname, version / 100000,
 	    elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
-	    elf_corres_to_string(wordsize_corres, (int)elfhdr.e_ident[EI_CLASS]));
+	    wordsize_corres_str);
 
 	switch (elfhdr.e_machine) {
-		case EM_ARM:
-			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
-			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-			    (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
-			    (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
-			break;
-		case EM_MIPS:
-			/*
-			 * this is taken from binutils sources:
-			 * include/elf/mips.h
-			 * mapping is figured out from binutils:
-			 * gas/config/tc-mips.c
-			 */
-			switch (elfhdr.e_flags & EF_MIPS_ABI) {
-				case E_MIPS_ABI_O32:
+	case EM_ARM:
+		endian_corres_str = elf_corres_to_string(endian_corres,
+		    (int)elfhdr.e_ident[EI_DATA]);
+
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+		    endian_corres_str,
+		    (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
+		    (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
+		break;
+	case EM_MIPS:
+		/*
+		 * this is taken from binutils sources:
+		 * include/elf/mips.h
+		 * mapping is figured out from binutils:
+		 * gas/config/tc-mips.c
+		 */
+		switch (elfhdr.e_flags & EF_MIPS_ABI) {
+			case E_MIPS_ABI_O32:
+				abi = "o32";
+				break;
+			case E_MIPS_ABI_N32:
+				abi = "n32";
+				break;
+			default:
+				if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
 					abi = "o32";
-					break;
-				case E_MIPS_ABI_N32:
-					abi = "n32";
-					break;
-				default:
-					if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
-						abi = "o32";
-					else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
-						abi = "n64";
-					break;
-			}
-			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
-			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-			    abi);
-			break;
+				else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
+					abi = "n64";
+				break;
+		}
+		endian_corres_str = elf_corres_to_string(endian_corres,
+		    (int)elfhdr.e_ident[EI_DATA]);
+
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
+		    endian_corres_str, abi);
+		break;
+	default:
+		break;
 	}
 
 cleanup:
@@ -452,25 +468,31 @@ pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
 	iswildcard = (strchr(arch, 'c') != NULL);
 
 	if (iswildcard && isdefault)
-		pkg_emit_error("Configuration error: arch \"%s\" cannot use wildcards as default", arch);
+		pkg_emit_error("Configuration error: arch \"%s\" cannot use "
+		    "wildcards as default", arch);
 
 	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
 		if (iswildcard) {
 			/* Definitely has to be arch specific */
-			pkg_emit_error("Error: arch \"%s\" -- package installs architecture specific files", arch);
+			pkg_emit_error("Error: arch \"%s\" -- package installs "
+			    "architecture specific files", arch);
 		}
 	} else {
 		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
 			if (iswildcard) {
 				/* Could well be arch specific */
-				pkg_emit_error("Warning: arch \"%s\" -- package installs C/C++ headers or libtool files,\n"
-					       "**** which are often architecture specific.", arch);
+				pkg_emit_error("Warning: arch \"%s\" -- package"
+				    " installs C/C++ headers or libtool "
+				    "files,\n**** which are often architecture "
+				    "specific", arch);
 			}
 		} else {
 			/* Might be arch independent */
 			if (!iswildcard)
-				pkg_emit_error("Notice: arch \"%s\" -- no architecture specific files found:\n"
-					       "**** could this package use a wildcard architecture?", arch);
+				pkg_emit_error("Notice: arch \"%s\" -- no "
+				    "architecture specific files found:\n"
+				    "**** could this package use a wildcard "
+				    "architecture?", arch);
 		}
 	}
 	return (EPKG_OK);

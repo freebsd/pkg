@@ -164,7 +164,8 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 	const char *cachedir = NULL;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
-
+	int lflags = PKG_LOAD_BASIC | PKG_LOAD_FILES | PKG_LOAD_SCRIPTS |
+	    PKG_LOAD_DIRS;
 	bool handle_rc = false;
 
 	STAILQ_INIT(&pkg_queue);
@@ -176,6 +177,8 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
 	
+	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+
 	p = NULL;
 	/* Install */
 	sql_exec(j->db->sqlite, "SAVEPOINT upgrade;");
@@ -191,17 +194,19 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 			pkg = NULL;
 			it = pkgdb_query(j->db, pkgorigin, MATCH_EXACT);
 			if (it != NULL) {
-				if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS) == EPKG_OK) {
+				if (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
 					STAILQ_INSERT_TAIL(&pkg_queue, pkg, next);
-					pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
+					pkg_script_run(pkg,
+					    PKG_SCRIPT_PRE_DEINSTALL);
 					pkg_get(pkg, PKG_ORIGIN, &origin);
 					/*
-					 * stop the different related services if the users do want that
-					 * and that the service is running
+					 * stop the different related services
+					 * if the user wants that and the
+					 * service is running
 					 */
-					pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
 					if (handle_rc)
-						pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
+						pkg_start_stop_rc_scripts(pkg,
+						    PKG_RC_STOP);
 					pkgdb_unregister_pkg(j->db, origin);
 					pkg = NULL;
 				}
@@ -213,17 +218,17 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 
 		if (it != NULL) {
 			pkg = NULL;
-			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS) == EPKG_OK) {
+			while (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
 				STAILQ_INSERT_TAIL(&pkg_queue, pkg, next);
 				pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
 				pkg_get(pkg, PKG_ORIGIN, &origin);
 				/*
-				 * stop the different related services if the users do want that
-				 * and that the service is running
+				 * stop the different related services if the
+				 * user wants that and the service is running
 				 */
-				pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
 				if (handle_rc)
-					pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
+					pkg_start_stop_rc_scripts(pkg,
+					    PKG_RC_STOP);
 				pkgdb_unregister_pkg(j->db, origin);
 				pkg = NULL;
 			}
@@ -337,8 +342,6 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	const char *cachedir = NULL;
 	const char *repopath = NULL;
 	char cachedpath[MAXPATHLEN];
-	char dlsz[7];
-	char fsz[7];
 	int ret = EPKG_OK;
 	
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
@@ -366,9 +369,13 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	}
 
 	if (dlsize > ((int64_t)fs.f_bsize * (int64_t)fs.f_bfree)) {
+		int64_t fsize = (int64_t)fs.f_bsize * (int64_t)fs.f_bfree;
+		char dlsz[7], fsz[7];
+
 		humanize_number(dlsz, sizeof(dlsz), dlsize, "B", HN_AUTOSCALE, 0);
-		humanize_number(fsz, sizeof(fsz), (int64_t)fs.f_bsize * (int64_t)fs.f_bfree, "B", HN_AUTOSCALE, 0);
-		pkg_emit_error("Not enough space in %s, needed %s available %s", cachedir, dlsz, fsz);
+		humanize_number(fsz, sizeof(fsz), fsize, "B", HN_AUTOSCALE, 0);
+		pkg_emit_error("Not enough space in %s, needed %s available %s",
+		    cachedir, dlsz, fsz);
 		return (EPKG_FATAL);
 	}
 		

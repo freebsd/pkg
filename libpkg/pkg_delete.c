@@ -90,21 +90,26 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 
 	if (flags & PKG_DELETE_UPGRADE) {
-		if ((ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_UPGRADE)) != EPKG_OK)
+		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_UPGRADE);
+		if (ret != EPKG_OK)
 			return (ret);
 	} else {
-		if ((ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL)) != EPKG_OK)
+		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
+		if (ret != EPKG_OK)
 			return (ret);
 	}
 
 	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE)) != EPKG_OK)
 		return (ret);
 
-	if (flags ^ PKG_DELETE_UPGRADE)
-		if ((ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL)) != EPKG_OK)
+	if (flags ^ PKG_DELETE_UPGRADE) {
+		ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
+		if (ret != EPKG_OK)
 			return (ret);
+	}
 
-	if ((ret = pkg_delete_dirs(db, pkg, flags & PKG_DELETE_FORCE)) != EPKG_OK)
+	ret = pkg_delete_dirs(db, pkg, flags & PKG_DELETE_FORCE);
+	if (ret != EPKG_OK)
 		return (ret);
 
 	if (flags ^ PKG_DELETE_UPGRADE)
@@ -122,6 +127,8 @@ pkg_delete_files(struct pkg *pkg, int force)
 	const char *path;
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
+		const char *sum = pkg_file_cksum(file);
+
 		if (file->keep == 1)
 			continue;
 
@@ -129,12 +136,12 @@ pkg_delete_files(struct pkg *pkg, int force)
 
 		/* Regular files and links */
 		/* check sha256 */
-		if (!force && pkg_file_cksum(file)[0] != '\0') {
+		if (!force && sum[0] != '\0') {
 			if (sha256_file(path, sha256) != EPKG_OK)
 				continue;
-			if (strcmp(sha256, pkg_file_cksum(file)) != 0) {
-				pkg_emit_error("%s fails original SHA256 checksum,"
-							   " not removing", path);
+			if (strcmp(sha256, sum)) {
+				pkg_emit_error("%s fails original SHA256 "
+				    "checksum, not removing", path);
 				continue;
 			}
 		}
@@ -152,26 +159,14 @@ int
 pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, int force)
 {
 	struct pkg_dir *dir = NULL;
-/*	int64_t nbpackage; */
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (dir->keep == 1)
 			continue;
 
-		/* 
-		 * To reactivate when stage install will be in otherwise
-		 * This code left cruft on server because sometime package 
-		 */
-/*		nbpackage = 0;
-
-		if (pkgdb_is_dir_used(db, pkg_dir_path(dir), &nbpackage) != EPKG_OK) 
-			return (EPKG_FATAL);
-
-		if (nbpackage > 1)
-			continue; */
-
 		if (pkg_dir_try(dir)) {
-			if (rmdir(pkg_dir_path(dir)) == -1 && errno != ENOTEMPTY && force != 1)
+			if (rmdir(pkg_dir_path(dir)) == -1 &&
+			    errno != ENOTEMPTY && force != 1)
 				pkg_emit_errno("rmdir", pkg_dir_path(dir));
 		} else {
 			if (rmdir(pkg_dir_path(dir)) == -1 && force != 1)

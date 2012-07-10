@@ -167,14 +167,16 @@ pkg_is_valid(struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
+	/* Ensure that required fields are set. */
 	for (i = 0; i < PKG_NUM_FIELDS; i++) {
-		if (fields[i].type & pkg->type && fields[i].optional == 0) {
-			if (pkg->fields[i] == NULL || sbuf_get(pkg->fields[i])[0] == '\0') {
-				pkg_emit_error("package field incomplete: %s",
-				    fields[i].human_desc);
-				return (EPKG_FATAL);
-			}
-		}
+		if ((fields[i].type & pkg->type) == 0 ||
+		    fields[i].optional ||
+		    pkg->fields[i] != NULL ||
+		    sbuf_get(pkg->fields[i])[0] != '\0')
+			continue;
+		pkg_emit_error("package field incomplete: %s",
+		    fields[i].human_desc);
+		return (EPKG_FATAL);
 	}
 
 	return (EPKG_OK);
@@ -187,7 +189,8 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr < PKG_NUM_FIELDS) {
-			*va_arg(ap, const char **) = (pkg->fields[attr] != NULL)?
+			const char **var = va_arg(ap, const char **);
+			*var = (pkg->fields[attr] != NULL) ?
 			    sbuf_get(pkg->fields[attr]) : NULL;
 			continue;
 		}
@@ -237,10 +240,22 @@ pkg_get2(struct pkg const *const pkg, ...)
 	return (ret);
 }
 
+static void
+pkg_set_repourl(struct pkg *pkg, const char *str)
+{
+	struct pkg_config_kv *rkv = NULL;
+
+	while (pkg_config_list(PKG_CONFIG_REPOS, &rkv) == EPKG_OK) {
+		const char *key = pkg_config_kv_get(rkv, PKG_CONFIG_KV_KEY);
+		const char *val = pkg_config_kv_get(rkv, PKG_CONFIG_KV_VALUE);
+		if (strcmp(str, key) == 0)
+			pkg_set(pkg, PKG_REPOURL, val);
+	}
+}
+
 static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
-	struct pkg_config_kv *repokv = NULL;
 	bool multirepos_enabled = false;
 	int attr;
 
@@ -263,41 +278,38 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				continue;
 			}
 
-			if (attr == PKG_REPONAME && multirepos_enabled) {
-				while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
-					if (strcmp(str, pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY)) == 0)
-						pkg_set(pkg, PKG_REPOURL, pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE));
-				}
-			}
+			if (attr == PKG_REPONAME && multirepos_enabled)
+				pkg_set_repourl(pkg, str);
 
 			sbuf_set(sbuf, str);
 			continue;
 		}
 		switch (attr) {
-			case PKG_AUTOMATIC:
-				pkg->automatic = (int)va_arg(ap, int64_t);
-				break;
-			case PKG_LICENSE_LOGIC:
-				pkg->licenselogic = (lic_t)va_arg(ap, int64_t);
-				break;
-			case PKG_FLATSIZE:
-				pkg->flatsize = va_arg(ap, int64_t);
-				break;
-			case PKG_NEW_FLATSIZE:
-				pkg->new_flatsize = va_arg(ap, int64_t);
-				break;
-			case PKG_NEW_PKGSIZE:
-				pkg->new_pkgsize = va_arg(ap, int64_t);
-				break;
-			case PKG_TIME:
-				pkg->time = va_arg(ap, int64_t);
-				break;
-			case PKG_ROWID:
-				pkg->rowid = va_arg(ap, int64_t);
-				break;
-			default:
-				va_arg(ap, void *); /* ignore */
-				break;
+		case PKG_AUTOMATIC:
+			pkg->automatic = (int)va_arg(ap, int64_t);
+			break;
+		case PKG_LICENSE_LOGIC:
+			pkg->licenselogic = (lic_t)va_arg(ap, int64_t);
+			break;
+		case PKG_FLATSIZE:
+			pkg->flatsize = va_arg(ap, int64_t);
+			break;
+		case PKG_NEW_FLATSIZE:
+			pkg->new_flatsize = va_arg(ap, int64_t);
+			break;
+		case PKG_NEW_PKGSIZE:
+			pkg->new_pkgsize = va_arg(ap, int64_t);
+			break;
+		case PKG_TIME:
+			pkg->time = va_arg(ap, int64_t);
+			break;
+		case PKG_ROWID:
+			pkg->rowid = va_arg(ap, int64_t);
+			break;
+		default:
+			/* XXX emit an error? */
+			(void) va_arg(ap, void *);
+			break;
 		}
 	}
 

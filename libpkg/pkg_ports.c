@@ -111,9 +111,12 @@ sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...
 	va_end(ap);
 }
 
-#define post_unexec_append(buf, str, ...) sbuf_append(buf, "unexec", str, __VA_ARGS__)
-#define pre_unexec_append(buf, str, ...) sbuf_append(buf, "unexec", str, __VA_ARGS__)
-#define exec_append(buf, str, ...) sbuf_append(buf, "exec", str, __VA_ARGS__)
+#define post_unexec_append(buf, str, ...) \
+	sbuf_append(buf, "unexec", str, __VA_ARGS__)
+#define pre_unexec_append(buf, str, ...) \
+	sbuf_append(buf, "unexec", str, __VA_ARGS__)
+#define exec_append(buf, str, ...) \
+	sbuf_append(buf, "exec", str, __VA_ARGS__)
 
 static int
 setprefix(struct plist *p, char *line)
@@ -146,7 +149,8 @@ meta_dirrm(struct plist *p, char *line, bool try)
 	if (line[0] == '/')
 		snprintf(path, sizeof(path), "%s/", line);
 	else
-		snprintf(path, sizeof(path), "%s%s%s/", p->prefix, p->slash, line);
+		snprintf(path, sizeof(path), "%s%s%s/", p->prefix, p->slash,
+		    line);
 
 	testpath = path;
 
@@ -156,7 +160,8 @@ meta_dirrm(struct plist *p, char *line, bool try)
 	}
 
 	if (lstat(testpath, &st) == 0)
-		return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname, p->perm, try));
+		return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
+		    p->perm, try));
 
 	pkg_emit_errno("lstat", path);
 	if (p->stage != NULL)
@@ -200,7 +205,8 @@ file(struct plist *p, char *line)
 	if (line[0] == '/')
 		snprintf(path, sizeof(path), "%s", line);
 	else
-		snprintf(path, sizeof(path), "%s%s%s", p->prefix, p->slash, line);
+		snprintf(path, sizeof(path), "%s%s%s", p->prefix,
+		    p->slash, line);
 	testpath = path;
 
 	if (p->stage != NULL) {
@@ -224,7 +230,8 @@ file(struct plist *p, char *line)
 			sha256_file(testpath, sha256);
 			buf = sha256;
 		}
-		return (pkg_addfile_attr(p->pkg, path, buf, p->uname, p->gname, p->perm, true));
+		return (pkg_addfile_attr(p->pkg, path, buf, p->uname, p->gname,
+		    p->perm, true));
 	}
 
 	pkg_emit_errno("lstat", path);
@@ -296,8 +303,10 @@ meta_exec(struct plist *p, char *line, bool unexec)
 	char comment[2];
 	char path[MAXPATHLEN + 1];
 	regmatch_t pmatch[2];
+	int ret;
 
-	if (format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL) != EPKG_OK)
+	ret = format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL);
+	if (ret != EPKG_OK)
 		return (EPKG_OK);
 
 	if (unexec) {
@@ -333,10 +342,13 @@ meta_exec(struct plist *p, char *line, bool unexec)
 		if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
 		    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
 		    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
-		    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache") ||
-		    strstr(cmd, "update-desktop-database") || strstr(cmd, "update-mime-database")) {
+		    strstr(cmd, "fonts.scale") ||
+		    strstr(cmd, "gtk-update-icon-cache") ||
+		    strstr(cmd, "update-desktop-database") ||
+		    strstr(cmd, "update-mime-database")) {
 			if (comment[0] != '#')
-				post_unexec_append(p->post_deinstall_buf, "%s%s\n", comment, cmd);
+				post_unexec_append(p->post_deinstall_buf,
+				    "%s%s\n", comment, cmd);
 		} else {
 			sbuf_printf(p->unexec_buf, "%s%s\n",comment, cmd);
 		}
@@ -352,18 +364,22 @@ meta_exec(struct plist *p, char *line, bool unexec)
 			split_chr(buf, '|');
 
 			if (strstr(buf, "\"/")) {
-				regcomp(&preg, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
+				regcomp(&preg, "[[:space:]]\"(/[^\"]+)",
+				    REG_EXTENDED);
 				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
-					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
+					strlcpy(path, &buf[pmatch[1].rm_so],
+					    pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
 						continue;
 					dirrmtry(p, path);
 				}
 			} else {
-				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)", REG_EXTENDED);
+				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)",
+				    REG_EXTENDED);
 				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
-					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
+					strlcpy(path, &buf[pmatch[1].rm_so],
+					    pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
 						continue;
@@ -506,7 +522,8 @@ plist_free(struct plist *plist)
 }
 
 static int
-parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *line)
+parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
+    char *line)
 {
 	yaml_node_item_t *item;
 	yaml_node_t *val;
@@ -527,7 +544,8 @@ parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *li
 		}
 
 		for (i = 0; list_actions[i].name != NULL; i++) {
-			if (!strcasecmp(val->data.scalar.value, list_actions[i].name)) {
+			if (!strcasecmp(val->data.scalar.value,
+			    list_actions[i].name)) {
 				list_actions[i].perform(p, line);
 				break;
 			}
@@ -539,7 +557,8 @@ parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *li
 }
 
 static int
-parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *line)
+parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
+    struct plist *p, char *line)
 {
 	yaml_node_pair_t *pair;
 	yaml_node_t *key, *val;
@@ -562,7 +581,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "pre-install")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->pre_install_buf, cmd);
 				free(cmd);
 			}
@@ -572,7 +592,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "post-install")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->post_install_buf, cmd);
 				free(cmd);
 			}
@@ -582,7 +603,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "pre-deinstall")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->pre_deinstall_buf, cmd);
 				free(cmd);
 			}
@@ -592,7 +614,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "post-deinstall")) {
 			if (val->data.scalar.length != 0) { 
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->post_deinstall_buf, cmd);
 				free(cmd);
 			}
@@ -602,7 +625,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "pre-upgrade")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->pre_upgrade_buf, cmd);
 				free(cmd);
 			}
@@ -612,7 +636,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "post-upgrade")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->post_upgrade_buf, cmd);
 				free(cmd);
 			}
@@ -639,14 +664,17 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 	pkg_config_string(PKG_CONFIG_PLIST_KEYWORDS_DIR, &keyword_dir);
 	if (keyword_dir == NULL) {
 		pkg_config_string(PKG_CONFIG_PORTSDIR, &keyword_dir);
-		snprintf(keyfile_path, sizeof(keyfile_path), "%s/Keywords/%s.yaml", keyword_dir, keyword);
+		snprintf(keyfile_path, sizeof(keyfile_path),
+		    "%s/Keywords/%s.yaml", keyword_dir, keyword);
 	} else {
-		snprintf(keyfile_path, sizeof(keyfile_path), "%s/%s.yaml", keyword_dir, keyword);
+		snprintf(keyfile_path, sizeof(keyfile_path),
+		    "%s/%s.yaml", keyword_dir, keyword);
 	}
 
 	if ((fp = fopen(keyfile_path, "r")) == NULL) {
 		if (errno != ENOENT)
-			pkg_emit_errno("Unable to open keyword definition", keyfile_path);
+			pkg_emit_errno("Unable to open keyword definition",
+			    keyfile_path);
 
 		return (EPKG_UNKNOWN);
 	}
@@ -658,9 +686,11 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 	node = yaml_document_get_root_node(&doc);
 	if (node != NULL) {
 		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid keyword file format: %s", keyfile_path);
+			pkg_emit_error("Invalid keyword file format: %s",
+			    keyfile_path);
 		} else {
-			ret = parse_and_apply_keyword_file(&doc, node, plist, line);
+			ret = parse_and_apply_keyword_file(&doc, node, plist,
+			    line);
 		}
 	} else {
 		pkg_emit_error("Invalid keyword file format: %s", keyfile_path);
@@ -784,7 +814,8 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 				buf++;
 			switch (parse_keywords(&pplist, keyword, buf)) {
 			case EPKG_UNKNOWN:
-				pkg_emit_error("unknown keyword %s, ignoring %s", keyword, plist_p);
+				pkg_emit_error("unknown keyword %s, ignoring %s",
+				    keyword, plist_p);
 				break;
 			case EPKG_FATAL:
 				ret = EPKG_FATAL;
@@ -816,13 +847,20 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 
 	pkg_set(pkg, PKG_FLATSIZE, pplist.flatsize);
 
-	flush_script_buffer(pplist.pre_install_buf, pkg, PKG_SCRIPT_PRE_INSTALL);
-	flush_script_buffer(pplist.post_install_buf, pkg, PKG_SCRIPT_POST_INSTALL);
-	flush_script_buffer(pplist.pre_deinstall_buf, pkg, PKG_SCRIPT_PRE_DEINSTALL);
-	flush_script_buffer(pplist.unexec_buf, pkg, PKG_SCRIPT_POST_DEINSTALL);
-	flush_script_buffer(pplist.post_deinstall_buf, pkg, PKG_SCRIPT_POST_DEINSTALL);
-	flush_script_buffer(pplist.pre_upgrade_buf, pkg, PKG_SCRIPT_PRE_UPGRADE);
-	flush_script_buffer(pplist.post_upgrade_buf, pkg, PKG_SCRIPT_POST_UPGRADE);
+	flush_script_buffer(pplist.pre_install_buf, pkg,
+	    PKG_SCRIPT_PRE_INSTALL);
+	flush_script_buffer(pplist.post_install_buf, pkg,
+	    PKG_SCRIPT_POST_INSTALL);
+	flush_script_buffer(pplist.pre_deinstall_buf, pkg,
+	    PKG_SCRIPT_PRE_DEINSTALL);
+	flush_script_buffer(pplist.unexec_buf, pkg,
+	    PKG_SCRIPT_POST_DEINSTALL);
+	flush_script_buffer(pplist.post_deinstall_buf, pkg,
+	    PKG_SCRIPT_POST_DEINSTALL);
+	flush_script_buffer(pplist.pre_upgrade_buf, pkg,
+	    PKG_SCRIPT_PRE_UPGRADE);
+	flush_script_buffer(pplist.post_upgrade_buf, pkg,
+	    PKG_SCRIPT_POST_UPGRADE);
 
 	free(hardlinks.inodes);
 
