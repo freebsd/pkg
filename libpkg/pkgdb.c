@@ -2566,19 +2566,19 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 		"'%s' AS dbname FROM pkgjobs order by weight DESC;";
 
 	const char pkgjobs_sql_1[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-			"maintainer, www, prefix, flatsize, pkgsize, "
+			"maintainer, www, prefix, flatsize, newversion, pkgsize, "
 			"cksum, repopath, automatic, opts) "
 			"SELECT id, origin, name, version, comment, desc, "
-			"arch, maintainer, www, prefix, flatsize, pkgsize, "
+			"arch, maintainer, www, prefix, flatsize, version AS newversion, pkgsize, "
 			"cksum, path, 0 ,"
 			"(select group_concat(option) from (select option from '%s'.options WHERE package_id=id AND value='on' ORDER BY option)) "
 			"FROM '%s'.packages WHERE origin IN (select origin from main.packages)";
 
 	const char pkgjobs_sql_2[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-				"maintainer, www, prefix, flatsize, pkgsize, "
+				"maintainer, www, prefix, flatsize, newversion, pkgsize, "
 				"cksum, repopath, automatic, opts) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
-				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
+				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.version AS newversion, r.pkgsize, "
 				"r.cksum, r.path, 1, "
 				"(select group_concat(option) from (select option from '%s'.options WHERE package_id=r.id AND value='on' ORDER BY option)) "
 				"FROM '%s'.packages AS r where r.origin IN "
