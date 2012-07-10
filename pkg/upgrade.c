@@ -80,7 +80,7 @@ exec_upgrade(int argc, char **argv)
 		default:
 			usage_upgrade();
 			return (EX_USAGE);
-			break; /* NOT REACHED */
+			/* NOTREACHED */
 		}
 	}
 	argc -= optind;

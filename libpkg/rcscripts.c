@@ -97,7 +97,7 @@ rc_stop(const char *rc_file)
 		execl("/usr/sbin/service", "service", rc_file,
 		    "onestatus", (char *)NULL);
 		_exit(1);
-		/* NOT REACHED */
+		/* NOTREACHED */
 	default:
 		/* parent */
 		break;
@@ -119,7 +119,7 @@ rc_stop(const char *rc_file)
 		execl("/usr/sbin/service", "service",
 		    rc_file, "stop", (char *)NULL);
 		_exit(1);
-		/* NOT REACHED */
+		/* NOTREACHED */
 	default:
 		/* parent */
 		break;
@@ -150,7 +150,7 @@ rc_start(const char *rc_file)
 		execl("/usr/sbin/service", "service", rc_file,
 		    "quietstart", (char *)NULL);
 		_exit(1);
-		/* NOT REACHED */
+		/* NOTREACHED */
 	default:
 		/* parent */
 		break;
