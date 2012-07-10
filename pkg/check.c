@@ -274,7 +274,7 @@ exec_check(int argc, char **argv)
 				errx(EX_USAGE, "reanalyzing shlibs requires SHLIBS"
 					       " in pkg.conf.");
 			reanalyse_shlibs = true;
-			flags |= PKG_LOAD_SHLIBS;
+			flags |= PKG_LOAD_FILES;
 			break;
 		case 's':
 			checksums = true;
