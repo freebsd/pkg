@@ -2447,10 +2447,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 				"cksum, repopath, automatic) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
 				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
-				"r.cksum, r.path, 1 "
-				"FROM '%s'.packages AS r WHERE r.id IN "
-				"(SELECT d.package_id FROM '%s'.deps AS d, pkgjobs AS j WHERE d.origin = j.origin) "
-				"AND EXISTS (SELECT origin FROM main.packages WHERE origin=r.origin);";
+				"r.cksum, r.path, p.automatic "
+				"FROM '%s'.packages AS r "
+				"INNER JOIN main.packages p ON (p.origin = r.origin) "
+				"WHERE r.id IN (SELECT d.package_id FROM '%s'.deps AS d, pkgjobs AS j WHERE d.origin = j.origin);";
 
 	const char weight_sql[] = "UPDATE pkgjobs SET weight=("
 		"SELECT COUNT(*) FROM '%s'.deps AS d, '%s'.packages AS p, pkgjobs AS j "
