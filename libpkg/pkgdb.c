@@ -2521,7 +2521,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 
 	if (recursive) {
 		do {
-			sql_exec(db->sqlite, upwards_deps_sql);
+			sql_exec(db->sqlite, upwards_deps_sql,
+				 reponame, reponame);
 		} while (sqlite3_changes(db->sqlite) != 0);
 	}
 
