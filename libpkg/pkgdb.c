@@ -1727,7 +1727,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkg_license *license = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
-	struct pkg_shlib *shlib = NULL;
 	struct pkgdb_it *it = NULL;
 
 	sqlite3 *s;
@@ -1951,6 +1950,20 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	/*
 	 * Insert shlibs
 	 */
+	if (pkgdb_update_shlibs(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
+
+	retcode = EPKG_OK;
+
+	cleanup:
+
+	return (retcode);
+}
+
+int
+pkgdb_update_shlibs(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	struct pkg_shlib *shlib = NULL;
 
 	while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
 		if (run_prstmt(SHLIBS1, pkg_shlib_name(shlib))
@@ -1959,16 +1972,62 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		    run_prstmt(SHLIBS2, package_id, pkg_shlib_name(shlib))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
-			goto cleanup;
+			return (EPKG_FATAL);
 		}
 	}
 
-	retcode = EPKG_OK;
-
-	cleanup:
-
-	return (retcode);
+	return (EPKG_OK);
 }
+
+int
+pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
+{
+	sqlite3 *s;
+	int64_t package_id;
+	int ret = EPKG_OK;
+	const char sql[] = "DELETE FROM pkg_shlibs WHERE package_id = ?1;";
+	sqlite3_stmt *stmt_del;
+
+	assert(db != NULL);
+
+	if (pkg_is_valid(pkg) != EPKG_OK) {
+		pkg_emit_error("the package is not valid");
+		return (EPKG_FATAL);
+	}
+
+	if ((ret = pkg_analyse_files(db, pkg)) == EPKG_OK) {
+		if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
+			return (EPKG_FATAL);
+
+		s = db->sqlite;
+		pkg_get(pkg, PKG_ROWID, &package_id);
+
+		/* Clean out old shlibs first */
+		if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt_del, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_bind_int64(stmt_del, 1, package_id);
+
+		ret = sqlite3_step(stmt_del);
+		sqlite3_finalize(stmt_del);
+
+		if (ret != SQLITE_DONE) {
+			ERROR_SQLITE(db->sqlite);
+			return (EPKG_FATAL);
+		}
+
+		if (sql_exec(db->sqlite, "DELETE FROM shlibs WHERE id NOT IN (SELECT DISTINCT shlib_id FROM pkg_shlibs);") != EPKG_OK)
+			return (EPKG_FATAL);
+
+		/* Save shlibs */
+		ret = pkgdb_update_shlibs(pkg, package_id, s);
+	}
+
+	return (ret);
+}
+
 
 int
 pkgdb_register_finale(struct pkgdb *db, int retcode)

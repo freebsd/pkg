@@ -977,6 +977,7 @@ int pkg_shutdown(void);
 
 void pkg_test_filesum(struct pkg *);
 void pkg_recompute(struct pkgdb *, struct pkg *);
+int pkgdb_reanalyse_shlibs(struct pkgdb *, struct pkg *);
 
 int pkg_get_myarch(char *pkgarch, size_t sz);
 
