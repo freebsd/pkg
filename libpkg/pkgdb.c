@@ -5,6 +5,7 @@
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1726,7 +1727,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	struct pkg_license *license = NULL;
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
-	struct pkg_shlib *shlib = NULL;
 	struct pkgdb_it *it = NULL;
 
 	sqlite3 *s;
@@ -1866,7 +1866,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	while (pkg_categories(pkg, &category) == EPKG_OK) {
 		if (run_prstmt(CATEGORY1, pkg_category_name(category))
 		    != SQLITE_DONE
-		    &&
+		    ||
 		    run_prstmt(CATEGORY2, package_id, pkg_category_name(category))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
@@ -1881,7 +1881,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	while (pkg_licenses(pkg, &license) == EPKG_OK) {
 		if (run_prstmt(LICENSES1, pkg_license_name(license))
 		    != SQLITE_DONE
-		    &&
+		    ||
 		    run_prstmt(LICENSES2, package_id, pkg_license_name(license))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
@@ -1896,7 +1896,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	while (pkg_users(pkg, &user) == EPKG_OK) {
 		if (run_prstmt(USERS1, pkg_user_name(user))
 		    != SQLITE_DONE
-		    &&
+		    ||
 		    run_prstmt(USERS2, package_id, pkg_user_name(user))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
@@ -1911,7 +1911,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	while (pkg_groups(pkg, &group) == EPKG_OK) {
 		if (run_prstmt(GROUPS1, pkg_group_name(group))
 		    != SQLITE_DONE
-		    &&
+		    ||
 		    run_prstmt(GROUPS2, package_id, pkg_group_name(group))
 		    != SQLITE_DONE)
 		{
@@ -1950,17 +1950,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	/*
 	 * Insert shlibs
 	 */
-
-	while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
-		if (run_prstmt(SHLIBS1, pkg_shlib_name(shlib))
-		    != SQLITE_DONE
-		    &&
-		    run_prstmt(SHLIBS2, package_id, pkg_shlib_name(shlib))
-		    != SQLITE_DONE) {
-			ERROR_SQLITE(s);
-			goto cleanup;
-		}
-	}
+	if (pkgdb_update_shlibs(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
 
 	retcode = EPKG_OK;
 
@@ -1968,6 +1959,75 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	return (retcode);
 }
+
+int
+pkgdb_update_shlibs(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	struct pkg_shlib *shlib = NULL;
+
+	while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+		if (run_prstmt(SHLIBS1, pkg_shlib_name(shlib))
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(SHLIBS2, package_id, pkg_shlib_name(shlib))
+		    != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
+{
+	sqlite3 *s;
+	int64_t package_id;
+	int ret = EPKG_OK;
+	const char sql[] = "DELETE FROM pkg_shlibs WHERE package_id = ?1;";
+	sqlite3_stmt *stmt_del;
+
+	assert(db != NULL);
+
+	if (pkg_is_valid(pkg) != EPKG_OK) {
+		pkg_emit_error("the package is not valid");
+		return (EPKG_FATAL);
+	}
+
+	if ((ret = pkg_analyse_files(db, pkg)) == EPKG_OK) {
+		if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
+			return (EPKG_FATAL);
+
+		s = db->sqlite;
+		pkg_get(pkg, PKG_ROWID, &package_id);
+
+		/* Clean out old shlibs first */
+		if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt_del, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_bind_int64(stmt_del, 1, package_id);
+
+		ret = sqlite3_step(stmt_del);
+		sqlite3_finalize(stmt_del);
+
+		if (ret != SQLITE_DONE) {
+			ERROR_SQLITE(db->sqlite);
+			return (EPKG_FATAL);
+		}
+
+		if (sql_exec(db->sqlite, "DELETE FROM shlibs WHERE id NOT IN (SELECT DISTINCT shlib_id FROM pkg_shlibs);") != EPKG_OK)
+			return (EPKG_FATAL);
+
+		/* Save shlibs */
+		ret = pkgdb_update_shlibs(pkg, package_id, s);
+	}
+
+	return (ret);
+}
+
 
 int
 pkgdb_register_finale(struct pkgdb *db, int retcode)
@@ -2343,7 +2403,7 @@ cleanup:
 }
 
 struct pkgdb_it *
-pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, const char *repo, bool force)
+pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, const char *repo, bool force, bool recursive)
 {
 	sqlite3_stmt *stmt = NULL;
 	struct pkgdb_it *it;
@@ -2381,6 +2441,16 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 				"FROM '%s'.packages AS r where r.origin IN "
 				"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j WHERE d.package_id = j.pkgid) "
 				"AND (SELECT origin FROM main.packages WHERE origin=r.origin AND version=r.version) IS NULL;";
+
+	const char upwards_deps_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
+				"maintainer, www, prefix, flatsize, pkgsize, "
+				"cksum, repopath, automatic) "
+				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
+				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
+				"r.cksum, r.path, p.automatic "
+				"FROM '%s'.packages AS r "
+				"INNER JOIN main.packages p ON (p.origin = r.origin) "
+				"WHERE r.id IN (SELECT d.package_id FROM '%s'.deps AS d, pkgjobs AS j WHERE d.origin = j.origin);";
 
 	const char weight_sql[] = "UPDATE pkgjobs SET weight=("
 		"SELECT COUNT(*) FROM '%s'.deps AS d, '%s'.packages AS p, pkgjobs AS j "
@@ -2449,6 +2519,11 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs, c
 		sql_exec(db->sqlite, sbuf_get(sql));
 	} while (sqlite3_changes(db->sqlite) != 0);
 
+	if (recursive) {
+		do {
+			sql_exec(db->sqlite, upwards_deps_sql);
+		} while (sqlite3_changes(db->sqlite) != 0);
+	}
 
 	/* Determine if there is an upgrade needed */
 	sql_exec(db->sqlite, "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
@@ -2506,19 +2581,19 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 		"'%s' AS dbname FROM pkgjobs order by weight DESC;";
 
 	const char pkgjobs_sql_1[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-			"maintainer, www, prefix, flatsize, pkgsize, "
+			"maintainer, www, prefix, flatsize, newversion, pkgsize, "
 			"cksum, repopath, automatic, opts) "
 			"SELECT id, origin, name, version, comment, desc, "
-			"arch, maintainer, www, prefix, flatsize, pkgsize, "
+			"arch, maintainer, www, prefix, flatsize, version AS newversion, pkgsize, "
 			"cksum, path, 0 ,"
 			"(select group_concat(option) from (select option from '%s'.options WHERE package_id=id AND value='on' ORDER BY option)) "
 			"FROM '%s'.packages WHERE origin IN (select origin from main.packages)";
 
 	const char pkgjobs_sql_2[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-				"maintainer, www, prefix, flatsize, pkgsize, "
+				"maintainer, www, prefix, flatsize, newversion, pkgsize, "
 				"cksum, repopath, automatic, opts) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
-				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
+				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.version AS newversion, r.pkgsize, "
 				"r.cksum, r.path, 1, "
 				"(select group_concat(option) from (select option from '%s'.options WHERE package_id=r.id AND value='on' ORDER BY option)) "
 				"FROM '%s'.packages AS r where r.origin IN "

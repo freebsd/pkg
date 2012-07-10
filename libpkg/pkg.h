@@ -722,7 +722,7 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
 /**
  * 
  */
-struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, bool force);
+struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, bool force, bool recursive);
 struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame, bool all);
 struct pkgdb_it *pkgdb_query_downgrades(struct pkgdb *db, const char *reponame);
 struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
@@ -977,6 +977,7 @@ int pkg_shutdown(void);
 
 void pkg_test_filesum(struct pkg *);
 void pkg_recompute(struct pkgdb *, struct pkg *);
+int pkgdb_reanalyse_shlibs(struct pkgdb *, struct pkg *);
 
 int pkg_get_myarch(char *pkgarch, size_t sz);
 

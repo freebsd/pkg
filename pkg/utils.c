@@ -398,3 +398,28 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 		printf("\n%s to be downloaded\n", size);
 	}
 }
+
+struct sbuf *
+exec_buf(const char *cmd) {
+	FILE *fp;
+	char buf[BUFSIZ];
+	struct sbuf *res;
+
+	if ((fp = popen(cmd, "r")) == NULL)
+		return (NULL);
+
+	res = sbuf_new_auto();
+	while (fgets(buf, BUFSIZ, fp) != NULL)
+		sbuf_cat(res, buf);
+
+	pclose(fp);
+
+	if (sbuf_len(res) == 0) {
+		sbuf_delete(res);
+		return (NULL);
+	}
+
+	sbuf_finish(res);
+
+	return (res);
+}

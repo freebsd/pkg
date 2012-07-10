@@ -148,7 +148,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		free(pkgs);
 
-	if ((it = pkgdb_query_installs(db, MATCH_EXACT, nbpkgs, pkgs, NULL, false)) == NULL) {
+	if ((it = pkgdb_query_installs(db, MATCH_EXACT, nbpkgs, pkgs, NULL, false, false)) == NULL) {
 		free(pkgs);
 		pkg_jobs_free(jobs);
 	}
@@ -221,7 +221,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-dsr] [-vy] [-a | -gxX <pattern>]\n\n");
+	fprintf(stderr, "usage: pkg check [-dlsr] [-vy] [-a | -gxX <pattern>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -239,13 +239,15 @@ exec_check(int argc, char **argv)
 	bool dcheck = false;
 	bool checksums = false;
 	bool recompute = false;
+	bool reanalyse_shlibs = false;
+	bool shlibs;
 	int nbpkgs = 0;
 	int i;
 	int verbose = 0;
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagdxXsrv")) != -1) {
+	while ((ch = getopt(argc, argv, "yagdlxXsrv")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -265,6 +267,14 @@ exec_check(int argc, char **argv)
 			case 'd':
 				dcheck = true;
 				flags |= PKG_LOAD_DEPS;
+				break;
+			case 'l':
+				pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+				if (!shlibs)
+					errx(EX_USAGE, "reanalyzing shlibs requires SHLIBS"
+						       " in pkg.conf.");
+				reanalyse_shlibs = true;
+				flags |= PKG_LOAD_FILES;
 				break;
 			case 's':
 				checksums = true;
@@ -289,9 +299,9 @@ exec_check(int argc, char **argv)
 	argv += optind;
 
 	/* Default to all packages if no pkg provided */
-	if (argc == 0 && (dcheck || checksums || recompute)) {
+	if (argc == 0 && (dcheck || checksums || recompute || reanalyse_shlibs)) {
 		match = MATCH_ALL;
-	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recompute)) {
+	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recompute || reanalyse_shlibs)) {
 		usage_check();
 		return (EX_USAGE);
 	}
@@ -332,6 +342,12 @@ exec_check(int argc, char **argv)
 				if (verbose)
 					printf("Recomputing size and checksums: %s\n", pkgname);
 				pkg_recompute(db, pkg);
+			}
+			if (reanalyse_shlibs) {
+				if (verbose)
+					printf("Reanalyzing files for shlibs: %s\n", pkgname);
+				if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK)
+					printf("Failed to reanalyse for shlibs: %s\n", pkgname);
 			}
 		}
 

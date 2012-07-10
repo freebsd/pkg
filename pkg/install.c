@@ -44,7 +44,7 @@
 void
 usage_install(void)
 {
-	fprintf(stderr, "usage: pkg install [-r reponame] [-yqfgxXL] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg install [-r reponame] [-yqfgxXRL] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -60,11 +60,12 @@ exec_install(int argc, char **argv)
 	int ch;
 	bool yes = false;
 	bool auto_update = true;
+	bool recursive = false;
 
 	match_t match = MATCH_EXACT;
 	bool force = false;
 
-	while ((ch = getopt(argc, argv, "yfgxXr:qL")) != -1) {
+	while ((ch = getopt(argc, argv, "yfgxXr:qLR")) != -1) {
 		switch (ch) {
 			case 'y':
 				yes = true;
@@ -89,6 +90,9 @@ exec_install(int argc, char **argv)
 				break;
 			case 'L':
 				auto_update = false;
+				break;
+			case 'R':
+				recursive = true;
 				break;
 			default:
 				usage_install();
@@ -120,7 +124,7 @@ exec_install(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if ((it = pkgdb_query_installs(db, match, argc, argv, reponame, force)) == NULL)
+	if ((it = pkgdb_query_installs(db, match, argc, argv, reponame, force, recursive)) == NULL)
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {

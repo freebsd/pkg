@@ -61,31 +61,6 @@ usage_version(void)
 	fprintf(stderr, "For more information see 'pkg help version'.\n");
 }
 
-static struct sbuf *
-exec_buf(const char *cmd) {
-	FILE *fp;
-	char buf[BUFSIZ];
-	struct sbuf *res;
-
-	if ((fp = popen(cmd, "r")) == NULL)
-		return (NULL);
-
-	res = sbuf_new_auto();
-	while (fgets(buf, BUFSIZ, fp) != NULL)
-		sbuf_cat(res, buf);
-
-	pclose(fp);
-
-	if (sbuf_len(res) == 0) {
-		sbuf_delete(res);
-		return (NULL);
-	}
-
-	sbuf_finish(res);
-
-	return (res);
-}
-
 static void
 print_version(struct pkg *pkg, const char *source, const char *ver, char limchar, unsigned int opt)
 {
