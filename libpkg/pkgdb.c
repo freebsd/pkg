@@ -196,40 +196,40 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	for (icol = 0; icol < sqlite3_column_count(stmt); icol++) {
 		colname = sqlite3_column_name(stmt, icol);
 		switch (sqlite3_column_type(stmt, icol)) {
-			case SQLITE_TEXT:
-				for (i = 0; columns[i].name != NULL; i++) {
-					if (!strcmp(columns[i].name, colname)) {
-						pkg_set(pkg, columns[i].type,
-						    sqlite3_column_text(stmt,
-						    icol));
-						break;
-					}
+		case SQLITE_TEXT:
+			for (i = 0; columns[i].name != NULL; i++) {
+				if (!strcmp(columns[i].name, colname)) {
+					pkg_set(pkg, columns[i].type,
+					    sqlite3_column_text(stmt,
+					    icol));
+					break;
 				}
-				if (columns[i].name == NULL)
-					pkg_emit_error("Unknown column %s",
-					    colname);
-				break;
-			case SQLITE_INTEGER:
-				for (i = 0; columns[i].name != NULL; i++) {
-					if (!strcmp(columns[i].name, colname)) {
-						pkg_set(pkg, columns[i].type,
-						    sqlite3_column_int64(stmt,
-						    icol));
-						break;
-					}
-				}
-				if (columns[i].name == NULL)
-					pkg_emit_error("Unknown column %s",
-					    colname);
-				break;
-			case SQLITE_BLOB:
-			case SQLITE_FLOAT:
-				pkg_emit_error("Wrong type for column: %s",
+			}
+			if (columns[i].name == NULL)
+				pkg_emit_error("Unknown column %s",
 				    colname);
-				/* just ignore currently */
-				break;
-			case SQLITE_NULL:
-				break;
+			break;
+		case SQLITE_INTEGER:
+			for (i = 0; columns[i].name != NULL; i++) {
+				if (!strcmp(columns[i].name, colname)) {
+					pkg_set(pkg, columns[i].type,
+					    sqlite3_column_int64(stmt,
+					    icol));
+					break;
+				}
+			}
+			if (columns[i].name == NULL)
+				pkg_emit_error("Unknown column %s",
+				    colname);
+			break;
+		case SQLITE_BLOB:
+		case SQLITE_FLOAT:
+			pkg_emit_error("Wrong type for column: %s",
+			    colname);
+			/* just ignore currently */
+			break;
+		case SQLITE_NULL:
+			break;
 		}
 	}
 }
@@ -330,7 +330,7 @@ pkgdb_pkgcmp(sqlite3_context *ctx, int argc, sqlite3_value **argv, int sign)
 		return;
 	}
 
-	switch(pkg_version_cmp(version1, version2)) {
+	switch (pkg_version_cmp(version1, version2)) {
 	case -1:
 		if ((sign & PKGLT) == PKGLT)
 			res = 1;
@@ -677,7 +677,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			return (EPKG_FATAL);
 		}
 
-		switch(pkg_check_repo_version(db, repo_name)) {
+		switch (pkg_check_repo_version(db, repo_name)) {
 		case EPKG_FATAL:
 			pkgdb_close(db);
 			return (EPKG_FATAL);
@@ -997,25 +997,25 @@ pkgdb_get_match_how(match_t match)
 	const char *how = NULL;
 
 	switch (match) {
-		case MATCH_ALL:
-			how = NULL;
-			break;
-		case MATCH_EXACT:
-			how = "%s = ?1";
-			break;
-		case MATCH_GLOB:
-			how = "%s GLOB ?1";
-			break;
-		case MATCH_REGEX:
-			how = "%s REGEXP ?1";
-			break;
-		case MATCH_EREGEX:
-			how = "EREGEXP(?1, %s)";
-			break;
-		case MATCH_CONDITION:
-			/* Should not be called by pkgdb_get_match_how(). */
-			assert(0);
-			break;
+	case MATCH_ALL:
+		how = NULL;
+		break;
+	case MATCH_EXACT:
+		how = "%s = ?1";
+		break;
+	case MATCH_GLOB:
+		how = "%s GLOB ?1";
+		break;
+	case MATCH_REGEX:
+		how = "%s REGEXP ?1";
+		break;
+	case MATCH_EREGEX:
+		how = "EREGEXP(?1, %s)";
+		break;
+	case MATCH_CONDITION:
+		/* Should not be called by pkgdb_get_match_how(). */
+		assert(0);
+		break;
 	}
 
 	return (how);
@@ -3020,25 +3020,25 @@ pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
 
 	how = pkgdb_get_match_how(match);
 
-	switch(field) {
-		case FIELD_NONE:
-			what = NULL;
-			break;
-		case FIELD_ORIGIN:
-			what = "origin";
-			break;
-		case FIELD_NAME:
-			what = "name";
-			break;
-		case FIELD_NAMEVER:
-			what = "name || \"-\" || version";
-			break;
-		case FIELD_COMMENT:
-			what = "comment";
-			break;
-		case FIELD_DESC:
-			what = "desc";
-			break;
+	switch (field) {
+	case FIELD_NONE:
+		what = NULL;
+		break;
+	case FIELD_ORIGIN:
+		what = "origin";
+		break;
+	case FIELD_NAME:
+		what = "name";
+		break;
+	case FIELD_NAMEVER:
+		what = "name || \"-\" || version";
+		break;
+	case FIELD_COMMENT:
+		what = "comment";
+		break;
+	case FIELD_DESC:
+		what = "desc";
+		break;
 	}
 
 	if (what != NULL && how != NULL)
@@ -3343,32 +3343,32 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 		}
 
 		switch (attr) {
-			case PKG_SET_FLATSIZE:
-				flatsize = va_arg(ap, int64_t);
-				sqlite3_bind_int64(stmt, 1, flatsize);
-				sqlite3_bind_int64(stmt, 2, id);
-				break;
-			case PKG_SET_AUTOMATIC:
-				automatic = (int64_t)va_arg(ap, int);
-				if (automatic != 0 && automatic != 1) {
-					sqlite3_finalize(stmt);
-					continue;
-				}
-				sqlite3_bind_int64(stmt, 1, automatic);
-				sqlite3_bind_int64(stmt, 2, id);
-				break;
-			case PKG_SET_DEPORIGIN:
-				oldorigin = va_arg(ap, char *);
-				neworigin = va_arg(ap, char *);
-				sqlite3_bind_text(stmt, 1, neworigin, -1, SQLITE_STATIC);
-				sqlite3_bind_int64(stmt, 2, id);
-				sqlite3_bind_text(stmt, 3, oldorigin, -1, SQLITE_STATIC);
-				break;
-			case PKG_SET_ORIGIN:
-				neworigin = va_arg(ap, char *);
-				sqlite3_bind_text(stmt, 1, neworigin, -1, SQLITE_STATIC);
-				sqlite3_bind_int64(stmt, 2, id);
-				break;
+		case PKG_SET_FLATSIZE:
+			flatsize = va_arg(ap, int64_t);
+			sqlite3_bind_int64(stmt, 1, flatsize);
+			sqlite3_bind_int64(stmt, 2, id);
+			break;
+		case PKG_SET_AUTOMATIC:
+			automatic = (int64_t)va_arg(ap, int);
+			if (automatic != 0 && automatic != 1) {
+				sqlite3_finalize(stmt);
+				continue;
+			}
+			sqlite3_bind_int64(stmt, 1, automatic);
+			sqlite3_bind_int64(stmt, 2, id);
+			break;
+		case PKG_SET_DEPORIGIN:
+			oldorigin = va_arg(ap, char *);
+			neworigin = va_arg(ap, char *);
+			sqlite3_bind_text(stmt, 1, neworigin, -1, SQLITE_STATIC);
+			sqlite3_bind_int64(stmt, 2, id);
+			sqlite3_bind_text(stmt, 3, oldorigin, -1, SQLITE_STATIC);
+			break;
+		case PKG_SET_ORIGIN:
+			neworigin = va_arg(ap, char *);
+			sqlite3_bind_text(stmt, 1, neworigin, -1, SQLITE_STATIC);
+			sqlite3_bind_int64(stmt, 2, id);
+			break;
 		}
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {

@@ -113,15 +113,15 @@ exec_update(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "fq")) != -1) {
 		switch (ch) {
-			case 'q':
-				quiet = true;
-				break;
-			case 'f':
-				force = true;
-				break;
-			default:
-				usage_update();
-				return (EX_USAGE);
+		case 'q':
+			quiet = true;
+			break;
+		case 'f':
+			force = true;
+			break;
+		default:
+			usage_update();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;

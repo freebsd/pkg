@@ -62,25 +62,25 @@ exec_upgrade(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "yr:fqL")) != -1) {
 		switch (ch) {
-			case 'y':
-				yes = true;
-				break;
-			case 'r':
-				reponame = optarg;
-				break;
-			case 'q':
-				quiet = true;
-				break;
-			case 'f':
-				all = true;
-				break;
-			case 'L':
-				auto_update = false;
-				break;
-			default:
-				usage_upgrade();
-				return (EX_USAGE);
-				break; /* NOT REACHED */
+		case 'y':
+			yes = true;
+			break;
+		case 'r':
+			reponame = optarg;
+			break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'f':
+			all = true;
+			break;
+		case 'L':
+			auto_update = false;
+			break;
+		default:
+			usage_upgrade();
+			return (EX_USAGE);
+			break; /* NOT REACHED */
 		}
 	}
 	argc -= optind;

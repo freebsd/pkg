@@ -77,18 +77,18 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 	}
 
 	switch (fmt) {
-		case TXZ:
-			format = "txz";
-			break;
-		case TBZ:
-			format = "tbz";
-			break;
-		case TGZ:
-			format = "tgz";
-			break;
-		case TAR:
-			format = "tar";
-			break;
+	case TXZ:
+		format = "txz";
+		break;
+	case TBZ:
+		format = "tbz";
+		break;
+	case TGZ:
+		format = "tgz";
+		break;
+	case TAR:
+		format = "tar";
+		break;
 	}
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {

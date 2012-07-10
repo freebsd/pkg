@@ -249,50 +249,50 @@ exec_check(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "yagdBxXsrv")) != -1) {
 		switch (ch) {
-			case 'a':
-				match = MATCH_ALL;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'y':
-				yes = true;
-				break;
-			case 'd':
-				dcheck = true;
-				flags |= PKG_LOAD_DEPS;
-				break;
-			case 'B':
-				pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
-				if (!shlibs)
-					errx(EX_USAGE, "reanalyzing shlibs requires SHLIBS"
-						       " in pkg.conf.");
-				reanalyse_shlibs = true;
-				flags |= PKG_LOAD_SHLIBS;
-				break;
-			case 's':
-				checksums = true;
-				flags |= PKG_LOAD_FILES;
-				break;
-			case 'r':
-				recompute = true;
-				flags |= PKG_LOAD_FILES;
-				if (geteuid() != 0)
-					errx(EX_USAGE, "recomputing the checksums"
-					    " and size can only be done as root");
-				break;
-			case 'v':
-				verbose = 1;
-				break;
-			default:
-				usage_check();
-				return (EX_USAGE);
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'y':
+			yes = true;
+			break;
+		case 'd':
+			dcheck = true;
+			flags |= PKG_LOAD_DEPS;
+			break;
+		case 'B':
+			pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+			if (!shlibs)
+				errx(EX_USAGE, "reanalyzing shlibs requires SHLIBS"
+					       " in pkg.conf.");
+			reanalyse_shlibs = true;
+			flags |= PKG_LOAD_SHLIBS;
+			break;
+		case 's':
+			checksums = true;
+			flags |= PKG_LOAD_FILES;
+			break;
+		case 'r':
+			recompute = true;
+			flags |= PKG_LOAD_FILES;
+			if (geteuid() != 0)
+				errx(EX_USAGE, "recomputing the checksums"
+				    " and size can only be done as root");
+			break;
+		case 'v':
+			verbose = 1;
+			break;
+		default:
+			usage_check();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;

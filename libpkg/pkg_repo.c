@@ -516,8 +516,7 @@ maybe_delete_conflicting(const char *origin, const char *version,
 	if (run_prepared_statement(VERSION, origin) != SQLITE_ROW)
 		return (EPKG_FATAL); /* sqlite error */
 	oversion = sqlite3_column_text(STMT(VERSION), 0);
-	switch(pkg_version_cmp(oversion, version))
-	{
+	switch(pkg_version_cmp(oversion, version)) {
 	case -1:
 		pkg_emit_error("duplicate package origin: replacing older "
 			       "version %s in repo with package %s for "
@@ -683,8 +682,7 @@ pkg_create_repo(char *path, bool force,
 		    pkg_path)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				switch(maybe_delete_conflicting(origin,
-				    version, pkg_path)) 
-				{
+				    version, pkg_path)) {
 				case EPKG_FATAL: /* sqlite error */
 					ERROR_SQLITE(sqlite);
 					retcode = EPKG_FATAL;

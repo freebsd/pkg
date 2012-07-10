@@ -57,12 +57,12 @@ exec_which(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "qo")) != -1) {
 		switch (ch) {
-			case 'q':
-				quiet = true;
-				break;
-			case 'o':
-				orig = true;
-				break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'o':
+			orig = true;
+			break;
 		}
 	}
 

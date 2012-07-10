@@ -58,14 +58,14 @@ exec_autoremove(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "yq")) != -1) {
 		switch (ch) {
-			case 'q':
-				quiet = true;
-				break;
-			case 'y':
-				yes = true;
-				break;
-			default:
-				break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'y':
+			yes = true;
+			break;
+		default:
+			break;
 		}
         }
 	argc -= optind;

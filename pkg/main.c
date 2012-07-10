@@ -183,21 +183,21 @@ main(int argc, char **argv)
 		usage();
 
 	while ((ch = getopt(argc, argv, "dj:c:vq")) != -1) {
-		switch(ch) {
-			case 'd':
-				debug++;
-				break;
-			case 'c':
-				chroot_path = optarg;
-				break;
-			case 'j':
-				jail_str = optarg;
-				break;
-			case 'v':
-				version++;
-				break;
-			default:
-				break;
+		switch (ch) {
+		case 'd':
+			debug++;
+			break;
+		case 'c':
+			chroot_path = optarg;
+			break;
+		case 'j':
+			jail_str = optarg;
+			break;
+		case 'v':
+			version++;
+			break;
+		default:
+			break;
 		}
 	}
 	argc -= optind;

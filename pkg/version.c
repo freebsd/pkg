@@ -77,18 +77,18 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 			key = '?';
 	} else {
 		switch (pkg_version_cmp(version, ver)) {
-			case -1:
-				key = '<';
-				break;
-			case 0:
-				key = '=';
-				break;
-			case 1:
-				key = '>';
-				break;
-			default:
-				key = '!';
-				break;
+		case -1:
+			key = '<';
+			break;
+		case 0:
+			key = '=';
+			break;
+		case 1:
+			key = '>';
+			break;
+		default:
+			key = '!';
+			break;
 		}
 	}
 
@@ -107,7 +107,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 	free(namever);
 
 	if (opt & VERSION_VERBOSE) {
-		switch(key) {
+		switch (key) {
 		case '<':
 			printf("   needs updating (%s has %s)", source, ver);
 			break;
@@ -159,54 +159,54 @@ exec_version(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "hIoqvl:L:X:x:g:e:OtT")) != -1) {
 		switch (ch) {
-			case 'h':
-				usage_version();
-				return (EX_OK);
-			case 'I':
-				opt |= VERSION_INDEX;
-				break;
-			case 'o':
-				opt |= VERSION_ORIGIN;
-				break;
-			case 'q':
-				opt |= VERSION_QUIET;
-				break;
-			case 'v':
-				opt |= VERSION_VERBOSE;
-				break;
-			case 'l':
-				opt |= VERSION_STATUS;
-				limchar = *optarg;
-				break;
-			case 'L':
-				opt |= VERSION_NOSTATUS;
-				limchar = *optarg;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				pattern = optarg;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				pattern = optarg;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				pattern = optarg;
-				break;
-			case 'e':
-				match = MATCH_EXACT;
-				pattern = optarg;
-				break;
-			case 'O':
-				opt |= VERSION_WITHORIGIN;
-				break;
-			case 't':
-				opt |= VERSION_TESTVERSION;
-				break;
-			case 'T':
-				opt |= VERSION_TESTPATTERN;
-				break;
+		case 'h':
+			usage_version();
+			return (EX_OK);
+		case 'I':
+			opt |= VERSION_INDEX;
+			break;
+		case 'o':
+			opt |= VERSION_ORIGIN;
+			break;
+		case 'q':
+			opt |= VERSION_QUIET;
+			break;
+		case 'v':
+			opt |= VERSION_VERBOSE;
+			break;
+		case 'l':
+			opt |= VERSION_STATUS;
+			limchar = *optarg;
+			break;
+		case 'L':
+			opt |= VERSION_NOSTATUS;
+			limchar = *optarg;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			pattern = optarg;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			pattern = optarg;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			pattern = optarg;
+			break;
+		case 'e':
+			match = MATCH_EXACT;
+			pattern = optarg;
+			break;
+		case 'O':
+			opt |= VERSION_WITHORIGIN;
+			break;
+		case 't':
+			opt |= VERSION_TESTVERSION;
+			break;
+		case 'T':
+			opt |= VERSION_TESTPATTERN;
+			break;
 		}
 	}
 	argc -= optind;
@@ -232,15 +232,15 @@ exec_version(int argc, char **argv)
 	
 	} else if (opt == VERSION_TESTVERSION) {
 		switch (pkg_version_cmp(argv[0], argv[1])) {
-			case -1:
-				printf("<\n");
-				break;
-			case 0:
-				printf("=\n");
-				break;
-			case 1:
-				printf(">\n");
-				break;
+		case -1:
+			printf("<\n");
+			break;
+		case 0:
+			printf("=\n");
+			break;
+		case 1:
+			printf(">\n");
+			break;
 		}
 	} else if (opt & VERSION_INDEX) {
 		uname(&u);

@@ -71,15 +71,15 @@ exec_updating(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "d:f:")) != -1) {
 		switch (ch) {
-			case 'd':
-				date = optarg;
-				break;
-			case 'f':
-				updatingfile = optarg;
-				break;
-			default:
-				usage_updating();
-				return (EX_USAGE);
+		case 'd':
+			date = optarg;
+			break;
+		case 'f':
+			updatingfile = optarg;
+			break;
+		default:
+			usage_updating();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;

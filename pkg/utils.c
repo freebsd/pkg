@@ -94,24 +94,24 @@ absolutepath(const char *src, char *dest, size_t dest_len) {
 		else
 			len = strlen(ptr);
 
-		switch(len) {
-			case 2:
-				if (ptr[0] == '.' && ptr[1] == '.') {
-					slash = strrchr(res, '/');
-					if (slash != NULL) {
-						res_len = slash - res;
-						res[res_len] = '\0';
-					}
-					continue;
+		switch (len) {
+		case 2:
+			if (ptr[0] == '.' && ptr[1] == '.') {
+				slash = strrchr(res, '/');
+				if (slash != NULL) {
+					res_len = slash - res;
+					res[res_len] = '\0';
 				}
-				break;
-			case 1:
-				if (ptr[0] == '.')
-					continue;
-
-				break;
-			case 0:
 				continue;
+			}
+			break;
+		case 1:
+			if (ptr[0] == '.')
+				continue;
+
+			break;
+		case 0:
+			continue;
 		}
 		res[res_len++] = '/';
 		strlcpy(res + res_len, ptr, res_size);

@@ -109,29 +109,29 @@ exec_register(int argc, char **argv)
 	pkg_new(&pkg, PKG_INSTALLED);
 	while ((ch = getopt(argc, argv, "f:m:i:ld")) != -1) {
 		switch (ch) {
-			case 'f':
-				if ((plist = strdup(optarg)) == NULL)
-					err(1, "cannot allocate memory");
+		case 'f':
+			if ((plist = strdup(optarg)) == NULL)
+				err(1, "cannot allocate memory");
 
-				break;
-			case 'm':
-				if ((mdir = strdup(optarg)) == NULL)
-					err(1, "cannot allocate memory");
-				break;
-			case 'd':
-				pkg_set(pkg, PKG_AUTOMATIC, true);
-				break;
-			case 'i':
-				if ((input_path = strdup(optarg)) == NULL)
-					err(1, "cannot allocate memory");
-				break;
-			case 'l':
-				legacy = true;
-				break;
-			default:
-				printf("%c\n", ch);
-				usage_register();
-				return (EX_USAGE);
+			break;
+		case 'm':
+			if ((mdir = strdup(optarg)) == NULL)
+				err(1, "cannot allocate memory");
+			break;
+		case 'd':
+			pkg_set(pkg, PKG_AUTOMATIC, true);
+			break;
+		case 'i':
+			if ((input_path = strdup(optarg)) == NULL)
+				err(1, "cannot allocate memory");
+			break;
+		case 'l':
+			legacy = true;
+			break;
+		default:
+			printf("%c\n", ch);
+			usage_register();
+			return (EX_USAGE);
 		}
 	}
 

@@ -194,13 +194,13 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 			goto cleanup;
 		}
 		switch (shdr.sh_type) {
-			case SHT_NOTE:
-				note = scn;
-				break;
-			case SHT_DYNAMIC:
-				dynamic = scn;
-				sh_link = shdr.sh_link;
-				numdyn = shdr.sh_size / shdr.sh_entsize;
+		case SHT_NOTE:
+			note = scn;
+			break;
+		case SHT_DYNAMIC:
+			dynamic = scn;
+			sh_link = shdr.sh_link;
+			numdyn = shdr.sh_size / shdr.sh_entsize;
 		}
 
 		if (note != NULL && dynamic != NULL)

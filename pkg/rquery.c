@@ -94,28 +94,28 @@ exec_rquery(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "agxXe:r:")) != -1) {
 		switch (ch) {
-			case 'a':
-				match = MATCH_ALL;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'e':
-				match = MATCH_CONDITION;
-				condition = optarg;
-				break;
-			case 'r':
-				reponame = optarg;
-				break;
-			default:
-				usage_rquery();
-				return (EX_USAGE);
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'e':
+			match = MATCH_CONDITION;
+			condition = optarg;
+			break;
+		case 'r':
+			reponame = optarg;
+			break;
+		default:
+			usage_rquery();
+			return (EX_USAGE);
 		}
 	}
 

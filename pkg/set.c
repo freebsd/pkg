@@ -68,47 +68,53 @@ exec_set(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "ayA:kxXgo:")) != -1) {
 		switch (ch) {
-			case 'y':
-				yes_flag = true;
-				break;
-			case 'a':
-				match = MATCH_ALL;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'A':
-				sets |= AUTOMATIC;
-				newautomatic = strtonum(optarg, 0, 1, &errstr);
-				if (errstr)
-					errx(EX_USAGE, "Wrong value for -A. Expecting 0 or 1, got: %s (%s)", optarg, errstr);
-				break;
-			case 'o':
-				sets |= ORIGIN;
-				loads |= PKG_LOAD_DEPS;
-				match = MATCH_ALL;
-				oldorigin = strdup(optarg);
-				neworigin = strrchr(oldorigin, ':');
-				if (neworigin == NULL) {
-					free(oldorigin);
-					errx(EX_USAGE, "Wrong format for -o. Expecting oldorigin:neworigin, got: %s", optarg);
-				}
-				*neworigin = '\0';
-				neworigin++;
-				if (strrchr(oldorigin, '/') == NULL || strrchr(neworigin, '/') == NULL) {
-					free(oldorigin);
-					errx(EX_USAGE, "Bad origin format, got: %s", optarg);
-				}
-				break;
-			default:
-				usage_set();
-				return (EX_USAGE);
+		case 'y':
+			yes_flag = true;
+			break;
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'A':
+			sets |= AUTOMATIC;
+			newautomatic = strtonum(optarg, 0, 1, &errstr);
+			if (errstr)
+				errx(EX_USAGE, "Wrong value for -A. "
+				    "Expecting 0 or 1, got: %s (%s)",
+				    optarg, errstr);
+			break;
+		case 'o':
+			sets |= ORIGIN;
+			loads |= PKG_LOAD_DEPS;
+			match = MATCH_ALL;
+			oldorigin = strdup(optarg);
+			neworigin = strrchr(oldorigin, ':');
+			if (neworigin == NULL) {
+				free(oldorigin);
+				errx(EX_USAGE, "Wrong format for -o. "
+				    "Expecting oldorigin:neworigin, got: %s",
+				    optarg);
+			}
+			*neworigin = '\0';
+			neworigin++;
+			if (strrchr(oldorigin, '/') == NULL ||
+			    strrchr(neworigin, '/') == NULL) {
+				free(oldorigin);
+				errx(EX_USAGE,
+				    "Bad origin format, got: %s", optarg);
+			}
+			break;
+		default:
+			usage_set();
+			return (EX_USAGE);
 		}
 	}
 

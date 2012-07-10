@@ -195,30 +195,30 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 			continue;
 		}
 		switch (attr) {
-			case PKG_FLATSIZE:
-				*va_arg(ap, int64_t *) = pkg->flatsize;
-				break;
-			case PKG_NEW_FLATSIZE:
-				*va_arg(ap, int64_t *) = pkg->new_flatsize;
-				break;
-			case PKG_NEW_PKGSIZE:
-				*va_arg(ap, int64_t *) = pkg->new_pkgsize;
-				break;
-			case PKG_LICENSE_LOGIC:
-				*va_arg(ap, lic_t *) = pkg->licenselogic;
-				break;
-			case PKG_AUTOMATIC:
-				*va_arg(ap, bool *) = pkg->automatic;
-				break;
-			case PKG_TIME:
-				*va_arg(ap, int64_t *) = pkg->time;
-				break;
-			case PKG_ROWID:
-				*va_arg(ap, int64_t *) = pkg->rowid;
-				break;
-			default:
-				va_arg(ap, void *); /* ignore */
-				break;
+		case PKG_FLATSIZE:
+			*va_arg(ap, int64_t *) = pkg->flatsize;
+			break;
+		case PKG_NEW_FLATSIZE:
+			*va_arg(ap, int64_t *) = pkg->new_flatsize;
+			break;
+		case PKG_NEW_PKGSIZE:
+			*va_arg(ap, int64_t *) = pkg->new_pkgsize;
+			break;
+		case PKG_LICENSE_LOGIC:
+			*va_arg(ap, lic_t *) = pkg->licenselogic;
+			break;
+		case PKG_AUTOMATIC:
+			*va_arg(ap, bool *) = pkg->automatic;
+			break;
+		case PKG_TIME:
+			*va_arg(ap, int64_t *) = pkg->time;
+			break;
+		case PKG_ROWID:
+			*va_arg(ap, int64_t *) = pkg->rowid;
+			break;
+		default:
+			va_arg(ap, void *); /* ignore */
+			break;
 		}
 	}
 
@@ -843,26 +843,26 @@ pkg_addshlib(struct pkg *pkg, const char *name)
 int
 pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 	switch (list) {
-		case PKG_DEPS:
-			return (STAILQ_EMPTY(&pkg->deps));
-		case PKG_RDEPS:
-			return (STAILQ_EMPTY(&pkg->rdeps));
-		case PKG_LICENSES:
-			return (STAILQ_EMPTY(&pkg->licenses));
-		case PKG_OPTIONS:
-			return (STAILQ_EMPTY(&pkg->options));
-		case PKG_CATEGORIES:
-			return (STAILQ_EMPTY(&pkg->categories));
-		case PKG_FILES:
-			return (STAILQ_EMPTY(&pkg->files));
-		case PKG_DIRS:
-			return (STAILQ_EMPTY(&pkg->dirs));
-		case PKG_USERS:
-			return (STAILQ_EMPTY(&pkg->users));
-		case PKG_GROUPS:
-			return (STAILQ_EMPTY(&pkg->groups));
-		case PKG_SHLIBS:
-			return (STAILQ_EMPTY(&pkg->shlibs));
+	case PKG_DEPS:
+		return (STAILQ_EMPTY(&pkg->deps));
+	case PKG_RDEPS:
+		return (STAILQ_EMPTY(&pkg->rdeps));
+	case PKG_LICENSES:
+		return (STAILQ_EMPTY(&pkg->licenses));
+	case PKG_OPTIONS:
+		return (STAILQ_EMPTY(&pkg->options));
+	case PKG_CATEGORIES:
+		return (STAILQ_EMPTY(&pkg->categories));
+	case PKG_FILES:
+		return (STAILQ_EMPTY(&pkg->files));
+	case PKG_DIRS:
+		return (STAILQ_EMPTY(&pkg->dirs));
+	case PKG_USERS:
+		return (STAILQ_EMPTY(&pkg->users));
+	case PKG_GROUPS:
+		return (STAILQ_EMPTY(&pkg->groups));
+	case PKG_SHLIBS:
+		return (STAILQ_EMPTY(&pkg->shlibs));
 	}
 	
 	return (0);
@@ -881,46 +881,46 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_shlib *sl;
 
 	switch (list) {
-		case PKG_DEPS:
-			LIST_FREE(&pkg->deps, d, pkg_dep_free);
-			pkg->flags &= ~PKG_LOAD_DEPS;
-			break;
-		case PKG_RDEPS:
-			LIST_FREE(&pkg->rdeps, d, pkg_dep_free);
-			pkg->flags &= ~PKG_LOAD_RDEPS;
-			break;
-		case PKG_LICENSES:
-			LIST_FREE(&pkg->licenses, l, pkg_license_free);
-			pkg->flags &= ~PKG_LOAD_LICENSES;
-			break;
-		case PKG_OPTIONS:
-			LIST_FREE(&pkg->options, o, pkg_option_free);
-			pkg->flags &= ~PKG_LOAD_OPTIONS;
-			break;
-		case PKG_CATEGORIES:
-			LIST_FREE(&pkg->categories, c, pkg_category_free);
-			pkg->flags &= ~PKG_LOAD_CATEGORIES;
-			break;
-		case PKG_FILES:
-			LIST_FREE(&pkg->files, f, pkg_file_free);
-			pkg->flags &= ~PKG_LOAD_FILES;
-			break;
-		case PKG_DIRS:
-			LIST_FREE(&pkg->dirs, dir, pkg_dir_free);
-			pkg->flags &= ~PKG_LOAD_DIRS;
-			break;
-		case PKG_USERS:
-			LIST_FREE(&pkg->users, u, pkg_user_free);
-			pkg->flags &= ~PKG_LOAD_USERS;
-			break;
-		case PKG_GROUPS:
-			LIST_FREE(&pkg->groups, g, pkg_group_free);
-			pkg->flags &= ~PKG_LOAD_GROUPS;
-			break;
-		case PKG_SHLIBS:
-			LIST_FREE(&pkg->shlibs, sl, pkg_shlib_free);
-			pkg->flags &= ~PKG_LOAD_SHLIBS;
-			break;
+	case PKG_DEPS:
+		LIST_FREE(&pkg->deps, d, pkg_dep_free);
+		pkg->flags &= ~PKG_LOAD_DEPS;
+		break;
+	case PKG_RDEPS:
+		LIST_FREE(&pkg->rdeps, d, pkg_dep_free);
+		pkg->flags &= ~PKG_LOAD_RDEPS;
+		break;
+	case PKG_LICENSES:
+		LIST_FREE(&pkg->licenses, l, pkg_license_free);
+		pkg->flags &= ~PKG_LOAD_LICENSES;
+		break;
+	case PKG_OPTIONS:
+		LIST_FREE(&pkg->options, o, pkg_option_free);
+		pkg->flags &= ~PKG_LOAD_OPTIONS;
+		break;
+	case PKG_CATEGORIES:
+		LIST_FREE(&pkg->categories, c, pkg_category_free);
+		pkg->flags &= ~PKG_LOAD_CATEGORIES;
+		break;
+	case PKG_FILES:
+		LIST_FREE(&pkg->files, f, pkg_file_free);
+		pkg->flags &= ~PKG_LOAD_FILES;
+		break;
+	case PKG_DIRS:
+		LIST_FREE(&pkg->dirs, dir, pkg_dir_free);
+		pkg->flags &= ~PKG_LOAD_DIRS;
+		break;
+	case PKG_USERS:
+		LIST_FREE(&pkg->users, u, pkg_user_free);
+		pkg->flags &= ~PKG_LOAD_USERS;
+		break;
+	case PKG_GROUPS:
+		LIST_FREE(&pkg->groups, g, pkg_group_free);
+		pkg->flags &= ~PKG_LOAD_GROUPS;
+		break;
+	case PKG_SHLIBS:
+		LIST_FREE(&pkg->shlibs, sl, pkg_shlib_free);
+		pkg->flags &= ~PKG_LOAD_SHLIBS;
+		break;
 	}
 }
 

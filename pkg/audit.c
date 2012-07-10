@@ -88,15 +88,15 @@ fetch_and_extract(const char *src, const char *dest)
 		t = st.st_mtime;
 	}
 	switch (pkg_fetch_file(src, tmp, t)) {
-		case EPKG_OK:
-			break;
-		case EPKG_UPTODATE:
-			printf("Audit file up-to-date.\n");
-			retcode = EPKG_OK;
-			goto cleanup;
-		default:
-			warnx("Cannot fetch audit file!");
-			goto cleanup;
+	case EPKG_OK:
+		break;
+	case EPKG_UPTODATE:
+		printf("Audit file up-to-date.\n");
+		retcode = EPKG_OK;
+		goto cleanup;
+	default:
+		warnx("Cannot fetch audit file!");
+		goto cleanup;
 	}
 
 	a = archive_read_new();
@@ -215,17 +215,17 @@ parse_db(const char *path, struct audit_head *h)
 		while ((column = strsep(&line, "|")) != NULL)
 		{
 			switch (column_id) {
-				case 0:
-					parse_pattern(e, column, linelen);
-					break;
-				case 1:
-					e->url = strdup(column);
-					break;
-				case 2:
-					e->desc = strdup(column);
-					break;
-				default:
-					warn("extra column in audit file");
+			case 0:
+				parse_pattern(e, column, linelen);
+				break;
+			case 1:
+				e->url = strdup(column);
+				break;
+			case 2:
+				e->desc = strdup(column);
+				break;
+			default:
+				warn("extra column in audit file");
 			}
 			column_id++;
 		}
@@ -248,18 +248,18 @@ match_version(const char *pkgversion, struct version_entry *v)
 		return true;
 
 	switch (pkg_version_cmp(pkgversion, v->version)) {
-		case -1:
-			if (v->type == LT || v->type == LTE)
-				res = true;
-			break;
-		case 0:
-			if (v->type == EQ || v->type == LTE || v->type == GTE)
-				res = true;
-			break;
-		case 1:
-			if (v->type == GT || v->type == GTE)
-				res = true;
-			break;
+	case -1:
+		if (v->type == LT || v->type == LTE)
+			res = true;
+		break;
+	case 0:
+		if (v->type == EQ || v->type == LTE || v->type == GTE)
+			res = true;
+		break;
+	case 1:
+		if (v->type == GT || v->type == GTE)
+			res = true;
+		break;
 	}
 	return res;
 }
@@ -334,15 +334,15 @@ exec_audit(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "qF")) != -1) {
 		switch (ch) {
-			case 'q':
-				quiet = true;
-				break;
-			case 'F':
-				fetch = true;
-				break;
-			default:
-				usage_audit();
-				return(EX_USAGE);
+		case 'q':
+			quiet = true;
+			break;
+		case 'F':
+			fetch = true;
+			break;
+		default:
+			usage_audit();
+			return(EX_USAGE);
 		}
 	}
 	argc -= optind;

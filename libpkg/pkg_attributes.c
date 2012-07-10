@@ -59,18 +59,18 @@ pkg_dep_get(struct pkg_dep const * const d, const pkg_dep_attr attr)
 	assert(d != NULL);
 
 	switch (attr) {
-		case PKG_DEP_NAME:
-			return (sbuf_get(d->name));
-			break;
-		case PKG_DEP_ORIGIN:
-			return (sbuf_get(d->origin));
-			break;
-		case PKG_DEP_VERSION:
-			return (sbuf_get(d->version));
-			break;
-		default:
-			return (NULL);
-			break;
+	case PKG_DEP_NAME:
+		return (sbuf_get(d->name));
+		break;
+	case PKG_DEP_ORIGIN:
+		return (sbuf_get(d->origin));
+		break;
+	case PKG_DEP_VERSION:
+		return (sbuf_get(d->version));
+		break;
+	default:
+		return (NULL);
+		break;
 	}
 }
 
@@ -126,21 +126,21 @@ pkg_file_get(struct pkg_file const * const f, const pkg_file_attr attr)
 	assert(f != NULL);
 
 	switch (attr) {
-		case PKG_FILE_PATH:
-			return (f->path);
-			break;
-		case PKG_FILE_SUM:
-			return (f->sum);
-			break;
-		case PKG_FILE_UNAME:
-			return (f->uname);
-			break;
-		case PKG_FILE_GNAME:
-			return (f->gname);
-			break;
-		default:
-			return (NULL);
-			break;
+	case PKG_FILE_PATH:
+		return (f->path);
+		break;
+	case PKG_FILE_SUM:
+		return (f->sum);
+		break;
+	case PKG_FILE_UNAME:
+		return (f->uname);
+		break;
+	case PKG_FILE_GNAME:
+		return (f->gname);
+		break;
+	default:
+		return (NULL);
+		break;
 	}
 }
 

@@ -67,36 +67,36 @@ exec_install(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "yfgxXr:qLR")) != -1) {
 		switch (ch) {
-			case 'y':
-				yes = true;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'r':
-				reponame = optarg;
-				break;
-			case 'f':
-				force = true;
-				break;
-			case 'q':
-				quiet = true;
-				break;
-			case 'L':
-				auto_update = false;
-				break;
-			case 'R':
-				recursive = true;
-				break;
-			default:
-				usage_install();
-				return (EX_USAGE);
+		case 'y':
+			yes = true;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'r':
+			reponame = optarg;
+			break;
+		case 'f':
+			force = true;
+			break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'L':
+			auto_update = false;
+			break;
+		case 'R':
+			recursive = true;
+			break;
+		default:
+			usage_install();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;

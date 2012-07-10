@@ -67,11 +67,15 @@ event_callback(void *data, struct pkg_event *ev)
 			if (filename != NULL) {
 				filename++;
 			} else {
-				// We failed at beeing smart, display the entire url
+				/*
+				 * We failed at being smart, so display
+				 * the entire url.
+				 */
 				filename = ev->e_fetching.url;
 			}
 			strlcpy(url, filename, sizeof(url));
-			start_progress_meter(url, ev->e_fetching.total, &fetched);
+			start_progress_meter(url, ev->e_fetching.total,
+			    &fetched);
 		}
 		fetched = ev->e_fetching.done;
 		if (ev->e_fetching.done == ev->e_fetching.total) {
@@ -82,7 +86,8 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INSTALL_BEGIN:
 		if (quiet)
 			break;
-		pkg_get(ev->e_install_begin.pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		pkg_get(ev->e_install_begin.pkg, PKG_NAME, &name,
+		    PKG_VERSION, &version);
 		printf("Installing %s-%s...", name, version);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
@@ -109,7 +114,8 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		if (quiet)
 			break;
-		pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME, &name,
+		    PKG_VERSION, &version);
 		printf("Deinstalling %s-%s...", name, version);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
@@ -120,18 +126,20 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
 			break;
-		pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name, PKG_VERSION, &version,
-		    PKG_NEWVERSION, &newversion);
+		pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name,
+		    PKG_VERSION, &version, PKG_NEWVERSION, &newversion);
 		switch (pkg_version_cmp(version, newversion)) {
-			case 1:
-				printf("Downgrading %s from %s to %s...", name, version, newversion);
-				break;
-			case 0:
-				printf("Reinstalling %s-%s", name, version);
-				break;
-			case -1:
-				printf("Upgrading %s from %s to %s...", name, version, newversion);
-				break;
+		case 1:
+			printf("Downgrading %s from %s to %s...", name,
+			    version, newversion);
+			break;
+		case 0:
+			printf("Reinstalling %s-%s", name, version);
+			break;
+		case -1:
+			printf("Upgrading %s from %s to %s...", name,
+			    version, newversion);
+			break;
 		}
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
@@ -143,9 +151,9 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg = ev->e_required.pkg;
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		fprintf(stderr, "%s-%s is required by:", name, version);
-		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-			fprintf(stderr, " %s-%s", pkg_dep_name(dep), pkg_dep_version(dep));
-		}
+		while (pkg_rdeps(pkg, &dep) == EPKG_OK)
+			fprintf(stderr, " %s-%s", pkg_dep_name(dep),
+			    pkg_dep_version(dep));
 		if (ev->e_required.force == 1)
 			fprintf(stderr, ", deleting anyway\n");
 		else
@@ -154,15 +162,19 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_ALREADY_INSTALLED:
 		if (quiet)
 			break;
-		pkg_get(ev->e_already_installed.pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		pkg_get(ev->e_already_installed.pkg, PKG_NAME, &name,
+		    PKG_VERSION, &version);
 		printf("%s-%s already installed\n", name, version);
 		break;
 	case PKG_EVENT_MISSING_DEP:
-		fprintf(stderr, "missing dependency %s-%s", pkg_dep_name(ev->e_missing_dep.dep),
+		fprintf(stderr, "missing dependency %s-%s",
+		    pkg_dep_name(ev->e_missing_dep.dep),
 		    pkg_dep_version(ev->e_missing_dep.dep));
 		break;
 	case PKG_EVENT_NOREMOTEDB:
-		fprintf(stderr, "Unable to open remote database \"%s\". Try running '%s update' first.\n", ev->e_remotedb.repo, getprogname());
+		fprintf(stderr, "Unable to open remote database \"%s\". "
+		    "Try running '%s update' first.\n", ev->e_remotedb.repo,
+		    getprogname());
 		break;
 	case PKG_EVENT_NOLOCALDB:
 		/* only cares if run as root */
@@ -170,12 +182,15 @@ event_callback(void *data, struct pkg_event *ev)
 			fprintf(stderr, "Unable to create local database!\n");
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
-		printf("New version of pkg detected, it needs to be installed first.\n"
-		       "After this upgrade it is recommended that you do a full upgrade using: 'pkg upgrade'\n\n");
+		printf("New version of pkg detected; it needs to be "
+		    "installed first.\nAfter this upgrade it is recommended"
+		    "that you do a full upgrade using: 'pkg upgrade'\n\n");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
-		pkg_get(ev->e_file_mismatch.pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name, version, pkg_file_path(ev->e_file_mismatch.file));
+		pkg_get(ev->e_file_mismatch.pkg, PKG_NAME, &name,
+		    PKG_VERSION, &version);
+		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name,
+		    version, pkg_file_path(ev->e_file_mismatch.file));
 	default:
 		break;
 	}

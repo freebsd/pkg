@@ -865,33 +865,33 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 			continue;
 
 		switch (i) {
-			case PKG_SCRIPT_PRE_INSTALL:
-				script_types = "pre-install";
-				break;
-			case PKG_SCRIPT_INSTALL:
-				script_types = "install";
-				break;
-			case PKG_SCRIPT_POST_INSTALL:
-				script_types = "post-install";
-				break;
-			case PKG_SCRIPT_PRE_UPGRADE:
-				script_types = "pre-upgrade";
-				break;
-			case PKG_SCRIPT_UPGRADE:
-				script_types = "upgrade";
-				break;
-			case PKG_SCRIPT_POST_UPGRADE:
-				script_types = "post-upgrade";
-				break;
-			case PKG_SCRIPT_PRE_DEINSTALL:
-				script_types = "pre-deinstall";
-				break;
-			case PKG_SCRIPT_DEINSTALL:
-				script_types = "deinstall";
-				break;
-			case PKG_SCRIPT_POST_DEINSTALL:
-				script_types = "post-deinstall";
-				break;
+		case PKG_SCRIPT_PRE_INSTALL:
+			script_types = "pre-install";
+			break;
+		case PKG_SCRIPT_INSTALL:
+			script_types = "install";
+			break;
+		case PKG_SCRIPT_POST_INSTALL:
+			script_types = "post-install";
+			break;
+		case PKG_SCRIPT_PRE_UPGRADE:
+			script_types = "pre-upgrade";
+			break;
+		case PKG_SCRIPT_UPGRADE:
+			script_types = "upgrade";
+			break;
+		case PKG_SCRIPT_POST_UPGRADE:
+			script_types = "post-upgrade";
+			break;
+		case PKG_SCRIPT_PRE_DEINSTALL:
+			script_types = "pre-deinstall";
+			break;
+		case PKG_SCRIPT_DEINSTALL:
+			script_types = "deinstall";
+			break;
+		case PKG_SCRIPT_POST_DEINSTALL:
+			script_types = "post-deinstall";
+			break;
 		}
 		urlencode(pkg_script_get(pkg, i), &tmpsbuf);
 		manifest_append_kv(map, script_types, sbuf_get(tmpsbuf),

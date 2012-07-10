@@ -312,18 +312,18 @@ pkg_jobs_apply(struct pkg_jobs *j, int force)
 	int rc;
 
 	switch (j->type) {
-		case PKG_JOBS_INSTALL:
-			rc = pkg_jobs_install(j, force);
-			break;
-		case PKG_JOBS_DEINSTALL:
-			rc = pkg_jobs_deinstall(j, force);
-			break;
-		case PKG_JOBS_FETCH:
-			rc = pkg_jobs_fetch(j);
-			break;
-		default:
-			rc = EPKG_FATAL;
-			pkg_emit_error("bad jobs argument");
+	case PKG_JOBS_INSTALL:
+		rc = pkg_jobs_install(j, force);
+		break;
+	case PKG_JOBS_DEINSTALL:
+		rc = pkg_jobs_deinstall(j, force);
+		break;
+	case PKG_JOBS_FETCH:
+		rc = pkg_jobs_fetch(j);
+		break;
+	default:
+		rc = EPKG_FATAL;
+		pkg_emit_error("bad jobs argument");
 	}
 
 	return (rc);

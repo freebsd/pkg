@@ -365,12 +365,12 @@ pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type)
 	assert(kv != NULL);
 
 	switch (type) {
-		case PKG_CONFIG_KV_KEY:
-			return (kv->key);
-			break;
-		case PKG_CONFIG_KV_VALUE:
-			return (kv->value);
-			break;
+	case PKG_CONFIG_KV_KEY:
+		return (kv->key);
+		break;
+	case PKG_CONFIG_KV_VALUE:
+		return (kv->value);
+		break;
 	}
 	return (NULL);
 }

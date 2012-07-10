@@ -84,23 +84,23 @@ rc_stop(const char *rc_file)
 		return (0);
 
 	switch ((pid = fork())) {
-		case -1:
-			return (-1);
-		case 0:
-			/* child */
-			/*
-			 * We don't need to see the output
-			 */
-			fd = open("/dev/null", O_WRONLY);
-			dup2(fd, STDERR_FILENO);
-			dup2(fd, STDOUT_FILENO);
-			execl("/usr/sbin/service", "service", rc_file,
-			    "onestatus", (char *)NULL);
-			_exit(1);
-			/* NOT REACHED */
-		default:
-			/* parent */
-			break;
+	case -1:
+		return (-1);
+	case 0:
+		/* child */
+		/*
+		 * We don't need to see the output
+		 */
+		fd = open("/dev/null", O_WRONLY);
+		dup2(fd, STDERR_FILENO);
+		dup2(fd, STDOUT_FILENO);
+		execl("/usr/sbin/service", "service", rc_file,
+		    "onestatus", (char *)NULL);
+		_exit(1);
+		/* NOT REACHED */
+	default:
+		/* parent */
+		break;
 	}
 
 	while (waitpid(pid, &pstat, 0) == -1) {
@@ -112,17 +112,17 @@ rc_stop(const char *rc_file)
 		return (0);
 
 	switch ((pid = fork())) {
-		case -1:
-			return (-1);
-		case 0:
-			/* child */
-			execl("/usr/sbin/service", "service",
-			    rc_file, "stop", (char *)NULL);
-			_exit(1);
-			/* NOT REACHED */
-		default:
-			/* parent */
-			break;
+	case -1:
+		return (-1);
+	case 0:
+		/* child */
+		execl("/usr/sbin/service", "service",
+		    rc_file, "stop", (char *)NULL);
+		_exit(1);
+		/* NOT REACHED */
+	default:
+		/* parent */
+		break;
 	}
 
 	while (waitpid(pid, &pstat, 0) == -1) {
@@ -143,17 +143,17 @@ rc_start(const char *rc_file)
 		return (0);
 
 	switch ((pid = fork())) {
-		case -1:
-			return (-1);
-		case 0:
-			/* child */
-			execl("/usr/sbin/service", "service", rc_file,
-			    "quietstart", (char *)NULL);
-			_exit(1);
-			/* NOT REACHED */
-		default:
-			/* parent */
-			break;
+	case -1:
+		return (-1);
+	case 0:
+		/* child */
+		execl("/usr/sbin/service", "service", rc_file,
+		    "quietstart", (char *)NULL);
+		_exit(1);
+		/* NOT REACHED */
+	default:
+		/* parent */
+		break;
 	}
 
 	while (waitpid(pid, &pstat, 0) == -1) {

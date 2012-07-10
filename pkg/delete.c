@@ -61,33 +61,33 @@ exec_delete(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "aqgxXfyR")) != -1) {
 		switch (ch) {
-			case 'a':
-				match = MATCH_ALL;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'f':
-				force = 1;
-				break;
-			case 'q':
-				quiet = true;
-				break;
-			case 'y':
-				yes = true;
-				break;
-			case 'R':
-				recursive = 1;
-				break;
-			default:
-				usage_delete();
-				return (EX_USAGE);
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'f':
+			force = 1;
+			break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'y':
+			yes = true;
+			break;
+		case 'R':
+			recursive = 1;
+			break;
+		default:
+			usage_delete();
+			return (EX_USAGE);
 		}
 	}
 

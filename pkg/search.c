@@ -61,49 +61,49 @@ exec_search(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "gxXcdr:fDsqop")) != -1) {
 		switch (ch) {
-			case 'e':
-				match = MATCH_EXACT;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'c':
-				field = FIELD_COMMENT;
-				break;
-			case 'd':
-				field = FIELD_DESC;
-				break;
-			case 'r':
-				reponame = optarg;
-			case 'f':
-				opt |= INFO_FULL;
-				flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS;
-				break;
-			case 'D':
-				opt |= INFO_PRINT_DEP;
-				flags |= PKG_LOAD_DEPS;
-				break;
-			case 's':
-				opt |= INFO_SIZE;
-				break;
-			case 'q':
-				opt |= INFO_QUIET;
-				break;
-			case 'o':
-				opt |= INFO_ORIGIN;
-				break;
-			case 'p':
-				opt |= INFO_PREFIX;
-				break;
-			default:
-				usage_search();
-				return (EX_USAGE);
+		case 'e':
+			match = MATCH_EXACT;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'c':
+			field = FIELD_COMMENT;
+			break;
+		case 'd':
+			field = FIELD_DESC;
+			break;
+		case 'r':
+			reponame = optarg;
+		case 'f':
+			opt |= INFO_FULL;
+			flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS;
+			break;
+		case 'D':
+			opt |= INFO_PRINT_DEP;
+			flags |= PKG_LOAD_DEPS;
+			break;
+		case 's':
+			opt |= INFO_SIZE;
+			break;
+		case 'q':
+			opt |= INFO_QUIET;
+			break;
+		case 'o':
+			opt |= INFO_ORIGIN;
+			break;
+		case 'p':
+			opt |= INFO_PREFIX;
+			break;
+		default:
+			usage_search();
+			return (EX_USAGE);
 		}
 	}
 
