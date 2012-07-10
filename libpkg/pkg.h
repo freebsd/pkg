@@ -308,7 +308,7 @@ typedef enum {
 	 * local file newer than remote
 	 */
 	EPKG_UPTODATE,
-	/** 
+	/**
 	 * unkown keyword
 	 */
 	EPKG_UNKNOWN,
@@ -657,7 +657,7 @@ const char *pkg_shlib_name(struct pkg_shlib const * const);
  * @return EPKG_OK if the package is installed,
  * and != EPKG_OK if the package is not installed or an error occurred
  */
-int pkg_is_installed(struct pkgdb *db, const char *origin); 
+int pkg_is_installed(struct pkgdb *db, const char *origin);
 
 /**
  * Create a repository database.
@@ -687,7 +687,7 @@ void pkgdb_close(struct pkgdb *db);
  */
 int pkgdb_remote_init(struct pkgdb *db, const char *reponame);
 
-/** 
+/**
  * Dump the content of the database in yaml format
  * only to use when mtree will be deprecated
  */
@@ -703,7 +703,7 @@ int pkgdb_load(struct pkgdb *db, char *dest);
 int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg);
 
 /**
- * Unregister a package from the database.
+ * Unregister a package from the database
  * @return An error code.
  */
 int pkgdb_unregister_pkg(struct pkgdb *pkg, const char *origin);
@@ -720,7 +720,7 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
 		match_t type, unsigned int field, const char *reponame);
 
 /**
- * 
+ *
  */
 struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, bool force, bool recursive);
 struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame, bool all);

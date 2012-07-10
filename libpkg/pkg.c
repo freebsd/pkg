@@ -737,7 +737,7 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 	filename[0] = '\0';
 	filename++;
 
-	if (strcmp(filename, "pkg-pre-install") == 0 || 
+	if (strcmp(filename, "pkg-pre-install") == 0 ||
 			strcmp(filename, "+PRE_INSTALL") == 0) {
 		type = PKG_SCRIPT_PRE_INSTALL;
 	} else if (strcmp(filename, "pkg-post-install") == 0 ||

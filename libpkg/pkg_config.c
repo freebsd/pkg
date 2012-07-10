@@ -212,7 +212,7 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
 
 		if (key->data.scalar.length <= 0) {
-			/* 
+			/*
 			 * ignoring silently empty keys can be empty lines or user mistakes
 			 */
 			++pair;

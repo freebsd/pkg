@@ -352,7 +352,7 @@ exec_check(int argc, char **argv)
 		}
 
 		if (geteuid() == 0 && nbpkgs > 0) {
-			if (yes == false) 
+			if (yes == false)
 				pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 			printf("\n>>> Missing package dependencies were detected.\n");

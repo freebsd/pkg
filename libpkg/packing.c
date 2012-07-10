@@ -229,7 +229,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 	size_t treelen;
 	struct sbuf *sb;
 	char *paths[2] = { __DECONST(char *, treepath), NULL };
- 
+
 	treelen = strlen(treepath);
 	fts = fts_open(paths, FTS_PHYSICAL | FTS_XDEV, NULL);
 	if (fts == NULL)
@@ -265,7 +265,7 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 break;
 		default:
 			 break;
-		}   
+		}
 	}
 	sbuf_free(sb);
 cleanup:

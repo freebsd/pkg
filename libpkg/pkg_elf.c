@@ -163,7 +163,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("elf_begin() for %s failed: %s", fpath,
-		    elf_errmsg(-1)); 
+		    elf_errmsg(-1));
 		goto cleanup;
 	}
 
@@ -236,7 +236,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getdyn() failed for %s: %s", fpath,
-			    elf_errmsg(-1)); 
+			    elf_errmsg(-1));
 			goto cleanup;
 		}
 
@@ -357,7 +357,7 @@ pkg_get_myarch(char *dest, size_t sz)
 
 	if ((elf = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
-		pkg_emit_error("elf_begin() failed: %s.", elf_errmsg(-1)); 
+		pkg_emit_error("elf_begin() failed: %s.", elf_errmsg(-1));
 		goto cleanup;
 	}
 

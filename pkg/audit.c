@@ -243,7 +243,7 @@ match_version(const char *pkgversion, struct version_entry *v)
 	/*
 	 * Return true so it is easier for the caller to handle case where there is
 	 * only one version to match: the missing one will always match.
-	 */ 
+	 */
 	if (v->version == NULL)
 		return true;
 

@@ -124,7 +124,7 @@ pkgdb_load(struct pkgdb *db, char *dest)
 			archive_read_data(a, buf, size);
 			pkg_set(pkg, PKG_MTREE, buf);
 			free(buf);
-		} else 
+		} else
 			continue;
 	}
 	if (pkg != NULL)

@@ -152,7 +152,7 @@ urldecode(const char *src, struct sbuf **dest)
 			errno = 0;
 			c = strtol(hex, NULL, 16);
 			if (errno != 0) {
-				/* 
+				/*
 				 * if it fails consider this is not a urlencoded
 				 * information
 				 */
@@ -285,7 +285,7 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
 		case PKG_SHLIBS:
 			if (!is_valid_yaml_scalar(val))
 				pkg_emit_error("Skipping malformed shared library");
-			else 
+			else
 				pkg_addshlib(pkg, val->data.scalar.value);
 		}
 		++item;
@@ -823,7 +823,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
 		manifest_append_seqval(&doc, mapping, &seq, "shlibs",
 		    pkg_shlib_name(shlib));
- 
+
 	map = -1;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		if (map == -1)

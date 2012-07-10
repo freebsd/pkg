@@ -138,7 +138,7 @@ refresh_progress_meter(void)
 	bytes_left = end_pos - cur_pos;
 
 	delta_pos = cur_pos - last_pos;
-	if (delta_pos > max_delta_pos) 
+	if (delta_pos > max_delta_pos)
 		max_delta_pos = delta_pos;
 
 	if (bytes_left > 0)

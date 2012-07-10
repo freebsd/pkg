@@ -142,7 +142,7 @@ exec_autoremove(int argc, char **argv)
 			goto cleanup;
 	}
 
-	if (pkgdb_compact(db) != EPKG_OK) { 
+	if (pkgdb_compact(db) != EPKG_OK) {
 		retcode = EPKG_FATAL;
 	}
 

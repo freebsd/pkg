@@ -613,7 +613,7 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "post-deinstall")) {
-			if (val->data.scalar.length != 0) { 
+			if (val->data.scalar.length != 0) {
 				format_exec_cmd(&cmd, val->data.scalar.value,
 				    p->prefix, p->last_file, line);
 				sbuf_cat(p->post_deinstall_buf, cmd);

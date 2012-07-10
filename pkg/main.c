@@ -101,7 +101,7 @@ usage(void)
 	fprintf(stderr, "\t%-15s%s\n\n", "-v", "Display pkg(1) version");
 	fprintf(stderr, "Commands supported:\n");
 
-	for (unsigned int i = 0; i < cmd_len; i++) 
+	for (unsigned int i = 0; i < cmd_len; i++)
 		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
 	fprintf(stderr, "\nFor more information on the different commands"

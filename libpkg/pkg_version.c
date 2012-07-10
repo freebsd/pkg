@@ -128,7 +128,7 @@ typedef struct {
  *   sort first (10 < 10a < 10b)
  * - missing version numbers (in components starting with a letter) sort as -1
  *   (a < 0, 10.a < 10)
- * - a separator is inserted before the special strings "pl", "alpha", "beta", 
+ * - a separator is inserted before the special strings "pl", "alpha", "beta",
  *   "pre" and "rc".
  * - "pl" sorts before every other letter, "alpha", "beta", "pre" and "rc"
  *   sort as a, b, p and r. (10alpha = 10.a < 10, but 10 < 10a; pl11 < alpha3

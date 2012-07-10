@@ -120,7 +120,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"T",
 	},
 	[SHLIB2] = {
-		NULL, 
+		NULL,
 		"INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
@@ -182,7 +182,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	if ((retcode = mkdirs(path)) != EPKG_OK)
 		goto cleanup;
 
-	/* 
+	/*
 	 * In multi-repos the remote URL is stored in pkg[PKG_REPOURL]
 	 * For a single attached database the repository URL should be
 	 * defined by PACKAGESITE.
@@ -706,7 +706,7 @@ pkg_create_repo(char *path, bool force,
 
 		dep = NULL;
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
-			if (run_prepared_statement(DEPS, 
+			if (run_prepared_statement(DEPS,
 			    pkg_dep_origin(dep),
 			    pkg_dep_name(dep),
 			    pkg_dep_version(dep),
@@ -846,7 +846,7 @@ pkg_check_repo_version(struct pkgdb *db, const char *database)
 	    != EPKG_OK)
 		return (ret);	/* sqlite error */
 
-	/* 
+	/*
 	 * If the local pkgng uses a repo schema behind that used to
 	 * create the repo, we may still be able use it for reading
 	 * (ie pkg install), but pkg repo can't do an incremental
