@@ -67,7 +67,10 @@ do_extract(struct archive *a, struct archive_entry *ae)
 	struct stat st;
 
 	do {
-		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
+		const char *pathname = archive_entry_pathname(ae);
+
+		ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+		if (ret != ARCHIVE_OK) {
 			/*
 			 * show error except when the failure is during
 			 * extracting a directory and that the directory already
@@ -75,8 +78,8 @@ do_extract(struct archive *a, struct archive_entry *ae)
 			 * this allow to install packages linux_base from
 			 * package for example
 			 */
-			if (!(archive_entry_filetype(ae) == AE_IFDIR &&
-			    is_dir(archive_entry_pathname(ae)))) {
+			if (archive_entry_filetype(ae) != AE_IFDIR ||
+			    !is_dir(pathname)) {
 				pkg_emit_error("archive_read_extract(): %s",
 				    archive_error_string(a));
 				retcode = EPKG_FATAL;
@@ -92,12 +95,13 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		 * if conf1.cfg doesn't exists create it based on
 		 * conf1.cfg.pkgconf
 		 */
-		if (is_conf_file(archive_entry_pathname(ae), path, sizeof(path))
+		if (is_conf_file(pathname, path, sizeof(path))
 		    && lstat(path, &st) == ENOENT) {
 			archive_entry_set_pathname(ae, path);
-			if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
+			ret = archive_read_extract(a,ae, EXTRACT_ARCHIVE_FLAGS);
+			if (ret != ARCHIVE_OK) {
 				pkg_emit_error("archive_read_extract(): %s",
-							   archive_error_string(a));
+				    archive_error_string(a));
 				retcode = EPKG_FATAL;
 				break;
 			}
@@ -106,7 +110,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 
 	if (ret != ARCHIVE_EOF) {
 		pkg_emit_error("archive_read_next_header(): %s",
-					   archive_error_string(a));
+		    archive_error_string(a));
 		retcode = EPKG_FATAL;
 	}
 
@@ -200,12 +204,16 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (dep_installed(dep, db) != EPKG_OK) {
-			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
-					 pkg_dep_name(dep), pkg_dep_version(dep),
-					 ext);
+			const char *dep_name = pkg_dep_name(dep);
+			const char *dep_ver = pkg_dep_version(dep);
 
-			if ((flags & PKG_ADD_UPGRADE) == 0 && access(dpath, F_OK) == 0) {
-				if (pkg_add(db, dpath, PKG_ADD_AUTOMATIC) != EPKG_OK) {
+			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
+			    dep_name, dep_ver, ext);
+
+			if ((flags & PKG_ADD_UPGRADE) == 0 &&
+			    access(dpath, F_OK) == 0) {
+				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC);
+				if (ret != EPKG_OK) {
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}

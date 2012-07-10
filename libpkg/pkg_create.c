@@ -41,7 +41,8 @@
 static int pkg_create_from_dir(struct pkg *, const char *, struct packing *);
 
 static int
-pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archive)
+pkg_create_from_dir(struct pkg *pkg, const char *root,
+    struct packing *pkg_archive)
 {
 	char fpath[MAXPATHLEN + 1];
 	struct pkg_file *file = NULL;
@@ -61,12 +62,16 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 	 * if the checksum is not provided in the manifest recompute it
 	 */
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_path(file));
-		else
-			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
+		const char *pkg_path = pkg_file_path(file);
+		const char *pkg_sum = pkg_file_cksum(file);
 
-		if ((pkg_file_cksum(file) == NULL || pkg_file_cksum(file)[0] == '\0') && lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
+		if (root != NULL)
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_path);
+		else
+			strlcpy(fpath, pkg_path, sizeof(fpath));
+
+		if ((pkg_sum == NULL || pkg_sum[0] == '\0') &&
+		    lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
 			if (sha256_file(fpath, sha256) != EPKG_OK)
 				return (EPKG_FATAL);
 			strlcpy(file->sum, sha256, sizeof(file->sum));
@@ -79,27 +84,33 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 
 	pkg_get(pkg, PKG_MTREE, &mtree);
 	if (mtree != NULL)
-		packing_append_buffer(pkg_archive, mtree, "+MTREE_DIRS", strlen(mtree));
+		packing_append_buffer(pkg_archive, mtree, "+MTREE_DIRS",
+		    strlen(mtree));
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_path(file));
-		else
-			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
+		const char *pkg_path = pkg_file_path(file);
 
-		ret = packing_append_file_attr(pkg_archive, fpath, pkg_file_path(file), file->uname, file->gname, file->perm);
+		if (root != NULL)
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_path);
+		else
+			strlcpy(fpath, pkg_path, sizeof(fpath));
+
+		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
+		    file->uname, file->gname, file->perm);
 		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 		if (developer && ret != EPKG_OK)
 			return (ret);
 	}
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		const char *pkg_path = pkg_dir_path(dir);
 		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_dir_path(dir));
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_path);
 		else
 			strlcpy(fpath, pkg_dir_path(dir), sizeof(fpath));
 
-		ret = packing_append_file_attr(pkg_archive, fpath, pkg_dir_path(dir), dir->uname, dir->gname, dir->perm);
+		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
+		    dir->uname, dir->gname, dir->perm);
 		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 		if (developer && ret != EPKG_OK)
 			return (ret);
@@ -109,7 +120,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root, struct packing *pkg_archi
 }
 
 static struct packing *
-pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format, int required_flags)
+pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
+    int required_flags)
 {
 	char *pkg_path = NULL;
 	struct packing *pkg_archive = NULL;
@@ -162,7 +174,8 @@ static const char * const scripts[] = {
 };
 
 int
-pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir, const char *metadatadir, char *plist)
+pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
+    const char *md_dir, char *plist)
 {
 	struct pkg *pkg = NULL;
 	struct pkg_file *file = NULL;
@@ -180,7 +193,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir, c
 	char *www;
 
 	/* Load the manifest from the metadata directory */
-	if (snprintf(path, sizeof(path), "%s/+MANIFEST", metadatadir) == -1)
+	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
 		goto cleanup;
 
 	pkg_new(&pkg, PKG_FILE);
@@ -196,7 +209,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir, c
 
 	pkg_get(pkg, PKG_DESC, &buf);
 	if (buf == NULL) {
-		if (snprintf(path, sizeof(path), "%s/+DESC", metadatadir) == -1)
+		if (snprintf(path, sizeof(path), "%s/+DESC", md_dir) == -1)
 			goto cleanup;
 		if (access(path, F_OK) == 0)
 			pkg_set_from_file(pkg, PKG_DESC, path);
@@ -205,7 +218,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir, c
 	/* if no message try to get it from a file */
 	pkg_get(pkg, PKG_MESSAGE, &buf);
 	if (buf == NULL) {
-		if (snprintf(path, sizeof(path), "%s/+DISPLAY", metadatadir) == -1)
+		ret = snprintf(path, sizeof(path), "%s/+DISPLAY", md_dir);
+		if (ret == -1)
 			goto cleanup;
 		if (access(path, F_OK) == 0)
 			pkg_set_from_file(pkg, PKG_MESSAGE, path);
@@ -221,19 +235,21 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir, c
 	/* if no mtree try to get it from a file */
 	pkg_get(pkg, PKG_MTREE, &buf);
 	if (buf == NULL) {
-		if (snprintf(path, sizeof(path), "%s/+MTREE_DIRS", metadatadir) == -1)
+		ret = snprintf(path, sizeof(path), "%s/+MTREE_DIRS", md_dir);
+		if (ret == -1)
 			goto cleanup;
 		if (access(path, F_OK) == 0)
 			pkg_set_from_file(pkg, PKG_MTREE, path);
 	}
 
 	for (i = 0; scripts[i] != NULL; i++) {
-		snprintf(path, sizeof(path), "%s/%s", metadatadir, scripts[i]);
+		snprintf(path, sizeof(path), "%s/%s", md_dir, scripts[i]);
 		if (access(path, F_OK) == 0)
 			pkg_addscript_file(pkg, path);
 	}
 
-	if (plist != NULL && ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
+	if (plist != NULL &&
+	    ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -242,7 +258,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir, c
 	pkg_get(pkg, PKG_WWW, &www);
 	if (www == NULL) {
 		pkg_get(pkg, PKG_DESC, &buf);
-		regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
+		regcomp(&preg, "^WWW:[[:space:]]*(.*)$",
+		    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
 		if (regexec(&preg, buf, 2, pmatch, 0) == 0) {
 			size = pmatch[1].rm_eo - pmatch[1].rm_so;
 			www = strndup(&buf[pmatch[1].rm_so], size);
@@ -264,9 +281,10 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir, c
 		goto cleanup;
 	}
 
-	if (pkg_files(pkg, &file) != EPKG_OK && pkg_dirs(pkg, &dir) != EPKG_OK) {
+	if (pkg_files(pkg, &file) != EPKG_OK &&
+	    pkg_dirs(pkg, &dir) != EPKG_OK) {
 		/* Now traverse the file directories, adding to the archive */
-		packing_append_tree(pkg_archive, metadatadir, NULL);
+		packing_append_tree(pkg_archive, md_dir, NULL);
 		packing_append_tree(pkg_archive, rootdir, "/");
 	} else {
 		pkg_create_from_dir(pkg, rootdir, pkg_archive);
@@ -285,12 +303,13 @@ cleanup:
 }
 
 int
-pkg_create_installed(const char *outdir, pkg_formats format, const char *rootdir, struct pkg *pkg)
+pkg_create_installed(const char *outdir, pkg_formats format,
+    const char *rootdir, struct pkg *pkg)
 {
 	struct packing *pkg_archive;
-	int required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
-	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
-	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES ;
+	int required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
+	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
+	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES ;
 
 	assert(pkg->type == PKG_INSTALLED);
 

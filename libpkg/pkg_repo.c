@@ -217,11 +217,12 @@ pkg_repo_fetch(struct pkg *pkg)
 	if (retcode == EPKG_OK)
 		if (strcmp(cksum, sum)) {
 			if (fetched == 1) {
-				pkg_emit_error("%s-%s failed checksum from repository",
-				    name, version);
+				pkg_emit_error("%s-%s failed checksum "
+				    "from repository", name, version);
 				retcode = EPKG_FATAL;
 			} else {
-				pkg_emit_error("cached package %s-%s: checksum mismatch, fetching from remote",
+				pkg_emit_error("cached package %s-%s: "
+				    "checksum mismatch, fetching from remote",
 				    name, version);
 				unlink(dest);
 				return (pkg_repo_fetch(pkg));
@@ -266,8 +267,7 @@ get_repo_user_version(sqlite3 *sqlite, const char *database, int *reposcver)
 
 	sqlite3_snprintf(sizeof(sql), sql, fmt, database);
 
-	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
-	{
+	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(sqlite);
 		return (EPKG_FATAL);
 	}
@@ -308,7 +308,8 @@ initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 			"flatsize INTEGER NOT NULL,"
 			"licenselogic INTEGER NOT NULL,"
 			"cksum TEXT NOT NULL,"
-			"path TEXT NOT NULL," /* relative path to the package in the repository */
+			/* relative path to the package in the repository */
+			"path TEXT NOT NULL,"
 			"pkg_format_version INTEGER"
 		");"
 		"CREATE TABLE deps ("
@@ -379,19 +380,20 @@ initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 		   update, then we cannot do an incremental update.
 		   Delete the existing repo, and promote this to a
 		   full update */
-		if (incremental) {
-			if (get_repo_user_version(*sqlite, "main", &reposcver) != EPKG_OK)
-				return (EPKG_FATAL);
-			if (force || reposcver != REPO_SCHEMA_VERSION) {
-				if (reposcver != REPO_SCHEMA_VERSION)
-					pkg_emit_error("updating repo schema version "
-					     "from %d to %d", reposcver,
-					     REPO_SCHEMA_VERSION);
-				sqlite3_close(*sqlite);
-				unlink(repodb);
-				incremental = false;
-				db_not_open = true;
-			}
+		if (!incremental)
+			continue;
+		retcode = get_repo_user_version(*sqlite, "main", &reposcver);
+		if (retcode != EPKG_OK)
+			return (EPKG_FATAL);
+		if (force || reposcver != REPO_SCHEMA_VERSION) {
+			if (reposcver != REPO_SCHEMA_VERSION)
+				pkg_emit_error("updating repo schema version "
+				     "from %d to %d", reposcver,
+				     REPO_SCHEMA_VERSION);
+			sqlite3_close(*sqlite);
+			unlink(repodb);
+			incremental = false;
+			db_not_open = true;
 		}
 	}
 
@@ -401,24 +403,36 @@ initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 	if ((retcode = sql_exec(*sqlite, "PRAGMA synchronous=off")) != EPKG_OK)
 		return (retcode);
 
-	if ((retcode = sql_exec(*sqlite, "PRAGMA journal_mode=memory")) != EPKG_OK)
+	retcode = sql_exec(*sqlite, "PRAGMA journal_mode=memory");
+	if (retcode != EPKG_OK)
 		return (retcode);
 
 	if ((retcode = sql_exec(*sqlite, "PRAGMA foreign_keys=on")) != EPKG_OK)
 		return (retcode);
 
-	if (!incremental && (retcode = sql_exec(*sqlite, initsql, REPO_SCHEMA_VERSION)) != EPKG_OK)
-		return (retcode);
+	if (!incremental) {
+		retcode = sql_exec(*sqlite, initsql, REPO_SCHEMA_VERSION);
+		if (retcode != EPKG_OK)
+			return (retcode);
+	}
 
 	if ((retcode = sql_exec(*sqlite, "BEGIN TRANSACTION")) != EPKG_OK)
 		return (retcode);
 
 	/* remove anything that is no longer in the repository. */
 	if (incremental) {
-		sql_exec(*sqlite, "DELETE FROM packages WHERE NOT FILE_EXISTS(path)");
-		sql_exec(*sqlite, "DELETE FROM categories WHERE id NOT IN (SELECT category_id FROM pkg_categories);");
-		sql_exec(*sqlite, "DELETE FROM licenses WHERE id NOT IN (SELECT license_id FROM pkg_licenses);");
-		sql_exec(*sqlite, "DELETE FROM shlibs WHERE id NOT IN (SELECT shlib_id FROM pkg_shlibs);");
+		const char *obsolete[] = {
+			"packages WHERE NOT FILE_EXISTS(path)",
+			"categories WHERE id NOT IN "
+				"(SELECT category_id FROM pkg_categories)",
+			"licenses WHERE id NOT IN "
+				"(SELECT license_id FROM pkg_licenses)",
+			"shlibs WHERE id NOT IN "
+				"(SELECT shlib_id FROM pkg_shlibs)"
+		};
+		size_t num_objs = sizeof(obsolete) / sizeof(*obsolete);
+		for (size_t obj = 0; obj < num_objs; obj++)
+			sql_exec(*sqlite, "DELETE FROM %s;", obsolete[obj]);
 	}
 
 	return (EPKG_OK);
@@ -428,19 +442,17 @@ static int
 initialize_prepared_statements(sqlite3 *sqlite)
 {
 	sql_prstmt_index i;
-	int retcode = EPKG_OK;
+	int ret;
 
 	for (i = 0; i < PRSTMT_LAST; i++)
 	{
-		if (sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL)
-		    != SQLITE_OK)
-		{
+		ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
+		if (ret != SQLITE_OK) {
 			ERROR_SQLITE(sqlite);
-			retcode = EPKG_FATAL;
-			break;
+			return (EPKG_FATAL);
 		}
 	}
-	return (retcode);
+	return (EPKG_OK);
 }
 
 static int
@@ -464,7 +476,7 @@ run_prepared_statement(sql_prstmt_index s, ...)
 		switch (argtypes[i]) {
 		case 'T':
 			sqlite3_bind_text(stmt, i + 1, va_arg(ap, const char*),
-					  -1, SQLITE_STATIC);
+			    -1, SQLITE_STATIC);
 			break;
 		case 'I':
 			sqlite3_bind_int64(stmt, i + 1, va_arg(ap, int64_t));
@@ -528,7 +540,8 @@ maybe_delete_conflicting(const char *origin, const char *version,
 }
 
 int
-pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *data), void *data)
+pkg_create_repo(char *path, bool force,
+    void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
 	FTSENT *ent = NULL;
@@ -579,14 +592,17 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 		a = archive_read_new();
 		archive_read_support_compression_all(a);
 		archive_read_support_format_tar(a);
-		if (archive_read_open_filename(a, repopack, 4096) != ARCHIVE_OK) {
+		ret = archive_read_open_filename(a, repopack, 4096);
+		if (ret != ARCHIVE_OK) {
 			/* if we can't unpack it it won't be useful for us */
 			unlink(repopack);
 		} else {
 			while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-				if (!strcmp(archive_entry_pathname(ae), "repo.sqlite")) {
+				if (!strcmp(archive_entry_pathname(ae),
+				    "repo.sqlite")) {
 					archive_entry_set_pathname(ae, repodb);
-					archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+					archive_read_extract(a, ae,
+					    EXTRACT_ARCHIVE_FLAGS);
 					break;
 				}
 			}
@@ -653,10 +669,12 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 		if (progress != NULL)
 			progress(pkg, data);
 
-		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name, PKG_VERSION, &version,
-		    PKG_COMMENT, &comment, PKG_DESC, &desc, PKG_ARCH, &arch,
-		    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_PREFIX, &prefix,
-		    PKG_FLATSIZE, &flatsize, PKG_LICENSE_LOGIC, &licenselogic);
+		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
+		    PKG_VERSION, &version, PKG_COMMENT, &comment,
+		    PKG_DESC, &desc, PKG_ARCH, &arch,
+		    PKG_MAINTAINER, &maintainer, PKG_WWW, &www,
+		    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
+		    PKG_LICENSE_LOGIC, &licenselogic);
 
 	try_again:
 		if ((ret = run_prepared_statement(PKG, origin, name, version,
@@ -717,12 +735,12 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 
 		license = NULL;
 		while (pkg_licenses(pkg, &license) == EPKG_OK) {
-			if (run_prepared_statement(LIC1,
-			    pkg_license_name(license)) != SQLITE_DONE
-			    &&
-			    run_prepared_statement(LIC2, package_id,
-			    pkg_license_name(license)) != SQLITE_DONE)
-			{
+			const char *lic_name = pkg_license_name(license);
+			ret = run_prepared_statement(LIC1, lic_name);
+			if (ret == SQLITE_DONE)
+				ret = run_prepared_statement(LIC2, package_id,
+				    lic_name);
+			if (ret != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -808,7 +826,8 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 
 		free(sigret);
 	}
-	packing_append_file_attr(pack, repo_path, "repo.sqlite", "root", "wheel", 0644);
+	packing_append_file_attr(pack, repo_path, "repo.sqlite",
+	    "root", "wheel", 0644);
 	unlink(repo_path);
 	packing_finish(pack);
 
@@ -853,18 +872,18 @@ pkg_check_repo_version(struct pkgdb *db, const char *database)
 		reposcver = 2001;
 
 	if (reposcver > REPO_SCHEMA_VERSION) {
-		pkg_emit_error("Repo %s (schema version %d) is too new - we can "
-			       "accept at most version %d", database, reposcver,
-			       REPO_SCHEMA_VERSION);
+		pkg_emit_error("Repo %s (schema version %d) is too new - we can"
+		    " accept at most version %d", database, reposcver,
+		    REPO_SCHEMA_VERSION);
 		return (EPKG_REPOSCHEMA);
 	}
 	
 	repomajor = reposcver / 1000;
 
 	if (repomajor < REPO_SCHEMA_MAJOR) {
-		pkg_emit_error("Repo %s (schema version %d) is too old - need at "
-			       "least schema %d", database, reposcver,
-			       REPO_SCHEMA_MAJOR * 1000);
+		pkg_emit_error("Repo %s (schema version %d) is too old - "
+		    "need at least schema %d", database, reposcver,
+		    REPO_SCHEMA_MAJOR * 1000);
 		return (EPKG_REPOSCHEMA);
 	}
 

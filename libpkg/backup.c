@@ -55,7 +55,8 @@ pkgdb_dump(struct pkgdb *db, char *dest)
 	while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 		const char *name, *version, *mtree;
 
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_MTREE, &mtree);
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_MTREE,
+		    &mtree);
 		pkg_emit_manifest(pkg, &m);
 		sbuf_clear(path);
 		sbuf_printf(path, "%s-%s.yaml", name, version);
@@ -66,7 +67,8 @@ pkgdb_dump(struct pkgdb *db, char *dest)
 			sbuf_clear(path);
 			sbuf_printf(path, "%s-%s.mtree", name, version);
 			sbuf_finish(path);
-			packing_append_buffer(pack, mtree, sbuf_get(path), strlen(mtree));
+			packing_append_buffer(pack, mtree, sbuf_get(path),
+			    strlen(mtree));
 		}
 	}
 
@@ -107,7 +109,8 @@ pkgdb_load(struct pkgdb *db, char *dest)
 			if (pkg == NULL) {
 				pkg_new(&pkg, PKG_FILE);
 			} else {
-				pkgdb_register_finale(db, pkgdb_register_pkg(db, pkg, 0));
+				int reg_result = pkgdb_register_pkg(db, pkg, 0);
+				pkgdb_register_finale(db, reg_result);
 				pkg_reset(pkg, PKG_FILE);
 			}
 			size = archive_entry_size(ae);

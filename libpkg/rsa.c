@@ -48,7 +48,8 @@ _load_rsa_private_key(char *rsa_key_path, pem_password_cb *password_cb)
 		return (NULL);
 	}
 
-	if ((rsa = PEM_read_RSAPrivateKey(fp, 0, password_cb, rsa_key_path)) == NULL) {
+	rsa = PEM_read_RSAPrivateKey(fp, 0, password_cb, rsa_key_path);
+	if (rsa == NULL) {
 		fclose(fp);
 		return (NULL);
 	}
@@ -71,7 +72,7 @@ _load_rsa_public_key(const char *rsa_key_path)
 
 	if (!PEM_read_RSA_PUBKEY(fp, &rsa, NULL, NULL)) {
 		pkg_emit_error("error reading public key(%s): %s", rsa_key_path,
-					   ERR_error_string(ERR_get_error(), errbuf));
+		    ERR_error_string(ERR_get_error(), errbuf));
 		fclose(fp);
 		return (NULL);
 	}
@@ -81,11 +82,13 @@ _load_rsa_public_key(const char *rsa_key_path)
 }
 
 int
-rsa_verify(const char *path, const char *key, unsigned char *sig, unsigned int sig_len)
+rsa_verify(const char *path, const char *key, unsigned char *sig,
+    unsigned int sig_len)
 {
 	char sha256[SHA256_DIGEST_LENGTH *2 +1];
 	char errbuf[1024];
 	RSA *rsa = NULL;
+	int ret;
 
 	sha256_file(path, sha256);
 
@@ -97,9 +100,10 @@ rsa_verify(const char *path, const char *key, unsigned char *sig, unsigned int s
 	if (rsa == NULL)
 		return(EPKG_FATAL);
 
-	if (RSA_verify(NID_sha1, sha256, sizeof(sha256), sig, sig_len, rsa) == 0) {
+	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), sig, sig_len, rsa);
+	if (ret == 0) {
 		pkg_emit_error("%s: %s", key,
-					   ERR_error_string(ERR_get_error(), errbuf));
+		    ERR_error_string(ERR_get_error(), errbuf));
 		return (EPKG_FATAL);
 	}
 
@@ -114,7 +118,7 @@ rsa_sign(char *path, pem_password_cb *password_cb, char *rsa_key_path,
 		unsigned char **sigret, unsigned int *siglen)
 {
 	char errbuf[1024];
-	int max_len = 0;
+	int max_len = 0, ret;
 	RSA *rsa = NULL;
 	char sha256[SHA256_DIGEST_LENGTH * 2 +1];
 
@@ -139,7 +143,8 @@ rsa_sign(char *path, pem_password_cb *password_cb, char *rsa_key_path,
 
 	sha256_file(path, sha256);
 
-	if (RSA_sign(NID_sha1, sha256, sizeof(sha256), *sigret, siglen, rsa) == 0) {
+	ret = RSA_sign(NID_sha1, sha256, sizeof(sha256), *sigret, siglen, rsa);
+	if (ret == 0) {
 		/* XXX pass back RSA errors correctly */
 		pkg_emit_error("%s: %s", rsa_key_path,
 					   ERR_error_string(ERR_get_error(), errbuf));

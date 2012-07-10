@@ -78,7 +78,8 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 			pkg_config_bool(PKG_CONFIG_SRV_MIRROR, &srv);
 			if (srv) {
 				if (strcmp(u->scheme, "file") != 0) {
-					snprintf(zone, sizeof(zone), "_%s._tcp.%s", u->scheme, u->host);
+					snprintf(zone, sizeof(zone),
+					    "_%s._tcp.%s", u->scheme, u->host);
 					mirrors = dns_getsrvinfo(zone);
 					current = mirrors;
 				}
@@ -92,7 +93,8 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 		if (remote == NULL) {
 			--retry;
 			if (retry == 0) {
-				pkg_emit_error("%s: %s", url, fetchLastErrString);
+				pkg_emit_error("%s: %s", url,
+				    fetchLastErrString);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}

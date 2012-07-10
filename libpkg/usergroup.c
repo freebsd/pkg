@@ -147,7 +147,8 @@ pkg_add_user_group(struct pkg *pkg)
 			pw_fini();
 		}
 		pw_fini();
-		if (strcmp(pw->pw_dir, "/nonexistent") && strcmp(pw->pw_dir, "/var/empty")) {
+		if (strcmp(pw->pw_dir, "/nonexistent") &&
+		    strcmp(pw->pw_dir, "/var/empty")) {
 			/* now create the homedir if it doesn't exists */
 			/* TODO: do it recursively */
 			mkdir(pw->pw_dir, 0644);
@@ -176,30 +177,37 @@ pkg_add_user_group(struct pkg *pkg)
 		for (i = 0; gr->gr_mem[i] != NULL; i++) {
 
 			while (pkg_users(pkg, &u) == EPKG_OK) {
-				if (!strcmp(pkg_user_name(u), gr->gr_mem[i])) {
-					/* check if the user is not already in the local group */
-					for (j = 0; grlocal->gr_mem[j] != NULL; j++) {
-						if (!strcmp(grlocal->gr_mem[j], gr->gr_mem[i]))
-							break;
-					}
+				if (strcmp(pkg_user_name(u), gr->gr_mem[i]))
+					continue;
 
-					if (grlocal->gr_mem[j] != NULL)
-						continue; /* already in the group */
-
-					/* adding the user to the group */
-
-					if (grnew == NULL) {
-						nx = j - 1;
-						grnew = gr_dup(grlocal);
-					}
-
-					if (nx == 0)
-						grnew->gr_mem = NULL;
-					nx++;
-					grnew->gr_mem = reallocf(grnew->gr_mem, sizeof(*grnew->gr_mem) * (nx + 1));
-					grnew->gr_mem[nx - 1] = __DECONST(char *, pkg_user_name(u));
-					grnew->gr_mem[nx] = NULL;
+				/*
+				 * check if the user is not already in the
+				 * local group
+				 */
+				for (j = 0; grlocal->gr_mem[j] != NULL; j++) {
+					if (!strcmp(grlocal->gr_mem[j],
+					    gr->gr_mem[i]))
+						break;
 				}
+
+				if (grlocal->gr_mem[j] != NULL)
+					continue; /* already in the group */
+
+				/* adding the user to the group */
+
+				if (grnew == NULL) {
+					nx = j - 1;
+					grnew = gr_dup(grlocal);
+				}
+
+				if (nx == 0)
+					grnew->gr_mem = NULL;
+				nx++;
+				grnew->gr_mem = reallocf(grnew->gr_mem,
+				    sizeof(*grnew->gr_mem) * (nx + 1));
+				grnew->gr_mem[nx - 1] =
+				    __DECONST(char *, pkg_user_name(u));
+				grnew->gr_mem[nx] = NULL;
 			}
 		}
 		if (grnew == NULL) {

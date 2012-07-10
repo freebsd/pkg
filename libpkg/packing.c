@@ -67,13 +67,15 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	if (!is_dir(path)) {
 		(*pack)->awrite = archive_write_new();
 		archive_write_set_format_pax_restricted((*pack)->awrite);
-		if ((ext = packing_set_format((*pack)->awrite, format)) == NULL) {
+		ext = packing_set_format((*pack)->awrite, format);
+		if (ext == NULL) {
 			archive_read_finish((*pack)->aread);
 			archive_write_finish((*pack)->awrite);
 			*pack = NULL;
 			return EPKG_FATAL; /* error set by _set_format() */
 		}
-		snprintf(archive_path, sizeof(archive_path), "%s.%s", path, ext);
+		snprintf(archive_path, sizeof(archive_path), "%s.%s", path,
+		    ext);
 
 		if (archive_write_open_filename(
 		    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
@@ -86,16 +88,19 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 		}
 	} else { /* pass mode directly write to the disk */
 		(*pack)->awrite = archive_write_disk_new();
-		archive_write_disk_set_options((*pack)->awrite, EXTRACT_ARCHIVE_FLAGS);
+		archive_write_disk_set_options((*pack)->awrite,
+		    EXTRACT_ARCHIVE_FLAGS);
 	}
 
 	(*pack)->resolver = archive_entry_linkresolver_new();
-	archive_entry_linkresolver_set_strategy((*pack)->resolver, ARCHIVE_FORMAT_TAR_PAX_RESTRICTED);
+	archive_entry_linkresolver_set_strategy((*pack)->resolver,
+	    ARCHIVE_FORMAT_TAR_PAX_RESTRICTED);
 	return (EPKG_OK);
 }
 
 int
-packing_append_buffer(struct packing *pack, const char *buffer, const char *path, int size)
+packing_append_buffer(struct packing *pack, const char *buffer,
+    const char *path, int size)
 {
 	struct archive_entry *entry;
 
@@ -116,14 +121,16 @@ packing_append_buffer(struct packing *pack, const char *buffer, const char *path
 }
 
 int
-packing_append_file(struct packing *pack, const char *filepath, const char *newpath)
+packing_append_file(struct packing *pack, const char *filepath,
+    const char *newpath)
 {
-	return (packing_append_file_attr(pack, filepath, newpath, NULL, NULL, 0));
+	return (packing_append_file_attr(pack, filepath, newpath,
+	    NULL, NULL, 0));
 }
 
 int
-packing_append_file_attr(struct packing *pack, const char *filepath, const char *newpath,
-		const char *uname, const char *gname, mode_t perm)
+packing_append_file_attr(struct packing *pack, const char *filepath,
+    const char *newpath, const char *uname, const char *gname, mode_t perm)
 {
 	int fd;
 	int len;
@@ -214,7 +221,8 @@ packing_append_file_attr(struct packing *pack, const char *filepath, const char 
 }
 
 int
-packing_append_tree(struct packing *pack, const char *treepath, const char *newroot)
+packing_append_tree(struct packing *pack, const char *treepath,
+    const char *newroot)
 {
 	FTS *fts = NULL;
 	FTSENT *fts_e = NULL;
@@ -235,16 +243,18 @@ packing_append_tree(struct packing *pack, const char *treepath, const char *newr
 		case FTS_F:
 		case FTS_SL:
 		case FTS_SLNONE:
-			 /* Skip entries that are shorter than the tree itself */
+			 /* Entries not within this tree are irrelevant. */
 			 if (fts_e->fts_pathlen <= treelen)
 				  break;
 			 sbuf_clear(sb);
 			 /* Strip the prefix to obtain the target path */
 			 if (newroot) /* Prepend a root if one is specified */
 				  sbuf_cat(sb, newroot);
-			 sbuf_cat(sb, fts_e->fts_path + treelen + 1 /* skip trailing slash */);
+			 /* +1 = skip trailing slash */
+			 sbuf_cat(sb, fts_e->fts_path + treelen + 1);
 			 sbuf_finish(sb);
-			 packing_append_file(pack, fts_e->fts_name, sbuf_get(sb));
+			 packing_append_file(pack, fts_e->fts_name,
+			    sbuf_get(sb));
 			 break;
 		case FTS_DC:
 		case FTS_DNR:
@@ -281,28 +291,27 @@ packing_finish(struct packing *pack)
 static const char *
 packing_set_format(struct archive *a, pkg_formats format)
 {
+	const char *notsupp_fmt = "%s is not supported, trying %s";
+
 	switch (format) {
-		case TXZ:
-			if (archive_write_set_compression_xz(a) == ARCHIVE_OK) {
-				return ("txz");
-			} else {
-				pkg_emit_error("%s", "xz is not supported, trying bzip2");
-			}
-		case TBZ:
-			if (archive_write_set_compression_bzip2(a) == ARCHIVE_OK) {
-				return ("tbz");
-			} else {
-				pkg_emit_error("%s", "bzip2 is not supported, trying gzip");
-			}
-		case TGZ:
-			if (archive_write_set_compression_gzip(a) == ARCHIVE_OK) {
-				return ("tgz");
-			} else {
-				pkg_emit_error("%s", "gzip is not supported, trying plain tar");
-			}
-		case TAR:
-			archive_write_set_compression_none(a);
-			return ("tar");
+	case TXZ:
+		if (archive_write_set_compression_xz(a) == ARCHIVE_OK)
+			return ("txz");
+		else
+			pkg_emit_error(notsupp_fmt, "xz", "bzip2");
+	case TBZ:
+		if (archive_write_set_compression_bzip2(a) == ARCHIVE_OK)
+			return ("tbz");
+		else
+			pkg_emit_error(notsupp_fmt, "bzip2", "gzip");
+	case TGZ:
+		if (archive_write_set_compression_gzip(a) == ARCHIVE_OK)
+			return ("tgz");
+		else
+			pkg_emit_error(notsupp_fmt, "gzip", "plain tar");
+	case TAR:
+		archive_write_set_compression_none(a);
+		return ("tar");
 	}
 	return (NULL);
 }
