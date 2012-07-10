@@ -221,7 +221,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-dlsr] [-vy] [-a | -gxX <pattern>]\n\n");
+	fprintf(stderr, "usage: pkg check [-Bdsr] [-vy] [-a | -gxX <pattern>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -247,7 +247,7 @@ exec_check(int argc, char **argv)
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagdlxXsrv")) != -1) {
+	while ((ch = getopt(argc, argv, "yagdBxXsrv")) != -1) {
 		switch (ch) {
 			case 'a':
 				match = MATCH_ALL;
@@ -268,13 +268,13 @@ exec_check(int argc, char **argv)
 				dcheck = true;
 				flags |= PKG_LOAD_DEPS;
 				break;
-			case 'l':
+			case 'B':
 				pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 				if (!shlibs)
 					errx(EX_USAGE, "reanalyzing shlibs requires SHLIBS"
 						       " in pkg.conf.");
 				reanalyse_shlibs = true;
-				flags |= PKG_LOAD_FILES;
+				flags |= PKG_LOAD_SHLIBS;
 				break;
 			case 's':
 				checksums = true;
