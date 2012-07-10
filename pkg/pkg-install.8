@@ -24,7 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
-.Op Fl yqfgxXL
+.Op Fl yqfgxXRL
 .Ar <pkg-origin> <...>
 .Sh DESCRIPTION
 .Nm
@@ -127,6 +127,10 @@ Force quiet output.
 Don't auto update repository catalogues with
 .Xr pkg-update 8 .
 Use the locally cached copies only.
+.It Fl R
+When used with
+.Fl f ,
+recursively reinstalls any packages depending on the given package.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
