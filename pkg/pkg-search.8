@@ -20,43 +20,60 @@
 .Os
 .Sh NAME
 .Nm "pkg search"
-.Nd searches in remote package repositories
+.Nd search package repository catalogues
 .Sh SYNOPSIS
 .Nm
+.Op Fl "r repo"
+.Op Fl egxX
+.Op Fl "S search"
+.Op Fl "L label"
+.Op Fl "M mod"
 .Ar pkg-name
 .Nm
-.Op Fl fDsqop
+.Op Fl "r repo"
+.Op Fl egxX
+.Op Fl qcdfDsop
 .Ar pkg-name
-.Nm
-.Op Fl gexXcdfDsqop
-.Ar pattern
 .Sh DESCRIPTION
 .Nm
-is used for searching in the remote package repositories
-and it displays the requested information for the matching
-packages.
+is used for searching package repository catalogues.
+Packages available for installation can be matched by name, by name
+and version, by origin or by text in the package comments or package
+descriptions.
+The output defaults to displaying the field matched by the search
+term, but any of the searchable fields may be displayed.
+The output may be modified to additionally show many other data
+associated with the matched package available from the repository
+catalogues.
 .Pp
-.Nm
-will search for the given pattern in the remote package
-repositories, which are defined in the
-.Xr pkg.conf 5
-file.
+It is recommended to update the local copies of the repository
+catalogues before running
+.Nm .
+See
+.Xr pkg-update 8 .
+Package repositories are defined in the
+.Fa pkg.conf
+file; see
+.Xr pkg.conf 5.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
 .It Fl e
-Treat
+Match
 .Ar pattern
-as exact pattern
+exactly against the search field.
 .It Fl g
 Treat
 .Ar pattern
 as a shell glob pattern.
+The globbing expression must match the entirety of the field being seached.
 .It Fl x
 Treat
 .Ar pattern
-as a regular expression.
+as a regular expression.  This is the default.
+Matches any substring of the search field unless explicit beginning
+(^) and ending (?) anchor terms are used.
 .It Fl X
 Treat
 .Ar pattern
