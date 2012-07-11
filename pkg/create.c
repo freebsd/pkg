@@ -58,7 +58,8 @@ usage_create(void)
 }
 
 static int
-pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const char * const outdir, const char * const rootdir, bool overwrite)
+pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
+    const char * const outdir, const char * const rootdir, bool overwrite)
 {
 	int i, ret = EPKG_OK, retcode = EPKG_OK;
 	struct pkgdb *db = NULL;
@@ -68,10 +69,10 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 	struct pkg_entry *e = NULL;
 	const char *name, *version;
 	char pkgpath[MAXPATHLEN];
-	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
-	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
-	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES | PKG_LOAD_USERS |
-	    PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
+	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | 
+	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
+	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
+	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
 	const char *format;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
@@ -122,16 +123,19 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const 
 
 		pkg_get(e->pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		if (!overwrite) {
-			snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
+			snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir,
+			    name, version, format);
 			if (access(pkgpath, F_OK) == 0) {
-				printf("%s-%s already packaged skipping...\n", name, version);
+				printf("%s-%s already packaged skipping...\n",
+				    name, version);
 				pkg_free(e->pkg);
 				free(e);
 				continue;
 			}
 		}
 		printf("Creating package for %s-%s\n", name, version);
-		if (pkg_create_installed(outdir, fmt, rootdir, e->pkg) != EPKG_OK)
+		if (pkg_create_installed(outdir, fmt, rootdir, e->pkg) !=
+		    EPKG_OK)
 			retcode++;
 		pkg_free(e->pkg);
 		free(e);
@@ -231,8 +235,10 @@ exec_create(int argc, char **argv)
 	}
 
 	if (manifestdir == NULL)
-		return pkg_create_matches(argc, argv, match, fmt, outdir, rootdir, overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE;
+		return (pkg_create_matches(argc, argv, match, fmt, outdir,
+		    rootdir, overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	else
-		return pkg_create_staged(outdir, fmt, rootdir, manifestdir, plist) == EPKG_OK ? EX_OK : EX_SOFTWARE;
+		return (pkg_create_staged(outdir, fmt, rootdir, manifestdir,
+		    plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 }
 
