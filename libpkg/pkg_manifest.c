@@ -743,7 +743,7 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 
 #define manifest_append_kv(map, key, val, style) do {			\
 	int key_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
-	int val_obj = YAML_ADD_SCALAR(&doc, key, style);		\
+	int val_obj = YAML_ADD_SCALAR(&doc, val, style);		\
 	yaml_document_append_mapping_pair(&doc, map, key_obj, val_obj);	\
 } while (0)
 
