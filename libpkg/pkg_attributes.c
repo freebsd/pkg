@@ -101,6 +101,14 @@ pkg_dep_version(struct pkg_dep const * const d)
 	return (sbuf_get(d->version));
 }
 
+bool
+pkg_dep_is_locked(struct pkg_dep const * const d)
+{
+	assert(d != NULL);
+
+	return d->locked;
+}
+
 /*
  * File
  */

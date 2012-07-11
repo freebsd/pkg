@@ -81,6 +81,7 @@
 struct pkg {
 	struct sbuf	*fields[PKG_NUM_FIELDS];
 	bool		 automatic;
+	bool		 locked;
 	int64_t		 flatsize;
 	int64_t		 new_flatsize;
 	int64_t		 new_pkgsize;
@@ -108,7 +109,8 @@ struct pkg_dep {
 	struct sbuf	*origin;
 	struct sbuf	*name;
 	struct sbuf	*version;
-	UT_hash_handle	hh;
+	UT_hash_handle	 hh;
+	bool		 locked;
 };
 
 struct pkg_license {

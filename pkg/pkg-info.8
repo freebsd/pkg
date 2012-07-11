@@ -27,7 +27,7 @@
 .Nm
 .Fl a
 .Nm
-.Op Fl BDdefgIlOqRrsXx
+.Op Fl BDdefgIklOqRrsXx
 .Ar <pkg-name>
 .Nm
 .Op Fl BDdfIlqRrs
@@ -72,6 +72,19 @@ Display the list of packages required by
 .It Fl r
 Display the list of packages which depend on
 .Ar <pkg-name> .
+.It Fl k
+Show the locking status for 
+.Ar <pkg-name> .
+When used in combination with
+.Fl d
+or
+.Fl r ,
+indicate which packages, dependencies or requirements are locked
+by '(*)'.
+Locking status is only meaningful for installed packages; all locking
+statuses will show as unlocked when information about a
+.Ar <pkg-file>
+is queried.
 .It Fl l
 Display all files installed by
 .Ar <pkg-name> .
@@ -130,6 +143,7 @@ See
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,
 .Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
 .Xr pkg-query 8 ,
 .Xr pkg-register 8 ,
 .Xr pkg-repo 8 ,

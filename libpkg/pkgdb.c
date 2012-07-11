@@ -51,7 +51,7 @@
 #include "private/utils.h"
 
 #include "private/db_upgrades.h"
-#define DBVERSION 12
+#define DBVERSION 13
 
 #define PKGGT	(1U << 1)
 #define PKGLT	(1U << 2)
@@ -103,6 +103,7 @@ static struct column_mapping {
 	{ "pkgsize",	PKG_NEW_PKGSIZE },
 	{ "licenselogic", PKG_LICENSE_LOGIC },
 	{ "automatic",	PKG_AUTOMATIC },
+	{ "locked",	PKG_LOCKED },
 	{ "time",	PKG_TIME },
 	{ "infos",	PKG_INFOS },
 	{ "rowid",	PKG_ROWID },
@@ -479,6 +480,7 @@ pkgdb_init(sqlite3 *sdb)
 		"prefix TEXT NOT NULL,"
 		"flatsize INTEGER NOT NULL,"
 		"automatic INTEGER NOT NULL,"
+		"locked INTEGER NOT NULL DEFAULT 0,"
 		"licenselogic INTEGER NOT NULL,"
 		"infos TEXT, "
 		"time INTEGER, "
@@ -1153,7 +1155,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 			"SELECT id, origin, name, version, comment, desc, "
 				"message, arch, maintainer, www, "
 				"prefix, flatsize, licenselogic, automatic, "
-				"time, infos "
+				"locked, time, infos "
 			"FROM packages AS p%s "
 			"ORDER BY p.name;", comp);
 
@@ -1249,7 +1251,6 @@ pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res)
 
 	return (EPKG_OK);
 
-
 }
 
 int
@@ -1259,8 +1260,13 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 	int		 ret = EPKG_OK;
 	char		 sql[BUFSIZ];
 	const char	*reponame = NULL;
-	const char	*basesql = ""
-		"SELECT d.name, d.origin, d.version "
+	const char	*mainsql = ""
+		"SELECT d.name, d.origin, d.version, p.locked "
+		"FROM main.deps AS d, "
+		"main.packages AS p "
+		"WHERE d.package_id = ?1 AND p.origin = d.origin;";
+	const char	*reposql = ""
+		"SELECT d.name, d.origin, d.version, 0 "
 		"FROM %Q.deps AS d "
 		"WHERE d.package_id = ?1;";
 
@@ -1272,11 +1278,12 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, reposql, reponame);
+		ret = sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL);
 	} else
-		sqlite3_snprintf(sizeof(sql), sql, basesql, "main");
+		ret = sqlite3_prepare_v2(db->sqlite, mainsql, -1, &stmt, NULL);
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
@@ -1285,7 +1292,9 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddep(pkg, sqlite3_column_text(stmt, 0),
-		    sqlite3_column_text(stmt, 1), sqlite3_column_text(stmt, 2));
+			   sqlite3_column_text(stmt, 1),
+			   sqlite3_column_text(stmt, 2),
+			   sqlite3_column_int(stmt, 3));
 	}
 	sqlite3_finalize(stmt);
 
@@ -1307,8 +1316,13 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 	const char	*origin;
 	const char	*reponame = NULL;
 	char		 sql[BUFSIZ];
-	const char	*basesql = ""
-		"SELECT p.name, p.origin, p.version "
+	const char	*mainsql = ""
+		"SELECT p.name, p.origin, p.version, p.locked "
+		"FROM main.packages AS p, main.deps AS d "
+		"WHERE p.id = d.package_id "
+			"AND d.origin = ?1;";
+	const char	*reposql = ""
+		"SELECT p.name, p.origin, p.version, 0 "
 		"FROM %Q.packages AS p, %Q.deps AS d "
 		"WHERE p.id = d.package_id "
 			"AND d.origin = ?1;";
@@ -1321,11 +1335,12 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, reposql, reponame, reponame);
+		ret = sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL);
 	} else
-		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
+		ret = sqlite3_prepare_v2(db->sqlite, mainsql, -1, &stmt, NULL);
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
 	}
@@ -1335,7 +1350,9 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addrdep(pkg, sqlite3_column_text(stmt, 0),
-		    sqlite3_column_text(stmt, 1), sqlite3_column_text(stmt, 2));
+			    sqlite3_column_text(stmt, 1),
+			    sqlite3_column_text(stmt, 2),
+			    sqlite3_column_int(stmt, 3));
 	}
 	sqlite3_finalize(stmt);
 
@@ -1879,7 +1896,6 @@ prstmt_finalize(struct pkgdb *db)
 	db->prstmt_initialized = false;
 	return;
 }
-
 
 int
 pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
@@ -3184,7 +3200,6 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
 }
 
-
 static int
 pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
     pkgdb_field field, pkgdb_field sort)
@@ -3269,7 +3284,6 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 	assert(db != NULL);
 	assert(pattern != NULL && pattern[0] != '\0');
 	assert(db->type == PKGDB_REMOTE);
-
 
 	sql = sbuf_new_auto();
 	sbuf_cat(sql, basesql);
@@ -3523,7 +3537,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 {
 	int		 attr;
 	sqlite3_stmt	*stmt;
-	int64_t		 automatic, flatsize;
+	int64_t		 automatic, flatsize, locked;
 	char		*oldorigin;
 	char		*neworigin;
 
@@ -3564,6 +3578,13 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 			sqlite3_bind_int64(stmt, 1, automatic);
 			sqlite3_bind_int64(stmt, 2, id);
 			break;
+		case PKG_SET_LOCKED:
+			locked = (int64_t)va_arg(ap, int);
+			if (locked != 0 && locked != 1)
+				continue;
+			sqlite3_bind_int64(stmt, 1, locked);
+			sqlite3_bind_int64(stmt, 2, id);
+			break;
 		case PKG_SET_DEPORIGIN:
 			oldorigin = va_arg(ap, char *);
 			neworigin = va_arg(ap, char *);
@@ -3583,7 +3604,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 			sqlite3_finalize(stmt);
 			return (EPKG_FATAL);
 		}
-		
+
 		sqlite3_finalize(stmt);
 	}
 	return (EPKG_OK);
@@ -3917,7 +3938,6 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		stats = sqlite3_column_int64(stmt, 0);
 	}
-
 
 	sbuf_finish(sql);
 	sbuf_free(sql);

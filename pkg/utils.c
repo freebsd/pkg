@@ -179,6 +179,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 	struct pkg_user	    *user   = NULL;
 	bool multirepos_enabled = false;
 	bool print_tag = false;
+	bool show_locks = false;
 	char size[7];
 	const char *name, *version, *prefix, *origin, *reponame, *repourl;
 	const char *maintainer, *www, *comment, *desc, *message, *arch;
@@ -188,6 +189,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 	unsigned opt;
 	int64_t flatsize, newflatsize, newpkgsize;
 	lic_t licenselogic;
+	bool locked;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
 
@@ -210,7 +212,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 		PKG_LICENSE_LOGIC, &licenselogic,
 		PKG_MESSAGE,       &message,
 		PKG_ARCH,	   &arch,
-		PKG_REPOPATH,	   &repopath);
+		PKG_REPOPATH,	   &repopath
+		PKG_LOCKED         &locked);
 
 	if (!multirepos_enabled)
 		pkg_config_string(PKG_CONFIG_REPO, &repourl);
@@ -224,6 +227,11 @@ print_info(struct pkg * const pkg, unsigned int options)
 		return;
 	}
 
+	/* Show locking status when requested to display it and the
+	   package is locally installed */
+	if (pkg_type(pkg) == PKG_INSTALLED && (options & INFO_LOCKED) != 0)
+		show_locks = true;
+
 	if (!quiet) {
 		/* Print a tag-line identifying the package -- either
 		   NAMEVER, ORIGIN or NAME (in that order of
@@ -236,6 +244,10 @@ print_info(struct pkg * const pkg, unsigned int options)
 			cout = printf("%s", origin);
 		else if (options & INFO_TAG_NAME)
 			cout = printf("%s", name);
+
+		/* Show when locked as requested */
+		if (show_locks && locked)
+			cout += printf(" (*)");
 	}
 
 	/* Don't display a tab if quiet, retains compatibility. */
@@ -416,22 +428,30 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_DEPS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Depends on");
-				while (pkg_deps(pkg, &dep) == EPKG_OK)
+				while (pkg_deps(pkg, &dep) == EPKG_OK) {
 					printf("%s%s-%s\n",
 					       tab,
 					       pkg_dep_name(dep),
 					       pkg_dep_version(dep));
+					if (show_locks && pkg_dep_locked(dep))
+						printf(" (*)");
+					printf("\n");
+				}
 			}
 			break;
 		case INFO_RDEPS:
 			if (pkg_list_count(pkg, PKG_RDEPS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Required by");
-				while (pkg_rdeps(pkg, &dep) == EPKG_OK)
+				while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 					printf("%s%s-%s\n",
 					       tab,
 					       pkg_dep_name(dep),
 					       pkg_dep_version(dep));
+					if (show_locks && pkg_dep_locked(dep))
+						printf(" (*)");
+					printf("\n");
+				}
 			}
 			break;
 		case INFO_FILES: /* Installed pkgs only */
@@ -496,6 +516,11 @@ print_info(struct pkg * const pkg, unsigned int options)
 					printf("%s/%s\n", repourl, repopath);
 			} else if (!print_tag)
 				printf("\n");
+			break;
+		case INFO_LOCKED:
+			if (print_tag)
+				printf("%-15s: ", "Locked");
+			printf("%s\n", locked ? "yes" : "no");
 			break;
 		}
 	}

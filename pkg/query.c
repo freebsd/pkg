@@ -64,6 +64,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'w', "",		0, PKG_LOAD_BASIC },
 	{ 'l', "",		0, PKG_LOAD_BASIC },
 	{ 'a', "",		0, PKG_LOAD_BASIC },
+	{ 'k', "",              0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
 	{ 'i', "",		0, PKG_LOAD_BASIC },
 	{ 't', "",		0, PKG_LOAD_BASIC },
@@ -74,7 +75,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 {
 	char size[7];
 	const char *tmp;
-	bool automatic;
+	bool tmp2;
 	int64_t flatsize;
 	int64_t timestamp;
 	lic_t licenselogic;
@@ -131,8 +132,12 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_cat(dest, tmp);
 				break;
 			case 'a':
-				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
-				sbuf_printf(dest, "%d", automatic);
+				pkg_get(pkg, PKG_AUTOMATIC, &tmp2);
+				sbuf_printf(dest, "%d", tmp2);
+				break;
+			case 'k':
+				pkg_get(pkg, PKG_LOCKED, &tmp2);
+				sbuf_printf(dest, "%d", tmp2);
 				break;
 			case 't':
 				pkg_get(pkg, PKG_TIME, &timestamp);
@@ -465,6 +470,12 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 					if (for_remote)
 						goto bad_option;
 					sbuf_cat(sqlcond, "automatic");
+					state = OPERATOR_INT;
+					break;
+				case 'k':
+					if (for_remote)
+						goto bad_option;
+					sbuf_cat(sqlcond, "locked");
 					state = OPERATOR_INT;
 					break;
 				case 'M':

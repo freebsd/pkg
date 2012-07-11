@@ -70,6 +70,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	}
 
 	(*pkg)->automatic = false;
+	(*pkg)->locked = false;
 	(*pkg)->type = type;
 	(*pkg)->licenselogic = LICENSE_SINGLE;
 
@@ -95,6 +96,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg->new_pkgsize = 0;
 	pkg->time = 0;
 	pkg->automatic = false;
+	pkg->locked = false;
 	pkg->licenselogic = LICENSE_SINGLE;
 
 	pkg_list_free(pkg, PKG_LICENSES);
@@ -199,6 +201,9 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 		case PKG_AUTOMATIC:
 			*va_arg(ap, bool *) = pkg->automatic;
 			break;
+		case PKG_LOCKED:
+			*va_arg(ap, bool *) = pkg->locked;
+			break;
 		case PKG_TIME:
 			*va_arg(ap, int64_t *) = pkg->time;
 			break;
@@ -298,6 +303,9 @@ pkg_vset(struct pkg *pkg, va_list ap)
 		switch (attr) {
 		case PKG_AUTOMATIC:
 			pkg->automatic = (int)va_arg(ap, int64_t);
+			break;
+		case PKG_LOCKED:
+			pkg->locked = (int)va_arg(ap, int64_t);
 			break;
 		case PKG_LICENSE_LOGIC:
 			pkg->licenselogic = (lic_t)va_arg(ap, int64_t);
@@ -548,7 +556,7 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version)
+pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version, bool locked)
 {
 	struct pkg_dep *d = NULL;
 	const char *n1, *v1;
@@ -571,6 +579,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	sbuf_set(&d->origin, origin);
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
+	d->locked = locked;
 
 	HASH_ADD_KEYPTR(hh, pkg->deps, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)),
 	    strlen(pkg_dep_get(d, PKG_DEP_ORIGIN)), d);
@@ -579,7 +588,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 }
 
 int
-pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *version)
+pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *version, bool locked)
 {
 	struct pkg_dep *d;
 
@@ -593,6 +602,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	sbuf_set(&d->origin, origin);
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
+	d->locked = locked;
 
 	HASH_ADD_KEYPTR(hh, pkg->deps, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)),
 	    strlen(pkg_dep_get(d, PKG_DEP_ORIGIN)), d);

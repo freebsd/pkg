@@ -50,7 +50,7 @@ usage_info(void)
 {
 	fprintf(stderr, "usage: pkg info <pkg-name>\n");
 	fprintf(stderr, "       pkg info -a\n");
-	fprintf(stderr, "       pkg info [-BDdefgIlOqRrsXx] <pkg-name>\n");
+	fprintf(stderr, "       pkg info [-BDdefgIklOqRrsXx] <pkg-name>\n");
 	fprintf(stderr, "       pkg info [-BDdfIlqRrs] -F <pkg-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
@@ -83,7 +83,7 @@ exec_info(int argc, char **argv)
 	bool origin_search = false;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "aDegxXEIdrlBsqopOfF:R")) != -1) {
+	while ((ch = getopt(argc, argv, "aDegxXEIdrklBsqopOfF:R")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -115,6 +115,9 @@ exec_info(int argc, char **argv)
 			break;
 		case 'r':
 			opt |= INFO_RDEPS;
+			break;
+		case 'k':
+			opt |= INFO_LOCKED;
 			break;
 		case 'l':
 			opt |= INFO_FILES;

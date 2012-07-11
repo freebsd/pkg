@@ -15,57 +15,78 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 9, 2012
-.Dt PKG-CHECK 8
+.Dd May 12, 2012
+.Dt PKG-LOCK 8
 .Os
 .Sh NAME
-.Nm "pkg check"
-.Nd sanity checks installed packages
+.Nm "pkg lock" ,
+.Nm "pkg unlock"
+.Nd lock or unlock packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl Bdsr
-.Op Fl vy
-.Op Fl a | gxX Ar <pattern>
+.Op Fl yq
+.Fl a
+.Nm
+.Op Fl gxXyq
+.Ar <pkg-name>
+.Nm "pkg unlock"
+.Op Fl yq
+.Fl a
+.Nm "pkg unlock"
+.Op Fl gxXyq
+.Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
-.Fl B
-is used to reanalyse SHLIBS of installed packages.
-See
-.Xr pkg.conf 5
-for more information on SHLIBS.
+is used to lock packages against reinstallation,
+modification or deletion.
+.Nm "pkg unlock"
+unlocks the named packages.
+Either variant only has an effect on currently installed packages.
+Consequently it is impossible to block installation of a new package
+by using this mechanism, unless such an installation implies updating
+a locked package.
 .Pp
-.Nm
-.Fl d
-is used to check for and install missing dependencies.
+The impact of locking a package is wider than simply preventing
+modifications to the package itself.
+.Cm Any
+operation implying modification of the locked package will be
+blocked.
+This includes:
 .Pp
-.Nm
-.Fl r
-is used to recompute sizes and checksums of installed packages.
-.Pp
-.Nm
-.Fl s
-is used to find invalid checksums for installed packages.
+.Bl -bullet -compact
+.It
+Attempts to reinstall, up- or downgrade or delete the locked package
+itself.
+.It
+Installation, up- or downgrade of a package where the resultant
+package would have a dependency on a different version of the locked
+package.
+.It
+Deletion, up- or downgrade of any package the locked package depends
+upon, either directly or as a consequence of installing or upgrading
+some third package.
+.El
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl y
-Assume yes when asked for confirmation before installing missing dependencies.
-.It Fl v
-Be verbose.
 .It Fl a
-Process all packages.
+Lock or unlock all installed packages.
+.It Fl q
+Operate quietly: do not output anything other than confirmatory questions.
+.It Fl y
+Assume "yes" as the answer to all questions.
 .It Fl g
 Treat
-.Ar <pattern>
+.Ar <pkg-name>
 as a shell glob pattern.
 .It Fl x
 Treat
-.Ar <pattern>
+.Ar <pkg-name>
 as a regular expression.
 .It Fl X
 Treat
-.Ar <pattern>
+.Ar <pkg-name>
 as an extended regular expression.
 .El
 .Sh ENVIRONMENT
@@ -81,19 +102,18 @@ for further description.
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
-.Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,
-.Xr pkg-info 8 ,
+.Xr pkg-info 8,
 .Xr pkg-install 8 ,
-.Xr pkg-lock 8 ,
 .Xr pkg-query 8 ,
 .Xr pkg-register 8 ,
 .Xr pkg-repo 8 ,
@@ -107,4 +127,5 @@ See
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,
-.Xr pkg-which 8
+.Xr pkg-which 8 ,
+.Xr pkg.conf 5

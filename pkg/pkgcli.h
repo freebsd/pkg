@@ -76,6 +76,11 @@ void usage_install(void);
 int exec_plugins(int, char **);
 void usage_plugins(void);
 
+/* pkg lock */
+int exec_lock(int, char **);
+int exec_unlock(int, char **);
+void usage_lock(void);
+
 /* pkg query */
 int exec_query(int, char **);
 void usage_query(void);
@@ -182,8 +187,9 @@ void usage_which(void);
 #define INFO_GROUPS	(1<<21)
 #define INFO_ARCH	(1<<22)
 #define INFO_REPOURL	(1<<23)
+#define INFO_LOCKED	(1<<24)
 
-#define INFO_LASTFIELD	INFO_REPOURL
+#define INFO_LASTFIELD	INFO_LOCKED
 #define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
 
 /* Identifying tags */

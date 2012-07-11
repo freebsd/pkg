@@ -94,6 +94,8 @@ is in bytes, and
 is in human readable format.
 .It Cm \&%a
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
+.It Cm \&%k
+Returns 1 if the matched package is locked against modification or deletion, 0 otherwise
 .It Cm \&%M
 message contain in the matched package
 .It Cm \&%t
@@ -221,6 +223,8 @@ WWW address of the package (type string)
 Flatsize of the package (type integer)
 .It Cm \&%a
 Automatic status of the package (type integer)
+.It Cm \&%k
+Locking status of the package (type integer)
 .It Cm \&%M
 Message of the package (type string)
 .It Cm \&%t
@@ -272,6 +276,7 @@ See
 .Xr pkg-fetch 8 ,
 .Xr pkg-info 8 ,
 .Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
 .Xr pkg-register 8 ,
 .Xr pkg-repo 8 ,
 .Xr pkg-rquery 8 ,

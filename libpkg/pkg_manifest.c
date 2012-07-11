@@ -589,7 +589,7 @@ pkg_set_deps_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 	}
 
 	if (origin != NULL && version != NULL)
-		pkg_adddep(pkg, depname, origin, version);
+		pkg_adddep(pkg, depname, origin, version, false);
 	else
 		pkg_emit_error("Skipping malformed dependency %s", depname);
 
