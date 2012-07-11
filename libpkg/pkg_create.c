@@ -78,6 +78,12 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		}
 	}
 
+	/*
+	 * Register shared libraries used by the package if SHLIBS
+	 * enabled in conf.  Deletes shlib info if not.
+	 */
+	pkg_register_shlibs(pkg);
+
 	pkg_emit_manifest(pkg, &m);
 	packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
 	free(m);

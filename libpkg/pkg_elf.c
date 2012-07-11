@@ -372,6 +372,8 @@ pkg_register_shlibs(struct pkg *pkg)
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
+	pkg_list_free(pkg, PKG_SHLIBS);
+
 	if (!shlibs)
 		return (EPKG_OK);
 
