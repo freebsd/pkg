@@ -641,7 +641,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 	    "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL	/!\\\n"
 	    "\t/!\\		     YOU HAVE BEEN WARNED		/!\\\n\n";
 
-	fprintf(stderr, multirepo_warning);
+	fprintf(stderr, "%s", multirepo_warning);
 
 	while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
 		const char *repo_name = pkg_config_kv_get(repokv,
