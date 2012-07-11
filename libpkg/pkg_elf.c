@@ -83,14 +83,15 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 
 /* ARGSUSED */
 static int
-do_nothing(void *actdata, struct pkg *pkg, const char *name)
+do_nothing(__unused void *actdata, __unused struct pkg *pkg,
+	   __unused const char *name)
 {
 	return (EPKG_OK);
 }
 
 /* ARGSUSED */
 static int
-add_shlibs_to_pkg(void *actdata, struct pkg *pkg, const char *name)
+add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *name)
 {
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
@@ -394,7 +395,6 @@ elf_corres_to_string(struct _elf_corres* m, int e)
 
 	return ("unknown");
 }
-
 
 int
 pkg_get_myarch(char *dest, size_t sz)
