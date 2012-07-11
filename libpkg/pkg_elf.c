@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -45,26 +46,10 @@
 #include "private/elf_tables.h"
 
 static int
-test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
+filter_system_shlibs(const char *name, char *path, size_t pathlen)
 {
-	struct pkg_dep *dep = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *d;
-	Link_map *map;
-	const char *deporigin, *depname, *depversion;
-	bool found;
 	void *handle;
-	bool shlibs = false;
-	bool autodeps = false;
-
-#ifdef STATIC_LINKAGE
-	/* If we're compiled using static linkage, ie. as pkg-static,
-	   calls to dlopen(3) will fail, so bail out immediately. */
-	return (EPKG_OK);
-#endif
-
-	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+	Link_map *map;
 
 	if ((handle = dlopen(name, RTLD_LAZY)) == NULL) {
 		pkg_emit_error("accessing shared library %s failed -- %s",
@@ -79,21 +64,71 @@ test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 	    strncmp(map->l_name, "/usr/lib", 7) == 0) {
 		/* ignore libs from base */
 		dlclose(handle);
+		return (EPKG_END);
+	}
+
+	if (path != NULL)
+		strncpy(path, map->l_name, pathlen);
+
+	dlclose(handle);
+	return (EPKG_OK);
+} 
+
+/* Callback functions to process the shlib data */
+
+/* ARGSUSED */
+static int
+do_nothing(void *actdata, struct pkg *pkg, const char *name)
+{
+	return (EPKG_OK);
+}
+
+/* ARGSUSED */
+static int
+add_shlibs_to_pkg(void *actdata, struct pkg *pkg, const char *name)
+{
+	switch(filter_system_shlibs(name, NULL, 0)) {
+	case EPKG_OK:		/* A non-system library */
+		pkg_addshlib(pkg, name);
 		return (EPKG_OK);
+	case EPKG_END:		/* A system library */
+		return (EPKG_OK);
+	default:
+		return (EPKG_FATAL);
+	}
+}
+
+static int
+test_depends(void *actdata, struct pkg *pkg, const char *name)
+{
+	struct pkgdb *db = actdata;
+	struct pkg_dep *dep = NULL;
+	struct pkgdb_it *it = NULL;
+	struct pkg *d;
+	const char *deporigin, *depname, *depversion;
+	char pathbuf[MAXPATHLEN];
+	bool found;
+	bool shlibs = false;
+
+	assert(db != NULL);
+
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+
+	switch(filter_system_shlibs(name, pathbuf, sizeof(pathbuf))) {
+	case EPKG_OK:		/* A non-system library */
+		break;
+	case EPKG_END:		/* A system library */
+		return (EPKG_OK);
+	default:
+		return (EPKG_FATAL);
 	}
 
 	if (shlibs)
 		pkg_addshlib(pkg, name);
 
-	if (!autodeps) {
-		dlclose(handle);
+	if ((it = pkgdb_query_which(db, pathbuf)) == NULL)
 		return (EPKG_OK);
-	}
 
-	if ((it = pkgdb_query_which(db, map->l_name)) == NULL) {
-		dlclose(handle);
-		return (EPKG_OK);
-	}
 	d = NULL;
 	if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
 		found = false;
@@ -110,18 +145,19 @@ test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
 		}
 		if (!found) {
 			pkg_emit_error("adding forgotten depends (%s): %s-%s",
-					map->l_name, depname, depversion);
+					pathbuf, depname, depversion);
 			pkg_adddep(pkg, depname, deporigin, depversion);
 		}
 		pkg_free(d);
 	}
-	dlclose(handle);
+
 	pkgdb_it_free(it);
 	return (EPKG_OK);
 }
 
 static int
-analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
+analyse_elf(struct pkg *pkg, const char *fpath, 
+	    int (action)(void *, struct pkg *, const char *), void *actdata)
 {
 	Elf *e = NULL;
 	GElf_Ehdr elfhdr;
@@ -201,6 +237,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 			dynamic = scn;
 			sh_link = shdr.sh_link;
 			numdyn = shdr.sh_size / shdr.sh_entsize;
+			break;
 		}
 
 		if (note != NULL && dynamic != NULL)
@@ -209,7 +246,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 
 	/*
 	 * note == NULL usually means a shared object for use with dlopen(3)
-	 * dynamic == NULL means not a dynamic linked elf
+	 * dynamic == NULL means not a dynamically linked elf
 	 */
 	if (dynamic == NULL) {
 		ret = EPKG_END;
@@ -243,7 +280,7 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		if (dyn->d_tag != DT_NEEDED)
 			continue;
 
-		test_depends(db, pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
+		action(actdata, pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
 	}
 
 cleanup:
@@ -283,6 +320,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	bool shlibs = false;
 	bool autodeps = false;
 	bool developer = false;
+	int (*action)(void *, struct pkg *, const char *);
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
@@ -294,6 +332,20 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
+#ifdef STATIC_LINKAGE
+	/* If we're compiled using static linkage, ie. as pkg-static,
+	   calls to dlopen(3) will fail, so don't call a function that
+	   does that. */
+	action = do_nothing;
+#else
+	if (autodeps)
+		action = test_depends;
+	else if (shlibs)
+		action = add_shlibs_to_pkg;
+	else
+		action = do_nothing;
+#endif
+
 	/* Assume no architecture dependence, for contradiction */
 	if (developer)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
@@ -302,7 +354,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		fpath = pkg_file_path(file);
-		ret = analyse_elf(db, pkg, fpath);
+		ret = analyse_elf(pkg, fpath, action, db);
 		if (developer) {
 			if (ret != EPKG_OK && ret != EPKG_END)
 				return (ret);
