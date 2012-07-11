@@ -50,7 +50,7 @@ usage_create(void)
 {
 	fprintf(stderr, "usage: pkg create [-n] [-f format] [-o outdir] "
 		"[-p plist] [-r rootdir] -m manifestdir\n");
-	fprintf(stderr, "       pkg create [-gnXX] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-gnXx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
 	fprintf(stderr, "       pkg create [-n] [-f format] [-o outdir] "
 		"[-r rootdir] -a\n\n");
