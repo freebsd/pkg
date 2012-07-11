@@ -51,6 +51,11 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 	void *handle;
 	Link_map *map;
 
+#ifdef STATIC_LINKAGE
+	/* Can't use dlopen() in a statically linked program */
+	return (EPKG_END);
+#endif
+
 	if ((handle = dlopen(name, RTLD_LAZY)) == NULL) {
 		pkg_emit_error("accessing shared library %s failed -- %s",
 		    name, dlerror());
@@ -332,19 +337,12 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
-#ifdef STATIC_LINKAGE
-	/* If we're compiled using static linkage, ie. as pkg-static,
-	   calls to dlopen(3) will fail, so don't call a function that
-	   does that. */
-	action = do_nothing;
-#else
 	if (autodeps)
 		action = test_depends;
 	else if (shlibs)
 		action = add_shlibs_to_pkg;
 	else
 		action = do_nothing;
-#endif
 
 	/* Assume no architecture dependence, for contradiction */
 	if (developer)
@@ -361,6 +359,26 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 			analyse_fpath(pkg, fpath);
 		}
 	}
+
+	return (EPKG_OK);
+}
+
+int
+pkg_register_shlibs(struct pkg *pkg)
+{
+	struct pkg_file *file = NULL;
+	bool shlibs;
+
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+
+	if (!shlibs)
+		return (EPKG_OK);
+
+	if (elf_version(EV_CURRENT) == EV_NONE)
+		return (EPKG_FATAL);
+
+	while(pkg_files(pkg, &file) == EPKG_OK)
+		analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
 
 	return (EPKG_OK);
 }
