@@ -92,7 +92,7 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 		remote = fetchXGet(u, &st, "");
 		if (remote == NULL) {
 			--retry;
-			if (retry == 0) {
+			if (retry <= 0) {
 				pkg_emit_error("%s: %s", url,
 				    fetchLastErrString);
 				retcode = EPKG_FATAL;

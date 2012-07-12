@@ -281,8 +281,6 @@ pkg_config_int64(pkg_config_key key, int64_t *val)
 {
 	const char *errstr = NULL;
 
-	*val = 0;
-
 	if (parsed != true) {
 		pkg_emit_error("pkg_init() must be called before pkg_config_int64()");
 		return (EPKG_FATAL);
@@ -299,7 +297,16 @@ pkg_config_int64(pkg_config_key key, int64_t *val)
 			    c[key].val, errstr);
 			return (EPKG_FATAL);
 		}
-	}
+	} else if (c[key].def != NULL) {
+		*val = strtonum(c[key].def, 0, INT64_MAX, &errstr);
+		if (errstr != NULL) {
+			pkg_emit_error("Unable to convert default value %s to int64: %s",
+			    c[key].def, errstr);
+			return (EPKG_FATAL);
+		}
+	} else
+		return (EPKG_FATAL); /* No value set, and no default */
+
 	return (EPKG_OK);
 }
 
