@@ -74,6 +74,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
 	const char *format;
+	bool foundone;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
@@ -105,13 +106,19 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 			if ((it = pkgdb_query(db, argv[i], match)) == NULL)
 				goto cleanup;
 
+		foundone = false;
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
 				err(1, "malloc(pkg_entry)");
 			e->pkg = pkg;
 			pkg = NULL;
 			STAILQ_INSERT_TAIL(&head, e, next);
+			foundone = true;
 		}
+		if (!foundone)
+			warnx("No installed package matching \"%s\" found\n",
+			    argv[i]);
+
 		pkgdb_it_free(it);
 		if (ret != EPKG_END)
 			retcode++;
