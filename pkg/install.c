@@ -44,7 +44,8 @@
 void
 usage_install(void)
 {
-	fprintf(stderr, "usage: pkg install [-r reponame] [-yqfgxXRL] <pkg-name> <...>\n\n");
+	fprintf(stderr,
+	    "usage: pkg install [-fgLnqRXxy] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -64,35 +65,39 @@ exec_install(int argc, char **argv)
 
 	match_t match = MATCH_EXACT;
 	bool force = false;
+	bool dry_run = false;
 
-	while ((ch = getopt(argc, argv, "yfgxXr:qLR")) != -1) {
+	while ((ch = getopt(argc, argv, "fgLnqRr:Xxy")) != -1) {
 		switch (ch) {
-		case 'y':
-			yes = true;
+		case 'f':
+			force = true;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
 			break;
-		case 'x':
-			match = MATCH_REGEX;
+		case 'L':
+			auto_update = false;
 			break;
-		case 'X':
-			match = MATCH_EREGEX;
-			break;
-		case 'r':
-			reponame = optarg;
-			break;
-		case 'f':
-			force = true;
+		case 'n':
+			dry_run = true;
 			break;
 		case 'q':
 			quiet = true;
 			break;
-		case 'L':
-			auto_update = false;
-			break;
 		case 'R':
 			recursive = true;
+			break;
+		case 'r':
+			reponame = optarg;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'y':
+			yes = true;
 			break;
 		default:
 			usage_install();
@@ -124,10 +129,12 @@ exec_install(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if ((it = pkgdb_query_installs(db, match, argc, argv, reponame, force, recursive)) == NULL)
+	if ((it = pkgdb_query_installs(db, match, argc, argv, reponame,
+	    force, recursive)) == NULL)
 		goto cleanup;
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) ==
+	    EPKG_OK) {
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}
@@ -138,13 +145,17 @@ exec_install(int argc, char **argv)
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
-	if (!quiet) {
-		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following packages will be installed:\n\n");
+	if (!quiet || dry_run) {
+		print_jobs_summary(jobs, PKG_JOBS_INSTALL,
+		    "The following packages will be installed:\n\n");
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-		if (!yes)
-			yes = query_yesno("\nProceed with installing packages [y/N]: ");
+		if (!yes && !dry_run)
+			yes = query_yesno(
+			    "\nProceed with installing packages [y/N]: ");
+		if (dry_run)
+			yes = false;
 	}
 
 	if (yes)

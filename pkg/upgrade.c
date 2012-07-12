@@ -37,7 +37,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage: pkg upgrade [-r reponame] [-yfqL]\n\n");
+	fprintf(stderr, "usage: pkg upgrade [-fLnqy] [-r reponame]\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -53,6 +53,7 @@ exec_upgrade(int argc, char **argv)
 	int ch;
 	bool yes = false;
 	bool all = false;
+	bool dry_run = false;
 	bool auto_update = true;
 
 	if (geteuid() != 0) {
@@ -60,22 +61,25 @@ exec_upgrade(int argc, char **argv)
 		return (EX_NOPERM);
 	}
 
-	while ((ch = getopt(argc, argv, "yr:fqL")) != -1) {
+	while ((ch = getopt(argc, argv, "fLnqr:y")) != -1) {
 		switch (ch) {
-		case 'y':
-			yes = true;
-			break;
-		case 'r':
-			reponame = optarg;
-			break;
-		case 'q':
-			quiet = true;
-			break;
 		case 'f':
 			all = true;
 			break;
 		case 'L':
 			auto_update = false;
+			break;
+		case 'n':
+			dry_run = true;
+			break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'r':
+			reponame = optarg;
+			break;
+		case 'y':
+			yes = true;
 			break;
 		default:
 			usage_upgrade();
@@ -121,13 +125,15 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	pkg = NULL;
-	if (!quiet) {
+	if (!quiet || dry_run) {
 		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following packages will be upgraded:\n\n");
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-		if (!yes)
+		if (!yes && !dry_run)
 			yes = query_yesno("\nProceed with upgrading packages [y/N]: ");
+		if (dry_run)
+			yes = false;
 	}
 
 	if (yes)

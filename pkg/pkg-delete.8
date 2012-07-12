@@ -20,37 +20,63 @@
 .Os
 .Sh NAME
 .Nm "pkg delete"
-.Nd deletes a package from the database and the system
+.Nd deletes packages from the database and the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl ay
+.Op Fl fgnqRXxy
+.Ar <pkg-name> ...
 .Nm
-.Op Fl yqfRgxX
-.Ar <pkg-name> <...>
+.Op Fl nqy
+.Fl a
 .Sh DESCRIPTION
 .Nm
-is used for deleting previously installed packages and removes them from the
-database.
+is used for deleting installed packages from the system.
+.Nm
+creates a work-list of all the installed packages matching the package
+names on the command line.
+The list is presented to the user.
+If the user confirms that they do want to remove those packages, or
+if the
+.Cm ASSUME_ALWAYS_YES
+consifuration option is set,
+.Nm
+proceeds to remove the listed packages.
+.Pp
+If the set of packages to be deleted would leave installed packages
+with unfulfilled dependencies,
+.Nm
+will emit an error message and quit without deleting anything unless
+forced to proceed by the
+.Fl f
+option.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl f
-Forces packages to be removed.
 .It Fl a
-Deletes all installed packages from the system and the database.
-.It Fl y
-Assume yes when asked for confirmation before package deletion.
+Deletes all installed packages from the system and empties the database.
+.It Fl f
+Forces packages to be removed despite leaving unresolved dependencies.
 .It Fl g
 Treat the package names as shell glob patterns.
+.It Fl n
+Dry run mode.
+The list of packages to delete is always printed, but no packages are
+actually deleted.
+.It Fl q
+Force quiet output, except where
+.Fl n
+is also used, when
+.Nm
+will show the list of packages to be deleted.
 .It Fl R
-Recursively delete all packages that depend on the deleted package as well.
-.It Fl x
-Treat the package names as regular expressions.
+Delete all packages that require the listed packages as well.
 .It Fl X
 Treat the package names as extended regular expressions.
-.It Fl q
-Force quiet output
+.It Fl x
+Treat the package names as regular expressions.
+.It Fl y
+Assume yes when asked for confirmation before package deletion.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

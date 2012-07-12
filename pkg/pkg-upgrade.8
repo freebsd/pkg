@@ -23,14 +23,20 @@
 .Nd performs upgrades of package software distributions
 .Sh SYNOPSIS
 .Nm
-.Op Fl yfqL
+.Op Fl fLnqy
+.Op Fl r Ar reponame
 .Sh DESCRIPTION
 .Nm
 is used for upgrading of package software distributions.
 .Pp
-Currently only one package repository can be
-used during package upgrades as defined by the environment variable
-.Ev PACKAGESITE .
+Currently only one package repository can be used during package
+upgrades.
+This is either as defined by the environment variable
+.Ev PACKAGESITE ,
+or when in multi-repos mode, either the default repository or the
+argument to the
+.Fl r
+option.
 .Pp
 Soon enough
 .Nm
@@ -45,16 +51,26 @@ flag.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl y
-Assume yes when asked for confirmation before package installation.
 .It Fl f
 Force reinstalling/upgrading the whole set of packages
-.It Fl q
-Force quiet output
 .It Fl L
 Don't auto update the remote database with
 .Xr pkg-update 8 .
 Use the local cache only.
+.It Fl n
+Dry-run mode: show what packages have updates available, but do not perform
+any upgrades.
+Repository catalogues will be updated as usual unless the
+.Fl L
+option is also given.
+.It Fl q
+Force quiet output, except when
+.Fl n
+is used, where
+.Nm
+will always print out the list of packages with available updates.
+.It Fl y
+Assume yes when asked for confirmation before package installation.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
