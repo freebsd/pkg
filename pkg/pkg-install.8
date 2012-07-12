@@ -23,9 +23,9 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
+.Op Fl fgLnqRXxy
 .Op Fl r Ar reponame
-.Op Fl yqfgxXRL
-.Ar <pkg-origin> <...>
+.Ar <pkg-origin> ...
 .Sh DESCRIPTION
 .Nm
 is used for installation of packages from a remote package
@@ -71,18 +71,22 @@ for finding the autoremoval status of a package, and
 .Xr pkg-set 8
 for modifying it.
 .Pp
+Currently
 .Nm
-can install packages from multiple repositories.
-Repository catalogues will be downloaded from all listed repositories.
-The order in which repositories are listed in
+will only use one repository to install packages from.
+When
+.Ev PACKAGESITE
+is set in the environment, or the equivalent
+.Cm PACKAGESITE
+setting is present in
 .Fa pkg.conf
-is significant.
-If a package is found to exist in more than one repository, package
-fetching will be attempted from each repository listed as containing
-the package in the order specified in
-.Fa pkg.conf ,
-until either the package has been successfully downloaded or all
-the repositories have been tried.
+only that site will be used.
+.Pp
+Alternatively, when in multi-repo mode, the
+.Fl r
+option may be used to select one of the package repositories listed
+in the configuration file.
+Otherwise the default repository will be used.
 .Pp
 Multiple package repository support is only activated when neither the
 environment variable
@@ -90,9 +94,6 @@ environment variable
 nor the equivalent
 .Cm PACKAGESITE
 configuration setting are defined.
-When
-.Ev PACKAGESITE
-is defined only the referenced repository will be used.
 .Pp
 Package repository catalogues will be automatically updated whenever
 .Xr pkg-update 8
@@ -106,31 +107,38 @@ package installation with
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl f
+Force the reinstallation of the package if already installed.
+.It Fl g
+Treat the package names as shell glob patterns.
+.It Fl L
+Don't auto update repository catalogues with
+.Xr pkg-update 8 .
+Use the locally cached copies only.
+.It Fl n
+Dry-run mode.  The list of changes to packages is always printed, but
+no changes are actually made.
+.It Fl q
+Force quiet output, except when
+.Fl n
+is used, where
+.Nm
+will always show packages to be installed, upgraded or deleted.
+.It Fl R
+When used with
+.Fl f ,
+reinstalls any packages that require the given package.
 .It Fl r Ar reponame
 In multi-repo mode, override the
 .Fa pkg.conf
 ordering and only attempt to download packages from the named
 repository.
-.It Fl y
-Assume yes when asked for confirmation before package installation.
-.It Fl g
-Treat the package names as shell glob patterns.
-.It Fl x
-Treat the package names as regular expressions.
 .It Fl X
 Treat the package names as extended regular expressions.
-.It Fl f
-Force the reinstallation of the package if already installed.
-.It Fl q
-Force quiet output.
-.It Fl L
-Don't auto update repository catalogues with
-.Xr pkg-update 8 .
-Use the locally cached copies only.
-.It Fl R
-When used with
-.Fl f ,
-reinstalls any packages that require the given package.
+.It Fl x
+Treat the package names as regular expressions.
+.It Fl y
+Assume yes when asked for confirmation before package installation.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
