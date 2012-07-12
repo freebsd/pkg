@@ -39,8 +39,8 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "usage: pkg delete [-yqgxXfr] <pkg-name> <...>\n");
-	fprintf(stderr, "       pkg delete [-yq] -a\n\n");
+	fprintf(stderr, "usage: pkg delete [-fgnqRXxy] <pkg-name> ...\n");
+	fprintf(stderr, "       pkg delete [-nqy] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
 
@@ -56,34 +56,38 @@ exec_delete(int argc, char **argv)
 	int flags = PKG_LOAD_BASIC;
 	int force = 0;
 	bool yes = false;
+	bool dry_run = false;
 	int retcode = EX_SOFTWARE;
 	int recursive = 0;
 
-	while ((ch = getopt(argc, argv, "aqgxXfyR")) != -1) {
+	while ((ch = getopt(argc, argv, "afgnqRXxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
+		case 'f':
+			force = 1;
+			break;
 		case 'g':
 			match = MATCH_GLOB;
 			break;
-		case 'x':
-			match = MATCH_REGEX;
-			break;
-		case 'X':
-			match = MATCH_EREGEX;
-			break;
-		case 'f':
-			force = 1;
+		case 'n':
+			dry_run = true;
 			break;
 		case 'q':
 			quiet = true;
 			break;
-		case 'y':
-			yes = true;
-			break;
 		case 'R':
 			recursive = 1;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'y':
+			yes = true;
 			break;
 		default:
 			usage_delete();
@@ -135,14 +139,17 @@ exec_delete(int argc, char **argv)
 	}
 
 	pkg = NULL;
-	if (!quiet) {
-		print_jobs_summary(jobs, PKG_JOBS_DEINSTALL, "The following packages will be deinstalled:\n\n");
+	if (!quiet || dry_run) {
+		print_jobs_summary(jobs, PKG_JOBS_DEINSTALL,
+		    "The following packages will be deinstalled:\n\n");
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-		if (!yes)
-			yes = query_yesno("\nProceed with deinstalling packages [y/N]: ");
-
+		if (!yes && !dry_run)
+			yes = query_yesno(
+		            "\nProceed with deinstalling packages [y/N]: ");
+		if (dry_run)
+			yes = false;
 	}
 	if (yes) {
 		if ((retcode = pkg_jobs_apply(jobs, force)) != EPKG_OK)
