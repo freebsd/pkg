@@ -107,6 +107,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *name)
 	struct pkgdb_it *it = NULL;
 	struct pkg *d;
 	const char *deporigin, *depname, *depversion;
+	bool deplocked;
 	char pathbuf[MAXPATHLEN];
 	bool found;
 	bool shlibs = false;
@@ -150,8 +151,9 @@ test_depends(void *actdata, struct pkg *pkg, const char *name)
 		}
 		if (!found) {
 			pkg_emit_error("adding forgotten depends (%s): %s-%s",
-					pathbuf, depname, depversion);
-			pkg_adddep(pkg, depname, deporigin, depversion, deplocked);
+			    pathbuf, depname, depversion);
+			pkg_adddep(pkg, depname, deporigin, depversion,
+			    deplocked);
 		}
 		pkg_free(d);
 	}
