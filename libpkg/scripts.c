@@ -35,7 +35,7 @@ int
 pkg_script_run(struct pkg * const pkg, pkg_script type)
 {
 	struct sbuf * const script_cmd = sbuf_new_auto();
-	size_t i;
+	size_t i, j;
 	const char *name, *prefix, *version;
 
 	struct {
@@ -62,22 +62,22 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	assert(i < sizeof(map) / sizeof(map[0]));
 	assert(map[i].a == type);
 
-	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
-		if (pkg_script_get(pkg, i) == NULL)
+	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
+		if (pkg_script_get(pkg, j) == NULL)
 			continue;
-		if (i == map[i].a || i == map[i].b) {
+		if (j == map[i].a || j == map[i].b) {
 			sbuf_reset(script_cmd);
 			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s",
 			    prefix, name, version);
 
-			if (i == map[i].b) {
+			if (j == map[i].b) {
 				/* add arg **/
 				sbuf_cat(script_cmd, " ");
 				sbuf_cat(script_cmd, map[i].arg);
 			}
 
 			sbuf_cat(script_cmd, "\n");
-			sbuf_cat(script_cmd, pkg_script_get(pkg, i));
+			sbuf_cat(script_cmd, pkg_script_get(pkg, j));
 			sbuf_finish(script_cmd);
 			system(sbuf_get(script_cmd));
 		}
