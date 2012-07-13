@@ -53,11 +53,15 @@ static const cliopt search_label[] = {
 
 static const cliopt modifiers[] = {
 	{ "arch",         'a'  },
+	{ "categories",   'C'  },
 	{ "comment",      'c'  },
 	{ "depends-on",   'd'  },
 	{ "description",  'D'  },
 	{ "full",         'f'  },
+	{ "licenses",     'l'  },
 	{ "maintainer",   'm'  },
+	{ "name",         'n'  },
+	{ "options",      'o'  },
 	{ "pkg-size",	  'P'  },
 	{ "prefix",       'p'  },
 	{ "repository",   'R'  },
@@ -135,6 +139,9 @@ modifier_opt(const char *optionarg)
 	case 'a':
 		opt = INFO_ARCH;
 		break;
+	case 'C':
+		opt = INFO_CATEGORIES;
+		break;
 	case 'c':
 		opt = INFO_COMMENT;
 		break;
@@ -147,8 +154,17 @@ modifier_opt(const char *optionarg)
 	case 'f':
 		opt = INFO_FULL;
 		break;
+	case 'l':
+		opt = INFO_LICENSES;
+		break;
 	case 'm':
 		opt = INFO_MAINTAINER;
+		break;
+	case 'n':
+		opt = INFO_NAME;
+		break;
+	case 'o':
+		opt = INFO_OPTIONS;
 		break;
 	case 'P':
 		opt = INFO_PKGSIZE;
@@ -170,6 +186,9 @@ modifier_opt(const char *optionarg)
 		break;
 	case 'u':
 		opt = INFO_REPOURL;
+		break;
+	case 'v':
+		opt = INFO_VERSION;
 		break;
 	case 'w':
 		opt = INFO_WWW;
@@ -232,8 +251,8 @@ exec_search(int argc, char **argv)
 		case 'D':	/* Same as -M depends-on  */
 			opt |= modifier_opt("depends-on");
 			break;
-		case 'd':	/* Same as -S depends-on */
-			search = search_label_opt("depends-on");
+		case 'd':	/* Same as -S description */
+			search = search_label_opt("description");
 			break;
 		case 'e':
 			match = MATCH_EXACT;
