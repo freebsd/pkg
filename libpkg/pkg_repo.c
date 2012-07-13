@@ -719,11 +719,13 @@ pkg_create_repo(char *path, bool force,
 
 		category = NULL;
 		while (pkg_categories(pkg, &category) == EPKG_OK) {
-			if (run_prepared_statement(CAT1,
-			    pkg_category_name(category)) != SQLITE_DONE
-			    &&
-			    run_prepared_statement(CAT2, package_id,
-			    pkg_category_name(category)) != SQLITE_DONE)
+			const char *cat_name = pkg_category_name(category);
+
+			ret = run_prepared_statement(CAT1, cat_name);
+			if (ret == SQLITE_DONE)
+			    ret = run_prepared_statement(CAT2, package_id,
+			        cat_name);
+			if (ret != SQLITE_DONE)
 			{
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
@@ -734,6 +736,7 @@ pkg_create_repo(char *path, bool force,
 		license = NULL;
 		while (pkg_licenses(pkg, &license) == EPKG_OK) {
 			const char *lic_name = pkg_license_name(license);
+
 			ret = run_prepared_statement(LIC1, lic_name);
 			if (ret == SQLITE_DONE)
 				ret = run_prepared_statement(LIC2, package_id,
@@ -758,11 +761,13 @@ pkg_create_repo(char *path, bool force,
 
 		shlib = NULL;
 		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
-			if (run_prepared_statement(SHLIB1,
-			    pkg_shlib_name(shlib)) != SQLITE_DONE
-			    &&
-			    run_prepared_statement(SHLIB2, package_id,
-			    pkg_shlib_name(shlib)) != SQLITE_DONE)
+			const char *shlib_name = pkg_shlib_name(shlib);
+
+			ret = run_prepared_statement(SHLIB1, shlib_name);
+			if (ret == SQLITE_DONE)
+			    ret = run_prepared_statement(SHLIB2, package_id,
+			        shlib_name);
+			if (ret != SQLITE_DONE)
 			{
 				ERROR_SQLITE(sqlite);
 				retcode = EPKG_FATAL;
