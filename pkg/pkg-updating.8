@@ -55,6 +55,9 @@ The following environment variables affect the execution of
 .It Ev PORTSDIR
 Location of the ports tree.
 .El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
 .Sh EXAMPLES
 Shows all entries of all installed ports:
 .Dl % pkg updating
@@ -71,9 +74,6 @@ Shows all apache entries since 2012-01-01:
 Defines that the UPDATING file is in /tmp and shows all entries of all
 installed ports:
 .Dl % pkg updating -f /tmp/UPDATING
-.Sh FILES
-See
-.Xr pkg.conf 5 .
 .Sh SEE ALSO
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
