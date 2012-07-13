@@ -2701,7 +2701,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 				"maintainer, www, prefix, flatsize, newversion, pkgsize, "
 				"cksum, repopath, automatic, opts) "
 				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
-				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.version AS newversion, r.pkgsize, "
+				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, NULL AS newversion, r.pkgsize, "
 				"r.cksum, r.path, 1, "
 				"(select group_concat(option) from (select option from '%s'.options WHERE package_id=r.id AND value='on' ORDER BY option)) "
 				"FROM '%s'.packages AS r where r.origin IN "
