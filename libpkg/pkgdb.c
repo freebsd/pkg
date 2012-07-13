@@ -1792,7 +1792,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	const char *comment, *desc, *message, *infos;
 	const char *arch, *maintainer, *www, *prefix;
 
-	int64_t automatic, flatsize, licenselogic;
+	bool automatic;
+	lic_t licenselogic;
+	int64_t flatsize;
 	int64_t i;
 
 	assert(db != NULL);
@@ -1830,7 +1832,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	 * Insert package record
 	 */
 	ret = run_prstmt(PKG, origin, name, version, comment, desc, message,
-	    arch, maintainer, www, prefix, flatsize, automatic, licenselogic,
+	    arch, maintainer, www, prefix, flatsize, (int64_t)automatic, (int64_t)licenselogic,
 	    mtree, infos);
 	if (ret != SQLITE_DONE) {
 		ERROR_SQLITE(s);
