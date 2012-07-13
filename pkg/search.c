@@ -41,7 +41,7 @@ typedef struct _cliopt {
 	char key;
 } cliopt;
 
-/* an option string should not be a prefix of any other option */ 
+/* an option string should not be a prefix of any other option string */ 
 static const cliopt search_label[] = {
 	{ "comment",     'c'  },
 	{ "description", 'd'  },
@@ -95,13 +95,102 @@ match_optarg(const cliopt *optlist, const char *opt)
 	return (key);
 }
 
+static pkgdb_field
+search_label_opt(const char *optionarg)
+{
+	pkgdb_field field;
+
+	/* label options */
+	switch(match_optarg(search_label, optionarg)) {
+	case 'o':
+		field = FIELD_ORIGIN;
+		break;
+	case 'n':
+		field = FIELD_NAME;
+		break;
+	case 'p':
+		field = FIELD_NAMEVER;
+		break;
+	case 'c':
+		field = FIELD_COMMENT;
+		break;
+	case 'd':
+		field = FIELD_DESC;
+		break;
+	default:
+		usage_search();
+		errx(EX_USAGE, "Unknown search/label option: %s", optionarg);
+		/* NOTREACHED */
+	}
+	return field;
+}
+
+static unsigned int
+modifier_opt(const char *optionarg)
+{
+	unsigned int opt;
+
+	/* output modifiers */
+	switch(match_optarg(modifiers, optionarg)) {
+	case 'a':
+		opt = INFO_ARCH;
+		break;
+	case 'c':
+		opt = INFO_COMMENT;
+		break;
+	case 'd':
+		opt = INFO_DEPS;
+		break;
+	case 'D':
+		opt = INFO_DESCR;
+		break;
+	case 'f':
+		opt = INFO_FULL;
+		break;
+	case 'm':
+		opt = INFO_MAINTAINER;
+		break;
+	case 'P':
+		opt = INFO_PKGSIZE;
+		break;
+	case 'p':
+		opt = INFO_PREFIX;
+		break;
+	case 'R':
+		opt = INFO_REPOSITORY;
+		break;
+	case 'r':
+		opt = INFO_RDEPS;
+		break;
+	case 'S':
+		opt = INFO_SHLIBS;
+		break;
+	case 's':
+		opt = INFO_FLATSIZE;
+		break;
+	case 'u':
+		opt = INFO_REPOURL;
+		break;
+	case 'w':
+		opt = INFO_WWW;
+		break;
+	default:
+		usage_search();
+		errx(EX_USAGE, "Unkown modifier option %s", optionarg);
+		/* NOTREACHED */
+	}
+	return opt;
+}
+
 void
 usage_search(void)
 {
 	int i, n;
 
-	fprintf(stderr, "usage: pkg search [-r repo] [-egXx] [-S search] [-L label] [-M mod]... <pkg-name>\n");
-	fprintf(stderr, "       pkg search [-r repo] [-egXx] [-cDdfopqS] <pattern>\n\n");
+	fprintf(stderr, "usage: pkg search [-egXx] [-r repo] [-S search] "
+	    "[-L label] [-M mod]... <pkg-name>\n");
+	fprintf(stderr, "       pkg search [-cDdefgopqXx] [-r repo] "
+	    "<pattern>\n\n");
 	n = fprintf(stderr, "       Search and Label options:");
 	for (i = 0; search_label[i].option != NULL; i++) {
 		if (n > 72)
@@ -125,7 +214,7 @@ exec_search(int argc, char **argv)
 	const char *pattern = NULL;
 	const char *reponame = NULL;
 	int ret = EPKG_OK, ch;
-	int flags = PKG_LOAD_BASIC;
+	int flags;
 	unsigned int opt = 0;
 	match_t match = MATCH_REGEX;
 	pkgdb_field search = FIELD_NONE;
@@ -135,149 +224,55 @@ exec_search(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	bool atleastone = false;
 
-	while ((ch = getopt(argc, argv, "egxXr:S:L:M:cdfDsopq")) != -1) {
+	while ((ch = getopt(argc, argv, "cDdefgL:M:opqr:S:sXx")) != -1) {
 		switch (ch) {
+		case 'c':	/* Same as -S comment */
+			search = search_label_opt("comment");
+			break;
+		case 'D':	/* Same as -M depends-on  */
+			opt |= modifier_opt("depends-on");
+			break;
+		case 'd':	/* Same as -S depends-on */
+			search = search_label_opt("depends-on");
+			break;
 		case 'e':
 			match = MATCH_EXACT;
+			break;
+		case 'f':	/* Same as -M full */
+			opt |= modifier_opt("full");
 			break;
 		case 'g':
 			match = MATCH_GLOB;
 			break;
-		case 'x':
-			match = MATCH_REGEX;
+		case 'L':
+			label = search_label_opt(optarg);
 			break;
-		case 'X':
-			match = MATCH_EREGEX;
+		case 'M':
+			opt |= modifier_opt(optarg);
+			break;
+		case 'o':	/* Same as -L origin */
+			label = search_label_opt("origin");
+			break;
+		case 'p':	/* Same as -M prefix */
+			opt |= modifier_opt("prefix");
+			break;
+		case 'q':
+			quiet = true;
 			break;
 		case 'r':
 			reponame = optarg;
 			break;
 		case 'S':
-			/* search options */
-			switch(match_optarg(search_label, optarg)) {
-			case 'o':
-				search = FIELD_ORIGIN;
-				break;
-			case 'n':
-				search = FIELD_NAME;
-				break;
-			case 'p':
-				search = FIELD_NAMEVER;
-				break;
-			case 'c':
-			opt_S_c:
-				search = FIELD_COMMENT;
-				break;
-			case 'd':
-			opt_S_d:
-				search = FIELD_DESC;
-				break;
-			default:
-				usage_search();
-				return (EX_USAGE);
-			}
+			search = search_label_opt(optarg);
 			break;
-		case 'L':
-			/* label options */
-			switch(match_optarg(search_label, optarg)) {
-			case 'o':
-			opt_L_o:
-				label = FIELD_ORIGIN;
-				break;
-			case 'n':
-				label = FIELD_NAME;
-				break;
-			case 'p':
-				label = FIELD_NAMEVER;
-				break;
-			case 'c':
-				label = FIELD_COMMENT;
-				break;
-			case 'd':
-				label = FIELD_DESC;
-				break;
-			default:
-				usage_search();
-				return (EX_USAGE);
-			}
-			break;
-		case 'M':
-			/* output modifiers */
-			switch(match_optarg(modifiers, optarg)) {
-			case 'a':
-				opt |= INFO_ARCH;
-				break;
-			case 'c':
-				opt |= INFO_COMMENT;
-				break;
-			case 'd':
-			opt_M_d:
-				opt |= INFO_DEPS;
-				flags |= PKG_LOAD_DEPS;
-				break;
-			case 'D':
-				opt |= INFO_DESCR;
-				break;
-			case 'f':
-			opt_M_f:
-				opt |= INFO_FULL;
-				flags |= PKG_LOAD_CATEGORIES |
-					PKG_LOAD_LICENSES    |
-					PKG_LOAD_OPTIONS     |
-					PKG_LOAD_SHLIBS;
-				break;
-			case 'm':
-				opt |= INFO_MAINTAINER;
-				break;
-			case 'P':
-				opt |= INFO_PKGSIZE;
-				break;
-			case 'p':
-			opt_M_p:
-				opt |= INFO_PREFIX;
-				break;
-			case 'R':
-				opt |= INFO_REPOSITORY;
-				break;
-			case 'r':
-				opt |= INFO_RDEPS;
-				flags |= PKG_LOAD_RDEPS;
-				break;
-			case 'S':
-				opt |= INFO_SHLIBS;
-				flags |= PKG_LOAD_SHLIBS;
-				break;
-			case 's':
-			opt_M_s:
-				opt |= INFO_FLATSIZE;
-				break;
-			case 'u':
-				opt |= INFO_REPOURL;
-				break;
-			case 'w':
-				opt |= INFO_WWW;
-				break;
-			default:
-				usage_search();
-				return (EX_USAGE);
-			}
-			break;
-		case 'c':	/* Same as -S comment */
-			goto opt_S_c;
-		case 'd':	/* Same as -S depends-on */
-			goto opt_S_d;
-		case 'f':	/* Same as -M full */
-			goto opt_M_f;
-		case 'D':	/* Same as -M depends-on  */
-			goto opt_M_d;
 		case 's':	/* Same as -M size */
-			goto opt_M_s;
-		case 'o':	/* Same as -L origin */
-			goto opt_L_o;
-		case 'p':	/* Same as -M prefix */
-			goto opt_M_p;
-		case 'q':
-			quiet = true;
+			opt |= modifier_opt("size");
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
 			break;
 		default:
 			usage_search();
@@ -330,11 +325,13 @@ exec_search(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
 
-	if ((it = pkgdb_search(db, pattern, match, search, reponame)) == NULL) {
+	if ((it = pkgdb_search(db, pattern, match, search, reponame)) ==
+	    NULL) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
 
+	flags = info_flags(opt);
 	while ((ret = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
 		print_info(pkg, opt);
 		atleastone = true;

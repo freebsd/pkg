@@ -129,6 +129,36 @@ absolutepath(const char *src, char *dest, size_t dest_len) {
 	return &dest[0];
 }
 
+/* what the pkg needs to load in order to display the requested info */
+int
+info_flags(unsigned int opt)
+{
+	int flags = PKG_LOAD_BASIC;
+
+	if (opt & INFO_CATEGORIES)
+		flags |= PKG_LOAD_CATEGORIES;
+	if (opt & INFO_LICENSES)
+		flags |= PKG_LOAD_LICENSES;
+	if (opt & INFO_OPTIONS)
+		flags |= PKG_LOAD_OPTIONS;
+	if (opt & INFO_SHLIBS)
+		flags |= PKG_LOAD_SHLIBS;
+	if (opt & INFO_DEPS)
+		flags |= PKG_LOAD_DEPS;
+	if (opt & INFO_RDEPS)
+		flags |= PKG_LOAD_RDEPS;
+	if (opt & INFO_FILES)
+		flags |= PKG_LOAD_FILES;
+	if (opt & INFO_DIRS)
+		flags |= PKG_LOAD_DIRS;
+	if (opt & INFO_USERS)
+		flags |= PKG_LOAD_USERS;
+	if (opt & INFO_GROUPS)
+		flags |= PKG_LOAD_GROUPS;
+
+	return flags;
+}
+
 void
 print_info(struct pkg * const pkg, unsigned int options)
 {

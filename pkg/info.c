@@ -65,7 +65,7 @@ exec_info(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
-	int query_flags = PKG_LOAD_BASIC;
+	int query_flags;
 	struct pkg *pkg = NULL;
 	unsigned int opt = INFO_TAG_NAMEVER;
 	match_t match = MATCH_EXACT;
@@ -89,7 +89,7 @@ exec_info(int argc, char **argv)
 			match = MATCH_ALL;
 			break;
 		case 'O':
-			origin_search = true;  /* this is only for ports compat */
+			origin_search = true;  /* only for ports compat */
 			break;
 		case 'e':
 			pkg_exists = true;;
@@ -106,31 +106,27 @@ exec_info(int argc, char **argv)
 			break;
 		case 'D':
 			opt |= INFO_MESSAGE;
-			query_flags |= PKG_LOAD_BASIC;
 			break;
 		case 'd':
 			opt |= INFO_DEPS;
-			query_flags |= PKG_LOAD_DEPS;
 			break;
 		case 'I':
 			opt |= INFO_COMMENT;
 			break;
 		case 'r':
 			opt |= INFO_RDEPS;
-			query_flags |= PKG_LOAD_RDEPS;
 			break;
 		case 'l':
 			opt |= INFO_FILES;
-			query_flags |= PKG_LOAD_FILES;
 			break;
 		case 'B':
 			opt |= INFO_SHLIBS;
-			query_flags |= PKG_LOAD_SHLIBS;
 			break;
 		case 's':
 			opt |= INFO_FLATSIZE;
 			break;
 		case 'E': /* ports compatibility */
+			/* FALLSTHROUGH */
 		case 'q':
 			quiet = true;
 			break;
@@ -142,25 +138,12 @@ exec_info(int argc, char **argv)
 			break;
 		case 'f':
 			opt |= INFO_FULL;
-			query_flags |= PKG_LOAD_CATEGORIES |
-				PKG_LOAD_LICENSES	   |
-				PKG_LOAD_OPTIONS;
 			break;
 		case 'F':
 			file = optarg;
 			break;
 		case 'R':
 			opt |= INFO_RAW;
-			query_flags |= PKG_LOAD_FILES |
-				PKG_LOAD_DIRS	      |
-				PKG_LOAD_CATEGORIES   |
-				PKG_LOAD_LICENSES     |
-				PKG_LOAD_OPTIONS      |
-				PKG_LOAD_SCRIPTS      |
-				PKG_LOAD_USERS	      |
-				PKG_LOAD_GROUPS	      |
-				PKG_LOAD_DEPS	      |
-				PKG_LOAD_SHLIBS;
 			break;
 		default:
 			usage_info();
@@ -329,6 +312,7 @@ exec_info(int argc, char **argv)
 
 		/* end of compatibility hacks */
 
+		query_flags = info_flags(opt);
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			gotone = true;
 			const char *version;
