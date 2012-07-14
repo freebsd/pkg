@@ -3013,7 +3013,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 
 static int
 pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
-    unsigned int field)
+    pkgdb_field field)
 {
 	const char *how = NULL;
 	const char *what = NULL;
@@ -3049,7 +3049,7 @@ pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
 
 struct pkgdb_it *
 pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
-    unsigned int field, const char *reponame)
+    pkgdb_field field, const char *reponame)
 {
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = NULL;
