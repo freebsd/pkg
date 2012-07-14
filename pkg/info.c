@@ -50,8 +50,8 @@ usage_info(void)
 {
 	fprintf(stderr, "usage: pkg info <pkg-name>\n");
 	fprintf(stderr, "       pkg info -a\n");
-	fprintf(stderr, "       pkg info [-eDgxXdrlBsqOf] <pkg-name>\n");
-	fprintf(stderr, "       pkg info [-drlBsqfR] -F <pkg-file>\n\n");
+	fprintf(stderr, "       pkg info [-BDdefgIlOqRrsXx] <pkg-name>\n");
+	fprintf(stderr, "       pkg info [-BDdfIlqRrs] -F <pkg-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
 
@@ -65,9 +65,9 @@ exec_info(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
-	int query_flags = PKG_LOAD_BASIC;
+	int query_flags;
 	struct pkg *pkg = NULL;
-	unsigned int opt = 0;
+	unsigned int opt = INFO_TAG_NAMEVER;
 	match_t match = MATCH_EXACT;
 	char *pkgname;
 	char *pkgversion = NULL, *pkgversion2 = NULL;
@@ -79,19 +79,20 @@ exec_info(int argc, char **argv)
 	int i, j;
 	int sign = 0;
 	int sign2 = 0;
+	bool pkg_exists = false;
+	bool origin_search = false;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "aDegxXEdrlBsqopOfF:R")) != -1) {
+	while ((ch = getopt(argc, argv, "aDegxXEIdrlBsqopOfF:R")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
 		case 'O':
-			/* this is only for ports compat */
-			opt |= INFO_ORIGIN_SEARCH;
+			origin_search = true;  /* only for ports compat */
 			break;
 		case 'e':
-			opt |= INFO_EXISTS;
+			pkg_exists = true;;
 			retcode = 1;
 			break;
 		case 'g':
@@ -104,31 +105,30 @@ exec_info(int argc, char **argv)
 			match = MATCH_EREGEX;
 			break;
 		case 'D':
-			opt |= INFO_PRINT_MESSAGE;
-			query_flags |= PKG_LOAD_BASIC;
+			opt |= INFO_MESSAGE;
 			break;
 		case 'd':
-			opt |= INFO_PRINT_DEP;
-			query_flags |= PKG_LOAD_DEPS;
+			opt |= INFO_DEPS;
+			break;
+		case 'I':
+			opt |= INFO_COMMENT;
 			break;
 		case 'r':
-			opt |= INFO_PRINT_RDEP;
-			query_flags |= PKG_LOAD_RDEPS;
+			opt |= INFO_RDEPS;
 			break;
 		case 'l':
-			opt |= INFO_LIST_FILES;
-			query_flags |= PKG_LOAD_FILES;
+			opt |= INFO_FILES;
 			break;
 		case 'B':
-			opt |= INFO_LIST_SHLIBS;
-			query_flags |= PKG_LOAD_SHLIBS;
+			opt |= INFO_SHLIBS;
 			break;
 		case 's':
-			opt |= INFO_SIZE;
+			opt |= INFO_FLATSIZE;
 			break;
 		case 'E': /* ports compatibility */
+			/* FALLSTHROUGH */
 		case 'q':
-			opt |= INFO_QUIET;
+			quiet = true;
 			break;
 		case 'o':
 			opt |= INFO_ORIGIN;
@@ -138,14 +138,12 @@ exec_info(int argc, char **argv)
 			break;
 		case 'f':
 			opt |= INFO_FULL;
-			query_flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS;
 			break;
 		case 'F':
 			file = optarg;
 			break;
 		case 'R':
 			opt |= INFO_RAW;
-			query_flags |= PKG_LOAD_FILES|PKG_LOAD_DIRS|PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS|PKG_LOAD_SCRIPTS|PKG_LOAD_USERS|PKG_LOAD_GROUPS|PKG_LOAD_DEPS|PKG_LOAD_SHLIBS;
 			break;
 		default:
 			usage_info();
@@ -161,10 +159,25 @@ exec_info(int argc, char **argv)
 
 	if (argc == 0 && file == NULL && match != MATCH_ALL) {
 		/* which -O bsd.*.mk always execpt clean output */
-		if (opt & INFO_ORIGIN_SEARCH)
+		if (origin_search)
 			return (EX_OK);
 		usage_info();
 		return (EX_USAGE);
+	}
+
+	/* When no other data is requested, default is to print
+	 * 'name-ver comment' For -O, just print name-ver */
+	if (!origin_search && (opt & INFO_ALL) == 0 && match == MATCH_ALL) 
+		opt |= INFO_COMMENT;
+
+	/* Special compatibility: handle -O and -q -O */
+	if (origin_search) {
+		if (quiet) {
+			opt = INFO_TAG_NAMEVER;
+			quiet = false;
+		} else {
+			opt = INFO_TAG_NAMEVER|INFO_COMMENT;
+		}
 	}
 
 	if (file != NULL) {
@@ -184,7 +197,7 @@ exec_info(int argc, char **argv)
 		if (match == MATCH_ALL)
 			return (EX_OK);
 
-		if ((opt & INFO_QUIET) == 0)
+		if (!quiet)
 			printf("No packages installed.\n");
 
 		return (EX_UNAVAILABLE);
@@ -294,11 +307,12 @@ exec_info(int argc, char **argv)
 
 		/* ports infrastructure expects pkg info -q -O to always return 0 even
 		 * if the ports doesn't exists */
-		if (opt & INFO_ORIGIN_SEARCH)
+		if (origin_search)
 			gotone = true;
 
 		/* end of compatibility hacks */
 
+		query_flags = info_flags(opt);
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			gotone = true;
 			const char *version;
@@ -352,7 +366,7 @@ exec_info(int argc, char **argv)
 					break;
 				}
 			}
-			if (opt & INFO_EXISTS)
+			if (pkg_exists)
 				retcode = EX_OK;
 			else
 				print_info(pkg, opt);
@@ -362,7 +376,7 @@ exec_info(int argc, char **argv)
 		}
 
 		if (retcode == EX_OK && !gotone && match != MATCH_ALL) {
-			if ((opt & INFO_QUIET) == 0)
+			if (!quiet)
 				warnx("No package(s) matching %s", argv[i]);
 			retcode = EX_SOFTWARE;
 		}
