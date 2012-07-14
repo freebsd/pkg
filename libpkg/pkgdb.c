@@ -3015,10 +3015,11 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 
 static int
 pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
-    pkgdb_field field)
+    pkgdb_field field, pkgdb_field sort)
 {
 	const char *how = NULL;
 	const char *what = NULL;
+	const char *orderby = NULL;
 
 	how = pkgdb_get_match_how(match);
 
@@ -3046,28 +3047,52 @@ pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
 	if (what != NULL && how != NULL)
 		sbuf_printf(sql, how, what);
 
+	switch (sort) {
+	case FIELD_NONE:
+		orderby = NULL;
+		break;
+	case FIELD_ORIGIN:
+		orderby = " ORDER BY origin";
+		break;
+	case FIELD_NAME:
+		orderby = " ORDER BY name";
+		break;
+	case FIELD_NAMEVER:
+		orderby = " ORDER BY name, version";
+		break;
+	case FIELD_COMMENT:
+		orderby = " ORDER BY comment";
+		break;
+	case FIELD_DESC:
+		orderby = " ORDER BY desc";
+		break;
+	}
+
+	if (orderby != NULL)
+		sbuf_cat(sql, orderby);
+
 	return (EPKG_OK);
 }
 
 struct pkgdb_it *
 pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
-    pkgdb_field field, const char *reponame)
+    pkgdb_field field, pkgdb_field sort, const char *reponame)
 {
 	sqlite3_stmt *stmt = NULL;
 	struct sbuf *sql = NULL;
 	bool multirepos_enabled = false;
 	int ret;
 	const char *basesql = ""
-				"SELECT id, origin, name, version, comment, "
-					"prefix, desc, arch, maintainer, www, "
-					"licenselogic, flatsize AS newflatsize, pkgsize, "
-					"cksum, path AS repopath ";
+		"SELECT id, origin, name, version, comment, "
+		"prefix, desc, arch, maintainer, www, "
+		"licenselogic, flatsize AS newflatsize, pkgsize, "
+		"cksum, path AS repopath ";
 	const char *multireposql = ""
-				"SELECT id, origin, name, version, comment, "
-					"prefix, desc, arch, maintainer, www, "
-					"licenselogic, flatsize, pkgsize, "
-					"cksum, path, '%1$s' AS dbname "
-					"FROM '%1$s'.packages ";
+		"SELECT id, origin, name, version, comment, "
+		"prefix, desc, arch, maintainer, www, "
+		"licenselogic, flatsize, pkgsize, "
+		"cksum, path, '%1$s' AS dbname "
+		"FROM '%1$s'.packages ";
 
 	assert(db != NULL);
 	assert(pattern != NULL && pattern[0] != '\0');
@@ -3089,7 +3114,8 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 
 		if (reponame != NULL) {
 			if (is_attached(db->sqlite, reponame)) {
-				sbuf_printf(sql, multireposql, reponame, reponame);
+				sbuf_printf(sql, multireposql, reponame,
+				    reponame);
 			} else {
 				pkg_emit_error("Repository %s can't be loaded",
 				    reponame);
@@ -3115,7 +3141,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 		sbuf_cat(sql, ", 'remote' AS dbname FROM remote.packages WHERE ");
 	}
 
-	pkgdb_search_build_search_query(sql, match, field);
+	pkgdb_search_build_search_query(sql, match, field, sort);
 	sbuf_cat(sql, ";");
 	sbuf_finish(sql);
 
