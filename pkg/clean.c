@@ -95,14 +95,16 @@ exec_clean(int argc, char **argv)
 		}
 
 		pkg_get(pkg, PKG_ORIGIN, &origin);
-		it = pkgdb_search(db, origin, MATCH_EXACT, FIELD_ORIGIN, NULL);
+		it = pkgdb_search(db, origin, MATCH_EXACT, FIELD_ORIGIN,
+		    FIELD_NONE, NULL);
 
 		if (it == NULL) {
 			warnx("skipping %s", ent->fts_path);
 			continue;
 		}
 
-		if ((ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC)) == EPKG_FATAL) {
+		if ((ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC)) ==
+		    EPKG_FATAL) {
 			warnx("skipping %s", ent->fts_path);
 			continue;
 		}
@@ -110,7 +112,8 @@ exec_clean(int argc, char **argv)
 		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		if (ret == EPKG_END) {
 			to_delete = true;
-			printf("%s does not exist anymore, deleting it\n", repopath);
+			printf("%s does not exist anymore, deleting it\n",
+			    repopath);
 		} else if (strcmp(repopath, pkgrepopath)) {
 			printf("%s is out-of-date, deleting it\n", repopath);
 			to_delete = true;
