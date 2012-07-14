@@ -212,8 +212,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 		PKG_LICENSE_LOGIC, &licenselogic,
 		PKG_MESSAGE,       &message,
 		PKG_ARCH,	   &arch,
-		PKG_REPOPATH,	   &repopath
-		PKG_LOCKED         &locked);
+		PKG_REPOPATH,	   &repopath,
+		PKG_LOCKED,	   &locked);
 
 	if (!multirepos_enabled)
 		pkg_config_string(PKG_CONFIG_REPO, &repourl);
@@ -433,7 +433,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 					       tab,
 					       pkg_dep_name(dep),
 					       pkg_dep_version(dep));
-					if (show_locks && pkg_dep_locked(dep))
+					if (show_locks && pkg_dep_is_locked(dep))
 						printf(" (*)");
 					printf("\n");
 				}
@@ -448,7 +448,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 					       tab,
 					       pkg_dep_name(dep),
 					       pkg_dep_version(dep));
-					if (show_locks && pkg_dep_locked(dep))
+					if (show_locks && pkg_dep_is_locked(dep))
 						printf(" (*)");
 					printf("\n");
 				}
