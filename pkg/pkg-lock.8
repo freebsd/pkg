@@ -24,16 +24,16 @@
 .Nd lock or unlock packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl yq
+.Op Fl qy
 .Fl a
 .Nm
-.Op Fl gxXyq
+.Op Fl gqXxy
 .Ar <pkg-name>
 .Nm "pkg unlock"
-.Op Fl yq
+.Op Fl qy
 .Fl a
 .Nm "pkg unlock"
-.Op Fl gxXyq
+.Op Fl gqXxy
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
@@ -72,22 +72,22 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Lock or unlock all installed packages.
-.It Fl q
-Operate quietly: do not output anything other than confirmatory questions.
-.It Fl y
-Assume "yes" as the answer to all questions.
 .It Fl g
 Treat
 .Ar <pkg-name>
 as a shell glob pattern.
-.It Fl x
-Treat
-.Ar <pkg-name>
-as a regular expression.
+.It Fl q
+Operate quietly: do not output anything other than confirmatory questions.
 .It Fl X
 Treat
 .Ar <pkg-name>
 as an extended regular expression.
+.It Fl x
+Treat
+.Ar <pkg-name>
+as a regular expression.
+.It Fl y
+Assume "yes" as the answer to all questions.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -96,7 +96,8 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It PKG_DBDIR
+.It Ev PKG_DBDIR
+.It Ev ASSUME_ALWAYS_YES
 .El
 .Sh FILES
 See

@@ -48,10 +48,10 @@ static bool yes = false;	/* Assume yes answer to questions */
 void
 usage_lock(void)
 {
-	fprintf(stderr, "usage: pkg lock [-gxXyq] <pkg-name>\n");
-	fprintf(stderr, "       pkg lock [-yq] -a\n");
-	fprintf(stderr, "       pkg unlock [-gxXyq] <pkg-name>\n");
-	fprintf(stderr, "       pkg unlock [-yq] -a\n");
+	fprintf(stderr, "usage: pkg lock [-gqXxy] <pkg-name>\n");
+	fprintf(stderr, "       pkg lock [-qy] -a\n");
+	fprintf(stderr, "       pkg unlock [-gqXxy] <pkg-name>\n");
+	fprintf(stderr, "       pkg unlock [-qy] -a\n");
 	fprintf(stderr, "For more information see 'pkg help lock'.\n");
 }
 
@@ -131,7 +131,9 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	int exitcode = EX_OK;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "agxXyq")) != -1) {
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+
+	while ((ch = getopt(argc, argv, "agqXxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -139,17 +141,17 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 		case 'g':
 			match = MATCH_GLOB;
 			break;
-		case 'x':
-			match = MATCH_REGEX;
+		case 'q':
+			quiet = true;
 			break;
 		case 'X':
 			match = MATCH_EREGEX;
 			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
 		case 'y':
 			yes = true;
-			break;
-		case 'q':
-			quiet = true;
 			break;
 		default:
 			usage_lock();
