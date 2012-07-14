@@ -305,7 +305,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			pkg->automatic = (int)va_arg(ap, int64_t);
 			break;
 		case PKG_LOCKED:
-			pkg->locked = (int)va_arg(ap, int64_t);
+			pkg->locked = (bool)va_arg(ap, int64_t);
 			break;
 		case PKG_LICENSE_LOGIC:
 			pkg->licenselogic = (lic_t)va_arg(ap, int64_t);
