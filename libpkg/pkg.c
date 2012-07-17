@@ -240,6 +240,28 @@ pkg_get2(struct pkg const *const pkg, ...)
 	return (ret);
 }
 
+const char *
+pkg_name(struct pkg const *const pkg)
+{
+	assert(pkg != NULL);
+
+	if (pkg->fields[PKG_NAME] != NULL)
+		return (sbuf_get(pkg->fields[PKG_NAME]));
+	else
+		return (NULL);
+}
+
+const char *
+pkg_version(struct pkg const *const pkg)
+{
+	assert(pkg != NULL);
+
+	if (pkg->fields[PKG_VERSION] != NULL)
+		return (sbuf_get(pkg->fields[PKG_VERSION]));
+	else
+		return (NULL);
+}
+
 static void
 pkg_set_repourl(struct pkg *pkg, const char *str)
 {

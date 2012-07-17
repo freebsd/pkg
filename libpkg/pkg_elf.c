@@ -30,52 +30,45 @@
 #include <sys/elf_common.h>
 #include <sys/stat.h>
 
-#include <ctype.h>
 #include <assert.h>
-#include <fcntl.h>
+#include <ctype.h>
 #include <dlfcn.h>
+#include <elf-hints.h>
+#include <err.h>
+#include <fcntl.h>
 #include <gelf.h>
 #include <link.h>
 #include <stdbool.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
 #include "private/elf_tables.h"
+#include "private/ldconfig.h"
+
+/* FFR: when we support installing a 32bit package on a 64bit host */
+#define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
 
 static int
 filter_system_shlibs(const char *name, char *path, size_t pathlen)
 {
-	void *handle;
-	Link_map *map;
+	const char *shlib_path;
 
-#ifdef STATIC_LINKAGE
-	/* Can't use dlopen() in a statically linked program */
-	return (EPKG_END);
-#endif
-
-	if ((handle = dlopen(name, RTLD_LAZY)) == NULL) {
-		pkg_emit_error("accessing shared library %s failed -- %s",
-		    name, dlerror());
+	shlib_path = shlib_list_find_by_name(name);
+	if (shlib_path == NULL) {
 		return (EPKG_FATAL);
 	}
 
-	dlinfo(handle, RTLD_DI_LINKMAP, &map);
-
 	/* match /lib, /lib32, /usr/lib and /usr/lib32 */
-	if (strncmp(map->l_name, "/lib", 4) == 0 ||
-	    strncmp(map->l_name, "/usr/lib", 7) == 0) {
-		/* ignore libs from base */
-		dlclose(handle);
-		return (EPKG_END);
-	}
+	if (strncmp(shlib_path, "/lib", 4) == 0 ||
+	    strncmp(shlib_path, "/usr/lib", 7) == 0)
+		return (EPKG_END); /* ignore libs from base */
 
 	if (path != NULL)
-		strncpy(path, map->l_name, pathlen);
+		strncpy(path, shlib_path, pathlen);
 
-	dlclose(handle);
 	return (EPKG_OK);
 } 
 
@@ -100,6 +93,8 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *name)
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
 	default:
+		warnx("(%s-%s) shared library %s not found", pkg_name(pkg),
+		      pkg_version(pkg), name);
 		return (EPKG_FATAL);
 	}
 }
@@ -126,6 +121,8 @@ test_depends(void *actdata, struct pkg *pkg, const char *name)
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
 	default:
+		warnx("(%s-%s) shared library %s not found", pkg_name(pkg),
+		      pkg_version(pkg), name);
 		return (EPKG_FATAL);
 	}
 
@@ -163,7 +160,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *name)
 
 static int
 analyse_elf(struct pkg *pkg, const char *fpath, 
-	    int (action)(void *, struct pkg *, const char *), void *actdata)
+    int (action)(void *, struct pkg *, const char *), void *actdata)
 {
 	Elf *e = NULL;
 	GElf_Ehdr elfhdr;
@@ -275,6 +272,30 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 	data = elf_getdata(dynamic, NULL);
 
+	/* First, scan through the data from the .dynamic section to
+	   find any RPATH or RUNPATH settings.  These are colon
+	   separated paths to prepend to the ld.so search paths from
+	   the ELF hints file.  These always seem to come right after
+	   the NEEDED entries */
+
+	rpath_list_init();
+	for (dynidx = 0; dynidx < numdyn; dynidx++) {
+		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
+			ret = EPKG_FATAL;
+			pkg_emit_error("getdyn() failed for %s: %s", fpath,
+			    elf_errmsg(-1));
+			goto cleanup;
+		}
+
+		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
+			continue;
+
+		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val));
+		break;
+	}
+
+	/* Now find all of the NEEDED shared libraries */
+
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
 			ret = EPKG_FATAL;
@@ -290,6 +311,8 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	}
 
 cleanup:
+	rpath_list_free();
+
 	if (e != NULL)
 		elf_end(e);
 	close(fd);
@@ -345,6 +368,14 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	else
 		action = do_nothing;
 
+	if (autodeps || shlibs) {
+		shlib_list_init();
+
+		ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
+		if (ret != EPKG_OK)
+			goto cleanup;
+	}
+
 	/* Assume no architecture dependence, for contradiction */
 	if (developer)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
@@ -356,19 +387,25 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 		ret = analyse_elf(pkg, fpath, action, db);
 		if (developer) {
 			if (ret != EPKG_OK && ret != EPKG_END)
-				return (ret);
+				goto cleanup;
 			analyse_fpath(pkg, fpath);
 		}
 	}
 
-	return (EPKG_OK);
+	ret = EPKG_OK;
+
+cleanup:
+	if (autodeps || shlibs)
+		shlib_list_free();
+
+	return (ret);
 }
 
 int
 pkg_register_shlibs(struct pkg *pkg)
 {
-	struct pkg_file *file = NULL;
-	bool shlibs;
+	struct pkg_file        *file = NULL;
+	bool			shlibs;
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
@@ -380,9 +417,16 @@ pkg_register_shlibs(struct pkg *pkg)
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
+	shlib_list_init();
+	if (shlib_list_from_elf_hints(_PATH_ELF_HINTS) != EPKG_OK) {
+		shlib_list_free();
+		return (EPKG_FATAL);
+	}
+
 	while(pkg_files(pkg, &file) == EPKG_OK)
 		analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
 
+	shlib_list_free();
 	return (EPKG_OK);
 }
 
