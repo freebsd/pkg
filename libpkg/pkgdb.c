@@ -3332,7 +3332,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 		[PKG_SET_DEPORIGIN] =
 		    "UPDATE deps SET origin=?1, "
 		    "name=(SELECT name FROM packages WHERE origin=?1), "
-		    "version=(SELECT version FROM packages WHERE origin=?1), "
+		    "version=(SELECT version FROM packages WHERE origin=?1) "
 		    "WHERE package_id=?2 AND origin=?3",
 		[PKG_SET_ORIGIN]    =
 		    "UPDATE packages SET origin=?1 WHERE id=?2",
