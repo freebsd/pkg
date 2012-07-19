@@ -362,6 +362,13 @@ pkg_t pkg_type(struct pkg const * const);
 int pkg_get2(struct pkg const *const, ...);
 #define pkg_get(pkg, ...) pkg_get2(pkg, __VA_ARGS__, -1)
 
+/**
+ * Specific getters for simple attributes.
+ * @return NULL-terminated string.
+ */
+const char *pkg_name(struct pkg const *const pkg);
+const char *pkg_version(struct pkg const *const pkg);
+
 int pkg_list_is_empty(struct pkg *, pkg_list);
 /**
  * Iterates over the dependencies of the package.

@@ -11,6 +11,7 @@ SHLIB_MAJOR=	0
 #gr_utils.c has to be deleted as soon as it goes in base
 SRCS=		backup.c \
 		dns_utils.c \
+		elfhints.c \
 		fetch.c \
 		packing.c \
 		pkg.c \
@@ -46,7 +47,6 @@ CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
 		-I${.CURDIR}/../external/libyaml/include
-STATIC_CFLAGS+=	-DSTATIC_LINKAGE
 LDADD+=		-L${.OBJDIR}/../external/sqlite \
 		-L${.OBJDIR}/../external/libyaml \
 		-lsqlite3 \
