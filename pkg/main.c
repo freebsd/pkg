@@ -93,18 +93,18 @@ const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
-	fprintf(stderr, "Global options supported:\n");
-	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
-	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(1) inside a jail(8)");
-	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
-	fprintf(stderr, "\t%-15s%s\n\n", "-v", "Display pkg(1) version");
-	fprintf(stderr, "Commands supported:\n");
+	printf("usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
+	printf("Global options supported:\n");
+	printf("\t%-15s%s\n", "-d", "Increment debug level");
+	printf("\t%-15s%s\n", "-j", "Execute pkg(1) inside a jail(8)");
+	printf("\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
+	printf("\t%-15s%s\n\n", "-v", "Display pkg(1) version");
+	printf("Commands supported:\n");
 
-	for (unsigned int i = 0; i < cmd_len; i++)
-		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
+	for (unsigned int i = 0; i < cmd_len; i++) 
+		printf("\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
-	fprintf(stderr, "\nFor more information on the different commands"
+	printf("\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
 
 	exit(EX_USAGE);
@@ -113,11 +113,11 @@ usage(void)
 static void
 usage_help(void)
 {
-	fprintf(stderr, "usage: pkg help <command>\n\n");
-	fprintf(stderr, "Where <command> can be:\n");
+	printf("usage: pkg help <command>\n\n");
+	printf("Where <command> can be:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++)
-		fprintf(stderr, "\t%s\n", cmd[i].name);
+		printf("\t%s\n", cmd[i].name);
 }
 
 static int
