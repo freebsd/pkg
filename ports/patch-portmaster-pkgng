@@ -197,7 +197,7 @@ $FreeBSD$
  	local sn dir
  
 +	if [ -n "$use_pkgng" ]; then
-+		pkg info -q ${1} || return 1
++		pkg info -qO ${1} || return 1
 +		return
 +	fi
  	sn=${1#*/} ; sn=${sn%-*} ; sn=${sn%%[0-9]*}
