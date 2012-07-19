@@ -44,7 +44,8 @@ is_url(const char * const pattern)
 {
 	if (strncmp(pattern, "http://", 7) == 0 ||
 		strncmp(pattern, "https://", 8) == 0 ||
-		strncmp(pattern, "ftp://", 6) == 0)
+		strncmp(pattern, "ftp://", 6) == 0 ||
+		strncmp(pattern, "file://", 7) == 0)
 		return (EPKG_OK);
 
 	return (EPKG_FATAL);
