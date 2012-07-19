@@ -136,7 +136,7 @@ shlib_list_find_by_name(const char *shlib_file)
 }
 
 void
-shlib_list_free()
+shlib_list_free(void)
 {
 	struct shlib_list_entry *sl1, *sl2;
 
@@ -150,7 +150,7 @@ shlib_list_free()
 }
 
 void
-rpath_list_free()
+rpath_list_free(void)
 {
 	struct shlib_list_entry *sl1, *sl2;
 
