@@ -1,6 +1,5 @@
 PROG=pkg-static
 
-CFLAGS+=	-DSTATIC_LINKAGE
 STATIC_PKGNG=	yes
 NO_SHARED?=	yes
 NO_MAN=		yes
