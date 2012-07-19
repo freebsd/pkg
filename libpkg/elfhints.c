@@ -251,12 +251,11 @@ int shlib_list_from_rpath(const char *rpath_str)
 	size_t		buflen;
 	int		i, numdirs;
 	int		ret;
-	const char     *cc;
-	char	       *c;
+	const char     *c;
 	
 	numdirs = 1;
-	for (cc = rpath_str; *cc != '\0'; cc++)
-		if (*cc == ':')
+	for (c = rpath_str; *c != '\0'; c++)
+		if (*c == ':')
 			numdirs++;
 	buflen = numdirs * sizeof(char *) + strlen(rpath_str) + 1;
 	dirlist = calloc(1, buflen);
@@ -264,20 +263,18 @@ int shlib_list_from_rpath(const char *rpath_str)
 		warnx("Out of memory");
 		return (EPKG_FATAL);
 	}
-	buf = (char *)dirlist + buflen;
+	buf = (char *)dirlist + numdirs * sizeof(char *);
 	strcpy(buf, rpath_str);
 
 	i = 0;
-	dirlist[i++] = buf;
-	for (c = buf; *c != '\0'; c++)
-		if (*c == ':') {
-			*c = '\0';
-			dirlist[i++] = c + 1;
-		}
+	while ((c = strsep(&buf, ":")) != NULL) {
+		if (strlen(c) > 0)
+			dirlist[i++] = c;
+	}
 
-	assert(i == numdirs);
+	assert(i <= numdirs);
 
-	ret = scan_dirs_for_shlibs(&rpath, numdirs, dirlist);
+	ret = scan_dirs_for_shlibs(&rpath, i, dirlist);
 
 	free(dirlist);
 
