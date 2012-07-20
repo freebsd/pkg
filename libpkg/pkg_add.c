@@ -238,7 +238,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	/*
 	 * Execute pre-install scripts
 	 */
-	if ((flags & PKG_ADD_UPGRADE_NEW) == 0)
+	if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == 0)
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	/* add the user and group if necessary */
@@ -257,7 +257,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	/*
 	 * Execute post install scripts
 	 */
-	if (flags & PKG_ADD_UPGRADE_NEW)
+	if (flags & PKG_ADD_USE_UPGRADE_SCRIPTS)
 		pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 	else
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
