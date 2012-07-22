@@ -43,6 +43,7 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/thd_repo.h"
 
 /* The package repo schema major revision */
 #define REPO_SCHEMA_MAJOR 2
@@ -543,24 +544,21 @@ pkg_create_repo(char *path, bool force,
     void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
-	FTSENT *ent = NULL;
+	struct thd_data thd_data;
+	int num_workers = 6;
+	pthread_t *tids = NULL;
 
-	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
 	struct pkg_option *option = NULL;
 	struct pkg_shlib *shlib = NULL;
-	struct sbuf *manifest = NULL;
-	char *ext = NULL;
 
 	sqlite3 *sqlite = NULL;
 
 	int64_t package_id;
 	char *errmsg = NULL;
 	int retcode = EPKG_OK;
-	char *pkg_path;
-	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	int ret;
 
 	char *repopath[2];
@@ -616,43 +614,52 @@ pkg_create_repo(char *path, bool force,
 	if ((retcode = initialize_prepared_statements(sqlite)) != EPKG_OK)
 		goto cleanup;
 
-	manifest = sbuf_new_auto();
-	while ((ent = fts_read(fts)) != NULL) {
+	thd_data.root_path = path;
+	thd_data.stop = false;
+	thd_data.fts = fts;
+	pthread_mutex_init(&thd_data.fts_m, NULL);
+	STAILQ_INIT(&thd_data.results);
+	thd_data.thd_finished = 0;
+	pthread_mutex_init(&thd_data.results_m, NULL);
+	pthread_cond_init(&thd_data.has_result, NULL);
+
+	/* Launch workers */
+	tids = calloc(num_workers, sizeof(pthread_t));
+	for (int i = 0; i < num_workers; i++) {
+		pthread_create(&tids[i], NULL, (void *)&read_pkg_file, &thd_data);
+	}
+
+	for (;;) {
+		struct pkg_result *r;
+
 		const char *name, *version, *origin, *comment, *desc;
 		const char *arch, *maintainer, *www, *prefix;
 		int64_t flatsize;
 		lic_t licenselogic;
 
-		/* skip everything that is not a file */
-		if (ent->fts_info != FTS_F)
+		pthread_mutex_lock(&thd_data.results_m);
+		while ((r = STAILQ_FIRST(&thd_data.results)) == NULL) {
+			if (thd_data.thd_finished == num_workers) {
+				break;
+			}
+			pthread_cond_wait(&thd_data.has_result, &thd_data.results_m);
+		}
+		if (r != NULL) {
+			STAILQ_REMOVE_HEAD(&thd_data.results, next);
+		}
+		pthread_mutex_unlock(&thd_data.results_m);
+		if (r == NULL) {
+			break;
+		}
+
+		if (r->retcode != EPKG_OK) {
 			continue;
-
-		ext = strrchr(ent->fts_name, '.');
-
-		if (ext == NULL)
-			continue;
-
-		if (strcmp(ext, ".tgz") != 0 &&
-				strcmp(ext, ".tbz") != 0 &&
-				strcmp(ext, ".txz") != 0 &&
-				strcmp(ext, ".tar") != 0)
-			continue;
-
-		if (strcmp(ent->fts_name, "repo.txz") == 0)
-			continue;
-
-		pkg_path = ent->fts_path;
-		pkg_path += strlen(path);
-		while (pkg_path[0] == '/')
-			pkg_path++;
-
-		cksum[0] = '\0';
-		sha256_file(ent->fts_accpath, cksum);
+		}
 
 		/* do not add if package if already in repodb
 		   (possibly at a different pkg_path) */
 
-		if (run_prepared_statement(EXISTS, cksum) != SQLITE_ROW) {
+		if (run_prepared_statement(EXISTS, r->cksum) != SQLITE_ROW) {
 			ERROR_SQLITE(sqlite);
 			goto cleanup;
 		}
@@ -660,15 +667,10 @@ pkg_create_repo(char *path, bool force,
 			continue;
 		}
 
-		if (pkg_open(&pkg, ent->fts_accpath, manifest) != EPKG_OK) {
-			retcode = EPKG_WARN;
-			continue;
-		}
-
 		if (progress != NULL)
-			progress(pkg, data);
+			progress(r->pkg, data);
 
-		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
+		pkg_get(r->pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_COMMENT, &comment,
 		    PKG_DESC, &desc, PKG_ARCH, &arch,
 		    PKG_MAINTAINER, &maintainer, PKG_WWW, &www,
@@ -678,11 +680,11 @@ pkg_create_repo(char *path, bool force,
 	try_again:
 		if ((ret = run_prepared_statement(PKG, origin, name, version,
 		    comment, desc, arch, maintainer, www, prefix,
-		    ent->fts_statp->st_size, flatsize, (int64_t)licenselogic, cksum,
-		    pkg_path)) != SQLITE_DONE) {
+		    r->size, flatsize, (int64_t)licenselogic, r->cksum,
+		    r->path)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				switch(maybe_delete_conflicting(origin,
-				    version, pkg_path)) {
+				    version, r->path)) {
 				case EPKG_FATAL: /* sqlite error */
 					ERROR_SQLITE(sqlite);
 					retcode = EPKG_FATAL;
@@ -705,7 +707,7 @@ pkg_create_repo(char *path, bool force,
 		package_id = sqlite3_last_insert_rowid(sqlite);
 
 		dep = NULL;
-		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+		while (pkg_deps(r->pkg, &dep) == EPKG_OK) {
 			if (run_prepared_statement(DEPS,
 			    pkg_dep_origin(dep),
 			    pkg_dep_name(dep),
@@ -718,7 +720,7 @@ pkg_create_repo(char *path, bool force,
 		}
 
 		category = NULL;
-		while (pkg_categories(pkg, &category) == EPKG_OK) {
+		while (pkg_categories(r->pkg, &category) == EPKG_OK) {
 			const char *cat_name = pkg_category_name(category);
 
 			ret = run_prepared_statement(CAT1, cat_name);
@@ -734,7 +736,7 @@ pkg_create_repo(char *path, bool force,
 		}
 
 		license = NULL;
-		while (pkg_licenses(pkg, &license) == EPKG_OK) {
+		while (pkg_licenses(r->pkg, &license) == EPKG_OK) {
 			const char *lic_name = pkg_license_name(license);
 
 			ret = run_prepared_statement(LIC1, lic_name);
@@ -748,7 +750,7 @@ pkg_create_repo(char *path, bool force,
 			}
 		}
 		option = NULL;
-		while (pkg_options(pkg, &option) == EPKG_OK) {
+		while (pkg_options(r->pkg, &option) == EPKG_OK) {
 			if (run_prepared_statement(OPTS,
 			    pkg_option_opt(option),
 			    pkg_option_value(option),
@@ -760,7 +762,7 @@ pkg_create_repo(char *path, bool force,
 		}
 
 		shlib = NULL;
-		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+		while (pkg_shlibs(r->pkg, &shlib) == EPKG_OK) {
 			const char *shlib_name = pkg_shlib_name(shlib);
 
 			ret = run_prepared_statement(SHLIB1, shlib_name);
@@ -774,6 +776,9 @@ pkg_create_repo(char *path, bool force,
 				goto cleanup;
 			}
 		}
+
+		pkg_free(r->pkg);
+		free(r);
 	}
 
 	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK) {
@@ -782,11 +787,23 @@ pkg_create_repo(char *path, bool force,
 	}
 
 	cleanup:
+	// Cancel running threads
+	if (retcode != EPKG_OK) {
+		pthread_mutex_lock(&thd_data.fts_m);
+		thd_data.stop = true;
+		pthread_mutex_unlock(&thd_data.fts_m);
+	}
+
+	// Join on threads to release thread IDs
+	if (tids != NULL) {
+		for (int i = 0; i < num_workers; i++) {
+			pthread_join(tids[i], NULL);
+		}
+		free(tids);
+	}
+
 	if (fts != NULL)
 		fts_close(fts);
-
-	if (pkg != NULL)
-		pkg_free(pkg);
 
 	finalize_prepared_statements();
 
@@ -796,11 +813,103 @@ pkg_create_repo(char *path, bool force,
 	if (errmsg != NULL)
 		sqlite3_free(errmsg);
 
-	sbuf_free(manifest);
-
 	sqlite3_shutdown();
 
 	return (retcode);
+}
+
+void
+read_pkg_file(void *data)
+{
+	struct thd_data *d = (struct thd_data*) data;
+	struct pkg_result *r;
+
+	FTSENT *fts_ent = NULL;
+	char fts_accpath[MAXPATHLEN + 1];
+	char fts_path[MAXPATHLEN + 1];
+	char fts_name[MAXPATHLEN + 1];
+	off_t st_size;
+	int fts_info;
+
+	struct sbuf *manifest = sbuf_new_auto();
+	char *ext = NULL;
+	char *pkg_path;
+
+	for (;;) {
+		fts_ent = NULL;
+
+		/*
+		 * Get a file to read from.
+		 * Copy the data we need from the fts entry localy because as soon as
+		 * we unlock the fts_m mutex, we can not access it.
+		 */
+		pthread_mutex_lock(&d->fts_m);
+		if (d->stop == false) {
+			fts_ent = fts_read(d->fts);
+		}
+		if (fts_ent != NULL) {
+			strlcpy(fts_accpath, fts_ent->fts_accpath, sizeof(fts_accpath));
+			strlcpy(fts_path, fts_ent->fts_path, sizeof(fts_path));
+			strlcpy(fts_name, fts_ent->fts_name, sizeof(fts_name));
+			st_size = fts_ent->fts_statp->st_size;
+			fts_info = fts_ent->fts_info;
+		}
+		pthread_mutex_unlock(&d->fts_m);
+
+		// There is no more jobs, exit the main loop.
+		if (fts_ent == NULL)
+				break;
+
+		/* skip everything that is not a file */
+		if (fts_info != FTS_F)
+			continue;
+
+		ext = strrchr(fts_name, '.');
+
+		if (ext == NULL)
+			continue;
+
+		if (strcmp(ext, ".tgz") != 0 &&
+				strcmp(ext, ".tbz") != 0 &&
+				strcmp(ext, ".txz") != 0 &&
+				strcmp(ext, ".tar") != 0)
+			continue;
+
+		if (strcmp(fts_name, "repo.txz") == 0)
+			continue;
+
+		pkg_path = fts_path;
+		pkg_path += strlen(d->root_path);
+		while (pkg_path[0] == '/')
+			pkg_path++;
+
+		r = calloc(1, sizeof(struct pkg_result));
+		strlcpy(r->path, pkg_path, sizeof(r->path));
+		r->size = st_size;
+
+		sha256_file(fts_accpath, r->cksum);
+
+		if (pkg_open(&r->pkg, fts_accpath, manifest) != EPKG_OK) {
+			r->retcode = EPKG_WARN;
+		}
+
+		/* Add result to the FIFO and notify */
+		pthread_mutex_lock(&d->results_m);
+		STAILQ_INSERT_TAIL(&d->results, r, next);
+		pthread_cond_signal(&d->has_result);
+		pthread_mutex_unlock(&d->results_m);
+	}
+
+	/*
+	 * This thread is about to exit.
+	 * Notify the main thread that we are done.
+	 */
+	pthread_mutex_lock(&d->results_m);
+	d->thd_finished++;
+	pthread_cond_signal(&d->has_result);
+	pthread_mutex_unlock(&d->results_m);
+
+	sbuf_free(manifest);
 }
 
 int
