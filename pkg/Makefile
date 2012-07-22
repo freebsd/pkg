@@ -48,6 +48,7 @@ LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lpkg \
 		-lutil \
 		-ljail \
+		-lpthread \
 		${LDADD_STATIC}
 
 WARNS?=		6
