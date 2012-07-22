@@ -27,7 +27,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/sysctl.h>
 
 #include <archive_entry.h>
 #include <assert.h>
@@ -545,7 +547,8 @@ pkg_create_repo(char *path, bool force,
 {
 	FTS *fts = NULL;
 	struct thd_data thd_data;
-	int num_workers = 6;
+	int num_workers;
+	size_t len;
 	pthread_t *tids = NULL;
 
 	struct pkg_dep *dep = NULL;
@@ -575,6 +578,10 @@ pkg_create_repo(char *path, bool force,
 
 	repopath[0] = path;
 	repopath[1] = NULL;
+
+	len = sizeof(num_workers);
+	if (sysctlbyname("hw.ncpu", &num_workers, &len, NULL, 0) == -1)
+		num_workers = 6;
 
 	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
 		pkg_emit_errno("fts_open", path);
