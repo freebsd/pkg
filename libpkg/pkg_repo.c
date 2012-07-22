@@ -576,7 +576,7 @@ pkg_create_repo(char *path, bool force,
 	repopath[0] = path;
 	repopath[1] = NULL;
 
-	if ((fts = fts_open(repopath, FTS_PHYSICAL, NULL)) == NULL) {
+	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
 		pkg_emit_errno("fts_open", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
