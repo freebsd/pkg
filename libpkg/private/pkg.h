@@ -196,7 +196,7 @@ int pkg_script_run(struct pkg *, pkg_script type);
 int pkg_add_user_group(struct pkg *pkg);
 int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
 
-int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path, struct sbuf *mbuf);
+int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
 
 void pkg_list_free(struct pkg *, pkg_list);
 

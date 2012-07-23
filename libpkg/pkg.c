@@ -947,13 +947,13 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 }
 
 int
-pkg_open(struct pkg **pkg_p, const char *path, struct sbuf *mbuf)
+pkg_open(struct pkg **pkg_p, const char *path)
 {
 	struct archive *a;
 	struct archive_entry *ae;
 	int ret;
 
-	ret = pkg_open2(pkg_p, &a, &ae, path, mbuf);
+	ret = pkg_open2(pkg_p, &a, &ae, path);
 
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
@@ -964,13 +964,13 @@ pkg_open(struct pkg **pkg_p, const char *path, struct sbuf *mbuf)
 }
 
 int
-pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path, struct sbuf *mbuf)
+pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path)
 {
 	struct pkg *pkg;
 	pkg_error_t retcode = EPKG_OK;
 	int ret;
 	int64_t size;
-	struct sbuf *manifest = mbuf;
+	struct sbuf *manifest;
 	const char *fpath;
 	char buf[BUFSIZ];
 	struct sbuf **sbuf;
@@ -986,7 +986,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 	assert(path != NULL && path[0] != '\0');
 
-	sbuf_init(&manifest);
+	manifest = sbuf_new_auto();
 
 	*a = archive_read_new();
 	archive_read_support_compression_all(*a);
@@ -1060,10 +1060,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	}
 
 	cleanup:
-	if (mbuf == NULL)
-		sbuf_delete(manifest);
-	else
-		sbuf_clear(manifest);
+	sbuf_delete(manifest);
 
 	if (retcode != EPKG_OK && retcode != EPKG_END) {
 		if (*a != NULL)

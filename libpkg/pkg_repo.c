@@ -838,7 +838,6 @@ read_pkg_file(void *data)
 	off_t st_size;
 	int fts_info;
 
-	struct sbuf *manifest = sbuf_new_auto();
 	char *ext = NULL;
 	char *pkg_path;
 
@@ -896,7 +895,7 @@ read_pkg_file(void *data)
 
 		sha256_file(fts_accpath, r->cksum);
 
-		if (pkg_open(&r->pkg, fts_accpath, manifest) != EPKG_OK) {
+		if (pkg_open(&r->pkg, fts_accpath) != EPKG_OK) {
 			r->retcode = EPKG_WARN;
 		}
 
@@ -915,8 +914,6 @@ read_pkg_file(void *data)
 	d->thd_finished++;
 	pthread_cond_signal(&d->has_result);
 	pthread_mutex_unlock(&d->results_m);
-
-	sbuf_free(manifest);
 }
 
 int

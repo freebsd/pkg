@@ -89,7 +89,7 @@ exec_clean(int argc, char **argv)
 		if (repopath[0] == '/')
 			repopath++;
 
-		if (pkg_open(&pkg, ent->fts_path, NULL) != EPKG_OK) {
+		if (pkg_open(&pkg, ent->fts_path) != EPKG_OK) {
 			warnx("skipping %s", ent->fts_path);
 			continue;
 		}

@@ -108,7 +108,7 @@ exec_add(int argc, char **argv)
 
 		}
 			
-		pkg_open(&p, file, NULL);
+		pkg_open(&p, file);
 
 		if ((retcode = pkg_add(db, file, 0)) != EPKG_OK) {
 			sbuf_cat(failedpkgs, argv[i]);

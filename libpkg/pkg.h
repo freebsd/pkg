@@ -346,7 +346,7 @@ int pkg_is_valid(struct pkg *);
  * NULL pointer, the function allocate a new pkg using pkg_new().
  * @param path The path to the local package archive.
  */
-int pkg_open(struct pkg **p, const char *path, struct sbuf *mbuf);
+int pkg_open(struct pkg **p, const char *path);
 
 /**
  * @return the type of the package.

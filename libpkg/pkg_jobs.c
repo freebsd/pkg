@@ -236,7 +236,7 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 		}
 		snprintf(path, sizeof(path), "%s/%s", cachedir, pkgrepopath);
 
-		pkg_open(&newpkg, path, NULL);
+		pkg_open(&newpkg, path);
 		if (newversion != NULL) {
 			pkg_emit_upgrade_begin(p);
 		} else {
@@ -334,7 +334,6 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	struct pkg *pkg = NULL;
-	struct sbuf *buf = NULL;
 	struct statfs fs;
 	struct stat st;
 	char path[MAXPATHLEN + 1];
@@ -390,15 +389,13 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	/* integrity checking */
 	pkg_emit_integritycheck_begin();
 
-	buf = sbuf_new_auto();
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		const char *pkgrepopath;
 
 		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 		    pkgrepopath);
-		if (pkg_open(&pkg, path, buf) != EPKG_OK) {
-			sbuf_delete(buf);
+		if (pkg_open(&pkg, path) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
 
@@ -407,7 +404,6 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	}
 
 	pkg_free(pkg);
-	sbuf_delete(buf);
 
 	if (pkgdb_integrity_check(j->db) != EPKG_OK || ret != EPKG_OK)
 		return (EPKG_FATAL);
