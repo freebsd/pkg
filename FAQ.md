@@ -39,7 +39,7 @@ In order to start using pkgng, please follow the steps below.
 
 Install ports-mgmt/pkg:
 
-        # make -C /usr/ports/ports-mgmt/pkg
+        # make -C /usr/ports/ports-mgmt/pkg install
         # echo "WITH_PKGNG=yes" >> /etc/make.conf
 
 Now register all packages you have in the pkgng database:
