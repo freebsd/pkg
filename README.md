@@ -180,7 +180,7 @@ Directory leftovers are automatically removed if they are not in the MTREE.
 
 pkgng beta1 is now in the ports tree. To get it:
 
-	$ make -C /usr/ports/ports-mgmt/pkg
+	$ make -C /usr/ports/ports-mgmt/pkg install
 	$ echo "WITH_PKGNG=yes" >> /etc/make.conf
 
 <a name="usageintro"></a>
