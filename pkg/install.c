@@ -45,7 +45,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "usage: pkg install [-fgLnqRXxy] [-r reponame] <pkg-name> ...\n\n");
+	    "usage: pkg install [-dfgLnqRXxy] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -62,13 +62,17 @@ exec_install(int argc, char **argv)
 	bool yes = false;
 	bool auto_update = true;
 	bool recursive = false;
+	bool automatic = false;
 
 	match_t match = MATCH_EXACT;
 	bool force = false;
 	bool dry_run = false;
 
-	while ((ch = getopt(argc, argv, "fgLnqRr:Xxy")) != -1) {
+	while ((ch = getopt(argc, argv, "dfgLnqRr:Xxy")) != -1) {
 		switch (ch) {
+		case 'd':
+			automatic = true;
+			break;
 		case 'f':
 			force = true;
 			break;
@@ -135,6 +139,8 @@ exec_install(int argc, char **argv)
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) ==
 	    EPKG_OK) {
+		if (automatic)
+			pkg_set(pkg, PKG_AUTOMATIC, true);
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}
