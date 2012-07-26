@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 16, 2012
+.Dd July 26, 2012
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl fgLnqRXxy
+.Op Fl dfgLnqRXxy
 .Op Fl r Ar reponame
 .Ar <pkg-origin> ...
 .Sh DESCRIPTION
@@ -107,6 +107,11 @@ package installation with
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl d
+Mark the installed packages as orphan.
+Will be automatically removed if no other packages depend on them.
+For more information please refer to
+.Xr pkg-autoremove 8
 .It Fl f
 Force the reinstallation of the package if already installed.
 .It Fl g
