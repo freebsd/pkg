@@ -177,6 +177,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 	const char *name, *version, *prefix, *origin, *reponame, *repourl;
 	const char *maintainer, *www, *comment, *desc, *message, *arch;
 	const char *repopath;
+	const char *tab;
 	char *m;
 	unsigned opt;
 	int64_t flatsize, newflatsize, newpkgsize;
@@ -230,6 +231,9 @@ print_info(struct pkg * const pkg, unsigned int options)
 		else if (options & INFO_TAG_NAME)
 			cout = printf("%s", name);
 	}
+
+	/* Don't display a tab if quiet, retains compatibility. */
+	tab = quiet == false ? "\t" : "";
 
 	/* If we printed a tag, and there are no other items to print,
 	   then just return now. If there's only one single-line item
@@ -350,7 +354,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s:\n", "Options");
 				while (pkg_options(pkg, &option) == EPKG_OK)
-					printf("\t%-15s: %s\n",
+					printf("%s%-15s: %s\n",
+					       tab,
 					       pkg_option_opt(option),
 					       pkg_option_value(option));
 			}
@@ -360,7 +365,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s:\n", "Shared Libs");
 				while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
-					printf("\t%s\n", pkg_shlib_name(shlib));
+					printf("%s%s\n", tab, pkg_shlib_name(shlib));
 			}
 			break;
 		case INFO_FLATSIZE:
@@ -406,7 +411,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s:\n", "Depends on");
 				while (pkg_deps(pkg, &dep) == EPKG_OK)
-					printf("\t%s-%s\n",
+					printf("%s%s-%s\n",
+					       tab,
 					       pkg_dep_name(dep),
 					       pkg_dep_version(dep));
 			}
@@ -416,7 +422,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s:\n", "Required by");
 				while (pkg_rdeps(pkg, &dep) == EPKG_OK)
-					printf("\t%s-%s\n",
+					printf("%s%s-%s\n",
+					       tab,
 					       pkg_dep_name(dep),
 					       pkg_dep_version(dep));
 			}
@@ -427,7 +434,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s:\n", "Files");
 				while (pkg_files(pkg, &file) == EPKG_OK)
-					printf("\t%s\n",
+					printf("%s%s\n",
+					       tab,
 					       pkg_file_path(file));
 			}
 			break;
@@ -437,7 +445,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s:\n", "Directories");
 				while (pkg_dirs(pkg, &dir) == EPKG_OK)
-					printf("\t%s\n",
+					printf("%s%s\n",
+					       tab,
 					       pkg_dir_path(dir));
 			}
 			break;
