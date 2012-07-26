@@ -162,11 +162,11 @@ More information can be found in the portupgrade [NEWS](https://github.com/pkgto
 <a name="17"></a>
 ### Q: pkgng does not work it says: /usr/local/sbin/pkg: Undefined symbol "pkg_event_register"
 
-You should have forgotten make delete-old-libs when you upgraded your system.
+You forgot to run `make delete-old-libs` when you upgraded your system.
 
-during 9-CURRENT life the pkg_install tools has been splitted to provide a
-shared library: libpkg.so.0 and this has been reverted, this error message means
-that this library is still on your system, please check /usr/lib/libpkg.so.0
+During 9-CURRENT life the pkg_install tools have been split to provide a
+shared library: libpkg.so.0. This has been reverted, this error message means
+that this library is still on your system. Check for and delete /usr/lib/libpkg.so.0.
 
 <a name="18"></a>
 ### Q: Can pkgng cope with parallel installs?  What happpens if I simultaneously (attempt to) install conflicting packages?
