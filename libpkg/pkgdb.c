@@ -2749,6 +2749,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	/* Remove packages already installed and in the latest version */
 	if (!all) {
+		/* Remove all the downgrades we asked for upgrade :) */
 		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
 		    "(SELECT p.origin FROM main.packages AS p WHERE "
 		    "p.origin=pkgjobs.origin AND PKGGT(p.version,pkgjobs.version))"
@@ -2767,6 +2768,14 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	do {
 		sql_exec(db->sqlite, sbuf_get(sql));
 	} while (sqlite3_changes(db->sqlite) != 0);
+
+	if (!all) {
+		/* Remove all the downgrades in dependencies as well we asked for upgrade :) */
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE "
+		    "p.origin=pkgjobs.origin AND PKGGT(p.version,pkgjobs.version))"
+		    "IS NOT NULL;");
+	}
 
 	/* Determine if there is an upgrade needed */
 	sql_exec(db->sqlite, pkgjobs_sql_3);
