@@ -799,15 +799,15 @@ pkg_create_repo(char *path, bool force,
 	}
 
 	cleanup:
-	// Cancel running threads
-	if (retcode != EPKG_OK) {
-		pthread_mutex_lock(&thd_data.fts_m);
-		thd_data.stop = true;
-		pthread_mutex_unlock(&thd_data.fts_m);
-	}
 
-	// Join on threads to release thread IDs
 	if (tids != NULL) {
+		// Cancel running threads
+		if (retcode != EPKG_OK) {
+			pthread_mutex_lock(&thd_data.fts_m);
+			thd_data.stop = true;
+			pthread_mutex_unlock(&thd_data.fts_m);
+		}
+		// Join on threads to release thread IDs
 		for (int i = 0; i < num_workers; i++) {
 			pthread_join(tids[i], NULL);
 		}
