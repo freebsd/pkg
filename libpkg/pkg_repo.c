@@ -907,7 +907,7 @@ read_pkg_file(void *data)
 
 		/* Add result to the FIFO and notify */
 		pthread_mutex_lock(&d->results_m);
-		if (d->num_results >= d->max_results) {
+		while (d->num_results >= d->max_results) {
 			pthread_cond_wait(&d->has_room, &d->results_m);
 		}
 		STAILQ_INSERT_TAIL(&d->results, r, next);
