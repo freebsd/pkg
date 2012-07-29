@@ -11,12 +11,12 @@ fi
 ARCH=$( uname -m )
 failed_pkgs=""
 MOVED=0
+DBDIR="/var/db"
+PKGDB="${DBDIR}/pkg"
+PKGBAK="${DBDIR}/pkg.bak"
 
 for PKG in $( pkg_info -Ea )
 do
-	DBDIR="/var/db"
-	PKGDB="${DBDIR}/pkg"
-	PKGBAK="${DBDIR}/pkg.bak"
 	DB="${PKGDB}/${PKG}"
 	DESC="${DB}/+DESC"
 	if [ ! -e "${PKGBAK}" ]; then
@@ -69,9 +69,6 @@ do
 	echo "deps:" >> ${MANIFEST}
 	pkg_info -qr ${PKG} | while read ignore dep; do
 		deporigin=$(pkg_info -qo ${dep})
-		if [ -z "$deporigin" ]; then
-			deporigin=$(PKG_DBDIR=${PKGBAK} pkg_info -qo ${dep})
-		fi
 		echo -e "  ${dep%-*}: { origin: \"${deporigin}\", version: \"${dep##*-}\"}" >> ${MANIFEST}
 	done
 	egrep -v "^@(name|pkgdep|ignore|conflicts|display)" ${DB}/+CONTENTS >> ${PLIST}
@@ -87,10 +84,6 @@ do
 		failed_pkgs="${failed_pkgs} ${PKG}"
 	else
 		rm -rf ${MANIFEST}
-		if [ -e ${DB} ]; then
-			mv ${DB} ${PKGBAK}/${PKG}
-			MOVED=1
-		fi
 	fi
 
 	rm -rf ${MDIR}
@@ -104,6 +97,16 @@ if [ -n "${failed_pkgs}" ]; then
 	echo "" >&2
 	echo "!!! Some packages failed to register !!!" >&2
 	echo "Failed packages: ${failed_pkgs}" >&2
+else
+	for PKG in $( pkg_info -Ea ); do
+		DB="${PKGDB}/${PKG}"
+		if [ -e ${DB} ]; then
+			mv ${DB} ${PKGBAK}/${PKG}
+			MOVED=1
+		fi
+	done
+	echo "Conversion has been successfully finished"
+	echo "Your old packages database has been moved to: ${PKGBAK}."
 fi
 
 # Delete the portupgrade pkgdb to avoid discrepencies. It will be auto recreated.
