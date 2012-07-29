@@ -36,22 +36,30 @@ struct pkg_result {
 	char path[MAXPATHLEN + 1];
 	char cksum[SHA256_DIGEST_LENGTH * 2 + 1];
 	off_t size;
-	int retcode; // to pass errors
+	int retcode; /* to pass errors */
 	STAILQ_ENTRY(pkg_result) next;
 };
 
 struct thd_data {
 	char *root_path;
+	unsigned int max_results;
 
+	/*
+	 * `fts_m' protects `fts' and `stop'
+	 */
+	pthread_mutex_t fts_m;
 	FTS *fts;
 	bool stop;
-	pthread_mutex_t fts_m; // protects `fts' and `stop'
 
-	/* results is used as a FIFO */
+	/*
+	 * `results_m' protects `results', `thd_finished' and `num_results'
+	 */
+	pthread_mutex_t results_m;
+	pthread_cond_t has_result;
+	pthread_cond_t has_room;
 	STAILQ_HEAD(results, pkg_result) results;
+	unsigned int num_results;
 	int thd_finished;
-	pthread_mutex_t results_m; // protects `results' an `thd_finished'
-	pthread_cond_t has_result; // signal that there is at least one result
 };
 
 void read_pkg_file(void *);

@@ -622,6 +622,8 @@ pkg_create_repo(char *path, bool force,
 		goto cleanup;
 
 	thd_data.root_path = path;
+	thd_data.max_results = num_workers;
+	thd_data.num_results = 0;
 	thd_data.stop = false;
 	thd_data.fts = fts;
 	pthread_mutex_init(&thd_data.fts_m, NULL);
@@ -629,6 +631,7 @@ pkg_create_repo(char *path, bool force,
 	thd_data.thd_finished = 0;
 	pthread_mutex_init(&thd_data.results_m, NULL);
 	pthread_cond_init(&thd_data.has_result, NULL);
+	pthread_cond_init(&thd_data.has_room, NULL);
 
 	/* Launch workers */
 	tids = calloc(num_workers, sizeof(pthread_t));
@@ -653,6 +656,8 @@ pkg_create_repo(char *path, bool force,
 		}
 		if (r != NULL) {
 			STAILQ_REMOVE_HEAD(&thd_data.results, next);
+			thd_data.num_results--;
+			pthread_cond_signal(&thd_data.has_room);
 		}
 		pthread_mutex_unlock(&thd_data.results_m);
 		if (r == NULL) {
@@ -865,7 +870,7 @@ read_pkg_file(void *data)
 
 		// There is no more jobs, exit the main loop.
 		if (fts_ent == NULL)
-				break;
+			break;
 
 		/* skip everything that is not a file */
 		if (fts_info != FTS_F)
@@ -902,7 +907,11 @@ read_pkg_file(void *data)
 
 		/* Add result to the FIFO and notify */
 		pthread_mutex_lock(&d->results_m);
+		if (d->num_results >= d->max_results) {
+			pthread_cond_wait(&d->has_room, &d->results_m);
+		}
 		STAILQ_INSERT_TAIL(&d->results, r, next);
+		d->num_results++;
 		pthread_cond_signal(&d->has_result);
 		pthread_mutex_unlock(&d->results_m);
 	}
