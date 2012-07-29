@@ -69,6 +69,9 @@ do
 	echo "deps:" >> ${MANIFEST}
 	pkg_info -qr ${PKG} | while read ignore dep; do
 		deporigin=$(pkg_info -qo ${dep})
+		if [ -z "$deporigin" ]; then
+			deporigin=$(PKG_DBDIR=${PKGBAK} pkg_info -qo ${dep})
+		fi
 		echo -e "  ${dep%-*}: { origin: \"${deporigin}\", version: \"${dep##*-}\"}" >> ${MANIFEST}
 	done
 	egrep -v "^@(name|pkgdep|ignore|conflicts|display)" ${DB}/+CONTENTS >> ${PLIST}
