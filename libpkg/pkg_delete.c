@@ -77,7 +77,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 	/* If there are dependencies */
 	if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
 		pkg_emit_required(pkg, flags & PKG_DELETE_FORCE);
-		if (flags ^ PKG_DELETE_FORCE)
+		if ((flags & PKG_DELETE_FORCE) == 0)
 			return (EPKG_REQUIRED);
 	}
 
@@ -102,7 +102,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE)) != EPKG_OK)
 		return (ret);
 
-	if (flags ^ PKG_DELETE_UPGRADE) {
+	if ((flags & PKG_DELETE_UPGRADE) == 0) {
 		ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
 		if (ret != EPKG_OK)
 			return (ret);
@@ -112,7 +112,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 	if (ret != EPKG_OK)
 		return (ret);
 
-	if (flags ^ PKG_DELETE_UPGRADE)
+	if ((flags & PKG_DELETE_UPGRADE) == 0)
 		pkg_emit_deinstall_finished(pkg);
 
 	pkg_get(pkg, PKG_ORIGIN, &origin);
