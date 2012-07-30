@@ -28,6 +28,7 @@
 
 #include <err.h>
 #include <stdio.h>
+#include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
 #include <libutil.h>
@@ -59,6 +60,8 @@ exec_delete(int argc, char **argv)
 	bool dry_run = false;
 	int retcode = EX_SOFTWARE;
 	int recursive = 0;
+	bool haspkg = false;
+	const char *origin;
 
 	while ((ch = getopt(argc, argv, "afgnqRXxy")) != -1) {
 		switch (ch) {
@@ -121,8 +124,18 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 
 	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		if (!force && !haspkg) {
+			if (strcmp(origin, "ports-mgmt/pkg") == 0)
+				haspkg = true;
+		}
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
+	}
+	if (haspkg && !force) {
+		warnx("You are about to delete 'ports-mgmt/pkg' which is really"
+		    "dangerous, you can't do that without specifying -f");
+		goto cleanup;
 	}
 
 	/* check if we have something to deinstall */
