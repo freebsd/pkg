@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -673,16 +673,21 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 
 	j = 0; /* shut up scanbuild */
 
+	if (strchr(qstr, '%') == NULL) {
+		fprintf(stderr, "Invalid query: query should contains format string\n");
+		return (EPKG_FATAL);
+	}
+
 	while (qstr[0] != '\0') {
 		if (qstr[0] == '%') {
 			qstr++;
 			valid_flag = 0;
-	
+
 			for (i = 0; i < q_flags_len; i++) {
 				/* found the flag */
 				if (qstr[0] == q_flags[i].flag) {
 					valid_flag = 1;
-					
+
 					/* if the flag is followed by additional options */
 					if (q_flags[i].options[0] != '\0') {
 						qstr++;
@@ -694,7 +699,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 								break;
 							}
 						}
-						
+
 						if (valid_opts == 0) {
 							fprintf(stderr, "Invalid query: '%%%c' should be followed by:", q_flags[i].flag);
 
@@ -734,11 +739,11 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 			}
 
 			if (valid_flag == 0) {
-				fprintf(stderr, "Unkown query format key: '%%%c'\n", qstr[0]);
+				fprintf(stderr, "Unknown query format key: '%%%c'\n", qstr[0]);
 				return (EPKG_FATAL);
 			}
 		}
-		
+
 		qstr++;
 	}
 
@@ -824,7 +829,7 @@ exec_query(int argc, char **argv)
 		if (pkg_open(&pkg, pkgname) != EPKG_OK) {
 			return (EX_IOERR);
 		}
-		
+
 		print_query(pkg, argv[0], multiline);
 		pkg_free(pkg);
 		return (EX_OK);
