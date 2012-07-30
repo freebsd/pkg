@@ -83,7 +83,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
 	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
-	if (mktemp(tmp) == NULL) {
+	if (mkstemp(tmp) == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 		    "aborting update.\n", tmp);
 		return (EPKG_FATAL);
