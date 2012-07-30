@@ -695,12 +695,12 @@ void pkgdb_close(struct pkgdb *db);
 int pkgdb_remote_init(struct pkgdb *db, const char *reponame);
 
 /**
- * Dump the content of the database in yaml format
- * only to use when mtree will be deprecated
+ * Dump to or load from a backup copy of the main database file
+ * (local.sqlite)
  */
 
-int pkgdb_dump(struct pkgdb *db, char *dest);
-int pkgdb_load(struct pkgdb *db, char *dest);
+int pkgdb_dump(struct pkgdb *db, const char *dest);
+int pkgdb_load(struct pkgdb *db, const char *src);
 
 /**
  * Register a ports to the database.
