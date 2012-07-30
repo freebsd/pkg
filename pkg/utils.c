@@ -227,7 +227,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
                         printf("\n");
 	} else if (opt & INFO_PRINT_MESSAGE) {
 		if (message)
-			printf("%s", message);
+			printf("%s\n", message);
 	} else if (opt & INFO_PRINT_RDEP) {
 		if (!(opt & INFO_QUIET))
 			printf("%s-%s is required by:\n", name, version);
