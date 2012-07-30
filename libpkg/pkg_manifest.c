@@ -189,8 +189,7 @@ pkg_set_from_node(struct pkg *pkg, yaml_node_t *val,
 {
 	int ret = EPKG_OK;
 
-	while (val->data.scalar.length > 1 &&
-	    val->data.scalar.value[val->data.scalar.length - 2] == '\n' &&
+	while (val->data.scalar.length > 0 &&
 	    val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
 		val->data.scalar.value[val->data.scalar.length - 1] = '\0';
 		val->data.scalar.length--;
