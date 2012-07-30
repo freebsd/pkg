@@ -673,6 +673,11 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 
 	j = 0; /* shut up scanbuild */
 
+	if (strchr(qstr, '%') == NULL) {
+		fprintf(stderr, "Invalid query: query should contains format string\n");
+		return (EPKG_FATAL);
+	}
+
 	while (qstr[0] != '\0') {
 		if (qstr[0] == '%') {
 			qstr++;
