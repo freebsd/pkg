@@ -28,14 +28,18 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <spawn.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
+#include "private/event.h"
 
 static int rc_stop(const char *);
 static int rc_start(const char *);
+
+extern char **environ;
 
 int
 pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
@@ -76,31 +80,29 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 static int
 rc_stop(const char *rc_file)
 {
-	int pstat;
-	int fd;
+	int error, pstat;
 	pid_t pid;
+	posix_spawn_file_actions_t actions;
+	const char *argv[4];
 
 	if (rc_file == NULL)
 		return (0);
 
-	switch ((pid = fork())) {
-	case -1:
+	argv[0] = "service";
+	argv[1] = rc_file;
+	argv[2] = "onestatus";
+	argv[3] = NULL;
+
+	if ((error = posix_spawn_file_actions_init(&actions)) != 0 ||
+	    (error = posix_spawn_file_actions_addopen(&actions,
+	    STDOUT_FILENO, "/dev/null", O_RDONLY, 0)) != 0 ||
+	    (error = posix_spawn_file_actions_addopen(&actions,
+	    STDERR_FILENO, "/dev/null", O_RDONLY, 0)) != 0 ||
+	    (error = posix_spawn(&pid, "/usr/sbin/service", &actions, NULL,
+	    __DECONST(char **, argv), environ)) != 0) {
+		errno = error;
+		pkg_emit_errno("Cannot query service", rc_file);
 		return (-1);
-	case 0:
-		/* child */
-		/*
-		 * We don't need to see the output
-		 */
-		fd = open("/dev/null", O_WRONLY);
-		dup2(fd, STDERR_FILENO);
-		dup2(fd, STDOUT_FILENO);
-		execl("/usr/sbin/service", "service", rc_file,
-		    "onestatus", (char *)NULL);
-		_exit(1);
-		/* NOTREACHED */
-	default:
-		/* parent */
-		break;
 	}
 
 	while (waitpid(pid, &pstat, 0) == -1) {
@@ -111,18 +113,15 @@ rc_stop(const char *rc_file)
 	if (WEXITSTATUS(pstat) != 0)
 		return (0);
 
-	switch ((pid = fork())) {
-	case -1:
+	posix_spawn_file_actions_destroy(&actions);
+
+	argv[2] = "stop";
+
+	if ((error = posix_spawn(&pid, "/usr/sbin/service", NULL, NULL,
+	    __DECONST(char **, argv), environ)) != 0) {
+		errno = error;
+		pkg_emit_errno("Cannot stop service", rc_file);
 		return (-1);
-	case 0:
-		/* child */
-		execl("/usr/sbin/service", "service",
-		    rc_file, "stop", (char *)NULL);
-		_exit(1);
-		/* NOTREACHED */
-	default:
-		/* parent */
-		break;
 	}
 
 	while (waitpid(pid, &pstat, 0) == -1) {
@@ -136,24 +135,23 @@ rc_stop(const char *rc_file)
 static int
 rc_start(const char *rc_file)
 {
-	int pstat;
+	int error, pstat;
 	pid_t pid;
+	const char *argv[4];
 
 	if (rc_file == NULL)
 		return (0);
 
-	switch ((pid = fork())) {
-	case -1:
+	argv[0] = "service";
+	argv[1] = rc_file;
+	argv[2] = "quietstart";
+	argv[3] = NULL;
+
+	if ((error = posix_spawn(&pid, "/usr/sbin/service", NULL, NULL,
+	    __DECONST(char **, argv), environ)) != 0) {
+		errno = error;
+		pkg_emit_errno("Cannot stop service", rc_file);
 		return (-1);
-	case 0:
-		/* child */
-		execl("/usr/sbin/service", "service", rc_file,
-		    "quietstart", (char *)NULL);
-		_exit(1);
-		/* NOTREACHED */
-	default:
-		/* parent */
-		break;
 	}
 
 	while (waitpid(pid, &pstat, 0) == -1) {
