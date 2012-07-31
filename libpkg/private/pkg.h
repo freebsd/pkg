@@ -255,6 +255,7 @@ int pkg_check_repo_version(struct pkgdb *db, const char *database);
 
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);
+int get_pragma(sqlite3 *, const char *sql, int64_t *res);
 
 int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg);
