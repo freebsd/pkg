@@ -26,17 +26,29 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/wait.h>
+
 #include <assert.h>
+#include <errno.h>
+#include <paths.h>
+#include <spawn.h>
+#include <stdlib.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
+#include "private/event.h"
+
+extern char **environ;
 
 int
 pkg_script_run(struct pkg * const pkg, pkg_script type)
 {
 	struct sbuf * const script_cmd = sbuf_new_auto();
 	size_t i, j;
+	int error, pstat;
+	pid_t pid;
 	const char *name, *prefix, *version;
+	const char *argv[4];
 
 	struct {
 		const char * const arg;
@@ -54,6 +66,10 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 
 	pkg_get(pkg, PKG_PREFIX, &prefix, PKG_NAME, &name, PKG_VERSION, &version);
 
+	argv[0] = "sh";
+	argv[1] = "-c";
+	argv[3] = NULL;
+
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if (map[i].a == type)
 			break;
@@ -67,8 +83,9 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			continue;
 		if (j == map[i].a || j == map[i].b) {
 			sbuf_reset(script_cmd);
-			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s",
-			    prefix, name, version);
+			setenv("PKG_PREFIX", prefix, 1);
+			sbuf_printf(script_cmd, "set -- %s-%s",
+			    name, version);
 
 			if (j == map[i].b) {
 				/* add arg **/
@@ -79,7 +96,29 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			sbuf_cat(script_cmd, "\n");
 			sbuf_cat(script_cmd, pkg_script_get(pkg, j));
 			sbuf_finish(script_cmd);
-			system(sbuf_get(script_cmd));
+			argv[2] = sbuf_get(script_cmd);
+
+			if ((error = posix_spawn(&pid, _PATH_BSHELL, NULL,
+			    NULL, __DECONST(char **, argv),
+			    environ)) != 0) {
+				errno = error;
+				pkg_emit_errno("Cannot run script",
+				    map[i].arg);
+				sbuf_delete(script_cmd);
+				return (EPKG_FATAL);
+			}
+
+			unsetenv("PKG_PREFIX");
+
+			while (waitpid(pid, &pstat, 0) == -1) {
+				if (errno != EINTR)
+					return (EPKG_FATAL);
+			}
+
+			if (WEXITSTATUS(pstat) != 0) {
+				pkg_emit_error("%s script failed", map[i].arg);
+				return (EPKG_FATAL);
+			}
 		}
 	}
 
