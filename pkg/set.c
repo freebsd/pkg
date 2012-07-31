@@ -146,17 +146,24 @@ exec_set(int argc, char **argv)
 		}
 
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
-			fprintf(stderr, "%s not installed\n", oldorigin);
+			pkg = NULL;
+/*			fprintf(stderr, "%s not installed\n", oldorigin);
 			free(oldorigin);
 			pkgdb_it_free(it);
 			pkgdb_close(db);
-			return (EX_SOFTWARE);
+			return (EX_SOFTWARE);*/
 		}
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		if (!yes)
-			yes = query_yesno("Change origin from %s to %s for %s-%s? [y/N]: ",
-			    oldorigin, neworigin, name, version);
-		if (yes) {
+		if (pkg != NULL)
+			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		if (!yes) {
+			if (pkg != NULL)
+				yes = query_yesno("Change origin from %s to %s for %s-%s? [y/N]: ",
+				    oldorigin, neworigin, name, version);
+			else
+				yes = query_yesno("Change origin from %s to %s for all dependencies? "
+				    "[y/N]: ", oldorigin, neworigin);
+		}
+		if (pkg != NULL && yes) {
 			if (pkgdb_set(db, pkg, PKG_SET_ORIGIN, neworigin) != EPKG_OK)
 				return (EX_IOERR);
 		}
