@@ -2647,6 +2647,14 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	sbuf_printf(sql, weight_sql, reponame, reponame);
 	sbuf_finish(sql);
 
+	if (!force) {
+		/* Remove all the downgrades in dependencies as well we asked for upgrade :) */
+		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
+		    "(SELECT p.origin FROM main.packages AS p WHERE "
+		    "p.origin=pkgjobs.origin AND PKGGT(p.version,pkgjobs.version))"
+		    "IS NOT NULL;");
+	}
+
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	sql_exec(db->sqlite, "UPDATE pkgjobs set weight=100000 where origin=\"ports-mgmt/pkg\"");
