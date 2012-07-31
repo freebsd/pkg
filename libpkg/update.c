@@ -38,8 +38,9 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+#include "private/pkgdb.h"
 
-#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM)
+//#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM)
 
 /* Add indexes to the repo */
 static int
@@ -79,6 +80,10 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	int rc = EPKG_FATAL, ret;
 	struct stat st;
 	time_t t = 0;
+	sqlite3 *sqlite;
+	char *archreq = NULL;
+	const char *myarch;
+	int64_t res;
 
 	snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
@@ -168,8 +173,44 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		}
 	}
 
+	/* check is the repository is for valid architecture */
+	sqlite3_initialize();
+
+	if (sqlite3_open(repofile_unchecked, &sqlite) != SQLITE_OK) {
+		unlink(repofile_unchecked);
+		pkg_emit_error("Corrupted repository");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+
+	archreq = sqlite3_mprintf("select count(arch) from packages "
+	    "where arch not GLOB '%q'", myarch);
+	if (get_pragma(sqlite, archreq, &res) != EPKG_OK) {
+		sqlite3_free(archreq);
+		pkg_emit_error("Unable to query repository");
+		rc = EPKG_FATAL;
+		sqlite3_close(sqlite);
+		goto cleanup;
+	}
+
+	if (res > 0) {
+		pkg_emit_error("At least one of the packages provided by"
+		    "the repository is not compatible with your abi: %s",
+		    myarch);
+		rc = EPKG_FATAL;
+		sqlite3_close(sqlite);
+		goto cleanup;
+	}
+
+	sqlite3_close(sqlite);
+	sqlite3_shutdown();
+
+
 	if (rename(repofile_unchecked, repofile) != 0) {
 		pkg_emit_errno("rename", "");
+		rc = EPKG_FATAL;
 		goto cleanup;
 	}
 

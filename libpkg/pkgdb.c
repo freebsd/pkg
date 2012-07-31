@@ -66,7 +66,6 @@ static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkgle(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkgge(sqlite3_context *, int, sqlite3_value **);
-static int get_pragma(sqlite3 *, const char *, int64_t *);
 static int pkgdb_upgrade(struct pkgdb *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
 static int create_temporary_pkgjobs(sqlite3 *);
@@ -2340,7 +2339,7 @@ pkgdb_detach_remotes(sqlite3 *s)
 	sbuf_delete(sql);
 }
 
-static int
+int
 get_pragma(sqlite3 *s, const char *sql, int64_t *res)
 {
 	sqlite3_stmt *stmt;
