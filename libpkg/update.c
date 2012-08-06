@@ -149,8 +149,12 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		}
 	}
 
-	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK)
+	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK) {
+		if (sig != NULL)
+			free(sig);
+		
 		return (EPKG_FATAL);
+	}
 
 	if (repokey != NULL) {
 		if (sig != NULL) {
@@ -164,6 +168,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 				rc = EPKG_FATAL;
 				goto cleanup;
 			}
+			free(sig);
 		} else {
 			pkg_emit_error("No signature found in the repository.  "
 			    "Can not validate against %s key.", repokey);
