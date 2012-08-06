@@ -113,6 +113,9 @@ exec_set(int argc, char **argv)
 			}
 			break;
 		default:
+			if (oldorigin != NULL)
+				free(oldorigin);
+			
 			usage_set();
 			return (EX_USAGE);
 		}
