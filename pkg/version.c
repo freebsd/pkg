@@ -103,7 +103,10 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 		return;
 
 	asprintf(&namever, "%s-%s", name, version);	
-	printf("%-34s %c", namever, key);
+	if (opt & VERSION_ORIGIN)
+		printf("%-34s %c", origin, key);
+	else
+		printf("%-34s %c", namever, key);
 	free(namever);
 
 	if (opt & VERSION_VERBOSE) {
