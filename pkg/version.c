@@ -155,12 +155,13 @@ exec_version(int argc, char **argv)
 	struct sbuf *res;
 	const char *portsdir;
 	const char *origin;
+	const char *matchorigin = NULL;
 	match_t match = MATCH_ALL;
 	char *pattern=NULL;
 
 	SLIST_INIT(&indexhead);
 
-	while ((ch = getopt(argc, argv, "hIoqvl:L:X:x:g:e:OtT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIoqvl:L:X:x:g:e:O:tT")) != -1) {
 		switch (ch) {
 		case 'h':
 			usage_version();
@@ -203,6 +204,7 @@ exec_version(int argc, char **argv)
 			break;
 		case 'O':
 			opt |= VERSION_WITHORIGIN;
+			matchorigin = optarg;
 			break;
 		case 't':
 			opt |= VERSION_TESTVERSION;
@@ -289,6 +291,11 @@ exec_version(int argc, char **argv)
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			SLIST_FOREACH(entry, &indexhead, next) {
 				pkg_get(pkg, PKG_ORIGIN, &origin);
+
+				/* If -O was specific, check if this origin matches */
+				if ((opt & VERSION_WITHORIGIN) && strcmp(origin, matchorigin) != 0)
+					continue;
+
 				if (!strcmp(entry->origin, origin)) {
 					print_version(pkg, "index", entry->version, limchar, opt);
 					break;
@@ -332,10 +339,16 @@ exec_version(int argc, char **argv)
 			goto cleanup;
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			cmd = sbuf_new_auto();
 			pkg_get(pkg, PKG_ORIGIN, &origin);
+
+			/* If -O was specific, check if this origin matches */
+			if ((opt & VERSION_WITHORIGIN) && strcmp(origin, matchorigin) != 0)
+				continue;
+
+			cmd = sbuf_new_auto();
 			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
 			sbuf_finish(cmd);
+
 			if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
 				buf = sbuf_data(res);
 				while (*buf != '\0') {
