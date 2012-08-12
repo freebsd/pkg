@@ -23,10 +23,12 @@
 .Nd summarize installed versions of packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl hIoqv
+.Op Fl IPR
+.Op Fl hoqv
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
 .Op Fl Xxge Ar pattern
+.Op Fl r Ar reponame
 .Op Fl O Ar origin
 .Op Ar index
 .Nm
@@ -46,7 +48,21 @@ The following options are supported by
 .It Fl h
 Displays usage information
 .It Fl I
-Use INDEX file for determining if a package is out of date
+Use INDEX file for determining if a package is out of date.
+.It Fl P
+Use ports for determining if a package is out of date.
+This is the default if a ports tree exists.
+The tree used can be overridden by PORTSDIR, see
+.Xr pkg 5
+for more information.
+.It Fl R
+Use repository catalogue for determining if a package is out of date.
+This is the default if no ports tree exists.
+.It Fl r Ar reponame
+Use the given
+.Ar reponame
+for comparison when using
+.Fl R
 .It Fl o
 Display package origin, instead of package name.
 .It Fl q

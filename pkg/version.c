@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -42,6 +43,8 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <fnmatch.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "pkgcli.h"
 
@@ -54,8 +57,8 @@ struct index_entry {
 void
 usage_version(void)
 {
-	fprintf(stderr, "usage: pkg version [-hIoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
-	fprintf(stderr, "                   [-O origin] [index]\n");
+	fprintf(stderr, "usage: pkg version [-IPR] [-hoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
+	fprintf(stderr, "                   [-r reponame] [-O origin] [index]\n");
 	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help version'.\n");
@@ -148,26 +151,36 @@ exec_version(int argc, char **argv)
 	char *version;
 	struct index_entry *entry;
 	struct pkgdb *db = NULL;
-	struct pkg *pkg = NULL;
-	struct pkgdb_it *it = NULL;
+	struct pkg *pkg = NULL, *pkg_remote = NULL;
+	struct pkgdb_it *it = NULL, *it_remote = NULL;
 	char limchar = '-';
 	struct sbuf *cmd;
 	struct sbuf *res;
 	const char *portsdir;
 	const char *origin;
 	const char *matchorigin = NULL;
+	const char *reponame = NULL;
+	const char *version_remote = NULL;
+	bool have_ports;
 	match_t match = MATCH_ALL;
 	char *pattern=NULL;
+	struct stat sb;
 
 	SLIST_INIT(&indexhead);
 
-	while ((ch = getopt(argc, argv, "hIoqvl:L:X:x:g:e:O:tT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIPRoqvl:L:X:x:g:e:O:r:tT")) != -1) {
 		switch (ch) {
 		case 'h':
 			usage_version();
 			return (EX_OK);
 		case 'I':
-			opt |= VERSION_INDEX;
+			opt |= VERSION_SOURCE_INDEX;
+			break;
+		case 'R':
+			opt |= VERSION_SOURCE_REMOTE;
+			break;
+		case 'P':
+			opt |= VERSION_SOURCE_PORTS;
 			break;
 		case 'o':
 			opt |= VERSION_ORIGIN;
@@ -202,6 +215,9 @@ exec_version(int argc, char **argv)
 			match = MATCH_EXACT;
 			pattern = optarg;
 			break;
+		case 'r':
+			reponame = optarg;
+			break;
 		case 'O':
 			opt |= VERSION_WITHORIGIN;
 			matchorigin = optarg;
@@ -216,9 +232,6 @@ exec_version(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
-
-	if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
-		err(1, "Cannot get portsdir config entry!");
 
 	if (opt & VERSION_STATUS) {
 			if (limchar != '<' &&
@@ -247,62 +260,6 @@ exec_version(int argc, char **argv)
 			printf(">\n");
 			break;
 		}
-	} else if (opt & VERSION_INDEX) {
-		uname(&u);
-		rel_major_ver = (int) strtol(u.release, NULL, 10);
-		snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", portsdir, rel_major_ver);
-		indexfile = fopen(indexpath, "r");
-		if (!indexfile)
-			err(EX_SOFTWARE, "Unable to open %s!", indexpath);
-
-		while ((linelen = getline(&line, &linecap, indexfile)) > 0) {
-			/* line is pkgname|portdir|... */
-			buf = strchr(line, '|');
-			buf[0] = '\0';
-			buf++;
-			version = strrchr(line, '-');
-			version[0] = '\0';
-			version++;
-			buf = strchr(buf, '|');
-			buf[0] = '\0';
-			buf--;
-			/* go backward to get the last two dirs of portsdir */
-			while (buf[0] != '/')
-				buf--;
-			buf--;
-			while (buf[0] != '/')
-				buf--;
-			buf++;
-
-			entry = malloc(sizeof(struct index_entry));
-			entry->version = strdup(version);
-			entry->origin = strdup(buf);
-			SLIST_INSERT_HEAD(&indexhead, entry, next);
-		}
-		free(line);
-		fclose(indexfile);
-
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-			return (EX_IOERR);
-
-		if ((it = pkgdb_query(db, pattern, match)) == NULL)
-			goto cleanup;
-
-		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			SLIST_FOREACH(entry, &indexhead, next) {
-				pkg_get(pkg, PKG_ORIGIN, &origin);
-
-				/* If -O was specific, check if this origin matches */
-				if ((opt & VERSION_WITHORIGIN) && strcmp(origin, matchorigin) != 0)
-					continue;
-
-				if (!strcmp(entry->origin, origin)) {
-					print_version(pkg, "index", entry->version, limchar, opt);
-					break;
-				}
-			}
-		}
-
 	/* -T must be unique */
 	} else if (((opt & VERSION_TESTPATTERN) && opt != VERSION_TESTPATTERN) ||
 			(opt == VERSION_TESTPATTERN && argc != 2)) {
@@ -331,12 +288,71 @@ exec_version(int argc, char **argv)
 		
 		return (retval);
 		
-	} else  {
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-			return (EX_IOERR);
+	} else {
+		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
+			err(1, "Cannot get portsdir config entry!");
+
+		have_ports = (stat(portsdir, &sb) == 0 && S_ISDIR(sb.st_mode));
+
+		/* If none of -IPR were specified, and portsdir exists use that,
+		   otherwise fallback to remote. */
+		if ((opt & (VERSION_SOURCE_PORTS|VERSION_SOURCE_REMOTE|VERSION_SOURCE_INDEX)) == 0) {
+			if (have_ports)
+				opt |= VERSION_SOURCE_PORTS;
+			else
+				opt |= VERSION_SOURCE_REMOTE;
+		}
+
+		if (!have_ports && (opt & (VERSION_SOURCE_INDEX|VERSION_SOURCE_PORTS)))
+			err(1, "Unable to open ports directory %s", portsdir);
+
+		/* Only force remote mode if looking up remote, otherwise
+		   user is forced to have a repo.sqlite */
+		if (opt & VERSION_SOURCE_REMOTE) {
+			if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+				return (EX_IOERR);
+		} else
+			if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+				return (EX_IOERR);
 
 		if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
+
+		if (opt & VERSION_SOURCE_INDEX) {
+			uname(&u);
+			rel_major_ver = (int) strtol(u.release, NULL, 10);
+			snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", portsdir, rel_major_ver);
+			indexfile = fopen(indexpath, "r");
+			if (!indexfile)
+				err(EX_SOFTWARE, "Unable to open %s!", indexpath);
+
+			while ((linelen = getline(&line, &linecap, indexfile)) > 0) {
+				/* line is pkgname|portdir|... */
+				buf = strchr(line, '|');
+				buf[0] = '\0';
+				buf++;
+				version = strrchr(line, '-');
+				version[0] = '\0';
+				version++;
+				buf = strchr(buf, '|');
+				buf[0] = '\0';
+				buf--;
+				/* go backward to get the last two dirs of portsdir */
+				while (buf[0] != '/')
+					buf--;
+				buf--;
+				while (buf[0] != '/')
+					buf--;
+				buf++;
+
+				entry = malloc(sizeof(struct index_entry));
+				entry->version = strdup(version);
+				entry->origin = strdup(buf);
+				SLIST_INSERT_HEAD(&indexhead, entry, next);
+			}
+			free(line);
+			fclose(indexfile);
+		}
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
@@ -345,25 +361,42 @@ exec_version(int argc, char **argv)
 			if ((opt & VERSION_WITHORIGIN) && strcmp(origin, matchorigin) != 0)
 				continue;
 
-			cmd = sbuf_new_auto();
-			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
-			sbuf_finish(cmd);
-
-			if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
-				buf = sbuf_data(res);
-				while (*buf != '\0') {
-					if (*buf == '\n') {
-						*buf = '\0';
+			if (opt & VERSION_SOURCE_INDEX) {
+				SLIST_FOREACH(entry, &indexhead, next) {
+					if (!strcmp(entry->origin, origin)) {
+						print_version(pkg, "index", entry->version, limchar, opt);
 						break;
 					}
-					buf++;
 				}
-				print_version(pkg, "port", sbuf_data(res), limchar, opt);
-				sbuf_delete(res);
-			} else {
-				print_version(pkg, NULL, NULL, limchar, opt);
+			} else if (opt & VERSION_SOURCE_PORTS) {
+				cmd = sbuf_new_auto();
+				sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
+				sbuf_finish(cmd);
+
+				if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
+					buf = sbuf_data(res);
+					while (*buf != '\0') {
+						if (*buf == '\n') {
+							*buf = '\0';
+							break;
+						}
+						buf++;
+					}
+					print_version(pkg, "port", sbuf_data(res), limchar, opt);
+					sbuf_delete(res);
+				} else {
+					print_version(pkg, NULL, NULL, limchar, opt);
+				}
+				sbuf_delete(cmd);
+			} else if (opt & VERSION_SOURCE_REMOTE) {
+				if ((it_remote = pkgdb_rquery(db, origin, MATCH_EXACT, reponame)) == NULL)
+					return (EX_IOERR);
+				if (pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC) == EPKG_OK) {
+					pkg_get(pkg_remote, PKG_VERSION, &version_remote);
+					print_version(pkg, "remote", version_remote, limchar, opt);
+				}
+				pkgdb_it_free(it_remote);
 			}
-			sbuf_delete(cmd);
 		}
 	}
 	
@@ -377,6 +410,7 @@ cleanup:
 	}
 
 	pkg_free(pkg);
+	pkg_free(pkg_remote);
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
