@@ -23,7 +23,7 @@
 .Nd summarize installed versions of packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl IP
+.Op Fl IPR
 .Op Fl hoqv
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
@@ -51,6 +51,8 @@ Use INDEX file for determining if a package is out of date.
 .It Fl P
 Use ports for determining if a package is out of date.
 This is the default.
+.It Fl R
+Use repository catalogue for determining if a package is out of date.
 .It Fl o
 Display package origin, instead of package name.
 .It Fl q

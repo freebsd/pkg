@@ -55,7 +55,7 @@ struct index_entry {
 void
 usage_version(void)
 {
-	fprintf(stderr, "usage: pkg version [-IP] [-hoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
+	fprintf(stderr, "usage: pkg version [-IPR] [-hoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
 	fprintf(stderr, "                   [-O origin] [index]\n");
 	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n\n");
@@ -149,26 +149,31 @@ exec_version(int argc, char **argv)
 	char *version;
 	struct index_entry *entry;
 	struct pkgdb *db = NULL;
-	struct pkg *pkg = NULL;
-	struct pkgdb_it *it = NULL;
+	struct pkg *pkg = NULL, *pkg_remote = NULL;
+	struct pkgdb_it *it = NULL, *it_remote = NULL;
 	char limchar = '-';
 	struct sbuf *cmd;
 	struct sbuf *res;
 	const char *portsdir;
-	const char *origin;
+	const char *origin, *origin_remote;
 	const char *matchorigin = NULL;
+	const char *reponame = NULL;
+	const char *version_remote = NULL;
 	match_t match = MATCH_ALL;
 	char *pattern=NULL;
 
 	SLIST_INIT(&indexhead);
 
-	while ((ch = getopt(argc, argv, "hIPoqvl:L:X:x:g:e:O:tT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIPRoqvl:L:X:x:g:e:O:tT")) != -1) {
 		switch (ch) {
 		case 'h':
 			usage_version();
 			return (EX_OK);
 		case 'I':
 			opt |= VERSION_SOURCE_INDEX;
+			break;
+		case 'R':
+			opt |= VERSION_SOURCE_REMOTE;
 			break;
 		case 'P':
 			opt |= VERSION_SOURCE_PORTS;
@@ -283,9 +288,15 @@ exec_version(int argc, char **argv)
 		
 		return (retval);
 		
-	} else if ((opt & (VERSION_SOURCE_INDEX|VERSION_SOURCE_PORTS)) != 0) {
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-			return (EX_IOERR);
+	} else if ((opt & (VERSION_SOURCE_INDEX|VERSION_SOURCE_REMOTE|VERSION_SOURCE_PORTS)) != 0) {
+		/* Only force remote mode if looking up remote, otherwise
+		   user is forced to have a repo.sqlite */
+		if (opt & VERSION_SOURCE_REMOTE) {
+			if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+				return (EX_IOERR);
+		} else
+			if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+				return (EX_IOERR);
 
 		if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
@@ -324,6 +335,9 @@ exec_version(int argc, char **argv)
 			}
 			free(line);
 			fclose(indexfile);
+		} else if (opt & VERSION_SOURCE_REMOTE) {
+			if ((it_remote = pkgdb_rquery(db, pattern, match, reponame)) == NULL)
+				return (EX_IOERR);
 		}
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
@@ -360,6 +374,16 @@ exec_version(int argc, char **argv)
 					print_version(pkg, NULL, NULL, limchar, opt);
 				}
 				sbuf_delete(cmd);
+			} else if (opt & VERSION_SOURCE_REMOTE) {
+				while ((pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC)) == EPKG_OK) {
+					pkg_get(pkg_remote, PKG_ORIGIN, &origin_remote);
+
+					if (strcmp(origin_remote, origin) == 0) {
+						pkg_get(pkg_remote, PKG_VERSION, &version_remote);
+						print_version(pkg, "remote", version_remote, limchar, opt);
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -374,7 +398,9 @@ cleanup:
 	}
 
 	pkg_free(pkg);
+	pkg_free(pkg_remote);
 	pkgdb_it_free(it);
+	pkgdb_it_free(it_remote);
 	pkgdb_close(db);
 
 	return (EX_OK);

@@ -138,6 +138,7 @@ void usage_shell(void);
 #define VERSION_TESTVERSION	(1<<8)
 #define VERSION_TESTPATTERN	(1<<9)
 #define VERSION_SOURCE_PORTS	(1<<10)
+#define VERSION_SOURCE_REMOTE	(1<<11)
 
 int exec_version(int, char **);
 void usage_version(void);
