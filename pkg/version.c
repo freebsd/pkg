@@ -43,6 +43,8 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <fnmatch.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "pkgcli.h"
 
@@ -159,8 +161,10 @@ exec_version(int argc, char **argv)
 	const char *matchorigin = NULL;
 	const char *reponame = NULL;
 	const char *version_remote = NULL;
+	bool have_ports;
 	match_t match = MATCH_ALL;
 	char *pattern=NULL;
+	struct stat sb;
 
 	SLIST_INIT(&indexhead);
 
@@ -229,9 +233,14 @@ exec_version(int argc, char **argv)
 	if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
 		err(1, "Cannot get portsdir config entry!");
 
+	have_ports = (stat(portsdir, &sb) == 0 && S_ISDIR(sb.st_mode));
+
 	/* If -I not specified, default to ports */
 	if ((opt & VERSION_SOURCE_INDEX) == 0)
 		opt |= VERSION_SOURCE_PORTS;
+
+	if (!have_ports && (opt & (VERSION_SOURCE_INDEX|VERSION_SOURCE_PORTS)))
+		err(1, "Unable to open ports directory %s", portsdir);
 
 	if (opt & VERSION_STATUS) {
 			if (limchar != '<' &&
