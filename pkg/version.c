@@ -157,7 +157,7 @@ exec_version(int argc, char **argv)
 	struct sbuf *cmd;
 	struct sbuf *res;
 	const char *portsdir;
-	const char *origin, *origin_remote;
+	const char *origin;
 	const char *matchorigin = NULL;
 	const char *reponame = NULL;
 	const char *version_remote = NULL;
@@ -352,9 +352,6 @@ exec_version(int argc, char **argv)
 			}
 			free(line);
 			fclose(indexfile);
-		} else if (opt & VERSION_SOURCE_REMOTE) {
-			if ((it_remote = pkgdb_rquery(db, pattern, match, reponame)) == NULL)
-				return (EX_IOERR);
 		}
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
@@ -392,15 +389,13 @@ exec_version(int argc, char **argv)
 				}
 				sbuf_delete(cmd);
 			} else if (opt & VERSION_SOURCE_REMOTE) {
-				while ((pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC)) == EPKG_OK) {
-					pkg_get(pkg_remote, PKG_ORIGIN, &origin_remote);
-
-					if (strcmp(origin_remote, origin) == 0) {
-						pkg_get(pkg_remote, PKG_VERSION, &version_remote);
-						print_version(pkg, "remote", version_remote, limchar, opt);
-						break;
-					}
+				if ((it_remote = pkgdb_rquery(db, origin, MATCH_EXACT, reponame)) == NULL)
+					return (EX_IOERR);
+				if (pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC) == EPKG_OK) {
+					pkg_get(pkg_remote, PKG_VERSION, &version_remote);
+					print_version(pkg, "remote", version_remote, limchar, opt);
 				}
+				pkgdb_it_free(it_remote);
 			}
 		}
 	}
@@ -417,7 +412,6 @@ cleanup:
 	pkg_free(pkg);
 	pkg_free(pkg_remote);
 	pkgdb_it_free(it);
-	pkgdb_it_free(it_remote);
 	pkgdb_close(db);
 
 	return (EX_OK);
