@@ -28,6 +28,7 @@
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
 .Op Fl Xxge Ar pattern
+.Op Fl r Ar reponame
 .Op Fl O Ar origin
 .Op Ar index
 .Nm
@@ -57,6 +58,11 @@ for more information.
 .It Fl R
 Use repository catalogue for determining if a package is out of date.
 This is the default if no ports tree exists.
+.It Fl r Ar reponame
+Use the given
+.Ar reponame
+for comparison when using
+.Fl R
 .It Fl o
 Display package origin, instead of package name.
 .It Fl q

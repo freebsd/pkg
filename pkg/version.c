@@ -58,7 +58,7 @@ void
 usage_version(void)
 {
 	fprintf(stderr, "usage: pkg version [-IPR] [-hoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
-	fprintf(stderr, "                   [-O origin] [index]\n");
+	fprintf(stderr, "                   [-r reponame] [-O origin] [index]\n");
 	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help version'.\n");
@@ -168,7 +168,7 @@ exec_version(int argc, char **argv)
 
 	SLIST_INIT(&indexhead);
 
-	while ((ch = getopt(argc, argv, "hIPRoqvl:L:X:x:g:e:O:tT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIPRoqvl:L:X:x:g:e:O:r:tT")) != -1) {
 		switch (ch) {
 		case 'h':
 			usage_version();
@@ -214,6 +214,9 @@ exec_version(int argc, char **argv)
 		case 'e':
 			match = MATCH_EXACT;
 			pattern = optarg;
+			break;
+		case 'r':
+			reponame = optarg;
 			break;
 		case 'O':
 			opt |= VERSION_WITHORIGIN;
