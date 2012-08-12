@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -247,62 +248,6 @@ exec_version(int argc, char **argv)
 			printf(">\n");
 			break;
 		}
-	} else if (opt & VERSION_INDEX) {
-		uname(&u);
-		rel_major_ver = (int) strtol(u.release, NULL, 10);
-		snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", portsdir, rel_major_ver);
-		indexfile = fopen(indexpath, "r");
-		if (!indexfile)
-			err(EX_SOFTWARE, "Unable to open %s!", indexpath);
-
-		while ((linelen = getline(&line, &linecap, indexfile)) > 0) {
-			/* line is pkgname|portdir|... */
-			buf = strchr(line, '|');
-			buf[0] = '\0';
-			buf++;
-			version = strrchr(line, '-');
-			version[0] = '\0';
-			version++;
-			buf = strchr(buf, '|');
-			buf[0] = '\0';
-			buf--;
-			/* go backward to get the last two dirs of portsdir */
-			while (buf[0] != '/')
-				buf--;
-			buf--;
-			while (buf[0] != '/')
-				buf--;
-			buf++;
-
-			entry = malloc(sizeof(struct index_entry));
-			entry->version = strdup(version);
-			entry->origin = strdup(buf);
-			SLIST_INSERT_HEAD(&indexhead, entry, next);
-		}
-		free(line);
-		fclose(indexfile);
-
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-			return (EX_IOERR);
-
-		if ((it = pkgdb_query(db, pattern, match)) == NULL)
-			goto cleanup;
-
-		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			SLIST_FOREACH(entry, &indexhead, next) {
-				pkg_get(pkg, PKG_ORIGIN, &origin);
-
-				/* If -O was specific, check if this origin matches */
-				if ((opt & VERSION_WITHORIGIN) && strcmp(origin, matchorigin) != 0)
-					continue;
-
-				if (!strcmp(entry->origin, origin)) {
-					print_version(pkg, "index", entry->version, limchar, opt);
-					break;
-				}
-			}
-		}
-
 	/* -T must be unique */
 	} else if (((opt & VERSION_TESTPATTERN) && opt != VERSION_TESTPATTERN) ||
 			(opt == VERSION_TESTPATTERN && argc != 2)) {
@@ -331,12 +276,48 @@ exec_version(int argc, char **argv)
 		
 		return (retval);
 		
-	} else  {
+	} else {
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 			return (EX_IOERR);
 
 		if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
+
+		if (opt & VERSION_INDEX) {
+			uname(&u);
+			rel_major_ver = (int) strtol(u.release, NULL, 10);
+			snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", portsdir, rel_major_ver);
+			indexfile = fopen(indexpath, "r");
+			if (!indexfile)
+				err(EX_SOFTWARE, "Unable to open %s!", indexpath);
+
+			while ((linelen = getline(&line, &linecap, indexfile)) > 0) {
+				/* line is pkgname|portdir|... */
+				buf = strchr(line, '|');
+				buf[0] = '\0';
+				buf++;
+				version = strrchr(line, '-');
+				version[0] = '\0';
+				version++;
+				buf = strchr(buf, '|');
+				buf[0] = '\0';
+				buf--;
+				/* go backward to get the last two dirs of portsdir */
+				while (buf[0] != '/')
+					buf--;
+				buf--;
+				while (buf[0] != '/')
+					buf--;
+				buf++;
+
+				entry = malloc(sizeof(struct index_entry));
+				entry->version = strdup(version);
+				entry->origin = strdup(buf);
+				SLIST_INSERT_HEAD(&indexhead, entry, next);
+			}
+			free(line);
+			fclose(indexfile);
+		}
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
@@ -345,25 +326,34 @@ exec_version(int argc, char **argv)
 			if ((opt & VERSION_WITHORIGIN) && strcmp(origin, matchorigin) != 0)
 				continue;
 
-			cmd = sbuf_new_auto();
-			sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
-			sbuf_finish(cmd);
-
-			if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
-				buf = sbuf_data(res);
-				while (*buf != '\0') {
-					if (*buf == '\n') {
-						*buf = '\0';
+			if (opt & VERSION_INDEX) {
+				SLIST_FOREACH(entry, &indexhead, next) {
+					if (!strcmp(entry->origin, origin)) {
+						print_version(pkg, "index", entry->version, limchar, opt);
 						break;
 					}
-					buf++;
 				}
-				print_version(pkg, "port", sbuf_data(res), limchar, opt);
-				sbuf_delete(res);
 			} else {
-				print_version(pkg, NULL, NULL, limchar, opt);
+				cmd = sbuf_new_auto();
+				sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
+				sbuf_finish(cmd);
+
+				if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
+					buf = sbuf_data(res);
+					while (*buf != '\0') {
+						if (*buf == '\n') {
+							*buf = '\0';
+							break;
+						}
+						buf++;
+					}
+					print_version(pkg, "port", sbuf_data(res), limchar, opt);
+					sbuf_delete(res);
+				} else {
+					print_version(pkg, NULL, NULL, limchar, opt);
+				}
+				sbuf_delete(cmd);
 			}
-			sbuf_delete(cmd);
 		}
 	}
 	
