@@ -50,9 +50,13 @@ Displays usage information
 Use INDEX file for determining if a package is out of date.
 .It Fl P
 Use ports for determining if a package is out of date.
-This is the default.
+This is the default if a ports tree exists.
+The tree used can be overridden by PORTSDIR, see
+.Xr pkg 5
+for more information.
 .It Fl R
 Use repository catalogue for determining if a package is out of date.
+This is the default if no ports tree exists.
 .It Fl o
 Display package origin, instead of package name.
 .It Fl q
