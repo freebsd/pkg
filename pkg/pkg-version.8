@@ -23,7 +23,8 @@
 .Nd summarize installed versions of packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl hIoqv
+.Op Fl IP
+.Op Fl hoqv
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
 .Op Fl Xxge Ar pattern
@@ -46,7 +47,10 @@ The following options are supported by
 .It Fl h
 Displays usage information
 .It Fl I
-Use INDEX file for determining if a package is out of date
+Use INDEX file for determining if a package is out of date.
+.It Fl P
+Use ports for determining if a package is out of date.
+This is the default.
 .It Fl o
 Display package origin, instead of package name.
 .It Fl q

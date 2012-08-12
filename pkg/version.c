@@ -55,7 +55,7 @@ struct index_entry {
 void
 usage_version(void)
 {
-	fprintf(stderr, "usage: pkg version [-hIoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
+	fprintf(stderr, "usage: pkg version [-IP] [-hoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
 	fprintf(stderr, "                   [-O origin] [index]\n");
 	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n\n");
@@ -162,13 +162,16 @@ exec_version(int argc, char **argv)
 
 	SLIST_INIT(&indexhead);
 
-	while ((ch = getopt(argc, argv, "hIoqvl:L:X:x:g:e:O:tT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIPoqvl:L:X:x:g:e:O:tT")) != -1) {
 		switch (ch) {
 		case 'h':
 			usage_version();
 			return (EX_OK);
 		case 'I':
-			opt |= VERSION_INDEX;
+			opt |= VERSION_SOURCE_INDEX;
+			break;
+		case 'P':
+			opt |= VERSION_SOURCE_PORTS;
 			break;
 		case 'o':
 			opt |= VERSION_ORIGIN;
@@ -220,6 +223,10 @@ exec_version(int argc, char **argv)
 
 	if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
 		err(1, "Cannot get portsdir config entry!");
+
+	/* If -I not specified, default to ports */
+	if ((opt & VERSION_SOURCE_INDEX) == 0)
+		opt |= VERSION_SOURCE_PORTS;
 
 	if (opt & VERSION_STATUS) {
 			if (limchar != '<' &&
@@ -276,14 +283,14 @@ exec_version(int argc, char **argv)
 		
 		return (retval);
 		
-	} else {
+	} else if ((opt & (VERSION_SOURCE_INDEX|VERSION_SOURCE_PORTS)) != 0) {
 		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 			return (EX_IOERR);
 
 		if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
 
-		if (opt & VERSION_INDEX) {
+		if (opt & VERSION_SOURCE_INDEX) {
 			uname(&u);
 			rel_major_ver = (int) strtol(u.release, NULL, 10);
 			snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", portsdir, rel_major_ver);
@@ -326,14 +333,14 @@ exec_version(int argc, char **argv)
 			if ((opt & VERSION_WITHORIGIN) && strcmp(origin, matchorigin) != 0)
 				continue;
 
-			if (opt & VERSION_INDEX) {
+			if (opt & VERSION_SOURCE_INDEX) {
 				SLIST_FOREACH(entry, &indexhead, next) {
 					if (!strcmp(entry->origin, origin)) {
 						print_version(pkg, "index", entry->version, limchar, opt);
 						break;
 					}
 				}
-			} else {
+			} else if (opt & VERSION_SOURCE_PORTS) {
 				cmd = sbuf_new_auto();
 				sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
 				sbuf_finish(cmd);
