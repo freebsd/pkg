@@ -78,11 +78,18 @@ fetch_and_extract(const char *src, const char *dest)
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
 	int fd = -1;
-	const char *tmp = "/tmp/auditfile.tbz";
+	char tmp[MAXPATHLEN];
+	const char *tmpdir;
 	int retcode = EPKG_FATAL;
 	int ret;
 	time_t t = 0;
 	struct stat st;
+
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	strlcpy(tmp, tmpdir, sizeof(tmp));
+	strlcat(tmp, "/auditfile.tbz", sizeof(tmp));
 
 	if (stat(dest, &st) != -1) {
 		t = st.st_mtime;
