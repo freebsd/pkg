@@ -44,6 +44,8 @@
 #define LIST 2
 #define INTEGER 3
 
+#define ABI_VAR_STRING "${ABI}"
+
 struct pkg_config_kv {
 	char *key;
 	char *value;
@@ -253,6 +255,34 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 	}
 }
 
+/**
+ * @brief Substitute PACKAGESITE variables
+ */
+static void
+subst_packagesite(void)
+{
+	const char *variable_string;
+	const char *oldval;
+	const char *myarch;
+	struct sbuf *newval;
+
+	oldval = c[PKG_CONFIG_REPO].val;
+
+	if ((variable_string = strstr(oldval, ABI_VAR_STRING)) == NULL)
+		return;
+
+	newval = sbuf_new_auto();
+	sbuf_bcat(newval, oldval, variable_string - oldval);
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+	sbuf_cat(newval, myarch);
+	sbuf_cat(newval, variable_string + strlen(ABI_VAR_STRING));
+	sbuf_finish(newval);
+
+	free(c[PKG_CONFIG_REPO].val);
+	c[PKG_CONFIG_REPO].val = strdup(sbuf_data(newval));
+	sbuf_free(newval);
+}
+
 int
 pkg_config_string(pkg_config_key key, const char **val)
 {
@@ -267,6 +297,9 @@ pkg_config_string(pkg_config_key key, const char **val)
 		pkg_emit_error("this config entry is not a string");
 		return (EPKG_FATAL);
 	}
+
+	if (key == PKG_CONFIG_REPO)
+		subst_packagesite();
 
 	*val = c[key].val;
 

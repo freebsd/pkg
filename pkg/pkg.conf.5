@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd June 12, 2012
+.Dd August 14, 2012
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -75,6 +75,9 @@ By default this option is disabled.
 .It Cm PACKAGESITE: string
 Specifies the remote location to use
 when fetching the database file and packages.
+This supports using
+.Sy ${ABI}
+to create a dynamic URL based on the ABI being used.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 The default value
