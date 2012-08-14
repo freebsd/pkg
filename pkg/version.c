@@ -125,8 +125,10 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 			break;
 		case '?':
 			printf("   orphaned: %s", origin);
+			break;
 		case '!':
 			printf("   Comparison failed");
+			break;
 		}
 	}
 
