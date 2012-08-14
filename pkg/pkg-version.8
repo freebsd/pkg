@@ -42,7 +42,7 @@ is used for generating a report of packages installed by
 .Pp
 By default, if a ports tree exists it is used to compare versions.
 If it does not exist, the remote repository catalogue is used.
-These defaults can be overriden by specifying one of
+These defaults can be overridden by specifying one of
 .Fl P ,
 .Fl R
 or
@@ -151,6 +151,27 @@ for further description.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
+.Sh EXAMPLES
+The following is a typical invocation of the
+.Nm
+command, which checks the installed packages against the local ports
+index file:
+.Pp
+.Dl % pkg version -v
+.Pp
+The command below generates a report against the versions in the repository catalogue:
+.Pp
+.Dl % pkg update
+.Dl % pkg version -vR
+.Pp
+The following lists packages needing upgrade, compared to the repository catalogue:
+.Pp
+.Dl % pkg update
+.Dl % pkg version -vRL=
+.Pp
+The following command compares two package version strings:
+.Pp
+.Dl % pkg version -t 1.5 1.5.1
 .Sh SEE ALSO
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
