@@ -233,23 +233,6 @@ exec_version(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
-		err(1, "Cannot get portsdir config entry!");
-
-	have_ports = (stat(portsdir, &sb) == 0 && S_ISDIR(sb.st_mode));
-
-	/* If none of -IPR were specified, and portsdir exists use that,
-	   otherwise fallback to remote. */
-	if ((opt & (VERSION_SOURCE_PORTS|VERSION_SOURCE_REMOTE|VERSION_SOURCE_INDEX)) == 0) {
-		if (have_ports)
-			opt |= VERSION_SOURCE_PORTS;
-		else
-			opt |= VERSION_SOURCE_REMOTE;
-	}
-
-	if (!have_ports && (opt & (VERSION_SOURCE_INDEX|VERSION_SOURCE_PORTS)))
-		err(1, "Unable to open ports directory %s", portsdir);
-
 	if (opt & VERSION_STATUS) {
 			if (limchar != '<' &&
 					limchar != '>' &&
@@ -305,7 +288,24 @@ exec_version(int argc, char **argv)
 		
 		return (retval);
 		
-	} else if ((opt & (VERSION_SOURCE_INDEX|VERSION_SOURCE_REMOTE|VERSION_SOURCE_PORTS)) != 0) {
+	} else {
+		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
+			err(1, "Cannot get portsdir config entry!");
+
+		have_ports = (stat(portsdir, &sb) == 0 && S_ISDIR(sb.st_mode));
+
+		/* If none of -IPR were specified, and portsdir exists use that,
+		   otherwise fallback to remote. */
+		if ((opt & (VERSION_SOURCE_PORTS|VERSION_SOURCE_REMOTE|VERSION_SOURCE_INDEX)) == 0) {
+			if (have_ports)
+				opt |= VERSION_SOURCE_PORTS;
+			else
+				opt |= VERSION_SOURCE_REMOTE;
+		}
+
+		if (!have_ports && (opt & (VERSION_SOURCE_INDEX|VERSION_SOURCE_PORTS)))
+			err(1, "Unable to open ports directory %s", portsdir);
+
 		/* Only force remote mode if looking up remote, otherwise
 		   user is forced to have a repo.sqlite */
 		if (opt & VERSION_SOURCE_REMOTE) {
