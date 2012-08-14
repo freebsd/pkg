@@ -59,7 +59,7 @@ exec_search(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	bool atleastone = false;
 
-	while ((ch = getopt(argc, argv, "gxXcdr:fDsqop")) != -1) {
+	while ((ch = getopt(argc, argv, "egxXcdr:fDsqop")) != -1) {
 		switch (ch) {
 		case 'e':
 			match = MATCH_EXACT;
