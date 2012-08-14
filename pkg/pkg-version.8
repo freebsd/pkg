@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 11, 2012
+.Dd August 14, 2012
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -32,7 +32,7 @@
 .Op Fl O Ar origin
 .Op Ar index
 .Nm
-.Fl t Ar version1
+.Fl t Ar version1 Ar version2
 .Nm
 .Fl T Ar <pkgname> Ar <pattern>
 .Sh DESCRIPTION
@@ -40,7 +40,34 @@
 is used for generating a report of packages installed by
 .Xr pkg 8 .
 .Pp
-< To be completed >
+By default, if a ports tree exists it is used to compare versions.
+If it does not exist, the remote repository catalogue is used.
+These defaults can be overriden by specifying one of
+.Fl P ,
+.Fl R
+or
+.Fl I .
+.Pp
+When comparing package versions the package name and a comparison character are printed:
+.Bl -tag -width indent
+.It Li =
+The installed version of the package is current.
+.It Li \&<
+The installed version of the package is older than the current version.
+.It Li \&>
+The installed version of the package is newer than the current version.
+This situation can arise with an out-of-date index file, or when
+testing new ports.
+.It Li \&?
+The installed package does not appear in the index.
+This could be due to an out of date index or a package taken from a PR
+that has not yet been committed.
+.It Li \&!
+The installed package exists in the index but for some reason,
+.Nm
+was unable to compare the version number of the installed package
+with the corresponding entry in the index.
+.El
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -92,7 +119,15 @@ Only display the packages that exactly match the string.
 Display only the packages which origin matches
 .Ar origin
 .It Fl t Ar <version1> Ar <version2>
-< To be added >
+Test a pair of version number strings and exit.
+The output consists of one of the single characters
+.Li =
+(equal),
+.Li \&<
+(right-hand number greater), or
+.Li \&>
+(left-hand number greater) on standard output.
+This flag is mostly useful for scripts or for testing.
 .It Fl T Ar <pkgname> Ar <pattern>
 Compare
 .Ar <pkgname>
