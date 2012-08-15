@@ -127,7 +127,13 @@ struct pkg_jobs {
 	STAILQ_HEAD(jobs, pkg) jobs;
 	struct pkgdb *db;
 	pkg_jobs_t type;
+	unsigned flags;
 };
+
+typedef enum _pkg_job_flags {
+	PKG_JOB_FLAGS_FORCE = (1 << 0 ),
+	PKG_JOB_FLAGS_DRY_RUN = (1 << 1),
+} pkg_job_flags;
 
 struct pkg_jobs_node {
 	struct pkg *pkg;

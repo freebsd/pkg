@@ -129,7 +129,8 @@ exec_install(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, force, dry_run)
+	    != EPKG_OK) {
 		goto cleanup;
 	}
 
@@ -165,7 +166,7 @@ exec_install(int argc, char **argv)
 	}
 
 	if (yes)
-		if (pkg_jobs_apply(jobs, force) != EPKG_OK)
+		if (pkg_jobs_apply(jobs) != EPKG_OK)
 			goto cleanup;
 
 	if (messages != NULL) {

@@ -56,11 +56,6 @@ exec_upgrade(int argc, char **argv)
 	bool dry_run = false;
 	bool auto_update = true;
 
-	if (geteuid() != 0) {
-		warnx("Upgrading can only be done as root");
-		return (EX_NOPERM);
-	}
-
 	while ((ch = getopt(argc, argv, "fLnqr:y")) != -1) {
 		switch (ch) {
 		case 'f':
@@ -90,6 +85,11 @@ exec_upgrade(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if ((!dry_run || auto_update) && geteuid() != 0) {
+		warnx("Upgrading can only be done as root");
+		return (EX_NOPERM);
+	}
+
 	if (argc != 0) {
 		usage_upgrade();
 		return (EX_USAGE);
@@ -103,7 +103,8 @@ exec_upgrade(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, false, dry_run)
+	    != EPKG_OK) {
 		goto cleanup;
 	}
 
@@ -137,7 +138,7 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	if (yes)
-		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
+		if (pkg_jobs_apply(jobs) != EPKG_OK)
 			goto cleanup;
 
 	if (messages != NULL) {

@@ -86,7 +86,9 @@ exec_autoremove(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
+	/* Always force packages to be removed */
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, true, false)
+	    != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
@@ -138,7 +140,7 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	if (yes) {
-		if ((retcode = pkg_jobs_apply(jobs, 1)) != EPKG_OK)
+		if ((retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 			goto cleanup;
 	}
 

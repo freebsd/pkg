@@ -55,7 +55,7 @@ exec_delete(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	int ch;
 	int flags = PKG_LOAD_BASIC;
-	int force = 0;
+	bool force = false;
 	bool yes = false;
 	bool dry_run = false;
 	int retcode = EX_SOFTWARE;
@@ -69,7 +69,7 @@ exec_delete(int argc, char **argv)
 			match = MATCH_ALL;
 			break;
 		case 'f':
-			force = 1;
+			force = true;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
@@ -115,7 +115,8 @@ exec_delete(int argc, char **argv)
 		return (EPKG_FATAL);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, force, dry_run)
+	    != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
@@ -165,7 +166,7 @@ exec_delete(int argc, char **argv)
 			yes = false;
 	}
 	if (yes) {
-		if ((retcode = pkg_jobs_apply(jobs, force)) != EPKG_OK)
+		if ((retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 			goto cleanup;
 	} else
 		goto cleanup;
