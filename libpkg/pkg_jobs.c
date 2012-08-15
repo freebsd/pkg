@@ -44,12 +44,13 @@
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 
 int
-pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
+pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
+	     bool dry_run)
 {
 	assert(db != NULL);
 	assert(t != PKG_JOBS_INSTALL || db->type == PKGDB_REMOTE);
 
-	if (pkgdb_lock(db) != EPKG_OK)
+	if (!dry_run && pkgdb_lock(db) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if ((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
@@ -60,6 +61,10 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	STAILQ_INIT(&(*j)->jobs);
 	(*j)->db = db;
 	(*j)->type = t;
+	if (dry_run)
+		(*j)->flags |= PKG_JOB_FLAGS_DRY_RUN;
+	if (force)
+		(*j)->flags |= PKG_JOB_FLAGS_FORCE;
 
 	return (EPKG_OK);
 }
@@ -72,7 +77,8 @@ pkg_jobs_free(struct pkg_jobs *j)
 	if (j == NULL)
 		return;
 
-	pkgdb_unlock(j->db);
+	if ((j->flags & PKG_JOB_FLAGS_DRY_RUN) == 0)
+		pkgdb_unlock(j->db);
 
 	while (!STAILQ_EMPTY(&j->jobs)) {
 		p = STAILQ_FIRST(&j->jobs);
@@ -152,7 +158,7 @@ pkg_jobs_keep_files_to_del(struct pkg *p1, struct pkg *p2)
 }
 
 static int
-pkg_jobs_install(struct pkg_jobs *j, bool force)
+pkg_jobs_install(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	struct pkg *pkg = NULL;
@@ -257,7 +263,7 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 			}
 		}
 
-		if (force)
+		if ((j->flags & PKG_JOB_FLAGS_FORCE) != 0)
 			flags |= PKG_ADD_FORCE;
 		flags |= PKG_ADD_UPGRADE;
 		if (automatic)
@@ -289,16 +295,21 @@ pkg_jobs_install(struct pkg_jobs *j, bool force)
 }
 
 static int
-pkg_jobs_deinstall(struct pkg_jobs *j, int force)
+pkg_jobs_deinstall(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	int retcode;
+	int flags = 0;
+
+	if ((j->flags & PKG_JOB_FLAGS_DRY_RUN) != 0)
+		return (EPKG_OK); /* Do nothing */
+
+	if ((j->flags & PKG_JOB_FLAGS_FORCE) != 0)
+		flags = PKG_DELETE_FORCE;
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
-		if (force)
-			retcode = pkg_delete(p, j->db, PKG_DELETE_FORCE);
-		else
-			retcode = pkg_delete(p, j->db, 0);
+		retcode = pkg_delete(p, j->db, flags);
+
 		if (retcode != EPKG_OK)
 			return (retcode);
 	}
@@ -307,16 +318,16 @@ pkg_jobs_deinstall(struct pkg_jobs *j, int force)
 }
 
 int
-pkg_jobs_apply(struct pkg_jobs *j, int force)
+pkg_jobs_apply(struct pkg_jobs *j)
 {
 	int rc;
 
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
-		rc = pkg_jobs_install(j, force);
+		rc = pkg_jobs_install(j);
 		break;
 	case PKG_JOBS_DEINSTALL:
-		rc = pkg_jobs_deinstall(j, force);
+		rc = pkg_jobs_deinstall(j);
 		break;
 	case PKG_JOBS_FETCH:
 		rc = pkg_jobs_fetch(j);
@@ -378,7 +389,10 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		    cachedir, dlsz, fsz);
 		return (EPKG_FATAL);
 	}
-		
+
+	if ((j->flags & PKG_JOB_FLAGS_DRY_RUN) != 0)
+		return (EPKG_OK); /* don't download anything */
+
 	/* Fetch */
 	p = NULL;
 	while (pkg_jobs(j, &p) == EPKG_OK) {

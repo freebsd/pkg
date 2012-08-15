@@ -117,7 +117,7 @@ exec_fetch(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db, false, false) != EPKG_OK) {
 		goto cleanup;
 	}
 
@@ -144,7 +144,7 @@ exec_fetch(int argc, char **argv)
 	}
 	
 	if (yes)
-		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
+		if (pkg_jobs_apply(jobs) != EPKG_OK)
 			goto cleanup;
 
 	retcode = EX_OK;

@@ -236,7 +236,7 @@ typedef enum {
 typedef enum _pkg_jobs_t {
 	PKG_JOBS_INSTALL,
 	PKG_JOBS_DEINSTALL,
-	PKG_JOBS_FETCH
+	PKG_JOBS_FETCH,
 } pkg_jobs_t;
 
 typedef enum _pkg_config_key {
@@ -798,7 +798,8 @@ int pkg_add(struct pkgdb *db, const char *path, int flags);
  * @param db A pkgdb open with PKGDB_REMOTE.
  * @return An error code.
  */
-int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db);
+int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db,
+		 bool force, bool dry_run);
 
 /**
  * Free a pkg_jobs
@@ -827,7 +828,7 @@ int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
  * Apply the jobs in the queue (fetch and install).
  * @return An error code.
  */
-int pkg_jobs_apply(struct pkg_jobs *jobs, int force);
+int pkg_jobs_apply(struct pkg_jobs *jobs);
 
 /**
  * Archive formats options.
