@@ -3,7 +3,7 @@
 # options please refer to the pkg.conf(5) man page
 
 # Configuration options
-PACKAGESITE	    : http://pkgbeta.freebsd.org/freebsd-9-amd64
+PACKAGESITE	    : http://pkgbeta.freebsd.org/${ABI}
 #PKG_DBDIR	    : /var/db/pkg
 #PKG_CACHEDIR	    : /var/cache/pkg
 #PORTSDIR	    : /usr/ports
