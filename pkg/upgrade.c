@@ -85,7 +85,7 @@ exec_upgrade(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if ((!dry_run || auto_update) && geteuid() != 0) {
+	if (!dry_run && geteuid() != 0) {
 		warnx("Upgrading can only be done as root");
 		return (EX_NOPERM);
 	}
@@ -96,7 +96,8 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	/* first update the remote repositories if needed */
-	if (auto_update && (retcode = pkgcli_update(false)) != EPKG_OK)
+	if (!dry_run && auto_update && 
+	    (retcode = pkgcli_update(false)) != EPKG_OK)
 		return (retcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
