@@ -38,8 +38,10 @@
 #include <openssl/pem.h>
 
 #define PKGVERSION "1.0.90"
-/* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg version comparison
- * in pkgdb_query_newpkgversion() */
+
+/* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg
+ * version comparison in pkgdb_query_newpkgversion() */
+
 #define PKG_PORTVERSION "1.0.90"
 
 struct pkg;
@@ -67,19 +69,19 @@ typedef enum {
 	/**
 	 * The license logic is OR (dual in the ports)
 	 */
-	LICENSE_OR='|',
+	LICENSE_OR = '|',
 	/**
 	 * The license logic is AND (multi in the ports)
 	 */
-	LICENSE_AND='&',
+	LICENSE_AND = '&',
 	/**
 	 * The license logic un single (default in the ports)
 	 */
-	LICENSE_SINGLE=1
+	LICENSE_SINGLE = 1U
 } lic_t;
 
 typedef enum {
-	PKGDB_DEFAULT=0,
+	PKGDB_DEFAULT = 0,
 	PKGDB_REMOTE
 } pkgdb_t;
 
@@ -138,16 +140,16 @@ typedef enum {
 	/**
 	 * The pkg refers to a local file archive.
 	 */
-	PKG_FILE = 1 << 0,
+	PKG_FILE = (1U << 0),
 	/**
 	 * The pkg refers to a package available on the remote repository.
 	 * @todo Document which attributes are available.
 	 */
-	PKG_REMOTE = 1 << 1,
+	PKG_REMOTE = (1U << 1),
 	/**
 	 * The pkg refers to a localy installed package.
 	 */
-	PKG_INSTALLED = 1 << 2,
+	PKG_INSTALLED = (1U << 2),
 } pkg_t;
 
 /**
@@ -155,7 +157,7 @@ typedef enum {
  * Used by pkg_get() and pkg_set()
  */
 typedef enum {
-	PKG_ORIGIN = 1,
+	PKG_ORIGIN = 1U,
 	PKG_NAME,
 	PKG_VERSION,
 	PKG_COMMENT,
@@ -172,7 +174,7 @@ typedef enum {
 	PKG_NEWVERSION,
 	PKG_REPONAME,
 	PKG_REPOURL, /* end of fields */
-	PKG_FLATSIZE=64,
+	PKG_FLATSIZE = 64U,
 	PKG_NEW_FLATSIZE,
 	PKG_NEW_PKGSIZE,
 	PKG_LICENSE_LOGIC,
@@ -182,7 +184,7 @@ typedef enum {
 } pkg_attr;
 
 typedef enum {
-	PKG_SET_FLATSIZE = 1,
+	PKG_SET_FLATSIZE = 1U,
 	PKG_SET_AUTOMATIC,
 	PKG_SET_DEPORIGIN,
 	PKG_SET_ORIGIN
@@ -241,23 +243,23 @@ typedef enum _pkg_jobs_t {
 
 typedef enum _pkg_config_key {
 	PKG_CONFIG_REPO = 0,
-	PKG_CONFIG_DBDIR = 1,
-	PKG_CONFIG_CACHEDIR = 2,
-	PKG_CONFIG_PORTSDIR = 3,
-	PKG_CONFIG_REPOKEY = 4,
-	PKG_CONFIG_MULTIREPOS = 5,
-	PKG_CONFIG_HANDLE_RC_SCRIPTS = 6,
-	PKG_CONFIG_ASSUME_ALWAYS_YES = 7,
-	PKG_CONFIG_REPOS = 8,
-	PKG_CONFIG_PLIST_KEYWORDS_DIR = 9,
-	PKG_CONFIG_SYSLOG = 10,
-	PKG_CONFIG_SHLIBS = 11,
-	PKG_CONFIG_AUTODEPS = 12,
-	PKG_CONFIG_ABI = 13,
-	PKG_CONFIG_DEVELOPER_MODE = 14,
-	PKG_CONFIG_PORTAUDIT_SITE = 15,
-	PKG_CONFIG_SRV_MIRROR = 16,
-	PKG_CONFIG_FETCH_RETRY = 17,
+	PKG_CONFIG_DBDIR,
+	PKG_CONFIG_CACHEDIR,
+	PKG_CONFIG_PORTSDIR,
+	PKG_CONFIG_REPOKEY,
+	PKG_CONFIG_MULTIREPOS,
+	PKG_CONFIG_HANDLE_RC_SCRIPTS,
+	PKG_CONFIG_ASSUME_ALWAYS_YES,
+	PKG_CONFIG_REPOS,
+	PKG_CONFIG_PLIST_KEYWORDS_DIR,
+	PKG_CONFIG_SYSLOG,
+	PKG_CONFIG_SHLIBS,
+	PKG_CONFIG_AUTODEPS,
+	PKG_CONFIG_ABI,
+	PKG_CONFIG_DEVELOPER_MODE,
+	PKG_CONFIG_PORTAUDIT_SITE,
+	PKG_CONFIG_SRV_MIRROR,
+	PKG_CONFIG_FETCH_RETRY,
 } pkg_config_key;
 
 typedef enum {
@@ -451,9 +453,9 @@ int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
  */
 
  /* Don't conflict with PKG_LOAD_* q.v. */
-#define PKG_CONTAINS_ELF_OBJECTS (1<<24)
-#define PKG_CONTAINS_STATIC_LIBS (1<<25)
-#define PKG_CONTAINS_H_OR_LA (1<<26)
+#define PKG_CONTAINS_ELF_OBJECTS	(1U << 24)
+#define PKG_CONTAINS_STATIC_LIBS	(1U << 25)
+#define PKG_CONTAINS_H_OR_LA		(1U << 26)
 
 int pkg_analyse_files(struct pkgdb *, struct pkg *);
 
@@ -480,7 +482,8 @@ int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
  * @param sha256 The new checksum
  * @return An error code
  */
-int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256);
+int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
+			 const char *sha256);
 
 /**
  * Read the content of a file into a buffer, then call pkg_set().
@@ -503,7 +506,8 @@ int pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const
  * @param check_duplicates ensure no duplicate files are added to the pkg?
  * @return An error code.
  */
-int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, bool check_duplicates);
+int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256,
+		bool check_duplicates);
 
 /**
  * Allocate a new struct pkg_file and add it to the files of pkg;
@@ -515,7 +519,9 @@ int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256, bool chec
  * @param check_duplicates ensure no duplicate files are added to the pkg?
  * @return An error code.
  */
-int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const char *uname, const char *gname, mode_t perm, bool check_duplicates);
+int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
+		     const char *uname, const char *gname, mode_t perm,
+		     bool check_duplicates);
 
 /**
  * Add a path
@@ -531,7 +537,8 @@ int pkg_adddir(struct pkg *pkg, const char *path, bool try);
  * @param perm the permission
  * @return An error code.
  */
-int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try);
+int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
+		    const char *gname, mode_t perm, bool try);
 
 /**
  * Add a category
@@ -674,7 +681,8 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
  * @param data A pointer which is passed to the callback.
  * @param sum An 65 long char array to receive the sha256 sum
  */
-int pkg_create_repo(char *path, bool force, void (*callback)(struct pkg *, void *), void *);
+int pkg_create_repo(char *path, bool force,
+		    void (*callback)(struct pkg *, void *), void *);
 int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path);
 
 /**
@@ -735,7 +743,7 @@ struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame, bo
 struct pkgdb_it *pkgdb_query_downgrades(struct pkgdb *db, const char *reponame);
 struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
 struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
-struct pkgdb_it *pkgdb_query_fetch(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, int flags);
+struct pkgdb_it *pkgdb_query_fetch(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, unsigned flags);
 
 /**
  * @todo Return directly the struct pkg?
@@ -744,19 +752,19 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 
 struct pkgdb_it * pkgdb_query_shlib(struct pkgdb *db, const char *shlib);
 
-#define PKG_LOAD_BASIC 0
-#define PKG_LOAD_DEPS (1<<0)
-#define PKG_LOAD_RDEPS (1<<1)
-#define PKG_LOAD_FILES (1<<2)
-#define PKG_LOAD_SCRIPTS (1<<3)
-#define PKG_LOAD_OPTIONS (1<<4)
-#define PKG_LOAD_MTREE (1<<5)
-#define PKG_LOAD_DIRS (1<<6)
-#define PKG_LOAD_CATEGORIES (1<<7)
-#define PKG_LOAD_LICENSES (1<<8)
-#define PKG_LOAD_USERS (1<<9)
-#define PKG_LOAD_GROUPS (1<<10)
-#define PKG_LOAD_SHLIBS (1<<11)
+#define PKG_LOAD_BASIC		0
+#define PKG_LOAD_DEPS		(1U << 0)
+#define PKG_LOAD_RDEPS		(1U << 1)
+#define PKG_LOAD_FILES		(1U << 2)
+#define PKG_LOAD_SCRIPTS	(1U << 3)
+#define PKG_LOAD_OPTIONS	(1U << 4)
+#define PKG_LOAD_MTREE		(1U << 5)
+#define PKG_LOAD_DIRS		(1U << 6)
+#define PKG_LOAD_CATEGORIES	(1U << 7)
+#define PKG_LOAD_LICENSES	(1U << 8)
+#define PKG_LOAD_USERS		(1U << 9)
+#define PKG_LOAD_GROUPS		(1U << 10)
+#define PKG_LOAD_SHLIBS		(1U << 11)
 /* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**
@@ -766,7 +774,7 @@ struct pkgdb_it * pkgdb_query_shlib(struct pkgdb *db, const char *shlib);
  * @param flags OR'ed PKG_LOAD_*
  * @return An error code.
  */
-int pkgdb_it_next(struct pkgdb_it *, struct pkg **pkg, int flags);
+int pkgdb_it_next(struct pkgdb_it *, struct pkg **pkg, unsigned flags);
 
 /**
  * Free a struct pkgdb_it.
@@ -787,12 +795,12 @@ int pkgdb_compact(struct pkgdb *db);
  * @param path The path to the package archive file on the local disk
  * @return An error code.
  */
-int pkg_add(struct pkgdb *db, const char *path, int flags);
+int pkg_add(struct pkgdb *db, const char *path, unsigned flags);
 
-#define PKG_ADD_UPGRADE (1 << 0)
-#define PKG_ADD_USE_UPGRADE_SCRIPTS (1 << 1)
-#define PKG_ADD_AUTOMATIC (1 << 2)
-#define PKG_ADD_FORCE (1 << 3)
+#define PKG_ADD_UPGRADE			(1U << 0)
+#define PKG_ADD_USE_UPGRADE_SCRIPTS	(1U << 1)
+#define PKG_ADD_AUTOMATIC		(1U << 2)
+#define PKG_ADD_FORCE			(1U << 3)
 
 /**
  * Allocate a new pkg_jobs.
@@ -839,12 +847,14 @@ typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 /**
  * Create package from an installed & registered package
  */
-int pkg_create_installed(const char *, pkg_formats, const char *, struct pkg *);
+int pkg_create_installed(const char *, pkg_formats, const char *,
+			 struct pkg *);
 
 /**
  * Create package from stage install with a metadata directory
  */
-int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *);
+int pkg_create_staged(const char *, pkg_formats, const char *, const char *,
+		      char *);
 
 /**
  * Download the latest repo db file and checks its signature if any

@@ -39,12 +39,12 @@
 #include "private/utils.h"
 
 int
-pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
+pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 {
-	struct pkg_dep *rdep = NULL;
-	int ret;
-	bool handle_rc = false;
-	const char *origin;
+	struct pkg_dep	*rdep = NULL;
+	int		 ret;
+	bool		 handle_rc = false;
+	const char	*origin;
 
 	assert(pkg != NULL);
 	assert(db != NULL);
@@ -120,11 +120,11 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags)
 }
 
 int
-pkg_delete_files(struct pkg *pkg, int force)
+pkg_delete_files(struct pkg *pkg, bool force)
 {
-	struct pkg_file *file = NULL;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	const char *path;
+	struct pkg_file	*file = NULL;
+	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	const char	*path;
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *sum = pkg_file_cksum(file);
@@ -156,9 +156,9 @@ pkg_delete_files(struct pkg *pkg, int force)
 }
 
 int
-pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, int force)
+pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, bool force)
 {
-	struct pkg_dir *dir = NULL;
+	struct pkg_dir	*dir = NULL;
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (dir->keep == 1)
@@ -166,10 +166,10 @@ pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, int force)
 
 		if (pkg_dir_try(dir)) {
 			if (rmdir(pkg_dir_path(dir)) == -1 &&
-			    errno != ENOTEMPTY && force != 1)
+			    errno != ENOTEMPTY && !force)
 				pkg_emit_errno("rmdir", pkg_dir_path(dir));
 		} else {
-			if (rmdir(pkg_dir_path(dir)) == -1 && force != 1)
+			if (rmdir(pkg_dir_path(dir)) == -1 && !force)
 				pkg_emit_errno("rmdir", pkg_dir_path(dir));
 		}
 	}

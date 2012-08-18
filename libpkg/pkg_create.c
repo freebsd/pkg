@@ -44,15 +44,15 @@ static int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
     struct packing *pkg_archive)
 {
-	char fpath[MAXPATHLEN + 1];
-	struct pkg_file *file = NULL;
-	struct pkg_dir *dir = NULL;
-	char *m;
-	int ret;
-	const char *mtree;
-	bool developer;
-	struct stat st;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	char		 fpath[MAXPATHLEN + 1];
+	struct pkg_file	*file = NULL;
+	struct pkg_dir	*dir = NULL;
+	char		*m;
+	int		 ret;
+	const char	*mtree;
+	bool		 developer;
+	struct stat	 st;
+	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
@@ -127,11 +127,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 static struct packing *
 pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
-    int required_flags)
+    unsigned required_flags)
 {
-	char *pkg_path = NULL;
-	struct packing *pkg_archive = NULL;
-	const char *pkgname, *pkgversion;
+	char		*pkg_path = NULL;
+	struct packing	*pkg_archive = NULL;
+	const char	*pkgname, *pkgversion;
 
 	/*
 	 * Ensure that we have all the information we need
@@ -183,20 +183,20 @@ int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
     const char *md_dir, char *plist)
 {
-	struct pkg *pkg = NULL;
-	struct pkg_file *file = NULL;
-	struct pkg_dir *dir = NULL;
-	struct packing *pkg_archive = NULL;
-	char *manifest = NULL;
-	char path[MAXPATHLEN];
-	char arch[BUFSIZ];
-	int ret = ENOMEM;
-	char *buf;
-	int i;
-	regex_t preg;
-	regmatch_t pmatch[2];
-	size_t size;
-	char *www;
+	struct pkg	*pkg = NULL;
+	struct pkg_file	*file = NULL;
+	struct pkg_dir	*dir = NULL;
+	struct packing	*pkg_archive = NULL;
+	char		*manifest = NULL;
+	char		 path[MAXPATHLEN];
+	char		 arch[BUFSIZ];
+	int		 ret = ENOMEM;
+	char		*buf;
+	int		 i;
+	regex_t		 preg;
+	regmatch_t	 pmatch[2];
+	size_t		 size;
+	char		*www;
 
 	/* Load the manifest from the metadata directory */
 	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
@@ -312,10 +312,10 @@ int
 pkg_create_installed(const char *outdir, pkg_formats format,
     const char *rootdir, struct pkg *pkg)
 {
-	struct packing *pkg_archive;
-	int required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
-	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
-	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES ;
+	struct packing	*pkg_archive;
+	unsigned	 required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
+		PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
+		PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES ;
 
 	assert(pkg->type == PKG_INSTALLED);
 

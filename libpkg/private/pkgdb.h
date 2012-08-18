@@ -33,16 +33,16 @@
 #include "sqlite3.h"
 
 struct pkgdb {
-	sqlite3 *sqlite;
-	pkgdb_t type;
-	int lock_count;
-	bool prstmt_initialized;
+	sqlite3		*sqlite;
+	pkgdb_t		 type;
+	int		 lock_count;
+	bool		 prstmt_initialized;
 };
 
 struct pkgdb_it {
-	struct pkgdb *db;
-	sqlite3_stmt *stmt;
-	int type;
+	struct pkgdb	*db;
+	sqlite3_stmt	*stmt;
+	int		 type;
 };
 
 int pkgdb_lock(struct pkgdb *db);

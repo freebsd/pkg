@@ -43,9 +43,9 @@
 
 static int
 dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
-	struct pkg *p = NULL;
-	struct pkgdb_it *it;
-	int ret = EPKG_FATAL;
+	struct pkg	*p = NULL;
+	struct pkgdb_it	*it;
+	int		 ret = EPKG_FATAL;
 
 	it = pkgdb_query(db, pkg_dep_origin(dep), MATCH_EXACT);
 
@@ -61,9 +61,9 @@ dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
 static int
 do_extract(struct archive *a, struct archive_entry *ae)
 {
-	int retcode = EPKG_OK;
-	int ret = 0;
-	char path[MAXPATHLEN + 1];
+	int	retcode = EPKG_OK;
+	int	ret = 0;
+	char	path[MAXPATHLEN + 1];
 	struct stat st;
 
 	do {
@@ -118,22 +118,22 @@ do_extract(struct archive *a, struct archive_entry *ae)
 }
 
 int
-pkg_add(struct pkgdb *db, const char *path, int flags)
+pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 {
-	const char *arch;
-	const char *myarch;
-	const char *origin;
-	struct archive *a;
+	const char	*arch;
+	const char	*myarch;
+	const char	*origin;
+	struct archive	*a;
 	struct archive_entry *ae;
-	struct pkg *pkg = NULL;
-	struct pkg_dep *dep = NULL;
-	bool extract = true;
-	bool handle_rc = false;
-	char dpath[MAXPATHLEN + 1];
-	const char *basedir;
-	const char *ext;
-	int retcode = EPKG_OK;
-	int ret;
+	struct pkg	*pkg = NULL;
+	struct pkg_dep	*dep = NULL;
+	bool		 extract = true;
+	bool		 handle_rc = false;
+	char		 dpath[MAXPATHLEN + 1];
+	const char	*basedir;
+	const char	*ext;
+	int		 retcode = EPKG_OK;
+	int		 ret;
 
 	assert(path != NULL);
 
@@ -167,7 +167,8 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin);
 
-	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH && strncmp(arch, myarch, strlen(myarch)) != 0) {
+	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH &&
+	    strncmp(arch, myarch, strlen(myarch)) != 0) {
 		pkg_emit_error("wrong architecture: %s instead of %s",
 		    arch, myarch);
 		if ((flags & PKG_ADD_FORCE) == 0) {

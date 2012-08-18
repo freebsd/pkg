@@ -56,12 +56,12 @@
 	} while (0)
 
 struct pkg {
-	struct sbuf * fields[PKG_NUM_FIELDS];
-	bool automatic;
-	int64_t flatsize;
-	int64_t new_flatsize;
-	int64_t new_pkgsize;
-	struct sbuf * scripts[PKG_NUM_SCRIPTS];
+	struct sbuf	*fields[PKG_NUM_FIELDS];
+	bool		 automatic;
+	int64_t		 flatsize;
+	int64_t		 new_flatsize;
+	int64_t		 new_pkgsize;
+	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
 	STAILQ_HEAD(categories, pkg_category) categories;
 	STAILQ_HEAD(licenses, pkg_license) licenses;
 	STAILQ_HEAD(deps, pkg_dep) deps;
@@ -72,92 +72,92 @@ struct pkg {
 	STAILQ_HEAD(users, pkg_user) users;
 	STAILQ_HEAD(groups, pkg_group) groups;
 	STAILQ_HEAD(shlibs, pkg_shlib) shlibs;
-	int flags;
-	int64_t rowid;
-	int64_t time;
-	lic_t licenselogic;
-	pkg_t type;
+	unsigned       	 flags;
+	int64_t		 rowid;
+	int64_t		 time;
+	lic_t		 licenselogic;
+	pkg_t		 type;
 	STAILQ_ENTRY(pkg) next;
 };
 
 struct pkg_dep {
-	struct sbuf *origin;
-	struct sbuf *name;
-	struct sbuf *version;
+	struct sbuf	*origin;
+	struct sbuf	*name;
+	struct sbuf	*version;
 	STAILQ_ENTRY(pkg_dep) next;
 };
 
 struct pkg_license {
-	struct sbuf *name;
+	struct sbuf	*name;
 	STAILQ_ENTRY(pkg_license) next;
 };
 
 struct pkg_category {
-	struct sbuf *name;
+	struct sbuf	*name;
 	STAILQ_ENTRY(pkg_category) next;
 };
 
 struct pkg_file {
-	char path[MAXPATHLEN +1];
-	char sum[SHA256_DIGEST_LENGTH * 2 +1];
-	char uname[MAXLOGNAME +1];
-	char gname[MAXLOGNAME +1];
-	int keep;
-	mode_t perm;
+	char		 path[MAXPATHLEN +1];
+	char		 sum[SHA256_DIGEST_LENGTH * 2 +1];
+	char		 uname[MAXLOGNAME +1];
+	char		 gname[MAXLOGNAME +1];
+	int		 keep;
+	mode_t		 perm;
 	STAILQ_ENTRY(pkg_file) next;
 };
 
 struct pkg_dir {
-	char path[MAXPATHLEN +1];
-	char uname[MAXLOGNAME +1];
-	char gname[MAXLOGNAME +1];
-	mode_t perm;
-	int keep;
-	bool try;
+	char		 path[MAXPATHLEN +1];
+	char		 uname[MAXLOGNAME +1];
+	char		 gname[MAXLOGNAME +1];
+	mode_t		 perm;
+	int		 keep;
+	bool		 try;
 	STAILQ_ENTRY(pkg_dir) next;
 };
 
 struct pkg_option {
-	struct sbuf *key;
-	struct sbuf *value;
+	struct sbuf	*key;
+	struct sbuf	*value;
 	STAILQ_ENTRY(pkg_option) next;
 };
 
 struct pkg_jobs {
 	STAILQ_HEAD(jobs, pkg) jobs;
-	struct pkgdb *db;
-	pkg_jobs_t type;
-	unsigned flags;
+	struct pkgdb	*db;
+	pkg_jobs_t	 type;
+	unsigned	 flags;
 };
 
 typedef enum _pkg_job_flags {
-	PKG_JOB_FLAGS_FORCE = (1 << 0 ),
-	PKG_JOB_FLAGS_DRY_RUN = (1 << 1),
+	PKG_JOB_FLAGS_FORCE =	(1 << 0 ),
+	PKG_JOB_FLAGS_DRY_RUN =	(1 << 1),
 } pkg_job_flags;
 
 struct pkg_jobs_node {
-	struct pkg *pkg;
-	size_t nrefs;
-	struct pkg_jobs_node **parents; /* rdeps */
-	size_t parents_len;
-	size_t parents_cap;
+	struct pkg	*pkg;
+	size_t		 nrefs;
+	struct pkg_jobs_node	**parents; /* rdeps */
+	size_t		 parents_len;
+	size_t		 parents_cap;
 	LIST_ENTRY(pkg_jobs_node) entries;
 };
 
 struct pkg_user {
-	char name[MAXLOGNAME+1];
-	char uidstr[8192];/* taken from pw_util.c */
+	char		 name[MAXLOGNAME+1];
+	char		 uidstr[8192];/* taken from pw_util.c */
 	STAILQ_ENTRY(pkg_user) next;
 };
 
 struct pkg_group {
-	char name[MAXLOGNAME+1];
-	char gidstr[8192]; /* taken from gw_util.c */
+	char		 name[MAXLOGNAME+1];
+	char		 gidstr[8192]; /* taken from gw_util.c */
 	STAILQ_ENTRY(pkg_group) next;
 };
 
 struct pkg_shlib {
-	struct sbuf *name;
+	struct sbuf	*name;
 	STAILQ_ENTRY(pkg_shlib) next;
 };
 
@@ -165,9 +165,9 @@ struct pkg_shlib {
 /* sql helpers */
 
 typedef struct _sql_prstmt {
-	sqlite3_stmt *stmt;
-	const char *sql;
-	const char *argtypes;
+	sqlite3_stmt	*stmt;
+	const char	*sql;
+	const char	*argtypes;
 } sql_prstmt;
 
 #define STMT(x) (sql_prepared_statements[(x)].stmt)
@@ -189,7 +189,7 @@ typedef enum {
  * required by other packages.
  * @return An error code.
  */
-int pkg_delete(struct pkg *pkg, struct pkgdb *db, int flags);
+int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_FORCE (1<<0)
 #define PKG_DELETE_UPGRADE (1<<1)
 
@@ -202,7 +202,8 @@ int pkg_script_run(struct pkg *, pkg_script type);
 int pkg_add_user_group(struct pkg *pkg);
 int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
 
-int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae, const char *path);
+int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
+	      const char *path);
 
 void pkg_list_free(struct pkg *, pkg_list);
 
@@ -238,21 +239,27 @@ void pkg_shlib_free(struct pkg_shlib *);
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format);
-int packing_append_file(struct packing *pack, const char *filepath, const char *newpath);
-int packing_append_file_attr(struct packing *pack, const char *filepath, const char *newpath, const char *uname, const char *gname, mode_t perm);
-int packing_append_buffer(struct packing *pack, const char *buffer, const char *path, int size);
-int packing_append_tree(struct packing *pack, const char *treepath, const char *newroot);
+int packing_append_file(struct packing *pack, const char *filepath,
+			const char *newpath);
+int packing_append_file_attr(struct packing *pack, const char *filepath,
+			     const char *newpath, const char *uname,
+			     const char *gname, mode_t perm);
+int packing_append_buffer(struct packing *pack, const char *buffer,
+			  const char *path, int size);
+int packing_append_tree(struct packing *pack, const char *treepath,
+			const char *newroot);
 int packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
 
-int pkg_delete_files(struct pkg *pkg, int force);
-int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, int force);
+int pkg_delete_files(struct pkg *pkg, bool force);
+int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, bool force);
 
 int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 
 int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p);
 int pkgdb_integrity_check(struct pkgdb *db);
-struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin);
+struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db,
+						const char *origin);
 
 int pkg_set_mtree(struct pkg *, const char *mtree);
 
