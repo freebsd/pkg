@@ -35,8 +35,8 @@
 
 #include "pkgcli.h"
 
-#define AUTOMATIC 1<<0
-#define ORIGIN 1<<1
+#define AUTOMATIC 1U<<0
+#define ORIGIN 1U<<1
 
 void
 usage_set(void)

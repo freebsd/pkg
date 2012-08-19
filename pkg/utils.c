@@ -243,7 +243,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 	   style to show on a new line.  */
 
 	info_num = 0;
-	for (opt = 0x1; opt <= INFO_LASTFIELD; opt <<= 1) 
+	for (opt = 0x1U; opt <= INFO_LASTFIELD; opt <<= 1) 
 		if ((opt & options) != 0)
 			info_num++;
 
