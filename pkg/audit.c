@@ -424,6 +424,9 @@ exec_audit(int argc, char **argv)
 		}
 	}
 
+	if (ret == EPKG_END && vuln == 0)
+		ret = EX_OK;
+
 	printf("%u problem(s) in your installed packages found.\n", vuln);
 
 cleanup:
