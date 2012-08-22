@@ -23,10 +23,35 @@
 .Nd Cleans the local cache of fetched remote packages.
 .Sh SYNOPSIS
 .Nm
+.Op Fl nqy
 .Sh DESCRIPTION
 .Nm
-is used to cleanup the local cache of remote packages.
-It will remove packages that are out-of-date, as well as packages that are no longer provided.
+is used to cleanup the local cache of packages downloaded from remote
+repositories.
+It removes packages that have been superseded by newer versions, and
+any packages that are no longer provided.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl n
+Dry-run: do not delete any package files from the cache, but show what
+would be done instead.
+Forces the preview of the packages that would be deleted to be shown,
+even when used with
+.Fl y .
+Note: the package cache file permissions only permit root access.
+Results will be disappointing for any other user.
+.It Fl q
+Be quiet.
+Suppress most output.
+All output is suppressed if
+.Fl y
+is also used.
+.It Fl y
+Assume a yes answer instead of asking for confirmation before deleting
+any out-of-date or redundant packages from the cache.
+.El  
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
@@ -34,6 +59,7 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It ASSUME_ALWAYS_YES
 .It PKG_DBDIR
 .It PKG_CONFIG_CACHEDIR
 .El
