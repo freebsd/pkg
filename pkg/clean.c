@@ -316,12 +316,14 @@ exec_clean(int argc, char **argv)
 	}
 
 	if (STAILQ_EMPTY(&dl)) {
-	    printf("Nothing to do.\n");
-	    retcode = EX_OK;
-	    goto cleanup;
+		if (!quiet)
+			printf("Nothing to do.\n");
+		retcode = EX_OK;
+		goto cleanup;
 	}
 
-	display_dellist(&dl, cachedir);
+	if (dry_run || !yes || !quiet)
+		display_dellist(&dl, cachedir);
 
 	if (!dry_run) {
 		if (!yes)
