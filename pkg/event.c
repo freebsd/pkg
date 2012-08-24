@@ -116,7 +116,7 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME, &name,
 		    PKG_VERSION, &version);
-		printf("Deinstalling %s-%s...", name, version);
+		printf("Deleting %s-%s...", name, version);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
