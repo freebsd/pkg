@@ -556,6 +556,8 @@ pkg_get_myarch(char *dest, size_t sz)
 					abi = "o32";
 				else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
 					abi = "n64";
+				else
+					abi = "unknown";
 				break;
 		}
 		endian_corres_str = elf_corres_to_string(endian_corres,
