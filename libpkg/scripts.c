@@ -105,19 +105,19 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 				pkg_emit_errno("Cannot run script",
 				    map[i].arg);
 				sbuf_delete(script_cmd);
-				return (EPKG_FATAL);
+				return (EPKG_OK);
 			}
 
 			unsetenv("PKG_PREFIX");
 
 			while (waitpid(pid, &pstat, 0) == -1) {
 				if (errno != EINTR)
-					return (EPKG_FATAL);
+					return (EPKG_OK);
 			}
 
 			if (WEXITSTATUS(pstat) != 0) {
 				pkg_emit_error("%s script failed", map[i].arg);
-				return (EPKG_FATAL);
+				return (EPKG_OK);
 			}
 		}
 	}
