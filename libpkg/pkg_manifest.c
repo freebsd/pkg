@@ -392,7 +392,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 				if (val->data.scalar.length == 64)
 					pkg_sum = val->data.scalar.value;
 				urldecode(key->data.scalar.value, &tmp);
-				pkg_addfile(pkg, sbuf_get(tmp), pkg_sum, true);
+				pkg_addfile(pkg, sbuf_get(tmp), pkg_sum, false);
 			} else if (val->type == YAML_MAPPING_NODE)
 				pkg_set_files_from_node(pkg, val, doc,
 				    key->data.scalar.value);
