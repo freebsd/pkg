@@ -154,6 +154,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	}
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
+		pkg_set(pkg, PKG_AUTOMATIC, true);
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}
