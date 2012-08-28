@@ -689,23 +689,25 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_adddir(struct pkg *pkg, const char *path, bool try)
+pkg_adddir(struct pkg *pkg, const char *path, bool try, bool check_duplicates)
 {
-	return(pkg_adddir_attr(pkg, path, NULL, NULL, 0, try));
+	return(pkg_adddir_attr(pkg, path, NULL, NULL, 0, try, check_duplicates));
 }
 
 int
-pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try)
+pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char *gname, mode_t perm, bool try, bool check_duplicates)
 {
 	struct pkg_dir *d = NULL;
 
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
-	while (pkg_dirs(pkg, &d) == EPKG_OK) {
-		if (strcmp(path, pkg_dir_path(d)) == 0) {
-			pkg_emit_error("duplicate directory listing: %s, ignoring", path);
-			return (EPKG_OK);
+	if (check_duplicates) {
+		while (pkg_dirs(pkg, &d) == EPKG_OK) {
+			if (strcmp(path, pkg_dir_path(d)) == 0) {
+				pkg_emit_error("duplicate directory listing: %s, ignoring", path);
+				return (EPKG_OK);
+			}
 		}
 	}
 
