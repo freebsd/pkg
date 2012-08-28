@@ -173,6 +173,12 @@ static struct config_entry c[] = {
 		"3",
 		{ NULL }
 	},
+	[PKG_PLUGINS_DIR] = {
+		STRING,
+		"PKG_PLUGINS_DIR"
+		"/usr/local/etc/pkg/plugins",
+		{ NULL }
+	},
 };
 
 static bool parsed = false;
