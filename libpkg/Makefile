@@ -46,7 +46,8 @@ CFLAGS+=	-DHAVE_GRUTILS
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
-		-I${.CURDIR}/../external/libyaml/include
+		-I${.CURDIR}/../external/libyaml/include \
+		-I${.CURDIR}/../external/uthash
 LDADD+=		-L${.OBJDIR}/../external/sqlite \
 		-L${.OBJDIR}/../external/libyaml \
 		-lsqlite3 \
