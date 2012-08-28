@@ -248,11 +248,11 @@ exec_search(int argc, char **argv)
 		case 'c':	/* Same as -S comment */
 			search = search_label_opt("comment");
 			break;
-		case 'D':	/* Same as -M depends-on  */
-			opt |= modifier_opt("depends-on");
-			break;
-		case 'd':	/* Same as -S description */
+		case 'D':	/* Same as -S description */
 			search = search_label_opt("description");
+			break;
+		case 'd':	/* Same as -M depends-on  */
+			opt |= modifier_opt("depends-on");
 			break;
 		case 'e':
 			match = MATCH_EXACT;
