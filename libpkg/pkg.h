@@ -1057,4 +1057,70 @@ int pkgdb_reanalyse_shlibs(struct pkgdb *, struct pkg *);
 int pkg_get_myarch(char *pkgarch, size_t sz);
 
 void pkgdb_cmd(int argc, char **argv);
+
+/**
+ * pkg_printf() and friends.  These parallel the similarly named libc
+ * functions printf(), fprintf() etc.
+ */
+
+/**
+ * print to stdout data from pkg as indicated by the format code fmt
+ * @param pkg The struct pkg supplying the data
+ * @param fmt String with embedded %-escapes indicating what to print
+ * @return count of the number of characters printed
+ */
+int pkg_printf(const char*fmt, const struct pkg *pkg);
+
+/**
+ * print to named stream from pkg as indicated by the format code fmt
+ * @param pkg The struct pkg supplying the data
+ * @param fmt String with embedded %-escapes indicating what to output
+ * @return count of the number of characters printed
+ */
+int pkg_fprintf(FILE *stream, const char *fmt, const struct pkg *pkg);
+
+/**
+ * print to file descriptor d data from pkg as indicated by the format
+ * code fmt
+ * @param d Previously opened file descriptor to print to
+ * @param pkg The struct pkg supplying the data
+ * @param fmt String with embedded %-escapes indicating what to print
+ * @return count of the number of characters printed
+ */
+int pkg_dprintf(int fd, const char *fmt, const struct pkg *pkg);
+
+/**
+ * print to buffer str of given size data from pkg as indicated by the
+ * format code fmt as a NULL-terminated string
+ * @param str Character array buffer to receive output
+ * @param size Length of the buffer str
+ * @param pkg The struct pkg supplying the data
+ * @param fmt String with embedded %-escapes indicating what to output
+ * @return count of the number of characters that would have been output
+ * disregarding truncation to fit size
+ */
+int pkg_snprintf(char *str, size_t size, const char *fmt, const struct pkg *pkg);
+
+/**
+ * Allocate a string buffer ret sufficiently big to contain formatted
+ * data data from pkg as indicated by the format code fmt
+ * @param ret location of pointer to be set to point to buffer containing
+ * result 
+ * @param pkg The struct pkg supplying the data
+ * @param fmt String with embedded %-escapes indicating what to output
+ * @return count of the number of characters printed
+ */
+int pkg_asprintf(char **ret, const char *fmt, const struct pkg *pkg);
+
+/**
+ * store data from pkg into sbuf as indicated by the format code fmt.
+ * This is the core function called by all the other pkg_printf() family.
+ * @param sbuf contains the result
+ * @param pkg The struct pkg supplying the data
+ * @param fmt String with embedded %-escapes indicating what to output
+ * @return count of the number of characters in the result
+ */
+int pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, const struct pkg *pkg);
+
+
 #endif
