@@ -150,7 +150,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		fprintf(stderr, "%s-%s is required by:", name, version);
+		fprintf(stderr, "\n%s-%s is required by:", name, version);
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK)
 			fprintf(stderr, " %s-%s", pkg_dep_name(dep),
 			    pkg_dep_version(dep));
