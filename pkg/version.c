@@ -376,7 +376,7 @@ exec_version(int argc, char **argv)
 				}
 			} else if (opt & VERSION_SOURCE_PORTS) {
 				cmd = sbuf_new_auto();
-				sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION", portsdir, origin);
+				sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null", portsdir, origin);
 				sbuf_finish(cmd);
 
 				if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
@@ -391,7 +391,7 @@ exec_version(int argc, char **argv)
 					print_version(pkg, "port", sbuf_data(res), limchar, opt);
 					sbuf_delete(res);
 				} else {
-					print_version(pkg, NULL, NULL, limchar, opt);
+					print_version(pkg, "port", NULL, limchar, opt);
 				}
 				sbuf_delete(cmd);
 			} else if (opt & VERSION_SOURCE_REMOTE) {
