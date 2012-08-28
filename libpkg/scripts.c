@@ -47,8 +47,14 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	size_t i, j;
 	int error, pstat;
 	pid_t pid;
-	const char *name, *prefix, *version;
+	const char *name, *prefix, *version, *script_cmd_p;
 	const char *argv[4];
+	int ret = EPKG_OK;
+	int stdin_pipe[2] = {-1, -1};
+	posix_spawn_file_actions_t action;
+	bool use_pipe = 0;
+	ssize_t bytes_written;
+	size_t script_cmd_len;
 
 	struct {
 		const char * const arg;
@@ -65,10 +71,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	};
 
 	pkg_get(pkg, PKG_PREFIX, &prefix, PKG_NAME, &name, PKG_VERSION, &version);
-
-	argv[0] = "sh";
-	argv[1] = "-c";
-	argv[3] = NULL;
 
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if (map[i].a == type)
@@ -96,34 +98,81 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			sbuf_cat(script_cmd, "\n");
 			sbuf_cat(script_cmd, pkg_script_get(pkg, j));
 			sbuf_finish(script_cmd);
-			argv[2] = sbuf_get(script_cmd);
 
-			if ((error = posix_spawn(&pid, _PATH_BSHELL, NULL,
+			if (sbuf_len(script_cmd) > ARG_MAX) {
+				if (pipe(stdin_pipe) < 0) {
+					ret = EPKG_FATAL;
+					goto cleanup;
+				}
+
+				posix_spawn_file_actions_init(&action);
+				posix_spawn_file_actions_adddup2(&action, stdin_pipe[0],
+				    STDIN_FILENO);
+				posix_spawn_file_actions_addclose(&action, stdin_pipe[1]);
+
+				argv[0] = "sh";
+				argv[1] = "-s";
+				argv[2] = NULL;
+
+				use_pipe = 1;
+			} else {
+				argv[0] = "sh";
+				argv[1] = "-c";
+				argv[2] = sbuf_get(script_cmd);
+				argv[3] = NULL;
+
+				use_pipe = 0;
+			}
+
+			if ((error = posix_spawn(&pid, _PATH_BSHELL,
+			    use_pipe ? &action : NULL,
 			    NULL, __DECONST(char **, argv),
 			    environ)) != 0) {
 				errno = error;
 				pkg_emit_errno("Cannot run script",
 				    map[i].arg);
-				sbuf_delete(script_cmd);
-				return (EPKG_OK);
+				goto cleanup;
+			}
+
+			if (use_pipe) {
+				script_cmd_p = sbuf_get(script_cmd);
+				script_cmd_len = sbuf_len(script_cmd);
+				while (script_cmd_len > 0) {
+					if ((bytes_written = write(stdin_pipe[1], script_cmd_p,
+					    script_cmd_len)) == -1) {
+						if (errno == EINTR)
+							continue;
+						ret = EPKG_FATAL;
+						goto cleanup;
+					}
+					script_cmd_p += bytes_written;
+					script_cmd_len -= bytes_written;
+				}
+				close(stdin_pipe[1]);
 			}
 
 			unsetenv("PKG_PREFIX");
 
 			while (waitpid(pid, &pstat, 0) == -1) {
 				if (errno != EINTR)
-					return (EPKG_OK);
+					goto cleanup;
 			}
 
 			if (WEXITSTATUS(pstat) != 0) {
 				pkg_emit_error("%s script failed", map[i].arg);
-				return (EPKG_OK);
+				goto cleanup;
 			}
 		}
 	}
 
-	sbuf_delete(script_cmd);
+cleanup:
 
-	return (EPKG_OK);
+	sbuf_delete(script_cmd);
+	if (stdin_pipe[0] != -1)
+		close(stdin_pipe[0]);
+	if (stdin_pipe[1] != -1)
+		close(stdin_pipe[1]);
+
+	return (ret);
 }
 
