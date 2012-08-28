@@ -33,8 +33,8 @@ PREFIX?=	/usr/local
 BINDIR=		${PREFIX}/sbin
 MANDIR=		${PREFIX}/man/man
 
-.if exists(../.git) && exists(/usr/local/bin/git)
-GITHASH!=	git rev-parse HEAD
+.if exists(${.CURDIR}/../.git) && exists(/usr/local/bin/git)
+GITHASH!=	cd ${.CURDIR} && git rev-parse HEAD
 CFLAGS+=	-DGITHASH="\" ${GITHASH}\""
 .endif
 
