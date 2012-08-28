@@ -60,7 +60,7 @@ event_callback(void *data, struct pkg_event *ev)
 		warnx("%s", ev->e_pkg_error.msg);
 		break;
 	case PKG_EVENT_FETCHING:
-		if (quiet)
+		if (quiet || !isatty(fileno(stdin)))
 			break;
 		if (fetched == 0) {
 			filename = strrchr(ev->e_fetching.url, '/');
