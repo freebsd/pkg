@@ -76,7 +76,7 @@ exec_search(int argc, char **argv)
 		case 'c':
 			field = FIELD_COMMENT;
 			break;
-		case 'd':
+		case 'D':
 			field = FIELD_DESC;
 			break;
 		case 'r':
@@ -85,7 +85,7 @@ exec_search(int argc, char **argv)
 			opt |= INFO_FULL;
 			flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS;
 			break;
-		case 'D':
+		case 'd':
 			opt |= INFO_PRINT_DEP;
 			flags |= PKG_LOAD_DEPS;
 			break;
