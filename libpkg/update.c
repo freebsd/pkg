@@ -77,7 +77,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	const char *repokey;
 	unsigned char *sig = NULL;
 	int siglen = 0;
-	int rc = EPKG_FATAL, ret;
+	int fd, rc = EPKG_FATAL, ret;
 	struct stat st;
 	time_t t = 0;
 	sqlite3 *sqlite;
@@ -94,11 +94,13 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	strlcpy(tmp, tmpdir, sizeof(tmp));
 	strlcat(tmp, "/repo.txz.XXXXXX", sizeof(tmp));
 
-	if (mktemp(tmp) == NULL) {
+	fd = mkstemp(tmp);
+	if (fd == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 		    "aborting update.\n", tmp);
 		return (EPKG_FATAL);
 	}
+	close(fd);
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
 		pkg_emit_error("Cant get dbdir config entry");
