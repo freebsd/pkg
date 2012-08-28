@@ -276,7 +276,7 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
 			break;
 		case PKG_DIRS:
 			if (is_valid_yaml_scalar(val))
-				pkg_adddir(pkg, val->data.scalar.value, 1);
+				pkg_adddir(pkg, val->data.scalar.value, 1, false);
 			else if (val->type == YAML_MAPPING_NODE)
 				parse_mapping(pkg, val, doc, attr);
 			else
@@ -375,9 +375,9 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 			if (is_valid_yaml_scalar(val)) {
 				urldecode(key->data.scalar.value, &tmp);
 				if (val->data.scalar.value[0] == 'y')
-					pkg_adddir(pkg, sbuf_get(tmp), 1);
+					pkg_adddir(pkg, sbuf_get(tmp), 1, false);
 				else
-					pkg_adddir(pkg, sbuf_get(tmp), 0);
+					pkg_adddir(pkg, sbuf_get(tmp), 0, false);
 			} else if (val->type == YAML_MAPPING_NODE) {
 				pkg_set_dirs_from_node(pkg, val, doc,
 				    key->data.scalar.value);
@@ -486,7 +486,7 @@ pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item,
 
 	if (key != NULL)
 		pkg_addfile_attr(pkg, key->data.scalar.value, sum, uname, gname,
-		    perm, true);
+		    perm, false);
 
 	return (EPKG_OK);
 }
@@ -550,7 +550,7 @@ pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 		++pair;
 	}
 
-	pkg_adddir_attr(pkg, dirname, uname, gname, perm, try);
+	pkg_adddir_attr(pkg, dirname, uname, gname, perm, try, false);
 
 	return (EPKG_OK);
 }

@@ -527,7 +527,8 @@ int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
  * Add a path
  * @return An error code.
  */
-int pkg_adddir(struct pkg *pkg, const char *path, bool try);
+int pkg_adddir(struct pkg *pkg, const char *path, bool try,
+		    bool check_duplicates);
 
 /**
  * Allocate a new struct pkg_file and add it to the files of pkg;
@@ -538,7 +539,8 @@ int pkg_adddir(struct pkg *pkg, const char *path, bool try);
  * @return An error code.
  */
 int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
-		    const char *gname, mode_t perm, bool try);
+		    const char *gname, mode_t perm, bool try,
+		    bool check_duplicates);
 
 /**
  * Add a category

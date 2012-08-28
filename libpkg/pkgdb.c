@@ -1300,7 +1300,7 @@ pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddir(pkg, sqlite3_column_text(stmt, 0),
-		    sqlite3_column_int(stmt, 1));
+		    sqlite3_column_int(stmt, 1), false);
 	}
 
 	sqlite3_finalize(stmt);

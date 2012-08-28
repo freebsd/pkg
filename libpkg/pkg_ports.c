@@ -161,7 +161,7 @@ meta_dirrm(struct plist *p, char *line, bool try)
 
 	if (lstat(testpath, &st) == 0)
 		return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
-		    p->perm, try));
+		    p->perm, try, true));
 
 	pkg_emit_errno("lstat", path);
 	if (p->stage != NULL)
