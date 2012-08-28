@@ -27,6 +27,7 @@
 
 #include <pkg.h>
 #include <sysexits.h>
+#include <unistd.h>
 
 #include "pkgcli.h"
 
@@ -56,18 +57,22 @@ exec_backup(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (argv[1][1] == 'd') {
-		printf("Dumping database...\n");
+		if (isatty(fileno(stdin)))
+				printf("Dumping database...\n");
 		if (pkgdb_dump(db, dest) == EPKG_FATAL)
 			return (EX_IOERR);
 
-		printf("done\n");
+		if (isatty(fileno(stdin)))
+			printf("done\n");
 	}
 
 	if (argv[1][1] == 'r') {
-		printf("Restoring database...\n");
+		if (isatty(fileno(stdin)))
+			printf("Restoring database...\n");
 		if (pkgdb_load(db, dest) == EPKG_FATAL)
 			return (EX_IOERR);
-		printf("done\n");
+		if (isatty(fileno(stdin)))
+			printf("done\n");
 	}
 
 	pkgdb_close(db);
