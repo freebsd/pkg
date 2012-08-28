@@ -167,6 +167,7 @@ exec_version(int argc, char **argv)
 	match_t match = MATCH_ALL;
 	char *pattern=NULL;
 	struct stat sb;
+	char portsdirmakefile[MAXPATHLEN];
 
 	SLIST_INIT(&indexhead);
 
@@ -294,7 +295,10 @@ exec_version(int argc, char **argv)
 		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
 			err(1, "Cannot get portsdir config entry!");
 
-		have_ports = (stat(portsdir, &sb) == 0 && S_ISDIR(sb.st_mode));
+		snprintf(portsdirmakefile, sizeof(portsdirmakefile),
+		    "%s/Makefile", portsdir);
+
+		have_ports = (stat(portsdirmakefile, &sb) == 0 && S_ISREG(sb.st_mode));
 
 		/* If none of -IPR were specified, and portsdir exists use that,
 		   otherwise fallback to remote. */
