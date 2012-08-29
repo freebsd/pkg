@@ -164,7 +164,7 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_SRV_MIRROR] = {
 		BOOL,
 		"SRV_MIRRORS",
-		"NO",
+		"YES",
 		{ NULL }
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
