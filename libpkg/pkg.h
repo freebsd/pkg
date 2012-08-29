@@ -65,6 +65,8 @@ struct pkg_repos_entry;
 
 struct pkg_config_kv;
 
+struct pkg_plugin;
+
 typedef enum {
 	/**
 	 * The license logic is OR (dual in the ports)
@@ -890,6 +892,7 @@ int64_t pkgdb_stats(struct pkgdb *db, pkg_stats_t type);
  */
 int pkg_plugin_init(void);
 int pkg_plugin_shutdown(void);
+int pkg_plugin_list(struct pkg_plugin **plugin);
 
 /**
  * Get the value of a configuration key
