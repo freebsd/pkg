@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd August 14, 2012
+.Dd August 29, 2012
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -78,6 +78,11 @@ when fetching the database file and packages.
 This supports using
 .Sy ${ABI}
 to create a dynamic URL based on the ABI being used.
+.It Cm SRV_MIRRORS: boolean
+Specifies whether the defined
+.Sy PACKAGESITE
+uses SRV records for load balancing or not.
+By default this option is disabled.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 The default value
