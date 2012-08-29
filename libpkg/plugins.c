@@ -34,6 +34,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -174,6 +175,14 @@ pkg_plugins_free(void)
         }
 
 	return (EPKG_OK);
+}
+
+const char *
+pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key)
+{
+	assert(p != NULL);
+
+	return (p->fields[key].val);
 }
 
 int
