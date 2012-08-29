@@ -326,6 +326,9 @@ pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_ca
 	while (pkg_plugins_list(&p) != EPKG_END) {
 		pname = pkg_plugins_get(p, PKG_PLUGINS_NAME);
 		if ((strcmp(pname, pluginname)) == 0) {
+			/**
+			 * @todo: allow plugins to specify more than 1 callback for hooking
+			 */
 			p->hook |= hook;
 			p->callback = callback;
 			plugin_found = true;
