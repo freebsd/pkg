@@ -3,7 +3,8 @@
 # options please refer to the pkg.conf(5) man page
 
 # Configuration options
-PACKAGESITE	    : http://pkgbeta.freebsd.org/${ABI}/latest
+PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
+SRV_MIRRORS	    : YES
 #PKG_DBDIR	    : /var/db/pkg
 #PKG_CACHEDIR	    : /var/cache/pkg
 #PORTSDIR	    : /usr/ports
