@@ -265,7 +265,12 @@ pkg_plugins_unload(struct pkg_plugins *p)
 	const char *pluginname = NULL;
 	
 	assert(p != NULL);
-	assert(p->lh != NULL);
+
+	/*
+	 * Plugin could be enabled, but failed to be loaded
+	 */
+	if (p->lh == NULL)
+		return (EPKG_OK);
 
 	pluginfile = pkg_plugins_get(p, PKG_PLUGINS_PLUGINFILE);
 	pluginname = pkg_plugins_get(p, PKG_PLUGINS_NAME);
