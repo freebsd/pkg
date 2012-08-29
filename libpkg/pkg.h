@@ -65,7 +65,7 @@ struct pkg_repos_entry;
 
 struct pkg_config_kv;
 
-struct pkg_plugin;
+struct pkg_plugins;
 
 typedef enum {
 	/**
@@ -282,13 +282,13 @@ typedef enum _pkg_stats_t {
 /**
  * Keys for accessing pkg plugins data
  */
-typedef enum _pkg_plugin_key {
-	PKG_PLUGIN_NAME = 0,
-	PKG_PLUGIN_DESC,
-	PKG_PLUGIN_VERSION,
-	PKG_PLUGIN_PLUGINFILE,
-	PKG_PLUGIN_ENABLED,
-} pkg_plugin_key;
+typedef enum _pkg_plugins_key {
+	PKG_PLUGINS_NAME = 0,
+	PKG_PLUGINS_DESC,
+	PKG_PLUGINS_VERSION,
+	PKG_PLUGINS_PLUGINFILE,
+	PKG_PLUGINS_ENABLED,
+} pkg_plugins_key;
 
 /**
  * Error type used everywhere by libpkg.
@@ -890,9 +890,9 @@ int64_t pkgdb_stats(struct pkgdb *db, pkg_stats_t type);
  * pkg plugins functions
  * @todo Document
  */
-int pkg_plugin_init(void);
-int pkg_plugin_shutdown(void);
-int pkg_plugin_list(struct pkg_plugin **plugin);
+int pkg_plugins_init(void);
+int pkg_plugins_shutdown(void);
+int pkg_plugins_list(struct pkg_plugins **plugin);
 
 /**
  * Get the value of a configuration key

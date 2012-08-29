@@ -40,31 +40,31 @@
 
 #define N(a) (sizeof(a) / sizeof(a[0]))
 
-struct _pkg_plugin_kv {
+struct _pkg_plugins_kv {
 	 char *key;
 	 char *val;
-} pkg_plugin_kv[] = {
-	[PKG_PLUGIN_NAME] 	= { __DECONST(char *, "name"), NULL },
-	[PKG_PLUGIN_DESC] 	= { __DECONST(char *, "description"), NULL },
-	[PKG_PLUGIN_VERSION] 	= { __DECONST(char *, "version"), NULL },
-	[PKG_PLUGIN_PLUGINFILE]	= { __DECONST(char *, "plugin"), NULL },
-	[PKG_PLUGIN_ENABLED]	= { __DECONST(char *, "enabled"), NULL },
+} pkg_plugins_kv[] = {
+	[PKG_PLUGINS_NAME] 		= { __DECONST(char *, "name"), NULL },
+	[PKG_PLUGINS_DESC] 		= { __DECONST(char *, "description"), NULL },
+	[PKG_PLUGINS_VERSION] 		= { __DECONST(char *, "version"), NULL },
+	[PKG_PLUGINS_PLUGINFILE]	= { __DECONST(char *, "plugin"), NULL },
+	[PKG_PLUGINS_ENABLED]		= { __DECONST(char *, "enabled"), NULL },
 };
 
-struct pkg_plugin {
-	struct _pkg_plugin_kv fields[N(pkg_plugin_kv)];
-	STAILQ_ENTRY(pkg_plugin) next;
+struct pkg_plugins {
+	struct _pkg_plugins_kv fields[N(pkg_plugins_kv)];
+	STAILQ_ENTRY(pkg_plugins) next;
 };
 
-STAILQ_HEAD(plugin_head, pkg_plugin);
-static struct plugin_head ph = STAILQ_HEAD_INITIALIZER(ph);
+STAILQ_HEAD(plugins_head, pkg_plugins);
+static struct plugins_head ph = STAILQ_HEAD_INITIALIZER(ph);
 
-static int pkg_plugin_discover(void);
-static int pkg_plugin_parse_conf(const char *file);
-static int pkg_plugin_free(void);
+static int pkg_plugins_discover(void);
+static int pkg_plugins_parse_conf(const char *file);
+static int pkg_plugins_free(void);
 
 static int
-pkg_plugin_discover(void)
+pkg_plugins_discover(void)
 {
 	FTS  	*fts = NULL;
 	FTSENT	*ftsent = NULL;
@@ -92,7 +92,7 @@ pkg_plugin_discover(void)
 
 		/* parse only .conf files */
 		if (strstr(ftsent->fts_name, ".conf") != NULL)
-			pkg_plugin_parse_conf(ftsent->fts_path);
+			pkg_plugins_parse_conf(ftsent->fts_path);
 	}
 
 	fts_close(fts);
@@ -101,9 +101,9 @@ pkg_plugin_discover(void)
 }
 
 static int
-pkg_plugin_parse_conf(const char *file)
+pkg_plugins_parse_conf(const char *file)
 {
-	struct pkg_plugin *new = NULL;
+	struct pkg_plugins *new = NULL;
 	properties p = NULL;
 	unsigned int i = 0;
 	char *temp;
@@ -115,15 +115,15 @@ pkg_plugin_parse_conf(const char *file)
 		return (EPKG_FATAL);
 	}
 
-	if ((new = calloc(1, sizeof(struct pkg_plugin))) == NULL) {
+	if ((new = calloc(1, sizeof(struct pkg_plugins))) == NULL) {
 		pkg_emit_error("Cannot allocate memory");
 		return (EPKG_FATAL);
 	}
 
 	p = properties_read(fd);
 
-	for (i = 0; i < N(pkg_plugin_kv); i++) {
-		new->fields[i].key = strdup(pkg_plugin_kv[i].key);
+	for (i = 0; i < N(pkg_plugins_kv); i++) {
+		new->fields[i].key = strdup(pkg_plugins_kv[i].key);
 		if ((temp = property_find(p, new->fields[i].key)) == NULL) {
 			pkg_emit_error("required option '%s' is not specified in '%s'",
 				       new->fields[i].key, file);
@@ -137,7 +137,7 @@ pkg_plugin_parse_conf(const char *file)
 
 	if (wrong_conf == true) {
 		pkg_emit_error("required options were missing in '%s', plugin will not be loaded", file);
-		for (i = 0; i < N(pkg_plugin_kv); i++) {
+		for (i = 0; i < N(pkg_plugins_kv); i++) {
 			if (new->fields[i].key != NULL)
 				free(new->fields[i].key);
 			if (new->fields[i].val != NULL)
@@ -153,16 +153,16 @@ pkg_plugin_parse_conf(const char *file)
 }
 
 static int
-pkg_plugin_free(void)
+pkg_plugins_free(void)
 {
-	struct pkg_plugin *p = NULL;
+	struct pkg_plugins *p = NULL;
 	unsigned int i;
 
         while (!STAILQ_EMPTY(&ph)) {
                 p = STAILQ_FIRST(&ph);
                 STAILQ_REMOVE_HEAD(&ph, next);
 
-		for (i = 0; i < N(pkg_plugin_kv); i++) {
+		for (i = 0; i < N(pkg_plugins_kv); i++) {
 			free(p->fields[i].key);
 			free(p->fields[i].val);
 		}
@@ -174,7 +174,7 @@ pkg_plugin_free(void)
 }
 
 int
-pkg_plugin_list(struct pkg_plugin **plugin)
+pkg_plugins_list(struct pkg_plugins **plugin)
 {
 	if ((*plugin) == NULL)
 		(*plugin) = STAILQ_FIRST(&ph);
@@ -188,17 +188,17 @@ pkg_plugin_list(struct pkg_plugin **plugin)
 }
 
 int
-pkg_plugin_init(void)
+pkg_plugins_init(void)
 {
-	pkg_plugin_discover();
+	pkg_plugins_discover();
 
 	return (EPKG_OK);
 }
 
 int
-pkg_plugin_shutdown(void)
+pkg_plugins_shutdown(void)
 {
-	pkg_plugin_free();
+	pkg_plugins_free();
 
 	return (EPKG_OK);
 }

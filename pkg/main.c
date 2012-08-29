@@ -242,7 +242,7 @@ main(int argc, char **argv)
 	if (pkg_init(NULL) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
-	if (pkg_plugin_init() != EPKG_OK)
+	if (pkg_plugins_init() != EPKG_OK)
 		errx(EX_SOFTWARE, "Plugins cannot be loaded");
 
 	if (version > 1) {
@@ -283,7 +283,7 @@ main(int argc, char **argv)
 			printf("Repository: %s\n", buf ? buf : "none");
 		}
 		pkg_shutdown();
-		pkg_plugin_shutdown();
+		pkg_plugins_shutdown();
 		exit(EX_OK);
 	}
 
@@ -309,7 +309,7 @@ main(int argc, char **argv)
 
 	if (command == NULL) {
 		pkg_shutdown();
-		pkg_plugin_shutdown();
+		pkg_plugins_shutdown();
 		usage();
 		return (ret); /* Not reached but makes scanbuild happy */
 	}
@@ -329,7 +329,7 @@ main(int argc, char **argv)
 	}
 
 	pkg_shutdown();
-	pkg_plugin_shutdown();
+	pkg_plugins_shutdown();
 	
 	return (ret);
 }
