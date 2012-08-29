@@ -234,8 +234,8 @@ pkg_plugins_load(struct pkg_plugins *p)
 	sbuf_printf(init_name, "pkg_plugins_init_%s", pluginname);
 
 	if ((init_func = dlsym(p->lh, sbuf_get(init_name))) == NULL) {
-		pkg_emit_error("Cannot load init function for plugin '%s': %s",
-			       pluginname, dlerror());
+		pkg_emit_error("Cannot load init function for plugin '%s'", pluginname);
+		pkg_emit_error("Plugin '%s' will not be loaded: %s", pluginname, dlerror());
 		sbuf_delete(init_name);
 		dlclose(p->lh);
 		return (EPKG_FATAL);
@@ -363,6 +363,8 @@ pkg_plugins_display_loaded(void)
 		if (pkg_plugins_is_loaded(p))
 			printf("%s ", pkg_plugins_get(p, PKG_PLUGINS_NAME));
 
+	printf("\nSuccessfully loaded %d plugins\n", have_plugins_loaded);
+	
 	return (EPKG_OK);
 }
 
