@@ -134,7 +134,7 @@ exec_delete(int argc, char **argv)
 		pkg = NULL;
 	}
 	if (haspkg && !force) {
-		warnx("You are about to delete 'ports-mgmt/pkg' which is really"
+		warnx("You are about to delete 'ports-mgmt/pkg' which is really "
 		    "dangerous, you can't do that without specifying -f");
 		goto cleanup;
 	}
