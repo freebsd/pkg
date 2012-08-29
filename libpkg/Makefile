@@ -33,7 +33,8 @@ SRCS=		backup.c \
 		scripts.c \
 		update.c \
 		usergroup.c \
-		utils.c
+		utils.c \
+		plugins.c
 
 HAVE_GRUTILS!=	grep -q gr_copy /usr/include/libutil.h && echo yes || echo no
 

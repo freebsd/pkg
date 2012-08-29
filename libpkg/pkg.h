@@ -260,6 +260,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_PORTAUDIT_SITE,
 	PKG_CONFIG_SRV_MIRROR,
 	PKG_CONFIG_FETCH_RETRY,
+	PKG_CONFIG_PLUGINS_DIR
 } pkg_config_key;
 
 typedef enum {
@@ -275,6 +276,17 @@ typedef enum _pkg_stats_t {
 	PKG_STATS_REMOTE_SIZE,
 	PKG_STATS_REMOTE_REPOS,
 } pkg_stats_t;
+
+/**
+ * Keys for accessing pkg plugins data
+ */
+typedef enum _pkg_plugin_key {
+	PKG_PLUGIN_NAME = 0,
+	PKG_PLUGIN_DESC,
+	PKG_PLUGIN_VERSION,
+	PKG_PLUGIN_PLUGINFILE,
+	PKG_PLUGIN_ENABLED,
+} pkg_plugin_key;
 
 /**
  * Error type used everywhere by libpkg.
@@ -871,6 +883,13 @@ int pkg_update(const char *name, const char *packagesite, bool force);
  * @return The statistic information requested
  */
 int64_t pkgdb_stats(struct pkgdb *db, pkg_stats_t type);
+
+/**
+ * pkg plugins functions
+ * @todo Document
+ */
+int pkg_plugin_init(void);
+int pkg_plugin_shutdown(void);
 
 /**
  * Get the value of a configuration key

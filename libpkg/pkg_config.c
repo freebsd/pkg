@@ -173,9 +173,9 @@ static struct config_entry c[] = {
 		"3",
 		{ NULL }
 	},
-	[PKG_PLUGINS_DIR] = {
+	[PKG_CONFIG_PLUGINS_DIR] = {
 		STRING,
-		"PKG_PLUGINS_DIR"
+		"PKG_PLUGINS_DIR",
 		"/usr/local/etc/pkg/plugins",
 		{ NULL }
 	},
@@ -475,6 +475,7 @@ pkg_init(const char *path)
 
 	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
+
 
 	parsed = true;
 	return (EPKG_OK);
