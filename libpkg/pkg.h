@@ -291,6 +291,14 @@ typedef enum _pkg_plugins_key {
 } pkg_plugins_key;
 
 /**
+ * Keys for hooking into the library
+ */
+typedef enum _pkg_plugins_hook_t {
+	PKG_PLUGINS_HOOK_PRE_INSTALL = 1,
+	PKG_PLUGINS_HOOK_POST_INSTALL,
+} pkg_plugins_hook_t;
+
+/**
  * Error type used everywhere by libpkg.
  */
 typedef enum {
@@ -897,6 +905,13 @@ int pkg_plugins_display_loaded(void);
 bool pkg_plugins_is_enabled(struct pkg_plugins *p);
 bool pkg_plugins_is_loaded(struct pkg_plugins *p);
 const char *pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key);
+
+/**
+ * This is where plugins hook into the library using pkg_plugins_hook()
+ * @todo: Document
+ */
+typedef int(*pkg_plugins_callback)(void *data);
+int pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_callback callback);
 
 /**
  * Get the value of a configuration key
