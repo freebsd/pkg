@@ -893,6 +893,7 @@ int64_t pkgdb_stats(struct pkgdb *db, pkg_stats_t type);
 int pkg_plugins_init(void);
 int pkg_plugins_shutdown(void);
 int pkg_plugins_list(struct pkg_plugins **plugin);
+bool pkg_plugins_is_enabled(struct pkg_plugins *p);
 const char *pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key);
 
 /**

@@ -30,6 +30,7 @@
 
 #include <fts.h>
 #include <fcntl.h>
+#include <dlfcn.h>
 #include <libutil.h>
 #include <stdbool.h>
 #include <string.h>
@@ -54,7 +55,8 @@ struct _pkg_plugins_kv {
 };
 
 struct pkg_plugins {
-	struct _pkg_plugins_kv fields[N(pkg_plugins_kv)];
+	struct _pkg_plugins_kv fields[N(pkg_plugins_kv)];	/* plugin configuration fields */
+	void *lh;						/* library handle */
 	STAILQ_ENTRY(pkg_plugins) next;
 };
 
@@ -64,6 +66,8 @@ static struct plugins_head ph = STAILQ_HEAD_INITIALIZER(ph);
 static int pkg_plugins_discover(void);
 static int pkg_plugins_parse_conf(const char *file);
 static int pkg_plugins_free(void);
+static int pkg_plugins_load(struct pkg_plugins *p);
+static int pkg_plugins_unload(struct pkg_plugins *p);
 
 static int
 pkg_plugins_discover(void)
@@ -177,12 +181,152 @@ pkg_plugins_free(void)
 	return (EPKG_OK);
 }
 
+static int
+pkg_plugins_load(struct pkg_plugins *p)
+{
+	struct sbuf *init_name = NULL;
+	int (*init_func)(void);
+	int rc = EPKG_OK;
+	
+	const char *pluginfile = NULL;
+	const char *pluginname = NULL;
+	
+	assert(p != NULL);
+
+	pluginfile = pkg_plugins_get(p, PKG_PLUGINS_PLUGINFILE);
+	pluginname = pkg_plugins_get(p, PKG_PLUGINS_NAME);
+
+	if ((eaccess(pluginfile, F_OK)) != 0) {
+		pkg_emit_error("Plugin file '%s' does not exists, ignoring plugin '%s'",
+			       pluginfile, pluginname);
+		return (EPKG_FATAL);
+	}
+
+	/*
+	 * Load the plugin
+	 */
+	if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
+		pkg_emit_error("Loading of plugin '%s' failed: %s",
+			       pluginname, dlerror());
+		return (EPKG_FATAL);
+	}
+
+	/*
+	 * The plugin *must* provide an init function that is called by the library.
+	 *
+	 * The plugin's init function takes care of registering a hook in the library,
+	 * which is handled by the pkg_plugins_register_hook() function.
+	 *
+	 * Every plugin *must* provide a 'pkg_plugin_init_<plugin>' function, which is
+	 * called upon plugin loading for registering a hook in the library.
+	 *
+	 * The plugin's init function prototype should be in the following form:
+	 *
+	 * int pkg_plugins_init_<plugin> (void);
+	 *
+	 * No arguments are passed to the plugin's init function.
+	 *
+	 * Upon successful initialization of the plugin EPKG_OK (0) is returned and
+	 * upon failure EPKG_FATAL ( > 0 ) is returned to the caller.
+	 */
+	init_name = sbuf_new_auto();
+	sbuf_printf(init_name, "pkg_plugins_init_%s", pluginname);
+
+	if ((init_func = dlsym(p->lh, sbuf_get(init_name))) == NULL) {
+		pkg_emit_error("Cannot load init function for plugin '%s': %s",
+			       pluginname, dlerror());
+		sbuf_delete(init_name);
+		dlclose(p->lh);
+		return (EPKG_FATAL);
+	}
+
+	sbuf_delete(init_name);
+
+	/*
+	 * Initialize the plugin and let it register itself a hook in the library
+	 */
+	if ((rc = (*init_func)()) != EPKG_OK) {
+		pkg_emit_error("Plugin '%s' failed to initialize, return code was %d",
+			       pluginname, rc);
+		dlclose(p->lh);
+	}
+
+	return (rc);
+}
+
+static int
+pkg_plugins_unload(struct pkg_plugins *p)
+{
+	struct sbuf *shutdown_name = NULL;
+	int (*shutdown_func)(void);
+	int rc = EPKG_OK;
+	
+	const char *pluginfile = NULL;
+	const char *pluginname = NULL;
+	
+	assert(p != NULL);
+	assert(p->lh != NULL);
+
+	pluginfile = pkg_plugins_get(p, PKG_PLUGINS_PLUGINFILE);
+	pluginname = pkg_plugins_get(p, PKG_PLUGINS_NAME);
+
+	/*
+	 * Plugins may optionally provide a shutdown function.
+	 *
+	 * When a plugin provides a shutdown function, it is called
+	 * before a plugin is being unloaded. This is useful in cases
+	 * where a plugin needs to perform a cleanup for example, or
+	 * perform any post-actions like reporting for example.
+	 *
+	 * The plugin's shutdown function prototype should be in the following form:
+	 *
+	 * int pkg_plugins_shutdown_<plugin> (void);
+	 *
+	 * Upon successful shutdown of the plugin EPKG_OK (0) is returned and
+	 * upon failure EPKG_FATAL ( > 0 ) is returned to the caller.
+	 */
+	
+	shutdown_name = sbuf_new_auto();
+	sbuf_printf(shutdown_name, "pkg_plugins_shutdown_%s", pluginname);
+
+	/* Execute the shutdown function provided by the plugin */
+	if ((shutdown_func = dlsym(p->lh, sbuf_get(shutdown_name))) != NULL) {
+		if ((rc = (*shutdown_func)()) != EPKG_OK) {
+			pkg_emit_error("Plugin '%s' failed to shutdown properly, return code was %d",
+				       pluginname, rc);
+		}
+	}
+
+	sbuf_delete(shutdown_name);
+	dlclose(p->lh);
+
+	return (rc);
+}
+
 const char *
 pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key)
 {
 	assert(p != NULL);
 
 	return (p->fields[key].val);
+}
+
+bool
+pkg_plugins_is_enabled(struct pkg_plugins *p)
+{
+	const char *enabled = NULL;
+	bool is_enabled = false;
+
+	assert(p != NULL);
+
+	enabled = pkg_plugins_get(p, PKG_PLUGINS_ENABLED);
+
+	if ((strcasecmp(enabled, "on") == 0) ||
+	    (strcasecmp(enabled, "yes") == 0) ||
+	    (strcasecmp(enabled, "true") == 0))
+		is_enabled = true;
+
+	return (is_enabled);
 }
 
 int
@@ -204,7 +348,19 @@ pkg_plugins_list(struct pkg_plugins **plugin)
 int
 pkg_plugins_init(void)
 {
+	struct pkg_plugins *p = NULL;
+
+	/*
+	 * Discover available plugins
+	 */
 	pkg_plugins_discover();
+
+	/*
+	 * Load any enabled plugins
+	 */
+	while (pkg_plugins_list(&p) != EPKG_END)
+		if (pkg_plugins_is_enabled(p))
+			pkg_plugins_load(p);
 
 	return (EPKG_OK);
 }
@@ -212,6 +368,18 @@ pkg_plugins_init(void)
 int
 pkg_plugins_shutdown(void)
 {
+	struct pkg_plugins *p = NULL;
+
+	/*
+	 * Unload any previously loaded plugins
+	 */
+	while (pkg_plugins_list(&p) != EPKG_END)
+		if (pkg_plugins_is_enabled(p))
+			pkg_plugins_unload(p);
+
+	/*
+	 * Deallocate memory used by the plugins
+	 */
 	pkg_plugins_free();
 
 	return (EPKG_OK);
