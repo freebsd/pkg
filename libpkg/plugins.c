@@ -33,6 +33,7 @@
 #include <libutil.h>
 #include <stdbool.h>
 #include <string.h>
+#include <assert.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -110,6 +111,8 @@ pkg_plugins_parse_conf(const char *file)
 	int fd = -1;
 	bool wrong_conf = false;
 
+	assert(file != NULL);
+
 	if ((fd = open(file, O_RDONLY)) < 0) {
 		pkg_emit_error("open(%s)", file);
 		return (EPKG_FATAL);
@@ -176,6 +179,8 @@ pkg_plugins_free(void)
 int
 pkg_plugins_list(struct pkg_plugins **plugin)
 {
+	assert(&ph != NULL);
+	
 	if ((*plugin) == NULL)
 		(*plugin) = STAILQ_FIRST(&ph);
 	else
