@@ -334,6 +334,35 @@ pkg_plugins_is_enabled(struct pkg_plugins *p)
 	return (is_enabled);
 }
 
+bool
+pkg_plugins_is_loaded(struct pkg_plugins *p)
+{
+	bool is_loaded = false;
+
+	assert(p != NULL);
+
+	is_loaded = ((pkg_plugins_is_enabled(p)) && (p->lh != NULL));
+	
+	return (is_loaded);
+}
+
+int
+pkg_plugins_display_loaded(void)
+{
+	struct pkg_plugins *p = NULL;
+
+	if (!STAILQ_EMPTY(&ph))
+		return (EPKG_OK);
+
+	printf("Plugins loaded: ");
+	
+	while (pkg_plugins_list(&p) != EPKG_END)
+		if (pkg_plugins_is_loaded(p))
+			printf("%s ", pkg_plugins_get(p, PKG_PLUGINS_NAME));
+
+	return (EPKG_OK);
+}
+
 int
 pkg_plugins_list(struct pkg_plugins **plugin)
 {

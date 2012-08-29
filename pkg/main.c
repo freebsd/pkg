@@ -245,6 +245,8 @@ main(int argc, char **argv)
 	if (pkg_plugins_init() != EPKG_OK)
 		errx(EX_SOFTWARE, "Plugins cannot be loaded");
 
+	pkg_plugins_display_loaded();
+
 	if (version > 1) {
 		printf("version: "PKGVERSION""GITHASH"\n");
 		pkg_config_string(PKG_CONFIG_ABI, &buf);
