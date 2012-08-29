@@ -324,7 +324,9 @@ pkg_jobs_apply(struct pkg_jobs *j)
 
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
+		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_PRE_INSTALL);
 		rc = pkg_jobs_install(j);
+		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_POST_INSTALL);
 		break;
 	case PKG_JOBS_DEINSTALL:
 		rc = pkg_jobs_deinstall(j);
