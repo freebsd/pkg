@@ -100,7 +100,6 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		    "aborting update.\n", tmp);
 		return (EPKG_FATAL);
 	}
-	close(fd);
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
 		pkg_emit_error("Cant get dbdir config entry");
@@ -121,12 +120,10 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		}
 	}
 
-	if ((rc = pkg_fetch_file(url, tmp, t)) != EPKG_OK) {
-		/*
-		 * No need to unlink(tmp) here as it is already
-		 * done in pkg_fetch_file() in case fetch failed.
-		 */
-		return (rc);
+	rc = pkg_fetch_file_to_fd(url, fd, t);
+	close(fd);
+	if (rc != EPKG_OK) {
+		goto cleanup;
 	}
 
 	a = archive_read_new();
