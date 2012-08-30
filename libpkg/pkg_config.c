@@ -179,6 +179,12 @@ static struct config_entry c[] = {
 		"/usr/local/etc/pkg/plugins",
 		{ NULL }
 	},
+	[PKG_CONFIG_ENABLE_PLUGINS] = {
+		BOOL,
+		"PKG_ENABLE_PLUGINS",
+		"NO",
+		{ NULL }
+	},
 };
 
 static bool parsed = false;

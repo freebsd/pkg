@@ -174,7 +174,7 @@ main(int argc, char **argv)
 	int version = 0;
 	int ret = EX_OK;
 	const char *buf = NULL;
-	bool b;
+	bool b, plugins_enabled;
 	struct pkg_config_kv *kv = NULL;
 	
 	/* Set stdout unbuffered */
@@ -243,8 +243,12 @@ main(int argc, char **argv)
 	if (pkg_init(NULL) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
-	if (pkg_plugins_init() != EPKG_OK)
-		errx(EX_SOFTWARE, "Plugins cannot be loaded");
+	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
+
+	if (plugins_enabled) {
+		if (pkg_plugins_init() != EPKG_OK)
+			errx(EX_SOFTWARE, "Plugins cannot be loaded");
+	}
 
 	pkg_plugins_display_loaded();
 
