@@ -296,6 +296,10 @@ typedef enum _pkg_plugins_key {
 typedef enum _pkg_plugins_hook_t {
 	PKG_PLUGINS_HOOK_PRE_INSTALL = 1,
 	PKG_PLUGINS_HOOK_POST_INSTALL,
+	PKG_PLUGINS_HOOK_PRE_DEINSTALL,
+	PKG_PLUGINS_HOOK_POST_DEINSTALL,
+	PKG_PLUGINS_HOOK_PRE_FETCH,
+	PKG_PLUGINS_HOOK_POST_FETCH,
 } pkg_plugins_hook_t;
 
 /**

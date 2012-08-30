@@ -329,10 +329,14 @@ pkg_jobs_apply(struct pkg_jobs *j)
 		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_POST_INSTALL, j);
 		break;
 	case PKG_JOBS_DEINSTALL:
+		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_PRE_DEINSTALL, j);
 		rc = pkg_jobs_deinstall(j);
+		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_POST_DEINSTALL, j);
 		break;
 	case PKG_JOBS_FETCH:
+		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_PRE_FETCH, j);
 		rc = pkg_jobs_fetch(j);
+		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_POST_FETCH, j);
 		break;
 	default:
 		rc = EPKG_FATAL;
