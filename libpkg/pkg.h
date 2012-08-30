@@ -916,9 +916,9 @@ const char *pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key);
  * This is where plugins hook into the library using pkg_plugins_hook()
  * @todo: Document
  */
-typedef int(*pkg_plugins_callback)(void *data);
+typedef int(*pkg_plugins_callback)(void *data, struct pkgdb *db);
 int pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_callback callback);
-int pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data);
+int pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data, struct pkgdb *db);
 
 /**
  * Get the value of a configuration key

@@ -78,7 +78,7 @@ static int pkg_plugins_load(struct pkg_plugins *p);
 static int pkg_plugins_unload(struct pkg_plugins *p);
 static int pkg_plugins_hook_free(struct pkg_plugins *p);
 static int pkg_plugins_hook_register(struct pkg_plugins *p, pkg_plugins_hook_t hook, pkg_plugins_callback callback);
-static int pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data);
+static int pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data, struct pkgdb *db);
 static int pkg_plugins_hook_list(struct pkg_plugins *p, struct plugins_hook **h);
 
 static int
@@ -364,7 +364,7 @@ pkg_plugins_hook_register(struct pkg_plugins *p, pkg_plugins_hook_t hook, pkg_pl
 }
 
 static int
-pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data)
+pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data, struct pkgdb *db)
 {
 	struct plugins_hook *h = NULL;
 	
@@ -374,7 +374,7 @@ pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data
 		if (h->hook == hook) {
 			printf(">>> Triggering execution of plugin '%s'\n",
 			       pkg_plugins_get(p, PKG_PLUGINS_NAME));
-			h->callback(data);
+			h->callback(data, db);
 		}
 
 	return (EPKG_OK);
@@ -425,13 +425,13 @@ pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_ca
 }
 
 int
-pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data)
+pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data, struct pkgdb *db)
 {
 	struct pkg_plugins *p = NULL;
 
 	while (pkg_plugins_list(&p) != EPKG_END)
 		if (pkg_plugins_is_loaded(p))
-			pkg_plugins_hook_exec(p, hook, data);
+			pkg_plugins_hook_exec(p, hook, data, db);
 
 	return (EPKG_OK);
 }
@@ -488,7 +488,7 @@ pkg_plugins_display_loaded(void)
 		if (pkg_plugins_is_loaded(p))
 			printf("'%s' ", pkg_plugins_get(p, PKG_PLUGINS_NAME));
 
-	printf(" ]\nSuccessfully loaded %d plugin(s)\n", have_plugins_loaded);
+	printf("]\nSuccessfully loaded %d plugin(s)\n", have_plugins_loaded);
 	
 	return (EPKG_OK);
 }
