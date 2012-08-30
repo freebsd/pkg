@@ -71,6 +71,7 @@ static struct commands {
 	{ "help", "Displays help information", exec_help, usage_help},
 	{ "info", "Displays information about installed packages", exec_info, usage_info},
 	{ "install", "Installs packages from remote package repositories", exec_install, usage_install},
+	{ "plugins", "Manages plugins and displays information about plugins", exec_plugins, usage_plugins},
 	{ "query", "Queries information about installed packages", exec_query, usage_query},
 	{ "register", "Registers a package into the local database", exec_register, usage_register},
 	{ "remove", "Deletes packages from the database and the system", exec_delete, usage_delete},

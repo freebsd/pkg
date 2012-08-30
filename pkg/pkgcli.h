@@ -70,6 +70,10 @@ void usage_info(void);
 int exec_install(int, char **);
 void usage_install(void);
 
+/* pkg plugins */
+int exec_plugins(int, char **);
+void usage_plugins(void);
+
 /* pkg query */
 int exec_query(int, char **);
 void usage_query(void);

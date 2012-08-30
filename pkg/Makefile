@@ -11,6 +11,7 @@ SRCS=		add.c \
 		info.c \
 		install.c \
 		main.c \
+		plugins.c \
 		progressmeter.c \
 		query.c \
 		register.c \
