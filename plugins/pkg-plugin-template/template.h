@@ -28,8 +28,8 @@
 #define _PKG_PLUGINS_TEMPLATE_H
 
 /* callback functions */
-int my_callback1(void *data);
-int my_callback2(void *data);
+int my_callback1(void *data, struct pkgdb *db);
+int my_callback2(void *data, struct pkgdb *db);
 
 /* plugin init and shutdown functions */
 int pkg_plugins_init_template(void);

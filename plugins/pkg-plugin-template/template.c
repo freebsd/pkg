@@ -132,7 +132,7 @@ pkg_plugins_shutdown_template(void)
  * called is (struct pkg_jobs *), so the plugin callback must cast it explicitely.
  */
 int
-my_callback1(void *data)
+my_callback1(void *data, struct pkgdb *db)
 {
 	printf("Hey, I was just called by the library, lets see what we've got here..\n");
 
@@ -148,7 +148,7 @@ my_callback1(void *data)
  * Second callback function
  */
 int
-my_callback2(void *data)
+my_callback2(void *data, struct pkgdb *db)
 {
 	printf("Hey, I was just called again, lets see what its all about this time..\n");
 

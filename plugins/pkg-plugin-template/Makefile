@@ -2,7 +2,7 @@
 
 LIB=		pkg-plugin-template
 INCS=		template.h
-WARNS=		6
+#WARNS=		6
 PREFIX?=	/usr/local
 LIBDIR=		${PREFIX}/lib
 INCLUDEDIR=	${PREFIX}/include
