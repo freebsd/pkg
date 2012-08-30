@@ -371,7 +371,7 @@ pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data
 	assert(p != NULL);
 
 	while (pkg_plugins_hook_list(p, &h) != EPKG_END)
-		if ((h->hook) & hook)
+		if (h->hook == hook)
 			h->callback(data);
 
 	return (EPKG_OK);
