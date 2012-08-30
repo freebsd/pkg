@@ -33,6 +33,8 @@
 #include <paths.h>
 #include <spawn.h>
 #include <stdlib.h>
+#include <limits.h>
+#include <string.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -49,12 +51,14 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	pid_t pid;
 	const char *name, *prefix, *version, *script_cmd_p;
 	const char *argv[4];
+	char **ep;
 	int ret = EPKG_OK;
 	int stdin_pipe[2] = {-1, -1};
 	posix_spawn_file_actions_t action;
 	bool use_pipe = 0;
 	ssize_t bytes_written;
 	size_t script_cmd_len;
+	long argmax;
 
 	struct {
 		const char * const arg;
@@ -99,7 +103,18 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			sbuf_cat(script_cmd, pkg_script_get(pkg, j));
 			sbuf_finish(script_cmd);
 
-			if (sbuf_len(script_cmd) > ARG_MAX) {
+			/* Determine the maximum argument length for the given
+			   script to determine if /bin/sh -c can be used, or
+			   if a pipe is required to /bin/sh -s. Similar to
+			   find(1) determination */
+			if ((argmax = sysconf(_SC_ARG_MAX)) == -1)
+				argmax = _POSIX_ARG_MAX;
+			argmax -= 1024;
+			for (ep = environ; *ep != NULL; ep++)
+				argmax -= strlen(*ep) + 1 + sizeof(*ep);
+			argmax -= 1 + sizeof(*ep);
+
+			if (sbuf_len(script_cmd) > argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;
 					goto cleanup;
