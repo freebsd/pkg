@@ -482,13 +482,13 @@ pkg_plugins_display_loaded(void)
 	if (STAILQ_EMPTY(&ph) || have_plugins_loaded == 0)
 		return (EPKG_OK);
 
-	printf("Plugins loaded: ");
+	printf("Plugin(s) loaded: [ ");
 	
 	while (pkg_plugins_list(&p) != EPKG_END)
 		if (pkg_plugins_is_loaded(p))
-			printf("%s ", pkg_plugins_get(p, PKG_PLUGINS_NAME));
+			printf("'%s' ", pkg_plugins_get(p, PKG_PLUGINS_NAME));
 
-	printf("\nSuccessfully loaded %d plugins\n", have_plugins_loaded);
+	printf(" ]\nSuccessfully loaded %d plugin(s)\n", have_plugins_loaded);
 	
 	return (EPKG_OK);
 }
