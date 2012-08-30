@@ -174,7 +174,7 @@ main(int argc, char **argv)
 	int version = 0;
 	int ret = EX_OK;
 	const char *buf = NULL;
-	bool b, plugins_enabled;
+	bool b, plugins_enabled = false, plugins_summary = false;
 	struct pkg_config_kv *kv = NULL;
 	
 	/* Set stdout unbuffered */
@@ -248,9 +248,11 @@ main(int argc, char **argv)
 	if (plugins_enabled) {
 		if (pkg_plugins_init() != EPKG_OK)
 			errx(EX_SOFTWARE, "Plugins cannot be loaded");
-	}
 
-	pkg_plugins_display_loaded();
+		pkg_config_bool(PKG_CONFIG_PLUGINS_SUMMARY, &plugins_summary);
+		if (plugins_summary)
+			pkg_plugins_display_loaded();
+	}
 
 	if (version > 1) {
 		printf("version: "PKGVERSION""GITHASH"\n");

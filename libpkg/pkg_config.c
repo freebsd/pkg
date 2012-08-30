@@ -185,6 +185,12 @@ static struct config_entry c[] = {
 		"NO",
 		{ NULL }
 	},
+	[PKG_CONFIG_PLUGINS_SUMMARY] = {
+		BOOL,
+		"PKG_PLUGINS_SUMMARY",
+		"NO",
+		{ NULL }
+	},
 };
 
 static bool parsed = false;
