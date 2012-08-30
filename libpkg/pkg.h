@@ -912,7 +912,7 @@ const char *pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key);
  */
 typedef int(*pkg_plugins_callback)(void *data);
 int pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_callback callback);
-int pkg_plugins_hook_run(pkg_plugins_hook_t hook);
+int pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data);
 
 /**
  * Get the value of a configuration key

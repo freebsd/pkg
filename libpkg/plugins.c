@@ -345,14 +345,14 @@ pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_ca
 }
 
 int
-pkg_plugins_hook_run(pkg_plugins_hook_t hook)
+pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data)
 {
 	struct pkg_plugins *p = NULL;
 
 	while (pkg_plugins_list(&p) != EPKG_END) {
 		if (pkg_plugins_is_loaded(p)) {
 			if ((p->hook) & hook)
-				p->callback(NULL);
+				p->callback(data);
 		}
 	}
 
