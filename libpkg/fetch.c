@@ -36,12 +36,34 @@
 
 #include "pkg.h"
 #include "private/event.h"
+#include "private/pkg.h"
 #include "private/utils.h"
 
 int
 pkg_fetch_file(const char *url, const char *dest, time_t t)
 {
 	int fd = -1;
+	int retcode = EPKG_FATAL;
+
+	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0600)) == -1) {
+		pkg_emit_errno("open", dest);
+		return(EPKG_FATAL);
+	}
+
+	retcode = pkg_fetch_file_to_fd(url, fd, t);
+
+	close(fd);
+
+	/* Remove local file if fetch failed */
+	if (retcode != EPKG_OK)
+		unlink(dest);
+
+	return (retcode);
+}
+
+int
+pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
+{
 	FILE *remote = NULL;
 	struct url *u;
 	struct url_stat st;
@@ -66,11 +88,6 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 		max_retry = 3;
 
 	retry = max_retry;
-
-	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC, 0600)) == -1) {
-		pkg_emit_errno("open", dest);
-		return(EPKG_FATAL);
-	}
 
 	u = fetchParseURL(url);
 	while (remote == NULL) {
@@ -119,8 +136,8 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 		if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
 			break;
 
-		if (write(fd, buf, r) != r) {
-			pkg_emit_errno("write", dest);
+		if (write(dest, buf, r) != r) {
+			pkg_emit_errno("write", "");
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -142,17 +159,10 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 
 	cleanup:
 
-	if (fd > 0)
-		close(fd);
-
 	if (remote != NULL)
 		fclose(remote);
 
 	fetchFreeURL(u);
-
-	/* Remove local file if fetch failed */
-	if (retcode != EPKG_OK)
-		unlink(dest);
 
 	return (retcode);
 }
