@@ -78,6 +78,7 @@ pkg_plugins_discover(void)
 	FTS  	*fts = NULL;
 	FTSENT	*ftsent = NULL;
 	char	*paths[2];
+	char    *ext = NULL;
 	const char *plugins_dir = NULL;
 
 	if (pkg_config_string(PKG_CONFIG_PLUGINS_DIR, &plugins_dir) != EPKG_OK) {
@@ -100,7 +101,8 @@ pkg_plugins_discover(void)
 			continue;
 
 		/* parse only .conf files */
-		if (strstr(ftsent->fts_name, ".conf") != NULL)
+		ext = strrchr(ftsent->fts_name, '.');
+		if ((strcmp(ext, ".conf")) == 0)
 			pkg_plugins_parse_conf(ftsent->fts_path);
 	}
 
