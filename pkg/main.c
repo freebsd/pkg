@@ -108,6 +108,9 @@ usage(void)
 	for (unsigned int i = 0; i < cmd_len; i++)
 		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
+	if (pkg_init(NULL) != EPKG_OK)
+		errx(EX_SOFTWARE, "Cannot parse configuration file!");
+	
 	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
 
 	if (plugins_enabled) {
@@ -332,9 +335,15 @@ main(int argc, char **argv)
 	}
 
 	if (command == NULL) {
+		/* Check if a plugin provides the requested command */
+		if (plugins_enabled)
+			ret = pkg_plugins_cmd_run(argv[0], argc, argv);
+		
 		pkg_shutdown();
 		pkg_plugins_shutdown();
-		usage();
+		if (ret != EPKG_OK)
+			usage();
+		
 		return (ret); /* Not reached but makes scanbuild happy */
 	}
 

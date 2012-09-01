@@ -473,6 +473,7 @@ pkg_plugins_cmd_run(const char *cmd, int argc, char **argv)
 
 	while (pkg_plugins_list(&p) != EPKG_END)
 		if ((pkg_plugins_is_loaded(p)) &&
+		    (pkg_plugins_provides_cmd(p)) &&
 		    (strcmp(cmd, pkg_plugins_get(p, PKG_PLUGINS_NAME)) == 0)) {
 			cmd_found = true;
 			p->exec_cmd(argc, argv);
