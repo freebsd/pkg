@@ -927,6 +927,7 @@ int pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data, struct pkgdb *db);
 typedef int(*pkg_plugins_cmd_callback)(int argc, char **argv);
 int pkg_plugins_register_cmd(const char *pluginname, pkg_plugins_cmd_callback callback);
 int pkg_plugins_cmd_run(const char *cmd, int argc, char **argv);
+bool pkg_plugins_provides_cmd(struct pkg_plugins *p);
 			     
 /**
  * Get the value of a configuration key

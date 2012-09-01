@@ -493,6 +493,14 @@ pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key)
 }
 
 bool
+pkg_plugins_provides_cmd(struct pkg_plugins *p)
+{
+	assert(p != NULL);
+
+	return (p->exec_cmd == NULL);
+}
+
+bool
 pkg_plugins_is_enabled(struct pkg_plugins *p)
 {
 	const char *enabled = NULL;
