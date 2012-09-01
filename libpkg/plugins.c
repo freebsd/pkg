@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -217,6 +218,7 @@ pkg_plugins_free(void)
 static int
 pkg_plugins_load(struct pkg_plugins *p)
 {
+	struct stat st;
 	struct sbuf *init_name = NULL;
 	int (*init_func)(void);
 	int rc = EPKG_OK;
@@ -232,6 +234,23 @@ pkg_plugins_load(struct pkg_plugins *p)
 	if ((eaccess(pluginfile, F_OK)) != 0) {
 		pkg_emit_error("Plugin file '%s' does not exists, ignoring plugin '%s'",
 			       pluginfile, pluginname);
+		return (EPKG_FATAL);
+	}
+
+	/*
+	 * Check file permission of he shared object. To limit security exposure,
+	 * it must be owned by root and in 0444 (readonly) mode.
+	 */
+	if (stat(pluginfile, &st) != 0) {
+		pkg_emit_errno("stat", pluginfile);
+		return (EPKG_FATAL);
+	}
+	if (st.st_uid != 0) {
+		pkg_emit_error("Plugin file %s must be owned by root", pluginfile);
+		return (EPKG_FATAL);
+	}
+	if ((st.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)) != 0444) {
+		pkg_emit_error("Plugin file %s must be in mode 444", pluginfile);
 		return (EPKG_FATAL);
 	}
 
