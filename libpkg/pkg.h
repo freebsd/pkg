@@ -921,6 +921,14 @@ int pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugin
 int pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data, struct pkgdb *db);
 
 /**
+ * These functions are used by plugins for registering new commands provided by plugins
+ * @todo: Document
+ */
+typedef int(*pkg_plugins_cmd_callback)(int argc, char **argv);
+int pkg_plugins_register_cmd(const char *pluginname, pkg_plugins_cmd_callback callback);
+int pkg_plugins_cmd_run(const char *cmd, int argc, char **argv);
+			     
+/**
  * Get the value of a configuration key
  */
 int pkg_config_string(pkg_config_key key, const char **value);

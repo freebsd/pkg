@@ -63,6 +63,7 @@ struct plugins_hook {
 struct pkg_plugins {
 	struct _pkg_plugins_kv fields[N(pkg_plugins_kv)];	/* plugin configuration fields */
 	void *lh;						/* library handle */
+	pkg_plugins_cmd_callback exec_cmd;			/* exec callback for plugins providing commands */
 	STAILQ_HEAD(phooks, plugins_hook) phooks;		/* plugin hooks */
 	STAILQ_ENTRY(pkg_plugins) next;
 };
@@ -425,6 +426,34 @@ pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_ca
 }
 
 int
+pkg_plugins_register_cmd(const char *pluginname, pkg_plugins_cmd_callback callback)
+{
+	struct pkg_plugins *p = NULL;
+	const char *pname = NULL;
+	bool plugin_found = false;
+	
+	assert(pluginname != NULL);
+	assert(callback != NULL);
+
+	/* locate the plugin */
+	while (pkg_plugins_list(&p) != EPKG_END) {
+		pname = pkg_plugins_get(p, PKG_PLUGINS_NAME);
+		if ((strcmp(pname, pluginname)) == 0) {
+			p->exec_cmd = callback;
+			plugin_found = true;
+		}
+	}
+
+	if (plugin_found == false) {
+		pkg_emit_error("Plugin name '%s' was not found in the registry, cannot hook",
+			       pluginname);
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+int
 pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data, struct pkgdb *db)
 {
 	struct pkg_plugins *p = NULL;
@@ -434,6 +463,25 @@ pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data, struct pkgdb *db)
 			pkg_plugins_hook_exec(p, hook, data, db);
 
 	return (EPKG_OK);
+}
+
+int
+pkg_plugins_cmd_run(const char *cmd, int argc, char **argv)
+{
+	struct pkg_plugins *p = NULL;
+	bool cmd_found = false;
+
+	while (pkg_plugins_list(&p) != EPKG_END)
+		if ((pkg_plugins_is_loaded(p)) &&
+		    (strcmp(cmd, pkg_plugins_get(p, PKG_PLUGINS_NAME)) == 0)) {
+			cmd_found = true;
+			p->exec_cmd(argc, argv);
+		}
+
+	if (cmd_found == false)
+		return (EPKG_FATAL);
+	else
+		return (EPKG_OK);
 }
 
 const char *
