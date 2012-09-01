@@ -94,6 +94,9 @@ const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
 static void
 usage(void)
 {
+	struct pkg_plugins *p = NULL;
+	bool plugins_enabled = false;
+	
 	fprintf(stderr, "usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
 	fprintf(stderr, "Global options supported:\n");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
@@ -105,6 +108,18 @@ usage(void)
 	for (unsigned int i = 0; i < cmd_len; i++)
 		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
+	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
+
+	if (plugins_enabled) {
+		printf("\nCommands provided by plugins:\n");
+		
+		while (pkg_plugins_list(&p) != EPKG_END)
+			if (pkg_plugins_provides_cmd(p))
+				printf("\t%-15s%s\n",
+				       pkg_plugins_get(p, PKG_PLUGINS_NAME),
+				       pkg_plugins_get(p, PKG_PLUGINS_DESC));
+	}
+	
 	fprintf(stderr, "\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
 
