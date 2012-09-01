@@ -636,10 +636,10 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 	char		 remotepath[MAXPATHLEN + 1];
 	struct pkg_config_kv *repokv = NULL;
 	const char	*multirepo_warning =
-	    "\t/!\\		   WARNING WARNING WARNING		/!\\\n"
-	    "\t/!\\	     WORKING ON MULTIPLE REPOSITORIES		/!\\\n"
-	    "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL	/!\\\n"
-	    "\t/!\\		     YOU HAVE BEEN WARNED		/!\\\n\n";
+	    "\t/!\\             WARNING WARNING WARNING             /!\\\n"
+	    "\t/!\\        WORKING ON MULTIPLE REPOSITORIES         /!\\\n"
+	    "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL  /!\\\n"
+	    "\t/!\\              YOU HAVE BEEN WARNED               /!\\\n\n";
 
 	fprintf(stderr, "%s", multirepo_warning);
 
