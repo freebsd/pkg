@@ -33,6 +33,12 @@
 
 #include "pkg.h"
 
+#define PKG_PRINTF_ALTERNATE_FORM	(1U << 0)
+#define PKG_PRINTF_LEFT_ALIGN		(1U << 1)
+#define PKG_PRINTF_EXPLICIT_PLUS	(1U << 2)
+#define PKG_PRINTF_SPACE_FOR_PLUS	(1U << 3)
+#define PKG_PRINTF_ZERO_PAD		(1U << 4)
+
 /**
  * print to stdout data from pkg as indicated by the format code fmt
  * @param pkg The struct pkg supplying the data
@@ -406,12 +412,8 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg,
 {
 	const char	*fstart;
 	int		width = 0;
-	bool		alternate_form = false;
-	bool		left_align     = false;
-	bool		explicit_plus  = false;
-	bool		space_for_plus = false;
-	bool		zero_pad       = false;
-	bool		done           = false;
+	unsigned	flags = 0;
+	bool		done = false;
 
 	fstart = f;
 
@@ -429,19 +431,19 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg,
 	while (!done) {
 		switch (*f) {
 		case '#':
-			alternate_form = true;
+			flags |= PKG_PRINTF_ALTERNATE_FORM;
 			break;
 		case '-':
-			left_align = true;
+			flags |= PKG_PRINTF_LEFT_ALIGN;
 			break;
 		case '+':
-			explicit_plus = true;
+			flags |= PKG_PRINTF_EXPLICIT_PLUS;
 			break;
 		case ' ':
-			space_for_plus = true;
+			flags |= PKG_PRINTF_SPACE_FOR_PLUS;
 			break;
 		case '0':
-			zero_pad = true;
+			flags |= PKG_PRINF_ZERO_PAD;
 			break;
 		default:
 			done = true;
@@ -453,7 +455,8 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg,
 
 	/* Field width, if any -- some number of decimal digits.
 	   Note: field width can't be set to zero, as that indicates
-	   zero padding. */
+	   zero padding, so use width == 0 to flag "no explicit width
+	   setting requested" */
 
 	done = false;
 	while (!done) {
