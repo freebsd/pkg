@@ -114,6 +114,9 @@ usage(void)
 	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
 
 	if (plugins_enabled) {
+		if (pkg_plugins_init() != EPKG_OK)
+			errx(EX_SOFTWARE, "Plugins cannot be loaded");
+		
 		printf("\nCommands provided by plugins:\n");
 		
 		while (pkg_plugins_list(&p) != EPKG_END)

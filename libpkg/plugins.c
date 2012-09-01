@@ -498,7 +498,7 @@ pkg_plugins_provides_cmd(struct pkg_plugins *p)
 {
 	assert(p != NULL);
 
-	return (p->exec_cmd == NULL);
+	return ((p->exec_cmd == NULL) ? false : true);
 }
 
 bool
