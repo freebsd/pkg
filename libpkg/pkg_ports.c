@@ -163,6 +163,10 @@ meta_dirrm(struct plist *p, char *line, bool try)
 		return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
 		    p->perm, try, true));
 
+	/* If just trying, don't emit errors */
+	if (try)
+		return (EPKG_OK);
+
 	pkg_emit_errno("lstat", path);
 	if (p->stage != NULL)
 		return (EPKG_FATAL);
