@@ -8,7 +8,7 @@ $FreeBSD$
  
  version () {
 -	echo '' ; echo "===>>> Version 3.13.13"
-+	echo '' ; echo "===>>> Version 3.13.13 (pkgng patch 1.4)"
++	echo '' ; echo "===>>> Version 3.13.13 (pkgng patch 1.5)"
  	#svn='$FreeBSD: user/dougb/portmaster/portmaster 238754 2012-07-24 20:15:41Z dougb $'
  }
  
@@ -1000,20 +1000,22 @@ $FreeBSD$
  		pm_sv "Running pkg_delete for $ro_upg_port"
  		pm_pkg_delete_s -f $ro_upg_port
  	fi
-@@ -3760,6 +4030,8 @@
+@@ -3760,6 +4030,10 @@
  			unset preserve_port files
  		esac
  
-+		# Orphan state of $ro_upg_port has precedence
-+		: ${np_orphan:=`pkg query "%a" $upg_port`}
++		# If $ro_upg_port was non-automatic, keep its state
++		if [ "${np_orphan:-1}" -eq 1 ]; then
++			np_orphan=`pkg query "%a" $upg_port`
++		fi
  		pm_sv "Running pkg_delete for $upg_port"
  		pm_pkg_delete_s -f $upg_port
  	fi
-@@ -3806,6 +4078,18 @@
+@@ -3806,6 +4080,18 @@
  		unset port_log_args
  	fi
  
-+	if [ -z "$UPDATE_ALL" -a -z "$REPLACE_ORIGIN" -a -z "$PM_URB" -a "${np_orphan:-1}" -eq 1 ]; then
++	if [ -z "$np_orphan" -a -z "$UPDATE_ALL" -a -z "$REPLACE_ORIGIN" -a -z "$PM_URB" ]; then
 +		if [ -n "$PM_MULTI_PORTS" ]; then
 +			case "$PM_MULTI_PORTS" in
 +			*:${upg_port:-NONE}:*)	np_orphan=0 ;;
@@ -1028,7 +1030,7 @@ $FreeBSD$
  	# Defining NO_DEPENDS ensures that we will control the installation
  	# of the depends, not bsd.port.mk.
  	eval pm_make_s -DNO_DEPENDS install $port_log_args || install_failed $new_port
-@@ -3823,29 +4107,31 @@
+@@ -3823,29 +4109,31 @@
  	fi
  fi
  
@@ -1083,7 +1085,7 @@ $FreeBSD$
  if [ -n "$preserve_dir" ]; then
  	rmdir $preserve_dir 2>/dev/null
  	unset preserve_dir preserve_port_files
-@@ -3861,14 +4147,19 @@
+@@ -3861,14 +4149,19 @@
  temp=`find $LOCALBASE_COMPAT -type d -empty 2>/dev/null`
  if [ -z "$temp" ] && [ -d "$LOCALBASE_COMPAT" ]; then
  	unset files
@@ -1105,7 +1107,7 @@ $FreeBSD$
  		$PM_SU_CMD /etc/rc.d/ldconfig start > /dev/null
  	fi
  	unset temp file files
-@@ -3920,11 +4211,13 @@
+@@ -3920,11 +4213,13 @@
  	done
  
  	pm_sv "Installing $dist_list\n"
@@ -1120,7 +1122,7 @@ $FreeBSD$
  	if grep -q DEPORIGIN $pdb/$new_port/+CONTENTS; then
  		echo -e "===>>> Updating dependencies for $new_port to match installed versions\n"
  		update_contents $pdb/$new_port/+CONTENTS ; pm_v
-@@ -3946,7 +4239,7 @@
+@@ -3946,7 +4241,7 @@
  if [ -n "$MAKE_PACKAGE" ]; then
  	if [ -z "$use_package" ]; then
  		echo "===>>> Creating a package for new version $new_port"
@@ -1129,7 +1131,7 @@ $FreeBSD$
  		echo "	===>>> Package saved to $PACKAGES/All" ; echo ''
  	else
  		pm_pkg_create $PACKAGES $new_port
-@@ -3959,29 +4252,37 @@
+@@ -3959,29 +4254,37 @@
  	pm_v
  fi
  
@@ -1188,7 +1190,7 @@ $FreeBSD$
  if [ -n "$upg_port" ]; then
  	if [ ! "$upg_port" = "$new_port" ]; then
  		ilist="Upgrade of $upg_port to $new_port"
-@@ -3997,13 +4298,15 @@
+@@ -3997,13 +4300,15 @@
  fi
  
  INSTALLED_LIST="${INSTALLED_LIST}\t${ilist}\n"
