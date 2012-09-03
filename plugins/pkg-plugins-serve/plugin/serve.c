@@ -24,6 +24,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -67,6 +70,7 @@ int
 plugin_serve_callback(int argc, char **argv)
 {
 	struct mg_context *ctx = NULL;
+	struct stat st;
 	const char *wwwroot = NULL;
 	const char *port = NULL;
         int ch;
@@ -92,7 +96,13 @@ plugin_serve_callback(int argc, char **argv)
 		port = "8080";
 
 	if (wwwroot == NULL) {
-		fprintf(stderr, "You need to specify a directory for serving");
+		fprintf(stderr, ">>> You need to specify a directory for serving");
+		return (EX_USAGE);
+	}
+
+	stat(wwwroot, &st);
+	if (S_ISDIR(st.st_mode) == 0) {
+		fprintf(stderr, ">>> '%s' is not a directory\n", wwwroot);
 		return (EX_USAGE);
 	}
 
