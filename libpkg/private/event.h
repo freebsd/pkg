@@ -46,5 +46,6 @@ void pkg_emit_noremotedb(const char *);
 void pkg_emit_nolocaldb(void);
 void pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum);
 void pkg_emit_newpkgversion(void);
+void pkg_emit_developer_mode(const char *fmt, ...);
 
 #endif

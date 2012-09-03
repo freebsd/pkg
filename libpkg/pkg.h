@@ -917,6 +917,7 @@ typedef enum {
 	PKG_EVENT_NOREMOTEDB,
 	PKG_EVENT_NOLOCALDB,
 	PKG_EVENT_FILE_MISMATCH,
+	PKG_EVENT_DEVELOPER_MODE,
 } pkg_event_t;
 
 struct pkg_event {

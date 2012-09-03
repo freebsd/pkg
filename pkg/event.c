@@ -59,6 +59,9 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_ERROR:
 		warnx("%s", ev->e_pkg_error.msg);
 		break;
+	case PKG_EVENT_DEVELOPER_MODE:
+		warnx("DEVELOPER_MODE: %s", ev->e_pkg_error.msg);
+		break;
 	case PKG_EVENT_FETCHING:
 		if (quiet || !isatty(fileno(stdin)))
 			break;
