@@ -264,6 +264,11 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	pkg_get(pkg, PKG_WWW, &www);
 	if (www == NULL) {
 		pkg_get(pkg, PKG_DESC, &buf);
+		if (buf == NULL) {
+			pkg_emit_error("No www or desc defined in manifest");
+			ret = EPKG_FATAL;
+			goto cleanup;
+		}
 		regcomp(&preg, "^WWW:[[:space:]]*(.*)$",
 		    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
 		if (regexec(&preg, buf, 2, pmatch, 0) == 0) {
