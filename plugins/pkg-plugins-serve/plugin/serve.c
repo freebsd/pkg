@@ -104,8 +104,18 @@ plugin_serve_callback(int argc, char **argv)
 	};
 
 	ctx = mg_start(NULL, NULL, options);
+
+	printf(">>> Server listening on port %s\n", port);
+	printf(">>> Serving directory %s\n", wwwroot);
+	printf(">>> In order to stop the server press ENTER ...");
+	
 	getchar(); /* serve until user pressed enter */
+
+	printf(">>> Shutting down server\n");
+	
 	mg_stop(ctx);
+
+	printf(">>> Done\n");
 
 	return (EPKG_OK);
 }
