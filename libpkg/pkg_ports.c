@@ -173,8 +173,10 @@ meta_dirrm(struct plist *p, char *line, bool try)
 	if (!try) {
 		if (p->stage != NULL)
 			return (EPKG_FATAL);
-		if (developer)
+		if (developer) {
+			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
 			return (EPKG_FATAL);
+		}
 	}
 	return (EPKG_OK);
 }
@@ -245,8 +247,10 @@ file(struct plist *p, char *line)
 	if (p->stage != NULL)
 		return (EPKG_FATAL);
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-	if (developer)
+	if (developer) {
+		pkg_emit_developer_mode("Plist error, missing file: %s", line);
 		return (EPKG_FATAL);
+	}
 	return (EPKG_OK);
 }
 

@@ -64,6 +64,22 @@ pkg_emit_error(const char *fmt, ...)
 }
 
 void
+pkg_emit_developer_mode(const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+
+	ev.type = PKG_EVENT_DEVELOPER_MODE;
+
+	va_start(ap, fmt);
+	vasprintf(&ev.e_pkg_error.msg, fmt, ap);
+	va_end(ap);
+
+	pkg_emit_event(&ev);
+	free(ev.e_pkg_error.msg);
+}
+
+void
 pkg_emit_errno(const char *func, const char *arg)
 {
 	struct pkg_event ev;
