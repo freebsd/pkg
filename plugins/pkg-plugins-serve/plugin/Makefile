@@ -12,7 +12,10 @@ SRCS=		serve.c
 
 CFLAGS+=	-std=c99 -fPIC -shared
 CFLAGS+=	-I${INCLUDEDIR} \
-		-I${.CURDIR}/mongoose
+		-I${.CURDIR}/../mongoose
+
+LDADD+=		-L${.OBJDIR}/../mongoose \
+		-lmongoose
 
 DEBUG_FLAGS+=  -g -O0
 
