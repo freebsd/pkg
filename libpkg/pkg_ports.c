@@ -163,16 +163,19 @@ meta_dirrm(struct plist *p, char *line, bool try)
 		return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
 		    p->perm, try, true));
 
-	/* If just trying, don't emit errors */
-	if (try)
-		return (EPKG_OK);
-
-	pkg_emit_errno("lstat", path);
-	if (p->stage != NULL)
-		return (EPKG_FATAL);
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-	if (developer)
-		return (EPKG_FATAL);
+
+	/* Only omit warning if not @dirrmtry, or always show in DEVELOPER_MODE */
+	if (!try || developer)
+		pkg_emit_errno("lstat", path);
+
+	/* Don't emit fatal if using @dirrmtry, regardless of DEVELOPER_MODE or staging */
+	if (!try) {
+		if (p->stage != NULL)
+			return (EPKG_FATAL);
+		if (developer)
+			return (EPKG_FATAL);
+	}
 	return (EPKG_OK);
 }
 
