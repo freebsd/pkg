@@ -126,6 +126,7 @@ static int
 pkg_plugins_parse_conf(const char *file)
 {
 	struct pkg_plugins *new = NULL;
+	struct pkg_plugins *plugin = NULL;
 	properties p = NULL;
 	unsigned int i = 0;
 	char *temp;
@@ -159,8 +160,16 @@ pkg_plugins_parse_conf(const char *file)
 	properties_free(p);
 	close(fd);
 
+	/* check for duplicate plugin names */
+	while (pkg_plugins_list(&plugin) != EPKG_END)
+		if (strcmp(pkg_plugins_get(new, PKG_PLUGINS_NAME),
+			   pkg_plugins_get(plugin, PKG_PLUGINS_NAME)) == 0) {
+			pkg_emit_error("Plugin '%s' is already registered", pkg_plugins_get(plugin, PKG_PLUGINS_NAME));
+			wrong_conf = true;
+		}
+	
 	if (wrong_conf == true) {
-		pkg_emit_error("required options were missing in '%s', plugin will not be loaded", file);
+		pkg_emit_error("Configuration errors found in '%s', plugin will not be loaded", file);
 		for (i = 0; i < N(pkg_plugins_kv); i++) {
 			if (new->fields[i].key != NULL)
 				free(new->fields[i].key);
