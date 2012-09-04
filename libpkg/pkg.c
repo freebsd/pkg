@@ -70,7 +70,6 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	}
 
 	(*pkg)->licenses = NULL;
-	STAILQ_INIT(&(*pkg)->categories);
 	STAILQ_INIT(&(*pkg)->deps);
 	STAILQ_INIT(&(*pkg)->rdeps);
 	(*pkg)->files = NULL;
@@ -454,7 +453,7 @@ pkg_categories(struct pkg *pkg, struct pkg_category **c)
 {
 	assert(pkg != NULL);
 
-	PKG_LIST_NEXT(&pkg->categories, *c);
+	HASH_NEXT(pkg->categories, (*c));
 }
 
 int
@@ -681,18 +680,17 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	while (pkg_categories(pkg, &c) == EPKG_OK) {
-		if (strcmp(name, pkg_category_name(c)) == 0) {
-			pkg_emit_error("duplicate category listing: %s, ignoring", name);
-			return (EPKG_OK);
-		}
+	HASH_FIND_STR(pkg->categories, name, c);
+	if (c != NULL) {
+		pkg_emit_error("duplicate category listing: %s, ignoring", name);
+		return (EPKG_OK);
 	}
 
 	pkg_category_new(&c);
 
 	sbuf_set(&c->name, name);
 
-	STAILQ_INSERT_TAIL(&pkg->categories, c, next);
+	HASH_ADD_KEYPTR(hh, pkg->categories, name, strlen(name), c);
 
 	return (EPKG_OK);
 }
@@ -884,7 +882,7 @@ pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 	case PKG_OPTIONS:
 		return (STAILQ_EMPTY(&pkg->options));
 	case PKG_CATEGORIES:
-		return (STAILQ_EMPTY(&pkg->categories));
+		return ((HASH_COUNT(pkg->categories) == 0));
 	case PKG_FILES:
 		return ((HASH_COUNT(pkg->files) == 0));
 	case PKG_DIRS:
@@ -904,7 +902,6 @@ void
 pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_dep *d;
 	struct pkg_option *o;
-	struct pkg_category *c;
 	struct pkg_user *u;
 	struct pkg_group *g;
 	struct pkg_shlib *sl;
@@ -927,7 +924,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_CATEGORIES:
-		LIST_FREE(&pkg->categories, c, pkg_category_free);
+		HASH_FREE(pkg->categories, pkg_category, free);
 		pkg->flags &= ~PKG_LOAD_CATEGORIES;
 		break;
 	case PKG_FILES:

@@ -74,7 +74,7 @@ struct pkg {
 	int64_t		 new_pkgsize;
 	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
 	struct pkg_license *licenses;
-	STAILQ_HEAD(categories, pkg_category) categories;
+	struct pkg_category *categories;
 	STAILQ_HEAD(deps, pkg_dep) deps;
 	STAILQ_HEAD(rdeps, pkg_dep) rdeps;
 	struct pkg_file *files;
@@ -106,7 +106,7 @@ struct pkg_license {
 
 struct pkg_category {
 	struct sbuf	*name;
-	STAILQ_ENTRY(pkg_category) next;
+	UT_hash_handle	hh;
 };
 
 struct pkg_file {
