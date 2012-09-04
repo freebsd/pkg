@@ -37,15 +37,17 @@
 #include <string.h>
 #include <unistd.h>
 #include <yaml.h>
+#include <uthash.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
 
 struct keyword {
-	const char *keyword;
-	STAILQ_HEAD(actions, action) actions;
-	STAILQ_ENTRY(keyword) next;
+	/* 64 is more than enough for this */
+	char keyword[64];
+	STAILQ_HEAD(, action) actions;
+	UT_hash_handle hh;
 };
 
 struct plist {
@@ -67,7 +69,7 @@ struct plist {
 	int64_t flatsize;
 	struct hardlinks *hardlinks;
 	mode_t perm;
-	STAILQ_HEAD(keywords, keyword) keywords;
+	struct keyword *keywords;
 };
 
 struct action {
@@ -427,92 +429,92 @@ populate_keywords(struct plist *p)
 	/* @cwd */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "cwd";
+	strlcpy(k->keyword, "cwd", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = setprefix;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @ignore */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "ignore";
+	strlcpy(k->keyword, "ignore", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = ignore_next;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @comment */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "comment";
+	strlcpy(k->keyword, "comment", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = ignore;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @dirrm */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "dirrm";
+	strlcpy(k->keyword, "dirrm", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = dirrm;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @dirrmtry */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "dirrmtry";
+	strlcpy(k->keyword, "dirrmtry", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = dirrmtry;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @mode */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "mode";
+	strlcpy(k->keyword, "mode", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = setmod;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @owner */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "owner";
+	strlcpy(k->keyword, "owner", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = setowner;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @group */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "group";
+	strlcpy(k->keyword, "group", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = setgroup;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @exec */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "exec";
+	strlcpy(k->keyword, "exec", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = exec;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @unexec */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "unexec";
+	strlcpy(k->keyword, "unexec", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = unexec;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 }
 
 static void
@@ -526,10 +528,13 @@ keyword_free(struct keyword *k)
 }
 
 static void
-plist_free(struct plist *plist)
+plist_free(struct plist *p)
 {
-	struct keyword *k;
-	LIST_FREE(&plist->keywords, k, keyword_free);
+	struct keyword *k, *tmp;
+	HASH_ITER(hh, p->keywords, k, tmp) {
+		HASH_DEL(p->keywords, k);
+		keyword_free(k);
+	}
 }
 
 static int
@@ -711,7 +716,6 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 	yaml_parser_delete(&parser);
 
 	return (ret);
-
 }
 
 static int
@@ -721,15 +725,14 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	struct action *a;
 	int ret = EPKG_FATAL;
 
-	STAILQ_FOREACH(k, &plist->keywords, next) {
-		if (!strcmp(k->keyword, keyword)) {
-			STAILQ_FOREACH(a, &k->actions, next) {
-				ret = a->perform(plist, line);
-				if (ret != EPKG_OK)
-					return (ret);
-			}
-			return (ret);
+	HASH_FIND_STR(plist->keywords, keyword, k);
+	if (k != NULL) {
+		STAILQ_FOREACH(a, &k->actions, next) {
+			ret = a->perform(plist, line);
+			if (ret != EPKG_OK)
+				return (ret);
 		}
+		return (ret);
 	}
 
 	/*
@@ -783,7 +786,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pplist.ignore_next = false;
 	pplist.hardlinks = &hardlinks;
 	pplist.flatsize = 0;
-	STAILQ_INIT(&pplist.keywords);
+	pplist.keywords = NULL;
 
 	populate_keywords(&pplist);
 
