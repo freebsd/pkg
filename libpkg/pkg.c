@@ -73,7 +73,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	STAILQ_INIT(&(*pkg)->categories);
 	STAILQ_INIT(&(*pkg)->deps);
 	STAILQ_INIT(&(*pkg)->rdeps);
-	STAILQ_INIT(&(*pkg)->files);
+	(*pkg)->files = NULL;
 	STAILQ_INIT(&(*pkg)->dirs);
 	STAILQ_INIT(&(*pkg)->options);
 	STAILQ_INIT(&(*pkg)->users);
@@ -390,6 +390,17 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 			return (EPKG_OK); \
 	} while (0)
 
+#define HASH_NEXT(hash, data) do {            \
+		if (data == NULL)             \
+			data = hash;          \
+		else                          \
+			data = data->hh.next; \
+		if (data == NULL)             \
+			return (EPKG_END);    \
+		else                          \
+			return (EPKG_OK);     \
+	} while (0)
+
 int
 pkg_licenses(struct pkg *pkg, struct pkg_license **l)
 {
@@ -435,7 +446,7 @@ pkg_files(struct pkg *pkg, struct pkg_file **f)
 {
 	assert(pkg != NULL);
 
-	PKG_LIST_NEXT(&pkg->files, *f);
+	HASH_NEXT(pkg->files, (*f));
 }
 
 int
@@ -659,7 +670,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 	if (perm != 0)
 		f->perm = perm;
 
-	STAILQ_INSERT_TAIL(&pkg->files, f, next);
+	HASH_ADD_STR(pkg->files, path, f);
 
 	return (EPKG_OK);
 }
@@ -878,7 +889,7 @@ pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 	case PKG_CATEGORIES:
 		return (STAILQ_EMPTY(&pkg->categories));
 	case PKG_FILES:
-		return (STAILQ_EMPTY(&pkg->files));
+		return (HASH_COUNT(pkg->files) == 0 ? 1 : 0);
 	case PKG_DIRS:
 		return (STAILQ_EMPTY(&pkg->dirs));
 	case PKG_USERS:
@@ -898,7 +909,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_option *o;
 	struct pkg_license *l;
 	struct pkg_category *c;
-	struct pkg_file *f;
 	struct pkg_dir *dir;
 	struct pkg_user *u;
 	struct pkg_group *g;
@@ -926,7 +936,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_CATEGORIES;
 		break;
 	case PKG_FILES:
-		LIST_FREE(&pkg->files, f, pkg_file_free);
+		HASH_FREE(pkg->files, pkg_file, pkg_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:

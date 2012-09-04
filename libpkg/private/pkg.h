@@ -37,6 +37,7 @@
 #include <sqlite3.h>
 #include <openssl/sha.h>
 #include <stdbool.h>
+#include <uthash.h>
 
 #include "private/utils.h"
 
@@ -46,6 +47,16 @@
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM | \
 		ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
+
+#define HASH_FREE(data, type, free_func) do {      \
+	struct type *hf1, *hf2;                    \
+	HASH_ITER(hh, data, hf1, hf2) {            \
+		HASH_DEL(data, hf1);               \
+		if (free_func != NULL)             \
+			free_func(hf1);           \
+	}                                          \
+	data = NULL;                               \
+} while (0)
 
 #define LIST_FREE(head, data, free_func) do { \
 	while (!STAILQ_EMPTY(head)) { \
@@ -66,7 +77,7 @@ struct pkg {
 	STAILQ_HEAD(licenses, pkg_license) licenses;
 	STAILQ_HEAD(deps, pkg_dep) deps;
 	STAILQ_HEAD(rdeps, pkg_dep) rdeps;
-	STAILQ_HEAD(files, pkg_file) files;
+	struct pkg_file *files;
 	STAILQ_HEAD(dirs, pkg_dir) dirs;
 	STAILQ_HEAD(options, pkg_option) options;
 	STAILQ_HEAD(users, pkg_user) users;
@@ -104,7 +115,7 @@ struct pkg_file {
 	char		 gname[MAXLOGNAME +1];
 	int		 keep;
 	mode_t		 perm;
-	STAILQ_ENTRY(pkg_file) next;
+	UT_hash_handle	 hh;
 };
 
 struct pkg_dir {
