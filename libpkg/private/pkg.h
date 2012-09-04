@@ -58,6 +58,17 @@
 	data = NULL;                               \
 } while (0)
 
+#define HASH_NEXT(hash, data) do {            \
+		if (data == NULL)             \
+			data = hash;          \
+		else                          \
+			data = data->hh.next; \
+		if (data == NULL)             \
+			return (EPKG_END);    \
+		else                          \
+			return (EPKG_OK);     \
+	} while (0)
+
 #define LIST_FREE(head, data, free_func) do { \
 	while (!STAILQ_EMPTY(head)) { \
 		data = STAILQ_FIRST(head); \

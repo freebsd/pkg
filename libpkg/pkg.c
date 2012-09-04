@@ -368,17 +368,6 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 	return (ret);
 }
 
-#define HASH_NEXT(hash, data) do {            \
-		if (data == NULL)             \
-			data = hash;          \
-		else                          \
-			data = data->hh.next; \
-		if (data == NULL)             \
-			return (EPKG_END);    \
-		else                          \
-			return (EPKG_OK);     \
-	} while (0)
-
 int
 pkg_licenses(struct pkg *pkg, struct pkg_license **l)
 {
