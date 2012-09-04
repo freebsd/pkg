@@ -78,7 +78,7 @@ struct pkg {
 	STAILQ_HEAD(deps, pkg_dep) deps;
 	STAILQ_HEAD(rdeps, pkg_dep) rdeps;
 	struct pkg_file *files;
-	STAILQ_HEAD(dirs, pkg_dir) dirs;
+	struct pkg_dir *dirs;
 	STAILQ_HEAD(options, pkg_option) options;
 	STAILQ_HEAD(users, pkg_user) users;
 	STAILQ_HEAD(groups, pkg_group) groups;
@@ -125,7 +125,7 @@ struct pkg_dir {
 	mode_t		 perm;
 	int		 keep;
 	bool		 try;
-	STAILQ_ENTRY(pkg_dir) next;
+	UT_hash_handle	 hh;
 };
 
 struct pkg_option {

@@ -74,7 +74,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	STAILQ_INIT(&(*pkg)->deps);
 	STAILQ_INIT(&(*pkg)->rdeps);
 	(*pkg)->files = NULL;
-	STAILQ_INIT(&(*pkg)->dirs);
+	(*pkg)->dirs = NULL;
 	STAILQ_INIT(&(*pkg)->options);
 	STAILQ_INIT(&(*pkg)->users);
 	STAILQ_INIT(&(*pkg)->groups);
@@ -462,7 +462,7 @@ pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
 {
 	assert(pkg != NULL);
 
-	PKG_LIST_NEXT(&pkg->dirs, *d);
+	HASH_NEXT(pkg->dirs, (*d));
 }
 
 int
@@ -736,7 +736,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 
 	d->try = try;
 
-	STAILQ_INSERT_TAIL(&pkg->dirs, d, next);
+	HASH_ADD_STR(pkg->dirs, path, d);
 
 	return (EPKG_OK);
 }
@@ -889,9 +889,9 @@ pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 	case PKG_CATEGORIES:
 		return (STAILQ_EMPTY(&pkg->categories));
 	case PKG_FILES:
-		return (HASH_COUNT(pkg->files) == 0 ? 1 : 0);
+		return ((HASH_COUNT(pkg->files) == 0));
 	case PKG_DIRS:
-		return (STAILQ_EMPTY(&pkg->dirs));
+		return ((HASH_COUNT(pkg->dirs) == 0));
 	case PKG_USERS:
 		return (STAILQ_EMPTY(&pkg->users));
 	case PKG_GROUPS:
@@ -909,7 +909,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_option *o;
 	struct pkg_license *l;
 	struct pkg_category *c;
-	struct pkg_dir *dir;
 	struct pkg_user *u;
 	struct pkg_group *g;
 	struct pkg_shlib *sl;
@@ -940,7 +939,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
-		LIST_FREE(&pkg->dirs, dir, pkg_dir_free);
+		HASH_FREE(pkg->dirs, pkg_dir, pkg_dir_free);
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
 	case PKG_USERS:
