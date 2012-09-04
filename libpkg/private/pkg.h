@@ -75,14 +75,14 @@ struct pkg {
 	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
 	struct pkg_license *licenses;
 	struct pkg_category *categories;
-	STAILQ_HEAD(deps, pkg_dep) deps;
-	STAILQ_HEAD(rdeps, pkg_dep) rdeps;
+	struct pkg_dep *deps;
+	struct pkg_dep *rdeps;
 	struct pkg_file *files;
 	struct pkg_dir *dirs;
-	STAILQ_HEAD(options, pkg_option) options;
-	STAILQ_HEAD(users, pkg_user) users;
-	STAILQ_HEAD(groups, pkg_group) groups;
-	STAILQ_HEAD(shlibs, pkg_shlib) shlibs;
+	struct pkg_option *options;
+	struct pkg_user *users;
+	struct pkg_group *groups;
+	struct pkg_shlib *shlibs;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -95,7 +95,7 @@ struct pkg_dep {
 	struct sbuf	*origin;
 	struct sbuf	*name;
 	struct sbuf	*version;
-	STAILQ_ENTRY(pkg_dep) next;
+	UT_hash_handle	hh;
 };
 
 struct pkg_license {
@@ -132,7 +132,7 @@ struct pkg_dir {
 struct pkg_option {
 	struct sbuf	*key;
 	struct sbuf	*value;
-	STAILQ_ENTRY(pkg_option) next;
+	UT_hash_handle	hh;
 };
 
 struct pkg_jobs {
@@ -159,18 +159,18 @@ struct pkg_jobs_node {
 struct pkg_user {
 	char		 name[MAXLOGNAME+1];
 	char		 uidstr[8192];/* taken from pw_util.c */
-	STAILQ_ENTRY(pkg_user) next;
+	UT_hash_handle	hh;
 };
 
 struct pkg_group {
 	char		 name[MAXLOGNAME+1];
 	char		 gidstr[8192]; /* taken from gw_util.c */
-	STAILQ_ENTRY(pkg_group) next;
+	UT_hash_handle	hh;
 };
 
 struct pkg_shlib {
 	struct sbuf	*name;
-	STAILQ_ENTRY(pkg_shlib) next;
+	UT_hash_handle	hh;
 };
 
 
