@@ -476,7 +476,7 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND_STR(pkg->files, name, l);
+	HASH_FIND_STR(pkg->files, __DECONST(char *, name), l);
 	if (l != NULL) {
 		pkg_emit_error("duplicate license listing: %s, ignoring", name);
 		return (EPKG_OK);
@@ -499,7 +499,7 @@ pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->users, name, u);
+	HASH_FIND_STR(pkg->users, __DECONST(char *, name), u);
 	if (u != NULL) {
 		pkg_emit_error("duplicate user listing: %s, ignoring", name);
 		return (EPKG_OK);
@@ -533,7 +533,7 @@ pkg_addgid(struct pkg *pkg, const char *name, const char *gidstr)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->groups, name, g);
+	HASH_FIND_STR(pkg->groups, __DECONST(char *, name), g);
 	if (g != NULL) {
 		pkg_emit_error("duplicate group listing: %s, ignoring", name);
 		return (EPKG_OK);
@@ -568,7 +568,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(origin != NULL && origin[0] != '\0');
 	assert(version != NULL && version[0] != '\0');
 
-	HASH_FIND_STR(pkg->deps, origin, d);
+	HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
 	if (d != NULL) {
 		pkg_emit_error("duplicate dependency listing: %s-%s, ignoring", name, version);
 		return (EPKG_OK);
@@ -580,7 +580,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
 
-	HASH_ADD_KEYPTR(hh, pkg->deps, origin, strlen(origin), d);
+	HASH_ADD_KEYPTR(hh, pkg->deps, __DECONST(char *, origin), strlen(origin), d);
 
 	return (EPKG_OK);
 }
@@ -601,7 +601,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
 
-	HASH_ADD_KEYPTR(hh, pkg->rdeps, origin, strlen(origin), d);
+	HASH_ADD_KEYPTR(hh, pkg->rdeps, __DECONST(char *, origin), strlen(origin), d);
 
 	return (EPKG_OK);
 }
@@ -621,7 +621,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 	assert(path != NULL && path[0] != '\0');
 
 	if (check_duplicates) {
-		HASH_FIND_STR(pkg->files, path, f);
+		HASH_FIND_STR(pkg->files, __DECONST(char *, path), f);
 		if (f != NULL) {
 			pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_path(f));
 			return (EPKG_OK);
@@ -656,7 +656,7 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->categories, name, c);
+	HASH_FIND_STR(pkg->categories, __DECONST(char *, name), c);
 	if (c != NULL) {
 		pkg_emit_error("duplicate category listing: %s, ignoring", name);
 		return (EPKG_OK);
@@ -666,7 +666,7 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 
 	sbuf_set(&c->name, name);
 
-	HASH_ADD_KEYPTR(hh, pkg->categories, name, strlen(name), c);
+	HASH_ADD_KEYPTR(hh, pkg->categories, __DECONST(char *, name), strlen(name), c);
 
 	return (EPKG_OK);
 }
@@ -686,7 +686,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 	assert(path != NULL && path[0] != '\0');
 
 	if (check_duplicates) {
-		HASH_FIND_STR(pkg->dirs, path, d);
+		HASH_FIND_STR(pkg->dirs, __DECONST(char *, path), d);
 		if (d != NULL) {
 			pkg_emit_error("duplicate directory listing: %s, ignoring", path);
 			return (EPKG_OK);
@@ -807,7 +807,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	assert(key != NULL && key[0] != '\0');
 	assert(value != NULL && value[0] != '\0');
 
-	HASH_FIND_STR(pkg->options, key, o);
+	HASH_FIND_STR(pkg->options, __DECONST(char *, key), o);
 	if (o != NULL) {
 		pkg_emit_error("duplicate options listing: %s, ignoring", key);
 		return (EPKG_OK);
@@ -817,7 +817,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	sbuf_set(&o->key, key);
 	sbuf_set(&o->value, value);
 
-	HASH_ADD_KEYPTR(hh, pkg->options, key, strlen(key), o);
+	HASH_ADD_KEYPTR(hh, pkg->options, __DECONST(char *, key), strlen(key), o);
 
 	return (EPKG_OK);
 }
@@ -830,7 +830,7 @@ pkg_addshlib(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->shlibs, name, s);
+	HASH_FIND_STR(pkg->shlibs, __DECONST(char *, name), s);
 	/* silently ignore duplicates in case of shlibs */
 	if (s != NULL)
 		return (EPKG_OK);
@@ -839,7 +839,7 @@ pkg_addshlib(struct pkg *pkg, const char *name)
 
 	sbuf_set(&s->name, name);
 
-	HASH_ADD_KEYPTR(hh, pkg->shlibs, name, strlen(name), s);
+	HASH_ADD_KEYPTR(hh, pkg->shlibs, __DECONST(char *, name), strlen(name), s);
 
 	return (EPKG_OK);
 }
