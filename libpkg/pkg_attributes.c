@@ -299,7 +299,6 @@ pkg_license_free(struct pkg_license *l)
 	if (l == NULL)
 		return;
 
-	sbuf_free(l->name);
 	free(l);
 }
 
@@ -308,7 +307,7 @@ pkg_license_name(struct pkg_license const * const l)
 {
 	assert(l != NULL);
 
-	return (sbuf_get(l->name));
+	return (l->name);
 }
 
 /*

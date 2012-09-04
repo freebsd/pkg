@@ -69,7 +69,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 		return EPKG_FATAL;
 	}
 
-	STAILQ_INIT(&(*pkg)->licenses);
+	(*pkg)->licenses = NULL;
 	STAILQ_INIT(&(*pkg)->categories);
 	STAILQ_INIT(&(*pkg)->deps);
 	STAILQ_INIT(&(*pkg)->rdeps);
@@ -406,7 +406,7 @@ pkg_licenses(struct pkg *pkg, struct pkg_license **l)
 {
 	assert(pkg != NULL);
 
-	PKG_LIST_NEXT(&pkg->licenses, *l);
+	HASH_NEXT(pkg->licenses, (*l));
 }
 
 int
@@ -491,25 +491,24 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 	const char *pkgname;
 
-	if (pkg->licenselogic == LICENSE_SINGLE && !STAILQ_EMPTY(&pkg->licenses)) {
+	if (pkg->licenselogic == LICENSE_SINGLE && HASH_COUNT(pkg->licenses) != 0) {
 		pkg_get(pkg, PKG_NAME, &pkgname);
 		pkg_emit_error("%s have a single license which is already set",
 		    pkgname);
 		return (EPKG_FATAL);
 	}
 
-	while (pkg_licenses(pkg, &l) != EPKG_END) {
-		if (!strcmp(name, pkg_license_name(l))) {
-			pkg_emit_error("duplicate license listing: %s, ignoring", name);
-			return (EPKG_OK);
-		}
+	HASH_FIND_STR(pkg->files, name, l);
+	if (l != NULL) {
+		pkg_emit_error("duplicate license listing: %s, ignoring", name);
+		return (EPKG_OK);
 	}
 
 	pkg_license_new(&l);
 
-	sbuf_set(&l->name, name);
+	strlcpy(l->name, name, sizeof(l->name));
 
-	STAILQ_INSERT_TAIL(&pkg->licenses, l, next);
+	HASH_ADD_STR(pkg->licenses, name, l);
 
 	return (EPKG_OK);
 }
@@ -881,7 +880,7 @@ pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
 	case PKG_RDEPS:
 		return (STAILQ_EMPTY(&pkg->rdeps));
 	case PKG_LICENSES:
-		return (STAILQ_EMPTY(&pkg->licenses));
+		return ((HASH_COUNT(pkg->licenses) == 0));
 	case PKG_OPTIONS:
 		return (STAILQ_EMPTY(&pkg->options));
 	case PKG_CATEGORIES:
@@ -905,7 +904,6 @@ void
 pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	struct pkg_dep *d;
 	struct pkg_option *o;
-	struct pkg_license *l;
 	struct pkg_category *c;
 	struct pkg_user *u;
 	struct pkg_group *g;
@@ -921,7 +919,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_LICENSES:
-		LIST_FREE(&pkg->licenses, l, pkg_license_free);
+		HASH_FREE(pkg->licenses, pkg_license, pkg_license_free);
 		pkg->flags &= ~PKG_LOAD_LICENSES;
 		break;
 	case PKG_OPTIONS:
