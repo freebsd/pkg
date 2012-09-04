@@ -53,6 +53,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'G', "",		1, PKG_LOAD_GROUPS },
 	{ 'B', "",		1, PKG_LOAD_SHLIBS },
 	{ '?', "drCFODLUGB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ '#', "drCFODLUGB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },
 	{ 'n', "",		0, PKG_LOAD_BASIC },
 	{ 'v', "",		0, PKG_LOAD_BASIC },
@@ -180,6 +181,41 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					break;
 				case 'B':
 					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS) > 0);
+					break;
+				}
+				break;
+			case '#':
+				qstr++;
+				switch (qstr[0]) {
+				case 'd':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_DEPS));
+					break;
+				case 'r':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_RDEPS));
+					break;
+				case 'C':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_CATEGORIES));
+					break;
+				case 'F':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_FILES));
+					break;
+				case 'O':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_OPTIONS));
+					break;
+				case 'D':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_DIRS));
+					break;
+				case 'L':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_LICENSES));
+					break;
+				case 'U':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_USERS));
+					break;
+				case 'G':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_GROUPS));
+					break;
+				case 'B':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS));
 					break;
 				}
 				break;
@@ -724,7 +760,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 					}
 
 					/* handle the '?' flag cases */
-					if (q_flags[i].flag == '?') {
+					if (q_flags[i].flag == '?' || q_flags[i].flag == '#') {
 						for (k = 0; k < q_flags_len; k++)
 							if (q_flags[k].flag == q_flags[i].options[j]) {
 								*flags |= q_flags[k].dbflags;
