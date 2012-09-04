@@ -284,6 +284,12 @@ subst_packagesite(void)
 }
 
 int
+pkg_initialized(void)
+{
+	return (parsed);
+}
+
+int
 pkg_config_string(pkg_config_key key, const char **val)
 {
 	*val = NULL;

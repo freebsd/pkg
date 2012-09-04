@@ -985,6 +985,7 @@ typedef int(*pkg_event_cb)(void *, struct pkg_event *);
 void pkg_event_register(pkg_event_cb cb, void *data);
 
 int pkg_init(const char *);
+int pkg_initialized(void);
 int pkg_shutdown(void);
 
 void pkg_test_filesum(struct pkg *);

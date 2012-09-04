@@ -107,17 +107,16 @@ usage(void)
 	fprintf(stderr, "\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
 
+	if (pkg_initialized())
+		pkg_shutdown();
+
 	exit(EX_USAGE);
 }
 
 static void
 usage_help(void)
 {
-	fprintf(stderr, "usage: pkg help <command>\n\n");
-	fprintf(stderr, "Where <command> can be:\n");
-
-	for (unsigned int i = 0; i < cmd_len; i++)
-		fprintf(stderr, "\t%s\n", cmd[i].name);
+	usage();
 }
 
 static int
