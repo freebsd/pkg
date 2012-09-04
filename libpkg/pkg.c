@@ -69,11 +69,8 @@ pkg_new(struct pkg **pkg, pkg_t type)
 		return EPKG_FATAL;
 	}
 
-	(*pkg)->licenses = NULL;
 	STAILQ_INIT(&(*pkg)->deps);
 	STAILQ_INIT(&(*pkg)->rdeps);
-	(*pkg)->files = NULL;
-	(*pkg)->dirs = NULL;
 	STAILQ_INIT(&(*pkg)->options);
 	STAILQ_INIT(&(*pkg)->users);
 	STAILQ_INIT(&(*pkg)->groups);
