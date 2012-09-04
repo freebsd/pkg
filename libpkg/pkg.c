@@ -647,11 +647,10 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 	assert(path != NULL && path[0] != '\0');
 
 	if (check_duplicates) {
-		while (pkg_files(pkg, &f) != EPKG_END) {
-			if (!strcmp(path, pkg_file_path(f))) {
-				pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_path(f));
-				return (EPKG_OK);
-			}
+		HASH_FIND_STR(pkg->files, path, f);
+		if (f != NULL) {
+			pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_path(f));
+			return (EPKG_OK);
 		}
 	}
 
@@ -714,11 +713,10 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 	assert(path != NULL && path[0] != '\0');
 
 	if (check_duplicates) {
-		while (pkg_dirs(pkg, &d) == EPKG_OK) {
-			if (strcmp(path, pkg_dir_path(d)) == 0) {
-				pkg_emit_error("duplicate directory listing: %s, ignoring", path);
-				return (EPKG_OK);
-			}
+		HASH_FIND_STR(pkg->dirs, path, d);
+		if (d != NULL) {
+			pkg_emit_error("duplicate directory listing: %s, ignoring", path);
+			return (EPKG_OK);
 		}
 	}
 
