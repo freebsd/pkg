@@ -107,9 +107,6 @@ usage(void)
 	fprintf(stderr, "\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
 
-	if (pkg_initialized())
-		pkg_shutdown();
-
 	exit(EX_USAGE);
 }
 
