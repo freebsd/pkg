@@ -308,7 +308,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 				printf("\n");
 			break;
 		case INFO_CATEGORIES:
-			if (!pkg_list_is_empty(pkg, PKG_CATEGORIES)) {
+			if (pkg_list_count(pkg, PKG_CATEGORIES) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Categories");
 				if (pkg_categories(pkg, &cat) == EPKG_OK)
@@ -320,7 +320,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 				printf("\n");
 			break;
 		case INFO_LICENSES:
-			if (!pkg_list_is_empty(pkg, PKG_LICENSES)) {
+			if (pkg_list_count(pkg, PKG_LICENSES) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Licenses");
 				if (pkg_licenses(pkg, &lic) == EPKG_OK)
@@ -350,7 +350,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			printf("%s\n", comment);
 			break;
 		case INFO_OPTIONS:
-			if (!pkg_list_is_empty(pkg, PKG_OPTIONS)) {
+			if (pkg_list_count(pkg, PKG_OPTIONS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Options");
 				while (pkg_options(pkg, &option) == EPKG_OK)
@@ -361,7 +361,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			}
 			break;
 		case INFO_SHLIBS:
-			if (!pkg_list_is_empty(pkg, PKG_SHLIBS)) {
+			if (pkg_list_count(pkg, PKG_SHLIBS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Shared Libs");
 				while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
@@ -407,7 +407,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			}
 			break;
 		case INFO_DEPS:
-			if (!pkg_list_is_empty(pkg, PKG_DEPS)) {
+			if (pkg_list_count(pkg, PKG_DEPS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Depends on");
 				while (pkg_deps(pkg, &dep) == EPKG_OK)
@@ -418,7 +418,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			}
 			break;
 		case INFO_RDEPS:
-			if (!pkg_list_is_empty(pkg, PKG_RDEPS)) {
+			if (pkg_list_count(pkg, PKG_RDEPS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Required by");
 				while (pkg_rdeps(pkg, &dep) == EPKG_OK)
@@ -430,7 +430,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			break;
 		case INFO_FILES: /* Installed pkgs only */
 			if (pkg_type(pkg) != PKG_REMOTE &&
-			    !pkg_list_is_empty(pkg, PKG_FILES)) {
+			    pkg_list_count(pkg, PKG_FILES) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Files");
 				while (pkg_files(pkg, &file) == EPKG_OK)
@@ -441,7 +441,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			break;
 		case INFO_DIRS:	/* Installed pkgs only */
 			if (pkg_type(pkg) != PKG_REMOTE &&
-			    !pkg_list_is_empty(pkg, PKG_DIRS)) {
+			    pkg_list_count(pkg, PKG_DIRS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Directories");
 				while (pkg_dirs(pkg, &dir) == EPKG_OK)
@@ -452,7 +452,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			break;
 		case INFO_USERS: /* Installed pkgs only */
 			if (pkg_type(pkg) != PKG_REMOTE &&
-			    !pkg_list_is_empty(pkg, PKG_USERS)) {
+			    pkg_list_count(pkg, PKG_USERS) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Users");
 				if (pkg_users(pkg, &user) == EPKG_OK)
@@ -464,7 +464,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			break;
 		case INFO_GROUPS: /* Installed pkgs only */
 			if (pkg_type(pkg) != PKG_REMOTE &&
-			    !pkg_list_is_empty(pkg, PKG_GROUPS)) {
+			    pkg_list_count(pkg, PKG_GROUPS) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Groups");
 				if (pkg_groups(pkg, &group) == EPKG_OK)

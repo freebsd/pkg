@@ -845,28 +845,29 @@ pkg_addshlib(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_list_is_empty(struct pkg *pkg, pkg_list list) {
+pkg_list_count(struct pkg *pkg, pkg_list list)
+{
 	switch (list) {
 	case PKG_DEPS:
-		return ((HASH_COUNT(pkg->deps) == 0));
+		return (HASH_COUNT(pkg->deps));
 	case PKG_RDEPS:
-		return ((HASH_COUNT(pkg->rdeps) == 0));
+		return (HASH_COUNT(pkg->rdeps));
 	case PKG_LICENSES:
-		return ((HASH_COUNT(pkg->licenses) == 0));
+		return (HASH_COUNT(pkg->licenses));
 	case PKG_OPTIONS:
-		return ((HASH_COUNT(pkg->options) == 0));
+		return (HASH_COUNT(pkg->options));
 	case PKG_CATEGORIES:
-		return ((HASH_COUNT(pkg->categories) == 0));
+		return (HASH_COUNT(pkg->categories));
 	case PKG_FILES:
-		return ((HASH_COUNT(pkg->files) == 0));
+		return (HASH_COUNT(pkg->files));
 	case PKG_DIRS:
-		return ((HASH_COUNT(pkg->dirs) == 0));
+		return (HASH_COUNT(pkg->dirs));
 	case PKG_USERS:
-		return ((HASH_COUNT(pkg->users) == 0));
+		return (HASH_COUNT(pkg->users));
 	case PKG_GROUPS:
-		return ((HASH_COUNT(pkg->groups) == 0));
+		return (HASH_COUNT(pkg->groups));
 	case PKG_SHLIBS:
-		return ((HASH_COUNT(pkg->shlibs) == 0));
+		return (HASH_COUNT(pkg->shlibs));
 	}
 	
 	return (0);

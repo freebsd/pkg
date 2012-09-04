@@ -399,7 +399,7 @@ int pkg_get2(struct pkg const *const, ...);
 const char *pkg_name(struct pkg const *const pkg);
 const char *pkg_version(struct pkg const *const pkg);
 
-int pkg_list_is_empty(struct pkg *, pkg_list);
+int pkg_list_count(struct pkg *, pkg_list);
 /**
  * Iterates over the dependencies of the package.
  * @param dep Must be set to NULL for the first call.
