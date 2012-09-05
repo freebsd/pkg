@@ -1120,7 +1120,7 @@ int pkg_asprintf(char **ret, const char *fmt, const struct pkg *pkg);
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
-int pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, const struct pkg *pkg);
+struct sbuf *pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, const struct pkg *pkg);
 
 
 #endif
