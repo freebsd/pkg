@@ -688,7 +688,7 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 	}
 
 	if ((fp = fopen(keyfile_path, "r")) == NULL) {
-		if (errno != ENOENT)
+		if (errno == ENOENT)
 			pkg_emit_errno("Unable to open keyword definition",
 			    keyfile_path);
 
