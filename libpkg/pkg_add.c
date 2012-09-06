@@ -183,7 +183,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * Check if the package is already installed
 	 */
 
-	ret = EPKG_FATAL; // assume package is not installed
+	ret = EPKG_FATAL; /* assume package is not installed */
 	if ((it = pkgdb_query(db, origin, MATCH_EXACT)) != NULL) {
 		ret = pkgdb_it_next(it, &pkg_inst, PKG_LOAD_BASIC);
 		pkgdb_it_free(it);
