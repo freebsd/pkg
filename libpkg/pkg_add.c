@@ -127,6 +127,8 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	struct archive_entry *ae;
 	struct pkg	*pkg = NULL;
 	struct pkg_dep	*dep = NULL;
+	struct pkg      *pkg_inst = NULL;
+	struct pkgdb_it *it = NULL;
 	bool		 extract = true;
 	bool		 handle_rc = false;
 	char		 dpath[MAXPATHLEN + 1];
@@ -181,10 +183,15 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * Check if the package is already installed
 	 */
 
-	ret = pkg_is_installed(db, origin);
+	ret = EPKG_FATAL; // assume package is not installed
+	if ((it = pkgdb_query(db, origin, MATCH_EXACT)) != NULL) {
+		ret = pkgdb_it_next(it, &pkg_inst, PKG_LOAD_BASIC);
+		pkgdb_it_free(it);
+	}
 
 	if (ret == EPKG_OK) {
-		pkg_emit_already_installed(pkg);
+		pkg_emit_already_installed(pkg_inst);
+		pkg_free(pkg_inst);
 		retcode = EPKG_INSTALLED;
 		goto cleanup;
 	} else if (ret != EPKG_END) {
