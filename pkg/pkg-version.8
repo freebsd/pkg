@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 11, 2012
+.Dd August 14, 2012
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -23,14 +23,16 @@
 .Nd summarize installed versions of packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl hIoqv
+.Op Fl IPR
+.Op Fl hoqv
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
 .Op Fl Xxge Ar pattern
+.Op Fl r Ar reponame
 .Op Fl O Ar origin
 .Op Ar index
 .Nm
-.Fl t Ar version1
+.Fl t Ar version1 Ar version2
 .Nm
 .Fl T Ar <pkgname> Ar <pattern>
 .Sh DESCRIPTION
@@ -38,7 +40,34 @@
 is used for generating a report of packages installed by
 .Xr pkg 8 .
 .Pp
-< To be completed >
+By default, if a ports tree exists it is used to compare versions.
+If it does not exist, the remote repository catalogue is used.
+These defaults can be overridden by specifying one of
+.Fl P ,
+.Fl R
+or
+.Fl I .
+.Pp
+When comparing package versions the package name and a comparison character are printed:
+.Bl -tag -width indent
+.It Li =
+The installed version of the package is current.
+.It Li \&<
+The installed version of the package is older than the current version.
+.It Li \&>
+The installed version of the package is newer than the current version.
+This situation can arise with an out-of-date index file, or when
+testing new ports.
+.It Li \&?
+The installed package does not appear in the index.
+This could be due to an out of date index or a package taken from a PR
+that has not yet been committed.
+.It Li \&!
+The installed package exists in the index but for some reason,
+.Nm
+was unable to compare the version number of the installed package
+with the corresponding entry in the index.
+.El
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -46,7 +75,21 @@ The following options are supported by
 .It Fl h
 Displays usage information
 .It Fl I
-Use INDEX file for determining if a package is out of date
+Use INDEX file for determining if a package is out of date.
+.It Fl P
+Use ports for determining if a package is out of date.
+This is the default if a ports tree exists.
+The tree used can be overridden by PORTSDIR, see
+.Xr pkg 5
+for more information.
+.It Fl R
+Use repository catalogue for determining if a package is out of date.
+This is the default if no ports tree exists.
+.It Fl r Ar reponame
+Use the given
+.Ar reponame
+for comparison when using
+.Fl R
 .It Fl o
 Display package origin, instead of package name.
 .It Fl q
@@ -76,7 +119,15 @@ Only display the packages that exactly match the string.
 Display only the packages which origin matches
 .Ar origin
 .It Fl t Ar <version1> Ar <version2>
-< To be added >
+Test a pair of version number strings and exit.
+The output consists of one of the single characters
+.Li =
+(equal),
+.Li \&<
+(right-hand number greater), or
+.Li \&>
+(left-hand number greater) on standard output.
+This flag is mostly useful for scripts or for testing.
 .It Fl T Ar <pkgname> Ar <pattern>
 Compare
 .Ar <pkgname>
@@ -100,6 +151,27 @@ for further description.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
+.Sh EXAMPLES
+The following is a typical invocation of the
+.Nm
+command, which checks the installed packages against the local ports
+index file:
+.Pp
+.Dl % pkg version -v
+.Pp
+The command below generates a report against the versions in the repository catalogue:
+.Pp
+.Dl % pkg update
+.Dl % pkg version -vR
+.Pp
+The following lists packages needing upgrade, compared to the repository catalogue:
+.Pp
+.Dl % pkg update
+.Dl % pkg version -vRL=
+.Pp
+The following command compares two package version strings:
+.Pp
+.Dl % pkg version -t 1.5 1.5.1
 .Sh SEE ALSO
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
@@ -118,9 +190,10 @@ See
 .Xr pkg-repo 8 ,
 .Xr pkg-rquery 8 ,
 .Xr pkg-search 8 ,
-.Xr pkg-set 8,
+.Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

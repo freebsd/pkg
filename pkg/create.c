@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -27,6 +27,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/queue.h>
 
 #include <err.h>
 #include <stdio.h>
@@ -37,88 +38,117 @@
 
 #include "pkgcli.h"
 
+struct pkg_entry {
+	struct pkg *pkg;
+	STAILQ_ENTRY(pkg_entry) next;
+};
+
+STAILQ_HEAD(pkg_head, pkg_entry);
+
 void
 usage_create(void)
 {
-	fprintf(stderr, "usage: pkg create [-gx] [-n] [-r rootdir] [-m manifest] [-f format] [-o outdir] "
-			"<pkg> ...\n");
-	fprintf(stderr, "       pkg create -a [-n] [-r rootdir] [-m manifest] [-f format] [-o outdir]\n\n");
+	fprintf(stderr, "usage: pkg create [-n] [-f format] [-o outdir] "
+		"[-p plist] [-r rootdir] -m manifestdir\n");
+	fprintf(stderr, "       pkg create [-gnXx] [-f format] [-o outdir] "
+		"[-r rootdir] pkg-name ...\n");
+	fprintf(stderr, "       pkg create [-n] [-f format] [-o outdir] "
+		"[-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
 
 static int
-pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt, const char * const outdir, const char * const rootdir, bool overwrite)
+pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
+    const char * const outdir, const char * const rootdir, bool overwrite)
 {
 	int i, ret = EPKG_OK, retcode = EPKG_OK;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
+	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
+	struct pkg_entry *e = NULL;
 	const char *name, *version;
 	char pkgpath[MAXPATHLEN];
-	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
-	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
-	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES | PKG_LOAD_USERS |
-	    PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
+	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | 
+	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
+	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
+	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
+	const char *format;
+	bool foundone;
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
 
-	if (match != MATCH_ALL) {
-		for (i = 0;i < argc; i++) {
-			if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
-				goto cleanup;
-			}
-			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-				pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-				if (!overwrite) {
-					const char *format;
-					switch (fmt) {
-						case TXZ:
-							format = "txz";
-							break;
-						case TBZ:
-							format = "tbz";
-							break;
-						case TGZ:
-							format = "tgz";
-							break;
-						case TAR:
-							format = "tar";
-							break;
-					}
+	switch (fmt) {
+	case TXZ:
+		format = "txz";
+		break;
+	case TBZ:
+		format = "tbz";
+		break;
+	case TGZ:
+		format = "tgz";
+		break;
+	case TAR:
+		format = "tar";
+		break;
+	}
 
-					snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir, name, version, format);
-					if (access(pkgpath, F_OK) == 0) {
-						printf("%s-%s already packaged skipping...\n", name, version);
-						continue;
-					}
-				}
-				printf("Creating package for %s-%s\n", name, version);
-				if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK)
-					retcode++;
+	for (i = 0; i < argc || match == MATCH_ALL; i++) {
+		if (match == MATCH_ALL) {
+			printf("Loading package list...\n");
+			if ((it = pkgdb_query(db, NULL, match)) == NULL)
+				goto cleanup;
+			match = !MATCH_ALL;
+		} else
+			if ((it = pkgdb_query(db, argv[i], match)) == NULL)
+				goto cleanup;
+
+		foundone = false;
+		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
+			if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
+				err(1, "malloc(pkg_entry)");
+			e->pkg = pkg;
+			pkg = NULL;
+			STAILQ_INSERT_TAIL(&head, e, next);
+			foundone = true;
+		}
+		if (!foundone)
+			warnx("No installed package matching \"%s\" found\n",
+			    argv[i]);
+
+		pkgdb_it_free(it);
+		if (ret != EPKG_END)
+			retcode++;
+	}
+
+	while (!STAILQ_EMPTY(&head)) {
+		e = STAILQ_FIRST(&head);
+		STAILQ_REMOVE_HEAD(&head, next);
+
+		pkg_get(e->pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		if (!overwrite) {
+			snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir,
+			    name, version, format);
+			if (access(pkgpath, F_OK) == 0) {
+				printf("%s-%s already packaged skipping...\n",
+				    name, version);
+				pkg_free(e->pkg);
+				free(e);
+				continue;
 			}
 		}
-	} else {
-		if ((it = pkgdb_query(db, NULL, match)) == NULL) {
-			goto cleanup;
-		}
-		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-			printf("Creating package for %s-%s\n", name, version);
-			if (pkg_create_installed(outdir, fmt, rootdir, pkg) != EPKG_OK)
-				retcode++;
-		}
+		printf("Creating package for %s-%s\n", name, version);
+		if (pkg_create_installed(outdir, fmt, rootdir, e->pkg) !=
+		    EPKG_OK)
+			retcode++;
+		pkg_free(e->pkg);
+		free(e);
 	}
 
 cleanup:
-	if (ret != EPKG_END) {
-		retcode++;
-	}
-
-	pkg_free(pkg);
-	pkgdb_it_free(it);
 	pkgdb_close(db);
 
 	return (retcode);
@@ -142,39 +172,43 @@ exec_create(int argc, char **argv)
 	const char *format = NULL;
 	const char *rootdir = NULL;
 	const char *manifestdir = NULL;
+	char *plist = NULL;
 	bool overwrite = true;
 	pkg_formats fmt;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "agxXf:r:m:o:n")) != -1) {
+	while ((ch = getopt(argc, argv, "agxXf:r:m:o:np:")) != -1) {
 		switch (ch) {
-			case 'a':
-				match = MATCH_ALL;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'f':
-				format = optarg;
-				break;
-			case 'o':
-				outdir = optarg;
-				break;
-			case 'r':
-				rootdir = optarg;
-				break;
-			case 'm':
-				manifestdir = optarg;
-				break;
-			case 'n':
-				overwrite = false;
-				break;
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'f':
+			format = optarg;
+			break;
+		case 'o':
+			outdir = optarg;
+			break;
+		case 'r':
+			rootdir = optarg;
+			break;
+		case 'm':
+			manifestdir = optarg;
+			break;
+		case 'n':
+			overwrite = false;
+			break;
+		case 'p':
+			plist = optarg;
+			break;
 		}
 	}
 	argc -= optind;
@@ -208,8 +242,10 @@ exec_create(int argc, char **argv)
 	}
 
 	if (manifestdir == NULL)
-		return pkg_create_matches(argc, argv, match, fmt, outdir, rootdir, overwrite) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+		return (pkg_create_matches(argc, argv, match, fmt, outdir,
+		    rootdir, overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	else
-		return pkg_create_fakeroot(outdir, fmt, rootdir, manifestdir) == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE;
+		return (pkg_create_staged(outdir, fmt, rootdir, manifestdir,
+		    plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 }
 

@@ -38,8 +38,9 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
+#include "private/pkgdb.h"
 
-#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM)
+//#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM)
 
 /* Add indexes to the repo */
 static int
@@ -64,27 +65,39 @@ remote_add_indexes(const char *reponame)
 }
 
 int
-pkg_update(const char *name, const char *packagesite)
+pkg_update(const char *name, const char *packagesite, bool force)
 {
 	char url[MAXPATHLEN];
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
 	char repofile[MAXPATHLEN];
 	char repofile_unchecked[MAXPATHLEN];
-	char tmp[21];
+	char tmp[MAXPATHLEN];
 	const char *dbdir = NULL;
 	const char *repokey;
 	unsigned char *sig = NULL;
 	int siglen = 0;
-	int rc = EPKG_FATAL;
+	int fd, rc = EPKG_FATAL, ret;
 	struct stat st;
 	time_t t = 0;
+	sqlite3 *sqlite;
+	char *archreq = NULL;
+	const char *myarch;
+	int64_t res;
+	const char *tmpdir;
 
 	snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
-	(void)strlcpy(tmp, "/tmp/repo.txz.XXXXXX", sizeof(tmp));
-	if (mktemp(tmp) == NULL) {
-		pkg_emit_error("Could not create temporary file %s, aborting update.\n", tmp);
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	strlcpy(tmp, tmpdir, sizeof(tmp));
+	strlcat(tmp, "/repo.txz.XXXXXX", sizeof(tmp));
+
+	fd = mkstemp(tmp);
+	if (fd == -1) {
+		pkg_emit_error("Could not create temporary file %s, "
+		    "aborting update.\n", tmp);
 		return (EPKG_FATAL);
 	}
 
@@ -94,20 +107,23 @@ pkg_update(const char *name, const char *packagesite)
 	}
 
 	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
-	if (stat(repofile, &st) != -1) {
-		t = st.st_mtime;
-		/* add 10 minutes to the timestap because repo.sqlite is
-		 * always newer than repo.txz, 10 minutes should be enough
-		 */
-		t += 600;
+	if (force)
+		t = 0;		/* Always fetch */
+	else {
+		if (stat(repofile, &st) != -1) {
+			t = st.st_mtime;
+			/* add 1 minute to the timestamp because
+			 * repo.sqlite is always newer than repo.txz,
+			 * 1 minute should be enough.
+			 */
+			t += 60;
+		}
 	}
 
-	if ((rc = pkg_fetch_file(url, tmp, t)) != EPKG_OK) {
-		/*
-		 * No need to unlink(tmp) here as it is already
-		 * done in pkg_fetch_file() in case fetch failed.
-		 */
-		return (rc);
+	rc = pkg_fetch_file_to_fd(url, fd, t);
+	close(fd);
+	if (rc != EPKG_OK) {
+		goto cleanup;
 	}
 
 	a = archive_read_new();
@@ -118,7 +134,8 @@ pkg_update(const char *name, const char *packagesite)
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			snprintf(repofile_unchecked, sizeof(repofile_unchecked), "%s.unchecked", repofile);
+			snprintf(repofile_unchecked, sizeof(repofile_unchecked),
+			    "%s.unchecked", repofile);
 			archive_entry_set_pathname(ae, repofile_unchecked);
 
 			/*
@@ -137,29 +154,73 @@ pkg_update(const char *name, const char *packagesite)
 		}
 	}
 
-	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK)
+	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK) {
+		if (sig != NULL)
+			free(sig);
+		
 		return (EPKG_FATAL);
+	}
 
 	if (repokey != NULL) {
 		if (sig != NULL) {
-			if (rsa_verify(repofile_unchecked, repokey, sig, siglen - 1) != EPKG_OK) {
-				pkg_emit_error("Invalid signature, removing repository.\n");
+			ret = rsa_verify(repofile_unchecked, repokey,
+			    sig, siglen - 1);
+			if (ret != EPKG_OK) {
+				pkg_emit_error("Invalid signature, "
+				    "removing repository.\n");
 				unlink(repofile_unchecked);
 				free(sig);
 				rc = EPKG_FATAL;
 				goto cleanup;
 			}
+			free(sig);
 		} else {
-			pkg_emit_error("No signature found in the repository."
-						   "Can not validate against %s key.", repokey);
+			pkg_emit_error("No signature found in the repository.  "
+			    "Can not validate against %s key.", repokey);
 			rc = EPKG_FATAL;
 			unlink(repofile_unchecked);
 			goto cleanup;
 		}
 	}
 
+	/* check is the repository is for valid architecture */
+	sqlite3_initialize();
+
+	if (sqlite3_open(repofile_unchecked, &sqlite) != SQLITE_OK) {
+		unlink(repofile_unchecked);
+		pkg_emit_error("Corrupted repository");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+
+	archreq = sqlite3_mprintf("select count(arch) from packages "
+	    "where arch not GLOB '%q'", myarch);
+	if (get_pragma(sqlite, archreq, &res) != EPKG_OK) {
+		sqlite3_free(archreq);
+		pkg_emit_error("Unable to query repository");
+		rc = EPKG_FATAL;
+		sqlite3_close(sqlite);
+		goto cleanup;
+	}
+
+	if (res > 0) {
+		pkg_emit_error("At least one of the packages provided by"
+		    "the repository is not compatible with your abi: %s",
+		    myarch);
+		rc = EPKG_FATAL;
+		sqlite3_close(sqlite);
+		goto cleanup;
+	}
+
+	sqlite3_close(sqlite);
+	sqlite3_shutdown();
+
+
 	if (rename(repofile_unchecked, repofile) != 0) {
 		pkg_emit_errno("rename", "");
+		rc = EPKG_FATAL;
 		goto cleanup;
 	}
 

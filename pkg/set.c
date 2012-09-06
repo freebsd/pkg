@@ -35,13 +35,13 @@
 
 #include "pkgcli.h"
 
-#define AUTOMATIC 1<<0
-#define ORIGIN 1<<1
+#define AUTOMATIC 1U<<0
+#define ORIGIN 1U<<1
 
 void
 usage_set(void)
 {
-	fprintf(stderr, "usage pkg set [-a] [-A [01]] -yxXg <pattern>\n\n");
+	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-xXg] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
@@ -68,47 +68,56 @@ exec_set(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "ayA:kxXgo:")) != -1) {
 		switch (ch) {
-			case 'y':
-				yes_flag = true;
-				break;
-			case 'a':
-				match = MATCH_ALL;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'A':
-				sets |= AUTOMATIC;
-				newautomatic = strtonum(optarg, 0, 1, &errstr);
-				if (errstr)
-					errx(EX_USAGE, "Wrong value for -A expecting 0 or 1, got: %s (%s)", optarg, errstr);
-				break;
-			case 'o':
-				sets |= ORIGIN;
-				loads |= PKG_LOAD_DEPS;
-				match = MATCH_ALL;
-				oldorigin = strdup(optarg);
-				neworigin = strrchr(oldorigin, ':');
-				if (neworigin == NULL) {
-					free(oldorigin);
-					errx(EX_USAGE, "Wrong format for -o expecting oldorigin:neworigin, got %s", optarg);
-				}
-				*neworigin = '\0';
-				neworigin++;
-				if (strrchr(oldorigin, '/') == NULL || strrchr(neworigin, '/') == NULL) {
-					free(oldorigin);
-					errx(EX_USAGE, "Bad origin format, got %s", optarg);
-				}
-				break;
-			default:
-				usage_set();
-				return (EX_USAGE);
+		case 'y':
+			yes_flag = true;
+			break;
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'A':
+			sets |= AUTOMATIC;
+			newautomatic = strtonum(optarg, 0, 1, &errstr);
+			if (errstr)
+				errx(EX_USAGE, "Wrong value for -A. "
+				    "Expecting 0 or 1, got: %s (%s)",
+				    optarg, errstr);
+			break;
+		case 'o':
+			sets |= ORIGIN;
+			loads |= PKG_LOAD_DEPS;
+			match = MATCH_ALL;
+			oldorigin = strdup(optarg);
+			neworigin = strrchr(oldorigin, ':');
+			if (neworigin == NULL) {
+				free(oldorigin);
+				errx(EX_USAGE, "Wrong format for -o. "
+				    "Expecting oldorigin:neworigin, got: %s",
+				    optarg);
+			}
+			*neworigin = '\0';
+			neworigin++;
+			if (strrchr(oldorigin, '/') == NULL ||
+			    strrchr(neworigin, '/') == NULL) {
+				free(oldorigin);
+				errx(EX_USAGE,
+				    "Bad origin format, got: %s", optarg);
+			}
+			break;
+		default:
+			if (oldorigin != NULL)
+				free(oldorigin);
+			
+			usage_set();
+			return (EX_USAGE);
 		}
 	}
 
@@ -121,7 +130,7 @@ exec_set(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("modifying local database can only be done as root");
+		warnx("Modifying local database can only be done as root");
 		return (EX_NOPERM);
 	}
 
@@ -140,19 +149,26 @@ exec_set(int argc, char **argv)
 		}
 
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
-			fprintf(stderr, "%s not installed\n", oldorigin);
+			pkg = NULL;
+/*			fprintf(stderr, "%s not installed\n", oldorigin);
 			free(oldorigin);
 			pkgdb_it_free(it);
 			pkgdb_close(db);
-			return (EX_SOFTWARE);
+			return (EX_SOFTWARE);*/
 		}
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		if (!yes)
-			yes = query_yesno("Change origin from %s to %s for %s-%s? [y/N]: ",
-			    oldorigin, neworigin, name, version);
-		if (yes) {
+		if (pkg != NULL)
+			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		if (!yes) {
+			if (pkg != NULL)
+				yes = query_yesno("Change origin from %s to %s for %s-%s? [y/N]: ",
+				    oldorigin, neworigin, name, version);
+			else
+				yes = query_yesno("Change origin from %s to %s for all dependencies? "
+				    "[y/N]: ", oldorigin, neworigin);
+		}
+		if (pkg != NULL && yes) {
 			if (pkgdb_set(db, pkg, PKG_SET_ORIGIN, neworigin) != EPKG_OK)
-				return (EPKG_FATAL);
+				return (EX_IOERR);
 		}
 		pkgdb_it_free(it);
 	}
@@ -185,11 +201,11 @@ exec_set(int argc, char **argv)
 				struct pkg_dep *d = NULL;
 				while (pkg_deps(pkg, &d) == EPKG_OK) {
 					/*
-					 * Do not query user has he has already
-					 * been queried
+					 * Do not query user when he has already
+					 * been queried.
 					 */
 					if (pkgdb_set(db, pkg, PKG_SET_DEPORIGIN, oldorigin, neworigin) != EPKG_OK)
-						return (EPKG_FATAL);
+						return (EX_IOERR);
 				}
 			}
 		}
@@ -202,5 +218,5 @@ exec_set(int argc, char **argv)
 	pkg_free(pkg);
 	pkgdb_close(db);
 
-	return (EXIT_SUCCESS);
+	return (EX_OK);
 }

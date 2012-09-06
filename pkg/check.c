@@ -71,9 +71,9 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh)
 
 	while (pkg_deps(p, &dep) == EPKG_OK) {
 		/* do we have a missing dependency? */
-		if (pkg_is_installed(db, pkg_dep_get(dep, PKG_DEP_ORIGIN)) != EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
 			printf("%s has a missing dependency: %s\n", origin,
-			       pkg_dep_get(dep, PKG_DEP_ORIGIN)),
+			       pkg_dep_origin(dep)),
 			add_missing_dep(dep, dh, &nbpkgs);
 		}
 	}
@@ -90,7 +90,7 @@ add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs)
 	assert(d != NULL);
 
 	/* do not add duplicate entries in the queue */
-	origin = pkg_dep_get(d, PKG_DEP_ORIGIN);
+	origin = pkg_dep_origin(d);
 
 	STAILQ_FOREACH(e, dh, next)
 		if (strcmp(e->origin, origin) == 0)
@@ -99,9 +99,9 @@ add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs)
 	if ((e = calloc(1, sizeof(struct deps_entry))) == NULL)
 		err(1, "calloc(deps_entry)");
 
-	e->name = strdup(pkg_dep_get(d, PKG_DEP_NAME));
-	e->version = strdup(pkg_dep_get(d, PKG_DEP_VERSION));
-	e->origin = strdup(pkg_dep_get(d, PKG_DEP_ORIGIN));
+	e->name = strdup(pkg_dep_name(d));
+	e->version = strdup(pkg_dep_version(d));
+	e->origin = strdup(pkg_dep_origin(d));
 
 	(*nbpkgs)++;
 
@@ -143,23 +143,26 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		pkgs[i++] = e->origin;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
-		return (EPKG_FATAL);
+		return (EPKG_ENODB);
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, false, false) != EPKG_OK)
 		free(pkgs);
 
-	if ((it = pkgdb_query_installs(db, MATCH_EXACT, nbpkgs, pkgs, NULL, false)) == NULL) {
+	if ((it = pkgdb_query_installs(db, MATCH_EXACT, nbpkgs, pkgs, NULL, false, false)) == NULL) {
 		free(pkgs);
 		pkg_jobs_free(jobs);
 	}
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
+		pkg_set(pkg, PKG_AUTOMATIC, true);
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}
 
 	if (pkg_jobs_is_empty(jobs)) {
-		printf("\n>>> Not able to find packages for installation.\n\n");
+		printf("\n>>> Unable to find packages for installation.\n\n");
+		pkg_jobs_free(jobs);
+		pkgdb_it_free(it);
 		return (EPKG_FATAL);
 	}
 
@@ -172,7 +175,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		yes = query_yesno("\n>>> Try to fix the missing dependencies [y/N]: ");
 
 	if (yes == true)
-		pkg_jobs_apply(jobs, 0);
+		pkg_jobs_apply(jobs);
 
 	free(pkgs);
 	pkg_free(pkg);
@@ -221,8 +224,8 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-dsr] [-vy] [-a | -gxX <pattern>]\n");
-	fprintf(stderr, "\nFor more information see 'pkg help check'.\n");
+	fprintf(stderr, "usage: pkg check [-Bdsr] [-vy] [-a | -gxX <pattern>]\n\n");
+	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
 int
@@ -233,65 +236,75 @@ exec_check(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
-	int retcode = EX_OK;
 	int ret;
 	int ch;
 	bool yes = false;
 	bool dcheck = false;
 	bool checksums = false;
 	bool recompute = false;
+	bool reanalyse_shlibs = false;
+	bool shlibs;
 	int nbpkgs = 0;
 	int i;
 	int verbose = 0;
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagdxXsrv")) != -1) {
+	while ((ch = getopt(argc, argv, "yagdBxXsrv")) != -1) {
 		switch (ch) {
-			case 'a':
-				match = MATCH_ALL;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'y':
-				yes = true;
-				break;
-			case 'd':
-				dcheck = true;
-				flags |= PKG_LOAD_DEPS;
-				break;
-			case 's':
-				checksums = true;
-				flags |= PKG_LOAD_FILES;
-				break;
-			case 'r':
-				recompute = true;
-				flags |= PKG_LOAD_FILES;
-				if (geteuid() != 0)
-					errx(EX_USAGE, "Needs to be root to recompute the checksums and size");
-				break;
-			case 'v':
-				verbose = 1;
-				break;
-			default:
-				usage_check();
-				return (EX_USAGE);
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'y':
+			yes = true;
+			break;
+		case 'd':
+			dcheck = true;
+			flags |= PKG_LOAD_DEPS;
+			break;
+		case 'B':
+			pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+			if (!shlibs)
+				errx(EX_USAGE, "reanalyzing shlibs requires SHLIBS"
+					       " in pkg.conf.");
+			reanalyse_shlibs = true;
+			flags |= PKG_LOAD_FILES;
+			break;
+		case 's':
+			checksums = true;
+			flags |= PKG_LOAD_FILES;
+			break;
+		case 'r':
+			recompute = true;
+			flags |= PKG_LOAD_FILES;
+			if (geteuid() != 0)
+				errx(EX_USAGE, "recomputing the checksums"
+				    " and size can only be done as root");
+			break;
+		case 'v':
+			verbose = 1;
+			break;
+		default:
+			usage_check();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;
 	argv += optind;
 
 	/* Default to all packages if no pkg provided */
-	if (argc == 0 && (dcheck || checksums || recompute)) {
+	if (argc == 0 && (dcheck || checksums || recompute || reanalyse_shlibs)) {
 		match = MATCH_ALL;
-	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recompute)) {
+	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recompute || reanalyse_shlibs)) {
 		usage_check();
 		return (EX_USAGE);
 	}
@@ -301,7 +314,7 @@ exec_check(int argc, char **argv)
 		if (geteuid() == 0)
 			return (EX_IOERR);
 
-		return (retcode);
+		return (EX_OK);
 	}
 
 	if (ret != EPKG_OK)
@@ -330,13 +343,19 @@ exec_check(int argc, char **argv)
 			}
 			if (recompute) {
 				if (verbose)
-					printf("Recomputing size and sums: %s\n", pkgname);
+					printf("Recomputing size and checksums: %s\n", pkgname);
 				pkg_recompute(db, pkg);
+			}
+			if (reanalyse_shlibs) {
+				if (verbose)
+					printf("Reanalyzing files for shlibs: %s\n", pkgname);
+				if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK)
+					printf("Failed to reanalyse for shlibs: %s\n", pkgname);
 			}
 		}
 
 		if (geteuid() == 0 && nbpkgs > 0) {
-			if (yes == false) 
+			if (yes == false)
 				pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 			printf("\n>>> Missing package dependencies were detected.\n");
@@ -344,6 +363,10 @@ exec_check(int argc, char **argv)
 			ret = fix_deps(db, &dh, nbpkgs, yes);
 			if (ret == EPKG_OK)
 				check_summary(db, &dh);
+			else if (ret == EPKG_ENODB) {
+				db = NULL;
+				return (EX_IOERR);
+			}
 		}
 		pkgdb_it_free(it);
 		i++;
@@ -353,5 +376,5 @@ exec_check(int argc, char **argv)
 	pkg_free(pkg);
 	pkgdb_close(db);
 
-	return (retcode);
+	return (EX_OK);
 }

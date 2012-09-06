@@ -59,7 +59,7 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 		if [ $rc -ne 0 -o \
 			$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
 			-le $(( ${now} - ${then} + 600 )) ]; then
-			/usr/local/sbin/pkg audit -F || {
+			/usr/local/sbin/pkg audit -Fq || {
 			  rc=$?; [ $rc -lt 3 ] && rc=3
 			}
 		else

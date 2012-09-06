@@ -10,6 +10,7 @@ LDADD_STATIC=	-L${.OBJDIR}/../external/sqlite \
 		-larchive \
 		-lsbuf \
 		-lfetch \
+		-lpthread \
 		-lelf \
 		-lssl \
 		-lcrypto \

@@ -71,15 +71,15 @@ exec_updating(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "d:f:")) != -1) {
 		switch (ch) {
-			case 'd':
-				date = optarg;
-				break;
-			case 'f':
-				updatingfile = optarg;
-				break;
-			default:
-				usage_updating();
-				return (EX_USAGE);
+		case 'd':
+			date = optarg;
+			break;
+		case 'f':
+			updatingfile = optarg;
+			break;
+		default:
+			usage_updating();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;
@@ -95,7 +95,7 @@ exec_updating(int argc, char **argv)
 
 	SLIST_INIT(&origins);
 	if (argc == 0) {
-		if (( it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
+		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 			goto cleanup;
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
@@ -116,7 +116,7 @@ exec_updating(int argc, char **argv)
 	if (updatingfile == NULL) {
 		const char *portsdir;
 		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK) {
-			warnx("Cant get portsdir config entry");
+			warnx("Cannot get portsdir config entry!");
 			return (1);
 		}
 		asprintf(&updatingfile, "%s/UPDATING", portsdir);

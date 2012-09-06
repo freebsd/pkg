@@ -25,48 +25,103 @@
  */
 
 #include <sys/param.h>
+#include <sys/stat.h>
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <fetch.h>
 
 #include "pkg.h"
 #include "private/event.h"
+#include "private/pkg.h"
+#include "private/utils.h"
 
 int
 pkg_fetch_file(const char *url, const char *dest, time_t t)
 {
 	int fd = -1;
-	FILE *remote = NULL;
-	struct url_stat st;
-	off_t done = 0;
-	off_t r;
-	int retry = 3;
-	time_t begin_dl;
-	time_t now;
-	time_t last = 0;
-	char buf[10240];
-	int retcode = EPKG_OK;
-
-	fetchTimeout = 30;
+	int retcode = EPKG_FATAL;
 
 	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0600)) == -1) {
 		pkg_emit_errno("open", dest);
 		return(EPKG_FATAL);
 	}
 
+	retcode = pkg_fetch_file_to_fd(url, fd, t);
+
+	close(fd);
+
+	/* Remove local file if fetch failed */
+	if (retcode != EPKG_OK)
+		unlink(dest);
+
+	return (retcode);
+}
+
+int
+pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
+{
+	FILE *remote = NULL;
+	struct url *u;
+	struct url_stat st;
+	off_t done = 0;
+	off_t r;
+
+	int64_t max_retry, retry;
+	time_t begin_dl;
+	time_t now;
+	time_t last = 0;
+	char buf[10240];
+	int retcode = EPKG_OK;
+	bool srv = false;
+	char zone[MAXHOSTNAMELEN + 12];
+	struct dns_srvinfo *mirrors, *current;
+
+	current = mirrors = NULL;
+
+	fetchTimeout = 30;
+
+	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
+		max_retry = 3;
+
+	retry = max_retry;
+
+	u = fetchParseURL(url);
 	while (remote == NULL) {
-		remote = fetchXGetURL(url, &st, "");
+		if (retry == max_retry) {
+			pkg_config_bool(PKG_CONFIG_SRV_MIRROR, &srv);
+			if (srv) {
+				if (strcmp(u->scheme, "file") != 0) {
+					snprintf(zone, sizeof(zone),
+					    "_%s._tcp.%s", u->scheme, u->host);
+					mirrors = dns_getsrvinfo(zone);
+					current = mirrors;
+				}
+			}
+		}
+
+		if (mirrors != NULL)
+			strlcpy(u->host, current->host, sizeof(u->host));
+
+		remote = fetchXGet(u, &st, "");
 		if (remote == NULL) {
 			--retry;
-			if (retry == 0) {
-				pkg_emit_error("%s: %s", url, fetchLastErrString);
+			if (retry <= 0) {
+				pkg_emit_error("%s: %s", url,
+				    fetchLastErrString);
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-			sleep(1);
+			if (mirrors == NULL) {
+				sleep(1);
+			} else {
+				current = current->next;
+				if (current == NULL)
+					current = mirrors;
+			}
 		}
 	}
 	if (t != 0) {
@@ -81,8 +136,8 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 		if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
 			break;
 
-		if (write(fd, buf, r) != r) {
-			pkg_emit_errno("write", dest);
+		if (write(dest, buf, r) != r) {
+			pkg_emit_errno("write", "");
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -104,15 +159,10 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 
 	cleanup:
 
-	if (fd > 0)
-		close(fd);
-
 	if (remote != NULL)
 		fclose(remote);
 
-	/* Remove local file if fetch failed */
-	if (retcode != EPKG_OK)
-		unlink(dest);
+	fetchFreeURL(u);
 
 	return (retcode);
 }

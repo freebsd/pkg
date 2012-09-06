@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 25, 2012
+.Dd July 18, 2012
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -122,6 +122,30 @@ for groups
 .It Cm B
 for shared libraries
 .El
+.It Cm \&%# Ns Op drCFODLUGB
+Returns the number of element in the list
+.Bl -tag -width indent
+.It Cm d
+for dependencies
+.It Cm r
+for reverse dependencies
+.It Cm C
+for categories
+.It Cm F
+for files
+.It Cm O
+for options
+.It Cm D
+for directories
+.It Cm L
+for licenses
+.It Cm U
+for users
+.It Cm G
+for groups
+.It Cm B
+for shared libraries
+.El
 .El
 .Ss Multiline patterns:
 .Bl -tag -width F1
@@ -163,12 +187,22 @@ Expands to the list of license(s) for the matched package.
 Expands to the list of users needed by the matched package.
 .It Cm \&%G
 Expands to the list of groups needed by the matched package.
-.It Cm \&%S
-Expands to the list of scripts for the matching packages - install, deinstall, etc.
 .It Cm \&%B
 Expands to the list of shared libraries used by programs from the matched package.
 .El
 .Sh EVALUATION FORMAT
+Packages can be selected by using expressions comparing
+.Ar Variables
+(see below) to string or integer values. The mode of comparison is specified
+by the
+.Ar Operator
+(also listed below).
+Expressions can be combined using && (for and) and || (for or).
+Parentheses can be used for grouping in the usual manner.
+.Pp
+String values are either any text not containing whitespace (possibly
+followed by but not including whitespace) or any text enclosed in single or
+double quotes.
 .Ss Variables
 .Bl -tag -width F1
 .It Cm \&%n
@@ -193,6 +227,11 @@ Message of the package (type string)
 Timestamp that the package was installed (type integer)
 .It Cm \&%i
 Additionnal information about the package (type string)
+.It Cm \&%# Ns Op drCFODLUGB
+Number of elements in the list of information (type integer).
+See
+.Cm %?
+above for what information is used.
 .El
 .Ss Operators
 .Bl -tag -width F1
@@ -203,7 +242,9 @@ Integer comparison
 .It Cm < Ns Op =
 Integer comparison
 .It Cm = Ns Op =
-Integer or string comparison
+Integer or string equality comparison
+.It Cm !=
+Integer or string inequality comparison
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -237,6 +278,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

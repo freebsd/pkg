@@ -62,28 +62,30 @@ static struct commands {
 	{ "add", "Registers a package and installs it on the system", exec_add, usage_add},
 	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
-	{ "backup", "Backup and restore the local package database", exec_backup, usage_backup},
-	{ "check", "Check for missing dependencies and database consistency", exec_check, usage_check},
+	{ "backup", "Backs-up and restores the local package database", exec_backup, usage_backup},
+	{ "check", "Checks for missing dependencies and database consistency", exec_check, usage_check},
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
 	{ "create", "Creates software package distributions", exec_create, usage_create},
 	{ "delete", "Deletes packages from the database and the system", exec_delete, usage_delete},
 	{ "fetch", "Fetches packages from a remote repository", exec_fetch, usage_fetch},
 	{ "help", "Displays help information", exec_help, usage_help},
-	{ "info", "Displays information for installed packages", exec_info, usage_info},
+	{ "info", "Displays information about installed packages", exec_info, usage_info},
 	{ "install", "Installs packages from remote package repositories", exec_install, usage_install},
-	{ "query", "Query information for installed packages", exec_query, usage_query},
-	{ "search", "Performs a search in remote package repositories", exec_search, usage_search},
-	{ "set", "Modify local database informations", exec_set, usage_set},
-	{ "register", "Registers a package into the local package database", exec_register, usage_register},
+	{ "plugins", "Manages plugins and displays information about plugins", exec_plugins, usage_plugins},
+	{ "query", "Queries information about installed packages", exec_query, usage_query},
+	{ "register", "Registers a package into the local database", exec_register, usage_register},
 	{ "remove", "Deletes packages from the database and the system", exec_delete, usage_delete},
-	{ "repo", "Creates a package database repository", exec_repo, usage_repo},
-	{ "rquery", "Query information from the remote repository", exec_rquery, usage_rquery},
-	{ "shell", "Open a debug shell", exec_shell, usage_shell},
-	{ "shlib", "Displays which package links against a specific shared library", exec_shlib, usage_shlib},
-	{ "update", "Updates remote package repository databases", exec_update, usage_update},
+	{ "repo", "Creates a package repository catalogue", exec_repo, usage_repo},
+	{ "rquery", "Queries information in repository catalogues", exec_rquery, usage_rquery},
+	{ "search", "Performs a search of package repository catalogues", exec_search, usage_search},
+	{ "set", "Modifies information about packages in the local database", exec_set, usage_set},
+	{ "shell", "Opens a debug shell", exec_shell, usage_shell},
+	{ "shlib", "Displays which packages link against a specific shared library", exec_shlib, usage_shlib},
+	{ "stats", "Displays package database statistics", exec_stats, usage_stats},
+	{ "update", "Updates package repository catalogues", exec_update, usage_update},
 	{ "updating", "Displays UPDATING information for a package", exec_updating, usage_updating},
-	{ "upgrade", "Performs upgrades of package software distributions", exec_upgrade, usage_upgrade},
-	{ "version", "Summarize installed versions of packages", exec_version, usage_version},
+	{ "upgrade", "Performs upgrades of packaged software distributions", exec_upgrade, usage_upgrade},
+	{ "version", "Displays the versions of installed packages", exec_version, usage_version},
 	{ "which", "Displays which package installed a specific file", exec_which, usage_which},
 };
 
@@ -92,6 +94,9 @@ const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
 static void
 usage(void)
 {
+	struct pkg_plugins *p = NULL;
+	bool plugins_enabled = false;
+	
 	fprintf(stderr, "usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
 	fprintf(stderr, "Global options supported:\n");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
@@ -100,11 +105,31 @@ usage(void)
 	fprintf(stderr, "\t%-15s%s\n\n", "-v", "Display pkg(1) version");
 	fprintf(stderr, "Commands supported:\n");
 
-	for (unsigned int i = 0; i < cmd_len; i++) 
+	for (unsigned int i = 0; i < cmd_len; i++)
 		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
+	if (!pkg_initialized() && pkg_init(NULL) != EPKG_OK)
+		errx(EX_SOFTWARE, "Cannot parse configuration file!");
+	
+	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
+
+	if (plugins_enabled) {
+		if (pkg_plugins_init() != EPKG_OK)
+			errx(EX_SOFTWARE, "Plugins cannot be loaded");
+		
+		printf("\nCommands provided by plugins:\n");
+		
+		while (pkg_plugins_list(&p) != EPKG_END)
+			if (pkg_plugins_provides_cmd(p))
+				printf("\t%-15s%s\n",
+				       pkg_plugins_get(p, PKG_PLUGINS_NAME),
+				       pkg_plugins_get(p, PKG_PLUGINS_DESC));
+	}
+	
 	fprintf(stderr, "\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
+
+	pkg_shutdown();
 
 	exit(EX_USAGE);
 }
@@ -112,11 +137,7 @@ usage(void)
 static void
 usage_help(void)
 {
-	fprintf(stderr, "usage: pkg help <command>\n\n");
-	fprintf(stderr, "Where <command> can be:\n");
-
-	for (unsigned int i = 0; i < cmd_len; i++)
-		fprintf(stderr, "\t%s\n", cmd[i].name);
+	usage();
 }
 
 static int
@@ -170,33 +191,33 @@ main(int argc, char **argv)
 	signed char ch;
 	int debug = 0;
 	int version = 0;
-	int ret = EXIT_SUCCESS;
+	int ret = EX_OK;
 	const char *buf = NULL;
-	bool b;
+	bool b, plugins_enabled = false, plugins_summary = false;
 	struct pkg_config_kv *kv = NULL;
 	
-	// Set stdout unbuffered
+	/* Set stdout unbuffered */
         setvbuf(stdout, NULL, _IONBF, 0);
 
 	if (argc < 2)
 		usage();
 
 	while ((ch = getopt(argc, argv, "dj:c:vq")) != -1) {
-		switch(ch) {
-			case 'd':
-				debug++;
-				break;
-			case 'c':
-				chroot_path = optarg;
-				break;
-			case 'j':
-				jail_str = optarg;
-				break;
-			case 'v':
-				version++;
-				break;
-			default:
-				break;
+		switch (ch) {
+		case 'd':
+			debug++;
+			break;
+		case 'c':
+			chroot_path = optarg;
+			break;
+		case 'j':
+			jail_str = optarg;
+			break;
+		case 'v':
+			version++;
+			break;
+		default:
+			break;
 		}
 	}
 	argc -= optind;
@@ -204,7 +225,7 @@ main(int argc, char **argv)
 
 	if (version == 1) {
 		printf(PKGVERSION""GITHASH"\n");
-		exit(EXIT_SUCCESS);
+		exit(EX_OK);
 	}
 	if (argc == 0 && version == 0)
 		usage();
@@ -217,13 +238,13 @@ main(int argc, char **argv)
 	optind = 1;
 
 	if (jail_str != NULL && chroot_path != NULL) {
-		fprintf(stderr, "-j and -c cannot be used at the same time\n");
+		fprintf(stderr, "-j and -c cannot be used at the same time!\n");
 		usage();
 	}
 
 	if (chroot_path != NULL)
 		if (chroot(chroot_path) == -1)
-			errx(EX_SOFTWARE, "chroot failed");
+			errx(EX_SOFTWARE, "chroot failed!");
 
 	if (jail_str != NULL) {
 		jid = jail_getid(jail_str);
@@ -239,7 +260,18 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "chdir() failed");
 
 	if (pkg_init(NULL) != EPKG_OK)
-		errx(EX_SOFTWARE, "can not parse configuration file");
+		errx(EX_SOFTWARE, "Cannot parse configuration file!");
+
+	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
+
+	if (plugins_enabled) {
+		if (pkg_plugins_init() != EPKG_OK)
+			errx(EX_SOFTWARE, "Plugins cannot be loaded");
+
+		pkg_config_bool(PKG_CONFIG_PLUGINS_SUMMARY, &plugins_summary);
+		if (plugins_summary)
+			pkg_plugins_display_loaded();
+	}
 
 	if (version > 1) {
 		printf("version: "PKGVERSION""GITHASH"\n");
@@ -279,7 +311,8 @@ main(int argc, char **argv)
 			printf("Repository: %s\n", buf ? buf : "none");
 		}
 		pkg_shutdown();
-		exit(EXIT_SUCCESS);
+		pkg_plugins_shutdown();
+		exit(EX_OK);
 	}
 
 	len = strlen(argv[0]);
@@ -303,8 +336,15 @@ main(int argc, char **argv)
 	}
 
 	if (command == NULL) {
+		/* Check if a plugin provides the requested command */
+		if (plugins_enabled)
+			ret = pkg_plugins_cmd_run(argv[0], argc, argv);
+		
 		pkg_shutdown();
-		usage();
+		pkg_plugins_shutdown();
+		if (ret != EPKG_OK)
+			usage();
+		
 		return (ret); /* Not reached but makes scanbuild happy */
 	}
 
@@ -323,6 +363,8 @@ main(int argc, char **argv)
 	}
 
 	pkg_shutdown();
+	pkg_plugins_shutdown();
+	
 	return (ret);
 }
 

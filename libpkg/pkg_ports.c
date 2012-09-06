@@ -37,19 +37,22 @@
 #include <string.h>
 #include <unistd.h>
 #include <yaml.h>
+#include <uthash.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
 
 struct keyword {
-	const char *keyword;
-	STAILQ_HEAD(actions, action) actions;
-	STAILQ_ENTRY(keyword) next;
+	/* 64 is more than enough for this */
+	char keyword[64];
+	STAILQ_HEAD(, action) actions;
+	UT_hash_handle hh;
 };
 
 struct plist {
 	char *last_file;
+	const char *stage;
 	const char *prefix;
 	struct sbuf *unexec_buf;
 	struct sbuf *pre_install_buf;
@@ -66,7 +69,7 @@ struct plist {
 	int64_t flatsize;
 	struct hardlinks *hardlinks;
 	mode_t perm;
-	STAILQ_HEAD(keywords, keyword) keywords;
+	struct keyword *keywords;
 };
 
 struct action {
@@ -110,9 +113,12 @@ sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...
 	va_end(ap);
 }
 
-#define post_unexec_append(buf, str, ...) sbuf_append(buf, "unexec", str, __VA_ARGS__)
-#define pre_unexec_append(buf, str, ...) sbuf_append(buf, "unexec", str, __VA_ARGS__)
-#define exec_append(buf, str, ...) sbuf_append(buf, "exec", str, __VA_ARGS__)
+#define post_unexec_append(buf, str, ...) \
+	sbuf_append(buf, "unexec", str, __VA_ARGS__)
+#define pre_unexec_append(buf, str, ...) \
+	sbuf_append(buf, "unexec", str, __VA_ARGS__)
+#define exec_append(buf, str, ...) \
+	sbuf_append(buf, "exec", str, __VA_ARGS__)
 
 static int
 setprefix(struct plist *p, char *line)
@@ -132,6 +138,10 @@ meta_dirrm(struct plist *p, char *line, bool try)
 {
 	size_t len;
 	char path[MAXPATHLEN];
+	char stagedpath[MAXPATHLEN];
+	char *testpath;
+	struct stat st;
+	bool developer;
 
 	len = strlen(line);
 
@@ -141,9 +151,36 @@ meta_dirrm(struct plist *p, char *line, bool try)
 	if (line[0] == '/')
 		snprintf(path, sizeof(path), "%s/", line);
 	else
-		snprintf(path, sizeof(path), "%s%s%s/", p->prefix, p->slash, line);
+		snprintf(path, sizeof(path), "%s%s%s/", p->prefix, p->slash,
+		    line);
 
-	return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname, p->perm, try));
+	testpath = path;
+
+	if (p->stage != NULL) {
+		snprintf(stagedpath, sizeof(stagedpath), "%s%s", p->stage, path);
+		testpath = stagedpath;
+	}
+
+	if (lstat(testpath, &st) == 0)
+		return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
+		    p->perm, try, true));
+
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+
+	/* Only omit warning if not @dirrmtry, or always show in DEVELOPER_MODE */
+	if (!try || developer)
+		pkg_emit_errno("lstat", path);
+
+	/* Don't emit fatal if using @dirrmtry, regardless of DEVELOPER_MODE or staging */
+	if (!try) {
+		if (p->stage != NULL)
+			return (EPKG_FATAL);
+		if (developer) {
+			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
+			return (EPKG_FATAL);
+		}
+	}
+	return (EPKG_OK);
 }
 
 static int
@@ -163,6 +200,8 @@ file(struct plist *p, char *line)
 {
 	size_t len;
 	char path[MAXPATHLEN];
+	char stagedpath[MAXPATHLEN];
+	char *testpath;
 	struct stat st;
 	char *buf;
 	bool regular = false;
@@ -177,9 +216,16 @@ file(struct plist *p, char *line)
 	if (line[0] == '/')
 		snprintf(path, sizeof(path), "%s", line);
 	else
-		snprintf(path, sizeof(path), "%s%s%s", p->prefix, p->slash, line);
+		snprintf(path, sizeof(path), "%s%s%s", p->prefix,
+		    p->slash, line);
+	testpath = path;
 
-	if (lstat(path, &st) == 0) {
+	if (p->stage != NULL) {
+		snprintf(stagedpath, sizeof(stagedpath), "%s%s", p->stage, path);
+		testpath = stagedpath;
+	}
+
+	if (lstat(testpath, &st) == 0) {
 		buf = NULL;
 		regular = true;
 
@@ -192,15 +238,22 @@ file(struct plist *p, char *line)
 
 		if (regular) {
 			p->flatsize += st.st_size;
-			sha256_file(path, sha256);
+			sha256_file(testpath, sha256);
 			buf = sha256;
 		}
-		return (pkg_addfile_attr(p->pkg, path, buf, p->uname, p->gname, p->perm, true));
+		return (pkg_addfile_attr(p->pkg, path, buf, p->uname, p->gname,
+		    p->perm, true));
 	}
 
 	pkg_emit_errno("lstat", path);
+	if (p->stage != NULL)
+		return (EPKG_FATAL);
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-	return (developer ? EPKG_FATAL : EPKG_OK);
+	if (developer) {
+		pkg_emit_developer_mode("Plist error, missing file: %s", line);
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
 }
 
 static int
@@ -263,8 +316,10 @@ meta_exec(struct plist *p, char *line, bool unexec)
 	char comment[2];
 	char path[MAXPATHLEN + 1];
 	regmatch_t pmatch[2];
+	int ret;
 
-	if (format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL) != EPKG_OK)
+	ret = format_exec_cmd(&cmd, line, p->prefix, p->last_file, NULL);
+	if (ret != EPKG_OK)
 		return (EPKG_OK);
 
 	if (unexec) {
@@ -300,10 +355,13 @@ meta_exec(struct plist *p, char *line, bool unexec)
 		if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
 		    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
 		    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
-		    strstr(cmd, "fonts.scale") || strstr(cmd, "gtk-update-icon-cache") ||
-		    strstr(cmd, "update-desktop-database") || strstr(cmd, "update-mime-database")) {
+		    strstr(cmd, "fonts.scale") ||
+		    strstr(cmd, "gtk-update-icon-cache") ||
+		    strstr(cmd, "update-desktop-database") ||
+		    strstr(cmd, "update-mime-database")) {
 			if (comment[0] != '#')
-				post_unexec_append(p->post_deinstall_buf, "%s%s\n", comment, cmd);
+				post_unexec_append(p->post_deinstall_buf,
+				    "%s%s\n", comment, cmd);
 		} else {
 			sbuf_printf(p->unexec_buf, "%s%s\n",comment, cmd);
 		}
@@ -319,18 +377,22 @@ meta_exec(struct plist *p, char *line, bool unexec)
 			split_chr(buf, '|');
 
 			if (strstr(buf, "\"/")) {
-				regcomp(&preg, "[[:space:]]\"(/[^\"]+)", REG_EXTENDED);
+				regcomp(&preg, "[[:space:]]\"(/[^\"]+)",
+				    REG_EXTENDED);
 				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
-					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
+					strlcpy(path, &buf[pmatch[1].rm_so],
+					    pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
 						continue;
 					dirrmtry(p, path);
 				}
 			} else {
-				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)", REG_EXTENDED);
+				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)",
+				    REG_EXTENDED);
 				while (regexec(&preg, buf, 2, pmatch, 0) == 0) {
-					strlcpy(path, &buf[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so + 1);
+					strlcpy(path, &buf[pmatch[1].rm_so],
+					    pmatch[1].rm_eo - pmatch[1].rm_so + 1);
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
 						continue;
@@ -367,92 +429,92 @@ populate_keywords(struct plist *p)
 	/* @cwd */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "cwd";
+	strlcpy(k->keyword, "cwd", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = setprefix;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @ignore */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "ignore";
+	strlcpy(k->keyword, "ignore", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = ignore_next;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @comment */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "comment";
+	strlcpy(k->keyword, "comment", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = ignore;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @dirrm */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "dirrm";
+	strlcpy(k->keyword, "dirrm", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = dirrm;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @dirrmtry */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "dirrmtry";
+	strlcpy(k->keyword, "dirrmtry", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = dirrmtry;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @mode */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "mode";
+	strlcpy(k->keyword, "mode", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = setmod;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @owner */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "owner";
+	strlcpy(k->keyword, "owner", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = setowner;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @group */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "group";
+	strlcpy(k->keyword, "group", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = setgroup;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @exec */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "exec";
+	strlcpy(k->keyword, "exec", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = exec;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @unexec */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	k->keyword = "unexec";
+	strlcpy(k->keyword, "unexec", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = unexec;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	STAILQ_INSERT_TAIL(&p->keywords, k, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
 }
 
 static void
@@ -466,14 +528,18 @@ keyword_free(struct keyword *k)
 }
 
 static void
-plist_free(struct plist *plist)
+plist_free(struct plist *p)
 {
-	struct keyword *k;
-	LIST_FREE(&plist->keywords, k, keyword_free);
+	struct keyword *k, *tmp;
+	HASH_ITER(hh, p->keywords, k, tmp) {
+		HASH_DEL(p->keywords, k);
+		keyword_free(k);
+	}
 }
 
 static int
-parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *line)
+parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
+    char *line)
 {
 	yaml_node_item_t *item;
 	yaml_node_t *val;
@@ -494,7 +560,8 @@ parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *li
 		}
 
 		for (i = 0; list_actions[i].name != NULL; i++) {
-			if (!strcasecmp(val->data.scalar.value, list_actions[i].name)) {
+			if (!strcasecmp(val->data.scalar.value,
+			    list_actions[i].name)) {
 				list_actions[i].perform(p, line);
 				break;
 			}
@@ -506,7 +573,8 @@ parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *li
 }
 
 static int
-parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct plist *p, char *line)
+parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
+    struct plist *p, char *line)
 {
 	yaml_node_pair_t *pair;
 	yaml_node_t *key, *val;
@@ -529,7 +597,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "pre-install")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->pre_install_buf, cmd);
 				free(cmd);
 			}
@@ -539,7 +608,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "post-install")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->post_install_buf, cmd);
 				free(cmd);
 			}
@@ -549,7 +619,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "pre-deinstall")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->pre_deinstall_buf, cmd);
 				free(cmd);
 			}
@@ -558,8 +629,9 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "post-deinstall")) {
-			if (val->data.scalar.length != 0) { 
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+			if (val->data.scalar.length != 0) {
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->post_deinstall_buf, cmd);
 				free(cmd);
 			}
@@ -569,7 +641,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "pre-upgrade")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->pre_upgrade_buf, cmd);
 				free(cmd);
 			}
@@ -579,7 +652,8 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node, struct pli
 
 		if (!strcasecmp(key->data.scalar.value, "post-upgrade")) {
 			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value, p->prefix, p->last_file, line);
+				format_exec_cmd(&cmd, val->data.scalar.value,
+				    p->prefix, p->last_file, line);
 				sbuf_cat(p->post_upgrade_buf, cmd);
 				free(cmd);
 			}
@@ -598,7 +672,7 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
 	FILE *fp;
-	int ret = EPKG_FATAL;
+	int ret = EPKG_UNKNOWN;
 	yaml_parser_t parser;
 	yaml_document_t doc;
 	yaml_node_t *node;
@@ -606,16 +680,19 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 	pkg_config_string(PKG_CONFIG_PLIST_KEYWORDS_DIR, &keyword_dir);
 	if (keyword_dir == NULL) {
 		pkg_config_string(PKG_CONFIG_PORTSDIR, &keyword_dir);
-		snprintf(keyfile_path, sizeof(keyfile_path), "%s/Keywords/%s.yaml", keyword_dir, keyword);
+		snprintf(keyfile_path, sizeof(keyfile_path),
+		    "%s/Keywords/%s.yaml", keyword_dir, keyword);
 	} else {
-		snprintf(keyfile_path, sizeof(keyfile_path), "%s/%s.yaml", keyword_dir, keyword);
+		snprintf(keyfile_path, sizeof(keyfile_path),
+		    "%s/%s.yaml", keyword_dir, keyword);
 	}
 
 	if ((fp = fopen(keyfile_path, "r")) == NULL) {
 		if (errno != ENOENT)
-			pkg_emit_errno("Unable to open keyword definition", keyfile_path);
+			pkg_emit_errno("Unable to open keyword definition",
+			    keyfile_path);
 
-		return (EPKG_FATAL);
+		return (EPKG_UNKNOWN);
 	}
 
 	yaml_parser_initialize(&parser);
@@ -625,9 +702,11 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 	node = yaml_document_get_root_node(&doc);
 	if (node != NULL) {
 		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid keyword file format: %s", keyfile_path);
+			pkg_emit_error("Invalid keyword file format: %s",
+			    keyfile_path);
 		} else {
-			ret = parse_and_apply_keyword_file(&doc, node, plist, line);
+			ret = parse_and_apply_keyword_file(&doc, node, plist,
+			    line);
 		}
 	} else {
 		pkg_emit_error("Invalid keyword file format: %s", keyfile_path);
@@ -637,7 +716,6 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 	yaml_parser_delete(&parser);
 
 	return (ret);
-
 }
 
 static int
@@ -647,15 +725,14 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	struct action *a;
 	int ret = EPKG_FATAL;
 
-	STAILQ_FOREACH(k, &plist->keywords, next) {
-		if (!strcmp(k->keyword, keyword)) {
-			STAILQ_FOREACH(a, &k->actions, next) {
-				ret = a->perform(plist, line);
-				if (ret != EPKG_OK)
-					return (ret);
-			}
-			return (ret);
+	HASH_FIND_STR(plist->keywords, keyword, k);
+	if (k != NULL) {
+		STAILQ_FOREACH(a, &k->actions, next) {
+			ret = a->perform(plist, line);
+			if (ret != EPKG_OK)
+				return (ret);
 		}
+		return (ret);
 	}
 
 	/*
@@ -677,7 +754,7 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 }
 
 int
-ports_parse_plist(struct pkg *pkg, char *plist)
+ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 {
 	char *plist_p, *buf, *plist_buf;
 	int nbel, i;
@@ -693,6 +770,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 	pplist.last_file = NULL;
 	pplist.prefix = NULL;
+	pplist.stage = stage;
 	pplist.unexec_buf = sbuf_new_auto();
 	pplist.pre_install_buf = sbuf_new_auto();
 	pplist.post_install_buf = sbuf_new_auto();
@@ -708,7 +786,7 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 	pplist.ignore_next = false;
 	pplist.hardlinks = &hardlinks;
 	pplist.flatsize = 0;
-	STAILQ_INIT(&pplist.keywords);
+	pplist.keywords = NULL;
 
 	populate_keywords(&pplist);
 
@@ -748,8 +826,15 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			/* trim write spaces */
 			while (isspace(buf[0]))
 				buf++;
-			if (parse_keywords(&pplist, keyword, buf) != EPKG_OK)
-				pkg_emit_error("unknown keyword %s, ignoring %s", keyword, plist_p);
+			switch (parse_keywords(&pplist, keyword, buf)) {
+			case EPKG_UNKNOWN:
+				pkg_emit_error("unknown keyword %s, ignoring %s",
+				    keyword, plist_p);
+				break;
+			case EPKG_FATAL:
+				ret = EPKG_FATAL;
+				break;
+			}
 		} else if ((len = strlen(plist_p)) > 0){
 			if (sbuf_len(pplist.unexec_buf) > 0) {
 				sbuf_finish(pplist.unexec_buf);
@@ -764,7 +849,8 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 			while (isspace(buf[0]))
 				buf++;
 
-			file(&pplist, buf);
+			if (file(&pplist, buf) != EPKG_OK)
+				ret = EPKG_FATAL;
 		}
 
 		if (i != nbel) {
@@ -775,13 +861,20 @@ ports_parse_plist(struct pkg *pkg, char *plist)
 
 	pkg_set(pkg, PKG_FLATSIZE, pplist.flatsize);
 
-	flush_script_buffer(pplist.pre_install_buf, pkg, PKG_SCRIPT_PRE_INSTALL);
-	flush_script_buffer(pplist.post_install_buf, pkg, PKG_SCRIPT_POST_INSTALL);
-	flush_script_buffer(pplist.pre_deinstall_buf, pkg, PKG_SCRIPT_PRE_DEINSTALL);
-	flush_script_buffer(pplist.unexec_buf, pkg, PKG_SCRIPT_POST_DEINSTALL);
-	flush_script_buffer(pplist.post_deinstall_buf, pkg, PKG_SCRIPT_POST_DEINSTALL);
-	flush_script_buffer(pplist.pre_upgrade_buf, pkg, PKG_SCRIPT_PRE_UPGRADE);
-	flush_script_buffer(pplist.post_upgrade_buf, pkg, PKG_SCRIPT_POST_UPGRADE);
+	flush_script_buffer(pplist.pre_install_buf, pkg,
+	    PKG_SCRIPT_PRE_INSTALL);
+	flush_script_buffer(pplist.post_install_buf, pkg,
+	    PKG_SCRIPT_POST_INSTALL);
+	flush_script_buffer(pplist.pre_deinstall_buf, pkg,
+	    PKG_SCRIPT_PRE_DEINSTALL);
+	flush_script_buffer(pplist.unexec_buf, pkg,
+	    PKG_SCRIPT_POST_DEINSTALL);
+	flush_script_buffer(pplist.post_deinstall_buf, pkg,
+	    PKG_SCRIPT_POST_DEINSTALL);
+	flush_script_buffer(pplist.pre_upgrade_buf, pkg,
+	    PKG_SCRIPT_PRE_UPGRADE);
+	flush_script_buffer(pplist.post_upgrade_buf, pkg,
+	    PKG_SCRIPT_POST_UPGRADE);
 
 	free(hardlinks.inodes);
 

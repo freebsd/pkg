@@ -44,7 +44,8 @@ is_url(const char * const pattern)
 {
 	if (strncmp(pattern, "http://", 7) == 0 ||
 		strncmp(pattern, "https://", 8) == 0 ||
-		strncmp(pattern, "ftp://", 6) == 0)
+		strncmp(pattern, "ftp://", 6) == 0 ||
+		strncmp(pattern, "file://", 7) == 0)
 		return (EPKG_OK);
 
 	return (EPKG_FATAL);
@@ -54,7 +55,7 @@ void
 usage_add(void)
 {
 	fprintf(stderr, "usage: pkg add <pkg-name>\n");
-	fprintf(stderr, "       pkg add <url>://<pkg-name>\n\n");
+	fprintf(stderr, "       pkg add <protocol>://<path>/<pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help add'.\n");
 }
 
@@ -76,7 +77,7 @@ exec_add(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("adding packages can only be done as root");
+		warnx("Adding packages can only be done as root");
 		return (EX_NOPERM);
 	}
 
@@ -97,7 +98,7 @@ exec_add(int argc, char **argv)
 			if (access(file, F_OK) != 0) {
 				warn("%s",file);
 				if (errno == ENOENT)
-					warnx("Did you mean pkg install %s?", file);
+					warnx("Did you mean 'pkg install %s'?", file);
 				sbuf_cat(failedpkgs, argv[i]);
 				if (i != argc - 1)
 					sbuf_printf(failedpkgs, ", ");
@@ -107,7 +108,7 @@ exec_add(int argc, char **argv)
 
 		}
 			
-		pkg_open(&p, file, NULL);
+		pkg_open(&p, file);
 
 		if ((retcode = pkg_add(db, file, 0)) != EPKG_OK) {
 			sbuf_cat(failedpkgs, argv[i]);
@@ -122,7 +123,7 @@ exec_add(int argc, char **argv)
 	
 	if(failedpkgcount > 0) {
 		sbuf_finish(failedpkgs);
-		printf("\nFailed to install the following %d package(s): %s.\n", failedpkgcount, sbuf_data(failedpkgs));
+		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, sbuf_data(failedpkgs));
 	}
 	sbuf_delete(failedpkgs);
 

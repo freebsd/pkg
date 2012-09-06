@@ -152,12 +152,12 @@ show pkg-message, ...
 `pkg add` can install a package archive from the local disk, or from a
 remote FTP/HTTP server.
 
-If only a package name is given, it will search the remote repository
+If only a package name is given, it will search the repository catalogue
 and download and install the package if it exists. The dependencies will be
 downloaded and installed first.
 
 This is possible because we have the dependency information in the
-remote repository database.
+catalogue of the remote repository.
 
 `pkg add` will check if the user attempts to install a package built for another
 arch or release.
@@ -180,7 +180,7 @@ Directory leftovers are automatically removed if they are not in the MTREE.
 
 pkgng beta1 is now in the ports tree. To get it:
 
-	$ make -C /usr/ports/ports-mgmt/pkg
+	$ make -C /usr/ports/ports-mgmt/pkg install clean
 	$ echo "WITH_PKGNG=yes" >> /etc/make.conf
 
 <a name="usageintro"></a>
@@ -282,7 +282,7 @@ so that it points to a remote location, which contains packages that can be inst
 or set _PACKAGESITE_ in the *pkg.conf(5)* configuration file.
 
 In order to work with a single remote package repository, you would define _PACKAGESITE_ to
-your remote server with packages, like for example (or use */etc/pkg.conf* to set it there):
+your remote server with packages, like for example (or use ${LOCALBASE}/etc/pkg.conf* to set it there):
 
 	TCSH users:
 
@@ -292,7 +292,7 @@ your remote server with packages, like for example (or use */etc/pkg.conf* to se
 
 	# export PACKAGESITE=http://example.org/pkgng-repo/
 
-Then fetch the remote repository using the below command:
+Then fetch the repository catalogue using the command:
 
 	# pkg update
 
@@ -308,11 +308,11 @@ pkgng is also able to work with multiple remote repositories. In the previous se
 we are using only a single remote repository, which is defined by the _PACKAGESITE_ option.
 
 In order to be able to work with multiple remote repositories and instead of changing
-each time _PACKAGESITE_, you can tell *pkg(1)* to work in multi-repos mode as well.
+_PACKAGESITE_ each time, you can tell *pkg(1)* to work in multi-repos mode as well.
 
 To do this, simply enable multi-repos in *pkg.conf(5)* like this:
 
-	# echo "PKG_MULTIREPOS : YES" >> /etc/pkg.conf
+	# echo "PKG_MULTIREPOS : YES" >> /usr/local/etc/pkg.conf
 
 The next thing is to define your remote repositories in the *pkg.conf(5)* file.
 
@@ -327,7 +327,7 @@ the *default* repository.
 It is important that you always define a *default* repository - this is the repository that is being
 used when no remote repositories are specified via the `-r <repo>` flag.
 
-Next, fetch the remote repositories:
+Next, fetch all the repository catalogues:
 
 	# pkg update
 

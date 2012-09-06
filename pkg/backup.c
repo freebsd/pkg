@@ -27,13 +27,15 @@
 
 #include <pkg.h>
 #include <sysexits.h>
+#include <unistd.h>
 
 #include "pkgcli.h"
 
 void
 usage_backup(void)
 {
-	fprintf(stderr, "usage: pkg backup -[d|r] dest\n");
+	fprintf(stderr, "usage: pkg backup -d <dest_file>\n");
+	fprintf(stderr, "       pkg backup -r <src_file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help backup'.\n");
 }
 
@@ -55,22 +57,25 @@ exec_backup(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (argv[1][1] == 'd') {
-		printf("Dumping database...");
+		if (isatty(fileno(stdin)))
+				printf("Dumping database...\n");
 		if (pkgdb_dump(db, dest) == EPKG_FATAL)
-			return (EPKG_FATAL);
+			return (EX_IOERR);
 
-		printf("done\n");
+		if (isatty(fileno(stdin)))
+			printf("done\n");
 	}
 
 	if (argv[1][1] == 'r') {
-		printf("Restoring database...");
+		if (isatty(fileno(stdin)))
+			printf("Restoring database...\n");
 		if (pkgdb_load(db, dest) == EPKG_FATAL)
-			return (EPKG_FATAL);
-		printf("done\n");
+			return (EX_IOERR);
+		if (isatty(fileno(stdin)))
+			printf("done\n");
 	}
 
 	pkgdb_close(db);
 
-
-	return (EPKG_OK);
+	return (EX_OK);
 }

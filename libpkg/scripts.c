@@ -26,24 +26,44 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/wait.h>
+
 #include <assert.h>
+#include <errno.h>
+#include <paths.h>
+#include <spawn.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <string.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
+#include "private/event.h"
+
+extern char **environ;
 
 int
-pkg_script_run(struct pkg * const pkg, pkg_script_t type)
+pkg_script_run(struct pkg * const pkg, pkg_script type)
 {
-	struct pkg_script *script = NULL;
-	pkg_script_t stype;
 	struct sbuf * const script_cmd = sbuf_new_auto();
-	size_t i;
-	const char *name, *prefix, *version;
+	size_t i, j;
+	int error, pstat;
+	pid_t pid;
+	const char *name, *prefix, *version, *script_cmd_p;
+	const char *argv[4];
+	char **ep;
+	int ret = EPKG_OK;
+	int stdin_pipe[2] = {-1, -1};
+	posix_spawn_file_actions_t action;
+	bool use_pipe = 0;
+	ssize_t bytes_written;
+	size_t script_cmd_len;
+	long argmax;
 
 	struct {
 		const char * const arg;
-		const pkg_script_t b;
-		const pkg_script_t a;
+		const pkg_script b;
+		const pkg_script a;
 	} const map[] = {
 		/* a implies b with argument arg */
 		{"PRE-INSTALL",    PKG_SCRIPT_INSTALL,   PKG_SCRIPT_PRE_INSTALL},
@@ -64,30 +84,110 @@ pkg_script_run(struct pkg * const pkg, pkg_script_t type)
 	assert(i < sizeof(map) / sizeof(map[0]));
 	assert(map[i].a == type);
 
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
-
-		stype = pkg_script_type(script);
-
-		if (stype == map[i].a || stype == map[i].b) {
+	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
+		if (pkg_script_get(pkg, j) == NULL)
+			continue;
+		if (j == map[i].a || j == map[i].b) {
 			sbuf_reset(script_cmd);
-			sbuf_printf(script_cmd, "PKG_PREFIX=%s\nset -- %s-%s",
-			    prefix, name, version);
+			setenv("PKG_PREFIX", prefix, 1);
+			sbuf_printf(script_cmd, "set -- %s-%s",
+			    name, version);
 
-			if (stype == map[i].b) {
+			if (j == map[i].b) {
 				/* add arg **/
 				sbuf_cat(script_cmd, " ");
 				sbuf_cat(script_cmd, map[i].arg);
 			}
 
 			sbuf_cat(script_cmd, "\n");
-			sbuf_cat(script_cmd, pkg_script_data(script));
+			sbuf_cat(script_cmd, pkg_script_get(pkg, j));
 			sbuf_finish(script_cmd);
-			system(sbuf_get(script_cmd));
+
+			/* Determine the maximum argument length for the given
+			   script to determine if /bin/sh -c can be used, or
+			   if a pipe is required to /bin/sh -s. Similar to
+			   find(1) determination */
+			if ((argmax = sysconf(_SC_ARG_MAX)) == -1)
+				argmax = _POSIX_ARG_MAX;
+			argmax -= 1024;
+			for (ep = environ; *ep != NULL; ep++)
+				argmax -= strlen(*ep) + 1 + sizeof(*ep);
+			argmax -= 1 + sizeof(*ep);
+
+			if (sbuf_len(script_cmd) > argmax) {
+				if (pipe(stdin_pipe) < 0) {
+					ret = EPKG_FATAL;
+					goto cleanup;
+				}
+
+				posix_spawn_file_actions_init(&action);
+				posix_spawn_file_actions_adddup2(&action, stdin_pipe[0],
+				    STDIN_FILENO);
+				posix_spawn_file_actions_addclose(&action, stdin_pipe[1]);
+
+				argv[0] = "sh";
+				argv[1] = "-s";
+				argv[2] = NULL;
+
+				use_pipe = 1;
+			} else {
+				argv[0] = "sh";
+				argv[1] = "-c";
+				argv[2] = sbuf_get(script_cmd);
+				argv[3] = NULL;
+
+				use_pipe = 0;
+			}
+
+			if ((error = posix_spawn(&pid, _PATH_BSHELL,
+			    use_pipe ? &action : NULL,
+			    NULL, __DECONST(char **, argv),
+			    environ)) != 0) {
+				errno = error;
+				pkg_emit_errno("Cannot run script",
+				    map[i].arg);
+				goto cleanup;
+			}
+
+			if (use_pipe) {
+				script_cmd_p = sbuf_get(script_cmd);
+				script_cmd_len = sbuf_len(script_cmd);
+				while (script_cmd_len > 0) {
+					if ((bytes_written = write(stdin_pipe[1], script_cmd_p,
+					    script_cmd_len)) == -1) {
+						if (errno == EINTR)
+							continue;
+						ret = EPKG_FATAL;
+						goto cleanup;
+					}
+					script_cmd_p += bytes_written;
+					script_cmd_len -= bytes_written;
+				}
+				close(stdin_pipe[1]);
+			}
+
+			unsetenv("PKG_PREFIX");
+
+			while (waitpid(pid, &pstat, 0) == -1) {
+				if (errno != EINTR)
+					goto cleanup;
+			}
+
+			if (WEXITSTATUS(pstat) != 0) {
+				pkg_emit_error("%s script failed", map[i].arg);
+				goto cleanup;
+			}
 		}
 	}
 
-	sbuf_delete(script_cmd);
+cleanup:
 
-	return (EPKG_OK);
+	sbuf_delete(script_cmd);
+	if (stdin_pipe[0] != -1)
+		close(stdin_pipe[0]);
+	if (stdin_pipe[1] != -1)
+		close(stdin_pipe[1]);
+
+	return (ret);
 }
 

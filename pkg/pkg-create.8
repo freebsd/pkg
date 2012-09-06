@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 2, 2012
+.Dd July 10, 2012
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -25,59 +25,92 @@
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
 .Nm
-.Op Fl gxXn
-.Op Fl r Ar rootdir
-.Op Fl m Ar manifest
+.Op Fl n
 .Op Fl f Ar format
 .Op Fl o Ar outdir
+.Op Fl p Ar plist
+.Op Fl r Ar rootdir
+.Fl m Ar manifestdir
+.Nm
+.Op Fl gnxX
+.Op Fl f Ar format
+.Op Fl o Ar outdir
+.Op Fl r Ar rootdir
 .Ar pkg-name ...
 .Nm
-.Fl an
-.Op Fl r Ar rootdir
-.Op Fl m Ar manifest
+.Op Fl n
 .Op Fl f Ar format
 .Op Fl o Ar outdir
+.Op Fl r Ar rootdir
+.Fl a
 .\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
 .Nm
-is used to create packages from binaries installed on your computer.
-Packages thus created can be distributed and subsequently installed on other machines
-using the
+is used to create packages from binaries or other files installed on
+your computer.
+Package tarballs can created from the files of a previously installed
+package using metadata from the local package database.
+Any number of packages may be created in one invocation of this style.
+.Pp
+Alternatively, a single package can be created from an arbitrary
+selection of files on your system, but this requires a
+.Ar manifestdir
+and optionally
+.Ar plist
+to be supplied.
+The package name will be derived from the
+.Fa +MANIFEST
+file which must be contained within the
+.Ar manifestdir .
+.Pp
+Packages thus created can be distributed and subsequently installed on
+other machines using the
 .Cm pkg add
 command.
 .\" ---------------------------------------------------------------------------
 .Sh OPTIONS
 The following options are supported by
 .Nm :
-.Bl -tag -width ".Fl m Ar manifest"
+.Bl -tag -width ".Fl m Ar manifestdir"
 .It Fl a
-Create packages for all binaries installed on your system.
-You can't use this option along with the
-.Fl g , x
+Create package tarballs from all packages installed on your system.
+This option is incompatible with the
+.Fl g , x , X
 or
-.Fl X
-option.
+.Fl m Ar manifestdir
+options.
 .It Fl g
 Interpret
 .Ar pkg-name
 as a shell glob pattern and create package only for installed binaries whose
 name match this pattern.
+This option is incompatible with the
+.Fl a , x , X
+or
+.Fl m Ar manifestdir
+options.
 .It Fl x
 Like
 .Fl g ,
 but interpret
 .Ar pkg-name
 as a regular expression.
+This option is incompatible with the
+.Fl a, g , X
+or
+.Fl m Ar manifestdir
+options.
 .It Fl X
 Like
 .Fl g ,
 but interpret
 .Ar pkg-name
 as an extended regular expression.
-.It Fl r Ar rootdir
-Specify root directory for the package \" TODO: New description
-.It Fl m Ar manifest
-Specify manifest directory \" TODO: New description
+This option is incompatible with the
+.Fl a, g , x
+or
+.Fl m Ar manifestdir
+options.
 .It Fl f Ar format
 Set
 .Ar format
@@ -90,14 +123,65 @@ which are currently the only supported format.
 If an invalid or no format is specified
 .Ar txz
 is assumed.
+.It Fl m Ar manifestdir
+Specify the directory containing the package manifest,
+.Fa +MANIFEST
+and optionally two other files; one containing a message to be
+displayed on package installation,
+.Fa +DISPLAY
+and the other containing an mtree specification,
+.Fa +MTREE_DIRS ,
+for the directory tree the package will use.
+See
+.Xr mtree 5
+for the format of the mtree file.
+If specified, only a single package will be created.
+Neither
+.Fa +DISPLAY
+nor
+.Fa +MTREE_DIRS
+are required; the
+.Fa +MANIFEST
+file can contain all the required information needed to build a
+package.
+This option is incompatible with the
+.Fl a, g , x
+or
+.Fl X
+options.
+.It Fl n
+Do not overwrite already existing packages
 .It Fl o Ar outdir
 Set
 .Ar outdir
 as the output directory.
 If this option is not given, all created packages will
 be saved in the current directory.
-.It Fl n
-Do not overwrite already existing packages
+.It Fl p Ar plist
+Specify some package metadata using the legacy plist format from
+.Xr pkg_add 1 ,
+commonly found in
+.Fa pkg-plist
+files in the ports tree.
+Metadata from the
+.Ar plist
+file, if specified, will take precedence over any equivalents from
+the
+.Ar manifestdir .
+Only has any effect when used with
+.Ar manifestdir .
+.It Fl r Ar rootdir
+.Ar rootdir
+specifies the top-level directory to be treated as the root of the
+filesystem hierarchy containing the package files.
+File paths in generated packages will be relative to
+.Ar rootdir .
+This allows a package to be generated from content offset from its
+intended final location, which allows a package building without
+disturbing similar content already on the system.
+If unspecified, the default is effectively
+.Fa / ,
+the actual root directory.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh MANIFEST FILE DETAILS
@@ -188,17 +272,16 @@ for further description.
 .It Ev PORTSDIR
 .El
 .\" ---------------------------------------------------------------------------
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.\" ---------------------------------------------------------------------------
 .Sh EXAMPLES
 Create package files for installed packages:
 .Dl % pkg create -a -o /usr/ports/packages/All
 .Pp
 Create package file for pkg:
 .Dl % pkg create -o /usr/ports/packages/All pkg
-.Pp
-.\" ---------------------------------------------------------------------------
-.Sh FILES
-See
-.Xr pkg.conf 5 .
 .\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr pkg 8 ,
@@ -220,6 +303,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

@@ -44,8 +44,6 @@
 #include <pkg.h>
 #include "pkgcli.h"
 
-#define AUDIT_URL "http://portaudit.FreeBSD.org/auditfile.tbz"
-
 #define EQ 1
 #define LT 2
 #define LTE 3
@@ -70,7 +68,8 @@ SLIST_HEAD(audit_head, audit_entry);
 void
 usage_audit(void)
 {
-	fprintf(stderr, "usage: pkg audit [-F] <pattern>\n");
+	fprintf(stderr, "usage: pkg audit [-F] <pattern>\n\n");
+	fprintf(stderr, "For more information see 'pkg help add'.\n");
 }
 
 static int
@@ -79,25 +78,32 @@ fetch_and_extract(const char *src, const char *dest)
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
 	int fd = -1;
-	const char *tmp = "/tmp/auditfile.tbz";
+	char tmp[MAXPATHLEN];
+	const char *tmpdir;
 	int retcode = EPKG_FATAL;
 	int ret;
 	time_t t = 0;
 	struct stat st;
 
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	strlcpy(tmp, tmpdir, sizeof(tmp));
+	strlcat(tmp, "/auditfile.tbz", sizeof(tmp));
+
 	if (stat(dest, &st) != -1) {
 		t = st.st_mtime;
 	}
 	switch (pkg_fetch_file(src, tmp, t)) {
-		case EPKG_OK:
-			break;
-		case EPKG_UPTODATE:
-			printf("audit file up-to-date\n");
-			retcode = EPKG_OK;
-			goto cleanup;
-		default:
-			warnx("Can't fetch audit file");
-			goto cleanup;
+	case EPKG_OK:
+		break;
+	case EPKG_UPTODATE:
+		printf("Audit file up-to-date.\n");
+		retcode = EPKG_OK;
+		goto cleanup;
+	default:
+		warnx("Cannot fetch audit file!");
+		goto cleanup;
 	}
 
 	a = archive_read_new();
@@ -216,17 +222,17 @@ parse_db(const char *path, struct audit_head *h)
 		while ((column = strsep(&line, "|")) != NULL)
 		{
 			switch (column_id) {
-				case 0:
-					parse_pattern(e, column, linelen);
-					break;
-				case 1:
-					e->url = strdup(column);
-					break;
-				case 2:
-					e->desc = strdup(column);
-					break;
-				default:
-					warn("extra column in audit file");
+			case 0:
+				parse_pattern(e, column, linelen);
+				break;
+			case 1:
+				e->url = strdup(column);
+				break;
+			case 2:
+				e->desc = strdup(column);
+				break;
+			default:
+				warn("extra column in audit file");
 			}
 			column_id++;
 		}
@@ -244,23 +250,23 @@ match_version(const char *pkgversion, struct version_entry *v)
 	/*
 	 * Return true so it is easier for the caller to handle case where there is
 	 * only one version to match: the missing one will always match.
-	 */ 
+	 */
 	if (v->version == NULL)
 		return true;
 
 	switch (pkg_version_cmp(pkgversion, v->version)) {
-		case -1:
-			if (v->type == LT || v->type == LTE)
-				res = true;
-			break;
-		case 0:
-			if (v->type == EQ || v->type == LTE || v->type == GTE)
-				res = true;
-			break;
-		case 1:
-			if (v->type == GT || v->type == GTE)
-				res = true;
-			break;
+	case -1:
+		if (v->type == LT || v->type == LTE)
+			res = true;
+		break;
+	case 0:
+		if (v->type == EQ || v->type == LTE || v->type == GTE)
+			res = true;
+		break;
+	case 1:
+		if (v->type == GT || v->type == GTE)
+			res = true;
+		break;
 	}
 	return res;
 }
@@ -286,7 +292,7 @@ is_vulnerable(struct audit_head *h, struct pkg *pkg)
 		res2 = match_version(pkgversion, &e->v2);
 		if (res1 && res2) {
 			res = true;
-			printf("%s-%s is vulnerable\n", pkgname, pkgversion);
+			printf("%s-%s is vulnerable:\n", pkgname, pkgversion);
 			printf("%s\n", e->desc);
 			printf("WWW: %s\n\n", e->url);
 		}
@@ -325,6 +331,7 @@ exec_audit(int argc, char **argv)
 	bool fetch = false;
 	int ch;
 	int ret = EX_OK;
+	const char *portaudit_site = NULL;
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &db_dir) != EPKG_OK) {
 		warnx("PKG_DBIR is missing");
@@ -332,21 +339,27 @@ exec_audit(int argc, char **argv)
 	}
 	snprintf(audit_file, sizeof(audit_file), "%s/auditfile", db_dir);
 
-	while ((ch = getopt(argc, argv, "F")) != -1) {
+	while ((ch = getopt(argc, argv, "qF")) != -1) {
 		switch (ch) {
-			case 'F':
-				fetch = true;
-				break;
-			default:
-				usage_audit();
-				return(EX_USAGE);
+		case 'q':
+			quiet = true;
+			break;
+		case 'F':
+			fetch = true;
+			break;
+		default:
+			usage_audit();
+			return(EX_USAGE);
 		}
 	}
 	argc -= optind;
 	argv += optind;
 
 	if (fetch == true) {
-		if (fetch_and_extract(AUDIT_URL, audit_file) != EPKG_OK) {
+		if (pkg_config_string(PKG_CONFIG_PORTAUDIT_SITE, &portaudit_site) != EPKG_OK) {
+			return (EPKG_FATAL);
+		}
+		if (fetch_and_extract(portaudit_site, audit_file) != EPKG_OK) {
 			return (EX_IOERR);
 		}
 	}
@@ -369,7 +382,7 @@ exec_audit(int argc, char **argv)
 		    PKG_VERSION, version);
 		if (parse_db(audit_file, &h) != EPKG_OK) {
 			if (errno == ENOENT)
-				warnx("unable to open audit file, try running pkg audit -F first");
+				warnx("unable to open audit file, try running 'pkg audit -F' first");
 			else
 				warn("unable to open audit file %s", audit_file);
 			ret = EX_DATAERR;
@@ -391,14 +404,14 @@ exec_audit(int argc, char **argv)
 
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 	{
-		warnx("Can not query local database");
+		warnx("cannot query local database");
 		ret = EX_IOERR;
 		goto cleanup;
 	}
 
 	if (parse_db(audit_file, &h) != EPKG_OK) {
 		if (errno == ENOENT)
-			warnx("unable to open audit file, try running pkg audit -F first");
+			warnx("unable to open audit file, try running 'pkg audit -F' first");
 		else
 			warn("unable to open audit file %s", audit_file);
 		ret = EX_DATAERR;
@@ -410,6 +423,9 @@ exec_audit(int argc, char **argv)
 			vuln++;
 		}
 	}
+
+	if (ret == EPKG_END && vuln == 0)
+		ret = EX_OK;
 
 	printf("%u problem(s) in your installed packages found.\n", vuln);
 

@@ -138,11 +138,11 @@ refresh_progress_meter(void)
 	bytes_left = end_pos - cur_pos;
 
 	delta_pos = cur_pos - last_pos;
-	if (delta_pos > max_delta_pos) 
+	if (delta_pos > max_delta_pos)
 		max_delta_pos = delta_pos;
 
 	if (bytes_left > 0)
-		elapsed = now - last_update;
+		elapsed = (now > last_update) ? now - last_update : 0;
 	else {
 		elapsed = now - start;
 		/* Calculate true total speed when done */

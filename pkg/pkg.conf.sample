@@ -1,23 +1,27 @@
 # System-wide configuration file for pkg(1)
-# For more information on the file format and 
+# For more information on the file format and
 # options please refer to the pkg.conf(5) man page
 
 # Configuration options
-PACKAGESITE	    : ftp://ftp.freebsd.org/pub/pkgng
-PKG_DBDIR	    : /var/db/pkg
-PKG_CACHEDIR	    : /var/cache/pkg
-PORTSDIR	    : /usr/ports
-PUBKEY		    : /etc/ssl/pkg.conf
-HANDLE_RC_SCRIPTS   : NO
-PKG_MULTIREPOS	    : NO
-ASSUME_ALWAYS_YES   : NO
-SYSLOG		    : YES
-SHLIBS		    : NO
-AUTODEPS	    : NO
+PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
+#PKG_DBDIR	    : /var/db/pkg
+#PKG_CACHEDIR	    : /var/cache/pkg
+#PORTSDIR	    : /usr/ports
+#PUBKEY		    : /etc/ssl/pkg.conf
+#HANDLE_RC_SCRIPTS   : NO
+#PKG_MULTIREPOS	    : NO
+#ASSUME_ALWAYS_YES   : NO
+#SYSLOG		    : YES
+#SHLIBS		    : NO
+#AUTODEPS	    : NO
+#PORTAUDIT_SITE	    : http://portaudit.FreeBSD.org/auditfile.tbz
+PKG_PLUGINS_DIR	    : /usr/local/etc/pkg/plugins
+PKG_ENABLE_PLUGINS  : NO
+PKG_PLUGINS_SUMMARY : NO
 
 # Repository definitions
-repos:
-  default : http://example.org/pkgng/
-  repo1 : http://somewhere.org/pkgng/repo1/
-  repo2 : http://somewhere.org/pkgng/repo2/
+#repos:
+#  default : http://example.org/pkgng/
+#  repo1 : http://somewhere.org/pkgng/repo1/
+#  repo2 : http://somewhere.org/pkgng/repo2/
 

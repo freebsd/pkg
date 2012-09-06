@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 12, 2012
+.Dd June 12, 2012
 .Dt PKG-AUDIT 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd Audits installed packages against known vulnerabilities.
 .Sh SYNOPSIS
 .Nm
-.Op Fl F
+.Op Fl Fq
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
@@ -38,6 +38,12 @@ to check if security advisories for any installed packages exist.
 Note that a current ports tree (or any local copy of the ports tree) is not
 required for operation.
 .Pp
+The URL that is used to fetch the database can be overridden via the PORTAUDIT_SITE
+config variable.
+See
+.Xr pkg.conf 5
+for more information.
+.Pp
 If you have a vulnerable package installed, you are advised to update or
 deinstall it immediately.
 .Pp
@@ -50,6 +56,10 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl F
 Fetch the database before checking.
+.It Fl q
+Be ``quiet''.
+Prints only the requested information without
+displaying many hints.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -59,12 +69,12 @@ See
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It PKG_DBDIR
+.It PORTAUDIT_SITE
 .El
 .Sh FILES
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
-.Xr pkg-set 8 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
 .Xr pkg-autoremove 8 ,
@@ -84,6 +94,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

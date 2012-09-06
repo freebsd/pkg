@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 16, 2012
+.Dd July 26, 2012
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -23,63 +23,128 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
+.Op Fl AfgLnqRXxy
 .Op Fl r Ar reponame
-.Op Fl yqfgxXL
-.Ar <pkg-origin> <...>
+.Ar <pkg-origin> ...
 .Sh DESCRIPTION
 .Nm
 is used for installation of packages from a remote package
-repository database.
-It can install multiple packages
-specified on the command-line from multiple repositories.
+repository.
+Multiple package names can be specified on the command line, either
+explicitly or by matching against package names in the repository
+catalogues using shell globbing; standard- or extended regular
+expressions.
 .Pp
-If a package is found to exists in more than one package
-repository the first matching repository is the one that the
-package will be first tried to be fetched from.
-.Pp
-If fetching from the repository fails for some reason the next
-repository, which the package is found to exist is the one that is
-tried until the package is fetched, or all repositories are tried.
-.Pp
-Multiple package repositories is activated only when the environment
-variable
-.Ev PACKAGESITE
-is not defined.
-.Pp
-If
-.Ev PACKAGESITE
-is defined then only the repository to which it
-points is the one that is used during the package installations.
-.Pp
-It is always good to update your package repositories first before
-doing a remote installation using
 .Nm
+creates a work-list of all the package installations to do.
+Any already installed and up to date packages will be dropped from the
+list unless the
+.Fl f
+(force) option is supplied, in which case those packages will be
+reinstalled.
+The dependencies of packages in the list are examined and any missing
+packages are added to the list for installation.
+Such implicitly added packages are flagged as candidates for
+autoremoval.
+See
+.Xr pkg-autoremove 8
+for details.
+Any already installed but out of date packages, either named on the
+command line or from the sum of all their dependencies are added to
+the work list as upgrade jobs.
+The work list is sorted into dependency order and
+.Nm
+will present it to the user for approval before proceeding, unless
+overridden by the
+.Fl y
+option or the
+.Cm ASSUME_ALWAYS_YES
+setting in
+.Fa pkg.conf .
 .Pp
-The remote repository will automatically be updated using
-.Xr pkg-update 8 .
-This can be disabled with the
+Autoremoval flags are sticky, and will persist over reinstallation or
+upgrade of the packages concerned, even if subsequently the packages
+are named explicitly on a command line.
+See
+.Xr pkg-query 8
+for finding the autoremoval status of a package, and
+.Xr pkg-set 8
+for modifying it.
+.Pp
+Currently
+.Nm
+will only use one repository to install packages from.
+When
+.Ev PACKAGESITE
+is set in the environment, or the equivalent
+.Cm PACKAGESITE
+setting is present in
+.Fa pkg.conf
+only that site will be used.
+.Pp
+Alternatively, when in multi-repo mode, the
+.Fl r
+option may be used to select one of the package repositories listed
+in the configuration file.
+Otherwise the default repository will be used.
+.Pp
+Multiple package repository support is only activated when neither the
+environment variable
+.Ev PACKAGESITE
+nor the equivalent
+.Cm PACKAGESITE
+configuration setting are defined.
+.Pp
+Package repository catalogues will be automatically updated whenever
+.Xr pkg-update 8
+is run, unless disabled by the
 .Fl L
 flag.
+Updating repository catalogues is highly recommended before doing any
+package installation with
+.Nm .
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl y
-Assume yes when asked for confirmation before package installation.
-.It Fl g
-Treat the package names as shell glob patterns.
-.It Fl x
-Treat the package names as regular expressions.
-.It Fl X
-Treat the package names as extended regular expressions.
+.It Fl A
+Mark the installed packages as orphan.
+Will be automatically removed if no other packages depend on them.
+For more information please refer to
+.Xr pkg-autoremove 8
 .It Fl f
 Force the reinstallation of the package if already installed.
-.It Fl q
-Force quiet output.
+.It Fl g
+Treat the package names as shell glob patterns.
 .It Fl L
-Don't auto update the remote database with
+Skip updating the repository catalogues with
 .Xr pkg-update 8 .
-Use the local cache only.
+Use the locally cached copies only.
+.It Fl n
+Dry-run mode.
+The list of changes to packages is always printed, but
+no changes are actually made.
+.It Fl q
+Force quiet output, except when
+.Fl n
+is used, where
+.Nm
+will always show packages to be installed, upgraded or deleted.
+.It Fl R
+When used with
+.Fl f ,
+reinstalls any packages that require the given package.
+.It Fl r Ar reponame
+In multi-repo mode, override the
+.Fa pkg.conf
+ordering and only attempt to download packages from the named
+repository.
+.It Fl X
+Treat the package names as extended regular expressions.
+.It Fl x
+Treat the package names as regular expressions.
+.It Fl y
+Assume yes when asked for confirmation before package installation.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -115,9 +180,10 @@ See
 .Xr pkg-repo 8 ,
 .Xr pkg-rquery 8 ,
 .Xr pkg-search 8 ,
-.Xr pkg-set 8,
+.Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

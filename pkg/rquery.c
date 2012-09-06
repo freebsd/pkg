@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -48,6 +49,7 @@ static struct query_flags accepted_rquery_flags[] = {
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
 	{ 'B', "",		1, PKG_LOAD_SHLIBS },
 	{ '?', "drCOLB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ '#', "drCOLB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },
 	{ 'n', "",		0, PKG_LOAD_BASIC },
 	{ 'v', "",		0, PKG_LOAD_BASIC },
@@ -82,7 +84,7 @@ exec_rquery(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	int ch;
 	int ret = EPKG_OK;
-	int retcode = EXIT_SUCCESS;
+	int retcode = EX_OK;
 	int i;
 	char multiline = 0;
 	char *condition = NULL;
@@ -93,28 +95,28 @@ exec_rquery(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "agxXe:r:")) != -1) {
 		switch (ch) {
-			case 'a':
-				match = MATCH_ALL;
-				break;
-			case 'g':
-				match = MATCH_GLOB;
-				break;
-			case 'x':
-				match = MATCH_REGEX;
-				break;
-			case 'X':
-				match = MATCH_EREGEX;
-				break;
-			case 'e':
-				match = MATCH_CONDITION;
-				condition = optarg;
-				break;
-			case 'r':
-				reponame = optarg;
-				break;
-			default:
-				usage_rquery();
-				return (EX_USAGE);
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'X':
+			match = MATCH_EREGEX;
+			break;
+		case 'e':
+			match = MATCH_CONDITION;
+			condition = optarg;
+			break;
+		case 'r':
+			reponame = optarg;
+			break;
+		default:
+			usage_rquery();
+			return (EX_USAGE);
 		}
 	}
 
@@ -139,7 +141,7 @@ exec_rquery(int argc, char **argv)
 
 	if (condition != NULL) {
 		sqlcond = sbuf_new_auto();
-		if (format_sql_condition(condition, sqlcond) != EPKG_OK)
+		if (format_sql_condition(condition, sqlcond, true) != EPKG_OK)
 			return (EX_USAGE);
 		sbuf_finish(sqlcond);
 	}
@@ -150,7 +152,7 @@ exec_rquery(int argc, char **argv)
 			return (EX_IOERR);
 
 		/* do not fail if run as a user */
-		return (EXIT_SUCCESS);
+		return (EX_OK);
 	}
 
 	if (ret != EPKG_OK)
@@ -190,7 +192,7 @@ exec_rquery(int argc, char **argv)
 			pkgdb_it_free(it);
 		}
 		if (!onematched)
-			retcode = EXIT_FAILURE;
+			retcode = EX_SOFTWARE;
 	}
 
 	pkg_free(pkg);

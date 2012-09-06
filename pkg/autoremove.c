@@ -38,7 +38,7 @@
 void
 usage_autoremove(void)
 {
-	fprintf(stderr, "usage pkg autoremove [-yq]\n\n");
+	fprintf(stderr, "usage: pkg autoremove [-yq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help autoremove'.\n");
 }
 
@@ -58,14 +58,14 @@ exec_autoremove(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "yq")) != -1) {
 		switch (ch) {
-			case 'q':
-				quiet = true;
-				break;
-			case 'y':
-				yes = true;
-				break;
-			default:
-				break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'y':
+			yes = true;
+			break;
+		default:
+			break;
 		}
         }
 	argc -= optind;
@@ -86,9 +86,11 @@ exec_autoremove(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
+	/* Always force packages to be removed */
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, true, false)
+	    != EPKG_OK) {
 		pkgdb_close(db);
-		return (EPKG_FATAL);
+		return (EX_IOERR);
 	}
 
 	if ((it = pkgdb_query_autoremove(db)) == NULL) {
@@ -112,7 +114,7 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	if (pkg_jobs_is_empty(jobs)) {
-		printf("Nothing to do\n");
+		printf("Nothing to do.\n");
 		retcode = 0;
 		goto cleanup;
 	}
@@ -127,22 +129,22 @@ exec_autoremove(int argc, char **argv)
 		}
 
 		if (oldsize > newsize)
-			printf("\nThe autoremove will free %s\n", size);
+			printf("\nThe autoremoval will free %s\n", size);
 		else
-			printf("\nThe autoremove will require %s more space\n", size);
+			printf("\nThe autoremoval will require %s more space\n", size);
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 		if (!yes)
-			yes = query_yesno("\nProceed with autoremove of packages [y/N]: ");
+			yes = query_yesno("\nProceed with autoremoval of packages [y/N]: ");
 	}
 
 	if (yes) {
-		if ((retcode = pkg_jobs_apply(jobs, 1)) != EPKG_OK)
+		if ((retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 			goto cleanup;
 	}
 
-	if (pkgdb_compact(db) != EPKG_OK) { 
+	if (pkgdb_compact(db) != EPKG_OK) {
 		retcode = EPKG_FATAL;
 	}
 
@@ -152,5 +154,5 @@ exec_autoremove(int argc, char **argv)
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
-	return (retcode);
+	return ((retcode == EPKG_OK) ? EX_OK : EX_SOFTWARE);
 }

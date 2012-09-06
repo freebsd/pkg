@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -29,90 +30,137 @@
 #include <sys/elf_common.h>
 #include <sys/stat.h>
 
-#include <ctype.h>
 #include <assert.h>
-#include <fcntl.h>
+#include <ctype.h>
 #include <dlfcn.h>
+#include <elf-hints.h>
+#include <err.h>
+#include <fcntl.h>
 #include <gelf.h>
 #include <link.h>
 #include <stdbool.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
 #include "private/elf_tables.h"
+#include "private/ldconfig.h"
+
+/* FFR: when we support installing a 32bit package on a 64bit host */
+#define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
 
 static int
-test_depends(struct pkgdb *db, struct pkg *pkg, const char *name)
+filter_system_shlibs(const char *name, char *path, size_t pathlen)
 {
-	struct pkg_dep *dep = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *d;
-	Link_map *map;
-	const char *deporigin, *depname, *depversion;
-	bool found;
-	void *handle;
-	bool shlibs = false;
-	bool autodeps = false;
+	const char *shlib_path;
 
-	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
-
-	if ((handle = dlopen(name, RTLD_LAZY)) == NULL) {
-		pkg_emit_error("accessing shared library %s failed -- %s", name, dlerror());
+	shlib_path = shlib_list_find_by_name(name);
+	if (shlib_path == NULL) {
 		return (EPKG_FATAL);
 	}
 
-	dlinfo(handle, RTLD_DI_LINKMAP, &map);
-
 	/* match /lib, /lib32, /usr/lib and /usr/lib32 */
-	if (strncmp(map->l_name, "/lib", 4) == 0 || strncmp(map->l_name, "/usr/lib", 7) == 0) {
-		/* ignore libs from base */
-		dlclose(handle);
+	if (strncmp(shlib_path, "/lib", 4) == 0 ||
+	    strncmp(shlib_path, "/usr/lib", 7) == 0)
+		return (EPKG_END); /* ignore libs from base */
+
+	if (path != NULL)
+		strncpy(path, shlib_path, pathlen);
+
+	return (EPKG_OK);
+} 
+
+/* Callback functions to process the shlib data */
+
+/* ARGSUSED */
+static int
+do_nothing(__unused void *actdata, __unused struct pkg *pkg,
+	   __unused const char *name)
+{
+	return (EPKG_OK);
+}
+
+/* ARGSUSED */
+static int
+add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *name)
+{
+	switch(filter_system_shlibs(name, NULL, 0)) {
+	case EPKG_OK:		/* A non-system library */
+		pkg_addshlib(pkg, name);
 		return (EPKG_OK);
+	case EPKG_END:		/* A system library */
+		return (EPKG_OK);
+	default:
+		warnx("(%s-%s) shared library %s not found", pkg_name(pkg),
+		      pkg_version(pkg), name);
+		return (EPKG_FATAL);
+	}
+}
+
+static int
+test_depends(void *actdata, struct pkg *pkg, const char *name)
+{
+	struct pkgdb *db = actdata;
+	struct pkg_dep *dep = NULL;
+	struct pkgdb_it *it = NULL;
+	struct pkg *d;
+	const char *deporigin, *depname, *depversion;
+	char pathbuf[MAXPATHLEN];
+	bool found;
+	bool shlibs = false;
+
+	assert(db != NULL);
+
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+
+	switch(filter_system_shlibs(name, pathbuf, sizeof(pathbuf))) {
+	case EPKG_OK:		/* A non-system library */
+		break;
+	case EPKG_END:		/* A system library */
+		return (EPKG_OK);
+	default:
+		warnx("(%s-%s) shared library %s not found", pkg_name(pkg),
+		      pkg_version(pkg), name);
+		return (EPKG_FATAL);
 	}
 
 	if (shlibs)
 		pkg_addshlib(pkg, name);
 
-	if (!autodeps) {
-		dlclose(handle);
+	if ((it = pkgdb_query_which(db, pathbuf)) == NULL)
 		return (EPKG_OK);
-	}
 
-	if ((it = pkgdb_query_which(db, map->l_name)) == NULL) {
-		dlclose(handle);
-		return (EPKG_OK);
-	}
 	d = NULL;
 	if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
 		found = false;
-		pkg_get(d, PKG_ORIGIN, &deporigin, PKG_NAME, &depname, PKG_VERSION, &depversion);
+		pkg_get(d, PKG_ORIGIN, &deporigin, PKG_NAME, &depname,
+		    PKG_VERSION, &depversion);
 
 		dep = NULL;
 		found = false;
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
-			if (strcmp(pkg_dep_get(dep, PKG_DEP_ORIGIN), deporigin) == 0) {
+			if (strcmp(pkg_dep_origin(dep), deporigin) == 0) {
 				found = true;
 				break;
 			}
 		}
 		if (!found) {
 			pkg_emit_error("adding forgotten depends (%s): %s-%s",
-					map->l_name, depname, depversion);
+					pathbuf, depname, depversion);
 			pkg_adddep(pkg, depname, deporigin, depversion);
 		}
 		pkg_free(d);
 	}
-	dlclose(handle);
+
 	pkgdb_it_free(it);
 	return (EPKG_OK);
 }
 
 static int
-analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
+analyse_elf(struct pkg *pkg, const char *fpath, 
+    int (action)(void *, struct pkg *, const char *), void *actdata)
 {
 	Elf *e = NULL;
 	GElf_Ehdr elfhdr;
@@ -130,6 +178,14 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	size_t dynidx;
 	const char *osname;
 
+	bool shlibs = false;
+	bool autodeps = false;
+	bool developer = false;
+
+	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+
 	int fd;
 
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
@@ -143,9 +199,10 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		goto cleanup;
 	}
 
-	if (( e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
+	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
-		pkg_emit_error("elf_begin() for %s failed: %s", fpath, elf_errmsg(-1)); 
+		pkg_emit_error("elf_begin() for %s failed: %s", fpath,
+		    elf_errmsg(-1));
 		goto cleanup;
 	}
 
@@ -154,26 +211,36 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 		return (EPKG_END); /* Not an elf file: no results */
 	}
 
+	if (developer)
+		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
+
+	if (!autodeps && !shlibs) {
+	   ret = EPKG_OK;
+	   goto cleanup;
+	}
+
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
 		goto cleanup;
 	}
 
-	while (( scn = elf_nextscn(e, scn)) != NULL) {
+	while ((scn = elf_nextscn(e, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
-			pkg_emit_error("getshdr() for %s failed: %s", fpath, elf_errmsg(-1));
+			pkg_emit_error("getshdr() for %s failed: %s", fpath,
+			    elf_errmsg(-1));
 			goto cleanup;
 		}
 		switch (shdr.sh_type) {
-			case SHT_NOTE:
-				note = scn;
-				break;
-			case SHT_DYNAMIC:
-				dynamic = scn;
-				sh_link = shdr.sh_link;
-				numdyn = shdr.sh_size / shdr.sh_entsize;
+		case SHT_NOTE:
+			note = scn;
+			break;
+		case SHT_DYNAMIC:
+			dynamic = scn;
+			sh_link = shdr.sh_link;
+			numdyn = shdr.sh_size / shdr.sh_entsize;
+			break;
 		}
 
 		if (note != NULL && dynamic != NULL)
@@ -181,15 +248,14 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 	}
 
 	/*
-	 * note == NULL means no freebsd
-	 * dynamic == NULL means not a dynamic linked elf
+	 * note == NULL usually means a shared object for use with dlopen(3)
+	 * dynamic == NULL means not a dynamically linked elf
 	 */
 	if (dynamic == NULL) {
 		ret = EPKG_END;
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	/* some freebsd binaries don't have notes like some perl modules */
 	if (note != NULL) {
 		data = elf_getdata(note, NULL);
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
@@ -206,25 +272,72 @@ analyse_elf(struct pkgdb *db, struct pkg *pkg, const char *fpath)
 
 	data = elf_getdata(dynamic, NULL);
 
+	/* First, scan through the data from the .dynamic section to
+	   find any RPATH or RUNPATH settings.  These are colon
+	   separated paths to prepend to the ld.so search paths from
+	   the ELF hints file.  These always seem to come right after
+	   the NEEDED entries */
+
+	rpath_list_init();
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
 			ret = EPKG_FATAL;
-			pkg_emit_error("getdyn() failed for %s: %s", fpath, elf_errmsg(-1)); 
+			pkg_emit_error("getdyn() failed for %s: %s", fpath,
+			    elf_errmsg(-1));
+			goto cleanup;
+		}
+
+		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
+			continue;
+
+		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val));
+		break;
+	}
+
+	/* Now find all of the NEEDED shared libraries */
+
+	for (dynidx = 0; dynidx < numdyn; dynidx++) {
+		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
+			ret = EPKG_FATAL;
+			pkg_emit_error("getdyn() failed for %s: %s", fpath,
+			    elf_errmsg(-1));
 			goto cleanup;
 		}
 
 		if (dyn->d_tag != DT_NEEDED)
 			continue;
 
-		test_depends(db, pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
+		action(actdata, pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
 	}
 
 cleanup:
-	if ( e != NULL)
+	rpath_list_free();
+
+	if (e != NULL)
 		elf_end(e);
 	close(fd);
 
 	return (ret);
+}
+
+static int
+analyse_fpath(struct pkg *pkg, const char *fpath)
+{
+	const char *dot;
+
+	dot = strrchr(fpath, '.');
+
+	if (dot == NULL)	/* No extension */
+		return (EPKG_OK);
+
+	if (dot[1] == 'a' && dot[2] == '\0')
+		pkg->flags |= PKG_CONTAINS_STATIC_LIBS;
+
+	if ((dot[1] == 'l' && dot[2] == 'a' && dot[3] == '\0') ||
+	    (dot[1] == 'h' && dot[2] == '\0'))
+		pkg->flags |= PKG_CONTAINS_H_OR_LA;
+
+	return (EPKG_OK);
 }
 
 int
@@ -232,22 +345,89 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
+	const char *fpath;
 	bool shlibs = false;
 	bool autodeps = false;
+	bool developer = false;
+	int (*action)(void *, struct pkg *, const char *);
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
+	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
-	if (!autodeps && !shlibs)
+	if (!autodeps && !shlibs && !developer)
 		return (EPKG_OK);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
-	while (pkg_files(pkg, &file) == EPKG_OK)
-		analyse_elf(db, pkg, pkg_file_get(file, PKG_FILE_PATH));
+	if (autodeps)
+		action = test_depends;
+	else if (shlibs)
+		action = add_shlibs_to_pkg;
+	else
+		action = do_nothing;
+
+	if (autodeps || shlibs) {
+		shlib_list_init();
+
+		ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
+		if (ret != EPKG_OK)
+			goto cleanup;
+	}
+
+	/* Assume no architecture dependence, for contradiction */
+	if (developer)
+		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
+				PKG_CONTAINS_STATIC_LIBS |
+				PKG_CONTAINS_H_OR_LA);
+
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		fpath = pkg_file_path(file);
+		ret = analyse_elf(pkg, fpath, action, db);
+		if (developer) {
+			if (ret != EPKG_OK && ret != EPKG_END)
+				goto cleanup;
+			analyse_fpath(pkg, fpath);
+		}
+	}
+
+	ret = EPKG_OK;
+
+cleanup:
+	if (autodeps || shlibs)
+		shlib_list_free();
 
 	return (ret);
+}
+
+int
+pkg_register_shlibs(struct pkg *pkg)
+{
+	struct pkg_file        *file = NULL;
+	bool			shlibs;
+
+	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+
+	pkg_list_free(pkg, PKG_SHLIBS);
+
+	if (!shlibs)
+		return (EPKG_OK);
+
+	if (elf_version(EV_CURRENT) == EV_NONE)
+		return (EPKG_FATAL);
+
+	shlib_list_init();
+	if (shlib_list_from_elf_hints(_PATH_ELF_HINTS) != EPKG_OK) {
+		shlib_list_free();
+		return (EPKG_FATAL);
+	}
+
+	while(pkg_files(pkg, &file) == EPKG_OK)
+		analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+
+	shlib_list_free();
+	return (EPKG_OK);
 }
 
 static const char *
@@ -261,7 +441,6 @@ elf_corres_to_string(struct _elf_corres* m, int e)
 
 	return ("unknown");
 }
-
 
 int
 pkg_get_myarch(char *dest, size_t sz)
@@ -278,10 +457,11 @@ pkg_get_myarch(char *dest, size_t sz)
 	uint32_t version = 0;
 	int ret = EPKG_OK;
 	int i;
-	const char *abi;
+	const char *abi, *endian_corres_str, *wordsize_corres_str;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
-		pkg_emit_error("ELF library initialization failed: %s", elf_errmsg(-1));
+		pkg_emit_error("ELF library initialization failed: %s",
+		    elf_errmsg(-1));
 		return (EPKG_FATAL);
 	}
 
@@ -293,7 +473,7 @@ pkg_get_myarch(char *dest, size_t sz)
 
 	if ((elf = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
 		ret = EPKG_FATAL;
-		pkg_emit_error("elf_begin() failed: %s.", elf_errmsg(-1)); 
+		pkg_emit_error("elf_begin() failed: %s.", elf_errmsg(-1));
 		goto cleanup;
 	}
 
@@ -339,44 +519,55 @@ pkg_get_myarch(char *dest, size_t sz)
 	for (i = 0; osname[i] != '\0'; i++)
 		osname[i] = (char)tolower(osname[i]);
 
+	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
+	    (int)elfhdr.e_ident[EI_CLASS]);
+
 	snprintf(dest, sz, "%s:%d:%s:%s",
-	    osname,
-	    version / 100000,
+	    osname, version / 100000,
 	    elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
-	    elf_corres_to_string(wordsize_corres, (int)elfhdr.e_ident[EI_CLASS]));
+	    wordsize_corres_str);
 
 	switch (elfhdr.e_machine) {
-		case EM_ARM:
-			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
-			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-			    (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
-			    (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
-			break;
-		case EM_MIPS:
-			/*
-			 * this is taken from binutils sources:
-			 * include/elf/mips.h
-			 * mapping is figured out from binutils:
-			 * gas/config/tc-mips.c
-			 */
-			switch (elfhdr.e_flags & EF_MIPS_ABI) {
-				case E_MIPS_ABI_O32:
+	case EM_ARM:
+		endian_corres_str = elf_corres_to_string(endian_corres,
+		    (int)elfhdr.e_ident[EI_DATA]);
+
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+		    endian_corres_str,
+		    (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
+		    (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
+		break;
+	case EM_MIPS:
+		/*
+		 * this is taken from binutils sources:
+		 * include/elf/mips.h
+		 * mapping is figured out from binutils:
+		 * gas/config/tc-mips.c
+		 */
+		switch (elfhdr.e_flags & EF_MIPS_ABI) {
+			case E_MIPS_ABI_O32:
+				abi = "o32";
+				break;
+			case E_MIPS_ABI_N32:
+				abi = "n32";
+				break;
+			default:
+				if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
 					abi = "o32";
-					break;
-				case E_MIPS_ABI_N32:
-					abi = "n32";
-					break;
-				default:
-					if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
-						abi = "o32";
-					else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
-						abi = "n64";
-					break;
-			}
-			snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
-			    elf_corres_to_string(endian_corres, (int) elfhdr.e_ident[EI_DATA]),
-			    abi);
-			break;
+				else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
+					abi = "n64";
+				else
+					abi = "unknown";
+				break;
+		}
+		endian_corres_str = elf_corres_to_string(endian_corres,
+		    (int)elfhdr.e_ident[EI_DATA]);
+
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
+		    endian_corres_str, abi);
+		break;
+	default:
+		break;
 	}
 
 cleanup:
@@ -385,4 +576,42 @@ cleanup:
 
 	close(fd);
 	return (ret);
+}
+
+int
+pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
+{
+	bool iswildcard;
+
+	iswildcard = (strchr(arch, 'c') != NULL);
+
+	if (iswildcard && isdefault)
+		pkg_emit_error("Configuration error: arch \"%s\" cannot use "
+		    "wildcards as default", arch);
+
+	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
+		if (iswildcard) {
+			/* Definitely has to be arch specific */
+			pkg_emit_error("Error: arch \"%s\" -- package installs "
+			    "architecture specific files", arch);
+		}
+	} else {
+		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
+			if (iswildcard) {
+				/* Could well be arch specific */
+				pkg_emit_error("Warning: arch \"%s\" -- package"
+				    " installs C/C++ headers or libtool "
+				    "files,\n**** which are often architecture "
+				    "specific", arch);
+			}
+		} else {
+			/* Might be arch independent */
+			if (!iswildcard)
+				pkg_emit_error("Notice: arch \"%s\" -- no "
+				    "architecture specific files found:\n"
+				    "**** could this package use a wildcard "
+				    "architecture?", arch);
+		}
+	}
+	return (EPKG_OK);
 }

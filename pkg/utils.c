@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -54,7 +55,7 @@ query_yesno(const char *msg, ...)
 	else if (c == '\n' || c == EOF)
 		return false;
 
-	while((c = getchar()) != '\n' && c != EOF)
+	while ((c = getchar()) != '\n' && c != EOF)
 		continue;
 
 	return r;
@@ -94,24 +95,24 @@ absolutepath(const char *src, char *dest, size_t dest_len) {
 		else
 			len = strlen(ptr);
 
-		switch(len) {
-			case 2:
-				if (ptr[0] == '.' && ptr[1] == '.') {
-					slash = strrchr(res, '/');
-					if (slash != NULL) {
-						res_len = slash - res;
-						res[res_len] = '\0';
-					}
-					continue;
+		switch (len) {
+		case 2:
+			if (ptr[0] == '.' && ptr[1] == '.') {
+				slash = strrchr(res, '/');
+				if (slash != NULL) {
+					res_len = slash - res;
+					res[res_len] = '\0';
 				}
-				break;
-			case 1:
-				if (ptr[0] == '.')
-					continue;
-
-				break;
-			case 0:
 				continue;
+			}
+			break;
+		case 1:
+			if (ptr[0] == '.')
+				continue;
+
+			break;
+		case 0:
+			continue;
 		}
 		res[res_len++] = '/';
 		strlcpy(res + res_len, ptr, res_size);
@@ -128,167 +129,370 @@ absolutepath(const char *src, char *dest, size_t dest_len) {
 	return &dest[0];
 }
 
-void
-print_info(struct pkg * const pkg, unsigned int opt)
+/* what the pkg needs to load in order to display the requested info */
+int
+info_flags(unsigned int opt)
 {
-	struct pkg_dep *dep = NULL;
-	struct pkg_file *file = NULL;
-	struct pkg_category *cat = NULL;
-	struct pkg_license *lic = NULL;
-	struct pkg_option *option = NULL;
-	struct pkg_shlib *shlib = NULL;
+	int flags = PKG_LOAD_BASIC;
+
+	if (opt & INFO_CATEGORIES)
+		flags |= PKG_LOAD_CATEGORIES;
+	if (opt & INFO_LICENSES)
+		flags |= PKG_LOAD_LICENSES;
+	if (opt & INFO_OPTIONS)
+		flags |= PKG_LOAD_OPTIONS;
+	if (opt & INFO_SHLIBS)
+		flags |= PKG_LOAD_SHLIBS;
+	if (opt & INFO_DEPS)
+		flags |= PKG_LOAD_DEPS;
+	if (opt & INFO_RDEPS)
+		flags |= PKG_LOAD_RDEPS;
+	if (opt & INFO_FILES)
+		flags |= PKG_LOAD_FILES;
+	if (opt & INFO_DIRS)
+		flags |= PKG_LOAD_DIRS;
+	if (opt & INFO_USERS)
+		flags |= PKG_LOAD_USERS;
+	if (opt & INFO_GROUPS)
+		flags |= PKG_LOAD_GROUPS;
+
+	return flags;
+}
+
+void
+print_info(struct pkg * const pkg, unsigned int options)
+{
+	struct pkg_category *cat    = NULL;
+	struct pkg_dep	    *dep    = NULL;
+	struct pkg_dir	    *dir    = NULL;
+	struct pkg_file	    *file   = NULL;
+	struct pkg_group    *group  = NULL;
+	struct pkg_license  *lic    = NULL;
+	struct pkg_option   *option = NULL;
+	struct pkg_shlib    *shlib  = NULL;
+	struct pkg_user	    *user   = NULL;
 	bool multirepos_enabled = false;
-	char buf[BUFSIZ];
-	char *m;
+	bool print_tag = false;
 	char size[7];
 	const char *name, *version, *prefix, *origin, *reponame, *repourl;
-	const char *maintainer, *www, *comment, *desc, *message;
+	const char *maintainer, *www, *comment, *desc, *message, *arch;
+	const char *repopath;
+	const char *tab;
+	char *m;
+	unsigned opt;
 	int64_t flatsize, newflatsize, newpkgsize;
 	lic_t licenselogic;
+	int cout = 0;		/* Number of characters output */
+	int info_num;		/* Number of different data items to print */
 
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
-	pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_PREFIX, &prefix,
-	    PKG_ORIGIN, &origin, PKG_REPONAME, &reponame, PKG_REPOURL, &repourl,
-	    PKG_MAINTAINER, &maintainer, PKG_WWW, &www, PKG_COMMENT, &comment,
-	    PKG_DESC, &desc, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize,
-		PKG_NEW_PKGSIZE, &newpkgsize, PKG_LICENSE_LOGIC, &licenselogic, PKG_MESSAGE, &message);
+	pkg_get(pkg,
+		PKG_NAME,          &name,
+		PKG_VERSION,       &version,
+		PKG_PREFIX,        &prefix,
+		PKG_ORIGIN,        &origin,
+		PKG_REPONAME,      &reponame,
+		PKG_REPOURL,       &repourl,
+		PKG_MAINTAINER,    &maintainer,
+		PKG_WWW,           &www,
+		PKG_COMMENT,       &comment,
+		PKG_DESC,          &desc,
+		PKG_FLATSIZE,      &flatsize,
+		PKG_NEW_FLATSIZE,  &newflatsize,
+		PKG_NEW_PKGSIZE,   &newpkgsize,
+		PKG_LICENSE_LOGIC, &licenselogic,
+		PKG_MESSAGE,       &message,
+		PKG_ARCH,	   &arch,
+		PKG_REPOPATH,	   &repopath);
 
-	if (opt & INFO_RAW) {
-		pkg_emit_manifest(pkg, &m);
-		printf("%s\n", m);
-		free(m);
-	} else if (opt & INFO_FULL) {
-		printf("%-15s: %s\n", "Name", name);
-		printf("%-15s: %s\n", "Version", version);
-		printf("%-15s: %s\n", "Origin", origin);
-		printf("%-15s: %s\n", "Prefix", prefix);
+	if (!multirepos_enabled)
+		pkg_config_string(PKG_CONFIG_REPO, &repourl);
 
-		if ((pkg_type(pkg) == PKG_REMOTE) && multirepos_enabled)
-			printf("%-15s: %s [%s]\n", "Repository", reponame, repourl);
-
-                if (!pkg_list_is_empty(pkg, PKG_CATEGORIES)) {
-                        printf("%-15s:", "Categories");
-                        while (pkg_categories(pkg, &cat) == EPKG_OK)
-                                printf(" %s", pkg_category_name(cat));
-                        printf("\n");
-                }
-
-		if (!pkg_list_is_empty(pkg, PKG_LICENSES)) {
-			printf("%-15s:", "Licenses");
-			while (pkg_licenses(pkg, &lic) == EPKG_OK) {
-				printf(" %s", pkg_license_name(lic));
-				if (licenselogic != 1)
-					printf(" %c", licenselogic);
-				else
-					printf(" ");
-			}
-			printf("\b \n");
+	if (options & INFO_RAW) { /* Not for remote packages */
+		if (pkg_type(pkg) != PKG_REMOTE) {
+			pkg_emit_manifest(pkg, &m);
+			printf("%s\n", m);
+			free(m);
 		}
+		return;
+	}
 
-		printf("%-15s: %s\n", "Maintainer", maintainer);
-		printf("%-15s: %s\n", "WWW", www);
-		printf("%-15s: %s\n", "Comment", comment);
+	if (!quiet) {
+		/* Print a tag-line identifying the package -- either
+		   NAMEVER, ORIGIN or NAME (in that order of
+		   preference).  This may be the only output from this
+		   function */
 
-                if (!pkg_list_is_empty(pkg, PKG_OPTIONS)) {
-                        printf("%-15s: \n", "Options");
-                        while (pkg_options(pkg, &option) == EPKG_OK)
-                                printf("\t%s: %s\n", pkg_option_opt(option), pkg_option_value(option));
-                }
+		if (options & INFO_TAG_NAMEVER)
+			cout = printf("%s-%s", name, version);
+		else if (options & INFO_TAG_ORIGIN)
+			cout = printf("%s", origin);
+		else if (options & INFO_TAG_NAME)
+			cout = printf("%s", name);
+	}
 
-		if (!pkg_list_is_empty(pkg, PKG_SHLIBS)) {
-			printf("%-15s:", "SharedLibraries");
-			while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
-				printf(" %s", pkg_shlib_name(shlib));
-			printf("\n");
-		}
+	/* Don't display a tab if quiet, retains compatibility. */
+	tab = quiet == false ? "\t" : "";
 
-		if (pkg_type(pkg) == PKG_INSTALLED || pkg_type(pkg) == PKG_FILE) {
-			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
-			printf("%-15s: %s\n", "Flat size", size);
-		} else {
-			humanize_number(size, sizeof(size), newflatsize, "B", HN_AUTOSCALE, 0);
-			printf("%-15s: %s\n", "Flat size", size);
-			humanize_number(size, sizeof(size), newpkgsize, "B", HN_AUTOSCALE, 0);
-			printf("%-15s: %s\n", "Pkg size", size);
-		}
+	/* If we printed a tag, and there are no other items to print,
+	   then just return now. If there's only one single-line item
+	   to print, show it at column 32 on the same line. If there's
+	   one multi-line item to print, start a new line. If there is
+	   more than one item to print per pkg, use 'key : value'
+	   style to show on a new line.  */
 
-		printf("%-15s: \n%s\n", "Description", desc);
+	info_num = 0;
+	for (opt = 0x1U; opt <= INFO_LASTFIELD; opt <<= 1) 
+		if ((opt & options) != 0)
+			info_num++;
+
+	if (info_num == 0 && cout > 0) {
 		printf("\n");
-	} else if (opt & INFO_PRINT_DEP) {
-		if (!(opt & INFO_QUIET))
-			printf("%s-%s depends on:\n", name, version);
+		return;
+	}
 
-                while (pkg_deps(pkg, &dep) == EPKG_OK) {
-                        printf("%s-%s\n", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
-                }
-
-                if (!(opt & INFO_QUIET))
-                        printf("\n");
-	} else if (opt & INFO_PRINT_MESSAGE) {
-		if (message)
-			printf("%s", message);
-	} else if (opt & INFO_PRINT_RDEP) {
-		if (!(opt & INFO_QUIET))
-			printf("%s-%s is required by:\n", name, version);
-
-                while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-                        printf("%s-%s\n", pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION));
-                }
-
-                if (!(opt & INFO_QUIET))
-                        printf("\n");
-	} else if (opt & INFO_LIST_FILES) {
-		if (!(opt & INFO_QUIET))
-			printf("%s-%s owns the following files:\n", name, version);
-
-                while (pkg_files(pkg, &file) == EPKG_OK) {
-                        printf("%s\n", pkg_file_get(file, PKG_FILE_PATH));
-                }
-
-                if (!(opt & INFO_QUIET))
-                        printf("\n");
-	} else if (opt & INFO_LIST_SHLIBS) {
-		if (!(opt & INFO_QUIET))
-			printf("%s-%s uses the following shared libraries:\n", name, version);
-
-                while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
-                        printf("%s\n", pkg_shlib_name(shlib));
-                }
-
-                if (!(opt & INFO_QUIET))
-                        printf("\n");
-        } else if (opt & INFO_SIZE) {
-		if (pkg_type(pkg) == PKG_INSTALLED) {
-			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
-			printf("%s-%s size is: %s\n", name, version, size);
-		} else {
-			humanize_number(size, sizeof(size), newflatsize, "B", HN_AUTOSCALE, 0);
-			printf("%s-%s flat size is: %s\n", name, version, size);
-			humanize_number(size, sizeof(size), newpkgsize, "B", HN_AUTOSCALE, 0);
-			printf("%s-%s package size is: %s\n", name, version, size);
+	if (info_num == 1) {
+		/* Only one item to print */
+		print_tag = false;
+		if (!quiet) {
+			if (options & INFO_MULTILINE)
+				printf(":\n");
+			else {
+				if (cout < 31)
+					cout = 31 - cout;
+				else
+					cout = 1;
+				printf("%*s", cout, " ");
+			}
 		}
-        } else if (opt & INFO_ORIGIN) {
-                if (opt & INFO_QUIET)
-                        printf("%s\n", origin);
-                else
-                        printf("%s-%s: %s\n", name, version, origin);
-        } else if (opt & INFO_PREFIX) {
-                if (opt & INFO_QUIET)
-                        printf("%s\n", prefix);
-                else
-                        printf("%s-%s: %s\n", name, version, prefix);
-        } else {
-                if (opt & INFO_QUIET)
-                        printf("%s-%s\n", name, version);
-                else {
-			snprintf(buf, BUFSIZ, "%s-%s", name, version);
-			if ((pkg_type(pkg) == PKG_REMOTE) && multirepos_enabled)
-				printf("%-30s [repository: %s]: %s\n", buf, reponame, comment);
+	} else {
+		/* Several items to print */
+		print_tag = true;
+		if (!quiet)
+			printf("\n");
+	}
+
+	for (opt = 0x1; opt <= INFO_LASTFIELD; opt <<= 1) {
+		if ((opt & options) == 0)
+			continue;
+
+		switch (opt) {
+		case INFO_NAME:
+			if (print_tag)
+				printf("%-15s: ", "Name");
+			printf("%s\n", name);
+			break;
+		case INFO_VERSION:
+			if (print_tag)
+				printf("%-15s: ", "Version");
+			printf("%s\n", version);
+			break;
+		case INFO_ORIGIN:
+			if (print_tag)
+				printf("%-15s: ", "Origin");
+			printf("%s\n", origin);
+			break;
+		case INFO_PREFIX:
+			if (print_tag)
+				printf("%-15s: ", "Prefix");
+			printf("%s\n", prefix);
+			break;
+		case INFO_REPOSITORY:
+			if (pkg_type(pkg) == PKG_REMOTE &&
+			    repourl != NULL && repourl[0] != '\0') {
+				if (print_tag)
+					printf("%-15s: ", "Repository");
+				printf("%s [%s]\n", reponame, repourl);
+			} else if (!print_tag)
+				printf("\n");
+			break;
+		case INFO_CATEGORIES:
+			if (pkg_list_count(pkg, PKG_CATEGORIES) > 0) {
+				if (print_tag)
+					printf("%-15s: ", "Categories");
+				if (pkg_categories(pkg, &cat) == EPKG_OK)
+					printf("%s", pkg_category_name(cat));
+				while (pkg_categories(pkg, &cat) == EPKG_OK)
+					printf(" %s", pkg_category_name(cat));
+				printf("\n");
+			} else if (!print_tag)
+				printf("\n");
+			break;
+		case INFO_LICENSES:
+			if (pkg_list_count(pkg, PKG_LICENSES) > 0) {
+				if (print_tag)
+					printf("%-15s: ", "Licenses");
+				if (pkg_licenses(pkg, &lic) == EPKG_OK)
+					printf("%s", pkg_license_name(lic));
+				while (pkg_licenses(pkg, &lic) == EPKG_OK) {
+					if (licenselogic != 1)
+						printf(" %c", licenselogic);
+					printf(" %s", pkg_license_name(lic));
+				}
+				printf("\n");				
+			} else if (!print_tag)
+				printf("\n");
+			break;
+		case INFO_MAINTAINER:
+			if (print_tag)
+				printf("%-15s: ", "Maintainer");
+			printf("%s\n", maintainer);
+			break;
+		case INFO_WWW:	
+			if (print_tag)
+				printf("%-15s: ", "WWW");
+			printf("%s\n", www);
+			break;
+		case INFO_COMMENT:
+			if (print_tag)
+				printf("%-15s: ", "Comment");
+			printf("%s\n", comment);
+			break;
+		case INFO_OPTIONS:
+			if (pkg_list_count(pkg, PKG_OPTIONS) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Options");
+				while (pkg_options(pkg, &option) == EPKG_OK)
+					printf("%s%-15s: %s\n",
+					       tab,
+					       pkg_option_opt(option),
+					       pkg_option_value(option));
+			}
+			break;
+		case INFO_SHLIBS:
+			if (pkg_list_count(pkg, PKG_SHLIBS) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Shared Libs");
+				while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
+					printf("%s%s\n", tab, pkg_shlib_name(shlib));
+			}
+			break;
+		case INFO_FLATSIZE:
+			if (pkg_type(pkg) == PKG_INSTALLED ||
+			    pkg_type(pkg) == PKG_FILE)
+				humanize_number(size, sizeof(size),
+						flatsize,"B",
+						HN_AUTOSCALE, 0);
 			else
-				printf("%-30s %s\n", buf, comment);
+				humanize_number(size, sizeof(size),
+						newflatsize,"B",
+						HN_AUTOSCALE, 0);
+
+			if (print_tag)
+				printf("%-15s: ", "Flat size");
+			printf("%s\n", size);
+			break;
+		case INFO_PKGSIZE: /* Remote pkgs only */
+			if (pkg_type(pkg) == PKG_REMOTE) {
+				humanize_number(size, sizeof(size),
+						newpkgsize,"B",
+						HN_AUTOSCALE, 0);
+				if (print_tag)
+					printf("%-15s: ", "Pkg size");
+				printf("%s\n", size);
+			} else if (!print_tag)
+				printf("\n");
+			break;
+		case INFO_DESCR:
+			if (print_tag)
+				printf("%-15s:\n", "Description");
+			printf("%s\n", desc);
+			break;
+		case INFO_MESSAGE:
+			if (message) {
+				if (print_tag)
+					printf("%-15s:\n", "Message");
+				printf("%s\n", message);
+			}
+			break;
+		case INFO_DEPS:
+			if (pkg_list_count(pkg, PKG_DEPS) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Depends on");
+				while (pkg_deps(pkg, &dep) == EPKG_OK)
+					printf("%s%s-%s\n",
+					       tab,
+					       pkg_dep_name(dep),
+					       pkg_dep_version(dep));
+			}
+			break;
+		case INFO_RDEPS:
+			if (pkg_list_count(pkg, PKG_RDEPS) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Required by");
+				while (pkg_rdeps(pkg, &dep) == EPKG_OK)
+					printf("%s%s-%s\n",
+					       tab,
+					       pkg_dep_name(dep),
+					       pkg_dep_version(dep));
+			}
+			break;
+		case INFO_FILES: /* Installed pkgs only */
+			if (pkg_type(pkg) != PKG_REMOTE &&
+			    pkg_list_count(pkg, PKG_FILES) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Files");
+				while (pkg_files(pkg, &file) == EPKG_OK)
+					printf("%s%s\n",
+					       tab,
+					       pkg_file_path(file));
+			}
+			break;
+		case INFO_DIRS:	/* Installed pkgs only */
+			if (pkg_type(pkg) != PKG_REMOTE &&
+			    pkg_list_count(pkg, PKG_DIRS) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Directories");
+				while (pkg_dirs(pkg, &dir) == EPKG_OK)
+					printf("%s%s\n",
+					       tab,
+					       pkg_dir_path(dir));
+			}
+			break;
+		case INFO_USERS: /* Installed pkgs only */
+			if (pkg_type(pkg) != PKG_REMOTE &&
+			    pkg_list_count(pkg, PKG_USERS) > 0) {
+				if (print_tag)
+					printf("%-15s: ", "Users");
+				if (pkg_users(pkg, &user) == EPKG_OK)
+					printf("%s", pkg_user_name(user));
+				while (pkg_users(pkg, &user) == EPKG_OK)
+					printf(" %s", pkg_user_name(user));
+				printf("\n");
+			}
+			break;
+		case INFO_GROUPS: /* Installed pkgs only */
+			if (pkg_type(pkg) != PKG_REMOTE &&
+			    pkg_list_count(pkg, PKG_GROUPS) > 0) {
+				if (print_tag)
+					printf("%-15s: ", "Groups");
+				if (pkg_groups(pkg, &group) == EPKG_OK)
+					printf("%s", pkg_group_name(group));
+				while (pkg_groups(pkg, &group) == EPKG_OK)
+					printf(" %s", pkg_group_name(group));
+				printf("\n");
+			}
+			break;
+		case INFO_ARCH:
+			if (print_tag)
+				printf("%-15s: ", "Architecture");
+			printf("%s\n", arch);
+			break;
+		case INFO_REPOURL:
+			if (pkg_type(pkg) == PKG_REMOTE &&
+			    repourl != NULL && repourl[0] != '\0') {
+				if (print_tag)
+					printf("%-15s: ", "Pkg URL");
+				if (repourl[strlen(repourl) -1] == '/')
+					printf("%s%s\n", repourl, repopath);
+				else
+					printf("%s/%s\n", repourl, repopath);
+			} else if (!print_tag)
+				printf("\n");
+			break;
 		}
-        }
+	}
 }
 
 void
@@ -397,4 +601,29 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
 		printf("\n%s to be downloaded\n", size);
 	}
+}
+
+struct sbuf *
+exec_buf(const char *cmd) {
+	FILE *fp;
+	char buf[BUFSIZ];
+	struct sbuf *res;
+
+	if ((fp = popen(cmd, "r")) == NULL)
+		return (NULL);
+
+	res = sbuf_new_auto();
+	while (fgets(buf, BUFSIZ, fp) != NULL)
+		sbuf_cat(res, buf);
+
+	pclose(fp);
+
+	if (sbuf_len(res) == 0) {
+		sbuf_delete(res);
+		return (NULL);
+	}
+
+	sbuf_finish(res);
+
+	return (res);
 }

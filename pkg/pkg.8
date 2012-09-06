@@ -20,7 +20,8 @@
 .Os
 .\" ---------------------------------------------------------------------------
 .Sh NAME
-.Nm pkg
+.Nm pkg ,
+.Nm pkg-static
 .Nd a utility for manipulating packages
 .\" ---------------------------------------------------------------------------
 .Sh SYNOPSIS
@@ -33,6 +34,15 @@
 .Sh DESCRIPTION
 provides an interface for manupulating packages - registering,
 adding, removing and upgrading of packages.
+.Nm pkg-static
+is a statically linked variant of
+.Nm
+typically only used for the initial installation of
+.Nm .
+There are some differences in functionality.
+See
+.Xr pkg.conf 5
+for details.
 .\" ---------------------------------------------------------------------------
 .Sh OPTIONS
 The following options are supported by
@@ -101,18 +111,14 @@ Display information about installed packages.
 Install a package from a remote package repository.
 If a package is found in more than one remote repository,
 then installation happens from the first one.
-If a package
-fails to fetch from the remote repository, the next one in
-the list is tried, until the package is fetched.
+Downloading a package is tried from each package repository in turn,
+until the package is successfully fetched.
 .It Ic query
 Query information about installed packages.
 .It Ic register
 Register a package in the database.
 .It Ic repo
 Create a local package repository for remote usage.
-.It Ic shell
-Fires up a sqlite shell to the local or remote database.
-Extreme care should be taken when using this command.
 .It Ic rquery
 Query information for remote repositories.
 .It Ic search
@@ -120,8 +126,13 @@ Search for the given pattern in the remote package
 repositories.
 .It Ic set
 Modify information in the installed database.
+.It Ic shell
+Fires up a sqlite shell to the local or remote database.
+Extreme care should be taken when using this command.
 .It Ic shlib
 Displays which packages link to a specific shared library.
+.It Ic stats
+Display package database statistics.
 .It Ic update
 Update the available remote repositories as listed in
 .Xr pkg.conf 5 .
@@ -166,6 +177,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,
@@ -186,6 +198,7 @@ command first appeared in
 .An Will Andrews Aq will@FreeBSD.org
 .An Marin Atanasov Nikolov Aq dnaeon@gmail.com
 .An Bryan Drewery Aq bryan@shatow.net
+.An Matthew Seaman Aq matthew@FreeBSD.org
 .\" ---------------------------------------------------------------------------
 .Sh BUGS
 See the issue tracker at

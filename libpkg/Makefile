@@ -10,6 +10,8 @@ SHLIB_MAJOR=	0
 
 #gr_utils.c has to be deleted as soon as it goes in base
 SRCS=		backup.c \
+		dns_utils.c \
+		elfhints.c \
 		fetch.c \
 		packing.c \
 		pkg.c \
@@ -31,18 +33,22 @@ SRCS=		backup.c \
 		scripts.c \
 		update.c \
 		usergroup.c \
-		utils.c
+		utils.c \
+		plugins.c
 
-OSVERSION!=	awk '/^\#define[[:blank:]]__FreeBSD_version/ {print $$3}' /usr/include/sys/param.h
+HAVE_GRUTILS!=	grep -q gr_copy /usr/include/libutil.h && echo yes || echo no
 
-.if ${OSVERSION} < 1000003
+.if ${HAVE_GRUTILS} != yes
 SRCS+=	gr_util.c
+.else
+CFLAGS+=	-DHAVE_GRUTILS
 .endif
 
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
-		-I${.CURDIR}/../external/libyaml/include
+		-I${.CURDIR}/../external/libyaml/include \
+		-I${.CURDIR}/../external/uthash
 LDADD+=		-L${.OBJDIR}/../external/sqlite \
 		-L${.OBJDIR}/../external/libyaml \
 		-lsqlite3 \

@@ -43,7 +43,8 @@
  * Based on work of Jeremy D. Lea.
  */
 static const char *
-split_version(const char *pkgname, const char **endname, unsigned long *epoch, unsigned long *revision)
+split_version(const char *pkgname, const char **endname,
+    unsigned long *epoch, unsigned long *revision)
 {
 	char *ch;
 	const char *versionstr;
@@ -59,7 +60,10 @@ split_version(const char *pkgname, const char **endname, unsigned long *epoch, u
 	/* Cheat if we are just passed a version, not a valid package name */
 	versionstr = ch ? ch + 1 : pkgname;
 
-	/* Look for the last '_' in the version string, advancing the end pointer */
+	/*
+	 * Look for the last '_' in the version string, advancing the
+	 * end pointer.
+	 */
 	ch = strrchr(versionstr, '_');
 
 	if (revision != NULL)
@@ -76,9 +80,13 @@ split_version(const char *pkgname, const char **endname, unsigned long *epoch, u
 	if (ch && !endversionstr)
 		endversionstr = ch;
 
-	/* set the pointer behind the last character of the version without revision or epoch */
+	/*
+	 * set the pointer behind the last character of the version without
+	 * revision or epoch
+	 */
 	if (endname)
-		*endname = endversionstr ? endversionstr : strrchr(versionstr, '\0');
+		*endname = endversionstr ? endversionstr :
+					   strrchr(versionstr, '\0');
 
 	return versionstr;
 }
@@ -120,7 +128,7 @@ typedef struct {
  *   sort first (10 < 10a < 10b)
  * - missing version numbers (in components starting with a letter) sort as -1
  *   (a < 0, 10.a < 10)
- * - a separator is inserted before the special strings "pl", "alpha", "beta", 
+ * - a separator is inserted before the special strings "pl", "alpha", "beta",
  *   "pre" and "rc".
  * - "pl" sorts before every other letter, "alpha", "beta", "pre" and "rc"
  *   sort as a, b, p and r. (10alpha = 10.a < 10, but 10 < 10a; pl11 < alpha3
@@ -186,8 +194,9 @@ get_component(const char *position, version_component *component)
 		if (isalpha(pos[1])) {
 			unsigned int i;
 			for (i = 0; stage[i].name; i++) {
-				if (strncasecmp(pos, stage[i].name, stage[i].namelen) == 0
-						&& !isalpha(pos[stage[i].namelen])) {
+				size_t len = stage[i].namelen;
+				if (strncasecmp(pos, stage[i].name, len) == 0 &&
+				    !isalpha(pos[stage[i].namelen])) {
 					if (hasstage) {
 						/* stage to value */
 						component->a = stage[i].value;
@@ -234,9 +243,9 @@ get_component(const char *position, version_component *component)
 	}
 
 	/* skip trailing separators */
-	while (*pos && !isdigit(*pos) && !isalpha(*pos) && *pos != '+' && *pos != '*') {
+	while (*pos && !isdigit(*pos) && !isalpha(*pos)
+	    && *pos != '+' && *pos != '*')
 		pos++;
-	}
 
 	return pos;
 }
@@ -281,10 +290,13 @@ pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 	}
 
 	/* Shortcut check for equality before invoking the parsing routines. */
-	if (result == 0 && (ve1 - v1 != ve2 - v2 || strncasecmp(v1, v2, ve1 - v1) != 0)) {
-		/* Loop over different components (the parts separated by dots).
-		 * If any component differs, we have the basis for an inequality. */
-		while(result == 0 && (v1 < ve1 || v2 < ve2)) {
+	if (result == 0 &&
+	    (ve1 - v1 != ve2 - v2 || strncasecmp(v1, v2, ve1 - v1) != 0)) {
+		/*
+		 * Loop over different components (the parts separated by dots).
+		 * If any component differs, there is an inequality.
+		 */
+		while (result == 0 && (v1 < ve1 || v2 < ve2)) {
 			int block_v1 = 0;
 			int block_v2 = 0;
 			version_component vc1 = {0, 0, 0};

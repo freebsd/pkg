@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd June 12, 2012
 .Dt PKG-ADD 8
 .Os
 .Sh NAME
@@ -25,7 +25,7 @@
 .Nm
 .Ar <pkg-name>
 .Nm
-.Ar <url>://<pkg-name>
+.Ar <protocol>://<path>/<pkg-name>
 .Sh DESCRIPTION
 .Nm
 installs a package from either a local source or a remote one.
@@ -34,11 +34,6 @@ When installing from a remote source you need to specify
 the protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
-.Sh OPTIONS
-The following options are supported by
-.Nm :
-.Bl -tag -width F1
-.El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
@@ -54,7 +49,6 @@ for further description.
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
-.Xr pkg-set 8 ,
 .Xr pkg 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -74,6 +68,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

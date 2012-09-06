@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 16, 2012
+.Dd June 12, 2012
 .Dt PKG-BACKUP 8
 .Os
 .Sh NAME
@@ -23,11 +23,11 @@
 .Nd backup and restore the local package database
 .Sh SYNOPSIS
 .Nm
-.Op Fl d
-.Ar <file>
+.Fl d
+.Ar <dest_file>
 .Nm
-.Op Fl r
-.Ar <file>
+.Fl r
+.Ar <src_file>
 .Sh DESCRIPTION
 .Nm
 is used for backing up and restoring of the local package database.
@@ -35,14 +35,14 @@ is used for backing up and restoring of the local package database.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl d Ar <file>
+.It Fl d Ar <dest_file>
 Dumps the local package database to a file specified on the command-line.
 If
 .Ar -
 is specified as the argument
 .Nm
-will use stdout for it's output.
-.It Fl r Ar <file>
+will use stdout for its output.
+.It Fl r Ar <src_file>
 Uses
 .Ar file
 in order to restore the local package database.
@@ -81,6 +81,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

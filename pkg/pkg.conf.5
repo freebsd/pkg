@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd June 2, 2012
+.Dd August 29, 2012
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -46,7 +46,6 @@ specified in the configuration file -
 .Fa YES, TRUE
 and
 .Fa ON.
-.Pp
 .Sh OPTIONS
 The following options can be defined in
 .Nm :
@@ -76,6 +75,14 @@ By default this option is disabled.
 .It Cm PACKAGESITE: string
 Specifies the remote location to use
 when fetching the database file and packages.
+This supports using
+.Sy ${ABI}
+to create a dynamic URL based on the ABI being used.
+.It Cm SRV_MIRRORS: boolean
+Specifies whether to check the
+.Sy PACKAGESITE
+for SRV record support for mirroring.
+By default this option is enabled.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 The default value
@@ -104,13 +111,37 @@ This option is enabled by default, log all the
 installation/deinstallation/upgrade operation via syslog(3)
 .It Cm SHLIBS: boolean
 Analyse elf and track all shared libraries needed by the packages.
+This option is silently ignored by
+.Xr pkg-static 8
+since it relies on
+.Xr dlopen 3
+which is unavailable to statically linked programs.
 default: off
 .It Cm AUTODEPS: boolean
 Analyse the elf to add dependencies (shared libraries) that may have been
 forgotten by the maintainer.
+This option is silently ignored by
+.Xr pkg-static 8
+since it relies on
+.Xr dlopen 3
+which is unavailable to statically linked programs.
 default: off
 .It Cm ABI: string
 the abi of the package you want to install, by default the /bin/sh abi is used
+.It Cm DEVELOPER_MODE: boolean
+Makes certain errors immediately fatal.
+Adds various warnings and
+suggestions to the output of
+.Xr pkg 1
+as an aide to port maintainers, including indicating when the port
+might be marked as architecture independent.
+default: off
+.It Cm PORTAUDIT_SITE: string
+Specifies the remote location to use
+when fetching the portaudit database.
+See
+.Xr pkg-audit 8
+for more information.
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration
@@ -136,6 +167,7 @@ file always overrides the value of an option set in the file.
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

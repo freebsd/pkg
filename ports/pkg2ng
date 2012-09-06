@@ -9,25 +9,38 @@ then
 fi
 
 ARCH=$( uname -m )
+failed_pkgs=""
+MOVED=0
+DBDIR="/var/db"
+PKGDB="${DBDIR}/pkg"
+PKGBAK="${DBDIR}/pkg.bak"
 
 for PKG in $( pkg_info -Ea )
 do
-	DB="/var/db/pkg/${PKG}"
+	DB="${PKGDB}/${PKG}"
 	DESC="${DB}/+DESC"
+	if [ ! -e "${PKGBAK}" ]; then
+		echo "Creating backup pkg_info(1) database directory in ${PKGBAK}."
+		mkdir -p ${PKGBAK}
+	fi
 
 	ORIGIN=$(pkg_info -qo ${PKG})
 	# register a package only if it's not registered already
 	if pkg info -e ${ORIGIN}; then
         echo "${PKG} is already registered."
+	if [ -e ${DB} ]; then
+		mv ${DB} ${PKGBAK}/${PKG}
+		MOVED=1
+	fi
         continue
 	fi
 	PREFX=$(pkg_info -qp ${PKG})
-	if [ -d ${PORTSDIR} ]; then
+	if [ -d ${PORTSDIR}/${ORIGIN} ]; then
 		MAINTAINER=$( make -C ${PORTSDIR}/${ORIGIN} -V MAINTAINER )
 		CATEGORIES=$( make -C ${PORTSDIR}/${ORIGIN} -V CATEGORIES | sed -e "s/ /,/g")
 		LICENSES=$( make -C ${PORTSDIR}/${ORIGIN} -V LICENSE | sed -e "s/ /,/g")
 		LICLOGIC=$(make -C ${PORTSDIR}/${ORIGIN} -V LICENSE_COMB )
-		OPTIONS=$(make -C ${PORTSDIR}/${ORIGIN} showconfig | awk 'BEGIN{ line=""; }!/^=/ { gsub(/=/,": ",$1); line=line" "$1","; } END{print line}')
+		OPTIONS=$(make -C ${PORTSDIR}/${ORIGIN} showconfig | awk 'BEGIN{ line=""; }!/^=/ { gsub(/=/,": ",$1); gsub(/:$/,"",$1); line=line" "$1","; } END{print line}')
 		USERS=$(make -C ${PORTSDIR}/${ORIGIN} -V USERS | sed -e "s/ /,/g")
 		GROUPS=$(make -C ${PORTSDIR}/${ORIGIN} -V GROUPS | sed -e "s/ /,/g")
 	else
@@ -66,14 +79,35 @@ do
 
 	pkg register -l -m ${MDIR} -f ${PLIST} ${CMD_ARGS}
 	if [ $? -ne 0 ]; then
-		echo "Registration of ${PKG} failed."
+		echo "Registration of ${PKG} failed." >&2
 		cat ${MANIFEST}
+		failed_pkgs="${failed_pkgs} ${PKG}"
 	else
 		rm -rf ${MANIFEST}
 	fi
 
 	rm -rf ${MDIR}
 done
+
+if [ ${MOVED} -eq 1 ]; then
+	echo "Moved old package database to ${PKGBAK}."
+fi
+
+if [ -n "${failed_pkgs}" ]; then
+	echo "" >&2
+	echo "!!! Some packages failed to register !!!" >&2
+	echo "Failed packages: ${failed_pkgs}" >&2
+else
+	for PKG in $( pkg_info -Ea ); do
+		DB="${PKGDB}/${PKG}"
+		if [ -e ${DB} ]; then
+			mv ${DB} ${PKGBAK}/${PKG}
+			MOVED=1
+		fi
+	done
+	echo "Conversion has been successfully finished"
+	echo "Your old packages database has been moved to: ${PKGBAK}."
+fi
 
 # Delete the portupgrade pkgdb to avoid discrepencies. It will be auto recreated.
 rm -f /var/db/pkg/pkgdb.db > /dev/null 2>&1

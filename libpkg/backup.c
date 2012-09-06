@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -24,114 +25,166 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <archive_entry.h>
+#include <sys/errno.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+
+#include <assert.h>
+#include <libgen.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/pkgdb.h"
 
-int
-pkgdb_dump(struct pkgdb *db, char *dest)
+/* Number of pages to copy per call to sqlite3_backup_step()
+   Default page size is 1024 bytes on Unix */
+#define NPAGES	512
+
+static int 
+ps_cb(void *ps, int ncols, char **coltext, __unused char **colnames)
 {
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	struct sbuf *path = NULL;
-	struct packing *pack = NULL;
-	char *m = NULL;
-	int ret = EPKG_OK;
-	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | PKG_LOAD_CATEGORIES |
-	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS | PKG_LOAD_OPTIONS |
-	    PKG_LOAD_MTREE | PKG_LOAD_LICENSES | PKG_LOAD_SHLIBS;
+	/* We should have exactly one row and one column of output */
+	if (ncols != 1)
+		return (-1);	/* ABORT! */
 
-	packing_init(&pack, dest ? dest : "./pkgdump", TXZ);
+	*(off_t *)ps = strtoll(coltext[0], NULL, 10);
 
-	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
-		/* TODO handle errors */
+	return (0);
+}
+
+static int
+copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
+{
+	sqlite3_backup	*b;
+	char		*errmsg;
+	off_t		 total;
+	off_t		 done;
+	off_t		 page_size;
+	time_t		 start;
+	time_t		 elapsed;
+	int		 ret;
+
+	assert(src != NULL);
+	assert(dst != NULL);
+
+	ret = sqlite3_exec(dst, "PRAGMA main.locking_mode=EXCLUSIVE;"
+			   "BEGIN IMMEDIATE;COMMIT;", NULL, NULL, &errmsg);
+	if (ret != SQLITE_OK) {
+		pkg_emit_error("sqlite error -- %s", errmsg);
+		sqlite3_free(errmsg);
 		return (EPKG_FATAL);
 	}
 
-	path = sbuf_new_auto();
-	while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-		const char *name, *version, *mtree;
-
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_MTREE, &mtree);
-		pkg_emit_manifest(pkg, &m);
-		sbuf_clear(path);
-		sbuf_printf(path, "%s-%s.yaml", name, version);
-		sbuf_finish(path);
-		packing_append_buffer(pack, m, sbuf_get(path), strlen(m));
-		free(m);
-		if (mtree != NULL) {
-			sbuf_clear(path);
-			sbuf_printf(path, "%s-%s.mtree", name, version);
-			sbuf_finish(path);
-			packing_append_buffer(pack, mtree, sbuf_get(path), strlen(mtree));
-		}
+	ret = sqlite3_exec(dst, "PRAGMA page_size", ps_cb, &page_size, &errmsg);
+	if (ret != SQLITE_OK) {
+		pkg_emit_error("sqlite error -- %s", errmsg);
+		sqlite3_free(errmsg);
+		return (EPKG_FATAL);
 	}
 
-	sbuf_delete(path);
-	packing_finish(pack);
-	return (EPKG_OK);
+	b = sqlite3_backup_init(dst, "main", src, "main");
+
+	elapsed = -1;
+	start = time(NULL);
+
+	do {
+		ret = sqlite3_backup_step(b, NPAGES);
+
+		if (ret != SQLITE_OK && ret != SQLITE_DONE ) {
+			if (ret == SQLITE_BUSY) {
+				sqlite3_sleep(250);
+			} else {
+				ERROR_SQLITE(dst);
+				break;
+			}
+		}
+
+		total = sqlite3_backup_pagecount(b) * page_size;
+		done = total - sqlite3_backup_remaining(b) * page_size; 
+
+		/* Callout no more than once a second */
+		if (elapsed < time(NULL) - start) {
+			elapsed = time(NULL) - start;
+			pkg_emit_fetching(name, total, done, elapsed);
+		}
+	} while(done < total);
+
+	ret = sqlite3_backup_finish(b);
+	pkg_emit_fetching(name, total, done, time(NULL) - start); 
+
+	sqlite3_exec(dst, "PRAGMA main.locking_mode=NORMAL;"
+			   "BEGIN IMMEDIATE;COMMIT;", NULL, NULL, &errmsg);
+
+	if (ret != SQLITE_OK) {
+		pkg_emit_error("sqlite error -- %s", errmsg);
+		sqlite3_free(errmsg);
+		return (EPKG_FATAL);
+	}
+
+	return ret;
 }
 
 int
-pkgdb_load(struct pkgdb *db, char *dest)
+pkgdb_dump(struct pkgdb *db, const char *dest)
 {
-	struct pkg *pkg = NULL;
-	struct archive *a = NULL;
-	struct archive_entry *ae = NULL;
-	const char *path = NULL;
-	size_t len = 0;
-	char *buf = NULL;
-	size_t size = 0;
-	int retcode = EPKG_OK;
+	sqlite3	*backup;
+	int	 ret;
 
-	a = archive_read_new();
-	archive_read_support_compression_all(a);
-	archive_read_support_format_tar(a);
+	if (eaccess(dest, W_OK)) {
+		if (errno != ENOENT) {
+			pkg_emit_error("eaccess(%s) -- %s", dest,
+			    strerror(errno));
+			return (EPKG_FATAL);
+		}
 
-	if (archive_read_open_filename(a, dest, 4096) != ARCHIVE_OK) {
-		pkg_emit_error("archive_read_open_filename(%s): %s", dest,
-					   archive_error_string(a));
-		retcode = EPKG_FATAL;
-		goto cleanup;
+		/* Could we create the Sqlite DB file? */
+		if (eaccess(dirname(dest), W_OK)) {
+			pkg_emit_error("eaccess(%s) -- %s", dirname(dest),
+			    strerror(errno));
+			return (EPKG_FATAL);
+		}
 	}
 
-	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		path = archive_entry_pathname(ae);
-		len = strlen(path);
-		if (len < 6)
-			continue;
-		if (!strcmp(path + len - 5, ".yaml")) {
-			if (pkg == NULL) {
-				pkg_new(&pkg, PKG_FILE);
-			} else {
-				pkgdb_register_finale(db, pkgdb_register_pkg(db, pkg, 0));
-				pkg_reset(pkg, PKG_FILE);
-			}
-			size = archive_entry_size(ae);
-			buf = calloc(1, size + 1);
-			archive_read_data(a, buf, size);
-			pkg_parse_manifest(pkg, buf);
-			free(buf);
-		} else if (!strcmp(path + len - 6, ".mtree")) {
-			size = archive_entry_size(ae);
-			buf = calloc(1, size + 1);
-			archive_read_data(a, buf, size);
-			pkg_set(pkg, PKG_MTREE, buf);
-			free(buf);
-		} else 
-			continue;
+	ret = sqlite3_open(dest, &backup);
+
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(backup);
+		sqlite3_close(backup);
+		return (EPKG_FATAL);
 	}
-	if (pkg != NULL)
-		pkgdb_register_pkg(db, pkg, 1);
 
-cleanup:
-	if (a != NULL)
-		archive_read_finish(a);
-	pkgdb_close(db);
-	pkg_free(pkg);
+	ret = copy_database(db->sqlite, backup, dest);
 
-	return (retcode);
+	sqlite3_close(backup);
+
+	return (ret == SQLITE_OK? EPKG_OK : EPKG_FATAL);
+}
+
+int
+pkgdb_load(struct pkgdb *db, const char *src)
+{
+	sqlite3	*restore;
+	int	 ret;
+
+	if (eaccess(src, R_OK)) {
+		pkg_emit_error("eaccess(%s) -- %s", src, strerror(errno));
+		return (EPKG_FATAL);
+	}
+
+	ret = sqlite3_open(src, &restore);
+
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(restore);
+		sqlite3_close(restore);
+		return (EPKG_FATAL);
+	}
+
+	ret = copy_database(restore, db->sqlite, src);
+
+	sqlite3_close(restore);
+
+	return (ret == SQLITE_OK? EPKG_OK : EPKG_FATAL);
 }

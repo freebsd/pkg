@@ -90,13 +90,21 @@ static struct manifest_key {
 	{ "infos", PKG_INFOS, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "options", PKG_OPTIONS, YAML_MAPPING_NODE, parse_mapping},
-	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence}, /* compatibility with old format */
+	/* compatibility with old format */
+	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "users", PKG_USERS, YAML_MAPPING_NODE, parse_mapping},
 	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping}, /* compatibility with old format */
+	/* compatibility with old format */
+	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping},
 	{ "shlibs", PKG_SHLIBS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ NULL, -99, -99, NULL}
 };
+
+static int
+is_valid_yaml_scalar(yaml_node_t *val)
+{
+	return (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0);
+}
 
 static int
 urlencode(const char *src, struct sbuf **dest)
@@ -144,7 +152,7 @@ urldecode(const char *src, struct sbuf **dest)
 			errno = 0;
 			c = strtol(hex, NULL, 16);
 			if (errno != 0) {
-				/* 
+				/*
 				 * if it fails consider this is not a urlencoded
 				 * information
 				 */
@@ -176,12 +184,13 @@ pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 }
 
 static int
-pkg_set_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *doc, int attr)
+pkg_set_from_node(struct pkg *pkg, yaml_node_t *val,
+    __unused yaml_document_t *doc, int attr)
 {
 	int ret = EPKG_OK;
 
 	while (val->data.scalar.length > 0 &&
-			val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
+	    val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
 		val->data.scalar.value[val->data.scalar.length - 1] = '\0';
 		val->data.scalar.length--;
 	}
@@ -192,7 +201,8 @@ pkg_set_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *d
 }
 
 static int
-pkg_set_flatsize_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *doc, __unused int attr)
+pkg_set_flatsize_from_node(struct pkg *pkg, yaml_node_t *val,
+    __unused yaml_document_t *doc, __unused int attr)
 {
 	int64_t flatsize;
 	const char *errstr = NULL;
@@ -206,23 +216,28 @@ pkg_set_flatsize_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_docu
 	return (pkg_set(pkg, PKG_FLATSIZE, flatsize));
 }
 static int
-pkg_set_licenselogic_from_node(struct pkg *pkg, yaml_node_t *val, __unused yaml_document_t *doc, __unused int attr)
+pkg_set_licenselogic_from_node(struct pkg *pkg, yaml_node_t *val,
+    __unused yaml_document_t *doc, __unused int attr)
 {
 	if (!strcmp(val->data.scalar.value, "single"))
 		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t) LICENSE_SINGLE);
-	else if ( !strcmp(val->data.scalar.value, "and") || !strcmp(val->data.scalar.value, "dual"))
+	else if (!strcmp(val->data.scalar.value, "and") ||
+	    !strcmp(val->data.scalar.value, "dual"))
 		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_AND);
-	else if ( !strcmp(val->data.scalar.value, "or") || !strcmp(val->data.scalar.value, "multi"))
+	else if (!strcmp(val->data.scalar.value, "or") ||
+	    !strcmp(val->data.scalar.value, "multi"))
 		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_OR);
 	else {
-		pkg_emit_error("Unknown license logic: %s", val->data.scalar.value);
+		pkg_emit_error("Unknown license logic: %s",
+		    val->data.scalar.value);
 		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
 }
 
 static int
-parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc, int attr)
+parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
+    int attr)
 {
 	yaml_node_item_t *item;
 	yaml_node_t *val;
@@ -231,51 +246,75 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc, int at
 	while (item < node->data.sequence.items.top) {
 		val = yaml_document_get_node(doc, *item);
 		switch (attr) {
-			case PKG_CATEGORIES:
-				if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0)
-					pkg_emit_error("Skipping malformed category");
-				else
-					pkg_addcategory(pkg, val->data.scalar.value);
-				break;
-			case PKG_LICENSES:
-				if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0)
-					pkg_emit_error("Skipping malformed license");
-				else
-					pkg_addlicense(pkg, val->data.scalar.value);
-				break;
-			case PKG_USERS:
-				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
-					pkg_adduser(pkg, val->data.scalar.value);
-				else if (val->type == YAML_MAPPING_NODE)
-					parse_mapping(pkg, val, doc, attr);
-				else
-					pkg_emit_error("Skipping malformed license");
-				break;
-			case PKG_GROUPS:
-				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
-					pkg_addgroup(pkg, val->data.scalar.value);
-				else if (val->type == YAML_MAPPING_NODE)
-					parse_mapping(pkg, val, doc, attr);
-				else
-					pkg_emit_error("Skipping malformed license");
-				break;
-			case PKG_DIRS:
-				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
-					pkg_adddir(pkg, val->data.scalar.value, 1);
-				else if (val->type == YAML_MAPPING_NODE)
-					parse_mapping(pkg, val, doc, attr);
-				else
-					pkg_emit_error("Skipping malformed dirs");
-				break;
-			case PKG_SHLIBS:
-				if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0)
-					pkg_emit_error("Skipping malformed shared library");
-				else 
-					pkg_addshlib(pkg, val->data.scalar.value);
+		case PKG_CATEGORIES:
+			if (!is_valid_yaml_scalar(val))
+				pkg_emit_error("Skipping malformed category");
+			else
+				pkg_addcategory(pkg, val->data.scalar.value);
+			break;
+		case PKG_LICENSES:
+			if (!is_valid_yaml_scalar(val))
+				pkg_emit_error("Skipping malformed license");
+			else
+				pkg_addlicense(pkg, val->data.scalar.value);
+			break;
+		case PKG_USERS:
+			if (is_valid_yaml_scalar(val))
+				pkg_adduser(pkg, val->data.scalar.value);
+			else if (val->type == YAML_MAPPING_NODE)
+				parse_mapping(pkg, val, doc, attr);
+			else
+				pkg_emit_error("Skipping malformed license");
+			break;
+		case PKG_GROUPS:
+			if (is_valid_yaml_scalar(val))
+				pkg_addgroup(pkg, val->data.scalar.value);
+			else if (val->type == YAML_MAPPING_NODE)
+				parse_mapping(pkg, val, doc, attr);
+			else
+				pkg_emit_error("Skipping malformed license");
+			break;
+		case PKG_DIRS:
+			if (is_valid_yaml_scalar(val))
+				pkg_adddir(pkg, val->data.scalar.value, 1, false);
+			else if (val->type == YAML_MAPPING_NODE)
+				parse_mapping(pkg, val, doc, attr);
+			else
+				pkg_emit_error("Skipping malformed dirs");
+			break;
+		case PKG_SHLIBS:
+			if (!is_valid_yaml_scalar(val))
+				pkg_emit_error("Skipping malformed shared library");
+			else
+				pkg_addshlib(pkg, val->data.scalar.value);
 		}
 		++item;
 	}
 	return (EPKG_OK);
+}
+
+static int
+script_type_str(const char *str)
+{
+	if (strcmp(str, "pre-install") == 0)
+		return (PKG_SCRIPT_PRE_INSTALL);
+	if (strcmp(str, "install") == 0)
+		return (PKG_SCRIPT_INSTALL);
+	if (strcmp(str, "post-install") == 0)
+		return (PKG_SCRIPT_POST_INSTALL);
+	if (strcmp(str, "pre-upgrade") == 0)
+		return (PKG_SCRIPT_PRE_UPGRADE);
+	if (strcmp(str, "upgrade") == 0)
+		return (PKG_SCRIPT_UPGRADE);
+	if (strcmp(str, "post-upgrade") == 0)
+		return (PKG_SCRIPT_POST_UPGRADE);
+	if (strcmp(str, "pre-deinstall") == 0)
+		return (PKG_SCRIPT_PRE_DEINSTALL);
+	if (strcmp(str, "deinstall") == 0)
+		return (PKG_SCRIPT_DEINSTALL);
+	if (strcmp(str, "post-deinstall") == 0)
+		return (PKG_SCRIPT_POST_DEINSTALL);
+	return (INT_MAX);
 }
 
 static int
@@ -285,7 +324,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 	yaml_node_pair_t *pair;
 	yaml_node_t *key;
 	yaml_node_t *val;
-	pkg_script_t script_type;
+	pkg_script script_type;
 
 	pair = item->data.mapping.pairs.start;
 
@@ -300,96 +339,89 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 		}
 
 		switch (attr) {
-			case PKG_DEPS:
-				if (val->type != YAML_MAPPING_NODE)
-					pkg_emit_error("Skipping malformed depencency %s",
-								   key->data.scalar.value);
+		case PKG_DEPS:
+			if (val->type != YAML_MAPPING_NODE)
+				pkg_emit_error("Skipping malformed dependency %s",
+				    key->data.scalar.value);
+			else
+				pkg_set_deps_from_node(pkg, val, doc,
+				    key->data.scalar.value);
+			break;
+		case PKG_DIRS:
+			if (val->type != YAML_MAPPING_NODE)
+				pkg_emit_error("Skipping malformed dirs %s",
+				    key->data.scalar.value);
+			else
+				pkg_set_dirs_from_node(pkg, val, doc,
+				    key->data.scalar.value);
+			break;
+		case PKG_USERS:
+			if (is_valid_yaml_scalar(val))
+				pkg_adduid(pkg, key->data.scalar.value,
+				    val->data.scalar.value);
+			else
+				pkg_emit_error("Skipping malformed users %s",
+						key->data.scalar.value);
+			break;
+		case PKG_GROUPS:
+			if (is_valid_yaml_scalar(val))
+				pkg_addgid(pkg, key->data.scalar.value,
+				    val->data.scalar.value);
+			else
+				pkg_emit_error("Skipping malformed groups %s",
+						key->data.scalar.value);
+			break;
+		case PKG_DIRECTORIES:
+			if (is_valid_yaml_scalar(val)) {
+				urldecode(key->data.scalar.value, &tmp);
+				if (val->data.scalar.value[0] == 'y')
+					pkg_adddir(pkg, sbuf_get(tmp), 1, false);
 				else
-					pkg_set_deps_from_node(pkg, val, doc, key->data.scalar.value);
+					pkg_adddir(pkg, sbuf_get(tmp), 0, false);
+			} else if (val->type == YAML_MAPPING_NODE) {
+				pkg_set_dirs_from_node(pkg, val, doc,
+				    key->data.scalar.value);
+			} else {
+				pkg_emit_error("Skipping malformed directories %s",
+				    key->data.scalar.value);
+			}
+			break;
+		case PKG_FILES:
+			if (is_valid_yaml_scalar(val)) {
+				const char *pkg_sum = NULL;
+				if (val->data.scalar.length == 64)
+					pkg_sum = val->data.scalar.value;
+				urldecode(key->data.scalar.value, &tmp);
+				pkg_addfile(pkg, sbuf_get(tmp), pkg_sum, false);
+			} else if (val->type == YAML_MAPPING_NODE)
+				pkg_set_files_from_node(pkg, val, doc,
+				    key->data.scalar.value);
+			else
+				pkg_emit_error("Skipping malformed files %s",
+				    key->data.scalar.value);
+			break;
+		case PKG_OPTIONS:
+			if (val->type != YAML_SCALAR_NODE)
+				pkg_emit_error("Skipping malformed option %s",
+				    key->data.scalar.value);
+			else
+				pkg_addoption(pkg, key->data.scalar.value,
+				    val->data.scalar.value);
+			break;
+		case PKG_SCRIPTS:
+			if (val->type != YAML_SCALAR_NODE)
+				pkg_emit_error("Skipping malformed scripts %s",
+				    key->data.scalar.value);
+			script_type = script_type_str(key->data.scalar.value);
+			if (script_type == INT_MAX) {
+				pkg_emit_error("Skipping unknown script "
+				    "type: %s", key->data.scalar.value);
 				break;
-			case PKG_DIRS:
-				if (val->type != YAML_MAPPING_NODE)
-					pkg_emit_error("Skipping malformed dirs %s",
-								   key->data.scalar.value);
-				else
-					pkg_set_dirs_from_node(pkg, val, doc, key->data.scalar.value);
-				break;
-			case PKG_USERS:
-				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
-					pkg_adduid(pkg, key->data.scalar.value, val->data.scalar.value);
-				else
-					pkg_emit_error("Skipping malformed users %s",
-							key->data.scalar.value);
-				break;
-			case PKG_GROUPS:
-				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0)
-					pkg_addgid(pkg, key->data.scalar.value, val->data.scalar.value);
-				else
-					pkg_emit_error("Skipping malformed groups %s",
-							key->data.scalar.value);
-				break;
-			case PKG_DIRECTORIES:
-				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
-					urldecode(key->data.scalar.value, &tmp);
-					if (val->data.scalar.value[0] == 'y')
-						pkg_adddir(pkg, sbuf_get(tmp), 1);
-					else
-						pkg_adddir(pkg, sbuf_get(tmp), 0);
-				} else if (val->type == YAML_MAPPING_NODE) {
-					pkg_set_dirs_from_node(pkg, val, doc, key->data.scalar.value);
-				} else {
-					pkg_emit_error("Skipping malformed directories %s",
-								   key->data.scalar.value);
-				}
-				break;
-			case PKG_FILES:
-				if (val->type == YAML_SCALAR_NODE && val->data.scalar.length > 0) {
-					urldecode(key->data.scalar.value, &tmp);
-					pkg_addfile(pkg, sbuf_get(tmp), val->data.scalar.length == 64 ? val->data.scalar.value : NULL, true);
-				} else if (val->type == YAML_MAPPING_NODE)
-					pkg_set_files_from_node(pkg, val, doc, key->data.scalar.value);
-				else
-					pkg_emit_error("Skipping malformed files %s",
-								   key->data.scalar.value);
-				break;
-			case PKG_OPTIONS:
-				if (val->type != YAML_SCALAR_NODE)
-					pkg_emit_error("Skipping malformed option %s",
-								   key->data.scalar.value);
-				else
-					pkg_addoption(pkg, key->data.scalar.value, val->data.scalar.value);
-				break;
-			case PKG_SCRIPTS:
-				if (val->type != YAML_SCALAR_NODE)
-					pkg_emit_error("Skipping malformed scripts %s",
-								   key->data.scalar.value);
-				if (strcmp(key->data.scalar.value, "pre-install") == 0) {
-					script_type = PKG_SCRIPT_PRE_INSTALL;
-				} else if (strcmp(key->data.scalar.value, "install") == 0) {
-					script_type = PKG_SCRIPT_INSTALL;
-				} else if (strcmp(key->data.scalar.value, "post-install") == 0) {
-					script_type = PKG_SCRIPT_POST_INSTALL;
-				} else if (strcmp(key->data.scalar.value, "pre-upgrade") == 0) {
-					script_type = PKG_SCRIPT_PRE_UPGRADE;
-				} else if (strcmp(key->data.scalar.value, "upgrade") == 0) {
-					script_type = PKG_SCRIPT_UPGRADE;
-				} else if (strcmp(key->data.scalar.value, "post-upgrade") == 0) {
-					script_type = PKG_SCRIPT_POST_UPGRADE;
-				} else if (strcmp(key->data.scalar.value, "pre-deinstall") == 0) {
-					script_type = PKG_SCRIPT_PRE_DEINSTALL;
-				} else if (strcmp(key->data.scalar.value, "deinstall") == 0) {
-					script_type = PKG_SCRIPT_DEINSTALL;
-				} else if (strcmp(key->data.scalar.value, "post-deinstall") == 0) {
-					script_type = PKG_SCRIPT_POST_DEINSTALL;
-				} else {
-					pkg_emit_error("Skipping unknown script type: %s",
-								   key->data.scalar.value);
-					break;
-				}
+			}
 
-				urldecode(val->data.scalar.value, &tmp);
-				pkg_addscript(pkg, sbuf_get(tmp), script_type);
-				break;
+			urldecode(val->data.scalar.value, &tmp);
+			pkg_addscript(pkg, sbuf_get(tmp), script_type);
+			break;
 		}
 
 		++pair;
@@ -400,7 +432,9 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 }
 
 static int
-pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, const char *filename) {
+pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item,
+    yaml_document_t *doc, const char *filename)
+{
 	yaml_node_pair_t *pair = NULL;
 	yaml_node_t *key = NULL;
 	yaml_node_t *val = NULL;
@@ -415,13 +449,16 @@ pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc
 		key = yaml_document_get_node(doc, pair->key);
 		val = yaml_document_get_node(doc, pair->value);
 		if (key->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed file entry for %s", filename);
+			pkg_emit_error("Skipping malformed file entry for %s",
+			    filename);
 			++pair;
 			continue;
 		}
 
-		if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed file entry for %s", filename);
+		if (val->type != YAML_SCALAR_NODE ||
+		    val->data.scalar.length <= 0) {
+			pkg_emit_error("Skipping malformed file entry for %s",
+			    filename);
 			++pair;
 			continue;
 		}
@@ -430,29 +467,34 @@ pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc
 			uname = val->data.scalar.value;
 		else if (!strcasecmp(key->data.scalar.value, "gname"))
 			gname = val->data.scalar.value;
-		else if (!strcasecmp(key->data.scalar.value, "sum") && val->data.scalar.length == 64)
+		else if (!strcasecmp(key->data.scalar.value, "sum") &&
+		    val->data.scalar.length == 64)
 			sum = val->data.scalar.value;
 		else if (!strcasecmp(key->data.scalar.value, "perm")) {
 			if ((set = setmode(val->data.scalar.value)) == NULL)
-				pkg_emit_error("Not a valide mode: %s", val->data.scalar.value);
+				pkg_emit_error("Not a valid mode: %s",
+				    val->data.scalar.value);
 			else
 				perm = getmode(set, 0);
 		} else {
-			pkg_emit_error("Skipping unknown key for file(%s): %s", filename,
-						   key->data.scalar.value);
+			pkg_emit_error("Skipping unknown key for file(%s): %s",
+			    filename, key->data.scalar.value);
 		}
 
 		++pair;
 	}
 
 	if (key != NULL)
-	    pkg_addfile_attr(pkg, key->data.scalar.value, sum, uname, gname, perm, true);
+		pkg_addfile_attr(pkg, key->data.scalar.value, sum, uname, gname,
+		    perm, false);
 
 	return (EPKG_OK);
 }
 
 static int
-pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, const char *dirname) {
+pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
+    const char *dirname)
+{
 	yaml_node_pair_t *pair;
 	yaml_node_t *key;
 	yaml_node_t *val;
@@ -467,13 +509,16 @@ pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 		key = yaml_document_get_node(doc, pair->key);
 		val = yaml_document_get_node(doc, pair->value);
 		if (key->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed file entry for %s", dirname);
+			pkg_emit_error("Skipping malformed file entry for %s",
+			    dirname);
 			++pair;
 			continue;
 		}
 
-		if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed file entry for %s", dirname);
+		if (val->type != YAML_SCALAR_NODE ||
+		    val->data.scalar.length <= 0) {
+			pkg_emit_error("Skipping malformed file entry for %s",
+			    dirname);
 			++pair;
 			continue;
 		}
@@ -484,7 +529,8 @@ pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 			gname = val->data.scalar.value;
 		else if (!strcasecmp(key->data.scalar.value, "perm")) {
 			if ((set = setmode(val->data.scalar.value)) == NULL)
-				pkg_emit_error("Not a valide mode: %s", val->data.scalar.value);
+				pkg_emit_error("Not a valid mode: %s",
+				    val->data.scalar.value);
 			else
 				perm = getmode(set, 0);
 		} else if (!strcasecmp(key->data.scalar.value, "try")) {
@@ -493,22 +539,26 @@ pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 			else if (val->data.scalar.value[0] == 'y')
 				try = true;
 			else
-				pkg_emit_error("Wrong value for try: %s, expected 'y' or 'n'", val->data.scalar.value);
+				pkg_emit_error("Wrong value for try: %s, "
+				    "expected 'y' or 'n'",
+				    val->data.scalar.value);
 		} else {
-			pkg_emit_error("Skipping unknown key for dir(%s): %s", dirname,
-						   key->data.scalar.value);
+			pkg_emit_error("Skipping unknown key for dir(%s): %s",
+			    dirname, key->data.scalar.value);
 		}
 
 		++pair;
 	}
 
-	pkg_adddir_attr(pkg, dirname, uname, gname, perm, try);
+	pkg_adddir_attr(pkg, dirname, uname, gname, perm, try, false);
 
 	return (EPKG_OK);
 }
 
 static int
-pkg_set_deps_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, const char *depname) {
+pkg_set_deps_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
+    const char *depname)
+{
 	yaml_node_pair_t *pair;
 	yaml_node_t *key;
 	yaml_node_t *val;
@@ -519,16 +569,12 @@ pkg_set_deps_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 	while (pair < item->data.mapping.pairs.top) {
 		key = yaml_document_get_node(doc, pair->key);
 		val = yaml_document_get_node(doc, pair->value);
-		if (key->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed dependency entry for %s",
-						   depname);
-			++pair;
-			continue;
-		}
 
-		if (val->type != YAML_SCALAR_NODE || val->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed dependency entry for %s",
-						   depname);
+		if (key->data.scalar.length <= 0 ||
+		    val->type != YAML_SCALAR_NODE ||
+		    val->data.scalar.length <= 0) {
+			pkg_emit_error("Skipping malformed dependency entry "
+			    "for %s", depname);
 			++pair;
 			continue;
 		}
@@ -571,23 +617,23 @@ parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
 			continue;
 		}
 
-		if (val->type == YAML_NO_NODE || ( val->type == YAML_SCALAR_NODE && val->data.scalar.length <= 0)) {
+		if (val->type == YAML_NO_NODE ||
+		    (val->type == YAML_SCALAR_NODE &&
+		     val->data.scalar.length <= 0)) {
 			/* silently skip on purpose */
 			++pair;
 			continue;
 		}
 
 		for (i = 0; manifest_key[i].key != NULL; i++) {
-			if (!strcasecmp(key->data.scalar.value, manifest_key[i].key)) {
-				if (val->type == manifest_key[i].valid_type) {
-					retcode = manifest_key[i].parse_data(pkg, val, doc, manifest_key[i].type);
-					break;
-				}
+			const char *m_key = manifest_key[i].key;
+			if (strcasecmp(key->data.scalar.value, m_key))
+				continue;
+			if (val->type == manifest_key[i].valid_type) {
+				retcode = manifest_key[i].parse_data(pkg, val,
+				    doc, manifest_key[i].type);
+				break;
 			}
-
-			if (manifest_key[i].key == NULL)
-				pkg_emit_error("Skipping unknown manifest key: %s",
-							   key->data.scalar.value);
 		}
 		++pair;
 	}
@@ -637,16 +683,28 @@ yaml_write_buf(void *data, unsigned char *buffer, size_t size)
 }
 
 static void
-manifest_append_seqval(yaml_document_t *doc, int parent, int *seq, const char *title, const char *value)
+manifest_append_seqval(yaml_document_t *doc, int parent, int *seq,
+    const char *title, const char *value)
 {
+	int scalar;
+
 	if (*seq == -1) {
-		*seq = yaml_document_add_sequence(doc, NULL, YAML_FLOW_SEQUENCE_STYLE);
-		yaml_document_append_mapping_pair(doc, parent,
-				yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t*, title), strlen(title), YAML_PLAIN_SCALAR_STYLE), *seq);
+		*seq = yaml_document_add_sequence(doc, NULL,
+		    YAML_FLOW_SEQUENCE_STYLE);
+		scalar = yaml_document_add_scalar(doc, NULL,
+		    __DECONST(yaml_char_t *, title), strlen(title),
+		    YAML_PLAIN_SCALAR_STYLE);
+		yaml_document_append_mapping_pair(doc, parent, scalar, *seq);
 	}
-	yaml_document_append_sequence_item(doc, *seq,
-			yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t*, value), strlen(value), YAML_PLAIN_SCALAR_STYLE));
+	scalar = yaml_document_add_scalar(doc, NULL,
+	    __DECONST(yaml_char_t *, value), strlen(value),
+	    YAML_PLAIN_SCALAR_STYLE);
+	yaml_document_append_sequence_item(doc, *seq, scalar);
 }
+
+#define	YAML_ADD_SCALAR(doc, name, style)				       \
+	yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t *, name),    \
+	    strlen(name), YAML_##style##_SCALAR_STYLE)
 
 int
 pkg_emit_manifest(struct pkg *pkg, char **dest)
@@ -658,7 +716,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	struct pkg_option *option = NULL;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
-	struct pkg_script *script = NULL;
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
 	struct pkg_user *user = NULL;
@@ -670,12 +727,13 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int seq = -1;
 	int map = -1;
 	int depkv;
+	int i;
 /*	int users = -1;
 	int groups = -1;*/
-	const char *script_types = NULL;
 	struct sbuf *destbuf = sbuf_new_auto();
-	const char *name, *version, *pkgorigin, *comment, *pkgarch, *www, *pkgmaintainer, *prefix;
-	const char *desc, *message, *infos;
+	const char *comment, *desc, *infos, *message, *name, *pkgarch;
+	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
+	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize;
 
@@ -683,25 +741,28 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	yaml_emitter_set_unicode(&emitter, 1);
 	yaml_emitter_set_output(&emitter, yaml_write_buf, destbuf);
 
-#define manifest_append_kv(map, key, val, style) yaml_document_append_mapping_pair(&doc, map, \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), strlen(key), YAML_PLAIN_SCALAR_STYLE), \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, val), strlen(val), YAML_##style##_SCALAR_STYLE));
+#define manifest_append_kv(map, key, val, style) do {			\
+	int key_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
+	int val_obj = YAML_ADD_SCALAR(&doc, val, style);		\
+	yaml_document_append_mapping_pair(&doc, map, key_obj, val_obj);	\
+} while (0)
 
-#define manifest_append_map(id, map, key, block) do { \
+#define manifest_append_map(id, map, key, block) do {			\
+	int scalar_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
 	id = yaml_document_add_mapping(&doc, NULL, YAML_##block##_MAPPING_STYLE); \
-	yaml_document_append_mapping_pair(&doc, map, \
-		yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, key), strlen(key), YAML_PLAIN_SCALAR_STYLE), id); \
-	} while (0)
+	yaml_document_append_mapping_pair(&doc, map, scalar_obj, id);	\
+} while (0)
 
 	yaml_document_initialize(&doc, NULL, NULL, NULL, 0, 1);
-	mapping = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
+	mapping = yaml_document_add_mapping(&doc, NULL,
+	    YAML_BLOCK_MAPPING_STYLE);
 
-	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin, PKG_COMMENT, &comment,
-	    PKG_ARCH, &pkgarch, PKG_WWW, &www,
+	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
+	    PKG_COMMENT, &comment, PKG_ARCH, &pkgarch, PKG_WWW, &www,
 	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
-	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message, PKG_VERSION, &version,
-	    PKG_INFOS, &infos);
+	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
+	    PKG_VERSION, &version, PKG_INFOS, &infos);
 	manifest_append_kv(mapping, "name", name, PLAIN);
 	manifest_append_kv(mapping, "version", version, PLAIN);
 	manifest_append_kv(mapping, "origin", pkgorigin, PLAIN);
@@ -711,20 +772,21 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	manifest_append_kv(mapping, "maintainer", pkgmaintainer, PLAIN);
 	manifest_append_kv(mapping, "prefix", prefix, PLAIN);
 	switch (licenselogic) {
-		case LICENSE_SINGLE:
-			manifest_append_kv(mapping, "licenselogic", "single", PLAIN);
-			break;
-		case LICENSE_AND:
-			manifest_append_kv(mapping, "licenselogic", "and", PLAIN);
-			break;
-		case LICENSE_OR:
-			manifest_append_kv(mapping, "licenselogic", "or", PLAIN);
-			break;
+	case LICENSE_SINGLE:
+		manifest_append_kv(mapping, "licenselogic", "single", PLAIN);
+		break;
+	case LICENSE_AND:
+		manifest_append_kv(mapping, "licenselogic", "and", PLAIN);
+		break;
+	case LICENSE_OR:
+		manifest_append_kv(mapping, "licenselogic", "or", PLAIN);
+		break;
 	}
 
 	seq = -1;
 	while (pkg_licenses(pkg, &license) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "licenses", pkg_license_name(license));
+		manifest_append_seqval(&doc, mapping, &seq, "licenses",
+		    pkg_license_name(license));
 
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, flatsize);
 	manifest_append_kv(mapping, "flatsize", tmpbuf, PLAIN);
@@ -736,115 +798,115 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		if (map == -1)
 			manifest_append_map(map, mapping, "deps", BLOCK);
 
-		manifest_append_map(depkv, map, pkg_dep_get(dep, PKG_DEP_NAME), FLOW);
-		manifest_append_kv(depkv, "origin", pkg_dep_get(dep, PKG_DEP_ORIGIN), PLAIN);
-		manifest_append_kv(depkv, "version", pkg_dep_get(dep, PKG_DEP_VERSION), PLAIN);
+		manifest_append_map(depkv, map, pkg_dep_name(dep), FLOW);
+		manifest_append_kv(depkv, "origin", pkg_dep_origin(dep), PLAIN);
+		manifest_append_kv(depkv, "version", pkg_dep_version(dep),
+		    PLAIN);
 	}
 
 	seq = -1;
 	while (pkg_categories(pkg, &category) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "categories", pkg_category_name(category));
+		manifest_append_seqval(&doc, mapping, &seq, "categories",
+		    pkg_category_name(category));
 
 	seq = -1;
 	while (pkg_users(pkg, &user) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "users", pkg_user_name(user));
+		manifest_append_seqval(&doc, mapping, &seq, "users",
+		    pkg_user_name(user));
 
 	seq = -1;
 	while (pkg_groups(pkg, &group) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "groups", pkg_group_name(group));
-/*	while (pkg_users(pkg, &user) == EPKG_OK) {
-		if (users == -1) {
-			users = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "users"), 5, YAML_PLAIN_SCALAR_STYLE),
-					users);
-		}
-		manifest_append_kv(users, pkg_user_name(user), user->uidstr);
-	}
-
-	while (pkg_groups(pkg, &group) == EPKG_OK) {
-		if (groups == -1) {
-			groups = yaml_document_add_mapping(&doc, NULL, YAML_BLOCK_MAPPING_STYLE);
-			yaml_document_append_mapping_pair(&doc, mapping,
-					yaml_document_add_scalar(&doc, NULL, __DECONST(yaml_char_t*, "groups"), 6, YAML_PLAIN_SCALAR_STYLE),
-					groups);
-		}
-		manifest_append_kv(groups, pkg_group_name(group), group->gidstr);
-	}*/
+		manifest_append_seqval(&doc, mapping, &seq, "groups",
+		    pkg_group_name(group));
 
 	seq = -1;
 	while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "shlibs", pkg_shlib_name(shlib));
- 
+		manifest_append_seqval(&doc, mapping, &seq, "shlibs",
+		    pkg_shlib_name(shlib));
+
 	map = -1;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		if (map == -1)
 			manifest_append_map(map, mapping, "options", FLOW);
-		manifest_append_kv(map, pkg_option_opt(option), pkg_option_value(option), PLAIN);
+		manifest_append_kv(map, pkg_option_opt(option),
+		    pkg_option_value(option), PLAIN);
 	}
 
 	map = -1;
 	while (pkg_files(pkg, &file) == EPKG_OK) {
+		const char *pkg_sum = pkg_file_cksum(file);
+
+		if (pkg_sum == NULL || pkg_sum[0] == '\0')
+			pkg_sum = "-";
+
 		if (map == -1)
 			manifest_append_map(map, mapping, "files", BLOCK);
-		urlencode(pkg_file_get(file, PKG_FILE_PATH), &tmpsbuf);
-		manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_file_get(file, PKG_FILE_SUM) && strlen(pkg_file_get(file, PKG_FILE_SUM)) > 0 ? pkg_file_get(file, PKG_FILE_SUM) : "-", PLAIN);
+		urlencode(pkg_file_path(file), &tmpsbuf);
+		manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
 	}
 
 	seq = -1;
 	map = -1;
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		const char *try_str;
 		if (map == -1)
 			manifest_append_map(map, mapping, "directories", BLOCK);
 		urlencode(pkg_dir_path(dir), &tmpsbuf);
-		manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_dir_try(dir) ? "y" : "n", PLAIN);
+		try_str = pkg_dir_try(dir) ? "y" : "n";
+		manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
 	}
 
 	map = -1;
-	while (pkg_scripts(pkg, &script) == EPKG_OK) {
+	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
 		if (map == -1)
 			manifest_append_map(map, mapping, "scripts", BLOCK);
 
-		switch (pkg_script_type(script)) {
-			case PKG_SCRIPT_PRE_INSTALL:
-				script_types = "pre-install";
-				break;
-			case PKG_SCRIPT_INSTALL:
-				script_types = "install";
-				break;
-			case PKG_SCRIPT_POST_INSTALL:
-				script_types = "post-install";
-				break;
-			case PKG_SCRIPT_PRE_UPGRADE:
-				script_types = "pre-upgrade";
-				break;
-			case PKG_SCRIPT_UPGRADE:
-				script_types = "upgrade";
-				break;
-			case PKG_SCRIPT_POST_UPGRADE:
-				script_types = "post-upgrade";
-				break;
-			case PKG_SCRIPT_PRE_DEINSTALL:
-				script_types = "pre-deinstall";
-				break;
-			case PKG_SCRIPT_DEINSTALL:
-				script_types = "deinstall";
-				break;
-			case PKG_SCRIPT_POST_DEINSTALL:
-				script_types = "post-deinstall";
-				break;
+		if (pkg_script_get(pkg, i) == NULL)
+			continue;
+
+		switch (i) {
+		case PKG_SCRIPT_PRE_INSTALL:
+			script_types = "pre-install";
+			break;
+		case PKG_SCRIPT_INSTALL:
+			script_types = "install";
+			break;
+		case PKG_SCRIPT_POST_INSTALL:
+			script_types = "post-install";
+			break;
+		case PKG_SCRIPT_PRE_UPGRADE:
+			script_types = "pre-upgrade";
+			break;
+		case PKG_SCRIPT_UPGRADE:
+			script_types = "upgrade";
+			break;
+		case PKG_SCRIPT_POST_UPGRADE:
+			script_types = "post-upgrade";
+			break;
+		case PKG_SCRIPT_PRE_DEINSTALL:
+			script_types = "pre-deinstall";
+			break;
+		case PKG_SCRIPT_DEINSTALL:
+			script_types = "deinstall";
+			break;
+		case PKG_SCRIPT_POST_DEINSTALL:
+			script_types = "post-deinstall";
+			break;
 		}
-		urlencode(pkg_script_data(script), &tmpsbuf);
-		manifest_append_kv(map, script_types, sbuf_get(tmpsbuf), LITERAL);
+		urlencode(pkg_script_get(pkg, i), &tmpsbuf);
+		manifest_append_kv(map, script_types, sbuf_get(tmpsbuf),
+		    LITERAL);
 	}
 	if (infos != NULL && *infos != '\0') {
 		urlencode(infos, &tmpsbuf);
-		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf), LITERAL);
+		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf),
+		    LITERAL);
 	}
 
 	if (message != NULL && *message != '\0') {
 		urlencode(message, &tmpsbuf);
-		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf), LITERAL);
+		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf),
+		    LITERAL);
 	}
 
 	if (!yaml_emitter_dump(&emitter, &doc))

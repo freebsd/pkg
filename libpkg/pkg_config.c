@@ -42,6 +42,9 @@
 #define STRING 0
 #define BOOL 1
 #define LIST 2
+#define INTEGER 3
+
+#define ABI_VAR_STRING "${ABI}"
 
 struct pkg_config_kv {
 	char *key;
@@ -151,69 +154,157 @@ static struct config_entry c[] = {
 		"DEVELOPER_MODE",
 		"NO",
 		{ NULL }
-	}
+	},
+	[PKG_CONFIG_PORTAUDIT_SITE] = {
+		STRING,
+		"PORTAUDIT_SITE",
+		"http://portaudit.FreeBSD.org/auditfile.tbz",
+		{ NULL }
+	},
+	[PKG_CONFIG_SRV_MIRROR] = {
+		BOOL,
+		"SRV_MIRRORS",
+		"YES",
+		{ NULL }
+	},
+	[PKG_CONFIG_FETCH_RETRY] = {
+		INTEGER,
+		"FETCH_RETRY",
+		"3",
+		{ NULL }
+	},
+	[PKG_CONFIG_PLUGINS_DIR] = {
+		STRING,
+		"PKG_PLUGINS_DIR",
+		"/usr/local/etc/pkg/plugins",
+		{ NULL }
+	},
+	[PKG_CONFIG_ENABLE_PLUGINS] = {
+		BOOL,
+		"PKG_ENABLE_PLUGINS",
+		"NO",
+		{ NULL }
+	},
+	[PKG_CONFIG_PLUGINS_SUMMARY] = {
+		BOOL,
+		"PKG_PLUGINS_SUMMARY",
+		"NO",
+		{ NULL }
+	},
 };
 
 static bool parsed = false;
 static size_t c_size = sizeof(c) / sizeof(struct config_entry);
 
 static void
+parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, size_t ent)
+{
+	yaml_node_pair_t *subpair = map->data.mapping.pairs.start;
+	yaml_node_t *subkey, *subval;
+	struct pkg_config_kv *kv;
+
+	STAILQ_INIT(&c[ent].list);
+	while (subpair < map->data.mapping.pairs.top) {
+		subkey = yaml_document_get_node(doc, subpair->key);
+		subval = yaml_document_get_node(doc, subpair->value);
+		if (subkey->type != YAML_SCALAR_NODE ||
+		    subval->type != YAML_SCALAR_NODE) {
+			++subpair;
+			continue;
+		}
+		kv = malloc(sizeof(struct pkg_config_kv));
+		kv->key = strdup(subkey->data.scalar.value);
+		kv->value = strdup(subval->data.scalar.value);
+		STAILQ_INSERT_TAIL(&(c[ent].list), kv, next);
+		++subpair;
+	}
+}
+
+static void
 parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 {
-	size_t i;
-	struct pkg_config_kv *kv;
-	yaml_node_pair_t *pair, *subpair;
-	yaml_node_t *key, *subkey;
-	yaml_node_t *val, *subval;
+	size_t ent;
+	yaml_node_pair_t *pair;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
+		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
+		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
 
 		if (key->data.scalar.length <= 0) {
-			/* ignoring silently */
+			/*
+			 * ignoring silently empty keys can be empty lines or user mistakes
+			 */
 			++pair;
 			continue;
 		}
 
-		if (val->type == YAML_NO_NODE || ( val->type == YAML_SCALAR_NODE && val->data.scalar.length <= 0)) {
-			/* silently skip on purpose */
+		if (val->type == YAML_NO_NODE ||
+		    (val->type == YAML_SCALAR_NODE &&
+		     val->data.scalar.length <= 0)) {
+			/*
+			 * silently skip on purpose to allow user to leave
+			 * empty lines for examples without complaining
+			 */
 			++pair;
 			continue;
 		}
-		for (i = 0; i < c_size; i++) {
-			if (!strcasecmp(key->data.scalar.value, c[i].key)) {
-				if (c[i].val != NULL) {
-					/* skip env var already set */
-					++pair;
-					continue;
-				}
-				if (val->type == YAML_SCALAR_NODE) {
-					c[i].val = strdup(val->data.scalar.value);
-				} else if (val->type == YAML_MAPPING_NODE) {
-					subpair = val->data.mapping.pairs.start;
-					STAILQ_INIT(&c[i].list);
-					while (subpair < val->data.mapping.pairs.top) {
-						subkey = yaml_document_get_node(doc, subpair->key);
-						subval = yaml_document_get_node(doc, subpair->value);
-						if (subkey->type != YAML_SCALAR_NODE || subval->type != YAML_SCALAR_NODE) {
-							++subpair;
-							continue;
-						}
-						kv = malloc(sizeof(struct pkg_config_kv));
-						kv->key = strdup(subkey->data.scalar.value);
-						kv->value = strdup(subval->data.scalar.value);
-						STAILQ_INSERT_TAIL(&(c[i].list), kv, next);
-						++subpair;
-					}
-				}
-				break;
+		for (ent = 0; ent < c_size; ent++) {
+			if (strcasecmp(key->data.scalar.value, c[ent].key))
+				continue;
+			if (c[ent].val != NULL) {
+				/*
+				 * skip env var already set
+				 * Env vars have priority over config files
+				 */
+				++pair;
+				continue;
 			}
+			if (val->type == YAML_SCALAR_NODE)
+				c[ent].val = strdup(val->data.scalar.value);
+			else if (val->type == YAML_MAPPING_NODE)
+				parse_config_mapping(doc, val, ent);
 		}
-		/* unknown values are just silently skipped */
+		/*
+		 * unknown values are just silently ignored, because we don't
+		 * care about them
+		 */
 		++pair;
 	}
+}
+
+/**
+ * @brief Substitute PACKAGESITE variables
+ */
+static void
+subst_packagesite(void)
+{
+	const char *variable_string;
+	const char *oldval;
+	const char *myarch;
+	struct sbuf *newval;
+
+	oldval = c[PKG_CONFIG_REPO].val;
+
+	if (oldval == NULL || (variable_string = strstr(oldval, ABI_VAR_STRING)) == NULL)
+		return;
+
+	newval = sbuf_new_auto();
+	sbuf_bcat(newval, oldval, variable_string - oldval);
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+	sbuf_cat(newval, myarch);
+	sbuf_cat(newval, variable_string + strlen(ABI_VAR_STRING));
+	sbuf_finish(newval);
+
+	free(c[PKG_CONFIG_REPO].val);
+	c[PKG_CONFIG_REPO].val = strdup(sbuf_data(newval));
+	sbuf_free(newval);
+}
+
+int
+pkg_initialized(void)
+{
+	return (parsed);
 }
 
 int
@@ -231,10 +322,47 @@ pkg_config_string(pkg_config_key key, const char **val)
 		return (EPKG_FATAL);
 	}
 
+	if (key == PKG_CONFIG_REPO)
+		subst_packagesite();
+
 	*val = c[key].val;
 
 	if (*val == NULL)
 		*val = c[key].def;
+
+	return (EPKG_OK);
+}
+
+int
+pkg_config_int64(pkg_config_key key, int64_t *val)
+{
+	const char *errstr = NULL;
+
+	if (parsed != true) {
+		pkg_emit_error("pkg_init() must be called before pkg_config_int64()");
+		return (EPKG_FATAL);
+	}
+
+	if (c[key].type != INTEGER) {
+		pkg_emit_error("this config entry is not an integer");
+		return (EPKG_FATAL);
+	}
+	if (c[key].val != NULL) {
+		*val = strtonum(c[key].val, 0, INT64_MAX, &errstr);
+		if (errstr != NULL) {
+			pkg_emit_error("Unable to convert %s to int64: %s",
+			    c[key].val, errstr);
+			return (EPKG_FATAL);
+		}
+	} else if (c[key].def != NULL) {
+		*val = strtonum(c[key].def, 0, INT64_MAX, &errstr);
+		if (errstr != NULL) {
+			pkg_emit_error("Unable to convert default value %s to int64: %s",
+			    c[key].def, errstr);
+			return (EPKG_FATAL);
+		}
+	} else
+		return (EPKG_FATAL); /* No value set, and no default */
 
 	return (EPKG_OK);
 }
@@ -256,14 +384,14 @@ pkg_config_bool(pkg_config_key key, bool *val)
 
 	if (c[key].val != NULL && (
 	    strcasecmp(c[key].val, "yes") == 0 ||
-	    strcasecmp(c[key].val, "true" ) == 0 ||
-	    strcasecmp(c[key].val, "on" ) == 0)) {
+	    strcasecmp(c[key].val, "true") == 0 ||
+	    strcasecmp(c[key].val, "on") == 0)) {
 		*val = true;
 	}
 	else if (c[key].val == NULL && c[key].def != NULL && (
 	    strcasecmp(c[key].def, "yes") == 0 ||
-	    strcasecmp(c[key].def, "true" ) == 0 ||
-	    strcasecmp(c[key].def, "on" ) == 0)) {
+	    strcasecmp(c[key].def, "true") == 0 ||
+	    strcasecmp(c[key].def, "on") == 0)) {
 			*val = true;
 	}
 
@@ -301,12 +429,12 @@ pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type)
 	assert(kv != NULL);
 
 	switch (type) {
-		case PKG_CONFIG_KV_KEY:
-			return (kv->key);
-			break;
-		case PKG_CONFIG_KV_VALUE:
-			return (kv->value);
-			break;
+	case PKG_CONFIG_KV_KEY:
+		return (kv->key);
+		break;
+	case PKG_CONFIG_KV_VALUE:
+		return (kv->value);
+		break;
 	}
 	return (NULL);
 }
@@ -366,6 +494,7 @@ pkg_init(const char *path)
 	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
 
+
 	parsed = true;
 	return (EPKG_OK);
 }
@@ -383,6 +512,8 @@ pkg_shutdown(void)
 				free(c[i].val);
 				break;
 			case LIST:
+				break;
+			case INTEGER:
 				break;
 			default:
 				err(1, "unknown config entry type");

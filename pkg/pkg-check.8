@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 30, 2012
+.Dd July 9, 2012
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
@@ -23,10 +23,17 @@
 .Nd sanity checks installed packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl dsr
+.Op Fl Bdsr
 .Op Fl vy
 .Op Fl a | gxX Ar <pattern>
 .Sh DESCRIPTION
+.Nm
+.Fl B
+is used to reanalyse SHLIBS of installed packages.
+See
+.Xr pkg.conf 5
+for more information on SHLIBS.
+.Pp
 .Nm
 .Fl d
 is used to check for and install missing dependencies.
@@ -74,7 +81,6 @@ for further description.
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
-.Xr pkg-set 8 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
 .Xr pkg-audit 8 ,
@@ -94,6 +100,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

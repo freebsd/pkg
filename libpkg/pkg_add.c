@@ -43,11 +43,11 @@
 
 static int
 dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
-	struct pkg *p = NULL;
-	struct pkgdb_it *it;
-	int ret = EPKG_FATAL;
+	struct pkg	*p = NULL;
+	struct pkgdb_it	*it;
+	int		 ret = EPKG_FATAL;
 
-	it = pkgdb_query(db, pkg_dep_get(dep, PKG_DEP_ORIGIN), MATCH_EXACT);
+	it = pkgdb_query(db, pkg_dep_origin(dep), MATCH_EXACT);
 
 	if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK)
 		ret = EPKG_OK;
@@ -61,13 +61,16 @@ dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
 static int
 do_extract(struct archive *a, struct archive_entry *ae)
 {
-	int retcode = EPKG_OK;
-	int ret = 0;
-	char path[MAXPATHLEN + 1];
+	int	retcode = EPKG_OK;
+	int	ret = 0;
+	char	path[MAXPATHLEN + 1];
 	struct stat st;
 
 	do {
-		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
+		const char *pathname = archive_entry_pathname(ae);
+
+		ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+		if (ret != ARCHIVE_OK) {
 			/*
 			 * show error except when the failure is during
 			 * extracting a directory and that the directory already
@@ -75,8 +78,8 @@ do_extract(struct archive *a, struct archive_entry *ae)
 			 * this allow to install packages linux_base from
 			 * package for example
 			 */
-			if (!(archive_entry_filetype(ae) == AE_IFDIR &&
-			    is_dir(archive_entry_pathname(ae)))) {
+			if (archive_entry_filetype(ae) != AE_IFDIR ||
+			    !is_dir(pathname)) {
 				pkg_emit_error("archive_read_extract(): %s",
 				    archive_error_string(a));
 				retcode = EPKG_FATAL;
@@ -92,12 +95,13 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		 * if conf1.cfg doesn't exists create it based on
 		 * conf1.cfg.pkgconf
 		 */
-		if (is_conf_file(archive_entry_pathname(ae), path, sizeof(path))
+		if (is_conf_file(pathname, path, sizeof(path))
 		    && lstat(path, &st) == ENOENT) {
 			archive_entry_set_pathname(ae, path);
-			if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
+			ret = archive_read_extract(a,ae, EXTRACT_ARCHIVE_FLAGS);
+			if (ret != ARCHIVE_OK) {
 				pkg_emit_error("archive_read_extract(): %s",
-							   archive_error_string(a));
+				    archive_error_string(a));
 				retcode = EPKG_FATAL;
 				break;
 			}
@@ -106,7 +110,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 
 	if (ret != ARCHIVE_EOF) {
 		pkg_emit_error("archive_read_next_header(): %s",
-					   archive_error_string(a));
+		    archive_error_string(a));
 		retcode = EPKG_FATAL;
 	}
 
@@ -114,22 +118,22 @@ do_extract(struct archive *a, struct archive_entry *ae)
 }
 
 int
-pkg_add(struct pkgdb *db, const char *path, int flags)
+pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 {
-	const char *arch;
-	const char *myarch;
-	const char *origin;
-	struct archive *a;
+	const char	*arch;
+	const char	*myarch;
+	const char	*origin;
+	struct archive	*a;
 	struct archive_entry *ae;
-	struct pkg *pkg = NULL;
-	struct pkg_dep *dep = NULL;
-	bool extract = true;
-	bool handle_rc = false;
-	char dpath[MAXPATHLEN + 1];
-	const char *basedir;
-	const char *ext;
-	int retcode = EPKG_OK;
-	int ret;
+	struct pkg	*pkg = NULL;
+	struct pkg_dep	*dep = NULL;
+	bool		 extract = true;
+	bool		 handle_rc = false;
+	char		 dpath[MAXPATHLEN + 1];
+	const char	*basedir;
+	const char	*ext;
+	int		 retcode = EPKG_OK;
+	int		 ret;
 
 	assert(path != NULL);
 
@@ -138,7 +142,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	 * current archive_entry to the first non-meta file.
 	 * If there is no non-meta files, EPKG_END is returned.
 	 */
-	ret = pkg_open2(&pkg, &a, &ae, path, NULL);
+	ret = pkg_open2(&pkg, &a, &ae, path);
 	if (ret == EPKG_END)
 		extract = false;
 	else if (ret != EPKG_OK) {
@@ -163,7 +167,8 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin);
 
-	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH) {
+	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH &&
+	    strncmp(arch, myarch, strlen(myarch)) != 0) {
 		pkg_emit_error("wrong architecture: %s instead of %s",
 		    arch, myarch);
 		if ((flags & PKG_ADD_FORCE) == 0) {
@@ -200,12 +205,16 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		if (dep_installed(dep, db) != EPKG_OK) {
-			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
-					 pkg_dep_get(dep, PKG_DEP_NAME), pkg_dep_get(dep, PKG_DEP_VERSION),
-					 ext);
+			const char *dep_name = pkg_dep_name(dep);
+			const char *dep_ver = pkg_dep_version(dep);
 
-			if ((flags & PKG_ADD_UPGRADE) == 0 && access(dpath, F_OK) == 0) {
-				if (pkg_add(db, dpath, PKG_ADD_AUTOMATIC) != EPKG_OK) {
+			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", basedir,
+			    dep_name, dep_ver, ext);
+
+			if ((flags & PKG_ADD_UPGRADE) == 0 &&
+			    access(dpath, F_OK) == 0) {
+				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC);
+				if (ret != EPKG_OK) {
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
@@ -230,7 +239,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	/*
 	 * Execute pre-install scripts
 	 */
-	if ((flags & PKG_ADD_UPGRADE_NEW) == 0)
+	if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == 0)
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	/* add the user and group if necessary */
@@ -249,7 +258,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 	/*
 	 * Execute post install scripts
 	 */
-	if (flags & PKG_ADD_UPGRADE_NEW)
+	if (flags & PKG_ADD_USE_UPGRADE_SCRIPTS)
 		pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 	else
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);

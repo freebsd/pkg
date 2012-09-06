@@ -50,19 +50,19 @@ exec_which(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 	char pathabs[MAXPATHLEN + 1];
-	int ret = EPKG_OK, retcode = EPKG_OK;
+	int ret = EPKG_OK, retcode = EX_OK;
 	const char *name, *version, *origin;
 	int ch;
 	bool orig = false;
 
 	while ((ch = getopt(argc, argv, "qo")) != -1) {
 		switch (ch) {
-			case 'q':
-				quiet = true;
-				break;
-			case 'o':
-				orig = true;
-				break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'o':
+			orig = true;
+			break;
 		}
 	}
 
@@ -85,8 +85,7 @@ exec_which(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (( ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		retcode = EPKG_OK;
+	if ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_ORIGIN, &origin);
 		if (quiet && orig)
 			printf("%s\n", origin);
@@ -97,11 +96,11 @@ exec_which(int argc, char **argv)
 		else if (!quiet && !orig)
 			printf("%s was installed by package %s-%s\n", pathabs, name, version);
 	} else if (ret != EPKG_END) {
-		retcode = EPKG_WARN;
+		retcode = EX_SOFTWARE;
 	} else {
 		if (!quiet)
 			printf("%s was not found in the database\n", pathabs);
-		retcode = EPKG_WARN;
+		retcode = EX_DATAERR;
 	}
 		
 	pkg_free(pkg);

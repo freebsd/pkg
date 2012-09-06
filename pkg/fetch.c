@@ -54,7 +54,7 @@ exec_fetch(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
-	int retcode = EXIT_FAILURE;
+	int retcode = EX_SOFTWARE;
 	int ch;
 	int flags = PKG_LOAD_BASIC;
 	bool yes = false;
@@ -105,19 +105,19 @@ exec_fetch(int argc, char **argv)
 
 	/* TODO: Allow the user to specify an output directory via -o outdir */
 	if (geteuid() != 0) {
-		warnx("fetching packages can only be done as root");
+		warnx("Fetching packages can only be done as root");
 		return (EX_NOPERM);
 	}
 
 	/* first update the remote repositories if needed */
-	if (auto_update && (retcode = pkgcli_update()) != EPKG_OK)
+	if (auto_update && (retcode = pkgcli_update(false)) != EPKG_OK)
 		return (retcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db, false, false) != EPKG_OK) {
 		goto cleanup;
 	}
 
@@ -144,10 +144,10 @@ exec_fetch(int argc, char **argv)
 	}
 	
 	if (yes)
-		if (pkg_jobs_apply(jobs, 0) != EPKG_OK)
+		if (pkg_jobs_apply(jobs) != EPKG_OK)
 			goto cleanup;
 
-	retcode = EXIT_SUCCESS;
+	retcode = EX_OK;
 
 	cleanup:
 	pkg_jobs_free(jobs);

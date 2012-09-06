@@ -114,6 +114,22 @@ for options
 for licenses
 .It Cm B
 for shared libraries
+.It Cm \&%# Ns Op drCOLB
+Returns the number of elements in the list
+.Bl -tag -width indent
+.It Cm d
+for dependencies
+.It Cm r
+for reverse dependencies
+.It Cm C
+for categories
+.It Cm O
+for options
+.It Cm L
+for licenses
+.It Cm B
+for shared libraries
+.El
 .El
 .El
 .Ss Multiline patterns:
@@ -168,6 +184,11 @@ Flatsize of the package (type integer)
 Automatic status of the package (type integer)
 .It Cm \&%M
 Message of the package (type string)
+.It Cm \&%# Ns Op drCOLB
+Number of elements in the list of information (type integer).
+See
+.Cm %?
+above for what information is used.
 .El
 .Ss Operators
 .Bl -tag -width F1
@@ -212,6 +233,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

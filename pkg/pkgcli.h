@@ -70,6 +70,10 @@ void usage_info(void);
 int exec_install(int, char **);
 void usage_install(void);
 
+/* pkg plugins */
+int exec_plugins(int, char **);
+void usage_plugins(void);
+
 /* pkg query */
 int exec_query(int, char **);
 void usage_query(void);
@@ -99,10 +103,17 @@ int exec_shlib(int, char **);
 void usage_shlib(void);
 char *sanitize(char *, const char *, size_t);
 
+/* pkg stats */
+#define STATS_LOCAL (1<<0)
+#define STATS_REMOTE (1<<1)
+
+int exec_stats(int, char **);
+void usage_stats(void);
+
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);
-int pkgcli_update(void);
+int pkgcli_update(bool);
 
 /* pkg updating */
 int exec_updating(int, char **);
@@ -121,15 +132,17 @@ int exec_shell(int, char **);
 void usage_shell(void);
 
 /* pkg version */
-#define VERSION_INDEX (1<<0)
-#define VERSION_ORIGIN (1<<1)
-#define VERSION_QUIET (1<<2)
-#define VERSION_VERBOSE (1<<3)
-#define VERSION_STATUS (1<<4)
-#define VERSION_NOSTATUS (1<<5)
-#define VERSION_WITHORIGIN (1<<7)
-#define VERSION_TESTVERSION (1<<8)
-#define VERSION_TESTPATTERN (1<<9)
+#define VERSION_SOURCE_INDEX	(1<<0)
+#define VERSION_ORIGIN		(1<<1)
+#define VERSION_QUIET		(1<<2)
+#define VERSION_VERBOSE		(1<<3)
+#define VERSION_STATUS		(1<<4)
+#define VERSION_NOSTATUS	(1<<5)
+#define VERSION_WITHORIGIN	(1<<7)
+#define VERSION_TESTVERSION	(1<<8)
+#define VERSION_TESTPATTERN	(1<<9)
+#define VERSION_SOURCE_PORTS	(1<<10)
+#define VERSION_SOURCE_REMOTE	(1<<11)
 
 int exec_version(int, char **);
 void usage_version(void);
@@ -139,24 +152,64 @@ int exec_which(int, char **);
 void usage_which(void);
 
 /* utils */
-#define INFO_PRINT_DEP (1<<0)
-#define INFO_PRINT_RDEP (1<<1)
-#define INFO_EXISTS (1<<2)
-#define INFO_LIST_FILES (1<<3)
-#define INFO_SIZE (1<<4)
-#define INFO_QUIET (1<<5)
-#define INFO_ORIGIN (1<<6)
-#define INFO_ORIGIN_SEARCH (1<<7)
-#define INFO_PREFIX (1<<8)
-#define INFO_FULL (1<<9)
-#define INFO_RAW (1<<10)
-#define INFO_LIST_SHLIBS (1<<11)
-#define INFO_PRINT_MESSAGE (1<<12)
+
+/* These are the fields of the Full output, in order */
+#define INFO_NAME	(1<<0)
+#define INFO_VERSION	(1<<1)
+#define INFO_ORIGIN	(1<<2)
+#define INFO_PREFIX	(1<<3)
+#define INFO_REPOSITORY	(1<<4)
+#define INFO_CATEGORIES	(1<<5)
+#define INFO_LICENSES	(1<<6)
+#define INFO_MAINTAINER	(1<<7)
+#define INFO_WWW	(1<<8)
+#define INFO_COMMENT	(1<<9)
+#define INFO_OPTIONS	(1<<10)
+#define INFO_SHLIBS	(1<<11)
+#define INFO_FLATSIZE	(1<<12)
+#define INFO_PKGSIZE	(1<<13)
+#define INFO_DESCR	(1<<14)
+
+/* Other fields not part of the Full output */
+#define INFO_MESSAGE	(1<<15)
+#define INFO_DEPS	(1<<16)
+#define INFO_RDEPS	(1<<17)
+#define INFO_FILES	(1<<18)
+#define INFO_DIRS	(1<<19)
+#define INFO_USERS	(1<<20)
+#define INFO_GROUPS	(1<<21)
+#define INFO_ARCH	(1<<22)
+#define INFO_REPOURL	(1<<23)
+
+#define INFO_LASTFIELD	INFO_REPOURL
+#define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
+
+/* Identifying tags */
+#define INFO_TAG_NAME		(1<<28)
+#define INFO_TAG_ORIGIN		(1<<29)
+#define INFO_TAG_NAMEVER	(1<<30)
+
+/* Output YAML format */
+#define INFO_RAW	(1<<31)
+
+/* Everything in the 'full' package output */
+#define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_ORIGIN|INFO_PREFIX| \
+			 INFO_REPOSITORY|INFO_CATEGORIES|INFO_LICENSES|  \
+			 INFO_MAINTAINER|INFO_WWW|INFO_COMMENT|          \
+			 INFO_OPTIONS|INFO_SHLIBS|INFO_FLATSIZE|         \
+			 INFO_PKGSIZE|INFO_DESCR)
+
+/* Everything that can take more than one line to print */
+#define INFO_MULTILINE	(INFO_OPTIONS|INFO_SHLIBS|INFO_DESCR|INFO_MESSAGE| \
+			 INFO_DEPS|INFO_RDEPS|INFO_FILES|INFO_DIRS)
 
 bool query_yesno(const char *msg, ...);
+int info_flags(unsigned int opt);
 void print_info(struct pkg * const pkg, unsigned int opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
-void print_jobs_summary(struct pkg_jobs *j, pkg_jobs_t type, const char *msg, ...);
+void print_jobs_summary(struct pkg_jobs *j, pkg_jobs_t type,
+			const char *msg, ...);
+struct sbuf *exec_buf(const char *cmd);
 
 int event_callback(void *data, struct pkg_event *ev);
 
@@ -171,20 +224,11 @@ struct query_flags {
 	const int dbflags;
 };
 
-typedef enum {
-	NONE,
-	NEXT_IS_INT,
-	OPERATOR_INT,
-	INT,
-	NEXT_IS_STRING,
-	OPERATOR_STRING,
-	STRING,
-	QUOTEDSTRING,
-	SQUOTEDSTRING
-} type_t;
-
 void print_query(struct pkg *pkg, char *qstr, char multiline);
-int format_sql_condition(const char *str, struct sbuf *sqlcond);
-int analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int q_flags_len, int *flags, char *multiline);
+int format_sql_condition(const char *str, struct sbuf *sqlcond,
+			 bool for_remote);
+int analyse_query_string(char *qstr, struct query_flags *q_flags,
+			 const unsigned int q_flags_len, int *flags,
+			 char *multiline);
 
 #endif

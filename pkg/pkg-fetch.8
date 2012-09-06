@@ -33,7 +33,7 @@ is used to download binary packages from a remote repository.
 .Pp
 One or more packages, or patterns can be specified.
 .Pp
-The remote repository will automatically be updated using
+Repository catalogues will be updated automatically using
 .Xr pkg-update 8 .
 This can be disabled with the
 .Fl L
@@ -68,11 +68,11 @@ Treat
 .Ar <pkg-name>
 as an extended regular expression.
 .It Fl L
-Don't auto update the remote database with
+Skip updating the repository catalogues with
 .Xr pkg-update 8 .
 Use the local cache only.
 .It Fl d
-Fetch the package and it's dependencies as well.
+Fetch the package and its dependencies as well.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -87,7 +87,6 @@ for further description.
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
-.Xr pkg-set 8 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
 .Xr pkg-audit 8 ,
@@ -107,6 +106,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,

@@ -41,10 +41,10 @@
 #include "pkgcli.h"
 
 /**
- * Fetch remote databases.
+ * Fetch repository calalogues.
  */
 int
-pkgcli_update(void) {
+pkgcli_update(bool force) {
 	const char *packagesite = NULL;
 	const char *repo_name;
 	bool multi_repos = false;
@@ -52,7 +52,7 @@ pkgcli_update(void) {
 	int retcode;
 
 	if (!quiet)
-		printf("Updating remote repository\n");
+		printf("Updating repository catalogue\n");
 
 	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multi_repos);
 
@@ -69,10 +69,11 @@ pkgcli_update(void) {
 			return (1);
 		}
 
-		retcode = pkg_update("repo", packagesite);
+		retcode = pkg_update("repo", packagesite, force);
 		if (retcode == EPKG_UPTODATE) {
 			if (!quiet)
-				printf("Remote repository up-to-date, no need to upgrade\n");
+				printf("Repository catalogue is up-to-date, "
+				       "no need to fetch fresh copy\n");
 			retcode = EPKG_OK;
 		}
 	} else {
@@ -81,10 +82,12 @@ pkgcli_update(void) {
 			repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
 			packagesite = pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE);
 
-			retcode = pkg_update(repo_name, packagesite);
+			retcode = pkg_update(repo_name, packagesite, force);
 			if (retcode == EPKG_UPTODATE) {
 				if (!quiet)
-					printf("%s repository up-to-date, no need to upgrade\n", repo_name);
+					printf("%s repository catalogue is "
+					       "up-to-date, no need to fetch "
+					       "fresh copy\n", repo_name);
 				retcode = EPKG_OK;
 			}
 		}
@@ -97,24 +100,28 @@ pkgcli_update(void) {
 void
 usage_update(void)
 {
-	fprintf(stderr, "usage: pkg update [-q]\n\n");
+	fprintf(stderr, "usage: pkg update [-fq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help update'.\n");
 }
 
 int
 exec_update(int argc, char **argv)
 {
-	int retcode = EPKG_OK;
+	int ret;
 	int ch;
+	bool force = false;
 
-	while ((ch = getopt(argc, argv, "q")) != -1) {
+	while ((ch = getopt(argc, argv, "fq")) != -1) {
 		switch (ch) {
-			case 'q':
-				quiet = true;
-				break;
-			default:
-				usage_update();
-				return (EX_USAGE);
+		case 'q':
+			quiet = true;
+			break;
+		case 'f':
+			force = true;
+			break;
+		default:
+			usage_update();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;
@@ -126,11 +133,11 @@ exec_update(int argc, char **argv)
 	}
 
 	if (geteuid() != 0) {
-		warnx("updating the remote database can only be done as root");
+		warnx("Updating repository catalogues can only be done as root");
 		return (EX_NOPERM);
 	}
 
-	retcode = pkgcli_update();
+	ret = pkgcli_update(force);
 
-	return (retcode);
+	return ((ret == EPKG_OK) ? EX_OK : EX_SOFTWARE);
 }
