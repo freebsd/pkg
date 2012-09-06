@@ -551,15 +551,18 @@ int
 pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version)
 {
 	struct pkg_dep *d = NULL;
+	const char *n1, *v1;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 	assert(origin != NULL && origin[0] != '\0');
 	assert(version != NULL && version[0] != '\0');
 
-	HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
+	HASH_FIND_STR(pkg->deps, origin, d);
 	if (d != NULL) {
-		pkg_emit_error("duplicate dependency listing: %s-%s, ignoring", name, version);
+		pkg_get(pkg, PKG_NAME, &n1, PKG_VERSION, &v1);
+		pkg_emit_error("%s-%s: duplicate dependency listing: %s-%s, ignoring",
+		    n1, v1, name, version);
 		return (EPKG_OK);
 	}
 
@@ -569,7 +572,8 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
 
-	HASH_ADD_KEYPTR(hh, pkg->deps, __DECONST(char *, origin), strlen(origin), d);
+	HASH_ADD_KEYPTR(hh, pkg->deps, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)),
+	    strlen(pkg_dep_get(d, PKG_DEP_ORIGIN)), d);
 
 	return (EPKG_OK);
 }
@@ -590,7 +594,8 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	sbuf_set(&d->name, name);
 	sbuf_set(&d->version, version);
 
-	HASH_ADD_KEYPTR(hh, pkg->rdeps, __DECONST(char *, origin), strlen(origin), d);
+	HASH_ADD_KEYPTR(hh, pkg->deps, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)),
+	    strlen(pkg_dep_get(d, PKG_DEP_ORIGIN)), d);
 
 	return (EPKG_OK);
 }
@@ -655,7 +660,8 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 
 	sbuf_set(&c->name, name);
 
-	HASH_ADD_KEYPTR(hh, pkg->categories, __DECONST(char *, name), strlen(name), c);
+	HASH_ADD_KEYPTR(hh, pkg->categories, __DECONST(char *, pkg_category_name(c)),
+	    strlen(pkg_category_name(c)), c);
 
 	return (EPKG_OK);
 }
@@ -806,7 +812,8 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	sbuf_set(&o->key, key);
 	sbuf_set(&o->value, value);
 
-	HASH_ADD_KEYPTR(hh, pkg->options, __DECONST(char *, key), strlen(key), o);
+	HASH_ADD_KEYPTR(hh, pkg->options, __DECONST(char *, pkg_option_opt(o)),
+	    strlen(pkg_option_opt(o)), o);
 
 	return (EPKG_OK);
 }
@@ -828,7 +835,8 @@ pkg_addshlib(struct pkg *pkg, const char *name)
 
 	sbuf_set(&s->name, name);
 
-	HASH_ADD_KEYPTR(hh, pkg->shlibs, __DECONST(char *, name), strlen(name), s);
+	HASH_ADD_KEYPTR(hh, pkg->shlibs,__DECONST(char *, pkg_shlib_name(s)),
+	    strlen(pkg_shlib_name(s)), s);
 
 	return (EPKG_OK);
 }
