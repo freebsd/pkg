@@ -33,11 +33,12 @@
 
 #include "pkg.h"
 
-#define PKG_PRINTF_ALTERNATE_FORM	(1U << 0)
-#define PKG_PRINTF_LEFT_ALIGN		(1U << 1)
-#define PKG_PRINTF_EXPLICIT_PLUS	(1U << 2)
-#define PKG_PRINTF_SPACE_FOR_PLUS	(1U << 3)
-#define PKG_PRINTF_ZERO_PAD		(1U << 4)
+#define PKG_PRINTF_ALTERNATE_FORM1	(1U << 0)
+#define PKG_PRINTF_ALTERNATE_FORM2	(1U << 1)
+#define PKG_PRINTF_LEFT_ALIGN		(1U << 2)
+#define PKG_PRINTF_EXPLICIT_PLUS	(1U << 3)
+#define PKG_PRINTF_SPACE_FOR_PLUS	(1U << 4)
+#define PKG_PRINTF_ZERO_PAD		(1U << 5)
 
 
 static const char*
@@ -280,14 +281,15 @@ process_escape(struct sbuf *sbuf, const char *f)
 }
 
 /*
- * %? -- Flag values.  List of booleans.  %?X returns 0 if the %X list is
- * empty, 1 otherwise. Standard form: 0, 1.  Alternate form: no, yes
+ * Note: List values -- special behaviour with ? and # modifiers.
+ * Affects %B %C %D %F %G %L %O %U
+ *
+ * With ? -- Flag values.  Boolean.  %?X returns 0 if the %X list is
+ * empty, 1 otherwise.
+ *
+ * With # -- Count values.  Integer.  %#X returns the number of items in
+ * the %X list.
  */
-static const char *
-format_flags(const char *f, const struct pkg *pkg, unsigned flags, int width)
-{
-	return (f);
-}
 
 /*
  * %B -- Shared Libraries.  List of shlibs required by binaries in the
@@ -550,7 +552,10 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
 	while (!done) {
 		switch (*f) {
 		case '#':
-			flags |= PKG_PRINTF_ALTERNATE_FORM;
+			flags |= PKG_PRINTF_ALTERNATE_FORM1;
+			break;
+		case '?':
+			flags |= PKG_PRINTF_ALTERNATE_FORM2;
 			break;
 		case '-':
 			flags |= PKG_PRINTF_LEFT_ALIGN;
@@ -622,9 +627,6 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
 	switch (*f) {
 	case '%':		/* literal % */
 		sbuf_putc(sbuf, '%');
-		break;
-	case '?':		/* flags for presence of various data */
-		f = format_flags(f, pkg, flags, width);
 		break;
 	case 'B':		/* shared libraries */
 		f = format_shlibs(f, pkg, flags, width);
