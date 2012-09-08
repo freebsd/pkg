@@ -558,7 +558,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(origin != NULL && origin[0] != '\0');
 	assert(version != NULL && version[0] != '\0');
 
-	HASH_FIND_STR(pkg->deps, origin, d);
+	HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
 	if (d != NULL) {
 		pkg_get(pkg, PKG_NAME, &n1, PKG_VERSION, &v1);
 		pkg_emit_error("%s-%s: duplicate dependency listing: %s-%s, ignoring",
