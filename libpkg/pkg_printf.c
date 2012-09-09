@@ -28,18 +28,68 @@
 #include <sys/sbuf.h>
 
 #include <ctype.h>
+#include <inttypes.h>
 #define _WITH_DPRINTF
 #include <stdio.h>
 
 #include "pkg.h"
 
-#define PKG_PRINTF_ALTERNATE_FORM1	(1U << 0)
-#define PKG_PRINTF_ALTERNATE_FORM2	(1U << 1)
-#define PKG_PRINTF_LEFT_ALIGN		(1U << 2)
-#define PKG_PRINTF_EXPLICIT_PLUS	(1U << 3)
-#define PKG_PRINTF_SPACE_FOR_PLUS	(1U << 4)
-#define PKG_PRINTF_ZERO_PAD		(1U << 5)
+#define PP_ALTERNATE_FORM1	(1U << 0) /* ? */
+#define PP_ALTERNATE_FORM2	(1U << 1) /* # */
+#define PP_LEFT_ALIGN		(1U << 2) /* - */
+#define PP_EXPLICIT_PLUS	(1U << 3) /* + */
+#define PP_SPACE_FOR_PLUS	(1U << 4) /* SPACE */
+#define PP_ZERO_PAD		(1U << 5) /* 0 */
+#define PP_THOUSANDS_SEP	(1U << 6) /* ' */
 
+static const char	*liclog_str[3][3] = {
+	[LICENCE_SINGLE] = { "single", "",  "==" },
+	[LICENCE_OR]     = { "or",     "|", "||" },
+	[LICENCE_AND]    = { "and",    "&", "&&" },
+};
+
+static const char	*boolean_str[2][3] = {
+	[false]	= { "0", "no", "false" },
+	[true]  = { "1", "yes", "true" },
+};
+
+struct percent_esc {
+	unsigned	 flags;
+	int		 width;
+	char		*list_item_fmt;
+	char		*list_sep_fmt;
+	char		 fmt_code;
+};
+
+static void
+free_percent_esc(struct percent_esc *p)
+{
+	if (p->list_item_fmt != NULL)
+		free(p->list_item_fmt);
+	if (p->list_sep_fmt != NULL)
+		free(p->list_sep_fmt);
+	free(p);
+	return;
+}
+
+static struct percent_esc *
+new_percent_esc(struct percent_esc *p)
+{
+	if (p == NULL)
+		p = calloc(sizeof(struct percent_esc));
+	else {
+		p->flags = 0;
+		p->width = 0;
+		if (p->list_item_fmt)
+			free(p->list_item_fmt);
+		p->list_item_fmt = NULL;
+		if (p->list_sep_fmt)
+			free(p->list_sep_fmt);
+		p->list_sep_fmt = NULL;
+		p->fmt_code = '\0';
+	}
+	return (p);
+}
 
 static const char*
 maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
@@ -182,7 +232,8 @@ read_oct_byte(struct sbuf *sbuf, const char *f)
 	int	i;
 
 	/* Octal escapes are upto three octal digits: \N, \NN or \NNN
-	   up to a max of \377 */
+	   up to a max of \377.  Note: this treats \400 as \40
+	   followed by digit 0 passed through unchanged. */
 
 	while (val < 32) {
 		switch (*f) {
@@ -260,14 +311,14 @@ process_escape(struct sbuf *sbuf, const char *f)
 		f++;
 		f = maybe_read_hex_byte(sbuf, f);
 		break;
-	case '0':		/* falls through */
-	case '1':		/* falls through */
-	case '2':		/* falls through */
-	case '3':		/* falls through */
-	case '4':		/* falls through */
-	case '5':		/* falls through */
-	case '6':		/* falls through */
-	case '7':
+	case '0':
+	case '1':
+	case '2':
+	case '3':
+	case '4':
+	case '5':
+	case '6':
+	case '7':		/* all fall through */
 		f = read_oct_byte(sbuf, f);
 		break;
 	default:		/* If it's not a recognised escape,
@@ -278,6 +329,147 @@ process_escape(struct sbuf *sbuf, const char *f)
 	}
 
 	return (f);
+}
+
+static char *
+gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
+{
+	int	bp = 0;
+	size_t	tlen;
+
+	/* We need at least 3 characters '%' '*' '\0' and maybe 7 '%'
+	   '#' '-' '+' '\'' '*' '\0' plus the length of tail */
+
+	tlen = strlen(tail);
+
+	if (buflen - bp < tlen + 3)
+		return (NULL);
+
+	buf[bp++] = '%';
+
+	/* PP_ALTERNATE_FORM1 is not used by regular printf(3) */
+
+	if (flags & PP_ALTERNATE_FORM2)
+		buf[bp++] = '#';
+
+	if (flags & PP_LEFT_ALIGN)
+		buf[bp++] = '-';
+	else if (flags & PP_ZERO_FILL)
+		buf[bp++] = '0';
+
+	if (buflen - bp < tlen + 2)
+		return (NULL);
+	
+	if (FLAGS & PP_EXPLICIT_PLUS)
+		buf[bp++] = '+';
+	else if (flags & PP_SPACE_FOR_PLUS)
+		buf[bp++] = ' ';
+
+	if (flags & PP_THOUSANDS_SEP)
+		buf[bp++] = '\'';
+
+	if (buflen - bp < tlen + 2)
+		return (NULL);
+
+	/* The effect of 0 meaning 'zero fill' is indisinguishable
+	   from 0 meaning 'a field width of zero' */
+
+	buf[bp++] = '*';
+	buf[bp] = '\0';
+
+	strlcat(fmt, tail, sizeof(fmt));
+
+	return (buf);
+}
+
+
+static struct sbuf *
+human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
+{
+	double		 num;
+	int		 divisor;
+	int		 scale;
+	bool		 bin_scale;
+
+#define MAXSCALE	7
+
+	const char	 bin_pfx[MAXSCALE][3] =
+		{ "", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei" }; 
+	const char	 si_pfx[MAXSCALE][2] =
+		{ "", "k", "M", "G", "T", "P", "E" };
+	char		 fmt[16];
+	char		*fp = fmt;
+
+	bin_scale = ((p->flags & PP_ALTERNATE_FORM2) != 0);
+
+	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
+
+	num = number;
+	divisor = bin_scale ? 1024 : 1000;
+
+	for (scale = 0; scale < MAXSCALE; scale++) {
+		if (num <= divisor)
+			break;
+		num /= divisor;
+	}
+
+	if (gen_format(fmt, sizeof(fmt), p->flags, ".3f %s") == NULL)
+		return (NULL);
+
+	sbuf_printf(sbuf, fmt, p->width, num,
+		    bin_scale ? bin_pfx[scale] : si_pfx[scale]);
+
+	return (sbuf);
+}
+
+static struct sbuf *
+string_val(struct sbuf *sbuf, const char *str, struct percent_esc *p)
+{
+	char	fmt[16];
+
+	/* The '#' '?' '+' ' ' and '\'' modifiers have no meaning for
+	   strings */
+
+	p->flags &= ~(PP_ALTERNATE_FORM1 |
+		      PP_ALTERNATE_FORM2 |
+		      PP_EXPLICIT_PLUS   |
+		      PP_SPACE_FOR_PLUS  |
+		      PP_THOUSANDS_SEP);
+
+	if (gen_format(fmt, sizeof(fmt), p->flags, "s") == NULL)
+		return (NULL);
+
+	sbuf_printf(sbuf, fmt, p->width, str);
+	return (sbuf);
+}
+
+static struct sbuf *
+int_val(struct sbuf *sbuf, int64_t value, struct percent_esc *p)
+{
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (human_number(sbuf, value, p));
+	else {
+		char	 fmt[16]; /* More than enough */
+
+		if (gen_format(fmt, sizeof(fmt), p->flags, PRId64) == NULL)
+			return (NULL);
+
+		sbuf_printf(sbuf, fmt, p->width, value);
+	}
+	return (sbuf);
+}
+
+static struct sbuf *
+list_count(struct sbuf *sbuf, int64_t count, struct percent_esc *p)
+{
+	/* Convert to 0 or 1 for %?X */
+	if (p->flags & PP_ALTERNATE_FORM1)
+		count = (count > 0);
+
+	/* Turn off %#X and %?X flags, then print as a normal integer */
+	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
+
+	return (int_val(sbuf, count, p));
 }
 
 /*
@@ -296,10 +488,16 @@ process_escape(struct sbuf *sbuf, const char *f)
  * pkg.  Optionall accepts per-field format in %{ %| %}, where %b is
  * replaced by the shlib name.  Default %{%b\n%|%}
  */
-static const char *
-format_shlibs(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_shlibs(struct sbuf *sbuf, const struct pkg *pkg,
+	      struct percent_esc *p)
 {
-	return (f);
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS), p));
+	else {
+		/* @@@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
@@ -307,10 +505,17 @@ format_shlibs(const char *f, const struct pkg *pkg, unsigned flags, int width)
  * Optionally accepts per-field format in %{ %| %}, where %c is replaced by the
  * category name.  Default %{%c%|, %}
  */
-static const char *
-format_categories(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_categories(struct sbuf *sbuf, const struct pkg *pkg,
+		  struct percent_esc *p)
 {
-	return (f);
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES),
+				   p));
+	else {
+		/* @@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
@@ -319,10 +524,16 @@ format_categories(const char *f, const struct pkg *pkg, unsigned flags, int widt
  * %{ %| %}, where %d is replaced by the directory name.  Default
  * %{%d\n%|%}
  */
-static const char *
-format_directories(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_directories(struct sbuf *sbuf, const struct pkg *pkg,
+		   struct percent_esc *p)
 {
-	return (f);
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_DIRS), p));
+	else {
+		/* @@@@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
@@ -330,10 +541,16 @@ format_directories(const char *f, const struct pkg *pkg, unsigned flags, int wid
  * Optionally accepts following per-field format in %{ %| %}, where
  * %f is replaced by the filename, %s by the checksum.  Default %{%f\n%|%}
  */
-static const char *
-format_files(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_files(struct sbuf *sbuf, const struct pkg *pkg,
+	     struct percent_esc *p)
 {
-	return (f);
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_FILES), p));
+	else {
+		/* @@@@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
@@ -341,10 +558,16 @@ format_files(const char *f, const struct pkg *pkg, unsigned flags, int width)
  * per-field format in %{ %| %} where %g will be replaced by each
  * groupname or %#g by the gid. Default %{%g\n%|%}
  */
-static const char *
-format_groups(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_groups(struct sbuf *sbuf, const struct pkg *pkg,
+	      struct percent_esc *p)
 {
-	return (f);
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_GROUPS), p));
+	else {
+		/* @@@@@@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
@@ -352,19 +575,30 @@ format_groups(const char *f, const struct pkg *pkg, unsigned flags, int width)
  * following per-field format in %{ %| %} where %L is replaced by the
  * license name and %l by the license logic.  Default %{%L%| %l %}
  */
-static const char *
-format_licenses(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_licenses(struct sbuf *sbuf, const struct pkg *pkg,
+		struct percent_esc *p)
 {
-	return (f);
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_LICENSES),
+				   p));
+	else {
+		/* @@@@@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
  * %M -- Pkg message. string.  Accepts field-width, left-align
  */
-static const char *
-format_message(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_message(struct sbuf *sbuf, const struct pkg *pkg,
+	       struct percent_esc *p)
 {
-	return (f);
+	char	*message;
+
+	pkg_get(pkg, PKG_MESSAGE, &message);
+	return (string_val(sbuf, message, p));
 }
 
 /*
@@ -372,10 +606,16 @@ format_message(const char *f, const struct pkg *pkg, unsigned flags, int width)
  * following per-field format in %{ %| %}, where %k is replaced by the
  * option name and %v by the value.  Default %{%k %v\n%|%}
  */ 
-static const char *
-format_options(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_options(struct sbuf *sbuf, const struct pkg *pkg,
+	       struct percent_esc *p)
 {
-	return (f);
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_OPTIONS), p));
+	else {
+		/* @@@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
@@ -383,29 +623,56 @@ format_options(const char *f, const struct pkg *pkg, unsigned flags, int width)
  * per-field format in %{ %| %} where %u will be replaced by each
  * username or %#g by the uid. Default %{%u\n%|%}
  */
-static const char *
-format_users(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_users(struct sbuf *sbuf, const struct pkg *pkg,
+	     struct percent_esc *p)
 {
-	return (f);
+
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_USERS), p));
+	else {
+		/* @@@@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
  * %a -- Autoremove flag. boolean.  Accepts field-width, left-align.
- * Standard form: 0, 1.  Alternate form: no, yes
+ * Standard form: 0, 1.  Alternate form1: no, yes.  Alternate form2:
+ * false, true
  */
-static const char *
-format_autoremove(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_autoremove(struct sbuf *sbuf, const struct pkg *pkg,
+		  struct percent_esc *p)
 {
-	return (f);
+	bool	automatic;
+	int	alternate;
+
+	pkg_get(pkg, PKG_AUTOMATIC, &automatic);
+
+	if (p->flags & PP_ALTERNATE_FORM2)
+		alternate = 2;
+	else if (flags & PP_ALTERNATE_FORM1)
+		alternate = 1;
+	else
+		alternate = 0;
+
+	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
+
+	return (string_val(sbuf, boolean_str[automatic][alternate], p));
 }
 
 /*
  * %c -- Comment. string.  Accepts field-width, left-align
  */
-static const char *
-format_comment(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_comment(struct sbuf *sbuf, const struct pkg *pkg,
+	       struct percent_esc *p)
 {
-	return (f);
+	char	*coment;
+
+	pkg_get(pkg, PKG_COMMENT, &comment);
+	return (string_val(sbuf, comment, p));
 }
 
 /*
@@ -413,65 +680,108 @@ format_comment(const char *f, const struct pkg *pkg, unsigned flags, int width)
  * per-field format string in %{ %| %} using any pkg_printf() *scalar*
  * formats. Defaults to printing "%n-%v\n" for each dependency.
  */
-static const char *
-format_dependencies(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_dependencies(struct sbuf *sbuf, const struct pkg *pkg,
+		    struct percent_esc *p)
 {
-	return (f);
+
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_DEPS), p));
+	else {
+		/* @@@@@@@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
  * %i -- Additional info. string. Accepts field-width, left-align
  */
-static const char *
-format_add_info(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_add_info(struct sbuf *sbuf, const struct pkg *pkg,
+		struct percent_esc *p)
 {
-	return (f);
+	char	*info;
+
+	pkg_get(pkg, PKG_INFOS, &info);
+	return (string_val(sbuf, info, p));
 }
 
 /*
  * %l -- Licence logic. string.  Accepts field-width, left-align.
- * Standard form: &, |, ''. Alternate form: and, or, ''.  
+ * Standard form: and, or, single. Alternate form 1: &, |, ''.
+ * Alternate form 2: &&, ||, ==
  */
-static const char *
-format_license_logic(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_license_logic(struct sbuf *sbuf, const struct pkg *pkg,
+		     struct percent_esc *p)
 {
-	return (f);
+	lic_t	licenselogic;
+	int	alternate;
+
+	pkg_get(pkg, PKG_LICENSE_LOGIC, &licenselogic);
+
+	if (p->flags & PP_ALTERNATE_FORM2)
+		alternate = 2;
+	else if (p->flags & PP_ALTERNATE_FORM1)
+		alternate = 1;
+	else
+		alternate = 0;
+
+	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
+
+	return (string_val(sbuf, liclog_str[licenselogic][alternate], p));
 }
 
 /*
  * %m -- Maintainer e-mail address. string.  Accepts field-width, left-align
  */
-static const char *
-format_maintainer(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_maintainer(struct sbuf *sbuf, const struct pkg *pkg,
+		  struct percent_esc *p)
 {
-	return (f);
+	char	*maintainer;
+
+	pkg_get(pkg, PKG_MAINTAINER, &maintainer);
+	return (string_val(sbuf, maintainer, p));
 }
 
 /*
  * %n -- Package name. string.  Accepts field-width, left-align
  */
-static const char *
-format_name(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_name(struct sbuf *sbuf, const struct pkg *pkg,
+	    struct percent_esc *p)
 {
-	return (f);
+	char	*name;
+
+	pkg_get(pkg, PKG_NAME, &name);
+	return (string_val(sbuf, name, p));
 }
 
 /*
  * %o -- Package origin. string.  Accepts field-width, left-align
  */
-static const char *
-format_origin(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_origin(struct sbuf *sbuf, const struct pkg *pkg,
+	      struct percent_esc *p)
 {
-	return (f);
+	char	*origin;
+
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	return (string_val(sbuf, origin, p));
 }
 
 /*
  * %p -- Installation prefix. string. Accepts field-width, left-align
  */
-static const char *
-format_prefix(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_prefix(struct sbuf *sbuf, const struct pkg *pkg,
+	      struct percent_esc *p)
 {
-	return (f);
+	char	*prefix;
+
+	pkg_get(pkg, PKG_PREFIX, &prefix);
+	return (string_val(sbuf, prefix, p));
 }
 
 /*
@@ -479,22 +789,33 @@ format_prefix(const char *f, const struct pkg *pkg, unsigned flags, int width)
  * per-field format string in %{ %| %} using any pkg_printf() *scalar*
  * formats. Defaults to printing "%{%n-%v\n%|%}" for each dependency.
  */
-static const char *
-format_requirements(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_requirements(struct sbuf *sbuf, const struct pkg *pkg,
+		    struct percent_esc *p)
 {
-	return (f);
+	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+		return(list_count(sbuf, pkg_list_count(pkg, PKG_RDEPS), p));
+	else {
+		/* @@@@@@@@@@@@@@@@@@@@@@@ */
+	}
+	return (sbuf);
 }
 
 /*
  * %s -- Size of installed package. integer.  Accepts field-width,
  * left-align, zero-fill, space-for-plus, explicit-plus and
- * alternate-form.  Alternate form is a humanized number using binary
- * scale prefixes (ki, Mi, etc.)
+ * alternate-form.  Alternate form is a humanized number using decimal
+ * exponents (k, M, G).  Alternate form 2, ditto, but using binary
+ * scale prefixes (ki, Mi, Gi etc.)
  */
-static const char *
-format_flatsize(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_flatsize(struct sbuf *sbuf, const struct pkg *pkg,
+		struct percent_esc *p)
 {
-	return (f);
+	int_64t	flatsize;
+
+	pkg_get(pkg, PKG_FLATSIZE, &flatsize);
+	return (int_val(sbuf, flatsize, p));
 }
 
 /*
@@ -503,42 +824,54 @@ format_flatsize(const char *f, const struct pkg *pkg, unsigned flags, int width)
  * %{ %}.  Default is to print seconds-since-epoch as an integer, in
  * which case zero-fill, space-for-plus and explicit-plus also apply.
  */
-static const char *
-format_install_tstamp(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_install_tstamp(struct sbuf *sbuf, const struct pkg *pkg,
+		      struct percent_esc *p)
 {
-	return (f);
+	int_64t	timestamp;
+
+	pkg_get(pkg, PKG_TIME, &timestamp);
+	/* @@@@@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
 }
 
 /*
  * %v -- Package version. string. Accepts field width, left align
  */
-static const char *
-format_version(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_version(struct sbuf *sbuf, const struct pkg *pkg,
+	       struct percent_esc *p)
 {
-	return (f);
+	char	*version;
+
+	pkg_get(pkg, PKG_VERSION, &version);
+	return (string_val(sbuf, version, p));
 }
 
 /*
  * %w -- Home page URL.  string.  Accepts field width, left align
  */
-static const char *
-format_home_url(const char *f, const struct pkg *pkg, unsigned flags, int width)
+static struct sbuf *
+format_home_url(struct sbuf *sbuf, const struct pkg *pkg,
+		struct percent_esc *p)
 {
-	return (f);
+	char	*url;
+
+	pkg_get(pkg, PKG_WWW, &url);
+	return (string_val(sbuf, url, p));
 }
 
-
 static const char *
-process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
+parse_escape(const char *f, struct percent_esc **p)
 {
 	const char	*fstart;
-	int		width = 0;
-	unsigned	flags = 0;
-	bool		done = false;
+	bool		 done = false;
 
 	fstart = f;
 
 	f++;			/* Eat the % */
+
+	*p = new_percent_esc(*p);
 
 	/* Field modifiers, if any:
 	 * '#' alternate form
@@ -552,22 +885,25 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
 	while (!done) {
 		switch (*f) {
 		case '#':
-			flags |= PKG_PRINTF_ALTERNATE_FORM1;
+			(*p)->flags |= PP_ALTERNATE_FORM1;
 			break;
 		case '?':
-			flags |= PKG_PRINTF_ALTERNATE_FORM2;
+			(*p)->flags |= PP_ALTERNATE_FORM2;
 			break;
 		case '-':
-			flags |= PKG_PRINTF_LEFT_ALIGN;
+			(*p)->flags |= PP_LEFT_ALIGN;
 			break;
 		case '+':
-			flags |= PKG_PRINTF_EXPLICIT_PLUS;
+			(*p)->flags |= PP_EXPLICIT_PLUS;
 			break;
 		case ' ':
-			flags |= PKG_PRINTF_SPACE_FOR_PLUS;
+			(*p)->flags |= PP_SPACE_FOR_PLUS;
 			break;
 		case '0':
-			flags |= PKG_PRINTF_ZERO_PAD;
+			(*p)->flags |= PP_ZERO_PAD;
+			break;
+		case '\'':
+			(*p)->flags |= PP_THOUSANDS_SEP;
 			break;
 		default:
 			done = true;
@@ -578,42 +914,42 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
 	}
 
 	/* Field width, if any -- some number of decimal digits.
-	   Note: field width can't be set to zero, as that indicates
-	   zero padding, so use width == 0 to flag "no explicit width
-	   setting requested" */
+	   Note: field width set to zero could be interpreted as using
+	   0 to request zero padding: it doesn't matter which -- the
+	   result on the output is exactly the same. */
 
 	done = false;
 	while (!done) {
 		switch(*f) {
 		case '0':
-			width = width * 10 + 0;
+			(*p)->width = (*p)->width * 10 + 0;
 			break;
 		case '1':
-			width = width * 10 + 1;
+			(*p)->width = (*p)->width * 10 + 1;
 			break;
 		case '2':
-			width = width * 10 + 2;
+			(*p)->width = (*p)->width * 10 + 2;
 			break;
 		case '3':
-			width = width * 10 + 3;
+			(*p)->width = (*p)->width * 10 + 3;
 			break;
 		case '4':
-			width = width * 10 + 4;
+			(*p)->width = (*p)->width * 10 + 4;
 			break;
 		case '5':
-			width = width * 10 + 5;
+			(*p)->width = (*p)->width * 10 + 5;
 			break;
 		case '6':
-			width = width * 10 + 6;
+			(*p)->width = (*p)->width * 10 + 6;
 			break;
 		case '7':
-			width = width * 10 + 7;
+			(*p)->width = (*p)->width * 10 + 7;
 			break;
 		case '8':
-			width = width * 10 + 8;
+			(*p)->width = (*p)->width * 10 + 8;
 			break;
 		case '9':
-			width = width * 10 + 9;
+			(*p)->width = (*p)->width * 10 + 9;
 			break;
 		default:
 			done = true;
@@ -623,79 +959,95 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
 			f++;
 	}
 
+	(*p)->fmt_code = *f++;
+
+
+	return (f);
+}
+
+static struct sbuf *
+process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
+{
+	const char		*fstart;
+	struct sbuf		*s;
+	struct percent_esc	*p = NULL;
+
+	fstart = f;
+	f = parse_escape(f, &p);
+
 	/* Format code */
-	switch (*f) {
+	switch (p->fmt_code) {
 	case '%':		/* literal % */
 		sbuf_putc(sbuf, '%');
 		break;
 	case 'B':		/* shared libraries */
-		f = format_shlibs(f, pkg, flags, width);
+		s = format_shlibs(sbuf, pkg, p);
 		break;
 	case 'C':		/* categories */
-		f = format_categories(f, pkg, flags, width);
+		s = format_categories(sbuf, pkg, p);
 		break;
 	case 'D':		/* directories */
-		f = format_directories(f, pkg, flags, width);
+		s = format_directories(sbuf, pkg, p);
 		break;
 	case 'F':		/* files */
-		f = format_files(f, pkg, flags, width);
+		s = format_files(sbuf, pkg, p);
 		break;
 	case 'G':		/* groups */
-		f = format_groups(f, pkg, flags, width);
+		s = format_groups(sbuf, pkg, p);
 		break;
 	case 'L':		/* licenses */
-		f = format_licenses(f, pkg, flags, width);
+		s = format_licenses(sbuf, pkg, p);
 		break;
 	case 'M':		/* message */
-		f = format_message(f, pkg, flags, width);
+		s = format_message(sbuf, pkg, p);
 		break;
 	case 'O':		/* options */
-		f = format_options(f, pkg, flags, width);
+		s = format_options(sbuf, pkg, p);
 		break;
 	case 'U':		/* users */
-		f = format_users(f, pkg, flags, width);
+		s = format_users(sbuf, pkg, p);
 		break;
 	case 'a':		/* autoremove flag */
-		f = format_autoremove(f, pkg, flags, width);
+		s = format_autoremove(sbuf, pkg, p);
 		break;
 	case 'c':		/* comment */
-		f = format_comment(f, pkg, flags, width);
+		s = format_comment(sbuf, pkg, p);
 		break;
 	case 'd':		/* dependencies */
-		f = format_dependencies(f, pkg, flags, width);
+		s = format_dependencies(sbuf, pkg, p);
 		break;
 	case 'i':		/* additional info */
-		f = format_add_info(f, pkg, flags, width);
+		s = format_add_info(sbuf, pkg, p);
 		break;
 	case 'l':		/* license logic */
-		f = format_license_logic(f, pkg, flags, width);
+		s = format_license_logic(sbuf, pkg, p);
 		break;
 	case 'm':		/* maintainer */
-		f = format_maintainer(f, pkg, flags, width);
+		s = format_maintainer(sbuf, pkg, p);
 		break;
 	case 'n':		/* name */
-		f = format_name(f, pkg, flags, width);
+		s = format_name(sbuf, pkg, p);
 		break;
 	case 'o':		/* origin */
-		f = format_origin(f, pkg, flags, width);
+		s = format_origin(sbuf, pkg, p);
 		break;
 	case 'p':		/* prefix */
-		f = format_prefix(f, pkg, flags, width);
+		s = format_prefix(sbuf, pkg, p);
 		break;
 	case 'r':		/* requirements */
-		f = format_requirements(f, pkg, flags, width);
+		s = format_requirements(sbuf, pkg, p);
 		break;
 	case 's':		/* flat size */
-		f = format_flatsize(f, pkg, flags, width);
+		s = format_flatsize(sbuf, pkg, p);
 		break;
 	case 't':		/* installation timestamp */
-		f = format_install_tstamp(f, pkg, flags, width);
+		s = format_install_tstamp(sbuf, pkg, p);
 		break;
 	case 'v':		/* version */
-		f = format_version(f, pkg, flags, width);
+		s = format_version(sbuf, pkg, p);
 		break;
 	case 'w':		/* pkg home page URL */
-		f = format_home_url(f, pkg, flags, width);
+		s = format_home_url(sbuf, pkg, p);
 		break;
 	default:
 		/* If it's not a known escape, pass through unchanged */
@@ -703,6 +1055,11 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
 		f = fstart;
 		break;
 	}
+
+	if (s == NULL)
+		f = fstart;	/* Pass through unprocessed on error */
+
+	free_percent_esc(p);
 
 	return (f);
 }
