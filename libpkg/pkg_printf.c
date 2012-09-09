@@ -31,6 +31,8 @@
 #include <inttypes.h>
 #define _WITH_DPRINTF
 #include <stdio.h>
+#include <string.h>
+#include <time.h>
 
 #include "pkg.h"
 
@@ -42,10 +44,14 @@
 #define PP_ZERO_PAD		(1U << 5) /* 0 */
 #define PP_THOUSANDS_SEP	(1U << 6) /* ' */
 
+#define PP_LIC_SINGLE	0
+#define PP_LIC_OR	1
+#define PP_LIC_AND	2
+
 static const char	*liclog_str[3][3] = {
-	[LICENCE_SINGLE] = { "single", "",  "==" },
-	[LICENCE_OR]     = { "or",     "|", "||" },
-	[LICENCE_AND]    = { "and",    "&", "&&" },
+	[PP_LIC_SINGLE] = { "single", "",  "==" },
+	[PP_LIC_OR]     = { "or",     "|", "||" },
+	[PP_LIC_AND]    = { "and",    "&", "&&" },
 };
 
 static const char	*boolean_str[2][3] = {
@@ -76,7 +82,7 @@ static struct percent_esc *
 new_percent_esc(struct percent_esc *p)
 {
 	if (p == NULL)
-		p = calloc(sizeof(struct percent_esc));
+		p = calloc(1, sizeof(struct percent_esc));
 	else {
 		p->flags = 0;
 		p->width = 0;
@@ -229,7 +235,6 @@ static const char*
 read_oct_byte(struct sbuf *sbuf, const char *f)
 {
 	int	val = 0;
-	int	i;
 
 	/* Octal escapes are upto three octal digits: \N, \NN or \NNN
 	   up to a max of \377.  Note: this treats \400 as \40
@@ -354,13 +359,13 @@ gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 
 	if (flags & PP_LEFT_ALIGN)
 		buf[bp++] = '-';
-	else if (flags & PP_ZERO_FILL)
+	else if (flags & PP_ZERO_PAD)
 		buf[bp++] = '0';
 
 	if (buflen - bp < tlen + 2)
 		return (NULL);
 	
-	if (FLAGS & PP_EXPLICIT_PLUS)
+	if (flags & PP_EXPLICIT_PLUS)
 		buf[bp++] = '+';
 	else if (flags & PP_SPACE_FOR_PLUS)
 		buf[bp++] = ' ';
@@ -377,7 +382,7 @@ gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 	buf[bp++] = '*';
 	buf[bp] = '\0';
 
-	strlcat(fmt, tail, sizeof(fmt));
+	strlcat(buf, tail, sizeof(buf));
 
 	return (buf);
 }
@@ -398,7 +403,6 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 	const char	 si_pfx[MAXSCALE][2] =
 		{ "", "k", "M", "G", "T", "P", "E" };
 	char		 fmt[16];
-	char		*fp = fmt;
 
 	bin_scale = ((p->flags & PP_ALTERNATE_FORM2) != 0);
 
@@ -446,7 +450,7 @@ string_val(struct sbuf *sbuf, const char *str, struct percent_esc *p)
 static struct sbuf *
 int_val(struct sbuf *sbuf, int64_t value, struct percent_esc *p)
 {
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (human_number(sbuf, value, p));
 	else {
 		char	 fmt[16]; /* More than enough */
@@ -489,10 +493,9 @@ list_count(struct sbuf *sbuf, int64_t count, struct percent_esc *p)
  * replaced by the shlib name.  Default %{%b\n%|%}
  */
 static struct sbuf *
-format_shlibs(struct sbuf *sbuf, const struct pkg *pkg,
-	      struct percent_esc *p)
+format_shlibs(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS), p));
 	else {
 		/* @@@@@@@@@@@@@@@ */
@@ -506,10 +509,9 @@ format_shlibs(struct sbuf *sbuf, const struct pkg *pkg,
  * category name.  Default %{%c%|, %}
  */
 static struct sbuf *
-format_categories(struct sbuf *sbuf, const struct pkg *pkg,
-		  struct percent_esc *p)
+format_categories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES),
 				   p));
 	else {
@@ -525,10 +527,9 @@ format_categories(struct sbuf *sbuf, const struct pkg *pkg,
  * %{%d\n%|%}
  */
 static struct sbuf *
-format_directories(struct sbuf *sbuf, const struct pkg *pkg,
-		   struct percent_esc *p)
+format_directories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DIRS), p));
 	else {
 		/* @@@@@@@@@@@@@@@@ */
@@ -542,10 +543,9 @@ format_directories(struct sbuf *sbuf, const struct pkg *pkg,
  * %f is replaced by the filename, %s by the checksum.  Default %{%f\n%|%}
  */
 static struct sbuf *
-format_files(struct sbuf *sbuf, const struct pkg *pkg,
-	     struct percent_esc *p)
+format_files(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_FILES), p));
 	else {
 		/* @@@@@@@@@@@@@@@@ */
@@ -559,10 +559,9 @@ format_files(struct sbuf *sbuf, const struct pkg *pkg,
  * groupname or %#g by the gid. Default %{%g\n%|%}
  */
 static struct sbuf *
-format_groups(struct sbuf *sbuf, const struct pkg *pkg,
-	      struct percent_esc *p)
+format_groups(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_GROUPS), p));
 	else {
 		/* @@@@@@@@@@@@@@@@@@ */
@@ -576,10 +575,9 @@ format_groups(struct sbuf *sbuf, const struct pkg *pkg,
  * license name and %l by the license logic.  Default %{%L%| %l %}
  */
 static struct sbuf *
-format_licenses(struct sbuf *sbuf, const struct pkg *pkg,
-		struct percent_esc *p)
+format_licenses(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_LICENSES),
 				   p));
 	else {
@@ -592,8 +590,7 @@ format_licenses(struct sbuf *sbuf, const struct pkg *pkg,
  * %M -- Pkg message. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_message(struct sbuf *sbuf, const struct pkg *pkg,
-	       struct percent_esc *p)
+format_message(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*message;
 
@@ -607,10 +604,9 @@ format_message(struct sbuf *sbuf, const struct pkg *pkg,
  * option name and %v by the value.  Default %{%k %v\n%|%}
  */ 
 static struct sbuf *
-format_options(struct sbuf *sbuf, const struct pkg *pkg,
-	       struct percent_esc *p)
+format_options(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_OPTIONS), p));
 	else {
 		/* @@@@@@@@@@@@@@@ */
@@ -624,11 +620,10 @@ format_options(struct sbuf *sbuf, const struct pkg *pkg,
  * username or %#g by the uid. Default %{%u\n%|%}
  */
 static struct sbuf *
-format_users(struct sbuf *sbuf, const struct pkg *pkg,
-	     struct percent_esc *p)
+format_users(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_USERS), p));
 	else {
 		/* @@@@@@@@@@@@@@@@ */
@@ -642,8 +637,7 @@ format_users(struct sbuf *sbuf, const struct pkg *pkg,
  * false, true
  */
 static struct sbuf *
-format_autoremove(struct sbuf *sbuf, const struct pkg *pkg,
-		  struct percent_esc *p)
+format_autoremove(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	bool	automatic;
 	int	alternate;
@@ -652,7 +646,7 @@ format_autoremove(struct sbuf *sbuf, const struct pkg *pkg,
 
 	if (p->flags & PP_ALTERNATE_FORM2)
 		alternate = 2;
-	else if (flags & PP_ALTERNATE_FORM1)
+	else if (p->flags & PP_ALTERNATE_FORM1)
 		alternate = 1;
 	else
 		alternate = 0;
@@ -666,10 +660,9 @@ format_autoremove(struct sbuf *sbuf, const struct pkg *pkg,
  * %c -- Comment. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_comment(struct sbuf *sbuf, const struct pkg *pkg,
-	       struct percent_esc *p)
+format_comment(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	char	*coment;
+	char	*comment;
 
 	pkg_get(pkg, PKG_COMMENT, &comment);
 	return (string_val(sbuf, comment, p));
@@ -681,11 +674,10 @@ format_comment(struct sbuf *sbuf, const struct pkg *pkg,
  * formats. Defaults to printing "%n-%v\n" for each dependency.
  */
 static struct sbuf *
-format_dependencies(struct sbuf *sbuf, const struct pkg *pkg,
-		    struct percent_esc *p)
+format_dependencies(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DEPS), p));
 	else {
 		/* @@@@@@@@@@@@@@@@@@@ */
@@ -697,8 +689,7 @@ format_dependencies(struct sbuf *sbuf, const struct pkg *pkg,
  * %i -- Additional info. string. Accepts field-width, left-align
  */
 static struct sbuf *
-format_add_info(struct sbuf *sbuf, const struct pkg *pkg,
-		struct percent_esc *p)
+format_add_info(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*info;
 
@@ -712,13 +703,25 @@ format_add_info(struct sbuf *sbuf, const struct pkg *pkg,
  * Alternate form 2: &&, ||, ==
  */
 static struct sbuf *
-format_license_logic(struct sbuf *sbuf, const struct pkg *pkg,
-		     struct percent_esc *p)
+format_license_logic(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	lic_t	licenselogic;
 	int	alternate;
+	int	llogic;
 
 	pkg_get(pkg, PKG_LICENSE_LOGIC, &licenselogic);
+
+	switch (licenselogic) {
+	case LICENSE_SINGLE:
+		llogic = PP_LIC_SINGLE;
+		break;
+	case LICENSE_OR:
+		llogic = PP_LIC_OR;
+		break;
+	case LICENSE_AND:
+		llogic = PP_LIC_AND;
+		break;
+	}
 
 	if (p->flags & PP_ALTERNATE_FORM2)
 		alternate = 2;
@@ -729,15 +732,14 @@ format_license_logic(struct sbuf *sbuf, const struct pkg *pkg,
 
 	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
 
-	return (string_val(sbuf, liclog_str[licenselogic][alternate], p));
+	return (string_val(sbuf, liclog_str[llogic][alternate], p));
 }
 
 /*
  * %m -- Maintainer e-mail address. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_maintainer(struct sbuf *sbuf, const struct pkg *pkg,
-		  struct percent_esc *p)
+format_maintainer(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*maintainer;
 
@@ -749,8 +751,7 @@ format_maintainer(struct sbuf *sbuf, const struct pkg *pkg,
  * %n -- Package name. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_name(struct sbuf *sbuf, const struct pkg *pkg,
-	    struct percent_esc *p)
+format_name(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*name;
 
@@ -762,8 +763,7 @@ format_name(struct sbuf *sbuf, const struct pkg *pkg,
  * %o -- Package origin. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_origin(struct sbuf *sbuf, const struct pkg *pkg,
-	      struct percent_esc *p)
+format_origin(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*origin;
 
@@ -775,8 +775,7 @@ format_origin(struct sbuf *sbuf, const struct pkg *pkg,
  * %p -- Installation prefix. string. Accepts field-width, left-align
  */
 static struct sbuf *
-format_prefix(struct sbuf *sbuf, const struct pkg *pkg,
-	      struct percent_esc *p)
+format_prefix(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*prefix;
 
@@ -790,10 +789,9 @@ format_prefix(struct sbuf *sbuf, const struct pkg *pkg,
  * formats. Defaults to printing "%{%n-%v\n%|%}" for each dependency.
  */
 static struct sbuf *
-format_requirements(struct sbuf *sbuf, const struct pkg *pkg,
-		    struct percent_esc *p)
+format_requirements(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	if (p->flags & PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return(list_count(sbuf, pkg_list_count(pkg, PKG_RDEPS), p));
 	else {
 		/* @@@@@@@@@@@@@@@@@@@@@@@ */
@@ -809,29 +807,37 @@ format_requirements(struct sbuf *sbuf, const struct pkg *pkg,
  * scale prefixes (ki, Mi, Gi etc.)
  */
 static struct sbuf *
-format_flatsize(struct sbuf *sbuf, const struct pkg *pkg,
-		struct percent_esc *p)
+format_flatsize(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-	int_64t	flatsize;
+	int64_t	flatsize;
 
 	pkg_get(pkg, PKG_FLATSIZE, &flatsize);
 	return (int_val(sbuf, flatsize, p));
 }
 
 /*
- * %t -- Installation timestamp (Unix time). integer.  Accepts field-width,
- * left-align.  Can be followed by optional strftime format string in
- * %{ %}.  Default is to print seconds-since-epoch as an integer, in
- * which case zero-fill, space-for-plus and explicit-plus also apply.
+ * %t -- Installation timestamp (Unix time). integer.  Accepts
+ * field-width, left-align.  Can be followed by optional strftime
+ * format string in %{ %}.  Default is to print seconds-since-epoch as
+ * an integer applying our format modifiers.
  */
 static struct sbuf *
-format_install_tstamp(struct sbuf *sbuf, const struct pkg *pkg,
+format_install_tstamp(struct sbuf *sbuf, struct pkg *pkg,
 		      struct percent_esc *p)
 {
-	int_64t	timestamp;
+	int64_t	 timestamp;
 
 	pkg_get(pkg, PKG_TIME, &timestamp);
-	/* @@@@@@@@@@@@@@@@@@@@@@@ */
+
+	if (p->list_item_fmt == NULL)
+		return (int_val(sbuf, timestamp, p));
+	else {
+		char	 buf[1024];
+
+		strftime(buf, sizeof(buf), p->list_item_fmt,
+			 localtime(&timestamp));
+		sbuf_cat(sbuf, buf); 
+	}
 	return (sbuf);
 }
 
@@ -839,8 +845,7 @@ format_install_tstamp(struct sbuf *sbuf, const struct pkg *pkg,
  * %v -- Package version. string. Accepts field width, left align
  */
 static struct sbuf *
-format_version(struct sbuf *sbuf, const struct pkg *pkg,
-	       struct percent_esc *p)
+format_version(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*version;
 
@@ -852,7 +857,7 @@ format_version(struct sbuf *sbuf, const struct pkg *pkg,
  * %w -- Home page URL.  string.  Accepts field width, left align
  */
 static struct sbuf *
-format_home_url(struct sbuf *sbuf, const struct pkg *pkg,
+format_home_url(struct sbuf *sbuf, struct pkg *pkg,
 		struct percent_esc *p)
 {
 	char	*url;
@@ -965,8 +970,8 @@ parse_escape(const char *f, struct percent_esc **p)
 	return (f);
 }
 
-static struct sbuf *
-process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
+static const char *
+process_format(struct sbuf *sbuf, const char *f, struct pkg *pkg)
 {
 	const char		*fstart;
 	struct sbuf		*s;
@@ -1071,7 +1076,7 @@ process_format(struct sbuf *sbuf, const char *f, const struct pkg *pkg)
  * @return count of the number of characters printed
  */
 int
-pkg_printf(const char *fmt, const struct pkg *pkg)
+pkg_printf(const char *fmt, struct pkg *pkg)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
@@ -1092,7 +1097,7 @@ pkg_printf(const char *fmt, const struct pkg *pkg)
  * @return count of the number of characters printed
  */
 int
-pkg_fprintf(FILE *stream, const char *fmt, const struct pkg *pkg)
+pkg_fprintf(FILE *stream, const char *fmt, struct pkg *pkg)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
@@ -1115,7 +1120,7 @@ pkg_fprintf(FILE *stream, const char *fmt, const struct pkg *pkg)
  * @return count of the number of characters printed
  */
 int
-pkg_dprintf(int fd, const char *fmt, const struct pkg *pkg)
+pkg_dprintf(int fd, const char *fmt, struct pkg *pkg)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
@@ -1140,7 +1145,7 @@ pkg_dprintf(int fd, const char *fmt, const struct pkg *pkg)
  * disregarding truncation to fit size
  */
 int
-pkg_snprintf(char *str, size_t size, const char *fmt, const struct pkg *pkg)
+pkg_snprintf(char *str, size_t size, const char *fmt, struct pkg *pkg)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
@@ -1164,7 +1169,7 @@ pkg_snprintf(char *str, size_t size, const char *fmt, const struct pkg *pkg)
  * @return count of the number of characters printed
  */
 int
-pkg_asprintf(char **ret, const char *fmt, const struct pkg *pkg)
+pkg_asprintf(char **ret, const char *fmt, struct pkg *pkg)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
@@ -1189,8 +1194,8 @@ pkg_asprintf(char **ret, const char *fmt, const struct pkg *pkg)
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
-struct sbuf *sbuf
-pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, const struct pkg *pkg)
+struct sbuf *
+pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, struct pkg *pkg)
 {
 	const char	*f;
 
