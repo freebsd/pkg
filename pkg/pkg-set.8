@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 12, 2012
+.Dd September 14, 2012
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -44,7 +44,17 @@ Match on all installed packages.
 .It Fl A Op 01
 Set automatic flag to the package: 0 is not automatic, 1 is automatic
 .It Fl o Op <oldorigin>:<neworigin>
-Change the dependency origin of a given dependency
+Change the port origin of a given dependency from
+.Ar oldorigin
+to
+.Ar neworigin .
+This corresponds to the port directory that the package originated from.
+Typically, this is only needed for upgrading a library or package that has MOVED or when the default version of a major port dependency changes.
+Usually this will be explained in /usr/ports/UPDATING.
+Also see
+.Xr pkg-updating 8
+and
+.Sy EXAMPLES .
 .It Fl x
 Assume pkg-name is a regex
 .It Fl X
@@ -55,6 +65,25 @@ Assume pkg-name is a glob
 .Sh FILES
 See
 .Xr pkg.conf 5 .
+.Sh EXAMPLES
+Upgrade perl from 5.12 to 5.14.
+This involes moving the origin from
+.Sy lang/perl5.12
+to
+.Sy lang/perl5.14 :
+.Dl # pkg set -o lang/perl5.12:lang/perl5.14
+.Pp
+Upgrade ruby from 1.8 to 1.9.
+This involes moving the origin from
+.Sy lang/ruby18
+to
+.Sy lang/ruby19 :
+.Dl # pkg set -o lang/ruby18:lang/ruby19
+.Pp
+Move the origin libglut to freeglut, and then reinstall everything depending on glut to use the new shared library:
+.Dl # pkg set -o graphics/libglut:graphics/freeglut
+.Dl # pkg install -Rf graphics/freeglut
+.Pp
 .Sh SEE ALSO
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
