@@ -42,7 +42,9 @@ Assume yes when asked for confirmation before package autoremoval.
 .It Fl a
 Match on all installed packages.
 .It Fl A Op 01
-Set automatic flag to the package: 0 is not automatic, 1 is automatic
+Set automatic flag to the package: 0 is not automatic, 1 is automatic.
+This affects the operation of
+.Xr pkg-autoremove 8 .
 .It Fl o Op <oldorigin>:<neworigin>
 Change the port origin of a given dependency from
 .Ar oldorigin
