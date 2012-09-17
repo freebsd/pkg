@@ -186,7 +186,7 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
 		printf("New version of pkg detected; it needs to be "
-		    "installed first.\nAfter this upgrade it is recommended"
+		    "installed first.\nAfter this upgrade it is recommended "
 		    "that you do a full upgrade using: 'pkg upgrade'\n\n");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
