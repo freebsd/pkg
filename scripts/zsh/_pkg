@@ -1,0 +1,294 @@
+#compdef pkg
+
+_pkg_installed() {
+	compadd "$@" - $(pkg query "%n-%v")
+}
+
+_pkg_available_name() {
+	compadd "$@" - $(pkg rquery "%n")
+}
+
+_pkg_available() {
+	compadd "$@" - $(pkg rquery "%n-%v")
+}
+
+_pkg() {
+	local earlyargs subcmd
+	earlyargs=(
+	'-d[Increment debug level]'
+	'-j[Execute pkg(1) inside a jail(8)]:jail:_jid'
+	'-c[Execute pkg(1) inside a chroot(8)]:chroot:_files -/'
+	'-v[Display pkg(1) version]'
+	)
+
+	subcmd=(
+		'add[Registers a package and installs it on the system]'
+		'audit[Reports vulnerable packages]'
+		'autoremove[Removes orphan packages]'
+		'backup[Backs-up and restores the local package database]'
+		'check[Checks for missing dependencies and database consistency]'
+		'clean[Cleans old packages from the cache]'
+		'create[Creates software package distributions]'
+		'delete[Deletes packages from the database and the system]'
+		'fetch[Fetches packages from a remote repository]'
+		'help[Displays help information]'
+		'info[Displays information about installed packages]'
+		'install[Installs packages from remote package repositories]'
+		'query[Queries information about installed packages]'
+		'register[Registers a package into the local database]'
+		'remove[Deletes packages from the database and the system]'
+		'repo[Creates a package repository catalogue]'
+		'rquery[Queries information in repository catalogues]'
+		'search[Performs a search of package repository catalogues]'
+		'set[Modifies information about packages in the local database]'
+		'shell[Opens a debug shell]'
+		'shlib[Displays which packages link against a specific shared library]'
+		'stats[Displays package database statistics]'
+		'update[Updates package repository catalogues]'
+		'updating[Displays UPDATING information for a package]'
+		'upgrade[Performs upgrades of packaged software distributions]'
+		'version[Displays the versions of installed packages]'
+		'which[Displays which package installed a specific file]'
+	)
+
+	if [[ $service = "pkg" ]]; then
+
+		_arguments -C -A "-*" \
+			$earlyargs \
+			'*::command:->subcmd' && return 0
+
+		if (( CURRENT == 1 )); then
+			_values 'pkg subcommands' \
+				$subcmd && return 0
+			return 0
+		fi
+		service="$words[1]"
+		curcontext="${curcontext%:*}=$service:"
+	fi
+
+	case $service in
+		(add) _arguments -A 'package' \
+			'*:package:_files -g "*.t?z"' && return 0
+			;;
+		(audit)
+			_arguments -s \
+				'-F[Fetch the database before checking.]' \
+				'-q[Quiet]' \
+				'*:package:_pkg_installed' \
+				&& return 0
+			;;
+		(autoremove)
+			_arguments -s \
+				'-y[Assume yes when asked for confirmation]' \
+				'-i[Interactive]' \
+				&& return 0
+			;;
+		(backup)
+			_arguments -s \
+				'(-r)-d[Dumps the local package database]:destination:_files' \
+				'(-d)-r[Restrore the local package database]:destination:_files' \
+				&& return 0
+			;;
+		(check)
+			_arguments -s \
+				'-B[reanalyse SHLIBS of installed packages]' \
+				'-d[check for and install missing dependencies]' \
+				'-r[recompute sizes and checksums of installed]' \
+				'-s[find invalid checksums]' \
+				'-v[Be verbose]' \
+				'(-g -x -X)-a[Process all packages]' \
+				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				&& return 0
+			;;
+		(clean)
+			return 0
+			;;
+		(create)
+			_arguments -s \
+				'-r[Root directory]:rootdir:_files -/' \
+				'-m[Manifest directory]:manifestdir:_files -/' \
+				'-f[format]:format:((tar tgz tbz txz))' \
+				'-o[Ouput directory]:outdir:_files -/' \
+				'(-g -x -X)-a[Process all packages]' \
+				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'*:Package:_pkg_installed' \
+				&& return 0
+			;;
+		(delete|remove)
+			_arguments -s \
+				'-y[Assume yes when asked for confirmation]' \
+				'-f[Forces packages to be removed]' \
+				'(-g -x -X)-a[Process all packages]' \
+				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'*:Package:_pkg_installed' \
+				&& return 0
+			;;
+		(fetch)
+			_arguments -s \
+				'-y[Assume yes when asked for confirmation]' \
+				'-L[Do not try to update the repository metadata]' \
+				'-q[Be quiet]' \
+				'(-g -x -X)-a[Process all packages]' \
+				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'*:Available packages:_pkg_available' \
+				&& return 0
+			;;
+		(help)
+			# TODO
+			return 0
+			;;
+		(info)
+			_arguments -s \
+				'(-e -d -r -l -o -p -D)-f[Displays full information]' \
+				'(-f -d -r -l -o -p -D)-e[Returns 0 if <pkg-name> is installed]' \
+				'(-e -f -r -l -o -p -D)-d[Displays the dependencies]' \
+				'(-e -d -f -l -o -p -D)-r[Displays the reverse dependencies]' \
+				'(-e -d -r -f -o -p -D)-l[Displays all files]' \
+				'(-e -d -r -l -f -p -D)-o[Displays origin]' \
+				'(-e -d -r -l -o -f -D)-p[Displays prefix]' \
+				'(-e -d -r -l -o -p -f)-D[Displays message]' \
+				'-q[Be quiet]' \
+				'(-g -x -X -F)-a[Process all packages]' \
+				'(-x -X -a -F)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X -a -F)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x -a -F)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-g -x -X -a)-F[Process the specified package]:package:_files -g "*.t?z"' \
+				'*:Package:_pkg_installed' \
+				&& return 0
+			;;
+		(install)
+			_arguments -s \
+				'-y[Assume yes when asked for confirmation]' \
+				'-f[Force reinstallation if needed]' \
+				'-R[Reinstall every package depending on matching expressions]' \
+				'-L[Do not try to update the repository metadata]' \
+				'(-x -X)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'*:Available packages:_pkg_available' \
+				&& return 0
+			;;
+		(query)
+			_arguments -s \
+				'(-g -x -X -F -e)-a[Process all packages]' \
+				'(-x -X -a -F -e)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X -a -F -e)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x -a -F -e)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-g -x -X -a -F)-e[Process packages that matches the evaluation]:evaluation:' \
+				'(-g -x -X -a -e)-F[Process the specified package]:package:_files -g "*.t?z"' \
+				':Ouput format:' \
+				&& return 0
+			;;
+		(register)
+			_arguments -s \
+				'-l[registered as a legacy format]' \
+				'-d[mark the package as an automatic dependency]' \
+				'-f[packing list file]:packing list file:_files' \
+				'-m[metadata directory]:metadatadir:_files -/' \
+				'-a[ABI]:abi:' \
+				'-i[input path (aka root directory)]:input path:_files -/' \
+				&& return 0
+			;;
+		(repo)
+			_arguments -s \
+				':Repository path:_files -/' \
+				':RSA key:_files' \
+				&& return 0
+			;;
+		(rquery)
+			_arguments -s \
+				'(-g -x -X -e)-a[Process all packages]' \
+				'(-x -X -a -e)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X -a -e)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x -a -e)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-g -x -X -a)-e[Process packages that matches the evaluation]:evaluation:' \
+				':Ouput format:' \
+				&& return 0
+			;;
+		(search)
+			_arguments -s \
+				'(-x -X)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'*:Available packages:_pkg_available_name' \
+				&& return 0
+			;;
+		(set)
+			_arguments -s \
+				'(-o)-A[Mark as automatic or not]:flag:((1\:automatic 0\:not\ automatic))' \
+				'(-A)-o[Change the origin]:oldorigin\:neworigin:' \
+				'-y[Assume yes when asked for confirmation]' \
+				'(-g -x -X)-a[Process all packages]' \
+				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'*:Package:_pkg_installed'
+			return 0
+			;;
+		(shell)
+			_arguments -s \
+				':database:_files' \
+				&& return 0
+			;;
+		(shlib)
+			_arguments -s \
+				':Library:' \
+				&& return 0
+			;;
+		(stats)
+			_arguments -s \
+				'-q[Be quiet]' \
+				'(-l)-r[Display stats only for the local package database]' \
+				'(-r)-l[Display stats only for the remote package database(s)' \
+				&& return 0
+			;;
+		(update)
+			_arguments -s \
+				'-f[Force updating]' \
+				'-q[Be quiet]' \
+				&& return 0
+			;;
+		(updating)
+			_arguments -s \
+				'-d[Only entries newer than date are shown]:date:' \
+				'-f[Defines a alternative location of the UPDATING file]:UPDATING file:_files' \
+				'*:Package:_pkg_installed' \
+				&& return 0
+			;;
+		(upgrade)
+			_arguments -s \
+				'-y[Assume yes when asked for confirmation]' \
+				'-f[Upgrade/Reinstall everything]' \
+				'-L[Do not try to update the repository metadata]' \
+				&& return 1
+			;;
+		(version)
+			#TODO: complete
+			_arguments -s \
+				'(-P -R)-I[Use INDEX file]' \
+				'(-R -I)-P[Force checking against the ports tree]' \
+				'(-I -P)-R[Use remote repository]' \
+				'-o[Display package origin, instead of package name]' \
+				'-q[Be quiet]' \
+				'-v[Be verbose]' \
+				'(-L)-l[Display only the packages for given status flag]:flag:((\< = \>))' \
+				'(-l)-L[Display only the packages without given status flag]:flag:((\< = \>))' \
+				&& return 0
+			;;
+		(which)
+			_arguments -s \
+				':file:_files' \
+			&& return 0
+			;;
+	esac
+}
+
+_pkg "$@"
