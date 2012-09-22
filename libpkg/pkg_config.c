@@ -183,7 +183,7 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_PLUGINS_DIR] = {
 		STRING,
 		"PKG_PLUGINS_DIR",
-		PREFIX"lib/pkg/",
+		PREFIX"/lib/pkg/",
 		{ NULL }
 	},
 	[PKG_CONFIG_ENABLE_PLUGINS] = {
@@ -218,7 +218,7 @@ static size_t c_size = sizeof(c) / sizeof(struct config_entry);
 static void
 parse_config_sequence(yaml_document_t *doc, yaml_node_t *seq, size_t ent)
 {
-	yaml_node_item_t *item = seq->data.sequence.items.top;
+	yaml_node_item_t *item = seq->data.sequence.items.start;
 	yaml_node_t *val;
 	struct pkg_config_value *v;
 

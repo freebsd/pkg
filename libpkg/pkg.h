@@ -291,8 +291,7 @@ typedef enum _pkg_plugins_key {
 	PKG_PLUGINS_NAME = 0,
 	PKG_PLUGINS_DESC,
 	PKG_PLUGINS_VERSION,
-	PKG_PLUGINS_PLUGINFILE,
-	PKG_PLUGINS_ENABLED,
+	PKG_PLUGINS_PLUGINFILE
 } pkg_plugins_key;
 
 /**
@@ -910,9 +909,8 @@ int64_t pkgdb_stats(struct pkgdb *db, pkg_stats_t type);
 int pkg_plugins_init(void);
 int pkg_plugins_shutdown(void);
 int pkg_plugins_list(struct pkg_plugins **plugin);
+int pkg_plugins_set(struct pkg_plugins *p, pkg_plugins_key key, const char *str);
 int pkg_plugins_display_loaded(void);
-bool pkg_plugins_is_enabled(struct pkg_plugins *p);
-bool pkg_plugins_is_loaded(struct pkg_plugins *p);
 const char *pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key);
 void *pkg_plugins_func(struct pkg_plugins *p, const char *func);
 

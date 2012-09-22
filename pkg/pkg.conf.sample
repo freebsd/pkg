@@ -15,9 +15,10 @@ PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
 #SHLIBS		    : NO
 #AUTODEPS	    : NO
 #PORTAUDIT_SITE	    : http://portaudit.FreeBSD.org/auditfile.tbz
-PKG_PLUGINS_DIR	    : /usr/local/etc/pkg/plugins
-PKG_ENABLE_PLUGINS  : NO
-PKG_PLUGINS_SUMMARY : NO
+#PKG_PLUGINS_DIR    : /usr/local/lib/pkg/plugins
+#PKG_ENABLE_PLUGINS  : NO
+#PKG_PLUGINS_SUMMARY : NO
+#PLUGINS	    : [commands/mystat]
 
 # Repository definitions
 #repos:

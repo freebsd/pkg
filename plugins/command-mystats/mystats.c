@@ -33,25 +33,28 @@
 
 #include <pkg.h>
 
-#include "mystats.h"
-
-#define PLUGIN_NAME 		"mystats"
 #define PLUGIN_STATS_LOCAL 	(1<<0)
 #define PLUGIN_STATS_REMOTE 	(1<<1)
 
 static char myname[] = "mystats";
-static char mydesc[] = "A plugin for displaying package statistics";
+static char version[] = "1.0.0";
+static char mydesc[] = "Display package statistics";
+static char plugdesc[] = "A plugin to display package statistics";
 
 static int plugin_mystats_usage(void);
 
 int
-pkg_plugins_init_mystats(void)
+init(struct pkg_plugins *p)
 {
+	pkg_plugins_set(p, PKG_PLUGINS_NAME, myname);
+	pkg_plugins_set(p, PKG_PLUGINS_DESC, plugdesc);
+	pkg_plugins_set(p, PKG_PLUGINS_VERSION, version);
+
 	return (EPKG_OK);
 }
 
 int
-pkg_plugins_shutdown_mystats(void)
+shutdown(void)
 {
 	/* nothing to be done here */
 

@@ -82,13 +82,12 @@ exec_plugins(int argc, char **argv)
 	 * @todo: implement enabling, disabling and configuring of plugins
 	 */
 
-	printf("%-10s %-35s %-10s %-10s\n", "NAME", "DESC", "VERSION", "LOADED");
+	printf("%-10s %-45s %-10s\n", "NAME", "DESC", "VERSION");
 	while (pkg_plugins_list(&p) != EPKG_END)
-		printf("%-10s %-35s %-10s %-10s\n",
+		printf("%-10s %-45s %-10s\n",
 		       pkg_plugins_get(p, PKG_PLUGINS_NAME),
 		       pkg_plugins_get(p, PKG_PLUGINS_DESC),
-		       pkg_plugins_get(p, PKG_PLUGINS_VERSION),
-		       ( pkg_plugins_is_loaded(p) ? "YES" : "NO" ));
+		       pkg_plugins_get(p, PKG_PLUGINS_VERSION));
 
 	return (EX_OK);
 }
