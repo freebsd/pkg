@@ -918,8 +918,8 @@ void *pkg_plugin_func(struct pkg_plugin *p, const char *func);
  * @todo: Document
  */
 typedef int(*pkg_plugin_callback)(void *data, struct pkgdb *db);
-int pkg_plugins_hook(const char *pluginname, pkg_plugin_hook_t hook, pkg_plugin_callback callback);
 int pkg_plugins_hook_run(pkg_plugin_hook_t hook, void *data, struct pkgdb *db);
+int pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_plugin_callback callback);
 
 /**
  * Get the value of a configuration key

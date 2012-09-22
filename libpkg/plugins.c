@@ -46,7 +46,7 @@
 
 struct plugin_hook {
 	pkg_plugin_hook_t hook;				/* plugin hook type */
-	pkg_plugin_callback callback;                          /* plugin callback function */
+	pkg_plugin_callback callback;			/* plugin callback function */
 	STAILQ_ENTRY(plugin_hook) next;
 };
 
@@ -61,7 +61,6 @@ static STAILQ_HEAD(, pkg_plugin) ph = STAILQ_HEAD_INITIALIZER(ph);
 
 static int pkg_plugin_free(void);
 static int pkg_plugin_hook_free(struct pkg_plugin *p);
-static int pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_plugin_callback callback);
 static int pkg_plugin_hook_exec(struct pkg_plugin *p, pkg_plugin_hook_t hook, void *data, struct pkgdb *db);
 static int pkg_plugin_hook_list(struct pkg_plugin *p, struct plugin_hook **h);
 
@@ -107,7 +106,7 @@ pkg_plugin_free(void)
 	return (EPKG_OK);
 }
 
-static int
+int
 pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_plugin_callback callback)
 {
 	struct plugin_hook *new = NULL;
@@ -159,34 +158,6 @@ pkg_plugin_hook_list(struct pkg_plugin *p, struct plugin_hook **h)
 		return (EPKG_END);
 	else
 		return (EPKG_OK);
-}
-
-int
-pkg_plugins_hook(const char *pluginname, pkg_plugin_hook_t hook, pkg_plugin_callback callback)
-{
-	struct pkg_plugin *p = NULL;
-	const char *pname = NULL;
-	bool plugin_found = false;
-	
-	assert(pluginname != NULL);
-	assert(callback != NULL);
-
-	/* locate the plugin */
-	while (pkg_plugins(&p) != EPKG_END) {
-		pname = pkg_plugin_get(p, PKG_PLUGIN_NAME);
-		if ((strcmp(pname, pluginname)) == 0) {
-			pkg_plugin_hook_register(p, hook, callback);
-			plugin_found = true;
-		}
-	}
-
-	if (plugin_found == false) {
-		pkg_emit_error("Plugin name '%s' was not found in the registry, cannot hook",
-			       pluginname);
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
 }
 
 int
@@ -253,6 +224,7 @@ pkg_plugins_init(void)
 		snprintf(pluginfile, MAXPATHLEN, "%s/%s.so", plugdir,
 		    pkg_config_value(v));
 		p = calloc(1, sizeof(struct pkg_plugin));
+		STAILQ_INIT(&p->phooks);
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
 			pkg_emit_error("Loading of plugin '%s' failed: %s",
 			    pkg_config_value(v), dlerror());
