@@ -109,7 +109,7 @@ else
 			         +POST-DEINSTALL +POST-INSTALL  +REQUIRE \
                                  +REQUIRED_BY ;
 			do
-			    rm ${DB}/$f
+			    rm -f ${DB}/$f
 			done
 			rmdir ${DB} 2>/dev/null || true
 			MOVED=1
