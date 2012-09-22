@@ -198,12 +198,6 @@ static struct config_entry c[] = {
 		"NULL",
 		{ NULL }
 	},
-	[PKG_CONFIG_PLUGINS_SUMMARY] = {
-		BOOL,
-		"PKG_PLUGINS_SUMMARY",
-		"NO",
-		{ NULL }
-	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
 		BOOL,
 		"DEBUG_SCRIPTS",

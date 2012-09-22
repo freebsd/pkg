@@ -59,7 +59,6 @@ struct pkg_plugins {
 
 STAILQ_HEAD(plugins_head, pkg_plugins);
 static struct plugins_head ph = STAILQ_HEAD_INITIALIZER(ph);
-static unsigned int have_plugins_loaded = 0;
 
 static int pkg_plugins_free(void);
 static int pkg_plugins_hook_free(struct pkg_plugins *p);
@@ -216,24 +215,6 @@ pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key)
 	assert(p != NULL);
 
 	return (sbuf_get(p->fields[key]));
-}
-
-int
-pkg_plugins_display_loaded(void)
-{
-	struct pkg_plugins *p = NULL;
-
-	if (STAILQ_EMPTY(&ph) || have_plugins_loaded == 0)
-		return (EPKG_OK);
-
-	printf("Plugin(s) loaded: [ ");
-	
-	while (pkg_plugins_list(&p) != EPKG_END)
-		printf("'%s' ", pkg_plugins_get(p, PKG_PLUGINS_NAME));
-
-	printf("]\nSuccessfully loaded %d plugin(s)\n", have_plugins_loaded);
-	
-	return (EPKG_OK);
 }
 
 int
