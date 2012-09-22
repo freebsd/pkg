@@ -81,12 +81,14 @@ free_percent_esc(struct percent_esc *p)
 static struct percent_esc *
 new_percent_esc(struct percent_esc *p)
 {
-	/* Alloc new or reset */
+	/* reset or alloc new */
 	if (p == NULL) {
 		p = calloc(1, sizeof(struct percent_esc));
-		p->item_fmt = sbuf_new_auto();
-		p->sep_fmt = sbuf_new_auto();
-		if (p->item_fmt == NULL || p->sep_fmt == NULL) {
+		if (p != NULL) {
+			p->item_fmt = sbuf_new_auto();
+			p->sep_fmt = sbuf_new_auto();
+		}
+		if (p == NULL || p->item_fmt == NULL || p->sep_fmt == NULL) {
 			/* out of memory */
 			free_percent_esc(p);
 			return NULL;
@@ -468,6 +470,23 @@ int_val(struct sbuf *sbuf, int64_t value, struct percent_esc *p)
 }
 
 static struct sbuf *
+bool_val(struct sbuf *sbuf, bool value, struct percent_esc *p)
+{
+	int	alternate;
+
+	if (p->flags & PP_ALTERNATE_FORM2)
+		alternate = 2;
+	else if (p->flags & PP_ALTERNATE_FORM1)
+		alternate = 1;
+	else
+		alternate = 0;
+
+	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
+
+	return (string_val(sbuf, boolean_str[value][alternate], p));
+}
+
+static struct sbuf *
 list_count(struct sbuf *sbuf, int64_t count, struct percent_esc *p)
 {
 	/* Convert to 0 or 1 for %?X */
@@ -508,9 +527,10 @@ format_shlibs(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 }
 
 /*
- * %C -- Categories.  List of Category names (strings). 1ary category is first.
- * Optionally accepts per-field format in %{ %| %}, where %c is replaced by the
- * category name.  Default %{%c%|, %}
+ * %C -- Categories.  List of Category names (strings). 1ary category
+ * is not distinguished -- look at the package origin for that.
+ * Optionally accepts per-field format in %{ %| %}, where %c is
+ * replaced by the category name.  Default %{%c%|, %}
  */
 static struct sbuf *
 format_categories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
@@ -621,7 +641,7 @@ format_options(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 /*
  * %U -- Users. list of string values.  Optionally accepts following
  * per-field format in %{ %| %} where %u will be replaced by each
- * username or %#g by the uid. Default %{%u\n%|%}
+ * username or %#u by the uid. Default %{%u\n%|%}
  */
 static struct sbuf *
 format_users(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
@@ -644,20 +664,9 @@ static struct sbuf *
 format_autoremove(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	bool	automatic;
-	int	alternate;
 
 	pkg_get(pkg, PKG_AUTOMATIC, &automatic);
-
-	if (p->flags & PP_ALTERNATE_FORM2)
-		alternate = 2;
-	else if (p->flags & PP_ALTERNATE_FORM1)
-		alternate = 1;
-	else
-		alternate = 0;
-
-	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
-
-	return (string_val(sbuf, boolean_str[automatic][alternate], p));
+	return (bool_val(sbuf, automatic, p));
 }
 
 /*
@@ -921,7 +930,7 @@ parse_escape(const char *f, struct percent_esc *p)
 	/* Field width, if any -- some number of decimal digits.
 	   Note: field width set to zero could be interpreted as using
 	   0 to request zero padding: it doesn't matter which -- the
-	   result on the output is exactly the same. */
+	   result on output is exactly the same. */
 
 	done = false;
 	while (!done) {
@@ -1020,6 +1029,9 @@ process_format(struct sbuf *sbuf, const char *f, struct pkg *pkg)
 	const char		*fstart;
 	struct sbuf		*s;
 	struct percent_esc	*p = new_percent_esc(NULL);
+
+	if (p == NULL)
+		return (NULL);	/* Out of memory */
 
 	fstart = f;
 	f = parse_escape(f, p);
@@ -1125,12 +1137,15 @@ pkg_printf(const char *fmt, struct pkg *pkg)
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
 
-	sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
-	if (sbuf_len(sbuf) >= 0) {
+	if (sbuf)
+		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = printf("%s", sbuf_data(sbuf));
-	}
-	sbuf_delete(sbuf);
+	} else
+		count = -1;
+	if (sbuf)
+		sbuf_delete(sbuf);
 	return (count);
 }
 
@@ -1146,12 +1161,15 @@ pkg_fprintf(FILE *stream, const char *fmt, struct pkg *pkg)
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
 
-	sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
-	if (sbuf_len(sbuf) >= 0) {
+	if (sbuf)
+		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = fprintf(stream, "%s", sbuf_data(sbuf));
-	}
-	sbuf_delete(sbuf);
+	} else
+		count = -1;
+	if (sbuf)
+		sbuf_delete(sbuf);
 	return (count);
 }
 
@@ -1169,12 +1187,15 @@ pkg_dprintf(int fd, const char *fmt, struct pkg *pkg)
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
 
-	sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
-	if (sbuf_len(sbuf) >= 0) {
+	if (sbuf)
+		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = dprintf(fd, "%s", sbuf_data(sbuf));
-	}
-	sbuf_delete(sbuf);
+	} else 
+		count = -1;
+	if (sbuf)
+		sbuf_delete(sbuf);
 	return (count);
 }
 
@@ -1194,12 +1215,15 @@ pkg_snprintf(char *str, size_t size, const char *fmt, struct pkg *pkg)
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
 
-	sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
-	if (sbuf_len(sbuf) >= 0) {
+	if (sbuf)
+		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = snprintf(str, size, "%s", sbuf_data(sbuf));
-	}
-	sbuf_delete(sbuf);
+	} else
+		count = -1;
+	if (sbuf)
+		sbuf_delete(sbuf);
 	return (count);
 }
 
@@ -1218,15 +1242,17 @@ pkg_asprintf(char **ret, const char *fmt, struct pkg *pkg)
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
 
-	sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
-	if (sbuf_len(sbuf) >= 0) {
+	if (sbuf)
+		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = asprintf(ret, "%s", sbuf_data(sbuf));
 	} else {
 		count = -1;
 		*ret = NULL;
 	}
-	sbuf_delete(sbuf);
+	if (sbuf)
+		sbuf_delete(sbuf);
 	return (count);
 }
 
@@ -1250,6 +1276,10 @@ pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, struct pkg *pkg)
 			f = process_escape(sbuf, f);
 		} else {
 			sbuf_putc(sbuf, *f);
+		}
+		if (f == NULL) {
+			sbuf_clear(sbuf);
+			break;	/* Error: out of memory */
 		}
 	}
 	return (sbuf);
