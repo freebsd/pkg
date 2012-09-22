@@ -256,7 +256,7 @@ pkg_set_repourl(struct pkg *pkg, const char *str)
 {
 	struct pkg_config_kv *rkv = NULL;
 
-	while (pkg_config_list(PKG_CONFIG_REPOS, &rkv) == EPKG_OK) {
+	while (pkg_config_kvlist(PKG_CONFIG_REPOS, &rkv) == EPKG_OK) {
 		const char *key = pkg_config_kv_get(rkv, PKG_CONFIG_KV_KEY);
 		const char *val = pkg_config_kv_get(rkv, PKG_CONFIG_KV_VALUE);
 		if (strcmp(str, key) == 0)

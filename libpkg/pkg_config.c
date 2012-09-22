@@ -41,8 +41,9 @@
 
 #define STRING 0
 #define BOOL 1
-#define LIST 2
+#define KVLIST 2
 #define INTEGER 3
+#define LIST 4
 
 #define ABI_VAR_STRING "${ABI}"
 
@@ -52,13 +53,19 @@ struct pkg_config_kv {
 	STAILQ_ENTRY(pkg_config_kv) next;
 };
 
+struct pkg_config_value {
+	char *value;
+	STAILQ_ENTRY(pkg_config_value) next;
+};
+
 struct config_entry {
 	uint8_t type;
 	const char *key;
 	const char *def;
 	union {
 		char *val;
-		STAILQ_HEAD(, pkg_config_kv) list;
+		STAILQ_HEAD(, pkg_config_kv) kvlist;
+		STAILQ_HEAD(, pkg_config_value) list;
 	};
 };
 
@@ -114,7 +121,7 @@ static struct config_entry c[] = {
 		{ NULL }
 	},
 	[PKG_CONFIG_REPOS] = {
-		LIST,
+		KVLIST,
 		"REPOS",
 		"NULL",
 		{ NULL }
@@ -176,13 +183,19 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_PLUGINS_DIR] = {
 		STRING,
 		"PKG_PLUGINS_DIR",
-		"/usr/local/etc/pkg/plugins",
+		PREFIX"lib/pkg/",
 		{ NULL }
 	},
 	[PKG_CONFIG_ENABLE_PLUGINS] = {
 		BOOL,
 		"PKG_ENABLE_PLUGINS",
-		"NO",
+		"YES",
+		{ NULL }
+	},
+	[PKG_CONFIG_PLUGINS] = {
+		LIST,
+		"PLUGINS",
+		"NULL",
 		{ NULL }
 	},
 	[PKG_CONFIG_PLUGINS_SUMMARY] = {
@@ -203,13 +216,34 @@ static bool parsed = false;
 static size_t c_size = sizeof(c) / sizeof(struct config_entry);
 
 static void
+parse_config_sequence(yaml_document_t *doc, yaml_node_t *seq, size_t ent)
+{
+	yaml_node_item_t *item = seq->data.sequence.items.top;
+	yaml_node_t *val;
+	struct pkg_config_value *v;
+
+	STAILQ_INIT(&c[ent].list);
+	while (item < seq->data.sequence.items.top) {
+		val = yaml_document_get_node(doc, *item);
+		if (val->type != YAML_SCALAR_NODE) {
+			++item;
+			continue;
+		}
+		v = malloc(sizeof(struct pkg_config_value));
+		v->value = strdup(val->data.scalar.value);
+		STAILQ_INSERT_TAIL(&(c[ent].list), v, next);
+		++item;
+	}
+}
+
+static void
 parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, size_t ent)
 {
 	yaml_node_pair_t *subpair = map->data.mapping.pairs.start;
 	yaml_node_t *subkey, *subval;
 	struct pkg_config_kv *kv;
 
-	STAILQ_INIT(&c[ent].list);
+	STAILQ_INIT(&c[ent].kvlist);
 	while (subpair < map->data.mapping.pairs.top) {
 		subkey = yaml_document_get_node(doc, subpair->key);
 		subval = yaml_document_get_node(doc, subpair->value);
@@ -221,7 +255,7 @@ parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, size_t ent)
 		kv = malloc(sizeof(struct pkg_config_kv));
 		kv->key = strdup(subkey->data.scalar.value);
 		kv->value = strdup(subval->data.scalar.value);
-		STAILQ_INSERT_TAIL(&(c[ent].list), kv, next);
+		STAILQ_INSERT_TAIL(&(c[ent].kvlist), kv, next);
 		++subpair;
 	}
 }
@@ -270,6 +304,8 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 				c[ent].val = strdup(val->data.scalar.value);
 			else if (val->type == YAML_MAPPING_NODE)
 				parse_config_mapping(doc, val, ent);
+			else if (val->type == YAML_SEQUENCE_NODE)
+				parse_config_sequence(doc, val, ent);
 		}
 		/*
 		 * unknown values are just silently ignored, because we don't
@@ -405,7 +441,31 @@ pkg_config_bool(pkg_config_key key, bool *val)
 }
 
 int
-pkg_config_list(pkg_config_key key, struct pkg_config_kv **kv)
+pkg_config_kvlist(pkg_config_key key, struct pkg_config_kv **kv)
+{
+	if (parsed != true) {
+		pkg_emit_error("pkg_init() must be called before pkg_config_kvlist()");
+		return (EPKG_FATAL);
+	}
+
+	if (c[key].type != KVLIST) {
+		pkg_emit_error("this config entry is not a \"key: value\" list");
+		return (EPKG_FATAL);
+	}
+
+	if (*kv == NULL)
+		*kv = STAILQ_FIRST(&(c[key].kvlist));
+	else
+		*kv = STAILQ_NEXT(*kv, next);
+
+	if (*kv == NULL)
+		return (EPKG_END);
+	else
+		return (EPKG_OK);
+}
+
+int
+pkg_config_list(pkg_config_key key, struct pkg_config_value **v)
 {
 	if (parsed != true) {
 		pkg_emit_error("pkg_init() must be called before pkg_config_list()");
@@ -417,17 +477,24 @@ pkg_config_list(pkg_config_key key, struct pkg_config_kv **kv)
 		return (EPKG_FATAL);
 	}
 
-	if (*kv == NULL) {
-		*kv = STAILQ_FIRST(&(c[key].list));
-	} else {
-		*kv = STAILQ_NEXT(*kv, next);
-	}
-
-	if (*kv == NULL)
+	if (*v == NULL)
+		*v = STAILQ_FIRST(&(c[key].list));
+	else
+		*v = STAILQ_NEXT(*v, next);
+	if (*v == NULL)
 		return (EPKG_END);
 	else
 		return (EPKG_OK);
+};
+
+const char *
+pkg_config_value(struct pkg_config_value *v)
+{
+	assert(v != NULL);
+
+	return (v->value);
 }
+
 
 const char *
 pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type)
@@ -518,6 +585,7 @@ pkg_shutdown(void)
 				free(c[i].val);
 				break;
 			case LIST:
+			case KVLIST:
 				break;
 			case INTEGER:
 				break;

@@ -643,7 +643,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 
 	fprintf(stderr, "%s", multirepo_warning);
 
-	while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
+	while (pkg_config_kvlist(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
 		const char *repo_name = pkg_config_kv_get(repokv,
 		    PKG_CONFIG_KV_KEY);
 

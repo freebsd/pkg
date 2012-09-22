@@ -64,6 +64,7 @@ struct pkg_repos;
 struct pkg_repos_entry;
 
 struct pkg_config_kv;
+struct pkg_config_value;
 
 struct pkg_plugins;
 
@@ -264,6 +265,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_FETCH_RETRY,
 	PKG_CONFIG_PLUGINS_DIR,
 	PKG_CONFIG_ENABLE_PLUGINS,
+	PKG_CONFIG_PLUGINS,
 	PKG_CONFIG_PLUGINS_SUMMARY,
 	PKG_CONFIG_DEBUG_SCRIPTS,
 } pkg_config_key;
@@ -936,8 +938,10 @@ bool pkg_plugins_provides_cmd(struct pkg_plugins *p);
  */
 int pkg_config_string(pkg_config_key key, const char **value);
 int pkg_config_bool(pkg_config_key key, bool *value);
-int pkg_config_list(pkg_config_key key, struct pkg_config_kv **kv);
+int pkg_config_kvlist(pkg_config_key key, struct pkg_config_kv **kv);
+int pkg_config_list(pkg_config_key key, struct pkg_config_value **v);
 const char *pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type);
+const char *pkg_config_value(struct pkg_config_value *v);
 int pkg_config_int64(pkg_config_key key, int64_t *value);
 
 /**

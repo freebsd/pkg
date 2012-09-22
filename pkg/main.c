@@ -322,7 +322,7 @@ main(int argc, char **argv)
 		pkg_config_bool(PKG_CONFIG_MULTIREPOS, &b);
 		if (b) {
 			printf("Repositories:\n");
-			while (pkg_config_list(PKG_CONFIG_REPOS, &kv) == EPKG_OK) {
+			while (pkg_config_kvlist(PKG_CONFIG_REPOS, &kv) == EPKG_OK) {
 				printf("             - %s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
 				    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
 			}

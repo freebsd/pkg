@@ -78,7 +78,7 @@ pkgcli_update(bool force) {
 		}
 	} else {
 		/* multiple repositories */
-		while (pkg_config_list(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
+		while (pkg_config_kvlist(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
 			repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
 			packagesite = pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE);
 
