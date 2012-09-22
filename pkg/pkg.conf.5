@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd August 29, 2012
+.Dd September 22, 2012
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -132,6 +132,8 @@ when fetching the portaudit database.
 See
 .Xr pkg-audit 8
 for more information.
+.It Cm DEBUG_SCRIPTS: boolean
+Activate debug mode for scripts (aka set -x)
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration

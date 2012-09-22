@@ -56,6 +56,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	int stdin_pipe[2] = {-1, -1};
 	posix_spawn_file_actions_t action;
 	bool use_pipe = 0;
+	bool debug = false;
 	ssize_t bytes_written;
 	size_t script_cmd_len;
 	long argmax;
@@ -90,6 +91,9 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 		if (j == map[i].a || j == map[i].b) {
 			sbuf_reset(script_cmd);
 			setenv("PKG_PREFIX", prefix, 1);
+			pkg_config_bool(PKG_CONFIG_DEBUG_SCRIPTS, &debug);
+			if (debug)
+				sbuf_printf(script_cmd, "set -x\n");
 			sbuf_printf(script_cmd, "set -- %s-%s",
 			    name, version);
 
