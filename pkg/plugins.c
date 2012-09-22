@@ -43,7 +43,7 @@ usage_plugins(void)
 int
 exec_plugins(int argc, char **argv)
 {
-	struct pkg_plugins *p = NULL;
+	struct pkg_plugin *p = NULL;
 	const char *plugin_name = NULL;
 	int ch;
 	bool list_only = true;
@@ -83,11 +83,11 @@ exec_plugins(int argc, char **argv)
 	 */
 
 	printf("%-10s %-45s %-10s\n", "NAME", "DESC", "VERSION");
-	while (pkg_plugins_list(&p) != EPKG_END)
+	while (pkg_plugins(&p) != EPKG_END)
 		printf("%-10s %-45s %-10s\n",
-		       pkg_plugins_get(p, PKG_PLUGINS_NAME),
-		       pkg_plugins_get(p, PKG_PLUGINS_DESC),
-		       pkg_plugins_get(p, PKG_PLUGINS_VERSION));
+		       pkg_plugin_get(p, PKG_PLUGIN_NAME),
+		       pkg_plugin_get(p, PKG_PLUGIN_DESC),
+		       pkg_plugin_get(p, PKG_PLUGIN_VERSION));
 
 	return (EX_OK);
 }

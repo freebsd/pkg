@@ -324,19 +324,19 @@ pkg_jobs_apply(struct pkg_jobs *j)
 
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
-		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_PRE_INSTALL, j, j->db);
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
 		rc = pkg_jobs_install(j);
-		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_POST_INSTALL, j, j->db);
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_INSTALL, j, j->db);
 		break;
 	case PKG_JOBS_DEINSTALL:
-		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_PRE_DEINSTALL, j, j->db);
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_DEINSTALL, j, j->db);
 		rc = pkg_jobs_deinstall(j);
-		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_POST_DEINSTALL, j, j->db);
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_DEINSTALL, j, j->db);
 		break;
 	case PKG_JOBS_FETCH:
-		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_PRE_FETCH, j, j->db);
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_FETCH, j, j->db);
 		rc = pkg_jobs_fetch(j);
-		pkg_plugins_hook_run(PKG_PLUGINS_HOOK_POST_FETCH, j, j->db);
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
 		break;
 	default:
 		rc = EPKG_FATAL;

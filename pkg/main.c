@@ -204,7 +204,7 @@ main(int argc, char **argv)
 	bool b, plugins_enabled = false;
 	struct pkg_config_kv *kv = NULL;
 	struct plugcmd *c;
-	struct pkg_plugins *p = NULL;
+	struct pkg_plugin *p = NULL;
 
 	/* Set stdout unbuffered */
         setvbuf(stdout, NULL, _IONBF, 0);
@@ -279,8 +279,8 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "Plugins cannot be loaded");
 
 		/* load commands plugins */
-		while (pkg_plugins_list(&p) != EPKG_END) {
-			register_cmd *reg = pkg_plugins_func(p, "pkg_register_cmd");
+		while (pkg_plugins(&p) != EPKG_END) {
+			register_cmd *reg = pkg_plugin_func(p, "pkg_register_cmd");
 			if (reg != NULL) {
 				c = malloc(sizeof(struct plugcmd));
 				reg(&c->name, &c->desc, &c->exec);

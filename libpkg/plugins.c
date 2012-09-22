@@ -42,40 +42,39 @@
 #include "private/pkg.h"
 #include "private/event.h"
 
-#define PLUGINS_NUMFIELDS 4
+#define PLUGIN_NUMFIELDS 4
 
-struct plugins_hook {
-	pkg_plugins_hook_t hook;				/* plugin hook type */
-	pkg_plugins_callback callback;                          /* plugin callback function */
-	STAILQ_ENTRY(plugins_hook) next;
+struct plugin_hook {
+	pkg_plugin_hook_t hook;				/* plugin hook type */
+	pkg_plugin_callback callback;                          /* plugin callback function */
+	STAILQ_ENTRY(plugin_hook) next;
 };
 
-struct pkg_plugins {
-	struct sbuf *fields[PLUGINS_NUMFIELDS];
+struct pkg_plugin {
+	struct sbuf *fields[PLUGIN_NUMFIELDS];
 	void *lh;						/* library handle */
-	STAILQ_HEAD(phooks, plugins_hook) phooks;		/* plugin hooks */
-	STAILQ_ENTRY(pkg_plugins) next;
+	STAILQ_HEAD(phooks, plugin_hook) phooks;		/* plugin hooks */
+	STAILQ_ENTRY(pkg_plugin) next;
 };
 
-STAILQ_HEAD(plugins_head, pkg_plugins);
-static struct plugins_head ph = STAILQ_HEAD_INITIALIZER(ph);
+static STAILQ_HEAD(, pkg_plugin) ph = STAILQ_HEAD_INITIALIZER(ph);
 
-static int pkg_plugins_free(void);
-static int pkg_plugins_hook_free(struct pkg_plugins *p);
-static int pkg_plugins_hook_register(struct pkg_plugins *p, pkg_plugins_hook_t hook, pkg_plugins_callback callback);
-static int pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data, struct pkgdb *db);
-static int pkg_plugins_hook_list(struct pkg_plugins *p, struct plugins_hook **h);
+static int pkg_plugin_free(void);
+static int pkg_plugin_hook_free(struct pkg_plugin *p);
+static int pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_plugin_callback callback);
+static int pkg_plugin_hook_exec(struct pkg_plugin *p, pkg_plugin_hook_t hook, void *data, struct pkgdb *db);
+static int pkg_plugin_hook_list(struct pkg_plugin *p, struct plugin_hook **h);
 
 void *
-pkg_plugins_func(struct pkg_plugins *p, const char *func)
+pkg_plugin_func(struct pkg_plugin *p, const char *func)
 {
 	return (dlsym(p->lh, func));
 }
 
 static int
-pkg_plugins_hook_free(struct pkg_plugins *p)
+pkg_plugin_hook_free(struct pkg_plugin *p)
 {
-	struct plugins_hook *h = NULL;
+	struct plugin_hook *h = NULL;
 
 	assert(p != NULL);
 
@@ -89,19 +88,19 @@ pkg_plugins_hook_free(struct pkg_plugins *p)
 }
 
 static int
-pkg_plugins_free(void)
+pkg_plugin_free(void)
 {
-	struct pkg_plugins *p = NULL;
+	struct pkg_plugin *p = NULL;
 	unsigned int i;
 
         while (!STAILQ_EMPTY(&ph)) {
                 p = STAILQ_FIRST(&ph);
                 STAILQ_REMOVE_HEAD(&ph, next);
 
-		for (i = 0; i < PLUGINS_NUMFIELDS; i++)
+		for (i = 0; i < PLUGIN_NUMFIELDS; i++)
 			sbuf_delete(p->fields[i]);
 
-		pkg_plugins_hook_free(p);
+		pkg_plugin_hook_free(p);
 		free(p);
         }
 
@@ -109,14 +108,14 @@ pkg_plugins_free(void)
 }
 
 static int
-pkg_plugins_hook_register(struct pkg_plugins *p, pkg_plugins_hook_t hook, pkg_plugins_callback callback)
+pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_plugin_callback callback)
 {
-	struct plugins_hook *new = NULL;
+	struct plugin_hook *new = NULL;
 	
 	assert(p != NULL);
 	assert(callback != NULL);
 
-	if ((new = calloc(1, sizeof(struct plugins_hook))) == NULL) {
+	if ((new = calloc(1, sizeof(struct plugin_hook))) == NULL) {
 		pkg_emit_error("Cannot allocate memory");
 		return (EPKG_FATAL);
 	}
@@ -130,16 +129,16 @@ pkg_plugins_hook_register(struct pkg_plugins *p, pkg_plugins_hook_t hook, pkg_pl
 }
 
 static int
-pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data, struct pkgdb *db)
+pkg_plugin_hook_exec(struct pkg_plugin *p, pkg_plugin_hook_t hook, void *data, struct pkgdb *db)
 {
-	struct plugins_hook *h = NULL;
+	struct plugin_hook *h = NULL;
 	
 	assert(p != NULL);
 
-	while (pkg_plugins_hook_list(p, &h) != EPKG_END)
+	while (pkg_plugin_hook_list(p, &h) != EPKG_END)
 		if (h->hook == hook) {
 			printf(">>> Triggering execution of plugin '%s'\n",
-			       pkg_plugins_get(p, PKG_PLUGINS_NAME));
+			       pkg_plugin_get(p, PKG_PLUGIN_NAME));
 			h->callback(data, db);
 		}
 
@@ -147,7 +146,7 @@ pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data
 }
 
 static int
-pkg_plugins_hook_list(struct pkg_plugins *p, struct plugins_hook **h)
+pkg_plugin_hook_list(struct pkg_plugin *p, struct plugin_hook **h)
 {
 	assert(p != NULL);
 	
@@ -163,9 +162,9 @@ pkg_plugins_hook_list(struct pkg_plugins *p, struct plugins_hook **h)
 }
 
 int
-pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_callback callback)
+pkg_plugins_hook(const char *pluginname, pkg_plugin_hook_t hook, pkg_plugin_callback callback)
 {
-	struct pkg_plugins *p = NULL;
+	struct pkg_plugin *p = NULL;
 	const char *pname = NULL;
 	bool plugin_found = false;
 	
@@ -173,10 +172,10 @@ pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_ca
 	assert(callback != NULL);
 
 	/* locate the plugin */
-	while (pkg_plugins_list(&p) != EPKG_END) {
-		pname = pkg_plugins_get(p, PKG_PLUGINS_NAME);
+	while (pkg_plugins(&p) != EPKG_END) {
+		pname = pkg_plugin_get(p, PKG_PLUGIN_NAME);
 		if ((strcmp(pname, pluginname)) == 0) {
-			pkg_plugins_hook_register(p, hook, callback);
+			pkg_plugin_hook_register(p, hook, callback);
 			plugin_found = true;
 		}
 	}
@@ -191,18 +190,18 @@ pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_ca
 }
 
 int
-pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data, struct pkgdb *db)
+pkg_plugins_hook_run(pkg_plugin_hook_t hook, void *data, struct pkgdb *db)
 {
-	struct pkg_plugins *p = NULL;
+	struct pkg_plugin *p = NULL;
 
-	while (pkg_plugins_list(&p) != EPKG_END)
-			pkg_plugins_hook_exec(p, hook, data, db);
+	while (pkg_plugins(&p) != EPKG_END)
+			pkg_plugin_hook_exec(p, hook, data, db);
 
 	return (EPKG_OK);
 }
 
 int
-pkg_plugins_set(struct pkg_plugins *p, pkg_plugins_key key, const char *str)
+pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str)
 {
 	assert(p != NULL);
 
@@ -210,7 +209,7 @@ pkg_plugins_set(struct pkg_plugins *p, pkg_plugins_key key, const char *str)
 }
 
 const char *
-pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key)
+pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key)
 {
 	assert(p != NULL);
 
@@ -218,7 +217,7 @@ pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key)
 }
 
 int
-pkg_plugins_list(struct pkg_plugins **plugin)
+pkg_plugins(struct pkg_plugin **plugin)
 {
 	assert(&ph != NULL);
 	
@@ -236,11 +235,11 @@ pkg_plugins_list(struct pkg_plugins **plugin)
 int
 pkg_plugins_init(void)
 {
-	struct pkg_plugins *p = NULL;
+	struct pkg_plugin *p = NULL;
 	struct pkg_config_value *v = NULL;
 	char pluginfile[MAXPATHLEN];
 	const char *plugdir;
-	int (*init_func)(struct pkg_plugins *);
+	int (*init_func)(struct pkg_plugin *);
 
 	/*
 	 * Discover available plugins
@@ -253,9 +252,7 @@ pkg_plugins_init(void)
 		 */
 		snprintf(pluginfile, MAXPATHLEN, "%s/%s.so", plugdir,
 		    pkg_config_value(v));
-		p = malloc(sizeof(struct pkg_plugins));
-		for (int i = 0; i < PLUGINS_NUMFIELDS; i++)
-			p->fields[i] = NULL;
+		p = calloc(1, sizeof(struct pkg_plugin));
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
 			pkg_emit_error("Loading of plugin '%s' failed: %s",
 			    pkg_config_value(v), dlerror());
@@ -267,7 +264,7 @@ pkg_plugins_init(void)
 			pkg_emit_error("Plugin '%s' will not be loaded: %s",
 			      pkg_config_value(v), dlerror());
 		}
-		pkg_plugins_set(p, PKG_PLUGINS_PLUGINFILE, pluginfile);
+		pkg_plugin_set(p, PKG_PLUGIN_PLUGINFILE, pluginfile);
 		if (init_func(p) == EPKG_OK) {
 			STAILQ_INSERT_TAIL(&ph, p, next);
 		} else {
@@ -282,13 +279,13 @@ pkg_plugins_init(void)
 int
 pkg_plugins_shutdown(void)
 {
-	struct pkg_plugins *p = NULL;
-	int (*shutdown_func)(struct pkg_plugins *p);
+	struct pkg_plugin *p = NULL;
+	int (*shutdown_func)(struct pkg_plugin *p);
 
 	/*
 	 * Unload any previously loaded plugins
 	 */
-	while (pkg_plugins_list(&p) != EPKG_END) {
+	while (pkg_plugins(&p) != EPKG_END) {
 		if ((shutdown_func = dlsym(p->lh, "shutdown")) != NULL) {
 			shutdown_func(p);
 		}
@@ -298,7 +295,7 @@ pkg_plugins_shutdown(void)
 	/*
 	 * Deallocate memory used by the plugins
 	 */
-	pkg_plugins_free();
+	pkg_plugin_free();
 
 	return (EPKG_OK);
 }

@@ -66,7 +66,7 @@ struct pkg_repos_entry;
 struct pkg_config_kv;
 struct pkg_config_value;
 
-struct pkg_plugins;
+struct pkg_plugin;
 
 typedef enum {
 	/**
@@ -284,26 +284,26 @@ typedef enum _pkg_stats_t {
 } pkg_stats_t;
 
 /**
- * Keys for accessing pkg plugins data
+ * Keys for accessing pkg plugin data
  */
-typedef enum _pkg_plugins_key {
-	PKG_PLUGINS_NAME = 0,
-	PKG_PLUGINS_DESC,
-	PKG_PLUGINS_VERSION,
-	PKG_PLUGINS_PLUGINFILE
-} pkg_plugins_key;
+typedef enum _pkg_plugin_key {
+	PKG_PLUGIN_NAME = 0,
+	PKG_PLUGIN_DESC,
+	PKG_PLUGIN_VERSION,
+	PKG_PLUGIN_PLUGINFILE
+} pkg_plugin_key;
 
 /**
  * Keys for hooking into the library
  */
-typedef enum _pkg_plugins_hook_t {
-	PKG_PLUGINS_HOOK_PRE_INSTALL = 1,
-	PKG_PLUGINS_HOOK_POST_INSTALL,
-	PKG_PLUGINS_HOOK_PRE_DEINSTALL,
-	PKG_PLUGINS_HOOK_POST_DEINSTALL,
-	PKG_PLUGINS_HOOK_PRE_FETCH,
-	PKG_PLUGINS_HOOK_POST_FETCH,
-} pkg_plugins_hook_t;
+typedef enum _pkg_plugin_hook_t {
+	PKG_PLUGIN_HOOK_PRE_INSTALL = 1,
+	PKG_PLUGIN_HOOK_POST_INSTALL,
+	PKG_PLUGIN_HOOK_PRE_DEINSTALL,
+	PKG_PLUGIN_HOOK_POST_DEINSTALL,
+	PKG_PLUGIN_HOOK_PRE_FETCH,
+	PKG_PLUGIN_HOOK_POST_FETCH,
+} pkg_plugin_hook_t;
 
 /**
  * Error type used everywhere by libpkg.
@@ -902,34 +902,25 @@ int pkg_update(const char *name, const char *packagesite, bool force);
 int64_t pkgdb_stats(struct pkgdb *db, pkg_stats_t type);
 
 /**
- * pkg plugins functions
+ * pkg plugin functions
  * @todo Document
  */
 int pkg_plugins_init(void);
 int pkg_plugins_shutdown(void);
-int pkg_plugins_list(struct pkg_plugins **plugin);
-int pkg_plugins_set(struct pkg_plugins *p, pkg_plugins_key key, const char *str);
-int pkg_plugins_display_loaded(void);
-const char *pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key);
-void *pkg_plugins_func(struct pkg_plugins *p, const char *func);
+int pkg_plugins(struct pkg_plugin **plugin);
+int pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str);
+int pkg_plugin_display_loaded(void);
+const char *pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key);
+void *pkg_plugin_func(struct pkg_plugin *p, const char *func);
 
 /**
- * This is where plugins hook into the library using pkg_plugins_hook()
+ * This is where plugin hook into the library using pkg_plugin_hook()
  * @todo: Document
  */
-typedef int(*pkg_plugins_callback)(void *data, struct pkgdb *db);
-int pkg_plugins_hook(const char *pluginname, pkg_plugins_hook_t hook, pkg_plugins_callback callback);
-int pkg_plugins_hook_run(pkg_plugins_hook_t hook, void *data, struct pkgdb *db);
+typedef int(*pkg_plugin_callback)(void *data, struct pkgdb *db);
+int pkg_plugins_hook(const char *pluginname, pkg_plugin_hook_t hook, pkg_plugin_callback callback);
+int pkg_plugins_hook_run(pkg_plugin_hook_t hook, void *data, struct pkgdb *db);
 
-/**
- * These functions are used by plugins for registering new commands provided by plugins
- * @todo: Document
- */
-typedef int(*pkg_plugins_cmd_callback)(int argc, char **argv);
-int pkg_plugins_register_cmd(const char *pluginname, pkg_plugins_cmd_callback callback);
-int pkg_plugins_cmd_run(const char *cmd, int argc, char **argv);
-bool pkg_plugins_provides_cmd(struct pkg_plugins *p);
-			     
 /**
  * Get the value of a configuration key
  */
