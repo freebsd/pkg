@@ -101,7 +101,17 @@ else
 	for PKG in $( pkg_info -Ea ); do
 		DB="${PKGDB}/${PKG}"
 		if [ -e ${DB} ]; then
-			mv ${DB} ${PKGBAK}/${PKG}
+			cp -pr ${DB} ${PKGBAK}/${PKG}
+			# Remove only the files documented in
+			# pkg_add(1), then remove ${DB} only if empty
+			for f in +COMMENT +CONTENTS +DEINSTALL +DESC \
+                                 +DISPLAY +INSTALL +MTREE_DIRS \
+			         +POST-DEINSTALL +POST-INSTALL  +REQUIRE \
+                                 +REQUIRED_BY ;
+			do
+			    rm ${DB}/$f
+			done
+			rmdir ${DB} 2>/dev/null || true
 			MOVED=1
 		fi
 	done
