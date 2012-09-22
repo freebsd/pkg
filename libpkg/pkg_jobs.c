@@ -100,17 +100,6 @@ pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
 }
 
 int
-pkg_jobs_rem(struct pkg_jobs *j, struct pkg *pkg)
-{
-	assert(j != NULL);
-	assert(pkg != NULL);
-
-	STAILQ_REMOVE(&j->jobs, pkg, pkg, next);
-
-	return (EPKG_OK);
-}
-
-int
 pkg_jobs_is_empty(struct pkg_jobs *j)
 {
 	assert(j != NULL);

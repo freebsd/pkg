@@ -23,7 +23,7 @@
 .Nd removes orphan packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl iyq
+.Op Fl yq
 .Sh DESCRIPTION
 .Nm
 is used for removing orphan packages, which were installed
@@ -32,8 +32,6 @@ during dependency resolution and are no longer needed.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl i
-Interactively ask for a confirmation on every package.
 .It Fl y
 Assume yes when asked for confirmation before package autoremoval.
 .It Fl q
