@@ -44,11 +44,11 @@ static char plugdesc[] = "A plugin to display package statistics";
 static int plugin_mystats_usage(void);
 
 int
-init(struct pkg_plugins *p)
+init(struct pkg_plugin *p)
 {
-	pkg_plugins_set(p, PKG_PLUGINS_NAME, myname);
-	pkg_plugins_set(p, PKG_PLUGINS_DESC, plugdesc);
-	pkg_plugins_set(p, PKG_PLUGINS_VERSION, version);
+	pkg_plugin_set(p, PKG_PLUGIN_NAME, myname);
+	pkg_plugin_set(p, PKG_PLUGIN_DESC, plugdesc);
+	pkg_plugin_set(p, PKG_PLUGIN_VERSION, version);
 
 	return (EPKG_OK);
 }
