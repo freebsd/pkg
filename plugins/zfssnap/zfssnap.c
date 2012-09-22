@@ -60,19 +60,22 @@ static int plugins_zfssnap_fd = -1;
 static properties plugins_zfssnap_p = NULL;
 
 int
-pkg_plugins_init_zfssnap(void)
+init(struct pkg_plugin *p)
 {
+	pkg_plugin_set(p, PKG_PLUGIN_NAME, PLUGIN_NAME);
+	pkg_plugin_set(p, PKG_PLUGIN_DESC, "ZFS snapshot plugin");
+	pkg_plugin_set(p, PKG_PLUGIN_VERSION, "1.0.0");
 	if (plugins_zfssnap_load_conf(PLUGIN_CONF) != EPKG_OK) {
 		fprintf(stderr, ">>> Cannot parse configuration file %s\n", PLUGIN_CONF);
 		return (EPKG_FATAL);
 	}
 	
-	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGINS_HOOK_PRE_INSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
+	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_INSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
 		fprintf(stderr, ">>> Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
 	
-	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGINS_HOOK_PRE_DEINSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
+	if (pkg_plugin_hook_register(p, PKG_PLUGIN_HOOK_PRE_DEINSTALL, &plugins_zfssnap_callback) != EPKG_OK) {
 		fprintf(stderr, ">>> Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
@@ -81,7 +84,7 @@ pkg_plugins_init_zfssnap(void)
 }
 
 int
-pkg_plugins_shutdown_zfssnap(void)
+shutdown(struct pkg_plugin *p __unused)
 {
 	properties_free(plugins_zfssnap_p);
 	close(plugins_zfssnap_fd);
