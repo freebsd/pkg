@@ -62,18 +62,18 @@ static const char	*boolean_str[2][3] = {
 struct percent_esc {
 	unsigned	 flags;
 	int		 width;
-	char		*list_item_fmt;
-	char		*list_sep_fmt;
+	struct sbuf	*item_fmt;
+	struct sbuf	*sep_fmt;
 	char		 fmt_code;
 };
 
 static void
 free_percent_esc(struct percent_esc *p)
 {
-	if (p->list_item_fmt != NULL)
-		free(p->list_item_fmt);
-	if (p->list_sep_fmt != NULL)
-		free(p->list_sep_fmt);
+	if (p->item_fmt)
+		sbuf_delete(p->item_fmt);
+	if (p->sep_fmt)
+		sbuf_delete(p->sep_fmt);
 	free(p);
 	return;
 }
@@ -81,17 +81,21 @@ free_percent_esc(struct percent_esc *p)
 static struct percent_esc *
 new_percent_esc(struct percent_esc *p)
 {
-	if (p == NULL)
+	/* Alloc new or reset */
+	if (p == NULL) {
 		p = calloc(1, sizeof(struct percent_esc));
-	else {
+		p->item_fmt = sbuf_new_auto();
+		p->sep_fmt = sbuf_new_auto();
+		if (p->item_fmt == NULL || p->sep_fmt == NULL) {
+			/* out of memory */
+			free_percent_esc(p);
+			return NULL;
+		}
+	} else {
 		p->flags = 0;
 		p->width = 0;
-		if (p->list_item_fmt)
-			free(p->list_item_fmt);
-		p->list_item_fmt = NULL;
-		if (p->list_sep_fmt)
-			free(p->list_sep_fmt);
-		p->list_sep_fmt = NULL;
+		sbuf_clear(p->item_fmt);
+		sbuf_clear(p->sep_fmt);
 		p->fmt_code = '\0';
 	}
 	return (p);
@@ -829,12 +833,12 @@ format_install_tstamp(struct sbuf *sbuf, struct pkg *pkg,
 
 	pkg_get(pkg, PKG_TIME, &timestamp);
 
-	if (p->list_item_fmt == NULL)
+	if (sbuf_len(p->item_fmt) == 0)
 		return (int_val(sbuf, timestamp, p));
 	else {
 		char	 buf[1024];
 
-		strftime(buf, sizeof(buf), p->list_item_fmt,
+		strftime(buf, sizeof(buf), sbuf_data(p->item_fmt),
 			 localtime(&timestamp));
 		sbuf_cat(sbuf, buf); 
 	}
@@ -867,16 +871,11 @@ format_home_url(struct sbuf *sbuf, struct pkg *pkg,
 }
 
 static const char *
-parse_escape(const char *f, struct percent_esc **p)
+parse_escape(const char *f, struct percent_esc *p)
 {
-	const char	*fstart;
 	bool		 done = false;
 
-	fstart = f;
-
 	f++;			/* Eat the % */
-
-	*p = new_percent_esc(*p);
 
 	/* Field modifiers, if any:
 	 * '#' alternate form
@@ -884,31 +883,32 @@ parse_escape(const char *f, struct percent_esc **p)
 	 * '+' explicit plus sign (numerics only)
 	 * ' ' space instead of plus sign (numerics only)
 	 * '0' pad with zeroes (numerics only)
+         * '\'' use thousands separator
 	 * Note '*' (dynamic field width) is not supported
 	 */
 
 	while (!done) {
 		switch (*f) {
 		case '#':
-			(*p)->flags |= PP_ALTERNATE_FORM1;
+			p->flags |= PP_ALTERNATE_FORM1;
 			break;
 		case '?':
-			(*p)->flags |= PP_ALTERNATE_FORM2;
+			p->flags |= PP_ALTERNATE_FORM2;
 			break;
 		case '-':
-			(*p)->flags |= PP_LEFT_ALIGN;
+			p->flags |= PP_LEFT_ALIGN;
 			break;
 		case '+':
-			(*p)->flags |= PP_EXPLICIT_PLUS;
+			p->flags |= PP_EXPLICIT_PLUS;
 			break;
 		case ' ':
-			(*p)->flags |= PP_SPACE_FOR_PLUS;
+			p->flags |= PP_SPACE_FOR_PLUS;
 			break;
 		case '0':
-			(*p)->flags |= PP_ZERO_PAD;
+			p->flags |= PP_ZERO_PAD;
 			break;
 		case '\'':
-			(*p)->flags |= PP_THOUSANDS_SEP;
+			p->flags |= PP_THOUSANDS_SEP;
 			break;
 		default:
 			done = true;
@@ -927,34 +927,34 @@ parse_escape(const char *f, struct percent_esc **p)
 	while (!done) {
 		switch(*f) {
 		case '0':
-			(*p)->width = (*p)->width * 10 + 0;
+			p->width = p->width * 10 + 0;
 			break;
 		case '1':
-			(*p)->width = (*p)->width * 10 + 1;
+			p->width = p->width * 10 + 1;
 			break;
 		case '2':
-			(*p)->width = (*p)->width * 10 + 2;
+			p->width = p->width * 10 + 2;
 			break;
 		case '3':
-			(*p)->width = (*p)->width * 10 + 3;
+			p->width = p->width * 10 + 3;
 			break;
 		case '4':
-			(*p)->width = (*p)->width * 10 + 4;
+			p->width = p->width * 10 + 4;
 			break;
 		case '5':
-			(*p)->width = (*p)->width * 10 + 5;
+			p->width = p->width * 10 + 5;
 			break;
 		case '6':
-			(*p)->width = (*p)->width * 10 + 6;
+			p->width = p->width * 10 + 6;
 			break;
 		case '7':
-			(*p)->width = (*p)->width * 10 + 7;
+			p->width = p->width * 10 + 7;
 			break;
 		case '8':
-			(*p)->width = (*p)->width * 10 + 8;
+			p->width = p->width * 10 + 8;
 			break;
 		case '9':
-			(*p)->width = (*p)->width * 10 + 9;
+			p->width = p->width * 10 + 9;
 			break;
 		default:
 			done = true;
@@ -964,8 +964,52 @@ parse_escape(const char *f, struct percent_esc **p)
 			f++;
 	}
 
-	(*p)->fmt_code = *f++;
+	p->fmt_code = *f++;
 
+	/* Is there a trailing list item/separator format like
+	 * %{...%|...%} ? */
+
+	if (f[0] == '%' && f[1] == '{') {
+		const char	*f2;
+		bool		 item = false;
+		bool		 sep = false;
+
+		for (f2 = f + 2; *f2 != '\0'; f2++) {
+			if (f2[0] == '%' && ( f2[1] == '}' || f2[1] == '|')) {
+				if (f2[1] == '|')
+					sep = true;
+				break;
+			}
+			sbuf_putc(p->item_fmt, *f2);
+		}
+		if (item) {
+			sbuf_finish(p->item_fmt);
+			f = f2 + 1;
+		
+			if (sep) {
+				sep = false;
+
+				for (f2 = f; *f2 != '\0'; f2++) {
+					if (f2[0] == '%' && f2[1] == '}') {
+						sep = true;
+						break;
+					}
+					sbuf_putc(p->sep_fmt, *f2);
+				}
+
+				if (sep) {
+					sbuf_finish(p->sep_fmt);
+					f = f2 + 1;
+				} else {
+					sbuf_clear(p->item_fmt);
+					sbuf_clear(p->sep_fmt);
+				}
+			}
+		} else {
+			sbuf_clear(p->item_fmt);
+			sbuf_clear(p->sep_fmt);
+		}
+	}
 
 	return (f);
 }
@@ -975,10 +1019,10 @@ process_format(struct sbuf *sbuf, const char *f, struct pkg *pkg)
 {
 	const char		*fstart;
 	struct sbuf		*s;
-	struct percent_esc	*p = NULL;
+	struct percent_esc	*p = new_percent_esc(NULL);
 
 	fstart = f;
-	f = parse_escape(f, &p);
+	f = parse_escape(f, p);
 
 	/* Format code */
 	switch (p->fmt_code) {
