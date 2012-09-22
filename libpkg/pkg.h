@@ -909,7 +909,6 @@ int pkg_plugins_init(void);
 int pkg_plugins_shutdown(void);
 int pkg_plugins(struct pkg_plugin **plugin);
 int pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str);
-int pkg_plugin_display_loaded(void);
 const char *pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key);
 void *pkg_plugin_func(struct pkg_plugin *p, const char *func);
 
