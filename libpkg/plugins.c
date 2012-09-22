@@ -83,6 +83,12 @@ static int pkg_plugins_hook_register(struct pkg_plugins *p, pkg_plugins_hook_t h
 static int pkg_plugins_hook_exec(struct pkg_plugins *p, pkg_plugins_hook_t hook, void *data, struct pkgdb *db);
 static int pkg_plugins_hook_list(struct pkg_plugins *p, struct plugins_hook **h);
 
+void *
+pkg_plugins_func(struct pkg_plugins *p, const char *func)
+{
+	return (dlsym(p->lh, func));
+}
+
 static int
 pkg_plugins_discover(void)
 {
@@ -113,7 +119,7 @@ pkg_plugins_discover(void)
 
 		/* parse only .conf files */
 		ext = strrchr(ftsent->fts_name, '.');
-		if ((strcmp(ext, ".conf")) == 0)
+		if (ext && (strcmp(ext, ".conf")) == 0)
 			pkg_plugins_parse_conf(ftsent->fts_path);
 	}
 

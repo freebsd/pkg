@@ -28,7 +28,7 @@
 #define _PKG_PLUGINS_MYSTATS_H
 
 /* callback functions */
-int plugin_mystats_callback(int argc, char **argv);
+int pkg_register_cmd(const char **name, const char **desc, int (**exec)(int argc, char **argv));
 
 /* plugin init and shutdown functions */
 int pkg_plugins_init_mystats(void);

@@ -30,6 +30,7 @@
 #include <sys/param.h>
 #include <sys/jail.h>
 #include <sys/stat.h>
+#include <sys/queue.h>
 
 #include <assert.h>
 #include <err.h>
@@ -91,10 +92,20 @@ static struct commands {
 
 const unsigned int cmd_len = (sizeof(cmd)/sizeof(cmd[0]));
 
+static STAILQ_HEAD(, plugcmd) plugins = STAILQ_HEAD_INITIALIZER(plugins);
+struct plugcmd {
+	const char *name;
+	const char *desc;
+	int (*exec)(int argc, char **argv);
+	STAILQ_ENTRY(plugcmd) next;
+};
+
+typedef int (register_cmd)(const char **name, const char **desc, int (**exec)(int argc, char **argv));
+
 static void
 usage(void)
 {
-	struct pkg_plugins *p = NULL;
+	struct plugcmd *c;
 	bool plugins_enabled = false;
 	
 	fprintf(stderr, "usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
@@ -118,12 +129,9 @@ usage(void)
 			errx(EX_SOFTWARE, "Plugins cannot be loaded");
 		
 		printf("\nCommands provided by plugins:\n");
-		
-		while (pkg_plugins_list(&p) != EPKG_END)
-			if (pkg_plugins_provides_cmd(p))
-				printf("\t%-15s%s\n",
-				       pkg_plugins_get(p, PKG_PLUGINS_NAME),
-				       pkg_plugins_get(p, PKG_PLUGINS_DESC));
+
+		STAILQ_FOREACH(c, &plugins, next)
+			fprintf(stderr, "\t%-15s%s\n", c->name, c->desc);
 	}
 	
 	fprintf(stderr, "\nFor more information on the different commands"
@@ -195,7 +203,9 @@ main(int argc, char **argv)
 	const char *buf = NULL;
 	bool b, plugins_enabled = false, plugins_summary = false;
 	struct pkg_config_kv *kv = NULL;
-	
+	struct plugcmd *c;
+	struct pkg_plugins *p = NULL;
+
 	/* Set stdout unbuffered */
         setvbuf(stdout, NULL, _IONBF, 0);
 
@@ -268,6 +278,16 @@ main(int argc, char **argv)
 		if (pkg_plugins_init() != EPKG_OK)
 			errx(EX_SOFTWARE, "Plugins cannot be loaded");
 
+		/* load commands plugins */
+		while (pkg_plugins_list(&p) != EPKG_END) {
+			register_cmd *reg = pkg_plugins_func(p, "pkg_register_cmd");
+			if (reg != NULL) {
+				c = malloc(sizeof(struct plugcmd));
+				reg(&c->name, &c->desc, &c->exec);
+				STAILQ_INSERT_TAIL(&plugins, c, next);
+			}
+		}
+
 		pkg_config_bool(PKG_CONFIG_PLUGINS_SUMMARY, &plugins_summary);
 		if (plugins_summary)
 			pkg_plugins_display_loaded();
@@ -337,8 +357,15 @@ main(int argc, char **argv)
 
 	if (command == NULL) {
 		/* Check if a plugin provides the requested command */
-		if (plugins_enabled)
-			ret = pkg_plugins_cmd_run(argv[0], argc, argv);
+		if (plugins_enabled) {
+			STAILQ_FOREACH(c, &plugins, next) {
+				ret = EPKG_FATAL;
+				if (strcmp(c->name, argv[0]) == 0) {
+					ret = c->exec(argc, argv);
+					break;
+				}
+			}
+		}
 		
 		pkg_shutdown();
 		pkg_plugins_shutdown();

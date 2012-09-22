@@ -912,6 +912,7 @@ int pkg_plugins_display_loaded(void);
 bool pkg_plugins_is_enabled(struct pkg_plugins *p);
 bool pkg_plugins_is_loaded(struct pkg_plugins *p);
 const char *pkg_plugins_get(struct pkg_plugins *p, pkg_plugins_key key);
+void *pkg_plugins_func(struct pkg_plugins *p, const char *func);
 
 /**
  * This is where plugins hook into the library using pkg_plugins_hook()

@@ -39,17 +39,14 @@
 #define PLUGIN_STATS_LOCAL 	(1<<0)
 #define PLUGIN_STATS_REMOTE 	(1<<1)
 
+static char myname[] = "mystats";
+static char mydesc[] = "A plugin for displaying package statistics";
+
 static int plugin_mystats_usage(void);
 
 int
 pkg_plugins_init_mystats(void)
 {
-
-	if (pkg_plugins_register_cmd(PLUGIN_NAME, &plugin_mystats_callback) != EPKG_OK) {
-		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
-		return (EPKG_FATAL);
-	}
-
 	return (EPKG_OK);
 }
 
@@ -66,9 +63,10 @@ plugin_mystats_usage(void)
 {
 	fprintf(stderr, "usage: pkg mystats [-lr]\n\n");
 	fprintf(stderr, "A plugin for displaying package statistics\n");
+	return (EPKG_OK);
 }
 
-int
+static int
 plugin_mystats_callback(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
@@ -125,3 +123,14 @@ plugin_mystats_callback(int argc, char **argv)
 
 	return (EPKG_OK);
 }
+
+int
+pkg_register_cmd(const char **name, const char **desc, int (**exec)(int argc, char **argv))
+{
+	*name = myname;
+	*desc = mydesc;
+	*exec = plugin_mystats_callback;
+
+	return (EPKG_OK);
+}
+
