@@ -34,25 +34,23 @@
 #include <pkg.h>
 #include <mongoose.h>
 
-#include "serve.h"
-
-#define PLUGIN_NAME "serve"
-
 static void plugin_serve_usage(void);
 
-int
-pkg_plugins_init_serve(void)
-{
-	if (pkg_plugins_register_cmd(PLUGIN_NAME, &plugin_serve_callback) != EPKG_OK) {
-		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
-		return (EPKG_FATAL);
-	}
+static char myname[] = "serve";
+static char version[] = "1.0.0";
+static char mydesc[] = "A http plugin for serving files";
 
+int
+init(struct pkg_plugin *p)
+{
+	pkg_plugin_set(p, PKG_PLUGIN_NAME, myname);
+	pkg_plugin_set(p, PKG_PLUGIN_DESC, mydesc);
+	pkg_plugin_set(p, PKG_PLUGIN_VERSION, version);
 	return (EPKG_OK);
 }
 
 int
-pkg_plugins_shutdown_serve(void)
+shutdown(struct pkg_plugin *p __unused)
 {
 	/* nothing to be done here */
 
@@ -126,6 +124,16 @@ plugin_serve_callback(int argc, char **argv)
 	mg_stop(ctx);
 
 	printf(">>> Done\n");
+
+	return (EPKG_OK);
+}
+
+int
+pkg_register_cmd(const char **name, const char **desc, int (**exec)(int argc, char **argv))
+{
+	*name = myname;
+	*desc = mydesc;
+	*exec = plugin_serve_callback;
 
 	return (EPKG_OK);
 }
