@@ -227,10 +227,10 @@ file(struct plist *p, char *line)
 
 	if (lstat(testpath, &st) == 0) {
 		buf = NULL;
-		regular = true;
+		regular = false;
 
-		if (S_ISLNK(st.st_mode))
-			regular = false;
+		if (S_ISREG(st.st_mode))
+			regular = true;
 
 		/* special case for hardlinks */
 		if (st.st_nlink > 1)
