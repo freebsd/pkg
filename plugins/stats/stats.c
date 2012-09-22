@@ -32,12 +32,15 @@
 
 #include <pkg.h>
 
-#include "stats.h"
-
 #define PLUGIN_NAME "stats"
 
+static char name[] = "stats";
+static char version[] = "1.0.0";
+static char description[] = "Plugin for displaying package stats";
+static int plugin_stats_callback(void *data, struct pkgdb *db);
+
 int
-pkg_plugins_init_stats(void)
+init(struct pkg_plugin *p)
 {
 	/*
 	 * Hook into the library and provide package stats for the following actions:
@@ -47,22 +50,25 @@ pkg_plugins_init_stats(void)
 	 * - pre-deinstall
 	 * - post-deinstall
 	 */
-	
-	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGINS_HOOK_PRE_INSTALL, &plugin_stats_callback) != EPKG_OK) {
+	pkg_plugin_set(p, PKG_PLUGIN_NAME, name);
+	pkg_plugin_set(p, PKG_PLUGIN_DESC, description);
+	pkg_plugin_set(p, PKG_PLUGIN_VERSION, version);
+
+	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGIN_HOOK_PRE_INSTALL, &plugin_stats_callback) != EPKG_OK) {
 		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
 
-	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGINS_HOOK_POST_INSTALL, &plugin_stats_callback) != EPKG_OK) {
+	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGIN_HOOK_POST_INSTALL, &plugin_stats_callback) != EPKG_OK) {
 		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
-	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGINS_HOOK_PRE_DEINSTALL, &plugin_stats_callback) != EPKG_OK) {
+	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGIN_HOOK_PRE_DEINSTALL, &plugin_stats_callback) != EPKG_OK) {
 		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
 	
-	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGINS_HOOK_POST_DEINSTALL, &plugin_stats_callback) != EPKG_OK) {
+	if (pkg_plugins_hook(PLUGIN_NAME, PKG_PLUGIN_HOOK_POST_DEINSTALL, &plugin_stats_callback) != EPKG_OK) {
 		fprintf(stderr, "Plugin '%s' failed to hook into the library\n", PLUGIN_NAME);
 		return (EPKG_FATAL);
 	}
@@ -71,7 +77,7 @@ pkg_plugins_init_stats(void)
 }
 
 int
-pkg_plugins_shutdown_template(void)
+shutdown(struct pkg_plugin *p __unused)
 {
 	/* nothing to be done here */
 
