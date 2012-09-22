@@ -38,7 +38,7 @@
 void
 usage_autoremove(void)
 {
-	fprintf(stderr, "usage: pkg autoremove [-iyq]\n\n");
+	fprintf(stderr, "usage: pkg autoremove [-yq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help autoremove'.\n");
 }
 
@@ -55,13 +55,9 @@ exec_autoremove(int argc, char **argv)
 	char size[7];
 	int ch;
 	bool yes = false;
-	bool interactive = false;
 
-	while ((ch = getopt(argc, argv, "iyq")) != -1) {
+	while ((ch = getopt(argc, argv, "yq")) != -1) {
 		switch (ch) {
-		case 'i':
-			interactive = true;
-			break;
 		case 'q':
 			quiet = true;
 			break;
@@ -103,8 +99,18 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+		pkg_get(pkg, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize);
+		oldsize += flatsize;
+		newsize += newflatsize;
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
+	}
+
+	if (oldsize > newsize) {
+		newsize *= -1;
+		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
+	} else {
+		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
 	}
 
 	if (pkg_jobs_is_empty(jobs)) {
@@ -116,35 +122,16 @@ exec_autoremove(int argc, char **argv)
 	pkg = NULL;
 	if (!quiet) {
 		printf("Packages to be autoremoved: \n");
-		int torem = 1;
 		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
 			const char *name, *version;
-			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize);
-			printf("\t%s-%s", name, version);
-
-			if (interactive) {
-				if (!(torem = query_yesno(" [y/N]: "))) {
-					pkg_jobs_rem(jobs, pkg);
-				}
-			} else {
-				puts(""); /* need a newline here */
-			}
-
-
-			if (torem) {
-				oldsize += flatsize;
-				newsize += newflatsize;
-			}
+			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+			printf("\t%s-%s\n", name, version);
 		}
 
-		if (pkg_jobs_is_empty(jobs)) {
-			printf("Nothing to do.\n");
-			retcode = 0;
-			goto cleanup;
-		}
-
-		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("\nThe autoremoval will free %s\n", size);
+		if (oldsize > newsize)
+			printf("\nThe autoremoval will free %s\n", size);
+		else
+			printf("\nThe autoremoval will require %s more space\n", size);
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
