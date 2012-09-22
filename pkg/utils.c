@@ -159,6 +159,7 @@ info_flags(unsigned int opt)
 		flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS ;
 		flags |= PKG_LOAD_SHLIBS|PKG_LOAD_DEPS|PKG_LOAD_FILES;
 		flags |= PKG_LOAD_DIRS|PKG_LOAD_USERS|PKG_LOAD_GROUPS;
+		flags |= PKG_LOAD_SCRIPTS;
 	}
 
 	return flags;
