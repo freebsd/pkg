@@ -47,13 +47,13 @@
 struct plugin_hook {
 	pkg_plugin_hook_t hook;				/* plugin hook type */
 	pkg_plugin_callback callback;			/* plugin callback function */
-	STAILQ_ENTRY(plugin_hook) next;
+	UT_hash_handle hh;
 };
 
 struct pkg_plugin {
 	struct sbuf *fields[PLUGIN_NUMFIELDS];
 	void *lh;						/* library handle */
-	STAILQ_HEAD(phooks, plugin_hook) phooks;		/* plugin hooks */
+	struct plugin_hook *hooks;
 	STAILQ_ENTRY(pkg_plugin) next;
 };
 
@@ -62,7 +62,6 @@ static STAILQ_HEAD(, pkg_plugin) ph = STAILQ_HEAD_INITIALIZER(ph);
 static int pkg_plugin_free(void);
 static int pkg_plugin_hook_free(struct pkg_plugin *p);
 static int pkg_plugin_hook_exec(struct pkg_plugin *p, pkg_plugin_hook_t hook, void *data, struct pkgdb *db);
-static int pkg_plugin_hook_list(struct pkg_plugin *p, struct plugin_hook **h);
 
 void *
 pkg_plugin_func(struct pkg_plugin *p, const char *func)
@@ -73,15 +72,9 @@ pkg_plugin_func(struct pkg_plugin *p, const char *func)
 static int
 pkg_plugin_hook_free(struct pkg_plugin *p)
 {
-	struct plugin_hook *h = NULL;
-
 	assert(p != NULL);
 
-	while (!STAILQ_EMPTY(&p->phooks)) {
-		h = STAILQ_FIRST(&p->phooks);
-		STAILQ_REMOVE_HEAD(&p->phooks, next);
-		free(h);
-	}
+	HASH_FREE(p->hooks, plugin_hook, free);
 
 	return (EPKG_OK);
 }
@@ -119,10 +112,10 @@ pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_plugi
 		return (EPKG_FATAL);
 	}
 
-	new->hook |= hook;
+	new->hook = hook;
 	new->callback = callback;
 
-	STAILQ_INSERT_TAIL(&p->phooks, new, next);
+	HASH_ADD_INT(p->hooks, hook, new);
 
 	return (EPKG_OK);
 }
@@ -134,30 +127,14 @@ pkg_plugin_hook_exec(struct pkg_plugin *p, pkg_plugin_hook_t hook, void *data, s
 	
 	assert(p != NULL);
 
-	while (pkg_plugin_hook_list(p, &h) != EPKG_END)
-		if (h->hook == hook) {
-			printf(">>> Triggering execution of plugin '%s'\n",
-			       pkg_plugin_get(p, PKG_PLUGIN_NAME));
-			h->callback(data, db);
-		}
+	HASH_FIND_INT(p->hooks, &hook, h);
+	if (h != NULL) {
+		printf(">>> Triggering execution of plugin '%s'\n",
+		    pkg_plugin_get(p, PKG_PLUGIN_NAME));
+		h->callback(data, db);
+	}
 
 	return (EPKG_OK);
-}
-
-static int
-pkg_plugin_hook_list(struct pkg_plugin *p, struct plugin_hook **h)
-{
-	assert(p != NULL);
-	
-	if ((*h) == NULL)
-		(*h) = STAILQ_FIRST(&(p->phooks));
-	else
-		(*h) = STAILQ_NEXT((*h), next);
-
-	if ((*h) == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
 }
 
 int
@@ -166,7 +143,7 @@ pkg_plugins_hook_run(pkg_plugin_hook_t hook, void *data, struct pkgdb *db)
 	struct pkg_plugin *p = NULL;
 
 	while (pkg_plugins(&p) != EPKG_END)
-			pkg_plugin_hook_exec(p, hook, data, db);
+		pkg_plugin_hook_exec(p, hook, data, db);
 
 	return (EPKG_OK);
 }
@@ -224,7 +201,6 @@ pkg_plugins_init(void)
 		snprintf(pluginfile, MAXPATHLEN, "%s/%s.so", plugdir,
 		    pkg_config_value(v));
 		p = calloc(1, sizeof(struct pkg_plugin));
-		STAILQ_INIT(&p->phooks);
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
 			pkg_emit_error("Loading of plugin '%s' failed: %s",
 			    pkg_config_value(v), dlerror());
