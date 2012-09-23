@@ -126,32 +126,21 @@ pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
 static int
 pkg_jobs_keep_files_to_del(struct pkg *p1, struct pkg *p2)
 {
-	struct pkg_file *f1 = NULL, *f2 = NULL;
-	struct pkg_dir *d1 = NULL, *d2 = NULL;
+	struct pkg_file *f = NULL;
+	struct pkg_dir *d = NULL;
 
-	while (pkg_files(p1, &f1) == EPKG_OK) {
-		if (f1->keep == 1)
+	while (pkg_files(p1, &f) == EPKG_OK) {
+		if (f->keep)
 			continue;
 
-		f2 = NULL;
-		while (pkg_files(p2, &f2) == EPKG_OK) {
-			if (strcmp(pkg_file_path(f1), pkg_file_path(f2)) == 0) {
-				f1->keep = 1;
-				break;
-			}
-		}
+		f->keep = pkg_has_file(p2, pkg_file_path(f));
 	}
 
-	while (pkg_dirs(p1, &d1) == EPKG_OK) {
-		if (d1->keep == 1)
+	while (pkg_dirs(p1, &d) == EPKG_OK) {
+		if (d->keep)
 			continue;
-		d2 = NULL;
-		while (pkg_dirs(p2, &d2) == EPKG_OK) {
-			if (strcmp(pkg_dir_path(d1), pkg_dir_path(d2)) == 0) {
-				d1->keep = 1;
-				break;
-			}
-		}
+
+		d->keep = pkg_has_file(p2, pkg_dir_path(d));
 	}
 
 	return (EPKG_OK);

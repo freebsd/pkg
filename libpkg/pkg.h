@@ -665,6 +665,8 @@ const char *pkg_file_uname(struct pkg_file const * const);
 const char *pkg_file_gname(struct pkg_file const * const);
 mode_t pkg_file_mode(struct pkg_file const * const);
 
+bool pkg_has_dir(struct pkg *, const char *);
+bool pkg_has_file(struct pkg *, const char *);
 /* pkg_dir */
 const char *pkg_dir_path(struct pkg_dir const * const);
 const char *pkg_dir_uname(struct pkg_dir const * const);

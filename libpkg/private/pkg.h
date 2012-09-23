@@ -125,7 +125,7 @@ struct pkg_file {
 	char		 sum[SHA256_DIGEST_LENGTH * 2 +1];
 	char		 uname[MAXLOGNAME +1];
 	char		 gname[MAXLOGNAME +1];
-	int		 keep;
+	bool		 keep;
 	mode_t		 perm;
 	UT_hash_handle	 hh;
 };
@@ -135,7 +135,7 @@ struct pkg_dir {
 	char		 uname[MAXLOGNAME +1];
 	char		 gname[MAXLOGNAME +1];
 	mode_t		 perm;
-	int		 keep;
+	bool		 keep;
 	bool		 try;
 	UT_hash_handle	 hh;
 };

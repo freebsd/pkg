@@ -1150,3 +1150,23 @@ pkg_is_installed(struct pkgdb *db, const char *origin)
 
 	return (ret);
 }
+
+bool
+pkg_has_dir(struct pkg *p, const char *path)
+{
+	struct pkg_file *f;
+
+	HASH_FIND_STR(p->files, __DECONST(char *, path), f);
+
+	return (f != NULL ? true : false);
+}
+
+bool
+pkg_has_file(struct pkg *p, const char *path)
+{
+	struct pkg_dir *d;
+
+	HASH_FIND_STR(p->dirs, __DECONST(char *, path), d);
+
+	return (d != NULL ? true : false);
+}
