@@ -119,7 +119,7 @@ exec_upgrade(int argc, char **argv)
 	}
 	pkgdb_it_free(it);
 
-	if (pkg_jobs_is_empty(jobs)) {
+	if (pkg_jobs_count(jobs) == 0) {
 		if (!quiet)
 			printf("Nothing to do\n");
 		retcode = EXIT_SUCCESS;

@@ -113,7 +113,7 @@ exec_autoremove(int argc, char **argv)
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
 	}
 
-	if (pkg_jobs_is_empty(jobs)) {
+	if (pkg_jobs_count(jobs) == 0) {
 		printf("Nothing to do.\n");
 		retcode = 0;
 		goto cleanup;

@@ -131,7 +131,7 @@ exec_fetch(int argc, char **argv)
 	
 	pkgdb_it_free(it);
 
-	if (pkg_jobs_is_empty(jobs))
+	if (pkg_jobs_count(jobs) == 0)
 		goto cleanup;
 
 	if (!quiet) {

@@ -58,7 +58,6 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
 		return (EPKG_FATAL);
 	}
 
-	STAILQ_INIT(&(*j)->jobs);
 	(*j)->db = db;
 	(*j)->type = t;
 	if (dry_run)
@@ -72,39 +71,37 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
-	struct pkg *p;
-
 	if (j == NULL)
 		return;
 
 	if ((j->flags & PKG_JOB_FLAGS_DRY_RUN) == 0)
 		pkgdb_unlock(j->db);
 
-	while (!STAILQ_EMPTY(&j->jobs)) {
-		p = STAILQ_FIRST(&j->jobs);
-		STAILQ_REMOVE_HEAD(&j->jobs, next);
-		pkg_free(p);
-	}
+	HASH_FREE(j->jobs, pkg, pkg_free);
+
 	free(j);
 }
 
 int
 pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
 {
+	char *origin;
+
 	assert(j != NULL);
 	assert(pkg != NULL);
 
-	STAILQ_INSERT_TAIL(&j->jobs, pkg, next);
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
 
 	return (EPKG_OK);
 }
 
 int
-pkg_jobs_is_empty(struct pkg_jobs *j)
+pkg_jobs_count(struct pkg_jobs *j)
 {
 	assert(j != NULL);
 
-	return (STAILQ_EMPTY(&j->jobs));
+	return (HASH_COUNT(j->jobs));
 }
 
 int
@@ -112,15 +109,7 @@ pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
 {
 	assert(j != NULL);
 
-	if (*pkg == NULL)
-		*pkg = STAILQ_FIRST(&j->jobs);
-	else
-		*pkg = STAILQ_NEXT(*pkg, next);
-
-	if (*pkg == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	HASH_NEXT(j->jobs, (*pkg));
 }
 
 static int

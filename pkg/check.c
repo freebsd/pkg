@@ -159,7 +159,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		pkg = NULL;
 	}
 
-	if (pkg_jobs_is_empty(jobs)) {
+	if (pkg_jobs_count(jobs) == 0) {
 		printf("\n>>> Unable to find packages for installation.\n\n");
 		pkg_jobs_free(jobs);
 		pkgdb_it_free(it);

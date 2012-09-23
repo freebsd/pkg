@@ -99,6 +99,7 @@ struct pkg {
 	int64_t		 time;
 	lic_t		 licenselogic;
 	pkg_t		 type;
+	UT_hash_handle	 hh;
 	STAILQ_ENTRY(pkg) next;
 };
 
@@ -147,7 +148,7 @@ struct pkg_option {
 };
 
 struct pkg_jobs {
-	STAILQ_HEAD(jobs, pkg) jobs;
+	struct pkg	*jobs;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	unsigned	 flags;

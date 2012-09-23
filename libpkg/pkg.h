@@ -855,9 +855,9 @@ void pkg_jobs_free(struct pkg_jobs *jobs);
 int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
 
 /**
- * Returns true if there are no jobs.
+ * Returns the number of elements in the job queue
  */
-int pkg_jobs_is_empty(struct pkg_jobs *jobs);
+int pkg_jobs_count(struct pkg_jobs *jobs);
 
 /**
  * Iterates over the packages in the jobs queue.

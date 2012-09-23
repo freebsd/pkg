@@ -140,7 +140,7 @@ exec_delete(int argc, char **argv)
 	}
 
 	/* check if we have something to deinstall */
-	if (pkg_jobs_is_empty(jobs)) {
+	if (pkg_jobs_count(jobs) == 0) {
 		if (argc == 0) {
 			if (!quiet)
 				printf("Nothing to do.\n");
