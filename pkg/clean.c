@@ -337,10 +337,8 @@ exec_clean(int argc, char **argv)
 cleanup:
 	free_dellist(&dl);
 
-	if (pkg != NULL)
-		pkg_free(pkg);
-	if (p != NULL)
-		pkg_free(p);
+	pkg_free(pkg);
+	pkg_free(p);
 	if (fts != NULL)
 		fts_close(fts);
 	if (db != NULL)

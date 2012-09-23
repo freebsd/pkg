@@ -155,8 +155,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	}
 
 	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK) {
-		if (sig != NULL)
-			free(sig);
+		free(sig);
 		
 		return (EPKG_FATAL);
 	}

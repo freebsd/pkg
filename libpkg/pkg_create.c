@@ -150,8 +150,7 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
 	if (packing_init(&pkg_archive, pkg_path, format) != EPKG_OK)
 		pkg_archive = NULL;
 
-	if (pkg_path != NULL)
-		free(pkg_path);
+	free(pkg_path);
 
 	return pkg_archive;
 }
@@ -304,10 +303,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	ret = EPKG_OK;
 
 cleanup:
-	if (pkg != NULL)
-		free(pkg);
-	if (manifest != NULL)
-		free(manifest);
+	free(pkg);
+	free(manifest);
 	if (ret == EPKG_OK)
 		ret = packing_finish(pkg_archive);
 	return ret;

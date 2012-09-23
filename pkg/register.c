@@ -187,8 +187,7 @@ exec_register(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (plist != NULL)
-		free(plist);
+	free(plist);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);

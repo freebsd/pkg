@@ -47,6 +47,9 @@ pkg_dep_new(struct pkg_dep **d)
 void
 pkg_dep_free(struct pkg_dep *d)
 {
+	if (d == NULL)
+		return;
+
 	sbuf_free(d->origin);
 	sbuf_free(d->name);
 	sbuf_free(d->version);
@@ -296,9 +299,6 @@ pkg_license_new(struct pkg_license **l)
 void
 pkg_license_free(struct pkg_license *l)
 {
-	if (l == NULL)
-		return;
-
 	free(l);
 }
 
@@ -328,9 +328,6 @@ pkg_user_new(struct pkg_user **u)
 void
 pkg_user_free(struct pkg_user *u)
 {
-	if (u == NULL)
-		return;
-
 	free(u);
 }
 
@@ -368,9 +365,6 @@ pkg_group_new(struct pkg_group **g)
 void
 pkg_group_free(struct pkg_group *g)
 {
-	if (g == NULL)
-		return;
-
 	free(g);
 }
 

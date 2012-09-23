@@ -175,8 +175,7 @@ exec_set(int argc, char **argv)
 	i = 0;
 	do {
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
-			if (oldorigin != NULL)
-				free(oldorigin);
+			free(oldorigin);
 			pkgdb_close(db);
 			return (EX_IOERR);
 		}
@@ -213,8 +212,7 @@ exec_set(int argc, char **argv)
 		i++;
 	} while (i < argc);
 
-	if (oldorigin != NULL)
-		free(oldorigin);
+	free(oldorigin);
 	pkg_free(pkg);
 	pkgdb_close(db);
 
