@@ -103,7 +103,7 @@ new_percent_esc(struct percent_esc *p)
 	return (p);
 }
 
-static const char*
+static inline const char*
 maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 {
 	int	val;
@@ -237,7 +237,7 @@ maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 	return (f);
 }
 
-static const char*
+static inline const char*
 read_oct_byte(struct sbuf *sbuf, const char *f)
 {
 	int	val = 0;
@@ -285,7 +285,7 @@ done:
 	return (f);
 }
 
-static const char *
+static inline const char *
 process_escape(struct sbuf *sbuf, const char *f)
 {
 	f++;			/* Eat the \ */
@@ -432,7 +432,7 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 	return (sbuf);
 }
 
-static struct sbuf *
+static inline struct sbuf *
 string_val(struct sbuf *sbuf, const char *str, struct percent_esc *p)
 {
 	char	fmt[16];
@@ -453,7 +453,7 @@ string_val(struct sbuf *sbuf, const char *str, struct percent_esc *p)
 	return (sbuf);
 }
 
-static struct sbuf *
+static inline struct sbuf *
 int_val(struct sbuf *sbuf, int64_t value, struct percent_esc *p)
 {
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
@@ -469,7 +469,7 @@ int_val(struct sbuf *sbuf, int64_t value, struct percent_esc *p)
 	return (sbuf);
 }
 
-static struct sbuf *
+static inline struct sbuf *
 bool_val(struct sbuf *sbuf, bool value, struct percent_esc *p)
 {
 	int	alternate;
@@ -486,7 +486,7 @@ bool_val(struct sbuf *sbuf, bool value, struct percent_esc *p)
 	return (string_val(sbuf, boolean_str[value][alternate], p));
 }
 
-static struct sbuf *
+static inline struct sbuf *
 list_count(struct sbuf *sbuf, int64_t count, struct percent_esc *p)
 {
 	/* Convert to 0 or 1 for %?X */
@@ -497,6 +497,21 @@ list_count(struct sbuf *sbuf, int64_t count, struct percent_esc *p)
 	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
 
 	return (int_val(sbuf, count, p));
+}
+
+static inline struct percent_esc *
+set_list_defaults(struct percent_esc *p, const char *item_fmt,
+		  const char *sep_fmt)
+{
+	if (sbuf_len(p->item_fmt) == 0) {
+		sbuf_cat(p->item_fmt, item_fmt);
+		sbuf_finish(p->item_fmt);
+	}
+	if (sbuf_len(p->sep_fmt) == 0) {
+		sbuf_cat(p->sep_fmt, sep_fmt);
+		sbuf_finish(p->sep_fmt);
+	}
+	return (p);
 }
 
 /*
@@ -521,7 +536,13 @@ format_shlibs(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS), p));
 	else {
-		/* @@@@@@@@@@@@@@@ */
+		struct pkg_shlib	*shlib;
+
+		set_list_defaults(p, "%b\n", "");
+
+		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+			/* @@@@@@@@@@@@@@@ */
+		}
 	}
 	return (sbuf);
 }
@@ -539,7 +560,13 @@ format_categories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES),
 				   p));
 	else {
-		/* @@@@@@@@@@@@@@ */
+		struct pkg_category	*cat;
+
+		set_list_defaults(p, "%c", ", ");
+
+		while (pkg_categories(pkg, &cat) == EPKG_OK) {
+			/* @@@@@@@@@@@@@@ */
+		}
 	}
 	return (sbuf);
 }
@@ -556,7 +583,13 @@ format_directories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DIRS), p));
 	else {
-		/* @@@@@@@@@@@@@@@@ */
+		struct pkg_dir	*dir;
+
+		set_list_defaults(p, "%d\n", "");
+
+		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+			/* @@@@@@@@@@@@@@@@ */
+		}
 	}
 	return (sbuf);
 }
@@ -572,7 +605,13 @@ format_files(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_FILES), p));
 	else {
-		/* @@@@@@@@@@@@@@@@ */
+		struct pkg_file	*file;
+
+		set_list_defaults(p, "%f\n", "");
+
+		while (pkg_files(pkg, &files) == EPKG_OK) {
+			/* @@@@@@@@@@@@@@@@ */
+		}
 	}
 	return (sbuf);
 }
@@ -588,7 +627,13 @@ format_groups(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_GROUPS), p));
 	else {
-		/* @@@@@@@@@@@@@@@@@@ */
+		struct pkg_group	*group;
+
+		set_list_defaults(p, "%g\n", "");
+
+		while(pkg_groups(pkg, &group) == EPKG_OK) {
+			/* @@@@@@@@@@@@@@@@@@ */
+		}
 	}
 	return (sbuf);
 }
@@ -605,7 +650,13 @@ format_licenses(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_LICENSES),
 				   p));
 	else {
-		/* @@@@@@@@@@@@@@@@@ */
+		struct pkg_license	*lic;
+
+		set_list_defaults(p, "%L", " %l ");
+
+		while (pkg_licenses(pkg, &lic) == EPKG_OK) {
+			/* @@@@@@@@@@@@@@@@@ */
+		}
 	}
 	return (sbuf);
 }
@@ -613,7 +664,7 @@ format_licenses(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 /*
  * %M -- Pkg message. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+static inline struct sbuf *
 format_message(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*message;
@@ -633,7 +684,13 @@ format_options(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_OPTIONS), p));
 	else {
-		/* @@@@@@@@@@@@@@@ */
+		struct pkg_option	*opt;
+
+		set_list_defaults(p, "%k %v\n", "");
+
+		while (pkg_options(pkg, &opt) == EPKG_OK) {
+			/* @@@@@@@@@@@@@@@ */
+		}
 	}
 	return (sbuf);
 }
@@ -646,11 +703,16 @@ format_options(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 static struct sbuf *
 format_users(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
-
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_USERS), p));
 	else {
-		/* @@@@@@@@@@@@@@@@ */
+		struct pkg_user	*user;
+
+		set_list_defaults(p, "%u\n", "");
+
+		while (pkg_users(pkg, &user) == EPKG_OK) {
+			/* @@@@@@@@@@@@@@@@ */
+		}
 	}
 	return (sbuf);
 }
@@ -660,7 +722,7 @@ format_users(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * Standard form: 0, 1.  Alternate form1: no, yes.  Alternate form2:
  * false, true
  */
-static struct sbuf *
+static inline struct sbuf *
 format_autoremove(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	bool	automatic;
@@ -672,7 +734,7 @@ format_autoremove(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 /*
  * %c -- Comment. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+static inline struct sbuf *
 format_comment(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*comment;
@@ -693,7 +755,13 @@ format_dependencies(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DEPS), p));
 	else {
-		/* @@@@@@@@@@@@@@@@@@@ */
+		struct pkg_dep	*dep;
+
+		set_list_defaults(p, "%n-%v\n", "");
+
+		while (pkg_deps(pkg, &dep) == EPKG_OK) {
+			/* @@@@@@@@@@@@@@@@@@@ */
+		}
 	}
 	return (sbuf);
 }
@@ -701,7 +769,7 @@ format_dependencies(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 /*
  * %i -- Additional info. string. Accepts field-width, left-align
  */
-static struct sbuf *
+static inline struct sbuf *
 format_add_info(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*info;
@@ -751,7 +819,7 @@ format_license_logic(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 /*
  * %m -- Maintainer e-mail address. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+static inline struct sbuf *
 format_maintainer(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*maintainer;
@@ -763,7 +831,7 @@ format_maintainer(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 /*
  * %n -- Package name. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+static inline struct sbuf *
 format_name(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*name;
@@ -775,7 +843,7 @@ format_name(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 /*
  * %o -- Package origin. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+static inline struct sbuf *
 format_origin(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*origin;
@@ -787,7 +855,7 @@ format_origin(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 /*
  * %p -- Installation prefix. string. Accepts field-width, left-align
  */
-static struct sbuf *
+static inline struct sbuf *
 format_prefix(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	char	*prefix;
@@ -807,6 +875,8 @@ format_requirements(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return(list_count(sbuf, pkg_list_count(pkg, PKG_RDEPS), p));
 	else {
+		set_list_defaults(p, "%n-%v\n", "");
+
 		/* @@@@@@@@@@@@@@@@@@@@@@@ */
 	}
 	return (sbuf);
@@ -819,7 +889,7 @@ format_requirements(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * exponents (k, M, G).  Alternate form 2, ditto, but using binary
  * scale prefixes (ki, Mi, Gi etc.)
  */
-static struct sbuf *
+static inline struct sbuf *
 format_flatsize(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 {
 	int64_t	flatsize;
@@ -834,7 +904,7 @@ format_flatsize(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * format string in %{ %}.  Default is to print seconds-since-epoch as
  * an integer applying our format modifiers.
  */
-static struct sbuf *
+static inline struct sbuf *
 format_install_tstamp(struct sbuf *sbuf, struct pkg *pkg,
 		      struct percent_esc *p)
 {
@@ -869,7 +939,7 @@ format_version(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 /*
  * %w -- Home page URL.  string.  Accepts field width, left align
  */
-static struct sbuf *
+static inline struct sbuf *
 format_home_url(struct sbuf *sbuf, struct pkg *pkg,
 		struct percent_esc *p)
 {
@@ -892,7 +962,7 @@ parse_escape(const char *f, struct percent_esc *p)
 	 * '+' explicit plus sign (numerics only)
 	 * ' ' space instead of plus sign (numerics only)
 	 * '0' pad with zeroes (numerics only)
-         * '\'' use thousands separator
+         * '\'' use thousands separator (numerics only)
 	 * Note '*' (dynamic field width) is not supported
 	 */
 
