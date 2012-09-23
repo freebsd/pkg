@@ -459,7 +459,7 @@ int_val(struct sbuf *sbuf, int64_t value, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (human_number(sbuf, value, p));
 	else {
-		char	 fmt[16]; /* More than enough */
+		char	 fmt[16];
 
 		if (gen_format(fmt, sizeof(fmt), p->flags, PRId64) == NULL)
 			return (NULL);
@@ -514,6 +514,102 @@ set_list_defaults(struct percent_esc *p, const char *item_fmt,
 	return (p);
 }
 
+/* Understands %i (index, integer) %b (shlib name, string) */
+static struct sbuf *
+format_shlibs_item(struct sbuf *sbuf, struct pkg_shlib *shlib, int count,
+		  const char *fmt)
+{
+	struct percent_esc	*p = new_percent_esc(NULL);
+
+	parse_escape(fmt, p)...
+	/* @@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
+}
+
+/* Understands %i (index, integer) %c (category, string) */
+static struct sbuf *
+format_categories_item(struct sbuf *sbuf, struct pkg_category *cat, int count,
+		     const char *fmt)
+{
+	/* @@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
+}
+
+/* Understands %i (index, integer) %d (directory, string) %u (user,
+   string) %g (group, string) %m (mode ...) %k (keep-flag bool) %t
+   (rm-try bool) */
+static struct sbuf *
+format_directories_item(struct sbuf *sbuf, struct pkg_dir *dir, int count,
+		      const char *fmt)
+{
+	/* @@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
+}
+
+/* Understands %i (index, integer) %f (filename, string) %x (checksum,
+   string) %u (user, string) %g (group, string) %m (mode ...) %k
+   (keep-flag bool) */
+static struct sbuf *
+format_files_item(struct sbuf *sbuf, struct pkg_file *file, int count,
+		  const char *fmt)
+{
+	/* @@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
+}
+
+/* Understands %i (index, integer) %g (group, string) %#g (gid,
+ * integer) */
+static struct sbuf *
+format_groups_item(struct sbuf *sbuf, struct pkg_group *group, int count,
+		  const char *fmt)
+{
+	/* @@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
+}
+
+/* Understands %i (index, integer) %L (license, string) %l
+ * (license-logic, string) */
+static struct sbuf *
+format_licenses_item(struct sbuf *sbuf, struct pkg_license *lic,
+		     lic_t licenselogic, int count, const char *fmt)
+{
+	/* @@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
+}
+
+/* Understands %i (index, integer) %o (option, string) %v
+ * (option value, string) */
+static struct sbuf *
+format_options_item(struct sbuf *sbuf, struct pkg_option *opt, int count,
+		    const char *fmt)
+{
+	/* @@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
+}
+
+/* Understands %i (index, integer) %u (user, string) %#u (uid,
+ * integer) */
+static struct sbuf *
+format_users_item(struct sbuf *sbuf, struct pkg_user *user, int count,
+		  const char *fmt)
+{
+	/* @@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
+}
+
+/* Note: used for both requirements (%r) and dependencies (%d).
+ * Understands the same scalar-value formats as for the top-level
+ * pkg */
+static struct sbuf *
+format_dependencies_item(struct sbuf *sbuf, struct pkg_dep *dep, int count,
+			 const char *fmt)
+{
+	/* @@@@@@@@@@@@@@@@@@@@ */
+	return (sbuf);
+}
+
+
+
 /*
  * Note: List values -- special behaviour with ? and # modifiers.
  * Affects %B %C %D %F %G %L %O %U
@@ -537,11 +633,19 @@ format_shlibs(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS), p));
 	else {
 		struct pkg_shlib	*shlib;
+		int			 count;
 
 		set_list_defaults(p, "%b\n", "");
 
+		count = 1;
 		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
-			/* @@@@@@@@@@@@@@@ */
+			if (count > 1)
+				format_shlibs_item(sbuf, shlib, count,
+						  sbuf_data(p->sep_fmt));
+
+			format_shlibs_item(sbuf, shlib, count,
+					  sbuf_data(p->item_fmt));
+			count++;
 		}
 	}
 	return (sbuf);
@@ -561,11 +665,19 @@ format_categories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 				   p));
 	else {
 		struct pkg_category	*cat;
+		int			 count;
 
 		set_list_defaults(p, "%c", ", ");
 
+		count = 1;
 		while (pkg_categories(pkg, &cat) == EPKG_OK) {
-			/* @@@@@@@@@@@@@@ */
+			if (count > 1)
+				format_categories_item(sbuf, cat, count,
+						       sbuf_data(p->sep_fmt));
+
+			format_categories_item(sbuf, cat, count,
+					       sbuf_data(p->item_fmt));
+			count++;
 		}
 	}
 	return (sbuf);
@@ -584,11 +696,19 @@ format_directories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DIRS), p));
 	else {
 		struct pkg_dir	*dir;
+		int		 count;
 
 		set_list_defaults(p, "%d\n", "");
 
+		count = 1;
 		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-			/* @@@@@@@@@@@@@@@@ */
+			if (count > 1)
+				format_directories_item(sbuf, dir, count,
+							sbuf_data(p->sep_fmt));
+
+			format_directories_item(sbuf, dir, count,
+						sbuf_data(p->item_fmt));
+			count++;
 		}
 	}
 	return (sbuf);
@@ -606,11 +726,19 @@ format_files(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_FILES), p));
 	else {
 		struct pkg_file	*file;
+		int		 count;
 
 		set_list_defaults(p, "%f\n", "");
 
-		while (pkg_files(pkg, &files) == EPKG_OK) {
-			/* @@@@@@@@@@@@@@@@ */
+		count = 1;
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			if (count > 1)
+				format_files_item(sbuf, file, count,
+						  sbuf_data(p->sep_fmt));
+
+			format_files_item(sbuf, file, count,
+					  sbuf_data(p->item_fmt));
+			count++;
 		}
 	}
 	return (sbuf);
@@ -628,11 +756,19 @@ format_groups(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_GROUPS), p));
 	else {
 		struct pkg_group	*group;
+		int			 count;
 
 		set_list_defaults(p, "%g\n", "");
 
+		count = 1;
 		while(pkg_groups(pkg, &group) == EPKG_OK) {
-			/* @@@@@@@@@@@@@@@@@@ */
+			if (count > 1)
+				format_groups_item(sbuf, group, count,
+						   sbuf_data(p->sep_fmt));
+
+			format_groups_item(sbuf, group, count,
+					   sbuf_data(p->item_fmt));
+			count++;
 		}
 	}
 	return (sbuf);
@@ -651,11 +787,23 @@ format_licenses(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 				   p));
 	else {
 		struct pkg_license	*lic;
+		int			 count;
+		lic_t			 license_logic;
+
 
 		set_list_defaults(p, "%L", " %l ");
+		pkg_get(pkg, PKG_LICENSE_LOGIC, &license_logic);
 
+		count = 1;
 		while (pkg_licenses(pkg, &lic) == EPKG_OK) {
-			/* @@@@@@@@@@@@@@@@@ */
+			if (count > 1)
+				format_licenses_item(sbuf, lic, license_logic,
+						     count,
+						     sbuf_data(p->sep_fmt));
+
+			format_licenses_item(sbuf, lic, license_logic, count,
+					     sbuf_data(p->item_fmt));
+			count++;
 		}
 	}
 	return (sbuf);
@@ -685,11 +833,19 @@ format_options(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_OPTIONS), p));
 	else {
 		struct pkg_option	*opt;
+		int			 count;
 
 		set_list_defaults(p, "%k %v\n", "");
 
+		count = 1;
 		while (pkg_options(pkg, &opt) == EPKG_OK) {
-			/* @@@@@@@@@@@@@@@ */
+			if (count > 1)
+				format_options_item(sbuf, opt, count,
+						    sbuf_data(p->sep_fmt));
+
+			format_options_item(sbuf, opt, count,
+					    sbuf_data(p->item_fmt));
+			count++;
 		}
 	}
 	return (sbuf);
@@ -707,11 +863,19 @@ format_users(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_USERS), p));
 	else {
 		struct pkg_user	*user;
+		int		 count;
 
 		set_list_defaults(p, "%u\n", "");
 
+		count = 1;
 		while (pkg_users(pkg, &user) == EPKG_OK) {
-			/* @@@@@@@@@@@@@@@@ */
+			if (count > 1)
+				format_users_item(sbuf, user, count, 
+						  sbuf_data(p->sep_fmt));
+
+			format_users_item(sbuf, user, count,
+					  sbuf_data(p->item_fmt));
+			count++;
 		}
 	}
 	return (sbuf);
@@ -756,11 +920,19 @@ format_dependencies(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DEPS), p));
 	else {
 		struct pkg_dep	*dep;
+		int		 count;
 
 		set_list_defaults(p, "%n-%v\n", "");
 
+		count = 1;
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
-			/* @@@@@@@@@@@@@@@@@@@ */
+			if (count > 1)
+				format_dependencies_item(sbuf, dep, count,
+							 sbuf_data(p->sep_fmt));
+
+			format_dependencies_item(sbuf, dep, count,
+						 sbuf_data(p->item_fmt));
+			count++;
 		}
 	}
 	return (sbuf);
@@ -875,9 +1047,21 @@ format_requirements(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return(list_count(sbuf, pkg_list_count(pkg, PKG_RDEPS), p));
 	else {
+		struct pkg_dep	*req;
+		int		 count;
+
 		set_list_defaults(p, "%n-%v\n", "");
 
-		/* @@@@@@@@@@@@@@@@@@@@@@@ */
+		count = 1;
+		while (pkg_rdeps(pkg, &req) == EPKG_OK) {
+			if (count > 1)
+				format_dependencies_item(sbuf, req, count,
+							 sbuf_data(p->sep_fmt));
+
+			format_dependencies_item(sbuf, req, count,
+						 sbuf_data(p->item_fmt));
+			count++;
+		}
 	}
 	return (sbuf);
 }
