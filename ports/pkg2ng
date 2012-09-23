@@ -8,12 +8,11 @@ then
 	return 77	# EX_PERM
 fi
 
-ARCH=$( uname -m )
+: ${ARCH=$(uname -m)}
 failed_pkgs=""
 MOVED=0
-DBDIR="/var/db"
-PKGDB="${DBDIR}/pkg"
-PKGBAK="${DBDIR}/pkg.bak"
+PKGDB="$(make -C ${PORTSDIR}/ports-mgmt/pkg -VPKG_DBDIR)"
+PKGBAK="$PKGDB.bak"
 
 for PKG in $( pkg_info -Ea )
 do
