@@ -39,8 +39,6 @@
 
 #include <pkg.h>
 
-#include "zfssnap.h"
-
 #define PLUGIN_NAME "zfssnap"
 #define PLUGIN_CONF "/usr/local/etc/pkg/plugins/zfssnap.conf"
 
@@ -56,6 +54,8 @@ static struct _zfssnap_config {
 
 static int plugins_zfssnap_load_conf(const char *file);
 static const char *plugins_zfssnap_get_conf(const char *key);
+static int plugins_zfssnap_callback(void *data, struct pkgdb *db);
+
 static int plugins_zfssnap_fd = -1;
 static properties plugins_zfssnap_p = NULL;
 
@@ -127,7 +127,7 @@ plugins_zfssnap_get_conf(const char *key)
 	return (NULL);
 }
 
-int
+static int
 plugins_zfssnap_callback(void *data, struct pkgdb *db)
 {
 	char cmd_buf[MAXPATHLEN + 1];
