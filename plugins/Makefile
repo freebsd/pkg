@@ -1,6 +1,6 @@
 SUBDIR+=	command-mystats
 SUBDIR+=	stats
 SUBDIR+=	zfssnap
-SUBDIR+=	serve
+SUBDIR+=	command-serve
 
 .include <bsd.subdir.mk>
