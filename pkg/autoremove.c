@@ -38,7 +38,7 @@
 void
 usage_autoremove(void)
 {
-	fprintf(stderr, "usage: pkg autoremove [-yq]\n\n");
+	fprintf(stderr, "usage: pkg autoremove [-ynq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help autoremove'.\n");
 }
 
@@ -55,14 +55,18 @@ exec_autoremove(int argc, char **argv)
 	char size[7];
 	int ch;
 	bool yes = false;
+	bool dry_run = false;
 
-	while ((ch = getopt(argc, argv, "yq")) != -1) {
+	while ((ch = getopt(argc, argv, "ynq")) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
 			break;
 		case 'y':
 			yes = true;
+			break;
+		case 'n':
+			dry_run = true;
 			break;
 		default:
 			break;
@@ -87,7 +91,7 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	/* Always force packages to be removed */
-	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, true, false)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, true, dry_run)
 	    != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
@@ -120,7 +124,7 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	pkg = NULL;
-	if (!quiet) {
+	if (!quiet || dry_run) {
 		printf("Packages to be autoremoved: \n");
 		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
 			const char *name, *version;
@@ -135,8 +139,10 @@ exec_autoremove(int argc, char **argv)
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-		if (!yes)
+		if (!yes && !dry_run)
 			yes = query_yesno("\nProceed with autoremoval of packages [y/N]: ");
+		if (dry_run)
+			yes = false;
 	}
 
 	if (yes) {
