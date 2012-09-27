@@ -167,18 +167,13 @@ meta_dirrm(struct plist *p, char *line, bool try)
 
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
-	/* Only omit warning if not @dirrmtry, or always show in DEVELOPER_MODE */
-	if (!try || developer)
-		pkg_emit_errno("lstat", path);
+	pkg_emit_errno("lstat", path);
 
-	/* Don't emit fatal if using @dirrmtry, regardless of DEVELOPER_MODE or staging */
-	if (!try) {
-		if (p->stage != NULL)
-			return (EPKG_FATAL);
-		if (developer) {
-			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
-			return (EPKG_FATAL);
-		}
+	if (p->stage != NULL)
+		return (EPKG_FATAL);
+	if (developer) {
+		pkg_emit_developer_mode("Plist error: @dirrm %s", line);
+		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
 }
