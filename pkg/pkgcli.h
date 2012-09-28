@@ -28,6 +28,8 @@
 #define _PKGCLI_H
 
 extern bool quiet;
+int nbactions;
+int nbdone;
 
 /* pkg add */
 int exec_add(int, char **);

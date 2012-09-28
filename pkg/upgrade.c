@@ -55,7 +55,7 @@ exec_upgrade(int argc, char **argv)
 	bool all = false;
 	bool dry_run = false;
 	bool auto_update = true;
-	int nbpkgs;
+	nbactions = nbdone = 0;
 
 	while ((ch = getopt(argc, argv, "fLnqr:y")) != -1) {
 		switch (ch) {
@@ -120,7 +120,7 @@ exec_upgrade(int argc, char **argv)
 	}
 	pkgdb_it_free(it);
 
-	if ((nbpkgs = pkg_jobs_count(jobs)) == 0) {
+	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
 		if (!quiet)
 			printf("Nothing to do\n");
 		retcode = EXIT_SUCCESS;
@@ -129,7 +129,7 @@ exec_upgrade(int argc, char **argv)
 
 	pkg = NULL;
 	if (!quiet || dry_run) {
-		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following %d packages will be upgraded:\n\n", nbpkgs);
+		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following %d packages will be upgraded:\n\n", nbactions);
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
