@@ -92,8 +92,10 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg_get(ev->e_install_begin.pkg, PKG_NAME, &name,
 		    PKG_VERSION, &version);
 		nbdone++;
-		printf("[%d/%d] Installing %s-%s...", nbdone, nbactions,
-		    name, version);
+		if (nbactions > 0)
+			printf("[%d/%d] ", nbdone, nbactions);
+		printf("Installing %s-%s...", name, version);
+
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
@@ -122,8 +124,9 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME, &name,
 		    PKG_VERSION, &version);
 		nbdone++;
-		printf("[%d/%d] Deleting %s-%s...", nbdone, nbactions,
-		    name, version);
+		if (nbactions > 0)
+			printf("[%d/%d] ", nbdone, nbactions);
+		printf("Deleting %s-%s...", name, version);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
@@ -136,20 +139,19 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_NEWVERSION, &newversion);
 		nbdone++;
+		if (nbactions > 0)
+			printf("[%d/%d] ", nbdone, nbactions);
 		switch (pkg_version_cmp(version, newversion)) {
 		case 1:
-			printf("[%d/%d] Downgrading %s from %s to %s...",
-			    nbdone, nbactions,
+			printf("Downgrading %s from %s to %s...",
 			    name, version, newversion);
 			break;
 		case 0:
-			printf("[%d/%d] Reinstalling %s-%s",
-			    nbdone, nbactions,
+			printf("Reinstalling %s-%s",
 			    name, version);
 			break;
 		case -1:
-			printf("[%d/%d] Upgrading %s from %s to %s...",
-			    nbdone, nbactions,
+			printf("Upgrading %s from %s to %s...",
 			    name, version, newversion);
 			break;
 		}
