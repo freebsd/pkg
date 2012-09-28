@@ -62,6 +62,7 @@ exec_delete(int argc, char **argv)
 	int recursive = 0;
 	bool haspkg = false;
 	const char *origin;
+	int nbpkgs;
 
 	while ((ch = getopt(argc, argv, "afgnqRXxy")) != -1) {
 		switch (ch) {
@@ -140,7 +141,7 @@ exec_delete(int argc, char **argv)
 	}
 
 	/* check if we have something to deinstall */
-	if (pkg_jobs_count(jobs) == 0) {
+	if ((nbpkgs = pkg_jobs_count(jobs)) == 0) {
 		if (argc == 0) {
 			if (!quiet)
 				printf("Nothing to do.\n");
@@ -155,7 +156,7 @@ exec_delete(int argc, char **argv)
 	pkg = NULL;
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs, PKG_JOBS_DEINSTALL,
-		    "The following packages will be deinstalled:\n\n");
+		    "The following %d packages will be deinstalled:\n\n", nbpkgs);
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);

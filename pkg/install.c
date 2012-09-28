@@ -67,6 +67,7 @@ exec_install(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	bool force = false;
 	bool dry_run = false;
+	int nbpkgs = 0;
 
 	while ((ch = getopt(argc, argv, "AfgLnqRr:Xxy")) != -1) {
 		switch (ch) {
@@ -147,14 +148,15 @@ exec_install(int argc, char **argv)
 	}
 	pkgdb_it_free(it);
 
-	if (pkg_jobs_count(jobs) == 0)
+	if ((nbpkgs = pkg_jobs_count(jobs)) == 0)
 		goto cleanup;
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs, PKG_JOBS_INSTALL,
-		    "The following packages will be installed:\n\n");
+		    "The following %d packages will be installed:\n\n",
+		    nbpkgs);
 
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);

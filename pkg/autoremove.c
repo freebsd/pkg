@@ -56,6 +56,7 @@ exec_autoremove(int argc, char **argv)
 	int ch;
 	bool yes = false;
 	bool dry_run = false;
+	int nbpkgs;
 
 	while ((ch = getopt(argc, argv, "ynq")) != -1) {
 		switch (ch) {
@@ -117,7 +118,7 @@ exec_autoremove(int argc, char **argv)
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
 	}
 
-	if (pkg_jobs_count(jobs) == 0) {
+	if ((nbpkgs = pkg_jobs_count(jobs)) == 0) {
 		printf("Nothing to do.\n");
 		retcode = 0;
 		goto cleanup;
@@ -125,7 +126,7 @@ exec_autoremove(int argc, char **argv)
 
 	pkg = NULL;
 	if (!quiet || dry_run) {
-		printf("Packages to be autoremoved: \n");
+		printf("%d packages to be autoremoved: \n", nbpkgs);
 		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
 			const char *name, *version;
 			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
