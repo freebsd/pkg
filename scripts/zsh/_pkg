@@ -79,8 +79,8 @@ _pkg() {
 			;;
 		(autoremove)
 			_arguments -s \
-				'-y[Assume yes when asked for confirmation]' \
-				'-i[Interactive]' \
+				'(-y)-n[Assume yes when asked for confirmation]' \
+				'(-n)-y[Assume no (dry run) for confirmations]' \
 				&& return 0
 			;;
 		(backup)
@@ -120,7 +120,8 @@ _pkg() {
 			;;
 		(delete|remove)
 			_arguments -s \
-				'-y[Assume yes when asked for confirmation]' \
+				'(-y)-n[Assume yes when asked for confirmation]' \
+				'(-n)-y[Assume no (dry run) for confirmations]' \
 				'-f[Forces packages to be removed]' \
 				'(-g -x -X)-a[Process all packages]' \
 				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
@@ -166,7 +167,8 @@ _pkg() {
 			;;
 		(install)
 			_arguments -s \
-				'-y[Assume yes when asked for confirmation]' \
+				'(-y)-n[Assume yes when asked for confirmation]' \
+				'(-n)-y[Assume no (dry run) for confirmations]' \
 				'-f[Force reinstallation if needed]' \
 				'-R[Reinstall every package depending on matching expressions]' \
 				'-L[Do not try to update the repository metadata]' \
@@ -265,7 +267,8 @@ _pkg() {
 			;;
 		(upgrade)
 			_arguments -s \
-				'-y[Assume yes when asked for confirmation]' \
+				'(-y)-n[Assume yes when asked for confirmation]' \
+				'(-n)-y[Assume no (dry run) for confirmations]' \
 				'-f[Upgrade/Reinstall everything]' \
 				'-L[Do not try to update the repository metadata]' \
 				&& return 1
