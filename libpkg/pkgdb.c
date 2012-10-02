@@ -905,7 +905,7 @@ pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
 
 		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
 	} else {
-		const char sql[] = "ROLLBACK TO SAVEPOINT ?1";
+		const char sql[] = "RELEASE SAVEPOINT ?1";
 
 		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
 		if (ret == SQLITE_OK) 
@@ -943,7 +943,7 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 
 		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
 	} else {
-		const char sql[] = "RELEASE SAVEPOINT ?1";
+		const char sql[] = "ROLLBACK TO SAVEPOINT ?1";
 
 		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
 		if (ret == SQLITE_OK) 
