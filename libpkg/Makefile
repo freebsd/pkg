@@ -28,6 +28,7 @@ SRCS=		${PC} \
 		pkg_jobs.c \
 		pkg_manifest.c \
 		pkg_ports.c \
+		pkg_printf.c \
 		pkg_repo.c \
 		pkg_status.c \
 		pkg_version.c \
