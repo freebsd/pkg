@@ -29,6 +29,7 @@
 
 #include <ctype.h>
 #include <inttypes.h>
+#include <stdarg.h>
 #define _WITH_DPRINTF
 #include <stdio.h>
 #include <string.h>
@@ -1277,8 +1278,66 @@ parse_escape(const char *f, struct percent_esc *p)
 	return (f);
 }
 
+/*
+ * Format codes
+ *    Type      What
+ * A
+ * B  pkg       List of shared libraries
+ * C  pkg       List of categories
+ * D  pkg       List of directories
+ * E
+ * F  pkg       List of files
+ * G  pkg       List of groups
+ * H
+ * I
+ * J
+ * K
+ * L  pkg       List of licenses
+ * M  pkg       message
+ * N
+ * O  pkg       List of options
+ * P
+ * Q
+ * R
+ * S
+ * T
+ * U  pkg       List of users
+ * V
+ * W
+ * X
+ * Y
+ * Z
+ * a  pkg       autoremove flag
+ * b
+ * c  pkg       comment
+ * d  pkg       List of dependencies
+ * e
+ * f
+ * g
+ * h
+ * i  pkg       additional info
+ * j
+ * k
+ * l  pkg       license logic
+ * m  pkg       maintainer
+ * n  pkg       name
+ * o  pkg       origin
+ * p  pkg       prefix
+ * q
+ * r  pkg       List of requirements
+ * s  pkg       flatsize
+ * t  pkg       install timestamp
+ * u
+ * v  pkg       version
+ * w  pkg       home page URL
+ * x
+ * y
+ * z
+ */
+
+
 static const char *
-process_format(struct sbuf *sbuf, const char *f, struct pkg *pkg)
+process_format(struct sbuf *sbuf, const char *f, void *data)
 {
 	const char		*fstart;
 	struct sbuf		*s;
@@ -1295,74 +1354,74 @@ process_format(struct sbuf *sbuf, const char *f, struct pkg *pkg)
 	case '%':		/* literal % */
 		sbuf_putc(sbuf, '%');
 		break;
-	case 'B':		/* shared libraries */
-		s = format_shlibs(sbuf, pkg, p);
+	case 'B':		/* pkg list of shared libraries */
+		s = format_shlibs(sbuf, (struct pkg *) data, p);
 		break;
-	case 'C':		/* categories */
-		s = format_categories(sbuf, pkg, p);
+	case 'C':		/* pkg list categories */
+		s = format_categories(sbuf, (struct pkg *) data, p);
 		break;
-	case 'D':		/* directories */
-		s = format_directories(sbuf, pkg, p);
+	case 'D':		/* pkg list of directories */
+		s = format_directories(sbuf, (struct pkg *) data, p);
 		break;
-	case 'F':		/* files */
-		s = format_files(sbuf, pkg, p);
+	case 'F':		/* pkg list of files */
+		s = format_files(sbuf, (struct pkg *) data, p);
 		break;
-	case 'G':		/* groups */
-		s = format_groups(sbuf, pkg, p);
+	case 'G':		/* pkg list of groups */
+		s = format_groups(sbuf, (struct pkg *) data, p);
 		break;
-	case 'L':		/* licenses */
-		s = format_licenses(sbuf, pkg, p);
+	case 'L':		/* pkg list of licenses */
+		s = format_licenses(sbuf, (struct pkg *) data, p);
 		break;
-	case 'M':		/* message */
-		s = format_message(sbuf, pkg, p);
+	case 'M':		/* pkg message */
+		s = format_message(sbuf, (struct pkg *) data, p);
 		break;
-	case 'O':		/* options */
-		s = format_options(sbuf, pkg, p);
+	case 'O':		/* pkg list of options */
+		s = format_options(sbuf, (struct pkg *) data, p);
 		break;
-	case 'U':		/* users */
-		s = format_users(sbuf, pkg, p);
+	case 'U':		/* pkg list of users */
+		s = format_users(sbuf, (struct pkg *) data, p);
 		break;
-	case 'a':		/* autoremove flag */
-		s = format_autoremove(sbuf, pkg, p);
+	case 'a':		/* pkg autoremove flag */
+		s = format_autoremove(sbuf, (struct pkg *) data, p);
 		break;
-	case 'c':		/* comment */
-		s = format_comment(sbuf, pkg, p);
+	case 'c':		/* pkg comment */
+		s = format_comment(sbuf, (struct pkg *) data, p);
 		break;
-	case 'd':		/* dependencies */
-		s = format_dependencies(sbuf, pkg, p);
+	case 'd':		/* pkg list of dependencies */
+		s = format_dependencies(sbuf, (struct pkg *) data, p);
 		break;
-	case 'i':		/* additional info */
-		s = format_add_info(sbuf, pkg, p);
+	case 'i':		/* pkg additional info */
+		s = format_add_info(sbuf, (struct pkg *) data, p);
 		break;
-	case 'l':		/* license logic */
-		s = format_license_logic(sbuf, pkg, p);
+	case 'l':		/* pkg license logic */
+		s = format_license_logic(sbuf, (struct pkg *) data, p);
 		break;
-	case 'm':		/* maintainer */
-		s = format_maintainer(sbuf, pkg, p);
+	case 'm':		/* pkg maintainer */
+		s = format_maintainer(sbuf, (struct pkg *) data, p);
 		break;
-	case 'n':		/* name */
-		s = format_name(sbuf, pkg, p);
+	case 'n':		/* pkg name */
+		s = format_name(sbuf, (struct pkg *) data, p);
 		break;
-	case 'o':		/* origin */
-		s = format_origin(sbuf, pkg, p);
+	case 'o':		/* pkg origin */
+		s = format_origin(sbuf, (struct pkg *) data, p);
 		break;
-	case 'p':		/* prefix */
-		s = format_prefix(sbuf, pkg, p);
+	case 'p':		/* pkg prefix */
+		s = format_prefix(sbuf, (struct pkg *) data, p);
 		break;
-	case 'r':		/* requirements */
-		s = format_requirements(sbuf, pkg, p);
+	case 'r':		/* pkg list of requirements */
+		s = format_requirements(sbuf, (struct pkg *) data, p);
 		break;
-	case 's':		/* flat size */
-		s = format_flatsize(sbuf, pkg, p);
+	case 's':		/* pkg flat size */
+		s = format_flatsize(sbuf, (struct pkg *) data, p);
 		break;
-	case 't':		/* installation timestamp */
-		s = format_install_tstamp(sbuf, pkg, p);
+	case 't':		/* pkg installation timestamp */
+		s = format_install_tstamp(sbuf, (struct pkg *) data, p);
 		break;
-	case 'v':		/* version */
-		s = format_version(sbuf, pkg, p);
+	case 'v':		/* pkg version */
+		s = format_version(sbuf, (struct pkg *) data, p);
 		break;
 	case 'w':		/* pkg home page URL */
-		s = format_home_url(sbuf, pkg, p);
+		s = format_home_url(sbuf, (struct pkg *) data, p);
 		break;
 	default:
 		/* If it's not a known escape, pass through unchanged */
@@ -1381,18 +1440,21 @@ process_format(struct sbuf *sbuf, const char *f, struct pkg *pkg)
 
 /**
  * print to stdout data from pkg as indicated by the format code fmt
- * @param pkg The struct pkg supplying the data
+ * @param ... Varargs list of struct pkg etc. supplying the data
  * @param fmt String with embedded %-escapes indicating what to print
  * @return count of the number of characters printed
  */
 int
-pkg_printf(const char *fmt, struct pkg *pkg)
+pkg_printf(const char *fmt, ...)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
+	va_list		 ap;
 
+	va_start(ap, fmt);
 	if (sbuf)
-		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+		sbuf = pkg_sbuf_vprintf(sbuf, fmt, ap);
+	va_end(ap);
 	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = printf("%s", sbuf_data(sbuf));
@@ -1405,18 +1467,21 @@ pkg_printf(const char *fmt, struct pkg *pkg)
 
 /**
  * print to named stream from pkg as indicated by the format code fmt
- * @param pkg The struct pkg supplying the data
+ * @param ... Varargs list of struct pkg etc. supplying the data
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
  */
 int
-pkg_fprintf(FILE *stream, const char *fmt, struct pkg *pkg)
+pkg_fprintf(FILE *stream, const char *fmt, ...)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
+	va_list		 ap;
 
+	va_start(ap, fmt);
 	if (sbuf)
-		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+		sbuf = pkg_sbuf_vprintf(sbuf, fmt, ap);
+	va_end(ap);
 	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = fprintf(stream, "%s", sbuf_data(sbuf));
@@ -1431,18 +1496,21 @@ pkg_fprintf(FILE *stream, const char *fmt, struct pkg *pkg)
  * print to file descriptor d data from pkg as indicated by the format
  * code fmt
  * @param d Previously opened file descriptor to print to
- * @param pkg The struct pkg supplying the data
+ * @param ... Varargs list of struct pkg etc. supplying the data
  * @param fmt String with embedded %-escapes indicating what to print
  * @return count of the number of characters printed
  */
 int
-pkg_dprintf(int fd, const char *fmt, struct pkg *pkg)
+pkg_dprintf(int fd, const char *fmt, ...)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
+	va_list		 ap;
 
+	va_start(ap, fmt);
 	if (sbuf)
-		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+		sbuf = pkg_sbuf_vprintf(sbuf, fmt, ap);
+	va_end(ap);
 	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = dprintf(fd, "%s", sbuf_data(sbuf));
@@ -1458,19 +1526,22 @@ pkg_dprintf(int fd, const char *fmt, struct pkg *pkg)
  * format code fmt as a NULL-terminated string
  * @param str Character array buffer to receive output
  * @param size Length of the buffer str
- * @param pkg The struct pkg supplying the data
+ * @param ... Varargs list of struct pkg etc. supplying the data
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters that would have been output
  * disregarding truncation to fit size
  */
 int
-pkg_snprintf(char *str, size_t size, const char *fmt, struct pkg *pkg)
+pkg_snprintf(char *str, size_t size, const char *fmt, ...)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
+	va_list		 ap;
 
+	va_start(ap, fmt);
 	if (sbuf)
-		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+		sbuf = pkg_sbuf_vprintf(sbuf, fmt, ap);
+	va_end(ap);
 	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = snprintf(str, size, "%s", sbuf_data(sbuf));
@@ -1486,18 +1557,21 @@ pkg_snprintf(char *str, size_t size, const char *fmt, struct pkg *pkg)
  * data data from pkg as indicated by the format code fmt
  * @param ret location of pointer to be set to point to buffer containing
  * result 
- * @param pkg The struct pkg supplying the data
+ * @param ... Varargs list of struct pkg etc. supplying the data
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
  */
 int
-pkg_asprintf(char **ret, const char *fmt, struct pkg *pkg)
+pkg_asprintf(char **ret, const char *fmt, ...)
 {
 	struct sbuf	*sbuf = sbuf_new_auto();
 	int		 count;
+	va_list		 ap;
 
+	va_start(ap, fmt);
 	if (sbuf)
-		sbuf = pkg_sbuf_printf(sbuf, fmt, pkg);
+		sbuf = pkg_sbuf_vprintf(sbuf, fmt, ap);
+	va_end(ap);
 	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = asprintf(ret, "%s", sbuf_data(sbuf));
@@ -1514,18 +1588,41 @@ pkg_asprintf(char **ret, const char *fmt, struct pkg *pkg)
  * store data from pkg into sbuf as indicated by the format code fmt.
  * This is the core function called by all the other pkg_printf() family.
  * @param sbuf contains the result
- * @param pkg The struct pkg supplying the data
+ * @param ... Varargs list of struct pkg etc. supplying the data
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
 struct sbuf *
-pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, struct pkg *pkg)
+pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, ...)
 {
 	const char	*f;
+	va_list		 ap;
+
+	va_start(ap, fmt);
+	sbuf = pkg_sbuf_vprintf(sbuf, fmt, ap);
+	va_end(ap);
+
+	return (sbuf);
+}
+
+/**
+ * store data from pkg into sbuf as indicated by the format code fmt.
+ * This is the core function called by all the other pkg_printf() family.
+ * @param sbuf contains the result
+ * @param ap Arglist with struct pkg etc. supplying the data
+ * @param fmt String with embedded %-escapes indicating what to output
+ * @return count of the number of characters in the result
+ */
+struct sbuf *
+pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, va_list ap)
+{
+	const char	*f;
+	void		*data;
 
 	for (f = fmt; *f != '\0'; f++) {
 		if (*f == '%') {
-			f = process_format(sbuf, f, pkg);
+			data = va_arg(ap, void *);
+			f = process_format(sbuf, f, data);
 		} else if (*f == '\\' ) {
 			f = process_escape(sbuf, f);
 		} else {
@@ -1538,7 +1635,6 @@ pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, struct pkg *pkg)
 	}
 	return (sbuf);
 }
-
 /*
  * That's All Folks!
  */
