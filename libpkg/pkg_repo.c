@@ -419,7 +419,7 @@ initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 			return (retcode);
 	}
 
-	if ((retcode = sql_exec(*sqlite, "BEGIN TRANSACTION")) != EPKG_OK)
+	if ((retcode = pkgdb_transaction_begin(*sqlite, NULL)) != EPKG_OK)
 		return (retcode);
 
 	/* remove anything that is no longer in the repository. */
@@ -793,10 +793,8 @@ pkg_create_repo(char *path, bool force,
 		free(r);
 	}
 
-	if (sqlite3_exec(sqlite, "COMMIT;", NULL, NULL, &errmsg) != SQLITE_OK) {
-		pkg_emit_error("sqlite: %s", errmsg);
+	if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK)
 		retcode = EPKG_FATAL;
-	}
 
 	cleanup:
 

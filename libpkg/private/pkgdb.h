@@ -45,6 +45,17 @@ struct pkgdb_it {
 	int		 type;
 };
 
+
+/**
+ * Transaction/savepoint handling.
+ * @param savepoint -- if NULL or an empty string, use BEGIN, ROLLBACK, COMMIT
+ * otherwise use SAVEPOINT, ROLLBACK TO, RELEASE.
+ * @return an error code.
+ */
+int pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint);
+int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
+int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
+
 int pkgdb_lock(struct pkgdb *db);
 int pkgdb_unlock(struct pkgdb *db);
 

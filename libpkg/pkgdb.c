@@ -422,18 +422,22 @@ pkgdb_upgrade(struct pkgdb *db)
 			return (EPKG_FATAL);
 		}
 
-		if (sql_exec(db->sqlite, "BEGIN;") != EPKG_OK)
+		if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 
-		if (sql_exec(db->sqlite, sql_upgrade) != EPKG_OK)
+		if (sql_exec(db->sqlite, sql_upgrade) != EPKG_OK) {
+			pkgdb_transaction_rollback(db->sqlite, NULL);
 			return (EPKG_FATAL);
+		}
 
 		sql_str = "PRAGMA user_version = %" PRId64 ";";
 		ret = sql_exec(db->sqlite, sql_str, db_version);
-		if (ret != EPKG_OK)
+		if (ret != EPKG_OK) {
+			pkgdb_transaction_rollback(db->sqlite, NULL);
 			return (EPKG_FATAL);
+		}
 
-		if (sql_exec(db->sqlite, "COMMIT;") != EPKG_OK)
+		if (pkgdb_transaction_commit(db->sqlite, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
@@ -851,6 +855,118 @@ pkgdb_close(struct pkgdb *db)
 	sqlite3_shutdown();
 	free(db);
 }
+
+/* How many times to try COMMIT or ROLLBACK if the DB is busy */ 
+#define NTRIES	3
+
+int
+pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
+{
+	int		 ret;
+	sqlite3_stmt	*stmt;
+
+	assert(sqlite != NULL);
+
+	if (savepoint == NULL || savepoint[0] == '\0') {
+		const char sql[] = "BEGIN IMMEDIATE TRANSACTION";
+		
+		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
+	} else {
+		const char sql[] = "SAVEPOINT ?1";
+
+		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
+		if (ret == SQLITE_OK) 
+			ret = sqlite3_bind_text(stmt, 1, savepoint, -1,
+						SQLITE_STATIC);
+	}
+
+	if (ret == SQLITE_OK)
+		ret = sqlite3_step(stmt);
+
+	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_OK && ret != SQLITE_DONE)
+		ERROR_SQLITE(sqlite);
+
+	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
+}
+
+int
+pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
+{
+	int		 ret;
+	int		 tries;
+	sqlite3_stmt	*stmt;
+
+	assert(sqlite != NULL);
+
+	if (savepoint == NULL || savepoint[0] == '\0') {
+		const char sql[] = "COMMIT TRANSACTION";
+
+		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
+	} else {
+		const char sql[] = "ROLLBACK TO SAVEPOINT ?1";
+
+		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
+		if (ret == SQLITE_OK) 
+			ret = sqlite3_bind_text(stmt, 1, savepoint, -1,
+						SQLITE_STATIC);
+	}
+
+	if (ret == SQLITE_OK)
+		for (tries = 0; tries < NTRIES; tries++) {
+			ret = sqlite3_step(stmt);
+			if (ret != SQLITE_BUSY)
+				break;
+			sqlite3_sleep(250);
+		}
+
+	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_OK && ret != SQLITE_DONE)
+		ERROR_SQLITE(sqlite);
+
+	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
+}
+
+int
+pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
+{
+	int		 ret;
+	int		 tries;
+	sqlite3_stmt	*stmt;
+
+	assert(sqlite != NULL);
+
+	if (savepoint == NULL || savepoint[0] == '\0') {
+		const char sql[] = "ROLLBACK TRANSACTION";
+
+		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
+	} else {
+		const char sql[] = "RELEASE SAVEPOINT ?1";
+
+		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
+		if (ret == SQLITE_OK) 
+			ret = sqlite3_bind_text(stmt, 1, savepoint, -1,
+						SQLITE_STATIC);
+	}
+
+	if (ret == SQLITE_OK)
+		for (tries = 0; tries < NTRIES; tries++) {
+			ret = sqlite3_step(stmt);
+			if (ret != SQLITE_BUSY)
+				break;
+			sqlite3_sleep(250);
+		}
+
+	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_OK && ret != SQLITE_DONE)
+		ERROR_SQLITE(sqlite);
+
+	return (ret == SQLITE_OK || ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
+}
+
 
 static struct pkgdb_it *
 pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
@@ -1806,7 +1922,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 
 	s = db->sqlite;
 
-	if (!complete && sql_exec(s, "BEGIN;") != EPKG_OK)
+	if (!complete && pkgdb_transaction_begin(s, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	pkg_get(pkg,
@@ -2109,13 +2225,14 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_register_finale(struct pkgdb *db, int retcode)
 {
-	int		 ret = EPKG_OK;
-	const char	*cmd;
+	int	ret = EPKG_OK;
 
 	assert(db != NULL);
 
-	cmd = (retcode == EPKG_OK) ? "COMMIT;" : "ROLLBACK;";
-	ret = sql_exec(db->sqlite, cmd);
+	if (retcode == EPKG_OK) 
+		ret = pkgdb_transaction_commit(db->sqlite, NULL);
+	else
+		ret = pkgdb_transaction_rollback(db->sqlite, NULL);
 
 	return (ret);
 }

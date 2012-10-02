@@ -165,7 +165,8 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 	p = NULL;
 	/* Install */
-	sql_exec(j->db->sqlite, "SAVEPOINT upgrade;");
+	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
+
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		const char *pkgorigin, *pkgrepopath, *newversion, *origin;
 		bool automatic;
@@ -248,7 +249,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 			flags |= PKG_ADD_AUTOMATIC;
 
 		if (pkg_add(j->db, path, flags) != EPKG_OK) {
-			sql_exec(j->db->sqlite, "ROLLBACK TO upgrade;");
+			pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
 			goto cleanup;
 		}
 
@@ -258,15 +259,15 @@ pkg_jobs_install(struct pkg_jobs *j)
 			pkg_emit_install_finished(newpkg);
 
 		if (STAILQ_EMPTY(&pkg_queue)) {
-			sql_exec(j->db->sqlite, "RELEASE upgrade;");
-			sql_exec(j->db->sqlite, "SAVEPOINT upgrade;");
+			pkgdb_transaction_commit(j->db->sqlite, "upgrade");
+			pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 		}
 	}
 
 	retcode = EPKG_OK;
 
 	cleanup:
-	sql_exec(j->db->sqlite, "RELEASE upgrade;");
+	pkgdb_transaction_commit(j->db->sqlite, "upgrade");
 	pkg_free(newpkg);
 
 	return (retcode);
