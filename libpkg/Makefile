@@ -25,7 +25,6 @@ SRCS=		backup.c \
 		pkg_jobs.c \
 		pkg_manifest.c \
 		pkg_ports.c \
-		pkg_printf.c \
 		pkg_repo.c \
 		pkg_version.c \
 		pkgdb.c \
