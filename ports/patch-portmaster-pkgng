@@ -1,15 +1,12 @@
-
-$FreeBSD$
-
---- portmaster.sh.in.orig
-+++ portmaster.sh.in
+--- ./portmaster.sh.in.orig	2012-10-01 09:34:15.000000000 +0100
++++ ./portmaster.sh.in	2012-10-02 18:14:34.319249588 +0100
 @@ -47,7 +47,7 @@
  #=============== Begin functions we always want to have ===============
  
  version () {
--	echo '' ; echo "===>>> Version 3.13.13"
-+	echo '' ; echo "===>>> Version 3.13.13 (pkgng patch 1.5)"
- 	#svn='$FreeBSD: user/dougb/portmaster/portmaster 238754 2012-07-24 20:15:41Z dougb $'
+-	echo '' ; echo "===>>> Version 3.14"
++	echo '' ; echo "===>>> Version 3.14 (pkgng patch 1.6)"
+ 	#svn='$FreeBSD: user/dougb/portmaster/portmaster 241090 2012-10-01 08:32:05Z dougb $'
  }
  
 @@ -134,6 +134,8 @@
@@ -50,30 +47,33 @@ $FreeBSD$
 +		if [ -z "$use_pkgng" ]; then
 +			for f in $build_deps_il; do
 +				pm_v "       $f"
-+				pm_pkg_delete_s -f $f
++				pm_pkg_delete_s $f
 +			done
 +		else
-+			pm_pkg_delete_s -f $build_deps_il
++			pm_pkg_delete_s $build_deps_il
 +		fi
  		echo ''
  	fi
  
-@@ -323,7 +334,13 @@
+@@ -323,7 +334,16 @@
  pm_make_s         () { ( unset -v CUR_DEPS INSTALLED_LIST PM_DEPTH build_l PM_URB_LIST;
  			 $PM_SU_CMD /usr/bin/nice /usr/bin/make $PM_MAKE_ARGS $*; ); }
  pm_mkdir_s        () { $PM_SU_CMD /bin/mkdir -p $1; }
 -pm_pkg_delete_s   () { $PM_SU_CMD /usr/sbin/pkg_delete $*; }
 +pm_pkg_delete_s   () {
 +	if [ -z "$use_pkgng" ]; then
-+		$PM_SU_CMD /usr/sbin/pkg_delete $*;
++		$PM_SU_CMD /usr/sbin/pkg_delete -f $*;
 +	else
-+		$PM_SU_CMD /usr/local/sbin/pkg delete -y $*;
++		$PM_SU_CMD /usr/local/sbin/pkg delete -yf $*;
++		for d in $* ; do
++		    pm_rm_s -rf $pdb/$d
++		done
 +	fi
 +}
  pm_rm_s           () { $PM_SU_CMD /bin/rm $*; }
  pm_rmdir_s        () { $PM_SU_CMD /bin/rmdir $*; }
  pm_unlink_s       () { [ -e "$1" ] && $PM_SU_CMD /bin/unlink $1; }
-@@ -371,6 +388,10 @@
+@@ -371,6 +391,10 @@
  	[ -z "$port_dbdir" ] &&
  		port_dbdir=`pm_make_b -f/usr/share/mk/bsd.port.mk -V PORT_DBDIR 2>/dev/null`
  	[ -n "$port_dbdir" ] && export port_dbdir
@@ -84,7 +84,7 @@ $FreeBSD$
  fi
  
  usage () {
-@@ -527,12 +548,17 @@
+@@ -527,12 +551,17 @@
  
  	pattern=`globstrip $1`
  
@@ -104,7 +104,7 @@ $FreeBSD$
  	esac
  
  	unset glob_dirs
-@@ -542,20 +568,35 @@
+@@ -542,20 +571,35 @@
  origin_from_pdb () {
  	local o
  
@@ -145,7 +145,7 @@ $FreeBSD$
  		echo '' >&2
  	fi
  	return 1
-@@ -697,12 +738,17 @@
+@@ -697,12 +741,17 @@
  	o)	REPLACE_ORIGIN=oopt ;;
  	p)	fail 'The -p option has been deprecated' ;;
  	r)	PM_URB=ropt
@@ -165,7 +165,7 @@ $FreeBSD$
  			2)	fail 'The argument to -r must match only one port' ;;
  			esac
  		fi
-@@ -784,6 +830,12 @@
+@@ -784,6 +833,12 @@
  	    fail 'The -[ar] options are not compatible with other updates'
  
  	if [ -n "$PM_PACKAGES" -o -n "$PM_PACKAGES_BUILD" ]; then
@@ -178,7 +178,7 @@ $FreeBSD$
  		[ `/sbin/sysctl -n kern.osreldate 2>/dev/null` -lt 600400 ] &&
  			fail Package installation support requires FreeBSD 6.4 or newer
  	fi
-@@ -850,7 +902,12 @@
+@@ -850,7 +905,12 @@
  		fi
  		unset INDEXFILE INDEXDIR
  
@@ -192,7 +192,7 @@ $FreeBSD$
  		export PM_INDEX_PORTS
  
  		if [ -z "$pd" -o "$pd" != /usr/ports ]; then
-@@ -907,6 +964,10 @@
+@@ -907,6 +967,10 @@
  iport_from_origin () {
  	local sn dir
  
@@ -203,7 +203,7 @@ $FreeBSD$
  	sn=${1#*/} ; sn=${sn%-*} ; sn=${sn%%[0-9]*}
  
  	if ! dir=`grep -l "@comment ORIGIN:${1}$" $pdb/${sn}*/+CONTENTS 2>/dev/null`; then
-@@ -935,7 +996,9 @@
+@@ -935,7 +999,9 @@
  	done
  }
  
@@ -213,7 +213,7 @@ $FreeBSD$
  	# Global: grep_deps
  	local origin iport ro_opd
  
-@@ -1017,7 +1080,9 @@
+@@ -1017,7 +1083,9 @@
  	fi
  }
  
@@ -223,7 +223,7 @@ $FreeBSD$
  	local IFS delete contents origin n_port old_origin iport
  	local o_seen line d_missing d_origin d_iport prev_line answer
  
-@@ -1117,7 +1182,7 @@
+@@ -1117,7 +1185,7 @@
  	for l in `grep "^$sf|" $pd/MOVED`; do
  		case "$l" in
  		${sf}\|\|*) [ -n "$iport" ] || iport=`iport_from_origin $sf`
@@ -232,7 +232,7 @@ $FreeBSD$
  				if [ -n "$PM_VERBOSE" ]; then
  					echo ''
  					echo "	===>>> The $sf port has been deleted"
-@@ -1152,24 +1217,36 @@
+@@ -1152,24 +1220,36 @@
  		echo ''
  
  		[ -n "$iport" ] || iport=`iport_from_origin $sf`
@@ -277,7 +277,7 @@ $FreeBSD$
  		if [ ! -d "$pd/$origin" ]; then
  			find_moved_port $origin $iport nonfatal >/dev/null
  			[ -n "$moved_npd" ] || continue
-@@ -1245,29 +1322,43 @@
+@@ -1256,29 +1336,43 @@
  
  	pm_v "===>>> Sorting ports by category"
  
@@ -341,7 +341,7 @@ $FreeBSD$
  }
  
  delete_empty_dist_subdirs () {
-@@ -1315,7 +1406,9 @@
+@@ -1326,7 +1420,9 @@
  	esac
  }
  
@@ -351,7 +351,7 @@ $FreeBSD$
  	# Global: needws
  	local do_update
  
-@@ -1325,7 +1418,7 @@
+@@ -1336,7 +1432,7 @@
  	else
  		do_update=do_update2
  	fi
@@ -360,7 +360,7 @@ $FreeBSD$
  		pm_v "	===>>> Updating $1/+REQUIRED_BY"
  		needws=needws_urb
  		pm_install_s $grep_deps $pdb/$1/+REQUIRED_BY
-@@ -1371,11 +1464,15 @@
+@@ -1382,11 +1478,15 @@
  
  	echo "===>>> Checking for stale packages"
  	for package in `find $PACKAGES -type f | sort`; do
@@ -379,7 +379,7 @@ $FreeBSD$
  
  		if [ -z "$PM_INDEX" ]; then
  			if [ -d "$pd/$origin" ]; then
-@@ -1391,16 +1488,28 @@
+@@ -1402,16 +1502,28 @@
  		fi
  
  		if [ -n "$port_ver" ]; then
@@ -417,7 +417,7 @@ $FreeBSD$
  				fi
  				unset port_ver
  				continue
-@@ -1411,10 +1520,18 @@
+@@ -1422,10 +1534,18 @@
  
  			unset port_ver
  
@@ -439,7 +439,7 @@ $FreeBSD$
  			fi
  		fi
  
-@@ -1453,6 +1570,10 @@
+@@ -1464,6 +1584,10 @@
  fi	# [ -n "$CLEAN_PACKAGES" ]
  
  if [ -n "$CHECK_DEPENDS" ]; then
@@ -450,7 +450,7 @@ $FreeBSD$
  	PM_VERBOSE=pmv_check_depends
  IFS='
  '
-@@ -1499,24 +1620,42 @@
+@@ -1510,24 +1634,42 @@
  	unique_list=':'
  
  	echo "===>>> Building list of installed port names"; echo ''
@@ -508,7 +508,7 @@ $FreeBSD$
  
  	echo "===>>> Checking $port_dbdir"
  
-@@ -1617,7 +1756,7 @@
+@@ -1628,7 +1770,7 @@
  
  	if [ -z "$do_update" -a -z "$skip" -a -z "$PM_INDEX_ONLY" ] && [ -d "$pd/$origin" ]; then
  		if ! pm_cd $pd/$origin; then
@@ -517,7 +517,7 @@ $FreeBSD$
  				echo "	===>>> Warning: Unable to cd to $pd/$origin"
  				echo "	===>>> Continuing due to $pdb/$iport/+IGNOREME"
  				echo ''
-@@ -1634,13 +1773,13 @@
+@@ -1645,13 +1787,13 @@
  
  		# If the port has moved and no +IGNOREME, we have to update it
  		if [ -n "$moved_npd" ]; then
@@ -534,7 +534,7 @@ $FreeBSD$
  			fi
  		fi
  	fi
-@@ -1657,14 +1796,20 @@
+@@ -1668,14 +1810,20 @@
  				unset port_ver
  			fi
  		else
@@ -557,7 +557,7 @@ $FreeBSD$
  			esac
  
  			[ -z "$do_update" ] && {
-@@ -1680,8 +1825,9 @@
+@@ -1691,8 +1839,9 @@
  	if [ -n "$LIST_PLUS" ]; then
  		if [ -z "$moved_npd" ]; then
  			echo "	===>>> New version available: $port_ver"
@@ -568,7 +568,7 @@ $FreeBSD$
  			pm_cd_pd $origin && check_state
  			num_updates=$(( $num_updates + 1 ))
  		else
-@@ -1736,7 +1882,13 @@
+@@ -1747,7 +1896,13 @@
  	fi
  
  	pm_cd $pkgdir || fail "Cannot cd into $pkgdir to create a package"
@@ -583,7 +583,7 @@ $FreeBSD$
  		if [ "$1" = "$pbu" ]; then
  			if [ -n "$BACKUP" ]; then
  				echo "	===>>> Package saved to $1" ; echo ''
-@@ -2085,10 +2237,14 @@
+@@ -2096,10 +2251,14 @@
  fi
  
  if [ -n "$EXPUNGE" ]; then
@@ -600,7 +600,7 @@ $FreeBSD$
  		2)	echo "===>>> $EXPUNGE matched multiple ports"
  			fail "The -e option works with only one port at a time" ;;
  		0)	EXPUNGE=${glob_dirs#$pdb/}
-@@ -2097,15 +2253,24 @@
+@@ -2108,15 +2267,24 @@
  	fi
  
  	origin=`origin_from_pdb $EXPUNGE`
@@ -630,7 +630,7 @@ $FreeBSD$
  				update_contents delete $f $origin
  			done ;;
  		*)	exit 1 ;;
-@@ -2115,8 +2280,13 @@
+@@ -2126,8 +2294,13 @@
  	[ -n "$BACKUP" ] && { init_packages ; pm_pkg_create $pbu $EXPUNGE; }
  	[ -z "$DONT_SCRUB_DISTFILES" ] && delete_all_distfiles $origin
  
@@ -642,11 +642,11 @@ $FreeBSD$
 +		pkg_delete="pkg delete"
 +	fi
 +	echo "===>>> Running $pkg_delete -f $EXPUNGE"
-+	pm_pkg_delete_s -f $EXPUNGE || fail "$pkg_delete failed"
++	pm_pkg_delete_s $EXPUNGE || fail "$pkg_delete failed"
  
  	echo '' ; echo "===>>> Running ${0##*/} -s $ARGS"
  	exec $0 -s $ARGS
-@@ -2126,13 +2296,21 @@
+@@ -2137,13 +2310,21 @@
  if [ -n "$CLEAN_STALE" ]; then
  	[ -z "$no_del_list" ] && export no_del_list=':'
  
@@ -670,7 +670,7 @@ $FreeBSD$
  		if [ -n "$deplist" ]; then
  			echo ''
  			echo "===>>> Warning: Unrecorded dependencies on ${iport}:"
-@@ -2145,22 +2323,32 @@
+@@ -2156,22 +2337,32 @@
  			continue
  		fi
  
@@ -691,7 +691,7 @@ $FreeBSD$
 -			echo "===>>> Running pkg_delete -f $iport"
 -			pm_pkg_delete_s -f $iport || fail 'pkg_delete failed'
 +			echo "===>>> Running $pkg_delete -f $iport"
-+			pm_pkg_delete_s -f $iport || fail "$pkg_delete failed"
++			pm_pkg_delete_s $iport || fail "$pkg_delete failed"
  
  			exec $0 -s $ARGS ;;
 -		*)	get_answer_yn n "\t===>>> Delete this dependency data"
@@ -711,7 +711,7 @@ $FreeBSD$
  		esac
  	done
  	exit 0
-@@ -2182,7 +2370,7 @@
+@@ -2193,7 +2384,7 @@
  	# to go out to the disk if we don't have to.
  	[ -z "$RESTART" ] && return 1
  
@@ -720,7 +720,7 @@ $FreeBSD$
  		return 1
  	else
  		already_done $1
-@@ -2199,7 +2387,7 @@
+@@ -2210,7 +2401,7 @@
  	case "$INTERACTIVE_YES" in *:${1}:*) return 0 ;; esac
  	case "$INTERACTIVE_NO" in *:${1}:*) return 1 ;; esac
  
@@ -729,7 +729,7 @@ $FreeBSD$
  		echo ''
  		echo "===>>> +IGNOREME file is present for $1"
  		echo ''
-@@ -2314,7 +2502,13 @@
+@@ -2325,7 +2516,13 @@
  
  	find_new_port $origin
  
@@ -744,7 +744,7 @@ $FreeBSD$
  	\<)	build_l="${build_l}\tUpgrade $iport to $new_port\n" ;;
  	=)	build_l="${build_l}\tRe-install $iport\n" ;;
  	\>)	build_l="${build_l}\tDowngrade $iport to $new_port\n" ;;
-@@ -2464,6 +2658,18 @@
+@@ -2475,6 +2672,18 @@
  		rundeps=`gen_dep_list run-depends-list`
  
  		for dep in $d_port_list; do
@@ -763,7 +763,7 @@ $FreeBSD$
  			case "$rundeps" in
  			*" ${dep} "*|*${dep}*)
  				varname=`echo ${dep#$pd/} | sed 's#[-+/\.]#_#g'`
-@@ -2533,7 +2739,11 @@
+@@ -2544,7 +2753,11 @@
  				fail "Cannot cd to $d_port"
  			fi
  			for glob in $conflicts; do
@@ -776,7 +776,7 @@ $FreeBSD$
  				if [ -n "$confl_p" ]; then
  					confl_p=${confl_p%% *}
  					d_port="$pd/`origin_from_pdb $confl_p`"
-@@ -2676,7 +2886,11 @@
+@@ -2687,7 +2900,11 @@
  		done
  
  		for dep in $build_only_dl_g; do
@@ -789,7 +789,7 @@ $FreeBSD$
  			[ -n "$PM_DEL_BUILD_ONLY" ] &&
  				iport_from_origin ${dep#$pd/} >/dev/null && continue
  			temp_bodlg="$temp_bodlg $dep"
-@@ -2703,7 +2917,7 @@
+@@ -2714,7 +2931,7 @@
  
  urb_update () {
  	# Global: PM_URB_UP
@@ -798,7 +798,7 @@ $FreeBSD$
  
  	verb=Checking ; [ -n "$1" ] && verb=Updating
  
-@@ -2713,15 +2927,25 @@
+@@ -2724,15 +2941,25 @@
  	PM_PARENT_PORT="$verb dependent ports"
  
  	for origin in $PM_URB_ORIGINS; do
@@ -831,7 +831,7 @@ $FreeBSD$
  	done
  
  	if [ -n "$PM_URB_LIST" ]; then
-@@ -2733,7 +2957,11 @@
+@@ -2744,7 +2971,11 @@
  
  	for req_by in $PM_URB_LIST; do
  		# Probably not needed, but JIC
@@ -844,7 +844,7 @@ $FreeBSD$
  
  		pm_v "===>>> $req_by depends on $PM_URB_IPORTS"
  
-@@ -2774,12 +3002,16 @@
+@@ -2785,12 +3016,16 @@
  			else
  				fail "$pd/${port} does not exist"
  			fi ;;
@@ -863,7 +863,7 @@ $FreeBSD$
  				*)	local dir
  					for dir in $glob_dirs; do
  					worklist_temp="$worklist_temp ${dir#$pdb/}"
-@@ -2894,9 +3126,16 @@
+@@ -2905,9 +3140,16 @@
  		*/*)	origin=$port ;;
  		*)	# If an installed version does not exist at this
  			# point it probably got updated as a dependency
@@ -883,7 +883,7 @@ $FreeBSD$
  			fi
  			origin=`origin_from_pdb $port` ;;
  		esac
-@@ -3120,7 +3359,11 @@
+@@ -3131,7 +3373,11 @@
  	argv=${argv:-$1} ; argv=${argv%/} ; argv=`globstrip $argv`
  	case "$argv" in
  	$pd/*)	portdir=${argv#$pd/} ;;
@@ -896,7 +896,7 @@ $FreeBSD$
  	/*)	echo '' ; no_valid_port ;;
  	*/*)	portdir=$argv ;;
  	\.|'')	portdir="$PWD"
-@@ -3131,7 +3374,9 @@
+@@ -3142,7 +3388,9 @@
  			*)	echo '' ; no_valid_port ;;
  			esac
  		done ;;
@@ -907,7 +907,7 @@ $FreeBSD$
  	esac
  
  	if [ -z "$portdir" -a -z "$upg_port" ]; then
-@@ -3164,7 +3409,7 @@
+@@ -3175,7 +3423,7 @@
  
  	case "$arg2" in
  	*/*)	ro_opd=$arg2 ; ro_upg_port=`iport_from_origin $ro_opd` ;;
@@ -916,7 +916,7 @@ $FreeBSD$
  			ro_upg_port=$arg2
  		else
  			find_glob_dirs $arg2 && ro_upg_port=${glob_dirs#$pdb/}
-@@ -3179,12 +3424,21 @@
+@@ -3190,12 +3438,21 @@
  	unset arg2
  
  	if [ -z "$ro_upg_port" ]; then
@@ -941,7 +941,7 @@ $FreeBSD$
  			echo '       or listed as a dependency'
  			echo '' ; no_valid_port
  		fi
-@@ -3216,7 +3470,7 @@
+@@ -3227,7 +3484,7 @@
  fi
  [ -z "$upg_port" -a -z "$REPLACE_ORIGIN" ] && upg_port=`iport_from_origin ${portdir}`
  
@@ -950,7 +950,7 @@ $FreeBSD$
  	# Adding to CUR_DEPS means we will not get here in the build
  	if [ -z "$PM_BUILDING" ]; then
  		# Only need to prompt for this once if -ai
-@@ -3602,7 +3856,12 @@
+@@ -3613,7 +3870,12 @@
  		pm_v "===>>> Available package ($latest_pv) matches the current version"
  	elif [ -n "$latest_pv" -a -n "$PM_PACKAGES_NEWER" ]; then
  		if [ -n "$upg_port" ]; then
@@ -964,7 +964,7 @@ $FreeBSD$
  			\<)	use_package=up_newer
  				pm_v "===>>> Available package ($latest_pv)"
  				pm_v "       is newer than installed ($upg_port)" ;;
-@@ -3618,7 +3877,12 @@
+@@ -3629,7 +3891,12 @@
  			pm_v "===>>> There is a package available ($latest_pv)"
  		fi
  	elif [ -n "$latest_pv" ]; then
@@ -978,7 +978,7 @@ $FreeBSD$
  		\<)	# Could happen if ports tree is out of date
  			use_package=up_old_tree
  			pm_v "===>>> Available package ($latest_pv)"
-@@ -3718,7 +3982,12 @@
+@@ -3729,7 +3996,12 @@
  		    grep -v ^$LOCALBASE_COMPAT > $pm_mktemp_file
  
  		unset temp
@@ -992,15 +992,18 @@ $FreeBSD$
  		    sort - $pm_mktemp_file | uniq -d`; do
  			temp="${temp}$file "
  		done
-@@ -3741,6 +4010,7 @@
+@@ -3752,8 +4024,9 @@
  
  	if [ -n "$REPLACE_ORIGIN" -a -n "$ro_upg_port" ]; then
  		# Delete any existing versions of the old port
 +		np_orphan=`pkg query "%a" $ro_upg_port`
  		pm_sv "Running pkg_delete for $ro_upg_port"
- 		pm_pkg_delete_s -f $ro_upg_port
+-		pm_pkg_delete_s -f $ro_upg_port
++		pm_pkg_delete_s $ro_upg_port
  	fi
-@@ -3760,6 +4030,10 @@
+ 
+ 	# Could be empty if -o
+@@ -3771,8 +4044,12 @@
  			unset preserve_port files
  		esac
  
@@ -1009,9 +1012,12 @@ $FreeBSD$
 +			np_orphan=`pkg query "%a" $upg_port`
 +		fi
  		pm_sv "Running pkg_delete for $upg_port"
- 		pm_pkg_delete_s -f $upg_port
+-		pm_pkg_delete_s -f $upg_port
++		pm_pkg_delete_s $upg_port
  	fi
-@@ -3806,6 +4080,18 @@
+ 
+ 	echo ''
+@@ -3817,6 +4094,18 @@
  		unset port_log_args
  	fi
  
@@ -1030,7 +1036,7 @@ $FreeBSD$
  	# Defining NO_DEPENDS ensures that we will control the installation
  	# of the depends, not bsd.port.mk.
  	eval pm_make_s -DNO_DEPENDS install $port_log_args || install_failed $new_port
-@@ -3823,29 +4109,31 @@
+@@ -3834,29 +4123,31 @@
  	fi
  fi
  
@@ -1085,7 +1091,7 @@ $FreeBSD$
  if [ -n "$preserve_dir" ]; then
  	rmdir $preserve_dir 2>/dev/null
  	unset preserve_dir preserve_port_files
-@@ -3861,14 +4149,19 @@
+@@ -3872,14 +4163,19 @@
  temp=`find $LOCALBASE_COMPAT -type d -empty 2>/dev/null`
  if [ -z "$temp" ] && [ -d "$LOCALBASE_COMPAT" ]; then
  	unset files
@@ -1107,7 +1113,7 @@ $FreeBSD$
  		$PM_SU_CMD /etc/rc.d/ldconfig start > /dev/null
  	fi
  	unset temp file files
-@@ -3920,11 +4213,13 @@
+@@ -3931,11 +4227,13 @@
  	done
  
  	pm_sv "Installing $dist_list\n"
@@ -1122,7 +1128,7 @@ $FreeBSD$
  	if grep -q DEPORIGIN $pdb/$new_port/+CONTENTS; then
  		echo -e "===>>> Updating dependencies for $new_port to match installed versions\n"
  		update_contents $pdb/$new_port/+CONTENTS ; pm_v
-@@ -3946,7 +4241,7 @@
+@@ -3957,7 +4255,7 @@
  if [ -n "$MAKE_PACKAGE" ]; then
  	if [ -z "$use_package" ]; then
  		echo "===>>> Creating a package for new version $new_port"
@@ -1131,7 +1137,7 @@ $FreeBSD$
  		echo "	===>>> Package saved to $PACKAGES/All" ; echo ''
  	else
  		pm_pkg_create $PACKAGES $new_port
-@@ -3959,29 +4254,37 @@
+@@ -3970,29 +4268,37 @@
  	pm_v
  fi
  
@@ -1190,7 +1196,7 @@ $FreeBSD$
  if [ -n "$upg_port" ]; then
  	if [ ! "$upg_port" = "$new_port" ]; then
  		ilist="Upgrade of $upg_port to $new_port"
-@@ -3997,13 +4300,15 @@
+@@ -4008,13 +4314,15 @@
  fi
  
  INSTALLED_LIST="${INSTALLED_LIST}\t${ilist}\n"
