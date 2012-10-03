@@ -167,7 +167,8 @@ exec_info(int argc, char **argv)
 
 	/* When no other data is requested, default is to print
 	 * 'name-ver comment' For -O, just print name-ver */
-	if (!origin_search && (opt & INFO_ALL) == 0 && match == MATCH_ALL) 
+	if (!origin_search && (opt & INFO_ALL) == 0 && match == MATCH_ALL &&
+	    !quiet)
 		opt |= INFO_COMMENT;
 
 	/* Special compatibility: handle -O and -q -O */
@@ -179,6 +180,9 @@ exec_info(int argc, char **argv)
 			opt = INFO_TAG_NAMEVER|INFO_COMMENT;
 		}
 	}
+
+	if (match == MATCH_ALL && opt == INFO_TAG_NAMEVER)
+		quiet = false;
 
 	if (file != NULL) {
 		if (pkg_open(&pkg, file) != EPKG_OK) {
