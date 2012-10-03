@@ -44,14 +44,14 @@
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 
 int
-pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
-	     bool dry_run)
+pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db,
+	     pkg_jobs_flags flags)
 {
 	assert(db != NULL);
 	assert(t != PKG_JOBS_INSTALL || db->type == PKGDB_REMOTE);
 
-	if (!dry_run && pkgdb_lock(db) != EPKG_OK)
-		return (EPKG_FATAL);
+	if (((flags & PKG_JOBS_DRY_RUN) == 0) &&
+	    pkgdb_lock(db) != EPKG_OK)
 
 	if ((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
 		pkg_emit_errno("calloc", "pkg_jobs");
@@ -60,10 +60,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
 
 	(*j)->db = db;
 	(*j)->type = t;
-	if (dry_run)
-		(*j)->flags |= PKG_JOB_FLAGS_DRY_RUN;
-	if (force)
-		(*j)->flags |= PKG_JOB_FLAGS_FORCE;
+	(*j)->flags |= flags;
 
 	return (EPKG_OK);
 }
@@ -74,7 +71,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	if (j == NULL)
 		return;
 
-	if ((j->flags & PKG_JOB_FLAGS_DRY_RUN) == 0)
+	if ((j->flags & PKG_JOBS_DRY_RUN) == 0)
 		pkgdb_unlock(j->db);
 
 	HASH_FREE(j->jobs, pkg, pkg_free);
@@ -242,7 +239,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 			}
 		}
 
-		if ((j->flags & PKG_JOB_FLAGS_FORCE) != 0)
+		if ((j->flags & PKG_JOBS_FORCE) != 0)
 			flags |= PKG_ADD_FORCE;
 		flags |= PKG_ADD_UPGRADE;
 		if (automatic)
@@ -280,10 +277,10 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 	int retcode;
 	int flags = 0;
 
-	if ((j->flags & PKG_JOB_FLAGS_DRY_RUN) != 0)
+	if ((j->flags & PKG_JOBS_DRY_RUN) != 0)
 		return (EPKG_OK); /* Do nothing */
 
-	if ((j->flags & PKG_JOB_FLAGS_FORCE) != 0)
+	if ((j->flags & PKG_JOBS_FORCE) != 0)
 		flags = PKG_DELETE_FORCE;
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
@@ -374,7 +371,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 	}
 
-	if ((j->flags & PKG_JOB_FLAGS_DRY_RUN) != 0)
+	if ((j->flags & PKG_JOBS_DRY_RUN) != 0)
 		return (EPKG_OK); /* don't download anything */
 
 	/* Fetch */

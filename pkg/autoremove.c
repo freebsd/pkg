@@ -54,6 +54,7 @@ exec_autoremove(int argc, char **argv)
 	int64_t flatsize, newflatsize;
 	char size[7];
 	int ch;
+	pkg_jobs_flags f = PKG_JOBS_FORCE;
 	bool yes = false;
 	bool dry_run = false;
 	nbactions = nbdone = 0;
@@ -68,6 +69,7 @@ exec_autoremove(int argc, char **argv)
 			break;
 		case 'n':
 			dry_run = true;
+			f |= PKG_JOBS_DRY_RUN;
 			break;
 		default:
 			break;
@@ -92,7 +94,7 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	/* Always force packages to be removed */
-	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, true, dry_run)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, f)
 	    != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
