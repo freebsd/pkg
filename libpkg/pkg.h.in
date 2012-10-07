@@ -823,6 +823,7 @@ const char *pkg_file_get(struct pkg_file const * const, const pkg_file_attr);
 #define pkg_file_uname(f) pkg_file_get(f, PKG_FILE_UNAME)
 #define pkg_file_gname(f) pkg_file_get(f, PKG_FILE_GNAME)
 mode_t pkg_file_mode(struct pkg_file const * const);
+bool pkg_file_keep(struct pkg_file const * const);
 
 bool pkg_has_dir(struct pkg *, const char *);
 bool pkg_has_file(struct pkg *, const char *);
@@ -832,6 +833,7 @@ const char *pkg_dir_get(struct pkg_dir const * const, const pkg_dir_attr);
 #define pkg_dir_uname(d) pkg_dir_get(d, PKG_DIR_UNAME)
 #define pkg_dir_gname(d) pkg_dir_get(d, PKG_DIR_GNAME)
 mode_t pkg_dir_mode(struct pkg_dir const * const);
+bool pkg_dir_keep(struct pkg_dir const * const);
 bool pkg_dir_try(struct pkg_dir const * const);
 
 /* pkg_category */

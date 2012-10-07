@@ -139,6 +139,14 @@ pkg_file_mode(struct pkg_file const * const f)
 	return (f->perm);
 }
 
+bool
+pkg_file_keep(struct pkg_file const * const f)
+{
+	assert(f != NULL);
+
+	return (f->keep);
+}
+
 /*
  * Dir
  */
@@ -187,6 +195,14 @@ pkg_dir_mode(struct pkg_dir const * const d)
 	assert(d != NULL);
 
 	return (d->perm);
+}
+
+bool
+pkg_dir_keep(struct pkg_dir const * const d)
+{
+	assert(d != NULL);
+
+	return (d->keep);
 }
 
 bool
