@@ -245,6 +245,8 @@ file_exists(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 	char fpath[MAXPATHLEN];
 	sqlite3 *db = sqlite3_context_db_handle(ctx);
 	char *path = dirname(sqlite3_db_filename(db, "main"));
+	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
+
 	if (argc != 1) {
 		sqlite3_result_error(ctx, "Need one argument", -1);
 		return;
@@ -252,10 +254,15 @@ file_exists(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 
 	snprintf(fpath, MAXPATHLEN, "%s/%s", path, sqlite3_value_text(argv[0]));
 
-	if (access(fpath, F_OK) == 0)
+	if (access(fpath, F_OK) == 0) {
+		sha256_file(fpath, cksum);
+		if (strcmp(cksum, sqlite3_value_text(argv[1])) == 0)
 			sqlite3_result_int(ctx, 1);
-	else
+		else
 			sqlite3_result_int(ctx, 0);
+	} else {
+		sqlite3_result_int(ctx, 0);
+	}
 }
 
 static int
@@ -400,7 +407,7 @@ initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 		}
 	}
 
-	sqlite3_create_function(*sqlite, "file_exists", 1, SQLITE_ANY, NULL,
+	sqlite3_create_function(*sqlite, "file_exists", 2, SQLITE_ANY, NULL,
 				file_exists, NULL, NULL);
 
 	if ((retcode = sql_exec(*sqlite, "PRAGMA synchronous=off")) != EPKG_OK)
@@ -425,7 +432,7 @@ initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 	/* remove anything that is no longer in the repository. */
 	if (incremental) {
 		const char *obsolete[] = {
-			"packages WHERE NOT FILE_EXISTS(path)",
+			"packages WHERE NOT FILE_EXISTS(path, cksum)",
 			"categories WHERE id NOT IN "
 				"(SELECT category_id FROM pkg_categories)",
 			"licenses WHERE id NOT IN "
