@@ -372,7 +372,7 @@ pkg_config_bool(pkg_config_key key, bool *val)
 		*val = true;
 	}
 	else if (c[key].val == NULL && c[key].def != NULL && (
-	    strcmp(c[key].val, "1") == 0 ||
+	    strcmp(c[key].def, "1") == 0 ||
 	    strcasecmp(c[key].def, "yes") == 0 ||
 	    strcasecmp(c[key].def, "true") == 0 ||
 	    strcasecmp(c[key].def, "on") == 0)) {
