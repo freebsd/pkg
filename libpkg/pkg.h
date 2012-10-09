@@ -835,20 +835,13 @@ int pkg_add(struct pkgdb *db, const char *path, unsigned flags);
 #define PKG_ADD_AUTOMATIC		(1U << 2)
 #define PKG_ADD_FORCE			(1U << 3)
 
-typedef enum _pkg_job_flags {
-	PKG_JOBS_FORCE=		(1U << 0),
-	PKG_JOBS_AUTOMATIC=	(1U << 1),
-	PKG_JOBS_RECURSIVE=	(1U << 2),
-	PKG_JOBS_DRY_RUN=	(1U << 3),
-} pkg_jobs_flags;
-
 /**
  * Allocate a new pkg_jobs.
  * @param db A pkgdb open with PKGDB_REMOTE.
  * @return An error code.
  */
 int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db,
-		 pkg_jobs_flags flags);
+		 bool force, bool dry_run);
 
 /**
  * Free a pkg_jobs

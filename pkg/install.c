@@ -63,7 +63,7 @@ exec_install(int argc, char **argv)
 	bool auto_update = true;
 	bool recursive = false;
 	bool automatic = false;
-	pkg_jobs_flags f = 0;
+
 	match_t match = MATCH_EXACT;
 	bool force = false;
 	bool dry_run = false;
@@ -76,7 +76,6 @@ exec_install(int argc, char **argv)
 			break;
 		case 'f':
 			force = true;
-			f |= PKG_JOBS_FORCE;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
@@ -86,7 +85,6 @@ exec_install(int argc, char **argv)
 			break;
 		case 'n':
 			dry_run = true;
-			f |= PKG_JOBS_DRY_RUN;
 			break;
 		case 'q':
 			quiet = true;
@@ -128,11 +126,14 @@ exec_install(int argc, char **argv)
 	if (auto_update && (retcode = pkgcli_update(false)) != EPKG_OK)
 		return (retcode);
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		return (EX_IOERR);
+	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, f) != EPKG_OK)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, force, dry_run)
+	    != EPKG_OK) {
 		goto cleanup;
+	}
 
 	if ((it = pkgdb_query_installs(db, match, argc, argv, reponame,
 	    force, recursive)) == NULL)
