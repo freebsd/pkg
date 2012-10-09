@@ -35,7 +35,16 @@ SRCS=		backup.c \
 		usergroup.c \
 		utils.c
 
+PC=	pkg.pc
+CLEANFILES=	${PC}
+
+all: ${PC}
+
+realinstall: ${PC}
+	${INSTALL} -m 644 ${PC} ${PREFIX}/libdata/pkgconfig
+
 HAVE_GRUTILS!=	grep -q gr_copy /usr/include/libutil.h && echo yes || echo no
+VERSION!=	awk '$$2 == "PKGVERSION" { print $$3 }' pkg.h
 
 .if ${HAVE_GRUTILS} != yes
 SRCS+=	gr_util.c
@@ -72,4 +81,11 @@ DEBUG_FLAGS+=	-pg
 NO_MAN=		yes
 
 .include <bsd.lib.mk>
+
+.SUFFIXES: .pc.in .pc
+
+.pc.in.pc:
+	sed -e "s,__PREFIX__,${PREFIX},g" \
+		-e "s,__VERSION__,${VERSION},g" \
+		${.IMPSRC} > ${.TARGET}
 
