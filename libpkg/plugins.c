@@ -171,7 +171,7 @@ pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key)
 }
 
 int
-pkg_plugin_conf_add_string(struct pkg_plugin *p, uint8_t id, const char *key, const char *def)
+pkg_plugin_conf_add_string(struct pkg_plugin *p, int id, const char *key, const char *def)
 {
 	struct pkg_config *conf;
 	char *val;
@@ -211,7 +211,7 @@ pkg_plugin_conf_add_string(struct pkg_plugin *p, uint8_t id, const char *key, co
 }
 
 int
-pkg_plugin_conf_add_bool(struct pkg_plugin *p, uint8_t id, const char *key, bool boolean)
+pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool boolean)
 {
 	struct pkg_config *conf;
 	char *val;
@@ -257,7 +257,7 @@ pkg_plugin_conf_add_bool(struct pkg_plugin *p, uint8_t id, const char *key, bool
 }
 
 int
-pkg_plugin_conf_add_integer(struct pkg_plugin *p, uint8_t id, const char *key, int64_t integer)
+pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64_t integer)
 {
 	struct pkg_config *conf;
 	const char *errstr;
@@ -301,7 +301,7 @@ pkg_plugin_conf_add_integer(struct pkg_plugin *p, uint8_t id, const char *key, i
 }
 
 int
-pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, uint8_t id, const char *key)
+pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key)
 {
 	struct pkg_config *conf;
 
@@ -331,7 +331,7 @@ pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, uint8_t id, const char *key)
 }
 
 int
-pkg_plugin_conf_add_list(struct pkg_plugin *p, uint8_t id, const char *key)
+pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key)
 {
 	struct pkg_config *conf;
 
@@ -421,7 +421,7 @@ pkg_plugins_init(void)
 }
 
 int
-pkg_plugin_conf_string(struct pkg_plugin *p, uint8_t key, const char **val)
+pkg_plugin_conf_string(struct pkg_plugin *p, int key, const char **val)
 {
 	struct pkg_config *conf;
 
@@ -440,7 +440,7 @@ pkg_plugin_conf_string(struct pkg_plugin *p, uint8_t key, const char **val)
 }
 
 int
-pkg_plugin_conf_integer(struct pkg_plugin *p, uint8_t key, int64_t *val)
+pkg_plugin_conf_integer(struct pkg_plugin *p, int key, int64_t *val)
 {
 	struct pkg_config *conf;
 
@@ -459,7 +459,7 @@ pkg_plugin_conf_integer(struct pkg_plugin *p, uint8_t key, int64_t *val)
 }
 
 int
-pkg_plugin_conf_bool(struct pkg_plugin *p, uint8_t key, bool *val)
+pkg_plugin_conf_bool(struct pkg_plugin *p, int key, bool *val)
 {
 	struct pkg_config *conf;
 
@@ -478,7 +478,7 @@ pkg_plugin_conf_bool(struct pkg_plugin *p, uint8_t key, bool *val)
 }
 
 int
-pkg_plugin_conf_kvlist(struct pkg_plugin *p, uint8_t key, struct pkg_config_kv **kv)
+pkg_plugin_conf_kvlist(struct pkg_plugin *p, int key, struct pkg_config_kv **kv)
 {
 	struct pkg_config *conf;
 
@@ -508,7 +508,7 @@ pkg_plugin_conf_kvlist(struct pkg_plugin *p, uint8_t key, struct pkg_config_kv *
 }
 
 int
-pkg_plugin_conf_list(struct pkg_plugin *p, uint8_t key, struct pkg_config_value **v)
+pkg_plugin_conf_list(struct pkg_plugin *p, int key, struct pkg_config_value **v)
 {
 	struct pkg_config *conf;
 
@@ -548,7 +548,7 @@ pkg_plugin_parse(struct pkg_plugin *p)
 	yaml_document_t doc;
 	yaml_node_t *node;
 
-	pkg_config_string(PKG_CONFIG_PLUGINS_DIR, &path);
+	pkg_config_string(PKG_CONFIG_PLUGINS_CONF_DIR, &path);
 	plugname = pkg_plugin_get(p, PKG_PLUGIN_NAME);
 
 	snprintf(confpath, sizeof(confpath), "%s/%s.conf", path, plugname);
@@ -579,6 +579,8 @@ pkg_plugin_parse(struct pkg_plugin *p)
 
 	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
+
+	fclose(fp);
 
 	p->parsed = true;
 	return (EPKG_OK);

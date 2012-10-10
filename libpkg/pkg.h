@@ -915,17 +915,17 @@ int pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str);
 const char *pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key);
 void *pkg_plugin_func(struct pkg_plugin *p, const char *func);
 
-int pkg_plugin_conf_add_string(struct pkg_plugin *p, uint8_t id, const char *key, const char *def);
-int pkg_plugin_conf_add_bool(struct pkg_plugin *p, uint8_t id, const char *key, bool val);
-int pkg_plugin_conf_add_integer(struct pkg_plugin *p, uint8_t id, const char *key, int64_t integer);
-int pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, uint8_t id, const char *key);
-int pkg_plugin_conf_add_list(struct pkg_plugin *p, uint8_t id, const char *key);
+int pkg_plugin_conf_add_string(struct pkg_plugin *p, int id, const char *key, const char *def);
+int pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool val);
+int pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64_t integer);
+int pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key);
+int pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key);
 
-int pkg_plugin_conf_string(struct pkg_plugin *p, uint8_t key, const char **value);
-int pkg_plugin_conf_bool(struct pkg_plugin *p, uint8_t key, bool *value);
-int pkg_plugin_conf_kvlist(struct pkg_plugin *p, uint8_t key, struct pkg_config_kv **kv);
-int pkg_plugin_conf_list(struct pkg_plugin *p, uint8_t key, struct pkg_config_value **v);
-int pkg_plugin_conf_integer(struct pkg_plugin *p, uint8_t key, int64_t *value);
+int pkg_plugin_conf_string(struct pkg_plugin *p, int key, const char **value);
+int pkg_plugin_conf_bool(struct pkg_plugin *p, int key, bool *value);
+int pkg_plugin_conf_kvlist(struct pkg_plugin *p, int key, struct pkg_config_kv **kv);
+int pkg_plugin_conf_list(struct pkg_plugin *p, int key, struct pkg_config_value **v);
+int pkg_plugin_conf_integer(struct pkg_plugin *p, int key, int64_t *value);
 
 int pkg_plugin_parse(struct pkg_plugin *p);
 
