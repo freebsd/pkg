@@ -178,7 +178,9 @@ Directory leftovers are automatically removed if they are not in the MTREE.
 <a name="pkgngports"></a>
 ### pkgng in Ports
 
-pkgng beta1 is now in the ports tree. To get it:
+pkgng-1.0 release was committed to the the ports tree on 30th August
+2012, and a series of further releases are planned.  To install the
+latest release version:
 
 	$ make -C /usr/ports/ports-mgmt/pkg install clean
 	$ echo "WITH_PKGNG=yes" >> /etc/make.conf
