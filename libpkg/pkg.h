@@ -63,6 +63,7 @@ struct pkg_jobs;
 struct pkg_repos;
 struct pkg_repos_entry;
 
+struct pkg_config;
 struct pkg_config_kv;
 struct pkg_config_value;
 
