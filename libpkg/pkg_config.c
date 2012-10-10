@@ -63,11 +63,6 @@ struct config_entry {
 	uint8_t type;
 	const char *key;
 	const char *def;
-	union {
-		char *val;
-		STAILQ_HEAD(, pkg_config_kv) kvlist;
-		STAILQ_HEAD(, pkg_config_value) list;
-	};
 };
 
 struct pkg_config {
@@ -96,133 +91,111 @@ static struct config_entry c[] = {
 		STRING,
 		"PACKAGESITE",
 		NULL,
-		{ NULL }
 	},
 	[PKG_CONFIG_DBDIR] = {
 		STRING,
 		"PKG_DBDIR",
 		"/var/db/pkg",
-		{ NULL }
 	},
 	[PKG_CONFIG_CACHEDIR] = {
 		STRING,
 		"PKG_CACHEDIR",
 		"/var/cache/pkg",
-		{ NULL }
 	},
 	[PKG_CONFIG_PORTSDIR] = {
 		STRING,
 		"PORTSDIR",
 		"/usr/ports",
-		{ NULL }
 	},
 	[PKG_CONFIG_REPOKEY] = {
 		STRING,
 		"PUBKEY",
 		NULL,
-		{ NULL }
 	},
 	[PKG_CONFIG_MULTIREPOS] = {
 		BOOL,
 		"PKG_MULTIREPOS",
 		NULL,
-		{ NULL }
 	},
 	[PKG_CONFIG_HANDLE_RC_SCRIPTS] = {
 		BOOL,
 		"HANDLE_RC_SCRIPTS",
 		NULL,
-		{ NULL }
 	},
 	[PKG_CONFIG_ASSUME_ALWAYS_YES] = {
 		BOOL,
 		"ASSUME_ALWAYS_YES",
 		NULL,
-		{ NULL }
 	},
 	[PKG_CONFIG_REPOS] = {
 		KVLIST,
 		"REPOS",
 		"NULL",
-		{ NULL }
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
 		STRING,
 		"PLIST_KEYWORDS_DIR",
 		NULL,
-		{ NULL }
 	},
 	[PKG_CONFIG_SYSLOG] = {
 		BOOL,
 		"SYSLOG",
 		"YES",
-		{ NULL }
 	},
 	[PKG_CONFIG_SHLIBS] = {
 		BOOL,
 		"SHLIBS",
 		"NO",
-		{ NULL }
 	},
 	[PKG_CONFIG_AUTODEPS] = {
 		BOOL,
 		"AUTODEPS",
 		"NO",
-		{ NULL }
 	},
 	[PKG_CONFIG_ABI] = {
 		STRING,
 		"ABI",
 		myabi,
-		{ NULL }
 	},
 	[PKG_CONFIG_DEVELOPER_MODE] = {
 		BOOL,
 		"DEVELOPER_MODE",
 		"NO",
-		{ NULL }
 	},
 	[PKG_CONFIG_PORTAUDIT_SITE] = {
 		STRING,
 		"PORTAUDIT_SITE",
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
-		{ NULL }
 	},
 	[PKG_CONFIG_SRV_MIRROR] = {
 		BOOL,
 		"SRV_MIRRORS",
 		"YES",
-		{ NULL }
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
 		INTEGER,
 		"FETCH_RETRY",
 		"3",
-		{ NULL }
 	},
 	[PKG_CONFIG_PLUGINS_DIR] = {
 		STRING,
 		"PKG_PLUGINS_DIR",
 		PREFIX"/lib/pkg/",
-		{ NULL }
 	},
 	[PKG_CONFIG_ENABLE_PLUGINS] = {
 		BOOL,
 		"PKG_ENABLE_PLUGINS",
 		"YES",
-		{ NULL }
 	},
 	[PKG_CONFIG_PLUGINS] = {
 		LIST,
 		"PLUGINS",
 		"NULL",
-		{ NULL }
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
 		BOOL,
 		"DEBUG_SCRIPTS",
 		"NO",
-		{ NULL }
 	},
 };
 
@@ -673,27 +646,41 @@ pkg_init(const char *path)
 	return (EPKG_OK);
 }
 
+static void
+pkg_config_free(struct pkg_config *conf)
+{
+	struct pkg_config_kv *k;
+	struct pkg_config_value *v;
+	if (conf == NULL)
+		return;
+
+	if (conf->type == STRING)
+		free(conf->string);
+	else if (conf->type == KVLIST) {
+		while (!STAILQ_EMPTY(&conf->kvlist)) {
+			k = STAILQ_FIRST(&conf->kvlist);
+			free(k->key);
+			free(k->value);
+			STAILQ_REMOVE_HEAD(&conf->kvlist, next);
+			free(k);
+		}
+	} else if (conf->type == LIST) {
+		while (!STAILQ_EMPTY(&conf->kvlist)) {
+			v = STAILQ_FIRST(&conf->list);
+			free(v->value);
+			STAILQ_REMOVE_HEAD(&conf->list, next);
+			free(v);
+		}
+	}
+
+	free(conf);
+}
+
 int
 pkg_shutdown(void)
 {
-	size_t i;
-
 	if (parsed == true) {
-		for (i = 0; i < c_size; i++) {
-			switch (c[i].type) {
-			case STRING:
-			case BOOL:
-				free(c[i].val);
-				break;
-			case LIST:
-			case KVLIST:
-				break;
-			case INTEGER:
-				break;
-			default:
-				err(1, "unknown config entry type");
-			}
-		}
+		HASH_FREE(config, pkg_config, pkg_config_free);
 	} else {
 		pkg_emit_error("pkg_shutdown() must be called after pkg_init()");
 		return (EPKG_FATAL);
