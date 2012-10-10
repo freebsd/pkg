@@ -195,7 +195,7 @@ struct pkg_shlib {
 };
 
 struct pkg_config {
-	uint8_t id;
+	int id;
 	uint8_t type;
 	const char *key;
 	const void *def;

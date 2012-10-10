@@ -602,7 +602,7 @@ pkg_init(const char *path)
 		if (node->type != YAML_MAPPING_NODE) {
 			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
 		} else {
-			pkg_config_parse(&doc, node, config);
+			pkg_config_parse(&doc, node, config_by_key);
 		}
 	} else {
 		pkg_emit_error("Invalid configuration format, ignoring the configuration file");
