@@ -40,46 +40,12 @@
 #include "private/pkg.h"
 #include "private/event.h"
 
-#define STRING 0
-#define BOOL 1
-#define KVLIST 2
-#define INTEGER 3
-#define LIST 4
-
 #define ABI_VAR_STRING "${ABI}"
-
-struct pkg_config_kv {
-	char *key;
-	char *value;
-	STAILQ_ENTRY(pkg_config_kv) next;
-};
-
-struct pkg_config_value {
-	char *value;
-	STAILQ_ENTRY(pkg_config_value) next;
-};
 
 struct config_entry {
 	uint8_t type;
 	const char *key;
 	const char *def;
-};
-
-struct pkg_config {
-	pkg_config_key id;
-	uint8_t type;
-	const char *key;
-	const void *def;
-	bool fromenv;
-	union {
-		char *string;
-		uint64_t integer;
-		bool boolean;
-		STAILQ_HEAD(, pkg_config_kv) kvlist;
-		STAILQ_HEAD(, pkg_config_value) list;
-	};
-	UT_hash_handle hh;
-	UT_hash_handle hhkey;
 };
 
 static char myabi[BUFSIZ];
@@ -88,114 +54,119 @@ static struct pkg_config *config_by_key = NULL;
 
 static struct config_entry c[] = {
 	[PKG_CONFIG_REPO] = {
-		STRING,
+		CONF_STRING,
 		"PACKAGESITE",
 		NULL,
 	},
 	[PKG_CONFIG_DBDIR] = {
-		STRING,
+		CONF_STRING,
 		"PKG_DBDIR",
 		"/var/db/pkg",
 	},
 	[PKG_CONFIG_CACHEDIR] = {
-		STRING,
+		CONF_STRING,
 		"PKG_CACHEDIR",
 		"/var/cache/pkg",
 	},
 	[PKG_CONFIG_PORTSDIR] = {
-		STRING,
+		CONF_STRING,
 		"PORTSDIR",
 		"/usr/ports",
 	},
 	[PKG_CONFIG_REPOKEY] = {
-		STRING,
+		CONF_STRING,
 		"PUBKEY",
 		NULL,
 	},
 	[PKG_CONFIG_MULTIREPOS] = {
-		BOOL,
+		CONF_BOOL,
 		"PKG_MULTIREPOS",
 		NULL,
 	},
 	[PKG_CONFIG_HANDLE_RC_SCRIPTS] = {
-		BOOL,
+		CONF_BOOL,
 		"HANDLE_RC_SCRIPTS",
 		NULL,
 	},
 	[PKG_CONFIG_ASSUME_ALWAYS_YES] = {
-		BOOL,
+		CONF_BOOL,
 		"ASSUME_ALWAYS_YES",
 		NULL,
 	},
 	[PKG_CONFIG_REPOS] = {
-		KVLIST,
+		CONF_KVLIST,
 		"REPOS",
 		"NULL",
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
-		STRING,
+		CONF_STRING,
 		"PLIST_KEYWORDS_DIR",
 		NULL,
 	},
 	[PKG_CONFIG_SYSLOG] = {
-		BOOL,
+		CONF_BOOL,
 		"SYSLOG",
 		"YES",
 	},
 	[PKG_CONFIG_SHLIBS] = {
-		BOOL,
+		CONF_BOOL,
 		"SHLIBS",
 		"NO",
 	},
 	[PKG_CONFIG_AUTODEPS] = {
-		BOOL,
+		CONF_BOOL,
 		"AUTODEPS",
 		"NO",
 	},
 	[PKG_CONFIG_ABI] = {
-		STRING,
+		CONF_STRING,
 		"ABI",
 		myabi,
 	},
 	[PKG_CONFIG_DEVELOPER_MODE] = {
-		BOOL,
+		CONF_BOOL,
 		"DEVELOPER_MODE",
 		"NO",
 	},
 	[PKG_CONFIG_PORTAUDIT_SITE] = {
-		STRING,
+		CONF_STRING,
 		"PORTAUDIT_SITE",
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
 	},
 	[PKG_CONFIG_SRV_MIRROR] = {
-		BOOL,
+		CONF_BOOL,
 		"SRV_MIRRORS",
 		"YES",
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
-		INTEGER,
+		CONF_INTEGER,
 		"FETCH_RETRY",
 		"3",
 	},
 	[PKG_CONFIG_PLUGINS_DIR] = {
-		STRING,
+		CONF_STRING,
 		"PKG_PLUGINS_DIR",
 		PREFIX"/lib/pkg/",
 	},
 	[PKG_CONFIG_ENABLE_PLUGINS] = {
-		BOOL,
+		CONF_BOOL,
 		"PKG_ENABLE_PLUGINS",
 		"YES",
 	},
 	[PKG_CONFIG_PLUGINS] = {
-		LIST,
+		CONF_LIST,
 		"PLUGINS",
 		"NULL",
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
-		BOOL,
+		CONF_BOOL,
 		"DEBUG_SCRIPTS",
 		"NO",
+	},
+	[PKG_CONFIG_PLUGINS_CONF_DIR] = {
+		CONF_STRING,
+		"PLUGINS_CONF_DIR",
+		PREFIX"/etc/pkg/",
 	},
 };
 
@@ -245,8 +216,8 @@ parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, struct pkg_config *
 	}
 }
 
-static void
-parse_configuration(yaml_document_t *doc, yaml_node_t *node)
+void
+pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key)
 {
 	struct pkg_config *conf;
 	yaml_node_pair_t *pair;
@@ -282,10 +253,10 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 			sbuf_putc(b, toupper(key->data.scalar.value[i]));
 
 		sbuf_finish(b);
-		HASH_FIND(hhkey, config_by_key, sbuf_data(b), sbuf_len(b), conf);
+		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), sbuf_len(b), conf);
 		if (conf != NULL) {
 			switch (conf->type) {
-			case STRING:
+			case CONF_STRING:
 				if (val->type != YAML_SCALAR_NODE) {
 					pkg_emit_error("Expecting a string for key %s,"
 					    " ignoring...", key->data.scalar.value);
@@ -296,7 +267,7 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 					conf->string = strdup(val->data.scalar.value);
 				}
 				break;
-			case INTEGER:
+			case CONF_INTEGER:
 				if (val->type != YAML_SCALAR_NODE) {
 					pkg_emit_error("Expecting an integer for key %s,"
 					    " ignoring...", key->data.scalar.value);
@@ -311,7 +282,7 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 					conf->integer = newint;
 				}
 				break;
-			case BOOL:
+			case CONF_BOOL:
 				if (val->type != YAML_SCALAR_NODE) {
 					pkg_emit_error("Expecting an integer for key %s,"
 					    " ignoring...", key->data.scalar.value);
@@ -329,14 +300,14 @@ parse_configuration(yaml_document_t *doc, yaml_node_t *node)
 					}
 				}
 				break;
-			case KVLIST:
+			case CONF_KVLIST:
 				if (val->type != YAML_MAPPING_NODE) {
 					pkg_emit_error("Expecting a key/value list for key %s,"
 					    " ignoring...", key->data.scalar.value);
 				}
 				parse_config_mapping(doc, val, conf);
 				break;
-			case LIST:
+			case CONF_LIST:
 				if (val->type != YAML_SEQUENCE_NODE) {
 					pkg_emit_error("Expecting a string list for key %s,"
 					    " ignoring...", key->data.scalar.value);
@@ -462,7 +433,7 @@ pkg_config_kvlist(pkg_config_key key, struct pkg_config_kv **kv)
 	if (conf == NULL)
 		return (EPKG_FATAL);
 
-	if (conf->type != KVLIST) {
+	if (conf->type != CONF_KVLIST) {
 		pkg_emit_error("this config entry is not a \"key: value\" list");
 		return (EPKG_FATAL);
 	}
@@ -492,7 +463,7 @@ pkg_config_list(pkg_config_key key, struct pkg_config_value **v)
 	if (conf == NULL)
 		return (EPKG_FATAL);
 
-	if (conf->type != LIST) {
+	if (conf->type != CONF_LIST) {
 		pkg_emit_error("this config entry is not a list");
 		return (EPKG_FATAL);
 	}
@@ -505,7 +476,7 @@ pkg_config_list(pkg_config_key key, struct pkg_config_value **v)
 		return (EPKG_END);
 	else
 		return (EPKG_OK);
-};
+}
 
 const char *
 pkg_config_value(struct pkg_config_value *v)
@@ -559,7 +530,7 @@ pkg_init(const char *path)
 		val = getenv(c[i].key);
 
 		switch (c[i].type) {
-		case STRING:
+		case CONF_STRING:
 			if (val != NULL) {
 				conf->string = strdup(val);
 				conf->fromenv = true;
@@ -569,7 +540,7 @@ pkg_init(const char *path)
 			else
 				conf->string = NULL;
 			break;
-		case INTEGER:
+		case CONF_INTEGER:
 			if (val == NULL)
 				val = c[i].def;
 			else
@@ -581,7 +552,7 @@ pkg_init(const char *path)
 				return (EPKG_FATAL);
 			}
 			break;
-		case BOOL:
+		case CONF_BOOL:
 			if (val == NULL)
 				val = c[i].def;
 			else
@@ -596,10 +567,10 @@ pkg_init(const char *path)
 				conf->boolean = false;
 			}
 			break;
-		case KVLIST:
+		case CONF_KVLIST:
 			STAILQ_INIT(&conf->kvlist);
 			break;
-		case LIST:
+		case CONF_LIST:
 			STAILQ_INIT(&conf->list);
 			break;
 		}
@@ -631,7 +602,7 @@ pkg_init(const char *path)
 		if (node->type != YAML_MAPPING_NODE) {
 			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
 		} else {
-			parse_configuration(&doc, node);
+			pkg_config_parse(&doc, node, config);
 		}
 	} else {
 		pkg_emit_error("Invalid configuration format, ignoring the configuration file");
@@ -654,9 +625,9 @@ pkg_config_free(struct pkg_config *conf)
 	if (conf == NULL)
 		return;
 
-	if (conf->type == STRING)
+	if (conf->type == CONF_STRING)
 		free(conf->string);
-	else if (conf->type == KVLIST) {
+	else if (conf->type == CONF_KVLIST) {
 		while (!STAILQ_EMPTY(&conf->kvlist)) {
 			k = STAILQ_FIRST(&conf->kvlist);
 			free(k->key);
@@ -664,7 +635,7 @@ pkg_config_free(struct pkg_config *conf)
 			STAILQ_REMOVE_HEAD(&conf->kvlist, next);
 			free(k);
 		}
-	} else if (conf->type == LIST) {
+	} else if (conf->type == CONF_LIST) {
 		while (!STAILQ_EMPTY(&conf->kvlist)) {
 			v = STAILQ_FIRST(&conf->list);
 			free(v->value);

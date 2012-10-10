@@ -39,6 +39,7 @@
 #include <stdbool.h>
 #include <uthash.h>
 
+#include <yaml.h>
 #include "private/utils.h"
 
 #define PKG_NUM_FIELDS 18
@@ -159,6 +160,14 @@ typedef enum _pkg_job_flags {
 	PKG_JOB_FLAGS_DRY_RUN =	(1 << 1),
 } pkg_job_flags;
 
+enum {
+	CONF_STRING=0,
+	CONF_BOOL,
+	CONF_KVLIST,
+	CONF_INTEGER,
+	CONF_LIST
+};
+
 struct pkg_jobs_node {
 	struct pkg	*pkg;
 	size_t		 nrefs;
@@ -185,6 +194,33 @@ struct pkg_shlib {
 	UT_hash_handle	hh;
 };
 
+struct pkg_config {
+	uint8_t id;
+	uint8_t type;
+	const char *key;
+	const void *def;
+	bool fromenv;
+	union {
+		char *string;
+		uint64_t integer;
+		bool boolean;
+		STAILQ_HEAD(, pkg_config_kv) kvlist;
+		STAILQ_HEAD(, pkg_config_value) list;
+	};
+	UT_hash_handle hh;
+	UT_hash_handle hhkey;
+};
+
+struct pkg_config_kv {
+	char *key;
+	char *value;
+	STAILQ_ENTRY(pkg_config_kv) next;
+};
+
+struct pkg_config_value {
+	char *value;
+	STAILQ_ENTRY(pkg_config_value) next;
+};
 
 /* sql helpers */
 
@@ -313,5 +349,7 @@ int pkgdb_update_shlibs(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 int pkg_register_shlibs(struct pkg *pkg);
+
+void pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key);
 
 #endif

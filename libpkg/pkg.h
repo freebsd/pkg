@@ -63,7 +63,6 @@ struct pkg_jobs;
 struct pkg_repos;
 struct pkg_repos_entry;
 
-struct pkg_config;
 struct pkg_config_kv;
 struct pkg_config_value;
 
@@ -268,6 +267,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_ENABLE_PLUGINS,
 	PKG_CONFIG_PLUGINS,
 	PKG_CONFIG_DEBUG_SCRIPTS,
+	PKG_CONFIG_PLUGINS_CONF_DIR,
 } pkg_config_key;
 
 typedef enum {
@@ -914,6 +914,20 @@ int pkg_plugins(struct pkg_plugin **plugin);
 int pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str);
 const char *pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key);
 void *pkg_plugin_func(struct pkg_plugin *p, const char *func);
+
+int pkg_plugin_conf_add_string(struct pkg_plugin *p, uint8_t id, const char *key, const char *def);
+int pkg_plugin_conf_add_bool(struct pkg_plugin *p, uint8_t id, const char *key, bool val);
+int pkg_plugin_conf_add_integer(struct pkg_plugin *p, uint8_t id, const char *key, int64_t integer);
+int pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, uint8_t id, const char *key);
+int pkg_plugin_conf_add_list(struct pkg_plugin *p, uint8_t id, const char *key);
+
+int pkg_plugin_conf_string(struct pkg_plugin *p, uint8_t key, const char **value);
+int pkg_plugin_conf_bool(struct pkg_plugin *p, uint8_t key, bool *value);
+int pkg_plugin_conf_kvlist(struct pkg_plugin *p, uint8_t key, struct pkg_config_kv **kv);
+int pkg_plugin_conf_list(struct pkg_plugin *p, uint8_t key, struct pkg_config_value **v);
+int pkg_plugin_conf_integer(struct pkg_plugin *p, uint8_t key, int64_t *value);
+
+int pkg_plugin_parse(struct pkg_plugin *p);
 
 /**
  * This is where plugin hook into the library using pkg_plugin_hook()
