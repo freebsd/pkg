@@ -56,13 +56,15 @@ exec_delete(int argc, char **argv)
 	int ch;
 	int flags = PKG_LOAD_BASIC;
 	bool force = false;
-	bool yes = false;
+	bool yes;
 	bool dry_run = false;
 	int retcode = EX_SOFTWARE;
 	int recursive = 0;
 	bool haspkg = false;
 	const char *origin;
 	nbactions = nbdone = 0;
+
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 	while ((ch = getopt(argc, argv, "afgnqRXxy")) != -1) {
 		switch (ch) {
@@ -157,9 +159,6 @@ exec_delete(int argc, char **argv)
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs, PKG_JOBS_DEINSTALL,
 		    "The following %d packages will be deinstalled:\n\n", nbactions);
-
-		if (!yes)
-			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 		if (!yes && !dry_run)
 			yes = query_yesno(
 		            "\nProceed with deinstalling packages [y/N]: ");
