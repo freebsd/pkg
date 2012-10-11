@@ -67,11 +67,13 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 	
 	if (locked) {
 		if (!quiet)
-			printf("%s-%s: already locked\n", pkgname, pkgversion);
+			printf("%s-%s: already locked\n",
+			       pkgname, pkgversion);
 		return (EPKG_OK);
 	}
 
-	if (!yes && !query_yesno("%s-%s: lock this package? [y/N]: ", pkgname, pkgversion))
+	if (!yes && !query_yesno("%s-%s: lock this package? [y/N]: ",
+				 pkgname, pkgversion))
 		return (EPKG_OK);
 
 	if (!quiet)
@@ -94,11 +96,13 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 
 	if (!locked) {
 		if (!quiet)
-			printf("%s-%s: already unlocked\n", pkgname, pkgversion);
+			printf("%s-%s: already unlocked\n",
+			       pkgname, pkgversion);
 		return (EPKG_OK);
 	}
 
-	if (!yes && !query_yesno("%s-%s: unlock this package? [y/N]: ", pkgname, pkgversion))
+	if (!yes && !query_yesno("%s-%s: unlock this package? [y/N]: ",
+				 pkgname, pkgversion))
 		return (EPKG_OK);
 
 	if (!quiet)
