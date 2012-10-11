@@ -161,6 +161,11 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		printf(" done\n");
 		break;
+	case PKG_EVENT_LOCKED:
+		pkg = ev->e_locked.pkg;
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		fprintf(stderr, "\n%s-%s is locked and may not be modified\n");
+		break;
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
