@@ -244,10 +244,6 @@ print_info(struct pkg * const pkg, unsigned int options)
 			cout = printf("%s", origin);
 		else if (options & INFO_TAG_NAME)
 			cout = printf("%s", name);
-
-		/* Show when locked as requested */
-		if (show_locks && locked)
-			cout += printf(" (*)");
 	}
 
 	/* Don't display a tab if quiet, retains compatibility. */
@@ -429,7 +425,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s:\n", "Depends on");
 				while (pkg_deps(pkg, &dep) == EPKG_OK) {
-					printf("%s%s-%s\n",
+					printf("%s%s-%s",
 					       tab,
 					       pkg_dep_name(dep),
 					       pkg_dep_version(dep));
@@ -444,7 +440,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s:\n", "Required by");
 				while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-					printf("%s%s-%s\n",
+					printf("%s%s-%s",
 					       tab,
 					       pkg_dep_name(dep),
 					       pkg_dep_version(dep));
