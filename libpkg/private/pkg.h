@@ -109,8 +109,8 @@ struct pkg_dep {
 	struct sbuf	*origin;
 	struct sbuf	*name;
 	struct sbuf	*version;
-	UT_hash_handle	 hh;
 	bool		 locked;
+	UT_hash_handle	 hh;
 };
 
 struct pkg_license {

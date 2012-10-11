@@ -3547,6 +3547,8 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 		    "UPDATE packages SET flatsize=?1 WHERE id=?2",
 		[PKG_SET_AUTOMATIC] =
 		    "UPDATE packages SET automatic=?1 WHERE id=?2",
+		[PKG_SET_LOCKED] =
+		    "UPDATE packages SET locked=?1 WHERE id=?2",
 		[PKG_SET_DEPORIGIN] =
 		    "UPDATE deps SET origin=?1, "
 		    "name=(SELECT name FROM packages WHERE origin=?1), "
