@@ -247,6 +247,17 @@ pkg_emit_missing_dep(struct pkg *p, struct pkg_dep *d)
 }
 
 void
+pkg_emit_locked(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_LOCKED;
+	ev.e_locked.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_required(struct pkg *p, int force)
 {
 	struct pkg_event ev;

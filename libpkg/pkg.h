@@ -998,6 +998,7 @@ typedef enum {
 	PKG_EVENT_ALREADY_INSTALLED,
 	PKG_EVENT_FAILED_CKSUM,
 	PKG_EVENT_CREATE_DB_ERROR,
+	PKG_EVENT_LOCKED,
 	PKG_EVENT_REQUIRED,
 	PKG_EVENT_MISSING_DEP,
 	PKG_EVENT_NOREMOTEDB,
@@ -1047,6 +1048,9 @@ struct pkg_event {
 			struct pkg *pkg;
 			struct pkg_dep *dep;
 		} e_missing_dep;
+		struct {
+			struct pkg *pkg;
+		} e_locked;
 		struct {
 			struct pkg *pkg;
 			int force;
