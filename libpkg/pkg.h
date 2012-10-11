@@ -323,7 +323,8 @@ typedef enum {
 	 */
 	EPKG_FATAL,
 	/**
-	 * Can not delete the package because it is required by another package.
+	 * Can not delete the package because it is required by
+	 * another package.
 	 */
 	EPKG_REQUIRED,
 	/**
@@ -331,9 +332,14 @@ typedef enum {
 	 */
 	EPKG_INSTALLED,
 	/**
-	 * Can not install the package because some dependencies are unresolved.
+	 * Can not install the package because some dependencies are
+	 * unresolved.
 	 */
 	EPKG_DEPENDENCY,
+	/**
+         * Can not operate on package because it is locked
+	 */
+	EPKG_LOCKED,
 	/**
 	 * Can not create local database
 	 */
