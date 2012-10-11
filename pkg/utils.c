@@ -535,6 +535,7 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 	const char *name, *version, *newversion, *pkgrepopath, *cachedir;
 	int64_t dlsize, oldsize, newsize;
 	int64_t flatsize, newflatsize, pkgsize;
+	bool locked;
 	char size[7];
 	va_list ap;
 
@@ -552,7 +553,40 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
 		    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize,
-		    PKG_REPOPATH, &pkgrepopath);
+		    PKG_REPOPATH, &pkgrepopath, PKG_LOCKED, &locked);
+
+		if (locked) {
+			printf("\tPackage %s-%s is locked ",
+			       name, version);
+			switch (type) {
+			case PKG_JOBS_INSTALL:
+				/* If it's a new install, then it
+				 * cannot have been locked yet. */
+				if (newversion != NULL) {
+					switch(pkg_version_cmp(version, newversion)) {
+					case 1:
+						printf("and may not be upgraded to version %s\n", newversion);
+						break;
+					case 0:
+						printf("and may not be reinstalled\n");
+						break;
+					case -1:
+						printf("and may not be downgraded to version %s\n", newversion);
+						break;
+					}
+					continue;
+				} 
+				break;
+			case PKG_JOBS_DEINSTALL:
+				printf("and may not be deinstalled\n");
+				continue;
+				break;
+			case PKG_JOBS_FETCH:
+				printf("but a new package can still be fetched\n");
+				break;
+			}
+
+		}
 
 		switch (type) {
 		case PKG_JOBS_INSTALL:
