@@ -51,11 +51,13 @@ exec_upgrade(int argc, char **argv)
 	const char *reponame = NULL;
 	int retcode = 1;
 	int ch;
-	bool yes = false;
+	bool yes;
 	bool all = false;
 	bool dry_run = false;
 	bool auto_update = true;
 	nbactions = nbdone = 0;
+
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 	while ((ch = getopt(argc, argv, "fLnqr:y")) != -1) {
 		switch (ch) {
@@ -131,8 +133,6 @@ exec_upgrade(int argc, char **argv)
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following %d packages will be upgraded:\n\n", nbactions);
 
-		if (!yes)
-			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 		if (!yes && !dry_run)
 			yes = query_yesno("\nProceed with upgrading packages [y/N]: ");
 		if (dry_run)
