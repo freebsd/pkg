@@ -59,7 +59,7 @@ exec_install(int argc, char **argv)
 	const char *reponame = NULL;
 	int retcode = EX_SOFTWARE;
 	int ch;
-	bool yes = false;
+	bool yes;
 	bool auto_update = true;
 	bool recursive = false;
 	bool automatic = false;
@@ -68,6 +68,8 @@ exec_install(int argc, char **argv)
 	bool force = false;
 	bool dry_run = false;
 	nbactions = nbdone = 0;
+
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 	while ((ch = getopt(argc, argv, "AfgLnqRr:Xxy")) != -1) {
 		switch (ch) {
@@ -158,8 +160,6 @@ exec_install(int argc, char **argv)
 		    "The following %d packages will be installed:\n\n",
 		    nbactions);
 
-		if (!yes)
-			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 		if (!yes && !dry_run)
 			yes = query_yesno(
 			    "\nProceed with installing packages [y/N]: ");
