@@ -169,7 +169,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		const char *pkgorigin, *pkgrepopath, *newversion, *origin;
-		bool automatic;
+		bool automatic, locked;
 		flags = 0;
 
 		pkg_get(p, PKG_ORIGIN, &pkgorigin, PKG_REPOPATH, &pkgrepopath,
@@ -180,6 +180,15 @@ pkg_jobs_install(struct pkg_jobs *j)
 			it = pkgdb_query(j->db, pkgorigin, MATCH_EXACT);
 			if (it != NULL) {
 				if (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
+					pkg_get(pkg, PKG_LOCKED, &locked);
+					if (locked) {
+						pkg_emit_locked(pkg);
+						pkgdb_it_free(it);
+						retcode = EPKG_LOCKED;
+						pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+						goto cleanup; /* Bail out */
+					}
+
 					STAILQ_INSERT_TAIL(&pkg_queue, pkg, next);
 					pkg_script_run(pkg,
 					    PKG_SCRIPT_PRE_DEINSTALL);
@@ -204,6 +213,16 @@ pkg_jobs_install(struct pkg_jobs *j)
 		if (it != NULL) {
 			pkg = NULL;
 			while (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
+
+				pkg_get(pkg, PKG_LOCKED, &locked);
+				if (locked) {
+					pkg_emit_locked(pkg);
+					pkgdb_it_free(it);
+					retcode = EPKG_LOCKED;
+					pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+					goto cleanup; /* Bail out */
+				}
+
 				STAILQ_INSERT_TAIL(&pkg_queue, pkg, next);
 				pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
 				pkg_get(pkg, PKG_ORIGIN, &origin);
