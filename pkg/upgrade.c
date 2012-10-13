@@ -116,7 +116,8 @@ exec_upgrade(int argc, char **argv)
 		goto cleanup;
 	}
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) ==
+	       EPKG_OK) {
 		pkg_jobs_add(jobs, pkg);
 		pkg = NULL;
 	}
@@ -131,10 +132,13 @@ exec_upgrade(int argc, char **argv)
 
 	pkg = NULL;
 	if (!quiet || dry_run) {
-		print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following %d packages will be upgraded:\n\n", nbactions);
+		print_jobs_summary(jobs, PKG_JOBS_INSTALL,
+		    "Uprgades have been requested for the following %d "
+		    "packages:\n\n", nbactions);
 
 		if (!yes && !dry_run)
-			yes = query_yesno("\nProceed with upgrading packages [y/N]: ");
+			yes = query_yesno("\nProceed with upgrading "
+			          "packages [y/N]: ");
 		if (dry_run)
 			yes = false;
 	}
