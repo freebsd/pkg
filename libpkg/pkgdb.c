@@ -3066,7 +3066,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 
 	const char	 sqlsel[] = ""
 		"SELECT id, p.origin, name, version, comment, desc, "
-		"message, arch, maintainer, www, prefix, "
+		"message, arch, maintainer, www, prefix, locked,"
 		"flatsize, (select count(*) from deps AS d where d.origin=del.origin) as weight FROM packages as p, delete_job as del where id = pkgid "
 		"ORDER BY weight ASC;";
 

@@ -158,7 +158,7 @@ exec_delete(int argc, char **argv)
 	pkg = NULL;
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs, PKG_JOBS_DEINSTALL,
-		    "The following %d packages will be deinstalled:\n\n", nbactions);
+		    "Deinstallation has been requested for the following %d packages:\n\n", nbactions);
 		if (!yes && !dry_run)
 			yes = query_yesno(
 		            "\nProceed with deinstalling packages [y/N]: ");
