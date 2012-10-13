@@ -245,7 +245,7 @@ file_exists(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 	char	 fpath[MAXPATHLEN];
 	sqlite3	*db = sqlite3_context_db_handle(ctx);
 	char	*path = dirname(sqlite3_db_filename(db, "main"));
-	char	cksum[SHA256_DIGEST_LENGTH * 2 +1];
+	char	 cksum[SHA256_DIGEST_LENGTH * 2 +1];
 
 	if (argc != 2) {
 		sqlite3_result_error(ctx, "Need two arguments", -1);
@@ -410,14 +410,16 @@ initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 	sqlite3_create_function(*sqlite, "file_exists", 2, SQLITE_ANY, NULL,
 				file_exists, NULL, NULL);
 
-	if ((retcode = sql_exec(*sqlite, "PRAGMA synchronous=off")) != EPKG_OK)
+	retcode = sql_exec(*sqlite, "PRAGMA synchronous=off");
+	if (retcode != EPKG_OK)
 		return (retcode);
 
 	retcode = sql_exec(*sqlite, "PRAGMA journal_mode=memory");
 	if (retcode != EPKG_OK)
 		return (retcode);
 
-	if ((retcode = sql_exec(*sqlite, "PRAGMA foreign_keys=on")) != EPKG_OK)
+	retcode = sql_exec(*sqlite, "PRAGMA foreign_keys=on");
+	if (retcode != EPKG_OK)
 		return (retcode);
 
 	if (!incremental) {
@@ -426,7 +428,8 @@ initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 			return (retcode);
 	}
 
-	if ((retcode = pkgdb_transaction_begin(*sqlite, NULL)) != EPKG_OK)
+	retcode = pkgdb_transaction_begin(*sqlite, NULL);
+	if (retcode != EPKG_OK)
 		return (retcode);
 
 	/* remove anything that is no longer in the repository. */
