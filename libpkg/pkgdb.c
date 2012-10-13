@@ -642,10 +642,10 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 	char		 remotepath[MAXPATHLEN + 1];
 	struct pkg_config_kv *repokv = NULL;
 	const char	*multirepo_warning =
-	    "\t/!\\             WARNING WARNING WARNING             /!\\\n"
-	    "\t/!\\        WORKING ON MULTIPLE REPOSITORIES         /!\\\n"
+	    "\t/!\\		WARNING WARNING WARNING		    /!\\\n"
+	    "\t/!\\	   WORKING ON MULTIPLE REPOSITORIES	    /!\\\n"
 	    "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL  /!\\\n"
-	    "\t/!\\              YOU HAVE BEEN WARNED               /!\\\n\n";
+	    "\t/!\\		 YOU HAVE BEEN WARNED		    /!\\\n\n";
 
 	fprintf(stderr, "%s", multirepo_warning);
 
@@ -2400,10 +2400,10 @@ report_already_installed(sqlite3 *s)
 		    "WHERE p.origin = pkgjobs.origin "
 		    "AND p.version = pkgjobs.version "
 		    "AND (SELECT GROUP_CONCAT(option) "
-		        "FROM (SELECT option FROM main.options "
-		        "WHERE package_id = p.id "
-		        "AND value = 'on' "
-		        "ORDER BY option))"
+			"FROM (SELECT option FROM main.options "
+			"WHERE package_id = p.id "
+			"AND value = 'on' "
+			"ORDER BY option))"
 		     "IS pkgjobs.opts) "
 		"IS NOT NULL;";
 
@@ -2597,8 +2597,8 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	    "  version, flatsize, cksum, repopath, automatic "
 	    ") "
 	    "SELECT p.id, p.origin, p.name, p.version as newversion, "
-	    "       p.comment, p.desc, p.arch, p.maintainer, p.www, "
-	    "       p.prefix, p.flatsize as newflatsize, p.pkgsize, "
+	    "	    p.comment, p.desc, p.arch, p.maintainer, p.www, "
+	    "	    p.prefix, p.flatsize as newflatsize, p.pkgsize, "
 	    /* If not installed from a port, insert the running version in */
 	    "COALESCE(l.version, '" PKG_PORTVERSION "') as version, "
 	    "COALESCE(l.flatsize, p.flatsize) as flatsize, "
@@ -2687,8 +2687,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"  cksum, path, 0, "
 		"  (SELECT GROUP_CONCAT(option) FROM "
 		"    (SELECT option FROM '%s'.options "
-		"                   WHERE package_id=id"
-		"                   AND value='on' ORDER BY option"
+		"		    WHERE package_id=id"
+		"		    AND value='on' ORDER BY option"
 		"    )"
 		"  ) "
 		"FROM '%s'.packages WHERE ";
@@ -2698,14 +2698,14 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		    "version, comment, desc, arch, maintainer, www, "
 		    "prefix, flatsize, pkgsize, cksum, repopath, "
 		    "automatic) "
-	        "SELECT DISTINCT r.id, r.origin, r.name, r.version, "
+		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
 		    "r.comment, r.desc, r.arch, r.maintainer, r.www, "
 		    "r.prefix, r.flatsize, r.pkgsize, r.cksum, "
 		    "r.path, 1 "
- 	        "FROM '%s'.packages AS r WHERE r.origin IN "
-	            "(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
+		"FROM '%s'.packages AS r WHERE r.origin IN "
+		    "(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
 		    "WHERE d.package_id = j.pkgid) "
-	            "AND (SELECT origin FROM main.packages "
+		    "AND (SELECT origin FROM main.packages "
 		    "WHERE origin = r.origin AND version = r.version) "
 		    "IS NULL";
 
@@ -2785,7 +2785,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
 		    "(SELECT p.origin FROM main.packages AS p "
 		    "WHERE p.origin = pkgjobs.origin "
-		         "AND p.version=pkgjobs.version "
+			 "AND p.version=pkgjobs.version "
 			 "AND p.name = pkgjobs.name "
 			 "AND (SELECT GROUP_CONCAT(option) "
 			 "FROM (SELECT option FROM main.options "
@@ -2891,36 +2891,36 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	const char	 pkgjobs_sql_1[] = ""
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
-                        "comment, desc, arch, maintainer, www, prefix, "
-		        "locked, flatsize, newversion, pkgsize, "
+			"comment, desc, arch, maintainer, www, prefix, "
+			"locked, flatsize, newversion, pkgsize, "
 			"cksum, repopath, automatic, opts) "
 		"SELECT r.id, r.origin, r.name, r.version, r.comment, "
-                        "r.desc, r.arch, r.maintainer, r.www, r.prefix, "
-		        "r.locked, r.flatsize, r.version AS newversion, "
-		        "r.pkgsize, r.cksum, r.path, l.automatic ,"
+			"r.desc, r.arch, r.maintainer, r.www, r.prefix, "
+			"r.locked, r.flatsize, r.version AS newversion, "
+			"r.pkgsize, r.cksum, r.path, l.automatic ,"
 			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
-		        "FROM '%s'.options WHERE package_id=r.id AND "
-		        "value='on' ORDER BY option)) "
+			"FROM '%s'.options WHERE package_id=r.id AND "
+			"value='on' ORDER BY option)) "
 			"FROM '%s'.packages r INNER JOIN main.packages l "
-		        "ON l.origin = r.origin";
+			"ON l.origin = r.origin";
 
 	const char	 pkgjobs_sql_2[] = ""
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
-		        "comment, desc, arch, maintainer, www, prefix, "
-		        "locked, flatsize, newversion, pkgsize, cksum, "
-		        "repopath, automatic, opts) "
+			"comment, desc, arch, maintainer, www, prefix, "
+			"locked, flatsize, newversion, pkgsize, cksum, "
+			"repopath, automatic, opts) "
 		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
-		        "r.comment, r.desc, r.arch, r.maintainer, r.www, "
-		        "r.prefix, r.locked, r.flatsize, NULL AS newversion, "
-		        "r.pkgsize, r.cksum, r.path, 1, "
-		        "(SELECT GROUP_CONCAT(option) FROM (SELECT option "
-		        "FROM '%s'.options WHERE package_id=r.id AND "
-		        "value='on' ORDER BY option)) "
+			"r.comment, r.desc, r.arch, r.maintainer, r.www, "
+			"r.prefix, r.locked, r.flatsize, NULL AS newversion, "
+			"r.pkgsize, r.cksum, r.path, 1, "
+			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
+			"FROM '%s'.options WHERE package_id=r.id AND "
+			"value='on' ORDER BY option)) "
 		"FROM '%s'.packages AS r WHERE r.origin IN "
 			"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
-		        "WHERE d.package_id = j.pkgid) AND (SELECT p.origin "
-		        "FROM main.packages AS p WHERE p.origin = r.origin "
-		        "AND version = r.version) IS NULL;";
+			"WHERE d.package_id = j.pkgid) AND (SELECT p.origin "
+			"FROM main.packages AS p WHERE p.origin = r.origin "
+			"AND version = r.version) IS NULL;";
 
 	const char	*pkgjobs_sql_3;
 	if (!all) {
@@ -2951,15 +2951,15 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"r.version AS newversion, "
 			"r.flatsize AS newflatsize, r.pkgsize, r.cksum, "
 			"r.repopath, l.automatic "
-	        "FROM main.packages AS l, pkgjobs AS r "
+		"FROM main.packages AS l, pkgjobs AS r "
 			"WHERE l.origin = r.origin";
 	}
 
 	const char	weight_sql[] = ""
 		"UPDATE pkgjobs SET weight = ("
 		"SELECT COUNT(*) FROM '%s'.deps AS d, "
-		        "'%s'.packages AS p, "
-		        "pkgjobs AS j "
+			"'%s'.packages AS p, "
+			"pkgjobs AS j "
 		"WHERE d.origin = pkgjobs.origin "
 			"AND d.package_id = p.id "
 			"AND p.origin = j.origin"
@@ -3096,20 +3096,20 @@ pkgdb_query_autoremove(struct pkgdb *db)
 		"SELECT id, p.origin, name, version, comment, desc, "
 		    "message, arch, maintainer, www, prefix, "
 		    "locked, flatsize "
-                "FROM packages AS p, autoremove "
+		"FROM packages AS p, autoremove "
 		"WHERE id = pkgid ORDER BY weight ASC;";
 
 	sql_exec(db->sqlite, "DROP TABLE IF EXISTS autoremove; "
-	        "CREATE TEMPORARY TABLE IF NOT EXISTS autoremove ("
+		"CREATE TEMPORARY TABLE IF NOT EXISTS autoremove ("
 			"origin TEXT UNIQUE NOT NULL, "
-		        "pkgid INTEGER, "
-		        "weight INTEGER )");
+			"pkgid INTEGER, "
+			"weight INTEGER )");
 
 	do {
 		sql_exec(db->sqlite, ""
 		    "INSERT OR IGNORE INTO autoremove(origin, pkgid, weight) "
 		    "SELECT DISTINCT origin, id, %d "
-                    "FROM packages "
+		    "FROM packages "
 		    "WHERE automatic = 1 "
 			 "AND origin NOT IN (SELECT DISTINCT deps.origin "
 			 "FROM deps "
@@ -3524,8 +3524,8 @@ pkgdb_integrity_check(struct pkgdb *db)
 		"SELECT path, COUNT(path) FROM ("
 		"SELECT path FROM integritycheck UNION ALL "
 		"SELECT path FROM files, main.packages AS p "
-	        "WHERE p.id = package_id AND p.origin NOT IN "
-	        "(SELECT origin FROM integritycheck)"
+		"WHERE p.id = package_id AND p.origin NOT IN "
+		"(SELECT origin FROM integritycheck)"
 		") GROUP BY path HAVING (COUNT(path) > 1 );",
 		-1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -3762,7 +3762,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 			"flatsize, pkgsize, cksum, repopath) "
 			"SELECT id, origin, name, version, flatsize, "
-		        "pkgsize, cksum, path FROM '%s'.packages ";
+			"pkgsize, cksum, path FROM '%s'.packages ";
 
 	const char	deps_sql[] = ""
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
@@ -3770,11 +3770,11 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
 			"r.flatsize, r.pkgsize, r.cksum, r.path "
 		"FROM '%s'.packages AS r where r.origin IN "
-		        "(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
+			"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
 		"WHERE d.package_id = j.pkgid) "
 			"AND (SELECT origin FROM main.packages "
-		        "WHERE origin = r.origin "
-		        "AND version = r.version) IS NULL;";
+			"WHERE origin = r.origin "
+			"AND version = r.version) IS NULL;";
 
 	const char	weight_sql[] = ""
 		"UPDATE pkgjobs SET weight=(SELECT COUNT(*) "
@@ -3925,7 +3925,7 @@ pkgshell_open(const char **reponame)
 int
 pkgdb_lock(struct pkgdb *db)
 {
-        assert(db != NULL);
+	assert(db != NULL);
 	assert(db->lock_count >= 0);
 	if (!(db->lock_count++))
 		return sql_exec(db->sqlite,
@@ -3937,7 +3937,7 @@ pkgdb_lock(struct pkgdb *db)
 int
 pkgdb_unlock(struct pkgdb *db)
 {
-        assert(db != NULL);
+	assert(db != NULL);
 	assert(db->lock_count >= 1);
 	if (!(--db->lock_count))
 		return sql_exec(db->sqlite,
