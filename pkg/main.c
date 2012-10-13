@@ -84,6 +84,7 @@ static struct commands {
 	{ "shell", "Opens a debug shell", exec_shell, usage_shell},
 	{ "shlib", "Displays which packages link against a specific shared library", exec_shlib, usage_shlib},
 	{ "stats", "Displays package database statistics", exec_stats, usage_stats},
+	{ "unlock", "Unlocks a package, allowing modification or deletion", exec_unlock, usage_lock},
 	{ "update", "Updates package repository catalogues", exec_update, usage_update},
 	{ "updating", "Displays UPDATING information for a package", exec_updating, usage_updating},
 	{ "upgrade", "Performs upgrades of packaged software distributions", exec_upgrade, usage_upgrade},
