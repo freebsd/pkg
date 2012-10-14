@@ -2564,9 +2564,10 @@ create_temporary_pkgjobs(sqlite3 *s)
 	ret = sql_exec(s, "DROP TABLE IF EXISTS pkgjobs;"
 			"CREATE TEMPORARY TABLE IF NOT EXISTS pkgjobs ("
 			"    pkgid INTEGER, origin TEXT UNIQUE NOT NULL,"
-			"    name TEXT, version TEXT, comment TEXT, desc TEXT, "
-			"    message TEXT, arch TEXT, maintainer TEXT, "
-			"    www TEXT, prefix TEXT, flatsize INTEGER, "
+			"    name TEXT, version TEXT, comment TEXT, "
+		        "    desc TEXT, message TEXT, arch TEXT, "
+		        "    maintainer TEXT, www TEXT, prefix TEXT, "
+		        "    locked INTEGER, flatsize INTEGER, "
 			"    newversion TEXT, newflatsize INTEGER, "
 			"    pkgsize INTEGER, cksum TEXT, repopath TEXT, "
 			"    automatic INTEGER, weight INTEGER, dbname TEXT, "
@@ -2889,6 +2890,10 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 		    "weight, '%s' AS dbname "
 		"FROM pkgjobs ORDER BY weight DESC;";
 
+	/* All the local packages where there is a matching package in
+	 * the repo: all data from the repo except locked and
+	 * automatic flags which are inherited from local */
+
 	const char	 pkgjobs_sql_1[] = ""
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 			"comment, desc, arch, maintainer, www, prefix, "
@@ -2896,13 +2901,17 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"cksum, repopath, automatic, opts) "
 		"SELECT r.id, r.origin, r.name, r.version, r.comment, "
 			"r.desc, r.arch, r.maintainer, r.www, r.prefix, "
-			"r.locked, r.flatsize, r.version AS newversion, "
+			"l.locked, r.flatsize, r.version AS newversion, "
 			"r.pkgsize, r.cksum, r.path, l.automatic ,"
 			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
-			"FROM '%s'.options WHERE package_id=r.id AND "
-			"value='on' ORDER BY option)) "
+			"FROM '%s'.options WHERE package_id = r.id AND "
+			"value = 'on' ORDER BY option)) "
 			"FROM '%s'.packages r INNER JOIN main.packages l "
 			"ON l.origin = r.origin";
+
+	/* All dependencies for packages from the repo listed in the
+	 * temporary pkgjobs table and not already installed as local
+	 * packages (locked = 0, automatic = 1) */
 
 	const char	 pkgjobs_sql_2[] = ""
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
@@ -2911,10 +2920,10 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"repopath, automatic, opts) "
 		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
 			"r.comment, r.desc, r.arch, r.maintainer, r.www, "
-			"r.prefix, r.locked, r.flatsize, NULL AS newversion, "
+			"r.prefix, 0, r.flatsize, NULL AS newversion, "
 			"r.pkgsize, r.cksum, r.path, 1, "
 			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
-			"FROM '%s'.options WHERE package_id=r.id AND "
+			"FROM '%s'.options WHERE package_id = r.id AND "
 			"value='on' ORDER BY option)) "
 		"FROM '%s'.packages AS r WHERE r.origin IN "
 			"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
@@ -2975,18 +2984,20 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
-	/* Remove packages already installed and in the latest version */
 	if (!all) {
 		/* Remove all the downgrades we asked for upgrade :) */
 		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
 		    "(SELECT p.origin FROM main.packages AS p WHERE "
-			 "p.origin=pkgjobs.origin "
-			 "AND PKGGT(p.version,pkgjobs.version))"
-			 "IS NOT NULL;");
+			 "p.origin = pkgjobs.origin "
+			 "AND PKGGT(p.version, pkgjobs.version))"
+			 "IS NOT NULL");
+
+		/* Remove packages already installed and in the latest
+		 * version */
 		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
 		    "(SELECT p.origin FROM main.packages AS p WHERE "
-		    "p.origin=pkgjobs.origin "
-			 "AND p.version=pkgjobs.version "
+		    "p.origin = pkgjobs.origin "
+			 "AND p.version = pkgjobs.version "
 			 "AND p.name = pkgjobs.name "
 			 "AND (SELECT GROUP_CONCAT(option) "
 		    "FROM (select option FROM main.options "
