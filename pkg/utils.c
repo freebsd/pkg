@@ -560,13 +560,13 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 				 * cannot have been locked yet. */
 				if (newversion != NULL) {
 					switch(pkg_version_cmp(version, newversion)) {
-					case 1:
+					case -1:
 						printf("and may not be upgraded to version %s\n", newversion);
 						break;
 					case 0:
 						printf("and may not be reinstalled\n");
 						break;
-					case -1:
+					case 1:
 						printf("and may not be downgraded to version %s\n", newversion);
 						break;
 					}
