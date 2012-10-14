@@ -867,19 +867,21 @@ pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 	int		 ret;
 	sqlite3_stmt	*stmt;
 
+
 	assert(sqlite != NULL);
 
 	if (savepoint == NULL || savepoint[0] == '\0') {
 		const char sql[] = "BEGIN IMMEDIATE TRANSACTION";
 		
-		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
+		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
+					 &stmt, NULL);
 	} else {
-		const char sql[] = "SAVEPOINT ?1";
+		char sql[128] = "SAVEPOINT ";
 
-		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
-		if (ret == SQLITE_OK) 
-			ret = sqlite3_bind_text(stmt, 1, savepoint, -1,
-						SQLITE_STATIC);
+		strlcat(sql, savepoint, sizeof(sql));
+
+		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
+					 &stmt, NULL);
 	}
 
 	if (ret == SQLITE_OK)
@@ -905,14 +907,15 @@ pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
 	if (savepoint == NULL || savepoint[0] == '\0') {
 		const char sql[] = "COMMIT TRANSACTION";
 
-		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
+		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
+					 &stmt, NULL);
 	} else {
-		const char sql[] = "RELEASE SAVEPOINT ?1";
+		char sql[128] = "RELEASE SAVEPOINT ";
 
-		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
-		if (ret == SQLITE_OK) 
-			ret = sqlite3_bind_text(stmt, 1, savepoint, -1,
-						SQLITE_STATIC);
+		strlcat(sql, savepoint, sizeof(sql));
+
+		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
+					 &stmt, NULL);
 	}
 
 	if (ret == SQLITE_OK)
@@ -943,14 +946,15 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 	if (savepoint == NULL || savepoint[0] == '\0') {
 		const char sql[] = "ROLLBACK TRANSACTION";
 
-		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
+		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
+					 &stmt, NULL);
 	} else {
-		const char sql[] = "ROLLBACK TO SAVEPOINT ?1";
+		char sql[128] = "ROLLBACK TO SAVEPOINT ";
 
-		ret = sqlite3_prepare_v2(sqlite, sql, sizeof(sql), &stmt, NULL);
-		if (ret == SQLITE_OK) 
-			ret = sqlite3_bind_text(stmt, 1, savepoint, -1,
-						SQLITE_STATIC);
+		strlcat(sql, savepoint, sizeof(sql));
+
+		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
+					 &stmt, NULL);
 	}
 
 	if (ret == SQLITE_OK)
