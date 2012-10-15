@@ -36,7 +36,7 @@
 void
 usage_plugins(void)
 {
-        fprintf(stderr, "usage: pkg plugins [-l] [-edc] <plugin>\n\n");
+        fprintf(stderr, "usage: pkg plugins [-l] <plugin>\n\n");
         fprintf(stderr, "For more information see 'pkg help plugins'.\n");
 }
 
@@ -48,24 +48,8 @@ exec_plugins(int argc, char **argv)
 	int ch;
 	bool list_only = true;
 
-	while ((ch = getopt(argc, argv, "edlc:")) != -1) {
+	while ((ch = getopt(argc, argv, "l")) != -1) {
                 switch (ch) {
-		case 'e':
-			fprintf(stderr, "Enabling of plugins is currently not implemented");
-			return (EX_OK);
-			/* NOT REACHED */
-			break;
-		case 'd':
-			fprintf(stderr, "Disabling of plugins is currently not implemented");
-			return (EX_OK);
-			/* NOT REACHED */
-			break;
-		case 'c':
-			plugin_name = optarg;
-			fprintf(stderr, "Configuring plugins is currently not implemented");
-			return (EX_OK);
-			/* NOT REACHED */
-			break;
 		case 'l':
 			list_only = true;
 			break;
