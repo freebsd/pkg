@@ -430,7 +430,7 @@ main(int argc, char **argv)
 
 	pkg_shutdown();
 	pkg_plugins_shutdown();
-	
+
 	return (ret);
 }
 

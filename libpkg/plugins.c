@@ -231,7 +231,7 @@ pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool boo
 	conf = malloc(sizeof(struct pkg_config));
 	conf->id = id;
 	conf->key = key;
-	conf->type = PKG_CONFIG_STRING;
+	conf->type = PKG_CONFIG_BOOL;
 	conf->fromenv = false;
 	val = getenv(key);
 	if (val != NULL) {
