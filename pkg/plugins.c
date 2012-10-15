@@ -44,7 +44,6 @@ int
 exec_plugins(int argc, char **argv)
 {
 	struct pkg_plugin *p = NULL;
-	const char *plugin_name = NULL;
 	int ch;
 	bool list_only = true;
 

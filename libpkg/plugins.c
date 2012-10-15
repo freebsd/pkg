@@ -383,8 +383,12 @@ pkg_plugins_init(void)
 	struct pkg_config_value *v = NULL;
 	char pluginfile[MAXPATHLEN];
 	const char *plugdir;
+	bool plug_enabled = false;
 	int (*init_func)(struct pkg_plugin *);
 
+	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plug_enabled);
+	if (!plug_enabled)
+		return (EPKG_OK);
 	/*
 	 * Discover available plugins
 	 */

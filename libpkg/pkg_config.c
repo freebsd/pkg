@@ -29,6 +29,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <dlfcn.h>
 #include <err.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -503,6 +504,28 @@ pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type)
 	return (NULL);
 }
 
+static void
+disable_plugins_if_static(void)
+{
+	void *dlh;
+	struct pkg_config *conf;
+	pkg_config_key k = PKG_CONFIG_ENABLE_PLUGINS;
+
+	HASH_FIND_INT(config, &k, conf);
+
+	if (!conf->boolean)
+		return;
+
+	dlh = dlopen(0, 0);
+	dlclose(dlh);
+
+	/* if dlh is 0 then we are in static binary */
+	if (dlh == 0)
+		conf->boolean = false;
+
+	return;
+}
+
 int
 pkg_init(const char *path)
 {
@@ -612,6 +635,7 @@ pkg_init(const char *path)
 	yaml_parser_delete(&parser);
 
 	subst_packagesite();
+	disable_plugins_if_static();
 
 	parsed = true;
 	return (EPKG_OK);
