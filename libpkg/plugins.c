@@ -404,6 +404,7 @@ pkg_plugins_init(void)
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
 			pkg_emit_error("Loading of plugin '%s' failed: %s",
 			    pkg_config_value(v), dlerror());
+			free(p);
 			return (EPKG_FATAL);
 		}
 		if ((init_func = dlsym(p->lh, "init")) == NULL) {
@@ -412,6 +413,7 @@ pkg_plugins_init(void)
 			pkg_emit_error("Plugin '%s' will not be loaded: %s",
 			      pkg_config_value(v), dlerror());
 			dlclose(p->lh);
+			free(p);
 			return (EPKG_FATAL);
 		}
 		pkg_plugin_set(p, PKG_PLUGIN_PLUGINFILE, pluginfile);
