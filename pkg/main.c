@@ -317,6 +317,7 @@ main(int argc, char **argv)
 				break;
 			case PKG_CONFIG_KVLIST:
 				printf("%s:\n", configname);
+				kv = NULL;
 				while (pkg_config_kvlist(pkg_config_id(conf), &kv) == EPKG_OK) {
 					printf("\t- %s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
 					    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
@@ -324,8 +325,46 @@ main(int argc, char **argv)
 				break;
 			case PKG_CONFIG_LIST:
 				printf("%s:\n", configname);
+				list = NULL;
 				while (pkg_config_list(pkg_config_id(conf), &list) == EPKG_OK) {
 					printf("\t- %s\n", pkg_config_value(list));
+				}
+			}
+		}
+		while (pkg_plugins(&p) == EPKG_OK) {
+			conf = NULL;
+			printf("Configurations for plugin: %s\n", pkg_plugin_get(p, PKG_PLUGIN_NAME));
+			while (pkg_plugin_confs(p, &conf) == EPKG_OK) {
+				configname = pkg_config_name(conf);
+				switch (pkg_config_type(conf)) {
+				case PKG_CONFIG_STRING:
+					pkg_plugin_conf_string(p, pkg_config_id(conf), &buf);
+					if (buf == NULL)
+						buf = "";
+					printf("\t%s: %s\n", configname, buf);
+					break;
+				case PKG_CONFIG_BOOL:
+					pkg_plugin_conf_bool(p, pkg_config_id(conf), &b);
+					printf("\t%s: %s\n", configname, b ? "yes": "no");
+					break;
+				case PKG_CONFIG_INTEGER:
+					pkg_plugin_conf_integer(p, pkg_config_id(conf), &integer);
+					printf("\t%s: %"PRId64"\n", configname, integer);
+					break;
+				case PKG_CONFIG_KVLIST:
+					printf("\t%s:\n", configname);
+					kv = NULL;
+					while (pkg_plugin_conf_kvlist(p, pkg_config_id(conf), &kv) == EPKG_OK) {
+						printf("\t\t- %s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
+						    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
+					}
+					break;
+				case PKG_CONFIG_LIST:
+					printf("\t%s:\n", configname);
+					list = NULL;
+					while (pkg_plugin_conf_list(p, pkg_config_id(conf), &list) == EPKG_OK) {
+						printf("\t\t- %s\n", pkg_config_value(list));
+					}
 				}
 			}
 		}

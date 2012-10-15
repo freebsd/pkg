@@ -541,6 +541,12 @@ pkg_plugin_conf_list(struct pkg_plugin *p, int key, struct pkg_config_value **v)
 }
 
 int
+pkg_plugin_confs(struct pkg_plugin *p, struct pkg_config **conf)
+{
+	HASH_NEXT(p->conf, (*conf));
+}
+
+int
 pkg_plugin_parse(struct pkg_plugin *p)
 {
 	char confpath[MAXPATHLEN];

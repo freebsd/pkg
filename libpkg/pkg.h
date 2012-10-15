@@ -944,6 +944,7 @@ int pkg_plugin_conf_bool(struct pkg_plugin *p, int key, bool *value);
 int pkg_plugin_conf_kvlist(struct pkg_plugin *p, int key, struct pkg_config_kv **kv);
 int pkg_plugin_conf_list(struct pkg_plugin *p, int key, struct pkg_config_value **v);
 int pkg_plugin_conf_integer(struct pkg_plugin *p, int key, int64_t *value);
+int pkg_plugin_confs(struct pkg_plugin *p, struct pkg_config **conf);
 
 int pkg_plugin_parse(struct pkg_plugin *p);
 
