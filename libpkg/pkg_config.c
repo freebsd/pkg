@@ -705,6 +705,8 @@ pkg_shutdown(void)
 		return (EPKG_FATAL);
 	}
 
+	config_by_key = NULL;
+
 	parsed = false;
 
 	return (EPKG_OK);
