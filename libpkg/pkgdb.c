@@ -2609,7 +2609,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	    "COALESCE(l.flatsize, p.flatsize) as flatsize, "
 	    "p.cksum, p.path, 0 FROM '%s'.packages as p "
 	    "  LEFT JOIN packages as l ON p.origin = l.origin "
-	    "  WHERE p.origin REGEXP '^ports-mgmt/pkg\(-devel\)\{0,1\}$';";
+	    "  WHERE p.origin REGEXP '^ports-mgmt/pkg\\(-devel\\)\\{0,1\\}$';";
 
 	assert(db != NULL);
 	assert(db->type == PKGDB_REMOTE);
@@ -2850,7 +2850,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	sql_exec(db->sqlite, "UPDATE pkgjobs SET weight=100000 "
-		 "WHERE origin REGEXP '^ports-mgmt/pkg\(-devel\)\{0,1\}$'");
+		 "WHERE origin REGEXP '^ports-mgmt/pkg\\(-devel\\)\\{0,1\\}$'");
 
 	sbuf_reset(sql);
 	sbuf_printf(sql, finalsql, reponame);
@@ -3038,7 +3038,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	sql_exec(db->sqlite, "UPDATE pkgjobs SET weight = 100000 "
-		 "WHERE origin REGEXP '^ports-mgmt/pkg\(-devel\)\{0,1\}$'");
+		 "WHERE origin REGEXP '^ports-mgmt/pkg\\(-devel\\)\\{0,1\\}$'");
 
 	sbuf_reset(sql);
 	sbuf_printf(sql, finalsql, reponame);
