@@ -133,22 +133,13 @@ Possibly in version 9.1.
 <a name="15"></a>
 ### Q: How can I use pkgng with portmaster?
 
-First make sure you have the latest portmaster patch from the Github repo.
+Ensure your ports tree is up-to-date, select the PKGNG option, and install/upgrade portmaster:
 
-The latest patch can be found here:
+    # portsnap fetch update
+    # make -C /usr/ports/ports-mgmt/portmaster config clean build deinstall install
+    # echo "WITH_PKGNG=yes" >> /etc/make.conf
+    # pkg2ng
 
-* [ports/patch-portmaster-pkgng](https://github.com/pkgng/pkgng/blob/master/ports/patch-portmaster-pkgng)
-
-Now patch portmaster:
-
-	# cp patch-portmaster-pkgng /usr/ports/ports-mgmt/portmaster/files
-	# make -C /usr/ports/ports-mgmt/portmaster clean deinstall reinstall
-
-Enable pkgng in portmaster:
-
-	# echo "WITH_PKGNG=yes" >> /etc/make.conf
-
-That was it.
 <a name="16"></a>
 ### Q: How can I use pkgng with portupgrade?
 
