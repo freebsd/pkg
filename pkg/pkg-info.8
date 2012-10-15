@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 12, 2012
+.Dd October 15, 2012
 .Dt PKG-INFO 8
 .Os
 .Sh NAME
@@ -27,7 +27,7 @@
 .Nm
 .Fl a
 .Nm
-.Op Fl BDdefgIklOqRrsXx
+.Op Fl BDdefgIklOqRrsx
 .Ar <pkg-name>
 .Nm
 .Op Fl BDdfIlqRrs
@@ -61,11 +61,9 @@ as a shell glob pattern.
 .It Fl x
 Treat
 .Ar <pkg-name>
-as a regular expression.
-.It Fl X
-Treat
-.Ar <pkg-name>
-as an extended regular expression.
+as a regular expression according to the "modern" or "extended" syntax
+of
+.Xr re_format 7 .
 .It Fl d
 Display the list of packages required by
 .Ar <pkg-name> .

@@ -50,7 +50,7 @@ usage_create(void)
 {
 	fprintf(stderr, "usage: pkg create [-n] [-f format] [-o outdir] "
 		"[-p plist] [-r rootdir] -m manifestdir\n");
-	fprintf(stderr, "       pkg create [-gnXx] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-gnx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
 	fprintf(stderr, "       pkg create [-n] [-f format] [-o outdir] "
 		"[-r rootdir] -a\n\n");
@@ -177,7 +177,7 @@ exec_create(int argc, char **argv)
 	pkg_formats fmt;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "agxXf:r:m:o:np:")) != -1) {
+	while ((ch = getopt(argc, argv, "agxf:r:m:o:np:")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -187,9 +187,6 @@ exec_create(int argc, char **argv)
 			break;
 		case 'x':
 			match = MATCH_REGEX;
-			break;
-		case 'X':
-			match = MATCH_EREGEX;
 			break;
 		case 'f':
 			format = optarg;

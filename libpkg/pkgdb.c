@@ -58,9 +58,7 @@
 #define PKGEQ	(1U << 3)
 
 static struct pkgdb_it *pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
-static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **, int);
-static void pkgdb_regex_basic(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_regex_extended(sqlite3_context *, int, sqlite3_value **);
+static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
@@ -235,7 +233,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 }
 
 static void
-pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
+pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 {
 	const unsigned char	*regex = NULL;
 	const unsigned char	*str;
@@ -252,7 +250,7 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
 	re = (regex_t *)sqlite3_get_auxdata(ctx, 0);
 	if (re == NULL) {
 		re = malloc(sizeof(regex_t));
-		if (regcomp(re, regex, reg_type | REG_NOSUB) != 0) {
+		if (regcomp(re, regex, REG_EXTENDED | REG_NOSUB) != 0) {
 			sqlite3_result_error(ctx, "Invalid regex\n", -1);
 			free(re);
 			return;
@@ -263,18 +261,6 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv, int reg_type)
 
 	ret = regexec(re, str, 0, NULL, 0);
 	sqlite3_result_int(ctx, (ret != REG_NOMATCH));
-}
-
-static void
-pkgdb_regex_basic(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	pkgdb_regex(ctx, argc, argv, REG_BASIC);
-}
-
-static void
-pkgdb_regex_extended(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	pkgdb_regex(ctx, argc, argv, REG_EXTENDED);
 }
 
 static void
@@ -1098,13 +1084,6 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		else
 			comp = " WHERE origin REGEXP ?1";
 		break;
-	case MATCH_EREGEX:
-		if (checkorigin == NULL)
-			comp = " WHERE EREGEXP(?1, name) "
-				"OR EREGEXP(?1, name || \"-\" || version)";
-		else
-			comp = " WHERE EREGEXP(?1, origin)";
-		break;
 	case MATCH_CONDITION:
 		comp = pattern;
 		break;
@@ -1130,9 +1109,6 @@ pkgdb_get_match_how(match_t match)
 		break;
 	case MATCH_REGEX:
 		how = "%s REGEXP ?1";
-		break;
-	case MATCH_EREGEX:
-		how = "EREGEXP(?1, %s)";
 		break;
 	case MATCH_CONDITION:
 		/* Should not be called by pkgdb_get_match_how(). */
@@ -2609,7 +2585,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 	    "COALESCE(l.flatsize, p.flatsize) as flatsize, "
 	    "p.cksum, p.path, 0 FROM '%s'.packages as p "
 	    "  LEFT JOIN packages as l ON p.origin = l.origin "
-	    "  WHERE p.origin REGEXP '^ports-mgmt/pkg\\(-devel\\)\\{0,1\\}$';";
+	    "  WHERE p.origin REGEXP '^ports-mgmt/pkg(-devel)?$';";
 
 	assert(db != NULL);
 	assert(db->type == PKGDB_REMOTE);
@@ -2850,7 +2826,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	sql_exec(db->sqlite, "UPDATE pkgjobs SET weight=100000 "
-		 "WHERE origin REGEXP '^ports-mgmt/pkg\\(-devel\\)\\{0,1\\}$'");
+		 "WHERE origin REGEXP '^ports-mgmt/pkg(-devel)?$'");
 
 	sbuf_reset(sql);
 	sbuf_printf(sql, finalsql, reponame);
@@ -3038,7 +3014,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	sql_exec(db->sqlite, sbuf_get(sql));
 
 	sql_exec(db->sqlite, "UPDATE pkgjobs SET weight = 100000 "
-		 "WHERE origin REGEXP '^ports-mgmt/pkg\\(-devel\\)\\{0,1\\}$'");
+		 "WHERE origin REGEXP '^ports-mgmt/pkg(-devel)?$'");
 
 	sbuf_reset(sql);
 	sbuf_printf(sql, finalsql, reponame);
@@ -3900,9 +3876,7 @@ sqlcmd_init(sqlite3 *db, __unused const char **err,
 	sqlite3_create_function(db, "myarch", 1, SQLITE_ANY, NULL,
 				pkgdb_myarch, NULL, NULL);
 	sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL,
-				pkgdb_regex_basic, NULL, NULL);
-	sqlite3_create_function(db, "eregexp", 2, SQLITE_ANY, NULL,
-				pkgdb_regex_extended, NULL, NULL);
+				pkgdb_regex, NULL, NULL);
 	sqlite3_create_function(db, "pkglt", 2, SQLITE_ANY, NULL,
 				pkgdb_pkglt, NULL, NULL);
 	sqlite3_create_function(db, "pkggt", 2, SQLITE_ANY, NULL,

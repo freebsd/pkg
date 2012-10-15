@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd September 14, 2012
+.Dd October 15, 2012
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -27,7 +27,7 @@
 .Op Fl A Op Ar 01
 .Op Fl o Ar <oldorigin>:<neworigin>
 .Op Fl y
-.Op Fl xXg
+.Op Fl xg
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
@@ -51,16 +51,18 @@ Change the port origin of a given dependency from
 to
 .Ar neworigin .
 This corresponds to the port directory that the package originated from.
-Typically, this is only needed for upgrading a library or package that has MOVED or when the default version of a major port dependency changes.
+Typically, this is only needed for upgrading a library or package that
+has MOVED or when the default version of a major port dependency
+changes.
 Usually this will be explained in /usr/ports/UPDATING.
 Also see
 .Xr pkg-updating 8
 and
 .Sx EXAMPLES .
 .It Fl x
-Assume pkg-name is a regex
-.It Fl X
-Assume pkg-name is an extended regex
+Assume pkg-name is a regular expression according to the "modern" or
+"extended" syntax of
+.Xr re_format 7 .
 .It Fl g
 Assume pkg-name is a glob
 .El

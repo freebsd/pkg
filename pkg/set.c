@@ -41,7 +41,7 @@
 void
 usage_set(void)
 {
-	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-xXg] <pkg-name>\n\n");
+	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-gx] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
@@ -66,7 +66,7 @@ exec_set(int argc, char **argv)
 	unsigned int loads = PKG_LOAD_BASIC;
 	unsigned int sets = 0;
 
-	while ((ch = getopt(argc, argv, "ayA:kxXgo:")) != -1) {
+	while ((ch = getopt(argc, argv, "ayA:kxgo:")) != -1) {
 		switch (ch) {
 		case 'y':
 			yes_flag = true;
@@ -76,9 +76,6 @@ exec_set(int argc, char **argv)
 			break;
 		case 'x':
 			match = MATCH_REGEX;
-			break;
-		case 'X':
-			match = MATCH_EREGEX;
 			break;
 		case 'g':
 			match = MATCH_GLOB;

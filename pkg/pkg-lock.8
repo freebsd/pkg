@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 12, 2012
+.Dd October 15, 2012
 .Dt PKG-LOCK 8
 .Os
 .Sh NAME
@@ -27,13 +27,13 @@
 .Op Fl qy
 .Fl a
 .Nm
-.Op Fl gqXxy
+.Op Fl gqxy
 .Ar <pkg-name>
 .Nm "pkg unlock"
 .Op Fl qy
 .Fl a
 .Nm "pkg unlock"
-.Op Fl gqXxy
+.Op Fl gqxy
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
@@ -78,14 +78,12 @@ Treat
 as a shell glob pattern.
 .It Fl q
 Operate quietly: do not output anything other than confirmatory questions.
-.It Fl X
-Treat
-.Ar <pkg-name>
-as an extended regular expression.
 .It Fl x
 Treat
 .Ar <pkg-name>
-as a regular expression.
+as a regular expression according to the "modern" or "extended" syntax 
+of
+.Xr re_format 7 .
 .It Fl y
 Assume "yes" as the answer to all questions.
 .El

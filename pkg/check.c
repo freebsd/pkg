@@ -229,7 +229,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-Bdsr] [-vy] [-a | -gxX <pattern>]\n\n");
+	fprintf(stderr, "usage: pkg check [-Bdsr] [-vy] [-a | -gx <pattern>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -255,16 +255,13 @@ exec_check(int argc, char **argv)
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagdBxXsrv")) != -1) {
+	while ((ch = getopt(argc, argv, "yagdBxsrv")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
 		case 'x':
 			match = MATCH_REGEX;
-			break;
-		case 'X':
-			match = MATCH_EREGEX;
 			break;
 		case 'g':
 			match = MATCH_GLOB;

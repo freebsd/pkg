@@ -106,13 +106,10 @@ typedef enum {
 	 */
 	MATCH_GLOB,
 	/**
-	 * The argument is a basic regular expression.
+	 * The argument is a regular expression ('modern' style
+	 * according to re_format(7).
 	 */
 	MATCH_REGEX,
-	/**
-	 * The argument is an extended regular expression.
-	 */
-	MATCH_EREGEX,
 	/**
 	 * The argument is a WHERE clause to use as condition
 	 */

@@ -206,9 +206,9 @@ usage_search(void)
 {
 	int i, n;
 
-	fprintf(stderr, "usage: pkg search [-egXx] [-r repo] [-S search] "
+	fprintf(stderr, "usage: pkg search [-egx] [-r repo] [-S search] "
 	    "[-L label] [-M mod]... <pkg-name>\n");
-	fprintf(stderr, "       pkg search [-cDdefgopqXx] [-r repo] "
+	fprintf(stderr, "       pkg search [-cDdefgopqx] [-r repo] "
 	    "<pattern>\n\n");
 	n = fprintf(stderr, "       Search and Label options:");
 	for (i = 0; search_label[i].option != NULL; i++) {
@@ -243,7 +243,7 @@ exec_search(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	bool atleastone = false;
 
-	while ((ch = getopt(argc, argv, "cDdefgL:M:opqr:S:sXx")) != -1) {
+	while ((ch = getopt(argc, argv, "cDdefgL:M:opqr:S:sx")) != -1) {
 		switch (ch) {
 		case 'c':	/* Same as -S comment */
 			search = search_label_opt("comment");
@@ -286,9 +286,6 @@ exec_search(int argc, char **argv)
 			break;
 		case 's':	/* Same as -M size */
 			opt |= modifier_opt("size");
-			break;
-		case 'X':
-			match = MATCH_EREGEX;
 			break;
 		case 'x':
 			match = MATCH_REGEX;

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 10, 2012
+.Dd October 15, 2012
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@
 .Op Fl r Ar rootdir
 .Fl m Ar manifestdir
 .Nm
-.Op Fl gnxX
+.Op Fl gnx
 .Op Fl f Ar format
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
@@ -85,7 +85,7 @@ Interpret
 as a shell glob pattern and create package only for installed binaries whose
 name match this pattern.
 This option is incompatible with the
-.Fl a , x , X
+.Fl a , x
 or
 .Fl m Ar manifestdir
 options.
@@ -94,20 +94,10 @@ Like
 .Fl g ,
 but interpret
 .Ar pkg-name
-as a regular expression.
+as a regular expression using the "modern" or "extended" syntax described in
+.Xr re_format 7 .
 This option is incompatible with the
-.Fl a, g , X
-or
-.Fl m Ar manifestdir
-options.
-.It Fl X
-Like
-.Fl g ,
-but interpret
-.Ar pkg-name
-as an extended regular expression.
-This option is incompatible with the
-.Fl a, g , x
+.Fl a, g
 or
 .Fl m Ar manifestdir
 options.
@@ -145,9 +135,9 @@ are required; the
 file can contain all the required information needed to build a
 package.
 This option is incompatible with the
-.Fl a, g , x
+.Fl a, g
 or
-.Fl X
+.Fl x
 options.
 .It Fl n
 Do not overwrite already existing packages

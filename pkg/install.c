@@ -45,7 +45,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "usage: pkg install [-AfgLnqRXxy] [-r reponame] <pkg-name> ...\n\n");
+	    "usage: pkg install [-AfgLnqRxy] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -71,7 +71,7 @@ exec_install(int argc, char **argv)
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
-	while ((ch = getopt(argc, argv, "AfgLnqRr:Xxy")) != -1) {
+	while ((ch = getopt(argc, argv, "AfgLnqRr:xy")) != -1) {
 		switch (ch) {
 		case 'A':
 			automatic = true;
@@ -96,9 +96,6 @@ exec_install(int argc, char **argv)
 			break;
 		case 'r':
 			reponame = optarg;
-			break;
-		case 'X':
-			match = MATCH_EREGEX;
 			break;
 		case 'x':
 			match = MATCH_REGEX;

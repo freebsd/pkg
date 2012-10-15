@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 26, 2012
+.Dd October 15, 2012
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl AfgLnqRXxy
+.Op Fl AfgLnqRxy
 .Op Fl r Ar reponame
 .Ar <pkg-origin> ...
 .Sh DESCRIPTION
@@ -32,8 +32,7 @@ is used for installation of packages from a remote package
 repository.
 Multiple package names can be specified on the command line, either
 explicitly or by matching against package names in the repository
-catalogues using shell globbing; standard- or extended regular
-expressions.
+catalogues using shell globbing or regular expressions.
 .Pp
 .Nm
 creates a work-list of all the package installations to do.
@@ -139,10 +138,10 @@ In multi-repo mode, override the
 .Fa pkg.conf
 ordering and only attempt to download packages from the named
 repository.
-.It Fl X
-Treat the package names as extended regular expressions.
 .It Fl x
-Treat the package names as regular expressions.
+Treat the package names as regular expressions according to the
+"modern" or "extended" syntax of
+.Xr re_format 7 .
 .It Fl y
 Assume yes when asked for confirmation before package installation.
 .El

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 9, 2012
+.Dd October 15, 2012
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
@@ -25,7 +25,7 @@
 .Nm
 .Op Fl Bdsr
 .Op Fl vy
-.Op Fl a | gxX Ar <pattern>
+.Op Fl a | gx Ar <pattern>
 .Sh DESCRIPTION
 .Nm
 .Fl B
@@ -63,10 +63,8 @@ as a shell glob pattern.
 Treat
 .Ar <pattern>
 as a regular expression.
-.It Fl X
-Treat
-.Ar <pattern>
-as an extended regular expression.
+This uses the "modern" or "extended" syntax described in
+.Xr re_format 7
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

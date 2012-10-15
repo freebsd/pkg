@@ -23,14 +23,14 @@
 .Nd search package repository catalogues
 .Sh SYNOPSIS
 .Nm
-.Op Fl egxX
+.Op Fl egx
 .Op Fl r Ar repo
 .Op Fl S Ar search
 .Op Fl L Ar label
 .Op Fl M Ar mod
 .Ar pattern
 .Nm
-.Op Fl cDdefgopqXx
+.Op Fl cDdefgopqx
 .Op Fl r Ar repo
 .Ar pattern
 .Sh DESCRIPTION
@@ -144,16 +144,12 @@ sections for more details.
 Display the installed size of matched packages.
 Equivalent to
 .Fl "M size" .
-.It Fl X
-Treat
-.Ar pattern
-as an extended regular expression.
-Matches any substring of the search field unless explicit beginning
-or ending anchor terms are used.
 .It Fl x
 Treat
 .Ar pattern
-as a regular expression.
+as a regular expression according to the "modern" or "extended" 
+syntax of
+.Xr re_format 7 .
 This is the default.
 Matches any substring of the search field unless explicit beginning
 or ending anchor terms are used.

@@ -69,7 +69,7 @@ usage_rquery(void)
 	fprintf(stderr, "usage: pkg rquery [-r reponame] <query-format> <pkg-name>\n");
 	fprintf(stderr, "       pkg rquery [-a] [-r reponame] <query-format>\n");
 	fprintf(stderr, "       pkg rquery -e <evaluation> [-r reponame] <query-format>\n");
-	fprintf(stderr, "       pkg rquery [-gxX] [-r reponame] <query-format> <pattern> <...>\n\n");
+	fprintf(stderr, "       pkg rquery [-gx] [-r reponame] <query-format> <pattern> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help rquery.'\n");
 }
 
@@ -93,7 +93,7 @@ exec_rquery(int argc, char **argv)
 	const char *reponame = NULL;
 	bool onematched = false;
 
-	while ((ch = getopt(argc, argv, "agxXe:r:")) != -1) {
+	while ((ch = getopt(argc, argv, "agxe:r:")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -103,9 +103,6 @@ exec_rquery(int argc, char **argv)
 			break;
 		case 'x':
 			match = MATCH_REGEX;
-			break;
-		case 'X':
-			match = MATCH_EREGEX;
 			break;
 		case 'e':
 			match = MATCH_CONDITION;

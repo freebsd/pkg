@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 25, 2012
+.Dd October 15, 2012
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -33,7 +33,7 @@
 .Op Fl r Ar reponame
 .Ao query-format Ac
 .Nm
-.Op Fl gxX
+.Op Fl gx
 .Op Fl r Ar reponame
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
@@ -62,11 +62,9 @@ as a glob pattern.
 .It Fl x
 Treat
 .Ao pattern Ac
-as a regular expression.
-.It Fl X
-Treat
-.Ao pattern Ac
-as an extended regular expression.
+as a regular expression according to the "modern" or "extended" syntax
+of
+.Xr re_format 7 .
 .El
 .Sh QUERY FORMAT
 There are two type of keyword for the query format: the multiline and the normal

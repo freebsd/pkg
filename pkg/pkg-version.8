@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 14, 2012
+.Dd October 15, 2012
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -27,7 +27,7 @@
 .Op Fl hoqv
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
-.Op Fl Xxge Ar pattern
+.Op Fl xge Ar pattern
 .Op Fl r Ar reponame
 .Op Fl O Ar origin
 .Op Ar index
@@ -107,10 +107,10 @@ flag.
 Displays the packages which status flag does not match the one
 specified by
 .Ar limchar
-.It Fl X Ar pattern
-Only display the packages that match the extended regular expression.
 .It Fl x Ar pattern
 Only display the packages that match the regular expression.
+Uses the "modern" or "extended" syntax of
+.Xr re_format 7 .
 .It Fl g Ar pattern
 Only display the packages that match the glob expression.
 .It Fl g Ar string

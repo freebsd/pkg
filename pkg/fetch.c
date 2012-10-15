@@ -42,7 +42,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxXadL] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxadL] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
 }
 
@@ -61,7 +61,7 @@ exec_fetch(int argc, char **argv)
 	bool auto_update = true;
 	match_t match = MATCH_EXACT;
 
-	while ((ch = getopt(argc, argv, "ygxXr:qaLd")) != -1) {
+	while ((ch = getopt(argc, argv, "ygxr:qaLd")) != -1) {
 		switch (ch) {
 		case 'y':
 			yes = true;
@@ -74,9 +74,6 @@ exec_fetch(int argc, char **argv)
 			break;
 		case 'x':
 			match = MATCH_REGEX;
-			break;
-		case 'X':
-			match = MATCH_EREGEX;
 			break;
 		case 'r':
 			reponame = optarg;

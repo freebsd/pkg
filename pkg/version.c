@@ -171,7 +171,7 @@ exec_version(int argc, char **argv)
 
 	SLIST_INIT(&indexhead);
 
-	while ((ch = getopt(argc, argv, "hIPRoqvl:L:X:x:g:e:O:r:tT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIPRoqvl:L:x:g:e:O:r:tT")) != -1) {
 		switch (ch) {
 		case 'h':
 			usage_version();
@@ -201,10 +201,6 @@ exec_version(int argc, char **argv)
 		case 'L':
 			opt |= VERSION_NOSTATUS;
 			limchar = *optarg;
-			break;
-		case 'X':
-			match = MATCH_EREGEX;
-			pattern = optarg;
 			break;
 		case 'x':
 			match = MATCH_REGEX;
