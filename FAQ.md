@@ -152,9 +152,10 @@ That was it.
 <a name="16"></a>
 ### Q: How can I use pkgng with portupgrade?
 
-Currently only **ports-mgmt/portupgrade-devel** supports pkgng.
+Install the latest **ports-mgmt/portupgrade**, or **ports-mgmt/portupgrade-devel**. Both support pkgng.
 
-    # portupgrade -f -o ports-mgmt/portupgrade-devel ports-mgmt/portupgrade
+    # portsnap fetch update
+    # portupgrade ports-mgmt/portupgrade
     # echo "WITH_PKGNG=yes" >> /etc/make.conf
     # pkg2ng
 
