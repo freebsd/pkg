@@ -411,6 +411,8 @@ pkg_plugins_init(void)
 			     pkg_config_value(v));
 			pkg_emit_error("Plugin '%s' will not be loaded: %s",
 			      pkg_config_value(v), dlerror());
+			dlclose(p->lh);
+			return (EPKG_FATAL);
 		}
 		pkg_plugin_set(p, PKG_PLUGIN_PLUGINFILE, pluginfile);
 		if (init_func(p) == EPKG_OK) {
