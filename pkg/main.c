@@ -405,11 +405,12 @@ main(int argc, char **argv)
 			}
 		}
 		
-		pkg_shutdown();
-		pkg_plugins_shutdown();
 		if (ret != EPKG_OK)
 			usage();
 		
+		pkg_plugins_shutdown();
+		pkg_shutdown();
+
 		return (ret); /* Not reached but makes scanbuild happy */
 	}
 
