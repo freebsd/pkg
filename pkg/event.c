@@ -95,6 +95,8 @@ event_callback(void *data, struct pkg_event *ev)
 		if (nbactions > 0)
 			printf("[%d/%d] ", nbdone, nbactions);
 		printf("Installing %s-%s...", name, version);
+		/* print to the terminal title*/
+		printf("%c]0;[%d/%d] Installing %s-%s%c", '\033', nbdone, nbactions, name, version, '\007');
 
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
@@ -127,6 +129,8 @@ event_callback(void *data, struct pkg_event *ev)
 		if (nbactions > 0)
 			printf("[%d/%d] ", nbdone, nbactions);
 		printf("Deleting %s-%s...", name, version);
+		printf("%c]0;[%d/%d] Deleting %s-%s%c", '\033', nbdone,
+		    nbactions, name, version, '\007');
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
@@ -145,14 +149,22 @@ event_callback(void *data, struct pkg_event *ev)
 		case 1:
 			printf("Downgrading %s from %s to %s...",
 			    name, version, newversion);
+			printf("%c]0;[%d/%d] Downgrading %s from %s to %s%c",
+			    '\033', nbdone, nbactions, name, version,
+			    newversion, '\007');
 			break;
 		case 0:
 			printf("Reinstalling %s-%s",
 			    name, version);
+			printf("%c]0;[%d/%d] Reinstalling %s-%s%c", '\033',
+			    nbdone, nbactions, name, version, '\007');
 			break;
 		case -1:
 			printf("Upgrading %s from %s to %s...",
 			    name, version, newversion);
+			printf("%c]0;[%d/%d] Upgrading %s from %s to %s%c",
+			    '\033', nbdone, nbactions, name, version,
+			    newversion, '\007');
 			break;
 		}
 		break;
