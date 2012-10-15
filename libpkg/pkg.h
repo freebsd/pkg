@@ -63,6 +63,7 @@ struct pkg_jobs;
 struct pkg_repos;
 struct pkg_repos_entry;
 
+struct pkg_config;
 struct pkg_config_kv;
 struct pkg_config_value;
 
@@ -285,6 +286,14 @@ typedef enum _pkg_stats_t {
 	PKG_STATS_REMOTE_SIZE,
 	PKG_STATS_REMOTE_REPOS,
 } pkg_stats_t;
+
+typedef enum {
+	PKG_CONFIG_STRING=0,
+	PKG_CONFIG_BOOL,
+	PKG_CONFIG_KVLIST,
+	PKG_CONFIG_INTEGER,
+	PKG_CONFIG_LIST
+} pkg_config_t;
 
 /**
  * Keys for accessing pkg plugin data
@@ -956,6 +965,10 @@ int pkg_config_list(pkg_config_key key, struct pkg_config_value **v);
 const char *pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type);
 const char *pkg_config_value(struct pkg_config_value *v);
 int pkg_config_int64(pkg_config_key key, int64_t *value);
+int pkg_configs(struct pkg_config **c);
+int pkg_config_id(struct pkg_config *c);
+int pkg_config_type(struct pkg_config *c);
+const char *pkg_config_name(struct pkg_config *c);
 
 /**
  * @todo Document

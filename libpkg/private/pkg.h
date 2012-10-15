@@ -162,14 +162,6 @@ typedef enum _pkg_job_flags {
 	PKG_JOB_FLAGS_DRY_RUN =	(1 << 1),
 } pkg_job_flags;
 
-enum {
-	CONF_STRING=0,
-	CONF_BOOL,
-	CONF_KVLIST,
-	CONF_INTEGER,
-	CONF_LIST
-};
-
 struct pkg_jobs_node {
 	struct pkg	*pkg;
 	size_t		 nrefs;

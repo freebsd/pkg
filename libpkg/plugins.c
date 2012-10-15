@@ -191,7 +191,7 @@ pkg_plugin_conf_add_string(struct pkg_plugin *p, int id, const char *key, const 
 	conf = malloc(sizeof(struct pkg_config));
 	conf->id = id;
 	conf->key = key;
-	conf->type = CONF_STRING;
+	conf->type = PKG_CONFIG_STRING;
 	conf->fromenv = false;
 	val = getenv(key);
 	if (val != NULL) {
@@ -231,7 +231,7 @@ pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool boo
 	conf = malloc(sizeof(struct pkg_config));
 	conf->id = id;
 	conf->key = key;
-	conf->type = CONF_STRING;
+	conf->type = PKG_CONFIG_STRING;
 	conf->fromenv = false;
 	val = getenv(key);
 	if (val != NULL) {
@@ -278,7 +278,7 @@ pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64
 	conf = malloc(sizeof(struct pkg_config));
 	conf->id = id;
 	conf->key = key;
-	conf->type = CONF_STRING;
+	conf->type = PKG_CONFIG_STRING;
 	conf->fromenv = false;
 	val = getenv(key);
 	if (val != NULL) {
@@ -320,7 +320,7 @@ pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key)
 	conf = malloc(sizeof(struct pkg_config));
 	conf->id = id;
 	conf->key = key;
-	conf->type = CONF_KVLIST;
+	conf->type = PKG_CONFIG_KVLIST;
 	STAILQ_INIT(&conf->kvlist);
 
 	HASH_ADD_INT(p->conf, id, conf);
@@ -350,7 +350,7 @@ pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key)
 	conf = malloc(sizeof(struct pkg_config));
 	conf->id = id;
 	conf->key = key;
-	conf->type = CONF_LIST;
+	conf->type = PKG_CONFIG_LIST;
 	STAILQ_INIT(&conf->list);
 
 	HASH_ADD_INT(p->conf, id, conf);
@@ -495,7 +495,7 @@ pkg_plugin_conf_kvlist(struct pkg_plugin *p, int key, struct pkg_config_kv **kv)
 	if (conf == NULL)
 		return (EPKG_FATAL);
 
-	if (conf->type != CONF_KVLIST) {
+	if (conf->type != PKG_CONFIG_KVLIST) {
 		pkg_emit_error("this config entry is not a \"key: value\" list");
 		return (EPKG_FATAL);
 	}
@@ -525,7 +525,7 @@ pkg_plugin_conf_list(struct pkg_plugin *p, int key, struct pkg_config_value **v)
 	if (conf == NULL)
 		return (EPKG_FATAL);
 
-	if (conf->type != CONF_LIST) {
+	if (conf->type != PKG_CONFIG_LIST) {
 		pkg_emit_error("this config entry is not a list");
 		return (EPKG_FATAL);
 	}

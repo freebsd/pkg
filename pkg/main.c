@@ -34,6 +34,7 @@
 
 #include <assert.h>
 #include <err.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -205,8 +206,12 @@ main(int argc, char **argv)
 	const char *buf = NULL;
 	bool b, plugins_enabled = false;
 	struct pkg_config_kv *kv = NULL;
+	struct pkg_config_value *list = NULL;
 	struct plugcmd *c;
 	struct pkg_plugin *p = NULL;
+	struct pkg_config *conf = NULL;
+	const char *configname = NULL;
+	int64_t integer = 0;
 
 	/* Set stdout unbuffered */
         setvbuf(stdout, NULL, _IONBF, 0);
@@ -293,40 +298,36 @@ main(int argc, char **argv)
 
 	if (version > 1) {
 		printf("version: "PKGVERSION""GITHASH"\n");
-		pkg_config_string(PKG_CONFIG_ABI, &buf);
-		printf("abi: %s\n", buf);
-		pkg_config_string(PKG_CONFIG_DBDIR, &buf);
-		printf("db dir: %s\n", buf);
-		pkg_config_string(PKG_CONFIG_CACHEDIR, &buf);
-		printf("cache dir: %s\n", buf);
-		pkg_config_string(PKG_CONFIG_PORTSDIR, &buf);
-		printf("ports dir: %s\n", buf);
-		pkg_config_bool(PKG_CONFIG_SYSLOG, &b);
-		printf("Log into syslog: %s\n", b ? "yes": "no");
-		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &b);
-		printf("Assume always yes: %s\n", b ? "yes" : "no");
-		if (version > 2) {
-			pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &b);
-			printf("Handle rc scripts: %s\n", b ? "yes" : "no");
-			pkg_config_bool(PKG_CONFIG_SHLIBS, &b);
-			printf("Track shlibs: %s\n", b ? "yes" : "no");
-			pkg_config_bool(PKG_CONFIG_AUTODEPS, &b);
-			printf("Automatic dependency tracking: %s\n", b ? "yes": "no");
-			pkg_config_string(PKG_CONFIG_PLIST_KEYWORDS_DIR, &buf);
-			printf("Custom keywords directory: %s\n", buf ? buf : "none");
-			pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &b);
-			printf("Developer mode: %s\n", b ? "yes" : "no");
-		}
-		pkg_config_bool(PKG_CONFIG_MULTIREPOS, &b);
-		if (b) {
-			printf("Repositories:\n");
-			while (pkg_config_kvlist(PKG_CONFIG_REPOS, &kv) == EPKG_OK) {
-				printf("             - %s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
-				    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
+		while (pkg_configs(&conf) == EPKG_OK) {
+			configname = pkg_config_name(conf);
+			switch (pkg_config_type(conf)) {
+			case PKG_CONFIG_STRING:
+				pkg_config_string(pkg_config_id(conf), &buf);
+				if (buf == NULL)
+					buf = "";
+				printf("%s: %s\n", configname, buf);
+				break;
+			case PKG_CONFIG_BOOL:
+				pkg_config_bool(pkg_config_id(conf), &b);
+				printf("%s: %s\n", configname, b ? "yes": "no");
+				break;
+			case PKG_CONFIG_INTEGER:
+				pkg_config_int64(pkg_config_id(conf), &integer);
+				printf("%s: %"PRId64"\n", configname, integer);
+				break;
+			case PKG_CONFIG_KVLIST:
+				printf("%s:\n", configname);
+				while (pkg_config_kvlist(pkg_config_id(conf), &kv) == EPKG_OK) {
+					printf("\t- %s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
+					    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
+				}
+				break;
+			case PKG_CONFIG_LIST:
+				printf("%s:\n", configname);
+				while (pkg_config_list(pkg_config_id(conf), &list) == EPKG_OK) {
+					printf("\t- %s\n", pkg_config_value(list));
+				}
 			}
-		} else {
-			pkg_config_string(PKG_CONFIG_REPO, &buf);
-			printf("Repository: %s\n", buf ? buf : "none");
 		}
 		pkg_shutdown();
 		pkg_plugins_shutdown();

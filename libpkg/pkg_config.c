@@ -55,117 +55,117 @@ static struct pkg_config *config_by_key = NULL;
 
 static struct config_entry c[] = {
 	[PKG_CONFIG_REPO] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"PACKAGESITE",
 		NULL,
 	},
 	[PKG_CONFIG_DBDIR] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"PKG_DBDIR",
 		"/var/db/pkg",
 	},
 	[PKG_CONFIG_CACHEDIR] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"PKG_CACHEDIR",
 		"/var/cache/pkg",
 	},
 	[PKG_CONFIG_PORTSDIR] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"PORTSDIR",
 		"/usr/ports",
 	},
 	[PKG_CONFIG_REPOKEY] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"PUBKEY",
 		NULL,
 	},
 	[PKG_CONFIG_MULTIREPOS] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"PKG_MULTIREPOS",
 		NULL,
 	},
 	[PKG_CONFIG_HANDLE_RC_SCRIPTS] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"HANDLE_RC_SCRIPTS",
 		NULL,
 	},
 	[PKG_CONFIG_ASSUME_ALWAYS_YES] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"ASSUME_ALWAYS_YES",
 		NULL,
 	},
 	[PKG_CONFIG_REPOS] = {
-		CONF_KVLIST,
+		PKG_CONFIG_KVLIST,
 		"REPOS",
 		"NULL",
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"PLIST_KEYWORDS_DIR",
 		NULL,
 	},
 	[PKG_CONFIG_SYSLOG] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"SYSLOG",
 		"YES",
 	},
 	[PKG_CONFIG_SHLIBS] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"SHLIBS",
 		"NO",
 	},
 	[PKG_CONFIG_AUTODEPS] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"AUTODEPS",
 		"NO",
 	},
 	[PKG_CONFIG_ABI] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"ABI",
 		myabi,
 	},
 	[PKG_CONFIG_DEVELOPER_MODE] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"DEVELOPER_MODE",
 		"NO",
 	},
 	[PKG_CONFIG_PORTAUDIT_SITE] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"PORTAUDIT_SITE",
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
 	},
 	[PKG_CONFIG_SRV_MIRROR] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"SRV_MIRRORS",
 		"YES",
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
-		CONF_INTEGER,
+		PKG_CONFIG_INTEGER,
 		"FETCH_RETRY",
 		"3",
 	},
 	[PKG_CONFIG_PLUGINS_DIR] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"PKG_PLUGINS_DIR",
 		PREFIX"/lib/pkg/",
 	},
 	[PKG_CONFIG_ENABLE_PLUGINS] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"PKG_ENABLE_PLUGINS",
 		"YES",
 	},
 	[PKG_CONFIG_PLUGINS] = {
-		CONF_LIST,
+		PKG_CONFIG_LIST,
 		"PLUGINS",
 		"NULL",
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
-		CONF_BOOL,
+		PKG_CONFIG_BOOL,
 		"DEBUG_SCRIPTS",
 		"NO",
 	},
 	[PKG_CONFIG_PLUGINS_CONF_DIR] = {
-		CONF_STRING,
+		PKG_CONFIG_STRING,
 		"PLUGINS_CONF_DIR",
 		PREFIX"/etc/pkg/",
 	},
@@ -257,7 +257,7 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), sbuf_len(b), conf);
 		if (conf != NULL) {
 			switch (conf->type) {
-			case CONF_STRING:
+			case PKG_CONFIG_STRING:
 				if (val->type != YAML_SCALAR_NODE) {
 					pkg_emit_error("Expecting a string for key %s,"
 					    " ignoring...", key->data.scalar.value);
@@ -268,7 +268,7 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 					conf->string = strdup(val->data.scalar.value);
 				}
 				break;
-			case CONF_INTEGER:
+			case PKG_CONFIG_INTEGER:
 				if (val->type != YAML_SCALAR_NODE) {
 					pkg_emit_error("Expecting an integer for key %s,"
 					    " ignoring...", key->data.scalar.value);
@@ -283,7 +283,7 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 					conf->integer = newint;
 				}
 				break;
-			case CONF_BOOL:
+			case PKG_CONFIG_BOOL:
 				if (val->type != YAML_SCALAR_NODE) {
 					pkg_emit_error("Expecting an integer for key %s,"
 					    " ignoring...", key->data.scalar.value);
@@ -301,14 +301,14 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 					}
 				}
 				break;
-			case CONF_KVLIST:
+			case PKG_CONFIG_KVLIST:
 				if (val->type != YAML_MAPPING_NODE) {
 					pkg_emit_error("Expecting a key/value list for key %s,"
 					    " ignoring...", key->data.scalar.value);
 				}
 				parse_config_mapping(doc, val, conf);
 				break;
-			case CONF_LIST:
+			case PKG_CONFIG_LIST:
 				if (val->type != YAML_SEQUENCE_NODE) {
 					pkg_emit_error("Expecting a string list for key %s,"
 					    " ignoring...", key->data.scalar.value);
@@ -434,7 +434,7 @@ pkg_config_kvlist(pkg_config_key key, struct pkg_config_kv **kv)
 	if (conf == NULL)
 		return (EPKG_FATAL);
 
-	if (conf->type != CONF_KVLIST) {
+	if (conf->type != PKG_CONFIG_KVLIST) {
 		pkg_emit_error("this config entry is not a \"key: value\" list");
 		return (EPKG_FATAL);
 	}
@@ -464,7 +464,7 @@ pkg_config_list(pkg_config_key key, struct pkg_config_value **v)
 	if (conf == NULL)
 		return (EPKG_FATAL);
 
-	if (conf->type != CONF_LIST) {
+	if (conf->type != PKG_CONFIG_LIST) {
 		pkg_emit_error("this config entry is not a list");
 		return (EPKG_FATAL);
 	}
@@ -553,7 +553,7 @@ pkg_init(const char *path)
 		val = getenv(c[i].key);
 
 		switch (c[i].type) {
-		case CONF_STRING:
+		case PKG_CONFIG_STRING:
 			if (val != NULL) {
 				conf->string = strdup(val);
 				conf->fromenv = true;
@@ -563,7 +563,7 @@ pkg_init(const char *path)
 			else
 				conf->string = NULL;
 			break;
-		case CONF_INTEGER:
+		case PKG_CONFIG_INTEGER:
 			if (val == NULL)
 				val = c[i].def;
 			else
@@ -575,7 +575,7 @@ pkg_init(const char *path)
 				return (EPKG_FATAL);
 			}
 			break;
-		case CONF_BOOL:
+		case PKG_CONFIG_BOOL:
 			if (val == NULL)
 				val = c[i].def;
 			else
@@ -590,10 +590,10 @@ pkg_init(const char *path)
 				conf->boolean = false;
 			}
 			break;
-		case CONF_KVLIST:
+		case PKG_CONFIG_KVLIST:
 			STAILQ_INIT(&conf->kvlist);
 			break;
-		case CONF_LIST:
+		case PKG_CONFIG_LIST:
 			STAILQ_INIT(&conf->list);
 			break;
 		}
@@ -649,9 +649,9 @@ pkg_config_free(struct pkg_config *conf)
 	if (conf == NULL)
 		return;
 
-	if (conf->type == CONF_STRING)
+	if (conf->type == PKG_CONFIG_STRING)
 		free(conf->string);
-	else if (conf->type == CONF_KVLIST) {
+	else if (conf->type == PKG_CONFIG_KVLIST) {
 		while (!STAILQ_EMPTY(&conf->kvlist)) {
 			k = STAILQ_FIRST(&conf->kvlist);
 			free(k->key);
@@ -659,7 +659,7 @@ pkg_config_free(struct pkg_config *conf)
 			STAILQ_REMOVE_HEAD(&conf->kvlist, next);
 			free(k);
 		}
-	} else if (conf->type == CONF_LIST) {
+	} else if (conf->type == PKG_CONFIG_LIST) {
 		while (!STAILQ_EMPTY(&conf->kvlist)) {
 			v = STAILQ_FIRST(&conf->list);
 			free(v->value);
@@ -669,6 +669,30 @@ pkg_config_free(struct pkg_config *conf)
 	}
 
 	free(conf);
+}
+
+int
+pkg_config_id(struct pkg_config *conf)
+{
+	return (conf->id);
+}
+
+int
+pkg_config_type(struct pkg_config *conf)
+{
+	return (conf->type);
+}
+
+const char *
+pkg_config_name(struct pkg_config *conf)
+{
+	return (conf->key);
+}
+
+int
+pkg_configs(struct pkg_config **conf)
+{
+	HASH_NEXT(config, (*conf));
 }
 
 int
