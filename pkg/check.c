@@ -143,7 +143,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		pkgs[i++] = e->origin;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		free(pkgs)
+		free(pkgs);
 		return (EPKG_ENODB);
 	}
 
