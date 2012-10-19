@@ -123,7 +123,7 @@
  * i  pkg          additional info
  *
  * j
- * k
+ * k  pkg          lock status
  *
  * l  pkg          license logic
  *
@@ -228,6 +228,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_DEPENDENCY_ORIGIN,
 	PP_PKG_DEPENDENCY_VERSION,
 	PP_PKG_ADDITIONAL_INFO,
+	PP_PKG_LOCK_STATUS,
 	PP_PKG_LICENSE_LOGIC,
 	PP_PKG_MAINTAINER,
 	PP_PKG_NAME,
@@ -308,6 +309,7 @@ static const struct pkg_printf_fmt	fmt[] = {
 	[PP_PKG_DEPENDENCY_ORIGIN] =	{ 'd',  'o',  PP_PKG|PP_d, },
 	[PP_PKG_DEPENDENCY_VERSION] =	{ 'v',  'v',  PP_PKG|PP_d, },
 	[PP_PKG_ADDITIONAL_INFO] =	{ 'i',  '\0', PP_ALL,      },
+	[PP_PKG_LOCK_STATUS] =		{ 'k',  '\0', PP_ALL,	   },
 	[PP_PKG_LICENSE_LOGIC] =	{ 'l',  '\0', PP_ALL,      },
 	[PP_PKG_MAINTAINER] =		{ 'm',  '\0', PP_ALL,      },
 	[PP_PKG_NAME] =			{ 'n',  '\0', PP_ALL,      },
@@ -1421,6 +1423,20 @@ format_add_info(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
 }
 
 /*
+ * %k -- Locked flag. boolean.  Accepts field-width, left-align.
+ * Standard form: 0, 1.  Alternate form1: no, yes.  Alternate form2:
+ * false, true
+ */
+static inline struct sbuf *
+format_lock_status(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+{
+	bool	locked;
+
+	pkg_get(pkg, PKG_LOCKED, &locked);
+	return (bool_val(sbuf, locked, p));
+}
+
+/*
  * %l -- Licence logic. string.  Accepts field-width, left-align.
  * Standard form: and, or, single. Alternate form 1: &, |, ''.
  * Alternate form 2: &&, ||, ==
@@ -1717,7 +1733,7 @@ parse_escape(const char *f, unsigned context, struct percent_esc *p)
 	done = false;
 	for (fmt_code = PP_PKG_SHLIBS; fmt_code < PP_END_MARKER; fmt_code++) {
 		if ((fmt[fmt_code].context & context) == context &&
-		    fmt[fmt_code].fmt_main == *f &&
+		    fmt[fmt_code].fmt_main == f[0] &&
 		    (fmt[fmt_code].fmt_sub == '\0' ||
 		     fmt[fmt_code].fmt_sub == f[1]))	{
 			p->fmt_code = fmt_code;
@@ -1925,6 +1941,9 @@ process_format(struct sbuf *sbuf, const char *f, va_list ap)
 		break;
 	case PP_PKG_ADDITIONAL_INFO:
 		s = format_add_info(sbuf, (struct pkg *) data, p);
+		break;
+	case PP_PKG_LOCK_STATUS:
+		s = format_lock_status(sbuf, (struct pkg *) data, p);
 		break;
 	case PP_PKG_LICENSE_LOGIC:
 		s = format_license_logic(sbuf, (struct pkg *) data, p);
@@ -2161,6 +2180,9 @@ struct sbuf *
 pkg_sbuf_vprintf(struct sbuf *sbuf, const char *format, va_list ap)
 {
 	const char	*f;
+
+	assert(sbuf != NULL);
+	assert(format != NULL);
 
 	for (f = format; *f != '\0'; f++) {
 		if (*f == '%') {
