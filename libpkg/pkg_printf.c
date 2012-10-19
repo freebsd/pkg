@@ -251,10 +251,8 @@ struct pkg_printf_fmt {
 	char	         fmt_main;
 	char		 fmt_sub;
 	unsigned	 context;
-	/*
 	struct sbuf	*(*fmt_handler)(struct sbuf *, const void *,
 					struct percent_esc *);
-	*/
 };
 
 struct percent_esc {
@@ -271,61 +269,114 @@ struct percent_esc {
 
 /* These are in ASCII order: alphabetical with A-Z sorting before a-z */
 static const struct pkg_printf_fmt	fmt[] = {
-	[PP_PKG_SHLIBS] =		{ 'B',  '\0', PP_PKG,      },
-	[PP_PKG_SHLIB_NAME] =		{ 'B',  'n',  PP_PKG|PP_B, },
-	[PP_PKG_CATEGORIES] =		{ 'C',  '\0', PP_PKG,      },
-        [PP_PKG_CATEGORY_NAME] =	{ 'C',  'n',  PP_PKG|PP_C, },
-	[PP_PKG_DIRECTORIES] =		{ 'D',  '\0', PP_PKG,      },
-        [PP_PKG_DIRECTORY_GROUP] =	{ 'D',  'g',  PP_PKG|PP_D, },
-	[PP_PKG_DIRECTORY_KEEPFLAG] =	{ 'D',  'k',  PP_PKG|PP_D, },
-	[PP_PKG_DIRECTORY_PATH] =       { 'D',  'n',  PP_PKG|PP_D, },
-	[PP_PKG_DIRECTORY_PERMS] =	{ 'D',  'p',  PP_PKG|PP_D, },
-	[PP_PKG_DIRECTORY_TRYFLAG] =	{ 'D',  't',  PP_PKG|PP_D, },
-	[PP_PKG_DIRECTORY_USER] =	{ 'D',  'u',  PP_PKG|PP_D, },
-	[PP_PKG_FILES] =		{ 'F',  '\0', PP_PKG,      },
-	[PP_PKG_FILE_GROUP] =		{ 'F',  'g',  PP_PKG|PP_F, },
-	[PP_PKG_FILE_KEEPFLAG] =	{ 'F',  'k',  PP_PKG|PP_F, },
-	[PP_PKG_FILE_PATH] =		{ 'F',  'n',  PP_PKG|PP_F, },
-	[PP_PKG_FILE_PERMS] =		{ 'F',  'p',  PP_PKG|PP_F, },
-	[PP_PKG_FILE_SHA256] =		{ 'F',  's',  PP_PKG|PP_F, },
-	[PP_PKG_FILE_USER] =		{ 'F',  'u',  PP_PKG|PP_F, },
-	[PP_PKG_GROUPS] =		{ 'G',  '\0', PP_PKG,      },
-	[PP_PKG_GROUP_GIDSTR] =		{ 'G',  'g',  PP_PKG|PP_G, },
-	[PP_PKG_GROUP_NAME] =		{ 'G',  'n',  PP_PKG|PP_G, },
-	[PP_ROW_COUNTER] =		{ 'I',  '\0', PP_ALL,      },
-	[PP_PKG_LICENSES] =		{ 'L',  '\0', PP_PKG,      },
-	[PP_PKG_LICENSE_NAME] =		{ 'L',  'n',  PP_PKG|PP_L, },
-	[PP_PKG_MESSAGE] =		{ 'M',  '\0', PP_ALL,      },
-	[PP_PKG_OPTIONS] =		{ 'O',  '\0', PP_PKG,      },
-	[PP_PKG_OPTION_NAME] =		{ 'O',  'n',  PP_PKG|PP_O, },
-	[PP_PKG_OPTION_VALUE] =		{ 'O',  'v',  PP_PKG|PP_O, },
-	[PP_PKG_USERS] =		{ 'U',  '\0', PP_PKG,      },
-	[PP_PKG_USER_NAME] =		{ 'U',  'n',  PP_PKG|PP_U, },
-	[PP_PKG_USER_UIDSTR] =		{ 'U',  'u',  PP_PKG|PP_U, },
-	[PP_PKG_AUTOREMOVE] =		{ 'a',  '\0', PP_ALL,      },
-	[PP_PKG_COMMENT] =		{ 'c',  '\0', PP_ALL,      },
-	[PP_PKG_DEPENDENCIES] =		{ 'd',  '\0', PP_ALL,      },
-	[PP_PKG_DEPENDENCY_NAME] =	{ 'd',  'n',  PP_PKG,      },
-	[PP_PKG_DEPENDENCY_ORIGIN] =	{ 'd',  'o',  PP_PKG|PP_d, },
-	[PP_PKG_DEPENDENCY_VERSION] =	{ 'v',  'v',  PP_PKG|PP_d, },
-	[PP_PKG_ADDITIONAL_INFO] =	{ 'i',  '\0', PP_ALL,      },
-	[PP_PKG_LOCK_STATUS] =		{ 'k',  '\0', PP_ALL,	   },
-	[PP_PKG_LICENSE_LOGIC] =	{ 'l',  '\0', PP_ALL,      },
-	[PP_PKG_MAINTAINER] =		{ 'm',  '\0', PP_ALL,      },
-	[PP_PKG_NAME] =			{ 'n',  '\0', PP_ALL,      },
-	[PP_PKG_ORIGIN] =		{ 'o',  '\0', PP_ALL,      },
-	[PP_PKG_PREFIX] =		{ 'p',  '\0', PP_ALL,      },
-	[PP_PKG_REQUIREMENTS] =		{ 'r',  '\0', PP_PKG,      },
-	[PP_PKG_REQUIREMENT_NAME] =	{ 'r',  'n',  PP_PKG|PP_r, },
-	[PP_PKG_REQUIREMENT_ORIGIN] =   { 'r',  'o',  PP_PKG|PP_r, },
-	[PP_PKG_REQUIREMENT_VERSION] =	{ 'r',  'v',  PP_PKG|PP_r, },
-	[PP_PKG_FLATSIZE] =		{ 's',  '\0', PP_ALL,      },
-	[PP_PKG_INSTALL_TIMESTAMP] =	{ 't',  '\0', PP_ALL,      },
-	[PP_PKG_VERSION] =		{ 'v',  '\0', PP_ALL,      },
-	[PP_PKG_HOME_PAGE] =		{ 'w',  '\0', PP_ALL,      },
-	[PP_LITERAL_PERCENT] =		{ '%',  '\0', PP_ALL,      },
-	[PP_END_MARKER] =		{ '\0', '\0', 0,           },
-
+	[PP_PKG_SHLIBS] =
+	{ 'B',	'\0',	PP_PKG,		format_shlibs, },
+	[PP_PKG_SHLIB_NAME] =
+	{ 'B',	'n',	PP_PKG|PP_B,	format_shlib_names, },
+	[PP_PKG_CATEGORIES] =
+	{ 'C',	'\0',	PP_PKG,		format_categories, },
+        [PP_PKG_CATEGORY_NAME] =
+	{ 'C',	'n',	PP_PKG|PP_C,	format_category_name, },
+	[PP_PKG_DIRECTORIES] =
+	{ 'D',	'\0',	PP_PKG,		format_directories, },
+        [PP_PKG_DIRECTORY_GROUP] =
+	{ 'D',	'g',	PP_PKG|PP_D,	format_directory_group, },
+	[PP_PKG_DIRECTORY_KEEPFLAG] =
+	{ 'D',	'k',	PP_PKG|PP_D,	format_directory_keepflag, },
+	[PP_PKG_DIRECTORY_PATH] =
+	{ 'D',	'n',	PP_PKG|PP_D,	format_directory_path, },
+	[PP_PKG_DIRECTORY_PERMS] =
+	{ 'D',	'p',	PP_PKG|PP_D,	format_directory_perms, },
+	[PP_PKG_DIRECTORY_TRYFLAG] =
+	{ 'D',	't',	PP_PKG|PP_D,	format_directory_tryflag, },
+	[PP_PKG_DIRECTORY_USER] =
+	{ 'D',	'u',	PP_PKG|PP_D,	format_directory_user, },
+	[PP_PKG_FILES] =
+	{ 'F',	'\0',	PP_PKG,		format_files, },
+	[PP_PKG_FILE_GROUP] =
+	{ 'F',	'g',	PP_PKG|PP_F,	format_file_group, },
+	[PP_PKG_FILE_KEEPFLAG] =
+	{ 'F',	'k',	PP_PKG|PP_F,	format_file_keepflag, },
+	[PP_PKG_FILE_PATH] =
+	{ 'F',	'n',	PP_PKG|PP_F,	format_file_path, },
+	[PP_PKG_FILE_PERMS] =
+	{ 'F',	'p',	PP_PKG|PP_F,	format_file_perms, },
+	[PP_PKG_FILE_SHA256] =
+	{ 'F',	's',	PP_PKG|PP_F,	format_file_sha256, },
+	[PP_PKG_FILE_USER] =
+	{ 'F',	'u',	PP_PKG|PP_F,	format_file_user, },
+	[PP_PKG_GROUPS] =
+	{ 'G',	'\0',	PP_PKG,		format_groups, },
+	[PP_PKG_GROUP_GIDSTR] =
+	{ 'G',	'g',	PP_PKG|PP_G,	format_group_gidstr, },
+	[PP_PKG_GROUP_NAME] =
+	{ 'G',	'n',	PP_PKG|PP_G,	format_group_name, },
+	[PP_ROW_COUNTER] =
+	{ 'I',	'\0',	PP_ALL,		format_row_counter, },
+	[PP_PKG_LICENSES] =
+	{ 'L',	'\0',	PP_PKG,		format_licenses, },
+	[PP_PKG_LICENSE_NAME] =
+	{ 'L',	'n',	PP_PKG|PP_L,	format_license_name, },
+	[PP_PKG_MESSAGE] =
+	{ 'M',	'\0',	PP_ALL,		format_message, },
+	[PP_PKG_OPTIONS] =
+	{ 'O',	'\0',	PP_PKG,		format_options, },
+	[PP_PKG_OPTION_NAME] =
+	{ 'O',	'n',	PP_PKG|PP_O,	format_option_name, },
+	[PP_PKG_OPTION_VALUE] =
+	{ 'O',	'v',	PP_PKG|PP_O,	format_option_value, },
+	[PP_PKG_USERS] =
+	{ 'U',	'\0',	PP_PKG,		format_users, },
+	[PP_PKG_USER_NAME] =
+	{ 'U',	'n',	PP_PKG|PP_U,	format_user_name, },
+	[PP_PKG_USER_UIDSTR] =
+	{ 'U',	'u',	PP_PKG|PP_U,	format_user_uidstr, },
+	[PP_PKG_AUTOREMOVE] =
+	{ 'a',	'\0',	PP_ALL,		format_autoremove, },
+	[PP_PKG_COMMENT] =
+	{ 'c',	'\0',	PP_ALL,		format_comment, },
+	[PP_PKG_DEPENDENCIES] =
+	{ 'd',	'\0',	PP_ALL,		format_dependencies, },
+	[PP_PKG_DEPENDENCY_NAME] =
+	{ 'd',	'n',	PP_PKG,		format_dependency_name, },
+	[PP_PKG_DEPENDENCY_ORIGIN] =
+	{ 'd',	'o',	PP_PKG|PP_d,	format_dependency_origin, },
+	[PP_PKG_DEPENDENCY_VERSION] =
+	{ 'v',	'v',	PP_PKG|PP_d,	format_dependency_version, },
+	[PP_PKG_ADDITIONAL_INFO] =
+	{ 'i',	'\0',	PP_ALL,		format_add_info, },
+	[PP_PKG_LOCK_STATUS] =
+	{ 'k',	'\0',	PP_ALL,		format_lock_status, },
+	[PP_PKG_LICENSE_LOGIC] =
+	{ 'l',	'\0',	PP_ALL,		format_license_logic, },
+	[PP_PKG_MAINTAINER] =
+	{ 'm',	'\0',	PP_ALL,		format_maintainer, },
+	[PP_PKG_NAME] =
+	{ 'n',	'\0',	PP_ALL,		format_name, },
+	[PP_PKG_ORIGIN] =
+	{ 'o',	'\0',	PP_ALL,		format_origin, },
+	[PP_PKG_PREFIX] =
+	{ 'p',	'\0',	PP_ALL,		format_prefix, },
+	[PP_PKG_REQUIREMENTS] =
+	{ 'r',	'\0',	PP_PKG,		format_requirements, },
+	[PP_PKG_REQUIREMENT_NAME] =
+	{ 'r',	'n',	PP_PKG|PP_r,	format_dependency_name, },
+	[PP_PKG_REQUIREMENT_ORIGIN] =
+	{ 'r',	'o',	PP_PKG|PP_r,	format_dependency_origin, },
+	[PP_PKG_REQUIREMENT_VERSION] =
+	{ 'r',	'v',	PP_PKG|PP_r,	format_dependency_version, },
+	[PP_PKG_FLATSIZE] =
+	{ 's',	'\0',	PP_ALL,		format_flatsize },
+	[PP_PKG_INSTALL_TIMESTAMP] =
+	{ 't',	'\0',	PP_ALL,		format_install_timestamp },
+	[PP_PKG_VERSION] =
+	{ 'v',	'\0',	PP_ALL,		format_version, },
+	[PP_PKG_HOME_PAGE] =
+	{ 'w',	'\0',	PP_ALL,		format_home_url, },
+	[PP_LITERAL_PERCENT] =
+	{ '%',	'\0',	PP_ALL,		format_literal_percent, },
+	[PP_END_MARKER] =
+	{ '\0',	'\0',	0,		NULL, },
 };
 
 static const char	*liclog_str[3][3] = {
@@ -822,12 +873,26 @@ static struct sbuf *
 iterate_item(struct sbuf *sbuf, struct pkg *pkg, void *data, int count,
 	     const char *format, unsigned context)
 {
-	struct percent_esc	*p = new_percent_esc(NULL);
+	char			*f;
 
-	/* @@@@@@@@@@@@@@@@@@@@ */
-
-	free_percent_esc(p);
-
+	/* Scan the format string and interpret any escapes */
+	for (f = format; f != '\0'; f++) {
+		switch(*f) {
+		case '%':
+			/* @@@@@@@@@@@@ */
+			break;
+		case '\\':
+			f = process_escape(sbuf, f);
+			break;
+		default:
+			sbuf_putc(sbuf, *f);
+			break;
+		}
+		if (f = NULL) {
+			sbuf_clear(sbuf);
+			break;	/* Out of memory */
+		}
+	}
 	return (sbuf);
 }
 
