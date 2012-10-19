@@ -105,13 +105,25 @@ struct plugcmd {
 
 typedef int (register_cmd)(const char **name, const char **desc, int (**exec)(int argc, char **argv));
 
+
+static void
+show_command_names(void)
+{
+	unsigned	i;
+
+	for(i = 0; i < cmd_len; i++)
+		printf("%s\n", cmd[i].name);
+
+	return;
+}
+
 static void
 usage(void)
 {
 	struct plugcmd *c;
 	bool plugins_enabled = false;
 	
-	fprintf(stderr, "usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
+	fprintf(stderr, "usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] [-l] <command> [<args>]\n\n");
 	fprintf(stderr, "Global options supported:\n");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
 	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(1) inside a jail(8)");
@@ -205,6 +217,7 @@ main(int argc, char **argv)
 	int ret = EX_OK;
 	const char *buf = NULL;
 	bool b, plugins_enabled = false;
+	bool show_commands = false;
 	struct pkg_config_kv *kv = NULL;
 	struct pkg_config_value *list = NULL;
 	struct plugcmd *c;
@@ -219,7 +232,7 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage();
 
-	while ((ch = getopt(argc, argv, "dj:c:vq")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:lvq")) != -1) {
 		switch (ch) {
 		case 'd':
 			debug++;
@@ -229,6 +242,9 @@ main(int argc, char **argv)
 			break;
 		case 'j':
 			jail_str = optarg;
+			break;
+		case 'l':
+			show_commands = true;
 			break;
 		case 'v':
 			version++;
@@ -242,6 +258,10 @@ main(int argc, char **argv)
 
 	if (version == 1) {
 		printf(PKGVERSION""GITHASH"\n");
+		exit(EX_OK);
+	}
+	if (show_commands && version == 0) {
+		show_command_names();
 		exit(EX_OK);
 	}
 	if (argc == 0 && version == 0)

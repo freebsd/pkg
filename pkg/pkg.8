@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd June 6, 2012
+.Dd October 19, 2012
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -28,6 +28,7 @@
 .Nm
 .Op Fl v
 .Op Fl d
+.Op Fl l
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
@@ -53,6 +54,16 @@ Displays the current version of
 .Nm
 .It Fl d
 Show debug information
+.It Fl l
+List all the available command names, and exit without performing any
+other action.
+The
+.Fl v
+option takes precedence over
+.Fl l
+but
+.Fl l
+will override any other command line arguments. 
 .It Fl j Ao jail name or id Ac
 .Nm
 will execute in the given
