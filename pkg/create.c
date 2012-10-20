@@ -133,7 +133,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 			snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir,
 			    name, version, format);
 			if (access(pkgpath, F_OK) == 0) {
-				printf("%s-%s already packaged skipping...\n",
+				printf("%s-%s already packaged, skipping...\n",
 				    name, version);
 				pkg_free(e->pkg);
 				free(e);
