@@ -51,7 +51,7 @@ exec_upgrade(int argc, char **argv)
 	const char *reponame = NULL;
 	int retcode = 1;
 	int ch;
-	bool yes;
+	bool yes = false;
 	bool all = false;
 	bool dry_run = false;
 	bool auto_update = true;
