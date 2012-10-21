@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <uthash.h>
 
 #include "pkg.h"
 #include "private/ldconfig.h"
@@ -50,17 +51,15 @@
 #define MAXDIRS		1024		/* Maximum directories in path */
 #define MAXFILESIZE	(16*1024)	/* Maximum hints file size */
 
-struct shlib_list_entry {
-	STAILQ_ENTRY(shlib_list_entry) next;
-	const char *name;
-	char path[];
+struct shlib_list {
+	UT_hash_handle	 hh;
+	const char	*name;
+	char		 path[];
 };
 
-STAILQ_HEAD(shlib_list, shlib_list_entry);
-
-static int	shlib_list_add(struct shlib_list *shlib_list, const char *dir,
-			       const char *shlib_file);
-static int	scan_dirs_for_shlibs(struct shlib_list *shlib_list,
+static int	shlib_list_add(struct shlib_list **shlib_list,
+				const char *dir, const char *shlib_file);
+static int	scan_dirs_for_shlibs(struct shlib_list **shlib_list,
 				     int numdirs, const char **dirlist);
 static void	add_dir(const char *, const char *, int);
 static void	read_dirs_from_file(const char *, const char *);
@@ -73,46 +72,52 @@ int			 insecure;
 
 /* Known shlibs on the standard system search path.  Persistent,
    common to all applications */
-static struct shlib_list shlibs;
+static struct shlib_list *shlibs = NULL;
 
 /* Known shlibs on the specific RPATH or RUNPATH of one binary.
    Evanescent. */
-static struct shlib_list rpath;
+static struct shlib_list *rpath = NULL;
 
 void
 shlib_list_init(void)
 {
-	STAILQ_INIT(&shlibs);
+	assert(HASH_COUNT(shlibs) == 0);
 }
 
 void
 rpath_list_init(void)
 {
-	STAILQ_INIT(&rpath);
+	assert(HASH_COUNT(rpath) == 0);
 }
 
 static int
-shlib_list_add(struct shlib_list *shlib_list, const char *dir,
+shlib_list_add(struct shlib_list **shlib_list, const char *dir,
     const char *shlib_file)
 {
-	struct shlib_list_entry	*sl;
+	struct shlib_list	*sl;
 	size_t	path_len, dir_len;
+
+	/* If shlib_file is already in the shlib_list table, don't try
+	 * and add it again */
+	HASH_FIND_STR(*shlib_list, shlib_file, sl);
+	if (sl != NULL)
+		return (EPKG_OK);
 
 	path_len = strlen(dir) + strlen(shlib_file) + 2;
 
-	sl = calloc(1, sizeof(struct shlib_list_entry) + path_len);
+	sl = calloc(1, sizeof(struct shlib_list) + path_len);
 	if (sl == NULL) {
 		warnx("Out of memory");
 		return (EPKG_FATAL);
 	}
 
-	strlcat(sl->path, dir, path_len);
+	strlcpy(sl->path, dir, path_len);
 	dir_len = strlcat(sl->path, "/", path_len);
 	strlcat(sl->path, shlib_file, path_len);
 	
 	sl->name = sl->path + dir_len;
 
-	STAILQ_INSERT_TAIL(shlib_list, sl, next);
+	HASH_ADD_KEYPTR(hh, *shlib_list, sl->name, strlen(sl->name), sl);
 
 	return (EPKG_OK);
 }
@@ -120,47 +125,43 @@ shlib_list_add(struct shlib_list *shlib_list, const char *dir,
 const char *
 shlib_list_find_by_name(const char *shlib_file)
 {
-	struct shlib_list_entry *sl;
+	struct shlib_list *sl;
 
-	assert(!STAILQ_EMPTY(&shlibs));
+	assert(HASH_COUNT(shlibs) != 0);
 
-	STAILQ_FOREACH(sl, &rpath, next) {
-		if (strcmp(sl->name, shlib_file) == 0)
-			return (sl->path);
-	}
-	STAILQ_FOREACH(sl, &shlibs, next) {
-		if (strcmp(sl->name, shlib_file) == 0)
-			return (sl->path);
-	}
+	HASH_FIND_STR(rpath, shlib_file, sl);
+	if (sl != NULL)
+		return (sl->path);
+
+	HASH_FIND_STR(shlibs, shlib_file, sl);
+	if (sl != NULL)
+		return (sl->path);
+		
 	return (NULL);
 }
 
 void
 shlib_list_free(void)
 {
-	struct shlib_list_entry *sl1, *sl2;
+	struct shlib_list	*sl1, *sl2;
 
-	sl1 = STAILQ_FIRST(&shlibs);
-	while (sl1 != NULL) {
-		sl2 = STAILQ_NEXT(sl1, next);
+	HASH_ITER(hh, shlibs, sl1, sl2) {
+		HASH_DEL(shlibs, sl1);
 		free(sl1);
-		sl1 = sl2;
 	}
-	STAILQ_INIT(&shlibs);
+	shlibs = NULL;
 }
 
 void
 rpath_list_free(void)
 {
-	struct shlib_list_entry *sl1, *sl2;
+	struct shlib_list	*sl1, *sl2;
 
-	sl1 = STAILQ_FIRST(&rpath);
-	while (sl1 != NULL) {
-		sl2 = STAILQ_NEXT(sl1, next);
+	HASH_ITER(hh, rpath, sl1, sl2) {
+		HASH_DEL(rpath, sl1);
 		free(sl1);
-		sl1 = sl2;
 	}
-	STAILQ_INIT(&rpath);
+	rpath = NULL;
 }
 
 static void
@@ -198,7 +199,7 @@ add_dir(const char *hintsfile, const char *name, int trusted)
 }
 
 static int
-scan_dirs_for_shlibs(struct shlib_list *shlib_list, int numdirs,
+scan_dirs_for_shlibs(struct shlib_list **shlib_list, int numdirs,
     const char **dirlist)
 {
 	int	i;
@@ -234,7 +235,8 @@ scan_dirs_for_shlibs(struct shlib_list *shlib_list, int numdirs,
 				continue;
 
 			/* We have a valid shared library name. */
-			ret = shlib_list_add(shlib_list, dirlist[i], dp->d_name);
+			ret = shlib_list_add(shlib_list, dirlist[i],
+					      dp->d_name);
 			if (ret != EPKG_OK) {
 				closedir(dirp);
 				return ret;
