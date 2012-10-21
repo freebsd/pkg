@@ -223,13 +223,14 @@ scan_dirs_for_shlibs(struct shlib_list *shlib_list, int numdirs,
 			    strncmp(dp->d_name, "lib", 3) != 0)
 				continue;
 			vers = dp->d_name + len;
-			while (vers > dp->d_name && isdigit(*(vers-1)))
+			while (vers > dp->d_name &&
+			       (isdigit(*(vers-1)) || *(vers-1) == '.'))
 				vers--;
 			if (vers == dp->d_name + len) {
 				if (strncmp(vers - 3, ".so", 3) != 0)
 					continue;
-			} else if (vers < dp->d_name + 4 ||
-			    strncmp(vers - 4, ".so.", 4) != 0)
+			} else if (vers < dp->d_name + 3 ||
+			    strncmp(vers - 3, ".so.", 4) != 0)
 				continue;
 
 			/* We have a valid shared library name. */
