@@ -66,6 +66,12 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 	    strncmp(shlib_path, "/usr/lib", 7) == 0)
 		return (EPKG_END); /* ignore libs from base */
 
+	/* When running in DEVELOPER_MODE check that shlib names
+	 * conform to the correct pattern.  Only warn on error --
+	 * shlibs may belong to a different package. */
+
+
+
 	if (path != NULL)
 		strncpy(path, shlib_path, pathlen);
 
@@ -162,6 +168,47 @@ test_depends(void *actdata, struct pkg *pkg, const char *name)
 	return (EPKG_OK);
 }
 
+static void
+warn_about_name_format(struct pkg *pkg, const char *fpath, const char *shlib)
+{
+	bool		wrong = false;
+	unsigned	len;
+
+	/* Shlib names in NEEDED records in the Dynamic section of an
+           ELF object are expect to look like libfoo.so.N where the
+           ABI version N is an integer or libfoo.so without ABI
+           version at all. */
+
+	len = strlen(shlib);
+	if (len < 9)		/* libx.so.0 */
+		wrong = true;
+
+	if (!wrong && strncmp(shlib, "lib", 3) != 0)
+		wrong = true;
+
+	if (!wrong) {
+		const char *s;
+
+		s = shlib + len;
+		if (strncmp(s - 3, ".so", 3) != 0) {
+			while (s > shlib + 3 && isdigit(*(s-1)))
+				s--;
+			if (strncmp(s - 4, ".so.", 4) != 0)
+				wrong = true;
+		}
+	}
+
+	if (wrong) {
+		const char	*name;
+		const char	*version;
+
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+
+		warnx("(%s-%s) %s links with incorrectly named "
+		      "shared library %s", name, version, fpath, shlib);
+	}
+}
+
 static int
 analyse_elf(struct pkg *pkg, const char *fpath, 
     int (action)(void *, struct pkg *, const char *), void *actdata)
@@ -181,6 +228,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	size_t sh_link;
 	size_t dynidx;
 	const char *osname;
+	const char *shlib;
 
 	bool shlibs = false;
 	bool autodeps = false;
@@ -311,7 +359,12 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		if (dyn->d_tag != DT_NEEDED)
 			continue;
 
-		action(actdata, pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
+		shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
+
+		if (developer)
+			warn_about_name_format(pkg, fpath, shlib);
+
+		action(actdata, pkg, shlib);
 	}
 
 cleanup:
