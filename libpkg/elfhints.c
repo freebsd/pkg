@@ -60,8 +60,8 @@ STAILQ_HEAD(shlib_list, shlib_list_entry);
 
 static int	shlib_list_add(struct shlib_list *shlib_list, const char *dir,
 			       const char *shlib_file);
-static int	scan_dirs_for_shlibs(struct shlib_list *shlib_list, int numdirs,
-				     const char **dirlist);
+static int	scan_dirs_for_shlibs(struct shlib_list *shlib_list,
+				     int numdirs, const char **dirlist);
 static void	add_dir(const char *, const char *, int);
 static void	read_dirs_from_file(const char *, const char *);
 static void	read_elf_hints(const char *, int);
