@@ -116,21 +116,24 @@ is assumed.
 .It Fl m Ar manifestdir
 Specify the directory containing the package manifest,
 .Fa +MANIFEST
-and optionally two other files; one containing a message to be
+and optionally three other files; one containing a message to be
 displayed on package installation,
-.Fa +DISPLAY
-and the other containing an mtree specification,
+.Fa +DISPLAY .
+Another containing the description for the packages,
+.Fa +DESC .
+The last containing an mtree specification,
 .Fa +MTREE_DIRS ,
 for the directory tree the package will use.
 See
 .Xr mtree 5
 for the format of the mtree file.
 If specified, only a single package will be created.
-Neither
 .Fa +DISPLAY
-nor
+,
 .Fa +MTREE_DIRS
-are required; the
+, and
+.Fa +DESC
+are not required; the
 .Fa +MANIFEST
 file can contain all the required information needed to build a
 package.
