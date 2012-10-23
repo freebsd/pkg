@@ -174,7 +174,7 @@ pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, bool force)
 
 		if (pkg_dir_try(dir)) {
 			if (rmdir(pkg_dir_path(dir)) == -1 &&
-			    errno != ENOTEMPTY && !force)
+			    errno != ENOTEMPTY && errno != EBUSY && !force)
 				pkg_emit_errno("rmdir", pkg_dir_path(dir));
 		} else {
 			if (rmdir(pkg_dir_path(dir)) == -1 && !force)
