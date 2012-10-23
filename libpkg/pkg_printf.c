@@ -123,16 +123,12 @@
  * i  pkg          additional info
  *
  * j
+ *
  * k  pkg          lock status
- *
  * l  pkg          license logic
- *
  * m  pkg          maintainer
- *
  * n  pkg          name
- *
  * o  pkg          origin
- *
  * p  pkg          prefix
  *
  * q
@@ -143,13 +139,11 @@
  * rv pkg_dep      requirement version
  *
  * s  pkg          flatsize
- *
  * t  pkg          install timestamp
  *
  * u
  *
  * v  pkg          version
- *
  * w  pkg          home page URL
  *
  * x
