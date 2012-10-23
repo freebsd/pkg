@@ -518,13 +518,14 @@ int pkg_get2(struct pkg const *const, ...);
 const char *pkg_name(struct pkg const *const pkg);
 const char *pkg_version(struct pkg const *const pkg);
 
-int pkg_list_count(struct pkg *, pkg_list);
+int pkg_list_count(const struct pkg *, pkg_list);
+
 /**
  * Iterates over the dependencies of the package.
  * @param dep Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_deps(struct pkg *, struct pkg_dep **dep);
+int pkg_deps(const struct pkg *, struct pkg_dep **dep);
 
 /**
  * Iterates over the reverse dependencies of the package.
@@ -532,56 +533,56 @@ int pkg_deps(struct pkg *, struct pkg_dep **dep);
  * @param dep Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_rdeps(struct pkg *, struct pkg_dep **dep);
+int pkg_rdeps(const struct pkg *, struct pkg_dep **dep);
 
 /**
  * Iterates over the files of the package.
  * @param file Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_files(struct pkg *, struct pkg_file **file);
+int pkg_files(const struct pkg *, struct pkg_file **file);
 
 /**
  * Iterates over the directories of the package.
  * @param Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_dirs(struct pkg *pkg, struct pkg_dir **dir);
+int pkg_dirs(const struct pkg *pkg, struct pkg_dir **dir);
 
 /**
  * Iterates over the categories of the package.
  * @param Must be set to NULL for the first call.
  * @return An error code
  */
-int pkg_categories(struct pkg *pkg, struct pkg_category **category);
+int pkg_categories(const struct pkg *pkg, struct pkg_category **category);
 
 /**
  * Iterates over the licenses of the package.
  * @param Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_licenses(struct pkg *pkg, struct pkg_license **license);
+int pkg_licenses(const struct pkg *pkg, struct pkg_license **license);
 
 /**
  * Iterates over the users of the package.
  * @param Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_users(struct pkg *pkg, struct pkg_user **user);
+int pkg_users(const struct pkg *pkg, struct pkg_user **user);
 
 /**
  * Iterates over the groups of the package.
  * @param Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_groups(struct pkg *pkg, struct pkg_group **group);
+int pkg_groups(const struct pkg *pkg, struct pkg_group **group);
 
 /**
  * Iterates over the options of the package.
  * @param  option Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_options(struct pkg *, struct pkg_option **option);
+int pkg_options(const struct pkg *, struct pkg_option **option);
 
 /**
  * Iterates over the shared libraries used by the package.

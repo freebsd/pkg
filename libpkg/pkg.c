@@ -383,7 +383,7 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 }
 
 int
-pkg_licenses(struct pkg *pkg, struct pkg_license **l)
+pkg_licenses(const struct pkg *pkg, struct pkg_license **l)
 {
 	assert(pkg != NULL);
 
@@ -391,7 +391,7 @@ pkg_licenses(struct pkg *pkg, struct pkg_license **l)
 }
 
 int
-pkg_users(struct pkg *pkg, struct pkg_user **u)
+pkg_users(const struct pkg *pkg, struct pkg_user **u)
 {
 	assert(pkg != NULL);
 
@@ -399,7 +399,7 @@ pkg_users(struct pkg *pkg, struct pkg_user **u)
 }
 
 int
-pkg_groups(struct pkg *pkg, struct pkg_group **g)
+pkg_groups(const struct pkg *pkg, struct pkg_group **g)
 {
 	assert(pkg != NULL);
 
@@ -407,7 +407,7 @@ pkg_groups(struct pkg *pkg, struct pkg_group **g)
 }
 
 int
-pkg_deps(struct pkg *pkg, struct pkg_dep **d)
+pkg_deps(const struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
 
@@ -415,7 +415,7 @@ pkg_deps(struct pkg *pkg, struct pkg_dep **d)
 }
 
 int
-pkg_rdeps(struct pkg *pkg, struct pkg_dep **d)
+pkg_rdeps(const struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
 
@@ -423,7 +423,7 @@ pkg_rdeps(struct pkg *pkg, struct pkg_dep **d)
 }
 
 int
-pkg_files(struct pkg *pkg, struct pkg_file **f)
+pkg_files(const struct pkg *pkg, struct pkg_file **f)
 {
 	assert(pkg != NULL);
 
@@ -431,7 +431,7 @@ pkg_files(struct pkg *pkg, struct pkg_file **f)
 }
 
 int
-pkg_categories(struct pkg *pkg, struct pkg_category **c)
+pkg_categories(const struct pkg *pkg, struct pkg_category **c)
 {
 	assert(pkg != NULL);
 
@@ -439,7 +439,7 @@ pkg_categories(struct pkg *pkg, struct pkg_category **c)
 }
 
 int
-pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
+pkg_dirs(const struct pkg *pkg, struct pkg_dir **d)
 {
 	assert(pkg != NULL);
 
@@ -447,7 +447,7 @@ pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
 }
 
 int
-pkg_options(struct pkg *pkg, struct pkg_option **o)
+pkg_options(const struct pkg *pkg, struct pkg_option **o)
 {
 	assert(pkg != NULL);
 
@@ -948,7 +948,7 @@ pkg_delannotation(struct pkg *pkg, const char *tag)
 }
 
 int
-pkg_list_count(struct pkg *pkg, pkg_list list)
+pkg_list_count(const struct pkg *pkg, pkg_list list)
 {
 	switch (list) {
 	case PKG_DEPS:
