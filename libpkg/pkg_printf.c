@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/sbuf.h>
 
+#include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdarg.h>
@@ -241,14 +242,6 @@ typedef enum _fmt_code_t {
 	PP_END_MARKER,
 } fmt_code_t;
 
-struct pkg_printf_fmt {
-	char	         fmt_main;
-	char		 fmt_sub;
-	unsigned	 context;
-	struct sbuf	*(*fmt_handler)(struct sbuf *, const void *,
-					struct percent_esc *);
-};
-
 struct percent_esc {
 	unsigned	 flags;
 	int		 width;
@@ -257,119 +250,175 @@ struct percent_esc {
 	fmt_code_t	 fmt_code;
 };
 
+struct pkg_printf_fmt {
+	char	         fmt_main;
+	char		 fmt_sub;
+	unsigned	 context;
+	struct sbuf	*(*fmt_handler)(struct sbuf *, const void *,
+					struct percent_esc *);
+};
+
 /* Format handler function prototypes */
 
-
-
+static struct sbuf *format_shlibs(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_shlib_name(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_category_name(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_directories(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_directory_group(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_directory_keepflag(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_directory_path(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_directory_perms(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_directory_tryflag(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_directory_user(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_files(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_file_group(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_file_keepflag(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_file_path(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_file_perms(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_file_sha256(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_file_user(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_group_gidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_group_name(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_row_counter(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_options(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_option_name(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_option_value(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_users(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_user_name(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_user_uidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_autoremove(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_comment(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_dependencies(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_dependency_name(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_dependency_origin(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_dependency_version(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_add_info(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_lock_status(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_license_logic(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_maintainer(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_name(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_origin(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_prefix(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_requirements(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_flatsize(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_install_tstamp(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_version(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_home_url(struct sbuf *sbuf, const void *data, struct percent_esc *p);
+static struct sbuf *format_literal_percent(struct sbuf *sbuf, __unused const void *data, __unused struct percent_esc *p);
 
 /* These are in ASCII order: alphabetical with A-Z sorting before a-z */
 static const struct pkg_printf_fmt	fmt[] = {
 	[PP_PKG_SHLIBS] =
-	{ 'B',	'\0',	PP_PKG,		format_shlibs, },
+	{ 'B',	'\0',	PP_PKG,		&format_shlibs, },
 	[PP_PKG_SHLIB_NAME] =
-	{ 'B',	'n',	PP_PKG|PP_B,	format_shlib_names, },
+	{ 'B',	'n',	PP_PKG|PP_B,	&format_shlib_name, },
 	[PP_PKG_CATEGORIES] =
-	{ 'C',	'\0',	PP_PKG,		format_categories, },
+	{ 'C',	'\0',	PP_PKG,		&format_categories, },
         [PP_PKG_CATEGORY_NAME] =
-	{ 'C',	'n',	PP_PKG|PP_C,	format_category_name, },
+	{ 'C',	'n',	PP_PKG|PP_C,	&format_category_name, },
 	[PP_PKG_DIRECTORIES] =
-	{ 'D',	'\0',	PP_PKG,		format_directories, },
+	{ 'D',	'\0',	PP_PKG,		&format_directories, },
         [PP_PKG_DIRECTORY_GROUP] =
-	{ 'D',	'g',	PP_PKG|PP_D,	format_directory_group, },
+	{ 'D',	'g',	PP_PKG|PP_D,	&format_directory_group, },
 	[PP_PKG_DIRECTORY_KEEPFLAG] =
-	{ 'D',	'k',	PP_PKG|PP_D,	format_directory_keepflag, },
+	{ 'D',	'k',	PP_PKG|PP_D,	&format_directory_keepflag, },
 	[PP_PKG_DIRECTORY_PATH] =
-	{ 'D',	'n',	PP_PKG|PP_D,	format_directory_path, },
+	{ 'D',	'n',	PP_PKG|PP_D,	&format_directory_path, },
 	[PP_PKG_DIRECTORY_PERMS] =
-	{ 'D',	'p',	PP_PKG|PP_D,	format_directory_perms, },
+	{ 'D',	'p',	PP_PKG|PP_D,	&format_directory_perms, },
 	[PP_PKG_DIRECTORY_TRYFLAG] =
-	{ 'D',	't',	PP_PKG|PP_D,	format_directory_tryflag, },
+	{ 'D',	't',	PP_PKG|PP_D,	&format_directory_tryflag, },
 	[PP_PKG_DIRECTORY_USER] =
-	{ 'D',	'u',	PP_PKG|PP_D,	format_directory_user, },
+	{ 'D',	'u',	PP_PKG|PP_D,	&format_directory_user, },
 	[PP_PKG_FILES] =
-	{ 'F',	'\0',	PP_PKG,		format_files, },
+	{ 'F',	'\0',	PP_PKG,		&format_files, },
 	[PP_PKG_FILE_GROUP] =
-	{ 'F',	'g',	PP_PKG|PP_F,	format_file_group, },
+	{ 'F',	'g',	PP_PKG|PP_F,	&format_file_group, },
 	[PP_PKG_FILE_KEEPFLAG] =
-	{ 'F',	'k',	PP_PKG|PP_F,	format_file_keepflag, },
+	{ 'F',	'k',	PP_PKG|PP_F,	&format_file_keepflag, },
 	[PP_PKG_FILE_PATH] =
-	{ 'F',	'n',	PP_PKG|PP_F,	format_file_path, },
+	{ 'F',	'n',	PP_PKG|PP_F,	&format_file_path, },
 	[PP_PKG_FILE_PERMS] =
-	{ 'F',	'p',	PP_PKG|PP_F,	format_file_perms, },
+	{ 'F',	'p',	PP_PKG|PP_F,	&format_file_perms, },
 	[PP_PKG_FILE_SHA256] =
-	{ 'F',	's',	PP_PKG|PP_F,	format_file_sha256, },
+	{ 'F',	's',	PP_PKG|PP_F,	&format_file_sha256, },
 	[PP_PKG_FILE_USER] =
-	{ 'F',	'u',	PP_PKG|PP_F,	format_file_user, },
+	{ 'F',	'u',	PP_PKG|PP_F,	&format_file_user, },
 	[PP_PKG_GROUPS] =
-	{ 'G',	'\0',	PP_PKG,		format_groups, },
+	{ 'G',	'\0',	PP_PKG,		&format_groups, },
 	[PP_PKG_GROUP_GIDSTR] =
-	{ 'G',	'g',	PP_PKG|PP_G,	format_group_gidstr, },
+	{ 'G',	'g',	PP_PKG|PP_G,	&format_group_gidstr, },
 	[PP_PKG_GROUP_NAME] =
-	{ 'G',	'n',	PP_PKG|PP_G,	format_group_name, },
+	{ 'G',	'n',	PP_PKG|PP_G,	&format_group_name, },
 	[PP_ROW_COUNTER] =
-	{ 'I',	'\0',	PP_ALL,		format_row_counter, },
+	{ 'I',	'\0',	PP_ALL,		&format_row_counter, },
 	[PP_PKG_LICENSES] =
-	{ 'L',	'\0',	PP_PKG,		format_licenses, },
+	{ 'L',	'\0',	PP_PKG,		&format_licenses, },
 	[PP_PKG_LICENSE_NAME] =
-	{ 'L',	'n',	PP_PKG|PP_L,	format_license_name, },
+	{ 'L',	'n',	PP_PKG|PP_L,	&format_license_name, },
 	[PP_PKG_MESSAGE] =
-	{ 'M',	'\0',	PP_ALL,		format_message, },
+	{ 'M',	'\0',	PP_ALL,		&format_message, },
 	[PP_PKG_OPTIONS] =
-	{ 'O',	'\0',	PP_PKG,		format_options, },
+	{ 'O',	'\0',	PP_PKG,		&format_options, },
 	[PP_PKG_OPTION_NAME] =
-	{ 'O',	'n',	PP_PKG|PP_O,	format_option_name, },
+	{ 'O',	'n',	PP_PKG|PP_O,	&format_option_name, },
 	[PP_PKG_OPTION_VALUE] =
-	{ 'O',	'v',	PP_PKG|PP_O,	format_option_value, },
+	{ 'O',	'v',	PP_PKG|PP_O,	&format_option_value, },
 	[PP_PKG_USERS] =
-	{ 'U',	'\0',	PP_PKG,		format_users, },
+	{ 'U',	'\0',	PP_PKG,		&format_users, },
 	[PP_PKG_USER_NAME] =
-	{ 'U',	'n',	PP_PKG|PP_U,	format_user_name, },
+	{ 'U',	'n',	PP_PKG|PP_U,	&format_user_name, },
 	[PP_PKG_USER_UIDSTR] =
-	{ 'U',	'u',	PP_PKG|PP_U,	format_user_uidstr, },
+	{ 'U',	'u',	PP_PKG|PP_U,	&format_user_uidstr, },
 	[PP_PKG_AUTOREMOVE] =
-	{ 'a',	'\0',	PP_ALL,		format_autoremove, },
+	{ 'a',	'\0',	PP_ALL,		&format_autoremove, },
 	[PP_PKG_COMMENT] =
-	{ 'c',	'\0',	PP_ALL,		format_comment, },
+	{ 'c',	'\0',	PP_ALL,		&format_comment, },
 	[PP_PKG_DEPENDENCIES] =
-	{ 'd',	'\0',	PP_ALL,		format_dependencies, },
+	{ 'd',	'\0',	PP_ALL,		&format_dependencies, },
 	[PP_PKG_DEPENDENCY_NAME] =
-	{ 'd',	'n',	PP_PKG,		format_dependency_name, },
+	{ 'd',	'n',	PP_PKG,		&format_dependency_name, },
 	[PP_PKG_DEPENDENCY_ORIGIN] =
-	{ 'd',	'o',	PP_PKG|PP_d,	format_dependency_origin, },
+	{ 'd',	'o',	PP_PKG|PP_d,	&format_dependency_origin, },
 	[PP_PKG_DEPENDENCY_VERSION] =
-	{ 'v',	'v',	PP_PKG|PP_d,	format_dependency_version, },
+	{ 'v',	'v',	PP_PKG|PP_d,	&format_dependency_version, },
 	[PP_PKG_ADDITIONAL_INFO] =
-	{ 'i',	'\0',	PP_ALL,		format_add_info, },
+	{ 'i',	'\0',	PP_ALL,		&format_add_info, },
 	[PP_PKG_LOCK_STATUS] =
-	{ 'k',	'\0',	PP_ALL,		format_lock_status, },
+	{ 'k',	'\0',	PP_ALL,		&format_lock_status, },
 	[PP_PKG_LICENSE_LOGIC] =
-	{ 'l',	'\0',	PP_ALL,		format_license_logic, },
+	{ 'l',	'\0',	PP_ALL,		&format_license_logic, },
 	[PP_PKG_MAINTAINER] =
-	{ 'm',	'\0',	PP_ALL,		format_maintainer, },
+	{ 'm',	'\0',	PP_ALL,		&format_maintainer, },
 	[PP_PKG_NAME] =
-	{ 'n',	'\0',	PP_ALL,		format_name, },
+	{ 'n',	'\0',	PP_ALL,		&format_name, },
 	[PP_PKG_ORIGIN] =
-	{ 'o',	'\0',	PP_ALL,		format_origin, },
+	{ 'o',	'\0',	PP_ALL,		&format_origin, },
 	[PP_PKG_PREFIX] =
-	{ 'p',	'\0',	PP_ALL,		format_prefix, },
+	{ 'p',	'\0',	PP_ALL,		&format_prefix, },
 	[PP_PKG_REQUIREMENTS] =
-	{ 'r',	'\0',	PP_PKG,		format_requirements, },
+	{ 'r',	'\0',	PP_PKG,		&format_requirements, },
 	[PP_PKG_REQUIREMENT_NAME] =
-	{ 'r',	'n',	PP_PKG|PP_r,	format_dependency_name, },
+	{ 'r',	'n',	PP_PKG|PP_r,	&format_dependency_name, },
 	[PP_PKG_REQUIREMENT_ORIGIN] =
-	{ 'r',	'o',	PP_PKG|PP_r,	format_dependency_origin, },
+	{ 'r',	'o',	PP_PKG|PP_r,	&format_dependency_origin, },
 	[PP_PKG_REQUIREMENT_VERSION] =
-	{ 'r',	'v',	PP_PKG|PP_r,	format_dependency_version, },
+	{ 'r',	'v',	PP_PKG|PP_r,	&format_dependency_version, },
 	[PP_PKG_FLATSIZE] =
-	{ 's',	'\0',	PP_ALL,		format_flatsize },
+	{ 's',	'\0',	PP_ALL,		&format_flatsize, },
 	[PP_PKG_INSTALL_TIMESTAMP] =
-	{ 't',	'\0',	PP_ALL,		format_install_timestamp },
+	{ 't',	'\0',	PP_ALL,		&format_install_tstamp, },
 	[PP_PKG_VERSION] =
-	{ 'v',	'\0',	PP_ALL,		format_version, },
+	{ 'v',	'\0',	PP_ALL,		&format_version, },
 	[PP_PKG_HOME_PAGE] =
-	{ 'w',	'\0',	PP_ALL,		format_home_url, },
+	{ 'w',	'\0',	PP_ALL,		&format_home_url, },
 	[PP_LITERAL_PERCENT] =
-	{ '%',	'\0',	PP_ALL,		format_literal_percent, },
+	{ '%',	'\0',	PP_ALL,		&format_literal_percent, },
 	[PP_END_MARKER] =
 	{ '\0',	'\0',	0,		NULL, },
 };
@@ -865,10 +914,10 @@ set_list_defaults(struct percent_esc *p, const char *item_fmt,
 }
 
 static struct sbuf *
-iterate_item(struct sbuf *sbuf, struct pkg *pkg, void *data, int count,
-	     const char *format, unsigned context)
+iterate_item(struct sbuf *sbuf, const struct pkg *pkg, const void *data,
+	     int count, const char *format, unsigned context)
 {
-	char			*f;
+	const char	*f;
 
 	/* Scan the format string and interpret any escapes */
 	for (f = format; f != '\0'; f++) {
@@ -883,7 +932,7 @@ iterate_item(struct sbuf *sbuf, struct pkg *pkg, void *data, int count,
 			sbuf_putc(sbuf, *f);
 			break;
 		}
-		if (f = NULL) {
+		if (f == NULL) {
 			sbuf_clear(sbuf);
 			break;	/* Out of memory */
 		}
@@ -908,8 +957,10 @@ iterate_item(struct sbuf *sbuf, struct pkg *pkg, void *data, int count,
  * replaced by the shlib name.  Default %{%Bn\n%|%}
  */
 static struct sbuf *
-format_shlibs(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_shlibs(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
+
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS), p));
 	else {
@@ -936,9 +987,10 @@ format_shlibs(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %Bn -- Shared Library name.
  */
 static struct sbuf *
-format_shlib_name(struct sbuf *sbuf, struct pkg_shlib *shlib,
-		  struct percent_esc *p)
+format_shlib_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_shlib	*shlib = data;
+
 	return (string_val(sbuf, pkg_shlib_name(shlib), p));
 }
 
@@ -949,8 +1001,10 @@ format_shlib_name(struct sbuf *sbuf, struct pkg_shlib *shlib,
  * replaced by the category name.  Default %{%Cn%|, %}
  */
 static struct sbuf *
-format_categories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
+
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES),
 				   p));
@@ -978,9 +1032,10 @@ format_categories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %Cn -- Category name.
  */
 static struct sbuf *
-format_category_name(struct sbuf *sbuf, struct pkg_category *cat,
-		     struct percent_esc *p)
+format_category_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_category	*cat = data;
+
 	return (string_val(sbuf, pkg_category_name(cat), p));
 }
 
@@ -991,8 +1046,10 @@ format_category_name(struct sbuf *sbuf, struct pkg_category *cat,
  * %{%Dn\n%|%}
  */
 static struct sbuf *
-format_directories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_directories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
+
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DIRS), p));
 	else {
@@ -1019,9 +1076,11 @@ format_directories(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %Dg -- Directory group. TODO: numeric gid
  */
 static struct sbuf *
-format_directory_group(struct sbuf *sbuf, struct pkg_dir *dir,
+format_directory_group(struct sbuf *sbuf, const void *data,
 		       struct percent_esc *p)
 {
+	const struct pkg_dir	*dir = data;
+
 	return (string_val(sbuf, pkg_dir_gname(dir), p));
 }
 
@@ -1029,9 +1088,10 @@ format_directory_group(struct sbuf *sbuf, struct pkg_dir *dir,
  * %Dk -- Directory Keep flag.
  */
 static struct sbuf *
-format_directory_keepflag(struct sbuf *sbuf, struct pkg_dir *dir,
+format_directory_keepflag(struct sbuf *sbuf, const void *data,
 		       struct percent_esc *p)
 {
+	const struct pkg_dir	*dir = data;
 	return (bool_val(sbuf, pkg_dir_keep(dir), p));
 }
 
@@ -1039,9 +1099,10 @@ format_directory_keepflag(struct sbuf *sbuf, struct pkg_dir *dir,
  * %Dn -- Directory path name.
  */
 static struct sbuf *
-format_directory_path(struct sbuf *sbuf, struct pkg_dir *dir,
-		      struct percent_esc *p)
+format_directory_path(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_dir	*dir = data;
+
 	return (string_val(sbuf, pkg_dir_path(dir), p));
 }
 
@@ -1049,9 +1110,11 @@ format_directory_path(struct sbuf *sbuf, struct pkg_dir *dir,
  * %Dp -- Directory permissions.
  */
 static struct sbuf *
-format_directory_perms(struct sbuf *sbuf, struct pkg_dir *dir,
+format_directory_perms(struct sbuf *sbuf, const void *data,
 		       struct percent_esc *p)
 {
+	const struct pkg_dir	*dir = data;
+
 	return (mode_val(sbuf, pkg_dir_mode(dir), p));
 }
 
@@ -1059,9 +1122,11 @@ format_directory_perms(struct sbuf *sbuf, struct pkg_dir *dir,
  * %Dt -- Directory Try flag.
  */
 static struct sbuf *
-format_directory_tryflag(struct sbuf *sbuf, struct pkg_dir *dir,
+format_directory_tryflag(struct sbuf *sbuf, const void *data,
 			 struct percent_esc *p)
 {
+	const struct pkg_dir	*dir = data;
+
 	return (bool_val(sbuf, pkg_dir_try(dir), p));
 }
 
@@ -1069,9 +1134,11 @@ format_directory_tryflag(struct sbuf *sbuf, struct pkg_dir *dir,
  * %Du -- Directory user. TODO: numeric UID
  */
 static struct sbuf *
-format_directory_user(struct sbuf *sbuf, struct pkg_dir *dir,
+format_directory_user(struct sbuf *sbuf, const void *data,
 		      struct percent_esc *p)
 {
+	const struct pkg_dir	*dir = data;
+
 	return (string_val(sbuf, pkg_dir_uname(dir), p));
 }
 
@@ -1082,8 +1149,10 @@ format_directory_user(struct sbuf *sbuf, struct pkg_dir *dir,
  * Default %{%Fn\n%|%}
  */
 static struct sbuf *
-format_files(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_files(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
+
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_FILES), p));
 	else {
@@ -1110,9 +1179,10 @@ format_files(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %Fg -- File group.
  */
 static struct sbuf *
-format_file_group(struct sbuf *sbuf, struct pkg_file *file,
-		  struct percent_esc *p)
+format_file_group(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_file	*file = data;
+
 	return (string_val(sbuf, pkg_file_gname(file), p));
 }
 
@@ -1120,9 +1190,10 @@ format_file_group(struct sbuf *sbuf, struct pkg_file *file,
  * %Fk -- File Keep flag.
  */
 static struct sbuf *
-format_file_keepflag(struct sbuf *sbuf, struct pkg_file *file,
-		     struct percent_esc *p)
+format_file_keepflag(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_file	*file = data;
+
 	return (bool_val(sbuf, pkg_file_keep(file), p));
 }
 
@@ -1130,9 +1201,10 @@ format_file_keepflag(struct sbuf *sbuf, struct pkg_file *file,
  * %Fn -- File path name.
  */
 static struct sbuf *
-format_file_path(struct sbuf *sbuf, struct pkg_file *file,
-		  struct percent_esc *p)
+format_file_path(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_file	*file = data;
+
 	return (string_val(sbuf, pkg_file_path(file), p));
 }
 
@@ -1140,9 +1212,10 @@ format_file_path(struct sbuf *sbuf, struct pkg_file *file,
  * %Fp -- File permissions.
  */
 static struct sbuf *
-format_file_perms(struct sbuf *sbuf, struct pkg_file *file,
-		  struct percent_esc *p)
+format_file_perms(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_file	*file = data;
+
 	return (mode_val(sbuf, pkg_file_mode(file), p));
 }
 
@@ -1150,9 +1223,10 @@ format_file_perms(struct sbuf *sbuf, struct pkg_file *file,
  * %Fs -- File SHA256 Checksum.
  */
 static struct sbuf *
-format_file_sha256(struct sbuf *sbuf, struct pkg_file *file,
-		   struct percent_esc *p)
+format_file_sha256(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_file	*file = data;
+
 	return (string_val(sbuf, pkg_file_cksum(file), p));
 }
 
@@ -1160,9 +1234,10 @@ format_file_sha256(struct sbuf *sbuf, struct pkg_file *file,
  * %Fu -- File user.
  */
 static struct sbuf *
-format_file_user(struct sbuf *sbuf, struct pkg_file *file,
-		  struct percent_esc *p)
+format_file_user(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_file	*file = data;
+
 	return (string_val(sbuf, pkg_file_uname(file), p));
 }
 
@@ -1173,8 +1248,10 @@ format_file_user(struct sbuf *sbuf, struct pkg_file *file,
  * /etc/group. Default %{%Gn\n%|%}
  */
 static struct sbuf *
-format_groups(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
+
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_GROUPS), p));
 	else {
@@ -1201,9 +1278,10 @@ format_groups(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %Gg -- Group 'gidstr' (one line from /etc/group).
  */
 static struct sbuf *
-format_group_gidstr(struct sbuf *sbuf, struct pkg_group *group,
-		    struct percent_esc *p)
+format_group_gidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_group	*group = data;
+
 	return (string_val(sbuf, pkg_group_gidstr(group), p));
 }
 
@@ -1211,9 +1289,10 @@ format_group_gidstr(struct sbuf *sbuf, struct pkg_group *group,
  * %Gn -- Group name.
  */
 static struct sbuf *
-format_group_name(struct sbuf *sbuf, struct pkg_group *group,
-		    struct percent_esc *p)
+format_group_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_group	*group = data;
+
 	return (string_val(sbuf, pkg_group_name(group), p));
 }
 
@@ -1221,8 +1300,10 @@ format_group_name(struct sbuf *sbuf, struct pkg_group *group,
  * %I -- Row counter (integer*). Usually used only in per-field format.
  */
 static struct sbuf *
-format_row_counter(struct sbuf *sbuf, int *counter, struct percent_esc *p)
+format_row_counter(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const int *counter = data;
+
 	return (int_val(sbuf, *counter, p));
 }
 
@@ -1232,8 +1313,10 @@ format_row_counter(struct sbuf *sbuf, int *counter, struct percent_esc *p)
  * license name and %l by the license logic.  Default %{%n%| %l %}
  */
 static struct sbuf *
-format_licenses(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
+
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_LICENSES),
 				   p));
@@ -1264,9 +1347,10 @@ format_licenses(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %Ln -- License name.
  */
 static struct sbuf *
-format_license_name(struct sbuf *sbuf, struct pkg_license *license,
-		    struct percent_esc *p)
+format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_license	*license = data;
+
 	return (string_val(sbuf, pkg_license_name(license), p));
 }
 
@@ -1274,9 +1358,10 @@ format_license_name(struct sbuf *sbuf, struct pkg_license *license,
  * %M -- Pkg message. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_message(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	char	*message;
+	const struct pkg	*pkg = data;
+	const char		*message;
 
 	pkg_get(pkg, PKG_MESSAGE, &message);
 	return (string_val(sbuf, message, p));
@@ -1288,8 +1373,10 @@ format_message(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * option name and %Ov by the value.  Default %{%On %Ov\n%|%}
  */ 
 static struct sbuf *
-format_options(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_options(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
+
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_OPTIONS), p));
 	else {
@@ -1316,9 +1403,10 @@ format_options(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %On -- Option name.
  */
 static struct sbuf *
-format_option_name(struct sbuf *sbuf, struct pkg_option *option,
-		    struct percent_esc *p)
+format_option_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_option	*option = data;
+
 	return (string_val(sbuf, pkg_option_opt(option), p));
 }
 
@@ -1326,9 +1414,10 @@ format_option_name(struct sbuf *sbuf, struct pkg_option *option,
  * %Ov -- Option value.
  */
 static struct sbuf *
-format_option_value(struct sbuf *sbuf, struct pkg_option *option,
-		    struct percent_esc *p)
+format_option_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_option	*option = data;
+
 	return (string_val(sbuf, pkg_option_value(option), p));
 }
 
@@ -1339,8 +1428,10 @@ format_option_value(struct sbuf *sbuf, struct pkg_option *option,
  * /etc/passwd. Default %{%Un\n%|%}
  */
 static struct sbuf *
-format_users(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_users(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
+
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_USERS), p));
 	else {
@@ -1367,19 +1458,21 @@ format_users(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %Un -- User name.
  */
 static struct sbuf *
-format_user_name(struct sbuf *sbuf, struct pkg_user *user,
-		 struct percent_esc *p)
+format_user_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_user	*user = data;
+
 	return (string_val(sbuf, pkg_user_name(user), p));
 }
 
 /*
- * %Uu -- User uidstr (one line from /etc/passwd.
+ * %Uu -- User uidstr (one line from /etc/passwd).
  */
 static struct sbuf *
-format_user_uidstr(struct sbuf *sbuf, struct pkg_user *user,
-		   struct percent_esc *p)
+format_user_uidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg_user	*user = data;
+
 	return (string_val(sbuf, pkg_user_uidstr(user), p));
 }
 
@@ -1389,9 +1482,10 @@ format_user_uidstr(struct sbuf *sbuf, struct pkg_user *user,
  * false, true
  */
 static struct sbuf *
-format_autoremove(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_autoremove(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	bool	automatic;
+	const struct pkg	*pkg = data;
+	bool			 automatic;
 
 	pkg_get(pkg, PKG_AUTOMATIC, &automatic);
 	return (bool_val(sbuf, automatic, p));
@@ -1401,9 +1495,10 @@ format_autoremove(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %c -- Comment. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_comment(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_comment(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	char	*comment;
+	const struct pkg	*pkg = data;
+	const char		*comment;
 
 	pkg_get(pkg, PKG_COMMENT, &comment);
 	return (string_val(sbuf, comment, p));
@@ -1415,8 +1510,9 @@ format_comment(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * formats. Defaults to printing "%dn-%dv\n" for each dependency.
  */
 static struct sbuf *
-format_dependencies(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_dependencies(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DEPS), p));
@@ -1444,9 +1540,11 @@ format_dependencies(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %dn -- Dependency name or %rn -- Requirement name.
  */
 static struct sbuf *
-format_dependency_name(struct sbuf *sbuf, struct pkg_dep *dep,
+format_dependency_name(struct sbuf *sbuf, const void *data,
 		       struct percent_esc *p)
 {
+	const struct pkg_dep	*dep = data;
+
 	return (string_val(sbuf, pkg_dep_name(dep), p));
 }
 
@@ -1454,9 +1552,11 @@ format_dependency_name(struct sbuf *sbuf, struct pkg_dep *dep,
  * %do -- Dependency origin or %ro -- Requirement origin.
  */
 static struct sbuf *
-format_dependency_origin(struct sbuf *sbuf, struct pkg_dep *dep,
+format_dependency_origin(struct sbuf *sbuf, const void *data,
 			 struct percent_esc *p)
 {
+	const struct pkg_dep	*dep = data;
+
 	return (string_val(sbuf, pkg_dep_origin(dep), p));
 }
 
@@ -1464,9 +1564,11 @@ format_dependency_origin(struct sbuf *sbuf, struct pkg_dep *dep,
  * %dv -- Dependency version or %rv -- Requirement version.
  */
 static struct sbuf *
-format_dependency_version(struct sbuf *sbuf, struct pkg_dep *dep,
-		       struct percent_esc *p)
+format_dependency_version(struct sbuf *sbuf, const void *data,
+			  struct percent_esc *p)
 {
+	const struct pkg_dep	*dep = data;
+
 	return (string_val(sbuf, pkg_dep_version(dep), p));
 }
 
@@ -1474,9 +1576,10 @@ format_dependency_version(struct sbuf *sbuf, struct pkg_dep *dep,
  * %i -- Additional info. string. Accepts field-width, left-align
  */
 static struct sbuf *
-format_add_info(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_add_info(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	char	*info;
+	const struct pkg	*pkg = data;
+	const char		*info;
 
 	pkg_get(pkg, PKG_INFOS, &info);
 	return (string_val(sbuf, info, p));
@@ -1488,9 +1591,10 @@ format_add_info(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * false, true
  */
 static struct sbuf *
-format_lock_status(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_lock_status(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	bool	locked;
+	const struct pkg	*pkg = data;
+	bool			 locked;
 
 	pkg_get(pkg, PKG_LOCKED, &locked);
 	return (bool_val(sbuf, locked, p));
@@ -1502,11 +1606,12 @@ format_lock_status(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * Alternate form 2: &&, ||, ==
  */
 static struct sbuf *
-format_license_logic(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_license_logic(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	lic_t	licenselogic;
-	int	alternate;
-	int	llogic;
+	const struct pkg	*pkg = data;
+	lic_t			 licenselogic;
+	int			 alternate;
+	int			 llogic;
 
 	pkg_get(pkg, PKG_LICENSE_LOGIC, &licenselogic);
 
@@ -1538,9 +1643,10 @@ format_license_logic(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %m -- Maintainer e-mail address. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_maintainer(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_maintainer(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	char	*maintainer;
+	const struct pkg	*pkg = data;
+	const char		*maintainer;
 
 	pkg_get(pkg, PKG_MAINTAINER, &maintainer);
 	return (string_val(sbuf, maintainer, p));
@@ -1550,9 +1656,10 @@ format_maintainer(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %n -- Package name. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_name(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	char	*name;
+	const struct pkg	*pkg = data;
+	const char		*name;
 
 	pkg_get(pkg, PKG_NAME, &name);
 	return (string_val(sbuf, name, p));
@@ -1562,9 +1669,10 @@ format_name(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %o -- Package origin. string.  Accepts field-width, left-align
  */
 static struct sbuf *
-format_origin(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_origin(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	char	*origin;
+	const struct pkg	*pkg = data;
+	const char		*origin;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin);
 	return (string_val(sbuf, origin, p));
@@ -1574,9 +1682,10 @@ format_origin(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %p -- Installation prefix. string. Accepts field-width, left-align
  */
 static struct sbuf *
-format_prefix(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_prefix(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	char	*prefix;
+	const struct pkg	*pkg = data;
+	const char		*prefix;
 
 	pkg_get(pkg, PKG_PREFIX, &prefix);
 	return (string_val(sbuf, prefix, p));
@@ -1588,8 +1697,10 @@ format_prefix(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * formats. Defaults to printing "%{%rn-%rv\n%|%}" for each dependency.
  */
 static struct sbuf *
-format_requirements(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_requirements(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
+	const struct pkg	*pkg = data;
+
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return(list_count(sbuf, pkg_list_count(pkg, PKG_RDEPS), p));
 	else {
@@ -1620,9 +1731,10 @@ format_requirements(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * scale prefixes (ki, Mi, Gi etc.)
  */
 static struct sbuf *
-format_flatsize(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_flatsize(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	int64_t	flatsize;
+	const struct pkg	*pkg = data;
+	int64_t			 flatsize;
 
 	pkg_get(pkg, PKG_FLATSIZE, &flatsize);
 	return (int_val(sbuf, flatsize, p));
@@ -1635,10 +1747,10 @@ format_flatsize(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * an integer applying our integer format modifiers.
  */
 static struct sbuf *
-format_install_tstamp(struct sbuf *sbuf, struct pkg *pkg,
-		      struct percent_esc *p)
+format_install_tstamp(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	int64_t	 timestamp;
+	const struct pkg	*pkg = data;
+	int64_t			 timestamp;
 
 	pkg_get(pkg, PKG_TIME, &timestamp);
 
@@ -1658,9 +1770,10 @@ format_install_tstamp(struct sbuf *sbuf, struct pkg *pkg,
  * %v -- Package version. string. Accepts field width, left align
  */
 static struct sbuf *
-format_version(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
+format_version(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	char	*version;
+	const struct pkg	*pkg = data;
+	const char		*version;
 
 	pkg_get(pkg, PKG_VERSION, &version);
 	return (string_val(sbuf, version, p));
@@ -1670,10 +1783,10 @@ format_version(struct sbuf *sbuf, struct pkg *pkg, struct percent_esc *p)
  * %w -- Home page URL.  string.  Accepts field width, left align
  */
 static struct sbuf *
-format_home_url(struct sbuf *sbuf, struct pkg *pkg,
-		struct percent_esc *p)
+format_home_url(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	char	*url;
+	const struct pkg	*pkg = data;
+	const char		*url;
 
 	pkg_get(pkg, PKG_WWW, &url);
 	return (string_val(sbuf, url, p));
@@ -1683,7 +1796,7 @@ format_home_url(struct sbuf *sbuf, struct pkg *pkg,
  * %% -- Output a literal '%' character
  */
 static struct sbuf *
-format_literal_percent(struct sbuf *sbuf, __unused struct pkg *pkg,
+format_literal_percent(struct sbuf *sbuf, __unused const void *data,
 		       __unused struct percent_esc *p)
 {
 	sbuf_putc(sbuf, '%');
