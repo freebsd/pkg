@@ -211,7 +211,7 @@ exec_create(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (match != MATCH_ALL && manifestdir != NULL && argc == 0) {
+	if (match != MATCH_ALL && manifestdir == NULL && argc == 0) {
 		usage_create();
 		return (EX_USAGE);
 	}
