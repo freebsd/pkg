@@ -223,6 +223,17 @@ event_callback(void *data, struct pkg_event *ev)
 		    PKG_VERSION, &version);
 		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name,
 		    version, pkg_file_path(ev->e_file_mismatch.file));
+	case PKG_EVENT_PLUGIN_ERRNO:
+		warn("%s: %s(%s)", pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),ev->e_plugin_errno.func, ev->e_plugin_errno.arg);
+		break;
+	case PKG_EVENT_PLUGIN_ERROR:
+		warnx("%s: %s", pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME), ev->e_plugin_error.msg);
+		break;
+	case PKG_EVENT_PLUGIN_INFO:
+		if (quiet)
+			break;
+		printf("%s: %s\n", pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME), ev->e_plugin_info.msg);
+		break;
 	default:
 		break;
 	}
