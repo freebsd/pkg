@@ -312,6 +312,7 @@ typedef enum _pkg_plugin_hook_t {
 	PKG_PLUGIN_HOOK_POST_DEINSTALL,
 	PKG_PLUGIN_HOOK_PRE_FETCH,
 	PKG_PLUGIN_HOOK_POST_FETCH,
+	PKG_PLUGIN_HOOK_EVENT,
 } pkg_plugin_hook_t;
 
 /**

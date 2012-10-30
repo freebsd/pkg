@@ -43,6 +43,7 @@ pkg_event_register(pkg_event_cb cb, void *data)
 static void
 pkg_emit_event(struct pkg_event *ev)
 {
+	pkg_plugins_hook_run(PKG_PLUGIN_HOOK_EVENT, ev, NULL);
 	if (_cb != NULL)
 		_cb(_data, ev);
 }
