@@ -140,7 +140,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
 			break;
-		pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name,
+		pkg_get(ev->e_upgrade_begin.pkg, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_NEWVERSION, &newversion);
 		nbdone++;
 		if (nbactions > 0)
