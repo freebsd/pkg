@@ -134,11 +134,8 @@ pkg_plugin_hook_exec(struct pkg_plugin *p, pkg_plugin_hook_t hook, void *data, s
 	assert(p != NULL);
 
 	HASH_FIND_INT(p->hooks, &hook, h);
-	if (h != NULL) {
-		printf(">>> Triggering execution of plugin '%s'\n",
-		    pkg_plugin_get(p, PKG_PLUGIN_NAME));
+	if (h != NULL)
 		h->callback(data, db);
-	}
 
 	return (EPKG_OK);
 }
