@@ -81,6 +81,7 @@ STRIP=
 DEBUG_FLAGS+=	-pg
 .endif
 NO_MAN=		yes
+NOMAN=		yes
 
 .include <bsd.lib.mk>
 
