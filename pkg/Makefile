@@ -47,9 +47,14 @@ CFLAGS+=	-I${.CURDIR}/../libpkg
 LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lpkg \
 		-lutil \
-		-ljail \
 		-lpthread \
 		${LDADD_STATIC}
+
+.if !exists(/usr/include/jail.h)
+CFLAGS+=	-DNO_LIBJAIL
+.else
+LDADD+=		-ljail
+.endif
 
 WARNS?=		6
 MAN=	pkg.8 \
