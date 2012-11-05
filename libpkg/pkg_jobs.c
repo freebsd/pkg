@@ -36,6 +36,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __DragonFly__
+#define STAILQ_FOREACH_SAFE STAILQ_FOREACH_MUTABLE
+#endif
+
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
