@@ -56,9 +56,19 @@ CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
 		-I${.CURDIR}/../external/libyaml/include
+
+.if defined(WITH_BUNDLED_LIBELF)
+CFLAGS+=	-I${.CURDIR}/../external/libelf
+.endif
+
 LDADD+=		-L${.OBJDIR}/../external/sqlite \
-		-L${.OBJDIR}/../external/libyaml \
-		-lsqlite3 \
+		-L${.OBJDIR}/../external/libyaml
+
+.if defined(WITH_BUNDLED_LIBELF)
+LDADD+=		-L${.OBJDIR}/../external/libelf
+.endif
+
+LDADD+=		-lsqlite3 \
 		-lyaml \
 		-larchive \
 		-lsbuf \
