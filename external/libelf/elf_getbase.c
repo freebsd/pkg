@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,11 +25,12 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_getbase.c 209122 2010-06-13 10:58:50Z kaiw $");
 
 #include <libelf.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: elf_getbase.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 off_t
 elf_getbase(Elf *e)

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008,2011 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,18 +25,20 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/lib/libelf/elf_errmsg.c 241720 2012-10-19 05:43:38Z ed $");
 
 #include <libelf.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: elf_errmsg.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 /*
  * Retrieve a human readable translation for an error message.
  */
 
-static const char *_libelf_errors[] = {
+const char *_libelf_errors[] = {
 #define	DEFINE_ERROR(N,S)	[ELF_E_##N] = S
 	DEFINE_ERROR(NONE,	"No Error"),
 	DEFINE_ERROR(ARCHIVE,	"Malformed ar(1) archive"),
@@ -62,7 +64,8 @@ elf_errmsg(int error)
 {
 	int oserr;
 
-	if (error == 0 && (error = LIBELF_PRIVATE(error)) == 0)
+	if (error == ELF_E_NONE &&
+	    (error = LIBELF_PRIVATE(error)) == 0)
 	    return NULL;
 	else if (error == -1)
 	    error = LIBELF_PRIVATE(error);
@@ -70,31 +73,13 @@ elf_errmsg(int error)
 	oserr = error >> LIBELF_OS_ERROR_SHIFT;
 	error &= LIBELF_ELF_ERROR_MASK;
 
-	if (error < 0 || error >= ELF_E_NUM)
+	if (error < ELF_E_NONE || error >= ELF_E_NUM)
 		return _libelf_errors[ELF_E_NUM];
 	if (oserr) {
-		strlcpy(LIBELF_PRIVATE(msg), _libelf_errors[error],
-		    sizeof(LIBELF_PRIVATE(msg)));
-		strlcat(LIBELF_PRIVATE(msg), ": ", sizeof(LIBELF_PRIVATE(msg)));
-		strlcat(LIBELF_PRIVATE(msg), strerror(oserr),
-		    sizeof(LIBELF_PRIVATE(msg)));
+		(void) snprintf(LIBELF_PRIVATE(msg),
+		    sizeof(LIBELF_PRIVATE(msg)), "%s: %s",
+		    _libelf_errors[error], strerror(oserr));
 		return (const char *)&LIBELF_PRIVATE(msg);
 	}
 	return _libelf_errors[error];
 }
-
-#if	defined(LIBELF_TEST_HOOKS)
-
-const char *
-_libelf_get_unknown_error_message(void)
-{
-	return _libelf_errors[ELF_E_NUM];
-}
-
-const char *
-_libelf_get_no_error_message(void)
-{
-	return _libelf_errors[0];
-}
-
-#endif	/* LIBELF_TEST_HOOKS */

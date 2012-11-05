@@ -1,4 +1,4 @@
-.\" Copyright (c) 2006 Joseph Koshy.  All rights reserved.
+.\" Copyright (c) 2006,2008 Joseph Koshy.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -21,11 +21,11 @@
 .\" out of the use of this software, even if advised of the possibility of
 .\" such damage.
 .\"
-.\" $FreeBSD: head/lib/libelf/elf_strptr.3 235286 2012-05-11 20:06:46Z gjb $
+.\" $Id: elf_strptr.3 1081 2010-08-14 02:23:48Z jkoshy $
 .\"
 .Dd December 16, 2006
-.Dt ELF_STRPTR 3
 .Os
+.Dt ELF_STRPTR 3
 .Sh NAME
 .Nm elf_strptr
 .Nd retrieve a string pointer in a string table
@@ -64,7 +64,7 @@ encountered.
 .It Bq Er ELF_E_ARGUMENT
 Argument
 .Ar elf
-was NULL.
+was NULL
 .It Bq Er ELF_E_ARGUMENT
 Argument
 .Ar elf

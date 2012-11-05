@@ -32,7 +32,7 @@ struct _elf_corres {
 
 struct _elf_corres mach_corres[] = {
 	{ EM_386, "x86" },
-	{ EM_AMD64, "x86" },
+	{ EM_X86_64, "x86" },
 	{ EM_ARM, "arm" },
 	{ EM_MIPS, "mips" },
 	{ EM_PPC, "powerpc" },

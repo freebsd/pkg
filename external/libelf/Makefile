@@ -1,8 +1,7 @@
-# $FreeBSD: head/lib/libelf/Makefile 238741 2012-07-24 16:03:28Z ache $
-
 LIB=	elf
 
-SRCS=	elf_begin.c						\
+SRCS=	elf.c							\
+	elf_begin.c						\
 	elf_cntl.c						\
 	elf_end.c elf_errmsg.c elf_errno.c			\
 	elf_data.c						\
@@ -16,6 +15,7 @@ SRCS=	elf_begin.c						\
 	elf_kind.c						\
 	elf_memory.c						\
 	elf_next.c						\
+	elf_open.c						\
 	elf_rand.c						\
 	elf_rawfile.c						\
 	elf_phnum.c						\
@@ -40,7 +40,6 @@ SRCS=	elf_begin.c						\
 	gelf_syminfo.c						\
 	gelf_symshndx.c						\
 	gelf_xlate.c						\
-	libelf.c						\
 	libelf_align.c						\
 	libelf_allocate.c					\
 	libelf_ar.c						\
@@ -49,20 +48,24 @@ SRCS=	elf_begin.c						\
 	libelf_data.c						\
 	libelf_ehdr.c						\
 	libelf_extended.c					\
+	libelf_memory.c						\
+	libelf_open.c						\
 	libelf_phdr.c						\
 	libelf_shdr.c						\
 	libelf_xlate.c						\
 	${GENSRCS}
-
-INTERNALLIB=
 INCS=	libelf.h gelf.h
 
 GENSRCS=	libelf_fsize.c libelf_msize.c libelf_convert.c
 CLEANFILES=	${GENSRCS}
-CLEANDIRS=	sys
-CFLAGS+=	-I${.CURDIR} -I.
 
+CFLAGS+=	-I${.CURDIR}
+
+INTERNALLI=
 NO_MAN=	yes
+NOMAN=	yes
+
+WARNS?=	6
 
 libelf_convert.c:	elf_types.m4 libelf_convert.m4
 libelf_fsize.c:		elf_types.m4 libelf_fsize.m4
@@ -71,6 +74,7 @@ libelf_msize.c:		elf_types.m4 libelf_msize.m4
 .include <bsd.lib.mk>
 
 # Keep the .SUFFIXES line after the include of bsd.lib.mk
-.SUFFIXES:	.m4 .c
+.SUFFIXES:     .m4 .c
 .m4.c:
 	m4 -D SRCDIR=${.CURDIR} ${.IMPSRC} > ${.TARGET}
+

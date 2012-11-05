@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008-2011 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,14 +22,15 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: releng/9.1/lib/libelf/libelf_fsize.m4 210340 2010-07-21 10:39:29Z kaiw $
  */
 
 #include <libelf.h>
-#include <osreldate.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: libelf_fsize.m4 2225 2011-11-26 18:55:54Z jkoshy $");
+
+/* WARNING: GENERATED FROM __file__. */
 
 /*
  * Create an array of file sizes from the elf_type definitions
@@ -50,6 +51,8 @@ define(`IDENT_SIZE',	`EI_NIDENT')
 /* Types that have variable length. */
 define(`GNUHASH_SIZE',	1)
 define(`NOTE_SIZE',	1)
+define(`VDEF_SIZE',	1)
+define(`VNEED_SIZE',	1)
 
 /* Currently unimplemented types. */
 define(`MOVEP_SIZE',	0)
@@ -118,9 +121,8 @@ DEFINE_ELF_FSIZES(ELF_TYPE_LIST)
 DEFINE_ELF_FSIZE(`IDENT',`')	# `IDENT' is a pseudo type
 
 define(`FSIZE',
-  `#if	__FreeBSD_version >= $3
-    [ELF_T_$1] = { .fsz32 = $1_SIZE32, .fsz64 = $1_SIZE64 },
-#endif')
+  `[ELF_T_$1] = { .fsz32 = $1_SIZE32, .fsz64 = $1_SIZE64 },
+')
 define(`FSIZES',
   `ifelse($#,1,`',
     `FSIZE($1)
@@ -155,4 +157,3 @@ _libelf_fsize(Elf_Type t, int ec, unsigned int v, size_t c)
 
 	return (sz*c);
 }
-

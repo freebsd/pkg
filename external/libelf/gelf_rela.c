@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,25 +25,28 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/gelf_rela.c 176727 2008-03-02 06:33:10Z jkoshy $");
-
-#include <sys/limits.h>
 
 #include <assert.h>
 #include <gelf.h>
+#include <limits.h>
 
 #include "_libelf.h"
 
+ELFTC_VCSID("$Id: gelf_rela.c 2272 2011-12-03 17:07:31Z jkoshy $");
+
 GElf_Rela *
-gelf_getrela(Elf_Data *d, int ndx, GElf_Rela *dst)
+gelf_getrela(Elf_Data *ed, int ndx, GElf_Rela *dst)
 {
 	int ec;
 	Elf *e;
+	size_t msz;
 	Elf_Scn *scn;
+	uint32_t sh_type;
 	Elf32_Rela *rela32;
 	Elf64_Rela *rela64;
-	size_t msz;
-	uint32_t sh_type;
+	struct _Libelf_Data *d;
+
+	d = (struct _Libelf_Data *) ed;
 
 	if (d == NULL || ndx < 0 || dst == NULL ||
 	    (scn = d->d_scn) == NULL ||
@@ -69,13 +72,13 @@ gelf_getrela(Elf_Data *d, int ndx, GElf_Rela *dst)
 
 	assert(msz > 0);
 
-	if (msz * ndx >= d->d_size) {
+	if (msz * ndx >= d->d_data.d_size) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (NULL);
 	}
 
 	if (ec == ELFCLASS32) {
-		rela32 = (Elf32_Rela *) d->d_buf + ndx;
+		rela32 = (Elf32_Rela *) d->d_data.d_buf + ndx;
 
 		dst->r_offset = (Elf64_Addr) rela32->r_offset;
 		dst->r_info   = ELF64_R_INFO(
@@ -85,7 +88,7 @@ gelf_getrela(Elf_Data *d, int ndx, GElf_Rela *dst)
 
 	} else {
 
-		rela64 = (Elf64_Rela *) d->d_buf + ndx;
+		rela64 = (Elf64_Rela *) d->d_data.d_buf + ndx;
 
 		*dst = *rela64;
 	}
@@ -94,15 +97,18 @@ gelf_getrela(Elf_Data *d, int ndx, GElf_Rela *dst)
 }
 
 int
-gelf_update_rela(Elf_Data *d, int ndx, GElf_Rela *dr)
+gelf_update_rela(Elf_Data *ed, int ndx, GElf_Rela *dr)
 {
 	int ec;
 	Elf *e;
+	size_t msz;
 	Elf_Scn *scn;
+	uint32_t sh_type;
 	Elf32_Rela *rela32;
 	Elf64_Rela *rela64;
-	size_t msz;
-	uint32_t sh_type;
+	struct _Libelf_Data *d;
+
+	d = (struct _Libelf_Data *) ed;
 
 	if (d == NULL || ndx < 0 || dr == NULL ||
 	    (scn = d->d_scn) == NULL ||
@@ -127,13 +133,13 @@ gelf_update_rela(Elf_Data *d, int ndx, GElf_Rela *dr)
 	msz = _libelf_msize(ELF_T_RELA, ec, e->e_version);
 	assert(msz > 0);
 
-	if (msz * ndx >= d->d_size) {
+	if (msz * ndx >= d->d_data.d_size) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (0);
 	}
 
 	if (ec == ELFCLASS32) {
-		rela32 = (Elf32_Rela *) d->d_buf + ndx;
+		rela32 = (Elf32_Rela *) d->d_data.d_buf + ndx;
 
 		LIBELF_COPY_U32(rela32, dr, r_offset);
 
@@ -147,7 +153,7 @@ gelf_update_rela(Elf_Data *d, int ndx, GElf_Rela *dr)
 
 		LIBELF_COPY_S32(rela32, dr, r_addend);
 	} else {
-		rela64 = (Elf64_Rela *) d->d_buf + ndx;
+		rela64 = (Elf64_Rela *) d->d_data.d_buf + ndx;
 
 		*rela64 = *dr;
 	}

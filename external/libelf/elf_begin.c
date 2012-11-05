@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008-2011 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,63 +24,11 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_begin.c 210351 2010-07-21 13:18:57Z kaiw $");
-
-#include <sys/types.h>
-#include <sys/errno.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-
-#include <ar.h>
-#include <ctype.h>
 #include <libelf.h>
-#include <unistd.h>
 
 #include "_libelf.h"
 
-static Elf *
-_libelf_open_object(int fd, Elf_Cmd c)
-{
-	Elf *e;
-	void *m;
-	struct stat sb;
-
-	/*
-	 * 'Raw' files are always mapped with 'PROT_READ'.  At
-	 * elf_update(3) time for files opened with ELF_C_RDWR the
-	 * mapping is unmapped, file data is written to using write(2)
-	 * and then the raw data is immediately mapped back in.
-	 */
-	if (fstat(fd, &sb) < 0) {
-		LIBELF_SET_ERROR(IO, errno);
-		return (NULL);
-	}
-
-	m = NULL;
-	if ((m = mmap(NULL, (size_t) sb.st_size, PROT_READ, MAP_PRIVATE, fd,
-	    (off_t) 0)) == MAP_FAILED) {
-		LIBELF_SET_ERROR(IO, errno);
-		return (NULL);
-	}
-
-	if ((e = elf_memory(m, (size_t) sb.st_size)) == NULL) {
-		(void) munmap(m, (size_t) sb.st_size);
-		return (NULL);
-	}
-
-	e->e_flags |= LIBELF_F_MMAP;
-	e->e_fd = fd;
-	e->e_cmd = c;
-
-	if (c == ELF_C_RDWR && e->e_kind == ELF_K_AR) {
-		(void) elf_end(e);
-		LIBELF_SET_ERROR(ARGUMENT, 0);
-		return (NULL);
-	}
-
-	return (e);
-}
+ELFTC_VCSID("$Id: elf_begin.c 2364 2011-12-28 17:55:25Z jkoshy $");
 
 Elf *
 elf_begin(int fd, Elf_Cmd c, Elf *a)
@@ -99,28 +47,12 @@ elf_begin(int fd, Elf_Cmd c, Elf *a)
 		return (NULL);
 
 	case ELF_C_WRITE:
-
-		if (a != NULL) { /* not allowed for ar(1) archives. */
-			LIBELF_SET_ERROR(ARGUMENT, 0);
-			return (NULL);
-		}
-
 		/*
-		 * Check writeability of `fd' immediately and fail if
-		 * not writeable.
+		 * The ELF_C_WRITE command is required to ignore the
+		 * descriptor passed in.
 		 */
-		if (ftruncate(fd, (off_t) 0) < 0) {
-			LIBELF_SET_ERROR(IO, errno);
-			return (NULL);
-		}
-
-		if ((e = _libelf_allocate_elf()) != NULL) {
-			_libelf_init_elf(e, ELF_K_ELF);
-			e->e_byteorder = LIBELF_PRIVATE(byteorder);
-			e->e_fd = fd;
-			e->e_cmd = c;
-		}
-		return (e);
+		a = NULL;
+		break;
 
 	case ELF_C_RDWR:
 		if (a != NULL) { /* not allowed for ar(1) archives. */
@@ -149,7 +81,7 @@ elf_begin(int fd, Elf_Cmd c, Elf *a)
 	}
 
 	if (a == NULL)
-		e = _libelf_open_object(fd, c);
+		e = _libelf_open_object(fd, c, 1);
 	else if (a->e_kind == ELF_K_AR)
 		e = _libelf_ar_open_member(a->e_fd, c, a);
 	else

@@ -27,7 +27,9 @@
 
 #include <sys/endian.h>
 #include <sys/types.h>
+#ifndef BUNDLED_LIBELF
 #include <sys/elf_common.h>
+#endif
 #include <sys/stat.h>
 
 #include <assert.h>
@@ -37,7 +39,9 @@
 #include <err.h>
 #include <fcntl.h>
 #include <gelf.h>
+#ifndef BUNDLED_LIBELF
 #include <link.h>
+#endif
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>

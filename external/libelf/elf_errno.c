@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008,2011 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,11 +25,12 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_errno.c 164190 2006-11-11 17:16:35Z jkoshy $");
 
 #include <libelf.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: elf_errno.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 int
 elf_errno(void)
@@ -40,19 +41,3 @@ elf_errno(void)
 	LIBELF_PRIVATE(error) = 0;
 	return (old & LIBELF_ELF_ERROR_MASK);
 }
-
-#if	defined(LIBELF_TEST_HOOKS)
-
-int
-_libelf_get_max_error(void)
-{
-	return ELF_E_NUM;
-}
-
-void
-_libelf_set_error(int error)
-{
-	LIBELF_PRIVATE(error) = error;
-}
-
-#endif	/* LIBELF_TEST_HOOKS */

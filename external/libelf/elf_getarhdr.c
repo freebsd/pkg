@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008,2010 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,24 +25,23 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_getarhdr.c 164190 2006-11-11 17:16:35Z jkoshy $");
 
 #include <libelf.h>
 
 #include "_libelf.h"
 
+ELFTC_VCSID("$Id: elf_getarhdr.c 2225 2011-11-26 18:55:54Z jkoshy $");
+
 Elf_Arhdr *
 elf_getarhdr(Elf *e)
 {
-	Elf_Arhdr *arh;
-
 	if (e == NULL) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (NULL);
 	}
 
-	if ((arh = e->e_arhdr) != NULL)
-		return (arh);
+	if (e->e_flags & LIBELF_F_AR_HEADER)
+		return (e->e_hdr.e_arhdr);
 
 	return (_libelf_ar_gethdr(e));
 }

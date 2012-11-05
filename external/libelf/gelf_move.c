@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,28 +25,28 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/gelf_move.c 165317 2006-12-18 05:40:01Z jkoshy $");
-
-#include <sys/limits.h>
 
 #include <assert.h>
 #include <gelf.h>
-#include <osreldate.h>
+#include <limits.h>
 
 #include "_libelf.h"
 
-#if	__FreeBSD_version >= 700025
+ELFTC_VCSID("$Id: gelf_move.c 2272 2011-12-03 17:07:31Z jkoshy $");
 
 GElf_Move *
-gelf_getmove(Elf_Data *d, int ndx, GElf_Move *dst)
+gelf_getmove(Elf_Data *ed, int ndx, GElf_Move *dst)
 {
 	int ec;
 	Elf *e;
+	size_t msz;
 	Elf_Scn *scn;
+	uint32_t sh_type;
 	Elf32_Move *move32;
 	Elf64_Move *move64;
-	size_t msz;
-	uint32_t sh_type;
+	struct _Libelf_Data *d;
+
+	d = (struct _Libelf_Data *) ed;
 
 	if (d == NULL || ndx < 0 || dst == NULL ||
 	    (scn = d->d_scn) == NULL ||
@@ -72,14 +72,14 @@ gelf_getmove(Elf_Data *d, int ndx, GElf_Move *dst)
 
 	assert(msz > 0);
 
-	if (msz * ndx >= d->d_size) {
+	if (msz * ndx >= d->d_data.d_size) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (NULL);
 	}
 
 	if (ec == ELFCLASS32) {
 
-		move32 = (Elf32_Move *) d->d_buf + ndx;
+		move32 = (Elf32_Move *) d->d_data.d_buf + ndx;
 
 		dst->m_value   = move32->m_value;
 		dst->m_info    = (Elf64_Xword) move32->m_info;
@@ -88,7 +88,7 @@ gelf_getmove(Elf_Data *d, int ndx, GElf_Move *dst)
 		dst->m_stride = move32->m_stride;
 	} else {
 
-		move64 = (Elf64_Move *) d->d_buf + ndx;
+		move64 = (Elf64_Move *) d->d_data.d_buf + ndx;
 
 		*dst = *move64;
 	}
@@ -97,15 +97,18 @@ gelf_getmove(Elf_Data *d, int ndx, GElf_Move *dst)
 }
 
 int
-gelf_update_move(Elf_Data *d, int ndx, GElf_Move *gm)
+gelf_update_move(Elf_Data *ed, int ndx, GElf_Move *gm)
 {
 	int ec;
 	Elf *e;
+	size_t msz;
 	Elf_Scn *scn;
+	uint32_t sh_type;
 	Elf32_Move *move32;
 	Elf64_Move *move64;
-	size_t msz;
-	uint32_t sh_type;
+	struct _Libelf_Data *d;
+
+	d = (struct _Libelf_Data *) ed;
 
 	if (d == NULL || ndx < 0 || gm == NULL ||
 	    (scn = d->d_scn) == NULL ||
@@ -130,13 +133,13 @@ gelf_update_move(Elf_Data *d, int ndx, GElf_Move *gm)
 	msz = _libelf_msize(ELF_T_MOVE, ec, e->e_version);
 	assert(msz > 0);
 
-	if (msz * ndx >= d->d_size) {
+	if (msz * ndx >= d->d_data.d_size) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (0);
 	}
 
 	if (ec == ELFCLASS32) {
-		move32 = (Elf32_Move *) d->d_buf + ndx;
+		move32 = (Elf32_Move *) d->d_data.d_buf + ndx;
 
 		move32->m_value  = gm->m_value;
 		LIBELF_COPY_U32(move32, gm, m_info);
@@ -145,12 +148,10 @@ gelf_update_move(Elf_Data *d, int ndx, GElf_Move *gm)
 		move32->m_stride = gm->m_stride;
 
 	} else {
-		move64 = (Elf64_Move *) d->d_buf + ndx;
+		move64 = (Elf64_Move *) d->d_data.d_buf + ndx;
 
 		*move64 = *gm;
 	}
 
 	return (1);
 }
-
-#endif	/* __FreeBSD_version >= 700025 */

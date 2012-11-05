@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,49 +23,43 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: releng/9.1/lib/libelf/elf_types.m4 210341 2010-07-21 10:57:22Z kaiw $
+ * $Id: elf_types.m4 321 2009-03-07 16:59:14Z jkoshy $
  */
 
 /*
  * ELF types, defined in the "enum Elf_Type" API.
  *
- * The members of the list form a 3-tuple: (name, C-type-suffix, OSversion).
+ * The members of the list form a 2-tuple: (name, C-type-suffix).
  * + `name' is an Elf_Type symbol without the `ELF_T_' prefix.
  * + `C-type-suffix' is the suffix for Elf32_ and Elf64_ type names.
- * + `version' is the OS version the symbol first appeared in.
- *
- * OS revisions of note are:
- * 600102 - The earliest (6.0-STABLE) version supported by this code.
- * 700009 - Symbol versioning and ELF64 type changes.
- * 700025 - More ELF types and the introduction of libelf.
  */
 
 define(`ELF_TYPE_LIST',
-	``ADDR,		Addr,	600102',
-	`BYTE,		Byte,	600102',
-	`CAP,		Cap,	700025',
-	`DYN,		Dyn,	600102',
-	`EHDR,		Ehdr,	600102',
-	`GNUHASH,	-,	800062',
-	`HALF,		Half,	600102',
-	`LWORD,		Lword,	700025',
-	`MOVE,		Move,	700025',
-	`MOVEP,		MoveP,	700025',
-	`NOTE,		Note,	600102',
-	`OFF,		Off,	600102',
-	`PHDR,		Phdr,	600102',
-	`REL,		Rel,	600102',
-	`RELA,		Rela,	600102',
-	`SHDR,		Shdr,	600102',
-	`SWORD,		Sword,	600102',
-	`SXWORD,	Sxword,	700009',
-	`SYMINFO,	Syminfo, 700025',
-	`SYM,		Sym,	600102',
-	`VDEF,		Verdef,	700009',
-	`VNEED,		Verneed, 700009',
-	`WORD,		Word,	600102',
-	`XWORD,		Xword,	700009',
-	`NUM,		_,	_'')
+	``ADDR,		Addr',
+	`BYTE,		Byte',
+	`CAP,		Cap',
+	`DYN,		Dyn',
+	`EHDR,		Ehdr',
+	`GNUHASH,	-',
+	`HALF,		Half',
+	`LWORD,		Lword',
+	`MOVE,		Move',
+	`MOVEP,		MoveP',
+	`NOTE,		Note',
+	`OFF,		Off',
+	`PHDR,		Phdr',
+	`REL,		Rel',
+	`RELA,		Rela',
+	`SHDR,		Shdr',
+	`SWORD,		Sword',
+	`SXWORD,	Sxword',
+	`SYMINFO,	Syminfo',
+	`SYM,		Sym',
+	`VDEF,		Verdef',
+	`VNEED,		Verneed',
+	`WORD,		Word',
+	`XWORD,		Xword',
+	`NUM,		_'')
 
 /*
  * DEFINE_STRUCT(NAME,MEMBERLIST...)

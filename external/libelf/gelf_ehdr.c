@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,16 +25,16 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/gelf_ehdr.c 210325 2010-07-21 08:58:52Z kaiw $");
-
-#include <sys/limits.h>
 
 #include <assert.h>
 #include <gelf.h>
 #include <libelf.h>
+#include <limits.h>
 #include <string.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: gelf_ehdr.c 2268 2011-12-03 17:05:11Z jkoshy $");
 
 Elf32_Ehdr *
 elf32_getehdr(Elf *e)
@@ -65,7 +65,8 @@ gelf_getehdr(Elf *e, GElf_Ehdr *d)
 		if ((eh32 = _libelf_ehdr(e, ELFCLASS32, 0)) == NULL)
 			return (NULL);
 
-		(void) memcpy(d->e_ident, eh32->e_ident, sizeof(eh32->e_ident));
+		(void) memcpy(d->e_ident, eh32->e_ident,
+		    sizeof(eh32->e_ident));
 		d->e_type		= eh32->e_type;
 		d->e_machine		= eh32->e_machine;
 		d->e_version		= eh32->e_version;

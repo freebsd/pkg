@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,17 +25,14 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_align.c 210332 2010-07-21 09:56:42Z kaiw $");
 
 #include <sys/types.h>
 
-#include <machine/elf.h>
-#include <machine/endian.h>
-
 #include <libelf.h>
-#include <osreldate.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: libelf_align.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 struct align {
 	int a32;
@@ -66,20 +63,14 @@ struct align {
 static struct align malign[ELF_T_NUM] = {
 	[ELF_T_ADDR]	= MALIGN(Addr),
 	[ELF_T_BYTE]	= { .a32 = 1, .a64 = 1 },
-#if	__FreeBSD_version >= 700025
 	[ELF_T_CAP]	= MALIGN(Cap),
-#endif
 	[ELF_T_DYN]	= MALIGN(Dyn),
 	[ELF_T_EHDR]	= MALIGN(Ehdr),
 	[ELF_T_HALF]	= MALIGN(Half),
-#if	__FreeBSD_version >= 700025
 	[ELF_T_LWORD]	= MALIGN(Lword),
 	[ELF_T_MOVE]	= MALIGN(Move),
-#endif
 	[ELF_T_MOVEP] 	= UNSUPPORTED(),
-#if	__FreeBSD_version >= 700025
 	[ELF_T_NOTE]	= MALIGN(Nhdr),
-#endif
 	[ELF_T_OFF]	= MALIGN(Off),
 	[ELF_T_PHDR]	= MALIGN(Phdr),
 	[ELF_T_REL]	= MALIGN(Rel),
@@ -88,18 +79,12 @@ static struct align malign[ELF_T_NUM] = {
 	[ELF_T_SWORD]	= MALIGN(Sword),
 	[ELF_T_SXWORD]	= MALIGN64(Sxword),
 	[ELF_T_SYM]	= MALIGN(Sym),
-#if	__FreeBSD_version >= 700025
 	[ELF_T_SYMINFO]	= MALIGN(Syminfo),
-#endif
-#if	__FreeBSD_version >= 700009
 	[ELF_T_VDEF]	= MALIGN(Verdef),
 	[ELF_T_VNEED]	= MALIGN(Verneed),
-#endif
 	[ELF_T_WORD]	= MALIGN(Word),
 	[ELF_T_XWORD]	= MALIGN64(Xword),
-#if	__FreeBSD_version >= 800062
 	[ELF_T_GNUHASH] = MALIGN_WORD()
-#endif
 };
 
 int
@@ -117,20 +102,14 @@ _libelf_malign(Elf_Type t, int elfclass)
 static struct align falign[ELF_T_NUM] = {
 	[ELF_T_ADDR]	= FALIGN(4,8),
 	[ELF_T_BYTE]	= FALIGN(1,1),
-#if	__FreeBSD_version >= 700025
 	[ELF_T_CAP]	= FALIGN(4,8),
-#endif
 	[ELF_T_DYN]	= FALIGN(4,8),
 	[ELF_T_EHDR]	= FALIGN(4,8),
 	[ELF_T_HALF]	= FALIGN(2,2),
-#if	__FreeBSD_version >= 700025
 	[ELF_T_LWORD]	= FALIGN(8,8),
 	[ELF_T_MOVE]	= FALIGN(8,8),
-#endif
 	[ELF_T_MOVEP] 	= UNSUPPORTED(),
-#if	__FreeBSD_version >= 700025
-	[ELF_T_NOTE]	= FALIGN(1,1),
-#endif
+	[ELF_T_NOTE]	= FALIGN(4,4),
 	[ELF_T_OFF]	= FALIGN(4,8),
 	[ELF_T_PHDR]	= FALIGN(4,8),
 	[ELF_T_REL]	= FALIGN(4,8),
@@ -139,18 +118,12 @@ static struct align falign[ELF_T_NUM] = {
 	[ELF_T_SWORD]	= FALIGN(4,4),
 	[ELF_T_SXWORD]	= FALIGN(0,8),
 	[ELF_T_SYM]	= FALIGN(4,8),
-#if	__FreeBSD_version >= 700025
 	[ELF_T_SYMINFO]	= FALIGN(2,2),
-#endif
-#if	__FreeBSD_version >= 700009
 	[ELF_T_VDEF]	= FALIGN(4,4),
 	[ELF_T_VNEED]	= FALIGN(4,4),
-#endif
 	[ELF_T_WORD]	= FALIGN(4,4),
 	[ELF_T_XWORD]	= FALIGN(0,8),
-#if	__FreeBSD_version >= 800062
 	[ELF_T_GNUHASH] = FALIGN(4,8)
-#endif
 };
 
 int

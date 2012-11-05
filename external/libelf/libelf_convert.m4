@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006-2008 Joseph Koshy
+ * Copyright (c) 2006-2011 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,32 +25,522 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_convert.m4 219126 2011-03-01 11:47:51Z brucec $");
-
-#include <sys/types.h>
-#include <sys/elf32.h>
-#include <sys/elf64.h>
 
 #include <assert.h>
 #include <libelf.h>
-#include <osreldate.h>
 #include <string.h>
 
 #include "_libelf.h"
 
+ELFTC_VCSID("$Id: libelf_convert.m4 2361 2011-12-28 12:03:05Z jkoshy $");
+
 /* WARNING: GENERATED FROM __file__. */
 
+divert(-1)
+
+# Generate conversion routines for converting between in-memory and
+# file representations of Elf data structures.
+#
+# These conversions use the type information defined in `elf_types.m4'.
+
+include(SRCDIR`/elf_types.m4')
+
+# For the purposes of generating conversion code, ELF types may be
+# classified according to the following characteristics:
+#
+# 1. Whether the ELF type can be directly mapped to an integral C
+#    language type.  For example, the ELF_T_WORD type maps directly to
+#    a 'uint32_t', but ELF_T_GNUHASH lacks a matching C type.
+#
+# 2. Whether the type has word size dependent variants.  For example,
+#    ELT_T_EHDR is represented using C types Elf32_Ehdr and El64_Ehdr,
+#    and the ELF_T_ADDR and ELF_T_OFF types have integral C types that
+#    can be 32- or 64- bit wide.
+#
+# 3. Whether the ELF types has a fixed representation or not.  For
+#    example, the ELF_T_SYM type has a fixed size file representation,
+#    some types like ELF_T_NOTE and ELF_T_GNUHASH use a variable size
+#    representation.
+#
+# We use m4 macros to generate conversion code for ELF types that have
+# a fixed size representation.  Conversion functions for the remaining
+# types are coded by hand.
+#
+#* Handling File and Memory Representations
+#
+# `In-memory' representations of an Elf data structure use natural
+# alignments and native byte ordering.  This allows pointer arithmetic
+# and casting to work as expected.  On the other hand, the `file'
+# representation of an ELF data structure could possibly be packed
+# tighter than its `in-memory' representation, and could be of a
+# differing byte order.  Reading ELF objects that are members of `ar'
+# archives present an additional complication: `ar' pads file data to
+# even addresses, so file data structures in an archive member
+# residing inside an `ar' archive could be at misaligned memory
+# addresses when brought into memory.
+#
+# In summary, casting the `char *' pointers that point to memory
+# representations (i.e., source pointers for the *_tof() functions and
+# the destination pointers for the *_tom() functions), is safe, as
+# these pointers should be correctly aligned for the memory type
+# already.  However, pointers to file representations have to be
+# treated as being potentially unaligned and no casting can be done.
+
+# NOCVT(TYPE) -- Do not generate the cvt[] structure entry for TYPE
+define(`NOCVT',`define(`NOCVT_'$1,1)')
+
+# NOFUNC(TYPE) -- Do not generate a conversion function for TYPE
+define(`NOFUNC',`define(`NOFUNC_'$1,1)')
+
+# IGNORE(TYPE) -- Completely ignore the type.
+define(`IGNORE',`NOCVT($1)NOFUNC($1)')
+
+# Mark ELF types that should not be processed by the M4 macros below.
+
+# Types for which we use functions with non-standard names.
+IGNORE(`BYTE')			# Uses a wrapper around memcpy().
+IGNORE(`NOTE')			# Not a fixed size type.
+
+# Types for which we supply hand-coded functions.
+NOFUNC(`GNUHASH')		# A type with complex internal structure.
+NOFUNC(`VDEF')			# See MAKE_VERSION_CONVERTERS below.
+NOFUNC(`VNEED')			# ..
+
+# Unimplemented types.
+IGNORE(`MOVEP')
+
+# ELF types that don't exist in a 32-bit world.
+NOFUNC(`XWORD32')
+NOFUNC(`SXWORD32')
+
+# `Primitive' ELF types are those that are an alias for an integral
+# type.  As they have no internal structure, they can be copied using
+# a `memcpy()', and byteswapped in straightforward way.
+#
+# Mark all ELF types that directly map to integral C types.
+define(`PRIM_ADDR',	1)
+define(`PRIM_BYTE',	1)
+define(`PRIM_HALF',	1)
+define(`PRIM_LWORD',	1)
+define(`PRIM_OFF',	1)
+define(`PRIM_SWORD',	1)
+define(`PRIM_SXWORD',	1)
+define(`PRIM_WORD',	1)
+define(`PRIM_XWORD',	1)
+
+# Note the primitive types that are size-dependent.
+define(`SIZEDEP_ADDR',	1)
+define(`SIZEDEP_OFF',	1)
+
+# Generate conversion functions for primitive types.
+#
+# Macro use: MAKEPRIMFUNCS(ELFTYPE,CTYPE,TYPESIZE,SYMSIZE)
+# `$1': Name of the ELF type.
+# `$2': C structure name suffix.
+# `$3': ELF class specifier for types, one of [`32', `64'].
+# `$4': Additional ELF class specifier, one of [`', `32', `64'].
+#
+# Generates a pair of conversion functions.
+define(`MAKEPRIMFUNCS',`
+static int
+_libelf_cvt_$1$4_tof(char *dst, size_t dsz, char *src, size_t count,
+    int byteswap)
+{
+	Elf$3_$2 t, *s = (Elf$3_$2 *) (uintptr_t) src;
+	size_t c;
+
+	(void) dsz;
+
+	if (!byteswap) {
+		(void) memcpy(dst, src, count * sizeof(*s));
+		return (1);
+	}
+
+	for (c = 0; c < count; c++) {
+		t = *s++;
+		SWAP_$1$4(t);
+		WRITE_$1$4(dst,t);
+	}
+
+	return (1);
+}
+
+static int
+_libelf_cvt_$1$4_tom(char *dst, size_t dsz, char *src, size_t count,
+    int byteswap)
+{
+	Elf$3_$2 t, *d = (Elf$3_$2 *) (uintptr_t) dst;
+	size_t c;
+
+	if (dsz < count * sizeof(Elf$3_$2))
+		return (0);
+
+	if (!byteswap) {
+		(void) memcpy(dst, src, count * sizeof(*d));
+		return (1);
+	}
+
+	for (c = 0; c < count; c++) {
+		READ_$1$4(src,t);
+		SWAP_$1$4(t);
+		*d++ = t;
+	}
+
+	return (1);
+}
+')
+
+#
+# Handling composite ELF types
+#
+
+# SWAP_FIELD(FIELDNAME,ELFTYPE) -- Generate code to swap one field.
+define(`SWAP_FIELD',
+  `ifdef(`SIZEDEP_'$2,
+    `SWAP_$2'SZ()`(t.$1);
+			',
+    `SWAP_$2(t.$1);
+			')')
+
+# SWAP_MEMBERS(STRUCT) -- Iterate over a structure definition.
+define(`SWAP_MEMBERS',
+  `ifelse($#,1,`/**/',
+     `SWAP_FIELD($1)SWAP_MEMBERS(shift($@))')')
+
+# SWAP_STRUCT(CTYPE,SIZE) -- Generate code to swap an ELF structure.
+define(`SWAP_STRUCT',
+  `pushdef(`SZ',$2)/* Swap an Elf$2_$1 */
+			SWAP_MEMBERS(Elf$2_$1_DEF)popdef(`SZ')')
+
+# WRITE_FIELD(ELFTYPE,FIELDNAME) -- Generate code to write one field.
+define(`WRITE_FIELD',
+  `ifdef(`SIZEDEP_'$2,
+    `WRITE_$2'SZ()`(dst,t.$1);
+		',
+    `WRITE_$2(dst,t.$1);
+		')')
+
+# WRITE_MEMBERS(ELFTYPELIST) -- Iterate over a structure definition.
+define(`WRITE_MEMBERS',
+  `ifelse($#,1,`/**/',
+    `WRITE_FIELD($1)WRITE_MEMBERS(shift($@))')')
+
+# WRITE_STRUCT(CTYPE,SIZE) -- Generate code to write out an ELF structure.
+define(`WRITE_STRUCT',
+  `pushdef(`SZ',$2)/* Write an Elf$2_$1 */
+		WRITE_MEMBERS(Elf$2_$1_DEF)popdef(`SZ')')
+
+# READ_FIELD(ELFTYPE,CTYPE) -- Generate code to read one field.
+define(`READ_FIELD',
+  `ifdef(`SIZEDEP_'$2,
+    `READ_$2'SZ()`(s,t.$1);
+		',
+    `READ_$2(s,t.$1);
+		')')
+
+# READ_MEMBERS(ELFTYPELIST) -- Iterate over a structure definition.
+define(`READ_MEMBERS',
+  `ifelse($#,1,`/**/',
+    `READ_FIELD($1)READ_MEMBERS(shift($@))')')
+
+# READ_STRUCT(CTYPE,SIZE) -- Generate code to read an ELF structure.
+define(`READ_STRUCT',
+  `pushdef(`SZ',$2)/* Read an Elf$2_$1 */
+		READ_MEMBERS(Elf$2_$1_DEF)popdef(`SZ')')
+
+
+# MAKECOMPFUNCS -- Generate converters for composite ELF structures.
+#
+# When converting data to file representation, the source pointer will
+# be naturally aligned for a data structure's in-memory
+# representation.  When converting data to memory, the destination
+# pointer will be similarly aligned.
+#
+# For in-place conversions, when converting to file representations,
+# the source buffer is large enough to hold `file' data.  When
+# converting from file to memory, we need to be careful to work
+# `backwards', to avoid overwriting unconverted data.
+#
+# Macro use:
+# `$1': Name of the ELF type.
+# `$2': C structure name suffix.
+# `$3': ELF class specifier, one of [`', `32', `64']
+define(`MAKECOMPFUNCS', `ifdef(`NOFUNC_'$1$3,`',`
+static int
+_libelf_cvt_$1$3_tof(char *dst, size_t dsz, char *src, size_t count,
+    int byteswap)
+{
+	Elf$3_$2	t, *s;
+	size_t c;
+
+	(void) dsz;
+
+	s = (Elf$3_$2 *) (uintptr_t) src;
+	for (c = 0; c < count; c++) {
+		t = *s++;
+		if (byteswap) {
+			SWAP_STRUCT($2,$3)
+		}
+		WRITE_STRUCT($2,$3)
+	}
+
+	return (1);
+}
+
+static int
+_libelf_cvt_$1$3_tom(char *dst, size_t dsz, char *src, size_t count,
+    int byteswap)
+{
+	Elf$3_$2	 t, *d;
+	char		*s,*s0;
+	size_t		fsz;
+
+	fsz = elf$3_fsize(ELF_T_$1, (size_t) 1, EV_CURRENT);
+	d   = ((Elf$3_$2 *) (uintptr_t) dst) + (count - 1);
+	s0  = (char *) src + (count - 1) * fsz;
+
+	if (dsz < count * sizeof(Elf$3_$2))
+		return (0);
+
+	while (count--) {
+		s = s0;
+		READ_STRUCT($2,$3)
+		if (byteswap) {
+			SWAP_STRUCT($2,$3)
+		}
+		*d-- = t; s0 -= fsz;
+	}
+
+	return (1);
+}
+')')
+
+# MAKE_TYPE_CONVERTER(ELFTYPE,CTYPE)
+#
+# Make type convertor functions from the type definition
+# of the ELF type:
+# - Skip convertors marked as `NOFUNC'.
+# - Invoke `MAKEPRIMFUNCS' or `MAKECOMPFUNCS' as appropriate.
+define(`MAKE_TYPE_CONVERTER',
+  `ifdef(`NOFUNC_'$1,`',
+    `ifdef(`PRIM_'$1,
+      `ifdef(`SIZEDEP_'$1,
+	`MAKEPRIMFUNCS($1,$2,32,32)dnl
+	 MAKEPRIMFUNCS($1,$2,64,64)',
+	`MAKEPRIMFUNCS($1,$2,64)')',
+      `MAKECOMPFUNCS($1,$2,32)dnl
+       MAKECOMPFUNCS($1,$2,64)')')')
+
+# MAKE_TYPE_CONVERTERS(ELFTYPELIST) -- Generate conversion functions.
+define(`MAKE_TYPE_CONVERTERS',
+  `ifelse($#,1,`',
+    `MAKE_TYPE_CONVERTER($1)MAKE_TYPE_CONVERTERS(shift($@))')')
+
+
+#
+# Macros to generate entries for the table of convertors.
+#
+
+# CONV(ELFTYPE,SIZE,DIRECTION)
+#
+# Generate the name of a convertor function.
+define(`CONV',
+  `ifdef(`NOFUNC_'$1$2,
+    `.$3$2 = NULL',
+    `ifdef(`PRIM_'$1,
+      `ifdef(`SIZEDEP_'$1,
+	`.$3$2 = _libelf_cvt_$1$2_$3',
+	`.$3$2 = _libelf_cvt_$1_$3')',
+      `.$3$2 = _libelf_cvt_$1$2_$3')')')
+
+# CONVERTER_NAME(ELFTYPE)
+#
+# Generate the contents of one `struct cvt' instance.
+define(`CONVERTER_NAME',
+  `ifdef(`NOCVT_'$1,`',
+    `	[ELF_T_$1] = {
+		CONV($1,32,tof),
+		CONV($1,32,tom),
+		CONV($1,64,tof),
+		CONV($1,64,tom)
+	},
+
+')')
+
+# CONVERTER_NAMES(ELFTYPELIST)
+#
+# Generate the `struct cvt[]' array.
+define(`CONVERTER_NAMES',
+  `ifelse($#,1,`',
+    `CONVERTER_NAME($1)CONVERTER_NAMES(shift($@))')')
+
+#
+# Handling ELF version sections.
+#
+
+# _FSZ(FIELD,BASETYPE) - return the file size for a field.
+define(`_FSZ',
+  `ifelse($2,`HALF',2,
+     $2,`WORD',4)')
+
+# FSZ(STRUCT) - determine the file size of a structure.
+define(`FSZ',
+  `ifelse($#,1,0,
+    `eval(_FSZ($1) + FSZ(shift($@)))')')
+
+# MAKE_VERSION_CONVERTERS(TYPE,BASE,AUX,PFX) -- Generate conversion
+# functions for versioning structures.
+define(`MAKE_VERSION_CONVERTERS',
+  `MAKE_VERSION_CONVERTER($1,$2,$3,$4,32)
+   MAKE_VERSION_CONVERTER($1,$2,$3,$4,64)')
+
+# MAKE_VERSION_CONVERTOR(TYPE,CBASE,CAUX,PFX,SIZE) -- Generate a
+# conversion function.
+define(`MAKE_VERSION_CONVERTER',`
+static int
+_libelf_cvt_$1$5_tof(char *dst, size_t dsz, char *src, size_t count,
+    int byteswap)
+{
+	Elf$5_$2	t;
+	Elf$5_$3	a;
+	const size_t	verfsz = FSZ(Elf$5_$2_DEF);
+	const size_t	auxfsz = FSZ(Elf$5_$3_DEF);
+	const size_t	vermsz = sizeof(Elf$5_$2);
+	const size_t	auxmsz = sizeof(Elf$5_$3);
+	char * const	dstend = dst + dsz;
+	char * const	srcend = src + count;
+	char		*dtmp, *dstaux, *srcaux;
+	Elf$5_Word	aux, anext, cnt, vnext;
+
+	for (dtmp = dst, vnext = ~0;
+	     vnext != 0 && dtmp + verfsz <= dstend && src + vermsz <= srcend;
+	     dtmp += vnext, src += vnext) {
+
+		/* Read in an Elf$5_$2 structure. */
+		t = *((Elf$5_$2 *) (uintptr_t) src);
+
+		aux = t.$4_aux;
+		cnt = t.$4_cnt;
+		vnext = t.$4_next;
+
+		if (byteswap) {
+			SWAP_STRUCT($2, $5)
+		}
+
+		dst = dtmp;
+		WRITE_STRUCT($2, $5)
+
+		if (aux < verfsz)
+			return (0);
+
+		/* Process AUX entries. */
+		for (anext = ~0, dstaux = dtmp + aux, srcaux = src + aux;
+		     cnt != 0 && anext != 0 && dstaux + auxfsz <= dstend &&
+			srcaux + auxmsz <= srcend;
+		     dstaux += anext, srcaux += anext, cnt--) {
+
+			/* Read in an Elf$5_$3 structure. */
+			a = *((Elf$5_$3 *) (uintptr_t) srcaux);
+			anext = a.$4a_next;
+
+			if (byteswap) {
+				pushdef(`t',`a')SWAP_STRUCT($3, $5)popdef(`t')
+			}
+
+			dst = dstaux;
+			pushdef(`t',`a')WRITE_STRUCT($3, $5)popdef(`t')
+		}
+
+		if (anext || cnt)
+			return (0);
+	}
+
+	if (vnext)
+		return (0);
+
+	return (1);
+}
+
+static int
+_libelf_cvt_$1$5_tom(char *dst, size_t dsz, char *src, size_t count,
+    int byteswap)
+{
+	Elf$5_$2	t, *dp;
+	Elf$5_$3	a, *ap;
+	const size_t	verfsz = FSZ(Elf$5_$2_DEF);
+	const size_t	auxfsz = FSZ(Elf$5_$3_DEF);
+	const size_t	vermsz = sizeof(Elf$5_$2);
+	const size_t	auxmsz = sizeof(Elf$5_$3);
+	char * const	dstend = dst + dsz;
+	char * const	srcend = src + count;
+	char		*dstaux, *s, *srcaux, *stmp;
+	Elf$5_Word	aux, anext, cnt, vnext;
+
+	for (stmp = src, vnext = ~0;
+	     vnext != 0 && stmp + verfsz <= srcend && dst + vermsz <= dstend;
+	     stmp += vnext, dst += vnext) {
+
+		/* Read in a $1 structure. */
+		s = stmp;
+		READ_STRUCT($2, $5)
+		if (byteswap) {
+			SWAP_STRUCT($2, $5)
+		}
+
+		dp = (Elf$5_$2 *) (uintptr_t) dst;
+		*dp = t;
+
+		aux = t.$4_aux;
+		cnt = t.$4_cnt;
+		vnext = t.$4_next;
+
+		if (aux < vermsz)
+			return (0);
+
+		/* Process AUX entries. */
+		for (anext = ~0, dstaux = dst + aux, srcaux = stmp + aux;
+		     cnt != 0 && anext != 0 && dstaux + auxmsz <= dstend &&
+			srcaux + auxfsz <= srcend;
+		     dstaux += anext, srcaux += anext, cnt--) {
+
+			s = srcaux;
+			pushdef(`t',`a')READ_STRUCT($3, $5)popdef(`t')
+
+			if (byteswap) {
+				pushdef(`t',`a')SWAP_STRUCT($3, $5)popdef(`t')
+			}
+
+			anext = a.$4a_next;
+
+			ap = ((Elf$5_$3 *) (uintptr_t) dstaux);
+			*ap = a;
+		}
+
+		if (anext || cnt)
+			return (0);
+	}
+
+	if (vnext)
+		return (0);
+
+	return (1);
+}')
+
+divert(0)
+
 /*
- * Macros to swap various integral quantities.
+ * C macros to byte swap integral quantities.
  */
 
-#define	SWAP_HALF(X) 	do {						\
+#define	SWAP_BYTE(X)	do { (void) (X); } while (0)
+#define	SWAP_IDENT(X)	do { (void) (X); } while (0)
+#define	SWAP_HALF(X)	do {						\
 		uint16_t _x = (uint16_t) (X);				\
 		uint16_t _t = _x & 0xFF;				\
 		_t <<= 8; _x >>= 8; _t |= _x & 0xFF;			\
 		(X) = _t;						\
 	} while (0)
-#define	SWAP_WORD(X) 	do {						\
+#define	SWAP_WORD(X)	do {						\
 		uint32_t _x = (uint32_t) (X);				\
 		uint32_t _t = _x & 0xFF;				\
 		_t <<= 8; _x >>= 8; _t |= _x & 0xFF;			\
@@ -80,9 +570,12 @@ __FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_convert.m4 219126 2011-03-01 11
 #define	SWAP_XWORD(X)	SWAP_WORD64(X)
 
 /*
- * Write out various integral values.  The destination pointer could
- * be unaligned.  Values are written out in native byte order.  The
- * destination pointer is incremented after the write.
+ * C macros to write out various integral values.
+ *
+ * Note:
+ * - The destination pointer could be unaligned.
+ * - Values are written out in native byte order.
+ * - The destination pointer is incremented after the write.
  */
 #define	WRITE_BYTE(P,X) do {						\
 		char *const _p = (char *) (P);	\
@@ -95,7 +588,7 @@ __FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_convert.m4 219126 2011-03-01 11
 		const char *const _q = (char *) &_t;	\
 		_p[0]		= _q[0];				\
 		_p[1]		= _q[1];				\
-		(P) 		= _p + 2;				\
+		(P)		= _p + 2;				\
 	} while (0)
 #define	WRITE_WORD(P,X)	do {						\
 		uint32_t _t	= (X);					\
@@ -135,9 +628,12 @@ __FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_convert.m4 219126 2011-03-01 11
 	} while (0)
 
 /*
- * Read in various integral values.  The source pointer could be
- * unaligned.  Values are read in native byte order.  The source
- * pointer is incremented appropriately.
+ * C macros to read in various integral values.
+ *
+ * Note:
+ * - The source pointer could be unaligned.
+ * - Values are read in native byte order.
+ * - The source pointer is incremented appropriately.
  */
 
 #define	READ_BYTE(P,X)	do {						\
@@ -199,294 +695,11 @@ __FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_convert.m4 219126 2011-03-01 11
 
 #define	ROUNDUP2(V,N)	(V) = ((((V) + (N) - 1)) & ~((N) - 1))
 
-divert(-1)
-
-/*
- * Generate conversion routines for converting between in-memory and
- * file representations of Elf data structures.
- *
- * `In-memory' representations of an Elf data structure use natural
- * alignments and native byte ordering.  This allows arithmetic and
- * casting to work as expected.  On the other hand the `file'
- * representation of an ELF data structure could be packed tighter
- * than its `in-memory' representation, and could be of a differing
- * byte order.  An additional complication is that `ar' only pads data
- * to even addresses and so ELF archive member data being read from
- * inside an `ar' archive could end up at misaligned memory addresses.
- *
- * Consequently, casting the `char *' pointers that point to memory
- * representations (i.e., source pointers for the *_tof() functions
- * and the destination pointers for the *_tom() functions), is safe,
- * as these pointers should be correctly aligned for the memory type
- * already.  However, pointers to file representations have to be
- * treated as being potentially unaligned and no casting can be done.
- */
-
-include(SRCDIR`/elf_types.m4')
-
-/*
- * `IGNORE'_* flags turn off generation of template code.
- */
-
-define(`IGNORE',
-  `define(IGNORE_$1`'32,	1)
-   define(IGNORE_$1`'64,	1)')
-
-IGNORE(MOVEP)
-IGNORE(NOTE)
-IGNORE(GNUHASH)
-
-define(IGNORE_BYTE,		1)	/* 'lator, leave 'em bytes alone */
-define(IGNORE_GNUHASH,		1)
-define(IGNORE_NOTE,		1)
-define(IGNORE_SXWORD32,		1)
-define(IGNORE_XWORD32,		1)
-
-/*
- * `BASE'_XXX flags cause class agnostic template functions
- * to be generated.
- */
-
-define(`BASE_BYTE',	1)
-define(`BASE_HALF',	1)
-define(`BASE_NOTE',	1)
-define(`BASE_WORD',	1)
-define(`BASE_LWORD',	1)
-define(`BASE_SWORD',	1)
-define(`BASE_XWORD',	1)
-define(`BASE_SXWORD',	1)
-
-/*
- * `SIZEDEP'_XXX flags cause 32/64 bit variants to be generated
- * for each primitive type.
- */
-
-define(`SIZEDEP_ADDR',	1)
-define(`SIZEDEP_OFF',	1)
-
-/*
- * `Primitive' ELF types are those that are an alias for an integral
- * type.  They have no internal structure. These can be copied using
- * a `memcpy()', and byteswapped in straightforward way.
- *
- * Macro use:
- * `$1': Name of the ELF type.
- * `$2': C structure name suffix
- * `$3': ELF class specifier for symbols, one of [`', `32', `64']
- * `$4': ELF class specifier for types, one of [`32', `64']
- */
-define(`MAKEPRIM_TO_F',`
-static int
-libelf_cvt_$1$3_tof(char *dst, size_t dsz, char *src, size_t count,
-    int byteswap)
-{
-	Elf$4_$2 t, *s = (Elf$4_$2 *) (uintptr_t) src;
-	size_t c;
-
-	(void) dsz;
-
-	if (!byteswap) {
-		(void) memcpy(dst, src, count * sizeof(*s));
-		return (1);
-	}
-
-	for (c = 0; c < count; c++) {
-		t = *s++;
-		SWAP_$1$3(t);
-		WRITE_$1$3(dst,t);
-	}
-
-	return (1);
-}
-')
-
-define(`MAKEPRIM_TO_M',`
-static int
-libelf_cvt_$1$3_tom(char *dst, size_t dsz, char *src, size_t count,
-    int byteswap)
-{
-	Elf$4_$2 t, *d = (Elf$4_$2 *) (uintptr_t) dst;
-	size_t c;
-
-	if (dsz < count * sizeof(Elf$4_$2))
-		return (0);
-
-	if (!byteswap) {
-		(void) memcpy(dst, src, count * sizeof(*d));
-		return (1);
-	}
-
-	for (c = 0; c < count; c++) {
-		READ_$1$3(src,t);
-		SWAP_$1$3(t);
-		*d++ = t;
-	}
-
-	return (1);
-}
-')
-
-define(`SWAP_FIELD',
-  `ifdef(`IGNORE_'$2,`',
-    `ifelse(BASE_$2,1,
-      `SWAP_$2(t.$1);
-			',
-      `ifelse($2,BYTE,`',
-        `ifelse($2,IDENT,`',
-          `SWAP_$2'SZ()`(t.$1);
-			')')')')')
-define(`SWAP_MEMBERS',
-  `ifelse($#,1,`/**/',
-     `SWAP_FIELD($1)SWAP_MEMBERS(shift($@))')')
-
-define(`SWAP_STRUCT',
-  `pushdef(`SZ',$2)/* Swap an Elf$2_$1 */
-			SWAP_MEMBERS(Elf$2_$1_DEF)popdef(`SZ')')
-
-define(`WRITE_FIELD',
-  `ifelse(BASE_$2,1,
-    `WRITE_$2(dst,t.$1);
-		',
-    `ifelse($2,IDENT,
-      `WRITE_$2(dst,t.$1);
-		',
-      `WRITE_$2'SZ()`(dst,t.$1);
-		')')')
-define(`WRITE_MEMBERS',
-  `ifelse($#,1,`/**/',
-    `WRITE_FIELD($1)WRITE_MEMBERS(shift($@))')')
-
-define(`WRITE_STRUCT',
-  `pushdef(`SZ',$2)/* Write an Elf$2_$1 */
-		WRITE_MEMBERS(Elf$2_$1_DEF)popdef(`SZ')')
-
-define(`READ_FIELD',
-  `ifelse(BASE_$2,1,
-    `READ_$2(s,t.$1);
-		',
-    `ifelse($2,IDENT,
-      `READ_$2(s,t.$1);
-		',
-      `READ_$2'SZ()`(s,t.$1);
-		')')')
-
-define(`READ_MEMBERS',
-  `ifelse($#,1,`/**/',
-    `READ_FIELD($1)READ_MEMBERS(shift($@))')')
-
-define(`READ_STRUCT',
-  `pushdef(`SZ',$2)/* Read an Elf$2_$1 */
-		READ_MEMBERS(Elf$2_$1_DEF)popdef(`SZ')')
-
-/*
- * Converters for non-integral ELF data structures.
- *
- * When converting data to file representation, the source pointer
- * will be naturally aligned for a data structure's in-memory
- * representation.  When converting data to memory, the destination
- * pointer will be similarly aligned.
- *
- * For in-place conversions, when converting to file representations,
- * the source buffer is large enough to hold `file' data.  When
- * converting from file to memory, we need to be careful to work
- * `backwards', to avoid overwriting unconverted data.
- *
- * Macro use:
- * `$1': Name of the ELF type.
- * `$2': C structure name suffix.
- * `$3': ELF class specifier, one of [`', `32', `64']
- */
-
-define(`MAKE_TO_F',
-  `ifdef(`IGNORE_'$1$3,`',`
-static int
-libelf_cvt$3_$1_tof(char *dst, size_t dsz, char *src, size_t count,
-    int byteswap)
-{
-	Elf$3_$2	t, *s;
-	size_t c;
-
-	(void) dsz;
-
-	s = (Elf$3_$2 *) (uintptr_t) src;
-	for (c = 0; c < count; c++) {
-		t = *s++;
-		if (byteswap) {
-			SWAP_STRUCT($2,$3)
-		}
-		WRITE_STRUCT($2,$3)
-	}
-
-	return (1);
-}
-')')
-
-define(`MAKE_TO_M',
-  `ifdef(`IGNORE_'$1$3,`',`
-static int
-libelf_cvt$3_$1_tom(char *dst, size_t dsz, char *src, size_t count,
-    int byteswap)
-{
-	Elf$3_$2	 t, *d;
-	char		*s,*s0;
-	size_t		fsz;
-
-	fsz = elf$3_fsize(ELF_T_$1, (size_t) 1, EV_CURRENT);
-	d   = ((Elf$3_$2 *) (uintptr_t) dst) + (count - 1);
-	s0  = (char *) src + (count - 1) * fsz;
-
-	if (dsz < count * sizeof(Elf$3_$2))
-		return (0);
-
-	while (count--) {
-		s = s0;
-		READ_STRUCT($2,$3)
-		if (byteswap) {
-			SWAP_STRUCT($2,$3)
-		}
-		*d-- = t; s0 -= fsz;
-	}
-
-	return (1);
-}
-')')
-
-/*
- * Make type convertor functions from the type definition
- * of the ELF type:
- * - if the type is a base (i.e., `primitive') type:
- *   - if it is marked as to be ignored (i.e., `IGNORE_'TYPE)
- *     is defined, we skip the code generation step.
- *   - if the type is declared as `SIZEDEP', then 32 and 64 bit
- *     variants of the conversion functions are generated.
- *   - otherwise a 32 bit variant is generated.
- * - if the type is a structure type, we generate 32 and 64 bit
- *   variants of the conversion functions.
- */
-
-define(`MAKE_TYPE_CONVERTER',
-  `#if	__FreeBSD_version >= $3 /* $1 */
-ifdef(`BASE'_$1,
-    `ifdef(`IGNORE_'$1,`',
-      `MAKEPRIM_TO_F($1,$2,`',64)
-       MAKEPRIM_TO_M($1,$2,`',64)')',
-    `ifdef(`SIZEDEP_'$1,
-      `MAKEPRIM_TO_F($1,$2,32,32)dnl
-       MAKEPRIM_TO_M($1,$2,32,32)dnl
-       MAKEPRIM_TO_F($1,$2,64,64)dnl
-       MAKEPRIM_TO_M($1,$2,64,64)',
-      `MAKE_TO_F($1,$2,32)dnl
-       MAKE_TO_F($1,$2,64)dnl
-       MAKE_TO_M($1,$2,32)dnl
-       MAKE_TO_M($1,$2,64)')')
-#endif /* $1 */
-')
-
-define(`MAKE_TYPE_CONVERTERS',
-  `ifelse($#,1,`',
-    `MAKE_TYPE_CONVERTER($1)MAKE_TYPE_CONVERTERS(shift($@))')')
-
-divert(0)
+/*[*/
+MAKE_TYPE_CONVERTERS(ELF_TYPE_LIST)
+MAKE_VERSION_CONVERTERS(VDEF,Verdef,Verdaux,vd)
+MAKE_VERSION_CONVERTERS(VNEED,Verneed,Vernaux,vn)
+/*]*/
 
 /*
  * Sections of type ELF_T_BYTE are never byteswapped, consequently a
@@ -494,7 +707,7 @@ divert(0)
  */
 
 static int
-libelf_cvt_BYTE_tox(char *dst, size_t dsz, char *src, size_t count,
+_libelf_cvt_BYTE_tox(char *dst, size_t dsz, char *src, size_t count,
     int byteswap)
 {
 	(void) byteswap;
@@ -505,9 +718,6 @@ libelf_cvt_BYTE_tox(char *dst, size_t dsz, char *src, size_t count,
 	return (1);
 }
 
-MAKE_TYPE_CONVERTERS(ELF_TYPE_LIST)
-
-#if	__FreeBSD_version >= 800062
 /*
  * Sections of type ELF_T_GNUHASH start with a header containing 4 32-bit
  * words.  Bloom filter data comes next, followed by hash buckets and the
@@ -522,23 +732,23 @@ MAKE_TYPE_CONVERTERS(ELF_TYPE_LIST)
  */
 
 static int
-libelf_cvt32_GNUHASH_tom(char *dst, size_t dsz, char *src, size_t srcsz,
+_libelf_cvt_GNUHASH32_tom(char *dst, size_t dsz, char *src, size_t srcsz,
     int byteswap)
 {
-	return (libelf_cvt_WORD_tom(dst, dsz, src, srcsz / sizeof(uint32_t),
-	        byteswap));
+	return (_libelf_cvt_WORD_tom(dst, dsz, src, srcsz / sizeof(uint32_t),
+		byteswap));
 }
 
 static int
-libelf_cvt32_GNUHASH_tof(char *dst, size_t dsz, char *src, size_t srcsz,
+_libelf_cvt_GNUHASH32_tof(char *dst, size_t dsz, char *src, size_t srcsz,
     int byteswap)
 {
-	return (libelf_cvt_WORD_tof(dst, dsz, src, srcsz / sizeof(uint32_t),
-	        byteswap));
+	return (_libelf_cvt_WORD_tof(dst, dsz, src, srcsz / sizeof(uint32_t),
+		byteswap));
 }
 
 static int
-libelf_cvt64_GNUHASH_tom(char *dst, size_t dsz, char *src, size_t srcsz,
+_libelf_cvt_GNUHASH64_tom(char *dst, size_t dsz, char *src, size_t srcsz,
     int byteswap)
 {
 	size_t sz;
@@ -576,7 +786,7 @@ libelf_cvt64_GNUHASH_tom(char *dst, size_t dsz, char *src, size_t srcsz,
 	gh->gh_symndx    = symndx;
 	gh->gh_maskwords = maskwords;
 	gh->gh_shift2    = shift2;
-	
+
 	dsz -= sizeof(Elf_GNU_Hash_Header);
 	dst += sizeof(Elf_GNU_Hash_Header);
 
@@ -608,7 +818,7 @@ libelf_cvt64_GNUHASH_tom(char *dst, size_t dsz, char *src, size_t srcsz,
 	srcsz -= sz;
 
 	if (dsz < srcsz)	/* Destination lacks space. */
-	        return (0);
+		return (0);
 
 	nchains = srcsz / sizeof(uint32_t);
 	chains = (uint32_t *) (uintptr_t) dst;
@@ -624,7 +834,7 @@ libelf_cvt64_GNUHASH_tom(char *dst, size_t dsz, char *src, size_t srcsz,
 }
 
 static int
-libelf_cvt64_GNUHASH_tof(char *dst, size_t dsz, char *src, size_t srcsz,
+_libelf_cvt_GNUHASH64_tof(char *dst, size_t dsz, char *src, size_t srcsz,
     int byteswap)
 {
 	uint32_t *s32;
@@ -654,7 +864,7 @@ libelf_cvt64_GNUHASH_tof(char *dst, size_t dsz, char *src, size_t srcsz,
 	if (srcsz < sz || dsz < sz)
 		return (0);
 
- 	/* Write out the header. */
+	/* Write out the header. */
 	if (byteswap) {
 		SWAP_WORD(t0);
 		SWAP_WORD(t1);
@@ -701,7 +911,6 @@ libelf_cvt64_GNUHASH_tof(char *dst, size_t dsz, char *src, size_t srcsz,
 
 	return (1);
 }
-#endif
 
 /*
  * Elf_Note structures comprise a fixed size header followed by variable
@@ -712,7 +921,7 @@ libelf_cvt64_GNUHASH_tof(char *dst, size_t dsz, char *src, size_t srcsz,
  * The destination buffer needs to be at least `count' bytes in size.
  */
 static int
-libelf_cvt_NOTE_tom(char *dst, size_t dsz, char *src, size_t count, 
+_libelf_cvt_NOTE_tom(char *dst, size_t dsz, char *src, size_t count,
     int byteswap)
 {
 	uint32_t namesz, descsz, type;
@@ -774,7 +983,7 @@ libelf_cvt_NOTE_tom(char *dst, size_t dsz, char *src, size_t count,
 }
 
 static int
-libelf_cvt_NOTE_tof(char *dst, size_t dsz, char *src, size_t count,
+_libelf_cvt_NOTE_tof(char *dst, size_t dsz, char *src, size_t count,
     int byteswap)
 {
 	uint32_t namesz, descsz, type;
@@ -835,60 +1044,28 @@ struct converters {
 		    int byteswap);
 };
 
-divert(-1)
-define(`CONV',
-  `ifdef(`IGNORE_'$1$2,
-    `.$3$2 = NULL',
-    `ifdef(`BASE_'$1,
-      `.$3$2 = libelf_cvt_$1_$3',
-      `ifdef(`SIZEDEP_'$1,
-        `.$3$2 = libelf_cvt_$1$2_$3',
-        `.$3$2 = libelf_cvt$2_$1_$3')')')')
-
-define(`CONVERTER_NAME',
-  `ifdef(`IGNORE_'$1,`',
-    `#if	__FreeBSD_version >= $3
-    [ELF_T_$1] = {
-        CONV($1,32,tof), CONV($1,32,tom),
-        CONV($1,64,tof), CONV($1,64,tom) },
-#endif
-')')
-
-define(`CONVERTER_NAMES',
-  `ifelse($#,1,`',
-    `CONVERTER_NAME($1)CONVERTER_NAMES(shift($@))')')
-
-undefine(`IGNORE_BYTE32', `IGNORE_BYTE64')
-divert(0)
 
 static struct converters cvt[ELF_T_NUM] = {
+	/*[*/
 CONVERTER_NAMES(ELF_TYPE_LIST)
+	/*]*/
 
 	/*
-	 * Types that needs hand-coded converters follow.
+	 * Types that need hand-coded converters follow.
 	 */
 
 	[ELF_T_BYTE] = {
-		.tof32 = libelf_cvt_BYTE_tox,
-		.tom32 = libelf_cvt_BYTE_tox,
-		.tof64 = libelf_cvt_BYTE_tox,
-		.tom64 = libelf_cvt_BYTE_tox
+		.tof32 = _libelf_cvt_BYTE_tox,
+		.tom32 = _libelf_cvt_BYTE_tox,
+		.tof64 = _libelf_cvt_BYTE_tox,
+		.tom64 = _libelf_cvt_BYTE_tox
 	},
-
-#if	__FreeBSD_version >= 800062
-	[ELF_T_GNUHASH] = {
-		.tof32 = libelf_cvt32_GNUHASH_tof,
-		.tom32 = libelf_cvt32_GNUHASH_tom,
-		.tof64 = libelf_cvt64_GNUHASH_tof,
-		.tom64 = libelf_cvt64_GNUHASH_tom
-	},
-#endif
 
 	[ELF_T_NOTE] = {
-		.tof32 = libelf_cvt_NOTE_tof,
-		.tom32 = libelf_cvt_NOTE_tom,
-		.tof64 = libelf_cvt_NOTE_tof,
-		.tom64 = libelf_cvt_NOTE_tom
+		.tof32 = _libelf_cvt_NOTE_tof,
+		.tom32 = _libelf_cvt_NOTE_tom,
+		.tof64 = _libelf_cvt_NOTE_tof,
+		.tom64 = _libelf_cvt_NOTE_tom
 	}
 };
 

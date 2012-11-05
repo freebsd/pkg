@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,14 +25,13 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/gelf_symshndx.c 164190 2006-11-11 17:16:35Z jkoshy $");
-
-#include <sys/limits.h>
 
 #include <assert.h>
 #include <gelf.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: gelf_symshndx.c 2283 2011-12-04 04:07:24Z jkoshy $");
 
 GElf_Sym *
 gelf_getsymshndx(Elf_Data *d, Elf_Data *id, int ndx, GElf_Sym *dst,
@@ -40,15 +39,19 @@ gelf_getsymshndx(Elf_Data *d, Elf_Data *id, int ndx, GElf_Sym *dst,
 {
 	int ec;
 	Elf *e;
-	Elf_Scn *scn;
 	size_t msz;
+	Elf_Scn *scn;
 	uint32_t sh_type;
+	struct _Libelf_Data *ld, *lid;
+
+	ld = (struct _Libelf_Data *) d;
+	lid = (struct _Libelf_Data *) id;
 
 	if (gelf_getsym(d, ndx, dst) == 0)
 		return (NULL);
 
-	if (id == NULL || (scn = id->d_scn) == NULL ||
-	    (e = scn->s_elf) == NULL || (e != d->d_scn->s_elf) ||
+	if (lid == NULL || (scn = lid->d_scn) == NULL ||
+	    (e = scn->s_elf) == NULL || (e != ld->d_scn->s_elf) ||
 	    shindex == NULL) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (NULL);
@@ -88,15 +91,19 @@ gelf_update_symshndx(Elf_Data *d, Elf_Data *id, int ndx, GElf_Sym *gs,
 {
 	int ec;
 	Elf *e;
-	Elf_Scn *scn;
 	size_t msz;
+	Elf_Scn *scn;
 	uint32_t sh_type;
+	struct _Libelf_Data *ld, *lid;
+
+	ld = (struct _Libelf_Data *) d;
+	lid = (struct _Libelf_Data *) id;
 
 	if (gelf_update_sym(d, ndx, gs) == 0)
 		return (0);
 
-	if (id == NULL || (scn = id->d_scn) == NULL ||
-	    (e = scn->s_elf) == NULL || (e != d->d_scn->s_elf)) {
+	if (lid == NULL || (scn = lid->d_scn) == NULL ||
+	    (e = scn->s_elf) == NULL || (e != ld->d_scn->s_elf)) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (0);
 	}

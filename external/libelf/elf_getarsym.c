@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,11 +25,12 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_getarsym.c 164190 2006-11-11 17:16:35Z jkoshy $");
 
 #include <libelf.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: elf_getarsym.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 Elf_Arsym *
 elf_getarsym(Elf *ar, size_t *ptr)
@@ -45,7 +46,9 @@ elf_getarsym(Elf *ar, size_t *ptr)
 	else if ((symtab = ar->e_u.e_ar.e_symtab) != NULL)
 		n = ar->e_u.e_ar.e_symtabsz;
 	else if (ar->e_u.e_ar.e_rawsymtab)
-		symtab = _libelf_ar_process_symtab(ar, &n);
+		symtab = (ar->e_flags & LIBELF_F_AR_VARIANT_SVR4) ?
+		    _libelf_ar_process_svr4_symtab(ar, &n) :
+		    _libelf_ar_process_bsd_symtab(ar, &n);
 	else
 		LIBELF_SET_ERROR(ARCHIVE, 0);
 
@@ -53,4 +56,3 @@ elf_getarsym(Elf *ar, size_t *ptr)
 		*ptr = n;
 	return (symtab);
 }
-

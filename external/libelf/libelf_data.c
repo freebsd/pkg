@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,12 +25,12 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/lib/libelf/libelf_data.c 233524 2012-03-26 21:31:57Z gonzo $");
 
 #include <libelf.h>
-#include <osreldate.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: libelf_data.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 int
 _libelf_xlate_shtype(uint32_t sht)
@@ -42,10 +42,10 @@ _libelf_xlate_shtype(uint32_t sht)
 		return (ELF_T_SYM);
 	case SHT_FINI_ARRAY:
 		return (ELF_T_ADDR);
-#if	__FreeBSD_version >= 800062
 	case SHT_GNU_HASH:
 		return (ELF_T_GNUHASH);
-#endif
+	case SHT_GNU_LIBLIST:
+		return (ELF_T_WORD);
 	case SHT_GROUP:
 		return (ELF_T_WORD);
 	case SHT_HASH:
@@ -70,28 +70,18 @@ _libelf_xlate_shtype(uint32_t sht)
 		return (ELF_T_SYM);
 	case SHT_SYMTAB_SHNDX:
 		return (ELF_T_WORD);
-#if	__FreeBSD_version >= 700025
-	case SHT_GNU_verdef:	/* == SHT_SUNW_verdef */
-		return (ELF_T_VDEF);
-	case SHT_GNU_verneed:	/* == SHT_SUNW_verneed */
-		return (ELF_T_VNEED);
-	case SHT_GNU_versym:	/* == SHT_SUNW_versym */
-		return (ELF_T_HALF);
+	case SHT_SUNW_dof:
+		return (ELF_T_BYTE);
 	case SHT_SUNW_move:
 		return (ELF_T_MOVE);
 	case SHT_SUNW_syminfo:
 		return (ELF_T_SYMINFO);
-	case SHT_SUNW_dof:
-		return (ELF_T_BYTE);
-#endif
-	case SHT_MIPS_DWARF:
-		/* FALLTHROUGH */
-	case SHT_MIPS_REGINFO:
-		/* FALLTHROUGH */
-	case SHT_MIPS_OPTIONS:
-		/* FALLTHROUGH */
-	case SHT_AMD64_UNWIND:	/* == SHT_IA_64_UNWIND */
-		return (ELF_T_BYTE);
+	case SHT_SUNW_verdef:	/* == SHT_GNU_verdef */
+		return (ELF_T_VDEF);
+	case SHT_SUNW_verneed:	/* == SHT_GNU_verneed */
+		return (ELF_T_VNEED);
+	case SHT_SUNW_versym:	/* == SHT_GNU_versym */
+		return (ELF_T_HALF);
 	default:
 		return (-1);
 	}

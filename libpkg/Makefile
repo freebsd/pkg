@@ -60,7 +60,8 @@ CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/uthash
 
 .if defined(WITH_BUNDLED_LIBELF)
-CFLAGS+=	-I${.CURDIR}/../external/libelf
+CFLAGS+=	-I${.CURDIR}/../external/libelf \
+		-DBUNDLED_LIBELF
 .endif
 
 LDADD+=		-L${.OBJDIR}/../external/sqlite \

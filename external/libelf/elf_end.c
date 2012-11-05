@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008-2009,2011 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,15 +25,18 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_end.c 164190 2006-11-11 17:16:35Z jkoshy $");
-
-#include <sys/mman.h>
 
 #include <assert.h>
 #include <libelf.h>
 #include <stdlib.h>
 
 #include "_libelf.h"
+
+#if	ELFTC_HAVE_MMAP
+#include <sys/mman.h>
+#endif
+
+ELFTC_VCSID("$Id: elf_end.c 2240 2011-11-28 06:36:48Z jkoshy $");
 
 int
 elf_end(Elf *e)
@@ -65,7 +68,8 @@ elf_end(Elf *e)
 			/*
 			 * Reclaim all section descriptors.
 			 */
-			STAILQ_FOREACH_SAFE(scn, &e->e_u.e_elf.e_scn, s_next, tscn)
+			STAILQ_FOREACH_SAFE(scn, &e->e_u.e_elf.e_scn, s_next,
+			    tscn)
  				scn = _libelf_release_scn(scn);
 			break;
 		case ELF_K_NUM:
@@ -74,8 +78,14 @@ elf_end(Elf *e)
 			break;
 		}
 
-		if (e->e_flags & LIBELF_F_MMAP)
-			(void) munmap(e->e_rawfile, e->e_rawsize);
+		if (e->e_rawfile) {
+			if (e->e_flags & LIBELF_F_RAWFILE_MALLOC)
+				free(e->e_rawfile);
+#if	ELFTC_HAVE_MMAP
+			else if (e->e_flags & LIBELF_F_RAWFILE_MMAP)
+				(void) munmap(e->e_rawfile, e->e_rawsize);
+#endif
+		}
 
 		sv = e;
 		if ((e = e->e_parent) != NULL)
@@ -85,4 +95,3 @@ elf_end(Elf *e)
 
 	return (0);
 }
-

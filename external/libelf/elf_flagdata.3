@@ -1,4 +1,4 @@
-.\" Copyright (c) 2006,2007 Joseph Koshy.  All rights reserved.
+.\" Copyright (c) 2006-2008,2011 Joseph Koshy.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -21,12 +21,13 @@
 .\" out of the use of this software, even if advised of the possibility of
 .\" such damage.
 .\"
-.\" $FreeBSD: releng/9.1/lib/libelf/elf_flagdata.3 206622 2010-04-14 19:08:06Z uqs $
+.\" $Id: elf_flagdata.3 2267 2011-12-03 17:04:25Z jkoshy $
 .\"
-.Dd October 22, 2007
-.Dt ELF_FLAGDATA 3
+.Dd December 3, 2011
 .Os
+.Dt ELF_FLAGDATA 3
 .Sh NAME
+.Nm elf_flagarhdr ,
 .Nm elf_flagdata ,
 .Nm elf_flagehdr ,
 .Nm elf_flagelf ,
@@ -38,6 +39,8 @@
 .Lb libelf
 .Sh SYNOPSIS
 .In libelf.h
+.Ft "unsigned int"
+.Fn elf_flagarhdr "Elf_Arhdr *arhdr" "Elf_Cmd cmd" "unsigned int flags"
 .Ft "unsigned int"
 .Fn elf_flagdata "Elf_Data *data" "Elf_Cmd cmd" "unsigned int flags"
 .Ft "unsigned int"
@@ -55,11 +58,44 @@ These functions are used to query, set or reset flags on data
 structures associated with an ELF file.
 .Pp
 Arguments
+.Ar arhdr ,
 .Ar data ,
 .Ar elf
 and
 .Ar scn
 denote the data structures whose flags need to be changed.
+These values should have been returned by prior calls to
+functions in the ELF(3) API set:
+.Bl -bullet -compact
+.It
+Argument
+.Ar arhdr
+should have been returned by a prior call to
+.Xr elf_getarhdr 3 .
+.It
+Argument
+.Ar data
+should have been returned by a prior call to one of
+.Xr elf_newdata 3 ,
+.Xr elf_getdata 3
+or
+.Xr elf_rawdata 3 .
+.It
+Argument
+.Ar elf
+should have been allocated by a prior call to one of
+.Xr elf_begin 3
+or
+.Xr elf_memory 3 .
+.It
+Argument
+.Ar scn
+should have been returned by a prior call to one of
+.Xr elf_getscn 3 ,
+.Xr elf_newscn 3
+or
+.Xr elf_nextscn 3 .
+.El
 These values are allowed to be NULL to simplify error handling in
 application code.
 .Pp
@@ -80,7 +116,26 @@ specifies the flags to be set.
 The argument
 .Ar flags
 is allowed to have the following flags set:
-.Bl -tag -width ELF_F_LAYOUT
+.Bl -tag -width ELF_F_ARCHIVE_SYSV
+.It Dv ELF_F_ARCHIVE
+This flag is only valid with the
+.Fn elf_flagelf
+API.
+It informs the library that the application desires to create an
+.Xr ar 1
+archive.
+Argument
+.Ar elf
+should have been opened for writing using the
+.Dv ELF_C_WRITE
+command to function
+.Fn elf_begin .
+.It Dv ELF_F_ARCHIVE_SYSV
+This flag is used in conjunction with the
+.Dv ELF_F_ARCHIVE
+flag to indicate that library should create archives that conform
+to System V layout rules.
+The default is to create BSD style archives.
 .It Dv ELF_F_DIRTY
 Mark the associated data structure as needing to be written back
 to the underlying file.
@@ -113,6 +168,14 @@ queried.
 .Sh RETURN VALUES
 These functions return the updated flags is successful, and zero if
 an error is detected.
+.Sh COMPATIBILITY
+The
+.Fn elf_flagarhdr
+function and the
+.Dv ELF_F_ARCHIVE
+and
+.Dv ELF_F_ARCHIVE_SYSV
+flags are an extension to the ELF(3) API.
 .Sh ERRORS
 These functions may fail with the following errors:
 .Bl -tag -width "[ELF_E_RESOURCE]"
@@ -128,6 +191,10 @@ had unsupported flags set.
 The argument
 .Ar elf
 was not a descriptor for an ELF object.
+.It Bq Er ELF_E_MODE
+The
+.Dv ELF_F_ARCHIVE
+flag was used with an ELF descriptor that had not been opened for writing.
 .It Bq Er ELF_E_SEQUENCE
 Function
 .Fn elf_flagehdr
