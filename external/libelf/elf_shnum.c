@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,12 +25,13 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_shnum.c 210345 2010-07-21 12:14:50Z kaiw $");
 
 #include <ar.h>
 #include <libelf.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: elf_shnum.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 static int
 _libelf_getshdrnum(Elf *e, size_t *shnum)

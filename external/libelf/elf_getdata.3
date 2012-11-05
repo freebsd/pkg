@@ -21,11 +21,11 @@
 .\" out of the use of this software, even if advised of the possibility of
 .\" such damage.
 .\"
-.\" $FreeBSD: head/lib/libelf/elf_getdata.3 235286 2012-05-11 20:06:46Z gjb $
+.\" $Id: elf_getdata.3 1766 2011-08-22 06:01:03Z jkoshy $
 .\"
 .Dd January 26, 2011
-.Dt ELF_GETDATA 3
 .Os
+.Dt ELF_GETDATA 3
 .Sh NAME
 .Nm elf_getdata ,
 .Nm elf_newdata ,
@@ -144,7 +144,7 @@ structures of type
 .Dv ELF_T_BYTE .
 .Ss Special handling of zero-sized and SHT_NOBITS sections
 For sections of type
-.Dv SHT_NOBITS ,
+.Dv SHT_NOBITS,
 and for zero-sized sections,
 the functions
 .Fn elf_getdata
@@ -174,18 +174,47 @@ These functions return a valid pointer to a data descriptor if successful, or
 NULL if an error occurs.
 .Sh ERRORS
 These functions may fail with the following errors:
-.Bl -tag -width "[ELF_E_RESOURCE]"
+.Bl -tag -width "[ELF_E_RESOURCE]" 
 .It Bq Er ELF_E_ARGUMENT
-Arguments
+Either of the arguments
 .Ar scn
+or
+.Ar data
 was NULL.
 .It Bq Er ELF_E_ARGUMENT
-Data descriptor
+The data descriptor referenced by argument
 .Ar data
-was not associated with section descriptor
+is not associated with section descriptor
 .Ar scn .
+.It Bq Er ELF_E_ARGUMENT
+The section denoted by argument
+.Ar scn
+had no data associated with it.
+.It Bq Er ELF_E_DATA
+Retrieval of data from the underlying object failed.
 .It Bq Er ELF_E_RESOURCE
 An out of memory condition was detected.
+.It Bq Er ELF_E_SECTION
+Section
+.Ar scn
+had type
+.Dv SHT_NULL .
+.It Bq Er ELF_E_SECTION
+The type of the section
+.Ar scn
+was not recognized by the library.
+.It Bq Er ELF_E_SECTION
+The size of the section
+.Ar scn
+is not a multiple of the file size for its section type.
+.It Bq Er ELF_E_SECTION
+The file offset for section
+.Ar scn
+is incorrect.
+.It Bq Er ELF_E_UNIMPL
+The section type associated with section
+.Ar scn
+is currently unsupported by the library.
 .El
 .Sh SEE ALSO
 .Xr elf 3 ,

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,28 +25,27 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/gelf_syminfo.c 165317 2006-12-18 05:40:01Z jkoshy $");
-
-#include <sys/limits.h>
 
 #include <assert.h>
 #include <gelf.h>
-#include <osreldate.h>
 
 #include "_libelf.h"
 
-#if	__FreeBSD_version >= 700025
+ELFTC_VCSID("$Id: gelf_syminfo.c 2272 2011-12-03 17:07:31Z jkoshy $");
 
 GElf_Syminfo *
-gelf_getsyminfo(Elf_Data *d, int ndx, GElf_Syminfo *dst)
+gelf_getsyminfo(Elf_Data *ed, int ndx, GElf_Syminfo *dst)
 {
 	int ec;
 	Elf *e;
+	size_t msz;
 	Elf_Scn *scn;
+	uint32_t sh_type;
+	struct _Libelf_Data *d;
 	Elf32_Syminfo *syminfo32;
 	Elf64_Syminfo *syminfo64;
-	size_t msz;
-	uint32_t sh_type;
+
+	d = (struct _Libelf_Data *) ed;
 
 	if (d == NULL || ndx < 0 || dst == NULL ||
 	    (scn = d->d_scn) == NULL ||
@@ -72,21 +71,21 @@ gelf_getsyminfo(Elf_Data *d, int ndx, GElf_Syminfo *dst)
 
 	assert(msz > 0);
 
-	if (msz * ndx >= d->d_size) {
+	if (msz * ndx >= d->d_data.d_size) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (NULL);
 	}
 
 	if (ec == ELFCLASS32) {
 
-		syminfo32 = (Elf32_Syminfo *) d->d_buf + ndx;
+		syminfo32 = (Elf32_Syminfo *) d->d_data.d_buf + ndx;
 
 		dst->si_boundto = syminfo32->si_boundto;
 		dst->si_flags   = syminfo32->si_flags;
 
 	} else {
 
-		syminfo64 = (Elf64_Syminfo *) d->d_buf + ndx;
+		syminfo64 = (Elf64_Syminfo *) d->d_data.d_buf + ndx;
 
 		*dst = *syminfo64;
 	}
@@ -95,15 +94,18 @@ gelf_getsyminfo(Elf_Data *d, int ndx, GElf_Syminfo *dst)
 }
 
 int
-gelf_update_syminfo(Elf_Data *d, int ndx, GElf_Syminfo *gs)
+gelf_update_syminfo(Elf_Data *ed, int ndx, GElf_Syminfo *gs)
 {
 	int ec;
 	Elf *e;
+	size_t msz;
 	Elf_Scn *scn;
+	uint32_t sh_type;
+	struct _Libelf_Data *d;
 	Elf32_Syminfo *syminfo32;
 	Elf64_Syminfo *syminfo64;
-	size_t msz;
-	uint32_t sh_type;
+
+	d = (struct _Libelf_Data *) ed;
 
 	if (d == NULL || ndx < 0 || gs == NULL ||
 	    (scn = d->d_scn) == NULL ||
@@ -128,24 +130,22 @@ gelf_update_syminfo(Elf_Data *d, int ndx, GElf_Syminfo *gs)
 	msz = _libelf_msize(ELF_T_SYMINFO, ec, e->e_version);
 	assert(msz > 0);
 
-	if (msz * ndx >= d->d_size) {
+	if (msz * ndx >= d->d_data.d_size) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (0);
 	}
 
 	if (ec == ELFCLASS32) {
-		syminfo32 = (Elf32_Syminfo *) d->d_buf + ndx;
+		syminfo32 = (Elf32_Syminfo *) d->d_data.d_buf + ndx;
 
 		syminfo32->si_boundto  = gs->si_boundto;
 		syminfo32->si_flags  = gs->si_flags;
 
 	} else {
-		syminfo64 = (Elf64_Syminfo *) d->d_buf + ndx;
+		syminfo64 = (Elf64_Syminfo *) d->d_data.d_buf + ndx;
 
 		*syminfo64 = *gs;
 	}
 
 	return (1);
 }
-
-#endif	/* __FreeBSD_version >= 700025 */

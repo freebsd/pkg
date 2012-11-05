@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008-2010 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,16 +23,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: releng/9.1/lib/libelf/libelf.h 210345 2010-07-21 12:14:50Z kaiw $
+ * $Id: libelf.h 2366 2011-12-29 06:12:14Z jkoshy $
  */
 
 #ifndef	_LIBELF_H_
 #define	_LIBELF_H_
 
 #include <sys/types.h>
-#include <sys/elf32.h>
-#include <sys/elf64.h>
-#include <sys/queue.h>
+
+#include <elfdefinitions.h>
 
 /* Library private data structures */
 typedef struct _Elf Elf;
@@ -112,13 +111,6 @@ typedef struct _Elf_Data {
 	uint64_t	d_size;
 	Elf_Type	d_type;
 	unsigned int	d_version;
-
-	/*
-	 * Members that are not part of the public API.
-	 */
-	Elf_Scn		*d_scn;		/* containing section */
-	unsigned int	d_flags;
-	STAILQ_ENTRY(_Elf_Data)	d_next;
 } Elf_Data;
 
 /*
@@ -133,6 +125,11 @@ typedef struct {
 	char		*ar_rawname;	/* 'raw' member name */
 	size_t		ar_size;
 	uid_t		ar_uid;
+
+	/*
+	 * Members that are not part of the public API.
+	 */
+	int		ar_flags;
 } Elf_Arhdr;
 
 /*
@@ -175,6 +172,10 @@ enum Elf_Error {
 #define	ELF_F_LAYOUT	0x001U	/* application will layout the file */
 #define	ELF_F_DIRTY	0x002U	/* a section or ELF file is dirty */
 
+/* ELF(3) API extensions. */
+#define	ELF_F_ARCHIVE	   0x100U /* archive creation */
+#define	ELF_F_ARCHIVE_SYSV 0x200U /* SYSV style archive */
+
 __BEGIN_DECLS
 Elf		*elf_begin(int _fd, Elf_Cmd _cmd, Elf *_elf);
 int		elf_cntl(Elf *_elf, Elf_Cmd _cmd);
@@ -182,7 +183,10 @@ int		elf_end(Elf *_elf);
 const char	*elf_errmsg(int _error);
 int		elf_errno(void);
 void		elf_fill(int _fill);
-unsigned int	elf_flagdata(Elf_Data *_data, Elf_Cmd _cmd, unsigned int _flags);
+unsigned int	elf_flagarhdr(Elf_Arhdr *_arh, Elf_Cmd _cmd,
+			unsigned int _flags);
+unsigned int	elf_flagdata(Elf_Data *_data, Elf_Cmd _cmd,
+			unsigned int _flags);
 unsigned int	elf_flagehdr(Elf *_elf, Elf_Cmd _cmd, unsigned int _flags);
 unsigned int	elf_flagelf(Elf *_elf, Elf_Cmd _cmd, unsigned int _flags);
 unsigned int	elf_flagphdr(Elf *_elf, Elf_Cmd _cmd, unsigned int _flags);
@@ -208,6 +212,8 @@ Elf_Data	*elf_newdata(Elf_Scn *_scn);
 Elf_Scn		*elf_newscn(Elf *_elf);
 Elf_Scn		*elf_nextscn(Elf *_elf, Elf_Scn *_scn);
 Elf_Cmd		elf_next(Elf *_elf);
+Elf		*elf_open(int _fd);
+Elf		*elf_openmemory(char *_image, size_t _size);
 off_t		elf_rand(Elf *_elf, off_t _off);
 Elf_Data	*elf_rawdata(Elf_Scn *_scn, Elf_Data *_data);
 char		*elf_rawfile(Elf *_elf, size_t *_size);
@@ -241,15 +247,6 @@ Elf_Data	*elf64_xlatetof(Elf_Data *_dst, const Elf_Data *_src,
 			unsigned int _enc);
 Elf_Data	*elf64_xlatetom(Elf_Data *_dst, const Elf_Data *_src,
 			unsigned int _enc);
-
-#if	defined(LIBELF_TEST_HOOKS)
-int		_libelf_get_elf_class(Elf *_elf);
-int		_libelf_get_max_error(void);
-const char	*_libelf_get_no_error_message(void);
-const char	*_libelf_get_unknown_error_message(void);
-void		_libelf_set_elf_class(Elf *_elf, int _class);
-void		_libelf_set_error(int _error);
-#endif	/* LIBELF_TEST_HOOKS */
 __END_DECLS
 
 #endif	/* _LIBELF_H_ */

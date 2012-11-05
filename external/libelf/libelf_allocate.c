@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008,2010 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,16 +29,16 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_allocate.c 166863 2007-02-21 08:14:22Z dumbbell $");
-
-#include <sys/errno.h>
 
 #include <assert.h>
+#include <errno.h>
 #include <libelf.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: libelf_allocate.c 2272 2011-12-03 17:07:31Z jkoshy $");
 
 Elf *
 _libelf_allocate_elf(void)
@@ -51,7 +51,7 @@ _libelf_allocate_elf(void)
 	}
 
 	e->e_activations = 1;
-	e->e_arhdr	 = NULL;
+	e->e_hdr.e_rawhdr = NULL;
 	e->e_byteorder   = ELFDATANONE;
 	e->e_class       = ELFCLASSNONE;
 	e->e_cmd         = ELF_C_NULL;
@@ -94,6 +94,8 @@ _libelf_init_elf(Elf *e, Elf_Kind kind)
 Elf *
 _libelf_release_elf(Elf *e)
 {
+	Elf_Arhdr *arh;
+
 	switch (e->e_kind) {
 	case ELF_K_AR:
 		FREE(e->e_u.e_ar.e_symtab);
@@ -113,10 +115,11 @@ _libelf_release_elf(Elf *e)
 
 		assert(STAILQ_EMPTY(&e->e_u.e_elf.e_scn));
 
-		if (e->e_arhdr) {
-			FREE(e->e_arhdr->ar_name);
-			FREE(e->e_arhdr->ar_rawname);
-			free(e->e_arhdr);
+		if (e->e_flags & LIBELF_F_AR_HEADER) {
+			arh = e->e_hdr.e_arhdr;
+			FREE(arh->ar_name);
+			FREE(arh->ar_rawname);
+			free(arh);
 		}
 
 		break;
@@ -130,12 +133,12 @@ _libelf_release_elf(Elf *e)
 	return (NULL);
 }
 
-Elf_Data *
+struct _Libelf_Data *
 _libelf_allocate_data(Elf_Scn *s)
 {
-	Elf_Data *d;
+	struct _Libelf_Data *d;
 
-	if ((d = calloc((size_t) 1, sizeof(Elf_Data))) == NULL) {
+	if ((d = calloc((size_t) 1, sizeof(*d))) == NULL) {
 		LIBELF_SET_ERROR(RESOURCE, 0);
 		return (NULL);
 	}
@@ -145,12 +148,12 @@ _libelf_allocate_data(Elf_Scn *s)
 	return (d);
 }
 
-Elf_Data *
-_libelf_release_data(Elf_Data *d)
+struct _Libelf_Data *
+_libelf_release_data(struct _Libelf_Data *d)
 {
 
-	if (d->d_flags & LIBELF_F_MALLOCED)
-		free(d->d_buf);
+	if (d->d_flags & LIBELF_F_DATA_MALLOCED)
+		free(d->d_data.d_buf);
 
 	free(d);
 
@@ -182,18 +185,18 @@ Elf_Scn *
 _libelf_release_scn(Elf_Scn *s)
 {
 	Elf *e;
-	Elf_Data *d, *td;
+	struct _Libelf_Data *d, *td;
 
 	assert(s != NULL);
 
 	STAILQ_FOREACH_SAFE(d, &s->s_data, d_next, td) {
-		STAILQ_REMOVE(&s->s_data, d, _Elf_Data, d_next);
+		STAILQ_REMOVE(&s->s_data, d, _Libelf_Data, d_next);
 		d = _libelf_release_data(d);
 	}
 
 	STAILQ_FOREACH_SAFE(d, &s->s_rawdata, d_next, td) {
-		assert((d->d_flags & LIBELF_F_MALLOCED) == 0);
-		STAILQ_REMOVE(&s->s_rawdata, d, _Elf_Data, d_next);
+		assert((d->d_flags & LIBELF_F_DATA_MALLOCED) == 0);
+		STAILQ_REMOVE(&s->s_rawdata, d, _Libelf_Data, d_next);
 		d = _libelf_release_data(d);
 	}
 

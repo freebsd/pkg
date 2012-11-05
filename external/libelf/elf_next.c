@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,13 +25,14 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_next.c 164190 2006-11-11 17:16:35Z jkoshy $");
 
 #include <ar.h>
 #include <assert.h>
 #include <libelf.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: elf_next.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 Elf_Cmd
 elf_next(Elf *e)
@@ -49,13 +50,13 @@ elf_next(Elf *e)
 
 	assert (parent->e_kind == ELF_K_AR);
 	assert (parent->e_cmd == ELF_C_READ);
-	assert((uintptr_t) e->e_rawfile % 2 == 0);
 	assert(e->e_rawfile > parent->e_rawfile);
 
 	next = e->e_rawfile - parent->e_rawfile + e->e_rawsize;
 	next = (next + 1) & ~1;	/* round up to an even boundary */
 
-	parent->e_u.e_ar.e_next = (next >= (off_t) parent->e_rawsize) ? (off_t) 0 : next;
+	parent->e_u.e_ar.e_next = (next >= (off_t) parent->e_rawsize) ?
+	    (off_t) 0 : next;
 
 	return (ELF_C_READ);
 }

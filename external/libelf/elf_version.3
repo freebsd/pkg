@@ -1,4 +1,4 @@
-.\" Copyright (c) 2006 Joseph Koshy.  All rights reserved.
+.\" Copyright (c) 2006,2008 Joseph Koshy.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -21,11 +21,11 @@
 .\" out of the use of this software, even if advised of the possibility of
 .\" such damage.
 .\"
-.\" $FreeBSD: releng/9.1/lib/libelf/elf_version.3 206622 2010-04-14 19:08:06Z uqs $
+.\" $Id: elf_version.3 2123 2011-11-09 15:40:09Z jkoshy $
 .\"
-.Dd June 1, 2006
-.Dt ELF_VERSION 3
+.Dd November 9, 2011
 .Os
+.Dt ELF_VERSION 3
 .Sh NAME
 .Nm elf_version
 .Nd retrieve or set ELF library operating version
@@ -80,7 +80,7 @@ operating version and check for an error using the following code
 snippet:
 .Bd -literal -offset indent
 if (elf_version(EV_CURRENT) == EV_NONE)
-	err(EX_SOFTWARE, "ELF library too old");
+	err(EXIT_FAILURE, "ELF library too old");
 .Ed
 .Sh ERRORS
 Function

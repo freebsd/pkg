@@ -1,7 +1,6 @@
-/*
- * $FreeBSD: releng/9.1/lib/libelf/Version.map 210345 2010-07-21 12:14:50Z kaiw $
- */
-FBSD_1.0 {
+/* $Id: Version.map 2574 2012-09-11 15:11:59Z jkoshy $ */
+
+R1.0 {
 global:
 	elf32_checksum;
 	elf32_fsize;
@@ -27,6 +26,7 @@ global:
 	elf_errmsg;
 	elf_errno;
 	elf_fill;
+	elf_flagarhdr;
 	elf_flagdata;
 	elf_flagehdr;
 	elf_flagelf;
@@ -38,12 +38,12 @@ global:
 	elf_getbase;
 	elf_getdata;
 	elf_getident;
-	elf_getscn;
 	elf_getphdrnum;
 	elf_getphnum;
+	elf_getscn;
 	elf_getshdrnum;
-	elf_getshnum;
 	elf_getshdrstrndx;
+	elf_getshnum;
 	elf_getshstrndx;
 	elf_hash;
 	elf_kind;
@@ -53,6 +53,8 @@ global:
 	elf_newscn;
 	elf_next;
 	elf_nextscn;
+	elf_open;
+	elf_openmemory;
 	elf_rand;
 	elf_rawdata;
 	elf_rawfile;
@@ -91,15 +93,4 @@ global:
 	gelf_xlatetom;
 local:
 	*;
-};
-
-/*
- * Private symbols, mostly test hooks
- */
-FBSDprivate_1.0 {
-global:
-	_libelf_set_error;
-	_libelf_get_max_error;
-	_libelf_get_no_error_message;
-	_libelf_get_unknown_error_message;
 };

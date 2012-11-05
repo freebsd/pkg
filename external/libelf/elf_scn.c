@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008-2010 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,21 +25,24 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_scn.c 210338 2010-07-21 10:25:02Z kaiw $");
+#include <sys/queue.h>
 
 #include <assert.h>
 #include <errno.h>
 #include <gelf.h>
 #include <libelf.h>
+#include <stddef.h>
 #include <stdlib.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: elf_scn.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 /*
  * Load an ELF section table and create a list of Elf_Scn structures.
  */
 int
-_libelf_load_scn(Elf *e, void *ehdr)
+_libelf_load_section_headers(Elf *e, void *ehdr)
 {
 	int ec, swapbytes;
 	size_t fsz, i, shnum;
@@ -139,7 +142,7 @@ elf_getscn(Elf *e, size_t index)
 
 	if (e->e_cmd != ELF_C_WRITE &&
 	    (e->e_flags & LIBELF_F_SHDRS_LOADED) == 0 &&
-	    _libelf_load_scn(e, ehdr) == 0)
+	    _libelf_load_section_headers(e, ehdr) == 0)
 		return (NULL);
 
 	STAILQ_FOREACH(s, &e->e_u.e_elf.e_scn, s_next)
@@ -192,7 +195,7 @@ elf_newscn(Elf *e)
 	 */
 	if (e->e_cmd != ELF_C_WRITE &&
 	    (e->e_flags & LIBELF_F_SHDRS_LOADED) == 0 &&
-	    _libelf_load_scn(e, ehdr) == 0)
+	    _libelf_load_section_headers(e, ehdr) == 0)
 		return (NULL);
 
 	if (STAILQ_EMPTY(&e->e_u.e_elf.e_scn)) {

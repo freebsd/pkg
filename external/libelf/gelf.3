@@ -1,4 +1,4 @@
-.\" Copyright (c) 2006 Joseph Koshy.  All rights reserved.
+.\" Copyright (c) 2006,2008 Joseph Koshy.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -21,11 +21,11 @@
 .\" out of the use of this software, even if advised of the possibility of
 .\" such damage.
 .\"
-.\" $FreeBSD: head/lib/libelf/gelf.3 236438 2012-06-02 08:47:26Z joel $
+.\" $Id: gelf.3 189 2008-07-20 10:38:08Z jkoshy $
 .\"
 .Dd September 1, 2006
-.Dt GELF 3
 .Os
+.Dt GELF 3
 .Sh NAME
 .Nm GElf
 .Nd class-independent API for ELF manipulation
@@ -115,7 +115,7 @@ routines will signal an error if a GElf value is out of range
 for the underlying ELF data type.
 .Ss Namespace use
 The GElf interface uses the following symbols:
-.Bl -tag -width 8n
+.Bl -tag
 .It GElf_*
 Class-independent data types.
 .It gelf_*
@@ -125,16 +125,16 @@ For functions defined in the API set.
 This section provides an overview of the GElf programming APIs.
 Further information is provided in the manual page of each function
 listed here.
-.Bl -tag -width 2n
+.Bl -tag
 .It "Allocating ELF Data Structures"
-.Bl -tag -width 19n -compact
+.Bl -tag -compact
 .It Fn gelf_newehdr
 Allocate a new ELF Executable Header.
 .It Fn gelf_newphdr
 Allocate a new ELF Program Header Table.
 .El
 .It "Data Translation"
-.Bl -tag -width 19n -compact
+.Bl -tag -compact
 .It Fn gelf_xlatetof
 Translate the native representation of an ELF data structure to its
 file representation.
@@ -143,7 +143,7 @@ Translate from the file representation of an ELF data structure to a
 native representation.
 .El
 .It "Retrieving ELF Data"
-.Bl -tag -width 19n -compact
+.Bl -tag -compact
 .It Fn gelf_getdyn
 Retrieve an ELF
 .Sy .dynamic
@@ -162,7 +162,7 @@ Retrieve an ELF Section Header Table entry from the underlying ELF descriptor.
 Retrieve an ELF symbol table entry.
 .El
 .It Queries
-.Bl -tag -width 19n -compact
+.Bl -tag -compact
 .It Fn gelf_checksum
 Retrieves the ELF checksum for an ELF descriptor.
 .It Fn gelf_fsize
@@ -171,7 +171,7 @@ Retrieves the size of the file representation of an ELF type.
 Retrieves the ELF class of an ELF descriptor.
 .El
 .It "Updating ELF Data"
-.Bl -tag -width 19n -compact
+.Bl -tag -compact -width ".Fn gelf_update_shdr"
 .It Fn gelf_update_dyn
 Copy back an ELF
 .Sy .dynamic

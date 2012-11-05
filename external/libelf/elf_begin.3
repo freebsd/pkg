@@ -1,4 +1,4 @@
-.\" Copyright (c) 2006 Joseph Koshy.  All rights reserved.
+.\" Copyright (c) 2006,2008-2011 Joseph Koshy.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -21,11 +21,11 @@
 .\" out of the use of this software, even if advised of the possibility of
 .\" such damage.
 .\"
-.\" $FreeBSD: head/lib/libelf/elf_begin.3 236626 2012-06-05 18:19:52Z joel $
+.\" $Id: elf_begin.3 2313 2011-12-11 06:19:24Z jkoshy $ 
 .\"
-.Dd June 20, 2010
-.Dt ELF_BEGIN 3
+.Dd December 11, 2011
 .Os
+.Dt ELF_BEGIN 3
 .Sh NAME
 .Nm elf_begin
 .Nd open an ELF file or ar(1) archive
@@ -81,26 +81,34 @@ and
 are ignored, and no additional error is signalled.
 .It ELF_C_READ
 This value is to be when the application wishes to examine (but not
-modify) the contents of the file specified by argument
-.Ar fd .
+modify) the contents of the file specified by the arguments
+.Ar fd
+and
+.Ar elf .
 It can be used for both
 .Xr ar 1
-archives and for regular ELF files.
+archives and for ELF objects.
 .Pp
-Argument
-.Ar fd
-should have been opened for reading.
 If argument
 .Ar elf
-is NULL, the library will allocate a new ELF descriptor for
-the file being processed.
+is NULL, the library will allocate a new ELF descriptor for the file
+being processed.
+The argument
+.Ar fd
+should have been opened for reading.
+.Pp
 If argument
 .Ar elf
 is not NULL, and references a regular ELF file previously opened with
 .Fn elf_begin ,
-then the activation count for
+then the activation count for the descriptor referenced by argument
 .Ar elf
 is incremented.
+The value in argument
+.Ar fd
+should match that used to open the descriptor argument
+.Ar elf .
+.Pp
 If argument
 .Ar elf
 is not NULL, and references a descriptor for an
@@ -111,9 +119,24 @@ a descriptor for an element in the archive is returned as
 described in the section
 .Sx "Processing ar(1) archives"
 below.
+The value for argument
+.Ar fd
+should match that used to open the archive earlier.
+.Pp
+If argument
+.Ar elf
+is not NULL, and references an
+.Xr ar 1
+archive opened earlier with
+.Fn elf_memory ,
+then the value of the argument
+.Ar fd
+is ignored.
 .It Dv ELF_C_RDWR
-The command is used to prepare an ELF file for reading and writing.
-It is not supported for archives.
+This command is used to prepare an ELF file for reading and writing.
+This command is not supported for
+.Xr ar 1
+archives.
 .Pp
 Argument
 .Ar fd
@@ -134,14 +157,11 @@ and
 in this case the library will increment the activation count for descriptor
 .Ar elf
 and return the same descriptor.
-Changes to the in-memory image of the ELF file are written back to
+.Pp
+Changes to the in-memory image of the ELF file may be written back to
 disk using the
 .Xr elf_update 3
 function.
-.Pp
-This command is not valid for
-.Xr ar 1
-archives.
 .It Dv ELF_C_WRITE
 This command is used when the application wishes to create a new ELF
 file.
@@ -150,8 +170,7 @@ Argument
 should have been opened for writing.
 Argument
 .Ar elf
-is ignored, and the previous contents of file referenced by
-argument
+is ignored, and the previous contents of file referenced by argument
 .Ar fd
 are overwritten.
 .El
@@ -228,8 +247,9 @@ The archive denoted by argument
 .Ar elf
 could not be parsed.
 .It Bq Er ELF_E_ARGUMENT
-An unrecognized value was specified in argument
-.Ar cmd .
+The value in argument
+.Ar cmd
+was unrecognized.
 .It Bq Er ELF_E_ARGUMENT
 A non-null value for argument
 .Ar elf
@@ -252,15 +272,26 @@ was created.
 .It Bq Er ELF_E_ARGUMENT
 An
 .Xr ar 1
-archive was opened with
+archive was opened with with
 .Ar cmd
 set to
 .Dv ELF_C_RDWR .
+.It Bq Er ELF_E_ARGUMENT
+The file referenced by argument
+.Ar fd
+was empty.
+.It Bq Er ELF_E_ARGUMENT
+The underlying file for argument
+.Ar fd
+was of an unsupported type.
 .It Bq Er ELF_E_IO
-Function
-.Fn elf_begin
-was unable to truncate a file opened for writing using
-.Dv ELF_C_WRITE .
+The file descriptor in argument
+.Ar fd
+was invalid.
+.It Bq Er ELF_E_IO
+The file descriptor in argument
+.Ar fd
+could not be read or written to.
 .It Bq Er ELF_E_RESOURCE
 An out of memory condition was encountered.
 .It Bq Er ELF_E_SEQUENCE
@@ -268,6 +299,10 @@ Function
 .Fn elf_begin
 was called before a working version was established with
 .Xr elf_version 3 .
+.It Bq Er ELF_E_VERSION
+The ELF object referenced by argument
+.Ar fd
+was of an unsupported ELF version.
 .El
 .Sh SEE ALSO
 .Xr elf 3 ,

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006,2009 Joseph Koshy
+ * Copyright (c) 2006,2009,2010 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,26 +25,27 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_ar_util.c 210348 2010-07-21 12:54:34Z kaiw $");
 
-#include <ar.h>
 #include <assert.h>
 #include <libelf.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "_libelf.h"
+#include "_libelf_ar.h"
+
+ELFTC_VCSID("$Id: libelf_ar_util.c 2365 2011-12-29 04:36:44Z jkoshy $");
 
 /*
  * Convert a string bounded by `start' and `start+sz' (exclusive) to a
  * number in the specified base.
  */
 int
-_libelf_ar_get_number(char *s, size_t sz, int base, size_t *ret)
+_libelf_ar_get_number(const char *s, size_t sz, int base, size_t *ret)
 {
 	int c, v;
 	size_t r;
-	char *e;
+	const char *e;
 
 	assert(base <= 10);
 
@@ -73,67 +74,30 @@ _libelf_ar_get_number(char *s, size_t sz, int base, size_t *ret)
 }
 
 /*
- * Retrieve a string from a name field.  If `rawname' is set, leave
- * ar(1) control characters in.
+ * Return the translated name for an archive member.
  */
 char *
-_libelf_ar_get_string(const char *buf, size_t bufsize, int rawname)
+_libelf_ar_get_translated_name(const struct ar_hdr *arh, Elf *ar)
 {
-	const char *q;
-	char *r;
-	size_t sz;
+	char c, *s;
+	size_t len, offset;
+	const char *buf, *p, *q, *r;
+	const size_t bufsize = sizeof(arh->ar_name);
 
-	if (rawname)
-		sz = bufsize + 1;
-	else {
-		/* Skip back over trailing blanks. */
-		for (q = buf + bufsize - 1; q >= buf && *q == ' '; --q)
-			;
+	assert(arh != NULL);
+	assert(ar->e_kind == ELF_K_AR);
+	assert((const char *) arh >= ar->e_rawfile &&
+	    (const char *) arh < ar->e_rawfile + ar->e_rawsize);
 
-		if (q < buf) {
-			/*
-			 * If the input buffer only had blanks in it,
-			 * return a zero-length string.
-			 */
-			buf = "";
-			sz = 1;
-		} else {
-			/*
-			 * Remove the trailing '/' character, but only
-			 * if the name isn't one of the special names
-			 * "/" and "//".
-			 */
-			if (q > buf + 1 ||
-			    (q == (buf + 1) && *buf != '/'))
-				q--;
+	buf = arh->ar_name;
 
-			sz = q - buf + 2; /* Space for a trailing NUL. */
-		}
-	}
-
-	if ((r = malloc(sz)) == NULL) {
-		LIBELF_SET_ERROR(RESOURCE, 0);
-		return (NULL);
-	}
-
-	(void) strncpy(r, buf, sz);
-	r[sz - 1] = '\0';
-
-	return (r);
-}
-
-/*
- * Retrieve the full name of the archive member.
- */
-char *
-_libelf_ar_get_name(char *buf, size_t bufsize, Elf *e)
-{
-	char c, *q, *r, *s;
-	size_t len;
-	size_t offset;
-
-	assert(e->e_kind == ELF_K_AR);
-
+	/*
+	 * Check for extended naming.
+	 *
+	 * If the name matches the pattern "^/[0-9]+", it is an
+	 * SVR4-style extended name.  If the name matches the pattern
+	 * "#1/[0-9]+", the entry uses BSD style extended naming.
+	 */
 	if (buf[0] == '/' && (c = buf[1]) >= '0' && c <= '9') {
 		/*
 		 * The value in field ar_name is a decimal offset into
@@ -141,52 +105,135 @@ _libelf_ar_get_name(char *buf, size_t bufsize, Elf *e)
 		 * resides.
 		 */
 		if (_libelf_ar_get_number(buf + 1, bufsize - 1, 10,
-		    &offset) == 0) {
+			&offset) == 0) {
 			LIBELF_SET_ERROR(ARCHIVE, 0);
 			return (NULL);
 		}
 
-		if (offset > e->e_u.e_ar.e_rawstrtabsz) {
+		if (offset > ar->e_u.e_ar.e_rawstrtabsz) {
 			LIBELF_SET_ERROR(ARCHIVE, 0);
 			return (NULL);
 		}
 
-		s = q = e->e_u.e_ar.e_rawstrtab + offset;
-		r = e->e_u.e_ar.e_rawstrtab + e->e_u.e_ar.e_rawstrtabsz;
+		p = q = ar->e_u.e_ar.e_rawstrtab + offset;
+		r = ar->e_u.e_ar.e_rawstrtab + ar->e_u.e_ar.e_rawstrtabsz;
 
-		for (s = q; s < r && *s != '/'; s++)
+		for (; p < r && *p != '/'; p++)
 			;
-		len = s - q + 1; /* space for the trailing NUL */
+		len = p - q + 1; /* space for the trailing NUL */
 
 		if ((s = malloc(len)) == NULL) {
 			LIBELF_SET_ERROR(RESOURCE, 0);
 			return (NULL);
 		}
 
-		(void) strncpy(s, q, len);
+		(void) strncpy(s, q, len - 1);
 		s[len - 1] = '\0';
+
+		return (s);
+	} else if (IS_EXTENDED_BSD_NAME(buf)) {
+		r = buf + LIBELF_AR_BSD_EXTENDED_NAME_PREFIX_SIZE;
+
+		if (_libelf_ar_get_number(r, bufsize -
+			LIBELF_AR_BSD_EXTENDED_NAME_PREFIX_SIZE, 10,
+			&len) == 0) {
+			LIBELF_SET_ERROR(ARCHIVE, 0);
+			return (NULL);
+		}
+
+		/*
+		 * Allocate space for the file name plus a
+		 * trailing NUL.
+		 */
+		if ((s = malloc(len + 1)) == NULL) {
+			LIBELF_SET_ERROR(RESOURCE, 0);
+			return (NULL);
+		}
+
+		/*
+		 * The file name follows the archive header.
+		 */
+		q = (const char *) (arh + 1);
+
+		(void) strncpy(s, q, len);
+		s[len] = '\0';
 
 		return (s);
 	}
 
 	/*
-	 * Normal 'name'
+	 * A 'normal' name.
+	 *
+	 * Skip back over trailing blanks from the end of the field.
+	 * In the SVR4 format, a '/' is used as a terminator for
+	 * non-special names.
 	 */
-	return (_libelf_ar_get_string(buf, bufsize, 0));
+	for (q = buf + bufsize - 1; q >= buf && *q == ' '; --q)
+		;
+
+	if (q >= buf) {
+		if (*q == '/') {
+			/*
+			 * SVR4 style names: ignore the trailing
+			 * character '/', but only if the name is not
+			 * one of the special names "/" and "//".
+			 */
+			if (q > buf + 1 ||
+			    (q == (buf + 1) && *buf != '/'))
+				q--;
+		}
+
+		len = q - buf + 2; /* Add space for a trailing NUL. */
+	} else {
+		/* The buffer only had blanks. */
+		buf = "";
+		len = 1;
+	}
+
+	if ((s = malloc(len)) == NULL) {
+		LIBELF_SET_ERROR(RESOURCE, 0);
+		return (NULL);
+	}
+
+	(void) strncpy(s, buf, len - 1);
+	s[len - 1] = '\0';
+
+	return (s);
+}
+
+/*
+ * Return the raw name for an archive member, inclusive of any
+ * formatting characters.
+ */
+char *
+_libelf_ar_get_raw_name(const struct ar_hdr *arh)
+{
+	char *rawname;
+	const size_t namesz = sizeof(arh->ar_name);
+
+	if ((rawname = malloc(namesz + 1)) == NULL) {
+		LIBELF_SET_ERROR(RESOURCE, 0);
+		return (NULL);
+	}
+
+	(void) strncpy(rawname, arh->ar_name, namesz);
+	rawname[namesz] = '\0';
+	return (rawname);
 }
 
 /*
  * Open an 'ar' archive.
  */
 Elf *
-_libelf_ar_open(Elf *e)
+_libelf_ar_open(Elf *e, int reporterror)
 {
-	int i;
-	char *s, *end;
 	size_t sz;
+	int scanahead;
+	char *s, *end;
 	struct ar_hdr arh;
 
-	e->e_kind = ELF_K_AR;
+	_libelf_init_elf(e, ELF_K_AR);
+
 	e->e_u.e_ar.e_nchildren = 0;
 	e->e_u.e_ar.e_next = (off_t) -1;
 
@@ -200,54 +247,113 @@ _libelf_ar_open(Elf *e)
 	assert(e->e_rawsize > 0);
 
 	/*
-	 * Look for magic names "/ " and "// " in the first two entries
-	 * of the archive.
+	 * We use heuristics to determine the flavor of the archive we
+	 * are examining.
+	 *
+	 * SVR4 flavor archives use the name "/ " and "// " for
+	 * special members.
+	 *
+	 * In BSD flavor archives the symbol table, if present, is the
+	 * first archive with name "__.SYMDEF".
 	 */
-	for (i = 0; i < 2; i++) {
 
-		if (s + sizeof(arh) > end) {
-			LIBELF_SET_ERROR(ARCHIVE, 0);
-			return (NULL);
-		}
+#define	READ_AR_HEADER(S, ARH, SZ, END)					\
+	do {								\
+		if ((S) + sizeof((ARH)) > (END))			\
+		        goto error;					\
+		(void) memcpy(&(ARH), (S), sizeof((ARH)));		\
+		if ((ARH).ar_fmag[0] != '`' || (ARH).ar_fmag[1] != '\n') \
+			goto error;					\
+		if (_libelf_ar_get_number((ARH).ar_size,		\
+		    sizeof((ARH).ar_size), 10, &(SZ)) == 0)		\
+			goto error;					\
+	} while (0)
 
-		(void) memcpy(&arh, s, sizeof(arh));
+	READ_AR_HEADER(s, arh, sz, end);
 
-		if (arh.ar_fmag[0] != '`' || arh.ar_fmag[1] != '\n') {
-			LIBELF_SET_ERROR(ARCHIVE, 0);
-			return (NULL);
-		}
-
-		if (arh.ar_name[0] != '/')	/* not a special symbol */
-			break;
-
-		if (_libelf_ar_get_number(arh.ar_size, sizeof(arh.ar_size),
-			10, &sz) == 0) {
-			LIBELF_SET_ERROR(ARCHIVE, 0);
-			return (NULL);
-		}
+	/*
+	 * Handle special archive members for the SVR4 format.
+	 */
+	if (arh.ar_name[0] == '/') {
 
 		assert(sz > 0);
 
-		s += sizeof(arh);
+		e->e_flags |= LIBELF_F_AR_VARIANT_SVR4;
 
-		if (arh.ar_name[1] == ' ') {	/* "/ " => symbol table */
+		scanahead = 0;
 
+		/*
+		 * The symbol table (file name "/ ") always comes before the
+		 * string table (file name "// ").
+		 */
+		if (arh.ar_name[1] == ' ') {
+			/* "/ " => symbol table. */
+			scanahead = 1;	/* The string table to follow. */
+
+			s += sizeof(arh);
 			e->e_u.e_ar.e_rawsymtab = s;
 			e->e_u.e_ar.e_rawsymtabsz = sz;
 
-		} else if (arh.ar_name[1] == '/' && arh.ar_name[2] == ' ') {
+			sz = LIBELF_ADJUST_AR_SIZE(sz);
+			s += sz;
 
-			/* "// " => string table for long file names */
+		} else if (arh.ar_name[1] == '/' && arh.ar_name[2] == ' ') {
+			/* "// " => string table for long file names. */
+			s += sizeof(arh);
 			e->e_u.e_ar.e_rawstrtab = s;
 			e->e_u.e_ar.e_rawstrtabsz = sz;
+
+			sz = LIBELF_ADJUST_AR_SIZE(sz);
+			s += sz;
 		}
 
-		sz = LIBELF_ADJUST_AR_SIZE(sz);
+		/*
+		 * If the string table hasn't been seen yet, look for
+		 * it in the next member.
+		 */
+		if (scanahead) {
+			READ_AR_HEADER(s, arh, sz, end);
 
+			/* "// " => string table for long file names. */
+			if (arh.ar_name[0] == '/' && arh.ar_name[1] == '/' &&
+			    arh.ar_name[2] == ' ') {
+
+				s += sizeof(arh);
+
+				e->e_u.e_ar.e_rawstrtab = s;
+				e->e_u.e_ar.e_rawstrtabsz = sz;
+
+				sz = LIBELF_ADJUST_AR_SIZE(sz);
+				s += sz;
+			}
+		}
+	} else if (strncmp(arh.ar_name, LIBELF_AR_BSD_SYMTAB_NAME,
+		sizeof(LIBELF_AR_BSD_SYMTAB_NAME) - 1) == 0) {
+		/*
+		 * BSD style archive symbol table.
+		 */
+		s += sizeof(arh);
+		e->e_u.e_ar.e_rawsymtab = s;
+		e->e_u.e_ar.e_rawsymtabsz = sz;
+
+		sz = LIBELF_ADJUST_AR_SIZE(sz);
 		s += sz;
 	}
 
+	/*
+	 * Update the 'next' offset, so that a subsequent elf_begin()
+	 * works as expected.
+	 */
 	e->e_u.e_ar.e_next = (off_t) (s - e->e_rawfile);
 
 	return (e);
+
+error:
+	if (!reporterror) {
+		e->e_kind = ELF_K_NONE;
+		return (e);
+	}
+
+	LIBELF_SET_ERROR(ARCHIVE, 0);
+	return (NULL);
 }

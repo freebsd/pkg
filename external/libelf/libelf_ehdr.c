@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,12 +22,9 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
- * $FreeBSD: releng/9.1/lib/libelf/libelf_ehdr.c 210338 2010-07-21 10:25:02Z kaiw $
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_ehdr.c 210338 2010-07-21 10:25:02Z kaiw $");
 
 #include <assert.h>
 #include <gelf.h>
@@ -35,6 +32,8 @@ __FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_ehdr.c 210338 2010-07-21 10:25:
 #include <stdlib.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: libelf_ehdr.c 2225 2011-11-26 18:55:54Z jkoshy $");
 
 /*
  * Retrieve counts for sections, phdrs and the section string table index

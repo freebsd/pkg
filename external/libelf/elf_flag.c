@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008-2009,2011 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,35 +25,58 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_flag.c 164190 2006-11-11 17:16:35Z jkoshy $");
 
 #include <libelf.h>
 
 #include "_libelf.h"
 
+ELFTC_VCSID("$Id: elf_flag.c 2272 2011-12-03 17:07:31Z jkoshy $");
+
 unsigned int
-elf_flagdata(Elf_Data *d, Elf_Cmd c, unsigned int flags)
+elf_flagarhdr(Elf_Arhdr *a, Elf_Cmd c, unsigned int flags)
 {
-	Elf *e;
-	Elf_Scn *scn;
 	unsigned int r;
 
-	if (d == NULL)
+	if (a == NULL)
 		return (0);
 
-	if ((c != ELF_C_SET && c != ELF_C_CLR) || (scn = d->d_scn) == NULL ||
-	    (e = scn->s_elf) == NULL || e->e_kind != ELF_K_ELF ||
+	if ((c != ELF_C_SET && c != ELF_C_CLR) ||
 	    (flags & ~ELF_F_DIRTY) != 0) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (0);
 	}
 
 	if (c == ELF_C_SET)
-	    r = scn->s_flags |= flags;
+		r = a->ar_flags |= flags;
 	else
-	    r = scn->s_flags &= ~flags;
+		r = a->ar_flags &= ~flags;
 
-	return (r);
+	return (r & LIBELF_F_API_MASK);
+}
+
+unsigned int
+elf_flagdata(Elf_Data *d, Elf_Cmd c, unsigned int flags)
+{
+	unsigned int r;
+	struct _Libelf_Data *ld;
+
+	if (d == NULL)
+		return (0);
+
+	if ((c != ELF_C_SET && c != ELF_C_CLR) ||
+	    (flags & ~ELF_F_DIRTY) != 0) {
+		LIBELF_SET_ERROR(ARGUMENT, 0);
+		return (0);
+	}
+
+	ld = (struct _Libelf_Data *) d;
+
+	if (c == ELF_C_SET)
+		r = ld->d_flags |= flags;
+	else
+		r = ld->d_flags &= ~flags;
+
+	return (r & LIBELF_F_API_MASK);
 }
 
 unsigned int
@@ -95,8 +118,19 @@ elf_flagelf(Elf *e, Elf_Cmd c, unsigned int flags)
 
 	if ((c != ELF_C_SET && c != ELF_C_CLR) ||
 	    (e->e_kind != ELF_K_ELF) ||
-	    (flags & ~(ELF_F_DIRTY|ELF_F_LAYOUT)) != 0) {
+	    (flags & ~(ELF_F_ARCHIVE | ELF_F_ARCHIVE_SYSV |
+	    ELF_F_DIRTY | ELF_F_LAYOUT)) != 0) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
+		return (0);
+	}
+
+	if ((flags & ELF_F_ARCHIVE_SYSV) && (flags & ELF_F_ARCHIVE) == 0) {
+		LIBELF_SET_ERROR(ARGUMENT, 0);
+		return (0);
+	}
+
+	if ((flags & ELF_F_ARCHIVE) && e->e_cmd != ELF_C_WRITE) {
+		LIBELF_SET_ERROR(MODE, 0);
 		return (0);
 	}
 
@@ -104,7 +138,7 @@ elf_flagelf(Elf *e, Elf_Cmd c, unsigned int flags)
 		r = e->e_flags |= flags;
 	else
 		r = e->e_flags &= ~flags;
-	return (r);
+	return (r & LIBELF_F_API_MASK);
 }
 
 unsigned int
@@ -154,7 +188,7 @@ elf_flagscn(Elf_Scn *s, Elf_Cmd c, unsigned int flags)
 		r = s->s_flags |= flags;
 	else
 		r = s->s_flags &= ~flags;
-	return (r);
+	return (r & LIBELF_F_API_MASK);
 }
 
 unsigned int

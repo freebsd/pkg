@@ -1,4 +1,4 @@
-.\" Copyright (c) 2006 Joseph Koshy.  All rights reserved.
+.\" Copyright (c) 2006,2008 Joseph Koshy.  All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -21,11 +21,11 @@
 .\" out of the use of this software, even if advised of the possibility of
 .\" such damage.
 .\"
-.\" $FreeBSD: releng/9.1/lib/libelf/elf_memory.3 206622 2010-04-14 19:08:06Z uqs $
+.\" $Id: elf_memory.3 2314 2011-12-11 06:19:51Z jkoshy $
 .\"
 .Dd June 28, 2006
-.Dt ELF_MEMORY 3
 .Os
+.Dt ELF_MEMORY 3
 .Sh NAME
 .Nm elf_memory
 .Nd process an ELF or ar(1) archive mapped into memory
@@ -109,9 +109,9 @@ Function
 was called before a working version was set using
 .Xr elf_version 3 .
 .It Bq Er ELF_E_VERSION
-The argument
+The ELF object referenced by argument
 .Ar image
-corresponds to an ELF file with an unsupported version.
+was of an unsupported ELF version.
 .El
 .Sh SEE ALSO
 .Xr elf 3 ,

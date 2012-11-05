@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,15 +24,14 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/elf_strptr.c 179241 2008-05-23 07:35:36Z jb $");
-
 #include <sys/param.h>
 
 #include <assert.h>
 #include <gelf.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: elf_strptr.c 2271 2011-12-03 17:06:35Z jkoshy $");
 
 /*
  * Convert an ELF section#,offset pair to a string pointer.
@@ -55,7 +54,7 @@ elf_strptr(Elf *e, size_t scndx, size_t offset)
 	    gelf_getshdr(s, &shdr) == NULL)
 		return (NULL);
 
-	if (/*shdr.sh_type != SHT_STRTAB || */
+	if (shdr.sh_type != SHT_STRTAB ||
 	    offset >= shdr.sh_size) {
 		LIBELF_SET_ERROR(ARGUMENT, 0);
 		return (NULL);

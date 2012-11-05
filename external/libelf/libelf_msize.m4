@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006 Joseph Koshy
+ * Copyright (c) 2006,2008-2011 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,18 +25,14 @@
  */
 
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: releng/9.1/lib/libelf/libelf_msize.m4 210332 2010-07-21 09:56:42Z kaiw $");
-
-#include <sys/types.h>
-#include <sys/elf32.h>
-#include <sys/elf64.h>
 
 #include <assert.h>
 #include <libelf.h>
-#include <osreldate.h>
 #include <string.h>
 
 #include "_libelf.h"
+
+ELFTC_VCSID("$Id: libelf_msize.m4 2225 2011-11-26 18:55:54Z jkoshy $");
 
 /* WARNING: GENERATED FROM __file__. */
 
@@ -48,9 +44,14 @@ struct msize {
 divert(-1)
 include(SRCDIR`/elf_types.m4')
 
+/*
+ * ELF types whose memory representations have a variable size.
+ */
 define(BYTE_SIZE,	1)
 define(GNUHASH_SIZE,	1)
 define(NOTE_SIZE,	1)
+define(VDEF_SIZE,	1)
+define(VNEED_SIZE,	1)
 
 /*
  * Unimplemented types.
@@ -75,9 +76,8 @@ define(`DEFINE_ELF_MSIZES',
 DEFINE_ELF_MSIZES(ELF_TYPE_LIST)
 
 define(`MSIZE',
-  `#if	__FreeBSD_version >= $3
-    [ELF_T_$1] = { .msz32 = $1_SIZE32, .msz64 = $1_SIZE64 },
-#endif')
+  `[ELF_T_$1] = { .msz32 = $1_SIZE32, .msz64 = $1_SIZE64 },
+')
 define(`MSIZES',
   `ifelse($#,1,`',
     `MSIZE($1)
