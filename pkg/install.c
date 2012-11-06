@@ -58,6 +58,7 @@ exec_install(int argc, char **argv)
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
 	int retcode = EX_SOFTWARE;
+	int updcode = EPKG_OK;
 	int ch;
 	bool yes;
 	bool auto_update = true;
@@ -122,8 +123,8 @@ exec_install(int argc, char **argv)
 	}
 
 	/* first update the remote repositories if needed */
-	if (auto_update && (retcode = pkgcli_update(false)) != EPKG_OK)
-		return (retcode);
+	if (auto_update && (updcode = pkgcli_update(false)) != EPKG_OK)
+		return (updcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		return (EX_IOERR);
