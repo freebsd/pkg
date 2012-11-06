@@ -50,6 +50,7 @@ exec_upgrade(int argc, char **argv)
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
 	int retcode = 1;
+	int updcode;
 	int ch;
 	bool yes;
 	bool all = false;
@@ -100,8 +101,8 @@ exec_upgrade(int argc, char **argv)
 
 	/* first update the remote repositories if needed */
 	if (!dry_run && auto_update && 
-	    (retcode = pkgcli_update(false)) != EPKG_OK)
-		return (retcode);
+	    (updcode = pkgcli_update(false)) != EPKG_OK)
+		return (updcode);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		return (EX_IOERR);
