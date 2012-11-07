@@ -59,7 +59,7 @@ INCS=	libelf.h gelf.h
 GENSRCS=	libelf_fsize.c libelf_msize.c libelf_convert.c
 CLEANFILES=	${GENSRCS}
 
-CFLAGS+=	-I${.CURDIR}
+CFLAGS+=	-I${.CURDIR} -fPIC
 
 INTERNALLIB=
 NO_MAN=	yes
