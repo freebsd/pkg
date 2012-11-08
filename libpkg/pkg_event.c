@@ -357,3 +357,15 @@ pkg_plugin_info(struct pkg_plugin *p, const char *fmt, ...)
 	pkg_emit_event(&ev);
 	free(ev.e_plugin_info.msg);
 }
+
+void
+pkg_emit_package_not_found(const char *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_NOT_FOUND;
+	ev.e_not_found.pkg_name = p;
+
+	pkg_emit_event(&ev);
+}
+

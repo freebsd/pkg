@@ -48,5 +48,7 @@ void pkg_emit_nolocaldb(void);
 void pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum);
 void pkg_emit_newpkgversion(void);
 void pkg_emit_developer_mode(const char *fmt, ...);
+void pkg_emit_package_not_found(const char *);
+
 
 #endif
