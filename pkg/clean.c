@@ -232,7 +232,7 @@ exec_clean(int argc, char **argv)
 			yes = true;
 			break;
 		default:
-			usage_update();
+			usage_clean();
 			return (EX_USAGE);
 		}
 	}
