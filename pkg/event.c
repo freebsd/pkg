@@ -198,6 +198,10 @@ event_callback(void *data, struct pkg_event *ev)
 		    PKG_VERSION, &version);
 		printf("%s-%s already installed\n", name, version);
 		break;
+	case PKG_EVENT_NOT_FOUND:
+		printf("Package '%s' was not found in "
+		    "the repositories", ev->e_not_found.pkg_name);
+		break;
 	case PKG_EVENT_MISSING_DEP:
 		fprintf(stderr, "missing dependency %s-%s",
 		    pkg_dep_name(ev->e_missing_dep.dep),

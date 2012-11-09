@@ -2745,8 +2745,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 
 		/* report if package was not found in the database */
 		if (sqlite3_changes(db->sqlite) == 0)
-			pkg_emit_error("Package '%s' was not found in "
-			    "the repositories", pkgs[i]);
+			pkg_emit_package_not_found(pkgs[i]);
 	}
 
 	sqlite3_finalize(stmt);

@@ -1022,6 +1022,7 @@ typedef enum {
 	PKG_EVENT_PLUGIN_ERRNO,
 	PKG_EVENT_PLUGIN_ERROR,
 	PKG_EVENT_PLUGIN_INFO,
+	PKG_EVENT_NOT_FOUND,
 } pkg_event_t;
 
 struct pkg_event {
@@ -1093,6 +1094,9 @@ struct pkg_event {
 			struct pkg_plugin *plugin;
 			char *msg;
 		} e_plugin_error;
+		struct {
+			const char *pkg_name;
+		} e_not_found;
 	};
 };
 
