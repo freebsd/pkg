@@ -314,7 +314,7 @@ script_type_str(const char *str)
 		return (PKG_SCRIPT_DEINSTALL);
 	if (strcmp(str, "post-deinstall") == 0)
 		return (PKG_SCRIPT_POST_DEINSTALL);
-	return (INT_MAX);
+	return (PKG_SCRIPT_UNKNOWN);
 }
 
 static int
@@ -413,7 +413,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 				pkg_emit_error("Skipping malformed scripts %s",
 				    key->data.scalar.value);
 			script_type = script_type_str(key->data.scalar.value);
-			if (script_type == INT_MAX) {
+			if (script_type == PKG_SCRIPT_UNKNOWN) {
 				pkg_emit_error("Skipping unknown script "
 				    "type: %s", key->data.scalar.value);
 				break;
