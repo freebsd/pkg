@@ -691,7 +691,7 @@ exec_buf(const char *cmd) {
 }
 
 int
-sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
+hash_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
 	FILE *fp;
 	char buffer[BUFSIZ];

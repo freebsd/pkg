@@ -315,7 +315,7 @@ exec_clean(int argc, char **argv)
 
 			pkg_get(p, PKG_CKSUM, &cksum);
 
-			if (sha256_file(ent->fts_path, local_cksum) == EPKG_OK) {
+			if (hash_file(ent->fts_path, local_cksum) == EPKG_OK) {
 
 				if (strcmp(cksum, local_cksum) != 0) {
 					ret = add_to_dellist(&dl, CKSUM_MISMATCH, ent->fts_path,
