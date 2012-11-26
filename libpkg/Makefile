@@ -58,9 +58,20 @@ CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
 		-I${.CURDIR}/../external/libyaml/include \
 		-I${.CURDIR}/../external/uthash
+
+.if defined(WITH_BUNDLED_LIBELF)
+CFLAGS+=	-I${.CURDIR}/../external/libelf \
+		-DBUNDLED_LIBELF
+.endif
+
 LDADD+=		-L${.OBJDIR}/../external/sqlite \
-		-L${.OBJDIR}/../external/libyaml \
-		-lsqlite3 \
+		-L${.OBJDIR}/../external/libyaml
+
+.if defined(WITH_BUNDLED_LIBELF)
+LDADD+=		-L${.OBJDIR}/../external/libelf
+.endif
+
+LDADD+=		-lsqlite3 \
 		-lyaml \
 		-larchive \
 		-lsbuf \
@@ -81,6 +92,7 @@ STRIP=
 DEBUG_FLAGS+=	-pg
 .endif
 NO_MAN=		yes
+NOMAN=		yes
 
 .include <bsd.lib.mk>
 

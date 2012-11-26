@@ -235,7 +235,8 @@ typedef enum {
 	PKG_SCRIPT_POST_UPGRADE,
 	PKG_SCRIPT_INSTALL,
 	PKG_SCRIPT_DEINSTALL,
-	PKG_SCRIPT_UPGRADE
+	PKG_SCRIPT_UPGRADE,
+	PKG_SCRIPT_UNKNOWN
 } pkg_script;
 
 typedef enum _pkg_jobs_t {
@@ -312,6 +313,7 @@ typedef enum _pkg_plugin_hook_t {
 	PKG_PLUGIN_HOOK_POST_DEINSTALL,
 	PKG_PLUGIN_HOOK_PRE_FETCH,
 	PKG_PLUGIN_HOOK_POST_FETCH,
+	PKG_PLUGIN_HOOK_EVENT,
 } pkg_plugin_hook_t;
 
 /**
@@ -944,7 +946,9 @@ int pkg_plugin_conf_integer(struct pkg_plugin *p, int key, int64_t *value);
 int pkg_plugin_confs(struct pkg_plugin *p, struct pkg_config **conf);
 
 int pkg_plugin_parse(struct pkg_plugin *p);
-
+void pkg_plugin_errno(struct pkg_plugin *p, const char *func, const char *arg);
+void pkg_plugin_error(struct pkg_plugin *p, const char *fmt, ...);
+void pkg_plugin_info(struct pkg_plugin *p, const char *fmt, ...);
 /**
  * This is where plugin hook into the library using pkg_plugin_hook()
  * @todo: Document
@@ -1016,6 +1020,10 @@ typedef enum {
 	PKG_EVENT_NOLOCALDB,
 	PKG_EVENT_FILE_MISMATCH,
 	PKG_EVENT_DEVELOPER_MODE,
+	PKG_EVENT_PLUGIN_ERRNO,
+	PKG_EVENT_PLUGIN_ERROR,
+	PKG_EVENT_PLUGIN_INFO,
+	PKG_EVENT_NOT_FOUND,
 } pkg_event_t;
 
 struct pkg_event {
@@ -1074,6 +1082,22 @@ struct pkg_event {
 			struct pkg_file *file;
 			const char *newsum;
 		} e_file_mismatch;
+		struct {
+			struct pkg_plugin *plugin;
+			char *msg;
+		} e_plugin_info;
+		struct {
+			struct pkg_plugin *plugin;
+			const char *func;
+			const char *arg;
+		} e_plugin_errno;
+		struct {
+			struct pkg_plugin *plugin;
+			char *msg;
+		} e_plugin_error;
+		struct {
+			const char *pkg_name;
+		} e_not_found;
 	};
 };
 

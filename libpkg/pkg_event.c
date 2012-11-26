@@ -43,6 +43,7 @@ pkg_event_register(pkg_event_cb cb, void *data)
 static void
 pkg_emit_event(struct pkg_event *ev)
 {
+	pkg_plugins_hook_run(PKG_PLUGIN_HOOK_EVENT, ev, NULL);
 	if (_cb != NULL)
 		_cb(_data, ev);
 }
@@ -309,3 +310,62 @@ pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum) 
 
 	pkg_emit_event(&ev);
 }
+
+void
+pkg_plugin_errno(struct pkg_plugin *p, const char *func, const char *arg)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_PLUGIN_ERRNO;
+	ev.e_plugin_errno.plugin = p;
+	ev.e_plugin_errno.func = func;
+	ev.e_plugin_errno.arg = arg;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_plugin_error(struct pkg_plugin *p, const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+
+	ev.type = PKG_EVENT_PLUGIN_ERROR;
+	ev.e_plugin_error.plugin = p;
+
+	va_start(ap, fmt);
+	vasprintf(&ev.e_plugin_error.msg, fmt, ap);
+	va_end(ap);
+
+	pkg_emit_event(&ev);
+	free(ev.e_plugin_error.msg);
+}
+
+void
+pkg_plugin_info(struct pkg_plugin *p, const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+
+	ev.type = PKG_EVENT_PLUGIN_INFO;
+	ev.e_plugin_info.plugin = p;
+
+	va_start(ap, fmt);
+	vasprintf(&ev.e_plugin_info.msg, fmt, ap);
+	va_end(ap);
+
+	pkg_emit_event(&ev);
+	free(ev.e_plugin_info.msg);
+}
+
+void
+pkg_emit_package_not_found(const char *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_NOT_FOUND;
+	ev.e_not_found.pkg_name = p;
+
+	pkg_emit_event(&ev);
+}
+

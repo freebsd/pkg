@@ -134,11 +134,8 @@ pkg_plugin_hook_exec(struct pkg_plugin *p, pkg_plugin_hook_t hook, void *data, s
 	assert(p != NULL);
 
 	HASH_FIND_INT(p->hooks, &hook, h);
-	if (h != NULL) {
-		printf(">>> Triggering execution of plugin '%s'\n",
-		    pkg_plugin_get(p, PKG_PLUGIN_NAME));
+	if (h != NULL)
 		h->callback(data, db);
-	}
 
 	return (EPKG_OK);
 }
@@ -407,7 +404,7 @@ pkg_plugins_init(void)
 			free(p);
 			return (EPKG_FATAL);
 		}
-		if ((init_func = dlsym(p->lh, "init")) == NULL) {
+		if ((init_func = dlsym(p->lh, "pkg_plugin_init")) == NULL) {
 			pkg_emit_error("Cannot load init function for plugin '%s'",
 			     pkg_config_value(v));
 			pkg_emit_error("Plugin '%s' will not be loaded: %s",
@@ -610,7 +607,7 @@ pkg_plugins_shutdown(void)
 	 * Unload any previously loaded plugins
 	 */
 	while (pkg_plugins(&p) != EPKG_END) {
-		if ((shutdown_func = dlsym(p->lh, "shutdown")) != NULL) {
+		if ((shutdown_func = dlsym(p->lh, "pkg_plugin_shutdown")) != NULL) {
 			shutdown_func(p);
 		}
 		dlclose(p->lh);

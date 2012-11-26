@@ -140,7 +140,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
 			break;
-		pkg_get(ev->e_upgrade_finished.pkg, PKG_NAME, &name,
+		pkg_get(ev->e_upgrade_begin.pkg, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_NEWVERSION, &newversion);
 		nbdone++;
 		if (nbactions > 0)
@@ -198,6 +198,10 @@ event_callback(void *data, struct pkg_event *ev)
 		    PKG_VERSION, &version);
 		printf("%s-%s already installed\n", name, version);
 		break;
+	case PKG_EVENT_NOT_FOUND:
+		printf("Package '%s' was not found in "
+		    "the repositories", ev->e_not_found.pkg_name);
+		break;
 	case PKG_EVENT_MISSING_DEP:
 		fprintf(stderr, "missing dependency %s-%s",
 		    pkg_dep_name(ev->e_missing_dep.dep),
@@ -223,6 +227,17 @@ event_callback(void *data, struct pkg_event *ev)
 		    PKG_VERSION, &version);
 		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name,
 		    version, pkg_file_path(ev->e_file_mismatch.file));
+	case PKG_EVENT_PLUGIN_ERRNO:
+		warn("%s: %s(%s)", pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),ev->e_plugin_errno.func, ev->e_plugin_errno.arg);
+		break;
+	case PKG_EVENT_PLUGIN_ERROR:
+		warnx("%s: %s", pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME), ev->e_plugin_error.msg);
+		break;
+	case PKG_EVENT_PLUGIN_INFO:
+		if (quiet)
+			break;
+		printf("%s: %s\n", pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME), ev->e_plugin_info.msg);
+		break;
 	default:
 		break;
 	}

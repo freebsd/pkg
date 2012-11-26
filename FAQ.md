@@ -153,7 +153,7 @@ Install the latest **ports-mgmt/portupgrade**, or **ports-mgmt/portupgrade-devel
 More information can be found in the portupgrade [NEWS](https://github.com/pkgtools/pkgtools/blob/master/NEWS.md) file.
 
 <a name="17"></a>
-### Q: pkgng does not work it says: /usr/local/sbin/pkg: Undefined symbol "pkg_event_register"
+### Q: pkgng does not work it says: /usr/local/sbin/pkg: Undefined symbol "pkg_init"
 
 You forgot to run `make delete-old-libs` when you upgraded your system.
 

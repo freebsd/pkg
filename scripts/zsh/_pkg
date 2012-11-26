@@ -16,7 +16,7 @@ _pkg() {
 	local earlyargs subcmd
 	earlyargs=(
 	'-d[Increment debug level]'
-	'-j[Execute pkg(1) inside a jail(8)]:jail:_jid'
+	'-j[Execute pkg(1) inside a jail(8)]:jail:'
 	'-c[Execute pkg(1) inside a chroot(8)]:chroot:_files -/'
 	'-v[Display pkg(1) version]'
 	)

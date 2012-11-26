@@ -69,7 +69,7 @@ void
 usage_audit(void)
 {
 	fprintf(stderr, "usage: pkg audit [-F] <pattern>\n\n");
-	fprintf(stderr, "For more information see 'pkg help add'.\n");
+	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
 static int

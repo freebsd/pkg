@@ -60,7 +60,6 @@ information about the package:
 	origin: category/foo
 	comment: this is foo package
 	arch: i386
-	osversion: 8.2-STABLE-802507
 	www: http://www.foo.org
 	maintainer: foo@bar.org
 	prefix: /usr/local

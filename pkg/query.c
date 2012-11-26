@@ -664,7 +664,7 @@ bad_option:
 					}
 					sbuf_putc(sqlcond, '\'');
 				} else {
-					if (!isnumber(str[0])) {
+					if (!isdigit(str[0])) {
 						fprintf(stderr, "a number is expected, got: %c\n", str[0]);
 						return (EPKG_FATAL);
 					}
@@ -673,7 +673,7 @@ bad_option:
 				}
 			}
 		} else if (state == INT) {
-			if (!isnumber(str[0])) {
+			if (!isdigit(str[0])) {
 				state = POST_EXPR;
 				str--;
 			} else {

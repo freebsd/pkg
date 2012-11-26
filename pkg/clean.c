@@ -49,6 +49,7 @@ struct deletion_list {
 };
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
+#define CKSUM_MISMATCH	(1U<<2)
 
 STAILQ_HEAD(dl_head, deletion_list);
 
@@ -156,6 +157,9 @@ display_dellist(struct dl_head *dl, const char *cachedir)
 		case REMOVED:
 			printf("Removed from repository\n");
 			break;
+		case CKSUM_MISMATCH:
+			printf("Checksum mismatch\n");
+			break;
 		default:	/* not reached */
 			break;
 		}
@@ -232,7 +236,7 @@ exec_clean(int argc, char **argv)
 			yes = true;
 			break;
 		default:
-			usage_update();
+			usage_clean();
 			return (EX_USAGE);
 		}
 	}
@@ -305,6 +309,19 @@ exec_clean(int argc, char **argv)
 
 			ret = add_to_dellist(&dl, OUT_OF_DATE, ent->fts_path,
 					     origin, newname, newversion);
+		} else {
+			char local_cksum[SHA256_DIGEST_LENGTH * 2 +1];
+			const char *cksum;
+
+			pkg_get(p, PKG_CKSUM, &cksum);
+
+			if (hash_file(ent->fts_path, local_cksum) == EPKG_OK) {
+
+				if (strcmp(cksum, local_cksum) != 0) {
+					ret = add_to_dellist(&dl, CKSUM_MISMATCH, ent->fts_path,
+						     origin, NULL, NULL);
+				}
+			}
 		}
 
 		if (ret != EPKG_OK && ret != EPKG_END) {
