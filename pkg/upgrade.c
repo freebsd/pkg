@@ -52,7 +52,7 @@ exec_upgrade(int argc, char **argv)
 	int retcode = 1;
 	int updcode;
 	int ch;
-	bool yes = false;
+	bool yes;
 	bool all = false;
 	bool dry_run = false;
 	bool auto_update = true;
