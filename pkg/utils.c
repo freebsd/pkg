@@ -321,10 +321,11 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 
 		switch (type) {
 		case PKG_JOBS_INSTALL:
-			dlsize += pkgsize;
 			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
-			if (stat(path, &st) != -1)
-				dlsize -= st.st_size;
+			if (stat(path, &st) == -1 || pkgsize != st.st_size)
+				/* file looks corrupted (wrong size), assume a checksum mismatch will
+				   occur later and the file will be fetched from remote again */
+				dlsize += pkgsize;
 
 			if (newversion != NULL) {
 				switch (pkg_version_cmp(version, newversion)) {
