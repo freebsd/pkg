@@ -259,7 +259,7 @@ print_info(struct pkg * const pkg, unsigned int opt)
                 if (!(opt & INFO_QUIET))
                         printf("\n");
         } else if (opt & INFO_SIZE) {
-		if (pkg_type(pkg) == PKG_INSTALLED) {
+		if (pkg_type(pkg) == PKG_INSTALLED || pkg_type(pkg) == PKG_FILE) {
 			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
 			printf("%s-%s size is: %s\n", name, version, size);
 		} else {
