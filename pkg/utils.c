@@ -363,7 +363,6 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 	}
 
 	if (oldsize > newsize) {
-		newsize *= -1;
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
 
 		switch (type) {
