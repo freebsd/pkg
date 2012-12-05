@@ -77,7 +77,7 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	char buf[10240];
 	int retcode = EPKG_OK;
 	bool srv = false;
-	char zone[MAXHOSTNAMELEN + 12];
+	char zone[MAXHOSTNAMELEN + 13];
 	struct dns_srvinfo *mirrors, *current;
 
 	current = mirrors = NULL;
