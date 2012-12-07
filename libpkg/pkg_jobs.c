@@ -87,6 +87,47 @@ pkg_jobs_free(struct pkg_jobs *j)
 }
 
 int
+pkg_jobs_append(struct pkg_jobs *j, match_t match, char **argv, int argc, bool recursive)
+{
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it;
+	char *origin;
+
+	switch (j->type) {
+	case PKG_JOBS_DEINSTALL:
+		if ((it = pkgdb_query_delete(j->db, match, argc, argv, recursive)) == NULL)
+			return (EPKG_FATAL);
+
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+			pkg = NULL;
+		}
+		pkgdb_it_free(it);
+		break;
+	default:
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}
+
+int
+pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **p)
+{
+	struct pkg *pkg;
+
+	HASH_FIND_STR(j->jobs, __DECONST(char *, origin), pkg);
+	if (pkg == NULL)
+		return (EPKG_FATAL);
+
+	if (p != NULL)
+		*p = pkg;
+
+	return (EPKG_OK);
+}
+
+/* deprecated should die in the end */
+int
 pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
 {
 	char *origin;

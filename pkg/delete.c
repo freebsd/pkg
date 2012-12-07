@@ -51,17 +51,13 @@ exec_delete(int argc, char **argv)
 	struct pkg_jobs *jobs = NULL;
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
 	match_t match = MATCH_EXACT;
 	int ch;
-	int flags = PKG_LOAD_BASIC;
 	bool force = false;
 	bool yes;
 	bool dry_run = false;
 	int retcode = EX_SOFTWARE;
 	int recursive = 0;
-	bool haspkg = false;
-	const char *origin;
 	nbactions = nbdone = 0;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
@@ -121,19 +117,11 @@ exec_delete(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if ((it = pkgdb_query_delete(db, match, argc, argv, recursive)) == NULL)
+	if (pkg_jobs_append(jobs, match, argv, argc, recursive) == EPKG_FATAL)
 		goto cleanup;
 
-	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-		if (!force && !haspkg) {
-			if (strcmp(origin, "ports-mgmt/pkg") == 0)
-				haspkg = true;
-		}
-		pkg_jobs_add(jobs, pkg);
-		pkg = NULL;
-	}
-	if (haspkg && !force) {
+	if ((pkg_jobs_find(jobs, "ports-mgmt/pkg", NULL) == EPKG_OK)
+	     && !force) {
 		warnx("You are about to delete 'ports-mgmt/pkg' which is really "
 		    "dangerous, you can't do that without specifying -f");
 		goto cleanup;
@@ -174,7 +162,6 @@ exec_delete(int argc, char **argv)
 
 cleanup:
 	pkg_jobs_free(jobs);
-	pkgdb_it_free(it);
 	pkgdb_close(db);
 
 	return (retcode);
