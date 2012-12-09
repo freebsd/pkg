@@ -14,6 +14,7 @@ _pkg_available() {
 
 _pkg() {
 	local earlyargs subcmd
+	local subcmd_list cmd
 	earlyargs=(
 	'-d[Increment debug level]'
 	'-j[Execute pkg(1) inside a jail(8)]:jail:'
@@ -143,7 +144,13 @@ _pkg() {
 				&& return 0
 			;;
 		(help)
-			# TODO
+			subcmd_list=( $(
+				for cmd in $subcmd[@]; do
+					print ${cmd/\[*/}
+				done
+				) )
+				_arguments -s \
+					':command:_values -S " " -w "pkg subcommands" $subcmd_list[@]'
 			return 0
 			;;
 		(info)
@@ -249,7 +256,7 @@ _pkg() {
 			_arguments -s \
 				'-q[Be quiet]' \
 				'(-l)-r[Display stats only for the local package database]' \
-				'(-r)-l[Display stats only for the remote package database(s)' \
+				'(-r)-l[Display stats only for the remote package database(s)]' \
 				&& return 0
 			;;
 		(update)
@@ -267,8 +274,8 @@ _pkg() {
 			;;
 		(upgrade)
 			_arguments -s \
-				'(-y)-n[Assume yes when asked for confirmation]' \
-				'(-n)-y[Assume no (dry run) for confirmations]' \
+				'(-y)-n[Assume no (dry run) for confirmations]' \
+				'(-n)-y[Assume yes when asked for confirmation]' \
 				'-f[Upgrade/Reinstall everything]' \
 				'-L[Do not try to update the repository metadata]' \
 				&& return 1
