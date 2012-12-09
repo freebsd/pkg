@@ -5,4 +5,8 @@ SUBDIR=	sqlite \
 SUBDIR+= libelf
 .endif
 
+.PHONY: set-version
+
+set-version:
+
 .include <bsd.subdir.mk>

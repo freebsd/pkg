@@ -38,13 +38,23 @@ SRCS=		backup.c \
 PC=	pkg.pc
 CLEANFILES=	${PC}
 
+NEWVERS=	../newvers.sh
+
+PKGVERSION!=	sh ${NEWVERS} pkg
+PORTVERSION!=	sh ${NEWVERS} port
+
+.if defined(CREATE_SNAPSHOT)
+_snapshot=	snapshot
+
+${_snapshot}:
+.endif
+
 all: ${PC}
 
 realinstall: ${PC}
 	${INSTALL} -m 644 ${PC} ${PREFIX}/libdata/pkgconfig
 
 HAVE_GRUTILS!=	grep -q gr_copy /usr/include/libutil.h && echo yes || echo no
-VERSION!=	awk '$$2 == "PKGVERSION" { print $$3 }' pkg.h
 
 .if ${HAVE_GRUTILS} != yes
 SRCS+=	gr_util.c
@@ -96,8 +106,16 @@ NOMAN=		yes
 
 .SUFFIXES: .pc.in .pc
 
-.pc.in.pc:
-	sed -e "s,__PREFIX__,${PREFIX},g" \
-		-e "s,__VERSION__,${VERSION},g" \
-		${.IMPSRC} > ${.TARGET}
+.PHONY:	set-version ${_snapshot}
 
+set-version: pkg.h ${PC}
+
+pkg.h:	${NEWVERS} ${_snapshot}
+	sed -e "/^#define PKGVERSION/s,\".*\",\"$(PKGVERSION)\","       \
+	    -e "/^#define PKG_PORTVERSION/s,\".*\",\"$(PORTVERSION)\"," \
+	    -i '' $(.TARGET) 
+
+.pc.in.pc: ${NEWVERS} ${_snapshot}
+	sed -e "s,__PREFIX__,${PREFIX},g" \
+		-e "s,__VERSION__,${PKGVERSION},g" \
+		${.IMPSRC} > ${.TARGET}
