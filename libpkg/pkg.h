@@ -37,7 +37,7 @@
 #include <sys/sbuf.h>
 #include <openssl/pem.h>
 
-#define PKGVERSION "1.1-alpha1"
+#define PKGVERSION "1.1.a1"
 
 /* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg
  * version comparison in pkgdb_query_newpkgversion() */
