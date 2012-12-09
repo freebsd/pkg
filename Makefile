@@ -43,7 +43,7 @@ do-set-version:
 
 set-version: do-set-version Doxyfile
 
-regression-test: all
+regression-test: clean all
 	@${ECHO} "==> Regression Test"
 
 do-release: regression-test
