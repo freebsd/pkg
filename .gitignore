@@ -8,6 +8,7 @@
 *.gmon
 *.log
 *.gz
+*.pc
 tags
 pkg/pkg
 pkg2legacy
