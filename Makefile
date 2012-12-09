@@ -53,7 +53,7 @@ release: do-release set-tag make-tarball
 
 set-tag:
 	@if [ -n "$$( git status -s )" ] ; then \
-	    git commit -m "New Release ${PKGVERSION}" ${VERSIONED_FILES} ; \
+	    git commit -uno -m "New Release ${PKGVERSION}" ${VERSIONED_FILES} ; \
 	fi
 	@if git tag -l | grep -F ${PKGVERSION} ; then \
 	    ${ECHO} "---> Error: tag ${PKGVERSION} already exists" ; \
