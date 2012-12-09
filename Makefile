@@ -52,7 +52,7 @@ do-release: regression-test
 release: do-release set-tag make-tarball
 
 set-tag:
-	@if [ $$( git status -s ) ] ; then \
+	@if [ -n "$$( git status -s )" ] ; then \
 	    git commit -m "New Release ${PKGVERSION}" ${VERSIONED_FILES} ; \
 	fi
 	@if git tag -l | grep -F ${PKGVERSION} ; then \
