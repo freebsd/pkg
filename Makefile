@@ -52,7 +52,7 @@ do-release: regression-test
 release: do-release set-tag make-tarball
 
 set-tag:
-	if git tag -l | grep -F ${PKGVERSION} ; then \
+	@if git tag -l | grep -F ${PKGVERSION} ; then \
 	    ${ECHO} "---> Error: tag ${PKGVERSION} already exists" ; \
 	    ${ECHO} "---> Either delete the tag (git tag -d ${PKGVERSION})" ; \
 	    ${ECHO} "---> (but only if you haven't pushed yet) or edit" ; \
