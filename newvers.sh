@@ -38,10 +38,10 @@
 # should not be done routinely:
 
 : ${PKG_MAJOR_VERSION:="1"}
-: ${PKG_MINOR_VERSION="1"}
-: ${PKG_PATCH_LEVEL="a1"}
+: ${PKG_MINOR_VERSION="0"}
+: ${PKG_PATCH_LEVEL="3"}
  
-: ${PORTREVISION:=}
+: ${PORTREVISION:="1"}
 : ${PORTEPOCH:=}
 
 # Define this to a true value if creating a snapshot
