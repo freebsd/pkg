@@ -270,23 +270,6 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 }
 
 int
-split_chr(char *str, char sep)
-{
-	char *next;
-	char *buf = str;
-	int nbel = 0;
-
-	while ((next = strchr(buf, sep)) != NULL) {
-		nbel++;
-		buf = next;
-		buf[0] = '\0';
-		buf++;
-	}
-
-	return nbel;
-}
-
-int
 is_dir(const char *path)
 {
 	struct stat st;
