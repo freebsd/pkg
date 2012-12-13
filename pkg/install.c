@@ -154,7 +154,7 @@ exec_install(int argc, char **argv)
 			yes = false;
 	}
 
-	if (!yes || pkg_jobs_apply(jobs) != EPKG_OK)
+	if (yes && pkg_jobs_apply(jobs) != EPKG_OK)
 		goto cleanup;
 
 	if (messages != NULL) {
