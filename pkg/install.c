@@ -154,7 +154,7 @@ exec_install(int argc, char **argv)
 	/* print a summary before applying the jobs */
 	pkg = NULL;
 	if (!quiet || dry_run) {
-		print_jobs_summary(jobs, PKG_JOBS_INSTALL,
+		print_jobs_summary(jobs,
 		    "The following %d packages will be installed:\n\n",
 		    nbactions);
 

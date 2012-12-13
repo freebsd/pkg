@@ -524,7 +524,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 }
 
 void
-print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
+print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
 	struct pkg *pkg = NULL;
 	char path[MAXPATHLEN];
@@ -535,6 +535,9 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 	bool locked;
 	char size[7];
 	va_list ap;
+	pkg_jobs_t type;
+
+	type = pkg_jobs_type(jobs);
 
 	va_start(ap, msg);
 	vprintf(msg, ap);

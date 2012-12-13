@@ -874,6 +874,7 @@ int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
 int pkg_jobs_append(struct pkg_jobs *j, match_t match, char **argv, int argc, bool recursive);
 int pkg_jobs_solve(struct pkg_jobs *j);
 int pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **pkg);
+pkg_jobs_t pkg_jobs_type(struct pkg_jobs *j);
 
 /**
  * Returns the number of elements in the job queue

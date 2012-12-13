@@ -213,6 +213,12 @@ pkg_jobs_count(struct pkg_jobs *j)
 	return (HASH_COUNT(j->jobs));
 }
 
+pkg_jobs_t
+pkg_jobs_type(struct pkg_jobs *j)
+{
+	return (j->type);
+}
+
 int
 pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
 {

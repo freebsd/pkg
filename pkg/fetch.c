@@ -132,7 +132,7 @@ exec_fetch(int argc, char **argv)
 		goto cleanup;
 
 	if (!quiet) {
-		print_jobs_summary(jobs, PKG_JOBS_FETCH, "The following packages will be fetched:\n\n");
+		print_jobs_summary(jobs, "The following packages will be fetched:\n\n");
 		
 		if (!yes)
 			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
