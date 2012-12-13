@@ -307,7 +307,7 @@ ignore_next(struct plist *p, __unused char *line)
 static int
 meta_exec(struct plist *p, char *line, bool unexec)
 {
-	char *cmd, *buf;
+	char *cmd, *buf, *tmp;
 	char comment[2];
 	char path[MAXPATHLEN + 1];
 	regmatch_t pmatch[2];
@@ -369,7 +369,8 @@ meta_exec(struct plist *p, char *line, bool unexec)
 			while (!isspace(buf[0]))
 				buf++;
 
-			split_chr(buf, '|');
+			if ((tmp = strchr(buf, '|')) != NULL)
+				tmp[0] = '\0';
 
 			if (strstr(buf, "\"/")) {
 				regcomp(&preg, "[[:space:]]\"(/[^\"]+)",
