@@ -534,6 +534,11 @@ pkg_jobs_apply(struct pkg_jobs *j)
 {
 	int rc;
 
+	if (!j->solved) {
+		pkg_emit_error("The jobs hasn't been solved");
+		return (EPKG_FATAL);
+	}
+
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
@@ -549,6 +554,15 @@ pkg_jobs_apply(struct pkg_jobs *j)
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_FETCH, j, j->db);
 		rc = pkg_jobs_fetch(j);
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
+		break;
+	case PKG_JOBS_UPGRADE:
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_UPGRADE, j, j->db);
+		rc = pkg_jobs_install(j);
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_UPGRADE, j, j->db);
+	case PKG_JOBS_AUTOREMOVE:
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_AUTOREMOVE, j, j->db);
+		rc = pkg_jobs_deinstall(j);
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_AUTOREMOVE, j, j->db);
 		break;
 	default:
 		rc = EPKG_FATAL;
