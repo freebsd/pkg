@@ -45,8 +45,6 @@ int
 exec_upgrade(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
 	int retcode = 1;
@@ -104,25 +102,15 @@ exec_upgrade(int argc, char **argv)
 	    (updcode = pkgcli_update(false)) != EPKG_OK)
 		return (updcode);
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
-	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, false, dry_run)
-	    != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db, all, dry_run)
+	    != EPKG_OK)
 		goto cleanup;
-	}
 
-	if ((it = pkgdb_query_upgrades(db, reponame, all)) == NULL) {
+	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
-	}
-
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) ==
-	       EPKG_OK) {
-		pkg_jobs_add(jobs, pkg);
-		pkg = NULL;
-	}
-	pkgdb_it_free(it);
 
 	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
 		if (!quiet)
@@ -131,7 +119,6 @@ exec_upgrade(int argc, char **argv)
 		goto cleanup;
 	}
 
-	pkg = NULL;
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs, PKG_JOBS_INSTALL,
 		    "Uprgades have been requested for the following %d "

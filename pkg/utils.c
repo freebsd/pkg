@@ -560,6 +560,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			       name, version);
 			switch (type) {
 			case PKG_JOBS_INSTALL:
+			case PKG_JOBS_UPGRADE:
 				/* If it's a new install, then it
 				 * cannot have been locked yet. */
 				if (newversion != NULL) {
@@ -591,6 +592,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 		switch (type) {
 		case PKG_JOBS_INSTALL:
+		case PKG_JOBS_UPGRADE:
 			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
 			if (stat(path, &st) == -1 || pkgsize != st.st_size)
 				/* file looks corrupted (wrong size), assume a checksum mismatch will
@@ -641,6 +643,9 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		case PKG_JOBS_INSTALL:
 			printf("\nThe installation will free %s\n", size);
 			break;
+		case PKG_JOBS_UPGRADE:
+			printf("\nThe upgrade will free %s\n", size);
+			break;
 		case PKG_JOBS_DEINSTALL:
 		case PKG_JOBS_AUTOREMOVE:
 			printf("\nThe deinstallation will free %s\n", size);
@@ -656,6 +661,9 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		case PKG_JOBS_INSTALL:
 			printf("\nThe installation will require %s more space\n", size);
 			break;
+		case PKG_JOBS_UPGRADE:
+			printf("\nThe upgrade will require %s more space\n", size);
+			break;
 		case PKG_JOBS_DEINSTALL:
 		case PKG_JOBS_AUTOREMOVE:
 			printf("\nThe deinstallation will require %s more space\n", size);
@@ -666,7 +674,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		}
 	}
 
-	if ((type == PKG_JOBS_INSTALL) || (type == PKG_JOBS_FETCH)) {
+	if ((type == PKG_JOBS_INSTALL) || (type == PKG_JOBS_FETCH) || (type == PKG_JOBS_UPGRADE)) {
 		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
 		printf("\n%s to be downloaded\n", size);
 	}

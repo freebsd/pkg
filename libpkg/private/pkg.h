@@ -156,6 +156,7 @@ struct pkg_jobs {
 	pkg_jobs_t	 type;
 	unsigned	 flags;
 	bool		 solved;
+	const char *	 reponame;
 	STAILQ_HEAD(,job_pattern) patterns;
 };
 

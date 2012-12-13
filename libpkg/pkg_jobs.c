@@ -74,6 +74,15 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
 	return (EPKG_OK);
 }
 
+int
+pkg_jobs_set_repository(struct pkg_jobs *j, const char *name)
+{
+	/* TODO should validate if the repository exists */
+	j->reponame = name;
+
+	return (EPKG_OK);
+}
+
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
@@ -162,6 +171,32 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 
 	return (EPKG_OK);
 }
+
+static int
+jobs_solve_upgrade(struct pkg_jobs *j)
+{
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it;
+	char *origin;
+	bool all = false;
+
+	if ((j->flags & PKG_JOB_FLAGS_FORCE) != 0)
+		all = true;
+
+	if ((it = pkgdb_query_upgrades(j->db, j->reponame, all)) == NULL)
+		return (EPKG_FATAL);
+
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+		pkg = NULL;
+	}
+	pkgdb_it_free(it);
+	j->solved = true;
+
+	return (EPKG_OK);
+}
+
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
@@ -170,6 +205,8 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		return (jobs_solve_autoremove(j));
 	case PKG_JOBS_DEINSTALL:
 		return (jobs_solve_deinstall(j));
+	case PKG_JOBS_UPGRADE:
+		return (jobs_solve_upgrade(j));
 	default:
 		return (EPKG_FATAL);
 	}
