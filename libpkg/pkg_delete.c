@@ -124,6 +124,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 		pkg_emit_deinstall_finished(pkg);
 
 	pkg_get(pkg, PKG_ORIGIN, &origin);
+
 	return (pkgdb_unregister_pkg(db, origin));
 }
 

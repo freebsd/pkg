@@ -94,11 +94,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 		pkgdb_unlock(j->db);
 
 	HASH_FREE(j->jobs, pkg, pkg_free);
-	while (!STAILQ_EMPTY(&j->patterns)) {
-		jp = STAILQ_FIRST(&j->patterns);
-		STAILQ_REMOVE_HEAD(&j->patterns, next);
-		free(jp);
-	}
+	LIST_FREE(&j->patterns, jp, free);
 
 	free(j);
 }

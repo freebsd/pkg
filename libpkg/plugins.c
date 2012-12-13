@@ -85,22 +85,24 @@ pkg_plugin_hook_free(struct pkg_plugin *p)
 	return (EPKG_OK);
 }
 
+static void
+plug_free(struct pkg_plugin *p)
+{
+	unsigned int i;
+
+	for (i = 0; i < PLUGIN_NUMFIELDS; i++)
+		sbuf_delete(p->fields[i]);
+
+	pkg_plugin_hook_free(p);
+	free(p);
+}
+
 static int
 pkg_plugin_free(void)
 {
 	struct pkg_plugin *p = NULL;
-	unsigned int i;
 
-        while (!STAILQ_EMPTY(&ph)) {
-                p = STAILQ_FIRST(&ph);
-                STAILQ_REMOVE_HEAD(&ph, next);
-
-		for (i = 0; i < PLUGIN_NUMFIELDS; i++)
-			sbuf_delete(p->fields[i]);
-
-		pkg_plugin_hook_free(p);
-		free(p);
-        }
+	LIST_FREE(&ph, p, plug_free);
 
 	return (EPKG_OK);
 }
