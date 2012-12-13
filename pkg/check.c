@@ -127,7 +127,6 @@ static int
 fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 {
 	struct pkg *pkg = NULL;
-	struct pkgdb_it *it = NULL;
 	struct pkg_jobs *jobs = NULL;
 	struct deps_entry *e = NULL;
 	char **pkgs = NULL;
@@ -152,29 +151,30 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		return (EPKG_FATAL);
 	}
 
-	if ((it = pkgdb_query_installs(db, MATCH_EXACT, nbpkgs, pkgs, NULL, false, false)) == NULL) {
-		free(pkgs);
+	if (pkg_jobs_append(jobs, MATCH_EXACT, pkgs, nbpkgs, false) == EPKG_FATAL) {
 		pkg_jobs_free(jobs);
 		return (EPKG_FATAL);
 	}
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
-		pkg_set(pkg, PKG_AUTOMATIC, true);
-		pkg_jobs_add(jobs, pkg);
-		pkg = NULL;
+	if (pkg_jobs_solve(jobs) != EPKG_OK) {
+		pkg_jobs_free(jobs);
+		return (EPKG_FATAL);
 	}
 
 	if (pkg_jobs_count(jobs) == 0) {
-		printf("\n>>> Unable to find packages for installation.\n\n");
+		printf("\nUnable to find packages for installation.\n\n");
 		pkg_jobs_free(jobs);
-		pkgdb_it_free(it);
 		return (EPKG_FATAL);
 	}
+
+	while (pkg_jobs(jobs, &pkg) == EPKG_OK)
+		pkg_set(pkg, PKG_AUTOMATIC, true);
+
 
 	/* print a summary before applying the jobs */
 	pkg = NULL;
 
-	print_jobs_summary(jobs, PKG_JOBS_INSTALL, "The following packages will be installed:\n\n");
+	print_jobs_summary(jobs, "The following packages will be installed:\n\n");
 	
 	if (yes == false)
 		yes = query_yesno("\n>>> Try to fix the missing dependencies [y/N]: ");
@@ -185,7 +185,6 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	free(pkgs);
 	pkg_free(pkg);
 	pkg_jobs_free(jobs);
-	pkgdb_it_free(it);
 
 	return (EPKG_OK);
 }

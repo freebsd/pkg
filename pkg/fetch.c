@@ -49,14 +49,12 @@ usage_fetch(void)
 int
 exec_fetch(int argc, char **argv)
 {
-	struct pkg *pkg = NULL;
-	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
 	int retcode = EX_SOFTWARE;
 	int ch;
-	int flags = PKG_LOAD_BASIC;
+	bool force = false;
 	bool yes = false;
 	bool auto_update = true;
 	match_t match = MATCH_EXACT;
@@ -85,7 +83,7 @@ exec_fetch(int argc, char **argv)
 			auto_update = false;
 			break;
 		case 'd':
-			flags |= PKG_LOAD_DEPS;
+			force = true;
 			break;
 		default:
 			usage_fetch();
@@ -110,23 +108,17 @@ exec_fetch(int argc, char **argv)
 	if (auto_update && (retcode = pkgcli_update(false)) != EPKG_OK)
 		return (retcode);
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
-	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db, false, false) != EPKG_OK) {
-		goto cleanup;
-	}
-
-	if ((it = pkgdb_query_fetch(db, match, argc, argv, reponame, flags)) == NULL)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db, force, false) != EPKG_OK)
 		goto cleanup;
 
-	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-		pkg_jobs_add(jobs, pkg);
-		pkg = NULL;
-	}
-	
-	pkgdb_it_free(it);
+	if (pkg_jobs_append(jobs, match, argv, argc, false) != EPKG_OK)
+		goto cleanup;
+
+	if (pkg_jobs_solve(jobs) != EPKG_OK)
+		goto cleanup;
 
 	if (pkg_jobs_count(jobs) == 0)
 		goto cleanup;
@@ -140,13 +132,12 @@ exec_fetch(int argc, char **argv)
 			yes = query_yesno("\nProceed with fetching packages [y/N]: ");
 	}
 	
-	if (yes)
-		if (pkg_jobs_apply(jobs) != EPKG_OK)
-			goto cleanup;
+	if (!yes || pkg_jobs_apply(jobs) != EPKG_OK)
+		goto cleanup;
 
 	retcode = EX_OK;
 
-	cleanup:
+cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 

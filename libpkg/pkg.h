@@ -789,12 +789,6 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
     match_t type, pkgdb_field field, pkgdb_field sort, const char *reponame);
 
 /**
- *
- */
-struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, bool force, bool recursive);
-struct pkgdb_it *pkgdb_query_fetch(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, unsigned flags);
-
-/**
  * @todo Return directly the struct pkg?
  */
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);

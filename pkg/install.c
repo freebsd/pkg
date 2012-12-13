@@ -53,7 +53,6 @@ int
 exec_install(int argc, char **argv)
 {
 	struct pkg *pkg = NULL;
-	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
@@ -135,24 +134,21 @@ exec_install(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if ((it = pkgdb_query_installs(db, match, argc, argv, reponame,
-	    force, recursive)) == NULL)
+	if (pkg_jobs_append(jobs, match, argv, argc, false) == EPKG_FATAL)
 		goto cleanup;
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) ==
-	    EPKG_OK) {
-		if (automatic)
-			pkg_set(pkg, PKG_AUTOMATIC, true);
-		pkg_jobs_add(jobs, pkg);
-		pkg = NULL;
-	}
-	pkgdb_it_free(it);
+	if (pkg_jobs_solve(jobs) != EPKG_OK)
+		goto cleanup;
 
 	if ((nbactions = pkg_jobs_count(jobs)) == 0)
 		goto cleanup;
 
+	if (automatic) {
+		while (pkg_jobs(jobs, &pkg) == EPKG_OK)
+			pkg_set(pkg, PKG_AUTOMATIC, true);
+	}
+
 	/* print a summary before applying the jobs */
-	pkg = NULL;
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
 		    "The following %d packages will be installed:\n\n",
@@ -165,9 +161,8 @@ exec_install(int argc, char **argv)
 			yes = false;
 	}
 
-	if (yes)
-		if (pkg_jobs_apply(jobs) != EPKG_OK)
-			goto cleanup;
+	if (yes || pkg_jobs_apply(jobs) != EPKG_OK)
+		goto cleanup;
 
 	if (messages != NULL) {
 		sbuf_finish(messages);
@@ -176,7 +171,7 @@ exec_install(int argc, char **argv)
 
 	retcode = EX_OK;
 
-	cleanup:
+cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 

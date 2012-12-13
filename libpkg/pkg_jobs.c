@@ -197,6 +197,64 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
+static int
+jobs_solve_install(struct pkg_jobs *j)
+{
+	struct job_pattern *jp = NULL;
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it;
+	char *origin;
+	bool force = false;
+
+	if ((j->flags & PKG_JOB_FLAGS_FORCE) != 0)
+		force = true;
+
+	STAILQ_FOREACH(jp, &j->patterns, next) {
+		if ((it = pkgdb_query_installs(j->db, jp->match, jp->nb,
+		    jp->pattern, j->reponame, force, jp->recursive)) == NULL)
+			return (EPKG_FATAL);
+
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+			pkg = NULL;
+		}
+		pkgdb_it_free(it);
+	}
+	j->solved = true;
+
+	return (EPKG_OK);
+}
+
+static int
+jobs_solve_fetch(struct pkg_jobs *j)
+{
+	struct job_pattern *jp = NULL;
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it;
+	char *origin;
+	unsigned flag = PKG_LOAD_BASIC;
+
+	if ((j->flags & PKG_JOB_FLAGS_FORCE) != 0)
+		flag |= PKG_LOAD_DEPS;
+
+	STAILQ_FOREACH(jp, &j->patterns, next) {
+		if ((it = pkgdb_query_fetch(j->db, jp->match, jp->nb,
+		    jp->pattern, j->reponame, flag)) == NULL)
+			return (EPKG_FATAL);
+
+		while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+			pkg = NULL;
+		}
+		pkgdb_it_free(it);
+	}
+	j->solved = true;
+
+	return (EPKG_OK);
+}
+
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
@@ -207,6 +265,10 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		return (jobs_solve_deinstall(j));
 	case PKG_JOBS_UPGRADE:
 		return (jobs_solve_upgrade(j));
+	case PKG_JOBS_INSTALL:
+		return (jobs_solve_install(j));
+	case PKG_JOBS_FETCH:
+		return (jobs_solve_fetch(j));
 	default:
 		return (EPKG_FATAL);
 	}
