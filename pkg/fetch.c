@@ -114,7 +114,7 @@ exec_fetch(int argc, char **argv)
 	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db, force, false) != EPKG_OK)
 		goto cleanup;
 
-	if (pkg_jobs_append(jobs, match, argv, argc, false) != EPKG_OK)
+	if (pkg_jobs_add(jobs, match, argv, argc, false) != EPKG_OK)
 		goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)

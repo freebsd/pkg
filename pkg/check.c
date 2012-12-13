@@ -151,7 +151,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		return (EPKG_FATAL);
 	}
 
-	if (pkg_jobs_append(jobs, MATCH_EXACT, pkgs, nbpkgs, false) == EPKG_FATAL) {
+	if (pkg_jobs_add(jobs, MATCH_EXACT, pkgs, nbpkgs, false) == EPKG_FATAL) {
 		pkg_jobs_free(jobs);
 		return (EPKG_FATAL);
 	}

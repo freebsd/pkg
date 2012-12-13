@@ -866,9 +866,7 @@ void pkg_jobs_free(struct pkg_jobs *jobs);
  * Add a pkg to the jobs queue.
  * @return An error code.
  */
-int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
-
-int pkg_jobs_append(struct pkg_jobs *j, match_t match, char **argv, int argc, bool recursive);
+int pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc, bool recursive);
 int pkg_jobs_solve(struct pkg_jobs *j);
 int pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **pkg);
 int pkg_jobs_set_repository(struct pkg_jobs *j, const char *name);

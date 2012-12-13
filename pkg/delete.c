@@ -117,7 +117,7 @@ exec_delete(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_append(jobs, match, argv, argc, recursive) == EPKG_FATAL)
+	if (pkg_jobs_add(jobs, match, argv, argc, recursive) == EPKG_FATAL)
 		goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)

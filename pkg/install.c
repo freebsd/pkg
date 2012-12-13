@@ -134,7 +134,7 @@ exec_install(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (pkg_jobs_append(jobs, match, argv, argc, false) == EPKG_FATAL)
+	if (pkg_jobs_add(jobs, match, argv, argc, false) == EPKG_FATAL)
 		goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)

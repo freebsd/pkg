@@ -105,7 +105,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 }
 
 int
-pkg_jobs_append(struct pkg_jobs *j, match_t match, char **argv, int argc,
+pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc,
     bool recursive)
 {
 	struct job_pattern *jp;
@@ -285,21 +285,6 @@ pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **p)
 
 	if (p != NULL)
 		*p = pkg;
-
-	return (EPKG_OK);
-}
-
-/* deprecated should die in the end */
-int
-pkg_jobs_add(struct pkg_jobs *j, struct pkg *pkg)
-{
-	char *origin;
-
-	assert(j != NULL);
-	assert(pkg != NULL);
-
-	pkg_get(pkg, PKG_ORIGIN, &origin);
-	HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
 
 	return (EPKG_OK);
 }
