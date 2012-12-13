@@ -113,10 +113,7 @@ exec_autoremove(int argc, char **argv)
 		if (dry_run)
 			yes = false;
 	}
-	if (yes) {
-		if (yes && (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
-			goto cleanup;
-	} else
+	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
 
 	pkgdb_compact(db);
