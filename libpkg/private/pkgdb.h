@@ -57,6 +57,7 @@ int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 
 struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
+struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
 
 int pkgdb_lock(struct pkgdb *db);
 int pkgdb_unlock(struct pkgdb *db);

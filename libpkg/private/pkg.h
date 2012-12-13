@@ -155,6 +155,16 @@ struct pkg_jobs {
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	unsigned	 flags;
+	bool		 solved;
+	STAILQ_HEAD(,job_pattern) patterns;
+};
+
+struct job_pattern {
+	char		**pattern;
+	int		nb;
+	match_t		match;
+	bool		recursive;
+	STAILQ_ENTRY(job_pattern) next;
 };
 
 typedef enum _pkg_job_flags {

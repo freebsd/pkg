@@ -64,6 +64,8 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
 
 	(*j)->db = db;
 	(*j)->type = t;
+	(*j)->solved = false;
+	STAILQ_INIT(&(*j)->patterns);
 	if (dry_run)
 		(*j)->flags |= PKG_JOB_FLAGS_DRY_RUN;
 	if (force)
@@ -75,6 +77,8 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
+	struct job_pattern *jp;
+
 	if (j == NULL)
 		return;
 
@@ -82,20 +86,48 @@ pkg_jobs_free(struct pkg_jobs *j)
 		pkgdb_unlock(j->db);
 
 	HASH_FREE(j->jobs, pkg, pkg_free);
+	while (!STAILQ_EMPTY(&j->patterns)) {
+		jp = STAILQ_FIRST(&j->patterns);
+		STAILQ_REMOVE_HEAD(&j->patterns, next);
+		free(jp);
+	}
 
 	free(j);
 }
 
 int
-pkg_jobs_append(struct pkg_jobs *j, match_t match, char **argv, int argc, bool recursive)
+pkg_jobs_append(struct pkg_jobs *j, match_t match, char **argv, int argc,
+    bool recursive)
 {
+	struct job_pattern *jp;
+
+	if (!j->solved) {
+		pkg_emit_error("The job has already been solved."
+		    "Impossible to append now elements");
+		return (EPKG_FATAL);
+	}
+
+	jp = malloc(sizeof(struct job_pattern));
+	jp->pattern = argv;
+	jp->nb = argc;
+	jp->match = match;
+	jp->recursive = recursive;
+	STAILQ_INSERT_TAIL(&j->patterns, jp, next);
+
+	return (EPKG_OK);
+}
+
+static int
+jobs_solve_deinstall(struct pkg_jobs *j)
+{
+	struct job_pattern *jp = NULL;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
 
-	switch (j->type) {
-	case PKG_JOBS_DEINSTALL:
-		if ((it = pkgdb_query_delete(j->db, match, argc, argv, recursive)) == NULL)
+	STAILQ_FOREACH(jp, &j->patterns, next) {
+		if ((it = pkgdb_query_delete(j->db, jp->match, jp->nb,
+		    jp->pattern, jp->recursive)) == NULL)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
@@ -104,11 +136,43 @@ pkg_jobs_append(struct pkg_jobs *j, match_t match, char **argv, int argc, bool r
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
-		break;
+	}
+	j->solved = true;
+
+	return( EPKG_OK);
+}
+
+static int
+jobs_solve_autoremove(struct pkg_jobs *j)
+{
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it;
+	char *origin;
+
+	if ((it = pkgdb_query_autoremove(j->db)) == NULL)
+		return (EPKG_FATAL);
+
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+		pkg = NULL;
+	}
+	pkgdb_it_free(it);
+	j->solved = true;
+
+	return (EPKG_OK);
+}
+int
+pkg_jobs_solve(struct pkg_jobs *j)
+{
+	switch (j->type) {
+	case PKG_JOBS_AUTOREMOVE:
+		return (jobs_solve_autoremove(j));
+	case PKG_JOBS_DEINSTALL:
+		return (jobs_solve_deinstall(j));
 	default:
 		return (EPKG_FATAL);
 	}
-	return (EPKG_OK);
 }
 
 int

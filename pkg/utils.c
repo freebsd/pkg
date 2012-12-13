@@ -575,6 +575,7 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 				} 
 				break;
 			case PKG_JOBS_DEINSTALL:
+			case PKG_JOBS_AUTOREMOVE:
 				printf("and may not be deinstalled\n");
 				continue;
 				break;
@@ -613,6 +614,7 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 			}
 			break;
 		case PKG_JOBS_DEINSTALL:
+		case PKG_JOBS_AUTOREMOVE:
 			oldsize += flatsize;
 			newsize += newflatsize;
 			
@@ -637,6 +639,7 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 			printf("\nThe installation will free %s\n", size);
 			break;
 		case PKG_JOBS_DEINSTALL:
+		case PKG_JOBS_AUTOREMOVE:
 			printf("\nThe deinstallation will free %s\n", size);
 			break;
 		case PKG_JOBS_FETCH:
@@ -651,6 +654,7 @@ print_jobs_summary(struct pkg_jobs *jobs, pkg_jobs_t type, const char *msg, ...)
 			printf("\nThe installation will require %s more space\n", size);
 			break;
 		case PKG_JOBS_DEINSTALL:
+		case PKG_JOBS_AUTOREMOVE:
 			printf("\nThe deinstallation will require %s more space\n", size);
 			break;
 		case PKG_JOBS_FETCH:

@@ -243,6 +243,7 @@ typedef enum _pkg_jobs_t {
 	PKG_JOBS_INSTALL,
 	PKG_JOBS_DEINSTALL,
 	PKG_JOBS_FETCH,
+	PKG_JOBS_AUTOREMOVE,
 } pkg_jobs_t;
 
 typedef enum _pkg_config_key {
@@ -792,7 +793,6 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
 struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, bool force, bool recursive);
 struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame, bool all);
 struct pkgdb_it *pkgdb_query_downgrades(struct pkgdb *db, const char *reponame);
-struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
 struct pkgdb_it *pkgdb_query_fetch(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, unsigned flags);
 
 /**
@@ -872,6 +872,7 @@ void pkg_jobs_free(struct pkg_jobs *jobs);
 int pkg_jobs_add(struct pkg_jobs *jobs, struct pkg *pkg);
 
 int pkg_jobs_append(struct pkg_jobs *j, match_t match, char **argv, int argc, bool recursive);
+int pkg_jobs_solve(struct pkg_jobs *j);
 int pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **pkg);
 
 /**

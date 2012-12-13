@@ -46,17 +46,14 @@ int
 exec_autoremove(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
-	struct pkgdb_it *it;
-	struct pkg *pkg = NULL;
 	struct pkg_jobs *jobs = NULL;
-	int retcode = EPKG_OK;
-	int64_t oldsize = 0, newsize = 0;
-	int64_t flatsize, newflatsize;
-	char size[7];
+	int retcode = EX_SOFTWARE;
 	int ch;
 	bool yes = false;
 	bool dry_run = false;
 	nbactions = nbdone = 0;
+
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 	while ((ch = getopt(argc, argv, "ynq")) != -1) {
 		switch (ch) {
@@ -92,31 +89,14 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	/* Always force packages to be removed */
-	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, true, dry_run)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_AUTOREMOVE, db, true, dry_run)
 	    != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
 
-	if ((it = pkgdb_query_autoremove(db)) == NULL) {
-		retcode = EPKG_FATAL;
+	if ((retcode = pkg_jobs_solve(jobs)) != EPKG_OK)
 		goto cleanup;
-	}
-
-	while ((retcode = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		pkg_get(pkg, PKG_FLATSIZE, &flatsize, PKG_NEW_FLATSIZE, &newflatsize);
-		oldsize += flatsize;
-		newsize += newflatsize;
-		pkg_jobs_add(jobs, pkg);
-		pkg = NULL;
-	}
-
-	if (oldsize > newsize) {
-		newsize *= -1;
-		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-	} else {
-		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-	}
 
 	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
 		printf("Nothing to do.\n");
@@ -124,42 +104,28 @@ exec_autoremove(int argc, char **argv)
 		goto cleanup;
 	}
 
-	pkg = NULL;
 	if (!quiet || dry_run) {
-		printf("%d packages to be autoremoved: \n", nbactions);
-		while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-			const char *name, *version;
-			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-			printf("\t%s-%s\n", name, version);
-		}
-
-		if (oldsize > newsize)
-			printf("\nThe autoremoval will free %s\n", size);
-		else
-			printf("\nThe autoremoval will require %s more space\n", size);
-
-		if (!yes)
-			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+		print_jobs_summary(jobs, PKG_JOBS_AUTOREMOVE,
+		    "Deinstallation has been requested for the following %d packages:\n\n", nbactions);
 		if (!yes && !dry_run)
-			yes = query_yesno("\nProceed with autoremoval of packages [y/N]: ");
+			yes = query_yesno(
+		            "\nProceed with deinstalling packages [y/N]: ");
 		if (dry_run)
 			yes = false;
 	}
-
 	if (yes) {
-		if ((retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
+		if (yes && (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 			goto cleanup;
-	}
+	} else
+		goto cleanup;
 
-	if (pkgdb_compact(db) != EPKG_OK) {
-		retcode = EPKG_FATAL;
-	}
+	pkgdb_compact(db);
 
-	cleanup:
-	pkg_free(pkg);
+	retcode = EX_OK;
+
+cleanup:
 	pkg_jobs_free(jobs);
-	pkgdb_it_free(it);
 	pkgdb_close(db);
 
-	return ((retcode == EPKG_OK) ? EX_OK : EX_SOFTWARE);
+	return (retcode);
 }
