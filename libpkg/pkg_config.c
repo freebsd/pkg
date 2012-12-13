@@ -189,7 +189,7 @@ parse_config_sequence(yaml_document_t *doc, yaml_node_t *seq, struct pkg_config 
 		}
 		v = malloc(sizeof(struct pkg_config_value));
 		v->value = strdup(val->data.scalar.value);
-		STAILQ_INSERT_TAIL(&conf->list, v, next);
+		HASH_ADD_STR(conf->list, value, v);
 		++item;
 	}
 }
@@ -212,7 +212,7 @@ parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, struct pkg_config *
 		kv = malloc(sizeof(struct pkg_config_kv));
 		kv->key = strdup(subkey->data.scalar.value);
 		kv->value = strdup(subval->data.scalar.value);
-		STAILQ_INSERT_TAIL(&conf->kvlist, kv, next);
+		HASH_ADD_STR(conf->kvlist, value, kv);
 		++subpair;
 	}
 }
@@ -439,15 +439,7 @@ pkg_config_kvlist(pkg_config_key key, struct pkg_config_kv **kv)
 		return (EPKG_FATAL);
 	}
 
-	if (*kv == NULL)
-		*kv = STAILQ_FIRST(&(conf->kvlist));
-	else
-		*kv = STAILQ_NEXT(*kv, next);
-
-	if (*kv == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	HASH_NEXT(conf->kvlist, (*kv));
 }
 
 int
@@ -469,14 +461,7 @@ pkg_config_list(pkg_config_key key, struct pkg_config_value **v)
 		return (EPKG_FATAL);
 	}
 
-	if (*v == NULL)
-		*v = STAILQ_FIRST(&conf->list);
-	else
-		*v = STAILQ_NEXT(*v, next);
-	if (*v == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	HASH_NEXT(conf->list, (*v));
 }
 
 const char *
@@ -591,10 +576,10 @@ pkg_init(const char *path)
 			}
 			break;
 		case PKG_CONFIG_KVLIST:
-			STAILQ_INIT(&conf->kvlist);
+			conf->kvlist = NULL;
 			break;
 		case PKG_CONFIG_LIST:
-			STAILQ_INIT(&conf->list);
+			conf->list = NULL;
 			break;
 		}
 
@@ -642,31 +627,32 @@ pkg_init(const char *path)
 }
 
 static void
+pkg_config_kv_free(struct pkg_config_kv *k)
+{
+	free(k->key);
+	free(k->value);
+	free(k);
+}
+
+static void
+pkg_config_value_free(struct pkg_config_value *v)
+{
+	free(v->value);
+	free(v);
+}
+
+static void
 pkg_config_free(struct pkg_config *conf)
 {
-	struct pkg_config_kv *k;
-	struct pkg_config_value *v;
 	if (conf == NULL)
 		return;
 
 	if (conf->type == PKG_CONFIG_STRING)
 		free(conf->string);
-	else if (conf->type == PKG_CONFIG_KVLIST) {
-		while (!STAILQ_EMPTY(&conf->kvlist)) {
-			k = STAILQ_FIRST(&conf->kvlist);
-			free(k->key);
-			free(k->value);
-			STAILQ_REMOVE_HEAD(&conf->kvlist, next);
-			free(k);
-		}
-	} else if (conf->type == PKG_CONFIG_LIST) {
-		while (!STAILQ_EMPTY(&conf->kvlist)) {
-			v = STAILQ_FIRST(&conf->list);
-			free(v->value);
-			STAILQ_REMOVE_HEAD(&conf->list, next);
-			free(v);
-		}
-	}
+	else if (conf->type == PKG_CONFIG_KVLIST)
+		HASH_FREE(conf->kvlist, pkg_config_kv, pkg_config_kv_free);
+	else if (conf->type == PKG_CONFIG_LIST)
+		HASH_FREE(conf->list, pkg_config_value, pkg_config_value_free);
 
 	free(conf);
 }

@@ -203,8 +203,8 @@ struct pkg_config {
 		char *string;
 		uint64_t integer;
 		bool boolean;
-		STAILQ_HEAD(, pkg_config_kv) kvlist;
-		STAILQ_HEAD(, pkg_config_value) list;
+		struct pkg_config_kv *kvlist;
+		struct pkg_config_value *list;
 	};
 	UT_hash_handle hh;
 	UT_hash_handle hhkey;
@@ -213,12 +213,12 @@ struct pkg_config {
 struct pkg_config_kv {
 	char *key;
 	char *value;
-	STAILQ_ENTRY(pkg_config_kv) next;
+	UT_hash_handle hh;
 };
 
 struct pkg_config_value {
 	char *value;
-	STAILQ_ENTRY(pkg_config_value) next;
+	UT_hash_handle hh;
 };
 
 /* sql helpers */
