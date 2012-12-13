@@ -154,7 +154,7 @@ struct pkg_jobs {
 	struct pkg	*jobs;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
-	unsigned	 flags;
+	pkg_flags	 flags;
 	bool		 solved;
 	const char *	 reponame;
 	STAILQ_HEAD(,job_pattern) patterns;
@@ -164,14 +164,8 @@ struct job_pattern {
 	char		**pattern;
 	int		nb;
 	match_t		match;
-	bool		recursive;
 	STAILQ_ENTRY(job_pattern) next;
 };
-
-typedef enum _pkg_job_flags {
-	PKG_JOB_FLAGS_FORCE =	(1 << 0 ),
-	PKG_JOB_FLAGS_DRY_RUN =	(1 << 1),
-} pkg_job_flags;
 
 struct pkg_jobs_node {
 	struct pkg	*pkg;

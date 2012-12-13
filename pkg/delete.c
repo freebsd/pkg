@@ -49,7 +49,6 @@ int
 exec_delete(int argc, char **argv)
 {
 	struct pkg_jobs *jobs = NULL;
-	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	match_t match = MATCH_EXACT;
 	int ch;
@@ -57,8 +56,8 @@ exec_delete(int argc, char **argv)
 	bool yes;
 	bool dry_run = false;
 	int retcode = EX_SOFTWARE;
-	int recursive = 0;
 	nbactions = nbdone = 0;
+	pkg_flags f = PKG_FLAG_NONE;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
@@ -68,19 +67,21 @@ exec_delete(int argc, char **argv)
 			match = MATCH_ALL;
 			break;
 		case 'f':
+			f |= PKG_FLAG_FORCE;
 			force = true;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
 			break;
 		case 'n':
+			f |= PKG_FLAG_DRY_RUN;
 			dry_run = true;
 			break;
 		case 'q':
 			quiet = true;
 			break;
 		case 'R':
-			recursive = 1;
+			f |= PKG_FLAG_RECURSIVE;
 			break;
 		case 'x':
 			match = MATCH_REGEX;
@@ -111,13 +112,14 @@ exec_delete(int argc, char **argv)
 		return (EPKG_FATAL);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, force, dry_run)
-	    != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_add(jobs, match, argv, argc, recursive) == EPKG_FATAL)
+	pkg_jobs_set_flags(jobs, f);
+
+	if (pkg_jobs_add(jobs, match, argv, argc) == EPKG_FATAL)
 		goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
@@ -143,7 +145,6 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 	}
 
-	pkg = NULL;
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
 		    "Deinstallation has been requested for the following %d packages:\n\n", nbactions);

@@ -247,6 +247,15 @@ typedef enum _pkg_jobs_t {
 	PKG_JOBS_UPGRADE,
 } pkg_jobs_t;
 
+typedef enum _pkg_flags {
+	PKG_FLAG_NONE = 0,
+	PKG_FLAG_DRY_RUN = (1U << 0),
+	PKG_FLAG_FORCE = (1U << 1),
+	PKG_FLAG_RECURSIVE = (1U << 2),
+	PKG_FLAG_AUTOMATIC = (1U << 3),
+	PKG_FLAG_WITH_DEPS = (1U << 4),
+} pkg_flags;
+
 typedef enum _pkg_config_key {
 	PKG_CONFIG_REPO = 0,
 	PKG_CONFIG_DBDIR,
@@ -854,8 +863,7 @@ int pkg_add(struct pkgdb *db, const char *path, unsigned flags);
  * @param db A pkgdb open with PKGDB_REMOTE.
  * @return An error code.
  */
-int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db,
-		 bool force, bool dry_run);
+int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db);
 
 /**
  * Free a pkg_jobs
@@ -866,10 +874,11 @@ void pkg_jobs_free(struct pkg_jobs *jobs);
  * Add a pkg to the jobs queue.
  * @return An error code.
  */
-int pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc, bool recursive);
+int pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc);
 int pkg_jobs_solve(struct pkg_jobs *j);
 int pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **pkg);
 int pkg_jobs_set_repository(struct pkg_jobs *j, const char *name);
+void pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags f);
 pkg_jobs_t pkg_jobs_type(struct pkg_jobs *j);
 
 /**

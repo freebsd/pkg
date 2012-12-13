@@ -52,6 +52,7 @@ exec_autoremove(int argc, char **argv)
 	bool yes = false;
 	bool dry_run = false;
 	nbactions = nbdone = 0;
+	pkg_flags f = PKG_FLAG_FORCE;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
@@ -64,6 +65,7 @@ exec_autoremove(int argc, char **argv)
 			yes = true;
 			break;
 		case 'n':
+			f |= PKG_FLAG_DRY_RUN;
 			dry_run = true;
 			break;
 		default:
@@ -73,7 +75,6 @@ exec_autoremove(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	(void) argv;
 	if (argc != 0) {
 		usage_autoremove();
 		return (EX_USAGE);
@@ -89,11 +90,12 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	/* Always force packages to be removed */
-	if (pkg_jobs_new(&jobs, PKG_JOBS_AUTOREMOVE, db, true, dry_run)
-	    != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_AUTOREMOVE, db) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
+
+	pkg_jobs_set_flags(jobs, f);
 
 	if ((retcode = pkg_jobs_solve(jobs)) != EPKG_OK)
 		goto cleanup;

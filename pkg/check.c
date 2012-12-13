@@ -126,11 +126,11 @@ deps_free(struct deps_head *dh)
 static int
 fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 {
-	struct pkg *pkg = NULL;
 	struct pkg_jobs *jobs = NULL;
 	struct deps_entry *e = NULL;
 	char **pkgs = NULL;
 	int i = 0;
+	pkg_flags f = PKG_FLAG_AUTOMATIC;
 
 	assert(db != NULL);
 	assert(nbpkgs > 0);
@@ -146,12 +146,14 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		return (EPKG_ENODB);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, false, false) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
 		free(pkgs);
 		return (EPKG_FATAL);
 	}
 
-	if (pkg_jobs_add(jobs, MATCH_EXACT, pkgs, nbpkgs, false) == EPKG_FATAL) {
+	pkg_jobs_set_flags(jobs, f);
+
+	if (pkg_jobs_add(jobs, MATCH_EXACT, pkgs, nbpkgs) == EPKG_FATAL) {
 		pkg_jobs_free(jobs);
 		return (EPKG_FATAL);
 	}
@@ -167,13 +169,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		return (EPKG_FATAL);
 	}
 
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK)
-		pkg_set(pkg, PKG_AUTOMATIC, true);
-
-
 	/* print a summary before applying the jobs */
-	pkg = NULL;
-
 	print_jobs_summary(jobs, "The following packages will be installed:\n\n");
 	
 	if (yes == false)
@@ -183,7 +179,6 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		pkg_jobs_apply(jobs);
 
 	free(pkgs);
-	pkg_free(pkg);
 	pkg_jobs_free(jobs);
 
 	return (EPKG_OK);

@@ -52,7 +52,6 @@ usage_install(void)
 int
 exec_install(int argc, char **argv)
 {
-	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
@@ -61,23 +60,20 @@ exec_install(int argc, char **argv)
 	int ch;
 	bool yes;
 	bool auto_update = true;
-	bool recursive = false;
-	bool automatic = false;
-
 	match_t match = MATCH_EXACT;
-	bool force = false;
 	bool dry_run = false;
 	nbactions = nbdone = 0;
+	pkg_flags f = PKG_FLAG_NONE;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 	while ((ch = getopt(argc, argv, "AfgLnqRr:xy")) != -1) {
 		switch (ch) {
 		case 'A':
-			automatic = true;
+			f |= PKG_FLAG_AUTOMATIC;
 			break;
 		case 'f':
-			force = true;
+			f |= PKG_FLAG_FORCE;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
@@ -86,13 +82,14 @@ exec_install(int argc, char **argv)
 			auto_update = false;
 			break;
 		case 'n':
+			f |= PKG_FLAG_DRY_RUN;
 			dry_run = true;
 			break;
 		case 'q':
 			quiet = true;
 			break;
 		case 'R':
-			recursive = true;
+			f |= PKG_FLAG_RECURSIVE;
 			break;
 		case 'r':
 			reponame = optarg;
@@ -129,12 +126,13 @@ exec_install(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, force, dry_run)
-	    != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
 		goto cleanup;
 	}
 
-	if (pkg_jobs_add(jobs, match, argv, argc, false) == EPKG_FATAL)
+	pkg_jobs_set_flags(jobs, f);
+
+	if (pkg_jobs_add(jobs, match, argv, argc) == EPKG_FATAL)
 		goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
@@ -142,11 +140,6 @@ exec_install(int argc, char **argv)
 
 	if ((nbactions = pkg_jobs_count(jobs)) == 0)
 		goto cleanup;
-
-	if (automatic) {
-		while (pkg_jobs(jobs, &pkg) == EPKG_OK)
-			pkg_set(pkg, PKG_AUTOMATIC, true);
-	}
 
 	/* print a summary before applying the jobs */
 	if (!quiet || dry_run) {

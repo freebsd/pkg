@@ -58,6 +58,7 @@ exec_fetch(int argc, char **argv)
 	bool yes = false;
 	bool auto_update = true;
 	match_t match = MATCH_EXACT;
+	pkg_flags f = PKG_FLAG_NONE;
 
 	while ((ch = getopt(argc, argv, "ygxr:qaLd")) != -1) {
 		switch (ch) {
@@ -83,6 +84,7 @@ exec_fetch(int argc, char **argv)
 			auto_update = false;
 			break;
 		case 'd':
+			f |= PKG_FLAG_WITH_DEPS;
 			force = true;
 			break;
 		default:
@@ -111,10 +113,12 @@ exec_fetch(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db, force, false) != EPKG_OK)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db) != EPKG_OK)
 		goto cleanup;
 
-	if (pkg_jobs_add(jobs, match, argv, argc, false) != EPKG_OK)
+	pkg_jobs_set_flags(jobs, f);
+
+	if (pkg_jobs_add(jobs, match, argv, argc) != EPKG_OK)
 		goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)

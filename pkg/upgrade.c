@@ -51,22 +51,23 @@ exec_upgrade(int argc, char **argv)
 	int updcode;
 	int ch;
 	bool yes;
-	bool all = false;
 	bool dry_run = false;
 	bool auto_update = true;
 	nbactions = nbdone = 0;
+	pkg_flags f = PKG_FLAG_NONE;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 	while ((ch = getopt(argc, argv, "fLnqr:y")) != -1) {
 		switch (ch) {
 		case 'f':
-			all = true;
+			f |= PKG_FLAG_FORCE;
 			break;
 		case 'L':
 			auto_update = false;
 			break;
 		case 'n':
+			f |= PKG_FLAG_DRY_RUN;
 			dry_run = true;
 			break;
 		case 'q':
@@ -105,9 +106,10 @@ exec_upgrade(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db, all, dry_run)
-	    != EPKG_OK)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK)
 		goto cleanup;
+
+	pkg_jobs_set_flags(jobs, f);
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
@@ -120,7 +122,7 @@ exec_upgrade(int argc, char **argv)
 	}
 
 	if (!quiet || dry_run) {
-		print_jobs_summary(jobs, PKG_JOBS_INSTALL,
+		print_jobs_summary(jobs,
 		    "Uprgades have been requested for the following %d "
 		    "packages:\n\n", nbactions);
 
