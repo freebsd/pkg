@@ -288,19 +288,6 @@ sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH],
 	out[SHA256_DIGEST_LENGTH * 2] = '\0';
 }
 
-void
-sha256_str(const char *string, char out[SHA256_DIGEST_LENGTH * 2 + 1])
-{
-	unsigned char hash[SHA256_DIGEST_LENGTH];
-	SHA256_CTX sha256;
-
-	SHA256_Init(&sha256);
-	SHA256_Update(&sha256, string, strlen(string));
-	SHA256_Final(hash, &sha256);
-
-	sha256_hash(hash, out);
-}
-
 int
 sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
