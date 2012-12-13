@@ -751,10 +751,7 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 int
 ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 {
-	char *plist_p, *buf, *plist_buf;
-	int nbel, i;
-	size_t next;
-	size_t len;
+	char *plist_buf, *walk, *buf, *token;
 	int ret = EPKG_OK;
 	off_t sz = 0;
 	struct hardlinks hardlinks = {NULL, 0, 0};
@@ -793,21 +790,19 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pkg_get(pkg, PKG_PREFIX, &pplist.prefix);
 	pplist.slash = pplist.prefix[strlen(pplist.prefix) - 1] == '/' ? "" : "/";
 
-	nbel = split_chr(plist_buf, '\n');
+	walk = plist_buf;
 
-	next = strlen(plist_buf);
-	plist_p = plist_buf;
-
-	for (i = 0; i <= nbel; i++) {
+	while ((token = strsep(&walk, "\n")) != NULL) {
 		if (pplist.ignore_next) {
 			pplist.ignore_next = false;
-			plist_p += next + 1;
-			next = strlen(plist_p);
 			continue;
 		}
 
-		if (plist_p[0] == '@') {
-			char *keyword = plist_p;
+		if (token[0] == '\0')
+			continue;
+
+		if (token[0] == '@') {
+			char *keyword = token;
 
 			keyword++; /* skip the @ */
 			buf = keyword;
@@ -824,20 +819,20 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 			switch (parse_keywords(&pplist, keyword, buf)) {
 			case EPKG_UNKNOWN:
 				pkg_emit_error("unknown keyword %s, ignoring %s",
-				    keyword, plist_p);
+				    keyword, token);
 				break;
 			case EPKG_FATAL:
 				ret = EPKG_FATAL;
 				break;
 			}
-		} else if ((len = strlen(plist_p)) > 0){
+		} else {
 			if (sbuf_len(pplist.unexec_buf) > 0) {
 				sbuf_finish(pplist.unexec_buf);
 				pre_unexec_append(pplist.pre_deinstall_buf,
 				    sbuf_get(pplist.unexec_buf), "");
 				sbuf_reset(pplist.unexec_buf);
 			}
-			buf = plist_p;
+			buf = token;
 			pplist.last_file = buf;
 
 			/* remove spaces at the begining and at the end */
@@ -846,11 +841,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 
 			if (file(&pplist, buf) != EPKG_OK)
 				ret = EPKG_FATAL;
-		}
-
-		if (i != nbel) {
-			plist_p += next + 1;
-			next = strlen(plist_p);
 		}
 	}
 
