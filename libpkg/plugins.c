@@ -318,7 +318,7 @@ pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key)
 	conf->id = id;
 	conf->key = key;
 	conf->type = PKG_CONFIG_KVLIST;
-	STAILQ_INIT(&conf->kvlist);
+	conf->kvlist = NULL;
 
 	HASH_ADD_INT(p->conf, id, conf);
 	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
@@ -348,7 +348,7 @@ pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key)
 	conf->id = id;
 	conf->key = key;
 	conf->type = PKG_CONFIG_LIST;
-	STAILQ_INIT(&conf->list);
+	conf->list = NULL;
 
 	HASH_ADD_INT(p->conf, id, conf);
 	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
@@ -501,15 +501,7 @@ pkg_plugin_conf_kvlist(struct pkg_plugin *p, int key, struct pkg_config_kv **kv)
 		return (EPKG_FATAL);
 	}
 
-	if (*kv == NULL)
-		*kv = STAILQ_FIRST(&(conf->kvlist));
-	else
-		*kv = STAILQ_NEXT(*kv, next);
-
-	if (*kv == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	HASH_NEXT(conf->kvlist, (*kv));
 }
 
 int
@@ -531,14 +523,7 @@ pkg_plugin_conf_list(struct pkg_plugin *p, int key, struct pkg_config_value **v)
 		return (EPKG_FATAL);
 	}
 
-	if (*v == NULL)
-		*v = STAILQ_FIRST(&conf->list);
-	else
-		*v = STAILQ_NEXT(*v, next);
-	if (*v == NULL)
-		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	HASH_NEXT(conf->list, (*v));
 }
 
 int
