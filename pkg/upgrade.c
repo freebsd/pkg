@@ -131,9 +131,8 @@ exec_upgrade(int argc, char **argv)
 			yes = false;
 	}
 
-	if (yes)
-		if (pkg_jobs_apply(jobs) != EPKG_OK)
-			goto cleanup;
+	if (yes && pkg_jobs_apply(jobs) != EPKG_OK)
+		goto cleanup;
 
 	if (messages != NULL) {
 		sbuf_finish(messages);
