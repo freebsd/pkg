@@ -3032,49 +3032,6 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 }
 
 struct pkgdb_it *
-pkgdb_query_downgrades(struct pkgdb *db, const char *repo)
-{
-	struct sbuf	*sql = NULL;
-	const char	*reponame = NULL;
-	sqlite3_stmt	*stmt = NULL;
-	int		 ret;
-
-	assert(db != NULL);
-	assert(db->type == PKGDB_REMOTE);
-
-	const char	 finalsql[] = ""
-		"SELECT l.id, l.origin AS origin, l.name AS name, "
-		    "l.version AS version, l.comment AS comment, "
-		    "l.desc AS desc, l.message AS message, l.arch AS arch, "
-		    "l.maintainer AS maintainer, l.www AS www, "
-		    "l.prefix AS prefix, l.locked AS locked, "
-		    "l.flatsize AS flatsize, r.version AS version, "
-		    "r.flatsize AS newflatsize, r.pkgsize AS pkgsize, "
-		    "r.path AS repopath, '%s' AS dbname "
-		"FROM main.packages AS l, "
-		    "'%s'.packages AS r "
-		"WHERE l.origin = r.origin "
-		    "AND PKGGT(l.version, r.version)";
-
-	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL)
-		return (NULL);
-
-	sql = sbuf_new_auto();
-	sbuf_printf(sql, finalsql, reponame, reponame);
-	sbuf_finish(sql);
-
-	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		sbuf_delete(sql);
-		return (NULL);
-	}
-	sbuf_delete(sql);
-
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
-}
-
-struct pkgdb_it *
 pkgdb_query_autoremove(struct pkgdb *db)
 {
 	sqlite3_stmt	*stmt = NULL;
