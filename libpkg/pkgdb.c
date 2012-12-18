@@ -3868,7 +3868,7 @@ pkgshell_open(const char **reponame)
 }
 
 int
-pkgdb_lock(struct pkgdb *db)
+pkgdb_obtain_lock(struct pkgdb *db)
 {
 	assert(db != NULL);
 	assert(db->lock_count >= 0);
@@ -3880,7 +3880,7 @@ pkgdb_lock(struct pkgdb *db)
 }
 
 int
-pkgdb_unlock(struct pkgdb *db)
+pkgdb_release_lock(struct pkgdb *db)
 {
 	assert(db != NULL);
 	assert(db->lock_count >= 0);
