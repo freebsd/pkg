@@ -105,8 +105,8 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	struct job_pattern *jp;
 
 	if (!j->solved) {
-		pkg_emit_error("The job has already been solved."
-		    "Impossible to append now elements");
+		pkg_emit_error("The job has already been solved. "
+		    "Impossible to append new elements");
 		return (EPKG_FATAL);
 	}
 
