@@ -3630,9 +3630,11 @@ pkgdb_lock(struct pkgdb *db)
 int
 pkgdb_unlock(struct pkgdb *db)
 {
-        assert(db != NULL);
-	assert(db->lock_count >= 1);
-	if (!(--db->lock_count))
+	assert(db != NULL);
+	assert(db->lock_count >= 0);
+	if (db->lock_count > 0)
+		db->lock_count--;
+	if (db->lock_count == 0)
 		return sql_exec(db->sqlite,
 		    "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
 	else
