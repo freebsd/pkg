@@ -248,7 +248,9 @@ scan_dirs_for_shlibs(struct shlib_list **shlib_list, int numdirs,
 	return 0;
 }
 
-int shlib_list_from_rpath(const char *rpath_str)
+#define ORIGIN	"$ORIGIN"
+
+int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 {
 	const char    **dirlist;
 	char	       *buf;
@@ -257,18 +259,32 @@ int shlib_list_from_rpath(const char *rpath_str)
 	int		ret;
 	const char     *c;
 	
+	/* The special token $ORIGIN should be replaced by the
+	   dirpath: adjust buflen calculation to account for this */
+
 	numdirs = 1;
 	for (c = rpath_str; *c != '\0'; c++)
 		if (*c == ':')
 			numdirs++;
 	buflen = numdirs * sizeof(char *) + strlen(rpath_str) + 1;
+	i = strlen(dirpath) - strlen(ORIGIN);
+	if (i > 0)
+		buflen += i;
+
 	dirlist = calloc(1, buflen);
 	if (dirlist == NULL) {
 		warnx("Out of memory");
 		return (EPKG_FATAL);
 	}
 	buf = (char *)dirlist + numdirs * sizeof(char *);
-	strcpy(buf, rpath_str);
+
+	c = strstr(rpath_str, ORIGIN);
+	if ( c != NULL ) {
+		strncpy(buf, rpath_str, c - rpath_str);
+		strlcat(buf, dirpath, buflen);
+		strlcat(buf, c + strlen(ORIGIN), buflen);
+	} else
+		strlcpy(buf, rpath_str, buflen);
 
 	i = 0;
 	while ((c = strsep(&buf, ":")) != NULL) {

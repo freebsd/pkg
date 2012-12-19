@@ -39,6 +39,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <gelf.h>
+#include <libgen.h>
 #ifndef BUNDLED_LIBELF
 #include <link.h>
 #endif
@@ -345,8 +346,9 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
 			continue;
-
-		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val));
+		
+		shlib_list_from_rpath(elf_strptr(e, sh_link, dyn->d_un.d_val), 
+				      dirname(fpath));
 		break;
 	}
 
@@ -410,7 +412,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	bool shlibs = false;
 	bool autodeps = false;
 	bool developer = false;
-	int (*action)(void *, struct pkg *, const char *);
+	int (*action)(void *, struct pkg *, const char *, const char *);
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
