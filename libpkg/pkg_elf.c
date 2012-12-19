@@ -83,14 +83,14 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 /* ARGSUSED */
 static int
 do_nothing(__unused void *actdata, __unused struct pkg *pkg,
-	   __unused const char *name)
+	   __unused const char *fpath, __unused const char *name)
 {
 	return (EPKG_OK);
 }
 
 /* ARGSUSED */
 static int
-add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *name)
+add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath, const char *name)
 {
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
@@ -99,14 +99,14 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *name)
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
 	default:
-		warnx("(%s-%s) shared library %s not found", pkg_name(pkg),
-		      pkg_version(pkg), name);
+		warnx("(%s-%s) %s - shared library %s not found",
+		      pkg_name(pkg), pkg_version(pkg), fpath, name);
 		return (EPKG_FATAL);
 	}
 }
 
 static int
-test_depends(void *actdata, struct pkg *pkg, const char *name)
+test_depends(void *actdata, struct pkg *pkg, const char *fpath, const char *name)
 {
 	struct pkgdb *db = actdata;
 	struct pkg_dep *dep = NULL;
@@ -127,8 +127,8 @@ test_depends(void *actdata, struct pkg *pkg, const char *name)
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
 	default:
-		warnx("(%s-%s) shared library %s not found", pkg_name(pkg),
-		      pkg_version(pkg), name);
+		warnx("(%s-%s) %s - shared library %s not found",
+		      pkg_name(pkg), pkg_version(pkg), fpath, name);
 		return (EPKG_FATAL);
 	}
 
@@ -166,7 +166,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *name)
 
 static int
 analyse_elf(struct pkg *pkg, const char *fpath, 
-    int (action)(void *, struct pkg *, const char *), void *actdata)
+    int (action)(void *, struct pkg *, const char *, const char *), void *actdata)
 {
 	Elf *e = NULL;
 	GElf_Ehdr elfhdr;
@@ -313,7 +313,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		if (dyn->d_tag != DT_NEEDED)
 			continue;
 
-		action(actdata, pkg, elf_strptr(e, sh_link, dyn->d_un.d_val));
+		action(actdata, pkg, fpath, elf_strptr(e, sh_link, dyn->d_un.d_val));
 	}
 
 cleanup:
