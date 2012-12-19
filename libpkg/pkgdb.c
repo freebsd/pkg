@@ -768,6 +768,10 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 
 		/* If the database is missing we have to initialize it */
 		if (create == true)
+			if (mkdirs(dbdir) != EPKG_OK) {
+				pkgdb_close(db);
+				return (EPKG_FATAL);
+			}
 			if (pkgdb_init(db->sqlite) != EPKG_OK) {
 				pkgdb_close(db);
 				return (EPKG_FATAL);
