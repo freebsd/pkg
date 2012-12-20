@@ -65,6 +65,7 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 
 	shlib_path = shlib_list_find_by_name(name);
 	if (shlib_path == NULL) {
+		/* dynamic linker could not resolve */
 		return (EPKG_FATAL);
 	}
 
@@ -72,10 +73,6 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 	if (strncmp(shlib_path, "/lib", 4) == 0 ||
 	    strncmp(shlib_path, "/usr/lib", 7) == 0)
 		return (EPKG_END); /* ignore libs from base */
-
-	/* When running in DEVELOPER_MODE check that shlib names
-	 * conform to the correct pattern.  Only warn on error --
-	 * shlibs may belong to a different package. */
 
 	if (path != NULL)
 		strncpy(path, shlib_path, pathlen);
@@ -88,14 +85,16 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 /* ARGSUSED */
 static int
 do_nothing(__unused void *actdata, __unused struct pkg *pkg,
-	   __unused const char *fpath, __unused const char *name)
+	   __unused const char *fpath, __unused const char *name,
+	   __unused bool is_shlib)
 {
 	return (EPKG_OK);
 }
 
 /* ARGSUSED */
 static int
-add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath, const char *name)
+add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
+		  const char *name, bool is_shlib)
 {
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
@@ -104,6 +103,11 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath, co
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
 	default:
+		/* Ignore link resolution errors if we're analysing a
+		   shared library. */
+		if (is_shlib)
+			return (EPKG_OK);
+
 		warnx("(%s-%s) %s - shared library %s not found",
 		      pkg_name(pkg), pkg_version(pkg), fpath, name);
 		return (EPKG_FATAL);
@@ -111,7 +115,8 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath, co
 }
 
 static int
-test_depends(void *actdata, struct pkg *pkg, const char *fpath, const char *name)
+test_depends(void *actdata, struct pkg *pkg, const char *fpath,
+	     const char *name, bool is_shlib)
 {
 	struct pkgdb *db = actdata;
 	struct pkg_dep *dep = NULL;
@@ -133,6 +138,11 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath, const char *name
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
 	default:
+		/* Ignore link resolution errors if we're analysing a
+		   shared library. */
+		if (is_shlib)
+			return (EPKG_OK);
+
 		warnx("(%s-%s) %s - shared library %s not found",
 		      pkg_name(pkg), pkg_version(pkg), fpath, name);
 		return (EPKG_FATAL);
@@ -180,7 +190,7 @@ warn_about_name_format(struct pkg *pkg, const char *fpath, const char *shlib)
 	unsigned	len;
 
 	/* Shlib names in NEEDED records in the Dynamic section of an
-           ELF object are expect to look like libfoo.so.N where the
+           ELF object are expected to look like libfoo.so.N where the
            ABI version N is an integer or libfoo.so without ABI
            version at all. */
 
@@ -215,8 +225,9 @@ warn_about_name_format(struct pkg *pkg, const char *fpath, const char *shlib)
 }
 
 static int
-analyse_elf(struct pkg *pkg, const char *fpath, 
-    int (action)(void *, struct pkg *, const char *, const char *), void *actdata)
+analyse_elf(struct pkg *pkg, const char *fpath,
+	int (action)(void *, struct pkg *, const char *, const char *, bool),
+	void *actdata)
 {
 	Elf *e = NULL;
 	GElf_Ehdr elfhdr;
@@ -238,6 +249,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	bool shlibs = false;
 	bool autodeps = false;
 	bool developer = false;
+	bool is_shlib = false;
 
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
@@ -333,7 +345,13 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	   find any RPATH or RUNPATH settings.  These are colon
 	   separated paths to prepend to the ld.so search paths from
 	   the ELF hints file.  These always seem to come right after
-	   the NEEDED entries */
+	   the NEEDED shared library entries.
+
+	   NEEDED entries should resolve to a filename for installed
+	   executables, but need not resolve for installed shared
+	   libraries -- additional info from the apps that link
+	   against them would be required.  Shared libraries are
+	   distinguished by a DT_SONAME tag */
 
 	rpath_list_init();
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
@@ -344,6 +362,9 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			goto cleanup;
 		}
 
+		if (dyn->d_tag == DT_SONAME)
+			is_shlib = true;
+
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
 			continue;
 		
@@ -352,7 +373,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		break;
 	}
 
-	/* Now find all of the NEEDED shared libraries */
+	/* Now find all of the NEEDED shared libraries. */
 
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
@@ -367,10 +388,15 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 		shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
 
+		/* When running in DEVELOPER_MODE check that shlib
+		   names conform to the correct pattern.  Only issue a
+		   warning on mismatch -- shlibs may belong to a
+		   different package. */
+
 		if (developer)
 			warn_about_name_format(pkg, fpath, shlib);
 
-		action(actdata, pkg, fpath, shlib);
+		action(actdata, pkg, fpath, shlib, is_shlib);
 	}
 
 cleanup:
@@ -412,7 +438,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	bool shlibs = false;
 	bool autodeps = false;
 	bool developer = false;
-	int (*action)(void *, struct pkg *, const char *, const char *);
+	int (*action)(void *, struct pkg *, const char *, const char *, bool);
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
