@@ -677,13 +677,8 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 		    "%s/%s.yaml", keyword_dir, keyword);
 	}
 
-	if ((fp = fopen(keyfile_path, "r")) == NULL) {
-		if (errno == ENOENT)
-			pkg_emit_errno("Unable to open keyword definition",
-			    keyfile_path);
-
+	if ((fp = fopen(keyfile_path, "r")) == NULL)
 		return (EPKG_UNKNOWN);
-	}
 
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_file(&parser, fp);
