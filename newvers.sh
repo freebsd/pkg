@@ -39,9 +39,9 @@
 
 : ${PKG_MAJOR_VERSION:="1"}
 : ${PKG_MINOR_VERSION="0"}
-: ${PKG_PATCH_LEVEL="3"}
+: ${PKG_PATCH_LEVEL="4"}
  
-: ${PORTREVISION:="1"}
+: ${PORTREVISION:=""}
 : ${PORTEPOCH:=}
 
 # Define this to a true value if creating a snapshot
