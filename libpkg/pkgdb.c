@@ -1874,6 +1874,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *pkg_path = pkg_file_path(file);
 		const char *pkg_sum = pkg_file_cksum(file);
+		bool		permissive = false;
+		const char	*pkg_path = pkg_file_path(file);
+		const char	*pkg_sum  = pkg_file_cksum(file);
 
 		ret = run_prstmt(FILES, pkg_path, pkg_sum, package_id);
 		if (ret == SQLITE_DONE)
@@ -1894,13 +1897,17 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			goto cleanup;
 		}
 		pkg_get(pkg2, PKG_NAME, &name2, PKG_VERSION, &version2);
-		pkg_emit_error("%s-%s conflicts with %s-%s"
-		    " (installs files into the same place). "
-		    " Problematic file: %s",
-		    name, version, name2, version2, pkg_path);
+		pkg_config_bool(PKG_PERMISSIVE, &permissive);
+			pkg_emit_error("%s-%s conflicts with %s-%s"
+			    " (installs files into the same place). "
+			    " Problematic file: %s%s",
+			    name, version, name2, version2, pkg_path,
+			    permissive ? " ignored" : "");
 		pkg_free(pkg2);
-		pkgdb_it_free(it);
-		goto cleanup;
+		if (!permissive) {
+			pkgdb_it_free(it);
+			goto cleanup;
+		}
 	}
 
 	/*

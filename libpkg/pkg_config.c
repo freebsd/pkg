@@ -173,6 +173,11 @@ static struct config_entry c[] = {
 		"3",
 		{ NULL }
 	},
+	[PKG_PERMISSIVE] = {
+		PKG_CONFIG_BOOL,
+		"PERMISSIVE",
+		"NO",
+	}
 };
 
 static bool parsed = false;
