@@ -169,6 +169,11 @@ static struct config_entry c[] = {
 		"PLUGINS_CONF_DIR",
 		PREFIX"/etc/pkg/",
 	},
+	[PKG_PERMISSIVE] = {
+		PKG_CONFIG_BOOL,
+		"PERMISSIVE",
+		"NO",
+	}
 };
 
 static bool parsed = false;
