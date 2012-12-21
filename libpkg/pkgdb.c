@@ -1889,6 +1889,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
+		pkg2 = NULL;
 		ret = pkgdb_it_next(it, &pkg2, PKG_LOAD_BASIC);
 		if (ret != EPKG_OK) {
 			pkgdb_it_free(it);
@@ -1897,11 +1898,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		}
 		pkg_get(pkg2, PKG_NAME, &name2, PKG_VERSION, &version2);
 		pkg_config_bool(PKG_PERMISSIVE, &permissive);
-			pkg_emit_error("%s-%s conflicts with %s-%s"
-			    " (installs files into the same place). "
-			    " Problematic file: %s%s",
-			    name, version, name2, version2, pkg_path,
-			    permissive ? " ignored" : "");
+		pkg_emit_error("%s-%s conflicts with %s-%s"
+		    " (installs files into the same place). "
+		    " Problematic file: %s%s",
+		    name, version, name2, version2, pkg_path,
+		    permissive ? " ignored" : "");
 		pkg_free(pkg2);
 		if (!permissive) {
 			pkgdb_it_free(it);
