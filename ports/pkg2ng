@@ -21,6 +21,12 @@ PKGBAK="${DBDIR}/pkg.bak"
 for PKG in $( pkg_info -Ea )
 do
 	DB="${PKGDB}/${PKG}"
+
+	# Work around lingering portmaster distfiles showing "corruption"
+	if [ ! -e "${DB}/+CONTENTS" ] && [ "$(/bin/ls ${DB})" = "distfiles" ]; then
+		continue
+	fi
+
 	DESC="${DB}/+DESC"
 	if [ ! -e "${PKGBAK}" ]; then
 		echo "Creating backup pkg_info(1) database directory in ${PKGBAK}."
