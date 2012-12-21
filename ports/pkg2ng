@@ -2,6 +2,8 @@
 
 : "${PORTSDIR:=/usr/ports}"
 
+export PKG_PERMISSIVE=yes
+
 if [ $( id -u ) -ne 0 ]
 then
 	echo "This program needs to be run as root"
