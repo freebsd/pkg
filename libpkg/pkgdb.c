@@ -1876,8 +1876,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		const char *pkg_path = pkg_file_path(file);
 		const char *pkg_sum = pkg_file_cksum(file);
 		bool		permissive = false;
-		const char	*pkg_path = pkg_file_path(file);
-		const char	*pkg_sum  = pkg_file_cksum(file);
 
 		ret = run_prstmt(FILES, pkg_path, pkg_sum, package_id);
 		if (ret == SQLITE_DONE)

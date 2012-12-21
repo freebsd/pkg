@@ -174,9 +174,10 @@ static struct config_entry c[] = {
 		{ NULL }
 	},
 	[PKG_PERMISSIVE] = {
-		PKG_CONFIG_BOOL,
+		BOOL,
 		"PERMISSIVE",
 		"NO",
+		{ NULL }
 	}
 };
 
