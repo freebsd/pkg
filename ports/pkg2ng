@@ -36,12 +36,12 @@ do
 	ORIGIN=$(pkg_info -qo ${PKG})
 	# register a package only if it's not registered already
 	if pkg info -e ${ORIGIN}; then
-        echo "${PKG} is already registered."
-	if [ -e ${DB} ]; then
-		mv ${DB} ${PKGBAK}/${PKG}
-		MOVED=1
-	fi
-        continue
+		echo "${PKG} is already registered."
+		if [ -e ${DB} ]; then
+			mv ${DB} ${PKGBAK}/${PKG}
+			MOVED=1
+		fi
+		continue
 	fi
 	PREFX=$(pkg_info -qp ${PKG})
 	if [ -d ${PORTSDIR}/${ORIGIN} ]; then
