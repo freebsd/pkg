@@ -1,9 +1,7 @@
-#include <check.h>
+#include <atf-c.h>
 #include <pkg.h>
 
-TCase *tcase_pkg(void)
+void
+test_pkg(void)
 {
-	TCase *tc = tcase_create("Pkg");
-
-	return (tc);
 }
