@@ -144,13 +144,8 @@ _pkg() {
 				&& return 0
 			;;
 		(help)
-			subcmd_list=( $(
-				for cmd in $subcmd[@]; do
-					print ${cmd/\[*/}
-				done
-				) )
-				_arguments -s \
-					':command:_values -S " " -w "pkg subcommands" $subcmd_list[@]'
+			_arguments -s \
+				':command:_values -S " " -w "pkg subcommands" ${subcmd/\[*/}'
 			return 0
 			;;
 		(info)
