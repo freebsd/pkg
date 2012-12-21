@@ -49,8 +49,9 @@ exec_stats(int argc, char **argv)
 	unsigned int opt = 0;
 	char size[7];
 	int ch;
+	bool show_bytes = false;
 
-	while ((ch = getopt(argc, argv, "qlr")) != -1) {
+	while ((ch = getopt(argc, argv, "qlrb")) != -1) {
                 switch (ch) {
 		case 'q':
 			quiet = true;
@@ -60,6 +61,9 @@ exec_stats(int argc, char **argv)
 			break;
 		case 'r':
 			opt |= STATS_REMOTE;
+			break;
+		case 'b':
+			show_bytes = true;
 			break;
 		default:
 			usage_stats();
@@ -82,8 +86,13 @@ exec_stats(int argc, char **argv)
 		printf("\tInstalled packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_LOCAL_COUNT));
 
 		flatsize = pkgdb_stats(db, PKG_STATS_LOCAL_SIZE);
-		humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
-		printf("\tDisk space occupied: %s\n\n", size);
+
+		if (show_bytes)
+			printf("\tDisk space occupied: %" PRId64 "\n\n", flatsize);
+		else {
+			humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
+			printf("\tDisk space occupied: %s\n\n", size);
+		}
 	}
 
 	if (opt & STATS_REMOTE) {
@@ -93,8 +102,13 @@ exec_stats(int argc, char **argv)
 		printf("\tUnique packages: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_UNIQUE));
 
 		flatsize = pkgdb_stats(db, PKG_STATS_REMOTE_SIZE);
-		humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
-		printf("\tTotal size of packages: %s\n", size);
+
+		if (show_bytes)
+			printf("\tTotal size of packages: %" PRId64 "\n", flatsize);
+		else {
+			humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
+			printf("\tTotal size of packages: %s\n", size);
+		}
 	}
 
 	pkgdb_close(db);
