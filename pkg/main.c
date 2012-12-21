@@ -126,9 +126,9 @@ usage(void)
 	bool plugins_enabled = false;
 
 #ifndef NO_LIBJAIL
- 	fprintf(stderr, "usage: pkg [-v] [-d] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
+ 	fprintf(stderr, "usage: pkg [-v] [-d] [-n] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
 #else
-	fprintf(stderr, "usage: pkg [-v] [-d] [-c <chroot path>] <command> [<args>]\n\n");
+	fprintf(stderr, "usage: pkg [-v] [-d] [-n] [-c <chroot path>] <command> [<args>]\n\n");
 #endif
 	fprintf(stderr, "Global options supported:\n");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
@@ -137,6 +137,7 @@ usage(void)
 #endif
 	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
 	fprintf(stderr, "\t%-15s%s\n\n", "-v", "Display pkg(1) version");
+	fprintf(stderr, "\t%-15s%s\n\n", "-n", "Test if pkg(1) is activated and avoid auto-activation");
 	fprintf(stderr, "Commands supported:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++)
@@ -228,6 +229,7 @@ main(int argc, char **argv)
 	const char *buf = NULL;
 	bool b, plugins_enabled = false;
 	bool show_commands = false;
+	bool activation_test = false;
 	struct pkg_config_kv *kv = NULL;
 	struct pkg_config_value *list = NULL;
 	struct plugcmd *c;
@@ -243,9 +245,9 @@ main(int argc, char **argv)
 		usage();
 
 #ifndef NO_LIBJAIL
-	while ((ch = getopt(argc, argv, "dj:c:lvq")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:lnvq")) != -1) {
 #else
-	while ((ch = getopt(argc, argv, "d:c:lvq")) != -1) {
+	while ((ch = getopt(argc, argv, "d:c:lnvq")) != -1) {
 #endif
 		switch (ch) {
 		case 'd':
@@ -261,6 +263,9 @@ main(int argc, char **argv)
 #endif
 		case 'l':
 			show_commands = true;
+			break;
+		case 'n':
+			activation_test = true;
 			break;
 		case 'v':
 			version++;
@@ -280,7 +285,7 @@ main(int argc, char **argv)
 		show_command_names();
 		exit(EX_OK);
 	}
-	if (argc == 0 && version == 0)
+	if (argc == 0 && version == 0 && !activation_test)
 		usage();
 
 	umask(022);
@@ -409,6 +414,44 @@ main(int argc, char **argv)
 		pkg_shutdown();
 		pkg_plugins_shutdown();
 		exit(EX_OK);
+	}
+
+	if (activation_test) {
+		int	count;
+
+		/* Test to see if pkg(1) has been activated.  Exit
+		   with an error code if not.  Can be combined with -c
+		   and -j to test if pkg is activated in chroot or
+		   jail. If there are no other arguments, and pkg(1)
+		   has been activated, show how many packages have
+		   been installed. */
+
+		switch (pkg_status(&count)) {
+		case PKG_STATUS_UNINSTALLED: /* This case shouldn't ever happen... */
+			pkg_shutdown();
+			pkg_plugins_shutdown();
+			errx(EX_UNAVAILABLE, "can't execute " PKG_EXEC_NAME " or " PKG_STATIC_NAME "\n");
+			/* NOTREACHED */
+		case PKG_STATUS_NODB:
+			pkg_shutdown();
+			pkg_plugins_shutdown();
+			errx(EX_UNAVAILABLE, "package database non-existent\n");
+			/* NOTREACHED */
+		case PKG_STATUS_NOPACKAGES:
+			pkg_shutdown();
+			pkg_plugins_shutdown();
+			errx(EX_UNAVAILABLE, "no packages registered\n");
+			/* NOTREACHED */
+		case PKG_STATUS_ACTIVE:
+			if (argc == 0) {
+				warnx("%d packages installed\n", count);
+				pkg_shutdown();
+				pkg_plugins_shutdown();
+				exit(EX_OK);
+			}
+			break;
+		}
+			
 	}
 
 	len = strlen(argv[0]);

@@ -37,6 +37,16 @@
 #include <sys/sbuf.h>
 #include <openssl/pem.h>
 
+/* The expected name of the pkg(1) binary executable. */
+#ifndef PKG_EXEC_NAME
+#define PKG_EXEC_NAME	"pkg"
+#endif
+
+/* The expected name of the pkg-static(1) binary */
+#ifndef PKG_STATIC_NAME
+#define PKG_STATIC_NAME	"pkg-static"
+#endif
+
 #define PKGVERSION "1.1.a1"
 
 /* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg
@@ -68,6 +78,22 @@ struct pkg_config_kv;
 struct pkg_config_value;
 
 struct pkg_plugin;
+
+/**
+ * The system-wide pkg(1) status: ie. is it a) installed or otherwise
+ * available on the sysem, b) database (local.sqlite) initialised and
+ * c) has at least one package installed (which should be pkg
+ * itself). PKG_STATUS_UNINSTALLED logically cannot be returned by
+ * pkg(1) itself, but it can be useful for the pkg bootstrapper
+ * /usr/bin/pkg or for applications that link against libpkg.so
+ */
+
+typedef enum {
+	PKG_STATUS_ACTIVE = 0,	/* pkg in use */
+	PKG_STATUS_NOPACKAGES,	/* local.sqlite empty */
+	PKG_STATUS_NODB,	/* local.sqlite not found, unreadable or not initialised */
+	PKG_STATUS_UNINSTALLED,	/* pkg not argv[0] or not on $PATH */
+} pkg_status_t;
 
 typedef enum {
 	/**
@@ -381,6 +407,13 @@ typedef enum {
 	 */
 	EPKG_REPOSCHEMA,
 } pkg_error_t;
+
+/**
+ * test if pkg is installed and activated.
+ * @param count  If all the tests pass, and count is non-NULL,
+ * write the number of installed packages into *count
+ */
+pkg_status_t pkg_status(int *count);
 
 /**
  * Allocate a new pkg.
