@@ -109,7 +109,8 @@ if [ -n "${failed_pkgs}" ]; then
 else
 	for PKG in $( pkg_info -Ea ); do
 		DB="${PKGDB}/${PKG}"
-		if [ -e ${DB} ]; then
+		# Ignore package dirs that only have portmaster 'distfiles' in them
+		if [ -e ${DB} ] && [ "$(/bin/ls ${DB})" != "distfiles" ]; then
 			cp -pr ${DB} ${PKGBAK}/${PKG}
 			# Remove only the files documented in
 			# pkg_add(1), then remove ${DB} only if empty
