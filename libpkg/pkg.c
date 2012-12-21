@@ -604,7 +604,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	sbuf_set(&d->version, version);
 	d->locked = locked;
 
-	HASH_ADD_KEYPTR(hh, pkg->deps, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)),
+	HASH_ADD_KEYPTR(hh, pkg->rdeps, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)),
 	    strlen(pkg_dep_get(d, PKG_DEP_ORIGIN)), d);
 
 	return (EPKG_OK);
