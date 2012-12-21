@@ -17,7 +17,7 @@ TESTS=	manifest \
 
 run: ${PROG}
 .for test in ${TESTS}
-	@env LD_LIBRARY_PATH=../libpkg ./${PROG} ${test}
+	@env LD_LIBRARY_PATH=${.CURDIR}/../../libpkg ./${PROG} ${test}
 .endfor
 
 .include <bsd.prog.mk>
