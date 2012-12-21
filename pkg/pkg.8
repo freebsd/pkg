@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 18, 2013
+.Dd May 30, 2013
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -28,6 +28,7 @@
 .Nm
 .Op Fl v
 .Op Fl d
+.Op Fl n
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
@@ -53,6 +54,31 @@ Displays the current version of
 .Nm
 .It Fl d
 Show debug information
+.It Fl n
+Sanity check mode.
+Prevent
+.Nm
+from automatically creating or initializing the sqlite database in
+.Fa /var/db/pkg/local.sqlite
+if it does not already exist.
+.Pp
+Prevent
+.Nm
+from performing any actions if no packages are currently installed, on
+the basis that a correctly initialised system using
+.Nm
+will always have at least the
+.Nm
+package itself registered.
+.Pp
+If used without any other arguments,
+.Nm Fl n
+will run the sanity tests and print out a short message showing how
+many packages are currently installed.
+The exit status should be a reliable indication of whether the system
+is configured to use
+.Nm
+as its package management system or not.
 .It Fl j Ao jail name or id Ac
 .Nm
 will execute in the given
