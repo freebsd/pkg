@@ -2,7 +2,6 @@
 
 : "${PORTSDIR:=/usr/ports}"
 
-export PERMISSIVE=yes
 export PKG_OLD_NOWARN=yes
 
 if [ $( id -u ) -ne 0 ]
@@ -105,6 +104,8 @@ fi
 if [ -n "${failed_pkgs}" ]; then
 	echo "" >&2
 	echo "!!! Some packages failed to register !!!" >&2
+	echo "Please fix them by upgrading them or removing them" >&2
+	echo "or rerun \"PERMISSIVE=yes pkg2ng\" if you *really* must" >&2
 	echo "Failed packages: ${failed_pkgs}" >&2
 else
 	for PKG in $( pkg_info -Ea ); do
