@@ -2,7 +2,7 @@
 
 : "${PORTSDIR:=/usr/ports}"
 
-export PKG_PERMISSIVE=yes
+export PERMISSIVE=yes
 
 if [ $( id -u ) -ne 0 ]
 then
