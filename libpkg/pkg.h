@@ -280,7 +280,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_PLUGINS,
 	PKG_CONFIG_DEBUG_SCRIPTS,
 	PKG_CONFIG_PLUGINS_CONF_DIR,
-	PKG_PERMISSIVE,
+	PKG_CONFIG_PERMISSIVE,
 } pkg_config_key;
 
 typedef enum {

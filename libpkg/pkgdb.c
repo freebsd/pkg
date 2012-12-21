@@ -1996,6 +1996,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		const char	*pkg_path = pkg_file_path(file);
 		const char	*pkg_sum  = pkg_file_cksum(file);
 		bool		permissive = false;
+		bool		devmode = false;
 
 		ret = run_prstmt(FILES, pkg_path, pkg_sum, package_id);
 		if (ret == SQLITE_DONE)
@@ -2017,7 +2018,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			goto cleanup;
 		}
 		pkg_get(pkg2, PKG_NAME, &name2, PKG_VERSION, &version2);
-		pkg_config_bool(PKG_PERMISSIVE, &permissive);
+		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &devmode);
+		if (!devmode)
+			pkg_config_bool(PKG_CONFIG_PERMISSIVE, &permissive);
 		pkg_emit_error("%s-%s conflicts with %s-%s"
 		    " (installs files into the same place). "
 		    " Problematic file: %s%s",
