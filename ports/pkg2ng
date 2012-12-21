@@ -3,6 +3,7 @@
 : "${PORTSDIR:=/usr/ports}"
 
 export PERMISSIVE=yes
+export PKG_OLD_NOWARN=yes
 
 if [ $( id -u ) -ne 0 ]
 then
