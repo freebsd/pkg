@@ -41,7 +41,7 @@
 : ${PKG_MINOR_VERSION="0"}
 : ${PKG_PATCH_LEVEL="4"}
  
-: ${PORTREVISION:=""}
+: ${PORTREVISION:="1"}
 : ${PORTEPOCH:=}
 
 # Define this to a true value if creating a snapshot
