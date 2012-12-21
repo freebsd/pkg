@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd September 22, 2012
+.Dd December 21, 2012
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -126,6 +126,9 @@ suggestions to the output of
 as an aide to port maintainers, including indicating when the port
 might be marked as architecture independent.
 default: off
+.It Cm PKG_PERMISSIVE: boolean
+Ignore conflicts while registring a package, note that the files conflicting
+will not be marked as owned by the new package. (default: NO)
 .It Cm PORTAUDIT_SITE: string
 Specifies the remote location to use
 when fetching the portaudit database.
