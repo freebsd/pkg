@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 6, 2012
+.Dd December 20, 2012
 .Dt PKG-STATS 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd package database statistics
 .Sh SYNOPSIS
 .Nm
-.Op Fl qlr
+.Op Fl qlrb
 .Sh DESCRIPTION
 .Nm
 is used to display different statistics about the package databases.
@@ -38,6 +38,8 @@ Show less output.
 Display stats only for the local package database.
 .It Fl r
 Display stats only for the remote package database(s).
+.It Fl b
+Display disk space usage in bytes only.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
