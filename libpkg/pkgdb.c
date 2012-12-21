@@ -1905,7 +1905,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		    " (installs files into the same place). "
 		    " Problematic file: %s%s",
 		    name, version, name2, version2, pkg_path,
-		    permissive ? " ignored" : "");
+		    permissive ? " ignored by permissive mode" : "");
 		pkg_free(pkg2);
 		if (!permissive) {
 			pkgdb_it_free(it);
