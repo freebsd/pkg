@@ -760,7 +760,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 		sqlite3_busy_timeout(db->sqlite, 5000);
 
 		/* If the database is missing we have to initialize it */
-		if (create == true)
+		if (create == true) {
 			if (mkdirs(dbdir) != EPKG_OK) {
 				pkgdb_close(db);
 				return (EPKG_FATAL);
@@ -769,6 +769,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 				pkgdb_close(db);
 				return (EPKG_FATAL);
 			}
+		}
 
 		/* Create our functions */
 		sqlcmd_init(db->sqlite, NULL, NULL);
