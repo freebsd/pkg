@@ -1,4 +1,5 @@
-#include <check.h>
+#include <atf-c.h>
 
-TCase * tcase_manifest(void);
-TCase * tcase_pkg(void);
+void test_manifest(void);
+void test_pkg(void);
+

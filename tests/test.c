@@ -1,21 +1,29 @@
-#include <check.h>
-
+#include <atf-c.h>
 #include "tests.h"
 
-int
-main()
+ATF_TC(manifest);
+ATF_TC_HEAD(manifest, tc)
 {
-	int nfailed = 0;
-	Suite *s = suite_create("pkgng");
+    atf_tc_set_md_var(tc, "descr", "Testing manifest loading...");
+}
+ATF_TC_BODY(manifest, tc)
+{
+    test_manifest();
+}
 
-	suite_add_tcase(s, tcase_manifest());
-	suite_add_tcase(s, tcase_pkg());
+ATF_TC(pkg);
+ATF_TC_HEAD(pkg, tc)
+{
+    atf_tc_set_md_var(tc, "descr", "Testing pkg interface...");
+}
 
-	/* Run the tests ...*/
-	SRunner *sr = srunner_create(s);
-	srunner_set_log(sr, "test.log");
-	srunner_run_all(sr, CK_NORMAL);
-	nfailed = srunner_ntests_failed(sr);
-	srunner_free(sr);
-	return (nfailed == 0 ? 0 : 1);
+ATF_TC_BODY(pkg, tc)
+{
+    test_pkg();
+}
+ATF_TP_ADD_TCS(tp)
+{
+    ATF_TP_ADD_TC(tp, manifest);
+    ATF_TP_ADD_TC(tp, pkg);
+    return atf_no_error();
 }
