@@ -28,7 +28,8 @@
 .Nm
 .Op Fl v
 .Op Fl d
-.Op Fl n
+.Op Fl l
+.Op Fl N
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
@@ -54,8 +55,8 @@ Displays the current version of
 .Nm
 .It Fl d
 Show debug information
-.It Fl n
-Sanity check mode.
+.It Fl N
+Activation status check mode.
 Prevent
 .Nm
 from automatically creating or initializing the sqlite database in
@@ -72,10 +73,10 @@ will always have at least the
 package itself registered.
 .Pp
 If used without any other arguments,
-.Nm Fl n
-will run the sanity tests and print out a short message showing how
-many packages are currently installed.
-The exit status should be a reliable indication of whether the system
+.Nm Fl N
+will run the sanity tests and if successful print out a short message
+showing how many packages are currently installed.
+The exit status should be a reliable indication of whether a system
 is configured to use
 .Nm
 as its package management system or not.

@@ -96,9 +96,9 @@ static void
 usage(void)
 {
 #ifndef NO_LIBJAIL
- 	fprintf(stderr, "usage: pkg [-v] [-d] [-n] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
+ 	fprintf(stderr, "usage: pkg [-v] [-d] [-N] [-j <jail name or id>|-c <chroot path>] <command> [<args>]\n\n");
 #else
-	fprintf(stderr, "usage: pkg [-v] [-d] [-n] [-c <chroot path>] <command> [<args>]\n\n");
+	fprintf(stderr, "usage: pkg [-v] [-d] [-N] [-c <chroot path>] <command> [<args>]\n\n");
 #endif
 	fprintf(stderr, "Global options supported:\n");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
@@ -107,7 +107,7 @@ usage(void)
 #endif
 	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
 	fprintf(stderr, "\t%-15s%s\n\n", "-v", "Display pkg(1) version");
-	fprintf(stderr, "\t%-15s%s\n\n", "-n", "Test if pkg(1) is activated and avoid auto-activation");
+	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(1) is activated and avoid auto-activation");
 	fprintf(stderr, "Commands supported:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++)
@@ -191,9 +191,9 @@ main(int argc, char **argv)
 		usage();
 
 #ifndef NO_LIBJAIL
-	while ((ch = getopt(argc, argv, "dj:c:nvq")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:Nvq")) != -1) {
 #else
-	while ((ch = getopt(argc, argv, "d:c:nvq")) != -1) {
+	while ((ch = getopt(argc, argv, "d:c:Nvq")) != -1) {
 #endif
 		switch (ch) {
 		case 'd':
@@ -207,7 +207,7 @@ main(int argc, char **argv)
 			jail_str = optarg;
 			break;
 #endif
-		case 'n':
+		case 'N':
 			activation_test = true;
 			break;
 		case 'v':
