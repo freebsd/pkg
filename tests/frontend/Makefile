@@ -1,4 +1,4 @@
-TESTS=	version
+TESTS=	version pkg
 all:
 	@echo "nothing todo"
 run:
