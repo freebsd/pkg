@@ -1,4 +1,4 @@
-TESTS=	version pkg
+TESTS=	version pkg search
 all:
 	@echo "nothing todo"
 run:
