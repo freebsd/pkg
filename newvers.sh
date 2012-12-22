@@ -44,14 +44,22 @@
 : ${PORTREVISION:="1"}
 : ${PORTEPOCH:=}
 
-# Define this to a true value if creating a snapshot
-: ${CREATE_SNAPSHOT:="NO"}
-
 # ------------------------------------------------------------------
+
+# Define this to a true value in the environment if creating a
+# snapshot
+: ${CREATE_SNAPSHOT:="NO"}
 
 case $PKG_PATCH_LEVEL in
     ''|0)
-	_patch=
+	case $CREATE_SNAPSHOT in
+	    [yY][eE][sS])
+		_patch=".${PKG_PATCH_LEVEL}"
+		;;
+	    *)
+		_patch=
+		;;
+	esac
 	;;
     *)
 	_patch=".${PKG_PATCH_LEVEL}"
@@ -110,4 +118,3 @@ esac
 #
 # That's All Folks!
 #
-
