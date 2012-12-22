@@ -435,16 +435,16 @@ main(int argc, char **argv)
 		case PKG_STATUS_NODB:
 			pkg_shutdown();
 			pkg_plugins_shutdown();
-			errx(EX_UNAVAILABLE, "package database non-existent\n");
+			errx(EX_UNAVAILABLE, "package database non-existent");
 			/* NOTREACHED */
 		case PKG_STATUS_NOPACKAGES:
 			pkg_shutdown();
 			pkg_plugins_shutdown();
-			errx(EX_UNAVAILABLE, "no packages registered\n");
+			errx(EX_UNAVAILABLE, "no packages registered");
 			/* NOTREACHED */
 		case PKG_STATUS_ACTIVE:
 			if (argc == 0) {
-				warnx("%d packages installed\n", count);
+				warnx("%d packages installed", count);
 				pkg_shutdown();
 				pkg_plugins_shutdown();
 				exit(EX_OK);
