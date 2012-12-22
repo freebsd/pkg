@@ -7,21 +7,27 @@ SUBDIR_TARGETS=	set-version
 
 NEWVERS=	newvers.sh
 
+CLEANFILES=	Doxyfile
+
 .if !defined(NOSTATIC)
 SUBDIR+=	pkg-static
 .endif
 
 PKGVERSION!=    sh ${NEWVERS} pkg
 
-# All the files modified by changing version strings.  Changes to
-# these files will be commited to git unconditionally as part of the
-# 'release' target.
+# Sources for all the files modified by changing version strings.
+# Changes to these sources will be commited to git unconditionally as
+# part of the 'release' target.
 
-VERSIONED_FILES=	Doxyfile libpkg/pkg.h ${NEWVERS}
+VERSIONED_FILES=	Doxyfile.in \
+			libpkg/pkg.h.in \
+			libpkg/pkg.pc.in \
+			${NEWVERS}
 
 # Set CREATE_SNAPSHOT=yes to create a snapshot, which will update
-# Doxyfile, libpkg/pkg.h etc. but not newvers.sh.  To clear the
-# snapshot, either update ${NEWVERS} or set CREATE_SNAPSHOT=no
+# Doxyfile, libpkg/pkg.h etc. without needing any modifications to
+# newvers.sh.  To clear the snapshot, either update ${NEWVERS} or set
+# CREATE_SNAPSHOT=no
 
 .if defined(CREATE_SNAPSHOT)
 _snapshot=	snapshot
@@ -37,6 +43,9 @@ TARBALL_FILE=		${TARBALL_BASENAME}.${TARBALL_EXT}
 	set-version do-set-version ${_snapshot} 
 
 all:	set-version
+
+clean:
+	rm -f ${CLEANFILES}
 
 do-set-version:
 	@${ECHO} "==> Update version strings (${PKGVERSION})" 
@@ -71,7 +80,7 @@ make-tarball:
 	git archive --format=${TARBALL_EXT} --prefix=${TARBALL_BASENAME}/ \
 	    -o ${TARBALL_FILE} ${PKGVERSION}
 
-Doxyfile: ${NEWVERS} ${_snapshot}
-	sed -e "/^PROJECT_NUMBER/s,= .*,= ${PKGVERSION}," -i '' ${.TARGET}
+Doxyfile: Doxyfile.in ${NEWVERS} ${_snapshot}
+	sed -e 's,%%PKGVERSION%%,${PKGVERSION},' ${.TARGET:S,$,.in,} > ${.TARGET}
 
 .include <bsd.subdir.mk>

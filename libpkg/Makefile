@@ -38,7 +38,8 @@ SRCS=		backup.c \
 		plugins.c
 
 PC=	pkg.pc
-CLEANFILES=	${PC}
+PKGH=	pkg.h
+CLEANFILES=	${PC} ${PKGH}
 
 NEWVERS=	../newvers.sh
 
@@ -111,12 +112,12 @@ NOMAN=		yes
 
 .PHONY:	set-version ${_snapshot}
 
-set-version: pkg.h ${PC}
+set-version: ${PKGH} ${PC}
 
-pkg.h:	${NEWVERS} ${_snapshot}
-	sed -e "/^#define PKGVERSION/s,\".*\",\"$(PKGVERSION)\","       \
-	    -e "/^#define PKG_PORTVERSION/s,\".*\",\"$(PORTVERSION)\"," \
-	    -i '' $(.TARGET) 
+${PKGH}: ${PKGH:S,$,.in,} ${NEWVERS} ${_snapshot}
+	sed -e 's,%%PKGVERSION%%,$(PKGVERSION),'   \
+	    -e 's,%%PORTVERSION%%,$(PORTVERSION),' \
+	    ${.TARGET:S,$,.in,} > ${.TARGET} 
 
 .pc.in.pc: ${NEWVERS} ${_snapshot}
 	sed -e "s,__PREFIX__,${PREFIX},g" \

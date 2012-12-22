@@ -15,3 +15,5 @@ pkg2legacy
 pkg-static/pkg-static
 tests/test
 docs/html/*
+Doxyfile
+libpkg/pkg.h
