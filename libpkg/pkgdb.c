@@ -706,6 +706,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 int
 pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 {
+<<<<<<< HEAD
 	struct pkgdb *db = NULL;
 	bool reopen = false;
 	char localpath[MAXPATHLEN + 1];
@@ -713,6 +714,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	const char *dbdir = NULL;
 	bool multirepos_enabled = false;
 	bool create = false;
+	bool createdir = false;
 	int ret;
 
 	if (*db_p != NULL) {
@@ -743,18 +745,27 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 				pkg_emit_nolocaldb();
 				pkgdb_close(db);
 				return (EPKG_ENODB);
-			} else if (eaccess(dbdir, W_OK) != 0) {
+			} else if ((eaccess(dbdir, W_OK) != 0)) {
 				/*
 				 * If we need to create the db but cannot
 				 * write to it, fail early
 				 */
-				pkg_emit_nolocaldb();
-				pkgdb_close(db);
-				return (EPKG_ENODB);
+				if (errno == ENOENT) {
+					createdir = true;
+					create = true;
+				} else {
+					pkg_emit_nolocaldb();
+					pkgdb_close(db);
+					return (EPKG_ENODB);
+				}
 			} else {
 				create = true;
 			}
 		}
+
+		/* Create the diretory if it doesn't exists */
+		if (createdir && mkdirs(dbdir) != EPKG_OK)
+				return (EPKG_FATAL);
 
 		sqlite3_initialize();
 		if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
@@ -767,15 +778,9 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 		sqlite3_busy_timeout(db->sqlite, 5000);
 
 		/* If the database is missing we have to initialize it */
-		if (create == true) {
-			if (mkdirs(dbdir) != EPKG_OK) {
-				pkgdb_close(db);
-				return (EPKG_FATAL);
-			}
-			if (pkgdb_init(db->sqlite) != EPKG_OK) {
-				pkgdb_close(db);
-				return (EPKG_FATAL);
-			}
+		if (create && pkgdb_init(db->sqlite) != EPKG_OK) {
+			pkgdb_close(db);
+			return (EPKG_FATAL);
 		}
 
 		/* Create our functions */
