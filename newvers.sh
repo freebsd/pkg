@@ -54,7 +54,7 @@ case $PKG_PATCH_LEVEL in
     ''|0)
 	case $CREATE_SNAPSHOT in
 	    [yY][eE][sS])
-		_patch=".${PKG_PATCH_LEVEL}"
+		_patch=".0"
 		;;
 	    *)
 		_patch=
