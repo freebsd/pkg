@@ -31,6 +31,7 @@
 .Op Fl l
 .Op Fl N
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
+.Op Fl C Ao configuration file Ac
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
@@ -111,6 +112,9 @@ and
 will chroot in the
 .Ao chroot path Ac
 Environment
+.It Fl C Ao configuration file Ac
+.Nm
+will use the specified file as a configuration file
 .El
 .\" ---------------------------------------------------------------------------
 .Sh COMMANDS
