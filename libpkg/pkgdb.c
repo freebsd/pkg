@@ -706,7 +706,6 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 int
 pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 {
-<<<<<<< HEAD
 	struct pkgdb *db = NULL;
 	bool reopen = false;
 	char localpath[MAXPATHLEN + 1];
