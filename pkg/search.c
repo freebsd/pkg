@@ -243,7 +243,7 @@ exec_search(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	bool atleastone = false;
 
-	while ((ch = getopt(argc, argv, "cDdefgL:M:opqr:S:sx")) != -1) {
+	while ((ch = getopt(argc, argv, "cDdefgL:opqQ:r:S:sx")) != -1) {
 		switch (ch) {
 		case 'c':	/* Same as -S comment */
 			search = search_label_opt("comment");
@@ -251,13 +251,13 @@ exec_search(int argc, char **argv)
 		case 'D':	/* Same as -S description */
 			search = search_label_opt("description");
 			break;
-		case 'd':	/* Same as -M depends-on  */
+		case 'd':	/* Same as -Q depends-on  */
 			opt |= modifier_opt("depends-on");
 			break;
 		case 'e':
 			match = MATCH_EXACT;
 			break;
-		case 'f':	/* Same as -M full */
+		case 'f':	/* Same as -Q full */
 			opt |= modifier_opt("full");
 			break;
 		case 'g':
@@ -266,17 +266,17 @@ exec_search(int argc, char **argv)
 		case 'L':
 			label = search_label_opt(optarg);
 			break;
-		case 'M':
-			opt |= modifier_opt(optarg);
-			break;
 		case 'o':	/* Same as -L origin */
 			label = search_label_opt("origin");
 			break;
-		case 'p':	/* Same as -M prefix */
+		case 'p':	/* Same as -Q prefix */
 			opt |= modifier_opt("prefix");
 			break;
 		case 'q':
 			quiet = true;
+			break;
+		case 'Q':
+			opt |= modifier_opt(optarg);
 			break;
 		case 'r':
 			reponame = optarg;
@@ -284,7 +284,7 @@ exec_search(int argc, char **argv)
 		case 'S':
 			search = search_label_opt(optarg);
 			break;
-		case 's':	/* Same as -M size */
+		case 's':	/* Same as -Q size */
 			opt |= modifier_opt("size");
 			break;
 		case 'x':

@@ -27,7 +27,7 @@
 .Op Fl r Ar repo
 .Op Fl S Ar search
 .Op Fl L Ar label
-.Op Fl M Ar mod
+.Op Fl Q Ar query-modifier
 .Ar pattern
 .Nm
 .Op Fl cDdefgopqx
@@ -70,14 +70,14 @@ Equivalent to
 .It Fl d
 Display the list of packages depended on by each matched package.
 Equivalent to
-.Fl "M depends-on" .
+.Fl "Q depends-on" .
 .It Fl e
 .Ar pattern
 should be an exact match against the search field.
 .It Fl f
 Show ``full'' information about the package.
 Equivalent to
-.Fl "M full" .
+.Fl "Q full" .
 .It Fl g
 Treat
 .Ar pattern
@@ -100,14 +100,6 @@ If unspecified,
 is set to the same as the value searched via the
 .Fl S Ar search
 option.
-.It Fl M Ar mod
-Modify the output by adding an additional field to the result.
-Multiple fields can be added by using additional
-.Fl M Ar mod
-flags.
-See the
-.Qq Sx Output Modifier Options
-section for details.
 .It Fl o
 List packages by origin for each package matching
 .Ar pattern .
@@ -116,11 +108,19 @@ Equivalent to
 .It Fl p
 Display the package installation prefix for each matched package.
 Equivalent to
-.Fl "M prefix" .
+.Fl "Q prefix" .
 .It Fl q
 Be ``quiet''.
 Produce less output.
 In particular do not show an identifying label field for each package.
+.It Fl Q Ar query-modifier
+Modify the query output by adding an additional field to the result.
+Multiple fields can be added by using additional
+.Fl Q Ar query-modifier
+flags.
+See the
+.Qq Sx Output Modifier Options
+section for details.
 .It Fl r Ar repo
 In multi-repo mode, select only the repository catalogue from
 .Sy repo
@@ -143,7 +143,7 @@ sections for more details.
 .It Fl s
 Display the installed size of matched packages.
 Equivalent to
-.Fl "M size" .
+.Fl "Q size" .
 .It Fl x
 Treat
 .Ar pattern
@@ -168,7 +168,7 @@ variable in the port's
 When chosen as a label option, the output format will additionally
 include the packge name, equivalent to
 .Fl "L pkg-name"
-.Fl "M comment" .
+.Fl "Q comment" .
 When chosen as a search option, only the
 .Sy comment
 field is used for sorting the output.
@@ -182,7 +182,7 @@ URL reference, if any, from that file.
 When chosen as a label option, the output format will additionally
 include the package name, equivalent to
 .Fl "L pkg-name"
-.Fl "M description" .
+.Fl "Q description" .
 When chosen as a search option, only the
 .Sy description
 field is used for sorting the output.
@@ -216,9 +216,9 @@ Additional data from the repository catalogue to print for each matched
 package.
 Multiple output modifiers can be combined.
 Where more than one output field is required, either because multiple
-.Fl M Ar mod
+.Fl Q Ar query-modifier
 options were given, or one or more
-.Fl M Ar mod
+.Fl Q Ar query-modifier
 option was combined with the
 .Fl "L comment"
 or
@@ -351,18 +351,18 @@ This is extracted from the
 file in the port.
 .El
 .Pp
-Any unambiguous prefix of the modifier name may be used on the command
-line.
+Any unambiguous prefix of the query modifier name may be used on the
+command line.
 Thus
-.Fl "Mm" ,
-.Fl "M maint"
+.Fl "Qm" ,
+.Fl "Q maint"
 and
-.Fl "M maintainer"
+.Fl "Q maintainer"
 are all equivalent,
 but you need to use at least
-.Fl "M si"
+.Fl "Q si"
 and
-.Fl "M sh"
+.Fl "Q sh"
 to distinguish
 .Cm size
 from
