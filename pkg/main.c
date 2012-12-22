@@ -137,7 +137,7 @@ usage(const char *conffile)
 #endif
 	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
 	fprintf(stderr, "\t%-15s%s\n", "-C", "Use the specified configuration file");
-	fprintf(stderr, "\t%-15s%s\n\n", "-v", "Display pkg(1) version");
+	fprintf(stderr, "\t%-15s%s\n", "-v", "Display pkg(1) version");
 	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(1) is activated and avoid auto-activation");
 	fprintf(stderr, "Commands supported:\n");
 
