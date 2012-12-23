@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,7 +11,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -141,12 +141,12 @@ display_dellist(struct dl_head *dl, const char *cachedir)
 				relpath++;
 		} else
 			relpath = dl_entry->path;
-		
+
 		printf("%-30s %-20s ", relpath, dl_entry->origin);
 
 		switch (dl_entry->reason) {
 		case OUT_OF_DATE:
-			printf("Superseded by %s-%s\n", 
+			printf("Superseded by %s-%s\n",
 			    dl_entry->newname != NULL ?
 			       dl_entry->newname :
 			       "(unknown)",
@@ -189,7 +189,7 @@ delete_dellist(struct dl_head *dl)
 	if (!quiet) {
 		if (retcode == EX_OK)
 			printf("All done\n");
-		else 
+		else
 			printf("%d package%s could not be deleted\n",
 			       count, count > 1 ? "s" : "");
 	}
@@ -288,29 +288,34 @@ exec_clean(int argc, char **argv)
 			continue;
 		}
 
-		if ((ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC)) ==
-		    EPKG_FATAL) {
+		ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC);
+		if (ret == EPKG_FATAL) {
 			if (!quiet)
 				warnx("skipping %s", ent->fts_path);
 			continue;
 		}
 
-		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		if (ret == EPKG_END) {
+			/* No matching package found in repo */
 			ret = add_to_dellist(&dl, REMOVED, ent->fts_path,
 					     origin, NULL, NULL);
-		} else if (strcmp(repopath, pkgrepopath)) {
+			continue;
+		}
+
+		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
+
+		if (strcmp(repopath, pkgrepopath)) {
 			const char	*newname;
 			const char	*newversion;
 
-			pkg_get(p, 
+			pkg_get(p,
 				PKG_NAME,    &newname,
 				PKG_VERSION, &newversion);
 
 			ret = add_to_dellist(&dl, OUT_OF_DATE, ent->fts_path,
 					     origin, newname, newversion);
 		} else {
-			char local_cksum[SHA256_DIGEST_LENGTH * 2 +1];
+			char local_cksum[SHA256_DIGEST_LENGTH * 2 + 1];
 			const char *cksum;
 
 			pkg_get(p, PKG_CKSUM, &cksum);
@@ -319,7 +324,7 @@ exec_clean(int argc, char **argv)
 
 				if (strcmp(cksum, local_cksum) != 0) {
 					ret = add_to_dellist(&dl, CKSUM_MISMATCH, ent->fts_path,
-						     origin, NULL, NULL);
+							     origin, NULL, NULL);
 				}
 			}
 		}
@@ -348,7 +353,7 @@ exec_clean(int argc, char **argv)
 				"\nProceed with cleaning cache [y/N]: ");
 		if (yes)
 			retcode = delete_dellist(&dl);
-	} else 
+	} else
 		retcode = EX_OK;
 
 cleanup:
