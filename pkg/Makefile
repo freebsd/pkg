@@ -52,6 +52,10 @@ LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lpthread \
 		${LDADD_STATIC}
 
+.if !defined(LDADD_STATIC)
+LDADD+=		-Wl,-z,origin,-rpath,'$$ORIGIN/../lib'
+.endif
+
 .if !exists(/usr/include/jail.h)
 CFLAGS+=	-DNO_LIBJAIL
 .else
