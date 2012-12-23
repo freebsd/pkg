@@ -257,7 +257,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 	size_t		buflen;
 	int		i, numdirs;
 	int		ret;
-	const char     *c;
+	const char     *c, *cstart;
 	
 	/* The special token $ORIGIN should be replaced by the
 	   dirpath: adjust buflen calculation to account for this */
@@ -269,7 +269,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 	buflen = numdirs * sizeof(char *) + strlen(rpath_str) + 1;
 	i = strlen(dirpath) - strlen(ORIGIN);
 	if (i > 0)
-		buflen += i;
+		buflen += i * numdirs;
 
 	dirlist = calloc(1, buflen);
 	if (dirlist == NULL) {
@@ -278,13 +278,14 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 	}
 	buf = (char *)dirlist + numdirs * sizeof(char *);
 
-	c = strstr(rpath_str, ORIGIN);
-	if ( c != NULL ) {
-		strncpy(buf, rpath_str, c - rpath_str);
+	buf[0] = '\0';
+	cstart = rpath_str;
+	while ( (c = strstr(cstart, ORIGIN)) != NULL ) {
+		strncat(buf, cstart, c - cstart);
 		strlcat(buf, dirpath, buflen);
-		strlcat(buf, c + strlen(ORIGIN), buflen);
-	} else
-		strlcpy(buf, rpath_str, buflen);
+		cstart = c + strlen(ORIGIN);
+	}
+	strlcat(buf, cstart, buflen);
 
 	i = 0;
 	while ((c = strsep(&buf, ":")) != NULL) {
