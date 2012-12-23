@@ -5,8 +5,6 @@ SUBDIR=	external \
 
 NEWVERS=	newvers.sh
 
-CLEANFILES=	Doxyfile
-
 .if !defined(NOSTATIC)
 SUBDIR+=	pkg-static
 .endif
