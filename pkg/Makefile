@@ -58,6 +58,10 @@ CFLAGS+=	-DNO_LIBJAIL
 LDADD+=		-ljail
 .endif
 
+.if !defined(STATIC_PKGNG)
+LDFLAGS+=	-Wl,-rpath=/usr/lib:${PREFIX}/lib
+.endif
+
 WARNS?=		6
 MAN=	pkg.8 \
 	pkg-add.8 \
