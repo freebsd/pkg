@@ -38,6 +38,12 @@
 
 #include "pkg.h"
 
+#ifdef TESTING
+#define _static	
+#else
+#define _static	static
+#endif
+
 /*
  * Format codes
  *    Arg Type     What
@@ -256,90 +262,90 @@ struct percent_esc {
 
 /* Format handler function prototypes */
 
-static struct sbuf *format_shlibs(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_shlib_name(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_categories(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_category_name(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_directories(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_directory_group(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_directory_keepflag(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_directory_path(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_directory_perms(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_directory_tryflag(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_directory_user(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_files(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_file_group(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_file_keepflag(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_file_path(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_file_perms(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_file_sha256(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_file_user(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_groups(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_group_gidstr(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_group_name(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_row_counter(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_licenses(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_license_name(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_message(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_options(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_option_name(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_option_value(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_users(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_user_name(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_user_uidstr(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_autoremove(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_comment(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_dependencies(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_dependency_name(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_dependency_origin(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_dependency_version(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_add_info(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_lock_status(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_license_logic(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_maintainer(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_name(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_origin(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_prefix(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_requirements(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_flatsize(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_install_tstamp(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_version(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_home_url(struct sbuf *, const void *, struct percent_esc *);
-static struct sbuf *format_literal_percent(struct sbuf *, __unused const void *, __unused struct percent_esc *);
-static struct sbuf *format_unknown(struct sbuf *, __unused const void *, __unused struct percent_esc *);
+_static struct sbuf *format_shlibs(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_shlib_name(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_categories(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_category_name(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_directories(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_directory_group(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_directory_keepflag(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_directory_path(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_directory_perms(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_directory_tryflag(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_directory_user(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_files(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_file_group(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_file_keepflag(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_file_path(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_file_perms(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_file_sha256(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_file_user(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_groups(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_group_gidstr(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_group_name(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_row_counter(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_licenses(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_license_name(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_message(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_options(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_option_name(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_option_value(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_users(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_user_name(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_user_uidstr(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_autoremove(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_comment(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_dependencies(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_dependency_name(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_dependency_origin(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_dependency_version(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_add_info(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_lock_status(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_license_logic(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_maintainer(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_name(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_origin(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_prefix(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_requirements(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_flatsize(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_install_tstamp(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_version(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_home_url(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_literal_percent(struct sbuf *, __unused const void *, __unused struct percent_esc *);
+_static struct sbuf *format_unknown(struct sbuf *, __unused const void *, __unused struct percent_esc *);
 
 /* Other static function prototypes */
 
-static void free_percent_esc(struct percent_esc *);
-static struct percent_esc *new_percent_esc(struct percent_esc *);
+_static void free_percent_esc(struct percent_esc *);
+_static struct percent_esc *new_percent_esc(struct percent_esc *);
 
-static char *gen_format(char *, size_t, unsigned, const char *);
+_static char *gen_format(char *, size_t, unsigned, const char *);
 
-static struct sbuf *human_number(struct sbuf *, int64_t, struct percent_esc *);
-static struct sbuf *string_val(struct sbuf *, const char *,
+_static struct sbuf *human_number(struct sbuf *, int64_t, struct percent_esc *);
+_static struct sbuf *string_val(struct sbuf *, const char *,
 			       struct percent_esc *);
-static struct sbuf *int_val(struct sbuf *, int64_t, struct percent_esc *);
-static struct sbuf *bool_val(struct sbuf *, bool, struct percent_esc *);
-static struct sbuf *mode_val(struct sbuf *, mode_t, struct percent_esc *);
-static struct sbuf *list_count(struct sbuf *, int64_t, struct percent_esc *);
+_static struct sbuf *int_val(struct sbuf *, int64_t, struct percent_esc *);
+_static struct sbuf *bool_val(struct sbuf *, bool, struct percent_esc *);
+_static struct sbuf *mode_val(struct sbuf *, mode_t, struct percent_esc *);
+_static struct sbuf *list_count(struct sbuf *, int64_t, struct percent_esc *);
 
-static struct percent_esc *set_list_defaults(struct percent_esc *, const char *,
+_static struct percent_esc *set_list_defaults(struct percent_esc *, const char *,
 					     const char *);
 
-static struct sbuf *iterate_item(struct sbuf *, const struct pkg *, const char *,
+_static struct sbuf *iterate_item(struct sbuf *, const struct pkg *, const char *,
 				 const void *, int, unsigned);
 
-static inline const char *field_modifier(const char *, struct percent_esc *);
-static inline const char *field_width(const char *, struct percent_esc *);
-static const char *parse_format(const char *, unsigned, struct percent_esc *);
+_static inline const char *field_modifier(const char *, struct percent_esc *);
+_static inline const char *field_width(const char *, struct percent_esc *);
+_static const char *parse_format(const char *, unsigned, struct percent_esc *);
 
-static inline const char *maybe_read_hex_byte(struct sbuf *, const char *);
-static inline const char *read_oct_byte(struct sbuf *, const char *);
-static const char *process_escape(struct sbuf *, const char *);
+_static inline const char *maybe_read_hex_byte(struct sbuf *, const char *);
+_static inline const char *read_oct_byte(struct sbuf *, const char *);
+_static const char *process_escape(struct sbuf *, const char *);
 
-static const char *process_format_trailer(struct sbuf *, const char *, const struct pkg *,
+_static const char *process_format_trailer(struct sbuf *, const char *, const struct pkg *,
 					  const void *, int, unsigned);
-static const char *process_format_main(struct sbuf *, const char *, va_list);
+_static const char *process_format_main(struct sbuf *, const char *, va_list);
 
 
 struct pkg_printf_fmt {
@@ -491,7 +497,7 @@ static const char	*boolean_str[2][3] = {
  * pkg.  Optionally accepts per-field format in %{ %| %}, where %n is
  * replaced by the shlib name.  Default %{%Bn\n%|%}
  */
-static struct sbuf *
+struct sbuf *
 format_shlibs(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -521,7 +527,7 @@ format_shlibs(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Bn -- Shared Library name.
  */
-static struct sbuf *
+struct sbuf *
 format_shlib_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_shlib	*shlib = data;
@@ -535,7 +541,7 @@ format_shlib_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * Optionally accepts per-field format in %{ %| %}, where %n is
  * replaced by the category name.  Default %{%Cn%|, %}
  */
-static struct sbuf *
+struct sbuf *
 format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -566,7 +572,7 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Cn -- Category name.
  */
-static struct sbuf *
+struct sbuf *
 format_category_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_category	*cat = data;
@@ -580,7 +586,7 @@ format_category_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * %{ %| %}, where %Dn is replaced by the directory name.  Default
  * %{%Dn\n%|%}
  */
-static struct sbuf *
+struct sbuf *
 format_directories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -610,7 +616,7 @@ format_directories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Dg -- Directory group. TODO: numeric gid
  */
-static struct sbuf *
+struct sbuf *
 format_directory_group(struct sbuf *sbuf, const void *data,
 		       struct percent_esc *p)
 {
@@ -622,7 +628,7 @@ format_directory_group(struct sbuf *sbuf, const void *data,
 /*
  * %Dk -- Directory Keep flag.
  */
-static struct sbuf *
+struct sbuf *
 format_directory_keepflag(struct sbuf *sbuf, const void *data,
 		       struct percent_esc *p)
 {
@@ -633,7 +639,7 @@ format_directory_keepflag(struct sbuf *sbuf, const void *data,
 /*
  * %Dn -- Directory path name.
  */
-static struct sbuf *
+struct sbuf *
 format_directory_path(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_dir	*dir = data;
@@ -644,7 +650,7 @@ format_directory_path(struct sbuf *sbuf, const void *data, struct percent_esc *p
 /*
  * %Dp -- Directory permissions.
  */
-static struct sbuf *
+struct sbuf *
 format_directory_perms(struct sbuf *sbuf, const void *data,
 		       struct percent_esc *p)
 {
@@ -656,7 +662,7 @@ format_directory_perms(struct sbuf *sbuf, const void *data,
 /*
  * %Dt -- Directory Try flag.
  */
-static struct sbuf *
+struct sbuf *
 format_directory_tryflag(struct sbuf *sbuf, const void *data,
 			 struct percent_esc *p)
 {
@@ -668,7 +674,7 @@ format_directory_tryflag(struct sbuf *sbuf, const void *data,
 /*
  * %Du -- Directory user. TODO: numeric UID
  */
-static struct sbuf *
+struct sbuf *
 format_directory_user(struct sbuf *sbuf, const void *data,
 		      struct percent_esc *p)
 {
@@ -683,7 +689,7 @@ format_directory_user(struct sbuf *sbuf, const void *data,
  * %}, where %n is replaced by the filename, %s by the checksum, etc.
  * Default %{%Fn\n%|%}
  */
-static struct sbuf *
+struct sbuf *
 format_files(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -713,7 +719,7 @@ format_files(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Fg -- File group.
  */
-static struct sbuf *
+struct sbuf *
 format_file_group(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
@@ -724,7 +730,7 @@ format_file_group(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Fk -- File Keep flag.
  */
-static struct sbuf *
+struct sbuf *
 format_file_keepflag(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
@@ -735,7 +741,7 @@ format_file_keepflag(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Fn -- File path name.
  */
-static struct sbuf *
+struct sbuf *
 format_file_path(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
@@ -746,7 +752,7 @@ format_file_path(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Fp -- File permissions.
  */
-static struct sbuf *
+struct sbuf *
 format_file_perms(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
@@ -757,7 +763,7 @@ format_file_perms(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Fs -- File SHA256 Checksum.
  */
-static struct sbuf *
+struct sbuf *
 format_file_sha256(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
@@ -768,7 +774,7 @@ format_file_sha256(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Fu -- File user.
  */
-static struct sbuf *
+struct sbuf *
 format_file_user(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
@@ -782,7 +788,7 @@ format_file_user(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * groupname or %#Gn by the gid or %Gg by the "gidstr" -- a line from
  * /etc/group. Default %{%Gn\n%|%}
  */
-static struct sbuf *
+struct sbuf *
 format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -812,7 +818,7 @@ format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Gg -- Group 'gidstr' (one line from /etc/group).
  */
-static struct sbuf *
+struct sbuf *
 format_group_gidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_group	*group = data;
@@ -823,7 +829,7 @@ format_group_gidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Gn -- Group name.
  */
-static struct sbuf *
+struct sbuf *
 format_group_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_group	*group = data;
@@ -834,7 +840,7 @@ format_group_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %I -- Row counter (integer*). Usually used only in per-field format.
  */
-static struct sbuf *
+struct sbuf *
 format_row_counter(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const int *counter = data;
@@ -847,7 +853,7 @@ format_row_counter(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * following per-field format in %{ %| %} where %Ln is replaced by the
  * license name and %l by the license logic.  Default %{%n%| %l %}
  */
-static struct sbuf *
+struct sbuf *
 format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -881,7 +887,7 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Ln -- License name.
  */
-static struct sbuf *
+struct sbuf *
 format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_license	*license = data;
@@ -892,7 +898,7 @@ format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %M -- Pkg message. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+struct sbuf *
 format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -907,7 +913,7 @@ format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * following per-field format in %{ %| %}, where %On is replaced by the
  * option name and %Ov by the value.  Default %{%On %Ov\n%|%}
  */ 
-static struct sbuf *
+struct sbuf *
 format_options(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -937,7 +943,7 @@ format_options(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %On -- Option name.
  */
-static struct sbuf *
+struct sbuf *
 format_option_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
@@ -948,7 +954,7 @@ format_option_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Ov -- Option value.
  */
-static struct sbuf *
+struct sbuf *
 format_option_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
@@ -962,7 +968,7 @@ format_option_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * username or %#Un by the uid or %Uu by the uidstr -- a line from
  * /etc/passwd. Default %{%Un\n%|%}
  */
-static struct sbuf *
+struct sbuf *
 format_users(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -992,7 +998,7 @@ format_users(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Un -- User name.
  */
-static struct sbuf *
+struct sbuf *
 format_user_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_user	*user = data;
@@ -1003,7 +1009,7 @@ format_user_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %Uu -- User uidstr (one line from /etc/passwd).
  */
-static struct sbuf *
+struct sbuf *
 format_user_uidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_user	*user = data;
@@ -1016,7 +1022,7 @@ format_user_uidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * Standard form: 0, 1.  Alternate form1: no, yes.  Alternate form2:
  * false, true
  */
-static struct sbuf *
+struct sbuf *
 format_autoremove(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1029,7 +1035,7 @@ format_autoremove(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %c -- Comment. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+struct sbuf *
 format_comment(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1044,7 +1050,7 @@ format_comment(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * per-field format string in %{ %| %} using any pkg_printf() *scalar*
  * formats. Defaults to printing "%dn-%dv\n" for each dependency.
  */
-static struct sbuf *
+struct sbuf *
 format_dependencies(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1074,7 +1080,7 @@ format_dependencies(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %dn -- Dependency name or %rn -- Requirement name.
  */
-static struct sbuf *
+struct sbuf *
 format_dependency_name(struct sbuf *sbuf, const void *data,
 		       struct percent_esc *p)
 {
@@ -1086,7 +1092,7 @@ format_dependency_name(struct sbuf *sbuf, const void *data,
 /*
  * %do -- Dependency origin or %ro -- Requirement origin.
  */
-static struct sbuf *
+struct sbuf *
 format_dependency_origin(struct sbuf *sbuf, const void *data,
 			 struct percent_esc *p)
 {
@@ -1098,7 +1104,7 @@ format_dependency_origin(struct sbuf *sbuf, const void *data,
 /*
  * %dv -- Dependency version or %rv -- Requirement version.
  */
-static struct sbuf *
+struct sbuf *
 format_dependency_version(struct sbuf *sbuf, const void *data,
 			  struct percent_esc *p)
 {
@@ -1110,7 +1116,7 @@ format_dependency_version(struct sbuf *sbuf, const void *data,
 /*
  * %i -- Additional info. string. Accepts field-width, left-align
  */
-static struct sbuf *
+struct sbuf *
 format_add_info(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1125,7 +1131,7 @@ format_add_info(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * Standard form: 0, 1.  Alternate form1: no, yes.  Alternate form2:
  * false, true
  */
-static struct sbuf *
+struct sbuf *
 format_lock_status(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1140,7 +1146,7 @@ format_lock_status(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * Standard form: and, or, single. Alternate form 1: &, |, ''.
  * Alternate form 2: &&, ||, ==
  */
-static struct sbuf *
+struct sbuf *
 format_license_logic(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1177,7 +1183,7 @@ format_license_logic(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %m -- Maintainer e-mail address. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+struct sbuf *
 format_maintainer(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1190,7 +1196,7 @@ format_maintainer(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %n -- Package name. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+struct sbuf *
 format_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1203,7 +1209,7 @@ format_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %o -- Package origin. string.  Accepts field-width, left-align
  */
-static struct sbuf *
+struct sbuf *
 format_origin(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1216,7 +1222,7 @@ format_origin(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %p -- Installation prefix. string. Accepts field-width, left-align
  */
-static struct sbuf *
+struct sbuf *
 format_prefix(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1231,7 +1237,7 @@ format_prefix(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * per-field format string in %{ %| %} using any pkg_printf() *scalar*
  * formats. Defaults to printing "%{%rn-%rv\n%|%}" for each dependency.
  */
-static struct sbuf *
+struct sbuf *
 format_requirements(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1265,7 +1271,7 @@ format_requirements(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * exponents (k, M, G).  Alternate form 2, ditto, but using binary
  * scale prefixes (ki, Mi, Gi etc.)
  */
-static struct sbuf *
+struct sbuf *
 format_flatsize(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1281,7 +1287,7 @@ format_flatsize(struct sbuf *sbuf, const void *data, struct percent_esc *p)
  * format string in %{ %}.  Default is to print seconds-since-epoch as
  * an integer applying our integer format modifiers.
  */
-static struct sbuf *
+struct sbuf *
 format_install_tstamp(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1304,7 +1310,7 @@ format_install_tstamp(struct sbuf *sbuf, const void *data, struct percent_esc *p
 /*
  * %v -- Package version. string. Accepts field width, left align
  */
-static struct sbuf *
+struct sbuf *
 format_version(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1317,7 +1323,7 @@ format_version(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %w -- Home page URL.  string.  Accepts field width, left align
  */
-static struct sbuf *
+struct sbuf *
 format_home_url(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
@@ -1330,7 +1336,7 @@ format_home_url(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 /*
  * %% -- Output a literal '%' character
  */
-static struct sbuf *
+struct sbuf *
 format_literal_percent(struct sbuf *sbuf, __unused const void *data,
 		       __unused struct percent_esc *p)
 {
@@ -1342,7 +1348,7 @@ format_literal_percent(struct sbuf *sbuf, __unused const void *data,
  * Unknown format code -- return NULL to signal upper layers to pass
  * the text through unchanged.
  */
-static struct sbuf *
+struct sbuf *
 format_unknown(struct sbuf *sbuf, __unused const void *data,
 		       __unused struct percent_esc *p)
 {
@@ -1352,7 +1358,7 @@ format_unknown(struct sbuf *sbuf, __unused const void *data,
 
 /* -------------------------------------------------------------- */
 
-static void
+void
 free_percent_esc(struct percent_esc *p)
 {
 	if (p->item_fmt)
@@ -1363,7 +1369,7 @@ free_percent_esc(struct percent_esc *p)
 	return;
 }
 
-static struct percent_esc *
+struct percent_esc *
 new_percent_esc(struct percent_esc *p)
 {
 	/* reset or alloc new */
@@ -1388,7 +1394,7 @@ new_percent_esc(struct percent_esc *p)
 	return (p);
 }
 
-static char *
+char *
 gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 {
 	int	bp = 0;
@@ -1441,7 +1447,7 @@ gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 }
 
 
-static struct sbuf *
+struct sbuf *
 human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 {
 	double		 num;
@@ -1479,7 +1485,7 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 	return (sbuf);
 }
 
-static struct sbuf *
+struct sbuf *
 string_val(struct sbuf *sbuf, const char *str, struct percent_esc *p)
 {
 	char	format[16];
@@ -1500,7 +1506,7 @@ string_val(struct sbuf *sbuf, const char *str, struct percent_esc *p)
 	return (sbuf);
 }
 
-static struct sbuf *
+struct sbuf *
 int_val(struct sbuf *sbuf, int64_t value, struct percent_esc *p)
 {
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
@@ -1517,7 +1523,7 @@ int_val(struct sbuf *sbuf, int64_t value, struct percent_esc *p)
 	return (sbuf);
 }
 
-static struct sbuf *
+struct sbuf *
 bool_val(struct sbuf *sbuf, bool value, struct percent_esc *p)
 {
 	int	alternate;
@@ -1534,7 +1540,7 @@ bool_val(struct sbuf *sbuf, bool value, struct percent_esc *p)
 	return (string_val(sbuf, boolean_str[value][alternate], p));
 }
 
-static struct sbuf *
+struct sbuf *
 mode_val(struct sbuf *sbuf, mode_t mode, struct percent_esc *p)
 {
 	/* Print mode as an octal integer '%o' by default.
@@ -1564,7 +1570,7 @@ mode_val(struct sbuf *sbuf, mode_t mode, struct percent_esc *p)
 	return (sbuf);
 }
 
-static struct sbuf *
+struct sbuf *
 list_count(struct sbuf *sbuf, int64_t count, struct percent_esc *p)
 {
 	/* Convert to 0 or 1 for %?X */
@@ -1577,7 +1583,7 @@ list_count(struct sbuf *sbuf, int64_t count, struct percent_esc *p)
 	return (int_val(sbuf, count, p));
 }
 
-static struct percent_esc *
+struct percent_esc *
 set_list_defaults(struct percent_esc *p, const char *item_fmt,
 		  const char *sep_fmt)
 {
@@ -1592,7 +1598,7 @@ set_list_defaults(struct percent_esc *p, const char *item_fmt,
 	return (p);
 }
 
-static struct sbuf *
+struct sbuf *
 iterate_item(struct sbuf *sbuf, const struct pkg *pkg, const char *format,
 	     const void *data, int count, unsigned context)
 {
@@ -1619,7 +1625,7 @@ iterate_item(struct sbuf *sbuf, const struct pkg *pkg, const char *format,
 	return (sbuf);
 }
 
-static inline const char *
+inline const char *
 field_modifier(const char *f, struct percent_esc *p)
 {
 	bool	done;
@@ -1667,7 +1673,7 @@ field_modifier(const char *f, struct percent_esc *p)
 	return (f);
 }
 
-static inline const char *
+inline const char *
 field_width(const char *f, struct percent_esc *p)
 {
 	bool	done;
@@ -1720,7 +1726,7 @@ field_width(const char *f, struct percent_esc *p)
 	return (f);
 }
 
-static inline const char *
+inline const char *
 format_trailer(const char *f, struct percent_esc *p)
 {
 
@@ -1774,7 +1780,7 @@ format_trailer(const char *f, struct percent_esc *p)
 	return (f);
 }
 
-static const char *
+const char *
 parse_format(const char *f, unsigned context, struct percent_esc *p)
 {
 	bool		done;
@@ -1828,7 +1834,7 @@ parse_format(const char *f, unsigned context, struct percent_esc *p)
 	return (f);
 }
 
-static inline const char*
+inline const char*
 maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 {
 	int	val;
@@ -1962,7 +1968,7 @@ maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 	return (f);
 }
 
-static inline const char*
+inline const char*
 read_oct_byte(struct sbuf *sbuf, const char *f)
 {
 	int	val = 0;
@@ -2010,7 +2016,7 @@ done:
 	return (f);
 }
 
-static const char *
+const char *
 process_escape(struct sbuf *sbuf, const char *f)
 {
 	f++;			/* Eat the \ */
@@ -2067,7 +2073,7 @@ process_escape(struct sbuf *sbuf, const char *f)
 	return (f);
 }
 
-static const char *
+const char *
 process_format_trailer(struct sbuf *sbuf, const char *f, const struct pkg *pkg, 
 		       const void *data, int count, unsigned context)
 {
@@ -2101,7 +2107,7 @@ process_format_trailer(struct sbuf *sbuf, const char *f, const struct pkg *pkg,
 	return (f);
 }
 
-static const char *
+const char *
 process_format_main(struct sbuf *sbuf, const char *f, va_list ap)
 {
 	const char		*fstart;
