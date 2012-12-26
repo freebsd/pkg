@@ -30,10 +30,114 @@
 #include <pkg.h>
 #include <private/pkg_printf.h>
 
+ATF_TC(gen_format);
+ATF_TC_HEAD(gen_format, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+			  "Generate printf format code of output");
+}
+ATF_TC_BODY(gen_format, tc)
+{
+	char		 buf[32];
+	unsigned	 i;
+	char		*tail = "x";
+
+	struct gf_test_vals {
+		unsigned    flags;
+		const char *out;
+	} gf_test_vals[] = {
+		{ 0x00,	"%*x", },
+		{ 0x01,	"%*x", },
+		{ 0x02,	"%#*x", },
+		{ 0x03,	"%#*x", },
+
+		{ 0x04,	"%-*x", },
+		{ 0x05,	"%-*x", },
+		{ 0x06,	"%#-*x", },
+		{ 0x07,	"%#-*x", },
+
+		{ 0x08,	"%+*x", },
+		{ 0x09,	"%+*x", },
+		{ 0x0a,	"%#+*x", },
+		{ 0x0b,	"%#+*x", },
+
+		{ 0x0c,	"%-+*x", },
+		{ 0x0d,	"%-+*x", },
+		{ 0x0e,	"%#-+*x", },
+		{ 0x0f,	"%#-+*x", },
+
+		{ 0x10,	"% *x", },
+		{ 0x11,	"% *x", },
+		{ 0x12,	"%# *x", },
+		{ 0x13,	"%# *x", },
+
+		{ 0x14,	"%- *x", },
+		{ 0x15,	"%- *x", },
+		{ 0x16,	"%#- *x", },
+		{ 0x17,	"%#- *x", },
+
+		{ 0x18,	"%+*x", },
+		{ 0x19,	"%+*x", },
+		{ 0x1a,	"%#+*x", },
+		{ 0x1b,	"%#+*x", },
+
+		{ 0x1c,	"%-+*x", },
+		{ 0x1d,	"%-+*x", },
+		{ 0x1e,	"%#-+*x", },
+		{ 0x1f,	"%#-+*x", },
+
+		{ 0x20,	"%0*x", },
+		{ 0x21,	"%0*x", },
+		{ 0x22,	"%#0*x", },
+		{ 0x23,	"%#0*x", },
+
+		{ 0x24,	"%-*x", },
+		{ 0x25,	"%-*x", },
+		{ 0x26,	"%#-*x", },
+		{ 0x27,	"%#-*x", },
+
+		{ 0x28,	"%0+*x", },
+		{ 0x29,	"%0+*x", },
+		{ 0x2a,	"%#0+*x", },
+		{ 0x2b,	"%#0+*x", },
+
+		{ 0x2c,	"%-+*x", },
+		{ 0x2d,	"%-+*x", },
+		{ 0x2e,	"%#-+*x", },
+		{ 0x2f,	"%#-+*x", },
+
+		{ 0x30,	"%0 *x", },
+		{ 0x31,	"%0 *x", },
+		{ 0x32,	"%#0 *x", },
+		{ 0x33,	"%#0 *x", },
+
+		{ 0x34,	"%- *x", },
+		{ 0x35,	"%- *x", },
+		{ 0x36,	"%#- *x", },
+		{ 0x37,	"%#- *x", },
+
+		{ 0x38,	"%0+*x", },
+		{ 0x39,	"%0+*x", },
+		{ 0x3a,	"%#0+*x", },
+		{ 0x3b,	"%#0+*x", },
+
+		{ 0x3c,	"%-+*x", },
+		{ 0x3d,	"%-+*x", },
+		{ 0x3e,	"%#-+*x", },
+		{ 0x3f,	"%#-+*x", },
+
+		{ 0,    NULL, },
+	};
+
+	for (i = 0; gf_test_vals[i].out != NULL; i++) {
+		ATF_CHECK_STREQ(gen_format(buf, sizeof(buf),
+					   gf_test_vals[i].flags, tail),
+				gf_test_vals[i].out);
+	}
+}
+
 ATF_TC(human_number);
 ATF_TC_HEAD(human_number, tc)
-	
-	
 {
 	atf_tc_set_md_var(tc, "descr",
 			  "Testing human_number() output routine");
@@ -151,6 +255,7 @@ ATF_TC_BODY(human_number, tc)
 
 ATF_TP_ADD_TCS(tp)
 {
+	ATF_TP_ADD_TC(tp, gen_format);
 	ATF_TP_ADD_TC(tp, human_number);
 
 	return atf_no_error();
