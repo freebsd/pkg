@@ -6,6 +6,12 @@ TOPDIR=	${.CURDIR}/../..
 
 CLEANFILES=	pkg_printf.c
 
+.if defined(STATIC_TESTS)
+NO_SHARED=	yes
+.else
+LDFLAGS+=	-Wl,-rpath=${TOPDIR}/libpkg
+.endif
+
 CFLAGS+=-DTESTING		\
 	-I${.CURDIR}		\
 	-I${TOPDIR}/libpkg	\
@@ -15,19 +21,26 @@ CFLAGS+=-I${TOPDIR}/external/sqlite		\
 	-I${TOPDIR}/external/libyaml/include	\
 	-I${TOPDIR}/external/uthash
 
-.if defined(STATIC_TESTS)
-NO_SHARED=	yes
-.else
-LDFLAGS+=	-Wl,-rpath=${TOPDIR}/libpkg
+.if defined(WITH_BUNDLED_LIBELF)
+CFLAGS+=-I${TOPDIR}/external/libelf \
+	-DBUNDLED_LIBELF
 .endif
 
 LDADD+=	-L${TOPDIR}/libpkg		\
-	-lpkg				\
-	-L${TOPDIR}/external/sqlite	\
+	-lpkg
+
+.if defined(STATIC_TESTS)
+LDADD+=	-L${TOPDIR}/external/sqlite	\
 	-lsqlite3			\
 	-L${TOPDIR}/external/libyaml	\
-	-lyaml				\
-	-L/usr/local/lib		\
+	-lyaml
+
+.  if defined(WITH_BUNDLED_LIBELF)
+LDADD+=	-L${TOPDIR}/external/libelf
+.  endif
+.endif
+
+LDADD+=	-L/usr/local/lib	\
 	-latf-c
 
 .if defined(STATIC_TESTS)
