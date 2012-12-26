@@ -1256,15 +1256,17 @@ struct sbuf *
 human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 {
 	double		 num;
+	int		 sign;
 	int		 divisor;
 	int		 scale;
+	int		 precision;
 	bool		 bin_scale;
 
 #define MAXSCALE	7
 
-	const char	 bin_pfx[MAXSCALE][3] =
+	const char	 *bin_pfx[MAXSCALE] =
 		{ "", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei" }; 
-	const char	 si_pfx[MAXSCALE][2] =
+	const char	 *si_pfx[MAXSCALE] =
 		{ "", "k", "M", "G", "T", "P", "E" };
 	char		 format[16];
 
@@ -1272,19 +1274,45 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 
 	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
 
-	num = number;
+	if (gen_format(format, sizeof(format), p->flags, ".*f") == NULL)
+		return (NULL);
+
+	if (number >= 0) {
+		num = number;
+		sign = 1;
+	} else {
+		num = -number;
+		sign = -1;
+	}
+
 	divisor = bin_scale ? 1024 : 1000;
 
 	for (scale = 0; scale < MAXSCALE; scale++) {
-		if (num <= divisor)
+		if (num < divisor)
 			break;
 		num /= divisor;
 	}
 
-	if (gen_format(format, sizeof(format), p->flags, ".3f %s") == NULL)
-		return (NULL);
+	if (num >= 100)
+		precision = 0;
+	else if (num >= 10) {
+		if (p->width == 0 || p->width > 3)
+			precision = 1;
+		else
+			precision = 0;
+	} else {
+		if (p->width == 0 || p->width > 3)
+			precision = 2;
+		else if (p->width == 3)
+			precision = 1;
+		else
+			precision = 0;
+	}
 
-	sbuf_printf(sbuf, format, p->width, num,
+	sbuf_printf(sbuf, format, p->width, num * sign, precision);
+
+	if (scale > 0)
+		sbuf_printf(sbuf, "%s", 
 		    bin_scale ? bin_pfx[scale] : si_pfx[scale]);
 
 	return (sbuf);

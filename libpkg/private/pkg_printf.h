@@ -43,7 +43,7 @@
 #define PP_EXPLICIT_PLUS	(1U << 3) /* + */
 #define PP_SPACE_FOR_PLUS	(1U << 4) /* SPACE */
 #define PP_ZERO_PAD		(1U << 5) /* 0 */
-#define PP_THOUSANDS_SEP	(1U << 6) /* ' */
+#define PP_THOUSANDS_SEP	(1U << 6) /* ' (locale dependent) */
 
 /* Contexts for option parsing */
 #define PP_PKG	(1U << 0)	/* Any pkg scalar value */

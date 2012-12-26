@@ -65,14 +65,12 @@ LDADD+=	-ledit		\
 
 NO_MAN=	true
 
-TESTS=	pkg_printf
+TESTS=	human_number
 
 pkg_printf.c:	${TOPDIR}/libpkg/pkg_printf.c
 	ln -s ${.OODATE} ${.TARGET}
 
 run: ${PROG}
-.for test in ${TESTS}
-	@env LD_LIBRARY_PATH=${TOPDIR}/libpkg ./${PROG} ${test}
-.endfor
+	atf-run
 
 .include <bsd.prog.mk>
