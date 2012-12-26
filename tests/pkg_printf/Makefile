@@ -1,0 +1,65 @@
+PROG=	test
+SRCS=	test.c		\
+	pkg_printf.c
+
+TOPDIR=	${.CURDIR}/../..
+
+CLEANFILES=	pkg_printf.c
+
+CFLAGS+=-DTESTING		\
+	-I${.CURDIR}		\
+	-I${TOPDIR}/libpkg	\
+	-I/usr/local/include
+
+CFLAGS+=-I${TOPDIR}/external/sqlite		\
+	-I${TOPDIR}/external/libyaml/include	\
+	-I${TOPDIR}/external/uthash
+
+.if defined(STATIC_TESTS)
+NO_SHARED=	yes
+.else
+LDFLAGS+=	-Wl,-rpath=${TOPDIR}/libpkg
+.endif
+
+LDADD+=	-L${TOPDIR}/libpkg		\
+	-lpkg				\
+	-L${TOPDIR}/external/sqlite	\
+	-lsqlite3			\
+	-L${TOPDIR}/external/libyaml	\
+	-lyaml				\
+	-L/usr/local/lib		\
+	-latf-c
+
+.if defined(STATIC_TESTS)
+LDADD+=	-larchive	\
+	-lsbuf		\
+	-lfetch		\
+	-lelf		\
+	-lutil		\
+	-lpthread	\
+	-lssl		\
+	-lcrypto	\
+	-lmd		\
+	-lz		\
+	-lbz2		\
+	-llzma
+
+.  if exists(/usr/include/edit/readline/readline.h)
+LDADD+=	-ledit		\
+	-lncursesw
+.  endif
+.endif
+
+NO_MAN=	true
+
+TESTS=	pkg_printf
+
+pkg_printf.c:	${TOPDIR}/libpkg/pkg_printf.c
+	ln -s ${.OODATE} ${.TARGET}
+
+run: ${PROG}
+.for test in ${TESTS}
+	@env LD_LIBRARY_PATH=${TOPDIR}/libpkg ./${PROG} ${test}
+.endfor
+
+.include <bsd.prog.mk>

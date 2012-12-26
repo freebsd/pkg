@@ -37,7 +37,7 @@
 #include <time.h>
 
 #include "pkg.h"
-#include "private/pkg_printf.h"
+#include <private/pkg_printf.h>
 
 /*
  * Format codes
@@ -1430,7 +1430,7 @@ iterate_item(struct sbuf *sbuf, const struct pkg *pkg, const char *format,
 	return (sbuf);
 }
 
-inline const char *
+const char *
 field_modifier(const char *f, struct percent_esc *p)
 {
 	bool	done;
@@ -1478,7 +1478,7 @@ field_modifier(const char *f, struct percent_esc *p)
 	return (f);
 }
 
-inline const char *
+const char *
 field_width(const char *f, struct percent_esc *p)
 {
 	bool	done;
@@ -1531,7 +1531,7 @@ field_width(const char *f, struct percent_esc *p)
 	return (f);
 }
 
-inline const char *
+const char *
 format_trailer(const char *f, struct percent_esc *p)
 {
 
@@ -1639,7 +1639,7 @@ parse_format(const char *f, unsigned context, struct percent_esc *p)
 	return (f);
 }
 
-inline const char*
+const char*
 maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 {
 	int	val;
@@ -1773,7 +1773,7 @@ maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 	return (f);
 }
 
-inline const char*
+const char*
 read_oct_byte(struct sbuf *sbuf, const char *f)
 {
 	int	val = 0;

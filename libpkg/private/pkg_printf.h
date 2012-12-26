@@ -28,7 +28,7 @@
 #ifndef _PKG_PRINTF_H
 #define _PKG_PRINTF_H
 
-#include "pkg.h"
+#include <pkg.h>
 
 #ifdef TESTING
 #define _static	
@@ -213,12 +213,13 @@ _static struct percent_esc *set_list_defaults(struct percent_esc *, const char *
 _static struct sbuf *iterate_item(struct sbuf *, const struct pkg *, const char *,
 				 const void *, int, unsigned);
 
-_static inline const char *field_modifier(const char *, struct percent_esc *);
-_static inline const char *field_width(const char *, struct percent_esc *);
+_static const char *field_modifier(const char *, struct percent_esc *);
+_static const char *field_width(const char *, struct percent_esc *);
+_static const char *format_trailer(const char *, struct percent_esc *);
 _static const char *parse_format(const char *, unsigned, struct percent_esc *);
 
-_static inline const char *maybe_read_hex_byte(struct sbuf *, const char *);
-_static inline const char *read_oct_byte(struct sbuf *, const char *);
+_static const char *maybe_read_hex_byte(struct sbuf *, const char *);
+_static const char *read_oct_byte(struct sbuf *, const char *);
 _static const char *process_escape(struct sbuf *, const char *);
 
 _static const char *process_format_trailer(struct sbuf *, const char *, const struct pkg *,
