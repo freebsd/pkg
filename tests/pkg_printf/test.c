@@ -310,6 +310,9 @@ ATF_TC_BODY(human_number, tc)
 	sbuf = sbuf_new_auto();
 	p = new_percent_esc(NULL);
 
+	ATF_REQUIRE_EQ(sbuf != NULL, true);
+	ATF_REQUIRE_EQ(p != NULL, true);
+
 	for (i = 0; hn_test_vals[i].out != NULL; i++) {
 		p->width = hn_test_vals[i].width;
 		p->flags = hn_test_vals[i].flags;
@@ -322,11 +325,96 @@ ATF_TC_BODY(human_number, tc)
 	sbuf_delete(sbuf);
 }
 
+ATF_TC(string_val);
+ATF_TC_HEAD(string_val, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+			  "Testing string_val() output routine");
+}
+ATF_TC_BODY(string_val, tc)
+{
+	struct sbuf		*sbuf;
+	struct percent_esc	*p;
+	int			 i;
+
+	struct sv_test_vals {
+		const char *in;
+		const char *out;
+		int width;
+		unsigned flags;
+	} sv_test_vals[] = {
+		{ "xxx", "xxx",    0, 0, },
+		{ "xxx", "xxx",    1, 0, },
+		{ "xxx", "xxx",    2, 0, },
+		{ "xxx", "xxx",    3, 0, },
+		{ "xxx", " xxx",   4, 0, },
+		{ "xxx", "  xxx",  5, 0, },
+		{ "xxx", "   xxx", 6, 0, },
+
+		{ "xxy", "xxy",    0, PP_LEFT_ALIGN, },
+		{ "xxy", "xxy",    1, PP_LEFT_ALIGN, },
+		{ "xxy", "xxy",    2, PP_LEFT_ALIGN, },
+		{ "xxy", "xxy",    3, PP_LEFT_ALIGN, },
+		{ "xxy", "xxy ",   4, PP_LEFT_ALIGN, },
+		{ "xxy", "xxy  ",  5, PP_LEFT_ALIGN, },
+		{ "xxy", "xxy   ", 6, PP_LEFT_ALIGN, },
+
+		{ "xxz", "xxz",    0, PP_ZERO_PAD, },
+		{ "xxz", "xxz",    1, PP_ZERO_PAD, },
+		{ "xxz", "xxz",    2, PP_ZERO_PAD, },
+		{ "xxz", "xxz",    3, PP_ZERO_PAD, },
+		{ "xxz", "0xxz",   4, PP_ZERO_PAD, },
+		{ "xxz", "00xxz",  5, PP_ZERO_PAD, },
+		{ "xxz", "000xxz", 6, PP_ZERO_PAD, },
+
+		/* Seems you can't zero pad on the RHS of a string */
+
+		{ "xyx", "xyx",    0, PP_ZERO_PAD|PP_LEFT_ALIGN, },
+		{ "xyx", "xyx",    1, PP_ZERO_PAD|PP_LEFT_ALIGN, },
+		{ "xyx", "xyx",    2, PP_ZERO_PAD|PP_LEFT_ALIGN, },
+		{ "xyx", "xyx",    3, PP_ZERO_PAD|PP_LEFT_ALIGN, },
+		{ "xyx", "xyx ",   4, PP_ZERO_PAD|PP_LEFT_ALIGN, },
+		{ "xyx", "xyx  ",  5, PP_ZERO_PAD|PP_LEFT_ALIGN, },
+		{ "xyx", "xyx   ", 6, PP_ZERO_PAD|PP_LEFT_ALIGN, },
+
+		/* Most of the format modifiers don't affect strings */
+
+		{ "aaa", "aaa", 0, PP_ALTERNATE_FORM1, },
+		{ "bbb", "bbb", 0, PP_ALTERNATE_FORM2, },
+		{ "ccc", "ccc", 0, PP_EXPLICIT_PLUS, },
+		{ "ddd", "ddd", 0, PP_SPACE_FOR_PLUS, },
+		{ "eee", "eee", 0, PP_THOUSANDS_SEP, },
+
+		{ NULL, NULL, 0, 0, },
+	};
+
+	sbuf = sbuf_new_auto();
+	p = new_percent_esc(NULL);
+
+	ATF_REQUIRE_EQ(sbuf != NULL, true);
+	ATF_REQUIRE_EQ(p != NULL, true);
+
+	for (i = 0; sv_test_vals[i].out != NULL; i++) {
+		p->width = sv_test_vals[i].width;
+		p->flags = sv_test_vals[i].flags;
+		sbuf = string_val(sbuf, sv_test_vals[i].in, p);
+		ATF_CHECK_STREQ(sbuf_data(sbuf), sv_test_vals[i].out);
+		sbuf_clear(sbuf);
+	}
+
+	free_percent_esc(p);
+	sbuf_delete(sbuf);
+}
+
 
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, gen_format);
 	ATF_TP_ADD_TC(tp, human_number);
+	ATF_TP_ADD_TC(tp, string_val);
 
 	return atf_no_error();
 }
+/*
+ * That's All Folks!
+ */

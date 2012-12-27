@@ -65,7 +65,7 @@ LDADD+=	-ledit		\
 
 NO_MAN=	true
 
-TESTS=	human_number
+TESTS=	gen_format human_number string_val
 
 pkg_printf.c:	${TOPDIR}/libpkg/pkg_printf.c
 	ln -s ${.OODATE} ${.TARGET}
