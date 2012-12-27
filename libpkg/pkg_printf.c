@@ -1257,6 +1257,8 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 {
 	double		 num;
 	int		 sign;
+	int		 width;
+	int		 scale_width;
 	int		 divisor;
 	int		 scale;
 	int		 precision;
@@ -1293,23 +1295,37 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 		num /= divisor;
 	}
 
+	if (scale == 0)
+		scale_width = 0;
+	else if (bin_scale)
+		scale_width = 2;
+	else
+		scale_width = 1;
+
+	if (p->width == 0)
+		width = 0;
+	else if (p->width <= scale_width)
+		width = 1;
+	else
+		width = p->width - scale_width;
+
 	if (num >= 100)
 		precision = 0;
 	else if (num >= 10) {
-		if (p->width == 0 || p->width > 3)
+		if (width == 0 || width > 3)
 			precision = 1;
 		else
 			precision = 0;
 	} else {
-		if (p->width == 0 || p->width > 3)
+		if (width == 0 || width > 3)
 			precision = 2;
-		else if (p->width == 3)
+		else if (width == 3)
 			precision = 1;
 		else
 			precision = 0;
 	}
 
-	sbuf_printf(sbuf, format, p->width, num * sign, precision);
+	sbuf_printf(sbuf, format, width, num * sign, precision);
 
 	if (scale > 0)
 		sbuf_printf(sbuf, "%s", 
