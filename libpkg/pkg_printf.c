@@ -1218,12 +1218,27 @@ gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 
 	/* PP_ALTERNATE_FORM1 is not used by regular printf(3) */
 
+	/* If PP_EXPLICIT_PLUS and PP_SPACE_FOR_PLUS are both set,
+	   the result is formatted according to PP_EXPLICIT_PLUS */
+
+	if ((flags & (PP_EXPLICIT_PLUS|PP_SPACE_FOR_PLUS)) ==
+	    (PP_EXPLICIT_PLUS|PP_SPACE_FOR_PLUS))
+		flags &= ~(PP_SPACE_FOR_PLUS);
+
+	/* If PP_LEFT_ALIGN and PP_ZERO_PAD are given together,
+	   PP_LEFT_ALIGN applies */
+
+	if ((flags & (PP_LEFT_ALIGN|PP_ZERO_PAD)) ==
+	    (PP_LEFT_ALIGN|PP_ZERO_PAD))
+		flags &= ~(PP_ZERO_PAD);
+
 	if (flags & PP_ALTERNATE_FORM2)
 		buf[bp++] = '#';
 
 	if (flags & PP_LEFT_ALIGN)
 		buf[bp++] = '-';
-	else if (flags & PP_ZERO_PAD)
+
+	if (flags & PP_ZERO_PAD)
 		buf[bp++] = '0';
 
 	if (buflen - bp < tlen + 2)
@@ -1231,7 +1246,8 @@ gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 	
 	if (flags & PP_EXPLICIT_PLUS)
 		buf[bp++] = '+';
-	else if (flags & PP_SPACE_FOR_PLUS)
+
+	if (flags & PP_SPACE_FOR_PLUS)
 		buf[bp++] = ' ';
 
 	if (flags & PP_THOUSANDS_SEP)
