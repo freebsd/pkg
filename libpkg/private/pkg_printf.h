@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* This is a private header file for internal testing use only */
+/* This is a private header file for internal and testing use only */
 #ifndef _PKG_PRINTF_H
 #define _PKG_PRINTF_H
 
@@ -205,6 +205,7 @@ _static struct sbuf *string_val(struct sbuf *, const char *,
 _static struct sbuf *int_val(struct sbuf *, int64_t, struct percent_esc *);
 _static struct sbuf *bool_val(struct sbuf *, bool, struct percent_esc *);
 _static struct sbuf *mode_val(struct sbuf *, mode_t, struct percent_esc *);
+_static struct sbuf *liclog_val(struct sbuf *, lic_t, struct percent_esc *);
 _static struct sbuf *list_count(struct sbuf *, int64_t, struct percent_esc *);
 
 _static struct percent_esc *set_list_defaults(struct percent_esc *, const char *,

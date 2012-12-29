@@ -26,6 +26,7 @@
 
 #include <sys/types.h>
 #include <sys/sbuf.h>
+#include <sys/stat.h>
 
 #include <assert.h>
 #include <ctype.h>
@@ -273,17 +274,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 	{ '\0', '\0',   PP_ALL,         &format_unknown, },
 	[PP_END_MARKER] =
 	{ '\0',	'\0',	0,		NULL, },
-};
-
-static const char	*liclog_str[3][3] = {
-	[PP_LIC_SINGLE] = { "single", "",  "==" },
-	[PP_LIC_OR]     = { "or",     "|", "||" },
-	[PP_LIC_AND]    = { "and",    "&", "&&" },
-};
-
-static const char	*boolean_str[2][3] = {
-	[false]	= { "0", "no", "false" },
-	[true]  = { "1", "yes", "true" },
 };
 
 /*
@@ -956,33 +946,9 @@ format_license_logic(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 	lic_t			 licenselogic;
-	int			 alternate;
-	int			 llogic;
 
 	pkg_get(pkg, PKG_LICENSE_LOGIC, &licenselogic);
-
-	switch (licenselogic) {
-	case LICENSE_SINGLE:
-		llogic = PP_LIC_SINGLE;
-		break;
-	case LICENSE_OR:
-		llogic = PP_LIC_OR;
-		break;
-	case LICENSE_AND:
-		llogic = PP_LIC_AND;
-		break;
-	}
-
-	if (p->flags & PP_ALTERNATE_FORM2)
-		alternate = 2;
-	else if (p->flags & PP_ALTERNATE_FORM1)
-		alternate = 1;
-	else
-		alternate = 0;
-
-	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
-
-	return (string_val(sbuf, liclog_str[llogic][alternate], p));
+	return (liclog_val(sbuf, licenselogic, p));
 }
 
 /*
@@ -1391,6 +1357,10 @@ int_val(struct sbuf *sbuf, int64_t value, struct percent_esc *p)
 struct sbuf *
 bool_val(struct sbuf *sbuf, bool value, struct percent_esc *p)
 {
+	static const char	*boolean_str[2][3] = {
+		[false]	= { "0", "no", "false" },
+		[true]  = { "1", "yes", "true" },
+	};
 	int	alternate;
 
 	if (p->flags & PP_ALTERNATE_FORM2)
@@ -1408,12 +1378,12 @@ bool_val(struct sbuf *sbuf, bool value, struct percent_esc *p)
 struct sbuf *
 mode_val(struct sbuf *sbuf, mode_t mode, struct percent_esc *p)
 {
-	/* Print mode as an octal integer '%o' by default.
+	/*
+         * Print mode as an octal integer '%o' by default.
 	 * PP_ALTERNATE_FORM2 generates '%#o' pased to regular
-	 * printf(). PP_ALTERNATE_FORM1 will generate drwxr-x--- style
-	 * from strmode(3).  */
-
-	/* Does the mode include the bits that indicate the inode type? */
+	 * printf(). PP_ALTERNATE_FORM1 will generate 'drwxr-x--- '
+	 * style from strmode(3).
+	 */
 
 	if (p->flags & PP_ALTERNATE_FORM1) {
 		char	modebuf[12];
@@ -1424,7 +1394,19 @@ mode_val(struct sbuf *sbuf, mode_t mode, struct percent_esc *p)
 	} else {
 		char	format[16];
 
-		p->flags &= ~(PP_ALTERNATE_FORM1);
+		/*
+		 * Should the mode when expressed as a numeric value
+		 * in octal include the bits that indicate the inode
+		 * type?  Generally no, but since mode is
+		 * intrinsically an unsigned type, overload
+		 * PP_EXPLICIT_PLUS to mean 'show bits for the inode
+		 * type'
+		 */
+
+		if ( (p->flags & PP_EXPLICIT_PLUS) == 0 )
+			mode &= ALLPERMS;
+
+		p->flags &= ~(PP_ALTERNATE_FORM1|PP_EXPLICIT_PLUS);
 
 		if (gen_format(format, sizeof(format), p->flags, PRIo16)
 		    == NULL)
@@ -1433,6 +1415,42 @@ mode_val(struct sbuf *sbuf, mode_t mode, struct percent_esc *p)
 		sbuf_printf(sbuf, format, p->width, mode);
 	}
 	return (sbuf);
+}
+
+struct sbuf *
+liclog_val(struct sbuf *sbuf, lic_t licenselogic, struct percent_esc *p)
+{
+	int			 alternate;
+	int			 llogic;
+
+	static const char	*liclog_str[3][3] = {
+		[PP_LIC_SINGLE] = { "single", "",  "==" },
+		[PP_LIC_OR]     = { "or",     "|", "||" },
+		[PP_LIC_AND]    = { "and",    "&", "&&" },
+	};
+
+	switch (licenselogic) {
+	case LICENSE_SINGLE:
+		llogic = PP_LIC_SINGLE;
+		break;
+	case LICENSE_OR:
+		llogic = PP_LIC_OR;
+		break;
+	case LICENSE_AND:
+		llogic = PP_LIC_AND;
+		break;
+	}
+
+	if (p->flags & PP_ALTERNATE_FORM2)
+		alternate = 2;
+	else if (p->flags & PP_ALTERNATE_FORM1)
+		alternate = 1;
+	else
+		alternate = 0;
+
+	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
+
+	return (string_val(sbuf, liclog_str[llogic][alternate], p));
 }
 
 struct sbuf *
