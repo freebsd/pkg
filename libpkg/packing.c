@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * All rights reserved.

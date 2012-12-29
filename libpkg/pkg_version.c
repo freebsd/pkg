@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * All rights reserved.
  * 

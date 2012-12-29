@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2012 Olivier Houchard <cognet@FreeBSD.org>
  * All rights reserved.
  * 
