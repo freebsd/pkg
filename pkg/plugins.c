@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * All rights reserved.
  * 

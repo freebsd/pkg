@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  *
