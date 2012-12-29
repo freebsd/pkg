@@ -814,6 +814,61 @@ ATF_TC_BODY(mode_val, tc)
 	sbuf_delete(sbuf);
 }
 	
+ATF_TC(liclog_val);
+ATF_TC_HEAD(liclog_val, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+			  "Testing liclog_val() output routine");
+}
+ATF_TC_BODY(liclog_val, tc)
+{
+	struct sbuf		*sbuf;
+	struct percent_esc	*p;
+	int			 i;
+
+	struct lv_test_vals {
+		lic_t in;
+		const char *out;
+		int width;
+		unsigned flags;
+	} lv_test_vals[] = {
+		{ LICENSE_SINGLE, "single", 0, 0, },
+		{ LICENSE_OR,     "or",     0, 0, },
+		{ LICENSE_AND,    "and",    0, 0, },
+
+		{ LICENSE_SINGLE, "",       0, PP_ALTERNATE_FORM1, },
+		{ LICENSE_OR,     "|",      0, PP_ALTERNATE_FORM1, },
+		{ LICENSE_AND,    "&",      0, PP_ALTERNATE_FORM1, },
+
+		{ LICENSE_SINGLE, "==",     0, PP_ALTERNATE_FORM2, },
+		{ LICENSE_OR,     "||",     0, PP_ALTERNATE_FORM2, },
+		{ LICENSE_AND,    "&&",     0, PP_ALTERNATE_FORM2, },
+
+		/*
+		 * See string_val() for tests on field-width and
+		 * left-align
+		 */
+
+		{ 0, NULL, 0, 0, },
+	};
+
+	sbuf = sbuf_new_auto();
+	p = new_percent_esc(NULL);
+
+	ATF_REQUIRE_EQ(sbuf != NULL, true);
+	ATF_REQUIRE_EQ(p != NULL, true);
+
+	for (i = 0; lv_test_vals[i].out != NULL; i++) {
+		p->width = lv_test_vals[i].width;
+		p->flags = lv_test_vals[i].flags;
+		sbuf = liclog_val(sbuf, lv_test_vals[i].in, p);
+		ATF_CHECK_STREQ(sbuf_data(sbuf), lv_test_vals[i].out);
+		sbuf_clear(sbuf);
+	}
+
+	free_percent_esc(p);
+	sbuf_delete(sbuf);
+}
 
 
 ATF_TP_ADD_TCS(tp)
@@ -824,6 +879,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, int_val);
 	ATF_TP_ADD_TC(tp, bool_val);
 	ATF_TP_ADD_TC(tp, mode_val);
+	ATF_TP_ADD_TC(tp, liclog_val);
 
 	return atf_no_error();
 }
