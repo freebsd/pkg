@@ -92,7 +92,7 @@ static int setmod(struct plist *, char *, struct file_attr *);
 static int setowner(struct plist *, char *, struct file_attr *);
 static int setgroup(struct plist *, char *, struct file_attr *);
 static int ignore_next(struct plist *, char *, struct file_attr *);
-static int comment(struct plist *, char *, struct file_attr *);
+static int comment_key(struct plist *, char *, struct file_attr *);
 /* compat with old packages */
 static int name(struct plist *, char *, struct file_attr *);
 static int pkgdep(struct plist *, char *, struct file_attr *);
@@ -108,7 +108,7 @@ static struct action_cmd {
 	{ "setmode", setmod },
 	{ "setowner", setowner },
 	{ "setgroup", setgroup },
-	{ "comment", comment },
+	{ "comment", comment_key },
 	{ "ignore_next", ignore_next },
 	/* compat with old packages */
 	{ "name", name },
@@ -379,7 +379,7 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-comment(struct plist *p, char *line, struct file_attr *a)
+comment_key(struct plist *p, char *line, struct file_attr *a)
 {
 	char *name, *version;
 	if (strcmp(line, "DEPORIGIN:") == 0) {
@@ -554,7 +554,7 @@ populate_keywords(struct plist *p)
 	a = malloc(sizeof(struct action));
 	strlcpy(k->keyword, "comment", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
-	a->perform = comment;
+	a->perform = comment_key;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
 	HASH_ADD_STR(p->keywords, keyword, k);
 
