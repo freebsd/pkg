@@ -29,6 +29,12 @@
 #include <sys/param.h>
 #include <sys/queue.h>
 
+#ifdef PKG_COMPAT
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
+#endif
+
 #include <err.h>
 #include <stdio.h>
 #include <pkg.h>
@@ -39,7 +45,11 @@
 #include "pkgcli.h"
 
 struct pkg_entry {
+#ifndef PKG_COMPAT
 	struct pkg *pkg;
+#else
+	char *pkgname;
+#endif
 	STAILQ_ENTRY(pkg_entry) next;
 };
 
@@ -61,18 +71,21 @@ static int
 pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
     const char * const outdir, const char * const rootdir, bool overwrite)
 {
-	int i, ret = EPKG_OK, retcode = EPKG_OK;
+	int i, retcode = EPKG_OK;
+#ifndef PKG_COMPAT
+	int ret = EPKG_OK;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
-	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
-	struct pkg_entry *e = NULL;
 	const char *name, *version;
-	char pkgpath[MAXPATHLEN];
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | 
 	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
 	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
+#endif
+	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
+	struct pkg_entry *e = NULL;
+	char pkgpath[MAXPATHLEN];
 	const char *format;
 	bool foundone;
 
@@ -125,6 +138,43 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		pkgdb_it_free(it);
 		if (ret != EPKG_END)
 			retcode++;
+#else
+		const char *dbdir = getenv("PKG_DBDIR");
+		struct dirent *dp;
+		DIR *d;
+
+		if (dbdir == NULL)
+			dbdir = "/var/db/pkg";
+
+		foundone = false;
+		if (match == MATCH_ALL) {
+			if ((d = opendir(dbdir)) == NULL) {
+				retcode++;
+				goto cleanup;
+			}
+			while ((dp = readdir(d)) != NULL) {
+				if (dp->d_type == DT_DIR) {
+					if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
+						err(1, "malloc(pkg_entry)");
+					e->pkgname = strdup(dp->d_name);
+					STAILQ_INSERT_TAIL(&head, e, next);
+					foundone = true;
+				}
+			}
+			closedir(d);
+			match = !MATCH_ALL;
+		} else {
+			struct stat st;
+			snprintf(pkgpath, MAXPATHLEN, "%s/%s", dbdir, argv[i]);
+			if (stat(pkgpath, &st) == 0 && S_ISDIR(st.st_mode)) {
+				foundone = true;
+				if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
+					err(1, "malloc(pkg_entry)");
+				e->pkgname = strdup(argv[i]);
+				STAILQ_INSERT_TAIL(&head, e, next);
+				foundone = true;
+			}
+		}
 #endif
 	}
 
@@ -132,23 +182,43 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		e = STAILQ_FIRST(&head);
 		STAILQ_REMOVE_HEAD(&head, next);
 
+#ifndef PKG_COMPAT
 		pkg_get(e->pkg, PKG_NAME, &name, PKG_VERSION, &version);
+#endif
 		if (!overwrite) {
+#ifndef PKG_COMPAT
 			snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir,
 			    name, version, format);
+#else
+			snprintf(pkgpath, MAXPATHLEN, "%s/%s.%s", outdir,
+			    e->pkgname, format);
+#endif
 			if (access(pkgpath, F_OK) == 0) {
+#ifndef PKG_COMPAT
 				printf("%s-%s already packaged, skipping...\n",
 				    name, version);
 				pkg_free(e->pkg);
+#else
+				printf("%s already packaged, skipping...\n",
+				    e->pkgname);
+				free(e->pkgname);
+#endif
 				free(e);
 				continue;
 			}
 		}
+#ifndef PKG_COMPAT
 		printf("Creating package for %s-%s\n", name, version);
 		if (pkg_create_installed(outdir, fmt, rootdir, e->pkg) !=
 		    EPKG_OK)
 			retcode++;
 		pkg_free(e->pkg);
+#else
+		printf("Creating package for %s\n", e->pkgname);
+		if (pkg_create_oldinstalled(outdir, fmt, rootdir, e->pkgname) != EPKG_OK)
+			retcode++;
+		free(e->pkgname);
+#endif
 		free(e);
 	}
 
@@ -226,7 +296,11 @@ exec_create(int argc, char **argv)
 		outdir = "./";
 
 	if (format == NULL) {
+#ifdef PKG_COMPAT
+		fmt = TBZ;
+#else
 		fmt = TXZ;
+#endif
 	} else {
 		if (format[0] == '.')
 			++format;
@@ -240,7 +314,11 @@ exec_create(int argc, char **argv)
 			fmt = TAR;
 		else {
 			warnx("unknown format %s, using txz", format);
+#ifdef PKG_COMPAT
+			fmt = TBZ;
+#else
 			fmt = TXZ;
+#endif
 		}
 	}
 
