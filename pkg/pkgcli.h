@@ -158,6 +158,10 @@ void usage_version(void);
 int exec_which(int, char **);
 void usage_which(void);
 
+/* pkg convert */
+int exec_convert(int, char **);
+void usage_convert(void);
+
 /* utils */
 
 /* These are the fields of the Full output, in order */

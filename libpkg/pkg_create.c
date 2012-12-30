@@ -72,8 +72,13 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		if ((pkg_sum == NULL || pkg_sum[0] == '\0') &&
 		    lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
-			if (sha256_file(fpath, sha256) != EPKG_OK)
-				return (EPKG_FATAL);
+			if (pkg->type == PKG_OLD_FILE) {
+				if (md5_file(fpath, sha256) != EPKG_OK)
+					return (EPKG_FATAL);
+			} else {
+				if (sha256_file(fpath, sha256) != EPKG_OK)
+					return (EPKG_FATAL);
+			}
 			strlcpy(file->sum, sha256, sizeof(file->sum));
 		}
 	}
@@ -82,11 +87,24 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Register shared libraries used by the package if SHLIBS
 	 * enabled in conf.  Deletes shlib info if not.
 	 */
-	pkg_register_shlibs(pkg);
+	if (pkg->type == PKG_OLD_FILE) {
+		const char *desc, *display, *comment;
 
-	pkg_emit_manifest(pkg, &m);
-	packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
-	free(m);
+		pkg_old_emit_content(pkg, &m);
+		packing_append_buffer(pkg_archive, m, "+CONTENTS", strlen(m));
+		free(m);
+
+		pkg_get(pkg, PKG_DESC, &desc, PKG_MESSAGE, &display, PKG_COMMENT, &comment);
+		packing_append_buffer(pkg_archive, desc, "+DESC", strlen(desc));
+		packing_append_buffer(pkg_archive, display, "+DISPLAY", strlen(display));
+		packing_append_buffer(pkg_archive, comment, "+COMMENT", strlen(comment));
+	} else {
+		pkg_register_shlibs(pkg);
+
+		pkg_emit_manifest(pkg, &m);
+		packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
+		free(m);
+	}
 
 	pkg_get(pkg, PKG_MTREE, &mtree);
 	if (mtree != NULL)
@@ -136,7 +154,8 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
 	/*
 	 * Ensure that we have all the information we need
 	 */
-	assert((pkg->flags & required_flags) == required_flags);
+	if (pkg->type != PKG_OLD_FILE)
+		assert((pkg->flags & required_flags) == required_flags);
 
 	if (mkdirs(outdir) != EPKG_OK)
 		return NULL;

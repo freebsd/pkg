@@ -69,6 +69,7 @@ static struct commands {
 	{ "backup", "Backs-up and restores the local package database", exec_backup, usage_backup},
 	{ "check", "Checks for missing dependencies and database consistency", exec_check, usage_check},
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
+	{ "convert", "Convert database from/to pkgng", exec_convert, usage_convert},
 	{ "create", "Creates software package distributions", exec_create, usage_create},
 	{ "delete", "Deletes packages from the database and the system", exec_delete, usage_delete},
 	{ "fetch", "Fetches packages from a remote repository", exec_fetch, usage_fetch},

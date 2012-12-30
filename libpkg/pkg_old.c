@@ -148,7 +148,7 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 		     pkg_file_cksum(file));
 	}
 
-	while (pkg_dirs(pkg, &dir)) {
+	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (pkg_dir_try(dir)) {
 			sbuf_printf(content,
 			    "@dirrm %s\n",
@@ -163,6 +163,34 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 	sbuf_finish(content);
 	*dest = strdup(sbuf_get(content));
 	sbuf_delete(content);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_to_old(struct pkg *p)
+{
+	struct pkg_file *f = NULL;
+	char md5[MD5_DIGEST_LENGTH * 2 + 1];
+
+	p->type = PKG_OLD_FILE;
+	while (pkg_files(p, &f) == EPKG_OK)
+		if (md5_file(pkg_file_path(f), md5) == EPKG_OK)
+			strlcpy(f->sum, md5, sizeof(f->sum));
+
+	return (EPKG_OK);
+}
+
+int
+pkg_from_old(struct pkg *p __unused)
+{
+	struct pkg_file *f = NULL;
+	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+
+	p->type = PKG_INSTALLED;
+	while (pkg_files(p, &f) == EPKG_OK)
+		if (sha256_file(pkg_file_path(f), sha256) == EPKG_OK)
+			strlcpy(f->sum, sha256, sizeof(f->sum));
 
 	return (EPKG_OK);
 }

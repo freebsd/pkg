@@ -73,7 +73,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
-	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | 
+	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
 	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
 	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;

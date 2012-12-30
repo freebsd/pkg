@@ -1171,4 +1171,6 @@ int pkg_get_myarch(char *pkgarch, size_t sz);
 void pkgdb_cmd(int argc, char **argv);
 int pkg_old_load_from_path(struct pkg *pkg, const char *path);
 int pkg_old_emit_content(struct pkg *pkg, char **dest);
+int pkg_from_old(struct pkg *pkg);
+int pkg_to_old(struct pkg *pkg);
 #endif
