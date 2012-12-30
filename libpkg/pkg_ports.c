@@ -621,12 +621,68 @@ parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
 	return (EPKG_OK);
 }
 
+static void
+parse_attributes(yaml_document_t *doc, yaml_node_t *node, struct file_attr **a) {
+	yaml_node_pair_t *pair;
+	yaml_node_t *key, *val;
+
+	if (*a == NULL)
+		*a = calloc(1, sizeof(struct file_attr));
+
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		key = yaml_document_get_node(doc, pair->key);
+		val = yaml_document_get_node(doc, pair->value);
+		if (key->data.scalar.length <= 0) {
+			++pair;
+			continue;
+		}
+
+		if (!strcasecmp(key->data.scalar.value, "owner")) {
+			if (val->type == YAML_SCALAR_NODE) {
+				if ((*a)->owner == NULL)
+					(*a)->owner = strdup(val->data.scalar.value);
+			} else {
+				pkg_emit_error("Expecting a scalar for the owner attribute, ignored");
+			}
+			++pair;
+			continue;
+		}
+		if (!strcasecmp(key->data.scalar.value, "group")) {
+			if (val->type == YAML_SCALAR_NODE) {
+				if ((*a)->group == NULL)
+					(*a)->group = strdup(val->data.scalar.value);
+			} else {
+				pkg_emit_error("Expecting a scalar for the group attribute, ignored");
+			}
+		}
+		if (!strcasecmp(key->data.scalar.value, "mode")) {
+			if (val->type == YAML_SCALAR_NODE) {
+				if ((*a)->mode == 0) {
+					void *set;
+					if ((set = setmode(val->data.scalar.value)) == NULL)
+						pkg_emit_error("Bad format for the mode attribute: %s", val->data.scalar.value);
+					else
+						(*a)->mode = getmode(set, 0);
+					free(set);
+				}
+			} else {
+				pkg_emit_error("Expecting a scalar for the mode attribute, ignored");
+			}
+		}
+		++pair;
+		continue;
+	}
+}
+
+
 static int
 parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
     struct plist *p, char *line, struct file_attr *attr)
 {
 	yaml_node_pair_t *pair;
 	yaml_node_t *key, *val;
+	yaml_node_t *actions = NULL;
 	char *cmd;
 
 	pair = node->data.mapping.pairs.start;
@@ -639,7 +695,13 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "actions")) {
-			parse_actions(doc, val, p, line, attr);
+			actions = val;
+			++pair;
+			continue;
+		}
+
+		if (!strcasecmp(key->data.scalar.value, "attributes")) {
+			parse_attributes(doc, val, &attr);
 			++pair;
 			continue;
 		}
@@ -711,6 +773,9 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
 		}
 		++pair;
 	}
+
+	if (actions != NULL)
+		parse_actions(doc, actions, p, line, attr);
 
 	return (EPKG_OK);
 }
@@ -822,7 +887,7 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	}
 
 	/* if keyword is empty consider it as a file */
-	if (*keyword = '\0')
+	if (*keyword == '\0')
 		return (file(plist, line, attr));
 
 	HASH_FIND_STR(plist->keywords, keyword, k);
