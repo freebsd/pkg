@@ -94,7 +94,7 @@ static int setgroup(struct plist *, char *, struct file_attr *);
 static int ignore_next(struct plist *, char *, struct file_attr *);
 static int comment_key(struct plist *, char *, struct file_attr *);
 /* compat with old packages */
-static int name(struct plist *, char *, struct file_attr *);
+static int name_key(struct plist *, char *, struct file_attr *);
 static int pkgdep(struct plist *, char *, struct file_attr *);
 
 static struct action_cmd {
@@ -111,7 +111,7 @@ static struct action_cmd {
 	{ "comment", comment_key },
 	{ "ignore_next", ignore_next },
 	/* compat with old packages */
-	{ "name", name },
+	{ "name", name_key },
 	{ "pkgdep", pkgdep },
 	{ NULL, NULL }
 };
@@ -159,7 +159,7 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-name(struct plist *p, char *line, struct file_attr *a)
+name_key(struct plist *p, char *line, struct file_attr *a)
 {
 	char *name;
 	char *tmp;
@@ -628,16 +628,16 @@ populate_keywords(struct plist *p)
 	a = malloc(sizeof(struct action));
 	strlcpy(k->keyword, "name", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
-	a->perform = name;
+	a->perform = name_key;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
 	HASH_ADD_STR(p->keywords, keyword, k);
 
 	/* @pkgdep */
 	k = malloc(sizeof(struct keyword));
 	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "name", sizeof(k->keyword));
+	strlcpy(k->keyword, "pkgdep", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
-	a->perform = name;
+	a->perform = pkgdep;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
 	HASH_ADD_STR(p->keywords, keyword, k);
 }
