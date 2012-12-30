@@ -106,3 +106,63 @@ pkg_old_load_from_path(struct pkg *pkg, const char *path)
 
 	return (EPKG_OK);
 }
+
+int
+pkg_old_emit_content(struct pkg *pkg, char **dest)
+{
+	struct sbuf *content = sbuf_new_auto();
+
+	struct pkg_dep *dep = NULL;
+	struct pkg_file *file = NULL;
+	struct pkg_dir *dir = NULL;
+
+	const char *name;
+	const char *pkgorigin, *prefix, *version;
+
+	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
+	    PKG_PREFIX, &prefix, PKG_VERSION, &version);
+
+	sbuf_printf(content,
+	    "@comment PKG_FORMAT_REVISION:1.1\n"
+	    "@name %s-%s\n"
+	    "@comment ORIGIN:%s\n"
+	    "@cwd %s\n"
+	    /* hack because we can recreate the prefix split or origin */
+	    "@cwd /\n",
+	    name, version, pkgorigin, prefix);
+
+	while (pkg_deps(pkg, &dep) == EPKG_OK) {
+		sbuf_printf(content,
+		    "@pkgdep %s-%s\n"
+		    "@comment DEPORIGIN:%s\n",
+		    pkg_dep_name(dep),
+		    pkg_dep_version(dep),
+		    pkg_dep_origin(dep));
+	}
+
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		sbuf_printf(content,
+		    "%s\n"
+		    "@comment MD5:%s\n",
+		     pkg_file_path(file) + 1,
+		     pkg_file_cksum(file));
+	}
+
+	while (pkg_dirs(pkg, &dir)) {
+		if (pkg_dir_try(dir)) {
+			sbuf_printf(content,
+			    "@dirrm %s\n",
+			    pkg_dir_path(dir));
+		} else {
+			sbuf_printf(content,
+			    "@unexec /sbin/rmdir %s 2>/dev/null\n",
+			    pkg_dir_path(dir));
+		}
+	}
+
+	sbuf_finish(content);
+	*dest = strdup(sbuf_get(content));
+	sbuf_delete(content);
+
+	return (EPKG_OK);
+}
