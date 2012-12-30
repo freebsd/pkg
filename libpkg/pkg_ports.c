@@ -165,15 +165,14 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 	char *tmp;
 
 	pkg_get(p->pkg, PKG_NAME, &name);
-	if (name == NULL) {
+	if (name != NULL && *name != '\0') {
 		free(a);
 		return (EPKG_OK);
 	}
-
 	tmp = strrchr(line, '-');
 	tmp[0] = '\0';
 	tmp++;
-	pkg_set(p->pkg, PKG_NAME, line, PKG_ORIGIN, tmp);
+	pkg_set(p->pkg, PKG_NAME, line, PKG_VERSION, tmp);
 
 	free(a);
 	return (EPKG_OK);
@@ -1034,7 +1033,8 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 		return (ret);
 
 	pkg_get(pkg, PKG_PREFIX, &pplist.prefix);
-	pplist.slash = pplist.prefix[strlen(pplist.prefix) - 1] == '/' ? "" : "/";
+	if (pplist.prefix != NULL)
+		pplist.slash = pplist.prefix[strlen(pplist.prefix) - 1] == '/' ? "" : "/";
 
 	walk = plist_buf;
 

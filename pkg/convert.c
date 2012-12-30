@@ -29,6 +29,7 @@
 
 #include <string.h>
 #include <sysexits.h>
+#include <dirent.h>
 
 #include <pkg.h>
 
@@ -123,6 +124,39 @@ cleanup:
 static int
 convert_from_old(void)
 {
+	DIR *d;
+	struct dirent *dp;
+	struct pkg *p = NULL;
+	char path[MAXPATHLEN];
+	char *name, *version;
+	struct pkgdb *db = NULL;
+
+	if ((d = opendir("/var/db/pkg")) == NULL)
+		return (EX_NOINPUT);
+
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+		return (EX_IOERR);
+	}
+	while ((dp = readdir(d)) != NULL) {
+		if (dp->d_type == DT_DIR) {
+			if (strcmp(dp->d_name, ".") == 0 ||
+			    strcmp(dp->d_name, "..") == 0)
+				continue;
+			if (p == NULL)
+				pkg_new(&p, PKG_OLD_FILE);
+			else
+				pkg_reset(p, PKG_OLD_FILE);
+			snprintf(path, MAXPATHLEN, "/var/db/pkg/%s/", dp->d_name);
+			pkg_old_load_from_path(p, path);
+			pkg_from_old(p);
+			pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
+			printf("Converting %s-%s...\n", name, version);
+			pkgdb_register_ports(db, p);
+		}
+	}
+
+	pkg_free(p);
+	pkgdb_close(db);
 	return (EX_OK);
 }
 
