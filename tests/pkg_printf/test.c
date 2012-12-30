@@ -870,9 +870,156 @@ ATF_TC_BODY(liclog_val, tc)
 	sbuf_delete(sbuf);
 }
 
+ATF_TC(list_count);
+ATF_TC_HEAD(list_count, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+			  "Testing list_count() output routine");
+}
+ATF_TC_BODY(list_count, tc)
+{
+	struct sbuf		*sbuf;
+	struct percent_esc	*p;
+	int			 i;
+
+	struct lc_test_vals {
+		int64_t in;
+		const char *out;
+		int width;
+		unsigned flags;
+	} lc_test_vals[] = {
+		{ 10, "10", 0, 0, },
+		{ 20, "1",  0, PP_ALTERNATE_FORM1, },
+		{ 30, "30", 0, PP_ALTERNATE_FORM2, },
+
+		/*
+		 * See int_val() for tests on field-width and
+		 * left-align
+		 */
+
+		{ 0, NULL, 0, 0, },
+	};
+
+	sbuf = sbuf_new_auto();
+	p = new_percent_esc(NULL);
+
+	ATF_REQUIRE_EQ(sbuf != NULL, true);
+	ATF_REQUIRE_EQ(p != NULL, true);
+
+	for (i = 0; lc_test_vals[i].out != NULL; i++) {
+		p->width = lc_test_vals[i].width;
+		p->flags = lc_test_vals[i].flags;
+		sbuf = list_count(sbuf, lc_test_vals[i].in, p);
+		ATF_CHECK_STREQ(sbuf_data(sbuf), lc_test_vals[i].out);
+		sbuf_clear(sbuf);
+	}
+
+	free_percent_esc(p);
+	sbuf_delete(sbuf);
+}
+
+ATF_TC(maybe_read_hex_byte);
+ATF_TC_HEAD(maybe_read_hex_byte, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "Testing maybe_read_hex_byte() format parsing routine");
+}
+ATF_TC_BODY(maybe_read_hex_byte, tc)
+{
+	struct sbuf	*sbuf;
+	const char	*f;
+	int		 i;
+
+	struct mrhb_test_vals {
+		const char *in;
+		const char *out; /* What gets written to the sbuf */
+		ptrdiff_t   fend_offset; /* Where f is left pointing */
+		char	    fend_val; /* expected first char in fend */
+	} mrhb_test_vals[] = {
+		{ "x61",   "a",    3, '\0', },
+		{ "x",     "\\x",  1, '\0', },
+		{ "xg",    "\\x",  1, 'g',  },
+		{ "xf",    "\\x",  1, 'f',  },
+		{ "xfg",   "\\x",  1, 'f',  },
+		{ "xff",   "\xff", 3, '\0', },
+		{ "xffg",  "\xff", 3, 'g',  },
+		{ "xfffg", "\xff", 3, 'f',  },
+
+		{ "x00",   "\0",   3, '\0', },
+		{ "x01",   "\x01", 3, '\0', },
+		{ "x02",   "\x02", 3, '\0', },
+		{ "x03",   "\x03", 3, '\0', },
+		{ "x04",   "\x04", 3, '\0', },
+		{ "x05",   "\x05", 3, '\0', },
+		{ "x06",   "\x06", 3, '\0', },
+		{ "x07",   "\x07", 3, '\0', },
+		{ "x08",   "\x08", 3, '\0', },
+		{ "x09",   "\x09", 3, '\0', },
+		{ "x0a",   "\x0a", 3, '\0', },
+		{ "x0b",   "\x0b", 3, '\0', },
+		{ "x0c",   "\x0c", 3, '\0', },
+		{ "x0d",   "\x0d", 3, '\0', },
+		{ "x0e",   "\x0e", 3, '\0', },
+		{ "x0f",   "\x0f", 3, '\0', },
+
+		{ "x0A",   "\x0a", 3, '\0', },
+		{ "x0B",   "\x0b", 3, '\0', },
+		{ "x0C",   "\x0c", 3, '\0', },
+		{ "x0D",   "\x0d", 3, '\0', },
+		{ "x0E",   "\x0e", 3, '\0', },
+		{ "x0F",   "\x0f", 3, '\0', },
+
+		{ "x10",   "\x10", 3, '\0', },
+		{ "x20",   "\x20", 3, '\0', },
+		{ "x30",   "\x30", 3, '\0', },
+		{ "x40",   "\x40", 3, '\0', },
+		{ "x50",   "\x50", 3, '\0', },
+		{ "x60",   "\x60", 3, '\0', },
+		{ "x70",   "\x70", 3, '\0', },
+		{ "x80",   "\x80", 3, '\0', },
+		{ "x90",   "\x90", 3, '\0', },
+		{ "xa0",   "\xa0", 3, '\0', },
+		{ "xb0",   "\xb0", 3, '\0', },
+		{ "xc0",   "\xc0", 3, '\0', },
+		{ "xd0",   "\xd0", 3, '\0', },
+		{ "xe0",   "\xe0", 3, '\0', },
+		{ "xf0",   "\xf0", 3, '\0', },
+
+		{ "xA0",   "\xa0", 3, '\0', },
+		{ "xB0",   "\xb0", 3, '\0', },
+		{ "xC0",   "\xc0", 3, '\0', },
+		{ "xD0",   "\xd0", 3, '\0', },
+		{ "xE0",   "\xe0", 3, '\0', },
+		{ "xF0",   "\xf0", 3, '\0', },
+
+		{ NULL,   NULL,    0, '\0', },
+	};
+
+	sbuf = sbuf_new_auto();
+
+	ATF_REQUIRE_EQ(sbuf != NULL, true);
+
+	for (i = 0; mrhb_test_vals[i].in != NULL; i++) {
+		f = maybe_read_hex_byte(sbuf, mrhb_test_vals[i].in);
+		sbuf_finish(sbuf);
+
+		ATF_CHECK_STREQ_MSG(sbuf_data(sbuf), mrhb_test_vals[i].out,
+				    "(test %d)", i);
+		ATF_CHECK_EQ_MSG(f - mrhb_test_vals[i].in,
+				 mrhb_test_vals[i].fend_offset,
+				 "(test %d)", i);
+		ATF_CHECK_EQ_MSG(*f, mrhb_test_vals[i].fend_val,
+				 "(test %d)", i);
+		
+		sbuf_clear(sbuf);
+	}
+
+	sbuf_delete(sbuf);
+}
 
 ATF_TP_ADD_TCS(tp)
 {
+	/* Output routines */
 	ATF_TP_ADD_TC(tp, gen_format);
 	ATF_TP_ADD_TC(tp, human_number);
 	ATF_TP_ADD_TC(tp, string_val);
@@ -880,6 +1027,10 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, bool_val);
 	ATF_TP_ADD_TC(tp, mode_val);
 	ATF_TP_ADD_TC(tp, liclog_val);
+	ATF_TP_ADD_TC(tp, list_count);
+
+	/* Format string parsing routines */
+	ATF_TP_ADD_TC(tp, maybe_read_hex_byte);
 
 	return atf_no_error();
 }
