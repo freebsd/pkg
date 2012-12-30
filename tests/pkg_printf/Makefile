@@ -66,12 +66,12 @@ LDADD+=	-ledit		\
 NO_MAN=	true
 
 TESTS=	gen_format human_number string_val int_val bool_val mode_val \
-	liclog_val
+	liclog_val list_count
 
 pkg_printf.c:	${TOPDIR}/libpkg/pkg_printf.c
 	ln -s ${.OODATE} ${.TARGET}
 
 run: ${PROG}
-	atf-run
+	atf-run | atf-report
 
 .include <bsd.prog.mk>
