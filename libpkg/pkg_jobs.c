@@ -557,6 +557,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_UPGRADE, j, j->db);
 		rc = pkg_jobs_install(j);
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_UPGRADE, j, j->db);
+		break;
 	case PKG_JOBS_AUTOREMOVE:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_AUTOREMOVE, j, j->db);
 		rc = pkg_jobs_deinstall(j);
