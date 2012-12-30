@@ -45,11 +45,7 @@
 #include "pkgcli.h"
 
 struct pkg_entry {
-#ifndef PKG_COMPAT
 	struct pkg *pkg;
-#else
-	char *pkgname;
-#endif
 	STAILQ_ENTRY(pkg_entry) next;
 };
 
@@ -71,13 +67,12 @@ static int
 pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
     const char * const outdir, const char * const rootdir, bool overwrite)
 {
-	int i, retcode = EPKG_OK;
+	int i, ret = EPKG_OK, retcode = EPKG_OK;
+	const char *name, *version;
 #ifndef PKG_COMPAT
-	int ret = EPKG_OK;
+	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	const char *name, *version;
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES | 
 	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
 	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
@@ -156,7 +151,10 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 				if (dp->d_type == DT_DIR) {
 					if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
 						err(1, "malloc(pkg_entry)");
-					e->pkgname = strdup(dp->d_name);
+					e->pkg = NULL;
+					pkg_new(&e->pkg, PKG_OLD_FILE);
+					snprintf(pkgpath, MAXPATHLEN, "%s/%s", dbdir, dp->d_name);
+					ret = pkg_old_load_from_path(e->pkg, pkgpath);
 					STAILQ_INSERT_TAIL(&head, e, next);
 					foundone = true;
 				}
@@ -170,7 +168,9 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 				foundone = true;
 				if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
 					err(1, "malloc(pkg_entry)");
-				e->pkgname = strdup(argv[i]);
+				e->pkg = NULL;
+				pkg_new(&e->pkg, PKG_OLD_FILE);
+				ret = pkg_old_load_from_path(e->pkg, pkgpath);
 				STAILQ_INSERT_TAIL(&head, e, next);
 				foundone = true;
 			}
@@ -182,43 +182,23 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		e = STAILQ_FIRST(&head);
 		STAILQ_REMOVE_HEAD(&head, next);
 
-#ifndef PKG_COMPAT
 		pkg_get(e->pkg, PKG_NAME, &name, PKG_VERSION, &version);
-#endif
 		if (!overwrite) {
-#ifndef PKG_COMPAT
 			snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir,
 			    name, version, format);
-#else
-			snprintf(pkgpath, MAXPATHLEN, "%s/%s.%s", outdir,
-			    e->pkgname, format);
-#endif
 			if (access(pkgpath, F_OK) == 0) {
-#ifndef PKG_COMPAT
 				printf("%s-%s already packaged, skipping...\n",
 				    name, version);
 				pkg_free(e->pkg);
-#else
-				printf("%s already packaged, skipping...\n",
-				    e->pkgname);
-				free(e->pkgname);
-#endif
 				free(e);
 				continue;
 			}
 		}
-#ifndef PKG_COMPAT
 		printf("Creating package for %s-%s\n", name, version);
 		if (pkg_create_installed(outdir, fmt, rootdir, e->pkg) !=
 		    EPKG_OK)
 			retcode++;
 		pkg_free(e->pkg);
-#else
-		printf("Creating package for %s\n", e->pkgname);
-		if (pkg_create_oldinstalled(outdir, fmt, rootdir, e->pkgname) != EPKG_OK)
-			retcode++;
-		free(e->pkgname);
-#endif
 		free(e);
 	}
 

@@ -317,13 +317,6 @@ cleanup:
 }
 
 int
-pkg_create_oldinstalled(const char *outdir __unused, pkg_formats format __unused,
-    const char *rootdir __unused, char *pkgname __unused)
-{
-	return (EPKG_OK);
-}
-
-int
 pkg_create_installed(const char *outdir, pkg_formats format,
     const char *rootdir, struct pkg *pkg)
 {
@@ -332,7 +325,7 @@ pkg_create_installed(const char *outdir, pkg_formats format,
 		PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
 		PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES ;
 
-	assert(pkg->type == PKG_INSTALLED);
+	assert(pkg->type == PKG_INSTALLED || pkg->type == PKG_OLD_FILE);
 
 	pkg_archive = pkg_create_archive(outdir, pkg, format, required_flags);
 	if (pkg_archive == NULL) {

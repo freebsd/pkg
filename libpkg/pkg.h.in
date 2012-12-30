@@ -947,8 +947,6 @@ typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
  */
 int pkg_create_installed(const char *, pkg_formats, const char *,
 			 struct pkg *);
-int pkg_create_oldinstalled(const char *, pkg_formats, const char *,
-			 char *);
 
 /**
  * Create package from stage install with a metadata directory
@@ -1171,6 +1169,5 @@ int pkgdb_reanalyse_shlibs(struct pkgdb *, struct pkg *);
 int pkg_get_myarch(char *pkgarch, size_t sz);
 
 void pkgdb_cmd(int argc, char **argv);
-
 int pkg_old_load_from_path(struct pkg *pkg, const char *path);
 #endif
