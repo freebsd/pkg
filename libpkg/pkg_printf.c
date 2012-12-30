@@ -1958,10 +1958,9 @@ process_escape(struct sbuf *sbuf, const char *f)
 		f = read_oct_byte(sbuf, f);
 		break;
 	default:		/* If it's not a recognised escape,
-				   pass it through unchanged */
+				   leave f pointing at the escaped
+				   character */
 		sbuf_putc(sbuf, '\\');
-		sbuf_putc(sbuf, *f);
-		f++;
 		break;
 	}
 
