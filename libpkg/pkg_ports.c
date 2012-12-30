@@ -65,6 +65,7 @@ struct plist {
 	const char *uname;
 	const char *gname;
 	const char *slash;
+	char *pkgdep;
 	bool ignore_next;
 	int64_t flatsize;
 	struct hardlinks *hardlinks;
@@ -91,7 +92,10 @@ static int setmod(struct plist *, char *, struct file_attr *);
 static int setowner(struct plist *, char *, struct file_attr *);
 static int setgroup(struct plist *, char *, struct file_attr *);
 static int ignore_next(struct plist *, char *, struct file_attr *);
-static int ignore(struct plist *, char *, struct file_attr *);
+static int comment(struct plist *, char *, struct file_attr *);
+/* compat with old packages */
+static int name(struct plist *, char *, struct file_attr *);
+static int pkgdep(struct plist *, char *, struct file_attr *);
 
 static struct action_cmd {
 	const char *name;
@@ -104,8 +108,11 @@ static struct action_cmd {
 	{ "setmode", setmod },
 	{ "setowner", setowner },
 	{ "setgroup", setgroup },
-	{ "ignore", ignore },
+	{ "comment", comment },
 	{ "ignore_next", ignore_next },
+	/* compat with old packages */
+	{ "name", name },
+	{ "pkgdep", pkgdep },
 	{ NULL, NULL }
 };
 
@@ -148,6 +155,36 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 
 	free(a);
 
+	return (EPKG_OK);
+}
+
+static int
+name(struct plist *p, char *line, struct file_attr *a)
+{
+	char *name;
+	char *tmp;
+
+	pkg_get(p->pkg, PKG_NAME, &name);
+	if (name == NULL) {
+		free(a);
+		return (EPKG_OK);
+	}
+
+	tmp = strrchr(line, '-');
+	tmp[0] = '\0';
+	tmp++;
+	pkg_set(p->pkg, PKG_NAME, line, PKG_ORIGIN, tmp);
+
+	free(a);
+	return (EPKG_OK);
+}
+
+static int
+pkgdep(struct plist *p, char *line, struct file_attr *a)
+{
+	if (*line != '\0')
+		p->pkgdep = line;
+	free(a);
 	return (EPKG_OK);
 }
 
@@ -342,8 +379,21 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 }
 
 static int
-ignore(__unused struct plist *p, __unused char *line, struct file_attr *a)
+comment(struct plist *p, char *line, struct file_attr *a)
 {
+	char *name, *version;
+	if (strcmp(line, "DEPORIGIN:") == 0) {
+		line += 10;
+		name = p->pkgdep;
+		version = strrchr(name, '-');
+		version[0] = '\0';
+		version++;
+		pkg_adddep(p->pkg, name, line, version, false);
+		p->pkgdep = NULL;
+	}
+
+	/* ignore md5 will be recomputed anyway */
+
 	free_file_attr(a);
 
 	return (EPKG_OK);
@@ -501,7 +551,7 @@ populate_keywords(struct plist *p)
 	a = malloc(sizeof(struct action));
 	strlcpy(k->keyword, "comment", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
-	a->perform = ignore;
+	a->perform = comment;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
 	HASH_ADD_STR(p->keywords, keyword, k);
 
@@ -565,6 +615,26 @@ populate_keywords(struct plist *p)
 	strlcpy(k->keyword, "unexec", sizeof(k->keyword));
 	STAILQ_INIT(&k->actions);
 	a->perform = unexec;
+	STAILQ_INSERT_TAIL(&k->actions, a, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
+
+	/* old pkg compat */
+
+	/* @name */
+	k = malloc(sizeof(struct keyword));
+	a = malloc(sizeof(struct action));
+	strlcpy(k->keyword, "name", sizeof(k->keyword));
+	STAILQ_INIT(&k->actions);
+	a->perform = name;
+	STAILQ_INSERT_TAIL(&k->actions, a, next);
+	HASH_ADD_STR(p->keywords, keyword, k);
+
+	/* @pkgdep */
+	k = malloc(sizeof(struct keyword));
+	a = malloc(sizeof(struct action));
+	strlcpy(k->keyword, "name", sizeof(k->keyword));
+	STAILQ_INIT(&k->actions);
+	a->perform = name;
 	STAILQ_INSERT_TAIL(&k->actions, a, next);
 	HASH_ADD_STR(p->keywords, keyword, k);
 }
