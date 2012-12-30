@@ -264,7 +264,10 @@ file(struct plist *p, char *line, struct file_attr *a)
 
 		if (regular) {
 			p->flatsize += st.st_size;
-			sha256_file(testpath, sha256);
+			if (pkg_type(p->pkg) == PKG_OLD_FILE)
+				md5_file(testpath, sha256);
+			else
+				sha256_file(testpath, sha256);
 			buf = sha256;
 		}
 		if (a != NULL)

@@ -177,6 +177,10 @@ typedef enum {
 	 * The pkg refers to a localy installed package.
 	 */
 	PKG_INSTALLED = (1U << 2),
+	/**
+	 * The pkg refers to a local file old archive.
+	 */
+	PKG_OLD_FILE = (1U << 3),
 } pkg_t;
 
 /**
