@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
