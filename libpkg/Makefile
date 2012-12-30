@@ -40,6 +40,7 @@ SRCS=		${PC} \
 		usergroup.c \
 		utils.c \
 		plugins.c \
+		pkg_old.c \
 		pkg.pc
 
 CLEANFILES=	${PC} ${PKGH}
