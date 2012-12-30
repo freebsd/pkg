@@ -76,10 +76,12 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	const char *format;
 	bool foundone;
 
+#ifndef PKG_COMPAT
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
+#endif
 
 	switch (fmt) {
 	case TXZ:
@@ -97,6 +99,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	}
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
+#ifndef PKG_COMPAT
 		if (match == MATCH_ALL) {
 			printf("Loading package list...\n");
 			if ((it = pkgdb_query(db, NULL, match)) == NULL)
@@ -122,6 +125,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		pkgdb_it_free(it);
 		if (ret != EPKG_END)
 			retcode++;
+#endif
 	}
 
 	while (!STAILQ_EMPTY(&head)) {
@@ -149,7 +153,9 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	}
 
 cleanup:
+#ifndef PKG_COMPAT
 	pkgdb_close(db);
+#endif
 
 	return (retcode);
 }
