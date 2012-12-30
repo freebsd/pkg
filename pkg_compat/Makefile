@@ -2,9 +2,7 @@ PROG=	pkg_compat
 
 SRCS=	pkg_compat.c register.c create.c
 
-CFLAGS=	-I${.CURDIR}/../external/libyaml/include \
-	-I${.CURDIR}/../external/uthash \
-	-I${.CURDIR}/../libpkg \
+CFLAGS=	-I${.CURDIR}/../libpkg \
 	-I${.CURDIR}/../pkg \
 	-DPKG_COMPAT=yes
 
