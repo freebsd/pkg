@@ -26,6 +26,7 @@
 
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/sbuf.h>
 
 #include <string.h>
 #include <sysexits.h>
@@ -49,6 +50,7 @@ convert_to_old(void)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	char *content, *name, *version, *buf;
+	const char *tmp;
 	int ret = EX_OK;
 	char path[MAXPATHLEN];
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
@@ -56,6 +58,8 @@ convert_to_old(void)
 	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE |
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS;
 	FILE *fp;
+	struct sbuf *install_script = sbuf_new_auto();
+	struct sbuf *deinstall_script = sbuf_new_auto();
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
@@ -89,11 +93,11 @@ convert_to_old(void)
 		pkg_get(pkg, PKG_COMMENT, &buf);
 		snprintf(path, MAXPATHLEN, "/var/db/pkg/%s-%s/+COMMENT", name, version);
 		fp = fopen(path, "w");
-		fputs(buf, fp);
+		fprintf(fp, "%s\n", buf);
 		fclose(fp);
 
 		pkg_get(pkg, PKG_MESSAGE, &buf);
-		if (buf != NULL) {
+		if (buf != NULL && buf[0] != '\0') {
 			snprintf(path, MAXPATHLEN, "/var/db/pkg/%s-%s/+DISPLAY", name, version);
 			fp = fopen(path, "w");
 			fputs(buf, fp);
@@ -101,17 +105,93 @@ convert_to_old(void)
 		}
 
 		pkg_get(pkg, PKG_MTREE, &buf);
-		if (buf != NULL) {
+		if (buf != NULL && buf[0] != '\0') {
 			snprintf(path, MAXPATHLEN, "/var/db/pkg/%s-%s/+MTREE_DIRS", name, version);
 			fp = fopen(path, "w");
 			fputs(buf, fp);
 			fclose(fp);
 		}
-		/* TODO scripts + required_by */
+
+		sbuf_clear(install_script);
+		tmp = pkg_script_get(pkg, PKG_SCRIPT_PRE_INSTALL);
+		if (tmp != NULL && tmp[0] != '\0') {
+			if (sbuf_len(install_script) == 0)
+				sbuf_cat(install_script, "#!/bin/sh\n\n");
+			sbuf_printf(install_script,
+			    "if [ \"$2\" = \"PRE-INSTALL\" ]; then\n"
+			    "%s\n"
+			    "fi\n",
+			    tmp);
+		}
+
+		tmp = pkg_script_get(pkg, PKG_SCRIPT_INSTALL);
+		if (tmp != NULL && tmp[0] != '\0') {
+			if (sbuf_len(install_script) == 0)
+				sbuf_cat(install_script, "#!/bin/sh\n\n");
+			sbuf_cat(install_script, tmp);
+		}
+
+		tmp = pkg_script_get(pkg, PKG_SCRIPT_POST_INSTALL);
+		if (tmp != NULL && tmp[0] != '\0') {
+			if (sbuf_len(install_script) == 0)
+				sbuf_cat(install_script, "#!/bin/sh\n\n");
+			sbuf_printf(install_script,
+			    "if [ \"$2\" = \"POST-INSTALL\" ]; then\n"
+			    "%s\n"
+			    "fi\n",
+			    tmp);
+		}
+		if (sbuf_len(install_script) > 0) {
+			sbuf_finish(install_script);
+			snprintf(path, MAXPATHLEN, "/var/db/pkg/%s-%s/+INSTALL", name, version);
+			fp = fopen(path, "w");
+			fputs(sbuf_data(install_script), fp);
+			fclose(fp);
+		}
+
+		sbuf_clear(deinstall_script);
+		tmp = pkg_script_get(pkg, PKG_SCRIPT_PRE_DEINSTALL);
+		if (tmp != NULL && tmp[0] != '\0') {
+			if (sbuf_len(deinstall_script) == 0)
+				sbuf_cat(deinstall_script, "#!/bin/sh\n\n");
+			sbuf_printf(deinstall_script,
+			    "if [ \"$2\" = \"DEINSTALL\" ]; then\n"
+			    "%s\n"
+			    "fi\n",
+			    tmp);
+		}
+
+		tmp = pkg_script_get(pkg, PKG_SCRIPT_DEINSTALL);
+		if (tmp != NULL && tmp[0] != '\0') {
+			if (sbuf_len(deinstall_script) == 0)
+				sbuf_cat(deinstall_script, "#!/bin/sh\n\n");
+			sbuf_cat(deinstall_script, tmp);
+		}
+
+		tmp = pkg_script_get(pkg, PKG_SCRIPT_POST_DEINSTALL);
+		if (tmp != NULL && tmp[0] != '\0') {
+			if (sbuf_len(deinstall_script) == 0)
+				sbuf_cat(deinstall_script, "#!/bin/sh\n\n");
+			sbuf_printf(deinstall_script,
+			    "if [ \"$2\" = \"POST-DEINSTALL\" ]; then\n"
+			    "%s\n"
+			    "fi\n",
+			    tmp);
+		}
+		if (sbuf_len(deinstall_script) > 0) {
+			sbuf_finish(deinstall_script);
+			snprintf(path, MAXPATHLEN, "/var/db/pkg/%s-%s/+DEINSTALL", name, version);
+			fp = fopen(path, "w");
+			fputs(sbuf_data(deinstall_script), fp);
+			fclose(fp);
+		}
+		/* TODO  required_by */
 		printf("done.\n");
 
 		free(content);
 	}
+	sbuf_delete(install_script);
+	sbuf_delete(deinstall_script);
 
 cleanup:
 	pkg_free(pkg);
