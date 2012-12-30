@@ -189,9 +189,12 @@ exec_register(int argc, char **argv)
 
 	free(plist);
 
+#ifndef PKG_COMPAT
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
 	}
+#else
+#endif
 
 	pkg_analyse_files(db, pkg);
 
@@ -215,14 +218,19 @@ exec_register(int argc, char **argv)
 		free(input_path);
 	}
 
+#ifndef PKG_COMPAT
 	if (pkgdb_register_ports(db, pkg) != EPKG_OK)
 		retcode = EX_SOFTWARE;
+#else
+#endif
 
 	pkg_get(pkg, PKG_MESSAGE, &message);
 	if (message != NULL && !legacy)
 		printf("%s\n", message);
 
+#ifndef PKG_COMPAT
 	pkgdb_close(db);
+#endif
 	pkg_free(pkg);
 
 	return (retcode);
