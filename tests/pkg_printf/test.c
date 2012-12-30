@@ -1124,7 +1124,72 @@ ATF_TC_BODY(read_oct_byte, tc)
 	sbuf_delete(sbuf);
 }
 
+ATF_TC(process_escape);
+ATF_TC_HEAD(process_escape, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "Testing process_escape() format parsing routine");
+}
+ATF_TC_BODY(process_escape, tc)
+{
+	struct sbuf	*sbuf;
+	const char	*f;
+	int		 i;
 
+	struct pe_test_vals {
+		const char *in;
+		const char *out; /* What gets written to the sbuf */
+		ptrdiff_t   fend_offset; /* Where f is left pointing */
+		char	    fend_val; /* expected first char in fend */
+	} pe_test_vals[] = {
+		{ "\\a",   "\a",   2, '\0', },
+		{ "\\b",   "\b",   2, '\0', },
+		{ "\\f",   "\f",   2, '\0', },
+		{ "\\n",   "\n",   2, '\0', },
+		{ "\\t",   "\t",   2, '\0', },
+		{ "\\v",   "\v",   2, '\0', },
+		{ "\\'",   "'",    2, '\0', },
+		{ "\\\"",  "\"",   2, '\0', },
+		{ "\\\\",  "\\",   2, '\0', },
+
+		{ "\\q",   "\\",   1, 'q',  },
+
+		/* See read_oct_byte() for more comprehensive tests on
+		   octal number escapes */
+
+		{ "\\1234",  "S",   4, '4',  },
+		{ "\\89",    "\\",  1, '8',  },
+
+		/* See maybe_read_hex_byte() for more comprehensive
+		   tests on hexadecimal number escapes */
+
+		{ "\\x4cd",  "L",   4, 'd', },
+		{ "\\xGG",   "\\x", 2, 'G', },
+
+		{ NULL,   NULL,    0, '\0', },
+	};
+
+	sbuf = sbuf_new_auto();
+
+	ATF_REQUIRE_EQ(sbuf != NULL, true);
+
+	for (i = 0; pe_test_vals[i].in != NULL; i++) {
+		f = process_escape(sbuf, pe_test_vals[i].in);
+		sbuf_finish(sbuf);
+
+		ATF_CHECK_STREQ_MSG(sbuf_data(sbuf), pe_test_vals[i].out,
+				    "(test %d)", i);
+		ATF_CHECK_EQ_MSG(f - pe_test_vals[i].in,
+				 pe_test_vals[i].fend_offset,
+				 "(test %d)", i);
+		ATF_CHECK_EQ_MSG(*f, pe_test_vals[i].fend_val,
+				 "(test %d)", i);
+		
+		sbuf_clear(sbuf);
+	}
+
+	sbuf_delete(sbuf);
+}
 
 ATF_TP_ADD_TCS(tp)
 {
@@ -1141,6 +1206,7 @@ ATF_TP_ADD_TCS(tp)
 	/* Format string parsing routines */
 	ATF_TP_ADD_TC(tp, maybe_read_hex_byte);
 	ATF_TP_ADD_TC(tp, read_oct_byte);
+	ATF_TP_ADD_TC(tp, process_escape);
 
 	return atf_no_error();
 }
