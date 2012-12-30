@@ -72,24 +72,30 @@ struct plist {
 	struct keyword *keywords;
 };
 
+struct file_attr {
+	char *owner;
+	char *group;
+	mode_t mode;
+};
+
 struct action {
-	int (*perform)(struct plist *, char *);
+	int (*perform)(struct plist *, char *, struct file_attr *);
 	STAILQ_ENTRY(action) next;
 };
 
-static int setprefix(struct plist *, char *);
-static int dirrm(struct plist *, char *);
-static int dirrmtry(struct plist *, char *);
-static int file(struct plist *, char *);
-static int setmod(struct plist *, char *);
-static int setowner(struct plist *, char *);
-static int setgroup(struct plist *, char *);
-static int ignore_next(struct plist *, char *);
-static int ignore(struct plist *, char *);
+static int setprefix(struct plist *, char *, struct file_attr *);
+static int dirrm(struct plist *, char *, struct file_attr *);
+static int dirrmtry(struct plist *, char *, struct file_attr *);
+static int file(struct plist *, char *, struct file_attr *);
+static int setmod(struct plist *, char *, struct file_attr *);
+static int setowner(struct plist *, char *, struct file_attr *);
+static int setgroup(struct plist *, char *, struct file_attr *);
+static int ignore_next(struct plist *, char *, struct file_attr *);
+static int ignore(struct plist *, char *, struct file_attr *);
 
 static struct action_cmd {
 	const char *name;
-	int (*perform)(struct plist *, char *);
+	int (*perform)(struct plist *, char *, struct file_attr *);
 } list_actions[] = {
 	{ "setprefix", setprefix },
 	{ "dirrm", dirrm },
@@ -102,6 +108,16 @@ static struct action_cmd {
 	{ "ignore_next", ignore_next },
 	{ NULL, NULL }
 };
+
+static void
+free_file_attr(struct file_attr *a)
+{
+	if (a == NULL)
+		return;
+	free(a->owner);
+	free(a->group);
+	free(a);
+}
 
 static void
 sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...)
@@ -121,7 +137,7 @@ sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...
 	sbuf_append(buf, "exec", str, __VA_ARGS__)
 
 static int
-setprefix(struct plist *p, char *line)
+setprefix(struct plist *p, char *line, struct file_attr *a)
 {
 	/* if no arguments then set default prefix */
 	if (line[0] == '\0')
@@ -130,11 +146,13 @@ setprefix(struct plist *p, char *line)
 		p->prefix = line;
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
+	free(a);
+
 	return (EPKG_OK);
 }
 
 static int
-meta_dirrm(struct plist *p, char *line, bool try)
+meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 {
 	size_t len;
 	char path[MAXPATHLEN];
@@ -142,6 +160,7 @@ meta_dirrm(struct plist *p, char *line, bool try)
 	char *testpath;
 	struct stat st;
 	bool developer;
+	int ret;
 
 	len = strlen(line);
 
@@ -161,37 +180,48 @@ meta_dirrm(struct plist *p, char *line, bool try)
 		testpath = stagedpath;
 	}
 
-	if (lstat(testpath, &st) == 0)
-		return (pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
-		    p->perm, try, true));
+	if (lstat(testpath, &st) == 0) {
+		if (a != NULL)
+			ret = pkg_adddir_attr(p->pkg, path,
+			    a->owner ? a->owner : p->uname,
+			    a->group ? a->group : p->gname,
+			    a->mode ? a->mode : p->perm,
+			    try, true);
+		else
+			ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
+			    p->perm, try, true);
+		goto cleanup;
+	}
 
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
 	pkg_emit_errno("lstat", path);
 
 	if (p->stage != NULL)
-		return (EPKG_FATAL);
+		ret = EPKG_FATAL;
 	if (developer) {
 		pkg_emit_developer_mode("Plist error: @dirrm %s", line);
-		return (EPKG_FATAL);
+		ret = EPKG_FATAL;
 	}
-	return (EPKG_OK);
+cleanup:
+	free_file_attr(a);
+	return (ret);
 }
 
 static int
-dirrm(struct plist *p, char *line)
+dirrm(struct plist *p, char *line, struct file_attr *a)
 {
-	return (meta_dirrm(p, line, false));
+	return (meta_dirrm(p, line, a, false));
 }
 
 static int
-dirrmtry(struct plist *p, char *line)
+dirrmtry(struct plist *p, char *line, struct file_attr *a)
 {
-	return (meta_dirrm(p, line, true));
+	return (meta_dirrm(p, line, a, true));
 }
 
 static int
-file(struct plist *p, char *line)
+file(struct plist *p, char *line, struct file_attr *a)
 {
 	size_t len;
 	char path[MAXPATHLEN];
@@ -202,6 +232,7 @@ file(struct plist *p, char *line)
 	bool regular = false;
 	bool developer;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	int ret;
 
 	len = strlen(line);
 
@@ -236,23 +267,33 @@ file(struct plist *p, char *line)
 			sha256_file(testpath, sha256);
 			buf = sha256;
 		}
-		return (pkg_addfile_attr(p->pkg, path, buf, p->uname, p->gname,
-		    p->perm, true));
+		if (a != NULL)
+			ret = pkg_addfile_attr(p->pkg, path, buf,
+			    a->owner ? a->owner : p->uname,
+			    a->group ? a->group : p->gname,
+			    a->mode ? a->mode : p->perm, true);
+		else
+			ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
+			    p->gname, p->perm, true);
+		goto cleanup;
 	}
 
 	pkg_emit_errno("lstat", path);
 	if (p->stage != NULL)
-		return (EPKG_FATAL);
+		ret = EPKG_FATAL;
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 	if (developer) {
 		pkg_emit_developer_mode("Plist error, missing file: %s", line);
-		return (EPKG_FATAL);
+		ret = EPKG_FATAL;
 	}
+
+cleanup:
+	free_file_attr(a);
 	return (EPKG_OK);
 }
 
 static int
-setmod(struct plist *p, char *line)
+setmod(struct plist *p, char *line, struct file_attr *a)
 {
 	void *set;
 
@@ -265,47 +306,57 @@ setmod(struct plist *p, char *line)
 		pkg_emit_error("%s wrong mode value", line);
 	else
 		p->perm = getmode(set, 0);
+
+	free_file_attr(a);
+
 	return (EPKG_OK);
 }
 
 static int
-setowner(struct plist *p, char *line)
+setowner(struct plist *p, char *line, struct file_attr *a)
 {
 	if (line[0] == '\0')
 		p->uname = NULL;
 	else
 		p->uname = line;
 
+	free_file_attr(a);
+
 	return (EPKG_OK);
 }
 
 static int
-setgroup(struct plist *p, char *line)
+setgroup(struct plist *p, char *line, struct file_attr *a)
 {
 	if (line[0] == '\0')
 		p->gname = NULL;
 	else
 		p->gname = line;
 
+	free_file_attr(a);
+
 	return (EPKG_OK);
 }
 
 static int
-ignore(__unused struct plist *p, __unused char *line)
+ignore(__unused struct plist *p, __unused char *line, struct file_attr *a)
 {
+	free_file_attr(a);
+
 	return (EPKG_OK);
 }
 
 static int
-ignore_next(struct plist *p, __unused char *line)
+ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
 {
 	p->ignore_next = true;
+	free_file_attr(a);
 
 	return (EPKG_OK);
 }
 
 static int
-meta_exec(struct plist *p, char *line, bool unexec)
+meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 {
 	char *cmd, *buf, *tmp;
 	char comment[2];
@@ -381,7 +432,7 @@ meta_exec(struct plist *p, char *line, bool unexec)
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
 						continue;
-					dirrmtry(p, path);
+					dirrmtry(p, path, a);
 				}
 			} else {
 				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)",
@@ -392,7 +443,7 @@ meta_exec(struct plist *p, char *line, bool unexec)
 					buf+=pmatch[1].rm_eo;
 					if (!strcmp(path, "/dev/null"))
 						continue;
-					dirrmtry(p, path);
+					dirrmtry(p, path, a);
 				}
 			}
 			regfree(&preg);
@@ -401,19 +452,21 @@ meta_exec(struct plist *p, char *line, bool unexec)
 	} else {
 		exec_append(p->post_install_buf, "%s\n", cmd);
 	}
+	free_file_attr(a);
+
 	return (EPKG_OK);
 }
 
 static int
-exec(struct plist *p, char *line)
+exec(struct plist *p, char *line, struct file_attr *a)
 {
-	return (meta_exec(p, line, false));
+	return (meta_exec(p, line, a, false));
 }
 
 static int
-unexec(struct plist *p, char *line)
+unexec(struct plist *p, char *line, struct file_attr *a)
 {
-	return (meta_exec(p, line, true));
+	return (meta_exec(p, line, a, true));
 }
 
 static void
@@ -535,7 +588,7 @@ plist_free(struct plist *p)
 
 static int
 parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
-    char *line)
+    char *line, struct file_attr *a)
 {
 	yaml_node_item_t *item;
 	yaml_node_t *val;
@@ -558,7 +611,7 @@ parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
 		for (i = 0; list_actions[i].name != NULL; i++) {
 			if (!strcasecmp(val->data.scalar.value,
 			    list_actions[i].name)) {
-				list_actions[i].perform(p, line);
+				list_actions[i].perform(p, line, a);
 				break;
 			}
 		}
@@ -570,7 +623,7 @@ parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
 
 static int
 parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
-    struct plist *p, char *line)
+    struct plist *p, char *line, struct file_attr *attr)
 {
 	yaml_node_pair_t *pair;
 	yaml_node_t *key, *val;
@@ -586,7 +639,7 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
 		}
 
 		if (!strcasecmp(key->data.scalar.value, "actions")) {
-			parse_actions(doc, val, p, line);
+			parse_actions(doc, val, p, line, attr);
 			++pair;
 			continue;
 		}
@@ -663,7 +716,7 @@ parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
 }
 
 static int
-external_keyword(struct plist *plist, char *keyword, char *line)
+external_keyword(struct plist *plist, char *keyword, char *line, struct file_attr *attr)
 {
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
@@ -697,7 +750,7 @@ external_keyword(struct plist *plist, char *keyword, char *line)
 			    keyfile_path);
 		} else {
 			ret = parse_and_apply_keyword_file(&doc, node, plist,
-			    line);
+			    line, attr);
 		}
 	} else {
 		pkg_emit_error("Invalid keyword file format: %s", keyfile_path);
@@ -714,12 +767,68 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 {
 	struct keyword *k;
 	struct action *a;
+	struct file_attr *attr = NULL;
+	char *tmp;
 	int ret = EPKG_FATAL;
+	char *owner = NULL;
+	char *group = NULL;
+	char *permstr = NULL;
+	void *set;
+
+	if ((tmp = strchr(keyword, '(')) != NULL &&
+	    keyword[strlen(keyword) -1] != ')') {
+		pkg_emit_error("Malformed keyword %s, expecting @keyword "
+		    "or @keyword(owner,group,mode)", keyword);
+		return (ret);
+	}
+
+	if (tmp != NULL) {
+		tmp[0] = '\0';
+		tmp++;
+		owner = tmp;
+		if ((tmp = strchr(tmp, ',')) == NULL) {
+			pkg_emit_error("Malformed keyword %s, expecting @keyword "
+			    "or @keyword(owner,group,mode)", keyword);
+			return (ret);
+		}
+		tmp[0] = '\0';
+		tmp++;
+		group = tmp;
+		if ((tmp = strchr(tmp, ',')) == NULL) {
+			pkg_emit_error("Malformed keyword %s, expecting @keyword "
+			    "or @keyword(owner,group,mode)", keyword);
+			return (ret);
+		}
+		tmp[0] = '\0';
+		tmp++;
+		permstr = tmp;
+		if (*permstr != '\0' && (set = setmode(permstr)) == NULL) {
+			pkg_emit_error("Malformed keyword %s, wrong mode section",
+			    keyword);
+			return (ret);
+		}
+
+		/* remove the trailing ) */
+		permstr[strlen(permstr) - 1] = '\0';
+		attr = calloc(1, sizeof(struct file_attr));
+		if (*owner != '\0')
+			attr->owner = owner;
+		if (*group != '\0')
+			attr->group = group;
+		if (*permstr != '\0') {
+			attr->mode = getmode(set, 0);
+			free(set);
+		}
+	}
+
+	/* if keyword is empty consider it as a file */
+	if (*keyword = '\0')
+		return (file(plist, line, attr));
 
 	HASH_FIND_STR(plist->keywords, keyword, k);
 	if (k != NULL) {
 		STAILQ_FOREACH(a, &k->actions, next) {
-			ret = a->perform(plist, line);
+			ret = a->perform(plist, line, attr);
 			if (ret != EPKG_OK)
 				return (ret);
 		}
@@ -731,7 +840,7 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	 * maybe it is defined externally
 	 * let's try to find it
 	 */
-	return (external_keyword(plist, keyword, line));
+	return (external_keyword(plist, keyword, line, attr));
 }
 
 static void
@@ -835,7 +944,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 			while (isspace(buf[0]))
 				buf++;
 
-			if (file(&pplist, buf) != EPKG_OK)
+			if (file(&pplist, buf, NULL) != EPKG_OK)
 				ret = EPKG_FATAL;
 		}
 	}
