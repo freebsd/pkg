@@ -34,6 +34,7 @@
 
 #include <openssl/pem.h>
 #include <openssl/sha.h>
+#include <openssl/md5.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
@@ -70,6 +71,7 @@ int is_dir(const char *);
 int is_conf_file(const char *path, char *newpath, size_t len);
 
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
+int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
 
 int rsa_sign(char *path, pem_password_cb *password_cb, char *rsa_key_path,
 		 unsigned char **sigret, unsigned int *siglen);

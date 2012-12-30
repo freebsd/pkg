@@ -278,6 +278,51 @@ is_dir(const char *path)
 }
 
 static void
+md5_hash(unsigned char hash[MD5_DIGEST_LENGTH],
+    char out[MD5_DIGEST_LENGTH * 2 + 1])
+{
+	int i;
+	for (i = 0; i < MD5_DIGEST_LENGTH; i++)
+		sprintf(out + (i *2), "%02x", hash[i]);
+
+	out[MD5_DIGEST_LENGTH * 2] = '\0';
+}
+
+int
+md5_file(const char *path, char out[MD5_DIGEST_LENGTH * 2 + 1])
+{
+	FILE *fp;
+	char buffer[BUFSIZ];
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	size_t r = 0;
+	MD5_CTX md5;
+
+	if ((fp = fopen(path, "rb")) == NULL) {
+		pkg_emit_errno("fopen", path);
+		return EPKG_FATAL;
+	}
+
+	MD5_Init(&md5);
+
+	while ((r = fread(buffer, 1, BUFSIZ, fp)) > 0)
+		MD5_Update(&md5, buffer, r);
+
+	if (ferror(fp) != 0) {
+		fclose(fp);
+		out[0] = '\0';
+		pkg_emit_errno("fread", path);
+		return EPKG_FATAL;
+	}
+
+	fclose(fp);
+
+	MD5_Final(hash, &md5);
+	md5_hash(hash, out);
+
+	return (EPKG_OK);
+}
+
+static void
 sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH],
     char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
