@@ -1724,6 +1724,8 @@ maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 
 	/* Hex escapes are of the form \xNN -- always two hex digits */
 
+	f++;			/* eat the x */
+
 	if (isxdigit(f[0]) && isxdigit(f[1])) {
 		switch(*f) {
 		case '0':
@@ -1842,6 +1844,7 @@ maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 		}
 
 		sbuf_putc(sbuf, val);
+		f++;
 	} else {
 		/* Pass through unchanged if it's not a recognizable
 		   hex byte. */
@@ -1933,7 +1936,6 @@ process_escape(struct sbuf *sbuf, const char *f)
 		sbuf_putc(sbuf, '\\');
 		break;
 	case 'x':		/* Hex escape: \xNN */
-		f++;
 		f = maybe_read_hex_byte(sbuf, f);
 		break;
 	case '0':
