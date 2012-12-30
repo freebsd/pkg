@@ -150,8 +150,9 @@ convert_from_old(void)
 			pkg_old_load_from_path(p, path);
 			pkg_from_old(p);
 			pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
-			printf("Converting %s-%s...\n", name, version);
+			printf("Converting %s-%s...", name, version);
 			pkgdb_register_ports(db, p);
+			printf("done\n");
 		}
 	}
 

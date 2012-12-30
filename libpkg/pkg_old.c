@@ -172,11 +172,16 @@ pkg_to_old(struct pkg *p)
 {
 	struct pkg_file *f = NULL;
 	char md5[MD5_DIGEST_LENGTH * 2 + 1];
+	const char *sum;
 
 	p->type = PKG_OLD_FILE;
-	while (pkg_files(p, &f) == EPKG_OK)
+	while (pkg_files(p, &f) == EPKG_OK) {
+		sum = pkg_file_cksum(f);
+		if (sum == NULL || sum[0] == '\0')
+			continue;
 		if (md5_file(pkg_file_path(f), md5) == EPKG_OK)
 			strlcpy(f->sum, md5, sizeof(f->sum));
+	}
 
 	return (EPKG_OK);
 }
@@ -186,11 +191,16 @@ pkg_from_old(struct pkg *p)
 {
 	struct pkg_file *f = NULL;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	const char *sum;
 
 	p->type = PKG_INSTALLED;
-	while (pkg_files(p, &f) == EPKG_OK)
+	while (pkg_files(p, &f) == EPKG_OK) {
+		sum = pkg_file_cksum(f);
+		if (sum == NULL || sum[0] == '\0')
+			continue;
 		if (sha256_file(pkg_file_path(f), sha256) == EPKG_OK)
 			strlcpy(f->sum, sha256, sizeof(f->sum));
+	}
 
 	return (EPKG_OK);
 }
