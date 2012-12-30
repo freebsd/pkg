@@ -155,7 +155,7 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 			    pkg_dir_path(dir));
 		} else {
 			sbuf_printf(content,
-			    "@unexec /sbin/rmdir %s 2>/dev/null\n",
+			    "@unexec /sbin/rmdir \"%s\" 2>/dev/null\n",
 			    pkg_dir_path(dir));
 		}
 	}
