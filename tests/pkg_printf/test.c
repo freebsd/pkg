@@ -1017,6 +1017,115 @@ ATF_TC_BODY(maybe_read_hex_byte, tc)
 	sbuf_delete(sbuf);
 }
 
+
+ATF_TC(read_oct_byte);
+ATF_TC_HEAD(read_oct_byte, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "Testing read_oct_byte() format parsing routine");
+}
+ATF_TC_BODY(read_oct_byte, tc)
+{
+	struct sbuf	*sbuf;
+	const char	*f;
+	int		 i;
+
+	struct rob_test_vals {
+		const char *in;
+		const char *out; /* What gets written to the sbuf */
+		ptrdiff_t   fend_offset; /* Where f is left pointing */
+		char	    fend_val; /* expected first char in fend */
+	} rob_test_vals[] = {
+		{ "141",   "a",    3, '\0', },
+		{ "0",     "\0",   1, '\0', },
+		{ "08",    "\0",   1, '8',  },
+		{ "008",    "\0",  2, '8',  },
+		{ "0008",   "\0",  3, '8',  },
+		{ "00008",  "\0",  3, '0',  },
+
+		{ "1",     "\001", 1, '\0', },
+		{ "2",     "\002", 1, '\0', },
+		{ "3",     "\003", 1, '\0', },
+		{ "4",     "\004", 1, '\0', },
+		{ "5",     "\005", 1, '\0', },
+		{ "6",     "\006", 1, '\0', },
+		{ "7",     "\007", 1, '\0', },
+
+		{ "00",    "\000", 2, '\0', },
+		{ "01",    "\001", 2, '\0', },
+		{ "02",    "\002", 2, '\0', },
+		{ "03",    "\003", 2, '\0', },
+		{ "04",    "\004", 2, '\0', },
+		{ "05",    "\005", 2, '\0', },
+		{ "06",    "\006", 2, '\0', },
+		{ "07",    "\007", 2, '\0', },
+
+		{ "000",   "\000", 3, '\0', },
+		{ "001",   "\001", 3, '\0', },
+		{ "002",   "\002", 3, '\0', },
+		{ "003",   "\003", 3, '\0', },
+		{ "004",   "\004", 3, '\0', },
+		{ "005",   "\005", 3, '\0', },
+		{ "006",   "\006", 3, '\0', },
+		{ "007",   "\007", 3, '\0', },
+
+		{ "10",    "\010", 2, '\0', },
+		{ "20",    "\020", 2, '\0', },
+		{ "30",    "\030", 2, '\0', },
+		{ "40",    "\040", 2, '\0', },
+		{ "50",    "\050", 2, '\0', },
+		{ "60",    "\060", 2, '\0', },
+		{ "70",    "\070", 2, '\0', },
+
+		{ "010",   "\010", 3, '\0', },
+		{ "020",   "\020", 3, '\0', },
+		{ "030",   "\030", 3, '\0', },
+		{ "040",   "\040", 3, '\0', },
+		{ "050",   "\050", 3, '\0', },
+		{ "060",   "\060", 3, '\0', },
+		{ "070",   "\070", 3, '\0', },
+
+		{ "100",   "\100", 3, '\0', },
+		{ "200",   "\200", 3, '\0', },
+		{ "300",   "\300", 3, '\0', },
+
+		{ "370",   "\370", 3, '\0', },
+		{ "371",   "\371", 3, '\0', },
+		{ "372",   "\372", 3, '\0', },
+		{ "373",   "\373", 3, '\0', },
+		{ "374",   "\374", 3, '\0', },
+		{ "375",   "\375", 3, '\0', },
+		{ "376",   "\376", 3, '\0', },
+		{ "377",   "\377", 3, '\0', },
+		{ "400",   "\040", 2, '0',  },
+
+		{ NULL,   NULL,    0, '\0', },
+	};
+
+	sbuf = sbuf_new_auto();
+
+	ATF_REQUIRE_EQ(sbuf != NULL, true);
+
+	for (i = 0; rob_test_vals[i].in != NULL; i++) {
+		f = read_oct_byte(sbuf, rob_test_vals[i].in);
+		sbuf_finish(sbuf);
+
+		ATF_CHECK_STREQ_MSG(sbuf_data(sbuf), rob_test_vals[i].out,
+				    "(test %d)", i);
+		ATF_CHECK_EQ_MSG(f - rob_test_vals[i].in,
+				 rob_test_vals[i].fend_offset,
+				 "(test %d)", i);
+		ATF_CHECK_EQ_MSG(*f, rob_test_vals[i].fend_val,
+				 "(test %d)", i);
+		
+		sbuf_clear(sbuf);
+	}
+
+	sbuf_delete(sbuf);
+}
+
+
+
 ATF_TP_ADD_TCS(tp)
 {
 	/* Output routines */
@@ -1031,6 +1140,7 @@ ATF_TP_ADD_TCS(tp)
 
 	/* Format string parsing routines */
 	ATF_TP_ADD_TC(tp, maybe_read_hex_byte);
+	ATF_TP_ADD_TC(tp, read_oct_byte);
 
 	return atf_no_error();
 }
