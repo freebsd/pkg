@@ -1858,12 +1858,13 @@ const char*
 read_oct_byte(struct sbuf *sbuf, const char *f)
 {
 	int	val = 0;
+	int	count = 0;
 
 	/* Octal escapes are upto three octal digits: \N, \NN or \NNN
 	   up to a max of \377.  Note: this treats \400 as \40
 	   followed by character 0 passed through unchanged. */
 
-	while (val < 32) {
+	while (val < 32 && count++ < 3) {
 		switch (*f) {
 		case '0':
 			val = val * 8 + 0;
@@ -1896,7 +1897,6 @@ read_oct_byte(struct sbuf *sbuf, const char *f)
 		f++;
 	} 
 done:
-	f--;	/* point at the last octal digit */
 	sbuf_putc(sbuf, val);
 
 	return (f);
@@ -1910,30 +1910,39 @@ process_escape(struct sbuf *sbuf, const char *f)
 	switch (*f) {
 	case 'a':
 		sbuf_putc(sbuf, '\a');
+		f++;
 		break;
 	case 'b':
 		sbuf_putc(sbuf, '\b');
+		f++;
 		break;
 	case 'f':
 		sbuf_putc(sbuf, '\f');
+		f++;
 		break;
 	case 'n':
 		sbuf_putc(sbuf, '\n');
+		f++;
 		break;
 	case 't':
 		sbuf_putc(sbuf, '\t');
+		f++;
 		break;
 	case 'v':
 		sbuf_putc(sbuf, '\v');
+		f++;
 		break;
 	case '\'':
 		sbuf_putc(sbuf, '\'');
+		f++;
 		break;
 	case '"':
 		sbuf_putc(sbuf, '"');
+		f++;
 		break;
 	case '\\':
 		sbuf_putc(sbuf, '\\');
+		f++;
 		break;
 	case 'x':		/* Hex escape: \xNN */
 		f = maybe_read_hex_byte(sbuf, f);
@@ -1945,13 +1954,14 @@ process_escape(struct sbuf *sbuf, const char *f)
 	case '4':
 	case '5':
 	case '6':
-	case '7':		/* all fall through */
+	case '7':		/* Oct escape: all fall through */
 		f = read_oct_byte(sbuf, f);
 		break;
 	default:		/* If it's not a recognised escape,
 				   pass it through unchanged */
 		sbuf_putc(sbuf, '\\');
 		sbuf_putc(sbuf, *f);
+		f++;
 		break;
 	}
 
