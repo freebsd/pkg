@@ -182,7 +182,7 @@ pkg_to_old(struct pkg *p)
 }
 
 int
-pkg_from_old(struct pkg *p __unused)
+pkg_from_old(struct pkg *p)
 {
 	struct pkg_file *f = NULL;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
