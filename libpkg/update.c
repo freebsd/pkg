@@ -126,6 +126,13 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		goto cleanup;
 	}
 
+	if (eaccess(repofile, W_OK) == -1) {
+		pkg_emit_error("Insufficient privilege to update %s\n",
+			       repofile);
+		rc = EPKG_NOACCESS;
+		goto cleanup;
+	}
+
 	a = archive_read_new();
 	archive_read_support_compression_all(a);
 	archive_read_support_format_tar(a);

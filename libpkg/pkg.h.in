@@ -411,6 +411,10 @@ typedef enum {
 	 * repo DB schema incompatible version
 	 */
 	EPKG_REPOSCHEMA,
+	/**
+         * Insufficient privilege for action
+         */
+	EPKG_NOACCESS,
 } pkg_error_t;
 
 /**
