@@ -164,13 +164,15 @@ exec_version(int argc, char **argv)
 	const char *reponame = NULL;
 	const char *version_remote = NULL;
 	bool have_ports;
-	bool auto_update = true;
+	bool auto_update;
 	match_t match = MATCH_ALL;
 	char *pattern=NULL;
 	struct stat sb;
 	char portsdirmakefile[MAXPATHLEN];
 
 	SLIST_INIT(&indexhead);
+
+	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
 	while ((ch = getopt(argc, argv, "hIPRUoqvl:L:x:g:e:O:r:tT")) != -1) {
 		switch (ch) {

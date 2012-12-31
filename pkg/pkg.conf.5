@@ -137,6 +137,16 @@ See
 for more information.
 .It Cm DEBUG_SCRIPTS: boolean
 Activate debug mode for scripts (aka set -x)
+.It Cm REPO_AUTOUPDATE: boolean
+When true, automatically check for and download updates to
+.Fa /var/db/pkg/repo.sqlite
+when running one of:
+.Nm pkg upgrade ,
+.Nm pkg fetch ,
+.Nm pkg install
+or
+.Nm pkg version -R .
+(default: YES)
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration

@@ -18,6 +18,7 @@ PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
 #PKG_PLUGINS_DIR    : /usr/local/lib/pkg/plugins
 #PKG_ENABLE_PLUGINS : YES
 #PLUGINS	    : [commands/mystat]
+#REPO_AUTOUPDATE    : YES
 
 # Repository definitions
 #repos:

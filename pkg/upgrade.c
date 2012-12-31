@@ -52,11 +52,13 @@ exec_upgrade(int argc, char **argv)
 	int ch;
 	bool yes;
 	bool dry_run = false;
-	bool auto_update = true;
+	bool auto_update;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_NONE;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
+
 
 	while ((ch = getopt(argc, argv, "fLnqr:y")) != -1) {
 		switch (ch) {

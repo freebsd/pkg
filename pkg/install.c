@@ -59,13 +59,14 @@ exec_install(int argc, char **argv)
 	int updcode = EPKG_OK;
 	int ch;
 	bool yes;
-	bool auto_update = true;
+	bool auto_update;
 	match_t match = MATCH_EXACT;
 	bool dry_run = false;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_NONE;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
 	while ((ch = getopt(argc, argv, "AfgLnqRr:xy")) != -1) {
 		switch (ch) {

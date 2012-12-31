@@ -56,9 +56,11 @@ exec_fetch(int argc, char **argv)
 	int ch;
 	bool force = false;
 	bool yes = false;
-	bool auto_update = true;
+	bool auto_update;
 	match_t match = MATCH_EXACT;
 	pkg_flags f = PKG_FLAG_NONE;
+
+	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
 	while ((ch = getopt(argc, argv, "ygxr:qaLd")) != -1) {
 		switch (ch) {
