@@ -164,6 +164,7 @@ exec_version(int argc, char **argv)
 	const char *reponame = NULL;
 	const char *version_remote = NULL;
 	bool have_ports;
+	bool auto_update = false;
 	match_t match = MATCH_ALL;
 	char *pattern=NULL;
 	struct stat sb;
@@ -171,7 +172,7 @@ exec_version(int argc, char **argv)
 
 	SLIST_INIT(&indexhead);
 
-	while ((ch = getopt(argc, argv, "hIPRoqvl:L:x:g:e:O:r:tT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIPRUoqvl:L:x:g:e:O:r:tT")) != -1) {
 		switch (ch) {
 		case 'h':
 			usage_version();
@@ -181,6 +182,9 @@ exec_version(int argc, char **argv)
 			break;
 		case 'R':
 			opt |= VERSION_SOURCE_REMOTE;
+			break;
+		case 'U':
+			auto_update = true;
 			break;
 		case 'P':
 			opt |= VERSION_SOURCE_PORTS;
@@ -311,6 +315,13 @@ exec_version(int argc, char **argv)
 		/* Only force remote mode if looking up remote, otherwise
 		   user is forced to have a repo.sqlite */
 		if (opt & VERSION_SOURCE_REMOTE) {
+			if (auto_update) {
+				int retcode;
+
+				retcode = pkgcli_update(false);
+				if (retcode != EPKG_OK)
+					return (updcode);
+			}
 			if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 				return (EX_IOERR);
 		} else

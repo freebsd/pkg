@@ -24,7 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl IPR
-.Op Fl hoqv
+.Op Fl hoqvU
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
 .Op Fl xge Ar pattern
@@ -85,6 +85,17 @@ for more information.
 .It Fl R
 Use repository catalogue for determining if a package is out of date.
 This is the default if no ports tree exists.
+.It Fl U
+Suppress the automatic update of the local copy of the repository catalogue
+from remote.
+This only has any effect in combination with the
+.Fl R
+option.
+Note: the
+.Fl L
+option is comonly used for this purpose in other
+.Nm pkg
+applications.
 .It Fl r Ar reponame
 Use the given
 .Ar reponame
