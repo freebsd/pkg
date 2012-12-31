@@ -173,12 +173,12 @@ static struct config_entry c[] = {
 		PKG_CONFIG_BOOL,
 		"PERMISSIVE",
 		"NO",
-	}
+	},
 	[PKG_CONFIG_REPO_AUTOUPDATE] = {
 		PKG_CONFIG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
-	}
+	},
 };
 
 static bool parsed = false;
