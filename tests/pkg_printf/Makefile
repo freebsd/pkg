@@ -66,7 +66,9 @@ LDADD+=	-ledit		\
 NO_MAN=	true
 
 TESTS=	gen_format human_number string_val int_val bool_val mode_val \
-	liclog_val list_count
+	liclog_val list_count maybe_read_hex_byte read_oct_byte \
+	process_escape
+
 
 pkg_printf.c:	${TOPDIR}/libpkg/pkg_printf.c
 	ln -s ${.OODATE} ${.TARGET}
