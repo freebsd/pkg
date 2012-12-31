@@ -57,7 +57,7 @@ struct index_entry {
 void
 usage_version(void)
 {
-	fprintf(stderr, "usage: pkg version [-IPR] [-hoqv] [-l limchar] [-L limchar] [[-X] -s string]\n");
+	fprintf(stderr, "usage: pkg version [-IPR] [-hoqvU] [-l limchar] [-L limchar] [[-X] -s string]\n");
 	fprintf(stderr, "                   [-r reponame] [-O origin] [index]\n");
 	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n\n");
