@@ -1260,6 +1260,77 @@ ATF_TC_BODY(field_modifier, tc)
 	free_percent_esc(p);
 }
 
+ATF_TC(field_width);
+ATF_TC_HEAD(field_width, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "Testing field_width() format parsing routine");
+}
+ATF_TC_BODY(field_width, tc)
+{
+	struct percent_esc	*p;
+	const char		*f;
+	int		 	i;
+
+	struct fw_test_vals {
+		const char *in;
+		int width; 
+		ptrdiff_t   fend_offset; /* Where f is left pointing */
+		char	    fend_val; /* expected first char in fend */
+	} fw_test_vals[] = {
+		{  "0",  0, 1, '\0', },
+		{  "1",  1, 1, '\0', },
+		{  "2",  2, 1, '\0', },
+		{  "3",  3, 1, '\0', },
+		{  "4",  4, 1, '\0', },
+		{  "5",  5, 1, '\0', },
+		{  "6",  6, 1, '\0', },
+		{  "7",  7, 1, '\0', },
+		{  "8",  8, 1, '\0', },
+		{  "9",  9, 1, '\0', },
+
+		{ "10", 10, 2, '\0', },
+		{ "11", 11, 2, '\0', },
+		{ "12", 12, 2, '\0', },
+
+		{ "23", 23, 2, '\0', },
+		{ "34", 34, 2, '\0', },
+		{ "45", 45, 2, '\0', },
+		{ "56", 56, 2, '\0', },
+		{ "67", 67, 2, '\0', },
+		{ "78", 78, 2, '\0', },
+		{ "89", 89, 2, '\0', },
+		{ "90", 90, 2, '\0', },
+
+		{ "00",  0, 2, '\0', },
+		{ "001", 1, 3, '\0', },
+		{ "x",   0, 0, 'x',  },
+		{ "0x",  0, 1, 'x',  },
+
+		{ NULL,  0, 0, '\0', },
+	};
+
+	p = new_percent_esc(NULL);
+
+	ATF_REQUIRE_EQ(p != NULL, true);
+
+	for (i = 0; fw_test_vals[i].in != NULL; i++) {
+		p->width = 0;
+		f = field_width(fw_test_vals[i].in, p);
+
+		ATF_CHECK_EQ_MSG(p->width, fw_test_vals[i].width,
+				    "(test %d)", i);
+		ATF_CHECK_EQ_MSG(f - fw_test_vals[i].in,
+				 fw_test_vals[i].fend_offset,
+				 "(test %d)", i);
+		ATF_CHECK_EQ_MSG(*f, fw_test_vals[i].fend_val,
+				 "(test %d)", i);
+	}
+
+	free_percent_esc(p);
+}
+
+
 ATF_TP_ADD_TCS(tp)
 {
 	/* Output routines */
@@ -1278,6 +1349,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, process_escape);
 
 	ATF_TP_ADD_TC(tp, field_modifier);
+	ATF_TP_ADD_TC(tp, field_width);
 
 	return atf_no_error();
 }
