@@ -320,7 +320,7 @@ exec_version(int argc, char **argv)
 
 				retcode = pkgcli_update(false);
 				if (retcode != EPKG_OK)
-					return (updcode);
+					return (retcode);
 			}
 			if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 				return (EX_IOERR);
