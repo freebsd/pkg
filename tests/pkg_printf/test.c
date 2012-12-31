@@ -1191,6 +1191,75 @@ ATF_TC_BODY(process_escape, tc)
 	sbuf_delete(sbuf);
 }
 
+ATF_TC(field_modifier);
+ATF_TC_HEAD(field_modifier, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "Testing field_modifier() format parsing routine");
+}
+ATF_TC_BODY(field_modifier, tc)
+{
+	struct percent_esc	*p;
+	const char		*f;
+	int		 	i;
+
+	struct fm_test_vals {
+		const char *in;
+		unsigned flags; 
+		ptrdiff_t   fend_offset; /* Where f is left pointing */
+		char	    fend_val; /* expected first char in fend */
+	} fm_test_vals[] = {
+		{ "#",  PP_ALTERNATE_FORM1, 1, '\0', },
+		{ "?",  PP_ALTERNATE_FORM2, 1, '\0', },
+		{ "-",  PP_LEFT_ALIGN,      1, '\0', },
+		{ "+",  PP_EXPLICIT_PLUS,   1, '\0', },
+		{ " ",  PP_SPACE_FOR_PLUS,  1, '\0', },
+		{ "0",  PP_ZERO_PAD,        1, '\0', },
+		{ "\'", PP_THOUSANDS_SEP,   1, '\0', },
+
+		/* Not a format modifier... */
+		{ "z",  0,  0, 'z', },
+		{ "*",  0,  0, '*', },
+		{ "1",  0,  0, '1', },
+
+		{ "#",    PP_ALTERNATE_FORM1, 1, '\0', },
+		{ "##",   PP_ALTERNATE_FORM1, 2, '\0', },
+		{ "###",  PP_ALTERNATE_FORM1, 3, '\0', },
+		{ "####", PP_ALTERNATE_FORM1, 4, '\0', },
+
+		{ "#z",    PP_ALTERNATE_FORM1, 1, 'z', },
+		{ "##z",   PP_ALTERNATE_FORM1, 2, 'z', },
+		{ "###z",  PP_ALTERNATE_FORM1, 3, 'z', },
+		{ "####z", PP_ALTERNATE_FORM1, 4, 'z', },
+
+		{ "#",    PP_ALTERNATE_FORM1, 1, '\0', },
+		{ "#?",   PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2, 2, '\0', },
+		{ "#?#",  PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2, 3, '\0', },
+		{ "#?#?", PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2, 4, '\0', },
+
+		{ NULL,   0,    0, '\0', },
+	};
+
+	p = new_percent_esc(NULL);
+
+	ATF_REQUIRE_EQ(p != NULL, true);
+
+	for (i = 0; fm_test_vals[i].in != NULL; i++) {
+		p->flags = 0;
+		f = field_modifier(fm_test_vals[i].in, p);
+
+		ATF_CHECK_EQ_MSG(p->flags, fm_test_vals[i].flags,
+				    "(test %d)", i);
+		ATF_CHECK_EQ_MSG(f - fm_test_vals[i].in,
+				 fm_test_vals[i].fend_offset,
+				 "(test %d)", i);
+		ATF_CHECK_EQ_MSG(*f, fm_test_vals[i].fend_val,
+				 "(test %d)", i);
+	}
+
+	free_percent_esc(p);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	/* Output routines */
@@ -1207,6 +1276,8 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, maybe_read_hex_byte);
 	ATF_TP_ADD_TC(tp, read_oct_byte);
 	ATF_TP_ADD_TC(tp, process_escape);
+
+	ATF_TP_ADD_TC(tp, field_modifier);
 
 	return atf_no_error();
 }
