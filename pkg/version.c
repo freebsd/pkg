@@ -164,7 +164,7 @@ exec_version(int argc, char **argv)
 	const char *reponame = NULL;
 	const char *version_remote = NULL;
 	bool have_ports;
-	bool auto_update = false;
+	bool auto_update = true;
 	match_t match = MATCH_ALL;
 	char *pattern=NULL;
 	struct stat sb;
@@ -184,7 +184,7 @@ exec_version(int argc, char **argv)
 			opt |= VERSION_SOURCE_REMOTE;
 			break;
 		case 'U':
-			auto_update = true;
+			auto_update = false;
 			break;
 		case 'P':
 			opt |= VERSION_SOURCE_PORTS;
