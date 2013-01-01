@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -216,6 +216,7 @@ _static struct sbuf *iterate_item(struct sbuf *, const struct pkg *, const char 
 
 _static const char *field_modifier(const char *, struct percent_esc *);
 _static const char *field_width(const char *, struct percent_esc *);
+_static const char *format_code(const char *, unsigned , struct percent_esc *);
 _static const char *format_trailer(const char *, struct percent_esc *);
 _static const char *parse_format(const char *, unsigned, struct percent_esc *);
 
