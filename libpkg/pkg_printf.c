@@ -163,18 +163,20 @@ struct pkg_printf_fmt {
 					struct percent_esc *);
 };
 
-/* These are in alphabetical order with A-Z sorting before a-z */
+/*
+ * These are in pkg_fmt_t order, which is necessary for the parsing
+ * algorithm.
+ */
+
 static const struct pkg_printf_fmt	fmt[] = {
-	[PP_PKG_SHLIBS] =
-	{ 'B', '\0',  true,  PP_PKG,		&format_shlibs, },
 	[PP_PKG_SHLIB_NAME] =
 	{ 'B', 'n',   false, PP_PKG|PP_B,	&format_shlib_name, },
-	[PP_PKG_CATEGORIES] =
-	{ 'C', '\0',  true,  PP_PKG,		&format_categories, },
+	[PP_PKG_SHLIBS] =
+	{ 'B', '\0',  true,  PP_PKG,		&format_shlibs, },
         [PP_PKG_CATEGORY_NAME] =
 	{ 'C', 'n',   false, PP_PKG|PP_C,	&format_category_name, },
-	[PP_PKG_DIRECTORIES] =
-	{ 'D', '\0',  true,  PP_PKG,		&format_directories, },
+	[PP_PKG_CATEGORIES] =
+	{ 'C', '\0',  true,  PP_PKG,		&format_categories, },
         [PP_PKG_DIRECTORY_GROUP] =
 	{ 'D', 'g',   false, PP_PKG|PP_D,	&format_directory_group, },
 	[PP_PKG_DIRECTORY_KEEPFLAG] =
@@ -187,8 +189,8 @@ static const struct pkg_printf_fmt	fmt[] = {
 	{ 'D', 't',   false, PP_PKG|PP_D,	&format_directory_tryflag, },
 	[PP_PKG_DIRECTORY_USER] =
 	{ 'D', 'u',   false, PP_PKG|PP_D,	&format_directory_user, },
-	[PP_PKG_FILES] =
-	{ 'F', '\0',  true,  PP_PKG,		&format_files, },
+	[PP_PKG_DIRECTORIES] =
+	{ 'D', '\0',  true,  PP_PKG,		&format_directories, },
 	[PP_PKG_FILE_GROUP] =
 	{ 'F', 'g',   false, PP_PKG|PP_F,	&format_file_group, },
 	[PP_PKG_FILE_KEEPFLAG] =
@@ -201,44 +203,46 @@ static const struct pkg_printf_fmt	fmt[] = {
 	{ 'F', 's',   false, PP_PKG|PP_F,	&format_file_sha256, },
 	[PP_PKG_FILE_USER] =
 	{ 'F', 'u',   false, PP_PKG|PP_F,	&format_file_user, },
-	[PP_PKG_GROUPS] =
-	{ 'G', '\0',  true,  PP_PKG,		&format_groups, },
+	[PP_PKG_FILES] =
+	{ 'F', '\0',  true,  PP_PKG,		&format_files, },
 	[PP_PKG_GROUP_GIDSTR] =
 	{ 'G', 'g',   false, PP_PKG|PP_G,	&format_group_gidstr, },
 	[PP_PKG_GROUP_NAME] =
 	{ 'G', 'n',   false, PP_PKG|PP_G,	&format_group_name, },
+	[PP_PKG_GROUPS] =
+	{ 'G', '\0',  true,  PP_PKG,		&format_groups, },
 	[PP_ROW_COUNTER] =
 	{ 'I', '\0',  false, PP_TRAILER,	&format_row_counter, },
-	[PP_PKG_LICENSES] =
-	{ 'L', '\0',  true,  PP_PKG,		&format_licenses, },
 	[PP_PKG_LICENSE_NAME] =
 	{ 'L', 'n',   false, PP_PKG|PP_L,	&format_license_name, },
+	[PP_PKG_LICENSES] =
+	{ 'L', '\0',  true,  PP_PKG,		&format_licenses, },
 	[PP_PKG_MESSAGE] =
 	{ 'M', '\0',  false, PP_ALL,		&format_message, },
-	[PP_PKG_OPTIONS] =
-	{ 'O', '\0',  true,  PP_PKG,		&format_options, },
 	[PP_PKG_OPTION_NAME] =
 	{ 'O', 'n',   false, PP_PKG|PP_O,	&format_option_name, },
 	[PP_PKG_OPTION_VALUE] =
 	{ 'O', 'v',   false, PP_PKG|PP_O,	&format_option_value, },
-	[PP_PKG_USERS] =
-	{ 'U', '\0',  true,  PP_PKG,		&format_users, },
+	[PP_PKG_OPTIONS] =
+	{ 'O', '\0',  true,  PP_PKG,		&format_options, },
 	[PP_PKG_USER_NAME] =
 	{ 'U', 'n',   false, PP_PKG|PP_U,	&format_user_name, },
 	[PP_PKG_USER_UIDSTR] =
 	{ 'U', 'u',   false, PP_PKG|PP_U,	&format_user_uidstr, },
+	[PP_PKG_USERS] =
+	{ 'U', '\0',  true,  PP_PKG,		&format_users, },
 	[PP_PKG_AUTOREMOVE] =
 	{ 'a', '\0',  false, PP_ALL,		&format_autoremove, },
 	[PP_PKG_COMMENT] =
 	{ 'c', '\0',  false, PP_ALL,		&format_comment, },
-	[PP_PKG_DEPENDENCIES] =
-	{ 'd', '\0',  true,  PP_PKG,		&format_dependencies, },
 	[PP_PKG_DEPENDENCY_NAME] =
 	{ 'd', 'n',   false, PP_PKG|PP_d,	&format_dependency_name, },
 	[PP_PKG_DEPENDENCY_ORIGIN] =
 	{ 'd', 'o',   false, PP_PKG|PP_d,	&format_dependency_origin, },
 	[PP_PKG_DEPENDENCY_VERSION] =
 	{ 'd', 'v',   false, PP_PKG|PP_d,	&format_dependency_version, },
+	[PP_PKG_DEPENDENCIES] =
+	{ 'd', '\0',  true,  PP_PKG,		&format_dependencies, },
 	[PP_PKG_ADDITIONAL_INFO] =
 	{ 'i', '\0',  false, PP_ALL,		&format_add_info, },
 	[PP_PKG_LOCK_STATUS] =
@@ -253,14 +257,14 @@ static const struct pkg_printf_fmt	fmt[] = {
 	{ 'o', '\0',  false, PP_ALL,		&format_origin, },
 	[PP_PKG_PREFIX] =
 	{ 'p', '\0',  false, PP_ALL,		&format_prefix, },
-	[PP_PKG_REQUIREMENTS] =
-	{ 'r', '\0',  true,  PP_PKG,		&format_requirements, },
 	[PP_PKG_REQUIREMENT_NAME] =
 	{ 'r', 'n',   false, PP_PKG|PP_r,	&format_dependency_name, },
 	[PP_PKG_REQUIREMENT_ORIGIN] =
 	{ 'r', 'o',   false, PP_PKG|PP_r,	&format_dependency_origin, },
 	[PP_PKG_REQUIREMENT_VERSION] =
 	{ 'r', 'v',   false, PP_PKG|PP_r,	&format_dependency_version, },
+	[PP_PKG_REQUIREMENTS] =
+	{ 'r', '\0',  true,  PP_PKG,		&format_requirements, },
 	[PP_PKG_FLATSIZE] =
 	{ 's', '\0',  false, PP_ALL,		&format_flatsize, },
 	[PP_PKG_INSTALL_TIMESTAMP] =
@@ -1676,7 +1680,7 @@ format_code(const char *f, unsigned context, struct percent_esc *p)
 	   context.  This could be optimized since the format codes
 	   are arranged alphabetically in the fmt[] array. */
 
-	for (fmt_code = PP_PKG_SHLIBS; fmt_code < PP_END_MARKER; fmt_code++) {
+	for (fmt_code = 0; fmt_code < PP_END_MARKER; fmt_code++) {
 		if ((fmt[fmt_code].context & context) != context)
 			continue;
 		if (fmt[fmt_code].fmt_main != f[0])
