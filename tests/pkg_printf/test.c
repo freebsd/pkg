@@ -1978,6 +1978,62 @@ ATF_TC_BODY(format_code, tc)
 	free_percent_esc(p);
 }
 
+ATF_TC(format_trailer);
+ATF_TC_HEAD(format_trailer, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "Testing format_trailer() format parsing routine");
+}
+ATF_TC_BODY(format_trailer, tc)
+{
+	struct percent_esc	*p;
+	const char		*f;
+	int		 	i;
+
+	struct ft_test_vals {
+		const char *in;
+		const char *item;
+		const char *sep;
+		ptrdiff_t   fend_offset; /* Where f is left pointing */
+		char	    fend_val; /* expected first char in fend */
+	} ft_test_vals[] = {
+		{ "%{aaaaaaaa", "",   "",    0, '%',  },
+		{ "%{bb%|cccc", "",   "",    0, '%',  },
+		{ "ddd%|eee%}", "",   "",    0, 'd',  },
+		{ "%{ff%|gg%}", "ff", "gg", 10, '\0', },
+		{ "%{hh%}",     "hh", "",    6, '\0', },
+		{ "%{%|iii%}",  "",   "iii", 9, '\0', },
+
+		{ NULL,         NULL, NULL,  0, '\0', },
+	};
+
+	p = new_percent_esc(NULL);
+
+	ATF_REQUIRE_EQ(p != NULL, true);
+
+	for (i = 0; ft_test_vals[i].in != NULL; i++) {
+		sbuf_clear(p->item_fmt);
+		sbuf_clear(p->sep_fmt);
+
+		f = format_trailer(ft_test_vals[i].in, p);
+
+		ATF_CHECK_STREQ_MSG(sbuf_data(p->item_fmt),
+				    ft_test_vals[i].item,
+				    "(test %d)", i);
+		ATF_CHECK_STREQ_MSG(sbuf_data(p->sep_fmt),
+				    ft_test_vals[i].sep,
+				    "(test %d)", i);
+		ATF_CHECK_EQ_MSG(f - ft_test_vals[i].in,
+				 ft_test_vals[i].fend_offset,
+				 "(test %d)", i);
+		ATF_CHECK_EQ_MSG(*f, ft_test_vals[i].fend_val,
+				 "(test %d)", i);
+	}
+
+	free_percent_esc(p);
+}
+
+
 
 ATF_TP_ADD_TCS(tp)
 {
@@ -1999,6 +2055,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, field_modifier);
 	ATF_TP_ADD_TC(tp, field_width);
 	ATF_TP_ADD_TC(tp, format_code);
+	ATF_TP_ADD_TC(tp, format_trailer);
 
 	return atf_no_error();
 }

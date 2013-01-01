@@ -1642,7 +1642,7 @@ format_trailer(const char *f, struct percent_esc *p)
 
 
 		if (sep) {
-			sep = false;
+			done = false;
 
 			for (f2 = f1; *f2 != '\0'; f2++) {
 				if (f2[0] == '%' && f2[1] == '}') {
@@ -1656,13 +1656,13 @@ format_trailer(const char *f, struct percent_esc *p)
 		}
 		
 		if (done) {
-			sbuf_finish(p->item_fmt);
-			sbuf_finish(p->sep_fmt);
 			f = f1;
 		} else {
 			sbuf_clear(p->item_fmt);
 			sbuf_clear(p->sep_fmt);
 		}
+		sbuf_finish(p->item_fmt);
+		sbuf_finish(p->sep_fmt);
 	}
 
 	return (f);
