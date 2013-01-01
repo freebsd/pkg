@@ -166,115 +166,115 @@ struct pkg_printf_fmt {
 /* These are in alphabetical order with A-Z sorting before a-z */
 static const struct pkg_printf_fmt	fmt[] = {
 	[PP_PKG_SHLIBS] =
-	{ 'B', '\0',  true,  PP_PKG,	&format_shlibs, },
+	{ 'B', '\0',  true,  PP_PKG,		&format_shlibs, },
 	[PP_PKG_SHLIB_NAME] =
-	{ 'B', 'n',   false, PP_B,	&format_shlib_name, },
+	{ 'B', 'n',   false, PP_PKG|PP_B,	&format_shlib_name, },
 	[PP_PKG_CATEGORIES] =
-	{ 'C', '\0',  true,  PP_PKG,	&format_categories, },
+	{ 'C', '\0',  true,  PP_PKG,		&format_categories, },
         [PP_PKG_CATEGORY_NAME] =
-	{ 'C', 'n',   false, PP_C,	&format_category_name, },
+	{ 'C', 'n',   false, PP_PKG|PP_C,	&format_category_name, },
 	[PP_PKG_DIRECTORIES] =
-	{ 'D', '\0',  true,  PP_PKG,	&format_directories, },
+	{ 'D', '\0',  true,  PP_PKG,		&format_directories, },
         [PP_PKG_DIRECTORY_GROUP] =
-	{ 'D', 'g',   false, PP_D,	&format_directory_group, },
+	{ 'D', 'g',   false, PP_PKG|PP_D,	&format_directory_group, },
 	[PP_PKG_DIRECTORY_KEEPFLAG] =
-	{ 'D', 'k',   false, PP_D,	&format_directory_keepflag, },
+	{ 'D', 'k',   false, PP_PKG|PP_D,	&format_directory_keepflag, },
 	[PP_PKG_DIRECTORY_PATH] =
-	{ 'D', 'n',   false, PP_D,	&format_directory_path, },
+	{ 'D', 'n',   false, PP_PKG|PP_D,	&format_directory_path, },
 	[PP_PKG_DIRECTORY_PERMS] =
-	{ 'D', 'p',   false, PP_D,	&format_directory_perms, },
+	{ 'D', 'p',   false, PP_PKG|PP_D,	&format_directory_perms, },
 	[PP_PKG_DIRECTORY_TRYFLAG] =
-	{ 'D', 't',   false, PP_D,	&format_directory_tryflag, },
+	{ 'D', 't',   false, PP_PKG|PP_D,	&format_directory_tryflag, },
 	[PP_PKG_DIRECTORY_USER] =
-	{ 'D', 'u',   false, PP_D,	&format_directory_user, },
+	{ 'D', 'u',   false, PP_PKG|PP_D,	&format_directory_user, },
 	[PP_PKG_FILES] =
-	{ 'F', '\0',  true,  PP_PKG,	&format_files, },
+	{ 'F', '\0',  true,  PP_PKG,		&format_files, },
 	[PP_PKG_FILE_GROUP] =
-	{ 'F', 'g',   false, PP_F,	&format_file_group, },
+	{ 'F', 'g',   false, PP_PKG|PP_F,	&format_file_group, },
 	[PP_PKG_FILE_KEEPFLAG] =
-	{ 'F', 'k',   false, PP_F,	&format_file_keepflag, },
+	{ 'F', 'k',   false, PP_PKG|PP_F,	&format_file_keepflag, },
 	[PP_PKG_FILE_PATH] =
-	{ 'F', 'n',   false, PP_F,	&format_file_path, },
+	{ 'F', 'n',   false, PP_PKG|PP_F,	&format_file_path, },
 	[PP_PKG_FILE_PERMS] =
-	{ 'F', 'p',   false, PP_F,	&format_file_perms, },
+	{ 'F', 'p',   false, PP_PKG|PP_F,	&format_file_perms, },
 	[PP_PKG_FILE_SHA256] =
-	{ 'F', 's',   false, PP_F,	&format_file_sha256, },
+	{ 'F', 's',   false, PP_PKG|PP_F,	&format_file_sha256, },
 	[PP_PKG_FILE_USER] =
-	{ 'F', 'u',   false, PP_F,	&format_file_user, },
+	{ 'F', 'u',   false, PP_PKG|PP_F,	&format_file_user, },
 	[PP_PKG_GROUPS] =
-	{ 'G', '\0',  true,  PP_PKG,	&format_groups, },
+	{ 'G', '\0',  true,  PP_PKG,		&format_groups, },
 	[PP_PKG_GROUP_GIDSTR] =
-	{ 'G', 'g',   false, PP_G,	&format_group_gidstr, },
+	{ 'G', 'g',   false, PP_PKG|PP_G,	&format_group_gidstr, },
 	[PP_PKG_GROUP_NAME] =
-	{ 'G', 'n',   false, PP_G,	&format_group_name, },
+	{ 'G', 'n',   false, PP_PKG|PP_G,	&format_group_name, },
 	[PP_ROW_COUNTER] =
-	{ 'I', '\0',  false, PP_TRAILER, &format_row_counter, },
+	{ 'I', '\0',  false, PP_TRAILER,	&format_row_counter, },
 	[PP_PKG_LICENSES] =
-	{ 'L', '\0',  true,  PP_PKG,	&format_licenses, },
+	{ 'L', '\0',  true,  PP_PKG,		&format_licenses, },
 	[PP_PKG_LICENSE_NAME] =
-	{ 'L', 'n',   false, PP_L,	&format_license_name, },
+	{ 'L', 'n',   false, PP_PKG|PP_L,	&format_license_name, },
 	[PP_PKG_MESSAGE] =
-	{ 'M', '\0',  false, PP_ALL,	&format_message, },
+	{ 'M', '\0',  false, PP_ALL,		&format_message, },
 	[PP_PKG_OPTIONS] =
-	{ 'O', '\0',  true,  PP_PKG,	&format_options, },
+	{ 'O', '\0',  true,  PP_PKG,		&format_options, },
 	[PP_PKG_OPTION_NAME] =
-	{ 'O', 'n',   false, PP_O,	&format_option_name, },
+	{ 'O', 'n',   false, PP_PKG|PP_O,	&format_option_name, },
 	[PP_PKG_OPTION_VALUE] =
-	{ 'O', 'v',   false, PP_O,	&format_option_value, },
+	{ 'O', 'v',   false, PP_PKG|PP_O,	&format_option_value, },
 	[PP_PKG_USERS] =
-	{ 'U', '\0',  true,  PP_PKG,	&format_users, },
+	{ 'U', '\0',  true,  PP_PKG,		&format_users, },
 	[PP_PKG_USER_NAME] =
-	{ 'U', 'n',   false, PP_U,	&format_user_name, },
+	{ 'U', 'n',   false, PP_PKG|PP_U,	&format_user_name, },
 	[PP_PKG_USER_UIDSTR] =
-	{ 'U', 'u',   false, PP_U,	&format_user_uidstr, },
+	{ 'U', 'u',   false, PP_PKG|PP_U,	&format_user_uidstr, },
 	[PP_PKG_AUTOREMOVE] =
-	{ 'a', '\0',  false, PP_ALL,	&format_autoremove, },
+	{ 'a', '\0',  false, PP_ALL,		&format_autoremove, },
 	[PP_PKG_COMMENT] =
-	{ 'c', '\0',  false, PP_ALL,	&format_comment, },
+	{ 'c', '\0',  false, PP_ALL,		&format_comment, },
 	[PP_PKG_DEPENDENCIES] =
-	{ 'd', '\0',  true,  PP_PKG,	&format_dependencies, },
+	{ 'd', '\0',  true,  PP_PKG,		&format_dependencies, },
 	[PP_PKG_DEPENDENCY_NAME] =
-	{ 'd', 'n',   false, PP_d,	&format_dependency_name, },
+	{ 'd', 'n',   false, PP_PKG|PP_d,	&format_dependency_name, },
 	[PP_PKG_DEPENDENCY_ORIGIN] =
-	{ 'd', 'o',   false, PP_d,	&format_dependency_origin, },
+	{ 'd', 'o',   false, PP_PKG|PP_d,	&format_dependency_origin, },
 	[PP_PKG_DEPENDENCY_VERSION] =
-	{ 'd', 'v',   false, PP_d,	&format_dependency_version, },
+	{ 'd', 'v',   false, PP_PKG|PP_d,	&format_dependency_version, },
 	[PP_PKG_ADDITIONAL_INFO] =
-	{ 'i', '\0',  false, PP_ALL,	&format_add_info, },
+	{ 'i', '\0',  false, PP_ALL,		&format_add_info, },
 	[PP_PKG_LOCK_STATUS] =
-	{ 'k', '\0',  false, PP_ALL,	&format_lock_status, },
+	{ 'k', '\0',  false, PP_ALL,		&format_lock_status, },
 	[PP_PKG_LICENSE_LOGIC] =
-	{ 'l', '\0',  false, PP_ALL,	&format_license_logic, },
+	{ 'l', '\0',  false, PP_ALL,		&format_license_logic, },
 	[PP_PKG_MAINTAINER] =
-	{ 'm', '\0',  false, PP_ALL,	&format_maintainer, },
+	{ 'm', '\0',  false, PP_ALL,		&format_maintainer, },
 	[PP_PKG_NAME] =
-	{ 'n', '\0',  false, PP_ALL,	&format_name, },
+	{ 'n', '\0',  false, PP_ALL,		&format_name, },
 	[PP_PKG_ORIGIN] =
-	{ 'o', '\0',  false, PP_ALL,	&format_origin, },
+	{ 'o', '\0',  false, PP_ALL,		&format_origin, },
 	[PP_PKG_PREFIX] =
-	{ 'p', '\0',  false, PP_ALL,	&format_prefix, },
+	{ 'p', '\0',  false, PP_ALL,		&format_prefix, },
 	[PP_PKG_REQUIREMENTS] =
-	{ 'r', '\0',  true,  PP_PKG,	&format_requirements, },
+	{ 'r', '\0',  true,  PP_PKG,		&format_requirements, },
 	[PP_PKG_REQUIREMENT_NAME] =
-	{ 'r', 'n',   false, PP_r,	&format_dependency_name, },
+	{ 'r', 'n',   false, PP_PKG|PP_r,	&format_dependency_name, },
 	[PP_PKG_REQUIREMENT_ORIGIN] =
-	{ 'r', 'o',   false, PP_r,	&format_dependency_origin, },
+	{ 'r', 'o',   false, PP_PKG|PP_r,	&format_dependency_origin, },
 	[PP_PKG_REQUIREMENT_VERSION] =
-	{ 'r', 'v',   false, PP_r,	&format_dependency_version, },
+	{ 'r', 'v',   false, PP_PKG|PP_r,	&format_dependency_version, },
 	[PP_PKG_FLATSIZE] =
-	{ 's', '\0',  false, PP_ALL,	&format_flatsize, },
+	{ 's', '\0',  false, PP_ALL,		&format_flatsize, },
 	[PP_PKG_INSTALL_TIMESTAMP] =
-	{ 't', '\0',  false, PP_ALL,	&format_install_tstamp, },
+	{ 't', '\0',  false, PP_ALL,		&format_install_tstamp, },
 	[PP_PKG_VERSION] =
-	{ 'v', '\0',  false, PP_ALL,	&format_version, },
+	{ 'v', '\0',  false, PP_ALL,		&format_version, },
 	[PP_PKG_HOME_PAGE] =
-	{ 'w', '\0',  false, PP_ALL,	&format_home_url, },
+	{ 'w', '\0',  false, PP_ALL,		&format_home_url, },
 	[PP_LITERAL_PERCENT] =
-	{ '%', '\0',  false, PP_ALL,	&format_literal_percent, },
+	{ '%', '\0',  false, PP_ALL,		&format_literal_percent, },
 	[PP_UNKNOWN] =
-	{ '\0', '\0', false, PP_ALL,    &format_unknown, },
+	{ '\0', '\0', false, PP_ALL,    	&format_unknown, },
 	[PP_END_MARKER] =
-	{ '\0', '\0', false, 0,		NULL, },
+	{ '\0', '\0', false, 0,			NULL, },
 };
 
 /*
