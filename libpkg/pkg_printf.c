@@ -1519,7 +1519,8 @@ field_modifier(const char *f, struct percent_esc *p)
 	bool	done;
 
 	/* Field modifiers, if any:
-	   '#' alternate form
+	   '?' alternate form 1
+	   '#' alternate form 2
 	   '-' left align
 	   '+' explicit plus sign (numerics only)
 	   ' ' space instead of plus sign (numerics only)
@@ -1530,10 +1531,10 @@ field_modifier(const char *f, struct percent_esc *p)
 	done = false;
 	while (!done) {
 		switch (*f) {
-		case '#':
+		case '?':
 			p->flags |= PP_ALTERNATE_FORM1;
 			break;
-		case '?':
+		case '#':
 			p->flags |= PP_ALTERNATE_FORM2;
 			break;
 		case '-':
