@@ -1678,6 +1678,7 @@ typedef enum _sql_prstmt_index {
 	DEPS_UPDATE,
 	DEPS,
 	FILES,
+	FILES_REPLACE,
 	DIRS1,
 	DIRS2,
 	CATEGORY1,
@@ -1725,6 +1726,12 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[FILES] = {
 		NULL,
 		"INSERT INTO files (path, sha256, package_id) "
+		"VALUES (?1, ?2, ?3)",
+		"TTI",
+	},
+	[FILES_REPLACE] = {
+		NULL,
+		"INSERT OR REPLACE INTO files (path, sha256, package_id) "
 		"VALUES (?1, ?2, ?3)",
 		"TTI",
 	},
@@ -2016,7 +2023,20 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 		}
 		pkg2 = NULL;
 		ret = pkgdb_it_next(it, &pkg2, PKG_LOAD_BASIC);
-		if (ret != EPKG_OK) {
+		if (ret == EPKG_END) {
+			/* Stray entry in the files table not related to
+			   any known package: overwrite this */
+			ret = run_prstmt(FILES_REPLACE, pkg_path, pkg_sum,
+					 package_id);
+			pkgdb_it_free(it);
+			if (ret == SQLITE_DONE)
+				continue;
+			else {
+				ERROR_SQLITE(s);
+				goto cleanup;
+			}
+		}
+		if (ret != EPKG_OK && ret != EPKG_END) {
 			pkgdb_it_free(it);
 			ERROR_SQLITE(s);
 			goto cleanup;
