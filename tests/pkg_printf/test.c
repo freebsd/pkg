@@ -1209,8 +1209,8 @@ ATF_TC_BODY(field_modifier, tc)
 		ptrdiff_t   fend_offset; /* Where f is left pointing */
 		char	    fend_val; /* expected first char in fend */
 	} fm_test_vals[] = {
-		{ "#",  PP_ALTERNATE_FORM1, 1, '\0', },
-		{ "?",  PP_ALTERNATE_FORM2, 1, '\0', },
+		{ "?",  PP_ALTERNATE_FORM1, 1, '\0', },
+		{ "#",  PP_ALTERNATE_FORM2, 1, '\0', },
 		{ "-",  PP_LEFT_ALIGN,      1, '\0', },
 		{ "+",  PP_EXPLICIT_PLUS,   1, '\0', },
 		{ " ",  PP_SPACE_FOR_PLUS,  1, '\0', },
@@ -1222,17 +1222,17 @@ ATF_TC_BODY(field_modifier, tc)
 		{ "*",  0,  0, '*', },
 		{ "1",  0,  0, '1', },
 
-		{ "#",    PP_ALTERNATE_FORM1, 1, '\0', },
-		{ "##",   PP_ALTERNATE_FORM1, 2, '\0', },
-		{ "###",  PP_ALTERNATE_FORM1, 3, '\0', },
-		{ "####", PP_ALTERNATE_FORM1, 4, '\0', },
+		{ "#",    PP_ALTERNATE_FORM2, 1, '\0', },
+		{ "##",   PP_ALTERNATE_FORM2, 2, '\0', },
+		{ "###",  PP_ALTERNATE_FORM2, 3, '\0', },
+		{ "####", PP_ALTERNATE_FORM2, 4, '\0', },
 
-		{ "#z",    PP_ALTERNATE_FORM1, 1, 'z', },
-		{ "##z",   PP_ALTERNATE_FORM1, 2, 'z', },
-		{ "###z",  PP_ALTERNATE_FORM1, 3, 'z', },
-		{ "####z", PP_ALTERNATE_FORM1, 4, 'z', },
+		{ "#z",    PP_ALTERNATE_FORM2, 1, 'z', },
+		{ "##z",   PP_ALTERNATE_FORM2, 2, 'z', },
+		{ "###z",  PP_ALTERNATE_FORM2, 3, 'z', },
+		{ "####z", PP_ALTERNATE_FORM2, 4, 'z', },
 
-		{ "#",    PP_ALTERNATE_FORM1, 1, '\0', },
+		{ "#",    PP_ALTERNATE_FORM2, 1, '\0', },
 		{ "#?",   PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2, 2, '\0', },
 		{ "#?#",  PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2, 3, '\0', },
 		{ "#?#?", PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2, 4, '\0', },
@@ -2033,6 +2033,82 @@ ATF_TC_BODY(format_trailer, tc)
 	free_percent_esc(p);
 }
 
+ATF_TC(parse_format);
+ATF_TC_HEAD(parse_format, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "Testing parse_format() format parsing routine");
+}
+ATF_TC_BODY(parse_format, tc)
+{
+	struct percent_esc	*p;
+	const char		*f;
+	int		 	i;
+
+	struct pf_test_vals {
+		const char *in;
+		unsigned context;
+
+		unsigned flags;
+		int width;
+		fmt_code_t fmt_code;
+		const char *item;
+		const char *sep;
+		ptrdiff_t   fend_offset; /* Where f is left pointing */
+		char	    fend_val; /* expected first char in fend */
+	} pf_test_vals[] = {
+		{ "%n",    PP_PKG, 0,             0,  PP_PKG_NAME, "",   "",   2, '\0', },
+		{ "%-20n", PP_PKG, PP_LEFT_ALIGN, 20, PP_PKG_NAME, "",   "",   5, '\0', },
+		{ "%?B",   PP_PKG, PP_ALTERNATE_FORM1, 0, PP_PKG_SHLIBS, "", "", 3, '\0', },
+		{ "%#F",   PP_PKG, PP_ALTERNATE_FORM2, 0, PP_PKG_FILES,  "", "", 3, '\0', },
+
+		{ "%L%{%Ln%| %l %}", PP_PKG, 0, 0, PP_PKG_LICENSES, "%Ln", " %l ", 15, '\0', },
+		{ "%Ln",   PP_L,   0,             0,  PP_PKG_LICENSE_NAME,  "", "", 3, '\0', },
+		{ "%l",    PP_L,   0,             0,  PP_PKG_LICENSE_LOGIC, "", "", 2, '\0', },
+
+		{ "%Ln",   PP_PKG, 0,             0,  PP_PKG_LICENSE_NAME,  "", "", 3, '\0', },
+		{ "%l",    PP_PKG, 0,             0,  PP_PKG_LICENSE_LOGIC, "", "", 2, '\0', },
+
+		{ "%I",    PP_PKG, 0,             0,  PP_UNKNOWN,          "", "", 1, 'I', },
+
+		{ "%^D",   PP_PKG, 0,             0,  PP_UNKNOWN,          "", "", 1, '^', },
+
+		{ NULL,    0,      0,             0,  0,           NULL, NULL, 0, '\0', },
+	};
+
+	p = new_percent_esc(NULL);
+
+	ATF_REQUIRE_EQ(p != NULL, true);
+
+	for (i = 0; pf_test_vals[i].in != NULL; i++) {
+		p = new_percent_esc(p);
+
+		f = parse_format(pf_test_vals[i].in, pf_test_vals[i].context,
+				 p);
+
+		ATF_CHECK_EQ_MSG(p->flags, pf_test_vals[i].flags,
+				    "(test %d)", i);
+		ATF_CHECK_EQ_MSG(p->width, pf_test_vals[i].width,
+				    "(test %d)", i);
+		ATF_CHECK_EQ_MSG(p->fmt_code, pf_test_vals[i].fmt_code,
+				    "(test %d)", i);
+
+		ATF_CHECK_STREQ_MSG(sbuf_data(p->item_fmt),
+				    pf_test_vals[i].item,
+				    "(test %d)", i);
+		ATF_CHECK_STREQ_MSG(sbuf_data(p->sep_fmt),
+				    pf_test_vals[i].sep,
+				    "(test %d)", i);
+		ATF_CHECK_EQ_MSG(f - pf_test_vals[i].in,
+				 pf_test_vals[i].fend_offset,
+				 "(test %d)", i);
+		ATF_CHECK_EQ_MSG(*f, pf_test_vals[i].fend_val,
+				 "(test %d)", i);
+	}
+
+	free_percent_esc(p);
+}
+
 
 
 ATF_TP_ADD_TCS(tp)
@@ -2056,6 +2132,8 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, field_width);
 	ATF_TP_ADD_TC(tp, format_code);
 	ATF_TP_ADD_TC(tp, format_trailer);
+	ATF_TP_ADD_TC(tp, parse_format);
+
 
 	return atf_no_error();
 }
