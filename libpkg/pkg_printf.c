@@ -1164,7 +1164,11 @@ new_percent_esc(struct percent_esc *p)
 		p->flags = 0;
 		p->width = 0;
 		sbuf_clear(p->item_fmt);
+		sbuf_finish(p->item_fmt);
+
 		sbuf_clear(p->sep_fmt);
+		sbuf_finish(p->sep_fmt);
+
 		p->fmt_code = '\0';
 	}
 	return (p);
