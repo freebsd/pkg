@@ -44,6 +44,8 @@ SRCS=		${PC} \
 		pkg_old.c \
 		pkg.pc
 
+MAN=		pkg_printf.3
+
 CLEANFILES=	${PC} ${PKGH}
 
 NEWVERS=	../newvers.sh
