@@ -1385,7 +1385,7 @@ struct pkg_repo *pkg_repo_find_name(const char *name);
  * @param fmt String with embedded %-escapes indicating what to print
  * @return count of the number of characters printed
  */
-int pkg_printf(const char *fmt, ...);
+int pkg_printf(const char * restrict fmt, ...);
 
 /**
  * print to named stream from pkg as indicated by the format code fmt
@@ -1393,7 +1393,7 @@ int pkg_printf(const char *fmt, ...);
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
  */
-int pkg_fprintf(FILE *stream, const char *fmt, ...);
+int pkg_fprintf(FILE * restrict stream, const char * restrict fmt, ...);
 
 /**
  * print to file descriptor d data from pkg as indicated by the format
@@ -1403,7 +1403,7 @@ int pkg_fprintf(FILE *stream, const char *fmt, ...);
  * @param fmt String with embedded %-escapes indicating what to print
  * @return count of the number of characters printed
  */
-int pkg_dprintf(int fd, const char *fmt, ...);
+int pkg_dprintf(int fd, const char * restrict fmt, ...);
 
 /**
  * print to buffer str of given size data from pkg as indicated by the
@@ -1415,7 +1415,8 @@ int pkg_dprintf(int fd, const char *fmt, ...);
  * @return count of the number of characters that would have been output
  * disregarding truncation to fit size
  */
-int pkg_snprintf(char *str, size_t size, const char *fmt, ...);
+int pkg_snprintf(char * restrict str, size_t size, const char * restrict fmt,
+		 ...);
 
 /**
  * Allocate a string buffer ret sufficiently big to contain formatted
@@ -1426,7 +1427,7 @@ int pkg_snprintf(char *str, size_t size, const char *fmt, ...);
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
  */
-int pkg_asprintf(char **ret, const char *fmt, ...);
+int pkg_asprintf(char **ret, const char * restrict fmt, ...);
 
 /**
  * store data from pkg into sbuf as indicated by the format code fmt.
@@ -1435,7 +1436,8 @@ int pkg_asprintf(char **ret, const char *fmt, ...);
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
-struct sbuf *pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, ...);
+struct sbuf *pkg_sbuf_printf(struct sbuf * restrict sbuf,
+			     const char * restrict fmt, ...);
 
 /**
  * store data from pkg into sbuf as indicated by the format code fmt.
@@ -1445,6 +1447,7 @@ struct sbuf *pkg_sbuf_printf(struct sbuf *sbuf, const char *fmt, ...);
  * @param fmt String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
-struct sbuf *pkg_sbuf_vprintf(struct sbuf *sbuf, const char *fmt, va_list ap);
+struct sbuf *pkg_sbuf_vprintf(struct sbuf * restrict sbuf,
+			      const char * restrict fmt, va_list ap);
 
 #endif

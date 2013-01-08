@@ -2050,7 +2050,7 @@ process_format_main(struct sbuf *sbuf, const char *f, va_list ap)
  * @return count of the number of characters printed
  */
 int
-pkg_printf(const char *format, ...)
+pkg_printf(const char * restrict format, ...)
 {
 	struct sbuf	*sbuf;
 	int		 count;
@@ -2079,7 +2079,7 @@ pkg_printf(const char *format, ...)
  * @return count of the number of characters printed
  */
 int
-pkg_fprintf(FILE *stream, const char *format, ...)
+pkg_fprintf(FILE * restrict stream, const char * restrict format, ...)
 {
 	struct sbuf	*sbuf;
 	int		 count;
@@ -2110,7 +2110,7 @@ pkg_fprintf(FILE *stream, const char *format, ...)
  * @return count of the number of characters printed
  */
 int
-pkg_dprintf(int fd, const char *format, ...)
+pkg_dprintf(int fd, const char * restrict format, ...)
 {
 	struct sbuf	*sbuf;
 	int		 count;
@@ -2143,7 +2143,8 @@ pkg_dprintf(int fd, const char *format, ...)
  * disregarding truncation to fit size
  */
 int
-pkg_snprintf(char *str, size_t size, const char *format, ...)
+pkg_snprintf(char * restrict str, size_t size, const char * restrict format,
+	     ...)
 {
 	struct sbuf	*sbuf;
 	int		 count;
@@ -2175,7 +2176,7 @@ pkg_snprintf(char *str, size_t size, const char *format, ...)
  * @return count of the number of characters printed
  */
 int
-pkg_asprintf(char **ret, const char *format, ...)
+pkg_asprintf(char **ret, const char * restrict format, ...)
 {
 	struct sbuf	*sbuf;
 	int		 count;
@@ -2207,7 +2208,7 @@ pkg_asprintf(char **ret, const char *format, ...)
  * @return count of the number of characters in the result
  */
 struct sbuf *
-pkg_sbuf_printf(struct sbuf *sbuf, const char *format, ...)
+pkg_sbuf_printf(struct sbuf * restrict sbuf, const char *restrict format, ...)
 {
 	va_list		 ap;
 
@@ -2227,7 +2228,8 @@ pkg_sbuf_printf(struct sbuf *sbuf, const char *format, ...)
  * @return count of the number of characters in the result
  */
 struct sbuf *
-pkg_sbuf_vprintf(struct sbuf *sbuf, const char *format, va_list ap)
+pkg_sbuf_vprintf(struct sbuf * restrict sbuf, const char * restrict format,
+		 va_list ap)
 {
 	const char	*f;
 
