@@ -145,13 +145,15 @@ static struct config_entry c[] = {
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
 #endif
 	},
-	[PKG_CONFIG_SRV_MIRROR] = {
-		PKG_CONFIG_BOOL,
-		"SRV_MIRRORS",
+	[PKG_CONFIG_MIRRORS] = {
+		PKG_CONFIG_STRING,
+		"MIRROR_TYPE",
 #if DEFAULT_MIRROR_TYPE == 1
-		"YES",
+		"SRV",
+#elif DEFAULT_MIRROR_TYPE == 2
+		"HTTP",
 #else
-		"NO",
+		NULL,
 #endif
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
@@ -193,15 +195,6 @@ static struct config_entry c[] = {
 		PKG_CONFIG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
-	},
-	[PKG_CONFIG_HTTP_MIRROR] = {
-		PKG_CONFIG_BOOL,
-		"HTTP_MIRRORS",
-#if DEFAULT_MIRROR_TYPE == 2
-		"YES",
-#else
-		"NO",
-#endif
 	},
 };
 
