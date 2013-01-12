@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include <yaml.h>
 
@@ -45,6 +46,8 @@
 #define INTEGER 3
 
 #define ABI_VAR_STRING "${ABI}"
+
+pthread_mutex_t mirror_mtx;
 
 struct pkg_config_kv {
 	char *key;
@@ -68,7 +71,11 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_REPO] = {
 		STRING,
 		"PACKAGESITE",
+#ifdef DEFAULT_PACKAGESITE
+		DEFAULT_PACKAGESITE,
+#else
 		NULL,
+#endif
 		{ NULL }
 	},
 	[PKG_CONFIG_DBDIR] = {
@@ -158,13 +165,21 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_PORTAUDIT_SITE] = {
 		STRING,
 		"PORTAUDIT_SITE",
+#ifdef DEFAULT_AUDIT_URL
+		DEFAULT_AUDIT_URL,
+#else
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
+#endif
 		{ NULL }
 	},
 	[PKG_CONFIG_SRV_MIRROR] = {
 		BOOL,
 		"SRV_MIRRORS",
+#if DEFAULT_MIRROR_TYPE == 1
 		"YES",
+#else
+		"NO",
+#endif
 		{ NULL }
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
@@ -178,7 +193,17 @@ static struct config_entry c[] = {
 		"PERMISSIVE",
 		"NO",
 		{ NULL }
-	}
+	},
+	[PKG_CONFIG_HTTP_MIRROR] = {
+		BOOL,
+		"HTTP_MIRRORS",
+#if DEFAULT_MIRROR_TYPE == 2
+		"YES",
+#else
+		"NO",
+#endif
+		{ NULL }
+	},
 };
 
 static bool parsed = false;
@@ -446,6 +471,8 @@ pkg_init(const char *path)
 	}
 
 	/* first fill with environment variables */
+	pthread_mutex_init(&mirror_mtx, NULL);
+
 	for (i = 0; i < c_size; i++) {
 		val = getenv(c[i].key);
 

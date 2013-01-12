@@ -63,6 +63,17 @@ SRCS+=	gr_util.c
 CFLAGS+=	-DHAVE_GRUTILS
 .endif
 
+
+#
+# Set DEFAULT_MIRROR_TYPE default to SRV
+# Possible values are:
+# 0: none
+# 1: srv
+# 2: http
+#
+DEFAULT_MIRROR_TYPE?=	0
+
+CFLAGS+=	-DDEFAULT_MIRROR_TYPE=${DEFAULT_MIRROR_TYPE}
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
