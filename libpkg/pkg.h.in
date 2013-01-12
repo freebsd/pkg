@@ -260,6 +260,8 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_MIRRORS = 16,
 	PKG_CONFIG_FETCH_RETRY = 17,
 	PKG_CONFIG_PERMISSIVE = 18,
+	PKG_CONFIG_HTTP_PROXY = 19,
+	PKG_CONFIG_FTP_PROXY = 20,
 } pkg_config_key;
 
 typedef enum {

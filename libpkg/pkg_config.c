@@ -196,6 +196,18 @@ static struct config_entry c[] = {
 		"NO",
 		{ NULL }
 	},
+	[PKG_CONFIG_HTTP_PROXY] = {
+		STRING,
+		"HTTP_PROXY",
+		NULL,
+		{ NULL }
+	},
+	[PKG_CONFIG_FTP_PROXY] = {
+		STRING,
+		"FTP_PROXY",
+		NULL,
+		{ NULL }
+	},
 };
 
 static bool parsed = false;
@@ -455,6 +467,7 @@ pkg_init(const char *path)
 	yaml_node_t *node;
 	size_t i;
 	const char *val = NULL;
+	const char *proxy = NULL;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -504,6 +517,15 @@ pkg_init(const char *path)
 	yaml_parser_delete(&parser);
 
 	parsed = true;
+
+	/* set the environement variable for libfetch for proxies if any */
+	pkg_config_string(PKG_CONFIG_HTTP_PROXY, &proxy);
+	if (proxy != NULL)
+		setenv("HTTP_PROXY", proxy, 1);
+	pkg_config_string(PKG_CONFIG_FTP_PROXY, &proxy);
+	if (proxy != NULL)
+		setenv("FTP_PROXY", proxy, 1);
+
 	return (EPKG_OK);
 }
 
