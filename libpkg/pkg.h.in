@@ -312,6 +312,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_PLUGINS_CONF_DIR,
 	PKG_CONFIG_PERMISSIVE,
 	PKG_CONFIG_REPO_AUTOUPDATE,
+	PKG_CONFIG_HTTP_MIRROR,
 } pkg_config_key;
 
 typedef enum {

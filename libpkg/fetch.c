@@ -27,17 +27,64 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
+#include <ctype.h>
 #include <fcntl.h>
+#define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <fetch.h>
+#include <pthread.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/utils.h"
+
+struct http_mirror {
+	struct url *url;
+	STAILQ_ENTRY(http_mirror) next;
+};
+
+static struct dns_srvinfo *srv_mirrors = NULL;
+static STAILQ_HEAD(,http_mirror) http_mirrors = STAILQ_HEAD_INITIALIZER(http_mirrors);
+
+static void
+gethttpmirrors(const char *url) {
+	FILE *f;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	struct http_mirror *m;
+	struct url *u;
+
+	if ((f = fetchGetURL(url, "")) == NULL)
+		return;
+
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		if (strncmp(line, "URL:", 4) == 0) {
+			/* trim '\n' */
+			if (line[linelen - 1] == '\n')
+				line[linelen - 1 ] = '\0';
+
+			line += 4;
+			while (isspace(*line)) {
+				line++;
+			}
+			if (*line == '\0')
+				continue;
+
+			if ((u = fetchParseURL(url)) != NULL) {
+				m = malloc(sizeof(struct http_mirror));
+				m->url = u;
+				STAILQ_INSERT_TAIL(&http_mirrors, m, next);
+			}
+		}
+	}
+	fclose(f);
+	return;
+}
 
 int
 pkg_fetch_file(const char *url, const char *dest, time_t t)
@@ -75,12 +122,14 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	time_t now;
 	time_t last = 0;
 	char buf[10240];
+	char *doc;
+	char docpath[MAXPATHLEN];
 	int retcode = EPKG_OK;
 	bool srv = false;
+	bool http = false;
 	char zone[MAXHOSTNAMELEN + 13];
-	struct dns_srvinfo *mirrors, *current;
-
-	current = mirrors = NULL;
+	struct dns_srvinfo *srv_current;
+	struct http_mirror *http_current;
 
 	fetchTimeout = 30;
 
@@ -90,21 +139,40 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	retry = max_retry;
 
 	u = fetchParseURL(url);
+	doc = u->doc;
 	while (remote == NULL) {
 		if (retry == max_retry) {
 			pkg_config_bool(PKG_CONFIG_SRV_MIRROR, &srv);
-			if (srv) {
-				if (strcmp(u->scheme, "file") != 0) {
-					snprintf(zone, sizeof(zone),
-					    "_%s._tcp.%s", u->scheme, u->host);
-					mirrors = dns_getsrvinfo(zone);
-					current = mirrors;
-				}
+			pkg_config_bool(PKG_CONFIG_HTTP_MIRROR, &http);
+			if (srv && strcmp(u->scheme, "file") != 0) {
+				snprintf(zone, sizeof(zone),
+				    "_%s._tcp.%s", u->scheme, u->host);
+				pthread_mutex_lock(&mirror_mtx);
+				if (srv_mirrors != NULL)
+					srv_mirrors = dns_getsrvinfo(zone);
+				pthread_mutex_unlock(&mirror_mtx);
+				srv_current = srv_mirrors;
+			} else if (http && strcmp(u->scheme, "file") != 0 && \
+			           strcmp(u->scheme, "ftp") != 0) {
+				snprintf(zone, sizeof(zone),
+				    "%s://%s", u->scheme, u->host);
+				pthread_mutex_lock(&mirror_mtx);
+				if (STAILQ_EMPTY(&http_mirrors))
+					gethttpmirrors(zone);
+				pthread_mutex_unlock(&mirror_mtx);
+				http_current = STAILQ_FIRST(&http_mirrors);
 			}
 		}
 
-		if (mirrors != NULL)
-			strlcpy(u->host, current->host, sizeof(u->host));
+		if (srv && srv_mirrors != NULL)
+			strlcpy(u->host, srv_current->host, sizeof(u->host));
+		else if (http && !STAILQ_EMPTY(&http_mirrors)) {
+			strlcpy(u->scheme, http_current->url->scheme, sizeof(u->scheme));
+			strlcpy(u->host, http_current->url->host, sizeof(u->host));
+			snprintf(docpath, MAXPATHLEN, "%s%s", http_current->url->doc, doc);
+			u->doc = docpath;
+			u->port = http_current->url->port;
+		}
 
 		remote = fetchXGet(u, &st, "");
 		if (remote == NULL) {
@@ -115,12 +183,16 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-			if (mirrors == NULL) {
-				sleep(1);
+			if (srv && srv_mirrors != NULL) {
+				srv_current = srv_current->next;
+				if (srv_current == NULL)
+					srv_current = srv_mirrors;
+			} else if (http && !STAILQ_EMPTY(&http_mirrors)) {
+				http_current = STAILQ_NEXT(http_current, next);
+				if (http_current == NULL)
+					http_current = STAILQ_FIRST(&http_mirrors);
 			} else {
-				current = current->next;
-				if (current == NULL)
-					current = mirrors;
+				sleep(1);
 			}
 		}
 	}
@@ -161,6 +233,9 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 
 	if (remote != NULL)
 		fclose(remote);
+
+	/* restore original doc */
+	u->doc = doc;
 
 	fetchFreeURL(u);
 

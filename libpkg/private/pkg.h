@@ -79,6 +79,8 @@
 	}  \
 	} while (0)
 
+extern pthread_mutex_t mirror_mtx;
+
 struct pkg {
 	struct sbuf	*fields[PKG_NUM_FIELDS];
 	bool		 automatic;

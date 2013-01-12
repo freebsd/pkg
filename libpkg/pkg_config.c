@@ -34,6 +34,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include <yaml.h>
 
@@ -42,6 +43,8 @@
 #include "private/event.h"
 
 #define ABI_VAR_STRING "${ABI}"
+
+pthread_mutex_t mirror_mtx;
 
 struct config_entry {
 	uint8_t type;
@@ -57,7 +60,11 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_REPO] = {
 		PKG_CONFIG_STRING,
 		"PACKAGESITE",
+#ifdef DEFAULT_PACKAGESITE
+		DEFAULT_PACKAGESITE,
+#else
 		NULL,
+#endif
 	},
 	[PKG_CONFIG_DBDIR] = {
 		PKG_CONFIG_STRING,
@@ -132,12 +139,20 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_PORTAUDIT_SITE] = {
 		PKG_CONFIG_STRING,
 		"PORTAUDIT_SITE",
+#ifdef DEFAULT_AUDIT_URL
+		DEFAULT_AUDIT_URL,
+#else
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
+#endif
 	},
 	[PKG_CONFIG_SRV_MIRROR] = {
 		PKG_CONFIG_BOOL,
 		"SRV_MIRRORS",
+#if DEFAULT_MIRROR_TYPE == 1
 		"YES",
+#else
+		"NO",
+#endif
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
 		PKG_CONFIG_INTEGER,
@@ -178,6 +193,15 @@ static struct config_entry c[] = {
 		PKG_CONFIG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
+	},
+	[PKG_CONFIG_HTTP_MIRROR] = {
+		PKG_CONFIG_BOOL,
+		"HTTP_MIRRORS",
+#if DEFAULT_MIRROR_TYPE == 2
+		"YES",
+#else
+		"NO",
+#endif
 	},
 };
 
@@ -538,6 +562,8 @@ pkg_init(const char *path)
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);
 	}
+
+	pthread_mutex_init(&mirror_mtx, NULL);
 
 	for (i = 0; i < c_size; i++) {
 		conf = malloc(sizeof(struct pkg_config));
