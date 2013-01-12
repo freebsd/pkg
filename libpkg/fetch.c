@@ -130,6 +130,7 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	char zone[MAXHOSTNAMELEN + 13];
 	struct dns_srvinfo *srv_current;
 	struct http_mirror *http_current;
+	const char *mt;
 
 	fetchTimeout = 30;
 
@@ -142,9 +143,10 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	doc = u->doc;
 	while (remote == NULL) {
 		if (retry == max_retry) {
-			pkg_config_bool(PKG_CONFIG_SRV_MIRROR, &srv);
-			pkg_config_bool(PKG_CONFIG_HTTP_MIRROR, &http);
-			if (srv && strcmp(u->scheme, "file") != 0) {
+			pkg_config_string(PKG_CONFIG_MIRRORS, &mt);
+			if (mt != NULL && strncasecmp(mt, "srv", 3) == 0 && \
+			    strcmp(u->scheme, "file") != 0) {
+				srv = true;
 				snprintf(zone, sizeof(zone),
 				    "_%s._tcp.%s", u->scheme, u->host);
 				pthread_mutex_lock(&mirror_mtx);
@@ -152,8 +154,10 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 					srv_mirrors = dns_getsrvinfo(zone);
 				pthread_mutex_unlock(&mirror_mtx);
 				srv_current = srv_mirrors;
-			} else if (http && strcmp(u->scheme, "file") != 0 && \
+			} else if (mt != NULL && strncasecmp(mt, "http", 4) == 0 && \
+			           strcmp(u->scheme, "file") != 0 && \
 			           strcmp(u->scheme, "ftp") != 0) {
+				http = true;
 				snprintf(zone, sizeof(zone),
 				    "%s://%s", u->scheme, u->host);
 				pthread_mutex_lock(&mirror_mtx);

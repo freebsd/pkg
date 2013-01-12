@@ -172,13 +172,15 @@ static struct config_entry c[] = {
 #endif
 		{ NULL }
 	},
-	[PKG_CONFIG_SRV_MIRROR] = {
-		BOOL,
-		"SRV_MIRRORS",
+	[PKG_CONFIG_MIRRORS] = {
+		STRING,
+		"MIRROR_TYPE",
 #if DEFAULT_MIRROR_TYPE == 1
-		"YES",
+		"SRV",
+#elif DEFAULT_MIRROR_TYPE == 2
+		"HTTP",
 #else
-		"NO",
+		NULL,
 #endif
 		{ NULL }
 	},
@@ -192,16 +194,6 @@ static struct config_entry c[] = {
 		BOOL,
 		"PERMISSIVE",
 		"NO",
-		{ NULL }
-	},
-	[PKG_CONFIG_HTTP_MIRROR] = {
-		BOOL,
-		"HTTP_MIRRORS",
-#if DEFAULT_MIRROR_TYPE == 2
-		"YES",
-#else
-		"NO",
-#endif
 		{ NULL }
 	},
 };
