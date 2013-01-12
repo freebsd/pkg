@@ -196,6 +196,16 @@ static struct config_entry c[] = {
 		"REPO_AUTOUPDATE",
 		"YES",
 	},
+	[PKG_CONFIG_HTTP_PROXY] = {
+		PKG_CONFIG_STRING,
+		"HTTP_PROXY",
+		NULL,
+	},
+	[PKG_CONFIG_FTP_PROXY] = {
+		PKG_CONFIG_STRING,
+		"FTP_PROXY",
+		NULL,
+	},
 };
 
 static bool parsed = false;
@@ -548,6 +558,7 @@ pkg_init(const char *path)
 	size_t i;
 	const char *val = NULL;
 	const char *errstr = NULL;
+	const char *proxy = NULL;
 	struct pkg_config *conf;
 
 	pkg_get_myarch(myabi, BUFSIZ);
@@ -652,6 +663,15 @@ pkg_init(const char *path)
 	disable_plugins_if_static();
 
 	parsed = true;
+
+	/* set the environement variable for libfetch for proxies if any */
+	pkg_config_string(PKG_CONFIG_HTTP_PROXY, &proxy);
+	if (proxy != NULL)
+		setenv("HTTP_PROXY", proxy, 1);
+	pkg_config_string(PKG_CONFIG_FTP_PROXY, &proxy);
+	if (proxy != NULL)
+		setenv("FTP_PROXY", proxy, 1);
+
 	return (EPKG_OK);
 }
 
