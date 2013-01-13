@@ -70,6 +70,9 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 	assert(src != NULL);
 	assert(dst != NULL);
 
+	/* Do not remove until gcc has gone from FreeBSD base */
+	done = total = 0;
+
 	ret = sqlite3_exec(dst, "PRAGMA main.locking_mode=EXCLUSIVE;"
 			   "BEGIN IMMEDIATE;COMMIT;", NULL, NULL, &errmsg);
 	if (ret != SQLITE_OK) {
