@@ -81,7 +81,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
 	struct pkg_entry *e = NULL;
 	char pkgpath[MAXPATHLEN];
-	const char *format;
+	const char *format = NULL;
 	bool foundone;
 
 #ifndef PKG_COMPAT

@@ -240,8 +240,8 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	struct stat sb;
 	int ret = EPKG_OK;
 
-	size_t numdyn;
-	size_t sh_link;
+	size_t numdyn = 0;
+	size_t sh_link = 0;
 	size_t dynidx;
 	const char *osname;
 	const char *shlib;

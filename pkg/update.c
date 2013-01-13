@@ -49,7 +49,7 @@ pkgcli_update(bool force) {
 	const char *repo_name;
 	bool multi_repos = false;
 	struct pkg_config_kv *repokv = NULL;
-	int retcode;
+	int retcode = EPKG_FATAL;
 
 	if (!quiet)
 		printf("Updating repository catalogue\n");
