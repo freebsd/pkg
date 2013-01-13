@@ -4,7 +4,7 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * All rights reserved.
  *
@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <sqlite3.h>
 
@@ -693,6 +694,99 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			return (EPKG_FATAL);
 		}
 	}
+	return (EPKG_OK);
+}
+
+int
+pkgdb_access(int mode)
+{
+	const char	*dbdir;
+	char		 localpath[MAXPATHLEN + 1];
+	int		 access;
+	bool		 install_as_user;
+	bool		 i_am_super;
+	bool		 local_database_exists;
+
+
+	/*
+	 * This will return one of:
+	 *
+	 * EPKG_NODB:  local.sqlite doesn't exist (we don't want to create
+	 *             it.)
+	 *
+	 * EPKG_NOACCESS: we don't have privileges to read or write packages
+	 *
+	 * EPKG_FATAL: Couldn't determine the answer for other reason,
+	 *     like configuration screwed up, read-only filesystem, etc.
+	 *
+	 * EPKG_OK: We can go ahead
+	 */
+ 
+	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
+		return (EPKG_FATAL); /* Config borked */
+
+	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
+
+	/* We only care about F_OK, W_OK and R_OK. Not X_OK */
+
+	if ((mode & ~(R_OK|W_OK)) != 0)
+		return (EPKG_FATAL); /* EINVAL */
+
+	/* Does the database even exist? */
+
+	local_database_exists = (eaccess(localpath, F_OK) == 0);
+
+	if (mode == F_OK && !local_database_exists) {
+		pkg_emit_nolocaldb();
+		return (EPKG_ENODB);
+	}
+
+	/* Subtly different: do we have read access to the DB?  
+	   mode == (R_OK|W_OK) implies we don't want to create the DB */
+
+	if ((mode & R_OK) == R_OK &&
+	    !(local_database_exists && eaccess(localpath, R_OK) != 0)) {
+		if (errno == ENOTDIR || errno == ENOENT) {
+			pkg_emit_nolocaldb();
+			return (EPKG_ENODB);
+		} else if (errno == EACCES)
+			return (EPKG_NOACCESS);
+		else
+			return (EPKG_FATAL);
+	}
+
+	/* If we aren't being asked about write permissions, then
+	   we're done. */
+
+	if ((mode & W_OK) == 0)
+		return (EPKG_OK);
+
+	/* Are we too plebean? Only root is allowed, unless
+	   $INSTALL_AS_USER is set in the environment.  */
+
+	i_am_super = (geteuid() == 0);
+	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
+
+	if (!i_am_super && !install_as_user)
+		return (EPKG_NOACCESS);
+
+	/* We want to write to the DB and/or the system generally to
+	   manipulate packages.  If the local database doesn't exist,
+	   we will create it -- so test write access to the containing
+	   directory in that case. */
+
+	if (local_database_exists)
+		access = eaccess(localpath, W_OK);
+	else
+		access = eaccess(dbdir, W_OK);
+
+	if (access != 0) {
+		if (errno == EACCES)
+			return (EPKG_NOACCESS);
+		else
+			return (EPKG_FATAL);
+	}
+ 
 	return (EPKG_OK);
 }
 

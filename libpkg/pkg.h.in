@@ -4,6 +4,7 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -399,7 +400,7 @@ typedef enum {
 	 */
 	EPKG_LOCKED,
 	/**
-	 * Can not create local database
+	 * Can not create local database or database non-existent
 	 */
 	EPKG_ENODB,
 	/**
@@ -796,6 +797,12 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
 int pkg_create_repo(char *path, bool force,
 		    void (*callback)(struct pkg *, void *), void *);
 int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path);
+
+/**
+ * Test if the EUID has sufficient privilege to carry out some
+ * operation using R_OK, W_OK, F_OK as for eaccess()
+ */
+int pkgdb_access(int mode);
 
 /**
  * Open the local package database.
