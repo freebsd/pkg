@@ -129,7 +129,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	if (eaccess(repofile, W_OK) == -1) {
 		pkg_emit_error("Insufficient privilege to update %s\n",
 			       repofile);
-		rc = EPKG_NOACCESS;
+		rc = EPKG_ENOACCESS;
 		goto cleanup;
 	}
 

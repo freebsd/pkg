@@ -418,7 +418,7 @@ typedef enum {
 	/**
          * Insufficient privilege for action
          */
-	EPKG_NOACCESS,
+	EPKG_ENOACCESS,
 } pkg_error_t;
 
 /**

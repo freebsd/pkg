@@ -714,7 +714,7 @@ pkgdb_access(int mode)
 	 * EPKG_NODB:  local.sqlite doesn't exist (we don't want to create
 	 *             it.)
 	 *
-	 * EPKG_NOACCESS: we don't have privileges to read or write packages
+	 * EPKG_ENOACCESS: we don't have privileges to read or write packages
 	 *
 	 * EPKG_FATAL: Couldn't determine the answer for other reason,
 	 *     like configuration screwed up, read-only filesystem, etc.
@@ -750,7 +750,7 @@ pkgdb_access(int mode)
 			pkg_emit_nolocaldb();
 			return (EPKG_ENODB);
 		} else if (errno == EACCES)
-			return (EPKG_NOACCESS);
+			return (EPKG_ENOACCESS);
 		else
 			return (EPKG_FATAL);
 	}
@@ -768,7 +768,7 @@ pkgdb_access(int mode)
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	if (!i_am_super && !install_as_user)
-		return (EPKG_NOACCESS);
+		return (EPKG_ENOACCESS);
 
 	/* We want to write to the DB and/or the system generally to
 	   manipulate packages.  If the local database doesn't exist,
@@ -782,7 +782,7 @@ pkgdb_access(int mode)
 
 	if (access != 0) {
 		if (errno == EACCES)
-			return (EPKG_NOACCESS);
+			return (EPKG_ENOACCESS);
 		else
 			return (EPKG_FATAL);
 	}
