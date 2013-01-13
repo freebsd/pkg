@@ -46,7 +46,7 @@ pkg_status(int *count)
 	const char	*progname;
 	const char	*dbdir;
 	char		 dbpath[MAXPATHLEN];
-	int		 numpkgs;
+	int		 numpkgs = 0;
 	sqlite3		*db = NULL;
 	sqlite3_stmt	*stmt = NULL;
 	const char      *sql = "SELECT COUNT(*) FROM packages";
