@@ -913,7 +913,7 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 	char *owner = NULL;
 	char *group = NULL;
 	char *permstr = NULL;
-	void *set;
+	void *set = NULL;
 
 	if ((tmp = strchr(keyword, '(')) != NULL &&
 	    keyword[strlen(keyword) -1] != ')') {
