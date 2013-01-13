@@ -520,7 +520,7 @@ static int
 maybe_delete_conflicting(const char *origin, const char *version,
 			 const char *pkg_path)
 {
-	int ret;
+	int ret = EPKG_FATAL;
 	const char *oversion;
 
 	if (run_prepared_statement(VERSION, origin) != SQLITE_ROW)

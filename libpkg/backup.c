@@ -91,6 +91,7 @@ copy_database(sqlite3 *src, sqlite3 *dst, const char *name)
 	b = sqlite3_backup_init(dst, "main", src, "main");
 
 	elapsed = -1;
+	done = total = 0;
 	start = time(NULL);
 
 	do {

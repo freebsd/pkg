@@ -128,8 +128,8 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	bool srv = false;
 	bool http = false;
 	char zone[MAXHOSTNAMELEN + 13];
-	struct dns_srvinfo *srv_current;
-	struct http_mirror *http_current;
+	struct dns_srvinfo *srv_current = NULL;
+	struct http_mirror *http_current = NULL;
 	const char *mt;
 
 	fetchTimeout = 30;
