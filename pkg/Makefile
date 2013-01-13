@@ -41,7 +41,9 @@ GITHASH!=	cd ${.CURDIR} && git rev-parse HEAD
 CFLAGS+=	-DGITHASH="\" ${GITHASH}\""
 .endif
 
+.if defined(DEBUG_FLAGS)
 DEBUG_FLAGS+=	-g -O0
+.endif
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg
 .endif

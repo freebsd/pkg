@@ -113,7 +113,9 @@ LDADD+=		-ledit
 
 CFLAGS+=	-DPREFIX=\"${PREFIX}\"
 
+.if defined(DEBUG_FLAGS)
 DEBUG_FLAGS+=  -g -O0
+.endif
 STRIP=
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg
