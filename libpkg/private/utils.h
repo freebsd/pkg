@@ -83,4 +83,6 @@ bool is_hardlink(struct hardlinks *hl, struct stat *st);
 struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);
 
+int set_nameserver(const char *nsname);
+
 #endif

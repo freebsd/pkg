@@ -206,6 +206,11 @@ static struct config_entry c[] = {
 		"FTP_PROXY",
 		NULL,
 	},
+	[PKG_CONFIG_NAMESERVER] = {
+		PKG_CONFIG_STRING,
+		"NAMESERVER",
+		NULL,
+	},
 };
 
 static bool parsed = false;
@@ -559,6 +564,7 @@ pkg_init(const char *path)
 	const char *val = NULL;
 	const char *errstr = NULL;
 	const char *proxy = NULL;
+	const char *nsname = NULL;
 	struct pkg_config *conf;
 
 	pkg_get_myarch(myabi, BUFSIZ);
@@ -671,6 +677,11 @@ pkg_init(const char *path)
 	pkg_config_string(PKG_CONFIG_FTP_PROXY, &proxy);
 	if (proxy != NULL)
 		setenv("FTP_PROXY", proxy, 1);
+
+	/* bypass resolv.conf with specified NAMESERVER if any */
+	pkg_config_string(PKG_CONFIG_NAMESERVER, &nsname);
+	if (nsname != NULL)
+		set_nameserver(nsname);
 
 	return (EPKG_OK);
 }

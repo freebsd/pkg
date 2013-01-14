@@ -314,6 +314,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_REPO_AUTOUPDATE,
 	PKG_CONFIG_HTTP_PROXY,
 	PKG_CONFIG_FTP_PROXY,
+	PKG_CONFIG_NAMESERVER,
 } pkg_config_key;
 
 typedef enum {

@@ -31,6 +31,8 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <resolv.h>
+#include <netdb.h>
+
 #include "private/utils.h"
 
 typedef union {
@@ -131,4 +133,47 @@ dns_getsrvinfo(const char *zone)
 	free(res);
 
 	return (first);
+}
+
+int
+set_nameserver(const char *nsname) {
+	struct __res_state res;
+	union res_sockaddr_union u[MAXNS];
+	struct addrinfo *answer = NULL;
+	struct addrinfo *cur = NULL;
+	struct addrinfo hint;
+	int nscount = 0;
+
+	memset(u, 0, sizeof(u));
+	memset(&hint, 0, sizeof(hint));
+	hint.ai_socktype = SOCK_DGRAM;
+
+	if (res_ninit(&res) == -1)
+		return (-1);
+
+	if (getaddrinfo(nsname, NULL, &hint, &answer) == 0) {
+		for (cur = answer; cur != NULL; cur = cur->ai_next) {
+			if (nscount == MAXNS)
+				break;
+			switch (cur->ai_addr->sa_family) {
+			case AF_INET6:
+				u[nscount].sin6 = *(struct sockaddr_in6*)(void *)cur->ai_addr;
+				u[nscount++].sin6.sin6_port = htons(53);
+				break;
+			case AF_INET:
+				u[nscount].sin = *(struct sockaddr_in*)(void *)cur->ai_addr;
+				u[nscount++].sin.sin_port = htons(53);
+				break;
+			}
+		}
+		if (nscount != 0)
+			res_setservers(&res, u, nscount);
+		freeaddrinfo(answer);
+	}
+	if (nscount == 0)
+		return (-1);
+
+	_res = res;
+
+	return (0);
 }
