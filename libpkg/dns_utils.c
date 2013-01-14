@@ -65,10 +65,9 @@ dns_getsrvinfo(const char *zone)
 		p += len + NS_QFIXEDSZ;
 	}
 
-	res = malloc(sizeof(struct dns_srvinfo) * ancount);
+	res = calloc(1, sizeof(struct dns_srvinfo) * ancount);
 	if (res == NULL)
 		return (NULL);
-	memset(res, 0, sizeof(struct dns_srvinfo) * ancount);
 
 	n = 0;
 	while (ancount > 0 && p < end) {
