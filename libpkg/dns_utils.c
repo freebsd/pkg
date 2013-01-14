@@ -65,7 +65,7 @@ dns_getsrvinfo(const char *zone)
 		p += len + NS_QFIXEDSZ;
 	}
 
-	res = calloc(1, sizeof(struct dns_srvinfo) * ancount);
+	res = calloc(ancount, sizeof(struct dns_srvinfo));
 	if (res == NULL)
 		return (NULL);
 
