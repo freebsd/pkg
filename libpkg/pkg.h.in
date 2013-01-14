@@ -419,6 +419,11 @@ typedef enum {
          * Insufficient privilege for action
          */
 	EPKG_ENOACCESS,
+	/**
+	 * Insecure permissions on any component of
+	 * $PKGDB_DIR/local.sqlite or any of the repo database bits
+	 */
+	EPKG_INSECURE,
 } pkg_error_t;
 
 /**
@@ -800,9 +805,12 @@ int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path);
 
 /**
  * Test if the EUID has sufficient privilege to carry out some
- * operation using R_OK, W_OK, F_OK as for eaccess()
+ * operation using R_OK, W_OK, F_OK as for eaccess() on the databases
+ * indicated in the database bitmap.
  */
-int pkgdb_access(int mode);
+#define ACCESS_LOCAL	0x1
+#define ACCESS_REPO	0x2
+int pkgdb_access(int mode, unsigned database);
 
 /**
  * Open the local package database.
