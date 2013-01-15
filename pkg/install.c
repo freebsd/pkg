@@ -55,7 +55,7 @@ exec_install(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
-	int retcode = EX_SOFTWARE;
+	int retcode;
 	int updcode = EPKG_OK;
 	int ch;
 	bool yes;
@@ -114,22 +114,28 @@ exec_install(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (geteuid() != 0) {
-		warnx("Installing packages can only be done as root");
+	retcode = pkgdb_access(PKGDB_MODE_READ  |
+			       PKGDB_MODE_WRITE |
+			       PKGDB_MODE_CREATE,
+			       PKGDB_DB_LOCAL   |
+			       PKGDB_DB_REPO);
+	if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to install packages");
 		return (EX_NOPERM);
-	}
+	} else if (retcode != EPKG_OK)
+		return (EX_IOERR);
+	else
+		retcode = EX_SOFTWARE;
 
 	/* first update the remote repositories if needed */
 	if (auto_update && (updcode = pkgcli_update(false)) != EPKG_OK)
 		return (updcode);
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
-	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		goto cleanup;
-	}
 
 	pkg_jobs_set_flags(jobs, f);
 

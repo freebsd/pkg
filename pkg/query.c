@@ -30,6 +30,7 @@
 #include <sys/sbuf.h>
 
 #include <ctype.h>
+#include <err.h>
 #include <inttypes.h>
 #include <libutil.h>
 #include <pkg.h>
@@ -818,7 +819,7 @@ exec_query(int argc, char **argv)
 	int query_flags = PKG_LOAD_BASIC;
 	match_t match = MATCH_EXACT;
 	int ch;
-	int ret = EPKG_OK;
+	int ret;
 	int retcode = EX_OK;
 	int i;
 	char multiline = 0;
@@ -888,15 +889,18 @@ exec_query(int argc, char **argv)
 		sbuf_finish(sqlcond);
 	}
 
-	ret = pkgdb_open(&db, PKGDB_DEFAULT);
-	if (ret == EPKG_ENODB) {
-		if (geteuid() == 0)
-			return (EX_IOERR);
-
-		/* do not fail if run as a user */
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to query package database");
+		return (EX_NOPERM);
+	} else if (ret == EPKG_ENODB) {
+		if (!quiet)
+			warnx("No packages installed");
 		return (EX_OK);
-	}
+	} else if (ret != EPKG_OK)
+		return (EX_IOERR);
 
+	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 

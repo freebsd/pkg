@@ -213,9 +213,7 @@ event_callback(void *data, struct pkg_event *ev)
 		    getprogname());
 		break;
 	case PKG_EVENT_NOLOCALDB:
-		/* only cares if run as root */
-		if (geteuid() == 0)
-			fprintf(stderr, "Unable to create local database!\n");
+		fprintf(stderr, "Local package database nonexistent!\n");
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
 		printf("New version of pkg detected; it needs to be "

@@ -392,15 +392,24 @@ exec_audit(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		/*
-		 * if the database doesn't exist a normal user can't create it
-		 * it just means there is no package
-		 */
-		if (geteuid() == 0)
-			return (EX_IOERR);
+	/*
+	 * if the database doesn't exist it just means there are no
+	 * packages to audit.
+	 */
+
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+	if (ret == EPKG_ENODB) 
 		return (EX_OK);
+	else if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to read package database");
+		return (EX_NOPERM);
+	} else if (ret != EPKG_OK) {
+		warnx("Error accessing package database");
+		return (EX_IOERR);
 	}
+
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+		return (EX_IOERR);
 
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 	{

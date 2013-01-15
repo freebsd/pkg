@@ -104,14 +104,21 @@ exec_delete(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (geteuid() != 0) {
-		warnx("deleting packages can only be done as root");
+	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
+			       PKGDB_DB_LOCAL);
+	if (retcode == EPKG_ENODB) {
+		warnx("No packages installed.  Nothing to do!");
+		return (EX_OK);
+	} else if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to delete packages");
 		return (EX_NOPERM);
+	} else if (retcode != EPKG_OK) {
+		warnx("Error accessing package database");
+		return (EX_SOFTWARE);
 	}
-	
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		return (EPKG_FATAL);
-	}
+
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+		return (EX_IOERR);
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
 		pkgdb_close(db);

@@ -55,12 +55,14 @@ exec_fetch(int argc, char **argv)
 	int retcode = EX_SOFTWARE;
 	int ch;
 	bool force = false;
-	bool yes = false;
+	bool yes;
 	bool auto_update;
+	unsigned mode;
 	match_t match = MATCH_EXACT;
 	pkg_flags f = PKG_FLAG_NONE;
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 	while ((ch = getopt(argc, argv, "ygxr:qaLd")) != -1) {
 		switch (ch) {
@@ -102,11 +104,20 @@ exec_fetch(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	/* TODO: Allow the user to specify an output directory via -o outdir */
-	if (geteuid() != 0) {
-		warnx("Fetching packages can only be done as root");
+	/* TODO: Allow the user to specify an output directory via -o
+	   outdir */
+
+	if (auto_update)
+		mode = PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE;
+	else
+		mode = PKGDB_MODE_READ;
+
+	retcode = pkgdb_access(mode, PKGDB_DB_REPO);
+	if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to access repo catalogue");
 		return (EX_NOPERM);
-	}
+	} else if (retcode != EPKG_OK)
+		return (EX_IOERR);
 
 	/* first update the remote repositories if needed */
 	if (auto_update && (retcode = pkgcli_update(false)) != EPKG_OK)
@@ -131,9 +142,7 @@ exec_fetch(int argc, char **argv)
 
 	if (!quiet) {
 		print_jobs_summary(jobs, "The following packages will be fetched:\n\n");
-		
-		if (!yes)
-			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+
 		if (!yes)
 			yes = query_yesno("\nProceed with fetching packages [y/N]: ");
 	}

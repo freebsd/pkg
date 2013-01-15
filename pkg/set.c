@@ -65,6 +65,7 @@ exec_set(int argc, char **argv)
 	char *oldorigin = NULL;
 	unsigned int loads = PKG_LOAD_BASIC;
 	unsigned int sets = 0;
+	int retcode;
 
 	while ((ch = getopt(argc, argv, "ayA:kxgo:")) != -1) {
 		switch (ch) {
@@ -126,9 +127,20 @@ exec_set(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (geteuid() != 0) {
-		warnx("Modifying local database can only be done as root");
+	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
+			       PKGDB_DB_LOCAL);
+	if (retcode == EPKG_ENODB) {
+		if (match == MATCH_ALL)
+			return (EX_OK);
+		if (!quiet)
+			warnx("No packages installed.  Nothing to do!");
+		return (EX_OK);
+	} else if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to modify package database");
 		return (EX_NOPERM);
+	} else if (retcode != EPKG_OK) {
+		warnx("Error accessing package database");
+		return (EX_SOFTWARE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)

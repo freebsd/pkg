@@ -47,7 +47,7 @@ exec_autoremove(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	int retcode = EX_SOFTWARE;
+	int retcode;
 	int ch;
 	bool yes = false;
 	bool dry_run = false;
@@ -80,9 +80,17 @@ exec_autoremove(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (geteuid() != 0) {
-		warnx("autoremove can only be done as root");
+	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
+			       PKGDB_DB_LOCAL);
+	if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to autoremove packages");
 		return (EX_NOPERM);
+	} else if (retcode == EPKG_ENODB) {
+		warnx("No packages installed.  Nothing to do!");
+		return (EX_OK);
+	} else if (retcode != EPKG_OK) {
+		warnx("Error accessing package database");
+		return (EX_SOFTWARE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
@@ -97,12 +105,13 @@ exec_autoremove(int argc, char **argv)
 
 	pkg_jobs_set_flags(jobs, f);
 
-	if ((retcode = pkg_jobs_solve(jobs)) != EPKG_OK)
+	if ((retcode = pkg_jobs_solve(jobs)) != EPKG_OK) {
+		retcode = EX_SOFTWARE;
 		goto cleanup;
+	}
 
 	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
 		printf("Nothing to do.\n");
-		retcode = 0;
 		goto cleanup;
 	}
 
@@ -115,8 +124,10 @@ exec_autoremove(int argc, char **argv)
 		if (dry_run)
 			yes = false;
 	}
-	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
+	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK) {
+		retcode = EX_SOFTWARE;
 		goto cleanup;
+	}
 
 	pkgdb_compact(db);
 

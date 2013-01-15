@@ -175,8 +175,18 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	if (yes == false)
 		yes = query_yesno("\n>>> Try to fix the missing dependencies [y/N]: ");
 
-	if (yes == true)
+	if (yes == true) {
+		if (pkgdb_access(PKGDB_MODE_WRITE, PKGDB_DB_LOCAL) ==
+		    EPKG_ENOACCESS) {
+			warnx("Insufficient privilege to modify package "
+			      "database");
+			free(pkgs);
+			pkg_jobs_free(jobs);
+			return (EPKG_ENOACCESS);
+		}
+
 		pkg_jobs_apply(jobs);
+	}
 
 	free(pkgs);
 	pkg_jobs_free(jobs);
@@ -237,7 +247,7 @@ exec_check(int argc, char **argv)
 	int flags = PKG_LOAD_BASIC;
 	int ret;
 	int ch;
-	bool yes = false;
+	bool yes;
 	bool dcheck = false;
 	bool checksums = false;
 	bool recompute = false;
@@ -246,6 +256,8 @@ exec_check(int argc, char **argv)
 	int nbpkgs = 0;
 	int i;
 	int verbose = 0;
+
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
@@ -282,9 +294,6 @@ exec_check(int argc, char **argv)
 		case 'r':
 			recompute = true;
 			flags |= PKG_LOAD_FILES;
-			if (geteuid() != 0)
-				errx(EX_USAGE, "recomputing the checksums"
-				    " and size can only be done as root");
 			break;
 		case 'v':
 			verbose = 1;
@@ -305,14 +314,24 @@ exec_check(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	ret = pkgdb_open(&db, PKGDB_DEFAULT);
-	if (ret == EPKG_ENODB) {
-		if (geteuid() == 0)
-			return (EX_IOERR);
+	if (recompute || reanalyse_shlibs)
+		ret = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
+				   PKGDB_DB_LOCAL);
+	else
+		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 
+	if (ret == EPKG_ENODB) {
+		warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
+	} else if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to access package database");
+		return (EX_NOPERM);
+	} else if (ret != EPKG_OK) {
+		warnx("Error accessing package database");
+		return (EX_SOFTWARE);
 	}
 
+	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
@@ -350,12 +369,10 @@ exec_check(int argc, char **argv)
 			}
 		}
 
-		if (geteuid() == 0 && nbpkgs > 0) {
-			if (yes == false)
-				pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-
+		if (dcheck && nbpkgs > 0 ) {
 			printf("\n>>> Missing package dependencies were detected.\n");
 			printf(">>> Found %d issue(s) in total with your package database.\n\n", nbpkgs);
+
 			ret = fix_deps(db, &dh, nbpkgs, yes);
 			if (ret == EPKG_OK)
 				check_summary(db, &dh);

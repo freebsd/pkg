@@ -172,21 +172,23 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	else
 		pkgname = argv[0];
 
-	if (geteuid() != 0) {
-		warnx("lock and unlock can only be done as root");
-		return (EX_NOPERM);
-	}
-
-	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
+	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
+			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENODB) {
 		if (match == MATCH_ALL)
 			return (EX_OK);
-
 		if (!quiet)
-			printf("No packages installed.\n");
-
-		return (EX_NOINPUT);
+			warnx("No packages installed.  Nothing to do!");
+		return (EX_OK);
+	} else if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to modify package database");
+		return (EX_NOPERM);
+	} else if (retcode != EPKG_OK) {
+		warnx("Error accessing package database");
+		return (EX_SOFTWARE);
 	}
+
+	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (retcode != EPKG_OK)
 		return (EX_IOERR);
 

@@ -66,7 +66,7 @@ exec_add(int argc, char **argv)
 	struct sbuf *failedpkgs = NULL;
 	char path[MAXPATHLEN + 1];
 	char *file;
-	int retcode = EPKG_OK;
+	int retcode;
 	int i;
 	int failedpkgcount = 0;
 	struct pkg *p = NULL;
@@ -76,14 +76,18 @@ exec_add(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (geteuid() != 0) {
-		warnx("Adding packages can only be done as root");
+	retcode = pkgdb_access(PKGDB_MODE_READ  |
+			       PKGDB_MODE_WRITE |
+			       PKGDB_MODE_CREATE,
+			       PKGDB_DB_LOCAL);
+	if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to add packages");
 		return (EX_NOPERM);
-	}
-
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+	} else if (retcode != EPKG_OK)
 		return (EX_IOERR);
-	}
+
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+		return (EX_IOERR);
 
 	failedpkgs = sbuf_new_auto();
 	for (i = 1; i < argc; i++) {

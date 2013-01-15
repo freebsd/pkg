@@ -132,10 +132,14 @@ exec_update(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (geteuid() != 0) {
-		warnx("Updating repository catalogues can only be done as root");
+	ret = pkgdb_access(PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
+			   PKGDB_DB_REPO);
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to update repository "
+		      "catalogue");
 		return (EX_NOPERM);
-	}
+	} else if (ret != EPKG_OK)
+		return (EX_IOERR);
 
 	ret = pkgcli_update(force);
 

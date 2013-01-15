@@ -97,12 +97,19 @@ exec_register(int argc, char **argv)
 	bool developer = false;
 
 	int i;
-	int ret = EPKG_OK, retcode = EX_OK;
+	int ret = EPKG_OK, retcode;
 
-	if (geteuid() != 0) {
-		warnx("registering packages can only be done as root");
+	retcode = pkgdb_access(PKGDB_MODE_READ  |
+			       PKGDB_MODE_WRITE |
+			       PKGDB_MODE_CREATE,
+			       PKGDB_DB_LOCAL);
+	if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to register packages");
 		return (EX_NOPERM);
-	}
+	} else if (retcode != EPKG_OK)
+		return (EX_IOERR);
+	else
+		retcode = EX_OK;
 
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 

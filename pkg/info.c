@@ -193,20 +193,20 @@ exec_info(int argc, char **argv)
 		return (0);
 	}
 
-	ret = pkgdb_open(&db, PKGDB_DEFAULT);
-	if (ret == EPKG_ENODB) {
-		if (geteuid() == 0)
-			return (EX_IOERR);
-
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to query package database");
+		return (EX_NOPERM);
+	} else if (ret == EPKG_ENODB) {
 		if (match == MATCH_ALL)
 			return (EX_OK);
-
 		if (!quiet)
-			printf("No packages installed.\n");
-
+			warnx("No packages installed");
 		return (EX_UNAVAILABLE);
-	}
-
+	} else if (ret != EPKG_OK)
+		return (EX_IOERR);
+		
+	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 

@@ -143,15 +143,16 @@ exec_rquery(int argc, char **argv)
 		sbuf_finish(sqlcond);
 	}
 
-	ret = pkgdb_open(&db, PKGDB_REMOTE);
-	if (ret == EPKG_ENODB) {
-		if (geteuid() == 0)
-			return (EX_IOERR);
-
-		/* do not fail if run as a user */
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to query package database");
+		return (EX_NOPERM);
+	} else if (ret == EPKG_ENODB) {
 		return (EX_OK);
-	}
+	} else if (ret != EPKG_OK)
+		return (EX_IOERR);
 
+	ret = pkgdb_open(&db, PKGDB_REMOTE);
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 

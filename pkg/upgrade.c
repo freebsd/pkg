@@ -47,7 +47,7 @@ exec_upgrade(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
 	const char *reponame = NULL;
-	int retcode = 1;
+	int retcode;
 	int updcode;
 	int ch;
 	bool yes;
@@ -90,16 +90,29 @@ exec_upgrade(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (!dry_run && geteuid() != 0) {
-		warnx("Upgrading can only be done as root");
-		return (EX_NOPERM);
-	}
-
 	if (argc != 0) {
 		usage_upgrade();
 		return (EX_USAGE);
 	}
 
+
+	if (dry_run)
+		retcode = pkgdb_access(PKGDB_MODE_READ,
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+	else
+		retcode = pkgdb_access(PKGDB_MODE_READ  |
+				       PKGDB_MODE_WRITE |
+				       PKGDB_MODE_CREATE,
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+
+	if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to upgrade packages");
+		return (EX_NOPERM);
+	} else if (retcode != EPKG_OK)
+		return (EX_IOERR);
+	else
+		retcode = EX_SOFTWARE;
+	
 	/* first update the remote repositories if needed */
 	if (!dry_run && auto_update && 
 	    (updcode = pkgcli_update(false)) != EPKG_OK)
