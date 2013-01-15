@@ -58,6 +58,7 @@ exec_delete(int argc, char **argv)
 	int retcode = EX_SOFTWARE;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_NONE;
+	int i;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
@@ -118,6 +119,15 @@ exec_delete(int argc, char **argv)
 	}
 
 	pkg_jobs_set_flags(jobs, f);
+
+	if (match == MATCH_EXACT) {
+		for (i = 0; i < argc; i++) {
+			if (strchr(argv[i], '*') != NULL) {
+				match = MATCH_GLOB;
+				break;
+			}
+		}
+	}
 
 	if (pkg_jobs_add(jobs, match, argv, argc) == EPKG_FATAL)
 		goto cleanup;
