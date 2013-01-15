@@ -728,7 +728,7 @@ file_mode_insecure(const char *path, bool install_as_user)
 	if ( (sb.st_mode & S_IWOTH) != 0  ||
 	     ((euid == 0 || sb.st_gid != egid) &&
 	      (sb.st_mode & S_IWGRP) != 0)) {
-		pkg_emit_error("%s: permissions (%#o) too lax", path,
+		pkg_emit_error("%s permissions (%#o) too lax", path,
 			       (sb.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)));
 		return (EPKG_INSECURE);
 	}
@@ -749,7 +749,7 @@ database_access(unsigned mode, const char* dbdir, const char *dbname)
 		snprintf(dbpath, sizeof(dbpath), "%s/%s.sqlite", dbdir,
 			 dbname);
 	else
-		strlcpy(dbpath, dbname, sizeof(dbpath));
+		strlcpy(dbpath, dbdir, sizeof(dbpath));
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
