@@ -697,97 +697,183 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 	return (EPKG_OK);
 }
 
-int
-pkgdb_access(int mode)
+static int
+file_mode_insecure(const char *path, bool install_as_user)
 {
-	const char	*dbdir;
-	char		 localpath[MAXPATHLEN + 1];
-	int		 access;
-	bool		 install_as_user;
-	bool		 i_am_super;
-	bool		 local_database_exists;
+	uid_t		euid;
+	gid_t		egid;
+	struct stat	sb;
 
-
-	/*
-	 * This will return one of:
-	 *
-	 * EPKG_NODB:  local.sqlite doesn't exist (we don't want to create
-	 *             it.)
-	 *
-	 * EPKG_ENOACCESS: we don't have privileges to read or write packages
-	 *
-	 * EPKG_FATAL: Couldn't determine the answer for other reason,
-	 *     like configuration screwed up, read-only filesystem, etc.
-	 *
-	 * EPKG_OK: We can go ahead
-	 */
- 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
-		return (EPKG_FATAL); /* Config borked */
-
-	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
-
-	/* We only care about F_OK, W_OK and R_OK. Not X_OK */
-
-	if ((mode & ~(R_OK|W_OK)) != 0)
-		return (EPKG_FATAL); /* EINVAL */
-
-	/* Does the database even exist? */
-
-	local_database_exists = (eaccess(localpath, F_OK) == 0);
-
-	if (mode == F_OK && !local_database_exists) {
-		pkg_emit_nolocaldb();
-		return (EPKG_ENODB);
+	if (install_as_user) {
+		euid = geteuid();
+		egid = getegid();
+	} else {
+		euid = 0;
+		egid = 0;
 	}
 
-	/* Subtly different: do we have read access to the DB?  
-	   mode == (R_OK|W_OK) implies we don't want to create the DB */
-
-	if ((mode & R_OK) == R_OK &&
-	    !(local_database_exists && eaccess(localpath, R_OK) != 0)) {
-		if (errno == ENOTDIR || errno == ENOENT) {
-			pkg_emit_nolocaldb();
-			return (EPKG_ENODB);
-		} else if (errno == EACCES)
+	if (stat(path, &sb) != 0) {
+		if (errno == EACCES)
 			return (EPKG_ENOACCESS);
-		else
+		else if (errno == ENOENT)
+			return (EPKG_ENODB);
+		else 
 			return (EPKG_FATAL);
 	}
 
-	/* If we aren't being asked about write permissions, then
-	   we're done. */
+	/* if euid == 0, require no group or other read access.  if
+	   euid != 0, require no other read access and group read
+	   access IFF the group ownership == egid */
 
-	if ((mode & W_OK) == 0)
-		return (EPKG_OK);
+	if ( (sb.st_mode & S_IWOTH) != 0  ||
+	     ((euid == 0 || sb.st_gid != egid) &&
+	      (sb.st_mode & S_IWGRP) != 0)) {
+		pkg_emit_error("%s: permissions (%#o) too lax", path,
+			       (sb.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)));
+		return (EPKG_INSECURE);
+	}
 
-	/* Are we too plebean? Only root is allowed, unless
-	   $INSTALL_AS_USER is set in the environment.  */
+	return (EPKG_OK);
+}
 
-	i_am_super = (geteuid() == 0);
+static int
+database_access(unsigned mode, const char* dbdir, const char *dbname)
+{
+	char		 dbpath[MAXPATHLEN + 1];
+	int		 access;
+	int		 retval;
+	bool		 database_exists;
+	bool		 install_as_user;
+
+	if (dbname != NULL)
+		snprintf(dbpath, sizeof(dbpath), "%s/%s.sqlite", dbdir,
+			 dbname);
+	else
+		strlcpy(dbpath, dbname, sizeof(dbpath));
+
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
-	if (!i_am_super && !install_as_user)
-		return (EPKG_ENOACCESS);
+	retval = file_mode_insecure(dbpath, install_as_user);
 
-	/* We want to write to the DB and/or the system generally to
-	   manipulate packages.  If the local database doesn't exist,
-	   we will create it -- so test write access to the containing
-	   directory in that case. */
+	database_exists = (retval != EPKG_ENODB);
 
-	if (local_database_exists)
-		access = eaccess(localpath, W_OK);
-	else
-		access = eaccess(dbdir, W_OK);
+	if (database_exists && retval != EPKG_OK)
+		return (retval);
+
+	if (!database_exists && (mode & PKGDB_MODE_CREATE) != 0)
+		return (EPKG_OK);
+
+	switch(mode & (PKGDB_MODE_READ|PKGDB_MODE_WRITE)) {
+	case 0:		/* Existence test */
+		access = eaccess(dbpath, F_OK);
+		break;
+	case PKGDB_MODE_READ:
+		access = eaccess(dbpath, R_OK);
+		break;
+	case PKGDB_MODE_WRITE:
+		access = eaccess(dbpath, W_OK);
+		break;
+	case PKGDB_MODE_READ|PKGDB_MODE_WRITE:
+		access = eaccess(dbpath, R_OK|W_OK);
+		break;
+	}
 
 	if (access != 0) {
-		if (errno == EACCES)
+		if (errno == ENOENT)
+			return (EPKG_ENODB);
+		else if (errno == EACCES)
 			return (EPKG_ENOACCESS);
 		else
 			return (EPKG_FATAL);
 	}
  
 	return (EPKG_OK);
+}
+
+
+int
+pkgdb_access(unsigned mode, unsigned database)
+{
+	bool		 multirepos_enabled;
+	const char	*dbdir;
+	int		 retval = EPKG_OK;
+
+	/*
+	 * This will return one of:
+	 *
+	 * EPKG_NODB:  a database doesn't exist and we don't want to create
+	 *             it, or dbdir doesn't exist
+	 * 
+	 * EPKG_INSECURE: the dbfile or one of the directories in the
+	 *	       path to it are writable by other than root or
+	 *             (if $INSTALL_AS_USER is set) the current euid
+	 *             and egid
+	 *
+	 * EPKG_ENOACCESS: we don't have privileges to read or write a
+	 *
+	 * EPKG_FATAL: Couldn't determine the answer for other reason,
+	 *     like configuration screwed up, invalid argument values,
+	 *     read-only filesystem, etc.
+	 *
+	 * EPKG_OK: We can go ahead
+	 */
+
+	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
+		return (EPKG_FATAL); /* Config borked */
+
+	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
+
+	if ((mode & ~(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE))
+	    != 0)
+		return (EPKG_FATAL); /* EINVAL */
+
+	if ((database & ~(PKGDB_DB_LOCAL|PKGDB_DB_REPO)) != 0)
+		return (EPKG_FATAL); /* EINVAL */
+
+	/* Test the enclosing directory: if we're going to create the
+	   DB, then we need read and write permissions on the dir.
+	   Otherwise, just test for read access */
+
+	if ((mode & PKGDB_MODE_CREATE) != 0) 
+		retval = database_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
+					 dbdir, NULL);
+	else
+		retval = database_access(PKGDB_MODE_READ, dbdir, NULL);
+	if (retval != EPKG_OK)
+		return (retval);
+
+	/* Test local.sqlite, if required */
+
+	if ((database & PKGDB_DB_LOCAL) != 0) {
+		retval = database_access(mode, dbdir, "local");
+		if (retval != EPKG_OK)
+			return (retval);
+	}
+
+	/* Test repo.sqlite if required, or test all the repo DBs 
+	   if in multirepos_enabled mode */
+
+	if (!multirepos_enabled && (database & PKGDB_DB_REPO) != 0) {
+		retval = database_access(mode, dbdir, "repo");
+		if (retval != EPKG_OK)
+			return (retval);
+	}
+
+	if (multirepos_enabled && (database & PKGDB_DB_REPO) != 0) {
+		struct pkg_config_kv	*all_repos = NULL;
+		const char		*reponame;
+
+		while (pkg_config_kvlist(PKG_CONFIG_REPOS, &all_repos) ==
+		       EPKG_OK) {
+			reponame = pkg_config_kv_get(all_repos,
+					 PKG_CONFIG_KV_KEY);
+
+			retval = database_access(mode, dbdir, reponame);
+			if (retval != EPKG_OK)
+				return (retval);
+		}
+	}
+	return (retval);
 }
 
 int

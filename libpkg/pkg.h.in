@@ -805,12 +805,16 @@ int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path);
 
 /**
  * Test if the EUID has sufficient privilege to carry out some
- * operation using R_OK, W_OK, F_OK as for eaccess() on the databases
- * indicated in the database bitmap.
+ * operation (mode is a bitmap indicating READ, WRITE, CREATE) on the
+ * databases indicated in the database bitmap.
  */
-#define ACCESS_LOCAL	0x1
-#define ACCESS_REPO	0x2
-int pkgdb_access(int mode, unsigned database);
+#define PKGDB_MODE_READ		(0x1<<0)
+#define PKGDB_MODE_WRITE	(0x1<<1)
+#define PKGDB_MODE_CREATE	(0x1<<2)
+
+#define PKGDB_DB_LOCAL		(0x1<<0)
+#define PKGDB_DB_REPO		(0x1<<1)
+int pkgdb_access(unsigned mode, unsigned database);
 
 /**
  * Open the local package database.
