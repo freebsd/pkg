@@ -248,7 +248,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 	}
 
 	/* Don't display a tab if quiet, retains compatibility. */
-	tab = quiet == false ? "\t" : "";
+	tab = quiet ? "" : "\t";
 
 	/* If we printed a tag, and there are no other items to print,
 	   then just return now. If there's only one single-line item

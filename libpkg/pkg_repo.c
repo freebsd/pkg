@@ -863,9 +863,8 @@ read_pkg_file(void *data)
 		 * we unlock the fts_m mutex, we can not access it.
 		 */
 		pthread_mutex_lock(&d->fts_m);
-		if (d->stop == false) {
+		if (!d->stop)
 			fts_ent = fts_read(d->fts);
-		}
 		if (fts_ent != NULL) {
 			strlcpy(fts_accpath, fts_ent->fts_accpath, sizeof(fts_accpath));
 			strlcpy(fts_path, fts_ent->fts_path, sizeof(fts_path));

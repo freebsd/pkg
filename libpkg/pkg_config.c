@@ -744,12 +744,12 @@ pkg_configs(struct pkg_config **conf)
 int
 pkg_shutdown(void)
 {
-	if (parsed == true) {
-		HASH_FREE(config, pkg_config, pkg_config_free);
-	} else {
+	if (!parsed) {
 		pkg_emit_error("pkg_shutdown() must be called after pkg_init()");
 		return (EPKG_FATAL);
 	}
+
+	HASH_FREE(config, pkg_config, pkg_config_free);
 
 	config_by_key = NULL;
 

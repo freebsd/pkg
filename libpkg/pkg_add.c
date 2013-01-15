@@ -255,7 +255,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	/*
 	 * Extract the files on disk.
 	 */
-	if (extract == true && (retcode = do_extract(a, ae)) != EPKG_OK) {
+	if (extract && (retcode = do_extract(a, ae)) != EPKG_OK) {
 		/* If the add failed, clean up */
 		pkg_delete_files(pkg, 1);
 		pkg_delete_dirs(db, pkg, 1);
