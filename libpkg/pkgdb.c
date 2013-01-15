@@ -758,7 +758,6 @@ static int
 database_access(unsigned mode, const char* dbdir, const char *dbname)
 {
 	char		 dbpath[MAXPATHLEN + 1];
-	int		 access;
 	int		 retval;
 	bool		 database_exists;
 	bool		 install_as_user;
@@ -783,20 +782,20 @@ database_access(unsigned mode, const char* dbdir, const char *dbname)
 
 	switch(mode & (PKGDB_MODE_READ|PKGDB_MODE_WRITE)) {
 	case 0:		/* Existence test */
-		access = eaccess(dbpath, F_OK);
+		retval = eaccess(dbpath, F_OK);
 		break;
 	case PKGDB_MODE_READ:
-		access = eaccess(dbpath, R_OK);
+		retval = eaccess(dbpath, R_OK);
 		break;
 	case PKGDB_MODE_WRITE:
-		access = eaccess(dbpath, W_OK);
+		retval = eaccess(dbpath, W_OK);
 		break;
 	case PKGDB_MODE_READ|PKGDB_MODE_WRITE:
-		access = eaccess(dbpath, R_OK|W_OK);
+		retval = eaccess(dbpath, R_OK|W_OK);
 		break;
 	}
 
-	if (access != 0) {
+	if (retval != 0) {
 		if (errno == ENOENT)
 			return (EPKG_ENODB);
 		else if (errno == EACCES)

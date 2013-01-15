@@ -30,6 +30,7 @@
 #include <sys/sbuf.h>
 
 #include <ctype.h>
+#include <err.h>
 #include <inttypes.h>
 #include <libutil.h>
 #include <pkg.h>
