@@ -702,6 +702,8 @@ file_mode_insecure(const char *path, bool install_as_user)
 {
 	uid_t		euid;
 	gid_t		egid;
+	bool		bad_perms = false;
+	bool		wrong_owner = false;
 	struct stat	sb;
 
 	if (install_as_user) {
@@ -721,15 +723,31 @@ file_mode_insecure(const char *path, bool install_as_user)
 			return (EPKG_FATAL);
 	}
 
-	/* if euid == 0, require no group or other read access.  if
-	   euid != 0, require no other read access and group read
-	   access IFF the group ownership == egid */
+	/* if euid == 0, root ownership and no group or other read
+	   access.  if euid != 0, require no other read access and
+	   group read access IFF the group ownership == egid */
 
-	if ( (sb.st_mode & S_IWOTH) != 0  ||
-	     ((euid == 0 || sb.st_gid != egid) &&
-	      (sb.st_mode & S_IWGRP) != 0)) {
+	if ( euid == 0 ) {
+		if ((sb.st_mode & (S_IWGRP|S_IWOTH)) != 0)
+			bad_perms = true;
+		if (sb.st_uid != euid)
+			wrong_owner = true;
+	} else {
+		if ((sb.st_mode & S_IWOTH) != 0)
+			bad_perms = true;
+		if (sb.st_gid != egid && (sb.st_mode & S_IWGRP) != 0)
+			bad_perms = true;
+		if (sb.st_uid != 0 && sb.st_uid != euid && sb.st_gid != egid)
+			wrong_owner = true;
+	}
+
+	if (bad_perms) {
 		pkg_emit_error("%s permissions (%#o) too lax", path,
 			       (sb.st_mode & (S_IRWXU|S_IRWXG|S_IRWXO)));
+		return (EPKG_INSECURE);
+	}
+	if (wrong_owner) {
+		pkg_emit_error("%s wrong user or group ownership", path);
 		return (EPKG_INSECURE);
 	}
 
