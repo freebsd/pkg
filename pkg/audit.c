@@ -68,7 +68,7 @@ SLIST_HEAD(audit_head, audit_entry);
 void
 usage_audit(void)
 {
-	fprintf(stderr, "usage: pkg audit [-F] <pattern>\n\n");
+	fprintf(stderr, "usage: pkg audit [-Fq] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
