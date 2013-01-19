@@ -30,7 +30,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 5, 2013
+.Dd January 19, 2013
 .Dt PKG_PRINTF 3
 .Os
 .Sh NAME
@@ -156,8 +156,7 @@ Each conversion specification is introduced by
 the
 .Cm %
 character.
-The arguments must correspond properly (after type promotion)
-with the conversion specifier.
+The arguments must correspond properly with the conversion specifier.
 After the
 .Cm % ,
 the following appear in sequence:
@@ -165,20 +164,45 @@ the following appear in sequence:
 .It
 Zero or more of the following flags:
 .Bl -tag -width ".So \  Sc (space)"
-.It Sq Cm ?
+.It Cm ?
 The value should be converted to the
 .Dq first alternate form .
 For integer valued conversions
-.Cm ( I s t )
+.Cm ( I , s
+and
+.Cm t )
 this is a
-.Dq humanized
+.Vt humanized
 form as a floating point value scaled to the range 0 \- 1000
 followed by a SI power-of-10 scale factor.
-.It Sq Cm #
+For array valued conversions
+.Cm ( B , C , D , F , G , L , O , U , d ,
+and
+.Cm r )
+generate
+.Dq 0
+if there are no items in the array,
+.Dq 1
+otherwise.
+For formats returning file modes
+.Cm ( Dp
+or
+.Cm Fp )
+print the mode in the style of
+.Xr strmode 3 .
+For boolean valued formats
+.Cm ( Dk , Dt , Fk , a ,
+and
+.Cm k ) ,
+generate either
+.Dq yes
+or
+.Dq no .
+.It Cm #
 The value should be converted to the
 .Dq second alternate form .
-For integer valued conversions
-.Cm ( I s t )
+For the integer valued conversions
+.Cm ( I , s , t  )
 this is a
 .Dq humanized
 form as a floating point value scaled to the range 0 \- 1024
@@ -216,7 +240,7 @@ and
 .Cm G
 conversions, trailing zeros are not removed from the result as they
 would otherwise be.
-.It So Cm 0 Sc (zero)
+.It Cm 0 (zero)
 Zero padding.
 For all conversions except
 .Cm n ,
@@ -228,7 +252,7 @@ and
 the
 .Cm 0
 flag is ignored.
-.It Sq Cm \-
+.It Cm \-
 A negative field width flag;
 the converted value is to be left adjusted on the field boundary.
 Except for
@@ -246,7 +270,7 @@ produced by a signed conversion
 .Cm ( a , A , d , e , E , f , F , g , G ,
 or
 .Cm i ) .
-.It Sq Cm +
+.It Cm +
 A sign must always be placed before a
 number produced by a signed conversion.
 A
@@ -753,57 +777,6 @@ Insufficient storage space is available.
 .Xr scanf 3 ,
 .Xr setlocale 3 ,
 .Xr wprintf 3
-.Sh STANDARDS
-Subject to the caveats noted in the
-.Sx BUGS
-section below, the
-.Fn fprintf ,
-.Fn printf ,
-.Fn sprintf ,
-.Fn vprintf ,
-.Fn vfprintf ,
-and
-.Fn vsprintf
-functions
-conform to
-.St -ansiC
-and
-.St -isoC-99 .
-With the same reservation, the
-.Fn snprintf
-and
-.Fn vsnprintf
-functions conform to
-.St -isoC-99 ,
-while
-.Fn dprintf
-and
-.Fn vdprintf
-conform to
-.St -p1003.1-2008 .
-.Sh HISTORY
-The functions
-.Fn asprintf
-and
-.Fn vasprintf
-first appeared in the
-.Tn GNU C
-library.
-These were implemented by
-.An Peter Wemm Aq peter@FreeBSD.org
-in
-.Fx 2.2 ,
-but were later replaced with a different implementation
-from
-.Ox 2.3
-by
-.An Todd C. Miller Aq Todd.Miller@courtesan.com .
-The
-.Fn dprintf
-and
-.Fn vdprintf
-functions were added in
-.Fx 8.0 .
 .Sh BUGS
 The
 .Nm
@@ -811,45 +784,14 @@ family of functions do not correctly handle multibyte characters in the
 .Fa format
 argument.
 .Sh SECURITY CONSIDERATIONS
-The
+Equivalents to the
 .Fn sprintf
 and
 .Fn vsprintf
-functions are easily misused in a manner which enables malicious users
-to arbitrarily change a running program's functionality through
-a buffer overflow attack.
-Because
-.Fn sprintf
-and
-.Fn vsprintf
-assume an infinitely long string,
-callers must be careful not to overflow the actual space;
-this is often hard to assure.
-For safety, programmers should use the
-.Fn snprintf
-interface instead.
-For example:
-.Bd -literal
-void
-foo(const char *arbitrary_string, const char *and_another)
-{
-	char onstack[8];
-
-#ifdef BAD
-	/*
-	 * This first sprintf is bad behavior.  Do not use sprintf!
-	 */
-	sprintf(onstack, "%s, %s", arbitrary_string, and_another);
-#else
-	/*
-	 * The following two lines demonstrate better use of
-	 * snprintf().
-	 */
-	snprintf(onstack, sizeof(onstack), "%s, %s", arbitrary_string,
-	    and_another);
-#endif
-}
-.Ed
+functions are not supplied.
+Instead, use
+.Fn pkg_snprintf
+to write into a fixed length buffer without danger of overflow.
 .Pp
 The
 .Fn printf
@@ -863,9 +805,6 @@ to print potentially sensitive data
 or causing it to generate a memory fault or bus error
 by dereferencing an invalid pointer.
 .Pp
-.Cm %n
-can be used to write arbitrary data to potentially carefully-selected
-addresses.
 Programmers are therefore strongly advised to never pass untrusted strings
 as the
 .Fa format
@@ -876,8 +815,8 @@ This holds true even if the string was built using a function like
 .Fn snprintf ,
 as the resulting string may still contain user-supplied conversion specifiers
 for later interpolation by
-.Fn printf .
+.Fn pkg_printf .
 .Pp
 Always use the proper secure idiom:
 .Pp
-.Dl "snprintf(buffer, sizeof(buffer), \*q%s\*q, string);"
+.Dl "pkg_snprintf(buffer, sizeof(buffer), \*q%s\*q, string);"
