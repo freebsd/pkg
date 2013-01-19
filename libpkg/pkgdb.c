@@ -6,6 +6,7 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
+ * Copyright (c) 2013 Gerald Pfeifer <gerald@pfeifer.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -700,18 +701,18 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 static int
 file_mode_insecure(const char *path, bool install_as_user)
 {
-	uid_t		euid;
-	gid_t		egid;
+	uid_t		fileowner;
+	gid_t		filegroup;
 	bool		bad_perms = false;
 	bool		wrong_owner = false;
 	struct stat	sb;
 
 	if (install_as_user) {
-		euid = geteuid();
-		egid = getegid();
+		fileowner = geteuid();
+		filegroup = getegid();
 	} else {
-		euid = 0;
-		egid = 0;
+		fileowner = 0;
+		filegroup = 0;
 	}
 
 	if (stat(path, &sb) != 0) {
@@ -723,21 +724,22 @@ file_mode_insecure(const char *path, bool install_as_user)
 			return (EPKG_FATAL);
 	}
 
-	/* if euid == 0, root ownership and no group or other read
-	   access.  if euid != 0, require no other read access and
-	   group read access IFF the group ownership == egid */
+	/* if fileowner == 0, root ownership and no group or other
+	   read access.  if fileowner != 0, require no other read
+	   access and group read access IFF the group ownership ==
+	   filegroup */
 
-	if ( euid == 0 ) {
+	if ( fileowner == 0 ) {
 		if ((sb.st_mode & (S_IWGRP|S_IWOTH)) != 0)
 			bad_perms = true;
-		if (sb.st_uid != euid)
+		if (sb.st_uid != fileowner)
 			wrong_owner = true;
 	} else {
 		if ((sb.st_mode & S_IWOTH) != 0)
 			bad_perms = true;
-		if (sb.st_gid != egid && (sb.st_mode & S_IWGRP) != 0)
+		if (sb.st_gid != filegroup && (sb.st_mode & S_IWGRP) != 0)
 			bad_perms = true;
-		if (sb.st_uid != 0 && sb.st_uid != euid && sb.st_gid != egid)
+		if (sb.st_uid != 0 && sb.st_uid != fileowner && sb.st_gid != filegroup)
 			wrong_owner = true;
 	}
 
@@ -747,7 +749,9 @@ file_mode_insecure(const char *path, bool install_as_user)
 		return (EPKG_INSECURE);
 	}
 	if (wrong_owner) {
-		pkg_emit_error("%s wrong user or group ownership", path);
+		pkg_emit_error("%s wrong user or group ownership"
+			       " (expected %d/%d versus actual %d/%d)",
+			       path, fileowner, filegroup, sb.st_uid, sb.st_gid);
 		return (EPKG_INSECURE);
 	}
 

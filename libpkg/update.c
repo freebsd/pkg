@@ -126,7 +126,10 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		goto cleanup;
 	}
 
-	if (eaccess(repofile, W_OK) == -1) {
+	/* If the repo.sqlite file exists, test that we can write to
+	   it.  If it doesn't exist, assume we can create it */
+
+	if (eaccess(repofile, F_OK) == 0 && eaccess(repofile, W_OK) == -1) {
 		pkg_emit_error("Insufficient privilege to update %s\n",
 			       repofile);
 		rc = EPKG_ENOACCESS;
