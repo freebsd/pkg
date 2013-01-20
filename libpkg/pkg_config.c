@@ -79,7 +79,11 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_PORTSDIR] = {
 		PKG_CONFIG_STRING,
 		"PORTSDIR",
+#ifdef PORTSDIR
+		PORTSDIR,
+#else
 		"/usr/ports",
+#endif
 	},
 	[PKG_CONFIG_REPOKEY] = {
 		PKG_CONFIG_STRING,
