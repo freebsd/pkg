@@ -27,24 +27,28 @@
 .Op Fl A Op Ar 01
 .Op Fl o Ar <oldorigin>:<neworigin>
 .Op Fl y
-.Op Fl xg
+.Op Fl egx
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
-is used to modify information concerning installed packages, should be used with
-caution
+is used to modify information concerning installed packages.
+.Nm
+should always be used with caution.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl y
-Assume yes when asked for confirmation before package autoremoval.
-.It Fl a
-Match on all installed packages.
 .It Fl A Op 01
-Set automatic flag to the package: 0 is not automatic, 1 is automatic.
+Set automatic flag for the package: 0 is not automatic, 1 is automatic.
 This affects the operation of
 .Xr pkg-autoremove 8 .
+.It Fl a
+Match all installed packages.
+.It Fl e
+Match pkg-name as an exact string.
+This is the default.
+.It Fl g
+Match pkg-name as a globbing expression
 .It Fl o Op <oldorigin>:<neworigin>
 Change the port origin of a given dependency from
 .Ar oldorigin
@@ -60,11 +64,11 @@ Also see
 and
 .Sx EXAMPLES .
 .It Fl x
-Assume pkg-name is a regular expression according to the "modern" or
+Match pkg-name as a regular expression according to the "modern" or
 "extended" syntax of
 .Xr re_format 7 .
-.It Fl g
-Assume pkg-name is a glob
+.It Fl y
+Assume yes rather than asking for confirmation before package autoremoval.
 .El
 .Sh FILES
 See
