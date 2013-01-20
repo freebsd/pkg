@@ -48,6 +48,7 @@ convert_to_old(void)
 {
 	struct pkgdb *db = NULL;
 	struct pkg *pkg = NULL;
+	struct pkg_dep *dep = NULL;
 	struct pkgdb_it *it = NULL;
 	char *content, *name, *version, *buf;
 	const char *tmp;
@@ -56,8 +57,8 @@ convert_to_old(void)
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
 	    PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
 	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE |
-	    PKG_LOAD_USERS | PKG_LOAD_GROUPS;
-	FILE *fp;
+	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_RDEPS;
+	FILE *fp, *rq;
 	struct sbuf *install_script = sbuf_new_auto();
 	struct sbuf *deinstall_script = sbuf_new_auto();
 
@@ -72,6 +73,7 @@ convert_to_old(void)
 	}
 
 	while (pkgdb_it_next(it, &pkg, query_flags) == EPKG_OK) {
+		rq = NULL;
 		pkg_to_old(pkg);
 		pkg_old_emit_content(pkg, &content);
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
@@ -185,7 +187,15 @@ convert_to_old(void)
 			fputs(sbuf_data(deinstall_script), fp);
 			fclose(fp);
 		}
-		/* TODO  required_by */
+
+		snprintf(path, MAXPATHLEN, "/var/db/pkg/%s-%s/+REQUIRED_BY", name, version);
+		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
+			if (rq == NULL)
+				rq = fopen(path, "w");
+			fprintf(rq, "%s-%s\n", pkg_dep_name(dep), pkg_dep_version(dep));
+		}
+		if (rq != NULL)
+			fclose(rq);
 		printf("done.\n");
 
 		free(content);
