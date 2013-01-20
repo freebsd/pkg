@@ -129,6 +129,11 @@ typedef enum {
 	 */
 	MATCH_EXACT,
 	/**
+	 * The argument is an exact pattern except that matches
+	 * will be made case insensitively
+	 */
+	MATCH_CASE_INSENSITIVE,
+	/**
 	 * The argument is a globbing expression.
 	 */
 	MATCH_GLOB,
@@ -786,10 +791,12 @@ const char *pkg_shlib_name(struct pkg_shlib const * const);
 /**
  * @param db A pointer to a struct pkgdb object
  * @param origin Package origin
+ * @param case_insensitive Match the origin name case insensitively
  * @return EPKG_OK if the package is installed,
  * and != EPKG_OK if the package is not installed or an error occurred
  */
-int pkg_is_installed(struct pkgdb *db, const char *origin);
+int pkg_is_installed(struct pkgdb *db, const char *origin,
+		     bool case_insensitive);
 
 /**
  * Create a repository database.

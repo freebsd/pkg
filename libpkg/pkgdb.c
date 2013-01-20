@@ -1280,6 +1280,14 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		else
 			comp = " WHERE origin = ?1";
 		break;
+	case MATCH_CASE_INSENSITIVE:
+		if (checkorigin == NULL)
+			comp = " WHERE name = ?1 COLLATE NOCASE"
+				"OR name || \"-\" || version = ?1"
+				"COLLATE NOCASE";
+		else
+			comp = " WHERE origin = ?1 COLLATE NOCASE";
+		break;
 	case MATCH_GLOB:
 		if (checkorigin == NULL)
 			comp = " WHERE name GLOB ?1 "
@@ -1313,6 +1321,9 @@ pkgdb_get_match_how(match_t match)
 		break;
 	case MATCH_EXACT:
 		how = "%s = ?1";
+		break;
+	case MATCH_CASE_INSENSITIVE:
+		how = "%s = ?1 COLLATE NOCASE";
 		break;
 	case MATCH_GLOB:
 		how = "%s GLOB ?1";

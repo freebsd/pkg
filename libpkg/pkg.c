@@ -1144,13 +1144,19 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkg_is_installed(struct pkgdb *db, const char *origin)
+pkg_is_installed(struct pkgdb *db, const char *origin, bool case_insensitive)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	int ret = EPKG_FATAL;
+	match_t	match_type;
 
-	if ((it = pkgdb_query(db, origin, MATCH_EXACT)) == NULL)
+	if (case_insensitive)
+		match_type = MATCH_EXACT;
+	else
+		match_type = MATCH_CASE_INSENSITIVE;
+
+	if ((it = pkgdb_query(db, origin, match_type)) == NULL)
 		return (EPKG_FATAL);
 
 	ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC);

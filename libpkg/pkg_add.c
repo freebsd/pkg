@@ -42,23 +42,6 @@
 #include "private/pkg.h"
 
 static int
-dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
-	struct pkg	*p = NULL;
-	struct pkgdb_it	*it;
-	int		 ret = EPKG_FATAL;
-
-	it = pkgdb_query(db, pkg_dep_origin(dep), MATCH_EXACT);
-
-	if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK)
-		ret = EPKG_OK;
-
-	pkgdb_it_free(it);
-	pkg_free(p);
-
-	return (ret);
-}
-
-static int
 do_extract(struct archive *a, struct archive_entry *ae)
 {
 	int	retcode = EPKG_OK;
@@ -183,12 +166,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * Check if the package is already installed
 	 */
 
-	ret = EPKG_FATAL; /* assume package is not installed */
-	if ((it = pkgdb_query(db, origin, MATCH_EXACT)) != NULL) {
-		ret = pkgdb_it_next(it, &pkg_inst, PKG_LOAD_BASIC);
-		pkgdb_it_free(it);
-	}
-
+	ret = pkg_is_installed(db, origin, false);
 	if (ret == EPKG_OK) {
 		pkg_emit_already_installed(pkg_inst);
 		pkg_free(pkg_inst);
@@ -211,7 +189,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (dep_installed(dep, db) != EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_origin(dep), false) != EPKG_OK) {
 			const char *dep_name = pkg_dep_name(dep);
 			const char *dep_ver = pkg_dep_version(dep);
 
