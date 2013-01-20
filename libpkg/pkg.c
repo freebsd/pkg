@@ -105,6 +105,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg->new_flatsize = 0;
 	pkg->new_pkgsize = 0;
 	pkg->time = 0;
+	pkg->flags = 0;
 	pkg->automatic = false;
 	pkg->licenselogic = LICENSE_SINGLE;
 
