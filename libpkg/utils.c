@@ -67,7 +67,7 @@ char *
 sbuf_get(struct sbuf *buf)
 {
 	if (buf == NULL)
-		return ((char *) "");
+		return (__DECONST(char *, ""));
 
 	if (sbuf_done(buf) == 0)
 		sbuf_finish(buf);
