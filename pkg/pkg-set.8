@@ -27,7 +27,7 @@
 .Op Fl A Op Ar 01
 .Op Fl o Ar <oldorigin>:<neworigin>
 .Op Fl y
-.Op Fl egx
+.Op Fl gx
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
@@ -44,9 +44,6 @@ This affects the operation of
 .Xr pkg-autoremove 8 .
 .It Fl a
 Match all installed packages.
-.It Fl e
-Match pkg-name as an exact string.
-This is the default.
 .It Fl g
 Match pkg-name as a globbing expression
 .It Fl o Op <oldorigin>:<neworigin>
@@ -70,6 +67,12 @@ Match pkg-name as a regular expression according to the "modern" or
 .It Fl y
 Assume yes rather than asking for confirmation before package autoremoval.
 .El
+.Pp
+If neither the
+.Fl g
+nor
+.Fl x
+options are used, the default is to match pkg-name exactly.
 .Sh FILES
 See
 .Xr pkg.conf 5 .

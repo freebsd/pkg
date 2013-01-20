@@ -41,7 +41,7 @@
 void
 usage_set(void)
 {
-	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-egx] <pkg-name>\n\n");
+	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-gx] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
@@ -68,7 +68,7 @@ exec_set(int argc, char **argv)
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
-	while ((ch = getopt(argc, argv, "A:aego:xy")) != -1) {
+	while ((ch = getopt(argc, argv, "A:ago:xy")) != -1) {
 		switch (ch) {
 		case 'A':
 			sets |= AUTOMATIC;
@@ -80,9 +80,6 @@ exec_set(int argc, char **argv)
 			break;
 		case 'a':
 			match = MATCH_ALL;
-			break;
-		case 'e':
-			match = MATCH_EXACT;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
