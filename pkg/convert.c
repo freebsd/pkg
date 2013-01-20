@@ -261,7 +261,7 @@ exec_convert(int argc, char **argv)
 	}
 
 	if (revert)
-		return (convert_from_old());
-	else
 		return (convert_to_old());
+	else
+		return (convert_from_old());
 }
