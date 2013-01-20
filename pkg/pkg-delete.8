@@ -23,7 +23,7 @@
 .Nd deletes packages from the database and the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl fgnqRxy
+.Op Fl fginqRxy
 .Ar <pkg-name> ...
 .Nm
 .Op Fl nqy
@@ -59,6 +59,12 @@ Deletes all installed packages from the system and empties the database.
 Forces packages to be removed despite leaving unresolved dependencies.
 .It Fl g
 Treat the package names as shell glob patterns.
+.It Fl i
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
 .It Fl n
 Dry run mode.
 The list of packages to delete is always printed, but no packages are

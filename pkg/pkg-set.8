@@ -27,7 +27,7 @@
 .Op Fl A Op Ar 01
 .Op Fl o Ar <oldorigin>:<neworigin>
 .Op Fl y
-.Op Fl gx
+.Op Fl gix
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
@@ -45,7 +45,15 @@ This affects the operation of
 .It Fl a
 Match all installed packages.
 .It Fl g
-Match pkg-name as a globbing expression
+Match
+.Ar pkg-name
+as a globbing expression.
+.It Fl i
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
 .It Fl o Op <oldorigin>:<neworigin>
 Change the port origin of a given dependency from
 .Ar oldorigin
@@ -61,8 +69,9 @@ Also see
 and
 .Sx EXAMPLES .
 .It Fl x
-Match pkg-name as a regular expression according to the "modern" or
-"extended" syntax of
+Match
+.Ar pkg-name
+as a regular expression according to the "modern" or "extended" syntax of
 .Xr re_format 7 .
 .It Fl y
 Assume yes rather than asking for confirmation before package autoremoval.

@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl AfgLnqRxy
+.Op Fl AfgiLnqRxy
 .Op Fl r Ar reponame
 .Ar <pkg-origin> ...
 .Sh DESCRIPTION
@@ -115,6 +115,12 @@ For more information please refer to
 Force the reinstallation of the package if already installed.
 .It Fl g
 Treat the package names as shell glob patterns.
+.It Fl i
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
 .It Fl L
 Skip updating the repository catalogues with
 .Xr pkg-update 8 .

@@ -25,7 +25,7 @@
 .Nm
 .Op Fl Bdsr
 .Op Fl vy
-.Op Fl a | gx Ar <pattern>
+.Op Fl a | gix Ar <pattern>
 .Sh DESCRIPTION
 .Nm
 .Fl B
@@ -55,6 +55,12 @@ Assume yes when asked for confirmation before installing missing dependencies.
 Be verbose.
 .It Fl a
 Process all packages.
+.It Fl i
+Make the standard or regular expression 
+.Fl ( x )
+matching against
+.Ar pattern
+case insensitive.
 .It Fl g
 Treat
 .Ar <pattern>

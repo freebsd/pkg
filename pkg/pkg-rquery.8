@@ -33,7 +33,7 @@
 .Op Fl r Ar reponame
 .Ao query-format Ac
 .Nm
-.Op Fl gx
+.Op Fl gix
 .Op Fl r Ar reponame
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
@@ -59,6 +59,12 @@ See
 Treat
 .Ao pattern Ac
 as a glob pattern.
+.It Fl i
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
 .It Fl x
 Treat
 .Ao pattern Ac

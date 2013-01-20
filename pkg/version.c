@@ -57,7 +57,7 @@ struct index_entry {
 void
 usage_version(void)
 {
-	fprintf(stderr, "usage: pkg version [-IPR] [-hoqvU] [-l limchar] [-L limchar] [[-X] -s string]\n");
+	fprintf(stderr, "usage: pkg version [-IPR] [-hoqvU] [-l limchar] [-L limchar] [-egix pattern]\n");
 	fprintf(stderr, "                   [-r reponame] [-O origin] [index]\n");
 	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
 	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n\n");
@@ -174,7 +174,7 @@ exec_version(int argc, char **argv)
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
-	while ((ch = getopt(argc, argv, "hIPRUoqvl:L:x:g:e:O:r:tT")) != -1) {
+	while ((ch = getopt(argc, argv, "hIPRUoqvl:L:ix:g:e:O:r:tT")) != -1) {
 		switch (ch) {
 		case 'h':
 			usage_version();
@@ -207,6 +207,9 @@ exec_version(int argc, char **argv)
 		case 'L':
 			opt |= VERSION_NOSTATUS;
 			limchar = *optarg;
+			break;
+		case 'i':
+			pkgdb_set_case_sensitivity(false);
 			break;
 		case 'x':
 			match = MATCH_REGEX;

@@ -24,7 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
-.Op Fl yqgxadL
+.Op Fl yqgixadL
 .Ar <pkg-name>
 .Op ...
 .Sh DESCRIPTION
@@ -59,6 +59,12 @@ See
 Treat
 .Ar <pkg-name>
 as a shell glob pattern.
+.It Fl i
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
 .It Fl x
 Treat
 .Ar <pkg-name>

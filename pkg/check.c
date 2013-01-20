@@ -233,7 +233,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-Bdsr] [-vy] [-a | -gx <pattern>]\n\n");
+	fprintf(stderr, "usage: pkg check [-Bdsr] [-vy] [-a | -gix <pattern>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -261,23 +261,10 @@ exec_check(int argc, char **argv)
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagdBxsrv")) != -1) {
+	while ((ch = getopt(argc, argv, "yagidBxsrv")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
-			break;
-		case 'x':
-			match = MATCH_REGEX;
-			break;
-		case 'g':
-			match = MATCH_GLOB;
-			break;
-		case 'y':
-			yes = true;
-			break;
-		case 'd':
-			dcheck = true;
-			flags |= PKG_LOAD_DEPS;
 			break;
 		case 'B':
 			pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
@@ -287,16 +274,32 @@ exec_check(int argc, char **argv)
 			reanalyse_shlibs = true;
 			flags |= PKG_LOAD_FILES;
 			break;
-		case 's':
-			checksums = true;
-			flags |= PKG_LOAD_FILES;
+		case 'd':
+			dcheck = true;
+			flags |= PKG_LOAD_DEPS;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'i':
+			pkgdb_set_case_sensitivity(false);
 			break;
 		case 'r':
 			recompute = true;
 			flags |= PKG_LOAD_FILES;
 			break;
+		case 's':
+			checksums = true;
+			flags |= PKG_LOAD_FILES;
+			break;
 		case 'v':
 			verbose = 1;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'y':
+			yes = true;
 			break;
 		default:
 			usage_check();

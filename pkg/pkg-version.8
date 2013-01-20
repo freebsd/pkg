@@ -27,7 +27,7 @@
 .Op Fl hoqvU
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
-.Op Fl xge Ar pattern
+.Op Fl egix Ar pattern
 .Op Fl r Ar reponame
 .Op Fl O Ar origin
 .Op Ar index
@@ -118,6 +118,14 @@ flag.
 Displays the packages which status flag does not match the one
 specified by
 .Ar limchar
+.It Fl i
+Make the exact
+.Fl ( e )
+or regular expression
+.Fl ( x )
+matching against
+.Ar pattern
+case insensitive.
 .It Fl x Ar pattern
 Only display the packages that match the regular expression.
 Uses the "modern" or "extended" syntax of

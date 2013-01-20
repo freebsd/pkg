@@ -23,14 +23,14 @@
 .Nd search package repository catalogues
 .Sh SYNOPSIS
 .Nm
-.Op Fl egx
+.Op Fl egix
 .Op Fl r Ar repo
 .Op Fl S Ar search
 .Op Fl L Ar label
 .Op Fl Q Ar query-modifier
 .Ar pattern
 .Nm
-.Op Fl cDdefgopqx
+.Op Fl cDdefgiopqx
 .Op Fl r Ar repo
 .Ar pattern
 .Sh DESCRIPTION
@@ -83,6 +83,14 @@ Treat
 .Ar pattern
 as a shell globbing expression.
 The glob pattern must match the entire field being seached.
+.It Fl i
+Make the exact
+.Fl ( e )
+or regular expression
+.Fl ( x )
+matching against
+.Ar pattern
+case insensitive.
 .It Fl L Ar label
 Select which identifying label is printed for each matched package,
 unless
