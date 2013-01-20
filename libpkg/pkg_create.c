@@ -198,12 +198,6 @@ static const char * const scripts[] = {
 };
 
 int
-pkg_create_oldstaged(const char *outdir __unused, pkg_formats format __unused, const char *rootdir __unused,
-    const char *md_dir __unused, char *plist __unused)
-{
-	return (EPKG_OK);
-}
-int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
     const char *md_dir, char *plist)
 {

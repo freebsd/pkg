@@ -6,7 +6,7 @@ WARNS=		6
 PREFIX?=	/usr/local
 LIBDIR=		${PREFIX}/lib
 INCLUDEDIR=	${PREFIX}/include
-SHLIB_MAJOR=	0
+SHLIB_MAJOR=	1
 
 #gr_utils.c has to be deleted as soon as it goes in base
 PC=		pkg.pc
