@@ -111,7 +111,6 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	struct pkg	*pkg = NULL;
 	struct pkg_dep	*dep = NULL;
 	struct pkg      *pkg_inst = NULL;
-	struct pkgdb_it *it = NULL;
 	bool		 extract = true;
 	bool		 handle_rc = false;
 	char		 dpath[MAXPATHLEN + 1];
@@ -166,7 +165,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * Check if the package is already installed
 	 */
 
-	ret = pkg_is_installed(db, origin, false);
+	ret = pkg_is_installed(db, origin);
 	if (ret == EPKG_OK) {
 		pkg_emit_already_installed(pkg_inst);
 		pkg_free(pkg_inst);
@@ -189,7 +188,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (pkg_is_installed(db, pkg_dep_origin(dep), false) != EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
 			const char *dep_name = pkg_dep_name(dep);
 			const char *dep_ver = pkg_dep_version(dep);
 

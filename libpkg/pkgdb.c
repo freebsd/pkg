@@ -251,8 +251,15 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 
 	re = (regex_t *)sqlite3_get_auxdata(ctx, 0);
 	if (re == NULL) {
+		int cflags;
+
+		if (pkgdb_case_sensitive())
+			cflags = REG_EXTENDED | REG_NOSUB;
+		else
+			cflags = REG_EXTENDED | REG_NOSUB | REG_ICASE;
+
 		re = malloc(sizeof(regex_t));
-		if (regcomp(re, regex, REG_EXTENDED | REG_NOSUB) != 0) {
+		if (regcomp(re, regex, cflags) != 0) {
 			sqlite3_result_error(ctx, "Invalid regex\n", -1);
 			free(re);
 			return;
@@ -1260,6 +1267,23 @@ pkgdb_it_free(struct pkgdb_it *it)
 	free(it);
 }
 
+/* By default, MATCH_EXACT and MATCH_REGEX are case sensitive. */
+
+static bool _case_sensitive_flag = true;
+
+void
+pkgdb_set_case_sensitivity(bool case_sensitive)
+{
+	_case_sensitive_flag = case_sensitive;
+	return;
+}
+
+bool
+pkgdb_case_sensitive(void)
+{
+	return (_case_sensitive_flag);
+}
+
 static const char *
 pkgdb_get_pattern_query(const char *pattern, match_t match)
 {
@@ -1274,19 +1298,20 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		comp = "";
 		break;
 	case MATCH_EXACT:
-		if (checkorigin == NULL)
-			comp = " WHERE name = ?1 "
-				"OR name || \"-\" || version = ?1";
-		else
-			comp = " WHERE origin = ?1";
-		break;
-	case MATCH_CASE_INSENSITIVE:
-		if (checkorigin == NULL)
-			comp = " WHERE name = ?1 COLLATE NOCASE"
-				"OR name || \"-\" || version = ?1"
-				"COLLATE NOCASE";
-		else
-			comp = " WHERE origin = ?1 COLLATE NOCASE";
+		if (pkgdb_case_sensitive()) {
+			if (checkorigin == NULL)
+				comp = " WHERE name = ?1 "
+					"OR name || \"-\" || version = ?1";
+			else
+				comp = " WHERE origin = ?1";
+		} else {
+			if (checkorigin == NULL)
+				comp = " WHERE name = ?1 COLLATE NOCASE"
+					"OR name || \"-\" || version = ?1"
+					"COLLATE NOCASE";
+			else
+				comp = " WHERE origin = ?1 COLLATE NOCASE";
+		}
 		break;
 	case MATCH_GLOB:
 		if (checkorigin == NULL)
@@ -1320,10 +1345,10 @@ pkgdb_get_match_how(match_t match)
 		how = NULL;
 		break;
 	case MATCH_EXACT:
-		how = "%s = ?1";
-		break;
-	case MATCH_CASE_INSENSITIVE:
-		how = "%s = ?1 COLLATE NOCASE";
+		if (pkgdb_case_sensitive())
+			how = "%s = ?1";
+		else
+			how = "%s = ?1 COLLATE NOCASE";			
 		break;
 	case MATCH_GLOB:
 		how = "%s GLOB ?1";

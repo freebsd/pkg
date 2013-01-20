@@ -125,27 +125,26 @@ typedef enum {
 	 */
 	MATCH_ALL,
 	/**
-	 * The argument is the exact pattern.
+	 * The argument is the exact pattern.  Match will be case
+	 * sensitive or case insensitive according to
+	 * pkgdb_case_sensitive()
 	 */
 	MATCH_EXACT,
 	/**
-	 * The argument is an exact pattern except that matches
-	 * will be made case insensitively
-	 */
-	MATCH_CASE_INSENSITIVE,
-	/**
-	 * The argument is a globbing expression.
+	 * The argument is an exact pattern except that matches will
+	 * be made case insensitively.  Match is always case sensitive
 	 */
 	MATCH_GLOB,
 	/**
 	 * The argument is a regular expression ('modern' style
-	 * according to re_format(7).
+	 * according to re_format(7).  Match will be case sensitive or
+	 * case insensitive according to pkgdb_case_sensitive()
 	 */
 	MATCH_REGEX,
 	/**
 	 * The argument is a WHERE clause to use as condition
 	 */
-	MATCH_CONDITION
+	MATCH_CONDITION,
 } match_t;
 
 /**
@@ -791,12 +790,12 @@ const char *pkg_shlib_name(struct pkg_shlib const * const);
 /**
  * @param db A pointer to a struct pkgdb object
  * @param origin Package origin
- * @param case_insensitive Match the origin name case insensitively
  * @return EPKG_OK if the package is installed,
  * and != EPKG_OK if the package is not installed or an error occurred
+ * Match will be case sensitive or insensitive depending on
+ * pkgdb_case_sensitive()
  */
-int pkg_is_installed(struct pkgdb *db, const char *origin,
-		     bool case_insensitive);
+int pkg_is_installed(struct pkgdb *db, const char *origin);
 
 /**
  * Create a repository database.
@@ -860,6 +859,17 @@ int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg);
  * @return An error code.
  */
 int pkgdb_unregister_pkg(struct pkgdb *pkg, const char *origin);
+
+/**
+ * Set the case sensitivity flag on or off.  Defaults to 
+ * true (case_sensitive)
+ */
+void pkgdb_set_case_sensitivity(bool);
+
+/**
+ * Query the state of the case sensitity setting.
+ */
+bool pkgdb_case_sensitive(void);
 
 /**
  * Query the local package database.
