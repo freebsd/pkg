@@ -41,7 +41,7 @@
 void
 usage_set(void)
 {
-	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-gx] <pkg-name>\n\n");
+	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-egx] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
@@ -53,8 +53,7 @@ exec_set(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	int ch;
 	int i;
-	bool yes_flag = false;
-	bool yes = yes_flag;
+	bool yes;
 	match_t match = MATCH_EXACT;
 	int newautomatic = -1;
 	bool automatic = false;
@@ -67,20 +66,10 @@ exec_set(int argc, char **argv)
 	unsigned int sets = 0;
 	int retcode;
 
-	while ((ch = getopt(argc, argv, "ayA:kxgo:")) != -1) {
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+
+	while ((ch = getopt(argc, argv, "A:aego:xy")) != -1) {
 		switch (ch) {
-		case 'y':
-			yes_flag = true;
-			break;
-		case 'a':
-			match = MATCH_ALL;
-			break;
-		case 'x':
-			match = MATCH_REGEX;
-			break;
-		case 'g':
-			match = MATCH_GLOB;
-			break;
 		case 'A':
 			sets |= AUTOMATIC;
 			newautomatic = strtonum(optarg, 0, 1, &errstr);
@@ -88,6 +77,15 @@ exec_set(int argc, char **argv)
 				errx(EX_USAGE, "Wrong value for -A. "
 				    "Expecting 0 or 1, got: %s (%s)",
 				    optarg, errstr);
+			break;
+		case 'a':
+			match = MATCH_ALL;
+			break;
+		case 'e':
+			match = MATCH_EXACT;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
 			break;
 		case 'o':
 			sets |= ORIGIN;
@@ -109,6 +107,12 @@ exec_set(int argc, char **argv)
 				errx(EX_USAGE,
 				    "Bad origin format, got: %s", optarg);
 			}
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'y':
+			yes = true;
 			break;
 		default:
 			if (oldorigin != NULL)
@@ -145,12 +149,8 @@ exec_set(int argc, char **argv)
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
-
-	if (!yes_flag)
-		pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes_flag);
-
+ 
 	if (oldorigin != NULL) {
-		yes = yes_flag;
 		match = MATCH_ALL;
 		if ((it = pkgdb_query(db, oldorigin, MATCH_EXACT)) == NULL) {
 			pkgdb_close(db);
@@ -183,6 +183,8 @@ exec_set(int argc, char **argv)
 	}
 	i = 0;
 	do {
+		bool save_yes = yes;
+
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			free(oldorigin);
 			pkgdb_close(db);
@@ -190,7 +192,6 @@ exec_set(int argc, char **argv)
 		}
 
 		while (pkgdb_it_next(it, &pkg, loads) == EPKG_OK) {
-			yes = yes_flag;
 			if ((sets & AUTOMATIC) == AUTOMATIC) {
 				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
 				if (automatic == newautomatic)
@@ -204,6 +205,7 @@ exec_set(int argc, char **argv)
 				}
 				if (yes)
 					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, newautomatic);
+				yes = save_yes;
 			}
 			if ((sets & ORIGIN) == ORIGIN) {
 				struct pkg_dep *d = NULL;
