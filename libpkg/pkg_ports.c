@@ -146,11 +146,18 @@ sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...
 static int
 setprefix(struct plist *p, char *line, struct file_attr *a)
 {
+	char *pkgprefix;
+
 	/* if no arguments then set default prefix */
 	if (line[0] == '\0')
 		pkg_get(p->pkg, PKG_PREFIX, &p->prefix);
 	else
 		p->prefix = line;
+
+	pkg_get(p->pkg, PKG_PREFIX, &pkgprefix);
+	if (pkgprefix == NULL)
+		pkg_set(p->pkg, PKG_PREFIX, line);
+
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
 	free(a);
