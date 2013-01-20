@@ -381,7 +381,7 @@ static int
 comment_key(struct plist *p, char *line, struct file_attr *a)
 {
 	char *name, *version;
-	if (strcmp(line, "DEPORIGIN:") == 0) {
+	if (strncmp(line, "DEPORIGIN:", 10) == 0) {
 		line += 10;
 		name = p->pkgdep;
 		version = strrchr(name, '-');
@@ -389,7 +389,7 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 		version++;
 		pkg_adddep(p->pkg, name, line, version, false);
 		p->pkgdep = NULL;
-	} else if (strcmp(line, "ORIGIN:") == 0) {
+	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
 		line += 7;
 		pkg_set(p->pkg, PKG_ORIGIN, line);
 	}
