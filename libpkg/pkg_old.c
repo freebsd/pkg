@@ -208,3 +208,123 @@ pkg_from_old(struct pkg *p)
 
 	return (EPKG_OK);
 }
+
+int
+pkg_register_old(struct pkg *pkg)
+{
+	FILE *fp;
+	char *name, *version, *content, *buf;
+	const char *pkgdbdir, *tmp;
+	char path[MAXPATHLEN];
+	struct sbuf *install_script = sbuf_new_auto();
+	struct sbuf *deinstall_script = sbuf_new_auto();
+
+	pkg_to_old(pkg);
+	pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+	pkg_old_emit_content(pkg, &content);
+
+	pkg_config_string(PKG_CONFIG_DBDIR, &pkgdbdir);
+	snprintf(path, MAXPATHLEN, "%s/%s-%s", pkgdbdir, name, version);
+	mkdir(path, 0755);
+
+	snprintf(path, MAXPATHLEN, "%s/%s-%s/+CONTENTS", pkgdbdir, name, version);
+	fp = fopen(path, "w");
+	fputs(content, fp);
+	fclose(fp);
+
+	pkg_get(pkg, PKG_DESC, &buf);
+	snprintf(path, MAXPATHLEN, "%s/%s-%s/+DESC", pkgdbdir, name, version);
+	fp = fopen(path, "w");
+	fputs(buf, fp);
+	fclose(fp);
+
+	pkg_get(pkg, PKG_COMMENT, &buf);
+	snprintf(path, MAXPATHLEN, "%s/%s-%s/+COMMENT", pkgdbdir, name, version);
+	fp = fopen(path, "w");
+	fprintf(fp, "%s\n", buf);
+	fclose(fp);
+
+	pkg_get(pkg, PKG_MESSAGE, &buf);
+	if (buf != NULL && *buf != '\0') {
+		snprintf(path, MAXPATHLEN, "%s/%s-%s/+DISPLAY", pkgdbdir, name, version);
+		fp = fopen(path, "w");
+		fputs(buf, fp);
+		fclose(fp);
+	}
+
+	sbuf_clear(install_script);
+	tmp = pkg_script_get(pkg, PKG_SCRIPT_PRE_INSTALL);
+	if (tmp != NULL && *tmp != '\0') {
+		if (sbuf_len(install_script) == 0)
+			sbuf_cat(install_script, "#!/bin/sh\n\n");
+		sbuf_printf(install_script,
+		    "if [ \"$2\" = \"PRE-INSTALL\" ]; then\n"
+		    "%s\n"
+		    "fi\n",
+		    tmp);
+	}
+
+	tmp = pkg_script_get(pkg, PKG_SCRIPT_INSTALL);
+	if (tmp != NULL && *tmp != '\0') {
+		if (sbuf_len(install_script) == 0)
+			sbuf_cat(install_script, "#!/bin/sh\n\n");
+		sbuf_cat(install_script, tmp);
+	}
+
+	tmp = pkg_script_get(pkg, PKG_SCRIPT_POST_INSTALL);
+	if (tmp != NULL && *tmp != '\0') {
+		if (sbuf_len(install_script) == 0)
+			sbuf_cat(install_script, "#!/bin/sh\n\n");
+		sbuf_printf(install_script,
+		    "if [ \"$2\" = \"POST-INSTALL\" ]; then\n"
+		    "%s\n"
+		    "fi\n",
+		    tmp);
+	}
+	if (sbuf_len(install_script) > 0) {
+		sbuf_finish(install_script);
+		snprintf(path, MAXPATHLEN, "%s/%s-%s/+INSTALL", pkgdbdir, name, version);
+		fp = fopen(path, "w");
+		fputs(sbuf_data(install_script), fp);
+		fclose(fp);
+	}
+
+	sbuf_clear(deinstall_script);
+	tmp = pkg_script_get(pkg, PKG_SCRIPT_PRE_DEINSTALL);
+	if (tmp != NULL && *tmp != '\0') {
+		if (sbuf_len(deinstall_script) == 0)
+			sbuf_cat(deinstall_script, "#!/bin/sh\n\n");
+		sbuf_printf(deinstall_script,
+		    "if [ \"$2\" = \"DEINSTALL\" ]; then\n"
+		    "%s\n"
+		    "fi\n",
+		    tmp);
+	}
+
+	tmp = pkg_script_get(pkg, PKG_SCRIPT_DEINSTALL);
+	if (tmp != NULL && *tmp != '\0') {
+		if (sbuf_len(deinstall_script) == 0)
+			sbuf_cat(deinstall_script, "#!/bin/sh\n\n");
+		sbuf_cat(deinstall_script, tmp);
+	}
+
+	tmp = pkg_script_get(pkg, PKG_SCRIPT_POST_DEINSTALL);
+	if (tmp != NULL && tmp[0] != '\0') {
+		if (sbuf_len(deinstall_script) == 0)
+			sbuf_cat(deinstall_script, "#!/bin/sh\n\n");
+		sbuf_printf(deinstall_script,
+		    "if [ \"$2\" = \"POST-DEINSTALL\" ]; then\n"
+		    "%s\n"
+		    "fi\n",
+		    tmp);
+	}
+	if (sbuf_len(deinstall_script) > 0) {
+		sbuf_finish(deinstall_script);
+		snprintf(path, MAXPATHLEN, "%s/%s-%s/+DEINSTALL", pkgdbdir, name, version);
+		fp = fopen(path, "w");
+		fputs(sbuf_data(deinstall_script), fp);
+		fclose(fp);
+	}
+
+	return (EPKG_OK);
+}
