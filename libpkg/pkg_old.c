@@ -73,19 +73,19 @@ pkg_old_load_from_path(struct pkg *pkg, const char *path)
 
 	snprintf(fpath, MAXPATHLEN, "%s/+COMMENT", path);
 	if (access(fpath, F_OK) == 0)
-		pkg_set_from_file(pkg, PKG_COMMENT, fpath);
+		pkg_set_from_file(pkg, PKG_COMMENT, fpath, true);
 
 	snprintf(fpath, sizeof(fpath), "%s/+DESC", path);
 	if (access(fpath, F_OK) == 0)
-		pkg_set_from_file(pkg, PKG_DESC, fpath);
+		pkg_set_from_file(pkg, PKG_DESC, fpath, false);
 
 	snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", path);
 	if (access(fpath, F_OK) == 0)
-		pkg_set_from_file(pkg, PKG_MESSAGE, fpath);
+		pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
 
 	snprintf(fpath, sizeof(fpath), "%s/+MTREE_DIRS", path);
 	if (access(fpath, F_OK) == 0)
-		pkg_set_from_file(pkg, PKG_MTREE, fpath);
+		pkg_set_from_file(pkg, PKG_MTREE, fpath, false);
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		snprintf(fpath, sizeof(fpath), "%s/%s", path, scripts[i]);

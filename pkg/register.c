@@ -154,15 +154,15 @@ exec_register(int argc, char **argv)
 	}
 
 	snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
-	pkg_set_from_file(pkg, PKG_DESC, fpath);
+	pkg_set_from_file(pkg, PKG_DESC, fpath, false);
 
 	snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
 	if (access(fpath, F_OK) == 0)
-		 pkg_set_from_file(pkg, PKG_MESSAGE, fpath);
+		 pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
 
 	snprintf(fpath, sizeof(fpath), "%s/+MTREE_DIRS", mdir);
 	if (access(fpath, F_OK) == 0)
-		pkg_set_from_file(pkg, PKG_MTREE, fpath);
+		pkg_set_from_file(pkg, PKG_MTREE, fpath, false);
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		snprintf(fpath, sizeof(fpath), "%s/%s", mdir, scripts[i]);

@@ -242,7 +242,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		if (snprintf(path, sizeof(path), "%s/+DESC", md_dir) == -1)
 			goto cleanup;
 		if (access(path, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_DESC, path);
+			pkg_set_from_file(pkg, PKG_DESC, path, false);
 	}
 
 	/* if no message try to get it from a file */
@@ -252,7 +252,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		if (ret == -1)
 			goto cleanup;
 		if (access(path, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_MESSAGE, path);
+			pkg_set_from_file(pkg, PKG_MESSAGE, path, false);
 	}
 
 	/* if no arch autodetermine it */
@@ -269,7 +269,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		if (ret == -1)
 			goto cleanup;
 		if (access(path, F_OK) == 0)
-			pkg_set_from_file(pkg, PKG_MTREE, path);
+			pkg_set_from_file(pkg, PKG_MTREE, path, false);
 	}
 
 	for (i = 0; scripts[i] != NULL; i++) {

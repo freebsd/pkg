@@ -155,7 +155,7 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 		p->prefix = line;
 
 	pkg_get(p->pkg, PKG_PREFIX, &pkgprefix);
-	if (pkgprefix == NULL)
+	if (pkgprefix == NULL || *pkgprefix == '\0')
 		pkg_set(p->pkg, PKG_PREFIX, line);
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";

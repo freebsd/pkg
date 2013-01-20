@@ -605,7 +605,7 @@ int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 /**
  * Read the content of a file into a buffer, then call pkg_set().
  */
-int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
+int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
 
 /**
  * Allocate a new struct pkg and add it to the deps of pkg.

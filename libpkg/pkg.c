@@ -358,7 +358,7 @@ pkg_set_mtree(struct pkg *pkg, const char *mtree) {
 
 
 int
-pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
+pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 {
 	char *buf = NULL;
 	off_t size = 0;
@@ -369,6 +369,9 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 
 	if ((ret = file_to_buffer(path, &buf, &size)) !=  EPKG_OK)
 		return (ret);
+
+	while (trimcr && buf[strlen(buf) - 1] == '\n')
+		buf[strlen(buf) - 1] = '\0';
 
 	ret = pkg_set(pkg, attr, buf);
 
