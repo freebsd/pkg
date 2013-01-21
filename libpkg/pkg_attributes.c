@@ -77,6 +77,14 @@ pkg_dep_get(struct pkg_dep const * const d, const pkg_dep_attr attr)
 	}
 }
 
+bool
+pkg_dep_is_locked(struct pkg_dep const * const d)
+{
+	assert(d != NULL);
+
+	return d->locked;
+}
+
 /*
  * File
  */
