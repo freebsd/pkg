@@ -30,7 +30,6 @@
 #include <sys/param.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/queue.h>
 
 #include <assert.h>
 #include <ctype.h>

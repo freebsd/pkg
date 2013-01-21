@@ -44,11 +44,11 @@
 
 struct http_mirror {
 	struct url *url;
-	STAILQ_ENTRY(http_mirror) next;
+	struct http_mirror *next;
 };
 
 static struct dns_srvinfo *srv_mirrors = NULL;
-static STAILQ_HEAD(,http_mirror) http_mirrors = STAILQ_HEAD_INITIALIZER(http_mirrors);
+static struct http_mirror *http_mirrors = NULL;
 
 static void
 gethttpmirrors(const char *url) {
@@ -78,7 +78,7 @@ gethttpmirrors(const char *url) {
 			if ((u = fetchParseURL(url)) != NULL) {
 				m = malloc(sizeof(struct http_mirror));
 				m->url = u;
-				STAILQ_INSERT_TAIL(&http_mirrors, m, next);
+				LL_APPEND(http_mirrors, m);
 			}
 		}
 	}
@@ -161,16 +161,16 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 				snprintf(zone, sizeof(zone),
 				    "%s://%s", u->scheme, u->host);
 				pthread_mutex_lock(&mirror_mtx);
-				if (STAILQ_EMPTY(&http_mirrors))
+				if (http_mirrors == NULL)
 					gethttpmirrors(zone);
 				pthread_mutex_unlock(&mirror_mtx);
-				http_current = STAILQ_FIRST(&http_mirrors);
+				http_current = http_mirrors;
 			}
 		}
 
 		if (srv && srv_mirrors != NULL)
 			strlcpy(u->host, srv_current->host, sizeof(u->host));
-		else if (http && !STAILQ_EMPTY(&http_mirrors)) {
+		else if (http && http_mirrors != NULL) {
 			strlcpy(u->scheme, http_current->url->scheme, sizeof(u->scheme));
 			strlcpy(u->host, http_current->url->host, sizeof(u->host));
 			snprintf(docpath, MAXPATHLEN, "%s%s", http_current->url->doc, doc);
@@ -191,10 +191,10 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 				srv_current = srv_current->next;
 				if (srv_current == NULL)
 					srv_current = srv_mirrors;
-			} else if (http && !STAILQ_EMPTY(&http_mirrors)) {
-				http_current = STAILQ_NEXT(http_current, next);
+			} else if (http && http_mirrors != NULL) {
+				http_current = http_mirrors->next;
 				if (http_current == NULL)
-					http_current = STAILQ_FIRST(&http_mirrors);
+					http_current = http_mirrors;
 			} else {
 				sleep(1);
 			}

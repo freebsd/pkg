@@ -29,7 +29,6 @@
 #define _PKG_PRIVATE_H
 
 #include <sys/param.h>
-#include <sys/queue.h>
 #include <sys/sbuf.h>
 #include <sys/types.h>
 
@@ -39,6 +38,7 @@
 #include <openssl/md5.h>
 #include <stdbool.h>
 #include <uthash.h>
+#include <utlist.h>
 
 #include <yaml.h>
 #include "private/utils.h"
@@ -60,6 +60,16 @@
 	data = NULL;                               \
 } while (0)
 
+#define LL_FREE(head, type, free_func) do {   \
+	struct type *l1, *l2;                 \
+	LL_FOREACH_SAFE(head, l1, l2) {       \
+		LL_DELETE(head, l1);          \
+		if (free_func != NULL)        \
+			free_func(l1);        \
+	}                                     \
+	head = NULL;                          \
+} while (0)
+
 #define HASH_NEXT(hash, data) do {            \
 		if (data == NULL)             \
 			data = hash;          \
@@ -69,14 +79,6 @@
 			return (EPKG_END);    \
 		else                          \
 			return (EPKG_OK);     \
-	} while (0)
-
-#define LIST_FREE(head, data, free_func) do { \
-	while (!STAILQ_EMPTY(head)) { \
-		data = STAILQ_FIRST(head); \
-		STAILQ_REMOVE_HEAD(head, next); \
-		free_func(data); \
-	}  \
 	} while (0)
 
 extern pthread_mutex_t mirror_mtx;
@@ -105,7 +107,7 @@ struct pkg {
 	lic_t		 licenselogic;
 	pkg_t		 type;
 	UT_hash_handle	 hh;
-	STAILQ_ENTRY(pkg) next;
+	struct pkg	*next;
 };
 
 struct pkg_dep {
@@ -160,24 +162,24 @@ struct pkg_jobs {
 	pkg_flags	 flags;
 	bool		 solved;
 	const char *	 reponame;
-	STAILQ_HEAD(,job_pattern) patterns;
+	struct job_pattern *patterns;
 };
 
 struct job_pattern {
 	char		**pattern;
 	int		nb;
 	match_t		match;
-	STAILQ_ENTRY(job_pattern) next;
+	struct job_pattern *next;
 };
 
-struct pkg_jobs_node {
+/*struct pkg_jobs_node {
 	struct pkg	*pkg;
 	size_t		 nrefs;
-	struct pkg_jobs_node	**parents; /* rdeps */
+	struct pkg_jobs_node	**parents;
 	size_t		 parents_len;
 	size_t		 parents_cap;
 	LIST_ENTRY(pkg_jobs_node) entries;
-};
+}; */
 
 struct pkg_user {
 	char		 name[MAXLOGNAME+1];

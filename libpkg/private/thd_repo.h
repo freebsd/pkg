@@ -27,7 +27,6 @@
 #ifndef _PKG_THD_REPO_H
 #define _PKG_THD_REPO_H
 
-#include <sys/queue.h>
 #include <sys/types.h>
 #include <pthread.h>
 
@@ -37,7 +36,7 @@ struct pkg_result {
 	char cksum[SHA256_DIGEST_LENGTH * 2 + 1];
 	off_t size;
 	int retcode; /* to pass errors */
-	STAILQ_ENTRY(pkg_result) next;
+	struct pkg_result *next;
 };
 
 struct thd_data {
@@ -57,7 +56,7 @@ struct thd_data {
 	pthread_mutex_t results_m;
 	pthread_cond_t has_result;
 	pthread_cond_t has_room;
-	STAILQ_HEAD(results, pkg_result) results;
+	struct pkg_result *results;
 	unsigned int num_results;
 	int thd_finished;
 };
