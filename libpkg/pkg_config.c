@@ -108,7 +108,7 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_REPOS] = {
 		PKG_CONFIG_KVLIST,
 		"REPOS",
-		"NULL",
+		NULL,
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
 		PKG_CONFIG_STRING,
@@ -178,7 +178,7 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_PLUGINS] = {
 		PKG_CONFIG_LIST,
 		"PLUGINS",
-		"NULL",
+		NULL,
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
@@ -219,6 +219,8 @@ static struct config_entry c[] = {
 
 static bool parsed = false;
 static size_t c_size = sizeof(c) / sizeof(struct config_entry);
+
+static void pkg_config_kv_free(struct pkg_config_kv *);
 
 static void
 parse_config_sequence(yaml_document_t *doc, yaml_node_t *seq, struct pkg_config *conf)
@@ -568,12 +570,13 @@ pkg_init(const char *path)
 	yaml_node_t *node;
 	size_t i;
 	const char *val = NULL;
-	const char *buf, *walk;
+	const char *buf, *walk, *value, *key;
 	const char *errstr = NULL;
 	const char *proxy = NULL;
 	const char *nsname = NULL;
 	struct pkg_config *conf;
 	struct pkg_config_value *v;
+	struct pkg_config_kv *kv;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -631,6 +634,52 @@ pkg_init(const char *path)
 			break;
 		case PKG_CONFIG_KVLIST:
 			conf->kvlist = NULL;
+			if (val == NULL)
+				val = c[i].def;
+			else
+				conf->fromenv = false;
+			if (val != NULL) {
+				printf("%s\n", val);
+				walk = buf = val;
+				while ((buf = strchr(buf, ',')) != NULL) {
+					key = walk;
+					value = walk;
+					while (*value != ',') {
+						if (*value == '=')
+							break;
+						value++;
+					}
+					if (value == buf || (value - key) == 0) {
+						pkg_emit_error("Malformed Key/Value for %s", c[i].key);
+						pkg_config_kv_free(conf->kvlist);
+						conf->kvlist = NULL;
+						break;
+					}
+					kv = malloc(sizeof(struct pkg_config_kv));
+					kv->key = strndup(key, value - key);
+					kv->value = strndup(value + 1, buf - value -1);
+					HASH_ADD_STR(conf->kvlist, value, kv);
+					buf++;
+					walk = buf;
+				}
+				key = walk;
+				value = walk;
+				while (*value != '\0') {
+					if (*value == '=')
+						break;
+					value++;
+				}
+				if (*value == '\0' || (value - key) == 0) {
+					pkg_emit_error("Malformed Key/Value for %s: %s", c[i].key, val);
+					pkg_config_kv_free(conf->kvlist);
+					conf->kvlist = NULL;
+					break;
+				}
+				kv = malloc(sizeof(struct pkg_config_kv));
+				kv->key = strndup(key, value - key);
+				kv->value = strdup(value + 1);
+				HASH_ADD_STR(conf->kvlist, value, kv);
+			}
 			break;
 		case PKG_CONFIG_LIST:
 			conf->list = NULL;
@@ -714,6 +763,9 @@ pkg_init(const char *path)
 static void
 pkg_config_kv_free(struct pkg_config_kv *k)
 {
+	if (k == NULL)
+		return;
+
 	free(k->key);
 	free(k->value);
 	free(k);
