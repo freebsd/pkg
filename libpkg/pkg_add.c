@@ -100,6 +100,60 @@ do_extract(struct archive *a, struct archive_entry *ae)
 	return (retcode);
 }
 
+static int
+do_extract_mtree(char *mtree, const char *prefix)
+{
+	struct archive *a = NULL;
+	struct archive_entry *ae;
+	char path[MAXPATHLEN];
+	const char *fpath;
+	int retcode = EPKG_OK;
+	int ret;
+
+	if (mtree == NULL || *mtree == '\0')
+		return EPKG_OK;
+
+	a = archive_read_new();
+	archive_read_support_compression_none(a);
+	archive_read_support_filter_none(a);
+	archive_read_support_format_mtree(a);
+
+	if (archive_read_open_memory(a, mtree, strlen(mtree)) != ARCHIVE_OK) {
+		pkg_emit_error("Fail to extract the mtree: %s",
+		    archive_error_string(a));
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+		fpath = archive_entry_pathname(ae);
+
+		if (*fpath != '/') {
+			snprintf(path, sizeof(path), "%s/%s", prefix, fpath);
+			archive_entry_set_pathname(ae, path);
+		}
+
+		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
+			pkg_emit_error("Fail to extract some of the mtree entries: %s",
+			    archive_error_string(a));
+			retcode = EPKG_FATAL;
+			break;
+		}
+	}
+
+	if (ret != ARCHIVE_EOF) {
+		pkg_emit_error("Fail to walk in the mtree file: %s",
+		    archive_error_string(a));
+		retcode = EPKG_FATAL;
+	}
+
+cleanup:
+	if (a != NULL)
+		archive_read_finish(a);
+
+	return (retcode);
+}
+
 int
 pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 {
@@ -116,6 +170,8 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	char		 dpath[MAXPATHLEN + 1];
 	const char	*basedir;
 	const char	*ext;
+	char		*mtree;
+	char		*prefix;
 	int		 retcode = EPKG_OK;
 	int		 ret;
 
@@ -219,6 +275,10 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 
 	if (retcode != EPKG_OK)
 		goto cleanup;
+
+	pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
+	if ((retcode == do_extract_mtree(mtree, prefix)) != EPKG_OK)
+		goto cleanup_reg;
 
 	/*
 	 * Execute pre-install scripts
