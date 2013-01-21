@@ -176,6 +176,8 @@ pkg_dir_get(struct pkg_dir const * const d, const pkg_dir_attr attr)
 	case PKG_DIR_GNAME:
 		return (d->gname);
 		break;
+	default:
+		return(NULL);
 	}
 }
 
