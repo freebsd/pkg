@@ -98,7 +98,7 @@ exec_register(int argc, char **argv)
 	bool old = false;
 
 	int i;
-	int ret = EPKG_OK, retcode;
+	int ret = EPKG_OK, retcode = EX_OK;
 
 
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
