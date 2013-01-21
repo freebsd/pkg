@@ -355,11 +355,13 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 				parse_config_mapping(doc, val, conf);
 				break;
 			case PKG_CONFIG_LIST:
-				if (val->type != YAML_SEQUENCE_NODE) {
-					pkg_emit_error("Expecting a string list for key %s,"
-					    " ignoring...", key->data.scalar.value);
+				if (!conf->fromenv) {
+					if (val->type != YAML_SEQUENCE_NODE) {
+						pkg_emit_error("Expecting a string list for key %s,"
+						    " ignoring...", key->data.scalar.value);
+					}
+					parse_config_sequence(doc, val, conf);
 				}
-				parse_config_sequence(doc, val, conf);
 				break;
 			}
 		}
@@ -566,10 +568,12 @@ pkg_init(const char *path)
 	yaml_node_t *node;
 	size_t i;
 	const char *val = NULL;
+	const char *buf, *walk;
 	const char *errstr = NULL;
 	const char *proxy = NULL;
 	const char *nsname = NULL;
 	struct pkg_config *conf;
+	struct pkg_config_value *v;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -630,6 +634,23 @@ pkg_init(const char *path)
 			break;
 		case PKG_CONFIG_LIST:
 			conf->list = NULL;
+			if (val == NULL)
+				val = c[i].def;
+			else
+				conf->fromenv = true;
+			if (val != NULL) {
+				walk = buf = val;
+				while ((buf = strchr(buf, ',')) != NULL) {
+					v = malloc(sizeof(struct pkg_config_value));
+					v->value = strndup(walk, buf - walk);
+					HASH_ADD_STR(conf->list, value, v);
+					buf++;
+					walk = buf;
+				}
+				v = malloc(sizeof(struct pkg_config_value));
+				v->value = strdup(walk);
+				HASH_ADD_STR(conf->list, value, v);
+			}
 			break;
 		}
 
