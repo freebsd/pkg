@@ -290,7 +290,7 @@ pkg_add(struct pkgdb *db, const char *path, int flags)
 		goto cleanup;
 
 	pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
-	if ((retcode == do_extract_mtree(mtree, prefix)) != EPKG_OK)
+	if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
 		goto cleanup_reg;
 
 	/*
