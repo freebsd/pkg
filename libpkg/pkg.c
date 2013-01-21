@@ -1166,7 +1166,7 @@ pkg_is_installed(struct pkgdb *db, const char *origin)
 }
 
 bool
-pkg_has_dir(struct pkg *p, const char *path)
+pkg_has_files(struct pkg *p, const char *path)
 {
 	struct pkg_file *f;
 
@@ -1176,7 +1176,7 @@ pkg_has_dir(struct pkg *p, const char *path)
 }
 
 bool
-pkg_has_file(struct pkg *p, const char *path)
+pkg_has_dir(struct pkg *p, const char *path)
 {
 	struct pkg_dir *d;
 
