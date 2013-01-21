@@ -132,7 +132,6 @@ do_extract_mtree(char *mtree, const char *prefix)
 
 	a = archive_read_new();
 	archive_read_support_compression_none(a);
-	archive_read_support_filter_none(a);
 	archive_read_support_format_mtree(a);
 
 	if (archive_read_open_memory(a, mtree, strlen(mtree)) != ARCHIVE_OK) {
