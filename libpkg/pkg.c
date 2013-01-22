@@ -1112,7 +1112,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
 	const char *path;
-	struct hardlinks hl = { NULL, 0, 0 };
+	struct hardlinks *hl = NULL;
 	int64_t flatsize = 0;
 	int64_t oldflatsize;
 	struct stat st;
@@ -1133,7 +1133,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 
 			/* special case for hardlinks */
 			if (st.st_nlink > 1)
-				regular = is_hardlink(&hl, &st);
+				regular = is_hardlink(hl, &st);
 
 			if (regular)
 				flatsize += st.st_size;

@@ -915,7 +915,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	char *plist_buf, *walk, *buf, *token;
 	int ret = EPKG_OK;
 	off_t sz = 0;
-	struct hardlinks hardlinks = {NULL, 0, 0};
 	struct plist pplist;
 
 	assert(pkg != NULL);
@@ -937,7 +936,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pplist.pkg = pkg;
 	pplist.slash = "";
 	pplist.ignore_next = false;
-	pplist.hardlinks = &hardlinks;
+	pplist.hardlinks = NULL;
 	pplist.flatsize = 0;
 	pplist.keywords = NULL;
 
@@ -1023,7 +1022,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	flush_script_buffer(pplist.post_upgrade_buf, pkg,
 	    PKG_SCRIPT_POST_UPGRADE);
 
-	free(hardlinks.inodes);
+	HASH_FREE(pplist.hardlinks, hardlinks, free);
 
 	free(plist_buf);
 	HASH_FREE(pplist.keywords, keyword, keyword_free);

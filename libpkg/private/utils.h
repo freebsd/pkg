@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/sbuf.h>
 #include <sys/param.h>
+#include <uthash.h>
 
 #include <openssl/pem.h>
 #include <openssl/sha.h>
@@ -41,10 +42,14 @@
 #define ERROR_SQLITE(db) \
 	pkg_emit_error("sqlite: %s (%s:%d)", sqlite3_errmsg(db), __FILE__, __LINE__)
 
+#define HASH_FIND_INO(head,ino,out)                                          \
+	HASH_FIND(hh,head,ino,sizeof(ino_t),out)
+#define HASH_ADD_INO(head,ino,add)                                          \
+	HASH_ADD(hh,head,ino,sizeof(ino_t),add)
+
 struct hardlinks {
-	ino_t *inodes;
-	size_t len;
-	size_t cap;
+	ino_t inode;
+	UT_hash_handle hh;
 };
 
 struct dns_srvinfo {
