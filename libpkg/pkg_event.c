@@ -110,9 +110,9 @@ pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed)
 
 	ev.type = PKG_EVENT_FETCHING;
 	ev.e_fetching.url = url;
-        ev.e_fetching.total = total;
-        ev.e_fetching.done = done;
-        ev.e_fetching.elapsed = elapsed;
+	ev.e_fetching.total = total;
+	ev.e_fetching.done = done;
+	ev.e_fetching.elapsed = elapsed;
 
 	pkg_emit_event(&ev);
 }
