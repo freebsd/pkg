@@ -262,6 +262,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_PERMISSIVE = 18,
 	PKG_CONFIG_HTTP_PROXY = 19,
 	PKG_CONFIG_FTP_PROXY = 20,
+	PKG_CONFIG_EVENT_PIPE = 21,
 } pkg_config_key;
 
 typedef enum {
