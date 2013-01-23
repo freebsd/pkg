@@ -931,6 +931,7 @@ struct pkg_event {
 		struct {
 			const char *func;
 			const char *arg;
+			int no;
 		} e_errno;
 		struct {
 			char *msg;
