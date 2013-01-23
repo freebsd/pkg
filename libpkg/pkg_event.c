@@ -62,7 +62,7 @@ pipeevent(struct pkg_event *ev)
 		break;
 	case PKG_EVENT_DEVELOPER_MODE:
 		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
-		    "\"msg\": \"DEVELOPPER_MODE: %s\"}",
+		    "\"data\": {\"msg\": \"DEVELOPER_MODE: %s\"}}",
 		    ev->e_pkg_error.msg);
 		break;
 	case PKG_EVENT_FETCHING:
