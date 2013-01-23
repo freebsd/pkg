@@ -273,10 +273,12 @@ pipeevent(struct pkg_event *ev)
 		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
 		    "\"data\": {"
 		    "\"plugin\": \"%s\", "
-		    "\"msg\": \"%s(%s)\""
+		    "\"msg\": \"%s(%s): %s\","
+		    "\"errno\": %d"
 		    "}}",
 		    pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
-		    ev->e_plugin_errno.func, ev->e_plugin_errno.arg);
+		    ev->e_plugin_errno.func, ev->e_plugin_errno.arg,
+		    strerror(ev->e_plugin_errno.no), ev->e_plugin_errno.no);
 		break;
 	case PKG_EVENT_PLUGIN_ERROR:
 		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
@@ -592,6 +594,7 @@ pkg_plugin_errno(struct pkg_plugin *p, const char *func, const char *arg)
 	ev.e_plugin_errno.plugin = p;
 	ev.e_plugin_errno.func = func;
 	ev.e_plugin_errno.arg = arg;
+	ev.e_plugin_errno.no = errno;
 
 	pkg_emit_event(&ev);
 }

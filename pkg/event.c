@@ -54,7 +54,8 @@ event_callback(void *data, struct pkg_event *ev)
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
-		warn("%s(%s)", ev->e_errno.func, ev->e_errno.arg);
+		warnx("%s(%s): %s", ev->e_errno.func, ev->e_errno.arg,
+		    strerror(ev->e_errno.no));
 		break;
 	case PKG_EVENT_ERROR:
 		warnx("%s", ev->e_pkg_error.msg);
@@ -226,7 +227,8 @@ event_callback(void *data, struct pkg_event *ev)
 		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name,
 		    version, pkg_file_path(ev->e_file_mismatch.file));
 	case PKG_EVENT_PLUGIN_ERRNO:
-		warn("%s: %s(%s)", pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),ev->e_plugin_errno.func, ev->e_plugin_errno.arg);
+		warnx("%s: %s(%s): %s", pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
+		    ev->e_plugin_errno.func, ev->e_plugin_errno.arg, strerror(ev->e_plugin_errno.no));
 		break;
 	case PKG_EVENT_PLUGIN_ERROR:
 		warnx("%s: %s", pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME), ev->e_plugin_error.msg);

@@ -1190,6 +1190,7 @@ struct pkg_event {
 			struct pkg_plugin *plugin;
 			const char *func;
 			const char *arg;
+			int no;
 		} e_plugin_errno;
 		struct {
 			struct pkg_plugin *plugin;
