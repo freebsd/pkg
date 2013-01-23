@@ -28,6 +28,11 @@
 #include <sys/queue.h>
 
 #include <assert.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <ctype.h>
+#include <dlfcn.h>
+#include <fcntl.h>
 #include <err.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -48,6 +53,7 @@
 #define ABI_VAR_STRING "${ABI}"
 
 pthread_mutex_t mirror_mtx;
+int eventpipe = -1;
 
 struct pkg_config_kv {
 	char *key;
@@ -208,10 +214,60 @@ static struct config_entry c[] = {
 		NULL,
 		{ NULL }
 	},
+	[PKG_CONFIG_EVENT_PIPE] = {
+		STRING,
+		"EVENT_PIPE",
+		NULL,
+	}
 };
 
 static bool parsed = false;
 static size_t c_size = sizeof(c) / sizeof(struct config_entry);
+
+static void
+connect_evpipe(const char *evpipe) {
+	struct stat st;
+	struct sockaddr_un sock;
+	int flag = O_WRONLY;
+
+	if (stat(evpipe, &st) != 0) {
+		pkg_emit_error("No such event pipe: %s", evpipe);
+		return;
+	}
+
+	if (!S_ISFIFO(st.st_mode) && !S_ISSOCK(st.st_mode)) {
+		pkg_emit_error("%s is not a fifo or socket", evpipe);
+		return;
+	}
+
+	if (S_ISFIFO(st.st_mode)) {
+		flag |= O_NONBLOCK;
+		if ((eventpipe = open(evpipe, flag)) == -1)
+			pkg_emit_errno("open event pipe", evpipe);
+		return;
+	}
+
+	if (S_ISSOCK(st.st_mode)) {
+		if ((eventpipe = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+			pkg_emit_errno("Open event pipe", evpipe);
+			return;
+		}
+		memset(&sock, 0, sizeof(struct sockaddr_un));
+		sock.sun_family = AF_UNIX;
+		if (strlcpy(sock.sun_path, evpipe, sizeof(sock.sun_path)) >=
+		    sizeof(sock.sun_path)) {
+			pkg_emit_error("Socket path too long: %s", evpipe);
+			close(eventpipe);
+			return;
+		}
+
+		if (connect(eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
+			pkg_emit_errno("Connect event pipe", evpipe);
+			return;
+		}
+	}
+
+}
 
 static void
 parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, size_t ent)
@@ -468,6 +524,8 @@ pkg_init(const char *path)
 	size_t i;
 	const char *val = NULL;
 	const char *proxy = NULL;
+	const char *nsname = NULL;
+	const char *evpipe = NULL;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -517,6 +575,11 @@ pkg_init(const char *path)
 	yaml_parser_delete(&parser);
 
 	parsed = true;
+
+	/* Start the event pipe */
+	pkg_config_string(PKG_CONFIG_EVENT_PIPE, &evpipe);
+	if (evpipe != NULL)
+		connect_evpipe(evpipe);
 
 	/* set the environement variable for libfetch for proxies if any */
 	pkg_config_string(PKG_CONFIG_HTTP_PROXY, &proxy);
