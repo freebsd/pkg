@@ -75,7 +75,7 @@ gethttpmirrors(const char *url) {
 			if (*line == '\0')
 				continue;
 
-			if ((u = fetchParseURL(url)) != NULL) {
+			if ((u = fetchParseURL(line)) != NULL) {
 				m = malloc(sizeof(struct http_mirror));
 				m->url = u;
 				STAILQ_INSERT_TAIL(&http_mirrors, m, next);
