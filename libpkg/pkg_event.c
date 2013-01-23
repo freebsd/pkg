@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -27,11 +27,275 @@
 
 #include <syslog.h>
 
+#define _WITH_DPRINTF
 #include "pkg.h"
+#include "private/pkg.h"
 #include "private/event.h"
 
 static pkg_event_cb _cb = NULL;
 static void *_data = NULL;
+
+static void
+pipeevent(struct pkg_event *ev)
+{
+	struct pkg *pkg = NULL;
+	struct pkg_dep *dep = NULL;
+	struct sbuf *msg;
+	const char *message;
+	const char *name, *version, *newversion;
+
+	if (eventpipe < 0)
+		return;
+
+	msg = sbuf_new_auto();
+
+	switch(ev->type) {
+	case PKG_EVENT_ERRNO:
+		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
+		    "\"data\": {\"msg\": \"%s(%s)\"}}",
+		    ev->e_errno.func, ev->e_errno.arg);
+		break;
+	case PKG_EVENT_ERROR:
+		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
+		    "\"data\": {\"msg\": \"%s\"}}",
+		    ev->e_pkg_error.msg);
+		break;
+	case PKG_EVENT_DEVELOPER_MODE:
+		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
+		    "\"msg\": \"DEVELOPPER_MODE: %s\"}",
+		    ev->e_pkg_error.msg);
+		break;
+	case PKG_EVENT_FETCHING:
+		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH\", "
+		    "\"data\": { "
+		    "\"url\": \"%s\", "
+		    "\"fetched\": %" PRId64 ", "
+		    "\"total\": %" PRId64
+		    "}}",
+		    ev->e_fetching.url,
+		    ev->e_fetching.done,
+		    ev->e_fetching.total
+		    );
+		break;
+	case PKG_EVENT_INSTALL_BEGIN:
+		pkg_get(ev->e_install_begin.pkg, PKG_NAME, &name,
+		    PKG_VERSION, &version);
+
+		sbuf_printf(msg, "{ \"type\": \"INFO_INSTALL_BEGIN\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\""
+		    "}}",
+		    name,
+		    version
+		    );
+		break;
+	case PKG_EVENT_INSTALL_FINISHED:
+		pkg_get(ev->e_install_finished.pkg,
+		    PKG_MESSAGE, &message,
+		    PKG_NAME, &name,
+		    PKG_VERSION, &version);
+
+		sbuf_printf(msg, "{ \"type\": \"INFO_INSTALL_FINISHED\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\", "
+		    "\"message\": \"%s\""
+		    "}}",
+		    name,
+		    version,
+		    message
+		    );
+		break;
+	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
+		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
+		    "\"data\": {"
+		    "}}");
+		break;
+	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
+		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
+		    "\"data\": {"
+		    "}}");
+		break;
+	case PKG_EVENT_DEINSTALL_BEGIN:
+		pkg_get(ev->e_deinstall_begin.pkg,
+		    PKG_NAME, &name,
+		    PKG_VERSION, &version);
+
+		sbuf_printf(msg, "{ \"type\": \"INFO_DEINSTALL_BEGIN\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\""
+		    "}}",
+		    name,
+		    version
+		    );
+		break;
+	case PKG_EVENT_DEINSTALL_FINISHED:
+		pkg_get(ev->e_deinstall_finished.pkg,
+		    PKG_NAME, &name,
+		    PKG_VERSION, &version);
+
+		sbuf_printf(msg, "{ \"type\": \"INFO_DEINSTALL_FINISHED\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\""
+		    "}}",
+		    name,
+		    version
+		    );
+		break;
+	case PKG_EVENT_UPGRADE_BEGIN:
+		pkg_get(ev->e_upgrade_begin.pkg,
+		    PKG_NAME, &name,
+		    PKG_VERSION, &version,
+		    PKG_NEWVERSION, &newversion);
+
+		sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_BEGIN\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\" ,"
+		    "\"pkgnewversion\": \"%s\""
+		    "}}",
+		    name,
+		    version,
+		    newversion
+		    );
+		break;
+	case PKG_EVENT_UPGRADE_FINISHED:
+		pkg_get(ev->e_upgrade_finished.pkg,
+		    PKG_NAME, &name,
+		    PKG_VERSION, &version,
+		    PKG_NEWVERSION, &newversion);
+
+		sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\" ,"
+		    "\"pkgnewversion\": \"%s\""
+		    "}}",
+		    name,
+		    version,
+		    newversion
+		    );
+		break;
+	case PKG_EVENT_LOCKED:
+		pkg_get(ev->e_locked.pkg,
+		    PKG_NAME, &name,
+		    PKG_VERSION, &version);
+		sbuf_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\""
+		    "}}",
+		    name,
+		    version
+		    );
+		break;
+	case PKG_EVENT_REQUIRED:
+		pkg_get(ev->e_required.pkg,
+		    PKG_NAME, &name,
+		    PKG_VERSION, &version);
+		sbuf_printf(msg, "{ \"type\": \"ERROR_REQUIRED\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\", "
+		    "\"force\": %s, "
+		    "\"required_by\": [",
+		    name,
+		    version,
+		    ev->e_required.force == 1 ? "true": "false");
+		while (pkg_rdeps(pkg, &dep) == EPKG_OK)
+			sbuf_printf(msg, "{ \"pkgname\": \"%s\", "
+			    "\"pkgversion\": \"%s\" }, ",
+			    pkg_dep_name(dep),
+			    pkg_dep_version(dep));
+		sbuf_setpos(msg, sbuf_len(msg) - 2);
+		sbuf_cat(msg, "]}}");
+		break;
+	case PKG_EVENT_ALREADY_INSTALLED:
+		pkg_get(ev->e_already_installed.pkg,
+		    PKG_NAME, &name,
+		    PKG_VERSION, &version);
+		sbuf_printf(msg, "{ \"type\": \"ERROR_ALREADY_INSTALLED\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\""
+		    "}}",
+		    name,
+		    version);
+		break;
+	case PKG_EVENT_MISSING_DEP:
+		sbuf_printf(msg, "{ \"type\": \"ERROR_MISSING_DEP\", "
+		    "\"data\": { "
+		    "\"depname\": \"%s\", "
+		    "\"depversion\": \"%s\""
+		    "}}" ,
+		    pkg_dep_name(ev->e_missing_dep.dep),
+		    pkg_dep_version(ev->e_missing_dep.dep));
+		break;
+	case PKG_EVENT_NOREMOTEDB:
+		sbuf_printf(msg, "{ \"type\": \"ERROR_NOREMOTEDB\", "
+		    "\"data\": { "
+		    "\"url\": \"%s\" "
+		    "}}" ,
+		    ev->e_remotedb.repo);
+		break;
+	case PKG_EVENT_NOLOCALDB:
+		sbuf_printf(msg, "{ \"type\": \"ERROR_NOLOCALDB\", "
+		    "\"data\": {} ");
+		break;
+	case PKG_EVENT_NEWPKGVERSION:
+		sbuf_printf(msg, "{ \"type\": \"INFO_NEWPKGVERSION\", "
+		    "\"data\": {} ");
+		break;
+	case PKG_EVENT_FILE_MISMATCH:
+		pkg_get(ev->e_file_mismatch.pkg,
+		    PKG_NAME, &name,
+		    PKG_VERSION, &version);
+		sbuf_printf(msg, "{ \"type\": \"ERROR_FILE_MISMATCH\", "
+		    "\"data\": { "
+		    "\"pkgname\": \"%s\", "
+		    "\"pkgversion\": \"%s\", "
+		    "\"path\": \"%s\""
+		    "}}",
+		    name,
+		    version,
+		    pkg_file_path(ev->e_file_mismatch.file));
+		break;
+	case PKG_EVENT_PLUGIN_ERRNO:
+		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
+		    "\"data\": {"
+		    "\"plugin\": \"%s\", "
+		    "\"msg\": \"%s(%s)\""
+		    "}}",
+		    pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
+		    ev->e_plugin_errno.func, ev->e_plugin_errno.arg);
+		break;
+	case PKG_EVENT_PLUGIN_ERROR:
+		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
+		    "\"data\": {"
+		    "\"plugin\": \"%s\", "
+		    "\"msg\": \"%s\""
+		    "}}",
+		    pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME),
+		    ev->e_plugin_error.msg);
+		break;
+	case PKG_EVENT_PLUGIN_INFO:
+		sbuf_printf(msg, "{ \"type\": \"INFO_PLUGIN\", "
+		    "\"data\": {"
+		    "\"plugin\": \"%s\", "
+		    "\"msg\": \"%s\""
+		    "}}",
+		    pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME),
+		    ev->e_plugin_info.msg);
+		break;
+	default:
+		break;
+	}
+	sbuf_finish(msg);
+	dprintf(eventpipe, "%s\n", sbuf_data(msg));
+}
 
 void
 pkg_event_register(pkg_event_cb cb, void *data)
@@ -46,6 +310,7 @@ pkg_emit_event(struct pkg_event *ev)
 	pkg_plugins_hook_run(PKG_PLUGIN_HOOK_EVENT, ev, NULL);
 	if (_cb != NULL)
 		_cb(_data, ev);
+	pipeevent(ev);
 }
 
 void
