@@ -141,7 +141,12 @@ do_extract_mtree(char *mtree, const char *prefix)
 		goto cleanup;
 	}
 
-	while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+	while ((ret = archive_read_next_header(a, &ae)) != ARCHIVE_EOF) {
+		if (ret != ARCHIVE_OK) {
+			pkg_emit_error("Skipping unsupported mtree line: %s",
+			    archive_error_string(a));
+			continue;
+		}
 		fpath = archive_entry_pathname(ae);
 
 		if (*fpath != '/') {
@@ -155,12 +160,6 @@ do_extract_mtree(char *mtree, const char *prefix)
 			retcode = EPKG_FATAL;
 			break;
 		}
-	}
-
-	if (ret != ARCHIVE_EOF) {
-		pkg_emit_error("Fail to walk in the mtree file: %s",
-		    archive_error_string(a));
-		retcode = EPKG_FATAL;
 	}
 
 cleanup:
