@@ -25,6 +25,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <errno.h>
+#include <string.h>
 #include <syslog.h>
 
 #define _WITH_DPRINTF
@@ -52,8 +54,12 @@ pipeevent(struct pkg_event *ev)
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
 		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
-		    "\"data\": {\"msg\": \"%s(%s)\"}}",
-		    ev->e_errno.func, ev->e_errno.arg);
+		    "\"data\": {"
+		    "\"msg\": \"%s(%s): %s\","
+		    "\"errno\": %d}}",
+		    ev->e_errno.func, ev->e_errno.arg,
+		    strerror(ev->e_errno.no),
+		    ev->e_errno.no);
 		break;
 	case PKG_EVENT_ERROR:
 		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
@@ -353,6 +359,7 @@ pkg_emit_errno(const char *func, const char *arg)
 	ev.type = PKG_EVENT_ERRNO;
 	ev.e_errno.func = func;
 	ev.e_errno.arg = arg;
+	ev.e_errno.no = errno;
 
 	pkg_emit_event(&ev);
 }
