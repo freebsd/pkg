@@ -125,13 +125,13 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 				    STDIN_FILENO);
 				posix_spawn_file_actions_addclose(&action, stdin_pipe[1]);
 
-				argv[0] = "sh";
+				argv[0] = _PATH_BSHELL;
 				argv[1] = "-s";
 				argv[2] = NULL;
 
 				use_pipe = 1;
 			} else {
-				argv[0] = "sh";
+				argv[0] = _PATH_BSHELL;
 				argv[1] = "-c";
 				argv[2] = sbuf_get(script_cmd);
 				argv[3] = NULL;
