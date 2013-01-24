@@ -43,6 +43,7 @@
 #ifndef BUNDLED_LIBELF
 #include <link.h>
 #endif
+#include <paths.h>
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
@@ -554,8 +555,8 @@ pkg_get_myarch(char *dest, size_t sz)
 		return (EPKG_FATAL);
 	}
 
-	if ((fd = open("/bin/sh", O_RDONLY)) < 0) {
-		pkg_emit_errno("open", "/bin/sh");
+	if ((fd = open(_PATH_BSHELL, O_RDONLY)) < 0) {
+		pkg_emit_errno("open", _PATH_BSHELL);
 		snprintf(dest, sz, "%s", "unknown");
 		return (EPKG_FATAL);
 	}
