@@ -8,7 +8,6 @@ LIBDIR=		${PREFIX}/lib
 INCLUDEDIR=	${PREFIX}/include
 SHLIB_MAJOR=	1
 
-#gr_utils.c has to be deleted as soon as it goes in base
 PC=		pkg.pc
 PKGH=		pkg.h
 SRCS=		${PC} \
@@ -37,7 +36,6 @@ SRCS=		${PC} \
 		rsa.c \
 		scripts.c \
 		update.c \
-		usergroup.c \
 		utils.c \
 		plugins.c \
 		pkg_old.c \
@@ -60,15 +58,6 @@ all: ${PC}
 
 realinstall: ${PC}
 	${INSTALL} -m 644 ${PC} ${PREFIX}/libdata/pkgconfig
-
-HAVE_GRUTILS!=	grep -q gr_copy /usr/include/libutil.h && echo yes || echo no
-
-.if ${HAVE_GRUTILS} != yes
-SRCS+=	gr_util.c
-.else
-CFLAGS+=	-DHAVE_GRUTILS
-.endif
-
 
 #
 # Set DEFAULT_MIRROR_TYPE default to SRV
