@@ -354,7 +354,7 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 			sbuf_putc(b, toupper(key->data.scalar.value[i]));
 
 		sbuf_finish(b);
-		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), sbuf_len(b), conf);
+		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), (size_t)sbuf_len(b), conf);
 		if (conf != NULL) {
 			switch (conf->type) {
 			case PKG_CONFIG_STRING:
