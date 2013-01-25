@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 16, 2012
+.Dd January 25, 2013
 .Dt PKG-UPGRADE 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd performs upgrades of package software distributions
 .Sh SYNOPSIS
 .Nm
-.Op Fl fLnqy
+.Op Fl fILnqy
 .Op Fl r Ar reponame
 .Sh DESCRIPTION
 .Nm
@@ -53,6 +53,10 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl f
 Force reinstalling/upgrading the whole set of packages
+.It Fl I
+If any installation scripts (pre-install or post-install) or deinstallation
+scripts (pre-deinstall or post-deinstall) exist for a given package, do not
+execute them.
 .It Fl L
 Skip updating the repository catalogues with
 .Xr pkg-update 8 .

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd January 20, 2013
+.Dd January 25, 2013
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl AfgiLnqRxy
+.Op Fl AfgIiLnqRxy
 .Op Fl r Ar reponame
 .Ar <pkg-origin> ...
 .Sh DESCRIPTION
@@ -115,6 +115,10 @@ For more information please refer to
 Force the reinstallation of the package if already installed.
 .It Fl g
 Treat the package names as shell glob patterns.
+.It Fl I
+If any installation scripts (pre-install or post-install) exist for a given
+package, do not execute them.  When a package is updated, deinstallation
+scripts (pre-deinstall or post-deinstall) are not run either.
 .It Fl i
 Make the standard or the regular expression
 .Fl ( x )
