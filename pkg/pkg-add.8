@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd June 12, 2012
+.Dd January 25, 2013
 .Dt PKG-ADD 8
 .Os
 .Sh NAME
@@ -23,8 +23,10 @@
 .Nd Registers a package and installs it on the system
 .Sh SYNOPSIS
 .Nm
+.Op Fl I
 .Ar <pkg-name>
 .Nm
+.Op Fl I
 .Ar <protocol>://<path>/<pkg-name>
 .Sh DESCRIPTION
 .Nm
@@ -34,6 +36,14 @@ When installing from a remote source you need to specify
 the protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width I1
+.It Fl I
+If any installation scripts (pre-install or post-install) exist for a given
+package, do not execute them.
+.El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
