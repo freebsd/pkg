@@ -218,6 +218,7 @@ pkg_register_old(struct pkg *pkg)
 	char path[MAXPATHLEN];
 	struct sbuf *install_script = sbuf_new_auto();
 	struct sbuf *deinstall_script = sbuf_new_auto();
+	struct pkg_dep *dep = NULL;
 
 	pkg_to_old(pkg);
 	pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
@@ -323,6 +324,14 @@ pkg_register_old(struct pkg *pkg)
 		snprintf(path, MAXPATHLEN, "%s/%s-%s/+DEINSTALL", pkgdbdir, name, version);
 		fp = fopen(path, "w");
 		fputs(sbuf_data(deinstall_script), fp);
+		fclose(fp);
+	}
+
+	while (pkg_deps(pkg, &dep)) {
+		snprintf(path, MAXPATHLEN, "%s/%s-%s/+REQUIRED_BY", pkgdbdir,
+		    pkg_dep_name(dep), pkg_dep_version(dep));
+		fp = fopen(path, "a");
+		fprintf(fp, "%s-%s\n", name, version);
 		fclose(fp);
 	}
 
