@@ -3029,8 +3029,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	sqlite3_finalize(stmt);
 	sbuf_clear(sql);
 
-	if (pkg_not_found)
+	if (pkg_not_found) {
+		sbuf_delete(sql);
 		return (NULL);
+	}
 
 	/*
 	 * Report and remove packages already installed and at the latest
