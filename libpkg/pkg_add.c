@@ -281,7 +281,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	/*
 	 * Execute pre-install scripts
 	 */
-	if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == 0)
+	if ((flags & PKG_ADD_NOSCRIPT) == 0 && (flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == 0)
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	/* add the user and group if necessary */
@@ -300,10 +300,12 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	/*
 	 * Execute post install scripts
 	 */
+	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
 	if (flags & PKG_ADD_USE_UPGRADE_SCRIPTS)
 		pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 	else
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+	}
 
 	/*
 	 * start the different related services if the users do want that

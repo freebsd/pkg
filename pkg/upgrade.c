@@ -37,7 +37,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage: pkg upgrade [-fLnqy] [-r reponame]\n\n");
+	fprintf(stderr, "usage: pkg upgrade [-fILnqy] [-r reponame]\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -64,6 +64,9 @@ exec_upgrade(int argc, char **argv)
 		switch (ch) {
 		case 'f':
 			f |= PKG_FLAG_FORCE;
+			break;
+		case 'I':
+			f |= PKG_FLAG_NOSCRIPT;
 			break;
 		case 'L':
 			auto_update = false;
