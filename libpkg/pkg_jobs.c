@@ -394,8 +394,8 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 					LL_APPEND(pkg_queue, pkg);
 					if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-					pkg_script_run(pkg,
-					    PKG_SCRIPT_PRE_DEINSTALL);
+						pkg_script_run(pkg,
+						    PKG_SCRIPT_PRE_DEINSTALL);
 					pkg_get(pkg, PKG_ORIGIN, &origin);
 					/*
 					 * stop the different related services
@@ -429,7 +429,8 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 				LL_APPEND(pkg_queue, pkg);
 				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-				pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
+					pkg_script_run(pkg,
+					    PKG_SCRIPT_PRE_DEINSTALL);
 				pkg_get(pkg, PKG_ORIGIN, &origin);
 				/*
 				 * stop the different related services if the
@@ -460,7 +461,8 @@ pkg_jobs_install(struct pkg_jobs *j)
 				LL_DELETE(pkg_queue, pkg);
 				pkg_delete_files(pkg, 1);
 				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-				pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
+					pkg_script_run(pkg,
+					    PKG_SCRIPT_POST_DEINSTALL);
 				pkg_delete_dirs(j->db, pkg, 0);
 				pkg_free(pkg);
 				break;
