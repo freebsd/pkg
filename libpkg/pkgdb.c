@@ -2919,6 +2919,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	struct sbuf	*sql = NULL;
 	const char	*how = NULL;
 	const char	*reponame = NULL;
+	int              pkg_not_found = 0;
 
 	if ((it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
 		pkg_emit_newpkgversion();
@@ -3019,12 +3020,17 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		while (sqlite3_step(stmt) != SQLITE_DONE);
 
 		/* report if package was not found in the database */
-		if (sqlite3_changes(db->sqlite) == 0)
+		if (sqlite3_changes(db->sqlite) == 0) {
 			pkg_emit_package_not_found(pkgs[i]);
+			pkg_not_found = 1;
+		}
 	}
 
 	sqlite3_finalize(stmt);
 	sbuf_clear(sql);
+
+	if (pkg_not_found)
+		return (NULL);
 
 	/*
 	 * Report and remove packages already installed and at the latest
