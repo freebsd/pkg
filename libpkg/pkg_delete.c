@@ -98,15 +98,15 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 
 	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
-	if (flags & PKG_DELETE_UPGRADE) {
-		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_UPGRADE);
-		if (ret != EPKG_OK)
-			return (ret);
-	} else {
-		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
-		if (ret != EPKG_OK)
-			return (ret);
-	}
+		if (flags & PKG_DELETE_UPGRADE) {
+			ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_UPGRADE);
+			if (ret != EPKG_OK)
+				return (ret);
+		} else {
+			ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
+			if (ret != EPKG_OK)
+				return (ret);
+		}
 	}
 
 	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE)) != EPKG_OK)
