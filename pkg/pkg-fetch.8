@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd January 20, 2013
+.Dd January 25, 2013
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -24,7 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
-.Op Fl yqgixadL
+.Op Fl adgiLquxy
 .Ar <pkg-name>
 .Op ...
 .Sh DESCRIPTION
@@ -44,17 +44,8 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Fetch all packages.
-.It Fl y
-Assume yes when asked for confirmation before fetching packages.
-.It Fl q
-Quiet mode.
-Show less output.
-.It Fl r Ar reponame
-Fetches packages from the given
-.Ar reponame
-if multiple repo support is enabled.
-See
-.Xr pkg.conf 5 .
+.It Fl d
+Fetch the package and its dependencies as well.
 .It Fl g
 Treat
 .Ar <pkg-name>
@@ -65,18 +56,29 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case insensitive.
+.It Fl L
+Skip updating the repository catalogues with
+.Xr pkg-update 8 .
+Use the local cache only.
+.It Fl q
+Quiet mode.
+Show less output.
+.It Fl r Ar reponame
+Fetches packages from the given
+.Ar reponame
+if multiple repo support is enabled.
+See
+.Xr pkg.conf 5 .
+.It Fl u
+Fetch all available updates for the currently installed packages. 
 .It Fl x
 Treat
 .Ar <pkg-name>
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
-.It Fl L
-Skip updating the repository catalogues with
-.Xr pkg-update 8 .
-Use the local cache only.
-.It Fl d
-Fetch the package and its dependencies as well.
+.It Fl y
+Assume yes when asked for confirmation before fetching packages.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
