@@ -2911,7 +2911,7 @@ cleanup:
 
 struct pkgdb_it *
 pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
-    const char *repo, bool force, bool recursive)
+        const char *repo, bool force, bool recursive, bool pkgversiontest)
 {
 	sqlite3_stmt	*stmt = NULL;
 	struct pkgdb_it	*it;
@@ -2921,7 +2921,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	const char	*reponame = NULL;
 	bool             pkg_not_found = false;
 
-	if ((it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
+	if (pkgversiontest && 
+	    (it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
 		pkg_emit_newpkgversion();
 		return (it);
 	}
@@ -3128,7 +3129,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 }
 
 struct pkgdb_it *
-pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
+pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
+	bool pkgversiontest)
 {
 	sqlite3_stmt	*stmt = NULL;
 	struct sbuf	*sql = NULL;
@@ -3136,7 +3138,8 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	struct pkgdb_it	*it;
 	int		 ret;
 
-	if ((it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
+	if (pkgversiontest &&
+	    (it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
 		pkg_emit_newpkgversion();
 		return (it);
 	}

@@ -63,7 +63,7 @@ exec_install(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	bool dry_run = false;
 	nbactions = nbdone = 0;
-	pkg_flags f = PKG_FLAG_NONE;
+	pkg_flags f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);

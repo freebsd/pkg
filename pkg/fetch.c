@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -58,7 +59,7 @@ exec_fetch(int argc, char **argv)
 	int		 retcode = EX_SOFTWARE;
 	bool		 auto_update;
 	bool		 force = false;
-	bool		 updates_for_installed = false;
+	bool		 upgrades_for_installed = false;
 	bool		 yes;
 	unsigned	 mode;
 	match_t		 match = MATCH_EXACT;
@@ -92,7 +93,9 @@ exec_fetch(int argc, char **argv)
 			reponame = optarg;
 			break;
 		case 'u':
-			updates_for_installed = true;
+			f |= PKG_FLAG_UPGRADES_FOR_INSTALLED;
+			upgrades_for_installed = true;
+			break;
 		case 'x':
 			match = MATCH_REGEX;
 			break;
@@ -107,12 +110,12 @@ exec_fetch(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 	
-	if (argc < 1 && match != MATCH_ALL && !updates_for_installed) {
+	if (argc < 1 && match != MATCH_ALL && !upgrades_for_installed) {
 		usage_fetch();
 		return (EX_USAGE);
 	}
 
-        if (match == MATCH_ALL && updates_for_installed) {
+        if (match == MATCH_ALL && upgrades_for_installed) {
 		usage_fetch();
 		return (EX_USAGE);
 	}
@@ -133,7 +136,7 @@ exec_fetch(int argc, char **argv)
 	} else if (retcode != EPKG_OK)
 		return (EX_IOERR);
 
-	if (updates_for_installed) {
+	if (upgrades_for_installed) {
 		retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 
 		if (retcode == EPKG_ENOACCESS) {
@@ -155,13 +158,9 @@ exec_fetch(int argc, char **argv)
 
 	pkg_jobs_set_flags(jobs, f);
 
-	if (updates_for_installed) {
-		if (pkg_jobs_updates_for_installed(jobs) != EPKG_OK)
-			goto cleanup;
-	} else {
-		if (pkg_jobs_add(jobs, match, argv, argc) != EPKG_OK)
-			goto cleanup;
-	}
+	if (!upgrades_for_installed &&
+	    pkg_jobs_add(jobs, match, argv, argc) != EPKG_OK)
+		goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;

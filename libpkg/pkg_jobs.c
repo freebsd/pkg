@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -169,11 +170,16 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *origin;
 	bool all = false;
+	bool pkgversiontest = false;
 
 	if ((j->flags & PKG_FLAG_FORCE) != 0)
 		all = true;
 
-	if ((it = pkgdb_query_upgrades(j->db, j->reponame, all)) == NULL)
+	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != 0)
+		pkgversiontest = true;
+
+	if ((it = pkgdb_query_upgrades(j->db, j->reponame, all,
+	        pkgversiontest)) == NULL)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
@@ -196,17 +202,21 @@ jobs_solve_install(struct pkg_jobs *j)
 	char *origin;
 	bool force = false;
 	bool recursive = false;
+	bool pkgversiontest = false;
 
-
-	if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
+	if ((j->flags & PKG_FLAG_FORCE) != 0)
 		force = true;
 
-	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
+	if ((j->flags & PKG_FLAG_RECURSIVE) != 0)
 		recursive = true;
+
+	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != 0)
+		pkgversiontest = true;
 
 	LL_FOREACH(j->patterns, jp) {
 		if ((it = pkgdb_query_installs(j->db, jp->match, jp->nb,
-		    jp->pattern, j->reponame, force, recursive)) == NULL)
+		        jp->pattern, j->reponame, force, recursive,
+			pkgversiontest)) == NULL)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
@@ -231,6 +241,9 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *origin;
 	unsigned flag = PKG_LOAD_BASIC;
+
+	if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) != 0)
+		return (jobs_solve_upgrade(j));
 
 	if ((j->flags & PKG_FLAG_WITH_DEPS) != 0)
 		flag |= PKG_LOAD_DEPS;
