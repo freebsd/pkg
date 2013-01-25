@@ -1004,9 +1004,7 @@ int pkg_create_installed(const char *, pkg_formats, const char *,
  * Create package from stage install with a metadata directory
  */
 int pkg_create_staged(const char *, pkg_formats, const char *, const char *,
-		      char *);
-int pkg_create_oldstaged(const char *, pkg_formats, const char *, const char *,
-		      char *);
+		      char *, bool);
 
 /**
  * Download the latest repo db file and checks its signature if any

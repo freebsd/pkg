@@ -54,11 +54,11 @@ STAILQ_HEAD(pkg_head, pkg_entry);
 void
 usage_create(void)
 {
-	fprintf(stderr, "usage: pkg create [-n] [-f format] [-o outdir] "
+	fprintf(stderr, "usage: pkg create [-On] [-f format] [-o outdir] "
 		"[-p plist] [-r rootdir] -m manifestdir\n");
-	fprintf(stderr, "       pkg create [-gnx] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-Ognx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
-	fprintf(stderr, "       pkg create [-n] [-f format] [-o outdir] "
+	fprintf(stderr, "       pkg create [-On] [-f format] [-o outdir] "
 		"[-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
@@ -69,7 +69,6 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 {
 	int i, ret = EPKG_OK, retcode = EPKG_OK;
 	const char *name, *version;
-#ifndef PKG_COMPAT
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
@@ -77,19 +76,16 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
 	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
 	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
-#endif
 	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
 	struct pkg_entry *e = NULL;
 	char pkgpath[MAXPATHLEN];
 	const char *format = NULL;
 	bool foundone;
 
-#ifndef PKG_COMPAT
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
-#endif
 
 	switch (fmt) {
 	case TXZ:
@@ -107,7 +103,6 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	}
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
-#ifndef PKG_COMPAT
 		if (match == MATCH_ALL) {
 			printf("Loading package list...\n");
 			if ((it = pkgdb_query(db, NULL, match)) == NULL)
@@ -133,49 +128,6 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		pkgdb_it_free(it);
 		if (ret != EPKG_END)
 			retcode++;
-#else
-		const char *dbdir = getenv("PKG_DBDIR");
-		struct dirent *dp;
-		DIR *d;
-
-		if (dbdir == NULL)
-			dbdir = "/var/db/pkg";
-
-		foundone = false;
-		if (match == MATCH_ALL) {
-			if ((d = opendir(dbdir)) == NULL) {
-				retcode++;
-				goto cleanup;
-			}
-			while ((dp = readdir(d)) != NULL) {
-				if (dp->d_type == DT_DIR) {
-					if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
-						err(1, "malloc(pkg_entry)");
-					e->pkg = NULL;
-					pkg_new(&e->pkg, PKG_OLD_FILE);
-					snprintf(pkgpath, MAXPATHLEN, "%s/%s", dbdir, dp->d_name);
-					ret = pkg_old_load_from_path(e->pkg, pkgpath);
-					STAILQ_INSERT_TAIL(&head, e, next);
-					foundone = true;
-				}
-			}
-			closedir(d);
-			match = !MATCH_ALL;
-		} else {
-			struct stat st;
-			snprintf(pkgpath, MAXPATHLEN, "%s/%s", dbdir, argv[i]);
-			if (stat(pkgpath, &st) == 0 && S_ISDIR(st.st_mode)) {
-				foundone = true;
-				if ((e = malloc(sizeof(struct pkg_entry))) == NULL)
-					err(1, "malloc(pkg_entry)");
-				e->pkg = NULL;
-				pkg_new(&e->pkg, PKG_OLD_FILE);
-				ret = pkg_old_load_from_path(e->pkg, pkgpath);
-				STAILQ_INSERT_TAIL(&head, e, next);
-				foundone = true;
-			}
-		}
-#endif
 	}
 
 	while (!STAILQ_EMPTY(&head)) {
@@ -203,9 +155,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	}
 
 cleanup:
-#ifndef PKG_COMPAT
 	pkgdb_close(db);
-#endif
 
 	return (retcode);
 }
@@ -232,8 +182,9 @@ exec_create(int argc, char **argv)
 	bool overwrite = true;
 	pkg_formats fmt;
 	int ch;
+	bool old = false;
 
-	while ((ch = getopt(argc, argv, "agxf:r:m:o:np:")) != -1) {
+	while ((ch = getopt(argc, argv, "agxf:r:m:o:np:O")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -262,6 +213,9 @@ exec_create(int argc, char **argv)
 		case 'p':
 			plist = optarg;
 			break;
+		case 'O':
+			old = true;
+			break;
 		}
 	}
 	argc -= optind;
@@ -276,11 +230,7 @@ exec_create(int argc, char **argv)
 		outdir = "./";
 
 	if (format == NULL) {
-#ifdef PKG_COMPAT
-		fmt = TBZ;
-#else
-		fmt = TXZ;
-#endif
+		fmt = old ? TBZ : TXZ;
 	} else {
 		if (format[0] == '.')
 			++format;
@@ -294,19 +244,21 @@ exec_create(int argc, char **argv)
 			fmt = TAR;
 		else {
 			warnx("unknown format %s, using txz", format);
-#ifdef PKG_COMPAT
-			fmt = TBZ;
-#else
-			fmt = TXZ;
-#endif
+			fmt = old ? TBZ : TXZ;
 		}
 	}
 
-	if (manifestdir == NULL)
+	if (manifestdir == NULL) {
+		if (!old) {
+			warnx("Can only create an old package format"
+			    "out of a staged directory");
+			return (EX_SOFTWARE);
+		}
 		return (pkg_create_matches(argc, argv, match, fmt, outdir,
 		    rootdir, overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
-	else
+	} else {
 		return (pkg_create_staged(outdir, fmt, rootdir, manifestdir,
-		    plist) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+		    plist, old) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+	}
 }
 

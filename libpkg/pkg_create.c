@@ -89,6 +89,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 */
 	if (pkg->type == PKG_OLD_FILE) {
 		const char *desc, *display, *comment;
+		char oldcomment[BUFSIZ];
 
 		pkg_old_emit_content(pkg, &m);
 		packing_append_buffer(pkg_archive, m, "+CONTENTS", strlen(m));
@@ -97,7 +98,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		pkg_get(pkg, PKG_DESC, &desc, PKG_MESSAGE, &display, PKG_COMMENT, &comment);
 		packing_append_buffer(pkg_archive, desc, "+DESC", strlen(desc));
 		packing_append_buffer(pkg_archive, display, "+DISPLAY", strlen(display));
-		packing_append_buffer(pkg_archive, comment, "+COMMENT", strlen(comment));
+		snprintf(oldcomment, sizeof(oldcomment), "%s\n", comment);
+		packing_append_buffer(pkg_archive, oldcomment, "+COMMENT", strlen(oldcomment));
 	} else {
 		pkg_register_shlibs(pkg);
 
@@ -198,14 +200,8 @@ static const char * const scripts[] = {
 };
 
 int
-pkg_create_oldstaged(const char *outdir __unused, pkg_formats format __unused, const char *rootdir __unused,
-    const char *md_dir __unused, char *plist __unused)
-{
-	return (EPKG_OK);
-}
-int
 pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
-    const char *md_dir, char *plist)
+    const char *md_dir, char *plist, bool old)
 {
 	struct pkg	*pkg = NULL;
 	struct pkg_file	*file = NULL;
@@ -226,7 +222,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
 		goto cleanup;
 
-	pkg_new(&pkg, PKG_FILE);
+	pkg_new(&pkg, old ? PKG_OLD_FILE : PKG_FILE);
 	if (pkg == NULL)
 		goto cleanup;
 
