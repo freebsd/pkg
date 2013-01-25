@@ -128,6 +128,7 @@ exec_add(int argc, char **argv)
 	if(failedpkgcount > 0) {
 		sbuf_finish(failedpkgs);
 		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, sbuf_data(failedpkgs));
+		retcode = 1;
 	}
 	sbuf_delete(failedpkgs);
 
