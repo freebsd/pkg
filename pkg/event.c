@@ -201,7 +201,7 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_NOT_FOUND:
 		printf("Package '%s' was not found in "
-		    "the repositories", ev->e_not_found.pkg_name);
+		    "the repositories\n", ev->e_not_found.pkg_name);
 		break;
 	case PKG_EVENT_MISSING_DEP:
 		fprintf(stderr, "missing dependency %s-%s",
