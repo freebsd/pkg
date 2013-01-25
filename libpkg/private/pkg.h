@@ -257,6 +257,7 @@ typedef enum {
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_FORCE (1<<0)
 #define PKG_DELETE_UPGRADE (1<<1)
+#define PKG_DELETE_NOSCRIPT (1<<2)
 
 int pkg_fetch_file_to_fd(const char *url, int dest, time_t t);
 int pkg_repo_fetch(struct pkg *pkg);

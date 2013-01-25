@@ -508,6 +508,9 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_FORCE) != 0)
 		flags = PKG_DELETE_FORCE;
 
+	if ((j->flags & PKG_FLAG_NOSCRIPT) != 0)
+		flags |= PKG_DELETE_NOSCRIPT;
+
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		retcode = pkg_delete(p, j->db, flags);
 

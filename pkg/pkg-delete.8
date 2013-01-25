@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd January 20, 2013
+.Dd January 25, 2013
 .Dt PKG-DELETE 8
 .Os
 .Sh NAME
@@ -23,10 +23,10 @@
 .Nd deletes packages from the database and the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl fginqRxy
+.Op Fl DfginqRxy
 .Ar <pkg-name> ...
 .Nm
-.Op Fl nqy
+.Op Fl Dnqy
 .Fl a
 .Sh DESCRIPTION
 .Nm
@@ -55,6 +55,8 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Deletes all installed packages from the system and empties the database.
+.It Fl D
+If a deinstallation script exists for a given package, do not execute it.
 .It Fl f
 Forces packages to be removed despite leaving unresolved dependencies.
 .It Fl g
