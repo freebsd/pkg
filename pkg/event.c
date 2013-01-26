@@ -194,6 +194,7 @@ event_callback(void *data, struct pkg_event *ev)
 		    PKG_VERSION, &version);
 		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name,
 		    version, pkg_file_path(ev->e_file_mismatch.file));
+		break;
 	default:
 		break;
 	}
