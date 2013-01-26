@@ -30,7 +30,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd January 19, 2013
+.Dd January 26, 2013
 .Dt PKG_PRINTF 3
 .Os
 .Sh NAME
@@ -82,7 +82,7 @@ dynamically allocates a new string with
 .Xr malloc 3 ;
 .Fn pkg_sbuf_printf
 and
-.Fn pkg_sbuf_vprint
+.Fn pkg_sbuf_vprintf
 write to the given sbuf structure.
 .Pp
 These functions write the output under the control of a
@@ -174,7 +174,9 @@ and
 this is a
 .Vt humanized
 form as a floating point value scaled to the range 0 \- 1000
-followed by a SI power-of-10 scale factor.
+followed by the SI powers-of-10 scale factor.
+See
+.Sx SCALE FACTORS .
 For array valued conversions
 .Cm ( B , C , D , F , G , L , O , U , d ,
 and
@@ -191,9 +193,9 @@ or
 print the mode in the style of
 .Xr strmode 3 .
 For boolean valued formats
-.Cm ( Dk , Dt , Fk , a ,
+.Cm ( Dk , \^Dt , Fk , a
 and
-.Cm k ) ,
+.Cm k )
 generate either
 .Dq yes
 or
@@ -206,60 +208,41 @@ For the integer valued conversions
 this is a
 .Dq humanized
 form as a floating point value scaled to the range 0 \- 1024
-followed by a SI power-of-2 scale factor.
-For
-.Cm c , d , i , n , p , s ,
+followed by the IEE/IEC and SI powers-of-2 scale factor.
+See
+.Sx SCALE FACTORS .
+For array valued conversions
+.Cm ( B , C , D , F , G , L , O , U , d ,
 and
-.Cm u
-conversions, this option has no effect.
-For
-.Cm o
-conversions, the precision of the number is increased to force the first
-character of the output string to a zero.
-For
-.Cm x
+.Cm r )
+generate the number of items in the array.
+For formats returning file modes
+.Cm ( Dp
+or
+.Cm Fp )
+print the mode as an octal integer with a leading 0.
+For boolean valued formats
+.Cm ( Dk , \^Dt , Fk , a
 and
-.Cm X
-conversions, a non-zero result has the string
-.Ql 0x
-(Or
-.Ql 0X
-for
-.Cm X
-conversions) prepended to it.
-For
-.Cm a , A , e , E , f , F , g ,
-and
-.Cm G
-conversions, the result will always contain a decimal point, even if no
-digits follow it (normally, a decimal point appears in the results of
-those conversions only if a digit follows).
-For
-.Cm g
-and
-.Cm G
-conversions, trailing zeros are not removed from the result as they
-would otherwise be.
+.Cm k )
+generate either
+.Dq true
+or
+.Dq false .
 .It Cm 0 (zero)
 Zero padding.
-For all conversions except
-.Cm n ,
-the converted value is padded on the left with zeros rather than blanks.
-If a precision is given with a numeric conversion
-.Cm ( d , i , o , u , i , x ,
+For all integer valued conversions and humanized numbers the converted
+value is padded on the left with zeros rather than blanks.
+Applies to
+.Cm ( I , s ,
 and
-.Cm X ) ,
-the
-.Cm 0
-flag is ignored.
+.Cm t )
 .It Cm \-
 A negative field width flag;
 the converted value is to be left adjusted on the field boundary.
-Except for
-.Cm n
-conversions, the converted value is padded on the right with blanks,
+The converted value is padded on the right with blanks,
 rather than on the left with blanks or zeros.
-A
+Applies to all scalar-valued conversions.
 .Cm \-
 overrides a
 .Cm 0
@@ -267,9 +250,9 @@ if both are given.
 .It So "\ " Sc (space)
 A blank should be left before a positive number
 produced by a signed conversion
-.Cm ( a , A , d , e , E , f , F , g , G ,
+.Cm ( I , s ,
 or
-.Cm i ) .
+.Cm t ) .
 .It Cm +
 A sign must always be placed before a
 number produced by a signed conversion.
@@ -277,380 +260,238 @@ A
 .Cm +
 overrides a space if both are used.
 .It Sq Cm '
-Decimal conversions
-.Cm ( d , u ,
+Numerical conversions
+.Cm ( I , s ,
 or
-.Cm i )
-or the integral portion of a floating point conversion
-.Cm ( f
-or
-.Cm F )
+.Cm t )
 should be grouped and separated by thousands using
 the non-monetary separator returned by
 .Xr localeconv 3 .
 .El
 .It
 An optional decimal digit string specifying a minimum field width.
-If the converted value has fewer characters than the field width, it will
-be padded with spaces on the left (or right, if the left-adjustment
-flag has been given) to fill out
-the field width.
+If the converted value has fewer characters than the field width,
+it will be padded with spaces (or zeroes, if the zero-padding flag has
+been given and the conversion supports it) on the left (or spaces on
+the right, if the left-adjustment flag has been given) to fill out the
+field width.
 .It
-An optional precision, in the form of a period
-.Cm \&.
-followed by an
-optional digit string.
-If the digit string is omitted, the precision is taken as zero.
-This gives the minimum number of digits to appear for
-.Cm d , i , o , u , x ,
-and
-.Cm X
-conversions, the number of digits to appear after the decimal-point for
-.Cm a , A , e , E , f ,
-and
-.Cm F
-conversions, the maximum number of significant digits for
-.Cm g
-and
-.Cm G
-conversions, or the maximum number of characters to be printed from a
-string for
-.Cm s
-conversions.
+One or two characters that specifies the type of conversion to be applied.
 .It
-An optional length modifier, that specifies the size of the argument.
-The following length modifiers are valid for the
-.Cm d , i , n , o , u , x ,
-or
-.Cm X
-conversion:
-.Bl -column ".Cm q Em (deprecated)" ".Vt signed char" ".Vt unsigned long long" ".Vt long long *"
-.It Sy Modifier Ta Cm d , i Ta Cm o , u , x , X Ta Cm n
-.It Cm hh Ta Vt "signed char" Ta Vt "unsigned char" Ta Vt "signed char *"
-.It Cm h Ta Vt short Ta Vt "unsigned short" Ta Vt "short *"
-.It Cm l No (ell) Ta Vt long Ta Vt "unsigned long" Ta Vt "long *"
-.It Cm ll No (ell ell) Ta Vt "long long" Ta Vt "unsigned long long" Ta Vt "long long *"
-.It Cm j Ta Vt intmax_t Ta Vt uintmax_t Ta Vt "intmax_t *"
-.It Cm t Ta Vt ptrdiff_t Ta (see note) Ta Vt "ptrdiff_t *"
-.It Cm z Ta (see note) Ta Vt size_t Ta (see note)
-.It Cm q Em (deprecated) Ta Vt quad_t Ta Vt u_quad_t Ta Vt "quad_t *"
+A
+.Dq row format
+for array valued conversions
+.Cm ( B , C , D , F , G , L , O , U , d ,
+and
+.Cm r ) .
+The row format is one or two strings containing any number of the format
+conversions described here, bracketed by the character sequences
+.Cm %{
+and
+.Cm %}
+and optionally divided into two by the character sequence
+.Cm %| .
+The first or only format string is repeatedly processed for each of the
+array items in turn.
+The optional second format string is processed as a separator between
+each of the array items.
+Which conversion characters are permissible in the row format is
+context dependent.
+See the 
+.Sx FORMAT CODES
+section for details.
+.El
+.Ss SCALE FACTORS
+Humanized number conversions (using the scale the number to lie within
+the range 1 \- 1000 (power of ten conversions using the
+.Cm ?
+format modifier) or 1 \- 1024 (power of two conversions using the
+.Cm #
+format modifier) and append a scale factor as follows:
+.Pp
+The SI power of ten suffixes are
+.Bl -column "Suffix" "Description" "1,000,000,000,000,000,000" -offset indent
+.It Sy "Suffix" Ta Sy "Description" Ta Sy "Multiplier"
+.It Li \^ Ta No (none) Ta 1
+.It Li k Ta No kilo   Ta 1,000
+.It Li M Ta No mega   Ta 1,000,000
+.It Li G Ta No giga   Ta 1,000,000,000
+.It Li T Ta No tera   Ta 1,000,000,000,000
+.It Li P Ta No peta   Ta 1,000,000,000,000,000
+.It Li E Ta No exa    Ta 1,000,000,000,000,000,000
 .El
 .Pp
-Note:
-the
-.Cm t
-modifier, when applied to a
-.Cm o , u , x ,
-or
-.Cm X
-conversion, indicates that the argument is of an unsigned type
-equivalent in size to a
-.Vt ptrdiff_t .
-The
-.Cm z
-modifier, when applied to a
-.Cm d
-or
-.Cm i
-conversion, indicates that the argument is of a signed type equivalent in
-size to a
-.Vt size_t .
-Similarly, when applied to an
-.Cm n
-conversion, it indicates that the argument is a pointer to a signed type
-equivalent in size to a
-.Vt size_t .
-.Pp
-The following length modifier is valid for the
-.Cm a , A , e , E , f , F , g ,
-or
-.Cm G
-conversion:
-.Bl -column ".Sy Modifier" ".Cm a , A , e , E , f , F , g , G"
-.It Sy Modifier Ta Cm a , A , e , E , f , F , g , G
-.It Cm l No (ell) Ta Vt double
-(ignored, same behavior as without it)
-.It Cm L Ta Vt "long double"
+The IEE/IEC (and now also SI) power of two suffixes are:
+.Bl -column "Suffix" "Description" "1,000,000,000,000,000,000" -offset indent
+.It Sy "Suffix" Ta Sy "Description" Ta Sy "Multiplier"
+.It Li \^ Ta No (none) Ta 1
+.It Li Ki Ta No kibi   Ta 1,024
+.It Li Mi Ta No mebi   Ta 1,048,576
+.It Li Gi Ta No gibi   Ta 1,073,741,824
+.It Li Ti Ta No tebi   Ta 1,099,511,627,776
+.It Li Pi Ta No pebi   Ta 1,125,899,906,842,624
+.It Li Ei Ta No exbi   Ta 1,152,921,504,606,846,976
 .El
 .Pp
-The following length modifier is valid for the
-.Cm c
-or
-.Cm s
-conversion:
-.Bl -column ".Sy Modifier" ".Vt wint_t" ".Vt wchar_t *"
-.It Sy Modifier Ta Cm c Ta Cm s
-.It Cm l No (ell) Ta Vt wint_t Ta Vt "wchar_t *"
-.El
-.It
-A character that specifies the type of conversion to be applied.
-.El
-.Pp
-A field width or precision, or both, may be indicated by
-an asterisk
-.Ql *
-or an asterisk followed by one or more decimal digits and a
-.Ql $
-instead of a
-digit string.
-In this case, an
-.Vt int
-argument supplies the field width or precision.
-A negative field width is treated as a left adjustment flag followed by a
-positive field width; a negative precision is treated as though it were
-missing.
-If a single format directive mixes positional
-.Pq Li nn$
-and non-positional arguments, the results are undefined.
+.Ss FORMAT CODES
 .Pp
 The conversion specifiers and their meanings are:
-.Bl -tag -width ".Cm diouxX"
-.It Cm diouxX
-The
-.Vt int
-(or appropriate variant) argument is converted to signed decimal
-.Cm ( d
-and
-.Cm i ) ,
-unsigned octal
-.Pq Cm o ,
-unsigned decimal
-.Pq Cm u ,
-or unsigned hexadecimal
-.Cm ( x
-and
-.Cm X )
-notation.
-The letters
-.Dq Li abcdef
-are used for
-.Cm x
-conversions; the letters
-.Dq Li ABCDEF
-are used for
-.Cm X
-conversions.
-The precision, if any, gives the minimum number of digits that must
-appear; if the converted value requires fewer digits, it is padded on
-the left with zeros.
-.It Cm DOU
-The
-.Vt "long int"
-argument is converted to signed decimal, unsigned octal, or unsigned
-decimal, as if the format had been
-.Cm ld , lo ,
-or
-.Cm lu
-respectively.
-These conversion characters are deprecated, and will eventually disappear.
-.It Cm eE
-The
-.Vt double
-argument is rounded and converted in the style
-.Sm off
-.Oo \- Oc Ar d Li \&. Ar ddd Li e \(+- Ar dd
-.Sm on
-where there is one digit before the
-decimal-point character
-and the number of digits after it is equal to the precision;
-if the precision is missing,
-it is taken as 6; if the precision is
-zero, no decimal-point character appears.
-An
-.Cm E
-conversion uses the letter
-.Ql E
-(rather than
-.Ql e )
-to introduce the exponent.
-The exponent always contains at least two digits; if the value is zero,
-the exponent is 00.
-.Pp
-For
-.Cm a , A , e , E , f , F , g ,
-and
-.Cm G
-conversions, positive and negative infinity are represented as
-.Li inf
-and
-.Li -inf
-respectively when using the lowercase conversion character, and
-.Li INF
-and
-.Li -INF
-respectively when using the uppercase conversion character.
-Similarly, NaN is represented as
-.Li nan
-when using the lowercase conversion, and
-.Li NAN
-when using the uppercase conversion.
-.It Cm fF
-The
-.Vt double
-argument is rounded and converted to decimal notation in the style
-.Sm off
-.Oo \- Oc Ar ddd Li \&. Ar ddd ,
-.Sm on
-where the number of digits after the decimal-point character
-is equal to the precision specification.
-If the precision is missing, it is taken as 6; if the precision is
-explicitly zero, no decimal-point character appears.
-If a decimal point appears, at least one digit appears before it.
-.It Cm gG
-The
-.Vt double
-argument is converted in style
-.Cm f
-or
-.Cm e
-(or
-.Cm F
-or
-.Cm E
-for
-.Cm G
-conversions).
-The precision specifies the number of significant digits.
-If the precision is missing, 6 digits are given; if the precision is zero,
-it is treated as 1.
-Style
-.Cm e
-is used if the exponent from its conversion is less than \-4 or greater than
-or equal to the precision.
-Trailing zeros are removed from the fractional part of the result; a
-decimal point appears only if it is followed by at least one digit.
-.It Cm aA
-The
-.Vt double
-argument is rounded and converted to hexadecimal notation in the style
-.Sm off
-.Oo \- Oc Li 0x Ar h Li \&. Ar hhhp Oo \(+- Oc Ar d ,
-.Sm on
-where the number of digits after the hexadecimal-point character
-is equal to the precision specification.
-If the precision is missing, it is taken as enough to represent
-the floating-point number exactly, and no rounding occurs.
-If the precision is zero, no hexadecimal-point character appears.
-The
-.Cm p
-is a literal character
-.Ql p ,
-and the exponent consists of a positive or negative sign
-followed by a decimal number representing an exponent of 2.
-The
-.Cm A
-conversion uses the prefix
-.Dq Li 0X
-(rather than
-.Dq Li 0x ) ,
-the letters
-.Dq Li ABCDEF
-(rather than
-.Dq Li abcdef )
-to represent the hex digits, and the letter
-.Ql P
-(rather than
-.Ql p )
-to separate the mantissa and exponent.
-.Pp
-Note that there may be multiple valid ways to represent floating-point
-numbers in this hexadecimal format.
-For example,
-.Li 0x1.92p+1 , 0x3.24p+0 , 0x6.48p-1 ,
-and
-.Li 0xc.9p-2
-are all equivalent.
-.Fx 8.0
-and later always prints finite non-zero numbers using
-.Ql 1
-as the digit before the hexadecimal point.
-Zeroes are always represented with a mantissa of 0 (preceded by a
-.Ql -
-if appropriate) and an exponent of
-.Li +0 .
+.Bl -tag -width ".Cm Bn"
+.It Cm B
+Shared libraries [array]
+.Vt struct pkg *
+.It Cm Bn
+Shared library name [string]
+.Vt struct pkg_shlib *
 .It Cm C
-Treated as
-.Cm c
-with the
-.Cm l
-(ell) modifier.
+Categories [array]
+.Vt struct pkg *
+.It Cm Cn
+Category name [string]
+.Vt struct pkg_category *
+.It Cm D
+Directories [array]
+.Vt struct pkg *
+.It Cm Dg
+Directory ownership: group name [string]
+.Vt struct pkg_dir *
+.It Cm Dk
+Directory keep flag [boolean]
+.Vt struct pkg_dir *
+.It Cm Dn
+Directory path name [string]
+.Vt struct pkg_dir *
+.It Cm Dp
+Directory permissions [mode]
+.Vt struct pkg_dir *
+.It Cm \^Dt
+Directory try flag [boolean]
+.Vt struct pkg_dir *
+.It Cm Du
+Directory ownership: user name [string]
+.Vt struct pkg_dir *
+.It Cm F
+Files [array]
+.Vt struct pkg *
+.It Cm Fg
+File ownership: group name [string]
+.Vt struct pkg_file *
+.It Cm Fk
+File keep flag [boolean]
+.Vt struct pkg_file *
+.It Cm \^Fn
+File path name [string]
+.Vt struct pkg_file *
+.It Cm Fp
+File permissions [mode]
+.Vt struct pkg_file *
+.It Cm Fs
+File SHA256 checksum [string]
+.Vt struct pkg_file *
+.It Cm Fu
+File ownership: user name [string]
+.Vt struct pkg_file *
+.It Cm G
+Groups [array]
+.Vt struct pkg *
+.It Cm Gg
+Group GID-string [string]
+.Vt struct pkg_group *
+.It Cm Gn
+Group name [string]
+.Vt struct pkg_group *
+.It Cm I
+Row counter [integer]
+.It Cm L
+Licenses [array]
+.Vt struct pkg *
+.It Cm Ln
+Licence name [string]
+.Vt struct pkg_license *
+.It Cm M
+Package message [string]
+.Vt struct pkg *
+.It Cm O
+Options [array]
+.Vt struct pkg *
+.It Cm On
+Option name [string]
+.Vt struct pkg_option *
+.It Cm Ov
+Option value [string]
+.Vt struct pkg_option *
+.It Cm U
+Users [array]
+.Vt struct pkg *
+.It Cm Un
+User name [string]
+.Vt struct pkg_user *
+.It Cm Uu
+User UID-str [string]
+.Vt struct pkg_user *
+.It Cm a
+Autoremove flag [boolean]
+.Vt struct pkg *
 .It Cm c
-The
-.Vt int
-argument is converted to an
-.Vt "unsigned char" ,
-and the resulting character is written.
-.Pp
-If the
-.Cm l
-(ell) modifier is used, the
-.Vt wint_t
-argument shall be converted to a
-.Vt wchar_t ,
-and the (potentially multi-byte) sequence representing the
-single wide character is written, including any shift sequences.
-If a shift sequence is used, the shift state is also restored
-to the original state after the character.
-.It Cm S
-Treated as
-.Cm s
-with the
-.Cm l
-(ell) modifier.
-.It Cm s
-The
-.Vt "char *"
-argument is expected to be a pointer to an array of character type (pointer
-to a string).
-Characters from the array are written up to (but not including)
-a terminating
-.Dv NUL
-character;
-if a precision is specified, no more than the number specified are
-written.
-If a precision is given, no null character
-need be present; if the precision is not specified, or is greater than
-the size of the array, the array must contain a terminating
-.Dv NUL
-character.
-.Pp
-If the
-.Cm l
-(ell) modifier is used, the
-.Vt "wchar_t *"
-argument is expected to be a pointer to an array of wide characters
-(pointer to a wide string).
-For each wide character in the string, the (potentially multi-byte)
-sequence representing the
-wide character is written, including any shift sequences.
-If any shift sequence is used, the shift state is also restored
-to the original state after the string.
-Wide characters from the array are written up to (but not including)
-a terminating wide
-.Dv NUL
-character;
-if a precision is specified, no more than the number of bytes specified are
-written (including shift sequences).
-Partial characters are never written.
-If a precision is given, no null character
-need be present; if the precision is not specified, or is greater than
-the number of bytes required to render the multibyte representation of
-the string, the array must contain a terminating wide
-.Dv NUL
-character.
-.It Cm p
-The
-.Vt "void *"
-pointer argument is printed in hexadecimal (as if by
-.Ql %#x
-or
-.Ql %#lx ) .
+Comment [string]
+.Vt struct pkg *
+.It Cm d
+Dependencies [array]
+.Vt struct pkg *
+.It Cm dn
+Dependency name [string]
+.Vt struct pkg_dep *
+.It Cm do
+Dependency origin [string]
+.Vt struct pkg_dep *
+.It Cm dv
+Dependency version [string]
+.Vt struct pkg_dep *
+.It Cm i
+Additional information [string]
+.Vt struct pkg *
+.It Cm k
+Locking status [boolean]
+.Vt struct pkg *
+.It Cm l
+License logic [licence-logic type]
+.Vt struct pkg *
+.It Cm m
+Maintainer [string]
+.Vt struct pkg *
 .It Cm n
-The number of characters written so far is stored into the
-integer indicated by the
-.Vt "int *"
-(or variant) pointer argument.
-No argument is converted.
+Package name [string]
+.Vt struct pkg *
+.It Cm o
+Origin [string]
+.Vt struct pkg *
+.It Cm p
+Prefix [string]
+.Vt struct pkg *
+.It Cm r
+Requirements [array]
+.Vt struct pkg *
+.It Cm rn
+Requirement name [string]
+.Vt struct pkg_dep *
+.It Cm ro
+Requirement origin [string]
+.Vt struct pkg_dep *
+.It Cm rv
+Requirement version [string]
+.Vt struct pkg_dep *
+.It Cm s
+Package flat size [integer]
+.Vt struct pkg *
+.It Cm t
+Installation timestamp [date-time]
+.Vt struct pkg *
+.It Cm v
+Package version [string]
+.Vt struct pkg *
+.It Cm w
+Home page URL [string]
+.Vt struct pkg *
 .It Cm %
 A
 .Ql %
@@ -708,62 +549,11 @@ char *newfmt(const char *fmt, ...)
 	return (p);
 }
 .Ed
-.Sh COMPATIBILITY
-Many application writers used the name
-.Va dprintf
-before the
-.Fn dprintf
-function was introduced in
-.St -p1003.1 ,
-so a prototype is not provided by default in order to avoid
-compatibility problems.
-Applications that wish to use the
-.Fn dprintf
-function described herein should either request a strict
-.St -p1003.1-2008
-environment by defining the macro
-.Dv _POSIX_C_SOURCE
-to the value 200809 or greater, or by defining the macro
-.Dv _WITH_DPRINTF ,
-prior to the inclusion of
-.In stdio.h .
-For compatibility with GNU libc, defining either
-.Dv _BSD_SOURCE
-or
-.Dv _GNU_SOURCE
-prior to the inclusion of
-.In stdio.h
-will also make
-.Fn dprintf
-available.
-.Pp
-The conversion formats
-.Cm \&%D , \&%O ,
-and
-.Cm \&%U
-are not standard and
-are provided only for backward compatibility.
-The effect of padding the
-.Cm %p
-format with zeros (either by the
-.Cm 0
-flag or by specifying a precision), and the benign effect (i.e., none)
-of the
-.Cm #
-flag on
-.Cm %n
-and
-.Cm %p
-conversions, as well as other
-nonsensical combinations such as
-.Cm %Ld ,
-are not standard; such combinations
-should be avoided.
 .Sh ERRORS
 In addition to the errors documented for the
 .Xr write 2
 system call, the
-.Fn printf
+.Fn pkg_printf
 family of functions may fail if:
 .Bl -tag -width Er
 .It Bq Er EILSEQ
@@ -773,13 +563,12 @@ Insufficient storage space is available.
 .El
 .Sh SEE ALSO
 .Xr printf 1 ,
-.Xr fmtcheck 3 ,
-.Xr scanf 3 ,
-.Xr setlocale 3 ,
-.Xr wprintf 3
+.Xr printf 3 ,
+.Xr strftime 3 ,
+.Xr setlocale 3
 .Sh BUGS
 The
-.Nm
+.Nm pkg_printf
 family of functions do not correctly handle multibyte characters in the
 .Fa format
 argument.
@@ -794,10 +583,10 @@ Instead, use
 to write into a fixed length buffer without danger of overflow.
 .Pp
 The
+.Fn pkg_printf
+family, like the
 .Fn printf
-and
-.Fn sprintf
-family of functions are also easily misused in a manner
+family of functions it is modelled on, is also easily misused in a manner
 allowing malicious users to arbitrarily change a running program's
 functionality by either causing the program
 to print potentially sensitive data
