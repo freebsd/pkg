@@ -3992,14 +3992,14 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"FROM pkgjobs ORDER BY weight DESC;";
 
 	const char	 main_sql[] = ""
-		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
-			"flatsize, pkgsize, cksum, repopath) "
+		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, "
+		        "newversion, newflatsize, pkgsize, cksum, repopath) "
 			"SELECT id, origin, name, version, flatsize, "
 			"pkgsize, cksum, path FROM '%s'.packages ";
 
 	const char	deps_sql[] = ""
-		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
-			"flatsize, pkgsize, cksum, repopath) "
+		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, "
+		        "newversion, newflatsize, pkgsize, cksum, repopath) "
 		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
 			"r.flatsize, r.pkgsize, r.cksum, r.path "
 		"FROM '%s'.packages AS r where r.origin IN "

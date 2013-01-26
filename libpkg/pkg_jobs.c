@@ -171,6 +171,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	char *origin;
 	bool all = false;
 	bool pkgversiontest = false;
+	unsigned flags = PKG_LOAD_BASIC;
 
 	if ((j->flags & PKG_FLAG_FORCE) != 0)
 		all = true;
@@ -178,11 +179,14 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != 0)
 		pkgversiontest = true;
 
+	if ((j->flags & PKG_FLAG_WITH_DEPS) != 0)
+		flags |= PKG_LOAD_DEPS;
+
 	if ((it = pkgdb_query_upgrades(j->db, j->reponame, all,
 	        pkgversiontest)) == NULL)
 		return (EPKG_FATAL);
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
 		pkg = NULL;

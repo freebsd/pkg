@@ -636,7 +636,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 			humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
 
-			printf("\t%s-%s (%ld%% of %s)\n", name, newversion, (100 * oldsize)/pkgsize, size);
+			printf("\t%s-%s (%ld%% of %s)\n", name, newversion, 100 - (100 * oldsize)/pkgsize, size);
 			break;
 		}
 	}
