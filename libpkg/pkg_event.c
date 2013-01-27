@@ -179,19 +179,6 @@ pipeevent(struct pkg_event *ev)
 		    newversion
 		    );
 		break;
-	case PKG_EVENT_LOCKED:
-		pkg_get(ev->e_locked.pkg,
-		    PKG_NAME, &name,
-		    PKG_VERSION, &version);
-		sbuf_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
-		    "\"data\": { "
-		    "\"pkgname\": \"%s\", "
-		    "\"pkgversion\": \"%s\""
-		    "}}",
-		    name,
-		    version
-		    );
-		break;
 	case PKG_EVENT_REQUIRED:
 		pkg_get(ev->e_required.pkg,
 		    PKG_NAME, &name,
@@ -262,33 +249,6 @@ pipeevent(struct pkg_event *ev)
 		    name,
 		    version,
 		    pkg_file_path(ev->e_file_mismatch.file));
-		break;
-	case PKG_EVENT_PLUGIN_ERRNO:
-		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
-		    "\"data\": {"
-		    "\"plugin\": \"%s\", "
-		    "\"msg\": \"%s(%s)\""
-		    "}}",
-		    pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
-		    ev->e_plugin_errno.func, ev->e_plugin_errno.arg);
-		break;
-	case PKG_EVENT_PLUGIN_ERROR:
-		sbuf_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
-		    "\"data\": {"
-		    "\"plugin\": \"%s\", "
-		    "\"msg\": \"%s\""
-		    "}}",
-		    pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME),
-		    ev->e_plugin_error.msg);
-		break;
-	case PKG_EVENT_PLUGIN_INFO:
-		sbuf_printf(msg, "{ \"type\": \"INFO_PLUGIN\", "
-		    "\"data\": {"
-		    "\"plugin\": \"%s\", "
-		    "\"msg\": \"%s\""
-		    "}}",
-		    pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME),
-		    ev->e_plugin_info.msg);
 		break;
 	default:
 		break;

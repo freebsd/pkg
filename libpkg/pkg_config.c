@@ -218,6 +218,7 @@ static struct config_entry c[] = {
 		STRING,
 		"EVENT_PIPE",
 		NULL,
+		{ NULL }
 	}
 };
 
@@ -524,7 +525,6 @@ pkg_init(const char *path)
 	size_t i;
 	const char *val = NULL;
 	const char *proxy = NULL;
-	const char *nsname = NULL;
 	const char *evpipe = NULL;
 
 	pkg_get_myarch(myabi, BUFSIZ);
