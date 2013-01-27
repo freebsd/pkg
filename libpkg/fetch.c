@@ -182,10 +182,7 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 			u->port = http_current->url->port;
 		}
 
-		if (strncmp(u->scheme, "http", 4) == 0)
-			remote = fetchXGetHTTP(u, &st, "i");
-		else
-			remote = fetchXGet(u, &st, "");
+		remote = fetchXGet(u, &st, "i");
 		if (remote == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
 				retcode = EPKG_UPTODATE;
