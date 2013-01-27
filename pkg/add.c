@@ -69,7 +69,6 @@ exec_add(int argc, char **argv)
 	int retcode = EPKG_OK;
 	int i;
 	int failedpkgcount = 0;
-	struct pkg *p = NULL;
 
 	if (argc < 2) {
 		usage_add();
@@ -107,8 +106,6 @@ exec_add(int argc, char **argv)
 			}
 
 		}
-			
-		pkg_open(&p, file, NULL);
 
 		if ((retcode = pkg_add(db, file, 0)) != EPKG_OK) {
 			sbuf_cat(failedpkgs, argv[i]);
