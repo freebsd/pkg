@@ -54,7 +54,8 @@ event_callback(void *data, struct pkg_event *ev)
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
-		warn("%s(%s)", ev->e_errno.func, ev->e_errno.arg);
+		warnx("%s(%s): %s", ev->e_errno.func, ev->e_errno.arg,
+		    strerror(ev->e_errno.no));
 		break;
 	case PKG_EVENT_ERROR:
 		warnx("%s", ev->e_pkg_error.msg);
