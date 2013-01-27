@@ -646,13 +646,6 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 		const char *repo_name = pkg_config_kv_get(repokv,
 		    PKG_CONFIG_KV_KEY);
 
-		/* is it a reserved name? */
-		if ((strcmp(repo_name, "repo") == 0) ||
-		    (strcmp(repo_name, "main") == 0) ||
-		    (strcmp(repo_name, "temp") == 0) ||
-		    (strcmp(repo_name, "local") == 0))
-			continue;
-
 		/* is it already attached? */
 		if (is_attached(db->sqlite, repo_name)) {
 			pkg_emit_error("repository '%s' is already "
@@ -660,7 +653,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			continue;
 		}
 
-		snprintf(remotepath, sizeof(remotepath), "%s/%s.sqlite",
+		snprintf(remotepath, sizeof(remotepath), "%s/repo-%s.sqlite",
 		    dbdir, repo_name);
 
 		if (access(remotepath, R_OK) != 0) {
