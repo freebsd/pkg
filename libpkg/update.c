@@ -80,12 +80,17 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	int fd, rc = EPKG_FATAL, ret;
 	struct stat st;
 	time_t t = 0;
-	sqlite3 *sqlite;
-	char *archreq = NULL;
+	sqlite3 *sqlite = NULL;
+	char *req = NULL;
 	const char *myarch;
 	int64_t res;
 	const char *tmpdir;
+	sqlite3_stmt *stmt;
+	const char sql[] = ""
+	    "INSERT OR REPLACE INTO repodata (key, value) "
+	    "VALUES (\"packagesite\", ?1);";
 
+	sqlite3_initialize();
 	snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
 
 	tmpdir = getenv("TMPDIR");
@@ -119,6 +124,43 @@ pkg_update(const char *name, const char *packagesite, bool force)
 			t += 60;
 		}
 	}
+
+	if (t != 0) {
+		if (sqlite3_open(repofile, &sqlite) != SQLITE_OK) {
+			pkg_emit_error("Unable to open local database");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+
+		if (get_pragma(sqlite, "SELECT count(name) FROM sqlite_master "
+		    "WHERE type='table' AND name='repodata';", &res) != EPKG_OK) {
+			pkg_emit_error("Unable to query repository");
+			rc = EPKG_FATAL;
+			sqlite3_close(sqlite);
+			goto cleanup;
+		}
+		if (res != 1)
+			t = 0;
+	}
+
+	if (t != 0) {
+		req = sqlite3_mprintf("select count(key) from repodata "
+		    "WHERE key = \"packagesite\" and value = '%q'", packagesite);
+
+		if (get_pragma(sqlite, req, &res) != EPKG_OK) {
+			sqlite3_free(req);
+			pkg_emit_error("Unable to query repository");
+			rc = EPKG_FATAL;
+			sqlite3_close(sqlite);
+			goto cleanup;
+		}
+		sqlite3_free(req);
+		if (res != 1)
+			t = 0;
+	}
+
+	if (sqlite != NULL)
+		sqlite3_close(sqlite);
 
 	rc = pkg_fetch_file_to_fd(url, fd, t);
 	close(fd);
@@ -193,7 +235,6 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	}
 
 	/* check is the repository is for valid architecture */
-	sqlite3_initialize();
 
 	if (sqlite3_open(repofile_unchecked, &sqlite) != SQLITE_OK) {
 		unlink(repofile_unchecked);
@@ -204,10 +245,10 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 
-	archreq = sqlite3_mprintf("select count(arch) from packages "
+	req = sqlite3_mprintf("select count(arch) from packages "
 	    "where arch not GLOB '%q'", myarch);
-	if (get_pragma(sqlite, archreq, &res) != EPKG_OK) {
-		sqlite3_free(archreq);
+	if (get_pragma(sqlite, req, &res) != EPKG_OK) {
+		sqlite3_free(req);
 		pkg_emit_error("Unable to query repository");
 		rc = EPKG_FATAL;
 		sqlite3_close(sqlite);
@@ -222,6 +263,36 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		sqlite3_close(sqlite);
 		goto cleanup;
 	}
+
+	/* register the packagesite */
+	if (sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repodata ("
+	    "   key TEXT UNIQUE NOT NULL,"
+	    "   value TEXT NOT NULL"
+	    ");") != EPKG_OK) {
+		pkg_emit_error("Unable to register the packagesite in the "
+		    "database");
+		rc = EPKG_FATAL;
+		sqlite3_close(sqlite);
+		goto cleanup;
+	}
+
+	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite);
+		rc = EPKG_FATAL;
+		sqlite3_close(sqlite);
+		goto cleanup;
+	}
+
+	sqlite3_bind_text(stmt, 1, packagesite, -1, SQLITE_STATIC);
+
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		ERROR_SQLITE(sqlite);
+		rc = EPKG_FATAL;
+		sqlite3_close(sqlite);
+		goto cleanup;
+	}
+
+	sqlite3_finalize(stmt);
 
 	sqlite3_close(sqlite);
 	sqlite3_shutdown();
