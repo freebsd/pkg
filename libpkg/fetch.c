@@ -140,6 +140,9 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	retry = max_retry;
 
 	u = fetchParseURL(url);
+	if (t != 0)
+		u->ims_time = t;
+
 	doc = u->doc;
 	while (remote == NULL) {
 		if (retry == max_retry) {
@@ -178,8 +181,15 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 			u->port = http_current->url->port;
 		}
 
-		remote = fetchXGet(u, &st, "");
+		if (strncmp(u->scheme, "http", 4) == 0)
+			remote = fetchXGetHTTP(u, &st, "i");
+		else
+			remote = fetchXGet(u, &st, "");
 		if (remote == NULL) {
+			if (fetchLastErrCode == FETCH_OK) {
+				retcode = EPKG_UPTODATE;
+				goto cleanup;
+			}
 			--retry;
 			if (retry <= 0) {
 				pkg_emit_error("%s: %s", url,
