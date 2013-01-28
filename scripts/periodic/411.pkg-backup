@@ -1,10 +1,8 @@
-#!/bin/sh
+#!/bin/sh -
 #
 # $FreeBSD$
 #
 
-# If there is a global system configuration file, suck it in.
-#
 if [ -r /etc/defaults/periodic.conf ]; then
 	. /etc/defaults/periodic.conf
 	source_periodic_confs
@@ -44,6 +42,7 @@ case "${daily_backup_pkgng_enable:-YES}" in
 			rc=3
 		fi
 	fi
+	;;
 esac
 
 exit $rc

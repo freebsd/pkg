@@ -27,8 +27,8 @@ case "$daily_status_pkg_changes_enable" in
 
 		cmp -sz $bak/pkg.bak $bak/pkg.bak2
 		if [ $? -eq 1 ]; then
-			diff -U 0 $bak/pkg.bak2 $bak/pkg.bak \
-			| grep '^[-+][^-+]' | sort -k 1.2
+			diff -U 0 $bak/pkg.bak2 $bak/pkg.bak | \
+			grep '^[-+][^-+]' | sort -k 1.2
 		fi
 	fi
 	;;

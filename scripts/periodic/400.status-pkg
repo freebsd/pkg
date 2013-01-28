@@ -9,7 +9,7 @@ if [ -r /etc/defaults/periodic.conf ]; then
 fi
 
 case "$weekly_status_pkg_enable" in
-    [Yy][Ee][Ss])
+	[Yy][Ee][Ss])
 	pkgcmd=/usr/local/sbin/pkg
 
 	echo
@@ -25,10 +25,10 @@ case "$weekly_status_pkg_enable" in
 			tee /dev/stderr |
 			wc -l)
 		[ $rc -gt 1 ] && rc=1
-		;;
-		*)
-		rc=0
 	fi
+	;;
+	*)
+	rc=0
 	;;
 esac
 
