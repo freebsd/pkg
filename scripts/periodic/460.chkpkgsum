@@ -21,10 +21,11 @@ case "${daily_status_security_chkpkgsum_enable}" in
 	    echo 'chkpkgsum is enabled but pkg is not used'
 	    rc=2
 	else
-		n=$(${pkgcmd} check -sa 2>&1 |
+		rc=$(${pkgcmd} check -sa 2>&1 |
 		sed -e 's/ checksum mismatch for//' |
-		tee /dev/stderr | wc -l)
-		[ $n -gt 0 ] && rc=1 || rc=0
+		tee /dev/stderr |
+		wc -l)
+		[ $rc -gt 1 ] && rc=1
 	fi
 	;;
     *)
