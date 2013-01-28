@@ -40,44 +40,41 @@ fi
 
 # Compute PKG_DBDIR from the config file.
 if [ -z "${PKG_DBDIR}" ] && [ -f /usr/local/etc/pkg.conf ]; then
-  PKG_DBDIR=`awk 'toupper($1) ~ /PKG_DBDIR/ { print $3 }' \
-             < /usr/local/etc/pkg.conf`
+	PKG_DBDIR=`awk 'toupper($1) ~ /PKG_DBDIR/ { print $3 }' \
+		< /usr/local/etc/pkg.conf`
 fi
 : ${PKG_DBDIR="/var/db/pkg"}
 auditfile="${PKG_DBDIR}/auditfile"
 
 rc=0
+
 case "${daily_status_security_pkgaudit_enable:-YES}" in
 	[Nn][Oo])
-		;;
+	;;
 	*)
-		pkgcmd=/usr/local/sbin/pkg
+	pkgcmd=/usr/local/sbin/pkg
 
-		echo
-                echo "Checking for packages with security vulnerabilities:"
+	echo
+	echo 'Checking for packages with security vulnerabilities:'
 
-		if ${pkgcmd} -N >/dev/null 2>&1 ; then
-			echo 'pkg-audit is enabled but pkg is not used'
-			rc=2
+	if ${pkgcmd} -N >/dev/null 2>&1 ; then
+		echo 'pkg-audit is enabled but pkg is not used'
+		rc=2
+	else
+		then=`stat -f '%m' "${auditfile}" 2> /dev/null` || rc=3
+		now=`date +%s` || rc=3
+		# Add 10 minutes of padding since the check is in seconds.
+		if [ $rc -ne 0 -o \
+			$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
+			-le $(( ${now} - ${then} + 600 )) ]; then
+			${pkgcmd} audit -Fq || { rc=$?; [ $rc -lt 3 ] && rc=3 }
 		else
-			then=`stat -f '%m' "${auditfile}" 2> /dev/null` || rc=3
-			now=`date +%s` || rc=3
-			# Add 10 minutes of padding since the check is in seconds.
-			if [ $rc -ne 0 -o \
-				$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
-				-le $(( ${now} - ${then} + 600 )) ]; then
-				${pkgcmd} audit -Fq || {
-				  rc=$?; [ $rc -lt 3 ] && rc=3
-				}
-			else
-				echo -n "Database fetched: ";
-				date -r "${then}" || rc=3
-				${pkgcmd} audit || {
-				  rc=$?; [ $rc -lt 3 ] && rc=3
-				}
-			fi
+			echo -n 'Database fetched: ';
+			date -r "${then}" || rc=3
+			${pkgcmd} audit || { rc=$?; [ $rc -lt 3 ] && rc=3 }
 		fi
-		;;
+	fi
+	;;
 esac
 
 exit "$rc"
