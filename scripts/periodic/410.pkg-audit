@@ -55,21 +55,27 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 
 		echo
                 echo "Checking for packages with security vulnerabilities:"
-		then=`stat -f '%m' "${auditfile}" 2> /dev/null` || rc=3
-		now=`date +%s` || rc=3
-		# Add 10 minutes of padding since the check is in seconds.
-		if [ $rc -ne 0 -o \
-			$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
-			-le $(( ${now} - ${then} + 600 )) ]; then
-			${pkgcmd} audit -Fq || {
-			  rc=$?; [ $rc -lt 3 ] && rc=3
-			}
+
+		if ${pkgcmd} -N >/dev/null 2>&1 ; then
+			echo 'pkg-audit is enabled but pkg is not used'
+			rc=2
 		else
-			echo -n "Database fetched: ";
-			date -r "${then}" || rc=3
-			${pkgcmd} audit || {
-			  rc=$?; [ $rc -lt 3 ] && rc=3
-			}
+			then=`stat -f '%m' "${auditfile}" 2> /dev/null` || rc=3
+			now=`date +%s` || rc=3
+			# Add 10 minutes of padding since the check is in seconds.
+			if [ $rc -ne 0 -o \
+				$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
+				-le $(( ${now} - ${then} + 600 )) ]; then
+				${pkgcmd} audit -Fq || {
+				  rc=$?; [ $rc -lt 3 ] && rc=3
+				}
+			else
+				echo -n "Database fetched: ";
+				date -r "${then}" || rc=3
+				${pkgcmd} audit || {
+				  rc=$?; [ $rc -lt 3 ] && rc=3
+				}
+			fi
 		fi
 		;;
 esac
