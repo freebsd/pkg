@@ -154,12 +154,8 @@ do_extract_mtree(char *mtree, const char *prefix)
 			archive_entry_set_pathname(ae, path);
 		}
 
-		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
-			pkg_emit_error("Fail to extract some of the mtree entries: %s",
-			    archive_error_string(a));
-			retcode = EPKG_FATAL;
-			break;
-		}
+		/* Ignored failed extraction on purpose */
+		archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
 	}
 
 cleanup:
