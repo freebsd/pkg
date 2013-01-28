@@ -19,7 +19,7 @@ case "${daily_backup_pkgng_enable:-YES}" in
     *)
 	bak="${daily_backup_pkgng_dir:-/var/backups}"
 	bak_file="${bak}/pkgng.db"
-	pkgcmd="/usr/local/sbin/pkg"
+	pkgcmd=/usr/local/sbin/pkg
 
 	if [ ! -d "$bak" ]
 	then

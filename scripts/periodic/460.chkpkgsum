@@ -12,9 +12,11 @@ fi
 
 case "${daily_status_security_chkpkgsum_enable}" in
     [Yy][Ee][Ss])
+	pkgcmd=/usr/local/sbin/pkg
+
 	echo ''
 	echo 'Checking for packages with mismatched checksums:'
-	n=$(pkg check -sa 2>&1 |
+	n=$(${pkgcmd} check -sa 2>&1 |
 	sed -e 's/ checksum mismatch for//' |
 	tee /dev/stderr | wc -l)
 	[ $n -gt 0 ] && rc=1 || rc=0
