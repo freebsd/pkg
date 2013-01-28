@@ -759,17 +759,22 @@ file_mode_insecure(const char *path, bool install_as_user)
 }
 
 static int
-database_access(unsigned mode, const char* dbdir, const char *dbname)
+database_access(unsigned mode, const char* dbdir, const char *dbname,
+		bool multirepo)
 {
 	char		 dbpath[MAXPATHLEN + 1];
 	int		 retval;
 	bool		 database_exists;
 	bool		 install_as_user;
 
-	if (dbname != NULL)
-		snprintf(dbpath, sizeof(dbpath), "%s/%s.sqlite", dbdir,
-			 dbname);
-	else
+	if (dbname != NULL) {
+		if (multirepo)
+			snprintf(dbpath, sizeof(dbpath), "%s/repo-%s.sqlite",
+				 dbdir, dbname);
+		else
+			snprintf(dbpath, sizeof(dbpath), "%s/%s.sqlite",
+				 dbdir, dbname);
+	} else
 		strlcpy(dbpath, dbdir, sizeof(dbpath));
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
@@ -857,16 +862,16 @@ pkgdb_access(unsigned mode, unsigned database)
 
 	if ((mode & PKGDB_MODE_CREATE) != 0) 
 		retval = database_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
-					 dbdir, NULL);
+					 dbdir, NULL, false);
 	else
-		retval = database_access(PKGDB_MODE_READ, dbdir, NULL);
+		retval = database_access(PKGDB_MODE_READ, dbdir, NULL, false);
 	if (retval != EPKG_OK)
 		return (retval);
 
 	/* Test local.sqlite, if required */
 
 	if ((database & PKGDB_DB_LOCAL) != 0) {
-		retval = database_access(mode, dbdir, "local");
+		retval = database_access(mode, dbdir, "local", false);
 		if (retval != EPKG_OK)
 			return (retval);
 	}
@@ -875,7 +880,7 @@ pkgdb_access(unsigned mode, unsigned database)
 	   if in multirepos_enabled mode */
 
 	if (!multirepos_enabled && (database & PKGDB_DB_REPO) != 0) {
-		retval = database_access(mode, dbdir, "repo");
+		retval = database_access(mode, dbdir, "repo", false);
 		if (retval != EPKG_OK)
 			return (retval);
 	}
@@ -889,7 +894,7 @@ pkgdb_access(unsigned mode, unsigned database)
 			reponame = pkg_config_kv_get(all_repos,
 					 PKG_CONFIG_KV_KEY);
 
-			retval = database_access(mode, dbdir, reponame);
+			retval = database_access(mode, dbdir, reponame, true);
 			if (retval != EPKG_OK)
 				return (retval);
 		}
