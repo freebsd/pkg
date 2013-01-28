@@ -169,7 +169,7 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 			reponame = repo;
 		} else {
 			/* default repository in multi-repos is 'default' */
-			reponame = "default";
+			reponame = "remote-default";
 		}
 	} else {
 		if (repo != NULL && strcmp(repo, "repo") &&
@@ -662,7 +662,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			return (EPKG_ENODB);
 		}
 
-		ret = sql_exec(db->sqlite, "ATTACH '%s' AS '%s';",
+		ret = sql_exec(db->sqlite, "ATTACH '%s' AS 'remote-%s';",
 		    remotepath, repo_name);
 		if (ret != EPKG_OK) {
 			pkgdb_close(db);
@@ -687,7 +687,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 		}
 
 		/* check if default repository exists */
-		if (!is_attached(db->sqlite, "default")) {
+		if (!is_attached(db->sqlite, "remote-default")) {
 			pkg_emit_error("no default repository defined");
 			pkgdb_close(db);
 			return (EPKG_FATAL);
@@ -3030,7 +3030,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	/*
 	 * Working on multiple remote repositories
 	 */
-	if (multirepos_enabled && !strcmp(reponame, "default")) {
+	if (multirepos_enabled && !strcmp(reponame, "remote-default")) {
 		/* duplicate the query via UNION for all the attached databases */
 		ret = sql_on_all_attached_db(db->sqlite, sql,
 		    basesql, " UNION ALL ");
