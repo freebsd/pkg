@@ -16,10 +16,16 @@ case "${daily_status_security_chkpkgsum_enable}" in
 
 	echo ''
 	echo 'Checking for packages with mismatched checksums:'
-	n=$(${pkgcmd} check -sa 2>&1 |
-	sed -e 's/ checksum mismatch for//' |
-	tee /dev/stderr | wc -l)
-	[ $n -gt 0 ] && rc=1 || rc=0
+
+	if ${pkgcmd} -N >/dev/null 2>&1 ; then
+	    echo 'chkpkgsum is enabled but pkg is not used'
+	    rc=2
+	else
+		n=$(${pkgcmd} check -sa 2>&1 |
+		sed -e 's/ checksum mismatch for//' |
+		tee /dev/stderr | wc -l)
+		[ $n -gt 0 ] && rc=1 || rc=0
+	fi
 	;;
     *)
 	rc=0

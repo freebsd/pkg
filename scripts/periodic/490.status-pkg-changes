@@ -14,6 +14,7 @@ case "$daily_status_pkg_changes_enable" in
 
 	echo ''
 	echo 'Changes in installed packages:'
+
 	if ${pkgcmd} -N >/dev/null 2>&1 ; then
 	    echo 'status-pkg-changes is enabled but pkg is not used'
 	    rc=2
