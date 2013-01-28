@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -25,11 +25,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/queue.h>
-
 #include <assert.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <ctype.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <err.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -45,6 +46,7 @@
 #define ABI_VAR_STRING "${ABI}"
 
 pthread_mutex_t mirror_mtx;
+int eventpipe = -1;
 
 struct config_entry {
 	uint8_t type;
@@ -79,7 +81,11 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_PORTSDIR] = {
 		PKG_CONFIG_STRING,
 		"PORTSDIR",
+#ifdef PORTSDIR
+		PORTSDIR,
+#else
 		"/usr/ports",
+#endif
 	},
 	[PKG_CONFIG_REPOKEY] = {
 		PKG_CONFIG_STRING,
@@ -104,7 +110,7 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_REPOS] = {
 		PKG_CONFIG_KVLIST,
 		"REPOS",
-		"NULL",
+		NULL,
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
 		PKG_CONFIG_STRING,
@@ -174,7 +180,7 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_PLUGINS] = {
 		PKG_CONFIG_LIST,
 		"PLUGINS",
-		"NULL",
+		NULL,
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
@@ -211,10 +217,62 @@ static struct config_entry c[] = {
 		"NAMESERVER",
 		NULL,
 	},
+	[PKG_CONFIG_EVENT_PIPE] = {
+		PKG_CONFIG_STRING,
+		"EVENT_PIPE",
+		NULL,
+	}
 };
 
 static bool parsed = false;
 static size_t c_size = sizeof(c) / sizeof(struct config_entry);
+
+static void pkg_config_kv_free(struct pkg_config_kv *);
+
+static void
+connect_evpipe(const char *evpipe) {
+	struct stat st;
+	struct sockaddr_un sock;
+	int flag = O_WRONLY;
+
+	if (stat(evpipe, &st) != 0) {
+		pkg_emit_error("No such event pipe: %s", evpipe);
+		return;
+	}
+
+	if (!S_ISFIFO(st.st_mode) && !S_ISSOCK(st.st_mode)) {
+		pkg_emit_error("%s is not a fifo or socket", evpipe);
+		return;
+	}
+
+	if (S_ISFIFO(st.st_mode)) {
+		flag |= O_NONBLOCK;
+		if ((eventpipe = open(evpipe, flag)) == -1)
+			pkg_emit_errno("open event pipe", evpipe);
+		return;
+	}
+
+	if (S_ISSOCK(st.st_mode)) {
+		if ((eventpipe = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+			pkg_emit_errno("Open event pipe", evpipe);
+			return;
+		}
+		memset(&sock, 0, sizeof(struct sockaddr_un));
+		sock.sun_family = AF_UNIX;
+		if (strlcpy(sock.sun_path, evpipe, sizeof(sock.sun_path)) >=
+		    sizeof(sock.sun_path)) {
+			pkg_emit_error("Socket path too long: %s", evpipe);
+			close(eventpipe);
+			return;
+		}
+
+		if (connect(eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
+			pkg_emit_errno("Connect event pipe", evpipe);
+			return;
+		}
+	}
+
+}
 
 static void
 parse_config_sequence(yaml_document_t *doc, yaml_node_t *seq, struct pkg_config *conf)
@@ -296,7 +354,7 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 			sbuf_putc(b, toupper(key->data.scalar.value[i]));
 
 		sbuf_finish(b);
-		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), sbuf_len(b), conf);
+		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), (size_t)sbuf_len(b), conf);
 		if (conf != NULL) {
 			switch (conf->type) {
 			case PKG_CONFIG_STRING:
@@ -351,11 +409,13 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 				parse_config_mapping(doc, val, conf);
 				break;
 			case PKG_CONFIG_LIST:
-				if (val->type != YAML_SEQUENCE_NODE) {
-					pkg_emit_error("Expecting a string list for key %s,"
-					    " ignoring...", key->data.scalar.value);
+				if (!conf->fromenv) {
+					if (val->type != YAML_SEQUENCE_NODE) {
+						pkg_emit_error("Expecting a string list for key %s,"
+						    " ignoring...", key->data.scalar.value);
+					}
+					parse_config_sequence(doc, val, conf);
 				}
-				parse_config_sequence(doc, val, conf);
 				break;
 			}
 		}
@@ -562,10 +622,14 @@ pkg_init(const char *path)
 	yaml_node_t *node;
 	size_t i;
 	const char *val = NULL;
+	const char *buf, *walk, *value, *key;
 	const char *errstr = NULL;
 	const char *proxy = NULL;
 	const char *nsname = NULL;
+	const char *evpipe = NULL;
 	struct pkg_config *conf;
+	struct pkg_config_value *v;
+	struct pkg_config_kv *kv;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -623,9 +687,72 @@ pkg_init(const char *path)
 			break;
 		case PKG_CONFIG_KVLIST:
 			conf->kvlist = NULL;
+			if (val == NULL)
+				val = c[i].def;
+			else
+				conf->fromenv = false;
+			if (val != NULL) {
+				printf("%s\n", val);
+				walk = buf = val;
+				while ((buf = strchr(buf, ',')) != NULL) {
+					key = walk;
+					value = walk;
+					while (*value != ',') {
+						if (*value == '=')
+							break;
+						value++;
+					}
+					if (value == buf || (value - key) == 0) {
+						pkg_emit_error("Malformed Key/Value for %s", c[i].key);
+						pkg_config_kv_free(conf->kvlist);
+						conf->kvlist = NULL;
+						break;
+					}
+					kv = malloc(sizeof(struct pkg_config_kv));
+					kv->key = strndup(key, value - key);
+					kv->value = strndup(value + 1, buf - value -1);
+					HASH_ADD_STR(conf->kvlist, value, kv);
+					buf++;
+					walk = buf;
+				}
+				key = walk;
+				value = walk;
+				while (*value != '\0') {
+					if (*value == '=')
+						break;
+					value++;
+				}
+				if (*value == '\0' || (value - key) == 0) {
+					pkg_emit_error("Malformed Key/Value for %s: %s", c[i].key, val);
+					pkg_config_kv_free(conf->kvlist);
+					conf->kvlist = NULL;
+					break;
+				}
+				kv = malloc(sizeof(struct pkg_config_kv));
+				kv->key = strndup(key, value - key);
+				kv->value = strdup(value + 1);
+				HASH_ADD_STR(conf->kvlist, value, kv);
+			}
 			break;
 		case PKG_CONFIG_LIST:
 			conf->list = NULL;
+			if (val == NULL)
+				val = c[i].def;
+			else
+				conf->fromenv = true;
+			if (val != NULL) {
+				walk = buf = val;
+				while ((buf = strchr(buf, ',')) != NULL) {
+					v = malloc(sizeof(struct pkg_config_value));
+					v->value = strndup(walk, buf - walk);
+					HASH_ADD_STR(conf->list, value, v);
+					buf++;
+					walk = buf;
+				}
+				v = malloc(sizeof(struct pkg_config_value));
+				v->value = strdup(walk);
+				HASH_ADD_STR(conf->list, value, v);
+			}
 			break;
 		}
 
@@ -670,6 +797,11 @@ pkg_init(const char *path)
 
 	parsed = true;
 
+	/* Start the event pipe */
+	pkg_config_string(PKG_CONFIG_EVENT_PIPE, &evpipe);
+	if (evpipe != NULL)
+		connect_evpipe(evpipe);
+
 	/* set the environement variable for libfetch for proxies if any */
 	pkg_config_string(PKG_CONFIG_HTTP_PROXY, &proxy);
 	if (proxy != NULL)
@@ -689,6 +821,9 @@ pkg_init(const char *path)
 static void
 pkg_config_kv_free(struct pkg_config_kv *k)
 {
+	if (k == NULL)
+		return;
+
 	free(k->key);
 	free(k->value);
 	free(k);

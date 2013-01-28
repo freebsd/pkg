@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -125,22 +125,26 @@ typedef enum {
 	 */
 	MATCH_ALL,
 	/**
-	 * The argument is the exact pattern.
+	 * The argument is the exact pattern.  Match will be case
+	 * sensitive or case insensitive according to
+	 * pkgdb_case_sensitive()
 	 */
 	MATCH_EXACT,
 	/**
-	 * The argument is a globbing expression.
+	 * The argument is an exact pattern except that matches will
+	 * be made case insensitively.  Match is always case sensitive
 	 */
 	MATCH_GLOB,
 	/**
 	 * The argument is a regular expression ('modern' style
-	 * according to re_format(7).
+	 * according to re_format(7).  Match will be case sensitive or
+	 * case insensitive according to pkgdb_case_sensitive()
 	 */
 	MATCH_REGEX,
 	/**
 	 * The argument is a WHERE clause to use as condition
 	 */
-	MATCH_CONDITION
+	MATCH_CONDITION,
 } match_t;
 
 /**
@@ -242,6 +246,12 @@ typedef enum {
 } pkg_file_attr;
 
 typedef enum {
+	PKG_DIR_PATH = 0,
+	PKG_DIR_UNAME,
+	PKG_DIR_GNAME
+} pkg_dir_attr;
+
+typedef enum {
 	PKG_DEPS = 0,
 	PKG_RDEPS,
 	PKG_LICENSES,
@@ -285,6 +295,9 @@ typedef enum _pkg_flags {
 	PKG_FLAG_RECURSIVE = (1U << 2),
 	PKG_FLAG_AUTOMATIC = (1U << 3),
 	PKG_FLAG_WITH_DEPS = (1U << 4),
+	PKG_FLAG_NOSCRIPT = (1U << 5),
+	PKG_FLAG_PKG_VERSION_TEST = (1U << 6),
+	PKG_FLAG_UPGRADES_FOR_INSTALLED = (1U << 7),
 } pkg_flags;
 
 typedef enum _pkg_config_key {
@@ -316,6 +329,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_HTTP_PROXY,
 	PKG_CONFIG_FTP_PROXY,
 	PKG_CONFIG_NAMESERVER,
+	PKG_CONFIG_EVENT_PIPE,
 } pkg_config_key;
 
 typedef enum {
@@ -601,7 +615,7 @@ int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 /**
  * Read the content of a file into a buffer, then call pkg_set().
  */
-int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file);
+int pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
 
 /**
  * Allocate a new struct pkg and add it to the deps of pkg.
@@ -735,27 +749,26 @@ int pkg_emit_manifest(struct pkg *pkg, char **buf);
 
 /* pkg_dep */
 const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
-
-const char *pkg_dep_name(struct pkg_dep const * const);
-const char *pkg_dep_origin(struct pkg_dep const * const);
-const char *pkg_dep_version(struct pkg_dep const * const);
+#define pkg_dep_name(d) pkg_dep_get(d, PKG_DEP_NAME)
+#define pkg_dep_origin(d) pkg_dep_get(d, PKG_DEP_ORIGIN)
+#define pkg_dep_version(d) pkg_dep_get(d, PKG_DEP_VERSION)
 bool pkg_dep_is_locked(struct pkg_dep const * const);
 
 /* pkg_file */
 const char *pkg_file_get(struct pkg_file const * const, const pkg_file_attr);
-
-const char *pkg_file_path(struct pkg_file const * const);
-const char *pkg_file_cksum(struct pkg_file const * const);
-const char *pkg_file_uname(struct pkg_file const * const);
-const char *pkg_file_gname(struct pkg_file const * const);
+#define pkg_file_path(f) pkg_file_get(f, PKG_FILE_PATH)
+#define pkg_file_cksum(f) pkg_file_get(f, PKG_FILE_SUM)
+#define pkg_file_uname(f) pkg_file_get(f, PKG_FILE_UNAME)
+#define pkg_file_gname(f) pkg_file_get(f, PKG_FILE_GNAME)
 mode_t pkg_file_mode(struct pkg_file const * const);
 
 bool pkg_has_dir(struct pkg *, const char *);
 bool pkg_has_file(struct pkg *, const char *);
 /* pkg_dir */
-const char *pkg_dir_path(struct pkg_dir const * const);
-const char *pkg_dir_uname(struct pkg_dir const * const);
-const char *pkg_dir_gname(struct pkg_dir const * const);
+const char *pkg_dir_get(struct pkg_dir const * const, const pkg_dir_attr);
+#define pkg_dir_path(d) pkg_dir_get(d, PKG_DIR_PATH)
+#define pkg_dir_uname(d) pkg_dir_get(d, PKG_DIR_UNAME)
+#define pkg_dir_gname(d) pkg_dir_get(d, PKG_DIR_GNAME)
 mode_t pkg_dir_mode(struct pkg_dir const * const);
 bool pkg_dir_try(struct pkg_dir const * const);
 
@@ -788,6 +801,8 @@ const char *pkg_shlib_name(struct pkg_shlib const * const);
  * @param origin Package origin
  * @return EPKG_OK if the package is installed,
  * and != EPKG_OK if the package is not installed or an error occurred
+ * Match will be case sensitive or insensitive depending on
+ * pkgdb_case_sensitive()
  */
 int pkg_is_installed(struct pkgdb *db, const char *origin);
 
@@ -853,6 +868,17 @@ int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg);
  * @return An error code.
  */
 int pkgdb_unregister_pkg(struct pkgdb *pkg, const char *origin);
+
+/**
+ * Set the case sensitivity flag on or off.  Defaults to 
+ * true (case_sensitive)
+ */
+void pkgdb_set_case_sensitivity(bool);
+
+/**
+ * Query the state of the case sensitity setting.
+ */
+bool pkgdb_case_sensitive(void);
 
 /**
  * Query the local package database.
@@ -922,6 +948,7 @@ int pkg_add(struct pkgdb *db, const char *path, unsigned flags);
 #define PKG_ADD_USE_UPGRADE_SCRIPTS	(1U << 1)
 #define PKG_ADD_AUTOMATIC		(1U << 2)
 #define PKG_ADD_FORCE			(1U << 3)
+#define PKG_ADD_NOSCRIPT		(1U << 4)
 
 /**
  * Allocate a new pkg_jobs.
@@ -979,9 +1006,7 @@ int pkg_create_installed(const char *, pkg_formats, const char *,
  * Create package from stage install with a metadata directory
  */
 int pkg_create_staged(const char *, pkg_formats, const char *, const char *,
-		      char *);
-int pkg_create_oldstaged(const char *, pkg_formats, const char *, const char *,
-		      char *);
+		      char *, bool);
 
 /**
  * Download the latest repo db file and checks its signature if any
@@ -1108,6 +1133,7 @@ struct pkg_event {
 		struct {
 			const char *func;
 			const char *arg;
+			int no;
 		} e_errno;
 		struct {
 			char *msg;
@@ -1166,6 +1192,7 @@ struct pkg_event {
 			struct pkg_plugin *plugin;
 			const char *func;
 			const char *arg;
+			int no;
 		} e_plugin_errno;
 		struct {
 			struct pkg_plugin *plugin;
@@ -1200,4 +1227,5 @@ int pkg_old_load_from_path(struct pkg *pkg, const char *path);
 int pkg_old_emit_content(struct pkg *pkg, char **dest);
 int pkg_from_old(struct pkg *pkg);
 int pkg_to_old(struct pkg *pkg);
+int pkg_register_old(struct pkg *pkg);
 #endif

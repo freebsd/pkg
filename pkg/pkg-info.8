@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 15, 2012
+.Dd January 20, 2013
 .Dt PKG-INFO 8
 .Os
 .Sh NAME
@@ -27,7 +27,7 @@
 .Nm
 .Fl a
 .Nm
-.Op Fl BDdefgIklOqRrsx
+.Op Fl BDdefgiIklOqRrsx
 .Ar <pkg-name>
 .Nm
 .Op Fl BDdfIlqRrs
@@ -58,6 +58,11 @@ Show the pkg-message for matching packages.
 Treat
 .Ar <pkg-name>
 as a shell glob pattern.
+.It Fl i
+Make the default or the regular expression
+.Fl ( x )
+.Ar pkg-name
+matching case insensitive.
 .It Fl x
 Treat
 .Ar <pkg-name>

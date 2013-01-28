@@ -54,8 +54,8 @@ is_url(const char * const pattern)
 void
 usage_add(void)
 {
-	fprintf(stderr, "usage: pkg add <pkg-name>\n");
-	fprintf(stderr, "       pkg add <protocol>://<path>/<pkg-name>\n\n");
+	fprintf(stderr, "usage: pkg add [-I] <pkg-name>\n");
+	fprintf(stderr, "       pkg add [-I] <protocol>://<path>/<pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help add'.\n");
 }
 
@@ -67,11 +67,25 @@ exec_add(int argc, char **argv)
 	char path[MAXPATHLEN + 1];
 	char *file;
 	int retcode;
+	int ch;
 	int i;
 	int failedpkgcount = 0;
-	struct pkg *p = NULL;
+	pkg_flags f = PKG_FLAG_NONE;
 
-	if (argc < 2) {
+	while ((ch = getopt(argc, argv, "I")) != -1) {
+		switch (ch) {
+		case 'I':
+			f |= PKG_ADD_NOSCRIPT;
+			break;
+		default:
+			usage_add();
+			return (EX_USAGE);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1) {
 		usage_add();
 		return (EX_USAGE);
 	}
@@ -90,7 +104,7 @@ exec_add(int argc, char **argv)
 		return (EX_IOERR);
 
 	failedpkgs = sbuf_new_auto();
-	for (i = 1; i < argc; i++) {
+	for (i = 0; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
 			snprintf(path, sizeof(path), "./%s", basename(argv[i]));
 			if ((retcode = pkg_fetch_file(argv[i], path, 0)) != EPKG_OK)
@@ -111,10 +125,8 @@ exec_add(int argc, char **argv)
 			}
 
 		}
-			
-		pkg_open(&p, file);
 
-		if ((retcode = pkg_add(db, file, 0)) != EPKG_OK) {
+		if ((retcode = pkg_add(db, file, f)) != EPKG_OK) {
 			sbuf_cat(failedpkgs, argv[i]);
 			if (i != argc - 1)
 				sbuf_printf(failedpkgs, ", ");
@@ -128,6 +140,7 @@ exec_add(int argc, char **argv)
 	if(failedpkgcount > 0) {
 		sbuf_finish(failedpkgs);
 		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, sbuf_data(failedpkgs));
+		retcode = EPKG_FATAL;
 	}
 	sbuf_delete(failedpkgs);
 

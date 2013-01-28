@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2003-2012, Troy D. Hanson     http://uthash.sourceforge.net
+Copyright (c) 2003-2013, Troy D. Hanson     http://uthash.sourceforge.net
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -64,7 +64,7 @@ typedef unsigned char uint8_t;
 #include <inttypes.h>   /* uint32_t */
 #endif
 
-#define UTHASH_VERSION 1.9.6
+#define UTHASH_VERSION 1.9.7
 
 #ifndef uthash_fatal
 #define uthash_fatal(msg) exit(-1)        /* fatal error (out of memory,etc) */
@@ -215,7 +215,7 @@ do {                                                                            
         _hd_hh_del = &((delptr)->hh);                                            \
         if ((delptr) == ELMT_FROM_HH((head)->hh.tbl,(head)->hh.tbl->tail)) {     \
             (head)->hh.tbl->tail =                                               \
-                (UT_hash_handle*)((ptrdiff_t*)((delptr)->hh.prev) +              \
+                (UT_hash_handle*)((ptrdiff_t)((delptr)->hh.prev) +               \
                 (head)->hh.tbl->hho);                                            \
         }                                                                        \
         if ((delptr)->hh.prev) {                                                 \
@@ -502,7 +502,7 @@ do {                                                                            
  *   gcc -m64 -dM -E - < /dev/null                  (on gcc)
  *   cc -## a.c (where a.c is a simple test file)   (Sun Studio)
  */
-#if (defined(__i386__) || defined(__x86_64__)) 
+#if (defined(__i386__) || defined(__x86_64__)  || defined(_M_IX86))
 #define MUR_GETBLOCK(p,i) p[i]
 #else /* non intel */
 #define MUR_PLUS0_ALIGNED(p) (((unsigned long)p & 0x3) == 0)
@@ -541,10 +541,12 @@ do {                                                                   \
   uint32_t _mur_h1 = 0xf88D5353;                                       \
   uint32_t _mur_c1 = 0xcc9e2d51;                                       \
   uint32_t _mur_c2 = 0x1b873593;                                       \
+  uint32_t _mur_k1 = 0;                                                \
+  const uint8_t *_mur_tail;                                            \
   const uint32_t *_mur_blocks = (const uint32_t*)(_mur_data+_mur_nblocks*4); \
   int _mur_i;                                                          \
   for(_mur_i = -_mur_nblocks; _mur_i; _mur_i++) {                      \
-    uint32_t _mur_k1 = MUR_GETBLOCK(_mur_blocks,_mur_i);               \
+    _mur_k1 = MUR_GETBLOCK(_mur_blocks,_mur_i);                        \
     _mur_k1 *= _mur_c1;                                                \
     _mur_k1 = MUR_ROTL32(_mur_k1,15);                                  \
     _mur_k1 *= _mur_c2;                                                \
@@ -553,8 +555,8 @@ do {                                                                   \
     _mur_h1 = MUR_ROTL32(_mur_h1,13);                                  \
     _mur_h1 = _mur_h1*5+0xe6546b64;                                    \
   }                                                                    \
-  const uint8_t *_mur_tail = (const uint8_t*)(_mur_data + _mur_nblocks*4); \
-  uint32_t _mur_k1=0;                                                  \
+  _mur_tail = (const uint8_t*)(_mur_data + _mur_nblocks*4);            \
+  _mur_k1=0;                                                           \
   switch((keylen) & 3) {                                               \
     case 3: _mur_k1 ^= _mur_tail[2] << 16;                             \
     case 2: _mur_k1 ^= _mur_tail[1] << 8;                              \

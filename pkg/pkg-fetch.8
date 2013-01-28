@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 15, 2012
+.Dd January 25, 2013
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -24,9 +24,17 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
-.Op Fl yqgxadL
+.Op Fl dgiLqxy
 .Ar <pkg-name>
 .Op ...
+.Nm
+.Op Fl r Ar reponame
+.Op Fl dLqy
+.Fl a
+.Nm
+.Op Fl r Ar reponame
+.Op Fl dLqy
+.Fl u
 .Sh DESCRIPTION
 .Nm
 is used to download binary packages from a remote repository.
@@ -44,8 +52,22 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Fetch all packages.
-.It Fl y
-Assume yes when asked for confirmation before fetching packages.
+.It Fl d
+Fetch the package and its dependencies as well.
+.It Fl g
+Treat
+.Ar <pkg-name>
+as a shell glob pattern.
+.It Fl i
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
+.It Fl L
+Skip updating the repository catalogues with
+.Xr pkg-update 8 .
+Use the local cache only.
 .It Fl q
 Quiet mode.
 Show less output.
@@ -55,22 +77,16 @@ Fetches packages from the given
 if multiple repo support is enabled.
 See
 .Xr pkg.conf 5 .
-.It Fl g
-Treat
-.Ar <pkg-name>
-as a shell glob pattern.
+.It Fl u
+Fetch all available updates for the currently installed packages. 
 .It Fl x
 Treat
 .Ar <pkg-name>
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
-.It Fl L
-Skip updating the repository catalogues with
-.Xr pkg-update 8 .
-Use the local cache only.
-.It Fl d
-Fetch the package and its dependencies as well.
+.It Fl y
+Assume yes when asked for confirmation before fetching packages.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

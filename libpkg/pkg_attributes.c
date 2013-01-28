@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -77,30 +77,6 @@ pkg_dep_get(struct pkg_dep const * const d, const pkg_dep_attr attr)
 	}
 }
 
-const char *
-pkg_dep_name(struct pkg_dep const * const d)
-{
-	assert( d != NULL);
-
-	return (sbuf_get(d->name));
-}
-
-const char *
-pkg_dep_origin(struct pkg_dep const * const d)
-{
-	assert( d != NULL);
-
-	return (sbuf_get(d->origin));
-}
-
-const char *
-pkg_dep_version(struct pkg_dep const * const d)
-{
-	assert( d != NULL);
-
-	return (sbuf_get(d->version));
-}
-
 bool
 pkg_dep_is_locked(struct pkg_dep const * const d)
 {
@@ -155,38 +131,6 @@ pkg_file_get(struct pkg_file const * const f, const pkg_file_attr attr)
 	}
 }
 
-const char *
-pkg_file_path(struct pkg_file const * const f)
-{
-	assert(f != NULL);
-
-	return (f->path);
-}
-
-const char *
-pkg_file_cksum(struct pkg_file const * const f)
-{
-	assert(f != NULL);
-
-	return (f->sum);
-}
-
-const char *
-pkg_file_uname(struct pkg_file const * const f)
-{
-	assert(f != NULL);
-
-	return (f->uname);
-}
-
-const char *
-pkg_file_gname(struct pkg_file const * const f)
-{
-	assert(f != NULL);
-
-	return (f->gname);
-}
-
 mode_t
 pkg_file_mode(struct pkg_file const * const f)
 {
@@ -219,27 +163,22 @@ pkg_dir_free(struct pkg_dir *d)
 }
 
 const char *
-pkg_dir_path(struct pkg_dir const * const d)
+pkg_dir_get(struct pkg_dir const * const d, const pkg_dir_attr attr)
 {
 	assert(d != NULL);
-
-	return (d->path);
-}
-
-const char *
-pkg_dir_uname(struct pkg_dir const * const d)
-{
-	assert(d != NULL);
-
-	return (d->uname);
-}
-
-const char *
-pkg_dir_gname(struct pkg_dir const * const d)
-{
-	assert(d != NULL);
-
-	return (d->gname);
+	switch (attr) {
+	case PKG_DIR_PATH:
+		return (d->path);
+		break;
+	case PKG_DIR_UNAME:
+		return (d->uname);
+		break;
+	case PKG_DIR_GNAME:
+		return (d->gname);
+		break;
+	default:
+		return(NULL);
+	}
 }
 
 mode_t

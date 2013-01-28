@@ -629,9 +629,14 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			dlsize += pkgsize;
 			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
 			if (stat(path, &st) != -1)
-				dlsize -= st.st_size;
+				oldsize = st.st_size;
+			else
+				oldsize = 0;
+			dlsize -= oldsize;
 
-			printf("\t%s-%s\n", name, version);
+			humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
+
+			printf("\t%s-%s (%ld%% of %s)\n", name, newversion, 100 - (100 * oldsize)/pkgsize, size);
 			break;
 		}
 	}

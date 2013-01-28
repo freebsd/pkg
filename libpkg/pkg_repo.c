@@ -637,7 +637,7 @@ pkg_create_repo(char *path, bool force,
 	thd_data.stop = false;
 	thd_data.fts = fts;
 	pthread_mutex_init(&thd_data.fts_m, NULL);
-	STAILQ_INIT(&thd_data.results);
+	thd_data.results = NULL;
 	thd_data.thd_finished = 0;
 	pthread_mutex_init(&thd_data.results_m, NULL);
 	pthread_cond_init(&thd_data.has_result, NULL);
@@ -658,14 +658,14 @@ pkg_create_repo(char *path, bool force,
 		lic_t licenselogic;
 
 		pthread_mutex_lock(&thd_data.results_m);
-		while ((r = STAILQ_FIRST(&thd_data.results)) == NULL) {
+		while ((r = thd_data.results) == NULL) {
 			if (thd_data.thd_finished == num_workers) {
 				break;
 			}
 			pthread_cond_wait(&thd_data.has_result, &thd_data.results_m);
 		}
 		if (r != NULL) {
-			STAILQ_REMOVE_HEAD(&thd_data.results, next);
+			LL_DELETE(thd_data.results, thd_data.results);
 			thd_data.num_results--;
 			pthread_cond_signal(&thd_data.has_room);
 		}
@@ -916,7 +916,7 @@ read_pkg_file(void *data)
 		while (d->num_results >= d->max_results) {
 			pthread_cond_wait(&d->has_room, &d->results_m);
 		}
-		STAILQ_INSERT_TAIL(&d->results, r, next);
+		LL_APPEND(d->results, r);
 		d->num_results++;
 		pthread_cond_signal(&d->has_result);
 		pthread_mutex_unlock(&d->results_m);

@@ -30,7 +30,6 @@
 #define LDCONFIG_H 1
 
 #include <sys/cdefs.h>
-#include <sys/queue.h>
 
 extern int	insecure;	/* -i flag, needed here for elfhints.c */
 

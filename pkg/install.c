@@ -45,7 +45,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "usage: pkg install [-AfgLnqRxy] [-r reponame] <pkg-name> ...\n\n");
+	    "usage: pkg install [-AfgIiLnqRxy] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -63,12 +63,12 @@ exec_install(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	bool dry_run = false;
 	nbactions = nbdone = 0;
-	pkg_flags f = PKG_FLAG_NONE;
+	pkg_flags f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
-	while ((ch = getopt(argc, argv, "AfgLnqRr:xy")) != -1) {
+	while ((ch = getopt(argc, argv, "AfgIiLnqRr:xy")) != -1) {
 		switch (ch) {
 		case 'A':
 			f |= PKG_FLAG_AUTOMATIC;
@@ -78,6 +78,12 @@ exec_install(int argc, char **argv)
 			break;
 		case 'g':
 			match = MATCH_GLOB;
+			break;
+		case 'I':
+			f |= PKG_FLAG_NOSCRIPT;
+			break;
+		case 'i':
+			pkgdb_set_case_sensitivity(false);
 			break;
 		case 'L':
 			auto_update = false;

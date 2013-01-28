@@ -37,7 +37,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage: pkg upgrade [-fLnqy] [-r reponame]\n\n");
+	fprintf(stderr, "usage: pkg upgrade [-fILnqy] [-r reponame]\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -54,7 +54,7 @@ exec_upgrade(int argc, char **argv)
 	bool dry_run = false;
 	bool auto_update;
 	nbactions = nbdone = 0;
-	pkg_flags f = PKG_FLAG_NONE;
+	pkg_flags f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
@@ -64,6 +64,9 @@ exec_upgrade(int argc, char **argv)
 		switch (ch) {
 		case 'f':
 			f |= PKG_FLAG_FORCE;
+			break;
+		case 'I':
+			f |= PKG_FLAG_NOSCRIPT;
 			break;
 		case 'L':
 			auto_update = false;

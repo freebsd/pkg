@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -42,54 +43,64 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxadL] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg fetch [-r reponame] [-dgiLqxy] <pkg-name> <...>\n");
+	fprintf(stderr, "       pkg fetch [-r reponame] [-dLqy] -a\n");
+	fprintf(stderr, "       pkg fetch [-r reponame] [-dLqy] -u\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
 }
 
 int
 exec_fetch(int argc, char **argv)
 {
-	struct pkgdb *db = NULL;
-	struct pkg_jobs *jobs = NULL;
-	const char *reponame = NULL;
-	int retcode = EX_SOFTWARE;
-	int ch;
-	bool force = false;
-	bool yes;
-	bool auto_update;
-	unsigned mode;
-	match_t match = MATCH_EXACT;
-	pkg_flags f = PKG_FLAG_NONE;
+	struct pkgdb	*db = NULL;
+	struct pkg_jobs	*jobs = NULL;
+	const char	*reponame = NULL;
+	int		 ch;
+	int		 retcode = EX_SOFTWARE;
+	bool		 auto_update;
+	bool		 force = false;
+	bool		 upgrades_for_installed = false;
+	bool		 yes;
+	unsigned	 mode;
+	match_t		 match = MATCH_EXACT;
+	pkg_flags	 f = PKG_FLAG_NONE;
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
-	while ((ch = getopt(argc, argv, "ygxr:qaLd")) != -1) {
+	while ((ch = getopt(argc, argv, "adgiLqr:uxy")) != -1) {
 		switch (ch) {
-		case 'y':
-			yes = true;
-			break;
 		case 'a':
 			match = MATCH_ALL;
-			break;
-		case 'g':
-			match = MATCH_GLOB;
-			break;
-		case 'x':
-			match = MATCH_REGEX;
-			break;
-		case 'r':
-			reponame = optarg;
-			break;
-		case 'q':
-			quiet = true;
-			break;
-		case 'L':
-			auto_update = false;
 			break;
 		case 'd':
 			f |= PKG_FLAG_WITH_DEPS;
 			force = true;
+			break;
+		case 'g':
+			match = MATCH_GLOB;
+			break;
+		case 'i':
+			pkgdb_set_case_sensitivity(false);
+			break;
+		case 'L':
+			auto_update = false;
+			break;
+		case 'q':
+			quiet = true;
+			break;
+		case 'r':
+			reponame = optarg;
+			break;
+		case 'u':
+			f |= PKG_FLAG_UPGRADES_FOR_INSTALLED;
+			upgrades_for_installed = true;
+			break;
+		case 'x':
+			match = MATCH_REGEX;
+			break;
+		case 'y':
+			yes = true;
 			break;
 		default:
 			usage_fetch();
@@ -99,7 +110,12 @@ exec_fetch(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 	
-	if (argc < 1 && match != MATCH_ALL) {
+	if (argc < 1 && match != MATCH_ALL && !upgrades_for_installed) {
+		usage_fetch();
+		return (EX_USAGE);
+	}
+
+        if (match == MATCH_ALL && upgrades_for_installed) {
 		usage_fetch();
 		return (EX_USAGE);
 	}
@@ -113,11 +129,22 @@ exec_fetch(int argc, char **argv)
 		mode = PKGDB_MODE_READ;
 
 	retcode = pkgdb_access(mode, PKGDB_DB_REPO);
+
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to access repo catalogue");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK)
 		return (EX_IOERR);
+
+	if (upgrades_for_installed) {
+		retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+
+		if (retcode == EPKG_ENOACCESS) {
+			warnx("Insufficient privilege to access package DB");
+			return (EX_NOPERM);
+		} else if (retcode != EPKG_OK)
+			return (EX_IOERR);
+	}
 
 	/* first update the remote repositories if needed */
 	if (auto_update && (retcode = pkgcli_update(false)) != EPKG_OK)
@@ -131,7 +158,8 @@ exec_fetch(int argc, char **argv)
 
 	pkg_jobs_set_flags(jobs, f);
 
-	if (pkg_jobs_add(jobs, match, argv, argc) != EPKG_OK)
+	if (!upgrades_for_installed &&
+	    pkg_jobs_add(jobs, match, argv, argc) != EPKG_OK)
 		goto cleanup;
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK)

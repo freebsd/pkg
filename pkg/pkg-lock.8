@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 15, 2012
+.Dd January 20, 2013
 .Dt PKG-LOCK 8
 .Os
 .Sh NAME
@@ -27,13 +27,13 @@
 .Op Fl qy
 .Fl a
 .Nm
-.Op Fl gqxy
+.Op Fl giqxy
 .Ar <pkg-name>
 .Nm "pkg unlock"
 .Op Fl qy
 .Fl a
 .Nm "pkg unlock"
-.Op Fl gqxy
+.Op Fl giqxy
 .Ar <pkg-name>
 .Sh DESCRIPTION
 .Nm
@@ -76,6 +76,11 @@ Lock or unlock all installed packages.
 Treat
 .Ar <pkg-name>
 as a shell glob pattern.
+.It Fl i
+Make the default or the regular expression
+.Fl ( x )
+.Ar pkg-name
+matching case insensitive.
 .It Fl q
 Operate quietly: do not output anything other than confirmatory questions.
 .It Fl x

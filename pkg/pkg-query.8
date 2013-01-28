@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 15, 2012
+.Dd January 20, 2013
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -32,7 +32,7 @@
 .Nm
 .Fl e Ao evaluation-condition Ac Ao query-format Ac
 .Nm
-.Op Fl gx
+.Op Fl gix
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
@@ -50,6 +50,12 @@ See EVALUATION FORMAT for details.
 .It Fl F Ar pkg-name
 Display information only for the package file
 .Ar pkg-name
+.It Fl i
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
 .It Fl g
 Treat
 .Ao pattern Ac

@@ -26,7 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -60,10 +59,10 @@ struct pkg_plugin {
 	struct plugin_hook *hooks;
 	struct pkg_config *conf;
 	struct pkg_config *conf_by_key;
-	STAILQ_ENTRY(pkg_plugin) next;
+	struct pkg_plugin *next;
 };
 
-static STAILQ_HEAD(, pkg_plugin) ph = STAILQ_HEAD_INITIALIZER(ph);
+static struct pkg_plugin *plugins = NULL;
 
 static int pkg_plugin_free(void);
 static int pkg_plugin_hook_free(struct pkg_plugin *p);
@@ -100,9 +99,7 @@ plug_free(struct pkg_plugin *p)
 static int
 pkg_plugin_free(void)
 {
-	struct pkg_plugin *p = NULL;
-
-	LIST_FREE(&ph, p, plug_free);
+	LL_FREE(plugins, pkg_plugin, plug_free);
 
 	return (EPKG_OK);
 }
@@ -362,12 +359,10 @@ pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key)
 int
 pkg_plugins(struct pkg_plugin **plugin)
 {
-	assert(&ph != NULL);
-	
 	if ((*plugin) == NULL)
-		(*plugin) = STAILQ_FIRST(&ph);
+		(*plugin) = plugins;
 	else
-		(*plugin) = STAILQ_NEXT((*plugin), next);
+		(*plugin) = (*plugin)->next;
 
 	if ((*plugin) == NULL)
 		return (EPKG_END);
@@ -417,7 +412,7 @@ pkg_plugins_init(void)
 		}
 		pkg_plugin_set(p, PKG_PLUGIN_PLUGINFILE, pluginfile);
 		if (init_func(p) == EPKG_OK) {
-			STAILQ_INSERT_TAIL(&ph, p, next);
+			LL_APPEND(plugins, p);
 		} else {
 			dlclose(p->lh);
 			free(p);

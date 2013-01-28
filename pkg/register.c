@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * All rights reserved.
@@ -66,7 +66,7 @@ static const char * const scripts[] = {
 void
 usage_register(void)
 {
-	fprintf(stderr, "usage: pkg register [-ld] [-i <input-path>]"
+	fprintf(stderr, "usage: pkg register [-Old] [-i <input-path>]"
 	                " -m <metadatadir> -f <plist-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
@@ -95,26 +95,16 @@ exec_register(int argc, char **argv)
 
 	bool legacy = false;
 	bool developer = false;
+	bool old = false;
 
 	int i;
-	int ret = EPKG_OK, retcode;
+	int ret = EPKG_OK, retcode = EX_OK;
 
-	retcode = pkgdb_access(PKGDB_MODE_READ  |
-			       PKGDB_MODE_WRITE |
-			       PKGDB_MODE_CREATE,
-			       PKGDB_DB_LOCAL);
-	if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to register packages");
-		return (EX_NOPERM);
-	} else if (retcode != EPKG_OK)
-		return (EX_IOERR);
-	else
-		retcode = EX_OK;
 
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
 	pkg_new(&pkg, PKG_INSTALLED);
-	while ((ch = getopt(argc, argv, "f:m:i:ld")) != -1) {
+	while ((ch = getopt(argc, argv, "f:m:i:ldO")) != -1) {
 		switch (ch) {
 		case 'f':
 			if ((plist = strdup(optarg)) == NULL)
@@ -135,11 +125,28 @@ exec_register(int argc, char **argv)
 		case 'l':
 			legacy = true;
 			break;
+		case 'O':
+			old = true;
+			break;
 		default:
 			printf("%c\n", ch);
 			usage_register();
 			return (EX_USAGE);
 		}
+	}
+
+	if (!old) {
+		retcode = pkgdb_access(PKGDB_MODE_READ  |
+				       PKGDB_MODE_WRITE |
+				       PKGDB_MODE_CREATE,
+				       PKGDB_DB_LOCAL);
+		if (retcode == EPKG_ENOACCESS) {
+			warnx("Insufficient privilege to register packages");
+			return (EX_NOPERM);
+		} else if (retcode != EPKG_OK)
+			return (EX_IOERR);
+		else
+			retcode = EX_OK;
 	}
 
 	if (plist == NULL)
@@ -154,15 +161,15 @@ exec_register(int argc, char **argv)
 	}
 
 	snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
-	pkg_set_from_file(pkg, PKG_DESC, fpath);
+	pkg_set_from_file(pkg, PKG_DESC, fpath, false);
 
 	snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
 	if (access(fpath, F_OK) == 0)
-		 pkg_set_from_file(pkg, PKG_MESSAGE, fpath);
+		 pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
 
 	snprintf(fpath, sizeof(fpath), "%s/+MTREE_DIRS", mdir);
 	if (access(fpath, F_OK) == 0)
-		pkg_set_from_file(pkg, PKG_MTREE, fpath);
+		pkg_set_from_file(pkg, PKG_MTREE, fpath, false);
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		snprintf(fpath, sizeof(fpath), "%s/%s", mdir, scripts[i]);
@@ -196,12 +203,9 @@ exec_register(int argc, char **argv)
 
 	free(plist);
 
-#ifndef PKG_COMPAT
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+	if (!old && pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
 	}
-#else
-#endif
 
 	pkg_analyse_files(db, pkg);
 
@@ -225,19 +229,21 @@ exec_register(int argc, char **argv)
 		free(input_path);
 	}
 
-#ifndef PKG_COMPAT
-	if (pkgdb_register_ports(db, pkg) != EPKG_OK)
-		retcode = EX_SOFTWARE;
-#else
-#endif
+	if (old) {
+		if (pkg_register_old(pkg) != EPKG_OK)
+			retcode = EX_SOFTWARE;
+	} else {
+		if (pkgdb_register_ports(db, pkg) != EPKG_OK)
+			retcode = EX_SOFTWARE;
+	}
 
 	pkg_get(pkg, PKG_MESSAGE, &message);
 	if (message != NULL && !legacy)
 		printf("%s\n", message);
 
-#ifndef PKG_COMPAT
-	pkgdb_close(db);
-#endif
+	if (!old)
+		pkgdb_close(db);
+
 	pkg_free(pkg);
 
 	return (retcode);

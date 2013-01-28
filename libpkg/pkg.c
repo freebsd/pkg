@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * All rights reserved.
@@ -95,6 +95,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg->new_flatsize = 0;
 	pkg->new_pkgsize = 0;
 	pkg->time = 0;
+	pkg->flags = 0;
 	pkg->automatic = false;
 	pkg->locked = false;
 	pkg->licenselogic = LICENSE_SINGLE;
@@ -357,7 +358,7 @@ pkg_set_mtree(struct pkg *pkg, const char *mtree) {
 
 
 int
-pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
+pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 {
 	char *buf = NULL;
 	off_t size = 0;
@@ -368,6 +369,9 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path)
 
 	if ((ret = file_to_buffer(path, &buf, &size)) !=  EPKG_OK)
 		return (ret);
+
+	while (trimcr && buf[strlen(buf) - 1] == '\n')
+		buf[strlen(buf) - 1] = '\0';
 
 	ret = pkg_set(pkg, attr, buf);
 
@@ -1108,7 +1112,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
 	const char *path;
-	struct hardlinks hl = { NULL, 0, 0 };
+	struct hardlinks *hl = NULL;
 	int64_t flatsize = 0;
 	int64_t oldflatsize;
 	struct stat st;
@@ -1129,7 +1133,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 
 			/* special case for hardlinks */
 			if (st.st_nlink > 1)
-				regular = is_hardlink(&hl, &st);
+				regular = is_hardlink(hl, &st);
 
 			if (regular)
 				flatsize += st.st_size;
@@ -1162,7 +1166,7 @@ pkg_is_installed(struct pkgdb *db, const char *origin)
 }
 
 bool
-pkg_has_dir(struct pkg *p, const char *path)
+pkg_has_file(struct pkg *p, const char *path)
 {
 	struct pkg_file *f;
 
@@ -1172,7 +1176,7 @@ pkg_has_dir(struct pkg *p, const char *path)
 }
 
 bool
-pkg_has_file(struct pkg *p, const char *path)
+pkg_has_dir(struct pkg *p, const char *path)
 {
 	struct pkg_dir *d;
 

@@ -6,6 +6,7 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
+ * Copyright (c) 2013 Gerald Pfeifer <gerald@pfeifer.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -169,7 +170,7 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 			reponame = repo;
 		} else {
 			/* default repository in multi-repos is 'default' */
-			reponame = "default";
+			reponame = "remote-default";
 		}
 	} else {
 		if (repo != NULL && strcmp(repo, "repo") &&
@@ -250,8 +251,15 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 
 	re = (regex_t *)sqlite3_get_auxdata(ctx, 0);
 	if (re == NULL) {
+		int cflags;
+
+		if (pkgdb_case_sensitive())
+			cflags = REG_EXTENDED | REG_NOSUB;
+		else
+			cflags = REG_EXTENDED | REG_NOSUB | REG_ICASE;
+
 		re = malloc(sizeof(regex_t));
-		if (regcomp(re, regex, REG_EXTENDED | REG_NOSUB) != 0) {
+		if (regcomp(re, regex, cflags) != 0) {
 			sqlite3_result_error(ctx, "Invalid regex\n", -1);
 			free(re);
 			return;
@@ -640,13 +648,6 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 		const char *repo_name = pkg_config_kv_get(repokv,
 		    PKG_CONFIG_KV_KEY);
 
-		/* is it a reserved name? */
-		if ((strcmp(repo_name, "repo") == 0) ||
-		    (strcmp(repo_name, "main") == 0) ||
-		    (strcmp(repo_name, "temp") == 0) ||
-		    (strcmp(repo_name, "local") == 0))
-			continue;
-
 		/* is it already attached? */
 		if (is_attached(db->sqlite, repo_name)) {
 			pkg_emit_error("repository '%s' is already "
@@ -654,7 +655,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			continue;
 		}
 
-		snprintf(remotepath, sizeof(remotepath), "%s/%s.sqlite",
+		snprintf(remotepath, sizeof(remotepath), "%s/repo-%s.sqlite",
 		    dbdir, repo_name);
 
 		if (access(remotepath, R_OK) != 0) {
@@ -663,7 +664,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			return (EPKG_ENODB);
 		}
 
-		ret = sql_exec(db->sqlite, "ATTACH '%s' AS '%s';",
+		ret = sql_exec(db->sqlite, "ATTACH '%s' AS 'remote-%s';",
 		    remotepath, repo_name);
 		if (ret != EPKG_OK) {
 			pkgdb_close(db);
@@ -688,7 +689,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 		}
 
 		/* check if default repository exists */
-		if (!is_attached(db->sqlite, "default")) {
+		if (!is_attached(db->sqlite, "remote-default")) {
 			pkg_emit_error("no default repository defined");
 			pkgdb_close(db);
 			return (EPKG_FATAL);
@@ -700,18 +701,18 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 static int
 file_mode_insecure(const char *path, bool install_as_user)
 {
-	uid_t		euid;
-	gid_t		egid;
+	uid_t		fileowner;
+	gid_t		filegroup;
 	bool		bad_perms = false;
 	bool		wrong_owner = false;
 	struct stat	sb;
 
 	if (install_as_user) {
-		euid = geteuid();
-		egid = getegid();
+		fileowner = geteuid();
+		filegroup = getegid();
 	} else {
-		euid = 0;
-		egid = 0;
+		fileowner = 0;
+		filegroup = 0;
 	}
 
 	if (stat(path, &sb) != 0) {
@@ -723,21 +724,22 @@ file_mode_insecure(const char *path, bool install_as_user)
 			return (EPKG_FATAL);
 	}
 
-	/* if euid == 0, root ownership and no group or other read
-	   access.  if euid != 0, require no other read access and
-	   group read access IFF the group ownership == egid */
+	/* if fileowner == 0, root ownership and no group or other
+	   read access.  if fileowner != 0, require no other read
+	   access and group read access IFF the group ownership ==
+	   filegroup */
 
-	if ( euid == 0 ) {
+	if ( fileowner == 0 ) {
 		if ((sb.st_mode & (S_IWGRP|S_IWOTH)) != 0)
 			bad_perms = true;
-		if (sb.st_uid != euid)
+		if (sb.st_uid != fileowner)
 			wrong_owner = true;
 	} else {
 		if ((sb.st_mode & S_IWOTH) != 0)
 			bad_perms = true;
-		if (sb.st_gid != egid && (sb.st_mode & S_IWGRP) != 0)
+		if (sb.st_gid != filegroup && (sb.st_mode & S_IWGRP) != 0)
 			bad_perms = true;
-		if (sb.st_uid != 0 && sb.st_uid != euid && sb.st_gid != egid)
+		if (sb.st_uid != 0 && sb.st_uid != fileowner && sb.st_gid != filegroup)
 			wrong_owner = true;
 	}
 
@@ -747,7 +749,9 @@ file_mode_insecure(const char *path, bool install_as_user)
 		return (EPKG_INSECURE);
 	}
 	if (wrong_owner) {
-		pkg_emit_error("%s wrong user or group ownership", path);
+		pkg_emit_error("%s wrong user or group ownership"
+			       " (expected %d/%d versus actual %d/%d)",
+			       path, fileowner, filegroup, sb.st_uid, sb.st_gid);
 		return (EPKG_INSECURE);
 	}
 
@@ -755,17 +759,22 @@ file_mode_insecure(const char *path, bool install_as_user)
 }
 
 static int
-database_access(unsigned mode, const char* dbdir, const char *dbname)
+database_access(unsigned mode, const char* dbdir, const char *dbname,
+		bool multirepo)
 {
 	char		 dbpath[MAXPATHLEN + 1];
 	int		 retval;
 	bool		 database_exists;
 	bool		 install_as_user;
 
-	if (dbname != NULL)
-		snprintf(dbpath, sizeof(dbpath), "%s/%s.sqlite", dbdir,
-			 dbname);
-	else
+	if (dbname != NULL) {
+		if (multirepo)
+			snprintf(dbpath, sizeof(dbpath), "%s/repo-%s.sqlite",
+				 dbdir, dbname);
+		else
+			snprintf(dbpath, sizeof(dbpath), "%s/%s.sqlite",
+				 dbdir, dbname);
+	} else
 		strlcpy(dbpath, dbdir, sizeof(dbpath));
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
@@ -853,16 +862,16 @@ pkgdb_access(unsigned mode, unsigned database)
 
 	if ((mode & PKGDB_MODE_CREATE) != 0) 
 		retval = database_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
-					 dbdir, NULL);
+					 dbdir, NULL, false);
 	else
-		retval = database_access(PKGDB_MODE_READ, dbdir, NULL);
+		retval = database_access(PKGDB_MODE_READ, dbdir, NULL, false);
 	if (retval != EPKG_OK)
 		return (retval);
 
 	/* Test local.sqlite, if required */
 
 	if ((database & PKGDB_DB_LOCAL) != 0) {
-		retval = database_access(mode, dbdir, "local");
+		retval = database_access(mode, dbdir, "local", false);
 		if (retval != EPKG_OK)
 			return (retval);
 	}
@@ -871,7 +880,7 @@ pkgdb_access(unsigned mode, unsigned database)
 	   if in multirepos_enabled mode */
 
 	if (!multirepos_enabled && (database & PKGDB_DB_REPO) != 0) {
-		retval = database_access(mode, dbdir, "repo");
+		retval = database_access(mode, dbdir, "repo", false);
 		if (retval != EPKG_OK)
 			return (retval);
 	}
@@ -885,7 +894,7 @@ pkgdb_access(unsigned mode, unsigned database)
 			reponame = pkg_config_kv_get(all_repos,
 					 PKG_CONFIG_KV_KEY);
 
-			retval = database_access(mode, dbdir, reponame);
+			retval = database_access(mode, dbdir, reponame, true);
 			if (retval != EPKG_OK)
 				return (retval);
 		}
@@ -1256,6 +1265,23 @@ pkgdb_it_free(struct pkgdb_it *it)
 	free(it);
 }
 
+/* By default, MATCH_EXACT and MATCH_REGEX are case sensitive. */
+
+static bool _case_sensitive_flag = true;
+
+void
+pkgdb_set_case_sensitivity(bool case_sensitive)
+{
+	_case_sensitive_flag = case_sensitive;
+	return;
+}
+
+bool
+pkgdb_case_sensitive(void)
+{
+	return (_case_sensitive_flag);
+}
+
 static const char *
 pkgdb_get_pattern_query(const char *pattern, match_t match)
 {
@@ -1270,11 +1296,20 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 		comp = "";
 		break;
 	case MATCH_EXACT:
-		if (checkorigin == NULL)
-			comp = " WHERE name = ?1 "
-				"OR name || \"-\" || version = ?1";
-		else
-			comp = " WHERE origin = ?1";
+		if (pkgdb_case_sensitive()) {
+			if (checkorigin == NULL)
+				comp = " WHERE name = ?1 "
+					"OR name || \"-\" || version = ?1";
+			else
+				comp = " WHERE origin = ?1";
+		} else {
+			if (checkorigin == NULL)
+				comp = " WHERE name = ?1 COLLATE NOCASE"
+					"OR name || \"-\" || version = ?1"
+					"COLLATE NOCASE";
+			else
+				comp = " WHERE origin = ?1 COLLATE NOCASE";
+		}
 		break;
 	case MATCH_GLOB:
 		if (checkorigin == NULL)
@@ -1308,7 +1343,10 @@ pkgdb_get_match_how(match_t match)
 		how = NULL;
 		break;
 	case MATCH_EXACT:
-		how = "%s = ?1";
+		if (pkgdb_case_sensitive())
+			how = "%s = ?1";
+		else
+			how = "%s = ?1 COLLATE NOCASE";			
 		break;
 	case MATCH_GLOB:
 		how = "%s GLOB ?1";
@@ -2871,7 +2909,7 @@ cleanup:
 
 struct pkgdb_it *
 pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
-    const char *repo, bool force, bool recursive)
+        const char *repo, bool force, bool recursive, bool pkgversiontest)
 {
 	sqlite3_stmt	*stmt = NULL;
 	struct pkgdb_it	*it;
@@ -2879,8 +2917,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	struct sbuf	*sql = NULL;
 	const char	*how = NULL;
 	const char	*reponame = NULL;
+	bool             pkg_not_found = false;
 
-	if ((it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
+	if (pkgversiontest && 
+	    (it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
 		pkg_emit_newpkgversion();
 		return (it);
 	}
@@ -2979,12 +3019,19 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		while (sqlite3_step(stmt) != SQLITE_DONE);
 
 		/* report if package was not found in the database */
-		if (sqlite3_changes(db->sqlite) == 0)
+		if (sqlite3_changes(db->sqlite) == 0) {
 			pkg_emit_package_not_found(pkgs[i]);
+			pkg_not_found = true;
+		}
 	}
 
 	sqlite3_finalize(stmt);
 	sbuf_clear(sql);
+
+	if (pkg_not_found) {
+		sbuf_delete(sql);
+		return (NULL);
+	}
 
 	/*
 	 * Report and remove packages already installed and at the latest
@@ -3080,7 +3127,8 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 }
 
 struct pkgdb_it *
-pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
+pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
+	bool pkgversiontest)
 {
 	sqlite3_stmt	*stmt = NULL;
 	struct sbuf	*sql = NULL;
@@ -3088,7 +3136,8 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	struct pkgdb_it	*it;
 	int		 ret;
 
-	if ((it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
+	if (pkgversiontest &&
+	    (it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
 		pkg_emit_newpkgversion();
 		return (it);
 	}
@@ -3431,7 +3480,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	/*
 	 * Working on multiple remote repositories
 	 */
-	if (multirepos_enabled && !strcmp(reponame, "default")) {
+	if (multirepos_enabled && !strcmp(reponame, "remote-default")) {
 		/* duplicate the query via UNION for all the attached
 		 * databases */
 
@@ -3941,14 +3990,14 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"FROM pkgjobs ORDER BY weight DESC;";
 
 	const char	 main_sql[] = ""
-		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
-			"flatsize, pkgsize, cksum, repopath) "
+		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, "
+		        "newversion, newflatsize, pkgsize, cksum, repopath) "
 			"SELECT id, origin, name, version, flatsize, "
 			"pkgsize, cksum, path FROM '%s'.packages ";
 
 	const char	deps_sql[] = ""
-		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
-			"flatsize, pkgsize, cksum, repopath) "
+		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, "
+		        "newversion, newflatsize, pkgsize, cksum, repopath) "
 		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
 			"r.flatsize, r.pkgsize, r.cksum, r.path "
 		"FROM '%s'.packages AS r where r.origin IN "

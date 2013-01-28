@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -46,7 +46,7 @@
 struct keyword {
 	/* 64 is more than enough for this */
 	char keyword[64];
-	STAILQ_HEAD(, action) actions;
+	struct action *actions;
 	UT_hash_handle hh;
 };
 
@@ -81,7 +81,7 @@ struct file_attr {
 
 struct action {
 	int (*perform)(struct plist *, char *, struct file_attr *);
-	STAILQ_ENTRY(action) next;
+	struct action *next;
 };
 
 static int setprefix(struct plist *, char *, struct file_attr *);
@@ -146,11 +146,18 @@ sbuf_append(struct sbuf *buf, __unused const char *comment, const char *str, ...
 static int
 setprefix(struct plist *p, char *line, struct file_attr *a)
 {
+	char *pkgprefix;
+
 	/* if no arguments then set default prefix */
 	if (line[0] == '\0')
 		pkg_get(p->pkg, PKG_PREFIX, &p->prefix);
 	else
 		p->prefix = line;
+
+	pkg_get(p->pkg, PKG_PREFIX, &pkgprefix);
+	if (pkgprefix == NULL || *pkgprefix == '\0')
+		pkg_set(p->pkg, PKG_PREFIX, line);
+
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
 	free(a);
@@ -381,7 +388,7 @@ static int
 comment_key(struct plist *p, char *line, struct file_attr *a)
 {
 	char *name, *version;
-	if (strcmp(line, "DEPORIGIN:") == 0) {
+	if (strncmp(line, "DEPORIGIN:", 10) == 0) {
 		line += 10;
 		name = p->pkgdep;
 		version = strrchr(name, '-');
@@ -389,7 +396,7 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 		version++;
 		pkg_adddep(p->pkg, name, line, version, false);
 		p->pkgdep = NULL;
-	} else if (strcmp(line, "ORIGIN:") == 0) {
+	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
 		line += 7;
 		pkg_set(p->pkg, PKG_ORIGIN, line);
 	}
@@ -524,142 +531,51 @@ unexec(struct plist *p, char *line, struct file_attr *a)
 	return (meta_exec(p, line, a, true));
 }
 
+static struct keyact {
+	const char *key;
+	int (*action)(struct plist *, char *, struct file_attr *);
+} keyacts[] = {
+	{ "cwd", setprefix },
+	{ "ignore", ignore_next },
+	{ "comment", comment_key },
+	{ "dirrm", dirrm },
+	{ "dirrmtry", dirrmtry },
+	{ "mode", setmod },
+	{ "owner", setowner },
+	{ "group", setgroup },
+	{ "exec", exec },
+	{ "unexec", unexec },
+	/* old pkg compat */
+	{ "name", name_key },
+	{ "pkgdep", pkgdep },
+	{ NULL, NULL },
+};
+
 static void
 populate_keywords(struct plist *p)
 {
 	struct keyword *k;
 	struct action *a;
+	int i;
 
-	/* @cwd */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "cwd", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = setprefix;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @ignore */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "ignore", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = ignore_next;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @comment */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "comment", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = comment_key;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @dirrm */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "dirrm", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = dirrm;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @dirrmtry */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "dirrmtry", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = dirrmtry;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @mode */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "mode", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = setmod;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @owner */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "owner", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = setowner;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @group */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "group", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = setgroup;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @exec */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "exec", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = exec;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @unexec */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "unexec", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = unexec;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* old pkg compat */
-
-	/* @name */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "name", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = name_key;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
-
-	/* @pkgdep */
-	k = malloc(sizeof(struct keyword));
-	a = malloc(sizeof(struct action));
-	strlcpy(k->keyword, "pkgdep", sizeof(k->keyword));
-	STAILQ_INIT(&k->actions);
-	a->perform = pkgdep;
-	STAILQ_INSERT_TAIL(&k->actions, a, next);
-	HASH_ADD_STR(p->keywords, keyword, k);
+	for (i = 0; keyacts[i].key != NULL; i++) {
+		k = calloc(1, sizeof(struct keyword));
+		a = malloc(sizeof(struct action));
+		strlcpy(k->keyword, keyacts[i].key, sizeof(k->keyword));
+		a->perform = keyacts[i].action;
+		LL_APPEND(k->actions, a);
+		HASH_ADD_STR(p->keywords, keyword, k);
+	}
 }
 
 static void
 keyword_free(struct keyword *k)
 {
-	struct action *a;
-
-	LIST_FREE(&k->actions, a, free);
+	LL_FREE(k->actions, action, free);
 
 	free(k);
 }
 
-static void
-plist_free(struct plist *p)
-{
-	struct keyword *k, *tmp;
-	HASH_ITER(hh, p->keywords, k, tmp) {
-		HASH_DEL(p->keywords, k);
-		keyword_free(k);
-	}
-}
 
 static int
 parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
@@ -967,7 +883,7 @@ parse_keywords(struct plist *plist, char *keyword, char *line)
 
 	HASH_FIND_STR(plist->keywords, keyword, k);
 	if (k != NULL) {
-		STAILQ_FOREACH(a, &k->actions, next) {
+		LL_FOREACH(k->actions, a) {
 			ret = a->perform(plist, line, attr);
 			if (ret != EPKG_OK)
 				return (ret);
@@ -999,7 +915,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	char *plist_buf, *walk, *buf, *token;
 	int ret = EPKG_OK;
 	off_t sz = 0;
-	struct hardlinks hardlinks = {NULL, 0, 0};
 	struct plist pplist;
 
 	assert(pkg != NULL);
@@ -1021,7 +936,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pplist.pkg = pkg;
 	pplist.slash = "";
 	pplist.ignore_next = false;
-	pplist.hardlinks = &hardlinks;
+	pplist.hardlinks = NULL;
 	pplist.flatsize = 0;
 	pplist.keywords = NULL;
 
@@ -1107,10 +1022,10 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	flush_script_buffer(pplist.post_upgrade_buf, pkg,
 	    PKG_SCRIPT_POST_UPGRADE);
 
-	free(hardlinks.inodes);
+	HASH_FREE(pplist.hardlinks, hardlinks, free);
 
 	free(plist_buf);
-	plist_free(&pplist);
+	HASH_FREE(pplist.keywords, keyword, keyword_free);
 
 	return (ret);
 }

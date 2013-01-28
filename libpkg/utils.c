@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -66,8 +66,9 @@ sbuf_set(struct sbuf **buf, const char *str)
 char *
 sbuf_get(struct sbuf *buf)
 {
+	if (buf == NULL)
+		return (__DECONST(char *, ""));
 
-	assert(buf != NULL);
 	if (sbuf_done(buf) == 0)
 		sbuf_finish(buf);
 
@@ -389,21 +390,18 @@ is_conf_file(const char *path, char *newpath, size_t len)
 	return (0);
 }
 
-bool is_hardlink(struct hardlinks *hl, struct stat *st)
+bool
+is_hardlink(struct hardlinks *hl, struct stat *st)
 {
-	size_t i;
+	struct hardlinks *h;
 
-	for (i = 0; i < hl->len; i++) {
-		if (hl->inodes[i] == st->st_ino)
-			return (false);
-	}
-	if (hl->cap <= hl->len) {
-		hl->cap |= 1;
-		hl->cap *= 2;
-		hl->inodes = reallocf(hl->inodes,
-				hl->cap * sizeof(ino_t));
-	}
-	hl->inodes[hl->len++] = st->st_ino;
+	HASH_FIND_INO(hl, &st->st_ino, h);
+	if (h != NULL)
+		return false;
+
+	h = malloc(sizeof(struct hardlinks));
+	h->inode = st->st_ino;
+	HASH_ADD_INO(hl, inode, h);
 
 	return (true);
 }

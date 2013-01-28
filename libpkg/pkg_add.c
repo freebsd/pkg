@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -40,23 +40,6 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
-
-static int
-dep_installed(struct pkg_dep *dep, struct pkgdb *db) {
-	struct pkg	*p = NULL;
-	struct pkgdb_it	*it;
-	int		 ret = EPKG_FATAL;
-
-	it = pkgdb_query(db, pkg_dep_origin(dep), MATCH_EXACT);
-
-	if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK)
-		ret = EPKG_OK;
-
-	pkgdb_it_free(it);
-	pkg_free(p);
-
-	return (ret);
-}
 
 static int
 do_extract(struct archive *a, struct archive_entry *ae)
@@ -117,6 +100,58 @@ do_extract(struct archive *a, struct archive_entry *ae)
 	return (retcode);
 }
 
+static int
+do_extract_mtree(char *mtree, const char *prefix)
+{
+	struct archive *a = NULL;
+	struct archive_entry *ae;
+	char path[MAXPATHLEN];
+	const char *fpath;
+	int retcode = EPKG_OK;
+	int ret;
+
+	if (mtree == NULL || *mtree == '\0')
+		return EPKG_OK;
+
+	a = archive_read_new();
+	archive_read_support_compression_none(a);
+	archive_read_support_format_mtree(a);
+
+	if (archive_read_open_memory(a, mtree, strlen(mtree)) != ARCHIVE_OK) {
+		pkg_emit_error("Fail to extract the mtree: %s",
+		    archive_error_string(a));
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	while ((ret = archive_read_next_header(a, &ae)) != ARCHIVE_EOF) {
+		if (ret != ARCHIVE_OK) {
+			pkg_emit_error("Skipping unsupported mtree line: %s",
+			    archive_error_string(a));
+			continue;
+		}
+		fpath = archive_entry_pathname(ae);
+
+		if (*fpath != '/') {
+			snprintf(path, sizeof(path), "%s/%s", prefix, fpath);
+			archive_entry_set_pathname(ae, path);
+		}
+
+		if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != ARCHIVE_OK) {
+			pkg_emit_error("Fail to extract some of the mtree entries: %s",
+			    archive_error_string(a));
+			retcode = EPKG_FATAL;
+			break;
+		}
+	}
+
+cleanup:
+	if (a != NULL)
+		archive_read_finish(a);
+
+	return (retcode);
+}
+
 int
 pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 {
@@ -128,12 +163,13 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	struct pkg	*pkg = NULL;
 	struct pkg_dep	*dep = NULL;
 	struct pkg      *pkg_inst = NULL;
-	struct pkgdb_it *it = NULL;
 	bool		 extract = true;
 	bool		 handle_rc = false;
 	char		 dpath[MAXPATHLEN + 1];
 	const char	*basedir;
 	const char	*ext;
+	char		*mtree;
+	char		*prefix;
 	int		 retcode = EPKG_OK;
 	int		 ret;
 
@@ -183,12 +219,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * Check if the package is already installed
 	 */
 
-	ret = EPKG_FATAL; /* assume package is not installed */
-	if ((it = pkgdb_query(db, origin, MATCH_EXACT)) != NULL) {
-		ret = pkgdb_it_next(it, &pkg_inst, PKG_LOAD_BASIC);
-		pkgdb_it_free(it);
-	}
-
+	ret = pkg_is_installed(db, origin);
 	if (ret == EPKG_OK) {
 		pkg_emit_already_installed(pkg_inst);
 		pkg_free(pkg_inst);
@@ -211,7 +242,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (dep_installed(dep, db) != EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
 			const char *dep_name = pkg_dep_name(dep);
 			const char *dep_ver = pkg_dep_version(dep);
 
@@ -243,10 +274,14 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	if (retcode != EPKG_OK)
 		goto cleanup;
 
+	pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
+	if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
+		goto cleanup_reg;
+
 	/*
 	 * Execute pre-install scripts
 	 */
-	if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == 0)
+	if ((flags & (PKG_ADD_NOSCRIPT | PKG_ADD_USE_UPGRADE_SCRIPTS)) == 0)
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	/* add the user and group if necessary */
@@ -265,10 +300,12 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	/*
 	 * Execute post install scripts
 	 */
-	if (flags & PKG_ADD_USE_UPGRADE_SCRIPTS)
-		pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
-	else
-		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
+		if (flags & PKG_ADD_USE_UPGRADE_SCRIPTS)
+			pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
+		else
+			pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
+	}
 
 	/*
 	 * start the different related services if the users do want that

@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -36,10 +37,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef __DragonFly__
-#define STAILQ_FOREACH_SAFE STAILQ_FOREACH_MUTABLE
-#endif
-
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
@@ -62,7 +59,6 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	(*j)->type = t;
 	(*j)->solved = false;
 	(*j)->flags = PKG_FLAG_NONE;
-	STAILQ_INIT(&(*j)->patterns);
 
 	return (EPKG_OK);
 }
@@ -85,8 +81,6 @@ pkg_jobs_set_repository(struct pkg_jobs *j, const char *name)
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
-	struct job_pattern *jp;
-
 	if (j == NULL)
 		return;
 
@@ -94,7 +88,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 		pkgdb_release_lock(j->db);
 
 	HASH_FREE(j->jobs, pkg, pkg_free);
-	LIST_FREE(&j->patterns, jp, free);
+	LL_FREE(j->patterns, job_pattern, free);
 
 	free(j);
 }
@@ -114,7 +108,7 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	jp->pattern = argv;
 	jp->nb = argc;
 	jp->match = match;
-	STAILQ_INSERT_TAIL(&j->patterns, jp, next);
+	LL_APPEND(j->patterns, jp);
 
 	return (EPKG_OK);
 }
@@ -131,7 +125,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
 		recursive = true;
 
-	STAILQ_FOREACH(jp, &j->patterns, next) {
+	LL_FOREACH(j->patterns, jp) {
 		if ((it = pkgdb_query_delete(j->db, jp->match, jp->nb,
 		    jp->pattern, recursive)) == NULL)
 			return (EPKG_FATAL);
@@ -176,14 +170,23 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *origin;
 	bool all = false;
+	bool pkgversiontest = false;
+	unsigned flags = PKG_LOAD_BASIC;
 
 	if ((j->flags & PKG_FLAG_FORCE) != 0)
 		all = true;
 
-	if ((it = pkgdb_query_upgrades(j->db, j->reponame, all)) == NULL)
+	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != 0)
+		pkgversiontest = true;
+
+	if ((j->flags & PKG_FLAG_WITH_DEPS) != 0)
+		flags |= PKG_LOAD_DEPS;
+
+	if ((it = pkgdb_query_upgrades(j->db, j->reponame, all,
+	        pkgversiontest)) == NULL)
 		return (EPKG_FATAL);
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
 		pkg = NULL;
@@ -203,17 +206,21 @@ jobs_solve_install(struct pkg_jobs *j)
 	char *origin;
 	bool force = false;
 	bool recursive = false;
+	bool pkgversiontest = false;
 
-
-	if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
+	if ((j->flags & PKG_FLAG_FORCE) != 0)
 		force = true;
 
-	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
+	if ((j->flags & PKG_FLAG_RECURSIVE) != 0)
 		recursive = true;
 
-	STAILQ_FOREACH(jp, &j->patterns, next) {
+	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != 0)
+		pkgversiontest = true;
+
+	LL_FOREACH(j->patterns, jp) {
 		if ((it = pkgdb_query_installs(j->db, jp->match, jp->nb,
-		    jp->pattern, j->reponame, force, recursive)) == NULL)
+		        jp->pattern, j->reponame, force, recursive,
+			pkgversiontest)) == NULL)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
@@ -239,10 +246,13 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	char *origin;
 	unsigned flag = PKG_LOAD_BASIC;
 
+	if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) != 0)
+		return (jobs_solve_upgrade(j));
+
 	if ((j->flags & PKG_FLAG_WITH_DEPS) != 0)
 		flag |= PKG_LOAD_DEPS;
 
-	STAILQ_FOREACH(jp, &j->patterns, next) {
+	LL_FOREACH(j->patterns, jp) {
 		if ((it = pkgdb_query_fetch(j->db, jp->match, jp->nb,
 		    jp->pattern, j->reponame, flag)) == NULL)
 			return (EPKG_FATAL);
@@ -355,7 +365,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	struct pkg *newpkg = NULL;
 	struct pkg *pkg_temp = NULL;
 	struct pkgdb_it *it = NULL;
-	STAILQ_HEAD(,pkg) pkg_queue;
+	struct pkg *pkg_queue = NULL;
 	char path[MAXPATHLEN + 1];
 	const char *cachedir = NULL;
 	int flags = 0;
@@ -363,8 +373,6 @@ pkg_jobs_install(struct pkg_jobs *j)
 	int lflags = PKG_LOAD_BASIC | PKG_LOAD_FILES | PKG_LOAD_SCRIPTS |
 	    PKG_LOAD_DIRS;
 	bool handle_rc = false;
-
-	STAILQ_INIT(&pkg_queue);
 
 	/* Fetch */
 	if (pkg_jobs_fetch(j) != EPKG_OK)
@@ -401,9 +409,10 @@ pkg_jobs_install(struct pkg_jobs *j)
 						goto cleanup; /* Bail out */
 					}
 
-					STAILQ_INSERT_TAIL(&pkg_queue, pkg, next);
-					pkg_script_run(pkg,
-					    PKG_SCRIPT_PRE_DEINSTALL);
+					LL_APPEND(pkg_queue, pkg);
+					if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
+						pkg_script_run(pkg,
+						    PKG_SCRIPT_PRE_DEINSTALL);
 					pkg_get(pkg, PKG_ORIGIN, &origin);
 					/*
 					 * stop the different related services
@@ -435,8 +444,10 @@ pkg_jobs_install(struct pkg_jobs *j)
 					goto cleanup; /* Bail out */
 				}
 
-				STAILQ_INSERT_TAIL(&pkg_queue, pkg, next);
-				pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL);
+				LL_APPEND(pkg_queue, pkg);
+				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
+					pkg_script_run(pkg,
+					    PKG_SCRIPT_PRE_DEINSTALL);
 				pkg_get(pkg, PKG_ORIGIN, &origin);
 				/*
 				 * stop the different related services if the
@@ -458,15 +469,17 @@ pkg_jobs_install(struct pkg_jobs *j)
 		} else {
 			pkg_emit_install_begin(newpkg);
 		}
-		STAILQ_FOREACH(pkg, &pkg_queue, next)
+		LL_FOREACH(pkg_queue, pkg)
 			pkg_jobs_keep_files_to_del(pkg, newpkg);
 
-		STAILQ_FOREACH_SAFE(pkg, &pkg_queue, next, pkg_temp) {
+		LL_FOREACH_SAFE(pkg_queue, pkg, pkg_temp) {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
 			if (strcmp(pkgorigin, origin) == 0) {
-				STAILQ_REMOVE(&pkg_queue, pkg, pkg, next);
+				LL_DELETE(pkg_queue, pkg);
 				pkg_delete_files(pkg, 1);
-				pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL);
+				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
+					pkg_script_run(pkg,
+					    PKG_SCRIPT_POST_DEINSTALL);
 				pkg_delete_dirs(j->db, pkg, 0);
 				pkg_free(pkg);
 				break;
@@ -475,6 +488,8 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 		if ((j->flags & PKG_FLAG_FORCE) != 0)
 			flags |= PKG_ADD_FORCE;
+		if ((j->flags & PKG_FLAG_NOSCRIPT) != 0)
+			flags |= PKG_ADD_NOSCRIPT;
 		flags |= PKG_ADD_UPGRADE;
 		if (automatic)
 			flags |= PKG_ADD_AUTOMATIC;
@@ -489,7 +504,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		else
 			pkg_emit_install_finished(newpkg);
 
-		if (STAILQ_EMPTY(&pkg_queue)) {
+		if (pkg_queue == NULL) {
 			pkgdb_transaction_commit(j->db->sqlite, "upgrade");
 			pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 		}
@@ -516,6 +531,9 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 
 	if ((j->flags & PKG_FLAG_FORCE) != 0)
 		flags = PKG_DELETE_FORCE;
+
+	if ((j->flags & PKG_FLAG_NOSCRIPT) != 0)
+		flags |= PKG_DELETE_NOSCRIPT;
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		retcode = pkg_delete(p, j->db, flags);

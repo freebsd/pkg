@@ -29,7 +29,6 @@
 #define _PKG_PRIVATE_H
 
 #include <sys/param.h>
-#include <sys/queue.h>
 #include <sys/sbuf.h>
 #include <sys/types.h>
 
@@ -39,6 +38,7 @@
 #include <openssl/md5.h>
 #include <stdbool.h>
 #include <uthash.h>
+#include <utlist.h>
 
 #include <yaml.h>
 #include "private/utils.h"
@@ -60,6 +60,16 @@
 	data = NULL;                               \
 } while (0)
 
+#define LL_FREE(head, type, free_func) do {   \
+	struct type *l1, *l2;                 \
+	LL_FOREACH_SAFE(head, l1, l2) {       \
+		LL_DELETE(head, l1);          \
+		if (free_func != NULL)        \
+			free_func(l1);        \
+	}                                     \
+	head = NULL;                          \
+} while (0)
+
 #define HASH_NEXT(hash, data) do {            \
 		if (data == NULL)             \
 			data = hash;          \
@@ -71,15 +81,8 @@
 			return (EPKG_OK);     \
 	} while (0)
 
-#define LIST_FREE(head, data, free_func) do { \
-	while (!STAILQ_EMPTY(head)) { \
-		data = STAILQ_FIRST(head); \
-		STAILQ_REMOVE_HEAD(head, next); \
-		free_func(data); \
-	}  \
-	} while (0)
-
 extern pthread_mutex_t mirror_mtx;
+extern int eventpipe;
 
 struct pkg {
 	struct sbuf	*fields[PKG_NUM_FIELDS];
@@ -105,7 +108,7 @@ struct pkg {
 	lic_t		 licenselogic;
 	pkg_t		 type;
 	UT_hash_handle	 hh;
-	STAILQ_ENTRY(pkg) next;
+	struct pkg	*next;
 };
 
 struct pkg_dep {
@@ -160,24 +163,24 @@ struct pkg_jobs {
 	pkg_flags	 flags;
 	bool		 solved;
 	const char *	 reponame;
-	STAILQ_HEAD(,job_pattern) patterns;
+	struct job_pattern *patterns;
 };
 
 struct job_pattern {
 	char		**pattern;
 	int		nb;
 	match_t		match;
-	STAILQ_ENTRY(job_pattern) next;
+	struct job_pattern *next;
 };
 
-struct pkg_jobs_node {
+/*struct pkg_jobs_node {
 	struct pkg	*pkg;
 	size_t		 nrefs;
-	struct pkg_jobs_node	**parents; /* rdeps */
+	struct pkg_jobs_node	**parents;
 	size_t		 parents_len;
 	size_t		 parents_cap;
 	LIST_ENTRY(pkg_jobs_node) entries;
-};
+}; */
 
 struct pkg_user {
 	char		 name[MAXLOGNAME+1];
@@ -254,6 +257,7 @@ typedef enum {
 int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_FORCE (1<<0)
 #define PKG_DELETE_UPGRADE (1<<1)
+#define PKG_DELETE_NOSCRIPT (1<<2)
 
 int pkg_fetch_file_to_fd(const char *url, int dest, time_t t);
 int pkg_repo_fetch(struct pkg *pkg);

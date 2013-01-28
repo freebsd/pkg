@@ -50,6 +50,7 @@ pkgcli_update(bool force) {
 	bool multi_repos = false;
 	struct pkg_config_kv *repokv = NULL;
 	int retcode = EPKG_FATAL;
+	char name[MAXPATHLEN];
 
 	if (!quiet)
 		printf("Updating repository catalogue\n");
@@ -82,7 +83,8 @@ pkgcli_update(bool force) {
 			repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
 			packagesite = pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE);
 
-			retcode = pkg_update(repo_name, packagesite, force);
+			snprintf(name, MAXPATHLEN, "repo-%s.sqlite", repo_name);
+			retcode = pkg_update(name, packagesite, force);
 			if (retcode == EPKG_UPTODATE) {
 				if (!quiet)
 					printf("%s repository catalogue is "

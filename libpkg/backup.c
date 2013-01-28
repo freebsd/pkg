@@ -43,7 +43,7 @@
    Default page size is 1024 bytes on Unix */
 #define NPAGES	512
 
-static int 
+static int
 ps_cb(void *ps, int ncols, char **coltext, __unused char **colnames)
 {
 	/* We should have exactly one row and one column of output */

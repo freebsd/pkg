@@ -40,8 +40,8 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "usage: pkg delete [-fgnqRxy] <pkg-name> ...\n");
-	fprintf(stderr, "       pkg delete [-nqy] -a\n\n");
+	fprintf(stderr, "usage: pkg delete [-DfginqRxy] <pkg-name> ...\n");
+	fprintf(stderr, "       pkg delete [-Dnqy] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
 
@@ -62,10 +62,13 @@ exec_delete(int argc, char **argv)
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
-	while ((ch = getopt(argc, argv, "afgnqRxy")) != -1) {
+	while ((ch = getopt(argc, argv, "aDfginqRxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'D':
+			f |= PKG_FLAG_NOSCRIPT;
 			break;
 		case 'f':
 			f |= PKG_FLAG_FORCE;
@@ -73,6 +76,9 @@ exec_delete(int argc, char **argv)
 			break;
 		case 'g':
 			match = MATCH_GLOB;
+			break;
+		case 'i':
+			pkgdb_set_case_sensitivity(false);
 			break;
 		case 'n':
 			f |= PKG_FLAG_DRY_RUN;
