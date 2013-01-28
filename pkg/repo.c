@@ -114,9 +114,9 @@ exec_repo(int argc, char **argv)
 
 	if (!quiet) {
 		printf("Generating repo.sqlite in %s:  ", argv[0]);
-		ret = pkg_create_repo(argv[0], force, progress, &pos);
+		ret = pkg_create_repo(argv[0], force, true, progress, &pos);
 	} else
-		ret = pkg_create_repo(argv[0], force, NULL, NULL);
+		ret = pkg_create_repo(argv[0], force, true, NULL, NULL);
 
 	if (ret != EPKG_OK) {
 		printf("cannot create repository catalogue\n");
