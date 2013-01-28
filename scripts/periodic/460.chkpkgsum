@@ -4,22 +4,22 @@
 #
 
 if [ -r /etc/defaults/periodic.conf ]; then
-    . /etc/defaults/periodic.conf
-    source_periodic_confs
+	. /etc/defaults/periodic.conf
+	source_periodic_confs
 fi
 
 . /etc/periodic/security/security.functions
 
 case "${daily_status_security_chkpkgsum_enable}" in
-    [Yy][Ee][Ss])
+	[Yy][Ee][Ss])
 	pkgcmd=/usr/local/sbin/pkg
 
-	echo ''
+	echo
 	echo 'Checking for packages with mismatched checksums:'
 
 	if ${pkgcmd} -N >/dev/null 2>&1 ; then
-	    echo 'chkpkgsum is enabled but pkg is not used'
-	    rc=2
+		echo 'chkpkgsum is enabled but pkg is not used'
+		rc=2
 	else
 		rc=$(${pkgcmd} check -sa 2>&1 |
 		sed -e 's/ checksum mismatch for//' |
@@ -28,7 +28,7 @@ case "${daily_status_security_chkpkgsum_enable}" in
 		[ $rc -gt 1 ] && rc=1
 	fi
 	;;
-    *)
+	*)
 	rc=0
 	;;
 esac
