@@ -10,7 +10,7 @@ fi
 
 . /etc/periodic/security/security.functions
 
-case "${daily_status_security_chkpkgsum_enable}" in
+case "${daily_status_security_pkg_checksum_enable}" in
 	[Yy][Ee][Ss])
 	pkgcmd=/usr/local/sbin/pkg
 
@@ -18,7 +18,7 @@ case "${daily_status_security_chkpkgsum_enable}" in
 	echo 'Checking for packages with mismatched checksums:'
 
 	if ${pkgcmd} -N >/dev/null 2>&1 ; then
-		echo 'chkpkgsum is enabled but pkg is not used'
+		echo 'pkg-checksum is enabled but pkg is not used'
 		rc=2
 	else
 		rc=$(${pkgcmd} check -sa 2>&1 |
