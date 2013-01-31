@@ -230,6 +230,7 @@ main(int argc, char **argv)
 	int ret = EX_OK;
 	const char *buf = NULL;
 	bool b, plugins_enabled = false;
+	bool plugin_found = false;
 	bool show_commands = false;
 	bool activation_test = false;
 	struct pkg_config_kv *kv = NULL;
@@ -482,23 +483,24 @@ main(int argc, char **argv)
 
 	if (command == NULL) {
 		/* Check if a plugin provides the requested command */
+		ret = EPKG_FATAL;
 		if (plugins_enabled) {
 			STAILQ_FOREACH(c, &plugins, next) {
-				ret = EPKG_FATAL;
 				if (strcmp(c->name, argv[0]) == 0) {
+					plugin_found = true;
 					ret = c->exec(argc, argv);
 					break;
 				}
 			}
 		}
 		
-		if (ret != EPKG_OK)
+		if (!plugin_found)
 			usage(conffile);
 		
 		pkg_plugins_shutdown();
 		pkg_shutdown();
 
-		return (ret); /* Not reached but makes scanbuild happy */
+		return (ret);
 	}
 
 	if (ambiguous <= 1) {
