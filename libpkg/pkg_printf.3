@@ -167,6 +167,7 @@ Zero or more of the following flags:
 .It Cm ?
 The value should be converted to the
 .Dq first alternate form .
+.Pp
 For integer valued conversions
 .Cm ( I , s
 and
@@ -177,6 +178,7 @@ form as a floating point value scaled to the range 0 \- 1000
 followed by the SI powers-of-10 scale factor.
 See
 .Sx SCALE FACTORS .
+.Pp
 For array valued conversions
 .Cm ( B , C , D , F , G , L , O , U , d ,
 and
@@ -186,12 +188,14 @@ generate
 if there are no items in the array,
 .Dq 1
 otherwise.
+.Pp
 For formats returning file modes
 .Cm ( Dp
 or
 .Cm Fp )
 print the mode in the style of
 .Xr strmode 3 .
+.Pp
 For boolean valued formats
 .Cm ( Dk , \^Dt , Fk , a
 and
@@ -200,9 +204,25 @@ generate either
 .Dq yes
 or
 .Dq no .
+.Pp
+For the licence logic format
+.Cm (l)
+generate
+.Dq \^
+(empty),
+.Dq &
+or
+.Dq |
+for types
+.Sq SINGLE ,
+.Sq AND
+and
+.Sq OR
+respectively.
 .It Cm #
 The value should be converted to the
 .Dq second alternate form .
+.Pp
 For the integer valued conversions
 .Cm ( I , s , t  )
 this is a
@@ -211,16 +231,19 @@ form as a floating point value scaled to the range 0 \- 1024
 followed by the IEE/IEC and SI powers-of-2 scale factor.
 See
 .Sx SCALE FACTORS .
+.Pp
 For array valued conversions
 .Cm ( B , C , D , F , G , L , O , U , d ,
 and
 .Cm r )
 generate the number of items in the array.
+.Pp
 For formats returning file modes
 .Cm ( Dp
 or
 .Cm Fp )
 print the mode as an octal integer with a leading 0.
+.Pp
 For boolean valued formats
 .Cm ( Dk , \^Dt , Fk , a
 and
@@ -229,14 +252,24 @@ generate either
 .Dq true
 or
 .Dq false .
+.Pp
+For the licence logic format
+.Cm (l)
+generate
+.Dq == ,
+.Dq &&
+or
+.Dq ||
+for types
+.Sq SINGLE ,
+.Sq AND
+and
+.Sq OR
+respectively.
 .It Cm 0 (zero)
 Zero padding.
 For all integer valued conversions and humanized numbers the converted
 value is padded on the left with zeros rather than blanks.
-Applies to
-.Cm ( I , s ,
-and
-.Cm t )
 .It Cm \-
 A negative field width flag;
 the converted value is to be left adjusted on the field boundary.
@@ -254,8 +287,8 @@ produced by a signed conversion
 or
 .Cm t ) .
 .It Cm +
-A sign must always be placed before a
-number produced by a signed conversion.
+A sign must always be placed before an integer or humanized
+number produced by a numerical conversion.
 A
 .Cm +
 overrides a space if both are used.
@@ -278,7 +311,7 @@ field width.
 .It
 One or two characters that specifies the type of conversion to be applied.
 .It
-A
+An optional
 .Dq row format
 for array valued conversions
 .Cm ( B , C , D , F , G , L , O , U , d ,
@@ -295,6 +328,8 @@ The first or only format string is repeatedly processed for each of the
 array items in turn.
 The optional second format string is processed as a separator between
 each of the array items.
+If a row format is not given, each of the array valued types will
+generate output according to a default format.
 Which conversion characters are permissible in the row format is
 context dependent.
 See the 
@@ -334,165 +369,264 @@ The IEE/IEC (and now also SI) power of two suffixes are:
 .El
 .Pp
 .Ss FORMAT CODES
+Format codes will format the output classified as shown in square brackets.
+With the sole exception of
+.Cm I
+all format codes can be used outside of a
+.Dq row format.
+When used in this fashion they will consume one argument of the indicated
+type from the function's argument list.
+The array valued format codes
+.Cm ( B , C , D , F , G , L , O , U , d ,
+and
+.Cm r )
+will use a default
+.Dq row format
+if one is not given explicitly.
+Within a
+.Dq row format
+string, you may use any of the single-character format codes, but
+only the two-character format codes which correspond to the parent
+item and have the same first character.
+Only one argument, a
+.Vt struct pkg *
+pointer is consumed from the argument list.
+Thus this is a legal
+.Fa format
+string:
+.Bd -literal -offset indent
+"%B%{%n-%v:%Bn%|\en%}"
+.Ed
+.Pp
+which serves to print out a list of the shared libraries required by
+the programs within the package, each prefixed by the package name and
+version.
 .Pp
 The conversion specifiers and their meanings are:
-.Bl -tag -width ".Cm Bn"
-.It Cm B
+.Bl -tag -width ".Cm %Bn"
+.It Cm \^%B
 Shared libraries [array]
 .Vt struct pkg *
-.It Cm Bn
+.Pp
+Default row format:
+.Cm "%B%{%Bn\en%|%}"
+.It Cm %Bn
 Shared library name [string]
 .Vt struct pkg_shlib *
-.It Cm C
+.It Cm %C
 Categories [array]
 .Vt struct pkg *
-.It Cm Cn
+.Pp
+Default row format:
+.Cm "%C%{%Cn%|, %}"
+.It Cm %Cn
 Category name [string]
 .Vt struct pkg_category *
-.It Cm D
+.It Cm \^%D
 Directories [array]
 .Vt struct pkg *
-.It Cm Dg
+.Pp
+Default row format:
+.Cm "%D%{%D\en%|%}"
+.It Cm %Dg
 Directory ownership: group name [string]
 .Vt struct pkg_dir *
-.It Cm Dk
+.It Cm %Dk
 Directory keep flag [boolean]
 .Vt struct pkg_dir *
-.It Cm Dn
+.It Cm %Dn
 Directory path name [string]
 .Vt struct pkg_dir *
-.It Cm Dp
+.It Cm %Dp
 Directory permissions [mode]
 .Vt struct pkg_dir *
-.It Cm \^Dt
+.It Cm %Dt
 Directory try flag [boolean]
 .Vt struct pkg_dir *
-.It Cm Du
+.It Cm %Du
 Directory ownership: user name [string]
 .Vt struct pkg_dir *
-.It Cm F
+.It Cm %F
 Files [array]
 .Vt struct pkg *
-.It Cm Fg
+.Pp
+Default row format:
+.Cm "%F%{%Fn\en%|%}"
+.It Cm %Fg
 File ownership: group name [string]
 .Vt struct pkg_file *
-.It Cm Fk
+.It Cm %Fk
 File keep flag [boolean]
 .Vt struct pkg_file *
-.It Cm \^Fn
+.It Cm %\^Fn
 File path name [string]
 .Vt struct pkg_file *
-.It Cm Fp
+.It Cm %Fp
 File permissions [mode]
 .Vt struct pkg_file *
-.It Cm Fs
+.It Cm %Fs
 File SHA256 checksum [string]
 .Vt struct pkg_file *
-.It Cm Fu
+.It Cm %Fu
 File ownership: user name [string]
 .Vt struct pkg_file *
-.It Cm G
+.It Cm %G
 Groups [array]
 .Vt struct pkg *
-.It Cm Gg
+.Pp
+Default row format:
+.Cm "%G%{%Gn\en%|%}"
+.It Cm %Gg
 Group GID-string [string]
 .Vt struct pkg_group *
-.It Cm Gn
+.It Cm %Gn
 Group name [string]
 .Vt struct pkg_group *
-.It Cm I
-Row counter [integer]
-.It Cm L
+.It Cm \^%I
+Row counter [integer].
+.Pp
+This format code may only be used as part of a
+.Dq row format.
+.It Cm %L
 Licenses [array]
 .Vt struct pkg *
-.It Cm Ln
+.Pp
+Default row format:
+.Cm "%L%{%Ln%| %l %}"
+.It Cm %Ln
 Licence name [string]
 .Vt struct pkg_license *
-.It Cm M
+.It Cm %M
 Package message [string]
 .Vt struct pkg *
-.It Cm O
+.It Cm \^%O
 Options [array]
 .Vt struct pkg *
-.It Cm On
+.Pp
+Default row format:
+.Cm "%O%{%On %Ov\en%|%}"
+.It Cm %On
 Option name [string]
 .Vt struct pkg_option *
-.It Cm Ov
+.It Cm %Ov
 Option value [string]
 .Vt struct pkg_option *
-.It Cm U
+.It Cm \^%U
 Users [array]
 .Vt struct pkg *
-.It Cm Un
+.Pp
+Default row format:
+.Cm "%U%{%Un\en%|%}"
+.It Cm %Un
 User name [string]
 .Vt struct pkg_user *
-.It Cm Uu
+.It Cm %Uu
 User UID-str [string]
 .Vt struct pkg_user *
-.It Cm a
+.It Cm %a
 Autoremove flag [boolean]
 .Vt struct pkg *
-.It Cm c
+.It Cm %c
 Comment [string]
 .Vt struct pkg *
-.It Cm d
+.It Cm %d
 Dependencies [array]
 .Vt struct pkg *
-.It Cm dn
+.Pp
+Default row format:
+.Cm "%d%{%dn-%dv\en%|%}"
+.It Cm %dn
 Dependency name [string]
 .Vt struct pkg_dep *
-.It Cm do
+.It Cm %do
 Dependency origin [string]
 .Vt struct pkg_dep *
-.It Cm dv
+.It Cm %dv
 Dependency version [string]
 .Vt struct pkg_dep *
-.It Cm i
+.It Cm %i
 Additional information [string]
 .Vt struct pkg *
-.It Cm k
+.It Cm %k
 Locking status [boolean]
 .Vt struct pkg *
-.It Cm l
-License logic [licence-logic type]
+.It Cm %l
+License logic [licence-logic]
 .Vt struct pkg *
-.It Cm m
+.Pp
+Generates
+.Sq single ,
+.Sq and
+or
+.Sq or
+unless combined with one of the alternate form flags.
+.Cm "%?l"
+(first alternate form) generates
+.Sq \^ ,
+.Sq &
+or
+.Sq |
+and
+.Cm "%#l"
+(second alternate form) generates
+.Sq == ,
+.Sq &&
+or
+.Sq ||
+respectively.
+.It Cm %m
 Maintainer [string]
 .Vt struct pkg *
-.It Cm n
+.It Cm %n
 Package name [string]
 .Vt struct pkg *
-.It Cm o
+.It Cm %o
 Origin [string]
 .Vt struct pkg *
-.It Cm p
+.It Cm %p
 Prefix [string]
 .Vt struct pkg *
-.It Cm r
+.It Cm %r
 Requirements [array]
 .Vt struct pkg *
-.It Cm rn
+.Pp
+Default row format:
+.Cm "%r%{%rn-%rv\en%|%}"
+.It Cm %rn
 Requirement name [string]
 .Vt struct pkg_dep *
-.It Cm ro
+.It Cm %ro
 Requirement origin [string]
 .Vt struct pkg_dep *
-.It Cm rv
+.It Cm %rv
 Requirement version [string]
 .Vt struct pkg_dep *
-.It Cm s
+.It Cm %s
 Package flat size [integer]
 .Vt struct pkg *
-.It Cm t
+.It Cm %t
 Installation timestamp [date-time]
 .Vt struct pkg *
-.It Cm v
+.Pp
+When used outside of a
+.Dq row format
+string may be followed by an optional
+.Xr strftime 3
+format, enclosed in
+.Cm %{
+and
+.Cm %} ,
+which will be used to format the timestamp.
+Otherwise the timestamp is printed as an integer value of the
+number of seconds since the Epoch (00:00:00 UTC, 1 January 1970; see
+.Xr time 3).  
+.It Cm %v
 Package version [string]
 .Vt struct pkg *
-.It Cm w
+.It Cm %w
 Home page URL [string]
 .Vt struct pkg *
-.It Cm %
+.It Cm %%
 A
 .Ql %
 is written.
@@ -511,43 +645,33 @@ a numeric field; if the result of a conversion is wider than the field
 width, the
 field is expanded to contain the conversion result.
 .Sh EXAMPLES
-To print a date and time in the form
+To print the package installation timestamp in the form
 .Dq Li "Sunday, July 3, 10:02" ,
-where
-.Fa weekday
-and
-.Fa month
-are pointers to strings:
 .Bd -literal -offset indent
-#include <stdio.h>
-fprintf(stdout, "%s, %s %d, %.2d:%.2d\en",
-	weekday, month, day, hour, min);
+#include <pkg.h>
+pkg_fprintf(stdout, "%t%{%A, %B %e, %R%}\en", pkg);
 .Ed
 .Pp
-To print \*(Pi
-to five decimal places:
+To print the package name and version, followed by the name and
+version of all of the packages it depends upon, one per line, each
+indented by one tab stop:
 .Bd -literal -offset indent
-#include <math.h>
-#include <stdio.h>
-fprintf(stdout, "pi = %.5f\en", 4 * atan(1.0));
+#include <pkg.h>
+pkg_printf("%n-%v\en%d%{\et%dn-%dv%|%\en%}\en", pkg, pkg, pkg);
 .Ed
-.Pp
-To allocate a 128 byte string and print into it:
+Note that the item separator part of the row format is only printed
+between individual row items.
+Thus to fill the buffer
+.Fa buf
+with a one-line string listing all of the licenses for the package
+separated by
+.Dq and
+or
+.Dq or
+as appropriate:
 .Bd -literal -offset indent
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-char *newfmt(const char *fmt, ...)
-{
-	char *p;
-	va_list ap;
-	if ((p = malloc(128)) == NULL)
-		return (NULL);
-	va_start(ap, fmt);
-	(void) vsnprintf(p, 128, fmt, ap);
-	va_end(ap);
-	return (p);
-}
+#include <pkg.h>
+pkg_snprintf(buf, sizeof(buf), "%L%{%Ln%| %l %}", pkg);
 .Ed
 .Sh ERRORS
 In addition to the errors documented for the
