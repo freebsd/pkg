@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -120,11 +121,17 @@ exec_install(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	retcode = pkgdb_access(PKGDB_MODE_READ  |
-			       PKGDB_MODE_WRITE |
-			       PKGDB_MODE_CREATE,
-			       PKGDB_DB_LOCAL   |
-			       PKGDB_DB_REPO);
+	if (dry_run)
+		retcode = pkgdb_access(PKGDB_MODE_READ,
+				       PKGDB_DB_LOCAL   |
+				       PKGDB_DB_REPO);
+	else
+		retcode = pkgdb_access(PKGDB_MODE_READ  |
+				       PKGDB_MODE_WRITE |
+				       PKGDB_MODE_CREATE,
+				       PKGDB_DB_LOCAL   |
+				       PKGDB_DB_REPO);
+	
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to install packages");
 		return (EX_NOPERM);
