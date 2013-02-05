@@ -19,7 +19,10 @@ _pkg() {
 	'-d[Increment debug level]'
 	'-j[Execute pkg(1) inside a jail(8)]:jail:'
 	'-c[Execute pkg(1) inside a chroot(8)]:chroot:_files -/'
+	'-C[Use the specified configuration file]'
+	'-l[List available command and exit'
 	'-v[Display pkg(1) version]'
+	'-N[Test if pkg(1) is activated and avoid auto-activation]'
 	)
 
 	subcmd=(
@@ -29,6 +32,7 @@ _pkg() {
 		'backup[Backs-up and restores the local package database]'
 		'check[Checks for missing dependencies and database consistency]'
 		'clean[Cleans old packages from the cache]'
+		'convert[Convert database from/to pkgng]'
 		'create[Creates software package distributions]'
 		'delete[Deletes packages from the database and the system]'
 		'fetch[Fetches packages from a remote repository]'
@@ -105,6 +109,11 @@ _pkg() {
 			;;
 		(clean)
 			return 0
+			;;
+		(convert)
+			_arguments -s \
+				'-r[Revert conversion]' \
+				&& return 0
 			;;
 		(create)
 			_arguments -s \
