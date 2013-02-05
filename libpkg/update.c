@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,7 +11,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -208,7 +208,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK) {
 		free(sig);
-		
+
 		return (EPKG_FATAL);
 	}
 
@@ -256,7 +256,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	}
 
 	if (res > 0) {
-		pkg_emit_error("At least one of the packages provided by"
+		pkg_emit_error("At least one of the packages provided by "
 		    "the repository is not compatible with your abi: %s",
 		    myarch);
 		rc = EPKG_FATAL;
