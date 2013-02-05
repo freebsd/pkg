@@ -1,47 +1,48 @@
-#!/bin/sh
+#!/bin/sh -
 #
 # $FreeBSD$
 #
 
-# If there is a global system configuration file, suck it in.
-#
-if [ -r /etc/defaults/periodic.conf ]
-then
-    . /etc/defaults/periodic.conf
-    source_periodic_confs
+if [ -r /etc/defaults/periodic.conf ]; then
+	. /etc/defaults/periodic.conf
+	source_periodic_confs
 fi
 
 rc=0
 
 case "${daily_backup_pkgng_enable:-YES}" in
-    [Nn][Oo])
-        ;;
-    *)
+	[Nn][Oo])
+	;;
+	*)
 	bak="${daily_backup_pkgng_dir:-/var/backups}"
 	bak_file="${bak}/pkgng.db"
-	pkgcmd="/usr/local/sbin/pkg"
+	pkgcmd=/usr/local/sbin/pkg
 
-	if [ ! -d "$bak" ]
-	then
-	    install -d -o root -g wheel -m 750 $bak || {
-		echo '$daily_backup_pkgng_enable is enabled but' \
-		    "$daily_backup_pkgng_dbdir doesn't exist" ;
-		exit 2 ; }
+	if ${pkgcmd} -N >/dev/null 2>&1 ; then
+		echo 'pkg-backup is enabled but pkg is not used'
+		rc=2
+ 	else
+		if [ ! -d "$bak" ]
+		then
+			install -d -o root -g wheel -m 750 $bak || {
+			echo 'pkg-backup is enabled but' \
+				"$daily_backup_pkgng_dbdir doesn't exist" ;
+			exit 2 ; }
+		fi
+
+		echo
+		echo 'Backing up pkgng database:'
+
+		[ -e "${bak_file}.txz" ] && \
+			mv -f "${bak_file}.txz" "${bak_file}.txz.2"
+
+		if ${pkgcmd} backup -d ${bak_file} 2>/dev/null; then
+			rc=0
+		else
+			rc=3
+		fi
 	fi
-
-	echo ''
-	echo 'Backing up pkgng database:'
-
-	if [ -e "${bak_file}.txz" ]; then
-	    unlink "${bak_file}.txz.2"
-	    mv "${bak_file}.txz" "${bak_file}.txz.2"
-	fi
-
-	if ${pkgcmd} backup -d ${bak_file} 2>/dev/null; then
-	    rc=0
-	else
-	    rc=3
-	fi
+	;;
 esac
 
 exit $rc
