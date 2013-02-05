@@ -178,6 +178,8 @@ static int
 exec_help(int argc, char **argv)
 {
 	char *manpage;
+	bool plugins_enabled = false;
+	struct plugcmd *c;
 
 	if ((argc != 2) || (strcmp("help", argv[1]) == 0)) {
 		usage_help();
@@ -193,6 +195,22 @@ exec_help(int argc, char **argv)
 			free(manpage);
 
 			return (0);
+		}
+	}
+
+	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
+
+	if (plugins_enabled) {
+		STAILQ_FOREACH(c, &plugins, next) {
+			if (strcmp(c->name, argv[1]) == 0) {
+				if (asprintf(&manpage, "/usr/bin/man pkg-%s", c->name) == -1)
+					errx(1, "cannot allocate memory");
+
+				system(manpage);
+				free(manpage);
+
+				return (0);
+			}
 		}
 	}
 
