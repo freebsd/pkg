@@ -4,32 +4,35 @@
 #
 
 if [ -r /etc/defaults/periodic.conf ]; then
-    . /etc/defaults/periodic.conf
-    source_periodic_confs
+	. /etc/defaults/periodic.conf
+	source_periodic_confs
 fi
 
 case "$daily_status_pkg_changes_enable" in
-    [Yy][Ee][Ss])
-	echo ''
+	[Yy][Ee][Ss])
+	pkgcmd=/usr/local/sbin/pkg
+
+	echo
 	echo 'Changes in installed packages:'
-	if pkg -N >/dev/null 2>&1 ; then
-	    echo 'status-pkg-changes is enabled but pkg is not used'
-	    rc=2
+
+	if ${pkgcmd} -N >/dev/null 2>&1 ; then
+		echo 'status-pkg-changes is enabled but pkg is not used'
+		rc=2
 	else
-	    bak=/var/backups
-	    rc=0
+		bak=/var/backups
+		rc=0
 
-	    [ -r $bak/pkg.bak ] && mv -f $bak/pkg.bak $bak/pkg.bak2
-	    pkg info > $bak/pkg.bak
+		[ -r $bak/pkg.bak ] && mv -f $bak/pkg.bak $bak/pkg.bak2
+		${pkgcmd} info > $bak/pkg.bak
 
-	    cmp -sz $bak/pkg.bak $bak/pkg.bak2
-	    if [ $? -eq 1 ]; then
-		diff -U 0 $bak/pkg.bak2 $bak/pkg.bak \
-		| grep '^[-+][^-+]' | sort -k 1.2
-	    fi
+		cmp -sz $bak/pkg.bak $bak/pkg.bak2
+		if [ $? -eq 1 ]; then
+			diff -U 0 $bak/pkg.bak2 $bak/pkg.bak | \
+			grep '^[-+][^-+]' | sort -k 1.2
+		fi
 	fi
 	;;
-    *)
+	*)
 	rc=0
 	;;
 esac

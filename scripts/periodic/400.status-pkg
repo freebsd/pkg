@@ -9,18 +9,25 @@ if [ -r /etc/defaults/periodic.conf ]; then
 fi
 
 case "$weekly_status_pkg_enable" in
-    [Yy][Ee][Ss])
-	echo ''
+	[Yy][Ee][Ss])
+	pkgcmd=/usr/local/sbin/pkg
+
+	echo
 	echo 'Checking for out of date packages:'
 
-	rc=$(pkg version -v ${pkg_version_index} |
-	    sed -n -e '/up-to-date/d' \
-	    -e 's/^\([^[:space:]]*\)[[:space:]]*[<>=!?][[:space:]]*\(.*\)$/\1 \2/p' |
-	    tee /dev/stderr |
-	    wc -l)
-	[ $rc -gt 1 ] && rc=1
+	if ${pkgcmd} -N >/dev/null 2>&1 ; then
+	    echo 'status-pkg is enabled but pkg is not used'
+	    rc=2
+	else
+		rc=$(${pkgcmd} version -v ${pkg_version_index} |
+			sed -n -e '/up-to-date/d' \
+			-e 's/^\([^[:space:]]*\)[[:space:]]*[<>=!?][[:space:]]*\(.*\)$/\1 \2/p' |
+			tee /dev/stderr |
+			wc -l)
+		[ $rc -gt 1 ] && rc=1
+	fi
 	;;
-    *)
+	*)
 	rc=0
 	;;
 esac
