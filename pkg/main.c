@@ -4,7 +4,7 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -14,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -127,9 +127,9 @@ usage(const char *conffile)
 	bool plugins_enabled = false;
 
 #ifndef NO_LIBJAIL
- 	fprintf(stderr, "usage: pkg [-v] [-d] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] <command> [<args>]\n\n");
+ 	fprintf(stderr, "usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] <command> [<args>]\n\n");
 #else
-	fprintf(stderr, "usage: pkg [-v] [-d] [-N] [-c <chroot path>] [-C <configuration file>] <command> [<args>]\n\n");
+	fprintf(stderr, "usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] <command> [<args>]\n\n");
 #endif
 	fprintf(stderr, "Global options supported:\n");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
@@ -138,6 +138,7 @@ usage(const char *conffile)
 #endif
 	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
 	fprintf(stderr, "\t%-15s%s\n", "-C", "Use the specified configuration file");
+	fprintf(stderr, "\t%-15s%s\n", "-l", "List available command and exit");
 	fprintf(stderr, "\t%-15s%s\n", "-v", "Display pkg(1) version");
 	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(1) is activated and avoid auto-activation");
 	fprintf(stderr, "Commands supported:\n");
@@ -147,19 +148,19 @@ usage(const char *conffile)
 
 	if (!pkg_initialized() && pkg_init(conffile) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
-	
+
 	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
 
 	if (plugins_enabled) {
 		if (pkg_plugins_init() != EPKG_OK)
 			errx(EX_SOFTWARE, "Plugins cannot be loaded");
-		
+
 		printf("\nCommands provided by plugins:\n");
 
 		STAILQ_FOREACH(c, &plugins, next)
 			fprintf(stderr, "\t%-15s%s\n", c->name, c->desc);
 	}
-	
+
 	fprintf(stderr, "\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
 
@@ -224,7 +225,7 @@ exec_help(int argc, char **argv)
 
 	/* Command name not found */
 	warnx("'%s' is not a valid command.\n", argv[1]);
-	
+
 	fprintf(stderr, "See 'pkg help' for more information on the commands.\n");
 
 	return (EX_USAGE);
@@ -476,7 +477,7 @@ main(int argc, char **argv)
 			}
 			break;
 		}
-			
+
 	}
 
 	len = strlen(argv[0]);
@@ -511,10 +512,10 @@ main(int argc, char **argv)
 				}
 			}
 		}
-		
+
 		if (!plugin_found)
 			usage(conffile);
-		
+
 		pkg_plugins_shutdown();
 		pkg_shutdown();
 
