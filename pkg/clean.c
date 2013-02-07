@@ -107,7 +107,9 @@ exec_clean(int argc, char **argv)
 			continue;
 		}
 		to_delete = false;
-		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
+		if (ret != EPKG_END)
+			pkg_get(p, PKG_REPOPATH, &pkgrepopath);
+
 		if (ret == EPKG_END) {
 			to_delete = true;
 			printf("%s does not exist anymore, deleting it\n", repopath);
