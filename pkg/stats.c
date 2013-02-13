@@ -90,7 +90,7 @@ exec_stats(int argc, char **argv)
 		if (show_bytes)
 			printf("\tDisk space occupied: %" PRId64 "\n\n", flatsize);
 		else {
-			humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
+			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
 			printf("\tDisk space occupied: %s\n\n", size);
 		}
 	}
@@ -106,7 +106,7 @@ exec_stats(int argc, char **argv)
 		if (show_bytes)
 			printf("\tTotal size of packages: %" PRId64 "\n", flatsize);
 		else {
-			humanize_number(size, sizeof(flatsize), flatsize, "B", HN_AUTOSCALE, 0);
+			humanize_number(size, sizeof(size), flatsize, "B", HN_AUTOSCALE, 0);
 			printf("\tTotal size of packages: %s\n", size);
 		}
 	}

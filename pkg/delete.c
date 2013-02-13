@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -110,8 +111,12 @@ exec_delete(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
-			       PKGDB_DB_LOCAL);
+	if (dry_run)
+		retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+	else
+		retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
+				       PKGDB_DB_LOCAL);
+
 	if (retcode == EPKG_ENODB) {
 		warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);

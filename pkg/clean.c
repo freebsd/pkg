@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -218,7 +219,7 @@ exec_clean(int argc, char **argv)
 	char		*repopath;
 	bool		 dry_run = false;
 	bool		 yes;
-	int		 retcode = EX_SOFTWARE;
+	int		 retcode;
 	int		 ret;
 	int		 ch;
 
@@ -250,6 +251,21 @@ exec_clean(int argc, char **argv)
 
 	paths[0] = __DECONST(char*, cachedir);
 	paths[1] = NULL;
+
+	retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
+
+	if (retcode == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to clean old packages");
+		return (EX_NOPERM);
+	} else if (retcode == EPKG_ENODB) {
+		warnx("No package database installed.  Nothing to do!");
+		return (EX_OK);
+	} else if (retcode != EPKG_OK) {
+		warnx("Error accessing package database");
+		return (EX_SOFTWARE);
+	}
+
+	retcode = EX_SOFTWARE;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
 		goto cleanup;

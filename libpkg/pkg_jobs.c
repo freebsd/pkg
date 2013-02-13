@@ -274,7 +274,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 {
 	bool dry_run = false;
 
-	if ((j->flags & PKG_FLAG_DRY_RUN) != PKG_FLAG_DRY_RUN)
+	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		dry_run = true;
 
 	if (!dry_run && pkgdb_obtain_lock(j->db) != EPKG_OK)
