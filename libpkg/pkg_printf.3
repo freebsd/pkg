@@ -293,13 +293,12 @@ A
 .Cm +
 overrides a space if both are used.
 .It Sq Cm '
-Numerical conversions
-.Cm ( I , s ,
-or
-.Cm t )
-should be grouped and separated by thousands using
-the non-monetary separator returned by
+Numerical (integer) conversions should be grouped and separated by
+thousands using the non-monetary separator returned by
 .Xr localeconv 3 .
+Has no visible effect in the default
+.Dq C
+locale.
 .El
 .It
 An optional decimal digit string specifying a minimum field width.
@@ -309,27 +308,16 @@ been given and the conversion supports it) on the left (or spaces on
 the right, if the left-adjustment flag has been given) to fill out the
 field width.
 .It
-One or two characters that specifies the type of conversion to be applied.
+One or two characters that specify the type of conversion to be applied.
 .It
 An optional
 .Dq row format
 for array valued conversions
 .Cm ( B , C , D , F , G , L , O , U , d ,
 and
-.Cm r ) .
-The row format is one or two strings containing any number of the format
-conversions described here, bracketed by the character sequences
-.Cm %{
-and
-.Cm %}
-and optionally divided into two by the character sequence
-.Cm %| .
-The first or only format string is repeatedly processed for each of the
-array items in turn.
-The optional second format string is processed as a separator between
-each of the array items.
-If a row format is not given, each of the array valued types will
-generate output according to a default format.
+.Cm r )
+or the timestamp value conversion 
+.Cm ( t ) .
 Which conversion characters are permissible in the row format is
 context dependent.
 See the 
@@ -369,25 +357,55 @@ The IEE/IEC (and now also SI) power of two suffixes are:
 .El
 .Pp
 .Ss FORMAT CODES
-Format codes will format the output classified as shown in square brackets.
-With the sole exception of
-.Cm I
-all format codes can be used outside of a
+Format codes will format the output classified as the type shown in
+square brackets.
+.Cm %\^I
+is unique in that it can only be used inside a
 .Dq row format.
+All other format codes may be used stand-alone.
 When used in this fashion they will consume one argument of the indicated
 type from the function's argument list.
+.Pp
 The array valued format codes
 .Cm ( B , C , D , F , G , L , O , U , d ,
 and
 .Cm r )
-will use a default
-.Dq row format
-if one is not given explicitly.
+and the timestamp format code
+.Cm ( t )
+can be followed by a
+.Dq row format .
+They will use a default row format (detailed below) if one is not
+given explicitly.
+.Pp
+The row format is bracketed by the character sequences
+.Cm %{
+and
+.Cm %}
+and, for array values only, may be optionally divided into two by the
+character sequence
+.Cm %| .
+For array values, it contains one or two strings containing any number
+of the format conversions described here.
+For timestamp values it contains any number of format conversion
+specifiers with meanings as described in
+.Xr strftime 3 .
+.Pp
+The first or only format string is repeatedly processed for each of the
+array items in turn.
+The optional second format string is processed as a separator between
+each of the array items.
+If no row format is given, output will be generated according to a
+default format, detailed below.
+.Pp
 Within a
 .Dq row format
-string, you may use any of the single-character format codes, but
-only the two-character format codes which correspond to the parent
-item and have the same first character.
+string, you may use any of the single-character non-array valuedd
+format codes, but only the two-character format codes which correspond
+to the parent item and have the same first character.
+Array valued format codes may not be used within row formats,
+nor may you embed one
+.Dq row format
+within another.
 Only one argument, a
 .Vt struct pkg *
 pointer is consumed from the argument list.
@@ -427,7 +445,7 @@ Directories [array]
 .Vt struct pkg *
 .Pp
 Default row format:
-.Cm "%D%{%D\en%|%}"
+.Cm "%D%{%Dn\en%|%}"
 .It Cm %Dg
 Directory ownership: group name [string]
 .Vt struct pkg_dir *
@@ -479,6 +497,17 @@ Default row format:
 .It Cm %Gg
 Group GID-string [string]
 .Vt struct pkg_group *
+.Pp
+The GID-string consists of a colon-separated list containing the
+group name,
+.Sq *
+as a place holder instead of any hashed password for the group,
+the group identifier number and a possibly empty comma separated list
+of the group members,
+equivalent to one line from
+.Fa /etc/group
+as described in
+.Xr group 5 .
 .It Cm %Gn
 Group name [string]
 .Vt struct pkg_group *
@@ -523,6 +552,20 @@ User name [string]
 .It Cm %Uu
 User UID-str [string]
 .Vt struct pkg_user *
+.Pp
+The UID-string consists of a colon-separated list containing the
+user name,
+.Sq *
+as a place holder instead of any hashed password for the user, the
+user identifier number, the user's login group id, an empty field for
+the user login class, zero for the password change time, zero for the
+account expiry time,
+.Sq gecos
+string (general information about the user), the user's home directory
+and the user's login shell; equivalent to one line from
+.Fa /etc/master.passwd
+as described in
+.Xr passwd 5 . 
 .It Cm %a
 Autoremove flag [boolean]
 .Vt struct pkg *
@@ -553,27 +596,6 @@ Locking status [boolean]
 .It Cm %l
 License logic [licence-logic]
 .Vt struct pkg *
-.Pp
-Generates
-.Sq single ,
-.Sq and
-or
-.Sq or
-unless combined with one of the alternate form flags.
-.Cm "%?l"
-(first alternate form) generates
-.Sq \^ ,
-.Sq &
-or
-.Sq |
-and
-.Cm "%#l"
-(second alternate form) generates
-.Sq == ,
-.Sq &&
-or
-.Sq ||
-respectively.
 .It Cm %m
 Maintainer [string]
 .Vt struct pkg *
@@ -607,19 +629,6 @@ Package flat size [integer]
 .It Cm %t
 Installation timestamp [date-time]
 .Vt struct pkg *
-.Pp
-When used outside of a
-.Dq row format
-string may be followed by an optional
-.Xr strftime 3
-format, enclosed in
-.Cm %{
-and
-.Cm %} ,
-which will be used to format the timestamp.
-Otherwise the timestamp is printed as an integer value of the
-number of seconds since the Epoch (00:00:00 UTC, 1 January 1970; see
-.Xr time 3).  
 .It Cm %v
 Package version [string]
 .Vt struct pkg *
@@ -641,9 +650,171 @@ character is defined in the program's locale (category
 .Dv LC_NUMERIC ) .
 .Pp
 In no case does a non-existent or small field width cause truncation of
-a numeric field; if the result of a conversion is wider than the field
-width, the
-field is expanded to contain the conversion result.
+a numeric field;
+if the result of a conversion is wider than the field width, the field
+is expanded to contain the conversion result.
+.Pp
+.Ss ARRAY VALUES
+.Pp
+.Ss STRING VALUES
+Effective format modifiers:
+.Bl -tag -width ".So \  Sc" -offset indent
+.It Cm \-
+Left align
+.El
+.Pp
+.Ss INTEGER VALUES
+Effective format modifiers:
+.Bl -tag -width ".So \  Sc" -offset indent
+.It Cm \-
+Left align
+.It Cm ?
+1st Alternate Form: humanized number (decimal)
+.It Cm #
+2nd Alternate Form: humanized number (binary)
+.It Cm 0
+Zero pad
+.It So "\ " Sc
+Blank for plus
+.It Cm +
+Explicit + or \- sign
+.It Sq Cm '
+Thousands separator
+.El
+.Pp
+.Ss BOOLEAN VALUES
+The two possible values
+.Sq true
+or
+.Sq false
+may be output in one of three different styles: plain; or alternate
+forms 1 and 2 specified using format modifiers.
+.Pp
+.Bl -column "FALSE" "Plain (%a)" "Alt 1 (%?a)" "Alt 2 (%#a)" -offset indent
+.It Sy "Value" Ta Sy "Plain (%a)" Ta Sy "Alt 1 (%?a)" Ta Sy "Alt 2 (%#a)"
+.It Li FALSE Ta No 0 Ta no  Ta false
+.It Li TRUE  Ta No 1 Ta yes Ta true
+.El
+.Pp
+Effective format modifiers:
+.Bl -tag -width ".Cm #" -offset indent
+.It Cm ?
+1st Alternate Form
+.It Cm #
+2nd Alternate Form
+.It Cm \-
+Left align
+.El
+.Pp
+.Ss FILE MODE VALUES
+The file mode is a bitmap representing setid, user, group and other
+permissions.
+The plain format prints it as an octal value, for example:
+.Bd -literal -offset indent
+4755
+.Ed
+.Pp
+The first alternate form is similar but adds a leading zero:
+.Bd -literal -offset indent
+04755
+.Ed
+.Pp
+Whilst the second alternate form produces a string in the style of
+.Xr strmode 3 :
+.Bd -literal -offset indent
+-rwsr-xr-x 
+.Ed
+.Pp
+Note: there is always a space at the end of the
+.Xr strmode 3
+output.
+.Pp
+Effective format modifiers (all forms):
+.Bl -tag -width ".Cm \-" -offset indent
+.It Cm \-
+Left align
+.El
+.Pp
+Additionally, when the value is printed as an integer (ie. plain
+or alternate form 1), these additional modifiers take effect:
+.Bl -tag -width ".So \  Sc" -offset indent
+.It Cm ?
+1st Alternate Form: add leading zero to octal integer
+.It Cm 0
+Zero pad
+.El
+.Pp
+.Ss LICENSE LOGIC VALUES
+License-logic  is a three-valued type: one of
+.Sq SINGLE ,
+.Sq OR
+or
+.Sq AND ,
+which shows whether the package is distributed under the terms of a
+single license, or when there are several applicable licenses, whether
+these should be treated as alternatives or applied in agregate.
+There are three different output styles: plain; or alternate forms 1
+and 2 specified using format modifiers.
+.Pp
+.Bl -column "SINGLE" "Plain (%l)" "Alt 1 (%?l)" "Alt 2 (%#l)" -offset indent
+.It Sy "Logic" Ta Sy "Plain (%l)" Ta Sy "Alt 1 (%?l)" Ta Sy "Alt 2 (%#l)" 
+.It Li SINGLE Ta No single Ta \^ Ta ==
+.It Li OR     Ta No or     Ta |  Ta ||
+.It Li AND    Ta No and    Ta &  Ta && 
+.El
+.Pp
+Effective format modifiers:
+.Bl -tag -width ".Cm #" -offset indent
+.It Cm ?
+1st Alternate Form
+.It Cm #
+2nd Alternate Form
+.It Cm \-
+Left align
+.El
+.Pp
+.Ss DATE-TIME VALUES
+When used outside of a
+.Dq row format
+string may be followed by an optional
+.Xr strftime 3
+format, enclosed in
+.Cm %{
+and
+.Cm %} ,
+which will be used to format the timestamp.
+Otherwise the timestamp is printed as an integer value of the
+number of seconds since the Epoch (00:00:00 UTC, 1 January 1970; see
+.Xr time 3).  
+.Pp
+Effective format modifiers:
+.Bl -tag -width ".Cm \-" -offset indent
+.It Cm \-
+Left align
+.El
+.Pp
+Additionally, when the value is printed as an integer (ie. without
+.Xr strftime 3
+format codes enclosed in 
+.Cm %{
+and
+.Cm %} ,
+the following format modifiers are also effective:
+.Bl -tag -width ".So \  Sc" -offset indent
+.It Cm ?
+1st Alternate Form: humanized number (decimal)
+.It Cm #
+2nd Alternate Form: humanized number (binary)
+.It Cm 0
+Zero pad
+.It So "\ " Sc
+Blank for plus
+.It Cm +
+Explicit + or \- sign
+.It Sq Cm '
+Thousands separator
+.El
+.Pp
 .Sh EXAMPLES
 To print the package installation timestamp in the form
 .Dq Li "Sunday, July 3, 10:02" ,
@@ -659,9 +830,10 @@ indented by one tab stop:
 #include <pkg.h>
 pkg_printf("%n-%v\en%d%{\et%dn-%dv%|%\en%}\en", pkg, pkg, pkg);
 .Ed
+.Pp
 Note that the item separator part of the row format is only printed
 between individual row items.
-Thus to fill the buffer
+Thus to fill the character array
 .Fa buf
 with a one-line string listing all of the licenses for the package
 separated by
@@ -671,6 +843,7 @@ or
 as appropriate:
 .Bd -literal -offset indent
 #include <pkg.h>
+char buf[256];
 pkg_snprintf(buf, sizeof(buf), "%L%{%Ln%| %l %}", pkg);
 .Ed
 .Sh ERRORS
@@ -696,6 +869,8 @@ The
 family of functions do not correctly handle multibyte characters in the
 .Fa format
 argument.
+.Pp
+There is no way to sort the output of array valued items.
 .Sh SECURITY CONSIDERATIONS
 Equivalents to the
 .Fn sprintf
