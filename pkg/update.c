@@ -92,6 +92,8 @@ pkgcli_update(bool force) {
 					       "fresh copy\n", repo_name);
 				retcode = EPKG_OK;
 			}
+			if (retcode != EPKG_OK)
+				break;
 		}
 	}
 
