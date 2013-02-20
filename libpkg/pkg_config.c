@@ -99,7 +99,11 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_PORTSDIR] = {
 		STRING,
 		"PORTSDIR",
+#ifdef __DragonFly__
+		"/usr/dports",
+#else
 		"/usr/ports",
+#endif
 		{ NULL }
 	},
 	[PKG_CONFIG_REPOKEY] = {
