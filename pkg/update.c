@@ -83,7 +83,7 @@ pkgcli_update(bool force) {
 			repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
 			packagesite = pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE);
 
-			snprintf(name, MAXPATHLEN, "repo-%s.sqlite", repo_name);
+			snprintf(name, MAXPATHLEN, "repo-%s", repo_name);
 			retcode = pkg_update(name, packagesite, force);
 			if (retcode == EPKG_UPTODATE) {
 				if (!quiet)
