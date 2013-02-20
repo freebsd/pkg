@@ -607,12 +607,12 @@ pack_extract(const char *pack, const char *dbname, const char *dbpath)
 		return;
 
 	a = archive_read_new();
-	archive_read_support_compression_all(a);
+	archive_read_support_filter_all(a);
 	archive_read_support_format_tar(a);
 	if (archive_read_open_filename(a, pack, 4096) != ARCHIVE_OK) {
 		/* if we can't unpack it it won't be useful for us */
 		unlink(pack);
-		archive_read_finish(a);
+		archive_read_free(a);
 		return;
 	}
 
@@ -624,7 +624,7 @@ pack_extract(const char *pack, const char *dbname, const char *dbpath)
 		}
 	}
 
-	archive_read_finish(a);
+	archive_read_free(a);
 
 
 }
