@@ -43,6 +43,17 @@
 #define PKG_NUM_FIELDS 18
 #define PKG_NUM_SCRIPTS 8
 
+#if ARCHIVE_VERSION_NUMBER < 3000002
+#define archive_read_free(a) archive_read_finish(a)
+#define archive_write_free(a) archive_write_finish(a)
+#define archive_write_add_filter_xz(a) archive_write_set_compression_xz(a)
+#define archive_write_add_filter_bzip2(a) archive_write_set_compression_bzip2(a)
+#define archive_write_add_filter_gzip(a) archive_write_set_compression_gzip(a)
+#define archive_write_add_filter_none(a) archive_write_set_compression_none(a)
+#define archive_read_support_filter_all(a) archive_read_support_compression_all(a)
+#define archive_read_support_filter_none(a) archive_read_support_compression_none(a)
+#endif
+
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM | \
 		ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
