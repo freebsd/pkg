@@ -3,11 +3,7 @@ SUBDIR=	external \
 	libpkg \
 	pkg
 
-SUBDIR_TARGETS=	set-version
-
 NEWVERS=	newvers.sh
-
-CLEANFILES=	Doxyfile
 
 .if !defined(NOSTATIC)
 SUBDIR+=	pkg-static
@@ -19,10 +15,9 @@ PKGVERSION!=    sh ${NEWVERS} pkg
 # Changes to these sources will be commited to git unconditionally as
 # part of the 'release' target.
 
-VERSIONED_FILES=	Doxyfile.in \
-			libpkg/pkg.h.in \
-			libpkg/pkg.pc.in \
-			${NEWVERS}
+VERSIONED_FILES=	${NEWVERS}
+
+CLEANFILES=		Doxyfile
 
 # Set CREATE_SNAPSHOT=yes to create a snapshot, which will update
 # Doxyfile, libpkg/pkg.h etc. without needing any modifications to
@@ -40,19 +35,14 @@ TARBALL_EXT=		tar.xz
 TARBALL_FILE=		${TARBALL_BASENAME}.${TARBALL_EXT}
 
 .PHONY: release do-release set-tag make-tarball regression-test \
-	set-version do-set-version ${_snapshot} 
+	 ${_snapshot}
 
-all:	set-version
+all:	Doxyfile
 
 clean:
 	rm -f ${CLEANFILES}
 
-do-set-version:
-	@${ECHO} "==> Update version strings (${PKGVERSION})" 
-
-set-version: do-set-version Doxyfile
-
-regression-test: all
+regression-test: clean all
 	@${ECHO} "==> Regression Test"
 
 do-release: regression-test
