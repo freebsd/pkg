@@ -255,7 +255,7 @@ file_exists(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 	char	 cksum[SHA256_DIGEST_LENGTH * 2 +1];
 
 	if (argc != 2) {
-		sqlite3_result_error(ctx, "Need two arguments", -1);
+		sqlite3_result_error(ctx, "file_exists needs two argument", -1);
 		return;
 	}
 
