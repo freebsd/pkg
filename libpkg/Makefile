@@ -8,8 +8,13 @@ LIBDIR=		${PREFIX}/lib
 INCLUDEDIR=	${PREFIX}/include
 SHLIB_MAJOR=	0
 
+PC=	pkg.pc
+PKGH=	pkg.h
+
 #gr_utils.c has to be deleted as soon as it goes in base
-SRCS=		backup.c \
+SRCS=		${PC} \
+		${PKGH} \
+		backup.c \
 		dns_utils.c \
 		elfhints.c \
 		fetch.c \
@@ -35,8 +40,6 @@ SRCS=		backup.c \
 		usergroup.c \
 		utils.c
 
-PC=	pkg.pc
-PKGH=	pkg.h
 CLEANFILES=	${PC} ${PKGH}
 
 NEWVERS=	../newvers.sh
@@ -118,18 +121,18 @@ NOMAN=		yes
 
 .include <bsd.lib.mk>
 
-.SUFFIXES: .pc.in .pc
+.SUFFIXES: .pc.in .pc .h.in .h
 
-.PHONY:	set-version ${_snapshot}
+.PHONY:	${_snapshot}
 
-set-version: ${PKGH} ${PC}
 
-${PKGH}: ${PKGH:S,$,.in,} ${NEWVERS} ${_snapshot}
+.h.in.h: ${NEWVERS} ${_snapshot}
 	sed -e 's,%%PKGVERSION%%,$(PKGVERSION),'   \
 	    -e 's,%%PORTVERSION%%,$(PORTVERSION),' \
-	    ${.TARGET:S,$,.in,} > ${.TARGET} 
+	    ${.IMPSRC} > ${.TARGET}
 
 .pc.in.pc: ${NEWVERS} ${_snapshot}
 	sed -e "s,__PREFIX__,${PREFIX},g" \
-		-e "s,__VERSION__,${PKGVERSION},g" \
-		${.IMPSRC} > ${.TARGET}
+	    -e "s,__VERSION__,${PKGVERSION},g" \
+	    ${.IMPSRC} > ${.TARGET}
+
