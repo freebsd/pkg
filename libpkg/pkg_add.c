@@ -114,7 +114,7 @@ do_extract_mtree(char *mtree, const char *prefix)
 		return EPKG_OK;
 
 	a = archive_read_new();
-	archive_read_support_compression_none(a);
+	archive_read_support_filter_none(a);
 	archive_read_support_format_mtree(a);
 
 	if (archive_read_open_memory(a, mtree, strlen(mtree)) != ARCHIVE_OK) {
@@ -143,7 +143,7 @@ do_extract_mtree(char *mtree, const char *prefix)
 
 cleanup:
 	if (a != NULL)
-		archive_read_finish(a);
+		archive_read_free(a);
 
 	return (retcode);
 }
@@ -321,7 +321,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 
 	cleanup:
 	if (a != NULL)
-		archive_read_finish(a);
+		archive_read_free(a);
 
 	pkg_free(pkg);
 

@@ -255,7 +255,7 @@ file_exists(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 	char	 cksum[SHA256_DIGEST_LENGTH * 2 +1];
 
 	if (argc != 2) {
-		sqlite3_result_error(ctx, "Need two arguments", -1);
+		sqlite3_result_error(ctx, "file_exists needs two argument", -1);
 		return;
 	}
 
@@ -607,12 +607,12 @@ pack_extract(const char *pack, const char *dbname, const char *dbpath)
 		return;
 
 	a = archive_read_new();
-	archive_read_support_compression_all(a);
+	archive_read_support_filter_all(a);
 	archive_read_support_format_tar(a);
 	if (archive_read_open_filename(a, pack, 4096) != ARCHIVE_OK) {
 		/* if we can't unpack it it won't be useful for us */
 		unlink(pack);
-		archive_read_finish(a);
+		archive_read_free(a);
 		return;
 	}
 
@@ -624,7 +624,7 @@ pack_extract(const char *pack, const char *dbname, const char *dbpath)
 		}
 	}
 
-	archive_read_finish(a);
+	archive_read_free(a);
 
 
 }

@@ -107,7 +107,12 @@ fetch_and_extract(const char *src, const char *dest)
 	}
 
 	a = archive_read_new();
+#if ARCHIVE_VERSION_NUMBER < 3000002
 	archive_read_support_compression_all(a);
+#else
+	archive_read_support_filter_all(a);
+#endif
+
 	archive_read_support_format_tar(a);
 
 	if (archive_read_open_filename(a, tmp, 4096) != ARCHIVE_OK) {
@@ -136,7 +141,11 @@ fetch_and_extract(const char *src, const char *dest)
 	cleanup:
 	unlink(tmp);
 	if (a != NULL)
+#if ARCHIVE_VERSION_NUMBER < 3000002
 		archive_read_finish(a);
+#else
+		archive_read_free(a);
+#endif
 	if (fd > 0)
 		close(fd);
 

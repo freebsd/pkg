@@ -942,7 +942,7 @@ pkg_open(struct pkg **pkg_p, const char *path)
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
 
-	archive_read_finish(a);
+	archive_read_free(a);
 
 	return (EPKG_OK);
 }
@@ -973,7 +973,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	manifest = sbuf_new_auto();
 
 	*a = archive_read_new();
-	archive_read_support_compression_all(*a);
+	archive_read_support_filter_all(*a);
 	archive_read_support_format_tar(*a);
 
 	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK) {
@@ -1048,7 +1048,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 	if (retcode != EPKG_OK && retcode != EPKG_END) {
 		if (*a != NULL)
-			archive_read_finish(*a);
+			archive_read_free(*a);
 		*a = NULL;
 		*ae = NULL;
 	}
