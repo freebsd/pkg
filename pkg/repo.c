@@ -91,8 +91,8 @@ exec_repo(int argc, char **argv)
 	char *rsa_key;
 	bool force = false;
 
-        while ((ch = getopt(argc, argv, "fq")) != -1) {
-                switch (ch) {
+	while ((ch = getopt(argc, argv, "fq")) != -1) {
+		switch (ch) {
 		case 'q':
 			quiet = true;
 			break;
@@ -102,10 +102,10 @@ exec_repo(int argc, char **argv)
 		default:
 			usage_repo();
 			return (EX_USAGE);
-                }
-        }
-        argc -= optind;
-        argv += optind;
+		}
+	}
+	argc -= optind;
+	argv += optind;
 
 	if (argc < 1 || argc > 2) {
 		usage_repo();
