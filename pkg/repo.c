@@ -90,14 +90,18 @@ exec_repo(int argc, char **argv)
 	int ch;
 	char *rsa_key;
 	bool force = false;
+	bool files = false;
 
-	while ((ch = getopt(argc, argv, "fq")) != -1) {
+	while ((ch = getopt(argc, argv, "Ffq")) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
 			break;
 		case 'f':
 			force = true;
+			break;
+		case 'F':
+			files = true;
 			break;
 		default:
 			usage_repo();
@@ -114,9 +118,9 @@ exec_repo(int argc, char **argv)
 
 	if (!quiet) {
 		printf("Generating repo.sqlite in %s:  ", argv[0]);
-		ret = pkg_create_repo(argv[0], force, true, progress, &pos);
+		ret = pkg_create_repo(argv[0], force, files, progress, &pos);
 	} else
-		ret = pkg_create_repo(argv[0], force, true, NULL, NULL);
+		ret = pkg_create_repo(argv[0], force, files, NULL, NULL);
 
 	if (ret != EPKG_OK) {
 		printf("cannot create repository catalogue\n");
