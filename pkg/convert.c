@@ -39,7 +39,7 @@
 void
 usage_convert(void)
 {
-	fprintf(stderr, "usage pkg convert [-r]\n\n");
+	fprintf(stderr, "usage: pkg convert [-r]\n\n");
 	fprintf(stderr, "For more information see 'pkg help convert'.\n");
 }
 
