@@ -81,14 +81,15 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 
 	while (pkgdb_it_next(it, &pkg, query_flags) == EPKG_OK) {
 		rq = NULL;
-		pkg_to_old(pkg);
-		pkg_old_emit_content(pkg, &content);
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		printf("Converting %s-%s...", name, version);
 		if (dry_run) {
 			printf("\n");
 			continue;
 		}
+		pkg_to_old(pkg);
+		pkg_old_emit_content(pkg, &content);
+
 		snprintf(path, MAXPATHLEN, "%s/%s-%s", pkg_add_dbdir, name, version);
 		mkdir(path, 0755);
 
@@ -229,7 +230,6 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 	struct dirent *dp;
 	struct pkg *p = NULL;
 	char path[MAXPATHLEN];
-	char *name, *version;
 	struct pkgdb *db = NULL;
 
 	if ((d = opendir(pkg_add_dbdir)) == NULL)
@@ -247,14 +247,13 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 				pkg_new(&p, PKG_OLD_FILE);
 			else
 				pkg_reset(p, PKG_OLD_FILE);
+			printf("Converting %s...\n", dp->d_name);
 			snprintf(path, MAXPATHLEN, "%s/%s", pkg_add_dbdir, dp->d_name);
 			if (pkg_old_load_from_path(p, path) != EPKG_OK) {
 				fprintf(stderr, "Skipping invalid package: %s\n", path);
 				continue;
 			}
 			pkg_from_old(p);
-			pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
-			printf("Converting %s-%s...\n", name, version);
 			if (!dry_run)
 				pkgdb_register_ports(db, p);
 		}
