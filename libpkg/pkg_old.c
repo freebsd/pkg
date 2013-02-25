@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2012-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -119,9 +120,11 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
+	struct pkg_option *option = NULL;
 
 	const char *name;
 	const char *pkgorigin, *prefix, *version;
+	char option_type = 0;
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
 	    PKG_PREFIX, &prefix, PKG_VERSION, &version);
@@ -163,6 +166,22 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 			    pkg_dir_path(dir));
 		}
 	}
+
+	sbuf_printf(content, "@comment OPTIONS:");
+	while (pkg_options(pkg, &option) == EPKG_OK) {
+		/* Add space for previous option, if not the first. */
+		if (option_type != 0)
+			sbuf_cat(content, " ");
+
+		if (strcmp(pkg_option_value(option), "on") == 0)
+			option_type = '+';
+		else
+			option_type = '-';
+		sbuf_printf(content, "%c%s",
+		    option_type,
+		    pkg_option_opt(option));
+	}
+	sbuf_printf(content, "\n");
 
 	sbuf_finish(content);
 	*dest = strdup(sbuf_get(content));
