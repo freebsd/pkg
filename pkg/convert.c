@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2012-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +32,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <dirent.h>
+#include <unistd.h>
 
 #include <pkg.h>
 
@@ -253,20 +255,25 @@ convert_from_old(void)
 int
 exec_convert(int argc, char **argv)
 {
+	int ch;
 	bool revert = false;
 
-	if (argc > 2) {
-		usage_convert();
-		return (EX_USAGE);
-	}
-
-	if (argc == 2) {
-		if (strcmp(argv[1], "-r") == 0)
+	while ((ch = getopt(argc, argv, "r")) != -1) {
+		switch (ch) {
+		case 'r':
 			revert = true;
-		else {
+			break;
+		default:
 			usage_convert();
 			return (EX_USAGE);
 		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc > 1) {
+		usage_convert();
+		return (EX_USAGE);
 	}
 
 	if (revert)
