@@ -242,7 +242,7 @@ convert_from_old(bool dry_run)
 				pkg_new(&p, PKG_OLD_FILE);
 			else
 				pkg_reset(p, PKG_OLD_FILE);
-			snprintf(path, MAXPATHLEN, "/var/db/pkg/%s/", dp->d_name);
+			snprintf(path, MAXPATHLEN, "/var/db/pkg/%s", dp->d_name);
 			pkg_old_load_from_path(p, path);
 			pkg_from_old(p);
 			pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
