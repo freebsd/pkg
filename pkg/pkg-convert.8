@@ -23,6 +23,7 @@
 .Nd convert from/to pkgng database format
 .Sh SYNOPSIS
 .Nm
+.Op Fl d Ar pkg_dbdir
 .Op Fl nr
 .Sh DESCRIPTION
 .Nm
@@ -32,6 +33,12 @@ format.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl d
+The location of the
+.Xr pkg_add 1
+dbdir.
+Defaults to
+.Fa /var/db/pkg .
 .It Fl n
 Dry-run mode.
 Do not actually convert anything.
