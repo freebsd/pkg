@@ -41,12 +41,12 @@
 void
 usage_convert(void)
 {
-	fprintf(stderr, "usage: pkg convert [-r]\n\n");
+	fprintf(stderr, "usage: pkg convert [-nr]\n\n");
 	fprintf(stderr, "For more information see 'pkg help convert'.\n");
 }
 
 static int
-convert_to_old(void)
+convert_to_old(bool dry_run)
 {
 	struct pkgdb *db = NULL;
 	struct pkg *pkg = NULL;
@@ -80,6 +80,10 @@ convert_to_old(void)
 		pkg_old_emit_content(pkg, &content);
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		printf("Converting %s-%s...", name, version);
+		if (dry_run) {
+			printf("\n");
+			continue;
+		}
 		snprintf(path, MAXPATHLEN, "/var/db/pkg/%s-%s", name, version);
 		mkdir(path, 0755);
 
@@ -214,7 +218,7 @@ cleanup:
 }
 
 static int
-convert_from_old(void)
+convert_from_old(bool dry_run)
 {
 	DIR *d;
 	struct dirent *dp;
@@ -243,7 +247,8 @@ convert_from_old(void)
 			pkg_from_old(p);
 			pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
 			printf("Converting %s-%s...\n", name, version);
-			pkgdb_register_ports(db, p);
+			if (!dry_run)
+				pkgdb_register_ports(db, p);
 		}
 	}
 
@@ -257,9 +262,13 @@ exec_convert(int argc, char **argv)
 {
 	int ch;
 	bool revert = false;
+	bool dry_run = false;
 
-	while ((ch = getopt(argc, argv, "r")) != -1) {
+	while ((ch = getopt(argc, argv, "nr")) != -1) {
 		switch (ch) {
+		case 'n':
+			dry_run = true;
+			break;
 		case 'r':
 			revert = true;
 			break;
@@ -277,7 +286,7 @@ exec_convert(int argc, char **argv)
 	}
 
 	if (revert)
-		return (convert_to_old());
+		return (convert_to_old(dry_run));
 	else
-		return (convert_from_old());
+		return (convert_from_old(dry_run));
 }
