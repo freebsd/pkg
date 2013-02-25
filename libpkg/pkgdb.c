@@ -1486,9 +1486,9 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 	const char	*reponame = NULL;
 	const char	*mainsql = ""
 		"SELECT d.name, d.origin, d.version, p.locked "
-		"FROM main.deps AS d, "
-		"main.packages AS p "
-		"WHERE d.package_id = ?1 AND p.origin = d.origin;";
+		"FROM main.deps AS d "
+		"LEFT JOIN main.packages AS p ON p.origin = d.origin "
+		"WHERE d.package_id = ?1;";
 	const char	*reposql = ""
 		"SELECT d.name, d.origin, d.version, 0 "
 		"FROM %Q.deps AS d "
@@ -3056,7 +3056,15 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		    ") IS NOT NULL;");
 	}
 
-	/* Append dependencies */
+	/* Include all reverse dependencies */
+	if (recursive) {
+		do {
+			sql_exec(db->sqlite, upwards_deps_sql,
+				 reponame, reponame);
+		} while (sqlite3_changes(db->sqlite) != 0);
+	}
+
+	/* Append missing dependencies */
 	sbuf_reset(sql);
 	sbuf_printf(sql, deps_sql, reponame, reponame);
 	sbuf_finish(sql);
@@ -3064,13 +3072,6 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	do {
 		sql_exec(db->sqlite, sbuf_get(sql));
 	} while (sqlite3_changes(db->sqlite) != 0);
-
-	if (recursive) {
-		do {
-			sql_exec(db->sqlite, upwards_deps_sql,
-				 reponame, reponame);
-		} while (sqlite3_changes(db->sqlite) != 0);
-	}
 
 	/* Determine if there is an upgrade needed */
 	sql_exec(db->sqlite, ""

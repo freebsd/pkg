@@ -351,7 +351,7 @@ pkg_jobs_keep_files_to_del(struct pkg *p1, struct pkg *p2)
 		if (d->keep)
 			continue;
 
-		d->keep = pkg_has_file(p2, pkg_dir_path(d));
+		d->keep = pkg_has_dir(p2, pkg_dir_path(d));
 	}
 
 	return (EPKG_OK);

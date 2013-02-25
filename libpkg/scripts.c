@@ -83,7 +83,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	}
 
 	assert(i < sizeof(map) / sizeof(map[0]));
-	assert(map[i].a == type);
 
 	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
 		if (pkg_script_get(pkg, j) == NULL)
