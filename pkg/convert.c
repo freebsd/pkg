@@ -243,7 +243,10 @@ convert_from_old(bool dry_run)
 			else
 				pkg_reset(p, PKG_OLD_FILE);
 			snprintf(path, MAXPATHLEN, "/var/db/pkg/%s", dp->d_name);
-			pkg_old_load_from_path(p, path);
+			if (pkg_old_load_from_path(p, path) != EPKG_OK) {
+				fprintf(stderr, "Skipping invalid package: %s\n", path);
+				continue;
+			}
 			pkg_from_old(p);
 			pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
 			printf("Converting %s-%s...\n", name, version);
