@@ -29,6 +29,8 @@
 #include <sys/stat.h>
 #include <sys/sbuf.h>
 
+#include <err.h>
+#include <errno.h>
 #include <string.h>
 #include <sysexits.h>
 #include <dirent.h>
@@ -64,10 +66,8 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 	struct sbuf *install_script = sbuf_new_auto();
 	struct sbuf *deinstall_script = sbuf_new_auto();
 
-	if (access(pkg_add_dbdir, F_OK) != 0) {
-		fprintf(stderr, "Package directory '%s' does not exist.\n", pkg_add_dbdir);
-		return (EX_NOINPUT);
-	}
+	if (mkdir(pkg_add_dbdir, 0755) != 0 && errno != EEXIST)
+		err(EX_CANTCREAT, pkg_add_dbdir);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
@@ -233,7 +233,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 	struct pkgdb *db = NULL;
 
 	if ((d = opendir(pkg_add_dbdir)) == NULL)
-		return (EX_NOINPUT);
+		err(EX_NOINPUT, pkg_add_dbdir);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
