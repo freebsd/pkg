@@ -162,6 +162,9 @@ void usage_which(void);
 int exec_convert(int, char **);
 void usage_convert(void);
 
+/* pkg term */
+void pkg_title(struct pkg *, const char*);
+
 /* utils */
 
 /* These are the fields of the Full output, in order */

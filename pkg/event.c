@@ -4,7 +4,7 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -14,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -97,7 +97,7 @@ event_callback(void *data, struct pkg_event *ev)
 			printf("[%d/%d] ", nbdone, nbactions);
 		printf("Installing %s-%s...", name, version);
 		/* print to the terminal title*/
-		printf("%c]0;[%d/%d] Installing %s-%s%c", '\033', nbdone, nbactions, name, version, '\007');
+		pkg_title(ev->e_install_begin.pkg, "Installing");
 
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
@@ -130,8 +130,8 @@ event_callback(void *data, struct pkg_event *ev)
 		if (nbactions > 0)
 			printf("[%d/%d] ", nbdone, nbactions);
 		printf("Deleting %s-%s...", name, version);
-		printf("%c]0;[%d/%d] Deleting %s-%s%c", '\033', nbdone,
-		    nbactions, name, version, '\007');
+		pkg_title(ev->e_deinstall_begin.pkg, "Deleting");
+
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
@@ -150,22 +150,26 @@ event_callback(void *data, struct pkg_event *ev)
 		case 1:
 			printf("Downgrading %s from %s to %s...",
 			    name, version, newversion);
-			printf("%c]0;[%d/%d] Downgrading %s from %s to %s%c",
-			    '\033', nbdone, nbactions, name, version,
-			    newversion, '\007');
+			messages = sbuf_new_auto();
+			sbuf_printf(messages, "Downgrading %s from %s to %s ", name, version, newversion);
+			pkg_title(ev->e_upgrade_begin.pkg, sbuf_data(messages));
+			sbuf_delete(messages);
+
 			break;
 		case 0:
 			printf("Reinstalling %s-%s",
 			    name, version);
-			printf("%c]0;[%d/%d] Reinstalling %s-%s%c", '\033',
-			    nbdone, nbactions, name, version, '\007');
+			pkg_title(ev->e_upgrade_begin.pkg, "Reinstalling");
+
 			break;
 		case -1:
 			printf("Upgrading %s from %s to %s...",
 			    name, version, newversion);
-			printf("%c]0;[%d/%d] Upgrading %s from %s to %s%c",
-			    '\033', nbdone, nbactions, name, version,
-			    newversion, '\007');
+			messages = sbuf_new_auto();
+			sbuf_printf(messages, "Upgrading %s from %s to %s ", name, version, newversion);
+			pkg_title(ev->e_upgrade_begin.pkg, sbuf_data(messages));
+			sbuf_delete(messages);
+
 			break;
 		}
 		break;
