@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -387,7 +388,7 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 static int
 comment_key(struct plist *p, char *line, struct file_attr *a)
 {
-	char *name, *version;
+	char *name, *version, *line_options, *option;
 	if (strncmp(line, "DEPORIGIN:", 10) == 0) {
 		line += 10;
 		name = p->pkgdep;
@@ -399,6 +400,17 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
 		line += 7;
 		pkg_set(p->pkg, PKG_ORIGIN, line);
+	} else if (strncmp(line, "OPTIONS:", 8) == 0) {
+		line += 8;
+		/* OPTIONS:+OPTION -OPTION */
+		if (line[0] != '\0') {
+			line_options = strdup(line);
+			while ((option = strsep(&line_options, " ")) != NULL) {
+				pkg_addoption(p->pkg, option + 1,
+				    option[0] == '+' ? "on" : "off");
+			}
+			free(line_options);
+		}
 	}
 
 	/* ignore md5 will be recomputed anyway */
