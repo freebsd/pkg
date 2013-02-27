@@ -67,7 +67,7 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 	struct sbuf *deinstall_script = sbuf_new_auto();
 
 	if (mkdir(pkg_add_dbdir, 0755) != 0 && errno != EEXIST)
-		err(EX_CANTCREAT, pkg_add_dbdir);
+		err(EX_CANTCREAT, "%s", pkg_add_dbdir);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
@@ -233,7 +233,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 	struct pkgdb *db = NULL;
 
 	if ((d = opendir(pkg_add_dbdir)) == NULL)
-		err(EX_NOINPUT, pkg_add_dbdir);
+		err(EX_NOINPUT, "%s", pkg_add_dbdir);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
