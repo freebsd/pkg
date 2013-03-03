@@ -143,8 +143,10 @@ info_flags(unsigned int opt)
 		flags |= PKG_LOAD_LICENSES;
 	if (opt & INFO_OPTIONS)
 		flags |= PKG_LOAD_OPTIONS;
-	if (opt & INFO_SHLIBS)
+	if (opt & INFO_SHLIBS_REQUIRED)
 		flags |= PKG_LOAD_SHLIBS_REQUIRED;
+	if (opt & INFO_SHLIBS_PROVIDED)
+		flags |= PKG_LOAD_SHLIBS_PROVIDED;
 	if (opt & INFO_DEPS)
 		flags |= PKG_LOAD_DEPS;
 	if (opt & INFO_RDEPS)
@@ -382,11 +384,19 @@ print_info(struct pkg * const pkg, unsigned int options)
 					       pkg_option_value(option));
 			}
 			break;
-		case INFO_SHLIBS:
+		case INFO_SHLIBS_REQUIRED:
 			if (pkg_list_count(pkg, PKG_SHLIBS_REQUIRED) > 0) {
 				if (print_tag)
-					printf("%-15s:\n", "Shared Libs");
+					printf("%-15s:\n", "Shared Libs required");
 				while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK)
+					printf("%s%s\n", tab, pkg_shlib_name(shlib));
+			}
+			break;
+		case INFO_SHLIBS_PROVIDED:
+			if (pkg_list_count(pkg, PKG_SHLIBS_PROVIDED) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Shared Libs provided");
+				while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
 					printf("%s%s\n", tab, pkg_shlib_name(shlib));
 			}
 			break;

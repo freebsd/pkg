@@ -52,25 +52,26 @@ static const cliopt search_label[] = {
 };
 
 static const cliopt modifiers[] = {
-	{ "arch",         'a'  },
-	{ "categories",   'C'  },
-	{ "comment",      'c'  },
-	{ "depends-on",   'd'  },
-	{ "description",  'D'  },
-	{ "full",         'f'  },
-	{ "licenses",     'l'  },
-	{ "maintainer",   'm'  },
-	{ "name",         'n'  },
-	{ "options",      'o'  },
-	{ "pkg-size",	  'P'  },
-	{ "prefix",       'p'  },
-	{ "repository",   'R'  },
-	{ "required-by",  'r'  },
-	{ "shared-libs",  'S'  },
-	{ "size",         's'  },
-	{ "url",          'u'  },
-	{ "www",          'w'  },
-	{ NULL,           '\0' },
+	{ "arch",                 'a'  },
+	{ "categories",           'C'  },
+	{ "comment",              'c'  },
+	{ "depends-on",           'd'  },
+	{ "description",          'D'  },
+	{ "full",                 'f'  },
+	{ "licenses",             'l'  },
+	{ "maintainer",           'm'  },
+	{ "name",                 'n'  },
+	{ "options",              'o'  },
+	{ "pkg-size",	          'P'  },
+	{ "prefix",               'p'  },
+	{ "repository",           'R'  },
+	{ "required-by",          'r'  },
+	{ "shared-libs-required", 'B'  },
+	{ "shared-libs-provided", 'b'  },
+	{ "size",                 's'  },
+	{ "url",                  'u'  },
+	{ "www",                  'w'  },
+	{ NULL,                   '\0' },
 };	
 
 static char
@@ -178,8 +179,11 @@ modifier_opt(const char *optionarg)
 	case 'r':
 		opt = INFO_RDEPS;
 		break;
-	case 'S':
-		opt = INFO_SHLIBS;
+	case 'B':
+		opt = INFO_SHLIBS_REQUIRED;
+		break;
+	case 'b':
+		opt = INFO_SHLIBS_PROVIDED;
 		break;
 	case 's':
 		opt = INFO_FLATSIZE;
@@ -207,7 +211,7 @@ usage_search(void)
 	int i, n;
 
 	fprintf(stderr, "usage: pkg search [-egix] [-r repo] [-S search] "
-	    "[-L label] [-M mod]... <pkg-name>\n");
+	    "[-L label] [-Q mod]... <pkg-name>\n");
 	fprintf(stderr, "       pkg search [-cDdefgiopqx] [-r repo] "
 	    "<pattern>\n\n");
 	n = fprintf(stderr, "       Search and Label options:");

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd March 3, 2013
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -282,7 +282,8 @@ Show a standard set of fields, equivalent to a combination of the
 .Sy www ,
 .Sy comment ,
 .Sy options ,
-.Sy shared-libs ,
+.Sy shared-libs-required ,
+.Sy shared-libs-provided ,
 .Sy size ,
 .Sy pkg-size
 and
@@ -336,7 +337,8 @@ one per line.
 If the no other packages require the named package, nothing will be
 output for this field, including suppressing the tag name when
 multiple output fields are requested.
-.It Sy shared-libs
+
+.It Sy shared-libs-required
 If the package contains dynamically linked FreeBSD ELF binaries,
 display a list of all of the shared libraries other than those from
 the base system required for those binaries to run.
@@ -345,6 +347,12 @@ under emulation will not be displayed.
 If the package does not require any shared libraries, nothing will be
 output for this field including suppressing the tag name when multiple
 fields are requested.
+.It Sy shared-libs-provided
+If the package contains any shared libraries, display a list of
+the library names, including the ABI version number, if any.
+A shared library, of either the same or differing ABI versions, may
+legitimately be provided by more than installed package, 
+but this generally indicates a problem.
 .It Sy size
 Display the total amount of filesystem space the package files will
 take up once unpacked and installed.
@@ -374,7 +382,14 @@ and
 to distinguish
 .Cm size
 from
-.Cm shared-libs .
+.Cm shared-libs-required
+or
+.Cm shared-libs-provided ,
+and you'll need at least
+.FL "Q shared-libs-p"
+ to select the
+.Cm shared-libs-provided
+unambiguously.
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
