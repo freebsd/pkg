@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -364,8 +364,16 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			goto cleanup;
 		}
 
-		if (dyn->d_tag == DT_SONAME)
+		if (dyn->d_tag == DT_SONAME) {
 			is_shlib = true;
+
+			/* The file being scanned is a shared library
+			   *provided* by the package. Record this if
+			   appropriate */
+
+			if (shlibs)
+				pkg_addshlib_provided(pkg, basename(fpath));
+		}
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
 			continue;
