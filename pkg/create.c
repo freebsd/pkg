@@ -250,9 +250,9 @@ exec_create(int argc, char **argv)
 	}
 
 	if (manifestdir == NULL) {
-		if (!old) {
+		if (old) {
 			warnx("Can only create an old package format"
-			    "out of a staged directory");
+			    " out of a staged directory");
 			return (EX_SOFTWARE);
 		}
 		return (pkg_create_matches(argc, argv, match, fmt, outdir,
