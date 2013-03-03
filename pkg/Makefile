@@ -48,6 +48,7 @@ DEBUG_FLAGS+=	-pg
 CFLAGS+=	-I${.CURDIR}/../libpkg
 LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lpkg \
+		-larchive \
 		-lutil \
 		-lpthread \
 		${LDADD_STATIC}
