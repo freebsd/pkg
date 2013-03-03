@@ -84,6 +84,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	char *req = NULL;
 	const char *myarch;
 	int64_t res;
+	char *bad_abis = NULL;
 	const char *tmpdir;
 	sqlite3_stmt *stmt;
 	const char sql[] = ""
@@ -245,9 +246,9 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 
-	req = sqlite3_mprintf("select count(arch) from packages "
+	req = sqlite3_mprintf("select group_concat(arch, ', ') from packages "
 	    "where arch not GLOB '%q'", myarch);
-	if (get_pragma(sqlite, req, &res) != EPKG_OK) {
+	if (get_sql_string(sqlite, req, &bad_abis) != EPKG_OK) {
 		sqlite3_free(req);
 		pkg_emit_error("Unable to query repository");
 		rc = EPKG_FATAL;
@@ -255,10 +256,12 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		goto cleanup;
 	}
 
-	if (res > 0) {
+	if (bad_abis != NULL) {
 		pkg_emit_error("At least one of the packages provided by "
-		    "the repository is not compatible with your abi: %s",
-		    myarch);
+		    "the repository is not compatible with your ABI:\n"
+		    "    Your ABI: %s\n"
+		    "    Incompatible ABIs found: %s",
+		    myarch, bad_abis);
 		rc = EPKG_FATAL;
 		sqlite3_close(sqlite);
 		goto cleanup;
