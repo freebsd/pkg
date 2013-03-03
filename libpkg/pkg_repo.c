@@ -48,12 +48,12 @@
 #include "private/thd_repo.h"
 
 /* The package repo schema major revision */
-#define REPO_SCHEMA_MAJOR 2
+#define REPO_SCHEMA_MAJOR 3
 
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo */
-#define REPO_SCHEMA_MINOR 1
+#define REPO_SCHEMA_MINOR 0
 
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
@@ -66,7 +66,8 @@ typedef enum _sql_prstmt_index {
 	LIC2,
 	OPTS,
 	SHLIB1,
-	SHLIB2,
+	SHLIB_REQD,
+	SHLIB_PROV,
 	EXISTS,
 	VERSION,
 	DELETE,
@@ -123,9 +124,15 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
 		"T",
 	},
-	[SHLIB2] = {
+	[SHLIB_REQD] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_shlibs_required(package_id, shlib_id) "
+		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
+		"IT",
+	},
+	[SHLIB_PROV] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_shlibs_provided(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
 	},
@@ -855,12 +862,27 @@ pkg_create_repo(char *path, bool force, bool files,
 		}
 
 		shlib = NULL;
-		while (pkg_shlibs(r->pkg, &shlib) == EPKG_OK) {
+		while (pkg_shlibs_required(r->pkg, &shlib) == EPKG_OK) {
 			const char *shlib_name = pkg_shlib_name(shlib);
 
 			ret = run_prepared_statement(SHLIB1, shlib_name);
 			if (ret == SQLITE_DONE)
-			    ret = run_prepared_statement(SHLIB2, package_id,
+			    ret = run_prepared_statement(SHLIB_REQD, package_id,
+			        shlib_name);
+			if (ret != SQLITE_DONE) {
+				ERROR_SQLITE(sqlite);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+		}
+
+		shlib = NULL;
+		while (pkg_shlibs_provided(r->pkg, &shlib) == EPKG_OK) {
+			const char *shlib_name = pkg_shlib_name(shlib);
+
+			ret = run_prepared_statement(SHLIB1, shlib_name);
+			if (ret == SQLITE_DONE)
+			    ret = run_prepared_statement(SHLIB_PROV, package_id,
 			        shlib_name);
 			if (ret != SQLITE_DONE) {
 				ERROR_SQLITE(sqlite);

@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -112,7 +113,8 @@ struct pkg {
 	struct pkg_option *options;
 	struct pkg_user *users;
 	struct pkg_group *groups;
-	struct pkg_shlib *shlibs;
+	struct pkg_shlib *shlibs_required;
+	struct pkg_shlib *shlibs_provided;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -359,10 +361,12 @@ int pkgdb_load_category(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_license(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
 
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete);
-int pkgdb_update_shlibs(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 int pkg_register_shlibs(struct pkg *pkg);

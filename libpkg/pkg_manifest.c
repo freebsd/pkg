@@ -52,7 +52,8 @@
 #define PKG_USERS -9
 #define PKG_GROUPS -10
 #define PKG_DIRECTORIES -11
-#define PKG_SHLIBS -12
+#define PKG_SHLIBS_REQUIRED -12
+#define PKG_SHLIBS_PROVIDED -13
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_flatsize_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -96,7 +97,8 @@ static struct manifest_key {
 	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
 	/* compatibility with old format */
 	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping},
-	{ "shlibs", PKG_SHLIBS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "shlibs_required", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "shlibs_provided", PKG_SHLIBS_PROVIDED, YAML_SEQUENCE_NODE, parse_sequence},
 	{ NULL, -99, -99, NULL}
 };
 
@@ -282,11 +284,18 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
 			else
 				pkg_emit_error("Skipping malformed dirs");
 			break;
-		case PKG_SHLIBS:
+		case PKG_SHLIBS_REQUIRED:
 			if (!is_valid_yaml_scalar(val))
-				pkg_emit_error("Skipping malformed shared library");
+				pkg_emit_error("Skipping malformed required shared library");
 			else
-				pkg_addshlib(pkg, val->data.scalar.value);
+				pkg_addshlib_required(pkg, val->data.scalar.value);
+			break;
+		case PKG_SHLIBS_PROVIDED:
+			if (!is_valid_yaml_scalar(val))
+				pkg_emit_error("Skipping malformed provided shared library");
+			else
+				pkg_addshlib_provided(pkg, val->data.scalar.value);
+			break;
 		}
 		++item;
 	}
@@ -820,8 +829,13 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		    pkg_group_name(group));
 
 	seq = -1;
-	while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "shlibs",
+	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "shlibs_required",
+		    pkg_shlib_name(shlib));
+
+	seq = -1;
+	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "shlibs_provided",
 		    pkg_shlib_name(shlib));
 
 	map = -1;

@@ -1206,18 +1206,19 @@ static struct load_on_flag {
 	int	flag;
 	int	(*load)(struct pkgdb *db, struct pkg *p);
 } load_on_flag[] = {
-	{ PKG_LOAD_DEPS,	pkgdb_load_deps },
-	{ PKG_LOAD_RDEPS,	pkgdb_load_rdeps },
-	{ PKG_LOAD_FILES,	pkgdb_load_files },
-	{ PKG_LOAD_DIRS,	pkgdb_load_dirs },
-	{ PKG_LOAD_SCRIPTS,	pkgdb_load_scripts },
-	{ PKG_LOAD_OPTIONS,	pkgdb_load_options },
-	{ PKG_LOAD_MTREE,	pkgdb_load_mtree },
-	{ PKG_LOAD_CATEGORIES,	pkgdb_load_category },
-	{ PKG_LOAD_LICENSES,	pkgdb_load_license },
-	{ PKG_LOAD_USERS,	pkgdb_load_user },
-	{ PKG_LOAD_GROUPS,	pkgdb_load_group },
-	{ PKG_LOAD_SHLIBS,	pkgdb_load_shlib },
+	{ PKG_LOAD_DEPS,		pkgdb_load_deps },
+	{ PKG_LOAD_RDEPS,		pkgdb_load_rdeps },
+	{ PKG_LOAD_FILES,		pkgdb_load_files },
+	{ PKG_LOAD_DIRS,		pkgdb_load_dirs },
+	{ PKG_LOAD_SCRIPTS,		pkgdb_load_scripts },
+	{ PKG_LOAD_OPTIONS,		pkgdb_load_options },
+	{ PKG_LOAD_MTREE,		pkgdb_load_mtree },
+	{ PKG_LOAD_CATEGORIES,		pkgdb_load_category },
+	{ PKG_LOAD_LICENSES,		pkgdb_load_license },
+	{ PKG_LOAD_USERS,		pkgdb_load_user },
+	{ PKG_LOAD_GROUPS,		pkgdb_load_group },
+	{ PKG_LOAD_SHLIBS_REQUIRED,	pkgdb_load_shlib_required },
+	{ PKG_LOAD_SHLIBS_PROVIDED,	pkgdb_load_shlib_provided },
 	{ -1,			NULL }
 };
 
@@ -1427,7 +1428,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path)
 }
 
 struct pkgdb_it *
-pkgdb_query_requires_shlib(struct pkgdb *db, const char *shlib)
+pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib)
 {
 	sqlite3_stmt	*stmt;
 	const char	 sql[] = ""
@@ -1452,7 +1453,7 @@ pkgdb_query_requires_shlib(struct pkgdb *db, const char *shlib)
 }
 
 struct pkgdb_it *
-pkgdb_query_provides_shlib(struct pkgdb *db, const char *shlib)
+pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib)
 {
 	sqlite3_stmt	*stmt;
 	const char	 sql[] = ""
@@ -1815,7 +1816,7 @@ pkgdb_load_group(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*reponame = NULL;
@@ -1835,8 +1836,34 @@ pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg)
 	} else
 		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 
-	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_SHLIBS,
-	    pkg_addshlib, PKG_SHLIBS));
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_SHLIBS_REQUIRED,
+	    pkg_addshlib_required, PKG_SHLIBS_REQUIRED));
+}
+
+
+int
+pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg)
+{
+	char		 sql[BUFSIZ];
+	const char	*reponame = NULL;
+	const char	*basesql = ""
+		"SELECT name "
+		"FROM %Q.pkg_shlibs_provided, %Q.shlibs AS s "
+		"WHERE package_id = ?1 "
+			"AND shlib_id = s.id "
+		"ORDER by name DESC";
+
+	assert(db != NULL && pkg != NULL);
+
+	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
+		pkg_get(pkg, PKG_REPONAME, &reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
+	} else
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
+
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_SHLIBS_PROVIDED,
+	    pkg_addshlib_provided, PKG_SHLIBS_PROVIDED));
 }
 
 int
@@ -1960,7 +1987,8 @@ typedef enum _sql_prstmt_index {
 	SCRIPTS,
 	OPTIONS,
 	SHLIBS1,
-	SHLIBS2,
+	SHLIBS_REQD,
+	SHLIBS_PROV,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -2076,9 +2104,15 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
 		"T",
 	},
-	[SHLIBS2] = {
+	[SHLIBS_REQD] = {
 		NULL,
 		"INSERT INTO pkg_shlibs_required(package_id, shlib_id) "
+		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
+		"IT",
+	},
+	[SHLIBS_PROV] = {
+		NULL,
+		"INSERT INTO pkg_shlibs_provided(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
 	},
@@ -2437,7 +2471,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 	/*
 	 * Insert shlibs
 	 */
-	if (pkgdb_update_shlibs(pkg, package_id, s) != EPKG_OK)
+	if (pkgdb_update_shlibs_required(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
+	if (pkgdb_update_shlibs_provided(pkg, package_id, s) != EPKG_OK)
 		goto cleanup;
 
 	retcode = EPKG_OK;
@@ -2448,15 +2484,34 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 }
 
 int
-pkgdb_update_shlibs(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
 	struct pkg_shlib	*shlib = NULL;
 
-	while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
 		if (run_prstmt(SHLIBS1, pkg_shlib_name(shlib))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(SHLIBS2, package_id, pkg_shlib_name(shlib))
+		    run_prstmt(SHLIBS_REQD, package_id, pkg_shlib_name(shlib))
+		    != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	struct pkg_shlib	*shlib = NULL;
+
+	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+		if (run_prstmt(SHLIBS1, pkg_shlib_name(shlib))
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(SHLIBS_PROV, package_id, pkg_shlib_name(shlib))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			return (EPKG_FATAL);
@@ -2526,7 +2581,9 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 			return (EPKG_FATAL);
 
 		/* Save shlibs */
-		ret = pkgdb_update_shlibs(pkg, package_id, s);
+		ret = pkgdb_update_shlibs_required(pkg, package_id, s);
+		if (ret == EPKG_OK)
+			ret = pkgdb_update_shlibs_provided(pkg, package_id, s);
 	}
 
 	return (ret);

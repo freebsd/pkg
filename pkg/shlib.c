@@ -94,7 +94,7 @@ exec_shlib(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if ((it = pkgdb_query_requires_shlib(db, libname)) == NULL) {
+	if ((it = pkgdb_query_shlib_required(db, libname)) == NULL) {
 		return (EX_IOERR);
 	}
 

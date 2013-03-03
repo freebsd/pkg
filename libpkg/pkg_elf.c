@@ -99,7 +99,7 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 {
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
-		pkg_addshlib(pkg, name);
+		pkg_addshlib_required(pkg, name);
 		return (EPKG_OK);
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
@@ -150,7 +150,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	}
 
 	if (shlibs)
-		pkg_addshlib(pkg, name);
+		pkg_addshlib_required(pkg, name);
 
 	if ((it = pkgdb_query_which(db, pathbuf)) == NULL)
 		return (EPKG_OK);
@@ -500,7 +500,7 @@ pkg_register_shlibs(struct pkg *pkg)
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
-	pkg_list_free(pkg, PKG_SHLIBS);
+	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 
 	if (!shlibs)
 		return (EPKG_OK);

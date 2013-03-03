@@ -109,7 +109,8 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
 	pkg_list_free(pkg, PKG_GROUPS);
-	pkg_list_free(pkg, PKG_SHLIBS);
+	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
+	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 
 	pkg->rowid = 0;
 	pkg->type = type;
@@ -136,7 +137,8 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
 	pkg_list_free(pkg, PKG_GROUPS);
-	pkg_list_free(pkg, PKG_SHLIBS);
+	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
+	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 
 	free(pkg);
 }
@@ -453,12 +455,19 @@ pkg_options(struct pkg *pkg, struct pkg_option **o)
 }
 
 int
-
-pkg_shlibs(struct pkg *pkg, struct pkg_shlib **s)
+pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **s)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->shlibs, (*s));
+	HASH_NEXT(pkg->shlibs_required, (*s));
+}
+
+int
+pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **s)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->shlibs_provided, (*s));
 }
 
 int
@@ -833,14 +842,14 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 }
 
 int
-pkg_addshlib(struct pkg *pkg, const char *name)
+pkg_addshlib_required(struct pkg *pkg, const char *name)
 {
 	struct pkg_shlib *s = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->shlibs, __DECONST(char *, name), s);
+	HASH_FIND_STR(pkg->shlibs_required, __DECONST(char *, name), s);
 	/* silently ignore duplicates in case of shlibs */
 	if (s != NULL)
 		return (EPKG_OK);
@@ -849,7 +858,32 @@ pkg_addshlib(struct pkg *pkg, const char *name)
 
 	sbuf_set(&s->name, name);
 
-	HASH_ADD_KEYPTR(hh, pkg->shlibs,__DECONST(char *, pkg_shlib_name(s)),
+	HASH_ADD_KEYPTR(hh, pkg->shlibs_required,
+	    __DECONST(char *, pkg_shlib_name(s)),
+	    strlen(pkg_shlib_name(s)), s);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addshlib_provided(struct pkg *pkg, const char *name)
+{
+	struct pkg_shlib *s = NULL;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	HASH_FIND_STR(pkg->shlibs_provided, __DECONST(char *, name), s);
+	/* silently ignore duplicates in case of shlibs */
+	if (s != NULL)
+		return (EPKG_OK);
+
+	pkg_shlib_new(&s);
+
+	sbuf_set(&s->name, name);
+
+	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided,
+	    __DECONST(char *, pkg_shlib_name(s)),
 	    strlen(pkg_shlib_name(s)), s);
 
 	return (EPKG_OK);
@@ -877,8 +911,10 @@ pkg_list_count(struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->users));
 	case PKG_GROUPS:
 		return (HASH_COUNT(pkg->groups));
-	case PKG_SHLIBS:
-		return (HASH_COUNT(pkg->shlibs));
+	case PKG_SHLIBS_REQUIRED:
+		return (HASH_COUNT(pkg->shlibs_required));
+	case PKG_SHLIBS_PROVIDED:
+		return (HASH_COUNT(pkg->shlibs_provided));
 	}
 	
 	return (0);
@@ -923,9 +959,13 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		HASH_FREE(pkg->groups, pkg_group, pkg_group_free);
 		pkg->flags &= ~PKG_LOAD_GROUPS;
 		break;
-	case PKG_SHLIBS:
-		HASH_FREE(pkg->shlibs, pkg_shlib, pkg_shlib_free);
-		pkg->flags &= ~PKG_LOAD_SHLIBS;
+	case PKG_SHLIBS_REQUIRED:
+		HASH_FREE(pkg->shlibs_required, pkg_shlib, pkg_shlib_free);
+		pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
+		break;
+	case PKG_SHLIBS_PROVIDED:
+		HASH_FREE(pkg->shlibs_provided, pkg_shlib, pkg_shlib_free);
+		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	}
 }

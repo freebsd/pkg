@@ -48,7 +48,7 @@ static struct query_flags accepted_rquery_flags[] = {
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
 	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
-	{ 'B', "",		1, PKG_LOAD_SHLIBS },
+	{ 'B', "",		1, PKG_LOAD_SHLIBS_REQUIRED },
 	{ '?', "drCOLB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ '#', "drCOLB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },

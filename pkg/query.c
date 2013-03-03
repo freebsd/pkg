@@ -52,7 +52,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
 	{ 'U', "",		1, PKG_LOAD_USERS },
 	{ 'G', "",		1, PKG_LOAD_GROUPS },
-	{ 'B', "",		1, PKG_LOAD_SHLIBS },
+	{ 'B', "",		1, PKG_LOAD_SHLIBS_REQUIRED },
 	{ '?', "drCFODLUGB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ '#', "drCFODLUGB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },
@@ -186,7 +186,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_GROUPS) > 0);
 					break;
 				case 'B':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS) > 0);
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_REQUIRED) > 0);
 					break;
 				}
 				break;
@@ -221,7 +221,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_GROUPS));
 					break;
 				case 'B':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS));
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_REQUIRED));
 					break;
 				}
 				break;
@@ -401,7 +401,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'B':
-		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
 			format_str(pkg, output, qstr, shlib);
 			printf("%s\n", sbuf_data(output));
 		}
@@ -537,7 +537,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_groups AS d WHERE d.package_id=p.id)", dbstr);
 							break;
 						case 'B':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs_required AS d WHERE d.package_id=p.id)", dbstr);
 							break;
 						default:
 							goto bad_option;

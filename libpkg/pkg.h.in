@@ -261,7 +261,8 @@ typedef enum {
 	PKG_DIRS,
 	PKG_USERS,
 	PKG_GROUPS,
-	PKG_SHLIBS
+	PKG_SHLIBS_REQUIRED,
+	PKG_SHLIBS_PROVIDED,
 } pkg_list;
 
 /**
@@ -568,7 +569,14 @@ int pkg_options(struct pkg *, struct pkg_option **option);
  * @param shlib must be set to NULL for the first call.
  * @return An error code
  */
-int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
+int pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **shlib);
+
+/**
+ * Iterates over the shared libraries provided by the package.
+ * @param shlib must be set to NULL for the first call.
+ * @return An error code
+ */
+int pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **shlib);
 
 /**
  * Iterate over all of the files within the package pkg, ensuring the
@@ -726,10 +734,16 @@ int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
 int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
 
 /**
- * Add a shared library
+ * Add a shared library used by this package
  * @return An error code.
  */
-int pkg_addshlib(struct pkg *pkg, const char *name);
+int pkg_addshlib_required(struct pkg *pkg, const char *name);
+
+/**
+ * Add a shared library provided by this package
+ * @return An error code.
+ */
+int pkg_addshlib_provided(struct pkg *pkg, const char *name);
 
 /**
  * Parse a manifest and set the attributes of pkg accordingly.
@@ -898,22 +912,23 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
  */
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 
-struct pkgdb_it * pkgdb_query_requires_shlib(struct pkgdb *db, const char *shlib);
-struct pkgdb_it * pkgdb_query_provides_shlib(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib);
 
-#define PKG_LOAD_BASIC		0
-#define PKG_LOAD_DEPS		(1U << 0)
-#define PKG_LOAD_RDEPS		(1U << 1)
-#define PKG_LOAD_FILES		(1U << 2)
-#define PKG_LOAD_SCRIPTS	(1U << 3)
-#define PKG_LOAD_OPTIONS	(1U << 4)
-#define PKG_LOAD_MTREE		(1U << 5)
-#define PKG_LOAD_DIRS		(1U << 6)
-#define PKG_LOAD_CATEGORIES	(1U << 7)
-#define PKG_LOAD_LICENSES	(1U << 8)
-#define PKG_LOAD_USERS		(1U << 9)
-#define PKG_LOAD_GROUPS		(1U << 10)
-#define PKG_LOAD_SHLIBS		(1U << 11)
+#define PKG_LOAD_BASIC			0
+#define PKG_LOAD_DEPS			(1U << 0)
+#define PKG_LOAD_RDEPS			(1U << 1)
+#define PKG_LOAD_FILES			(1U << 2)
+#define PKG_LOAD_SCRIPTS		(1U << 3)
+#define PKG_LOAD_OPTIONS		(1U << 4)
+#define PKG_LOAD_MTREE			(1U << 5)
+#define PKG_LOAD_DIRS			(1U << 6)
+#define PKG_LOAD_CATEGORIES		(1U << 7)
+#define PKG_LOAD_LICENSES		(1U << 8)
+#define PKG_LOAD_USERS			(1U << 9)
+#define PKG_LOAD_GROUPS			(1U << 10)
+#define PKG_LOAD_SHLIBS_REQUIRED	(1U << 11)
+#define PKG_LOAD_SHLIBS_PROVIDED	(1U << 12)
 /* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**
