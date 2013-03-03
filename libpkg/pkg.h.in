@@ -898,7 +898,8 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
  */
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
 
-struct pkgdb_it * pkgdb_query_shlib(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_requires_shlib(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_provides_shlib(struct pkgdb *db, const char *shlib);
 
 #define PKG_LOAD_BASIC		0
 #define PKG_LOAD_DEPS		(1U << 0)

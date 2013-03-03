@@ -265,6 +265,28 @@ static struct db_upgrades {
 		"FROM oldpkgs;"
 	"DROP TABLE oldpkgs;"
 	},
+	{14,
+	"CREATE TABLE pkg_shlibs_required ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+			" ON DELETE CASCADE ON UPDATE CASCADE,"
+		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
+			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE (package_id, shlib_id)"
+	");"
+	"CREATE TABLE pkg_shlibs_provided ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+			" ON DELETE CASCADE ON UPDATE CASCADE,"
+		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
+			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE (package_id, shlib_id)"
+	 ");"
+	 "INSERT INTO pkg_shlibs_required (package_id, shlib_id)"
+	 	" SELECT package_id, shlib_id FROM pkg_shlibs;"
+	 "CREATE INDEX pkg_shlibs_required_package_id ON pkg_shlibs_required (package_id);"
+	 "CREATE INDEX pkg_shlibs_provided_package_id ON pkg_shlibs_provided (package_id);"
+	 "DROP INDEX pkg_shlibs_package_id;"
+	 "DROP TABLE pkg_shlibs;"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL },

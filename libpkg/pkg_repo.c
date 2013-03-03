@@ -125,7 +125,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[SHLIB2] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
+		"INSERT OR ROLLBACK INTO pkg_shlibs_required(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
 	},
@@ -371,10 +371,17 @@ initialize_repo(const char *repodb, const char *filesdb, bool force,
 			"id INTEGER PRIMARY KEY,"
 			"name TEXT NOT NULL UNIQUE "
 		");"
-		"CREATE TABLE pkg_shlibs ("
-			"package_id INTEGER REFERENCES packages(id)"
+		"CREATE TABLE pkg_shlibs_required ("
+			"package_id INTEGER NOT NULL REFERENCES packages(id)"
 		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
-			"shlib_id INTEGER REFERENCES shlibs(id)"
+			"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
+			"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+			"UNIQUE(package_id, shlib_id)"
+		");"
+		"CREATE TABLE pkg_shlibs_provided ("
+			"package_id INTEGER NOT NULL REFERENCES packages(id)"
+		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
+			"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
 			"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 			"UNIQUE(package_id, shlib_id)"
 		");"
@@ -479,7 +486,9 @@ initialize_repo(const char *repodb, const char *filesdb, bool force,
 			"licenses WHERE id NOT IN "
 				"(SELECT license_id FROM pkg_licenses)",
 			"shlibs WHERE id NOT IN "
-				"(SELECT shlib_id FROM pkg_shlibs)"
+				"(SELECT shlib_id FROM pkg_shlibs_required)"
+			        "AND id NOT IN "
+				"(SELECT shlib_id FROM pkg_shlibs_provided)"
 		};
 		const char filesobsolete[] = "files.files where package_id NOT IN "
 			"(SELECT id from packages)";
