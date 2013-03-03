@@ -246,8 +246,9 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 
-	req = sqlite3_mprintf("select group_concat(arch, ', ') from packages "
-	    "where arch not GLOB '%q'", myarch);
+	req = sqlite3_mprintf("select group_concat(arch, ', ') from "
+	    "(select arch from packages "
+	    "where arch not GLOB '%q')", myarch);
 	if (get_sql_string(sqlite, req, &bad_abis) != EPKG_OK) {
 		sqlite3_free(req);
 		pkg_emit_error("Unable to query repository");
