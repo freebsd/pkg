@@ -53,8 +53,9 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'U', "",		1, PKG_LOAD_USERS },
 	{ 'G', "",		1, PKG_LOAD_GROUPS },
 	{ 'B', "",		1, PKG_LOAD_SHLIBS_REQUIRED },
-	{ '?', "drCFODLUGB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
-	{ '#', "drCFODLUGB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ 'b', "",		1, PKG_LOAD_SHLIBS_PROVIDED },
+	{ '?', "drCFODLUGBb",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ '#', "drCFODLUGBb",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },
 	{ 'n', "",		0, PKG_LOAD_BASIC },
 	{ 'v', "",		0, PKG_LOAD_BASIC },
@@ -65,7 +66,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'w', "",		0, PKG_LOAD_BASIC },
 	{ 'l', "",		0, PKG_LOAD_BASIC },
 	{ 'a', "",		0, PKG_LOAD_BASIC },
-	{ 'k', "",              0, PKG_LOAD_BASIC },
+	{ 'k', "",		0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
 	{ 'i', "",		0, PKG_LOAD_BASIC },
 	{ 't', "",		0, PKG_LOAD_BASIC },
@@ -188,6 +189,9 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				case 'B':
 					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_REQUIRED) > 0);
 					break;
+				case 'b':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_PROVIDED) > 0);
+					break;
 				}
 				break;
 			case '#':
@@ -222,6 +226,9 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					break;
 				case 'B':
 					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_REQUIRED));
+					break;
+				case 'b':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_PROVIDED));
 					break;
 				}
 				break;
@@ -287,6 +294,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				sbuf_cat(dest, pkg_group_name((struct pkg_group *)data));
 				break;
 			case 'B':
+			case 'b':
 				sbuf_cat(dest, pkg_shlib_name((struct pkg_shlib *)data));
 				break;
 			case 'M':
@@ -402,6 +410,12 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		break;
 	case 'B':
 		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+			format_str(pkg, output, qstr, shlib);
+			printf("%s\n", sbuf_data(output));
+		}
+		break;
+	case 'b':
+		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
 			format_str(pkg, output, qstr, shlib);
 			printf("%s\n", sbuf_data(output));
 		}
@@ -538,6 +552,9 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 							break;
 						case 'B':
 							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs_required AS d WHERE d.package_id=p.id)", dbstr);
+							break;
+						case 'b':
+							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs_provided AS d WHERE d.package_id=p.id)", dbstr);
 							break;
 						default:
 							goto bad_option;
