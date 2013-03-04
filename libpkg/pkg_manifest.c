@@ -34,7 +34,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef BUNDLED_YAML
 #include <yaml.h>
+#else
+#include <bsdyml.h>
+#endif
 
 #include "pkg.h"
 #include "private/event.h"

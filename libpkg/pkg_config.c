@@ -37,7 +37,11 @@
 #include <string.h>
 #include <pthread.h>
 
+#ifdef BUNDLED_YAML
 #include <yaml.h>
+#else
+#include <bsdyml.h>
+#endif
 
 #include "pkg.h"
 #include "private/pkg.h"
