@@ -54,6 +54,14 @@ LDADD+=		-L${.OBJDIR}/../libpkg \
 		-larchive \
 		-lutil \
 		-lpthread \
+		-lsbuf \
+		-lfetch \
+		-lssl \
+		-lcrypto \
+		-lmd \
+		-lz \
+		-lbz2 \
+		-llzma \
 		${LDADD_STATIC}
 
 .if !exists(/usr/include/jail.h)
