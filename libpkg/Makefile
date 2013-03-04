@@ -79,8 +79,14 @@ DEFAULT_MIRROR_TYPE?=	0
 CFLAGS+=	-DDEFAULT_MIRROR_TYPE=${DEFAULT_MIRROR_TYPE}
 CFLAGS+=	-std=c99
 CFLAGS+=	-I${.CURDIR} \
-		-I${.CURDIR}/../external/sqlite \
-		-I${.CURDIR}/../external/libyaml/include
+		-I${.CURDIR}/../external/sqlite
+
+.if !exists(/usr/include/bsdyml.h)
+CFLAGS+=	-DBUNDLED_YAML -I ${.CURDIR}/../external/libyaml/include
+LDADD+=		-L${.OBJDIR}/../external/libyaml -lyaml
+.else
+LDADD+=		-lbsdyml
+.endif
 
 .if defined(WITH_BUNDLED_LIBELF)
 CFLAGS+=	-I${.CURDIR}/../external/libelf \
@@ -95,7 +101,6 @@ LDADD+=		-L${.OBJDIR}/../external/libelf
 .endif
 
 LDADD+=		-lsqlite3 \
-		-lyaml \
 		-larchive \
 		-lsbuf \
 		-lfetch \
