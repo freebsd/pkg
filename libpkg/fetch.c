@@ -154,7 +154,7 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 				snprintf(zone, sizeof(zone),
 				    "_%s._tcp.%s", u->scheme, u->host);
 				pthread_mutex_lock(&mirror_mtx);
-				if (srv_mirrors != NULL)
+				if (srv_mirrors == NULL)
 					srv_mirrors = dns_getsrvinfo(zone);
 				pthread_mutex_unlock(&mirror_mtx);
 				srv_current = srv_mirrors;
