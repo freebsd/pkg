@@ -2413,8 +2413,11 @@ get_sql_string(sqlite3 *s, const char *sql, char **res)
 
 	ret = sqlite3_step(stmt);
 
-	if (ret == SQLITE_ROW)
-		*res = strdup(sqlite3_column_text(stmt, 0));
+	if (ret == SQLITE_ROW) {
+		const unsigned char *tmp;
+		tmp = sqlite3_column_text(stmt, 0);
+		*res = (tmp == NULL ? NULL : strdup(tmp));
+	}
 
 	if (ret == SQLITE_DONE)
 		*res = NULL;
