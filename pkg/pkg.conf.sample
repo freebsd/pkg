@@ -4,7 +4,6 @@
 
 # Configuration options
 PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
-#SRV_MIRRORS	    : NO
 #PKG_DBDIR	    : /var/db/pkg
 #PKG_CACHEDIR	    : /var/cache/pkg
 #PORTSDIR	    : /usr/ports
