@@ -796,10 +796,11 @@ pkg_init(const char *path)
 	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
 
-	subst_packagesite();
 	disable_plugins_if_static();
 
 	parsed = true;
+
+	subst_packagesite();
 
 	/* Start the event pipe */
 	pkg_config_string(PKG_CONFIG_EVENT_PIPE, &evpipe);
