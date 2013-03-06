@@ -300,8 +300,7 @@ exec_info(int argc, char **argv)
 				}
 				j++;
 			}
-		} else
-			pkgversion = NULL;
+		}
 
 		if (match != MATCH_ALL && pkgname[0] == '\0') {
 			fprintf(stderr, "Pattern must not be empty.\n");
