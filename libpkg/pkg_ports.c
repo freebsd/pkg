@@ -393,6 +393,7 @@ static int
 comment_key(struct plist *p, char *line, struct file_attr *a)
 {
 	char *name, *version, *line_options, *option;
+
 	if (strncmp(line, "DEPORIGIN:", 10) == 0) {
 		line += 10;
 		name = p->pkgdep;
@@ -410,8 +411,9 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 		if (line[0] != '\0') {
 			line_options = strdup(line);
 			while ((option = strsep(&line_options, " ")) != NULL) {
-				pkg_addoption(p->pkg, option + 1,
-				    option[0] == '+' ? "on" : "off");
+				if (strlen(option) > 0)
+					pkg_addoption(p->pkg, option + 1,
+					    option[0] == '+' ? "on" : "off");
 			}
 			free(line_options);
 		}
