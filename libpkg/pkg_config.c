@@ -475,7 +475,7 @@ pkg_config_string(pkg_config_key key, const char **val)
 	struct pkg_config *conf;
 
 	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_int64()");
+		pkg_emit_error("pkg_init() must be called before pkg_config_string()");
 		return (EPKG_FATAL);
 	}
 
@@ -513,7 +513,7 @@ pkg_config_bool(pkg_config_key key, bool *val)
 	struct pkg_config *conf;
 
 	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_int64()");
+		pkg_emit_error("pkg_init() must be called before pkg_config_bool()");
 		return (EPKG_FATAL);
 	}
 
