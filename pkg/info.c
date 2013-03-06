@@ -220,17 +220,11 @@ exec_info(int argc, char **argv)
 	do {
 		gotone = false;
 		pkgname = argv[i];
-		if (match != MATCH_ALL && pkgname[0] == '\0') {
-			fprintf(stderr, "Pattern must not be empty.\n");
-			i++;
-			continue;
-		}
 
 		/*
 		 * allow to search for origin with a trailing /
 		 * likes audio/linux-vsound depending on ${PORTSDIR}/audio/sox/
 		 */
-
 		if (argc > 0 && pkgname[strlen(pkgname) -1] == '/')
 			pkgname[strlen(pkgname) -1] = '\0';
 
@@ -306,8 +300,13 @@ exec_info(int argc, char **argv)
 				}
 				j++;
 			}
-		} else
-			pkgversion = NULL;
+		}
+
+		if (match != MATCH_ALL && pkgname[0] == '\0') {
+			fprintf(stderr, "Pattern must not be empty.\n");
+			i++;
+			continue;
+		}
 
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
 			return (EX_IOERR);
