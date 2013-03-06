@@ -216,6 +216,11 @@ static struct config_entry c[] = {
 		"FTP_PROXY",
 		NULL,
 	},
+	[PKG_CONFIG_FETCH_TIMEOUT] = {
+		PKG_CONFIG_INTEGER,
+		"FETCH_TIMEOUT",
+		"30",
+	},
 	[PKG_CONFIG_NAMESERVER] = {
 		PKG_CONFIG_STRING,
 		"NAMESERVER",
