@@ -215,10 +215,9 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * Check if the package is already installed
 	 */
 
-	ret = pkg_is_installed(db, origin);
+	ret = pkg_try_installed(db, origin, &pkg_inst, PKG_LOAD_BASIC);
 	if (ret == EPKG_OK) {
 		pkg_emit_already_installed(pkg_inst);
-		pkg_free(pkg_inst);
 		retcode = EPKG_INSTALLED;
 		goto cleanup;
 	} else if (ret != EPKG_END) {
@@ -324,6 +323,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 		archive_read_free(a);
 
 	pkg_free(pkg);
+	pkg_free(pkg_inst);
 
 	return (retcode);
 }
