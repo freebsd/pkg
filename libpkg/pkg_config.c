@@ -222,6 +222,12 @@ static struct config_entry c[] = {
 		NULL,
 		{ NULL }
 	},
+	[PKG_CONFIG_FETCH_TIMEOUT] = {
+		INTEGER,
+		"FETCH_TIMEOUT",
+		"30",
+		{ NULL }
+	},
 	[PKG_CONFIG_EVENT_PIPE] = {
 		STRING,
 		"EVENT_PIPE",
