@@ -331,6 +331,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_FTP_PROXY,
 	PKG_CONFIG_NAMESERVER,
 	PKG_CONFIG_EVENT_PIPE,
+	PKG_CONFIG_FETCH_TIMEOUT,
 } pkg_config_key;
 
 typedef enum {
