@@ -230,7 +230,12 @@ static struct config_entry c[] = {
 		PKG_CONFIG_INTEGER,
 		"FETCH_TIMEOUT",
 		"30",
-	}
+	},
+	[PKG_CONFIG_RET0_IF_ALREADY_INSTALLED] = {
+		PKG_CONFIG_BOOL,
+		"RETURN_0_IF_ALREADY_INSTALLED",
+		"NO",
+	},
 };
 
 static bool parsed = false;
