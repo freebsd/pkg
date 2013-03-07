@@ -313,7 +313,7 @@ exec_search(int argc, char **argv)
 
 	pattern = argv[0];
 	if (pattern[0] == '\0') {
-		fprintf(stderr, "Pattern must not be empty!\n");
+		fprintf(stderr, "Pattern must not be empty.\n");
 		return (EX_USAGE);
 	}
 	if (search == FIELD_NONE) {
