@@ -1188,19 +1188,28 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkg_is_installed(struct pkgdb *db, const char *origin)
-{
-	struct pkg *pkg = NULL;
+pkg_try_installed(struct pkgdb *db, const char *origin,
+		struct pkg **pkg, unsigned flags) {
 	struct pkgdb_it *it = NULL;
 	int ret = EPKG_FATAL;
 
 	if ((it = pkgdb_query(db, origin, MATCH_EXACT)) == NULL)
 		return (EPKG_FATAL);
 
-	ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC);
-
-	pkg_free(pkg);
+	ret = pkgdb_it_next(it, pkg, flags);
 	pkgdb_it_free(it);
+
+	return (ret);
+}
+
+int
+pkg_is_installed(struct pkgdb *db, const char *origin)
+{
+	struct pkg *pkg = NULL;
+	int ret = EPKG_FATAL;
+
+	ret = pkg_try_installed(db, origin, &pkg, PKG_LOAD_BASIC);
+	pkg_free(pkg);
 
 	return (ret);
 }
