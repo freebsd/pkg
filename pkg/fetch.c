@@ -59,7 +59,6 @@ exec_fetch(int argc, char **argv)
 	int		 ch;
 	int		 retcode = EX_SOFTWARE;
 	bool		 auto_update;
-	bool		 force = false;
 	bool		 upgrades_for_installed = false;
 	bool		 yes;
 	unsigned	 mode;
@@ -76,7 +75,6 @@ exec_fetch(int argc, char **argv)
 			break;
 		case 'd':
 			f |= PKG_FLAG_WITH_DEPS;
-			force = true;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
