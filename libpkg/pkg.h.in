@@ -814,6 +814,20 @@ const char *pkg_shlib_name(struct pkg_shlib const * const);
 /**
  * @param db A pointer to a struct pkgdb object
  * @param origin Package origin
+ * @param pkg An allocated struct pkg or a pointer to a NULL pointer. In the
+ * last case, the function take care of the allocation.
+ * @param flags OR'ed PKG_LOAD_*
+ * @return EPKG_OK if the package is installed,
+ * and != EPKG_OK if the package is not installed or an error occurred
+ * Match will be case sensitive or insensitive depending on
+ * pkgdb_case_sensitive()
+ */
+int pkg_try_installed(struct pkgdb *db, const char *origin,
+		struct pkg **pkg, unsigned flags);
+
+/**
+ * @param db A pointer to a struct pkgdb object
+ * @param origin Package origin
  * @return EPKG_OK if the package is installed,
  * and != EPKG_OK if the package is not installed or an error occurred
  * Match will be case sensitive or insensitive depending on
