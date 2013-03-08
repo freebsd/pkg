@@ -70,8 +70,7 @@
 	struct type *hf1, *hf2;                    \
 	HASH_ITER(hh, data, hf1, hf2) {            \
 		HASH_DEL(data, hf1);               \
-		if (free_func != NULL)             \
-			free_func(hf1);           \
+		free_func(hf1);                    \
 	}                                          \
 	data = NULL;                               \
 } while (0)
@@ -80,8 +79,7 @@
 	struct type *l1, *l2;                 \
 	LL_FOREACH_SAFE(head, l1, l2) {       \
 		LL_DELETE(head, l1);          \
-		if (free_func != NULL)        \
-			free_func(l1);        \
+		free_func(l1);                \
 	}                                     \
 	head = NULL;                          \
 } while (0)
