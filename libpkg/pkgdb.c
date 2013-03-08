@@ -71,7 +71,7 @@ static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
 static int create_temporary_pkgjobs(sqlite3 *);
 static void pkgdb_detach_remotes(sqlite3 *);
 static bool is_attached(sqlite3 *, const char *);
-static void report_already_installed(sqlite3 *);
+static int report_already_installed(sqlite3 *, int *nalreadyinstalled);
 static int sqlcmd_init(sqlite3 *db, __unused const char **err,
     __unused const void *noused);
 static int prstmt_initialize(struct pkgdb *db);
@@ -2742,9 +2742,10 @@ is_attached(sqlite3 *s, const char *name)
 	return (false);
 }
 
-static void
-report_already_installed(sqlite3 *s)
+static int
+report_already_installed(sqlite3 *s, int *nalreadyinstalled)
 {
+	int		count = 0;
 	sqlite3_stmt	*stmt = NULL;
 	const char	*origin = NULL;
 	const char	*sql = ""
@@ -2765,16 +2766,22 @@ report_already_installed(sqlite3 *s)
 
 	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(s);
-		return;
+		return (EPKG_FATAL);
 	}
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		origin = sqlite3_column_text(stmt, 0);
 		pkg_emit_error("%s is already installed and at "
 		    "the latest version", origin);
+		count++;
 	}
 
 	sqlite3_finalize(stmt);
+
+	if (nalreadyinstalled != NULL)
+		*nalreadyinstalled = count;
+
+	return (EPKG_OK);
 }
 
 static int
@@ -3042,19 +3049,28 @@ cleanup:
 	return (it);
 }
 
+/*
+ * XXX: we use a pointer to a return code (int *retcode) as an argument to keep
+ * consistancy between return values of the pkgdb_query_* functions. However, if
+ * any other pkgdb_query_* function ever need the same kind of hack, it should
+ * be reconsidered to refactor all of them.
+ *
+ * Currently retcode is only used to tell if packages were already installed.
+ */
 struct pkgdb_it *
 pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
-        const char *repo, bool force, bool recursive, bool pkgversiontest)
+		const char *repo, bool force, bool recursive, bool pkgversiontest,
+		int *retcode)
 {
 	sqlite3_stmt	*stmt = NULL;
 	struct pkgdb_it	*it;
-	int		 i = 0, ret;
+	int		 i = 0, ret, count;
 	struct sbuf	*sql = NULL;
 	const char	*how = NULL;
 	const char	*reponame = NULL;
 	bool             pkg_not_found = false;
 
-	if (pkgversiontest && 
+	if (pkgversiontest &&
 	    (it = pkgdb_query_newpkgversion(db, repo)) != NULL) {
 		pkg_emit_newpkgversion();
 		return (it);
@@ -3172,7 +3188,14 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	 * Report and remove packages already installed and at the latest
 	 * version and without option change
 	 */
-	report_already_installed(db->sqlite);
+	count = 0;
+	if (report_already_installed(db->sqlite, &count) != EPKG_OK) {
+		sbuf_delete(sql);
+		return (NULL);
+	}
+	if (count > 0 && retcode != NULL)
+		*retcode = EPKG_INSTALLED;
+
 	if (!force) {
 		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
 		    "(SELECT p.origin FROM main.packages AS p WHERE "

@@ -65,6 +65,7 @@ exec_install(int argc, char **argv)
 	bool dry_run = false;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
+	bool ret0_if_already_installed;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
@@ -155,8 +156,17 @@ exec_install(int argc, char **argv)
 	if (pkg_jobs_add(jobs, match, argv, argc) == EPKG_FATAL)
 		goto cleanup;
 
-	if (pkg_jobs_solve(jobs) != EPKG_OK)
+	switch (pkg_jobs_solve(jobs)) {
+	case EPKG_OK:
+		break;
+	case EPKG_INSTALLED:
+		pkg_config_bool(PKG_CONFIG_RET0_IF_ALREADY_INSTALLED,
+				&ret0_if_already_installed);
+		if (ret0_if_already_installed)
+			goto ex_ok_cleanup;
+	default:
 		goto cleanup;
+	}
 
 	if ((nbactions = pkg_jobs_count(jobs)) == 0)
 		goto cleanup;
@@ -182,6 +192,7 @@ exec_install(int argc, char **argv)
 		printf("%s", sbuf_data(messages));
 	}
 
+ex_ok_cleanup:
 	retcode = EX_OK;
 
 cleanup:
