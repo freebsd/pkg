@@ -214,7 +214,7 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 	char *testpath;
 	struct stat st;
 	bool developer;
-	int ret;
+	int ret = EPKG_OK;
 
 	len = strlen(line);
 
@@ -283,7 +283,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 	bool regular = false;
 	bool developer;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	int ret;
+	int ret = EPKG_OK;
 
 	len = strlen(line);
 
@@ -341,7 +341,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 	}
 
 	free_file_attr(a);
-	return (EPKG_OK);
+	return (ret);
 }
 
 static int
