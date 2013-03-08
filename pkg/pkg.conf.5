@@ -155,6 +155,11 @@ when running one of:
 or
 .Nm pkg version -R .
 (default: YES)
+.It Cm RETURN_0_IF_ALREADY_INSTALLED: boolean
+force
+.Xr pkg-install(8)
+to exits with 0 as status code when the packages are already installed.
+(default: NO)
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration
