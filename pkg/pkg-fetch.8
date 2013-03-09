@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd March 3, 2013
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -24,16 +24,16 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
-.Op Fl dgiLqxy
+.Op Fl dgiqUxy
 .Ar <pkg-name>
 .Op ...
 .Nm
 .Op Fl r Ar reponame
-.Op Fl dLqy
+.Op Fl dqUy
 .Fl a
 .Nm
 .Op Fl r Ar reponame
-.Op Fl dLqy
+.Op Fl dqUy
 .Fl u
 .Sh DESCRIPTION
 .Nm
@@ -44,7 +44,7 @@ One or more packages, or patterns can be specified.
 Repository catalogues will be updated automatically using
 .Xr pkg-update 8 .
 This can be disabled with the
-.Fl L
+.Fl U
 flag.
 .Sh OPTIONS
 The following options are supported by
@@ -65,9 +65,9 @@ matching against
 .Ar pkg-name
 case insensitive.
 .It Fl L
-Skip updating the repository catalogues with
-.Xr pkg-update 8 .
-Use the local cache only.
+Backwards compatbility flag for
+.Fl U .
+This is planned to be removed.
 .It Fl q
 Quiet mode.
 Show less output.
@@ -79,6 +79,10 @@ See
 .Xr pkg.conf 5 .
 .It Fl u
 Fetch all available updates for the currently installed packages.
+.It Fl U
+Skip updating the repository catalogues with
+.Xr pkg-update 8 .
+Use the local cache only.
 .It Fl x
 Treat
 .Ar <pkg-name>
