@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 24, 2012
+.Dd March 9, 2013
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -24,7 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
-.Op Fl yqgxXadL
+.Op Fl yqgxXadU
 .Ar <pkg-name>
 .Op ...
 .Sh DESCRIPTION
@@ -36,7 +36,7 @@ One or more packages, or patterns can be specified.
 Repository catalogues will be updated automatically using
 .Xr pkg-update 8 .
 This can be disabled with the
-.Fl L
+.Fl U
 flag.
 .Sh OPTIONS
 The following options are supported by
@@ -68,6 +68,10 @@ Treat
 .Ar <pkg-name>
 as an extended regular expression.
 .It Fl L
+Backwards compatbility flag for
+.Fl U .
+This is planned to be removed.
+.It Fl U
 Skip updating the repository catalogues with
 .Xr pkg-update 8 .
 Use the local cache only.

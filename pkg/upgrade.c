@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -37,7 +38,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage: pkg upgrade [-fLnqy] [-r reponame]\n\n");
+	fprintf(stderr, "usage: pkg upgrade [-fnqUy] [-r reponame]\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -57,12 +58,15 @@ exec_upgrade(int argc, char **argv)
 	bool dry_run = false;
 	bool auto_update = true;
 
-	while ((ch = getopt(argc, argv, "fLnqr:y")) != -1) {
+	while ((ch = getopt(argc, argv, "fLnqr:Uy")) != -1) {
 		switch (ch) {
 		case 'f':
 			all = true;
 			break;
 		case 'L':
+			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
+			/* FALLTHROUGH */
+		case 'U':
 			auto_update = false;
 			break;
 		case 'n':

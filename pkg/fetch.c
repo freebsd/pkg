@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +43,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxXadL] <pkg-name> <...>\n\n");
+	fprintf(stderr, "usage: pkg fetch [-r reponame] [-yqgxXadU] <pkg-name> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
 }
 
@@ -85,6 +86,9 @@ exec_fetch(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'L':
+			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
+			/* FALLTHROUGH */
+		case 'U':
 			auto_update = false;
 			break;
 		case 'd':

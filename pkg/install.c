@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -45,7 +46,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "usage: pkg install [-AfgLnqRXxy] [-r reponame] <pkg-name> ...\n\n");
+	    "usage: pkg install [-AfgnqRUXxy] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -69,7 +70,7 @@ exec_install(int argc, char **argv)
 	bool force = false;
 	bool dry_run = false;
 
-	while ((ch = getopt(argc, argv, "AfgLnqRr:Xxy")) != -1) {
+	while ((ch = getopt(argc, argv, "AfgLnqRr:UXxy")) != -1) {
 		switch (ch) {
 		case 'A':
 			automatic = true;
@@ -81,6 +82,9 @@ exec_install(int argc, char **argv)
 			match = MATCH_GLOB;
 			break;
 		case 'L':
+			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
+			/* FALLTHROUGH */
+		case 'U':
 			auto_update = false;
 			break;
 		case 'n':

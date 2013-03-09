@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 16, 2012
+.Dd March 9, 2013
 .Dt PKG-UPGRADE 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd performs upgrades of package software distributions
 .Sh SYNOPSIS
 .Nm
-.Op Fl fLnqy
+.Op Fl fnqUy
 .Op Fl r Ar reponame
 .Sh DESCRIPTION
 .Nm
@@ -45,7 +45,7 @@ will be able to perform package upgrades from multiple repositories.
 Repository catalogues will automatically be updated using
 .Xr pkg-update 8 .
 This can be disabled with the
-.Fl L
+.Fl U
 flag.
 .Sh OPTIONS
 The following options are supported by
@@ -54,19 +54,23 @@ The following options are supported by
 .It Fl f
 Force reinstalling/upgrading the whole set of packages
 .It Fl L
-Skip updating the repository catalogues with
-.Xr pkg-update 8 .
-Use the local cache only.
+Backwards compatbility flag for
+.Fl U .
+This is planned to be removed.
 .It Fl n
 Dry-run mode: show what packages have updates available, but do not perform
 any upgrades.
 Repository catalogues will be updated as usual unless the
-.Fl L
+.Fl U
 option is also given.
 .It Fl q
 Force quiet output, except when
 .Fl n
 is used, where
+.It Fl U
+Skip updating the repository catalogues with
+.Xr pkg-update 8 .
+Use the local cache only.
 .Nm
 will always print out the list of packages with available updates.
 .It Fl y

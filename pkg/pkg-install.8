@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 26, 2012
+.Dd March 9, 2013
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl AfgLnqRXxy
+.Op Fl AfgnqRUXxy
 .Op Fl r Ar reponame
 .Ar <pkg-origin> ...
 .Sh DESCRIPTION
@@ -98,7 +98,7 @@ configuration setting are defined.
 Package repository catalogues will be automatically updated whenever
 .Xr pkg-update 8
 is run, unless disabled by the
-.Fl L
+.Fl U
 flag.
 Updating repository catalogues is highly recommended before doing any
 package installation with
@@ -117,9 +117,9 @@ Force the reinstallation of the package if already installed.
 .It Fl g
 Treat the package names as shell glob patterns.
 .It Fl L
-Skip updating the repository catalogues with
-.Xr pkg-update 8 .
-Use the locally cached copies only.
+Backwards compatbility flag for
+.Fl U .
+This is planned to be removed.
 .It Fl n
 Dry-run mode.
 The list of changes to packages is always printed, but
@@ -139,6 +139,10 @@ In multi-repo mode, override the
 .Fa pkg.conf
 ordering and only attempt to download packages from the named
 repository.
+.It Fl U
+Skip updating the repository catalogues with
+.Xr pkg-update 8 .
+Use the locally cached copies only.
 .It Fl X
 Treat the package names as extended regular expressions.
 .It Fl x
