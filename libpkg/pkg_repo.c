@@ -1132,7 +1132,7 @@ pkg_check_repo_version(struct pkgdb *db, const char *database)
 		pkg_emit_error("Repo %s (schema version %d) is too old - "
 		    "need at least schema %d", database, reposcver,
 		    REPO_SCHEMA_MAJOR * 1000);
-		return (EPKG_REPOSCHEMA);
+//		return (EPKG_REPOSCHEMA);
 	}
 
 	return (EPKG_OK);
