@@ -248,6 +248,7 @@ exec_search(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	bool atleastone = false;
 	bool auto_update;
+	bool old_quiet;
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
@@ -366,8 +367,11 @@ exec_search(int argc, char **argv)
 		return (EX_IOERR);
 
 	/* first update the remote repositories if needed */
+	old_quiet = quiet;
+	quiet = true;
 	if (auto_update && (ret = pkgcli_update(false)) != EPKG_OK)
 		return (ret);
+	quiet = old_quiet;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);

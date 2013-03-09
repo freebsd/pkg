@@ -95,6 +95,7 @@ exec_rquery(int argc, char **argv)
 	const char *reponame = NULL;
 	bool auto_update;
 	bool onematched = false;
+	bool old_quiet;
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
@@ -168,8 +169,11 @@ exec_rquery(int argc, char **argv)
 		return (EX_IOERR);
 
 	/* first update the remote repositories if needed */
+	old_quiet = quiet;
+	quiet = true;
 	if (auto_update && (ret = pkgcli_update(false)) != EPKG_OK)
 		return (ret);
+	quiet = old_quiet;
 
 	ret = pkgdb_open(&db, PKGDB_REMOTE);
 	if (ret != EPKG_OK)
