@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -344,6 +345,15 @@ exec_search(int argc, char **argv)
 		opt |= INFO_TAG_NAMEVER|INFO_DESCR;
 		break;
 	}
+
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to query package database");
+		return (EX_NOPERM);
+	} else if (ret == EPKG_ENODB) {
+		return (EX_OK);
+	} else if (ret != EPKG_OK)
+		return (EX_IOERR);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
