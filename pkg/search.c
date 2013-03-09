@@ -247,8 +247,11 @@ exec_search(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 	bool atleastone = false;
+	bool auto_update;
 
-	while ((ch = getopt(argc, argv, "cDdefgiL:opqQ:r:S:sx")) != -1) {
+	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
+
+	while ((ch = getopt(argc, argv, "cDdefgiL:opqQ:r:S:sUx")) != -1) {
 		switch (ch) {
 		case 'c':	/* Same as -S comment */
 			search = search_label_opt("comment");
@@ -294,6 +297,9 @@ exec_search(int argc, char **argv)
 			break;
 		case 's':	/* Same as -Q size */
 			opt |= modifier_opt("size");
+			break;
+		case 'U':
+			auto_update = false;
 			break;
 		case 'x':
 			match = MATCH_REGEX;
@@ -346,14 +352,22 @@ exec_search(int argc, char **argv)
 		break;
 	}
 
-	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
+	/* Only auto update if the user has write access. */
+	if (auto_update &&
+	    pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
+	    PKGDB_DB_REPO) == EPKG_ENOACCESS)
+		auto_update = false;
+
+	ret = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_CREATE, PKGDB_DB_REPO);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to query package database");
 		return (EX_NOPERM);
-	} else if (ret == EPKG_ENODB) {
-		return (EX_OK);
 	} else if (ret != EPKG_OK)
 		return (EX_IOERR);
+
+	/* first update the remote repositories if needed */
+	if (auto_update && (ret = pkgcli_update(false)) != EPKG_OK)
+		return (ret);
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
