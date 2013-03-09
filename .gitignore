@@ -17,3 +17,4 @@ tests/test
 docs/html/*
 Doxyfile
 libpkg/pkg.h
+*.sw*
