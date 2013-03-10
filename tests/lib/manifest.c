@@ -8,6 +8,7 @@ char manifest[] = ""
 	"name: foobar\n"
 	"version: 0.3\n"
 	"origin: foo/bar\n"
+	"categories: [foo, bar]\n"
 	"comment: A dummy manifest\n"
 	"arch: amd64\n"
 	"www: http://www.foobar.com\n"
@@ -18,6 +19,11 @@ char manifest[] = ""
 	"  depbar: {origin: dep/bar, version: 3.4}\n"
 	"hello: world\n" /* unknown keyword should not be a problem */
 	"conflicts: [foo-*, bar-*]\n"
+	"prefix: /opt/prefix\n"
+	"desc: |\n"
+	"  port description\n"
+	"message: |\n"
+	"  pkg message\n"
 	"options:\n"
 	"  foo: true\n"
 	"  bar: false\n"
@@ -115,8 +121,10 @@ test_manifest(void)
 	struct pkg_dep *dep = NULL;
 	struct pkg_conflict *conflict = NULL;
 	struct pkg_option *option = NULL;
+	struct pkg_category *category = NULL;
 	struct pkg_file *file = NULL;
 	const char *pkg_str;
+	int64_t pkg_int;
 	int i;
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_FILE));
@@ -143,6 +151,18 @@ test_manifest(void)
 
 	ATF_REQUIRE(pkg_get(p, PKG_MAINTAINER, &pkg_str) == EPKG_OK);
 	ATF_REQUIRE(strcmp(pkg_str, "test@pkgng.lan") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_PREFIX, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "/opt/prefix") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_DESC, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "port description") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_MESSAGE, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "pkg message") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_FLATSIZE, &pkg_int) == EPKG_OK);
+	ATF_REQUIRE(pkg_int == 10000);
 
 	i = 0;
 	while (pkg_deps(p, &dep) == EPKG_OK) {
@@ -180,6 +200,17 @@ test_manifest(void)
 		} else if (i == 1) {
 			ATF_REQUIRE(strcmp(pkg_option_opt(option), "bar") == 0);
 			ATF_REQUIRE(strcmp(pkg_option_value(option), "false") == 0);
+		}
+		i++;
+	}
+	ATF_REQUIRE(i == 2);
+
+	i = 0;
+	while (pkg_categories(p, &category) == EPKG_OK) {
+		if (i == 0) {
+			ATF_REQUIRE(strcmp(pkg_category_name(category), "foo") == 0);
+		} else if (i == 1) {
+			ATF_REQUIRE(strcmp(pkg_category_name(category), "bar") == 0);
 		}
 		i++;
 	}
