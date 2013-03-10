@@ -10,7 +10,6 @@ char manifest[] = ""
 	"origin: foo/bar\n"
 	"comment: A dummy manifest\n"
 	"arch: amd64\n"
-	"osversion: 800500\n"
 	"www: http://www.foobar.com\n"
 	"maintainer: test@pkgng.lan\n"
 	"flatsize: 10000\n"
@@ -32,7 +31,6 @@ char wrong_manifest1[] = ""
 	"origin: foo/bar\n"
 	"comment: A dummy manifest\n"
 	"arch: amd64\n"
-	"osversion: 800500\n"
 	"www: http://www.foobar.com\n"
 	"maintainer: test@pkgng.lan\n"
 	"flatsize: 10000\n"
@@ -54,7 +52,6 @@ char wrong_manifest2[] = ""
 	"origin: foo/bar\n"
 	"comment: A dummy manifest\n"
 	"arch: amd64\n"
-	"osversion: 800500\n"
 	"www: http://www.foobar.com\n"
 	"maintainer: test@pkgng.lan\n"
 	"flatsize: 10000\n"
@@ -76,7 +73,6 @@ char wrong_manifest3[] = ""
 	"origin: foo/bar\n"
 	"comment: A dummy manifest\n"
 	"arch: amd64\n"
-	"osversion: 800500\n"
 	"www: http://www.foobar.com\n"
 	"maintainer: test@pkgng.lan\n"
 	"flatsize: 10000\n"
@@ -98,7 +94,6 @@ char wrong_manifest4[] = ""
 	"origin: foo/bar\n"
 	"comment: A dummy manifest\n"
 	"arch: amd64\n"
-	"osversion: 800500\n"
 	"www: http://www.foobar.com\n"
 	"maintainer: test@pkgng.lan\n"
 	"flatsize: 10000\n"
@@ -121,22 +116,33 @@ test_manifest(void)
 	struct pkg_conflict *conflict = NULL;
 	struct pkg_option *option = NULL;
 	struct pkg_file *file = NULL;
+	const char *pkg_value;
 	int i;
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_FILE));
 	ATF_REQUIRE(p != NULL);
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_parse_manifest(p, manifest));
 
-#if 0
-	ATF_REQUIRE(strcmp(pkg_get(p, PKG_NAME), "foobar") == 0);
-	ATF_REQUIRE(strcmp(pkg_get(p, PKG_VERSION), "0.3") == 0);
-	ATF_REQUIRE(strcmp(pkg_get(p, PKG_ORIGIN), "foo/bar") == 0);
-	ATF_REQUIRE(strcmp(pkg_get(p, PKG_COMMENT), "A dummy manifest") == 0);
-	ATF_REQUIRE(strcmp(pkg_get(p, PKG_ARCH), "amd64") == 0);
-	ATF_REQUIRE(strcmp(pkg_get(p, PKG_VERSION), "800500") == 0);
-	ATF_REQUIRE(strcmp(pkg_get(p, PKG_WWW), "http://www.foobar.com") == 0);
-	ATF_REQUIRE(strcmp(pkg_get(p, PKG_MAINTAINER), "test@pkgng.lan") == 0);
-#endif
+	ATF_REQUIRE(pkg_get(p, PKG_NAME, &pkg_value) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_value, "foobar") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_VERSION, &pkg_value) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_value, "0.3") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_ORIGIN, &pkg_value) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_value, "foo/bar") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_COMMENT, &pkg_value) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_value, "A dummy manifest") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_ARCH, &pkg_value) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_value, "amd64") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_WWW, &pkg_value) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_value, "http://www.foobar.com") == 0);
+
+	ATF_REQUIRE(pkg_get(p, PKG_MAINTAINER, &pkg_value) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_value, "test@pkgng.lan") == 0);
 
 	i = 0;
 	while (pkg_deps(p, &dep) == EPKG_OK) {
