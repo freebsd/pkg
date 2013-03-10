@@ -116,33 +116,33 @@ test_manifest(void)
 	struct pkg_conflict *conflict = NULL;
 	struct pkg_option *option = NULL;
 	struct pkg_file *file = NULL;
-	const char *pkg_value;
+	const char *pkg_str;
 	int i;
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_FILE));
 	ATF_REQUIRE(p != NULL);
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_parse_manifest(p, manifest));
 
-	ATF_REQUIRE(pkg_get(p, PKG_NAME, &pkg_value) == EPKG_OK);
-	ATF_REQUIRE(strcmp(pkg_value, "foobar") == 0);
+	ATF_REQUIRE(pkg_get(p, PKG_NAME, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "foobar") == 0);
 
-	ATF_REQUIRE(pkg_get(p, PKG_VERSION, &pkg_value) == EPKG_OK);
-	ATF_REQUIRE(strcmp(pkg_value, "0.3") == 0);
+	ATF_REQUIRE(pkg_get(p, PKG_VERSION, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "0.3") == 0);
 
-	ATF_REQUIRE(pkg_get(p, PKG_ORIGIN, &pkg_value) == EPKG_OK);
-	ATF_REQUIRE(strcmp(pkg_value, "foo/bar") == 0);
+	ATF_REQUIRE(pkg_get(p, PKG_ORIGIN, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "foo/bar") == 0);
 
-	ATF_REQUIRE(pkg_get(p, PKG_COMMENT, &pkg_value) == EPKG_OK);
-	ATF_REQUIRE(strcmp(pkg_value, "A dummy manifest") == 0);
+	ATF_REQUIRE(pkg_get(p, PKG_COMMENT, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "A dummy manifest") == 0);
 
-	ATF_REQUIRE(pkg_get(p, PKG_ARCH, &pkg_value) == EPKG_OK);
-	ATF_REQUIRE(strcmp(pkg_value, "amd64") == 0);
+	ATF_REQUIRE(pkg_get(p, PKG_ARCH, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "amd64") == 0);
 
-	ATF_REQUIRE(pkg_get(p, PKG_WWW, &pkg_value) == EPKG_OK);
-	ATF_REQUIRE(strcmp(pkg_value, "http://www.foobar.com") == 0);
+	ATF_REQUIRE(pkg_get(p, PKG_WWW, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "http://www.foobar.com") == 0);
 
-	ATF_REQUIRE(pkg_get(p, PKG_MAINTAINER, &pkg_value) == EPKG_OK);
-	ATF_REQUIRE(strcmp(pkg_value, "test@pkgng.lan") == 0);
+	ATF_REQUIRE(pkg_get(p, PKG_MAINTAINER, &pkg_str) == EPKG_OK);
+	ATF_REQUIRE(strcmp(pkg_str, "test@pkgng.lan") == 0);
 
 	i = 0;
 	while (pkg_deps(p, &dep) == EPKG_OK) {
