@@ -166,6 +166,8 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
 	exec_append(p->post_install_buf, "cd %s\n", p->prefix);
+	pre_unexec_append(p->pre_deinstall_buf, "cd %s\n", p->prefix);
+	post_unexec_append(p->post_deinstall_buf, "cd %s\n", p->prefix);
 
 	free(a);
 
