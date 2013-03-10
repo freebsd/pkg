@@ -1240,7 +1240,7 @@ pkg_check_repo_version(struct pkgdb *db, const char *database)
 
 	ret = EPKG_OK;
 
-	if (reposcver > REPO_SCHEMA_VERSION) {
+	if (reposcver < REPO_SCHEMA_VERSION) {
 		if (sqlite3_db_readonly(db->sqlite, database)) {
 			pkg_emit_error("Repo %s needs schema upgrade from "
 			"%d to %d but it is opened readonly", database,
@@ -1249,7 +1249,7 @@ pkg_check_repo_version(struct pkgdb *db, const char *database)
 			ret = EPKG_FATAL;
 		} else
 			ret = upgrade_repo_schema(db, database, reposcver);
-	} else if (reposcver < REPO_SCHEMA_VERSION) {
+	} else if (reposcver > REPO_SCHEMA_VERSION) {
 		if (sqlite3_db_readonly(db->sqlite, database)) {
 			pkg_emit_error("Repo %s needs schema downgrade from "
 			"%d to %d but it is opened readonly", database,
