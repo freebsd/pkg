@@ -587,6 +587,19 @@ pkgdb_init(sqlite3 *sdb)
 			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
 		"UNIQUE (package_id, shlib_id)"
 	");"
+	"CREATE TABLE abstract ("
+                "abstract_id INTEGER PRIMARY KEY,"
+                "abstract TEXT NOT NULL UNIQUE"
+        ");"
+        "CREATE TABLE pkg_abstract ("
+                "package_id INTERGER REFERENCES packages(id)"
+                      " ON DELETE CASCADE ON UPDATE RESTRICT,"
+                "key_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+                      " ON DELETE CASCADE ON UPDATE RESTRICT,"
+		"value_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+		      " ON DELETE CASCADE ON UPDATE RESTRICT,"
+		"UNIQUE (package_id, key_id, value_id)"
+	");"
 
 	/* Mark the end of the array */
 
@@ -603,6 +616,7 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_shlibs_required_package_id ON pkg_shlibs_required (package_id);"
 	"CREATE INDEX pkg_shlibs_provided_package_id ON pkg_shlibs_provided (package_id);"
 	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
+	"CREATE INDEX pkg_abstract_package_id ON pkg_abstract(package_id);"
 
 	"PRAGMA user_version = %d;"
 	"COMMIT;"
@@ -843,7 +857,7 @@ pkgdb_access(unsigned mode, unsigned database)
 	 *             (if $INSTALL_AS_USER is set) the current euid
 	 *             and egid
 	 *
-	 * EPKG_ENOACCESS: we don't have privileges to read or write a
+	 * EPKG_ENOACCESS: we don't have privileges to read or write
 	 *
 	 * EPKG_FATAL: Couldn't determine the answer for other reason,
 	 *     like configuration screwed up, invalid argument values,

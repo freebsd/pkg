@@ -83,6 +83,11 @@ pipeevent(struct pkg_event *ev)
 		    "\"data\": {\"msg\": \"%s\"}}",
 		    sbuf_json_escape(buf, ev->e_pkg_error.msg));
 		break;
+	case PKG_EVENT_NOTICE:
+		sbuf_printf(msg, "{ \"type\": \"NOTICE\", "
+		    "\"data\": {\"msg\": \"%s\"}}",
+		    sbuf_json_escape(buf, ev->e_pkg_notice.msg));
+		break;
 	case PKG_EVENT_DEVELOPER_MODE:
 		sbuf_printf(msg, "{ \"type\": \"ERROR\", "
 		    "\"data\": {\"msg\": \"DEVELOPER_MODE: %s\"}}",
@@ -344,6 +349,22 @@ pkg_emit_error(const char *fmt, ...)
 
 	va_start(ap, fmt);
 	vasprintf(&ev.e_pkg_error.msg, fmt, ap);
+	va_end(ap);
+
+	pkg_emit_event(&ev);
+	free(ev.e_pkg_error.msg);
+}
+
+void
+pkg_emit_notice(const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+
+	ev.type = PKG_EVENT_NOTICE;
+
+	va_start(ap, fmt);
+	vasprintf(&ev.e_pkg_notice.msg, fmt, ap);
 	va_end(ap);
 
 	pkg_emit_event(&ev);

@@ -1140,6 +1140,7 @@ typedef enum {
 	PKG_EVENT_INTEGRITYCHECK_BEGIN,
 	PKG_EVENT_INTEGRITYCHECK_FINISHED,
 	PKG_EVENT_NEWPKGVERSION,
+	PKG_EVENT_NOTICE,
 	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
@@ -1171,6 +1172,9 @@ struct pkg_event {
 		struct {
 			char *msg;
 		} e_pkg_error;
+		struct {
+			char *msg;
+		} e_pkg_notice;
 		struct {
 			const char *url;
 			off_t total;
