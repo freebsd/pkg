@@ -132,6 +132,8 @@ setprefix(struct plist *p, char *line)
 		p->prefix = line;
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
+	exec_append(p->post_install_buf, "cd %s\n", p->prefix);
+
 	return (EPKG_OK);
 }
 
