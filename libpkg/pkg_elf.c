@@ -628,29 +628,29 @@ pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
 	iswildcard = (strchr(arch, 'c') != NULL);
 
 	if (iswildcard && isdefault)
-		pkg_emit_error("Configuration error: arch \"%s\" cannot use "
-		    "wildcards as default", arch);
+		pkg_emit_developer_mode("Configuration error: arch \"%s\" "
+		    "cannot use wildcards as default", arch);
 
 	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
 		if (iswildcard) {
 			/* Definitely has to be arch specific */
-			pkg_emit_error("Error: arch \"%s\" -- package installs "
-			    "architecture specific files", arch);
+			pkg_emit_developer_mode("Error: arch \"%s\" -- package "
+			    "installs architecture specific files", arch);
 		}
 	} else {
 		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
 			if (iswildcard) {
 				/* Could well be arch specific */
-				pkg_emit_error("Warning: arch \"%s\" -- package"
-				    " installs C/C++ headers or libtool "
-				    "files,\n**** which are often architecture "
-				    "specific", arch);
+				pkg_emit_developer_mode("Warning: arch \"%s\" "
+				    "-- package installs C/C++ headers or "
+				    "libtool files,\n**** which are often "
+				    "architecture specific", arch);
 			}
 		} else {
 			/* Might be arch independent */
 			if (!iswildcard)
-				pkg_emit_error("Notice: arch \"%s\" -- no "
-				    "architecture specific files found:\n"
+				pkg_emit_developer_mode("Notice: arch \"%s\" -- "
+				    "no architecture specific files found:\n"
 				    "**** could this package use a wildcard "
 				    "architecture?", arch);
 		}
