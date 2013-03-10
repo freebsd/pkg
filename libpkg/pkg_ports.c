@@ -56,7 +56,6 @@ struct plist {
 	char *last_file;
 	const char *stage;
 	const char *prefix;
-	struct sbuf *unexec_buf;
 	struct sbuf *pre_install_buf;
 	struct sbuf *post_install_buf;
 	struct sbuf *pre_deinstall_buf;
@@ -364,7 +363,7 @@ meta_exec(struct plist *p, char *line, bool unexec)
 				post_unexec_append(p->post_deinstall_buf,
 				    "%s%s\n", comment, cmd);
 		} else {
-			sbuf_printf(p->unexec_buf, "%s%s\n",comment, cmd);
+			pre_unexec_append(p->pre_deinstall_buf, "%s%s\n", comment, cmd);
 		}
 		if (comment[0] == '#') {
 			buf = cmd;
@@ -766,7 +765,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pplist.last_file = NULL;
 	pplist.prefix = NULL;
 	pplist.stage = stage;
-	pplist.unexec_buf = sbuf_new_auto();
 	pplist.pre_install_buf = sbuf_new_auto();
 	pplist.post_install_buf = sbuf_new_auto();
 	pplist.pre_deinstall_buf = sbuf_new_auto();
@@ -831,12 +829,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 				break;
 			}
 		} else if ((len = strlen(plist_p)) > 0){
-			if (sbuf_len(pplist.unexec_buf) > 0) {
-				sbuf_finish(pplist.unexec_buf);
-				pre_unexec_append(pplist.pre_deinstall_buf,
-				    sbuf_get(pplist.unexec_buf), "");
-				sbuf_reset(pplist.unexec_buf);
-			}
 			buf = plist_p;
 			pplist.last_file = buf;
 
@@ -862,8 +854,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	    PKG_SCRIPT_POST_INSTALL);
 	flush_script_buffer(pplist.pre_deinstall_buf, pkg,
 	    PKG_SCRIPT_PRE_DEINSTALL);
-	flush_script_buffer(pplist.unexec_buf, pkg,
-	    PKG_SCRIPT_POST_DEINSTALL);
 	flush_script_buffer(pplist.post_deinstall_buf, pkg,
 	    PKG_SCRIPT_POST_DEINSTALL);
 	flush_script_buffer(pplist.pre_upgrade_buf, pkg,
