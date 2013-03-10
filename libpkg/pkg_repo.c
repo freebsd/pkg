@@ -1049,12 +1049,19 @@ substitute_into_sql(char *sqlbuf, size_t buflen, const char *fmt,
 	char	*f;
 	char	*f0;
 	char	*tofree;
+	char	*quoted;
 	size_t	 len;
 	int	 ret = EPKG_OK;
 
 	tofree = f = strdup(fmt);
 	if (tofree == NULL)
-		return EPKG_FATAL; /* out of memory */
+		return (EPKG_FATAL); /* out of memory */
+
+	quoted = sqlite3_mprintf("%Q", replacement);
+	if (quoted == NULL) {
+		free(tofree);
+		return (EPKG_FATAL); /* out of memory */
+	}
 
 	sqlbuf[0] = '\0';
 
@@ -1066,8 +1073,11 @@ substitute_into_sql(char *sqlbuf, size_t buflen, const char *fmt,
 			break;
 		}
 
+		if (f == NULL)
+			break;	/* done */
+
 		if (f[0] == 'Q') {
-			len = strlcat(sqlbuf, replacement, buflen);
+			len = strlcat(sqlbuf, quoted, buflen);
 			f++;	/* Jump the Q */
 		} else {
 			len = strlcat(sqlbuf, "%", buflen);
@@ -1081,6 +1091,7 @@ substitute_into_sql(char *sqlbuf, size_t buflen, const char *fmt,
 	}
 	
 	free(tofree);
+	sqlite3_free(quoted); 
 
 	return (ret);
 }
@@ -1089,7 +1100,7 @@ substitute_into_sql(char *sqlbuf, size_t buflen, const char *fmt,
 static int
 apply_repo_change(struct pkgdb *db, const char *database,
 		  struct repo_changes *repo_changes, const char *updown,
-		  int version)
+		  int version, int *next_version)
 {
 	struct repo_changes	*change;
 	bool			 found = false;
@@ -1104,7 +1115,7 @@ apply_repo_change(struct pkgdb *db, const char *database,
 		}
 	}
 	if (!found) {
-		pkg_emit_error("Failed to %s \"%s\" repo schema to "
+		pkg_emit_error("Failed to %s \"%s\" repo schema "
 			" version %d (target version %d) "
 			"-- change not found", updown, database, version,
 			REPO_SCHEMA_VERSION);
@@ -1129,18 +1140,21 @@ apply_repo_change(struct pkgdb *db, const char *database,
 	}
 	
 	/* update repo user_version */
-	if (ret == EPKG_OK)
-		ret = set_repo_user_version(db->sqlite, database, version);
+	if (ret == EPKG_OK) {
+		*next_version = change->next_version;
+		ret = set_repo_user_version(db->sqlite, database, *next_version);
+	}
 
 	/* commit or rollback */
 	if (ret == EPKG_OK)
 		ret = pkgdb_transaction_commit(db->sqlite, NULL);
 	else
-		ret = pkgdb_transaction_rollback(db->sqlite, NULL);
+		pkgdb_transaction_rollback(db->sqlite, NULL);
 
 	if (ret == EPKG_OK) {
-		pkg_emit_notice("Repo %s schema %s to version %d: %s",
-				database, version, change->message);
+		pkg_emit_notice("Repo \"%s\" %s schema %d to %d: %s",
+				database, updown, version,
+				change->next_version, change->message);
 	}
 
 	return (ret);
@@ -1150,13 +1164,14 @@ static int
 upgrade_repo_schema(struct pkgdb *db, const char *database, int current_version)
 {
 	int version;
+	int next_version;
 	int ret = EPKG_OK;
 
 	for (version = current_version;
-	     version <= REPO_SCHEMA_VERSION;
-	     version++)  {
+	     version < REPO_SCHEMA_VERSION;
+	     version = next_version)  {
 		ret = apply_repo_change(db, database, repo_upgrades,
-					"upgrade", version);
+					"upgrade", version, &next_version);
 		if (ret != EPKG_OK)
 			break;
 	}
@@ -1167,13 +1182,14 @@ static int
 downgrade_repo_schema(struct pkgdb *db, const char *database, int current_version)
 {
 	int version;
+	int next_version;
 	int ret = EPKG_OK;
 
-	for (version = current_version - 1;
-	     version >= REPO_SCHEMA_VERSION;
-	     version--)  {
+	for (version = current_version;
+	     version > REPO_SCHEMA_VERSION;
+	     version = next_version)  {
 		ret = apply_repo_change(db, database, repo_downgrades,
-					"downgrade", version);
+					"downgrade", version, &next_version);
 		if (ret != EPKG_OK)
 			break;
 	}
