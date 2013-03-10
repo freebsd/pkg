@@ -119,6 +119,7 @@ struct pkg {
 	struct pkg_group *groups;
 	struct pkg_shlib *shlibs_required;
 	struct pkg_shlib *shlibs_provided;
+	struct pkg_abstract *abstract_metadata;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -242,6 +243,12 @@ struct pkg_config_kv {
 struct pkg_config_value {
 	char *value;
 	UT_hash_handle hh;
+};
+
+struct pkg_abstract {
+	struct sbuf	*key;
+	struct sbuf	*value;
+	UT_hash_handle	 hh;
 };
 
 /* sql helpers */

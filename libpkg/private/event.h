@@ -29,6 +29,7 @@
 #define _PKG_EVENT
 
 void pkg_emit_error(const char *fmt, ...);
+void pkg_emit_notice(const char *fmt, ...);
 void pkg_emit_errno(const char *func, const char *arg);
 void pkg_emit_already_installed(struct pkg *p);
 void pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed);

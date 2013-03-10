@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -45,15 +45,16 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/repodb.h"
 #include "private/thd_repo.h"
 
 /* The package repo schema major revision */
-#define REPO_SCHEMA_MAJOR 3
+#define REPO_SCHEMA_MAJOR 2
 
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
-   versions accessing the repo */
-#define REPO_SCHEMA_MINOR 0
+   versions accessing the repo. */
+#define REPO_SCHEMA_MINOR 3
 
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
@@ -68,6 +69,8 @@ typedef enum _sql_prstmt_index {
 	SHLIB1,
 	SHLIB_REQD,
 	SHLIB_PROV,
+	ABSTRACT1,
+	ABSTRACT2,
 	EXISTS,
 	VERSION,
 	DELETE,
@@ -140,6 +143,20 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"SELECT count(*) FROM packages WHERE cksum=?1",
 		"T",
+	},
+	[ABSTRACT1] = {
+		NULL,
+		"INSERT OR IGNORE INTO abstract(abstract) "
+		"VALUES (?1)",
+		"T",
+	},
+	[ABSTRACT2] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_abstract(package_id, key_id, value_id) "
+		"VALUES (?1,"
+		" (SELECT abstract_id FROM abstract WHERE abstract=?2),"
+		" (SELECT abstract_id FROM abstract WHERE abstract=?3))",
+		"ITT",
 	},
 	[VERSION] = {
 		NULL,
@@ -308,6 +325,26 @@ get_repo_user_version(sqlite3 *sqlite, const char *database, int *reposcver)
 }
 
 static int
+set_repo_user_version(sqlite3 *sqlite, const char *database, int reposcver)
+{
+	int		 retcode = EPKG_OK;
+	char		 sql[BUFSIZ];
+	char		*errmsg;
+	const char	*fmt = "PRAGMA %Q.user_version = %" PRId64 ";" ;
+
+	assert(database != NULL);
+
+	sqlite3_snprintf(sizeof(sql), sql, fmt, database, reposcver);
+
+	if (sqlite3_exec(sqlite, sql, NULL, NULL, &errmsg) != SQLITE_OK) {
+		pkg_emit_error("sqlite: %s", errmsg);
+		sqlite3_free(errmsg);
+		retcode = EPKG_FATAL;
+	}
+	return (retcode);
+}
+
+static int
 initialize_repo(const char *repodb, const char *filesdb, bool force,
     bool files, sqlite3 **sqlite)
 {
@@ -315,85 +352,6 @@ initialize_repo(const char *repodb, const char *filesdb, bool force,
 	bool db_not_open;
 	int reposcver;
 	int retcode = EPKG_OK;
-
-	const char initsql[] = ""
-		"CREATE TABLE packages ("
-			"id INTEGER PRIMARY KEY,"
-			"origin TEXT UNIQUE,"
-			"name TEXT NOT NULL,"
-			"version TEXT NOT NULL,"
-			"comment TEXT NOT NULL,"
-			"desc TEXT NOT NULL,"
-			"osversion TEXT,"
-			"arch TEXT NOT NULL,"
-			"maintainer TEXT NOT NULL,"
-			"www TEXT,"
-			"prefix TEXT NOT NULL,"
-			"pkgsize INTEGER NOT NULL,"
-			"flatsize INTEGER NOT NULL,"
-			"licenselogic INTEGER NOT NULL,"
-			"cksum TEXT NOT NULL,"
-			/* relative path to the package in the repository */
-			"path TEXT NOT NULL,"
-			"pkg_format_version INTEGER"
-		");"
-		"CREATE TABLE deps ("
-			"origin TEXT,"
-			"name TEXT,"
-			"version TEXT,"
-			"package_id INTEGER REFERENCES packages(id)"
-		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
-			"UNIQUE(package_id, origin)"
-		");"
-		"CREATE TABLE categories ("
-			"id INTEGER PRIMARY KEY, "
-			"name TEXT NOT NULL UNIQUE "
-		");"
-		"CREATE TABLE pkg_categories ("
-			"package_id INTEGER REFERENCES packages(id)"
-		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
-			"category_id INTEGER REFERENCES categories(id)"
-			"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
-			"UNIQUE(package_id, category_id)"
-		");"
-		"CREATE TABLE licenses ("
-			"id INTEGER PRIMARY KEY,"
-			"name TEXT NOT NULL UNIQUE"
-		");"
-		"CREATE TABLE pkg_licenses ("
-			"package_id INTEGER REFERENCES packages(id)"
-		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
-			"license_id INTEGER REFERENCES licenses(id)"
-			"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
-			"UNIQUE(package_id, license_id)"
-		");"
-		"CREATE TABLE options ("
-			"package_id INTEGER REFERENCES packages(id)"
-		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
-			"option TEXT,"
-			"value TEXT,"
-			"UNIQUE (package_id, option)"
-		");"
-		"CREATE TABLE shlibs ("
-			"id INTEGER PRIMARY KEY,"
-			"name TEXT NOT NULL UNIQUE "
-		");"
-		"CREATE TABLE pkg_shlibs_required ("
-			"package_id INTEGER NOT NULL REFERENCES packages(id)"
-		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
-			"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
-			"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
-			"UNIQUE(package_id, shlib_id)"
-		");"
-		"CREATE TABLE pkg_shlibs_provided ("
-			"package_id INTEGER NOT NULL REFERENCES packages(id)"
-		        "  ON DELETE CASCADE ON UPDATE CASCADE,"
-			"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
-			"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
-			"UNIQUE(package_id, shlib_id)"
-		");"
-		"PRAGMA user_version=%d;"
-		;
 
 	const char initfilessql[] = ""
 		"CREATE TABLE files.files ("
@@ -1082,6 +1040,146 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	return (EPKG_OK);
 }
 
+/* We want to replace some arbitrary number of instances of the placeholder
+   %Q in the SQL with the name of the database. */
+static int
+substitute_into_sql(char *sqlbuf, size_t buflen, const char *fmt,
+		    const char *replacement)
+{
+	char	*f;
+	char	*f0;
+	char	*tofree;
+	size_t	 len;
+	int	 ret = EPKG_OK;
+
+	tofree = f = strdup(fmt);
+	if (tofree == NULL)
+		return EPKG_FATAL; /* out of memory */
+
+	sqlbuf[0] = '\0';
+
+	while ((f0 = strsep(&f, "%")) != NULL) {
+		len = strlcat(sqlbuf, f0, buflen);
+		if (len >= buflen) {
+			/* Overflowed the buffer */
+			ret = EPKG_FATAL;
+			break;
+		}
+
+		if (f[0] == 'Q') {
+			len = strlcat(sqlbuf, replacement, buflen);
+			f++;	/* Jump the Q */
+		} else {
+			len = strlcat(sqlbuf, "%", buflen);
+		}
+
+		if (len >= buflen) {
+			/* Overflowed the buffer */
+			ret = EPKG_FATAL;
+			break;
+		}
+	}
+	
+	free(tofree);
+
+	return (ret);
+}
+
+
+static int
+apply_repo_change(struct pkgdb *db, const char *database,
+		  struct repo_changes *repo_changes, const char *updown,
+		  int version)
+{
+	struct repo_changes	*change;
+	bool			 found = false;
+	int			 ret = EPKG_OK;
+	char			 sql[BUFSIZ];
+	char			*errmsg;
+	
+        for (change = repo_changes; change->version != -1; change++) {
+		if (change->version == version) {
+			found = true;
+			break;
+		}
+	}
+	if (!found) {
+		pkg_emit_error("Failed to %s \"%s\" repo schema to "
+			" version %d (target version %d) "
+			"-- change not found", updown, database, version,
+			REPO_SCHEMA_VERSION);
+		return (EPKG_FATAL);
+	}
+
+	/* substitute the repo database name */
+	ret = substitute_into_sql(sql, sizeof(sql), change->sql, database);
+
+	/* begin transaction */
+	if (ret == EPKG_OK)
+		ret = pkgdb_transaction_begin(db->sqlite, NULL);
+
+	/* apply change */
+	if (ret == EPKG_OK) {
+		ret = sqlite3_exec(db->sqlite, sql, NULL, NULL, &errmsg);
+		if (ret != SQLITE_OK) {
+			pkg_emit_error("sqlite: %s", errmsg);
+			sqlite3_free(errmsg);
+			ret = EPKG_FATAL;
+		}
+	}
+	
+	/* update repo user_version */
+	if (ret == EPKG_OK)
+		ret = set_repo_user_version(db->sqlite, database, version);
+
+	/* commit or rollback */
+	if (ret == EPKG_OK)
+		ret = pkgdb_transaction_commit(db->sqlite, NULL);
+	else
+		ret = pkgdb_transaction_rollback(db->sqlite, NULL);
+
+	if (ret == EPKG_OK) {
+		pkg_emit_notice("Repo %s schema %s to version %d: %s",
+				database, version, change->message);
+	}
+
+	return (ret);
+}
+
+static int
+upgrade_repo_schema(struct pkgdb *db, const char *database, int current_version)
+{
+	int version;
+	int ret = EPKG_OK;
+
+	for (version = current_version;
+	     version <= REPO_SCHEMA_VERSION;
+	     version++)  {
+		ret = apply_repo_change(db, database, repo_upgrades,
+					"upgrade", version);
+		if (ret != EPKG_OK)
+			break;
+	}
+	return (ret);
+}
+
+static int
+downgrade_repo_schema(struct pkgdb *db, const char *database, int current_version)
+{
+	int version;
+	int ret = EPKG_OK;
+
+	for (version = current_version - 1;
+	     version >= REPO_SCHEMA_VERSION;
+	     version--)  {
+		ret = apply_repo_change(db, database, repo_downgrades,
+					"downgrade", version);
+		if (ret != EPKG_OK)
+			break;
+	}
+	return (ret);
+}
+
 int
 pkg_check_repo_version(struct pkgdb *db, const char *database)
 {
@@ -1109,31 +1207,58 @@ pkg_check_repo_version(struct pkgdb *db, const char *database)
 	 *
 	 * So long as the major versions are the same, the local pkgng
 	 * should be compatible with any repo created by a more recent
-	 * pkgng
+	 * pkgng, although it may need some modification of the repo
+	 * schema
 	 */
 
-	/* --- Temporary ---- Grandfather in the old repo schema version
-	   so this patch doesn't immediately invalidate all the repos out there */
+	/* --- Temporary ---- Grandfather in the old repo schema
+	   version so this patch doesn't immediately invalidate all
+	   the repos out there */
+
 	if (reposcver == 2)
 		reposcver = 2000;
 	if (reposcver == 3)
 		reposcver = 2001;
 
-	if (reposcver > REPO_SCHEMA_VERSION) {
-		pkg_emit_error("Repo %s (schema version %d) is too new - we can"
-		    " accept at most version %d", database, reposcver,
-		    REPO_SCHEMA_VERSION);
-		return (EPKG_REPOSCHEMA);
-	}
-	
 	repomajor = reposcver / 1000;
 
 	if (repomajor < REPO_SCHEMA_MAJOR) {
 		pkg_emit_error("Repo %s (schema version %d) is too old - "
 		    "need at least schema %d", database, reposcver,
 		    REPO_SCHEMA_MAJOR * 1000);
-//		return (EPKG_REPOSCHEMA);
+		return (EPKG_REPOSCHEMA);
 	}
 
-	return (EPKG_OK);
+	if (repomajor > REPO_SCHEMA_MAJOR) {
+		pkg_emit_error("Repo %s (schema version %d) is too new - "
+		    "we can accept at most schema %d", database, reposcver,
+		    ((REPO_SCHEMA_MAJOR + 1) * 1000) - 1);
+		return (EPKG_REPOSCHEMA);
+	}
+
+	/* This is a repo schema version we can work with */
+
+	ret = EPKG_OK;
+
+	if (reposcver > REPO_SCHEMA_VERSION) {
+		if (sqlite3_db_readonly(db->sqlite, database)) {
+			pkg_emit_error("Repo %s needs schema upgrade from "
+			"%d to %d but it is opened readonly", database,
+			       reposcver, REPO_SCHEMA_VERSION
+			);
+			ret = EPKG_FATAL;
+		} else
+			ret = upgrade_repo_schema(db, database, reposcver);
+	} else if (reposcver < REPO_SCHEMA_VERSION) {
+		if (sqlite3_db_readonly(db->sqlite, database)) {
+			pkg_emit_error("Repo %s needs schema downgrade from "
+			"%d to %d but it is opened readonly", database,
+			       reposcver, REPO_SCHEMA_VERSION
+			);
+			ret = EPKG_FATAL;
+		} else
+			ret = downgrade_repo_schema(db, database, reposcver);
+	}
+
+	return (ret);
 }
