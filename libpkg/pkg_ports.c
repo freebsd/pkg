@@ -491,15 +491,11 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 	if (unexec) {
 		comment[0] = '\0';
 		/* workaround to detect the @dirrmtry */
-		if (STARTS_WITH(cmd, "rmdir ")) {
+		if (STARTS_WITH(cmd, "rmdir ") || STARTS_WITH(cmd, "/bin/rmdir ")) {
 			comment[0] = '#';
 			comment[1] = '\0';
-		} else if (STARTS_WITH(cmd, "/bin/rmdir ")) {
-			comment[0] = '#';
-			comment[1] = '\0';
-		}
-		/* remove the glob if any */
-		if (comment[0] == '#') {
+
+			/* remove the glob if any */
 			if (strchr(cmd, '*'))
 				comment[0] = '\0';
 
