@@ -212,8 +212,8 @@ exec_rquery(int argc, char **argv)
 
 			pkgdb_it_free(it);
 		}
-		if (!onematched)
-			retcode = EX_SOFTWARE;
+		if (!onematched && retcode == EX_OK)
+			retcode = EX_UNAVAILABLE;
 	}
 
 	pkg_free(pkg);
