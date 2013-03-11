@@ -234,7 +234,16 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 		testpath = stagedpath;
 	}
 
-	if (lstat(testpath, &st) == 0) {
+	if (lstat(testpath, &st) == -1) {
+		pkg_emit_errno("lstat", path);
+		if (p->stage != NULL)
+			ret = EPKG_FATAL;
+		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		if (developer) {
+			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
+			ret = EPKG_FATAL;
+		}
+	} else {
 		if (a != NULL)
 			ret = pkg_adddir_attr(p->pkg, path,
 			    a->owner ? a->owner : p->uname,
@@ -244,20 +253,8 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 		else
 			ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
 			    p->perm, try, true);
-		goto cleanup;
 	}
 
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-
-	pkg_emit_errno("lstat", path);
-
-	if (p->stage != NULL)
-		ret = EPKG_FATAL;
-	if (developer) {
-		pkg_emit_developer_mode("Plist error: @dirrm %s", line);
-		ret = EPKG_FATAL;
-	}
-cleanup:
 	free_file_attr(a);
 	return (ret);
 }
@@ -305,7 +302,16 @@ file(struct plist *p, char *line, struct file_attr *a)
 		testpath = stagedpath;
 	}
 
-	if (lstat(testpath, &st) == 0) {
+	if (lstat(testpath, &st) == -1) {
+		pkg_emit_errno("lstat", path);
+		if (p->stage != NULL)
+			ret = EPKG_FATAL;
+		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		if (developer) {
+			pkg_emit_developer_mode("Plist error, missing file: %s", line);
+			ret = EPKG_FATAL;
+		}
+	} else {
 		buf = NULL;
 		regular = false;
 
@@ -332,19 +338,8 @@ file(struct plist *p, char *line, struct file_attr *a)
 		else
 			ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
 			    p->gname, p->perm, true);
-		goto cleanup;
 	}
 
-	pkg_emit_errno("lstat", path);
-	if (p->stage != NULL)
-		ret = EPKG_FATAL;
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-	if (developer) {
-		pkg_emit_developer_mode("Plist error, missing file: %s", line);
-		ret = EPKG_FATAL;
-	}
-
-cleanup:
 	free_file_attr(a);
 	return (EPKG_OK);
 }
