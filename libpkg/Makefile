@@ -57,7 +57,7 @@ ${_snapshot}:
 all: ${PC}
 
 realinstall: ${PC}
-	${INSTALL} -m 644 ${PC} ${PREFIX}/libdata/pkgconfig
+	${INSTALL} -m 644 ${PC} ${DESTDIR}${PREFIX}/libdata/pkgconfig
 
 #
 # Set DEFAULT_MIRROR_TYPE default to SRV
