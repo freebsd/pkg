@@ -219,7 +219,7 @@ struct pkg_shlib {
 
 struct pkg_config {
 	int id;
-	uint8_t type;
+	pkg_config_t type;
 	const char *key;
 	const void *def;
 	bool fromenv;
