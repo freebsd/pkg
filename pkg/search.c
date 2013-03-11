@@ -359,7 +359,7 @@ exec_search(int argc, char **argv)
 	    PKGDB_DB_REPO) == EPKG_ENOACCESS)
 		auto_update = false;
 
-	ret = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_CREATE, PKGDB_DB_REPO);
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to query package database");
 		return (EX_NOPERM);
