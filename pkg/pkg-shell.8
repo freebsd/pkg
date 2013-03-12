@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 13, 2012
+.Dd March 11, 2013
 .Dt PKG-SHELL 8
 .Os
 .Sh NAME
@@ -27,6 +27,17 @@
 .Nm
 is used to interact with the local or remote database through a sqlite3 console.
 Extreme care should be taken when using this command.
+.Pp
+Do not rely on this command.
+The underlying schema is subject to change on any release.
+Use
+.Xr pkg-query 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8
+and
+.Xr pkg-set 8
+instead for querying and modiying the database.
+These commands are expected to have a stable API, unlike the database schema.
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
