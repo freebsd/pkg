@@ -44,7 +44,7 @@ usage_upgrade(void)
 }
 
 int
-exec_upgrade(int argc, char **argv)
+exec_upgrade(__unused int argc, __unused char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;

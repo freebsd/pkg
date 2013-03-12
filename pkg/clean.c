@@ -205,7 +205,7 @@ usage_clean(void)
 }
 
 int
-exec_clean(int argc, char **argv)
+exec_clean(__unused int argc, __unused char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;

@@ -41,7 +41,7 @@ usage_plugins(void)
 }
 
 int
-exec_plugins(int argc, char **argv)
+exec_plugins(__unused int argc, __unused char **argv)
 {
 	struct pkg_plugin *p = NULL;
 	int ch;

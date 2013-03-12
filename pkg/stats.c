@@ -42,7 +42,7 @@ usage_stats(void)
 }
 
 int
-exec_stats(int argc, char **argv)
+exec_stats(__unused int argc, __unused char **argv)
 {
 	struct pkgdb *db = NULL;
 	int64_t flatsize = 0;

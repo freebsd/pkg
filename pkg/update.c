@@ -114,7 +114,7 @@ usage_update(void)
 }
 
 int
-exec_update(int argc, char **argv)
+exec_update(__unused int argc, __unused char **argv)
 {
 	int ret;
 	int ch;

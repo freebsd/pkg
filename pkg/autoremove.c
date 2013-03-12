@@ -44,7 +44,7 @@ usage_autoremove(void)
 }
 
 int
-exec_autoremove(int argc, char **argv)
+exec_autoremove(__unused int argc, __unused char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
