@@ -488,7 +488,8 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 		    strstr(cmd, "fonts.scale") ||
 		    strstr(cmd, "gtk-update-icon-cache") ||
 		    strstr(cmd, "update-desktop-database") ||
-		    strstr(cmd, "update-mime-database")) {
+		    strstr(cmd, "update-mime-database") ||
+		    strstr(cmd, "install-info")) {
 			if (comment[0] != '#')
 				post_unexec_append(p->post_deinstall_buf,
 				    "%s%s\n", comment, cmd);
