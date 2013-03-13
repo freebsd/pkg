@@ -62,7 +62,7 @@ exec_fetch(int argc, char **argv)
 	bool auto_update = true;
 	match_t match = MATCH_EXACT;
 
-	while ((ch = getopt(argc, argv, "ygxXr:qaLd")) != -1) {
+	while ((ch = getopt(argc, argv, "ygxXr:qaLdU")) != -1) {
 		switch (ch) {
 		case 'y':
 			yes = true;
