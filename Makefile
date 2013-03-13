@@ -66,7 +66,7 @@ set-tag:
 
 
 # Note: you will need to update ~/.gitconfig so git understands tar.xz
-# as a format
+# as a format: git config --global tar.tar.xz.command "xz -c"
 make-tarball:
 	git archive --format=${TARBALL_EXT} --prefix=${TARBALL_BASENAME}/ \
 	    -o ${TARBALL_FILE} ${PKGVERSION}
