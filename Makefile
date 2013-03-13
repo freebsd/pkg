@@ -62,6 +62,7 @@ set-tag:
 	    false ; \
 	fi
 	git tag -m "New Release ${PKGVERSION}" ${PKGVERSION}
+	@{ECHO} "===> Don't forget to 'git push --tags origin'"
 
 
 # Note: you will need to update ~/.gitconfig so git understands tar.xz
