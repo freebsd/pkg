@@ -4,7 +4,7 @@ search_head() {
 }
 
 search_body() {
-	atf_check -o match:"New generation package manager" -s exit:0 pkg search -e -Q comment -S name pkg 
+	atf_check -o match:"pkg.*New generation package manager" -s exit:0 pkg search -e pkg
 }
 
 atf_init_test_cases() {
