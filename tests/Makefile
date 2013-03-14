@@ -1,18 +1,9 @@
-PROG=	test
-SRCS=	test.c		\
-	manifest.c	\
-	pkg.c		\
+SUBDIR=	lib \
+	frontend
 
-CFLAGS+=-I.			\
-	-I/usr/local/include	\
-	-I../libpkg
-LDADD+=	-L/usr/local/lib	\
-	-lcheck			\
-	-L../libpkg		\
-	-lpkg
-NO_MAN=	true
+.include <bsd.subdir.mk>
 
-run: ${PROG}
-	@env LD_LIBRARY_PATH=../libpkg ./${PROG}
-
-.include <bsd.prog.mk>
+run:
+.for dir in ${SUBDIR}
+	cd ${.CURDIR}/${dir} && ${MAKE} run
+.endfor
