@@ -79,7 +79,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		 * conf1.cfg.pkgconf
 		 */
 		if (is_conf_file(pathname, path, sizeof(path))
-		    && lstat(path, &st) == ENOENT) {
+		    && lstat(path, &st) == -1 && errno == ENOENT) {
 			archive_entry_set_pathname(ae, path);
 			ret = archive_read_extract(a,ae, EXTRACT_ARCHIVE_FLAGS);
 			if (ret != ARCHIVE_OK) {
