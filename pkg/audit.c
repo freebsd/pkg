@@ -366,7 +366,8 @@ exec_audit(int argc, char **argv)
 
 	if (fetch == true) {
 		if (pkg_config_string(PKG_CONFIG_PORTAUDIT_SITE, &portaudit_site) != EPKG_OK) {
-			return (EPKG_FATAL);
+			warnx("PORTAUDIT_SITE is missing");
+			return (EX_CONFIG);
 		}
 		if (fetch_and_extract(portaudit_site, audit_file) != EPKG_OK) {
 			return (EX_IOERR);
