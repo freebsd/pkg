@@ -103,7 +103,8 @@ exec_register(int argc, char **argv)
 
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
-	pkg_new(&pkg, PKG_INSTALLED);
+	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
+		err(EX_OSERR, "malloc");
 	while ((ch = getopt(argc, argv, "f:m:i:ldO")) != -1) {
 		switch (ch) {
 		case 'f':

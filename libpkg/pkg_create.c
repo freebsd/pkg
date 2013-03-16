@@ -222,8 +222,10 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
 		goto cleanup;
 
-	pkg_new(&pkg, old ? PKG_OLD_FILE : PKG_FILE);
-	if (pkg == NULL)
+	if(pkg_new(&pkg, old ? PKG_OLD_FILE : PKG_FILE) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
 		goto cleanup;
 
 	if ((ret = pkg_load_manifest_file(pkg, path)) != EPKG_OK) {

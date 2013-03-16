@@ -1023,9 +1023,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 		goto cleanup;
 	}
 
-	if (*pkg_p == NULL)
-		pkg_new(pkg_p, PKG_FILE);
-	else
+	if (*pkg_p == NULL) {
+		retcode = pkg_new(pkg_p, PKG_FILE);
+		if (retcode != EPKG_OK)
+			goto cleanup;
+	} else
 		pkg_reset(*pkg_p, PKG_FILE);
 
 	pkg = *pkg_p;

@@ -1247,9 +1247,11 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 
 	switch (sqlite3_step(it->stmt)) {
 	case SQLITE_ROW:
-		if (*pkg_p == NULL)
-			pkg_new(pkg_p, it->type);
-		else
+		if (*pkg_p == NULL) {
+			ret = pkg_new(pkg_p, it->type);
+			if (ret != EPKG_OK)
+				return (ret);
+		} else
 			pkg_reset(*pkg_p, it->type);
 		pkg = *pkg_p;
 
