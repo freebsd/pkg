@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stringlist.h>
 #include <unistd.h>
 #ifdef BUNDLED_YAML
 #include <yaml.h>
@@ -74,6 +75,8 @@ struct plist {
 	int64_t flatsize;
 	struct hardlinks *hardlinks;
 	mode_t perm;
+	char *post_pattern_to_free;
+	StringList *post_patterns;
 	struct keyword *keywords;
 };
 
@@ -439,6 +442,39 @@ ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
 	return (EPKG_OK);
 }
 
+static void
+parse_post(struct plist *p)
+{
+	const char *env;
+	char *token;
+
+	if ((env = getenv("FORCE_POST")) == NULL)
+		return;
+
+	p->post_patterns = sl_init();
+	p->post_pattern_to_free = strdup(env);
+	while ((token = strsep(&p->post_pattern_to_free, " \t")) != NULL) {
+		if (token[0] == '\0')
+			continue;
+		sl_add(p->post_patterns, token);
+	}
+}
+
+static bool
+should_be_post(char *cmd, struct plist *p)
+{
+	size_t i;
+
+	if (p->post_patterns == NULL)
+		parse_post(p);
+
+	for (i = 0; i < p->post_patterns->sl_cur; i++)
+		if (strstr(cmd, p->post_patterns->sl_str[i]))
+			return (true);
+
+	return (false);
+}
+
 static int
 meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 {
@@ -482,14 +518,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 			/* end remove mkdir -? */
 		}
 
-		if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
-		    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
-		    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
-		    strstr(cmd, "fonts.scale") ||
-		    strstr(cmd, "gio-querymodules") ||
-		    strstr(cmd, "gtk-update-icon-cache") ||
-		    strstr(cmd, "update-desktop-database") ||
-		    strstr(cmd, "update-mime-database")) {
+		if (should_be_post(cmd, p)) {
 			if (comment[0] != '#')
 				post_unexec_append(p->post_deinstall_buf,
 				    "%s%s\n", comment, cmd);
@@ -598,7 +627,6 @@ keyword_free(struct keyword *k)
 
 	free(k);
 }
-
 
 static int
 parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
@@ -961,6 +989,8 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pplist.hardlinks = NULL;
 	pplist.flatsize = 0;
 	pplist.keywords = NULL;
+	pplist.post_pattern_to_free = NULL;
+	pplist.post_patterns = NULL;
 
 	populate_keywords(&pplist);
 
@@ -1040,6 +1070,10 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 
 	free(plist_buf);
 	HASH_FREE(pplist.keywords, keyword, keyword_free);
+
+	free(pplist.post_pattern_to_free);
+	if (pplist.post_patterns != NULL)
+		sl_free(pplist.post_patterns, 0);
 
 	return (ret);
 }
