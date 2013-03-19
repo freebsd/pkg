@@ -65,7 +65,7 @@ int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL) {
-		pkg_emit_errno("malloc", "pkg");
+		pkg_emit_errno("calloc", "pkg");
 		return EPKG_FATAL;
 	}
 
