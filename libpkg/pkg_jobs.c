@@ -207,6 +207,7 @@ jobs_solve_install(struct pkg_jobs *j)
 	bool force = false;
 	bool recursive = false;
 	bool pkgversiontest = false;
+	int retcode = EPKG_OK;
 
 	if ((j->flags & PKG_FLAG_FORCE) != 0)
 		force = true;
@@ -220,7 +221,7 @@ jobs_solve_install(struct pkg_jobs *j)
 	LL_FOREACH(j->patterns, jp) {
 		if ((it = pkgdb_query_installs(j->db, jp->match, jp->nb,
 		        jp->pattern, j->reponame, force, recursive,
-			pkgversiontest)) == NULL)
+			pkgversiontest, &retcode)) == NULL)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
@@ -234,7 +235,7 @@ jobs_solve_install(struct pkg_jobs *j)
 	}
 	j->solved = true;
 
-	return (EPKG_OK);
+	return (retcode);
 }
 
 static int
