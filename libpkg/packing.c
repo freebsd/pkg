@@ -56,7 +56,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 	assert(pack != NULL);
 
 	if ((*pack = calloc(1, sizeof(struct packing))) == NULL) {
-		pkg_emit_errno("malloc", "packing");
+		pkg_emit_errno("calloc", "packing");
 		return (EPKG_FATAL);
 	}
 
