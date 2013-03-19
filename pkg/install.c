@@ -162,28 +162,27 @@ exec_install(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	if ((nbactions = pkg_jobs_count(jobs)) == 0)
-		goto cleanup;
+	if ((nbactions = pkg_jobs_count(jobs)) > 0) {
+		/* print a summary before applying the jobs */
+		if (!quiet || dry_run) {
+			print_jobs_summary(jobs,
+			    "The following %d packages will be installed:\n\n",
+			    nbactions);
 
-	/* print a summary before applying the jobs */
-	if (!quiet || dry_run) {
-		print_jobs_summary(jobs,
-		    "The following %d packages will be installed:\n\n",
-		    nbactions);
+			if (!yes && !dry_run)
+				yes = query_yesno(
+				    "\nProceed with installing packages [y/N]: ");
+			if (dry_run)
+				yes = false;
+		}
 
-		if (!yes && !dry_run)
-			yes = query_yesno(
-			    "\nProceed with installing packages [y/N]: ");
-		if (dry_run)
-			yes = false;
-	}
+		if (yes && pkg_jobs_apply(jobs) != EPKG_OK)
+			goto cleanup;
 
-	if (yes && pkg_jobs_apply(jobs) != EPKG_OK)
-		goto cleanup;
-
-	if (messages != NULL) {
-		sbuf_finish(messages);
-		printf("%s", sbuf_data(messages));
+		if (messages != NULL) {
+			sbuf_finish(messages);
+			printf("%s", sbuf_data(messages));
+		}
 	}
 
 	retcode = EX_OK;
