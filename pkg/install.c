@@ -152,31 +152,30 @@ exec_install(int argc, char **argv)
 	}
 	pkgdb_it_free(it);
 
-	if (pkg_jobs_is_empty(jobs))
-		goto cleanup;
+	if (!pkg_jobs_is_empty(jobs)) {
+		/* print a summary before applying the jobs */
+		pkg = NULL;
+		if (!quiet || dry_run) {
+			print_jobs_summary(jobs, PKG_JOBS_INSTALL,
+			    "The following packages will be installed:\n\n");
 
-	/* print a summary before applying the jobs */
-	pkg = NULL;
-	if (!quiet || dry_run) {
-		print_jobs_summary(jobs, PKG_JOBS_INSTALL,
-		    "The following packages will be installed:\n\n");
+			if (!yes)
+				pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+			if (!yes && !dry_run)
+				yes = query_yesno(
+				    "\nProceed with installing packages [y/N]: ");
+			if (dry_run)
+				yes = false;
+		}
 
-		if (!yes)
-			pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
-		if (!yes && !dry_run)
-			yes = query_yesno(
-			    "\nProceed with installing packages [y/N]: ");
-		if (dry_run)
-			yes = false;
-	}
+		if (yes)
+			if (pkg_jobs_apply(jobs) != EPKG_OK)
+				goto cleanup;
 
-	if (yes)
-		if (pkg_jobs_apply(jobs) != EPKG_OK)
-			goto cleanup;
-
-	if (messages != NULL) {
-		sbuf_finish(messages);
-		printf("%s", sbuf_data(messages));
+		if (messages != NULL) {
+			sbuf_finish(messages);
+			printf("%s", sbuf_data(messages));
+		}
 	}
 
 	retcode = EX_OK;
