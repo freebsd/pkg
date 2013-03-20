@@ -51,6 +51,7 @@ struct deletion_list {
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
 #define CKSUM_MISMATCH	(1U<<2)
+#define ALL		(1U<<3)
 
 STAILQ_HEAD(dl_head, deletion_list);
 
@@ -161,6 +162,9 @@ display_dellist(struct dl_head *dl, const char *cachedir)
 		case CKSUM_MISMATCH:
 			printf("Checksum mismatch\n");
 			break;
+		case ALL:
+			printf("Removing all\n");
+			break;
 		default:	/* not reached */
 			break;
 		}
@@ -200,7 +204,7 @@ delete_dellist(struct dl_head *dl)
 void
 usage_clean(void)
 {
-	fprintf(stderr, "usage: pkg [-nqy] clean\n\n");
+	fprintf(stderr, "usage: pkg clean [-anqy]\n\n");
 	fprintf(stderr, "For more information see 'pkg help clean'.\n");
 }
 
@@ -217,6 +221,7 @@ exec_clean(__unused int argc, __unused char **argv)
 	const char	*cachedir;
 	char		*paths[2];
 	char		*repopath;
+	bool		 all = false;
 	bool		 dry_run = false;
 	bool		 yes;
 	int		 retcode;
@@ -225,8 +230,11 @@ exec_clean(__unused int argc, __unused char **argv)
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
-	while ((ch = getopt(argc, argv, "nqy")) != -1) {
+	while ((ch = getopt(argc, argv, "anqy")) != -1) {
 		switch (ch) {
+		case 'a':
+			all = true;
+			break;
 		case 'n':
 			dry_run = true;
 			break;
@@ -301,6 +309,13 @@ exec_clean(__unused int argc, __unused char **argv)
 		if (it == NULL) {
 			if (!quiet)
 				warnx("skipping %s", ent->fts_path);
+			continue;
+		}
+
+		if (all) {
+			ret = add_to_dellist(&dl, ALL, ent->fts_path,
+					     origin, NULL, NULL);
+			pkgdb_it_free(it);
 			continue;
 		}
 
