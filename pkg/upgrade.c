@@ -48,7 +48,7 @@ exec_upgrade(__unused int argc, __unused char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	const char *reponame = NULL;
+	const char __unused *reponame = NULL;
 	int retcode;
 	int updcode;
 	int ch;

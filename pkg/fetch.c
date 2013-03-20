@@ -55,7 +55,7 @@ exec_fetch(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkg_jobs	*jobs = NULL;
-	const char	*reponame = NULL;
+	const char	__unused *reponame = NULL;
 	int		 ch;
 	int		 retcode = EX_SOFTWARE;
 	bool		 auto_update;
