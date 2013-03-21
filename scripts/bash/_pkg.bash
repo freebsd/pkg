@@ -35,40 +35,341 @@
 # interpreted as representing official policies, either expressed or #
 # implied, of the FreeBSD Project.                                   #
 #                                                                    #
-# info:                                                              #
-#       - original ksh autocompletion script:                        #
-#         github.com/pkgng/pkgng/blob/master/scripts/zsh/_pkg        #
+# ================================================================== #
 #                                                                    #
-# Todo:                                                              #
-#       - find solution for completion after subcommand              #
-#       - find solution for print long options details or only       # 
-#         options                                                    #
+# Usage: put "source _pkg.bash" into ~/.bashrc or /etc/bash.bashrc.  #
 #                                                                    #
 ######################################################################
 
-_pkg_installed () {
-    local ipkg
+######################################################################
+# Global function (generate dynamic package list e.g.)               #
+######################################################################
 
-    # store local installed package
-    ipkg=$(pkg query "%n-%v")
-    printf $ipkg
+_pkg_installed () {
+    pkg query "%n-%v"
 }
 
 _pkg_available_name () {
-    local anpkg
-
-    # store all available package with name only
-    anpkg=$(pkg rquery "%n")
-    printf $anpkg
+    pkg rquery "%n"
 }
 
 _pkg_available () {
-    local apkg
-    
-    # store all available package
-    apkg=$(pkg rquery "%n-%v")
-    printf $apkg
+    pkg rquery "%n-%v"
 }
+
+######################################################################
+# pkgng subfunction for pkg subcommand.                              #
+######################################################################
+
+_pkgng_add () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+
+    small_info="Registers a package and installs it on the system"
+    large_info=""
+}
+
+_pkgng_audit () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-F' '-q')
+    lopts=()
+
+    small_info="Reports vulnerable packages"
+    large_info=""
+}
+
+_pkgng_autoremove () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Removes orphan packages"
+    large_info=""
+}
+
+_pkgng_backup () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-r' '-d')
+    lopts=('-r[Restore the local package database]' 
+           '-d[Dumps the local package database]')
+
+    small_info="Backs-up and restores the local package database"
+    large_info=""
+}
+
+_pkgng_check () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-B' '-d' '-r' '-s' '-v' '-g' '-x' '-X' '-a')
+    lopts=()
+    small_info="Checks for missing dependencies and database consistency"
+    large_info=""
+}
+
+_pkgng_clean () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Cleans old packages from the cache"
+    large_info=""
+}
+
+_pkgng_convert () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Convert database from/to pkgng"
+    large_info=""
+}
+
+_pkgng_create () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-r' '-m' '-f' '-o' '-g' '-x' '-X' '-a')
+    lopts=()
+    small_info="Creates software package distributions"
+    large_info=""
+}
+
+_pkgng_delete () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-y' '-n' '-f' '-g' '-x' '-X' '-a')
+    lopts=()
+    small_info="Deletes packages from the database and the system"
+    large_info=""
+}
+
+_pkgng_fetch () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-y' '-L' '-q' '-g' '-x' '-X' '-a')
+    lopts=()
+    small_info="Fetches packages from a remote repository"
+    large_info=""
+}
+
+_pkgng_help () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Displays help information"
+    large_info=""
+}
+
+_pkgng_info () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-e' '-d' '-r' '-l' '-o' '-p' '-D' 
+          '-f' '-q' '-g' '-x' '-X' '-F' '-a')
+    lopts=()
+    small_info="Displays information about installed packages"
+    large_info=""
+}
+
+_pkgng_install () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-y' '-n' '-f' '-R' '-L' '-x' '-X' '-g')
+    lopts=()
+    small_info="Installs packages from remote package repositories"
+    large_info=""
+}
+
+_pkgng_query () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-g' '-x' '-X' '-F' '-e' '-a')
+    lopts=()
+    small_info="Queries information about installed packages"
+    large_info=""
+}
+
+_pkgng_register () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-l' '-d' '-f' '-m' '-a' '-i')
+    lopts=()
+    small_info="Registers a package into the local database"
+    large_info=""
+}
+
+_pkgng_remove () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Deletes packages from the database and the system"
+    large_info=""
+}
+
+_pkgng_repo () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Creates a package repository catalogue"
+    large_info=""
+}
+
+_pkgng_rquery () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-g' '-x' '-X' '-e' '-a')
+    lopts=()
+    small_info="Queries information in repository catalogues"
+    large_info=""
+}
+
+_pkgng_search () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-x' '-X' '-g')
+    lopts=()
+    small_info="Performs a search of package repository catalogues"
+    large_info=""
+}
+
+_pkgng_set () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=('-o' '-A' '-y' '-g' '-x' '-X' '-a')
+    lopts=('(-o)-A[Mark as automatic or not]'
+           '(-A)-o[Change the origin]'
+           '-y[Assume yes when asked for confirmation]'
+           '(-g -x -X)-a[Process all packages]'
+           '(-x -X -a)-g[Process packages that matches glob]'
+           '(-g -X -a)-x[Process packages that matches regex]'
+           '(-g -x -a)-X[Process packages that matches extended regex]')
+
+    small_info="Modifies information about packages in the local database"
+    large_info=""
+}
+
+_pkgng_shell () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=('-q[Be quiet]'
+           '(-l)-r[Display stats only for the local package database]'
+           '(-r)-l[Display stats only for the remote package database(s)]')
+
+    small_info="Opens a debug shell"
+    large_info=""
+}
+
+_pkgng_shlib () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=('-f[Force updating]'
+           '-q[Be quiet]')
+
+    small_info="Displays which packages link against a specific shared library"
+    large_info=""
+}
+
+_pkgng_stats () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Displays package database statistics"
+    large_info=""
+}
+
+_pkgng_update () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Updates package repository catalogues"
+    large_info=""
+}
+
+_pkgng_updating () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Displays UPDATING information for a package"
+    large_info=""
+}
+
+_pkgng_upgrade () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Performs upgrades of packaged software distributions"
+    large_info=""
+}
+
+_pkgng_version () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=('(-P -R)-I[Use INDEX file]'
+           '(-R -I)-P[Force checking against the ports tree]'
+           '(-I -P)-R[Use remote repository]'
+           '-o[Display package origin, instead of package name]'
+           '-q[Be quiet]'
+           '-v[Be verbose]'
+           '(-L)-l[Display only the packages for given status flag]'
+           '(-l)-L[Display only the packages without given status flag]')
+
+    small_info="Displays the versions of installed packages"
+    large_info=""
+}
+
+_pkgng_which () {
+    local cur prev opts lopts
+    COMPREPLY=()
+
+    opts=()
+    lopts=()
+    small_info="Displays which package installed a specific file"
+    large_info=""
+}
+
+######################################################################
+# Main function for completion, only for "pkg" command. Other        #
+# subcommand use function like _pkgng_[subfunction].                 #
+######################################################################
 
 _pkg () {
 
@@ -93,6 +394,7 @@ _pkg () {
             'backup[Backs-up and restores the local package database]'
             'check[Checks for missing dependencies and database consistency]'
             'clean[Cleans old packages from the cache]'
+            'convert[Convert database from/to pkgng]'
             'create[Creates software package distributions]'
             'delete[Deletes packages from the database and the system]'
             'fetch[Fetches packages from a remote repository]'
@@ -119,43 +421,30 @@ _pkg () {
     case "${prev}" in 
 
  	add) 
-	    COMPREPLY=( 
-		$(compgen -f file *.t?z --) 
-	    )
-	    return 0 ;;
+	    COMPREPLY=( $(compgen -A file *.t?z ) ) && \
+	    return 0 
+            ;;
 
         audit) 
 	    COMPREPLY=( 
 		'-F[Fetch the database before checking.]'
 		'-q[Quiet]'
-		$(compgen -W `_pkg_installed` -- ${cur}) 
+		$(compgen -F _pkg_installed) 
 	    )
-	    return 0 ;;
+	    return 0 
+            ;;
 
         autoremove) 
-	    COMPREPLY=( 
-		'-n'
-		'-y'
-		$(compgen -W `_pkg_installed` -- ${cur})  
-	    )
-	    return 0 ;;
+	    COMPREPLY=( $(compgen) ) && \
+		return 0 ;;
 
         backup) 
-	    if [ -z "$COMPREPLY" ] 
-	    then
-		COMPREPLY=(
-		    '-d'
-		    '-r'
-		)
-	    fi
-
-	    if [ "$COMPREPLY" == "-d" ]
-	    then
-		COMPREPLY=(
-		    $(compgen -f file *)
-		)
-	    fi
-	    return 0 ;;
+	    COMPREPLY=(
+		'(-r)-d[Dumps the local package database]'
+		'(-d)-r[Restrore the local package database]'
+	    )
+	    return 0 
+	    ;;
 
         check) 
 	    COMPREPLY=(
@@ -169,11 +458,18 @@ _pkg () {
 		'(-g -X -a)-x[Process packages that matches regex]'
 		'(-g -x -a)-X[Process packages that matches extended regex]'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         clean) 
 	    return 0 ;;
 	
+        convert)
+            # _arguments -s \
+            # '-r[Revert conversion]' \
+            # return 0
+            return 0;;
+
         create) 
 	    COMPREPLY=(
 		'-r[Root directory] -/'
@@ -186,7 +482,8 @@ _pkg () {
 		'(-g -x -a)-X[Process packages that matches extended regex]'
 		'*:Package:_pkg_installed'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         delete|remove) 
 	    COMPREPLY=(
@@ -199,7 +496,8 @@ _pkg () {
 		'(-g -x -a)-X[Process packages that matches extended regex]'
 		'*:Package:_pkg_installed'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         fetch) 
 	    COMPREPLY=(
@@ -212,7 +510,8 @@ _pkg () {
 		'(-g -x -a)-X[Process packages that matches extended regex]'
 		'*:Available packages:_pkg_available'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         help) 
 	    COMPREPLY=() && \
@@ -236,7 +535,8 @@ _pkg () {
 		'(-g -x -X -a)-F[Process the specified package]'
 		'*:Package:_pkg_installed'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         install) 
 	    COMPREPLY=(
@@ -250,7 +550,8 @@ _pkg () {
 		'(-g -x)-X[Process packages that matches extended regex]'
 		'*:Available packages:_pkg_available'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         query) 
 	    COMPREPLY=(
@@ -262,7 +563,8 @@ _pkg () {
 		'(-g -x -X -a -e)-F[Process the specified package]'
 		':Ouput format:'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         register) 
 	    COMPREPLY=(
@@ -276,11 +578,8 @@ _pkg () {
 	    return 0 ;;
 
         repo) 
-	    COMPREPLY=(
-		''
-		''
-	    )
-	    return 0 ;;
+	    COMPREPLY=() && \
+		return 0 ;;
 
         rquery) 
 	    COMPREPLY=(
@@ -313,12 +612,12 @@ _pkg () {
 	    return 0 ;;
 
         shell) 
-	    COMPREPLY=()
-	    return 0 ;;
+	    COMPREPLY=() && \
+		return 0 ;;
 
         shlib) 
-	    COMPREPLY=()
-	    return 0 ;;
+	    COMPREPLY=() && \
+		return 0 ;;
 
         stats) 
 	    COMPREPLY=(
@@ -340,7 +639,8 @@ _pkg () {
 		'-d[Only entries newer than date are shown]'
 		'-f[Defines a alternative location of the UPDATING file]'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         upgrade) 
 	    COMPREPLY=(
@@ -349,7 +649,8 @@ _pkg () {
 		'-f[Upgrade/Reinstall everything]' 
 		'-L[Do not try to update the repository metadata]'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         version) 
 	    COMPREPLY=(
@@ -362,14 +663,17 @@ _pkg () {
 		'(-L)-l[Display only the packages for given status flag]'
 		'(-l)-L[Display only the packages without given status flag]'
 	    )
-	    return 0 ;;
+	    return 0 
+	    ;;
 
         which) 
-	    COMPREPLY=( $(compgen -W "$(compgen -A file)") )
-	    return 0 ;;
+	    COMPREPLY=( $(compgen -W "$(compgen -A file)") ) && \
+		return 0 
+	    ;;
     esac
 
+    # if doesn't exist, return opts
     COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 }
 
-complete -D -F _pkg pkg
+complete -F _pkg pkg
