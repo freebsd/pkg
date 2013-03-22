@@ -3815,13 +3815,13 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 	sqlite3_stmt	*stmt = NULL;
 	sqlite3_stmt	*stmt_conflicts = NULL;
 	struct pkg_file	*file = NULL;
-	struct sbuf	*conflictmsg = NULL;
+
 
 	const char	 sql[] = ""
 		"INSERT INTO integritycheck (name, origin, version, path)"
 		"values (?1, ?2, ?3, ?4);";
 	const char	 sql_conflicts[] = ""
-		"SELECT name, version from integritycheck where path=?1;";
+		"SELECT name || '-' || version from integritycheck where path=?1;";
 
 	assert(db != NULL && p != NULL);
 
@@ -3838,11 +3838,11 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 		return (EPKG_FATAL);
 	}
 
-	conflictmsg = sbuf_new_auto();
 
 	while (pkg_files(p, &file) == EPKG_OK) {
 		const char	*name, *origin, *version;
 		const char	*pkg_path = pkg_file_path(file);
+		StringList	*conflicts_list = NULL;
 
 		pkg_get(p, PKG_NAME, &name, PKG_ORIGIN, &origin,
 		    PKG_VERSION, &version);
@@ -3852,36 +3852,28 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 		sqlite3_bind_text(stmt, 4, pkg_path, -1, SQLITE_STATIC);
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
-			sbuf_clear(conflictmsg);
-			sbuf_printf(conflictmsg,
-			    "WARNING: %s-%s conflict on %s with: \n", name,
-			    version, pkg_path);
 
 			if (sqlite3_prepare_v2(db->sqlite, sql_conflicts,
 			    -1, &stmt_conflicts, NULL) != SQLITE_OK) {
 				ERROR_SQLITE(db->sqlite);
 				sqlite3_finalize(stmt);
-				sbuf_delete(conflictmsg);
 				return (EPKG_FATAL);
 			}
 
 			sqlite3_bind_text(stmt_conflicts, 1, pkg_path,
 			    -1, SQLITE_STATIC);
-
+			conflicts_list = sl_init();
 			while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
-				sbuf_printf(conflictmsg, "\t- %s-%s\n",
-				    sqlite3_column_text(stmt_conflicts, 0),
-				    sqlite3_column_text(stmt_conflicts, 1));
+				sl_add(conflicts_list, strdup (sqlite3_column_text(stmt_conflicts, 0)));
 			}
 			sqlite3_finalize(stmt_conflicts);
-			sbuf_finish(conflictmsg);
-			pkg_emit_error("%s", sbuf_get(conflictmsg));
+			pkg_emit_integritycheck_conflict(name, version, pkg_path, conflicts_list);
+			sl_free(conflicts_list, 1);
 			ret = EPKG_FATAL;
 		}
 		sqlite3_reset(stmt);
 	}
 	sqlite3_finalize(stmt);
-	sbuf_delete(conflictmsg);
 
 	return (ret);
 }
