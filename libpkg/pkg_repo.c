@@ -600,10 +600,10 @@ pack_extract(const char *pack, const char *dbname, const char *dbpath)
 
 	archive_read_free(a);
 
-
 }
+
 int
-pkg_create_repo(char *path, bool force, bool files,
+pkg_create_repo(char *path, __unused bool force, bool files,
     void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
@@ -631,6 +631,8 @@ pkg_create_repo(char *path, bool force, bool files,
 	char repopack[MAXPATHLEN + 1];
 	char filesdb[MAXPATHLEN + 1];
 	char filespack[MAXPATHLEN + 1];
+	FILE *psyml;
+	struct sbuf *buf = sbuf_new_auto();
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -650,8 +652,14 @@ pkg_create_repo(char *path, bool force, bool files,
 		goto cleanup;
 	}
 
+	snprintf(repodb, sizeof(repodb), "%s/packagesite.yaml", path);
+	if ((psyml = fopen(repodb, "w")) == NULL) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
 	snprintf(repodb, sizeof(repodb), "%s/repo.sqlite", path);
-	snprintf(repopack, sizeof(repopack), "%s/repo.txz", path);
+	snprintf(repopack, sizeof(repopack), "%s/repoy.txz", path);
 	if (files) {
 		snprintf(filesdb, sizeof(filesdb), "%s/files.sqlite", path);
 		snprintf(filespack, sizeof(filespack), "%s/files.txz", path);
@@ -689,8 +697,8 @@ pkg_create_repo(char *path, bool force, bool files,
 		struct pkg_result *r;
 
 		const char *name, *version, *origin, *comment, *desc;
-		const char *arch, *maintainer, *www, *prefix;
-		int64_t flatsize;
+		const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
+		int64_t flatsize, pkgsize;
 		lic_t licenselogic;
 
 		pthread_mutex_lock(&thd_data.results_m);
@@ -728,18 +736,23 @@ pkg_create_repo(char *path, bool force, bool files,
 		if (progress != NULL)
 			progress(r->pkg, data);
 
+		pkg_emit_manifest2(r->pkg, buf, true);
+		sbuf_finish(buf);
+		fprintf(psyml, sbuf_data(buf));
+
 		pkg_get(r->pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_COMMENT, &comment,
 		    PKG_DESC, &desc, PKG_ARCH, &arch,
 		    PKG_MAINTAINER, &maintainer, PKG_WWW, &www,
 		    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
-		    PKG_LICENSE_LOGIC, &licenselogic);
+		    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
+		    PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
 
 	try_again:
 		if ((ret = run_prepared_statement(PKG, origin, name, version,
 		    comment, desc, arch, maintainer, www, prefix,
-		    r->size, flatsize, (int64_t)licenselogic, r->cksum,
-		    r->path)) != SQLITE_DONE) {
+		    pkgsize, flatsize, (int64_t)licenselogic, sum,
+		    rpath)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				switch(maybe_delete_conflicting(origin,
 				    version, r->path)) {
@@ -864,7 +877,10 @@ pkg_create_repo(char *path, bool force, bool files,
 
 		pkg_free(r->pkg);
 		free(r);
+
 	}
+
+	fclose(psyml);
 
 	if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK)
 		retcode = EPKG_FATAL;
@@ -887,6 +903,8 @@ pkg_create_repo(char *path, bool force, bool files,
 
 	if (fts != NULL)
 		fts_close(fts);
+
+	sbuf_delete(buf);
 
 	finalize_prepared_statements(files);
 
@@ -965,14 +983,16 @@ read_pkg_file(void *data)
 			pkg_path++;
 
 		r = calloc(1, sizeof(struct pkg_result));
-		strlcpy(r->path, pkg_path, sizeof(r->path));
-		r->size = st_size;
-
-		sha256_file(fts_accpath, r->cksum);
 
 		if (pkg_open(&r->pkg, fts_accpath) != EPKG_OK) {
 			r->retcode = EPKG_WARN;
+		} else {
+			sha256_file(fts_accpath, r->cksum);
+			pkg_set(r->pkg, PKG_CKSUM, r->cksum,
+			    PKG_REPOPATH, pkg_path,
+			    PKG_NEW_PKGSIZE, st_size);
 		}
+
 
 		/* Add result to the FIFO and notify */
 		pthread_mutex_lock(&d->results_m);
@@ -1029,12 +1049,16 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	    return (EPKG_FATAL);
 	}
 
+	snprintf(repo_path, sizeof(repo_path), "%s/packagesite.yaml", path);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/packagesite", path);
+	pack_db("packagesite.yaml", repo_archive, repo_path, rsa_key_path, password_cb);
+
 	snprintf(repo_path, sizeof(repo_path), "%s/repo.sqlite", path);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/repo", path);
+	pack_db("repo.sqlite", repo_archive, repo_path, rsa_key_path, password_cb);
+
 	snprintf(files_path, sizeof(repo_path), "%s/files.sqlite", path);
 	snprintf(files_archive, sizeof(repo_archive), "%s/files", path);
-
-	pack_db("repo.sqlite", repo_archive, repo_path, rsa_key_path, password_cb);
 	pack_db("files.sqlite", files_archive, files_path, rsa_key_path, password_cb);
 
 	return (EPKG_OK);
