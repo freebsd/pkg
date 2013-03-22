@@ -44,11 +44,11 @@ usage_upgrade(void)
 }
 
 int
-exec_upgrade(__unused int argc, __unused char **argv)
+exec_upgrade(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	const char __unused *reponame = NULL;
+	const char *reponame = NULL;
 	int retcode;
 	int updcode;
 	int ch;
@@ -62,7 +62,7 @@ exec_upgrade(__unused int argc, __unused char **argv)
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
 
-	while ((ch = getopt(argc, argv, "fLnqr:Uy")) != -1) {
+	while ((ch = getopt(argc, argv, "fLnqFr:Uy")) != -1) {
 		switch (ch) {
 		case 'f':
 			f |= PKG_FLAG_FORCE;
@@ -79,6 +79,9 @@ exec_upgrade(__unused int argc, __unused char **argv)
 		case 'n':
 			f |= PKG_FLAG_DRY_RUN;
 			dry_run = true;
+			break;
+		case 'F':
+			f |= PKG_FLAG_SKIP_INSTALL;
 			break;
 		case 'q':
 			quiet = true;

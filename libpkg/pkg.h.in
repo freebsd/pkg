@@ -36,6 +36,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <sys/sbuf.h>
+#include <stringlist.h>
 #include <openssl/pem.h>
 
 /* The expected name of the pkg(1) binary executable. */
@@ -299,6 +300,7 @@ typedef enum _pkg_flags {
 	PKG_FLAG_NOSCRIPT = (1U << 5),
 	PKG_FLAG_PKG_VERSION_TEST = (1U << 6),
 	PKG_FLAG_UPGRADES_FOR_INSTALLED = (1U << 7),
+	PKG_FLAG_SKIP_INSTALL = (1U << 8)
 } pkg_flags;
 
 typedef enum _pkg_config_key {
@@ -1136,6 +1138,7 @@ typedef enum {
 	PKG_EVENT_FETCHING,
 	PKG_EVENT_INTEGRITYCHECK_BEGIN,
 	PKG_EVENT_INTEGRITYCHECK_FINISHED,
+	PKG_EVENT_INTEGRITYCHECK_CONFLICT,
 	PKG_EVENT_NEWPKGVERSION,
 	PKG_EVENT_NOTICE,
 	/* errors */
@@ -1235,6 +1238,12 @@ struct pkg_event {
 		struct {
 			const char *pkg_name;
 		} e_not_found;
+		struct {
+			const char *pkg_name;
+			const char *pkg_version;
+			const char *pkg_path;
+			StringList *conflicts;
+		} e_integrity_conflict;
 	};
 };
 

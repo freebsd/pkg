@@ -378,6 +378,9 @@ pkg_jobs_install(struct pkg_jobs *j)
 	if (pkg_jobs_fetch(j) != EPKG_OK)
 		return (EPKG_FATAL);
 
+	if (j->flags & PKG_FLAG_SKIP_INSTALL)
+		return (EPKG_OK);
+
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
 	
