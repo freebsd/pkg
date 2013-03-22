@@ -157,7 +157,6 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 
 	d = NULL;
 	if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
-		found = false;
 		pkg_get(d, PKG_ORIGIN,  &deporigin,
 			   PKG_NAME,    &depname,
 			   PKG_VERSION, &depversion,

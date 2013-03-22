@@ -738,7 +738,7 @@ pkg_create_repo(char *path, __unused bool force, bool files,
 
 		pkg_emit_manifest2(r->pkg, buf, true);
 		sbuf_finish(buf);
-		fprintf(psyml, sbuf_data(buf));
+		(void)fprintf(psyml, "%s", sbuf_data(buf));
 
 		pkg_get(r->pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_COMMENT, &comment,
