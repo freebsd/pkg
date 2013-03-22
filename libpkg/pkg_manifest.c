@@ -60,7 +60,7 @@
 #define PKG_SHLIBS_PROVIDED -13
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
-static int pkg_set_flatsize_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+static int pkg_set_size_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_licenselogic_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_deps_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
 static int pkg_set_files_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
@@ -82,11 +82,14 @@ static struct manifest_key {
 	{ "comment", PKG_COMMENT, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "maintainer", PKG_MAINTAINER, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "prefix", PKG_PREFIX, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "path", PKG_REPOPATH, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "sum", PKG_CKSUM, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "deps", PKG_DEPS, YAML_MAPPING_NODE, parse_mapping},
 	{ "files", PKG_FILES, YAML_MAPPING_NODE, parse_mapping},
 	{ "dirs", PKG_DIRS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "directories", PKG_DIRECTORIES, YAML_MAPPING_NODE, parse_mapping},
-	{ "flatsize", -1, YAML_SCALAR_NODE, pkg_set_flatsize_from_node},
+	{ "pkgsize", PKG_NEW_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
+	{ "flatsize", PKG_FLATSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
 	{ "licenselogic", -1, YAML_SCALAR_NODE, pkg_set_licenselogic_from_node},
 	{ "licenses", PKG_LICENSES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "desc", PKG_DESC, YAML_SCALAR_NODE, pkg_set_from_node},
@@ -207,19 +210,19 @@ pkg_set_from_node(struct pkg *pkg, yaml_node_t *val,
 }
 
 static int
-pkg_set_flatsize_from_node(struct pkg *pkg, yaml_node_t *val,
-    __unused yaml_document_t *doc, __unused int attr)
+pkg_set_size_from_node(struct pkg *pkg, yaml_node_t *val,
+    __unused yaml_document_t *doc, int attr)
 {
-	int64_t flatsize;
+	int64_t size;
 	const char *errstr = NULL;
-	flatsize = strtonum(val->data.scalar.value, 0, INT64_MAX, &errstr);
+	size = strtonum(val->data.scalar.value, 0, INT64_MAX, &errstr);
 	if (errstr) {
 		pkg_emit_error("Unable to convert %s to int64: %s",
 					   val->data.scalar.value, errstr);
 		return (EPKG_FATAL);
 	}
 
-	return (pkg_set(pkg, PKG_FLATSIZE, flatsize));
+	return (pkg_set(pkg, attr, size));
 }
 static int
 pkg_set_licenselogic_from_node(struct pkg *pkg, yaml_node_t *val,
@@ -765,9 +768,10 @@ pkg_emit_manifest2(struct pkg *pkg, struct sbuf *destbuf, bool compact)
 	int groups = -1;*/
 	const char *comment, *desc, *infos, *message, *name, *pkgarch;
 	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
+	const char *repopath, *pkgsum;
 	const char *script_types = NULL;
 	lic_t licenselogic;
-	int64_t flatsize;
+	int64_t flatsize, pkgsize;
 
 	sbuf_reset(destbuf);
 	yaml_emitter_initialize(&emitter);
@@ -795,7 +799,8 @@ pkg_emit_manifest2(struct pkg *pkg, struct sbuf *destbuf, bool compact)
 	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
-	    PKG_VERSION, &version, PKG_INFOS, &infos);
+	    PKG_VERSION, &version, PKG_INFOS, &infos, PKG_REPOPATH, &repopath,
+	    PKG_CKSUM, &pkgsum, PKG_NEW_PKGSIZE, &pkgsize);
 	manifest_append_kv(mapping, "name", name, PLAIN);
 	manifest_append_kv(mapping, "version", version, PLAIN);
 	manifest_append_kv(mapping, "origin", pkgorigin, PLAIN);
@@ -804,6 +809,11 @@ pkg_emit_manifest2(struct pkg *pkg, struct sbuf *destbuf, bool compact)
 	manifest_append_kv(mapping, "www", www, PLAIN);
 	manifest_append_kv(mapping, "maintainer", pkgmaintainer, PLAIN);
 	manifest_append_kv(mapping, "prefix", prefix, PLAIN);
+	if (repopath != NULL)
+		manifest_append_kv(mapping, "path", repopath, PLAIN);
+	if (pkgsum != NULL)
+		manifest_append_kv(mapping, "sum", pkgsum, PLAIN);
+
 	switch (licenselogic) {
 	case LICENSE_SINGLE:
 		manifest_append_kv(mapping, "licenselogic", "single", PLAIN);
@@ -823,6 +833,10 @@ pkg_emit_manifest2(struct pkg *pkg, struct sbuf *destbuf, bool compact)
 
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, flatsize);
 	manifest_append_kv(mapping, "flatsize", tmpbuf, PLAIN);
+	if (pkgsize > 0) {
+		snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkgsize);
+	manifest_append_kv(mapping, "pkgsize", tmpbuf, PLAIN);
+	}
 	urlencode(desc, &tmpsbuf);
 	manifest_append_kv(mapping, "desc", sbuf_get(tmpsbuf), LITERAL);
 
