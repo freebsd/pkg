@@ -720,7 +720,7 @@ manifest_append_seqval(yaml_document_t *doc, int parent, int *seq,
 	    strlen(name), YAML_##style##_SCALAR_STYLE)
 
 int
-pkg_emit_manifest(struct pkg *pkg, char **dest)
+pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact)
 {
 	yaml_emitter_t emitter;
 	yaml_document_t doc;
@@ -850,70 +850,72 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		    pkg_option_value(option), PLAIN);
 	}
 
-	map = -1;
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		const char *pkg_sum = pkg_file_cksum(file);
+	if (!compact) {
+		map = -1;
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			const char *pkg_sum = pkg_file_cksum(file);
 
-		if (pkg_sum == NULL || pkg_sum[0] == '\0')
-			pkg_sum = "-";
+			if (pkg_sum == NULL || pkg_sum[0] == '\0')
+				pkg_sum = "-";
 
-		if (map == -1)
-			manifest_append_map(map, mapping, "files", BLOCK);
-		urlencode(pkg_file_path(file), &tmpsbuf);
-		manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
-	}
-
-	seq = -1;
-	map = -1;
-	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		const char *try_str;
-		if (map == -1)
-			manifest_append_map(map, mapping, "directories", BLOCK);
-		urlencode(pkg_dir_path(dir), &tmpsbuf);
-		try_str = pkg_dir_try(dir) ? "y" : "n";
-		manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
-	}
-
-	map = -1;
-	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
-		if (map == -1)
-			manifest_append_map(map, mapping, "scripts", BLOCK);
-
-		if (pkg_script_get(pkg, i) == NULL)
-			continue;
-
-		switch (i) {
-		case PKG_SCRIPT_PRE_INSTALL:
-			script_types = "pre-install";
-			break;
-		case PKG_SCRIPT_INSTALL:
-			script_types = "install";
-			break;
-		case PKG_SCRIPT_POST_INSTALL:
-			script_types = "post-install";
-			break;
-		case PKG_SCRIPT_PRE_UPGRADE:
-			script_types = "pre-upgrade";
-			break;
-		case PKG_SCRIPT_UPGRADE:
-			script_types = "upgrade";
-			break;
-		case PKG_SCRIPT_POST_UPGRADE:
-			script_types = "post-upgrade";
-			break;
-		case PKG_SCRIPT_PRE_DEINSTALL:
-			script_types = "pre-deinstall";
-			break;
-		case PKG_SCRIPT_DEINSTALL:
-			script_types = "deinstall";
-			break;
-		case PKG_SCRIPT_POST_DEINSTALL:
-			script_types = "post-deinstall";
-			break;
+			if (map == -1)
+				manifest_append_map(map, mapping, "files", BLOCK);
+			urlencode(pkg_file_path(file), &tmpsbuf);
+			manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
 		}
-		urlencode(pkg_script_get(pkg, i), &tmpsbuf);
-		manifest_append_kv(map, script_types, sbuf_get(tmpsbuf),
-		    LITERAL);
+
+		seq = -1;
+		map = -1;
+		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+			const char *try_str;
+			if (map == -1)
+				manifest_append_map(map, mapping, "directories", BLOCK);
+			urlencode(pkg_dir_path(dir), &tmpsbuf);
+			try_str = pkg_dir_try(dir) ? "y" : "n";
+			manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
+		}
+
+		map = -1;
+		for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
+			if (map == -1)
+				manifest_append_map(map, mapping, "scripts", BLOCK);
+
+			if (pkg_script_get(pkg, i) == NULL)
+				continue;
+
+			switch (i) {
+			case PKG_SCRIPT_PRE_INSTALL:
+				script_types = "pre-install";
+				break;
+			case PKG_SCRIPT_INSTALL:
+				script_types = "install";
+				break;
+			case PKG_SCRIPT_POST_INSTALL:
+				script_types = "post-install";
+				break;
+			case PKG_SCRIPT_PRE_UPGRADE:
+				script_types = "pre-upgrade";
+				break;
+			case PKG_SCRIPT_UPGRADE:
+				script_types = "upgrade";
+				break;
+			case PKG_SCRIPT_POST_UPGRADE:
+				script_types = "post-upgrade";
+				break;
+			case PKG_SCRIPT_PRE_DEINSTALL:
+				script_types = "pre-deinstall";
+				break;
+			case PKG_SCRIPT_DEINSTALL:
+				script_types = "deinstall";
+				break;
+			case PKG_SCRIPT_POST_DEINSTALL:
+				script_types = "post-deinstall";
+				break;
+			}
+			urlencode(pkg_script_get(pkg, i), &tmpsbuf);
+			manifest_append_kv(map, script_types, sbuf_get(tmpsbuf),
+			    LITERAL);
+		}
 	}
 	if (infos != NULL && *infos != '\0') {
 		urlencode(infos, &tmpsbuf);

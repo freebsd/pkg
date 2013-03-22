@@ -230,7 +230,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 
 	if (options & INFO_RAW) { /* Not for remote packages */
 		if (pkg_type(pkg) != PKG_REMOTE) {
-			pkg_emit_manifest(pkg, &m);
+			pkg_emit_manifest(pkg, &m, false);
 			printf("%s\n", m);
 			free(m);
 		}
