@@ -330,7 +330,7 @@ set_repo_user_version(sqlite3 *sqlite, const char *database, int reposcver)
 	int		 retcode = EPKG_OK;
 	char		 sql[BUFSIZ];
 	char		*errmsg;
-	const char	*fmt = "PRAGMA %Q.user_version = %" PRId64 ";" ;
+	const char	*fmt = "PRAGMA %Q.user_version = %d;" ;
 
 	assert(database != NULL);
 
