@@ -722,6 +722,26 @@ manifest_append_seqval(yaml_document_t *doc, int parent, int *seq,
 int
 pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact)
 {
+	struct sbuf *b = sbuf_new_auto();
+	int rc;
+
+	rc = pkg_emit_manifest2(pkg, b, compact);
+
+	if (rc != EPKG_OK) {
+		sbuf_delete(b);
+		return (rc);
+	}
+
+	sbuf_finish(b);
+	*dest = strdup(sbuf_get(b));
+	sbuf_delete(b);
+
+	return (rc);
+}
+
+int
+pkg_emit_manifest2(struct pkg *pkg, struct sbuf *destbuf, bool compact)
+{
 	yaml_emitter_t emitter;
 	yaml_document_t doc;
 	char tmpbuf[BUFSIZ];
@@ -743,13 +763,13 @@ pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact)
 	int i;
 /*	int users = -1;
 	int groups = -1;*/
-	struct sbuf *destbuf = sbuf_new_auto();
 	const char *comment, *desc, *infos, *message, *name, *pkgarch;
 	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
 	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize;
 
+	sbuf_reset(destbuf);
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_unicode(&emitter, 1);
 	yaml_emitter_set_output(&emitter, yaml_write_buf, destbuf);
@@ -933,9 +953,6 @@ pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact)
 		rc = EPKG_FATAL;
 
 	sbuf_free(tmpsbuf);
-	sbuf_finish(destbuf);
-	*dest = strdup(sbuf_get(destbuf));
-	sbuf_delete(destbuf);
 
 	yaml_emitter_delete(&emitter);
 	return (rc);
