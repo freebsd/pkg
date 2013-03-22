@@ -809,7 +809,7 @@ int pkg_add(struct pkgdb *db, const char *path, int flags);
  * @return An error code.
  */
 int pkg_jobs_new(struct pkg_jobs **jobs, pkg_jobs_t type, struct pkgdb *db,
-		 bool force, bool dry_run);
+		 bool force, bool dry_run, bool noinstall);
 
 /**
  * Free a pkg_jobs
@@ -896,6 +896,16 @@ int ports_parse_plist(struct pkg *, char *, const char *);
  * @todo Document
  */
 int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
+
+/**
+ * Special structure to report about conflicts
+ */
+struct pkg_event_conflict {
+	char *name;
+	char *origin;
+	char *version;
+	struct pkg_event_conflict *next;
+};
 
 /**
  * Event type used to report progress or problems.
@@ -985,8 +995,9 @@ struct pkg_event {
 		struct {
 			const char *pkg_name;
 			const char *pkg_version;
+			const char *pkg_origin;
 			const char *pkg_path;
-			StringList *conflicts;
+			struct pkg_event_conflict *conflicts;
 		} e_integrity_conflict;
 	};
 };

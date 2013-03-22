@@ -3226,7 +3226,8 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 
 	const char sql[] = "INSERT INTO integritycheck (name, origin, version, path)"
 		"values (?1, ?2, ?3, ?4);";
-	const char sql_conflicts[] = "SELECT name || '-' || version from integritycheck where path=?1;";
+	const char	 sql_conflicts[] = ""
+		"SELECT name, origin, version from integritycheck where path=?1;";
 
 	assert(db != NULL && p != NULL);
 
@@ -3244,9 +3245,9 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 
 
 	while (pkg_files(p, &file) == EPKG_OK) {
-		const char *name, *origin, *version;
-		const char *pkg_path = pkg_file_path(file);
-		StringList	*conflicts_list = NULL;
+		const char	*name, *origin, *version;
+		const char	*pkg_path = pkg_file_path(file);
+		struct pkg_event_conflict *conflicts_list = NULL, *cur;
 
 		pkg_get(p, PKG_NAME, &name, PKG_ORIGIN, &origin,
 		    PKG_VERSION, &version);
@@ -3266,13 +3267,31 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 
 			sqlite3_bind_text(stmt_conflicts, 1, pkg_path,
 			    -1, SQLITE_STATIC);
-			conflicts_list = sl_init();
+			cur = conflicts_list;
 			while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
-				sl_add(conflicts_list, strdup (sqlite3_column_text(stmt_conflicts, 0)));
+				if (cur == NULL) {
+					cur = calloc(1, sizeof (struct pkg_event_conflict));
+					conflicts_list = cur;
+				}
+				else {
+					cur->next = calloc(1, sizeof (struct pkg_event_conflict));
+					cur = cur->next;
+				}
+				cur->name = strdup(sqlite3_column_text(stmt_conflicts, 0));
+				cur->origin = strdup(sqlite3_column_text(stmt_conflicts, 1));
+				cur->version = strdup(sqlite3_column_text(stmt_conflicts, 2));
 			}
 			sqlite3_finalize(stmt_conflicts);
-			pkg_emit_integritycheck_conflict(name, version, pkg_path, conflicts_list);
-			sl_free(conflicts_list, 1);
+			pkg_emit_integritycheck_conflict(name, version, origin, pkg_path, conflicts_list);
+			cur = conflicts_list;
+			while (cur) {
+				free(cur->name);
+				free(cur->origin);
+				free(cur->version);
+				cur = cur->next;
+				free(conflicts_list);
+				conflicts_list = cur;
+			}
 			ret = EPKG_FATAL;
 		}
 		sqlite3_reset(stmt);

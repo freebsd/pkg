@@ -49,7 +49,7 @@ static int pkg_jobs_fetch(struct pkg_jobs *j);
 
 int
 pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
-	     bool dry_run)
+	     bool dry_run, bool noinstall)
 {
 	assert(db != NULL);
 	assert(t != PKG_JOBS_INSTALL || db->type == PKGDB_REMOTE);
@@ -69,6 +69,8 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db, bool force,
 		(*j)->flags |= PKG_JOB_FLAGS_DRY_RUN;
 	if (force)
 		(*j)->flags |= PKG_JOB_FLAGS_FORCE;
+	if (noinstall)
+		(*j)->flags |= PKG_JOB_FLAGS_SKIP_INSTALL;
 
 	return (EPKG_OK);
 }

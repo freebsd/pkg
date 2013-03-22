@@ -91,7 +91,7 @@ exec_autoremove(int argc, char **argv)
 	}
 
 	/* Always force packages to be removed */
-	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, true, dry_run)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, true, dry_run, false)
 	    != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);

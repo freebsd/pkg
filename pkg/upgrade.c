@@ -57,6 +57,7 @@ exec_upgrade(int argc, char **argv)
 	bool all = false;
 	bool dry_run = false;
 	bool auto_update = true;
+	bool noinstall = false;
 
 	while ((ch = getopt(argc, argv, "fLnqFr:Uy")) != -1) {
 		switch (ch) {
@@ -73,7 +74,7 @@ exec_upgrade(int argc, char **argv)
 			dry_run = true;
 			break;
 		case 'F':
-			f |= PKG_FLAG_SKIP_INSTALL;
+			noinstall = true;
 			break;
 		case 'q':
 			quiet = true;
@@ -112,7 +113,7 @@ exec_upgrade(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, false, dry_run)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, false, dry_run, noinstall)
 	    != EPKG_OK) {
 		goto cleanup;
 	}

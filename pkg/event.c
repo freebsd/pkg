@@ -51,8 +51,7 @@ event_callback(void *data, struct pkg_event *ev)
 	(void) debug;
 	const char *name, *version, *newversion;
 	const char *filename;
-	unsigned int i;
-	StringList *sl;
+	struct pkg_event_conflict *cur_conflict;
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -118,18 +117,19 @@ event_callback(void *data, struct pkg_event *ev)
 		printf(" done\n");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
-		printf("\nConflict found on path %s between %s-%s and ",
+		printf("\nConflict found on path %s between %s-%s(%s) and ",
 			ev->e_integrity_conflict.pkg_path,
 			ev->e_integrity_conflict.pkg_name,
-			ev->e_integrity_conflict.pkg_version);
-		sl = ev->e_integrity_conflict.conflicts;
-		for (i = 0; i < sl->sl_cur; i ++) {
-			if (i != sl->sl_cur - 1) {
-				printf("%s, ", sl->sl_str[i]);
-			}
-			else {
-				printf("%s", sl->sl_str[i]);
-			}
+			ev->e_integrity_conflict.pkg_version,
+			ev->e_integrity_conflict.pkg_origin);
+		cur_conflict = ev->e_integrity_conflict.conflicts;
+		while (cur_conflict) {
+			if (cur_conflict->next)
+				printf("%s-%s(%s), ", cur_conflict->name, cur_conflict->version, cur_conflict->origin);
+			else
+				printf("%s-%s(%s)", cur_conflict->name, cur_conflict->version, cur_conflict->origin);
+
+			cur_conflict = cur_conflict->next;
 		}
 		printf("\n");
 		break;

@@ -115,7 +115,7 @@ exec_delete(int argc, char **argv)
 		return (EPKG_FATAL);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, force, dry_run)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db, force, dry_run, false)
 	    != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);

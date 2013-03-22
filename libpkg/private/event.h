@@ -43,7 +43,7 @@ void pkg_emit_required(struct pkg *p, int force);
 void pkg_emit_integritycheck_begin(void);
 void pkg_emit_integritycheck_finished(void);
 void pkg_emit_integritycheck_conflict(const char *name, const char *version,
-		const char *path, StringList *conflicts);
+		const char *origin, const char *path, struct pkg_event_conflict *conflicts);
 void pkg_emit_noremotedb(const char *);
 void pkg_emit_nolocaldb(void);
 void pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum);
