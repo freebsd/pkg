@@ -63,13 +63,14 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'p', "",		0, PKG_LOAD_BASIC },
 	{ 'm', "",		0, PKG_LOAD_BASIC },
 	{ 'c', "",		0, PKG_LOAD_BASIC },
+	{ 'e', "",		0, PKG_LOAD_BASIC },
 	{ 'w', "",		0, PKG_LOAD_BASIC },
 	{ 'l', "",		0, PKG_LOAD_BASIC },
 	{ 'a', "",		0, PKG_LOAD_BASIC },
 	{ 'k', "",		0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
 	{ 'i', "",		0, PKG_LOAD_BASIC },
-	{ 't', "",		0, PKG_LOAD_BASIC },
+	{ 't', "",		0, PKG_LOAD_BASIC }
 };
 
 static void
@@ -155,6 +156,11 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				} else if (qstr[0] == 'b') {
 					sbuf_printf(dest, "%" PRId64, flatsize);
 				}
+				break;
+			case 'e':
+				pkg_get(pkg, PKG_DESC, &tmp);
+				if (tmp != NULL)
+					sbuf_cat(dest, tmp);
 				break;
 			case '?':
 				qstr++;
@@ -360,6 +366,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			printf("%s\n", sbuf_data(output));
 			break;
 		}
+		break;
 	case 'r':
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 			format_str(pkg, output, qstr, dep);
@@ -510,6 +517,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 						goto bad_option;
 					sbuf_cat(sqlcond, "time");
 					state = OPERATOR_INT;
+					break;
+				case 'e':
+					sbuf_cat(sqlcond, "desc");
+					state = OPERATOR_STRING;
 					break;
 				case '#':
 					str++;
