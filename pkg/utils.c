@@ -195,7 +195,6 @@ print_info(struct pkg * const pkg, unsigned int options)
 	const char *maintainer, *www, *comment, *desc, *message, *arch;
 	const char *repopath;
 	const char *tab;
-	char *m;
 	unsigned opt;
 	int64_t flatsize, newflatsize, newpkgsize;
 	lic_t licenselogic;
@@ -229,11 +228,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 		pkg_config_string(PKG_CONFIG_REPO, &repourl);
 
 	if (options & INFO_RAW) { /* Not for remote packages */
-		if (pkg_type(pkg) != PKG_REMOTE) {
-			pkg_emit_manifest(pkg, &m, false);
-			printf("%s\n", m);
-			free(m);
-		}
+		if (pkg_type(pkg) != PKG_REMOTE)
+			pkg_emit_manifest_file(pkg, stdout, false);
 		return;
 	}
 

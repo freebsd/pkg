@@ -763,6 +763,7 @@ int pkg_load_manifest_file(struct pkg *pkg, const char *fpath);
  * @return An error code.
  */
 int pkg_emit_manifest(struct pkg *pkg, char **buf, bool compact);
+int pkg_emit_manifest_file(struct pkg*, FILE *, bool);
 
 /* pkg_dep */
 const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
