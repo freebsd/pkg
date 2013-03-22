@@ -74,7 +74,6 @@ typedef enum _sql_prstmt_index {
 	EXISTS,
 	VERSION,
 	DELETE,
-	FILES,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -167,12 +166,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"DELETE FROM packages WHERE origin=?1",
 		"T",
-	},
-	[FILES] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO files.files(path, package_id) "
-		"VALUES (?1, ?2)",
-		"IT",
 	}
 	/* PRSTMT_LAST */
 };
@@ -345,43 +338,20 @@ set_repo_user_version(sqlite3 *sqlite, const char *database, int reposcver)
 }
 
 static int
-initialize_repo(const char *repodb, const char *filesdb, bool force,
-    bool files, sqlite3 **sqlite)
+initialize_repo(const char *repodb, bool force, sqlite3 **sqlite)
 {
 	bool incremental = false;
 	bool db_not_open;
 	int reposcver;
 	int retcode = EPKG_OK;
 
-	const char initfilessql[] = ""
-		"CREATE TABLE files.files ("
-			"path TEXT,"
-			"package_id INTEGER"
-		");";
-
-	if (access(repodb, F_OK) == 0) {
-		if (files) {
-			if (access(filesdb, F_OK) != 0) {
-				unlink(repodb);
-			} else {
-				incremental = true;
-			}
-		} else {
-			incremental = true;
-		}
-	}
+	if (access(repodb, F_OK) == 0)
+		incremental = true;
 
 	sqlite3_initialize();
 	db_not_open = true;
 	while (db_not_open) {
 		if (sqlite3_open(repodb, sqlite) != SQLITE_OK) {
-			sqlite3_shutdown();
-			return (EPKG_FATAL);
-		}
-
-		if (sql_exec(*sqlite, "ATTACH '%s' AS 'files';", filesdb) != EPKG_OK) {
-			pkg_emit_error("Unable to reate files database");
-			sqlite3_close(*sqlite);
 			sqlite3_shutdown();
 			return (EPKG_FATAL);
 		}
@@ -404,8 +374,6 @@ initialize_repo(const char *repodb, const char *filesdb, bool force,
 				     REPO_SCHEMA_VERSION);
 			sqlite3_close(*sqlite);
 			unlink(repodb);
-			if (files)
-				unlink(filesdb);
 			incremental = false;
 			db_not_open = true;
 		}
@@ -430,12 +398,6 @@ initialize_repo(const char *repodb, const char *filesdb, bool force,
 		retcode = sql_exec(*sqlite, initsql, REPO_SCHEMA_VERSION);
 		if (retcode != EPKG_OK)
 			return (retcode);
-
-		if (files) {
-			retcode = sql_exec(*sqlite, initfilessql);
-			if (retcode != EPKG_OK)
-				return (retcode);
-		}
 	}
 
 	retcode = pkgdb_transaction_begin(*sqlite, NULL);
@@ -455,25 +417,21 @@ initialize_repo(const char *repodb, const char *filesdb, bool force,
 			        "AND id NOT IN "
 				"(SELECT shlib_id FROM pkg_shlibs_provided)"
 		};
-		const char filesobsolete[] = "files.files where package_id NOT IN "
-			"(SELECT id from packages)";
 		size_t num_objs = sizeof(obsolete) / sizeof(*obsolete);
 		for (size_t obj = 0; obj < num_objs; obj++)
 			sql_exec(*sqlite, "DELETE FROM %s;", obsolete[obj]);
-		if (files)
-			sql_exec(*sqlite, "DELETE FROM %s;", filesobsolete);
 	}
 
 	return (EPKG_OK);
 }
 
 static int
-initialize_prepared_statements(sqlite3 *sqlite, bool files)
+initialize_prepared_statements(sqlite3 *sqlite)
 {
 	sql_prstmt_index i, last;
 	int ret;
 
-	last = files ? PRSTMT_LAST : PRSTMT_LAST - 1;
+	last = PRSTMT_LAST;
 
 	for (i = 0; i < last; i++)
 	{
@@ -523,11 +481,11 @@ run_prepared_statement(sql_prstmt_index s, ...)
 }
 
 static void
-finalize_prepared_statements(bool files)
+finalize_prepared_statements(void)
 {
 	sql_prstmt_index i, last;
 
-	last = files ? PRSTMT_LAST : PRSTMT_LAST - 1;
+	last = PRSTMT_LAST;
 
 	for (i = 0; i < last; i++)
 	{
@@ -603,8 +561,7 @@ pack_extract(const char *pack, const char *dbname, const char *dbpath)
 }
 
 int
-pkg_create_repo(char *path, __unused bool force, bool files,
-    void (progress)(struct pkg *pkg, void *data), void *data)
+pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
 	struct thd_data thd_data;
@@ -612,7 +569,6 @@ pkg_create_repo(char *path, __unused bool force, bool files,
 	size_t len;
 	pthread_t *tids = NULL;
 
-	struct pkg_file *f = NULL;
 	struct pkg_dep *dep = NULL;
 	struct pkg_category *category = NULL;
 	struct pkg_license *license = NULL;
@@ -629,10 +585,10 @@ pkg_create_repo(char *path, __unused bool force, bool files,
 	char *repopath[2];
 	char repodb[MAXPATHLEN + 1];
 	char repopack[MAXPATHLEN + 1];
-	char filesdb[MAXPATHLEN + 1];
-	char filespack[MAXPATHLEN + 1];
-	FILE *psyml;
+	FILE *psyml, *fsyml;
 	struct sbuf *buf = sbuf_new_auto();
+
+	psyml = fsyml = NULL;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -657,22 +613,21 @@ pkg_create_repo(char *path, __unused bool force, bool files,
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
+	snprintf(repodb, sizeof(repodb), "%s/filesite.yaml", path);
+	if ((fsyml = fopen(repodb, "w")) == NULL) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	snprintf(repodb, sizeof(repodb), "%s/repo.sqlite", path);
 	snprintf(repopack, sizeof(repopack), "%s/repoy.txz", path);
-	if (files) {
-		snprintf(filesdb, sizeof(filesdb), "%s/files.sqlite", path);
-		snprintf(filespack, sizeof(filespack), "%s/files.txz", path);
-	}
 
 	pack_extract(repopack, "repo.sqlite", repodb);
-	if (files)
-		pack_extract(filespack, "files.sqlite", filesdb);
 
-	if ((retcode = initialize_repo(repodb, filesdb, force, files, &sqlite)) != EPKG_OK)
+	if ((retcode = initialize_repo(repodb, force, &sqlite)) != EPKG_OK)
 		goto cleanup;
 
-	if ((retcode = initialize_prepared_statements(sqlite, files)) != EPKG_OK)
+	if ((retcode = initialize_prepared_statements(sqlite)) != EPKG_OK)
 		goto cleanup;
 
 	thd_data.root_path = path;
@@ -739,6 +694,7 @@ pkg_create_repo(char *path, __unused bool force, bool files,
 		pkg_emit_manifest2(r->pkg, buf, true);
 		sbuf_finish(buf);
 		(void)fprintf(psyml, "%s", sbuf_data(buf));
+		pkg_emit_filelist(r->pkg, fsyml);
 
 		pkg_get(r->pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_COMMENT, &comment,
@@ -862,30 +818,15 @@ pkg_create_repo(char *path, __unused bool force, bool files,
 			}
 		}
 
-		if (files) {
-			f = NULL;
-			while (pkg_files(r->pkg, &f) == EPKG_OK) {
-				const char *f_path = pkg_file_path(f);
-				ret = run_prepared_statement(FILES, package_id, f_path);
-				if (ret != SQLITE_DONE) {
-				ERROR_SQLITE(sqlite);
-				retcode = EPKG_FATAL;
-				goto cleanup;
-				}
-			}
-		}
-
 		pkg_free(r->pkg);
 		free(r);
 
 	}
 
-	fclose(psyml);
-
 	if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK)
 		retcode = EPKG_FATAL;
 
-	cleanup:
+cleanup:
 
 	if (tids != NULL) {
 		// Cancel running threads
@@ -906,7 +847,13 @@ pkg_create_repo(char *path, __unused bool force, bool files,
 
 	sbuf_delete(buf);
 
-	finalize_prepared_statements(files);
+	finalize_prepared_statements();
+
+	if (fsyml != NULL)
+		fclose(fsyml);
+
+	if (psyml != NULL)
+		fclose(psyml);
 
 	if (sqlite != NULL)
 		sqlite3_close(sqlite);
@@ -1039,8 +986,6 @@ pack_db(const char *name, const char *archive, char *path,
 int
 pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 {
-	char files_path[MAXPATHLEN + 1];
-	char files_archive[MAXPATHLEN + 1];
 	char repo_path[MAXPATHLEN + 1];
 	char repo_archive[MAXPATHLEN + 1];
 	
@@ -1057,9 +1002,9 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	snprintf(repo_archive, sizeof(repo_archive), "%s/repo", path);
 	pack_db("repo.sqlite", repo_archive, repo_path, rsa_key_path, password_cb);
 
-	snprintf(files_path, sizeof(repo_path), "%s/files.sqlite", path);
-	snprintf(files_archive, sizeof(repo_archive), "%s/files", path);
-	pack_db("files.sqlite", files_archive, files_path, rsa_key_path, password_cb);
+	snprintf(repo_path, sizeof(repo_path), "%s/filesite.yaml", path);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/filesite", path);
+	pack_db("filesite.yaml", repo_archive, repo_path, rsa_key_path, password_cb);
 
 	return (EPKG_OK);
 }
