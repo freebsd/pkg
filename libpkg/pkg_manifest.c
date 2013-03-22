@@ -722,6 +722,57 @@ manifest_append_seqval(yaml_document_t *doc, int parent, int *seq,
 	yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t *, name),    \
 	    strlen(name), YAML_##style##_SCALAR_STYLE)
 
+#define manifest_append_kv(map, key, val, style) do {			\
+	int key_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
+	int val_obj = YAML_ADD_SCALAR(&doc, val, style);		\
+	yaml_document_append_mapping_pair(&doc, map, key_obj, val_obj);	\
+} while (0)
+
+
+int
+pkg_emit_filelist(struct pkg *pkg, FILE *f)
+{
+	yaml_emitter_t emitter;
+	yaml_document_t doc;
+
+	struct pkg_file *file;
+
+	const char *name, *origin, *version;
+
+	int mapping;
+	int seq;
+	struct sbuf *b = NULL;
+	int rc = EPKG_OK;
+
+	yaml_emitter_initialize(&emitter);
+	yaml_emitter_set_unicode(&emitter, 1);
+	yaml_emitter_set_output_file(&emitter, f);
+	yaml_document_initialize(&doc, NULL, NULL, NULL, 0, 1);
+	mapping = yaml_document_add_mapping(&doc, NULL,
+	    YAML_BLOCK_MAPPING_STYLE);
+
+	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin, PKG_VERSION, &version);
+	manifest_append_kv(mapping, "origin", origin, PLAIN);
+	manifest_append_kv(mapping, "name", name, PLAIN);
+	manifest_append_kv(mapping, "version", version, PLAIN);
+
+	seq = -1;
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		urlencode(pkg_file_path(file), &b);
+		manifest_append_seqval(&doc, mapping, &seq, "files", sbuf_data(b));
+	}
+
+	if (!yaml_emitter_dump(&emitter, &doc))
+		rc = EPKG_FATAL;
+
+	if (b != NULL)
+		sbuf_delete(b);
+
+	yaml_emitter_delete(&emitter);
+
+	return (rc);
+}
+
 int
 pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact)
 {
@@ -777,12 +828,6 @@ pkg_emit_manifest2(struct pkg *pkg, struct sbuf *destbuf, bool compact)
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_unicode(&emitter, 1);
 	yaml_emitter_set_output(&emitter, yaml_write_buf, destbuf);
-
-#define manifest_append_kv(map, key, val, style) do {			\
-	int key_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
-	int val_obj = YAML_ADD_SCALAR(&doc, val, style);		\
-	yaml_document_append_mapping_pair(&doc, map, key_obj, val_obj);	\
-} while (0)
 
 #define manifest_append_map(id, map, key, block) do {			\
 	int scalar_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
