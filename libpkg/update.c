@@ -106,6 +106,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		    "aborting update.\n", tmp);
 		return (EPKG_FATAL);
 	}
+	(void)unlink(tmp);
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
 		pkg_emit_error("Cant get dbdir config entry");
@@ -113,6 +114,8 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	}
 
 	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
+	snprintf(repofile_unchecked, sizeof(repofile_unchecked),
+				    "%s.unchecked", repofile);
 	if (force)
 		t = 0;		/* Always fetch */
 	else {
@@ -164,7 +167,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		sqlite3_close(sqlite);
 
 	rc = pkg_fetch_file_to_fd(url, fd, t);
-	close(fd);
+
 	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
@@ -183,14 +186,12 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	archive_read_support_filter_all(a);
 	archive_read_support_format_tar(a);
 
-	archive_read_open_filename(a, tmp, 4096);
+	(void)lseek(fd, SEEK_SET, 0);
+	archive_read_open_fd(a, fd, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			snprintf(repofile_unchecked, sizeof(repofile_unchecked),
-			    "%s.unchecked", repofile);
 			archive_entry_set_pathname(ae, repofile_unchecked);
-
 			/*
 			 * The repo should be owned by root and not writable
 			 */
@@ -236,7 +237,11 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	}
 
 	/* check is the repository is for valid architecture */
-
+	if (access(repofile_unchecked, R_OK|W_OK) == -1) {
+		pkg_emit_error("Archive file does not have repo.sqlite file");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
 	if (sqlite3_open(repofile_unchecked, &sqlite) != SQLITE_OK) {
 		unlink(repofile_unchecked);
 		pkg_emit_error("Corrupted repository");
@@ -316,8 +321,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	cleanup:
 	if (a != NULL)
 		archive_read_free(a);
-
-	(void)unlink(tmp);
+	(void)close(fd);
 
 	return (rc);
 }
