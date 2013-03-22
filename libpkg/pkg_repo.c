@@ -586,7 +586,6 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 	char repodb[MAXPATHLEN + 1];
 	char repopack[MAXPATHLEN + 1];
 	FILE *psyml, *fsyml;
-	struct sbuf *buf = sbuf_new_auto();
 
 	psyml = fsyml = NULL;
 
@@ -691,9 +690,7 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 		if (progress != NULL)
 			progress(r->pkg, data);
 
-		pkg_emit_manifest2(r->pkg, buf, true);
-		sbuf_finish(buf);
-		(void)fprintf(psyml, "%s", sbuf_data(buf));
+		pkg_emit_manifest_file(r->pkg, psyml, true);
 		pkg_emit_filelist(r->pkg, fsyml);
 
 		pkg_get(r->pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
@@ -844,8 +841,6 @@ cleanup:
 
 	if (fts != NULL)
 		fts_close(fts);
-
-	sbuf_delete(buf);
 
 	finalize_prepared_statements();
 

@@ -773,30 +773,9 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 	return (rc);
 }
 
-int
-pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact)
+static int
+emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 {
-	struct sbuf *b = sbuf_new_auto();
-	int rc;
-
-	rc = pkg_emit_manifest2(pkg, b, compact);
-
-	if (rc != EPKG_OK) {
-		sbuf_delete(b);
-		return (rc);
-	}
-
-	sbuf_finish(b);
-	*dest = strdup(sbuf_get(b));
-	sbuf_delete(b);
-
-	return (rc);
-}
-
-int
-pkg_emit_manifest2(struct pkg *pkg, struct sbuf *destbuf, bool compact)
-{
-	yaml_emitter_t emitter;
 	yaml_document_t doc;
 	char tmpbuf[BUFSIZ];
 	struct pkg_dep *dep = NULL;
@@ -823,11 +802,6 @@ pkg_emit_manifest2(struct pkg *pkg, struct sbuf *destbuf, bool compact)
 	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize, pkgsize;
-
-	sbuf_reset(destbuf);
-	yaml_emitter_initialize(&emitter);
-	yaml_emitter_set_unicode(&emitter, 1);
-	yaml_emitter_set_output(&emitter, yaml_write_buf, destbuf);
 
 #define manifest_append_map(id, map, key, block) do {			\
 	int scalar_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
@@ -1008,11 +982,64 @@ pkg_emit_manifest2(struct pkg *pkg, struct sbuf *destbuf, bool compact)
 		    LITERAL);
 	}
 
-	if (!yaml_emitter_dump(&emitter, &doc))
+	if (!yaml_emitter_dump(emitter, &doc))
 		rc = EPKG_FATAL;
 
 	sbuf_free(tmpsbuf);
 
-	yaml_emitter_delete(&emitter);
 	return (rc);
 }
+
+int
+pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact)
+{
+	yaml_emitter_t emitter;
+	int rc;
+
+	yaml_emitter_initialize(&emitter);
+	yaml_emitter_set_unicode(&emitter, 1);
+	yaml_emitter_set_output_file(&emitter, f);
+
+	rc = emit_manifest(pkg, &emitter, compact);
+
+	yaml_emitter_delete(&emitter);
+
+	return (rc);
+}
+
+int
+pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, bool compact)
+{
+	yaml_emitter_t emitter;
+	int rc;
+
+	yaml_emitter_initialize(&emitter);
+	yaml_emitter_set_unicode(&emitter, 1);
+	yaml_emitter_set_output(&emitter, yaml_write_buf, b);
+
+	rc = emit_manifest(pkg, &emitter, compact);
+
+	yaml_emitter_delete(&emitter);
+
+	return (rc);
+}
+int
+pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact)
+{
+	struct sbuf *b = sbuf_new_auto();
+	int rc;
+
+	rc = pkg_emit_manifest_sbuf(pkg, b, compact);
+
+	if (rc != EPKG_OK) {
+		sbuf_delete(b);
+		return (rc);
+	}
+
+	sbuf_finish(b);
+	*dest = strdup(sbuf_get(b));
+	sbuf_delete(b);
+
+	return (rc);
+}
+
