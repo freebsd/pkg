@@ -24,7 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl Bdsr
-.Op Fl vy
+.Op Fl vyn
 .Op Fl a | gxX Ar <pattern>
 .Sh DESCRIPTION
 .Nm
@@ -53,6 +53,8 @@ The following options are supported by
 Assume yes when asked for confirmation before installing missing dependencies.
 .It Fl v
 Be verbose.
+.It Fl n
+Merely check for missing dependencies and do not install them.
 .It Fl a
 Process all packages.
 .It Fl g

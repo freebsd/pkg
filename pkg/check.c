@@ -50,14 +50,14 @@ struct deps_entry {
 
 STAILQ_HEAD(deps_head, deps_entry);
 
-static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_head *dh);
+static int check_deps(struct pkgdb *db, struct pkg *pkg, struct deps_head *dh, bool noinstall);
 static void add_missing_dep(struct pkg_dep *d, struct deps_head *dh, int *nbpkgs);
 static void deps_free(struct deps_head *dh);
 static int fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes);
 static void check_summary(struct pkgdb *db, struct deps_head *dh);
 
 static int
-check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh)
+check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh, bool noinstall)
 {
 	struct pkg_dep *dep = NULL;
 	char *name, *version, *origin;
@@ -72,8 +72,11 @@ check_deps(struct pkgdb *db, struct pkg *p, struct deps_head *dh)
 	while (pkg_deps(p, &dep) == EPKG_OK) {
 		/* do we have a missing dependency? */
 		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
-			printf("%s has a missing dependency: %s\n", origin,
-			       pkg_dep_origin(dep)),
+			if (noinstall)
+				printf("%s\n", pkg_dep_origin(dep));
+			else
+				printf("%s has a missing dependency: %s\n", origin,
+			       pkg_dep_origin(dep));
 			add_missing_dep(dep, dh, &nbpkgs);
 		}
 	}
@@ -244,13 +247,14 @@ exec_check(int argc, char **argv)
 	bool recompute = false;
 	bool reanalyse_shlibs = false;
 	bool shlibs;
+	bool noinstall = false;
 	int nbpkgs = 0;
 	int i;
 	int verbose = 0;
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagdBxXsrv")) != -1) {
+	while ((ch = getopt(argc, argv, "yagdnBxsrv")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -282,6 +286,9 @@ exec_check(int argc, char **argv)
 		case 's':
 			checksums = true;
 			flags |= PKG_LOAD_FILES;
+			break;
+		case 'n':
+			noinstall = true;
 			break;
 		case 'r':
 			recompute = true;
@@ -334,7 +341,7 @@ exec_check(int argc, char **argv)
 			if (dcheck) {
 				if (verbose)
 					printf("Checking dependencies: %s\n", pkgname);
-				nbpkgs += check_deps(db, pkg, &dh);
+				nbpkgs += check_deps(db, pkg, &dh, noinstall);
 			}
 			if (checksums) {
 				if (verbose)
@@ -354,7 +361,7 @@ exec_check(int argc, char **argv)
 			}
 		}
 
-		if (geteuid() == 0 && nbpkgs > 0) {
+		if (geteuid() == 0 && nbpkgs > 0 && !noinstall) {
 			if (yes == false)
 				pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
@@ -375,6 +382,9 @@ exec_check(int argc, char **argv)
 	deps_free(&dh);
 	pkg_free(pkg);
 	pkgdb_close(db);
+
+	if (noinstall && nbpkgs > 0)
+		return (EX_UNAVAILABLE);
 
 	return (EX_OK);
 }
