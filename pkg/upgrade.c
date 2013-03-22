@@ -38,7 +38,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage: pkg upgrade [-fnqUy] [-r reponame]\n\n");
+	fprintf(stderr, "usage: pkg upgrade [-fnFqUy] [-r reponame]\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -58,7 +58,7 @@ exec_upgrade(int argc, char **argv)
 	bool dry_run = false;
 	bool auto_update = true;
 
-	while ((ch = getopt(argc, argv, "fLnqr:Uy")) != -1) {
+	while ((ch = getopt(argc, argv, "fLnqFr:Uy")) != -1) {
 		switch (ch) {
 		case 'f':
 			all = true;
@@ -71,6 +71,9 @@ exec_upgrade(int argc, char **argv)
 			break;
 		case 'n':
 			dry_run = true;
+			break;
+		case 'F':
+			f |= PKG_FLAG_SKIP_INSTALL;
 			break;
 		case 'q':
 			quiet = true;

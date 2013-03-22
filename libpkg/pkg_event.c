@@ -62,6 +62,8 @@ pipeevent(struct pkg_event *ev)
 	struct sbuf *msg, *buf;
 	const char *message;
 	const char *name, *version, *newversion;
+	unsigned int i;
+	StringList *sl;
 
 	if (eventpipe < 0)
 		return;
@@ -134,6 +136,27 @@ pipeevent(struct pkg_event *ev)
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
 		    "\"data\": {}}");
+		break;
+	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
+		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
+			"\"data\": { "
+			"\"pkgname\": \"%s\", "
+			"\"pkgversion\": \"%s\", "
+			"\"pkgpath\": \"%s\", "
+			"\"conflicts\": [",
+			ev->e_integrity_conflict.pkg_name,
+			ev->e_integrity_conflict.pkg_version,
+			ev->e_integrity_conflict.pkg_path);
+		sl = ev->e_integrity_conflict.conflicts;
+		for (i = 0; i < sl->sl_cur; i ++) {
+			if (i != sl->sl_cur - 1) {
+				sbuf_printf(msg, "\"%s\",", sl->sl_str[i]);
+			}
+			else {
+				sbuf_printf(msg, "\"%s\"", sl->sl_str[i]);
+			}
+		}
+		sbuf_cat(msg, "]}}");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
@@ -300,7 +323,7 @@ pkg_emit_error(const char *fmt, ...)
 
 	ev.type = PKG_EVENT_ERROR;
 
-	va_start(ap, fmt);
+	va_start(ap, fmt);pkg_emit_event(&ev);
 	vasprintf(&ev.e_pkg_error.msg, fmt, ap);
 	va_end(ap);
 
@@ -406,6 +429,20 @@ pkg_emit_integritycheck_finished(void)
 {
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_INTEGRITYCHECK_FINISHED;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_integritycheck_conflict(const char *name, const char *version,
+		const char *path, StringList *conflicts)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_INTEGRITYCHECK_CONFLICT;
+	ev.e_integrity_conflict.pkg_name = name;
+	ev.e_integrity_conflict.pkg_version = version;
+	ev.e_integrity_conflict.pkg_path = path;
+	ev.e_integrity_conflict.conflicts = conflicts;
 
 	pkg_emit_event(&ev);
 }

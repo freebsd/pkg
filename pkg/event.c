@@ -51,6 +51,8 @@ event_callback(void *data, struct pkg_event *ev)
 	(void) debug;
 	const char *name, *version, *newversion;
 	const char *filename;
+	unsigned int i;
+	StringList *sl;
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -114,6 +116,22 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		printf(" done\n");
+		break;
+	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
+		printf("\nConflict found on path %s between %s-%s and ",
+			ev->e_integrity_conflict.pkg_path,
+			ev->e_integrity_conflict.pkg_name,
+			ev->e_integrity_conflict.pkg_version);
+		sl = ev->e_integrity_conflict.conflicts;
+		for (i = 0; i < sl->sl_cur; i ++) {
+			if (i != sl->sl_cur - 1) {
+				printf("%s, ", sl->sl_str[i]);
+			}
+			else {
+				printf("%s", sl->sl_str[i]);
+			}
+		}
+		printf("\n");
 		break;
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		if (quiet)
