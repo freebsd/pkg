@@ -706,7 +706,7 @@ manifest_append_seqval(yaml_document_t *doc, int parent, int *seq,
 
 	if (*seq == -1) {
 		*seq = yaml_document_add_sequence(doc, NULL,
-		    YAML_FLOW_SEQUENCE_STYLE);
+		    YAML_BLOCK_SEQUENCE_STYLE);
 		scalar = yaml_document_add_scalar(doc, NULL,
 		    __DECONST(yaml_char_t *, title), strlen(title),
 		    YAML_PLAIN_SCALAR_STYLE);
