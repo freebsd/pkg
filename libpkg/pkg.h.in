@@ -35,6 +35,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <sys/sbuf.h>
+#include <stringlist.h>
 #include <openssl/pem.h>
 
 #define PKGVERSION "%%PKGVERSION%%"
@@ -910,6 +911,7 @@ typedef enum {
 	PKG_EVENT_FETCHING,
 	PKG_EVENT_INTEGRITYCHECK_BEGIN,
 	PKG_EVENT_INTEGRITYCHECK_FINISHED,
+	PKG_EVENT_INTEGRITYCHECK_CONFLICT,
 	PKG_EVENT_NEWPKGVERSION,
 	/* errors */
 	PKG_EVENT_ERROR,
@@ -980,6 +982,12 @@ struct pkg_event {
 			struct pkg_file *file;
 			const char *newsum;
 		} e_file_mismatch;
+		struct {
+			const char *pkg_name;
+			const char *pkg_version;
+			const char *pkg_path;
+			StringList *conflicts;
+		} e_integrity_conflict;
 	};
 };
 
