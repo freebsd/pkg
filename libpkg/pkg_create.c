@@ -196,7 +196,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	regex_t preg;
 	regmatch_t pmatch[2];
 	size_t size;
-	char *www;
+	char *www = NULL;
 
 	/* Load the manifest from the metadata directory */
 	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
@@ -261,6 +261,11 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	}
 
 	/* if www is not given then try to determine it from description */
+	if (www != NULL) {
+		pkg_set(pkg, PKG_WWW, www);
+		free(www);
+	}
+
 	pkg_get(pkg, PKG_WWW, &www);
 	if (www == NULL) {
 		pkg_get(pkg, PKG_DESC, &buf);
@@ -280,9 +285,6 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 			pkg_set(pkg, PKG_WWW, "UNKNOWN");
 		}
 		regfree(&preg);
-	} else {
-		pkg_set(pkg, PKG_WWW, www);
-		free(www);
 	}
 
 	/* Create the archive */

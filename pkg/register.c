@@ -163,6 +163,13 @@ exec_register(int argc, char **argv)
 			pkg_addscript_file(pkg, fpath);
 	}
 
+	if (www != NULL) {
+		pkg_set(pkg, PKG_WWW, www);
+		free(www);
+	}
+
+	pkg_get(pkg, PKG_WWW, &www);
+
 	/* if www is not given then try to determine it from description */
 	if (www == NULL) {
 		pkg_get(pkg, PKG_DESC, &desc);
@@ -176,9 +183,6 @@ exec_register(int argc, char **argv)
 			pkg_set(pkg, PKG_WWW, "UNKNOWN");
 		}
 		regfree(&preg);
-	} else {
-		pkg_set(pkg, PKG_WWW, www);
-		free(www);
 	}
 
 	ret += ports_parse_plist(pkg, plist, input_path);
