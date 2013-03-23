@@ -229,7 +229,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 
 	if (options & INFO_RAW) { /* Not for remote packages */
 		if (pkg_type(pkg) != PKG_REMOTE)
-			pkg_emit_manifest_file(pkg, stdout, false);
+			pkg_emit_manifest_file(pkg, stdout, false, NULL);
 		return;
 	}
 
