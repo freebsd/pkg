@@ -103,6 +103,7 @@ packing_append_buffer(struct packing *pack, const char *buffer,
     const char *path, int size)
 {
 	struct archive_entry *entry;
+	int ret = EPKG_OK;
 
 	entry = archive_entry_new();
 	archive_entry_clear(entry);
@@ -112,12 +113,21 @@ packing_append_buffer(struct packing *pack, const char *buffer,
 	archive_entry_set_uname(entry, "root");
 	archive_entry_set_pathname(entry, path);
 	archive_entry_set_size(entry, size);
-	archive_write_header(pack->awrite, entry);
-	archive_write_data(pack->awrite, buffer, size);
+	if (archive_write_header(pack->awrite, entry) == -1) {
+		pkg_emit_errno("archive_write_header", path);
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
 
+	if (archive_write_data(pack->awrite, buffer, size) == -1) {
+		pkg_emit_errno("archive_write_data", path);
+		ret = EPKG_FATAL;
+	}
+
+cleanup:
 	archive_entry_free(entry);
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 int

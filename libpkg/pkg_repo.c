@@ -972,7 +972,7 @@ read_pkg_file(void *data)
 	pthread_mutex_unlock(&d->results_m);
 }
 
-static void
+static int
 pack_db(const char *name, const char *archive, char *path,
     char *rsa_key_path, pem_password_cb *password_cb)
 {
@@ -980,17 +980,28 @@ pack_db(const char *name, const char *archive, char *path,
 	unsigned char *sigret = NULL;
 	unsigned int siglen = 0;
 
-	packing_init(&pack, archive, TXZ);
-	if (rsa_key_path != NULL) {
-		rsa_sign(path, password_cb, rsa_key_path, &sigret, &siglen);
+	if (packing_init(&pack, archive, TXZ) != EPKG_OK)
+		return (EPKG_FATAL);
 
-		packing_append_buffer(pack, sigret, "signature", siglen + 1);
+	if (rsa_key_path != NULL) {
+		if (rsa_sign(path, password_cb, rsa_key_path, &sigret, &siglen) != EPKG_OK) {
+			packing_finish(pack);
+			return (EPKG_FATAL);
+		}
+
+		if (packing_append_buffer(pack, sigret, "signature", siglen + 1) != EPKG_OK) {
+			free(sigret);
+			return (EPKG_FATAL);
+		}
 
 		free(sigret);
 	}
 	packing_append_file_attr(pack, path, name, "root", "wheel", 0644);
+
 	unlink(path);
 	packing_finish(pack);
+
+	return (EPKG_OK);
 }
 
 int
@@ -1006,19 +1017,27 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 
 	snprintf(repo_path, sizeof(repo_path), "%s/packagesite.yaml", path);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/packagesite", path);
-	pack_db("packagesite.yaml", repo_archive, repo_path, rsa_key_path, password_cb);
+	if (pack_db("packagesite.yaml", repo_archive, repo_path,
+			rsa_key_path, password_cb) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	snprintf(repo_path, sizeof(repo_path), "%s/repo.sqlite", path);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/repo", path);
-	pack_db("repo.sqlite", repo_archive, repo_path, rsa_key_path, password_cb);
+	if (pack_db("repo.sqlite", repo_archive, repo_path,
+			rsa_key_path, password_cb) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	snprintf(repo_path, sizeof(repo_path), "%s/filesite.yaml", path);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/filesite", path);
-	pack_db("filesite.yaml", repo_archive, repo_path, rsa_key_path, password_cb);
+	if (pack_db("filesite.yaml", repo_archive, repo_path,
+			rsa_key_path, password_cb) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	snprintf(repo_path, sizeof(repo_path), "%s/digests", path);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/digests", path);
-	pack_db("digests", repo_archive, repo_path, rsa_key_path, password_cb);
+	if (pack_db("digests", repo_archive, repo_path,
+			rsa_key_path, password_cb) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	return (EPKG_OK);
 }
