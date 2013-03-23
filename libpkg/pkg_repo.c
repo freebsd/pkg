@@ -930,7 +930,8 @@ read_pkg_file(void *data)
 
 		if (strcmp(fts_name, "repo.txz") == 0 ||
 			strcmp(fts_name, "packagesite.txz") == 0 ||
-			strcmp(fts_name, "filesite.txz") == 0)
+			strcmp(fts_name, "filesite.txz") == 0 ||
+			strcmp(fts_name, "digests.txz") == 0)
 			continue;
 
 		pkg_path = fts_path;
@@ -1014,6 +1015,10 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	snprintf(repo_path, sizeof(repo_path), "%s/filesite.yaml", path);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/filesite", path);
 	pack_db("filesite.yaml", repo_archive, repo_path, rsa_key_path, password_cb);
+
+	snprintf(repo_path, sizeof(repo_path), "%s/digests", path);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/digests", path);
+	pack_db("digests", repo_archive, repo_path, rsa_key_path, password_cb);
 
 	return (EPKG_OK);
 }
