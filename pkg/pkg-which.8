@@ -23,7 +23,7 @@
 .Nd displays which package installed a specific file
 .Sh SYNOPSIS
 .Nm
-.Op Fl qo
+.Op Fl qog
 .Ar <file>
 .Sh DESCRIPTION
 .Nm
@@ -37,6 +37,10 @@ The following options are supported by
 Be quiet
 .It Fl o
 Shows the origin of the package instead of name-version
+.It Fl g
+Treat
+.Ao file Ac
+as a glob pattern.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

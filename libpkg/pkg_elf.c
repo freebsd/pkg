@@ -152,7 +152,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	if (shlibs)
 		pkg_addshlib_required(pkg, name);
 
-	if ((it = pkgdb_query_which(db, pathbuf)) == NULL)
+	if ((it = pkgdb_query_which(db, pathbuf, false)) == NULL)
 		return (EPKG_OK);
 
 	d = NULL;

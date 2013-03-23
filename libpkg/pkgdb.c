@@ -1424,18 +1424,20 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 }
 
 struct pkgdb_it *
-pkgdb_query_which(struct pkgdb *db, const char *path)
+pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 {
 	sqlite3_stmt	*stmt;
-	const char	 sql[] = ""
-		"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
-			"p.message, p.arch, p.maintainer, p.www, "
-			"p.prefix, p.flatsize, p.time, p.infos "
-			"FROM packages AS p, files AS f "
-			"WHERE p.id = f.package_id "
-				"AND f.path = ?1;";
+	char	sql[BUFSIZ];
+
 
 	assert(db != NULL);
+	sqlite3_snprintf(sizeof(sql), sql,
+			"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
+			"p.message, p.arch, p.maintainer, p.www, "
+			"p.prefix, p.flatsize, p.time, p.infos "
+			"FROM packages AS p "
+			"LEFT JOIN files AS f ON p.id = f.package_id "
+			"WHERE f.path %s ?1 GROUP BY p.id;", glob ? "GLOB" : "=");
 
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -2338,7 +2340,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
-		it = pkgdb_query_which(db, pkg_path);
+		it = pkgdb_query_which(db, pkg_path, false);
 		if (it == NULL) {
 			ERROR_SQLITE(s);
 			goto cleanup;

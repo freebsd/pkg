@@ -929,7 +929,7 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
 /**
  * @todo Return directly the struct pkg?
  */
-struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
+struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path, bool glob);
 
 struct pkgdb_it * pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib);
 struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib);
