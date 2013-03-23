@@ -302,9 +302,13 @@ static struct db_upgrades {
 	");"
 	"CREATE INDEX pkg_abstract_package_id ON pkg_abstract(package_id);"
 	},
+	{16,
+	"ALTER TABLE packages ADD COLUMN manifestdigest TEXT NULL;"
+	"CREATE INDEX IF NOT EXISTS pkg_digest_id ON packages(origin, manifestdigest);"
+	},
 
 	/* Mark the end of the array */
-	{ -1, NULL },
+	{ -1, NULL }
 
 };
 

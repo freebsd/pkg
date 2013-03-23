@@ -53,7 +53,7 @@
 #include "private/utils.h"
 
 #include "private/db_upgrades.h"
-#define DBVERSION 14
+#define DBVERSION 16
 
 #define PKGGT	(1U << 1)
 #define PKGLT	(1U << 2)
@@ -108,6 +108,7 @@ static struct column_mapping {
 	{ "infos",	PKG_INFOS },
 	{ "rowid",	PKG_ROWID },
 	{ "id",		PKG_ROWID },
+	{ "manifestdigest",	PKG_DIGEST },
 	{ "weight",	-1 },
 	{ NULL,		-1 }
 };
@@ -479,6 +480,7 @@ pkgdb_init(sqlite3 *sdb)
 		"licenselogic INTEGER NOT NULL,"
 		"infos TEXT, "
 		"time INTEGER, "
+		"manifestdigest TEXT NULL, "
 		"pkg_format_version INTEGER"
 	");"
 	"CREATE TABLE mtree ("
@@ -617,6 +619,7 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_shlibs_provided_package_id ON pkg_shlibs_provided (package_id);"
 	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
 	"CREATE INDEX pkg_abstract_package_id ON pkg_abstract(package_id);"
+	"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);"
 
 	"PRAGMA user_version = %d;"
 	"COMMIT;"
@@ -636,7 +639,8 @@ pkgdb_remote_init(struct pkgdb *db, const char *repo)
 	int		 ret;
 	const char	 init_sql[] = ""
 	"BEGIN;"
-	"CREATE INDEX '%s'.deps_origin ON deps(origin);"
+	"CREATE INDEX IF NOT EXISTS '%s'.deps_origin ON deps(origin);"
+	"CREATE INDEX IF NOT EXISTS '%s'.pkg_digest_id ON packages(origin, manifestdigest);"
 	"COMMIT;"
 	;
 
@@ -645,7 +649,7 @@ pkgdb_remote_init(struct pkgdb *db, const char *repo)
 	}
 
 	sql = sbuf_new_auto();
-	sbuf_printf(sql, init_sql, reponame);
+	sbuf_printf(sql, init_sql, reponame, reponame);
 
 	ret = sql_exec(db->sqlite, sbuf_data(sql));
 	sbuf_delete(sql);

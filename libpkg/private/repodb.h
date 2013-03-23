@@ -48,7 +48,8 @@ static const char initsql[] = ""
 	    "cksum TEXT NOT NULL,"
 	    /* relative path to the package in the repository */
 	    "path TEXT NOT NULL,"
-	    "pkg_format_version INTEGER"
+	    "pkg_format_version INTEGER,"
+	    "manifestdigest TEXT NULL"
 	");"
 	"CREATE TABLE deps ("
 	    "origin TEXT,"
@@ -168,15 +169,26 @@ static struct repo_changes repo_upgrades[] = {
 		" ON DELETE CASCADE ON UPDATE RESTRICT"
 	 ");"
 	},
+	{2003,
+	 2004,
+	"Add manifest digest field",
+	"ALTER TABLE %Q.packages ADD COLUMN manifestdigest TEXT NULL;"
+	"CREATE INDEX IF NOT EXISTS %Q.pkg_digest_id ON packages(origin, manifestdigest);"
+	},
 
 	/* Mark the end of the array */
-	{ -1, -1, NULL, NULL, },
+	{ -1, -1, NULL, NULL, }
 
 };
 
 /* How to downgrade a newer repo to match what the current system
    expects */
 static struct repo_changes repo_downgrades[] = {
+	{2004,
+	 2003,
+	 "Drop manifest digest index",
+	 "DROP INDEX %Q.pkg_digest_id;"
+	},
 	{2003,
 	 2002,
 	 "Drop abstract metadata",
@@ -210,7 +222,7 @@ static struct repo_changes repo_downgrades[] = {
 
 
 	/* Mark the end of the array */
-	{ -1, -1, NULL, NULL, },
+	{ -1, -1, NULL, NULL, }
 
 };
 

@@ -54,7 +54,7 @@
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 3
+#define REPO_SCHEMA_MINOR 4
 
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
@@ -1110,7 +1110,7 @@ apply_repo_change(struct pkgdb *db, const char *database,
 	char			 sql[BUFSIZ];
 	char			*errmsg;
 	
-        for (change = repo_changes; change->version != -1; change++) {
+	for (change = repo_changes; change->version != -1; change++) {
 		if (change->version == version) {
 			found = true;
 			break;

@@ -219,6 +219,7 @@ typedef enum {
 	PKG_LOCKED,
 	PKG_ROWID,
 	PKG_TIME,
+	PKG_DIGEST
 } pkg_attr;
 
 typedef enum {
