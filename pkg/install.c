@@ -46,7 +46,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "usage: pkg install [-AfgnqRUXxy] [-r reponame] <pkg-name> ...\n\n");
+	    "usage: pkg install [-AfgFnqRUXxy] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -69,8 +69,9 @@ exec_install(int argc, char **argv)
 	match_t match = MATCH_EXACT;
 	bool force = false;
 	bool dry_run = false;
+	bool noinstall = false;
 
-	while ((ch = getopt(argc, argv, "AfgLnqRr:UXxy")) != -1) {
+	while ((ch = getopt(argc, argv, "AfgLFnqRr:UXxy")) != -1) {
 		switch (ch) {
 		case 'A':
 			automatic = true;
@@ -80,6 +81,9 @@ exec_install(int argc, char **argv)
 			break;
 		case 'g':
 			match = MATCH_GLOB;
+			break;
+		case 'F':
+			noinstall = true;
 			break;
 		case 'L':
 			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
@@ -134,7 +138,7 @@ exec_install(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, force, dry_run, false)
+	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db, force, dry_run, noinstall)
 	    != EPKG_OK) {
 		goto cleanup;
 	}
