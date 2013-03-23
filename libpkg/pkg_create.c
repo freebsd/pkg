@@ -103,7 +103,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	} else {
 		pkg_register_shlibs(pkg);
 
-		pkg_emit_manifest(pkg, &m, false);
+		pkg_emit_manifest(pkg, &m, false, NULL);
 		packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
 		free(m);
 	}

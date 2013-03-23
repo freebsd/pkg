@@ -585,9 +585,10 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 	char *repopath[2];
 	char repodb[MAXPATHLEN + 1];
 	char repopack[MAXPATHLEN + 1];
-	FILE *psyml, *fsyml;
+	char *manifest_digest;
+	FILE *psyml, *fsyml, *mandigests;
 
-	psyml = fsyml = NULL;
+	psyml = fsyml = mandigests = NULL;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -614,6 +615,11 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 	}
 	snprintf(repodb, sizeof(repodb), "%s/filesite.yaml", path);
 	if ((fsyml = fopen(repodb, "w")) == NULL) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+	snprintf(repodb, sizeof(repodb), "%s/digests", path);
+	if ((mandigests = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -690,8 +696,9 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 		if (progress != NULL)
 			progress(r->pkg, data);
 
-		pkg_emit_manifest_file(r->pkg, psyml, true);
+		pkg_emit_manifest_file(r->pkg, psyml, true, &manifest_digest);
 		pkg_emit_filelist(r->pkg, fsyml);
+
 
 		pkg_get(r->pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_COMMENT, &comment,
@@ -700,6 +707,8 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 		    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
 		    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
 		    PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
+		fprintf(mandigests, "%s: %s\n", origin, manifest_digest);
+		free(manifest_digest);
 
 	try_again:
 		if ((ret = run_prepared_statement(PKG, origin, name, version,
@@ -850,6 +859,9 @@ cleanup:
 	if (psyml != NULL)
 		fclose(psyml);
 
+	if (mandigests != NULL)
+		fclose(mandigests);
+
 	if (sqlite != NULL)
 		sqlite3_close(sqlite);
 
@@ -916,7 +928,9 @@ read_pkg_file(void *data)
 				strcmp(ext, ".tar") != 0)
 			continue;
 
-		if (strcmp(fts_name, "repo.txz") == 0)
+		if (strcmp(fts_name, "repo.txz") == 0 ||
+			strcmp(fts_name, "packagesite.txz") == 0 ||
+			strcmp(fts_name, "filesite.txz") == 0)
 			continue;
 
 		pkg_path = fts_path;

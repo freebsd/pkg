@@ -70,7 +70,7 @@ exec_install(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
-	while ((ch = getopt(argc, argv, "AfgIiLnqRr:Uxy")) != -1) {
+	while ((ch = getopt(argc, argv, "AfgIiLFnqRr:Uxy")) != -1) {
 		switch (ch) {
 		case 'A':
 			f |= PKG_FLAG_AUTOMATIC;
@@ -83,6 +83,9 @@ exec_install(int argc, char **argv)
 			break;
 		case 'I':
 			f |= PKG_FLAG_NOSCRIPT;
+			break;
+		case 'F':
+			f |= PKG_FLAG_SKIP_INSTALL;
 			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
