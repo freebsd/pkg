@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl AfgIinqRUxy
+.Op Fl AfgIinFqRUxy
 .Op Fl r Ar reponame
 .Ar <pkg-origin> ...
 .Sh DESCRIPTION
@@ -134,6 +134,9 @@ This is planned to be removed.
 Dry-run mode.
 The list of changes to packages is always printed, but
 no changes are actually made.
+.It Fl F
+Do not perform actual installation of packages, merely fetch packages 
+that should be upgraded and detect possible conflicts.
 .It Fl q
 Force quiet output, except when
 .Fl n
