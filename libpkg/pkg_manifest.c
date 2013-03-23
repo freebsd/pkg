@@ -690,11 +690,38 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	return retcode;
 }
 
+struct pkg_yaml_emitter_data {
+	SHA256_CTX *sign_ctx;
+	union {
+		struct sbuf *sbuf;
+		FILE *file;
+		char *dest;
+	} data;
+};
+
 static int
 yaml_write_buf(void *data, unsigned char *buffer, size_t size)
 {
-	struct sbuf *dest = (struct sbuf *)data;
-	sbuf_bcat(dest, buffer, size);
+	struct pkg_yaml_emitter_data *dest = (struct pkg_yaml_emitter_data *)data;
+
+	sbuf_bcat(dest->data.sbuf, buffer, size);
+	if (dest->sign_ctx != NULL)
+		SHA256_Update(dest->sign_ctx, buffer, size);
+
+	return (1);
+}
+
+static int
+yaml_write_file(void *data, unsigned char *buffer, size_t size)
+{
+	struct pkg_yaml_emitter_data *dest = (struct pkg_yaml_emitter_data *)data;
+
+	if (fwrite(buffer, size, 1, dest->data.file) != 1)
+		return -1;
+
+	if (dest->sign_ctx != NULL)
+		SHA256_Update(dest->sign_ctx, buffer, size);
+
 	return (1);
 }
 
@@ -735,7 +762,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 	yaml_emitter_t emitter;
 	yaml_document_t doc;
 
-	struct pkg_file *file;
+	struct pkg_file *file = NULL;
 
 	const char *name, *origin, *version;
 
@@ -990,17 +1017,80 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 	return (rc);
 }
 
+static void
+pkg_emit_manifest_digest(const unsigned char *digest, size_t len, char *hexdigest)
+{
+	unsigned int i;
+
+	for (i = 0; i < len; i ++)
+		sprintf(hexdigest + (i * 2), "%02x", digest[i]);
+
+	hexdigest[len * 2] = '\0';
+}
+
 int
-pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact)
+pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact, char **pdigest)
 {
 	yaml_emitter_t emitter;
+	struct pkg_yaml_emitter_data emitter_data;
+	unsigned char digest[SHA256_DIGEST_LENGTH];
 	int rc;
+
+	if (pdigest != NULL) {
+		*pdigest = malloc(sizeof(digest) * 2 + 1);
+		emitter_data.sign_ctx = malloc(sizeof(SHA256_CTX));
+		SHA256_Init(emitter_data.sign_ctx);
+	}
+	else {
+		emitter_data.sign_ctx = NULL;
+	}
 
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_unicode(&emitter, 1);
-	yaml_emitter_set_output_file(&emitter, f);
+	emitter_data.data.file = f;
+	yaml_emitter_set_output(&emitter, yaml_write_file, &emitter_data);
 
 	rc = emit_manifest(pkg, &emitter, compact);
+
+	if (emitter_data.sign_ctx != NULL) {
+		SHA256_Final(digest, emitter_data.sign_ctx);
+		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
+		free(emitter_data.sign_ctx);
+	}
+	yaml_emitter_delete(&emitter);
+
+	return (rc);
+}
+
+int
+pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, bool compact, char **pdigest)
+{
+	yaml_emitter_t emitter;
+	struct pkg_yaml_emitter_data emitter_data;
+	unsigned char digest[SHA256_DIGEST_LENGTH];
+	int rc;
+
+	if (pdigest != NULL) {
+		*pdigest = malloc(sizeof(digest) * 2 + 1);
+		emitter_data.sign_ctx = malloc(sizeof(SHA256_CTX));
+		SHA256_Init(emitter_data.sign_ctx);
+	}
+	else {
+		emitter_data.sign_ctx = NULL;
+	}
+
+	yaml_emitter_initialize(&emitter);
+	yaml_emitter_set_unicode(&emitter, 1);
+	emitter_data.data.sbuf = b;
+	yaml_emitter_set_output(&emitter, yaml_write_buf, &emitter_data);
+
+	rc = emit_manifest(pkg, &emitter, compact);
+
+	if (emitter_data.sign_ctx != NULL) {
+		SHA256_Final(digest, emitter_data.sign_ctx);
+		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
+		free(emitter_data.sign_ctx);
+	}
 
 	yaml_emitter_delete(&emitter);
 
@@ -1008,28 +1098,12 @@ pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact)
 }
 
 int
-pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, bool compact)
-{
-	yaml_emitter_t emitter;
-	int rc;
-
-	yaml_emitter_initialize(&emitter);
-	yaml_emitter_set_unicode(&emitter, 1);
-	yaml_emitter_set_output(&emitter, yaml_write_buf, b);
-
-	rc = emit_manifest(pkg, &emitter, compact);
-
-	yaml_emitter_delete(&emitter);
-
-	return (rc);
-}
-int
-pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact)
+pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact, char **pdigest)
 {
 	struct sbuf *b = sbuf_new_auto();
 	int rc;
 
-	rc = pkg_emit_manifest_sbuf(pkg, b, compact);
+	rc = pkg_emit_manifest_sbuf(pkg, b, compact, pdigest);
 
 	if (rc != EPKG_OK) {
 		sbuf_delete(b);

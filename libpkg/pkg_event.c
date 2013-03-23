@@ -381,7 +381,6 @@ pkg_emit_error(const char *fmt, ...)
 	ev.type = PKG_EVENT_ERROR;
 
 	va_start(ap, fmt);
-	pkg_emit_event(&ev);
 	vasprintf(&ev.e_pkg_error.msg, fmt, ap);
 	va_end(ap);
 
