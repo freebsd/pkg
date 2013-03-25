@@ -560,14 +560,29 @@ pack_extract(const char *pack, const char *dbname, const char *dbpath)
 
 }
 
+struct digest_list_entry {
+	char *origin;
+	char *digest;
+	long manifest_pos;
+	long files_pos;
+	struct digest_list_entry *next;
+};
+
+static int
+digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry *d2)
+{
+	return strcmp(d1->origin, d2->origin);
+}
+
 int
-pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg, void *data), void *data)
+pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
 	struct thd_data thd_data;
 	int num_workers;
 	size_t len;
 	pthread_t *tids = NULL;
+	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
 
 	struct pkg_dep *dep = NULL;
 	struct pkg_category *category = NULL;
@@ -709,8 +724,12 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 		    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
 		    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
 		    PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
-		fprintf(mandigests, "%s:%s:%ld:%ld\n", origin, manifest_digest, manifest_pos, files_pos);
-		free(manifest_digest);
+		cur_dig = malloc(sizeof (struct digest_list_entry));
+		cur_dig->origin = strdup(origin);
+		cur_dig->digest = manifest_digest;
+		cur_dig->manifest_pos = manifest_pos;
+		cur_dig->files_pos = files_pos;
+		LL_PREPEND(dlist, cur_dig);
 
 	try_again:
 		if ((ret = run_prepared_statement(PKG, origin, name, version,
@@ -831,11 +850,22 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 
 	}
 
-	if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK)
+	if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK) {
 		retcode = EPKG_FATAL;
-
+		goto cleanup;
+	}
+	/* Now sort all digests */
+	LL_SORT(dlist, digest_sort_compare_func);
 cleanup:
-
+	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
+		if (retcode == EPKG_OK) {
+			fprintf(mandigests, "%s:%s:%ld:%ld\n", cur_dig->origin,
+				cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos);
+		}
+		free(cur_dig->digest);
+		free(cur_dig->origin);
+		free(cur_dig);
+	}
 	if (tids != NULL) {
 		// Cancel running threads
 		if (retcode != EPKG_OK) {
