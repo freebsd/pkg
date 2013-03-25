@@ -226,7 +226,7 @@ event_callback(void *data, struct pkg_event *ev)
 		    "the repositories\n", ev->e_not_found.pkg_name);
 		break;
 	case PKG_EVENT_MISSING_DEP:
-		fprintf(stderr, "missing dependency %s-%s",
+		fprintf(stderr, "missing dependency %s-%s\n",
 		    pkg_dep_name(ev->e_missing_dep.dep),
 		    pkg_dep_version(ev->e_missing_dep.dep));
 		break;
