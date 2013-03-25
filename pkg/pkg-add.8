@@ -23,10 +23,10 @@
 .Nd Registers a package and installs it on the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl IA
+.Op Fl IAfq
 .Ar <pkg-name> ...
 .Nm
-.Op Fl IA
+.Op Fl IAfq
 .Ar <protocol>://<path>/<pkg-name> ...
 .Sh DESCRIPTION
 .Nm
@@ -48,6 +48,10 @@ Mark the installed packages as orphan.
 Will be automatically removed if no other packages depend on them.
 For more information please refer to
 .Xr pkg-autoremove 8
+.It Fl f
+Force the reinstallation of the package if already installed.
+.It Fl q
+Force quiet output.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

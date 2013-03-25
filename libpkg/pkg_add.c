@@ -154,6 +154,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	const char	*arch;
 	const char	*myarch;
 	const char	*origin;
+	const char	*name;
 	struct archive	*a;
 	struct archive_entry *ae;
 	struct pkg	*pkg = NULL;
@@ -199,7 +200,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 */
 
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
-	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin);
+	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin, PKG_NAME, &name);
 
 	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH &&
 	    strncmp(arch, myarch, strlen(myarch)) != 0) {
@@ -217,9 +218,18 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 
 	ret = pkg_try_installed(db, origin, &pkg_inst, PKG_LOAD_BASIC);
 	if (ret == EPKG_OK) {
-		pkg_emit_already_installed(pkg_inst);
-		retcode = EPKG_INSTALLED;
-		goto cleanup;
+		if ((flags & PKG_FLAG_FORCE) == 0) {
+			pkg_emit_already_installed(pkg_inst);
+			retcode = EPKG_INSTALLED;
+			pkg_free(pkg_inst);
+			goto cleanup;
+		}
+		else {
+			pkg_emit_notice("package %s is already installed, forced install", name);
+			/* We need to upgrade package, so set appropriate flag */
+			flags |= PKG_ADD_UPGRADE;
+			pkg_free(pkg_inst);
+		}
 	} else if (ret != EPKG_END) {
 		retcode = ret;
 		goto cleanup;
