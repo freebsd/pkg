@@ -98,7 +98,21 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 		return(EPKG_FATAL);
 	}
 
-	retcode = pkg_fetch_file_to_fd(url, fd, t);
+	retcode = pkg_fetch_file_to_fd(url, fd, &t);
+
+	if (t != 0) {
+		struct timeval ftimes[2] = {
+			{
+			.tv_sec = t,
+			.tv_usec = 0
+			},
+			{
+			.tv_sec = t,
+			.tv_usec = 0
+			}
+		};
+		futimes(fd, ftimes);
+	}
 
 	close(fd);
 
@@ -110,7 +124,7 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 }
 
 int
-pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
+pkg_fetch_file_to_fd(const char *url, int dest, time_t *t)
 {
 	FILE *remote = NULL;
 	struct url *u;
@@ -145,8 +159,8 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	retry = max_retry;
 
 	u = fetchParseURL(url);
-	if (t != 0)
-		u->ims_time = t;
+	if (t != NULL && *t != 0)
+		u->ims_time = *t;
 
 	doc = u->doc;
 	while (remote == NULL) {
@@ -212,11 +226,13 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 			}
 		}
 	}
-	if (t != 0) {
-		if (st.mtime <= t) {
+	if (t != NULL) {
+		if (st.mtime < *t) {
 			retcode = EPKG_UPTODATE;
 			goto cleanup;
 		}
+		else
+			*t = st.mtime;
 	}
 
 	begin_dl = time(NULL);

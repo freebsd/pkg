@@ -64,20 +64,51 @@ remote_add_indexes(const char *reponame)
 	return (ret);
 }
 
+/* Return opened file descriptor */
+static int
+repo_fetch_remote_tmp(const char *reponame, const char *filename, time_t *t)
+{
+	char url[MAXPATHLEN];
+	char tmp[MAXPATHLEN];
+	int fd;
+	const char *tmpdir;
+
+	snprintf(url, MAXPATHLEN, "%s/%s", reponame, filename);
+
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	snprintf(tmp, MAXPATHLEN, "%s/%s.XXXXXX", tmpdir, filename);
+
+	fd = mkstemp(tmp);
+	if (fd == -1) {
+		pkg_emit_error("Could not create temporary file %s, "
+		    "aborting update.\n", tmp);
+		return -1;
+	}
+	(void)unlink(tmp);
+
+	if (pkg_fetch_file_to_fd(url, fd, t) != EPKG_OK) {
+		close(fd);
+		fd = -1;
+	}
+
+	return fd;
+}
+
 int
 pkg_update(const char *name, const char *packagesite, bool force)
 {
-	char url[MAXPATHLEN];
+
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
 	char repofile[MAXPATHLEN];
 	char repofile_unchecked[MAXPATHLEN];
-	char tmp[MAXPATHLEN];
 	const char *dbdir = NULL;
 	const char *repokey;
 	unsigned char *sig = NULL;
 	int siglen = 0;
-	int fd, rc = EPKG_FATAL, ret;
+	int fd = -1, rc = EPKG_FATAL, ret;
 	struct stat st;
 	time_t t = 0;
 	sqlite3 *sqlite = NULL;
@@ -85,28 +116,12 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	const char *myarch;
 	int64_t res;
 	char *bad_abis = NULL;
-	const char *tmpdir;
 	sqlite3_stmt *stmt;
 	const char sql[] = ""
 	    "INSERT OR REPLACE INTO repodata (key, value) "
 	    "VALUES (\"packagesite\", ?1);";
 
 	sqlite3_initialize();
-	snprintf(url, MAXPATHLEN, "%s/repo.txz", packagesite);
-
-	tmpdir = getenv("TMPDIR");
-	if (tmpdir == NULL)
-		tmpdir = "/tmp";
-	strlcpy(tmp, tmpdir, sizeof(tmp));
-	strlcat(tmp, "/repo.txz.XXXXXX", sizeof(tmp));
-
-	fd = mkstemp(tmp);
-	if (fd == -1) {
-		pkg_emit_error("Could not create temporary file %s, "
-		    "aborting update.\n", tmp);
-		return (EPKG_FATAL);
-	}
-	(void)unlink(tmp);
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
 		pkg_emit_error("Cant get dbdir config entry");
@@ -116,18 +131,9 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
 	snprintf(repofile_unchecked, sizeof(repofile_unchecked),
 				    "%s.unchecked", repofile);
-	if (force)
-		t = 0;		/* Always fetch */
-	else {
-		if (stat(repofile, &st) != -1) {
+	if (!force)
+		if (stat(repofile, &st) != -1)
 			t = st.st_mtime;
-			/* add 1 minute to the timestamp because
-			 * repo.sqlite is always newer than repo.txz,
-			 * 1 minute should be enough.
-			 */
-			t += 60;
-		}
-	}
 
 	if (t != 0) {
 		if (sqlite3_open(repofile, &sqlite) != SQLITE_OK) {
@@ -166,11 +172,6 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	if (sqlite != NULL)
 		sqlite3_close(sqlite);
 
-	rc = pkg_fetch_file_to_fd(url, fd, t);
-
-	if (rc != EPKG_OK) {
-		goto cleanup;
-	}
 
 	/* If the repo.sqlite file exists, test that we can write to
 	   it.  If it doesn't exist, assume we can create it */
@@ -179,6 +180,11 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		pkg_emit_error("Insufficient privilege to update %s\n",
 			       repofile);
 		rc = EPKG_ENOACCESS;
+		goto cleanup;
+	}
+
+	if ((fd = repo_fetch_remote_tmp(packagesite, "repo.txz", &t)) == -1) {
+		rc = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -316,12 +322,28 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	if ((rc = remote_add_indexes(name)) != EPKG_OK)
 		goto cleanup;
 
+	/* Set mtime from http request if possible */
+	if (t != 0) {
+		struct timeval ftimes[2] = {
+			{
+			.tv_sec = t,
+			.tv_usec = 0
+			},
+			{
+			.tv_sec = t,
+			.tv_usec = 0
+			}
+		};
+		utimes(repofile, ftimes);
+	}
+
 	rc = EPKG_OK;
 
 	cleanup:
 	if (a != NULL)
 		archive_read_free(a);
-	(void)close(fd);
+	if (fd != -1)
+		(void)close(fd);
 
 	return (rc);
 }
