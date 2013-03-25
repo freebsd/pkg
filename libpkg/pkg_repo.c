@@ -660,6 +660,7 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 		const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
 		int64_t flatsize, pkgsize;
 		lic_t licenselogic;
+		long manifest_pos, files_pos;
 
 		pthread_mutex_lock(&thd_data.results_m);
 		while ((r = thd_data.results) == NULL) {
@@ -696,9 +697,10 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 		if (progress != NULL)
 			progress(r->pkg, data);
 
+		manifest_pos = ftell(psyml);
+		files_pos = ftell(fsyml);
 		pkg_emit_manifest_file(r->pkg, psyml, true, &manifest_digest);
 		pkg_emit_filelist(r->pkg, fsyml);
-
 
 		pkg_get(r->pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_COMMENT, &comment,
@@ -707,7 +709,7 @@ pkg_create_repo(char *path, __unused bool force, void (progress)(struct pkg *pkg
 		    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
 		    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
 		    PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
-		fprintf(mandigests, "%s: %s\n", origin, manifest_digest);
+		fprintf(mandigests, "%s:%s:%ld:%ld\n", origin, manifest_digest, manifest_pos, files_pos);
 		free(manifest_digest);
 
 	try_again:
