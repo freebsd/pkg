@@ -193,7 +193,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	}
 
 	if (flags & PKG_ADD_AUTOMATIC)
-		pkg_set(pkg, PKG_AUTOMATIC, true);
+		pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
 
 	/*
 	 * Check the architecture
@@ -226,8 +226,6 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 		}
 		else {
 			pkg_emit_notice("package %s is already installed, forced install", name);
-			/* We need to upgrade package, so set appropriate flag */
-			flags |= PKG_ADD_UPGRADE;
 			pkg_free(pkg_inst);
 		}
 	} else if (ret != EPKG_END) {
