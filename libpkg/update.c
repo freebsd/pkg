@@ -66,7 +66,7 @@ remote_add_indexes(const char *reponame)
 
 /* Return opened file descriptor */
 static int
-repo_fetch_remote_tmp(const char *reponame, const char *filename, time_t *t)
+repo_fetch_remote_tmp(const char *reponame, const char *filename, time_t *t, int *rc)
 {
 	char url[MAXPATHLEN];
 	char tmp[MAXPATHLEN];
@@ -84,15 +84,17 @@ repo_fetch_remote_tmp(const char *reponame, const char *filename, time_t *t)
 	if (fd == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 		    "aborting update.\n", tmp);
+		*rc = EPKG_FATAL;
 		return -1;
 	}
 	(void)unlink(tmp);
 
-	if (pkg_fetch_file_to_fd(url, fd, t) != EPKG_OK) {
+	if ((*rc != pkg_fetch_file_to_fd(url, fd, t)) != EPKG_OK) {
 		close(fd);
 		fd = -1;
 	}
 
+	*rc = EPKG_OK;
 	return fd;
 }
 
@@ -183,8 +185,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		goto cleanup;
 	}
 
-	if ((fd = repo_fetch_remote_tmp(packagesite, "repo.txz", &t)) == -1) {
-		rc = EPKG_FATAL;
+	if ((fd = repo_fetch_remote_tmp(packagesite, "repo.txz", &t, &rc)) == -1) {
 		goto cleanup;
 	}
 
