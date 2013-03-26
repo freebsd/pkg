@@ -272,11 +272,14 @@ connect_evpipe(const char *evpipe) {
 		    sizeof(sock.sun_path)) {
 			pkg_emit_error("Socket path too long: %s", evpipe);
 			close(eventpipe);
+			eventpipe = -1;
 			return;
 		}
 
 		if (connect(eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
 			pkg_emit_errno("Connect event pipe", evpipe);
+			close(eventpipe);
+			eventpipe = -1;
 			return;
 		}
 	}
