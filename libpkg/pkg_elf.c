@@ -192,7 +192,10 @@ warn_about_name_format(struct pkg *pkg, const char *fpath, const char *shlib)
 	/* Shlib names in NEEDED records in the Dynamic section of an
            ELF object are expected to look like libfoo.so.N where the
            ABI version N is an integer or libfoo.so without ABI
-           version at all. */
+           version at all.  Well, actually, this should probably only
+           apply to shlibs which are publicly available.  shlibs for
+           the private use of some package can have whatever naming
+           convention they want.  So this is a bit too strict. */
 
 	len = strlen(shlib);
 	if (len < 9)		/* libx.so.0 */
