@@ -2223,7 +2223,7 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 	}
 
 	if (sqlite3_exec(s, sql_to_exec, NULL, NULL, &errmsg) != SQLITE_OK) {
-		pkg_emit_error("sqlite: %s", errmsg);
+		ERROR_SQLITE(s);
 		sqlite3_free(errmsg);
 		goto cleanup;
 	}
