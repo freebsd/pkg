@@ -48,7 +48,7 @@ exec_upgrade(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	const char *reponame = NULL;
+	const char __unused *reponame = NULL;
 	int retcode;
 	int updcode;
 	int ch;
@@ -105,7 +105,6 @@ exec_upgrade(int argc, char **argv)
 		usage_upgrade();
 		return (EX_USAGE);
 	}
-
 
 	if (dry_run)
 		retcode = pkgdb_access(PKGDB_MODE_READ,
