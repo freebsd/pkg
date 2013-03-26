@@ -89,12 +89,11 @@ repo_fetch_remote_tmp(const char *reponame, const char *filename, time_t *t, int
 	}
 	(void)unlink(tmp);
 
-	if ((*rc != pkg_fetch_file_to_fd(url, fd, t)) != EPKG_OK) {
+	if ((*rc = pkg_fetch_file_to_fd(url, fd, t)) != EPKG_OK) {
 		close(fd);
 		fd = -1;
 	}
 
-	*rc = EPKG_OK;
 	return fd;
 }
 

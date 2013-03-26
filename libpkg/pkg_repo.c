@@ -623,26 +623,26 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 		goto cleanup;
 	}
 
-	snprintf(repodb, sizeof(repodb), "%s/packagesite.yaml", path);
+	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_packagesite_file);
 	if ((psyml = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
-	snprintf(repodb, sizeof(repodb), "%s/filesite.yaml", path);
+	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_filesite_file);
 	if ((fsyml = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
-	snprintf(repodb, sizeof(repodb), "%s/digests", path);
+	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_digests_file);
 	if ((mandigests = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
-	snprintf(repodb, sizeof(repodb), "%s/repo.sqlite", path);
+	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_db_file);
 	snprintf(repopack, sizeof(repopack), "%s/repoy.txz", path);
 
-	pack_extract(repopack, "repo.sqlite", repodb);
+	pack_extract(repopack, repo_db_file, repodb);
 
 	if ((retcode = initialize_repo(repodb, force, &sqlite)) != EPKG_OK)
 		goto cleanup;
@@ -960,11 +960,14 @@ read_pkg_file(void *data)
 				strcmp(ext, ".tar") != 0)
 			continue;
 
-		if (strcmp(fts_name, "repo.txz") == 0 ||
-			strcmp(fts_name, "packagesite.txz") == 0 ||
-			strcmp(fts_name, "filesite.txz") == 0 ||
-			strcmp(fts_name, "digests.txz") == 0)
+		*ext = '\0';
+
+		if (strcmp(fts_name, repo_db_archive) == 0 ||
+			strcmp(fts_name, repo_packagesite_archive) == 0 ||
+			strcmp(fts_name, repo_filesite_archive) == 0 ||
+			strcmp(fts_name, repo_digests_archive) == 0)
 			continue;
+		*ext = '.';
 
 		pkg_path = fts_path;
 		pkg_path += strlen(d->root_path);
@@ -1047,27 +1050,27 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	    return (EPKG_FATAL);
 	}
 
-	snprintf(repo_path, sizeof(repo_path), "%s/packagesite.yaml", path);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/packagesite", path);
-	if (pack_db("packagesite.yaml", repo_archive, repo_path,
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_packagesite_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_packagesite_archive);
+	if (pack_db(repo_packagesite_file, repo_archive, repo_path,
 			rsa_key_path, password_cb) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	snprintf(repo_path, sizeof(repo_path), "%s/repo.sqlite", path);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/repo", path);
-	if (pack_db("repo.sqlite", repo_archive, repo_path,
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_db_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_db_archive);
+	if (pack_db(repo_db_file, repo_archive, repo_path,
 			rsa_key_path, password_cb) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	snprintf(repo_path, sizeof(repo_path), "%s/filesite.yaml", path);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/filesite", path);
-	if (pack_db("filesite.yaml", repo_archive, repo_path,
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_filesite_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_filesite_archive);
+	if (pack_db(repo_filesite_file, repo_archive, repo_path,
 			rsa_key_path, password_cb) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	snprintf(repo_path, sizeof(repo_path), "%s/digests", path);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/digests", path);
-	if (pack_db("digests", repo_archive, repo_path,
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_digests_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_digests_archive);
+	if (pack_db(repo_digests_file, repo_archive, repo_path,
 			rsa_key_path, password_cb) != EPKG_OK)
 		return (EPKG_FATAL);
 
