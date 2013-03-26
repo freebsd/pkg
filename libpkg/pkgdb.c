@@ -2218,7 +2218,7 @@ prstmt_finalize(struct pkgdb *db)
 }
 
 int
-pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
+pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 {
 	struct pkg		*pkg2 = NULL;
 	struct pkg_dep		*dep = NULL;
@@ -2366,18 +2366,27 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete)
 			goto cleanup;
 		}
 		pkg_get(pkg2, PKG_NAME, &name2, PKG_VERSION, &version2);
-		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &devmode);
-		if (!devmode)
-			pkg_config_bool(PKG_CONFIG_PERMISSIVE, &permissive);
-		pkg_emit_error("%s-%s conflicts with %s-%s"
-		    " (installs files into the same place). "
-		    " Problematic file: %s%s",
-		    name, version, name2, version2, pkg_path,
-		    permissive ? " ignored by permissive mode" : "");
-		pkg_free(pkg2);
-		if (!permissive) {
-			pkgdb_it_free(it);
-			goto cleanup;
+		if (!forced) {
+			pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &devmode);
+			if (!devmode)
+				pkg_config_bool(PKG_CONFIG_PERMISSIVE, &permissive);
+			pkg_emit_error("%s-%s conflicts with %s-%s"
+					" (installs files into the same place). "
+					" Problematic file: %s%s",
+					name, version, name2, version2, pkg_path,
+					permissive ? " ignored by permissive mode" : "");
+			pkg_free(pkg2);
+			if (!permissive) {
+				pkgdb_it_free(it);
+				goto cleanup;
+			}
+		}
+		else {
+			pkg_emit_error("%s-%s conflicts with %s-%s"
+					" (installs files into the same place). "
+					" Problematic file: %s ignored by forced mode",
+					name, version, name2, version2, pkg_path);
+			pkg_free(pkg2);
 		}
 	}
 
@@ -2634,7 +2643,7 @@ pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg)
 
 	pkg_emit_install_begin(pkg);
 
-	ret = pkgdb_register_pkg(db, pkg, 0);
+	ret = pkgdb_register_pkg(db, pkg, 0, 0);
 	if (ret == EPKG_OK)
 		pkg_emit_install_finished(pkg);
 

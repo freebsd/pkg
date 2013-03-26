@@ -374,7 +374,7 @@ int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
 
-int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete);
+int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);

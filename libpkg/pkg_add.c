@@ -271,10 +271,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
-	if ((flags & PKG_ADD_UPGRADE) == 0)
-		retcode = pkgdb_register_pkg(db, pkg, 0);
-	else
-		retcode = pkgdb_register_pkg(db, pkg, 1);
+	retcode = pkgdb_register_pkg(db, pkg, flags & PKG_ADD_UPGRADE, flags & PKG_FLAG_FORCE);
 
 	if (retcode != EPKG_OK)
 		goto cleanup;
