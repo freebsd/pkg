@@ -117,7 +117,7 @@ exec_register(int argc, char **argv)
 				err(1, "cannot allocate memory");
 			break;
 		case 'd':
-			pkg_set(pkg, PKG_AUTOMATIC, true);
+			pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
 			break;
 		case 'i':
 			if ((input_path = strdup(optarg)) == NULL)

@@ -226,7 +226,7 @@ jobs_solve_install(struct pkg_jobs *j)
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
 			if ((j->flags & PKG_FLAG_AUTOMATIC) == PKG_FLAG_AUTOMATIC)
-				pkg_set(pkg, PKG_AUTOMATIC, true);
+				pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
 			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
 			pkg = NULL;
 		}
