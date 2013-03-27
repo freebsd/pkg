@@ -169,89 +169,34 @@ cleanup:
 	return rc;
 }
 
-int
-pkg_update(const char *name, const char *packagesite, bool force)
+static int
+pkg_update_full(const char *repofile, const char *name, const char *packagesite, time_t *mtime)
 {
-
-	char repofile[MAXPATHLEN];
 	char repofile_unchecked[MAXPATHLEN];
-	const char *dbdir = NULL;
 	int fd = -1, rc = EPKG_FATAL;
-	struct stat st;
-	time_t t = 0;
 	sqlite3 *sqlite = NULL;
-	char *req = NULL;
-	const char *myarch;
-	int64_t res;
-	char *bad_abis = NULL;
 	sqlite3_stmt *stmt;
+	char *req = NULL;
+	char *bad_abis = NULL;
+	const char *myarch;
 	const char sql[] = ""
 	    "INSERT OR REPLACE INTO repodata (key, value) "
 	    "VALUES (\"packagesite\", ?1);";
 
-	sqlite3_initialize();
-
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
-		pkg_emit_error("Cant get dbdir config entry");
-		return (EPKG_FATAL);
-	}
-
-	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
 	snprintf(repofile_unchecked, sizeof(repofile_unchecked),
-				    "%s.unchecked", repofile);
-	if (!force)
-		if (stat(repofile, &st) != -1)
-			t = st.st_mtime;
-
-	if (t != 0) {
-		if (sqlite3_open(repofile, &sqlite) != SQLITE_OK) {
-			pkg_emit_error("Unable to open local database");
-			rc = EPKG_FATAL;
-			goto cleanup;
-		}
-
-		if (get_pragma(sqlite, "SELECT count(name) FROM sqlite_master "
-		    "WHERE type='table' AND name='repodata';", &res) != EPKG_OK) {
-			pkg_emit_error("Unable to query repository");
-			rc = EPKG_FATAL;
-			sqlite3_close(sqlite);
-			goto cleanup;
-		}
-		if (res != 1)
-			t = 0;
-	}
-
-	if (t != 0) {
-		req = sqlite3_mprintf("select count(key) from repodata "
-		    "WHERE key = \"packagesite\" and value = '%q'", packagesite);
-
-		if (get_pragma(sqlite, req, &res) != EPKG_OK) {
-			sqlite3_free(req);
-			pkg_emit_error("Unable to query repository");
-			rc = EPKG_FATAL;
-			sqlite3_close(sqlite);
-			goto cleanup;
-		}
-		sqlite3_free(req);
-		if (res != 1)
-			t = 0;
-	}
-
-	if (sqlite != NULL)
-		sqlite3_close(sqlite);
-
+			"%s.unchecked", repofile);
 
 	/* If the repo.sqlite file exists, test that we can write to
-	   it.  If it doesn't exist, assume we can create it */
+		   it.  If it doesn't exist, assume we can create it */
 
 	if (eaccess(repofile, F_OK) == 0 && eaccess(repofile, W_OK) == -1) {
 		pkg_emit_error("Insufficient privilege to update %s\n",
-			       repofile);
+				repofile);
 		rc = EPKG_ENOACCESS;
 		goto cleanup;
 	}
 
-	if ((fd = repo_fetch_remote_tmp(packagesite, repo_db_archive, "txz", &t, &rc)) == -1) {
+	if ((fd = repo_fetch_remote_tmp(packagesite, repo_db_archive, "txz", mtime, &rc)) == -1) {
 		goto cleanup;
 	}
 
@@ -275,8 +220,8 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 
 	req = sqlite3_mprintf("select group_concat(arch, ', ') from "
-	    "(select arch from packages "
-	    "where arch not GLOB '%q')", myarch);
+			"(select arch from packages "
+			"where arch not GLOB '%q')", myarch);
 	if (get_sql_string(sqlite, req, &bad_abis) != EPKG_OK) {
 		sqlite3_free(req);
 		pkg_emit_error("Unable to query repository");
@@ -287,10 +232,10 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	if (bad_abis != NULL) {
 		pkg_emit_error("At least one of the packages provided by "
-		    "the repository is not compatible with your ABI:\n"
-		    "    Your ABI: %s\n"
-		    "    Incompatible ABIs found: %s",
-		    myarch, bad_abis);
+				"the repository is not compatible with your ABI:\n"
+				"    Your ABI: %s\n"
+				"    Incompatible ABIs found: %s",
+				myarch, bad_abis);
 		rc = EPKG_FATAL;
 		sqlite3_close(sqlite);
 		goto cleanup;
@@ -298,11 +243,11 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	/* register the packagesite */
 	if (sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repodata ("
-	    "   key TEXT UNIQUE NOT NULL,"
-	    "   value TEXT NOT NULL"
-	    ");") != EPKG_OK) {
+			"   key TEXT UNIQUE NOT NULL,"
+			"   value TEXT NOT NULL"
+			");") != EPKG_OK) {
 		pkg_emit_error("Unable to register the packagesite in the "
-		    "database");
+				"database");
 		rc = EPKG_FATAL;
 		sqlite3_close(sqlite);
 		goto cleanup;
@@ -338,6 +283,77 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	if ((rc = remote_add_indexes(name)) != EPKG_OK)
 		goto cleanup;
+	rc = EPKG_OK;
+
+	cleanup:
+	if (fd != -1)
+		(void)close(fd);
+
+	return (rc);
+}
+
+int
+pkg_update(const char *name, const char *packagesite, bool force)
+{
+	char repofile[MAXPATHLEN];
+
+	const char *dbdir = NULL;
+	struct stat st;
+	time_t t = 0;
+	sqlite3 *sqlite = NULL;
+	char *req = NULL;
+	int64_t res;
+
+	sqlite3_initialize();
+
+	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
+		pkg_emit_error("Cant get dbdir config entry");
+		return (EPKG_FATAL);
+	}
+
+	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
+
+	if (!force)
+		if (stat(repofile, &st) != -1)
+			t = st.st_mtime;
+
+	if (t != 0) {
+		if (sqlite3_open(repofile, &sqlite) != SQLITE_OK) {
+			pkg_emit_error("Unable to open local database");
+			return (EPKG_FATAL);
+		}
+
+		if (get_pragma(sqlite, "SELECT count(name) FROM sqlite_master "
+		    "WHERE type='table' AND name='repodata';", &res) != EPKG_OK) {
+			pkg_emit_error("Unable to query repository");
+			sqlite3_close(sqlite);
+			return (EPKG_FATAL);
+		}
+		if (res != 1)
+			t = 0;
+	}
+
+	if (t != 0) {
+		req = sqlite3_mprintf("select count(key) from repodata "
+		    "WHERE key = \"packagesite\" and value = '%q'", packagesite);
+
+		if (get_pragma(sqlite, req, &res) != EPKG_OK) {
+			sqlite3_free(req);
+			pkg_emit_error("Unable to query repository");
+			sqlite3_close(sqlite);
+			return (EPKG_FATAL);
+		}
+		sqlite3_free(req);
+		if (res != 1)
+			t = 0;
+
+		if (sqlite != NULL)
+			sqlite3_close(sqlite);
+	}
+
+	if ((res = pkg_update_full(repofile, name, packagesite, &t)) != EPKG_OK) {
+		return (res);
+	}
 
 	/* Set mtime from http request if possible */
 	if (t != 0) {
@@ -354,11 +370,5 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		utimes(repofile, ftimes);
 	}
 
-	rc = EPKG_OK;
-
-	cleanup:
-	if (fd != -1)
-		(void)close(fd);
-
-	return (rc);
+	return (EPKG_OK);
 }
