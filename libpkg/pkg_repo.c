@@ -1136,10 +1136,10 @@ substitute_into_sql(char *sqlbuf, size_t buflen, const char *fmt,
 
 static int
 apply_repo_change(struct pkgdb *db, const char *database,
-		  struct repo_changes *repo_changes, const char *updown,
+		  const struct repo_changes *repo_changes, const char *updown,
 		  int version, int *next_version)
 {
-	struct repo_changes	*change;
+	const struct repo_changes	*change;
 	bool			 found = false;
 	int			 ret = EPKG_OK;
 	char			 sql[BUFSIZ];
