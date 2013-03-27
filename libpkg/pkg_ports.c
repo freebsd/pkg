@@ -346,7 +346,7 @@ should_be_post(char *cmd, struct plist *p)
 		parse_post(p);
 
 	if (p->post_patterns == NULL)
-		return;
+		return (false);
 
 	for (i = 0; i < p->post_patterns->sl_cur; i++)
 		if (strstr(cmd, p->post_patterns->sl_str[i]))
