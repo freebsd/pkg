@@ -29,14 +29,14 @@
 #ifndef _REPODB
 #define _REPODB
 
-const char repo_db_file[] = "repo.sqlite";
-const char repo_db_archive[] = "repo";
-const char repo_packagesite_file[] = "packagesite.yaml";
-const char repo_packagesite_archive[] = "packagesite";
-const char repo_filesite_file[] = "filesite.yaml";
-const char repo_filesite_archive[] = "filesite";
-const char repo_digests_file[] = "digests";
-const char repo_digests_archive[] = "digests";
+static const char repo_db_file[] = "repo.sqlite";
+static const char repo_db_archive[] = "repo";
+static const char repo_packagesite_file[] = "packagesite.yaml";
+static const char repo_packagesite_archive[] = "packagesite";
+static const char repo_filesite_file[] = "filesite.yaml";
+static const char repo_filesite_archive[] = "filesite";
+static const char repo_digests_file[] = "digests";
+static const char repo_digests_archive[] = "digests";
 
 static const char initsql[] = ""
 	"CREATE TABLE packages ("
