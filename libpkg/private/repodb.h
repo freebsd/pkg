@@ -29,14 +29,14 @@
 #ifndef _REPODB
 #define _REPODB
 
-static const char repo_db_file[] = "repo.sqlite";
-static const char repo_db_archive[] = "repo";
-static const char repo_packagesite_file[] = "packagesite.yaml";
-static const char repo_packagesite_archive[] = "packagesite";
-static const char repo_filesite_file[] = "filesite.yaml";
-static const char repo_filesite_archive[] = "filesite";
-static const char repo_digests_file[] = "digests";
-static const char repo_digests_archive[] = "digests";
+const char repo_db_file[] = "repo.sqlite";
+const char repo_db_archive[] = "repo";
+const char repo_packagesite_file[] = "packagesite.yaml";
+const char repo_packagesite_archive[] = "packagesite";
+const char repo_filesite_file[] = "filesite.yaml";
+const char repo_filesite_archive[] = "filesite";
+const char repo_digests_file[] = "digests";
+const char repo_digests_archive[] = "digests";
 
 static const char initsql[] = ""
 	"CREATE TABLE packages ("
@@ -140,7 +140,7 @@ struct repo_changes {
 
 /* How to upgrade an older repo to match what the current system
    expects */
-static struct repo_changes repo_upgrades[] = {
+static const struct repo_changes repo_upgrades[] = {
 	{2001,
 	 2002,
 	 "Modify shlib tracking to add \'provided\' capability",
@@ -192,7 +192,7 @@ static struct repo_changes repo_upgrades[] = {
 
 /* How to downgrade a newer repo to match what the current system
    expects */
-static struct repo_changes repo_downgrades[] = {
+static const struct repo_changes repo_downgrades[] = {
 	{2004,
 	 2003,
 	 "Drop manifest digest index",

@@ -39,6 +39,7 @@
 #include "private/event.h"
 #include "private/utils.h"
 #include "private/pkgdb.h"
+#include "private/repodb.h"
 
 //#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM)
 
@@ -66,19 +67,19 @@ remote_add_indexes(const char *reponame)
 
 /* Return opened file descriptor */
 static int
-repo_fetch_remote_tmp(const char *reponame, const char *filename, time_t *t, int *rc)
+repo_fetch_remote_tmp(const char *reponame, const char *filename, const char *extension, time_t *t, int *rc)
 {
 	char url[MAXPATHLEN];
 	char tmp[MAXPATHLEN];
 	int fd;
 	const char *tmpdir;
 
-	snprintf(url, MAXPATHLEN, "%s/%s", reponame, filename);
+	snprintf(url, MAXPATHLEN, "%s/%s.%s", reponame, filename, extension);
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
-	snprintf(tmp, MAXPATHLEN, "%s/%s.XXXXXX", tmpdir, filename);
+	snprintf(tmp, MAXPATHLEN, "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
 
 	fd = mkstemp(tmp);
 	if (fd == -1) {
@@ -97,19 +98,85 @@ repo_fetch_remote_tmp(const char *reponame, const char *filename, time_t *t, int
 	return fd;
 }
 
+static int
+repo_archive_extract_file(int fd, const char *file, const char *dest)
+{
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
+	const char *repokey;
+	unsigned char *sig = NULL;
+	int siglen = 0, ret, rc = EPKG_OK;
+
+	a = archive_read_new();
+	archive_read_support_filter_all(a);
+	archive_read_support_format_tar(a);
+
+	/* Seek to the begin of file */
+	(void)lseek(fd, SEEK_SET, 0);
+	archive_read_open_fd(a, fd, 4096);
+
+	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
+		if (strcmp(archive_entry_pathname(ae), file) == 0) {
+			archive_entry_set_pathname(ae, dest);
+			/*
+			 * The repo should be owned by root and not writable
+			 */
+			archive_entry_set_uid(ae, 0);
+			archive_entry_set_gid(ae, 0);
+			archive_entry_set_perm(ae, 0644);
+
+			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+		}
+		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
+			siglen = archive_entry_size(ae);
+			sig = malloc(siglen);
+			archive_read_data(a, sig, siglen);
+		}
+	}
+
+	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK) {
+		free(sig);
+		pkg_emit_error("Cannot get repository key.");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	if (repokey != NULL) {
+		if (sig != NULL) {
+			ret = rsa_verify(dest, repokey,
+					sig, siglen - 1);
+			if (ret != EPKG_OK) {
+				pkg_emit_error("Invalid signature, "
+						"removing repository.");
+				unlink(dest);
+				free(sig);
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
+			free(sig);
+		} else {
+			pkg_emit_error("No signature found in the repository.  "
+					"Can not validate against %s key.", repokey);
+			rc = EPKG_FATAL;
+			unlink(dest);
+			goto cleanup;
+		}
+	}
+cleanup:
+	if (a != NULL)
+		archive_read_free(a);
+
+	return rc;
+}
+
 int
 pkg_update(const char *name, const char *packagesite, bool force)
 {
 
-	struct archive *a = NULL;
-	struct archive_entry *ae = NULL;
 	char repofile[MAXPATHLEN];
 	char repofile_unchecked[MAXPATHLEN];
 	const char *dbdir = NULL;
-	const char *repokey;
-	unsigned char *sig = NULL;
-	int siglen = 0;
-	int fd = -1, rc = EPKG_FATAL, ret;
+	int fd = -1, rc = EPKG_FATAL;
 	struct stat st;
 	time_t t = 0;
 	sqlite3 *sqlite = NULL;
@@ -184,62 +251,12 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		goto cleanup;
 	}
 
-	if ((fd = repo_fetch_remote_tmp(packagesite, "repo.txz", &t, &rc)) == -1) {
+	if ((fd = repo_fetch_remote_tmp(packagesite, repo_db_archive, "txz", &t, &rc)) == -1) {
 		goto cleanup;
 	}
 
-	a = archive_read_new();
-	archive_read_support_filter_all(a);
-	archive_read_support_format_tar(a);
-
-	(void)lseek(fd, SEEK_SET, 0);
-	archive_read_open_fd(a, fd, 4096);
-
-	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		if (strcmp(archive_entry_pathname(ae), "repo.sqlite") == 0) {
-			archive_entry_set_pathname(ae, repofile_unchecked);
-			/*
-			 * The repo should be owned by root and not writable
-			 */
-			archive_entry_set_uid(ae, 0);
-			archive_entry_set_gid(ae, 0);
-			archive_entry_set_perm(ae, 0644);
-
-			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
-		}
-		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
-			siglen = archive_entry_size(ae);
-			sig = malloc(siglen);
-			archive_read_data(a, sig, siglen);
-		}
-	}
-
-	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK) {
-		free(sig);
-
-		return (EPKG_FATAL);
-	}
-
-	if (repokey != NULL) {
-		if (sig != NULL) {
-			ret = rsa_verify(repofile_unchecked, repokey,
-			    sig, siglen - 1);
-			if (ret != EPKG_OK) {
-				pkg_emit_error("Invalid signature, "
-				    "removing repository.\n");
-				unlink(repofile_unchecked);
-				free(sig);
-				rc = EPKG_FATAL;
-				goto cleanup;
-			}
-			free(sig);
-		} else {
-			pkg_emit_error("No signature found in the repository.  "
-			    "Can not validate against %s key.", repokey);
-			rc = EPKG_FATAL;
-			unlink(repofile_unchecked);
-			goto cleanup;
-		}
+	if ((rc = repo_archive_extract_file(fd, repo_db_file, repofile_unchecked)) != EPKG_OK) {
+		goto cleanup;
 	}
 
 	/* check is the repository is for valid architecture */
@@ -340,8 +357,6 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	rc = EPKG_OK;
 
 	cleanup:
-	if (a != NULL)
-		archive_read_free(a);
 	if (fd != -1)
 		(void)close(fd);
 
