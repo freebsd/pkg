@@ -254,7 +254,7 @@ exec_check(int argc, char **argv)
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 
-	while ((ch = getopt(argc, argv, "yagdnBxsrv")) != -1) {
+	while ((ch = getopt(argc, argv, "yagdnBxXsrv")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
