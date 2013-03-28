@@ -88,10 +88,10 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT INTO packages ("
 		"origin, name, version, comment, desc, arch, maintainer, www, "
-		"prefix, pkgsize, flatsize, licenselogic, cksum, path"
+		"prefix, pkgsize, flatsize, licenselogic, cksum, path, manifestdigest"
 		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
-		"TTTTTTTTTIIITT",
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+		"TTTTTTTTTIIITTT",
 	},
 	[DEPS] = {
 		NULL,
@@ -458,7 +458,8 @@ pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum)
 }
 
 int
-pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path, sqlite3 *sqlite)
+pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
+		sqlite3 *sqlite, const char *manifest_digest)
 {
 	const char *name, *version, *origin, *comment, *desc;
 	const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
@@ -484,7 +485,7 @@ try_again:
 	if ((ret = run_prepared_statement(PKG, origin, name, version,
 			comment, desc, arch, maintainer, www, prefix,
 			pkgsize, flatsize, (int64_t)licenselogic, sum,
-			rpath)) != SQLITE_DONE) {
+			rpath, manifest_digest)) != SQLITE_DONE) {
 		if (ret == SQLITE_CONSTRAINT) {
 			switch(maybe_delete_conflicting(origin,
 					version, pkg_path)) {
