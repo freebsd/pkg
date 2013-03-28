@@ -265,9 +265,50 @@ static struct db_upgrades {
 		"FROM oldpkgs;"
 	"DROP TABLE oldpkgs;"
 	},
+	{14,
+	"CREATE TABLE pkg_shlibs_required ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+			" ON DELETE CASCADE ON UPDATE CASCADE,"
+		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
+			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE (package_id, shlib_id)"
+	");"
+	"CREATE TABLE pkg_shlibs_provided ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+			" ON DELETE CASCADE ON UPDATE CASCADE,"
+		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
+			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE (package_id, shlib_id)"
+	");"
+	"INSERT INTO pkg_shlibs_required (package_id, shlib_id)"
+	 	" SELECT package_id, shlib_id FROM pkg_shlibs;"
+	"CREATE INDEX pkg_shlibs_required_package_id ON pkg_shlibs_required (package_id);"
+	"CREATE INDEX pkg_shlibs_provided_package_id ON pkg_shlibs_provided (package_id);"
+	"DROP INDEX pkg_shlibs_package_id;"
+	"DROP TABLE pkg_shlibs;"
+	},
+	{15,
+	"CREATE TABLE abstract ("
+                "abstract_id INTEGER PRIMARY KEY,"
+                "abstract TEXT NOT NULL UNIQUE"
+        ");"
+        "CREATE TABLE pkg_abstract ("
+                "package_id INTERGER REFERENCES packages(id)"
+                      " ON DELETE CASCADE ON UPDATE RESTRICT,"
+                "key_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+                      " ON DELETE CASCADE ON UPDATE RESTRICT,"
+		"value_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+		      " ON DELETE CASCADE ON UPDATE RESTRICT"
+	");"
+	"CREATE INDEX pkg_abstract_package_id ON pkg_abstract(package_id);"
+	},
+	{16,
+	"ALTER TABLE packages ADD COLUMN manifestdigest TEXT NULL;"
+	"CREATE INDEX IF NOT EXISTS pkg_digest_id ON packages(origin, manifestdigest);"
+	},
 
 	/* Mark the end of the array */
-	{ -1, NULL },
+	{ -1, NULL }
 
 };
 

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd March 25, 2013
 .Dt PKG-ADD 8
 .Os
 .Sh NAME
@@ -23,14 +23,14 @@
 .Nd Registers a package and installs it on the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl I
-.Ar <pkg-name>
+.Op Fl IAfq
+.Ar <pkg-name> ...
 .Nm
-.Op Fl I
-.Ar <protocol>://<path>/<pkg-name>
+.Op Fl IAfq
+.Ar <protocol>://<path>/<pkg-name> ...
 .Sh DESCRIPTION
 .Nm
-installs a package from either a local source or a remote one.
+installs packages from either a local source or a remote one.
 .Pp
 When installing from a remote source you need to specify
 the protocol to use when fetching the package.
@@ -41,8 +41,17 @@ The following options are supported by
 .Nm :
 .Bl -tag -width I1
 .It Fl I
-If any installation scripts (pre-install or post-install) exist for a given
-package, do not execute them.
+If any installation scripts (pre-install or post-install) exist for given
+packages, do not execute them.
+.It Fl A
+Mark the installed packages as orphan.
+Will be automatically removed if no other packages depend on them.
+For more information please refer to
+.Xr pkg-autoremove 8
+.It Fl f
+Force the reinstallation of the package if already installed.
+.It Fl q
+Force quiet output.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

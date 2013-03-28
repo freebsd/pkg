@@ -37,7 +37,11 @@
 #include <string.h>
 #include <pthread.h>
 
+#ifdef BUNDLED_YAML
 #include <yaml.h>
+#else
+#include <bsdyml.h>
+#endif
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -221,6 +225,11 @@ static struct config_entry c[] = {
 		PKG_CONFIG_STRING,
 		"EVENT_PIPE",
 		NULL,
+	},
+	[PKG_CONFIG_FETCH_TIMEOUT] = {
+		PKG_CONFIG_INTEGER,
+		"FETCH_TIMEOUT",
+		"30",
 	}
 };
 
@@ -263,11 +272,14 @@ connect_evpipe(const char *evpipe) {
 		    sizeof(sock.sun_path)) {
 			pkg_emit_error("Socket path too long: %s", evpipe);
 			close(eventpipe);
+			eventpipe = -1;
 			return;
 		}
 
 		if (connect(eventpipe, (struct sockaddr *)&sock, SUN_LEN(&sock)) == -1) {
 			pkg_emit_errno("Connect event pipe", evpipe);
+			close(eventpipe);
+			eventpipe = -1;
 			return;
 		}
 	}
@@ -471,7 +483,7 @@ pkg_config_string(pkg_config_key key, const char **val)
 	struct pkg_config *conf;
 
 	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_int64()");
+		pkg_emit_error("pkg_init() must be called before pkg_config_string()");
 		return (EPKG_FATAL);
 	}
 
@@ -509,7 +521,7 @@ pkg_config_bool(pkg_config_key key, bool *val)
 	struct pkg_config *conf;
 
 	if (parsed != true) {
-		pkg_emit_error("pkg_init() must be called before pkg_config_int64()");
+		pkg_emit_error("pkg_init() must be called before pkg_config_bool()");
 		return (EPKG_FATAL);
 	}
 
@@ -792,10 +804,11 @@ pkg_init(const char *path)
 	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
 
-	subst_packagesite();
 	disable_plugins_if_static();
 
 	parsed = true;
+
+	subst_packagesite();
 
 	/* Start the event pipe */
 	pkg_config_string(PKG_CONFIG_EVENT_PIPE, &evpipe);

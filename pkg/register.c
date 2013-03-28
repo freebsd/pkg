@@ -103,7 +103,8 @@ exec_register(int argc, char **argv)
 
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
-	pkg_new(&pkg, PKG_INSTALLED);
+	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
+		err(EX_OSERR, "malloc");
 	while ((ch = getopt(argc, argv, "f:m:i:ldO")) != -1) {
 		switch (ch) {
 		case 'f':
@@ -116,7 +117,7 @@ exec_register(int argc, char **argv)
 				err(1, "cannot allocate memory");
 			break;
 		case 'd':
-			pkg_set(pkg, PKG_AUTOMATIC, true);
+			pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
 			break;
 		case 'i':
 			if ((input_path = strdup(optarg)) == NULL)
@@ -177,6 +178,13 @@ exec_register(int argc, char **argv)
 			pkg_addscript_file(pkg, fpath);
 	}
 
+	if (www != NULL) {
+		pkg_set(pkg, PKG_WWW, www);
+		free(www);
+	}
+
+	pkg_get(pkg, PKG_WWW, &www);
+
 	/* if www is not given then try to determine it from description */
 	if (www == NULL) {
 		pkg_get(pkg, PKG_DESC, &desc);
@@ -190,9 +198,6 @@ exec_register(int argc, char **argv)
 			pkg_set(pkg, PKG_WWW, "UNKNOWN");
 		}
 		regfree(&preg);
-	} else {
-		pkg_set(pkg, PKG_WWW, www);
-		free(www);
 	}
 
 	ret += ports_parse_plist(pkg, plist, input_path);

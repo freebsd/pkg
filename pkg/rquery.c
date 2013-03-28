@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
+ * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -48,11 +48,13 @@ static struct query_flags accepted_rquery_flags[] = {
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
 	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
-	{ 'B', "",		1, PKG_LOAD_SHLIBS },
-	{ '?', "drCOLB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
-	{ '#', "drCOLB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ 'B', "",		1, PKG_LOAD_SHLIBS_REQUIRED },
+	{ 'b', "",		1, PKG_LOAD_SHLIBS_PROVIDED },
+	{ '?', "drCOLBb",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ '#', "drCOLBb",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },
 	{ 'n', "",		0, PKG_LOAD_BASIC },
+	{ 'e', "",		0, PKG_LOAD_BASIC },
 	{ 'v', "",		0, PKG_LOAD_BASIC },
 	{ 'o', "",		0, PKG_LOAD_BASIC },
 	{ 'R', "",		0, PKG_LOAD_BASIC },
@@ -61,7 +63,7 @@ static struct query_flags accepted_rquery_flags[] = {
 	{ 'c', "",		0, PKG_LOAD_BASIC },
 	{ 'w', "",		0, PKG_LOAD_BASIC },
 	{ 'l', "",		0, PKG_LOAD_BASIC },
-	{ 'M', "",		0, PKG_LOAD_BASIC },
+	{ 'M', "",		0, PKG_LOAD_BASIC }
 };
 
 void
@@ -92,9 +94,13 @@ exec_rquery(int argc, char **argv)
 	struct sbuf *sqlcond = NULL;
 	const unsigned int q_flags_len = (sizeof(accepted_rquery_flags)/sizeof(accepted_rquery_flags[0]));
 	const char *reponame = NULL;
+	bool auto_update;
 	bool onematched = false;
+	bool old_quiet;
 
-	while ((ch = getopt(argc, argv, "agixe:r:")) != -1) {
+	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
+
+	while ((ch = getopt(argc, argv, "agixe:r:U")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -114,6 +120,9 @@ exec_rquery(int argc, char **argv)
 			break;
 		case 'r':
 			reponame = optarg;
+			break;
+		case 'U':
+			auto_update = false;
 			break;
 		default:
 			usage_rquery();
@@ -151,10 +160,15 @@ exec_rquery(int argc, char **argv)
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to query package database");
 		return (EX_NOPERM);
-	} else if (ret == EPKG_ENODB) {
-		return (EX_OK);
 	} else if (ret != EPKG_OK)
 		return (EX_IOERR);
+
+	/* first update the remote repositories if needed */
+	old_quiet = quiet;
+	quiet = true;
+	if (auto_update && (ret = pkgcli_update(false)) != EPKG_OK)
+		return (ret);
+	quiet = old_quiet;
 
 	ret = pkgdb_open(&db, PKGDB_REMOTE);
 	if (ret != EPKG_OK)
@@ -193,8 +207,8 @@ exec_rquery(int argc, char **argv)
 
 			pkgdb_it_free(it);
 		}
-		if (!onematched)
-			retcode = EX_SOFTWARE;
+		if (!onematched && retcode == EX_OK)
+			retcode = EX_UNAVAILABLE;
 	}
 
 	pkg_free(pkg);

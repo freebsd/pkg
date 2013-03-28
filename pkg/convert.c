@@ -243,9 +243,10 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 			if (strcmp(dp->d_name, ".") == 0 ||
 			    strcmp(dp->d_name, "..") == 0)
 				continue;
-			if (p == NULL)
-				pkg_new(&p, PKG_OLD_FILE);
-			else
+			if (p == NULL) {
+				if (pkg_new(&p, PKG_OLD_FILE) != EPKG_OK)
+					err(EX_OSERR, "malloc");
+			} else
 				pkg_reset(p, PKG_OLD_FILE);
 			printf("Converting %s...\n", dp->d_name);
 			snprintf(path, MAXPATHLEN, "%s/%s", pkg_add_dbdir, dp->d_name);
@@ -265,7 +266,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 }
 
 int
-exec_convert(int argc, char **argv)
+exec_convert(__unused int argc, __unused char **argv)
 {
 	int ch;
 	bool revert = false;

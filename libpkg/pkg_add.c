@@ -79,7 +79,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		 * conf1.cfg.pkgconf
 		 */
 		if (is_conf_file(pathname, path, sizeof(path))
-		    && lstat(path, &st) == ENOENT) {
+		    && lstat(path, &st) == -1 && errno == ENOENT) {
 			archive_entry_set_pathname(ae, path);
 			ret = archive_read_extract(a,ae, EXTRACT_ARCHIVE_FLAGS);
 			if (ret != ARCHIVE_OK) {
@@ -154,6 +154,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	const char	*arch;
 	const char	*myarch;
 	const char	*origin;
+	const char	*name;
 	struct archive	*a;
 	struct archive_entry *ae;
 	struct pkg	*pkg = NULL;
@@ -192,14 +193,14 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	}
 
 	if (flags & PKG_ADD_AUTOMATIC)
-		pkg_set(pkg, PKG_AUTOMATIC, true);
+		pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
 
 	/*
 	 * Check the architecture
 	 */
 
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
-	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin);
+	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin, PKG_NAME, &name);
 
 	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH &&
 	    strncmp(arch, myarch, strlen(myarch)) != 0) {
@@ -215,12 +216,18 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * Check if the package is already installed
 	 */
 
-	ret = pkg_is_installed(db, origin);
+	ret = pkg_try_installed(db, origin, &pkg_inst, PKG_LOAD_BASIC);
 	if (ret == EPKG_OK) {
-		pkg_emit_already_installed(pkg_inst);
-		pkg_free(pkg_inst);
-		retcode = EPKG_INSTALLED;
-		goto cleanup;
+		if ((flags & PKG_FLAG_FORCE) == 0) {
+			pkg_emit_already_installed(pkg_inst);
+			retcode = EPKG_INSTALLED;
+			pkg_free(pkg_inst);
+			goto cleanup;
+		}
+		else {
+			pkg_emit_notice("package %s is already installed, forced install", name);
+			pkg_free(pkg_inst);
+		}
 	} else if (ret != EPKG_END) {
 		retcode = ret;
 		goto cleanup;
@@ -262,10 +269,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
-	if ((flags & PKG_ADD_UPGRADE) == 0)
-		retcode = pkgdb_register_pkg(db, pkg, 0);
-	else
-		retcode = pkgdb_register_pkg(db, pkg, 1);
+	retcode = pkgdb_register_pkg(db, pkg, flags & PKG_ADD_UPGRADE, flags & PKG_FLAG_FORCE);
 
 	if (retcode != EPKG_OK)
 		goto cleanup;
@@ -324,6 +328,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 		archive_read_free(a);
 
 	pkg_free(pkg);
+	pkg_free(pkg_inst);
 
 	return (retcode);
 }

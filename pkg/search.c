@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -52,25 +53,26 @@ static const cliopt search_label[] = {
 };
 
 static const cliopt modifiers[] = {
-	{ "arch",         'a'  },
-	{ "categories",   'C'  },
-	{ "comment",      'c'  },
-	{ "depends-on",   'd'  },
-	{ "description",  'D'  },
-	{ "full",         'f'  },
-	{ "licenses",     'l'  },
-	{ "maintainer",   'm'  },
-	{ "name",         'n'  },
-	{ "options",      'o'  },
-	{ "pkg-size",	  'P'  },
-	{ "prefix",       'p'  },
-	{ "repository",   'R'  },
-	{ "required-by",  'r'  },
-	{ "shared-libs",  'S'  },
-	{ "size",         's'  },
-	{ "url",          'u'  },
-	{ "www",          'w'  },
-	{ NULL,           '\0' },
+	{ "arch",                 'a'  },
+	{ "categories",           'C'  },
+	{ "comment",              'c'  },
+	{ "depends-on",           'd'  },
+	{ "description",          'D'  },
+	{ "full",                 'f'  },
+	{ "licenses",             'l'  },
+	{ "maintainer",           'm'  },
+	{ "name",                 'n'  },
+	{ "options",              'o'  },
+	{ "pkg-size",	          'P'  },
+	{ "prefix",               'p'  },
+	{ "repository",           'R'  },
+	{ "required-by",          'r'  },
+	{ "shared-libs-required", 'B'  },
+	{ "shared-libs-provided", 'b'  },
+	{ "size",                 's'  },
+	{ "url",                  'u'  },
+	{ "www",                  'w'  },
+	{ NULL,                   '\0' },
 };	
 
 static char
@@ -178,8 +180,11 @@ modifier_opt(const char *optionarg)
 	case 'r':
 		opt = INFO_RDEPS;
 		break;
-	case 'S':
-		opt = INFO_SHLIBS;
+	case 'B':
+		opt = INFO_SHLIBS_REQUIRED;
+		break;
+	case 'b':
+		opt = INFO_SHLIBS_PROVIDED;
 		break;
 	case 's':
 		opt = INFO_FLATSIZE;
@@ -207,7 +212,7 @@ usage_search(void)
 	int i, n;
 
 	fprintf(stderr, "usage: pkg search [-egix] [-r repo] [-S search] "
-	    "[-L label] [-M mod]... <pkg-name>\n");
+	    "[-L label] [-Q mod]... <pkg-name>\n");
 	fprintf(stderr, "       pkg search [-cDdefgiopqx] [-r repo] "
 	    "<pattern>\n\n");
 	n = fprintf(stderr, "       Search and Label options:");
@@ -242,8 +247,12 @@ exec_search(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 	bool atleastone = false;
+	bool auto_update;
+	bool old_quiet;
 
-	while ((ch = getopt(argc, argv, "cDdefgiL:opqQ:r:S:sx")) != -1) {
+	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
+
+	while ((ch = getopt(argc, argv, "cDdefgiL:opqQ:r:S:sUx")) != -1) {
 		switch (ch) {
 		case 'c':	/* Same as -S comment */
 			search = search_label_opt("comment");
@@ -290,6 +299,9 @@ exec_search(int argc, char **argv)
 		case 's':	/* Same as -Q size */
 			opt |= modifier_opt("size");
 			break;
+		case 'U':
+			auto_update = false;
+			break;
 		case 'x':
 			match = MATCH_REGEX;
 			break;
@@ -309,7 +321,7 @@ exec_search(int argc, char **argv)
 
 	pattern = argv[0];
 	if (pattern[0] == '\0') {
-		fprintf(stderr, "Pattern must not be empty!\n");
+		fprintf(stderr, "Pattern must not be empty.\n");
 		return (EX_USAGE);
 	}
 	if (search == FIELD_NONE) {
@@ -340,6 +352,20 @@ exec_search(int argc, char **argv)
 		opt |= INFO_TAG_NAMEVER|INFO_DESCR;
 		break;
 	}
+
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
+	if (ret == EPKG_ENOACCESS) {
+		warnx("Insufficient privilege to query package database");
+		return (EX_NOPERM);
+	} else if (ret != EPKG_OK)
+		return (EX_IOERR);
+
+	/* first update the remote repositories if needed */
+	old_quiet = quiet;
+	quiet = true;
+	if (auto_update && (ret = pkgcli_update(false)) != EPKG_OK)
+		return (ret);
+	quiet = old_quiet;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);

@@ -34,7 +34,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef BUNDLED_YAML
 #include <yaml.h>
+#else
+#include <bsdyml.h>
+#endif
 
 #include "pkg.h"
 #include "private/event.h"
@@ -52,10 +56,11 @@
 #define PKG_USERS -9
 #define PKG_GROUPS -10
 #define PKG_DIRECTORIES -11
-#define PKG_SHLIBS -12
+#define PKG_SHLIBS_REQUIRED -12
+#define PKG_SHLIBS_PROVIDED -13
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
-static int pkg_set_flatsize_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+static int pkg_set_size_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_licenselogic_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_deps_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
 static int pkg_set_files_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
@@ -77,11 +82,14 @@ static struct manifest_key {
 	{ "comment", PKG_COMMENT, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "maintainer", PKG_MAINTAINER, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "prefix", PKG_PREFIX, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "path", PKG_REPOPATH, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "sum", PKG_CKSUM, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "deps", PKG_DEPS, YAML_MAPPING_NODE, parse_mapping},
 	{ "files", PKG_FILES, YAML_MAPPING_NODE, parse_mapping},
 	{ "dirs", PKG_DIRS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "directories", PKG_DIRECTORIES, YAML_MAPPING_NODE, parse_mapping},
-	{ "flatsize", -1, YAML_SCALAR_NODE, pkg_set_flatsize_from_node},
+	{ "pkgsize", PKG_NEW_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
+	{ "flatsize", PKG_FLATSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
 	{ "licenselogic", -1, YAML_SCALAR_NODE, pkg_set_licenselogic_from_node},
 	{ "licenses", PKG_LICENSES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "desc", PKG_DESC, YAML_SCALAR_NODE, pkg_set_from_node},
@@ -96,7 +104,8 @@ static struct manifest_key {
 	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
 	/* compatibility with old format */
 	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping},
-	{ "shlibs", PKG_SHLIBS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "shlibs_required", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "shlibs_provided", PKG_SHLIBS_PROVIDED, YAML_SEQUENCE_NODE, parse_sequence},
 	{ NULL, -99, -99, NULL}
 };
 
@@ -201,19 +210,19 @@ pkg_set_from_node(struct pkg *pkg, yaml_node_t *val,
 }
 
 static int
-pkg_set_flatsize_from_node(struct pkg *pkg, yaml_node_t *val,
-    __unused yaml_document_t *doc, __unused int attr)
+pkg_set_size_from_node(struct pkg *pkg, yaml_node_t *val,
+    __unused yaml_document_t *doc, int attr)
 {
-	int64_t flatsize;
+	int64_t size;
 	const char *errstr = NULL;
-	flatsize = strtonum(val->data.scalar.value, 0, INT64_MAX, &errstr);
+	size = strtonum(val->data.scalar.value, 0, INT64_MAX, &errstr);
 	if (errstr) {
 		pkg_emit_error("Unable to convert %s to int64: %s",
 					   val->data.scalar.value, errstr);
 		return (EPKG_FATAL);
 	}
 
-	return (pkg_set(pkg, PKG_FLATSIZE, flatsize));
+	return (pkg_set(pkg, attr, size));
 }
 static int
 pkg_set_licenselogic_from_node(struct pkg *pkg, yaml_node_t *val,
@@ -282,11 +291,18 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
 			else
 				pkg_emit_error("Skipping malformed dirs");
 			break;
-		case PKG_SHLIBS:
+		case PKG_SHLIBS_REQUIRED:
 			if (!is_valid_yaml_scalar(val))
-				pkg_emit_error("Skipping malformed shared library");
+				pkg_emit_error("Skipping malformed required shared library");
 			else
-				pkg_addshlib(pkg, val->data.scalar.value);
+				pkg_addshlib_required(pkg, val->data.scalar.value);
+			break;
+		case PKG_SHLIBS_PROVIDED:
+			if (!is_valid_yaml_scalar(val))
+				pkg_emit_error("Skipping malformed provided shared library");
+			else
+				pkg_addshlib_provided(pkg, val->data.scalar.value);
+			break;
 		}
 		++item;
 	}
@@ -674,11 +690,38 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 	return retcode;
 }
 
+struct pkg_yaml_emitter_data {
+	SHA256_CTX *sign_ctx;
+	union {
+		struct sbuf *sbuf;
+		FILE *file;
+		char *dest;
+	} data;
+};
+
 static int
 yaml_write_buf(void *data, unsigned char *buffer, size_t size)
 {
-	struct sbuf *dest = (struct sbuf *)data;
-	sbuf_bcat(dest, buffer, size);
+	struct pkg_yaml_emitter_data *dest = (struct pkg_yaml_emitter_data *)data;
+
+	sbuf_bcat(dest->data.sbuf, buffer, size);
+	if (dest->sign_ctx != NULL)
+		SHA256_Update(dest->sign_ctx, buffer, size);
+
+	return (1);
+}
+
+static int
+yaml_write_file(void *data, unsigned char *buffer, size_t size)
+{
+	struct pkg_yaml_emitter_data *dest = (struct pkg_yaml_emitter_data *)data;
+
+	if (fwrite(buffer, size, 1, dest->data.file) != 1)
+		return -1;
+
+	if (dest->sign_ctx != NULL)
+		SHA256_Update(dest->sign_ctx, buffer, size);
+
 	return (1);
 }
 
@@ -690,7 +733,7 @@ manifest_append_seqval(yaml_document_t *doc, int parent, int *seq,
 
 	if (*seq == -1) {
 		*seq = yaml_document_add_sequence(doc, NULL,
-		    YAML_FLOW_SEQUENCE_STYLE);
+		    YAML_BLOCK_SEQUENCE_STYLE);
 		scalar = yaml_document_add_scalar(doc, NULL,
 		    __DECONST(yaml_char_t *, title), strlen(title),
 		    YAML_PLAIN_SCALAR_STYLE);
@@ -706,10 +749,60 @@ manifest_append_seqval(yaml_document_t *doc, int parent, int *seq,
 	yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t *, name),    \
 	    strlen(name), YAML_##style##_SCALAR_STYLE)
 
+#define manifest_append_kv(map, key, val, style) do {			\
+	int key_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
+	int val_obj = YAML_ADD_SCALAR(&doc, val, style);		\
+	yaml_document_append_mapping_pair(&doc, map, key_obj, val_obj);	\
+} while (0)
+
+
 int
-pkg_emit_manifest(struct pkg *pkg, char **dest)
+pkg_emit_filelist(struct pkg *pkg, FILE *f)
 {
 	yaml_emitter_t emitter;
+	yaml_document_t doc;
+
+	struct pkg_file *file = NULL;
+
+	const char *name, *origin, *version;
+
+	int mapping;
+	int seq;
+	struct sbuf *b = NULL;
+	int rc = EPKG_OK;
+
+	yaml_emitter_initialize(&emitter);
+	yaml_emitter_set_unicode(&emitter, 1);
+	yaml_emitter_set_output_file(&emitter, f);
+	yaml_document_initialize(&doc, NULL, NULL, NULL, 0, 1);
+	mapping = yaml_document_add_mapping(&doc, NULL,
+	    YAML_BLOCK_MAPPING_STYLE);
+
+	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin, PKG_VERSION, &version);
+	manifest_append_kv(mapping, "origin", origin, PLAIN);
+	manifest_append_kv(mapping, "name", name, PLAIN);
+	manifest_append_kv(mapping, "version", version, PLAIN);
+
+	seq = -1;
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		urlencode(pkg_file_path(file), &b);
+		manifest_append_seqval(&doc, mapping, &seq, "files", sbuf_data(b));
+	}
+
+	if (!yaml_emitter_dump(&emitter, &doc))
+		rc = EPKG_FATAL;
+
+	if (b != NULL)
+		sbuf_delete(b);
+
+	yaml_emitter_delete(&emitter);
+
+	return (rc);
+}
+
+static int
+emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
+{
 	yaml_document_t doc;
 	char tmpbuf[BUFSIZ];
 	struct pkg_dep *dep = NULL;
@@ -730,22 +823,12 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	int i;
 /*	int users = -1;
 	int groups = -1;*/
-	struct sbuf *destbuf = sbuf_new_auto();
 	const char *comment, *desc, *infos, *message, *name, *pkgarch;
 	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
+	const char *repopath, *pkgsum;
 	const char *script_types = NULL;
 	lic_t licenselogic;
-	int64_t flatsize;
-
-	yaml_emitter_initialize(&emitter);
-	yaml_emitter_set_unicode(&emitter, 1);
-	yaml_emitter_set_output(&emitter, yaml_write_buf, destbuf);
-
-#define manifest_append_kv(map, key, val, style) do {			\
-	int key_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
-	int val_obj = YAML_ADD_SCALAR(&doc, val, style);		\
-	yaml_document_append_mapping_pair(&doc, map, key_obj, val_obj);	\
-} while (0)
+	int64_t flatsize, pkgsize;
 
 #define manifest_append_map(id, map, key, block) do {			\
 	int scalar_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
@@ -762,7 +845,8 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
-	    PKG_VERSION, &version, PKG_INFOS, &infos);
+	    PKG_VERSION, &version, PKG_INFOS, &infos, PKG_REPOPATH, &repopath,
+	    PKG_CKSUM, &pkgsum, PKG_NEW_PKGSIZE, &pkgsize);
 	manifest_append_kv(mapping, "name", name, PLAIN);
 	manifest_append_kv(mapping, "version", version, PLAIN);
 	manifest_append_kv(mapping, "origin", pkgorigin, PLAIN);
@@ -771,6 +855,11 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 	manifest_append_kv(mapping, "www", www, PLAIN);
 	manifest_append_kv(mapping, "maintainer", pkgmaintainer, PLAIN);
 	manifest_append_kv(mapping, "prefix", prefix, PLAIN);
+	if (repopath != NULL)
+		manifest_append_kv(mapping, "path", repopath, PLAIN);
+	if (pkgsum != NULL)
+		manifest_append_kv(mapping, "sum", pkgsum, PLAIN);
+
 	switch (licenselogic) {
 	case LICENSE_SINGLE:
 		manifest_append_kv(mapping, "licenselogic", "single", PLAIN);
@@ -790,6 +879,10 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 
 	snprintf(tmpbuf, BUFSIZ, "%" PRId64, flatsize);
 	manifest_append_kv(mapping, "flatsize", tmpbuf, PLAIN);
+	if (pkgsize > 0) {
+		snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkgsize);
+	manifest_append_kv(mapping, "pkgsize", tmpbuf, PLAIN);
+	}
 	urlencode(desc, &tmpsbuf);
 	manifest_append_kv(mapping, "desc", sbuf_get(tmpsbuf), LITERAL);
 
@@ -820,8 +913,13 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		    pkg_group_name(group));
 
 	seq = -1;
-	while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "shlibs",
+	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "shlibs_required",
+		    pkg_shlib_name(shlib));
+
+	seq = -1;
+	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "shlibs_provided",
 		    pkg_shlib_name(shlib));
 
 	map = -1;
@@ -832,70 +930,72 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		    pkg_option_value(option), PLAIN);
 	}
 
-	map = -1;
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		const char *pkg_sum = pkg_file_cksum(file);
+	if (!compact) {
+		map = -1;
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			const char *pkg_sum = pkg_file_cksum(file);
 
-		if (pkg_sum == NULL || pkg_sum[0] == '\0')
-			pkg_sum = "-";
+			if (pkg_sum == NULL || pkg_sum[0] == '\0')
+				pkg_sum = "-";
 
-		if (map == -1)
-			manifest_append_map(map, mapping, "files", BLOCK);
-		urlencode(pkg_file_path(file), &tmpsbuf);
-		manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
-	}
-
-	seq = -1;
-	map = -1;
-	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		const char *try_str;
-		if (map == -1)
-			manifest_append_map(map, mapping, "directories", BLOCK);
-		urlencode(pkg_dir_path(dir), &tmpsbuf);
-		try_str = pkg_dir_try(dir) ? "y" : "n";
-		manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
-	}
-
-	map = -1;
-	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
-		if (map == -1)
-			manifest_append_map(map, mapping, "scripts", BLOCK);
-
-		if (pkg_script_get(pkg, i) == NULL)
-			continue;
-
-		switch (i) {
-		case PKG_SCRIPT_PRE_INSTALL:
-			script_types = "pre-install";
-			break;
-		case PKG_SCRIPT_INSTALL:
-			script_types = "install";
-			break;
-		case PKG_SCRIPT_POST_INSTALL:
-			script_types = "post-install";
-			break;
-		case PKG_SCRIPT_PRE_UPGRADE:
-			script_types = "pre-upgrade";
-			break;
-		case PKG_SCRIPT_UPGRADE:
-			script_types = "upgrade";
-			break;
-		case PKG_SCRIPT_POST_UPGRADE:
-			script_types = "post-upgrade";
-			break;
-		case PKG_SCRIPT_PRE_DEINSTALL:
-			script_types = "pre-deinstall";
-			break;
-		case PKG_SCRIPT_DEINSTALL:
-			script_types = "deinstall";
-			break;
-		case PKG_SCRIPT_POST_DEINSTALL:
-			script_types = "post-deinstall";
-			break;
+			if (map == -1)
+				manifest_append_map(map, mapping, "files", BLOCK);
+			urlencode(pkg_file_path(file), &tmpsbuf);
+			manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
 		}
-		urlencode(pkg_script_get(pkg, i), &tmpsbuf);
-		manifest_append_kv(map, script_types, sbuf_get(tmpsbuf),
-		    LITERAL);
+
+		seq = -1;
+		map = -1;
+		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+			const char *try_str;
+			if (map == -1)
+				manifest_append_map(map, mapping, "directories", BLOCK);
+			urlencode(pkg_dir_path(dir), &tmpsbuf);
+			try_str = pkg_dir_try(dir) ? "y" : "n";
+			manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
+		}
+
+		map = -1;
+		for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
+			if (map == -1)
+				manifest_append_map(map, mapping, "scripts", BLOCK);
+
+			if (pkg_script_get(pkg, i) == NULL)
+				continue;
+
+			switch (i) {
+			case PKG_SCRIPT_PRE_INSTALL:
+				script_types = "pre-install";
+				break;
+			case PKG_SCRIPT_INSTALL:
+				script_types = "install";
+				break;
+			case PKG_SCRIPT_POST_INSTALL:
+				script_types = "post-install";
+				break;
+			case PKG_SCRIPT_PRE_UPGRADE:
+				script_types = "pre-upgrade";
+				break;
+			case PKG_SCRIPT_UPGRADE:
+				script_types = "upgrade";
+				break;
+			case PKG_SCRIPT_POST_UPGRADE:
+				script_types = "post-upgrade";
+				break;
+			case PKG_SCRIPT_PRE_DEINSTALL:
+				script_types = "pre-deinstall";
+				break;
+			case PKG_SCRIPT_DEINSTALL:
+				script_types = "deinstall";
+				break;
+			case PKG_SCRIPT_POST_DEINSTALL:
+				script_types = "post-deinstall";
+				break;
+			}
+			urlencode(pkg_script_get(pkg, i), &tmpsbuf);
+			manifest_append_kv(map, script_types, sbuf_get(tmpsbuf),
+			    LITERAL);
+		}
 	}
 	if (infos != NULL && *infos != '\0') {
 		urlencode(infos, &tmpsbuf);
@@ -909,14 +1009,111 @@ pkg_emit_manifest(struct pkg *pkg, char **dest)
 		    LITERAL);
 	}
 
-	if (!yaml_emitter_dump(&emitter, &doc))
+	if (!yaml_emitter_dump(emitter, &doc))
 		rc = EPKG_FATAL;
 
 	sbuf_free(tmpsbuf);
-	sbuf_finish(destbuf);
-	*dest = strdup(sbuf_get(destbuf));
-	sbuf_delete(destbuf);
 
-	yaml_emitter_delete(&emitter);
 	return (rc);
 }
+
+static void
+pkg_emit_manifest_digest(const unsigned char *digest, size_t len, char *hexdigest)
+{
+	unsigned int i;
+
+	for (i = 0; i < len; i ++)
+		sprintf(hexdigest + (i * 2), "%02x", digest[i]);
+
+	hexdigest[len * 2] = '\0';
+}
+
+int
+pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact, char **pdigest)
+{
+	yaml_emitter_t emitter;
+	struct pkg_yaml_emitter_data emitter_data;
+	unsigned char digest[SHA256_DIGEST_LENGTH];
+	int rc;
+
+	if (pdigest != NULL) {
+		*pdigest = malloc(sizeof(digest) * 2 + 1);
+		emitter_data.sign_ctx = malloc(sizeof(SHA256_CTX));
+		SHA256_Init(emitter_data.sign_ctx);
+	}
+	else {
+		emitter_data.sign_ctx = NULL;
+	}
+
+	yaml_emitter_initialize(&emitter);
+	yaml_emitter_set_unicode(&emitter, 1);
+	emitter_data.data.file = f;
+	yaml_emitter_set_output(&emitter, yaml_write_file, &emitter_data);
+
+	rc = emit_manifest(pkg, &emitter, compact);
+
+	if (emitter_data.sign_ctx != NULL) {
+		SHA256_Final(digest, emitter_data.sign_ctx);
+		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
+		free(emitter_data.sign_ctx);
+	}
+	yaml_emitter_delete(&emitter);
+
+	return (rc);
+}
+
+int
+pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, bool compact, char **pdigest)
+{
+	yaml_emitter_t emitter;
+	struct pkg_yaml_emitter_data emitter_data;
+	unsigned char digest[SHA256_DIGEST_LENGTH];
+	int rc;
+
+	if (pdigest != NULL) {
+		*pdigest = malloc(sizeof(digest) * 2 + 1);
+		emitter_data.sign_ctx = malloc(sizeof(SHA256_CTX));
+		SHA256_Init(emitter_data.sign_ctx);
+	}
+	else {
+		emitter_data.sign_ctx = NULL;
+	}
+
+	yaml_emitter_initialize(&emitter);
+	yaml_emitter_set_unicode(&emitter, 1);
+	emitter_data.data.sbuf = b;
+	yaml_emitter_set_output(&emitter, yaml_write_buf, &emitter_data);
+
+	rc = emit_manifest(pkg, &emitter, compact);
+
+	if (emitter_data.sign_ctx != NULL) {
+		SHA256_Final(digest, emitter_data.sign_ctx);
+		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
+		free(emitter_data.sign_ctx);
+	}
+
+	yaml_emitter_delete(&emitter);
+
+	return (rc);
+}
+
+int
+pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact, char **pdigest)
+{
+	struct sbuf *b = sbuf_new_auto();
+	int rc;
+
+	rc = pkg_emit_manifest_sbuf(pkg, b, compact, pdigest);
+
+	if (rc != EPKG_OK) {
+		sbuf_delete(b);
+		return (rc);
+	}
+
+	sbuf_finish(b);
+	*dest = strdup(sbuf_get(b));
+	sbuf_delete(b);
+
+	return (rc);
+}
+

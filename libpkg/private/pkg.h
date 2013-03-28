@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -40,7 +41,11 @@
 #include <uthash.h>
 #include <utlist.h>
 
+#ifdef BUNDLED_YAML
 #include <yaml.h>
+#else
+#include <bsdyml.h>
+#endif
 #include "private/utils.h"
 
 #define PKG_NUM_FIELDS 18
@@ -65,8 +70,7 @@
 	struct type *hf1, *hf2;                    \
 	HASH_ITER(hh, data, hf1, hf2) {            \
 		HASH_DEL(data, hf1);               \
-		if (free_func != NULL)             \
-			free_func(hf1);           \
+		free_func(hf1);                    \
 	}                                          \
 	data = NULL;                               \
 } while (0)
@@ -75,8 +79,7 @@
 	struct type *l1, *l2;                 \
 	LL_FOREACH_SAFE(head, l1, l2) {       \
 		LL_DELETE(head, l1);          \
-		if (free_func != NULL)        \
-			free_func(l1);        \
+		free_func(l1);                \
 	}                                     \
 	head = NULL;                          \
 } while (0)
@@ -112,7 +115,9 @@ struct pkg {
 	struct pkg_option *options;
 	struct pkg_user *users;
 	struct pkg_group *groups;
-	struct pkg_shlib *shlibs;
+	struct pkg_shlib *shlibs_required;
+	struct pkg_shlib *shlibs_provided;
+	struct pkg_abstract *abstract_metadata;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -212,7 +217,7 @@ struct pkg_shlib {
 
 struct pkg_config {
 	int id;
-	uint8_t type;
+	pkg_config_t type;
 	const char *key;
 	const void *def;
 	bool fromenv;
@@ -236,6 +241,12 @@ struct pkg_config_kv {
 struct pkg_config_value {
 	char *value;
 	UT_hash_handle hh;
+};
+
+struct pkg_abstract {
+	struct sbuf	*key;
+	struct sbuf	*value;
+	UT_hash_handle	 hh;
 };
 
 /* sql helpers */
@@ -270,7 +281,7 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_UPGRADE (1<<1)
 #define PKG_DELETE_NOSCRIPT (1<<2)
 
-int pkg_fetch_file_to_fd(const char *url, int dest, time_t t);
+int pkg_fetch_file_to_fd(const char *url, int dest, time_t *t);
 int pkg_repo_fetch(struct pkg *pkg);
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
@@ -347,6 +358,7 @@ int pkg_check_repo_version(struct pkgdb *db, const char *database);
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);
 int get_pragma(sqlite3 *, const char *sql, int64_t *res);
+int get_sql_string(sqlite3 *, const char *sql, char **res);
 
 int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg);
@@ -359,14 +371,19 @@ int pkgdb_load_category(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_license(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_shlib(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
 
-int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete);
-int pkgdb_update_shlibs(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
+int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 int pkg_register_shlibs(struct pkg *pkg);
 
 void pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key);
+
+int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, bool, char **);
+int pkg_emit_filelist(struct pkg *, FILE *);
 
 #endif

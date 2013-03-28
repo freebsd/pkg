@@ -41,7 +41,7 @@
 void
 usage_shlib(void)
 {
-	fprintf(stderr, "usage: pkg shlib <library>\n\n");
+	fprintf(stderr, "usage: pkg shlib [P|R] <library>\n\n");
 	fprintf(stderr, "<library> should be a filename without leading path.\n");
 	fprintf(stderr, "For more information see 'pkg help shlib'.\n");
 }
@@ -69,53 +69,121 @@ sanitize(char *target, const char *source, size_t size)
 	return (rc);
 }
 
-int
-exec_shlib(int argc, char **argv)
+static int
+pkgs_providing_lib(struct pkgdb *db, const char *libname)
 {
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	char libname[MAXPATHLEN + 1];
-	int ret = EPKG_OK, retcode = EPKG_OK, count = 0;
-	const char *name, *version;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	const char	*name, *version;
+	int		 ret = EPKG_OK; 
+	int		 count = 0;
 
-	if (argc != 2) {
-		usage_shlib();
-		return (EX_USAGE);
-	}
-
-	if (sanitize(libname, argv[1], sizeof(libname)) == NULL) {
-		usage_shlib();
-		return (EX_USAGE);
-	}
-
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkgdb_close(db);
-		return (EX_IOERR);
-	}
-
-	if ((it = pkgdb_query_shlib(db, libname)) == NULL) {
-		return (EX_IOERR);
+	if ((it = pkgdb_query_shlib_provided(db, libname)) == NULL) {
+		return (EPKG_FATAL);
 	}
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		if (count == 0)
-			printf("%s is linked to by the folowing packages:\n", libname);
+			printf("%s is provided by the following packages:\n",
+			       libname);
 		count++;
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		printf("%s-%s\n", name, version);
 	}
 
-        if (ret != EPKG_END) {
-		retcode = EPKG_WARN;
-	} else if (count == 0) {
-		printf("%s was not found in the database.\n", libname);
-		retcode = EPKG_WARN;
+	if (ret == EPKG_END) {
+		if (count == 0)
+			printf("No packages provide %s.\n", libname);
+		ret = EPKG_OK;
 	}
-		
+
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 
+	return (ret);
+}
+
+static int
+pkgs_requiring_lib(struct pkgdb *db, const char *libname)
+{
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	const char	*name, *version;
+	int		 ret = EPKG_OK; 
+	int		 count = 0;
+
+	if ((it = pkgdb_query_shlib_required(db, libname)) == NULL) {
+		return (EPKG_FATAL);
+	}
+
+	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+		if (count == 0)
+			printf("%s is linked to by the following packages:\n",
+			       libname);
+		count++;
+		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+		printf("%s-%s\n", name, version);
+	}
+
+	if (ret == EPKG_END) {
+		if (count == 0)
+			printf("No packages require %s.\n", libname);
+		ret = EPKG_OK;
+	}
+
+	pkg_free(pkg);
+	pkgdb_it_free(it);
+
+	return (ret);
+}
+
+int
+exec_shlib(int argc, char **argv)
+{
+	struct pkgdb	*db = NULL;
+	char		 libname[MAXPATHLEN + 1];
+	int		 retcode = EPKG_OK;
+	int		 ch;
+	bool		 provides_only = false;
+	bool		 requires_only = false;
+
+	while ((ch = getopt(argc, argv, "PR")) != -1) {
+		switch (ch) {
+		case 'P':
+			provides_only = true;
+			break;
+		case 'R':
+			requires_only = true;
+			break;
+		default:
+			usage_shlib();
+			return (EX_USAGE);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc < 1 || (provides_only && requires_only)) {
+		usage_shlib();
+		return (EX_USAGE);
+	}
+
+	if (sanitize(libname, argv[0], sizeof(libname)) == NULL) {
+		usage_shlib();
+		return (EX_USAGE);
+	}
+
+	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
+
+	if (retcode == EPKG_OK && !provides_only)
+		retcode = pkgs_providing_lib(db, libname);
+
+	if (retcode == EPKG_OK && !requires_only)
+		retcode = pkgs_requiring_lib(db, libname);
+
+	if (retcode != EPKG_OK)
+		retcode = (EX_IOERR);
+		
 	pkgdb_close(db);
 	return (retcode);
 }

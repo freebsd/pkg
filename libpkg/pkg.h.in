@@ -36,6 +36,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <sys/sbuf.h>
+#include <stringlist.h>
 #include <openssl/pem.h>
 
 /* The expected name of the pkg(1) binary executable. */
@@ -218,6 +219,7 @@ typedef enum {
 	PKG_LOCKED,
 	PKG_ROWID,
 	PKG_TIME,
+	PKG_DIGEST
 } pkg_attr;
 
 typedef enum {
@@ -261,7 +263,8 @@ typedef enum {
 	PKG_DIRS,
 	PKG_USERS,
 	PKG_GROUPS,
-	PKG_SHLIBS
+	PKG_SHLIBS_REQUIRED,
+	PKG_SHLIBS_PROVIDED,
 } pkg_list;
 
 /**
@@ -298,6 +301,7 @@ typedef enum _pkg_flags {
 	PKG_FLAG_NOSCRIPT = (1U << 5),
 	PKG_FLAG_PKG_VERSION_TEST = (1U << 6),
 	PKG_FLAG_UPGRADES_FOR_INSTALLED = (1U << 7),
+	PKG_FLAG_SKIP_INSTALL = (1U << 8)
 } pkg_flags;
 
 typedef enum _pkg_config_key {
@@ -330,6 +334,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_FTP_PROXY,
 	PKG_CONFIG_NAMESERVER,
 	PKG_CONFIG_EVENT_PIPE,
+	PKG_CONFIG_FETCH_TIMEOUT,
 } pkg_config_key;
 
 typedef enum {
@@ -568,7 +573,14 @@ int pkg_options(struct pkg *, struct pkg_option **option);
  * @param shlib must be set to NULL for the first call.
  * @return An error code
  */
-int pkg_shlibs(struct pkg *pkg, struct pkg_shlib **shlib);
+int pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **shlib);
+
+/**
+ * Iterates over the shared libraries provided by the package.
+ * @param shlib must be set to NULL for the first call.
+ * @return An error code
+ */
+int pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **shlib);
 
 /**
  * Iterate over all of the files within the package pkg, ensuring the
@@ -726,10 +738,16 @@ int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
 int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
 
 /**
- * Add a shared library
+ * Add a shared library used by this package
  * @return An error code.
  */
-int pkg_addshlib(struct pkg *pkg, const char *name);
+int pkg_addshlib_required(struct pkg *pkg, const char *name);
+
+/**
+ * Add a shared library provided by this package
+ * @return An error code.
+ */
+int pkg_addshlib_provided(struct pkg *pkg, const char *name);
 
 /**
  * Parse a manifest and set the attributes of pkg accordingly.
@@ -743,9 +761,12 @@ int pkg_load_manifest_file(struct pkg *pkg, const char *fpath);
  * Emit a manifest according to the attributes of pkg.
  * @param buf A pointer which will hold the allocated buffer containing the
  * manifest. To be free'ed.
+ * @param pdigest A pointer that will hold digest of manifest produced, ignored
+ * if NULL. To be free'ed if not NULL.
  * @return An error code.
  */
-int pkg_emit_manifest(struct pkg *pkg, char **buf);
+int pkg_emit_manifest(struct pkg *pkg, char **buf, bool compact, char **pdigest);
+int pkg_emit_manifest_file(struct pkg*, FILE *, bool, char **pdigest);
 
 /* pkg_dep */
 const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
@@ -799,6 +820,20 @@ const char *pkg_shlib_name(struct pkg_shlib const * const);
 /**
  * @param db A pointer to a struct pkgdb object
  * @param origin Package origin
+ * @param pkg An allocated struct pkg or a pointer to a NULL pointer. In the
+ * last case, the function take care of the allocation.
+ * @param flags OR'ed PKG_LOAD_*
+ * @return EPKG_OK if the package is installed,
+ * and != EPKG_OK if the package is not installed or an error occurred
+ * Match will be case sensitive or insensitive depending on
+ * pkgdb_case_sensitive()
+ */
+int pkg_try_installed(struct pkgdb *db, const char *origin,
+		struct pkg **pkg, unsigned flags);
+
+/**
+ * @param db A pointer to a struct pkgdb object
+ * @param origin Package origin
  * @return EPKG_OK if the package is installed,
  * and != EPKG_OK if the package is not installed or an error occurred
  * Match will be case sensitive or insensitive depending on
@@ -810,13 +845,11 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
  * Create a repository database.
  * @param path The path where the repository live.
  * @param force If true, rebuild the repository catalogue from scratch
- * @param files If true, the file database will be created
  * @param callback A function which is called at every step of the process.
  * @param data A pointer which is passed to the callback.
  * @param sum An 65 long char array to receive the sha256 sum
  */
-int pkg_create_repo(char *path, bool force, bool files,
-    void (*callback)(struct pkg *, void *), void *);
+int pkg_create_repo(char *path, bool force, void (*callback)(struct pkg *, void *), void *);
 int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path);
 
 /**
@@ -896,23 +929,25 @@ struct pkgdb_it * pkgdb_search(struct pkgdb *db, const char *pattern,
 /**
  * @todo Return directly the struct pkg?
  */
-struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path);
+struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path, bool glob);
 
-struct pkgdb_it * pkgdb_query_shlib(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib);
+struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib);
 
-#define PKG_LOAD_BASIC		0
-#define PKG_LOAD_DEPS		(1U << 0)
-#define PKG_LOAD_RDEPS		(1U << 1)
-#define PKG_LOAD_FILES		(1U << 2)
-#define PKG_LOAD_SCRIPTS	(1U << 3)
-#define PKG_LOAD_OPTIONS	(1U << 4)
-#define PKG_LOAD_MTREE		(1U << 5)
-#define PKG_LOAD_DIRS		(1U << 6)
-#define PKG_LOAD_CATEGORIES	(1U << 7)
-#define PKG_LOAD_LICENSES	(1U << 8)
-#define PKG_LOAD_USERS		(1U << 9)
-#define PKG_LOAD_GROUPS		(1U << 10)
-#define PKG_LOAD_SHLIBS		(1U << 11)
+#define PKG_LOAD_BASIC			0
+#define PKG_LOAD_DEPS			(1U << 0)
+#define PKG_LOAD_RDEPS			(1U << 1)
+#define PKG_LOAD_FILES			(1U << 2)
+#define PKG_LOAD_SCRIPTS		(1U << 3)
+#define PKG_LOAD_OPTIONS		(1U << 4)
+#define PKG_LOAD_MTREE			(1U << 5)
+#define PKG_LOAD_DIRS			(1U << 6)
+#define PKG_LOAD_CATEGORIES		(1U << 7)
+#define PKG_LOAD_LICENSES		(1U << 8)
+#define PKG_LOAD_USERS			(1U << 9)
+#define PKG_LOAD_GROUPS			(1U << 10)
+#define PKG_LOAD_SHLIBS_REQUIRED	(1U << 11)
+#define PKG_LOAD_SHLIBS_PROVIDED	(1U << 12)
 /* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**
@@ -1094,6 +1129,16 @@ int ports_parse_plist(struct pkg *, char *, const char *);
 int pkg_copy_tree(struct pkg *, const char *src, const char *dest);
 
 /**
+ * Special structure to report about conflicts
+ */
+struct pkg_event_conflict {
+	char *name;
+	char *origin;
+	char *version;
+	struct pkg_event_conflict *next;
+};
+
+/**
  * Event type used to report progress or problems.
  */
 typedef enum {
@@ -1107,7 +1152,9 @@ typedef enum {
 	PKG_EVENT_FETCHING,
 	PKG_EVENT_INTEGRITYCHECK_BEGIN,
 	PKG_EVENT_INTEGRITYCHECK_FINISHED,
+	PKG_EVENT_INTEGRITYCHECK_CONFLICT,
 	PKG_EVENT_NEWPKGVERSION,
+	PKG_EVENT_NOTICE,
 	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
@@ -1139,6 +1186,9 @@ struct pkg_event {
 		struct {
 			char *msg;
 		} e_pkg_error;
+		struct {
+			char *msg;
+		} e_pkg_notice;
 		struct {
 			const char *url;
 			off_t total;
@@ -1202,6 +1252,13 @@ struct pkg_event {
 		struct {
 			const char *pkg_name;
 		} e_not_found;
+		struct {
+			const char *pkg_name;
+			const char *pkg_version;
+			const char *pkg_origin;
+			const char *pkg_path;
+			struct pkg_event_conflict *conflicts;
+		} e_integrity_conflict;
 	};
 };
 

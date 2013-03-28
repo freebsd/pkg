@@ -75,7 +75,8 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	int query_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
 	    PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
 	    PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES |
-	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS;
+	    PKG_LOAD_USERS | PKG_LOAD_GROUPS | PKG_LOAD_SHLIBS_REQUIRED |
+	    PKG_LOAD_SHLIBS_PROVIDED;
 	struct pkg_head head = STAILQ_HEAD_INITIALIZER(head);
 	struct pkg_entry *e = NULL;
 	char pkgpath[MAXPATHLEN];
@@ -249,9 +250,9 @@ exec_create(int argc, char **argv)
 	}
 
 	if (manifestdir == NULL) {
-		if (!old) {
+		if (old) {
 			warnx("Can only create an old package format"
-			    "out of a staged directory");
+			    " out of a staged directory");
 			return (EX_SOFTWARE);
 		}
 		return (pkg_create_matches(argc, argv, match, fmt, outdir,

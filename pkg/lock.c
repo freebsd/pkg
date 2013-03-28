@@ -79,7 +79,7 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 	if (!quiet)
 		printf("Locking %s-%s\n", pkgname, pkgversion);
 
-	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, true));
+	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int64_t)true));
 }
 
 
@@ -108,7 +108,7 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 	if (!quiet)
 		printf("Unlocking %s-%s\n", pkgname, pkgversion);
 
-	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, false));
+	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int64_t)false));
 }
 
 int

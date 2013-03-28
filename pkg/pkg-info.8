@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd March 3, 2013
 .Dt PKG-INFO 8
 .Os
 .Sh NAME
@@ -27,10 +27,10 @@
 .Nm
 .Fl a
 .Nm
-.Op Fl BDdefgiIklOqRrsx
+.Op Fl bBDdefgiIklOqRrsx
 .Ar <pkg-name>
 .Nm
-.Op Fl BDdfIlqRrs
+.Op Fl bBDdfIlqRrs
 .Fl F Ar <pkg-file>
 .Sh DESCRIPTION
 .Nm
@@ -90,6 +90,9 @@ statuses will show as unlocked when information about a
 is queried.
 .It Fl l
 Display all files installed by
+.Ar <pkg-name> .
+.It Fl b
+Display all shared libraries provided by
 .Ar <pkg-name> .
 .It Fl B
 Display all shared libraries used by

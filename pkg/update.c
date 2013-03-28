@@ -52,6 +52,11 @@ pkgcli_update(bool force) {
 	int retcode = EPKG_FATAL;
 	char name[MAXPATHLEN];
 
+	/* Only auto update if the user has write access. */
+	if (pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
+	    PKGDB_DB_REPO) == EPKG_ENOACCESS)
+		return (EPKG_OK);
+
 	if (!quiet)
 		printf("Updating repository catalogue\n");
 

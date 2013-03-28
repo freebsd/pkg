@@ -45,13 +45,13 @@ static struct _fields {
 	[PKG_ORIGIN] = {"origin", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_NAME] = {"name", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_VERSION] = {"version", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_COMMENT] = {"comment", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
-	[PKG_DESC] = {"description", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
+	[PKG_COMMENT] = {"comment", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
+	[PKG_DESC] = {"description", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_MTREE] = {"mtree", PKG_FILE|PKG_INSTALLED, 1},
 	[PKG_MESSAGE] = {"message", PKG_FILE|PKG_INSTALLED, 1},
 	[PKG_ARCH] = {"architecture", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_MAINTAINER] = {"maintainer", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_WWW] = {"www", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
+	[PKG_WWW] = {"www", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_PREFIX] = {"prefix", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_INFOS] = {"information", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
 	[PKG_REPOPATH] = {"repopath", PKG_REMOTE, 0},
@@ -65,7 +65,7 @@ int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
 	if ((*pkg = calloc(1, sizeof(struct pkg))) == NULL) {
-		pkg_emit_errno("malloc", "pkg");
+		pkg_emit_errno("calloc", "pkg");
 		return EPKG_FATAL;
 	}
 
@@ -109,7 +109,8 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
 	pkg_list_free(pkg, PKG_GROUPS);
-	pkg_list_free(pkg, PKG_SHLIBS);
+	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
+	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 
 	pkg->rowid = 0;
 	pkg->type = type;
@@ -136,7 +137,8 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_USERS);
 	pkg_list_free(pkg, PKG_GROUPS);
-	pkg_list_free(pkg, PKG_SHLIBS);
+	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
+	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 
 	free(pkg);
 }
@@ -453,12 +455,19 @@ pkg_options(struct pkg *pkg, struct pkg_option **o)
 }
 
 int
-
-pkg_shlibs(struct pkg *pkg, struct pkg_shlib **s)
+pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **s)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->shlibs, (*s));
+	HASH_NEXT(pkg->shlibs_required, (*s));
+}
+
+int
+pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **s)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->shlibs_provided, (*s));
 }
 
 int
@@ -833,14 +842,14 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 }
 
 int
-pkg_addshlib(struct pkg *pkg, const char *name)
+pkg_addshlib_required(struct pkg *pkg, const char *name)
 {
 	struct pkg_shlib *s = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->shlibs, __DECONST(char *, name), s);
+	HASH_FIND_STR(pkg->shlibs_required, __DECONST(char *, name), s);
 	/* silently ignore duplicates in case of shlibs */
 	if (s != NULL)
 		return (EPKG_OK);
@@ -849,7 +858,32 @@ pkg_addshlib(struct pkg *pkg, const char *name)
 
 	sbuf_set(&s->name, name);
 
-	HASH_ADD_KEYPTR(hh, pkg->shlibs,__DECONST(char *, pkg_shlib_name(s)),
+	HASH_ADD_KEYPTR(hh, pkg->shlibs_required,
+	    __DECONST(char *, pkg_shlib_name(s)),
+	    strlen(pkg_shlib_name(s)), s);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addshlib_provided(struct pkg *pkg, const char *name)
+{
+	struct pkg_shlib *s = NULL;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	HASH_FIND_STR(pkg->shlibs_provided, __DECONST(char *, name), s);
+	/* silently ignore duplicates in case of shlibs */
+	if (s != NULL)
+		return (EPKG_OK);
+
+	pkg_shlib_new(&s);
+
+	sbuf_set(&s->name, name);
+
+	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided,
+	    __DECONST(char *, pkg_shlib_name(s)),
 	    strlen(pkg_shlib_name(s)), s);
 
 	return (EPKG_OK);
@@ -877,8 +911,10 @@ pkg_list_count(struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->users));
 	case PKG_GROUPS:
 		return (HASH_COUNT(pkg->groups));
-	case PKG_SHLIBS:
-		return (HASH_COUNT(pkg->shlibs));
+	case PKG_SHLIBS_REQUIRED:
+		return (HASH_COUNT(pkg->shlibs_required));
+	case PKG_SHLIBS_PROVIDED:
+		return (HASH_COUNT(pkg->shlibs_provided));
 	}
 	
 	return (0);
@@ -923,9 +959,13 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		HASH_FREE(pkg->groups, pkg_group, pkg_group_free);
 		pkg->flags &= ~PKG_LOAD_GROUPS;
 		break;
-	case PKG_SHLIBS:
-		HASH_FREE(pkg->shlibs, pkg_shlib, pkg_shlib_free);
-		pkg->flags &= ~PKG_LOAD_SHLIBS;
+	case PKG_SHLIBS_REQUIRED:
+		HASH_FREE(pkg->shlibs_required, pkg_shlib, pkg_shlib_free);
+		pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
+		break;
+	case PKG_SHLIBS_PROVIDED:
+		HASH_FREE(pkg->shlibs_provided, pkg_shlib, pkg_shlib_free);
+		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	}
 }
@@ -983,9 +1023,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 		goto cleanup;
 	}
 
-	if (*pkg_p == NULL)
-		pkg_new(pkg_p, PKG_FILE);
-	else
+	if (*pkg_p == NULL) {
+		retcode = pkg_new(pkg_p, PKG_FILE);
+		if (retcode != EPKG_OK)
+			goto cleanup;
+	} else
 		pkg_reset(*pkg_p, PKG_FILE);
 
 	pkg = *pkg_p;
@@ -1148,19 +1190,28 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkg_is_installed(struct pkgdb *db, const char *origin)
-{
-	struct pkg *pkg = NULL;
+pkg_try_installed(struct pkgdb *db, const char *origin,
+		struct pkg **pkg, unsigned flags) {
 	struct pkgdb_it *it = NULL;
 	int ret = EPKG_FATAL;
 
 	if ((it = pkgdb_query(db, origin, MATCH_EXACT)) == NULL)
 		return (EPKG_FATAL);
 
-	ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC);
-
-	pkg_free(pkg);
+	ret = pkgdb_it_next(it, pkg, flags);
 	pkgdb_it_free(it);
+
+	return (ret);
+}
+
+int
+pkg_is_installed(struct pkgdb *db, const char *origin)
+{
+	struct pkg *pkg = NULL;
+	int ret = EPKG_FATAL;
+
+	ret = pkg_try_installed(db, origin, &pkg, PKG_LOAD_BASIC);
+	pkg_free(pkg);
 
 	return (ret);
 }

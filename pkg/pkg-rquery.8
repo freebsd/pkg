@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd March 22, 2013
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -91,6 +91,8 @@ Prefix of the matched package
 Maintainer of the matched package
 .It Cm \&%c
 Comment of the matched package
+.It Cm \&%e
+Description of the matched package
 .It Cm \&%w
 Home page of the matched package
 .It Cm \&%l
@@ -103,7 +105,7 @@ is in bytes, and
 is in human readable format.
 .It Cm \&%M
 message contain in the matched package
-.It Cm \&%? Ns Op drCOLB
+.It Cm \&%? Ns Op drCOLBb
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It Cm d
@@ -117,8 +119,10 @@ for options
 .It Cm L
 for licenses
 .It Cm B
-for shared libraries
-.It Cm \&%# Ns Op drCOLB
+for required shared libraries
+.It Cm b
+for provided shared libraries
+.It Cm \&%# Ns Op drCOLBb
 Returns the number of elements in the list
 .Bl -tag -width indent
 .It Cm d
@@ -132,7 +136,9 @@ for options
 .It Cm L
 for licenses
 .It Cm B
-for shared libraries
+for required shared libraries
+.It Cm b
+for provided shared libraries
 .El
 .El
 .El
@@ -166,6 +172,8 @@ for option value.
 Expands to the list of license(s) for the matched package.
 .It Cm \&%B
 Expands to the list of shared libraries used by programs from the matched package.
+.It Cm \&%b
+Expands to the list of shared libraries provided by the matched package.
 .El
 .Sh EVALUATION FORMAT
 .Ss Variables
@@ -180,6 +188,8 @@ Prefix of the package (type string)
 Maintainer of the package (type string)
 .It Cm \&%c
 Comment of the package (type string)
+.It Cm \&%e
+Description of the package (type string)
 .It Cm \&%w
 WWW address of the package (type string)
 .It Cm \&%s
@@ -188,7 +198,7 @@ Flatsize of the package (type integer)
 Automatic status of the package (type integer)
 .It Cm \&%M
 Message of the package (type string)
-.It Cm \&%# Ns Op drCOLB
+.It Cm \&%# Ns Op drCOLBb
 Number of elements in the list of information (type integer).
 See
 .Cm %?
@@ -214,6 +224,9 @@ for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
 .El
+.Sh EXIT STATUS
+.Nm
+exits 0 on success, and >0 if an error occurs.
 .Sh FILES
 See
 .Xr pkg.conf 5 .

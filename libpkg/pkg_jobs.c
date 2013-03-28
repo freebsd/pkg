@@ -226,7 +226,7 @@ jobs_solve_install(struct pkg_jobs *j)
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
 			if ((j->flags & PKG_FLAG_AUTOMATIC) == PKG_FLAG_AUTOMATIC)
-				pkg_set(pkg, PKG_AUTOMATIC, true);
+				pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
 			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
 			pkg = NULL;
 		}
@@ -378,6 +378,9 @@ pkg_jobs_install(struct pkg_jobs *j)
 	if (pkg_jobs_fetch(j) != EPKG_OK)
 		return (EPKG_FATAL);
 
+	if (j->flags & PKG_FLAG_SKIP_INSTALL)
+		return (EPKG_OK);
+
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
 	
@@ -487,7 +490,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		}
 
 		if ((j->flags & PKG_FLAG_FORCE) != 0)
-			flags |= PKG_ADD_FORCE;
+			flags |= PKG_ADD_FORCE | PKG_FLAG_FORCE;
 		if ((j->flags & PKG_FLAG_NOSCRIPT) != 0)
 			flags |= PKG_ADD_NOSCRIPT;
 		flags |= PKG_ADD_UPGRADE;

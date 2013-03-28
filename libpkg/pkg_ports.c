@@ -36,8 +36,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stringlist.h>
 #include <unistd.h>
+#ifdef BUNDLED_YAML
 #include <yaml.h>
+#else
+#include <bsdyml.h>
+#endif
 #include <uthash.h>
 
 #include "pkg.h"
@@ -55,7 +60,6 @@ struct plist {
 	char *last_file;
 	const char *stage;
 	const char *prefix;
-	struct sbuf *unexec_buf;
 	struct sbuf *pre_install_buf;
 	struct sbuf *post_install_buf;
 	struct sbuf *pre_deinstall_buf;
@@ -71,6 +75,8 @@ struct plist {
 	int64_t flatsize;
 	struct hardlinks *hardlinks;
 	mode_t perm;
+	char *post_pattern_to_free;
+	StringList *post_patterns;
 	struct keyword *keywords;
 };
 
@@ -161,6 +167,10 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
+	exec_append(p->post_install_buf, "cd %s\n", p->prefix);
+	pre_unexec_append(p->pre_deinstall_buf, "cd %s\n", p->prefix);
+	post_unexec_append(p->post_deinstall_buf, "cd %s\n", p->prefix);
+
 	free(a);
 
 	return (EPKG_OK);
@@ -204,7 +214,7 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 	char *testpath;
 	struct stat st;
 	bool developer;
-	int ret;
+	int ret = EPKG_OK;
 
 	len = strlen(line);
 
@@ -224,7 +234,16 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 		testpath = stagedpath;
 	}
 
-	if (lstat(testpath, &st) == 0) {
+	if (lstat(testpath, &st) == -1) {
+		pkg_emit_errno("lstat", path);
+		if (p->stage != NULL)
+			ret = EPKG_FATAL;
+		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		if (developer) {
+			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
+			ret = EPKG_FATAL;
+		}
+	} else {
 		if (a != NULL)
 			ret = pkg_adddir_attr(p->pkg, path,
 			    a->owner ? a->owner : p->uname,
@@ -234,20 +253,8 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 		else
 			ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
 			    p->perm, try, true);
-		goto cleanup;
 	}
 
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-
-	pkg_emit_errno("lstat", path);
-
-	if (p->stage != NULL)
-		ret = EPKG_FATAL;
-	if (developer) {
-		pkg_emit_developer_mode("Plist error: @dirrm %s", line);
-		ret = EPKG_FATAL;
-	}
-cleanup:
 	free_file_attr(a);
 	return (ret);
 }
@@ -276,7 +283,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 	bool regular = false;
 	bool developer;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	int ret;
+	int ret = EPKG_OK;
 
 	len = strlen(line);
 
@@ -295,7 +302,16 @@ file(struct plist *p, char *line, struct file_attr *a)
 		testpath = stagedpath;
 	}
 
-	if (lstat(testpath, &st) == 0) {
+	if (lstat(testpath, &st) == -1) {
+		pkg_emit_errno("lstat", path);
+		if (p->stage != NULL)
+			ret = EPKG_FATAL;
+		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		if (developer) {
+			pkg_emit_developer_mode("Plist error, missing file: %s", line);
+			ret = EPKG_FATAL;
+		}
+	} else {
 		buf = NULL;
 		regular = false;
 
@@ -322,21 +338,10 @@ file(struct plist *p, char *line, struct file_attr *a)
 		else
 			ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
 			    p->gname, p->perm, true);
-		goto cleanup;
 	}
 
-	pkg_emit_errno("lstat", path);
-	if (p->stage != NULL)
-		ret = EPKG_FATAL;
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-	if (developer) {
-		pkg_emit_developer_mode("Plist error, missing file: %s", line);
-		ret = EPKG_FATAL;
-	}
-
-cleanup:
 	free_file_attr(a);
-	return (EPKG_OK);
+	return (ret);
 }
 
 static int
@@ -388,7 +393,8 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 static int
 comment_key(struct plist *p, char *line, struct file_attr *a)
 {
-	char *name, *version, *line_options, *option;
+	char *name, *version, *line_options, *line_options2, *option;
+
 	if (strncmp(line, "DEPORIGIN:", 10) == 0) {
 		line += 10;
 		name = p->pkgdep;
@@ -404,12 +410,14 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 		line += 8;
 		/* OPTIONS:+OPTION -OPTION */
 		if (line[0] != '\0') {
-			line_options = strdup(line);
+			line_options2 = line_options = strdup(line);
 			while ((option = strsep(&line_options, " ")) != NULL) {
-				pkg_addoption(p->pkg, option + 1,
-				    option[0] == '+' ? "on" : "off");
+				if ((option[0] == '+' || option[0] == '-') &&
+				    option[1] != '\0' && isupper(option[1]))
+					pkg_addoption(p->pkg, option + 1,
+					    option[0] == '+' ? "on" : "off");
 			}
-			free(line_options);
+			free(line_options2);
 		}
 	}
 
@@ -429,6 +437,42 @@ ignore_next(struct plist *p, __unused char *line, struct file_attr *a)
 	return (EPKG_OK);
 }
 
+static void
+parse_post(struct plist *p)
+{
+	const char *env;
+	char *token;
+
+	if ((env = getenv("FORCE_POST")) == NULL)
+		return;
+
+	p->post_patterns = sl_init();
+	p->post_pattern_to_free = strdup(env);
+	while ((token = strsep(&p->post_pattern_to_free, " \t")) != NULL) {
+		if (token[0] == '\0')
+			continue;
+		sl_add(p->post_patterns, token);
+	}
+}
+
+static bool
+should_be_post(char *cmd, struct plist *p)
+{
+	size_t i;
+
+	if (p->post_patterns == NULL)
+		parse_post(p);
+
+	if (p->post_patterns == NULL)
+		return (false);
+
+	for (i = 0; i < p->post_patterns->sl_cur; i++)
+		if (strstr(cmd, p->post_patterns->sl_str[i]))
+			return (true);
+
+	return (false);
+}
+
 static int
 meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 {
@@ -445,15 +489,11 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 	if (unexec) {
 		comment[0] = '\0';
 		/* workaround to detect the @dirrmtry */
-		if (STARTS_WITH(cmd, "rmdir ")) {
+		if (STARTS_WITH(cmd, "rmdir ") || STARTS_WITH(cmd, "/bin/rmdir ")) {
 			comment[0] = '#';
 			comment[1] = '\0';
-		} else if (STARTS_WITH(cmd, "/bin/rmdir ")) {
-			comment[0] = '#';
-			comment[1] = '\0';
-		}
-		/* remove the glob if any */
-		if (comment[0] == '#') {
+
+			/* remove the glob if any */
 			if (strchr(cmd, '*'))
 				comment[0] = '\0';
 
@@ -472,18 +512,12 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 			/* end remove mkdir -? */
 		}
 
-		if (strstr(cmd, "rmdir") || strstr(cmd, "kldxref") ||
-		    strstr(cmd, "mkfontscale") || strstr(cmd, "mkfontdir") ||
-		    strstr(cmd, "fc-cache") || strstr(cmd, "fonts.dir") ||
-		    strstr(cmd, "fonts.scale") ||
-		    strstr(cmd, "gtk-update-icon-cache") ||
-		    strstr(cmd, "update-desktop-database") ||
-		    strstr(cmd, "update-mime-database")) {
+		if (should_be_post(cmd, p)) {
 			if (comment[0] != '#')
 				post_unexec_append(p->post_deinstall_buf,
 				    "%s%s\n", comment, cmd);
 		} else {
-			sbuf_printf(p->unexec_buf, "%s%s\n",comment, cmd);
+			pre_unexec_append(p->pre_deinstall_buf, "%s%s\n", comment, cmd);
 		}
 		if (comment[0] == '#') {
 			buf = cmd;
@@ -587,7 +621,6 @@ keyword_free(struct keyword *k)
 
 	free(k);
 }
-
 
 static int
 parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
@@ -935,7 +968,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pplist.last_file = NULL;
 	pplist.prefix = NULL;
 	pplist.stage = stage;
-	pplist.unexec_buf = sbuf_new_auto();
 	pplist.pre_install_buf = sbuf_new_auto();
 	pplist.post_install_buf = sbuf_new_auto();
 	pplist.pre_deinstall_buf = sbuf_new_auto();
@@ -951,6 +983,8 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pplist.hardlinks = NULL;
 	pplist.flatsize = 0;
 	pplist.keywords = NULL;
+	pplist.post_pattern_to_free = NULL;
+	pplist.post_patterns = NULL;
 
 	populate_keywords(&pplist);
 
@@ -999,12 +1033,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 				break;
 			}
 		} else {
-			if (sbuf_len(pplist.unexec_buf) > 0) {
-				sbuf_finish(pplist.unexec_buf);
-				pre_unexec_append(pplist.pre_deinstall_buf,
-				    sbuf_get(pplist.unexec_buf), "");
-				sbuf_reset(pplist.unexec_buf);
-			}
 			buf = token;
 			pplist.last_file = buf;
 
@@ -1025,8 +1053,6 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	    PKG_SCRIPT_POST_INSTALL);
 	flush_script_buffer(pplist.pre_deinstall_buf, pkg,
 	    PKG_SCRIPT_PRE_DEINSTALL);
-	flush_script_buffer(pplist.unexec_buf, pkg,
-	    PKG_SCRIPT_POST_DEINSTALL);
 	flush_script_buffer(pplist.post_deinstall_buf, pkg,
 	    PKG_SCRIPT_POST_DEINSTALL);
 	flush_script_buffer(pplist.pre_upgrade_buf, pkg,
@@ -1038,6 +1064,10 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 
 	free(plist_buf);
 	HASH_FREE(pplist.keywords, keyword, keyword_free);
+
+	free(pplist.post_pattern_to_free);
+	if (pplist.post_patterns != NULL)
+		sl_free(pplist.post_patterns, 0);
 
 	return (ret);
 }

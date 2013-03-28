@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -99,7 +99,7 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 {
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
-		pkg_addshlib(pkg, name);
+		pkg_addshlib_required(pkg, name);
 		return (EPKG_OK);
 	case EPKG_END:		/* A system library */
 		return (EPKG_OK);
@@ -150,14 +150,13 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	}
 
 	if (shlibs)
-		pkg_addshlib(pkg, name);
+		pkg_addshlib_required(pkg, name);
 
-	if ((it = pkgdb_query_which(db, pathbuf)) == NULL)
+	if ((it = pkgdb_query_which(db, pathbuf, false)) == NULL)
 		return (EPKG_OK);
 
 	d = NULL;
 	if (pkgdb_it_next(it, &d, PKG_LOAD_BASIC) == EPKG_OK) {
-		found = false;
 		pkg_get(d, PKG_ORIGIN,  &deporigin,
 			   PKG_NAME,    &depname,
 			   PKG_VERSION, &depversion,
@@ -193,7 +192,10 @@ warn_about_name_format(struct pkg *pkg, const char *fpath, const char *shlib)
 	/* Shlib names in NEEDED records in the Dynamic section of an
            ELF object are expected to look like libfoo.so.N where the
            ABI version N is an integer or libfoo.so without ABI
-           version at all. */
+           version at all.  Well, actually, this should probably only
+           apply to shlibs which are publicly available.  shlibs for
+           the private use of some package can have whatever naming
+           convention they want.  So this is a bit too strict. */
 
 	len = strlen(shlib);
 	if (len < 9)		/* libx.so.0 */
@@ -258,15 +260,14 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 	int fd;
 
-	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
-		return (EPKG_FATAL);
-	}
-	if (fstat(fd, &sb) != 0)
+	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for %s", fpath);
 	/* ignore empty files and non regular files */
-	if (sb.st_size == 0 || !S_ISREG(sb.st_mode)) {
-		ret = EPKG_END; /* Empty file: no results */
-		goto cleanup;
+	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
+		return (EPKG_END); /* Empty file or sym-link: no results */
+
+	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
+		return (EPKG_FATAL);
 	}
 
 	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
@@ -364,8 +365,16 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			goto cleanup;
 		}
 
-		if (dyn->d_tag == DT_SONAME)
+		if (dyn->d_tag == DT_SONAME) {
 			is_shlib = true;
+
+			/* The file being scanned is a shared library
+			   *provided* by the package. Record this if
+			   appropriate */
+
+			if (shlibs)
+				pkg_addshlib_provided(pkg, basename(fpath));
+		}
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
 			continue;
@@ -500,7 +509,7 @@ pkg_register_shlibs(struct pkg *pkg)
 
 	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
-	pkg_list_free(pkg, PKG_SHLIBS);
+	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 
 	if (!shlibs)
 		return (EPKG_OK);
@@ -682,29 +691,29 @@ pkg_suggest_arch(struct pkg *pkg, const char *arch, bool isdefault)
 	iswildcard = (strchr(arch, 'c') != NULL);
 
 	if (iswildcard && isdefault)
-		pkg_emit_error("Configuration error: arch \"%s\" cannot use "
-		    "wildcards as default", arch);
+		pkg_emit_developer_mode("Configuration error: arch \"%s\" "
+		    "cannot use wildcards as default", arch);
 
 	if (pkg->flags & (PKG_CONTAINS_ELF_OBJECTS|PKG_CONTAINS_STATIC_LIBS)) {
 		if (iswildcard) {
 			/* Definitely has to be arch specific */
-			pkg_emit_error("Error: arch \"%s\" -- package installs "
-			    "architecture specific files", arch);
+			pkg_emit_developer_mode("Error: arch \"%s\" -- package "
+			    "installs architecture specific files", arch);
 		}
 	} else {
 		if (pkg->flags & PKG_CONTAINS_H_OR_LA) {
 			if (iswildcard) {
 				/* Could well be arch specific */
-				pkg_emit_error("Warning: arch \"%s\" -- package"
-				    " installs C/C++ headers or libtool "
-				    "files,\n**** which are often architecture "
-				    "specific", arch);
+				pkg_emit_developer_mode("Warning: arch \"%s\" "
+				    "-- package installs C/C++ headers or "
+				    "libtool files,\n**** which are often "
+				    "architecture specific", arch);
 			}
 		} else {
 			/* Might be arch independent */
 			if (!iswildcard)
-				pkg_emit_error("Notice: arch \"%s\" -- no "
-				    "architecture specific files found:\n"
+				pkg_emit_developer_mode("Notice: arch \"%s\" -- "
+				    "no architecture specific files found:\n"
 				    "**** could this package use a wildcard "
 				    "architecture?", arch);
 		}

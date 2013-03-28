@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -43,9 +44,9 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "usage: pkg fetch [-r reponame] [-dgiLqxy] <pkg-name> <...>\n");
-	fprintf(stderr, "       pkg fetch [-r reponame] [-dLqy] -a\n");
-	fprintf(stderr, "       pkg fetch [-r reponame] [-dLqy] -u\n\n");
+	fprintf(stderr, "usage: pkg fetch [-r reponame] [-dgiqUxy] <pkg-name> <...>\n");
+	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -a\n");
+	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -u\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
 }
 
@@ -54,11 +55,10 @@ exec_fetch(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkg_jobs	*jobs = NULL;
-	const char	*reponame = NULL;
+	const char	__unused *reponame = NULL;
 	int		 ch;
 	int		 retcode = EX_SOFTWARE;
 	bool		 auto_update;
-	bool		 force = false;
 	bool		 upgrades_for_installed = false;
 	bool		 yes;
 	unsigned	 mode;
@@ -68,14 +68,13 @@ exec_fetch(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
-	while ((ch = getopt(argc, argv, "adgiLqr:uxy")) != -1) {
+	while ((ch = getopt(argc, argv, "adgiLqr:Uuxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
 		case 'd':
 			f |= PKG_FLAG_WITH_DEPS;
-			force = true;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
@@ -84,6 +83,9 @@ exec_fetch(int argc, char **argv)
 			pkgdb_set_case_sensitivity(false);
 			break;
 		case 'L':
+			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
+			/* FALLTHROUGH */
+		case 'U':
 			auto_update = false;
 			break;
 		case 'q':

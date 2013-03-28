@@ -51,6 +51,7 @@ event_callback(void *data, struct pkg_event *ev)
 	(void) debug;
 	const char *name, *version, *newversion;
 	const char *filename;
+	struct pkg_event_conflict *cur_conflict;
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -59,6 +60,10 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_ERROR:
 		warnx("%s", ev->e_pkg_error.msg);
+		break;
+	case PKG_EVENT_NOTICE:
+		if (!quiet)
+			warnx("%s", ev->e_pkg_notice.msg);
 		break;
 	case PKG_EVENT_DEVELOPER_MODE:
 		warnx("DEVELOPER_MODE: %s", ev->e_pkg_error.msg);
@@ -120,6 +125,23 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		printf(" done\n");
+		break;
+	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
+		printf("\nConflict found on path %s between %s-%s(%s) and ",
+			ev->e_integrity_conflict.pkg_path,
+			ev->e_integrity_conflict.pkg_name,
+			ev->e_integrity_conflict.pkg_version,
+			ev->e_integrity_conflict.pkg_origin);
+		cur_conflict = ev->e_integrity_conflict.conflicts;
+		while (cur_conflict) {
+			if (cur_conflict->next)
+				printf("%s-%s(%s), ", cur_conflict->name, cur_conflict->version, cur_conflict->origin);
+			else
+				printf("%s-%s(%s)", cur_conflict->name, cur_conflict->version, cur_conflict->origin);
+
+			cur_conflict = cur_conflict->next;
+		}
+		printf("\n");
 		break;
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		if (quiet)
@@ -208,7 +230,7 @@ event_callback(void *data, struct pkg_event *ev)
 		    "the repositories\n", ev->e_not_found.pkg_name);
 		break;
 	case PKG_EVENT_MISSING_DEP:
-		fprintf(stderr, "missing dependency %s-%s",
+		fprintf(stderr, "missing dependency %s-%s\n",
 		    pkg_dep_name(ev->e_missing_dep.dep),
 		    pkg_dep_version(ev->e_missing_dep.dep));
 		break;

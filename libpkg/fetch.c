@@ -98,7 +98,21 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 		return(EPKG_FATAL);
 	}
 
-	retcode = pkg_fetch_file_to_fd(url, fd, t);
+	retcode = pkg_fetch_file_to_fd(url, fd, &t);
+
+	if (t != 0) {
+		struct timeval ftimes[2] = {
+			{
+			.tv_sec = t,
+			.tv_usec = 0
+			},
+			{
+			.tv_sec = t,
+			.tv_usec = 0
+			}
+		};
+		futimes(fd, ftimes);
+	}
 
 	close(fd);
 
@@ -110,7 +124,7 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 }
 
 int
-pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
+pkg_fetch_file_to_fd(const char *url, int dest, time_t *t)
 {
 	FILE *remote = NULL;
 	struct url *u;
@@ -119,6 +133,7 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	off_t r;
 
 	int64_t max_retry, retry;
+	int64_t fetch_timeout;
 	time_t begin_dl;
 	time_t now;
 	time_t last = 0;
@@ -133,16 +148,19 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	struct http_mirror *http_current = NULL;
 	const char *mt;
 
-	fetchTimeout = 30;
-
 	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
 		max_retry = 3;
+
+	if (pkg_config_int64(PKG_CONFIG_FETCH_TIMEOUT, &fetch_timeout) == EPKG_FATAL)
+		fetch_timeout = 30;
+
+	fetchTimeout = (int) fetch_timeout;
 
 	retry = max_retry;
 
 	u = fetchParseURL(url);
-	if (t != 0)
-		u->ims_time = t;
+	if (t != NULL)
+		u->ims_time = *t;
 
 	doc = u->doc;
 	while (remote == NULL) {
@@ -154,7 +172,7 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 				snprintf(zone, sizeof(zone),
 				    "_%s._tcp.%s", u->scheme, u->host);
 				pthread_mutex_lock(&mirror_mtx);
-				if (srv_mirrors != NULL)
+				if (srv_mirrors == NULL)
 					srv_mirrors = dns_getsrvinfo(zone);
 				pthread_mutex_unlock(&mirror_mtx);
 				srv_current = srv_mirrors;
@@ -208,11 +226,13 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 			}
 		}
 	}
-	if (t != 0) {
-		if (st.mtime <= t) {
+	if (t != NULL) {
+		if (st.mtime < *t) {
 			retcode = EPKG_UPTODATE;
 			goto cleanup;
 		}
+		else
+			*t = st.mtime;
 	}
 
 	begin_dl = time(NULL);

@@ -103,7 +103,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	} else {
 		pkg_register_shlibs(pkg);
 
-		pkg_emit_manifest(pkg, &m);
+		pkg_emit_manifest(pkg, &m, false, NULL);
 		packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
 		free(m);
 	}
@@ -216,14 +216,16 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	regex_t		 preg;
 	regmatch_t	 pmatch[2];
 	size_t		 size;
-	char		*www;
+	char		*www = NULL;
 
 	/* Load the manifest from the metadata directory */
 	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
 		goto cleanup;
 
-	pkg_new(&pkg, old ? PKG_OLD_FILE : PKG_FILE);
-	if (pkg == NULL)
+	if(pkg_new(&pkg, old ? PKG_OLD_FILE : PKG_FILE) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
 		goto cleanup;
 
 	if ((ret = pkg_load_manifest_file(pkg, path)) != EPKG_OK) {
@@ -281,6 +283,11 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	}
 
 	/* if www is not given then try to determine it from description */
+	if (www != NULL) {
+		pkg_set(pkg, PKG_WWW, www);
+		free(www);
+	}
+
 	pkg_get(pkg, PKG_WWW, &www);
 	if (www == NULL) {
 		pkg_get(pkg, PKG_DESC, &buf);
@@ -300,9 +307,6 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 			pkg_set(pkg, PKG_WWW, "UNKNOWN");
 		}
 		regfree(&preg);
-	} else {
-		pkg_set(pkg, PKG_WWW, www);
-		free(www);
 	}
 
 	/* Create the archive */

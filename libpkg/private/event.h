@@ -29,6 +29,7 @@
 #define _PKG_EVENT
 
 void pkg_emit_error(const char *fmt, ...);
+void pkg_emit_notice(const char *fmt, ...);
 void pkg_emit_errno(const char *func, const char *arg);
 void pkg_emit_already_installed(struct pkg *p);
 void pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed);
@@ -43,6 +44,8 @@ void pkg_emit_locked(struct pkg *p);
 void pkg_emit_required(struct pkg *p, int force);
 void pkg_emit_integritycheck_begin(void);
 void pkg_emit_integritycheck_finished(void);
+void pkg_emit_integritycheck_conflict(const char *name, const char *version,
+		const char *origin, const char *path, struct pkg_event_conflict *conflicts);
 void pkg_emit_noremotedb(const char *);
 void pkg_emit_nolocaldb(void);
 void pkg_emit_file_mismatch(struct pkg *pkg, struct pkg_file *f, const char *newsum);

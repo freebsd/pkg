@@ -39,7 +39,7 @@
 void
 usage_which(void)
 {
-	fprintf(stderr, "usage: pkg which [-qo] <file>\n\n");
+	fprintf(stderr, "usage: pkg which [-qgo] <file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help which'.\n");
 }
 
@@ -54,11 +54,15 @@ exec_which(int argc, char **argv)
 	const char *name, *version, *origin;
 	int ch;
 	bool orig = false;
+	bool glob = false;
 
-	while ((ch = getopt(argc, argv, "qo")) != -1) {
+	while ((ch = getopt(argc, argv, "qgo")) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
+			break;
+		case 'g':
+			glob = true;
 			break;
 		case 'o':
 			orig = true;
@@ -79,13 +83,15 @@ exec_which(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	absolutepath(argv[0], pathabs, sizeof(pathabs));
+	if (!glob)
+		absolutepath(argv[0], pathabs, sizeof(pathabs));
+	else
+		strlcpy(pathabs, argv[0], sizeof(pathabs));
 
-	if ((it = pkgdb_query_which(db, pathabs)) == NULL) {
+	if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL)
 		return (EX_IOERR);
-	}
 
-	if ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_ORIGIN, &origin);
 		if (quiet && orig)
 			printf("%s\n", origin);
@@ -95,9 +101,14 @@ exec_which(int argc, char **argv)
 			printf("%s was installed by package %s\n", pathabs, origin);
 		else if (!quiet && !orig)
 			printf("%s was installed by package %s-%s\n", pathabs, name, version);
-	} else if (ret != EPKG_END) {
+		if (!glob)
+			break;
+	}
+
+	if (ret != EPKG_END) {
 		retcode = EX_SOFTWARE;
-	} else {
+	}
+	else if (!glob) {
 		if (!quiet)
 			printf("%s was not found in the database\n", pathabs);
 		retcode = EX_DATAERR;

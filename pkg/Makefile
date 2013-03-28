@@ -52,8 +52,17 @@ DEBUG_FLAGS+=	-pg
 CFLAGS+=	-I${.CURDIR}/../libpkg
 LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lpkg \
+		-larchive \
 		-lutil \
 		-lpthread \
+		-lsbuf \
+		-lfetch \
+		-lssl \
+		-lcrypto \
+		-lmd \
+		-lz \
+		-lbz2 \
+		-llzma \
 		${LDADD_STATIC}
 
 .if !exists(/usr/include/jail.h)

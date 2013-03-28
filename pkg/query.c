@@ -52,9 +52,10 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
 	{ 'U', "",		1, PKG_LOAD_USERS },
 	{ 'G', "",		1, PKG_LOAD_GROUPS },
-	{ 'B', "",		1, PKG_LOAD_SHLIBS },
-	{ '?', "drCFODLUGB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
-	{ '#', "drCFODLUGB",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ 'B', "",		1, PKG_LOAD_SHLIBS_REQUIRED },
+	{ 'b', "",		1, PKG_LOAD_SHLIBS_PROVIDED },
+	{ '?', "drCFODLUGBb",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ '#', "drCFODLUGBb",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },
 	{ 'n', "",		0, PKG_LOAD_BASIC },
 	{ 'v', "",		0, PKG_LOAD_BASIC },
@@ -62,13 +63,14 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'p', "",		0, PKG_LOAD_BASIC },
 	{ 'm', "",		0, PKG_LOAD_BASIC },
 	{ 'c', "",		0, PKG_LOAD_BASIC },
+	{ 'e', "",		0, PKG_LOAD_BASIC },
 	{ 'w', "",		0, PKG_LOAD_BASIC },
 	{ 'l', "",		0, PKG_LOAD_BASIC },
 	{ 'a', "",		0, PKG_LOAD_BASIC },
-	{ 'k', "",              0, PKG_LOAD_BASIC },
+	{ 'k', "",		0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
 	{ 'i', "",		0, PKG_LOAD_BASIC },
-	{ 't', "",		0, PKG_LOAD_BASIC },
+	{ 't', "",		0, PKG_LOAD_BASIC }
 };
 
 static void
@@ -155,6 +157,11 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_printf(dest, "%" PRId64, flatsize);
 				}
 				break;
+			case 'e':
+				pkg_get(pkg, PKG_DESC, &tmp);
+				if (tmp != NULL)
+					sbuf_cat(dest, tmp);
+				break;
 			case '?':
 				qstr++;
 				switch (qstr[0]) {
@@ -186,7 +193,10 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_GROUPS) > 0);
 					break;
 				case 'B':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS) > 0);
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_REQUIRED) > 0);
+					break;
+				case 'b':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_PROVIDED) > 0);
 					break;
 				}
 				break;
@@ -221,7 +231,10 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_GROUPS));
 					break;
 				case 'B':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS));
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_REQUIRED));
+					break;
+				case 'b':
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_PROVIDED));
 					break;
 				}
 				break;
@@ -287,6 +300,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				sbuf_cat(dest, pkg_group_name((struct pkg_group *)data));
 				break;
 			case 'B':
+			case 'b':
 				sbuf_cat(dest, pkg_shlib_name((struct pkg_shlib *)data));
 				break;
 			case 'M':
@@ -352,6 +366,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			printf("%s\n", sbuf_data(output));
 			break;
 		}
+		break;
 	case 'r':
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 			format_str(pkg, output, qstr, dep);
@@ -401,7 +416,13 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'B':
-		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+			format_str(pkg, output, qstr, shlib);
+			printf("%s\n", sbuf_data(output));
+		}
+		break;
+	case 'b':
+		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
 			format_str(pkg, output, qstr, shlib);
 			printf("%s\n", sbuf_data(output));
 		}
@@ -497,6 +518,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 					sbuf_cat(sqlcond, "time");
 					state = OPERATOR_INT;
 					break;
+				case 'e':
+					sbuf_cat(sqlcond, "desc");
+					state = OPERATOR_STRING;
+					break;
 				case '#':
 					str++;
 					const char *dbstr = for_remote ? "%1$s." : "";
@@ -537,7 +562,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_groups AS d WHERE d.package_id=p.id)", dbstr);
 							break;
 						case 'B':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs_required AS d WHERE d.package_id=p.id)", dbstr);
+							break;
+						case 'b':
+							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs_provided AS d WHERE d.package_id=p.id)", dbstr);
 							break;
 						default:
 							goto bad_option;
@@ -922,14 +950,17 @@ exec_query(int argc, char **argv)
 
 		pkgdb_it_free(it);
 	} else {
+		int nprinted = 0;
 		for (i = 1; i < argc; i++) {
 			pkgname = argv[i];
 
 			if ((it = pkgdb_query(db, pkgname, match)) == NULL)
 				return (EX_IOERR);
 
-			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
+			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
+				nprinted++;
 				print_query(pkg, argv[0], multiline);
+			}
 
 			if (ret != EPKG_END) {
 				retcode = EX_SOFTWARE;
@@ -937,6 +968,11 @@ exec_query(int argc, char **argv)
 			}
 
 			pkgdb_it_free(it);
+		}
+		if (nprinted == 0 && retcode == EX_OK) {
+			/* ensure to return a non-zero status when no package
+			 were found. */
+			retcode = EX_UNAVAILABLE;
 		}
 	}
 

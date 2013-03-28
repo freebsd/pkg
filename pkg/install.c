@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -46,7 +47,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "usage: pkg install [-AfgIiLnqRxy] [-r reponame] <pkg-name> ...\n\n");
+	    "usage: pkg install [-AfgIinFqRUxy] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -55,7 +56,7 @@ exec_install(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	const char *reponame = NULL;
+	const char __unused *reponame = NULL;
 	int retcode;
 	int updcode = EPKG_OK;
 	int ch;
@@ -69,7 +70,7 @@ exec_install(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
-	while ((ch = getopt(argc, argv, "AfgIiLnqRr:xy")) != -1) {
+	while ((ch = getopt(argc, argv, "AfgIiLFnqRr:Uxy")) != -1) {
 		switch (ch) {
 		case 'A':
 			f |= PKG_FLAG_AUTOMATIC;
@@ -83,10 +84,16 @@ exec_install(int argc, char **argv)
 		case 'I':
 			f |= PKG_FLAG_NOSCRIPT;
 			break;
+		case 'F':
+			f |= PKG_FLAG_SKIP_INSTALL;
+			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
 			break;
 		case 'L':
+			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
+			/* FALLTHROUGH */
+		case 'U':
 			auto_update = false;
 			break;
 		case 'n':
@@ -158,28 +165,27 @@ exec_install(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	if ((nbactions = pkg_jobs_count(jobs)) == 0)
-		goto cleanup;
+	if ((nbactions = pkg_jobs_count(jobs)) > 0) {
+		/* print a summary before applying the jobs */
+		if (!quiet || dry_run) {
+			print_jobs_summary(jobs,
+			    "The following %d packages will be installed:\n\n",
+			    nbactions);
 
-	/* print a summary before applying the jobs */
-	if (!quiet || dry_run) {
-		print_jobs_summary(jobs,
-		    "The following %d packages will be installed:\n\n",
-		    nbactions);
+			if (!yes && !dry_run)
+				yes = query_yesno(
+				    "\nProceed with installing packages [y/N]: ");
+			if (dry_run)
+				yes = false;
+		}
 
-		if (!yes && !dry_run)
-			yes = query_yesno(
-			    "\nProceed with installing packages [y/N]: ");
-		if (dry_run)
-			yes = false;
-	}
+		if (yes && pkg_jobs_apply(jobs) != EPKG_OK)
+			goto cleanup;
 
-	if (yes && pkg_jobs_apply(jobs) != EPKG_OK)
-		goto cleanup;
-
-	if (messages != NULL) {
-		sbuf_finish(messages);
-		printf("%s", sbuf_data(messages));
+		if (messages != NULL) {
+			sbuf_finish(messages);
+			printf("%s", sbuf_data(messages));
+		}
 	}
 
 	retcode = EX_OK;

@@ -366,7 +366,8 @@ exec_audit(int argc, char **argv)
 
 	if (fetch == true) {
 		if (pkg_config_string(PKG_CONFIG_PORTAUDIT_SITE, &portaudit_site) != EPKG_OK) {
-			return (EPKG_FATAL);
+			warnx("PORTAUDIT_SITE is missing");
+			return (EX_CONFIG);
 		}
 		if (fetch_and_extract(portaudit_site, audit_file) != EPKG_OK) {
 			return (EX_IOERR);
@@ -385,7 +386,8 @@ exec_audit(int argc, char **argv)
 			err(EX_USAGE, "bad package name format: %s", name);
 		version[0] = '\0';
 		version++;
-		pkg_new(&pkg, PKG_FILE);
+		if (pkg_new(&pkg, PKG_FILE) != EPKG_OK)
+			err(EX_OSERR, "malloc");
 		pkg_set(pkg,
 		    PKG_NAME, name,
 		    PKG_VERSION, version);

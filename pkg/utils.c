@@ -143,8 +143,10 @@ info_flags(unsigned int opt)
 		flags |= PKG_LOAD_LICENSES;
 	if (opt & INFO_OPTIONS)
 		flags |= PKG_LOAD_OPTIONS;
-	if (opt & INFO_SHLIBS)
-		flags |= PKG_LOAD_SHLIBS;
+	if (opt & INFO_SHLIBS_REQUIRED)
+		flags |= PKG_LOAD_SHLIBS_REQUIRED;
+	if (opt & INFO_SHLIBS_PROVIDED)
+		flags |= PKG_LOAD_SHLIBS_PROVIDED;
 	if (opt & INFO_DEPS)
 		flags |= PKG_LOAD_DEPS;
 	if (opt & INFO_RDEPS)
@@ -158,10 +160,16 @@ info_flags(unsigned int opt)
 	if (opt & INFO_GROUPS)
 		flags |= PKG_LOAD_GROUPS;
 	if (opt & INFO_RAW) {
-		flags |= PKG_LOAD_CATEGORIES|PKG_LOAD_LICENSES|PKG_LOAD_OPTIONS ;
-		flags |= PKG_LOAD_SHLIBS|PKG_LOAD_DEPS|PKG_LOAD_FILES;
-		flags |= PKG_LOAD_DIRS|PKG_LOAD_USERS|PKG_LOAD_GROUPS;
-		flags |= PKG_LOAD_SCRIPTS;
+		flags |= PKG_LOAD_CATEGORIES      |
+			 PKG_LOAD_LICENSES        |
+			 PKG_LOAD_OPTIONS         |
+			 PKG_LOAD_SHLIBS_REQUIRED |
+			 PKG_LOAD_DEPS            |
+			 PKG_LOAD_FILES           |
+			 PKG_LOAD_DIRS            |
+			 PKG_LOAD_USERS           |
+			 PKG_LOAD_GROUPS          |
+			 PKG_LOAD_SCRIPTS;
 	}
 
 	return flags;
@@ -187,7 +195,6 @@ print_info(struct pkg * const pkg, unsigned int options)
 	const char *maintainer, *www, *comment, *desc, *message, *arch;
 	const char *repopath;
 	const char *tab;
-	char *m;
 	unsigned opt;
 	int64_t flatsize, newflatsize, newpkgsize;
 	lic_t licenselogic;
@@ -221,11 +228,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 		pkg_config_string(PKG_CONFIG_REPO, &repourl);
 
 	if (options & INFO_RAW) { /* Not for remote packages */
-		if (pkg_type(pkg) != PKG_REMOTE) {
-			pkg_emit_manifest(pkg, &m);
-			printf("%s\n", m);
-			free(m);
-		}
+		if (pkg_type(pkg) != PKG_REMOTE)
+			pkg_emit_manifest_file(pkg, stdout, false, NULL);
 		return;
 	}
 
@@ -376,11 +380,19 @@ print_info(struct pkg * const pkg, unsigned int options)
 					       pkg_option_value(option));
 			}
 			break;
-		case INFO_SHLIBS:
-			if (pkg_list_count(pkg, PKG_SHLIBS) > 0) {
+		case INFO_SHLIBS_REQUIRED:
+			if (pkg_list_count(pkg, PKG_SHLIBS_REQUIRED) > 0) {
 				if (print_tag)
-					printf("%-15s:\n", "Shared Libs");
-				while (pkg_shlibs(pkg, &shlib) == EPKG_OK)
+					printf("%-15s:\n", "Shared Libs required");
+				while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK)
+					printf("%s%s\n", tab, pkg_shlib_name(shlib));
+			}
+			break;
+		case INFO_SHLIBS_PROVIDED:
+			if (pkg_list_count(pkg, PKG_SHLIBS_PROVIDED) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Shared Libs provided");
+				while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
 					printf("%s%s\n", tab, pkg_shlib_name(shlib));
 			}
 			break;

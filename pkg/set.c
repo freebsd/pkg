@@ -55,7 +55,7 @@ exec_set(int argc, char **argv)
 	int i;
 	bool yes;
 	match_t match = MATCH_EXACT;
-	int newautomatic = -1;
+	int64_t newautomatic = -1;
 	bool automatic = false;
 	const char *errstr;
 	const char *name;

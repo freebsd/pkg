@@ -38,7 +38,7 @@ ELFTC_VCSID("$Id: libelf_phdr.c 2225 2011-11-26 18:55:54Z jkoshy $");
 void *
 _libelf_getphdr(Elf *e, int ec)
 {
-	size_t phnum, phentsize;
+	size_t phnum;
 	size_t fsz, msz;
 	uint64_t phoff;
 	Elf32_Ehdr *eh32;
@@ -69,11 +69,9 @@ _libelf_getphdr(Elf *e, int ec)
 
 	if (ec == ELFCLASS32) {
 		eh32      = (Elf32_Ehdr *) ehdr;
-		phentsize = eh32->e_phentsize;
 		phoff     = (uint64_t) eh32->e_phoff;
 	} else {
 		eh64      = (Elf64_Ehdr *) ehdr;
-		phentsize = eh64->e_phentsize;
 		phoff     = (uint64_t) eh64->e_phoff;
 	}
 
