@@ -291,14 +291,19 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 
 	return (rc);
 }
-#if 0
-static int
-pkg_update_incremental(const char *repofile, const char *name, const char *packagesite, time_t *mtime)
+
+static __unused int
+pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 {
 	FILE *fmanifest = NULL, *fdigests = NULL;
 	int fd_manifest, fd_digests;
 	struct pkgdb *db = NULL;
-	int rc = EPKG_FATAL;
+	struct pkg *local_pkg;
+	int rc = EPKG_FATAL, ret;
+	const char *local_origin, *local_digest;
+	struct pkgdb_it *it;
+	char linebuf[1024], *digest_origin, *digest_digest, *digest_offset, *p;
+	int updated = 0, removed = 0, added = 0;
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		goto cleanup;
@@ -307,12 +312,103 @@ pkg_update_incremental(const char *repofile, const char *name, const char *packa
 	if (pkgdb_remote_init(db, name) != EPKG_OK)
 		goto cleanup;
 
-	if ((fd_digests = repo_fetch_remote_tmp(packagesite, repo_digests_archive, "txz", mtime, &rc)) == -1) {
+	it = pkgdb_repo_origins(db);
+	if (it == NULL) {
+		rc = EPKG_FATAL;
 		goto cleanup;
 	}
-	if ((fd_manifest = repo_fetch_remote_tmp(packagesite, repo_packagesite_archive, "txz", mtime, &rc)) == -1) {
+
+	/* Try to get a single entry in repository to ensure that we can read checksums */
+	pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
+	pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
+	if (local_digest == NULL || local_origin == NULL) {
+		pkg_emit_notice("incremental update is not possible as "
+				"repo format is inappropriate, trying full upgrade");
+		rc = EPKG_FATAL;
 		goto cleanup;
 	}
+
+	if ((fd_digests = repo_fetch_remote_tmp(packagesite, repo_digests_archive,
+			"txz", mtime, &rc)) == -1)
+		goto cleanup;
+	if ((fd_manifest = repo_fetch_remote_tmp(packagesite, repo_packagesite_archive,
+			"txz", mtime, &rc)) == -1)
+		goto cleanup;
+
+	do {
+		pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
+		/* Read a line from digests file */
+		if (fgets(linebuf, sizeof(linebuf) - 1, fdigests) == NULL) {
+			while ((ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+				/* Remove packages */
+				removed ++;
+			}
+		}
+		p = linebuf;
+		digest_origin = strsep(&p, ":");
+		digest_digest = strsep(&p, ":");
+		digest_offset = strsep(&p, ":");
+		if (digest_origin == NULL || digest_digest == NULL ||
+				digest_offset == NULL) {
+			pkg_emit_error("invalid digest file format");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+		/*
+		 * Now we have local and remote origins that are sorted,
+		 * so here are possible cases:
+		 * 1) local == remote, but hashes are different: upgrade
+		 * 2) local > remote, delete packages till local == remote
+		 * 3) local < remote, insert new packages till local == remote
+		 * 4) local == remote and hashes are the same, skip
+		 */
+		ret = strcmp(local_origin, digest_origin);
+		if (ret == 0) {
+			if (strcmp(digest_digest, local_digest) == 0) {
+				/* Do upgrade */
+				updated ++;
+			}
+			else {
+				/* Skip to next iteration */
+				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
+			}
+		}
+		else if (ret > 0) {
+			do {
+				/* Remove packages */
+				pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
+				if (strcmp(local_origin, digest_origin) <= 0) {
+					break;
+				}
+				removed ++;
+				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
+			} while (ret == EPKG_OK);
+		}
+		else if (ret < 0) {
+			for (;;) {
+				if (strcmp(local_origin, digest_origin) < 0) {
+					/* Insert a package from manifest */
+					added ++;
+				}
+				else {
+					break;
+				}
+				if (fgets(linebuf, sizeof(linebuf) - 1, fdigests) == NULL) {
+					break;
+				}
+				p = linebuf;
+				digest_origin = strsep(&p, ":");
+				digest_digest = strsep(&p, ":");
+				digest_offset = strsep(&p, ":");
+				if (digest_origin == NULL || digest_digest == NULL ||
+						digest_offset == NULL) {
+					pkg_emit_error("invalid digest file format");
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+			}
+		}
+	} while (ret == EPKG_OK);
 
 	rc = EPKG_OK;
 cleanup:
@@ -323,7 +419,6 @@ cleanup:
 
 	return (rc);
 }
-#endif
 
 int
 pkg_update(const char *name, const char *packagesite, bool force)
