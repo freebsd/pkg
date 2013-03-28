@@ -79,36 +79,39 @@ static void prstmt_finalize(struct pkgdb *db);
 
 extern int sqlite3_shell(int, char**);
 
+/*
+ * Keep entries sorted by name!
+ */
 static struct column_mapping {
 	const char * const name;
 	pkg_attr type;
 } columns[] = {
-	{ "origin",	PKG_ORIGIN },
-	{ "name",	PKG_NAME },
-	{ "version",	PKG_VERSION },
-	{ "comment",	PKG_COMMENT },
-	{ "desc",	PKG_DESC },
-	{ "message",	PKG_MESSAGE },
 	{ "arch",	PKG_ARCH },
-	{ "maintainer",	PKG_MAINTAINER },
-	{ "www",	PKG_WWW },
-	{ "prefix",	PKG_PREFIX },
-	{ "cksum",	PKG_CKSUM },
-	{ "repopath",	PKG_REPOPATH },
-	{ "dbname",	PKG_REPONAME },
-	{ "newversion",	PKG_NEWVERSION },
-	{ "flatsize",	PKG_FLATSIZE },
-	{ "newflatsize", PKG_NEW_FLATSIZE },
-	{ "pkgsize",	PKG_NEW_PKGSIZE },
-	{ "licenselogic", PKG_LICENSE_LOGIC },
 	{ "automatic",	PKG_AUTOMATIC },
-	{ "locked",	PKG_LOCKED },
-	{ "time",	PKG_TIME },
-	{ "infos",	PKG_INFOS },
-	{ "rowid",	PKG_ROWID },
+	{ "cksum",	PKG_CKSUM },
+	{ "comment",	PKG_COMMENT },
+	{ "dbname",	PKG_REPONAME },
+	{ "desc",	PKG_DESC },
+	{ "flatsize",	PKG_FLATSIZE },
 	{ "id",		PKG_ROWID },
+	{ "infos",	PKG_INFOS },
+	{ "licenselogic", PKG_LICENSE_LOGIC },
+	{ "locked",	PKG_LOCKED },
+	{ "maintainer",	PKG_MAINTAINER },
 	{ "manifestdigest",	PKG_DIGEST },
+	{ "message",	PKG_MESSAGE },
+	{ "name",	PKG_NAME },
+	{ "newflatsize", PKG_NEW_FLATSIZE },
+	{ "newversion",	PKG_NEWVERSION },
+	{ "origin",	PKG_ORIGIN },
+	{ "pkgsize",	PKG_NEW_PKGSIZE },
+	{ "prefix",	PKG_PREFIX },
+	{ "repopath",	PKG_REPOPATH },
+	{ "rowid",	PKG_ROWID },
+	{ "time",	PKG_TIME },
+	{ "version",	PKG_VERSION },
 	{ "weight",	-1 },
+	{ "www",	PKG_WWW },
 	{ NULL,		-1 }
 };
 
@@ -186,41 +189,50 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 	return (reponame);
 }
 
+static int
+compare_column_func(const void *pkey, const void *pcolumn)
+{
+	const char *key = (const char*)pkey;
+	const struct column_mapping *column =
+			(const struct column_mapping*)pcolumn;
+
+	return strcmp(key, column->name);
+}
+
 static void
 populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
-	int		 i, icol = 0;
+	int		 icol = 0;
 	const char	*colname;
 
 	assert(stmt != NULL);
 
 	for (icol = 0; icol < sqlite3_column_count(stmt); icol++) {
 		colname = sqlite3_column_name(stmt, icol);
+		struct column_mapping *column;
 		switch (sqlite3_column_type(stmt, icol)) {
 		case SQLITE_TEXT:
-			for (i = 0; columns[i].name != NULL; i++) {
-				if (!strcmp(columns[i].name, colname)) {
-					pkg_set(pkg, columns[i].type,
-					    sqlite3_column_text(stmt,
-					    icol));
-					break;
-				}
-			}
-			if (columns[i].name == NULL)
+			column = bsearch(colname, columns,
+					sizeof(columns) / sizeof(columns[0]) - 1,
+					sizeof(columns[0]), compare_column_func);
+			if (column == NULL)
 				pkg_emit_error("Unknown column %s",
 				    colname);
+			else
+				pkg_set(pkg, column->type,
+						sqlite3_column_text(stmt,
+						icol));
 			break;
 		case SQLITE_INTEGER:
-			for (i = 0; columns[i].name != NULL; i++) {
-				if (!strcmp(columns[i].name, colname)) {
-					pkg_set(pkg, columns[i].type,
-					    sqlite3_column_int64(stmt,
-					    icol));
-					break;
-				}
-			}
-			if (columns[i].name == NULL)
+			column = bsearch(colname, columns,
+					sizeof(columns) / sizeof(columns[0]) - 1,
+					sizeof(columns[0]), compare_column_func);
+			if (column == NULL)
 				pkg_emit_error("Unknown column %s",
-				    colname);
+						colname);
+			else
+				pkg_set(pkg, column->type,
+						sqlite3_column_int64(stmt,
+						icol));
 			break;
 		case SQLITE_BLOB:
 		case SQLITE_FLOAT:
