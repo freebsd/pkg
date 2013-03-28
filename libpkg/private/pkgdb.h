@@ -56,6 +56,8 @@ int pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 
+struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type);
+
 struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
 struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
 struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame, bool all, bool pkgversiontest);
@@ -111,5 +113,12 @@ int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
  * @return
  */
 int pkgdb_repo_check_version(struct pkgdb *db, const char *database);
+
+/**
+ * Returns a list of all packages sorted by origin
+ * @param db database
+ * @return new iterator
+ */
+struct pkgdb_it *pkgdb_repo_origins(struct pkgdb *db);
 
 #endif

@@ -59,7 +59,6 @@
 #define PKGLT	(1U << 2)
 #define PKGEQ	(1U << 3)
 
-static struct pkgdb_it *pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
@@ -1201,7 +1200,7 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 }
 
 
-static struct pkgdb_it *
+struct pkgdb_it *
 pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 {
 	struct pkgdb_it	*it;

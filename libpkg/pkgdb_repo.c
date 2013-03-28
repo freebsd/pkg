@@ -846,3 +846,26 @@ pkgdb_repo_check_version(struct pkgdb *db, const char *database)
 
 	return (ret);
 }
+
+struct pkgdb_it *
+pkgdb_repo_origins(struct pkgdb *db)
+{
+	sqlite3_stmt *stmt = NULL;
+	int ret;
+	const char query_sql[] = ""
+		"SELECT origin, manifestdigest "
+		"FROM packages "
+		"ORDER BY origin;";
+
+	assert(db != NULL);
+	assert(db->type == PKGDB_REMOTE);
+
+	ret = sqlite3_prepare_v2(db->sqlite, query_sql, -1,
+			&stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (NULL);
+	}
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+}
