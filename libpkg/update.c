@@ -291,6 +291,39 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 
 	return (rc);
 }
+#if 0
+static int
+pkg_update_incremental(const char *repofile, const char *name, const char *packagesite, time_t *mtime)
+{
+	FILE *fmanifest = NULL, *fdigests = NULL;
+	int fd_manifest, fd_digests;
+	struct pkgdb *db = NULL;
+	int rc = EPKG_FATAL;
+
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+		goto cleanup;
+
+	/* Initialize the remote remote */
+	if (pkgdb_remote_init(db, name) != EPKG_OK)
+		goto cleanup;
+
+	if ((fd_digests = repo_fetch_remote_tmp(packagesite, repo_digests_archive, "txz", mtime, &rc)) == -1) {
+		goto cleanup;
+	}
+	if ((fd_manifest = repo_fetch_remote_tmp(packagesite, repo_packagesite_archive, "txz", mtime, &rc)) == -1) {
+		goto cleanup;
+	}
+
+	rc = EPKG_OK;
+cleanup:
+	if (fmanifest)
+		fclose(fmanifest);
+	if (fdigests)
+		fclose(fdigests);
+
+	return (rc);
+}
+#endif
 
 int
 pkg_update(const char *name, const char *packagesite, bool force)

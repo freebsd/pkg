@@ -66,4 +66,48 @@ int pkgdb_obtain_lock(struct pkgdb *db);
 int pkgdb_release_lock(struct pkgdb *db);
 
 void pkgshell_open(const char **r);
+
+/**
+ * Init repodb for specified path
+ * @param repodb path of repodb
+ * @param force create repository if not exists
+ * @param sqlite destination db pointer
+ * @return EPKG_OK if succeed
+ */
+int pkgdb_repo_init(const char *repodb, bool force, sqlite3 **sqlite);
+
+/**
+ * Close repodb and commit/rollback transaction started
+ * @param sqlite sqlite pointer
+ * @param commit commit transaction if true, rollback otherwise
+ * @return EPKG_OK if succeed
+ */
+int pkgdb_repo_close(sqlite3 *sqlite, bool commit);
+
+/**
+ * Check whether a package with the cehcksum specified exists in pkg_repo
+ * @param sqlite sqlite pointer
+ * @param cksum sha256 printed checksum
+ * @return EPKG_OK if checksum exists, EPKG_END if not and EPKG_FATAL if error occurred
+ */
+int pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum);
+
+/**
+ * Add a package to pkg_repo
+ * @param pkg package structure
+ * @param pkg_path path triggered package addition
+ * @param sqlite sqlite pointer
+ * @return EPKG_OK if package added, EPKG_END if package already exists and is newer than
+ * inserted one, EPKG_FATAL if error occurred
+ */
+int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path, sqlite3 *sqlite);
+
+/**
+ * Upgrade repo db version if required
+ * @param db package database object
+ * @param database name of database
+ * @return
+ */
+int pkgdb_repo_check_version(struct pkgdb *db, const char *database);
+
 #endif

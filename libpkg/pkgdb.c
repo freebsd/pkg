@@ -697,7 +697,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			return (EPKG_FATAL);
 		}
 
-		switch (pkg_check_repo_version(db, repo_name)) {
+		switch (pkgdb_repo_check_version(db, repo_name)) {
 		case EPKG_FATAL:
 			pkgdb_close(db);
 			return (EPKG_FATAL);
@@ -1051,7 +1051,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 				return (EPKG_FATAL);
 			}
 
-			ret = pkg_check_repo_version(db, "remote");
+			ret = pkgdb_repo_check_version(db, "remote");
 			if (ret != EPKG_OK) {
 				pkgdb_close(db);
 				return (ret);
