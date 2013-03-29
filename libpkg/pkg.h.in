@@ -755,6 +755,7 @@ int pkg_addshlib_provided(struct pkg *pkg, const char *name);
  * @return An error code.
  */
 int pkg_parse_manifest(struct pkg *pkg, char *buf);
+int pkg_parse_manifest_file(struct pkg *pkg, FILE *f);
 int pkg_load_manifest_file(struct pkg *pkg, const char *fpath);
 
 /**

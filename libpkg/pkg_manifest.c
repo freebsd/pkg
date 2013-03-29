@@ -182,15 +182,17 @@ urldecode(const char *src, struct sbuf **dest)
 int
 pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 {
-	char *manifest = NULL;
-	off_t sz;
-	int ret = EPKG_OK;
+	FILE *f;
+	int ret;
 
-	if ((ret = file_to_buffer(fpath, &manifest, &sz)) != EPKG_OK)
-		return (ret);
+	f = fopen(fpath, "r");
+	if (f == NULL) {
+		pkg_emit_errno("open", fpath);
+		return (EPKG_FATAL);
+	}
 
-	ret = pkg_parse_manifest(pkg, manifest);
-	free(manifest);
+	ret = pkg_parse_manifest_file(pkg, f);
+	fclose(f);
 
 	return (ret);
 }
@@ -688,7 +690,40 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 			pkg_emit_error("Invalid manifest format");
 		} else {
 			parse_root_node(pkg, node, &doc);
-			retcode = EPKG_OK;
+			retcode = pkg_is_valid(pkg);
+		}
+	} else {
+		pkg_emit_error("Invalid manifest format");
+	}
+
+	yaml_document_delete(&doc);
+	yaml_parser_delete(&parser);
+
+	return retcode;
+}
+
+int
+pkg_parse_manifest_file(struct pkg *pkg, FILE *f)
+{
+	yaml_parser_t parser;
+	yaml_document_t doc;
+	yaml_node_t *node;
+	int retcode = EPKG_FATAL;
+
+	assert(pkg != NULL);
+	assert(f != NULL);
+
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input_file(&parser, f);
+	yaml_parser_load(&parser, &doc);
+
+	node = yaml_document_get_root_node(&doc);
+	if (node != NULL) {
+		if (node->type != YAML_MAPPING_NODE) {
+			pkg_emit_error("Invalid manifest format");
+		} else {
+			parse_root_node(pkg, node, &doc);
+			retcode = pkg_is_valid(pkg);
 		}
 	} else {
 		pkg_emit_error("Invalid manifest format");

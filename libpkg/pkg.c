@@ -166,7 +166,7 @@ pkg_is_valid(struct pkg *pkg)
 		if ((fields[i].type & pkg->type) == 0 ||
 		    fields[i].optional ||
 		    pkg->fields[i] != NULL ||
-		    sbuf_get(pkg->fields[i])[0] != '\0')
+		    sbuf_len(pkg->fields[i]) > 0)
 			continue;
 		pkg_emit_error("package field incomplete: %s",
 		    fields[i].human_desc);
