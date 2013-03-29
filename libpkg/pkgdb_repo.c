@@ -414,7 +414,7 @@ pkgdb_repo_close(sqlite3 *sqlite, bool commit)
 
 static int
 maybe_delete_conflicting(const char *origin, const char *version,
-			 const char *pkg_path)
+			 const char *pkg_path, bool forced)
 {
 	int ret = EPKG_FATAL;
 	const char *oversion;
@@ -422,24 +422,32 @@ maybe_delete_conflicting(const char *origin, const char *version,
 	if (run_prepared_statement(VERSION, origin) != SQLITE_ROW)
 		return (EPKG_FATAL); /* sqlite error */
 	oversion = sqlite3_column_text(STMT(VERSION), 0);
-	switch(pkg_version_cmp(oversion, version)) {
-	case -1:
-		pkg_emit_error("duplicate package origin: replacing older "
-			       "version %s in repo with package %s for "
-			       "origin %s", oversion, pkg_path, origin);
+	if (!forced) {
+		switch(pkg_version_cmp(oversion, version)) {
+		case -1:
+			pkg_emit_error("duplicate package origin: replacing older "
+					"version %s in repo with package %s for "
+					"origin %s", oversion, pkg_path, origin);
 
+			if (run_prepared_statement(DELETE, origin) != SQLITE_DONE)
+				return (EPKG_FATAL); /* sqlite error */
+
+			ret = EPKG_OK;	/* conflict cleared */
+			break;
+		case 0:
+		case 1:
+			pkg_emit_error("duplicate package origin: package %s is not "
+					"newer than version %s already in repo for "
+					"origin %s", pkg_path, oversion, origin);
+			ret = EPKG_END;	/* keep what is already in the repo */
+			break;
+		}
+	}
+	else {
 		if (run_prepared_statement(DELETE, origin) != SQLITE_DONE)
 			return (EPKG_FATAL); /* sqlite error */
 
-		ret = EPKG_OK;	/* conflict cleared */
-		break;
-	case 0:
-	case 1:
-		pkg_emit_error("duplicate package origin: package %s is not "
-			       "newer than version %s already in repo for "
-			       "origin %s", pkg_path, oversion, origin);
-		ret = EPKG_END;	/* keep what is already in the repo */
-		break;
+		ret = EPKG_OK;
 	}
 	return (ret);
 }
@@ -459,7 +467,7 @@ pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum)
 
 int
 pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, const char *manifest_digest)
+		sqlite3 *sqlite, const char *manifest_digest, bool forced)
 {
 	const char *name, *version, *origin, *comment, *desc;
 	const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
@@ -488,7 +496,7 @@ try_again:
 			rpath, manifest_digest)) != SQLITE_DONE) {
 		if (ret == SQLITE_CONSTRAINT) {
 			switch(maybe_delete_conflicting(origin,
-					version, pkg_path)) {
+					version, pkg_path, forced)) {
 			case EPKG_FATAL: /* sqlite error */
 				ERROR_SQLITE(sqlite);
 				return (EPKG_FATAL);
@@ -585,6 +593,19 @@ try_again:
 			return (EPKG_FATAL);
 		}
 	}
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_repo_remove_package(struct pkg *pkg)
+{
+	const char *origin;
+
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+
+	if (run_prepared_statement(DELETE, origin) != SQLITE_DONE)
+		return (EPKG_FATAL); /* sqlite error */
 
 	return (EPKG_OK);
 }

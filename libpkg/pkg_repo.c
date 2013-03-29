@@ -322,7 +322,8 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 		cur_dig->files_pos = files_pos;
 		LL_PREPEND(dlist, cur_dig);
 
-		retcode = pkgdb_repo_add_package(r->pkg, r->path, sqlite, manifest_digest);
+		retcode = pkgdb_repo_add_package(r->pkg, r->path, sqlite,
+				manifest_digest, false);
 		if (retcode == EPKG_END) {
 			continue;
 		}
