@@ -92,7 +92,7 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 	int fd = -1;
 	int retcode = EPKG_FATAL;
 
-	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0600)) == -1) {
+	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0644)) == -1) {
 		pkg_emit_errno("open", dest);
 		return(EPKG_FATAL);
 	}
