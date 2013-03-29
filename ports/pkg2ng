@@ -10,6 +10,8 @@ then
 	return 77	# EX_PERM
 fi
 
+FORCE_POST=$(make _POSTMKINCLUDED=1 -f ${PORTSDIR}/Mk/bsd.pkgng.mk -V _FORCE_POST_PATTERNS)
+
 ARCH=$( uname -m )
 failed_pkgs=""
 MOVED=0
@@ -85,7 +87,7 @@ do
 	test -n "${USERS}" && echo "users: [${USERS}]" >> ${MANIFEST}
 	test -n "${GROUPS}" && echo "groups: [${GROUPS}]" >> ${MANIFEST}
 
-	pkg register -l -m ${MDIR} -f ${PLIST} ${CMD_ARGS}
+	FORCE_POST=$FORCE_POST pkg register -l -m ${MDIR} -f ${PLIST} ${CMD_ARGS}
 	if [ $? -ne 0 ]; then
 		echo "Registration of ${PKG} failed." >&2
 		cat ${MANIFEST}
