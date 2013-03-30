@@ -338,6 +338,9 @@ int pkg_jobs_resolv(struct pkg_jobs *jobs);
 int pkg_shlib_new(struct pkg_shlib **);
 void pkg_shlib_free(struct pkg_shlib *);
 
+int pkg_abstract_new(struct pkg_abstract **);
+void pkg_abstract_free(struct pkg_abstract *);
+
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format);

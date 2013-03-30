@@ -112,6 +112,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	pkg_list_free(pkg, PKG_ABSTRACT_METADATA);
 
 	pkg->rowid = 0;
 	pkg->type = type;
@@ -140,6 +141,7 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	pkg_list_free(pkg, PKG_ABSTRACT_METADATA);
 
 	free(pkg);
 }
@@ -918,6 +920,8 @@ pkg_list_count(struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->shlibs_required));
 	case PKG_SHLIBS_PROVIDED:
 		return (HASH_COUNT(pkg->shlibs_provided));
+	case PKG_ABSTRACT_METADATA:
+		return (HASH_COUNT(pkg->abstract_metadata));
 	}
 	
 	return (0);
@@ -969,6 +973,10 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	case PKG_SHLIBS_PROVIDED:
 		HASH_FREE(pkg->shlibs_provided, pkg_shlib, pkg_shlib_free);
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
+		break;
+	case PKG_ABSTRACT_METADATA:
+		HASH_FREE(pkg->abstract_metadata, pkg_abstract, pkg_abstract_free);
+		pkg->flags &= ~PKG_LOAD_ABSTRACT_METADATA;
 		break;
 	}
 }

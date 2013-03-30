@@ -414,3 +414,43 @@ pkg_shlib_name(struct pkg_shlib const * const sl)
 
 	return (sbuf_get(sl->name));
 }
+
+/*
+ * Abstract Metadata
+ */
+
+int
+pkg_abstract_new(struct pkg_abstract **am)
+{
+	if ((*am = calloc(1, sizeof(struct pkg_abstract))) == NULL)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_abstract_free(struct pkg_abstract *am)
+{
+	if (am == NULL)
+		return;
+
+	sbuf_free(am->key);
+	sbuf_free(am->value);
+	free(am);
+}
+
+const char *
+pkg_abstract_key(struct pkg_abstract const * const am)
+{
+	assert(am != NULL);
+
+	return (sbuf_get(am->key));
+}
+
+const char *
+pkg_abstract_value(struct pkg_abstract const * const am)
+{
+	assert(am != NULL);
+
+	return (sbuf_get(am->value));
+}

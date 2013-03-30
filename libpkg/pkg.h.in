@@ -66,6 +66,7 @@ struct pkg_license;
 struct pkg_user;
 struct pkg_group;
 struct pkg_shlib;
+struct pkg_abstract;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -266,6 +267,7 @@ typedef enum {
 	PKG_GROUPS,
 	PKG_SHLIBS_REQUIRED,
 	PKG_SHLIBS_PROVIDED,
+	PKG_ABSTRACT_METADATA,
 } pkg_list;
 
 /**
@@ -821,6 +823,10 @@ const char *pkg_option_value(struct pkg_option const * const);
 /* pkg_shlib */
 const char *pkg_shlib_name(struct pkg_shlib const * const);
 
+/* pkg_abstract */
+const char *pkg_abstract_key(struct pkg_abstract const * const);
+const char *pkg_abstract_value(struct pkg_abstract const * const);
+
 /**
  * @param db A pointer to a struct pkgdb object
  * @param origin Package origin
@@ -952,6 +958,7 @@ struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib
 #define PKG_LOAD_GROUPS			(1U << 10)
 #define PKG_LOAD_SHLIBS_REQUIRED	(1U << 11)
 #define PKG_LOAD_SHLIBS_PROVIDED	(1U << 12)
+#define PKG_LOAD_ABSTRACT_METADATA      (1U << 13)
 /* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**
