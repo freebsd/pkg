@@ -895,6 +895,35 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 }
 
 int
+pkg_addabstract_metadata(struct pkg *pkg, const char *key, const char *value)
+{
+	struct pkg_abstract *am = NULL;
+
+	assert(pkg != NULL);
+	assert(key != NULL && key[0] != '\0');
+	assert(value != NULL && value[0] != '\0');
+
+	/* The combination of key+value should be unique */
+	HASH_FIND_STR(pkg->abstract_metadata, __DECONST(char *, key), am);
+	if (am != NULL && strcmp(value, pkg_abstract_value(am)) == 0) {
+		pkg_emit_error("duplicate abstract metadata listing: %s -- %s,"
+			       " ignoring", key, value);
+		return (EPKG_OK);
+	}
+	am = NULL;
+	pkg_abstract_new(&am);
+
+	sbuf_set(&am->key, key);
+	sbuf_set(&am->value, value);
+
+	HASH_ADD_KEYPTR(hh, pkg->abstract_metadata,
+	    __DECONST(char *, pkg_abstract_key(am)),
+	    strlen(pkg_abstract_key(am)), am);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_list_count(struct pkg *pkg, pkg_list list)
 {
 	switch (list) {

@@ -58,6 +58,7 @@
 #define PKG_DIRECTORIES -11
 #define PKG_SHLIBS_REQUIRED -12
 #define PKG_SHLIBS_PROVIDED -13
+#define PKG_ABSTRACT_METADATA -14
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_size_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -77,6 +78,7 @@ static struct manifest_key {
 	yaml_node_type_t valid_type;
 	int (*parse_data)(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 } manifest_keys[] = {
+	{ "abstract_metadata", PKG_ABSTRACT_METADATA, YAML_MAPPING_NODE, parse_mapping},
 	{ "arch", PKG_ARCH, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "comment", PKG_COMMENT, YAML_SCALAR_NODE, pkg_set_from_node},
@@ -442,6 +444,14 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 
 			urldecode(val->data.scalar.value, &tmp);
 			pkg_addscript(pkg, sbuf_get(tmp), script_type);
+			break;
+		case PKG_ABSTRACT_METADATA:
+			if (val->type != YAML_SCALAR_NODE)
+				pkg_emit_error("Skipping malformed abstract metadata %s",
+				    key->data.scalar.value);
+			else
+				pkg_addabstract_metadata(pkg, key->data.scalar.value,
+				    val->data.scalar.value);
 			break;
 		}
 

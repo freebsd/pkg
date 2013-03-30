@@ -754,6 +754,12 @@ int pkg_addshlib_required(struct pkg *pkg, const char *name);
  */
 int pkg_addshlib_provided(struct pkg *pkg, const char *name);
 
+/*
+ * Add abstract_metatdata key+value pair
+ * @return An error code
+ */
+int pkg_addabstract_metadata(struct pkg *pkg, const char *key, const char *value);
+
 /**
  * Parse a manifest and set the attributes of pkg accordingly.
  * @param buf An NULL-terminated buffer containing the manifest data.
