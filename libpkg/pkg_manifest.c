@@ -867,7 +867,7 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 	struct pkg_user *user = NULL;
 	struct pkg_group *group = NULL;
 	struct pkg_shlib *shlib = NULL;
-	struct pkg_abtract *abstract = NULL;
+	struct pkg_abstract *abstract = NULL;
 	struct sbuf *tmpsbuf = NULL;
 	int rc = EPKG_OK;
 	int mapping;
@@ -985,7 +985,7 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 	}
 	map = -1;
 	while (pkg_abstract_metadata(pkg, &abstract) == EPKG_OK) {
-		if (map = -1)
+		if (map == -1)
 			manifest_append_map(map, mapping, "abstract_metadata", FLOW);
 		manifest_append_kv(map, pkg_abstract_key(abstract),
 		    pkg_abstract_value(abstract), PLAIN);

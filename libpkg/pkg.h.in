@@ -588,6 +588,13 @@ int pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **shlib);
 int pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **shlib);
 
 /**
+ * Iterates over the abstract metatdata associated with the package.
+ * @param abstract must be set to NULL for the first call.
+ * @return An error code
+ */
+int pkg_abstract_metadata(struct pkg *pkg, struct pkg_abstract **abstract);
+
+/**
  * Iterate over all of the files within the package pkg, ensuring the
  * dependency list contains all applicable packages providing the
  * shared objects used by pkg.

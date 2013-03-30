@@ -476,6 +476,14 @@ pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **s)
 }
 
 int
+pkg_abstract_metadata(struct pkg *pkg, struct pkg_abstract **am)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->abstract_metadata, (*am));
+}
+
+int
 pkg_addlicense(struct pkg *pkg, const char *name)
 {
 	struct pkg_license *l = NULL;
