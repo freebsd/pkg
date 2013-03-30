@@ -151,6 +151,43 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	return (EPKG_OK);
 }
 
+static int
+load_key_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
+	     int (*pkg_addkeyval)(struct pkg *pkg, const char *key, const char *val),
+	     int list)
+{
+	sqlite3_stmt	*stmt;
+	int		 ret;
+
+	assert(db != NULL && pkg != NULL);
+
+	if (pkg->flags & flags)
+		return (EPKG_OK);
+
+	if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(db);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_int64(stmt, 1, pkg->rowid);
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		pkg_addkeyval(pkg, sqlite3_column_text(stmt, 0),
+			      sqlite3_column_text(stmt, 1));
+	}
+	sqlite3_finalize(stmt);
+
+	if (ret != SQLITE_DONE) {
+		if (list != -1)
+			pkg_list_free(pkg, list);
+		ERROR_SQLITE(db);
+		return (EPKG_FATAL);
+	}
+
+	pkg->flags |= flags;
+	return (EPKG_OK);
+}
+
 static const char *
 pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 {
@@ -1253,7 +1290,8 @@ static struct load_on_flag {
 	{ PKG_LOAD_GROUPS,		pkgdb_load_group },
 	{ PKG_LOAD_SHLIBS_REQUIRED,	pkgdb_load_shlib_required },
 	{ PKG_LOAD_SHLIBS_PROVIDED,	pkgdb_load_shlib_provided },
-	{ -1,			NULL }
+	{ PKG_LOAD_ABSTRACT_METADATA,   pkgdb_load_abstract_metadata },
+	{ -1,			        NULL }
 };
 
 int
@@ -1924,6 +1962,32 @@ pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
+pkgdb_load_abstract_metadata(struct pkgdb *db, struct pkg *pkg)
+{
+	char		 sql[BUFSIZ];
+	const char	*reponame = NULL;
+	const char	*basesql = ""
+		"SELECT k.abstract AS key, v.abstract AS value"
+		"  FROM %Q.pkg_abstract p"
+		"    JOIN %Q.abstract k ON (p.key_id = k.abstract_id)"
+		"    JOIN %Q.abstract v ON (p.key_id = v.abstract_id)"
+		"  WHERE p.package_id = ?1"
+		"  ORDER BY key, value";
+
+	assert(db != NULL && pkg != NULL);
+
+	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
+		pkg_get(pkg, PKG_REPONAME, &reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
+	} else
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
+
+	return (load_key_val(db->sqlite, pkg, sql, PKG_LOAD_ABSTRACT_METADATA,
+		   pkg_addabstract_metadata, PKG_ABSTRACT_METADATA));
+}
+
+int
 pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
@@ -1964,8 +2028,6 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 int
 pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 {
-	sqlite3_stmt	*stmt = NULL;
-	int		 ret = EPKG_OK;
 	const char	*reponame;
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
@@ -1986,27 +2048,8 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_snprintf(sizeof(sql), sql, basesql, "main");
 	}
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (EPKG_FATAL);
-	}
-
-	sqlite3_bind_int64(stmt, 1, pkg->rowid);
-
-	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_addoption(pkg, sqlite3_column_text(stmt, 0),
-		    sqlite3_column_text(stmt, 1));
-	}
-	sqlite3_finalize(stmt);
-
-	if (ret != SQLITE_DONE) {
-		pkg_list_free(pkg, PKG_OPTIONS);
-		ERROR_SQLITE(db->sqlite);
-		return (EPKG_FATAL);
-	}
-
-	pkg->flags |= PKG_LOAD_OPTIONS;
-	return (EPKG_OK);
+	return (load_key_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
+		    pkg_addoption, PKG_OPTIONS));
 }
 
 int
