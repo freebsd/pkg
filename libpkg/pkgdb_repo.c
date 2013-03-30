@@ -303,7 +303,7 @@ finalize_prepared_statements(void)
 }
 
 int
-pkgdb_repo_init(const char *repodb, bool force, sqlite3 **sqlite)
+pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
 {
 	bool incremental = false;
 	bool db_not_open;
@@ -324,9 +324,9 @@ pkgdb_repo_init(const char *repodb, bool force, sqlite3 **sqlite)
 		db_not_open = false;
 
 		/* If the schema is too old, or we're forcing a full
-		   update, then we cannot do an incremental update.
-		   Delete the existing repo, and promote this to a
-		   full update */
+			   update, then we cannot do an incremental update.
+			   Delete the existing repo, and promote this to a
+			   full update */
 		if (!incremental)
 			continue;
 		retcode = get_repo_user_version(*sqlite, "main", &reposcver);
@@ -335,8 +335,8 @@ pkgdb_repo_init(const char *repodb, bool force, sqlite3 **sqlite)
 		if (force || reposcver != REPO_SCHEMA_VERSION) {
 			if (reposcver != REPO_SCHEMA_VERSION)
 				pkg_emit_error("re-creating repo to upgrade schema version "
-				     "from %d to %d", reposcver,
-				     REPO_SCHEMA_VERSION);
+						"from %d to %d", reposcver,
+						REPO_SCHEMA_VERSION);
 			sqlite3_close(*sqlite);
 			unlink(repodb);
 			incremental = false;
@@ -344,52 +344,60 @@ pkgdb_repo_init(const char *repodb, bool force, sqlite3 **sqlite)
 		}
 	}
 
-	sqlite3_create_function(*sqlite, "file_exists", 2, SQLITE_ANY, NULL,
-	    file_exists, NULL, NULL);
-
-	retcode = sql_exec(*sqlite, "PRAGMA synchronous=off");
-	if (retcode != EPKG_OK)
-		return (retcode);
-
-	retcode = sql_exec(*sqlite, "PRAGMA journal_mode=memory");
-	if (retcode != EPKG_OK)
-		return (retcode);
-
-	retcode = sql_exec(*sqlite, "PRAGMA foreign_keys=on");
-	if (retcode != EPKG_OK)
-		return (retcode);
-
 	if (!incremental) {
 		retcode = sql_exec(*sqlite, initsql, REPO_SCHEMA_VERSION);
 		if (retcode != EPKG_OK)
 			return (retcode);
 	}
 
-	retcode = initialize_prepared_statements(*sqlite);
-	if (retcode != EPKG_OK)
-		return (retcode);
-
-	retcode = pkgdb_transaction_begin(*sqlite, NULL);
-	if (retcode != EPKG_OK)
-		return (retcode);
-
 	/* remove anything that is no longer in the repository. */
 	if (incremental) {
 		const char *obsolete[] = {
-			"packages WHERE NOT FILE_EXISTS(path, cksum)",
-			"categories WHERE id NOT IN "
+				"packages WHERE NOT FILE_EXISTS(path, cksum)",
+				"categories WHERE id NOT IN "
 				"(SELECT category_id FROM pkg_categories)",
-			"licenses WHERE id NOT IN "
+				"licenses WHERE id NOT IN "
 				"(SELECT license_id FROM pkg_licenses)",
-			"shlibs WHERE id NOT IN "
+				"shlibs WHERE id NOT IN "
 				"(SELECT shlib_id FROM pkg_shlibs_required)"
-			        "AND id NOT IN "
+				"AND id NOT IN "
 				"(SELECT shlib_id FROM pkg_shlibs_provided)"
 		};
 		size_t num_objs = sizeof(obsolete) / sizeof(*obsolete);
 		for (size_t obj = 0; obj < num_objs; obj++)
 			sql_exec(*sqlite, "DELETE FROM %s;", obsolete[obj]);
 	}
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_repo_init(sqlite3 *sqlite)
+{
+	int retcode = EPKG_OK;
+
+	sqlite3_create_function(sqlite, "file_exists", 2, SQLITE_ANY, NULL,
+	    file_exists, NULL, NULL);
+
+	retcode = sql_exec(sqlite, "PRAGMA synchronous=off");
+	if (retcode != EPKG_OK)
+		return (retcode);
+
+	retcode = sql_exec(sqlite, "PRAGMA journal_mode=memory");
+	if (retcode != EPKG_OK)
+		return (retcode);
+
+	retcode = sql_exec(sqlite, "PRAGMA foreign_keys=on");
+	if (retcode != EPKG_OK)
+		return (retcode);
+
+	retcode = initialize_prepared_statements(sqlite);
+	if (retcode != EPKG_OK)
+		return (retcode);
+
+	retcode = pkgdb_transaction_begin(sqlite, NULL);
+	if (retcode != EPKG_OK)
+		return (retcode);
 
 	return (EPKG_OK);
 }
@@ -869,24 +877,31 @@ pkgdb_repo_check_version(struct pkgdb *db, const char *database)
 }
 
 struct pkgdb_it *
-pkgdb_repo_origins(struct pkgdb *db)
+pkgdb_repo_origins(sqlite3 *sqlite)
 {
 	sqlite3_stmt *stmt = NULL;
 	int ret;
+	struct pkgdb_it *it;
 	const char query_sql[] = ""
 		"SELECT origin, manifestdigest "
 		"FROM packages "
 		"ORDER BY origin;";
 
-	assert(db != NULL);
-	assert(db->type == PKGDB_REMOTE);
-
-	ret = sqlite3_prepare_v2(db->sqlite, query_sql, -1,
+	ret = sqlite3_prepare_v2(sqlite, query_sql, -1,
 			&stmt, NULL);
 	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
+		ERROR_SQLITE(sqlite);
 		return (NULL);
 	}
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
+		pkg_emit_errno("malloc", "pkgdb_repo_origins");
+		sqlite3_finalize(stmt);
+		return (NULL);
+	}
+
+	it->db = NULL;
+	it->stmt = stmt;
+	it->type = PKG_REMOTE;
+	return (it);
 }

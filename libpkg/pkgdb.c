@@ -1000,7 +1000,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 
 		/* Create the diretory if it doesn't exists */
 		if (createdir && mkdirs(dbdir) != EPKG_OK)
-				return (EPKG_FATAL);
+			return (EPKG_FATAL);
 
 		sqlite3_initialize();
 		if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
@@ -1274,9 +1274,15 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 
 		for (i = 0; load_on_flag[i].load != NULL; i++) {
 			if (flags & load_on_flag[i].flag) {
-				ret = load_on_flag[i].load(it->db, pkg);
-				if (ret != EPKG_OK)
-					return (ret);
+				if (it->db != NULL) {
+					ret = load_on_flag[i].load(it->db, pkg);
+					if (ret != EPKG_OK)
+						return (ret);
+				}
+				else {
+					pkg_emit_error("invalid iterator passed to pkgdb_it_next");
+					return (EPKG_FATAL);
+				}
 			}
 		}
 
@@ -1284,7 +1290,10 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 	case SQLITE_DONE:
 		return (EPKG_END);
 	default:
-		ERROR_SQLITE(it->db->sqlite);
+		if (it->db)
+			ERROR_SQLITE(it->db->sqlite);
+		else
+			pkg_emit_error("invalid iterator passed to pkgdb_it_next");
 		return (EPKG_FATAL);
 	}
 }

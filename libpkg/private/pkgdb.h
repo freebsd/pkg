@@ -70,13 +70,20 @@ int pkgdb_release_lock(struct pkgdb *db);
 void pkgshell_open(const char **r);
 
 /**
- * Init repodb for specified path
+ * Open repodb for specified path
  * @param repodb path of repodb
  * @param force create repository if not exists
  * @param sqlite destination db pointer
  * @return EPKG_OK if succeed
  */
-int pkgdb_repo_init(const char *repodb, bool force, sqlite3 **sqlite);
+int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite);
+
+/**
+ * Init repository for pkgdb_repo* functions
+ * @param sqlite sqlite object
+ * @return EPKG_OK if succeed
+ */
+int pkgdb_repo_init(sqlite3 *sqlite);
 
 /**
  * Close repodb and commit/rollback transaction started
@@ -124,9 +131,9 @@ int pkgdb_repo_check_version(struct pkgdb *db, const char *database);
 
 /**
  * Returns a list of all packages sorted by origin
- * @param db database
+ * @param sqlite database
  * @return new iterator
  */
-struct pkgdb_it *pkgdb_repo_origins(struct pkgdb *db);
+struct pkgdb_it *pkgdb_repo_origins(sqlite3 *sqlite);
 
 #endif
