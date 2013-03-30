@@ -461,15 +461,16 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 {
 	const char *name, *version, *origin, *comment, *desc;
 	const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
-	int64_t flatsize, pkgsize;
-	lic_t licenselogic;
-	int ret;
-	struct pkg_dep *dep = NULL;
-	struct pkg_category *category = NULL;
-	struct pkg_license *license = NULL;
-	struct pkg_option *option = NULL;
-	struct pkg_shlib *shlib = NULL;
-	int64_t package_id;
+	int64_t			 flatsize, pkgsize;
+	lic_t			 licenselogic;
+	int			 ret;
+	struct pkg_dep		*dep = NULL;
+	struct pkg_category	*category = NULL;
+	struct pkg_license	*license = NULL;
+	struct pkg_option	*option = NULL;
+	struct pkg_shlib	*shlib = NULL;
+	struct pkg_abstract	*abstract = NULL;
+	int64_t			 package_id;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
 			    PKG_VERSION, &version, PKG_COMMENT, &comment,
@@ -578,6 +579,23 @@ try_again:
 		if (ret == SQLITE_DONE)
 			ret = run_prepared_statement(SHLIB_PROV, package_id,
 					shlib_name);
+		if (ret != SQLITE_DONE) {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+	}
+
+	abstract = NULL;
+	while (pkg_abstract_metadata(pkg, &abstract) == EPKG_OK) {
+		const char *abstract_key = pkg_abstract_key(abstract);
+		const char *abstract_val = pkg_abstract_value(abstract);
+
+		ret = run_prepared_statement(ABSTRACT1, abstract_key);
+		if (ret == SQLITE_DONE) 
+			ret = run_prepared_statement(ABSTRACT1, abstract_val);
+		if (ret == SQLITE_DONE)
+			ret = run_prepared_statement(ABSTRACT2, package_id,
+				  abstract_key, abstract_val);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite);
 			return (EPKG_FATAL);

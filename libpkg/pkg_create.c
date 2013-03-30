@@ -83,10 +83,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		}
 	}
 
-	/*
-	 * Register shared libraries used by the package if SHLIBS
-	 * enabled in conf.  Deletes shlib info if not.
-	 */
 	if (pkg->type == PKG_OLD_FILE) {
 		const char *desc, *display, *comment;
 		char oldcomment[BUFSIZ];
@@ -101,6 +97,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		snprintf(oldcomment, sizeof(oldcomment), "%s\n", comment);
 		packing_append_buffer(pkg_archive, oldcomment, "+COMMENT", strlen(oldcomment));
 	} else {
+		/*
+		 * Register shared libraries used by the package if
+		 * SHLIBS enabled in conf.  Deletes shlib info if not.
+		 */
+
 		pkg_register_shlibs(pkg);
 
 		pkg_emit_manifest(pkg, &m, false, NULL);

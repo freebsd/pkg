@@ -1012,7 +1012,8 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	case PKG_ABSTRACT_METADATA:
-		HASH_FREE(pkg->abstract_metadata, pkg_abstract, pkg_abstract_free);
+		HASH_FREE(pkg->abstract_metadata, pkg_abstract,
+		    pkg_abstract_free);
 		pkg->flags &= ~PKG_LOAD_ABSTRACT_METADATA;
 		break;
 	}

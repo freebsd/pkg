@@ -2089,6 +2089,8 @@ typedef enum _sql_prstmt_index {
 	SHLIBS1,
 	SHLIBS_REQD,
 	SHLIBS_PROV,
+	ABSTRACT1,
+	ABSTRACT2,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -2215,6 +2217,20 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT INTO pkg_shlibs_provided(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
+	},
+	[ABSTRACT1] = {
+		NULL,
+		"INSERT OR IGNORE INTO abstract(abstract) "
+		"VALUES (?1)",
+		"T",
+	},
+	[ABSTRACT2] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_abstract(package_id, key_id, value_id) "
+		"VALUES (?1,"
+		" (SELECT abstract_id FROM abstract WHERE abstract=?2),"
+		" (SELECT abstract_id FROM abstract WHERE abstract=?3))",
+		"ITT",
 	},
 	/* PRSTMT_LAST */
 };
@@ -2585,6 +2601,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	if (pkgdb_update_shlibs_provided(pkg, package_id, s) != EPKG_OK)
 		goto cleanup;
 
+	/*
+	 * Insert abstract metadata
+	 */
+	if (pkgdb_insert_abstract_metadata(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
+
 	retcode = EPKG_OK;
 
 	cleanup:
@@ -2627,6 +2649,29 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 		}
 	}
 
+	return (EPKG_OK);
+}
+
+int
+pkgdb_insert_abstract_metadata(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	struct pkg_abstract	*abstract = NULL;
+
+	while (pkg_abstract_metadata(pkg, &abstract) == EPKG_OK) {
+		if (run_prstmt(ABSTRACT1, pkg_abstract_key(abstract))
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(ABSTRACT1, pkg_abstract_value(abstract))
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(ABSTRACT2, package_id,
+			pkg_abstract_key(abstract),
+			pkg_abstract_value(abstract))
+		    != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			return (EPKG_FATAL);
+		}
+	}
 	return (EPKG_OK);
 }
 
