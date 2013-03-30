@@ -19,3 +19,6 @@ FORCE_POST=$(make _POSTMKINCLUDED=1 -f ${pkgng_mk_dir}/bsd.pkgng.mk -V _FORCE_PO
 [ -n "$tmp_pkgng_mk_dir" ] && rm -rf $tmp_pkgng_mk_dir
 
 FORCE_PORT=$FORCE_POST pkg convert
+
+# Delete the portupgrade pkgdb to avoid discrepencies. It will be auto recreated.
+rm -f /var/db/pkg/pkgdb.db > /dev/null 2>&1
