@@ -1979,9 +1979,11 @@ pkgdb_load_abstract_metadata(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame,
+		    reponame, reponame);
 	} else
-		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main",
+                    "main", "main");
 
 	return (load_key_val(db->sqlite, pkg, sql, PKG_LOAD_ABSTRACT_METADATA,
 		   pkg_addabstract_metadata, PKG_ABSTRACT_METADATA));
