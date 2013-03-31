@@ -68,44 +68,47 @@ static int pkg_set_dirs_from_node(struct pkg *, yaml_node_t *, yaml_document_t *
 static int parse_sequence(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int parse_mapping(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 
+/*
+ * Keep sorted
+ */
 static struct manifest_key {
 	const char *key;
 	int type;
 	yaml_node_type_t valid_type;
 	int (*parse_data)(struct pkg *, yaml_node_t *, yaml_document_t *, int);
-} manifest_key[] = {
-	{ "name", PKG_NAME, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "origin", PKG_ORIGIN, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "version", PKG_VERSION, YAML_SCALAR_NODE, pkg_set_from_node},
+} manifest_keys[] = {
 	{ "arch", PKG_ARCH, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "www", PKG_WWW, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "comment", PKG_COMMENT, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "maintainer", PKG_MAINTAINER, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "prefix", PKG_PREFIX, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "path", PKG_REPOPATH, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "sum", PKG_CKSUM, YAML_SCALAR_NODE, pkg_set_from_node},
+	/* compatibility with old format */
+	/* compatibility with old format */
 	{ "deps", PKG_DEPS, YAML_MAPPING_NODE, parse_mapping},
-	{ "files", PKG_FILES, YAML_MAPPING_NODE, parse_mapping},
-	{ "dirs", PKG_DIRS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "desc", PKG_DESC, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "directories", PKG_DIRECTORIES, YAML_MAPPING_NODE, parse_mapping},
-	{ "pkgsize", PKG_NEW_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
+	{ "dirs", PKG_DIRS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "files", PKG_FILES, YAML_MAPPING_NODE, parse_mapping},
 	{ "flatsize", PKG_FLATSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
+	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping},
+	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "infos", PKG_INFOS, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "licenselogic", -1, YAML_SCALAR_NODE, pkg_set_licenselogic_from_node},
 	{ "licenses", PKG_LICENSES, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "desc", PKG_DESC, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "scripts", PKG_SCRIPTS, YAML_MAPPING_NODE, parse_mapping},
+	{ "maintainer", PKG_MAINTAINER, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "message", PKG_MESSAGE, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "infos", PKG_INFOS, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "name", PKG_NAME, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "options", PKG_OPTIONS, YAML_MAPPING_NODE, parse_mapping},
-	/* compatibility with old format */
-	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "users", PKG_USERS, YAML_MAPPING_NODE, parse_mapping},
-	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
-	/* compatibility with old format */
-	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping},
-	{ "shlibs_required", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "origin", PKG_ORIGIN, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "path", PKG_REPOPATH, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "pkgsize", PKG_NEW_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
+	{ "prefix", PKG_PREFIX, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "scripts", PKG_SCRIPTS, YAML_MAPPING_NODE, parse_mapping},
 	{ "shlibs_provided", PKG_SHLIBS_PROVIDED, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "shlibs_required", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "sum", PKG_CKSUM, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "users", PKG_USERS, YAML_MAPPING_NODE, parse_mapping},
+	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "version", PKG_VERSION, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "www", PKG_WWW, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ NULL, -99, -99, NULL}
 };
 
@@ -179,15 +182,17 @@ urldecode(const char *src, struct sbuf **dest)
 int
 pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 {
-	char *manifest = NULL;
-	off_t sz;
-	int ret = EPKG_OK;
+	FILE *f;
+	int ret;
 
-	if ((ret = file_to_buffer(fpath, &manifest, &sz)) != EPKG_OK)
-		return (ret);
+	f = fopen(fpath, "r");
+	if (f == NULL) {
+		pkg_emit_errno("open", fpath);
+		return (EPKG_FATAL);
+	}
 
-	ret = pkg_parse_manifest(pkg, manifest);
-	free(manifest);
+	ret = pkg_parse_manifest_file(pkg, f);
+	fclose(f);
 
 	return (ret);
 }
@@ -613,12 +618,22 @@ pkg_set_deps_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 }
 
 static int
+manifest_key_cmp(const void *pkey, const void *pmanifest_key)
+{
+	const struct manifest_key *mkey =
+			(const struct manifest_key*)pmanifest_key;
+	const char *key = (const char *)pkey;
+
+	return strcasecmp(key, mkey->key);
+}
+
+static int
 parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
 	yaml_node_pair_t *pair;
 	yaml_node_t *key;
 	yaml_node_t *val;
-	int i = 0;
 	int retcode = EPKG_OK;
+	struct manifest_key *selected_key;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
@@ -641,15 +656,12 @@ parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
 			continue;
 		}
 
-		for (i = 0; manifest_key[i].key != NULL; i++) {
-			const char *m_key = manifest_key[i].key;
-			if (strcasecmp(key->data.scalar.value, m_key))
-				continue;
-			if (val->type == manifest_key[i].valid_type) {
-				retcode = manifest_key[i].parse_data(pkg, val,
-				    doc, manifest_key[i].type);
-				break;
-			}
+		selected_key = bsearch(key->data.scalar.value, manifest_keys,
+				sizeof(manifest_keys) / sizeof(manifest_keys[0]) - 1,
+				sizeof(manifest_keys[0]), manifest_key_cmp);
+		if (selected_key != NULL && val->type == selected_key->valid_type) {
+			retcode = selected_key->parse_data(pkg, val, doc,
+					selected_key->type);
 		}
 		++pair;
 	}
@@ -678,7 +690,40 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 			pkg_emit_error("Invalid manifest format");
 		} else {
 			parse_root_node(pkg, node, &doc);
-			retcode = EPKG_OK;
+			retcode = pkg_is_valid(pkg);
+		}
+	} else {
+		pkg_emit_error("Invalid manifest format");
+	}
+
+	yaml_document_delete(&doc);
+	yaml_parser_delete(&parser);
+
+	return retcode;
+}
+
+int
+pkg_parse_manifest_file(struct pkg *pkg, FILE *f)
+{
+	yaml_parser_t parser;
+	yaml_document_t doc;
+	yaml_node_t *node;
+	int retcode = EPKG_FATAL;
+
+	assert(pkg != NULL);
+	assert(f != NULL);
+
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input_file(&parser, f);
+	yaml_parser_load(&parser, &doc);
+
+	node = yaml_document_get_root_node(&doc);
+	if (node != NULL) {
+		if (node->type != YAML_MAPPING_NODE) {
+			pkg_emit_error("Invalid manifest format");
+		} else {
+			parse_root_node(pkg, node, &doc);
+			retcode = pkg_is_valid(pkg);
 		}
 	} else {
 		pkg_emit_error("Invalid manifest format");

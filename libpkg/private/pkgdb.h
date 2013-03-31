@@ -56,6 +56,8 @@ int pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 
+struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type);
+
 struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
 struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
 struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame, bool all, bool pkgversiontest);
@@ -66,4 +68,72 @@ int pkgdb_obtain_lock(struct pkgdb *db);
 int pkgdb_release_lock(struct pkgdb *db);
 
 void pkgshell_open(const char **r);
+
+/**
+ * Open repodb for specified path
+ * @param repodb path of repodb
+ * @param force create repository if not exists
+ * @param sqlite destination db pointer
+ * @return EPKG_OK if succeed
+ */
+int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite);
+
+/**
+ * Init repository for pkgdb_repo* functions
+ * @param sqlite sqlite object
+ * @return EPKG_OK if succeed
+ */
+int pkgdb_repo_init(sqlite3 *sqlite);
+
+/**
+ * Close repodb and commit/rollback transaction started
+ * @param sqlite sqlite pointer
+ * @param commit commit transaction if true, rollback otherwise
+ * @return EPKG_OK if succeed
+ */
+int pkgdb_repo_close(sqlite3 *sqlite, bool commit);
+
+/**
+ * Check whether a package with the cehcksum specified exists in pkg_repo
+ * @param sqlite sqlite pointer
+ * @param cksum sha256 printed checksum
+ * @return EPKG_OK if checksum exists, EPKG_END if not and EPKG_FATAL if error occurred
+ */
+int pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum);
+
+/**
+ * Add a package to pkg_repo
+ * @param pkg package structure
+ * @param pkg_path path triggered package addition
+ * @param sqlite sqlite pointer
+ * @param manifest_digest sha256 checksum of the manifest of the package
+ * @param forced force adding of package even if it is outdated
+ * @return EPKG_OK if package added, EPKG_END if package already exists and is newer than
+ * inserted one, EPKG_FATAL if error occurred
+ */
+int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
+		sqlite3 *sqlite, const char *manifest_digest, bool forced);
+
+/**
+ * Remove specified pkg from repo
+ * @param pkg package to remove
+ * @return EPKG_OK if succeeded
+ */
+int pkgdb_repo_remove_package(struct pkg *pkg);
+
+/**
+ * Upgrade repo db version if required
+ * @param db package database object
+ * @param database name of database
+ * @return EPKG_OK if succeeded
+ */
+int pkgdb_repo_check_version(struct pkgdb *db, const char *database);
+
+/**
+ * Returns a list of all packages sorted by origin
+ * @param sqlite database
+ * @return new iterator
+ */
+struct pkgdb_it *pkgdb_repo_origins(sqlite3 *sqlite);
+
 #endif

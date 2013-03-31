@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -292,6 +293,201 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 	return (rc);
 }
 
+static int
+pkg_add_from_manifest(FILE *f, const char *origin, long offset,
+		const char *manifest_digest, sqlite3 *sqlite)
+{
+	int rc = EPKG_OK;
+	struct pkg *pkg;
+	const char *local_origin;
+
+	if (fseek(f, offset, SEEK_SET) == -1) {
+		pkg_emit_errno("fseek", "invalid manifest offset");
+		return (EPKG_FATAL);
+	}
+
+	rc = pkg_new(&pkg, PKG_REMOTE);
+	if (rc != EPKG_OK)
+		return (EPKG_FATAL);
+
+	rc = pkg_parse_manifest_file(pkg, f);
+	if (rc != EPKG_OK) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/* Ensure that we have a proper origin */
+	pkg_get(pkg, PKG_ORIGIN, &local_origin);
+	if (local_origin == NULL || strcmp(local_origin, origin) != 0) {
+		pkg_emit_error("manifest contains origin %s while we wanted to add origin %s",
+				local_origin ? local_origin : "NULL", origin);
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, manifest_digest, true);
+
+cleanup:
+	pkg_free(pkg);
+
+	return (rc);
+}
+
+static int
+pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
+{
+	FILE *fmanifest = NULL, *fdigests = NULL;
+	int fd_manifest, fd_digests;
+	sqlite3 *sqlite = NULL;
+	struct pkg *local_pkg;
+	int rc = EPKG_FATAL, ret;
+	const char *local_origin, *local_digest;
+	struct pkgdb_it *it;
+	char linebuf[1024], *digest_origin, *digest_digest, *digest_offset, *p;
+	int updated = 0, removed = 0, added = 0;
+	long num_offset;
+
+	if ((rc = pkgdb_repo_open(name, true, &sqlite)) != EPKG_OK)
+		goto cleanup;
+
+	if ((rc = pkgdb_repo_init(sqlite)) != EPKG_OK)
+		goto cleanup;
+
+	it = pkgdb_repo_origins(sqlite);
+	if (it == NULL) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/* Try to get a single entry in repository to ensure that we can read checksums */
+	pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
+	pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
+	if (local_digest == NULL || local_origin == NULL) {
+		pkg_emit_notice("incremental update is not possible as "
+				"repo format is inappropriate, trying full upgrade");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	if ((fd_digests = repo_fetch_remote_tmp(packagesite, repo_digests_archive,
+			"txz", mtime, &rc)) == -1)
+		goto cleanup;
+	if ((fd_manifest = repo_fetch_remote_tmp(packagesite, repo_packagesite_archive,
+			"txz", mtime, &rc)) == -1)
+		goto cleanup;
+
+	do {
+		pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
+		/* Read a line from digests file */
+		if (fgets(linebuf, sizeof(linebuf) - 1, fdigests) == NULL) {
+			while ((ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+				/* Remove packages */
+				rc = pkgdb_repo_remove_package(local_pkg);
+				if (rc != EPKG_OK)
+					goto cleanup;
+				removed ++;
+			}
+		}
+		p = linebuf;
+		digest_origin = strsep(&p, ":");
+		digest_digest = strsep(&p, ":");
+		digest_offset = strsep(&p, ":");
+		if (digest_origin == NULL || digest_digest == NULL ||
+				digest_offset == NULL) {
+			pkg_emit_error("invalid digest file format");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+		errno = 0;
+		num_offset = (long)strtoul(digest_offset, NULL, 10);
+		if (errno != 0) {
+			pkg_emit_errno("strtoul", "digest format error");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+		/*
+		 * Now we have local and remote origins that are sorted,
+		 * so here are possible cases:
+		 * 1) local == remote, but hashes are different: upgrade
+		 * 2) local > remote, delete packages till local == remote
+		 * 3) local < remote, insert new packages till local == remote
+		 * 4) local == remote and hashes are the same, skip
+		 */
+		ret = strcmp(local_origin, digest_origin);
+		if (ret == 0) {
+			if (strcmp(digest_digest, local_digest) != 0) {
+				/* Do upgrade */
+				rc = pkg_add_from_manifest(fmanifest, digest_origin,
+						num_offset, digest_digest, sqlite);
+				updated ++;
+			}
+			else {
+				/* Skip to next iteration */
+				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
+			}
+		}
+		else if (ret > 0) {
+			do {
+				/* Remove packages */
+				pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
+				if (strcmp(local_origin, digest_origin) <= 0) {
+					break;
+				}
+				rc = pkgdb_repo_remove_package(local_pkg);
+				if (rc != EPKG_OK)
+					goto cleanup;
+				removed ++;
+				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
+			} while (ret == EPKG_OK);
+		}
+		else if (ret < 0) {
+			for (;;) {
+				if (strcmp(local_origin, digest_origin) < 0) {
+					/* Insert a package from manifest */
+					added ++;
+					rc = pkg_add_from_manifest(fmanifest, digest_origin,
+							num_offset, digest_digest, sqlite);
+				}
+				else {
+					break;
+				}
+				if (fgets(linebuf, sizeof(linebuf) - 1, fdigests) == NULL) {
+					break;
+				}
+				p = linebuf;
+				digest_origin = strsep(&p, ":");
+				digest_digest = strsep(&p, ":");
+				digest_offset = strsep(&p, ":");
+				if (digest_origin == NULL || digest_digest == NULL ||
+						digest_offset == NULL) {
+					pkg_emit_error("invalid digest file format");
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+				errno = 0;
+				num_offset = (long)strtoul(digest_offset, NULL, 10);
+				if (errno != 0) {
+					pkg_emit_errno("strtoul", "digest format error");
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+			}
+		}
+	} while (ret == EPKG_OK);
+
+	rc = EPKG_OK;
+cleanup:
+	if (pkgdb_repo_close(sqlite, rc == EPKG_OK) != EPKG_OK) {
+		rc = EPKG_FATAL;
+	}
+	if (fmanifest)
+		fclose(fmanifest);
+	if (fdigests)
+		fclose(fdigests);
+
+	return (rc);
+}
+
 int
 pkg_update(const char *name, const char *packagesite, bool force)
 {
@@ -350,11 +546,22 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		if (sqlite != NULL)
 			sqlite3_close(sqlite);
 	}
-
-	if ((res = pkg_update_full(repofile, name, packagesite, &t)) != EPKG_OK) {
-		return (res);
+	if (false) {
+		/* XXX: Still disabled by default */
+		res = pkg_update_incremental(name, packagesite, &t);
+		if (res != EPKG_OK) {
+			/* Still try to do full upgrade */
+			if ((res = pkg_update_full(repofile, name, packagesite, &t)) != EPKG_OK)
+				goto cleanup;
+		}
+	}
+	else {
+		if ((res = pkg_update_full(repofile, name, packagesite, &t)) != EPKG_OK)
+			goto cleanup;
 	}
 
+	res = EPKG_OK;
+cleanup:
 	/* Set mtime from http request if possible */
 	if (t != 0) {
 		struct timeval ftimes[2] = {
@@ -370,5 +577,5 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		utimes(repofile, ftimes);
 	}
 
-	return (EPKG_OK);
+	return (res);
 }

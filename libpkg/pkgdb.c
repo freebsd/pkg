@@ -59,7 +59,6 @@
 #define PKGLT	(1U << 2)
 #define PKGEQ	(1U << 3)
 
-static struct pkgdb_it *pkgdb_it_new(struct pkgdb *, sqlite3_stmt *, int);
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
 static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
@@ -80,36 +79,39 @@ static void prstmt_finalize(struct pkgdb *db);
 
 extern int sqlite3_shell(int, char**);
 
+/*
+ * Keep entries sorted by name!
+ */
 static struct column_mapping {
 	const char * const name;
 	pkg_attr type;
 } columns[] = {
-	{ "origin",	PKG_ORIGIN },
-	{ "name",	PKG_NAME },
-	{ "version",	PKG_VERSION },
-	{ "comment",	PKG_COMMENT },
-	{ "desc",	PKG_DESC },
-	{ "message",	PKG_MESSAGE },
 	{ "arch",	PKG_ARCH },
-	{ "maintainer",	PKG_MAINTAINER },
-	{ "www",	PKG_WWW },
-	{ "prefix",	PKG_PREFIX },
-	{ "cksum",	PKG_CKSUM },
-	{ "repopath",	PKG_REPOPATH },
-	{ "dbname",	PKG_REPONAME },
-	{ "newversion",	PKG_NEWVERSION },
-	{ "flatsize",	PKG_FLATSIZE },
-	{ "newflatsize", PKG_NEW_FLATSIZE },
-	{ "pkgsize",	PKG_NEW_PKGSIZE },
-	{ "licenselogic", PKG_LICENSE_LOGIC },
 	{ "automatic",	PKG_AUTOMATIC },
-	{ "locked",	PKG_LOCKED },
-	{ "time",	PKG_TIME },
-	{ "infos",	PKG_INFOS },
-	{ "rowid",	PKG_ROWID },
+	{ "cksum",	PKG_CKSUM },
+	{ "comment",	PKG_COMMENT },
+	{ "dbname",	PKG_REPONAME },
+	{ "desc",	PKG_DESC },
+	{ "flatsize",	PKG_FLATSIZE },
 	{ "id",		PKG_ROWID },
+	{ "infos",	PKG_INFOS },
+	{ "licenselogic", PKG_LICENSE_LOGIC },
+	{ "locked",	PKG_LOCKED },
+	{ "maintainer",	PKG_MAINTAINER },
 	{ "manifestdigest",	PKG_DIGEST },
+	{ "message",	PKG_MESSAGE },
+	{ "name",	PKG_NAME },
+	{ "newflatsize", PKG_NEW_FLATSIZE },
+	{ "newversion",	PKG_NEWVERSION },
+	{ "origin",	PKG_ORIGIN },
+	{ "pkgsize",	PKG_NEW_PKGSIZE },
+	{ "prefix",	PKG_PREFIX },
+	{ "repopath",	PKG_REPOPATH },
+	{ "rowid",	PKG_ROWID },
+	{ "time",	PKG_TIME },
+	{ "version",	PKG_VERSION },
 	{ "weight",	-1 },
+	{ "www",	PKG_WWW },
 	{ NULL,		-1 }
 };
 
@@ -187,41 +189,50 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 	return (reponame);
 }
 
+static int
+compare_column_func(const void *pkey, const void *pcolumn)
+{
+	const char *key = (const char*)pkey;
+	const struct column_mapping *column =
+			(const struct column_mapping*)pcolumn;
+
+	return strcmp(key, column->name);
+}
+
 static void
 populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
-	int		 i, icol = 0;
+	int		 icol = 0;
 	const char	*colname;
 
 	assert(stmt != NULL);
 
 	for (icol = 0; icol < sqlite3_column_count(stmt); icol++) {
 		colname = sqlite3_column_name(stmt, icol);
+		struct column_mapping *column;
 		switch (sqlite3_column_type(stmt, icol)) {
 		case SQLITE_TEXT:
-			for (i = 0; columns[i].name != NULL; i++) {
-				if (!strcmp(columns[i].name, colname)) {
-					pkg_set(pkg, columns[i].type,
-					    sqlite3_column_text(stmt,
-					    icol));
-					break;
-				}
-			}
-			if (columns[i].name == NULL)
+			column = bsearch(colname, columns,
+					sizeof(columns) / sizeof(columns[0]) - 1,
+					sizeof(columns[0]), compare_column_func);
+			if (column == NULL)
 				pkg_emit_error("Unknown column %s",
 				    colname);
+			else
+				pkg_set(pkg, column->type,
+						sqlite3_column_text(stmt,
+						icol));
 			break;
 		case SQLITE_INTEGER:
-			for (i = 0; columns[i].name != NULL; i++) {
-				if (!strcmp(columns[i].name, colname)) {
-					pkg_set(pkg, columns[i].type,
-					    sqlite3_column_int64(stmt,
-					    icol));
-					break;
-				}
-			}
-			if (columns[i].name == NULL)
+			column = bsearch(colname, columns,
+					sizeof(columns) / sizeof(columns[0]) - 1,
+					sizeof(columns[0]), compare_column_func);
+			if (column == NULL)
 				pkg_emit_error("Unknown column %s",
-				    colname);
+						colname);
+			else
+				pkg_set(pkg, column->type,
+						sqlite3_column_int64(stmt,
+						icol));
 			break;
 		case SQLITE_BLOB:
 		case SQLITE_FLOAT:
@@ -697,7 +708,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			return (EPKG_FATAL);
 		}
 
-		switch (pkg_check_repo_version(db, repo_name)) {
+		switch (pkgdb_repo_check_version(db, repo_name)) {
 		case EPKG_FATAL:
 			pkgdb_close(db);
 			return (EPKG_FATAL);
@@ -989,7 +1000,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 
 		/* Create the diretory if it doesn't exists */
 		if (createdir && mkdirs(dbdir) != EPKG_OK)
-				return (EPKG_FATAL);
+			return (EPKG_FATAL);
 
 		sqlite3_initialize();
 		if (sqlite3_open(localpath, &db->sqlite) != SQLITE_OK) {
@@ -1051,7 +1062,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 				return (EPKG_FATAL);
 			}
 
-			ret = pkg_check_repo_version(db, "remote");
+			ret = pkgdb_repo_check_version(db, "remote");
 			if (ret != EPKG_OK) {
 				pkgdb_close(db);
 				return (ret);
@@ -1201,7 +1212,7 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 }
 
 
-static struct pkgdb_it *
+struct pkgdb_it *
 pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 {
 	struct pkgdb_it	*it;
@@ -1263,9 +1274,15 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 
 		for (i = 0; load_on_flag[i].load != NULL; i++) {
 			if (flags & load_on_flag[i].flag) {
-				ret = load_on_flag[i].load(it->db, pkg);
-				if (ret != EPKG_OK)
-					return (ret);
+				if (it->db != NULL) {
+					ret = load_on_flag[i].load(it->db, pkg);
+					if (ret != EPKG_OK)
+						return (ret);
+				}
+				else {
+					pkg_emit_error("invalid iterator passed to pkgdb_it_next");
+					return (EPKG_FATAL);
+				}
 			}
 		}
 
@@ -1273,7 +1290,10 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 	case SQLITE_DONE:
 		return (EPKG_END);
 	default:
-		ERROR_SQLITE(it->db->sqlite);
+		if (it->db)
+			ERROR_SQLITE(it->db->sqlite);
+		else
+			pkg_emit_error("invalid iterator passed to pkgdb_it_next");
 		return (EPKG_FATAL);
 	}
 }

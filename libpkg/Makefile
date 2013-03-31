@@ -32,6 +32,7 @@ SRCS=		${PC} \
 		pkg_status.c \
 		pkg_version.c \
 		pkgdb.c \
+		pkgdb_repo.c \
 		rcscripts.c \
 		rsa.c \
 		scripts.c \
