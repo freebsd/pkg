@@ -53,7 +53,7 @@
 #include "private/utils.h"
 
 #include "private/db_upgrades.h"
-#define DBVERSION 16
+#define DBVERSION 17
 
 #define PKGGT	(1U << 1)
 #define PKGLT	(1U << 2)

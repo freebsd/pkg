@@ -60,7 +60,7 @@
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 4
+#define REPO_SCHEMA_MINOR 5
 
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
