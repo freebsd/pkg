@@ -364,7 +364,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			format_str(pkg, output, qstr, dep);
 			printf("%s\n", sbuf_data(output));
-			break;
 		}
 		break;
 	case 'r':
