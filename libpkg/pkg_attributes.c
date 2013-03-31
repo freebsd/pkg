@@ -416,41 +416,41 @@ pkg_shlib_name(struct pkg_shlib const * const sl)
 }
 
 /*
- * Abstract Metadata
+ * Annotations
  */
 
 int
-pkg_abstract_new(struct pkg_abstract **am)
+pkg_annotation_new(struct pkg_note **an)
 {
-	if ((*am = calloc(1, sizeof(struct pkg_abstract))) == NULL)
+	if ((*an = calloc(1, sizeof(struct pkg_note))) == NULL)
 		return (EPKG_FATAL);
 
 	return (EPKG_OK);
 }
 
 void
-pkg_abstract_free(struct pkg_abstract *am)
+pkg_annotation_free(struct pkg_note *an)
 {
-	if (am == NULL)
+	if (an == NULL)
 		return;
 
-	sbuf_free(am->key);
-	sbuf_free(am->value);
-	free(am);
+	sbuf_free(an->key);
+	sbuf_free(an->value);
+	free(an);
 }
 
 const char *
-pkg_abstract_key(struct pkg_abstract const * const am)
+pkg_annotation_key(struct pkg_note const * const an)
 {
-	assert(am != NULL);
+	assert(an != NULL);
 
-	return (sbuf_get(am->key));
+	return (sbuf_get(an->key));
 }
 
 const char *
-pkg_abstract_value(struct pkg_abstract const * const am)
+pkg_annotation_value(struct pkg_note const * const an)
 {
-	assert(am != NULL);
+	assert(an != NULL);
 
-	return (sbuf_get(am->value));
+	return (sbuf_get(an->value));
 }

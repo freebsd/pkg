@@ -132,7 +132,7 @@ for required shared libraries
 .It Cm b
 for provided shared libraries
 .It Cm A
-for abstract metadata
+for annotations
 .El
 .It Cm \&%# Ns Op drCFODLUGBbA
 Returns the number of element in the list
@@ -162,7 +162,7 @@ for required shared libraries
 .It Cm b
 for provided shared libraries
 .It Cm A
-for abstract metadata
+for annotations
 .El
 .El
 .Ss Multiline patterns:
@@ -210,12 +210,12 @@ Expands to the list of shared libraries used by programs from the matched packag
 .It Cm \&%b
 Expands to the list of shared libraries provided by the matched package.
 .It Cm \&A Ns Op kv
-Expands to the list of abstract metadata items for the matched package,
+Expands to the list of annotations for the matched package,
 where
 .Cm k
-stands for the item key, and
+stands for the annotation key, and
 .Cm v
-stands for the item value.
+stands for the annotation value.
 .El
 .Sh EVALUATION FORMAT
 Packages can be selected by using expressions comparing

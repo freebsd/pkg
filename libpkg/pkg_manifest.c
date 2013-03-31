@@ -58,7 +58,7 @@
 #define PKG_DIRECTORIES -11
 #define PKG_SHLIBS_REQUIRED -12
 #define PKG_SHLIBS_PROVIDED -13
-#define PKG_ABSTRACT_METADATA -14
+#define PKG_ANNOTATIONS -14
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_size_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -78,7 +78,7 @@ static struct manifest_key {
 	yaml_node_type_t valid_type;
 	int (*parse_data)(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 } manifest_keys[] = {
-	{ "abstract_metadata", PKG_ABSTRACT_METADATA, YAML_MAPPING_NODE, parse_mapping},
+	{ "annotations", PKG_ANNOTATIONS, YAML_MAPPING_NODE, parse_mapping},
 	{ "arch", PKG_ARCH, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "comment", PKG_COMMENT, YAML_SCALAR_NODE, pkg_set_from_node},
@@ -445,12 +445,12 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 			urldecode(val->data.scalar.value, &tmp);
 			pkg_addscript(pkg, sbuf_get(tmp), script_type);
 			break;
-		case PKG_ABSTRACT_METADATA:
+		case PKG_ANNOTATIONS:
 			if (val->type != YAML_SCALAR_NODE)
-				pkg_emit_error("Skipping malformed abstract metadata %s",
+				pkg_emit_error("Skipping malformed annotation %s",
 				    key->data.scalar.value);
 			else
-				pkg_addabstract_metadata(pkg, key->data.scalar.value,
+				pkg_addannotation(pkg, key->data.scalar.value,
 				    val->data.scalar.value);
 			break;
 		}
@@ -858,17 +858,17 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 {
 	yaml_document_t doc;
 	char tmpbuf[BUFSIZ];
-	struct pkg_dep *dep = NULL;
-	struct pkg_option *option = NULL;
-	struct pkg_file *file = NULL;
-	struct pkg_dir *dir = NULL;
-	struct pkg_category *category = NULL;
-	struct pkg_license *license = NULL;
-	struct pkg_user *user = NULL;
-	struct pkg_group *group = NULL;
-	struct pkg_shlib *shlib = NULL;
-	struct pkg_abstract *abstract = NULL;
-	struct sbuf *tmpsbuf = NULL;
+	struct pkg_dep		*dep      = NULL;
+	struct pkg_option	*option   = NULL;
+	struct pkg_file		*file     = NULL;
+	struct pkg_dir		*dir      = NULL;
+	struct pkg_category	*category = NULL;
+	struct pkg_license	*license  = NULL;
+	struct pkg_user		*user     = NULL;
+	struct pkg_group	*group    = NULL;
+	struct pkg_shlib	*shlib    = NULL;
+	struct pkg_note		*note     = NULL;
+	struct sbuf		*tmpsbuf  = NULL;
 	int rc = EPKG_OK;
 	int mapping;
 	int seq = -1;
@@ -984,11 +984,11 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 		    pkg_option_value(option), PLAIN);
 	}
 	map = -1;
-	while (pkg_abstract_metadata(pkg, &abstract) == EPKG_OK) {
+	while (pkg_annotations(pkg, &note) == EPKG_OK) {
 		if (map == -1)
-			manifest_append_map(map, mapping, "abstract_metadata", FLOW);
-		manifest_append_kv(map, pkg_abstract_key(abstract),
-		    pkg_abstract_value(abstract), PLAIN);
+			manifest_append_map(map, mapping, "annotations", FLOW);
+		manifest_append_kv(map, pkg_annotation_key(note),
+		    pkg_annotation_value(note), PLAIN);
 	}
 
 	if (!compact) {

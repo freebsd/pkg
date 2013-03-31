@@ -112,7 +112,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
-	pkg_list_free(pkg, PKG_ABSTRACT_METADATA);
+	pkg_list_free(pkg, PKG_ANNOTATIONS);
 
 	pkg->rowid = 0;
 	pkg->type = type;
@@ -141,7 +141,7 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
-	pkg_list_free(pkg, PKG_ABSTRACT_METADATA);
+	pkg_list_free(pkg, PKG_ANNOTATIONS);
 
 	free(pkg);
 }
@@ -476,11 +476,11 @@ pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **s)
 }
 
 int
-pkg_abstract_metadata(struct pkg *pkg, struct pkg_abstract **am)
+pkg_annotations(struct pkg *pkg, struct pkg_note **an)
 {
 	assert(pkg != NULL);
 
-	HASH_NEXT(pkg->abstract_metadata, (*am));
+	HASH_NEXT(pkg->annotations, (*an));
 }
 
 int
@@ -903,30 +903,30 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_addabstract_metadata(struct pkg *pkg, const char *key, const char *value)
+pkg_addannotation(struct pkg *pkg, const char *key, const char *value)
 {
-	struct pkg_abstract *am = NULL;
+	struct pkg_note *an = NULL;
 
 	assert(pkg != NULL);
 	assert(key != NULL && key[0] != '\0');
 	assert(value != NULL && value[0] != '\0');
 
 	/* The combination of key+value should be unique */
-	HASH_FIND_STR(pkg->abstract_metadata, __DECONST(char *, key), am);
-	if (am != NULL && strcmp(value, pkg_abstract_value(am)) == 0) {
-		pkg_emit_error("duplicate abstract metadata listing: %s -- %s,"
+	HASH_FIND_STR(pkg->annotations, __DECONST(char *, key), an);
+	if (an != NULL && strcmp(value, pkg_annotation_value(an)) == 0) {
+		pkg_emit_error("duplicate annotation listing: %s -- %s,"
 			       " ignoring", key, value);
 		return (EPKG_OK);
 	}
-	am = NULL;
-	pkg_abstract_new(&am);
+	an = NULL;
+	pkg_annotation_new(&an);
 
-	sbuf_set(&am->key, key);
-	sbuf_set(&am->value, value);
+	sbuf_set(&an->key, key);
+	sbuf_set(&an->value, value);
 
-	HASH_ADD_KEYPTR(hh, pkg->abstract_metadata,
-	    __DECONST(char *, pkg_abstract_key(am)),
-	    strlen(pkg_abstract_key(am)), am);
+	HASH_ADD_KEYPTR(hh, pkg->annotations,
+	    __DECONST(char *, pkg_annotation_key(an)),
+	    strlen(pkg_annotation_key(an)), an);
 
 	return (EPKG_OK);
 }
@@ -957,8 +957,8 @@ pkg_list_count(struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->shlibs_required));
 	case PKG_SHLIBS_PROVIDED:
 		return (HASH_COUNT(pkg->shlibs_provided));
-	case PKG_ABSTRACT_METADATA:
-		return (HASH_COUNT(pkg->abstract_metadata));
+	case PKG_ANNOTATIONS:
+		return (HASH_COUNT(pkg->annotations));
 	}
 	
 	return (0);
@@ -1011,10 +1011,9 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		HASH_FREE(pkg->shlibs_provided, pkg_shlib, pkg_shlib_free);
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
-	case PKG_ABSTRACT_METADATA:
-		HASH_FREE(pkg->abstract_metadata, pkg_abstract,
-		    pkg_abstract_free);
-		pkg->flags &= ~PKG_LOAD_ABSTRACT_METADATA;
+	case PKG_ANNOTATIONS:
+		HASH_FREE(pkg->annotations, pkg_note, pkg_annotation_free);
+		pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
 		break;
 	}
 }

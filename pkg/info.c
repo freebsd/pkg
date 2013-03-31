@@ -89,7 +89,7 @@ exec_info(int argc, char **argv)
 			match = MATCH_ALL;
 			break;
 		case 'A':
-			opt |= INFO_ABSTRACT_METADATA;
+			opt |= INFO_ANNOTATIONS;
 			break;
 		case 'O':
 			origin_search = true;  /* only for ports compat */

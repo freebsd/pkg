@@ -306,6 +306,28 @@ static struct db_upgrades {
 	"ALTER TABLE packages ADD COLUMN manifestdigest TEXT NULL;"
 	"CREATE INDEX IF NOT EXISTS pkg_digest_id ON packages(origin, manifestdigest);"
 	},
+	{17,
+	"CREATE TABLE annotation ("
+                "annotation_id INTEGER PRIMARY KEY,"
+                "annotation TEXT NOT NULL UNIQUE"
+        ");"
+        "CREATE TABLE pkg_annotation ("
+                "package_id INTERGER REFERENCES packages(id)"
+                      " ON DELETE CASCADE ON UPDATE RESTRICT,"
+                "key_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
+                      " ON DELETE CASCADE ON UPDATE RESTRICT,"
+		"value_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
+		      " ON DELETE CASCADE ON UPDATE RESTRICT"
+	");"
+	"CREATE INDEX pkg_annotation_package_id ON pkg_annotation(package_id);"
+	"INSERT INTO annotation (annotation_id, annotation)"
+	        "SELECT abstract_id, abstract FROM abstract;"
+	"INSERT INTO pkg_annotation (package_id,key_id,value_id)"
+	        "SELECT package_id,key_id,value_id FROM pkg_abstract;"
+	"DROP INDEX pkg_abstract_package_id;"
+	"DROP TABLE pkg_abstract;"
+	"DROP TABLE abstract;"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL }

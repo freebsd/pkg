@@ -54,7 +54,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'G', "",		1, PKG_LOAD_GROUPS },
 	{ 'B', "",		1, PKG_LOAD_SHLIBS_REQUIRED },
 	{ 'b', "",		1, PKG_LOAD_SHLIBS_PROVIDED },
-	{ 'A', "kv",            1, PKG_LOAD_ABSTRACT_METADATA },
+	{ 'A', "kv",            1, PKG_LOAD_ANNOTATIONS },
 	{ '?', "drCFODLUGBbA",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ '#', "drCFODLUGBbA",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },
@@ -200,7 +200,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_PROVIDED) > 0);
 					break;
 				case 'A':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_ABSTRACT_METADATA) > 0);
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_ANNOTATIONS) > 0);
 					break;
 				}
 				break;
@@ -241,7 +241,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_PROVIDED));
 					break;
 				case 'A':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_ABSTRACT_METADATA));
+					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_ANNOTATIONS));
 					break;
 				}
 				break;
@@ -313,9 +313,9 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 			case 'A':
 				qstr++;
 				if (qstr[0] == 'k')
-					sbuf_cat(dest, pkg_abstract_key((struct pkg_abstract *)data));
+					sbuf_cat(dest, pkg_annotation_key((struct pkg_note *)data));
 				else if (qstr[0] == 'v')
-					sbuf_cat(dest, pkg_abstract_value((struct pkg_abstract *)data));
+					sbuf_cat(dest, pkg_annotation_value((struct pkg_note *)data));
 				break;
 			case 'M':
 				pkg_get(pkg, PKG_MESSAGE, &tmp);
@@ -362,17 +362,17 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 void
 print_query(struct pkg *pkg, char *qstr, char multiline)
 {
-	struct sbuf *output = sbuf_new_auto();
-	struct pkg_dep *dep = NULL;
-	struct pkg_category *cat = NULL;
-	struct pkg_option *option = NULL;
-	struct pkg_file *file = NULL;
-	struct pkg_dir *dir = NULL;
-	struct pkg_license *lic = NULL;
-	struct pkg_user *user = NULL;
-	struct pkg_group *group = NULL;
-	struct pkg_shlib *shlib = NULL;
-	struct pkg_abstract *abstract = NULL;
+	struct sbuf		*output = sbuf_new_auto();
+	struct pkg_dep		*dep    = NULL;
+	struct pkg_category	*cat    = NULL;
+	struct pkg_option	*option = NULL;
+	struct pkg_file		*file   = NULL;
+	struct pkg_dir		*dir    = NULL;
+	struct pkg_license	*lic    = NULL;
+	struct pkg_user		*user   = NULL;
+	struct pkg_group	*group  = NULL;
+	struct pkg_shlib	*shlib  = NULL;
+	struct pkg_note		*note   = NULL;
 
 	switch (multiline) {
 	case 'd':
@@ -442,8 +442,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'A':
-		while (pkg_abstract_metadata(pkg, &abstract) == EPKG_OK) {
-			format_str(pkg, output, qstr, abstract);
+		while (pkg_annotations(pkg, &note) == EPKG_OK) {
+			format_str(pkg, output, qstr, note);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
@@ -588,7 +588,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs_provided AS d WHERE d.package_id=p.id)", dbstr);
 							break;
 						case 'A':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_abstract AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_annotation AS d WHERE d.package_id=p.id)", dbstr);
 							break;
 						default:
 							goto bad_option;

@@ -115,16 +115,16 @@ static const char initsql[] = ""
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, shlib_id)"
 	");"
-	"CREATE TABLE abstract ("
-	    "abstract_id INTEGER PRIMARY KEY,"
-	    "abstract TEXT NOT NULL UNIQUE"
+	"CREATE TABLE annotation ("
+	    "annotation_id INTEGER PRIMARY KEY,"
+	    "annotation TEXT NOT NULL UNIQUE"
 	");"
-	"CREATE TABLE pkg_abstract ("
+	"CREATE TABLE pkg_annotation ("
 	    "package_id INTERGER REFERENCES packages(id)"
 	    " ON DELETE CASCADE ON UPDATE RESTRICT,"
-	    "key_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+	    "key_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
 	    " ON DELETE CASCADE ON UPDATE RESTRICT,"
-	    "value_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+	    "value_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
 	    " ON DELETE CASCADE ON UPDATE RESTRICT,"
 	    "UNIQUE (package_id, key_id, value_id)"
 	");"
@@ -184,7 +184,28 @@ static const struct repo_changes repo_upgrades[] = {
 	"ALTER TABLE %Q.packages ADD COLUMN manifestdigest TEXT NULL;"
 	"CREATE INDEX IF NOT EXISTS %Q.pkg_digest_id ON packages(origin, manifestdigest);"
 	},
-
+	{2004,
+	 2005,
+	 "Rename 'abstract metadata' to 'annotations'",
+	 "CREATE TABLE %Q.annotation ("
+	        "annotation_id INTEGER PRIMARY KEY,"
+	        "annotation TEXT NOT NULL UNIQUE"
+	 ");"
+	 "CREATE TABLE %Q.pkg_annotation ("
+	        "package_id INTEGER REFERENCES packages(id)"
+	        " ON DELETE CASCADE ON UPDATE RESTRICT,"
+	        "key_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
+	        " ON DELETE CASCADE ON UPDATE RESTRICT,"
+	        "value_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
+	        " ON DELETE CASCADE ON UPDATE RESTRICT"
+	 ");"
+	 "INSERT INTO %Q.annotation (annotation_id, annotation)"
+	        " SELECT abstract_id, abstract FROM %Q.abstract;"
+	 "INSERT INTO %Q.pkg_annotation (package_id,key_id,value_id)"
+	        " SELECT package_id,key_id,value_id FROM %Q.pkg_abstract;"
+	 "DROP TABLE pkg_abstract;"
+	 "DROP TABLE abstract;"
+	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
 
@@ -193,6 +214,29 @@ static const struct repo_changes repo_upgrades[] = {
 /* How to downgrade a newer repo to match what the current system
    expects */
 static const struct repo_changes repo_downgrades[] = {
+	{2005,
+	 2004,
+	 "Revert rename of 'abstract metadata' to 'annotations'",
+
+	 "CREATE TABLE %Q.abstract ("
+	        "abstract_id INTEGER PRIMARY KEY,"
+	        "abstract TEXT NOT NULL UNIQUE"
+	 ");"
+	 "CREATE TABLE %Q.pkg_abstract ("
+	        "package_id INTEGER REFERENCES packages(id)"
+	        " ON DELETE CASCADE ON UPDATE RESTRICT,"
+	        "key_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+	        " ON DELETE CASCADE ON UPDATE RESTRICT,"
+	        "value_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+	        " ON DELETE CASCADE ON UPDATE RESTRICT"
+	 ");"
+	 "INSERT INTO %Q.abstract (abstract_id, abstract)"
+	        " SELECT annotation_id, annotation FROM %Q.annotation;"
+	 "INSERT INTO %Q.pkg_abstract (package_id,key_id,value_id)"
+	        " SELECT package_id,key_id,value_id FROM %Q.pkg_annotation;"
+	 "DROP TABLE pkg_annotation;"
+	 "DROP TABLE annotation;"
+	},
 	{2004,
 	 2003,
 	 "Drop manifest digest index",

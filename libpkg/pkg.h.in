@@ -66,7 +66,7 @@ struct pkg_license;
 struct pkg_user;
 struct pkg_group;
 struct pkg_shlib;
-struct pkg_abstract;
+struct pkg_note;
 
 struct pkgdb;
 struct pkgdb_it;
@@ -267,7 +267,7 @@ typedef enum {
 	PKG_GROUPS,
 	PKG_SHLIBS_REQUIRED,
 	PKG_SHLIBS_PROVIDED,
-	PKG_ABSTRACT_METADATA,
+	PKG_ANNOTATIONS,
 } pkg_list;
 
 /**
@@ -588,11 +588,11 @@ int pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **shlib);
 int pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **shlib);
 
 /**
- * Iterates over the abstract metatdata associated with the package.
- * @param abstract must be set to NULL for the first call.
+ * Iterates over the annotations associated with the package.
+ * @param note must be set to NULL for the first call.
  * @return An error code
  */
-int pkg_abstract_metadata(struct pkg *pkg, struct pkg_abstract **abstract);
+int pkg_annotations(struct pkg *pkg, struct pkg_note **note);
 
 /**
  * Iterate over all of the files within the package pkg, ensuring the
@@ -761,11 +761,11 @@ int pkg_addshlib_required(struct pkg *pkg, const char *name);
  */
 int pkg_addshlib_provided(struct pkg *pkg, const char *name);
 
-/*
- * Add abstract_metatdata key+value pair
+/**
+ * Add annotation key+value pair
  * @return An error code
  */
-int pkg_addabstract_metadata(struct pkg *pkg, const char *key, const char *value);
+int pkg_addannotation(struct pkg *pkg, const char *key, const char *value);
 
 /**
  * Parse a manifest and set the attributes of pkg accordingly.
@@ -836,9 +836,9 @@ const char *pkg_option_value(struct pkg_option const * const);
 /* pkg_shlib */
 const char *pkg_shlib_name(struct pkg_shlib const * const);
 
-/* pkg_abstract */
-const char *pkg_abstract_key(struct pkg_abstract const * const);
-const char *pkg_abstract_value(struct pkg_abstract const * const);
+/* pkg_note */
+const char *pkg_annotation_key(struct pkg_note const * const);
+const char *pkg_annotation_value(struct pkg_note const * const);
 
 /**
  * @param db A pointer to a struct pkgdb object
@@ -971,7 +971,7 @@ struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib
 #define PKG_LOAD_GROUPS			(1U << 10)
 #define PKG_LOAD_SHLIBS_REQUIRED	(1U << 11)
 #define PKG_LOAD_SHLIBS_PROVIDED	(1U << 12)
-#define PKG_LOAD_ABSTRACT_METADATA      (1U << 13)
+#define PKG_LOAD_ANNOTATIONS		(1U << 13)
 /* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**

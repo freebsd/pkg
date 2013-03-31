@@ -105,18 +105,18 @@ struct pkg {
 	int64_t		 new_flatsize;
 	int64_t		 new_pkgsize;
 	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
-	struct pkg_license *licenses;
-	struct pkg_category *categories;
-	struct pkg_dep *deps;
-	struct pkg_dep *rdeps;
-	struct pkg_file *files;
-	struct pkg_dir *dirs;
-	struct pkg_option *options;
-	struct pkg_user *users;
-	struct pkg_group *groups;
-	struct pkg_shlib *shlibs_required;
-	struct pkg_shlib *shlibs_provided;
-	struct pkg_abstract *abstract_metadata;
+	struct pkg_license	*licenses;
+	struct pkg_category	*categories;
+	struct pkg_dep		*deps;
+	struct pkg_dep		*rdeps;
+	struct pkg_file		*files;
+	struct pkg_dir		*dirs;
+	struct pkg_option	*options;
+	struct pkg_user		*users;
+	struct pkg_group	*groups;
+	struct pkg_shlib	*shlibs_required;
+	struct pkg_shlib	*shlibs_provided;
+	struct pkg_note		*annotations;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -243,7 +243,7 @@ struct pkg_config_value {
 	UT_hash_handle hh;
 };
 
-struct pkg_abstract {
+struct pkg_note {
 	struct sbuf	*key;
 	struct sbuf	*value;
 	UT_hash_handle	 hh;
@@ -338,8 +338,8 @@ int pkg_jobs_resolv(struct pkg_jobs *jobs);
 int pkg_shlib_new(struct pkg_shlib **);
 void pkg_shlib_free(struct pkg_shlib *);
 
-int pkg_abstract_new(struct pkg_abstract **);
-void pkg_abstract_free(struct pkg_abstract *);
+int pkg_annotation_new(struct pkg_note **);
+void pkg_annotation_free(struct pkg_note *);
 
 struct packing;
 
@@ -389,12 +389,12 @@ int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
-int pkgdb_load_abstract_metadata(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg);
 
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
-int pkgdb_insert_abstract_metadata(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 int pkg_register_shlibs(struct pkg *pkg);

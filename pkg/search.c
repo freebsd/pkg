@@ -53,7 +53,7 @@ static const cliopt search_label[] = {
 };
 
 static const cliopt modifiers[] = {
-	{ "abstract-metadata",    'A'  },
+	{ "annotations",          'A'  },
 	{ "arch",                 'a'  },
 	{ "categories",           'C'  },
 	{ "comment",              'c'  },
@@ -140,7 +140,7 @@ modifier_opt(const char *optionarg)
 	/* output modifiers */
 	switch(match_optarg(modifiers, optionarg)) {
 	case 'A':
-		opt = INFO_ABSTRACT_METADATA;
+		opt = INFO_ANNOTATIONS;
 		break;
 	case 'a':
 		opt = INFO_ARCH;

@@ -75,8 +75,8 @@ typedef enum _sql_prstmt_index {
 	SHLIB1,
 	SHLIB_REQD,
 	SHLIB_PROV,
-	ABSTRACT1,
-	ABSTRACT2,
+	ANNOTATE1,
+	ANNOTATE2,
 	EXISTS,
 	VERSION,
 	DELETE,
@@ -149,18 +149,18 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"SELECT count(*) FROM packages WHERE cksum=?1",
 		"T",
 	},
-	[ABSTRACT1] = {
+	[ANNOTATE1] = {
 		NULL,
-		"INSERT OR IGNORE INTO abstract(abstract) "
+		"INSERT OR IGNORE INTO annotation(annotation) "
 		"VALUES (?1)",
 		"T",
 	},
-	[ABSTRACT2] = {
+	[ANNOTATE2] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO pkg_abstract(package_id, key_id, value_id) "
+		"INSERT OR ROLLBACK INTO pkg_annotate(package_id, key_id, value_id) "
 		"VALUES (?1,"
-		" (SELECT abstract_id FROM abstract WHERE abstract=?2),"
-		" (SELECT abstract_id FROM abstract WHERE abstract=?3))",
+		" (SELECT annotation_id FROM annotation WHERE annotation=?2),"
+		" (SELECT annotation_id FROM annotation WHERE annotation=?3))",
 		"ITT",
 	},
 	[VERSION] = {
@@ -464,12 +464,12 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 	int64_t			 flatsize, pkgsize;
 	lic_t			 licenselogic;
 	int			 ret;
-	struct pkg_dep		*dep = NULL;
+	struct pkg_dep		*dep      = NULL;
 	struct pkg_category	*category = NULL;
-	struct pkg_license	*license = NULL;
-	struct pkg_option	*option = NULL;
-	struct pkg_shlib	*shlib = NULL;
-	struct pkg_abstract	*abstract = NULL;
+	struct pkg_license	*license  = NULL;
+	struct pkg_option	*option   = NULL;
+	struct pkg_shlib	*shlib    = NULL;
+	struct pkg_note		*note     = NULL;
 	int64_t			 package_id;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
@@ -585,17 +585,17 @@ try_again:
 		}
 	}
 
-	abstract = NULL;
-	while (pkg_abstract_metadata(pkg, &abstract) == EPKG_OK) {
-		const char *abstract_key = pkg_abstract_key(abstract);
-		const char *abstract_val = pkg_abstract_value(abstract);
+	note = NULL;
+	while (pkg_annotations(pkg, &note) == EPKG_OK) {
+		const char *note_key = pkg_annotation_key(note);
+		const char *note_val = pkg_annotation_value(note);
 
-		ret = run_prepared_statement(ABSTRACT1, abstract_key);
+		ret = run_prepared_statement(ANNOTATE1, note_key);
 		if (ret == SQLITE_DONE) 
-			ret = run_prepared_statement(ABSTRACT1, abstract_val);
+			ret = run_prepared_statement(ANNOTATE1, note_val);
 		if (ret == SQLITE_DONE)
-			ret = run_prepared_statement(ABSTRACT2, package_id,
-				  abstract_key, abstract_val);
+			ret = run_prepared_statement(ANNOTATE2, package_id,
+				  note_key, note_val);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite);
 			return (EPKG_FATAL);

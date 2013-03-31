@@ -637,16 +637,16 @@ pkgdb_init(sqlite3 *sdb)
 			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
 		"UNIQUE (package_id, shlib_id)"
 	");"
-	"CREATE TABLE abstract ("
-                "abstract_id INTEGER PRIMARY KEY,"
-                "abstract TEXT NOT NULL UNIQUE"
+	"CREATE TABLE annotation ("
+                "annotation_id INTEGER PRIMARY KEY,"
+                "annotation TEXT NOT NULL UNIQUE"
         ");"
-        "CREATE TABLE pkg_abstract ("
+        "CREATE TABLE pkg_annotation ("
                 "package_id INTERGER REFERENCES packages(id)"
                       " ON DELETE CASCADE ON UPDATE RESTRICT,"
-                "key_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+                "key_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
                       " ON DELETE CASCADE ON UPDATE RESTRICT,"
-		"value_id INTEGER NOT NULL REFERENCES abstract(abstract_id)"
+		"value_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
 		      " ON DELETE CASCADE ON UPDATE RESTRICT,"
 		"UNIQUE (package_id, key_id, value_id)"
 	");"
@@ -666,7 +666,7 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_shlibs_required_package_id ON pkg_shlibs_required (package_id);"
 	"CREATE INDEX pkg_shlibs_provided_package_id ON pkg_shlibs_provided (package_id);"
 	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
-	"CREATE INDEX pkg_abstract_package_id ON pkg_abstract(package_id);"
+	"CREATE INDEX pkg_annotation_package_id ON pkg_annotation(package_id);"
 	"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);"
 
 	"PRAGMA user_version = %d;"
@@ -1290,7 +1290,7 @@ static struct load_on_flag {
 	{ PKG_LOAD_GROUPS,		pkgdb_load_group },
 	{ PKG_LOAD_SHLIBS_REQUIRED,	pkgdb_load_shlib_required },
 	{ PKG_LOAD_SHLIBS_PROVIDED,	pkgdb_load_shlib_provided },
-	{ PKG_LOAD_ABSTRACT_METADATA,   pkgdb_load_abstract_metadata },
+	{ PKG_LOAD_ANNOTATIONS,		pkgdb_load_annotations },
 	{ -1,			        NULL }
 };
 
@@ -1962,15 +1962,15 @@ pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_load_abstract_metadata(struct pkgdb *db, struct pkg *pkg)
+pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg)
 {
 	char		 sql[BUFSIZ];
 	const char	*reponame = NULL;
 	const char	*basesql = ""
-		"SELECT k.abstract AS key, v.abstract AS value"
-		"  FROM %Q.pkg_abstract p"
-		"    JOIN %Q.abstract k ON (p.key_id = k.abstract_id)"
-		"    JOIN %Q.abstract v ON (p.key_id = v.abstract_id)"
+		"SELECT k.annotation AS key, v.annotation AS value"
+		"  FROM %Q.pkg_annotation p"
+		"    JOIN %Q.annotation k ON (p.key_id = k.annotation_id)"
+		"    JOIN %Q.annotation v ON (p.key_id = v.annotation_id)"
 		"  WHERE p.package_id = ?1"
 		"  ORDER BY key, value";
 
@@ -1985,8 +1985,8 @@ pkgdb_load_abstract_metadata(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_snprintf(sizeof(sql), sql, basesql, "main",
                     "main", "main");
 
-	return (load_key_val(db->sqlite, pkg, sql, PKG_LOAD_ABSTRACT_METADATA,
-		   pkg_addabstract_metadata, PKG_ABSTRACT_METADATA));
+	return (load_key_val(db->sqlite, pkg, sql, PKG_LOAD_ANNOTATIONS,
+		   pkg_addannotation, PKG_ANNOTATIONS));
 }
 
 int
@@ -2091,8 +2091,8 @@ typedef enum _sql_prstmt_index {
 	SHLIBS1,
 	SHLIBS_REQD,
 	SHLIBS_PROV,
-	ABSTRACT1,
-	ABSTRACT2,
+	ANNOTATE1,
+	ANNOTATE2,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -2220,18 +2220,18 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
 	},
-	[ABSTRACT1] = {
+	[ANNOTATE1] = {
 		NULL,
-		"INSERT OR IGNORE INTO abstract(abstract) "
+		"INSERT OR IGNORE INTO annotation(annotation) "
 		"VALUES (?1)",
 		"T",
 	},
-	[ABSTRACT2] = {
+	[ANNOTATE2] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO pkg_abstract(package_id, key_id, value_id) "
+		"INSERT OR ROLLBACK INTO pkg_annotation(package_id, key_id, value_id) "
 		"VALUES (?1,"
-		" (SELECT abstract_id FROM abstract WHERE abstract=?2),"
-		" (SELECT abstract_id FROM abstract WHERE abstract=?3))",
+		" (SELECT annotation_id FROM annotation WHERE annotation=?2),"
+		" (SELECT annotation_id FROM annotation WHERE annotation=?3))",
 		"ITT",
 	},
 	/* PRSTMT_LAST */
@@ -2604,9 +2604,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		goto cleanup;
 
 	/*
-	 * Insert abstract metadata
+	 * Insert annotations
 	 */
-	if (pkgdb_insert_abstract_metadata(pkg, package_id, s) != EPKG_OK)
+	if (pkgdb_insert_annotations(pkg, package_id, s) != EPKG_OK)
 		goto cleanup;
 
 	retcode = EPKG_OK;
@@ -2655,20 +2655,20 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 }
 
 int
-pkgdb_insert_abstract_metadata(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	struct pkg_abstract	*abstract = NULL;
+	struct pkg_note	*note = NULL;
 
-	while (pkg_abstract_metadata(pkg, &abstract) == EPKG_OK) {
-		if (run_prstmt(ABSTRACT1, pkg_abstract_key(abstract))
+	while (pkg_annotations(pkg, &note) == EPKG_OK) {
+		if (run_prstmt(ANNOTATE1, pkg_annotation_key(note))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(ABSTRACT1, pkg_abstract_value(abstract))
+		    run_prstmt(ANNOTATE1, pkg_annotation_value(note))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(ABSTRACT2, package_id,
-			pkg_abstract_key(abstract),
-			pkg_abstract_value(abstract))
+		    run_prstmt(ANNOTATE2, package_id,
+			pkg_annotation_key(note),
+			pkg_annotation_value(note))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			return (EPKG_FATAL);

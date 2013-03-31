@@ -183,8 +183,8 @@ info_flags(unsigned int opt)
 		flags |= PKG_LOAD_SHLIBS_REQUIRED;
 	if (opt & INFO_SHLIBS_PROVIDED)
 		flags |= PKG_LOAD_SHLIBS_PROVIDED;
-	if (opt & INFO_ABSTRACT_METADATA)
-		flags |= PKG_LOAD_ABSTRACT_METADATA;
+	if (opt & INFO_ANNOTATIONS)
+		flags |= PKG_LOAD_ANNOTATIONS;
 	if (opt & INFO_DEPS)
 		flags |= PKG_LOAD_DEPS;
 	if (opt & INFO_RDEPS)
@@ -198,17 +198,17 @@ info_flags(unsigned int opt)
 	if (opt & INFO_GROUPS)
 		flags |= PKG_LOAD_GROUPS;
 	if (opt & INFO_RAW) {
-		flags |= PKG_LOAD_CATEGORIES        |
-			 PKG_LOAD_LICENSES          |
-			 PKG_LOAD_OPTIONS           |
-			 PKG_LOAD_SHLIBS_REQUIRED   |
-			 PKG_LOAD_SHLIBS_PROVIDED   |
-			 PKG_LOAD_ABSTRACT_METADATA |
-			 PKG_LOAD_DEPS              |
-			 PKG_LOAD_FILES             |
-			 PKG_LOAD_DIRS              |
-			 PKG_LOAD_USERS             |
-			 PKG_LOAD_GROUPS            |
+		flags |= PKG_LOAD_CATEGORIES      |
+			 PKG_LOAD_LICENSES        |
+			 PKG_LOAD_OPTIONS         |
+			 PKG_LOAD_SHLIBS_REQUIRED |
+			 PKG_LOAD_SHLIBS_PROVIDED |
+			 PKG_LOAD_ANNOTATIONS     |
+			 PKG_LOAD_DEPS            |
+			 PKG_LOAD_FILES           |
+			 PKG_LOAD_DIRS            |
+			 PKG_LOAD_USERS           |
+			 PKG_LOAD_GROUPS          |
 			 PKG_LOAD_SCRIPTS;
 	}
 
@@ -218,16 +218,16 @@ info_flags(unsigned int opt)
 void
 print_info(struct pkg * const pkg, unsigned int options)
 {
-	struct pkg_category *cat      = NULL;
-	struct pkg_dep	    *dep      = NULL;
-	struct pkg_dir	    *dir      = NULL;
-	struct pkg_file	    *file     = NULL;
-	struct pkg_group    *group    = NULL;
-	struct pkg_license  *lic      = NULL;
-	struct pkg_option   *option   = NULL;
-	struct pkg_shlib    *shlib    = NULL;
-	struct pkg_abstract *abstract = NULL;
-	struct pkg_user	    *user     = NULL;
+	struct pkg_category *cat    = NULL;
+	struct pkg_dep	    *dep    = NULL;
+	struct pkg_dir	    *dir    = NULL;
+	struct pkg_file	    *file   = NULL;
+	struct pkg_group    *group  = NULL;
+	struct pkg_license  *lic    = NULL;
+	struct pkg_option   *option = NULL;
+	struct pkg_shlib    *shlib  = NULL;
+	struct pkg_note	    *note   = NULL;
+	struct pkg_user	    *user   = NULL;
 	bool multirepos_enabled = false;
 	bool print_tag = false;
 	bool show_locks = false;
@@ -437,14 +437,14 @@ print_info(struct pkg * const pkg, unsigned int options)
 					printf("%s%s\n", tab, pkg_shlib_name(shlib));
 			}
 			break;
-		case INFO_ABSTRACT_METADATA:
-			if (pkg_list_count(pkg, PKG_ABSTRACT_METADATA) > 0) {
+		case INFO_ANNOTATIONS:
+			if (pkg_list_count(pkg, PKG_ANNOTATIONS) > 0) {
 				if (print_tag)
-					printf("%-15s:\n", "Abstract Metadata");
-				while (pkg_abstract_metadata(pkg, &abstract) == EPKG_OK)
+					printf("%-15s:\n", "Annotations");
+				while (pkg_annotations(pkg, &note) == EPKG_OK)
 					printf("%s%-15s: %s\n", tab,
-					       pkg_abstract_key(abstract),
-					       pkg_abstract_value(abstract));
+					       pkg_annotation_key(note),
+					       pkg_annotation_value(note));
 			}
 			break;
 		case INFO_FLATSIZE:

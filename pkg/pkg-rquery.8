@@ -123,7 +123,7 @@ for required shared libraries
 .It Cm b
 for provided shared libraries
 .It Cm A
-for abstract metadata
+for annotations
 .It Cm \&%# Ns Op drCOLBbA
 Returns the number of elements in the list
 .Bl -tag -width indent
@@ -142,7 +142,7 @@ for required shared libraries
 .It Cm b
 for provided shared libraries
 .It Cm A
-for abstract metadata
+for annotations
 .El
 .El
 .El
@@ -179,12 +179,12 @@ Expands to the list of shared libraries used by programs from the matched packag
 .It Cm \&%b
 Expands to the list of shared libraries provided by the matched package.
 .It Cm \&%A Ns Op kv
-Expands to the list of abstract metadata items associated with the matched
+Expands to the list of annotations associated with the matched
 package, where
 .Cm k
-stands for the item key, and
+stands for the annotation key, and
 .Cm v
-stands for the item value.
+stands for the annotation value.
 .El
 .Sh EVALUATION FORMAT
 .Ss Variables
