@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 3, 2013
+.Dd March 31, 2013
 .Dt PKG-INFO 8
 .Os
 .Sh NAME
@@ -27,10 +27,10 @@
 .Nm
 .Fl a
 .Nm
-.Op Fl bBDdefgiIklOqRrsx
+.Op Fl AbBDdefgiIklOqRrsx
 .Ar <pkg-name>
 .Nm
-.Op Fl bBDdfIlqRrs
+.Op Fl AbBDdfIlqRrs
 .Fl F Ar <pkg-file>
 .Sh DESCRIPTION
 .Nm
@@ -41,6 +41,8 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Display all installed packages.
+.It Fl A
+Display any abstract metadata added to the package.
 .It Fl f
 Display full information about the packages matching
 .Ar <pkg-name> .

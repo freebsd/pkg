@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 22, 2013
+.Dd March 31, 2013
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -105,7 +105,7 @@ is in bytes, and
 is in human readable format.
 .It Cm \&%M
 message contain in the matched package
-.It Cm \&%? Ns Op drCOLBb
+.It Cm \&%? Ns Op drCOLBbA
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It Cm d
@@ -122,7 +122,9 @@ for licenses
 for required shared libraries
 .It Cm b
 for provided shared libraries
-.It Cm \&%# Ns Op drCOLBb
+.It Cm A
+for abstract metadata
+.It Cm \&%# Ns Op drCOLBbA
 Returns the number of elements in the list
 .Bl -tag -width indent
 .It Cm d
@@ -139,6 +141,8 @@ for licenses
 for required shared libraries
 .It Cm b
 for provided shared libraries
+.It Cm A
+for abstract metadata
 .El
 .El
 .El
@@ -174,6 +178,13 @@ Expands to the list of license(s) for the matched package.
 Expands to the list of shared libraries used by programs from the matched package.
 .It Cm \&%b
 Expands to the list of shared libraries provided by the matched package.
+.It Cm \&%A Ns Op kv
+Expands to the list of abstract metadata items associated with the matched
+package, where
+.Cm k
+stands for the item key, and
+.Cm v
+stands for the item value.
 .El
 .Sh EVALUATION FORMAT
 .Ss Variables
@@ -198,7 +209,7 @@ Flatsize of the package (type integer)
 Automatic status of the package (type integer)
 .It Cm \&%M
 Message of the package (type string)
-.It Cm \&%# Ns Op drCOLBb
+.It Cm \&%# Ns Op drCOLBbA
 Number of elements in the list of information (type integer).
 See
 .Cm %?

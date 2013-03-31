@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 22, 2013
+.Dd March 31, 2013
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -106,7 +106,7 @@ Returns 1 if the matched package is locked against modification or deletion, 0 o
 message contain in the matched package
 .It Cm \&%t
 Timestamp that the package was installed
-.It Cm \&%? Ns Op drCFODLUGBb
+.It Cm \&%? Ns Op drCFODLUGBbA
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It Cm d
@@ -131,8 +131,10 @@ for groups
 for required shared libraries
 .It Cm b
 for provided shared libraries
+.It Cm A
+for abstract metadata
 .El
-.It Cm \&%# Ns Op drCFODLUGBb
+.It Cm \&%# Ns Op drCFODLUGBbA
 Returns the number of element in the list
 .Bl -tag -width indent
 .It Cm d
@@ -159,6 +161,8 @@ for shared
 for required shared libraries
 .It Cm b
 for provided shared libraries
+.It Cm A
+for abstract metadata
 .El
 .El
 .Ss Multiline patterns:
@@ -205,6 +209,13 @@ Expands to the list of groups needed by the matched package.
 Expands to the list of shared libraries used by programs from the matched package.
 .It Cm \&%b
 Expands to the list of shared libraries provided by the matched package.
+.It Cm \&A Ns Op kv
+Expands to the list of abstract metadata items for the matched package,
+where
+.Cm k
+stands for the item key, and
+.Cm v
+stands for the item value.
 .El
 .Sh EVALUATION FORMAT
 Packages can be selected by using expressions comparing
@@ -247,7 +258,7 @@ Message of the package (type string)
 Timestamp that the package was installed (type integer)
 .It Cm \&%i
 Additionnal information about the package (type string)
-.It Cm \&%# Ns Op drCFODLUGBb
+.It Cm \&%# Ns Op drCFODLUGBbA
 Number of elements in the list of information (type integer).
 See
 .Cm %?

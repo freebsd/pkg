@@ -182,21 +182,22 @@ void usage_ssh(void);
 #define INFO_OPTIONS		(1<<10)
 #define INFO_SHLIBS_REQUIRED	(1<<11)
 #define INFO_SHLIBS_PROVIDED	(1<<12)
-#define INFO_FLATSIZE		(1<<13)
-#define INFO_PKGSIZE		(1<<14)
-#define INFO_DESCR		(1<<15)
+#define INFO_ABSTRACT_METADATA	(1<<13)
+#define INFO_FLATSIZE		(1<<14)
+#define INFO_PKGSIZE		(1<<15)
+#define INFO_DESCR		(1<<16)
 
 /* Other fields not part of the Full output */
-#define INFO_MESSAGE		(1<<16)
-#define INFO_DEPS		(1<<17)
-#define INFO_RDEPS		(1<<18)
-#define INFO_FILES		(1<<19)
-#define INFO_DIRS		(1<<20)
-#define INFO_USERS		(1<<21)
-#define INFO_GROUPS		(1<<22)
-#define INFO_ARCH		(1<<23)
-#define INFO_REPOURL		(1<<24)
-#define INFO_LOCKED		(1<<25)
+#define INFO_MESSAGE		(1<<17)
+#define INFO_DEPS		(1<<18)
+#define INFO_RDEPS		(1<<19)
+#define INFO_FILES		(1<<20)
+#define INFO_DIRS		(1<<21)
+#define INFO_USERS		(1<<22)
+#define INFO_GROUPS		(1<<23)
+#define INFO_ARCH		(1<<24)
+#define INFO_REPOURL		(1<<25)
+#define INFO_LOCKED		(1<<26)
 
 #define INFO_LASTFIELD	INFO_LOCKED
 #define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
@@ -214,13 +215,14 @@ void usage_ssh(void);
 			 INFO_REPOSITORY|INFO_CATEGORIES|INFO_LICENSES|	 \
 			 INFO_MAINTAINER|INFO_WWW|INFO_COMMENT|		 \
 			 INFO_OPTIONS|INFO_SHLIBS_REQUIRED|		 \
-			 INFO_SHLIBS_PROVIDED|INFO_FLATSIZE|		 \
-			 INFO_PKGSIZE|INFO_DESCR)
+			 INFO_SHLIBS_PROVIDED|INFO_ABSTRACT_METADATA|    \
+			 INFO_FLATSIZE|INFO_PKGSIZE|INFO_DESCR)
 
 /* Everything that can take more than one line to print */
 #define INFO_MULTILINE	(INFO_OPTIONS|INFO_SHLIBS_REQUIRED|	       \
-			 INFO_SHLIBS_PROVIDED|INFO_DESCR|INFO_MESSAGE| \
-			 INFO_DEPS|INFO_RDEPS|INFO_FILES|INFO_DIRS)
+			 INFO_SHLIBS_PROVIDED|INFO_ABSTRACT_METADATA|  \
+			 INFO_DESCR|INFO_MESSAGE|INFO_DEPS|INFO_RDEPS| \
+			 INFO_FILES|INFO_DIRS)
 
 bool query_yesno(const char *msg, ...);
 bool query_tty_yesno(const char *msg, ...);

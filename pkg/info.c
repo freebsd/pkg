@@ -50,8 +50,8 @@ usage_info(void)
 {
 	fprintf(stderr, "usage: pkg info <pkg-name>\n");
 	fprintf(stderr, "       pkg info -a\n");
-	fprintf(stderr, "       pkg info [-bBDdefgiIklOqRrsx] <pkg-name>\n");
-	fprintf(stderr, "       pkg info [-bBDdfIlqRrs] -F <pkg-file>\n\n");
+	fprintf(stderr, "       pkg info [-AbBDdefgiIklOqRrsx] <pkg-name>\n");
+	fprintf(stderr, "       pkg info [-AbBDdfIlqRrs] -F <pkg-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
 
@@ -83,10 +83,13 @@ exec_info(int argc, char **argv)
 	bool origin_search = false;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "aDegixEIdrklbBsqopOfF:R")) != -1) {
+	while ((ch = getopt(argc, argv, "aADegixEIdrklbBsqopOfF:R")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'A':
+			opt |= INFO_ABSTRACT_METADATA;
 			break;
 		case 'O':
 			origin_search = true;  /* only for ports compat */

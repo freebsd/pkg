@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 9, 2013
+.Dd March 31, 2013
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -233,6 +233,9 @@ or
 .Fl "L description"
 options, then each output field will be tagged with the field name.
 .Bl -tag -width 2n
+.It Sy abstract-metadata
+Freeform arbitrary text in key-value format that can be incorporated in
+any package. 
 .It Sy arch
 The architecture string indicating what OS version and CPU architecture
 the package is suitable for.
@@ -284,6 +287,7 @@ Show a standard set of fields, equivalent to a combination of the
 .Sy options ,
 .Sy shared-libs-required ,
 .Sy shared-libs-provided ,
+.Sy abstract-metadata ,
 .Sy size ,
 .Sy pkg-size
 and
