@@ -2093,6 +2093,9 @@ typedef enum _sql_prstmt_index {
 	SHLIBS_PROV,
 	ANNOTATE1,
 	ANNOTATE2,
+	ANNOTATE_ADD1,
+	ANNOTATE_DEL1,
+	ANNOTATE_DEL2,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -2230,9 +2233,34 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_annotation(package_id, key_id, value_id) "
 		"VALUES (?1,"
-		" (SELECT annotation_id FROM annotation WHERE annotation=?2),"
-		" (SELECT annotation_id FROM annotation WHERE annotation=?3))",
+		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
+		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
 		"ITT",
+	},
+	[ANNOTATE_ADD1] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_annotation(package_id, key_id, value_id) "
+		"VALUES ("
+		" (SELECT id FROM packages WHERE name = ?1 AND version = ?2),"
+		" (SELECT annotation_id FROM annotation WHERE annotation = ?3),"
+		" (SELECT annotation_id FROM annotation WHERE annotation = ?4))",
+		"TTTT",
+	},
+	[ANNOTATE_DEL1] = {
+		NULL,
+		"DELETE FROM pkg_annotation WHERE "
+		"package_id IN"
+                " (SELECT id FROM packages WHERE name = ?1 AND version = ?2) "
+		"AND key_id IN"
+		" (SELECT key_id FROM annotation WHERE annotation = ?3)",
+		"TTT",
+	},
+	[ANNOTATE_DEL2] = {
+		NULL,
+		"DELETE FROM annotation WHERE"
+		" annotation_id NOT IN (SELECT key_id FROM pkg_annotation) AND"
+		" annotation_id NOT IN (SELECT value_id FROM pkg_annotation)",
+		"",
 	},
 	/* PRSTMT_LAST */
 };
@@ -2604,7 +2632,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		goto cleanup;
 
 	/*
-	 * Insert annotations
+	 * Insert annotation
 	 */
 	if (pkgdb_insert_annotations(pkg, package_id, s) != EPKG_OK)
 		goto cleanup;
@@ -2743,6 +2771,102 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 	}
 
 	return (ret);
+}
+
+int
+pkgdb_add_annotation(struct pkgdb *db, const char *pkgname,
+    const char *pkgversion, const char *key, const char *value)
+{
+	assert(pkgname != NULL && pkgname[0] != '\0');
+	assert(pkgversion != NULL && pkgversion[0] != '\0');
+	assert(key != NULL);
+	assert(value != NULL);
+
+	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (run_prstmt(ANNOTATE1, key) != SQLITE_DONE
+	    ||
+	    run_prstmt(ANNOTATE1, value) != SQLITE_DONE
+	    ||
+	    run_prstmt(ANNOTATE_ADD1, pkgname, pkgversion, key, value)
+	    != SQLITE_DONE) {
+		ERROR_SQLITE(db->sqlite);
+		pkgdb_transaction_rollback(db->sqlite, NULL);
+		return (EPKG_FATAL);
+	}
+
+	if (pkgdb_transaction_commit(db->sqlite, NULL) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_modify_annotation(struct pkgdb *db, const char *pkgname,
+    const char *pkgversion, const char *key, const char *value)
+{
+	assert(pkgname != NULL && pkgname[0] != '\0');
+	assert(pkgversion != NULL && pkgversion[0] != '\0');
+	assert(key != NULL);
+	assert(value != NULL);
+
+	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (run_prstmt(ANNOTATE_DEL1, pkgname, pkgversion, key) != SQLITE_DONE
+	    ||
+	    run_prstmt(ANNOTATE1, key) != SQLITE_DONE /* is this necessary? */
+	    ||
+	    run_prstmt(ANNOTATE1, value) != SQLITE_DONE
+	    ||
+	    run_prstmt(ANNOTATE_ADD1, pkgname, pkgversion, key, value) !=
+	        SQLITE_DONE
+	    ||
+	    run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
+		ERROR_SQLITE(db->sqlite);
+		pkgdb_transaction_rollback(db->sqlite, NULL);
+		return (EPKG_FATAL);
+	}
+
+	if (pkgdb_transaction_commit(db->sqlite, NULL) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_delete_annotation(struct pkgdb *db, const char *pkgname,
+    const char *pkgversion, const char *key)
+{
+	assert(pkgname != NULL && pkgname[0] != '\0');
+	assert(pkgversion != NULL && pkgversion[0] != '\0');
+	assert(key != NULL);
+
+	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (run_prstmt(ANNOTATE_DEL1, pkgname, pkgversion, key) != SQLITE_DONE
+	    ||
+	    run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
+		ERROR_SQLITE(db->sqlite);
+		pkgdb_transaction_rollback(db->sqlite, NULL);
+		return (EPKG_FATAL);
+	}
+
+	if (pkgdb_transaction_commit(db->sqlite, NULL) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
 }
 
 

@@ -908,7 +908,7 @@ pkg_addannotation(struct pkg *pkg, const char *key, const char *value)
 	struct pkg_note *an = NULL;
 
 	assert(pkg != NULL);
-	assert(key != NULL && key[0] != '\0');
+	assert(key != NULL);
 	assert(value != NULL);
 
 	/* Keys are unique per-package */
@@ -938,17 +938,16 @@ pkg_delannotation(struct pkg *pkg, const char *key)
 	struct pkg_note *an = NULL;
 
 	assert(pkg != NULL);
-	assert(key != NULL && key[0] != '\0');
+	assert(key != NULL);
 
 	HASH_FIND_STR(pkg->annotations, __DECONST(char *, key), an);
 	if (an != NULL) {
-		HASH_DEL(pkg->annotations,
-		    __DECONST(char *, pkg_annotation_key(an)));
+		HASH_DEL(pkg->annotations, an);
 		pkg_annotation_free(an);
 		return (EPKG_OK);
 	} else {
-		pkg_emit_error("deleting key %s -- no annotation found"
-			       " with matching key", key);
+		pkg_emit_error("deleting key \'%s\' -- no matching annotation "
+			       "found", key);
 		return (EPKG_WARN);
 	}
 }
