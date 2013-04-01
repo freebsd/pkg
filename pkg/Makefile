@@ -1,5 +1,6 @@
 PROG?=		pkg
 SRCS=		add.c \
+		annotate.c \
 		audit.c \
 		autoremove.c \
 		backup.c \
@@ -78,6 +79,7 @@ LDFLAGS+=	-Wl,-rpath=/usr/lib:${PREFIX}/lib
 WARNS?=		6
 MAN=	pkg.8 \
 	pkg-add.8 \
+	pkg-annotate.8 \
 	pkg-audit.8 \
 	pkg-autoremove.8 \
 	pkg-backup.8 \

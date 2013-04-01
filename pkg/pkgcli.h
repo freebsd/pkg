@@ -35,6 +35,10 @@ int nbdone;
 int exec_add(int, char **);
 void usage_add(void);
 
+/* pkg annotate */
+int exec_annotate(int, char **);
+void usage_annotate(void);
+
 /* pkg audit */
 int exec_audit(int, char **);
 void usage_audit(void);

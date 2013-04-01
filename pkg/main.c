@@ -64,6 +64,7 @@ static struct commands {
 	void (* const usage)(void);
 } cmd[] = {
 	{ "add", "Registers a package and installs it on the system", exec_add, usage_add},
+	{ "annotate", "Add or modify key-value style annotations on packages", exec_annotate, usage_annotate},
 	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
 	{ "backup", "Backs-up and restores the local package database", exec_backup, usage_backup},
