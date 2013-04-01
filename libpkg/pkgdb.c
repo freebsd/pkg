@@ -648,7 +648,7 @@ pkgdb_init(sqlite3 *sdb)
                       " ON DELETE CASCADE ON UPDATE RESTRICT,"
 		"value_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
 		      " ON DELETE CASCADE ON UPDATE RESTRICT,"
-		"UNIQUE (package_id, key_id, value_id)"
+		"UNIQUE (package_id, key_id)"
 	");"
 
 	/* Mark the end of the array */

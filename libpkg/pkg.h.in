@@ -768,6 +768,12 @@ int pkg_addshlib_provided(struct pkg *pkg, const char *name);
 int pkg_addannotation(struct pkg *pkg, const char *key, const char *value);
 
 /**
+ * Delete annotation identified by the key
+ * @return An error code
+ */
+int pkg_delannotation(struct pkg *pkg, const char *key);
+
+/**
  * Parse a manifest and set the attributes of pkg accordingly.
  * @param buf An NULL-terminated buffer containing the manifest data.
  * @return An error code.

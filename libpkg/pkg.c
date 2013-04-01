@@ -909,11 +909,12 @@ pkg_addannotation(struct pkg *pkg, const char *key, const char *value)
 
 	assert(pkg != NULL);
 	assert(key != NULL && key[0] != '\0');
-	assert(value != NULL && value[0] != '\0');
+	assert(value != NULL);
 
-	/* The combination of key+value should be unique */
+	/* Keys are unique per-package */
+
 	HASH_FIND_STR(pkg->annotations, __DECONST(char *, key), an);
-	if (an != NULL && strcmp(value, pkg_annotation_value(an)) == 0) {
+	if (an != NULL) {
 		pkg_emit_error("duplicate annotation listing: %s -- %s,"
 			       " ignoring", key, value);
 		return (EPKG_OK);
@@ -929,6 +930,27 @@ pkg_addannotation(struct pkg *pkg, const char *key, const char *value)
 	    strlen(pkg_annotation_key(an)), an);
 
 	return (EPKG_OK);
+}
+
+int
+pkg_delannotation(struct pkg *pkg, const char *key)
+{
+	struct pkg_note *an = NULL;
+
+	assert(pkg != NULL);
+	assert(key != NULL && key[0] != '\0');
+
+	HASH_FIND_STR(pkg->annotations, __DECONST(char *, key), an);
+	if (an != NULL) {
+		HASH_DEL(pkg->annotations,
+		    __DECONST(char *, pkg_annotation_key(an)));
+		pkg_annotation_free(an);
+		return (EPKG_OK);
+	} else {
+		pkg_emit_error("deleting key %s -- no annotation found"
+			       " with matching key", key);
+		return (EPKG_WARN);
+	}
 }
 
 int
