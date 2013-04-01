@@ -32,6 +32,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <regex.h>
+#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -957,10 +958,12 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 int
 ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 {
-	char *plist_buf, *walk, *buf, *token;
+	char *buf, *line = NULL;
 	int ret = EPKG_OK;
-	off_t sz = 0;
 	struct plist pplist;
+	FILE *plist_f;
+	size_t linecap = 0;
+	ssize_t linelen;
 
 	assert(pkg != NULL);
 	assert(plist != NULL);
@@ -990,26 +993,29 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 
 	buf = NULL;
 
-	if ((ret = file_to_buffer(plist, &plist_buf, &sz)) != EPKG_OK)
-		return (ret);
+	if ((plist_f = fopen(plist, "r")) == NULL) {
+		pkg_emit_errno("Unable to open plist file: %s", plist);
+		return (EPKG_FATAL);
+	}
 
 	pkg_get(pkg, PKG_PREFIX, &pplist.prefix);
 	if (pplist.prefix != NULL)
 		pplist.slash = pplist.prefix[strlen(pplist.prefix) - 1] == '/' ? "" : "/";
 
-	walk = plist_buf;
+	while ((linelen = getline(&line, &linecap, plist_f)) > 0) {
+		if (line[linelen - 1] == '\n')
+			line[linelen - 1] = '\0';
 
-	while ((token = strsep(&walk, "\n")) != NULL) {
 		if (pplist.ignore_next) {
 			pplist.ignore_next = false;
 			continue;
 		}
 
-		if (token[0] == '\0')
+		if (line[0] == '\0')
 			continue;
 
-		if (token[0] == '@') {
-			char *keyword = token;
+		if (line[0] == '@') {
+			char *keyword = line;
 
 			keyword++; /* skip the @ */
 			buf = keyword;
@@ -1026,14 +1032,14 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 			switch (parse_keywords(&pplist, keyword, buf)) {
 			case EPKG_UNKNOWN:
 				pkg_emit_error("unknown keyword %s, ignoring %s",
-				    keyword, token);
+				    keyword, line);
 				break;
 			case EPKG_FATAL:
 				ret = EPKG_FATAL;
 				break;
 			}
 		} else {
-			buf = token;
+			buf = line;
 			pplist.last_file = buf;
 
 			/* remove spaces at the begining and at the end */
@@ -1044,6 +1050,8 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 				ret = EPKG_FATAL;
 		}
 	}
+
+	free(line);
 
 	pkg_set(pkg, PKG_FLATSIZE, pplist.flatsize);
 
@@ -1062,12 +1070,13 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 
 	HASH_FREE(pplist.hardlinks, hardlinks, free);
 
-	free(plist_buf);
 	HASH_FREE(pplist.keywords, keyword, keyword_free);
 
 	free(pplist.post_pattern_to_free);
 	if (pplist.post_patterns != NULL)
 		sl_free(pplist.post_patterns, 0);
+
+	fclose(plist_f);
 
 	return (ret);
 }
