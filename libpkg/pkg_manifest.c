@@ -689,8 +689,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 		if (node->type != YAML_MAPPING_NODE) {
 			pkg_emit_error("Invalid manifest format");
 		} else {
-			parse_root_node(pkg, node, &doc);
-			retcode = pkg_is_valid(pkg);
+			retcode = parse_root_node(pkg, node, &doc);
 		}
 	} else {
 		pkg_emit_error("Invalid manifest format");
@@ -722,8 +721,7 @@ pkg_parse_manifest_file(struct pkg *pkg, FILE *f)
 		if (node->type != YAML_MAPPING_NODE) {
 			pkg_emit_error("Invalid manifest format");
 		} else {
-			parse_root_node(pkg, node, &doc);
-			retcode = pkg_is_valid(pkg);
+			retcode = parse_root_node(pkg, node, &doc);
 		}
 	} else {
 		pkg_emit_error("Invalid manifest format");
