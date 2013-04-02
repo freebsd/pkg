@@ -1970,7 +1970,7 @@ pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg)
 		"SELECT k.annotation AS key, v.annotation AS value"
 		"  FROM %Q.pkg_annotation p"
 		"    JOIN %Q.annotation k ON (p.key_id = k.annotation_id)"
-		"    JOIN %Q.annotation v ON (p.key_id = v.annotation_id)"
+		"    JOIN %Q.annotation v ON (p.value_id = v.annotation_id)"
 		"  WHERE p.package_id = ?1"
 		"  ORDER BY key, value";
 
