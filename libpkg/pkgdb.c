@@ -1213,11 +1213,13 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 
 
 struct pkgdb_it *
-pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
+pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
 {
 	struct pkgdb_it	*it;
 
 	assert(db != NULL && s != NULL);
+	assert(!(flags & (PKGDB_IT_FLAG_CYCLED & PKGDB_IT_FLAG_ONCE)));
+	assert(!(flags & (PKGDB_IT_FLAG_AUTO & (PKGDB_IT_FLAG_CYCLED | PKGDB_IT_FLAG_ONCE))));
 
 	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
 		pkg_emit_errno("malloc", "pkgdb_it");
@@ -1226,8 +1228,11 @@ pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type)
 	}
 
 	it->db = db;
+	it->sqlite = db->sqlite;
 	it->stmt = s;
 	it->type = type;
+	it->flags = flags;
+	it->finished = 0;
 	return (it);
 }
 
@@ -1260,6 +1265,10 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 
 	assert(it != NULL);
 
+	if (it->finished && (it->flags & PKGDB_IT_FLAG_ONCE)) {
+		return (EPKG_END);
+	}
+
 	switch (sqlite3_step(it->stmt)) {
 	case SQLITE_ROW:
 		if (*pkg_p == NULL) {
@@ -1288,12 +1297,19 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 
 		return (EPKG_OK);
 	case SQLITE_DONE:
-		return (EPKG_END);
+		it->finished ++;
+		if (flags & PKGDB_IT_FLAG_CYCLED) {
+			sqlite3_reset(it->stmt);
+			return (EPKG_OK);
+		}
+		else {
+			if (flags & PKGDB_IT_FLAG_AUTO)
+				pkgdb_it_free(it);
+			return (EPKG_END);
+		}
+		break;
 	default:
-		if (it->db)
-			ERROR_SQLITE(it->db->sqlite);
-		else
-			pkg_emit_error("invalid iterator passed to pkgdb_it_next");
+		ERROR_SQLITE(it->sqlite);
 		return (EPKG_FATAL);
 	}
 }
@@ -1304,12 +1320,10 @@ pkgdb_it_free(struct pkgdb_it *it)
 	if (it == NULL)
 		return;
 
-	if (it->db != NULL) {
-		if (!sqlite3_db_readonly(it->db->sqlite, "main")) {
-			sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
-					"DROP TABLE IF EXISTS delete_job; "
-					"DROP TABLE IF EXISTS pkgjobs");
-		}
+	if (!sqlite3_db_readonly(it->sqlite, "main")) {
+		sql_exec(it->sqlite, "DROP TABLE IF EXISTS autoremove; "
+				"DROP TABLE IF EXISTS delete_job; "
+				"DROP TABLE IF EXISTS pkgjobs");
 	}
 
 	sqlite3_finalize(it->stmt);
@@ -1442,7 +1456,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 	if (match != MATCH_ALL && match != MATCH_CONDITION)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -1468,7 +1482,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -1493,7 +1507,7 @@ pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib)
 
 	sqlite3_bind_text(stmt, 1, shlib, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -1518,7 +1532,7 @@ pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib)
 
 	sqlite3_bind_text(stmt, 1, shlib, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 int
@@ -3087,7 +3101,7 @@ pkgdb_query_newpkgversion(struct pkgdb *db, const char *repo)
 		goto cleanup;
 	}
 
-	it = pkgdb_it_new(db, stmt, PKG_REMOTE);
+	it = pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
 
 cleanup:
 	sbuf_delete(sql);
@@ -3312,7 +3326,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	sbuf_finish(sql);
 	sbuf_delete(sql);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -3501,7 +3515,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 
 	sbuf_delete(sql);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -3543,7 +3557,7 @@ pkgdb_query_autoremove(struct pkgdb *db)
 		return (NULL);
 	}
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -3633,7 +3647,7 @@ pkgdb_query_delete(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	sbuf_finish(sql);
 	sbuf_delete(sql);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *
@@ -3697,7 +3711,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	if (match != MATCH_ALL && match != MATCH_CONDITION)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
 static int
@@ -3842,7 +3856,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 
 	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
 int
@@ -4043,7 +4057,7 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin)
 
 	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
 
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED));
+	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 static int
@@ -4297,7 +4311,7 @@ pkgdb_query_fetch(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 	sbuf_finish(sql);
 	sbuf_delete(sql);
 
-	return (pkgdb_it_new(db, stmt, PKG_REMOTE));
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
 /*

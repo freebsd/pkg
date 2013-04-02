@@ -41,9 +41,16 @@ struct pkgdb {
 
 struct pkgdb_it {
 	struct pkgdb	*db;
+	sqlite3	*sqlite;
 	sqlite3_stmt	*stmt;
-	int		 type;
+	short	type;
+	short	flags;
+	short	finished;
 };
+
+#define PKGDB_IT_FLAG_CYCLED (0x1)
+#define PKGDB_IT_FLAG_ONCE (0x1 << 1)
+#define PKGDB_IT_FLAG_AUTO (0x1 << 2)
 
 
 /**
@@ -56,7 +63,7 @@ int pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 
-struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type);
+struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short flags);
 
 struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
 struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);

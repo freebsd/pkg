@@ -860,7 +860,6 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 	sqlite3_stmt *stmt = NULL;
 	int ret;
 	static struct pkgdb repodb;
-	struct pkgdb_it *it;
 	const char query_sql[] = ""
 		"SELECT origin, manifestdigest "
 		"FROM packages "
@@ -873,15 +872,5 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 		return (NULL);
 	}
 
-	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb_repo_origins");
-		sqlite3_finalize(stmt);
-		return (NULL);
-	}
-
-	repodb.sqlite = sqlite;
-	it->db = &repodb;
-	it->stmt = stmt;
-	it->type = PKG_REMOTE;
-	return (it);
+	return pkgdb_it_new(&repodb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
 }
