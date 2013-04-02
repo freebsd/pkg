@@ -312,7 +312,10 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 
 	rc = pkg_parse_manifest_file(pkg, f);
 	if (rc != EPKG_OK) {
-		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	rc = pkg_is_valid(pkg);
+	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
 
