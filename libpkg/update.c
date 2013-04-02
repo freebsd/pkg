@@ -87,7 +87,7 @@ repo_fetch_remote_tmp(const char *reponame, const char *filename, const char *ex
 		pkg_emit_error("Could not create temporary file %s, "
 		    "aborting update.\n", tmp);
 		*rc = EPKG_FATAL;
-		return -1;
+		return (-1);
 	}
 	(void)unlink(tmp);
 
@@ -96,11 +96,11 @@ repo_fetch_remote_tmp(const char *reponame, const char *filename, const char *ex
 		fd = -1;
 	}
 
-	return fd;
+	return (fd);
 }
 
 static int
-repo_archive_extract_file(int fd, const char *file, const char *dest)
+repo_archive_extract_file(int fd, const char *file, const char *dest, int dest_fd)
 {
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
@@ -118,15 +118,29 @@ repo_archive_extract_file(int fd, const char *file, const char *dest)
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), file) == 0) {
-			archive_entry_set_pathname(ae, dest);
-			/*
-			 * The repo should be owned by root and not writable
-			 */
-			archive_entry_set_uid(ae, 0);
-			archive_entry_set_gid(ae, 0);
-			archive_entry_set_perm(ae, 0644);
+			if (dest_fd == -1) {
+				archive_entry_set_pathname(ae, dest);
+				/*
+				 * The repo should be owned by root and not writable
+				 */
+				archive_entry_set_uid(ae, 0);
+				archive_entry_set_gid(ae, 0);
+				archive_entry_set_perm(ae, 0644);
 
-			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
+				if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != 0) {
+					pkg_emit_errno("archive_read_extract", "extract error");
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+			}
+			else {
+				if (archive_read_data_into_fd(a, dest_fd) != 0) {
+					pkg_emit_errno("archive_read_extract", "extract error");
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+				(void)lseek(dest_fd, 0, SEEK_SET);
+			}
 		}
 		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
 			siglen = archive_entry_size(ae);
@@ -170,6 +184,55 @@ cleanup:
 	return rc;
 }
 
+static FILE *
+repo_fetch_remote_extract_tmp(const char *packagesite, const char *filename,
+		const char *extension, time_t *t, int *rc, const char *archive_file)
+{
+	int fd, dest_fd;
+	FILE *res = NULL;
+	const char *tmpdir;
+	char tmp[MAXPATHLEN];
+
+	fd = repo_fetch_remote_tmp(packagesite, filename, extension, t, rc);
+	if (fd == -1) {
+		return (NULL);
+	}
+
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	snprintf(tmp, MAXPATHLEN, "%s/%s.XXXXXX", tmpdir, archive_file);
+
+	dest_fd = mkstemp(tmp);
+	if (dest_fd == -1) {
+		pkg_emit_error("Could not create temporary file %s, "
+				"aborting update.\n", tmp);
+		*rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	(void)unlink(tmp);
+	if (repo_archive_extract_file(fd, archive_file, NULL, dest_fd) != EPKG_OK) {
+		*rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	res = fdopen(dest_fd, "r");
+	if (res == NULL) {
+		pkg_emit_errno("fdopen", "digest open failed");
+		*rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	dest_fd = -1;
+	*rc = EPKG_OK;
+
+cleanup:
+	if (dest_fd != -1)
+		close(dest_fd);
+	/* Thus removing archived file as well */
+	close(fd);
+	return (res);
+}
+
 static int
 pkg_update_full(const char *repofile, const char *name, const char *packagesite, time_t *mtime)
 {
@@ -201,7 +264,7 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 		goto cleanup;
 	}
 
-	if ((rc = repo_archive_extract_file(fd, repo_db_file, repofile_unchecked)) != EPKG_OK) {
+	if ((rc = repo_archive_extract_file(fd, repo_db_file, repofile_unchecked, -1)) != EPKG_OK) {
 		goto cleanup;
 	}
 
@@ -336,22 +399,46 @@ cleanup:
 	return (rc);
 }
 
+struct pkg_increment_task_item {
+	char *origin;
+	char *digest;
+	long offset;
+	struct pkg_increment_task_item *next;
+};
+
+static void
+pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char *origin,
+		const char *digest, long offset)
+{
+	struct pkg_increment_task_item *item;
+
+	item = calloc(1, sizeof(struct pkg_increment_task_item));
+	item->origin = strdup(origin);
+	item->digest = strdup(digest);
+	item->offset = offset;
+
+	LL_PREPEND(*head, item);
+}
+
 static int
 pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 {
 	FILE *fmanifest = NULL, *fdigests = NULL;
-	int fd_manifest, fd_digests;
 	sqlite3 *sqlite = NULL;
-	struct pkg *local_pkg;
+	struct pkg *local_pkg = NULL;
 	int rc = EPKG_FATAL, ret;
 	const char *local_origin, *local_digest;
-	struct pkgdb_it *it;
+	struct pkgdb_it *it = NULL;
 	char linebuf[1024], *digest_origin, *digest_digest, *digest_offset, *p;
 	int updated = 0, removed = 0, added = 0;
 	long num_offset;
+	time_t local_t = *mtime;
+	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
+			*item, *tmp_item;
 
-	if ((rc = pkgdb_repo_open(name, true, &sqlite)) != EPKG_OK)
-		goto cleanup;
+	if ((rc = pkgdb_repo_open(name, false, &sqlite)) != EPKG_OK) {
+		return (EPKG_FATAL);
+	}
 
 	if ((rc = pkgdb_repo_init(sqlite)) != EPKG_OK)
 		goto cleanup;
@@ -363,7 +450,11 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 	}
 
 	/* Try to get a single entry in repository to ensure that we can read checksums */
-	pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
+	if (pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC) != EPKG_OK) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
 	pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
 	if (local_digest == NULL || local_origin == NULL) {
 		pkg_emit_notice("incremental update is not possible as "
@@ -372,24 +463,30 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 		goto cleanup;
 	}
 
-	if ((fd_digests = repo_fetch_remote_tmp(packagesite, repo_digests_archive,
-			"txz", mtime, &rc)) == -1)
+	fdigests = repo_fetch_remote_extract_tmp(packagesite,
+			repo_digests_archive, "txz", &local_t,
+			&rc, repo_digests_file);
+	if (fdigests == NULL)
 		goto cleanup;
-	if ((fd_manifest = repo_fetch_remote_tmp(packagesite, repo_packagesite_archive,
-			"txz", mtime, &rc)) == -1)
+	local_t = *mtime;
+	fmanifest = repo_fetch_remote_extract_tmp(packagesite,
+			repo_packagesite_archive, "txz", &local_t,
+			&rc, repo_packagesite_file);
+	if (fmanifest == NULL)
 		goto cleanup;
+	*mtime = local_t;
 
 	do {
 		pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
 		/* Read a line from digests file */
 		if (fgets(linebuf, sizeof(linebuf) - 1, fdigests) == NULL) {
-			while ((ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+			while (ret == EPKG_OK) {
 				/* Remove packages */
-				rc = pkgdb_repo_remove_package(local_pkg);
-				if (rc != EPKG_OK)
-					goto cleanup;
-				removed ++;
+				pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
+				pkg_update_increment_item_new(&ldel, local_origin, local_digest, 0);
+				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
 			}
+			break;
 		}
 		p = linebuf;
 		digest_origin = strsep(&p, ":");
@@ -398,6 +495,7 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 		if (digest_origin == NULL || digest_digest == NULL ||
 				digest_offset == NULL) {
 			pkg_emit_error("invalid digest file format");
+			assert(0);
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -420,13 +518,8 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 		if (ret == 0) {
 			if (strcmp(digest_digest, local_digest) != 0) {
 				/* Do upgrade */
-				rc = pkg_add_from_manifest(fmanifest, digest_origin,
-						num_offset, digest_digest, sqlite);
+				pkg_update_increment_item_new(&ladd, digest_origin, digest_digest, num_offset);
 				updated ++;
-			}
-			else {
-				/* Skip to next iteration */
-				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
 			}
 		}
 		else if (ret > 0) {
@@ -436,53 +529,48 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 				if (strcmp(local_origin, digest_origin) <= 0) {
 					break;
 				}
-				rc = pkgdb_repo_remove_package(local_pkg);
-				if (rc != EPKG_OK)
-					goto cleanup;
-				removed ++;
+				pkg_update_increment_item_new(&ldel, local_origin, local_digest, 0);
 				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
 			} while (ret == EPKG_OK);
+			if (ret != EPKG_OK)
+				break;
 		}
 		else if (ret < 0) {
-			for (;;) {
-				if (strcmp(local_origin, digest_origin) < 0) {
-					/* Insert a package from manifest */
-					added ++;
-					rc = pkg_add_from_manifest(fmanifest, digest_origin,
-							num_offset, digest_digest, sqlite);
-				}
-				else {
-					break;
-				}
-				if (fgets(linebuf, sizeof(linebuf) - 1, fdigests) == NULL) {
-					break;
-				}
-				p = linebuf;
-				digest_origin = strsep(&p, ":");
-				digest_digest = strsep(&p, ":");
-				digest_offset = strsep(&p, ":");
-				if (digest_origin == NULL || digest_digest == NULL ||
-						digest_offset == NULL) {
-					pkg_emit_error("invalid digest file format");
-					rc = EPKG_FATAL;
-					goto cleanup;
-				}
-				errno = 0;
-				num_offset = (long)strtoul(digest_offset, NULL, 10);
-				if (errno != 0) {
-					pkg_emit_errno("strtoul", "digest format error");
-					rc = EPKG_FATAL;
-					goto cleanup;
-				}
-			}
+			/* Insert a package from manifest */
+			pkg_update_increment_item_new(&ladd, digest_origin, digest_digest, num_offset);
 		}
-	} while (ret == EPKG_OK);
+		/* Skip to next local package */
+		ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
+	} while (ret == EPKG_OK || !feof(fdigests));
 
 	rc = EPKG_OK;
-cleanup:
-	if (pkgdb_repo_close(sqlite, rc == EPKG_OK) != EPKG_OK) {
-		rc = EPKG_FATAL;
+
+	LL_FOREACH_SAFE(ldel, item, tmp_item) {
+		if (rc == EPKG_OK) {
+			rc = pkgdb_repo_remove_package(item->origin);
+			removed ++;
+		}
+		free(item->origin);
+		free(item->digest);
+		free(item);
 	}
+	LL_FOREACH_SAFE(ladd, item, tmp_item) {
+		if (rc == EPKG_OK) {
+			rc = pkg_add_from_manifest(fmanifest, item->origin,
+						item->offset, item->digest, sqlite);
+			added ++;
+		}
+		free(item->origin);
+		free(item->digest);
+		free(item);
+	}
+	added -= updated;
+
+cleanup:
+	if (it != NULL)
+		pkgdb_it_free(it);
+	if (pkgdb_repo_close(sqlite, rc == EPKG_OK) != EPKG_OK)
+		rc = EPKG_FATAL;
 	if (fmanifest)
 		fclose(fmanifest);
 	if (fdigests)
@@ -551,7 +639,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	}
 	if (false) {
 		/* XXX: Still disabled by default */
-		res = pkg_update_incremental(name, packagesite, &t);
+		res = pkg_update_incremental(repofile, packagesite, &t);
 		if (res != EPKG_OK) {
 			/* Still try to do full upgrade */
 			if ((res = pkg_update_full(repofile, name, packagesite, &t)) != EPKG_OK)
