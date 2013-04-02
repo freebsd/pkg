@@ -1265,9 +1265,8 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 
 	assert(it != NULL);
 
-	if (it->finished && (it->flags & PKGDB_IT_FLAG_ONCE)) {
+	if (it->finished && (it->flags & PKGDB_IT_FLAG_ONCE))
 		return (EPKG_END);
-	}
 
 	switch (sqlite3_step(it->stmt)) {
 	case SQLITE_ROW:
@@ -1298,12 +1297,12 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 		return (EPKG_OK);
 	case SQLITE_DONE:
 		it->finished ++;
-		if (flags & PKGDB_IT_FLAG_CYCLED) {
+		if (it->flags & PKGDB_IT_FLAG_CYCLED) {
 			sqlite3_reset(it->stmt);
 			return (EPKG_OK);
 		}
 		else {
-			if (flags & PKGDB_IT_FLAG_AUTO)
+			if (it->flags & PKGDB_IT_FLAG_AUTO)
 				pkgdb_it_free(it);
 			return (EPKG_END);
 		}
