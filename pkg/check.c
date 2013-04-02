@@ -248,7 +248,7 @@ exec_check(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
-	int ret;
+	int ret, rc = EX_OK;
 	int ch;
 	bool yes;
 	bool dcheck = false;
@@ -360,22 +360,31 @@ exec_check(int argc, char **argv)
 				if (verbose)
 					printf("Checking dependencies: %s\n", pkgname);
 				nbpkgs += check_deps(db, pkg, &dh, noinstall);
+				if (noinstall && nbpkgs > 0) {
+					rc = EX_UNAVAILABLE;
+				}
 			}
 			if (checksums) {
 				if (verbose)
 					printf("Checking checksums: %s\n", pkgname);
-				pkg_test_filesum(pkg);
+				if (pkg_test_filesum(pkg) != EPKG_OK) {
+					rc = EX_DATAERR;
+				}
 			}
 			if (recompute) {
 				if (verbose)
 					printf("Recomputing size and checksums: %s\n", pkgname);
-				pkg_recompute(db, pkg);
+				if (pkg_recompute(db, pkg) != EPKG_OK) {
+					rc = EX_DATAERR;
+				}
 			}
 			if (reanalyse_shlibs) {
 				if (verbose)
 					printf("Reanalyzing files for shlibs: %s\n", pkgname);
-				if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK)
+				if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
 					printf("Failed to reanalyse for shlibs: %s\n", pkgname);
+					rc = EX_UNAVAILABLE;
+				}
 			}
 		}
 
@@ -399,8 +408,5 @@ exec_check(int argc, char **argv)
 	pkg_free(pkg);
 	pkgdb_close(db);
 
-	if (noinstall && nbpkgs > 0)
-		return (EX_UNAVAILABLE);
-
-	return (EX_OK);
+	return (rc);
 }

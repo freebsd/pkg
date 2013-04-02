@@ -1131,13 +1131,14 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	return (packing_finish(pack));
 }
 
-void
+int
 pkg_test_filesum(struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
 	const char *path;
 	const char *sum;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	int rc = EPKG_OK;
 
 	assert(pkg != NULL);
 
@@ -1146,13 +1147,17 @@ pkg_test_filesum(struct pkg *pkg)
 		sum = pkg_file_cksum(f);
 		if (*sum != '\0') {
 			sha256_file(path, sha256);
-			if (strcmp(sha256, sum) != 0)
+			if (strcmp(sha256, sum) != 0) {
 				pkg_emit_file_mismatch(pkg, f, sum);
+				rc = EPKG_FATAL;
+			}
 		}
 	}
+
+	return (rc);
 }
 
-void
+int
 pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
@@ -1164,6 +1169,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 	bool regular = false;
 	const char *sum;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	int rc = EPKG_OK;
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		path = pkg_file_path(f);
@@ -1173,8 +1179,12 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			if (S_ISLNK(st.st_mode)) {
 				regular = false;
 				*sha256 = '\0';
-			} else
-				sha256_file(path, sha256);
+			} else {
+				if (sha256_file(path, sha256) != EPKG_OK) {
+					rc = EPKG_FATAL;
+					break;
+				}
+			}
 
 			/* special case for hardlinks */
 			if (st.st_nlink > 1)
@@ -1190,6 +1200,8 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 	pkg_get(pkg, PKG_FLATSIZE, &oldflatsize);
 	if (flatsize != oldflatsize)
 		pkgdb_set(db, pkg, PKG_SET_FLATSIZE, flatsize);
+
+	return (rc);
 }
 
 int
