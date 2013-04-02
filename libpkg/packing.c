@@ -149,9 +149,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	int ret;
 	struct stat st;
 	struct archive_entry *entry, *sparse_entry;
-	/* ugly hack for python and emacs */
-	/*char *p;*/
-	/*bool unset_timestamp = true;*/
+	bool unset_timestamp;
 
 	entry = archive_entry_new();
 	archive_entry_copy_sourcepath(entry, filepath);
@@ -187,23 +185,14 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	if (perm != 0)
 		archive_entry_set_perm(entry, perm);
 
-	/* XXX ugly hack for python and emacs */
-/*	p = strrchr(filepath, '.');
-
-	if (p != NULL && (strcmp(p, ".pyc") == 0 ||
-	    strcmp(p, ".py") == 0 ||
-	    strcmp(p, ".pyo") == 0 ||
-	    strcmp(p, ".elc") == 0 ||
-	    strcmp(p, ".el") == 0
-	    ))
-		unset_timestamp = false;
+	pkg_config_bool(PKG_CONFIG_UNSET_TIMESTAMP, &unset_timestamp);
 
 	if (unset_timestamp) {
 		archive_entry_unset_atime(entry);
 		archive_entry_unset_ctime(entry);
 		archive_entry_unset_mtime(entry);
 		archive_entry_unset_birthtime(entry);
-	}*/
+	}
 
 	archive_entry_linkify(pack->resolver, &entry, &sparse_entry);
 

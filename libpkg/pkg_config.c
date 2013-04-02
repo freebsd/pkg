@@ -230,6 +230,11 @@ static struct config_entry c[] = {
 		PKG_CONFIG_INTEGER,
 		"FETCH_TIMEOUT",
 		"30",
+	},
+	[PKG_CONFIG_UNSET_TIMESTAMP] = {
+		PKG_CONFIG_BOOL,
+		"UNSET_TIMESTAMP",
+		"NO",
 	}
 };
 
