@@ -4351,11 +4351,18 @@ pkgshell_open(const char **reponame)
 int
 pkgdb_obtain_lock(struct pkgdb *db)
 {
+	int ret;
+
 	assert(db != NULL);
 	assert(db->lock_count >= 0);
-	if (!(db->lock_count++))
-		return sql_exec(db->sqlite,
+	if (!db->lock_count) {
+		ret = sql_exec(db->sqlite,
 		    "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
+		/* Set lock only if we actually were able to switch locking mode */
+		if (ret == EPKG_OK)
+			++db->lock_count;
+		return (ret);
+	}
 	else
 		return (EPKG_OK);
 }
