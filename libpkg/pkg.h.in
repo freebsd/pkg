@@ -336,6 +336,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_NAMESERVER,
 	PKG_CONFIG_EVENT_PIPE,
 	PKG_CONFIG_FETCH_TIMEOUT,
+	PKG_CONFIG_UNSET_TIMESTAMP,
 } pkg_config_key;
 
 typedef enum {
