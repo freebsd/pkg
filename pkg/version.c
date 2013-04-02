@@ -400,6 +400,8 @@ exec_version(int argc, char **argv)
 				if (pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC) == EPKG_OK) {
 					pkg_get(pkg_remote, PKG_VERSION, &version_remote);
 					print_version(pkg, "remote", version_remote, limchar, opt);
+				} else {
+					print_version(pkg, "remote", NULL, limchar, opt);
 				}
 				pkgdb_it_free(it_remote);
 			}
