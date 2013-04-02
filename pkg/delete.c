@@ -176,11 +176,13 @@ exec_delete(int argc, char **argv)
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
 		    "Deinstallation has been requested for the following %d packages:\n\n", nbactions);
+		if (dry_run) {
+			retcode = EX_OK;
+			goto cleanup;
+		}
 		if (!yes && !dry_run)
 			yes = query_yesno(
 		            "\nProceed with deinstalling packages [y/N]: ");
-		if (dry_run)
-			yes = false;
 	}
 	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
