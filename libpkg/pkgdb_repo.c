@@ -344,28 +344,13 @@ pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
 		}
 	}
 
+	sqlite3_create_function(*sqlite, "file_exists", 2, SQLITE_ANY, NULL,
+	    file_exists, NULL, NULL);
+
 	if (!incremental) {
 		retcode = sql_exec(*sqlite, initsql, REPO_SCHEMA_VERSION);
 		if (retcode != EPKG_OK)
 			return (retcode);
-	}
-
-	/* remove anything that is no longer in the repository. */
-	if (incremental) {
-		const char *obsolete[] = {
-				"packages WHERE NOT FILE_EXISTS(path, cksum)",
-				"categories WHERE id NOT IN "
-				"(SELECT category_id FROM pkg_categories)",
-				"licenses WHERE id NOT IN "
-				"(SELECT license_id FROM pkg_licenses)",
-				"shlibs WHERE id NOT IN "
-				"(SELECT shlib_id FROM pkg_shlibs_required)"
-				"AND id NOT IN "
-				"(SELECT shlib_id FROM pkg_shlibs_provided)"
-		};
-		size_t num_objs = sizeof(obsolete) / sizeof(*obsolete);
-		for (size_t obj = 0; obj < num_objs; obj++)
-			sql_exec(*sqlite, "DELETE FROM %s;", obsolete[obj]);
 	}
 
 	return (EPKG_OK);
@@ -375,9 +360,6 @@ int
 pkgdb_repo_init(sqlite3 *sqlite)
 {
 	int retcode = EPKG_OK;
-
-	sqlite3_create_function(sqlite, "file_exists", 2, SQLITE_ANY, NULL,
-	    file_exists, NULL, NULL);
 
 	retcode = sql_exec(sqlite, "PRAGMA synchronous=off");
 	if (retcode != EPKG_OK)
