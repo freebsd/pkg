@@ -210,7 +210,9 @@ typedef enum {
 	PKG_CKSUM,
 	PKG_NEWVERSION,
 	PKG_REPONAME,
-	PKG_REPOURL, /* end of fields */
+	PKG_REPOURL,
+	PKG_DIGEST, 
+	/* end of fields */
 	PKG_FLATSIZE = 64U,
 	PKG_NEW_FLATSIZE,
 	PKG_NEW_PKGSIZE,
@@ -218,8 +220,7 @@ typedef enum {
 	PKG_AUTOMATIC,
 	PKG_LOCKED,
 	PKG_ROWID,
-	PKG_TIME,
-	PKG_DIGEST
+	PKG_TIME
 } pkg_attr;
 
 typedef enum {
