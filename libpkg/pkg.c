@@ -285,10 +285,12 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			struct sbuf **sbuf;
 			const char *str = va_arg(ap, const char *);
 
-			sbuf = &pkg->fields[attr];
+			if (str == NULL) {
+				pkg->fields[attr] = NULL;
+				continue;
+			}
 
-			if (str == NULL)
-				str = "";
+			sbuf = &pkg->fields[attr];
 
 			if (attr == PKG_MTREE && !STARTS_WITH(str, "#mtree")) {
 				sbuf_set(sbuf, "#mtree\n");
