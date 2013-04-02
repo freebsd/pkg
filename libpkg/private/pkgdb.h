@@ -116,10 +116,10 @@ int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 
 /**
  * Remove specified pkg from repo
- * @param pkg package to remove
+ * @param origin the origin of package to remove
  * @return EPKG_OK if succeeded
  */
-int pkgdb_repo_remove_package(struct pkg *pkg);
+int pkgdb_repo_remove_package(const char *origin);
 
 /**
  * Upgrade repo db version if required

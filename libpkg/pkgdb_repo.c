@@ -606,12 +606,8 @@ try_again:
 }
 
 int
-pkgdb_repo_remove_package(struct pkg *pkg)
+pkgdb_repo_remove_package(const char *origin)
 {
-	const char *origin;
-
-	pkg_get(pkg, PKG_ORIGIN, &origin);
-
 	if (run_prepared_statement(DELETE, origin) != SQLITE_DONE)
 		return (EPKG_FATAL); /* sqlite error */
 
@@ -881,6 +877,7 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 {
 	sqlite3_stmt *stmt = NULL;
 	int ret;
+	static struct pkgdb repodb;
 	struct pkgdb_it *it;
 	const char query_sql[] = ""
 		"SELECT origin, manifestdigest "
@@ -900,7 +897,8 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 		return (NULL);
 	}
 
-	it->db = NULL;
+	repodb.sqlite = sqlite;
+	it->db = &repodb;
 	it->stmt = stmt;
 	it->type = PKG_REMOTE;
 	return (it);

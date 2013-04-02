@@ -1304,10 +1304,12 @@ pkgdb_it_free(struct pkgdb_it *it)
 	if (it == NULL)
 		return;
 
-	if (!sqlite3_db_readonly(it->db->sqlite, "main")) {
-		sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
-			"DROP TABLE IF EXISTS delete_job; "
-			"DROP TABLE IF EXISTS pkgjobs");
+	if (it->db != NULL) {
+		if (!sqlite3_db_readonly(it->db->sqlite, "main")) {
+			sql_exec(it->db->sqlite, "DROP TABLE IF EXISTS autoremove; "
+					"DROP TABLE IF EXISTS delete_job; "
+					"DROP TABLE IF EXISTS pkgjobs");
+		}
 	}
 
 	sqlite3_finalize(it->stmt);

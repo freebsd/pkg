@@ -48,7 +48,7 @@
 #endif
 #include "private/utils.h"
 
-#define PKG_NUM_FIELDS 18
+#define PKG_NUM_FIELDS 19
 #define PKG_NUM_SCRIPTS 8
 
 #if ARCHIVE_VERSION_NUMBER < 3000002
