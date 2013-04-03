@@ -1159,6 +1159,7 @@ typedef enum {
 	PKG_EVENT_INTEGRITYCHECK_CONFLICT,
 	PKG_EVENT_NEWPKGVERSION,
 	PKG_EVENT_NOTICE,
+	PKG_EVENT_INCREMENTAL_UPDATE,
 	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
@@ -1176,7 +1177,7 @@ typedef enum {
 	PKG_EVENT_PLUGIN_ERRNO,
 	PKG_EVENT_PLUGIN_ERROR,
 	PKG_EVENT_PLUGIN_INFO,
-	PKG_EVENT_NOT_FOUND,
+	PKG_EVENT_NOT_FOUND
 } pkg_event_t;
 
 struct pkg_event {
@@ -1263,6 +1264,11 @@ struct pkg_event {
 			const char *pkg_path;
 			struct pkg_event_conflict *conflicts;
 		} e_integrity_conflict;
+		struct {
+			int updated;
+			int removed;
+			int added;
+		} e_incremental_update;
 	};
 };
 

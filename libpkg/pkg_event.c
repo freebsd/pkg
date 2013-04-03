@@ -347,6 +347,16 @@ pipeevent(struct pkg_event *ev)
 		    pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME),
 		    sbuf_json_escape(buf, ev->e_plugin_info.msg));
 		break;
+	case PKG_EVENT_INCREMENTAL_UPDATE:
+		sbuf_printf(msg, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
+		    "\"data\": {"
+			"\"updated\": %d, "
+			"\"removed\": %d, "
+			"\"added\": %d"
+			"}}", ev->e_incremental_update.updated,
+			ev->e_incremental_update.removed,
+			ev->e_incremental_update.added);
+		break;
 	default:
 		break;
 	}
@@ -726,3 +736,15 @@ pkg_emit_package_not_found(const char *p)
 	pkg_emit_event(&ev);
 }
 
+void
+pkg_emit_incremental_update(int updated, int removed, int added)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_INCREMENTAL_UPDATE;
+	ev.e_incremental_update.updated = updated;
+	ev.e_incremental_update.removed = removed;
+	ev.e_incremental_update.added = added;
+
+	pkg_emit_event(&ev);
+}

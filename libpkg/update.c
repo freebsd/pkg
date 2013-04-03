@@ -566,6 +566,7 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 		free(item);
 	}
 	added -= updated;
+	pkg_emit_incremental_update(updated, removed, added);
 
 cleanup:
 	if (it != NULL)

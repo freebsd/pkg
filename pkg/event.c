@@ -261,6 +261,12 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		printf("%s: %s\n", pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME), ev->e_plugin_info.msg);
 		break;
+	case PKG_EVENT_INCREMENTAL_UPDATE:
+		if (!quiet)
+			printf("Incremental update completed: %d packages updated, %d removed and %d added.\n",
+					ev->e_incremental_update.updated, ev->e_incremental_update.removed,
+					ev->e_incremental_update.added);
+		break;
 	default:
 		break;
 	}
