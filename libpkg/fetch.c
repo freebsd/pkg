@@ -372,7 +372,9 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 	} else {
 		EV_SET(&e, fileno(f->ssh), EVFILT_READ, EV_DELETE, 0, 0, 0);
 		kevent(kq, &e, 1, NULL, 0, NULL);
-		fcntl(fileno(f->ssh), F_SETFL, ~O_NONBLOCK);
+		int flags = fcntl(fileno(f->ssh), F_GETFL, 0);
+		flags &= ~O_NONBLOCK;
+		fcntl(fileno(f->ssh), F_SETFL, flags);
 	}
 
 	if (kq != -1)
