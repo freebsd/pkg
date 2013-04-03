@@ -335,7 +335,10 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 				break;
 		} else {
 			kevent(kq, &e, 1, &ev, 1, NULL);
-			if ((r = fread(buf, 1, ev.data > (intptr_t)sizeof(buf) ? sizeof(buf) : ev.data, remote)) < 1)
+			size_t size = (size_t)ev.data;
+			if ((size_t)ev.data > sizeof(buf))
+				size = sizeof(buf);
+			if ((r = fread(buf, 1, size, remote)) < 1)
 				break;
 		}
 
