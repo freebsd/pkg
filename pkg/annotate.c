@@ -71,8 +71,13 @@ do_add(struct pkgdb *db, const char *pkgname, const char *pkgversion,
 			if (!quiet)
 				printf("Annotated %s-%s: %s\n", pkgname,
 				     pkgversion, key);
+		} else if (ret == EPKG_WARN) {
+			if (!quiet)
+				warnx("%s-%s: Can't add annotation %s -- "
+				     "already exists", pkgname, pkgversion,
+				     key );
 		} else
-			warn("%s-%s: Failed to add annotation %s", pkgname,
+			warnx("%s-%s: Failed to add annotation %s", pkgname,
 			     pkgversion, key);
 	}
 	return (ret);
@@ -94,7 +99,7 @@ do_modify(struct pkgdb *db, const char *pkgname, const char *pkgversion,
 				printf("Modified annotation %s-%s: %s\n",
 				       pkgname, pkgversion, key);
 		} else
-			warn("%s-%s: Failed to modify annotation %s", pkgname,
+			warnx("%s-%s: Failed to modify annotation %s", pkgname,
 			     pkgversion, key);
 	}
 	return (ret);
@@ -113,8 +118,12 @@ do_delete(struct pkgdb *db, const char *pkgname, const char *pkgversion,
 			if (!quiet)
 				printf("Deleted annotation %s-%s: %s\n",
 				       pkgname, pkgversion, key);
+		} else if (ret == EPKG_WARN) {
+			if (!quiet)
+				warnx("%s-%s: Can't delete annotation %s -- "
+				     "nonexistent", pkgname, pkgversion, key);
 		} else
-			warn("%s-%s: Failed to delete annotation %s", pkgname,
+			warnx("%s-%s: Failed to delete annotation %s", pkgname,
 			     pkgversion, key);
 	}
 	return (ret);
@@ -274,7 +283,10 @@ exec_annotate(int argc, char **argv)
 			break;
 		}
 
-		if (retcode != EPKG_OK) {
+		if (retcode == EPKG_WARN)
+			exitcode = EX_DATAERR;
+
+		if (retcode != EPKG_OK && retcode != EPKG_WARN) {
 			exitcode = EX_IOERR;
 			goto cleanup;
 		}
