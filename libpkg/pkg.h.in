@@ -1297,5 +1297,5 @@ int pkg_old_emit_content(struct pkg *pkg, char **dest);
 int pkg_from_old(struct pkg *pkg);
 int pkg_to_old(struct pkg *pkg);
 int pkg_register_old(struct pkg *pkg);
-int pkg_sshserve(const char *path);
+int pkg_sshserve(void);
 #endif

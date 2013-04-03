@@ -34,12 +34,11 @@
 #include "pkg.h"
 
 int
-pkg_sshserve(const char *path __unused)
+pkg_sshserve(void)
 {
 	struct stat st;
 	char *line = NULL;
 	char *file, *age;
-	char fpath[MAXPATHLEN];
 	size_t linecap = 0, r;
 	ssize_t linelen;
 	time_t mtime = 0;
@@ -101,9 +100,7 @@ pkg_sshserve(const char *path __unused)
 			continue;
 		}
 
-		snprintf(fpath, sizeof(fpath), "%s/%s", path, file);
-
-		if (stat(fpath, &st) == -1) {
+		if (stat(file, &st) == -1) {
 			printf("ko: file not found\n");
 			continue;
 		}
@@ -119,7 +116,7 @@ pkg_sshserve(const char *path __unused)
 		}
 
 		printf("ok: %ld\n", st.st_size);
-		f = fopen(fpath, "r");
+		f = fopen(file, "r");
 
 		while ((r = fread(buf, 1, sizeof(buf), f)) > 0)
 			fwrite(buf, 1, r, stdout);

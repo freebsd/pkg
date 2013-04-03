@@ -89,5 +89,7 @@ struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);
 
 int set_nameserver(const char *nsname);
+int pkg_popen(const char *cmd, FILE **in, FILE **out, pid_t *pid);
+
 
 #endif

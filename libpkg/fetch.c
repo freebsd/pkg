@@ -93,6 +93,10 @@ pkg_fetch_new(struct pkg_fetch **f)
 int
 pkg_fetch_free(struct pkg_fetch *f)
 {
+	if (f->ssh != NULL) {
+		fprintf(f->ssh, "quit\n");
+		pclose(f->ssh);
+	}
 	free(f);
 
 	return (EPKG_OK);
@@ -137,6 +141,68 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 	return (retcode);
 }
 
+static int
+start_ssh(struct pkg_fetch *f, struct url *u, off_t *sz)
+{
+	char *line = NULL;
+	ssize_t linecap = 0;
+	size_t linelen;
+	struct sbuf *cmd = NULL;
+	const char *errstr;
+
+	if (f->ssh == NULL) {
+		cmd = sbuf_new_auto();
+		sbuf_cat(cmd, "/usr/bin/ssh -e none -T ");
+		if (u->port > 0)
+			sbuf_printf(cmd, "-P %d ", u->port);
+		if (u->user[0] != '\0')
+			sbuf_printf(cmd, "%s@", u->user);
+		sbuf_cat(cmd, u->host);
+		sbuf_printf(cmd, " pkg ssh");
+		sbuf_finish(cmd);
+		if ((f->ssh = popen(sbuf_data(cmd), "r+")) == NULL) {
+			pkg_emit_errno("popen", "ssh");
+			sbuf_delete(cmd);
+			return (EPKG_FATAL);
+		}
+		sbuf_delete(cmd);
+
+		if (getline(&line, &linecap, f->ssh) > 0) {
+			if (strncmp(line, "ok:", 3) != 0) {
+				pclose(f->ssh);
+				free(line);
+				return (EPKG_FATAL);
+			}
+		} else {
+			pclose(f->ssh);
+			return (EPKG_FATAL);
+		}
+	}
+
+	fprintf(f->ssh, "get %s %ld\n", u->doc, u->ims_time);
+	if ((linelen = getline(&line, &linecap, f->ssh)) > 0) {
+		if (line[linelen -1 ] == '\n')
+			line[linelen -1 ] = '\0';
+		if (strncmp(line, "ok:", 3) == 0) {
+			*sz = strtonum(line + 4, 0, LONG_MAX, &errstr);
+			if (errstr) {
+				free(line);
+				return (EPKG_FATAL);
+			}
+
+			if (*sz == 0) {
+				free(line);
+				return (EPKG_UPTODATE);
+			}
+
+			free(line);
+			return (EPKG_OK);
+		}
+	}
+	free(line);
+	return (EPKG_FATAL);
+}
+
 int
 pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 {
@@ -152,7 +218,7 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 	time_t now;
 	time_t last = 0;
 	char buf[10240];
-	char *doc;
+	char *doc = NULL;
 	char docpath[MAXPATHLEN];
 	int retcode = EPKG_OK;
 	bool srv = false;
@@ -161,6 +227,7 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 	struct dns_srvinfo *srv_current = NULL;
 	struct http_mirror *http_current = NULL;
 	const char *mt;
+	off_t sz = 0;
 
 	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
 		max_retry = 3;
@@ -176,21 +243,27 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 	if (t != NULL)
 		u->ims_time = *t;
 
+	if (strcmp(u->scheme, "ssh") == 0) {
+		if ((retcode = start_ssh(f, u, &sz)) != EPKG_OK)
+			goto cleanup;
+		remote = f->ssh;
+	}
+
 	doc = u->doc;
 	while (remote == NULL) {
 		if (retry == max_retry) {
 			pkg_config_string(PKG_CONFIG_MIRRORS, &mt);
-			if (mt != NULL && strncasecmp(mt, "srv", 3) == 0 && \
-			    strcmp(u->scheme, "file") != 0) {
+			if (mt != NULL && strncasecmp(mt, "srv", 3) == 0 &&
+			    (strncmp(u->scheme, "http", 4) == 0
+			     || strcmp(u->scheme, "ftp") == 0)) {
 				srv = true;
 				snprintf(zone, sizeof(zone),
 				    "_%s._tcp.%s", u->scheme, u->host);
 				if (f->srv == NULL)
 					f->srv = dns_getsrvinfo(zone);
 				srv_current = f->srv;
-			} else if (mt != NULL && strncasecmp(mt, "http", 4) == 0 && \
-			           strcmp(u->scheme, "file") != 0 && \
-			           strcmp(u->scheme, "ftp") != 0) {
+			} else if (mt != NULL && strncasecmp(mt, "http", 4) == 0 &&
+			           strncmp(u->scheme, "http", 4) == 0) {
 				http = true;
 				snprintf(zone, sizeof(zone),
 				    "%s://%s", u->scheme, u->host);
@@ -236,17 +309,19 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 			}
 		}
 	}
-	if (t != NULL) {
-		if (st.mtime < *t) {
-			retcode = EPKG_UPTODATE;
-			goto cleanup;
+	if (strcmp(u->scheme, "ssh") != 0) {
+		if (t != NULL) {
+			if (st.mtime < *t) {
+				retcode = EPKG_UPTODATE;
+				goto cleanup;
+			} else
+				*t = st.mtime;
 		}
-		else
-			*t = st.mtime;
+		sz = st.size;
 	}
 
 	begin_dl = time(NULL);
-	while (done < st.size) {
+	while (done < sz) {
 		if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
 			break;
 
@@ -259,8 +334,8 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 		done += r;
 		now = time(NULL);
 		/* Only call the callback every second */
-		if (now > last || done == st.size) {
-			pkg_emit_fetching(url, st.size, done, (now - begin_dl));
+		if (now > last || done == sz) {
+			pkg_emit_fetching(url, sz, done, (now - begin_dl));
 			last = now;
 		}
 	}
@@ -273,7 +348,7 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 
 	cleanup:
 
-	if (remote != NULL)
+	if (strcmp(u->scheme, "ssh") != 0 && remote != NULL)
 		fclose(remote);
 
 	/* restore original doc */

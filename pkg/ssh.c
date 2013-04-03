@@ -34,19 +34,19 @@
 void
 usage_ssh(void)
 {
-	fprintf(stderr, "usage: pkg ssh <ssh-path>\n\n");
+	fprintf(stderr, "usage: pkg ssh\n\n");
 	fprintf(stderr, "For more information see 'pkg help ssh'.\n");
 }
 
 int
-exec_ssh(int argc, char **argv)
+exec_ssh(int argc, char **argv __unused)
 {
-	if (argc != 2) {
+	if (argc > 1) {
 		usage_ssh();
 		return (EX_USAGE);
 	}
 
-	if (pkg_sshserve(argv[1]) != EPKG_OK)
+	if (pkg_sshserve() != EPKG_OK)
 		return (EX_SOFTWARE);
 
 	return (EX_OK);
