@@ -1100,6 +1100,7 @@ int pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_p
 /**
  * Get the value of a configuration key
  */
+int pkg_config_desc(pkg_config_key key, const char **value);
 int pkg_config_string(pkg_config_key key, const char **value);
 int pkg_config_bool(pkg_config_key key, bool *value);
 int pkg_config_kvlist(pkg_config_key key, struct pkg_config_kv **kv);

@@ -374,18 +374,42 @@ main(int argc, char **argv)
 				pkg_config_string(pkg_config_id(conf), &buf);
 				if (buf == NULL)
 					buf = "";
-				printf("%s: %s\n", configname, buf);
+				printf("%s: %s", configname, buf);
+				buf = NULL;
+				if (version > 2)
+					pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL)
+					printf(" (%s)", buf);
+				printf("\n");
 				break;
 			case PKG_CONFIG_BOOL:
 				pkg_config_bool(pkg_config_id(conf), &b);
-				printf("%s: %s\n", configname, b ? "yes": "no");
+				printf("%s: %s", configname, b ? "yes": "no");
+				buf = NULL;
+				if (version > 2)
+					pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL)
+					printf(" (%s)", buf);
+				printf("\n");
 				break;
 			case PKG_CONFIG_INTEGER:
 				pkg_config_int64(pkg_config_id(conf), &integer);
-				printf("%s: %"PRId64"\n", configname, integer);
+				printf("%s: %"PRId64, configname, integer);
+				buf = NULL;
+				if (version > 2)
+					pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL)
+					printf(" (%s)", buf);
+				printf("\n");
 				break;
 			case PKG_CONFIG_KVLIST:
-				printf("%s:\n", configname);
+				printf("%s:", configname);
+				buf = NULL;
+				if (version > 2)
+					pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL)
+					printf(" (%s)", buf);
+				printf("\n");
 				kv = NULL;
 				while (pkg_config_kvlist(pkg_config_id(conf), &kv) == EPKG_OK) {
 					printf("\t- %s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
@@ -393,7 +417,13 @@ main(int argc, char **argv)
 				}
 				break;
 			case PKG_CONFIG_LIST:
-				printf("%s:\n", configname);
+				printf("%s:", configname);
+				buf = NULL;
+				if (version > 2)
+					pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL)
+					printf(" (%s)", buf);
+				printf("\n");
 				list = NULL;
 				while (pkg_config_list(pkg_config_id(conf), &list) == EPKG_OK) {
 					printf("\t- %s\n", pkg_config_value(list));

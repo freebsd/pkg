@@ -56,6 +56,7 @@ struct config_entry {
 	uint8_t type;
 	const char *key;
 	const char *def;
+	const char *desc;
 };
 
 static char myabi[BUFSIZ];
@@ -71,16 +72,19 @@ static struct config_entry c[] = {
 #else
 		NULL,
 #endif
+		"Repository URL",
 	},
 	[PKG_CONFIG_DBDIR] = {
 		PKG_CONFIG_STRING,
 		"PKG_DBDIR",
 		"/var/db/pkg",
+		NULL,
 	},
 	[PKG_CONFIG_CACHEDIR] = {
 		PKG_CONFIG_STRING,
 		"PKG_CACHEDIR",
 		"/var/cache/pkg",
+		"Directory where downloaded packages are cached",
 	},
 	[PKG_CONFIG_PORTSDIR] = {
 		PKG_CONFIG_STRING,
@@ -90,61 +94,73 @@ static struct config_entry c[] = {
 #else
 		"/usr/ports",
 #endif
+		NULL,
 	},
 	[PKG_CONFIG_REPOKEY] = {
 		PKG_CONFIG_STRING,
 		"PUBKEY",
 		NULL,
+		"Public key for the packagesite",
 	},
 	[PKG_CONFIG_MULTIREPOS] = {
 		PKG_CONFIG_BOOL,
 		"PKG_MULTIREPOS",
+		NULL,
 		NULL,
 	},
 	[PKG_CONFIG_HANDLE_RC_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
 		"HANDLE_RC_SCRIPTS",
 		NULL,
+		"Automatically handle services",
 	},
 	[PKG_CONFIG_ASSUME_ALWAYS_YES] = {
 		PKG_CONFIG_BOOL,
 		"ASSUME_ALWAYS_YES",
+		NULL,
 		NULL,
 	},
 	[PKG_CONFIG_REPOS] = {
 		PKG_CONFIG_KVLIST,
 		"REPOS",
 		NULL,
+		NULL,
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
 		PKG_CONFIG_STRING,
 		"PLIST_KEYWORDS_DIR",
+		NULL,
 		NULL,
 	},
 	[PKG_CONFIG_SYSLOG] = {
 		PKG_CONFIG_BOOL,
 		"SYSLOG",
 		"YES",
+		"Log pkg(8) operations via syslog(3)",
 	},
 	[PKG_CONFIG_SHLIBS] = {
 		PKG_CONFIG_BOOL,
 		"SHLIBS",
 		"NO",
+		NULL,
 	},
 	[PKG_CONFIG_AUTODEPS] = {
 		PKG_CONFIG_BOOL,
 		"AUTODEPS",
 		"NO",
+		NULL,
 	},
 	[PKG_CONFIG_ABI] = {
 		PKG_CONFIG_STRING,
 		"ABI",
 		myabi,
+		NULL,
 	},
 	[PKG_CONFIG_DEVELOPER_MODE] = {
 		PKG_CONFIG_BOOL,
 		"DEVELOPER_MODE",
 		"NO",
+		NULL,
 	},
 	[PKG_CONFIG_PORTAUDIT_SITE] = {
 		PKG_CONFIG_STRING,
@@ -154,6 +170,7 @@ static struct config_entry c[] = {
 #else
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
 #endif
+		NULL,
 	},
 	[PKG_CONFIG_MIRRORS] = {
 		PKG_CONFIG_STRING,
@@ -165,76 +182,91 @@ static struct config_entry c[] = {
 #else
 		NULL,
 #endif
+		NULL,
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
 		PKG_CONFIG_INTEGER,
 		"FETCH_RETRY",
 		"3",
+		NULL,
 	},
 	[PKG_CONFIG_PLUGINS_DIR] = {
 		PKG_CONFIG_STRING,
 		"PKG_PLUGINS_DIR",
 		PREFIX"/lib/pkg/",
+		NULL,
 	},
 	[PKG_CONFIG_ENABLE_PLUGINS] = {
 		PKG_CONFIG_BOOL,
 		"PKG_ENABLE_PLUGINS",
 		"YES",
+		NULL,
 	},
 	[PKG_CONFIG_PLUGINS] = {
 		PKG_CONFIG_LIST,
 		"PLUGINS",
+		NULL,
 		NULL,
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
 		"DEBUG_SCRIPTS",
 		"NO",
+		NULL,
 	},
 	[PKG_CONFIG_PLUGINS_CONF_DIR] = {
 		PKG_CONFIG_STRING,
 		"PLUGINS_CONF_DIR",
 		PREFIX"/etc/pkg/",
+		NULL,
 	},
 	[PKG_CONFIG_PERMISSIVE] = {
 		PKG_CONFIG_BOOL,
 		"PERMISSIVE",
 		"NO",
+		NULL,
 	},
 	[PKG_CONFIG_REPO_AUTOUPDATE] = {
 		PKG_CONFIG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
+		NULL,
 	},
 	[PKG_CONFIG_HTTP_PROXY] = {
 		PKG_CONFIG_STRING,
 		"HTTP_PROXY",
+		NULL,
 		NULL,
 	},
 	[PKG_CONFIG_FTP_PROXY] = {
 		PKG_CONFIG_STRING,
 		"FTP_PROXY",
 		NULL,
+		NULL,
 	},
 	[PKG_CONFIG_NAMESERVER] = {
 		PKG_CONFIG_STRING,
 		"NAMESERVER",
+		NULL,
 		NULL,
 	},
 	[PKG_CONFIG_EVENT_PIPE] = {
 		PKG_CONFIG_STRING,
 		"EVENT_PIPE",
 		NULL,
+		NULL,
 	},
 	[PKG_CONFIG_FETCH_TIMEOUT] = {
 		PKG_CONFIG_INTEGER,
 		"FETCH_TIMEOUT",
 		"30",
+		NULL,
 	},
 	[PKG_CONFIG_UNSET_TIMESTAMP] = {
 		PKG_CONFIG_BOOL,
 		"UNSET_TIMESTAMP",
 		"NO",
+		NULL,
 	}
 };
 
@@ -483,6 +515,25 @@ pkg_initialized(void)
 }
 
 int
+pkg_config_desc(pkg_config_key key, const char **desc)
+{
+	struct pkg_config *conf;
+
+	if (parsed != true) {
+		pkg_emit_error("pkg_init() must be called before pkg_config_desc()");
+		return (EPKG_FATAL);
+	}
+
+	HASH_FIND_INT(config, &key, conf);
+	if (conf == NULL)
+		*desc = NULL;
+	else
+		*desc = conf->desc;
+
+	return (EPKG_OK);
+}
+
+int
 pkg_config_string(pkg_config_key key, const char **val)
 {
 	struct pkg_config *conf;
@@ -661,6 +712,7 @@ pkg_init(const char *path)
 		conf->id = i;
 		conf->key = c[i].key;
 		conf->type = c[i].type;
+		conf->desc = c[i].desc;
 		conf->fromenv = false;
 		val = getenv(c[i].key);
 

@@ -220,6 +220,7 @@ struct pkg_config {
 	pkg_config_t type;
 	const char *key;
 	const void *def;
+	const char *desc;
 	bool fromenv;
 	union {
 		char *string;
