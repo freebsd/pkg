@@ -426,7 +426,7 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 	FILE *fmanifest = NULL, *fdigests = NULL;
 	sqlite3 *sqlite = NULL;
 	struct pkg *local_pkg = NULL;
-	int rc = EPKG_FATAL, ret;
+	int rc = EPKG_FATAL, ret = 0;
 	const char *local_origin, *local_digest;
 	struct pkgdb_it *it = NULL;
 	char linebuf[1024], *digest_origin, *digest_digest, *digest_offset, *p;
