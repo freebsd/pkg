@@ -370,6 +370,9 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 		fcntl(fileno(f->ssh), F_SETFL, ~O_NONBLOCK);
 	}
 
+	if (kq != -1)
+		close(kq);
+
 	/* restore original doc */
 	u->doc = doc;
 
