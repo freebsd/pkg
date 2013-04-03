@@ -31,11 +31,13 @@
 #include <sys/stat.h>
 
 #include <err.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <libutil.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <paths.h>
 #include <pkg.h>
 
 #include "pkgcli.h"
@@ -43,22 +45,33 @@
 bool
 query_yesno(const char *msg, ...)
 {
-	int c;
-	bool r = false;
-	va_list ap;
+	int	 c;
+	bool	 r = false;
+	va_list	 ap;
+	int	 tty_fd;
+	FILE	*tty;
+
+	tty_fd = open(_PATH_TTY, O_RDWR|O_TTY_INIT);
+	if (tty_fd == -1)
+		return (r);		/* No ctty -- return the
+					 * default answer */
+
+	tty = fdopen(tty_fd, "r+");
 
 	va_start(ap, msg);
-	vprintf(msg, ap);
+	vfprintf(tty, msg, ap);
 	va_end(ap);
 
-	c = getchar();
+	c = getc(tty);
 	if (c == 'y' || c == 'Y')
 		r = true;
 	else if (c == '\n' || c == EOF)
 		return false;
 
-	while ((c = getchar()) != '\n' && c != EOF)
+	while ((c = getc(tty)) != '\n' && c != EOF)
 		continue;
+
+	fclose(tty);
 
 	return r;
 }
