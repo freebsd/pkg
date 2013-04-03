@@ -335,11 +335,8 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 				break;
 		} else {
 			kevent(kq, &e, 1, &ev, 1, NULL);
-			if (ev.data == 0) {
-				pkg_emit_error("An error occured while fetching package");
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
+			if (ev.data == 0)
+				break;
 			size_t size = (size_t)ev.data;
 			if (size > sizeof(buf))
 				size = sizeof(buf);
@@ -360,6 +357,12 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 			pkg_emit_fetching(url, sz, done, (now - begin_dl));
 			last = now;
 		}
+	}
+
+	if (done < sz) {
+		pkg_emit_error("An error occured while fetching package");
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	if (strcmp(u->scheme, "ssh") != 0 && ferror(remote)) {
