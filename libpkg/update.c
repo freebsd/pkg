@@ -74,6 +74,7 @@ repo_fetch_remote_tmp(const char *reponame, const char *filename, const char *ex
 	char tmp[MAXPATHLEN];
 	int fd;
 	const char *tmpdir;
+	struct pkg_fetch *f;
 
 	snprintf(url, MAXPATHLEN, "%s/%s.%s", reponame, filename, extension);
 
@@ -91,10 +92,12 @@ repo_fetch_remote_tmp(const char *reponame, const char *filename, const char *ex
 	}
 	(void)unlink(tmp);
 
-	if ((*rc = pkg_fetch_file_to_fd(url, fd, t)) != EPKG_OK) {
+	pkg_fetch_new(&f);
+	if ((*rc = pkg_fetch_file_to_fd(f, url, fd, t)) != EPKG_OK) {
 		close(fd);
 		fd = -1;
 	}
+	pkg_fetch_free(f);
 
 	return (fd);
 }

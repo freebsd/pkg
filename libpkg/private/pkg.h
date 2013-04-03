@@ -95,7 +95,6 @@
 			return (EPKG_OK);     \
 	} while (0)
 
-extern pthread_mutex_t mirror_mtx;
 extern int eventpipe;
 
 struct pkg {
@@ -250,6 +249,16 @@ struct pkg_abstract {
 	UT_hash_handle	 hh;
 };
 
+struct http_mirror {
+	struct url *url;
+	struct http_mirror *next;
+};
+
+struct pkg_fetch {
+	struct dns_srvinfo *srv;
+	struct http_mirror *http;
+};
+
 /* sql helpers */
 
 typedef struct _sql_prstmt {
@@ -282,7 +291,9 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_UPGRADE (1<<1)
 #define PKG_DELETE_NOSCRIPT (1<<2)
 
-int pkg_fetch_file_to_fd(const char *url, int dest, time_t *t);
+int pkg_fetch_new(struct pkg_fetch **f);
+int pkg_fetch_free(struct pkg_fetch *f);
+int pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t);
 int pkg_repo_fetch(struct pkg *pkg);
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);

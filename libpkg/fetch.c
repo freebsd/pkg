@@ -43,16 +43,8 @@
 #include "private/pkg.h"
 #include "private/utils.h"
 
-struct http_mirror {
-	struct url *url;
-	struct http_mirror *next;
-};
-
-static struct dns_srvinfo *srv_mirrors = NULL;
-static struct http_mirror *http_mirrors = NULL;
-
 static void
-gethttpmirrors(const char *url) {
+gethttpmirrors(struct pkg_fetch *fetch, const char *url) {
 	FILE *f;
 	char *line = NULL;
 	size_t linecap = 0;
@@ -79,7 +71,7 @@ gethttpmirrors(const char *url) {
 			if ((u = fetchParseURL(line)) != NULL) {
 				m = malloc(sizeof(struct http_mirror));
 				m->url = u;
-				LL_APPEND(http_mirrors, m);
+				LL_APPEND(fetch->http, m);
 			}
 		}
 	}
@@ -88,17 +80,39 @@ gethttpmirrors(const char *url) {
 }
 
 int
+pkg_fetch_new(struct pkg_fetch **f)
+{
+	if ((*f = calloc(1, sizeof(struct pkg_fetch))) == NULL) {
+		pkg_emit_errno("calloc", "fetch");
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkg_fetch_free(struct pkg_fetch *f)
+{
+	free(f);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_fetch_file(const char *url, const char *dest, time_t t)
 {
 	int fd = -1;
 	int retcode = EPKG_FATAL;
+	struct pkg_fetch *f;
 
 	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0644)) == -1) {
 		pkg_emit_errno("open", dest);
 		return(EPKG_FATAL);
 	}
 
-	retcode = pkg_fetch_file_to_fd(url, fd, &t);
+	pkg_fetch_new(&f);
+	retcode = pkg_fetch_file_to_fd(f, url, fd, &t);
+	pkg_fetch_free(f);
 
 	if (t != 0) {
 		struct timeval ftimes[2] = {
@@ -124,7 +138,7 @@ pkg_fetch_file(const char *url, const char *dest, time_t t)
 }
 
 int
-pkg_fetch_file_to_fd(const char *url, int dest, time_t *t)
+pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 {
 	FILE *remote = NULL;
 	struct url *u;
@@ -171,28 +185,24 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t *t)
 				srv = true;
 				snprintf(zone, sizeof(zone),
 				    "_%s._tcp.%s", u->scheme, u->host);
-				pthread_mutex_lock(&mirror_mtx);
-				if (srv_mirrors == NULL)
-					srv_mirrors = dns_getsrvinfo(zone);
-				pthread_mutex_unlock(&mirror_mtx);
-				srv_current = srv_mirrors;
+				if (f->srv == NULL)
+					f->srv = dns_getsrvinfo(zone);
+				srv_current = f->srv;
 			} else if (mt != NULL && strncasecmp(mt, "http", 4) == 0 && \
 			           strcmp(u->scheme, "file") != 0 && \
 			           strcmp(u->scheme, "ftp") != 0) {
 				http = true;
 				snprintf(zone, sizeof(zone),
 				    "%s://%s", u->scheme, u->host);
-				pthread_mutex_lock(&mirror_mtx);
-				if (http_mirrors == NULL)
-					gethttpmirrors(zone);
-				pthread_mutex_unlock(&mirror_mtx);
-				http_current = http_mirrors;
+				if (f->http == NULL)
+					gethttpmirrors(f, zone);
+				http_current = f->http;
 			}
 		}
 
-		if (srv && srv_mirrors != NULL)
+		if (srv && f->srv != NULL)
 			strlcpy(u->host, srv_current->host, sizeof(u->host));
-		else if (http && http_mirrors != NULL) {
+		else if (http && f->http != NULL) {
 			strlcpy(u->scheme, http_current->url->scheme, sizeof(u->scheme));
 			strlcpy(u->host, http_current->url->host, sizeof(u->host));
 			snprintf(docpath, MAXPATHLEN, "%s%s", http_current->url->doc, doc);
@@ -213,14 +223,14 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t *t)
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
-			if (srv && srv_mirrors != NULL) {
+			if (srv && f->srv != NULL) {
 				srv_current = srv_current->next;
 				if (srv_current == NULL)
-					srv_current = srv_mirrors;
-			} else if (http && http_mirrors != NULL) {
-				http_current = http_mirrors->next;
+					srv_current = f->srv;
+			} else if (http && f->http != NULL) {
+				http_current = f->http->next;
 				if (http_current == NULL)
-					http_current = http_mirrors;
+					http_current = f->http;
 			} else {
 				sleep(1);
 			}
