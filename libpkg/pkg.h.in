@@ -1268,6 +1268,7 @@ struct pkg_event {
 			int updated;
 			int removed;
 			int added;
+			int processed;
 		} e_incremental_update;
 	};
 };

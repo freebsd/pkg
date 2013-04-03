@@ -352,10 +352,12 @@ pipeevent(struct pkg_event *ev)
 		    "\"data\": {"
 			"\"updated\": %d, "
 			"\"removed\": %d, "
-			"\"added\": %d"
+			"\"added\": %d, "
+			"\"processed\": %d"
 			"}}", ev->e_incremental_update.updated,
 			ev->e_incremental_update.removed,
-			ev->e_incremental_update.added);
+			ev->e_incremental_update.added,
+			ev->e_incremental_update.processed);
 		break;
 	default:
 		break;
@@ -737,7 +739,7 @@ pkg_emit_package_not_found(const char *p)
 }
 
 void
-pkg_emit_incremental_update(int updated, int removed, int added)
+pkg_emit_incremental_update(int updated, int removed, int added, int processed)
 {
 	struct pkg_event ev;
 
@@ -745,6 +747,7 @@ pkg_emit_incremental_update(int updated, int removed, int added)
 	ev.e_incremental_update.updated = updated;
 	ev.e_incremental_update.removed = removed;
 	ev.e_incremental_update.added = added;
+	ev.e_incremental_update.processed = processed;
 
 	pkg_emit_event(&ev);
 }
