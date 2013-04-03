@@ -35,6 +35,7 @@ SRCS=		${PC} \
 		pkgdb_repo.c \
 		rcscripts.c \
 		rsa.c \
+		ssh.c \
 		scripts.c \
 		update.c \
 		utils.c \

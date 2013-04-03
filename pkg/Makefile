@@ -30,7 +30,8 @@ SRCS=		add.c \
 		which.c \
 		fetch.c \
 		shell.c \
-		stats.c
+		stats.c \
+		ssh.c
 
 PREFIX?=	/usr/local
 BINDIR=		${PREFIX}/sbin

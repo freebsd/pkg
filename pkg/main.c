@@ -1,9 +1,9 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * All rights reserved.
+ * All rights resshd.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -85,6 +85,7 @@ static struct commands {
 	{ "rquery", "Queries information in repository catalogues", exec_rquery, usage_rquery},
 	{ "search", "Performs a search of package repository catalogues", exec_search, usage_search},
 	{ "set", "Modifies information about packages in the local database", exec_set, usage_set},
+	{ "ssh", "ssh packages to be used via ssh", exec_ssh, usage_ssh},
 	{ "shell", "Opens a debug shell", exec_shell, usage_shell},
 	{ "shlib", "Displays which packages link against a specific shared library", exec_shlib, usage_shlib},
 	{ "stats", "Displays package database statistics", exec_stats, usage_stats},

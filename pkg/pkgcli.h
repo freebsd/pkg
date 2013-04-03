@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
- * All rights reserved.
+ * All rights resshd.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -161,6 +161,10 @@ void usage_which(void);
 /* pkg convert */
 int exec_convert(int, char **);
 void usage_convert(void);
+
+/* pkg ssh */
+int exec_ssh(int, char **);
+void usage_ssh(void);
 
 /* utils */
 
