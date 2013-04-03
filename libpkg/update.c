@@ -426,11 +426,11 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 	FILE *fmanifest = NULL, *fdigests = NULL;
 	sqlite3 *sqlite = NULL;
 	struct pkg *local_pkg = NULL;
-	int rc = EPKG_FATAL, ret = 0;
+	int rc = EPKG_FATAL, ret = 0, cmp;
 	const char *local_origin, *local_digest;
 	struct pkgdb_it *it = NULL;
 	char linebuf[1024], *digest_origin, *digest_digest, *digest_offset, *p;
-	int updated = 0, removed = 0, added = 0;
+	int updated = 0, removed = 0, added = 0, processed = 0;
 	long num_offset;
 	time_t local_t = *mtime;
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
@@ -450,7 +450,7 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 	}
 
 	/* Try to get a single entry in repository to ensure that we can read checksums */
-	if (pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC) != EPKG_OK) {
+	if ((ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC)) != EPKG_OK) {
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -488,6 +488,7 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 			}
 			break;
 		}
+		processed ++;
 		p = linebuf;
 		digest_origin = strsep(&p, ":");
 		digest_digest = strsep(&p, ":");
@@ -506,6 +507,12 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
+		if (ret == EPKG_END) {
+			/* We have reached end of the local repo, hence insert all packages after */
+			pkg_update_increment_item_new(&ladd, digest_origin,
+					digest_digest, num_offset);
+			continue;
+		}
 		/*
 		 * Now we have local and remote origins that are sorted,
 		 * so here are possible cases:
@@ -514,15 +521,15 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 		 * 3) local < remote, delete packages till local == remote
 		 * 4) local == remote and hashes are the same, skip
 		 */
-		ret = strcmp(local_origin, digest_origin);
-		if (ret == 0) {
+		cmp = strcmp(local_origin, digest_origin);
+		if (cmp == 0) {
 			if (strcmp(digest_digest, local_digest) != 0) {
 				/* Do upgrade */
 				pkg_update_increment_item_new(&ladd, digest_origin, digest_digest, num_offset);
 				updated ++;
 			}
 		}
-		else if (ret < 0) {
+		else if (cmp < 0) {
 			do {
 				/* Remove packages */
 				pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
@@ -532,8 +539,6 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 				pkg_update_increment_item_new(&ldel, local_origin, local_digest, 0);
 				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
 			} while (ret == EPKG_OK);
-			if (ret != EPKG_OK)
-				break;
 		}
 		else {
 			/* Insert a package from manifest */
