@@ -27,6 +27,8 @@
 
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/event.h>
+#include <sys/time.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -228,6 +230,8 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 	struct http_mirror *http_current = NULL;
 	const char *mt;
 	off_t sz = 0;
+	int kq = -1;
+	struct kevent e, ev;
 
 	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
 		max_retry = 3;
@@ -247,6 +251,10 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 		if ((retcode = start_ssh(f, u, &sz)) != EPKG_OK)
 			goto cleanup;
 		remote = f->ssh;
+		kq = kqueue();
+		EV_SET(&e, fileno(f->ssh), EVFILT_READ, EV_ADD, 0, 0, 0);
+		kevent(kq, &e, 1, NULL, 0, NULL);
+		fcntl(fileno(f->ssh), F_SETFL, O_NONBLOCK);
 	}
 
 	doc = u->doc;
@@ -322,8 +330,14 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 
 	begin_dl = time(NULL);
 	while (done < sz) {
-		if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
-			break;
+		if (kq == - 1) {
+			if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
+				break;
+		} else {
+			kevent(kq, &e, 1, &ev, 1, NULL);
+			if ((r = fread(buf, 1, ev.data > (intptr_t)sizeof(buf) ? sizeof(buf) : ev.data, remote)) < 1)
+				break;
+		}
 
 		if (write(dest, buf, r) != r) {
 			pkg_emit_errno("write", "");
@@ -340,7 +354,7 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 		}
 	}
 
-	if (ferror(remote)) {
+	if (strcmp(u->scheme, "ssh") != 0 && ferror(remote)) {
 		pkg_emit_error("%s: %s", url, fetchLastErrString);
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -348,8 +362,13 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 
 	cleanup:
 
-	if (strcmp(u->scheme, "ssh") != 0 && remote != NULL)
+	if (strcmp(u->scheme, "ssh") != 0 && remote != NULL) {
 		fclose(remote);
+	} else {
+		EV_SET(&e, fileno(f->ssh), EVFILT_READ, EV_DELETE, 0, 0, 0);
+		kevent(kq, &e, 1, NULL, 0, NULL);
+		fcntl(fileno(f->ssh), F_SETFL, ~O_NONBLOCK);
+	}
 
 	/* restore original doc */
 	u->doc = doc;
