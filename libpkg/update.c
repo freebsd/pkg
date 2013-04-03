@@ -510,8 +510,8 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 		 * Now we have local and remote origins that are sorted,
 		 * so here are possible cases:
 		 * 1) local == remote, but hashes are different: upgrade
-		 * 2) local > remote, delete packages till local == remote
-		 * 3) local < remote, insert new packages till local == remote
+		 * 2) local > remote, insert new packages till local == remote
+		 * 3) local < remote, delete packages till local == remote
 		 * 4) local == remote and hashes are the same, skip
 		 */
 		ret = strcmp(local_origin, digest_origin);
@@ -522,11 +522,11 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 				updated ++;
 			}
 		}
-		else if (ret > 0) {
+		else if (ret < 0) {
 			do {
 				/* Remove packages */
 				pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
-				if (strcmp(local_origin, digest_origin) <= 0) {
+				if (strcmp(local_origin, digest_origin) >= 0) {
 					break;
 				}
 				pkg_update_increment_item_new(&ldel, local_origin, local_digest, 0);
@@ -535,9 +535,10 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 			if (ret != EPKG_OK)
 				break;
 		}
-		else if (ret < 0) {
+		else {
 			/* Insert a package from manifest */
 			pkg_update_increment_item_new(&ladd, digest_origin, digest_digest, num_offset);
+			continue;
 		}
 		/* Skip to next local package */
 		ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
@@ -637,16 +638,9 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		if (sqlite != NULL)
 			sqlite3_close(sqlite);
 	}
-	if (false) {
-		/* XXX: Still disabled by default */
-		res = pkg_update_incremental(repofile, packagesite, &t);
-		if (res != EPKG_OK) {
-			/* Still try to do full upgrade */
-			if ((res = pkg_update_full(repofile, name, packagesite, &t)) != EPKG_OK)
-				goto cleanup;
-		}
-	}
-	else {
+	res = pkg_update_incremental(repofile, packagesite, &t);
+	if (res != EPKG_OK) {
+		/* Still try to do full upgrade */
 		if ((res = pkg_update_full(repofile, name, packagesite, &t)) != EPKG_OK)
 			goto cleanup;
 	}

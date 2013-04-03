@@ -871,6 +871,8 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 		ERROR_SQLITE(sqlite);
 		return (NULL);
 	}
+	repodb.sqlite = sqlite;
+	repodb.type = PKGDB_REMOTE;
 
 	return pkgdb_it_new(&repodb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
 }
