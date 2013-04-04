@@ -252,9 +252,22 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 			goto cleanup;
 		remote = f->ssh;
 		kq = kqueue();
+		if (kq == -1) {
+			pkg_emit_errno("kqueue", "ssh");
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 		EV_SET(&e, fileno(f->ssh), EVFILT_READ, EV_ADD, 0, 0, 0);
-		kevent(kq, &e, 1, NULL, 0, NULL);
-		fcntl(fileno(f->ssh), F_SETFL, O_NONBLOCK);
+		if (kevent(kq, &e, 1, NULL, 0, NULL) == -1) {
+			pkg_emit_errno("kevent", "ssh");
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+		if (fcntl(fileno(f->ssh), F_SETFL, O_NONBLOCK) == -1) {
+			pkg_emit_errno("fcntl", "set ssh non-blocking");
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 	doc = u->doc;
@@ -334,7 +347,11 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 			if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
 				break;
 		} else {
-			kevent(kq, &e, 1, &ev, 1, NULL);
+			if (kevent(kq, &e, 1, &ev, 1, NULL) == -1) {
+				pkg_emit_errno("kevent", "ssh");
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
 			if (ev.data == 0)
 				break;
 			size_t size = (size_t)ev.data;
@@ -379,8 +396,17 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 		EV_SET(&e, fileno(f->ssh), EVFILT_READ, EV_DELETE, 0, 0, 0);
 		kevent(kq, &e, 1, NULL, 0, NULL);
 		int flags = fcntl(fileno(f->ssh), F_GETFL, 0);
-		flags &= ~O_NONBLOCK;
-		fcntl(fileno(f->ssh), F_SETFL, flags);
+		if (flags != -1) {
+			flags &= ~O_NONBLOCK;
+			if (fcntl(fileno(f->ssh), F_SETFL, flags) == -1)
+				flags = -1;
+		}
+
+		/* if something went wrong close the ssh connection */
+		if (flags == -1) {
+			pclose(f->ssh);
+			f->ssh = NULL;
+		}
 	}
 
 	if (kq != -1)
