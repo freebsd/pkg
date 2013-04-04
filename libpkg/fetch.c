@@ -230,7 +230,7 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 	struct http_mirror *http_current = NULL;
 	const char *mt;
 	off_t sz = 0;
-	int kq = -1, flags;
+	int kq = -1, flags = 0;
 	struct kevent e, ev;
 	struct timespec ts;
 
