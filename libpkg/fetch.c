@@ -230,7 +230,7 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 	struct http_mirror *http_current = NULL;
 	const char *mt;
 	off_t sz = 0;
-	int kq = -1;
+	int kq = -1, flags;
 	struct kevent e, ev;
 	struct timespec ts;
 
@@ -264,7 +264,12 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
-		if (fcntl(fileno(f->ssh), F_SETFL, O_NONBLOCK) == -1) {
+		if ((flags = fcntl(fileno(f->ssh), F_GETFL)) == -1) {
+			pkg_emit_errno("fcntl", "set ssh non-blocking");
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+		if (fcntl(fileno(f->ssh), F_SETFL, flags | O_NONBLOCK) == -1) {
 			pkg_emit_errno("fcntl", "set ssh non-blocking");
 			retcode = EPKG_FATAL;
 			goto cleanup;
@@ -398,12 +403,9 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 	} else {
 		EV_SET(&e, fileno(f->ssh), EVFILT_READ, EV_DELETE, 0, 0, 0);
 		kevent(kq, &e, 1, NULL, 0, NULL);
-		int flags = fcntl(fileno(f->ssh), F_GETFL, 0);
-		if (flags != -1) {
-			flags &= ~O_NONBLOCK;
-			if (fcntl(fileno(f->ssh), F_SETFL, flags) == -1)
-				flags = -1;
-		}
+		flags &= ~O_NONBLOCK;
+		if (fcntl(fileno(f->ssh), F_SETFL, flags) == -1)
+			flags = -1;
 
 		/* if something went wrong close the ssh connection */
 		if (flags == -1) {
