@@ -232,6 +232,7 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 	off_t sz = 0;
 	int kq = -1;
 	struct kevent e, ev;
+	struct timespec ts;
 
 	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
 		max_retry = 3;
@@ -347,7 +348,9 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 			if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
 				break;
 		} else {
-			if (kevent(kq, &e, 1, &ev, 1, NULL) == -1) {
+			ts.tv_sec = fetch_timeout;
+			ts.tv_nsec = 0;
+			if (kevent(kq, &e, 1, &ev, 1, &ts) == -1) {
 				pkg_emit_errno("kevent", "ssh");
 				retcode = EPKG_FATAL;
 				goto cleanup;
