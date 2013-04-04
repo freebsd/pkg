@@ -181,7 +181,7 @@ start_ssh(struct pkg_fetch *f, struct url *u, off_t *sz)
 		}
 	}
 
-	fprintf(f->ssh, "get %s %ld\n", u->doc, u->ims_time);
+	fprintf(f->ssh, "get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
 	if ((linelen = getline(&line, &linecap, f->ssh)) > 0) {
 		if (line[linelen -1 ] == '\n')
 			line[linelen -1 ] = '\0';

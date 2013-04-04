@@ -24,10 +24,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 
 #include <ctype.h>
+#include <inttypes.h>
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
@@ -129,7 +131,7 @@ pkg_sshserve(void)
 			continue;
 		}
 
-		printf("ok: %ld\n", st.st_size);
+		printf("ok: %" PRIdMAX "\n", (intmax_t)st.st_size);
 		f = fopen(file, "r");
 
 		while ((r = fread(buf, 1, sizeof(buf), f)) > 0)
