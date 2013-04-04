@@ -267,6 +267,12 @@ static struct config_entry c[] = {
 		"UNSET_TIMESTAMP",
 		"NO",
 		NULL,
+	},
+	[PKG_CONFIG_SSH_RESTRICT_DIR] = {
+		PKG_CONFIG_STRING,
+		"SSH_RESTRICT_DIR",
+		NULL,
+		"Directory where the ssh subsystem will be restricted to",
 	}
 };
 

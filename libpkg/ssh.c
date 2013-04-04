@@ -31,6 +31,8 @@
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+
 #include "pkg.h"
 
 int
@@ -45,6 +47,10 @@ pkg_sshserve(void)
 	const char *errstr;
 	FILE *f;
 	char buf[BUFSIZ];
+	char fpath[MAXPATHLEN];
+	const char *restricted = NULL;
+
+	pkg_config_string(PKG_CONFIG_SSH_RESTRICT_DIR, &restricted);
 
 	printf("ok: pkg "PKGVERSION"\n");
 	for (;;) {
@@ -98,6 +104,14 @@ pkg_sshserve(void)
 		if (errstr) {
 			printf("ko: bad number %s: %s\n", age, errstr);
 			continue;
+		}
+
+		if (restricted != NULL) {
+			file = realpath(file, fpath);
+			if (strncmp(file, restricted, strlen(restricted)) != 0) {
+				printf("ko: file not found\n");
+				continue;
+			}
 		}
 
 		if (stat(file, &st) == -1) {
