@@ -398,8 +398,9 @@ pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t)
 
 	cleanup:
 
-	if (strcmp(u->scheme, "ssh") != 0 && remote != NULL) {
-		fclose(remote);
+	if (strcmp(u->scheme, "ssh") != 0) {
+		if (remote != NULL)
+			fclose(remote);
 	} else {
 		EV_SET(&e, fileno(f->ssh), EVFILT_READ, EV_DELETE, 0, 0, 0);
 		kevent(kq, &e, 1, NULL, 0, NULL);
