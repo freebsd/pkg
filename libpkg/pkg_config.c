@@ -182,7 +182,7 @@ static struct config_entry c[] = {
 #else
 		NULL,
 #endif
-		"Type of mirroring supported (possible: 'SRV', 'HTTP'),
+		"Type of mirroring supported (possible: 'SRV', 'HTTP')",
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
 		PKG_CONFIG_INTEGER,
