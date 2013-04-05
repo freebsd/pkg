@@ -600,6 +600,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	sqlite3 *sqlite = NULL;
 	char *req = NULL;
 	int64_t res;
+	bool can_increment = true;
 
 	sqlite3_initialize();
 
@@ -611,8 +612,10 @@ pkg_update(const char *name, const char *packagesite, bool force)
 	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
 
 	if (!force)
-		if (stat(repofile, &st) != -1)
+		if (stat(repofile, &st) != -1) {
 			t = st.st_mtime;
+			can_increment = false;
+		}
 
 	if (t != 0) {
 		if (sqlite3_open(repofile, &sqlite) != SQLITE_OK) {
@@ -626,8 +629,10 @@ pkg_update(const char *name, const char *packagesite, bool force)
 			sqlite3_close(sqlite);
 			return (EPKG_FATAL);
 		}
-		if (res != 1)
+		if (res != 1) {
 			t = 0;
+			can_increment = false;
+		}
 	}
 
 	if (t != 0) {
@@ -641,14 +646,18 @@ pkg_update(const char *name, const char *packagesite, bool force)
 			return (EPKG_FATAL);
 		}
 		sqlite3_free(req);
-		if (res != 1)
+		if (res != 1) {
 			t = 0;
+			can_increment = false;
+		}
 
 		if (sqlite != NULL)
 			sqlite3_close(sqlite);
 	}
-	res = pkg_update_incremental(repofile, packagesite, &t);
-	if (res != EPKG_OK) {
+	if (can_increment)
+		res = pkg_update_incremental(repofile, packagesite, &t);
+
+	if (!can_increment || res != EPKG_OK) {
 		/* Still try to do full upgrade */
 		if ((res = pkg_update_full(repofile, name, packagesite, &t)) != EPKG_OK)
 			goto cleanup;
