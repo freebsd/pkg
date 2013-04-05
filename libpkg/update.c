@@ -621,11 +621,10 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
 
-	if (!force)
-		if (stat(repofile, &st) != -1) {
-			t = st.st_mtime;
-			can_increment = false;
-		}
+	if (stat(repofile, &st) != -1)
+		t = force ? 0 : st.st_mtime;
+	else
+		can_increment = false;
 
 	if (t != 0) {
 		if (sqlite3_open(repofile, &sqlite) != SQLITE_OK) {
