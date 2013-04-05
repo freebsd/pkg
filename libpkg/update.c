@@ -361,11 +361,11 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 
 static int
 pkg_add_from_manifest(FILE *f, const char *origin, long offset,
-		const char *manifest_digest, sqlite3 *sqlite)
+		const char *manifest_digest, const char *local_arch, sqlite3 *sqlite)
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
-	const char *local_origin;
+	const char *local_origin, *pkg_arch;
 
 	if (fseek(f, offset, SEEK_SET) == -1) {
 		pkg_emit_errno("fseek", "invalid manifest offset");
@@ -385,11 +385,17 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 		goto cleanup;
 	}
 
-	/* Ensure that we have a proper origin */
-	pkg_get(pkg, PKG_ORIGIN, &local_origin);
+	/* Ensure that we have a proper origin and arch*/
+	pkg_get(pkg, PKG_ORIGIN, &local_origin, PKG_ARCH, &pkg_arch);
 	if (local_origin == NULL || strcmp(local_origin, origin) != 0) {
 		pkg_emit_error("manifest contains origin %s while we wanted to add origin %s",
 				local_origin ? local_origin : "NULL", origin);
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	if (pkg_arch == NULL || strcmp(pkg_arch, local_arch) != 0) {
+		pkg_emit_error("package %s is built for %s arch, and local arch is %s",
+				origin, pkg_arch ? pkg_arch : "NULL", local_arch);
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -438,6 +444,7 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 	time_t local_t = *mtime;
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
 			*item, *tmp_item;
+	const char *myarch;
 
 	if ((rc = pkgdb_repo_open(name, false, &sqlite)) != EPKG_OK) {
 		return (EPKG_FATAL);
@@ -563,10 +570,13 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 		free(item->digest);
 		free(item);
 	}
+
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+
 	LL_FOREACH_SAFE(ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkg_add_from_manifest(fmanifest, item->origin,
-						item->offset, item->digest, sqlite);
+						item->offset, item->digest, myarch, sqlite);
 			added ++;
 		}
 		free(item->origin);
