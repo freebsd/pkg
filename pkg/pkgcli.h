@@ -223,6 +223,7 @@ void usage_ssh(void);
 			 INFO_DEPS|INFO_RDEPS|INFO_FILES|INFO_DIRS)
 
 bool query_yesno(const char *msg, ...);
+bool query_tty_yesno(const char *msg, ...);
 int info_flags(unsigned int opt);
 void print_info(struct pkg * const pkg, unsigned int opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
