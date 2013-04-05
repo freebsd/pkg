@@ -63,7 +63,7 @@ do_add(struct pkgdb *db, const char *pkgname, const char *pkgversion,
 {
 	int	 ret = EPKG_OK;
 
-	if (yes || query_yesno("%s-%s: Add annotation %s => %s? [y/N]: ",
+	if (yes || query_tty_yesno("%s-%s: Add annotation %s => %s? [y/N]: ",
 			 pkgname, pkgversion, key, value)) {
 		ret = pkgdb_add_annotation(db, pkgname, pkgversion,
                           key, value);
@@ -89,7 +89,7 @@ do_modify(struct pkgdb *db, const char *pkgname, const char *pkgversion,
 {
 	int	ret = EPKG_OK;
 
-	if (yes || query_yesno("%s-%s: Change %s annotation to "
+	if (yes || query_tty_yesno("%s-%s: Change %s annotation to "
 		         "%s => %s? [y/N]: ",
 			 pkgname, pkgversion, key, key, value)) {
 		ret = pkgdb_modify_annotation(db, pkgname, pkgversion,
@@ -111,7 +111,7 @@ do_delete(struct pkgdb *db, const char *pkgname, const char *pkgversion,
 {
 	int	ret = EPKG_OK;
 
-	if (yes || query_yesno("%s-%s: Delete %s annotation [y/N]: ",
+	if (yes || query_tty_yesno("%s-%s: Delete %s annotation [y/N]: ",
 			 pkgname, pkgversion, key)) {
 		ret = pkgdb_delete_annotation(db, pkgname, pkgversion, key);
 		if (ret == EPKG_OK) {
