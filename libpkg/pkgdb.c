@@ -152,8 +152,8 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 }
 
 static int
-load_key_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
-	     int (*pkg_addkeyval)(struct pkg *pkg, const char *key, const char *val),
+load_tag_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
+	     int (*pkg_addtagval)(struct pkg *pkg, const char *tag, const char *val),
 	     int list)
 {
 	sqlite3_stmt	*stmt;
@@ -172,7 +172,7 @@ load_key_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	sqlite3_bind_int64(stmt, 1, pkg->rowid);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_addkeyval(pkg, sqlite3_column_text(stmt, 0),
+		pkg_addtagval(pkg, sqlite3_column_text(stmt, 0),
 			      sqlite3_column_text(stmt, 1));
 	}
 	sqlite3_finalize(stmt);
@@ -644,11 +644,11 @@ pkgdb_init(sqlite3 *sdb)
         "CREATE TABLE pkg_annotation ("
                 "package_id INTERGER REFERENCES packages(id)"
                       " ON DELETE CASCADE ON UPDATE RESTRICT,"
-                "key_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
+                "tag_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
                       " ON DELETE CASCADE ON UPDATE RESTRICT,"
 		"value_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
 		      " ON DELETE CASCADE ON UPDATE RESTRICT,"
-		"UNIQUE (package_id, key_id)"
+		"UNIQUE (package_id, tag_id)"
 	");"
 
 	/* Mark the end of the array */
@@ -1967,12 +1967,12 @@ pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg)
 	char		 sql[BUFSIZ];
 	const char	*reponame = NULL;
 	const char	*basesql = ""
-		"SELECT k.annotation AS key, v.annotation AS value"
+		"SELECT k.annotation AS tag, v.annotation AS value"
 		"  FROM %Q.pkg_annotation p"
-		"    JOIN %Q.annotation k ON (p.key_id = k.annotation_id)"
+		"    JOIN %Q.annotation k ON (p.tag_id = k.annotation_id)"
 		"    JOIN %Q.annotation v ON (p.value_id = v.annotation_id)"
 		"  WHERE p.package_id = ?1"
-		"  ORDER BY key, value";
+		"  ORDER BY tag, value";
 
 	assert(db != NULL && pkg != NULL);
 
@@ -1985,7 +1985,7 @@ pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_snprintf(sizeof(sql), sql, basesql, "main",
                     "main", "main");
 
-	return (load_key_val(db->sqlite, pkg, sql, PKG_LOAD_ANNOTATIONS,
+	return (load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_ANNOTATIONS,
 		   pkg_addannotation, PKG_ANNOTATIONS));
 }
 
@@ -2050,7 +2050,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 		sqlite3_snprintf(sizeof(sql), sql, basesql, "main");
 	}
 
-	return (load_key_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
+	return (load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
 		    pkg_addoption, PKG_OPTIONS));
 }
 
@@ -2231,7 +2231,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[ANNOTATE2] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO pkg_annotation(package_id, key_id, value_id) "
+		"INSERT OR ROLLBACK INTO pkg_annotation(package_id, tag_id, value_id) "
 		"VALUES (?1,"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
@@ -2239,7 +2239,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[ANNOTATE_ADD1] = {
 		NULL,
-		"INSERT OR IGNORE INTO pkg_annotation(package_id, key_id, value_id) "
+		"INSERT OR IGNORE INTO pkg_annotation(package_id, tag_id, value_id) "
 		"VALUES ("
 		" (SELECT id FROM packages WHERE name = ?1 AND version = ?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?3),"
@@ -2251,14 +2251,14 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"DELETE FROM pkg_annotation WHERE "
 		"package_id IN"
                 " (SELECT id FROM packages WHERE name = ?1 AND version = ?2) "
-		"AND key_id IN"
-		" (SELECT key_id FROM annotation WHERE annotation = ?3)",
+		"AND tag_id IN"
+		" (SELECT tag_id FROM annotation WHERE annotation = ?3)",
 		"TTT",
 	},
 	[ANNOTATE_DEL2] = {
 		NULL,
 		"DELETE FROM annotation WHERE"
-		" annotation_id NOT IN (SELECT key_id FROM pkg_annotation) AND"
+		" annotation_id NOT IN (SELECT tag_id FROM pkg_annotation) AND"
 		" annotation_id NOT IN (SELECT value_id FROM pkg_annotation)",
 		"",
 	},
@@ -2688,14 +2688,14 @@ pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 	struct pkg_note	*note = NULL;
 
 	while (pkg_annotations(pkg, &note) == EPKG_OK) {
-		if (run_prstmt(ANNOTATE1, pkg_annotation_key(note))
+		if (run_prstmt(ANNOTATE1, pkg_annotation_tag(note))
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(ANNOTATE1, pkg_annotation_value(note))
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(ANNOTATE2, package_id,
-			pkg_annotation_key(note),
+			pkg_annotation_tag(note),
 			pkg_annotation_value(note))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
@@ -2775,13 +2775,13 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 
 int
 pkgdb_add_annotation(struct pkgdb *db, const char *pkgname,
-    const char *pkgversion, const char *key, const char *value)
+    const char *pkgversion, const char *tag, const char *value)
 {
 	int	rows_changed;
 
 	assert(pkgname != NULL && pkgname[0] != '\0');
 	assert(pkgversion != NULL && pkgversion[0] != '\0');
-	assert(key != NULL);
+	assert(tag != NULL);
 	assert(value != NULL);
 
 	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
@@ -2790,11 +2790,11 @@ pkgdb_add_annotation(struct pkgdb *db, const char *pkgname,
 	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (run_prstmt(ANNOTATE1, key) != SQLITE_DONE
+	if (run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
 	    ||
 	    run_prstmt(ANNOTATE1, value) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE_ADD1, pkgname, pkgversion, key, value)
+	    run_prstmt(ANNOTATE_ADD1, pkgname, pkgversion, tag, value)
 	    != SQLITE_DONE) {
 		ERROR_SQLITE(db->sqlite);
 		pkgdb_transaction_rollback(db->sqlite, NULL);
@@ -2802,7 +2802,7 @@ pkgdb_add_annotation(struct pkgdb *db, const char *pkgname,
 	}
 
 	/* Expect rows_changed == 1 unless there's already an
-	   annotation using the given key */
+	   annotation using the given tag */
 
 	rows_changed = sqlite3_changes(db->sqlite);
 
@@ -2814,13 +2814,13 @@ pkgdb_add_annotation(struct pkgdb *db, const char *pkgname,
 
 int
 pkgdb_modify_annotation(struct pkgdb *db, const char *pkgname,
-    const char *pkgversion, const char *key, const char *value)
+    const char *pkgversion, const char *tag, const char *value)
 {
 	int rows_changed; 
 
 	assert(pkgname != NULL && pkgname[0] != '\0');
 	assert(pkgversion != NULL && pkgversion[0] != '\0');
-	assert(key != NULL);
+	assert(tag != NULL);
 	assert(value != NULL);
 
 	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
@@ -2829,13 +2829,13 @@ pkgdb_modify_annotation(struct pkgdb *db, const char *pkgname,
 	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (run_prstmt(ANNOTATE_DEL1, pkgname, pkgversion, key) != SQLITE_DONE
+	if (run_prstmt(ANNOTATE_DEL1, pkgname, pkgversion, tag) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE1, key) != SQLITE_DONE /* is this necessary? */
+	    run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
 	    ||
 	    run_prstmt(ANNOTATE1, value) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE_ADD1, pkgname, pkgversion, key, value) !=
+	    run_prstmt(ANNOTATE_ADD1, pkgname, pkgversion, tag, value) !=
 	        SQLITE_DONE
 	    ||
 	    run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
@@ -2856,14 +2856,14 @@ pkgdb_modify_annotation(struct pkgdb *db, const char *pkgname,
 
 int
 pkgdb_delete_annotation(struct pkgdb *db, const char *pkgname,
-    const char *pkgversion, const char *key)
+    const char *pkgversion, const char *tag)
 {
 	int	rows_changed;
 	bool	result;
 
 	assert(pkgname != NULL && pkgname[0] != '\0');
 	assert(pkgversion != NULL && pkgversion[0] != '\0');
-	assert(key != NULL);
+	assert(tag != NULL);
 
 	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -2871,7 +2871,8 @@ pkgdb_delete_annotation(struct pkgdb *db, const char *pkgname,
 	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	result = (run_prstmt(ANNOTATE_DEL1, pkgname, pkgversion, key) == SQLITE_DONE);
+	result = (run_prstmt(ANNOTATE_DEL1, pkgname, pkgversion, tag)
+		  == SQLITE_DONE);
 
 	rows_changed = sqlite3_changes(db->sqlite);
 

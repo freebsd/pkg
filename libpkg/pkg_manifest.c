@@ -987,7 +987,7 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 	while (pkg_annotations(pkg, &note) == EPKG_OK) {
 		if (map == -1)
 			manifest_append_map(map, mapping, "annotations", FLOW);
-		manifest_append_kv(map, pkg_annotation_key(note),
+		manifest_append_kv(map, pkg_annotation_tag(note),
 		    pkg_annotation_value(note), PLAIN);
 	}
 

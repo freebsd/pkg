@@ -312,8 +312,8 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				break;
 			case 'A':
 				qstr++;
-				if (qstr[0] == 'k')
-					sbuf_cat(dest, pkg_annotation_key((struct pkg_note *)data));
+				if (qstr[0] == 't')
+					sbuf_cat(dest, pkg_annotation_tag((struct pkg_note *)data));
 				else if (qstr[0] == 'v')
 					sbuf_cat(dest, pkg_annotation_value((struct pkg_note *)data));
 				break;

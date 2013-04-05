@@ -244,7 +244,7 @@ struct pkg_config_value {
 };
 
 struct pkg_note {
-	struct sbuf	*key;
+	struct sbuf	*tag;
 	struct sbuf	*value;
 	UT_hash_handle	 hh;
 };

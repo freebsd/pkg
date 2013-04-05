@@ -50,81 +50,88 @@ static 	bool yes;
 void
 usage_annotate(void)
 {
-	fprintf(stderr, "usage: pkg annotate [-giqxy] [-A|-M] <pkg-name> <key> [<value>]\n");
-	fprintf(stderr, "       pkg annotate [-giqxy] -D <pkg-name> <key>\n");
-	fprintf(stderr, "       pkg annotate [-qy] -a [-A|-M] <key> [<value>]\n");
-	fprintf(stderr, "       pkg annotate [-qy] -a -D <key>\n");
-	fprintf(stderr, "For more information see 'pkg help annotate'.\n");
+	fprintf(stderr,
+            "usage: pkg annotate [-giqxy] [-A|M] <pkg-name> <tag> [<value>]\n");
+	fprintf(stderr,
+            "       pkg annotate [-giqxy] -D <pkg-name> <tag>\n");
+	fprintf(stderr,
+            "       pkg annotate [-qy] -a [-A|M] <tag> [<value>]\n");
+	fprintf(stderr,
+            "       pkg annotate [-qy] -a -D <tag>\n");
+	fprintf(stderr,
+            "For more information see 'pkg help annotate'.\n");
 }
 
 static int
 do_add(struct pkgdb *db, const char *pkgname, const char *pkgversion,
-       const char *key, const char *value)
+       const char *tag, const char *value)
 {
 	int	 ret = EPKG_OK;
 
-	if (yes || query_tty_yesno("%s-%s: Add annotation %s => %s? [y/N]: ",
-			 pkgname, pkgversion, key, value)) {
+	if (yes || query_tty_yesno("%s-%s: Add annotation tagged: %s with "
+	               "value: %s? [y/N]: ", pkgname, pkgversion,
+                       tag, value)) {
 		ret = pkgdb_add_annotation(db, pkgname, pkgversion,
-                          key, value);
+                          tag, value);
 		if (ret == EPKG_OK) {
 			if (!quiet)
-				printf("Annotated %s-%s: %s\n", pkgname,
-				     pkgversion, key);
+				printf("%s-%s: added annotation tagged: %s\n",
+				     pkgname, pkgversion, tag);
 		} else if (ret == EPKG_WARN) {
 			if (!quiet)
-				warnx("%s-%s: Can't add annotation %s -- "
+				warnx("%s-%s: Can't add annotation tagged: %s -- "
 				     "already exists", pkgname, pkgversion,
-				     key );
+				     tag );
 		} else
-			warnx("%s-%s: Failed to add annotation %s", pkgname,
-			     pkgversion, key);
+			warnx("%s-%s: Failed to add annotation tagged: %s",
+			     pkgname, pkgversion, tag);
 	}
 	return (ret);
 }
 
 static int
 do_modify(struct pkgdb *db, const char *pkgname, const char *pkgversion,
-	  const char *key, const char *value)
+	  const char *tag, const char *value)
 {
 	int	ret = EPKG_OK;
 
-	if (yes || query_tty_yesno("%s-%s: Change %s annotation to "
-		         "%s => %s? [y/N]: ",
-			 pkgname, pkgversion, key, key, value)) {
+	if (yes || query_tty_yesno("%s-%s: Change annotation tagged: %s to "
+		         "new value: %s? [y/N]: ",
+			 pkgname, pkgversion, tag, value)) {
 		ret = pkgdb_modify_annotation(db, pkgname, pkgversion,
-                          key, value);
-		if (ret == EPKG_OK) {
+                          tag, value);
+		if (ret == EPKG_OK || ret == EPKG_WARN) {
 			if (!quiet)
-				printf("Modified annotation %s-%s: %s\n",
-				       pkgname, pkgversion, key);
+				printf("%s-%s: Modified annotation tagged: "
+				       "%s\n", pkgname, pkgversion, tag);
 		} else
-			warnx("%s-%s: Failed to modify annotation %s", pkgname,
-			     pkgversion, key);
+			warnx("%s-%s: Failed to modify annotation tagged: %s",
+			     pkgname, pkgversion, tag);
 	}
 	return (ret);
 } 
 
 static int
 do_delete(struct pkgdb *db, const char *pkgname, const char *pkgversion,
-	  const char *key)
+	  const char *tag)
 {
 	int	ret = EPKG_OK;
 
-	if (yes || query_tty_yesno("%s-%s: Delete %s annotation [y/N]: ",
-			 pkgname, pkgversion, key)) {
-		ret = pkgdb_delete_annotation(db, pkgname, pkgversion, key);
+	if (yes || query_tty_yesno("%s-%s: Delete annotation tagged: %s [y/N]: ",
+			 pkgname, pkgversion, tag)) {
+		ret = pkgdb_delete_annotation(db, pkgname, pkgversion, tag);
 		if (ret == EPKG_OK) {
 			if (!quiet)
-				printf("Deleted annotation %s-%s: %s\n",
-				       pkgname, pkgversion, key);
+				printf("%s-%s: Deleted annotation tagged: %s\n",
+				       pkgname, pkgversion, tag);
 		} else if (ret == EPKG_WARN) {
 			if (!quiet)
-				warnx("%s-%s: Can't delete annotation %s -- "
-				     "nonexistent", pkgname, pkgversion, key);
+				warnx("%s-%s: Can't delete annotation tagged: "
+				     "%s -- because there is none", pkgname,
+				     pkgversion, tag);
 		} else
-			warnx("%s-%s: Failed to delete annotation %s", pkgname,
-			     pkgversion, key);
+			warnx("%s-%s: Failed to delete annotation tagged: %s",
+			     pkgname, pkgversion, tag);
 	}
 	return (ret);
 } 
@@ -160,7 +167,7 @@ exec_annotate(int argc, char **argv)
 	struct pkgdb_it	*it       = NULL;
 	struct pkg	*pkg      = NULL;
 	enum action	 action   = NONE;
-	const char	*key;
+	const char	*tag;
 	const char	*value;
 	const char	*pkgname;
 	const char	*pkgversion;
@@ -218,11 +225,11 @@ exec_annotate(int argc, char **argv)
 
 	if (match == MATCH_ALL) {
 		pkgname = NULL;
-		key     = argv[0];
+		tag     = argv[0];
 		value   = (argc > 1) ? argv[1] : NULL;
 	} else {
 		pkgname = argv[0];
-		key     = argv[1];
+		tag     = argv[1];
 		value   = (argc > 2) ? argv[2] : NULL;
 	}
 
@@ -273,13 +280,13 @@ exec_annotate(int argc, char **argv)
 			exitcode = EX_USAGE;
 			break;
 		case ADD:
-			retcode = do_add(db, pkgname, pkgversion, key, value);
+			retcode = do_add(db, pkgname, pkgversion, tag, value);
 			break;
 		case MODIFY:
-			retcode = do_modify(db, pkgname, pkgversion, key, value);
+			retcode = do_modify(db, pkgname, pkgversion, tag, value);
 			break;
 		case DELETE:
-			retcode = do_delete(db, pkgname, pkgversion, key);
+			retcode = do_delete(db, pkgname, pkgversion, tag);
 			break;
 		}
 

@@ -443,7 +443,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 					printf("%-15s:\n", "Annotations");
 				while (pkg_annotations(pkg, &note) == EPKG_OK)
 					printf("%s%-15s: %s\n", tab,
-					       pkg_annotation_key(note),
+					       pkg_annotation_tag(note),
 					       pkg_annotation_value(note));
 			}
 			break;

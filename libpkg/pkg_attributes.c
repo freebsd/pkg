@@ -434,17 +434,17 @@ pkg_annotation_free(struct pkg_note *an)
 	if (an == NULL)
 		return;
 
-	sbuf_free(an->key);
+	sbuf_free(an->tag);
 	sbuf_free(an->value);
 	free(an);
 }
 
 const char *
-pkg_annotation_key(struct pkg_note const * const an)
+pkg_annotation_tag(struct pkg_note const * const an)
 {
 	assert(an != NULL);
 
-	return (sbuf_get(an->key));
+	return (sbuf_get(an->tag));
 }
 
 const char *

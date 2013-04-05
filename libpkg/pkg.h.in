@@ -765,13 +765,13 @@ int pkg_addshlib_provided(struct pkg *pkg, const char *name);
  * Add annotation key+value pair
  * @return An error code
  */
-int pkg_addannotation(struct pkg *pkg, const char *key, const char *value);
+int pkg_addannotation(struct pkg *pkg, const char *tag, const char *value);
 
 /**
  * Delete annotation identified by the key
  * @return An error code
  */
-int pkg_delannotation(struct pkg *pkg, const char *key);
+int pkg_delannotation(struct pkg *pkg, const char *tag);
 
 /**
  * Parse a manifest and set the attributes of pkg accordingly.
@@ -843,7 +843,7 @@ const char *pkg_option_value(struct pkg_option const * const);
 const char *pkg_shlib_name(struct pkg_shlib const * const);
 
 /* pkg_note */
-const char *pkg_annotation_key(struct pkg_note const * const);
+const char *pkg_annotation_tag(struct pkg_note const * const);
 const char *pkg_annotation_value(struct pkg_note const * const);
 
 /**
@@ -970,11 +970,11 @@ struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib
  * @return An error code
  */
 int pkgdb_add_annotation(struct pkgdb *db, const char *pkgname,
-	const char *pkgversion, const char *key, const char *value);
+	const char *pkgversion, const char *tag, const char *value);
 int pkgdb_modify_annotation(struct pkgdb *db, const char *pkgname,
-	const char *pkgversion, const char *key, const char *value);
+	const char *pkgversion, const char *tag, const char *value);
 int pkgdb_delete_annotation(struct pkgdb *db, const char *pkgname,
-        const char *pkgversion, const char *key);
+        const char *pkgversion, const char *tag);
 
 #define PKG_LOAD_BASIC			0
 #define PKG_LOAD_DEPS			(1U << 0)

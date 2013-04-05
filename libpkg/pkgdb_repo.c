@@ -157,7 +157,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[ANNOTATE2] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO pkg_annotate(package_id, key_id, value_id) "
+		"INSERT OR ROLLBACK INTO pkg_annotate(package_id, tag_id, value_id) "
 		"VALUES (?1,"
 		" (SELECT annotation_id FROM annotation WHERE annotation=?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation=?3))",
@@ -587,15 +587,15 @@ try_again:
 
 	note = NULL;
 	while (pkg_annotations(pkg, &note) == EPKG_OK) {
-		const char *note_key = pkg_annotation_key(note);
+		const char *note_tag = pkg_annotation_tag(note);
 		const char *note_val = pkg_annotation_value(note);
 
-		ret = run_prepared_statement(ANNOTATE1, note_key);
+		ret = run_prepared_statement(ANNOTATE1, note_tag);
 		if (ret == SQLITE_DONE) 
 			ret = run_prepared_statement(ANNOTATE1, note_val);
 		if (ret == SQLITE_DONE)
 			ret = run_prepared_statement(ANNOTATE2, package_id,
-				  note_key, note_val);
+				  note_tag, note_val);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite);
 			return (EPKG_FATAL);

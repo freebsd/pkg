@@ -903,51 +903,51 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_addannotation(struct pkg *pkg, const char *key, const char *value)
+pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 {
 	struct pkg_note *an = NULL;
 
 	assert(pkg != NULL);
-	assert(key != NULL);
+	assert(tag != NULL);
 	assert(value != NULL);
 
-	/* Keys are unique per-package */
+	/* Tags are unique per-package */
 
-	HASH_FIND_STR(pkg->annotations, __DECONST(char *, key), an);
+	HASH_FIND_STR(pkg->annotations, __DECONST(char *, tag), an);
 	if (an != NULL) {
-		pkg_emit_error("duplicate annotation listing: %s -- %s,"
-			       " ignoring", key, value);
+		pkg_emit_error("duplicate annotation tag: %s value: %s,"
+			       " ignoring", tag, value);
 		return (EPKG_OK);
 	}
 	an = NULL;
 	pkg_annotation_new(&an);
 
-	sbuf_set(&an->key, key);
+	sbuf_set(&an->tag, tag);
 	sbuf_set(&an->value, value);
 
 	HASH_ADD_KEYPTR(hh, pkg->annotations,
-	    __DECONST(char *, pkg_annotation_key(an)),
-	    strlen(pkg_annotation_key(an)), an);
+	    __DECONST(char *, pkg_annotation_tag(an)),
+	    strlen(pkg_annotation_tag(an)), an);
 
 	return (EPKG_OK);
 }
 
 int
-pkg_delannotation(struct pkg *pkg, const char *key)
+pkg_delannotation(struct pkg *pkg, const char *tag)
 {
 	struct pkg_note *an = NULL;
 
 	assert(pkg != NULL);
-	assert(key != NULL);
+	assert(tag != NULL);
 
-	HASH_FIND_STR(pkg->annotations, __DECONST(char *, key), an);
+	HASH_FIND_STR(pkg->annotations, __DECONST(char *, tag), an);
 	if (an != NULL) {
 		HASH_DEL(pkg->annotations, an);
 		pkg_annotation_free(an);
 		return (EPKG_OK);
 	} else {
-		pkg_emit_error("deleting key \'%s\' -- no matching annotation "
-			       "found", key);
+		pkg_emit_error("deleting annotation tagged \'%s\' -- "
+			       "not found", tag);
 		return (EPKG_WARN);
 	}
 }
