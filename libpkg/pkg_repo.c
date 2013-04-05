@@ -532,6 +532,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 {
 	char repo_path[MAXPATHLEN + 1];
 	char repo_archive[MAXPATHLEN + 1];
+	struct stat st;
 	
 	if (!is_dir(path)) {
 	    pkg_emit_error("%s is not a directory", path);
@@ -561,6 +562,27 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 	if (pack_db(repo_digests_file, repo_archive, repo_path,
 			rsa_key_path, password_cb) != EPKG_OK)
 		return (EPKG_FATAL);
+
+	/* Now we need to set the equal mtime for all archives in the repo */
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_db_archive);
+	if (stat(repo_archive, &st) == 0) {
+		struct timeval ftimes[2] = {
+			{
+			.tv_sec = st.st_mtime,
+			.tv_usec = 0
+			},
+			{
+			.tv_sec = st.st_mtime,
+			.tv_usec = 0
+			}
+		};
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_packagesite_archive);
+		utimes(repo_archive, ftimes);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_digests_archive);
+		utimes(repo_archive, ftimes);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_filesite_archive);
+		utimes(repo_archive, ftimes);
+	}
 
 	return (EPKG_OK);
 }
