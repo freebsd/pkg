@@ -43,7 +43,7 @@
 #include "pkgcli.h"
 
 bool
-query_yesno(const char *msg, ...)
+query_tty_yesno(const char *msg, ...)
 {
 	int	 c;
 	bool	 r = false;
@@ -72,6 +72,29 @@ query_yesno(const char *msg, ...)
 		continue;
 
 	fclose(tty);
+
+	return r;
+}
+
+bool
+query_yesno(const char *msg, ...)
+{
+	int	 c;
+	bool	 r = false;
+	va_list	 ap;
+
+	va_start(ap, msg);
+	vprintf(msg, ap);
+	va_end(ap);
+
+	c = getchar();
+	if (c == 'y' || c == 'Y')
+		r = true;
+	else if (c == '\n' || c == EOF)
+		return false;
+
+	while ((c = getchar()) != '\n' && c != EOF)
+		continue;
 
 	return r;
 }
