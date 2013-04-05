@@ -372,16 +372,16 @@ int
 is_conf_file(const char *path, char *newpath, size_t len)
 {
 	size_t n;
-	char *p = NULL;
+	const char *p = NULL;
 
 	n = strlen(path);
 
 	if (n < 8)
 		return (0);
 
-	p = strrchr(path, '.');
+	p = &path[len - 8];
 
-	if (p != NULL && !strcmp(p, ".pkgconf")) {
+	if (strcmp(p, ".pkgconf") == 0) {
 		strlcpy(newpath, path, len);
 		newpath[n - 8] = '\0';
 		return (1);
