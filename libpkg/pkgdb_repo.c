@@ -157,7 +157,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[ANNOTATE2] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO pkg_annotate(package_id, tag_id, value_id) "
+		"INSERT OR ROLLBACK INTO pkg_annotation(package_id, tag_id, value_id) "
 		"VALUES (?1,"
 		" (SELECT annotation_id FROM annotation WHERE annotation=?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation=?3))",
