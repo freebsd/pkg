@@ -50,7 +50,8 @@ DEBUG_FLAGS+=	-g -O0
 DEBUG_FLAGS+=	-pg
 .endif
 
-CFLAGS+=	-I${.CURDIR}/../libpkg
+CFLAGS+=	-I${.CURDIR}/../libpkg \
+			-I${.CURDIR}/../external/uthash
 LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lpkg \
 		-larchive \

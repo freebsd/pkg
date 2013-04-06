@@ -45,13 +45,14 @@
 #include <fnmatch.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <uthash.h>
 
 #include "pkgcli.h"
 
 struct index_entry {
 	char *origin;
 	char *version;
-	SLIST_ENTRY(index_entry) next;
+	UT_hash_handle hh;
 };
 
 void
@@ -142,7 +143,7 @@ exec_version(int argc, char **argv)
 	int ch;
 	FILE *indexfile;
 	char indexpath[MAXPATHLEN + 1];
-	SLIST_HEAD(, index_entry) indexhead;
+	struct index_entry *indexhead = NULL;
 	struct utsname u;
 	int rel_major_ver;
 	int retval;
@@ -151,7 +152,7 @@ exec_version(int argc, char **argv)
 	ssize_t linelen;
 	char *buf;
 	char *version;
-	struct index_entry *entry;
+	struct index_entry *entry, *tmp;
 	struct pkgdb *db = NULL;
 	struct pkg *pkg = NULL, *pkg_remote = NULL;
 	struct pkgdb_it *it = NULL, *it_remote = NULL;
@@ -169,8 +170,6 @@ exec_version(int argc, char **argv)
 	char *pattern=NULL;
 	struct stat sb;
 	char portsdirmakefile[MAXPATHLEN];
-
-	SLIST_INIT(&indexhead);
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
@@ -366,7 +365,7 @@ exec_version(int argc, char **argv)
 				entry = malloc(sizeof(struct index_entry));
 				entry->version = strdup(version);
 				entry->origin = strdup(buf);
-				SLIST_INSERT_HEAD(&indexhead, entry, next);
+				HASH_ADD_KEYPTR(hh, indexhead, entry->origin, strlen(entry->origin), entry);
 			}
 			free(line);
 			fclose(indexfile);
@@ -380,12 +379,9 @@ exec_version(int argc, char **argv)
 				continue;
 
 			if (opt & VERSION_SOURCE_INDEX) {
-				SLIST_FOREACH(entry, &indexhead, next) {
-					if (!strcmp(entry->origin, origin)) {
-						print_version(pkg, "index", entry->version, limchar, opt);
-						break;
-					}
-				}
+				HASH_FIND_STR(indexhead, __DECONST(char *, origin), entry);
+				if (entry != NULL)
+					print_version(pkg, "index", entry->version, limchar, opt);
 			} else if (opt & VERSION_SOURCE_PORTS) {
 				cmd = sbuf_new_auto();
 				sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null", portsdir, origin);
@@ -421,11 +417,10 @@ exec_version(int argc, char **argv)
 	}
 	
 cleanup:
-	while (!SLIST_EMPTY(&indexhead)) {
-		entry = SLIST_FIRST(&indexhead);
-		SLIST_REMOVE_HEAD(&indexhead, next);
-		free(entry->version);
+	HASH_ITER(hh, indexhead, entry, tmp) {
+		HASH_DEL(indexhead, entry);
 		free(entry->origin);
+		free(entry->version);
 		free(entry);
 	}
 
