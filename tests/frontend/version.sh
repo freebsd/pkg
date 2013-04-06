@@ -1,3 +1,5 @@
+#! /usr/bin/env atf-sh
+
 atf_test_case version
 version_head() {
 	atf_set "descr" "testing pkg version"
@@ -11,5 +13,7 @@ version_body() {
 }
 
 atf_init_test_cases() {
+        eval `cat $(atf_get_srcdir)/test_environment`
+
 	atf_add_test_case version
 }

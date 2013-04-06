@@ -1,0 +1,2 @@
+LD_LIBRARY_PATH=$(atf_get_srcdir)/../../libpkg
+PATH=$(atf_get_srcdir)/../../pkg:${PATH}
