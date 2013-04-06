@@ -1,0 +1,156 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\" $FreeBSD$
+.\"
+.Dd April 6, 2013
+.Dt PKG-ANNOTATE 8
+.Os
+.Sh NAME
+.Nm "pkg annotate"
+.Nd add, modify or delete arbitrary annotations from packages
+.Sh SYNOPSIS
+.Nm
+.Op Fl giqxy
+.Fl A|M
+.Ar <pkg-name>
+.Ar <tag>
+.Op Ar <value> 
+.Nm
+.Op Fl giqxy
+.Fl D
+.Ar <pkg-name>
+.Ar <tag>
+.Nm 
+.Op Fl qy
+.Fl a
+.Fl A|M
+.Ar <tag>
+.Op Ar <value>
+.Nm
+.Op Fl qy
+.Fl a
+.Fl D
+.Ar <tag>
+.Sh DESCRIPTION
+.Nm
+is used to add, modify or delete package annotations.
+These are freeform tag-value pairs which may contain any arbitrary text.
+.Ar Tags
+must be unique per package, but there is no restriction on what
+text
+.Ar values
+may be attached to them.
+.Pp
+The
+.Ar tag
+is always specified on the command line, but when adding or modifying
+an annotation, the
+.Ar value
+may be supplied either on the command line or as a text stream on stdin. 
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl a
+Annotate all installed packages.
+.It Fl A
+The operation is to add a new annotation.
+Attempting to add an annotation with a
+.Ar <tag>
+that already applies to that package is an error, but this will not
+cause
+.Nm
+to exit before attempting to apply the annotation to all remaining
+matched packages.
+.It Fl D
+The operation is to delete an annotation.
+Only the
+.Ar <tag>
+needs to be specified.
+Attempting to delete an annotation which does not exist on a package
+is an error, but this will not prevent
+.Nm
+carrying on to delete the annotation from all matched packages.
+.It Fl g
+Treat
+.Ar <pkg-name>
+as a shell glob pattern.
+.It Fl i
+Make the default or the regular expression
+.Fl ( x )
+.Ar pkg-name
+matching case insensitive.
+.It Fl M
+The operation is to modify a previously existing annotation.
+Functionally, this behaves similarly to
+.Fl A
+except that it will succeed irrespective of whether the tag already
+applies to all the matched packages.
+.It Fl q
+Operate quietly: do not output anything other than confirmatory questions.
+.It Fl x
+Treat
+.Ar <pkg-name>
+as a regular expression according to the "modern" or "extended" syntax
+of
+.Xr re_format 7 .
+.It Fl y
+Assume "yes" as the answer to all questions.
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PKG_DBDIR
+.It Ev ASSUME_ALWAYS_YES
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-convert 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
+
