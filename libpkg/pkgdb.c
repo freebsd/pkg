@@ -2252,7 +2252,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"package_id IN"
                 " (SELECT id FROM packages WHERE name = ?1 AND version = ?2) "
 		"AND tag_id IN"
-		" (SELECT tag_id FROM annotation WHERE annotation = ?3)",
+		" (SELECT annotation_id FROM annotation WHERE annotation = ?3)",
 		"TTT",
 	},
 	[ANNOTATE_DEL2] = {
