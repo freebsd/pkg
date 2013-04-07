@@ -25,25 +25,25 @@
 .Nm
 .Op Fl giqxy
 .Fl A|M
-.Ar <pkg-name>
-.Ar <tag>
-.Op Ar <value> 
+.Ar pkg-name
+.Ar tag
+.Op Ar value 
 .Nm
 .Op Fl giqxy
 .Fl D
-.Ar <pkg-name>
-.Ar <tag>
+.Ar pkg-name
+.Ar tag
 .Nm 
 .Op Fl qy
 .Fl a
 .Fl A|M
-.Ar <tag>
-.Op Ar <value>
+.Ar tag
+.Op Ar value
 .Nm
 .Op Fl qy
 .Fl a
 .Fl D
-.Ar <tag>
+.Ar tag
 .Sh DESCRIPTION
 .Nm
 is used to add, modify or delete package annotations.
@@ -69,7 +69,7 @@ Annotate all installed packages.
 .It Fl A
 The operation is to add a new annotation.
 Attempting to add an annotation with a
-.Ar <tag>
+.Ar tag
 that already applies to that package is an error, but this will not
 cause
 .Nm
@@ -78,7 +78,7 @@ matched packages.
 .It Fl D
 The operation is to delete an annotation.
 Only the
-.Ar <tag>
+.Ar tag
 needs to be specified.
 Attempting to delete an annotation which does not exist on a package
 is an error, but this will not prevent
@@ -86,7 +86,7 @@ is an error, but this will not prevent
 carrying on to delete the annotation from all matched packages.
 .It Fl g
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a shell glob pattern.
 .It Fl i
 Make the default or the regular expression
@@ -103,7 +103,7 @@ applies to all the matched packages.
 Operate quietly: do not output anything other than confirmatory questions.
 .It Fl x
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
