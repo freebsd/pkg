@@ -25,7 +25,7 @@
 .Nm
 .Op Fl r Ar reponame
 .Op Fl dgiqUxy
-.Ar <pkg-name>
+.Ar pkg-name
 .Op ...
 .Nm
 .Op Fl r Ar reponame
@@ -56,7 +56,7 @@ Fetch all packages.
 Fetch the package and its dependencies as well.
 .It Fl g
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a shell glob pattern.
 .It Fl i
 Make the standard or regular expression
@@ -85,7 +85,7 @@ Skip updating the repository catalogues with
 Use the local cache only.
 .It Fl x
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .

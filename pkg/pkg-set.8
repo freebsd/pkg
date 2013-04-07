@@ -25,10 +25,10 @@
 .Nm
 .Op Fl a
 .Op Fl A Op Ar 01
-.Op Fl o Ar <oldorigin>:<neworigin>
+.Op Fl o Ar oldorigin:neworigin
 .Op Fl y
 .Op Fl gix
-.Ar <pkg-name>
+.Ar pkg-name
 .Sh DESCRIPTION
 .Nm
 is used to modify information concerning installed packages.
@@ -38,7 +38,7 @@ should always be used with caution.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl A Op 01
+.It Fl A Ar 01
 Set automatic flag for the package: 0 is not automatic, 1 is automatic.
 This affects the operation of
 .Xr pkg-autoremove 8 .
@@ -54,7 +54,7 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case insensitive.
-.It Fl o Op <oldorigin>:<neworigin>
+.It Fl o Ar oldorigin:neworigin
 Change the port origin of a given dependency from
 .Ar oldorigin
 to

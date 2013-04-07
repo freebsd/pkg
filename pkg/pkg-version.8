@@ -34,7 +34,7 @@
 .Nm
 .Fl t Ar version1 Ar version2
 .Nm
-.Fl T Ar <pkgname> Ar <pattern>
+.Fl T Ar pkgname Ar pattern
 .Sh DESCRIPTION
 .Nm
 is used for generating a report of packages installed by
@@ -132,7 +132,7 @@ Only display the packages that exactly match the string.
 .It Fl O Ar origin
 Display only the packages which origin matches
 .Ar origin
-.It Fl t Ar <version1> Ar <version2>
+.It Fl t Ar version1 Ar version2
 Test a pair of version number strings and exit.
 The output consists of one of the single characters
 .Li =
@@ -142,11 +142,12 @@ The output consists of one of the single characters
 .Li \&>
 (left-hand number greater) on standard output.
 This flag is mostly useful for scripts or for testing.
-.It Fl T Ar <pkgname> Ar <pattern>
+.It Fl T Ar pkgname Ar pattern
 Compare
-.Ar <pkgname>
+.Ar pkgname
 against shell glob
-.Ar <pattern> and set exit code accordingly.
+.Ar pattern
+and set exit code accordingly.
 .Fl T
 can also be used in `filter mode':
 When one of the arguments is `-', standard input is used, and lines

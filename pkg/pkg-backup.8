@@ -24,10 +24,10 @@
 .Sh SYNOPSIS
 .Nm
 .Fl d
-.Ar <dest_file>
+.Ar dest_file
 .Nm
 .Fl r
-.Ar <src_file>
+.Ar src_file
 .Sh DESCRIPTION
 .Nm
 is used for backing up and restoring of the local package database.
@@ -35,14 +35,14 @@ is used for backing up and restoring of the local package database.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl d Ar <dest_file>
+.It Fl d Ar dest_file
 Dumps the local package database to a file specified on the command-line.
 If
 .Ar -
 is specified as the argument
 .Nm
 will use stdout for its output.
-.It Fl r Ar <src_file>
+.It Fl r Ar src_file
 Uses
 .Ar file
 in order to restore the local package database.
