@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd April 7, 2013
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -130,6 +130,8 @@ When installing from remote source you need to specify the
 protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
+.It Ic annotate
+Add, modify or delete tag-value style annotations on packages.
 .It Ic audit
 Audits installed packages against known vulnerabilities.
 .It Ic autoremove
@@ -158,6 +160,10 @@ If a package is found in more than one remote repository,
 then installation happens from the first one.
 Downloading a package is tried from each package repository in turn,
 until the package is successfully fetched.
+.It Ic lock
+Prevent modification or deletion of a package.
+.It Ic plugins
+List the avaliable plugins.
 .It Ic query
 Query information about installed packages.
 .It Ic register
@@ -178,6 +184,8 @@ Extreme care should be taken when using this command.
 Displays which packages link to a specific shared library.
 .It Ic stats
 Display package database statistics.
+.It Ic unlock
+Unlocks packages, allowing them to be midified or deleted
 .It Ic update
 Update the available remote repositories as listed in
 .Xr pkg.conf 5 .
