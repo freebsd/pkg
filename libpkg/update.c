@@ -287,7 +287,7 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 
 	req = sqlite3_mprintf("select group_concat(arch, ', ') from "
-			"(select arch from packages "
+			"(select distinct arch from packages "
 			"where arch not GLOB '%q')", myarch);
 	if (get_sql_string(sqlite, req, &bad_abis) != EPKG_OK) {
 		sqlite3_free(req);
