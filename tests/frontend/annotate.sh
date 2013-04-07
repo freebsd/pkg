@@ -1,5 +1,17 @@
 #! /usr/bin/env atf-sh
 
+atf_test_case ann0
+ann0_head() {
+	atf_set "descr" "set up dummy PKG database"
+}
+
+ann0_body() {
+    mkdir -p $PKG_DBDIR || atf_fail "can't create $PKG_DBDIR"
+
+    
+
+}
+
 atf_test_case ann1
 ann1_head() {
 	atf_set "descr" "add annotation via command-line"
