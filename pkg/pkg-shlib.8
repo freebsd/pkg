@@ -23,20 +23,20 @@
 .Nd displays which installed packages provide a specfic shared library,
 and those which require it by containg binaries that link to it
 .Pp
-.Ar <library>
+.Ar library
 is the filename of the library, without any leading path, but
 including the ABI version number.
 Only exact matches are handled.
 .Sh SYNOPSIS
 .Nm
 .Op Fl PR
-.Ar <library>
+.Ar library
 .Sh DESCRIPTION
 .Nm
 is used for displaying the packages that provide
-.Ar <library>
+.Ar library
 or that require
-.Ar <library>
+.Ar library
 by containing binaries that link to it.
 .Sh OPTIONS
 The following mutually exclusive options are supported by
@@ -44,10 +44,10 @@ The following mutually exclusive options are supported by
 .Bl -tag -width F1
 .It Fl P
 Show only the installed packages which provide the named
-.Ar <library> .
+.Ar library .
 .It Fl R
 Show only the installed packages which require
-.Ar <library>.
+.Ar library.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
