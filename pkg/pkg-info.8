@@ -23,15 +23,15 @@
 .Nd displays information for packages
 .Sh SYNOPSIS
 .Nm
-.Ar <pkg-name>
+.Ar pkg-name
 .Nm
 .Fl a
 .Nm
 .Op Fl AbBDdefgiIklOqRrsx
-.Ar <pkg-name>
+.Ar pkg-name
 .Nm
 .Op Fl AbBDdfIlqRrs
-.Fl F Ar <pkg-file>
+.Fl F Ar pkg-file
 .Sh DESCRIPTION
 .Nm
 is used for displaying information for packages.
@@ -45,20 +45,20 @@ Display all installed packages.
 Display any annotations added to the package.
 .It Fl f
 Display full information about the packages matching
-.Ar <pkg-name> .
+.Ar pkg-name .
 .It Fl R
 Display the full yaml (raw) about the packages matching
-.Ar <pkg-name> .
+.Ar pkg-name .
 .It Fl e
 If
-.Ar <pkg-name>
+.Ar pkg-name
 is installed and registered in the database, return 0, otherwise return 1.
 Useful for checking whether the package is installed.
 .It Fl D
 Show the pkg-message for matching packages.
 .It Fl g
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a shell glob pattern.
 .It Fl i
 Make the default or the regular expression
@@ -67,19 +67,19 @@ Make the default or the regular expression
 matching case insensitive.
 .It Fl x
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
 .It Fl d
 Display the list of packages required by
-.Ar <pkg-name> .
+.Ar pkg-name .
 .It Fl r
 Display the list of packages which depend on
-.Ar <pkg-name> .
+.Ar pkg-name .
 .It Fl k
 Show the locking status for
-.Ar <pkg-name> .
+.Ar pkg-name .
 When used in combination with
 .Fl d
 or
@@ -88,27 +88,27 @@ indicate which packages, dependencies or requirements are locked
 by '(*)'.
 Locking status is only meaningful for installed packages; all locking
 statuses will show as unlocked when information about a
-.Ar <pkg-file>
+.Ar pkg-file
 is queried.
 .It Fl l
 Display all files installed by
-.Ar <pkg-name> .
+.Ar pkg-name .
 .It Fl b
 Display all shared libraries provided by
-.Ar <pkg-name> .
+.Ar pkg-name .
 .It Fl B
 Display all shared libraries used by
-.Ar <pkg-name> .
+.Ar pkg-name .
 .It Fl s
 Display the total size of files installed by
-.Ar <pkg-name>
+.Ar pkg-name
 .It Fl q
 Be
 .Dq quiet .
 Prints only the requested information without displaying many hints.
 .It Fl O
 Search is done by the
-.Ar <pkg-name>
+.Ar pkg-name
 origin.
 Added only for Ports compatibility.
 .Pp
@@ -117,14 +117,14 @@ Currently not implemented.
 Added only for Ports compatibility.
 .It Fl o
 Display
-.Ar <pkg-name>
+.Ar pkg-name
 origin.
 .It Fl p
 Display the installation prefix for each package matching
-.Ar <pkg-name> .
-.It Fl F Ar <pkg-file>
+.Ar pkg-name .
+.It Fl F Ar pkg-file
 Displays information from the package archive
-.Ar <pkg-file> .
+.Ar pkg-file .
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
