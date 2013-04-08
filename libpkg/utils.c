@@ -379,7 +379,7 @@ is_conf_file(const char *path, char *newpath, size_t len)
 	if (n < 8)
 		return (0);
 
-	p = &path[len - 8];
+	p = &path[n - 8];
 
 	if (strcmp(p, ".pkgconf") == 0) {
 		strlcpy(newpath, path, len);
