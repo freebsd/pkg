@@ -872,9 +872,17 @@ database_access(unsigned mode, const char* dbdir, const char *dbname,
 		break;
 	case PKGDB_MODE_WRITE:
 		retval = eaccess(dbpath, W_OK);
+		if (retval != 0 && errno == ENOENT) {
+			mkdirs(dbpath);
+			retval = eaccess(dbpath, W_OK);
+		}
 		break;
 	case PKGDB_MODE_READ|PKGDB_MODE_WRITE:
 		retval = eaccess(dbpath, R_OK|W_OK);
+		if (retval != 0 && errno == ENOENT) {
+			mkdirs(dbpath);
+			retval = eaccess(dbpath, W_OK);
+		}
 		break;
 	}
 
@@ -934,10 +942,10 @@ pkgdb_access(unsigned mode, unsigned database)
 	   DB, then we need read and write permissions on the dir.
 	   Otherwise, just test for read access */
 
-	if ((mode & PKGDB_MODE_CREATE) != 0) 
+	if ((mode & PKGDB_MODE_CREATE) != 0) {
 		retval = database_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
 					 dbdir, NULL, false);
-	else
+	} else
 		retval = database_access(PKGDB_MODE_READ, dbdir, NULL, false);
 	if (retval != EPKG_OK)
 		return (retval);
