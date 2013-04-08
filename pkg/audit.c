@@ -301,9 +301,13 @@ is_vulnerable(struct audit_head *h, struct pkg *pkg)
 		res2 = match_version(pkgversion, &e->v2);
 		if (res1 && res2) {
 			res = true;
-			printf("%s-%s is vulnerable:\n", pkgname, pkgversion);
-			printf("%s\n", e->desc);
-			printf("WWW: %s\n\n", e->url);
+			if (quiet) {
+				printf("%s-%s\n", pkgname, pkgversion);
+			} else {
+				printf("%s-%s is vulnerable:\n", pkgname, pkgversion);
+				printf("%s\n", e->desc);
+				printf("WWW: %s\n\n", e->url);
+			}
 		}
 	}
 
@@ -438,16 +442,15 @@ exec_audit(int argc, char **argv)
 		goto cleanup;
 	}
 
-	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		if (is_vulnerable(&h, pkg)) {
+	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK)
+		if (is_vulnerable(&h, pkg))
 			vuln++;
-		}
-	}
 
 	if (ret == EPKG_END && vuln == 0)
 		ret = EX_OK;
 
-	printf("%u problem(s) in your installed packages found.\n", vuln);
+	if (!quiet)
+		printf("%u problem(s) in your installed packages found.\n", vuln);
 
 cleanup:
 	pkgdb_it_free(it);
