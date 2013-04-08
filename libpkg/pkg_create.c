@@ -227,7 +227,6 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
-		goto cleanup;
 
 	if ((ret = pkg_load_manifest_file(pkg, path)) != EPKG_OK) {
 		ret = EPKG_FATAL;
