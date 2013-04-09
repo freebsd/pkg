@@ -2268,16 +2268,25 @@ is_attached(sqlite3 *s, const char *name)
 static void
 report_already_installed(sqlite3 *s)
 {
-	sqlite3_stmt *stmt = NULL;
-	const char *origin = NULL;
-	const char *sql = "SELECT origin FROM pkgjobs WHERE "
-		"(SELECT p.origin FROM main.packages AS p WHERE "
-		"p.origin=pkgjobs.origin AND p.version=pkgjobs.version "
-		"AND (SELECT group_concat(option) FROM "
-		"  (select option FROM main.options "
-		"                 WHERE package_id=p.id "
-		"                 AND value='on' ORDER BY option))"
-		"IS pkgjobs.opts) "
+	sqlite3_stmt	*stmt = NULL;
+	const char	*origin = NULL;
+	const char	*sql = ""
+		"SELECT origin FROM pkgjobs "
+		"WHERE "
+		    "(SELECT p.origin FROM main.packages AS p "
+		    "WHERE p.origin = pkgjobs.origin "
+		    "AND p.version = pkgjobs.version "
+		    "AND (SELECT GROUP_CONCAT(option) "
+			"FROM (SELECT option FROM main.options "
+			"WHERE package_id = p.id "
+			"AND value = 'on' "
+			"ORDER BY option))"
+		     "IS pkgjobs.opts) "
+		    "AND (SELECT GROUP_CONCAT(origin) "
+			"FROM (SELECT origin from main.deps "
+			"wHERE package_id = p.id "
+			"ORDER BY origin))"
+		    "IS pkgjobs.deps) "
 		"IS NOT NULL;";
 
 	assert(s != NULL);
@@ -2474,7 +2483,7 @@ create_temporary_pkgjobs(sqlite3 *s)
 			"    newversion TEXT, newflatsize INTEGER, "
 			"    pkgsize INTEGER, cksum TEXT, repopath TEXT, "
 			"    automatic INTEGER, weight INTEGER, dbname TEXT, "
-			"    opts TEXT"
+			"    opts TEXT, deps TEXT"
 			");");
 
 	return (ret);
@@ -2580,49 +2589,65 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"cksum, repopath, automatic, weight, "
 		"'%s' AS dbname FROM pkgjobs ORDER BY weight DESC;";
 
-	const char main_sql[] =
-	    "INSERT OR IGNORE INTO pkgjobs ("
-	    "  pkgid, origin, name, version, comment, desc, arch, "
-	    "  maintainer, www, prefix, flatsize, pkgsize, "
-	    "  cksum, repopath, automatic, opts"
-	    ") "
-	    "SELECT id, origin, name, version, comment, desc, "
-	    "  arch, maintainer, www, prefix, flatsize, pkgsize, "
-	    "  cksum, path, 0, "
-	    "  (SELECT group_concat(option) FROM "
-	    "    (SELECT option FROM '%s'.options "
-	    "                   WHERE package_id=id"
-	    "                   AND value='on' ORDER BY option"
-	    "    )"
-	    "  ) "
-	    "FROM '%s'.packages WHERE ";
+	const char	 main_sql[] =
+		"INSERT OR IGNORE INTO pkgjobs ("
+		"  pkgid, origin, name, version, comment, desc, arch, "
+		"  maintainer, www, prefix, flatsize, pkgsize, "
+		"  cksum, repopath, automatic, opts, deps"
+		") "
+		"SELECT id, origin, name, version, comment, desc, "
+		"  arch, maintainer, www, prefix, flatsize, pkgsize, "
+		"  cksum, path, 0, "
+		"  (SELECT GROUP_CONCAT(option) FROM "
+		"    (SELECT option FROM '%s'.options "
+		"		    WHERE package_id=id"
+		"		    AND value='on' ORDER BY option"
+		"    )"
+		"  ), "
+		"  (SELECT GROUP_CONCAT(origin) FROM "
+		"    (SELECT origin FROM '%s'.deps "
+		"		    WHERE package_id=id"
+		"		    ORDER BY origin"
+		"    )
+		"  ) "
+		"FROM '%s'.packages WHERE ";
 
-	const char deps_sql[] =
-	    "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-	    "maintainer, www, prefix, flatsize, pkgsize, "
-	    "cksum, repopath, automatic) "
-	    "SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
-	    "r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
-	    "r.cksum, r.path, 1 "
-	    "FROM '%s'.packages AS r where r.origin IN "
-	    "(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j WHERE d.package_id = j.pkgid) "
-	    "AND (SELECT origin FROM main.packages WHERE origin=r.origin AND version=r.version) IS NULL;";
+	const char	deps_sql[] = ""
+		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, "
+		    "version, comment, desc, arch, maintainer, www, "
+		    "prefix, flatsize, pkgsize, cksum, repopath, "
+		    "automatic) "
+		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
+		    "r.comment, r.desc, r.arch, r.maintainer, r.www, "
+		    "r.prefix, r.flatsize, r.pkgsize, r.cksum, "
+		    "r.path, 1 "
+		"FROM '%s'.packages AS r WHERE r.origin IN "
+		    "(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
+		    "WHERE d.package_id = j.pkgid) "
+		    "AND (SELECT origin FROM main.packages "
+		    "WHERE origin = r.origin AND version = r.version) "
+		    "IS NULL";
 
-	const char upwards_deps_sql[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-				"maintainer, www, prefix, flatsize, pkgsize, "
-				"cksum, repopath, automatic) "
-				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
-				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.pkgsize, "
-				"r.cksum, r.path, p.automatic "
-				"FROM '%s'.packages AS r "
-				"INNER JOIN main.packages p ON (p.origin = r.origin) "
-				"WHERE r.id IN (SELECT d.package_id FROM '%s'.deps AS d, pkgjobs AS j WHERE d.origin = j.origin);";
+	const char	upwards_deps_sql[] = ""
+		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, "
+		    "version, comment, desc, arch, maintainer, www, "
+		    "prefix, flatsize, pkgsize, cksum, repopath, automatic) "
+		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
+		    "r.comment, r.desc, r.arch, r.maintainer, r.www, "
+		    "r.prefix, r.flatsize, r.pkgsize, r.cksum, r.path, "
+		    "p.automatic "
+		"FROM '%s'.packages AS r "
+		"INNER JOIN main.packages p ON (p.origin = r.origin) "
+		"WHERE r.id IN (SELECT d.package_id FROM '%s'.deps AS d, "
+		    "pkgjobs AS j WHERE d.origin = j.origin)";
 
-	const char weight_sql[] = "UPDATE pkgjobs SET weight=("
-		"SELECT COUNT(*) FROM '%s'.deps AS d, '%s'.packages AS p, pkgjobs AS j "
-			"WHERE d.origin = pkgjobs.origin "
-				"AND d.package_id = p.id "
-				"AND p.origin = j.origin"
+	const char	weight_sql[] = ""
+		"UPDATE pkgjobs SET weight=("
+		"SELECT COUNT(*) FROM '%s'.deps AS d, '%s'.packages AS p, "
+			"pkgjobs AS j "
+		"WHERE d.origin = pkgjobs.origin "
+			"AND d.package_id = p.id "
+			"AND p.origin = j.origin"
 		");";
 
 	assert(db != NULL);
@@ -2757,33 +2782,61 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	assert(db != NULL);
 	assert(db->type == PKGDB_REMOTE);
 
-	const char finalsql[] = "select pkgid as id, origin, name, version, "
-		"comment, desc, message, arch, maintainer, "
-		"www, prefix, flatsize, newversion, newflatsize, pkgsize, "
-		"cksum, repopath, automatic, weight, "
-		"'%s' AS dbname FROM pkgjobs order by weight DESC;";
+	const char	 finalsql[] = ""
+		"SELECT pkgid AS id, origin, name, version, "
+		    "comment, desc, message, arch, maintainer, "
+		    "www, prefix, locked, flatsize, newversion, "
+		    "newflatsize, pkgsize, cksum, repopath, automatic, "
+		    "weight, '%s' AS dbname "
+		"FROM pkgjobs ORDER BY weight DESC;";
 
-	const char pkgjobs_sql_1[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-			"maintainer, www, prefix, flatsize, newversion, pkgsize, "
-			"cksum, repopath, automatic, opts) "
-			"SELECT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
-			"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, r.version AS newversion, r.pkgsize, "
-			"r.cksum, r.path, l.automatic ,"
-			"(select group_concat(option) from (select option from '%s'.options WHERE package_id=r.id AND value='on' ORDER BY option)) "
-			"FROM '%s'.packages r INNER JOIN main.packages l ON l.origin = r.origin";
+	/* All the local packages where there is a matching package in
+	 * the repo: all data from the repo except locked and
+	 * automatic flags which are inherited from local */
 
-	const char pkgjobs_sql_2[] = "INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, comment, desc, arch, "
-				"maintainer, www, prefix, flatsize, newversion, pkgsize, "
-				"cksum, repopath, automatic, opts) "
-				"SELECT DISTINCT r.id, r.origin, r.name, r.version, r.comment, r.desc, "
-				"r.arch, r.maintainer, r.www, r.prefix, r.flatsize, NULL AS newversion, r.pkgsize, "
-				"r.cksum, r.path, 1, "
-				"(select group_concat(option) from (select option from '%s'.options WHERE package_id=r.id AND value='on' ORDER BY option)) "
-				"FROM '%s'.packages AS r where r.origin IN "
-				"(SELECT d.origin from '%s'.deps AS d, pkgjobs as j WHERE d.package_id = j.pkgid) "
-				"AND (SELECT p.origin from main.packages as p WHERE p.origin=r.origin AND version=r.version) IS NULL;";
+	const char	 pkgjobs_sql_1[] = ""
+		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
+			"comment, desc, arch, maintainer, www, prefix, "
+			"locked, flatsize, newversion, pkgsize, "
+			"cksum, repopath, automatic, opts, deps) "
+		"SELECT r.id, r.origin, r.name, r.version, r.comment, "
+			"r.desc, r.arch, r.maintainer, r.www, r.prefix, "
+			"l.locked, r.flatsize, r.version AS newversion, "
+			"r.pkgsize, r.cksum, r.path, l.automatic ,"
+			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
+			"FROM '%s'.options WHERE package_id = r.id AND "
+			"value = 'on' ORDER BY option)), "
+			"(SELECT GROUP_CONCAT(origin) FROM (SELECT origin "
+			"FROM '%s'.deps WHERE package_id = r.id ORDER BY origin)) "
+			"FROM '%s'.packages r INNER JOIN main.packages l "
+			"ON l.origin = r.origin";
 
-	const char *pkgjobs_sql_3;
+	/* All dependencies for packages from the repo listed in the
+	 * temporary pkgjobs table and not already installed as local
+	 * packages (locked = 0, automatic = 1) */
+
+	const char	 pkgjobs_sql_2[] = ""
+		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
+			"comment, desc, arch, maintainer, www, prefix, "
+			"locked, flatsize, newversion, pkgsize, cksum, "
+			"repopath, automatic, opts, deps) "
+		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
+			"r.comment, r.desc, r.arch, r.maintainer, r.www, "
+			"r.prefix, 0, r.flatsize, NULL AS newversion, "
+			"r.pkgsize, r.cksum, r.path, 1, "
+			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
+			"FROM '%s'.options WHERE package_id = r.id AND "
+			"value='on' ORDER BY option)), "
+			"(SELECT GROUP_CONCAT(origin) FROM (SELECT origin "
+			"FROM '%s'.deps WHERE package_id = r.id "
+			"ORDER BY origin)) "
+		"FROM '%s'.packages AS r WHERE r.origin IN "
+			"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
+			"WHERE d.package_id = j.pkgid) AND (SELECT p.origin "
+			"FROM main.packages AS p WHERE p.origin = r.origin "
+			"AND version = r.version) IS NULL;";
+
+	const char	*pkgjobs_sql_3;
 	if (!all) {
 		pkgjobs_sql_3 = "INSERT OR REPLACE INTO pkgjobs (pkgid, origin, name, version, comment, desc, message, arch, "
 			"maintainer, www, prefix, flatsize, newversion, newflatsize, pkgsize, "
@@ -2829,9 +2882,18 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 		    "IS NOT NULL;");
 		sql_exec(db->sqlite, "DELETE FROM pkgjobs WHERE "
 		    "(SELECT p.origin FROM main.packages AS p WHERE "
-		    "p.origin=pkgjobs.origin AND p.version=pkgjobs.version AND p.name = pkgjobs.name "
-		    "AND (SELECT group_concat(option) FROM (select option FROM main.options WHERE package_id=p.id AND value='on' ORDER BY option)) IS pkgjobs.opts "
-		    ")IS NOT NULL;");
+		    "p.origin = pkgjobs.origin "
+			 "AND p.version = pkgjobs.version "
+			 "AND p.name = pkgjobs.name "
+			 "AND (SELECT GROUP_CONCAT(option) "
+		    "FROM (select option FROM main.options "
+			 "WHERE package_id = p.id AND value = 'on' "
+			 "ORDER BY option)) IS pkgjobs.opts "
+			 "AND (SELECT GROUP_CONCAT(origin) "
+		    "FROM (select origin FROM main.deps "
+			 "WHERE package_id = p.id "
+			 "ORDER BY origin)) IS pkgjobs.deps "
+			 ") IS NOT NULL;");
 	}
 
 	sbuf_reset(sql);
