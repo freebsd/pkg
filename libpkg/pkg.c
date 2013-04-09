@@ -1062,12 +1062,13 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	struct pkg *pkg;
 	pkg_error_t retcode = EPKG_OK;
 	int ret;
-	int64_t size;
 	struct sbuf *manifest;
 	const char *fpath;
-	char buf[BUFSIZ];
+	const void *buf;
+	size_t size, total = 0;
+	off_t offset = 0;
 	struct sbuf **sbuf;
-	int i;
+	int i, r;
 
 	struct {
 		const char *name;
@@ -1108,15 +1109,28 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 			break;
 
 		if (strcmp(fpath, "+MANIFEST") == 0) {
-			size = archive_entry_size(*ae);
-			if (size <=0) {
+			for (;;) {
+				if ((r = archive_read_data_block(*a, &buf,
+						&size, &offset)) == 0) {
+					sbuf_bcat(manifest, buf, size);
+					total += size;
+				}
+				else {
+					if (r == ARCHIVE_FATAL) {
+						retcode = EPKG_FATAL;
+						pkg_emit_error("%s is not a valid package: "
+								"+MANIFEST is corrupted: %s", path,
+								archive_error_string(*a));
+						goto cleanup;
+					}
+					else if (r == ARCHIVE_EOF)
+						break;
+				}
+			}
+			if (total == 0) {
 				retcode = EPKG_FATAL;
 				pkg_emit_error("%s is not a valid package: empty +MANIFEST found", path);
 				goto cleanup;
-			}
-
-			while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0) {
-				sbuf_bcat(manifest, buf, size);
 			}
 
 			sbuf_finish(manifest);
@@ -1132,8 +1146,23 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 			if (strcmp(fpath, files[i].name) == 0) {
 				sbuf = &pkg->fields[files[i].attr];
 				sbuf_init(sbuf);
-				while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0) {
-					sbuf_bcat(*sbuf, buf, size);
+				offset = 0;
+				for (;;) {
+					if ((r = archive_read_data_block(*a, &buf,
+							&size, &offset)) == 0) {
+						sbuf_bcat(*sbuf, buf, size);
+					}
+					else {
+						if (r == ARCHIVE_FATAL) {
+							retcode = EPKG_FATAL;
+							pkg_emit_error("%s is not a valid package: "
+									"%s is corrupted: %s", path, fpath,
+									archive_error_string(*a));
+							goto cleanup;
+						}
+						else if (r == ARCHIVE_EOF)
+							break;
+					}
 				}
 				sbuf_finish(*sbuf);
 			}
