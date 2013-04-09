@@ -3401,7 +3401,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"    (SELECT origin FROM '%s'.deps "
 		"		    WHERE package_id=id"
 		"		    ORDER BY origin"
-		"    )
+		"    )"
 		"  ) "
 		"FROM '%s'.packages WHERE ";
 
@@ -3440,7 +3440,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 			"pkgjobs AS j "
 		"WHERE d.origin = pkgjobs.origin "
 			"AND d.package_id = p.id "
-			"AND p.origin = j.origin"
+			"AND p.origin = j.origin "
 		");";
 
 	assert(db != NULL);
@@ -3450,7 +3450,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		return (NULL);
 
 	sql = sbuf_new_auto();
-	sbuf_printf(sql, main_sql, reponame, reponame);
+	sbuf_printf(sql, main_sql, reponame, reponame, reponame);
 
 	how = pkgdb_get_match_how(match);
 
@@ -3705,7 +3705,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 	sql = sbuf_new_auto();
 	create_temporary_pkgjobs(db->sqlite);
 
-	sbuf_printf(sql, pkgjobs_sql_1, reponame, reponame);
+	sbuf_printf(sql, pkgjobs_sql_1, reponame, reponame, reponame);
 	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
@@ -3736,7 +3736,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 	}
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame, reponame);
+	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame, reponame, reponame);
 	sbuf_finish(sql);
 
 	do {
