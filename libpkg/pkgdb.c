@@ -3068,12 +3068,17 @@ report_already_installed(sqlite3 *s)
 			"WHERE package_id = p.id "
 			"AND value = 'on' "
 			"ORDER BY option))"
-		     "IS pkgjobs.opts) "
+		    "IS pkgjobs.opts) "
 		    "AND (SELECT GROUP_CONCAT(origin) "
 			"FROM (SELECT origin from main.deps "
 			"wHERE package_id = p.id "
 			"ORDER BY origin))"
 		    "IS pkgjobs.deps) "
+		    "AND (SELECT GROUP_CONCAT(shlib) "
+			"FROM (SELECT name as shlib from main.pkg_shlibs_required, main.shlibs as s "
+			"WHERE package_id = p.id AND shlib_id = s.id "
+			"ORDER BY name))"
+		    "IS pkgjobs.shlibs) "
 		"IS NOT NULL;";
 
 	assert(s != NULL);
@@ -3274,7 +3279,7 @@ create_temporary_pkgjobs(sqlite3 *s)
 			"    newversion TEXT, newflatsize INTEGER, "
 			"    pkgsize INTEGER, cksum TEXT, repopath TEXT, "
 			"    automatic INTEGER, weight INTEGER, dbname TEXT, "
-			"    opts TEXT, deps TEXT"
+			"    opts TEXT, deps TEXT, shlibs TEXT"
 			");");
 
 	return (ret);
@@ -3386,7 +3391,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"INSERT OR IGNORE INTO pkgjobs ("
 		"  pkgid, origin, name, version, comment, desc, arch, "
 		"  maintainer, www, prefix, flatsize, pkgsize, "
-		"  cksum, repopath, automatic, opts, deps"
+		"  cksum, repopath, automatic, opts, deps, shlibs"
 		") "
 		"SELECT id, origin, name, version, comment, desc, "
 		"  arch, maintainer, www, prefix, flatsize, pkgsize, "
@@ -3402,7 +3407,13 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"		    WHERE package_id=id"
 		"		    ORDER BY origin"
 		"    )"
-		"  ) "
+		"  ), "
+		"  (SELECT GROUP_CONCAT(shlib) FROM "
+		"    (SELECT name as shlib FROM '%s'.pkg_shlibs_required, '%s'.shlibs as s "
+			"WHERE package_id = p.id AND shlib_id = s.id "
+			"ORDER BY name"
+		"    )"
+		"  ), "
 		"FROM '%s'.packages WHERE ";
 
 	const char	deps_sql[] = ""
@@ -3450,7 +3461,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		return (NULL);
 
 	sql = sbuf_new_auto();
-	sbuf_printf(sql, main_sql, reponame, reponame, reponame);
+	sbuf_printf(sql, main_sql, reponame, reponame, reponame, reponame, reponame);
 
 	how = pkgdb_get_match_how(match);
 
@@ -3509,6 +3520,16 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 			 "FROM (SELECT option FROM main.options "
 			 "WHERE package_id = p.id AND value = 'on' "
 			 "ORDER BY option)) IS pkgjobs.opts "
+			 "AND (SELECT GROUP_CONCAT(origin) "
+			 "FROM (SELECT origin from main.deps "
+			 "wHERE package_id = p.id "
+			 "ORDER BY origin))"
+			 "IS pkgjobs.deps  "
+			 "AND (SELECT GROUP_CONCAT(shlib) "
+			 "FROM (SELECT name as shlib from main.pkg_shlibs_required, main.shlibs as s"
+			 "WHERE package_id = p.id AND shlib_id = s.id "
+			 "ORDER BY name))"
+			 "IS pkgjobs.shlibs "
 		    ") IS NOT NULL;");
 	}
 
@@ -3618,7 +3639,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 			"comment, desc, arch, maintainer, www, prefix, "
 			"locked, flatsize, newversion, pkgsize, "
-			"cksum, repopath, automatic, opts, deps) "
+			"cksum, repopath, automatic, opts, deps, shlibs) "
 		"SELECT r.id, r.origin, r.name, r.version, r.comment, "
 			"r.desc, r.arch, r.maintainer, r.www, r.prefix, "
 			"l.locked, r.flatsize, r.version AS newversion, "
@@ -3627,7 +3648,11 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 			"FROM '%s'.options WHERE package_id = r.id AND "
 			"value = 'on' ORDER BY option)), "
 			"(SELECT GROUP_CONCAT(origin) FROM (SELECT origin "
-			"FROM '%s'.deps WHERE package_id = r.id ORDER BY origin)) "
+			"FROM '%s'.deps WHERE package_id = r.id ORDER BY origin)), "
+			"(SELECT GROUP_CONCAT(shlib) FROM (SELECT name as shlib "
+			"FROM '%s'.pkg_shlibs_required, '%s'.shlibs as s "
+			"WHERE package_id = p.id AND shlib_id = s.id "
+			"ORDER BY name )), "
 			"FROM '%s'.packages r INNER JOIN main.packages l "
 			"ON l.origin = r.origin";
 
@@ -3639,7 +3664,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 			"comment, desc, arch, maintainer, www, prefix, "
 			"locked, flatsize, newversion, pkgsize, cksum, "
-			"repopath, automatic, opts, deps) "
+			"repopath, automatic, opts, deps, shlibs) "
 		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
 			"r.comment, r.desc, r.arch, r.maintainer, r.www, "
 			"r.prefix, 0, r.flatsize, NULL AS newversion, "
@@ -3649,7 +3674,12 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 			"value='on' ORDER BY option)), "
 			"(SELECT GROUP_CONCAT(origin) FROM (SELECT origin "
 			"FROM '%s'.deps WHERE package_id = r.id "
-			"ORDER BY origin)) "
+			"ORDER BY origin)), "
+			"(SELECT GROUP_CONCAT(shlib) FROM (SELECT name as shlib "
+			"FROM '%s'.pkg_shlibs_required, '%s'.shlibs as s "
+			"WHERE package_id = p.id AND shlib_id = s.id "
+			"ORDER BY name )) "
+			"FROM '%s'.packages r INNER JOIN main.packages l "
 		"FROM '%s'.packages AS r WHERE r.origin IN "
 			"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
 			"WHERE d.package_id = j.pkgid) AND (SELECT p.origin "
@@ -3705,7 +3735,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 	sql = sbuf_new_auto();
 	create_temporary_pkgjobs(db->sqlite);
 
-	sbuf_printf(sql, pkgjobs_sql_1, reponame, reponame, reponame);
+	sbuf_printf(sql, pkgjobs_sql_1, reponame, reponame, reponame, reponame, reponame);
 	sbuf_finish(sql);
 	sql_exec(db->sqlite, sbuf_get(sql));
 
@@ -3732,11 +3762,15 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 		    "FROM (select origin FROM main.deps "
 			 "WHERE package_id = p.id "
 			 "ORDER BY origin)) IS pkgjobs.deps "
+			 "AND (SELECT GROUP_CONCAT(shlib) "
+		    "FROM (SELECT name as shlib from main.pkg_shlibs_required, main.shlibs as s "
+			 "WHERE package_id = p.id AND shlib_id = s.id "
+			 "ORDER BY name)) IS pkgjobs.shlibs "
 			 ") IS NOT NULL;");
 	}
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame, reponame, reponame);
+	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame, reponame, reponame, reponame, reponame, reponame);
 	sbuf_finish(sql);
 
 	do {
