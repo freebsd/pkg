@@ -2281,16 +2281,16 @@ report_already_installed(sqlite3 *s)
 			"WHERE package_id = p.id "
 			"AND value = 'on' "
 			"ORDER BY option))"
-		    "IS pkgjobs.opts) "
+		    "IS pkgjobs.opts "
 		    "AND (SELECT GROUP_CONCAT(origin) "
 			"FROM (SELECT origin from main.deps "
 			"wHERE package_id = p.id "
 			"ORDER BY origin))"
-		    "IS pkgjobs.deps) "
+		    "IS pkgjobs.deps "
 		    "AND (SELECT GROUP_CONCAT(shlib) "
 			"FROM (SELECT name as shlib from main.pkg_shlibs_required, main.shlibs as s "
 			"WHERE package_id = p.id AND shlib_id = s.id "
-			"ORDER BY name))"
+			"ORDER BY name)) "
 		    "IS pkgjobs.shlibs) "
 		"IS NOT NULL;";
 
@@ -2617,10 +2617,10 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"  ), "
 		"  (SELECT GROUP_CONCAT(shlib) FROM "
 		"    (SELECT name as shlib FROM '%s'.pkg_shlibs_required, '%s'.shlibs as s "
-			"WHERE package_id = p.id AND shlib_id = s.id "
-			"ORDER BY name"
+		"		WHERE package_id = id AND shlib_id = s.id "
+		"		ORDER BY name"
 		"    )"
-		"  ), "
+		"  ) "
 		"FROM '%s'.packages WHERE ";
 
 	const char	deps_sql[] = ""
@@ -2726,7 +2726,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 			 "ORDER BY origin))"
 			 "IS pkgjobs.deps  "
 			 "AND (SELECT GROUP_CONCAT(shlib) "
-			 "FROM (SELECT name as shlib from main.pkg_shlibs_required, main.shlibs as s"
+			 "FROM (SELECT name as shlib from main.pkg_shlibs_required, main.shlibs as s "
 			 "WHERE package_id = p.id AND shlib_id = s.id "
 			 "ORDER BY name))"
 			 "IS pkgjobs.shlibs "
@@ -2836,8 +2836,8 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"FROM '%s'.deps WHERE package_id = r.id ORDER BY origin)), "
 			"(SELECT GROUP_CONCAT(shlib) FROM (SELECT name as shlib "
 			"FROM '%s'.pkg_shlibs_required, '%s'.shlibs as s "
-			"WHERE package_id = p.id AND shlib_id = s.id "
-			"ORDER BY name )), "
+			"WHERE package_id = r.id AND shlib_id = s.id "
+			"ORDER BY name )) "
 			"FROM '%s'.packages r INNER JOIN main.packages l "
 			"ON l.origin = r.origin";
 
@@ -2854,17 +2854,24 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"r.comment, r.desc, r.arch, r.maintainer, r.www, "
 			"r.prefix, 0, r.flatsize, NULL AS newversion, "
 			"r.pkgsize, r.cksum, r.path, 1, "
-			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
-			"FROM '%s'.options WHERE package_id = r.id AND "
-			"value='on' ORDER BY option)), "
-			"(SELECT GROUP_CONCAT(origin) FROM (SELECT origin "
-			"FROM '%s'.deps WHERE package_id = r.id "
-			"ORDER BY origin)), "
-			"(SELECT GROUP_CONCAT(shlib) FROM (SELECT name as shlib "
-			"FROM '%s'.pkg_shlibs_required, '%s'.shlibs as s "
-			"WHERE package_id = p.id AND shlib_id = s.id "
-			"ORDER BY name )) "
-			"FROM '%s'.packages r INNER JOIN main.packages l "
+			"  (SELECT GROUP_CONCAT(option) FROM "
+			"    (SELECT option FROM '%s'.options "
+			"		    WHERE package_id=id"
+			"		    AND value='on' ORDER BY option"
+			"    )"
+			"  ), "
+			"  (SELECT GROUP_CONCAT(origin) FROM "
+			"    (SELECT origin FROM '%s'.deps "
+			"		    WHERE package_id=id"
+			"		    ORDER BY origin"
+			"    )"
+			"  ), "
+			"  (SELECT GROUP_CONCAT(shlib) FROM "
+			"    (SELECT name as shlib FROM '%s'.pkg_shlibs_required, '%s'.shlibs as s "
+			"		WHERE package_id = id AND shlib_id = s.id "
+			"		ORDER BY name"
+			"    )"
+			"  ) "
 		"FROM '%s'.packages AS r WHERE r.origin IN "
 			"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
 			"WHERE d.package_id = j.pkgid) AND (SELECT p.origin "
@@ -2936,7 +2943,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	}
 
 	sbuf_reset(sql);
-	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame, reponame, reponame, reponame, reponame, reponame);
+	sbuf_printf(sql, pkgjobs_sql_2, reponame, reponame, reponame, reponame, reponame, reponame);
 	sbuf_finish(sql);
 
 	do {
