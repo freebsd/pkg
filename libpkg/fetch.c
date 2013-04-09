@@ -84,6 +84,7 @@ gethttpmirrors(struct pkg_fetch *fetch, const char *url) {
 int
 pkg_fetch_new(struct pkg_fetch **f)
 {
+	setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 	if ((*f = calloc(1, sizeof(struct pkg_fetch))) == NULL) {
 		pkg_emit_errno("calloc", "fetch");
 		return (EPKG_FATAL);
