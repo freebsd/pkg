@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd April 09, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -117,9 +117,6 @@ for this option is
 .It Cm SYSLOG: boolean
 This option is enabled by default, log all the
 installation/deinstallation/upgrade operation via syslog(3)
-.It Cm SHLIBS: boolean
-Analyse elf and track all shared libraries needed by the packages.
-default: off
 .It Cm AUTODEPS: boolean
 Analyse the elf to add dependencies (shared libraries) that may have been
 forgotten by the maintainer.

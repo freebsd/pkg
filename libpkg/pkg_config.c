@@ -138,12 +138,6 @@ static struct config_entry c[] = {
 		"YES",
 		"Log pkg(8) operations via syslog(3)",
 	},
-	[PKG_CONFIG_SHLIBS] = {
-		PKG_CONFIG_BOOL,
-		"SHLIBS",
-		"NO",
-		"Allow to track shared libraries with elf files",
-	},
 	[PKG_CONFIG_AUTODEPS] = {
 		PKG_CONFIG_BOOL,
 		"AUTODEPS",
