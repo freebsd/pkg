@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -200,6 +200,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	size_t sh_link = 0;
 	size_t dynidx;
 	const char *osname;
+	const char *shlib;
 
 	bool shlibs = false;
 	bool autodeps = false;
@@ -212,15 +213,14 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 	int fd;
 
-	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
-		return (EPKG_FATAL);
-	}
-	if (fstat(fd, &sb) != 0)
+	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for %s", fpath);
 	/* ignore empty files and non regular files */
-	if (sb.st_size == 0 || !S_ISREG(sb.st_mode)) {
-		ret = EPKG_END; /* Empty file: no results */
-		goto cleanup;
+	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
+		return (EPKG_END); /* Empty file: no results */
+
+	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
+		return (EPKG_FATAL);
 	}
 
 	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
@@ -342,9 +342,9 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		if (dyn->d_tag != DT_NEEDED)
 			continue;
 
-		action(actdata, pkg, fpath,
-		    elf_strptr(e, sh_link, dyn->d_un.d_val),
-		    is_shlib);
+		shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
+
+		action(actdata, pkg, fpath, shlib, is_shlib);
 	}
 
 cleanup:

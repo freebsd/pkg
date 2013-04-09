@@ -60,8 +60,8 @@ STAILQ_HEAD(shlib_list, shlib_list_entry);
 
 static int	shlib_list_add(struct shlib_list *shlib_list, const char *dir,
 			       const char *shlib_file);
-static int	scan_dirs_for_shlibs(struct shlib_list *shlib_list, int numdirs,
-				     const char **dirlist);
+static int	scan_dirs_for_shlibs(struct shlib_list *shlib_list,
+		    int numdirs, const char **dirlist, bool strictnames);
 static void	add_dir(const char *, const char *, int);
 static void	read_dirs_from_file(const char *, const char *);
 static void	read_elf_hints(const char *, int);
@@ -106,7 +106,7 @@ shlib_list_add(struct shlib_list *shlib_list, const char *dir,
 		return (EPKG_FATAL);
 	}
 
-	strlcat(sl->path, dir, path_len);
+	strlcpy(sl->path, dir, path_len);
 	dir_len = strlcat(sl->path, "/", path_len);
 	strlcat(sl->path, shlib_file, path_len);
 	
@@ -199,9 +199,18 @@ add_dir(const char *hintsfile, const char *name, int trusted)
 
 static int
 scan_dirs_for_shlibs(struct shlib_list *shlib_list, int numdirs,
-    const char **dirlist)
+    const char **dirlist, bool strictnames)
 {
 	int	i;
+
+       /* Expect shlibs to follow the name pattern libfoo.so.N if
+          strictnames is true -- ie. when searching the default
+          library search path.
+
+          Otherwise, allow any name ending in .so or .so.N -- ie. when
+          searching RPATH or RUNPATH and assuming it contains private
+          shared libraries which can follow just about any naming
+          convention */
 
 	for (i = 0;  i < numdirs;  i++) {
 		DIR		*dirp;
@@ -218,22 +227,28 @@ scan_dirs_for_shlibs(struct shlib_list *shlib_list, int numdirs,
 			if (dp->d_type != DT_REG && dp->d_type != DT_LNK)
 				continue;
 
-			/* Name can't be shorter than "libx.so" */
-			if ((len = strlen(dp->d_name)) < 7 ||
-			    strncmp(dp->d_name, "lib", 3) != 0)
-				continue;
+			len = strlen(dp->d_name);
+			if (strictnames) {
+				/* Name can't be shorter than "libx.so" */
+				if (len < 7 ||
+				    strncmp(dp->d_name, "lib", 3) != 0)
+					continue;
+			}
+
 			vers = dp->d_name + len;
-			while (vers > dp->d_name && isdigit(*(vers-1)))
+			while (vers > dp->d_name && 
+			       (isdigit(*(vers-1)) || *(vers-1) == '.'))
 				vers--;
 			if (vers == dp->d_name + len) {
 				if (strncmp(vers - 3, ".so", 3) != 0)
 					continue;
-			} else if (vers < dp->d_name + 4 ||
-			    strncmp(vers - 4, ".so.", 4) != 0)
+			} else if (vers < dp->d_name + 3 ||
+			    strncmp(vers - 3, ".so.", 4) != 0)
 				continue;
 
 			/* We have a valid shared library name. */
-			ret = shlib_list_add(shlib_list, dirlist[i], dp->d_name);
+			ret = shlib_list_add(shlib_list, dirlist[i],
+				  dp->d_name);
 			if (ret != EPKG_OK) {
 				closedir(dirp);
 				return ret;
@@ -291,7 +306,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 
 	assert(i <= numdirs);
 
-	ret = scan_dirs_for_shlibs(&rpath, i, dirlist);
+	ret = scan_dirs_for_shlibs(&rpath, i, dirlist, false);
 
 	free(dirlist);
 
@@ -303,7 +318,7 @@ shlib_list_from_elf_hints(const char *hintsfile)
 {
 	read_elf_hints(hintsfile, 1);
 
-	return (scan_dirs_for_shlibs(&shlibs, ndirs, dirs));
+	return (scan_dirs_for_shlibs(&shlibs, ndirs, dirs, true));
 }
 
 void
