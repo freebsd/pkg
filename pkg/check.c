@@ -255,7 +255,6 @@ exec_check(int argc, char **argv)
 	bool checksums = false;
 	bool recompute = false;
 	bool reanalyse_shlibs = false;
-	bool shlibs;
 	bool noinstall = false;
 	int nbpkgs = 0;
 	int i;
@@ -271,10 +270,6 @@ exec_check(int argc, char **argv)
 			match = MATCH_ALL;
 			break;
 		case 'B':
-			pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
-			if (!shlibs)
-				errx(EX_USAGE, "reanalyzing shlibs requires SHLIBS"
-					       " in pkg.conf.");
 			reanalyse_shlibs = true;
 			flags |= PKG_LOAD_FILES;
 			break;
