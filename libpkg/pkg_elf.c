@@ -81,17 +81,6 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 	return (EPKG_OK);
 } 
 
-/* Callback functions to process the shlib data */
-
-/* ARGSUSED */
-static int
-do_nothing(__unused void *actdata, __unused struct pkg *pkg,
-	   __unused const char *fpath, __unused const char *name,
-	   __unused bool is_shlib)
-{
-	return (EPKG_OK);
-}
-
 /* ARGSUSED */
 static int
 add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
@@ -126,11 +115,8 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	const char *deporigin, *depname, *depversion;
 	char pathbuf[MAXPATHLEN];
 	bool found;
-	bool shlibs = false;
 
 	assert(db != NULL);
-
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
 	switch(filter_system_shlibs(name, pathbuf, sizeof(pathbuf))) {
 	case EPKG_OK:		/* A non-system library */
@@ -148,8 +134,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 		return (EPKG_FATAL);
 	}
 
-	if (shlibs)
-		pkg_addshlib(pkg, name);
+	pkg_addshlib(pkg, name);
 
 	if ((it = pkgdb_query_which(db, pathbuf)) == NULL)
 		return (EPKG_OK);
@@ -202,13 +187,9 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	const char *osname;
 	const char *shlib;
 
-	bool shlibs = false;
-	bool autodeps = false;
 	bool developer = false;
 	bool is_shlib = false;
 
-	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
 	int fd;
@@ -237,11 +218,6 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 
 	if (developer)
 		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
-
-	if (!autodeps && !shlibs) {
-	   ret = EPKG_OK;
-	   goto cleanup;
-	}
 
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
 		ret = EPKG_FATAL;
@@ -383,35 +359,26 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
 	const char *fpath;
-	bool shlibs = false;
 	bool autodeps = false;
 	bool developer = false;
 	int (*action)(void *, struct pkg *, const char *, const char *, bool);
 
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-
-	if (!autodeps && !shlibs && !developer)
-		return (EPKG_OK);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
 	if (autodeps)
 		action = test_depends;
-	else if (shlibs)
-		action = add_shlibs_to_pkg;
 	else
-		action = do_nothing;
+		action = add_shlibs_to_pkg;
 
-	if (autodeps || shlibs) {
-		shlib_list_init();
+	shlib_list_init();
 
-		ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
-		if (ret != EPKG_OK)
-			goto cleanup;
-	}
+	ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
+	if (ret != EPKG_OK)
+		goto cleanup;
 
 	/* Assume no architecture dependence, for contradiction */
 	if (developer)
@@ -432,8 +399,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	ret = EPKG_OK;
 
 cleanup:
-	if (autodeps || shlibs)
-		shlib_list_free();
+	shlib_list_free();
 
 	return (ret);
 }
@@ -442,14 +408,8 @@ int
 pkg_register_shlibs(struct pkg *pkg)
 {
 	struct pkg_file        *file = NULL;
-	bool			shlibs;
-
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
 	pkg_list_free(pkg, PKG_SHLIBS);
-
-	if (!shlibs)
-		return (EPKG_OK);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
