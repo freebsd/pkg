@@ -133,6 +133,7 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	struct http_mirror *http_current = NULL;
 	const char *mt;
 
+	setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
 		max_retry = 3;
 
