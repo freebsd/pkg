@@ -3069,6 +3069,11 @@ report_already_installed(sqlite3 *s)
 			"AND value = 'on' "
 			"ORDER BY option))"
 		     "IS pkgjobs.opts) "
+		    "AND (SELECT GROUP_CONCAT(origin) "
+			"FROM (SELECT origin from main.deps "
+			"wHERE package_id = p.id "
+			"ORDER BY origin))"
+		    "IS pkgjobs.deps) "
 		"IS NOT NULL;";
 
 	assert(s != NULL);
@@ -3269,7 +3274,7 @@ create_temporary_pkgjobs(sqlite3 *s)
 			"    newversion TEXT, newflatsize INTEGER, "
 			"    pkgsize INTEGER, cksum TEXT, repopath TEXT, "
 			"    automatic INTEGER, weight INTEGER, dbname TEXT, "
-			"    opts TEXT"
+			"    opts TEXT, deps TEXT"
 			");");
 
 	return (ret);
@@ -3381,7 +3386,7 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"INSERT OR IGNORE INTO pkgjobs ("
 		"  pkgid, origin, name, version, comment, desc, arch, "
 		"  maintainer, www, prefix, flatsize, pkgsize, "
-		"  cksum, repopath, automatic, opts"
+		"  cksum, repopath, automatic, opts, deps"
 		") "
 		"SELECT id, origin, name, version, comment, desc, "
 		"  arch, maintainer, www, prefix, flatsize, pkgsize, "
@@ -3391,6 +3396,12 @@ pkgdb_query_installs(struct pkgdb *db, match_t match, int nbpkgs, char **pkgs,
 		"		    WHERE package_id=id"
 		"		    AND value='on' ORDER BY option"
 		"    )"
+		"  ), "
+		"  (SELECT GROUP_CONCAT(origin) FROM "
+		"    (SELECT origin FROM '%s'.deps "
+		"		    WHERE package_id=id"
+		"		    ORDER BY origin"
+		"    )
 		"  ) "
 		"FROM '%s'.packages WHERE ";
 
@@ -3607,14 +3618,16 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 			"comment, desc, arch, maintainer, www, prefix, "
 			"locked, flatsize, newversion, pkgsize, "
-			"cksum, repopath, automatic, opts) "
+			"cksum, repopath, automatic, opts, deps) "
 		"SELECT r.id, r.origin, r.name, r.version, r.comment, "
 			"r.desc, r.arch, r.maintainer, r.www, r.prefix, "
 			"l.locked, r.flatsize, r.version AS newversion, "
 			"r.pkgsize, r.cksum, r.path, l.automatic ,"
 			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
 			"FROM '%s'.options WHERE package_id = r.id AND "
-			"value = 'on' ORDER BY option)) "
+			"value = 'on' ORDER BY option)), "
+			"(SELECT GROUP_CONCAT(origin) FROM (SELECT origin "
+			"FROM '%s'.deps WHERE package_id = r.id ORDER BY origin)) "
 			"FROM '%s'.packages r INNER JOIN main.packages l "
 			"ON l.origin = r.origin";
 
@@ -3626,14 +3639,17 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 			"comment, desc, arch, maintainer, www, prefix, "
 			"locked, flatsize, newversion, pkgsize, cksum, "
-			"repopath, automatic, opts) "
+			"repopath, automatic, opts, deps) "
 		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
 			"r.comment, r.desc, r.arch, r.maintainer, r.www, "
 			"r.prefix, 0, r.flatsize, NULL AS newversion, "
 			"r.pkgsize, r.cksum, r.path, 1, "
 			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
 			"FROM '%s'.options WHERE package_id = r.id AND "
-			"value='on' ORDER BY option)) "
+			"value='on' ORDER BY option)), "
+			"(SELECT GROUP_CONCAT(origin) FROM (SELECT origin "
+			"FROM '%s'.deps WHERE package_id = r.id "
+			"ORDER BY origin)) "
 		"FROM '%s'.packages AS r WHERE r.origin IN "
 			"(SELECT d.origin FROM '%s'.deps AS d, pkgjobs AS j "
 			"WHERE d.package_id = j.pkgid) AND (SELECT p.origin "
@@ -3712,6 +3728,10 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 		    "FROM (select option FROM main.options "
 			 "WHERE package_id = p.id AND value = 'on' "
 			 "ORDER BY option)) IS pkgjobs.opts "
+			 "AND (SELECT GROUP_CONCAT(origin) "
+		    "FROM (select origin FROM main.deps "
+			 "WHERE package_id = p.id "
+			 "ORDER BY origin)) IS pkgjobs.deps "
 			 ") IS NOT NULL;");
 	}
 
