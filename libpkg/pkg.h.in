@@ -82,6 +82,8 @@ struct pkg_config_value;
 
 struct pkg_plugin;
 
+struct pkg_manifest_key;
+
 /**
  * The system-wide pkg(1) status: ie. is it a) installed or otherwise
  * available on the sysem, b) database (local.sqlite) initialised and
@@ -484,7 +486,7 @@ int pkg_is_valid(struct pkg *);
  * NULL pointer, the function allocate a new pkg using pkg_new().
  * @param path The path to the local package archive.
  */
-int pkg_open(struct pkg **p, const char *path);
+int pkg_open(struct pkg **p, const char *path, struct pkg_manifest_key *keys);
 
 /**
  * @return the type of the package.
@@ -777,9 +779,11 @@ int pkg_delannotation(struct pkg *pkg, const char *tag);
  * @param buf An NULL-terminated buffer containing the manifest data.
  * @return An error code.
  */
-int pkg_parse_manifest(struct pkg *pkg, char *buf);
-int pkg_parse_manifest_file(struct pkg *pkg, FILE *f);
-int pkg_load_manifest_file(struct pkg *pkg, const char *fpath);
+int pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *key);
+int pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *key);
+int pkg_load_manifest_file(struct pkg *pkg, const char *fpath, struct pkg_manifest_key *key);
+int pkg_manifest_keys_new(struct pkg_manifest_key **k);
+void pkg_manifest_keys_free(struct pkg_manifest_key *k);
 
 /**
  * Emit a manifest according to the attributes of pkg.
@@ -1020,7 +1024,7 @@ int pkgdb_compact(struct pkgdb *db);
  * @param path The path to the package archive file on the local disk
  * @return An error code.
  */
-int pkg_add(struct pkgdb *db, const char *path, unsigned flags);
+int pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_key *keys);
 
 #define PKG_ADD_UPGRADE			(1U << 0)
 #define PKG_ADD_USE_UPGRADE_SCRIPTS	(1U << 1)

@@ -1040,13 +1040,13 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 }
 
 int
-pkg_open(struct pkg **pkg_p, const char *path)
+pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys)
 {
 	struct archive *a;
 	struct archive_entry *ae;
 	int ret;
 
-	ret = pkg_open2(pkg_p, &a, &ae, path);
+	ret = pkg_open2(pkg_p, &a, &ae, path, keys);
 
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
@@ -1057,7 +1057,7 @@ pkg_open(struct pkg **pkg_p, const char *path)
 }
 
 int
-pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path)
+pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path, struct pkg_manifest_key *keys)
 {
 	struct pkg *pkg;
 	pkg_error_t retcode = EPKG_OK;
@@ -1135,7 +1135,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 			sbuf_finish(manifest);
 
-			ret = pkg_parse_manifest(pkg, sbuf_get(manifest));
+			ret = pkg_parse_manifest(pkg, sbuf_get(manifest), keys);
 			if (ret != EPKG_OK) {
 				retcode = EPKG_FATAL;
 				goto cleanup;

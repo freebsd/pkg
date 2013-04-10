@@ -866,6 +866,7 @@ exec_query(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
+	struct pkg_manifest_key *keys = NULL;
 	char *pkgname = NULL;
 	int query_flags = PKG_LOAD_BASIC;
 	match_t match = MATCH_EXACT;
@@ -925,10 +926,12 @@ exec_query(int argc, char **argv)
 		return (EX_USAGE);
 
 	if (pkgname != NULL) {
-		if (pkg_open(&pkg, pkgname) != EPKG_OK) {
+		pkg_manifest_keys_new(&keys);
+		if (pkg_open(&pkg, pkgname, keys) != EPKG_OK) {
 			return (EX_IOERR);
 		}
 
+		pkg_manifest_keys_free(keys);
 		print_query(pkg, argv[0], multiline);
 		pkg_free(pkg);
 		return (EX_OK);

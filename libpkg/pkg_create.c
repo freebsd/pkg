@@ -218,6 +218,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	regmatch_t	 pmatch[2];
 	size_t		 size;
 	char		*www = NULL;
+	struct pkg_manifest_key *keys = NULL;
 
 	/* Load the manifest from the metadata directory */
 	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
@@ -228,7 +229,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		goto cleanup;
 	}
 
-	if ((ret = pkg_load_manifest_file(pkg, path)) != EPKG_OK) {
+	pkg_manifest_keys_new(&keys);
+	if ((ret = pkg_load_manifest_file(pkg, path, keys)) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -330,6 +332,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 cleanup:
 	free(pkg);
 	free(manifest);
+	pkg_manifest_keys_free(keys);
 	if (ret == EPKG_OK)
 		ret = packing_finish(pkg_archive);
 	return ret;

@@ -95,6 +95,11 @@
 			return (EPKG_OK);     \
 	} while (0)
 
+#define HASH_FIND_YAMLT(head,type,out)                                   \
+	HASH_FIND(hh,head,type,sizeof(yaml_node_type_t),out)
+#define HASH_ADD_YAMLT(head,type,add)                                    \
+	HASH_ADD(hh,head,type,sizeof(yaml_node_type_t),add)
+
 extern int eventpipe;
 
 struct pkg {
@@ -305,7 +310,7 @@ int pkg_add_user_group(struct pkg *pkg);
 int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
-	      const char *path);
+	      const char *path, struct pkg_manifest_key *keys);
 
 void pkg_list_free(struct pkg *, pkg_list);
 

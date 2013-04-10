@@ -398,6 +398,7 @@ read_pkg_file(void *data)
 {
 	struct thd_data *d = (struct thd_data*) data;
 	struct pkg_result *r;
+	struct pkg_manifest_key *keys = NULL;
 
 	FTSENT *fts_ent = NULL;
 	char fts_accpath[MAXPATHLEN + 1];
@@ -408,6 +409,8 @@ read_pkg_file(void *data)
 
 	char *ext = NULL;
 	char *pkg_path;
+
+	pkg_manifest_keys_new(&keys);
 
 	for (;;) {
 		fts_ent = NULL;
@@ -464,7 +467,7 @@ read_pkg_file(void *data)
 
 		r = calloc(1, sizeof(struct pkg_result));
 
-		if (pkg_open(&r->pkg, fts_accpath) != EPKG_OK) {
+		if (pkg_open(&r->pkg, fts_accpath, keys) != EPKG_OK) {
 			r->retcode = EPKG_WARN;
 		} else {
 			sha256_file(fts_accpath, r->cksum);
@@ -493,6 +496,7 @@ read_pkg_file(void *data)
 	d->thd_finished++;
 	pthread_cond_signal(&d->has_result);
 	pthread_mutex_unlock(&d->results_m);
+	pkg_manifest_keys_free(keys);
 }
 
 static int

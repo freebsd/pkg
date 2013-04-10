@@ -366,6 +366,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	struct pkg *pkg_temp = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg_queue = NULL;
+	struct pkg_manifest_key *keys = NULL;
 	char path[MAXPATHLEN + 1];
 	const char *cachedir = NULL;
 	int flags = 0;
@@ -387,6 +388,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
 
 	p = NULL;
+	pkg_manifest_keys_new(&keys);
 	/* Install */
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
@@ -466,7 +468,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		}
 		snprintf(path, sizeof(path), "%s/%s", cachedir, pkgrepopath);
 
-		pkg_open(&newpkg, path);
+		pkg_open(&newpkg, path, keys);
 		if (newversion != NULL) {
 			pkg_emit_upgrade_begin(p);
 		} else {
@@ -497,7 +499,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		if (automatic)
 			flags |= PKG_ADD_AUTOMATIC;
 
-		if (pkg_add(j->db, path, flags) != EPKG_OK) {
+		if (pkg_add(j->db, path, flags, keys) != EPKG_OK) {
 			pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
 			goto cleanup;
 		}
@@ -518,6 +520,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	cleanup:
 	pkgdb_transaction_commit(j->db->sqlite, "upgrade");
 	pkg_free(newpkg);
+	pkg_manifest_keys_free(keys);
 
 	return (retcode);
 }
@@ -605,6 +608,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	const char *repopath = NULL;
 	char cachedpath[MAXPATHLEN];
 	int ret = EPKG_OK;
+	struct pkg_manifest_key *keys = NULL;
 	
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -655,19 +659,21 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	/* integrity checking */
 	pkg_emit_integritycheck_begin();
 
+	pkg_manifest_keys_new(&keys);
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		const char *pkgrepopath;
 
 		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 		    pkgrepopath);
-		if (pkg_open(&pkg, path) != EPKG_OK) {
+		if (pkg_open(&pkg, path, keys) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
 
 		if (pkgdb_integrity_append(j->db, pkg) != EPKG_OK)
 			ret = EPKG_FATAL;
 	}
+	pkg_manifest_keys_free(keys);
 
 	pkg_free(pkg);
 

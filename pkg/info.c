@@ -81,6 +81,7 @@ exec_info(int argc, char **argv)
 	int sign2 = 0;
 	bool pkg_exists = false;
 	bool origin_search = false;
+	struct pkg_manifest_key *keys = NULL;
 
 	/* TODO: exclusive opts ? */
 	while ((ch = getopt(argc, argv, "aADegixEIdrklbBsqopOfF:R")) != -1) {
@@ -194,9 +195,11 @@ exec_info(int argc, char **argv)
 		quiet = false;
 
 	if (file != NULL) {
-		if (pkg_open(&pkg, file) != EPKG_OK) {
+		pkg_manifest_keys_new(&keys);
+		if (pkg_open(&pkg, file, keys) != EPKG_OK) {
 			return (1);
 		}
+		pkg_manifest_keys_free(keys);
 		print_info(pkg, opt);
 		pkg_free(pkg);
 		return (0);

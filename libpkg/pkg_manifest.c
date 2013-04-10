@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -114,6 +114,65 @@ static struct manifest_key {
 	{ NULL, -99, -99, NULL}
 };
 
+struct dataparser {
+	yaml_node_type_t type;
+	int (*parse_data)(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+	UT_hash_handle hh;
+};
+
+struct pkg_manifest_key {
+	const char *key;
+	int type;
+	struct dataparser *parser;
+	UT_hash_handle hh;
+};
+
+int
+pkg_manifest_keys_new(struct pkg_manifest_key **key)
+{
+	int i;
+	struct pkg_manifest_key *k;
+	struct dataparser *dp;
+
+	if (*key != NULL)
+		return (EPKG_OK);
+
+	for (i = 0; manifest_keys[i].key != NULL; i++) {
+		HASH_FIND_STR(*key, manifest_keys[i].key, k);
+		if (k == NULL) {
+			k = calloc(1, sizeof(struct pkg_manifest_key));
+			k->key = manifest_keys[i].key;
+			k->type = manifest_keys[i].type;
+			HASH_ADD_KEYPTR(hh, *key, k->key, strlen(k->key), k);
+		}
+		HASH_FIND_YAMLT(k->parser, &manifest_keys[i].valid_type, dp);
+		if (dp != NULL)
+			continue;
+		dp = calloc(1, sizeof(struct dataparser));
+		dp->type = manifest_keys[i].valid_type;
+		dp->parse_data = manifest_keys[i].parse_data;
+		HASH_ADD_YAMLT(k->parser, type, dp);
+	}
+
+	return (EPKG_OK);
+}
+
+static void
+pmk_free(struct pkg_manifest_key *key) {
+	HASH_FREE(key->parser, dataparser, free);
+
+	free(key);
+}
+
+void
+pkg_manifest_keys_free(struct pkg_manifest_key *key)
+{
+	if (key == NULL)
+		return;
+
+	HASH_FREE(key, pkg_manifest_key, pmk_free);
+}
+
 static int
 is_valid_yaml_scalar(yaml_node_t *val)
 {
@@ -182,7 +241,7 @@ urldecode(const char *src, struct sbuf **dest)
 }
 
 int
-pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
+pkg_load_manifest_file(struct pkg *pkg, const char *fpath, struct pkg_manifest_key *keys)
 {
 	FILE *f;
 	int ret;
@@ -193,7 +252,7 @@ pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
 		return (EPKG_FATAL);
 	}
 
-	ret = pkg_parse_manifest_file(pkg, f);
+	ret = pkg_parse_manifest_file(pkg, f, keys);
 	fclose(f);
 
 	return (ret);
@@ -628,22 +687,13 @@ pkg_set_deps_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 }
 
 static int
-manifest_key_cmp(const void *pkey, const void *pmanifest_key)
-{
-	const struct manifest_key *mkey =
-			(const struct manifest_key*)pmanifest_key;
-	const char *key = (const char *)pkey;
-
-	return strcasecmp(key, mkey->key);
-}
-
-static int
-parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
+parse_root_node(struct pkg *pkg, struct pkg_manifest_key *keys,  yaml_node_t *node, yaml_document_t *doc) {
 	yaml_node_pair_t *pair;
 	yaml_node_t *key;
 	yaml_node_t *val;
 	int retcode = EPKG_OK;
-	struct manifest_key *selected_key;
+	struct pkg_manifest_key *selected_key;
+	struct dataparser *dp;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
@@ -666,12 +716,12 @@ parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
 			continue;
 		}
 
-		selected_key = bsearch(key->data.scalar.value, manifest_keys,
-				sizeof(manifest_keys) / sizeof(manifest_keys[0]) - 1,
-				sizeof(manifest_keys[0]), manifest_key_cmp);
-		if (selected_key != NULL && val->type == selected_key->valid_type) {
-			retcode = selected_key->parse_data(pkg, val, doc,
-					selected_key->type);
+		HASH_FIND_STR(keys, key->data.scalar.value, selected_key);
+		if (selected_key != NULL) {
+			HASH_FIND_YAMLT(selected_key->parser, &val->type, dp);
+			if (dp != NULL) {
+				dp->parse_data(pkg, val, doc, selected_key->type);
+			}
 		}
 		++pair;
 	}
@@ -680,7 +730,7 @@ parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
 }
 
 int
-pkg_parse_manifest(struct pkg *pkg, char *buf)
+pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *keys)
 {
 	yaml_parser_t parser;
 	yaml_document_t doc;
@@ -699,7 +749,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 		if (node->type != YAML_MAPPING_NODE) {
 			pkg_emit_error("Invalid manifest format");
 		} else {
-			retcode = parse_root_node(pkg, node, &doc);
+			retcode = parse_root_node(pkg, keys, node, &doc);
 		}
 	} else {
 		pkg_emit_error("Invalid manifest format");
@@ -712,7 +762,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf)
 }
 
 int
-pkg_parse_manifest_file(struct pkg *pkg, FILE *f)
+pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *keys)
 {
 	yaml_parser_t parser;
 	yaml_document_t doc;
@@ -731,7 +781,7 @@ pkg_parse_manifest_file(struct pkg *pkg, FILE *f)
 		if (node->type != YAML_MAPPING_NODE) {
 			pkg_emit_error("Invalid manifest format");
 		} else {
-			retcode = parse_root_node(pkg, node, &doc);
+			retcode = parse_root_node(pkg, keys, node, &doc);
 		}
 	} else {
 		pkg_emit_error("Invalid manifest format");

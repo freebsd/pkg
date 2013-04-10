@@ -361,7 +361,8 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 
 static int
 pkg_add_from_manifest(FILE *f, const char *origin, long offset,
-		const char *manifest_digest, const char *local_arch, sqlite3 *sqlite)
+		const char *manifest_digest, const char *local_arch, sqlite3 *sqlite,
+		struct pkg_manifest_key *keys)
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
@@ -376,7 +377,7 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 	if (rc != EPKG_OK)
 		return (EPKG_FATAL);
 
-	rc = pkg_parse_manifest_file(pkg, f);
+	rc = pkg_parse_manifest_file(pkg, f, keys);
 	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
@@ -445,6 +446,7 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
 			*item, *tmp_item;
 	const char *myarch;
+	struct pkg_manifest_key *keys = NULL;
 
 	if ((rc = pkgdb_repo_open(name, false, &sqlite)) != EPKG_OK) {
 		return (EPKG_FATAL);
@@ -486,6 +488,7 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 		goto cleanup;
 	*mtime = local_t;
 
+	pkg_manifest_keys_new(&keys);
 	do {
 		pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
 		/* Read a line from digests file */
@@ -576,7 +579,7 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 	LL_FOREACH_SAFE(ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkg_add_from_manifest(fmanifest, item->origin,
-						item->offset, item->digest, myarch, sqlite);
+			        item->offset, item->digest, myarch, sqlite, keys);
 			added ++;
 		}
 		free(item->origin);
@@ -595,6 +598,7 @@ cleanup:
 		fclose(fmanifest);
 	if (fdigests)
 		fclose(fdigests);
+	pkg_manifest_keys_free(keys);
 
 	return (rc);
 }

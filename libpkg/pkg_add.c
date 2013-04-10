@@ -149,7 +149,7 @@ cleanup:
 }
 
 int
-pkg_add(struct pkgdb *db, const char *path, unsigned flags)
+pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_key *keys)
 {
 	const char	*arch;
 	const char	*myarch;
@@ -177,7 +177,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * current archive_entry to the first non-meta file.
 	 * If there is no non-meta files, EPKG_END is returned.
 	 */
-	ret = pkg_open2(&pkg, &a, &ae, path);
+	ret = pkg_open2(&pkg, &a, &ae, path, keys);
 	if (ret == EPKG_END)
 		extract = false;
 	else if (ret != EPKG_OK) {
@@ -254,7 +254,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 
 			if ((flags & PKG_ADD_UPGRADE) == 0 &&
 			    access(dpath, F_OK) == 0) {
-				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC);
+				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys);
 				if (ret != EPKG_OK) {
 					retcode = EPKG_FATAL;
 					goto cleanup;

@@ -227,6 +227,7 @@ exec_clean(__unused int argc, __unused char **argv)
 	int		 retcode;
 	int		 ret;
 	int		 ch;
+	struct pkg_manifest_key *keys = NULL;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
@@ -286,6 +287,7 @@ exec_clean(__unused int argc, __unused char **argv)
 
 	/* Build the list of out-of-date or obsolete packages */
 
+	pkg_manifest_keys_new(&keys);
 	while ((ent = fts_read(fts)) != NULL) {
 		const char *origin, *pkgrepopath;
 
@@ -296,7 +298,7 @@ exec_clean(__unused int argc, __unused char **argv)
 		if (repopath[0] == '/')
 			repopath++;
 
-		if (pkg_open(&pkg, ent->fts_path) != EPKG_OK) {
+		if (pkg_open(&pkg, ent->fts_path, keys) != EPKG_OK) {
 			if (!quiet)
 				warnx("skipping %s", ent->fts_path);
 			continue;
@@ -388,6 +390,7 @@ exec_clean(__unused int argc, __unused char **argv)
 		retcode = EX_OK;
 
 cleanup:
+	pkg_manifest_keys_free(keys);
 	free_dellist(&dl);
 
 	pkg_free(pkg);

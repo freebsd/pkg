@@ -77,6 +77,8 @@ exec_register(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 
+	struct pkg_manifest_key *keys = NULL;
+
 	regex_t preg;
 	regmatch_t pmatch[2];
 
@@ -156,10 +158,12 @@ exec_register(int argc, char **argv)
 	if (mdir == NULL)
 		errx(EX_USAGE, "missing -m flag");
 
+	pkg_manifest_keys_new(&keys);
 	snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
-	if ((ret = pkg_load_manifest_file(pkg, fpath)) != EPKG_OK) {
+	if ((ret = pkg_load_manifest_file(pkg, fpath, keys)) != EPKG_OK) {
 		return (EX_IOERR);
 	}
+	pkg_manifest_keys_free(keys);
 
 	snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
 	pkg_set_from_file(pkg, PKG_DESC, fpath, false);
