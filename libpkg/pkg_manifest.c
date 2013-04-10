@@ -138,12 +138,12 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 		return (EPKG_OK);
 
 	for (i = 0; manifest_keys[i].key != NULL; i++) {
-		HASH_FIND_STR(*key, manifest_keys[i].key, k);
+		HASH_FIND_STR(*key, __DECONST(char *, manifest_keys[i].key), k);
 		if (k == NULL) {
 			k = calloc(1, sizeof(struct pkg_manifest_key));
 			k->key = manifest_keys[i].key;
 			k->type = manifest_keys[i].type;
-			HASH_ADD_KEYPTR(hh, *key, k->key, strlen(k->key), k);
+			HASH_ADD_KEYPTR(hh, *key, __DECONST(char *, k->key), strlen(k->key), k);
 		}
 		HASH_FIND_YAMLT(k->parser, &manifest_keys[i].valid_type, dp);
 		if (dp != NULL)
