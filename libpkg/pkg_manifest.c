@@ -752,11 +752,12 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, yaml_parser_t *pa
 }
 
 static int
-archive_reader(void * data, unsigned char *buf, size_t size, size_t *read)
+archive_reader(void * data, unsigned char *buf, size_t size, size_t *r)
 {
 	struct archive *a = (struct archive *)data;
 
-	*read = archive_read_data(a, buf, size);
+	*r = archive_read_data(a, buf, size);
+
 	return (1);
 }
 
