@@ -60,7 +60,7 @@ struct keyword {
 struct plist {
 	char *last_file;
 	const char *stage;
-	const char *prefix;
+	char prefix[MAXPATHLEN];
 	struct sbuf *pre_install_buf;
 	struct sbuf *post_install_buf;
 	struct sbuf *pre_deinstall_buf;
@@ -157,10 +157,12 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 	char *pkgprefix;
 
 	/* if no arguments then set default prefix */
-	if (line[0] == '\0')
-		pkg_get(p->pkg, PKG_PREFIX, &p->prefix);
+	if (line[0] == '\0') {
+		pkg_get(p->pkg, PKG_PREFIX, &pkgprefix);
+		strlcpy(p->prefix, pkgprefix, sizeof(p->prefix));
+	}
 	else
-		p->prefix = line;
+		strlcpy(p->prefix, line, sizeof(p->prefix));
 
 	pkg_get(p->pkg, PKG_PREFIX, &pkgprefix);
 	if (pkgprefix == NULL || *pkgprefix == '\0')
@@ -236,7 +238,7 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 	}
 
 	if (lstat(testpath, &st) == -1) {
-		pkg_emit_errno("lstat", path);
+		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
@@ -304,7 +306,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 	}
 
 	if (lstat(testpath, &st) == -1) {
-		pkg_emit_errno("lstat", path);
+		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
@@ -958,7 +960,7 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 int
 ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 {
-	char *buf, *line = NULL;
+	char *buf, *line = NULL, *tmpprefix;
 	int ret = EPKG_OK;
 	struct plist pplist;
 	FILE *plist_f;
@@ -969,7 +971,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	assert(plist != NULL);
 
 	pplist.last_file = NULL;
-	pplist.prefix = NULL;
+	pplist.prefix[0] = '\0';
 	pplist.stage = stage;
 	pplist.pre_install_buf = sbuf_new_auto();
 	pplist.post_install_buf = sbuf_new_auto();
@@ -998,9 +1000,11 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 		return (EPKG_FATAL);
 	}
 
-	pkg_get(pkg, PKG_PREFIX, &pplist.prefix);
-	if (pplist.prefix != NULL)
+	pkg_get(pkg, PKG_PREFIX, &tmpprefix);
+	if (tmpprefix) {
+		strlcpy(pplist.prefix, tmpprefix, sizeof(pplist.prefix));
 		pplist.slash = pplist.prefix[strlen(pplist.prefix) - 1] == '/' ? "" : "/";
+	}
 
 	while ((linelen = getline(&line, &linecap, plist_f)) > 0) {
 		if (line[linelen - 1] == '\n')
