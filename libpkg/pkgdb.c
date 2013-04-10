@@ -51,7 +51,26 @@
 #include "private/utils.h"
 
 #include "private/db_upgrades.h"
-#define DBVERSION 12
+
+/* An application using a libpkg() DBVERSION is assumed to be compatible
+   with:
+
+   * Any lower schema version of the DB, by updating the schema to DBVERSION
+   * Any equal schema version of the DB
+   * Any greater schema version of the DB with the same DB_SCHEMA_MAJOR
+     -- In general, it is OK to add new tables, but modifying or removing old
+        tables must be avoided.  If necessary, this may be achieved by creating
+        appropriate VIEWS and TRIGGERS to mimic the older structure.
+
+   Anyone wishing to make a schema change that necessitates incrementing
+   DB_SCHEMA_MAJOR must first present every other pkgng developer with one
+   of the Golden Apples of the Hesperides
+*/
+
+#define DB_SCHEMA_MAJOR 0
+#define DB_SCHEMA_MINOR 12
+
+#define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
 #define PKGGT	1<<1
 #define PKGLT	1<<2
@@ -384,12 +403,22 @@ pkgdb_upgrade(struct pkgdb *db)
 	if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (db_version == DBVERSION)
-		return (EPKG_OK);
-	else if (db_version > DBVERSION) {
-		pkg_emit_error("database version is newer than libpkg(3)");
-		return (EPKG_FATAL);
-	}
+        if (db_version == DBVERSION)
+                return (EPKG_OK);
+        else if (db_version > DBVERSION) {
+                if (db_version / 1000 <= DB_SCHEMA_MAJOR) {
+                        /* VIEWS and TRIGGERS used as compatibility hack */
+                        pkg_emit_error("warning: database version %" PRId64
+                            " is newer than libpkg(3) version %d, but still "
+				       "compatible", db_version, DBVERSION);
+                        return (EPKG_OK);
+                } else {
+                        pkg_emit_error("database version %" PRId64 " is newer "
+				       "than and incompatible with libpkg(3) version %d",
+				       db_version, DBVERSION);
+                        return (EPKG_FATAL);
+                }
+        }
 
 	while (db_version < DBVERSION) {
 		const char *sql_str;
