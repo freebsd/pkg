@@ -727,68 +727,66 @@ parse_root_node(struct pkg *pkg, struct pkg_manifest_key *keys,  yaml_node_t *no
 	return (retcode);
 }
 
+static int
+parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, yaml_parser_t *parser)
+{
+	yaml_document_t doc;
+	yaml_node_t *node;
+	int retcode = EPKG_FATAL;
+
+	yaml_parser_load(parser, &doc);
+	node = yaml_document_get_root_node(&doc);
+	if (node != NULL) {
+		if (node->type != YAML_MAPPING_NODE) {
+			pkg_emit_error("Invalid manifest format");
+		} else {
+			retcode = parse_root_node(pkg, keys, node, &doc);
+		}
+	} else {
+		pkg_emit_error("Invalid manifest format");
+	}
+
+	yaml_document_delete(&doc);
+
+	return (retcode);
+}
+
 int
 pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *keys)
 {
 	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
-	int retcode = EPKG_FATAL;
+	int rc;
 
 	assert(pkg != NULL);
 	assert(buf != NULL);
 
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_string(&parser, buf, strlen(buf));
-	yaml_parser_load(&parser, &doc);
 
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid manifest format");
-		} else {
-			retcode = parse_root_node(pkg, keys, node, &doc);
-		}
-	} else {
-		pkg_emit_error("Invalid manifest format");
-	}
+	rc = parse_manifest(pkg, keys, &parser);
 
-	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
 
-	return retcode;
+	return (rc);
 }
 
 int
 pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *keys)
 {
 	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
-	int retcode = EPKG_FATAL;
+	int rc;
 
 	assert(pkg != NULL);
 	assert(f != NULL);
 
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_file(&parser, f);
-	yaml_parser_load(&parser, &doc);
 
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid manifest format");
-		} else {
-			retcode = parse_root_node(pkg, keys, node, &doc);
-		}
-	} else {
-		pkg_emit_error("Invalid manifest format");
-	}
+	rc = parse_manifest(pkg, keys, &parser);
 
-	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
 
-	return retcode;
+	return (rc);
 }
 
 struct pkg_yaml_emitter_data {
