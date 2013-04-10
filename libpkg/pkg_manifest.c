@@ -743,12 +743,39 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, yaml_parser_t *pa
 			retcode = parse_root_node(pkg, keys, node, &doc);
 		}
 	} else {
-		pkg_emit_error("Invalid manifest format");
+		pkg_emit_error("Invalid manifest format: %s", parser->problem);
 	}
 
 	yaml_document_delete(&doc);
 
 	return (retcode);
+}
+
+static int
+archive_reader(void * data, unsigned char *buf, size_t size, size_t *read)
+{
+	struct archive *a = (struct archive *)data;
+
+	*read = archive_read_data(a, buf, size);
+	return (1);
+}
+
+int
+pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manifest_key *keys)
+{
+	yaml_parser_t parser;
+	int rc;
+
+	assert(pkg != NULL);
+
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input(&parser, archive_reader, a);
+
+	rc = parse_manifest(pkg, keys, &parser);
+
+	yaml_parser_delete(&parser);
+
+	return (rc);
 }
 
 int

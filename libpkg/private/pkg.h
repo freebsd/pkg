@@ -408,5 +408,6 @@ void pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, bool, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
+int pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manifest_key *keys);
 
 #endif
