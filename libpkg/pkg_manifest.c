@@ -82,8 +82,6 @@ static struct manifest_key {
 	{ "arch", PKG_ARCH, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "comment", PKG_COMMENT, YAML_SCALAR_NODE, pkg_set_from_node},
-	/* compatibility with old format */
-	/* compatibility with old format */
 	{ "deps", PKG_DEPS, YAML_MAPPING_NODE, parse_mapping},
 	{ "desc", PKG_DESC, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "directories", PKG_DIRECTORIES, YAML_MAPPING_NODE, parse_mapping},
