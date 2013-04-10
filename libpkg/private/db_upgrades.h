@@ -329,6 +329,32 @@ static struct db_upgrades {
 	"DROP TABLE pkg_abstract;"
 	"DROP TABLE abstract;"
 	},
+	{18,
+	"CREATE VIEW pkg_shlibs AS SELECT * FROM pkg_shlibs_required;"
+	"CREATE TRIGGER pkg_shlibs_update "
+		"INSTEAD OF UPDATE ON pkg_shlibs"
+	"FOR EACH ROW BEGIN"
+		"UPDATE pkg_shlibs_required "
+		"SET package_id = new.package_id,"
+		"  shlib_id = new.shlib_id"
+		"WHERE shlib_id = old.shlib_id "
+		"AND package_id = old.package_id;"
+	"END;"
+	"CREATE TRIGGER pkg_shlibs_insert "
+		"INSTEAD OF INSERT ON pkg_shlibs"
+	"FOR EACH ROW BEGIN"
+		"INSERT INTO pkg_shlibs_required "
+		"SET shlib_id = new.shlib_id,"
+		"package_id = new.package_id;"
+	"END;"
+	"CREATE TRIGGER pkg_shlibs_delete "
+		"INSTEAD OF DELETE ON pkg_shlibs"
+	"FOR EACH ROW BEGIN"
+		"DELETE FROM pkg_shlibs_required "
+                "WHERE shlib_id = old.shlib_id "
+		"AND package_id = old.package_id";
+	"END;"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL }

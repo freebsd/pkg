@@ -53,7 +53,26 @@
 #include "private/utils.h"
 
 #include "private/db_upgrades.h"
-#define DBVERSION 17
+
+/* An application using a libpkg() DBVERSION is assumed to be compatible
+   with:
+
+   * Any lower schema version of the DB, by updating the schema to DBVERSION
+   * Any equal schema version of the DB
+   * Any greater schema version of the DB with the same DB_SCHEMA_MAJOR
+     -- In general, it is OK to add new tables, but modifying or removing old
+        tables must be avoided.  If necessary, this may be achieved by creating
+	appropriate VIEWS and TRIGGERS to mimic the older structure.
+
+   Anyone wishing to make a schema change that necessitates incrementing
+   DB_SCHEMA_MAJOR must first present every other pkgng developer with one
+   of the Golden Apples of the Hesperides
+*/
+
+#define DB_SCHEMA_MAJOR	0
+#define DB_SCHEMA_MINOR	18
+
+#define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
 #define PKGGT	(1U << 1)
 #define PKGLT	(1U << 2)
@@ -433,8 +452,17 @@ pkgdb_upgrade(struct pkgdb *db)
 	if (db_version == DBVERSION)
 		return (EPKG_OK);
 	else if (db_version > DBVERSION) {
-		pkg_emit_error("database version is newer than libpkg(3)");
-		return (EPKG_FATAL);
+		if (db_version / 1000 <= DB_SCHEMA_MAJOR) {
+			/* VIEWS and TRIGGERS used as compatibility hack */
+			pkg_emit_error("warning: database version %" PRId64
+			    " is newer than libpkg(3) version %d, but still "
+			    "compatible", db_version, DBVERSION);
+		} else {
+			pkg_emit_error("database version %" PRId64 " is newer "
+			    "than and incompatible with libpkg(3) version %d",
+			    db_version, DBVERSION);
+			return (EPKG_FATAL);
+		}
 	}
 
 	while (db_version < DBVERSION) {
@@ -668,6 +696,31 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
 	"CREATE INDEX pkg_annotation_package_id ON pkg_annotation(package_id);"
 	"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);"
+
+	"CREATE VIEW pkg_shlibs AS SELECT * FROM pkg_shlibs_required;"
+	"CREATE TRIGGER pkg_shlibs_update "
+		"INSTEAD OF UPDATE ON pkg_shlibs"
+	"FOR EACH ROW BEGIN"
+		"UPDATE pkg_shlibs_required "
+		"SET package_id = new.package_id,"
+		"  shlib_id = new.shlib_id"
+		"WHERE shlib_id = old.shlib_id "
+		"AND package_id = old.package_id;"
+	"END;"
+	"CREATE TRIGGER pkg_shlibs_insert "
+		"INSTEAD OF INSERT ON pkg_shlibs"
+	"FOR EACH ROW BEGIN"
+		"INSERT INTO pkg_shlibs_required (shlib_id, package_id)"
+		"VALUES (new.shlib_id, new.package_id);"
+	"END;"
+	"CREATE TRIGGER pkg_shlibs_delete "
+		"INSTEAD OF DELETE ON pkg_shlibs"
+	"FOR EACH ROW BEGIN"
+		"DELETE FROM pkg_shlibs_required "
+                "WHERE shlib_id = old.shlib_id "
+		"AND package_id = old.package_id";
+	"END;"
+
 
 	"PRAGMA user_version = %d;"
 	"COMMIT;"
