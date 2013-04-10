@@ -457,6 +457,7 @@ pkgdb_upgrade(struct pkgdb *db)
 			pkg_emit_error("warning: database version %" PRId64
 			    " is newer than libpkg(3) version %d, but still "
 			    "compatible", db_version, DBVERSION);
+			return (EPKG_OK);
 		} else {
 			pkg_emit_error("database version %" PRId64 " is newer "
 			    "than and incompatible with libpkg(3) version %d",
