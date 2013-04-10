@@ -70,6 +70,14 @@ libelf_convert.c:	elf_types.m4 libelf_convert.m4
 libelf_fsize.c:		elf_types.m4 libelf_fsize.m4
 libelf_msize.c:		elf_types.m4 libelf_msize.m4
 
+.if defined(DEBUG_FLAGS)
+.if ${DEBUG_FLAGS} == 1
+DEBUG_FLAGS=	-ggdb -O0
+.else
+DEBUG_FLAGS+=	-ggdb -O0
+.endif
+.endif
+
 .include <bsd.lib.mk>
 
 # Keep the .SUFFIXES line after the include of bsd.lib.mk

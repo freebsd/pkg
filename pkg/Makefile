@@ -44,7 +44,11 @@ CFLAGS+=	-DGITHASH="\" ${GITHASH}\""
 .endif
 
 .if defined(DEBUG_FLAGS)
-DEBUG_FLAGS+=	-g -O0
+.if ${DEBUG_FLAGS} == 1
+DEBUG_FLAGS=	-ggdb -O0
+.else
+DEBUG_FLAGS+=	-ggdb -O0
+.endif
 .endif
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg

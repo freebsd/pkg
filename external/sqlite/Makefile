@@ -54,4 +54,12 @@ CFLAGS+=	-DSQLITE_OMIT_AUTOVACUUM \
 
 NO_MAN=		true
 
+.if defined(DEBUG_FLAGS)
+.if ${DEBUG_FLAGS} == 1
+DEBUG_FLAGS=	-ggdb -O0
+.else
+DEBUG_FLAGS+=	-ggdb -O0
+.endif
+.endif
+
 .include <bsd.lib.mk>
