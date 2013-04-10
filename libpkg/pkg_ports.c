@@ -68,8 +68,8 @@ struct plist {
 	struct sbuf *pre_upgrade_buf;
 	struct sbuf *post_upgrade_buf;
 	struct pkg *pkg;
-	const char *uname;
-	const char *gname;
+	char *uname;
+	char *gname;
 	const char *slash;
 	char *pkgdep;
 	bool ignore_next;
@@ -202,8 +202,12 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 static int
 pkgdep(struct plist *p, char *line, struct file_attr *a)
 {
-	if (*line != '\0')
-		p->pkgdep = line;
+	if (*line != '\0') {
+		if (p->pkgdep != NULL) {
+			free(p->pkgdep);
+		}
+		p->pkgdep = strdup(line);
+	}
 	free(a);
 	return (EPKG_OK);
 }
@@ -370,10 +374,16 @@ setmod(struct plist *p, char *line, struct file_attr *a)
 static int
 setowner(struct plist *p, char *line, struct file_attr *a)
 {
-	if (line[0] == '\0')
+	if (line[0] == '\0') {
+		if (p->uname != NULL)
+			free(p->uname);
 		p->uname = NULL;
-	else
-		p->uname = line;
+	}
+	else {
+		if (p->uname != NULL)
+			free(p->uname);
+		p->uname = strdup(line);
+	}
 
 	free_file_attr(a);
 
@@ -386,7 +396,7 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 	if (line[0] == '\0')
 		p->gname = NULL;
 	else
-		p->gname = line;
+		p->gname = strdup(line);
 
 	free_file_attr(a);
 
@@ -401,10 +411,13 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 	if (strncmp(line, "DEPORIGIN:", 10) == 0) {
 		line += 10;
 		name = p->pkgdep;
-		version = strrchr(name, '-');
-		version[0] = '\0';
-		version++;
-		pkg_adddep(p->pkg, name, line, version, false);
+		if (name != NULL) {
+			version = strrchr(name, '-');
+			version[0] = '\0';
+			version++;
+			pkg_adddep(p->pkg, name, line, version, false);
+			free(p->pkgdep);
+		}
 		p->pkgdep = NULL;
 	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
 		line += 7;
@@ -1076,6 +1089,12 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 
 	HASH_FREE(pplist.keywords, keyword, keyword_free);
 
+	if (pplist.pkgdep != NULL)
+		free(pplist.pkgdep);
+	if (pplist.uname != NULL)
+		free(pplist.uname);
+	if (pplist.gname != NULL)
+		free(pplist.gname);
 	free(pplist.post_pattern_to_free);
 	if (pplist.post_patterns != NULL)
 		sl_free(pplist.post_patterns, 0);
