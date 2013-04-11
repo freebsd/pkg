@@ -318,12 +318,12 @@ str_noglob_len(const char *s)
 static int
 audit_entry_compare(const void *a, const void *b)
 {
-	struct audit_entry_sorted *e1, *e2;
+	const struct audit_entry_sorted *e1, *e2;
 	size_t min_len;
 	int result;
 
-	e1 = (struct audit_entry_sorted *)a;
-	e2 = (struct audit_entry_sorted *)b;
+	e1 = (const struct audit_entry_sorted *)a;
+	e2 = (const struct audit_entry_sorted *)b;
 
 	min_len = (e1->noglob_len < e2->noglob_len ?
 	    e1->noglob_len : e2->noglob_len);
