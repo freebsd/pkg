@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <fts.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -143,8 +144,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
     const char *newpath, const char *uname, const char *gname, mode_t perm)
 {
 	int fd;
-	int len;
-	char buf[BUFSIZ];
+	char *map;
 	int retcode = EPKG_OK;
 	int ret;
 	struct stat st;
@@ -207,11 +207,17 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
-
-		while ((len = read(fd, buf, sizeof(buf))) > 0)
-			archive_write_data(pack->awrite, buf, len);
-
-		close(fd);
+		if ((map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0)) != MAP_FAILED) {
+			close(fd);
+			archive_write_data(pack->awrite, map, st.st_size);
+			munmap(map, st.st_size);
+		}
+		else {
+			close(fd);
+			pkg_emit_errno("open", filepath);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 	cleanup:
