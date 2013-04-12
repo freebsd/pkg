@@ -208,7 +208,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
-		if (st.st_size > SIZE_T_MAX) {
+		if (st.st_size > SSIZE_MAX) {
 			char buf[BUFSIZ];
 			int len;
 
