@@ -1003,6 +1003,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pplist.keywords = NULL;
 	pplist.post_pattern_to_free = NULL;
 	pplist.post_patterns = NULL;
+	pplist.pkgdep = NULL;
 
 	populate_keywords(&pplist);
 
