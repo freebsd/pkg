@@ -177,7 +177,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * current archive_entry to the first non-meta file.
 	 * If there is no non-meta files, EPKG_END is returned.
 	 */
-	ret = pkg_open2(&pkg, &a, &ae, path, keys);
+	ret = pkg_open2(&pkg, &a, &ae, path, keys, 0);
 	if (ret == EPKG_END)
 		extract = false;
 	else if (ret != EPKG_OK) {

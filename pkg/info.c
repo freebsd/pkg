@@ -196,7 +196,7 @@ exec_info(int argc, char **argv)
 
 	if (file != NULL) {
 		pkg_manifest_keys_new(&keys);
-		if (pkg_open(&pkg, file, keys) != EPKG_OK) {
+		if (pkg_open(&pkg, file, keys, 0) != EPKG_OK) {
 			return (1);
 		}
 		pkg_manifest_keys_free(keys);

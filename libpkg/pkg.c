@@ -1040,13 +1040,13 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 }
 
 int
-pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys)
+pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, int flags)
 {
 	struct archive *a;
 	struct archive_entry *ae;
 	int ret;
 
-	ret = pkg_open2(pkg_p, &a, &ae, path, keys);
+	ret = pkg_open2(pkg_p, &a, &ae, path, keys, flags);
 
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
@@ -1057,7 +1057,8 @@ pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys)
 }
 
 int
-pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path, struct pkg_manifest_key *keys)
+pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
+		const char *path, struct pkg_manifest_key *keys, int flags)
 {
 	struct pkg *pkg;
 	pkg_error_t retcode = EPKG_OK;
@@ -1114,6 +1115,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
+			if (flags & PKG_OPEN_MANIFEST_ONLY)
+				break;
 		}
 
 		for (i = 0; files[i].name != NULL; i++) {

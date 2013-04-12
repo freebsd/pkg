@@ -927,7 +927,7 @@ exec_query(int argc, char **argv)
 
 	if (pkgname != NULL) {
 		pkg_manifest_keys_new(&keys);
-		if (pkg_open(&pkg, pkgname, keys) != EPKG_OK) {
+		if (pkg_open(&pkg, pkgname, keys, 0) != EPKG_OK) {
 			return (EX_IOERR);
 		}
 

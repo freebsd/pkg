@@ -467,7 +467,7 @@ read_pkg_file(void *data)
 
 		r = calloc(1, sizeof(struct pkg_result));
 
-		if (pkg_open(&r->pkg, fts_accpath, keys) != EPKG_OK) {
+		if (pkg_open(&r->pkg, fts_accpath, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
 			r->retcode = EPKG_WARN;
 		} else {
 			sha256_file(fts_accpath, r->cksum);

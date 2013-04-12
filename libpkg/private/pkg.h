@@ -310,7 +310,7 @@ int pkg_add_user_group(struct pkg *pkg);
 int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
-	      const char *path, struct pkg_manifest_key *keys);
+	      const char *path, struct pkg_manifest_key *keys, int flags);
 
 void pkg_list_free(struct pkg *, pkg_list);
 

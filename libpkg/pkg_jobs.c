@@ -468,7 +468,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		}
 		snprintf(path, sizeof(path), "%s/%s", cachedir, pkgrepopath);
 
-		pkg_open(&newpkg, path, keys);
+		pkg_open(&newpkg, path, keys, 0);
 		if (newversion != NULL) {
 			pkg_emit_upgrade_begin(p);
 		} else {
@@ -666,7 +666,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 		    pkgrepopath);
-		if (pkg_open(&pkg, path, keys) != EPKG_OK) {
+		if (pkg_open(&pkg, path, keys, 0) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
 

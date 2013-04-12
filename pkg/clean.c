@@ -209,7 +209,7 @@ usage_clean(void)
 }
 
 int
-exec_clean(__unused int argc, __unused char **argv)
+exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
@@ -298,7 +298,7 @@ exec_clean(__unused int argc, __unused char **argv)
 		if (repopath[0] == '/')
 			repopath++;
 
-		if (pkg_open(&pkg, ent->fts_path, keys) != EPKG_OK) {
+		if (pkg_open(&pkg, ent->fts_path, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
 			if (!quiet)
 				warnx("skipping %s", ent->fts_path);
 			continue;

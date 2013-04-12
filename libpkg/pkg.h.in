@@ -451,6 +451,8 @@ typedef enum {
 	EPKG_INSECURE,
 } pkg_error_t;
 
+#define PKG_OPEN_MANIFEST_ONLY 0x1
+
 /**
  * test if pkg is installed and activated.
  * @param count  If all the tests pass, and count is non-NULL,
@@ -485,8 +487,10 @@ int pkg_is_valid(struct pkg *);
  * @param p A pointer to pkg allocated by pkg_new(), or if it points to a
  * NULL pointer, the function allocate a new pkg using pkg_new().
  * @param path The path to the local package archive.
+ * @param keys manifest keys that should be initialised
+ * @param flags open flags
  */
-int pkg_open(struct pkg **p, const char *path, struct pkg_manifest_key *keys);
+int pkg_open(struct pkg **p, const char *path, struct pkg_manifest_key *keys, int flags);
 
 /**
  * @return the type of the package.
