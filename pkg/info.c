@@ -212,6 +212,8 @@ exec_info(int argc, char **argv)
 	} else if (ret == EPKG_ENODB) {
 		if (match == MATCH_ALL)
 			return (EX_OK);
+		if (origin_search)
+			return (EX_OK);
 		if (!quiet)
 			warnx("No packages installed");
 		return (EX_UNAVAILABLE);
