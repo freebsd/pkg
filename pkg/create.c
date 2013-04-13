@@ -209,6 +209,9 @@ exec_create(int argc, char **argv)
 		case 'p':
 			plist = optarg;
 			break;
+		default:
+			usage_create();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;
