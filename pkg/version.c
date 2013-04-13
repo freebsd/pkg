@@ -235,6 +235,9 @@ exec_version(int argc, char **argv)
 		case 'T':
 			opt |= VERSION_TESTPATTERN;
 			break;
+		default:
+			usage_version();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;

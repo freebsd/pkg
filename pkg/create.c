@@ -217,6 +217,9 @@ exec_create(int argc, char **argv)
 		case 'O':
 			old = true;
 			break;
+		default:
+			usage_create();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;

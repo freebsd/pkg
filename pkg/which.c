@@ -67,6 +67,9 @@ exec_which(int argc, char **argv)
 		case 'o':
 			orig = true;
 			break;
+		default:
+			usage_which();
+			return (EX_USAGE);
 		}
 	}
 
