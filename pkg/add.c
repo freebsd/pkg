@@ -71,7 +71,7 @@ exec_add(int argc, char **argv)
 	int i;
 	int failedpkgcount = 0;
 	pkg_flags f = PKG_FLAG_NONE;
-	struct pkg_manifest_key *keys;
+	struct pkg_manifest_key *keys = NULL;
 
 	while ((ch = getopt(argc, argv, "IAfq")) != -1) {
 		switch (ch) {
