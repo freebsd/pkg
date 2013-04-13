@@ -101,12 +101,14 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		 * Register shared libraries used by the package if
 		 * SHLIBS enabled in conf.  Deletes shlib info if not.
 		 */
+		struct sbuf *b = sbuf_new_auto();
 
 		pkg_register_shlibs(pkg);
 
-		pkg_emit_manifest(pkg, &m, false, NULL);
-		packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
-		free(m);
+		pkg_emit_manifest_sbuf(pkg, b, false, NULL);
+		sbuf_finish(b);
+		packing_append_buffer(pkg_archive, sbuf_data(b), "+MANIFEST", sbuf_len(b));
+		sbuf_delete(b);
 	}
 
 	pkg_get(pkg, PKG_MTREE, &mtree);
