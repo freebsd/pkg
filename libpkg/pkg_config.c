@@ -78,13 +78,13 @@ static struct config_entry c[] = {
 		PKG_CONFIG_STRING,
 		"PKG_DBDIR",
 		"/var/db/pkg",
-		"Directory for packages database (local and remote)",
+		"Where the package databases are stored",
 	},
 	[PKG_CONFIG_CACHEDIR] = {
 		PKG_CONFIG_STRING,
 		"PKG_CACHEDIR",
 		"/var/cache/pkg",
-		"Directory where downloaded packages are cached",
+		"Directory containing cache of downloaded packages",
 	},
 	[PKG_CONFIG_PORTSDIR] = {
 		PKG_CONFIG_STRING,
@@ -94,43 +94,43 @@ static struct config_entry c[] = {
 #else
 		"/usr/ports",
 #endif
-		"Directory where the ports collection is located",
+		"Location of the ports collection",
 	},
 	[PKG_CONFIG_REPOKEY] = {
 		PKG_CONFIG_STRING,
 		"PUBKEY",
 		NULL,
-		"Public key for the packagesite",
+		"Public key for authenticating packages from the chosen repository",
 	},
 	[PKG_CONFIG_MULTIREPOS] = {
 		PKG_CONFIG_BOOL,
 		"PKG_MULTIREPOS",
 		NULL,
-		"Activate the experimental multi repository support",
+		"Activate experimental multi-repository support",
 	},
 	[PKG_CONFIG_HANDLE_RC_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
 		"HANDLE_RC_SCRIPTS",
 		NULL,
-		"Automatically handle services",
+		"Automatically handle restarting services",
 	},
 	[PKG_CONFIG_ASSUME_ALWAYS_YES] = {
 		PKG_CONFIG_BOOL,
 		"ASSUME_ALWAYS_YES",
 		NULL,
-		"Consider 'yes' as been replied to all pkg(8) questions",
+		"Answer 'yes' to all pkg(8) questions",
 	},
 	[PKG_CONFIG_REPOS] = {
 		PKG_CONFIG_KVLIST,
 		"REPOS",
 		NULL,
-		"List of repositories for experimental multi repository support",
+		"List of repositories used when multi-repository support enabled",
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
 		PKG_CONFIG_STRING,
 		"PLIST_KEYWORDS_DIR",
 		NULL,
-		"Directory where the plist Keywords are defined",
+		"Directory containing definitions of plist keywords",
 	},
 	[PKG_CONFIG_SYSLOG] = {
 		PKG_CONFIG_BOOL,
@@ -142,19 +142,19 @@ static struct config_entry c[] = {
 		PKG_CONFIG_BOOL,
 		"AUTODEPS",
 		"NO",
-		"Automatically append dependencies corresponding to discovered share libraries",
+		"Automatically append dependencies to fulfil dynamic linking requrements of binaries",
 	},
 	[PKG_CONFIG_ABI] = {
 		PKG_CONFIG_STRING,
 		"ABI",
 		myabi,
-		"Supported ABI",
+		"Override the automatically detected ABI",
 	},
 	[PKG_CONFIG_DEVELOPER_MODE] = {
 		PKG_CONFIG_BOOL,
 		"DEVELOPER_MODE",
 		"NO",
-		"Extra pedantic warnings and errors",
+		"Add extra strict, pedantic warnings as an aid to package maintainers",
 	},
 	[PKG_CONFIG_PORTAUDIT_SITE] = {
 		PKG_CONFIG_STRING,
@@ -164,7 +164,7 @@ static struct config_entry c[] = {
 #else
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
 #endif
-		"URL where to fetch the audit database",
+		"URL giving location of the audit database",
 	},
 	[PKG_CONFIG_MIRRORS] = {
 		PKG_CONFIG_STRING,
@@ -176,55 +176,55 @@ static struct config_entry c[] = {
 #else
 		NULL,
 #endif
-		"Type of mirroring supported (possible: 'SRV', 'HTTP')",
+		"Type of package site mirroring supported (one of: 'SRV', 'HTTP')",
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
 		PKG_CONFIG_INTEGER,
 		"FETCH_RETRY",
 		"3",
-		"Number of attempt to fetch a filed",
+		"How many times to retry fetching files",
 	},
 	[PKG_CONFIG_PLUGINS_DIR] = {
 		PKG_CONFIG_STRING,
 		"PKG_PLUGINS_DIR",
 		PREFIX"/lib/pkg/",
-		"Directory where pkg(8) will find it's plugins",
+		"Directory which pkg(8) will load plugins from",
 	},
 	[PKG_CONFIG_ENABLE_PLUGINS] = {
 		PKG_CONFIG_BOOL,
 		"PKG_ENABLE_PLUGINS",
 		"YES",
-		"Activate the plugin support",
+		"Activate plugin support",
 	},
 	[PKG_CONFIG_PLUGINS] = {
 		PKG_CONFIG_LIST,
 		"PLUGINS",
 		NULL,
-		"List of activated plugins",
+		"List of activate plugins",
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
 		"DEBUG_SCRIPTS",
 		"NO",
-		"Add 'set -x' to allow debugging scripts",
+		"Run shell scripts in verbose mode to facilitate debugging",
 	},
 	[PKG_CONFIG_PLUGINS_CONF_DIR] = {
 		PKG_CONFIG_STRING,
 		"PLUGINS_CONF_DIR",
 		PREFIX"/etc/pkg/",
-		"Directory where the configuration for plugins are located",
+		"Directory containing plugin configuration data",
 	},
 	[PKG_CONFIG_PERMISSIVE] = {
 		PKG_CONFIG_BOOL,
 		"PERMISSIVE",
 		"NO",
-		"Allow permissive installation (bypass the conflicts)",
+		"Permit package installation despite presence of conflicting packages",
 	},
 	[PKG_CONFIG_REPO_AUTOUPDATE] = {
 		PKG_CONFIG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
-		"Try to update the repository information before each command",
+		"Automatically update repository catalogues prior to package updates",
 	},
 	[PKG_CONFIG_HTTP_PROXY] = {
 		PKG_CONFIG_STRING,
@@ -242,7 +242,7 @@ static struct config_entry c[] = {
 		PKG_CONFIG_STRING,
 		"NAMESERVER",
 		NULL,
-		"Bypass name resolution forcing a nameserver",
+		"Override the usual nameeservers when looking up addresses",
 	},
 	[PKG_CONFIG_EVENT_PIPE] = {
 		PKG_CONFIG_STRING,
@@ -266,7 +266,7 @@ static struct config_entry c[] = {
 		PKG_CONFIG_STRING,
 		"SSH_RESTRICT_DIR",
 		NULL,
-		"Directory where the ssh subsystem will be restricted to",
+		"Directory the ssh subsystem will be restricted to",
 	}
 };
 
