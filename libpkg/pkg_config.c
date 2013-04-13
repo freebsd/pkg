@@ -242,7 +242,7 @@ static struct config_entry c[] = {
 		PKG_CONFIG_STRING,
 		"NAMESERVER",
 		NULL,
-		"Override the usual nameeservers when looking up addresses",
+		"Override the usual nameservers when looking up addresses",
 	},
 	[PKG_CONFIG_EVENT_PIPE] = {
 		PKG_CONFIG_STRING,
