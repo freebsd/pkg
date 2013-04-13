@@ -176,7 +176,7 @@ static struct config_entry c[] = {
 #else
 		NULL,
 #endif
-		"Type of package site mirroring supported (one of: 'SRV', 'HTTP')",
+		"How to locate alternate mirror sites of a repository (one of: 'SRV', 'HTTP')",
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
 		PKG_CONFIG_INTEGER,
@@ -200,7 +200,7 @@ static struct config_entry c[] = {
 		PKG_CONFIG_LIST,
 		"PLUGINS",
 		NULL,
-		"List of active plugins",
+		"List of plugins that pkg(8) should load",
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
@@ -242,7 +242,7 @@ static struct config_entry c[] = {
 		PKG_CONFIG_STRING,
 		"NAMESERVER",
 		NULL,
-		"Override the usual nameservers when looking up addresses",
+		"Use this nameserver when looking up addresses",
 	},
 	[PKG_CONFIG_EVENT_PIPE] = {
 		PKG_CONFIG_STRING,
