@@ -200,7 +200,7 @@ static struct config_entry c[] = {
 		PKG_CONFIG_LIST,
 		"PLUGINS",
 		NULL,
-		"List of activate plugins",
+		"List of active plugins",
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
