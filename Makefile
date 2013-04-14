@@ -42,12 +42,12 @@ all:	Doxyfile
 clean:
 	rm -f ${CLEANFILES}
 
+release: regression-test set-tag make-tarball
+	@${ECHO} "==> Create New Release (${PKGVERSION})"
+
 regression-test: clean all
 	@${ECHO} "==> Regression Test"
 	@${MAKE} -C tests run
-
-release: set-tag regression-test make-tarball
-	@${ECHO} "==> Create New Release (${PKGVERSION})"
 
 set-tag:
 	@if [ -n "$$( git status -uno -s )" ] ; then \
