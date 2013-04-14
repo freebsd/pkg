@@ -34,7 +34,7 @@ TARBALL_BASENAME=	pkg-${PKGVERSION}
 TARBALL_EXT=		tar.xz
 TARBALL_FILE=		${TARBALL_BASENAME}.${TARBALL_EXT}
 
-.PHONY: release do-release set-tag make-tarball regression-test \
+.PHONY: release set-tag make-tarball regression-test \
 	 ${_snapshot}
 
 all:	Doxyfile
@@ -46,10 +46,8 @@ regression-test: clean all
 	@${ECHO} "==> Regression Test"
 	@${MAKE} -C tests run
 
-do-release: regression-test
+release: set-tag regression-test make-tarball
 	@${ECHO} "==> Create New Release (${PKGVERSION})"
-
-release: do-release set-tag make-tarball
 
 set-tag:
 	@if [ -n "$$( git status -uno -s )" ] ; then \
