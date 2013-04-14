@@ -152,6 +152,13 @@ when running one of:
 or
 .Nm pkg version -R .
 (default: YES)
+.It Cm ENV: Key/Value list
+This tells
+.Xr pkg 8
+to set key/values passed in the environment. Therefore underlying libraries
+like
+.Xr fetch 3
+can be configured (e.g. setting FTP_PROXY and HTTP_PROXY). (default: empty)
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration

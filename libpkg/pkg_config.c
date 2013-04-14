@@ -226,18 +226,6 @@ static struct config_entry c[] = {
 		"YES",
 		"Automatically update repository catalogues prior to package updates",
 	},
-	[PKG_CONFIG_HTTP_PROXY] = {
-		PKG_CONFIG_STRING,
-		"HTTP_PROXY",
-		NULL,
-		NULL,
-	},
-	[PKG_CONFIG_FTP_PROXY] = {
-		PKG_CONFIG_STRING,
-		"FTP_PROXY",
-		NULL,
-		NULL,
-	},
 	[PKG_CONFIG_NAMESERVER] = {
 		PKG_CONFIG_STRING,
 		"NAMESERVER",
@@ -267,6 +255,12 @@ static struct config_entry c[] = {
 		"SSH_RESTRICT_DIR",
 		NULL,
 		"Directory the ssh subsystem will be restricted to",
+	},
+	[PKG_CONFIG_ENV] = {
+		PKG_CONFIG_KVLIST,
+		"ENV",
+		NULL,
+		"Environement variable pkg will use",
 	}
 };
 
@@ -692,7 +686,7 @@ pkg_init(const char *path)
 	const char *val = NULL;
 	const char *buf, *walk, *value, *key;
 	const char *errstr = NULL;
-	const char *proxy = NULL;
+	const char *evkey = NULL;
 	const char *nsname = NULL;
 	const char *evpipe = NULL;
 	struct pkg_config *conf;
@@ -872,13 +866,12 @@ pkg_init(const char *path)
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
 
-	/* set the environement variable for libfetch for proxies if any */
-	pkg_config_string(PKG_CONFIG_HTTP_PROXY, &proxy);
-	if (proxy != NULL)
-		setenv("HTTP_PROXY", proxy, 1);
-	pkg_config_string(PKG_CONFIG_FTP_PROXY, &proxy);
-	if (proxy != NULL)
-		setenv("FTP_PROXY", proxy, 1);
+	kv = NULL;
+	while (pkg_config_kvlist(PKG_CONFIG_ENV, &kv) == EPKG_OK) {
+		evkey = pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY);
+		if (evkey != NULL && evkey[0] != '\0')
+			setenv(evkey, pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE), 1);
+	}
 
 	/* bypass resolv.conf with specified NAMESERVER if any */
 	pkg_config_string(PKG_CONFIG_NAMESERVER, &nsname);
