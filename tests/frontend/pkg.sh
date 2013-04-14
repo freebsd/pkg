@@ -63,13 +63,12 @@ pkg_config_defaults_body()
 	-o match:'^PLUGINS_CONF_DIR: /usr/local/etc/pkg/$' \
 	-o match:'^PERMISSIVE: no$' \
 	-o match:'^REPO_AUTOUPDATE: yes$' \
-	-o match:'^HTTP_PROXY: $' \
-	-o match:'^FTP_PROXY: $' \
 	-o match:'^NAMESERVER: $' \
 	-o match:'^EVENT_PIPE: $' \
 	-o match:'^FETCH_TIMEOUT: 30$' \
 	-o match:'^UNSET_TIMESTAMP: no$' \
 	-o match:'^SSH_RESTRICT_DIR: $' \
+	-o match:'^ENV:$' \
 	-e empty              \
 	-s exit:0             \
 	pkg -C "" -vv 
