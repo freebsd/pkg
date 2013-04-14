@@ -12,5 +12,7 @@ search_body() {
 atf_init_test_cases() {
         eval `cat $(atf_get_srcdir)/test_environment`
 
+	unset PKG_DBDIR
+
 	atf_add_test_case search
 }

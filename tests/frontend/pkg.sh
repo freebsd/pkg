@@ -50,7 +50,6 @@ pkg_config_defaults_body()
 	-o match:'^REPOS:$' \
 	-o match:'^PLIST_KEYWORDS_DIR: $' \
 	-o match:'^SYSLOG: yes$' \
-	-o match:'^SHLIBS: no$' \
 	-o match:'^AUTODEPS: no$' \
 	-o match:'^ABI: [a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+$' \
 	-o match:'^DEVELOPER_MODE: no$' \
@@ -78,8 +77,6 @@ pkg_config_defaults_body()
 
 
 atf_init_test_cases() {
-        eval `cat $(atf_get_srcdir)/test_environment`
-
 	atf_add_test_case pkg_no_database
 	atf_add_test_case pkg_version
 	atf_add_test_case pkg_config_defaults
