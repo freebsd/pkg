@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd April 14, 2013
 .Dt PKG-REGISTER 8
 .Os
 .Sh NAME
@@ -23,34 +23,125 @@
 .Nd registers a package into the local package database
 .Sh SYNOPSIS
 .Nm
-.Op Fl ld
-.Fl f Ar plist-file
+.Op Fl dlOt
+.Op Fl f Ar plist-file
 .Fl m Ar metadatadir
 .Fl i Ar input-path
+.Nm
+.Op Fl dlOt
+.Fl M Ar metadatafile
 .Sh DESCRIPTION
 .Nm
 is used for registering a package into the local package database.
+.Pp
+.Nm
+assembles a full set of package meta-data from various possible inputs,
+and writes the meta-data into the package registry database.
+This is one of the final steps when installing software from ports:
+the package files are installed into the filesystem, and then
+.Nm
+is called to record what was installed into the package database.
+.Pp
+.Nm
+can derive package meta-data from a number of different sources:
+.Bl -bullet
+.It
+The package manifest
+.It
+The metadata directory
+.It
+Direct analysis of files installed by the package
+.El
+.Pp
+The package manifest is a
+.Cm YAML
+format listing of package meta-data.
+It can contain all of the necessary meta-data needed by the package,
+but the more usual approach is to provide selected items via the
+manifest, and fill in the rest, either from legacy files such as
+.Fa pkg-plist ,
+.Fa +DESC,
+.Fa +DISPLAY,
+.Fa +MESSAGE
+or
+.Fa +MTREE_DIRS
+which are optional and mostly located in the
+.Ar metadatadir
+given as the argument to the
+.Fl m
+option.
+.Pp
+Other information about shared library requirements and the packages
+necessary to provide them may be obtained by direct analysis of the
+files installed by the package.
+This is the mechanism currently used when installing software directly
+from the ports tree, as it provides reasonable backwards compatibility
+with the old style
+.Xr pkg_add 1
+command.
+.Pp
+Reading in a complete and comprehensive manifest from one file is a
+simpler alternative, but requires all the meta-data to have been
+assembled beforehand.
+.Pp
+Direct analysis of the installed files can be suppressed by use of
+the
+.Fl t
+option.
+This is intended for testing the functionality of
+.Xr pkg 8
+itself, and should not be routinely used.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl l
-Tells
-.Nm
-to treat the package to be registered as a legacy one (old style package)
 .It Fl d
-Mark the package for registering as orphan.
-Will be automatically removed if no other packages depend on it.
+Mark the package to be automatically removed if no other packages
+depend on it.
 For more information please refer to
 .Xr pkg-autoremove 8
 .It Fl f Ar plist-file
-Specifies the packing list file
-.It Fl m Ar metadatadir
-Specifies the meta data directory to use when registering the package
+Specifies a
+.Fa pkg-plist
+style packing list file
 .It Fl i Ar input-path
-Specifies the package input path.
-.Pp
-< To be completed >
+Specifies the package input path or staging directory.
+.It Fl l
+Tells
+.Nm
+to generate an old-style package registry entry in a sub-directory of
+.Sy $PKG_DBDIR
+rather than updating the
+.Fa local.sqlite
+database.
+.It Fl M Ar manifest
+Specifies the package manifest file.
+Use of this option means that the only file which will be used as a
+source of package meta-data is the named
+.Ar manifest
+file.
+The
+.Fl M
+option is mutually exclusive with
+.Fl m .
+.It Fl m Ar metadatadir
+Specifies the meta data directory to use when registering the package.
+This directory will hold the package manifest, and optionally may contain
+a number of other old-style metadata input files.
+The
+.Fl m
+option is mutually exclusive with
+.Fl M .
+.It Fl t
+Enable testing mode.
+This allows
+.Nm
+to update the package database without performing any of the usual
+analyses of files installed by the package.
+This option should only be used with caution, and preferably only
+for the intended purpose of performing regression tests on
+.Xr pkg 8
+itself.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
