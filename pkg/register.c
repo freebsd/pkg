@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -66,73 +67,82 @@ static const char * const scripts[] = {
 void
 usage_register(void)
 {
-	fprintf(stderr, "usage: pkg register [-Old] [-i <input-path>]"
-	                " -m <metadatadir> -f <plist-file>\n\n");
+	fprintf(stderr, "usage: pkg register [-Oldt] [-i <input-path>]"
+	                " [-f <plist-file>] -m <metadatadir>\n");
+	fprintf(stderr, "       pkg register [-Oldt] [-i <input_path>]"
+		        " -M <metadatafile>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
 
 int
 exec_register(int argc, char **argv)
 {
-	struct pkg *pkg = NULL;
-	struct pkgdb *db = NULL;
+	struct pkg	*pkg = NULL;
+	struct pkgdb	*db  = NULL;
 
 	struct pkg_manifest_key *keys = NULL;
 
-	regex_t preg;
-	regmatch_t pmatch[2];
+	regex_t		 preg;
+	regmatch_t	 pmatch[2];
 
-	int ch;
-	char *plist = NULL;
-	char *arch = NULL;
-	char myarch[BUFSIZ];
-	char *mdir = NULL;
-	char *www = NULL;
-	char *input_path = NULL;
-	char fpath[MAXPATHLEN + 1];
+	char		*arch = NULL;
+	char		 myarch[BUFSIZ];
+	char		*www  = NULL;
+	char		 fpath[MAXPATHLEN + 1];
 
-	const char *message;
-	const char *desc = NULL;
-	size_t size;
+	const char	*plist      = NULL;
+	const char	*mdir       = NULL;
+	const char	*mfile      = NULL;
+	const char	*input_path = NULL;
+	const char	*message;
+	const char	*desc       = NULL;
 
-	bool legacy = false;
-	bool developer = false;
-	bool old = false;
+	size_t		 size;
 
-	int i;
-	int ret = EPKG_OK, retcode = EX_OK;
+	bool		 developer;
+	bool		 legacy        = false;
+	bool		 old           = false;
+	bool		 metadata_only = false;
+	bool		 testing_mode  = false;
 
+	int		 ch;
+	int		 i;
+	int		 ret     = EPKG_OK;
+	int		 retcode = EX_OK;
 
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EX_OSERR, "malloc");
-	while ((ch = getopt(argc, argv, "f:m:i:ldO")) != -1) {
+	while ((ch = getopt(argc, argv, "df:i:lM:m:Ot")) != -1) {
 		switch (ch) {
-		case 'f':
-			if ((plist = strdup(optarg)) == NULL)
-				err(1, "cannot allocate memory");
-
-			break;
-		case 'm':
-			if ((mdir = strdup(optarg)) == NULL)
-				err(1, "cannot allocate memory");
-			break;
 		case 'd':
 			pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
 			break;
+		case 'f':
+			plist = optarg;
+			break;
 		case 'i':
-			if ((input_path = strdup(optarg)) == NULL)
-				err(1, "cannot allocate memory");
+			input_path = optarg;
 			break;
 		case 'l':
 			legacy = true;
 			break;
+		case 'M':
+			metadata_only = true;
+			mfile = optarg;
+			break;
+		case 'm':
+			mdir = optarg;
+			break;
 		case 'O':
 			old = true;
 			break;
+		case 't':
+			testing_mode = true;
+			break;
 		default:
-			printf("%c\n", ch);
+			warnx("Unrecognised option -%c\n", ch);
 			usage_register();
 			return (EX_USAGE);
 		}
@@ -152,71 +162,130 @@ exec_register(int argc, char **argv)
 			retcode = EX_OK;
 	}
 
-	if (plist == NULL)
-		errx(EX_USAGE, "missing -f flag");
+	/*
+         * Ideally, the +MANIFEST should be all that is necessary,
+	 * since it can contain all of the meta-data supplied by the
+	 * other files mentioned below.  These are here for backwards
+	 * compatibility with the way the ports tree works with
+	 * pkg_tools.
+	 * 
+	 * The -M option specifies one filename to read the meta_data
+	 * from, and overrides the use of legacy meta-data inputs.
+	 *
+	 * Dependencies, shlibs, files etc. may be derived by
+	 * analysing the package files (maybe discovered as the
+	 * content of the staging directory) unless -t (testing_mode)
+	 * is used.
+	 */
 
-	if (mdir == NULL)
-		errx(EX_USAGE, "missing -m flag");
+	if (mfile != NULL && mdir != NULL) {
+		warnx("Cannot use both -m and -M together");
+		usage_register();
+		return (EX_USAGE);
+	}
+
+
+	if (mfile == NULL && mdir == NULL) {
+		warnx("one of either -m or -M flags is required");
+		usage_register();
+		return (EX_USAGE);
+	}
+
+	if (mfile != NULL && plist != NULL) {
+		warnx("-M incompatible with -f option");
+		usage_register();
+		return (EX_USAGE);
+	}
+
+	if (testing_mode && input_path != NULL) {
+		warnx("-i incompatible with -t option");
+		usage_register();
+		return (EX_USAGE);
+	}
 
 	pkg_manifest_keys_new(&keys);
-	snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
-	if ((ret = pkg_load_manifest_file(pkg, fpath, keys)) != EPKG_OK) {
-		return (EX_IOERR);
-	}
-	pkg_manifest_keys_free(keys);
 
-	snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
-	pkg_set_from_file(pkg, PKG_DESC, fpath, false);
+	if (mfile != NULL) {
+		ret = pkg_load_manifest_file(pkg, fpath, keys);
+		pkg_manifest_keys_free(keys);
+		if (ret != EPKG_OK) 
+			return (EX_IOERR);
 
-	snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
-	if (access(fpath, F_OK) == 0)
-		 pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
+	} else {
+		snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
+		ret = pkg_load_manifest_file(pkg, fpath, keys);
+		pkg_manifest_keys_free(keys);
+		if (ret != EPKG_OK)
+			return (EX_IOERR);
 
-	snprintf(fpath, sizeof(fpath), "%s/+MTREE_DIRS", mdir);
-	if (access(fpath, F_OK) == 0)
-		pkg_set_from_file(pkg, PKG_MTREE, fpath, false);
 
-	for (i = 0; scripts[i] != NULL; i++) {
-		snprintf(fpath, sizeof(fpath), "%s/%s", mdir, scripts[i]);
+		snprintf(fpath, sizeof(fpath), "%s/+DESC", mdir);
+		pkg_set_from_file(pkg, PKG_DESC, fpath, false);
+
+		snprintf(fpath, sizeof(fpath), "%s/+DISPLAY", mdir);
 		if (access(fpath, F_OK) == 0)
-			pkg_addscript_file(pkg, fpath);
-	}
+			pkg_set_from_file(pkg, PKG_MESSAGE, fpath, false);
 
-	if (www != NULL) {
-		pkg_set(pkg, PKG_WWW, www);
-		free(www);
-	}
+		snprintf(fpath, sizeof(fpath), "%s/+MTREE_DIRS", mdir);
+		if (access(fpath, F_OK) == 0)
+			pkg_set_from_file(pkg, PKG_MTREE, fpath, false);
 
-	pkg_get(pkg, PKG_WWW, &www);
+		for (i = 0; scripts[i] != NULL; i++) {
+			snprintf(fpath, sizeof(fpath), "%s/%s", mdir,
+			    scripts[i]);
+			if (access(fpath, F_OK) == 0)
+				pkg_addscript_file(pkg, fpath);
+		}
 
-	/* if www is not given then try to determine it from description */
-	if (www == NULL) {
-		pkg_get(pkg, PKG_DESC, &desc);
-		regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
-		if (regexec(&preg, desc, 2, pmatch, 0) == 0) {
-			size = pmatch[1].rm_eo - pmatch[1].rm_so;
-			www = strndup(&desc[pmatch[1].rm_so], size);
+		if (www != NULL) {
 			pkg_set(pkg, PKG_WWW, www);
 			free(www);
-		} else {
-			pkg_set(pkg, PKG_WWW, "UNKNOWN");
 		}
-		regfree(&preg);
-	}
 
-	ret += ports_parse_plist(pkg, plist, input_path);
+		pkg_get(pkg, PKG_WWW, &www);
+
+		/* 
+		 * if www is not given then try to determine it from
+		 * description
+		 */
+
+		if (www == NULL) {
+			pkg_get(pkg, PKG_DESC, &desc);
+			regcomp(&preg, "^WWW:[[:space:]]*(.*)$",
+			    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
+			if (regexec(&preg, desc, 2, pmatch, 0) == 0) {
+				size = pmatch[1].rm_eo - pmatch[1].rm_so;
+				www = strndup(&desc[pmatch[1].rm_so], size);
+				pkg_set(pkg, PKG_WWW, www);
+				free(www);
+			} else {
+				pkg_set(pkg, PKG_WWW, "UNKNOWN");
+			}
+			regfree(&preg);
+		}
+
+		if (plist != NULL)
+			ret += ports_parse_plist(pkg, plist, input_path);
+	}
 
 	if (ret != EPKG_OK) {
 		return (EX_IOERR);
 	}
 
-	free(plist);
 
 	if (!old && pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
 	}
 
-	pkg_analyse_files(db, pkg);
+	/*
+         * testing_mode allows updating the local package database
+	 * without any check that the files etc. listed in the meta
+	 * data actually exist on the system.  Inappropriate use of
+	 * testing_mode can really screw things up.
+	 */
+
+	if (!testing_mode)
+		pkg_analyse_files(db, pkg);
 
 	pkg_get(pkg, PKG_ARCH, &arch);
 	if (arch == NULL) {
@@ -233,10 +302,8 @@ exec_register(int argc, char **argv)
 			pkg_suggest_arch(pkg, arch, false);
 	}
 
-	if (input_path != NULL) {
+	if (!testing_mode && input_path != NULL)
 		pkg_copy_tree(pkg, input_path, "/");
-		free(input_path);
-	}
 
 	if (old) {
 		if (pkg_register_old(pkg) != EPKG_OK)

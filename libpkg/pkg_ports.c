@@ -971,7 +971,7 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 }
 
 int
-ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
+ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 {
 	char *buf, *line = NULL, *tmpprefix;
 	int ret = EPKG_OK;
