@@ -58,7 +58,7 @@ struct keyword {
 };
 
 struct plist {
-	char *last_file;
+	char last_file[MAXPATHLEN];
 	const char *stage;
 	char prefix[MAXPATHLEN];
 	struct sbuf *pre_install_buf;
@@ -983,7 +983,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	assert(pkg != NULL);
 	assert(plist != NULL);
 
-	pplist.last_file = NULL;
+	pplist.last_file[0] = '\0';
 	pplist.prefix[0] = '\0';
 	pplist.stage = stage;
 	pplist.pre_install_buf = sbuf_new_auto();
@@ -1058,7 +1058,7 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 			}
 		} else {
 			buf = line;
-			pplist.last_file = buf;
+			strlcpy(pplist.last_file, buf, sizeof(pplist.last_file));
 
 			/* remove spaces at the begining and at the end */
 			while (isspace(buf[0]))

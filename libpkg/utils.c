@@ -195,7 +195,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			sbuf_cat(buf, prefix);
 			break;
 		case 'F':
-			if (plist_file == NULL) {
+			if (plist_file == NULL || plist_file[0] == '\0') {
 				pkg_emit_error("No files defined %%F couldn't "
 				    "be expanded, ignoring %s", in);
 				sbuf_finish(buf);
@@ -205,7 +205,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			sbuf_cat(buf, plist_file);
 			break;
 		case 'f':
-			if (plist_file == NULL) {
+			if (plist_file == NULL || plist_file[0] == '\0') {
 				pkg_emit_error("No files defined %%f couldn't "
 				    "be expanded, ignoring %s", in);
 				sbuf_finish(buf);
@@ -223,7 +223,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			sbuf_cat(buf, cp);
 			break;
 		case 'B':
-			if (plist_file == NULL) {
+			if (plist_file == NULL || plist_file[0] == '\0') {
 				pkg_emit_error("No files defined %%B couldn't "
 				    "be expanded, ignoring %s", in);
 				sbuf_finish(buf);
