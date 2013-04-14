@@ -44,6 +44,7 @@ clean:
 
 regression-test: clean all
 	@${ECHO} "==> Regression Test"
+	@${MAKE} -C tests run
 
 do-release: regression-test
 	@${ECHO} "==> Create New Release (${PKGVERSION})"
