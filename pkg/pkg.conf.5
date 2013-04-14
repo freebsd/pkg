@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 09, 2013
+.Dd April 14, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -159,6 +159,13 @@ to set key/values passed in the environment. Therefore underlying libraries
 like
 .Xr fetch 3
 can be configured (e.g. setting FTP_PROXY and HTTP_PROXY). (default: empty)
+.It Cm NAMESERVER: string
+Bypass name resolution forcing a nameserver
+.It Cm EVENT_PIPE: string
+Send all events to the specified fifo or Unix socket, events will be formatted
+in JSON.
+.It Cm SSH_RESTRICT_DIR: string
+Directory where the ssh subsystem will be restricted to
 .El
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the configuration
