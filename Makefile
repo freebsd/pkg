@@ -44,7 +44,7 @@ clean:
 
 regression-test: clean all
 	@${ECHO} "==> Regression Test"
-	@${MAKE} -C tests run
+	@cd tests && atf-run | atf-report
 
 release: set-tag regression-test make-tarball
 	@${ECHO} "==> Create New Release (${PKGVERSION})"
