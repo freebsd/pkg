@@ -70,7 +70,7 @@ usage_register(void)
 	fprintf(stderr, "usage: pkg register [-Oldt] [-i <input-path>]"
 	                " [-f <plist-file>] -m <metadatadir>\n");
 	fprintf(stderr, "       pkg register [-Oldt] [-i <input_path>]"
-		        " -M <metadatafile>\n\n");
+		        " -M <manifest>\n\n");
 	fprintf(stderr, "For more information see 'pkg help register'.\n");
 }
 
@@ -169,8 +169,9 @@ exec_register(int argc, char **argv)
 	 * compatibility with the way the ports tree works with
 	 * pkg_tools.
 	 * 
-	 * The -M option specifies one filename to read the meta_data
-	 * from, and overrides the use of legacy meta-data inputs.
+	 * The -M option specifies one manifest file to read the
+	 * meta-data from, and overrides the use of legacy meta-data
+	 * inputs.
 	 *
 	 * Dependencies, shlibs, files etc. may be derived by
 	 * analysing the package files (maybe discovered as the
