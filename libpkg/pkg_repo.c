@@ -316,7 +316,7 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 
 		manifest_pos = ftell(psyml);
 		files_pos = ftell(fsyml);
-		pkg_emit_manifest_file(r->pkg, psyml, true, &manifest_digest);
+		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
 		pkg_emit_filelist(r->pkg, fsyml);
 
 		pkg_get(r->pkg, PKG_ORIGIN, &origin);

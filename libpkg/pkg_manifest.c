@@ -928,7 +928,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 }
 
 static int
-emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
+emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 {
 	yaml_document_t doc;
 	char tmpbuf[BUFSIZ];
@@ -1065,29 +1065,31 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 		    pkg_annotation_value(note), PLAIN);
 	}
 
-	if (!compact) {
+	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		map = -1;
-		while (pkg_files(pkg, &file) == EPKG_OK) {
-			const char *pkg_sum = pkg_file_cksum(file);
+		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {
+			while (pkg_files(pkg, &file) == EPKG_OK) {
+				const char *pkg_sum = pkg_file_cksum(file);
 
-			if (pkg_sum == NULL || pkg_sum[0] == '\0')
-				pkg_sum = "-";
+				if (pkg_sum == NULL || pkg_sum[0] == '\0')
+					pkg_sum = "-";
 
-			if (map == -1)
-				manifest_append_map(map, mapping, "files", BLOCK);
-			urlencode(pkg_file_path(file), &tmpsbuf);
-			manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
-		}
+				if (map == -1)
+					manifest_append_map(map, mapping, "files", BLOCK);
+				urlencode(pkg_file_path(file), &tmpsbuf);
+				manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
+			}
 
-		seq = -1;
-		map = -1;
-		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-			const char *try_str;
-			if (map == -1)
-				manifest_append_map(map, mapping, "directories", BLOCK);
-			urlencode(pkg_dir_path(dir), &tmpsbuf);
-			try_str = pkg_dir_try(dir) ? "y" : "n";
-			manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
+			seq = -1;
+			map = -1;
+			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+				const char *try_str;
+				if (map == -1)
+					manifest_append_map(map, mapping, "directories", BLOCK);
+				urlencode(pkg_dir_path(dir), &tmpsbuf);
+				try_str = pkg_dir_try(dir) ? "y" : "n";
+				manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
+			}
 		}
 
 		map = -1;
@@ -1164,7 +1166,7 @@ pkg_emit_manifest_digest(const unsigned char *digest, size_t len, char *hexdiges
 }
 
 int
-pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact, char **pdigest)
+pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags, char **pdigest)
 {
 	yaml_emitter_t emitter;
 	struct pkg_yaml_emitter_data emitter_data;
@@ -1185,7 +1187,7 @@ pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact, char **pdigest)
 	emitter_data.data.file = f;
 	yaml_emitter_set_output(&emitter, yaml_write_file, &emitter_data);
 
-	rc = emit_manifest(pkg, &emitter, compact);
+	rc = emit_manifest(pkg, &emitter, flags);
 
 	if (emitter_data.sign_ctx != NULL) {
 		SHA256_Final(digest, emitter_data.sign_ctx);
@@ -1198,7 +1200,7 @@ pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact, char **pdigest)
 }
 
 int
-pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, bool compact, char **pdigest)
+pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, short flags, char **pdigest)
 {
 	yaml_emitter_t emitter;
 	struct pkg_yaml_emitter_data emitter_data;
@@ -1219,7 +1221,7 @@ pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, bool compact, char **pdi
 	emitter_data.data.sbuf = b;
 	yaml_emitter_set_output(&emitter, yaml_write_buf, &emitter_data);
 
-	rc = emit_manifest(pkg, &emitter, compact);
+	rc = emit_manifest(pkg, &emitter, flags);
 
 	if (emitter_data.sign_ctx != NULL) {
 		SHA256_Final(digest, emitter_data.sign_ctx);
@@ -1233,12 +1235,12 @@ pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, bool compact, char **pdi
 }
 
 int
-pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact, char **pdigest)
+pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
 {
 	struct sbuf *b = sbuf_new_auto();
 	int rc;
 
-	rc = pkg_emit_manifest_sbuf(pkg, b, compact, pdigest);
+	rc = pkg_emit_manifest_sbuf(pkg, b, flags, pdigest);
 
 	if (rc != EPKG_OK) {
 		sbuf_delete(b);

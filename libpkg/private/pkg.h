@@ -406,7 +406,7 @@ int pkg_register_shlibs(struct pkg *pkg);
 
 void pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key);
 
-int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, bool, char **);
+int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
 int pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manifest_key *keys);
 

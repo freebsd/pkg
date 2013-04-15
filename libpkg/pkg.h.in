@@ -788,16 +788,20 @@ int pkg_load_manifest_file(struct pkg *pkg, const char *fpath, struct pkg_manife
 int pkg_manifest_keys_new(struct pkg_manifest_key **k);
 void pkg_manifest_keys_free(struct pkg_manifest_key *k);
 
+#define PKG_MANIFEST_EMIT_COMPACT 0x1
+#define PKG_MANIFEST_EMIT_NOFILES (0x1 << 1)
+
 /**
  * Emit a manifest according to the attributes of pkg.
  * @param buf A pointer which will hold the allocated buffer containing the
  * manifest. To be free'ed.
+ * @param flags Flags for manifest emitting.
  * @param pdigest A pointer that will hold digest of manifest produced, ignored
  * if NULL. To be free'ed if not NULL.
  * @return An error code.
  */
-int pkg_emit_manifest(struct pkg *pkg, char **buf, bool compact, char **pdigest);
-int pkg_emit_manifest_file(struct pkg*, FILE *, bool, char **pdigest);
+int pkg_emit_manifest(struct pkg *pkg, char **buf, short flags, char **pdigest);
+int pkg_emit_manifest_file(struct pkg*, FILE *, short, char **pdigest);
 
 /* pkg_dep */
 const char *pkg_dep_get(struct pkg_dep const * const , const pkg_dep_attr);
