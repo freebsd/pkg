@@ -738,7 +738,7 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, yaml_parser_t *pa
 	node = yaml_document_get_root_node(&doc);
 	if (node != NULL) {
 		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid manifest format");
+			pkg_emit_error("Invalid manifest format in package");
 		} else {
 			retcode = parse_root_node(pkg, keys, node, &doc);
 		}

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 13, 2013
+.Dd April 15, 2013
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd creates a package repository catalogue
 .Sh SYNOPSIS
 .Nm
-.Op Fl fq
+.Op Fl flq
 .Ao Ar repo-path Ac Op Ar rsa-key
 .Sh DESCRIPTION
 .Nm
@@ -69,6 +69,8 @@ Force quiet output
 .It Fl f
 Force a full rebuild of the package catalogue, discarding any previous
 content
+.It Fl l
+Generate list of all files in repo as filesite.txz archive.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

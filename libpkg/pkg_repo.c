@@ -189,7 +189,8 @@ digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry 
 }
 
 int
-pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *data), void *data)
+pkg_create_repo(char *path, bool force, bool filelist,
+		void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
 	struct thd_data thd_data;
@@ -233,10 +234,12 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
-	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_filesite_file);
-	if ((fsyml = fopen(repodb, "w")) == NULL) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
+	if (filelist) {
+		snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_filesite_file);
+		if ((fsyml = fopen(repodb, "w")) == NULL) {
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_digests_file);
 	if ((mandigests = fopen(repodb, "w")) == NULL) {
@@ -260,6 +263,7 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 	thd_data.num_results = 0;
 	thd_data.stop = false;
 	thd_data.fts = fts;
+	thd_data.read_files = filelist;
 	pthread_mutex_init(&thd_data.fts_m, NULL);
 	thd_data.results = NULL;
 	thd_data.thd_finished = 0;
@@ -315,9 +319,13 @@ pkg_create_repo(char *path, bool force, void (progress)(struct pkg *pkg, void *d
 			progress(r->pkg, data);
 
 		manifest_pos = ftell(psyml);
-		files_pos = ftell(fsyml);
 		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
-		pkg_emit_filelist(r->pkg, fsyml);
+		if (filelist) {
+			files_pos = ftell(fsyml);
+			pkg_emit_filelist(r->pkg, fsyml);
+		} else {
+			files_pos = 0;
+		}
 
 		pkg_get(r->pkg, PKG_ORIGIN, &origin);
 
@@ -405,7 +413,7 @@ read_pkg_file(void *data)
 	char fts_path[MAXPATHLEN + 1];
 	char fts_name[MAXPATHLEN + 1];
 	off_t st_size;
-	int fts_info;
+	int fts_info, flags;
 
 	char *ext = NULL;
 	char *pkg_path;
@@ -467,7 +475,12 @@ read_pkg_file(void *data)
 
 		r = calloc(1, sizeof(struct pkg_result));
 
-		if (pkg_open(&r->pkg, fts_accpath, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
+		if (d->read_files)
+			flags = PKG_OPEN_MANIFEST_ONLY;
+		else
+			flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
+
+		if (pkg_open(&r->pkg, fts_accpath, keys, flags) != EPKG_OK) {
 			r->retcode = EPKG_WARN;
 		} else {
 			sha256_file(fts_accpath, r->cksum);
@@ -532,7 +545,7 @@ pack_db(const char *name, const char *archive, char *path,
 }
 
 int
-pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
+pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bool filelist)
 {
 	char repo_path[MAXPATHLEN + 1];
 	char repo_archive[MAXPATHLEN + 1];
@@ -555,11 +568,13 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 			rsa_key_path, password_cb) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_filesite_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_filesite_archive);
-	if (pack_db(repo_filesite_file, repo_archive, repo_path,
-			rsa_key_path, password_cb) != EPKG_OK)
-		return (EPKG_FATAL);
+	if (filelist) {
+		snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_filesite_file);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_filesite_archive);
+		if (pack_db(repo_filesite_file, repo_archive, repo_path,
+				rsa_key_path, password_cb) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_digests_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_digests_archive);
@@ -584,8 +599,10 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path)
 		utimes(repo_archive, ftimes);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_digests_archive);
 		utimes(repo_archive, ftimes);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_filesite_archive);
-		utimes(repo_archive, ftimes);
+		if (filelist) {
+			snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_filesite_archive);
+			utimes(repo_archive, ftimes);
+		}
 	}
 
 	return (EPKG_OK);

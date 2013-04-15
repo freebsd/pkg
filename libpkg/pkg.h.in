@@ -451,6 +451,7 @@ typedef enum {
 } pkg_error_t;
 
 #define PKG_OPEN_MANIFEST_ONLY 0x1
+#define PKG_OPEN_MANIFEST_COMPACT (0x1 << 1)
 
 /**
  * test if pkg is installed and activated.
@@ -884,12 +885,13 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
  * Create a repository database.
  * @param path The path where the repository live.
  * @param force If true, rebuild the repository catalogue from scratch
+ * @param filesite If true, create a list of all files in repo
  * @param callback A function which is called at every step of the process.
  * @param data A pointer which is passed to the callback.
  * @param sum An 65 long char array to receive the sha256 sum
  */
-int pkg_create_repo(char *path, bool force, void (*callback)(struct pkg *, void *), void *);
-int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path);
+int pkg_create_repo(char *path, bool force, bool filelist, void (*callback)(struct pkg *, void *), void *);
+int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path, bool filelist);
 
 /**
  * Test if the EUID has sufficient privilege to carry out some

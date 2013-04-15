@@ -1107,7 +1107,20 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		if (fpath[0] != '+')
 			break;
 
-		if (strcmp(fpath, "+MANIFEST") == 0) {
+		if (!manifest &&
+			(flags & PKG_OPEN_MANIFEST_COMPACT) &&
+			strcmp(fpath, "+COMPACT_MANIFEST") == 0) {
+			manifest = true;
+
+			ret = pkg_parse_manifest_archive(pkg, *a, keys);
+			if (ret != EPKG_OK) {
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+			/* Do not read anything more */
+			break;
+		}
+		if (!manifest && strcmp(fpath, "+MANIFEST") == 0) {
 			manifest = true;
 
 			ret = pkg_parse_manifest_archive(pkg, *a, keys);
@@ -1157,7 +1170,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 	if (!manifest) {
 		retcode = EPKG_FATAL;
-		pkg_emit_error("%s is not a valid package: no +MANIFEST found", path);
+		pkg_emit_error("%s is not a valid package: no manifest found", path);
 	}
 
 	cleanup:

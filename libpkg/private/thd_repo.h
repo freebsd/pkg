@@ -49,6 +49,7 @@ struct thd_data {
 	pthread_mutex_t fts_m;
 	FTS *fts;
 	bool stop;
+	bool read_files;
 
 	/*
 	 * `results_m' protects `results', `thd_finished' and `num_results'
