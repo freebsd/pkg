@@ -13,7 +13,7 @@ version_body() {
 }
 
 atf_init_test_cases() {
-        eval `cat $(atf_get_srcdir)/test_environment`
+        . $(atf_get_srcdir)/test_environment
 
 	atf_add_test_case version
 }

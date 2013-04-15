@@ -76,7 +76,7 @@ pkg_config_defaults_body()
 
 
 atf_init_test_cases() {
-        eval `cat $(atf_get_srcdir)/test_environment`
+        . $(atf_get_srcdir)/test_environment
 
 	atf_add_test_case pkg_no_database
 	atf_add_test_case pkg_version
