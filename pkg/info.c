@@ -79,6 +79,7 @@ exec_info(int argc, char **argv)
 	int i, j;
 	int sign = 0;
 	int sign2 = 0;
+	int open_flags = 0;
 	bool pkg_exists = false;
 	bool origin_search = false;
 	struct pkg_manifest_key *keys = NULL;
@@ -196,7 +197,11 @@ exec_info(int argc, char **argv)
 
 	if (file != NULL) {
 		pkg_manifest_keys_new(&keys);
-		if (pkg_open(&pkg, file, keys, 0) != EPKG_OK) {
+		if ((opt & (INFO_RAW | INFO_FILES |
+				INFO_DIRS)) == 0)
+			open_flags = PKG_OPEN_MANIFEST_COMPACT;
+
+		if (pkg_open(&pkg, file, keys, open_flags) != EPKG_OK) {
 			return (1);
 		}
 		pkg_manifest_keys_free(keys);
