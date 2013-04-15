@@ -169,7 +169,7 @@ absolutepath(const char *src, char *dest, size_t dest_len) {
 
 /* what the pkg needs to load in order to display the requested info */
 int
-info_flags(unsigned int opt)
+info_flags(unsigned int opt, bool remote)
 {
 	int flags = PKG_LOAD_BASIC;
 
@@ -204,12 +204,14 @@ info_flags(unsigned int opt)
 			 PKG_LOAD_SHLIBS_REQUIRED |
 			 PKG_LOAD_SHLIBS_PROVIDED |
 			 PKG_LOAD_ANNOTATIONS     |
-			 PKG_LOAD_DEPS            |
-			 PKG_LOAD_FILES           |
-			 PKG_LOAD_DIRS            |
-			 PKG_LOAD_USERS           |
-			 PKG_LOAD_GROUPS          |
-			 PKG_LOAD_SCRIPTS;
+			 PKG_LOAD_DEPS;
+		if (!remote) {
+			flags |= PKG_LOAD_FILES      |
+				PKG_LOAD_DIRS            |
+				PKG_LOAD_USERS           |
+				PKG_LOAD_GROUPS          |
+				PKG_LOAD_SCRIPTS;
+		}
 	}
 
 	return flags;
@@ -268,9 +270,11 @@ print_info(struct pkg * const pkg, unsigned int options)
 	if (!multirepos_enabled)
 		pkg_config_string(PKG_CONFIG_REPO, &repourl);
 
-	if (options & INFO_RAW) { /* Not for remote packages */
+	if (options & INFO_RAW) {
 		if (pkg_type(pkg) != PKG_REMOTE)
-			pkg_emit_manifest_file(pkg, stdout, false, NULL);
+			pkg_emit_manifest_file(pkg, stdout, 0, NULL);
+		else
+			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_COMPACT, NULL);
 		return;
 	}
 

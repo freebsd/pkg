@@ -329,7 +329,7 @@ exec_info(int argc, char **argv)
 
 		/* end of compatibility hacks */
 
-		query_flags = info_flags(opt);
+		query_flags = info_flags(opt, false);
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			gotone = true;
 			const char *version;

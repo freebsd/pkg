@@ -230,7 +230,7 @@ void usage_ssh(void);
 
 bool query_yesno(const char *msg, ...);
 bool query_tty_yesno(const char *msg, ...);
-int info_flags(unsigned int opt);
+int info_flags(unsigned int opt, bool remote);
 void print_info(struct pkg * const pkg, unsigned int opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
 void print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);

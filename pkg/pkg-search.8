@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 31, 2013
+.Dd April 15, 2013
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -30,7 +30,7 @@
 .Op Fl Q Ar query-modifier
 .Ar pattern
 .Nm
-.Op Fl cDdefgiopqx
+.Op Fl cDdefgiopqRx
 .Op Fl r Ar repo
 .Ar pattern
 .Sh DESCRIPTION
@@ -134,6 +134,8 @@ In multi-repo mode, select only the repository catalogue from
 .Sy repo
 to search.
 By default all known repository catalogues are searched.
+.It Fl R
+Display the full yaml (raw) about the packages matching.
 .It Fl S Ar search
 Specify the field to search the repository catalogue on.
 If unspecified, searches on
