@@ -102,7 +102,7 @@ exec_register(int argc, char **argv)
 	bool		 developer;
 	bool		 legacy        = false;
 	bool		 old           = false;
-	bool		 metadata_only = false;
+	bool		 __unused metadata_only = false;
 	bool		 testing_mode  = false;
 
 	int		 ch;
