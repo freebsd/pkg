@@ -94,17 +94,19 @@ Assume yes when asked for confirmation before fetching packages.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
-.Nm .
+.Nm :
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PKG_DBDIR
+.El
+.Pp
 See
 .Xr pkg.conf 5
-for further description.
-.Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It PKG_DBDIR
-.El
+for additional environment variables that control behaviour.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
+.Xr fetch 3 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
