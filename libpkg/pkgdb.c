@@ -1420,8 +1420,7 @@ pkgdb_it_free(struct pkgdb_it *it)
 		return;
 
 	if (!sqlite3_db_readonly(it->sqlite, "main")) {
-		sql_exec(it->sqlite, "DROP TABLE IF EXISTS autoremove; "
-				"DROP TABLE IF EXISTS delete_job; "
+		sql_exec(it->sqlite, "DROP TABLE IF EXISTS delete_job; "
 				"DROP TABLE IF EXISTS pkgjobs");
 	}
 
@@ -3874,48 +3873,6 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all,
 	sbuf_delete(sql);
 
 	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
-}
-
-struct pkgdb_it *
-pkgdb_query_autoremove(struct pkgdb *db)
-{
-	sqlite3_stmt	*stmt = NULL;
-	int		 weight = 0;
-
-	assert(db != NULL);
-
-	const char	 sql[] = ""
-		"SELECT id, p.origin, name, version, comment, desc, "
-		    "message, arch, maintainer, www, prefix, "
-		    "locked, flatsize "
-		"FROM packages AS p, autoremove "
-		"WHERE id = pkgid ORDER BY weight ASC;";
-
-	sql_exec(db->sqlite, "DROP TABLE IF EXISTS autoremove; "
-		"CREATE TEMPORARY TABLE IF NOT EXISTS autoremove ("
-			"origin TEXT UNIQUE NOT NULL, "
-			"pkgid INTEGER, "
-			"weight INTEGER )");
-
-	do {
-		sql_exec(db->sqlite, ""
-		    "INSERT OR IGNORE INTO autoremove(origin, pkgid, weight) "
-		    "SELECT DISTINCT origin, id, %d "
-		    "FROM packages "
-		    "WHERE automatic = 1 "
-			 "AND origin NOT IN (SELECT DISTINCT deps.origin "
-			 "FROM deps "
-			 "WHERE deps.origin = packages.origin "
-			 "AND package_id NOT IN (SELECT pkgid "
-			 "FROM autoremove));", weight);
-	} while (sqlite3_changes(db->sqlite) != 0);
-
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite);
-		return (NULL);
-	}
-
-	return (pkgdb_it_new(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
 struct pkgdb_it *

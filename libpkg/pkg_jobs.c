@@ -142,22 +142,54 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	return( EPKG_OK);
 }
 
+static bool
+recursive_autoremove(struct pkg *all, struct pkg_jobs *j)
+{
+	struct pkg *p1, *p2, *p3, *p4;
+	struct pkg_dep *dep;
+	char *origin;
+
+	HASH_ITER(hh, all, p1, p2) {
+		if (HASH_COUNT(p1->rdeps) == 0) {
+			HASH_DEL(all, p1);
+			pkg_get(p1, PKG_ORIGIN, &origin);
+			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), p1);
+			HASH_ITER(hh, all, p3, p4) {
+				HASH_FIND_STR(p3->rdeps, origin, dep);
+				if (dep != NULL) {
+					HASH_DEL(p3->rdeps, dep);
+					pkg_dep_free(dep);
+				}
+			}
+			return (true);
+		}
+	}
+
+	return (false);
+}
+
 static int
 jobs_solve_autoremove(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
+	struct pkg *all = NULL;
 	struct pkgdb_it *it;
 	char *origin;
 
-	if ((it = pkgdb_query_autoremove(j->db)) == NULL)
+	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
 		return (EPKG_FATAL);
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
-		HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+		HASH_ADD_KEYPTR(hh, all, origin, strlen(origin), pkg);
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
+
+	while (recursive_autoremove(all, j));
+
+	HASH_FREE(all, pkg, pkg_free);
+
 	j->solved = true;
 
 	return (EPKG_OK);

@@ -66,7 +66,6 @@ int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short flags);
 
 struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
-struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
 struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame, bool all, bool pkgversiontest);
 struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, bool force, bool recursive, bool pkgversiontest);
 struct pkgdb_it *pkgdb_query_fetch(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, unsigned flags);
