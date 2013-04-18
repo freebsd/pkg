@@ -166,6 +166,16 @@ static struct config_entry c[] = {
 #endif
 		"URL giving location of the audit database",
 	},
+	[PKG_CONFIG_VULNXML_SITE] = {
+		PKG_CONFIG_STRING,
+		"VULNXML_SITE",
+#ifdef DEFAULT_VULNXML_URL
+		DEFAULT_VULNXML_URL,
+#else
+		"http://www.vuxml.org/freebsd/vuln.xml.bz2",
+#endif
+		"URL giving location of the vulnxml database",
+	},
 	[PKG_CONFIG_MIRRORS] = {
 		PKG_CONFIG_STRING,
 		"MIRROR_TYPE",
