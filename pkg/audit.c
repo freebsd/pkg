@@ -124,7 +124,7 @@ static size_t audit_entry_first_byte_idx[256];
 void
 usage_audit(void)
 {
-	fprintf(stderr, "usage: pkg audit [-Fq] <pattern>\n\n");
+	fprintf(stderr, "usage: pkg audit [-Fqx] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
