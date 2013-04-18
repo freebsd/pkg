@@ -64,16 +64,20 @@ struct audit_versions {
 	struct audit_versions *next;
 };
 
+struct audit_cve {
+	char *cvename;
+	struct audit_cve *next;
+};
+
 struct audit_entry {
 	char *pkgname;
 	struct audit_versions *versions;
+	struct audit_cve *cve;
 	char *url;
 	char *desc;
 	char *id;
-	SLIST_ENTRY(audit_entry) next;
+	struct audit_entry *next;
 };
-
-SLIST_HEAD(audit_head, audit_entry);
 
 /*
  * The _sorted stuff.
@@ -268,7 +272,7 @@ parse_pattern(struct audit_entry *e, char *pattern, size_t len)
 }
 
 static int
-parse_db_portaudit(const char *path, struct audit_head *h)
+parse_db_portaudit(const char *path, struct audit_entry **h)
 {
 	struct audit_entry *e;
 	struct audit_versions *vers;
@@ -312,7 +316,7 @@ parse_db_portaudit(const char *path, struct audit_head *h)
 			}
 			column_id++;
 		}
-		SLIST_INSERT_HEAD(h, e, next);
+		LL_PREPEND(*h, e);
 	}
 
 	return EPKG_OK;
@@ -329,11 +333,12 @@ enum vulnxml_parse_state {
 	VULNXML_PARSE_RANGE_GE,
 	VULNXML_PARSE_RANGE_LT,
 	VULNXML_PARSE_RANGE_LE,
-	VULNXML_PARSE_RANGE_EQ
+	VULNXML_PARSE_RANGE_EQ,
+	VULNXML_PARSE_CVE
 };
 
 struct vulnxml_userdata {
-	struct audit_head *h;
+	struct audit_entry *h;
 	struct audit_entry *cur_entry;
 	enum vulnxml_parse_state state;
 	int range_num;
@@ -358,6 +363,7 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 				break;
 			}
 		}
+		ud->cur_entry->next = ud->h;
 		ud->npkg = 0;
 		ud->state = VULNXML_PARSE_VULN;
 	}
@@ -369,13 +375,17 @@ vulnxml_start_element(void *data, const char *element, const char **attributes)
 		if (ud->npkg++ > 0) {
 			/* Need to copy entry */
 			tmp_entry = ud->cur_entry;
-			SLIST_INSERT_HEAD(ud->h, tmp_entry, next);
+			LL_PREPEND(ud->h, tmp_entry);
 			ud->cur_entry = calloc(1, sizeof(struct audit_entry));
 			if (ud->cur_entry == NULL)
 				err(1, "calloc(audit_entry)");
 			ud->cur_entry->id = strdup(tmp_entry->id);
 			ud->cur_entry->desc = strdup(tmp_entry->desc);
+			ud->cur_entry->next = ud->h;
 		}
+	}
+	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "cvename") == 0) {
+		ud->state = VULNXML_PARSE_CVE;
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "name") == 0) {
 		ud->state = VULNXML_PARSE_PACKAGE_NAME;
@@ -417,7 +427,7 @@ vulnxml_end_element(void *data, const char *element)
 
 	if (ud->state == VULNXML_PARSE_VULN && strcasecmp(element, "vuln") == 0) {
 		if (ud->cur_entry->pkgname != NULL) {
-			SLIST_INSERT_HEAD(ud->h, ud->cur_entry, next);
+			LL_PREPEND(ud->h, ud->cur_entry);
 		}
 		else {
 			/* Ignore canceled entries */
@@ -428,6 +438,9 @@ vulnxml_end_element(void *data, const char *element)
 		ud->state = VULNXML_PARSE_INIT;
 	}
 	else if (ud->state == VULNXML_PARSE_TOPIC && strcasecmp(element, "topic") == 0) {
+		ud->state = VULNXML_PARSE_VULN;
+	}
+	else if (ud->state == VULNXML_PARSE_CVE && strcasecmp(element, "cvename") == 0) {
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(element, "package") == 0) {
@@ -471,7 +484,9 @@ vulnxml_handle_data(void *data, const char *content, int length)
 {
 	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
 	struct audit_versions *vers;
-	int range_type = -1;
+	struct audit_cve *cve;
+	struct audit_entry *entry;
+	int range_type = -1, i;
 
 	switch(ud->state) {
 	case VULNXML_PARSE_INIT:
@@ -501,6 +516,16 @@ vulnxml_handle_data(void *data, const char *content, int length)
 	case VULNXML_PARSE_RANGE_EQ:
 		range_type = EQ;
 		break;
+	case VULNXML_PARSE_CVE:
+		entry = ud->cur_entry;
+		for (i = 0; i < ud->npkg; i ++, entry = entry->next) {
+			if (entry == NULL)
+				break;
+			cve = malloc(sizeof(struct audit_cve));
+			vulnxml_dup_str(&cve->cvename, content, length);
+			LL_PREPEND(entry->cve, cve);
+		}
+		break;
 	}
 
 	if (range_type > 0) {
@@ -517,7 +542,7 @@ vulnxml_handle_data(void *data, const char *content, int length)
 }
 
 static int
-parse_db_vulnxml(const char *path, struct audit_head *h)
+parse_db_vulnxml(const char *path, struct audit_entry **h)
 {
 	int fd;
 	void *mem;
@@ -544,7 +569,7 @@ parse_db_vulnxml(const char *path, struct audit_head *h)
 	XML_SetUserData(parser, &ud);
 
 	ud.cur_entry = NULL;
-	ud.h = h;
+	ud.h = *h;
 	ud.npkg = 0;
 	ud.range_num = 0;
 	ud.state = VULNXML_PARSE_INIT;
@@ -555,6 +580,8 @@ parse_db_vulnxml(const char *path, struct audit_head *h)
 
 	XML_ParserFree(parser);
 	munmap(mem, st.st_size);
+
+	*h = ud.h;
 
 	return (ret);
 }
@@ -609,14 +636,14 @@ audit_entry_compare(const void *a, const void *b)
  * next distinct prefix.
  */
 static struct audit_entry_sorted *
-preprocess_db(struct audit_head *h)
+preprocess_db(struct audit_entry *h)
 {
 	struct audit_entry *e;
 	struct audit_entry_sorted *ret;
 	size_t i, n, tofill;
 
 	n = 0;
-	SLIST_FOREACH(e, h, next)
+	LL_FOREACH(h, e)
 		n++;
 
 	ret = (struct audit_entry_sorted *)calloc(n + 1, sizeof(ret[0]));
@@ -625,7 +652,7 @@ preprocess_db(struct audit_head *h)
 	bzero((void *)ret, (n + 1) * sizeof(ret[0]));
 
 	n = 0;
-	SLIST_FOREACH(e, h, next) {
+	LL_FOREACH(h, e) {
 		ret[n].e = e;
 		ret[n].noglob_len = str_noglob_len(e->pkgname);
 		ret[n].next_pfx_incr = 1;
@@ -706,6 +733,7 @@ is_vulnerable(struct audit_entry_sorted *a, struct pkg *pkg)
 {
 	struct audit_entry *e;
 	struct audit_versions *vers;
+	struct audit_cve *cve;
 	const char *pkgname;
 	const char *pkgversion;
 	bool res = false, res1, res2;
@@ -747,6 +775,13 @@ is_vulnerable(struct audit_entry_sorted *a, struct pkg *pkg)
 						printf("%s-%s is vulnerable:\n", pkgname, pkgversion);
 						printf("%s\n", e->desc);
 						/* XXX: for vulnxml we should use more clever approach indeed */
+						if (e->cve) {
+							cve = e->cve;
+							while (cve) {
+								printf("CVE: %s\n", cve->cvename);
+								cve = cve->next;
+							}
+						}
 						if (e->url)
 							printf("WWW: %s\n\n", e->url);
 						else if (e->id)
@@ -762,15 +797,16 @@ is_vulnerable(struct audit_entry_sorted *a, struct pkg *pkg)
 }
 
 static void
-free_audit_list(struct audit_head *h)
+free_audit_list(struct audit_entry *h)
 {
 	struct audit_entry *e;
-	struct audit_versions *vers, *tmp;
+	struct audit_versions *vers, *vers_tmp;
+	struct audit_cve *cve, *cve_tmp;
 
-	while (!SLIST_EMPTY(h)) {
-		e = SLIST_FIRST(h);
-		SLIST_REMOVE_HEAD(h, next);
-		LL_FOREACH_SAFE(e->versions, vers, tmp) {
+	while (h) {
+		e = h;
+		h = h->next;
+		LL_FOREACH_SAFE(e->versions, vers, vers_tmp) {
 			if (vers->v1.version) {
 				free(vers->v1.version);
 			}
@@ -779,19 +815,25 @@ free_audit_list(struct audit_head *h)
 			}
 			free(vers);
 		}
+		LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
+			if (cve->cvename)
+				free(cve->cvename);
+			free(cve);
+		}
 		if (e->url)
 			free(e->url);
 		if (e->desc)
 			free(e->desc);
 		if (e->id)
 			free(e->id);
+		free(e);
 	}
 }
 
 int
 exec_audit(int argc, char **argv)
 {
-	struct audit_head h = SLIST_HEAD_INITIALIZER();
+	struct audit_entry *h = NULL;
 	struct audit_entry_sorted *cooked_audit_entries = NULL;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
@@ -885,7 +927,7 @@ exec_audit(int argc, char **argv)
 			ret = EX_DATAERR;
 			goto cleanup;
 		}
-		cooked_audit_entries = preprocess_db(&h);
+		cooked_audit_entries = preprocess_db(h);
 		is_vulnerable(cooked_audit_entries, pkg);
 		goto cleanup;
 	}
@@ -930,7 +972,7 @@ exec_audit(int argc, char **argv)
 		ret = EX_DATAERR;
 		goto cleanup;
 	}
-	cooked_audit_entries = preprocess_db(&h);
+	cooked_audit_entries = preprocess_db(h);
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK)
 		if (is_vulnerable(cooked_audit_entries, pkg))
@@ -946,7 +988,7 @@ cleanup:
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 	pkg_free(pkg);
-	free_audit_list(&h);
+	free_audit_list(h);
 
 	return (ret);
 }
