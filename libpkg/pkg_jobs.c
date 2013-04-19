@@ -46,6 +46,8 @@ static int get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bo
 static struct pkg * get_local_pkg(struct pkg_jobs *j, const char *origin);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force);
+static bool new_pkg_version(struct pkg_jobs *j);
+static int order_pool(struct pkg_jobs *j);
 
 int
 pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
@@ -206,29 +208,38 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
-	bool all = false;
 	bool pkgversiontest = false;
 	unsigned flags = PKG_LOAD_BASIC;
 
-	if ((j->flags & PKG_FLAG_FORCE) != 0)
-		all = true;
+	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != PKG_FLAG_PKG_VERSION_TEST)
+		if (new_pkg_version(j)) {
+			pkg_emit_newpkgversion();
+			goto order;
+		}
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != 0)
 		pkgversiontest = true;
 
-	if ((j->flags & PKG_FLAG_WITH_DEPS) != 0)
-		flags |= PKG_LOAD_DEPS;
-
-	if ((it = pkgdb_query_upgrades(j->db, j->reponame, all,
-	        pkgversiontest)) == NULL)
+	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
-		HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+		/* Do not test we ignore what doesn't exists remotely */
+		get_remote_pkg(j, origin, MATCH_EXACT, false);
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
+
+order:
+	HASH_FREE(j->seen, pkg, pkg_free);
+
+	/* now order the pool */
+	while (HASH_COUNT(j->bulk) > 0) {
+		if (order_pool(j) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
 	j->solved = true;
 
 	return (EPKG_OK);
@@ -355,6 +366,9 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED;
 
 	if (root && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
+		force = true;
+
+	if (j->type == PKG_JOBS_UPGRADE && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
 
 	if (root && (j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
