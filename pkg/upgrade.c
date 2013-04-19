@@ -48,7 +48,7 @@ exec_upgrade(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	const char __unused *reponame = NULL;
+	const char *reponame = NULL;
 	int retcode;
 	int updcode;
 	int ch;
@@ -133,6 +133,9 @@ exec_upgrade(int argc, char **argv)
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK)
 		goto cleanup;
+
+	if (reponame != NULL)
+		pkg_jobs_set_repository(jobs, reponame);
 
 	pkg_jobs_set_flags(jobs, f);
 

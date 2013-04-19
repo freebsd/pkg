@@ -55,7 +55,7 @@ exec_fetch(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkg_jobs	*jobs = NULL;
-	const char	__unused *reponame = NULL;
+	const char	*reponame = NULL;
 	int		 ch;
 	int		 retcode = EX_SOFTWARE;
 	bool		 auto_update;
@@ -157,6 +157,9 @@ exec_fetch(int argc, char **argv)
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db) != EPKG_OK)
 		goto cleanup;
+
+	if (reponame != NULL)
+		pkg_jobs_set_repository(jobs, reponame);
 
 	pkg_jobs_set_flags(jobs, f);
 

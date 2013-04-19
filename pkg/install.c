@@ -56,7 +56,7 @@ exec_install(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	const char __unused *reponame = NULL;
+	const char *reponame = NULL;
 	int retcode;
 	int updcode = EPKG_OK;
 	int ch;
@@ -156,6 +156,9 @@ exec_install(int argc, char **argv)
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		goto cleanup;
+
+	if (reponame != NULL)
+		pkg_jobs_set_repository(jobs, reponame);
 
 	pkg_jobs_set_flags(jobs, f);
 
