@@ -749,6 +749,9 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 	while (pkg_repos(&r) == EPKG_OK) {
 		const char *repo_name = pkg_repo_name(r);
 
+		if (!pkg_repo_enabled(r))
+			continue;
+
 		/* is it already attached? */
 		if (is_attached(db->sqlite, repo_name)) {
 			pkg_emit_error("repository '%s' is already "
