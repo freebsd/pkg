@@ -1417,11 +1417,6 @@ pkgdb_it_free(struct pkgdb_it *it)
 	if (it == NULL)
 		return;
 
-	if (!sqlite3_db_readonly(it->sqlite, "main")) {
-		sql_exec(it->sqlite, "DROP TABLE IF EXISTS delete_job; "
-				"DROP TABLE IF EXISTS pkgjobs");
-	}
-
 	sqlite3_finalize(it->stmt);
 	free(it);
 }
