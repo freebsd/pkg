@@ -72,6 +72,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 
 	(*pkg)->automatic = false;
 	(*pkg)->locked = false;
+	(*pkg)->direct = false;
 	(*pkg)->type = type;
 	(*pkg)->licenselogic = LICENSE_SINGLE;
 
