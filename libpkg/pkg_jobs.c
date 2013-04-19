@@ -209,7 +209,6 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *origin;
 	bool pkgversiontest = false;
-	unsigned flags = PKG_LOAD_BASIC;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
@@ -223,7 +222,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 		return (EPKG_FATAL);
 
-	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		/* Do not test we ignore what doesn't exists remotely */
 		get_remote_pkg(j, origin, MATCH_EXACT, false);
@@ -363,13 +362,22 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	const char *buf1, *buf2;
 	bool force = false;
 	int rc = EPKG_FATAL;
-	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED;
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED;
 
 	if (root && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
 
 	if (j->type == PKG_JOBS_UPGRADE && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
+
+	if (j->type == PKG_JOBS_FETCH) {
+		if ((j->flags & PKG_FLAG_WITH_DEPS) == PKG_FLAG_WITH_DEPS)
+			flags |= PKG_LOAD_DEPS;
+		if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) == PKG_FLAG_UPGRADES_FOR_INSTALLED)
+			flags |= PKG_LOAD_DEPS;
+	} else {
+		flags |= PKG_LOAD_DEPS;
+	}
 
 	if (root && (j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
 		flags |= PKG_LOAD_RDEPS;
@@ -390,12 +398,14 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 			pkg_free(p1);
 		}
 
-		if (!newer_than_local_pkg(j, p, force)) {
-			if (root)
-				pkg_emit_already_installed(p);
-			rc = EPKG_OK;
-			HASH_ADD_KEYPTR(hh, j->seen, origin, strlen(origin), p);
-			continue;
+		if (j->type != PKG_JOBS_FETCH) {
+			if (!newer_than_local_pkg(j, p, force)) {
+				if (root)
+					pkg_emit_already_installed(p);
+				rc = EPKG_OK;
+				HASH_ADD_KEYPTR(hh, j->seen, origin, strlen(origin), p);
+				continue;
+			}
 		}
 
 		rc = EPKG_OK;
@@ -622,24 +632,31 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	char *origin;
 	unsigned flag = PKG_LOAD_BASIC;
 
-	if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) != 0)
-		return (jobs_solve_upgrade(j));
-
 	if ((j->flags & PKG_FLAG_WITH_DEPS) != 0)
 		flag |= PKG_LOAD_DEPS;
 
-	LL_FOREACH(j->patterns, jp) {
-		if ((it = pkgdb_query_fetch(j->db, jp->match, jp->nb,
-		    jp->pattern, j->reponame, flag)) == NULL)
+	if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) == PKG_FLAG_UPGRADES_FOR_INSTALLED) {
+		if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 			return (EPKG_FATAL);
 
-		while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
-			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+			/* Do not test we ignore what doesn't exists remotely */
+			get_remote_pkg(j, origin, MATCH_EXACT, false);
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
+	} else {
+		LL_FOREACH(j->patterns, jp) {
+			if (get_remote_pkg(j, jp->pattern[0], jp->match, true) == EPKG_FATAL)
+				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern[0]);
+		}
 	}
+
+	HASH_FREE(j->seen, pkg, pkg_free);
+	/* No need to order we are just fetching */
+	j->jobs = j->bulk;
+
 	j->solved = true;
 
 	return (EPKG_OK);

@@ -704,7 +704,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 			humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
 
-			printf("\t%s-%s (%" PRId64 "%% of %s)\n", name, newversion, 100 - (100 * oldsize)/pkgsize, size);
+			printf("\t%s-%s (%" PRId64 "%% of %s)\n", name, newversion == NULL ? version : newversion , 100 - (100 * oldsize)/pkgsize, size);
 			break;
 		}
 	}
