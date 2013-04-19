@@ -190,8 +190,7 @@ struct pkg_jobs {
 };
 
 struct job_pattern {
-	char		**pattern;
-	int		nb;
+	char		*pattern;
 	match_t		match;
 	struct job_pattern *next;
 };

@@ -112,8 +112,7 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 
 	for (i = 0; i < argc; i++) {
 		jp = malloc(sizeof(struct job_pattern));
-		jp->pattern = argv + i;
-		jp->nb = 1;
+		jp->pattern = argv[i];
 		jp->match = match;
 		LL_APPEND(j->patterns, jp);
 	}
@@ -199,7 +198,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		recursive = true;
 
 	LL_FOREACH(j->patterns, jp) {
-		if ((it = pkgdb_query(j->db, jp->pattern[0], jp->match)) == NULL)
+		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
@@ -651,8 +650,8 @@ jobs_solve_install(struct pkg_jobs *j)
 		}
 
 	LL_FOREACH(j->patterns, jp) {
-		if (get_remote_pkg(j, jp->pattern[0], jp->match, true) == EPKG_FATAL)
-			pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern[0]);
+		if (get_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
+			pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 	}
 
 	if (HASH_COUNT(j->bulk) == 0)
@@ -715,8 +714,8 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		pkgdb_it_free(it);
 	} else {
 		LL_FOREACH(j->patterns, jp) {
-			if (get_remote_pkg(j, jp->pattern[0], jp->match, true) == EPKG_FATAL)
-				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern[0]);
+			if (get_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
+				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 		}
 	}
 
