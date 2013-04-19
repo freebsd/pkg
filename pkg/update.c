@@ -47,10 +47,9 @@ int
 pkgcli_update(bool force) {
 	const char *packagesite = NULL;
 	const char *repo_name;
-	bool multi_repos = false;
-	struct pkg_config_kv *repokv = NULL;
 	int retcode = EPKG_FATAL;
 	char name[MAXPATHLEN];
+	struct pkg_repo *r = NULL;
 
 	/* Only auto update if the user has write access. */
 	if (pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
@@ -60,46 +59,21 @@ pkgcli_update(bool force) {
 	if (!quiet)
 		printf("Updating repository catalogue\n");
 
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multi_repos);
+	while (pkg_repos(&r) == EPKG_OK) {
+		repo_name = pkg_repo_name(r);
+		packagesite = pkg_repo_url(r);
 
-	/* single repository */
-	if (!multi_repos) {
-		/*
-		 * Single remote database
-		 */
-		
-		pkg_config_string(PKG_CONFIG_REPO, &packagesite);
-		
-		if (packagesite == NULL) {
-			warnx("PACKAGESITE is not defined.");
-			return (1);
-		}
-
-		retcode = pkg_update("repo", packagesite, force);
+		snprintf(name, MAXPATHLEN, "repo-%s", repo_name);
+		retcode = pkg_update(name, packagesite, force);
 		if (retcode == EPKG_UPTODATE) {
 			if (!quiet)
-				printf("Repository catalogue is up-to-date, "
-				       "no need to fetch fresh copy\n");
-			retcode = EPKG_OK;
-		}
-	} else {
-		/* multiple repositories */
-		while (pkg_config_kvlist(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
-			repo_name = pkg_config_kv_get(repokv, PKG_CONFIG_KV_KEY);
-			packagesite = pkg_config_kv_get(repokv, PKG_CONFIG_KV_VALUE);
-
-			snprintf(name, MAXPATHLEN, "repo-%s", repo_name);
-			retcode = pkg_update(name, packagesite, force);
-			if (retcode == EPKG_UPTODATE) {
-				if (!quiet)
-					printf("%s repository catalogue is "
-					       "up-to-date, no need to fetch "
-					       "fresh copy\n", repo_name);
+				printf("%s repository catalogue is "
+				       "up-to-date, no need to fetch "
+				       "fresh copy\n", repo_name);
 				retcode = EPKG_OK;
-			}
-			if (retcode != EPKG_OK)
-				break;
 		}
+		if (retcode != EPKG_OK)
+			break;
 	}
 
 	return (retcode);
