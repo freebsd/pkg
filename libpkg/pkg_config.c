@@ -1128,3 +1128,33 @@ pkg_shutdown(void)
 
 	return (EPKG_OK);
 }
+
+int
+pkg_repos(struct pkg_repo **r)
+{
+	HASH_NEXT(repos, (*r));
+}
+
+const char *
+pkg_repo_url(struct pkg_repo *r)
+{
+	return (r->url);
+}
+
+const char *
+pkg_repo_name(struct pkg_repo *r)
+{
+	return (r->name);
+}
+
+const char *
+pkg_repo_key(struct pkg_repo *r)
+{
+	return (r->pubkey);
+}
+
+bool
+pkg_repo_enabled(struct pkg_repo *r)
+{
+	return (r->enable);
+}

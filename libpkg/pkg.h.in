@@ -73,8 +73,7 @@ struct pkgdb_it;
 
 struct pkg_jobs;
 
-struct pkg_repos;
-struct pkg_repos_entry;
+struct pkg_repo;
 
 struct pkg_config;
 struct pkg_config_kv;
@@ -1352,4 +1351,10 @@ int pkg_from_old(struct pkg *pkg);
 int pkg_to_old(struct pkg *pkg);
 int pkg_register_old(struct pkg *pkg);
 int pkg_sshserve(void);
+
+int pkg_repos(struct pkg_repo **);
+const char *pkg_repo_url(struct pkg_repo *r);
+const char *pkg_repo_name(struct pkg_repo *r);
+const char *pkg_repo_key(struct pkg_repo *r);
+bool pkg_repo_enabled(struct pkg_repo *r);
 #endif
