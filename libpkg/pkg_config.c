@@ -50,7 +50,6 @@
 
 #define ABI_VAR_STRING "${ABI}"
 
-pthread_mutex_t mirror_mtx;
 int eventpipe = -1;
 
 struct config_entry {
@@ -871,8 +870,6 @@ pkg_init(const char *path)
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);
 	}
-
-	pthread_mutex_init(&mirror_mtx, NULL);
 
 	for (i = 0; i < c_size; i++) {
 		conf = malloc(sizeof(struct pkg_config));
