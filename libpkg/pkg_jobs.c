@@ -461,6 +461,9 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		pkg_get(p, PKG_ORIGIN, &origin);
 		HASH_FIND_STR(j->bulk, origin, p1);
+		if (p1 == NULL)
+			HASH_FIND_STR(j->seen, origin, p1);
+
 		if (p1 != NULL) {
 			pkg_get(p1, PKG_VERSION, &buf1);
 			pkg_get(p, PKG_VERSION, &buf2);
