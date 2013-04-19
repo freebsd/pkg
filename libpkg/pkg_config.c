@@ -29,6 +29,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <ctype.h>
+#include <dirent.h>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <err.h>
@@ -60,6 +61,7 @@ struct config_entry {
 };
 
 static char myabi[BUFSIZ];
+static struct pkg_repo *repos = NULL;
 static struct pkg_config *config = NULL;
 static struct pkg_config *config_by_key = NULL;
 
@@ -119,6 +121,12 @@ static struct config_entry c[] = {
 		"ASSUME_ALWAYS_YES",
 		NULL,
 		"Answer 'yes' to all pkg(8) questions",
+	},
+	[PKG_CONFIG_REPOS_DIR] = {
+		PKG_CONFIG_STRING,
+		"REPOS_DIR",
+		PREFIX"/etc/pkg/repos/",
+		"Location of the repositories configuration files"
 	},
 	[PKG_CONFIG_REPOS] = {
 		PKG_CONFIG_KVLIST,
@@ -685,6 +693,161 @@ disable_plugins_if_static(void)
 	return;
 }
 
+static void
+add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
+{
+	yaml_node_pair_t *pair;
+	yaml_char_t *url = NULL, *pubkey = NULL, *enable = NULL;
+	struct pkg_repo *r;
+
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
+		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
+
+		if (key->data.scalar.length <= 0) {
+			++pair;
+			continue;
+		}
+
+		if (val->type != YAML_SCALAR_NODE) {
+			++pair;
+			continue;
+		}
+
+		if (strcmp(key->data.scalar.value, "url") == 0)
+			url = val->data.scalar.value;
+		else if (strcmp(key->data.scalar.value, "pubkey") == 0)
+			pubkey = val->data.scalar.value;
+		else if (strcmp(key->data.scalar.value, "enable") == 0)
+			enable = val->data.scalar.value;
+
+		++pair;
+		continue;
+	}
+
+	if (url == NULL)
+		return;
+
+	r = calloc(1, sizeof(struct pkg_repo));
+	r->name = strdup(repo->data.scalar.value);
+	r->url = strdup(url);
+	if (pubkey != NULL)
+		r->pubkey = strdup(pubkey);
+
+	r->enable = true;
+	if (enable != NULL && (strcasecmp(enable, "off") == 0 ||
+	    strcasecmp(enable, "no") == 0 ||
+	    enable[0] == '0')) {
+		r->enable = false;
+	}
+}
+
+static void
+parse_repo_file(yaml_document_t *doc, yaml_node_t *node)
+{
+	yaml_node_pair_t *pair;
+	struct pkg_repo *r;
+
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
+		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
+
+		if (key->data.scalar.length <= 0) {
+			++pair;
+			continue;
+		}
+
+		if (val->type != YAML_MAPPING_NODE) {
+			++pair;
+			continue;
+		}
+		HASH_FIND_STR(repos, (char *)key->data.scalar.value, r);
+		if (r != NULL) {
+			pkg_emit_error("a repository named '%s' is already configured, skipping...");
+			++pair;
+			continue;
+		}
+
+		add_repo(doc, key, val);
+		++pair;
+	}
+}
+
+static void
+load_repo_file(const char *repofile)
+{
+	yaml_parser_t parser;
+	yaml_document_t doc;
+	yaml_node_t *node;
+	FILE *fp;
+
+	fp = fopen(repofile, "r");
+	if (fp == NULL) {
+		pkg_emit_errno("%s", repofile);
+		return;
+	}
+
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input_file(&parser, fp);
+	yaml_parser_load(&parser, &doc);
+
+	node = yaml_document_get_root_node(&doc);
+	if (node == NULL || node->type != YAML_MAPPING_NODE)
+		pkg_emit_error("Invalide repository format for %s", repofile);
+	else
+		parse_repo_file(&doc, node);
+
+	yaml_document_delete(&doc);
+	yaml_parser_delete(&parser);
+}
+
+static void
+load_repo_files(const char *repodir)
+{
+	struct dirent *ent;
+	DIR *d;
+	char *p;
+	size_t n;
+
+	if ((d = opendir(repodir)) == NULL)
+		return;
+
+	while ((ent = readdir(d))) {
+		if ((n = strlen(ent->d_name)) <= 5)
+			continue;
+		p = &ent->d_name[n - 5];
+		if (strcmp(p, ".conf") == 0)
+			load_repo_file(ent->d_name);
+	}
+	closedir(d);
+}
+
+static void
+load_repositories(void)
+{
+	struct pkg_repo *r;
+	const char *url, *pub, *repodir;
+
+	pkg_config_string(PKG_CONFIG_REPO, &url);
+	pkg_config_string(PKG_CONFIG_REPOKEY, &pub);
+
+	if (url != NULL) {
+		r = calloc(1, sizeof(struct pkg_repo));
+		r->name = strdup("packagesite");
+		r->url = strdup(url);
+		if (pub != 0)
+			r->pubkey = strdup(pub);
+		r->enable = true;
+		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
+	}
+
+	pkg_config_string(PKG_CONFIG_REPOS_DIR, &repodir);
+	if (repodir != NULL)
+		load_repo_files(repodir);
+}
+
 int
 pkg_init(const char *path)
 {
@@ -882,6 +1045,9 @@ pkg_init(const char *path)
 		if (evkey != NULL && evkey[0] != '\0')
 			setenv(evkey, pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE), 1);
 	}
+
+	/* load the repositories */
+	load_repositories();
 
 	/* bypass resolv.conf with specified NAMESERVER if any */
 	pkg_config_string(PKG_CONFIG_NAMESERVER, &nsname);

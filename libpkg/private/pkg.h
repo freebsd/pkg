@@ -258,6 +258,14 @@ struct pkg_fetch {
 	struct http_mirror *http;
 };
 
+struct pkg_repo {
+	char *name;
+	char *url;
+	char *pubkey;
+	bool enable;
+	UT_hash_handle hh;
+};
+
 /* sql helpers */
 
 typedef struct _sql_prstmt {
