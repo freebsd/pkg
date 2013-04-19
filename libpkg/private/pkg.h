@@ -104,6 +104,7 @@ extern int eventpipe;
 
 struct pkg {
 	struct sbuf	*fields[PKG_NUM_FIELDS];
+	bool		 direct;
 	bool		 automatic;
 	bool		 locked;
 	int64_t		 flatsize;
@@ -178,6 +179,8 @@ struct pkg_option {
 
 struct pkg_jobs {
 	struct pkg	*jobs;
+	struct pkg 	*bulk;
+	struct pkg	*seen;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
