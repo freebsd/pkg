@@ -43,7 +43,7 @@
 #include "private/pkgdb.h"
 
 static int get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root);
-static struct pkg * get_local_pkg(struct pkg_jobs *j, const char *origin);
+static struct pkg *get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force);
 static bool new_pkg_version(struct pkg_jobs *j);
@@ -122,6 +122,71 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 }
 
 static int
+populate_local_rdeps(struct pkg_jobs *j, struct pkg *p)
+{
+	struct pkg *pkg;
+	struct pkg_dep *d = NULL;
+	char *origin;
+
+	while (pkg_rdeps(p, &d) == EPKG_OK) {
+		HASH_FIND_STR(j->bulk, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
+		if (pkg != NULL)
+			continue;
+		HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
+		if (pkg != NULL)
+			continue;
+		if ((pkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), PKG_LOAD_BASIC|PKG_LOAD_RDEPS)) == NULL) {
+			pkg_emit_error("Missing reverse dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+			return (EPKG_FATAL);
+		}
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
+		populate_local_rdeps(j, pkg);
+	}
+
+	return (EPKG_OK);
+}
+
+static void
+remove_from_rdeps(struct pkg_jobs *j, const char *origin)
+{
+	struct pkg *pkg, *tmp;
+	struct pkg_dep *d;
+
+	HASH_ITER(hh, j->bulk, pkg, tmp) {
+		HASH_FIND_STR(pkg->rdeps, __DECONST(char *, origin), d);
+		if (d != NULL) {
+			HASH_DEL(pkg->rdeps, d);
+			pkg_dep_free(d);
+		}
+	}
+}
+
+static int
+reverse_order_pool(struct pkg_jobs *j)
+{
+	struct pkg *pkg, *tmp;
+	char *origin;
+	unsigned int nb;
+
+	nb = HASH_COUNT(j->bulk);
+	HASH_ITER(hh, j->bulk, pkg, tmp) {
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		if (HASH_COUNT(pkg->rdeps) == 0) {
+			HASH_DEL(j->bulk, pkg);
+			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+			remove_from_rdeps(j, origin);
+		}
+	}
+
+	if (nb == HASH_COUNT(j->bulk)) {
+		pkg_emit_error("Eror while ordering the jobs probably a circular dependency");
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
 	struct job_pattern *jp = NULL;
@@ -134,17 +199,26 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		recursive = true;
 
 	LL_FOREACH(j->patterns, jp) {
-		if ((it = pkgdb_query_delete(j->db, jp->match, jp->nb,
-		    jp->pattern, recursive)) == NULL)
+		if ((it = pkgdb_query(j->db, jp->pattern[0], jp->match)) == NULL)
 			return (EPKG_FATAL);
 
-		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
-			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+			HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
+			if (recursive)
+				populate_local_rdeps(j, pkg);
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
 	}
+
+	HASH_FREE(j->seen, pkg, pkg_free);
+
+	while (HASH_COUNT(j->bulk) > 0) {
+		if (reverse_order_pool(j) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
 	j->solved = true;
 
 	return( EPKG_OK);
@@ -335,11 +409,11 @@ new_pkg_version(struct pkg_jobs *j)
 	const char *origin = "ports-mgmt/pkg";
 
 	/* determine local pkgng */
-	p = get_local_pkg(j, origin);
+	p = get_local_pkg(j, origin, PKG_LOAD_BASIC);
 
 	if (p == NULL) {
 		origin = "ports-mgmt/pkg-devel";
-		p = get_local_pkg(j, origin);
+		p = get_local_pkg(j, origin, PKG_LOAD_BASIC);
 	}
 
 	/* you are using git version skip */
@@ -429,15 +503,19 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 }
 
 static struct pkg *
-get_local_pkg(struct pkg_jobs *j, const char *origin)
+get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 
+	if (flag == 0) {
+		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED;
+	}
+
 	if ((it = pkgdb_query(j->db, origin, MATCH_EXACT)) == NULL)
 		return (NULL);
 
-	if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED) != EPKG_OK)
+	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
 		pkg = NULL;
 
 	pkgdb_it_free(it);
@@ -457,7 +535,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	int cmp = 0, ret1, ret2;
 
 	pkg_get(rp, PKG_ORIGIN, &origin);
-	lp = get_local_pkg(j, origin);
+	lp = get_local_pkg(j, origin, 0);
 
 	/* obviously yes because local doesn't exists */
 	if (lp == NULL) {
