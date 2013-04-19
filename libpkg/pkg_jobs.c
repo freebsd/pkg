@@ -208,7 +208,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
-	bool pkgversiontest = false;
+	bool __unused pkgversiontest = false;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
@@ -450,12 +450,11 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
 	char *origin, *newversion, *oldversion, *oldsize, *newsize;
 	struct pkg *lp;
-	struct sbuf *sb1, *sb2;
-	struct pkg_option *o = NULL;
-	struct pkg_dep *d = NULL;
-	struct pkg_shlib *s = NULL;
+	struct pkg_option *lo = NULL, *ro = NULL;
+	struct pkg_dep *ld = NULL, *rd = NULL;
+	struct pkg_shlib *ls = NULL, *rs = NULL;
 	bool automatic, locked;
-	int cmp = 0;
+	int cmp = 0, ret1, ret2;
 
 	pkg_get(rp, PKG_ORIGIN, &origin);
 	lp = get_local_pkg(j, origin);
@@ -500,72 +499,62 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	}
 
 	/* compare options */
-	sb1 = sbuf_new_auto();
-	sb2 = sbuf_new_auto();
-
-	while (pkg_options(rp, &o) == EPKG_OK)
-		sbuf_printf(sb1, "%s=%s ", pkg_option_opt(o), pkg_option_value(o));
-
-	o = NULL;
-	while (pkg_options(lp, &o) == EPKG_OK)
-		sbuf_printf(sb2, "%s=%s ", pkg_option_opt(o), pkg_option_value(o));
-
-	sbuf_finish(sb1);
-	sbuf_finish(sb2);
-
-	if (strcmp(sbuf_data(sb1), sbuf_data(sb2)) != 0) {
-		sbuf_delete(sb1);
-		sbuf_delete(sb2);
-		pkg_free(lp);
-		return (true);
+	for (;;) {
+		ret1 = pkg_options(rp, &ro);
+		ret2 = pkg_options(lp, &lo);
+		if (ret1 != ret2) {
+			pkg_free(lp);
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_option_opt(lo), pkg_option_opt(ro)) != 0 ||
+				strcmp(pkg_option_value(lo), pkg_option_value(ro)) != 0) {
+				pkg_free(lp);
+				return (true);
+			}
+		}
+		else
+			break;
 	}
 
+
 	/* What about the direct deps */
-	sbuf_reset(sb1);
-	sbuf_reset(sb2);
-
-	while (pkg_deps(rp, &d) == EPKG_OK)
-		sbuf_cat(sb1, pkg_dep_get(d, PKG_DEP_NAME));
-
-	d = NULL;
-	while (pkg_deps(lp, &d) == EPKG_OK)
-		sbuf_cat(sb2, pkg_dep_get(d, PKG_DEP_NAME));
-
-	sbuf_finish(sb1);
-	sbuf_finish(sb2);
-
-	if (strcmp(sbuf_data(sb1), sbuf_data(sb2)) != 0) {
-		sbuf_delete(sb1);
-		sbuf_delete(sb2);
-		pkg_free(lp);
-
-		return (true);
+	for (;;) {
+		ret1 = pkg_deps(rp, &rd);
+		ret2 = pkg_deps(lp, &ld);
+		if (ret1 != ret2) {
+			pkg_free(lp);
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_dep_get(rd, PKG_DEP_NAME),
+					pkg_dep_get(ld, PKG_DEP_NAME)) != 0) {
+				pkg_free(lp);
+				return (true);
+			}
+		}
+		else
+			break;
 	}
 
 	/* Finish by the shlibs */
-	sbuf_reset(sb1);
-	sbuf_reset(sb2);
-
-	while (pkg_shlibs_required(rp, &s) == EPKG_OK)
-		sbuf_cat(sb1, pkg_shlib_name(s));
-
-	d = NULL;
-	while (pkg_shlibs_required(lp, &s) == EPKG_OK)
-		sbuf_cat(sb2, pkg_shlib_name(s));
-
-	sbuf_finish(sb1);
-	sbuf_finish(sb2);
-
-	if (strcmp(sbuf_data(sb1), sbuf_data(sb2)) != 0) {
-		sbuf_delete(sb1);
-		sbuf_delete(sb2);
-		pkg_free(lp);
-
-		return (true);
+	for (;;) {
+		ret1 = pkg_shlibs_required(rp, &rs);
+		ret2 = pkg_shlibs_required(lp, &ls);
+		if (ret1 != ret2) {
+			pkg_free(lp);
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_shlib_name(rs),
+					pkg_shlib_name(ls)) != 0) {
+				pkg_free(lp);
+				return (true);
+			}
+		}
+		else
+			break;
 	}
-
-	sbuf_delete(sb1);
-	sbuf_delete(sb2);
 
 	return (false);
 }
