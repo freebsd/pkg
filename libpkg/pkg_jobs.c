@@ -149,21 +149,21 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 }
 
 static bool
-recursive_autoremove(struct pkg *all, struct pkg_jobs *j)
+recursive_autoremove(struct pkg_jobs *j)
 {
-	struct pkg *p1, *p2, *p3, *p4;
+	struct pkg *pkg1, *tmp1, *pkg2, *tmp2;
 	struct pkg_dep *dep;
 	char *origin;
 
-	HASH_ITER(hh, all, p1, p2) {
-		if (HASH_COUNT(p1->rdeps) == 0) {
-			HASH_DEL(all, p1);
-			pkg_get(p1, PKG_ORIGIN, &origin);
-			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), p1);
-			HASH_ITER(hh, all, p3, p4) {
-				HASH_FIND_STR(p3->rdeps, origin, dep);
+	HASH_ITER(hh, j->bulk, pkg1, tmp1) {
+		if (HASH_COUNT(pkg1->rdeps) == 0) {
+			HASH_DEL(j->bulk, pkg1);
+			pkg_get(pkg1, PKG_ORIGIN, &origin);
+			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg1);
+			HASH_ITER(hh, j->bulk, pkg2, tmp2) {
+				HASH_FIND_STR(pkg2->rdeps, origin, dep);
 				if (dep != NULL) {
-					HASH_DEL(p3->rdeps, dep);
+					HASH_DEL(pkg2->rdeps, dep);
 					pkg_dep_free(dep);
 				}
 			}
@@ -178,7 +178,6 @@ static int
 jobs_solve_autoremove(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
-	struct pkg *all = NULL;
 	struct pkgdb_it *it;
 	char *origin;
 
@@ -187,14 +186,14 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
-		HASH_ADD_KEYPTR(hh, all, origin, strlen(origin), pkg);
+		HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
 
-	while (recursive_autoremove(all, j));
+	while (recursive_autoremove(j));
 
-	HASH_FREE(all, pkg, pkg_free);
+	HASH_FREE(j->bulk, pkg, pkg_free);
 
 	j->solved = true;
 
