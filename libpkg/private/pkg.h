@@ -195,15 +195,6 @@ struct job_pattern {
 	struct job_pattern *next;
 };
 
-/*struct pkg_jobs_node {
-	struct pkg	*pkg;
-	size_t		 nrefs;
-	struct pkg_jobs_node	**parents;
-	size_t		 parents_len;
-	size_t		 parents_cap;
-	LIST_ENTRY(pkg_jobs_node) entries;
-}; */
-
 struct pkg_user {
 	char		 name[MAXLOGNAME+1];
 	char		 uidstr[8192];/* taken from pw_util.c */
