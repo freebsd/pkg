@@ -740,6 +740,7 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 	    enable[0] == '0')) {
 		r->enable = false;
 	}
+	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 }
 
 static void
@@ -784,7 +785,7 @@ load_repo_file(const char *repofile)
 
 	fp = fopen(repofile, "r");
 	if (fp == NULL) {
-		pkg_emit_errno("%s", repofile);
+		pkg_emit_errno("fopen", repofile);
 		return;
 	}
 
@@ -809,6 +810,7 @@ load_repo_files(const char *repodir)
 	DIR *d;
 	char *p;
 	size_t n;
+	char path[MAXPATHLEN];
 
 	if ((d = opendir(repodir)) == NULL)
 		return;
@@ -817,8 +819,10 @@ load_repo_files(const char *repodir)
 		if ((n = strlen(ent->d_name)) <= 5)
 			continue;
 		p = &ent->d_name[n - 5];
-		if (strcmp(p, ".conf") == 0)
-			load_repo_file(ent->d_name);
+		if (strcmp(p, ".conf") == 0) {
+			snprintf(path, MAXPATHLEN, "%s/%s", repodir, ent->d_name);
+			load_repo_file(path);
+		}
 	}
 	closedir(d);
 }

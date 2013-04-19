@@ -259,6 +259,7 @@ main(int argc, char **argv)
 	struct plugcmd *c;
 	struct pkg_plugin *p = NULL;
 	struct pkg_config *conf = NULL;
+	struct pkg_repo *repo = NULL;
 	const char *configname = NULL;
 	const char *conffile = NULL;
 	int64_t integer = 0;
@@ -469,6 +470,15 @@ main(int argc, char **argv)
 				}
 			}
 		}
+
+		printf("\nRepositories:\n");
+		while (pkg_repos(&repo) == EPKG_OK) {
+			printf("  %s:\n    url: %s\n    key: %s\n    enabled: %s\n",
+			    pkg_repo_name(repo), pkg_repo_url(repo),
+			    pkg_repo_key(repo) == NULL ? "" : pkg_repo_key(repo),
+			    pkg_repo_enabled(repo) ? "yes" : "no");
+		}
+
 		pkg_shutdown();
 		pkg_plugins_shutdown();
 		exit(EX_OK);
