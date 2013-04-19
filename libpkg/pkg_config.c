@@ -103,12 +103,6 @@ static struct config_entry c[] = {
 		NULL,
 		"Public key for authenticating packages from the chosen repository",
 	},
-	[PKG_CONFIG_MULTIREPOS] = {
-		PKG_CONFIG_BOOL,
-		"PKG_MULTIREPOS",
-		NULL,
-		"Activate experimental multi-repository support",
-	},
 	[PKG_CONFIG_HANDLE_RC_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
 		"HANDLE_RC_SCRIPTS",
@@ -126,12 +120,6 @@ static struct config_entry c[] = {
 		"REPOS_DIR",
 		PREFIX"/etc/pkg/repos/",
 		"Location of the repositories configuration files"
-	},
-	[PKG_CONFIG_REPOS] = {
-		PKG_CONFIG_KVLIST,
-		"REPOS",
-		NULL,
-		"List of repositories used when multi-repository support enabled",
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
 		PKG_CONFIG_STRING,
@@ -1161,4 +1149,13 @@ bool
 pkg_repo_enabled(struct pkg_repo *r)
 {
 	return (r->enable);
+}
+
+struct pkg_repo *
+pkg_repo_find(const char *reponame)
+{
+	struct pkg_repo *r;
+
+	HASH_FIND_STR(repos, __DECONST(char *, reponame), r);
+	return (r);
 }

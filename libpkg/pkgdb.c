@@ -209,35 +209,17 @@ static const char *
 pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 {
 	const char	*reponame = NULL;
-	bool		 multirepos_enabled = false;
 
 	assert(db->type == PKGDB_REMOTE);
 
-	/* Working on multiple repositories */
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
-	if (multirepos_enabled) {
-		if (repo != NULL) {
-			if (!is_attached(db->sqlite, repo)) {
-				pkg_emit_error("repository '%s' does not exist",
-				    repo);
-				return (NULL);
-			}
-
-			reponame = repo;
-		} else {
-			/* default repository in multi-repos is 'default' */
-			reponame = "remote-default";
-		}
-	} else {
-		if (repo != NULL && strcmp(repo, "repo") &&
-		    strcmp(repo, "remote")) {
-			pkg_emit_error("PKG_MULTIREPOS is not enabled. "
-			    "-r flag not supported.", repo);
+	if (repo != NULL) {
+		if (!is_attached(db->sqlite, repo)) {
+			pkg_emit_error("repository '%s' does not exist",
+			    repo);
 			return (NULL);
 		}
-		/* default repository in single-repo is 'remote' */
-		reponame = "remote";
+
+		reponame = repo;
 	}
 
 	return (reponame);
@@ -761,18 +743,11 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 {
 	int		 ret;
 	char		 remotepath[MAXPATHLEN + 1];
-	struct pkg_config_kv *repokv = NULL;
-	const char	*multirepo_warning =
-	    "\t/!\\		WARNING WARNING WARNING		    /!\\\n"
-	    "\t/!\\	   WORKING ON MULTIPLE REPOSITORIES	    /!\\\n"
-	    "\t/!\\  THIS FEATURE IS STILL CONSIDERED EXPERIMENTAL  /!\\\n"
-	    "\t/!\\		 YOU HAVE BEEN WARNED		    /!\\\n\n";
+	struct pkg_repo	 *r = NULL;
+	char		 remotename[MAXPATHLEN];
 
-	fprintf(stderr, "%s", multirepo_warning);
-
-	while (pkg_config_kvlist(PKG_CONFIG_REPOS, &repokv) == EPKG_OK) {
-		const char *repo_name = pkg_config_kv_get(repokv,
-		    PKG_CONFIG_KV_KEY);
+	while (pkg_repos(&r) == EPKG_OK) {
+		const char *repo_name = pkg_repo_name(r);
 
 		/* is it already attached? */
 		if (is_attached(db->sqlite, repo_name)) {
@@ -790,14 +765,15 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			return (EPKG_ENODB);
 		}
 
-		ret = sql_exec(db->sqlite, "ATTACH '%s' AS 'remote-%s';",
+		ret = sql_exec(db->sqlite, "ATTACH '%s' AS 'repo-%s';",
 		    remotepath, repo_name);
 		if (ret != EPKG_OK) {
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
 
-		switch (pkgdb_repo_check_version(db, repo_name)) {
+		snprintf(remotename, sizeof(remotename), "repo-%s", repo_name);
+		switch (pkgdb_repo_check_version(db, remotename)) {
 		case EPKG_FATAL:
 			pkgdb_close(db);
 			return (EPKG_FATAL);
@@ -812,13 +788,6 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			break;
 		default:
 			break;
-		}
-
-		/* check if default repository exists */
-		if (!is_attached(db->sqlite, "remote-default")) {
-			pkg_emit_error("no default repository defined");
-			pkgdb_close(db);
-			return (EPKG_FATAL);
 		}
 	}
 	return (EPKG_OK);
@@ -886,7 +855,7 @@ file_mode_insecure(const char *path, bool install_as_user)
 
 static int
 database_access(unsigned mode, const char* dbdir, const char *dbname,
-		bool multirepo)
+		bool remote)
 {
 	char		 dbpath[MAXPATHLEN + 1];
 	int		 retval;
@@ -894,7 +863,7 @@ database_access(unsigned mode, const char* dbdir, const char *dbname,
 	bool		 install_as_user;
 
 	if (dbname != NULL) {
-		if (multirepo)
+		if (remote)
 			snprintf(dbpath, sizeof(dbpath), "%s/repo-%s.sqlite",
 				 dbdir, dbname);
 		else
@@ -954,7 +923,6 @@ database_access(unsigned mode, const char* dbdir, const char *dbname,
 int
 pkgdb_access(unsigned mode, unsigned database)
 {
-	bool		 multirepos_enabled;
 	const char	*dbdir;
 	int		 retval = EPKG_OK;
 
@@ -980,8 +948,6 @@ pkgdb_access(unsigned mode, unsigned database)
 
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
 		return (EPKG_FATAL); /* Config borked */
-
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
 	if ((mode & ~(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE))
 	    != 0)
@@ -1010,23 +976,12 @@ pkgdb_access(unsigned mode, unsigned database)
 			return (retval);
 	}
 
-	/* Test repo.sqlite if required, or test all the repo DBs 
-	   if in multirepos_enabled mode */
+	if ((database & PKGDB_DB_REPO) != 0) {
+		struct pkg_repo	*r = NULL;
+		const char	*reponame;
 
-	if (!multirepos_enabled && (database & PKGDB_DB_REPO) != 0) {
-		retval = database_access(mode, dbdir, "repo", false);
-		if (retval != EPKG_OK)
-			return (retval);
-	}
-
-	if (multirepos_enabled && (database & PKGDB_DB_REPO) != 0) {
-		struct pkg_config_kv	*all_repos = NULL;
-		const char		*reponame;
-
-		while (pkg_config_kvlist(PKG_CONFIG_REPOS, &all_repos) ==
-		       EPKG_OK) {
-			reponame = pkg_config_kv_get(all_repos,
-					 PKG_CONFIG_KV_KEY);
+		while (pkg_repos(&r) == EPKG_OK) {
+			reponame = pkg_repo_name(r);
 
 			retval = database_access(mode, dbdir, reponame, true);
 			if (retval != EPKG_OK)
@@ -1042,9 +997,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	struct pkgdb	*db = NULL;
 	bool		 reopen = false;
 	char		 localpath[MAXPATHLEN + 1];
-	char		 remotepath[MAXPATHLEN + 1];
 	const char	*dbdir = NULL;
-	bool		 multirepos_enabled = false;
 	bool		 create = false;
 	bool		 createdir = false;
 	int		 ret;
@@ -1134,38 +1087,8 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 		}
 	}
 
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-	if (type == PKGDB_REMOTE) {
-		if (multirepos_enabled)
-			pkgdb_open_multirepos(dbdir, db);
-		else {
-			/*
-			 * Working on a single remote repository
-			 */
-
-			snprintf(remotepath, sizeof(remotepath),
-			    "%s/repo.sqlite", dbdir);
-
-			if (access(remotepath, R_OK) != 0) {
-				pkg_emit_noremotedb("repo");
-				pkgdb_close(db);
-				return (EPKG_ENODB);
-			}
-
-			ret = sql_exec(db->sqlite, "ATTACH '%q' AS 'remote';",
-			    remotepath);
-			if (ret != EPKG_OK) {
-				pkgdb_close(db);
-				return (EPKG_FATAL);
-			}
-
-			ret = pkgdb_repo_check_version(db, "remote");
-			if (ret != EPKG_OK) {
-				pkgdb_close(db);
-				return (ret);
-			}
-		}
-	}
+	if (type == PKGDB_REMOTE)
+		pkgdb_open_multirepos(dbdir, db);
 
 	*db_p = db;
 	return (EPKG_OK);
@@ -3269,7 +3192,6 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 {
 	sqlite3_stmt	*stmt = NULL;
 	struct sbuf	*sql = NULL;
-	bool		 multirepos_enabled = false;
 	const char	*reponame = NULL;
 	const char	*comp = NULL;
 	int		 ret;
@@ -3283,20 +3205,17 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	assert(db != NULL);
 	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
 
-	if ((reponame = pkgdb_get_reponame(db, repo)) == NULL)
-		return (NULL);
+	(reponame = pkgdb_get_reponame(db, repo));
 
 	sql = sbuf_new_auto();
 	comp = pkgdb_get_pattern_query(pattern, match);
 	if (comp && comp[0])
 		strlcat(basesql, comp, sizeof(basesql));
 
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
 	/*
 	 * Working on multiple remote repositories
 	 */
-	if (multirepos_enabled && !strcmp(reponame, "remote-default")) {
+	if (reponame == NULL) {
 		/* duplicate the query via UNION for all the attached
 		 * databases */
 
@@ -3394,7 +3313,6 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 {
 	sqlite3_stmt	*stmt = NULL;
 	struct sbuf	*sql = NULL;
-	bool		 multirepos_enabled = false;
 	int		 ret;
 	const char	*basesql = ""
 		"SELECT id, origin, name, version, comment, "
@@ -3415,44 +3333,30 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 	sql = sbuf_new_auto();
 	sbuf_cat(sql, basesql);
 
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
+	/* add the dbname column to the SELECT */
+	sbuf_cat(sql, ", dbname FROM (");
 
-	if (multirepos_enabled) {
-		/*
-		 * Working on multiple remote repositories
-		 */
-
-		/* add the dbname column to the SELECT */
-		sbuf_cat(sql, ", dbname FROM (");
-
-		if (reponame != NULL) {
-			if (is_attached(db->sqlite, reponame)) {
-				sbuf_printf(sql, multireposql, reponame,
-				    reponame);
-			} else {
-				pkg_emit_error("Repository %s can't be loaded",
-				    reponame);
-				sbuf_delete(sql);
-				return (NULL);
-			}
+	if (reponame != NULL) {
+		if (is_attached(db->sqlite, reponame)) {
+			sbuf_printf(sql, multireposql, reponame,
+					reponame);
 		} else {
-			/* test on all the attached databases */
-			if (sql_on_all_attached_db(db->sqlite, sql,
-			    multireposql, " UNION ALL ") != EPKG_OK) {
-				sbuf_delete(sql);
-				return (NULL);
-			}
+			pkg_emit_error("Repository %s can't be loaded",
+					reponame);
+			sbuf_delete(sql);
+			return (NULL);
 		}
-
-		/* close the UNIONs and build the search query */
-		sbuf_cat(sql, ") WHERE ");
 	} else {
-		/*
-		 * Working on a single remote repository
-		 */
-
-		sbuf_cat(sql, ", 'remote' AS dbname FROM remote.packages WHERE ");
+		/* test on all the attached databases */
+		if (sql_on_all_attached_db(db->sqlite, sql,
+		    multireposql, " UNION ALL ") != EPKG_OK) {
+			sbuf_delete(sql);
+			return (NULL);
+		}
 	}
+
+	/* close the UNIONs and build the search query */
+	sbuf_cat(sql, ") WHERE ");
 
 	pkgdb_search_build_search_query(sql, match, field, sort);
 	sbuf_cat(sql, ";");

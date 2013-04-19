@@ -58,7 +58,6 @@ pkg_repo_fetch(struct pkg *pkg)
 	char *path = NULL;
 	const char *packagesite = NULL;
 	const char *cachedir = NULL;
-	bool multirepos_enabled = false;
 	int retcode = EPKG_OK;
 	const char *repopath, *repourl, *sum, *name, *version;
 	struct pkg_fetch *f;
@@ -93,13 +92,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	 * For a single attached database the repository URL should be
 	 * defined by PACKAGESITE.
 	 */
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
-	if (multirepos_enabled) {
-		packagesite = repourl;
-	} else {
-		pkg_config_string(PKG_CONFIG_REPO, &packagesite);
-	}
+	packagesite = repourl;
 
 	if (packagesite == NULL || packagesite[0] == '\0') {
 		pkg_emit_error("PACKAGESITE is not defined");

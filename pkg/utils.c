@@ -230,7 +230,6 @@ print_info(struct pkg * const pkg, unsigned int options)
 	struct pkg_shlib    *shlib  = NULL;
 	struct pkg_note	    *note   = NULL;
 	struct pkg_user	    *user   = NULL;
-	bool multirepos_enabled = false;
 	bool print_tag = false;
 	bool show_locks = false;
 	char size[7];
@@ -244,8 +243,6 @@ print_info(struct pkg * const pkg, unsigned int options)
 	bool locked;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
-
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
 	pkg_get(pkg,
 		PKG_NAME,          &name,
@@ -266,9 +263,6 @@ print_info(struct pkg * const pkg, unsigned int options)
 		PKG_ARCH,	   &arch,
 		PKG_REPOPATH,	   &repopath,
 		PKG_LOCKED,	   &locked);
-
-	if (!multirepos_enabled)
-		pkg_config_string(PKG_CONFIG_REPO, &repourl);
 
 	if (options & INFO_RAW) {
 		if (pkg_type(pkg) != PKG_REMOTE)

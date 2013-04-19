@@ -266,23 +266,17 @@ pkg_version(struct pkg const *const pkg)
 static void
 pkg_set_repourl(struct pkg *pkg, const char *str)
 {
-	struct pkg_config_kv *rkv = NULL;
+	struct pkg_repo *r;
 
-	while (pkg_config_kvlist(PKG_CONFIG_REPOS, &rkv) == EPKG_OK) {
-		const char *key = pkg_config_kv_get(rkv, PKG_CONFIG_KV_KEY);
-		const char *val = pkg_config_kv_get(rkv, PKG_CONFIG_KV_VALUE);
-		if (strcmp(str, key) == 0)
-			pkg_set(pkg, PKG_REPOURL, val);
-	}
+	r = pkg_repo_find(str);
+	if (r != 0)
+		pkg_set(pkg, PKG_REPOURL, pkg_repo_url(r));
 }
 
 static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
-	bool multirepos_enabled = false;
 	int attr;
-
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr < PKG_NUM_FIELDS) {
@@ -303,7 +297,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				continue;
 			}
 
-			if (attr == PKG_REPONAME && multirepos_enabled)
+			if (attr == PKG_REPONAME)
 				pkg_set_repourl(pkg, str);
 
 			sbuf_set(sbuf, str);

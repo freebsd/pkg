@@ -314,11 +314,9 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_CACHEDIR,
 	PKG_CONFIG_PORTSDIR,
 	PKG_CONFIG_REPOKEY,
-	PKG_CONFIG_MULTIREPOS,
 	PKG_CONFIG_HANDLE_RC_SCRIPTS,
 	PKG_CONFIG_ASSUME_ALWAYS_YES,
 	PKG_CONFIG_REPOS_DIR,
-	PKG_CONFIG_REPOS,
 	PKG_CONFIG_PLIST_KEYWORDS_DIR,
 	PKG_CONFIG_SYSLOG,
 	PKG_CONFIG_AUTODEPS,
@@ -1357,4 +1355,5 @@ const char *pkg_repo_url(struct pkg_repo *r);
 const char *pkg_repo_name(struct pkg_repo *r);
 const char *pkg_repo_key(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
+struct pkg_repo *pkg_repo_find(const char *reponame);
 #endif
