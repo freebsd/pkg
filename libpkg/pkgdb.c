@@ -3320,7 +3320,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 	const char	*basesql = ""
 		"SELECT id, origin, name, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
-		"licenselogic, flatsize AS newflatsize, pkgsize, "
+		"licenselogic, flatsize, pkgsize, "
 		"cksum, path AS repopath ";
 	const char	*multireposql = ""
 		"SELECT id, origin, name, version, comment, "
