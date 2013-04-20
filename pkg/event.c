@@ -164,7 +164,7 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		pkg_get(ev->e_upgrade_begin.pkg, PKG_NAME, &name,
-		    PKG_VERSION, &version, PKG_NEWVERSION, &newversion);
+		    PKG_VERSION, &newversion, PKG_OLD_VERSION, &version);
 		nbdone++;
 		if (nbactions > 0)
 			printf("[%d/%d] ", nbdone, nbactions);
