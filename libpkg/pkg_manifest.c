@@ -99,7 +99,7 @@ static struct manifest_key {
 	{ "options", PKG_OPTIONS, YAML_MAPPING_NODE, parse_mapping},
 	{ "origin", PKG_ORIGIN, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "path", PKG_REPOPATH, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "pkgsize", PKG_NEW_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
+	{ "pkgsize", PKG_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
 	{ "prefix", PKG_PREFIX, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "scripts", PKG_SCRIPTS, YAML_MAPPING_NODE, parse_mapping},
 	{ "shlibs_provided", PKG_SHLIBS_PROVIDED, YAML_SEQUENCE_NODE, parse_sequence},
@@ -974,7 +974,7 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
 	    PKG_VERSION, &version, PKG_INFOS, &infos, PKG_REPOPATH, &repopath,
-	    PKG_CKSUM, &pkgsum, PKG_NEW_PKGSIZE, &pkgsize);
+	    PKG_CKSUM, &pkgsum, PKG_PKGSIZE, &pkgsize);
 	manifest_append_kv(mapping, "name", name, PLAIN);
 	manifest_append_kv(mapping, "version", version, PLAIN);
 	manifest_append_kv(mapping, "origin", pkgorigin, PLAIN);

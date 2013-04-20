@@ -528,7 +528,7 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 static bool
 newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
-	char *origin, *newversion, *oldversion, *oldsize, *newsize;
+	char *origin, *newversion, *oldversion, *oldsize;
 	struct pkg *lp;
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
@@ -555,9 +555,9 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		return (false);
 	}
 
-	pkg_get(rp, PKG_VERSION, &newversion, PKG_FLATSIZE, &newsize);
-	pkg_set(rp, PKG_VERSION, oldversion, PKG_NEWVERSION, newversion,
-	    PKG_NEW_FLATSIZE, newsize, PKG_FLATSIZE, oldsize,
+	pkg_get(rp, PKG_VERSION, &newversion);
+	pkg_set(rp, PKG_OLD_VERSION, oldversion,
+	    PKG_OLD_FLATSIZE, oldsize,
 	    PKG_AUTOMATIC, (int64_t)automatic);
 
 	if (force) {
@@ -855,14 +855,14 @@ pkg_jobs_install(struct pkg_jobs *j)
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
-		const char *pkgorigin, *pkgrepopath, *newversion, *origin;
+		const char *pkgorigin, *pkgrepopath, *oldversion, *origin;
 		bool automatic, locked;
 		flags = 0;
 
 		pkg_get(p, PKG_ORIGIN, &pkgorigin, PKG_REPOPATH, &pkgrepopath,
-		    PKG_NEWVERSION, &newversion, PKG_AUTOMATIC, &automatic);
+		    PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
 
-		if (newversion != NULL) {
+		if (oldversion != NULL) {
 			pkg = NULL;
 			it = pkgdb_query(j->db, pkgorigin, MATCH_EXACT);
 			if (it != NULL) {
@@ -931,7 +931,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		snprintf(path, sizeof(path), "%s/%s", cachedir, pkgrepopath);
 
 		pkg_open(&newpkg, path, keys, 0);
-		if (newversion != NULL) {
+		if (oldversion != NULL) {
 			pkg_emit_upgrade_begin(p);
 		} else {
 			pkg_emit_install_begin(newpkg);
@@ -966,7 +966,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 			goto cleanup;
 		}
 
-		if (newversion != NULL)
+		if (oldversion != NULL)
 			pkg_emit_upgrade_finished(p);
 		else
 			pkg_emit_install_finished(newpkg);
@@ -1078,7 +1078,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	/* check for available size to fetch */
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		int64_t pkgsize;
-		pkg_get(p, PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
+		pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
 		snprintf(cachedpath, MAXPATHLEN, "%s/%s", cachedir, repopath);
 		if (stat(cachedpath, &st) == -1)
 			dlsize += pkgsize;

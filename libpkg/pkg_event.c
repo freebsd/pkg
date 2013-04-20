@@ -204,8 +204,8 @@ pipeevent(struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_BEGIN:
 		pkg_get(ev->e_upgrade_begin.pkg,
 		    PKG_NAME, &name,
-		    PKG_VERSION, &version,
-		    PKG_NEWVERSION, &newversion);
+		    PKG_OLD_VERSION, &version,
+		    PKG_VERSION, &newversion);
 
 		sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_BEGIN\", "
 		    "\"data\": { "
@@ -220,8 +220,8 @@ pipeevent(struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_FINISHED:
 		pkg_get(ev->e_upgrade_finished.pkg,
 		    PKG_NAME, &name,
-		    PKG_VERSION, &version,
-		    PKG_NEWVERSION, &newversion);
+		    PKG_OLD_VERSION, &version,
+		    PKG_VERSION, &newversion);
 
 		sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
 		    "\"data\": { "
@@ -592,8 +592,8 @@ pkg_emit_upgrade_finished(struct pkg *p)
 		int num_actions = sizeof(actions) / sizeof(*actions);
 		int action;
 
-		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version,
-		    PKG_NEWVERSION, &newversion);
+		pkg_get(p, PKG_NAME, &name, PKG_OLD_VERSION, &version,
+		    PKG_VERSION, &newversion);
 		action = pkg_version_cmp(version, newversion) + 1;
 		if (action >= 0 && action < num_actions)
 			syslog(LOG_NOTICE, "%s %s: %s -> %s ",

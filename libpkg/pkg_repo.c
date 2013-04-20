@@ -479,7 +479,7 @@ read_pkg_file(void *data)
 			sha256_file(fts_accpath, r->cksum);
 			pkg_set(r->pkg, PKG_CKSUM, r->cksum,
 			    PKG_REPOPATH, pkg_path,
-			    PKG_NEW_PKGSIZE, st_size);
+			    PKG_PKGSIZE, st_size);
 		}
 
 

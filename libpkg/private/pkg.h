@@ -108,8 +108,8 @@ struct pkg {
 	bool		 automatic;
 	bool		 locked;
 	int64_t		 flatsize;
-	int64_t		 new_flatsize;
-	int64_t		 new_pkgsize;
+	int64_t		 old_flatsize;
+	int64_t		 pkgsize;
 	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
 	struct pkg_license	*licenses;
 	struct pkg_category	*categories;

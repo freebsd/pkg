@@ -56,7 +56,7 @@ static struct _fields {
 	[PKG_INFOS] = {"information", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
 	[PKG_REPOPATH] = {"repopath", PKG_REMOTE, 0},
 	[PKG_CKSUM] = {"checksum", PKG_REMOTE, 0},
-	[PKG_NEWVERSION] = {"newversion", PKG_REMOTE, 1},
+	[PKG_OLD_VERSION] = {"oldversion", PKG_REMOTE, 1},
 	[PKG_REPONAME] = {"reponame", PKG_REMOTE, 1},
 	[PKG_REPOURL] = {"repourl", PKG_REMOTE, 1},
 	[PKG_DIGEST] = {"manifestdigest", PKG_REMOTE, 1}
@@ -94,8 +94,8 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 		sbuf_reset(pkg->scripts[i]);
 
 	pkg->flatsize = 0;
-	pkg->new_flatsize = 0;
-	pkg->new_pkgsize = 0;
+	pkg->old_flatsize = 0;
+	pkg->pkgsize = 0;
 	pkg->time = 0;
 	pkg->flags = 0;
 	pkg->automatic = false;
@@ -196,11 +196,11 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 		case PKG_FLATSIZE:
 			*va_arg(ap, int64_t *) = pkg->flatsize;
 			break;
-		case PKG_NEW_FLATSIZE:
-			*va_arg(ap, int64_t *) = pkg->new_flatsize;
+		case PKG_OLD_FLATSIZE:
+			*va_arg(ap, int64_t *) = pkg->old_flatsize;
 			break;
-		case PKG_NEW_PKGSIZE:
-			*va_arg(ap, int64_t *) = pkg->new_pkgsize;
+		case PKG_PKGSIZE:
+			*va_arg(ap, int64_t *) = pkg->pkgsize;
 			break;
 		case PKG_LICENSE_LOGIC:
 			*va_arg(ap, lic_t *) = pkg->licenselogic;
@@ -316,11 +316,11 @@ pkg_vset(struct pkg *pkg, va_list ap)
 		case PKG_FLATSIZE:
 			pkg->flatsize = va_arg(ap, int64_t);
 			break;
-		case PKG_NEW_FLATSIZE:
-			pkg->new_flatsize = va_arg(ap, int64_t);
+		case PKG_OLD_FLATSIZE:
+			pkg->old_flatsize = va_arg(ap, int64_t);
 			break;
-		case PKG_NEW_PKGSIZE:
-			pkg->new_pkgsize = va_arg(ap, int64_t);
+		case PKG_PKGSIZE:
+			pkg->pkgsize = va_arg(ap, int64_t);
 			break;
 		case PKG_TIME:
 			pkg->time = va_arg(ap, int64_t);

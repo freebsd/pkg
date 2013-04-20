@@ -238,7 +238,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 	const char *repopath;
 	const char *tab;
 	unsigned opt;
-	int64_t flatsize, newflatsize, newpkgsize;
+	int64_t flatsize, oldflatsize, pkgsize;
 	lic_t licenselogic;
 	bool locked;
 	int cout = 0;		/* Number of characters output */
@@ -256,8 +256,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 		PKG_COMMENT,       &comment,
 		PKG_DESC,          &desc,
 		PKG_FLATSIZE,      &flatsize,
-		PKG_NEW_FLATSIZE,  &newflatsize,
-		PKG_NEW_PKGSIZE,   &newpkgsize,
+		PKG_OLD_FLATSIZE,  &oldflatsize,
+		PKG_PKGSIZE,   &pkgsize,
 		PKG_LICENSE_LOGIC, &licenselogic,
 		PKG_MESSAGE,       &message,
 		PKG_ARCH,	   &arch,
@@ -446,15 +446,9 @@ print_info(struct pkg * const pkg, unsigned int options)
 			}
 			break;
 		case INFO_FLATSIZE:
-			if (pkg_type(pkg) == PKG_INSTALLED ||
-			    pkg_type(pkg) == PKG_FILE)
-				humanize_number(size, sizeof(size),
-						flatsize,"B",
-						HN_AUTOSCALE, 0);
-			else
-				humanize_number(size, sizeof(size),
-						newflatsize,"B",
-						HN_AUTOSCALE, 0);
+			humanize_number(size, sizeof(size),
+			    flatsize,"B",
+			    HN_AUTOSCALE, 0);
 
 			if (print_tag)
 				printf("%-15s: ", "Flat size");
@@ -463,7 +457,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 		case INFO_PKGSIZE: /* Remote pkgs only */
 			if (pkg_type(pkg) == PKG_REMOTE) {
 				humanize_number(size, sizeof(size),
-						newpkgsize,"B",
+						pkgsize,"B",
 						HN_AUTOSCALE, 0);
 				if (print_tag)
 					printf("%-15s: ", "Pkg size");
@@ -591,9 +585,9 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	struct pkg *pkg = NULL;
 	char path[MAXPATHLEN];
 	struct stat st;
-	const char *name, *version, *newversion, *pkgrepopath, *cachedir;
+	const char *name, *version, *oldversion, *pkgrepopath, *cachedir;
 	int64_t dlsize, oldsize, newsize;
-	int64_t flatsize, newflatsize, pkgsize;
+	int64_t flatsize, oldflatsize, pkgsize;
 	bool locked;
 	char size[7];
 	va_list ap;
@@ -606,15 +600,15 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	va_end(ap);
 
 	dlsize = oldsize = newsize = 0;
-	flatsize = newflatsize = pkgsize = 0;
-	name = version = newversion = NULL;
+	flatsize = oldflatsize = pkgsize = 0;
+	name = version = oldversion = NULL;
 	
 	pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir);
 
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
+		pkg_get(pkg, PKG_OLD_VERSION, &oldversion, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
-		    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize,
+		    PKG_OLD_FLATSIZE, &oldflatsize, PKG_PKGSIZE, &pkgsize,
 		    PKG_REPOPATH, &pkgrepopath, PKG_LOCKED, &locked);
 
 		if (locked) {
@@ -625,16 +619,16 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			case PKG_JOBS_UPGRADE:
 				/* If it's a new install, then it
 				 * cannot have been locked yet. */
-				if (newversion != NULL) {
-					switch(pkg_version_cmp(version, newversion)) {
+				if (oldversion != NULL) {
+					switch(pkg_version_cmp(oldversion, version)) {
 					case -1:
-						printf("and may not be upgraded to version %s\n", newversion);
+						printf("and may not be upgraded to version %s\n", version);
 						break;
 					case 0:
 						printf("and may not be reinstalled\n");
 						break;
 					case 1:
-						printf("and may not be downgraded to version %s\n", newversion);
+						printf("and may not be downgraded to version %s\n", version);
 						break;
 					}
 					continue;
@@ -661,20 +655,20 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				   occur later and the file will be fetched from remote again */
 				dlsize += pkgsize;
 
-			if (newversion != NULL) {
-				switch (pkg_version_cmp(version, newversion)) {
+			if (oldversion != NULL) {
+				switch (pkg_version_cmp(oldversion, version)) {
 				case 1:
-					printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
+					printf("\tDowngrading %s: %s -> %s\n", name, oldversion, version);
 					break;
 				case 0:
 					printf("\tReinstalling %s-%s\n", name, version);
 					break;
 				case -1:
-					printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+					printf("\tUpgrading %s: %s -> %s\n", name, oldversion, version);
 					break;
 				}
-				oldsize += flatsize;
-				newsize += newflatsize;
+				oldsize += oldflatsize;
+				newsize += flatsize;
 			} else {
 				newsize += flatsize;
 				printf("\tInstalling %s: %s\n", name, version);
@@ -682,8 +676,8 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			break;
 		case PKG_JOBS_DEINSTALL:
 		case PKG_JOBS_AUTOREMOVE:
-			oldsize += flatsize;
-			newsize += newflatsize;
+			oldsize += oldflatsize;
+			newsize += flatsize;
 			
 			printf("\t%s-%s\n", name, version);
 			break;
@@ -698,7 +692,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 			humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
 
-			printf("\t%s-%s (%" PRId64 "%% of %s)\n", name, newversion == NULL ? version : newversion , 100 - (100 * oldsize)/pkgsize, size);
+			printf("\t%s-%s (%" PRId64 "%% of %s)\n", name, version, 100 - (100 * oldsize)/pkgsize, size);
 			break;
 		}
 	}

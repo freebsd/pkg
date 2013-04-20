@@ -478,7 +478,7 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 			    PKG_MAINTAINER, &maintainer, PKG_WWW, &www,
 			    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
 			    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
-			    PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
+			    PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
 
 try_again:
 	if ((ret = run_prepared_statement(PKG, origin, name, version,
