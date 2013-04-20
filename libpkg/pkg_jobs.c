@@ -664,7 +664,6 @@ jobs_solve_install(struct pkg_jobs *j)
 	HASH_ITER(hh, j->bulk, pkg, tmp) {
 		d = NULL;
 		while (pkg_deps(pkg, &d) == EPKG_OK) {
-			printf("%s\n", pkg_dep_get(d, PKG_DEP_NAME));
 			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
 			if (p != NULL) {
 				HASH_DEL(pkg->deps, d);
