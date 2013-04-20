@@ -272,7 +272,6 @@ typedef enum {
 } pkg_list;
 
 typedef enum {
-	ALL,
 	SRV,
 	HTTP,
 	NOMIRROR,
