@@ -50,12 +50,14 @@ remote_add_indexes(const char *reponame)
 {
 	struct pkgdb *db = NULL;
 	int ret = EPKG_FATAL;
+	char repo[MAXPATHLEN];
 
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		goto cleanup;
 
+	snprintf(repo, sizeof(repo), "repo-%s", reponame);
 	/* Initialize the remote remote */
-	if (pkgdb_remote_init(db, reponame) != EPKG_OK)
+	if (pkgdb_remote_init(db, repo) != EPKG_OK)
 		goto cleanup;
 
 	ret = EPKG_OK;
