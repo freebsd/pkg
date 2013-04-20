@@ -30,7 +30,7 @@ struct _elf_corres {
 	const char *string;
 };
 
-struct _elf_corres mach_corres[] = {
+static const struct _elf_corres mach_corres[] = {
 	{ EM_386, "x86" },
 	{ EM_X86_64, "x86" },
 	{ EM_ARM, "arm" },
@@ -42,19 +42,19 @@ struct _elf_corres mach_corres[] = {
 	{ -1, NULL },
 };
 
-struct _elf_corres wordsize_corres[] = {
+static const struct _elf_corres wordsize_corres[] = {
 	{ ELFCLASS32, "32" },
 	{ ELFCLASS64, "64" },
 	{ -1, NULL},
 };
 
-struct _elf_corres endian_corres[] = {
+static const struct _elf_corres endian_corres[] = {
 	{ ELFDATA2MSB, "eb" },
 	{ ELFDATA2LSB, "el" },
 	{ -1, NULL}
 };
 
-struct _elf_corres os_corres[] = {
+static const struct _elf_corres os_corres[] = {
 	{ ELFOSABI_FREEBSD, "freebsd" },
 	{ -1, NULL }
 };

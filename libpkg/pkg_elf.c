@@ -428,7 +428,7 @@ pkg_register_shlibs(struct pkg *pkg)
 }
 
 static const char *
-elf_corres_to_string(struct _elf_corres* m, int e)
+elf_corres_to_string(const struct _elf_corres* m, int e)
 {
 	int i = 0;
 
