@@ -252,12 +252,6 @@ struct http_mirror {
 	struct http_mirror *next;
 };
 
-struct pkg_fetch {
-	FILE *ssh;
-	struct dns_srvinfo *srv;
-	struct http_mirror *http;
-};
-
 struct pkg_repo {
 	char *name;
 	char *url;
