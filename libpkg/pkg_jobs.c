@@ -644,7 +644,7 @@ jobs_solve_install(struct pkg_jobs *j)
 {
 	struct job_pattern *jp = NULL;
 	struct pkg *pkg, *tmp, *p;
-	struct pkg_dep *d;
+	struct pkg_dep *d, *dtmp;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
@@ -663,7 +663,7 @@ jobs_solve_install(struct pkg_jobs *j)
 	/* remove everything seen from deps */
 	HASH_ITER(hh, j->bulk, pkg, tmp) {
 		d = NULL;
-		while (pkg_deps(pkg, &d) == EPKG_OK) {
+		HASH_ITER(hh, pkg->deps, d, dtmp) {
 			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
 			if (p != NULL) {
 				HASH_DEL(pkg->deps, d);
