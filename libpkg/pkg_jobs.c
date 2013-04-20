@@ -279,18 +279,16 @@ static int
 jobs_solve_upgrade(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
+	struct pkg *p, *tmp;
 	struct pkgdb_it *it;
 	char *origin;
-	bool __unused pkgversiontest = false;
+	struct pkg_dep *d, *dtmp;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
 			pkg_emit_newpkgversion();
 			goto order;
 		}
-
-	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != 0)
-		pkgversiontest = true;
 
 	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 		return (EPKG_FATAL);
@@ -303,6 +301,17 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	}
 	pkgdb_it_free(it);
 
+	/* remove everything seen from deps */
+	HASH_ITER(hh, j->bulk, pkg, tmp) {
+		d = NULL;
+		HASH_ITER(hh, pkg->deps, d, dtmp) {
+			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
+			if (p != NULL) {
+				HASH_DEL(pkg->deps, d);
+				pkg_dep_free(d);
+			}
+		}
+	}
 order:
 	HASH_FREE(j->seen, pkg, pkg_free);
 
