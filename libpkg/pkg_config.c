@@ -702,11 +702,11 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 			continue;
 		}
 
-		if (strcmp(key->data.scalar.value, "url") == 0)
+		if (strcasecmp(key->data.scalar.value, "url") == 0)
 			url = val->data.scalar.value;
-		else if (strcmp(key->data.scalar.value, "pubkey") == 0)
+		else if (strcasecmp(key->data.scalar.value, "pubkey") == 0)
 			pubkey = val->data.scalar.value;
-		else if (strcmp(key->data.scalar.value, "enable") == 0)
+		else if (strcasecmp(key->data.scalar.value, "enable") == 0)
 			enable = val->data.scalar.value;
 
 		++pair;
