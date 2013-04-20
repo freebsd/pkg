@@ -723,9 +723,11 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 		r->pubkey = strdup(pubkey);
 
 	r->enable = true;
-	if (enable != NULL && (strcasecmp(enable, "off") == 0 ||
-	    strcasecmp(enable, "no") == 0 ||
-	    enable[0] == '0')) {
+	if (enable != NULL &&
+	    (strcasecmp(enable, "off") == 0 ||
+	     strcasecmp(enable, "no") == 0 ||
+	     strcasecmp(enable, "true") == 0 ||
+	     enable[0] == '0')) {
 		r->enable = false;
 	}
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
