@@ -59,7 +59,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	const char *packagesite = NULL;
 	const char *cachedir = NULL;
 	int retcode = EPKG_OK;
-	const char *repopath, *repourl, *sum, *name, *version;
+	const char *repopath, *sum, *name, *version, *reponame;
 	struct pkg_fetch *f;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
@@ -67,7 +67,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	pkg_get(pkg, PKG_REPOPATH, &repopath, PKG_REPOURL, &repourl,
+	pkg_get(pkg, PKG_REPOPATH, &repopath, PKG_REPONAME, &reponame,
 	    PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
 
 	snprintf(dest, sizeof(dest), "%s/%s", cachedir, repopath);
@@ -92,7 +92,9 @@ pkg_repo_fetch(struct pkg *pkg)
 	 * For a single attached database the repository URL should be
 	 * defined by PACKAGESITE.
 	 */
-	packagesite = repourl;
+	if (strncmp(reponame, "repo-", 5) == 0)
+		reponame += 5;
+	packagesite = pkg_repo_url(pkg_repo_find(reponame));
 
 	if (packagesite == NULL || packagesite[0] == '\0') {
 		pkg_emit_error("PACKAGESITE is not defined");
