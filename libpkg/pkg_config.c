@@ -726,7 +726,7 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 	if (enable != NULL &&
 	    (strcasecmp(enable, "off") == 0 ||
 	     strcasecmp(enable, "no") == 0 ||
-	     strcasecmp(enable, "true") == 0 ||
+	     strcasecmp(enable, "false") == 0 ||
 	     enable[0] == '0')) {
 		r->enable = false;
 	}
