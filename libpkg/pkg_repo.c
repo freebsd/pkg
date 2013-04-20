@@ -60,7 +60,6 @@ pkg_repo_fetch(struct pkg *pkg)
 	const char *cachedir = NULL;
 	int retcode = EPKG_OK;
 	const char *repopath, *sum, *name, *version, *reponame;
-	struct pkg_fetch *f;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
@@ -107,9 +106,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	else
 		snprintf(url, sizeof(url), "%s/%s", packagesite, repopath);
 
-	pkg_fetch_new(&f);
 	retcode = pkg_fetch_file(url, dest, 0);
-	pkg_fetch_free(f);
 	fetched = 1;
 
 	if (retcode != EPKG_OK)
