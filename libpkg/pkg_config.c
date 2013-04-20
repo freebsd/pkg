@@ -1040,6 +1040,8 @@ pkg_init(const char *path)
 	/* load the repositories */
 	load_repositories();
 
+	setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
+
 	/* bypass resolv.conf with specified NAMESERVER if any */
 	pkg_config_string(PKG_CONFIG_NAMESERVER, &nsname);
 	if (nsname != NULL)
@@ -1106,6 +1108,19 @@ pkg_configs(struct pkg_config **conf)
 	HASH_NEXT(config, (*conf));
 }
 
+static void
+pkg_repo_free(struct pkg_repo *r)
+{
+	free(r->url);
+	free(r->name);
+	free(r->pubkey);
+	if (r->ssh != NULL) {
+		fprintf(r->ssh, "quit\n");
+		pclose(r->ssh);
+	}
+	free(r);
+}
+
 int
 pkg_shutdown(void)
 {
@@ -1115,6 +1130,7 @@ pkg_shutdown(void)
 	}
 
 	HASH_FREE(config, pkg_config, pkg_config_free);
+	HASH_FREE(repos, pkg_repo, pkg_repo_free);
 
 	config_by_key = NULL;
 

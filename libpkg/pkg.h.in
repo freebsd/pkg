@@ -271,6 +271,13 @@ typedef enum {
 	PKG_ANNOTATIONS,
 } pkg_list;
 
+typedef enum {
+	ALL,
+	SRV,
+	HTTP,
+	NOMIRROR,
+} mirror_t;
+
 /**
  * Determine the type of a pkg_script.
  */
@@ -1102,7 +1109,7 @@ int pkg_create_staged(const char *, pkg_formats, const char *, const char *,
  * Download the latest repo db file and checks its signature if any
  * @param force Always download the repo catalogue
  */
-int pkg_update(const char *name, const char *packagesite, bool force);
+int pkg_update(struct pkg_repo *repo, bool force);
 
 /**
  * Get statistics information from the package database(s)
@@ -1173,7 +1180,7 @@ int pkg_version_cmp(const char * const , const char * const);
  * Fetch a file.
  * @return An error code.
  */
-int pkg_fetch_file(const char *url, const char *dest, time_t t);
+int pkg_fetch_file(struct pkg_repo *repo, const char *url, const char *dest, time_t t);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, const char *, const char *);

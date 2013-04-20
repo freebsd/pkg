@@ -262,6 +262,12 @@ struct pkg_repo {
 	char *name;
 	char *url;
 	char *pubkey;
+	mirror_t mirror_type;
+	union {
+		struct dns_srvinfo *srv;
+		struct http_mirror *http;
+	};
+	FILE *ssh;
 	bool enable;
 	UT_hash_handle hh;
 };
@@ -298,9 +304,7 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_UPGRADE (1<<1)
 #define PKG_DELETE_NOSCRIPT (1<<2)
 
-int pkg_fetch_new(struct pkg_fetch **f);
-int pkg_fetch_free(struct pkg_fetch *f);
-int pkg_fetch_file_to_fd(struct pkg_fetch *f, const char *url, int dest, time_t *t);
+int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t);
 int pkg_repo_fetch(struct pkg *pkg);
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);

@@ -157,7 +157,7 @@ fetch_and_extract(const char *src, const char *dest, bool xml)
 	if (stat(dest, &st) != -1) {
 		t = st.st_mtime;
 	}
-	switch (pkg_fetch_file(src, tmp, t)) {
+	switch (pkg_fetch_file(NULL, src, tmp, t)) {
 	case EPKG_OK:
 		break;
 	case EPKG_UPTODATE:

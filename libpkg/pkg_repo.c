@@ -60,6 +60,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	const char *cachedir = NULL;
 	int retcode = EPKG_OK;
 	const char *repopath, *sum, *name, *version, *reponame;
+	struct pkg_repo *repo;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
@@ -93,7 +94,8 @@ pkg_repo_fetch(struct pkg *pkg)
 	 */
 	if (strncmp(reponame, "repo-", 5) == 0)
 		reponame += 5;
-	packagesite = pkg_repo_url(pkg_repo_find(reponame));
+	repo = pkg_repo_find(reponame);
+	packagesite = pkg_repo_url(repo);
 
 	if (packagesite == NULL || packagesite[0] == '\0') {
 		pkg_emit_error("PACKAGESITE is not defined");
@@ -106,7 +108,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	else
 		snprintf(url, sizeof(url), "%s/%s", packagesite, repopath);
 
-	retcode = pkg_fetch_file(url, dest, 0);
+	retcode = pkg_fetch_file(repo, url, dest, 0);
 	fetched = 1;
 
 	if (retcode != EPKG_OK)

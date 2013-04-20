@@ -118,7 +118,7 @@ exec_add(int argc, char **argv)
 	for (i = 0; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
 			snprintf(path, sizeof(path), "./%s", basename(argv[i]));
-			if ((retcode = pkg_fetch_file(argv[i], path, 0)) != EPKG_OK)
+			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0)) != EPKG_OK)
 				break;
 
 			file = path;

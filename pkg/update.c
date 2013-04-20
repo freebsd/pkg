@@ -45,10 +45,7 @@
  */
 int
 pkgcli_update(bool force) {
-	const char *packagesite = NULL;
-	const char *repo_name;
 	int retcode = EPKG_FATAL;
-	char name[MAXPATHLEN];
 	struct pkg_repo *r = NULL;
 
 	/* Only auto update if the user has write access. */
@@ -60,16 +57,13 @@ pkgcli_update(bool force) {
 		printf("Updating repository catalogue\n");
 
 	while (pkg_repos(&r) == EPKG_OK) {
-		repo_name = pkg_repo_name(r);
-		packagesite = pkg_repo_url(r);
 
-		snprintf(name, MAXPATHLEN, "repo-%s", repo_name);
-		retcode = pkg_update(name, packagesite, force);
+		retcode = pkg_update(r, force);
 		if (retcode == EPKG_UPTODATE) {
 			if (!quiet)
 				printf("%s repository catalogue is "
 				       "up-to-date, no need to fetch "
-				       "fresh copy\n", repo_name);
+				       "fresh copy\n", pkg_repo_name(r));
 				retcode = EPKG_OK;
 		}
 		if (retcode != EPKG_OK)

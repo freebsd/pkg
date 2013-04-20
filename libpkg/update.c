@@ -68,15 +68,14 @@ remote_add_indexes(const char *reponame)
 
 /* Return opened file descriptor */
 static int
-repo_fetch_remote_tmp(const char *reponame, const char *filename, const char *extension, time_t *t, int *rc)
+repo_fetch_remote_tmp(struct pkg_repo *repo, const char *filename, const char *extension, time_t *t, int *rc)
 {
 	char url[MAXPATHLEN];
 	char tmp[MAXPATHLEN];
 	int fd;
 	const char *tmpdir;
-	struct pkg_fetch *f;
 
-	snprintf(url, MAXPATHLEN, "%s/%s.%s", reponame, filename, extension);
+	snprintf(url, MAXPATHLEN, "%s/%s.%s", pkg_repo_url(repo), filename, extension);
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
@@ -92,12 +91,10 @@ repo_fetch_remote_tmp(const char *reponame, const char *filename, const char *ex
 	}
 	(void)unlink(tmp);
 
-	pkg_fetch_new(&f);
-	if ((*rc = pkg_fetch_file_to_fd(f, url, fd, t)) != EPKG_OK) {
+	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t)) != EPKG_OK) {
 		close(fd);
 		fd = -1;
 	}
-	pkg_fetch_free(f);
 
 	return (fd);
 }
@@ -188,7 +185,7 @@ cleanup:
 }
 
 static FILE *
-repo_fetch_remote_extract_tmp(const char *packagesite, const char *filename,
+repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		const char *extension, time_t *t, int *rc, const char *archive_file)
 {
 	int fd, dest_fd;
@@ -196,7 +193,7 @@ repo_fetch_remote_extract_tmp(const char *packagesite, const char *filename,
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
 
-	fd = repo_fetch_remote_tmp(packagesite, filename, extension, t, rc);
+	fd = repo_fetch_remote_tmp(repo, filename, extension, t, rc);
 	if (fd == -1) {
 		return (NULL);
 	}
@@ -237,7 +234,7 @@ cleanup:
 }
 
 static int
-pkg_update_full(const char *repofile, const char *name, const char *packagesite, time_t *mtime)
+pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 {
 	char repofile_unchecked[MAXPATHLEN];
 	int fd = -1, rc = EPKG_FATAL;
@@ -263,7 +260,7 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 		goto cleanup;
 	}
 
-	if ((fd = repo_fetch_remote_tmp(packagesite, repo_db_archive, "txz", mtime, &rc)) == -1) {
+	if ((fd = repo_fetch_remote_tmp(repo, repo_db_archive, "txz", mtime, &rc)) == -1) {
 		goto cleanup;
 	}
 
@@ -327,7 +324,7 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 		goto cleanup;
 	}
 
-	sqlite3_bind_text(stmt, 1, packagesite, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 1, pkg_repo_name(repo), -1, SQLITE_STATIC);
 
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
 		ERROR_SQLITE(sqlite);
@@ -341,14 +338,13 @@ pkg_update_full(const char *repofile, const char *name, const char *packagesite,
 	sqlite3_close(sqlite);
 	sqlite3_shutdown();
 
-
 	if (rename(repofile_unchecked, repofile) != 0) {
 		pkg_emit_errno("rename", "");
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
 
-	if ((rc = remote_add_indexes(name)) != EPKG_OK)
+	if ((rc = remote_add_indexes(repofile)) != EPKG_OK)
 		goto cleanup;
 	rc = EPKG_OK;
 
@@ -431,7 +427,7 @@ pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char 
 }
 
 static int
-pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
+pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 {
 	FILE *fmanifest = NULL, *fdigests = NULL;
 	sqlite3 *sqlite = NULL;
@@ -475,13 +471,13 @@ pkg_update_incremental(const char *name, const char *packagesite, time_t *mtime)
 		goto cleanup;
 	}
 
-	fdigests = repo_fetch_remote_extract_tmp(packagesite,
+	fdigests = repo_fetch_remote_extract_tmp(repo,
 			repo_digests_archive, "txz", &local_t,
 			&rc, repo_digests_file);
 	if (fdigests == NULL)
 		goto cleanup;
 	local_t = *mtime;
-	fmanifest = repo_fetch_remote_extract_tmp(packagesite,
+	fmanifest = repo_fetch_remote_extract_tmp(repo,
 			repo_packagesite_archive, "txz", &local_t,
 			&rc, repo_packagesite_file);
 	if (fmanifest == NULL)
@@ -604,7 +600,7 @@ cleanup:
 }
 
 int
-pkg_update(const char *name, const char *packagesite, bool force)
+pkg_update(struct pkg_repo *repo, bool force)
 {
 	char repofile[MAXPATHLEN];
 
@@ -623,7 +619,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 		return (EPKG_FATAL);
 	}
 
-	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, name);
+	snprintf(repofile, sizeof(repofile), "%s/repo-%s.sqlite", dbdir, pkg_repo_name(repo));
 
 	if (stat(repofile, &st) != -1)
 		t = force ? 0 : st.st_mtime;
@@ -650,7 +646,7 @@ pkg_update(const char *name, const char *packagesite, bool force)
 
 	if (t != 0) {
 		req = sqlite3_mprintf("select count(key) from repodata "
-		    "WHERE key = \"packagesite\" and value = '%q'", packagesite);
+		    "WHERE key = \"packagesite\" and value = '%q'", pkg_repo_url(repo));
 
 		if (get_pragma(sqlite, req, &res) != EPKG_OK) {
 			sqlite3_free(req);
@@ -668,11 +664,11 @@ pkg_update(const char *name, const char *packagesite, bool force)
 			sqlite3_close(sqlite);
 	}
 	if (can_increment)
-		res = pkg_update_incremental(repofile, packagesite, &t);
+		res = pkg_update_incremental(repofile, repo, &t);
 
 	if (!can_increment || res != EPKG_OK) {
 		/* Still try to do full upgrade */
-		if ((res = pkg_update_full(repofile, name, packagesite, &t)) != EPKG_OK)
+		if ((res = pkg_update_full(repofile, repo, &t)) != EPKG_OK)
 			goto cleanup;
 	}
 
