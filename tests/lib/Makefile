@@ -20,4 +20,4 @@ run: ${PROG}
 	@env LD_LIBRARY_PATH=${.CURDIR}/../../libpkg ./${PROG} ${test}
 .endfor
 
-.include <bsd.prog.mk>
+.include "../bsd.tests.mk"
