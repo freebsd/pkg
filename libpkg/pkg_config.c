@@ -684,7 +684,7 @@ static void
 add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 {
 	yaml_node_pair_t *pair;
-	yaml_char_t *url = NULL, *pubkey = NULL, *enable = NULL;
+	yaml_char_t *url = NULL, *pubkey = NULL, *enable = NULL, *mirror_type = NULL;
 	struct pkg_repo *r;
 
 	pair = node->data.mapping.pairs.start;
@@ -708,6 +708,8 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 			pubkey = val->data.scalar.value;
 		else if (strcasecmp(key->data.scalar.value, "enable") == 0)
 			enable = val->data.scalar.value;
+		else if (strcasecmp(key->data.scalar.value, "mirror_type") == 0)
+			mirror_type = val->data.scalar.value;
 
 		++pair;
 		continue;
@@ -730,6 +732,15 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 	     enable[0] == '0')) {
 		r->enable = false;
 	}
+
+	r->mirror_type = NOMIRROR;
+	if (mirror_type != NULL) {
+		if (strcasecmp(mirror_type, "srv") == 0)
+			r->mirror_type = SRV;
+		else if (strcasecmp(mirror_type, "http") == 0)
+			r->mirror_type = HTTP;
+	}
+
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 }
 
@@ -821,17 +832,25 @@ static void
 load_repositories(void)
 {
 	struct pkg_repo *r;
-	const char *url, *pub, *repodir;
+	const char *url, *pub, *repodir, *mirror_type;
 
 	pkg_config_string(PKG_CONFIG_REPO, &url);
 	pkg_config_string(PKG_CONFIG_REPOKEY, &pub);
+	pkg_config_string(PKG_CONFIG_MIRRORS, &mirror_type);
 
 	if (url != NULL) {
 		r = calloc(1, sizeof(struct pkg_repo));
 		r->name = strdup("packagesite");
 		r->url = strdup(url);
-		if (pub != 0)
+		if (pub != NULL)
 			r->pubkey = strdup(pub);
+		r->mirror_type = NOMIRROR;
+		if (mirror_type != NULL) {
+			if (strcasecmp(mirror_type, "srv") == 0)
+				r->mirror_type = SRV;
+			else if (strcasecmp(mirror_type, "http") == 0)
+				r->mirror_type = HTTP;
+		}
 		r->enable = true;
 		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 	}
@@ -1167,6 +1186,12 @@ bool
 pkg_repo_enabled(struct pkg_repo *r)
 {
 	return (r->enable);
+}
+
+mirror_t
+pkg_repo_mirror_type(struct pkg_repo *r)
+{
+	return (r->mirror_type);
 }
 
 struct pkg_repo *

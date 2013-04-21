@@ -473,10 +473,22 @@ main(int argc, char **argv)
 
 		printf("\nRepositories:\n");
 		while (pkg_repos(&repo) == EPKG_OK) {
-			printf("  %s:\n    url: %s\n    key: %s\n    enabled: %s\n",
+			switch (pkg_repo_mirror_type(repo)) {
+			case SRV:
+				buf = "SRV";
+				break;
+			case HTTP:
+				buf = "HTTP";
+				break;
+			case NOMIRROR:
+				buf = "NONE";
+				break;
+			}
+			printf("  %s:\n    url: %s\n    key: %s\n    enabled: %s\n    mirror_type: %s\n",
 			    pkg_repo_name(repo), pkg_repo_url(repo),
 			    pkg_repo_key(repo) == NULL ? "" : pkg_repo_key(repo),
-			    pkg_repo_enabled(repo) ? "yes" : "no");
+			    pkg_repo_enabled(repo) ? "yes" : "no",
+			    buf);
 		}
 
 		pkg_shutdown();
