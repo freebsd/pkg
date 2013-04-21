@@ -102,11 +102,10 @@ repo_fetch_remote_tmp(struct pkg_repo *repo, const char *filename, const char *e
 }
 
 static int
-repo_archive_extract_file(int fd, const char *file, const char *dest, int dest_fd)
+repo_archive_extract_file(int fd, const char *file, const char *dest, const char *repokey, int dest_fd)
 {
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
-	const char *repokey;
 	unsigned char *sig = NULL;
 	int siglen = 0, ret, rc = EPKG_OK;
 
@@ -149,13 +148,6 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, int dest_f
 			sig = malloc(siglen);
 			archive_read_data(a, sig, siglen);
 		}
-	}
-
-	if (pkg_config_string(PKG_CONFIG_REPOKEY, &repokey) != EPKG_OK) {
-		free(sig);
-		pkg_emit_error("Cannot get repository key.");
-		rc = EPKG_FATAL;
-		goto cleanup;
 	}
 
 	if (repokey != NULL) {
@@ -213,7 +205,7 @@ repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		goto cleanup;
 	}
 	(void)unlink(tmp);
-	if (repo_archive_extract_file(fd, archive_file, NULL, dest_fd) != EPKG_OK) {
+	if (repo_archive_extract_file(fd, archive_file, NULL, repo->pubkey, dest_fd) != EPKG_OK) {
 		*rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -266,7 +258,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 		goto cleanup;
 	}
 
-	if ((rc = repo_archive_extract_file(fd, repo_db_file, repofile_unchecked, -1)) != EPKG_OK) {
+	if ((rc = repo_archive_extract_file(fd, repo_db_file, repofile_unchecked, repo->pubkey, -1)) != EPKG_OK) {
 		goto cleanup;
 	}
 
