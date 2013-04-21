@@ -77,8 +77,14 @@ pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags flags)
 int
 pkg_jobs_set_repository(struct pkg_jobs *j, const char *name)
 {
-	/* TODO should validate if the repository exists */
-	j->reponame = name;
+	struct pkg_repo *r;
+
+	if ((r = pkg_repo_find("name")) == NULL) {
+		pkg_emit_error("Unknown repository: %s", name);
+		return (EPKG_FATAL);
+	}
+
+	j->reponame = r->reponame;
 
 	return (EPKG_OK);
 }

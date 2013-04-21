@@ -134,8 +134,8 @@ exec_upgrade(int argc, char **argv)
 	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK)
 		goto cleanup;
 
-	if (reponame != NULL)
-		pkg_jobs_set_repository(jobs, reponame);
+	if (reponame != NULL && pkg_jobs_set_repository(jobs, reponame) != EPKG_OK)
+		goto cleanup;
 
 	pkg_jobs_set_flags(jobs, f);
 
