@@ -720,6 +720,7 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 
 	r = calloc(1, sizeof(struct pkg_repo));
 	r->name = strdup(repo->data.scalar.value);
+	asprintf(&r->name, "repo-%s", repo->data.scalar.value);
 	r->url = strdup(url);
 	if (pubkey != NULL)
 		r->pubkey = strdup(pubkey);
@@ -841,6 +842,7 @@ load_repositories(void)
 	if (url != NULL) {
 		r = calloc(1, sizeof(struct pkg_repo));
 		r->name = strdup("packagesite");
+		r->reponame = strdup("repo-packagesite");
 		r->url = strdup(url);
 		if (pub != NULL)
 			r->pubkey = strdup(pub);

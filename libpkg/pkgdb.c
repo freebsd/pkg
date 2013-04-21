@@ -744,46 +744,42 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 	int		 ret;
 	char		 remotepath[MAXPATHLEN + 1];
 	struct pkg_repo	 *r = NULL;
-	char		 remotename[MAXPATHLEN];
 
 	while (pkg_repos(&r) == EPKG_OK) {
-		const char *repo_name = pkg_repo_name(r);
-
 		if (!pkg_repo_enabled(r))
 			continue;
 
 		/* is it already attached? */
-		if (is_attached(db->sqlite, repo_name)) {
+		if (is_attached(db->sqlite, r->reponame)) {
 			pkg_emit_error("repository '%s' is already "
-			    "listed, ignoring", repo_name);
+			    "listed, ignoring", r->reponame);
 			continue;
 		}
 
-		snprintf(remotepath, sizeof(remotepath), "%s/repo-%s.sqlite",
-		    dbdir, repo_name);
+		snprintf(remotepath, sizeof(remotepath), "%s/%s.sqlite",
+		    dbdir, r->reponame);
 
 		if (access(remotepath, R_OK) != 0) {
-			pkg_emit_noremotedb(repo_name);
+			pkg_emit_noremotedb(r->reponame);
 			pkgdb_close(db);
 			return (EPKG_ENODB);
 		}
 
-		ret = sql_exec(db->sqlite, "ATTACH '%s' AS 'repo-%s';",
-		    remotepath, repo_name);
+		ret = sql_exec(db->sqlite, "ATTACH '%s' AS '%s';",
+		    remotepath, r->reponame);
 		if (ret != EPKG_OK) {
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
 
-		snprintf(remotename, sizeof(remotename), "repo-%s", repo_name);
-		switch (pkgdb_repo_check_version(db, remotename)) {
+		switch (pkgdb_repo_check_version(db, r->reponame)) {
 		case EPKG_FATAL:
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 			break;
 		case EPKG_REPOSCHEMA:
 			ret = sql_exec(db->sqlite, "DETACH DATABASE '%s'",
-			    repo_name);
+			    r->reponame);
 			if (ret != EPKG_OK) {
 				pkgdb_close(db);
 				return (EPKG_FATAL);
@@ -857,22 +853,16 @@ file_mode_insecure(const char *path, bool install_as_user)
 }
 
 static int
-database_access(unsigned mode, const char* dbdir, const char *dbname,
-		bool remote)
+database_access(unsigned mode, const char* dbdir, const char *dbname)
 {
 	char		 dbpath[MAXPATHLEN + 1];
 	int		 retval;
 	bool		 database_exists;
 	bool		 install_as_user;
 
-	if (dbname != NULL) {
-		if (remote)
-			snprintf(dbpath, sizeof(dbpath), "%s/repo-%s.sqlite",
-				 dbdir, dbname);
-		else
-			snprintf(dbpath, sizeof(dbpath), "%s/%s.sqlite",
-				 dbdir, dbname);
-	} else
+	if (dbname != NULL)
+		snprintf(dbpath, sizeof(dbpath), "%s/%s.sqlite", dbdir, dbname);
+	else
 		strlcpy(dbpath, dbdir, sizeof(dbpath));
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
@@ -965,28 +955,25 @@ pkgdb_access(unsigned mode, unsigned database)
 
 	if ((mode & PKGDB_MODE_CREATE) != 0) {
 		retval = database_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
-					 dbdir, NULL, false);
+					 dbdir, NULL);
 	} else
-		retval = database_access(PKGDB_MODE_READ, dbdir, NULL, false);
+		retval = database_access(PKGDB_MODE_READ, dbdir, NULL);
 	if (retval != EPKG_OK)
 		return (retval);
 
 	/* Test local.sqlite, if required */
 
 	if ((database & PKGDB_DB_LOCAL) != 0) {
-		retval = database_access(mode, dbdir, "local", false);
+		retval = database_access(mode, dbdir, "local");
 		if (retval != EPKG_OK)
 			return (retval);
 	}
 
 	if ((database & PKGDB_DB_REPO) != 0) {
 		struct pkg_repo	*r = NULL;
-		const char	*reponame;
 
 		while (pkg_repos(&r) == EPKG_OK) {
-			reponame = pkg_repo_name(r);
-
-			retval = database_access(mode, dbdir, reponame, true);
+			retval = database_access(mode, dbdir, r->reponame);
 			if (retval != EPKG_OK)
 				return (retval);
 		}
