@@ -44,10 +44,8 @@ pkg_config_defaults_body()
 	-o match:'^PKG_CACHEDIR: /var/cache/pkg$' \
 	-o match:'^PORTSDIR: /usr/ports$' \
 	-o match:'^PUBKEY: $' \
-	-o match:'^PKG_MULTIREPOS: no$' \
 	-o match:'^HANDLE_RC_SCRIPTS: no$' \
 	-o match:'^ASSUME_ALWAYS_YES: no$' \
-	-o match:'^REPOS:$' \
 	-o match:'^PLIST_KEYWORDS_DIR: $' \
 	-o match:'^SYSLOG: yes$' \
 	-o match:'^AUTODEPS: no$' \
@@ -69,6 +67,8 @@ pkg_config_defaults_body()
 	-o match:'^UNSET_TIMESTAMP: no$' \
 	-o match:'^SSH_RESTRICT_DIR: $' \
 	-o match:'^ENV:$' \
+	-o match:'^$' \
+	-o match:'^Repositories:$' \
 	-e empty              \
 	-s exit:0             \
 	pkg -C "" -vv 
