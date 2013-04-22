@@ -52,6 +52,7 @@ pkg_config_defaults_body()
 	-o match:'^ABI: [a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+$' \
 	-o match:'^DEVELOPER_MODE: no$' \
 	-o match:'^PORTAUDIT_SITE: http://portaudit.FreeBSD.org/auditfile.tbz$' \
+	-o match:'^VULNXML_SITE: http://www.vuxml.org/freebsd/vuln.xml.bz2$' \
 	-o match:'^MIRROR_TYPE: SRV$' \
 	-o match:'^FETCH_RETRY: 3$' \
 	-o match:'^PKG_PLUGINS_DIR: /usr/local/lib/pkg/$' \
@@ -67,8 +68,6 @@ pkg_config_defaults_body()
 	-o match:'^UNSET_TIMESTAMP: no$' \
 	-o match:'^SSH_RESTRICT_DIR: $' \
 	-o match:'^ENV:$' \
-	-o match:'^$' \
-	-o match:'^Repositories:$' \
 	-e empty              \
 	-s exit:0             \
 	pkg -C "" -vv 
