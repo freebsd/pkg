@@ -46,7 +46,7 @@
 
 /* Add indexes to the repo */
 static int
-remote_add_indexes(struct pkg_repo *repo)
+remote_add_indexes(const char *repo)
 {
 	struct pkgdb *db = NULL;
 	int ret = EPKG_FATAL;
@@ -55,7 +55,7 @@ remote_add_indexes(struct pkg_repo *repo)
 		goto cleanup;
 
 	/* Initialize the remote remote */
-	if (pkgdb_remote_init(db, repo->reponame) != EPKG_OK)
+	if (pkgdb_remote_init(db, repo) != EPKG_OK)
 		goto cleanup;
 
 	ret = EPKG_OK;
@@ -336,7 +336,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 		goto cleanup;
 	}
 
-	if ((rc = remote_add_indexes(repo)) != EPKG_OK)
+	if ((rc = remote_add_indexes(pkg_repo_name(repo))) != EPKG_OK)
 		goto cleanup;
 	rc = EPKG_OK;
 

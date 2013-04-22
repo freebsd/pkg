@@ -209,17 +209,18 @@ static const char *
 pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 {
 	const char	*reponame = NULL;
+	struct pkg_repo	*r;
 
 	assert(db->type == PKGDB_REMOTE);
 
 	if (repo != NULL) {
-		if (!is_attached(db->sqlite, repo)) {
-			pkg_emit_error("repository '%s' does not exist",
-			    repo);
+		r = pkg_repo_find(repo);
+		if (!is_attached(db->sqlite, r->reponame)) {
+			pkg_emit_error("repository '%s' does not exist", repo);
 			return (NULL);
 		}
 
-		reponame = repo;
+		reponame = r->reponame;
 	}
 
 	return (reponame);
@@ -752,7 +753,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 		/* is it already attached? */
 		if (is_attached(db->sqlite, r->reponame)) {
 			pkg_emit_error("repository '%s' is already "
-			    "listed, ignoring", r->reponame);
+			    "listed, ignoring", r->name);
 			continue;
 		}
 
@@ -760,7 +761,7 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 		    dbdir, r->reponame);
 
 		if (access(remotepath, R_OK) != 0) {
-			pkg_emit_noremotedb(r->reponame);
+			pkg_emit_noremotedb(r->name);
 			pkgdb_close(db);
 			return (EPKG_ENODB);
 		}
