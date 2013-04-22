@@ -92,8 +92,6 @@ pkg_repo_fetch(struct pkg *pkg)
 	 * For a single attached database the repository URL should be
 	 * defined by PACKAGESITE.
 	 */
-	if (strncmp(reponame, "repo-", 5) == 0)
-		reponame += 5;
 	repo = pkg_repo_find(reponame);
 	packagesite = pkg_repo_url(repo);
 
