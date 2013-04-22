@@ -3305,6 +3305,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 	sqlite3_stmt	*stmt = NULL;
 	struct sbuf	*sql = NULL;
 	int		 ret;
+	const char	*rname;
 	const char	*basesql = ""
 		"SELECT id, origin, name, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
@@ -3328,10 +3329,9 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 	sbuf_cat(sql, ", dbname FROM (");
 
 	if (reponame != NULL) {
-		if (is_attached(db->sqlite, reponame)) {
-			sbuf_printf(sql, multireposql, reponame,
-					reponame);
-		} else {
+		if ((rname = pkgdb_get_reponame(db, reponame)) != NULL)
+			sbuf_printf(sql, multireposql, rname, rname);
+		else {
 			pkg_emit_error("Repository %s can't be loaded",
 					reponame);
 			sbuf_delete(sql);
