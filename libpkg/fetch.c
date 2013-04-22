@@ -309,7 +309,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			if (st.mtime < *t) {
 				retcode = EPKG_UPTODATE;
 				goto cleanup;
-			} else
+			} else if (strncmp(u->scheme, "http", 4) == 0)
 				*t = st.mtime;
 		}
 		sz = st.size;
