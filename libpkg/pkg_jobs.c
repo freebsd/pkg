@@ -168,11 +168,13 @@ remove_from_rdeps(struct pkg_jobs *j, const char *origin)
 }
 
 static int
-reverse_order_pool(struct pkg_jobs *j)
+reverse_order_pool(struct pkg_jobs *j, bool force)
 {
 	struct pkg *pkg, *tmp;
+	struct pkg_dep *d, *dtmp;
 	char *origin;
 	unsigned int nb;
+	struct sbuf *errb;
 
 	nb = HASH_COUNT(j->bulk);
 	HASH_ITER(hh, j->bulk, pkg, tmp) {
@@ -185,8 +187,38 @@ reverse_order_pool(struct pkg_jobs *j)
 	}
 
 	if (nb == HASH_COUNT(j->bulk)) {
-		pkg_emit_error("Eror while ordering the jobs probably a circular dependency");
-		return (EPKG_FATAL);
+		errb = sbuf_new_auto();
+		HASH_ITER(hh, j->bulk, pkg, tmp) {
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			sbuf_printf(errb, "%s: ", origin);
+			HASH_ITER(hh, pkg->rdeps, d, dtmp) {
+				if (d->hh.next != NULL)
+					sbuf_printf(errb, "%s, ", pkg_dep_get(d, PKG_DEP_ORIGIN));
+				else
+					sbuf_printf(errb, "%s\n", pkg_dep_get(d, PKG_DEP_ORIGIN));
+			}
+			if (force) {
+				HASH_DEL(j->bulk, pkg);
+				HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
+				remove_from_rdeps(j, origin);
+			}
+
+		}
+		sbuf_finish(errb);
+		if (!force) {
+			pkg_emit_error("Error while trying to delete packages, "
+					"dependencies that are still required:\n%s", sbuf_data(errb));
+			sbuf_delete(errb);
+			return (EPKG_FATAL);
+		}
+		else {
+			pkg_emit_notice("You are trying to delete package(s) which has "
+							"dependencies that are still required:\n%s"
+							"... delete these packages anyway in forced mode",
+							sbuf_data(errb));
+			sbuf_delete(errb);
+			return (EPKG_END);
+		}
 	}
 
 	return (EPKG_OK);
@@ -196,8 +228,11 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 {
 	struct job_pattern *jp = NULL;
 	struct pkg *pkg = NULL;
+	struct pkg *tmp, *p;
+	struct pkg_dep *d, *dtmp;
 	struct pkgdb_it *it;
 	char *origin;
+	int ret;
 	bool recursive = false;
 
 	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
@@ -217,11 +252,27 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		pkgdb_it_free(it);
 	}
 
+	/* remove everything seen from deps */
+	HASH_ITER(hh, j->bulk, pkg, tmp) {
+		d = NULL;
+		HASH_ITER(hh, pkg->rdeps, d, dtmp) {
+			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
+			if (p != NULL) {
+				HASH_DEL(pkg->rdeps, d);
+				pkg_dep_free(d);
+			}
+		}
+	}
 	HASH_FREE(j->seen, pkg, pkg_free);
 
 	while (HASH_COUNT(j->bulk) > 0) {
-		if (reverse_order_pool(j) != EPKG_OK)
-			return (EPKG_FATAL);
+		if ((ret = reverse_order_pool(j, (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE))
+				!= EPKG_OK) {
+			if (ret == EPKG_END)
+				break;
+			else
+				return (EPKG_FATAL);
+		}
 	}
 
 	j->solved = true;
