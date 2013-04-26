@@ -2892,7 +2892,7 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 			"repopath, automatic, opts, deps, shlibs) "
 		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
 			"r.comment, r.desc, r.arch, r.maintainer, r.www, "
-			"r.prefix, 0, r.flatsize, NULL AS newversion, "
+			"r.prefix, r.flatsize, NULL AS newversion, "
 			"r.pkgsize, r.cksum, r.path, 1, "
 			"  (SELECT GROUP_CONCAT(option) FROM "
 			"    (SELECT option FROM '%s'.options "
