@@ -2851,23 +2851,23 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 	const char	 finalsql[] = ""
 		"SELECT pkgid AS id, origin, name, version, "
 		    "comment, desc, message, arch, maintainer, "
-		    "www, prefix, locked, flatsize, newversion, "
+		    "www, prefix, flatsize, newversion, "
 		    "newflatsize, pkgsize, cksum, repopath, automatic, "
 		    "weight, '%s' AS dbname "
 		"FROM pkgjobs ORDER BY weight DESC;";
 
 	/* All the local packages where there is a matching package in
-	 * the repo: all data from the repo except locked and
+	 * the repo: all data from the repo except
 	 * automatic flags which are inherited from local */
 
 	const char	 pkgjobs_sql_1[] = ""
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 			"comment, desc, arch, maintainer, www, prefix, "
-			"locked, flatsize, newversion, pkgsize, "
+			"flatsize, newversion, pkgsize, "
 			"cksum, repopath, automatic, opts, deps, shlibs) "
 		"SELECT r.id, r.origin, r.name, r.version, r.comment, "
 			"r.desc, r.arch, r.maintainer, r.www, r.prefix, "
-			"l.locked, r.flatsize, r.version AS newversion, "
+			"r.flatsize, r.version AS newversion, "
 			"r.pkgsize, r.cksum, r.path, l.automatic ,"
 			"(SELECT GROUP_CONCAT(option) FROM (SELECT option "
 			"FROM '%s'.options WHERE package_id = r.id AND "
@@ -2883,12 +2883,12 @@ pkgdb_query_upgrades(struct pkgdb *db, const char *repo, bool all)
 
 	/* All dependencies for packages from the repo listed in the
 	 * temporary pkgjobs table and not already installed as local
-	 * packages (locked = 0, automatic = 1) */
+	 * packages (automatic = 1) */
 
 	const char	 pkgjobs_sql_2[] = ""
 		"INSERT OR IGNORE INTO pkgjobs (pkgid, origin, name, version, "
 			"comment, desc, arch, maintainer, www, prefix, "
-			"locked, flatsize, newversion, pkgsize, cksum, "
+			"flatsize, newversion, pkgsize, cksum, "
 			"repopath, automatic, opts, deps, shlibs) "
 		"SELECT DISTINCT r.id, r.origin, r.name, r.version, "
 			"r.comment, r.desc, r.arch, r.maintainer, r.www, "
