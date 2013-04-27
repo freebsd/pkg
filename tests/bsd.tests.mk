@@ -1,5 +1,5 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
-# $FreeBSD: stable/9/share/mk/bsd.prog.mk 241711 2012-10-19 00:22:09Z jhb $
+# $FreeBSD$
 
 .include <bsd.init.mk>
 
@@ -19,9 +19,9 @@ NO_WERROR=
 CFLAGS+=${DEBUG_FLAGS}
 CXXFLAGS+=${DEBUG_FLAGS}
 
-.if ${MK_CTF} != "no" && ${DEBUG_FLAGS:M-g} != ""
+.  if ${MK_CTF} != "no" && ${DEBUG_FLAGS:M-g} != ""
 CTFFLAGS+= -g
-.endif
+.  endif
 .endif
 
 .if defined(CRUNCH_CFLAGS)
@@ -40,33 +40,38 @@ LDFLAGS+= -static
 PROG=	${PROG_CXX}
 .endif
 
+# TESTS -- a list of test binaries to generate.  We assume that for
+# each test, there is a single source file test.c or test.cc. TESTS
+# don't have manpages.  TESTS don't get installed outside the source
+# tree.
+
 .if defined(PROG)
-.if defined(SRCS)
+.  if defined(SRCS)
 
 OBJS+=  ${SRCS:N*.h:R:S/$/.o/g}
 
-.if target(beforelinking)
+.    if target(beforelinking)
 ${PROG}: ${OBJS} beforelinking
-.else
+.    else
 ${PROG}: ${OBJS}
-.endif
-.if defined(PROG_CXX)
+.    endif
+.    if defined(PROG_CXX)
 	${CXX} ${CXXFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
-.else
+.    else
 	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
-.endif
-.if ${MK_CTF} != "no"
+.    endif
+.    if ${MK_CTF} != "no"
 	${CTFMERGE} ${CTFFLAGS} -o ${.TARGET} ${OBJS}
-.endif
+.    endif
 
-.else	# !defined(SRCS)
+.  else				# !defined(SRCS)
 
-.if !target(${PROG})
-.if defined(PROG_CXX)
+.    if !target(${PROG})
+.      if defined(PROG_CXX)
 SRCS=	${PROG}.cc
-.else
+.      else
 SRCS=	${PROG}.c
-.endif
+.      endif
 
 # Always make an intermediate object file because:
 # - it saves time rebuilding when only the library has changed
@@ -75,146 +80,58 @@ SRCS=	${PROG}.c
 # - it's useful to keep objects around for crunching.
 OBJS=	${PROG}.o
 
-.if target(beforelinking)
+.      if target(beforelinking)
 ${PROG}: ${OBJS} beforelinking
-.else
+.      else
 ${PROG}: ${OBJS}
-.endif
-.if defined(PROG_CXX)
+.      endif
+.      if defined(PROG_CXX)
 	${CXX} ${CXXFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
-.else
+.      else
 	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
-.endif
-.if ${MK_CTF} != "no"
+.      endif
+.      if ${MK_CTF} != "no"
 	${CTFMERGE} ${CTFFLAGS} -o ${.TARGET} ${OBJS}
-.endif
-.endif
+.      endif
+.    endif
 
-.endif
-
-.if	${MK_MAN} != "no" && !defined(MAN) && \
-	!defined(MAN1) && !defined(MAN2) && !defined(MAN3) && \
-	!defined(MAN4) && !defined(MAN5) && !defined(MAN6) && \
-	!defined(MAN7) && !defined(MAN8) && !defined(MAN9) && \
-	!defined(MAN1aout)
-MAN=	${PROG}.1
-MAN1=	${MAN}
-.endif
-.endif
+.  endif			# !defined(SRCS)
 
 all: objwarn ${PROG} ${SCRIPTS}
-.if ${MK_MAN} != "no"
-all: _manpages
-.endif
 
-.if defined(PROG)
+.  if defined(PROG)
 CLEANFILES+= ${PROG}
-.endif
+.  endif
 
-.if defined(OBJS)
+.  if defined(OBJS)
 CLEANFILES+= ${OBJS}
-.endif
+.  endif
 
 .include <bsd.libnames.mk>
 
-.if defined(PROG)
+.  if defined(PROG)
 _EXTRADEPEND:
-.if defined(LDFLAGS) && !empty(LDFLAGS:M-nostdlib)
-.if defined(DPADD) && !empty(DPADD)
+.  if defined(LDFLAGS) && !empty(LDFLAGS:M-nostdlib)
+.    if defined(DPADD) && !empty(DPADD)
 	echo ${PROG}: ${DPADD} >> ${DEPENDFILE}
-.endif
-.else
+.    endif
+.  else
 	echo ${PROG}: ${LIBC} ${DPADD} >> ${DEPENDFILE}
-.if defined(PROG_CXX)
-.if !empty(CXXFLAGS:M-stdlib=libc++)
+.    if defined(PROG_CXX)
+.      if !empty(CXXFLAGS:M-stdlib=libc++)
 	echo ${PROG}: ${LIBCPLUSPLUS} >> ${DEPENDFILE}
-.else
+.      else
 	echo ${PROG}: ${LIBSTDCPLUSPLUS} >> ${DEPENDFILE}
-.endif
-.endif
-.endif
-.endif
-
-.if !target(install)
-
-.if defined(PRECIOUSPROG)
-.if !defined(NO_FSCHG)
-INSTALLFLAGS+= -fschg
-.endif
-INSTALLFLAGS+= -S
-.endif
-
-_INSTALLFLAGS:=	${INSTALLFLAGS}
-.for ie in ${INSTALLFLAGS_EDIT}
-_INSTALLFLAGS:=	${_INSTALLFLAGS${ie}}
-.endfor
-
-.if !target(realinstall) && !defined(INTERNALPROG)
-realinstall: _proginstall
-.ORDER: beforeinstall _proginstall
-_proginstall:
-.if defined(PROG)
-.if defined(PROGNAME)
-	${INSTALL} ${STRIP} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
-	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${BINDIR}/${PROGNAME}
-.else
-	${INSTALL} ${STRIP} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
-	    ${_INSTALLFLAGS} ${PROG} ${DESTDIR}${BINDIR}
-.endif
-.endif
-.endif	# !target(realinstall)
-
-.if defined(SCRIPTS) && !empty(SCRIPTS)
-realinstall: _scriptsinstall
-.ORDER: beforeinstall _scriptsinstall
-
-SCRIPTSDIR?=	${BINDIR}
-SCRIPTSOWN?=	${BINOWN}
-SCRIPTSGRP?=	${BINGRP}
-SCRIPTSMODE?=	${BINMODE}
-
-.for script in ${SCRIPTS}
-.if defined(SCRIPTSNAME)
-SCRIPTSNAME_${script:T}?=	${SCRIPTSNAME}
-.else
-SCRIPTSNAME_${script:T}?=	${script:T:R}
-.endif
-SCRIPTSDIR_${script:T}?=	${SCRIPTSDIR}
-SCRIPTSOWN_${script:T}?=	${SCRIPTSOWN}
-SCRIPTSGRP_${script:T}?=	${SCRIPTSGRP}
-SCRIPTSMODE_${script:T}?=	${SCRIPTSMODE}
-_scriptsinstall: _SCRIPTSINS_${script:T}
-_SCRIPTSINS_${script:T}: ${script}
-	${INSTALL} -o ${SCRIPTSOWN_${.ALLSRC:T}} \
-	    -g ${SCRIPTSGRP_${.ALLSRC:T}} -m ${SCRIPTSMODE_${.ALLSRC:T}} \
-	    ${.ALLSRC} \
-	    ${DESTDIR}${SCRIPTSDIR_${.ALLSRC:T}}/${SCRIPTSNAME_${.ALLSRC:T}}
-.endfor
-.endif
-
-NLSNAME?=	${PROG}
-.include <bsd.nls.mk>
-
-.include <bsd.files.mk>
-.include <bsd.incs.mk>
-.include <bsd.links.mk>
-
-.if ${MK_MAN} != "no"
-realinstall: _maninstall
-.ORDER: beforeinstall _maninstall
-.endif
-
-.endif
+.      endif
+.    endif
+.  endif
+.endif				# defined(PROG)
 
 .if !target(lint)
 lint: ${SRCS:M*.c}
-.if defined(PROG)
+.  if defined(PROG)
 	${LINT} ${LINTFLAGS} ${CFLAGS:M-[DIU]*} ${.ALLSRC}
-.endif
-.endif
-
-.if ${MK_MAN} != "no"
-.include <bsd.man.mk>
+.  endif
 .endif
 
 .include <bsd.dep.mk>
@@ -226,7 +143,3 @@ ${OBJS}: ${SRCS:M*.h}
 .include <bsd.obj.mk>
 
 .include <bsd.sys.mk>
-
-.if defined(PORTNAME)
-.include <bsd.pkg.mk>
-.endif
