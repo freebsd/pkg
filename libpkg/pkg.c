@@ -297,7 +297,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				continue;
 			}
 
-			if (attr == PKG_REPONAME)
+			if (attr == PKG_REPOURL)
 				pkg_set_repourl(pkg, str);
 
 			sbuf_set(sbuf, str);
