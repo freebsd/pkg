@@ -1,6 +1,8 @@
 Content-Type: application/X-atf-atffile; version="1"
 
-prop: test-suite = pkgng
+prop: test-suite = lib
 
-tp: frontend
-tp: lib
+tp: pkg
+tp: manifest
+tp: test
+
