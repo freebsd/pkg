@@ -3218,13 +3218,13 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 		"SELECT id, origin, name, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
-		"cksum, path AS repopath, REPONAME('%1$s') AS dbname "
+		"cksum, path AS repopath, '%1$s' AS dbname "
 		"FROM '%1$s'.packages p";
 
 	assert(db != NULL);
 	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
 
-	(reponame = pkgdb_get_reponame(db, repo));
+	reponame = pkgdb_get_reponame(db, repo);
 
 	sql = sbuf_new_auto();
 	comp = pkgdb_get_pattern_query(pattern, match);

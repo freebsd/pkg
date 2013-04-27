@@ -594,7 +594,8 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 static bool
 newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
-	char *origin, *newversion, *oldversion, *oldsize;
+	char *origin, *newversion, *oldversion;
+	int64_t oldsize;
 	struct pkg *lp;
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
