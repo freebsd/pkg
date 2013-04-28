@@ -1,4 +1,4 @@
-TESTS=	test
+TESTS=	test pkg_printf
 
 SRCS=		tests.h
 test_SRCS=	manifest.c	\

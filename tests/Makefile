@@ -1,6 +1,5 @@
 SUBDIR=	lib \
-	frontend \
-	pkg_printf
+	frontend
 
 .include <bsd.subdir.mk>
 
