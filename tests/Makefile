@@ -3,5 +3,5 @@ SUBDIR=	lib \
 
 .include <bsd.subdir.mk>
 
-run:
+run: all
 	atf-run | atf-report

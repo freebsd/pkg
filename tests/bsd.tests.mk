@@ -5,6 +5,12 @@
 
 .SUFFIXES: .out .o .c .cc .cpp .cxx .C .m .y .l .ln .s .S .asm
 
+# libatf is not in base for stable/9 or earlier
+CFLAGS+=	-I. -I/usr/local/include
+LDADD+=		-L/usr/local/lib
+LATF_C=		-latf-c
+LATF_CXX=	-latf-c++
+
 # XXX The use of COPTS in modern makefiles is discouraged.
 .if defined(COPTS)
 CFLAGS+=${COPTS}
@@ -36,72 +42,75 @@ STRIP?=	-s
 LDFLAGS+= -static
 .endif
 
-.if defined(PROG_CXX)
-PROG=	${PROG_CXX}
+.if defined(TESTS_CXX)
+TESTS+=	${TESTS_CXX}
 .endif
 
 # TESTS -- a list of test binaries to generate.  We assume that for
-# each test, there is a single source file test.c or test.cc. TESTS
-# don't have manpages.  TESTS don't get installed outside the source
-# tree.
+# each test 'foo', there is at minimum a single primary source file
+# foo.c
+#
+# TESTS_CXX -- all tests that use c++ source code.  Assume the primary
+# source file is foo.cc
+#
+# SRCS -- a list of source files needed for every test in ${TESTS}
+#
+# foo_SRCS -- a list of (additional) source files needed specifically
+# for test foo.  If foo.c is not mentioned in this list, it will be
+# automatically prepended to it.
+#
+# eg. Tests 'foo', 'bar' and 'baz'.  foo and bar are compiled
+# respectively from their primary source code foo.c or bar.c, and a
+# secondary file foobar_extra.c (specific to test foo and test bar)
+# and common.c.  bar.c is implicitly prepended to ${bar_SRCS}. Test
+# 'baz' is compiled from baz.c and common.c.  All tests also depend on
+# tests.h.
+#
+#   TESTS=	foo bar baz
+#   foo_SRCS=	foo.c foobar_extra.c
+#   bar_SRCS=	foobar_extra.c
+#   SRCS=	common.c tests.h
+#
+# TESTS don't have manpages.  TESTS don't get installed anywhere, but
+# are run directly from the source tree.
 
-.if defined(PROG)
-.  if defined(SRCS)
+.for _test in ${TESTS}
 
-OBJS+=  ${SRCS:N*.h:R:S/$/.o/g}
+.  if defined(TESTS_CXX:M${_test})
+${_test}_SRCS:=	${_test}.cc ${${_test}_SRCS:N${_test}.cc} ${SRCS}
+.  else
+${_test}_SRCS:=	${_test}.c ${${_test}_SRCS:N${_test}.c} ${SRCS}
+.  endif
 
+.  if defined(${_test}_SRCS)
+_SRCS+=	${${_test}_SRCS}
+${_test}_OBJS=	${${_test}_SRCS:N*.h:R:S/$/.o/g}
+.  endif
+
+.  if defined(${_test}_OBJS)
 .    if target(beforelinking)
-${PROG}: ${OBJS} beforelinking
+${_test}: ${${_test}_OBJS} beforelinking
 .    else
-${PROG}: ${OBJS}
+${_test}: ${${_test}_OBJS}
 .    endif
-.    if defined(PROG_CXX)
-	${CXX} ${CXXFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
+.    if defined(TESTS_CXX:M${_test})
+	${CXX} ${CXXFLAGS} ${LDFLAGS} -o ${.TARGET} ${${_test}_OBJS} ${LDADD} ${LATF_CXX}
 .    else
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
+	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${${_test}_OBJS} ${LDADD} ${LATF_C}
 .    endif
 .    if ${MK_CTF} != "no"
-	${CTFMERGE} ${CTFFLAGS} -o ${.TARGET} ${OBJS}
+	${CTFMERGE} ${CTFFLAGS} -o ${.TARGET} ${${_test}_OBJS}
 .    endif
+.  endif			# defined(${_test}_OBJS)
+.endfor				# for _test in ${TESTS}
 
-.  else				# !defined(SRCS)
+ALLSRCS:=	${_SRCS:O:u}
+OBJS=	${ALLSRCS:N*.h:R:O:u:S/$/.o/g}
 
-.    if !target(${PROG})
-.      if defined(PROG_CXX)
-SRCS=	${PROG}.cc
-.      else
-SRCS=	${PROG}.c
-.      endif
+.if defined(TESTS)
+all: objwarn ${TESTS} ${SCRIPTS}
 
-# Always make an intermediate object file because:
-# - it saves time rebuilding when only the library has changed
-# - the name of the object gets put into the executable symbol table instead of
-#   the name of a variable temporary object.
-# - it's useful to keep objects around for crunching.
-OBJS=	${PROG}.o
-
-.      if target(beforelinking)
-${PROG}: ${OBJS} beforelinking
-.      else
-${PROG}: ${OBJS}
-.      endif
-.      if defined(PROG_CXX)
-	${CXX} ${CXXFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
-.      else
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${OBJS} ${LDADD}
-.      endif
-.      if ${MK_CTF} != "no"
-	${CTFMERGE} ${CTFFLAGS} -o ${.TARGET} ${OBJS}
-.      endif
-.    endif
-
-.  endif			# !defined(SRCS)
-
-all: objwarn ${PROG} ${SCRIPTS}
-
-.  if defined(PROG)
-CLEANFILES+= ${PROG}
-.  endif
+CLEANFILES+= ${TESTS}
 
 .  if defined(OBJS)
 CLEANFILES+= ${OBJS}
@@ -109,35 +118,38 @@ CLEANFILES+= ${OBJS}
 
 .include <bsd.libnames.mk>
 
-.  if defined(PROG)
 _EXTRADEPEND:
 .  if defined(LDFLAGS) && !empty(LDFLAGS:M-nostdlib)
 .    if defined(DPADD) && !empty(DPADD)
-	echo ${PROG}: ${DPADD} >> ${DEPENDFILE}
+.      for _test in ${TESTS}
+	echo ${_test}: ${DPADD} >> ${DEPENDFILE}
+.      endfo
 .    endif
 .  else
+.    for _test in ${TESTS}
 	echo ${PROG}: ${LIBC} ${DPADD} >> ${DEPENDFILE}
-.    if defined(PROG_CXX)
-.      if !empty(CXXFLAGS:M-stdlib=libc++)
-	echo ${PROG}: ${LIBCPLUSPLUS} >> ${DEPENDFILE}
-.      else
-	echo ${PROG}: ${LIBSTDCPLUSPLUS} >> ${DEPENDFILE}
+.      if defined(TESTS_CXX:M${_test})
+.        if !empty(CXXFLAGS:M-stdlib=libc++)
+	echo ${_test}: ${LIBCPLUSPLUS} >> ${DEPENDFILE}
+.        else
+	echo ${_test}: ${LIBSTDCPLUSPLUS} >> ${DEPENDFILE}
+.        endif
 .      endif
-.    endif
+.    endfor
 .  endif
-.endif				# defined(PROG)
+.endif				# defined(TESTS)
 
 .if !target(lint)
 lint: ${SRCS:M*.c}
-.  if defined(PROG)
+.  if defined(TESTS)
 	${LINT} ${LINTFLAGS} ${CFLAGS:M-[DIU]*} ${.ALLSRC}
 .  endif
 .endif
 
 .include <bsd.dep.mk>
 
-.if defined(PROG) && !exists(${.OBJDIR}/${DEPENDFILE})
-${OBJS}: ${SRCS:M*.h}
+.if defined(TESTS) && !exists(${.OBJDIR}/${DEPENDFILE})
+${OBJS}: ${SRCS:O:u:M*.h}
 .endif
 
 .include <bsd.obj.mk>

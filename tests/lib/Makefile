@@ -1,23 +1,11 @@
-PROG=	test
-SRCS=	test.c		\
-	manifest.c	\
-	pkg.c
+TESTS=	test
 
-CFLAGS+=-I.			\
-	-I/usr/local/include	\
-	-I../libpkg
-LDADD+=	-L/usr/local/lib	\
-	-latf-c			\
-	-L../libpkg		\
-	-lpkg
-NO_MAN=	true
+SRCS=		tests.h
+test_SRCS=	manifest.c	\
+		pkg.c
 
-TESTS=	manifest \
-	pkg
-
-run: ${PROG}
-.for test in ${TESTS}
-	@env LD_LIBRARY_PATH=${.CURDIR}/../../libpkg ./${PROG} ${test}
-.endfor
+CFLAGS+=	-I../libpkg
+LDADD+=		-L../libpkg	\
+		-lpkg
 
 .include "../bsd.tests.mk"

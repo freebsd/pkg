@@ -2,7 +2,7 @@ Content-Type: application/X-atf-atffile; version="1"
 
 prop: test-suite = lib
 
-tp: pkg
-tp: manifest
+#tp: pkg
+#tp: manifest
 tp: test
 
