@@ -123,13 +123,19 @@ test_manifest(void)
 	struct pkg_option *option = NULL;
 	struct pkg_category *category = NULL;
 	struct pkg_file *file = NULL;
+        struct pkg_manifest_key *keys = NULL;
 	const char *pkg_str;
 	int64_t pkg_int;
 	int i;
 
+	pkg_manifest_keys_new(&keys);
+	ATF_REQUIRE(keys != NULL);
+
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_FILE));
 	ATF_REQUIRE(p != NULL);
-	ATF_REQUIRE_EQ(EPKG_OK, pkg_parse_manifest(p, manifest));
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_parse_manifest(p, manifest, keys));
+
+	pkg_manifest_keys_free(keys);
 
 	ATF_REQUIRE(pkg_get(p, PKG_NAME, &pkg_str) == EPKG_OK);
 	ATF_REQUIRE(strcmp(pkg_str, "foobar") == 0);
