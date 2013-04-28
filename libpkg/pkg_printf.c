@@ -45,7 +45,7 @@
  *    Arg Type     What
  * A
  *
- * B  pkg          List of shared libraries
+ * B  pkg          List of required shared libraries
  * Bn pkg_shlib    Shared library name
  *
  * C  pkg          List of categories
@@ -109,7 +109,8 @@
  *
  * a  pkg          autoremove flag
  *
- * b
+ * b  pkg          List of provided shared libraries
+ * bn pkg_shlib    Shared library name
  *
  * c  pkg          comment
  *
@@ -169,10 +170,10 @@ struct pkg_printf_fmt {
  */
 
 static const struct pkg_printf_fmt	fmt[] = {
-	[PP_PKG_SHLIB_NAME] =
+	[PP_PKG_SHLIB_REQUIRED_NAME] =
 	{ 'B', 'n',   false, PP_PKG|PP_B,	&format_shlib_name, },
-	[PP_PKG_SHLIBS] =
-	{ 'B', '\0',  true,  PP_PKG,		&format_shlibs, },
+	[PP_PKG_SHLIBS_REQUIRED] =
+	{ 'B', '\0',  true,  PP_PKG,		&format_shlibs_required, },
         [PP_PKG_CATEGORY_NAME] =
 	{ 'C', 'n',   false, PP_PKG|PP_C,	&format_category_name, },
 	[PP_PKG_CATEGORIES] =
@@ -233,6 +234,10 @@ static const struct pkg_printf_fmt	fmt[] = {
 	{ 'U', '\0',  true,  PP_PKG,		&format_users, },
 	[PP_PKG_AUTOREMOVE] =
 	{ 'a', '\0',  false, PP_ALL,		&format_autoremove, },
+	[PP_PKG_SHLIB_PROVIDED_NAME] =
+	{ 'b', 'n',   false, PP_PKG|PP_b,	&format_shlib_name, },
+	[PP_PKG_SHLIBS_PROVIDED] =
+	{ 'b', '\0',  true,  PP_PKG,		&format_shlibs_provided, },
 	[PP_PKG_COMMENT] =
 	{ 'c', '\0',  false, PP_ALL,		&format_comment, },
 	[PP_PKG_DEPENDENCY_NAME] =
@@ -283,7 +288,7 @@ static const struct pkg_printf_fmt	fmt[] = {
 
 /*
  * Note: List values -- special behaviour with ? and # modifiers.
- * Affects %B %C %D %F %G %L %O %U %d %r
+ * Affects %B %C %D %F %G %L %O %U %b %d %r
  *
  * With ? -- Flag values.  Boolean.  %?X returns 0 if the %X list is
  * empty, 1 otherwise.
@@ -293,17 +298,17 @@ static const struct pkg_printf_fmt	fmt[] = {
  */
 
 /*
- * %B -- Shared Libraries.  List of shlibs required by binaries in the
- * pkg.  Optionally accepts per-field format in %{ %| %}, where %n is
- * replaced by the shlib name.  Default %{%Bn\n%|%}
+ * %B -- Required Shared Libraries.  List of shlibs required by
+ * binaries in the pkg.  Optionally accepts per-field format in %{ %|
+ * %}, where %n is replaced by the shlib name.  Default %{%Bn\n%|%}
  */
 struct sbuf *
-format_shlibs(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+format_shlibs_required(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS), p));
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS_REQUIRED), p));
 	else {
 		struct pkg_shlib	*shlib;
 		int			 count;
@@ -311,7 +316,7 @@ format_shlibs(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Bn\n", "");
 
 		count = 1;
-		while (pkg_shlibs(pkg, &shlib) == EPKG_OK) {
+		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     shlib, count, PP_B);
@@ -325,7 +330,8 @@ format_shlibs(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 }
 
 /*
- * %Bn -- Shared Library name.
+ * %Bn -- Required Shared Library name or %bn -- Provided Shared
+ * Library name
  */
 struct sbuf *
 format_shlib_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
@@ -830,6 +836,39 @@ format_autoremove(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 
 	pkg_get(pkg, PKG_AUTOMATIC, &automatic);
 	return (bool_val(sbuf, automatic, p));
+}
+
+
+/*
+ * %b -- Provided Shared Libraries.  List of shlibs provided by
+ * binaries in the pkg.  Optionally accepts per-field format in %{ %|
+ * %}, where %n is replaced by the shlib name.  Default %{%bn\n%|%}
+ */
+struct sbuf *
+format_shlibs_provided(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS_PROVIDED), p));
+	else {
+		struct pkg_shlib	*shlib;
+		int			 count;
+
+		set_list_defaults(p, "%bn\n", "");
+
+		count = 1;
+		while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+			if (count > 1)
+				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
+					     shlib, count, PP_b);
+
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
+				     shlib, count, PP_b);
+			count++;
+		}
+	}
+	return (sbuf);
 }
 
 /*

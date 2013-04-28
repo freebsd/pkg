@@ -455,7 +455,7 @@ pkg_options(const struct pkg *pkg, struct pkg_option **o)
 }
 
 int
-pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **s)
+pkg_shlibs_required(const struct pkg *pkg, struct pkg_shlib **s)
 {
 	assert(pkg != NULL);
 
@@ -463,7 +463,7 @@ pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **s)
 }
 
 int
-pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **s)
+pkg_shlibs_provided(const struct pkg *pkg, struct pkg_shlib **s)
 {
 	assert(pkg != NULL);
 
@@ -471,7 +471,7 @@ pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **s)
 }
 
 int
-pkg_annotations(struct pkg *pkg, struct pkg_note **an)
+pkg_annotations(const struct pkg *pkg, struct pkg_note **an)
 {
 	assert(pkg != NULL);
 

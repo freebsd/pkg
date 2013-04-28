@@ -47,7 +47,7 @@
 
 /* Contexts for option parsing */
 #define PP_PKG	(1U << 0)	/* Any pkg scalar value */
-#define PP_B	(1U << 1)	/* shlib */
+#define PP_B	(1U << 1)	/* shlib required */
 #define PP_C	(1U << 2)	/* category */
 #define PP_D	(1U << 3)	/* directory */
 #define PP_F	(1U << 4)	/* file */
@@ -55,14 +55,15 @@
 #define PP_L	(1U << 6)	/* licence */
 #define PP_O	(1U << 7)	/* option */
 #define PP_U	(1U << 8)	/* user */
-#define PP_d	(1U << 9)	/* dependency */
-#define PP_r	(1U << 10)	/* requirement */
+#define PP_b    (1U << 9)	/* shlib provided */
+#define PP_d	(1U << 10)	/* dependency */
+#define PP_r	(1U << 11)	/* requirement */
 
 #define _PP_last	PP_r
 #define PP_ALL	((_PP_last << 1) - 1) /* All contexts */
 
 /*  %{ %| %} trailer context */
-#define PP_TRAILER	(PP_B|PP_C|PP_D|PP_F|PP_G|PP_L|PP_O|PP_U|PP_d|PP_r)
+#define PP_TRAILER	(PP_B|PP_C|PP_D|PP_F|PP_G|PP_L|PP_O|PP_U|PP_b|PP_d|PP_r)
 
 /* Licence logic types */
 #define PP_LIC_SINGLE	0
@@ -72,8 +73,8 @@
 /* These are in alphabetical order of format code with A-Z sorting
  * before a-z */
 typedef enum _fmt_code_t {
-	PP_PKG_SHLIB_NAME = 0,
-	PP_PKG_SHLIBS,
+	PP_PKG_SHLIB_REQUIRED_NAME = 0,
+	PP_PKG_SHLIBS_REQUIRED,
 	PP_PKG_CATEGORY_NAME,
 	PP_PKG_CATEGORIES,
 	PP_PKG_DIRECTORY_GROUP,
@@ -104,6 +105,8 @@ typedef enum _fmt_code_t {
 	PP_PKG_USER_UIDSTR,
 	PP_PKG_USERS,
 	PP_PKG_AUTOREMOVE,
+	PP_PKG_SHLIB_PROVIDED_NAME,
+	PP_PKG_SHLIBS_PROVIDED,
 	PP_PKG_COMMENT,
 	PP_PKG_DEPENDENCY_NAME,
 	PP_PKG_DEPENDENCY_ORIGIN,
@@ -140,7 +143,7 @@ struct percent_esc {
 
 /* Format handler function prototypes */
 
-_static struct sbuf *format_shlibs(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_shlibs_required(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_shlib_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_categories(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_category_name(struct sbuf *, const void *, struct percent_esc *);
@@ -172,6 +175,7 @@ _static struct sbuf *format_users(struct sbuf *, const void *, struct percent_es
 _static struct sbuf *format_user_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_user_uidstr(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_autoremove(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_shlibs_provided(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_comment(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_dependencies(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_dependency_name(struct sbuf *, const void *, struct percent_esc *);
