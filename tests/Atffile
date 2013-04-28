@@ -4,5 +4,4 @@ prop: test-suite = pkgng
 
 tp: frontend
 tp: lib
-tp: pkg_printf
 
