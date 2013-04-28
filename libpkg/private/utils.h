@@ -29,6 +29,7 @@
 #define _PKG_UTIL_H
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/sbuf.h>
 #include <sys/param.h>
 #include <uthash.h>
