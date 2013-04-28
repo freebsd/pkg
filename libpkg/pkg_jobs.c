@@ -437,7 +437,7 @@ populate_rdeps(struct pkg_jobs *j, struct pkg *p)
 		if (pkg != NULL)
 			continue;
 		if (get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), MATCH_EXACT, true) != EPKG_OK) {
-			pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+			pkg_emit_error("Missing reverse dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
 			return (EPKG_FATAL);
 		}
 	}
