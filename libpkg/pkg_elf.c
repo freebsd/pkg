@@ -212,8 +212,9 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	}
 
 	if (elf_kind(e) != ELF_K_ELF) {
-		close(fd);
-		return (EPKG_END); /* Not an elf file: no results */
+		/* Not an elf file: no results */
+		ret = EPKG_END;
+		goto cleanup;
 	}
 
 	if (developer)
