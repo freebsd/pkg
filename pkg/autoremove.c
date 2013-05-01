@@ -27,6 +27,7 @@
  */
 
 #include <err.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
