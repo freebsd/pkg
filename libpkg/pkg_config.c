@@ -476,35 +476,54 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 	sbuf_delete(b);
 }
 
+static char *
+subst_packagesite_str(const char *oldstr)
+{
+	const char *myarch;
+	struct sbuf *newval;
+	const char *variable_string;
+	char *res;
+
+	variable_string = strstr(oldstr, ABI_VAR_STRING);
+	if (variable_string == NULL)
+		return strdup(oldstr);
+
+	newval = sbuf_new_auto();
+	sbuf_bcat(newval, oldstr, variable_string - oldstr);
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+	sbuf_cat(newval, myarch);
+	sbuf_cat(newval, variable_string + strlen(ABI_VAR_STRING));
+	sbuf_finish(newval);
+
+	res = strdup(sbuf_data(newval));
+	sbuf_free(newval);
+
+	return res;
+}
+
 /**
  * @brief Substitute PACKAGESITE variables
  */
 static void
 subst_packagesite(void)
 {
-	const char *variable_string;
 	const char *oldval;
-	const char *myarch;
-	struct sbuf *newval;
+	char *newval;
+
 	struct pkg_config *conf;
 	pkg_config_key k = PKG_CONFIG_REPO;
 
 	HASH_FIND_INT(config, &k, conf);
 	oldval = conf->string;
 
-	if (oldval == NULL || (variable_string = strstr(oldval, ABI_VAR_STRING)) == NULL)
+	if (oldval == NULL || strstr(oldval, ABI_VAR_STRING) == NULL)
 		return;
 
-	newval = sbuf_new_auto();
-	sbuf_bcat(newval, oldval, variable_string - oldval);
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
-	sbuf_cat(newval, myarch);
-	sbuf_cat(newval, variable_string + strlen(ABI_VAR_STRING));
-	sbuf_finish(newval);
-
-	free(conf->string);
-	conf->string = strdup(sbuf_data(newval));
-	sbuf_free(newval);
+	newval = subst_packagesite_str(oldval);
+	if (newval != NULL) {
+		free(conf->string);
+		conf->string = newval;
+	}
 }
 
 int
@@ -721,7 +740,7 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 	r = calloc(1, sizeof(struct pkg_repo));
 	r->name = strdup(repo->data.scalar.value);
 	asprintf(&r->reponame, "repo-%s", repo->data.scalar.value);
-	r->url = strdup(url);
+	r->url = subst_packagesite_str(url);
 	if (pubkey != NULL)
 		r->pubkey = strdup(pubkey);
 
@@ -843,7 +862,7 @@ load_repositories(void)
 		r = calloc(1, sizeof(struct pkg_repo));
 		r->name = strdup("packagesite");
 		r->reponame = strdup("repo-packagesite");
-		r->url = strdup(url);
+		r->url = subst_packagesite_str(url);
 		if (pub != NULL)
 			r->pubkey = strdup(pub);
 		r->mirror_type = NOMIRROR;
