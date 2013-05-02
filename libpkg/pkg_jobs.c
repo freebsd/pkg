@@ -283,8 +283,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 static bool
 recursive_autoremove(struct pkg_jobs *j)
 {
-	struct pkg *pkg1, *tmp1, *pkg2, *tmp2;
-	struct pkg_dep *dep;
+	struct pkg *pkg1, *tmp1;
 	char *origin;
 
 	HASH_ITER(hh, j->bulk, pkg1, tmp1) {
@@ -292,13 +291,7 @@ recursive_autoremove(struct pkg_jobs *j)
 			HASH_DEL(j->bulk, pkg1);
 			pkg_get(pkg1, PKG_ORIGIN, &origin);
 			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg1);
-			HASH_ITER(hh, j->bulk, pkg2, tmp2) {
-				HASH_FIND_STR(pkg2->rdeps, origin, dep);
-				if (dep != NULL) {
-					HASH_DEL(pkg2->rdeps, dep);
-					pkg_dep_free(dep);
-				}
-			}
+			remove_from_rdeps(j, origin);
 			return (true);
 		}
 	}
