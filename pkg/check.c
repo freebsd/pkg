@@ -138,7 +138,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	assert(db != NULL);
 	assert(nbpkgs > 0);
 
-	if ((pkgs = calloc(nbpkgs, MAXPATHLEN + 1)) == NULL)
+	if ((pkgs = calloc(nbpkgs, sizeof (char *))) == NULL)
 		err(1, "calloc()");
 
 	STAILQ_FOREACH(e, dh, next)
