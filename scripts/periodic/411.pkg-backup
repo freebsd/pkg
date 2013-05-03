@@ -18,7 +18,7 @@ case "${daily_backup_pkgng_enable:-YES}" in
 	bak_file="${bak}/pkgng.db"
 	pkgcmd=/usr/local/sbin/pkg
 
-	if ${pkgcmd} -N >/dev/null 2>&1 ; then
+	if ! ${pkgcmd} -N >/dev/null 2>&1 ; then
 		echo 'pkg-backup is enabled but pkg is not used'
 		rc=2
  	else

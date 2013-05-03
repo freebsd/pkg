@@ -55,7 +55,7 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 	echo
 	echo 'Checking for packages with security vulnerabilities:'
 
-	if ${pkgcmd} -N >/dev/null 2>&1 ; then
+	if ! ${pkgcmd} -N >/dev/null 2>&1 ; then
 		echo 'pkg-audit is enabled but pkg is not used'
 		rc=2
 	else

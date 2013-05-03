@@ -15,7 +15,7 @@ case "$weekly_status_pkg_enable" in
 	echo
 	echo 'Checking for out of date packages:'
 
-	if ${pkgcmd} -N >/dev/null 2>&1 ; then
+	if ! ${pkgcmd} -N >/dev/null 2>&1 ; then
 	    echo 'status-pkg is enabled but pkg is not used'
 	    rc=2
 	else
