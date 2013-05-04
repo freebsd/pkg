@@ -75,16 +75,16 @@ pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags flags)
 }
 
 int
-pkg_jobs_set_repository(struct pkg_jobs *j, const char *name)
+pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 {
 	struct pkg_repo *r;
 
-	if ((r = pkg_repo_find("name")) == NULL) {
-		pkg_emit_error("Unknown repository: %s", name);
+	if ((r = pkg_repo_find_ident(ident)) == NULL) {
+		pkg_emit_error("Unknown repository: %s", ident);
 		return (EPKG_FATAL);
 	}
 
-	j->reponame = r->reponame;
+	j->reponame = pkg_repo_name(r);
 
 	return (EPKG_OK);
 }

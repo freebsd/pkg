@@ -215,13 +215,13 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 	assert(db->type == PKGDB_REMOTE);
 
 	if (repo != NULL) {
-		r = pkg_repo_find(repo);
-		if (!is_attached(db->sqlite, r->reponame)) {
+		r = pkg_repo_find_ident(repo);
+		reponame = pkg_repo_name(r);
+
+		if (!is_attached(db->sqlite, reponame)) {
 			pkg_emit_error("repository '%s' does not exist", repo);
 			return (NULL);
 		}
-
-		reponame = r->reponame;
 	}
 
 	return (reponame);
@@ -769,36 +769,36 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			continue;
 
 		/* is it already attached? */
-		if (is_attached(db->sqlite, r->reponame)) {
+		if (is_attached(db->sqlite, pkg_repo_name(r))) {
 			pkg_emit_error("repository '%s' is already "
-			    "listed, ignoring", r->name);
+			    "listed, ignoring", pkg_repo_ident(r));
 			continue;
 		}
 
 		snprintf(remotepath, sizeof(remotepath), "%s/%s.sqlite",
-		    dbdir, r->reponame);
+			 dbdir, pkg_repo_name(r));
 
 		if (access(remotepath, R_OK) != 0) {
-			pkg_emit_noremotedb(r->name);
+			pkg_emit_noremotedb(pkg_repo_ident(r));
 			pkgdb_close(db);
 			return (EPKG_ENODB);
 		}
 
 		ret = sql_exec(db->sqlite, "ATTACH '%s' AS '%s';",
-		    remotepath, r->reponame);
+		          remotepath, pkg_repo_name(r));
 		if (ret != EPKG_OK) {
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 		}
 
-		switch (pkgdb_repo_check_version(db, r->reponame)) {
+		switch (pkgdb_repo_check_version(db, pkg_repo_name(r))) {
 		case EPKG_FATAL:
 			pkgdb_close(db);
 			return (EPKG_FATAL);
 			break;
 		case EPKG_REPOSCHEMA:
 			ret = sql_exec(db->sqlite, "DETACH DATABASE '%s'",
-			    r->reponame);
+				  pkg_repo_name(r));
 			if (ret != EPKG_OK) {
 				pkgdb_close(db);
 				return (EPKG_FATAL);
@@ -992,7 +992,7 @@ pkgdb_access(unsigned mode, unsigned database)
 		struct pkg_repo	*r = NULL;
 
 		while (pkg_repos(&r) == EPKG_OK) {
-			retval = database_access(mode, dbdir, r->reponame);
+			retval = database_access(mode, dbdir, pkg_repo_name(r));
 			if (retval != EPKG_OK)
 				return (retval);
 		}

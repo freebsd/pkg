@@ -260,7 +260,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 		goto cleanup;
 	}
 
-	/* check is the repository is for valid architecture */
+	/* check if the repository is for valid architecture */
 	if (access(repofile_unchecked, R_OK|W_OK) == -1) {
 		pkg_emit_error("Archive file does not have repo.sqlite file");
 		rc = EPKG_FATAL;
@@ -611,7 +611,7 @@ pkg_update(struct pkg_repo *repo, bool force)
 		return (EPKG_FATAL);
 	}
 
-	snprintf(repofile, sizeof(repofile), "%s/repo-%s.sqlite", dbdir, pkg_repo_name(repo));
+	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
 
 	if (stat(repofile, &st) != -1)
 		t = force ? 0 : st.st_mtime;

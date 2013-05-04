@@ -485,7 +485,7 @@ main(int argc, char **argv)
 				break;
 			}
 			printf("  %s:\n    url: %s\n    key: %s\n    enabled: %s\n    mirror_type: %s\n",
-			    pkg_repo_name(repo), pkg_repo_url(repo),
+			    pkg_repo_ident(repo), pkg_repo_url(repo),
 			    pkg_repo_key(repo) == NULL ? "" : pkg_repo_key(repo),
 			    pkg_repo_enabled(repo) ? "yes" : "no",
 			    buf);

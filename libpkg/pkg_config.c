@@ -49,6 +49,7 @@
 #include "private/event.h"
 
 #define ABI_VAR_STRING "${ABI}"
+#define REPO_NAME_PREFIX "repo-"
 
 int eventpipe = -1;
 
@@ -738,8 +739,7 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 		return;
 
 	r = calloc(1, sizeof(struct pkg_repo));
-	r->name = strdup(repo->data.scalar.value);
-	asprintf(&r->reponame, "repo-%s", repo->data.scalar.value);
+	asprintf(&r->name, REPO_NAME_PREFIX"%s", repo->data.scalar.value);
 	r->url = subst_packagesite_str(url);
 	if (pubkey != NULL)
 		r->pubkey = strdup(pubkey);
@@ -784,7 +784,7 @@ parse_repo_file(yaml_document_t *doc, yaml_node_t *node)
 			++pair;
 			continue;
 		}
-		HASH_FIND_STR(repos, (char *)key->data.scalar.value, r);
+		r = pkg_repo_find_ident((char *)key->data.scalar.value);
 		if (r != NULL) {
 			pkg_emit_error("a repository named '%s' is already configured, skipping...");
 			++pair;
@@ -860,8 +860,7 @@ load_repositories(void)
 
 	if (url != NULL) {
 		r = calloc(1, sizeof(struct pkg_repo));
-		r->name = strdup("packagesite");
-		r->reponame = strdup("repo-packagesite");
+		r->name = strdup(REPO_NAME_PREFIX"packagesite");
 		r->url = subst_packagesite_str(url);
 		if (pub != NULL)
 			r->pubkey = strdup(pub);
@@ -1191,6 +1190,14 @@ pkg_repo_url(struct pkg_repo *r)
 	return (r->url);
 }
 
+/* The repo identifier from pkg.conf(5): without the 'repo-' prefix */
+const char *
+pkg_repo_ident(struct pkg_repo *r)
+{
+	return (r->name + strlen(REPO_NAME_PREFIX));
+}
+
+/* The basename of the sqlite DB file and the database name */
 const char *
 pkg_repo_name(struct pkg_repo *r)
 {
@@ -1215,8 +1222,27 @@ pkg_repo_mirror_type(struct pkg_repo *r)
 	return (r->mirror_type);
 }
 
+/* Locate the repo by the identifying tag from pkg.conf(5) */
 struct pkg_repo *
-pkg_repo_find(const char *reponame)
+pkg_repo_find_ident(const char *repoident)
+{
+	struct pkg_repo *r;
+	char *name;
+
+	asprintf(&name, REPO_NAME_PREFIX"%s", repoident);
+	if (name == NULL)
+		return (NULL);	/* Out of memory */
+
+	r = pkg_repo_find_name(name);
+	free(name);
+
+	return (r);
+}
+
+
+/* Locate the repo by the file basename / database name */
+struct pkg_repo *
+pkg_repo_find_name(const char *reponame)
 {
 	struct pkg_repo *r;
 

@@ -268,8 +268,8 @@ pkg_set_repourl(struct pkg *pkg, const char *str)
 {
 	struct pkg_repo *r;
 
-	r = pkg_repo_find(str);
-	if (r != 0)
+	r = pkg_repo_find_ident(str);
+	if (r != NULL)
 		pkg_set(pkg, PKG_REPOURL, pkg_repo_url(r));
 }
 

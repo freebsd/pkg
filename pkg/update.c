@@ -63,7 +63,7 @@ pkgcli_update(bool force) {
 			if (!quiet)
 				printf("%s repository catalogue is "
 				       "up-to-date, no need to fetch "
-				       "fresh copy\n", pkg_repo_name(r));
+				       "fresh copy\n", pkg_repo_ident(r));
 				retcode = EPKG_OK;
 		}
 		if (retcode != EPKG_OK)
