@@ -363,23 +363,6 @@ pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 }
 
 static void
-pkgdb_strip_reponame(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	const unsigned char	*reponame = NULL;
-
-	if (argc != 1) {
-		sqlite3_result_error(ctx, "Invalid usage of reponame\n", -1);
-		return;
-	}
-
-	reponame = sqlite3_value_text(argv[0]);
-	if (strncmp(reponame, "repo-", 5) == 0)
-		reponame += 5;
-
-	sqlite3_result_text(ctx, reponame, strlen(reponame), NULL);
-}
-
-static void
 pkgdb_pkgcmp(sqlite3_context *ctx, int argc, sqlite3_value **argv,
 	     unsigned sign)
 {
@@ -3746,8 +3729,6 @@ sqlcmd_init(sqlite3 *db, __unused const char **err,
 				pkgdb_pkgge, NULL, NULL);
 	sqlite3_create_function(db, "pkgle", 2, SQLITE_ANY, NULL,
 				pkgdb_pkgle, NULL, NULL);
-	sqlite3_create_function(db, "reponame", 1, SQLITE_ANY, NULL,
-				pkgdb_strip_reponame, NULL, NULL);
 
 	return SQLITE_OK;
 }
