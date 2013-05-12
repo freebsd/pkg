@@ -1,7 +1,8 @@
 
 SUBDIR=	external \
 	libpkg \
-	pkg
+	pkg \
+	tests
 
 NEWVERS=	newvers.sh
 
