@@ -43,7 +43,9 @@
 /*
  * Format codes
  *    Arg Type     What
- * A
+ * A  pkg          Package annotations
+ * An pkg_note     Annotation tag name
+ * Av pkg_note     Annotation value
  *
  * B  pkg          List of required shared libraries
  * Bn pkg_shlib    Shared library name
@@ -170,6 +172,12 @@ struct pkg_printf_fmt {
  */
 
 static const struct pkg_printf_fmt	fmt[] = {
+	[PP_PKG_ANNOTATION_NAME] =
+	{ 'A', 'n',   false, PP_PKG|PP_A,       &format_annotation_name, },
+	[PP_PKG_ANNOTATION_VALUE] =
+	{ 'A', 'v',   false, PP_PKG|PP_A,       &format_annotation_value, },
+	[PP_PKG_ANNOTATIONS] =
+	{ 'A', '\0',  true,  PP_PKG,            &format_annotations, },
 	[PP_PKG_SHLIB_REQUIRED_NAME] =
 	{ 'B', 'n',   false, PP_PKG|PP_B,	&format_shlib_name, },
 	[PP_PKG_SHLIBS_REQUIRED] =
@@ -288,7 +296,7 @@ static const struct pkg_printf_fmt	fmt[] = {
 
 /*
  * Note: List values -- special behaviour with ? and # modifiers.
- * Affects %B %C %D %F %G %L %O %U %b %d %r
+ * Affects %A %B %C %D %F %G %L %O %U %b %d %r
  *
  * With ? -- Flag values.  Boolean.  %?X returns 0 if the %X list is
  * empty, 1 otherwise.
@@ -298,9 +306,63 @@ static const struct pkg_printf_fmt	fmt[] = {
  */
 
 /*
+ * %A -- Annotations.  Free-form tag+value text that can be added to
+ * packages.  Optionally accepts per-field format in %{ %| %} Default
+ * %{%An: %Av\n%|%}
+ */  
+struct sbuf *
+format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
+		return (list_count(sbuf, pkg_list_count(pkg, PKG_ANNOTATIONS), p));
+	else {
+		struct pkg_note	*note;
+		int		 count;
+
+		set_list_defaults(p, "%An: %Av\n", "");
+
+		count = 1;
+		while (pkg_annotations(pkg, &note) == EPKG_OK) {
+			if (count > 1)
+				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
+					     note, count, PP_A);
+
+			iterate_item(sbuf, pkg, sbuf_data(p->item_fmt),
+				     note, count, PP_A);
+			count++;
+		}
+	}
+	return (sbuf);
+}
+
+/*
+ * %An -- Annotation tag name.
+ */
+struct sbuf *
+format_annotation_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg_note	*note = data;
+
+	return (string_val(sbuf, pkg_annotation_tag(note), p));
+}
+
+/*
+ * %Av -- Annotation value.
+ */
+struct sbuf *
+format_annotation_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg_note	*note = data;
+
+	return (string_val(sbuf, pkg_annotation_value(note), p));
+}
+
+/*
  * %B -- Required Shared Libraries.  List of shlibs required by
  * binaries in the pkg.  Optionally accepts per-field format in %{ %|
- * %}, where %n is replaced by the shlib name.  Default %{%Bn\n%|%}
+ * %}.  Default %{%Bn\n%|%}
  */
 struct sbuf *
 format_shlibs_required(struct sbuf *sbuf, const void *data, struct percent_esc *p)

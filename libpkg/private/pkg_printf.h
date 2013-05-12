@@ -47,23 +47,24 @@
 
 /* Contexts for option parsing */
 #define PP_PKG	(1U << 0)	/* Any pkg scalar value */
-#define PP_B	(1U << 1)	/* shlib required */
-#define PP_C	(1U << 2)	/* category */
-#define PP_D	(1U << 3)	/* directory */
-#define PP_F	(1U << 4)	/* file */
-#define PP_G	(1U << 5)	/* group */
-#define PP_L	(1U << 6)	/* licence */
-#define PP_O	(1U << 7)	/* option */
-#define PP_U	(1U << 8)	/* user */
-#define PP_b    (1U << 9)	/* shlib provided */
-#define PP_d	(1U << 10)	/* dependency */
-#define PP_r	(1U << 11)	/* requirement */
+#define PP_A	(1U << 1)	/* annotations */
+#define PP_B	(1U << 2)	/* shlib required */
+#define PP_C	(1U << 3)	/* category */
+#define PP_D	(1U << 4)	/* directory */
+#define PP_F	(1U << 5)	/* file */
+#define PP_G	(1U << 6)	/* group */
+#define PP_L	(1U << 7)	/* licence */
+#define PP_O	(1U << 8)	/* option */
+#define PP_U	(1U << 9)	/* user */
+#define PP_b	(1U << 10)	/* shlib provided */
+#define PP_d	(1U << 11)	/* dependency */
+#define PP_r	(1U << 12)	/* requirement */
 
 #define _PP_last	PP_r
 #define PP_ALL	((_PP_last << 1) - 1) /* All contexts */
 
 /*  %{ %| %} trailer context */
-#define PP_TRAILER	(PP_B|PP_C|PP_D|PP_F|PP_G|PP_L|PP_O|PP_U|PP_b|PP_d|PP_r)
+#define PP_TRAILER	(PP_A|PP_B|PP_C|PP_D|PP_F|PP_G|PP_L|PP_O|PP_U|PP_b|PP_d|PP_r)
 
 /* Licence logic types */
 #define PP_LIC_SINGLE	0
@@ -73,7 +74,10 @@
 /* These are in alphabetical order of format code with A-Z sorting
  * before a-z */
 typedef enum _fmt_code_t {
-	PP_PKG_SHLIB_REQUIRED_NAME = 0,
+	PP_PKG_ANNOTATION_NAME = 0,
+	PP_PKG_ANNOTATION_VALUE,
+	PP_PKG_ANNOTATIONS,
+	PP_PKG_SHLIB_REQUIRED_NAME,
 	PP_PKG_SHLIBS_REQUIRED,
 	PP_PKG_CATEGORY_NAME,
 	PP_PKG_CATEGORIES,
@@ -143,6 +147,9 @@ struct percent_esc {
 
 /* Format handler function prototypes */
 
+_static struct sbuf *format_annotation_name(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_annotation_value(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_annotations(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_shlibs_required(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_shlib_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_categories(struct sbuf *, const void *, struct percent_esc *);
