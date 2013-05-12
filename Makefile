@@ -1,13 +1,18 @@
 
 SUBDIR=	external \
 	libpkg \
-	pkg \
-	tests
+	pkg
 
 NEWVERS=	newvers.sh
 
 .if !defined(NOSTATIC)
 SUBDIR+=	pkg-static
+.endif
+
+ATF_INSTALLED!=	( which atf-version ) 2>&1 || true
+
+.if !empty(ATF_INSTALLED)
+SUBDIR+=	tests
 .endif
 
 PKGVERSION!=    sh ${NEWVERS} pkg
