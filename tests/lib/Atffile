@@ -5,4 +5,4 @@ prop: test-suite = lib
 #tp: pkg
 #tp: manifest
 tp: test
-tp: pp_test
+tp: pkg_printf_test
