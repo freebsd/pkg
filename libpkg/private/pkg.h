@@ -401,7 +401,7 @@ int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s
 int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
-int pkg_register_shlibs(struct pkg *pkg);
+int pkg_register_shlibs(struct pkg *pkg, const char* root);
 
 void pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key);
 
