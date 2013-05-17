@@ -1020,6 +1020,11 @@ int pkgdb_delete_annotation(struct pkgdb *db, const char *pkgname,
 int pkgdb_it_next(struct pkgdb_it *, struct pkg **pkg, unsigned flags);
 
 /**
+ * Reset the pkgdb_it iterator, allowing for re-iterating over it
+ */
+void pkgdb_it_reset(struct pkgdb_it *);
+
+/**
  * Free a struct pkgdb_it.
  */
 void pkgdb_it_free(struct pkgdb_it *);

@@ -1337,6 +1337,15 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 }
 
 void
+pkgdb_it_reset(struct pkgdb_it *it)
+{
+	if (it == NULL)
+		return;
+
+	it->finished = 0;
+}
+
+void
 pkgdb_it_free(struct pkgdb_it *it)
 {
 	if (it == NULL)
