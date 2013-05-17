@@ -457,6 +457,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		fpath = pkg_file_path(file);
+
 		ret = analyse_elf(pkg, fpath, action, db);
 		if (developer) {
 			if (ret != EPKG_OK && ret != EPKG_END)
@@ -474,9 +475,10 @@ cleanup:
 }
 
 int
-pkg_register_shlibs(struct pkg *pkg)
+pkg_register_shlibs(struct pkg *pkg, const char *root)
 {
 	struct pkg_file        *file = NULL;
+	char fpath[MAXPATHLEN];
 
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 
@@ -489,8 +491,13 @@ pkg_register_shlibs(struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	while(pkg_files(pkg, &file) == EPKG_OK)
-		analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+	while(pkg_files(pkg, &file) == EPKG_OK) {
+		if (root != NULL) {
+			snprintf(fpath, MAXPATHLEN, "%s%s", root, pkg_file_path(file));
+			analyse_elf(pkg, fpath, add_shlibs_to_pkg, NULL);
+		} else
+			analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+	}
 
 	shlib_list_free();
 	return (EPKG_OK);
