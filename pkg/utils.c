@@ -257,7 +257,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 		PKG_DESC,          &desc,
 		PKG_FLATSIZE,      &flatsize,
 		PKG_OLD_FLATSIZE,  &oldflatsize,
-		PKG_PKGSIZE,   &pkgsize,
+		PKG_PKGSIZE,       &pkgsize,
 		PKG_LICENSE_LOGIC, &licenselogic,
 		PKG_MESSAGE,       &message,
 		PKG_ARCH,	   &arch,
@@ -284,11 +284,11 @@ print_info(struct pkg * const pkg, unsigned int options)
 		   function */
 
 		if (options & INFO_TAG_NAMEVER)
-			cout = printf("%s-%s", name, version);
+			cout = pkg_printf("%n-%v", pkg, pkg);
 		else if (options & INFO_TAG_ORIGIN)
-			cout = printf("%s", origin);
+			cout = pkg_printf("%o", pkg);
 		else if (options & INFO_TAG_NAME)
-			cout = printf("%s", name);
+			cout = pkg_printf("%n", pkg);
 	}
 
 	/* Don't display a tab if quiet, retains compatibility. */
@@ -340,22 +340,22 @@ print_info(struct pkg * const pkg, unsigned int options)
 		case INFO_NAME:
 			if (print_tag)
 				printf("%-15s: ", "Name");
-			printf("%s\n", name);
+			pkg_printf("%n\n", pkg);
 			break;
 		case INFO_VERSION:
 			if (print_tag)
 				printf("%-15s: ", "Version");
-			printf("%s\n", version);
+			pkg_printf("%v\n", pkg);
 			break;
 		case INFO_ORIGIN:
 			if (print_tag)
 				printf("%-15s: ", "Origin");
-			printf("%s\n", origin);
+			pkg_printf("%o\n", pkg);
 			break;
 		case INFO_PREFIX:
 			if (print_tag)
 				printf("%-15s: ", "Prefix");
-			printf("%s\n", prefix);
+			pkg_printf("%p\n", pkg);
 			break;
 		case INFO_REPOSITORY:
 			if (pkg_type(pkg) == PKG_REMOTE &&
@@ -370,11 +370,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_CATEGORIES) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Categories");
-				if (pkg_categories(pkg, &cat) == EPKG_OK)
-					printf("%s", pkg_category_name(cat));
-				while (pkg_categories(pkg, &cat) == EPKG_OK)
-					printf(" %s", pkg_category_name(cat));
-				printf("\n");
+				pkg_printf("%C%{%Cn%| %}\n", pkg);
 			} else if (!print_tag)
 				printf("\n");
 			break;
@@ -382,41 +378,33 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_LICENSES) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Licenses");
-				if (pkg_licenses(pkg, &lic) == EPKG_OK)
-					printf("%s", pkg_license_name(lic));
-				while (pkg_licenses(pkg, &lic) == EPKG_OK) {
-					if (licenselogic != 1)
-						printf(" %c", licenselogic);
-					printf(" %s", pkg_license_name(lic));
-				}
-				printf("\n");				
+				pkg_printf("%L%{%Ln%| %l %}\n");
 			} else if (!print_tag)
 				printf("\n");
 			break;
 		case INFO_MAINTAINER:
 			if (print_tag)
 				printf("%-15s: ", "Maintainer");
-			printf("%s\n", maintainer);
+			pkg_printf("%m\n", pkg);
 			break;
 		case INFO_WWW:	
 			if (print_tag)
 				printf("%-15s: ", "WWW");
-			printf("%s\n", www);
+			pkg_printf("%w\n", pkg);
 			break;
 		case INFO_COMMENT:
 			if (print_tag)
 				printf("%-15s: ", "Comment");
-			printf("%s\n", comment);
+			pkg_printf("%c\n", pkg);
 			break;
 		case INFO_OPTIONS:
 			if (pkg_list_count(pkg, PKG_OPTIONS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Options");
-				while (pkg_options(pkg, &option) == EPKG_OK)
-					printf("%s%-15s: %s\n",
-					       tab,
-					       pkg_option_opt(option),
-					       pkg_option_value(option));
+				if (quiet) 
+					pkg_printf("%O%{%-15On: %Ov\n%|%}", pkg);
+				else
+					pkg_printf("%O%{\t%-15On: %Ov\n%|%}", pkg);
 			}
 			break;
 		case INFO_SHLIBS_REQUIRED:
