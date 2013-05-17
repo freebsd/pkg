@@ -258,7 +258,10 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	}
 
 	if (note != NULL) {
-		data = elf_getdata(note, NULL);
+		if ((data = elf_getdata(note, NULL)) == NULL) {
+			ret = EPKG_END; /* Some error occurred, ignore this file */
+			goto cleanup;
+		}
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
 		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0 &&
 		    strncasecmp(osname, "dragonfly", sizeof("dragonfly")) != 0) {
@@ -272,7 +275,10 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		}
 	}
 
-	data = elf_getdata(dynamic, NULL);
+	if ((data = elf_getdata(dynamic, NULL)) == NULL) {
+		ret = EPKG_END; /* Some error occurred, ignore this file */
+		goto cleanup;
+	}
 
 	/* First, scan through the data from the .dynamic section to
 	   find any RPATH or RUNPATH settings.  These are colon
