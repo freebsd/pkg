@@ -337,7 +337,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 		goto cleanup;
 	}
 
-	if ((rc = remote_add_indexes(pkg_repo_name(repo))) != EPKG_OK)
+	if ((rc = remote_add_indexes(pkg_repo_ident(repo))) != EPKG_OK)
 		goto cleanup;
 	rc = EPKG_OK;
 
