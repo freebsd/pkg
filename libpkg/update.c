@@ -80,6 +80,7 @@ repo_fetch_remote_tmp(struct pkg_repo *repo, const char *filename, const char *e
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
+	mkdirs(tmpdir);
 	snprintf(tmp, MAXPATHLEN, "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
 
 	fd = mkstemp(tmp);
