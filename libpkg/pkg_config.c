@@ -1037,26 +1037,27 @@ pkg_init(const char *path)
 		}
 		/* no configuration present */
 		parsed = true;
-		return (EPKG_OK);
 	}
 
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_file(&parser, fp);
-	yaml_parser_load(&parser, &doc);
+	if (!parsed) {
+		yaml_parser_initialize(&parser);
+		yaml_parser_set_input_file(&parser, fp);
+		yaml_parser_load(&parser, &doc);
 
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
+		node = yaml_document_get_root_node(&doc);
+		if (node != NULL) {
+			if (node->type != YAML_MAPPING_NODE) {
+				pkg_emit_error("Invalid configuration format, ignoring the configuration file");
+			} else {
+				pkg_config_parse(&doc, node, config_by_key);
+			}
 		} else {
-			pkg_config_parse(&doc, node, config_by_key);
+			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
 		}
-	} else {
-		pkg_emit_error("Invalid configuration format, ignoring the configuration file");
-	}
 
-	yaml_document_delete(&doc);
-	yaml_parser_delete(&parser);
+		yaml_document_delete(&doc);
+		yaml_parser_delete(&parser);
+	}
 
 	disable_plugins_if_static();
 
