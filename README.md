@@ -449,7 +449,9 @@ Now you can share your repo with other people by letting them know of your repos
 
 * [Buildbot for pkgng][4]
 
-* [Jenkins CI instance for pkgng][6]
+* [LLVM scanbuild][6]
+
+* [Jenkins CI instance for pkgng][7]
 
 In order to get in contact with us, you can find us in the #pkgng@FreeNode IRC channel.
 
@@ -460,4 +462,5 @@ If you hit a bug when using pkgng, you can always submit an issue in the [pkgng 
 [3]: http://jenkins.unix-heaven.org/jenkins/job/pkgng-doxygen/
 [4]: http://buildbot.etoilebsd.net/
 [5]: https://github.com/freebsd/pkg/issues
-[6]: http://jenkins.unix-heaven.org/jenkins/
+[6]: http://jenkins.unix-heaven.org/jenkins/job/pkgng-scan-build/
+[7]: http://jenkins.unix-heaven.org/jenkins/
