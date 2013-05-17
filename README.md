@@ -200,7 +200,7 @@ You can grap a development snapshot of pkgng from the [pkgng Github repository][
 
 To get the latest version of pkgng from the Git repo, just clone it:
 
-	# git clone https://github.com/pkgng/pkgng
+	# git clone https://github.com/freebsd/pkg
 
 Or you can take an already tagged release of pkgng from the above web page as well.
 
@@ -449,18 +449,15 @@ Now you can share your repo with other people by letting them know of your repos
 
 * [Buildbot for pkgng][4]
 
-* [LLVM scanbuild][6]
-
-* [Jenkins CI instance for pkgng][7]
+* [Jenkins CI instance for pkgng][6]
 
 In order to get in contact with us, you can find us in the #pkgng@FreeNode IRC channel.
 
 If you hit a bug when using pkgng, you can always submit an issue in the [pkgng issue tracker][5].
 
-[1]: https://github.com/pkgng/pkgng
+[1]: https://github.com/freebsd/pkg
 [2]: http://wiki.freebsd.org/pkgng
 [3]: http://jenkins.unix-heaven.org/jenkins/job/pkgng-doxygen/
 [4]: http://buildbot.etoilebsd.net/
-[5]: https://github.com/pkgng/pkgng/issues
-[6]: http://scanbuild.etoilebsd.net
-[7]: http://jenkins.unix-heaven.org/jenkins/
+[5]: https://github.com/freebsd/pkg/issues
+[6]: http://jenkins.unix-heaven.org/jenkins/

@@ -56,7 +56,7 @@ And that was it. Please read the man pages for more information on the commands.
 <a name="2"></a>
 ### Q: How is pkgng different from the FreeBSD pkg_* tools? What is the motivation behind pkgng?
 
-The [README](https://github.com/pkgng/pkgng/blob/master/README.md) should explain all of that :)
+The [README](https://github.com/freebsd/pkg/blob/master/README.md) should explain all of that :)
 
 <a name="3"></a>
 ### Q: How is pkgng different from PC-BSD PBI packages?
@@ -112,7 +112,7 @@ when building a repo.
 <a name="11"></a>
 ### Q: How to start working with multi-repos in pkgng?
 
-Please refer to the [README](https://github.com/pkgng/pkgng/blob/master/README.md#multirepos), which explains how to enable and get started with multi-repos in pkgng.
+Please refer to the [README](https://github.com/freebsd/pkg/blob/master/README.md#multirepos), which explains how to enable and get started with multi-repos in pkgng.
 
 <a name="12"></a>
 ### Q: Why is `pkg create` slow?
@@ -149,7 +149,7 @@ Install the latest **ports-mgmt/portupgrade**, or **ports-mgmt/portupgrade-devel
     # echo "WITH_PKGNG=yes" >> /etc/make.conf
     # pkg2ng
 
-More information can be found in the portupgrade [NEWS](https://github.com/pkgtools/pkgtools/blob/master/NEWS.md) file.
+More information can be found in the portupgrade [NEWS](https://github.com/freebsd/portupgrade/blob/master/NEWS.md) file.
 
 <a name="17"></a>
 ### Q: pkgng does not work it says: /usr/local/sbin/pkg: Undefined symbol "pkg_event_register"
