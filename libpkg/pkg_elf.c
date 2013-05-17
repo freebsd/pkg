@@ -474,8 +474,9 @@ cleanup:
 }
 
 int
-pkg_register_shlibs(struct pkg *pkg)
+pkg_register_shlibs(struct pkg *pkg, const char* root)
 {
+	char    	       fpath[MAXPATHLEN + 1];
 	struct pkg_file        *file = NULL;
 
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
@@ -489,8 +490,15 @@ pkg_register_shlibs(struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	while(pkg_files(pkg, &file) == EPKG_OK)
-		analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+	while(pkg_files(pkg, &file) == EPKG_OK) {
+		const char *pkg_path = pkg_file_path(file);
+
+		if (root != NULL)
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_path);
+		else
+			strlcpy(fpath, pkg_path, sizeof(fpath));
+		analyse_elf(pkg, fpath, add_shlibs_to_pkg, NULL);
+	}
 
 	shlib_list_free();
 	return (EPKG_OK);
