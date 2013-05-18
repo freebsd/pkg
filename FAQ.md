@@ -128,7 +128,7 @@ No, pkgng uses internal `pkg audit` command.
 <a name="14"></a>
 ### Q: When will pkgng be the default package manager of FreeBSD?
 
-Possibly in version 9.1.
+Possibly in version 9.2+
 
 <a name="15"></a>
 ### Q: How can I use pkgng with portmaster?
