@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 22, 2013
+.Dd May 18, 2013
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -241,6 +241,33 @@ exits 0 on success, and >0 if an error occurs.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
+.Sh EXAMPLES
+List all installed packages by name-version:
+.Dl $ pkg query %n-%v
+.Pp
+List all dependencies for a package by origin:
+.Dl $ pkg query %do subversion
+.Pp
+List all dependencies by package name-version:
+.Dl $ pkg query %dn-%dv subversion
+.Pp
+List all reverse dependencies for a package:
+.Dl $ pkg query %ro perl
+.Pp
+List all files and their known checksums for a package:
+.Dl $ pkg query '%Fp %Fs' perl
+.Pp
+List all files for all packages:
+.Dl $ pkg query '%o: %F'
+.Pp
+List all packages with no reverse dependencies:
+.Dl $ pkg query -e '%#r = 0' %o
+.Pp
+List non-automatic packages:
+.Dl $ pkg query -e '%a = 0' %o
+.Pp
+List automatic packages:
+.Dl $ pkg query -e '%a = 1' %o
 .Sh SEE ALSO
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,

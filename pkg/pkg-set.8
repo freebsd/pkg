@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd September 14, 2012
+.Dd May 18, 2013
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -73,18 +73,30 @@ This involes moving the origin from
 .Sy lang/perl5.12
 to
 .Sy lang/perl5.14 :
-.Dl # pkg set -o lang/perl5.12:lang/perl5.14
+.Dl % pkg set -o lang/perl5.12:lang/perl5.14
+.Dl % pkg install -Rf lang/perl5.14
 .Pp
 Upgrade ruby from 1.8 to 1.9.
 This involes moving the origin from
 .Sy lang/ruby18
 to
 .Sy lang/ruby19 :
-.Dl # pkg set -o lang/ruby18:lang/ruby19
+.Dl % pkg set -o lang/ruby18:lang/ruby19
+.Dl % pkg install -Rf lang/ruby19
 .Pp
 Move the origin libglut to freeglut, and then reinstall everything depending on glut to use the new shared library:
-.Dl # pkg set -o graphics/libglut:graphics/freeglut
-.Dl # pkg install -Rf graphics/freeglut
+.Dl % pkg set -o graphics/libglut:graphics/freeglut
+.Dl % pkg install -Rf graphics/freeglut
+.Pp
+Change a package from automatic to non-automatic, which will prevent
+.Ic autoremove
+from removing it:
+.Dl % pkg set -A 0 perl-5.14
+.Pp
+Change a package from non-automatic to automatic, which will make
+.Ic autoremove
+allow it be removed once nothing depends on it:
+.Dl % pkg set -A 1 perl-5.14
 .Sh SEE ALSO
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
