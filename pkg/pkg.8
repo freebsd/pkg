@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd May 16, 2013
+.Dd May 18, 2013
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -210,6 +210,62 @@ is in
 See
 .Xr pkg.conf 5 .
 .\" ---------------------------------------------------------------------------
+.Sh EXAMPLES
+Search for a package:
+.Dl $ pkg search perl
+.Pp
+Install a package:
+.Dl Installing must specify a unique origin or version otherwise it will try installing all matches.
+.Pp
+.Dl % pkg install perl-5.14
+.Pp
+List installed packages:
+.Dl $ pkg info
+.Pp
+Upgrade from remote repository:
+.Dl % pkg upgrade
+.Pp
+Change the origin for an installed package:
+.Dl % pkg set -o lang/perl5.12:lang/perl5.14
+.Dl % pkg install -Rf lang/perl5.14
+.Pp
+List non-automatic packages:
+.Dl $ pkg query -e '%a = 0' %o
+.Pp
+List automatic packages:
+.Dl $ pkg query -e '%a = 1' %o
+.Pp
+Delete an installed package:
+.Dl % pkg delete perl-5.14
+.Pp
+Remove unneeded dependencies:
+.Dl % pkg autoremove
+.Pp
+Change a package from automatic to non-automatic, which will prevent
+.Ic autoremove
+from removing it:
+.Dl % pkg set -A 0 perl-5.14
+.Pp
+Change a package from non-automatic to automatic, which will make
+.Ic autoremove
+allow it be removed once nothing depends on it:
+.Dl % pkg set -A 1 perl-5.14
+.Pp
+Create package file from an installed package:
+.Dl % pkg create -o /usr/ports/packages/All perl-5.14
+.Pp
+Determine which package installed a file:
+.Dl $ pkg which /usr/local/bin/perl
+.Pp
+Audit installed packages for security advisories:
+.Dl $ pkg audit
+.Pp
+Check installed packages for checksum mismatches:
+.Dl # pkg check -s -a
+.Pp
+Check for missing dependencies:
+.Dl # pkg check -d -a
+.\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
 .Xr SBUF 9 ,
 .Xr elf 3 ,
@@ -245,6 +301,9 @@ See
 .Xr pkg-version 8 ,
 .Xr pkg-which 8 ,
 .Xr pthread 3
+.Pp
+To build your own package set for one or multiple servers see
+.Em ports-mgmt/poudriere
 .\" ---------------------------------------------------------------------------
 .Sh HISTORY
 The
