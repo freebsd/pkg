@@ -25,7 +25,7 @@ NO_WERROR=
 CFLAGS+=${DEBUG_FLAGS}
 CXXFLAGS+=${DEBUG_FLAGS}
 
-.  if ${MK_CTF} != "no" && ${DEBUG_FLAGS:M-g} != ""
+.  if defined(MK_CTF) && ${MK_CTF} != "no" && ${DEBUG_FLAGS:M-g} != ""
 CTFFLAGS+= -g
 .  endif
 .endif
@@ -98,7 +98,7 @@ ${_test}: ${${_test}_OBJS}
 .    else
 	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${${_test}_OBJS} ${LDADD} ${LATF_C}
 .    endif
-.    if ${MK_CTF} != "no"
+.    if defined(MK_CTF) && ${MK_CTF} != "no"
 	${CTFMERGE} ${CTFFLAGS} -o ${.TARGET} ${${_test}_OBJS}
 .    endif
 .  endif			# defined(${_test}_OBJS)
