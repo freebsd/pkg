@@ -28,7 +28,9 @@
 #define _PKGCLI_H
 
 extern bool quiet;
+extern int nbactions;
 int nbactions;
+extern int nbdone;
 int nbdone;
 
 /* pkg add */
