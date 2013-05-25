@@ -206,10 +206,10 @@ info_flags(unsigned int opt, bool remote)
 			 PKG_LOAD_ANNOTATIONS     |
 			 PKG_LOAD_DEPS;
 		if (!remote) {
-			flags |= PKG_LOAD_FILES      |
-				PKG_LOAD_DIRS            |
-				PKG_LOAD_USERS           |
-				PKG_LOAD_GROUPS          |
+			flags |= PKG_LOAD_FILES  |
+				PKG_LOAD_DIRS    |
+				PKG_LOAD_USERS   |
+				PKG_LOAD_GROUPS  |
 				PKG_LOAD_SCRIPTS;
 		}
 	}
