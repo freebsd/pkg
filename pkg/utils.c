@@ -220,16 +220,7 @@ info_flags(unsigned int opt, bool remote)
 void
 print_info(struct pkg * const pkg, unsigned int options)
 {
-	struct pkg_category *cat    = NULL;
 	struct pkg_dep	    *dep    = NULL;
-	struct pkg_dir	    *dir    = NULL;
-	struct pkg_file	    *file   = NULL;
-	struct pkg_group    *group  = NULL;
-	struct pkg_license  *lic    = NULL;
-	struct pkg_option   *option = NULL;
-	struct pkg_shlib    *shlib  = NULL;
-	struct pkg_note	    *note   = NULL;
-	struct pkg_user	    *user   = NULL;
 	bool print_tag = false;
 	bool show_locks = false;
 	char size[7];
@@ -411,36 +402,36 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_SHLIBS_REQUIRED) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Shared Libs required");
-				while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK)
-					printf("%s%s\n", tab, pkg_shlib_name(shlib));
+				if (quiet)
+					pkg_printf("%B%{%Bn\n%|%}", pkg);
+				else
+					pkg_printf("%B%{\t%B\n%|%}", pkg);
 			}
 			break;
 		case INFO_SHLIBS_PROVIDED:
 			if (pkg_list_count(pkg, PKG_SHLIBS_PROVIDED) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Shared Libs provided");
-				while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
-					printf("%s%s\n", tab, pkg_shlib_name(shlib));
+				if (quiet)
+					pkg_printf("%b%{%bn\n%|%}", pkg);
+				else
+					pkg_printf("%b%{\t%bn\n%|%}", pkg);
 			}
 			break;
 		case INFO_ANNOTATIONS:
 			if (pkg_list_count(pkg, PKG_ANNOTATIONS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Annotations");
-				while (pkg_annotations(pkg, &note) == EPKG_OK)
-					printf("%s%-15s: %s\n", tab,
-					       pkg_annotation_tag(note),
-					       pkg_annotation_value(note));
+				if (quiet)
+					pkg_printf("%A%{%-15An: %Av\n%|%}", pkg);
+				else
+					pkg_printf("%A%{\t%-15An: %Av\n%|%}", pkg);					
 			}
 			break;
 		case INFO_FLATSIZE:
-			humanize_number(size, sizeof(size),
-			    flatsize,"B",
-			    HN_AUTOSCALE, 0);
-
 			if (print_tag)
 				printf("%-15s: ", "Flat size");
-			printf("%s\n", size);
+			pkg_printf("%#sB\n", pkg);
 			break;
 		case INFO_PKGSIZE: /* Remote pkgs only */
 			if (pkg_type(pkg) == PKG_REMOTE) {
@@ -462,7 +453,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (message) {
 				if (print_tag)
 					printf("%-15s:\n", "Message");
-				printf("%s\n", message);
+				pkg_printf("%M\n", pkg);
 			}
 			break;
 		case INFO_DEPS:
@@ -500,10 +491,10 @@ print_info(struct pkg * const pkg, unsigned int options)
 			    pkg_list_count(pkg, PKG_FILES) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Files");
-				while (pkg_files(pkg, &file) == EPKG_OK)
-					printf("%s%s\n",
-					       tab,
-					       pkg_file_path(file));
+				if (quiet)
+					pkg_printf("%F%{%Fn\n%|%}", pkg);
+				else
+					pkg_printf("%F%{\t%Fn\n%|%}", pkg);
 			}
 			break;
 		case INFO_DIRS:	/* Installed pkgs only */
@@ -511,10 +502,10 @@ print_info(struct pkg * const pkg, unsigned int options)
 			    pkg_list_count(pkg, PKG_DIRS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Directories");
-				while (pkg_dirs(pkg, &dir) == EPKG_OK)
-					printf("%s%s\n",
-					       tab,
-					       pkg_dir_path(dir));
+				if (quiet)
+					pkg_printf("%D%{%Dn\n%|%}", pkg);
+				else
+					pkg_printf("%D%{\t%Dn\n%|%}", pkg);
 			}
 			break;
 		case INFO_USERS: /* Installed pkgs only */
@@ -522,11 +513,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			    pkg_list_count(pkg, PKG_USERS) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Users");
-				if (pkg_users(pkg, &user) == EPKG_OK)
-					printf("%s", pkg_user_name(user));
-				while (pkg_users(pkg, &user) == EPKG_OK)
-					printf(" %s", pkg_user_name(user));
-				printf("\n");
+				pkg_printf("%U%{%Un%| %}\n", pkg);
 			}
 			break;
 		case INFO_GROUPS: /* Installed pkgs only */
@@ -534,11 +521,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			    pkg_list_count(pkg, PKG_GROUPS) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Groups");
-				if (pkg_groups(pkg, &group) == EPKG_OK)
-					printf("%s", pkg_group_name(group));
-				while (pkg_groups(pkg, &group) == EPKG_OK)
-					printf(" %s", pkg_group_name(group));
-				printf("\n");
+				pkg_printf("%G%{%Gn%| %}\n", pkg);
 			}
 			break;
 		case INFO_ARCH:
@@ -561,7 +544,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 		case INFO_LOCKED:
 			if (print_tag)
 				printf("%-15s: ", "Locked");
-			printf("%s\n", locked ? "yes" : "no");
+			pkg_printf("%?k\n", pkg);
 			break;
 		}
 	}
