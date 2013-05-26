@@ -305,6 +305,8 @@ packages from the remote repository, you would use the `pkg install` command:
 <a name="multirepos"></a>
 ### Working with multiple remote repositories
 
+**Note**: With pkg-1.1 the setup changes significantly. See *pkg.conf(5)* for more information.
+
 pkgng is also able to work with multiple remote repositories. In the previous section
 we are using only a single remote repository, which is defined by the _PACKAGESITE_ option.
 
