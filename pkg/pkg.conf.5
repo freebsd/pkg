@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd January 12, 2013
+.Dd May 26, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -29,7 +29,7 @@ is the system-wide configuration file used by the
 tools.
 .Pp
 The default location of this file is
-.Fa /usr/local/etc/pkg.conf
+.Pa /usr/local/etc/pkg.conf
 .Pp
 Lines in the file beginning with a "#" are comments
 and are ignored.
@@ -43,9 +43,9 @@ boolean, string and list options.
 .Pp
 A boolean option is marked as enabled if one of the following values is
 specified in the configuration file -
-.Fa YES, TRUE
+.Dv YES, TRUE
 and
-.Fa ON.
+.Dv ON.
 .Sh OPTIONS
 The following options can be defined in
 .Nm :
@@ -63,14 +63,14 @@ By default this option is disabled.
 Specifies the location to the public RSA key used for signing the
 repository database.
 The default value for this file is
-.Fa /etc/ssl/pkg.conf
+.Pa /etc/ssl/pkg.conf
 .It Cm HANDLE_RC_SCRIPTS: boolean
 This option when enabled
 will automatically perform start/stop of services during package
 installation and deinstallation.
 Services are started on installation only
 if they are enabled in
-.Fa /etc/rc.conf .
+.Pa /etc/rc.conf .
 By default this option is disabled.
 .It Cm PACKAGESITE: string
 Specifies the remote location to use
@@ -82,25 +82,25 @@ to create a dynamic URL based on the ABI being used.
 Specifies which mirror type to use for
 .Sy PACKAGESITE .
 Either
-.Fa HTTP
+.Dv HTTP
 or
-.Fa SRV
+.Dv SRV
 or
-.Fa NONE
+.Dv NONE
 can be used.
 By default
-.Fa SRV
+.Dv SRV
 is used.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 The default value
 for this option is
-.Fa /var/cache/pkg
+.Pa /var/cache/pkg
 .It Cm PKG_DBDIR: string
 Specifies the directory to use for storing the package
 database files.
 The default value for this option is
-.Fa /var/db/pkg
+.Pa /var/db/pkg
 .It Cm PKG_MULTIREPOS: boolean
 This option when enabled will tell
 .Xr pkg 1
@@ -113,7 +113,7 @@ definitions, please have a look at the sample configuration file.
 Specifies the location to the Ports directory.
 The default value
 for this option is
-.Fa /usr/ports
+.Pa /usr/ports
 .It Cm SYSLOG: boolean
 This option is enabled by default, log all the
 installation/deinstallation/upgrade operation via syslog(3)
