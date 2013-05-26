@@ -14,15 +14,16 @@ if [ -f ${PORTSDIR}/Mk/bsd.pkgng.mk ]; then
 	pkgng_mk_dir=${PORTSDIR}/Mk
 else
 	tmp_pkgng_mk_dir=$(mktemp -dt pkg2ng)
+	chown nobody:nobody ${tmp_pkgng_mk_dir}
 	echo "Fetching bsd.pkgng.mk as it is required for converting installed ports"
-	if ! fetch -o $tmp_pkgng_mk_dir http://svn.freebsd.org/ports/head/Mk/bsd.pkgng.mk; then
+	if ! fetch -o $tmp_pkgng_mk_dir https://svn0.us-west.freebsd.org/ports/head/Mk/bsd.pkgng.mk; then
 		echo "bsd.pkgng.mk is required, please checkouts ports and specify PORTSDIR"
 		exit 1
 	fi
 	pkgng_mk_dir=$tmp_pkgng_mk_dir
 fi
 
-FORCE_POST=$(make _POSTMKINCLUDED=1 -f ${pkgng_mk_dir}/bsd.pkgng.mk -V _FORCE_POST_PATTERNS)
+FORCE_POST=$(cd ${pkgng_mk_dir}; su -m nobody -c "make _POSTMKINCLUDED=1 -f ${pkgng_mk_dir}/bsd.pkgng.mk -V _FORCE_POST_PATTERNS")
 
 [ -n "$tmp_pkgng_mk_dir" ] && rm -rf $tmp_pkgng_mk_dir
 
