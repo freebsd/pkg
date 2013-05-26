@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd April 14, 2013
+.Dd May 26, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -101,12 +101,6 @@ Specifies the directory to use for storing the package
 database files.
 The default value for this option is
 .Fa /var/db/pkg
-.It Cm PKG_MULTIREPOS: boolean
-This option when enabled will tell
-.Xr pkg 1
-to work in multiple repositories mode.
-For example repositories
-definitions, please have a look at the sample configuration file.
 .It Cm PLIST_KEYWORDS_DIR: string
 < To be added >
 .It Cm PORTSDIR: string
@@ -168,9 +162,43 @@ in JSON.
 .It Cm SSH_RESTRICT_DIR: string
 Directory where the ssh subsystem will be restricted to
 .El
+.Sh MULTIPLE REPOSITORIES
+To use multiple repositories, specify the primary repository as shown above.
+Further repositores can be configured in repository files.
+.Pp
+Repository files reside in
+.Pa /usr/local/etc/pkg/repos/ .
+.Pp
+The filename does not matter,
+.Pa /usr/local/etc/pkg/repos/myrepo.conf
+could be used as an example.
+.Pp
+A repository file is in YAML format and has the following form (see
+above for the description of most options):
+.Bl -tag -width ".Cm myrepo:"
+.It Cm myrepo:
+.Bl -tag -width ".Cm MIRROR_TYPE: string"
+.It Cm URL: string
+PACKAGESITE for this repository only.
+.It Cm ENABLED: boolean
+The repository will be used only if this option is enabled. (default: YES)
+.It Cm MIRROR_TYPE: string
+MIRROR_TYPE for this repository only. (default: NONE)
+.It Cm PUBKEY: string
+PUBKEY for this repository only. (default: NONE)
+.El
+.El
+.Pp
+Note that 
+.Fa myrepo
+could be any string.
+However no two repositories may share the same name.
+.Pp
+It is possible to specify more than one repository per file.
 .Sh ENVIRONMENT
-An environment variable with the same name as the option in the configuration
-file always overrides the value of an option set in the file.
+An environment variable with the same name as the option in the
+configuration file always overrides the value of an option set in the
+file.
 .Sh SEE ALSO
 .Xr fetch 3 ,
 .Xr pkg 8 ,
