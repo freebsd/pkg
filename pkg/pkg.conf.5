@@ -167,13 +167,13 @@ To use multiple repositories, specify the primary repository as shown above.
 Further repositores can be configured in repository files.
 .Pp
 Repository files reside in
-.Fa /usr/local/etc/pkg/repos/ .
+.Pa /usr/local/etc/pkg/repos/ .
 .Pp
 The filename does not matter,
-.Fa /usr/local/etc/pkg/repos/myrepo.conf
+.Pa /usr/local/etc/pkg/repos/myrepo.conf
 could be used as an example.
 .Pp
-A repository file is in YAML format and has to following form (see
+A repository file is in YAML format and has the following form (see
 above for the description of most options):
 .Bl -tag -width ".Cm myrepo:"
 .It Cm myrepo:
@@ -189,11 +189,12 @@ PUBKEY for this repository only. (default: NONE)
 .El
 .El
 .Pp
-Note that "myrepo" could be any string, however, no two repositores
-may share the same name.
+Note that 
+.Fa myrepo
+could be any string.
+However no two repositories may share the same name.
 .Pp
-Also note that it is possible to specify more than one repository per
-repository file.
+It is possible to specify more than one repository per file.
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the
 configuration file always overrides the value of an option set in the
