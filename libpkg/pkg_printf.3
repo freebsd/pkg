@@ -30,7 +30,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 12, 2013
+.Dd May 27, 2013
 .Dt PKG_PRINTF 3
 .Os
 .Sh NAME
@@ -197,7 +197,7 @@ print the mode in the style of
 .Xr strmode 3 .
 .Pp
 For boolean valued formats
-.Cm ( Dk , \^Dt , Fk , a
+.Cm ( Dk , \^Dt , Fk , dk , rk , a
 and
 .Cm k )
 generate either
@@ -245,13 +245,14 @@ or
 print the mode as an octal integer with a leading 0.
 .Pp
 For boolean valued formats
-.Cm ( Dk , \^Dt , Fk , a
+.Cm ( Dk , \^Dt , Fk , dk , rk , a
 and
 .Cm k )
 generate either
-.Dq true
+.Dq (*)
 or
-.Dq false .
+.Dq \^
+(empty).
 .Pp
 For the licence logic format
 .Cm (l)
@@ -590,6 +591,9 @@ Dependencies [array]
 .Pp
 Default row format:
 .Cm "%d%{%dn-%dv\en%|%}"
+.It Cm %dk
+Dependency lock status [boolean]
+.Vt struct pkg_dep *
 .It Cm %dn
 Dependency name [string]
 .Vt struct pkg_dep *
@@ -629,6 +633,9 @@ Requirements [array]
 .Pp
 Default row format:
 .Cm "%r%{%rn-%rv\en%|%}"
+.It Cm %rk
+Requirement lock status [boolean]
+.Vt struct pkg_dep *
 .It Cm %rn
 Requirement name [string]
 .Vt struct pkg_dep *
@@ -715,9 +722,11 @@ forms 1 and 2 specified using format modifiers.
 .Pp
 .Bl -column "FALSE" "Plain (%a)" "Alt 1 (%?a)" "Alt 2 (%#a)" -offset indent
 .It Sy "Value" Ta Sy "Plain (%a)" Ta Sy "Alt 1 (%?a)" Ta Sy "Alt 2 (%#a)"
-.It Li FALSE Ta No 0 Ta no  Ta false
-.It Li TRUE  Ta No 1 Ta yes Ta true
+.It Li FALSE Ta No false Ta no  Ta \^
+.It Li TRUE  Ta No true  Ta yes Ta (*)
 .El
+The second alternate form produces no output for
+.Cm false .
 .Pp
 Effective format modifiers:
 .Bl -tag -width ".Cm #" -offset indent

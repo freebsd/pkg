@@ -117,6 +117,7 @@
  * c  pkg          comment
  *
  * d  pkg          List of dependencies
+ * dk pkg_dep      dependency lock status
  * dn pkg_dep      dependency name
  * do pkg_dep      dependency origin
  * dv pkg_dep      dependency version
@@ -141,6 +142,7 @@
  * q
  *
  * r  pkg          List of requirements
+ * rk pkg_dep      requirement lock status
  * rn pkg_dep      requirement name
  * ro pkg_dep      requirement origin
  * rv pkg_dep      requirement version
@@ -162,6 +164,7 @@ struct pkg_printf_fmt {
 	char	         fmt_main;
 	char		 fmt_sub;
 	bool		 has_trailer;
+	bool		 struct_pkg; /* or else a sub-type? */
 	unsigned	 context;
 	struct sbuf	*(*fmt_handler)(struct sbuf *, const void *,
 					struct percent_esc *);
@@ -174,127 +177,571 @@ struct pkg_printf_fmt {
 
 static const struct pkg_printf_fmt	fmt[] = {
 	[PP_PKG_ANNOTATION_NAME] =
-	{ 'A', 'n',   false, PP_PKG|PP_A,       &format_annotation_name, },
+	{
+		'A',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_A,
+		&format_annotation_name,
+	},
 	[PP_PKG_ANNOTATION_VALUE] =
-	{ 'A', 'v',   false, PP_PKG|PP_A,       &format_annotation_value, },
+	{
+		'A',
+		'v',
+		false,
+		false,
+		PP_PKG|PP_A,
+		&format_annotation_value,
+	},
 	[PP_PKG_ANNOTATIONS] =
-	{ 'A', '\0',  true,  PP_PKG,            &format_annotations, },
+	{
+		'A',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_annotations,
+	},
 	[PP_PKG_SHLIB_REQUIRED_NAME] =
-	{ 'B', 'n',   false, PP_PKG|PP_B,	&format_shlib_name, },
+	{
+		'B',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_B,
+		&format_shlib_name,
+	},
 	[PP_PKG_SHLIBS_REQUIRED] =
-	{ 'B', '\0',  true,  PP_PKG,		&format_shlibs_required, },
+	{
+		'B',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_shlibs_required,
+	},
         [PP_PKG_CATEGORY_NAME] =
-	{ 'C', 'n',   false, PP_PKG|PP_C,	&format_category_name, },
+	{
+		'C',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_C,
+		&format_category_name,
+	},
 	[PP_PKG_CATEGORIES] =
-	{ 'C', '\0',  true,  PP_PKG,		&format_categories, },
+	{
+		'C',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_categories,
+	},
         [PP_PKG_DIRECTORY_GROUP] =
-	{ 'D', 'g',   false, PP_PKG|PP_D,	&format_directory_group, },
+	{
+		'D',
+		'g',
+		false,
+		false,
+		PP_PKG|PP_D,
+		&format_directory_group,
+	},
 	[PP_PKG_DIRECTORY_KEEPFLAG] =
-	{ 'D', 'k',   false, PP_PKG|PP_D,	&format_directory_keepflag, },
+	{
+		'D',
+		'k',
+		false,
+		false,
+		PP_PKG|PP_D,
+		&format_directory_keepflag,
+	},
 	[PP_PKG_DIRECTORY_PATH] =
-	{ 'D', 'n',   false, PP_PKG|PP_D,	&format_directory_path, },
+	{
+		'D',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_D,
+		&format_directory_path,
+	},
 	[PP_PKG_DIRECTORY_PERMS] =
-	{ 'D', 'p',   false, PP_PKG|PP_D,	&format_directory_perms, },
+	{
+		'D',
+		'p',
+		false,
+		false,
+		PP_PKG|PP_D,
+		&format_directory_perms,
+	},
 	[PP_PKG_DIRECTORY_TRYFLAG] =
-	{ 'D', 't',   false, PP_PKG|PP_D,	&format_directory_tryflag, },
+	{
+		'D',
+		't',
+		false,
+		false,
+		PP_PKG|PP_D,
+		&format_directory_tryflag,
+	},
 	[PP_PKG_DIRECTORY_USER] =
-	{ 'D', 'u',   false, PP_PKG|PP_D,	&format_directory_user, },
+	{
+		'D',
+		'u',
+		false,
+		false,
+		PP_PKG|PP_D,
+		&format_directory_user,
+	},
 	[PP_PKG_DIRECTORIES] =
-	{ 'D', '\0',  true,  PP_PKG,		&format_directories, },
+	{
+		'D',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_directories,
+	},
 	[PP_PKG_FILE_GROUP] =
-	{ 'F', 'g',   false, PP_PKG|PP_F,	&format_file_group, },
+	{
+		'F',
+		'g',
+		false,
+		false,
+		PP_PKG|PP_F,
+		&format_file_group,
+	},
 	[PP_PKG_FILE_KEEPFLAG] =
-	{ 'F', 'k',   false, PP_PKG|PP_F,	&format_file_keepflag, },
+	{
+		'F',
+		'k',
+		false,
+		false,
+		PP_PKG|PP_F,
+		&format_file_keepflag,
+	},
 	[PP_PKG_FILE_PATH] =
-	{ 'F', 'n',   false, PP_PKG|PP_F,	&format_file_path, },
+	{
+		'F',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_F,
+		&format_file_path,
+	},
 	[PP_PKG_FILE_PERMS] =
-	{ 'F', 'p',   false, PP_PKG|PP_F,	&format_file_perms, },
+	{
+		'F',
+		'p',
+		false,
+		false,
+		PP_PKG|PP_F,
+		&format_file_perms,
+	},
 	[PP_PKG_FILE_SHA256] =
-	{ 'F', 's',   false, PP_PKG|PP_F,	&format_file_sha256, },
+	{
+		'F',
+		's',
+		false,
+		false,
+		PP_PKG|PP_F,
+		&format_file_sha256,
+	},
 	[PP_PKG_FILE_USER] =
-	{ 'F', 'u',   false, PP_PKG|PP_F,	&format_file_user, },
+	{
+		'F',
+		'u',
+		false,
+		false,
+		PP_PKG|PP_F,
+		&format_file_user,
+	},
 	[PP_PKG_FILES] =
-	{ 'F', '\0',  true,  PP_PKG,		&format_files, },
+	{
+		'F',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_files,
+	},
 	[PP_PKG_GROUP_GIDSTR] =
-	{ 'G', 'g',   false, PP_PKG|PP_G,	&format_group_gidstr, },
+	{
+		'G',
+		'g',
+		false,
+		false,
+		PP_PKG|PP_G,
+		&format_group_gidstr,
+	},
 	[PP_PKG_GROUP_NAME] =
-	{ 'G', 'n',   false, PP_PKG|PP_G,	&format_group_name, },
+	{
+		'G',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_G,
+		&format_group_name,
+	},
 	[PP_PKG_GROUPS] =
-	{ 'G', '\0',  true,  PP_PKG,		&format_groups, },
+	{
+		'G',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_groups,
+	},
 	[PP_ROW_COUNTER] =
-	{ 'I', '\0',  false, PP_TRAILER,	&format_row_counter, },
+	{
+		'I',
+		'\0',
+		false,
+		false,
+		PP_TRAILER,
+		&format_row_counter,
+	},
 	[PP_PKG_LICENSE_NAME] =
-	{ 'L', 'n',   false, PP_PKG|PP_L,	&format_license_name, },
+	{
+		'L',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_L,
+		&format_license_name,
+	},
 	[PP_PKG_LICENSES] =
-	{ 'L', '\0',  true,  PP_PKG,		&format_licenses, },
+	{
+		'L',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_licenses,
+	},
 	[PP_PKG_MESSAGE] =
-	{ 'M', '\0',  false, PP_ALL,		&format_message, },
+	{
+		'M',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_message,
+	},
 	[PP_PKG_OPTION_NAME] =
-	{ 'O', 'n',   false, PP_PKG|PP_O,	&format_option_name, },
+	{
+		'O',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_O,
+		&format_option_name,
+	},
 	[PP_PKG_OPTION_VALUE] =
-	{ 'O', 'v',   false, PP_PKG|PP_O,	&format_option_value, },
+	{
+		'O',
+		'v',
+		false,
+		false,
+		PP_PKG|PP_O,
+		&format_option_value,
+	},
 	[PP_PKG_OPTIONS] =
-	{ 'O', '\0',  true,  PP_PKG,		&format_options, },
+	{
+		'O',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_options,
+	},
 	[PP_PKG_USER_NAME] =
-	{ 'U', 'n',   false, PP_PKG|PP_U,	&format_user_name, },
+	{
+		'U',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_U,
+		&format_user_name,
+	},
 	[PP_PKG_USER_UIDSTR] =
-	{ 'U', 'u',   false, PP_PKG|PP_U,	&format_user_uidstr, },
+	{
+		'U',
+		'u',
+		false,
+		false,
+		PP_PKG|PP_U,
+		&format_user_uidstr,
+	},
 	[PP_PKG_USERS] =
-	{ 'U', '\0',  true,  PP_PKG,		&format_users, },
+	{
+		'U',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_users,
+	},
 	[PP_PKG_AUTOREMOVE] =
-	{ 'a', '\0',  false, PP_ALL,		&format_autoremove, },
+	{
+		'a',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_autoremove,
+	},
 	[PP_PKG_SHLIB_PROVIDED_NAME] =
-	{ 'b', 'n',   false, PP_PKG|PP_b,	&format_shlib_name, },
+	{
+		'b',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_b,
+		&format_shlib_name,
+	},
 	[PP_PKG_SHLIBS_PROVIDED] =
-	{ 'b', '\0',  true,  PP_PKG,		&format_shlibs_provided, },
+	{
+		'b',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_shlibs_provided,
+	},
 	[PP_PKG_COMMENT] =
-	{ 'c', '\0',  false, PP_ALL,		&format_comment, },
+	{
+		'c',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_comment,
+	},
+	[PP_PKG_DEPENDENCY_LOCK] =
+	{
+		'd',
+		'k',
+		false,
+		false,
+		PP_PKG|PP_d,
+		&format_dependency_lock,
+	},
 	[PP_PKG_DEPENDENCY_NAME] =
-	{ 'd', 'n',   false, PP_PKG|PP_d,	&format_dependency_name, },
+	{
+		'd',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_d,
+		&format_dependency_name,
+	},
 	[PP_PKG_DEPENDENCY_ORIGIN] =
-	{ 'd', 'o',   false, PP_PKG|PP_d,	&format_dependency_origin, },
+	{
+		'd',
+		'o',
+		false,
+		false,
+		PP_PKG|PP_d,
+		&format_dependency_origin,
+	},
 	[PP_PKG_DEPENDENCY_VERSION] =
-	{ 'd', 'v',   false, PP_PKG|PP_d,	&format_dependency_version, },
+	{
+		'd',
+		'v',
+		false,
+		false,
+		PP_PKG|PP_d,
+		&format_dependency_version,
+	},
 	[PP_PKG_DEPENDENCIES] =
-	{ 'd', '\0',  true,  PP_PKG,		&format_dependencies, },
+	{
+		'd',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_dependencies,
+	},
 	[PP_PKG_DESCRIPTION] =
-	{ 'e', '\0',  false, PP_ALL,		&format_description, },
+	{
+		'e',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_description,
+	},
 	[PP_PKG_ADDITIONAL_INFO] =
-	{ 'i', '\0',  false, PP_ALL,		&format_add_info, },
+	{
+		'i',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_add_info,
+	},
 	[PP_PKG_LOCK_STATUS] =
-	{ 'k', '\0',  false, PP_ALL,		&format_lock_status, },
+	{
+		'k',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_lock_status,
+	},
 	[PP_PKG_LICENSE_LOGIC] =
-	{ 'l', '\0',  false, PP_ALL,		&format_license_logic, },
+	{
+		'l',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_license_logic,
+	},
 	[PP_PKG_MAINTAINER] =
-	{ 'm', '\0',  false, PP_ALL,		&format_maintainer, },
+	{
+		'm',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_maintainer,
+	},
 	[PP_PKG_NAME] =
-	{ 'n', '\0',  false, PP_ALL,		&format_name, },
+	{
+		'n',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_name, },
 	[PP_PKG_ORIGIN] =
-	{ 'o', '\0',  false, PP_ALL,		&format_origin, },
+	{
+		'o',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_origin,
+	},
 	[PP_PKG_PREFIX] =
-	{ 'p', '\0',  false, PP_ALL,		&format_prefix, },
+	{
+		'p',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_prefix,
+	},
+	[PP_PKG_REQUIREMENT_LOCK] =
+	{
+		'r',
+		'k',
+		false,
+		false,
+		PP_PKG|PP_r,
+		&format_dependency_lock,
+	},
 	[PP_PKG_REQUIREMENT_NAME] =
-	{ 'r', 'n',   false, PP_PKG|PP_r,	&format_dependency_name, },
+	{
+		'r',
+		'n',
+		false,
+		false,
+		PP_PKG|PP_r,
+		&format_dependency_name,
+	},
 	[PP_PKG_REQUIREMENT_ORIGIN] =
-	{ 'r', 'o',   false, PP_PKG|PP_r,	&format_dependency_origin, },
+	{
+		'r',
+		'o',
+		false,
+		false,
+		PP_PKG|PP_r,
+		&format_dependency_origin,
+	},
 	[PP_PKG_REQUIREMENT_VERSION] =
-	{ 'r', 'v',   false, PP_PKG|PP_r,	&format_dependency_version, },
+	{
+		'r',
+		'v',
+		false,
+		false,
+		PP_PKG|PP_r,
+		&format_dependency_version,
+	},
 	[PP_PKG_REQUIREMENTS] =
-	{ 'r', '\0',  true,  PP_PKG,		&format_requirements, },
+	{
+		'r',
+		'\0',
+		true,
+		true,
+		PP_PKG,
+		&format_requirements,
+	},
 	[PP_PKG_FLATSIZE] =
-	{ 's', '\0',  false, PP_ALL,		&format_flatsize, },
+	{
+		's',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_flatsize,
+	},
 	[PP_PKG_INSTALL_TIMESTAMP] =
-	{ 't', '\0',  false, PP_ALL,		&format_install_tstamp, },
+	{
+		't',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_install_tstamp,
+	},
 	[PP_PKG_VERSION] =
-	{ 'v', '\0',  false, PP_ALL,		&format_version, },
+	{
+		'v',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_version,
+	},
 	[PP_PKG_HOME_PAGE] =
-	{ 'w', '\0',  false, PP_ALL,		&format_home_url, },
+	{
+		'w',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_home_url,
+	},
 	[PP_LITERAL_PERCENT] =
-	{ '%', '\0',  false, PP_ALL,		&format_literal_percent, },
+	{
+		'%',
+		'\0',
+		false,
+		false,
+		PP_ALL,
+		&format_literal_percent,
+	},
 	[PP_UNKNOWN] =
-	{ '\0', '\0', false, PP_ALL,    	&format_unknown, },
+	{
+		'\0',
+		'\0',
+		false,
+		false,
+		PP_ALL,
+		&format_unknown,
+	},
 	[PP_END_MARKER] =
-	{ '\0', '\0', false, 0,			NULL, },
+	{
+		'\0',
+		'\0',
+		false,
+		false,
+		0,
+		NULL,
+	},
 };
 
 /*
@@ -979,6 +1426,18 @@ format_dependencies(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 }
 
 /*
+ * %dk -- Dependency lock status or %rk -- Requirement lock status.
+ */
+struct sbuf *
+format_dependency_lock(struct sbuf *sbuf, const void *data,
+		       struct percent_esc *p)
+{
+	const struct pkg_dep	*dep = data;
+
+	return (bool_val(sbuf, pkg_dep_is_locked(dep), p));
+}
+
+/*
  * %dn -- Dependency name or %rn -- Requirement name.
  */
 struct sbuf *
@@ -1487,8 +1946,8 @@ struct sbuf *
 bool_val(struct sbuf *sbuf, bool value, struct percent_esc *p)
 {
 	static const char	*boolean_str[2][3] = {
-		[false]	= { "0", "no", "false" },
-		[true]  = { "1", "yes", "true" },
+		[false]	= { "false", "no",  ""    },
+		[true]  = { "true",  "yes", "(*)" },
 	};
 	int	alternate;
 
@@ -2132,10 +2591,10 @@ process_format_trailer(struct sbuf *sbuf, struct percent_esc *p,
 		s = fmt[p->fmt_code].fmt_handler(sbuf, &count, p);
 	else if (p->fmt_code > PP_LAST_FORMAT)
 		s = fmt[p->fmt_code].fmt_handler(sbuf, NULL, p);
-	else if (fmt[p->fmt_code].context & context)
-		s = fmt[p->fmt_code].fmt_handler(sbuf, data, p);
-	else
+	else if (fmt[p->fmt_code].struct_pkg)
 		s = fmt[p->fmt_code].fmt_handler(sbuf, pkg, p);
+	else
+		s = fmt[p->fmt_code].fmt_handler(sbuf, data, p);
 
 
 	if (s == NULL) {

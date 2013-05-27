@@ -112,6 +112,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_SHLIB_PROVIDED_NAME,
 	PP_PKG_SHLIBS_PROVIDED,
 	PP_PKG_COMMENT,
+	PP_PKG_DEPENDENCY_LOCK,
 	PP_PKG_DEPENDENCY_NAME,
 	PP_PKG_DEPENDENCY_ORIGIN,
 	PP_PKG_DEPENDENCY_VERSION,
@@ -124,6 +125,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_NAME,
 	PP_PKG_ORIGIN,
 	PP_PKG_PREFIX,
+	PP_PKG_REQUIREMENT_LOCK,
 	PP_PKG_REQUIREMENT_NAME,
 	PP_PKG_REQUIREMENT_ORIGIN,
 	PP_PKG_REQUIREMENT_VERSION,
@@ -190,6 +192,7 @@ _static struct sbuf *format_autoremove(struct sbuf *, const void *, struct perce
 _static struct sbuf *format_shlibs_provided(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_comment(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_dependencies(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_dependency_lock(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_dependency_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_dependency_origin(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_dependency_version(struct sbuf *, const void *, struct percent_esc *);
