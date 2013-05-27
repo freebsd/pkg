@@ -220,16 +220,13 @@ info_flags(unsigned int opt, bool remote)
 void
 print_info(struct pkg * const pkg, unsigned int options)
 {
-	struct pkg_dep	    *dep    = NULL;
 	bool print_tag = false;
 	bool show_locks = false;
 	char size[7];
 	const char *reponame, *repourl, *repopath;
 	const char *arch;
-	const char *tab;
 	unsigned opt;
 	int64_t flatsize, oldflatsize, pkgsize;
-	bool locked;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
 
@@ -240,8 +237,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 		PKG_OLD_FLATSIZE,  &oldflatsize,
 		PKG_PKGSIZE,       &pkgsize,
 		PKG_ARCH,	   &arch,
-		PKG_REPOPATH,	   &repopath,
-		PKG_LOCKED,	   &locked);
+		PKG_REPOPATH,	   &repopath);
 
 	if (options & INFO_RAW) {
 		if (pkg_type(pkg) != PKG_REMOTE)
@@ -269,9 +265,6 @@ print_info(struct pkg * const pkg, unsigned int options)
 		else if (options & INFO_TAG_NAME)
 			cout = pkg_printf("%n", pkg);
 	}
-
-	/* Don't display a tab if quiet, retains compatibility. */
-	tab = quiet ? "" : "\t";
 
 	/* If we printed a tag, and there are no other items to print,
 	   then just return now. If there's only one single-line item
@@ -446,14 +439,16 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_DEPS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Depends on");
-				while (pkg_deps(pkg, &dep) == EPKG_OK) {
-					printf("%s%s-%s",
-					       tab,
-					       pkg_dep_name(dep),
-					       pkg_dep_version(dep));
-					if (show_locks && pkg_dep_is_locked(dep))
-						printf(" (*)");
-					printf("\n");
+				if (quiet) {
+					if (show_locks) 
+						pkg_printf("%d%{%dn-%dv%#dk\n%|%}", pkg);
+					else
+						pkg_printf("%d%{%dn-%dv\n%|%}", pkg);
+				} else {
+					if (show_locks)
+						pkg_printf("%d%{\t%dn-%dv%#dk\n%|%}", pkg);
+					else
+						pkg_printf("%d%{\t%dn-%dv\n%|%}", pkg);
 				}
 			}
 			break;
@@ -461,14 +456,16 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_RDEPS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Required by");
-				while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-					printf("%s%s-%s",
-					       tab,
-					       pkg_dep_name(dep),
-					       pkg_dep_version(dep));
-					if (show_locks && pkg_dep_is_locked(dep))
-						printf(" (*)");
-					printf("\n");
+				if (quiet) {
+					if (show_locks) 
+						pkg_printf("%r%{%rn-%rv%#rk\n%|%}", pkg);
+					else
+						pkg_printf("%r%{%rn-%rv\n%|%}", pkg);
+				} else {
+					if (show_locks)
+						pkg_printf("%r%{\t%rn-%rv%#rk\n%|%}", pkg);
+					else
+						pkg_printf("%r%{\t%rn-%rv\n%|%}", pkg);
 				}
 			}
 			break;
