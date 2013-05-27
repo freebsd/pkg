@@ -137,9 +137,13 @@ typedef enum _fmt_code_t {
 	PP_END_MARKER,
 } fmt_code_t;
 
+#define	ITEM_FMT_SET	(0x1U << 0)
+#define SEP_FMT_SET	(0x1U << 1)
+
 struct percent_esc {
 	unsigned	 flags;
 	int		 width;
+	unsigned	 trailer_status;
 	struct sbuf	*item_fmt;
 	struct sbuf	*sep_fmt;
 	fmt_code_t	 fmt_code;

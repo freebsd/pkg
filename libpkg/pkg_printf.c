@@ -318,7 +318,7 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_ANNOTATIONS), p));
 	else {
-		struct pkg_note	*note;
+		struct pkg_note	*note = NULL;
 		int		 count;
 
 		set_list_defaults(p, "%An: %Av\n", "");
@@ -372,7 +372,7 @@ format_shlibs_required(struct sbuf *sbuf, const void *data, struct percent_esc *
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS_REQUIRED), p));
 	else {
-		struct pkg_shlib	*shlib;
+		struct pkg_shlib	*shlib = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Bn\n", "");
@@ -418,7 +418,7 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES),
 				   p));
 	else {
-		struct pkg_category	*cat;
+		struct pkg_category	*cat = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Cn", ", ");
@@ -462,7 +462,7 @@ format_directories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DIRS), p));
 	else {
-		struct pkg_dir	*dir;
+		struct pkg_dir	*dir = NULL;
 		int		 count;
 
 		set_list_defaults(p, "%Dn\n", "");
@@ -565,7 +565,7 @@ format_files(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_FILES), p));
 	else {
-		struct pkg_file	*file;
+		struct pkg_file	*file = NULL;
 		int		 count;
 
 		set_list_defaults(p, "%Fn\n", "");
@@ -664,7 +664,7 @@ format_groups(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_GROUPS), p));
 	else {
-		struct pkg_group	*group;
+		struct pkg_group	*group = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Gn\n", "");
@@ -730,7 +730,7 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_LICENSES),
 				   p));
 	else {
-		struct pkg_license	*lic;
+		struct pkg_license	*lic = NULL;
 		int			 count;
 		lic_t			 license_logic;
 
@@ -789,7 +789,7 @@ format_options(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_OPTIONS), p));
 	else {
-		struct pkg_option	*opt;
+		struct pkg_option	*opt = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%On %Ov\n", "");
@@ -844,7 +844,7 @@ format_users(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_USERS), p));
 	else {
-		struct pkg_user	*user;
+		struct pkg_user	*user = NULL;
 		int		 count;
 
 		set_list_defaults(p, "%Un\n", "");
@@ -914,7 +914,7 @@ format_shlibs_provided(struct sbuf *sbuf, const void *data, struct percent_esc *
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_SHLIBS_PROVIDED), p));
 	else {
-		struct pkg_shlib	*shlib;
+		struct pkg_shlib	*shlib = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%bn\n", "");
@@ -959,7 +959,7 @@ format_dependencies(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_DEPS), p));
 	else {
-		struct pkg_dep	*dep;
+		struct pkg_dep	*dep = NULL;
 		int		 count;
 
 		set_list_defaults(p, "%dn-%dv\n", "");
@@ -1122,7 +1122,7 @@ format_requirements(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return(list_count(sbuf, pkg_list_count(pkg, PKG_RDEPS), p));
 	else {
-		struct pkg_dep	*req;
+		struct pkg_dep	*req = NULL;
 		int		 count;
 
 		set_list_defaults(p, "%rn-%rv\n", "");
@@ -1264,6 +1264,7 @@ new_percent_esc(struct percent_esc *p)
 	} else {
 		p->flags = 0;
 		p->width = 0;
+		p->trailer_status = 0;
 		sbuf_clear(p->item_fmt);
 		sbuf_finish(p->item_fmt);
 
@@ -1580,13 +1581,15 @@ struct percent_esc *
 set_list_defaults(struct percent_esc *p, const char *item_fmt,
 		  const char *sep_fmt)
 {
-	if (sbuf_len(p->item_fmt) == 0) {
+	if ((p->trailer_status & ITEM_FMT_SET) != ITEM_FMT_SET) {
 		sbuf_cat(p->item_fmt, item_fmt);
 		sbuf_finish(p->item_fmt);
+		p->trailer_status |= ITEM_FMT_SET;
 	}
-	if (sbuf_len(p->sep_fmt) == 0) {
+	if ((p->trailer_status & SEP_FMT_SET) != SEP_FMT_SET) {
 		sbuf_cat(p->sep_fmt, sep_fmt);
 		sbuf_finish(p->sep_fmt);
+		p->trailer_status |= SEP_FMT_SET;
 	}
 	return (p);
 }
@@ -1598,7 +1601,10 @@ iterate_item(struct sbuf *sbuf, const struct pkg *pkg, const char *format,
 	const char	*f;
 
 	/* Scan the format string and interpret any escapes */
-	for (f = format; f != '\0'; f++) {
+
+	f = format;
+
+	while ( *f != '\0' ) {
 		switch(*f) {
 		case '%':
 			f = process_format_trailer(sbuf, f, pkg, data, count, context);
@@ -1608,6 +1614,7 @@ iterate_item(struct sbuf *sbuf, const struct pkg *pkg, const char *format,
 			break;
 		default:
 			sbuf_putc(sbuf, *f);
+			f++;
 			break;
 		}
 		if (f == NULL) {
@@ -1732,6 +1739,7 @@ format_trailer(const char *f, struct percent_esc *p)
 		const char	*f1;
 		const char	*f2;
 
+		p->trailer_status |= ITEM_FMT_SET;
 		f1 = f + 2;
 
 		for (f2 = f1; *f2 != '\0'; f2++) {
@@ -1748,6 +1756,7 @@ format_trailer(const char *f, struct percent_esc *p)
 
 
 		if (sep) {
+			p->trailer_status |= SEP_FMT_SET;
 			done = false;
 
 			for (f2 = f1; *f2 != '\0'; f2++) {
@@ -2337,13 +2346,20 @@ pkg_sbuf_vprintf(struct sbuf * restrict sbuf, const char * restrict format,
 	assert(sbuf != NULL);
 	assert(format != NULL);
 
-	for (f = format; *f != '\0'; f++) {
-		if (*f == '%') {
+	f = format;
+
+	while ( *f != '\0' ) {
+		switch(*f) {
+		case '%':
 			f = process_format_main(sbuf, f, ap);
-		} else if (*f == '\\' ) {
+			break;
+		case '\\':
 			f = process_escape(sbuf, f);
-		} else {
+			break;
+		default:
 			sbuf_putc(sbuf, *f);
+			f++;
+			break;
 		}
 		if (f == NULL) {
 			sbuf_clear(sbuf);
