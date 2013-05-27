@@ -2329,13 +2329,13 @@ parse_format(const char *f, unsigned context, struct percent_esc *p)
 const char*
 maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 {
-	int	val;
-
 	/* Hex escapes are of the form \xNN -- always two hex digits */
 
 	f++;			/* eat the x */
 
 	if (isxdigit(f[0]) && isxdigit(f[1])) {
+		int	val;
+
 		switch(*f) {
 		case '0':
 			val = 0x0;
@@ -2390,6 +2390,13 @@ maybe_read_hex_byte(struct sbuf *sbuf, const char *f)
 		case 'f':
 		case 'F':
 			val = 0xf0;
+			break;
+		default:
+			/* This case is to shut up the over-picky
+			 * compiler warnings about use of an
+			 * uninitialised value. It can't actually
+			 * be reached.  */
+			val = 0x0;
 			break;
 		}
 
