@@ -1024,10 +1024,10 @@ struct sbuf *
 format_description(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*descr;
+	const char		*desc;
 
-	pkg_get(pkg, PKG_DESCR, &descr);
-	return (string_val(sbuf, descr, p));
+	pkg_get(pkg, PKG_DESC, &desc);
+	return (string_val(sbuf, desc, p));
 }
 
 /*
