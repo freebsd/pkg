@@ -224,33 +224,21 @@ print_info(struct pkg * const pkg, unsigned int options)
 	bool print_tag = false;
 	bool show_locks = false;
 	char size[7];
-	const char *name, *version, *prefix, *origin, *reponame, *repourl;
-	const char *maintainer, *www, *comment, *desc, *message, *arch;
-	const char *repopath;
+	const char *reponame, *repourl, *repopath;
+	const char *arch;
 	const char *tab;
 	unsigned opt;
 	int64_t flatsize, oldflatsize, pkgsize;
-	lic_t licenselogic;
 	bool locked;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
 
 	pkg_get(pkg,
-		PKG_NAME,          &name,
-		PKG_VERSION,       &version,
-		PKG_PREFIX,        &prefix,
-		PKG_ORIGIN,        &origin,
 		PKG_REPONAME,      &reponame,
 		PKG_REPOURL,       &repourl,
-		PKG_MAINTAINER,    &maintainer,
-		PKG_WWW,           &www,
-		PKG_COMMENT,       &comment,
-		PKG_DESC,          &desc,
 		PKG_FLATSIZE,      &flatsize,
 		PKG_OLD_FLATSIZE,  &oldflatsize,
 		PKG_PKGSIZE,       &pkgsize,
-		PKG_LICENSE_LOGIC, &licenselogic,
-		PKG_MESSAGE,       &message,
 		PKG_ARCH,	   &arch,
 		PKG_REPOPATH,	   &repopath,
 		PKG_LOCKED,	   &locked);
@@ -447,14 +435,12 @@ print_info(struct pkg * const pkg, unsigned int options)
 		case INFO_DESCR:
 			if (print_tag)
 				printf("%-15s:\n", "Description");
-			printf("%s\n", desc);
+			pkg_printf("%e\n", pkg);
 			break;
 		case INFO_MESSAGE:
-			if (message) {
-				if (print_tag)
-					printf("%-15s:\n", "Message");
-				pkg_printf("%M\n", pkg);
-			}
+			if (print_tag)
+				printf("%-15s:\n", "Message");
+			pkg_printf("%M\n", pkg);
 			break;
 		case INFO_DEPS:
 			if (pkg_list_count(pkg, PKG_DEPS) > 0) {
