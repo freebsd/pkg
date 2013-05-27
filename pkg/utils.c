@@ -357,7 +357,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_LICENSES) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Licenses");
-				pkg_printf("%L%{%Ln%| %l %}\n");
+				pkg_printf("%L%{%Ln%| %l %}\n", pkg);
 			} else if (!print_tag)
 				printf("\n");
 			break;

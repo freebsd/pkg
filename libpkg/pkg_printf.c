@@ -735,11 +735,8 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	else {
 		struct pkg_license	*lic = NULL;
 		int			 count;
-		lic_t			 license_logic;
-
 
 		set_list_defaults(p, "%Ln", " %l ");
-		pkg_get(pkg, PKG_LICENSE_LOGIC, &license_logic);
 
 		count = 1;
 		while (pkg_licenses(pkg, &lic) == EPKG_OK) {
