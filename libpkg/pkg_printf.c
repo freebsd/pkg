@@ -1235,6 +1235,41 @@ format_unknown(struct sbuf *sbuf, __unused const void *data,
 
 /* -------------------------------------------------------------- */
 
+struct percent_esc *
+new_percent_esc(void)
+{
+	struct percent_esc	*p; 
+
+	p = calloc(1, sizeof(struct percent_esc));
+	if (p != NULL) {
+		p->item_fmt = sbuf_new_auto();
+		p->sep_fmt = sbuf_new_auto();
+	}
+	if (p == NULL || p->item_fmt == NULL || p->sep_fmt == NULL) {
+		/* out of memory */
+		free_percent_esc(p);
+		return NULL;
+	}
+	return (p);
+}
+
+struct percent_esc *
+clear_percent_esc(struct percent_esc *p)
+{
+	p->flags = 0;
+	p->width = 0;
+	p->trailer_status = 0;
+	sbuf_clear(p->item_fmt);
+	sbuf_finish(p->item_fmt);
+
+	sbuf_clear(p->sep_fmt);
+	sbuf_finish(p->sep_fmt);
+
+	p->fmt_code = '\0';
+
+	return (p);
+}
+
 void
 free_percent_esc(struct percent_esc *p)
 {
@@ -1244,36 +1279,6 @@ free_percent_esc(struct percent_esc *p)
 		sbuf_delete(p->sep_fmt);
 	free(p);
 	return;
-}
-
-struct percent_esc *
-new_percent_esc(struct percent_esc *p)
-{
-	/* reset or alloc new */
-	if (p == NULL) {
-		p = calloc(1, sizeof(struct percent_esc));
-		if (p != NULL) {
-			p->item_fmt = sbuf_new_auto();
-			p->sep_fmt = sbuf_new_auto();
-		}
-		if (p == NULL || p->item_fmt == NULL || p->sep_fmt == NULL) {
-			/* out of memory */
-			free_percent_esc(p);
-			return NULL;
-		}
-	} else {
-		p->flags = 0;
-		p->width = 0;
-		p->trailer_status = 0;
-		sbuf_clear(p->item_fmt);
-		sbuf_finish(p->item_fmt);
-
-		sbuf_clear(p->sep_fmt);
-		sbuf_finish(p->sep_fmt);
-
-		p->fmt_code = '\0';
-	}
-	return (p);
 }
 
 char *
@@ -1598,16 +1603,23 @@ struct sbuf *
 iterate_item(struct sbuf *sbuf, const struct pkg *pkg, const char *format,
 	     const void *data, int count, unsigned context)
 {
-	const char	*f;
+	const char		*f;
+	struct percent_esc	*p;
 
 	/* Scan the format string and interpret any escapes */
 
 	f = format;
+	p = new_percent_esc();
+
+	if (p == NULL) {
+		sbuf_clear(sbuf);
+		return (sbuf);	/* Out of memory */
+	}
 
 	while ( *f != '\0' ) {
 		switch(*f) {
 		case '%':
-			f = process_format_trailer(sbuf, f, pkg, data, count, context);
+			f = process_format_trailer(sbuf, p, f, pkg, data, count, context);
 			break;
 		case '\\':
 			f = process_escape(sbuf, f);
@@ -1622,6 +1634,8 @@ iterate_item(struct sbuf *sbuf, const struct pkg *pkg, const char *format,
 			break;	/* Out of memory */
 		}
 	}
+
+	free_percent_esc(p);
 	return (sbuf);
 }
 
@@ -2089,17 +2103,12 @@ process_escape(struct sbuf *sbuf, const char *f)
 }
 
 const char *
-process_format_trailer(struct sbuf *sbuf, const char *f, const struct pkg *pkg, 
+process_format_trailer(struct sbuf *sbuf, struct percent_esc *p,
+		       const char *f, const struct pkg *pkg, 
 		       const void *data, int count, unsigned context)
 {
 	const char		*fstart;
 	struct sbuf		*s;
-	struct percent_esc	*p;
-
-	p = new_percent_esc(NULL);
-
-	if (p == NULL)
-		return (NULL);	/* Out of memory */
 
 	fstart = f;
 	f = parse_format(f, context, p);
@@ -2117,23 +2126,18 @@ process_format_trailer(struct sbuf *sbuf, const char *f, const struct pkg *pkg,
 	if (s == NULL)
 		f = fstart;	/* Pass through unprocessed on error */
 
-	free_percent_esc(p);
+	clear_percent_esc(p);
 
 	return (f);
 }
 
 const char *
-process_format_main(struct sbuf *sbuf, const char *f, va_list ap)
+process_format_main(struct sbuf *sbuf, struct percent_esc *p, const char *f,
+		    va_list ap)
 {
 	const char		*fstart;
 	struct sbuf		*s;
-	struct percent_esc	*p;
 	void			*data;
-
-	p = new_percent_esc(NULL);
-
-	if (p == NULL)
-		return (NULL);	/* Out of memory */
 
 	fstart = f;
 	f = parse_format(f, PP_PKG, p);
@@ -2148,7 +2152,7 @@ process_format_main(struct sbuf *sbuf, const char *f, va_list ap)
 	if (s == NULL)
 		f = fstart;	/* Pass through unprocessed on error */
 
-	free_percent_esc(p);
+	clear_percent_esc(p);
 
 	return (f);
 }
@@ -2341,17 +2345,24 @@ struct sbuf *
 pkg_sbuf_vprintf(struct sbuf * restrict sbuf, const char * restrict format,
 		 va_list ap)
 {
-	const char	*f;
+	const char		*f;
+	struct percent_esc	*p;
 
 	assert(sbuf != NULL);
 	assert(format != NULL);
 
 	f = format;
+	p = new_percent_esc();
+
+	if (p == NULL) {
+		sbuf_clear(sbuf);
+		return (sbuf);	/* Out of memory */
+	}
 
 	while ( *f != '\0' ) {
 		switch(*f) {
 		case '%':
-			f = process_format_main(sbuf, f, ap);
+			f = process_format_main(sbuf, p, f, ap);
 			break;
 		case '\\':
 			f = process_escape(sbuf, f);
@@ -2366,6 +2377,8 @@ pkg_sbuf_vprintf(struct sbuf * restrict sbuf, const char * restrict format,
 			break;	/* Error: out of memory */
 		}
 	}
+
+	free_percent_esc(p);
 	return (sbuf);
 }
 /*

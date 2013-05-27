@@ -209,8 +209,9 @@ _static struct sbuf *format_unknown(struct sbuf *, __unused const void *, __unus
 
 /* Other static function prototypes */
 
+_static struct percent_esc *new_percent_esc(void);
+_static struct percent_esc *clear_percent_esc(struct percent_esc *);
 _static void free_percent_esc(struct percent_esc *);
-_static struct percent_esc *new_percent_esc(struct percent_esc *);
 
 _static char *gen_format(char *, size_t, unsigned, const char *);
 
@@ -239,9 +240,11 @@ _static const char *maybe_read_hex_byte(struct sbuf *, const char *);
 _static const char *read_oct_byte(struct sbuf *, const char *);
 _static const char *process_escape(struct sbuf *, const char *);
 
-_static const char *process_format_trailer(struct sbuf *, const char *, const struct pkg *,
-					  const void *, int, unsigned);
-_static const char *process_format_main(struct sbuf *, const char *, va_list);
+_static const char *process_format_trailer(struct sbuf *, struct percent_esc *,
+					   const char *, const struct pkg *,
+					   const void *, int, unsigned);
+_static const char *process_format_main(struct sbuf *, struct percent_esc *,
+					const char *, va_list);
 
 #endif
 

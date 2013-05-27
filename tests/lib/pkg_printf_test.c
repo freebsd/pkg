@@ -308,7 +308,7 @@ ATF_TC_BODY(human_number, tc)
 	};
 
 	sbuf = sbuf_new_auto();
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(sbuf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
@@ -389,7 +389,7 @@ ATF_TC_BODY(string_val, tc)
 	};
 
 	sbuf = sbuf_new_auto();
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(sbuf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
@@ -629,7 +629,7 @@ ATF_TC_BODY(int_val, tc)
 	}; 
 
 	sbuf = sbuf_new_auto();
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(sbuf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
@@ -682,7 +682,7 @@ ATF_TC_BODY(bool_val, tc)
 	};
 
 	sbuf = sbuf_new_auto();
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(sbuf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
@@ -797,7 +797,7 @@ ATF_TC_BODY(mode_val, tc)
 	};
 
 	sbuf = sbuf_new_auto();
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(sbuf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
@@ -853,7 +853,7 @@ ATF_TC_BODY(liclog_val, tc)
 	};
 
 	sbuf = sbuf_new_auto();
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(sbuf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
@@ -901,7 +901,7 @@ ATF_TC_BODY(list_count, tc)
 	};
 
 	sbuf = sbuf_new_auto();
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(sbuf != NULL, true);
 	ATF_REQUIRE_EQ(p != NULL, true);
@@ -1240,7 +1240,7 @@ ATF_TC_BODY(field_modifier, tc)
 		{ NULL,   0,    0, '\0', },
 	};
 
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(p != NULL, true);
 
@@ -1310,7 +1310,7 @@ ATF_TC_BODY(field_width, tc)
 		{ NULL,  0, 0, '\0', },
 	};
 
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(p != NULL, true);
 
@@ -2038,7 +2038,7 @@ ATF_TC_BODY(format_code, tc)
 		{ NULL, 0,    0,                          0, '\0', },
 	};
 
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(p != NULL, true);
 
@@ -2087,7 +2087,7 @@ ATF_TC_BODY(format_trailer, tc)
 		{ NULL,         NULL, NULL,  0, '\0', },
 	};
 
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(p != NULL, true);
 
@@ -2156,13 +2156,11 @@ ATF_TC_BODY(parse_format, tc)
 		{ NULL,    0,      0,             0,  0,           NULL, NULL, 0, '\0', },
 	};
 
-	p = new_percent_esc(NULL);
+	p = new_percent_esc();
 
 	ATF_REQUIRE_EQ(p != NULL, true);
 
 	for (i = 0; pf_test_vals[i].in != NULL; i++) {
-		p = new_percent_esc(p);
-
 		f = parse_format(pf_test_vals[i].in, pf_test_vals[i].context,
 				 p);
 
@@ -2184,6 +2182,8 @@ ATF_TC_BODY(parse_format, tc)
 				 "(test %d)", i);
 		ATF_CHECK_EQ_MSG(*f, pf_test_vals[i].fend_val,
 				 "(test %d)", i);
+
+		p = clear_percent_esc(p);
 	}
 
 	free_percent_esc(p);
