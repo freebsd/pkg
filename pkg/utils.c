@@ -405,7 +405,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (quiet)
 					pkg_printf("%B%{%Bn\n%|%}", pkg);
 				else
-					pkg_printf("%B%{\t%B\n%|%}", pkg);
+					pkg_printf("%B%{\t%Bn\n%|%}", pkg);
 			}
 			break;
 		case INFO_SHLIBS_PROVIDED:

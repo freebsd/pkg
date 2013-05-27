@@ -1842,10 +1842,12 @@ parse_format(const char *f, unsigned context, struct percent_esc *p)
 
 	/* Does this format take a trailing list item/separator format
 	   like %{...%|...%} ?  It's only the list-valued items that
-	   do.  Also, they only take the trailing stuff in the absence
-	   of %?X or %#X modifiers. */
+	   do, and they can only take it at the top level (context ==
+	   PP_PKG).  Also, they only take the trailing stuff in the
+	   absence of %?X or %#X modifiers. */
 
-	if (fmt[p->fmt_code].has_trailer &&
+	if ((context & PP_PKG) == PP_PKG &&
+	    fmt[p->fmt_code].has_trailer &&
 	    (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) == 0)
 		f = format_trailer(f, p);
 
@@ -2123,8 +2125,9 @@ process_format_trailer(struct sbuf *sbuf, struct percent_esc *p,
 		s = fmt[p->fmt_code].fmt_handler(sbuf, pkg, p);
 
 
-	if (s == NULL)
-		f = fstart;	/* Pass through unprocessed on error */
+	if (s == NULL) {
+		f = fstart + 1;	/* Eat just the % on error */
+	}
 
 	clear_percent_esc(p);
 
