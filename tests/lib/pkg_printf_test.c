@@ -664,14 +664,14 @@ ATF_TC_BODY(bool_val, tc)
 		int width;
 		unsigned flags;
 	} bv_test_vals[] = {
-		{ false, "0",     0, 0, },
-		{ true,  "1",     0, 0, },
+		{ false, "false", 0, 0, },
+		{ true,  "true",  0, 0, },
 
 		{ false, "no",    0, PP_ALTERNATE_FORM1, },
 		{ true,  "yes",   0, PP_ALTERNATE_FORM1, },
 
-		{ false, "false", 0, PP_ALTERNATE_FORM2, },
-		{ true,  "true",  0, PP_ALTERNATE_FORM2, },
+		{ false, "",      0, PP_ALTERNATE_FORM2, },
+		{ true,  "(*)",   0, PP_ALTERNATE_FORM2, },
 
 		/*
 		 * See string_val() for tests on field-width and
@@ -1036,9 +1036,9 @@ ATF_TC_BODY(read_oct_byte, tc)
 		ptrdiff_t   fend_offset; /* Where f is left pointing */
 		char	    fend_val; /* expected first char in fend */
 	} rob_test_vals[] = {
-		{ "141",   "a",    3, '\0', },
-		{ "0",     "\0",   1, '\0', },
-		{ "08",    "\0",   1, '8',  },
+		{ "141",    "a",   3, '\0', },
+		{ "0",      "\0",  1, '\0', },
+		{ "08",     "\0",  1, '8',  },
 		{ "008",    "\0",  2, '8',  },
 		{ "0008",   "\0",  3, '8',  },
 		{ "00008",  "\0",  3, '0',  },
@@ -1350,7 +1350,7 @@ ATF_TC_BODY(format_code, tc)
 		ptrdiff_t   fend_offset; /* Where f is left pointing */
 		char	    fend_val; /* expected first char in fend */
 	} fc_test_vals[] = {
-		{ "Bn", PP_PKG, PP_PKG_SHLIB_REQUIRED_NAME, 2, '\0', }, /* 0 */
+		{ "Bn", PP_PKG, PP_PKG_SHLIB_REQUIRED_NAME, 2, '\0', },
 		{ "B",  PP_PKG, PP_PKG_SHLIBS_REQUIRED,     1, '\0', },
 		{ "Cn", PP_PKG, PP_PKG_CATEGORY_NAME,       2, '\0', },
 		{ "C",  PP_PKG, PP_PKG_CATEGORIES,          1, '\0', },
@@ -1360,7 +1360,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Dp", PP_PKG, PP_PKG_DIRECTORY_PERMS,     2, '\0', },
 		{ "Dt", PP_PKG, PP_PKG_DIRECTORY_TRYFLAG,   2, '\0', },
 		{ "Du", PP_PKG, PP_PKG_DIRECTORY_USER,      2, '\0', },
-		{ "D",  PP_PKG, PP_PKG_DIRECTORIES,         1, '\0', }, /* 10 */
+		{ "D",  PP_PKG, PP_PKG_DIRECTORIES,         1, '\0', },
 		{ "Fg", PP_PKG, PP_PKG_FILE_GROUP,          2, '\0', },
 		{ "Fk", PP_PKG, PP_PKG_FILE_KEEPFLAG,       2, '\0', },
 		{ "Fn", PP_PKG, PP_PKG_FILE_PATH,           2, '\0', },
@@ -1370,7 +1370,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "F",  PP_PKG, PP_PKG_FILES,               1, '\0', },
 		{ "Gg", PP_PKG, PP_PKG_GROUP_GIDSTR,        2, '\0', },
 		{ "Gn", PP_PKG, PP_PKG_GROUP_NAME,          2, '\0', },
-		{ "G",  PP_PKG, PP_PKG_GROUPS,              1, '\0', }, /* 20 */
+		{ "G",  PP_PKG, PP_PKG_GROUPS,              1, '\0', },
 		{ "I",  PP_PKG, PP_UNKNOWN,                 0, 'I',  },
 		{ "Ln", PP_PKG, PP_PKG_LICENSE_NAME,        2, '\0', },
 		{ "L",  PP_PKG, PP_PKG_LICENSES,            1, '\0', },
@@ -1380,27 +1380,30 @@ ATF_TC_BODY(format_code, tc)
 		{ "O",  PP_PKG, PP_PKG_OPTIONS,             1, '\0', },
 		{ "Un", PP_PKG, PP_PKG_USER_NAME,           2, '\0', },
 		{ "Uu", PP_PKG, PP_PKG_USER_UIDSTR,         2, '\0', },
-		{ "U",  PP_PKG, PP_PKG_USERS,               1, '\0', }, /* 30 */
+		{ "U",  PP_PKG, PP_PKG_USERS,               1, '\0', },
 		{ "a",  PP_PKG, PP_PKG_AUTOREMOVE,          1, '\0', },
 		{ "bn", PP_PKG, PP_PKG_SHLIB_PROVIDED_NAME, 2, '\0', },
 		{ "b",  PP_PKG, PP_PKG_SHLIBS_PROVIDED,     1, '\0', },
 		{ "c",  PP_PKG, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_PKG, PP_PKG_DEPENDENCY_LOCK,     2, '\0', },
 		{ "dn", PP_PKG, PP_PKG_DEPENDENCY_NAME,     2, '\0', },
 		{ "do", PP_PKG, PP_PKG_DEPENDENCY_ORIGIN,   2, '\0', },
 		{ "dv", PP_PKG, PP_PKG_DEPENDENCY_VERSION,  2, '\0', },
 		{ "d",  PP_PKG, PP_PKG_DEPENDENCIES,        1, '\0', },
+		{ "e",  PP_PKG, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_PKG, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
-		{ "k",  PP_PKG, PP_PKG_LOCK_STATUS,         1, '\0', }, /* 40 */
+		{ "k",  PP_PKG, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_PKG, PP_PKG_LICENSE_LOGIC,       1, '\0', },
 		{ "m",  PP_PKG, PP_PKG_MAINTAINER,          1, '\0', },
 		{ "n",  PP_PKG, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_PKG, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_PKG, PP_PKG_PREFIX,              1, '\0', },
+		{ "rk", PP_PKG, PP_PKG_REQUIREMENT_LOCK,    2, '\0', },
 		{ "rn", PP_PKG, PP_PKG_REQUIREMENT_NAME,    2, '\0', },
 		{ "ro", PP_PKG, PP_PKG_REQUIREMENT_ORIGIN,  2, '\0', },
 		{ "rv", PP_PKG, PP_PKG_REQUIREMENT_VERSION, 2, '\0', },
 		{ "r",  PP_PKG, PP_PKG_REQUIREMENTS,        1, '\0', },
-		{ "s",  PP_PKG, PP_PKG_FLATSIZE,            1, '\0', }, /* 50 */
+		{ "s",  PP_PKG, PP_PKG_FLATSIZE,            1, '\0', },
 		{ "t",  PP_PKG, PP_PKG_INSTALL_TIMESTAMP,   1, '\0', },
 		{ "v",  PP_PKG, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_PKG, PP_PKG_HOME_PAGE,           1, '\0', },
@@ -1411,7 +1414,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "B",  PP_B, PP_UNKNOWN,                 0, 'B',  },
 		{ "Cn", PP_B, PP_UNKNOWN,                 0, 'C',  },
 		{ "C",  PP_B, PP_UNKNOWN,                 0, 'C',  },
-		{ "Dg", PP_B, PP_UNKNOWN,                 0, 'D',  }, /* 60 */
+		{ "Dg", PP_B, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dk", PP_B, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dn", PP_B, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dp", PP_B, PP_UNKNOWN,                 0, 'D',  },
@@ -1421,7 +1424,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fg", PP_B, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fk", PP_B, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fn", PP_B, PP_UNKNOWN,                 0, 'F',  },
-		{ "Fp", PP_B, PP_UNKNOWN,                 0, 'F',  }, /* 70 */
+		{ "Fp", PP_B, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fs", PP_B, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_B, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_B, PP_UNKNOWN,                 0, 'F',  },
@@ -1431,7 +1434,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "I",  PP_B, PP_ROW_COUNTER,             1, '\0', },
 		{ "Ln", PP_B, PP_UNKNOWN,                 0, 'L',  },
 		{ "L",  PP_B, PP_UNKNOWN,                 0, 'L',  },
-		{ "M",  PP_B, PP_PKG_MESSAGE,             1, '\0', }, /* 80 */
+		{ "M",  PP_B, PP_PKG_MESSAGE,             1, '\0', },
 		{ "On", PP_B, PP_UNKNOWN,                 0, 'O',  },
 		{ "Ov", PP_B, PP_UNKNOWN,                 0, 'O',  },
 		{ "O",  PP_B, PP_UNKNOWN,                 0, 'O',  },
@@ -1442,10 +1445,12 @@ ATF_TC_BODY(format_code, tc)
 		{ "bn", PP_B, PP_UNKNOWN,                 0, 'b', },
 		{ "b",  PP_B, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_B, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_B, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_B, PP_UNKNOWN,                 0, 'd',  },
-		{ "do", PP_B, PP_UNKNOWN,                 0, 'd',  }, /* 90 */
+		{ "do", PP_B, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_B, PP_UNKNOWN,                 0, 'd',  },
 		{ "d",  PP_B, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_B, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_B, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_B, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_B, PP_PKG_LICENSE_LOGIC,       1, '\0', },
@@ -1453,7 +1458,8 @@ ATF_TC_BODY(format_code, tc)
 		{ "n",  PP_B, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_B, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_B, PP_PKG_PREFIX,              1, '\0', },
-		{ "rn", PP_B, PP_UNKNOWN,                 0, 'r',  }, /* 100 */
+		{ "rk", PP_B, PP_UNKNOWN,                 0, 'r',  },
+		{ "rn", PP_B, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_B, PP_UNKNOWN,                 0, 'r',  },
 		{ "rv", PP_B, PP_UNKNOWN,                 0, 'r',  },
 		{ "r",  PP_B, PP_UNKNOWN,                 0, 'r',  },
@@ -1464,7 +1470,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "%",  PP_B, PP_LITERAL_PERCENT,         1, '\0', },
 		{ "x",  PP_B, PP_UNKNOWN,                 0, 'x',  },
 
-		{ "Bn", PP_C, PP_UNKNOWN,                 0, 'B',  }, /* 110 */
+		{ "Bn", PP_C, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_C, PP_UNKNOWN,                 0, 'B',  },
 		{ "Cn", PP_C, PP_PKG_CATEGORY_NAME,       2, '\0', },
 		{ "C",  PP_C, PP_UNKNOWN,                 0, 'C',  },
@@ -1474,7 +1480,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Dp", PP_C, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dt", PP_C, PP_UNKNOWN,                 0, 'D',  },
 		{ "Du", PP_C, PP_UNKNOWN,                 0, 'D',  },
-		{ "D",  PP_C, PP_UNKNOWN,                 0, 'D',  }, /* 120 */
+		{ "D",  PP_C, PP_UNKNOWN,                 0, 'D',  },
 		{ "Fg", PP_C, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fk", PP_C, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fn", PP_C, PP_UNKNOWN,                 0, 'F',  },
@@ -1484,7 +1490,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "F",  PP_C, PP_UNKNOWN,                 0, 'F',  },
 		{ "Gg", PP_C, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_C, PP_UNKNOWN,                 0, 'G',  },
-		{ "G",  PP_C, PP_UNKNOWN,                 0, 'G',  }, /* 130 */
+		{ "G",  PP_C, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_C, PP_ROW_COUNTER,             1, '\0', },
 		{ "Ln", PP_C, PP_UNKNOWN,                 0, 'L',  },
 		{ "L",  PP_C, PP_UNKNOWN,                 0, 'L',  },
@@ -1494,29 +1500,32 @@ ATF_TC_BODY(format_code, tc)
 		{ "O",  PP_C, PP_UNKNOWN,                 0, 'O',  },
 		{ "Un", PP_C, PP_UNKNOWN,                 0, 'U',  },
 		{ "Uu", PP_C, PP_UNKNOWN,                 0, 'U',  },
-		{ "U",  PP_C, PP_UNKNOWN,                 0, 'U',  }, /* 140 */
+		{ "U",  PP_C, PP_UNKNOWN,                 0, 'U',  },
 		{ "a",  PP_C, PP_PKG_AUTOREMOVE,          1, '\0', },
-		{ "bn", PP_C, PP_UNKNOWN,                 0, 'b',  }, /* 110 */
+		{ "bn", PP_C, PP_UNKNOWN,                 0, 'b',  },
 		{ "b",  PP_C, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_C, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_C, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_C, PP_UNKNOWN,                 0, 'd',  },
 		{ "do", PP_C, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_C, PP_UNKNOWN,                 0, 'd',  },
 		{ "d",  PP_C, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_C, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_C, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_C, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_C, PP_PKG_LICENSE_LOGIC,       1, '\0', },
-		{ "m",  PP_C, PP_PKG_MAINTAINER,          1, '\0', }, /* 150 */
+		{ "m",  PP_C, PP_PKG_MAINTAINER,          1, '\0', },
 		{ "n",  PP_C, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_C, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_C, PP_PKG_PREFIX,              1, '\0', },
+		{ "rk", PP_C, PP_UNKNOWN,                 0, 'r',  },
 		{ "rn", PP_C, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_C, PP_UNKNOWN,                 0, 'r',  },
 		{ "rv", PP_C, PP_UNKNOWN,                 0, 'r',  },
 		{ "r",  PP_C, PP_UNKNOWN,                 0, 'r',  },
 		{ "s",  PP_C, PP_PKG_FLATSIZE,            1, '\0', },
 		{ "t",  PP_C, PP_PKG_INSTALL_TIMESTAMP,   1, '\0', },
-		{ "v",  PP_C, PP_PKG_VERSION,             1, '\0', }, /* 160 */
+		{ "v",  PP_C, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_C, PP_PKG_HOME_PAGE,           1, '\0', },
 		{ "%",  PP_C, PP_LITERAL_PERCENT,         1, '\0', },
 		{ "x",  PP_C, PP_UNKNOWN,                 0, 'x',  },
@@ -1527,7 +1536,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "C",  PP_D, PP_UNKNOWN,                 0, 'C',  },
 		{ "Dg", PP_D, PP_PKG_DIRECTORY_GROUP,     2, '\0', },
 		{ "Dk", PP_D, PP_PKG_DIRECTORY_KEEPFLAG,  2, '\0', },
-		{ "Dn", PP_D, PP_PKG_DIRECTORY_PATH,      2, '\0', }, /* 170 */
+		{ "Dn", PP_D, PP_PKG_DIRECTORY_PATH,      2, '\0', },
 		{ "Dp", PP_D, PP_PKG_DIRECTORY_PERMS,     2, '\0', },
 		{ "Dt", PP_D, PP_PKG_DIRECTORY_TRYFLAG,   2, '\0', },
 		{ "Du", PP_D, PP_PKG_DIRECTORY_USER,      2, '\0', },
@@ -1537,7 +1546,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fn", PP_D, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fp", PP_D, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fs", PP_D, PP_UNKNOWN,                 0, 'F',  },
-		{ "Fu", PP_D, PP_UNKNOWN,                 0, 'F',  }, /* 180 */
+		{ "Fu", PP_D, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_D, PP_UNKNOWN,                 0, 'F',  },
 		{ "Gg", PP_D, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_D, PP_UNKNOWN,                 0, 'G',  },
@@ -1547,7 +1556,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "L",  PP_D, PP_UNKNOWN,                 0, 'L',  },
 		{ "M",  PP_D, PP_PKG_MESSAGE,             1, '\0', },
 		{ "On", PP_D, PP_UNKNOWN,                 0, 'O',  },
-		{ "Ov", PP_D, PP_UNKNOWN,                 0, 'O',  }, /* 190 */
+		{ "Ov", PP_D, PP_UNKNOWN,                 0, 'O',  },
 		{ "O",  PP_D, PP_UNKNOWN,                 0, 'O',  },
 		{ "Un", PP_D, PP_UNKNOWN,                 0, 'U',  },
 		{ "Uu", PP_D, PP_UNKNOWN,                 0, 'U',  },
@@ -1556,10 +1565,12 @@ ATF_TC_BODY(format_code, tc)
 		{ "bn", PP_D, PP_UNKNOWN,                 0, 'b',  },
 		{ "b",  PP_D, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_D, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_D, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_D, PP_UNKNOWN,                 0, 'd',  },
 		{ "do", PP_D, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_D, PP_UNKNOWN,                 0, 'd',  },
-		{ "d",  PP_D, PP_UNKNOWN,                 0, 'd',  }, /* 200 */
+		{ "d",  PP_D, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_D, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_D, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_D, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_D, PP_PKG_LICENSE_LOGIC,       1, '\0', },
@@ -1567,9 +1578,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "n",  PP_D, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_D, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_D, PP_PKG_PREFIX,              1, '\0', },
+		{ "rk", PP_D, PP_UNKNOWN,                 0, 'r',  },
 		{ "rn", PP_D, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_D, PP_UNKNOWN,                 0, 'r',  },
-		{ "rv", PP_D, PP_UNKNOWN,                 0, 'r',  }, /* 210 */
+		{ "rv", PP_D, PP_UNKNOWN,                 0, 'r',  },
 		{ "r",  PP_D, PP_UNKNOWN,                 0, 'r',  },
 		{ "s",  PP_D, PP_PKG_FLATSIZE,            1, '\0', },
 		{ "t",  PP_D, PP_PKG_INSTALL_TIMESTAMP,   1, '\0', },
@@ -1580,7 +1592,7 @@ ATF_TC_BODY(format_code, tc)
 
 		{ "Bn", PP_F, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_F, PP_UNKNOWN,                 0, 'B',  },
-		{ "Cn", PP_F, PP_UNKNOWN,                 0, 'C',  }, /* 220 */
+		{ "Cn", PP_F, PP_UNKNOWN,                 0, 'C',  },
 		{ "C",  PP_F, PP_UNKNOWN,                 0, 'C',  },
 		{ "Dg", PP_F, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dk", PP_F, PP_UNKNOWN,                 0, 'D',  },
@@ -1590,7 +1602,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Du", PP_F, PP_UNKNOWN,                 0, 'D',  },
 		{ "D",  PP_F, PP_UNKNOWN,                 0, 'D',  },
 		{ "Fg", PP_F, PP_PKG_FILE_GROUP,          2, '\0', },
-		{ "Fk", PP_F, PP_PKG_FILE_KEEPFLAG,       2, '\0', }, /* 230 */
+		{ "Fk", PP_F, PP_PKG_FILE_KEEPFLAG,       2, '\0', },
 		{ "Fn", PP_F, PP_PKG_FILE_PATH,           2, '\0', },
 		{ "Fp", PP_F, PP_PKG_FILE_PERMS,          2, '\0', },
 		{ "Fs", PP_F, PP_PKG_FILE_SHA256,         2, '\0', },
@@ -1600,7 +1612,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Gn", PP_F, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_F, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_F, PP_ROW_COUNTER,             1, '\0', },
-		{ "Ln", PP_F, PP_UNKNOWN,                 0, 'L',  }, /* 240 */
+		{ "Ln", PP_F, PP_UNKNOWN,                 0, 'L',  },
 		{ "L",  PP_F, PP_UNKNOWN,                 0, 'L',  },
 		{ "M",  PP_F, PP_PKG_MESSAGE,             1, '\0', },
 		{ "On", PP_F, PP_UNKNOWN,                 0, 'O',  },
@@ -1613,10 +1625,12 @@ ATF_TC_BODY(format_code, tc)
 		{ "bn", PP_F, PP_UNKNOWN,                 0, 'b',  },
 		{ "b",  PP_F, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_F, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_F, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_F, PP_UNKNOWN,                 0, 'd',  },
-		{ "do", PP_F, PP_UNKNOWN,                 0, 'd',  }, /* 250 */
+		{ "do", PP_F, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_F, PP_UNKNOWN,                 0, 'd',  },
 		{ "d",  PP_F, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_F, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_F, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_F, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_F, PP_PKG_LICENSE_LOGIC,       1, '\0', },
@@ -1624,7 +1638,8 @@ ATF_TC_BODY(format_code, tc)
 		{ "n",  PP_F, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_F, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_F, PP_PKG_PREFIX,              1, '\0', },
-		{ "rn", PP_F, PP_UNKNOWN,                 0, 'r',  },/* 260 */
+		{ "rk", PP_F, PP_UNKNOWN,                 0, 'r',  },
+		{ "rn", PP_F, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_F, PP_UNKNOWN,                 0, 'r',  },
 		{ "rv", PP_F, PP_UNKNOWN,                 0, 'r',  },
 		{ "r",  PP_F, PP_UNKNOWN,                 0, 'r',  },
@@ -1635,7 +1650,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "%",  PP_F, PP_LITERAL_PERCENT,         1, '\0', },
 		{ "x",  PP_F, PP_UNKNOWN,                 0, 'x',  },
 
-		{ "Bn", PP_G, PP_UNKNOWN,                 0, 'B',  }, /* 270 */
+		{ "Bn", PP_G, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_G, PP_UNKNOWN,                 0, 'B',  },
 		{ "Cn", PP_G, PP_UNKNOWN,                 0, 'C',  },
 		{ "C",  PP_G, PP_UNKNOWN,                 0, 'C',  },
@@ -1645,7 +1660,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Dp", PP_G, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dt", PP_G, PP_UNKNOWN,                 0, 'D',  },
 		{ "Du", PP_G, PP_UNKNOWN,                 0, 'D',  },
-		{ "D",  PP_G, PP_UNKNOWN,                 0, 'D',  }, /* 280 */
+		{ "D",  PP_G, PP_UNKNOWN,                 0, 'D',  },
 		{ "Fg", PP_G, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fk", PP_G, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fn", PP_G, PP_UNKNOWN,                 0, 'F',  },
@@ -1655,7 +1670,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "F",  PP_G, PP_UNKNOWN,                 0, 'F',  },
 		{ "Gg", PP_G, PP_PKG_GROUP_GIDSTR,        2, '\0', },
 		{ "Gn", PP_G, PP_PKG_GROUP_NAME,          2, '\0', },
-		{ "G",  PP_G, PP_UNKNOWN,                 0, 'G',  }, /* 290 */
+		{ "G",  PP_G, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_G, PP_ROW_COUNTER,             1, '\0', },
 		{ "Ln", PP_G, PP_UNKNOWN,                 0, 'L',  },
 		{ "L",  PP_G, PP_UNKNOWN,                 0, 'L',  },
@@ -1665,29 +1680,32 @@ ATF_TC_BODY(format_code, tc)
 		{ "O",  PP_G, PP_UNKNOWN,                 0, 'O',  },
 		{ "Un", PP_G, PP_UNKNOWN,                 0, 'U',  },
 		{ "Uu", PP_G, PP_UNKNOWN,                 0, 'U',  },
-		{ "U",  PP_G, PP_UNKNOWN,                 0, 'U',  }, /* 300 */
+		{ "U",  PP_G, PP_UNKNOWN,                 0, 'U',  },
 		{ "a",  PP_G, PP_PKG_AUTOREMOVE,          1, '\0', },
-		{ "bn", PP_G, PP_UNKNOWN,                 0, 'b',  }, /* 270 */
+		{ "bn", PP_G, PP_UNKNOWN,                 0, 'b',  },
 		{ "b",  PP_G, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_G, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_G, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_G, PP_UNKNOWN,                 0, 'd',  },
 		{ "do", PP_G, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_G, PP_UNKNOWN,                 0, 'd',  },
 		{ "d",  PP_G, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_G, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_G, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_G, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_G, PP_PKG_LICENSE_LOGIC,       1, '\0', },
-		{ "m",  PP_G, PP_PKG_MAINTAINER,          1, '\0', }, /* 310 */
+		{ "m",  PP_G, PP_PKG_MAINTAINER,          1, '\0', },
 		{ "n",  PP_G, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_G, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_G, PP_PKG_PREFIX,              1, '\0', },
+		{ "rk", PP_G, PP_UNKNOWN,                 0, 'r',  },
 		{ "rn", PP_G, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_G, PP_UNKNOWN,                 0, 'r',  },
 		{ "rv", PP_G, PP_UNKNOWN,                 0, 'r',  },
 		{ "r",  PP_G, PP_UNKNOWN,                 0, 'r',  },
 		{ "s",  PP_G, PP_PKG_FLATSIZE,            1, '\0', },
 		{ "t",  PP_G, PP_PKG_INSTALL_TIMESTAMP,   1, '\0', },
-		{ "v",  PP_G, PP_PKG_VERSION,             1, '\0', }, /* 320 */
+		{ "v",  PP_G, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_G, PP_PKG_HOME_PAGE,           1, '\0', },
 		{ "%",  PP_G, PP_LITERAL_PERCENT,         1, '\0', },
 		{ "x",  PP_G, PP_UNKNOWN,                 0, 'x',  },
@@ -1698,7 +1716,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "C",  PP_L, PP_UNKNOWN,                 0, 'C',  },
 		{ "Dg", PP_L, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dk", PP_L, PP_UNKNOWN,                 0, 'D',  },
-		{ "Dn", PP_L, PP_UNKNOWN,                 0, 'D',  }, /* 330 */
+		{ "Dn", PP_L, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dp", PP_L, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dt", PP_L, PP_UNKNOWN,                 0, 'D',  },
 		{ "Du", PP_L, PP_UNKNOWN,                 0, 'D',  },
@@ -1708,7 +1726,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fn", PP_L, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fp", PP_L, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fs", PP_L, PP_UNKNOWN,                 0, 'F',  },
-		{ "Fu", PP_L, PP_UNKNOWN,                 0, 'F',  }, /* 340 */
+		{ "Fu", PP_L, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_L, PP_UNKNOWN,                 0, 'F',  },
 		{ "Gg", PP_L, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_L, PP_UNKNOWN,                 0, 'G',  },
@@ -1718,7 +1736,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "L",  PP_L, PP_UNKNOWN,                 0, 'L',  },
 		{ "M",  PP_L, PP_PKG_MESSAGE,             1, '\0', },
 		{ "On", PP_L, PP_UNKNOWN,                 0, 'O',  },
-		{ "Ov", PP_L, PP_UNKNOWN,                 0, 'O',  }, /* 350 */
+		{ "Ov", PP_L, PP_UNKNOWN,                 0, 'O',  },
 		{ "O",  PP_L, PP_UNKNOWN,                 0, 'O',  },
 		{ "Un", PP_L, PP_UNKNOWN,                 0, 'U',  },
 		{ "Uu", PP_L, PP_UNKNOWN,                 0, 'U',  },
@@ -1727,10 +1745,12 @@ ATF_TC_BODY(format_code, tc)
 		{ "bn", PP_L, PP_UNKNOWN,                 0, 'b',  },
 		{ "b",  PP_L, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_L, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_L, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_L, PP_UNKNOWN,                 0, 'd',  },
 		{ "do", PP_L, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_L, PP_UNKNOWN,                 0, 'd',  },
-		{ "d",  PP_L, PP_UNKNOWN,                 0, 'd',  }, /* 360 */
+		{ "d",  PP_L, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_L, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_L, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_L, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_L, PP_PKG_LICENSE_LOGIC,       1, '\0', },
@@ -1738,9 +1758,10 @@ ATF_TC_BODY(format_code, tc)
 		{ "n",  PP_L, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_L, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_L, PP_PKG_PREFIX,              1, '\0', },
+		{ "rk", PP_L, PP_UNKNOWN,                 0, 'r',  },
 		{ "rn", PP_L, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_L, PP_UNKNOWN,                 0, 'r',  },
-		{ "rv", PP_L, PP_UNKNOWN,                 0, 'r',  }, /* 370 */
+		{ "rv", PP_L, PP_UNKNOWN,                 0, 'r',  },
 		{ "r",  PP_L, PP_UNKNOWN,                 0, 'r',  },
 		{ "s",  PP_L, PP_PKG_FLATSIZE,            1, '\0', },
 		{ "t",  PP_L, PP_PKG_INSTALL_TIMESTAMP,   1, '\0', },
@@ -1751,7 +1772,7 @@ ATF_TC_BODY(format_code, tc)
 
 		{ "Bn", PP_O, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_O, PP_UNKNOWN,                 0, 'B',  },
-		{ "Cn", PP_O, PP_UNKNOWN,                 0, 'C',  }, /* 380 */
+		{ "Cn", PP_O, PP_UNKNOWN,                 0, 'C',  },
 		{ "C",  PP_O, PP_UNKNOWN,                 0, 'C',  },
 		{ "Dg", PP_O, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dk", PP_O, PP_UNKNOWN,                 0, 'D',  },
@@ -1761,7 +1782,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Du", PP_O, PP_UNKNOWN,                 0, 'D',  },
 		{ "D",  PP_O, PP_UNKNOWN,                 0, 'D',  },
 		{ "Fg", PP_O, PP_UNKNOWN,                 0, 'F',  },
-		{ "Fk", PP_O, PP_UNKNOWN,                 0, 'F',  }, /* 390 */
+		{ "Fk", PP_O, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fn", PP_O, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fp", PP_O, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fs", PP_O, PP_UNKNOWN,                 0, 'F',  },
@@ -1771,7 +1792,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Gn", PP_O, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_O, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_O, PP_ROW_COUNTER,             1, '\0', },
-		{ "Ln", PP_O, PP_UNKNOWN,                 0, 'L',  }, /* 400 */
+		{ "Ln", PP_O, PP_UNKNOWN,                 0, 'L',  },
 		{ "L",  PP_O, PP_UNKNOWN,                 0, 'L',  },
 		{ "M",  PP_O, PP_PKG_MESSAGE,             1, '\0', },
 		{ "On", PP_O, PP_PKG_OPTION_NAME,         2, '\0', },
@@ -1783,18 +1804,21 @@ ATF_TC_BODY(format_code, tc)
 		{ "a",  PP_O, PP_PKG_AUTOREMOVE,          1, '\0', },
 		{ "bn", PP_O, PP_UNKNOWN,                 0, 'b',  },
 		{ "b",  PP_O, PP_UNKNOWN,                 0, 'b',  },
-		{ "c",  PP_O, PP_PKG_COMMENT,             1, '\0', }, /* 410 */
+		{ "c",  PP_O, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_O, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_O, PP_UNKNOWN,                 0, 'd',  },
 		{ "do", PP_O, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_O, PP_UNKNOWN,                 0, 'd',  },
 		{ "d",  PP_O, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_O, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_O, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_O, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_O, PP_PKG_LICENSE_LOGIC,       1, '\0', },
 		{ "m",  PP_O, PP_PKG_MAINTAINER,          1, '\0', },
 		{ "n",  PP_O, PP_PKG_NAME,                1, '\0', },
-		{ "o",  PP_O, PP_PKG_ORIGIN,              1, '\0', }, /* 420 */
+		{ "o",  PP_O, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_O, PP_PKG_PREFIX,              1, '\0', },
+		{ "rk", PP_O, PP_UNKNOWN,                 0, 'r',  },
 		{ "rn", PP_O, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_O, PP_UNKNOWN,                 0, 'r',  },
 		{ "rv", PP_O, PP_UNKNOWN,                 0, 'r',  },
@@ -1803,7 +1827,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "t",  PP_O, PP_PKG_INSTALL_TIMESTAMP,   1, '\0', },
 		{ "v",  PP_O, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_O, PP_PKG_HOME_PAGE,           1, '\0', },
-		{ "%",  PP_O, PP_LITERAL_PERCENT,         1, '\0', }, /* 430 */
+		{ "%",  PP_O, PP_LITERAL_PERCENT,         1, '\0', },
 		{ "x",  PP_O, PP_UNKNOWN,                 0, 'x',  },
 
 		{ "Bn", PP_U, PP_UNKNOWN,                 0, 'B',  },
@@ -1814,7 +1838,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Dk", PP_U, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dn", PP_U, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dp", PP_U, PP_UNKNOWN,                 0, 'D',  },
-		{ "Dt", PP_U, PP_UNKNOWN,                 0, 'D',  }, /* 440 */
+		{ "Dt", PP_U, PP_UNKNOWN,                 0, 'D',  },
 		{ "Du", PP_U, PP_UNKNOWN,                 0, 'D',  },
 		{ "D",  PP_U, PP_UNKNOWN,                 0, 'D',  },
 		{ "Fg", PP_U, PP_UNKNOWN,                 0, 'F',  },
@@ -1824,7 +1848,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fs", PP_U, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_U, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_U, PP_UNKNOWN,                 0, 'F',  },
-		{ "Gg", PP_U, PP_UNKNOWN,                 0, 'G',  }, /* 450 */
+		{ "Gg", PP_U, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_U, PP_UNKNOWN,                 0, 'G',  },
 		{ "G",  PP_U, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_U, PP_ROW_COUNTER,             1, '\0', },
@@ -1834,29 +1858,32 @@ ATF_TC_BODY(format_code, tc)
 		{ "On", PP_U, PP_UNKNOWN,                 0, 'O',  },
 		{ "Ov", PP_U, PP_UNKNOWN,                 0, 'O',  },
 		{ "O",  PP_U, PP_UNKNOWN,                 0, 'O',  },
-		{ "Un", PP_U, PP_PKG_USER_NAME,           2, '\0', }, /* 460 */
+		{ "Un", PP_U, PP_PKG_USER_NAME,           2, '\0', },
 		{ "Uu", PP_U, PP_PKG_USER_UIDSTR,         2, '\0', },
 		{ "U",  PP_U, PP_UNKNOWN,                 0, 'U',  },
 		{ "a",  PP_U, PP_PKG_AUTOREMOVE,          1, '\0', },
 		{ "bn", PP_U, PP_UNKNOWN,                 0, 'b',  },
 		{ "b",  PP_U, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_U, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_U, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_U, PP_UNKNOWN,                 0, 'd',  },
 		{ "do", PP_U, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_U, PP_UNKNOWN,                 0, 'd',  },
 		{ "d",  PP_U, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_U, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_U, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
-		{ "k",  PP_U, PP_PKG_LOCK_STATUS,         1, '\0', }, /* 470 */
+		{ "k",  PP_U, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_U, PP_PKG_LICENSE_LOGIC,       1, '\0', },
 		{ "m",  PP_U, PP_PKG_MAINTAINER,          1, '\0', },
 		{ "n",  PP_U, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_U, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_U, PP_PKG_PREFIX,              1, '\0', },
+		{ "rk", PP_U, PP_UNKNOWN,                 0, 'r',  },
 		{ "rn", PP_U, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_U, PP_UNKNOWN,                 0, 'r',  },
 		{ "rv", PP_U, PP_UNKNOWN,                 0, 'r',  },
 		{ "r",  PP_U, PP_UNKNOWN,                 0, 'r',  },
-		{ "s",  PP_U, PP_PKG_FLATSIZE,            1, '\0', }, /* 480 */
+		{ "s",  PP_U, PP_PKG_FLATSIZE,            1, '\0', },
 		{ "t",  PP_U, PP_PKG_INSTALL_TIMESTAMP,   1, '\0', },
 		{ "v",  PP_U, PP_PKG_VERSION,             1, '\0', },
 		{ "w",  PP_U, PP_PKG_HOME_PAGE,           1, '\0', },
@@ -1867,7 +1894,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "B",  PP_b, PP_UNKNOWN,                 0, 'B',  },
 		{ "Cn", PP_b, PP_UNKNOWN,                 0, 'C',  },
 		{ "C",  PP_b, PP_UNKNOWN,                 0, 'C',  },
-		{ "Dg", PP_b, PP_UNKNOWN,                 0, 'D',  }, /* 60 */
+		{ "Dg", PP_b, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dk", PP_b, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dn", PP_b, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dp", PP_b, PP_UNKNOWN,                 0, 'D',  },
@@ -1877,7 +1904,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fg", PP_b, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fk", PP_b, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fn", PP_b, PP_UNKNOWN,                 0, 'F',  },
-		{ "Fp", PP_b, PP_UNKNOWN,                 0, 'F',  }, /* 70 */
+		{ "Fp", PP_b, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fs", PP_b, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_b, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_b, PP_UNKNOWN,                 0, 'F',  },
@@ -1887,7 +1914,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "I",  PP_b, PP_ROW_COUNTER,             1, '\0', },
 		{ "Ln", PP_b, PP_UNKNOWN,                 0, 'L',  },
 		{ "L",  PP_b, PP_UNKNOWN,                 0, 'L',  },
-		{ "M",  PP_b, PP_PKG_MESSAGE,             1, '\0', }, /* 80 */
+		{ "M",  PP_b, PP_PKG_MESSAGE,             1, '\0', },
 		{ "On", PP_b, PP_UNKNOWN,                 0, 'O',  },
 		{ "Ov", PP_b, PP_UNKNOWN,                 0, 'O',  },
 		{ "O",  PP_b, PP_UNKNOWN,                 0, 'O',  },
@@ -1898,10 +1925,12 @@ ATF_TC_BODY(format_code, tc)
 		{ "bn", PP_b, PP_PKG_SHLIB_PROVIDED_NAME, 2, '\0', },
 		{ "b",  PP_b, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_b, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_b, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_b, PP_UNKNOWN,                 0, 'd',  },
-		{ "do", PP_b, PP_UNKNOWN,                 0, 'd',  }, /* 90 */
+		{ "do", PP_b, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_b, PP_UNKNOWN,                 0, 'd',  },
 		{ "d",  PP_b, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_b, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_b, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_b, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_b, PP_PKG_LICENSE_LOGIC,       1, '\0', },
@@ -1909,7 +1938,8 @@ ATF_TC_BODY(format_code, tc)
 		{ "n",  PP_b, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_b, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_b, PP_PKG_PREFIX,              1, '\0', },
-		{ "rn", PP_b, PP_UNKNOWN,                 0, 'r',  }, /* 100 */
+		{ "rk", PP_b, PP_UNKNOWN,                 0, 'r',  },
+		{ "rn", PP_b, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_b, PP_UNKNOWN,                 0, 'r',  },
 		{ "rv", PP_b, PP_UNKNOWN,                 0, 'r',  },
 		{ "r",  PP_b, PP_UNKNOWN,                 0, 'r',  },
@@ -1925,7 +1955,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "B",  PP_d, PP_UNKNOWN,                 0, 'B',  },
 		{ "Cn", PP_d, PP_UNKNOWN,                 0, 'C',  },
 		{ "C",  PP_d, PP_UNKNOWN,                 0, 'C',  },
-		{ "Dg", PP_d, PP_UNKNOWN,                 0, 'D',  }, /* 490 */
+		{ "Dg", PP_d, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dk", PP_d, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dn", PP_d, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dp", PP_d, PP_UNKNOWN,                 0, 'D',  },
@@ -1935,7 +1965,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Fg", PP_d, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fk", PP_d, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fn", PP_d, PP_UNKNOWN,                 0, 'F',  },
-		{ "Fp", PP_d, PP_UNKNOWN,                 0, 'F',  }, /* 500 */
+		{ "Fp", PP_d, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fs", PP_d, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fu", PP_d, PP_UNKNOWN,                 0, 'F',  },
 		{ "F",  PP_d, PP_UNKNOWN,                 0, 'F',  },
@@ -1945,7 +1975,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "I",  PP_d, PP_ROW_COUNTER,             1, '\0', },
 		{ "Ln", PP_d, PP_UNKNOWN,                 0, 'L',  },
 		{ "L",  PP_d, PP_UNKNOWN,                 0, 'L',  },
-		{ "M",  PP_d, PP_PKG_MESSAGE,             1, '\0', }, /* 510 */
+		{ "M",  PP_d, PP_PKG_MESSAGE,             1, '\0', },
 		{ "On", PP_d, PP_UNKNOWN,                 0, 'O',  },
 		{ "Ov", PP_d, PP_UNKNOWN,                 0, 'O',  },
 		{ "O",  PP_d, PP_UNKNOWN,                 0, 'O',  },
@@ -1956,10 +1986,12 @@ ATF_TC_BODY(format_code, tc)
 		{ "bn", PP_d, PP_UNKNOWN,                 0, 'b',  },
 		{ "b",  PP_d, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_d, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_d, PP_PKG_DEPENDENCY_LOCK,     2, '\0', },
 		{ "dn", PP_d, PP_PKG_DEPENDENCY_NAME,     2, '\0', },
-		{ "do", PP_d, PP_PKG_DEPENDENCY_ORIGIN,   2, '\0', }, /* 520 */
+		{ "do", PP_d, PP_PKG_DEPENDENCY_ORIGIN,   2, '\0', },
 		{ "dv", PP_d, PP_PKG_DEPENDENCY_VERSION,  2, '\0', },
 		{ "d",  PP_d, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_d, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_d, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_d, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_d, PP_PKG_LICENSE_LOGIC,       1, '\0', },
@@ -1967,7 +1999,8 @@ ATF_TC_BODY(format_code, tc)
 		{ "n",  PP_d, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_d, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_d, PP_PKG_PREFIX,              1, '\0', },
-		{ "rn", PP_d, PP_UNKNOWN,                 0, 'r',  }, /* 530 */
+		{ "rk", PP_d, PP_UNKNOWN,                 0, 'r',  },
+		{ "rn", PP_d, PP_UNKNOWN,                 0, 'r',  },
 		{ "ro", PP_d, PP_UNKNOWN,                 0, 'r',  },
 		{ "rv", PP_d, PP_UNKNOWN,                 0, 'r',  },
 		{ "r",  PP_d, PP_UNKNOWN,                 0, 'r',  },
@@ -1978,7 +2011,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "%",  PP_d, PP_LITERAL_PERCENT,         1, '\0', },
 		{ "x",  PP_d, PP_UNKNOWN,                 0, 'x',  },
 
-		{ "Bn", PP_r, PP_UNKNOWN,                 0, 'B',  }, /* 540 */
+		{ "Bn", PP_r, PP_UNKNOWN,                 0, 'B',  },
 		{ "B",  PP_r, PP_UNKNOWN,                 0, 'B',  },
 		{ "Cn", PP_r, PP_UNKNOWN,                 0, 'C',  },
 		{ "C",  PP_r, PP_UNKNOWN,                 0, 'C',  },
@@ -1988,7 +2021,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "Dp", PP_r, PP_UNKNOWN,                 0, 'D',  },
 		{ "Dt", PP_r, PP_UNKNOWN,                 0, 'D',  },
 		{ "Du", PP_r, PP_UNKNOWN,                 0, 'D',  },
-		{ "D",  PP_r, PP_UNKNOWN,                 0, 'D',  }, /* 550 */
+		{ "D",  PP_r, PP_UNKNOWN,                 0, 'D',  },
 		{ "Fg", PP_r, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fk", PP_r, PP_UNKNOWN,                 0, 'F',  },
 		{ "Fn", PP_r, PP_UNKNOWN,                 0, 'F',  },
@@ -1998,7 +2031,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "F",  PP_r, PP_UNKNOWN,                 0, 'F',  },
 		{ "Gg", PP_r, PP_UNKNOWN,                 0, 'G',  },
 		{ "Gn", PP_r, PP_UNKNOWN,                 0, 'G',  },
-		{ "G",  PP_r, PP_UNKNOWN,                 0, 'G',  }, /* 560 */
+		{ "G",  PP_r, PP_UNKNOWN,                 0, 'G',  },
 		{ "I",  PP_r, PP_ROW_COUNTER,             1, '\0', },
 		{ "Ln", PP_r, PP_UNKNOWN,                 0, 'L',  },
 		{ "L",  PP_r, PP_UNKNOWN,                 0, 'L',  },
@@ -2008,22 +2041,25 @@ ATF_TC_BODY(format_code, tc)
 		{ "O",  PP_r, PP_UNKNOWN,                 0, 'O',  },
 		{ "Un", PP_r, PP_UNKNOWN,                 0, 'U',  },
 		{ "Uu", PP_r, PP_UNKNOWN,                 0, 'U',  },
-		{ "U",  PP_r, PP_UNKNOWN,                 0, 'U',  }, /* 570 */
+		{ "U",  PP_r, PP_UNKNOWN,                 0, 'U',  },
 		{ "a",  PP_r, PP_PKG_AUTOREMOVE,          1, '\0', },
-		{ "bn", PP_r, PP_UNKNOWN,                 0, 'b',  }, /* 540 */
+		{ "bn", PP_r, PP_UNKNOWN,                 0, 'b',  },
 		{ "b",  PP_r, PP_UNKNOWN,                 0, 'b',  },
 		{ "c",  PP_r, PP_PKG_COMMENT,             1, '\0', },
+		{ "dk", PP_r, PP_UNKNOWN,                 0, 'd',  },
 		{ "dn", PP_r, PP_UNKNOWN,                 0, 'd',  },
 		{ "do", PP_r, PP_UNKNOWN,                 0, 'd',  },
 		{ "dv", PP_r, PP_UNKNOWN,                 0, 'd',  },
 		{ "d",  PP_r, PP_UNKNOWN,                 0, 'd',  },
+		{ "e",  PP_r, PP_PKG_DESCRIPTION,         1, '\0', },
 		{ "i",  PP_r, PP_PKG_ADDITIONAL_INFO,     1, '\0', },
 		{ "k",  PP_r, PP_PKG_LOCK_STATUS,         1, '\0', },
 		{ "l",  PP_r, PP_PKG_LICENSE_LOGIC,       1, '\0', },
 		{ "m",  PP_r, PP_PKG_MAINTAINER,          1, '\0', },
-		{ "n",  PP_r, PP_PKG_NAME,                1, '\0', }, /* 580 */
+		{ "n",  PP_r, PP_PKG_NAME,                1, '\0', },
 		{ "o",  PP_r, PP_PKG_ORIGIN,              1, '\0', },
 		{ "p",  PP_r, PP_PKG_PREFIX,              1, '\0', },
+		{ "rk", PP_r, PP_PKG_REQUIREMENT_LOCK,    2, '\0', },
 		{ "rn", PP_r, PP_PKG_REQUIREMENT_NAME,    2, '\0', },
 		{ "ro", PP_r, PP_PKG_REQUIREMENT_ORIGIN,  2, '\0', },
 		{ "rv", PP_r, PP_PKG_REQUIREMENT_VERSION, 2, '\0', },
@@ -2031,7 +2067,7 @@ ATF_TC_BODY(format_code, tc)
 		{ "s",  PP_r, PP_PKG_FLATSIZE,            1, '\0', },
 		{ "t",  PP_r, PP_PKG_INSTALL_TIMESTAMP,   1, '\0', },
 		{ "v",  PP_r, PP_PKG_VERSION,             1, '\0', },
-		{ "w",  PP_r, PP_PKG_HOME_PAGE,           1, '\0', }, /* 590 */
+		{ "w",  PP_r, PP_PKG_HOME_PAGE,           1, '\0', },
 		{ "%",  PP_r, PP_LITERAL_PERCENT,         1, '\0', },
 		{ "x",  PP_r, PP_UNKNOWN,                 0, 'x',  },
 
