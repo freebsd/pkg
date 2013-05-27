@@ -116,6 +116,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_DEPENDENCY_ORIGIN,
 	PP_PKG_DEPENDENCY_VERSION,
 	PP_PKG_DEPENDENCIES,
+	PP_PKG_DESCRIPTION,
 	PP_PKG_ADDITIONAL_INFO,
 	PP_PKG_LOCK_STATUS,
 	PP_PKG_LICENSE_LOGIC,
@@ -192,6 +193,7 @@ _static struct sbuf *format_dependencies(struct sbuf *, const void *, struct per
 _static struct sbuf *format_dependency_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_dependency_origin(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_dependency_version(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_description(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_add_info(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_lock_status(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_license_logic(struct sbuf *, const void *, struct percent_esc *);
@@ -224,11 +226,11 @@ _static struct sbuf *mode_val(struct sbuf *, mode_t, struct percent_esc *);
 _static struct sbuf *liclog_val(struct sbuf *, lic_t, struct percent_esc *);
 _static struct sbuf *list_count(struct sbuf *, int64_t, struct percent_esc *);
 
-_static struct percent_esc *set_list_defaults(struct percent_esc *, const char *,
-					     const char *);
+_static struct percent_esc *set_list_defaults(struct percent_esc *,
+					      const char *, const char *);
 
-_static struct sbuf *iterate_item(struct sbuf *, const struct pkg *, const char *,
-				 const void *, int, unsigned);
+_static struct sbuf *iterate_item(struct sbuf *, const struct pkg *,
+				  const char *, const void *, int, unsigned);
 
 _static const char *field_modifier(const char *, struct percent_esc *);
 _static const char *field_width(const char *, struct percent_esc *);

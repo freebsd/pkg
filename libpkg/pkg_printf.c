@@ -121,7 +121,8 @@
  * do pkg_dep      dependency origin
  * dv pkg_dep      dependency version
  *
- * e
+ * e  pkg          Package description
+ *
  * f
  * g
  * h
@@ -256,6 +257,8 @@ static const struct pkg_printf_fmt	fmt[] = {
 	{ 'd', 'v',   false, PP_PKG|PP_d,	&format_dependency_version, },
 	[PP_PKG_DEPENDENCIES] =
 	{ 'd', '\0',  true,  PP_PKG,		&format_dependencies, },
+	[PP_PKG_DESCRIPTION] =
+	{ 'e', '\0',  false, PP_ALL,		&format_description, },
 	[PP_PKG_ADDITIONAL_INFO] =
 	{ 'i', '\0',  false, PP_ALL,		&format_add_info, },
 	[PP_PKG_LOCK_STATUS] =
@@ -1012,6 +1015,19 @@ format_dependency_version(struct sbuf *sbuf, const void *data,
 	const struct pkg_dep	*dep = data;
 
 	return (string_val(sbuf, pkg_dep_version(dep), p));
+}
+
+/*
+ * %e -- Description. string. Accepts field-width, left-align
+ */
+struct sbuf *
+format_description(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+	const char		*descr;
+
+	pkg_get(pkg, PKG_DESCR, &descr);
+	return (string_val(sbuf, descr, p));
 }
 
 /*
