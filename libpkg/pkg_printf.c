@@ -1650,7 +1650,7 @@ format_install_tstamp(struct sbuf *sbuf, const void *data, struct percent_esc *p
 		char	 buf[1024];
 
 		strftime(buf, sizeof(buf), sbuf_data(p->item_fmt),
-			 localtime(&timestamp));
+			 localtime((const time_t *)&timestamp));
 		sbuf_cat(sbuf, buf); 
 	}
 	return (sbuf);
