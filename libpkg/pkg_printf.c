@@ -1648,9 +1648,11 @@ format_install_tstamp(struct sbuf *sbuf, const void *data, struct percent_esc *p
 		return (int_val(sbuf, timestamp, p));
 	else {
 		char	 buf[1024];
+		time_t	 tsv;
 
+		tsv = (time_t)timestamp;
 		strftime(buf, sizeof(buf), sbuf_data(p->item_fmt),
-			 localtime((const time_t *)&timestamp));
+			 localtime(&tsv));
 		sbuf_cat(sbuf, buf); 
 	}
 	return (sbuf);
