@@ -2009,7 +2009,7 @@ struct sbuf *
 liclog_val(struct sbuf *sbuf, lic_t licenselogic, struct percent_esc *p)
 {
 	int			 alternate;
-	int			 llogic;
+	int			 llogic = PP_LIC_SINGLE;
 
 	static const char	*liclog_str[3][3] = {
 		[PP_LIC_SINGLE] = { "single", "",  "==" },
