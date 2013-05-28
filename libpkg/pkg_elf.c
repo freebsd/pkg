@@ -86,6 +86,8 @@ static int
 add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		  const char *name, bool is_shlib)
 {
+	const char *pkgname, *pkgversion;
+
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
 		pkg_addshlib_required(pkg, name);
@@ -98,8 +100,10 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		if (is_shlib)
 			return (EPKG_OK);
 
+		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 		warnx("(%s-%s) %s - shared library %s not found",
-		      pkg_name(pkg), pkg_version(pkg), fpath, name);
+		      pkgname, pkgversion, fpath, name);
+
 		return (EPKG_FATAL);
 	}
 }
@@ -113,6 +117,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	struct pkgdb_it *it = NULL;
 	struct pkg *d;
 	const char *deporigin, *depname, *depversion;
+	const char *pkgname, *pkgversion;
 	bool deplocked;
 	char pathbuf[MAXPATHLEN];
 	bool found;
@@ -130,8 +135,9 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 		if (is_shlib)
 			return (EPKG_OK);
 
+		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 		warnx("(%s-%s) %s - shared library %s not found",
-		      pkg_name(pkg), pkg_version(pkg), fpath, name);
+		      pkgname, pkgversion, fpath, name);
 		return (EPKG_FATAL);
 	}
 
