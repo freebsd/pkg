@@ -6,7 +6,8 @@ search_head() {
 }
 
 search_body() {
-	atf_check -o inline:"pkg                            New generation package manager\n" -e empty -s exit:0 pkg search -e -Q comment -S name pkg
+	REPOS_DIR=/nonexistent
+	atf_check -o inline:"pkg                            New generation package manager\n" -e empty -s exit:0 pkg -C '' search -e -Q comment -S name pkg
 }
 
 atf_init_test_cases() {
