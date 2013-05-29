@@ -8,6 +8,8 @@ LIBDIR=		${PREFIX}/lib
 INCLUDEDIR=	${PREFIX}/include
 SHLIB_MAJOR=	1
 
+MANDIR=		${PREFIX}/man/man
+
 PC=		pkg.pc
 PKGH=		pkg.h
 SRCS=		${PC} \
