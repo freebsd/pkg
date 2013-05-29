@@ -67,10 +67,11 @@ pkg_config_defaults_body()
 	-o match:'^FETCH_TIMEOUT: 30$' \
 	-o match:'^UNSET_TIMESTAMP: no$' \
 	-o match:'^SSH_RESTRICT_DIR: $' \
+	-o match:'^REPOS_DIR: /usr/local/etc/pkg/repos/$' \
 	-o match:'^ENV:$' \
 	-e empty              \
 	-s exit:0             \
-	pkg -C "" -vv 
+	pkg -C "" -vv
 }
 
 
