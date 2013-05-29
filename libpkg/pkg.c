@@ -472,7 +472,7 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND_STR(pkg->files, __DECONST(char *, name), l);
+	HASH_FIND_STR(pkg->licenses, __DECONST(char *, name), l);
 	if (l != NULL) {
 		pkg_emit_error("duplicate license listing: %s, ignoring", name);
 		return (EPKG_OK);
