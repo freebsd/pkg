@@ -3,20 +3,10 @@
 : "${PORTSDIR:=/usr/ports}"
 
 if [ -f ${PORTSDIR}/Mk/bsd.pkgng.mk ]; then
-	pkgng_mk_dir=${PORTSDIR}/Mk
+	FORCE_POST=$(make _POSTMKINCLUDED=1 -f ${PORTSDIR}/Mk/bsd.pkgng.mk -V _FORCE_POST_PATTERNS)
 else
-	tmp_pkgng_mk_dir=$(mktemp -dt pkg2ng)
-	echo "Fetching bsd.pkgng.mk as it is required for converting installed ports"
-	if ! fetch -o $tmp_pkgng_mk_dir http://svn.freebsd.org/ports/head/Mk/bsd.pkgng.mk; then
-		echo "bsd.pkgng.mk is required, please checkouts ports and specify PORTSDIR"
-		exit 1
-	fi
-	pkgng_mk_dir=$tmp_pkgng_mk_dir
+	FORCE_POST="rmdir kldxref mkfontscale mkfontdir fc-cache fonts.dir fonts.scale gtk-update-icon-cache gio-querymodules ldconfig update-desktop-database update-mime-database gdk-pixbuf-query-loaders catalog.ports glib-compile-schemas"
 fi
-
-FORCE_POST=$(make _POSTMKINCLUDED=1 -f ${pkgng_mk_dir}/bsd.pkgng.mk -V _FORCE_POST_PATTERNS)
-
-[ -n "$tmp_pkgng_mk_dir" ] && rm -rf $tmp_pkgng_mk_dir
 
 FORCE_PORT=$FORCE_POST pkg convert
 
