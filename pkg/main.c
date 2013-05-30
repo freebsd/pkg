@@ -265,7 +265,7 @@ main(int argc, char **argv)
 	int64_t integer = 0;
 
 	/* Set stdout unbuffered */
-        setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stdout, NULL, _IONBF, 0);
 
 	if (argc < 2)
 		usage(NULL);
