@@ -1343,6 +1343,7 @@ pkgdb_it_reset(struct pkgdb_it *it)
 		return;
 
 	it->finished = 0;
+	sqlite3_reset(it->stmt);
 }
 
 void
