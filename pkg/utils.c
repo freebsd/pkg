@@ -663,7 +663,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			break;
 		case PKG_JOBS_DEINSTALL:
 		case PKG_JOBS_AUTOREMOVE:
-			printf("\nThe deinstallation will free %s\n", size);
+			printf("\nThe deinstallation will require %s more space\n", size);
 			break;
 		case PKG_JOBS_FETCH:
 			/* nothing to report here */
@@ -681,7 +681,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			break;
 		case PKG_JOBS_DEINSTALL:
 		case PKG_JOBS_AUTOREMOVE:
-			printf("\nThe deinstallation will require %s more space\n", size);
+			printf("\nThe deinstallation will free %s\n", size);
 			break;
 		case PKG_JOBS_FETCH:
 			/* nothing to report here */
