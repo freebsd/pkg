@@ -669,8 +669,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		pkg_free(lp);
 		return (true);
 	}
-
-	if (cmp == 0) {
+	if (cmp == -1) {
 		pkg_free(lp);
 		return (false);
 	}
