@@ -684,12 +684,14 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		ret2 = pkg_options(lp, &lo);
 		if (ret1 != ret2) {
 			pkg_free(lp);
+			pkg_set(rp, PKG_REASON, "options changed");
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if (strcmp(pkg_option_opt(lo), pkg_option_opt(ro)) != 0 ||
 				strcmp(pkg_option_value(lo), pkg_option_value(ro)) != 0) {
 				pkg_free(lp);
+				pkg_set(rp, PKG_REASON, "options changed");
 				return (true);
 			}
 		}
@@ -704,12 +706,14 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		ret2 = pkg_deps(lp, &ld);
 		if (ret1 != ret2) {
 			pkg_free(lp);
+			pkg_set(rp, PKG_REASON, "direct dependency changed");
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if (strcmp(pkg_dep_get(rd, PKG_DEP_NAME),
-					pkg_dep_get(ld, PKG_DEP_NAME)) != 0) {
+			    pkg_dep_get(ld, PKG_DEP_NAME)) != 0) {
 				pkg_free(lp);
+				pkg_set(rp, PKG_REASON, "direct dependency changed");
 				return (true);
 			}
 		}
@@ -723,12 +727,14 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		ret2 = pkg_shlibs_required(lp, &ls);
 		if (ret1 != ret2) {
 			pkg_free(lp);
+			pkg_set(rp, PKG_REASON, "needed shared library changed");
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
 			if (strcmp(pkg_shlib_name(rs),
-					pkg_shlib_name(ls)) != 0) {
+			    pkg_shlib_name(ls)) != 0) {
 				pkg_free(lp);
+				pkg_set(rp, PKG_REASON, "needed shared library changed");
 				return (true);
 			}
 		}

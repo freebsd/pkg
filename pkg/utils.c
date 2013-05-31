@@ -539,7 +539,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	struct pkg *pkg = NULL;
 	char path[MAXPATHLEN];
 	struct stat st;
-	const char *name, *version, *oldversion, *pkgrepopath, *cachedir;
+	const char *name, *version, *oldversion, *pkgrepopath, *cachedir, *why;
 	int64_t dlsize, oldsize, newsize;
 	int64_t flatsize, oldflatsize, pkgsize;
 	bool locked;
@@ -563,7 +563,8 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		pkg_get(pkg, PKG_OLD_VERSION, &oldversion, PKG_NAME, &name,
 		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
 		    PKG_OLD_FLATSIZE, &oldflatsize, PKG_PKGSIZE, &pkgsize,
-		    PKG_REPOPATH, &pkgrepopath, PKG_LOCKED, &locked);
+		    PKG_REPOPATH, &pkgrepopath, PKG_LOCKED, &locked,
+		    PKG_REASON, &why);
 
 		if (locked) {
 			printf("\tPackage %s-%s is locked ",
@@ -615,7 +616,10 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 					printf("\tDowngrading %s: %s -> %s\n", name, oldversion, version);
 					break;
 				case 0:
-					printf("\tReinstalling %s-%s\n", name, version);
+					printf("\tReinstalling %s-%s", name, version);
+					if (why != NULL)
+						printf(" (%s)", why);
+					printf("\n");
 					break;
 				case -1:
 					printf("\tUpgrading %s: %s -> %s\n", name, oldversion, version);
