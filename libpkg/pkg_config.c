@@ -726,7 +726,7 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 			url = val->data.scalar.value;
 		else if (strcasecmp(key->data.scalar.value, "pubkey") == 0)
 			pubkey = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "enable") == 0)
+		else if (strcasecmp(key->data.scalar.value, "enabled") == 0)
 			enable = val->data.scalar.value;
 		else if (strcasecmp(key->data.scalar.value, "mirror_type") == 0)
 			mirror_type = val->data.scalar.value;
