@@ -60,7 +60,7 @@ static struct _fields {
 	[PKG_REPONAME] = {"reponame", PKG_REMOTE, 1},
 	[PKG_REPOURL] = {"repourl", PKG_REMOTE, 1},
 	[PKG_DIGEST] = {"manifestdigest", PKG_REMOTE, 1},
-	[PKG_REASON] = "reason", PKG_REMOTE, 1}
+	[PKG_REASON] = {"reason", PKG_REMOTE, 1}
 };
 
 int
