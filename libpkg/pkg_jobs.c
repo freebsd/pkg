@@ -535,7 +535,7 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	const char *buf1, *buf2;
 	bool force = false;
 	int rc = EPKG_FATAL;
-	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED;
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS;
 
 	if (root && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
@@ -611,7 +611,7 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 	struct pkgdb_it *it;
 
 	if (flag == 0) {
-		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED;
+		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS;
 	}
 
 	if ((it = pkgdb_query(j->db, origin, MATCH_EXACT)) == NULL)
@@ -628,7 +628,8 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 static bool
 newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
-	char *origin, *newversion, *oldversion;
+	char *origin, *newversion, *oldversion, *reponame;
+	struct pkg_note *an;
 	int64_t oldsize;
 	struct pkg *lp;
 	struct pkg_option *lo = NULL, *ro = NULL;
@@ -637,7 +638,8 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	bool automatic, locked;
 	int cmp = 0, ret1, ret2;
 
-	pkg_get(rp, PKG_ORIGIN, &origin);
+	pkg_get(rp, PKG_ORIGIN, &origin,
+	    PKG_REPONAME, &reponame);
 	lp = get_local_pkg(j, origin, 0);
 
 	/* obviously yes because local doesn't exists */
@@ -650,6 +652,17 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	    PKG_AUTOMATIC, &automatic,
 	    PKG_VERSION, &oldversion,
 	    PKG_FLATSIZE, &oldsize);
+
+	an = pkg_annotation_lookup(lp, "repository");
+	if (an != NULL)  {
+		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
+		    pkg_annotation_value(an)) != 0)  {
+			pkg_free(lp);
+			return (false);
+		} else {
+			pkg_addannotation(rp, "repository", pkg_annotation_value(an));
+		}
+	}
 
 	if (locked) {
 		pkg_free(lp);
@@ -973,11 +986,13 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		const char *pkgorigin, *pkgrepopath, *oldversion, *origin;
+		struct pkg_note *an;
 		bool automatic, locked;
 		flags = 0;
 
 		pkg_get(p, PKG_ORIGIN, &pkgorigin, PKG_REPOPATH, &pkgrepopath,
 		    PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
+		an = pkg_annotation_lookup(p, "repository");
 
 		if (oldversion != NULL) {
 			pkg = NULL;
@@ -1081,6 +1096,10 @@ pkg_jobs_install(struct pkg_jobs *j)
 		if (pkg_add(j->db, path, flags, keys) != EPKG_OK) {
 			pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
 			goto cleanup;
+		}
+
+		if (an != NULL) {
+			pkgdb_add_annotation(j->db, pkgorigin, "repository", pkg_annotation_value(an));
 		}
 
 		if (oldversion != NULL)

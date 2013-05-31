@@ -905,6 +905,19 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 	return (EPKG_OK);
 }
 
+struct pkg_note *
+pkg_annotation_lookup(const struct pkg *pkg, const char *tag)
+{
+	struct pkg_note *an = NULL;
+
+	assert(pkg != NULL);
+	assert(tag != NULL);
+
+	HASH_FIND_STR(pkg->annotations, __DECONST(char *, tag), an);
+
+	return (an);
+}
+
 int
 pkg_delannotation(struct pkg *pkg, const char *tag)
 {

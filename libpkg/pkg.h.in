@@ -599,6 +599,8 @@ int pkg_shlibs_provided(const struct pkg *pkg, struct pkg_shlib **shlib);
  */
 int pkg_annotations(const struct pkg *pkg, struct pkg_note **note);
 
+struct pkg_note *pkg_annotation_lookup(const struct pkg *p, const char *tag);
+
 /**
  * Iterate over all of the files within the package pkg, ensuring the
  * dependency list contains all applicable packages providing the
@@ -983,12 +985,12 @@ struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib
  * @param value -- text of the annotation
  * @return An error code
  */
-int pkgdb_add_annotation(struct pkgdb *db, const char *pkgname,
-	const char *pkgversion, const char *tag, const char *value);
-int pkgdb_modify_annotation(struct pkgdb *db, const char *pkgname,
-	const char *pkgversion, const char *tag, const char *value);
-int pkgdb_delete_annotation(struct pkgdb *db, const char *pkgname,
-        const char *pkgversion, const char *tag);
+int pkgdb_add_annotation(struct pkgdb *db, const char *pkgorigin,
+	const char *tag, const char *value);
+int pkgdb_modify_annotation(struct pkgdb *db, const char *pkgorigin,
+	const char *tag, const char *value);
+int pkgdb_delete_annotation(struct pkgdb *db, const char *pkgorigin,
+        const char *tag);
 
 #define PKG_LOAD_BASIC			0
 #define PKG_LOAD_DEPS			(1U << 0)

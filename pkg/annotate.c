@@ -63,43 +63,44 @@ usage_annotate(void)
 }
 
 static int
-do_add(struct pkgdb *db, const char *pkgname, const char *pkgversion,
-       const char *tag, const char *value)
+do_add(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 {
-	int	 ret = EPKG_OK;
+	const char	*pkgname, *pkgversion, *pkgorigin;
+	int		 ret = EPKG_OK;
+
+	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion, PKG_ORIGIN, &pkgorigin);
 
 	if (yes || query_tty_yesno("%s-%s: Add annotation tagged: %s with "
 	               "value: %s? [y/N]: ", pkgname, pkgversion,
                        tag, value)) {
-		ret = pkgdb_add_annotation(db, pkgname, pkgversion,
-                          tag, value);
+		ret = pkgdb_add_annotation(db, pkgorigin, tag, value);
 		if (ret == EPKG_OK) {
 			if (!quiet)
 				printf("%s-%s: added annotation tagged: %s\n",
-				     pkgname, pkgversion, tag);
+				    pkgname, pkgversion, tag);
 		} else if (ret == EPKG_WARN) {
 			if (!quiet)
 				warnx("%s-%s: Can't add annotation tagged: %s -- "
-				     "already exists", pkgname, pkgversion,
-				     tag );
+				    "already exists", pkgname, pkgversion, tag);
 		} else
 			warnx("%s-%s: Failed to add annotation tagged: %s",
-			     pkgname, pkgversion, tag);
+			    pkgname, pkgversion, tag);
 	}
 	return (ret);
 }
 
 static int
-do_modify(struct pkgdb *db, const char *pkgname, const char *pkgversion,
-	  const char *tag, const char *value)
+do_modify(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 {
-	int	ret = EPKG_OK;
+	const char	*pkgname, *pkgversion, *pkgorigin;
+	int		 ret = EPKG_OK;
+
+	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion, PKG_ORIGIN, &pkgorigin);
 
 	if (yes || query_tty_yesno("%s-%s: Change annotation tagged: %s to "
 		         "new value: %s? [y/N]: ",
 			 pkgname, pkgversion, tag, value)) {
-		ret = pkgdb_modify_annotation(db, pkgname, pkgversion,
-                          tag, value);
+		ret = pkgdb_modify_annotation(db, pkgorigin, tag, value);
 		if (ret == EPKG_OK || ret == EPKG_WARN) {
 			if (!quiet)
 				printf("%s-%s: Modified annotation tagged: "
@@ -112,14 +113,16 @@ do_modify(struct pkgdb *db, const char *pkgname, const char *pkgversion,
 } 
 
 static int
-do_delete(struct pkgdb *db, const char *pkgname, const char *pkgversion,
-	  const char *tag)
+do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 {
-	int	ret = EPKG_OK;
+	const char	*pkgname, *pkgversion, *pkgorigin;
+	int		 ret = EPKG_OK;
+
+	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion, PKG_ORIGIN, &pkgorigin);
 
 	if (yes || query_tty_yesno("%s-%s: Delete annotation tagged: %s [y/N]: ",
 			 pkgname, pkgversion, tag)) {
-		ret = pkgdb_delete_annotation(db, pkgname, pkgversion, tag);
+		ret = pkgdb_delete_annotation(db, pkgorigin, tag);
 		if (ret == EPKG_OK) {
 			if (!quiet)
 				printf("%s-%s: Deleted annotation tagged: %s\n",
@@ -170,7 +173,6 @@ exec_annotate(int argc, char **argv)
 	const char	*tag;
 	const char	*value;
 	const char	*pkgname;
-	const char	*pkgversion;
 	struct sbuf	*input    = NULL;
 	int		 ch;
 	int		 match    = MATCH_EXACT;
@@ -272,7 +274,6 @@ exec_annotate(int argc, char **argv)
 	}
 
 	while ((retcode = pkgdb_it_next(it, &pkg, 0)) == EPKG_OK) {
-		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 
 		switch(action) {
 		case NONE:	/* Should never happen */
@@ -280,13 +281,13 @@ exec_annotate(int argc, char **argv)
 			exitcode = EX_USAGE;
 			break;
 		case ADD:
-			retcode = do_add(db, pkgname, pkgversion, tag, value);
+			retcode = do_add(db, pkg, tag, value);
 			break;
 		case MODIFY:
-			retcode = do_modify(db, pkgname, pkgversion, tag, value);
+			retcode = do_modify(db, pkg, tag, value);
 			break;
 		case DELETE:
-			retcode = do_delete(db, pkgname, pkgversion, tag);
+			retcode = do_delete(db, pkg, tag);
 			break;
 		}
 
