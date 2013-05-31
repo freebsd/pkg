@@ -1606,11 +1606,11 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 		"SELECT d.name, d.origin, d.version, p.locked "
 		"FROM main.deps AS d "
 		"LEFT JOIN main.packages AS p ON p.origin = d.origin "
-		"WHERE d.package_id = ?1;";
+		"WHERE d.package_id = ?1 ORDER BY d.origin DESC;";
 	const char	*reposql = ""
 		"SELECT d.name, d.origin, d.version, 0 "
 		"FROM %Q.deps AS d "
-		"WHERE d.package_id = ?1;";
+		"WHERE d.package_id = ?1 ORDER BY d.origin DESC;";
 
 	assert(db != NULL && pkg != NULL);
 
@@ -2024,7 +2024,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 	const char	*basesql = ""
 		"SELECT option, value "
 		"FROM %Q.options "
-		"WHERE package_id = ?1";
+		"WHERE package_id = ?1 ORDER BY option DESC";
 
 	assert(db != NULL && pkg != NULL);
 
