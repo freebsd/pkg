@@ -105,6 +105,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_OPTION_NAME,
 	PP_PKG_OPTION_VALUE,
 	PP_PKG_OPTIONS,
+	PP_PKG_CHAR_STRING,
 	PP_PKG_USER_NAME,
 	PP_PKG_USER_UIDSTR,
 	PP_PKG_USERS,
@@ -184,6 +185,7 @@ _static struct sbuf *format_message(struct sbuf *, const void *, struct percent_
 _static struct sbuf *format_options(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_option_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_option_value(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_char_string(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_users(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_user_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_user_uidstr(struct sbuf *, const void *, struct percent_esc *);

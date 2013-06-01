@@ -96,7 +96,9 @@
  * P
  * Q
  * R
- * S
+ *
+ * S  char*        Arbitrary character string
+ *
  * T
  *
  * U  pkg          List of users
@@ -452,6 +454,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_PKG,
 		&format_options,
+	},
+	[PP_PKG_CHAR_STRING] =
+	{
+		'S',
+		'\0',
+		false,
+		false,
+		PP_PKG,
+		&format_char_string,
 	},
 	[PP_PKG_USER_NAME] =
 	{
@@ -1264,6 +1275,17 @@ format_option_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	const struct pkg_option	*option = data;
 
 	return (string_val(sbuf, pkg_option_value(option), p));
+}
+
+/*
+ * %S -- Character string.
+ */
+struct sbuf *
+format_char_string(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const char	*charstring = data;
+
+	return (string_val(sbuf, charstring, p));
 }
 
 /*
