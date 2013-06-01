@@ -348,12 +348,10 @@ exec_check(int argc, char **argv)
 		}
 
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-			const char *pkgname = NULL;
-			pkg_get(pkg, PKG_NAME, &pkgname);
 			/* check for missing dependencies */
 			if (dcheck) {
 				if (verbose)
-					printf("Checking dependencies: %s\n", pkgname);
+					pkg_printf("Checking dependencies: %n\n", pkg);
 				nbpkgs += check_deps(db, pkg, &dh, noinstall);
 				if (noinstall && nbpkgs > 0) {
 					rc = EX_UNAVAILABLE;
@@ -361,23 +359,23 @@ exec_check(int argc, char **argv)
 			}
 			if (checksums) {
 				if (verbose)
-					printf("Checking checksums: %s\n", pkgname);
+					pkg_printf("Checking checksums: %n\n", pkg);
 				if (pkg_test_filesum(pkg) != EPKG_OK) {
 					rc = EX_DATAERR;
 				}
 			}
 			if (recompute) {
 				if (verbose)
-					printf("Recomputing size and checksums: %s\n", pkgname);
+					pkg_printf("Recomputing size and checksums: %n\n", pkg);
 				if (pkg_recompute(db, pkg) != EPKG_OK) {
 					rc = EX_DATAERR;
 				}
 			}
 			if (reanalyse_shlibs) {
 				if (verbose)
-					printf("Reanalyzing files for shlibs: %s\n", pkgname);
+					pkg_printf("Reanalyzing files for shlibs: %n\n", pkg);
 				if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
-					printf("Failed to reanalyse for shlibs: %s\n", pkgname);
+					pkg_printf("Failed to reanalyse for shlibs: %n\n", pkg);
 					rc = EX_UNAVAILABLE;
 				}
 			}
