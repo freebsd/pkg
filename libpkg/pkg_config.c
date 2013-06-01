@@ -1180,6 +1180,12 @@ pkg_shutdown(void)
 }
 
 int
+pkg_repos_count(void)
+{
+	return (HASH_COUNT(repos));
+}
+
+int
 pkg_repos(struct pkg_repo **r)
 {
 	HASH_NEXT(repos, (*r));

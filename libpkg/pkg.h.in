@@ -1360,6 +1360,7 @@ int pkg_to_old(struct pkg *pkg);
 int pkg_register_old(struct pkg *pkg);
 int pkg_sshserve(void);
 
+int pkg_repos_count(void);
 int pkg_repos(struct pkg_repo **);
 const char *pkg_repo_url(struct pkg_repo *r);
 const char *pkg_repo_ident(struct pkg_repo *r);
