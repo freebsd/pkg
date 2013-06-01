@@ -59,7 +59,7 @@ query_tty_yesno(const char *msg, ...)
 	tty = fdopen(tty_fd, "r+");
 
 	va_start(ap, msg);
-	vfprintf(tty, msg, ap);
+	pkg_vfprintf(tty, msg, ap);
 	va_end(ap);
 
 	c = getc(tty);
@@ -84,7 +84,7 @@ query_yesno(const char *msg, ...)
 	va_list	 ap;
 
 	va_start(ap, msg);
-	vprintf(msg, ap);
+	pkg_vprintf(msg, ap);
 	va_end(ap);
 
 	c = getchar();

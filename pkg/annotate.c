@@ -65,26 +65,34 @@ usage_annotate(void)
 static int
 do_add(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 {
-	const char	*pkgname, *pkgversion, *pkgorigin;
+	const char	*pkgname, *pkgversion;
 	int		 ret = EPKG_OK;
 
-	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion, PKG_ORIGIN, &pkgorigin);
 
-	if (yes || query_tty_yesno("%s-%s: Add annotation tagged: %s with "
-	               "value: %s? [y/N]: ", pkgname, pkgversion,
-                       tag, value)) {
-		ret = pkgdb_add_annotation(db, pkgorigin, tag, value);
+	if (yes || query_tty_yesno("%n-%v: Add annotation tagged: %S with "
+	               "value: %S? [y/N]: ", pkg, pkg, tag, value)) {
+
+		ret = pkgdb_add_annotation(db, pkg, tag, value);
 		if (ret == EPKG_OK) {
 			if (!quiet)
-				printf("%s-%s: added annotation tagged: %s\n",
-				    pkgname, pkgversion, tag);
+				pkg_printf("%n-%v: added annotation tagged:"
+				    " %S\n", pkg, pkg, tag);
 		} else if (ret == EPKG_WARN) {
-			if (!quiet)
-				warnx("%s-%s: Can't add annotation tagged: %s -- "
-				    "already exists", pkgname, pkgversion, tag);
-		} else
+			if (!quiet) {
+				pkg_get(pkg, PKG_NAME, &pkgname,
+					PKG_VERSION, &pkgversion);
+			
+				warnx("%s-%s: Can't add annotation tagged: "
+				      "%s -- already exists", pkgname,
+				      pkgversion, tag);
+			}
+		} else {
+			pkg_get(pkg, PKG_NAME, &pkgname,
+				PKG_VERSION, &pkgversion);
+
 			warnx("%s-%s: Failed to add annotation tagged: %s",
 			    pkgname, pkgversion, tag);
+		}
 	}
 	return (ret);
 }
@@ -92,22 +100,24 @@ do_add(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 static int
 do_modify(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 {
-	const char	*pkgname, *pkgversion, *pkgorigin;
+	const char	*pkgname, *pkgversion;
 	int		 ret = EPKG_OK;
 
-	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion, PKG_ORIGIN, &pkgorigin);
 
-	if (yes || query_tty_yesno("%s-%s: Change annotation tagged: %s to "
-		         "new value: %s? [y/N]: ",
-			 pkgname, pkgversion, tag, value)) {
-		ret = pkgdb_modify_annotation(db, pkgorigin, tag, value);
+	if (yes || query_tty_yesno("%n-%v: Change annotation tagged: %S to "
+		         "new value: %S? [y/N]: ", pkg, pkg, tag, value)) {
+		ret = pkgdb_modify_annotation(db, pkg, tag, value);
 		if (ret == EPKG_OK || ret == EPKG_WARN) {
 			if (!quiet)
-				printf("%s-%s: Modified annotation tagged: "
-				       "%s\n", pkgname, pkgversion, tag);
-		} else
+				pkg_printf("%n-%v: Modified annotation "
+				       "tagged: %S\n", pkg, pkg, tag);
+		} else {
+			pkg_get(pkg, PKG_NAME, &pkgname,
+				PKG_VERSION, &pkgversion);
+
 			warnx("%s-%s: Failed to modify annotation tagged: %s",
 			     pkgname, pkgversion, tag);
+		}
 	}
 	return (ret);
 } 
@@ -115,26 +125,32 @@ do_modify(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 static int
 do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 {
-	const char	*pkgname, *pkgversion, *pkgorigin;
+	const char	*pkgname, *pkgversion;
 	int		 ret = EPKG_OK;
 
-	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion, PKG_ORIGIN, &pkgorigin);
-
-	if (yes || query_tty_yesno("%s-%s: Delete annotation tagged: %s [y/N]: ",
-			 pkgname, pkgversion, tag)) {
-		ret = pkgdb_delete_annotation(db, pkgorigin, tag);
+	if (yes || query_tty_yesno("%n-%v: Delete annotation tagged: %S "
+			 "[y/N]: ", pkg, pkg, tag)) {
+		ret = pkgdb_delete_annotation(db, pkg, tag);
 		if (ret == EPKG_OK) {
 			if (!quiet)
-				printf("%s-%s: Deleted annotation tagged: %s\n",
-				       pkgname, pkgversion, tag);
+				pkg_printf("%n-%v: Deleted annotation "
+				       "tagged: %S\n", pkg, pkg, tag);
 		} else if (ret == EPKG_WARN) {
-			if (!quiet)
-				warnx("%s-%s: Can't delete annotation tagged: "
-				     "%s -- because there is none", pkgname,
-				     pkgversion, tag);
-		} else
+			if (!quiet) {
+				pkg_get(pkg, PKG_NAME, &pkgname,
+					PKG_VERSION, &pkgversion);
+
+				warnx("%s-%s: Can't delete annotation "
+				     "tagged: %s -- because there is none",
+				     pkgname, pkgversion, tag);
+			}
+		} else {
+			pkg_get(pkg, PKG_NAME, &pkgname,
+				PKG_VERSION, &pkgversion);
+
 			warnx("%s-%s: Failed to delete annotation tagged: %s",
 			     pkgname, pkgversion, tag);
+		}
 	}
 	return (ret);
 } 

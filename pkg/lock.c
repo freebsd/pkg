@@ -59,25 +59,20 @@ static int
 do_lock(struct pkgdb *db, struct pkg *pkg)
 {
 	bool locked;
-	const char *pkgname;
-	const char *pkgversion;
-
-	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion,
-		PKG_LOCKED, &locked);
 	
 	if (locked) {
 		if (!quiet)
-			printf("%s-%s: already locked\n",
-			       pkgname, pkgversion);
+			pkg_printf("%n-%v: already locked\n",
+			       pkg, pkg);
 		return (EPKG_OK);
 	}
 
-	if (!yes && !query_yesno("%s-%s: lock this package? [y/N]: ",
-				 pkgname, pkgversion))
+	if (!yes && !query_yesno("%n-%v: lock this package? [y/N]: ",
+				 pkg, pkg))
 		return (EPKG_OK);
 
 	if (!quiet)
-		printf("Locking %s-%s\n", pkgname, pkgversion);
+		pkg_printf("Locking %n-%v\n", pkg, pkg);
 
 	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int64_t)true));
 }
@@ -87,26 +82,19 @@ static int
 do_unlock(struct pkgdb *db, struct pkg *pkg)
 {
 	bool locked;
-	const char *pkgname;
-	const char *pkgversion;
-
-	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion,
-		PKG_LOCKED, &locked);
-
 
 	if (!locked) {
 		if (!quiet)
-			printf("%s-%s: already unlocked\n",
-			       pkgname, pkgversion);
+			pkg_printf("%n-%v: already unlocked\n", pkg, pkg);
 		return (EPKG_OK);
 	}
 
-	if (!yes && !query_yesno("%s-%s: unlock this package? [y/N]: ",
-				 pkgname, pkgversion))
+	if (!yes && !query_yesno("%n-%v: unlock this package? [y/N]: ",
+				 pkg, pkg))
 		return (EPKG_OK);
 
 	if (!quiet)
-		printf("Unlocking %s-%s\n", pkgname, pkgversion);
+		pkg_printf("Unlocking %n-%v\n", pkg, pkg);
 
 	return (pkgdb_set(db, pkg, PKG_SET_LOCKED, (int64_t)false));
 }
