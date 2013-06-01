@@ -46,6 +46,8 @@
 .Ft int
 .Fn pkg_fprintf "FILE * restrict stream" "const char * restrict format" ...
 .Ft int
+.Fn pkg_vfprintf "FILE * restrict stream" "const char * restrict format" "va_list ap"
+.Ft int
 .Fn pkg_dprintf "int fd" "const char * restrict format" ...
 .Ft int
 .Fn pkg_snprintf "char * restrict str" "size_t size" "const char * restrict format" ...
@@ -70,7 +72,9 @@ writes output to
 .Dv stdout ,
 the standard output stream;
 .Fn pkg_fprintf
-writes output to the given output
+and
+.Fn pkg_vfprintf
+write output to the given output
 .Fa stream ;
 .Fn pkg_dprintf
 writes output to the given file descriptor;

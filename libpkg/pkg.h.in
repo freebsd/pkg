@@ -1392,6 +1392,14 @@ int pkg_printf(const char * restrict fmt, ...);
 int pkg_fprintf(FILE * restrict stream, const char * restrict fmt, ...);
 
 /**
+ * print to named stream from pkg as indicated by the format code fmt
+ * @param ap varargs arglist
+ * @param fmt String with embedded %-escapes indicating what to output
+ * @return count of the number of characters printed
+ */
+int pkg_vfprintf(FILE * restrict stream, const char * restrict fmt, va_list ap);
+
+/**
  * print to file descriptor d data from pkg as indicated by the format
  * code fmt
  * @param d Previously opened file descriptor to print to

@@ -2698,6 +2698,32 @@ pkg_fprintf(FILE * restrict stream, const char * restrict format, ...)
 }
 
 /**
+ * print to named stream from pkg as indicated by the format code format
+ * @param ap Varargs list of struct pkg etc. supplying the data
+ * @param format String with embedded %-escapes indicating what to output
+ * @return count of the number of characters printed
+ */
+int
+pkg_vfprintf(FILE * restrict stream, const char * restrict format, va_list ap)
+{
+	struct sbuf	*sbuf;
+	int		 count;
+
+	sbuf  = sbuf_new_auto();
+
+	if (sbuf)
+		sbuf = pkg_sbuf_vprintf(sbuf, format, ap);
+	if (sbuf && sbuf_len(sbuf) >= 0) {
+		sbuf_finish(sbuf);
+		count = fprintf(stream, "%s", sbuf_data(sbuf));
+	} else
+		count = -1;
+	if (sbuf)
+		sbuf_delete(sbuf);
+	return (count);
+}
+
+/**
  * print to file descriptor d data from pkg as indicated by the format
  * code format
  * @param d Previously opened file descriptor to print to
