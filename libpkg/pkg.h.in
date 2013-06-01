@@ -984,11 +984,11 @@ struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib
  * @param value -- text of the annotation
  * @return An error code
  */
-int pkgdb_add_annotation(struct pkgdb *db, const char *pkgorigin,
+int pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg,
 	const char *tag, const char *value);
-int pkgdb_modify_annotation(struct pkgdb *db, const char *pkgorigin,
+int pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg,
 	const char *tag, const char *value);
-int pkgdb_delete_annotation(struct pkgdb *db, const char *pkgorigin,
+int pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg,
         const char *tag);
 
 #define PKG_LOAD_BASIC			0

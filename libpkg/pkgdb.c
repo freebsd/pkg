@@ -2760,17 +2760,20 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 }
 
 int
-pkgdb_add_annotation(struct pkgdb *db, const char *pkgorigin,
-    const char *tag, const char *value)
+pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
+        const char *value)
 {
-	int	rows_changed;
+	int		 rows_changed;
+	const char	*pkgorigin;
 
-	assert(pkgorigin != NULL && pkgorigin[0] != '\0');
+	assert(pkg != NULL);
 	assert(tag != NULL);
 	assert(value != NULL);
 
 	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
 		return (EPKG_FATAL);
+
+	pkg_get(pkg, PKG_ORIGIN, &pkgorigin);
 
 	if (run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
 	    ||
@@ -2792,12 +2795,13 @@ pkgdb_add_annotation(struct pkgdb *db, const char *pkgorigin,
 }
 
 int
-pkgdb_modify_annotation(struct pkgdb *db, const char *pkgorigin,
-    const char *tag, const char *value)
+pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
+        const char *value)
 {
-	int rows_changed; 
+	int		 rows_changed; 
+	const char	*pkgorigin;
 
-	assert(pkgorigin != NULL && pkgorigin[0] != '\0');
+	assert(pkg!= NULL);
 	assert(tag != NULL);
 	assert(value != NULL);
 
@@ -2806,6 +2810,8 @@ pkgdb_modify_annotation(struct pkgdb *db, const char *pkgorigin,
 
 	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
+
+	pkg_get(pkg, PKG_ORIGIN, &pkgorigin);
 
 	if (run_prstmt(ANNOTATE_DEL1, pkgorigin, tag) != SQLITE_DONE
 	    ||
@@ -2834,13 +2840,13 @@ pkgdb_modify_annotation(struct pkgdb *db, const char *pkgorigin,
 }
 
 int
-pkgdb_delete_annotation(struct pkgdb *db, const char *pkgorigin,
-    const char *tag)
+pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag)
 {
-	int	rows_changed;
-	bool	result;
+	int		 rows_changed;
+	bool		 result;
+	const char	*pkgorigin;
 
-	assert(pkgorigin != NULL && pkgorigin[0] != '\0');
+	assert(pkg != NULL);
 	assert(tag != NULL);
 
 	if (!db->prstmt_initialized && prstmt_initialize(db) != EPKG_OK)
@@ -2848,6 +2854,8 @@ pkgdb_delete_annotation(struct pkgdb *db, const char *pkgorigin,
 
 	if (pkgdb_transaction_begin(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
+
+	pkg_get(pkg, PKG_ORIGIN, &pkgorigin);
 
 	result = (run_prstmt(ANNOTATE_DEL1, pkgorigin, tag)
 		  == SQLITE_DONE);
@@ -2861,7 +2869,6 @@ pkgdb_delete_annotation(struct pkgdb *db, const char *pkgorigin,
 		pkgdb_transaction_rollback(db->sqlite, NULL);
 		return (EPKG_FATAL);
 	}
-
 
 	if (pkgdb_transaction_commit(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);

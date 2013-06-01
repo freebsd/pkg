@@ -1099,7 +1099,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		}
 
 		if (an != NULL) {
-			pkgdb_add_annotation(j->db, pkgorigin, "repository", pkg_annotation_value(an));
+			pkgdb_add_annotation(j->db, p, "repository", pkg_annotation_value(an));
 		}
 
 		if (oldversion != NULL)
