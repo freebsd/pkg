@@ -569,8 +569,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		reponame = pkg_repo_ident(pkg_repo_find_name(reponame));
 
 		if (locked) {
-			printf("\tPackage %s-%s is locked ",
-			       name, version);
+			pkg_printf("\tPackage %n-%v is locked ", pkg, pkg);
 			switch (type) {
 			case PKG_JOBS_INSTALL:
 			case PKG_JOBS_UPGRADE:
@@ -579,13 +578,13 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				if (oldversion != NULL) {
 					switch(pkg_version_cmp(oldversion, version)) {
 					case -1:
-						printf("and may not be upgraded to version %s\n", version);
+						pkg_printf("and may not be upgraded to version %v\n", pkg);
 						break;
 					case 0:
 						printf("and may not be reinstalled\n");
 						break;
 					case 1:
-						printf("and may not be downgraded to version %s\n", version);
+						pkg_printf("and may not be downgraded to version %v\n", pkg);
 						break;
 					}
 					continue;
@@ -608,20 +607,23 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		case PKG_JOBS_UPGRADE:
 			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
 			if (stat(path, &st) == -1 || pkgsize != st.st_size)
-				/* file looks corrupted (wrong size), assume a checksum mismatch will
-				   occur later and the file will be fetched from remote again */
+				/* file looks corrupted (wrong size),
+				   assume a checksum mismatch will
+				   occur later and the file will be
+				   fetched from remote again */
+
 				dlsize += pkgsize;
 
 			if (oldversion != NULL) {
 				switch (pkg_version_cmp(oldversion, version)) {
 				case 1:
-					printf("\tDowngrading %s: %s -> %s", name, oldversion, version);
+					pkg_printf("\tDowngrading %n: %S -> %v", pkg, oldversion, pkg);
 					if (pkg_repos_count() > 0)
 						printf(" [%s]", reponame);
 					printf("\n");
 					break;
 				case 0:
-					printf("\tReinstalling %s-%s", name, version);
+					pkg_printf("\tReinstalling %n-%v", pkg, pkg);
 					if (pkg_repos_count() > 0)
 						printf(" [%s]", reponame);
 					if (why != NULL)
@@ -629,7 +631,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 					printf("\n");
 					break;
 				case -1:
-					printf("\tUpgrading %s: %s -> %s", name, oldversion, version);
+					pkg_printf("\tUpgrading %n: %S -> %v", pkg, oldversion, pkg);
 					if (pkg_repos_count() > 0)
 						printf(" [%s]", reponame);
 					printf("\n");
@@ -639,7 +641,8 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				newsize += flatsize;
 			} else {
 				newsize += flatsize;
-				printf("\tInstalling %s: %s", name, version);
+
+				pkg_printf("\tInstalling %n: %v", pkg, pkg);
 				if (pkg_repos_count() > 0)
 					printf(" [%s]", reponame);
 				printf("\n");
@@ -650,7 +653,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			oldsize += oldflatsize;
 			newsize += flatsize;
 			
-			printf("\t%s-%s\n", name, version);
+			pkg_printf("\t%n-%v\n", pkg, pkg);
 			break;
 		case PKG_JOBS_FETCH:
 			dlsize += pkgsize;
