@@ -539,7 +539,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	struct pkg *pkg = NULL;
 	char path[MAXPATHLEN];
 	struct stat st;
-	const char *name, *version, *oldversion, *pkgrepopath, *cachedir, *why;
+	const char *name, *version, *oldversion, *pkgrepopath, *cachedir, *why, *reponame;
 	int64_t dlsize, oldsize, newsize;
 	int64_t flatsize, oldflatsize, pkgsize;
 	bool locked;
@@ -564,7 +564,9 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
 		    PKG_OLD_FLATSIZE, &oldflatsize, PKG_PKGSIZE, &pkgsize,
 		    PKG_REPOPATH, &pkgrepopath, PKG_LOCKED, &locked,
-		    PKG_REASON, &why);
+		    PKG_REASON, &why, PKG_REPONAME, &reponame);
+
+		reponame = pkg_repo_ident(pkg_repo_find_name(reponame));
 
 		if (locked) {
 			printf("\tPackage %s-%s is locked ",
@@ -613,23 +615,34 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			if (oldversion != NULL) {
 				switch (pkg_version_cmp(oldversion, version)) {
 				case 1:
-					printf("\tDowngrading %s: %s -> %s\n", name, oldversion, version);
+					printf("\tDowngrading %s: %s -> %s", name, oldversion, version);
+					if (pkg_repos_count() > 0)
+						printf(" [%s]", reponame);
+					printf("\n");
 					break;
 				case 0:
 					printf("\tReinstalling %s-%s", name, version);
+					if (pkg_repos_count() > 0)
+						printf(" [%s]", reponame);
 					if (why != NULL)
 						printf(" (%s)", why);
 					printf("\n");
 					break;
 				case -1:
-					printf("\tUpgrading %s: %s -> %s\n", name, oldversion, version);
+					printf("\tUpgrading %s: %s -> %s", name, oldversion, version);
+					if (pkg_repos_count() > 0)
+						printf(" [%s]", reponame);
+					printf("\n");
 					break;
 				}
 				oldsize += oldflatsize;
 				newsize += flatsize;
 			} else {
 				newsize += flatsize;
-				printf("\tInstalling %s: %s\n", name, version);
+				printf("\tInstalling %s: %s", name, version);
+				if (pkg_repos_count() > 0)
+					printf(" [%s]", reponame);
+				printf("\n");
 			}
 			break;
 		case PKG_JOBS_DEINSTALL:
