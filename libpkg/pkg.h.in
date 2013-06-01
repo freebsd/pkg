@@ -1384,6 +1384,14 @@ struct pkg_repo *pkg_repo_find_name(const char *name);
 int pkg_printf(const char * restrict fmt, ...);
 
 /**
+ * print to stdout data from pkg as indicated by the format code fmt
+ * @param ap Varargs list of struct pkg etc. supplying the data
+ * @param fmt String with embedded %-escapes indicating what to print
+ * @return count of the number of characters printed
+ */
+int pkg_vprintf(const char * restrict fmt, va_list ap);
+
+/**
  * print to named stream from pkg as indicated by the format code fmt
  * @param ... Varargs list of struct pkg etc. supplying the data
  * @param fmt String with embedded %-escapes indicating what to output

@@ -44,6 +44,8 @@
 .Ft int
 .Fn pkg_printf "const char * restrict format" ...
 .Ft int
+.Fn pkg_vprintf "const char * restrict format" "va_list ap"
+.Ft int
 .Fn pkg_fprintf "FILE * restrict stream" "const char * restrict format" ...
 .Ft int
 .Fn pkg_vfprintf "FILE * restrict stream" "const char * restrict format" "va_list ap"
@@ -67,8 +69,10 @@ as described below, analogously to the similarly named
 family of functions.
 The
 .Fn pkg_printf
-function
-writes output to
+and
+.Fn pkg_vprintf
+functions
+write output to
 .Dv stdout ,
 the standard output stream;
 .Fn pkg_fprintf

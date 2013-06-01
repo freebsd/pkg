@@ -2669,6 +2669,32 @@ pkg_printf(const char * restrict format, ...)
 }
 
 /**
+ * print to stdout data from pkg as indicated by the format code format
+ * @param ap Varargs list of struct pkg etc. supplying the data
+ * @param format String with embedded %-escapes indicating what to print
+ * @return count of the number of characters printed
+ */
+int
+pkg_vprintf(const char * restrict format, va_list ap)
+{
+	struct sbuf	*sbuf;
+	int		 count;
+
+	sbuf  = sbuf_new_auto();
+
+	if (sbuf)
+		sbuf = pkg_sbuf_vprintf(sbuf, format, ap);
+	if (sbuf && sbuf_len(sbuf) >= 0) {
+		sbuf_finish(sbuf);
+		count = printf("%s", sbuf_data(sbuf));
+	} else
+		count = -1;
+	if (sbuf)
+		sbuf_delete(sbuf);
+	return (count);
+}
+
+/**
  * print to named stream from pkg as indicated by the format code format
  * @param ... Varargs list of struct pkg etc. supplying the data
  * @param format String with embedded %-escapes indicating what to output
