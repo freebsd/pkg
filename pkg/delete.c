@@ -153,7 +153,8 @@ exec_delete(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	if ((pkg_jobs_find(jobs, "ports-mgmt/pkg", NULL) == EPKG_OK)
+	if (((pkg_jobs_find(jobs, "ports-mgmt/pkg", NULL) == EPKG_OK) ||
+	    (pkg_jobs_find(jobs, "ports-mgmt/pkg-devel", NULL) == EPKG_OK))
 	     && !force) {
 		warnx("You are about to delete 'ports-mgmt/pkg' which is really "
 		    "dangerous. You can't do that without specifying -f");
