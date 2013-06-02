@@ -60,6 +60,7 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 {
 	bool locked;
 	
+	pkg_get(pkg, PKG_LOCKED, &locked);
 	if (locked) {
 		if (!quiet)
 			pkg_printf("%n-%v: already locked\n",
@@ -83,6 +84,7 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 {
 	bool locked;
 
+	pkg_get(pkg, PKG_LOCKED, &locked);
 	if (!locked) {
 		if (!quiet)
 			pkg_printf("%n-%v: already unlocked\n", pkg, pkg);
