@@ -54,12 +54,12 @@ int
 event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL;
-	const char *message;
 	int *debug = data;
 	(void) debug;
 	const char *name, *version, *newversion;
 	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
+	int msglen;
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -127,12 +127,13 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		printf(" done\n");
-		if (message != NULL && message[0] != '\0') {
-			if (messages == NULL)
-				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "%M\n",
-			    ev->e_install_finished.pkg);
-		}
+		if (messages == NULL)
+			messages = sbuf_new_auto();
+		msglen = sbuf_len(messages);
+		pkg_sbuf_printf(messages, "%M",
+		    ev->e_install_finished.pkg);
+		if (msglen < sbuf_len(messages))
+			sbuf_putc(messages, '\n');
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		if (quiet)
