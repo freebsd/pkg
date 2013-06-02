@@ -41,11 +41,19 @@ static off_t fetched = 0;
 static char url[MAXPATHLEN+1];
 struct sbuf *messages = NULL;
 
+static void
+print_and_set_term_title(struct sbuf *msg)
+{
+	sbuf_finish(msg);
+	printf("%s", sbuf_data(msg));
+	printf("\033]0; %s\007", sbuf_data(msg));
+	sbuf_delete(msg);
+}
+
 int
 event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL;
-	struct pkg_dep *dep = NULL;
 	const char *message;
 	int *debug = data;
 	(void) debug;
@@ -95,25 +103,35 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INSTALL_BEGIN:
 		if (quiet)
 			break;
-		pkg_get(ev->e_install_begin.pkg, PKG_NAME, &name,
-		    PKG_VERSION, &version);
-		nbdone++;
-		if (nbactions > 0)
-			printf("[%d/%d] ", nbdone, nbactions);
-		printf("Installing %s-%s...", name, version);
-		/* print to the terminal title*/
-		printf("%c]0;[%d/%d] Installing %s-%s%c", '\033', nbdone, nbactions, name, version, '\007');
+		else {
+			struct sbuf	*msg;
 
+			nbdone++;
+
+			msg = sbuf_new_auto();
+			if (msg == NULL) {
+				warn("sbuf_new_auto() failed");
+				break;
+			}
+
+			if (nbactions > 0)
+				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
+
+			pkg = ev->e_install_begin.pkg;
+			pkg_sbuf_printf(msg, "Installing %n-%v...", pkg, pkg);
+
+			print_and_set_term_title(msg);
+		}
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
 		if (quiet)
 			break;
 		printf(" done\n");
-		pkg_get(ev->e_install_finished.pkg, PKG_MESSAGE, &message);
 		if (message != NULL && message[0] != '\0') {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
-			sbuf_printf(messages, "%s\n", message);
+			pkg_sbuf_printf(messages, "%M\n",
+			    ev->e_install_finished.pkg);
 		}
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
@@ -128,16 +146,20 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		printf("\nConflict found on path %s between %s-%s(%s) and ",
-			ev->e_integrity_conflict.pkg_path,
-			ev->e_integrity_conflict.pkg_name,
-			ev->e_integrity_conflict.pkg_version,
-			ev->e_integrity_conflict.pkg_origin);
+		    ev->e_integrity_conflict.pkg_path,
+		    ev->e_integrity_conflict.pkg_name,
+		    ev->e_integrity_conflict.pkg_version,
+		    ev->e_integrity_conflict.pkg_origin);
 		cur_conflict = ev->e_integrity_conflict.conflicts;
 		while (cur_conflict) {
 			if (cur_conflict->next)
-				printf("%s-%s(%s), ", cur_conflict->name, cur_conflict->version, cur_conflict->origin);
+				printf("%s-%s(%s), ", cur_conflict->name,
+				    cur_conflict->version,
+				    cur_conflict->origin);
 			else
-				printf("%s-%s(%s)", cur_conflict->name, cur_conflict->version, cur_conflict->origin);
+				printf("%s-%s(%s)", cur_conflict->name,
+				    cur_conflict->version,
+				    cur_conflict->origin);
 
 			cur_conflict = cur_conflict->next;
 		}
@@ -146,14 +168,25 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		if (quiet)
 			break;
-		pkg_get(ev->e_deinstall_begin.pkg, PKG_NAME, &name,
-		    PKG_VERSION, &version);
-		nbdone++;
-		if (nbactions > 0)
-			printf("[%d/%d] ", nbdone, nbactions);
-		printf("Deleting %s-%s...", name, version);
-		printf("%c]0;[%d/%d] Deleting %s-%s%c", '\033', nbdone,
-		    nbactions, name, version, '\007');
+		else {
+			struct sbuf	*msg;
+
+			nbdone++;
+
+			msg = sbuf_new_auto();
+			if (msg == NULL) {
+				warn("sbuf_new_auto() failed");
+				break;
+			}
+
+			if (nbactions > 0)
+				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
+
+			pkg = ev->e_install_begin.pkg;
+			pkg_sbuf_printf(msg, "Deleting %n-%v...", pkg, pkg);
+
+			print_and_set_term_title(msg);
+		}
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
 		if (quiet)
@@ -163,32 +196,32 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_UPGRADE_BEGIN:
 		if (quiet)
 			break;
-		pkg_get(ev->e_upgrade_begin.pkg, PKG_NAME, &name,
-		    PKG_VERSION, &newversion, PKG_OLD_VERSION, &version);
-		nbdone++;
-		if (nbactions > 0)
-			printf("[%d/%d] ", nbdone, nbactions);
-		switch (pkg_version_cmp(version, newversion)) {
-		case 1:
-			printf("Downgrading %s from %s to %s...",
-			    name, version, newversion);
-			printf("%c]0;[%d/%d] Downgrading %s from %s to %s%c",
-			    '\033', nbdone, nbactions, name, version,
-			    newversion, '\007');
-			break;
-		case 0:
-			printf("Reinstalling %s-%s",
-			    name, version);
-			printf("%c]0;[%d/%d] Reinstalling %s-%s%c", '\033',
-			    nbdone, nbactions, name, version, '\007');
-			break;
-		case -1:
-			printf("Upgrading %s from %s to %s...",
-			    name, version, newversion);
-			printf("%c]0;[%d/%d] Upgrading %s from %s to %s%c",
-			    '\033', nbdone, nbactions, name, version,
-			    newversion, '\007');
-			break;
+		else {
+			struct sbuf	*msg;
+
+			pkg_get(ev->e_upgrade_begin.pkg, PKG_NAME, &name,
+			    PKG_VERSION, &newversion,
+			    PKG_OLD_VERSION, &version);
+			nbdone++;
+			if (nbactions > 0)
+				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
+			switch (pkg_version_cmp(version, newversion)) {
+			case 1:
+				sbuf_printf(msg,
+				    "Downgrading %s from %s to %s...",
+				    name, version, newversion);
+				break;
+			case 0:
+				sbuf_printf(msg, "Reinstalling %s-%s",
+				    name, version);
+				break;
+			case -1:
+				sbuf_printf(msg,
+				    "Upgrading %s from %s to %s...",
+				    name, version, newversion);
+				break;
+			}
+			print_and_set_term_title(msg);
 		}
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
@@ -198,17 +231,15 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		fprintf(stderr, "\n%s-%s is locked and may not be modified\n",
-			name, version);
+		pkg_fprintf(stderr,
+		    "\n%n-%v is locked and may not be modified\n",
+		    pkg, pkg);
 		break;
 	case PKG_EVENT_REQUIRED:
 		pkg = ev->e_required.pkg;
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-		fprintf(stderr, "\n%s-%s is required by:", name, version);
-		while (pkg_rdeps(pkg, &dep) == EPKG_OK)
-			fprintf(stderr, " %s-%s", pkg_dep_name(dep),
-			    pkg_dep_version(dep));
+		pkg_fprintf(stderr,
+		    "\n%n-%v is required by: %r%{%rn-%rv%| %}",
+		    pkg, pkg, pkg);
 		if (ev->e_required.force == 1)
 			fprintf(stderr, ", deleting anyway\n");
 		else
@@ -217,9 +248,8 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_ALREADY_INSTALLED:
 		if (quiet)
 			break;
-		pkg_get(ev->e_already_installed.pkg, PKG_NAME, &name,
-		    PKG_VERSION, &version);
-		printf("%s-%s already installed\n", name, version);
+		pkg = ev->e_already_installed.pkg;
+		pkg_printf("%n-%v already installed\n", pkg, pkg);
 		break;
 	case PKG_EVENT_NOT_FOUND:
 		printf("Package '%s' was not found in "
@@ -244,31 +274,37 @@ event_callback(void *data, struct pkg_event *ev)
 		    "that you do a full upgrade using: 'pkg upgrade'\n\n");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
-		pkg_get(ev->e_file_mismatch.pkg, PKG_NAME, &name,
-		    PKG_VERSION, &version);
-		fprintf(stderr, "%s-%s: checksum mismatch for %s\n", name,
-		    version, pkg_file_path(ev->e_file_mismatch.file));
+		pkg = ev->e_file_mismatch.pkg;
+		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %S\n", pkg,
+		    pkg, pkg_file_path(ev->e_file_mismatch.file));
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
-		warnx("%s: %s(%s): %s", pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
-		    ev->e_plugin_errno.func, ev->e_plugin_errno.arg, strerror(ev->e_plugin_errno.no));
+		warnx("%s: %s(%s): %s",
+		    pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
+		    ev->e_plugin_errno.func, ev->e_plugin_errno.arg,
+		    strerror(ev->e_plugin_errno.no));
 		break;
 	case PKG_EVENT_PLUGIN_ERROR:
-		warnx("%s: %s", pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME), ev->e_plugin_error.msg);
+		warnx("%s: %s",
+		    pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME),
+		    ev->e_plugin_error.msg);
 		break;
 	case PKG_EVENT_PLUGIN_INFO:
 		if (quiet)
 			break;
-		printf("%s: %s\n", pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME), ev->e_plugin_info.msg);
+		printf("%s: %s\n",
+		    pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME),
+		    ev->e_plugin_info.msg);
 		break;
 	case PKG_EVENT_INCREMENTAL_UPDATE:
 		if (!quiet)
-			printf("Incremental update completed, %d packages processed:\n"
-					"%d packages updated, %d removed and %d added.\n",
-					ev->e_incremental_update.processed,
-					ev->e_incremental_update.updated,
-					ev->e_incremental_update.removed,
-					ev->e_incremental_update.added);
+			printf("Incremental update completed, %d packages "
+			    "processed:\n"
+			    "%d packages updated, %d removed and %d added.\n",
+			    ev->e_incremental_update.processed,
+			    ev->e_incremental_update.updated,
+			    ev->e_incremental_update.removed,
+			    ev->e_incremental_update.added);
 		break;
 	default:
 		break;
