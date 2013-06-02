@@ -196,7 +196,7 @@ typedef enum {
  * Used by pkg_get() and pkg_set()
  */
 typedef enum {
-	PKG_ORIGIN = 1U,
+	PKG_ORIGIN = 0U,
 	PKG_NAME,
 	PKG_VERSION,
 	PKG_COMMENT,
@@ -207,7 +207,6 @@ typedef enum {
 	PKG_MAINTAINER,
 	PKG_WWW,
 	PKG_PREFIX,
-	PKG_INFOS,
 	PKG_REPOPATH,
 	PKG_CKSUM,
 	PKG_OLD_VERSION,
@@ -215,7 +214,7 @@ typedef enum {
 	PKG_REPOURL,
 	PKG_DIGEST,
 	PKG_REASON,
-	/* end of fields */
+	PKG_NUM_FIELDS, 	/* end of fields */
 	PKG_FLATSIZE = 64U,
 	PKG_OLD_FLATSIZE,
 	PKG_PKGSIZE,

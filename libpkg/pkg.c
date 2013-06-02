@@ -53,7 +53,6 @@ static struct _fields {
 	[PKG_MAINTAINER] = {"maintainer", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_WWW] = {"www", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_PREFIX] = {"prefix", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_INFOS] = {"information", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
 	[PKG_REPOPATH] = {"repopath", PKG_REMOTE, 0},
 	[PKG_CKSUM] = {"checksum", PKG_REMOTE, 0},
 	[PKG_OLD_VERSION] = {"oldversion", PKG_REMOTE, 1},

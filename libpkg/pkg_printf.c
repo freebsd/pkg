@@ -127,9 +127,7 @@
  * f
  * g
  * h
- *
- * i  pkg          additional info
- *
+ * i
  * j
  *
  * k  pkg          lock status
@@ -571,15 +569,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_ALL,
 		&format_description,
-	},
-	[PP_PKG_ADDITIONAL_INFO] =
-	{
-		'i',
-		'\0',
-		false,
-		true,
-		PP_ALL,
-		&format_add_info,
 	},
 	[PP_PKG_LOCK_STATUS] =
 	{
@@ -1484,19 +1473,6 @@ format_description(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 
 	pkg_get(pkg, PKG_DESC, &desc);
 	return (string_val(sbuf, desc, p));
-}
-
-/*
- * %i -- Additional info. string. Accepts field-width, left-align
- */
-struct sbuf *
-format_add_info(struct sbuf *sbuf, const void *data, struct percent_esc *p)
-{
-	const struct pkg	*pkg = data;
-	const char		*info;
-
-	pkg_get(pkg, PKG_INFOS, &info);
-	return (string_val(sbuf, info, p));
 }
 
 /*

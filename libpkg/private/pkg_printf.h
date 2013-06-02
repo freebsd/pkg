@@ -118,7 +118,6 @@ typedef enum _fmt_code_t {
 	PP_PKG_DEPENDENCY_VERSION,
 	PP_PKG_DEPENDENCIES,
 	PP_PKG_DESCRIPTION,
-	PP_PKG_ADDITIONAL_INFO,
 	PP_PKG_LOCK_STATUS,
 	PP_PKG_LICENSE_LOGIC,
 	PP_PKG_MAINTAINER,
@@ -197,7 +196,6 @@ _static struct sbuf *format_dependency_name(struct sbuf *, const void *, struct 
 _static struct sbuf *format_dependency_origin(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_dependency_version(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_description(struct sbuf *, const void *, struct percent_esc *);
-_static struct sbuf *format_add_info(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_lock_status(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_license_logic(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_maintainer(struct sbuf *, const void *, struct percent_esc *);

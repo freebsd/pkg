@@ -71,7 +71,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	18
+#define DB_SCHEMA_MINOR	19
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -112,7 +112,6 @@ static struct column_mapping {
 	{ "desc",	PKG_DESC },
 	{ "flatsize",	PKG_FLATSIZE },
 	{ "id",		PKG_ROWID },
-	{ "infos",	PKG_INFOS },
 	{ "licenselogic", PKG_LICENSE_LOGIC },
 	{ "locked",	PKG_LOCKED },
 	{ "maintainer",	PKG_MAINTAINER },
@@ -537,7 +536,6 @@ pkgdb_init(sqlite3 *sdb)
 		"automatic INTEGER NOT NULL,"
 		"locked INTEGER NOT NULL DEFAULT 0,"
 		"licenselogic INTEGER NOT NULL,"
-		"infos TEXT, "
 		"time INTEGER, "
 		"manifestdigest TEXT NULL, "
 		"pkg_format_version INTEGER"
@@ -1470,7 +1468,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 			"SELECT id, origin, name, version, comment, desc, "
 				"message, arch, maintainer, www, "
 				"prefix, flatsize, licenselogic, automatic, "
-				"locked, time, infos "
+				"locked, time "
 			"FROM packages AS p%s "
 			"ORDER BY p.name;", comp);
 
@@ -1496,7 +1494,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 	sqlite3_snprintf(sizeof(sql), sql,
 			"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
-			"p.prefix, p.flatsize, p.time, p.infos "
+			"p.prefix, p.flatsize, p.time "
 			"FROM packages AS p "
 			"LEFT JOIN files AS f ON p.id = f.package_id "
 			"WHERE f.path %s ?1 GROUP BY p.id;", glob ? "GLOB" : "=");
@@ -1518,7 +1516,7 @@ pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib)
 	const char	 sql[] = ""
 		"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
-			"p.prefix, p.flatsize, p.time, p.infos "
+			"p.prefix, p.flatsize, p.time "
 			"FROM packages AS p, pkg_shlibs_required AS ps, shlibs AS s "
 			"WHERE p.id = ps.package_id "
 				"AND ps.shlib_id = s.id "
@@ -1543,7 +1541,7 @@ pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib)
 	const char	 sql[] = ""
 		"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
-			"p.prefix, p.flatsize, p.time, p.infos "
+			"p.prefix, p.flatsize, p.time "
 			"FROM packages AS p, pkg_shlibs_provided AS ps, shlibs AS s "
 			"WHERE p.id = ps.package_id "
 				"AND ps.shlib_id = s.id "
@@ -2099,10 +2097,10 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR REPLACE INTO packages( "
 			"origin, name, version, comment, desc, message, arch, "
 			"maintainer, www, prefix, flatsize, automatic, "
-			"licenselogic, mtree_id, infos, time) "
+			"licenselogic, mtree_id, time) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, "
-		"?13, (SELECT id FROM mtree WHERE content = ?14), ?15, NOW())",
-		"TTTTTTTTTTIIITT",
+		"?13, (SELECT id FROM mtree WHERE content = ?14), NOW())",
+		"TTTTTTTTTTIIIT",
 	},
 	[DEPS_UPDATE] = {
 		NULL,
@@ -2351,7 +2349,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	int64_t			 package_id;
 
 	const char		*mtree, *origin, *name, *version, *name2;
-	const char		*version2, *comment, *desc, *message, *infos;
+	const char		*version2, *comment, *desc, *message;
 	const char		*arch, *maintainer, *www, *prefix;
 
 	bool			 automatic;
@@ -2388,8 +2386,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		PKG_FLATSIZE,	&flatsize,
 		PKG_AUTOMATIC,	&automatic,
 		PKG_LICENSE_LOGIC, &licenselogic,
-		PKG_NAME,	&name,
-		PKG_INFOS,	&infos);
+		PKG_NAME,	&name);
 
 	/*
 	 * Insert mtree record
@@ -2405,7 +2402,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 	ret = run_prstmt(PKG, origin, name, version, comment, desc, message,
 	    arch, maintainer, www, prefix, flatsize, (int64_t)automatic,
-	    (int64_t)licenselogic, mtree, infos);
+	    (int64_t)licenselogic, mtree);
 	if (ret != SQLITE_DONE) {
 		ERROR_SQLITE(s);
 		goto cleanup;

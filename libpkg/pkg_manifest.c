@@ -59,9 +59,11 @@
 #define PKG_SHLIBS_REQUIRED -12
 #define PKG_SHLIBS_PROVIDED -13
 #define PKG_ANNOTATIONS -14
+#define PKG_INFOS -15		/* Deprecated field: treat as an annotation for backwards compatibility */
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_size_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+static int pkg_infos_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_licenselogic_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_deps_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
 static int pkg_set_files_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
@@ -90,7 +92,7 @@ static struct manifest_key {
 	{ "flatsize", PKG_FLATSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
 	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping},
 	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "infos", PKG_INFOS, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "infos", PKG_INFOS, YAML_SCALAR_NODE, pkg_infos_from_node}, /* Deprecated: treat as an annotation */
 	{ "licenselogic", -1, YAML_SCALAR_NODE, pkg_set_licenselogic_from_node},
 	{ "licenses", PKG_LICENSES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "maintainer", PKG_MAINTAINER, YAML_SCALAR_NODE, pkg_set_from_node},
@@ -271,6 +273,21 @@ pkg_set_from_node(struct pkg *pkg, yaml_node_t *val,
 	ret = urldecode(val->data.scalar.value, &pkg->fields[attr]);
 
 	return (ret);
+}
+
+static int
+pkg_infos_from_node(struct pkg *pkg, yaml_node_t *val,
+    __unused yaml_document_t *doc, __unused int attr)
+{
+	while (val->data.scalar.length > 0 &&
+	    val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
+		val->data.scalar.value[val->data.scalar.length - 1] = '\0';
+		val->data.scalar.length--;
+	}
+
+	pkg_addannotation(pkg, "_INFOS_", val->data.scalar.value);
+
+	return (EPKG_OK);
 }
 
 static int
@@ -951,7 +968,7 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 	int i;
 /*	int users = -1;
 	int groups = -1;*/
-	const char *comment, *desc, *infos, *message, *name, *pkgarch;
+	const char *comment, *desc, *message, *name, *pkgarch;
 	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
 	const char *repopath, *pkgsum;
 	const char *script_types = NULL;
@@ -973,7 +990,7 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
-	    PKG_VERSION, &version, PKG_INFOS, &infos, PKG_REPOPATH, &repopath,
+	    PKG_VERSION, &version, PKG_REPOPATH, &repopath,
 	    PKG_CKSUM, &pkgsum, PKG_PKGSIZE, &pkgsize);
 	manifest_append_kv(mapping, "name", name, PLAIN);
 	manifest_append_kv(mapping, "version", version, PLAIN);
@@ -1133,11 +1150,6 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 			manifest_append_kv(map, script_types, sbuf_get(tmpsbuf),
 			    LITERAL);
 		}
-	}
-	if (infos != NULL && *infos != '\0') {
-		urlencode(infos, &tmpsbuf);
-		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf),
-		    LITERAL);
 	}
 
 	if (message != NULL && *message != '\0') {
