@@ -1301,6 +1301,19 @@ pkg_is_installed(struct pkgdb *db, const char *origin)
 }
 
 bool
+pkg_has_message(struct pkg *p)
+{
+	const char *msg;
+
+	pkg_get(p, PKG_MESSAGE, &msg);
+
+	if (msg != NULL)
+		return (true);
+
+	return (false);
+}
+
+bool
 pkg_has_file(struct pkg *p, const char *path)
 {
 	struct pkg_file *f;
