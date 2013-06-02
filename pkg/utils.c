@@ -566,8 +566,6 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		    PKG_REPOPATH, &pkgrepopath, PKG_LOCKED, &locked,
 		    PKG_REASON, &why, PKG_REPONAME, &reponame);
 
-		reponame = pkg_repo_ident(pkg_repo_find_name(reponame));
-
 		if (locked) {
 			pkg_printf("\tPackage %n-%v is locked ", pkg, pkg);
 			switch (type) {
@@ -606,6 +604,8 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		case PKG_JOBS_INSTALL:
 		case PKG_JOBS_UPGRADE:
 			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
+			reponame = pkg_repo_ident(pkg_repo_find_name(reponame));
+
 			if (stat(path, &st) == -1 || pkgsize != st.st_size)
 				/* file looks corrupted (wrong size),
 				   assume a checksum mismatch will
