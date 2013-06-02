@@ -68,7 +68,6 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
     const char * const outdir, const char * const rootdir, bool overwrite)
 {
 	int i, ret = EPKG_OK, retcode = EPKG_OK;
-	const char *name, *version;
 	struct pkg *pkg = NULL;
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
@@ -135,19 +134,18 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		e = STAILQ_FIRST(&head);
 		STAILQ_REMOVE_HEAD(&head, next);
 
-		pkg_get(e->pkg, PKG_NAME, &name, PKG_VERSION, &version);
 		if (!overwrite) {
-			snprintf(pkgpath, MAXPATHLEN, "%s/%s-%s.%s", outdir,
-			    name, version, format);
+			pkg_snprintf(pkgpath, MAXPATHLEN, "%S/%n-%v.%S",
+			    outdir, e->pkg, e->pkg, format);
 			if (access(pkgpath, F_OK) == 0) {
-				printf("%s-%s already packaged, skipping...\n",
-				    name, version);
+				pkg_printf("%n-%v already packaged, skipping...\n",
+				    e->pkg, e->pkg);
 				pkg_free(e->pkg);
 				free(e);
 				continue;
 			}
 		}
-		printf("Creating package for %s-%s\n", name, version);
+		pkg_printf("Creating package for %n-%v\n", e->pkg, e->pkg);
 		if (pkg_create_installed(outdir, fmt, rootdir, e->pkg) !=
 		    EPKG_OK)
 			retcode++;
