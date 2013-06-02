@@ -203,6 +203,13 @@ event_callback(void *data, struct pkg_event *ev)
 			    PKG_VERSION, &newversion,
 			    PKG_OLD_VERSION, &version);
 			nbdone++;
+
+			msg = sbuf_new_auto();
+			if (msg == NULL) {
+				warn("sbuf_new_auto() failed");
+				break;
+			}
+
 			if (nbactions > 0)
 				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
 			switch (pkg_version_cmp(version, newversion)) {
