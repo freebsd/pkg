@@ -2648,23 +2648,13 @@ process_format_main(struct sbuf *sbuf, struct percent_esc *p, const char *f,
 int
 pkg_printf(const char * restrict format, ...)
 {
-	struct sbuf	*sbuf;
 	int		 count;
 	va_list		 ap;
 
-	sbuf  = sbuf_new_auto();
-
 	va_start(ap, format);
-	if (sbuf)
-		sbuf = pkg_sbuf_vprintf(sbuf, format, ap);
+	count = pkg_vprintf(format, ap);
 	va_end(ap);
-	if (sbuf && sbuf_len(sbuf) >= 0) {
-		sbuf_finish(sbuf);
-		count = printf("%s", sbuf_data(sbuf));
-	} else
-		count = -1;
-	if (sbuf)
-		sbuf_delete(sbuf);
+
 	return (count);
 }
 
@@ -2703,23 +2693,13 @@ pkg_vprintf(const char * restrict format, va_list ap)
 int
 pkg_fprintf(FILE * restrict stream, const char * restrict format, ...)
 {
-	struct sbuf	*sbuf;
 	int		 count;
 	va_list		 ap;
 
-	sbuf  = sbuf_new_auto();
-
 	va_start(ap, format);
-	if (sbuf)
-		sbuf = pkg_sbuf_vprintf(sbuf, format, ap);
+	count = pkg_vfprintf(stream, format, ap);
 	va_end(ap);
-	if (sbuf && sbuf_len(sbuf) >= 0) {
-		sbuf_finish(sbuf);
-		count = fprintf(stream, "%s", sbuf_data(sbuf));
-	} else
-		count = -1;
-	if (sbuf)
-		sbuf_delete(sbuf);
+
 	return (count);
 }
 
@@ -2750,9 +2730,9 @@ pkg_vfprintf(FILE * restrict stream, const char * restrict format, va_list ap)
 }
 
 /**
- * print to file descriptor d data from pkg as indicated by the format
+ * print to file descriptor fd data from pkg as indicated by the format
  * code format
- * @param d Previously opened file descriptor to print to
+ * @param fd Previously opened file descriptor to print to
  * @param ... Varargs list of struct pkg etc. supplying the data
  * @param format String with embedded %-escapes indicating what to print
  * @return count of the number of characters printed
@@ -2760,16 +2740,34 @@ pkg_vfprintf(FILE * restrict stream, const char * restrict format, va_list ap)
 int
 pkg_dprintf(int fd, const char * restrict format, ...)
 {
-	struct sbuf	*sbuf;
 	int		 count;
 	va_list		 ap;
 
+	va_start(ap, format);
+	count = pkg_vdprintf(fd, format, ap);
+	va_end(ap);
+
+	return (count);
+}
+
+/**
+ * print to file descriptor fd data from pkg as indicated by the format
+ * code format
+ * @param fd Previously opened file descriptor to print to
+ * @param ap Varargs list of struct pkg etc. supplying the data
+ * @param format String with embedded %-escapes indicating what to print
+ * @return count of the number of characters printed
+ */
+int
+pkg_vdprintf(int fd, const char * restrict format, va_list ap)
+{
+	struct sbuf	*sbuf;
+	int		 count;
+
 	sbuf  = sbuf_new_auto();
 
-	va_start(ap, format);
 	if (sbuf)
 		sbuf = pkg_sbuf_vprintf(sbuf, format, ap);
-	va_end(ap);
 	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = dprintf(fd, "%s", sbuf_data(sbuf));
@@ -2791,19 +2789,39 @@ pkg_dprintf(int fd, const char * restrict format, ...)
  * disregarding truncation to fit size
  */
 int
-pkg_snprintf(char * restrict str, size_t size, const char * restrict format,
-	     ...)
+pkg_snprintf(char * restrict str, size_t size, const char * restrict format, ...)
 {
-	struct sbuf	*sbuf;
 	int		 count;
 	va_list		 ap;
 
+	va_start(ap, format);
+	count = pkg_vsnprintf(str, size, format, ap);
+	va_end(ap);
+
+	return (count);
+}
+
+/**
+ * print to buffer str of given size data from pkg as indicated by the
+ * format code format as a NULL-terminated string
+ * @param str Character array buffer to receive output
+ * @param size Length of the buffer str
+ * @param ap Varargs list of struct pkg etc. supplying the data
+ * @param format String with embedded %-escapes indicating what to output
+ * @return count of the number of characters that would have been output
+ * disregarding truncation to fit size
+ */
+int
+pkg_vsnprintf(char * restrict str, size_t size, const char * restrict format,
+	     va_list ap)
+{
+	struct sbuf	*sbuf;
+	int		 count;
+
 	sbuf  = sbuf_new_auto();
 
-	va_start(ap, format);
 	if (sbuf)
 		sbuf = pkg_sbuf_vprintf(sbuf, format, ap);
-	va_end(ap);
 	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = snprintf(str, size, "%s", sbuf_data(sbuf));
@@ -2811,6 +2829,7 @@ pkg_snprintf(char * restrict str, size_t size, const char * restrict format,
 		count = -1;
 	if (sbuf)
 		sbuf_delete(sbuf);
+
 	return (count);
 }
 
@@ -2826,16 +2845,35 @@ pkg_snprintf(char * restrict str, size_t size, const char * restrict format,
 int
 pkg_asprintf(char **ret, const char * restrict format, ...)
 {
-	struct sbuf	*sbuf;
 	int		 count;
 	va_list		 ap;
 
+	va_start(ap, format);
+	count = pkg_vasprintf(ret, format, ap);
+	va_end(ap);
+
+	return (count);
+}
+
+/**
+ * Allocate a string buffer ret sufficiently big to contain formatted
+ * data data from pkg as indicated by the format code format
+ * @param ret location of pointer to be set to point to buffer containing
+ * result 
+ * @param ap Varargs list of struct pkg etc. supplying the data
+ * @param format String with embedded %-escapes indicating what to output
+ * @return count of the number of characters printed
+ */
+int
+pkg_vasprintf(char **ret, const char * restrict format, va_list ap)
+{
+	struct sbuf	*sbuf;
+	int		 count;
+
 	sbuf  = sbuf_new_auto();
 
-	va_start(ap, format);
 	if (sbuf)
 		sbuf = pkg_sbuf_vprintf(sbuf, format, ap);
-	va_end(ap);
 	if (sbuf && sbuf_len(sbuf) >= 0) {
 		sbuf_finish(sbuf);
 		count = asprintf(ret, "%s", sbuf_data(sbuf));

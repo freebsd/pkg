@@ -1376,90 +1376,125 @@ struct pkg_repo *pkg_repo_find_name(const char *name);
  */
 
 /**
- * print to stdout data from pkg as indicated by the format code fmt
+ * print to stdout data from pkg as indicated by the format code format
  * @param ... Varargs list of struct pkg etc. supplying the data
- * @param fmt String with embedded %-escapes indicating what to print
+ * @param format String with embedded %-escapes indicating what to print
  * @return count of the number of characters printed
  */
-int pkg_printf(const char * restrict fmt, ...);
+int pkg_printf(const char * restrict format, ...);
 
 /**
- * print to stdout data from pkg as indicated by the format code fmt
+ * print to stdout data from pkg as indicated by the format code format
  * @param ap Varargs list of struct pkg etc. supplying the data
- * @param fmt String with embedded %-escapes indicating what to print
+ * @param format String with embedded %-escapes indicating what to print
  * @return count of the number of characters printed
  */
-int pkg_vprintf(const char * restrict fmt, va_list ap);
+int pkg_vprintf(const char * restrict format, va_list ap);
 
 /**
- * print to named stream from pkg as indicated by the format code fmt
+ * print to named stream from pkg as indicated by the format code format
  * @param ... Varargs list of struct pkg etc. supplying the data
- * @param fmt String with embedded %-escapes indicating what to output
+ * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
  */
-int pkg_fprintf(FILE * restrict stream, const char * restrict fmt, ...);
+int pkg_fprintf(FILE * restrict stream, const char * restrict format, ...);
 
 /**
- * print to named stream from pkg as indicated by the format code fmt
+ * print to named stream from pkg as indicated by the format code format
  * @param ap varargs arglist
- * @param fmt String with embedded %-escapes indicating what to output
+ * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
  */
-int pkg_vfprintf(FILE * restrict stream, const char * restrict fmt, va_list ap);
+int pkg_vfprintf(FILE * restrict stream, const char * restrict format,
+	va_list ap);
 
 /**
- * print to file descriptor d data from pkg as indicated by the format
- * code fmt
- * @param d Previously opened file descriptor to print to
+ * print to file descriptor fd data from pkg as indicated by the format
+ * code format
+ * @param fd Previously opened file descriptor to print to
  * @param ... Varargs list of struct pkg etc. supplying the data
- * @param fmt String with embedded %-escapes indicating what to print
+ * @param format String with embedded %-escapes indicating what to print
  * @return count of the number of characters printed
  */
-int pkg_dprintf(int fd, const char * restrict fmt, ...);
+int pkg_dprintf(int fd, const char * restrict format, ...);
+
+/**
+ * print to file descriptor fd data from pkg as indicated by the format
+ * code format
+ * @param fd Previously opened file descriptor to print to
+ * @param ap Varargs list of struct pkg etc. supplying the data
+ * @param format String with embedded %-escapes indicating what to print
+ * @return count of the number of characters printed
+ */
+int pkg_vdprintf(int fd, const char * restrict format, va_list ap);
 
 /**
  * print to buffer str of given size data from pkg as indicated by the
- * format code fmt as a NULL-terminated string
+ * format code format as a NULL-terminated string
  * @param str Character array buffer to receive output
  * @param size Length of the buffer str
  * @param ... Varargs list of struct pkg etc. supplying the data
- * @param fmt String with embedded %-escapes indicating what to output
+ * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters that would have been output
  * disregarding truncation to fit size
  */
-int pkg_snprintf(char * restrict str, size_t size, const char * restrict fmt,
-		 ...);
+int pkg_snprintf(char * restrict str, size_t size,
+	const char * restrict format, ...);
+
+/**
+ * print to buffer str of given size data from pkg as indicated by the
+ * format code format as a NULL-terminated string
+ * @param str Character array buffer to receive output
+ * @param size Length of the buffer str
+ * @param ap Varargs list of struct pkg etc. supplying the data
+ * @param format String with embedded %-escapes indicating what to output
+ * @return count of the number of characters that would have been output
+ * disregarding truncation to fit size
+ */
+int pkg_vsnprintf(char * restrict str, size_t size,
+	const char * restrict format,va_list ap);
 
 /**
  * Allocate a string buffer ret sufficiently big to contain formatted
- * data data from pkg as indicated by the format code fmt
+ * data data from pkg as indicated by the format code format
  * @param ret location of pointer to be set to point to buffer containing
  * result 
  * @param ... Varargs list of struct pkg etc. supplying the data
- * @param fmt String with embedded %-escapes indicating what to output
+ * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
  */
-int pkg_asprintf(char **ret, const char * restrict fmt, ...);
+int pkg_asprintf(char **ret, const char * restrict format, ...);
 
 /**
- * store data from pkg into sbuf as indicated by the format code fmt.
+ * Allocate a string buffer ret sufficiently big to contain formatted
+ * data data from pkg as indicated by the format code format
+ * @param ret location of pointer to be set to point to buffer containing
+ * result 
+ * @param ap Varargs list of struct pkg etc. supplying the data
+ * @param format String with embedded %-escapes indicating what to output
+ * @return count of the number of characters printed
+ */
+int pkg_vasprintf(char **ret, const char * restrict format, va_list ap);
+
+/**
+ * store data from pkg into sbuf as indicated by the format code format.
  * @param sbuf contains the result
  * @param ... Varargs list of struct pkg etc. supplying the data
- * @param fmt String with embedded %-escapes indicating what to output
+ * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
 struct sbuf *pkg_sbuf_printf(struct sbuf * restrict sbuf,
-			     const char * restrict fmt, ...);
+	const char * restrict format, ...);
 
 /**
- * store data from pkg into sbuf as indicated by the format code fmt.
+ * store data from pkg into sbuf as indicated by the format code format.
  * This is the core function called by all the other pkg_printf() family.
  * @param sbuf contains the result
  * @param ap Arglist with struct pkg etc. supplying the data
- * @param fmt String with embedded %-escapes indicating what to output
+ * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters in the result
  */
 struct sbuf *pkg_sbuf_vprintf(struct sbuf * restrict sbuf,
-			      const char * restrict fmt, va_list ap);
+	const char * restrict format, va_list ap);
 
 #endif

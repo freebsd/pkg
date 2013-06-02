@@ -35,7 +35,9 @@
 .Os
 .Sh NAME
 .Nm pkg_printf , pkg_fprintf , pkg_dprintf , pkg_snprintf , pkg_asprintf ,
-.Nm pkg_sbuf_printf , pkg_sbuf_vprintf
+.Nm pkg_sbuf_printf ,
+.Nm pkg_vprintf , pkg_vfprintf , pkg_vdprintf , pkg_vsnprintf , pkg_vasprintf ,
+.Nm pkg_sbuf_vprintf
 .Nd formatted output of package data
 .Sh LIBRARY
 .Lb libpkg
@@ -44,11 +46,7 @@
 .Ft int
 .Fn pkg_printf "const char * restrict format" ...
 .Ft int
-.Fn pkg_vprintf "const char * restrict format" "va_list ap"
-.Ft int
 .Fn pkg_fprintf "FILE * restrict stream" "const char * restrict format" ...
-.Ft int
-.Fn pkg_vfprintf "FILE * restrict stream" "const char * restrict format" "va_list ap"
 .Ft int
 .Fn pkg_dprintf "int fd" "const char * restrict format" ...
 .Ft int
@@ -57,6 +55,17 @@
 .Fn pkg_asprintf "char **ret" "const char * restrict format" ...
 .Ft struct sbuf *
 .Fn pkg_sbuf_printf "struct sbuf * restrict sbuf" "const char * restrict format" ...
+.In stdarg.h
+.Ft int
+.Fn pkg_vprintf "const char * restrict format" "va_list ap"
+.Ft int
+.Fn pkg_vfprintf "FILE * restrict stream" "const char * restrict format" "va_list ap"
+.Ft int
+.Fn pkg_vdprintf "int fd" "const char * restrict format" "va_list ap"
+.Ft int
+.Fn pkg_vsnprintf "char * restrict str" "size_t size" "const char * restrict format" "va_list ap"
+.Ft int
+.Fn pkg_vasprintf "char **ret" "const char * restrict format" "va_list ap"
 .Ft struct sbuf *
 .Fn pkg_sbuf_vprintf "struct sbuf * restrict sbuf" "const char * restrict format" "va_list ap"
 .Sh DESCRIPTION
@@ -81,13 +90,20 @@ and
 write output to the given output
 .Fa stream ;
 .Fn pkg_dprintf
-writes output to the given file descriptor;
-.Fn pkg_snprintf ,
-writes to the character string
+and
+.Fn pkg_vdprintf
+write output to the given file descriptor;
+.Fn pkg_snprintf
+and
+.Fn pkg_vsnprintf
+write to the character string
 .Fa str ;
 .Fn pkg_asprintf
-dynamically allocates a new string with
-.Xr malloc 3 ;
+and
+.Fn pkg_vasprintf
+dynamically allocate a new string with
+.Xr malloc 3
+to write to;
 .Fn pkg_sbuf_printf
 and
 .Fn pkg_sbuf_vprintf
@@ -106,7 +122,9 @@ These functions return the number of characters printed
 used to end output to strings) or a negative value if an output error occurs,
 except for
 .Fn pkg_snprintf
-which returns the number of characters that would have been printed if the
+or
+.Fn pkg_vsnprintf
+which return the number of characters that would have been printed if the
 .Fa size
 were unlimited
 (again, not including the final
@@ -121,8 +139,9 @@ in the case of errors.
 .Pp
 The
 .Fn pkg_asprintf
-function
-sets
+and
+.Fn pkg_vasprintf
+functions set
 .Fa *ret
 to be a pointer to a buffer sufficiently large to hold the formatted string.
 This pointer should be passed to
@@ -130,6 +149,8 @@ This pointer should be passed to
 to release the allocated storage when it is no longer needed.
 If sufficient space cannot be allocated,
 .Fn pkg_asprintf
+and
+.Fn pkg_vasprintf
 will return \-1 and set
 .Fa ret
 to be a
@@ -138,8 +159,9 @@ pointer.
 .Pp
 The
 .Fn pkg_snprintf
-function
-will write at most
+and
+.Fn pkg_vsnprintf
+functions will write at most
 .Fa size Ns \-1
 of the characters printed into the output string
 (the
@@ -211,7 +233,12 @@ and
 generate either
 .Dq yes
 or
-.Dq no .
+.Dq no
+for
+.Sq true
+and
+.Sq false
+respectively.
 .Pp
 For the licence logic format
 .Cm (l)
@@ -260,7 +287,11 @@ generate either
 .Dq (*)
 or
 .Dq \^
-(empty).
+(empty) for
+.Sq true
+and
+.Sq false
+respectively.
 .Pp
 For the licence logic format
 .Cm (l)
@@ -334,7 +365,7 @@ See the
 section for details.
 .El
 .Ss SCALE FACTORS
-Humanized number conversions (using the scale the number to lie within
+Humanized number conversions scale the number to lie within
 the range 1 \- 1000 (power of ten conversions using the
 .Cm ?
 format modifier) or 1 \- 1024 (power of two conversions using the
@@ -394,7 +425,8 @@ and, for array values only, may be optionally divided into two by the
 character sequence
 .Cm %| .
 For array values, it contains one or two strings containing any number
-of the format conversions described here.
+of a context sensitive subset of format conversions from those
+described here.
 For timestamp values it contains any number of format conversion
 specifiers with meanings as described in
 .Xr strftime 3 .
@@ -409,7 +441,9 @@ default format, detailed below.
 Within a
 .Dq row format
 string, you may use any of the single-character non-array valued
-format codes, but only the two-character format codes which correspond
+format codes except for
+.Cm %S ,
+but only the two-character format codes which correspond
 to the parent item and have the same first character.
 Array valued format codes may not be used within row formats,
 nor may you embed one
