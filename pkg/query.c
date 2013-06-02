@@ -70,8 +70,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'a', "",		0, PKG_LOAD_BASIC },
 	{ 'k', "",		0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
-	{ 'i', "",		0, PKG_LOAD_BASIC },
-	{ 't', "",		0, PKG_LOAD_BASIC }
+	{ 't', "",		0, PKG_LOAD_BASIC },
 };
 
 static void
@@ -127,11 +126,6 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				break;
 			case 'w':
 				pkg_get(pkg, PKG_WWW, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
-				break;
-			case 'i':
-				pkg_get(pkg, PKG_INFOS, &tmp);
 				if (tmp != NULL)
 					sbuf_cat(dest, tmp);
 				break;
@@ -524,12 +518,6 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 					if (for_remote)
 						goto bad_option;
 					sbuf_cat(sqlcond, "message");
-					state = OPERATOR_STRING;
-					break;
-				case 'i':
-					if (for_remote)
-						goto bad_option;
-					sbuf_cat(sqlcond, "infos");
 					state = OPERATOR_STRING;
 					break;
 				case 't':
