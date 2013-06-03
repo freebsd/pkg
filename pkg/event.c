@@ -59,7 +59,6 @@ event_callback(void *data, struct pkg_event *ev)
 	const char *name, *version, *newversion;
 	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
-	int msglen;
 
 	switch(ev->type) {
 	case PKG_EVENT_ERRNO:
@@ -130,11 +129,8 @@ event_callback(void *data, struct pkg_event *ev)
 		if (pkg_has_message(ev->e_install_finished.pkg)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
-			msglen = sbuf_len(messages);
-			pkg_sbuf_printf(messages, "%M",
+			pkg_sbuf_printf(messages, "%M\n",
 			    ev->e_install_finished.pkg);
-			if (msglen < sbuf_len(messages))
-				sbuf_putc(messages, '\n');
 		}
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
