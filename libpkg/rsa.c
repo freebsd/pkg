@@ -34,28 +34,27 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
-static RSA *
-_load_rsa_private_key(char *rsa_key_path, pem_password_cb *password_cb)
+static int
+_load_rsa_private_key(struct rsa_key *rsa)
 {
 	FILE *fp;
-	RSA *rsa = NULL;
 
-	if ((fp = fopen(rsa_key_path, "r")) == 0)
-		return (NULL);
+	if ((fp = fopen(rsa->path, "r")) == 0)
+		return (EPKG_FATAL);
 
-	if ((rsa = RSA_new()) == NULL) {
+	if ((rsa->key = RSA_new()) == NULL) {
 		fclose(fp);
-		return (NULL);
+		return (EPKG_FATAL);
 	}
 
-	rsa = PEM_read_RSAPrivateKey(fp, 0, password_cb, rsa_key_path);
-	if (rsa == NULL) {
+	rsa->key = PEM_read_RSAPrivateKey(fp, 0, rsa->pw_cb, rsa->path);
+	if (rsa->key == NULL) {
 		fclose(fp);
-		return (NULL);
+		return (EPKG_FATAL);
 	}
 
 	fclose(fp);
-	return (rsa);
+	return (EPKG_OK);
 }
 
 static RSA *
@@ -114,45 +113,65 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 }
 
 int
-rsa_sign(char *path, pem_password_cb *password_cb, char *rsa_key_path,
-		unsigned char **sigret, unsigned int *siglen)
+rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen)
 {
 	char errbuf[1024];
 	int max_len = 0, ret;
-	RSA *rsa = NULL;
 	char sha256[SHA256_DIGEST_LENGTH * 2 +1];
 
-	if (access(rsa_key_path, R_OK) == -1) {
-		pkg_emit_errno("access", rsa_key_path);
-		return EPKG_FATAL;
+	if (access(rsa->path, R_OK) == -1) {
+		pkg_emit_errno("access", rsa->path);
+		return (EPKG_FATAL);
 	}
+
+	if (rsa->key == NULL && _load_rsa_private_key(rsa) != EPKG_OK) {
+		pkg_emit_error("can't load key from %s", rsa->path);
+		return (EPKG_FATAL);
+	}
+
+	max_len = RSA_size(rsa->key);
+	*sigret = calloc(1, max_len + 1);
+
+	sha256_file(path, sha256);
+
+	ret = RSA_sign(NID_sha1, sha256, sizeof(sha256), *sigret, siglen, rsa->key);
+	if (ret == 0) {
+		/* XXX pass back RSA errors correctly */
+		pkg_emit_error("%s: %s", rsa->path,
+		   ERR_error_string(ERR_get_error(), errbuf));
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+int
+rsa_new(struct rsa_key **rsa, pem_password_cb *cb, char *path)
+{
+	assert(*rsa == NULL);
+
+	*rsa = calloc(1, sizeof(struct rsa_key));
+	(*rsa)->path = path;
+	(*rsa)->pw_cb = cb;
 
 	SSL_load_error_strings();
 
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
-	rsa = _load_rsa_private_key(rsa_key_path, password_cb);
-	if (rsa == NULL) {
-		pkg_emit_error("can't load key from %s", rsa_key_path);
-		return EPKG_FATAL;
-	}
-
-	max_len = RSA_size(rsa);
-	*sigret = calloc(1, max_len + 1);
-
-	sha256_file(path, sha256);
-
-	ret = RSA_sign(NID_sha1, sha256, sizeof(sha256), *sigret, siglen, rsa);
-	if (ret == 0) {
-		/* XXX pass back RSA errors correctly */
-		pkg_emit_error("%s: %s", rsa_key_path,
-					   ERR_error_string(ERR_get_error(), errbuf));
-		return EPKG_FATAL;
-	}
-
-	RSA_free(rsa);
-	ERR_free_strings();
-
 	return (EPKG_OK);
 }
+
+void
+rsa_free(struct rsa_key *rsa)
+{
+	if (rsa == NULL)
+		return;
+
+	if (rsa->key != NULL)
+		RSA_free(rsa->key);
+
+	free(rsa);
+	ERR_free_strings();
+}
+

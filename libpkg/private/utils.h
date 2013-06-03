@@ -34,6 +34,7 @@
 #include <uthash.h>
 
 #include <openssl/pem.h>
+#include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 
@@ -63,6 +64,13 @@ struct dns_srvinfo {
 	struct dns_srvinfo *next;
 };
 
+struct rsa_key {
+	pem_password_cb *pw_cb;
+	char *path;
+	RSA *key;
+};
+
+
 void sbuf_init(struct sbuf **);
 int sbuf_set(struct sbuf **, const char *);
 char * sbuf_get(struct sbuf *);
@@ -78,8 +86,9 @@ int is_conf_file(const char *path, char *newpath, size_t len);
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
 
-int rsa_sign(char *path, pem_password_cb *password_cb, char *rsa_key_path,
-		 unsigned char **sigret, unsigned int *siglen);
+int rsa_new(struct rsa_key **, pem_password_cb *, char *path);
+void rsa_free(struct rsa_key *);
+int rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen);
 int rsa_verify(const char *path, const char *key,
 		unsigned char *sig, unsigned int sig_len);
 

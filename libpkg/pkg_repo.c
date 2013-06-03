@@ -505,8 +505,7 @@ read_pkg_file(void *data)
 }
 
 static int
-pack_db(const char *name, const char *archive, char *path,
-    char *rsa_key_path, pem_password_cb *password_cb)
+pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa)
 {
 	struct packing *pack;
 	unsigned char *sigret = NULL;
@@ -515,8 +514,8 @@ pack_db(const char *name, const char *archive, char *path,
 	if (packing_init(&pack, archive, TXZ) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (rsa_key_path != NULL) {
-		if (rsa_sign(path, password_cb, rsa_key_path, &sigret, &siglen) != EPKG_OK) {
+	if (rsa != NULL) {
+		if (rsa_sign(path, rsa, &sigret, &siglen) != EPKG_OK) {
 			packing_finish(pack);
 			return (EPKG_FATAL);
 		}
@@ -541,6 +540,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bo
 {
 	char repo_path[MAXPATHLEN + 1];
 	char repo_archive[MAXPATHLEN + 1];
+	struct rsa_key *rsa = NULL;
 	struct stat st;
 	
 	if (!is_dir(path)) {
@@ -548,30 +548,29 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bo
 	    return (EPKG_FATAL);
 	}
 
+	if (rsa_key_path != NULL)
+		rsa_new(&rsa, password_cb, rsa_key_path);
+
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_packagesite_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_packagesite_archive);
-	if (pack_db(repo_packagesite_file, repo_archive, repo_path,
-			rsa_key_path, password_cb) != EPKG_OK)
+	if (pack_db(repo_packagesite_file, repo_archive, repo_path, rsa) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_db_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_db_archive);
-	if (pack_db(repo_db_file, repo_archive, repo_path,
-			rsa_key_path, password_cb) != EPKG_OK)
+	if (pack_db(repo_db_file, repo_archive, repo_path, rsa) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if (filelist) {
 		snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_filesite_file);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_filesite_archive);
-		if (pack_db(repo_filesite_file, repo_archive, repo_path,
-				rsa_key_path, password_cb) != EPKG_OK)
+		if (pack_db(repo_filesite_file, repo_archive, repo_path, rsa) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_digests_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_digests_archive);
-	if (pack_db(repo_digests_file, repo_archive, repo_path,
-			rsa_key_path, password_cb) != EPKG_OK)
+	if (pack_db(repo_digests_file, repo_archive, repo_path, rsa) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	/* Now we need to set the equal mtime for all archives in the repo */
@@ -596,6 +595,8 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bo
 			utimes(repo_archive, ftimes);
 		}
 	}
+
+	rsa_free(rsa);
 
 	return (EPKG_OK);
 }
