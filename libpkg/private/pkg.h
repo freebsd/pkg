@@ -371,9 +371,6 @@ struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db,
 
 int pkg_set_mtree(struct pkg *, const char *mtree);
 
-/* pkg repo related */
-int pkg_check_repo_version(struct pkgdb *db, const char *database);
-
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);
 int get_pragma(sqlite3 *, const char *sql, int64_t *res);
