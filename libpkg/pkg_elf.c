@@ -581,12 +581,17 @@ pkg_get_myarch(char *dest, size_t sz)
 
 	data = elf_getdata(scn, NULL);
 	src = data->d_buf;
-	while (1) {
+	while ((uintptr_t)src < ((uintptr_t)data->d_buf + data->d_size)) {
 		memcpy(&note, src, sizeof(Elf_Note));
 		src += sizeof(Elf_Note);
 		if (note.n_type == NT_VERSION)
 			break;
 		src += note.n_namesz + note.n_descsz;
+	}
+	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
+		ret = EPKG_FATAL;
+		pkg_emit_error("fail to find the version elf note");
+		goto cleanup;
 	}
 	osname = src;
 	src += roundup2(note.n_namesz, 4);
