@@ -575,7 +575,7 @@ pkg_get_myarch(char *dest, size_t sz)
 
 	if (scn == NULL) {
 		ret = EPKG_FATAL;
-		pkg_emit_error("fail to get the note section");
+		pkg_emit_error("failed to get the note section");
 		goto cleanup;
 	}
 
@@ -590,7 +590,7 @@ pkg_get_myarch(char *dest, size_t sz)
 	}
 	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
 		ret = EPKG_FATAL;
-		pkg_emit_error("fail to find the version elf note");
+		pkg_emit_error("failed to find the version elf note");
 		goto cleanup;
 	}
 	osname = src;
