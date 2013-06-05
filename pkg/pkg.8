@@ -91,6 +91,29 @@ The exit status should be a reliable indication of whether a system
 is configured to use
 .Nm
 as its package management system or not.
+.Pp
+The
+.Fl N
+flag was not released at the initial release of
+.Nm
+and did not exist in every released version of the bootstrapper in
+.Pa /usr/sbin/pkg .
+Because of this, it may not be enough to just call
+.Nm Fl N ,
+as the bootstrapper may be invoked.
+The following script is the best way to detect if
+.Nm
+is installed and ready for use. This also assumes that the installed
+.Nm
+is at least version 1.0.13.
+.Bd -literal -offset indent
+  if [ -f /var/db/pkg/local.sqlite ] &&
+      pkg -N >/dev/null 2>&1; then
+    # pkgng-specifics
+  else
+    # pkg_install-specifics
+  fi
+.Ed
 .It Fl j Ao jail name or id Ac
 .Nm
 will execute in the given
