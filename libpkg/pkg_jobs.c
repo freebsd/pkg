@@ -123,6 +123,13 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 		LL_APPEND(j->patterns, jp);
 	}
 
+	if (argc == 0 && match == MATCH_ALL) {
+		jp = malloc(sizeof(struct job_pattern));
+		jp->pattern = NULL;
+		jp->match = match;
+		LL_APPEND(j->patterns, jp);
+	}
+
 	return (EPKG_OK);
 }
 
