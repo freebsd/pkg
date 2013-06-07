@@ -398,7 +398,7 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 		goto cleanup;
 	}
 
-	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, manifest_digest, true);
+	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, manifest_digest, true, false);
 
 cleanup:
 	pkg_free(pkg);
@@ -445,11 +445,11 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	const char *myarch;
 	struct pkg_manifest_key *keys = NULL;
 
-	if ((rc = pkgdb_repo_open(name, false, &sqlite)) != EPKG_OK) {
+	if ((rc = pkgdb_repo_open(name, false, &sqlite, false)) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
 
-	if ((rc = pkgdb_repo_init(sqlite)) != EPKG_OK)
+	if ((rc = pkgdb_repo_init(sqlite, false)) != EPKG_OK)
 		goto cleanup;
 
 	if ((rc = pkg_register_repo(repo, sqlite)) != EPKG_OK)

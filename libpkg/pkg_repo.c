@@ -244,10 +244,10 @@ pkg_create_repo(char *path, bool force, bool filelist,
 
 	pack_extract(repopack, repo_db_file, repodb);
 
-	if ((retcode = pkgdb_repo_open(repodb, force, &sqlite)) != EPKG_OK)
+	if ((retcode = pkgdb_repo_open(repodb, force, &sqlite, true)) != EPKG_OK)
 		goto cleanup;
 
-	if ((retcode = pkgdb_repo_init(sqlite)) != EPKG_OK)
+	if ((retcode = pkgdb_repo_init(sqlite, true)) != EPKG_OK)
 		goto cleanup;
 
 	thd_data.root_path = path;
@@ -329,7 +329,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		LL_PREPEND(dlist, cur_dig);
 
 		retcode = pkgdb_repo_add_package(r->pkg, r->path, sqlite,
-				manifest_digest, false);
+				manifest_digest, false, true);
 		if (retcode == EPKG_END) {
 			continue;
 		}

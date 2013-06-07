@@ -77,14 +77,14 @@ void pkgshell_open(const char **r);
  * @param sqlite destination db pointer
  * @return EPKG_OK if succeed
  */
-int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite);
+int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite, bool legacy);
 
 /**
  * Init repository for pkgdb_repo* functions
  * @param sqlite sqlite object
  * @return EPKG_OK if succeed
  */
-int pkgdb_repo_init(sqlite3 *sqlite);
+int pkgdb_repo_init(sqlite3 *sqlite, bool legacy);
 
 /**
  * Close repodb and commit/rollback transaction started
@@ -113,7 +113,7 @@ int pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum);
  * inserted one, EPKG_FATAL if error occurred
  */
 int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, const char *manifest_digest, bool forced);
+		sqlite3 *sqlite, const char *manifest_digest, bool forced, bool legacy);
 
 /**
  * Remove specified pkg from repo
