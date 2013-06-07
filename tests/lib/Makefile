@@ -14,6 +14,6 @@ LDADD+=		-Wl,-rpath ${.CURDIR}/../../libpkg \
 CLEANFILES+=	pkg_printf.c
 
 pkg_printf.c:	../../libpkg/pkg_printf.c
-	ln -s ${.OODATE} ${.TARGET}
+	ln -sf ${.OODATE} ${.TARGET}
 
 .include "../bsd.tests.mk"
