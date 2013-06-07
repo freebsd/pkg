@@ -227,18 +227,50 @@ cleanup:
 }
 
 static int
+pkg_register_repo(struct pkg_repo *repo, sqlite3 *sqlite)
+{
+	sqlite3_stmt *stmt;
+	const char sql[] = ""
+	    "INSERT OR REPLACE INTO repodata (key, value) "
+	    "VALUES (\"packagesite\", ?1);";
+
+	/* register the packagesite */
+	if (sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repodata ("
+			"   key TEXT UNIQUE NOT NULL,"
+			"   value TEXT NOT NULL"
+			");") != EPKG_OK) {
+		pkg_emit_error("Unable to register the packagesite in the "
+				"database");
+		return (EPKG_FATAL);
+	}
+
+	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_text(stmt, 1, pkg_repo_url(repo), -1, SQLITE_STATIC);
+
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		ERROR_SQLITE(sqlite);
+		sqlite3_finalize(stmt);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_finalize(stmt);
+
+	return (EPKG_OK);
+}
+
+static int
 pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 {
 	char repofile_unchecked[MAXPATHLEN];
 	int fd = -1, rc = EPKG_FATAL;
 	sqlite3 *sqlite = NULL;
-	sqlite3_stmt *stmt;
 	char *req = NULL;
 	char *bad_abis = NULL;
 	const char *myarch;
-	const char sql[] = ""
-	    "INSERT OR REPLACE INTO repodata (key, value) "
-	    "VALUES (\"packagesite\", ?1);";
 
 	snprintf(repofile_unchecked, sizeof(repofile_unchecked),
 			"%s.unchecked", repofile);
@@ -299,34 +331,10 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 	}
 
 	/* register the packagesite */
-	if (sql_exec(sqlite, "CREATE TABLE IF NOT EXISTS repodata ("
-			"   key TEXT UNIQUE NOT NULL,"
-			"   value TEXT NOT NULL"
-			");") != EPKG_OK) {
-		pkg_emit_error("Unable to register the packagesite in the "
-				"database");
-		rc = EPKG_FATAL;
+	if (pkg_register_repo(repo, sqlite) != EPKG_OK) {
 		sqlite3_close(sqlite);
 		goto cleanup;
 	}
-
-	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite);
-		rc = EPKG_FATAL;
-		sqlite3_close(sqlite);
-		goto cleanup;
-	}
-
-	sqlite3_bind_text(stmt, 1, pkg_repo_url(repo), -1, SQLITE_STATIC);
-
-	if (sqlite3_step(stmt) != SQLITE_DONE) {
-		ERROR_SQLITE(sqlite);
-		rc = EPKG_FATAL;
-		sqlite3_close(sqlite);
-		goto cleanup;
-	}
-
-	sqlite3_finalize(stmt);
 
 	sqlite3_close(sqlite);
 	sqlite3_shutdown();
@@ -444,6 +452,9 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	if ((rc = pkgdb_repo_init(sqlite)) != EPKG_OK)
 		goto cleanup;
 
+	if ((rc = pkg_register_repo(repo, sqlite)) != EPKG_OK)
+		goto cleanup;
+
 	it = pkgdb_repo_origins(sqlite);
 	if (it == NULL) {
 		rc = EPKG_FATAL;
@@ -451,18 +462,8 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	}
 
 	/* Try to get a single entry in repository to ensure that we can read checksums */
-	if ((ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC)) != EPKG_OK) {
-		rc = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
-	if (local_digest == NULL || local_origin == NULL) {
-		pkg_emit_notice("incremental update is not possible as "
-				"repo format is inappropriate, trying full upgrade");
-		rc = EPKG_FATAL;
-		goto cleanup;
-	}
+	if ((ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC)) != EPKG_OK)
+		local_pkg = NULL;
 
 	fdigests = repo_fetch_remote_extract_tmp(repo,
 			repo_digests_archive, "txz", &local_t,
@@ -479,10 +480,9 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 
 	pkg_manifest_keys_new(&keys);
 	do {
-		pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
 		/* Read a line from digests file */
 		if (fgets(linebuf, sizeof(linebuf) - 1, fdigests) == NULL) {
-			while (ret == EPKG_OK) {
+			while (local_pkg != NULL && ret == EPKG_OK) {
 				/* Remove packages */
 				pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
 				pkg_update_increment_item_new(&ldel, local_origin, local_digest, 0);
@@ -603,7 +603,6 @@ pkg_update(struct pkg_repo *repo, bool force)
 	sqlite3 *sqlite = NULL;
 	char *req = NULL;
 	int64_t res;
-	bool can_increment = true;
 
 	sqlite3_initialize();
 
@@ -616,8 +615,6 @@ pkg_update(struct pkg_repo *repo, bool force)
 
 	if (stat(repofile, &st) != -1)
 		t = force ? 0 : st.st_mtime;
-	else
-		can_increment = false;
 
 	if (t != 0) {
 		if (sqlite3_open(repofile, &sqlite) != SQLITE_OK) {
@@ -631,9 +628,14 @@ pkg_update(struct pkg_repo *repo, bool force)
 			sqlite3_close(sqlite);
 			return (EPKG_FATAL);
 		}
+
 		if (res != 1) {
 			t = 0;
-			can_increment = false;
+
+			if (sqlite != NULL) {
+				sqlite3_close(sqlite);
+				sqlite = NULL;
+			}
 		}
 	}
 
@@ -650,16 +652,18 @@ pkg_update(struct pkg_repo *repo, bool force)
 		sqlite3_free(req);
 		if (res != 1) {
 			t = 0;
-			can_increment = false;
+
+			if (sqlite != NULL) {
+				sqlite3_close(sqlite);
+				sqlite = NULL;
+			}
+			unlink(repofile);
 		}
-
-		if (sqlite != NULL)
-			sqlite3_close(sqlite);
 	}
-	if (can_increment)
-		res = pkg_update_incremental(repofile, repo, &t);
 
-	if (!can_increment || res != EPKG_OK) {
+	if (pkg_update_incremental(repofile, repo, &t) != EPKG_OK) {
+		pkg_emit_notice("No digest falling back on legacy catalog format");
+
 		/* Still try to do full upgrade */
 		if ((res = pkg_update_full(repofile, repo, &t)) != EPKG_OK)
 			goto cleanup;
