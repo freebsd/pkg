@@ -122,21 +122,15 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 	struct pkg_dir *dir = NULL;
 	struct pkg_option *option = NULL;
 
-	const char *name;
-	const char *pkgorigin, *prefix, *version;
 	char option_type = 0;
 
-	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
-	    PKG_PREFIX, &prefix, PKG_VERSION, &version);
-
-	sbuf_printf(content,
+	pkg_sbuf_printf(content,
 	    "@comment PKG_FORMAT_REVISION:1.1\n"
-	    "@name %s-%s\n"
-	    "@comment ORIGIN:%s\n"
-	    "@cwd %s\n"
+	    "@name %n-%v\n"
+	    "@comment ORIGIN:%o\n"
+	    "@cwd %p\n"
 	    /* hack because we can recreate the prefix split or origin */
-	    "@cwd /\n",
-	    name, version, pkgorigin, prefix);
+	    "@cwd /\n", pkg, pkg, pkg, pkg);
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		sbuf_printf(content,
