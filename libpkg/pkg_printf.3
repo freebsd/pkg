@@ -30,7 +30,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd May 27, 2013
+.Dd June 8, 2013
 .Dt PKG_PRINTF 3
 .Os
 .Sh NAME
@@ -595,9 +595,14 @@ Option name [string]
 .It Cm %Ov
 Option value [string]
 .Vt struct pkg_option *
+.It Cm \^%R
+Repository path - the path relative to the repository root that
+package may be downloaded from [string].
+.Vt struct pkg *
 .It Cm \^%S
 Arbitrary character string [string]
 .Vt const char *
+.Pp
 .It Cm \^%U
 Users [array]
 .Vt struct pkg *
@@ -624,6 +629,11 @@ and the user's login shell; equivalent to one line from
 .Fa /etc/master.passwd
 as described in
 .Xr passwd 5 . 
+.It Cm \^%V
+Old version [string].
+Valid only during operations when one version of a package is being
+replaced by another.
+.Vt struct pkg *
 .It Cm %a
 Autoremove flag [boolean]
 .Vt struct pkg *
@@ -695,6 +705,9 @@ Package flat size [integer]
 .Vt struct pkg *
 .It Cm %t
 Installation timestamp [date-time]
+.Vt struct pkg *
+.It Cm %u
+Package checksum [string]
 .Vt struct pkg *
 .It Cm %v
 Package version [string]
