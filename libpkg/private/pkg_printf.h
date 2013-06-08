@@ -125,6 +125,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_NAME,
 	PP_PKG_ORIGIN,
 	PP_PKG_PREFIX,
+	PP_PKG_ARCHITECTURE,
 	PP_PKG_REQUIREMENT_LOCK,
 	PP_PKG_REQUIREMENT_NAME,
 	PP_PKG_REQUIREMENT_ORIGIN,
@@ -204,6 +205,7 @@ _static struct sbuf *format_maintainer(struct sbuf *, const void *, struct perce
 _static struct sbuf *format_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_origin(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_prefix(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_architecture(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_requirements(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_flatsize(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_install_tstamp(struct sbuf *, const void *, struct percent_esc *);

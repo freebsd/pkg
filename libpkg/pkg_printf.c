@@ -138,9 +138,7 @@
  * n  pkg          name
  * o  pkg          origin
  * p  pkg          prefix
- *
- * q
- *
+ * q  pkg	   architecture / ABI
  * r  pkg          List of requirements
  * rk pkg_dep      requirement lock status
  * rn pkg_dep      requirement name
@@ -633,6 +631,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_ALL,
 		&format_prefix,
+	},
+	[PP_PKG_ARCHITECTURE] =
+	{
+		'q',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_architecture,
 	},
 	[PP_PKG_REQUIREMENT_LOCK] =
 	{
@@ -1577,6 +1584,19 @@ format_prefix(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 
 	pkg_get(pkg, PKG_PREFIX, &prefix);
 	return (string_val(sbuf, prefix, p));
+}
+
+/*
+ * %q -- pkg architecture a.k.a ABI string.  Accepts field-width, left-align
+ */
+struct sbuf *
+format_architecture(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+	const char		*arch;
+
+	pkg_get(pkg, PKG_ARCH, &arch);
+	return (string_val(sbuf, arch, p));
 }
 
 /*
