@@ -335,12 +335,21 @@ pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 	return result;
 }
 
-int
+pkg_change_t
 pkg_version_change(const struct pkg * restrict pkg)
 {
 	const char *version, *oldversion;
 
 	pkg_get(pkg, PKG_VERSION, &version,
 	    PKG_OLD_VERSION, &oldversion);
-	return (pkg_version_cmp(oldversion, version));
+
+	switch (pkg_version_cmp(oldversion, version)) {
+	case -1:
+		return PKG_UPGRADE;
+	default:		/* placate the compiler */
+	case 0:
+		return PKG_REINSTALL;
+	case 1:
+		return PKG_DOWNGRADE;
+	}
 }

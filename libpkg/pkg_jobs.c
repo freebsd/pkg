@@ -643,7 +643,8 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_shlib *ls = NULL, *rs = NULL;
 	bool automatic;
-	int cmp = 0, ret1, ret2;
+	int	ret1, ret2;
+	pkg_change_t cmp;
 
 	pkg_get(rp, PKG_ORIGIN, &origin,
 	    PKG_REPONAME, &reponame);
@@ -688,11 +689,11 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	/* compare versions */
 	cmp = pkg_version_change(rp);
 
-	if (cmp == -1) {
+	if (cmp == PKG_UPGRADE) {
 		pkg_free(lp);
 		return (true);
 	}
-	if (cmp == 1) {
+	if (cmp == PKG_DOWNGRADE) {
 		pkg_free(lp);
 		return (false);
 	}

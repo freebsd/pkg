@@ -548,17 +548,17 @@ pkg_emit_upgrade_finished(struct pkg *p)
 	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
 	if (syslog_enabled) {
 		const char *actions[] = {
-		    "upgraded", "reinstalled", "downgraded"
+			[PKG_DOWNGRADE] = "downgraded",
+			[PKG_REINSTALL] = "reinstalled",
+			[PKG_UPGRADE]   = "upgraded",
 		};
-		int num_actions = sizeof(actions) / sizeof(*actions);
-		int action;
+		pkg_change_t action;
 
 		pkg_get(p, PKG_NAME, &name, PKG_OLD_VERSION, &version,
 		    PKG_VERSION, &newversion);
-		action = pkg_version_change(p) + 1;
-		if (action >= 0 && action < num_actions)
-			syslog(LOG_NOTICE, "%s %s: %s -> %s ",
-			    name, actions[action], version, newversion);
+		action = pkg_version_change(p);
+		syslog(LOG_NOTICE, "%s %s: %s -> %s ",
+		    name, actions[action], version, newversion);
 	}
 
 	pkg_emit_event(&ev);

@@ -536,7 +536,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	struct pkg *pkg = NULL;
 	char path[MAXPATHLEN];
 	struct stat st;
-	const char *version, *oldversion, *cachedir, *why, *reponame;
+	const char *oldversion, *cachedir, *why, *reponame;
 	int64_t dlsize, oldsize, newsize;
 	int64_t flatsize, oldflatsize, pkgsize;
 	char size[7];
@@ -570,13 +570,13 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				 * cannot have been locked yet. */
 				if (oldversion != NULL) {
 					switch(pkg_version_change(pkg)) {
-					case -1:
+					case PKG_UPGRADE:
 						pkg_printf("and may not be upgraded to version %v\n", pkg);
 						break;
-					case 0:
+					case PKG_REINSTALL:
 						printf("and may not be reinstalled\n");
 						break;
-					case 1:
+					case PKG_DOWNGRADE:
 						pkg_printf("and may not be downgraded to version %v\n", pkg);
 						break;
 					}
@@ -611,13 +611,13 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 			if (oldversion != NULL) {
 				switch (pkg_version_change(pkg)) {
-				case 1:
+				case PKG_DOWNGRADE:
 					pkg_printf("\tDowngrading %n: %V -> %v", pkg, pkg, pkg);
 					if (pkg_repos_count() > 1)
 						printf(" [%s]", reponame);
 					printf("\n");
 					break;
-				case 0:
+				case PKG_REINSTALL:
 					pkg_printf("\tReinstalling %n-%v", pkg, pkg);
 					if (pkg_repos_count() > 1)
 						printf(" [%s]", reponame);
@@ -625,7 +625,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 						printf(" (%s)", why);
 					printf("\n");
 					break;
-				case -1:
+				case PKG_UPGRADE:
 					pkg_printf("\tUpgrading %n: %V -> %v", pkg, pkg, pkg);
 					if (pkg_repos_count() > 1)
 						printf(" [%s]", reponame);

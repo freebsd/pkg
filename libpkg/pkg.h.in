@@ -456,6 +456,17 @@ typedef enum {
 	EPKG_INSECURE,
 } pkg_error_t;
 
+/**
+ * Upgrade, downgrade or reinstall?
+ */
+
+typedef enum {
+	PKG_DOWNGRADE = 0,
+	PKG_REINSTALL,
+	PKG_UPGRADE,
+} pkg_change_t;
+
+
 #define PKG_OPEN_MANIFEST_ONLY 0x1
 #define PKG_OPEN_MANIFEST_COMPACT (0x1 << 1)
 
@@ -1178,7 +1189,7 @@ const char *pkg_config_name(struct pkg_config *c);
  * @todo Document
  */
 int pkg_version_cmp(const char * const , const char * const);
-int pkg_version_change(const struct pkg * restrict);
+pkg_change_t pkg_version_change(const struct pkg * restrict);
 
 /**
  * Fetch a file.

@@ -209,16 +209,16 @@ event_callback(void *data, struct pkg_event *ev)
 			if (nbactions > 0)
 				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
 			switch (pkg_version_change(pkg)) {
-			case 1:
+			case PKG_DOWNGRADE:
 				pkg_sbuf_printf(msg,
 				    "Downgrading %n from %V to %v...",
 				    pkg, pkg, pkg);
 				break;
-			case 0:
+			case PKG_REINSTALL:
 				pkg_sbuf_printf(msg, "Reinstalling %n-%V",
 				    pkg, pkg);
 				break;
-			case -1:
+			case PKG_UPGRADE:
 				pkg_sbuf_printf(msg,
 				    "Upgrading %n from %V to %v...",
 						pkg, pkg, pkg);
