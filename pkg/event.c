@@ -209,6 +209,8 @@ event_callback(void *data, struct pkg_event *ev)
 
 			if (nbactions > 0)
 				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
+			pkg_get(pkg, PKG_VERSION, &newversion,
+			    PKG_OLD_VERSION, &version);
 			switch (pkg_version_cmp(version, newversion)) {
 			case 1:
 				pkg_sbuf_printf(msg,
