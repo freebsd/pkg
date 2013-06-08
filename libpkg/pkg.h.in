@@ -1178,6 +1178,7 @@ const char *pkg_config_name(struct pkg_config *c);
  * @todo Document
  */
 int pkg_version_cmp(const char * const , const char * const);
+int pkg_vcmp(struct pkg *, struct pkg *);
 
 /**
  * Fetch a file.
