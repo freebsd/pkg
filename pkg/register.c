@@ -94,7 +94,6 @@ exec_register(int argc, char **argv)
 	const char	*mdir       = NULL;
 	const char	*mfile      = NULL;
 	const char	*input_path = NULL;
-	const char	*message;
 	const char	*desc       = NULL;
 
 	size_t		 size;
@@ -314,9 +313,8 @@ exec_register(int argc, char **argv)
 			retcode = EX_SOFTWARE;
 	}
 
-	pkg_get(pkg, PKG_MESSAGE, &message);
-	if (message != NULL && !legacy)
-		printf("%s\n", message);
+	if (!legacy && pkg_has_message(pkg))
+		pkg_printf("%M\n", pkg);
 
 	if (!old)
 		pkgdb_close(db);
