@@ -266,8 +266,14 @@ static struct config_entry c[] = {
 		PKG_CONFIG_KVLIST,
 		"ENV",
 		NULL,
-		"Environement variable pkg will use",
-	}
+		"Environment variables pkg will use",
+	},
+	[PKG_CONFIG_DISABLE_MTREE] = {
+		PKG_CONFIG_BOOL,
+		"DISABLE_MTREE",
+		"NO",
+		"Experimental: disable MTREE processing on pkg installation",
+	},
 };
 
 static bool parsed = false;

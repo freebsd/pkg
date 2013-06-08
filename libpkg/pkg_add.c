@@ -162,6 +162,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	struct pkg      *pkg_inst = NULL;
 	bool		 extract = true;
 	bool		 handle_rc = false;
+	bool		 disable_mtree;
 	char		 dpath[MAXPATHLEN + 1];
 	const char	*basedir;
 	const char	*ext;
@@ -274,9 +275,19 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	if (retcode != EPKG_OK)
 		goto cleanup;
 
-	pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
-	if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
-		goto cleanup_reg;
+	/* MTREE replicates much of the standard functionality
+	 * inplicit in the way pkg works.  It has to remain available
+	 * in the ports for compatibility with the old pkg_tools, but
+	 * ultimately, MTREE should be made redundant.  Use this for
+	 * experimantal purposes and to develop MTREE-free versions of
+	 * packages. */
+
+	pkg_config_bool(PKG_CONFIG_DISABLE_MTREE, &disable_mtree);
+	if (!disable_mtree) {
+		pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
+		if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
+			goto cleanup_reg;
+	}
 
 	/*
 	 * Execute pre-install scripts

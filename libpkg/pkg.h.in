@@ -345,6 +345,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_UNSET_TIMESTAMP,
 	PKG_CONFIG_SSH_RESTRICT_DIR,
 	PKG_CONFIG_ENV,
+	PKG_CONFIG_DISABLE_MTREE,
 } pkg_config_key;
 
 typedef enum {
