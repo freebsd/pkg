@@ -555,7 +555,7 @@ pkg_emit_upgrade_finished(struct pkg *p)
 
 		pkg_get(p, PKG_NAME, &name, PKG_OLD_VERSION, &version,
 		    PKG_VERSION, &newversion);
-		action = pkg_version_change(pkg) + 1;
+		action = pkg_version_change(p) + 1;
 		if (action >= 0 && action < num_actions)
 			syslog(LOG_NOTICE, "%s %s: %s -> %s ",
 			    name, actions[action], version, newversion);
