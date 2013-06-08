@@ -56,7 +56,6 @@ event_callback(void *data, struct pkg_event *ev)
 	struct pkg *pkg = NULL;
 	int *debug = data;
 	(void) debug;
-	const char *version, *newversion;
 	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
 
@@ -209,9 +208,7 @@ event_callback(void *data, struct pkg_event *ev)
 
 			if (nbactions > 0)
 				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
-			pkg_get(pkg, PKG_VERSION, &newversion,
-			    PKG_OLD_VERSION, &version);
-			switch (pkg_version_cmp(version, newversion)) {
+			switch (pkg_version_change(pkg)) {
 			case 1:
 				pkg_sbuf_printf(msg,
 				    "Downgrading %n from %V to %v...",

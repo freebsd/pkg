@@ -551,12 +551,12 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 	dlsize = oldsize = newsize = 0;
 	flatsize = oldflatsize = pkgsize = 0;
-	version = oldversion = NULL;
+	oldversion = NULL;
 	
 	pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir);
 
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		pkg_get(pkg, PKG_OLD_VERSION, &oldversion, PKG_VERSION, &version,
+		pkg_get(pkg, PKG_OLD_VERSION, &oldversion,
 		    PKG_FLATSIZE, &flatsize, PKG_OLD_FLATSIZE, &oldflatsize,
 		    PKG_PKGSIZE, &pkgsize, PKG_REASON, &why,
 		    PKG_REPONAME, &reponame);
@@ -569,7 +569,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				/* If it's a new install, then it
 				 * cannot have been locked yet. */
 				if (oldversion != NULL) {
-					switch(pkg_version_cmp(oldversion, version)) {
+					switch(pkg_version_change(pkg)) {
 					case -1:
 						pkg_printf("and may not be upgraded to version %v\n", pkg);
 						break;
@@ -610,7 +610,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				dlsize += pkgsize;
 
 			if (oldversion != NULL) {
-				switch (pkg_version_cmp(oldversion, version)) {
+				switch (pkg_version_change(pkg)) {
 				case 1:
 					pkg_printf("\tDowngrading %n: %V -> %v", pkg, pkg, pkg);
 					if (pkg_repos_count() > 1)
