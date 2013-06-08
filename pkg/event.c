@@ -198,9 +198,7 @@ event_callback(void *data, struct pkg_event *ev)
 		else {
 			struct sbuf	*msg;
 
-			pkg_get(ev->e_upgrade_begin.pkg, PKG_NAME, &name,
-			    PKG_VERSION, &newversion,
-			    PKG_OLD_VERSION, &version);
+			pkg = ev->e_upgrade_begin.pkg;
 			nbdone++;
 
 			msg = sbuf_new_auto();
@@ -213,17 +211,17 @@ event_callback(void *data, struct pkg_event *ev)
 				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
 			switch (pkg_version_cmp(version, newversion)) {
 			case 1:
-				sbuf_printf(msg,
-				    "Downgrading %s from %s to %s...",
-				    name, version, newversion);
+				pkg_sbuf_printf(msg,
+				    "Downgrading %n from %V to %v...",
+				    pkg, pkg, pkg);
 				break;
 			case 0:
-				sbuf_printf(msg, "Reinstalling %s-%s",
-				    name, version);
+				pkg_sbuf_printf(msg, "Reinstalling %n-%V",
+				    pkg, pkg);
 				break;
 			case -1:
-				sbuf_printf(msg,
-				    "Upgrading %s from %s to %s...",
+				pkg_sbuf_printf(msg,
+				    "Upgrading %n from %V to %v...",
 				    name, version, newversion);
 				break;
 			}

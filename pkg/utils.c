@@ -223,7 +223,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 	bool print_tag = false;
 	bool show_locks = false;
 	char size[7];
-	const char *reponame, *repourl, *repopath;
+	const char *reponame, *repourl;
 	unsigned opt;
 	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
@@ -234,8 +234,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 		PKG_REPOURL,       &repourl,
 		PKG_FLATSIZE,      &flatsize,
 		PKG_OLD_FLATSIZE,  &oldflatsize,
-		PKG_PKGSIZE,       &pkgsize,
-		PKG_REPOPATH,	   &repopath);
+		PKG_PKGSIZE,       &pkgsize);
 
 	if (options & INFO_RAW) {
 		if (pkg_type(pkg) != PKG_REMOTE)
@@ -516,9 +515,9 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s: ", "Pkg URL");
 				if (repourl[strlen(repourl) -1] == '/')
-					printf("%s%s\n", repourl, repopath);
+					pkg_printf("%S%R\n", repourl, pkg);
 				else
-					printf("%s/%s\n", repourl, repopath);
+					pkg_printf("%S/%R\n", repourl, pkg);
 			} else if (!print_tag)
 				printf("\n");
 			break;
@@ -537,7 +536,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	struct pkg *pkg = NULL;
 	char path[MAXPATHLEN];
 	struct stat st;
-	const char *version, *oldversion, *pkgrepopath, *cachedir, *why, *reponame;
+	const char *version, *oldversion, *cachedir, *why, *reponame;
 	int64_t dlsize, oldsize, newsize;
 	int64_t flatsize, oldflatsize, pkgsize;
 	char size[7];
@@ -559,8 +558,8 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
 		pkg_get(pkg, PKG_OLD_VERSION, &oldversion, PKG_VERSION, &version,
 		    PKG_FLATSIZE, &flatsize, PKG_OLD_FLATSIZE, &oldflatsize,
-		    PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &pkgrepopath,
-		    PKG_REASON, &why, PKG_REPONAME, &reponame);
+		    PKG_PKGSIZE, &pkgsize, PKG_REASON, &why,
+		    PKG_REPONAME, &reponame);
 
 		if (pkg_is_locked(pkg)) {
 			pkg_printf("\tPackage %n-%v is locked ", pkg, pkg);
@@ -599,7 +598,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		switch (type) {
 		case PKG_JOBS_INSTALL:
 		case PKG_JOBS_UPGRADE:
-			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
+			pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, pkg);
 			reponame = pkg_repo_ident(pkg_repo_find_name(reponame));
 
 			if (stat(path, &st) == -1 || pkgsize != st.st_size)
@@ -613,7 +612,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			if (oldversion != NULL) {
 				switch (pkg_version_cmp(oldversion, version)) {
 				case 1:
-					pkg_printf("\tDowngrading %n: %S -> %v", pkg, oldversion, pkg);
+					pkg_printf("\tDowngrading %n: %V -> %v", pkg, pkg, pkg);
 					if (pkg_repos_count() > 1)
 						printf(" [%s]", reponame);
 					printf("\n");
@@ -627,7 +626,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 					printf("\n");
 					break;
 				case -1:
-					pkg_printf("\tUpgrading %n: %S -> %v", pkg, oldversion, pkg);
+					pkg_printf("\tUpgrading %n: %V -> %v", pkg, pkg, pkg);
 					if (pkg_repos_count() > 1)
 						printf(" [%s]", reponame);
 					printf("\n");
@@ -653,7 +652,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			break;
 		case PKG_JOBS_FETCH:
 			dlsize += pkgsize;
-			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
+			pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, pkg);
 			if (stat(path, &st) != -1)
 				oldsize = st.st_size;
 			else
