@@ -991,12 +991,12 @@ pkg_jobs_install(struct pkg_jobs *j)
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
-		const char *pkgorigin, *pkgrepopath, *oldversion, *origin;
+		const char *pkgorigin, *oldversion, *origin;
 		struct pkg_note *an;
 		bool automatic;
 		flags = 0;
 
-		pkg_get(p, PKG_ORIGIN, &pkgorigin, PKG_REPOPATH, &pkgrepopath,
+		pkg_get(p, PKG_ORIGIN, &pkgorigin,
 		    PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
 		an = pkg_annotation_lookup(p, "repository");
 
@@ -1064,7 +1064,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 			}
 			pkgdb_it_free(it);
 		}
-		snprintf(path, sizeof(path), "%s/%s", cachedir, pkgrepopath);
+		pkg_snprintf(path, sizeof(path), "%s/%R", cachedir, p);
 
 		pkg_open(&newpkg, path, keys, 0);
 		if (oldversion != NULL) {
