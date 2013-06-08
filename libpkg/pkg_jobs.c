@@ -688,11 +688,11 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	/* compare versions */
 	cmp = pkg_version_change(rp);
 
-	if (cmp == 1) {
+	if (cmp == -1) {
 		pkg_free(lp);
 		return (true);
 	}
-	if (cmp == -1) {
+	if (cmp == 1) {
 		pkg_free(lp);
 		return (false);
 	}
