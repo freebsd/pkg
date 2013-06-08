@@ -70,7 +70,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	pkg_get(pkg, PKG_REPONAME, &reponame,
 	    PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
 
-	snprintf(dest, sizeof(dest), "%s/%s", cachedir, repopath);
+	pkg_snprintf(dest, sizeof(dest), "%S/%R", cachedir, pkg);
 
 	/* If it is already in the local cachedir, dont bother to
 	 * download it */
