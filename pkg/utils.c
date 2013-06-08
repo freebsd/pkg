@@ -224,7 +224,6 @@ print_info(struct pkg * const pkg, unsigned int options)
 	bool show_locks = false;
 	char size[7];
 	const char *reponame, *repourl, *repopath;
-	const char *arch;
 	unsigned opt;
 	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
@@ -236,7 +235,6 @@ print_info(struct pkg * const pkg, unsigned int options)
 		PKG_FLATSIZE,      &flatsize,
 		PKG_OLD_FLATSIZE,  &oldflatsize,
 		PKG_PKGSIZE,       &pkgsize,
-		PKG_ARCH,	   &arch,
 		PKG_REPOPATH,	   &repopath);
 
 	if (options & INFO_RAW) {
@@ -510,7 +508,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 		case INFO_ARCH:
 			if (print_tag)
 				printf("%-15s: ", "Architecture");
-			printf("%s\n", arch);
+			pkg_printf("%q\n", pkg);
 			break;
 		case INFO_REPOURL:
 			if (pkg_type(pkg) == PKG_REMOTE &&
