@@ -4,6 +4,7 @@
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -70,10 +71,10 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 {
 	bool to_print = true;
 	char key;
-	const char *version, *name, *origin;
+	const char *version;
 	char *namever = NULL;
 
-	pkg_get(pkg, PKG_VERSION, &version, PKG_NAME, &name, PKG_ORIGIN, &origin);
+	pkg_get(pkg, PKG_VERSION, &version);
 	if (ver == NULL) {
 		if (source == NULL)
 			key = '!';
@@ -106,11 +107,13 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 	if (!to_print)
 		return;
 
-	asprintf(&namever, "%s-%s", name, version);
+
 	if (opt & VERSION_ORIGIN)
-		printf("%-34s %c", origin, key);
+		pkg_asprintf(&namever, "%n-%v", pkg, pkg);
 	else
-		printf("%-34s %c", namever, key);
+		pkg_asprintf(&namever, "%-34o", pkg);
+
+	printf("%-34s %c", namever, key);
 	free(namever);
 
 	if (opt & VERSION_VERBOSE) {
@@ -125,7 +128,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 			printf("   succeeds %s (%s has %s)", source, source, ver);
 			break;
 		case '?':
-			printf("   orphaned: %s", origin);
+			pkg_printf("   orphaned: %o", pkg);
 			break;
 		case '!':
 			printf("   Comparison failed");
