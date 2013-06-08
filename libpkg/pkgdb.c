@@ -75,16 +75,8 @@
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
-#define PKGGT	(1U << 1)
-#define PKGLT	(1U << 2)
-#define PKGEQ	(1U << 3)
-
 static void pkgdb_regex(sqlite3_context *, int, sqlite3_value **);
 static void pkgdb_regex_delete(void *);
-static void pkgdb_pkglt(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_pkggt(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_pkgle(sqlite3_context *, int, sqlite3_value **);
-static void pkgdb_pkgge(sqlite3_context *, int, sqlite3_value **);
 static int pkgdb_upgrade(struct pkgdb *);
 static void populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg);
 static void pkgdb_detach_remotes(sqlite3 *);
@@ -359,62 +351,6 @@ pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 		return;
 	}
 	sqlite3_result_text(ctx, arch, strlen(arch), NULL);
-}
-
-static void
-pkgdb_pkgcmp(sqlite3_context *ctx, int argc, sqlite3_value **argv,
-	     unsigned sign)
-{
-	const unsigned char	*version1 = NULL;
-	const unsigned char	*version2 = NULL;
-	int			 res = 0;
-
-	if (argc != 2 || (version1 = sqlite3_value_text(argv[0])) == NULL
-		      || (version2 = sqlite3_value_text(argv[1])) == NULL) {
-		sqlite3_result_error(ctx, "Invalid comparison\n", -1);
-		return;
-	}
-
-	switch (pkg_version_cmp(version1, version2)) {
-	case -1:
-		if ((sign & PKGLT) == PKGLT)
-			res = 1;
-		break;
-	case 0:
-		if ((sign & PKGEQ) == PKGEQ)
-			res = 1;
-		break;
-	case 1:
-		if ((sign & PKGGT) == PKGGT)
-			res = 1;
-		break;
-	}
-
-	sqlite3_result_int(ctx, res);
-}
-
-static void
-pkgdb_pkglt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	pkgdb_pkgcmp(ctx, argc, argv, PKGLT);
-}
-
-static void
-pkgdb_pkggt(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	pkgdb_pkgcmp(ctx, argc, argv, PKGGT);
-}
-
-static void
-pkgdb_pkgle(sqlite3_context *ctx, int argc, sqlite3_value **argv)
-{
-	pkgdb_pkgcmp(ctx, argc, argv, PKGLT|PKGEQ);
-}
-
-static void
-pkgdb_pkgge(sqlite3_context * ctx, int argc, sqlite3_value **argv)
-{
-	pkgdb_pkgcmp(ctx, argc, argv, PKGGT|PKGEQ);
 }
 
 static int
@@ -3727,14 +3663,6 @@ sqlcmd_init(sqlite3 *db, __unused const char **err,
 				pkgdb_myarch, NULL, NULL);
 	sqlite3_create_function(db, "regexp", 2, SQLITE_ANY, NULL,
 				pkgdb_regex, NULL, NULL);
-	sqlite3_create_function(db, "pkglt", 2, SQLITE_ANY, NULL,
-				pkgdb_pkglt, NULL, NULL);
-	sqlite3_create_function(db, "pkggt", 2, SQLITE_ANY, NULL,
-				pkgdb_pkggt, NULL, NULL);
-	sqlite3_create_function(db, "pkgge", 2, SQLITE_ANY, NULL,
-				pkgdb_pkgge, NULL, NULL);
-	sqlite3_create_function(db, "pkgle", 2, SQLITE_ANY, NULL,
-				pkgdb_pkgle, NULL, NULL);
 
 	return SQLITE_OK;
 }
