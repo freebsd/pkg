@@ -343,6 +343,9 @@ pkg_version_change(const struct pkg * restrict pkg)
 	pkg_get(pkg, PKG_VERSION, &version,
 	    PKG_OLD_VERSION, &oldversion);
 
+	if (oldversion == NULL)
+		return PKG_REINSTALL;
+
 	switch (pkg_version_cmp(oldversion, version)) {
 	case -1:
 		return PKG_UPGRADE;
