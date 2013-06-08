@@ -59,7 +59,6 @@ pipeevent(struct pkg_event *ev)
 	struct pkg_dep *dep = NULL;
 	struct sbuf *msg, *buf;
 	const char *message;
-	const char *version;
 	struct pkg_event_conflict *cur_conflict;
 	if (eventpipe < 0)
 		return;
@@ -186,31 +185,25 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_deinstall_finished.pkg);
 		break;
 	case PKG_EVENT_UPGRADE_BEGIN:
-		pkg_get(ev->e_upgrade_finished.pkg,
-		    PKG_OLD_VERSION, &version);
-
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_BEGIN\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
-		    "\"pkgversion\": \"%S\" ,"
+		    "\"pkgversion\": \"%V\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
 		    ev->e_upgrade_begin.pkg,
-		    version,
+		    ev->e_upgrade_begin.pkg,
 		    ev->e_upgrade_begin.pkg);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
-		pkg_get(ev->e_upgrade_finished.pkg,
-		    PKG_OLD_VERSION, &version);
-
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
-		    "\"pkgversion\": \"%S\" ,"
+		    "\"pkgversion\": \"%V\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
 		    ev->e_upgrade_begin.pkg,
-		    version,
+		    ev->e_upgrade_begin.pkg,
 		    ev->e_upgrade_begin.pkg);
 		break;
 	case PKG_EVENT_LOCKED:
