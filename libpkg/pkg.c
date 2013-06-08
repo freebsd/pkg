@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -148,7 +149,7 @@ pkg_free(struct pkg *pkg)
 }
 
 pkg_t
-pkg_type(struct pkg const * const pkg)
+pkg_type(const struct pkg * restrict pkg)
 {
 	assert(pkg != NULL);
 
@@ -156,7 +157,7 @@ pkg_type(struct pkg const * const pkg)
 }
 
 int
-pkg_is_valid(struct pkg *pkg)
+pkg_is_valid(const struct pkg * restrict pkg)
 {
 	int i;
 
@@ -181,7 +182,7 @@ pkg_is_valid(struct pkg *pkg)
 }
 
 static int
-pkg_vget(struct pkg const *const pkg, va_list ap)
+pkg_vget(const struct pkg * restrict pkg, va_list ap)
 {
 	int attr;
 
@@ -227,7 +228,7 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 }
 
 int
-pkg_get2(struct pkg const *const pkg, ...)
+pkg_get2(const struct pkg * restrict pkg, ...)
 {
 	int ret = EPKG_OK;
 	va_list ap;
@@ -1314,8 +1315,10 @@ pkg_has_message(struct pkg *p)
 }
 
 bool
-pkg_is_locked(const struct pkg *p)
+pkg_is_locked(const struct pkg * restrict p)
 {
+	assert(p != NULL);
+
 	return (p->locked);
 }
 

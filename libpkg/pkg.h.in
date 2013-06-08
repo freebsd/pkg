@@ -486,7 +486,7 @@ void pkg_free(struct pkg *);
 /**
  * Check if a package is valid according to its type.
  */
-int pkg_is_valid(struct pkg *);
+int pkg_is_valid(const struct pkg * restrict);
 
 /**
  * Open a package file archive and retrive informations.
@@ -502,7 +502,7 @@ int pkg_open(struct pkg **p, const char *path, struct pkg_manifest_key *keys, in
  * @return the type of the package.
  * @warning returns PKG_NONE on error.
  */
-pkg_t pkg_type(struct pkg const * const);
+pkg_t pkg_type(const struct pkg * restrict);
 
 /**
  * Generic getter for simple attributes.
@@ -1499,6 +1499,6 @@ struct sbuf *pkg_sbuf_vprintf(struct sbuf * restrict sbuf,
 	const char * restrict format, va_list ap);
 
 bool pkg_has_message(struct pkg *p);
-bool pkg_is_locked(const struct pkg *p);
+bool pkg_is_locked(const struct pkg * restrict p);
 
 #endif
