@@ -1499,5 +1499,6 @@ struct sbuf *pkg_sbuf_vprintf(struct sbuf * restrict sbuf,
 	const char * restrict format, va_list ap);
 
 bool pkg_has_message(struct pkg *p);
+bool pkg_is_locked(const struct pkg *p);
 
 #endif

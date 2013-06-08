@@ -1314,6 +1314,12 @@ pkg_has_message(struct pkg *p)
 }
 
 bool
+pkg_is_locked(const struct pkg *p)
+{
+	return (p->locked);
+}
+
+bool
 pkg_has_file(struct pkg *p, const char *path)
 {
 	struct pkg_file *f;

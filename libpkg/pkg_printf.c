@@ -1513,10 +1513,8 @@ struct sbuf *
 format_lock_status(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	bool			 locked;
 
-	pkg_get(pkg, PKG_LOCKED, &locked);
-	return (bool_val(sbuf, locked, p));
+	return (bool_val(sbuf, pkg_is_locked(pkg), p));
 }
 
 /*

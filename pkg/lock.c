@@ -58,10 +58,7 @@ usage_lock(void)
 static int
 do_lock(struct pkgdb *db, struct pkg *pkg)
 {
-	bool locked;
-	
-	pkg_get(pkg, PKG_LOCKED, &locked);
-	if (locked) {
+	if (pkg_is_locked(pkg)) {
 		if (!quiet)
 			pkg_printf("%n-%v: already locked\n",
 			       pkg, pkg);
@@ -82,10 +79,7 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 static int
 do_unlock(struct pkgdb *db, struct pkg *pkg)
 {
-	bool locked;
-
-	pkg_get(pkg, PKG_LOCKED, &locked);
-	if (!locked) {
+	if (!pkg_is_locked(pkg)) {
 		if (!quiet)
 			pkg_printf("%n-%v: already unlocked\n", pkg, pkg);
 		return (EPKG_OK);

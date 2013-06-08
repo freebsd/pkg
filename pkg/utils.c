@@ -537,10 +537,9 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	struct pkg *pkg = NULL;
 	char path[MAXPATHLEN];
 	struct stat st;
-	const char *name, *version, *oldversion, *pkgrepopath, *cachedir, *why, *reponame;
+	const char *version, *oldversion, *pkgrepopath, *cachedir, *why, *reponame;
 	int64_t dlsize, oldsize, newsize;
 	int64_t flatsize, oldflatsize, pkgsize;
-	bool locked;
 	char size[7];
 	va_list ap;
 	pkg_jobs_t type;
@@ -553,18 +552,17 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 	dlsize = oldsize = newsize = 0;
 	flatsize = oldflatsize = pkgsize = 0;
-	name = version = oldversion = NULL;
+	version = oldversion = NULL;
 	
 	pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir);
 
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		pkg_get(pkg, PKG_OLD_VERSION, &oldversion, PKG_NAME, &name,
-		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
-		    PKG_OLD_FLATSIZE, &oldflatsize, PKG_PKGSIZE, &pkgsize,
-		    PKG_REPOPATH, &pkgrepopath, PKG_LOCKED, &locked,
+		pkg_get(pkg, PKG_OLD_VERSION, &oldversion, PKG_VERSION, &version,
+		    PKG_FLATSIZE, &flatsize, PKG_OLD_FLATSIZE, &oldflatsize,
+		    PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &pkgrepopath,
 		    PKG_REASON, &why, PKG_REPONAME, &reponame);
 
-		if (locked) {
+		if (pkg_is_locked(pkg)) {
 			pkg_printf("\tPackage %n-%v is locked ", pkg, pkg);
 			switch (type) {
 			case PKG_JOBS_INSTALL:
@@ -664,7 +662,8 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 			humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
 
-			printf("\t%s-%s (%" PRId64 "%% of %s)\n", name, version, 100 - (100 * oldsize)/pkgsize, size);
+			pkg_printf("\t%n-%v ", pkg, pkg);
+			printf("(%" PRId64 "%% of %s)\n", 100 - (100 * oldsize)/pkgsize, size);
 			break;
 		}
 	}

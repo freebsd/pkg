@@ -642,7 +642,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_shlib *ls = NULL, *rs = NULL;
-	bool automatic, locked;
+	bool automatic;
 	int cmp = 0, ret1, ret2;
 
 	pkg_get(rp, PKG_ORIGIN, &origin,
@@ -655,8 +655,12 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		return (true);
 	}
 
-	pkg_get(lp, PKG_LOCKED, &locked,
-	    PKG_AUTOMATIC, &automatic,
+	if (pkg_is_locked(lp)) {
+		pkg_free(lp);
+		return (false);
+	}
+
+	pkg_get(lp, PKG_AUTOMATIC, &automatic,
 	    PKG_VERSION, &oldversion,
 	    PKG_FLATSIZE, &oldsize);
 
@@ -669,11 +673,6 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		} else {
 			pkg_addannotation(rp, "repository", pkg_annotation_value(an));
 		}
-	}
-
-	if (locked) {
-		pkg_free(lp);
-		return (false);
 	}
 
 	pkg_get(rp, PKG_VERSION, &newversion);
@@ -994,7 +993,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	while (pkg_jobs(j, &p) == EPKG_OK) {
 		const char *pkgorigin, *pkgrepopath, *oldversion, *origin;
 		struct pkg_note *an;
-		bool automatic, locked;
+		bool automatic;
 		flags = 0;
 
 		pkg_get(p, PKG_ORIGIN, &pkgorigin, PKG_REPOPATH, &pkgrepopath,
@@ -1006,8 +1005,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 			it = pkgdb_query(j->db, pkgorigin, MATCH_EXACT);
 			if (it != NULL) {
 				if (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
-					pkg_get(pkg, PKG_LOCKED, &locked);
-					if (locked) {
+					if (pkg_is_locked(pkg)) {
 						pkg_emit_locked(pkg);
 						pkgdb_it_free(it);
 						retcode = EPKG_LOCKED;
@@ -1041,8 +1039,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 			pkg = NULL;
 			while (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
 
-				pkg_get(pkg, PKG_LOCKED, &locked);
-				if (locked) {
+				if (pkg_is_locked(pkg)) {
 					pkg_emit_locked(pkg);
 					pkgdb_it_free(it);
 					retcode = EPKG_LOCKED;
