@@ -69,6 +69,7 @@ pkg_config_defaults_body()
 	-o match:'^SSH_RESTRICT_DIR: $' \
 	-o match:'^REPOS_DIR: /usr/local/etc/pkg/repos/$' \
 	-o match:'^ENV:$' \
+	-o match:'^DISABLE_MTREE: no$' \
 	-e empty              \
 	-s exit:0             \
 	pkg -C "" -vv
