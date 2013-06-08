@@ -1064,7 +1064,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 			}
 			pkgdb_it_free(it);
 		}
-		pkg_snprintf(path, sizeof(path), "%s/%R", cachedir, p);
+		pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, p);
 
 		pkg_open(&newpkg, path, keys, 0);
 		if (oldversion != NULL) {
