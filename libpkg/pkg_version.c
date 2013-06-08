@@ -336,17 +336,6 @@ pkg_version_cmp(const char * const pkg1, const char * const pkg2)
 }
 
 int
-pkg_vcmp(struct pkg *p1, struct pkg *p2)
-{
-	const char *version1, *version2;
-
-	pkg_get(p1, PKG_VERSION, &version1);
-	pkg_get(p2, PKG_VERSION, &version2);
-
-	return (pkg_version_cmp(version1, version2));
-}
-
-int
 pkg_version_change(const struct pkg * restrict pkg)
 {
 	const char *version, *oldversion;
