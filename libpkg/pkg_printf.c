@@ -95,8 +95,8 @@
  *
  * P
  * Q
- * R
  *
+ * R  pkg          Repopath
  * S  char*        Arbitrary character string
  *
  * T
@@ -105,7 +105,7 @@
  * Un pkg_user     User name
  * Uu pkg_user     uidstr (parse this using pw_scan()?)
  *
- * V
+ * V  pkg          old version
  * W
  * X
  * Y
@@ -147,9 +147,7 @@
  *
  * s  pkg          flatsize
  * t  pkg          install timestamp
- *
- * u
- *
+ * u  pkg          checksum
  * v  pkg          version
  * w  pkg          home page URL
  *
@@ -453,6 +451,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_PKG,
 		&format_options,
 	},
+	[PP_PKG_REPO_PATH] =
+	{
+		'R',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_repo_path,
+	},
 	[PP_PKG_CHAR_STRING] =
 	{
 		'S',
@@ -488,6 +495,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_PKG,
 		&format_users,
+	},
+	[PP_PKG_OLD_VERSION] =
+	{
+		'V',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_old_version,
 	},
 	[PP_PKG_AUTOREMOVE] =
 	{
@@ -703,6 +719,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_ALL,
 		&format_install_tstamp,
+	},
+	[PP_PKG_CHECKSUM] =
+	{
+		'u',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_checksum,
 	},
 	[PP_PKG_VERSION] =
 	{
@@ -1285,6 +1310,19 @@ format_option_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 }
 
 /*
+ * %R -- Repo path. string.
+ */
+struct sbuf *
+format_repo_path(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+	const char		*repo_path;
+
+	pkg_get(pkg, PKG_REPOPATH, &repo_path);
+	return (string_val(sbuf, repo_path, p));
+}
+
+/*
  * %S -- Character string.
  */
 struct sbuf *
@@ -1348,6 +1386,19 @@ format_user_uidstr(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	const struct pkg_user	*user = data;
 
 	return (string_val(sbuf, pkg_user_uidstr(user), p));
+}
+
+/*
+ * %V -- Old package version. string. Accepts field width, left align
+ */
+struct sbuf *
+format_old_version(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+	const char		*old_version;
+
+	pkg_get(pkg, PKG_OLD_VERSION, &old_version);
+	return (string_val(sbuf, old_version, p));
 }
 
 /*
@@ -1685,6 +1736,19 @@ format_version(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 
 	pkg_get(pkg, PKG_VERSION, &version);
 	return (string_val(sbuf, version, p));
+}
+
+/*
+ * %u -- Package checksum. string. Accepts field width, left align
+ */
+struct sbuf *
+format_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+	const char		*checksum;
+
+	pkg_get(pkg, PKG_CKSUM, &checksum);
+	return (string_val(sbuf, checksum, p));
 }
 
 /*

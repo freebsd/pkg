@@ -105,10 +105,12 @@ typedef enum _fmt_code_t {
 	PP_PKG_OPTION_NAME,
 	PP_PKG_OPTION_VALUE,
 	PP_PKG_OPTIONS,
+	PP_PKG_REPO_PATH,
 	PP_PKG_CHAR_STRING,
 	PP_PKG_USER_NAME,
 	PP_PKG_USER_UIDSTR,
 	PP_PKG_USERS,
+	PP_PKG_OLD_VERSION,
 	PP_PKG_AUTOREMOVE,
 	PP_PKG_SHLIB_PROVIDED_NAME,
 	PP_PKG_SHLIBS_PROVIDED,
@@ -133,6 +135,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_REQUIREMENTS,
 	PP_PKG_FLATSIZE,
 	PP_PKG_INSTALL_TIMESTAMP,
+	PP_PKG_CHECKSUM,
 	PP_PKG_VERSION,
 	PP_PKG_HOME_PAGE,
 	PP_LAST_FORMAT = PP_PKG_HOME_PAGE,
@@ -186,10 +189,12 @@ _static struct sbuf *format_message(struct sbuf *, const void *, struct percent_
 _static struct sbuf *format_options(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_option_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_option_value(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_repo_path(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_char_string(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_users(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_user_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_user_uidstr(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_old_version(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_autoremove(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_shlibs_provided(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_comment(struct sbuf *, const void *, struct percent_esc *);
@@ -209,6 +214,7 @@ _static struct sbuf *format_architecture(struct sbuf *, const void *, struct per
 _static struct sbuf *format_requirements(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_flatsize(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_install_tstamp(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_checksum(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_version(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_home_url(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_literal_percent(struct sbuf *, __unused const void *, __unused struct percent_esc *);
