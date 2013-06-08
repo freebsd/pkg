@@ -56,7 +56,7 @@ event_callback(void *data, struct pkg_event *ev)
 	struct pkg *pkg = NULL;
 	int *debug = data;
 	(void) debug;
-	const char *name, *version, *newversion;
+	const char *version, *newversion;
 	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
 
@@ -222,7 +222,7 @@ event_callback(void *data, struct pkg_event *ev)
 			case -1:
 				pkg_sbuf_printf(msg,
 				    "Upgrading %n from %V to %v...",
-				    name, version, newversion);
+						pkg, pkg, pkg);
 				break;
 			}
 			print_and_set_term_title(msg);
