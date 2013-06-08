@@ -68,7 +68,7 @@ pkg_config_defaults_body()
 	-o match:'^UNSET_TIMESTAMP: no$' \
 	-o match:'^SSH_RESTRICT_DIR: $' \
 	-o match:'^REPOS_DIR: /usr/local/etc/pkg/repos/$' \
-	-o match:'^ENV:$' \
+	-o match:'^PKG_ENV:$' \
 	-o match:'^DISABLE_MTREE: no$' \
 	-e empty              \
 	-s exit:0             \

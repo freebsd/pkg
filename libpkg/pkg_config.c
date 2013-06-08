@@ -264,7 +264,7 @@ static struct config_entry c[] = {
 	},
 	[PKG_CONFIG_ENV] = {
 		PKG_CONFIG_KVLIST,
-		"ENV",
+		"PKG_ENV",
 		NULL,
 		"Environment variables pkg will use",
 	},
