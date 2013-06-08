@@ -59,7 +59,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	const char *packagesite = NULL;
 	const char *cachedir = NULL;
 	int retcode = EPKG_OK;
-	const char *repopath, *sum, *name, *version, *reponame;
+	const char *sum, *name, *version, *reponame;
 	struct pkg_repo *repo;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
@@ -67,7 +67,7 @@ pkg_repo_fetch(struct pkg *pkg)
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	pkg_get(pkg, PKG_REPOPATH, &repopath, PKG_REPONAME, &reponame,
+	pkg_get(pkg, PKG_REPONAME, &reponame,
 	    PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
 
 	snprintf(dest, sizeof(dest), "%s/%s", cachedir, repopath);
@@ -102,9 +102,9 @@ pkg_repo_fetch(struct pkg *pkg)
 	}
 
 	if (packagesite[strlen(packagesite) - 1] == '/')
-		snprintf(url, sizeof(url), "%s%s", packagesite, repopath);
+		pkg_snprintf(url, sizeof(url), "%S%R", packagesite, pkg);
 	else
-		snprintf(url, sizeof(url), "%s/%s", packagesite, repopath);
+		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
 
 	retcode = pkg_fetch_file(repo, url, dest, 0);
 	fetched = 1;
