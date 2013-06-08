@@ -345,3 +345,13 @@ pkg_vcmp(struct pkg *p1, struct pkg *p2)
 
 	return (pkg_version_cmp(version1, version2));
 }
+
+int
+pkg_version_change(const struct pkg * restrict pkg)
+{
+	const char *version, *oldversion;
+
+	pkg_get(pkg, PKG_VERSION, &version,
+	    PKG_OLD_VERSION, &oldversion);
+	return (pkg_version_cmp(oldversion, version));
+}

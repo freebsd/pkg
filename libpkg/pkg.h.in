@@ -1179,6 +1179,7 @@ const char *pkg_config_name(struct pkg_config *c);
  */
 int pkg_version_cmp(const char * const , const char * const);
 int pkg_vcmp(struct pkg *, struct pkg *);
+int pkg_version_change(const struct pkg * restrict);
 
 /**
  * Fetch a file.
