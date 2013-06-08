@@ -964,7 +964,6 @@ pkg_init(const char *path)
 			else
 				conf->fromenv = false;
 			if (val != NULL) {
-				printf("%s\n", val);
 				walk = buf = val;
 				while ((buf = strchr(buf, ',')) != NULL) {
 					key = walk;
