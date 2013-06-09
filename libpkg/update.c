@@ -435,9 +435,9 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	sqlite3 *sqlite = NULL;
 	struct pkg *local_pkg = NULL;
 	int rc = EPKG_FATAL;
-	const char *local_origin, *local_digest;
+	const char *origin, *digest, *offset;
 	struct pkgdb_it *it = NULL;
-	char *linebuf = NULL, *digest_origin, *digest_digest, *digest_offset, *p;
+	char *linebuf = NULL, *p;
 	int updated = 0, removed = 0, added = 0, processed = 0;
 	long num_offset;
 	time_t local_t = *mtime;
@@ -465,8 +465,8 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	}
 
 	while (pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
-		pkg_update_increment_item_new(&ldel, local_origin, local_digest, 4);
+		pkg_get(local_pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+		pkg_update_increment_item_new(&ldel, origin, digest, 4);
 	}
 
 	fdigests = repo_fetch_remote_extract_tmp(repo,
@@ -487,33 +487,33 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	/* load the while digests */
 	while ((linelen = getline(&linebuf, &linecap, fdigests)) > 0) {
 		p = linebuf;
-		digest_origin = strsep(&p, ":");
-		digest_digest = strsep(&p, ":");
-		digest_offset = strsep(&p, ":");
+		origin = strsep(&p, ":");
+		digest = strsep(&p, ":");
+		offset = strsep(&p, ":");
 
-		if (digest_origin == NULL || digest_digest == NULL ||
-				digest_offset == NULL) {
+		if (origin == NULL || digest == NULL ||
+				offset == NULL) {
 			pkg_emit_error("invalid digest file format");
 			assert(0);
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
 		errno = 0;
-		num_offset = (long)strtoul(digest_offset, NULL, 10);
+		num_offset = (long)strtoul(offset, NULL, 10);
 		if (errno != 0) {
 			pkg_emit_errno("strtoul", "digest format error");
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
-		HASH_FIND_STR(ldel, digest_origin, item);
+		HASH_FIND_STR(ldel, origin, item);
 		if (item == NULL) {
 			added++;
-			pkg_update_increment_item_new(&ladd, digest_origin, digest_digest, num_offset);
+			pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
 		} else {
-			if (strcmp(digest_digest, item->digest) == 0) {
+			if (strcmp(digest, item->digest) == 0) {
 				HASH_DEL(ldel, item);
 			} else {
-				pkg_update_increment_item_new(&ladd, digest_origin, digest_digest, num_offset);
+				pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
 				updated++;
 			}
 		}
