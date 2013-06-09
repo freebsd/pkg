@@ -908,7 +908,10 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 	int ret;
 	static struct pkgdb repodb;
 	const char query_sql[] = ""
-		"SELECT origin, manifestdigest "
+		"SELECT id, origin, name, version, comment, "
+		"prefix, desc, arch, maintainer, www, "
+		"licenselogic, flatsize, pkgsize, "
+		"cksum, path AS repopath, manifestdigest "
 		"FROM packages "
 		"ORDER BY origin;";
 

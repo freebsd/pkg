@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
+#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -410,7 +411,7 @@ struct pkg_increment_task_item {
 	char *origin;
 	char *digest;
 	long offset;
-	struct pkg_increment_task_item *next;
+	UT_hash_handle hh;
 };
 
 static void
@@ -424,7 +425,7 @@ pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char 
 	item->digest = strdup(digest);
 	item->offset = offset;
 
-	LL_PREPEND(*head, item);
+	HASH_ADD_KEYPTR(hh, *head, item->origin, strlen(item->origin), item);
 }
 
 static int
@@ -433,10 +434,11 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	FILE *fmanifest = NULL, *fdigests = NULL;
 	sqlite3 *sqlite = NULL;
 	struct pkg *local_pkg = NULL;
-	int rc = EPKG_FATAL, ret = 0, cmp;
+	int rc = EPKG_FATAL;
 	const char *local_origin, *local_digest;
+	struct sbuf *lorigin, *ldigest;
 	struct pkgdb_it *it = NULL;
-	char linebuf[1024], *digest_origin, *digest_digest, *digest_offset, *p;
+	char *linebuf = NULL, *digest_origin, *digest_digest, *digest_offset, *p;
 	int updated = 0, removed = 0, added = 0, processed = 0;
 	long num_offset;
 	time_t local_t = *mtime;
@@ -444,6 +446,11 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			*item, *tmp_item;
 	const char *myarch;
 	struct pkg_manifest_key *keys = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	struct sbuf *sql = sbuf_new_auto();
+
+	lorigin = ldigest = NULL;
 
 	if ((rc = pkgdb_repo_open(name, false, &sqlite, false)) != EPKG_OK) {
 		return (EPKG_FATAL);
@@ -461,9 +468,10 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		goto cleanup;
 	}
 
-	/* Try to get a single entry in repository to ensure that we can read checksums */
-	if ((ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC)) != EPKG_OK)
-		local_pkg = NULL;
+	while (pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
+		pkg_update_increment_item_new(&ldel, local_origin, local_digest, 4);
+	}
 
 	fdigests = repo_fetch_remote_extract_tmp(repo,
 			repo_digests_archive, "txz", &local_t,
@@ -479,22 +487,14 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	*mtime = local_t;
 
 	pkg_manifest_keys_new(&keys);
-	do {
-		/* Read a line from digests file */
-		if (fgets(linebuf, sizeof(linebuf) - 1, fdigests) == NULL) {
-			while (local_pkg != NULL && ret == EPKG_OK) {
-				/* Remove packages */
-				pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
-				pkg_update_increment_item_new(&ldel, local_origin, local_digest, 0);
-				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
-			}
-			break;
-		}
-		processed ++;
+
+	/* load the while digests */
+	while ((linelen = getline(&linebuf, &linecap, fdigests)) > 0) {
 		p = linebuf;
 		digest_origin = strsep(&p, ":");
 		digest_digest = strsep(&p, ":");
 		digest_offset = strsep(&p, ":");
+
 		if (digest_origin == NULL || digest_digest == NULL ||
 				digest_offset == NULL) {
 			pkg_emit_error("invalid digest file format");
@@ -509,76 +509,49 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
-		if (ret == EPKG_END) {
-			/* We have reached end of the local repo, hence insert all packages after */
-			pkg_update_increment_item_new(&ladd, digest_origin,
-					digest_digest, num_offset);
-			continue;
-		}
-		/*
-		 * Now we have local and remote origins that are sorted,
-		 * so here are possible cases:
-		 * 1) local == remote, but hashes are different: upgrade
-		 * 2) local > remote, insert new packages till local == remote
-		 * 3) local < remote, delete packages till local == remote
-		 * 4) local == remote and hashes are the same, skip
-		 */
-		cmp = strcmp(local_origin, digest_origin);
-		if (cmp == 0) {
-			if (strcmp(digest_digest, local_digest) != 0) {
-				/* Do upgrade */
+		HASH_FIND_STR(ldel, digest_origin, item);
+		if (item == NULL) {
+			added++;
+			pkg_update_increment_item_new(&ladd, digest_origin, digest_digest, num_offset);
+		} else {
+			if (strcmp(digest_digest, item->digest) == 0) {
+				HASH_DEL(ldel, item);
+			} else {
 				pkg_update_increment_item_new(&ladd, digest_origin, digest_digest, num_offset);
-				updated ++;
+				updated++;
 			}
 		}
-		else if (cmp < 0) {
-			do {
-				/* Remove packages */
-				pkg_get(local_pkg, PKG_ORIGIN, &local_origin, PKG_DIGEST, &local_digest);
-				if (strcmp(local_origin, digest_origin) >= 0) {
-					break;
-				}
-				pkg_update_increment_item_new(&ldel, local_origin, local_digest, 0);
-				ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
-			} while (ret == EPKG_OK);
-		}
-		else {
-			/* Insert a package from manifest */
-			pkg_update_increment_item_new(&ladd, digest_origin, digest_digest, num_offset);
-			continue;
-		}
-		/* Skip to next local package */
-		ret = pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC);
-	} while (ret == EPKG_OK || !feof(fdigests));
+	}
 
 	rc = EPKG_OK;
 
-	LL_FOREACH_SAFE(ldel, item, tmp_item) {
+	removed = HASH_COUNT(ldel) - updated;
+	HASH_ITER(hh, ldel, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkgdb_repo_remove_package(item->origin);
-			removed ++;
 		}
 		free(item->origin);
 		free(item->digest);
+		HASH_DEL(ldel, item);
 		free(item);
 	}
 
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 
-	LL_FOREACH_SAFE(ladd, item, tmp_item) {
+	HASH_ITER(hh, ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkg_add_from_manifest(fmanifest, item->origin,
 			        item->offset, item->digest, myarch, sqlite, keys);
-			added ++;
 		}
 		free(item->origin);
 		free(item->digest);
+		HASH_DEL(ladd, item);
 		free(item);
 	}
-	added -= updated;
 	pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:
+	sbuf_delete(sql);
 	if (it != NULL)
 		pkgdb_it_free(it);
 	if (pkgdb_repo_close(sqlite, rc == EPKG_OK) != EPKG_OK)
