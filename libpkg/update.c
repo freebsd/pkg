@@ -422,6 +422,8 @@ pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char 
 
 	item = calloc(1, sizeof(struct pkg_increment_task_item));
 	item->origin = strdup(origin);
+	if (digest == NULL)
+		digest = "";
 	item->digest = strdup(digest);
 	item->offset = offset;
 
