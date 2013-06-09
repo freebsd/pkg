@@ -102,6 +102,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_LICENSE_NAME,
 	PP_PKG_LICENSES,
 	PP_PKG_MESSAGE,
+	PP_PKG_REPO_NAME,
 	PP_PKG_OPTION_NAME,
 	PP_PKG_OPTION_VALUE,
 	PP_PKG_OPTIONS,
@@ -186,6 +187,7 @@ _static struct sbuf *format_row_counter(struct sbuf *, const void *, struct perc
 _static struct sbuf *format_licenses(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_license_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_message(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_repo_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_options(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_option_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_option_value(struct sbuf *, const void *, struct percent_esc *);
