@@ -39,37 +39,37 @@ pkg_config_defaults_head()
 pkg_config_defaults_body()
 {
     atf_check                 \
-	-o match:'^PACKAGESITE: $' \
-	-o match:'^PKG_DBDIR: /var/db/pkg$' \
-	-o match:'^PKG_CACHEDIR: /var/cache/pkg$' \
-	-o match:'^PORTSDIR: /usr/ports$' \
-	-o match:'^PUBKEY: $' \
-	-o match:'^HANDLE_RC_SCRIPTS: no$' \
-	-o match:'^ASSUME_ALWAYS_YES: no$' \
-	-o match:'^PLIST_KEYWORDS_DIR: $' \
-	-o match:'^SYSLOG: yes$' \
-	-o match:'^AUTODEPS: no$' \
-	-o match:'^ABI: [a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+$' \
-	-o match:'^DEVELOPER_MODE: no$' \
-	-o match:'^PORTAUDIT_SITE: http://portaudit.FreeBSD.org/auditfile.tbz$' \
-	-o match:'^VULNXML_SITE: http://www.vuxml.org/freebsd/vuln.xml.bz2$' \
-	-o match:'^MIRROR_TYPE: SRV$' \
-	-o match:'^FETCH_RETRY: 3$' \
-	-o match:'^PKG_PLUGINS_DIR: /usr/local/lib/pkg/$' \
-	-o match:'^PKG_ENABLE_PLUGINS: yes$' \
-	-o match:'^PLUGINS:$' \
-	-o match:'^DEBUG_SCRIPTS: no$' \
-	-o match:'^PLUGINS_CONF_DIR: /usr/local/etc/pkg/$' \
-	-o match:'^PERMISSIVE: no$' \
-	-o match:'^REPO_AUTOUPDATE: yes$' \
-	-o match:'^NAMESERVER: $' \
-	-o match:'^EVENT_PIPE: $' \
-	-o match:'^FETCH_TIMEOUT: 30$' \
-	-o match:'^UNSET_TIMESTAMP: no$' \
-	-o match:'^SSH_RESTRICT_DIR: $' \
-	-o match:'^REPOS_DIR: /usr/local/etc/pkg/repos/$' \
-	-o match:'^PKG_ENV:$' \
-	-o match:'^DISABLE_MTREE: no$' \
+	-o match:'^ *PACKAGESITE: $' \
+	-o match:'^ *PKG_DBDIR: /var/db/pkg$' \
+	-o match:'^ *PKG_CACHEDIR: /var/cache/pkg$' \
+	-o match:'^ *PORTSDIR: /usr/ports$' \
+	-o match:'^ *PUBKEY: $' \
+	-o match:'^ *HANDLE_RC_SCRIPTS: no$' \
+	-o match:'^ *ASSUME_ALWAYS_YES: no$' \
+	-o match:'^ *PLIST_KEYWORDS_DIR: $' \
+	-o match:'^ *SYSLOG: yes$' \
+	-o match:'^ *AUTODEPS: no$' \
+	-o match:'^ *ABI: [a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9]+$' \
+	-o match:'^ *DEVELOPER_MODE: no$' \
+	-o match:'^ *PORTAUDIT_SITE: http://portaudit.FreeBSD.org/auditfile.tbz$' \
+	-o match:'^ *VULNXML_SITE: http://www.vuxml.org/freebsd/vuln.xml.bz2$' \
+	-o match:'^ *MIRROR_TYPE: SRV$' \
+	-o match:'^ *FETCH_RETRY: 3$' \
+	-o match:'^ *PKG_PLUGINS_DIR: /usr/local/lib/pkg/$' \
+	-o match:'^ *PKG_ENABLE_PLUGINS: yes$' \
+	-o match:'^ *PLUGINS:$' \
+	-o match:'^ *DEBUG_SCRIPTS: no$' \
+	-o match:'^ *PLUGINS_CONF_DIR: /usr/local/etc/pkg/$' \
+	-o match:'^ *PERMISSIVE: no$' \
+	-o match:'^ *REPO_AUTOUPDATE: yes$' \
+	-o match:'^ *NAMESERVER: $' \
+	-o match:'^ *EVENT_PIPE: $' \
+	-o match:'^ *FETCH_TIMEOUT: 30$' \
+	-o match:'^ *UNSET_TIMESTAMP: no$' \
+	-o match:'^ *SSH_RESTRICT_DIR: $' \
+	-o match:'^ *REPOS_DIR: /usr/local/etc/pkg/repos/$' \
+	-o match:'^ *PKG_ENV:$' \
+	-o match:'^ *DISABLE_MTREE: no$' \
 	-e empty              \
 	-s exit:0             \
 	pkg -C "" -vv
