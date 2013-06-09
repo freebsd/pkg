@@ -436,7 +436,6 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	struct pkg *local_pkg = NULL;
 	int rc = EPKG_FATAL;
 	const char *local_origin, *local_digest;
-	struct sbuf *lorigin, *ldigest;
 	struct pkgdb_it *it = NULL;
 	char *linebuf = NULL, *digest_origin, *digest_digest, *digest_offset, *p;
 	int updated = 0, removed = 0, added = 0, processed = 0;
@@ -448,9 +447,6 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	struct pkg_manifest_key *keys = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
-	struct sbuf *sql = sbuf_new_auto();
-
-	lorigin = ldigest = NULL;
 
 	if ((rc = pkgdb_repo_open(name, false, &sqlite, false)) != EPKG_OK) {
 		return (EPKG_FATAL);
@@ -551,7 +547,6 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:
-	sbuf_delete(sql);
 	if (it != NULL)
 		pkgdb_it_free(it);
 	if (pkgdb_repo_close(sqlite, rc == EPKG_OK) != EPKG_OK)
