@@ -110,7 +110,6 @@ struct plugcmd {
 
 typedef int (register_cmd)(const char **name, const char **desc, int (**exec)(int argc, char **argv));
 
-
 static void
 show_command_names(void)
 {
@@ -166,8 +165,6 @@ usage(const char *conffile)
 	fprintf(stderr, "\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
 
-	pkg_shutdown();
-
 	exit(EX_USAGE);
 }
 
@@ -192,7 +189,7 @@ exec_help(int argc, char **argv)
 	for (unsigned int i = 0; i < cmd_len; i++) {
 		if (strcmp(cmd[i].name, argv[1]) == 0) {
 			if (asprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name) == -1)
-				errx(1, "cannot allocate memory");
+				errx(EX_SOFTWARE, "cannot allocate memory");
 
 			system(manpage);
 			free(manpage);
@@ -207,7 +204,7 @@ exec_help(int argc, char **argv)
 		STAILQ_FOREACH(c, &plugins, next) {
 			if (strcmp(c->name, argv[1]) == 0) {
 				if (asprintf(&manpage, "/usr/bin/man pkg-%s", c->name) == -1)
-					errx(1, "cannot allocate memory");
+					errx(EX_SOFTWARE, "cannot allocate memory");
 
 				system(manpage);
 				free(manpage);
@@ -233,6 +230,257 @@ exec_help(int argc, char **argv)
 	return (EX_USAGE);
 }
 
+static void
+show_config_info(int version)
+{
+	struct pkg_config	*conf = NULL;
+	struct pkg_config_value	*list = NULL;
+	struct pkg_config_kv	*kv = NULL;
+	const char		*configname;
+	const char		*buf = NULL;
+	int			 cout;
+	int64_t			 integer;
+	bool			 b;
+
+	assert(version > 1);
+
+	while (pkg_configs(&conf) == EPKG_OK) {
+		configname = pkg_config_name(conf);
+
+		switch (pkg_config_type(conf)) {
+		case PKG_CONFIG_STRING:
+			pkg_config_string(pkg_config_id(conf), &buf);
+			cout = printf("%24s: %s", configname,
+			    buf == NULL ? "" : buf);
+
+			if (version > 2) {
+				pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL) {
+					cout = (cout >= 48 ? 1 : 48 - cout);
+					printf("%*s(%s)", cout, "", buf);
+				}
+			}
+			printf("\n");
+			break;
+		case PKG_CONFIG_BOOL:
+			pkg_config_bool(pkg_config_id(conf), &b);
+			cout = printf("%24s: %s", configname, b ? "yes": "no");
+
+			if (version > 2) {
+				pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL) {
+					cout = (cout >= 48 ? 1 : 48 - cout);
+					printf("%*s(%s)", cout, "", buf);
+				}
+			}
+			printf("\n");
+			break;
+		case PKG_CONFIG_INTEGER:
+			pkg_config_int64(pkg_config_id(conf), &integer);
+			cout = printf("%24s: %"PRId64, configname, integer);
+
+			if (version > 2) {
+				pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL) {
+					cout = (cout >= 48 ? 1 : 48 - cout);
+					printf("%*s(%s)", cout, "", buf);
+				}
+			}
+			printf("\n");
+			break;
+		case PKG_CONFIG_KVLIST:
+			cout = printf("%24s:", configname);
+
+			if (version > 2) {
+				pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL) {
+					cout = (cout >= 48 ? 1 : 48 - cout);
+					printf("%*s(%s)", cout, "", buf);
+				}
+			}
+			printf("\n");
+
+			kv = NULL;
+			while (pkg_config_kvlist(pkg_config_id(conf), &kv)
+			       == EPKG_OK) {
+				printf("\t- %16s: %s\n",
+				    pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
+				    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
+			}
+			break;
+		case PKG_CONFIG_LIST:
+			cout = printf("%24s:", configname);
+
+			if (version > 2) {
+				pkg_config_desc(pkg_config_id(conf), &buf);
+				if (buf != NULL) {
+					cout = (cout >= 48 ? 1 : 48 - cout);
+					printf("%*s(%s)", cout, "", buf);
+				}
+			}
+			printf("\n");
+
+			list = NULL;
+			while (pkg_config_list(pkg_config_id(conf), &list)
+			       == EPKG_OK) {
+				printf("\t- %16s\n", pkg_config_value(list));
+			}
+			break;
+		}
+	}
+}
+
+static void
+show_plugin_info(void)
+{
+	struct pkg_plugin	*p = NULL;
+	struct pkg_config	*conf = NULL;
+	struct pkg_config_value	*list = NULL;
+	struct pkg_config_kv	*kv = NULL;
+	const char		*configname;
+	const char		*buf;
+	int64_t			 integer;
+	bool			 b;
+
+	while (pkg_plugins(&p) == EPKG_OK) {
+		conf = NULL;
+		printf("Configurations for plugin: %s\n",
+		    pkg_plugin_get(p, PKG_PLUGIN_NAME));
+
+		while (pkg_plugin_confs(p, &conf) == EPKG_OK) {
+			configname = pkg_config_name(conf);
+
+			switch (pkg_config_type(conf)) {
+			case PKG_CONFIG_STRING:
+				pkg_plugin_conf_string(p, pkg_config_id(conf),
+				    &buf);
+				if (buf == NULL)
+					printf("\t%16s:\n", configname);
+				else
+					printf("\t%16s: %s\n", configname, buf);
+				break;
+			case PKG_CONFIG_BOOL:
+				pkg_plugin_conf_bool(p, pkg_config_id(conf),
+				    &b);
+				printf("\t%16s: %s\n", configname,
+			            b ? "yes": "no");
+				break;
+			case PKG_CONFIG_INTEGER:
+				pkg_plugin_conf_integer(p, pkg_config_id(conf),
+				    &integer);
+				printf("\t%16s: %"PRId64"\n", configname,
+                                    integer);
+				break;
+			case PKG_CONFIG_KVLIST:
+				printf("\t%16s:\n", configname);
+				kv = NULL;
+				while (pkg_plugin_conf_kvlist(p,
+                                    pkg_config_id(conf), &kv) == EPKG_OK) {
+					printf("\t\t- %8s: %s\n",
+					    pkg_config_kv_get(kv,
+					        PKG_CONFIG_KV_KEY),
+					    pkg_config_kv_get(kv,
+						PKG_CONFIG_KV_VALUE));
+				}
+				break;
+			case PKG_CONFIG_LIST:
+				printf("\t%16s:\n", configname);
+
+				list = NULL;
+				while (pkg_plugin_conf_list(p,
+			            pkg_config_id(conf), &list) == EPKG_OK) {
+					printf("\t\t- %8s\n",
+					    pkg_config_value(list));
+				}
+				break;
+			}
+		}
+	}
+}
+
+static void
+show_repository_info(void)
+{
+	const char	*buf;
+	struct pkg_repo	*repo = NULL;
+
+	printf("\nRepositories:\n");
+	while (pkg_repos(&repo) == EPKG_OK) {
+		switch (pkg_repo_mirror_type(repo)) {
+		case SRV:
+			buf = "SRV";
+			break;
+		case HTTP:
+			buf = "HTTP";
+			break;
+		case NOMIRROR:
+			buf = "NONE";
+			break;
+		default:
+			buf = "-unknown-";
+			break;
+		}
+		printf("  %s:\n%16s: %s\n%16s: %s\n%16s: %s\n%16s: %s\n",
+		    pkg_repo_ident(repo),
+                    "url", pkg_repo_url(repo),
+		    "key", pkg_repo_key(repo) == NULL ?
+		       "" : pkg_repo_key(repo),
+		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no",
+		    "mirror_type", buf);
+	}
+}
+
+static void
+show_version_info(int version)
+{
+	if (version > 1)
+		printf("%24s: ", "Version");
+
+	printf(PKGVERSION""GITHASH"\n");
+
+	if (version == 1)
+		exit(EX_OK);
+
+	show_config_info(version);
+	show_plugin_info();
+	show_repository_info();
+	
+	exit(EX_OK);
+	/* NOTREACHED */
+}
+
+static void
+do_activation_test(int argc)
+{
+	int	count;
+
+	/* Test to see if pkg(1) has been activated.  Exit with an
+	   error code if not.  Can be combined with -c and -j to test
+	   if pkg is activated in chroot or jail. If there are no
+	   other arguments, and pkg(1) has been activated, show how
+	   many packages have been installed. */
+
+	switch (pkg_status(&count)) {
+	case PKG_STATUS_UNINSTALLED: /* This case shouldn't ever happen... */
+		errx(EX_UNAVAILABLE, "can't execute " PKG_EXEC_NAME
+		    " or " PKG_STATIC_NAME "\n");
+		/* NOTREACHED */
+	case PKG_STATUS_NODB:
+		errx(EX_UNAVAILABLE, "package database non-existent");
+		/* NOTREACHED */
+	case PKG_STATUS_NOPACKAGES:
+		errx(EX_UNAVAILABLE, "no packages registered");
+		/* NOTREACHED */
+	case PKG_STATUS_ACTIVE:
+		if (argc == 0) {
+			warnx("%d packages installed", count);
+			exit(EX_OK);
+		}
+		break;
+	}
+	return;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -249,20 +497,12 @@ main(int argc, char **argv)
 	int debug = 0;
 	int version = 0;
 	int ret = EX_OK;
-	const char *buf = NULL;
-	bool b, plugins_enabled = false;
+	bool plugins_enabled = false;
 	bool plugin_found = false;
 	bool show_commands = false;
 	bool activation_test = false;
-	struct pkg_config_kv *kv = NULL;
-	struct pkg_config_value *list = NULL;
 	struct plugcmd *c;
-	struct pkg_plugin *p = NULL;
-	struct pkg_config *conf = NULL;
-	struct pkg_repo *repo = NULL;
-	const char *configname = NULL;
 	const char *conffile = NULL;
-	int64_t integer = 0;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -306,10 +546,9 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (version == 1) {
-		printf(PKGVERSION""GITHASH"\n");
-		exit(EX_OK);
-	}
+	if (version == 1)
+		show_version_info(version);
+
 	if (show_commands && version == 0) {
 		show_command_names();
 		exit(EX_OK);
@@ -351,11 +590,20 @@ main(int argc, char **argv)
 	if (pkg_init(conffile) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
+	if (atexit(&pkg_shutdown) != 0)
+		errx(EX_SOFTWARE, "register pkg_shutdown() to run at exit");
+
 	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
 
 	if (plugins_enabled) {
+		struct pkg_plugin	*p = NULL;
+
 		if (pkg_plugins_init() != EPKG_OK)
 			errx(EX_SOFTWARE, "Plugins cannot be loaded");
+
+		if (atexit(&pkg_plugins_shutdown) != 0)
+			errx(EX_SOFTWARE,
+                            "register pkg_plugins_shutdown() to run at exit");
 
 		/* load commands plugins */
 		while (pkg_plugins(&p) != EPKG_END) {
@@ -368,171 +616,11 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (version > 1) {
-		printf("version: "PKGVERSION""GITHASH"\n");
-		while (pkg_configs(&conf) == EPKG_OK) {
-			configname = pkg_config_name(conf);
-			switch (pkg_config_type(conf)) {
-			case PKG_CONFIG_STRING:
-				pkg_config_string(pkg_config_id(conf), &buf);
-				if (buf == NULL)
-					buf = "";
-				printf("%s: %s", configname, buf);
-				buf = NULL;
-				if (version > 2)
-					pkg_config_desc(pkg_config_id(conf), &buf);
-				if (buf != NULL)
-					printf(" (%s)", buf);
-				printf("\n");
-				break;
-			case PKG_CONFIG_BOOL:
-				pkg_config_bool(pkg_config_id(conf), &b);
-				printf("%s: %s", configname, b ? "yes": "no");
-				buf = NULL;
-				if (version > 2)
-					pkg_config_desc(pkg_config_id(conf), &buf);
-				if (buf != NULL)
-					printf(" (%s)", buf);
-				printf("\n");
-				break;
-			case PKG_CONFIG_INTEGER:
-				pkg_config_int64(pkg_config_id(conf), &integer);
-				printf("%s: %"PRId64, configname, integer);
-				buf = NULL;
-				if (version > 2)
-					pkg_config_desc(pkg_config_id(conf), &buf);
-				if (buf != NULL)
-					printf(" (%s)", buf);
-				printf("\n");
-				break;
-			case PKG_CONFIG_KVLIST:
-				printf("%s:", configname);
-				buf = NULL;
-				if (version > 2)
-					pkg_config_desc(pkg_config_id(conf), &buf);
-				if (buf != NULL)
-					printf(" (%s)", buf);
-				printf("\n");
-				kv = NULL;
-				while (pkg_config_kvlist(pkg_config_id(conf), &kv) == EPKG_OK) {
-					printf("\t- %s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
-					    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
-				}
-				break;
-			case PKG_CONFIG_LIST:
-				printf("%s:", configname);
-				buf = NULL;
-				if (version > 2)
-					pkg_config_desc(pkg_config_id(conf), &buf);
-				if (buf != NULL)
-					printf(" (%s)", buf);
-				printf("\n");
-				list = NULL;
-				while (pkg_config_list(pkg_config_id(conf), &list) == EPKG_OK) {
-					printf("\t- %s\n", pkg_config_value(list));
-				}
-			}
-		}
-		while (pkg_plugins(&p) == EPKG_OK) {
-			conf = NULL;
-			printf("Configurations for plugin: %s\n", pkg_plugin_get(p, PKG_PLUGIN_NAME));
-			while (pkg_plugin_confs(p, &conf) == EPKG_OK) {
-				configname = pkg_config_name(conf);
-				switch (pkg_config_type(conf)) {
-				case PKG_CONFIG_STRING:
-					pkg_plugin_conf_string(p, pkg_config_id(conf), &buf);
-					if (buf == NULL)
-						buf = "";
-					printf("\t%s: %s\n", configname, buf);
-					break;
-				case PKG_CONFIG_BOOL:
-					pkg_plugin_conf_bool(p, pkg_config_id(conf), &b);
-					printf("\t%s: %s\n", configname, b ? "yes": "no");
-					break;
-				case PKG_CONFIG_INTEGER:
-					pkg_plugin_conf_integer(p, pkg_config_id(conf), &integer);
-					printf("\t%s: %"PRId64"\n", configname, integer);
-					break;
-				case PKG_CONFIG_KVLIST:
-					printf("\t%s:\n", configname);
-					kv = NULL;
-					while (pkg_plugin_conf_kvlist(p, pkg_config_id(conf), &kv) == EPKG_OK) {
-						printf("\t\t- %s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
-						    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
-					}
-					break;
-				case PKG_CONFIG_LIST:
-					printf("\t%s:\n", configname);
-					list = NULL;
-					while (pkg_plugin_conf_list(p, pkg_config_id(conf), &list) == EPKG_OK) {
-						printf("\t\t- %s\n", pkg_config_value(list));
-					}
-				}
-			}
-		}
+	if (version > 1)
+		show_version_info(version);
 
-		printf("\nRepositories:\n");
-		while (pkg_repos(&repo) == EPKG_OK) {
-			switch (pkg_repo_mirror_type(repo)) {
-			case SRV:
-				buf = "SRV";
-				break;
-			case HTTP:
-				buf = "HTTP";
-				break;
-			case NOMIRROR:
-				buf = "NONE";
-				break;
-			}
-			printf("  %s:\n    url: %s\n    key: %s\n    enabled: %s\n    mirror_type: %s\n",
-			    pkg_repo_ident(repo), pkg_repo_url(repo),
-			    pkg_repo_key(repo) == NULL ? "" : pkg_repo_key(repo),
-			    pkg_repo_enabled(repo) ? "yes" : "no",
-			    buf);
-		}
-
-		pkg_shutdown();
-		pkg_plugins_shutdown();
-		exit(EX_OK);
-	}
-
-	if (activation_test) {
-		int	count;
-
-		/* Test to see if pkg(1) has been activated.  Exit
-		   with an error code if not.  Can be combined with -c
-		   and -j to test if pkg is activated in chroot or
-		   jail. If there are no other arguments, and pkg(1)
-		   has been activated, show how many packages have
-		   been installed. */
-
-		switch (pkg_status(&count)) {
-		case PKG_STATUS_UNINSTALLED: /* This case shouldn't ever happen... */
-			pkg_shutdown();
-			pkg_plugins_shutdown();
-			errx(EX_UNAVAILABLE, "can't execute " PKG_EXEC_NAME " or " PKG_STATIC_NAME "\n");
-			/* NOTREACHED */
-		case PKG_STATUS_NODB:
-			pkg_shutdown();
-			pkg_plugins_shutdown();
-			errx(EX_UNAVAILABLE, "package database non-existent");
-			/* NOTREACHED */
-		case PKG_STATUS_NOPACKAGES:
-			pkg_shutdown();
-			pkg_plugins_shutdown();
-			errx(EX_UNAVAILABLE, "no packages registered");
-			/* NOTREACHED */
-		case PKG_STATUS_ACTIVE:
-			if (argc == 0) {
-				warnx("%d packages installed", count);
-				pkg_shutdown();
-				pkg_plugins_shutdown();
-				exit(EX_OK);
-			}
-			break;
-		}
-
-	}
+	if (activation_test)
+		do_activation_test(argc);
 
 	len = strlen(argv[0]);
 	for (i = 0; i < cmd_len; i++) {
@@ -570,9 +658,6 @@ main(int argc, char **argv)
 		if (!plugin_found)
 			usage(conffile);
 
-		pkg_plugins_shutdown();
-		pkg_shutdown();
-
 		return (ret);
 	}
 
@@ -589,9 +674,6 @@ main(int argc, char **argv)
 			if (strncmp(argv[0], cmd[i].name, len) == 0)
 				fprintf(stderr, "\t%s\n",cmd[i].name);
 	}
-
-	pkg_shutdown();
-	pkg_plugins_shutdown();
 
 	return (ret);
 }

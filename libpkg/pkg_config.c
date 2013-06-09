@@ -31,12 +31,13 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <dlfcn.h>
-#include <fcntl.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
+#include <sysexits.h>
 
 #ifdef BUNDLED_YAML
 #include <yaml.h>
@@ -1166,12 +1167,13 @@ pkg_repo_free(struct pkg_repo *r)
 	free(r);
 }
 
-int
+void
 pkg_shutdown(void)
 {
 	if (!parsed) {
 		pkg_emit_error("pkg_shutdown() must be called after pkg_init()");
-		return (EPKG_FATAL);
+		_exit(EX_SOFTWARE);
+		/* NOTREACHED */
 	}
 
 	HASH_FREE(config, pkg_config, pkg_config_free);
@@ -1181,7 +1183,7 @@ pkg_shutdown(void)
 
 	parsed = false;
 
-	return (EPKG_OK);
+	return;
 }
 
 int

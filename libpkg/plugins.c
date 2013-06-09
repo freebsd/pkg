@@ -579,7 +579,7 @@ pkg_plugin_parse(struct pkg_plugin *p)
 	return (EPKG_OK);
 }
 
-int
+void
 pkg_plugins_shutdown(void)
 {
 	struct pkg_plugin *p = NULL;
@@ -600,5 +600,5 @@ pkg_plugins_shutdown(void)
 	 */
 	pkg_plugin_free();
 
-	return (EPKG_OK);
+	return;
 }

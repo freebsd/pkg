@@ -1138,7 +1138,7 @@ int64_t pkgdb_stats(struct pkgdb *db, pkg_stats_t type);
  * @todo Document
  */
 int pkg_plugins_init(void);
-int pkg_plugins_shutdown(void);
+void pkg_plugins_shutdown(void);
 int pkg_plugins(struct pkg_plugin **plugin);
 int pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str);
 const char *pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key);
@@ -1356,7 +1356,7 @@ void pkg_event_register(pkg_event_cb cb, void *data);
 
 int pkg_init(const char *);
 int pkg_initialized(void);
-int pkg_shutdown(void);
+void pkg_shutdown(void);
 
 int pkg_test_filesum(struct pkg *);
 int pkg_recompute(struct pkgdb *, struct pkg *);
