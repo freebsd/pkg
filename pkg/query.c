@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -76,7 +77,6 @@ static struct query_flags accepted_query_flags[] = {
 static void
 format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 {
-	const char *tmp;
 
 	sbuf_clear(dest);
 
@@ -94,11 +94,7 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				pkg_sbuf_printf(dest, "%o", pkg);
 				break;
 			case 'R':
-				/* @@@@@@@@@@
-				   pkg_sbuf_printf(dest, "%...", pkg); */ 
-				pkg_get(pkg, PKG_REPONAME, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%N", pkg);
 				break;
 			case 'p':
 				pkg_sbuf_printf(dest, "%p", pkg);
