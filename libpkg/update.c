@@ -629,7 +629,8 @@ pkg_update(struct pkg_repo *repo, bool force)
 		}
 	}
 
-	if (pkg_update_incremental(repofile, repo, &t) != EPKG_OK) {
+	res = pkg_update_incremental(repofile, repo, &t);
+	if (res != EPKG_OK && res != EPKG_UPTODATE) {
 		pkg_emit_notice("No digest falling back on legacy catalog format");
 
 		/* Still try to do full upgrade */
