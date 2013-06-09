@@ -478,13 +478,13 @@ Annotation tag name [string]
 Annotation value [string]
 .Vt struct pkg_note *
 .It Cm \^%B
-Shared libraries [array]
+Required shared libraries [array]
 .Vt struct pkg *
 .Pp
 Default row format:
 .Cm "%B%{%Bn\en%|%}"
 .It Cm %Bn
-Shared library name [string]
+Required shared library name [string]
 .Vt struct pkg_shlib *
 .It Cm %C
 Categories [array]
@@ -637,6 +637,15 @@ replaced by another.
 .It Cm %a
 Autoremove flag [boolean]
 .Vt struct pkg *
+.It Cm \^%b
+Provided shared libraries [array]
+.Vt struct pkg *
+.Pp
+Default row format:
+.Cm "%b%{%bn\en%|%}"
+.It Cm %bn
+Provided shared library name [string]
+.Vt struct pkg_shlib *
 .It Cm %c
 Comment [string]
 .Vt struct pkg *
