@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -76,12 +77,6 @@ static struct query_flags accepted_query_flags[] = {
 static void
 format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 {
-	char size[7];
-	const char *tmp;
-	bool tmp2;
-	int64_t flatsize;
-	int64_t timestamp;
-	lic_t licenselogic;
 
 	sbuf_clear(dest);
 
@@ -90,111 +85,86 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 			qstr++;
 			switch (qstr[0]) {
 			case 'n':
-				pkg_get(pkg, PKG_NAME, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%n", pkg);
 				break;
 			case 'v':
-				pkg_get(pkg, PKG_VERSION, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%v", pkg);
 				break;
 			case 'o':
-				pkg_get(pkg, PKG_ORIGIN, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%o", pkg);
 				break;
 			case 'R':
-				pkg_get(pkg, PKG_REPONAME, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%N", pkg);
 				break;
 			case 'p':
-				pkg_get(pkg, PKG_PREFIX, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%p", pkg);
 				break;
 			case 'm':
-				pkg_get(pkg, PKG_MAINTAINER, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%m", pkg);
 				break;
 			case 'c':
-				pkg_get(pkg, PKG_COMMENT, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%c", pkg);
 				break;
 			case 'w':
-				pkg_get(pkg, PKG_WWW, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%w", pkg);
 				break;
 			case 'a':
-				pkg_get(pkg, PKG_AUTOMATIC, &tmp2);
-				sbuf_printf(dest, "%d", tmp2);
+				pkg_sbuf_printf(dest, "%a", pkg);
 				break;
 			case 'k':
-				pkg_get(pkg, PKG_LOCKED, &tmp2);
-				sbuf_printf(dest, "%d", tmp2);
+				pkg_sbuf_printf(dest, "%k", pkg);
 				break;
 			case 't':
-				pkg_get(pkg, PKG_TIME, &timestamp);
-				sbuf_printf(dest, "%" PRId64, timestamp);
+				pkg_sbuf_printf(dest, "%t", pkg);
 				break;
 			case 's':
 				qstr++;
-				pkg_get(pkg, PKG_FLATSIZE, &flatsize);
-				if (qstr[0] == 'h') {
-					humanize_number(size, sizeof(size),
-					    flatsize, "B", HN_AUTOSCALE, 0);
-					sbuf_cat(dest, size);
-				} else if (qstr[0] == 'b') {
-					sbuf_printf(dest, "%" PRId64, flatsize);
-				}
+				if (qstr[0] == 'h') 
+					pkg_sbuf_printf(dest, "%?sB", pkg);
+			        else if (qstr[0] == 'b')
+					pkg_sbuf_printf(dest, "%s", pkg);
 				break;
 			case 'e':
-				pkg_get(pkg, PKG_DESC, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%e", pkg);
 				break;
 			case '?':
 				qstr++;
 				switch (qstr[0]) {
 				case 'd':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_DEPS) > 0);
+					pkg_sbuf_printf(dest, "%?d", pkg);
 					break;
 				case 'r':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_RDEPS) > 0);
+					pkg_sbuf_printf(dest, "%?r", pkg);
 					break;
 				case 'C':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_CATEGORIES) > 0);
+					pkg_sbuf_printf(dest, "%?C", pkg);
 					break;
 				case 'F':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_FILES) > 0);
+					pkg_sbuf_printf(dest, "%?F", pkg);
 					break;
 				case 'O':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_OPTIONS) > 0);
+					pkg_sbuf_printf(dest, "%?O", pkg);
 					break;
 				case 'D':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_DIRS) > 0);
+					pkg_sbuf_printf(dest, "%?D", pkg);
 					break;
 				case 'L':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_LICENSES) > 0);
+					pkg_sbuf_printf(dest, "%?L", pkg);
 					break;
 				case 'U':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_USERS) > 0);
+					pkg_sbuf_printf(dest, "%?U", pkg);
 					break;
 				case 'G':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_GROUPS) > 0);
+					pkg_sbuf_printf(dest, "%?G", pkg);
 					break;
 				case 'B':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_REQUIRED) > 0);
+					pkg_sbuf_printf(dest, "%?B", pkg);
 					break;
 				case 'b':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_PROVIDED) > 0);
+					pkg_sbuf_printf(dest, "%?b", pkg);
 					break;
 				case 'A':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_ANNOTATIONS) > 0);
+					pkg_sbuf_printf(dest, "%?A", pkg);
 					break;
 				}
 				break;
@@ -202,119 +172,108 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				qstr++;
 				switch (qstr[0]) {
 				case 'd':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_DEPS));
+					pkg_sbuf_printf(dest, "%#d", pkg);
 					break;
 				case 'r':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_RDEPS));
+					pkg_sbuf_printf(dest, "%#r", pkg);
 					break;
 				case 'C':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_CATEGORIES));
+					pkg_sbuf_printf(dest, "%#C", pkg);
 					break;
 				case 'F':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_FILES));
+					pkg_sbuf_printf(dest, "%#F", pkg);
 					break;
 				case 'O':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_OPTIONS));
+					pkg_sbuf_printf(dest, "%#O", pkg);
 					break;
 				case 'D':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_DIRS));
+					pkg_sbuf_printf(dest, "%#D", pkg);
 					break;
 				case 'L':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_LICENSES));
+					pkg_sbuf_printf(dest, "%#L", pkg);
 					break;
 				case 'U':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_USERS));
+					pkg_sbuf_printf(dest, "%#U", pkg);
 					break;
 				case 'G':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_GROUPS));
+					pkg_sbuf_printf(dest, "%#G", pkg);
 					break;
 				case 'B':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_REQUIRED));
+					pkg_sbuf_printf(dest, "%#B", pkg);
 					break;
 				case 'b':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_SHLIBS_PROVIDED));
+					pkg_sbuf_printf(dest, "%#b", pkg);
 					break;
 				case 'A':
-					sbuf_printf(dest, "%d", pkg_list_count(pkg, PKG_ANNOTATIONS));
+					pkg_sbuf_printf(dest, "%#A", pkg);
 					break;
 				}
 				break;
 			case 'l':
-				pkg_get(pkg, PKG_LICENSE_LOGIC, &licenselogic);
-				switch (licenselogic) {
-				case LICENSE_SINGLE:
-					sbuf_cat(dest, "single");
-					break;
-				case LICENSE_OR:
-					sbuf_cat(dest, "or");
-					break;
-				case LICENSE_AND:
-					sbuf_cat(dest, "and");
-					break;
-				}
+				pkg_sbuf_printf(dest, "%l", pkg);
 				break;
 			case 'd':
 				qstr++;
 				if (qstr[0] == 'n')
-					sbuf_cat(dest, pkg_dep_name((struct pkg_dep *)data));
+					pkg_sbuf_printf(dest, "%dn", data);
 				else if (qstr[0] == 'o')
-					sbuf_cat(dest, pkg_dep_origin((struct pkg_dep *)data));
+					pkg_sbuf_printf(dest, "%do", data);
 				else if (qstr[0] == 'v')
-					sbuf_cat(dest, pkg_dep_version((struct pkg_dep *)data));
+					pkg_sbuf_printf(dest, "%dv", data);
 				break;
 			case 'r':
 				qstr++;
 				if (qstr[0] == 'n')
-					sbuf_cat(dest, pkg_dep_name((struct pkg_dep *)data));
+					pkg_sbuf_printf(dest, "%rn", data);
 				else if (qstr[0] == 'o')
-					sbuf_cat(dest, pkg_dep_origin((struct pkg_dep *)data));
+					pkg_sbuf_printf(dest, "%ro", data);
 				else if (qstr[0] == 'v')
-					sbuf_cat(dest, pkg_dep_version((struct pkg_dep *)data));
+					pkg_sbuf_printf(dest, "%rv", data);
 				break;
 			case 'C':
-				sbuf_cat(dest, pkg_category_name((struct pkg_category *)data));
+				pkg_sbuf_printf(dest, "%Cn", data);
 				break;
 			case 'F':
 				qstr++;
 				if (qstr[0] == 'p')
-					sbuf_cat(dest, pkg_file_path((struct pkg_file *)data));
+					pkg_sbuf_printf(dest, "%Fn", data);
 				else if (qstr[0] == 's')
-					sbuf_cat(dest, pkg_file_cksum((struct pkg_file *)data));
+					pkg_sbuf_printf(dest, "%Fs", data);
 				break;
 			case 'O':
 				qstr++;
 				if (qstr[0] == 'k')
-					sbuf_cat(dest, pkg_option_opt((struct pkg_option *)data));
+					pkg_sbuf_printf(dest, "%On", data);
 				else if (qstr[0] == 'v')
-					sbuf_cat(dest, pkg_option_value((struct pkg_option *)data));
+					pkg_sbuf_printf(dest, "%Ov", data);
 				break;
 			case 'D':
-				sbuf_cat(dest, pkg_dir_path((struct pkg_dir *)data));
+				pkg_sbuf_printf(dest, "%Dn", data);
 				break;
 			case 'L':
-				sbuf_cat(dest, pkg_license_name((struct pkg_license *)data));
+				pkg_sbuf_printf(dest, "%Ln", data);
 				break;
 			case 'U':
-				sbuf_cat(dest, pkg_user_name((struct pkg_user *)data));
+				pkg_sbuf_printf(dest, "%Un", data);
 				break;
 			case 'G':
-				sbuf_cat(dest, pkg_group_name((struct pkg_group *)data));
+				pkg_sbuf_printf(dest, "%Gn", data);
 				break;
 			case 'B':
+				pkg_sbuf_printf(dest, "%Bn", data);
+				break;
 			case 'b':
-				sbuf_cat(dest, pkg_shlib_name((struct pkg_shlib *)data));
+				pkg_sbuf_printf(dest, "%bn", data);
 				break;
 			case 'A':
 				qstr++;
 				if (qstr[0] == 't')
-					sbuf_cat(dest, pkg_annotation_tag((struct pkg_note *)data));
+					pkg_sbuf_printf(dest, "%An", data);
 				else if (qstr[0] == 'v')
-					sbuf_cat(dest, pkg_annotation_value((struct pkg_note *)data));
+					pkg_sbuf_printf(dest, "%Av", data);
 				break;
 			case 'M':
-				pkg_get(pkg, PKG_MESSAGE, &tmp);
-				if (tmp != NULL)
-					sbuf_cat(dest, tmp);
+				pkg_sbuf_printf(dest, "%M", pkg);
 				break;
 			case '%':
 				sbuf_putc(dest, '%');

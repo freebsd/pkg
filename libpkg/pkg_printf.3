@@ -30,7 +30,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 8, 2013
+.Dd June 9, 2013
 .Dt PKG_PRINTF 3
 .Os
 .Sh NAME
@@ -478,13 +478,13 @@ Annotation tag name [string]
 Annotation value [string]
 .Vt struct pkg_note *
 .It Cm \^%B
-Shared libraries [array]
+Required shared libraries [array]
 .Vt struct pkg *
 .Pp
 Default row format:
 .Cm "%B%{%Bn\en%|%}"
 .It Cm %Bn
-Shared library name [string]
+Required shared library name [string]
 .Vt struct pkg_shlib *
 .It Cm %C
 Categories [array]
@@ -583,6 +583,9 @@ Licence name [string]
 .It Cm %M
 Package message [string]
 .Vt struct pkg *
+.It Cm %N
+Repository identity [string]
+.Vt struct pkg *
 .It Cm \^%O
 Options [array]
 .Vt struct pkg *
@@ -637,6 +640,15 @@ replaced by another.
 .It Cm %a
 Autoremove flag [boolean]
 .Vt struct pkg *
+.It Cm \^%b
+Provided shared libraries [array]
+.Vt struct pkg *
+.Pp
+Default row format:
+.Cm "%b%{%bn\en%|%}"
+.It Cm %bn
+Provided shared library name [string]
+.Vt struct pkg_shlib *
 .It Cm %c
 Comment [string]
 .Vt struct pkg *

@@ -86,8 +86,7 @@
  * Ln pkg_license  Licence name
  *
  * M  pkg          Message
- *
- * N
+ * N  pkg          Reponame
  *
  * O  pkg          List of options
  * On pkg_option   Option name (key)
@@ -423,6 +422,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_ALL,
 		&format_message,
+	},
+	[PP_PKG_REPO_IDENT] =
+	{
+		'N',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_repo_ident,
 	},
 	[PP_PKG_OPTION_NAME] =
 	{
@@ -1253,6 +1261,19 @@ format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 
 	pkg_get(pkg, PKG_MESSAGE, &message);
 	return (string_val(sbuf, message, p));
+}
+
+/*
+ * %N -- Repository identity. string.  Accepts field-width, left-align
+ */
+struct sbuf *
+format_repo_ident(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+	const char		*reponame;
+
+	pkg_get(pkg, PKG_REPONAME, &reponame);
+	return (string_val(sbuf, pkg_repo_ident_from_name(reponame), p));
 }
 
 /*

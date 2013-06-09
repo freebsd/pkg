@@ -1377,6 +1377,7 @@ int pkg_repos(struct pkg_repo **);
 const char *pkg_repo_url(struct pkg_repo *r);
 const char *pkg_repo_ident(struct pkg_repo *r);
 const char *pkg_repo_name(struct pkg_repo *r);
+const char * pkg_repo_ident_from_name(const char *repo_name);
 const char *pkg_repo_key(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
