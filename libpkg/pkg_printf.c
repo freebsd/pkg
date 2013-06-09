@@ -423,14 +423,14 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_ALL,
 		&format_message,
 	},
-	[PP_PKG_REPO_NAME] =
+	[PP_PKG_REPO_IDENT] =
 	{
 		'N',
 		'\0',
 		false,
 		true,
 		PP_ALL,
-		&format_repo_name,
+		&format_repo_ident,
 	},
 	[PP_PKG_OPTION_NAME] =
 	{
@@ -1264,16 +1264,16 @@ format_message(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 }
 
 /*
- * %N -- Repository name. string.  Accepts field-width, left-align
+ * %N -- Repository identity. string.  Accepts field-width, left-align
  */
 struct sbuf *
-format_repo_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+format_repo_ident(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
-	const char		*repo_name;
+	const char		*reponame;
 
-	pkg_get(pkg, PKG_REPONAME, &repo_name);
-	return (string_val(sbuf, repo_name, p));
+	pkg_get(pkg, PKG_REPONAME, &reponame);
+	return (string_val(sbuf, pkg_repo_ident_from_name(reponame), p));
 }
 
 /*

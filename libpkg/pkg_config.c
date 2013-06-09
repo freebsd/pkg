@@ -1211,6 +1211,13 @@ pkg_repo_ident(struct pkg_repo *r)
 	return (r->name + strlen(REPO_NAME_PREFIX));
 }
 
+/* Ditto: The repo identifier from pkg.conf(5): without the 'repo-' prefix */
+const char *
+pkg_repo_ident_from_name(const char *repo_name)
+{
+	return (repo_name + strlen(REPO_NAME_PREFIX));
+}
+
 /* The basename of the sqlite DB file and the database name */
 const char *
 pkg_repo_name(struct pkg_repo *r)

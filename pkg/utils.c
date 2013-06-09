@@ -223,14 +223,13 @@ print_info(struct pkg * const pkg, unsigned int options)
 	bool print_tag = false;
 	bool show_locks = false;
 	char size[7];
-	const char *reponame, *repourl;
+	const char *repourl;
 	unsigned opt;
 	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
 
 	pkg_get(pkg,
-		PKG_REPONAME,      &reponame,
 		PKG_REPOURL,       &repourl,
 		PKG_FLATSIZE,      &flatsize,
 		PKG_OLD_FLATSIZE,  &oldflatsize,
@@ -331,7 +330,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			    repourl != NULL && repourl[0] != '\0') {
 				if (print_tag)
 					printf("%-15s: ", "Repository");
-				printf("%s [%s]\n", reponame, repourl);
+				pkg_printf("%N [%S]\n", pkg, repourl);
 			} else if (!print_tag)
 				printf("\n");
 			break;
