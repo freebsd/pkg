@@ -433,7 +433,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 {
 	FILE *fmanifest = NULL, *fdigests = NULL;
 	sqlite3 *sqlite = NULL;
-	struct pkg *local_pkg = NULL;
+	struct pkg *pkg = NULL;
 	int rc = EPKG_FATAL;
 	const char *origin, *digest, *offset;
 	struct pkgdb_it *it = NULL;
@@ -464,8 +464,8 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		goto cleanup;
 	}
 
-	while (pkgdb_it_next(it, &local_pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(local_pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
 		pkg_update_increment_item_new(&ldel, origin, digest, 4);
 	}
 
