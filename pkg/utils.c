@@ -429,7 +429,8 @@ print_info(struct pkg * const pkg, unsigned int options)
 		case INFO_MESSAGE:
 			if (print_tag)
 				printf("%-15s:\n", "Message");
-			pkg_printf("%M\n", pkg);
+			if (pkg_has_message(pkg))
+				pkg_printf("%M\n", pkg);
 			break;
 		case INFO_DEPS:
 			if (pkg_list_count(pkg, PKG_DEPS) > 0) {
