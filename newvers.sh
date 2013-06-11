@@ -39,9 +39,9 @@
 
 : ${PKG_MAJOR_VERSION:="1"}
 : ${PKG_MINOR_VERSION="0"}
-: ${PKG_PATCH_LEVEL="12"}
+: ${PKG_PATCH_LEVEL="13"}
  
-: ${PORTREVISION:="1"}
+: ${PORTREVISION:=""}
 : ${PORTEPOCH:=}
 
 # ------------------------------------------------------------------
