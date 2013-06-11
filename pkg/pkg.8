@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd June 5, 2013
+.Dd June 11, 2013
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -81,24 +81,37 @@ is configured to use
 .Nm
 as its package management system or not.
 .Pp
+Example usage:
+.Bd -literal -offset indent
+  if pkg -N >/dev/null 2>&1; then
+    # pkgng-specifics
+  else
+    # pkg_install-specifics
+  fi
+.Ed
+.Pp
 The
 .Fl N
-flag was not released at the initial release of
+flag was first released in the
+.Pa /usr/sbin/pkg
+bootstrapper
+in FreeBSD 8.4,
+but was missing from FreeBSD 9.1.
+It was not released in
 .Nm
-and did not exist in every released version of the bootstrapper in
-.Pa /usr/sbin/pkg .
+until 1.0.13.
 Because of this, it may not be enough to just call
 .Nm Fl N ,
-as the bootstrapper may be invoked.
-The following script is the best way to detect if
+as the bootstrapper may be invoked, or an error returned
+from
+.Nm .
+The following script is the safest way to detect if
 .Nm
-is installed and ready for use.
-This also assumes that the installed
-.Nm
-is at least version 1.0.13.
+is installed and activated:
 .Bd -literal -offset indent
-  if [ -f /var/db/pkg/local.sqlite ] &&
-      pkg -N >/dev/null 2>&1; then
+  if TMPDIR=/dev/null ASSUME_ALWAYS_YES=1 \\
+       PACKAGESITE=file:///nonexistent \\
+       pkg info pkg >/dev/null 2>&1; then
     # pkgng-specifics
   else
     # pkg_install-specifics
