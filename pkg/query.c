@@ -273,7 +273,8 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					pkg_sbuf_printf(dest, "%Av", data);
 				break;
 			case 'M':
-				pkg_sbuf_printf(dest, "%M", pkg);
+				if (pkg_has_message(pkg))
+					pkg_sbuf_printf(dest, "%M", pkg);
 				break;
 			case '%':
 				sbuf_putc(dest, '%');
