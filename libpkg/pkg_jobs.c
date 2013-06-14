@@ -547,8 +547,9 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	if (root && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
 
-	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
-		force = true;
+	if (((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE) &&
+	    ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE))
+	    force = true;
 
 	if (j->type == PKG_JOBS_UPGRADE && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
@@ -693,6 +694,12 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		pkg_free(lp);
 		return (true);
 	}
+
+	if (cmp == PKG_REINSTALL && (j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
+		pkg_free(lp);
+		return (true);
+	}
+
 	if (cmp == PKG_DOWNGRADE) {
 		pkg_free(lp);
 		return (false);
