@@ -547,6 +547,9 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	if (root && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
 
+	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
+		force = true;
+
 	if (j->type == PKG_JOBS_UPGRADE && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
 
@@ -558,9 +561,6 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	} else {
 		flags |= PKG_LOAD_DEPS;
 	}
-
-	if (root && (j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
-		flags |= PKG_LOAD_RDEPS;
 
 	if ((it = pkgdb_rquery(j->db, pattern, m, j->reponame)) == NULL)
 		return (rc);
@@ -771,6 +771,8 @@ jobs_solve_install(struct pkg_jobs *j)
 	struct job_pattern *jp = NULL;
 	struct pkg *pkg, *tmp, *p;
 	struct pkg_dep *d, *dtmp;
+	struct pkgdb_it *it;
+	const char *origin;
 	int ret;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != PKG_FLAG_PKG_VERSION_TEST)
@@ -780,8 +782,27 @@ jobs_solve_install(struct pkg_jobs *j)
 		}
 
 	LL_FOREACH(j->patterns, jp) {
-		if (get_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
-			pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
+		if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
+			if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
+				return (EPKG_FATAL);
+
+			pkg = NULL;
+			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
+				d = NULL;
+				pkg_get(pkg, PKG_ORIGIN, &origin);
+				if (get_remote_pkg(j, origin, MATCH_EXACT, true) == EPKG_FATAL)
+					pkg_emit_error("No packages matching '%s', has been found in the repositories", pkg_dep_origin(d));
+
+				while (pkg_rdeps(pkg, &d) == EPKG_OK) {
+					if (get_remote_pkg(j, pkg_dep_origin(d), MATCH_EXACT, false) == EPKG_FATAL)
+						pkg_emit_error("No packages matching '%s', has been found in the repositories", pkg_dep_origin(d));
+				}
+			}
+			pkgdb_it_free(it);
+		} else {
+			if (get_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
+				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
+		}
 	}
 
 	if (HASH_COUNT(j->bulk) == 0)
