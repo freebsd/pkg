@@ -93,7 +93,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			pkg_config_bool(PKG_CONFIG_DEBUG_SCRIPTS, &debug);
 			if (debug)
 				sbuf_printf(script_cmd, "set -x\n");
-			pkg_sbuf_printf(script_cmd, "set -- %s-%s", pkg, pkg);
+			pkg_sbuf_printf(script_cmd, "set -- %n-%v", pkg, pkg);
 
 			if (j == map[i].b) {
 				/* add arg **/
