@@ -3313,7 +3313,6 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		printf("%s\n", sbuf_data(sql));
 		ERROR_SQLITE(db->sqlite);
 		sbuf_delete(sql);
 		return (NULL);
