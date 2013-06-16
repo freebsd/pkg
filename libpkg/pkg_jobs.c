@@ -357,7 +357,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
-		/* Do not test we ignore what doesn't exists remotely */
+		/* Do not test, i.e. ignore what doesn't exists remotely) */
 		get_remote_pkg(j, origin, MATCH_EXACT, false);
 		pkg = NULL;
 	}
@@ -752,11 +752,13 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	for (;;) {
 		ret1 = pkg_shlibs_required(rp, &rs);
 		ret2 = pkg_shlibs_required(lp, &ls);
-		if (ret1 != ret2) {
+		/* If remote repository got new shlibs information but local repository does not */
+		if (ret1 == EPKG_OK && ret2 != EPKG_OK) {
 			pkg_free(lp);
-			pkg_set(rp, PKG_REASON, "needed shared library changed");
+			pkg_set(rp, PKG_REASON, "shared library information changed");
 			return (true);
 		}
+		/* If remote repository and local repository got shlibs information */
 		if (ret1 == EPKG_OK) {
 			if (strcmp(pkg_shlib_name(rs),
 			    pkg_shlib_name(ls)) != 0) {
