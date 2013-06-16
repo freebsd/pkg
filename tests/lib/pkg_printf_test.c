@@ -2254,7 +2254,7 @@ ATF_TC_BODY(parse_format, tc)
 
 	p = new_percent_esc();
 
-	ATF_REQUIRE_EQ(p != NULL, true);
+	ATF_REQUIRE(p != NULL);
 
 	for (i = 0; pf_test_vals[i].in != NULL; i++) {
 		f = parse_format(pf_test_vals[i].in, pf_test_vals[i].context,
