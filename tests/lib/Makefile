@@ -1,10 +1,12 @@
-TESTS=	test pkg_printf_test
+TESTS=	test pkg_printf_test pkg_validation
 
 SRCS=		tests.h
 test_SRCS=	manifest.c	\
 		pkg.c
 
 pkg_printf_test_SRCS=	pkg_printf.c
+
+pkg_validation_SRC=	pkg_validation
 
 CFLAGS+=	-DTESTING -I../../libpkg
 LDADD+=		-Wl,-rpath ${.CURDIR}/../../libpkg \
