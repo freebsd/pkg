@@ -36,7 +36,7 @@ ATF_TC(valid_installed);
 ATF_TC_HEAD(valid_installed, tc)
 {
 	atf_tc_set_md_var(tc, "descr",
-	    "pkg_valid() tests installed");
+	    "pkg_valid() tests installed packages");
 }
 
 int
@@ -104,12 +104,140 @@ ATF_TC_BODY(valid_installed, tc)
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_PREFIX, "/usr/local"));
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_is_valid(p));
 
+	sbuf_delete(msg);
+}
+
+ATF_TC(valid_file);
+
+ATF_TC_HEAD(valid_file, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "pkg_valid() tests file packages");
+}
+
+ATF_TC_BODY(valid_file, tc)
+{
+	struct pkg *p = NULL;
+	msg = sbuf_new_auto();
+
+	pkg_event_register(event_callback, NULL);
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_FILE));
+	ATF_REQUIRE(p != NULL);
+
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: origin");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ORIGIN, "test/bla"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: name");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_NAME, "test"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: version");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_VERSION, "1.1.0"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: comment");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_COMMENT, "test comment"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: description");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_DESC, "test description"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: architecture");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ARCH, "freebsd:N"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: maintainer");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_MAINTAINER, "tester"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: www");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_WWW, "test website"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: prefix");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_PREFIX, "/usr/local"));
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_is_valid(p));
+
+	sbuf_delete(msg);
+}
+
+ATF_TC(valid_remote);
+
+ATF_TC_HEAD(valid_remote, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "pkg_valid() tests remote packages");
+}
+
+ATF_TC_BODY(valid_remote, tc)
+{
+	struct pkg *p = NULL;
+	msg = sbuf_new_auto();
+
+	pkg_event_register(event_callback, NULL);
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_REMOTE));
+	ATF_REQUIRE(p != NULL);
+
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: origin");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ORIGIN, "test/bla"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: name");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_NAME, "test"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: version");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_VERSION, "1.1.0"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: comment");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_COMMENT, "test comment"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: description");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_DESC, "test description"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: architecture");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ARCH, "freebsd:N"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: maintainer");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_MAINTAINER, "tester"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: www");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_WWW, "test website"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: prefix");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_PREFIX, "/usr/local"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: repopath");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_REPOPATH, "/here"));
+	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
+	ATF_REQUIRE_STREQ(sbuf_data(msg), "package field incomplete: checksum");
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_CKSUM, "mysum"));
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_is_valid(p));
+
+	sbuf_delete(msg);
 }
 
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, valid_installed);
+	ATF_TP_ADD_TC(tp, valid_file);
+	ATF_TP_ADD_TC(tp, valid_remote);
 
 	return (atf_no_error());
 }
-
