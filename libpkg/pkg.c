@@ -170,8 +170,8 @@ pkg_is_valid(const struct pkg * restrict pkg)
 	for (i = 0; i < PKG_NUM_FIELDS; i++) {
 		if ((fields[i].type & pkg->type) == 0 ||
 		    fields[i].optional ||
-		    pkg->fields[i] != NULL ||
-		    sbuf_len(pkg->fields[i]) > 0)
+		    (pkg->fields[i] != NULL &&
+		    sbuf_len(pkg->fields[i]) > 0))
 			continue;
 		pkg_emit_error("package field incomplete: %s",
 		    fields[i].human_desc);
