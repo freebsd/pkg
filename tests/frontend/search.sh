@@ -7,7 +7,7 @@ search_head() {
 
 search_body() {
 	REPOS_DIR=/nonexistent
-	atf_check -o inline:"pkg                            New generation package manager\n" -e empty -s exit:0 pkg -C '' search -e -Q comment -S name pkg
+	atf_check -e inline:"pkg: No repositories configured\n" -o empty -s exit:74 pkg -C '' search -e -Q comment -S name pkg
 }
 
 atf_init_test_cases() {

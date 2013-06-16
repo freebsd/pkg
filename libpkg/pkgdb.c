@@ -3291,6 +3291,11 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 			return (NULL);
 		}
 	} else {
+		if (pkg_repos_count() == 0) {
+			pkg_emit_error("No repositories configured");
+			sbuf_delete(sql);
+			return (NULL);
+		}
 		/* test on all the attached databases */
 		if (sql_on_all_attached_db(db->sqlite, sql,
 		    multireposql, " UNION ALL ") != EPKG_OK) {
@@ -3308,6 +3313,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
+		printf("%s\n", sbuf_data(sql));
 		ERROR_SQLITE(db->sqlite);
 		sbuf_delete(sql);
 		return (NULL);
