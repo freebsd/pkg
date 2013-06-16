@@ -72,7 +72,7 @@ pkg_config_defaults_body()
 	-o match:'^ *DISABLE_MTREE: no$' \
 	-e empty              \
 	-s exit:0             \
-	pkg -C "" -vv
+	env -i PATH=${PATH} LD_LIBRARY_PATH=${LD_LIBRARY_PATH} pkg -C "" -vv
 }
 
 
