@@ -145,7 +145,7 @@ pkg_fetch_file_to_fd(const char *url, int dest, time_t t)
 	retry = max_retry;
 
 	u = fetchParseURL(url);
-	if (t != 0)
+	if (t != 0 && st.mtime != 0)
 		u->ims_time = t;
 
 	doc = u->doc;
