@@ -1,15 +1,15 @@
 #compdef pkg
 
 _pkg_installed() {
-	compadd "$@" - $(pkg query "%n-%v")
+	compadd "$@" - $(__PREFIX__/sbin/pkg query "%n-%v")
 }
 
 _pkg_available_name() {
-	compadd "$@" - $(pkg rquery "%n")
+	compadd "$@" - $(__PREFIX__/sbin/pkg rquery "%n")
 }
 
 _pkg_available() {
-	compadd "$@" - $(pkg rquery "%n-%v")
+	compadd "$@" - $(__PREFIX__/pkg rquery "%n-%v")
 }
 
 _pkg() {

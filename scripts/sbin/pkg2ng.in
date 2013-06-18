@@ -8,7 +8,7 @@ else
 	FORCE_POST="rmdir kldxref mkfontscale mkfontdir fc-cache fonts.dir fonts.scale gtk-update-icon-cache gio-querymodules ldconfig update-desktop-database update-mime-database gdk-pixbuf-query-loaders catalog.ports glib-compile-schemas"
 fi
 
-FORCE_PORT=$FORCE_POST pkg convert
+FORCE_PORT=$FORCE_POST __PREFIX__/sbin/pkg convert
 
 # Delete the portupgrade pkgdb to avoid discrepencies. It will be auto recreated.
 rm -f /var/db/pkg/pkgdb.db > /dev/null 2>&1
