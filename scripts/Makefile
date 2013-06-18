@@ -1,4 +1,5 @@
 SUBDIR=	periodic \
-	completion
+	completion \
+	sbin
 
 .include <bsd.subdir.mk>
