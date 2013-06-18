@@ -13,7 +13,7 @@ COMPLETION=	${COMPLETION_SRCS:R}
 all: ${COMPLETION}
 
 clean:
-	rm -f ${COMPLETION}
+	rm -f ${.OBJDIR}/${COMPLETION}
 
 install: all
 	install -d ${DESTDIR}${PREFIX}/share/zsh/site-functions/
