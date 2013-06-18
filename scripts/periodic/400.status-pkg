@@ -10,7 +10,7 @@ fi
 
 case "$weekly_status_pkg_enable" in
 	[Yy][Ee][Ss])
-	pkgcmd=%%PREFIX%%/sbin/pkg
+	pkgcmd=/usr/local/sbin/pkg
 
 	echo
 	echo 'Checking for out of date packages:'
