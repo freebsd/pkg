@@ -4,7 +4,7 @@ PREFIX?=	/usr/local
 
 COMPLETION_SRCS=	_pkg.bash.in \
 			_pkg.zsh.in
-COMPLETION=	${COMPLETION_SRCS:.in=}
+COMPLETION=	${COMPLETION_SRCS:R}
 
 .in:
 	sed -e 's,__PREFIX__,${PREFIX},g' \
