@@ -37,9 +37,9 @@ if [ -r /etc/defaults/periodic.conf ]; then
 fi
 
 # Compute PKG_DBDIR from the config file.
-if [ -z "${PKG_DBDIR}" ] && [ -f /usr/local/etc/pkg.conf ]; then
+if [ -z "${PKG_DBDIR}" ] && [ -f %%PREFIX%%/etc/pkg.conf ]; then
 	PKG_DBDIR=`awk 'toupper($1) ~ /PKG_DBDIR/ { print $3 }' \
-		< /usr/local/etc/pkg.conf`
+		< %%PREFIX%%/etc/pkg.conf`
 fi
 : ${PKG_DBDIR="/var/db/pkg"}
 auditfile="${PKG_DBDIR}/auditfile"
@@ -50,7 +50,7 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 	[Nn][Oo])
 	;;
 	*)
-	pkgcmd=/usr/local/sbin/pkg
+	pkgcmd=%%PREFIX%%/sbin/pkg
 
 	echo
 	echo 'Checking for packages with security vulnerabilities:'

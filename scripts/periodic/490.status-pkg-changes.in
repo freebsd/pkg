@@ -10,7 +10,7 @@ fi
 
 case "$daily_status_pkg_changes_enable" in
 	[Yy][Ee][Ss])
-	pkgcmd=/usr/local/sbin/pkg
+	pkgcmd=%%PREFIX%%/sbin/pkg
 
 	echo
 	echo 'Changes in installed packages:'

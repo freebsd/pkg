@@ -12,7 +12,7 @@ fi
 
 case "${daily_status_security_pkg_checksum_enable}" in
 	[Yy][Ee][Ss])
-	pkgcmd=/usr/local/sbin/pkg
+	pkgcmd=%%PREFIX%%/sbin/pkg
 
 	echo
 	echo 'Checking for packages with mismatched checksums:'
