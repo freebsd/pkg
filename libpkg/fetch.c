@@ -305,7 +305,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		}
 	}
 	if (strcmp(u->scheme, "ssh") != 0) {
-		if (t != NULL) {
+		if (t != NULL && st.mtime != 0) {
 			if (st.mtime < *t) {
 				retcode = EPKG_UPTODATE;
 				goto cleanup;
