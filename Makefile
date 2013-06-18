@@ -1,7 +1,8 @@
 
 SUBDIR=	external \
 	libpkg \
-	pkg
+	pkg \
+	scripts
 
 NEWVERS=	newvers.sh
 

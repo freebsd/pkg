@@ -37,7 +37,7 @@ if [ -r /etc/defaults/periodic.conf ]; then
 fi
 
 # Compute PKG_DBDIR from the config file.
-pkgcmd=/usr/sbin/pkg
+pkgcmd=__PREFIX__/sbin/pkg
 PKG_DBDIR=`${pkgcmd} -vv | awk -F: '$1 ~ /PKG_DBDIR$/ { print $2 }'`
 auditfile="${PKG_DBDIR}/auditfile"
 
