@@ -7,7 +7,7 @@ if [ -r /etc/defaults/periodic.conf ]; then
     . /etc/defaults/periodic.conf
     source_periodic_confs
 fi
-pkgcmd=/usr/sbin/pkg
+pkgcmd=__PREFIX__/sbin/pkg
 
 case "$weekly_status_pkg_enable" in
 	[Yy][Ee][Ss])
