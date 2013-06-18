@@ -17,6 +17,7 @@ tests/test
 tests/lib/test
 tests/lib/pkg_printf.c
 tests/lib/pkg_printf_test
+tests/lib/pkg_validation
 docs/html/*
 Doxyfile
 libpkg/pkg.h
