@@ -41,7 +41,7 @@
 : ${PKG_MINOR_VERSION="0"}
 : ${PKG_PATCH_LEVEL="13"}
  
-: ${PORTREVISION:=""}
+: ${PORTREVISION:="1"}
 : ${PORTEPOCH:=}
 
 # ------------------------------------------------------------------
