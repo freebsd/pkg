@@ -1,3 +1,4 @@
-SUBDIR=	periodic
+SUBDIR=	periodic \
+	completion
 
 .include <bsd.subdir.mk>
