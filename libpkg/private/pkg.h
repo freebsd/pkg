@@ -48,7 +48,7 @@
 #endif
 #include "private/utils.h"
 
-#define PKG_NUM_SCRIPTS 8
+#define PKG_NUM_SCRIPTS 9
 
 #if ARCHIVE_VERSION_NUMBER < 3000002
 #define archive_read_free(a) archive_read_finish(a)
