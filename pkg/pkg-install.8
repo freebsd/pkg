@@ -37,15 +37,17 @@ catalogues using shell globbing or regular expressions.
 first updates any out-of-date repository catalogues, unless
 .Cm REPO_AUTOUPDATE
 has been set to
-.Sy false
+.Sy NO
 in
 .Pa pkg.conf .
+.Pp
 It then creates a work-list of all the package installations to do.
-Any already installed and up to date packages will be dropped from the
+Any already installed and up-to-date packages will be dropped from the
 list unless the
 .Fl f
 (force) option is supplied, in which case those packages will be
 reinstalled.
+.Pp
 The dependencies of packages in the list are examined and any missing
 packages are added to the list for installation.
 Such implicitly added packages are flagged as candidates for
@@ -53,6 +55,16 @@ autoremoval.
 See
 .Xr pkg-autoremove 8
 for details.
+.Pp
+Autoremoval flags are sticky, and will persist over reinstallation or
+upgrade of the packages concerned, even if subsequently the packages
+are named explicitly on a command line.
+See
+.Xr pkg-query 8
+for finding the autoremoval status of a package, and
+.Xr pkg-set 8
+for modifying it.
+.Pp
 Any already installed but out of date packages, either named on the
 command line or from the sum of all their dependencies are added to
 the work list as upgrade jobs.
@@ -66,15 +78,9 @@ option or the
 setting in
 .Pa pkg.conf .
 .Pp
-Autoremoval flags are sticky, and will persist over reinstallation or
-upgrade of the packages concerned, even if subsequently the packages
-are named explicitly on a command line.
-See
-.Xr pkg-query 8
-for finding the autoremoval status of a package, and
-.Xr pkg-set 8
-for modifying it.
-.Pp
+Packages are fetched from the repositories into the local package
+cache if they are not already present, or if the checksum of the
+cached package file differs from the one in the repository.
 Packages may be downloaded from any of the repositories mentioned
 in
 .Xr pkg.conf 5

@@ -1,6 +1,6 @@
 .\"
-.\" FreeBSD pkg - a next generation package for the installation and maintenance
-.\" of non-core utilities.
+.\" FreeBSD pkg - a next generation package for the installation and
+.\" maintenance of non-core utilities.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 23, 2013
+.Dd June 22, 2013
 .Dt PKG-UPGRADE 8
 .Os
 .Sh NAME
@@ -27,26 +27,77 @@
 .Op Fl r Ar reponame
 .Sh DESCRIPTION
 .Nm
-is used for upgrading of package software distributions.
+is used for upgrading packaged software distributions.
 .Pp
-Currently only one package repository can be used during package
-upgrades.
-This is either as defined by the environment variable
-.Ev PACKAGESITE ,
-or when in multi-repos mode, either the default repository or the
-argument to the
-.Fl r
-option.
-.Pp
-Soon enough
 .Nm
-will be able to perform package upgrades from multiple repositories.
+compares the versions of all of the packages installed on the system
+to what is available in the configured package repositories.
+Any out-of-date packages are added to a work list for processing.
+If the
+.Fl f
+(force) flag is given, all installed packages are added to the work
+list.
 .Pp
-Repository catalogues will automatically be updated using
-.Xr pkg-update 8 .
-This can be disabled with the
+The package metadata downloaded from the repositories is then examined
+for each of the packages in the work list, and any missing
+dependencies are added to the work list as install jobs.
+Such implicitly added packages are flagged as candidates for 
+autoremoval.
+See
+.Xr pkg-autoremove 8
+for details.
+.Pp
+Autoremoval flags are sticky, and will persist over reinstallation or
+upgrade of the packages concerned, even if subsequently the packages
+are named explicitly on a command line.
+See
+.Xr pkg-query 8
+for finding the autoremoval status of a package, and
+.Xr pkg-set 8
+for modifying it.
+.Pp
+Where a package on the work list supplies a shared library, and that
+library has been updated, all packages requiring that shared library
+will also be added to the work list as reinstallation jobs.
+.Pp
+The work list is sorted into dependency order and
+.Nm
+will present it to the user for approval before proceeding, unless
+overridden by the
+.Fl y
+option or the
+.Cm ASSUME_ALWAYS_YES
+setting in
+.Pa pkg.conf .
+.Pp
+Packages are fetched from the repositories into the local package
+cache if they are not already present, or if the checksum of the
+cached package file differs from the one in the repository.
+Packages may be downloaded from any of the repositories mentioned
+in
+.Xr pkg.conf 5
+or in the files in
+.Pa /usr/local/etc/pkg/repo .
+See
+.Xr pkg-repository 5
+for details.
+.Pp
+Repository catalogues will automatically be updated whenever
+.Xr pkg-update 8
+is run, unless disabled by the
 .Fl U
-flag.
+flag or setting
+.Cm REPO_AUTOUPDATE
+to
+.Sy NO
+in
+.Xr pkg.conf 5 .
+.Pp
+Finally, the work list is executed in dependency order.
+Package reinstall or update jobs are processed by removing the currently
+installed package and immediately installing the replacement.
+New dependencies are processed as installation jobs as part of the
+work list.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -95,7 +146,7 @@ for further description.
 .It Ev PACKAGESITE
 .It Ev PKG_CACHEDIR
 .It Ev PKG_DBDIR
-.It Ev PKG_MULTIREPOS
+.It Ev REPO_AUTOUPDATE
 .El
 .Sh FILES
 See
