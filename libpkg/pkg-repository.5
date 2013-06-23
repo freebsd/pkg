@@ -137,6 +137,10 @@ Contains the package manifest data as above, but pre-loaded into
 an Sqlite database.
 This is supplied for backwards compatibility with
 .Nm pkg-1.0 .
+.It Pa $REPOSITORY_ROOT/filesite.txz
+(Optional).
+Contains a YAML document listing all of the files contained in all
+of the packages within the repository.
 .Pp
 The repository may optionally contain sub-directories corresponding to
 the package origins within the
@@ -200,7 +204,7 @@ single repository URL.
 The repository URL should download a text document containing a sequence
 of lines beginning with
 .Sq URL:
-followed by any amount of while space and the URL for a repository
+followed by any amount of while space and one URL for a repository
 mirror.
 Any lines not matching this pattern are ignored.
 Mirrors are tried in the order listed until a download succeeds.
