@@ -121,7 +121,7 @@ static struct config_entry c[] = {
 		PKG_CONFIG_STRING,
 		"REPOS_DIR",
 		PREFIX"/etc/pkg/repos/",
-		"Location of the repositories configuration files"
+		"Location of the repository configuration files"
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
 		PKG_CONFIG_STRING,
