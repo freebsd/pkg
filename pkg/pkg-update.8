@@ -1,6 +1,6 @@
 .\"
-.\" FreeBSD pkg - a next generation package for the installation and maintenance
-.\" of non-core utilities.
+.\" FreeBSD pkg - a next generation package for the installation and
+.\" maintenance of non-core utilities.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -15,33 +15,48 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd June 22, 2013
 .Dt PKG-UPDATE 8
 .Os
 .Sh NAME
 .Nm "pkg update"
-.Nd updates the local copy of a repository catalogue from the remote package
-repository
+.Nd updates the local copies of repository catalogues from the configured
+package repositories
 .Sh SYNOPSIS
 .Nm
 .Op Fl fq
 .Sh DESCRIPTION
 .Nm
-is used for updating the local copy of a repository catalogue from the remote
-package repository database.
-Updates to catalogues are normally downloaded
-only when the master copy on the remote package repository is newer than the
-local copy.
+is used for updating the local copy of a repository catalogue from
+each of the package repository databases.
+Updates to catalogues are normally downloaded only when the master
+copy on the remote package repository is newer than the local copy.
 .Pp
 The repository catalogues to be updated are defined in the
 .Xr pkg.conf 5
-file.
+file of by the entries in
+.Pa /usr/local/etc/pkg/repos .
+See
+.Xr pkg.conf 5
+for details.
 .Pp
-It is always a good idea to update your package repository catalogues
-before doing a remote install via
-.Xr pkg-install 8
-or upgrades via
-.Xr pkg-upgrade 8 .
+It is best practice to ensure your package repository catalogues are
+up to date before doing any package installation (via
+.Xr pkg-install 8 )
+or upgrades (via
+.Xr pkg-upgrade 8 ) .
+However, explicitly running
+.Nm
+is not normally necessary.
+By default invoking either of
+.Nm pkg install
+or
+.Nm pkg upgrade
+will cause repository
+catalogues to be updated automatically, unless disabled by setting
+.Ev REPO_AUTOUPDATE
+to false in
+.Xr pkg.conf 5 .
 .Pp
 .Ss Signed repositories
 If the repository catalogue is signed and
@@ -69,8 +84,8 @@ for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PACKAGESITE
 .It Ev PKG_DBDIR
-.It Ev PKG_MULTIREPOS
 .It Ev PUBKEY
+.It Ev REPO_AUTOUPDATE
 .El
 .Sh FILES
 See

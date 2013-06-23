@@ -21,4 +21,12 @@ tests/lib/pkg_validation
 docs/html/*
 Doxyfile
 libpkg/pkg.h
+scripts/completion/_pkg.bash
+scripts/completion/_pkg.zsh
+scripts/periodic/400.status-pkg
+scripts/periodic/410.pkg-audit
+scripts/periodic/411.pkg-backup
+scripts/periodic/460.pkg-checksum
+scripts/periodic/490.status-pkg-changes
+scripts/sbin/pkg2ng
 *.sw*

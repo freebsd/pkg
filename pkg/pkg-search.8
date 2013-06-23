@@ -1,6 +1,6 @@
 .\"
-.\" FreeBSD pkg - a next generation package for the installation and maintenance
-.\" of non-core utilities.
+.\" Freebsd pkg - a next generation package for the installation and
+.\" maintenance of non-core utilities.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 15, 2013
+.Dd Jun 22, 2013
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -51,8 +51,11 @@ See
 .Xr pkg-update 8 .
 Package repositories are defined in the
 .Fa pkg.conf
-file; see
-.Xr pkg.conf 5.
+file or by creating repository definitions in
+.Pa /usr/local/etc/pkg/repos ;
+see
+.Xr pkg.conf 5
+for details.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -130,10 +133,10 @@ See the
 .Qq Sx Output Modifier Options
 section for details.
 .It Fl r Ar repo
-In multi-repo mode, select only the repository catalogue from
+Select only the repository catalogue named as
 .Sy repo
 to search.
-By default all known repository catalogues are searched.
+By default all configured repository catalogues are searched.
 .It Fl R
 Display the full yaml (raw) about the packages matching.
 .It Fl S Ar search
@@ -325,21 +328,21 @@ need to be downloaded from the repository.
 Display the installation prefix for the package, usually
 .Fa /usr/local .
 .It Sy repository
-Displays the repository label and the corresponding base Url for the
+Displays the repository name and the corresponding base Url for the
 repository.
-In multi-repo mode, the repository label and URL are one of the pairs
-defined in
-.Fa pkg.conf .
-In normal mode the label is always ``remote'', and the URL is the
-value of
-.Cm PACKAGESITE .
+For a default repository defined in
+.Pa pkg.conf
+or one derived from the value of the
+.Ev PACKAGESITE
+environment variable the name will be
+.Dq packagesite .
 .It Sy required-by
 Displays all of the packages in the repository that require the named
 package as a dependency.
 Dependency packages are listed in the format
 .Sy name Ns - Ns Cm version
 one per line.
-If the no other packages require the named package, nothing will be
+If no other packages require the named package, nothing will be
 output for this field, including suppressing the tag name when
 multiple output fields are requested.
 .It Sy shared-libs-required
@@ -356,7 +359,7 @@ If the package contains any shared libraries, display a list of
 the library names, including the ABI version number, if any.
 A shared library, of either the same or differing ABI versions, may
 legitimately be provided by more than installed package,
-but this generally indicates a problem.
+but this frequently indicates a problem.
 .It Sy size
 Display the total amount of filesystem space the package files will
 take up once unpacked and installed.
@@ -403,7 +406,6 @@ for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PACKAGESITE
 .It Ev PKG_DBDIR
-.It Ev PKG_MULTIREPOS
 .El
 .Sh FILES
 See

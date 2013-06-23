@@ -121,7 +121,7 @@ static struct config_entry c[] = {
 		PKG_CONFIG_STRING,
 		"REPOS_DIR",
 		PREFIX"/etc/pkg/repos/",
-		"Location of the repositories configuration files"
+		"Location of the repository configuration files"
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
 		PKG_CONFIG_STRING,
@@ -823,7 +823,7 @@ load_repo_file(const char *repofile)
 
 	node = yaml_document_get_root_node(&doc);
 	if (node == NULL || node->type != YAML_MAPPING_NODE)
-		pkg_emit_error("Invalide repository format for %s", repofile);
+		pkg_emit_error("Invalid repository format for %s", repofile);
 	else
 		parse_repo_file(&doc, node);
 

@@ -1,6 +1,6 @@
 .\"
-.\" FreeBSD pkg - a next generation package for the installation and maintenance
-.\" of non-core utilities.
+.\" FreeBSD pkg - a next generation package for the installation and
+.\" maintenance of non-core utilities.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 23, 2013
+.Dd June 22, 2013
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -28,19 +28,26 @@
 .Ar pkg-origin ...
 .Sh DESCRIPTION
 .Nm
-is used for installation of packages from a remote package
-repository.
+is used for installation of packages from a package repository.
 Multiple package names can be specified on the command line, either
 explicitly or by matching against package names in the repository
 catalogues using shell globbing or regular expressions.
 .Pp
 .Nm
-creates a work-list of all the package installations to do.
-Any already installed and up to date packages will be dropped from the
+first updates any out-of-date repository catalogues, unless
+.Cm REPO_AUTOUPDATE
+has been set to
+.Sy NO
+in
+.Pa pkg.conf .
+.Pp
+It then creates a work-list of all the package installations to do.
+Any already installed and up-to-date packages will be dropped from the
 list unless the
 .Fl f
 (force) option is supplied, in which case those packages will be
 reinstalled.
+.Pp
 The dependencies of packages in the list are examined and any missing
 packages are added to the list for installation.
 Such implicitly added packages are flagged as candidates for
@@ -48,6 +55,16 @@ autoremoval.
 See
 .Xr pkg-autoremove 8
 for details.
+.Pp
+Autoremoval flags are sticky, and will persist over reinstallation or
+upgrade of the packages concerned, even if subsequently the packages
+are named explicitly on a command line.
+See
+.Xr pkg-query 8
+for finding the autoremoval status of a package, and
+.Xr pkg-set 8
+for modifying it.
+.Pp
 Any already installed but out of date packages, either named on the
 command line or from the sum of all their dependencies are added to
 the work list as upgrade jobs.
@@ -59,40 +76,19 @@ overridden by the
 option or the
 .Cm ASSUME_ALWAYS_YES
 setting in
-.Fa pkg.conf .
+.Pa pkg.conf .
 .Pp
-Autoremoval flags are sticky, and will persist over reinstallation or
-upgrade of the packages concerned, even if subsequently the packages
-are named explicitly on a command line.
+Packages are fetched from the repositories into the local package
+cache if they are not already present, or if the checksum of the
+cached package file differs from the one in the repository.
+Packages may be downloaded from any of the repositories mentioned
+in
+.Xr pkg.conf 5
+or in the files in
+.Pa /usr/local/etc/pkg/repo .
 See
-.Xr pkg-query 8
-for finding the autoremoval status of a package, and
-.Xr pkg-set 8
-for modifying it.
-.Pp
-Currently
-.Nm
-will only use one repository to install packages from.
-When
-.Ev PACKAGESITE
-is set in the environment, or the equivalent
-.Cm PACKAGESITE
-setting is present in
-.Fa pkg.conf
-only that site will be used.
-.Pp
-Alternatively, when in multi-repo mode, the
-.Fl r
-option may be used to select one of the package repositories listed
-in the configuration file.
-Otherwise the default repository will be used.
-.Pp
-Multiple package repository support is only activated when neither the
-environment variable
-.Ev PACKAGESITE
-nor the equivalent
-.Cm PACKAGESITE
-configuration setting are defined.
+.Xr pkg-repository 5
+for details.
 .Pp
 Package repository catalogues will be automatically updated whenever
 .Xr pkg-update 8
@@ -175,7 +171,7 @@ for further description.
 .It Ev PACKAGESITE
 .It Ev PKG_CACHEDIR
 .It Ev PKG_DBDIR
-.It Ev PKG_MULTIREPOS
+.It Ev REPO_AUTOUPDATE
 .El
 .Sh FILES
 See
