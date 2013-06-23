@@ -46,7 +46,8 @@ SRCS=		${PC} \
 		pkg_old.c \
 		pkg.pc
 
-MAN=		pkg_printf.3
+MAN=		pkg_printf.3 \
+		pkg-repository.5
 
 CLEANFILES=	${PC} ${PKGH}
 

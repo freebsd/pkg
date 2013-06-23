@@ -1,0 +1,280 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and
+.\" maintenance of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg-repository.5
+.\" $FreeBSD$
+.\"
+.Dd June 22, 2013
+.Dt PKG-REPOSITORY 5
+.Os
+.Sh NAME
+.Nm "package repository"
+.Nd format and operation of package repositories used by
+.Xr pkg 8 .
+.Sh DESCRIPTION
+.Nm "Package repositories"
+used by the
+.Xr pkg 8
+program consist of one or more collections of
+.Dq package tarballs
+together with package catalogues and optionally various other
+collected package metadata.
+.Pp
+Each collection consists of packages suitable for installation on a 
+specific system
+.Sy ABI :
+a combination of operating system, CPU architecture, OS version, word
+size, and for certain processors endianness or similar attributes.
+.Pp
+The package collections are typically made available to users for
+download via a web- or FTP server although various other means of access
+may be employed.
+Encoding the 
+.Sy ABI
+value into the repository URL allows
+.Nm pkg
+to automatically select the correct package collection by expanding the
+special token
+.Cm ${ABI}
+in
+.Pa pkg.conf .
+.Pp
+Repositories may be mirrored over several sites:
+.Nm pkg
+has built-in support for discovering available mirrors dynamically
+given a common URL by several mechanisms.
+.Sh FILESYSTEM ORGANIZATION
+Only very minimal constraints on repository layout are prescribed by
+.Nm pkg .
+The followin constraints are all that must be met:
+.Bl -bullet
+.It
+A repository may contain several package collections with parallel
+.Cm REPOSITORY_ROOTs
+in order to support diverse system
+.Cm ABIs .
+.It
+All of the content for one
+.Sy ABI
+should be accessible in a filesystem or URL hierarchy beneath the
+.Cm REPOSITORY_ROOT .
+.It
+All packages available beneath one
+.Cm REPOSITORY_ROOT
+should be binary compatible with a specific system
+.Cm ABI .
+.It
+The repository catalogue is located at the apex of the
+repository, at a specific location relative to the 
+.Cm REPOSITORY_ROOT .
+.El
+.Pp
+Package catalogues contain the paths relative to the
+.Cm REPOSITORY_ROOT
+for each package, allowing the full URL for downloading the
+package to be constructed.
+.Pp
+Where a package may be applicable to more than one
+.Sy ABI
+(eg. it contains only text files) symbolic or hard links, URL mappings
+or other techniques may be utilised to avoid duplication of storage.
+.Pp
+Although no specific filesystem organization is required, the usual
+convention (inherited from
+.Xr pkg-install 8 )
+is to create a filesystem hierarchy thus:
+.Bl -tag -width "REPOSITORY"
+.It Pa $REPOSITORY_ROOT/All
+One directory that contains every package available from the
+repository for that
+.Sy ABI .
+Packages are stored as package tarballs identified by name and
+version.
+This directory may contain several different versions of each package
+accumulated over time, but the repository catalogue will only record
+the latest version for each distinct package origin.
+.It Pa $REPOSITORY_ROOT/Latest/
+May contains symbolic links to the latest versions of packages in the
+.Pa All
+directory.
+Symbolic links contain a
+.Sq latest link
+style name only, without version.
+As the whole
+.Sq latest link
+concept is rendered obsolete by
+.Nm pkg ,
+this will usually contain only the
+.Pa pkg.txz
+link, used for bootstrapping
+.Nm pkg
+itself on a new system.
+.It Pa $REPOSITORY_ROOT/digests.txz
+Package checksum data and optionally package signatures.
+.It Pa $REPOSITORY_ROOT/packagesite.txz
+Contains one
+.Cm YAML
+document, which is the concatenation of the
+.Pa +MANIFEST
+files from each of the packages in the repository.
+This is used by
+.Nm pkg-1.1
+or later.
+.It Pa $REPOSITORY_ROOT/repo.txz
+(Deprecated).
+Contains the package manifest data as above, but pre-loaded into
+an Sqlite database.
+This is supplied for backwards compatibility with
+.Nm pkg-1.0 .
+.Pp
+The repository may optionally contain sub-directories corresponding to
+the package origins within the
+.Os
+ports tree.
+.It Pa $REPOSITORY_ROOT/accessibility/
+.It Pa $REPOSITORY_ROOT/archivers/
+.It Pa ...
+.It Pa $REPOSITORY_ROOT/x11-toolkits/
+These are populated by per-package symbolic links to the actual 
+package content stored within
+.Pa $REPOSITORY_ROOT/All/ 
+according to the package origin within the FreeBSD ports collection.
+Package symbolic links contain the package name and version.
+.El
+.Pp
+Each of the packages listed in the repository catalogue must have a
+unique
+.Cm origin .
+There are no other constraints: package sets are not required to be
+either complete (ie. with all dependencies satisfied) or
+self-consistent within a single repository.
+.Sh REPOSITORY ACCESS METHODS
+.Nm pkg
+uses standard network protocols for repository access.
+Any URL scheme understood by the
+.Xr fetch 3
+library may be used
+.Cm ( HTTP ,
+.Cm HTTPS ,
+.Cm FTP
+or
+.Cm FILE )
+as well as remote access over
+.Cm SSH .
+See
+.Xr fetch 3
+for a description of additional environment variables, including
+.Ev FETCH_BIND_ADDRESS ,
+.Ev FTP_LOGIN ,
+.Ev FTP_PASSIVE_MODE ,
+.Ev FTP_PASSWORD ,
+.Ev FTP_PROXY ,
+.Ev ftp_proxy ,
+.Ev HTTP_AUTH ,
+.Ev HTTP_PROXY ,
+.Ev http_proxy ,
+.Ev HTTP_PROXY_AUTH ,
+.Ev HTTP_REFERER ,
+.Ev HTTP_USER_AGENT ,
+.Ev NETRC ,
+.Ev NO_PROXY No and
+.Ev no_proxy .
+.Sh REPOSITORY MIRRORING
+Multiple copies of a repository can be provided for resilience or
+to scale up site capacity.
+Two schemes are provided to auto-discover sets of mirrors given a
+single repository URL.
+.Bl -tag -width "HTTP"
+.It Cm HTTP
+The repository URL should download a text document containing a sequence
+of lines beginning with
+.Sq URL:
+followed by any amount of while space and the URL for a repository
+mirror.
+Any lines not matching this pattern are ignored.
+Mirrors are tried in the order listed until a download succeeds.
+.It Cm SRV
+For an SRV mirrored repository where the URL is specified as
+.Pa http://pkgrepo.example.org/
+.Cm SRV
+records should be set up in the DNS:
+.Bd -literal -offset indent
+$ORIGIN example.com
+_http._tcp.pkgrepo IN SRV 10 1 80 mirror0
+                   IN SRV 20 1 80 mirror1
+.Ed
+.Pp
+where the
+.Cm SRV
+priority and weight parameters are used to control search order and
+traffic weighting between sites, and the port number and hostname are
+used to construct the individual mirror URLs.
+.El
+.Pp
+Mirrored repositories are assumed to have identical content, and only
+one copy of the repository catalogue will be downloaded to apply to
+all mirror sites.
+.Sh WORKING WITH MULTIPLE REPOSITORIES
+Where several different repositories are configured
+.Nm pkg
+will search amongst them all in the order specified,
+unless directed to use a single repository by the
+.Fl r flag to
+.Xr pkg-fetch 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-upgrade ,
+.Xr pkg-search
+or
+.Xr pkg-rquery .
+The search order is as displayed in the output of
+.Bd -literal -offset indent
+pkg -v -v
+.Ed
+.Pp
+Where several different versions of the same package are available,
+.Nm pkg
+will select the one with the highest version to install or to upgrade
+an installed package to, even if a lower numbered version can be found
+in a repository earlier in the list.
+This applies even if an explicit version is stated on the command line.
+Thus if packages
+.Pa example-1.0.0
+and
+.Pa example-1.0.1
+are available in configured repositories, then
+.Bd -literal -offset indent
+pkg install example-1.0.0
+.Ed
+.Pp
+will actually result in
+.Pa example-1.0.1
+being installed.
+To override this behaviour, on first installation of the package,
+select the repository with the appropriate version:
+.Bd -literal -offset indent
+pkg install -r repo-a example-1.0.0
+.Ed
+.Pp
+and then to make updates to that package
+.Dq sticky
+to the same repository, add an annotation to the package:
+.Bd -literal -offset indent
+pkg annotate -A example repository repo-a
+.Ed
+.Pp
+.Sh SEE ALSO
+.Xr pkg 8
+.Xr pkg.conf 5
+.Xr pkg-repo 8
+.Xr fetch 3
