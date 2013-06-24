@@ -1919,7 +1919,7 @@ gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 	buf[bp++] = '*';
 	buf[bp] = '\0';
 
-	strlcat(buf, tail, sizeof(buf));
+	strlcat(buf, tail, buflen);
 
 	return (buf);
 }
