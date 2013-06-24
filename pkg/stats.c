@@ -95,7 +95,7 @@ exec_stats(__unused int argc, __unused char **argv)
 		}
 	}
 
-	if (opt & STATS_REMOTE) {
+	if (opt & STATS_REMOTE && pkg_repos_count() > 0) {
 		printf("Remote package database(s):\n");
 		printf("\tNumber of repositories: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_REPOS));
 		printf("\tPackages available: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_COUNT));
