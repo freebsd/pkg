@@ -259,7 +259,7 @@ _static const char *process_format_trailer(struct sbuf *, struct percent_esc *,
 					   const char *, const struct pkg *,
 					   const void *, int, unsigned);
 _static const char *process_format_main(struct sbuf *, struct percent_esc *,
-					const char *, va_list);
+					const char *, va_list *);
 
 #endif
 

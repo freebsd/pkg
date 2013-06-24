@@ -2718,7 +2718,7 @@ process_format_trailer(struct sbuf *sbuf, struct percent_esc *p,
 
 const char *
 process_format_main(struct sbuf *sbuf, struct percent_esc *p, const char *f,
-		    va_list ap)
+		    va_list *ap)
 {
 	const char		*fstart;
 	struct sbuf		*s;
@@ -2728,7 +2728,7 @@ process_format_main(struct sbuf *sbuf, struct percent_esc *p, const char *f,
 	f = parse_format(f, PP_PKG, p);
 
 	if (p->fmt_code <= PP_LAST_FORMAT)
-		data = va_arg(ap, void *);
+		data = va_arg(*ap, void *);
 	else
 		data = NULL;
 
@@ -3037,7 +3037,7 @@ pkg_sbuf_vprintf(struct sbuf * restrict sbuf, const char * restrict format,
 	while ( *f != '\0' ) {
 		switch(*f) {
 		case '%':
-			f = process_format_main(sbuf, p, f, ap);
+			f = process_format_main(sbuf, p, f, &ap);
 			break;
 		case '\\':
 			f = process_escape(sbuf, f);
