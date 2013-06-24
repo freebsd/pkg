@@ -62,7 +62,7 @@ exec_upgrade(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
 
-	while ((ch = getopt(argc, argv, "fLnqFr:Uy")) != -1) {
+	while ((ch = getopt(argc, argv, "fILnqFr:Uy")) != -1) {
 		switch (ch) {
 		case 'f':
 			f |= PKG_FLAG_FORCE;
