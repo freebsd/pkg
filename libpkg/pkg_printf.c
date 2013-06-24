@@ -2717,29 +2717,17 @@ process_format_trailer(struct sbuf *sbuf, struct percent_esc *p,
 }
 
 const char *
-process_format_main(struct sbuf *sbuf, struct percent_esc *p, const char *f,
-		    va_list *ap)
+process_format_main(struct sbuf *sbuf, struct percent_esc *p,
+		const char *fstart, const char *fend, void *data)
 {
-	const char		*fstart;
 	struct sbuf		*s;
-	void			*data;
-
-	fstart = f;
-	f = parse_format(f, PP_PKG, p);
-
-	if (p->fmt_code <= PP_LAST_FORMAT)
-		data = va_arg(*ap, void *);
-	else
-		data = NULL;
 
 	s = fmt[p->fmt_code].fmt_handler(sbuf, data, p);
 
-	if (s == NULL)
-		f = fstart;	/* Pass through unprocessed on error */
-
 	clear_percent_esc(p);
 
-	return (f);
+	/* Pass through unprocessed on error */
+	return (s == NULL ? fstart : fend);
 }
 
 /**
@@ -3020,8 +3008,9 @@ struct sbuf *
 pkg_sbuf_vprintf(struct sbuf * restrict sbuf, const char * restrict format,
 		 va_list ap)
 {
-	const char		*f;
+	const char		*f, *fend;
 	struct percent_esc	*p;
+	void		*data;
 
 	assert(sbuf != NULL);
 	assert(format != NULL);
@@ -3037,7 +3026,13 @@ pkg_sbuf_vprintf(struct sbuf * restrict sbuf, const char * restrict format,
 	while ( *f != '\0' ) {
 		switch(*f) {
 		case '%':
-			f = process_format_main(sbuf, p, f, &ap);
+			fend = parse_format(f, PP_PKG, p);
+
+			if (p->fmt_code <= PP_LAST_FORMAT)
+				data = va_arg(ap, void *);
+			else
+				data = NULL;
+			f = process_format_main(sbuf, p, f, fend, data);
 			break;
 		case '\\':
 			f = process_escape(sbuf, f);
