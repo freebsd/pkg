@@ -252,7 +252,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
-			pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, 0);
+			pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
 			HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
 			if (recursive)
 				populate_local_rdeps(j, pkg);
@@ -300,7 +300,7 @@ recursive_autoremove(struct pkg_jobs *j)
 		if (HASH_COUNT(pkg1->rdeps) == 0) {
 			HASH_DEL(j->bulk, pkg1);
 			pkg_get(pkg1, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
-			pkg_set(pkg1, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, 0);
+			pkg_set(pkg1, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
 			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg1);
 			remove_from_rdeps(j, origin);
 			return (true);
