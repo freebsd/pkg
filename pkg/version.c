@@ -109,9 +109,9 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 
 
 	if (opt & VERSION_ORIGIN)
-		pkg_asprintf(&namever, "%n-%v", pkg, pkg);
-	else
 		pkg_asprintf(&namever, "%-34o", pkg);
+	else
+		pkg_asprintf(&namever, "%n-%v", pkg, pkg);
 
 	printf("%-34s %c", namever, key);
 	free(namever);
