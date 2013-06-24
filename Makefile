@@ -60,7 +60,7 @@ set-tag:
 	@if [ -n "$$( git status -uno -s )" ] ; then \
 	    git commit -uno -m "New Release ${PKGVERSION}" ${VERSIONED_FILES} ; \
 	fi
-	@if git tag -l | grep -F ${PKGVERSION} ; then \
+	@if git tag -l | grep "^${PKGVERSION}$$" ; then \
 	    ${ECHO} "---> Error: tag ${PKGVERSION} already exists" ; \
 	    ${ECHO} "---> Either delete the tag (git tag -d ${PKGVERSION})" ; \
 	    ${ECHO} "---> (but only if you haven't pushed yet) or edit" ; \
