@@ -312,7 +312,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * Execute post install scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		if (flags & PKG_ADD_USE_UPGRADE_SCRIPTS)
+		if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
 			pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 		else
 			pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
