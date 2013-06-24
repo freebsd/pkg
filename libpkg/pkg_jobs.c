@@ -1119,7 +1119,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		}
 
 		if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
-			flags |= PKG_ADD_FORCE | PKG_FLAG_FORCE;
+			flags |= PKG_ADD_FORCE;
 		if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 			flags |= PKG_ADD_NOSCRIPT;
 		flags |= PKG_ADD_UPGRADE;

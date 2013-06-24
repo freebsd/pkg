@@ -1055,11 +1055,11 @@ int pkgdb_compact(struct pkgdb *db);
  */
 int pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_key *keys);
 
-#define PKG_ADD_UPGRADE			(1U << 1)
-#define PKG_ADD_USE_UPGRADE_SCRIPTS	(1U << 2)
-#define PKG_ADD_AUTOMATIC		(1U << 3)
-#define PKG_ADD_FORCE			(1U << 4)
-#define PKG_ADD_NOSCRIPT		(1U << 5)
+#define PKG_ADD_UPGRADE			(1U << 0)
+#define PKG_ADD_USE_UPGRADE_SCRIPTS	(1U << 1)
+#define PKG_ADD_AUTOMATIC		(1U << 2)
+#define PKG_ADD_FORCE			(1U << 3)
+#define PKG_ADD_NOSCRIPT		(1U << 4)
 
 /**
  * Allocate a new pkg_jobs.
