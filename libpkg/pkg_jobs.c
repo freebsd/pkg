@@ -866,7 +866,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	char *origin;
 	unsigned flag = PKG_LOAD_BASIC;
 
-	if ((j->flags & PKG_FLAG_WITH_DEPS) != 0)
+	if ((j->flags & PKG_FLAG_WITH_DEPS) == PKG_FLAG_WITH_DEPS)
 		flag |= PKG_LOAD_DEPS;
 
 	if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) == PKG_FLAG_UPGRADES_FOR_INSTALLED) {
@@ -1118,9 +1118,9 @@ pkg_jobs_install(struct pkg_jobs *j)
 			}
 		}
 
-		if ((j->flags & PKG_FLAG_FORCE) != 0)
+		if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 			flags |= PKG_ADD_FORCE | PKG_FLAG_FORCE;
-		if ((j->flags & PKG_FLAG_NOSCRIPT) != 0)
+		if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 			flags |= PKG_ADD_NOSCRIPT;
 		flags |= PKG_ADD_UPGRADE;
 		if (automatic)
@@ -1163,13 +1163,13 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 	int retcode;
 	int flags = 0;
 
-	if ((j->flags & PKG_FLAG_DRY_RUN) != 0)
+	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		return (EPKG_OK); /* Do nothing */
 
-	if ((j->flags & PKG_FLAG_FORCE) != 0)
+	if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		flags = PKG_DELETE_FORCE;
 
-	if ((j->flags & PKG_FLAG_NOSCRIPT) != 0)
+	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_DELETE_NOSCRIPT;
 
 	while (pkg_jobs(j, &p) == EPKG_OK) {
@@ -1276,7 +1276,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 	}
 
-	if ((j->flags & PKG_FLAG_DRY_RUN) != 0)
+	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		return (EPKG_OK); /* don't download anything */
 
 	/* Fetch */
