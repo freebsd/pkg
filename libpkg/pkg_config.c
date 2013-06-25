@@ -698,11 +698,12 @@ disable_plugins_if_static(void)
 		return;
 
 	dlh = dlopen(0, 0);
-	dlclose(dlh);
 
-	/* if dlh is 0 then we are in static binary */
-	if (dlh == 0)
+	/* if dlh is NULL then we are in static binary */
+	if (dlh == NULL)
 		conf->boolean = false;
+	else
+		dlclose(dlh);
 
 	return;
 }
