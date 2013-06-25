@@ -76,7 +76,7 @@ query_tty_yesno(const char *msg, ...)
 cleanup:
 	fclose(tty);
 
-	return r;
+	return (r);
 }
 
 bool
