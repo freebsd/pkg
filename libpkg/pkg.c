@@ -777,10 +777,12 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 		type = PKG_SCRIPT_UPGRADE;
 	} else {
 		pkg_emit_error("unknown script '%s'", filename);
-		return EPKG_FATAL;
+		ret = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	ret = pkg_addscript(pkg, data, type);
+cleanup:
 	free(data);
 	return (ret);
 }
