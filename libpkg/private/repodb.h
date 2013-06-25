@@ -37,6 +37,8 @@ static const char repo_filesite_file[] = "filesite.yaml";
 static const char repo_filesite_archive[] = "filesite";
 static const char repo_digests_file[] = "digests";
 static const char repo_digests_archive[] = "digests";
+static const char repo_conflicts_file[] = "conflicts";
+static const char repo_conflicts_archive[] = "conflicts";
 
 static const char initsql_legacy[] = ""
 	"CREATE TABLE packages ("

@@ -127,6 +127,7 @@ struct pkg {
 	struct pkg_shlib	*shlibs_required;
 	struct pkg_shlib	*shlibs_provided;
 	struct pkg_note		*annotations;
+	struct pkg_conflict *conflicts;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -142,6 +143,13 @@ struct pkg_dep {
 	struct sbuf	*version;
 	bool		 locked;
 	UT_hash_handle	 hh;
+};
+
+struct pkg_conflict {
+	char	*origin;
+	char	*name;
+	char	*version;
+	struct pkg_conflict *next;
 };
 
 struct pkg_license {

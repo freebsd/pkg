@@ -39,6 +39,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -174,11 +175,176 @@ struct digest_list_entry {
 	struct digest_list_entry *next;
 };
 
+struct pkg_conflict_bulk {
+	struct pkg_conflict *conflicts;
+	char *file;
+	UT_hash_handle hh;
+};
+
 static int
 digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry *d2)
 {
 	return strcmp(d1->origin, d2->origin);
 }
+
+static void
+pkg_repo_new_conflict(const char *name, const char *origin,
+		const char *version, struct pkg_conflict_bulk *bulk)
+{
+	struct pkg_conflict *new;
+
+	new = malloc(sizeof(struct pkg_conflict));
+	if (new == NULL) {
+		pkg_emit_errno("malloc", "struct pkg_conflict");
+		return;
+	}
+	new->name = strdup(name);
+	new->version = strdup(version);
+	new->origin = strdup(origin);
+	LL_PREPEND(bulk->conflicts, new);
+}
+
+static void
+pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
+		sqlite3 *sqlite, struct pkg_conflict_bulk *conflicts)
+{
+	struct pkg_conflict_bulk	*s;
+	const char	*name, *origin, *version;
+
+	const char package_select_sql[] = ""
+				"SELECT name,origin,version "
+				"FROM packages WHERE id="
+				"(SELECT package_id FROM files WHERE"
+				"file=?1)";
+
+	HASH_FIND_STR(conflicts, file, s);
+
+	if (s != NULL) {
+		/*
+		 * If we have a conflict in hash table we just need to add
+		 * new package id there.
+		 */
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin,
+					PKG_VERSION, &version);
+		pkg_repo_new_conflict(name, origin, version, s);
+	}
+	else {
+		/*
+		 * If it is a new conflict we need to extract
+		 */
+		sqlite3_stmt	*stmt = NULL;
+
+		s = malloc(sizeof(struct pkg_conflict_bulk));
+		if (s == NULL){
+			pkg_emit_errno("malloc", "struct pkg_conflict_bulk");
+			return;
+		}
+		s->file = strdup(file);
+		HASH_ADD_KEYPTR(hh, conflicts, s->file, strlen(s->file), s);
+
+		/* Register the first conflicting package */
+		if (sqlite3_prepare_v2(sqlite, package_select_sql, -1, &stmt, NULL)
+				!= SQLITE_OK) {
+			ERROR_SQLITE(sqlite);
+			return;
+		}
+		sqlite3_bind_text(stmt, 1, file, -1, SQLITE_STATIC);
+		if (sqlite3_step(stmt) != SQLITE_ROW) {
+			ERROR_SQLITE(sqlite);
+			sqlite3_finalize(stmt);
+			return;
+		}
+		name = sqlite3_column_text(stmt, 1);
+		origin = sqlite3_column_text(stmt, 2);
+		version = sqlite3_column_text(stmt, 3);
+		pkg_repo_new_conflict(name, origin, version, s);
+		sqlite3_finalize(stmt);
+
+		/* Register the second conflicting package */
+		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin,
+							PKG_VERSION, &version);
+		pkg_repo_new_conflict(name, origin, version, s);
+	}
+}
+
+static void
+pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
+		struct pkg_conflict_bulk *conflicts)
+{
+	sqlite3_stmt	*stmt = NULL;
+	const char	*name, *origin, *version;
+	struct pkg_file	*f;
+	struct pkg_dir	*d;
+	int64_t	package_id;
+	int	r;
+
+	const char package_insert_sql[] = ""
+			"INSERT OR REPLACE INTO packages("
+			"origin, name, version)"
+			"VALUES(?1, ?2, ?3)";
+	const char file_insert_sql[] = ""
+			"INSERT INTO files("
+			"(file, package_id)"
+			"VALUES(?1, ?2)";
+
+	if (sqlite3_prepare_v2(sqlite, package_insert_sql, -1, &stmt, NULL)
+			!= SQLITE_OK) {
+		ERROR_SQLITE(sqlite);
+		return;
+	}
+
+	/* Insert a package */
+	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin,
+			PKG_VERSION, &version);
+	sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, origin, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 3, version, -1, SQLITE_STATIC);
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		ERROR_SQLITE(sqlite);
+		sqlite3_finalize(stmt);
+		return;
+	}
+
+	package_id = sqlite3_last_insert_rowid(sqlite);
+	sqlite3_finalize(stmt);
+
+	/* Iterate through all files */
+	if (sqlite3_prepare_v2(sqlite, file_insert_sql, -1, &stmt, NULL)
+			!= SQLITE_OK) {
+		ERROR_SQLITE(sqlite);
+		return;
+	}
+	while (pkg_files(pkg, &f) == EPKG_OK) {
+		sqlite3_bind_text(stmt, 1, f->path, -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt, 2, package_id);
+		r = sqlite3_step(stmt);
+		if (r == SQLITE_CONSTRAINT) {
+			pkg_repo_insert_conflict(f->path, pkg, sqlite, conflicts);
+		}
+		else if (r != SQLITE_DONE) {
+			ERROR_SQLITE(sqlite);
+			sqlite3_finalize(stmt);
+			return;
+		}
+		sqlite3_reset(stmt);
+	}
+	while (pkg_dirs(pkg, &d) == EPKG_OK) {
+		sqlite3_bind_text(stmt, 1, d->path, -1, SQLITE_STATIC);
+		sqlite3_bind_int64(stmt, 2, package_id);
+		r = sqlite3_step(stmt);
+		if (r == SQLITE_CONSTRAINT) {
+			pkg_repo_insert_conflict(d->path, pkg, sqlite, conflicts);
+		}
+		else if (r != SQLITE_DONE) {
+			ERROR_SQLITE(sqlite);
+			sqlite3_finalize(stmt);
+			return;
+		}
+		sqlite3_reset(stmt);
+	}
+	sqlite3_finalize(stmt);
+}
+
 
 int
 pkg_create_repo(char *path, bool force, bool filelist,
@@ -190,7 +356,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	size_t len;
 	pthread_t *tids = NULL;
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
-	sqlite3 *sqlite = NULL;
+	sqlite3 *sqlite = NULL, *conflictsdb = NULL;
 
 	char *errmsg = NULL;
 	int retcode = EPKG_OK;
@@ -200,6 +366,20 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	char repopack[MAXPATHLEN + 1];
 	char *manifest_digest;
 	FILE *psyml, *fsyml, *mandigests;
+
+	struct pkg_conflict_bulk *conflicts = NULL;
+
+	const char conflicts_create_sql[] = ""
+			"CREATE TABLE packages("
+			    "id INTEGER PRIMARY KEY"
+			    "origin NOT NULL,"
+			    "name NOT NULL,"
+			    "version NOT NULL);"
+			"CREATE TABLE files("
+			    "file TEXT UNIQUE,"
+			    "package_id INTEGER REFERENCES packages(id));"
+			    "";
+
 
 	psyml = fsyml = mandigests = NULL;
 
@@ -236,6 +416,21 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_digests_file);
 	if ((mandigests = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	snprintf(repodb, sizeof(repodb), "%s/conflicts.sqlite", path);
+	/* Unlink conflicts to ensure that it is clean */
+	if (unlink(repodb) == -1 && errno != ENOENT) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+	if (sqlite3_open(repodb, &conflictsdb) != SQLITE_OK) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	if ((retcode = sql_exec(conflictsdb, conflicts_create_sql)) != EPKG_OK) {
 		goto cleanup;
 	}
 
@@ -315,6 +510,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		if (filelist) {
 			files_pos = ftell(fsyml);
 			pkg_emit_filelist(r->pkg, fsyml);
+			pkg_repo_check_conflicts(r->pkg, conflictsdb, conflicts);
 		} else {
 			files_pos = 0;
 		}
@@ -385,10 +581,18 @@ cleanup:
 	if (sqlite != NULL)
 		sqlite3_close(sqlite);
 
+	if (conflictsdb != NULL)
+		sqlite3_close(conflictsdb);
+
 	if (errmsg != NULL)
 		sqlite3_free(errmsg);
 
 	sqlite3_shutdown();
+
+#if 0
+	snprintf(repodb, sizeof(repodb), "%s/conflicts.sqlite", path);
+	(void)unlink(repodb);
+#endif
 
 	return (retcode);
 }

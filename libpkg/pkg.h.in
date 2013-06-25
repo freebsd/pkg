@@ -58,6 +58,7 @@
 
 struct pkg;
 struct pkg_dep;
+struct pkg_conflict;
 struct pkg_file;
 struct pkg_dir;
 struct pkg_category;
