@@ -141,21 +141,18 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 	}
 
 	if (fstat(fd, &st) == -1) {
-		close(fd);
 		pkg_emit_errno("fstat", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if ((*buffer = malloc(st.st_size + 1)) == NULL) {
-		close(fd);
 		pkg_emit_errno("malloc", "");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (read(fd, *buffer, st.st_size) == -1) {
-		close(fd);
 		pkg_emit_errno("read", path);
 		retcode = EPKG_FATAL;
 		goto cleanup;
