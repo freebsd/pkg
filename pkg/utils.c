@@ -65,12 +65,15 @@ query_tty_yesno(const char *msg, ...)
 	c = getc(tty);
 	if (c == 'y' || c == 'Y')
 		r = true;
-	else if (c == '\n' || c == EOF)
-		return false;
+	else if (c == '\n' || c == EOF) {
+		r = false;
+		goto cleanup;
+	}
 
 	while ((c = getc(tty)) != '\n' && c != EOF)
 		continue;
 
+cleanup:
 	fclose(tty);
 
 	return r;
