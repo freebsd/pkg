@@ -522,6 +522,7 @@ pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa)
 
 		if (packing_append_buffer(pack, sigret, "signature", siglen + 1) != EPKG_OK) {
 			free(sigret);
+			free(pack);
 			return (EPKG_FATAL);
 		}
 
