@@ -215,7 +215,7 @@ event_callback(void *data, struct pkg_event *ev)
 				    pkg, pkg, pkg);
 				break;
 			case PKG_REINSTALL:
-				pkg_sbuf_printf(msg, "Reinstalling %n-%V",
+				pkg_sbuf_printf(msg, "Reinstalling %n-%V...",
 				    pkg, pkg);
 				break;
 			case PKG_UPGRADE:
