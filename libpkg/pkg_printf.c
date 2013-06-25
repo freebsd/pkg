@@ -1848,11 +1848,13 @@ clear_percent_esc(struct percent_esc *p)
 void
 free_percent_esc(struct percent_esc *p)
 {
-	if (p->item_fmt)
-		sbuf_delete(p->item_fmt);
-	if (p->sep_fmt)
-		sbuf_delete(p->sep_fmt);
-	free(p);
+	if (p) {
+		if (p->item_fmt)
+			sbuf_delete(p->item_fmt);
+		if (p->sep_fmt)
+			sbuf_delete(p->sep_fmt);
+		free(p);
+	}
 	return;
 }
 
