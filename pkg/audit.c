@@ -212,7 +212,7 @@ fetch_and_extract(const char *src, const char *dest, bool xml)
 #else
 		archive_read_free(a);
 #endif
-	if (fd > 0)
+	if (fd >= 0)
 		close(fd);
 
 	return (retcode);

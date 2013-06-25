@@ -159,7 +159,7 @@ file_to_buffer(const char *path, char **buffer, off_t *sz)
 	}
 
 	cleanup:
-	if (fd > 0)
+	if (fd >= 0)
 		close(fd);
 
 	if (retcode == EPKG_OK) {
