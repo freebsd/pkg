@@ -1998,10 +1998,10 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 			precision = 0;
 	}
 
-	sbuf_printf(sbuf, format, width, num * sign, precision);
+	sbuf_printf(sbuf, format, width, precision, num * sign);
 
 	if (scale > 0)
-		sbuf_printf(sbuf, "%s", 
+		sbuf_printf(sbuf, "%s",
 		    bin_scale ? bin_pfx[scale] : si_pfx[scale]);
 
 	return (sbuf);
