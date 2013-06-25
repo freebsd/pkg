@@ -542,6 +542,7 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bo
 	char repo_archive[MAXPATHLEN + 1];
 	struct rsa_key *rsa = NULL;
 	struct stat st;
+	int ret = EPKG_OK;
 	
 	if (!is_dir(path)) {
 	    pkg_emit_error("%s is not a directory", path);
@@ -553,25 +554,33 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bo
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_packagesite_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_packagesite_archive);
-	if (pack_db(repo_packagesite_file, repo_archive, repo_path, rsa) != EPKG_OK)
-		return (EPKG_FATAL);
+	if (pack_db(repo_packagesite_file, repo_archive, repo_path, rsa) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_db_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_db_archive);
-	if (pack_db(repo_db_file, repo_archive, repo_path, rsa) != EPKG_OK)
-		return (EPKG_FATAL);
+	if (pack_db(repo_db_file, repo_archive, repo_path, rsa) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	if (filelist) {
 		snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_filesite_file);
 		snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_filesite_archive);
-		if (pack_db(repo_filesite_file, repo_archive, repo_path, rsa) != EPKG_OK)
-			return (EPKG_FATAL);
+		if (pack_db(repo_filesite_file, repo_archive, repo_path, rsa) != EPKG_OK) {
+			ret = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_digests_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_digests_archive);
-	if (pack_db(repo_digests_file, repo_archive, repo_path, rsa) != EPKG_OK)
-		return (EPKG_FATAL);
+	if (pack_db(repo_digests_file, repo_archive, repo_path, rsa) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	/* Now we need to set the equal mtime for all archives in the repo */
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_db_archive);
@@ -596,7 +605,9 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bo
 		}
 	}
 
-	rsa_free(rsa);
+cleanup:
+	if (rsa)
+		rsa_free(rsa);
 
-	return (EPKG_OK);
+	return (ret);
 }
