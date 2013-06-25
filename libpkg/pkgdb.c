@@ -975,9 +975,11 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			}
 		}
 
-		/* Create the diretory if it doesn't exists */
-		if (createdir && mkdirs(dbdir) != EPKG_OK)
+		/* Create the directory if it doesn't exist */
+		if (createdir && mkdirs(dbdir) != EPKG_OK) {
+			pkgdb_close(db);
 			return (EPKG_FATAL);
+		}
 
 		sqlite3_initialize();
 
