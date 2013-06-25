@@ -20,7 +20,7 @@ _pkg() {
 	'-j[Execute pkg(1) inside a jail(8)]:jail:'
 	'-c[Execute pkg(1) inside a chroot(8)]:chroot:_files -/'
 	'-C[Use the specified configuration file]'
-	'-l[List available command and exit'
+	'-l[List available command and exit]'
 	'-v[Display pkg(1) version]'
 	'-N[Test if pkg(1) is activated and avoid auto-activation]'
 	)
