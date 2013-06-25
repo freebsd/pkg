@@ -579,6 +579,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 		exec_append(p->post_install_buf, "%s\n", cmd);
 	}
 	free_file_attr(a);
+	free(cmd);
 
 	return (EPKG_OK);
 }
