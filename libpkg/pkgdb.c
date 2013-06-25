@@ -3802,6 +3802,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		break;
 	}
 
+	sbuf_finish(sql);
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		sbuf_free(sql);
@@ -3813,7 +3814,6 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 		stats = sqlite3_column_int64(stmt, 0);
 	}
 
-	sbuf_finish(sql);
 	sbuf_free(sql);
 	sqlite3_finalize(stmt);
 
