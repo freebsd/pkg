@@ -217,7 +217,7 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 				"(SELECT package_id FROM files WHERE"
 				"file=?1)";
 
-	HASH_FIND_STR(conflicts, file, s);
+	HASH_FIND_STR(conflicts,  __DECONST(char *, file), s);
 
 	if (s != NULL) {
 		/*
@@ -239,6 +239,7 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 			pkg_emit_errno("malloc", "struct pkg_conflict_bulk");
 			return;
 		}
+		memset(s, 0, sizeof(struct pkg_conflict_bulk));
 		s->file = strdup(file);
 		HASH_ADD_KEYPTR(hh, conflicts, s->file, strlen(s->file), s);
 
@@ -345,6 +346,61 @@ pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
 	sqlite3_finalize(stmt);
 }
 
+static void
+pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
+{
+	struct pkg_conflict_bulk	*pkg_bulk = NULL, *cur, *tmp, *s;
+	struct pkg_conflict	*c1, *c2, *ctmp;
+	bool new;
+
+	/*
+	 * Here we reorder bulk hash from hash by file
+	 * to hash indexed by a package, so we iterate over the
+	 * original hash and create a new hash indexed by package name
+	 */
+
+	HASH_ITER (hh, bulk, cur, tmp) {
+		LL_FOREACH(cur->conflicts, c1) {
+			HASH_FIND_STR(pkg_bulk, c1->origin, s);
+			if (s == NULL) {
+				/* New entry required */
+				s = malloc(sizeof(struct pkg_conflict_bulk));
+				if (s == NULL) {
+					pkg_emit_errno("malloc", "struct pkg_conflict_bulk");
+					goto out;
+				}
+				memset(s, 0, sizeof(struct pkg_conflict_bulk));
+				s->file = c1->origin;
+				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
+			}
+			/* Now add all new entries from this file to this conflict structure */
+			new = true;
+			LL_FOREACH(cur->conflicts, c2) {
+				LL_FOREACH(s->conflicts, ctmp) {
+					/* It is safe to compare pointers here */
+					if (ctmp->origin == c1->origin ||
+							ctmp->origin == c2->origin)
+						new = false;
+				}
+				if (new)
+					LL_APPEND(s->conflicts, c2);
+			}
+		}
+	}
+
+	HASH_ITER (hh, pkg_bulk, cur, tmp) {
+		fprintf(out, "%s:", cur->file);
+		LL_FOREACH(cur->conflicts, c1) {
+			if (c1->next != NULL)
+				fprintf(out, "%s,", c1->origin);
+			else
+				fprintf(out, "%s\n", c1->origin);
+		}
+	}
+out:
+	/* TODO: add cleanup here */
+	return;
+}
 
 int
 pkg_create_repo(char *path, bool force, bool filelist,
@@ -365,7 +421,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	char repodb[MAXPATHLEN + 1];
 	char repopack[MAXPATHLEN + 1];
 	char *manifest_digest;
-	FILE *psyml, *fsyml, *mandigests;
+	FILE *psyml, *fsyml, *mandigests, *fconflicts;
 
 	struct pkg_conflict_bulk *conflicts = NULL;
 
@@ -431,6 +487,12 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	}
 
 	if ((retcode = sql_exec(conflictsdb, conflicts_create_sql)) != EPKG_OK) {
+		goto cleanup;
+	}
+
+	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_conflicts_file);
+	if ((fconflicts = fopen(repodb, "w")) == NULL) {
+		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -539,6 +601,8 @@ pkg_create_repo(char *path, bool force, bool filelist,
 
 	/* Now sort all digests */
 	LL_SORT(dlist, digest_sort_compare_func);
+
+	pkg_repo_write_conflicts(conflicts, fconflicts);
 cleanup:
 	if (pkgdb_repo_close(sqlite, retcode == EPKG_OK) != EPKG_OK) {
 		retcode = EPKG_FATAL;
@@ -574,6 +638,9 @@ cleanup:
 
 	if (psyml != NULL)
 		fclose(psyml);
+
+	if (fconflicts != NULL)
+		fclose(fconflicts);
 
 	if (mandigests != NULL)
 		fclose(mandigests);
