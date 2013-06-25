@@ -941,6 +941,7 @@ pkg_init(const char *path)
 			if (errstr != NULL) {
 				pkg_emit_error("Unable to convert %s to int64: %s",
 				    val, errstr);
+				free(conf);
 				return (EPKG_FATAL);
 			}
 			break;
