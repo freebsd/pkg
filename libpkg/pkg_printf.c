@@ -1928,12 +1928,13 @@ gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 struct sbuf *
 human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 {
-	int64_t		 num;
+	double		 num;
 	int		 sign;
+	int		 width;
 	int		 scale_width;
 	int		 divisor;
-	int		 width;
 	int		 scale;
+	int		 precision;
 	bool		 bin_scale;
 
 #define MAXSCALE	7
@@ -1948,7 +1949,7 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 
 	p->flags &= ~(PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2);
 
-	if (gen_format(format, sizeof(format), p->flags, PRId64) == NULL)
+	if (gen_format(format, sizeof(format), p->flags, ".*f") == NULL)
 		return (NULL);
 
 	if (number >= 0) {
@@ -1981,12 +1982,26 @@ human_number(struct sbuf *sbuf, int64_t number, struct percent_esc *p)
 	else
 		width = p->width - scale_width;
 
-	sbuf_printf(sbuf, format, width, num * sign);
-	if (number % num != 0)
-		sbuf_printf(sbuf, ".%"PRId64, number % num);
+	if (num >= 100)
+		precision = 0;
+	else if (num >= 10) {
+		if (width == 0 || width > 3)
+			precision = 1;
+		else
+			precision = 0;
+	} else {
+		if (width == 0 || width > 3)
+			precision = 2;
+		else if (width == 3)
+			precision = 1;
+		else
+			precision = 0;
+	}
+
+	sbuf_printf(sbuf, format, width, num * sign, precision);
 
 	if (scale > 0)
-		sbuf_printf(sbuf, "%s",
+		sbuf_printf(sbuf, "%s", 
 		    bin_scale ? bin_pfx[scale] : si_pfx[scale]);
 
 	return (sbuf);
