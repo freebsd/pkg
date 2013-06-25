@@ -557,6 +557,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 					if (!strcmp(path, "/dev/null"))
 						continue;
 					dirrmtry(p, path, a);
+					a = NULL;
 				}
 			} else {
 				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)",
@@ -568,6 +569,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 					if (!strcmp(path, "/dev/null"))
 						continue;
 					dirrmtry(p, path, a);
+					a = NULL;
 				}
 			}
 			regfree(&preg);
