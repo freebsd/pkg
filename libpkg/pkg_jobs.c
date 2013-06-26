@@ -346,7 +346,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkg_dep *d, *dtmp;
 	int ret;
 
-	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != PKG_FLAG_PKG_VERSION_TEST)
+	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
 			pkg_emit_newpkgversion();
 			goto order;
@@ -526,7 +526,7 @@ new_pkg_version(struct pkg_jobs *j)
 	if (p == NULL)
 		return (false);
 
-	if (get_remote_pkg(j, origin, MATCH_EXACT, true) == EPKG_OK)
+	if (get_remote_pkg(j, origin, MATCH_EXACT, false) == EPKG_OK)
 		return (true);
 
 	return (false);
@@ -540,7 +540,7 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	struct pkgdb_it *it;
 	char *origin;
 	const char *buf1, *buf2;
-	bool force = false;
+	bool force = false, seen = false;
 	int rc = EPKG_FATAL;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS;
 
@@ -567,19 +567,27 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 		return (rc);
 
 	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
+		seen = false;
 		pkg_get(p, PKG_ORIGIN, &origin);
 		HASH_FIND_STR(j->bulk, origin, p1);
-		if (p1 == NULL)
+		if (p1 == NULL) {
 			HASH_FIND_STR(j->seen, origin, p1);
+			seen = true;
+		}
 
 		if (p1 != NULL) {
 			pkg_get(p1, PKG_VERSION, &buf1);
 			pkg_get(p, PKG_VERSION, &buf2);
 			p->direct = root;
-			if (pkg_version_cmp(buf1, buf2) != 1)
-				continue;
-			HASH_DEL(j->bulk, p1);
-			pkg_free(p1);
+			if (seen) {
+				if (pkg_version_cmp(buf1, buf2) >= 0)
+					continue;
+			} else {
+				if (pkg_version_cmp(buf1, buf2) == 1)
+					continue;
+				HASH_DEL(j->bulk, p1);
+				pkg_free(p1);
+			}
 		}
 
 		if (j->type != PKG_JOBS_FETCH) {
@@ -588,6 +596,7 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 					pkg_emit_already_installed(p);
 				rc = EPKG_OK;
 				HASH_ADD_KEYPTR(hh, j->seen, origin, strlen(origin), p);
+				p = NULL;
 				continue;
 			}
 		}
@@ -782,7 +791,7 @@ jobs_solve_install(struct pkg_jobs *j)
 	const char *origin;
 	int ret;
 
-	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) != PKG_FLAG_PKG_VERSION_TEST)
+	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
 			pkg_emit_newpkgversion();
 			goto order;
