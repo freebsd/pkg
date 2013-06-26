@@ -122,7 +122,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, const char
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (strcmp(archive_entry_pathname(ae), file) == 0) {
-			if (dest_fd == -1) {
+			if (dest != NULL) {
 				archive_entry_set_pathname(ae, dest);
 				/*
 				 * The repo should be owned by root and not writable
@@ -137,7 +137,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, const char
 					goto cleanup;
 				}
 			}
-			else {
+			if (dest_fd != -1) {
 				if (archive_read_data_into_fd(a, dest_fd) != 0) {
 					pkg_emit_errno("archive_read_extract", "extract error");
 					rc = EPKG_FATAL;
@@ -190,6 +190,7 @@ repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 	FILE *res = NULL;
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
+	char tmp_rsa[MAXPATHLEN];
 
 	fd = repo_fetch_remote_tmp(repo, filename, extension, t, rc);
 	if (fd == -1) {
@@ -204,6 +205,7 @@ repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 	mask = umask(022);
 	dest_fd = mkstemp(tmp);
 	umask(mask);
+	snprintf(tmp_rsa, MAXPATHLEN, "%s.rsa", tmp);
 	if (dest_fd == -1) {
 		pkg_emit_error("Could not create temporary file %s, "
 				"aborting update.\n", tmp);
@@ -211,10 +213,12 @@ repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		goto cleanup;
 	}
 	(void)unlink(tmp);
-	if (repo_archive_extract_file(fd, archive_file, NULL, repo->pubkey, dest_fd) != EPKG_OK) {
+	if (repo_archive_extract_file(fd, archive_file, tmp_rsa, repo->pubkey, dest_fd) != EPKG_OK) {
 		*rc = EPKG_FATAL;
+		(void)unlink(tmp_rsa);
 		goto cleanup;
 	}
+	(void)unlink(tmp_rsa);
 
 	res = fdopen(dest_fd, "r");
 	if (res == NULL) {
