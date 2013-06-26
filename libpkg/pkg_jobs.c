@@ -798,7 +798,7 @@ jobs_solve_install(struct pkg_jobs *j)
 				d = NULL;
 				pkg_get(pkg, PKG_ORIGIN, &origin);
 				if (get_remote_pkg(j, origin, MATCH_EXACT, true) == EPKG_FATAL)
-					pkg_emit_error("No packages matching '%s', has been found in the repositories", pkg_dep_origin(d));
+					pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
 
 				while (pkg_rdeps(pkg, &d) == EPKG_OK) {
 					if (get_remote_pkg(j, pkg_dep_origin(d), MATCH_EXACT, false) == EPKG_FATAL)
