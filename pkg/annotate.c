@@ -173,8 +173,12 @@ read_input(void)
 		}
 		sbuf_putc(input, ch);
 	}
+#ifdef __DragonFly__
+	sbuf_finish(input);
+#else
 	if (sbuf_finish(input) != 0)
 		err(EX_DATAERR, "Could not read value data");
+#endif
 
 	return (input);
 }
