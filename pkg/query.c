@@ -77,6 +77,8 @@ static struct query_flags accepted_query_flags[] = {
 static void
 format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 {
+	bool automatic;
+	bool locked;
 
 	sbuf_clear(dest);
 
@@ -109,10 +111,12 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 				pkg_sbuf_printf(dest, "%w", pkg);
 				break;
 			case 'a':
-				pkg_sbuf_printf(dest, "%a", pkg);
+				pkg_get(pkg, PKG_AUTOMATIC, &automatic);
+				sbuf_printf(dest, "%d", automatic);
 				break;
 			case 'k':
-				pkg_sbuf_printf(dest, "%k", pkg);
+				pkg_get(pkg, PKG_LOCKED, &locked);
+				sbuf_printf(dest, "%d", locked);
 				break;
 			case 't':
 				pkg_sbuf_printf(dest, "%t", pkg);
