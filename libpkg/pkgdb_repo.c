@@ -413,6 +413,9 @@ pkgdb_repo_close(sqlite3 *sqlite, bool commit)
 {
 	int retcode = EPKG_OK;
 
+	if (sqlite == NULL)
+		return (retcode);
+
 	if (commit) {
 		if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK)
 			retcode = EPKG_FATAL;
