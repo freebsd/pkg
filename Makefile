@@ -10,7 +10,7 @@ NEWVERS=	newvers.sh
 SUBDIR+=	pkg-static
 .endif
 
-ATF_INSTALLED!=	( which atf-version ) 2>&1 || true
+ATF_INSTALLED!=	which atf-version 2>&1 || echo
 
 .if !empty(ATF_INSTALLED)
 SUBDIR+=	tests
