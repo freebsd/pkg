@@ -31,7 +31,7 @@ program consist of one or more collections of
 together with package catalogues and optionally various other
 collected package metadata.
 .Pp
-Each collection consists of packages suitable for installation on a 
+Each collection consists of packages suitable for installation on a
 specific system
 .Sy ABI :
 a combination of operating system, CPU architecture, OS version, word
@@ -40,7 +40,7 @@ size, and for certain processors endianness or similar attributes.
 The package collections are typically made available to users for
 download via a web- or FTP server although various other means of access
 may be employed.
-Encoding the 
+Encoding the
 .Sy ABI
 value into the repository URL allows
 .Nm pkg
@@ -76,7 +76,7 @@ should be binary compatible with a specific system
 .Cm ABI .
 .It
 The repository catalogue is located at the apex of the
-repository, at a specific location relative to the 
+repository, at a specific location relative to the
 .Cm REPOSITORY_ROOT .
 .El
 .Pp
@@ -87,7 +87,7 @@ package to be constructed.
 .Pp
 Where a package may be applicable to more than one
 .Sy ABI
-(eg. it contains only text files) symbolic or hard links, URL mappings
+(e.g., it contains only text files) symbolic or hard links, URL mappings
 or other techniques may be utilised to avoid duplication of storage.
 .Pp
 Although no specific filesystem organization is required, the usual
@@ -150,9 +150,9 @@ ports tree.
 .It Pa $REPOSITORY_ROOT/archivers/
 .It Pa ...
 .It Pa $REPOSITORY_ROOT/x11-toolkits/
-These are populated by per-package symbolic links to the actual 
+These are populated by per-package symbolic links to the actual
 package content stored within
-.Pa $REPOSITORY_ROOT/All/ 
+.Pa $REPOSITORY_ROOT/All/
 according to the package origin within the FreeBSD ports collection.
 Package symbolic links contain the package name and version.
 .El
@@ -161,7 +161,7 @@ Each of the packages listed in the repository catalogue must have a
 unique
 .Cm origin .
 There are no other constraints: package sets are not required to be
-either complete (ie. with all dependencies satisfied) or
+either complete (i.e., with all dependencies satisfied) or
 self-consistent within a single repository.
 .Sh REPOSITORY ACCESS METHODS
 .Nm pkg

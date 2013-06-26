@@ -153,7 +153,7 @@ to set key/values passed in the environment.
 Therefore underlying libraries
 like
 .Xr fetch 3
-can be configured (e.g. setting
+can be configured (e.g., setting
 .Ev FTP_PROXY
 and
 .Ev HTTP_PROXY ) .
@@ -166,7 +166,7 @@ in JSON.
 .It Cm SSH_RESTRICT_DIR: string
 Directory where the ssh subsystem will be restricted to
 .It Cm DISABLE_MTREE: boolean
-For experimental purposes only. 
+For experimental purposes only.
 Not for use on production systems.
 All this option does is prevent processing of
 .Cm +MTREE
@@ -174,15 +174,15 @@ data when installing a package.
 .Cm +MTREE
 files are a legacy feature of the ports tree, which provide functionality
 necessary for
-.Xr pkg-install 8 
+.Xr pkg-install 8
 as it cannot handle creating arbitrary directory heirarcies otherwise.
 .Xr pkg 8
 can create such directory structures natively, but currently still uses the
 .Cm +MTREE
 data.
-This option exists to facilitate developing 
+This option exists to facilitate developing
 .Cm +MTREE
-free package sets. 
+free package sets.
 .El
 .Sh MULTIPLE REPOSITORIES
 To use multiple repositories, specify the primary repository as shown above.
