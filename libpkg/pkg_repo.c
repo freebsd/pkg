@@ -213,9 +213,10 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 
 	const char package_select_sql[] = ""
 				"SELECT name,origin,version "
-				"FROM packages WHERE id="
-				"(SELECT package_id FROM files WHERE"
-				"file=?1)";
+				"FROM packages AS p "
+				"LEFT JOIN files AS f ON p.id = f.package_id "
+				"WHERE f.file = ?1 GROUP BY p.id"
+				"";
 
 	HASH_FIND_STR(conflicts,  __DECONST(char *, file), s);
 
@@ -255,9 +256,9 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 			sqlite3_finalize(stmt);
 			return;
 		}
-		name = sqlite3_column_text(stmt, 1);
-		origin = sqlite3_column_text(stmt, 2);
-		version = sqlite3_column_text(stmt, 3);
+		name = sqlite3_column_text(stmt, 0);
+		origin = sqlite3_column_text(stmt, 1);
+		version = sqlite3_column_text(stmt, 2);
 		pkg_repo_new_conflict(name, origin, version, s);
 		sqlite3_finalize(stmt);
 
@@ -280,11 +281,11 @@ pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
 	int	r;
 
 	const char package_insert_sql[] = ""
-			"INSERT OR REPLACE INTO packages("
-			"origin, name, version)"
+			"INSERT OR REPLACE INTO packages"
+			"(name, origin, version)"
 			"VALUES(?1, ?2, ?3)";
 	const char file_insert_sql[] = ""
-			"INSERT INTO files("
+			"INSERT INTO files"
 			"(file, package_id)"
 			"VALUES(?1, ?2)";
 
@@ -427,7 +428,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 
 	const char conflicts_create_sql[] = ""
 			"CREATE TABLE packages("
-			    "id INTEGER PRIMARY KEY"
+			    "id INTEGER PRIMARY KEY,"
 			    "origin NOT NULL,"
 			    "name NOT NULL,"
 			    "version NOT NULL);"
@@ -475,21 +476,6 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		goto cleanup;
 	}
 
-	snprintf(repodb, sizeof(repodb), "%s/conflicts.sqlite", path);
-	/* Unlink conflicts to ensure that it is clean */
-	if (unlink(repodb) == -1 && errno != ENOENT) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-	if (sqlite3_open(repodb, &conflictsdb) != SQLITE_OK) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((retcode = sql_exec(conflictsdb, conflicts_create_sql)) != EPKG_OK) {
-		goto cleanup;
-	}
-
 	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_conflicts_file);
 	if ((fconflicts = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
@@ -506,6 +492,21 @@ pkg_create_repo(char *path, bool force, bool filelist,
 
 	if ((retcode = pkgdb_repo_init(sqlite, true)) != EPKG_OK)
 		goto cleanup;
+
+	snprintf(repodb, sizeof(repodb), "%s/conflicts.sqlite", path);
+	/* Unlink conflicts to ensure that it is clean */
+	if (unlink(repodb) == -1 && errno != ENOENT) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+	if (sqlite3_open(repodb, &conflictsdb) != SQLITE_OK) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	if ((retcode = sql_exec(conflictsdb, conflicts_create_sql)) != EPKG_OK) {
+		goto cleanup;
+	}
 
 	thd_data.root_path = path;
 	thd_data.max_results = num_workers;
