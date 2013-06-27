@@ -240,7 +240,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	}
 
 	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_db_file);
-	snprintf(repopack, sizeof(repopack), "%s/repoy.txz", path);
+	snprintf(repopack, sizeof(repopack), "%s/repo.txz", path);
 
 	pack_extract(repopack, repo_db_file, repodb);
 
