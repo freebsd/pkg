@@ -52,7 +52,7 @@ query_tty_yesno(const char *msg, ...)
 	FILE	*tty;
 	int	 tty_flags = O_RDWR;
 
-#ifdef __FreeBSD__
+#ifndef __DragonFLy__
 	tty_flags |= O_TTY_INIT;
 #endif
 	tty_fd = open(_PATH_TTY, tty_flags);
