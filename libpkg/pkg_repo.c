@@ -189,7 +189,7 @@ digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry 
 
 static void
 pkg_repo_new_conflict(const char *name, const char *origin,
-		const char *version, struct pkg_conflict_bulk *bulk)
+		const char *version, struct pkg_conflict_bulk *bulk, bool need_copy)
 {
 	struct pkg_conflict *new;
 
@@ -198,9 +198,16 @@ pkg_repo_new_conflict(const char *name, const char *origin,
 		pkg_emit_errno("malloc", "struct pkg_conflict");
 		return;
 	}
-	new->name = strdup(name);
-	new->version = strdup(version);
-	new->origin = strdup(origin);
+	if (need_copy) {
+		new->name = strdup(name);
+		new->version = strdup(version);
+		new->origin = strdup(origin);
+	}
+	else {
+		new->name = __DECONST(char *, name);
+		new->version = __DECONST(char *, version);
+		new->origin = __DECONST(char *, origin);
+	}
 	LL_PREPEND(bulk->conflicts, new);
 }
 
@@ -227,7 +234,7 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 		 */
 		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin,
 					PKG_VERSION, &version);
-		pkg_repo_new_conflict(name, origin, version, s);
+		pkg_repo_new_conflict(name, origin, version, s, true);
 	}
 	else {
 		/*
@@ -261,13 +268,13 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 		name = sqlite3_column_text(stmt, 0);
 		origin = sqlite3_column_text(stmt, 1);
 		version = sqlite3_column_text(stmt, 2);
-		pkg_repo_new_conflict(name, origin, version, s);
+		pkg_repo_new_conflict(name, origin, version, s, true);
 		sqlite3_finalize(stmt);
 
 		/* Register the second conflicting package */
 		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin,
 							PKG_VERSION, &version);
-		pkg_repo_new_conflict(name, origin, version, s);
+		pkg_repo_new_conflict(name, origin, version, s, true);
 	}
 }
 
@@ -387,7 +394,8 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 						new = false;
 				}
 				if (new)
-					LL_APPEND(s->conflicts, c2);
+					pkg_repo_new_conflict(c2->name, c2->origin, c2->version,
+							s, false);
 			}
 		}
 	}
@@ -402,7 +410,16 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 		}
 	}
 out:
-	/* TODO: add cleanup here */
+	HASH_ITER (hh, pkg_bulk, cur, tmp) {
+		c1 = cur->conflicts;
+		while (c1 != NULL) {
+			ctmp = c1;
+			c1 = c1->next;
+			free (ctmp);
+		}
+		HASH_DEL(pkg_bulk, cur);
+		free(cur);
+	}
 	return;
 }
 
@@ -427,7 +444,8 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	char *manifest_digest;
 	FILE *psyml, *fsyml, *mandigests, *fconflicts;
 
-	struct pkg_conflict_bulk *conflicts = NULL;
+	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
+	struct pkg_conflict *c, *ctmp;
 
 	const char conflicts_create_sql[] = ""
 			"CREATE TABLE packages("
@@ -610,6 +628,19 @@ pkg_create_repo(char *path, bool force, bool filelist,
 cleanup:
 	if (pkgdb_repo_close(sqlite, retcode == EPKG_OK) != EPKG_OK) {
 		retcode = EPKG_FATAL;
+	}
+	HASH_ITER (hh, conflicts, curcb, tmpcb) {
+		c = curcb->conflicts;
+		while (c != NULL) {
+			free(c->name);
+			free(c->origin);
+			free(c->version);
+			ctmp = c;
+			c = c->next;
+			free(ctmp);
+		}
+		HASH_DEL(conflicts, curcb);
+		free(curcb);
 	}
 	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
 		if (retcode == EPKG_OK) {
