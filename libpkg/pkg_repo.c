@@ -691,10 +691,8 @@ cleanup:
 
 	sqlite3_shutdown();
 
-#if 0
 	snprintf(repodb, sizeof(repodb), "%s/conflicts.sqlite", path);
 	(void)unlink(repodb);
-#endif
 
 	return (retcode);
 }
