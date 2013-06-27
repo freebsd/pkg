@@ -522,6 +522,10 @@ subst_packagesite(void)
 	pkg_config_key k = PKG_CONFIG_REPO;
 
 	HASH_FIND_INT(config, &k, conf);
+
+	if (conf == NULL)
+		return;
+
 	oldval = conf->string;
 
 	if (oldval == NULL || strstr(oldval, ABI_VAR_STRING) == NULL)
