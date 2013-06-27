@@ -9,7 +9,7 @@ _pkg_available_name() {
 }
 
 _pkg_available() {
-	compadd "$@" - $(__PREFIX__/pkg rquery "%n-%v")
+	compadd "$@" - $(__PREFIX__/sbin/pkg rquery "%n-%v")
 }
 
 _pkg() {
