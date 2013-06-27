@@ -206,7 +206,7 @@ pkg_repo_new_conflict(const char *name, const char *origin,
 
 static void
 pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
-		sqlite3 *sqlite, struct pkg_conflict_bulk *conflicts)
+		sqlite3 *sqlite, struct pkg_conflict_bulk **conflicts)
 {
 	struct pkg_conflict_bulk	*s;
 	const char	*name, *origin, *version;
@@ -218,7 +218,7 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 				"WHERE f.file = ?1 GROUP BY p.id"
 				"";
 
-	HASH_FIND_STR(conflicts,  __DECONST(char *, file), s);
+	HASH_FIND_STR(*conflicts,  __DECONST(char *, file), s);
 
 	if (s != NULL) {
 		/*
@@ -234,6 +234,7 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 		 * If it is a new conflict we need to extract
 		 */
 		sqlite3_stmt	*stmt = NULL;
+		int	len;
 
 		s = malloc(sizeof(struct pkg_conflict_bulk));
 		if (s == NULL){
@@ -242,7 +243,8 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 		}
 		memset(s, 0, sizeof(struct pkg_conflict_bulk));
 		s->file = strdup(file);
-		HASH_ADD_KEYPTR(hh, conflicts, s->file, strlen(s->file), s);
+		len = strlen(s->file);
+		HASH_ADD_KEYPTR(hh, *conflicts, s->file, len, s);
 
 		/* Register the first conflicting package */
 		if (sqlite3_prepare_v2(sqlite, package_select_sql, -1, &stmt, NULL)
@@ -271,7 +273,7 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 
 static void
 pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
-		struct pkg_conflict_bulk *conflicts)
+		struct pkg_conflict_bulk **conflicts)
 {
 	sqlite3_stmt	*stmt = NULL;
 	const char	*name, *origin, *version;
@@ -375,12 +377,13 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
 			}
 			/* Now add all new entries from this file to this conflict structure */
-			new = true;
 			LL_FOREACH(cur->conflicts, c2) {
+				new = true;
+				if (strcmp(c1->origin, c2->origin) == 0)
+					continue;
+
 				LL_FOREACH(s->conflicts, ctmp) {
-					/* It is safe to compare pointers here */
-					if (ctmp->origin == c1->origin ||
-							ctmp->origin == c2->origin)
+					if (strcmp(ctmp->origin, c2->origin) == 0)
 						new = false;
 				}
 				if (new)
@@ -573,7 +576,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		if (filelist) {
 			files_pos = ftell(fsyml);
 			pkg_emit_filelist(r->pkg, fsyml);
-			pkg_repo_check_conflicts(r->pkg, conflictsdb, conflicts);
+			pkg_repo_check_conflicts(r->pkg, conflictsdb, &conflicts);
 		} else {
 			files_pos = 0;
 		}
