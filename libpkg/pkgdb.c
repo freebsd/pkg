@@ -2428,14 +2428,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 				pkgdb_it_free(it);
 				goto cleanup;
 			}
-		}
-		else {
+		} else {
 			pkg_emit_error("%s-%s conflicts with %s-%s"
 					" (installs files into the same place). "
 					" Problematic file: %s ignored by forced mode",
 					name, version, name2, version2, pkg_path);
 			pkg_free(pkg2);
 		}
+		pkgdb_it_free(it);
 	}
 
 	/*
