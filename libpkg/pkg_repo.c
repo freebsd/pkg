@@ -466,6 +466,7 @@ read_pkg_file(void *data)
 			pkg_path++;
 
 		r = calloc(1, sizeof(struct pkg_result));
+		strlcpy(r->path, pkg_path, sizeof(r->path));
 
 		if (d->read_files)
 			flags = PKG_OPEN_MANIFEST_ONLY;
