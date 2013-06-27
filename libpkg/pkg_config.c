@@ -698,6 +698,9 @@ disable_plugins_if_static(void)
 
 	HASH_FIND_INT(config, &k, conf);
 
+	if (conf == NULL)
+		return;
+
 	if (!conf->boolean)
 		return;
 
