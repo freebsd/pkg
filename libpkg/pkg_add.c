@@ -223,11 +223,13 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 			pkg_emit_already_installed(pkg_inst);
 			retcode = EPKG_INSTALLED;
 			pkg_free(pkg_inst);
+			pkg_inst = NULL;
 			goto cleanup;
 		}
 		else {
 			pkg_emit_notice("package %s is already installed, forced install", name);
 			pkg_free(pkg_inst);
+			pkg_inst = NULL;
 		}
 	} else if (ret != EPKG_END) {
 		retcode = ret;
@@ -339,7 +341,9 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 		archive_read_free(a);
 
 	pkg_free(pkg);
-	pkg_free(pkg_inst);
+
+	if (pkg_inst != NULL)
+		pkg_free(pkg_inst);
 
 	return (retcode);
 }
