@@ -277,7 +277,7 @@ pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
 	const char package_insert_sql[] = ""
 			"INSERT OR REPLACE INTO packages"
 			"(origin)"
-			"VALUES(?1, ?2, ?3)";
+			"VALUES(?1)";
 	const char file_insert_sql[] = ""
 			"INSERT INTO files"
 			"(file, package_id)"
@@ -372,7 +372,7 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 					continue;
 
 				HASH_FIND_STR(s->conflicts, sbuf_get(c2->origin), ctmp);
-				if (s == NULL)
+				if (ctmp == NULL)
 					pkg_repo_new_conflict(sbuf_get(c2->origin), s);
 			}
 		}
@@ -427,9 +427,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	const char conflicts_create_sql[] = ""
 			"CREATE TABLE packages("
 			    "id INTEGER PRIMARY KEY,"
-			    "origin NOT NULL,"
-			    "name NOT NULL,"
-			    "version NOT NULL);"
+			    "origin NOT NULL);"
 			"CREATE TABLE files("
 			    "file TEXT UNIQUE,"
 			    "package_id INTEGER REFERENCES packages(id));"
