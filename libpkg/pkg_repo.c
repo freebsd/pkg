@@ -188,27 +188,16 @@ digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry 
 }
 
 static void
-pkg_repo_new_conflict(const char *name, const char *origin,
-		const char *version, struct pkg_conflict_bulk *bulk, bool need_copy)
+pkg_repo_new_conflict(const char *origin, struct pkg_conflict_bulk *bulk)
 {
 	struct pkg_conflict *new;
 
-	new = malloc(sizeof(struct pkg_conflict));
-	if (new == NULL) {
-		pkg_emit_errno("malloc", "struct pkg_conflict");
-		return;
-	}
-	if (need_copy) {
-		new->name = strdup(name);
-		new->version = strdup(version);
-		new->origin = strdup(origin);
-	}
-	else {
-		new->name = __DECONST(char *, name);
-		new->version = __DECONST(char *, version);
-		new->origin = __DECONST(char *, origin);
-	}
-	LL_PREPEND(bulk->conflicts, new);
+	pkg_conflict_new(&new);
+	sbuf_set(&new->origin, origin);
+
+	HASH_ADD_KEYPTR(hh, bulk->conflicts,
+			__DECONST(char *, pkg_conflict_origin(new)),
+			sbuf_size(new->origin), new);
 }
 
 static void
@@ -216,10 +205,10 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 		sqlite3 *sqlite, struct pkg_conflict_bulk **conflicts)
 {
 	struct pkg_conflict_bulk	*s;
-	const char	*name, *origin, *version;
+	const char	*origin;
 
 	const char package_select_sql[] = ""
-				"SELECT name,origin,version "
+				"SELECT origin "
 				"FROM packages AS p "
 				"LEFT JOIN files AS f ON p.id = f.package_id "
 				"WHERE f.file = ?1 GROUP BY p.id"
@@ -232,9 +221,8 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 		 * If we have a conflict in hash table we just need to add
 		 * new package id there.
 		 */
-		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin,
-					PKG_VERSION, &version);
-		pkg_repo_new_conflict(name, origin, version, s, true);
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		pkg_repo_new_conflict(origin, s);
 	}
 	else {
 		/*
@@ -265,16 +253,13 @@ pkg_repo_insert_conflict(const char *file, struct pkg *pkg,
 			sqlite3_finalize(stmt);
 			return;
 		}
-		name = sqlite3_column_text(stmt, 0);
-		origin = sqlite3_column_text(stmt, 1);
-		version = sqlite3_column_text(stmt, 2);
-		pkg_repo_new_conflict(name, origin, version, s, true);
+		origin = sqlite3_column_text(stmt, 0);
+		pkg_repo_new_conflict(origin, s);
 		sqlite3_finalize(stmt);
 
 		/* Register the second conflicting package */
-		pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin,
-							PKG_VERSION, &version);
-		pkg_repo_new_conflict(name, origin, version, s, true);
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		pkg_repo_new_conflict(origin, s);
 	}
 }
 
@@ -283,7 +268,7 @@ pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
 		struct pkg_conflict_bulk **conflicts)
 {
 	sqlite3_stmt	*stmt = NULL;
-	const char	*name, *origin, *version;
+	const char	*origin;
 	struct pkg_file	*f;
 	struct pkg_dir	*d;
 	int64_t	package_id;
@@ -291,7 +276,7 @@ pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
 
 	const char package_insert_sql[] = ""
 			"INSERT OR REPLACE INTO packages"
-			"(name, origin, version)"
+			"(origin)"
 			"VALUES(?1, ?2, ?3)";
 	const char file_insert_sql[] = ""
 			"INSERT INTO files"
@@ -305,11 +290,8 @@ pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
 	}
 
 	/* Insert a package */
-	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin,
-			PKG_VERSION, &version);
-	sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 2, origin, -1, SQLITE_STATIC);
-	sqlite3_bind_text(stmt, 3, version, -1, SQLITE_STATIC);
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_STATIC);
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
 		ERROR_SQLITE(sqlite);
 		sqlite3_finalize(stmt);
@@ -360,7 +342,7 @@ static void
 pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 {
 	struct pkg_conflict_bulk	*pkg_bulk = NULL, *cur, *tmp, *s;
-	struct pkg_conflict	*c1, *c2, *ctmp;
+	struct pkg_conflict	*c1, *c1tmp, *c2, *c2tmp, *ctmp;
 	bool new;
 
 	/*
@@ -370,8 +352,8 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 	 */
 
 	HASH_ITER (hh, bulk, cur, tmp) {
-		LL_FOREACH(cur->conflicts, c1) {
-			HASH_FIND_STR(pkg_bulk, c1->origin, s);
+		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
+			HASH_FIND_STR(pkg_bulk, sbuf_get(c1->origin), s);
 			if (s == NULL) {
 				/* New entry required */
 				s = malloc(sizeof(struct pkg_conflict_bulk));
@@ -380,42 +362,37 @@ pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
 					goto out;
 				}
 				memset(s, 0, sizeof(struct pkg_conflict_bulk));
-				s->file = c1->origin;
+				s->file = sbuf_get(c1->origin);
 				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
 			}
 			/* Now add all new entries from this file to this conflict structure */
-			LL_FOREACH(cur->conflicts, c2) {
+			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
 				new = true;
-				if (strcmp(c1->origin, c2->origin) == 0)
+				if (strcmp(sbuf_get(c1->origin), sbuf_get(c2->origin)) == 0)
 					continue;
 
-				LL_FOREACH(s->conflicts, ctmp) {
-					if (strcmp(ctmp->origin, c2->origin) == 0)
-						new = false;
-				}
-				if (new)
-					pkg_repo_new_conflict(c2->name, c2->origin, c2->version,
-							s, false);
+				HASH_FIND_STR(s->conflicts, sbuf_get(c2->origin), ctmp);
+				if (s == NULL)
+					pkg_repo_new_conflict(sbuf_get(c2->origin), s);
 			}
 		}
 	}
 
 	HASH_ITER (hh, pkg_bulk, cur, tmp) {
 		fprintf(out, "%s:", cur->file);
-		LL_FOREACH(cur->conflicts, c1) {
-			if (c1->next != NULL)
-				fprintf(out, "%s,", c1->origin);
+		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
+			if (c1->hh.next != NULL)
+				fprintf(out, "%s,", sbuf_get(c1->origin));
 			else
-				fprintf(out, "%s\n", c1->origin);
+				fprintf(out, "%s\n", sbuf_get(c1->origin));
 		}
 	}
 out:
 	HASH_ITER (hh, pkg_bulk, cur, tmp) {
-		c1 = cur->conflicts;
-		while (c1 != NULL) {
-			ctmp = c1;
-			c1 = c1->next;
-			free (ctmp);
+		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
+			HASH_DEL(cur->conflicts, c1);
+			sbuf_free(c1->origin);
+			free(c1);
 		}
 		HASH_DEL(pkg_bulk, cur);
 		free(cur);
@@ -630,14 +607,10 @@ cleanup:
 		retcode = EPKG_FATAL;
 	}
 	HASH_ITER (hh, conflicts, curcb, tmpcb) {
-		c = curcb->conflicts;
-		while (c != NULL) {
-			free(c->name);
-			free(c->origin);
-			free(c->version);
-			ctmp = c;
-			c = c->next;
-			free(ctmp);
+		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
+			sbuf_free(c->origin);
+			HASH_DEL(curcb->conflicts, c);
+			free(c);
 		}
 		HASH_DEL(conflicts, curcb);
 		free(curcb);

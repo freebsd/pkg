@@ -432,6 +432,37 @@ pkg_shlib_name(struct pkg_shlib const * const sl)
 }
 
 /*
+ * Conflicts
+ */
+
+int
+pkg_conflict_new(struct pkg_conflict **c)
+{
+	if ((*c = calloc(1, sizeof(struct pkg_conflict))) == NULL)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_conflict_free(struct pkg_conflict *c)
+{
+	if (c == NULL)
+		return;
+
+	sbuf_free(c->origin);
+	free(c);
+}
+
+const char *
+pkg_conflict_origin(const struct pkg_conflict *c)
+{
+	assert(c != NULL);
+
+	return (sbuf_get(c->origin));
+}
+
+/*
  * Annotations
  */
 

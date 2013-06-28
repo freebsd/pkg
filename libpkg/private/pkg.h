@@ -146,10 +146,8 @@ struct pkg_dep {
 };
 
 struct pkg_conflict {
-	char	*origin;
-	char	*name;
-	char	*version;
-	struct pkg_conflict *next;
+	struct sbuf		*origin;
+	UT_hash_handle	hh;
 };
 
 struct pkg_license {
@@ -354,6 +352,9 @@ int pkg_jobs_resolv(struct pkg_jobs *jobs);
 
 int pkg_shlib_new(struct pkg_shlib **);
 void pkg_shlib_free(struct pkg_shlib *);
+
+int pkg_conflict_new(struct pkg_conflict **);
+void pkg_conflict_free(struct pkg_conflict *);
 
 int pkg_annotation_new(struct pkg_note **);
 void pkg_annotation_free(struct pkg_note *);

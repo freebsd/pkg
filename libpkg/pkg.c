@@ -463,6 +463,14 @@ pkg_shlibs_provided(const struct pkg *pkg, struct pkg_shlib **s)
 }
 
 int
+pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->conflicts, (*c));
+}
+
+int
 pkg_annotations(const struct pkg *pkg, struct pkg_note **an)
 {
 	assert(pkg != NULL);
@@ -894,6 +902,29 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided,
 	    __DECONST(char *, pkg_shlib_name(s)),
 	    strlen(pkg_shlib_name(s)), s);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addconflict(struct pkg *pkg, const char *name)
+{
+	struct pkg_conflict *c = NULL;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	HASH_FIND_STR(pkg->conflicts, __DECONST(char *, name), c);
+	/* silently ignore duplicates in case of conflicts */
+	if (c != NULL)
+		return (EPKG_OK);
+
+	pkg_conflict_new(&c);
+	sbuf_set(&c->origin, name);
+
+	HASH_ADD_KEYPTR(hh, pkg->conflicts,
+	    __DECONST(char *, pkg_conflict_origin(c)),
+	    sbuf_size(c->origin), c);
 
 	return (EPKG_OK);
 }

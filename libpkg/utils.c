@@ -91,6 +91,15 @@ sbuf_free(struct sbuf *buf)
 		sbuf_delete(buf);
 }
 
+ssize_t
+sbuf_size(struct sbuf *buf)
+{
+	if (buf != NULL)
+		return sbuf_len(buf);
+
+	return 0;
+}
+
 int
 mkdirs(const char *_path)
 {

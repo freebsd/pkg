@@ -60,6 +60,7 @@
 #define PKG_SHLIBS_PROVIDED -13
 #define PKG_ANNOTATIONS -14
 #define PKG_INFOS -15		/* Deprecated field: treat as an annotation for backwards compatibility */
+#define PKG_CONFLICTS -16
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_size_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
@@ -157,6 +158,7 @@ static struct manifest_key {
 	{ "shlibs", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence}, /* Backwards compat with 1.0.x packages */
 	{ "shlibs_provided", PKG_SHLIBS_PROVIDED, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "shlibs_required", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "conflicts", PKG_CONFLICTS, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "sum", PKG_CKSUM, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "users", PKG_USERS, YAML_MAPPING_NODE, parse_mapping},
 	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence},
@@ -831,6 +833,12 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
 			else
 				pkg_addshlib_provided(pkg, val->data.scalar.value);
 			break;
+		case PKG_CONFLICTS:
+			if (!is_valid_yaml_scalar(val))
+				pkg_emit_error("Skipping malformed conflict name");
+			else
+				pkg_addconflict(pkg, val->data.scalar.value);
+			break;
 		}
 		++item;
 	}
@@ -1498,6 +1506,7 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 	struct pkg_group	*group    = NULL;
 	struct pkg_shlib	*shlib    = NULL;
 	struct pkg_note		*note     = NULL;
+	struct pkg_conflict	*conflict = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
 	int rc = EPKG_OK;
 	int mapping;
@@ -1605,6 +1614,11 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
 		manifest_append_seqval(&doc, mapping, &seq, "shlibs_provided",
 		    pkg_shlib_name(shlib));
+
+	seq = -1;
+	while (pkg_conflicts(pkg, &conflict) == EPKG_OK)
+		manifest_append_seqval(&doc, mapping, &seq, "conflicts",
+		    pkg_conflict_origin(conflict));
 
 	map = -1;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
