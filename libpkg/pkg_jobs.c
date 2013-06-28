@@ -526,7 +526,7 @@ new_pkg_version(struct pkg_jobs *j)
 	if (p == NULL)
 		return (false);
 
-	if (get_remote_pkg(j, origin, MATCH_EXACT, false) == EPKG_OK)
+	if (get_remote_pkg(j, origin, MATCH_EXACT, false) == EPKG_OK && HASH_COUNT(j->bulk) == 1)
 		return (true);
 
 	return (false);
