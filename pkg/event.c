@@ -46,7 +46,7 @@ print_and_set_term_title(struct sbuf *msg)
 {
 	sbuf_finish(msg);
 	printf("%s", sbuf_data(msg));
-	printf("\033]0; %s\007", sbuf_data(msg));
+	/*printf("\033]0; %s\007", sbuf_data(msg));*/
 	sbuf_delete(msg);
 }
 
