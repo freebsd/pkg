@@ -117,7 +117,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, const char
 	archive_read_support_format_tar(a);
 
 	/* Seek to the begin of file */
-	(void)lseek(fd, SEEK_SET, 0);
+	(void)lseek(fd, 0, SEEK_SET);
 	archive_read_open_fd(a, fd, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
