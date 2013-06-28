@@ -334,15 +334,45 @@ sha256_hash(unsigned char hash[SHA256_DIGEST_LENGTH],
 int
 sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
-	FILE *fp;
+	int fd;
+	int ret;
+
+	if ((fd = open(path, O_RDONLY)) == -1) {
+		pkg_emit_errno("fopen", path);
+		return (EPKG_FATAL);
+	}
+
+	ret = sha256_fd(fd, out);
+
+	close(fd);
+
+	return (ret);
+}
+
+int
+sha256_fd(int fd, char out[SHA256_DIGEST_LENGTH * 2 + 1])
+{
+	int my_fd = -1;
+	FILE *fp = NULL;
 	char buffer[BUFSIZ];
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	size_t r = 0;
+	int ret = EPKG_OK;
 	SHA256_CTX sha256;
 
-	if ((fp = fopen(path, "rb")) == NULL) {
-		pkg_emit_errno("fopen", path);
-		return EPKG_FATAL;
+	out[0] = '\0';
+
+	/* Duplicate the fd so that fclose(3) does not close it. */
+	if ((my_fd = dup(fd)) == -1) {
+		pkg_emit_errno("dup", "");
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	if ((fp = fdopen(my_fd, "rb")) == NULL) {
+		pkg_emit_errno("fdopen", "");
+		ret = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	SHA256_Init(&sha256);
@@ -351,16 +381,20 @@ sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 		SHA256_Update(&sha256, buffer, r);
 
 	if (ferror(fp) != 0) {
-		fclose(fp);
-		out[0] = '\0';
-		pkg_emit_errno("fread", path);
-		return EPKG_FATAL;
+		pkg_emit_errno("fread", "");
+		ret = EPKG_FATAL;
+		goto cleanup;
 	}
-
-	fclose(fp);
 
 	SHA256_Final(hash, &sha256);
 	sha256_hash(hash, out);
+cleanup:
+
+	if (fp != NULL)
+		fclose(fp);
+	else if (my_fd != -1)
+		close(my_fd);
+	(void)lseek(fd, 0, SEEK_SET);
 
 	return (EPKG_OK);
 }
