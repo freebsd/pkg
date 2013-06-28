@@ -84,13 +84,14 @@ int is_dir(const char *);
 int is_conf_file(const char *path, char *newpath, size_t len);
 
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
+int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
 
 int rsa_new(struct rsa_key **, pem_password_cb *, char *path);
 void rsa_free(struct rsa_key *);
 int rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen);
 int rsa_verify(const char *path, const char *key,
-		unsigned char *sig, unsigned int sig_len);
+		unsigned char *sig, unsigned int sig_len, int fd);
 
 bool is_hardlink(struct hardlinks *hl, struct stat *st);
 

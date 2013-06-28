@@ -82,14 +82,17 @@ _load_rsa_public_key(const char *rsa_key_path)
 
 int
 rsa_verify(const char *path, const char *key, unsigned char *sig,
-    unsigned int sig_len)
+    unsigned int sig_len, int fd)
 {
 	char sha256[SHA256_DIGEST_LENGTH *2 +1];
 	char errbuf[1024];
 	RSA *rsa = NULL;
 	int ret;
 
-	sha256_file(path, sha256);
+	if (fd != -1)
+		sha256_fd(fd, sha256);
+	else
+		sha256_file(path, sha256);
 
 	SSL_load_error_strings();
 	OpenSSL_add_all_algorithms();
