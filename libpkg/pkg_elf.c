@@ -162,7 +162,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 			}
 		}
 		if (!found) {
-			pkg_emit_error("adding forgotten depends (%s): %s-%s",
+			pkg_emit_error("adding unlisted depends (%s): %s-%s",
 			    pathbuf, depname, depversion);
 			pkg_adddep(pkg, depname, deporigin, depversion,
 			    deplocked);
