@@ -532,6 +532,8 @@ int pkg_list_count(const struct pkg *, pkg_list);
  */
 int pkg_deps(const struct pkg *, struct pkg_dep **dep);
 
+struct pkg_dep *pkg_dep_lookup(const struct pkg *, const char *origin);
+
 /**
  * Iterates over the reverse dependencies of the package.
  * That is, the packages which require this package.

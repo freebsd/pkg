@@ -120,7 +120,6 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	const char *pkgname, *pkgversion;
 	bool deplocked;
 	char pathbuf[MAXPATHLEN];
-	bool found;
 
 	assert(db != NULL);
 
@@ -153,15 +152,9 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 			   PKG_VERSION, &depversion,
 			   PKG_LOCKED,  &deplocked);
 
-		dep = NULL;
-		found = false;
-		while (pkg_deps(pkg, &dep) == EPKG_OK) {
-			if (strcmp(pkg_dep_origin(dep), deporigin) == 0) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
+		dep = pkg_dep_lookup(pkg, deporigin);
+
+		if (dep != NULL) {
 			pkg_emit_error("adding unlisted depends (%s): %s-%s",
 			    pathbuf, depname, depversion);
 			pkg_adddep(pkg, depname, deporigin, depversion,
