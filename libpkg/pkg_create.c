@@ -225,6 +225,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	char		*www = NULL;
 	struct pkg_manifest_key *keys = NULL;
 
+	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
+
 	/* Load the manifest from the metadata directory */
 	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
 		goto cleanup;
@@ -246,8 +248,10 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	if (buf == NULL) {
 		if (snprintf(path, sizeof(path), "%s/+DESC", md_dir) == -1)
 			goto cleanup;
-		if (access(path, F_OK) == 0)
+		if (access(path, F_OK) == 0) {
+			pkg_debug(1, "Taking description from: '%s'", path);
 			pkg_set_from_file(pkg, PKG_DESC, path, false);
+		}
 	}
 
 	/* if no message try to get it from a file */
@@ -256,8 +260,10 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		ret = snprintf(path, sizeof(path), "%s/+DISPLAY", md_dir);
 		if (ret == -1)
 			goto cleanup;
-		if (access(path, F_OK) == 0)
+		if (access(path, F_OK) == 0) {
+			pkg_debug(1, "Taking message from: '%s'", path);
 			pkg_set_from_file(pkg, PKG_MESSAGE, path, false);
+		}
 	}
 
 	/* if no arch autodetermine it */
@@ -273,14 +279,18 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		ret = snprintf(path, sizeof(path), "%s/+MTREE_DIRS", md_dir);
 		if (ret == -1)
 			goto cleanup;
-		if (access(path, F_OK) == 0)
+		if (access(path, F_OK) == 0) {
+			pkg_debug(1, "Taking mtree definition from: '%s'", path);
 			pkg_set_from_file(pkg, PKG_MTREE, path, false);
+		}
 	}
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		snprintf(path, sizeof(path), "%s/%s", md_dir, scripts[i]);
-		if (access(path, F_OK) == 0)
+		if (access(path, F_OK) == 0) {
+			pkg_debug(1, "Adding script from: '%s'", path);
 			pkg_addscript_file(pkg, path);
+		}
 	}
 
 	if (plist != NULL &&
