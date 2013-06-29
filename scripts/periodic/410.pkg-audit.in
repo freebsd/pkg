@@ -38,7 +38,7 @@ fi
 
 # Compute PKG_DBDIR from the config file.
 pkgcmd=__PREFIX__/sbin/pkg
-PKG_DBDIR=`${pkgcmd} -vv | awk -F: '$1 ~ /PKG_DBDIR$/ { print $2 }'`
+PKG_DBDIR=`${pkgcmd} config PKG_DBDIR`
 auditfile="${PKG_DBDIR}/auditfile"
 
 rc=0
