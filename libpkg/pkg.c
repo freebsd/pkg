@@ -754,6 +754,8 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 	assert(pkg != NULL);
 	assert(path != NULL);
 
+	pkg_debug(1, "Adding script from: '%s'", path);
+
 	if ((ret = file_to_buffer(path, &data, &sz)) != EPKG_OK)
 		return (ret);
 

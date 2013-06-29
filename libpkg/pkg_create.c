@@ -287,10 +287,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 
 	for (i = 0; scripts[i] != NULL; i++) {
 		snprintf(path, sizeof(path), "%s/%s", md_dir, scripts[i]);
-		if (access(path, F_OK) == 0) {
-			pkg_debug(1, "Adding script from: '%s'", path);
+		if (access(path, F_OK) == 0)
 			pkg_addscript_file(pkg, path);
-		}
 	}
 
 	if (plist != NULL &&
