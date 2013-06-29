@@ -333,7 +333,7 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
 	yaml_node_item_t *item;
 	yaml_node_t *val;
 
-	pkg_debug(3, "%s", "Parsing sequence");
+	pkg_debug(3, "%s", "Manifest: parsing sequence");
 	item = node->data.sequence.items.start;
 	while (item < node->data.sequence.items.top) {
 		val = yaml_document_get_node(doc, *item);
@@ -427,7 +427,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 
 	pair = item->data.mapping.pairs.start;
 
-	pkg_debug(3, "%s", "Parsing mapping");
+	pkg_debug(3, "%s", "Manifest: parsing mapping");
 	while (pair < item->data.mapping.pairs.top) {
 		key = yaml_document_get_node(doc, pair->key);
 		val = yaml_document_get_node(doc, pair->value);

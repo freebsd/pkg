@@ -579,6 +579,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(origin != NULL && origin[0] != '\0');
 	assert(version != NULL && version[0] != '\0');
 
+	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s, version: %s", origin, name, version);
 	HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
 	if (d != NULL) {
 		pkg_get(pkg, PKG_NAME, &n1, PKG_VERSION, &v1);
@@ -610,6 +611,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	assert(origin != NULL && origin[0] != '\0');
 	assert(version != NULL && version[0] != '\0');
 
+	pkg_debug(3, "Pkg: add a new reverse dependency origin: %s, name: %s, version: %s", origin, name, version);
 	pkg_dep_new(&d);
 
 	sbuf_set(&d->origin, origin);
@@ -636,6 +638,8 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
+
+	pkg_debug(3, "Pkg: add new file '%s'", path);
 
 	if (check_duplicates) {
 		HASH_FIND_STR(pkg->files, __DECONST(char *, path), f);
@@ -703,6 +707,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
+	pkg_debug(3, "Pkg: add new directory '%s'", path);
 	if (check_duplicates) {
 		HASH_FIND_STR(pkg->dirs, __DECONST(char *, path), d);
 		if (d != NULL) {
