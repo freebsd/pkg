@@ -309,6 +309,9 @@ event_callback(void *data, struct pkg_event *ev)
 			    ev->e_incremental_update.removed,
 			    ev->e_incremental_update.added);
 		break;
+	case PKG_EVENT_DEBUG:
+		fprintf(stderr, "DBG(%d)> %s\n", ev->e_debug.level, ev->e_debug.msg);
+		break;
 	default:
 		break;
 	}

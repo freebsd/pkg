@@ -275,6 +275,12 @@ static struct config_entry c[] = {
 		"NO",
 		"Experimental: disable MTREE processing on pkg installation",
 	},
+	[PKG_CONFIG_DEBUG_LEVEL] = {
+		PKG_CONFIG_INTEGER,
+		"DEBUG_LEVEL",
+		"0",
+		"Level for debug messages",
+	},
 };
 
 static bool parsed = false;
@@ -1077,6 +1083,7 @@ pkg_init(const char *path)
 	disable_plugins_if_static();
 
 	parsed = true;
+	pkg_debug(1, "%s", "pkg initialized");
 
 	subst_packagesite();
 

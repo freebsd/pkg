@@ -346,6 +346,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_SSH_RESTRICT_DIR,
 	PKG_CONFIG_ENV,
 	PKG_CONFIG_DISABLE_MTREE,
+	PKG_CONFIG_DEBUG_LEVEL,
 } pkg_config_key;
 
 typedef enum {
@@ -1234,6 +1235,7 @@ typedef enum {
 	PKG_EVENT_INTEGRITYCHECK_CONFLICT,
 	PKG_EVENT_NEWPKGVERSION,
 	PKG_EVENT_NOTICE,
+	PKG_EVENT_DEBUG,
 	PKG_EVENT_INCREMENTAL_UPDATE,
 	/* errors */
 	PKG_EVENT_ERROR,
@@ -1252,7 +1254,7 @@ typedef enum {
 	PKG_EVENT_PLUGIN_ERRNO,
 	PKG_EVENT_PLUGIN_ERROR,
 	PKG_EVENT_PLUGIN_INFO,
-	PKG_EVENT_NOT_FOUND
+	PKG_EVENT_NOT_FOUND,
 } pkg_event_t;
 
 struct pkg_event {
@@ -1345,6 +1347,10 @@ struct pkg_event {
 			int added;
 			int processed;
 		} e_incremental_update;
+		struct {
+			int level;
+			char *msg;
+		} e_debug;
 	};
 };
 

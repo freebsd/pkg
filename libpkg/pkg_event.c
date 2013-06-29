@@ -712,3 +712,25 @@ pkg_emit_incremental_update(int updated, int removed, int added, int processed)
 
 	pkg_emit_event(&ev);
 }
+
+void
+pkg_debug(int level, const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+	int64_t expectlevel;
+
+	pkg_config_int64(PKG_CONFIG_DEBUG_LEVEL, &expectlevel);
+
+	if (expectlevel < level)
+		return;
+
+	ev.type = PKG_EVENT_DEBUG;
+	ev.e_debug.level = level;
+	va_start(ap, fmt);
+	vasprintf(&ev.e_debug.msg, fmt, ap);
+	va_end(ap);
+
+	pkg_emit_event(&ev);
+	free(ev.e_debug.msg);
+}

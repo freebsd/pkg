@@ -53,6 +53,7 @@ void pkg_emit_newpkgversion(void);
 void pkg_emit_developer_mode(const char *fmt, ...);
 void pkg_emit_package_not_found(const char *);
 void pkg_emit_incremental_update(int updated, int removed, int added, int processed);
+void pkg_debug(int level, const char *fmt, ...);
 
 
 #endif
