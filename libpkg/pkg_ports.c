@@ -1052,6 +1052,8 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 			/* trim write spaces */
 			while (isspace(buf[0]))
 				buf++;
+			pkg_debug(1, "Parsing plist, found keyword: '%s", keyword):
+
 			switch (parse_keywords(&pplist, keyword, buf)) {
 			case EPKG_UNKNOWN:
 				pkg_emit_error("unknown keyword %s, ignoring %s",
