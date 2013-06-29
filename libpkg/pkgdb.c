@@ -136,6 +136,7 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	if (pkg->flags & flags)
 		return (EPKG_OK);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db);
 		return (EPKG_FATAL);
@@ -173,6 +174,7 @@ load_tag_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 	if (pkg->flags & flags)
 		return (EPKG_OK);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db);
 		return (EPKG_FATAL);
@@ -1069,6 +1071,7 @@ pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 	if (savepoint == NULL || savepoint[0] == '\0') {
 		const char sql[] = "BEGIN IMMEDIATE TRANSACTION";
 		
+		pkg_debug(4, "Pkgdb: running '%s'", sql);
 		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
 					 &stmt, NULL);
 	} else {
@@ -1076,6 +1079,7 @@ pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 
 		strlcat(sql, savepoint, sizeof(sql));
 
+		pkg_debug(4, "Pkgdb: running '%s'", sql);
 		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
 					 &stmt, NULL);
 	}
@@ -1103,6 +1107,7 @@ pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
 	if (savepoint == NULL || savepoint[0] == '\0') {
 		const char sql[] = "COMMIT TRANSACTION";
 
+		pkg_debug(4, "Pkgdb: running '%s'", sql);
 		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
 					 &stmt, NULL);
 	} else {
@@ -1110,6 +1115,7 @@ pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint)
 
 		strlcat(sql, savepoint, sizeof(sql));
 
+		pkg_debug(4, "Pkgdb: running '%s'", sql);
 		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
 					 &stmt, NULL);
 	}
@@ -1142,6 +1148,7 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 	if (savepoint == NULL || savepoint[0] == '\0') {
 		const char sql[] = "ROLLBACK TRANSACTION";
 
+		pkg_debug(4, "Pkgdb: running '%s'", sql);
 		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
 					 &stmt, NULL);
 	} else {
@@ -1149,6 +1156,7 @@ pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint)
 
 		strlcat(sql, savepoint, sizeof(sql));
 
+		pkg_debug(4, "Pkgdb: running '%s'", sql);
 		ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1,
 					 &stmt, NULL);
 	}
@@ -1410,6 +1418,7 @@ pkgdb_query(struct pkgdb *db, const char *pattern, match_t match)
 			"FROM packages AS p%s "
 			"ORDER BY p.name;", comp);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
@@ -1437,6 +1446,7 @@ pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 			"LEFT JOIN files AS f ON p.id = f.package_id "
 			"WHERE f.path %s ?1 GROUP BY p.id;", glob ? "GLOB" : "=");
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
@@ -1462,6 +1472,7 @@ pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib)
 
 	assert(db != NULL);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
@@ -1487,6 +1498,7 @@ pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib)
 
 	assert(db != NULL);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (NULL);
@@ -1508,6 +1520,7 @@ pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res)
 
 	assert(db != NULL);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
@@ -1557,9 +1570,12 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
 		sqlite3_snprintf(sizeof(sql), sql, reposql, reponame);
+		pkg_debug(4, "Pkgdb: running '%s'", sql);
 		ret = sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL);
-	} else
+	} else {
+		pkg_debug(4, "Pkgdb: running '%s'", mainsql);
 		ret = sqlite3_prepare_v2(db->sqlite, mainsql, -1, &stmt, NULL);
+	}
 
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -1614,9 +1630,12 @@ pkgdb_load_rdeps(struct pkgdb *db, struct pkg *pkg)
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
 		sqlite3_snprintf(sizeof(sql), sql, reposql, reponame, reponame);
+		pkg_debug(4, "Pkgdb: running '%s'", sql);
 		ret = sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL);
-	} else
+	} else {
+		pkg_debug(4, "Pkgdb: running '%s'", mainsql);
 		ret = sqlite3_prepare_v2(db->sqlite, mainsql, -1, &stmt, NULL);
+	}
 
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -1661,6 +1680,7 @@ pkgdb_load_files(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->flags & PKG_LOAD_FILES)
 		return (EPKG_OK);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
@@ -1702,6 +1722,7 @@ pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->flags & PKG_LOAD_DIRS)
 		return (EPKG_OK);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
@@ -1930,6 +1951,7 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->flags & PKG_LOAD_SCRIPTS)
 		return (EPKG_OK);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
@@ -2203,6 +2225,7 @@ prstmt_initialize(struct pkgdb *db)
 
 	for (i = 0; i < PRSTMT_LAST; i++)
 	{
+		pkg_debug(4, "Pkgdb: running '%s'", SQL(i));
 		ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
 		if (ret != SQLITE_OK) {
 			ERROR_SQLITE(sqlite);
@@ -2667,6 +2690,7 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 
 		for (i = 0; i < 2; i++) {
 			/* Clean out old shlibs first */
+			pkg_debug(4, "Pkgdb: running '%s'", sql[i]);
 			if (sqlite3_prepare_v2(db->sqlite, sql[i], -1,
 					       &stmt_del, NULL)
 			    != SQLITE_OK) {
@@ -2879,6 +2903,7 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 	assert(db != NULL);
 	assert(origin != NULL);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt_del, NULL)
 	    != SQLITE_OK){
 		ERROR_SQLITE(db->sqlite);
@@ -3049,6 +3074,7 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res)
 
 	assert(s != NULL && sql != NULL);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(s);
 		return (EPKG_OK);
@@ -3077,6 +3103,7 @@ get_sql_string(sqlite3 *s, const char *sql, char **res)
 
 	assert(s != NULL && sql != NULL);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(s);
 		return (EPKG_OK);
@@ -3177,6 +3204,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	sbuf_cat(sql, " ORDER BY name;");
 	sbuf_finish(sql);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -3313,6 +3341,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 	sbuf_cat(sql, ";");
 	sbuf_finish(sql);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -3351,6 +3380,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 			"path TEXT UNIQUE);"
 		);
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL)
 	    != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -3372,6 +3402,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 
 		if (sqlite3_step(stmt) != SQLITE_DONE) {
 
+			pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
 			if (sqlite3_prepare_v2(db->sqlite, sql_conflicts,
 			    -1, &stmt_conflicts, NULL) != SQLITE_OK) {
 				ERROR_SQLITE(db->sqlite);
@@ -3449,6 +3480,7 @@ pkgdb_integrity_check(struct pkgdb *db)
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		sbuf_clear(conflictmsg);
 
+			pkg_debug(4, "Pkgdb: running '%s'", sql_local_conflict);
 		ret = sqlite3_prepare_v2(db->sqlite, sql_local_conflict, -1,
 		    &stmt_conflicts, NULL);
 		if (ret != SQLITE_OK) {
@@ -3471,6 +3503,7 @@ pkgdb_integrity_check(struct pkgdb *db)
 
 		sqlite3_finalize(stmt_conflicts);
 
+		pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
 		ret = sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1,
 		    &stmt_conflicts, NULL);
 		if (ret != SQLITE_OK) {
@@ -3517,6 +3550,7 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin)
 		"WHERE p.id = f.package_id AND f.path = i.path "
 		"AND i.origin = ?1";
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
 	ret = sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -3555,6 +3589,7 @@ pkgdb_vset(struct pkgdb *db, int64_t id, va_list ap)
 	};
 
 	while ((attr = va_arg(ap, int)) > 0) {
+		pkg_debug(4, "Pkgdb: running '%s'", sql[attr]);
 		if (sqlite3_prepare_v2(db->sqlite, sql[attr], -1, &stmt, NULL)
 		    != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite);
@@ -3635,6 +3670,7 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
 		"UPDATE files SET sha256 = ?1 WHERE path = ?2";
 	int		 ret;
 
+	pkg_debug(4, "Pkgdb: running '%s'", sql_file_update);
 	ret = sqlite3_prepare_v2(db->sqlite, sql_file_update, -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
@@ -3803,6 +3839,7 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	}
 
 	sbuf_finish(sql);
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_data(sql));
 	ret = sqlite3_prepare_v2(db->sqlite, sbuf_data(sql), -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		sbuf_free(sql);
