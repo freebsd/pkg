@@ -1112,6 +1112,19 @@ pkg_init(const char *path)
 	return (EPKG_OK);
 }
 
+struct pkg_config *
+pkg_config_lookup(const char *name)
+{
+	struct pkg_config *conf;
+
+	if (name == NULL)
+		return (NULL);
+
+	HASH_FIND(hhkey, config_by_key, name, strlen(name), conf);
+
+	return (conf);
+}
+
 static void
 pkg_config_kv_free(struct pkg_config_kv *k)
 {

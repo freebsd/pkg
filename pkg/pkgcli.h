@@ -172,6 +172,10 @@ void usage_convert(void);
 int exec_ssh(int, char **);
 void usage_ssh(void);
 
+/* pkg config */
+int exec_config(int, char **);
+void usage_config(void);
+
 /* utils */
 
 /* These are the fields of the Full output, in order */

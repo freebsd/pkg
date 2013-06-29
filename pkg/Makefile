@@ -6,6 +6,7 @@ SRCS=		add.c \
 		backup.c \
 		check.c \
 		clean.c \
+		config.c \
 		convert.c \
 		create.c \
 		delete.c \

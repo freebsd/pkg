@@ -1187,6 +1187,7 @@ int pkg_configs(struct pkg_config **c);
 int pkg_config_id(struct pkg_config *c);
 int pkg_config_type(struct pkg_config *c);
 const char *pkg_config_name(struct pkg_config *c);
+struct pkg_config *pkg_config_lookup(const char *name);
 
 /**
  * @todo Document
