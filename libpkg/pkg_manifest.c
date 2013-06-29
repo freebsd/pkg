@@ -246,6 +246,7 @@ pkg_load_manifest_file(struct pkg *pkg, const char *fpath, struct pkg_manifest_k
 	FILE *f;
 	int ret;
 
+	pkg_debug(1, "Loading manifest from '%s'", fpath);
 	f = fopen(fpath, "r");
 	if (f == NULL) {
 		pkg_emit_errno("open", fpath);
@@ -332,6 +333,7 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
 	yaml_node_item_t *item;
 	yaml_node_t *val;
 
+	pkg_debug(3, "%s", "Parsing sequence");
 	item = node->data.sequence.items.start;
 	while (item < node->data.sequence.items.top) {
 		val = yaml_document_get_node(doc, *item);
@@ -425,6 +427,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 
 	pair = item->data.mapping.pairs.start;
 
+	pkg_debug(3, "%s", "Parsing mapping");
 	while (pair < item->data.mapping.pairs.top) {
 		key = yaml_document_get_node(doc, pair->key);
 		val = yaml_document_get_node(doc, pair->value);
@@ -731,6 +734,8 @@ parse_root_node(struct pkg *pkg, struct pkg_manifest_key *keys,  yaml_node_t *no
 			continue;
 		}
 
+		pkg_debug(2, "Manifest: found key: '%s'", key->data.scalar.value);
+
 		HASH_FIND_STR(keys, key->data.scalar.value, selected_key);
 		if (selected_key != NULL) {
 			HASH_FIND_YAMLT(selected_key->parser, &val->type, dp);
@@ -786,6 +791,7 @@ pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manife
 
 	assert(pkg != NULL);
 
+	pkg_debug(1, "%s", "Parsing manifest from archive");
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input(&parser, archive_reader, a);
 
@@ -805,6 +811,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *keys)
 	assert(pkg != NULL);
 	assert(buf != NULL);
 
+	pkg_debug(1, "%s", "Parsing manifest from buffer");
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_string(&parser, buf, strlen(buf));
 
@@ -824,6 +831,7 @@ pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *keys)
 	assert(pkg != NULL);
 	assert(f != NULL);
 
+	pkg_debug(1, "%s", "Parsing manifest from file");
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_file(&parser, f);
 
