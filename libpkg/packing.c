@@ -79,6 +79,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 		snprintf(archive_path, sizeof(archive_path), "%s.%s", path,
 		    ext);
 
+		pkg_debug(1, "Packing to file '%s'", archive_path);
 		if (archive_write_open_filename(
 		    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
 			pkg_emit_errno("archive_write_open_filename",
@@ -89,6 +90,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 			return EPKG_FATAL;
 		}
 	} else { /* pass mode directly write to the disk */
+		pkg_debug(1, "Packing to directory '%s' (pass mode)", path);
 		(*pack)->awrite = archive_write_disk_new();
 		archive_write_disk_set_options((*pack)->awrite,
 		    EXTRACT_ARCHIVE_FLAGS);
@@ -154,6 +156,8 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 
 	entry = archive_entry_new();
 	archive_entry_copy_sourcepath(entry, filepath);
+
+	pkg_debug(2, "Packing file '%s'", filepath);
 
 	if (lstat(filepath, &st) != 0) {
 		pkg_emit_errno("lstat", filepath);
