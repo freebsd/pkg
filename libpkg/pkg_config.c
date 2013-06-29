@@ -138,7 +138,7 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_AUTODEPS] = {
 		PKG_CONFIG_BOOL,
 		"AUTODEPS",
-		"NO",
+		"YES",
 		"Automatically append dependencies to fulfil dynamic linking requrements of binaries",
 	},
 	[PKG_CONFIG_ABI] = {
