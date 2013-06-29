@@ -1035,6 +1035,8 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 		if (line[0] == '\0')
 			continue;
 
+		pkg_debug(1, "Parsing plist line: '%s'", line);
+
 		if (line[0] == '@') {
 			char *keyword = line;
 
