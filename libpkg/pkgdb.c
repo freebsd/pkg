@@ -1026,7 +1026,8 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	}
 
 	if (type == PKGDB_REMOTE)
-		pkgdb_open_multirepos(dbdir, db);
+		if ((ret = pkgdb_open_multirepos(dbdir, db)) != EPKG_OK)
+			return (ret);
 
 	*db_p = db;
 	return (EPKG_OK);
