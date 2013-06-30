@@ -396,7 +396,7 @@ cleanup:
 		close(my_fd);
 	(void)lseek(fd, 0, SEEK_SET);
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 int
