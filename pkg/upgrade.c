@@ -62,7 +62,7 @@ exec_upgrade(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
 
-	while ((ch = getopt(argc, argv, "fILnqFr:Uy")) != -1) {
+	while ((ch = getopt(argc, argv, "fInqFr:Uy")) != -1) {
 		switch (ch) {
 		case 'f':
 			f |= PKG_FLAG_FORCE;
@@ -70,9 +70,6 @@ exec_upgrade(int argc, char **argv)
 		case 'I':
 			f |= PKG_FLAG_NOSCRIPT;
 			break;
-		case 'L':
-			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
-			/* FALLTHROUGH */
 		case 'U':
 			auto_update = false;
 			break;
