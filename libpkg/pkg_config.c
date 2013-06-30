@@ -1120,7 +1120,7 @@ pkg_config_lookup(const char *name)
 	if (name == NULL)
 		return (NULL);
 
-	HASH_FIND(hhkey, config_by_key, name, strlen(name), conf);
+	HASH_FIND(hhkey, config_by_key, __DECONST(char *, name), strlen(name), conf);
 
 	return (conf);
 }
