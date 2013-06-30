@@ -529,6 +529,11 @@ new_pkg_version(struct pkg_jobs *j)
 	if (get_remote_pkg(j, origin, MATCH_EXACT, false) == EPKG_OK && HASH_COUNT(j->bulk) == 1)
 		return (true);
 
+	/* Remove from seen in case it was explicitly requested. */
+	HASH_FIND_STR(j->seen, __DECONST(char *, origin), p);
+	if (p != NULL)
+		HASH_DEL(j->seen, p);
+
 	return (false);
 }
 
