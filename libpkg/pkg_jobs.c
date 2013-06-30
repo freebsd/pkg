@@ -513,6 +513,12 @@ new_pkg_version(struct pkg_jobs *j)
 {
 	struct pkg *p;
 	const char *origin = "ports-mgmt/pkg";
+	pkg_flags old_flags;
+	bool ret = false;
+
+	/* Disable -f for pkg self-check, and restore at end. */
+	old_flags = j->flags;
+	j->flags &= ~PKG_FLAG_FORCE;
 
 	/* determine local pkgng */
 	p = get_local_pkg(j, origin, PKG_LOAD_BASIC);
@@ -523,18 +529,25 @@ new_pkg_version(struct pkg_jobs *j)
 	}
 
 	/* you are using git version skip */
-	if (p == NULL)
-		return (false);
+	if (p == NULL) {
+		ret = false;
+		goto end;
+	}
 
-	if (get_remote_pkg(j, origin, MATCH_EXACT, false) == EPKG_OK && HASH_COUNT(j->bulk) == 1)
-		return (true);
+	if (get_remote_pkg(j, origin, MATCH_EXACT, false) == EPKG_OK && HASH_COUNT(j->bulk) == 1) {
+		ret = true;
+		goto end;
+	}
 
 	/* Remove from seen in case it was explicitly requested. */
 	HASH_FIND_STR(j->seen, __DECONST(char *, origin), p);
 	if (p != NULL)
 		HASH_DEL(j->seen, p);
 
-	return (false);
+end:
+	j->flags = old_flags;
+
+	return (ret);
 }
 
 static int
