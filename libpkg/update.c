@@ -367,7 +367,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 static int
 pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 		const char *manifest_digest, const char *local_arch, sqlite3 *sqlite,
-		struct pkg_manifest_key *keys)
+		struct pkg_manifest_key *keys, struct pkg **p)
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
@@ -378,9 +378,15 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 		return (EPKG_FATAL);
 	}
 
-	rc = pkg_new(&pkg, PKG_REMOTE);
-	if (rc != EPKG_OK)
-		return (EPKG_FATAL);
+	if (*p == NULL) {
+		rc = pkg_new(p, PKG_REMOTE);
+		if (rc != EPKG_OK)
+			return (EPKG_FATAL);
+	} else {
+		pkg_reset(*p, PKG_REMOTE);
+	}
+
+	pkg = *p;
 
 	rc = pkg_parse_manifest_file(pkg, f, keys);
 	if (rc != EPKG_OK) {
@@ -409,8 +415,6 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, manifest_digest, true, false);
 
 cleanup:
-	pkg_free(pkg);
-
 	return (rc);
 }
 
@@ -457,6 +461,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	size_t linecap = 0;
 	ssize_t linelen;
 
+	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
 	if ((rc = pkgdb_repo_open(name, false, &sqlite, false)) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
@@ -493,6 +498,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 
 	pkg_manifest_keys_new(&keys);
 
+	pkg_debug(1, "Pkgrepo, reading new packagesite.yaml for '%s'", name);
 	/* load the while digests */
 	while ((linelen = getline(&linebuf, &linecap, fdigests)) > 0) {
 		p = linebuf;
@@ -530,6 +536,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 
 	rc = EPKG_OK;
 
+	pkg_debug(1, "Pkgrepo, removing old entries for '%s'", name);
 	removed = HASH_COUNT(ldel) - updated;
 	HASH_ITER(hh, ldel, item, tmp_item) {
 		if (rc == EPKG_OK) {
@@ -543,10 +550,12 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 
+	pkg_debug(1, "Pkgrepo, pushing new entries for '%s'", name);
+	pkg = NULL;
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkg_add_from_manifest(fmanifest, item->origin,
-			        item->offset, item->digest, myarch, sqlite, keys);
+			        item->offset, item->digest, myarch, sqlite, keys, &pkg);
 		}
 		free(item->origin);
 		free(item->digest);
@@ -556,6 +565,8 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:
+	if (pkg != NULL)
+		pkg_free(pkg);
 	if (it != NULL)
 		pkgdb_it_free(it);
 	if (pkgdb_repo_close(sqlite, rc == EPKG_OK) != EPKG_OK)

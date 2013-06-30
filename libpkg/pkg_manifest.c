@@ -791,7 +791,7 @@ pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manife
 
 	assert(pkg != NULL);
 
-	pkg_debug(1, "%s", "Parsing manifest from archive");
+	pkg_debug(2, "%s", "Parsing manifest from archive");
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input(&parser, archive_reader, a);
 
@@ -811,7 +811,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *keys)
 	assert(pkg != NULL);
 	assert(buf != NULL);
 
-	pkg_debug(1, "%s", "Parsing manifest from buffer");
+	pkg_debug(2, "%s", "Parsing manifest from buffer");
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_string(&parser, buf, strlen(buf));
 
@@ -831,7 +831,7 @@ pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *keys)
 	assert(pkg != NULL);
 	assert(f != NULL);
 
-	pkg_debug(1, "%s", "Parsing manifest from file");
+	pkg_debug(2, "%s", "Parsing manifest from file");
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_file(&parser, f);
 
