@@ -367,7 +367,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 static int
 pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 		const char *manifest_digest, const char *local_arch, sqlite3 *sqlite,
-		struct pkg_manifest_key *keys, struct pkg **p)
+		struct pkg_manifest_parser **parser, struct pkg **p)
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
@@ -388,7 +388,8 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 
 	pkg = *p;
 
-	rc = pkg_parse_manifest_file(pkg, f, keys);
+	pkg_manifest_parser_new(parser);
+	rc = pkg_parse_manifest_file_r(pkg, f, *parser);
 	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
@@ -458,6 +459,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			*item, *tmp_item;
 	const char *myarch;
 	struct pkg_manifest_key *keys = NULL;
+	struct pkg_manifest_parser *parser = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
 
@@ -555,13 +557,14 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkg_add_from_manifest(fmanifest, item->origin,
-			        item->offset, item->digest, myarch, sqlite, keys, &pkg);
+			        item->offset, item->digest, myarch, sqlite, &parser, &pkg);
 		}
 		free(item->origin);
 		free(item->digest);
 		HASH_DEL(ladd, item);
 		free(item);
 	}
+	pkg_manifest_parser_free(parser);
 	pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:

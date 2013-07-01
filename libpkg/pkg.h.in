@@ -82,6 +82,7 @@ struct pkg_config_value;
 struct pkg_plugin;
 
 struct pkg_manifest_key;
+struct pkg_manifest_parser;
 
 /**
  * The system-wide pkg(1) status: ie. is it a) installed or otherwise
@@ -801,9 +802,12 @@ int pkg_delannotation(struct pkg *pkg, const char *tag);
  */
 int pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *key);
 int pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *key);
+int pkg_parse_manifest_file_r(struct pkg *pkg, FILE *f, struct pkg_manifest_parser *p);
 int pkg_load_manifest_file(struct pkg *pkg, const char *fpath, struct pkg_manifest_key *key);
 int pkg_manifest_keys_new(struct pkg_manifest_key **k);
 void pkg_manifest_keys_free(struct pkg_manifest_key *k);
+int pkg_manifest_parser_new(struct pkg_manifest_parser **p);
+void pkg_manifest_parser_free(struct pkg_manifest_parser *p);
 
 #define PKG_MANIFEST_EMIT_COMPACT 0x1
 #define PKG_MANIFEST_EMIT_NOFILES (0x1 << 1)

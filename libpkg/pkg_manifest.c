@@ -127,6 +127,39 @@ struct pkg_manifest_key {
 	UT_hash_handle hh;
 };
 
+struct pkg_manifest_parser {
+	yaml_parser_t parser;
+	struct pkg_manifest_key *keys;
+};
+
+int
+pkg_manifest_parser_new(struct pkg_manifest_parser **p)
+{
+	if (*p != NULL) {
+		yaml_parser_delete(&(*p)->parser);
+		yaml_parser_initialize(&(*p)->parser);
+		return (EPKG_OK);
+	}
+	*p = calloc(1, sizeof(struct pkg_manifest_parser));
+	if (*p == NULL)
+		return (EPKG_FATAL);
+
+	pkg_manifest_keys_new(&(*p)->keys);
+	yaml_parser_initialize(&(*p)->parser);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_manifest_parser_free(struct pkg_manifest_parser *p)
+{
+	if (p == NULL)
+		return;
+
+	pkg_manifest_keys_free(p->keys);
+	yaml_parser_delete(&p->parser);
+}
+
 int
 pkg_manifest_keys_new(struct pkg_manifest_key **key)
 {
@@ -818,6 +851,23 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *keys)
 	rc = parse_manifest(pkg, keys, &parser);
 
 	yaml_parser_delete(&parser);
+
+	return (rc);
+}
+
+int
+pkg_parse_manifest_file_r(struct pkg *pkg, FILE *f, struct pkg_manifest_parser *p)
+{
+	int rc;
+
+	assert(pkg != NULL);
+	assert(f != NULL);
+	assert(p != NULL);
+
+	pkg_debug(2, "%s", "Parsing manifest from file");
+	yaml_parser_set_input_file(&p->parser, f);
+
+	rc = parse_manifest(pkg, p->keys, &p->parser);
 
 	return (rc);
 }
