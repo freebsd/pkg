@@ -104,6 +104,7 @@ static struct manifest_key {
 	{ "pkgsize", PKG_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
 	{ "prefix", PKG_PREFIX, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "scripts", PKG_SCRIPTS, YAML_MAPPING_NODE, parse_mapping},
+	{ "shlibs", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence}, /* Backwards compat with 1.0.x packages */
 	{ "shlibs_provided", PKG_SHLIBS_PROVIDED, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "shlibs_required", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "sum", PKG_CKSUM, YAML_SCALAR_NODE, pkg_set_from_node},
