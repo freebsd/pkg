@@ -802,7 +802,7 @@ int pkg_delannotation(struct pkg *pkg, const char *tag);
  */
 int pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *key);
 int pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *key);
-int pkg_parse_manifest_file_r(struct pkg *pkg, FILE *f, struct pkg_manifest_parser *p);
+int pkg_parse_manifest_file_ev(struct pkg *pkg, FILE *f, struct pkg_manifest_parser *p);
 int pkg_load_manifest_file(struct pkg *pkg, const char *fpath, struct pkg_manifest_key *key);
 int pkg_manifest_keys_new(struct pkg_manifest_key **k);
 void pkg_manifest_keys_free(struct pkg_manifest_key *k);

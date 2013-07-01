@@ -99,6 +99,11 @@
 #define HASH_ADD_YAMLT(head,type,add)                                    \
 	HASH_ADD(hh,head,type,sizeof(yaml_node_type_t),add)
 
+#define HASH_FIND_YAMLEVT(head,type,out)                                   \
+	HASH_FIND(hh,head,type,sizeof(yaml_event_type_t),out)
+#define HASH_ADD_YAMLEVT(head,type,add)                                    \
+	HASH_ADD(hh,head,type,sizeof(yaml_event_type_t),add)
+
 extern int eventpipe;
 
 struct pkg {

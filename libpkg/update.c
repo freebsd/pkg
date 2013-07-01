@@ -389,7 +389,7 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 	pkg = *p;
 
 	pkg_manifest_parser_new(parser);
-	rc = pkg_parse_manifest_file_r(pkg, f, *parser);
+	rc = pkg_parse_manifest_file_ev(pkg, f, *parser);
 	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
