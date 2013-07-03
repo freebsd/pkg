@@ -402,6 +402,25 @@ static struct db_upgrades {
 		"FROM oldpkgs;"
 	"DROP TABLE oldpkgs;"
 	},
+	{20,
+	"CREATE TABLE pkg_conflicts ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "conflict_id INTEGER NOT NULL,"
+	    "UNIQUE(package_id, conflict_id)"
+	");"
+	"CREATE TABLE provides("
+	"    id INTEGER PRIMARY KEY,"
+	"    provide TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_provides ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "provide_id INTEGER NOT NULL REFERENCES provides(id)"
+	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+	    "UNIQUE(package_id, provide_id)"
+	");"
+	},
 
 	/* Mark the end of the array */
 	{ -1, NULL }

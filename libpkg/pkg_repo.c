@@ -859,6 +859,13 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bo
 		goto cleanup;
 	}
 
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_conflicts_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_conflicts_archive);
+	if (pack_db(repo_conflicts_file, repo_archive, repo_path, rsa) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+
 	/* Now we need to set the equal mtime for all archives in the repo */
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_db_archive);
 	if (stat(repo_archive, &st) == 0) {

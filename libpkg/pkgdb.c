@@ -71,7 +71,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	19
+#define DB_SCHEMA_MINOR	20
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -600,6 +600,23 @@ pkgdb_init(sqlite3 *sdb)
 		      " ON DELETE CASCADE ON UPDATE RESTRICT,"
 		"UNIQUE (package_id, tag_id)"
 	");"
+	"CREATE TABLE pkg_conflicts ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "conflict_id INTEGER NOT NULL,"
+	    "UNIQUE(package_id, conflict_id)"
+	");"
+	"CREATE TABLE provides("
+	"    id INTEGER PRIMARY KEY,"
+	"    provide TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_provides ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "provide_id INTEGER NOT NULL REFERENCES provides(id)"
+	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+	    "UNIQUE(package_id, provide_id)"
+	");"
 
 	/* Mark the end of the array */
 
@@ -618,6 +635,8 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
 	"CREATE INDEX pkg_annotation_package_id ON pkg_annotation(package_id);"
 	"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);"
+	"CREATE INDEX pkg_conflicts_id ON pkg_conflicts(package_id);"
+	"CREATE INDEX pkg_provides_id ON pkg_provides(package_id);"
 
 	"CREATE VIEW pkg_shlibs AS SELECT * FROM pkg_shlibs_required;"
 	"CREATE TRIGGER pkg_shlibs_update "
