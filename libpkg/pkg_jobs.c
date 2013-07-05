@@ -516,7 +516,7 @@ new_pkg_version(struct pkg_jobs *j)
 
 	/* Disable -f for pkg self-check, and restore at end. */
 	old_flags = j->flags;
-	j->flags &= ~PKG_FLAG_FORCE;
+	j->flags &= ~(PKG_FLAG_FORCE|PKG_FLAG_RECURSIVE);
 
 	/* determine local pkgng */
 	p = get_local_pkg(j, origin, PKG_LOAD_BASIC);
