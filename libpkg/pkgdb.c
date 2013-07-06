@@ -206,7 +206,10 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 	assert(db->type == PKGDB_REMOTE);
 
 	if (repo != NULL) {
-		r = pkg_repo_find_ident(repo);
+		if ((r = pkg_repo_find_ident(repo)) == NULL) {
+			pkg_emit_error("repository '%s' does not exist", repo);
+			return (NULL);
+		}
 		reponame = pkg_repo_name(r);
 
 		if (!is_attached(db->sqlite, reponame)) {
