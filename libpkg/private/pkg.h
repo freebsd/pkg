@@ -128,6 +128,7 @@ struct pkg {
 	struct pkg_shlib	*shlibs_provided;
 	struct pkg_note		*annotations;
 	struct pkg_conflict *conflicts;
+	struct pkg_provide	*provides;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -147,6 +148,11 @@ struct pkg_dep {
 
 struct pkg_conflict {
 	struct sbuf		*origin;
+	UT_hash_handle	hh;
+};
+
+struct pkg_provide {
+	struct sbuf		*provide;
 	UT_hash_handle	hh;
 };
 
@@ -356,6 +362,9 @@ void pkg_shlib_free(struct pkg_shlib *);
 int pkg_conflict_new(struct pkg_conflict **);
 void pkg_conflict_free(struct pkg_conflict *);
 
+int pkg_provide_new(struct pkg_provide **);
+void pkg_provide_free(struct pkg_provide *);
+
 int pkg_annotation_new(struct pkg_note **);
 void pkg_annotation_free(struct pkg_note *);
 
@@ -405,10 +414,13 @@ int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_provides(struct pkgdb *db, struct pkg *pkg);
 
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 

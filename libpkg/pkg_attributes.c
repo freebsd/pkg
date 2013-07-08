@@ -463,6 +463,37 @@ pkg_conflict_origin(const struct pkg_conflict *c)
 }
 
 /*
+ * Provides
+ */
+int
+pkg_provide_new(struct pkg_provide **c)
+{
+	if ((*c = calloc(1, sizeof(struct pkg_provide))) == NULL)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_provide_free(struct pkg_provide *c)
+{
+	if (c == NULL)
+		return;
+
+	sbuf_free(c->provide);
+	free(c);
+}
+
+const char *
+pkg_provide_name(const struct pkg_provide *c)
+{
+	assert(c != NULL);
+
+	return (sbuf_get(c->provide));
+}
+
+
+/*
  * Annotations
  */
 

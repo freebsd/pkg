@@ -471,6 +471,14 @@ pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
 }
 
 int
+pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->provides, (*c));
+}
+
+int
 pkg_annotations(const struct pkg *pkg, struct pkg_note **an)
 {
 	assert(pkg != NULL);
@@ -930,6 +938,29 @@ pkg_addconflict(struct pkg *pkg, const char *name)
 }
 
 int
+pkg_addprovide(struct pkg *pkg, const char *name)
+{
+	struct pkg_provide *p = NULL;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	HASH_FIND_STR(pkg->provides, __DECONST(char *, name), p);
+	/* silently ignore duplicates in case of conflicts */
+	if (p != NULL)
+		return (EPKG_OK);
+
+	pkg_provide_new(&p);
+	sbuf_set(&p->provide, name);
+
+	HASH_ADD_KEYPTR(hh, pkg->provides,
+	    __DECONST(char *, pkg_provide_name(p)),
+	    sbuf_size(p->provide), p);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 {
 	struct pkg_note *an = NULL;
@@ -1020,6 +1051,10 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->shlibs_provided));
 	case PKG_ANNOTATIONS:
 		return (HASH_COUNT(pkg->annotations));
+	case PKG_CONFLICTS:
+		return (HASH_COUNT(pkg->conflicts));
+	case PKG_PROVIDES:
+		return (HASH_COUNT(pkg->provides));
 	}
 	
 	return (0);
@@ -1075,6 +1110,14 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	case PKG_ANNOTATIONS:
 		HASH_FREE(pkg->annotations, pkg_note, pkg_annotation_free);
 		pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
+		break;
+	case PKG_CONFLICTS:
+		HASH_FREE(pkg->conflicts, pkg_conflict, pkg_conflict_free);
+		pkg->flags &= ~PKG_LOAD_CONFLICTS;
+		break;
+	case PKG_PROVIDES:
+		HASH_FREE(pkg->provides, pkg_provide, pkg_provide_free);
+		pkg->flags &= ~PKG_LOAD_PROVIDES;
 		break;
 	}
 }

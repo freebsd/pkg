@@ -7,6 +7,7 @@
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Gerald Pfeifer <gerald@pfeifer.com>
+ * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -635,7 +636,8 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
 	"CREATE INDEX pkg_annotation_package_id ON pkg_annotation(package_id);"
 	"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);"
-	"CREATE INDEX pkg_conflicts_id ON pkg_conflicts(package_id);"
+	"CREATE INDEX pkg_conflicts_pid ON pkg_conflicts(package_id);"
+	"CREATE INDEX pkg_conflicts_cid ON pkg_conflicts(conflict_id);"
 	"CREATE INDEX pkg_provides_id ON pkg_provides(package_id);"
 
 	"CREATE VIEW pkg_shlibs AS SELECT * FROM pkg_shlibs_required;"
@@ -683,6 +685,9 @@ pkgdb_remote_init(struct pkgdb *db, const char *repo)
 	"BEGIN;"
 	"CREATE INDEX IF NOT EXISTS '%s'.deps_origin ON deps(origin);"
 	"CREATE INDEX IF NOT EXISTS '%s'.pkg_digest_id ON packages(origin, manifestdigest);"
+	"CREATE INDEX IF NOT EXISTS '%s'.pkg_conflicts_pid ON pkg_conflicts(package_id);"
+	"CREATE INDEX IF NOT EXISTS '%s'.pkg_conflicts_cid ON pkg_conflicts(conflict_id);"
+	"CREATE INDEX IF NOT EXISTS '%s'.pkg_provides_id ON pkg_provides(package_id);"
 	"COMMIT;"
 	;
 
@@ -691,7 +696,7 @@ pkgdb_remote_init(struct pkgdb *db, const char *repo)
 	}
 
 	sql = sbuf_new_auto();
-	sbuf_printf(sql, init_sql, reponame, reponame);
+	sbuf_printf(sql, init_sql, reponame, reponame, reponame, reponame, reponame);
 
 	ret = sql_exec(db->sqlite, sbuf_data(sql));
 	sbuf_delete(sql);
@@ -1243,6 +1248,8 @@ static struct load_on_flag {
 	{ PKG_LOAD_SHLIBS_REQUIRED,	pkgdb_load_shlib_required },
 	{ PKG_LOAD_SHLIBS_PROVIDED,	pkgdb_load_shlib_provided },
 	{ PKG_LOAD_ANNOTATIONS,		pkgdb_load_annotations },
+	{ PKG_LOAD_CONFLICTS,		pkgdb_load_conflicts },
+	{ PKG_LOAD_PROVIDES,		pkgdb_load_provides },
 	{ -1,			        NULL }
 };
 
@@ -2039,6 +2046,54 @@ pkgdb_load_mtree(struct pkgdb *db, struct pkg *pkg)
 	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_MTREE, pkg_set_mtree, -1));
 }
 
+int
+pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg)
+{
+	char		 sql[BUFSIZ];
+	const char	*reponame = NULL;
+	const char	*basesql = ""
+			"SELECT packages.origin "
+			"FROM %Q.conflicts "
+			"LEFT JOIN %Q.packages ON "
+			"packages.id = conflicts.conflict_id"
+			"WHERE package_id = ?1";
+
+	assert(db != NULL && pkg != NULL);
+
+	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
+		pkg_get(pkg, PKG_REPONAME, &reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
+	} else
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
+
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_CONFLICTS,
+			pkg_addconflict, PKG_CONFLICTS));
+}
+
+int
+pkgdb_load_provides(struct pkgdb *db, struct pkg *pkg)
+{
+	char		 sql[BUFSIZ];
+	const char	*reponame = NULL;
+	const char	*basesql = ""
+		"SELECT provide "
+		"FROM %Q.provides "
+		"WHERE package_id = ?1";
+
+	assert(db != NULL && pkg != NULL);
+
+	if (pkg->type == PKG_REMOTE) {
+		assert(db->type == PKGDB_REMOTE);
+		pkg_get(pkg, PKG_REPONAME, &reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
+	} else
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
+
+	return (load_val(db->sqlite, pkg, sql, PKG_LOAD_PROVIDES,
+			pkg_addconflict, PKG_PROVIDES));
+}
+
 typedef enum _sql_prstmt_index {
 	MTREE = 0,
 	PKG,
@@ -2066,6 +2121,9 @@ typedef enum _sql_prstmt_index {
 	ANNOTATE_ADD1,
 	ANNOTATE_DEL1,
 	ANNOTATE_DEL2,
+	CONFLICT,
+	PKG_PROVIDE,
+	PROVIDE,
 	PRSTMT_LAST,
 } sql_prstmt_index;
 
@@ -2232,6 +2290,24 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		" annotation_id NOT IN (SELECT value_id FROM pkg_annotation)",
 		"",
 	},
+	[CONFLICT] = {
+		NULL,
+		"INSERT INTO pkg_conflicts(package_id, "
+		"(SELECT id FROM packages WHERE origin = ?2)) "
+		"VALUES (?1, ?2)",
+		"IT",
+	},
+	[PKG_PROVIDE] = {
+		NULL,
+		"INSERT INTO pkg_provides(package_id, provide_id) "
+		"VALUES (?1, (SELECT id FROM provides WHERE provide = ?2))",
+		"IT",
+	},
+	{
+		NULL,
+		"INSERT OR IGNORE INTO provides(provide) VALUES(?1)",
+		"T",
+	}
 	/* PRSTMT_LAST */
 };
 
@@ -2324,6 +2400,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	struct pkg_license	*license = NULL;
 	struct pkg_user		*user = NULL;
 	struct pkg_group	*group = NULL;
+	struct pkg_conflict	*conflict = NULL;
 	struct pkgdb_it		*it = NULL;
 
 	sqlite3			*s;
@@ -2607,6 +2684,23 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	if (pkgdb_insert_annotations(pkg, package_id, s) != EPKG_OK)
 		goto cleanup;
 
+	/*
+	 * Insert conflicts
+	 */
+	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
+		if (run_prstmt(CONFLICT, package_id, pkg_conflict_origin(conflict))
+				!= SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			goto cleanup;
+		}
+	}
+
+	/*
+	 * Insert provides
+	 */
+	if (pkgdb_update_provides(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
+
 	retcode = EPKG_OK;
 
 	cleanup:
@@ -2643,6 +2737,25 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(SHLIBS_PROV, package_id, pkg_shlib_name(shlib))
+		    != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	struct pkg_provide	*provide;
+
+	while (pkg_provides(pkg, &provide) == EPKG_OK) {
+		if (run_prstmt(PROVIDE, pkg_provide_name(provide))
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(PKG_PROVIDE, package_id, pkg_provide_name(provide))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			return (EPKG_FATAL);
