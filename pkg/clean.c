@@ -51,7 +51,8 @@ struct deletion_list {
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
 #define CKSUM_MISMATCH	(1U<<2)
-#define ALL		(1U<<3)
+#define SIZE_MISMATCH	(1U<<3)
+#define ALL		(1U<<4)
 
 STAILQ_HEAD(dl_head, deletion_list);
 
@@ -164,6 +165,9 @@ display_dellist(struct dl_head *dl, const char *cachedir)
 			break;
 		case ALL:
 			printf("Removing all\n");
+			break;
+		case SIZE_MISMATCH:
+			printf("Size mismatch\n");
 			break;
 		default:	/* not reached */
 			break;
@@ -350,10 +354,14 @@ exec_clean(int argc, char **argv)
 		} else {
 			char local_cksum[SHA256_DIGEST_LENGTH * 2 + 1];
 			const char *cksum;
+			int64_t size;
 
-			pkg_get(p, PKG_CKSUM, &cksum);
+			pkg_get(p, PKG_CKSUM, &cksum, PKG_PKGSIZE, &size);
 
-			if (hash_file(ent->fts_path, local_cksum) == EPKG_OK) {
+			if (ent->fts_statp->st_size != size) {
+				ret = add_to_dellist(&dl, SIZE_MISMATCH,
+				                  ent->fts_path, origin, NULL, NULL);
+			} else if (hash_file(ent->fts_path, local_cksum) == EPKG_OK) {
 
 				if (strcmp(cksum, local_cksum) != 0) {
 					ret = add_to_dellist(&dl, CKSUM_MISMATCH, ent->fts_path,
