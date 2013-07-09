@@ -4,17 +4,17 @@ STATIC_PKGNG=	yes
 NO_SHARED?=	yes
 NO_MAN=		yes
 NOMAN=		yes
-LDADD_STATIC=	-L${.OBJDIR}/../external/sqlite
+LDADD_STATIC=	-L../external/sqlite
 
 .if !exists(/usr/include/bsdyml.h)
-LDADD_STATIC+=	-L${.OBJDIR}/../external/libyaml \
+LDADD_STATIC+=	-L../external/libyaml \
 		-lyaml
 .else
 LDADD_STATIC+=	-lbsdyml
 .endif
 
 .if defined(WITH_BUNDLED_LIBELF)
-LDADD_STATIC+=	-L${.OBJDIR}/../external/libelf
+LDADD_STATIC+=	-L../external/libelf
 .endif
 
 LDADD_STATIC+=	-lsqlite3 \

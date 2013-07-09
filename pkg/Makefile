@@ -55,9 +55,9 @@ DEBUG_FLAGS+=	-ggdb -O0
 DEBUG_FLAGS+=	-pg
 .endif
 
-CFLAGS+=	-I${.CURDIR}/../libpkg \
-			-I${.CURDIR}/../external/uthash
-LDADD+=		-L${.OBJDIR}/../libpkg \
+CFLAGS+=	-I../libpkg \
+		-I${.CURDIR}/../external/uthash
+LDADD+=		-L../libpkg \
 		-lpkg \
 		-larchive \
 		-lutil \
