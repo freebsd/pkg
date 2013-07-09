@@ -51,7 +51,7 @@ MAN=		pkg_printf.3 \
 
 CLEANFILES=	${PC} ${PKGH}
 
-NEWVERS=	../newvers.sh
+NEWVERS=	${.CURDIR}/../newvers.sh
 
 PKGVERSION!=	sh ${NEWVERS} pkg
 PORTVERSION!=	sh ${NEWVERS} port
@@ -65,7 +65,7 @@ ${_snapshot}:
 all: ${PC}
 
 realinstall: ${PC}
-	${INSTALL} -m 644 ${.OBJDIR}/${PC} ${DESTDIR}${PREFIX}/libdata/pkgconfig
+	${INSTALL} -m 644 ${PC} ${DESTDIR}${PREFIX}/libdata/pkgconfig
 
 #
 # Set DEFAULT_MIRROR_TYPE default to SRV
@@ -78,13 +78,14 @@ DEFAULT_MIRROR_TYPE?=	1
 
 CFLAGS+=	-DDEFAULT_MIRROR_TYPE=${DEFAULT_MIRROR_TYPE}
 CFLAGS+=	-std=c99
-CFLAGS+=	-I${.CURDIR} \
+CFLAGS+=	-I. \
+		-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
 		-I${.CURDIR}/../external/uthash
 
 .if !exists(/usr/include/bsdyml.h)
 CFLAGS+=	-DBUNDLED_YAML -I ${.CURDIR}/../external/libyaml/include
-LDADD+=		-L${.OBJDIR}/../external/libyaml -lyaml
+LDADD+=		-L../external/libyaml -lyaml
 .else
 LDADD+=		-lbsdyml
 .endif
@@ -94,11 +95,11 @@ CFLAGS+=	-I${.CURDIR}/../external/libelf \
 		-DBUNDLED_LIBELF
 .endif
 
-LDADD+=		-L${.OBJDIR}/../external/sqlite \
-		-L${.OBJDIR}/../external/libyaml
+LDADD+=		-L../external/sqlite \
+		-L../external/libyaml
 
 .if defined(WITH_BUNDLED_LIBELF)
-LDADD+=		-L${.OBJDIR}/../external/libelf
+LDADD+=		-L../external/libelf
 .endif
 
 LDADD+=		-lsqlite3 \
