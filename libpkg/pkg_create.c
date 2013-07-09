@@ -53,13 +53,14 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	bool		 developer;
 	struct stat	 st;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	int64_t		 flatsize = 0;
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
 		return (EPKG_FATAL);
 	}
 	/*
-	 * if the checksum is not provided in the manifest recompute it
+	 * Get / compute size / checksum if not provided in the manifest
 	 */
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *pkg_path = pkg_file_path(file);
@@ -70,8 +71,14 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		else
 			strlcpy(fpath, pkg_path, sizeof(fpath));
 
-		if ((pkg_sum == NULL || pkg_sum[0] == '\0') &&
-		    lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
+		if (lstat(fpath, &st) != 0 || S_ISLNK(st.st_mode))
+			continue;
+
+		if (file->size == 0)
+			file->size = (int64_t)st.st_size;
+		flatsize += file->size;
+
+		if (pkg_sum == NULL || pkg_sum[0] == '\0') {
 			if (pkg->type == PKG_OLD_FILE) {
 				if (md5_file(fpath, sha256) != EPKG_OK)
 					return (EPKG_FATAL);
@@ -82,6 +89,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			strlcpy(file->sum, sha256, sizeof(file->sum));
 		}
 	}
+	pkg_set(pkg, PKG_FLATSIZE, flatsize);
 
 	if (pkg->type == PKG_OLD_FILE) {
 		const char *desc, *display, *comment;
