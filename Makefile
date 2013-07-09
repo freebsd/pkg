@@ -4,7 +4,7 @@ SUBDIR=	external \
 	pkg \
 	scripts
 
-NEWVERS=	newvers.sh
+NEWVERS=	${.CURDIR}/newvers.sh
 
 .if !defined(NOSTATIC)
 SUBDIR+=	pkg-static
@@ -78,6 +78,6 @@ make-tarball:
 	    -o ${TARBALL_FILE} ${PKGVERSION}
 
 Doxyfile: Doxyfile.in ${NEWVERS} ${_snapshot}
-	sed -e 's,%%PKGVERSION%%,${PKGVERSION},' ${.TARGET:S,$,.in,} > ${.TARGET}
+	sed -e 's,%%PKGVERSION%%,${PKGVERSION},' ${.CURDIR}/${.TARGET:S,$,.in,} > ${.TARGET}
 
 .include <bsd.subdir.mk>
