@@ -207,7 +207,6 @@ pkg_manifest_parser_new(struct pkg_manifest_parser **p)
 
 	if (*p != NULL) {
 		yaml_parser_delete(&(*p)->parser);
-		yaml_event_delete(&(*p)->event);
 		yaml_parser_initialize(&(*p)->parser);
 		return (EPKG_OK);
 	}
@@ -1297,6 +1296,22 @@ pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manife
 	rc = parse_manifest(pkg, keys, &parser);
 
 	yaml_parser_delete(&parser);
+
+	return (rc);
+}
+
+int
+pkg_parse_manifest_ev(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_parser *p)
+{
+	int rc;
+
+	assert(pkg != NULL);
+	assert(buf != NULL);
+	assert(p != NULL);
+
+	yaml_parser_set_input_string(&p->parser, buf, len);
+
+	rc = scan_manifest(pkg, p);
 
 	return (rc);
 }
