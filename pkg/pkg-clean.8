@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd July 10, 2013
 .Dt PKG-CLEAN 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd Cleans the local cache of fetched remote packages.
 .Sh SYNOPSIS
 .Nm
-.Op Fl nqy
+.Op Fl anqy
 .Sh DESCRIPTION
 .Nm
 is used to cleanup the local cache of packages downloaded from remote
@@ -34,6 +34,8 @@ any packages that are no longer provided.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl a
+Delete all cached packages.
 .It Fl n
 Dry-run: do not delete any package files from the cache, but show what
 would be done instead.
