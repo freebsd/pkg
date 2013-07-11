@@ -348,6 +348,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_ENV,
 	PKG_CONFIG_DISABLE_MTREE,
 	PKG_CONFIG_DEBUG_LEVEL,
+	PKG_CONFIG_OVERRIDDEN_ROOT,
 } pkg_config_key;
 
 typedef enum {

@@ -47,10 +47,21 @@ do_extract(struct archive *a, struct archive_entry *ae)
 	int	retcode = EPKG_OK;
 	int	ret = 0;
 	char	path[MAXPATHLEN + 1];
-	struct stat st;
+	struct stat st;	
+	const char* overridden_root;
+	pkg_config_string(PKG_CONFIG_OVERRIDDEN_ROOT, &overridden_root);
 
 	do {
 		const char *pathname = archive_entry_pathname(ae);
+		/*
+		 * If we have overridden path - make changes to archive entry.
+		 */
+		if(overridden_root != NULL) {
+			char newPath[MAXPATHLEN + 1];
+			snprintf(newPath, MAXPATHLEN, "%s%s", overridden_root, pathname);
+			archive_entry_set_pathname(ae, newPath);
+			*pathname = archive_entry_pathname(ae);
+		}
 
 		ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
 		if (ret != ARCHIVE_OK) {

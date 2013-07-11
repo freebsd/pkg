@@ -23,6 +23,7 @@ Table of Contents:
 * [Installing from remote repositories](#pkginstall)
 * [Backing up your package database](#pkgbackup)
 * [Creating a package repository](#pkgcreate)
+* [Cross root installing](#crossroot)
 * [Additional resources](#resources)
 
 <a name="libpkg"></a>
@@ -439,6 +440,12 @@ Here's an example that will create a repository of all your currently installed 
 The above commands will create a repository of all packages on your system.
 
 Now you can share your repo with other people by letting them know of your repository :)
+
+<a name="crossroot"></a>
+### Install packages to mounted directory
+
+You can use pkg for installing to mounted other system (not chroot or jail way):
+_OVERRIDDEN_ROOT_ = /mnt _PKG_DBDIR_ = /mnt/var/db/pkg _PKG_CACHEDIR_ = /mnt/var/cache/pkg
 
 <a name="resources"></a>
 ### Additional resources
