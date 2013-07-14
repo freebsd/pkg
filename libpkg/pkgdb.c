@@ -206,7 +206,10 @@ pkgdb_get_reponame(struct pkgdb *db, const char *repo)
 	assert(db->type == PKGDB_REMOTE);
 
 	if (repo != NULL) {
-		r = pkg_repo_find_ident(repo);
+		if ((r = pkg_repo_find_ident(repo)) == NULL) {
+			pkg_emit_error("repository '%s' does not exist", repo);
+			return (NULL);
+		}
 		reponame = pkg_repo_name(r);
 
 		if (!is_attached(db->sqlite, reponame)) {
@@ -1026,7 +1029,8 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	}
 
 	if (type == PKGDB_REMOTE)
-		pkgdb_open_multirepos(dbdir, db);
+		if ((ret = pkgdb_open_multirepos(dbdir, db)) != EPKG_OK)
+			return (ret);
 
 	*db_p = db;
 	return (EPKG_OK);

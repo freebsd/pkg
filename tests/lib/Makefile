@@ -9,6 +9,7 @@ pkg_printf_test_SRCS=	pkg_printf.c
 CFLAGS+=	-DTESTING -I../../libpkg
 LDADD+=		-Wl,-rpath ${.CURDIR}/../../libpkg \
 		-L../../libpkg	\
+		-lsbuf \
 		-lpkg
 
 CLEANFILES+=	pkg_printf.c
