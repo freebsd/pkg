@@ -24,6 +24,7 @@ SRCS=		${PC} \
 		pkg_attributes.c \
 		pkg_config.c \
 		pkg_create.c \
+		pkg_cudf.c \
 		pkg_delete.c \
 		pkg_elf.c \
 		pkg_event.c \

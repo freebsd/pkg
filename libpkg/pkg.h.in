@@ -1149,6 +1149,12 @@ int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
 int pkg_jobs_apply(struct pkg_jobs *jobs);
 
 /**
+ * Emit CUDF spec to a file for a specified jobs request
+ * @return error code
+ */
+int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *, struct pkgdb *);
+
+/**
  * Archive formats options.
  */
 typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
