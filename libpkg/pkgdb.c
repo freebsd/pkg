@@ -1343,7 +1343,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 				comp = " WHERE origin = ?1";
 		} else {
 			if (checkorigin == NULL)
-				comp = " WHERE name = ?1 COLLATE NOCASE"
+				comp = " WHERE name = ?1 COLLATE NOCASE "
 					"OR name || \"-\" || version = ?1"
 					"COLLATE NOCASE";
 			else
