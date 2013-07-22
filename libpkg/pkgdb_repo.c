@@ -929,3 +929,15 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 
 	return pkgdb_it_new(&repodb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
 }
+
+int
+pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
+		int conflicts_num, sqlite3 *sqlite)
+{
+	/* TODO: implement this */
+	(void)origin;
+	(void)conflicts;
+	(void)conflicts_num;
+	(void)sqlite;
+	return (EPKG_OK);
+}

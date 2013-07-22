@@ -448,10 +448,42 @@ pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char 
 	HASH_ADD_KEYPTR(hh, *head, item->origin, strlen(item->origin), item);
 }
 
+static void
+pkg_parse_conflicts_file(FILE *f, sqlite3 *sqlite)
+{
+	size_t linecap = 0;
+	ssize_t linelen;
+	char *linebuf = NULL, *p, **deps;
+	const char *origin, *pdep;
+	int ndep, i;
+
+	while ((linelen = getline(&linebuf, &linecap, f)) > 0) {
+		p = linebuf;
+		origin = strsep(&p, ":");
+		/* Check dependencies number */
+		pdep = p;
+		ndep = 1;
+		while (*pdep != '\0') {
+			if (*pdep == ',')
+				ndep ++;
+			pdep ++;
+		}
+		deps = malloc(sizeof(char *) * ndep);
+		for (i = 0; i < ndep; i ++) {
+			deps[i] = strsep(&p, ",");
+		}
+		pkgdb_repo_register_conflicts(origin, deps, ndep, sqlite);
+		free(deps);
+	}
+
+	if (linebuf != NULL)
+		free(linebuf);
+}
+
 static int
 pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 {
-	FILE *fmanifest = NULL, *fdigests = NULL;
+	FILE *fmanifest = NULL, *fdigests = NULL, *fconflicts = NULL;
 	sqlite3 *sqlite = NULL;
 	struct pkg *pkg = NULL;
 	int rc = EPKG_FATAL;
@@ -503,6 +535,10 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			&rc, repo_packagesite_file);
 	if (fmanifest == NULL)
 		goto cleanup;
+	local_t = *mtime;
+	fmanifest = repo_fetch_remote_extract_tmp(repo,
+			repo_conflicts_archive, "txz", &local_t,
+			&rc, repo_conflicts_file);
 	*mtime = local_t;
 	fseek(fmanifest, 0, SEEK_END);
 	len = ftell(fmanifest);
@@ -583,6 +619,11 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		free(item);
 	}
 	pkg_manifest_parser_free(parser);
+
+	if (fconflicts != NULL) {
+		pkg_parse_conflicts_file(fconflicts, sqlite);
+	}
+
 	pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:
@@ -596,8 +637,12 @@ cleanup:
 		fclose(fmanifest);
 	if (fdigests)
 		fclose(fdigests);
+	if (fconflicts)
+		fclose(fconflicts);
 	if (map != MAP_FAILED)
 		munmap(map, len);
+	if (linebuf != NULL)
+		free(linebuf);
 
 	return (rc);
 }
