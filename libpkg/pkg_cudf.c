@@ -88,6 +88,29 @@ cudf_emit_pkg(struct pkg *pkg, FILE *f, struct pkgdb *db)
 	return (EPKG_OK);
 }
 
+static int
+cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
+{
+	struct pkg_job_request *req, *tmp;
+	const char *origin;
+
+	if (fprintf(f, "%s: ", op) < 0)
+		return (EPKG_FATAL);
+	HASH_ITER(hh, j->request, req, tmp) {
+		pkg_get(req->pkg, PKG_ORIGIN, &origin);
+		if (fprintf(f, "%s%c", origin,
+				(req->hh.hh_next == NULL) ?
+						'\n' : ',') < 0) {
+			return (EPKG_FATAL);
+		}
+	}
+
+	if (fputc('\n', f) < 0)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
 int
 pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb *db)
 {
@@ -107,16 +130,16 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb 
 	switch (t) {
 	case PKG_JOBS_FETCH:
 	case PKG_JOBS_INSTALL:
-		if (fprintf(f, "install: \n\n") < 0)
+		if (cudf_emit_request_packages("install", j, f) != EPKG_OK)
 			return (EPKG_FATAL);
 		break;
 	case PKG_JOBS_DEINSTALL:
 	case PKG_JOBS_AUTOREMOVE:
-		if (fprintf(f, "remove: \n\n") < 0)
+		if (cudf_emit_request_packages("remove", j, f) != EPKG_OK)
 			return (EPKG_FATAL);
 		break;
 	case PKG_JOBS_UPGRADE:
-		if (fprintf(f, "upgrade: \n\n") < 0)
+		if (cudf_emit_request_packages("upgrade", j, f) != EPKG_OK)
 			return (EPKG_FATAL);
 		break;
 	}

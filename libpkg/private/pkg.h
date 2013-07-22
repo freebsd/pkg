@@ -194,10 +194,16 @@ struct pkg_option {
 	UT_hash_handle	hh;
 };
 
+struct pkg_job_request {
+	struct pkg *pkg;
+	UT_hash_handle hh;
+};
+
 struct pkg_jobs {
 	struct pkg	*jobs;
 	struct pkg 	*bulk;
 	struct pkg	*seen;
+	struct pkg_job_request	*request;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;

@@ -90,12 +90,18 @@ pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
+	struct pkg_job_request *req, *tmp;
+
 	if (j == NULL)
 		return;
 
 	if ((j->flags & PKG_FLAG_DRY_RUN) == 0)
 		pkgdb_release_lock(j->db);
 
+	HASH_ITER(hh, j->request, req, tmp) {
+		HASH_DEL(j->request, req);
+		free(req);
+	}
 	HASH_FREE(j->jobs, pkg, pkg_free);
 	LL_FREE(j->patterns, job_pattern, free);
 
@@ -236,6 +242,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	struct pkg *tmp, *p;
 	struct pkg_dep *d, *dtmp;
 	struct pkgdb_it *it;
+	struct pkg_job_request *req;
 	int64_t oldsize;
 	char *origin;
 	int ret;
@@ -252,6 +259,13 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 			pkg_get(pkg, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
 			pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
 			HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
+			req = malloc(sizeof (struct pkg_job_request));
+			if (req == NULL) {
+				pkg_emit_errno("malloc", "struct pkg_job_request");
+				return (EPKG_FATAL);
+			}
+			req->pkg = pkg;
+			HASH_ADD_KEYPTR(hh, j->request, origin, strlen(origin), req);
 			if (recursive)
 				populate_local_rdeps(j, pkg);
 			pkg = NULL;
@@ -314,6 +328,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
+	struct pkg_job_request *req;
 
 	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
 		return (EPKG_FATAL);
@@ -321,6 +336,13 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
+		req = malloc(sizeof (struct pkg_job_request));
+		if (req == NULL) {
+			pkg_emit_errno("malloc", "struct pkg_job_request");
+			return (EPKG_FATAL);
+		}
+		req->pkg = pkg;
+		HASH_ADD_KEYPTR(hh, j->request, origin, strlen(origin), req);
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
@@ -342,6 +364,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *origin;
 	struct pkg_dep *d, *dtmp;
+	struct pkg_job_request *req;
 	int ret;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
@@ -355,6 +378,13 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
+		req = malloc(sizeof (struct pkg_job_request));
+		if (req == NULL) {
+			pkg_emit_errno("malloc", "struct pkg_job_request");
+			return (EPKG_FATAL);
+		}
+		req->pkg = pkg;
+		HASH_ADD_KEYPTR(hh, j->request, origin, strlen(origin), req);
 		/* Do not test we ignore what doesn't exists remotely */
 		get_remote_pkg(j, origin, MATCH_EXACT, false);
 		pkg = NULL;
@@ -804,6 +834,7 @@ jobs_solve_install(struct pkg_jobs *j)
 	struct pkg *pkg, *tmp, *p;
 	struct pkg_dep *d, *dtmp;
 	struct pkgdb_it *it;
+	struct pkg_job_request *req;
 	const char *origin;
 	int ret;
 
@@ -822,6 +853,13 @@ jobs_solve_install(struct pkg_jobs *j)
 			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 				d = NULL;
 				pkg_get(pkg, PKG_ORIGIN, &origin);
+				req = malloc(sizeof (struct pkg_job_request));
+				if (req == NULL) {
+					pkg_emit_errno("malloc", "struct pkg_job_request");
+					return (EPKG_FATAL);
+				}
+				req->pkg = pkg;
+				HASH_ADD_KEYPTR(hh, j->request, origin, strlen(origin), req);
 				if (get_remote_pkg(j, origin, MATCH_EXACT, true) == EPKG_FATAL)
 					pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
 
@@ -888,6 +926,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	struct job_pattern *jp = NULL;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
+	struct pkg_job_request *req;
 	char *origin;
 	unsigned flag = PKG_LOAD_BASIC;
 
@@ -900,6 +939,13 @@ jobs_solve_fetch(struct pkg_jobs *j)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
+			req = malloc(sizeof (struct pkg_job_request));
+			if (req == NULL) {
+				pkg_emit_errno("malloc", "struct pkg_job_request");
+				return (EPKG_FATAL);
+			}
+			req->pkg = pkg;
+			HASH_ADD_KEYPTR(hh, j->request, origin, strlen(origin), req);
 			/* Do not test we ignore what doesn't exists remotely */
 			get_remote_pkg(j, origin, MATCH_EXACT, false);
 			pkg = NULL;
