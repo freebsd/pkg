@@ -918,6 +918,7 @@ int
 pkg_addconflict(struct pkg *pkg, const char *name)
 {
 	struct pkg_conflict *c = NULL;
+	const char *origin;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
@@ -929,6 +930,8 @@ pkg_addconflict(struct pkg *pkg, const char *name)
 
 	pkg_conflict_new(&c);
 	sbuf_set(&c->origin, name);
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", origin, name);
 
 	HASH_ADD_KEYPTR(hh, pkg->conflicts,
 	    __DECONST(char *, pkg_conflict_origin(c)),

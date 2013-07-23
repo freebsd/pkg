@@ -470,7 +470,7 @@ pkg_parse_conflicts_file(FILE *f, sqlite3 *sqlite)
 		}
 		deps = malloc(sizeof(char *) * ndep);
 		for (i = 0; i < ndep; i ++) {
-			deps[i] = strsep(&p, ",");
+			deps[i] = strsep(&p, ",\n");
 		}
 		pkgdb_repo_register_conflicts(origin, deps, ndep, sqlite);
 		free(deps);

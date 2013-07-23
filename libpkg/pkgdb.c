@@ -2053,9 +2053,9 @@ pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg)
 	const char	*reponame = NULL;
 	const char	*basesql = ""
 			"SELECT packages.origin "
-			"FROM %Q.conflicts "
+			"FROM %Q.pkg_conflicts "
 			"LEFT JOIN %Q.packages ON "
-			"packages.id = conflicts.conflict_id"
+			"packages.id = pkg_conflicts.conflict_id "
 			"WHERE package_id = ?1";
 
 	assert(db != NULL && pkg != NULL);

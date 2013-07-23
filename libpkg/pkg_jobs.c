@@ -588,7 +588,8 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	const char *buf1, *buf2;
 	bool force = false, seen = false;
 	int rc = EPKG_FATAL;
-	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS;
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|
+			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	if (root && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
@@ -674,7 +675,9 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 	struct pkgdb_it *it;
 
 	if (flag == 0) {
-		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS;
+		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
+				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|
+				PKG_LOAD_CONFLICTS;
 	}
 
 	if ((it = pkgdb_query(j->db, origin, MATCH_EXACT)) == NULL)
