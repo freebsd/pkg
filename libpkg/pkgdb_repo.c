@@ -934,10 +934,89 @@ int
 pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 		int conflicts_num, sqlite3 *sqlite)
 {
-	/* TODO: implement this */
-	(void)origin;
-	(void)conflicts;
-	(void)conflicts_num;
-	(void)sqlite;
+	const char clean_conflicts_sql[] = ""
+			"DELETE FROM pkg_conflicts "
+			"WHERE package_id = ?1;";
+	const char select_id_sql[] = ""
+			"SELECT id FROM packages "
+			"WHERE origin = ?1;";
+	const char insert_conflict_sql[] = ""
+			"INSERT INTO pkg_conflicts "
+			"(package_id, conflict_id) "
+			"VALUES (?1, ?2);";
+	sqlite3_stmt *stmt = NULL;
+	int ret, i;
+	int64_t origin_id, conflict_id;
+
+	pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", select_id_sql);
+	if (sqlite3_prepare_v2(sqlite, select_id_sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
+	ret = sqlite3_step(stmt);
+
+	if (ret == SQLITE_ROW) {
+		origin_id = sqlite3_column_int64(stmt, 0);
+	}
+	else {
+		ERROR_SQLITE(sqlite);
+		return (EPKG_FATAL);
+	}
+	sqlite3_finalize(stmt);
+
+	pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", clean_conflicts_sql);
+	if (sqlite3_prepare_v2(sqlite, clean_conflicts_sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_int64(stmt, 1, origin_id);
+	/* Ignore cleanup result */
+	(void)sqlite3_step(stmt);
+
+	sqlite3_finalize(stmt);
+
+	for (i = 0; i < conflicts_num; i ++) {
+		/* Select a conflict */
+		pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", select_id_sql);
+		if (sqlite3_prepare_v2(sqlite, select_id_sql, -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_bind_text(stmt, 1, conflicts[i], -1, SQLITE_TRANSIENT);
+		ret = sqlite3_step(stmt);
+
+		if (ret == SQLITE_ROW) {
+			conflict_id = sqlite3_column_int64(stmt, 0);
+		}
+		else {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_finalize(stmt);
+
+		/* Insert a pair */
+		pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", insert_conflict_sql);
+		if (sqlite3_prepare_v2(sqlite, insert_conflict_sql, -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_bind_int64(stmt, 1, origin_id);
+		sqlite3_bind_int64(stmt, 2, conflict_id);
+		ret = sqlite3_step(stmt);
+
+		if (ret != SQLITE_DONE) {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_finalize(stmt);
+	}
+
 	return (EPKG_OK);
 }
