@@ -30,7 +30,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/queue.h>
 #include <sys/sbuf.h>
 #include <sys/utsname.h>
 
