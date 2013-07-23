@@ -281,6 +281,12 @@ static struct config_entry c[] = {
 		"0",
 		"Level for debug messages",
 	},
+	[PKG_CONFIG_CUDF_SOLVER] = {
+		PKG_CONFIG_BOOL,
+		"CUDF_SOLVER",
+		"0",
+		"Experimental: tells pkg to use an external CUDF solver",
+	},
 };
 
 static bool parsed = false;
