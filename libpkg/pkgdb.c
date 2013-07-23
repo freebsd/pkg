@@ -2292,9 +2292,8 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[CONFLICT] = {
 		NULL,
-		"INSERT INTO pkg_conflicts(package_id, "
-		"(SELECT id FROM packages WHERE origin = ?2)) "
-		"VALUES (?1, ?2)",
+		"INSERT INTO pkg_conflicts(package_id, conflict_id) "
+		"VALUES (?1, (SELECT id FROM packages WHERE origin = ?2))",
 		"IT",
 	},
 	[PKG_PROVIDE] = {
@@ -2749,7 +2748,7 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	struct pkg_provide	*provide;
+	struct pkg_provide	*provide = NULL;
 
 	while (pkg_provides(pkg, &provide) == EPKG_OK) {
 		if (run_prstmt(PROVIDE, pkg_provide_name(provide))

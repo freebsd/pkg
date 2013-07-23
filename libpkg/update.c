@@ -536,7 +536,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	if (fmanifest == NULL)
 		goto cleanup;
 	local_t = *mtime;
-	fmanifest = repo_fetch_remote_extract_tmp(repo,
+	fconflicts = repo_fetch_remote_extract_tmp(repo,
 			repo_conflicts_archive, "txz", &local_t,
 			&rc, repo_conflicts_file);
 	*mtime = local_t;

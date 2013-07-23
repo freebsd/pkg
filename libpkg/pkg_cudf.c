@@ -49,35 +49,43 @@ cudf_emit_pkg(struct pkg *pkg, FILE *f, struct pkgdb *db)
 
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_VERSION, &version);
 
-	if (fprintf(f, "package: %s\nversion: %s\ndepends: ", origin, version) < 0)
+	if (fprintf(f, "package: %s\nversion: %s\n", origin, version) < 0)
 		return (EPKG_FATAL);
 
 	/* Iterate all dependencies */
-	HASH_ITER(hh, pkg->deps, dep, dtmp) {
-		if (fprintf(f, "%s%c", pkg_dep_get(dep, PKG_DEP_ORIGIN),
-				(dep->hh.hh_next == NULL) ?
-				'\n' : ',') < 0) {
+	if (HASH_COUNT(pkg->deps) > 0) {
+		if (fprintf(f, "depends: ") < 0)
 			return (EPKG_FATAL);
+		HASH_ITER(hh, pkg->deps, dep, dtmp) {
+			if (fprintf(f, "%s%c", pkg_dep_get(dep, PKG_DEP_ORIGIN),
+					(dep->hh.hh_next == NULL) ?
+							'\n' : ',') < 0) {
+				return (EPKG_FATAL);
+			}
 		}
 	}
 
-	if (fprintf(f, "provides: ") < 0)
+	if (HASH_COUNT(pkg->provides) > 0) {
+		if (fprintf(f, "provides: ") < 0)
 			return (EPKG_FATAL);
-	HASH_ITER(hh, pkg->provides, prov, ptmp) {
-		if (fprintf(f, "%s%c", pkg_provide_name(prov),
-				(prov->hh.hh_next == NULL) ?
-				'\n' : ',') < 0) {
-			return (EPKG_FATAL);
+		HASH_ITER(hh, pkg->provides, prov, ptmp) {
+			if (fprintf(f, "%s%c", pkg_provide_name(prov),
+					(prov->hh.hh_next == NULL) ?
+							'\n' : ',') < 0) {
+				return (EPKG_FATAL);
+			}
 		}
 	}
 
-	if (fprintf(f, "conflicts: ") < 0)
-		return (EPKG_FATAL);
-	HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
-		if (fprintf(f, "%s%c", pkg_conflict_origin(conflict),
-				(conflict->hh.hh_next == NULL) ?
-				'\n' : ',') < 0) {
+	if (HASH_COUNT(pkg->conflicts) > 0) {
+		if (fprintf(f, "conflicts: ") < 0)
 			return (EPKG_FATAL);
+		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
+			if (fprintf(f, "%s%c", pkg_conflict_origin(conflict),
+					(conflict->hh.hh_next == NULL) ?
+							'\n' : ',') < 0) {
+				return (EPKG_FATAL);
+			}
 		}
 	}
 
