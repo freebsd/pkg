@@ -529,14 +529,24 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
+		processed++;
 		HASH_FIND_STR(ldel, __DECONST(char *, origin), item);
 		if (item == NULL) {
 			added++;
 			pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
 		} else {
 			if (strcmp(digest, item->digest) == 0) {
+				free(item->origin);
+				free(item->digest);
 				HASH_DEL(ldel, item);
+				free(item);
+				item = NULL;
 			} else {
+				free(item->origin);
+				free(item->digest);
+				HASH_DEL(ldel, item);
+				free(item);
+				item = NULL;
 				pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
 				updated++;
 			}
