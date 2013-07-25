@@ -307,8 +307,18 @@ pkg_create_repo(char *path, bool force, bool filelist,
 			continue;
 		}
 
+		/* EPKG_END returned */
+
 		if (progress != NULL)
 			progress(r->pkg, data);
+		retcode = pkgdb_repo_add_package(r->pkg, r->path, sqlite,
+				manifest_digest, false, true);
+		if (retcode == EPKG_END) {
+			continue;
+		}
+		else if (retcode != EPKG_OK) {
+			goto cleanup;
+		}
 
 		manifest_pos = ftell(psyml);
 		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
@@ -327,15 +337,6 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		cur_dig->manifest_pos = manifest_pos;
 		cur_dig->files_pos = files_pos;
 		LL_PREPEND(dlist, cur_dig);
-
-		retcode = pkgdb_repo_add_package(r->pkg, r->path, sqlite,
-				manifest_digest, false, true);
-		if (retcode == EPKG_END) {
-			continue;
-		}
-		else if (retcode != EPKG_OK) {
-			goto cleanup;
-		}
 
 		pkg_free(r->pkg);
 		free(r);
