@@ -3355,6 +3355,60 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
 }
 
+struct pkgdb_it *
+pkgdb_query_provide(struct pkgdb *db, const char *provide, const char *repo)
+{
+	sqlite3_stmt	*stmt;
+	struct sbuf	*sql = NULL;
+	const char	*reponame = NULL;
+	int		 ret;
+	const char	 basesql[] = ""
+			"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
+			"p.message, p.arch, p.maintainer, p.www, "
+			"p.flatsize "
+			"FROM '%1$s'.packages AS p, '%1$s'.pkg_provides AS pp, "
+			"'%1$s'.provides AS pr "
+			"WHERE p.id = pp.package_id "
+			"AND pp.provide_id = pr.id "
+			"AND pr.name = ?1;";
+
+	assert(db != NULL);
+	reponame = pkgdb_get_reponame(db, repo);
+
+	sql = sbuf_new_auto();
+	/*
+	 * Working on multiple remote repositories
+	 */
+	if (reponame == NULL) {
+		/* duplicate the query via UNION for all the attached
+		 * databases */
+
+		ret = sql_on_all_attached_db(db->sqlite, sql,
+				basesql, " UNION ALL ");
+		if (ret != EPKG_OK) {
+			sbuf_delete(sql);
+			return (NULL);
+		}
+	} else
+		sbuf_printf(sql, basesql, reponame);
+
+	sbuf_finish(sql);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
+	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+}
+
 static int
 pkgdb_search_build_search_query(struct sbuf *sql, match_t match,
     pkgdb_field field, pkgdb_field sort)
