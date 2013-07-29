@@ -74,6 +74,7 @@ struct pkgdb;
 struct pkgdb_it;
 
 struct pkg_jobs;
+struct pkg_solve_rule;
 
 struct pkg_repo;
 
@@ -1157,6 +1158,12 @@ int pkg_jobs_apply(struct pkg_jobs *jobs);
  * @return error code
  */
 int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *, struct pkgdb *);
+
+/**
+ * Solve a SAT problem
+ * @return true if a problem is solvable
+ */
+bool pkg_solve_sat_problem(struct pkg_solve_rule *rules);
 
 /**
  * Archive formats options.

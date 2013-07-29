@@ -33,6 +33,7 @@ SRCS=		${PC} \
 		pkg_ports.c \
 		pkg_printf.c \
 		pkg_repo.c \
+		pkg_solve.c \
 		pkg_status.c \
 		pkg_version.c \
 		pkgdb.c \
