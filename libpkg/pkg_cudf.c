@@ -127,7 +127,7 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb 
 	if (fprintf(f, "preamble: \n\n") < 0)
 		return (EPKG_FATAL);
 
-	HASH_ITER(hh, j->jobs, pkg, tmp) {
+	HASH_ITER(hh, j->universe, pkg, tmp) {
 		if (cudf_emit_pkg(pkg, f, db) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
