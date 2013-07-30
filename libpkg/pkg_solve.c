@@ -39,20 +39,28 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-
-/* Used as an atom in rules */
-struct pkg_solve_item {
+struct pkg_solve_variable {
 	struct pkg *pkg;
 	bool to_install;
-	bool inverse;
+	const char *origin;
 	bool resolved;
+	UT_hash_handle hh;
+};
+
+struct pkg_solve_item {
+	struct pkg_solve_variable *var;
+	bool inverse;
 	struct pkg_solve_item *next;
 };
 
 struct pkg_solve_rule {
 	struct pkg_solve_item *items;
-	bool resolved;
 	struct pkg_solve_rule *next;
+};
+
+struct pkg_solve_problem {
+	struct pkg_solve_rule *rules;
+	struct pkg_solve_variable *variables;
 };
 
 /*
@@ -61,7 +69,7 @@ struct pkg_solve_rule {
  * if it is not installed but inverted
  */
 #define PKG_SOLVE_CHECK_ITEM(item)				\
-	((item)->to_install ^ (item)->inverse)
+	((item)->var->to_install ^ (item)->inverse)
 
 /**
  * Check whether SAT rule is TRUE
@@ -76,12 +84,10 @@ pkg_solve_check_rules(struct pkg_solve_rule *rules)
 	bool ret;
 
 	LL_FOREACH(rules, cur) {
-		if (cur->resolved)
-			continue;
 
 		ret = false;
 		LL_FOREACH(cur->items, it) {
-			if (it->resolved) {
+			if (it->var->resolved) {
 				if (PKG_SOLVE_CHECK_ITEM(it))
 					ret = true;
 			}
@@ -107,11 +113,9 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
 	int resolved = 0, total = 0;
 
 	LL_FOREACH(rules, cur) {
-		if (cur->resolved)
-			continue;
 
 		LL_FOREACH(cur->items, it) {
-			if (it->resolved && PKG_SOLVE_CHECK_ITEM(it))
+			if (it->var->resolved && PKG_SOLVE_CHECK_ITEM(it))
 				resolved++;
 			else
 				unresolved = it;
@@ -119,11 +123,10 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
 		}
 		/* It is a unit */
 		if (total == resolved + 1 && unresolved != NULL) {
-			if (!unresolved->resolved) {
+			if (!unresolved->var->resolved) {
 				/* Propagate unit */
-				unresolved->resolved = true;
-				unresolved->to_install = !unresolved->inverse;
-				cur->resolved = true;
+				unresolved->var->resolved = true;
+				unresolved->var->to_install = !unresolved->inverse;
 				return (true);
 			}
 		}
@@ -143,15 +146,12 @@ pkg_solve_propagate_explicit(struct pkg_solve_rule *rules)
 	struct pkg_solve_item *it;
 
 	LL_FOREACH(rules, cur) {
-		if (cur->resolved)
-			continue;
 
 		it = cur->items;
 		/* Unary rules */
-		if (!it->resolved && it->next == NULL) {
-			it->to_install = !it->inverse;
-			it->resolved = true;
-			cur->resolved = true;
+		if (!it->var->resolved && it->next == NULL) {
+			it->var->to_install = !it->inverse;
+			it->var->resolved = true;
 			return (true);
 		}
 
@@ -175,7 +175,7 @@ pkg_solve_check_conflicts(struct pkg_solve_rule *rules)
 		it = cur->items;
 		next = it->next;
 		if (next != NULL && next->next == NULL) {
-			if (it->resolved ^ next->resolved) {
+			if (it->var->resolved ^ next->var->resolved) {
 				if (!(PKG_SOLVE_CHECK_ITEM(it) && PKG_SOLVE_CHECK_ITEM(next)))
 					return (false);
 			}
@@ -200,16 +200,16 @@ pkg_solve_propagate_default(struct pkg_solve_rule *rules)
 
 	LL_FOREACH(rules, cur) {
 		LL_FOREACH(cur->items, it) {
-			if (!it->resolved) {
-				if (it->pkg->type == PKG_INSTALLED) {
-					it->to_install = true;
+			if (!it->var->resolved) {
+				if (it->var->pkg->type == PKG_INSTALLED) {
+					it->var->to_install = true;
 					if (pkg_solve_check_conflicts(rules))
-						it->resolved = true;
+						it->var->resolved = true;
 				}
 				else {
-					it->to_install = false;
+					it->var->to_install = false;
 					if (pkg_solve_check_conflicts(rules))
-						it->resolved = true;
+						it->var->resolved = true;
 				}
 			}
 		}
@@ -224,16 +224,16 @@ pkg_solve_propagate_default(struct pkg_solve_rule *rules)
  * @return
  */
 bool
-pkg_solve_sat_problem(struct pkg_solve_rule *rules)
+pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
 
 	/* Initially propagate explicit rules */
-	while (pkg_solve_propagate_explicit(rules));
+	while (pkg_solve_propagate_explicit(problem->rules));
 
 	/* Now try to assign default values */
-	pkg_solve_propagate_default(rules);
+	pkg_solve_propagate_default(problem->rules);
 
-	while (!pkg_solve_check_rules(rules)) {
+	while (!pkg_solve_check_rules(problem->rules)) {
 		/* TODO:
 		 * 1) assign a free variable
 		 * 2) check for contradictions
@@ -243,4 +243,268 @@ pkg_solve_sat_problem(struct pkg_solve_rule *rules)
 	}
 
 	return (true);
+}
+
+/*
+ * Utilities to convert jobs to SAT rule
+ */
+
+static struct pkg_solve_item *
+pkg_solve_item_new(struct pkg_solve_variable *var)
+{
+	struct pkg_solve_item *result;
+
+	result = calloc(1, sizeof(struct pkg_solve_item));
+
+	if(result == NULL) {
+		pkg_emit_errno("calloc", "pkg_solve_item");
+		return (NULL);
+	}
+
+	result->var = var;
+
+	return (result);
+}
+
+static struct pkg_solve_rule *
+pkg_solve_rule_new(void)
+{
+	struct pkg_solve_rule *result;
+
+	result = calloc(1, sizeof(struct pkg_solve_rule));
+
+	if(result == NULL) {
+		pkg_emit_errno("calloc", "pkg_solve_rule");
+		return (NULL);
+	}
+
+	return (result);
+}
+
+static struct pkg_solve_variable *
+pkg_solve_variable_new(struct pkg *pkg)
+{
+	struct pkg_solve_variable *result;
+	const char *origin;
+
+	result = calloc(1, sizeof(struct pkg_solve_variable));
+
+	if(result == NULL) {
+		pkg_emit_errno("calloc", "pkg_solve_variable");
+		return (NULL);
+	}
+
+	result->pkg = pkg;
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	/* XXX: Is it safe to save a ptr here ? */
+	result->origin = origin;
+
+	return (result);
+}
+
+static void
+pkg_solve_rule_free(struct pkg_solve_rule *rule)
+{
+	struct pkg_solve_item *it, *tmp;
+
+	LL_FOREACH_SAFE(rule->items, it, tmp) {
+		free(it);
+	}
+	free(rule);
+}
+
+void
+pkg_solve_problem_free(struct pkg_solve_problem *problem)
+{
+	struct pkg_solve_rule *r, *rtmp;
+	struct pkg_solve_variable *v, *vtmp;
+
+	LL_FOREACH_SAFE(problem->rules, r, rtmp) {
+		pkg_solve_rule_free(r);
+	}
+	HASH_ITER(hh, problem->variables, v, vtmp) {
+		HASH_DEL(problem->variables, v);
+		free(v);
+	}
+}
+
+static int
+pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
+		struct pkg_solve_variable *pvar)
+{
+	struct pkg_dep *dep, *dtmp;
+	struct pkg_conflict *conflict, *ctmp;
+	struct pkg *ptmp, *pkg = pvar->pkg;
+	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *it;
+	struct pkg_solve_variable *var;
+	const char *origin;
+
+	/* Go through all deps */
+	HASH_ITER(hh, pkg->deps, dep, dtmp) {
+		rule = NULL;
+		it = NULL;
+		var = NULL;
+
+		origin = pkg_dep_get(dep, PKG_DEP_ORIGIN);
+		HASH_FIND_STR(problem->variables, __DECONST(char *, origin), var);
+		if (var == NULL) {
+			HASH_FIND_STR(j->universe, __DECONST(char *, origin), ptmp);
+			/* If there is no package in universe, refuse continue */
+			if (ptmp == NULL)
+				return (EPKG_FATAL);
+			/* Need to add a variable */
+			var = pkg_solve_variable_new(ptmp);
+			if (var == NULL)
+				goto err;
+			HASH_ADD_KEYPTR(hh, problem->variables, var->origin, strlen(var->origin), var);
+		}
+		/* Dependency rule: (!A | B) */
+		rule = pkg_solve_rule_new();
+		if (rule == NULL)
+			goto err;
+		/* !A */
+		it = pkg_solve_item_new(pvar);
+		if (it == NULL)
+			goto err;
+
+		it->inverse = true;
+		LL_PREPEND(rule->items, it);
+		/* B */
+		it = pkg_solve_item_new(var);
+		if (it == NULL)
+			goto err;
+
+		it->inverse = false;
+		LL_PREPEND(rule->items, it);
+
+		LL_PREPEND(problem->rules, rule);
+	}
+
+	/* Go through all conflicts */
+	HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
+		rule = NULL;
+		it = NULL;
+		var = NULL;
+
+		origin = pkg_conflict_origin(conflict);
+		HASH_FIND_STR(problem->variables, __DECONST(char *, origin), var);
+		if (var == NULL) {
+			HASH_FIND_STR(j->universe, __DECONST(char *, origin), ptmp);
+			/* If there is no package in universe, refuse continue */
+			if (ptmp == NULL)
+				return (EPKG_FATAL);
+			/* Need to add a variable */
+			var = pkg_solve_variable_new(ptmp);
+			if (var == NULL)
+				goto err;
+			HASH_ADD_KEYPTR(hh, problem->variables, var->origin, strlen(var->origin), var);
+		}
+		/* Conflict rule: (!A | !B) */
+		rule = pkg_solve_rule_new();
+		if (rule == NULL)
+			goto err;
+		/* !A */
+		it = pkg_solve_item_new(pvar);
+		if (it == NULL)
+			goto err;
+
+		it->inverse = true;
+		LL_PREPEND(rule->items, it);
+		/* !B */
+		it = pkg_solve_item_new(var);
+		if (it == NULL)
+			goto err;
+
+		it->inverse = true;
+		LL_PREPEND(rule->items, it);
+
+		LL_PREPEND(problem->rules, rule);
+	}
+
+	return (EPKG_OK);
+err:
+	if (it != NULL)
+		free(it);
+	if (var != NULL)
+		free(var);
+	if (rule != NULL)
+		pkg_solve_rule_free(rule);
+	return (EPKG_FATAL);
+}
+
+struct pkg_solve_problem *
+pkg_solve_jobs_to_sat(struct pkg_jobs *j)
+{
+	struct pkg_solve_problem *problem;
+	struct pkg_job_request *jreq, *jtmp;
+	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *it;
+	struct pkg *pkg, *ptmp;
+	struct pkg_solve_variable *var;
+	const char *origin;
+
+	problem = calloc(1, sizeof(struct pkg_solve_problem));
+
+	if (problem == NULL) {
+		pkg_emit_errno("calloc", "pkg_solve_problem");
+		return (NULL);
+	}
+
+	/* Add requests */
+	HASH_ITER(hh, j->request, jreq, jtmp) {
+		rule = NULL;
+		it = NULL;
+		var = NULL;
+
+		var = pkg_solve_variable_new(jreq->pkg);
+		if (var == NULL)
+			goto err;
+
+		HASH_ADD_KEYPTR(hh, problem->variables, var->origin, strlen(var->origin), var);
+		it = pkg_solve_item_new(var);
+		if (it == NULL)
+			goto err;
+
+		if (j->type == PKG_JOBS_DEINSTALL ||
+				j->type == PKG_JOBS_AUTOREMOVE) {
+			it->inverse = true;
+		}
+		rule = pkg_solve_rule_new();
+		if (rule == NULL)
+			goto err;
+
+		/* Requests are unary rules */
+		LL_PREPEND(rule->items, it);
+		LL_PREPEND(problem->rules, rule);
+	}
+
+	/* Parse universe */
+	HASH_ITER(hh, j->universe, pkg, ptmp) {
+		rule = NULL;
+		it = NULL;
+		var = NULL;
+
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		HASH_FIND_STR(problem->variables, origin, var);
+		if (var == NULL) {
+			/* Add new variable */
+			var = pkg_solve_variable_new(pkg);
+			if (var == NULL)
+				goto err;
+			HASH_ADD_KEYPTR(hh, problem->variables, var->origin, strlen(var->origin), var);
+		}
+		if (pkg_solve_add_pkg_rule(j, problem, var) == EPKG_FATAL)
+			goto err;
+	}
+
+	return (problem);
+err:
+	if (it != NULL)
+		free(it);
+	if (var != NULL)
+		free(var);
+	if (rule != NULL)
+		pkg_solve_rule_free(rule);
+	return (NULL);
 }

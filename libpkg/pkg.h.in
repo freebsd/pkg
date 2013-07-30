@@ -74,7 +74,7 @@ struct pkgdb;
 struct pkgdb_it;
 
 struct pkg_jobs;
-struct pkg_solve_rule;
+struct pkg_solve_problem;
 
 struct pkg_repo;
 
@@ -1163,7 +1163,18 @@ int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *, struct pkgdb
  * Solve a SAT problem
  * @return true if a problem is solvable
  */
-bool pkg_solve_sat_problem(struct pkg_solve_rule *rules);
+bool pkg_solve_sat_problem(struct pkg_solve_problem *problem);
+
+/**
+ * Convert package jobs to a SAT problem
+ * @return SAT problem or NULL if failed
+ */
+struct pkg_solve_problem * pkg_solve_jobs_to_sat(struct pkg_jobs *j);
+
+/**
+ * Free a SAT problem structure
+ */
+void pkg_solve_problem_free(struct pkg_solve_problem *problem);
 
 /**
  * Archive formats options.

@@ -200,6 +200,7 @@ struct pkg_job_request {
 };
 
 struct pkg_jobs {
+	struct pkg *universe;
 	struct pkg	*jobs;
 	struct pkg 	*bulk;
 	struct pkg	*seen;
