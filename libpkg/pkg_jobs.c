@@ -701,6 +701,8 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_shlib *ls = NULL, *rs = NULL;
+	struct pkg_conflict *lc = NULL, *rc = NULL;
+	struct pkg_provide *lpr = NULL, *rpr = NULL;
 	bool automatic;
 	int	ret1, ret2;
 	pkg_change_t cmp;
@@ -799,6 +801,48 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 			    pkg_dep_get(ld, PKG_DEP_NAME)) != 0) {
 				pkg_free(lp);
 				pkg_set(rp, PKG_REASON, "direct dependency changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* Conflicts */
+	for (;;) {
+		ret1 = pkg_conflicts(rp, &rc);
+		ret2 = pkg_conflicts(lp, &lc);
+		if (ret1 != ret2) {
+			pkg_free(lp);
+			pkg_set(rp, PKG_REASON, "direct conflict changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_conflict_origin(rc),
+					pkg_conflict_origin(lc)) != 0) {
+				pkg_free(lp);
+				pkg_set(rp, PKG_REASON, "direct conflict changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* Provides */
+	for (;;) {
+		ret1 = pkg_provides(rp, &rpr);
+		ret2 = pkg_provides(lp, &lpr);
+		if (ret1 != ret2) {
+			pkg_free(lp);
+			pkg_set(rp, PKG_REASON, "provides changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_provide_name(rpr),
+					pkg_provide_name(lpr)) != 0) {
+				pkg_free(lp);
+				pkg_set(rp, PKG_REASON, "provides changed");
 				return (true);
 			}
 		}
