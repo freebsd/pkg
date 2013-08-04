@@ -1161,7 +1161,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 		}
 
 		if (oldversion != NULL)
-			pkg_emit_upgrade_finished(p);
+			pkg_emit_upgrade_finished(newpkg);
 		else
 			pkg_emit_install_finished(newpkg);
 

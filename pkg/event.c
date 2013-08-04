@@ -231,6 +231,12 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		printf(" done\n");
+		if (pkg_has_message(ev->e_upgrade_finished.pkg)) {
+			if (messages == NULL)
+				messages = sbuf_new_auto();
+			pkg_sbuf_printf(messages, "%M\n",
+			    ev->e_upgrade_finished.pkg);
+		}
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;
