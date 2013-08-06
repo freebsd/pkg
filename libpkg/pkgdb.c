@@ -2953,6 +2953,7 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 		sql_to_exec = sql;
 	}
 
+	pkg_debug(4, "Pkgdb: executing '%s'", sql_to_exec);
 	if (sqlite3_exec(s, sql_to_exec, NULL, NULL, &errmsg) != SQLITE_OK) {
 		ERROR_SQLITE(s);
 		sqlite3_free(errmsg);
