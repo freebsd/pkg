@@ -57,6 +57,8 @@ pkgcli_update(bool force) {
 		printf("Updating repository catalogue\n");
 
 	while (pkg_repos(&r) == EPKG_OK) {
+		if (!pkg_repo_enabled(r))
+			continue;
 		retcode = pkg_update(r, force);
 		if (retcode == EPKG_UPTODATE) {
 			if (!quiet)
