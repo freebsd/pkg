@@ -154,9 +154,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 
 		dep = pkg_dep_lookup(pkg, deporigin);
 
-		if (dep != NULL) {
-			pkg_emit_error("adding unlisted depends (%s): %s-%s",
-			    pathbuf, depname, depversion);
+		if (dep == NULL) {
 			pkg_adddep(pkg, depname, deporigin, depversion,
 			    deplocked);
 		}
