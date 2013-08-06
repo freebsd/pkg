@@ -126,10 +126,15 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 	size_t linelen;
 	struct sbuf *cmd = NULL;
 	const char *errstr;
+	const char *ssh_args;
+
+	pkg_config_string(PKG_CONFIG_SSH_ARGS, &ssh_args);
 
 	if (repo->ssh == NULL) {
 		cmd = sbuf_new_auto();
 		sbuf_cat(cmd, "/usr/bin/ssh -e none -T ");
+		if (ssh_args != NULL)
+			sbuf_printf(cmd, "%s ", ssh_args);
 		if (u->port > 0)
 			sbuf_printf(cmd, "-P %d ", u->port);
 		if (u->user[0] != '\0')

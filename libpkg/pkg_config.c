@@ -275,6 +275,12 @@ static struct config_entry c[] = {
 		"NO",
 		"Experimental: disable MTREE processing on pkg installation",
 	},
+	[PKG_CONFIG_SSH_ARGS] = {
+		PKG_CONFIG_STRING,
+		"PKG_SSH_ARGS",
+		NULL,
+		"Extras arguments to pass to ssh(1)",
+	},
 };
 
 static bool parsed = false;
