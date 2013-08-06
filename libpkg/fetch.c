@@ -347,6 +347,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 				size = sizeof(buf);
 			if ((r = fread(buf, 1, size, remote)) < 1)
 				break;
+			tmout = fetchTimeout;
 		}
 
 		if (write(dest, buf, r) != r) {
