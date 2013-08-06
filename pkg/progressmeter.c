@@ -263,6 +263,8 @@ update_progress_meter(__unused int ignore)
 void
 start_progress_meter(char *f, off_t filesize, off_t *ctr)
 {
+	struct sigaction sa;
+
 	start = last_update = time(NULL);
 	file = f;
 	end_pos = filesize;
@@ -275,8 +277,13 @@ start_progress_meter(char *f, off_t filesize, off_t *ctr)
 	if (can_output())
 		refresh_progress_meter();
 
-	signal(SIGALRM, update_progress_meter);
-	signal(SIGWINCH, sig_winch);
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = update_progress_meter;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGALRM, &sa, NULL);
+	sa.sa_handler = sig_winch;
+	sigaction(SIGWINCH, &sa, NULL);
 	alarm(UPDATE_INTERVAL);
 }
 
