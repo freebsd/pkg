@@ -281,6 +281,12 @@ static struct config_entry c[] = {
 		"0",
 		"Level for debug messages",
 	},
+	[PKG_CONFIG_OVERRIDDEN_ROOT] = {
+		PKG_CONFIG_STRING,
+		"OVERRIDDEN_ROOT",
+		NULL,
+		"Directory to which all packages will be extracted",
+	},
 };
 
 static bool parsed = false;
