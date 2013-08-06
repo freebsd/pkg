@@ -319,6 +319,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 	req = sqlite3_mprintf("select group_concat(arch, ', ') from "
 			"(select distinct arch from packages "
 			"where arch not GLOB '%q')", myarch);
+
 	if (get_sql_string(sqlite, req, &bad_abis) != EPKG_OK) {
 		sqlite3_free(req);
 		pkg_emit_error("Unable to query repository");
@@ -613,7 +614,7 @@ pkg_update(struct pkg_repo *repo, bool force)
 		}
 
 		if (get_pragma(sqlite, "SELECT count(name) FROM sqlite_master "
-		    "WHERE type='table' AND name='repodata';", &res) != EPKG_OK) {
+		    "WHERE type='table' AND name='repodata';", &res, false) != EPKG_OK) {
 			pkg_emit_error("Unable to query repository");
 			sqlite3_close(sqlite);
 			return (EPKG_FATAL);
@@ -633,12 +634,13 @@ pkg_update(struct pkg_repo *repo, bool force)
 		req = sqlite3_mprintf("select count(key) from repodata "
 		    "WHERE key = \"packagesite\" and value = '%q'", pkg_repo_url(repo));
 
-		if (get_pragma(sqlite, req, &res) != EPKG_OK) {
-			sqlite3_free(req);
-			pkg_emit_error("Unable to query repository");
-			sqlite3_close(sqlite);
-			return (EPKG_FATAL);
-		}
+		res = 0;
+		/*
+		 * Ignore error here:
+		 * if an error occure it means the database is unusable
+		 * therefor it is better to rebuild it from scratch
+		 */
+		get_pragma(sqlite, req, &res, true);
 		sqlite3_free(req);
 		if (res != 1) {
 			t = 0;
