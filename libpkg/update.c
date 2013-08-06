@@ -626,6 +626,9 @@ pkg_update(struct pkg_repo *repo, bool force)
 
 	sqlite3_initialize();
 
+	if (!pkg_repo_enabled(repo))
+		return (EPKG_OK);
+
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
 		pkg_emit_error("Cant get dbdir config entry");
 		return (EPKG_FATAL);
