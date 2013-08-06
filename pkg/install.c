@@ -128,7 +128,7 @@ exec_install(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (dry_run)
+	if (dry_run && !auto_update)
 		retcode = pkgdb_access(PKGDB_MODE_READ,
 				       PKGDB_DB_LOCAL   |
 				       PKGDB_DB_REPO);
@@ -138,7 +138,14 @@ exec_install(int argc, char **argv)
 				       PKGDB_MODE_CREATE,
 				       PKGDB_DB_LOCAL   |
 				       PKGDB_DB_REPO);
-	
+
+
+	if (retcode == EPKG_ENOACCESS && dry_run) {
+		auto_update = false;
+		retcode = pkgdb_access(PKGDB_MODE_READ,
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+	}
+
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to install packages");
 		return (EX_NOPERM);
