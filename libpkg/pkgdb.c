@@ -367,7 +367,7 @@ pkgdb_upgrade(struct pkgdb *db)
 
 	assert(db != NULL);
 
-	ret = get_pragma(db->sqlite, "PRAGMA user_version;", &db_version);
+	ret = get_pragma(db->sqlite, "PRAGMA user_version;", &db_version, false);
 	if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
@@ -3071,7 +3071,7 @@ pkgdb_detach_remotes(sqlite3 *s)
 }
 
 int
-get_pragma(sqlite3 *s, const char *sql, int64_t *res)
+get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
@@ -3080,7 +3080,8 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res)
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
+		if (!silence)
+			ERROR_SQLITE(s);
 		return (EPKG_OK);
 	}
 
@@ -3092,7 +3093,8 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_ROW) {
-		ERROR_SQLITE(s);
+		if (!silence)
+			ERROR_SQLITE(s);
 		return (EPKG_FATAL);
 	}
 
@@ -3143,12 +3145,12 @@ pkgdb_compact(struct pkgdb *db)
 
 	assert(db != NULL);
 
-	ret = get_pragma(db->sqlite, "PRAGMA page_count;", &page_count);
+	ret = get_pragma(db->sqlite, "PRAGMA page_count;", &page_count, false);
 	if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
 	ret = get_pragma(db->sqlite, "PRAGMA freelist_count;",
-			 &freelist_count);
+			 &freelist_count, false);
 	if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
