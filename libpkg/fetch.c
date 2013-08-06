@@ -142,6 +142,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		sbuf_cat(cmd, u->host);
 		sbuf_printf(cmd, " pkg ssh");
 		sbuf_finish(cmd);
+		pkg_debug(1, "Fetch: running '%s'", sbuf_data(cmd));
 		if ((repo->ssh = popen(sbuf_data(cmd), "r+")) == NULL) {
 			pkg_emit_errno("popen", "ssh");
 			sbuf_delete(cmd);
