@@ -32,6 +32,7 @@
 
 #include <ctype.h>
 #include <fcntl.h>
+#include <errno.h>
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
@@ -190,6 +191,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	int64_t max_retry, retry;
 	int64_t fetch_timeout;
+	int tmout;
 	time_t begin_dl;
 	time_t now;
 	time_t last = 0;
@@ -316,14 +318,24 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	}
 
 	begin_dl = time(NULL);
+	tmout = fetch_timeout;
 	while (done < sz) {
 		if (kq == - 1) {
 			if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
 				break;
 		} else {
-			ts.tv_sec = fetch_timeout;
+			ts.tv_sec = tmout;
 			ts.tv_nsec = 0;
 			if (kevent(kq, &e, 1, &ev, 1, &ts) == -1) {
+				if (time(NULL) - now > fetch_timeout) {
+					pkg_emit_error("Fetch timeout");
+					retcode = EPKG_FATAL;
+					goto cleanup;
+				}
+				if (errno == EINTR) {
+					tmout = fetch_timeout - (time(NULL) - now);
+					continue;
+				}
 				pkg_emit_errno("kevent", "ssh");
 				retcode = EPKG_FATAL;
 				goto cleanup;
