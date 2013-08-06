@@ -93,7 +93,8 @@ pkg_jobs_free(struct pkg_jobs *j)
 	if (j == NULL)
 		return;
 
-	if ((j->flags & PKG_FLAG_DRY_RUN) == 0)
+	if ((j->flags & PKG_FLAG_DRY_RUN) == 0 &&
+		j->type != PKG_JOBS_FETCH)
 		pkgdb_release_lock(j->db);
 
 	HASH_FREE(j->jobs, pkg, pkg_free);
@@ -927,6 +928,9 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	bool dry_run = false;
 
 	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
+		dry_run = true;
+
+	if (j->type == PKG_JOBS_FETCH)
 		dry_run = true;
 
 	if (!dry_run && pkgdb_obtain_lock(j->db) != EPKG_OK)
