@@ -1735,6 +1735,7 @@ pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags, char **pdigest)
 
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_unicode(&emitter, 1);
+	yaml_emitter_set_width(&emitter, -1);
 	emitter_data.data.file = f;
 	yaml_emitter_set_output(&emitter, yaml_write_file, &emitter_data);
 
@@ -1769,6 +1770,7 @@ pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, short flags, char **pdig
 
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_unicode(&emitter, 1);
+	yaml_emitter_set_width(&emitter, -1);
 	emitter_data.data.sbuf = b;
 	yaml_emitter_set_output(&emitter, yaml_write_buf, &emitter_data);
 
