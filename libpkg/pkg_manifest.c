@@ -1513,6 +1513,7 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize, pkgsize;
+	yaml_mapping_style_t manifest_mapping = YAML_FLOW_MAPPING_STYLE;
 
 #define manifest_append_map(id, map, key, block) do {			\
 	int scalar_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
@@ -1520,9 +1521,12 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 	yaml_document_append_mapping_pair(&doc, map, scalar_obj, id);	\
 } while (0)
 
+	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
+		manifest_mapping = YAML_BLOCK_MAPPING_STYLE;
+
 	yaml_document_initialize(&doc, NULL, NULL, NULL, 0, 1);
 	mapping = yaml_document_add_mapping(&doc, NULL,
-	    YAML_BLOCK_MAPPING_STYLE);
+	    manifest_mapping);
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
 	    PKG_COMMENT, &comment, PKG_ARCH, &pkgarch, PKG_WWW, &www,
