@@ -244,9 +244,9 @@ print_info(struct pkg * const pkg, unsigned int options)
 
 	if (options & INFO_RAW) {
 		if (pkg_type(pkg) != PKG_REMOTE)
-			pkg_emit_manifest_file(pkg, stdout, 0, NULL);
+			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_PRETTY, NULL);
 		else
-			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_COMPACT, NULL);
+			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_COMPACT|PKG_MANIFEST_EMIT_PRETTY, NULL);
 		return;
 	}
 

@@ -807,6 +807,7 @@ void pkg_manifest_keys_free(struct pkg_manifest_key *k);
 
 #define PKG_MANIFEST_EMIT_COMPACT 0x1
 #define PKG_MANIFEST_EMIT_NOFILES (0x1 << 1)
+#define PKG_MANIFEST_EMIT_PRETTY (0x1 << 2)
 
 /**
  * Emit a manifest according to the attributes of pkg.
