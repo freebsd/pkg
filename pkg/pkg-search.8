@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd Jun 22, 2013
+.Dd August 9, 2013
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -366,6 +366,11 @@ take up once unpacked and installed.
 .It Sy url
 Display the URL that would be used to download the package from the
 repository.
+.It Sy version
+Display the package version, which is derived from the
+.Cm PKGVERSION
+variable in the port's
+.Fa Makefile .
 .It Sy www
 Display the general URL, if any, for the project developing the
 software used in the package.
