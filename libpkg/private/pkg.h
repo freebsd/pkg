@@ -204,7 +204,8 @@ struct pkg_jobs {
 	struct pkg	*jobs;
 	struct pkg 	*bulk;
 	struct pkg	*seen;
-	struct pkg_job_request	*request;
+	struct pkg_job_request	*request_add;
+	struct pkg_job_request	*request_delete;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
