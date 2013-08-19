@@ -510,7 +510,7 @@ static void
 parse_dep(struct pkg *pkg, struct pkg_manifest_parser *p)
 {
 	int state = 0;
-	char *orig, *vers = NULL;
+	char *orig = NULL, *vers = NULL;
 
 	sbuf_clear(p->buf);
 	sbuf_cat(p->buf, p->event.data.scalar.value);
