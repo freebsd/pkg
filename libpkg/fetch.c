@@ -322,10 +322,10 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		sz = st.size;
 	}
 
-	begin_dl = time(NULL);
+	now = begin_dl = time(NULL);
 	tmout = fetch_timeout;
 	while (done < sz) {
-		if (kq == - 1) {
+		if (kq == -1) {
 			if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
 				break;
 		} else {
