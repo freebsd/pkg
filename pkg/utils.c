@@ -98,81 +98,64 @@ query_yesno(const char *msg, ...)
 	if (c == 'y' || c == 'Y')
 		r = true;
 	else if (c == '\n' || c == EOF)
-		return false;
+		return (false);
 
 	while ((c = getchar()) != '\n' && c != EOF)
 		continue;
 
-	return r;
+	return (r);
 }
 
 /* unlike realpath(3), this routine does not expand symbolic links */
 char *
-absolutepath(const char *src, char *dest, size_t dest_len) {
-	char * res;
-	size_t res_len, res_size, len;
-	char pwd[MAXPATHLEN];
-	const char *ptr = src;
-	const char *next;
-	const char *slash;
+absolutepath(const char *src, char *dest, size_t dest_size) {
+	size_t dest_len, src_len, cur_len;
+	const char *cur, *next;
 
-	len = strlen(src);
-
-	if (len != 0 && src[0] != '/') {
-		if (getcwd(pwd, sizeof(pwd)) == NULL)
-			return NULL;
-
-		res_len = strlen(pwd);
-		res_size = res_len + 1 + len + 1;
-		res = malloc(res_size);
-		strlcpy(res, pwd, res_size);
-	} else {
-		res_size = (len > 0 ? len : 1) + 1;
-		res = malloc(res_size);
-		res_len = 0;
+	src_len = strlen(src);
+	bzero(dest, dest_size);
+	if (src_len != 0 && src[0] != '/') {
+		/* relative path, we use cwd */
+		if (getcwd(dest, dest_size) == NULL)
+			return (NULL);
 	}
+	dest_len = strlen(dest);
 
-	next = src;
-	for (ptr = src; next != NULL ; ptr = next + 1) {
-		next = strchr(ptr, '/');
-
+	for (cur = next = src; next != NULL; cur = next + 1) {
+		next = strchr(cur, '/');
 		if (next != NULL)
-			len = next - ptr;
+			cur_len = next - cur;
 		else
-			len = strlen(ptr);
+			cur_len = strlen(cur);
 
-		switch (len) {
-		case 2:
-			if (ptr[0] == '.' && ptr[1] == '.') {
-				slash = strrchr(res, '/');
-				if (slash != NULL) {
-					res_len = slash - res;
-					res[res_len] = '\0';
-				}
-				continue;
+		/* check for special cases "", "." and ".." */
+		if (cur_len == 0)
+			continue;
+		else if (cur_len == 1 && cur[0] == '.')
+			continue;
+		else if (cur_len == 2 && cur[0] == '.' && cur[1] == '.') {
+			const char *slash = strrchr(dest, '/');
+			if (slash != NULL) {
+				dest_len = slash - dest;
+				dest[dest_len] = '\0';
 			}
-			break;
-		case 1:
-			if (ptr[0] == '.')
-				continue;
-
-			break;
-		case 0:
 			continue;
 		}
-		res[res_len++] = '/';
-		strlcpy(res + res_len, ptr, res_size);
-		res_len += len;
-		res[res_len] = '\0';
+
+		if (dest_len + 1 + cur_len >= dest_size)
+			return (NULL);
+		dest[dest_len++] = '/';
+		(void)memcpy(dest + dest_len, cur, cur_len);
+		dest_len += cur_len;
+		dest[dest_len] = '\0';
 	}
 
-	if (res_len == 0)
-		strlcpy(res, "/", res_size);
+	if (dest_len == 0) {
+		if (strlcpy(dest, "/", dest_size) >= dest_size)
+			return (NULL);
+	}
 
-	strlcpy(dest, res, dest_len);
-	free(res);
-
-	return &dest[0];
+	return (dest);
 }
 
 /* what the pkg needs to load in order to display the requested info */
