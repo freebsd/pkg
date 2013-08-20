@@ -1720,8 +1720,14 @@ pkg_emit_manifest_digest(const unsigned char *digest, size_t len, char *hexdiges
 	hexdigest[len * 2] = '\0';
 }
 
-int
-pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags, char **pdigest)
+/*
+ * This routine is able to output to either a (FILE *) or a (struct sbuf *). It
+ * exist only to avoid code duplication and should not be called except from
+ * pkg_emit_manifest_file() and pkg_emit_manifest_sbuf().
+ */
+static int
+pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
+	    char **pdigest, bool out_is_a_sbuf)
 {
 	yaml_emitter_t emitter;
 	struct pkg_yaml_emitter_data emitter_data;
@@ -1740,55 +1746,40 @@ pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags, char **pdigest)
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_unicode(&emitter, 1);
 	yaml_emitter_set_width(&emitter, -1);
-	emitter_data.data.file = f;
-	yaml_emitter_set_output(&emitter, yaml_write_file, &emitter_data);
+
+	if (out_is_a_sbuf) { /* out is (struct sbuf *) */
+		emitter_data.data.sbuf = out;
+		yaml_emitter_set_output(&emitter, yaml_write_buf, &emitter_data);
+	} else { /* out is (FILE *) */
+		emitter_data.data.file = out;
+		yaml_emitter_set_output(&emitter, yaml_write_file, &emitter_data);
+	}
 
 	rc = emit_manifest(pkg, &emitter, flags);
 
-	if (emitter_data.sign_ctx != NULL) {
+	if (pdigest != NULL) {
 		SHA256_Final(digest, emitter_data.sign_ctx);
 		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
 		free(emitter_data.sign_ctx);
 	}
+
 	yaml_emitter_delete(&emitter);
 
 	return (rc);
 }
 
 int
+pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags, char **pdigest)
+{
+
+	return (pkg_emit_manifest_generic(pkg, f, flags, pdigest, false));
+}
+
+int
 pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, short flags, char **pdigest)
 {
-	yaml_emitter_t emitter;
-	struct pkg_yaml_emitter_data emitter_data;
-	unsigned char digest[SHA256_DIGEST_LENGTH];
-	int rc;
 
-	if (pdigest != NULL) {
-		*pdigest = malloc(sizeof(digest) * 2 + 1);
-		emitter_data.sign_ctx = malloc(sizeof(SHA256_CTX));
-		SHA256_Init(emitter_data.sign_ctx);
-	}
-	else {
-		emitter_data.sign_ctx = NULL;
-	}
-
-	yaml_emitter_initialize(&emitter);
-	yaml_emitter_set_unicode(&emitter, 1);
-	yaml_emitter_set_width(&emitter, -1);
-	emitter_data.data.sbuf = b;
-	yaml_emitter_set_output(&emitter, yaml_write_buf, &emitter_data);
-
-	rc = emit_manifest(pkg, &emitter, flags);
-
-	if (emitter_data.sign_ctx != NULL) {
-		SHA256_Final(digest, emitter_data.sign_ctx);
-		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
-		free(emitter_data.sign_ctx);
-	}
-
-	yaml_emitter_delete(&emitter);
-
-	return (rc);
+	return (pkg_emit_manifest_generic(pkg, b, flags, pdigest, true));
 }
 
 int
