@@ -106,6 +106,7 @@ query_yesno(const char *msg, ...)
 	return r;
 }
 
+/* unlike realpath(3), this routine does not expand symbolic links */
 char *
 absolutepath(const char *src, char *dest, size_t dest_len) {
 	char * res;
