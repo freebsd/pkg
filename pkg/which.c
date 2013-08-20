@@ -87,8 +87,10 @@ exec_which(int argc, char **argv)
 
 	if (!glob)
 		absolutepath(argv[0], pathabs, sizeof(pathabs));
-	else
-		strlcpy(pathabs, argv[0], sizeof(pathabs));
+	else {
+		if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs))
+			return (EX_USAGE);
+	}
 
 	if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL)
 		return (EX_IOERR);
