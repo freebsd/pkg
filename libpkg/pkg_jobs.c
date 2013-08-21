@@ -158,6 +158,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg, bool a
 		HASH_ADD_KEYPTR(hh, j->request_delete, origin, strlen(origin), req);
 }
 
+
 static int
 populate_local_rdeps(struct pkg_jobs *j, struct pkg *p)
 {

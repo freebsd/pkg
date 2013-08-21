@@ -452,7 +452,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	}
 
 	/* Add requests */
-	HASH_ITER(hh, j->request, jreq, jtmp) {
+	HASH_ITER(hh, j->request_add, jreq, jtmp) {
 		rule = NULL;
 		it = NULL;
 		var = NULL;
@@ -466,10 +466,29 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		if (it == NULL)
 			goto err;
 
-		if (j->type == PKG_JOBS_DEINSTALL ||
-				j->type == PKG_JOBS_AUTOREMOVE) {
-			it->inverse = true;
-		}
+		rule = pkg_solve_rule_new();
+		if (rule == NULL)
+			goto err;
+
+		/* Requests are unary rules */
+		LL_PREPEND(rule->items, it);
+		LL_PREPEND(problem->rules, rule);
+	}
+	HASH_ITER(hh, j->request_delete, jreq, jtmp) {
+		rule = NULL;
+		it = NULL;
+		var = NULL;
+
+		var = pkg_solve_variable_new(jreq->pkg);
+		if (var == NULL)
+			goto err;
+
+		HASH_ADD_KEYPTR(hh, problem->variables, var->origin, strlen(var->origin), var);
+		it = pkg_solve_item_new(var);
+		if (it == NULL)
+			goto err;
+
+		it->inverse = true;
 		rule = pkg_solve_rule_new();
 		if (rule == NULL)
 			goto err;

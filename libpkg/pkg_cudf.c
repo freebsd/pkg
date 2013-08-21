@@ -33,6 +33,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#define _WITH_GETLINE
+#include <stdio.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -104,7 +106,18 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 
 	if (fprintf(f, "%s: ", op) < 0)
 		return (EPKG_FATAL);
-	HASH_ITER(hh, j->request, req, tmp) {
+	HASH_ITER(hh, j->request_add, req, tmp) {
+		pkg_get(req->pkg, PKG_ORIGIN, &origin);
+		if (fprintf(f, "%s%c", origin,
+				(req->hh.hh_next == NULL) ?
+						'\n' : ',') < 0) {
+			return (EPKG_FATAL);
+		}
+	}
+
+	if (fprintf(f, "remove: ") < 0)
+		return (EPKG_FATAL);
+	HASH_ITER(hh, j->request_delete, req, tmp) {
 		pkg_get(req->pkg, PKG_ORIGIN, &origin);
 		if (fprintf(f, "%s%c", origin,
 				(req->hh.hh_next == NULL) ?
@@ -138,12 +151,9 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb 
 	switch (t) {
 	case PKG_JOBS_FETCH:
 	case PKG_JOBS_INSTALL:
-		if (cudf_emit_request_packages("install", j, f) != EPKG_OK)
-			return (EPKG_FATAL);
-		break;
 	case PKG_JOBS_DEINSTALL:
 	case PKG_JOBS_AUTOREMOVE:
-		if (cudf_emit_request_packages("remove", j, f) != EPKG_OK)
+		if (cudf_emit_request_packages("install", j, f) != EPKG_OK)
 			return (EPKG_FATAL);
 		break;
 	case PKG_JOBS_UPGRADE:
@@ -151,5 +161,66 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb 
 			return (EPKG_FATAL);
 		break;
 	}
+	return (EPKG_OK);
+}
+
+int
+pkg_jobs_cudf_parse_output(struct pkg_jobs __unused *j, FILE *f)
+{
+	char *line = NULL, *param, *value;
+	size_t linecap = 0;
+	ssize_t linelen;
+	struct {
+		char *origin;
+		bool was_installed;
+		bool installed;
+		char *version;
+	} cur_pkg = { NULL, false, false, NULL };
+
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		value = line;
+		param = strsep(&value, ": \t");
+		if (strcmp(param, "package") == 0) {
+			if (cur_pkg.origin != NULL) {
+				/* XXX: Add pkg */
+
+			}
+			cur_pkg.origin = strdup(value);
+			cur_pkg.was_installed = false;
+			cur_pkg.installed = false;
+			cur_pkg.version = NULL;
+		}
+		else if (strcmp(param, "version") == 0) {
+			if (cur_pkg.origin == NULL) {
+				free(line);
+				return (EPKG_FATAL);
+			}
+			cur_pkg.version = strdup(value);
+		}
+		else if (strcmp(param, "installed") == 0) {
+			if (cur_pkg.origin == NULL) {
+				free(line);
+				return (EPKG_FATAL);
+			}
+			if (strcmp(value, "true"))
+				cur_pkg.installed = true;
+		}
+		else if (strcmp(param, "was-installed") == 0) {
+			if (cur_pkg.origin == NULL) {
+				free(line);
+				return (EPKG_FATAL);
+			}
+			if (strcmp(value, "true"))
+				cur_pkg.was_installed = true;
+		}
+	}
+
+	if (cur_pkg.origin != NULL) {
+		/* XXX: add pkg */
+	}
+
+	if (line != NULL)
+		free(line);
+
 	return (EPKG_OK);
 }

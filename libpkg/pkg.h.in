@@ -1160,6 +1160,12 @@ int pkg_jobs_apply(struct pkg_jobs *jobs);
 int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *, struct pkgdb *);
 
 /**
+ * Parse the output of an external CUDF solver
+ * @return error code
+ */
+int pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f);
+
+/**
  * Solve a SAT problem
  * @return true if a problem is solvable
  */
