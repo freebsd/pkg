@@ -72,6 +72,7 @@ static const cliopt modifiers[] = {
 	{ "shared-libs-provided", 'b'  },
 	{ "size",                 's'  },
 	{ "url",                  'u'  },
+	{ "version",              'v'  },
 	{ "www",                  'w'  },
 	{ NULL,                   '\0' },
 };	

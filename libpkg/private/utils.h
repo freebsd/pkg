@@ -41,7 +41,7 @@
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
 #define ERROR_SQLITE(db) \
-	pkg_emit_error("sqlite: %s (%s:%d)", sqlite3_errmsg(db), __FILE__, __LINE__)
+	pkg_emit_error("sqlite: %s", sqlite3_errmsg(db), __FILE__, __LINE__)
 
 #define HASH_FIND_INO(head,ino,out)                                          \
 	HASH_FIND(hh,head,ino,sizeof(ino_t),out)

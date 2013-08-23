@@ -26,6 +26,7 @@
 
 #include <sys/stat.h>
 #include <sys/param.h>
+#include <sys/mman.h>
 
 #define _WITH_GETLINE
 #include <stdio.h>
@@ -33,6 +34,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <limits.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -319,6 +321,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 	req = sqlite3_mprintf("select group_concat(arch, ', ') from "
 			"(select distinct arch from packages "
 			"where arch not GLOB '%q')", myarch);
+
 	if (get_sql_string(sqlite, req, &bad_abis) != EPKG_OK) {
 		sqlite3_free(req);
 		pkg_emit_error("Unable to query repository");
@@ -365,7 +368,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 }
 
 static int
-pkg_add_from_manifest(FILE *f, const char *origin, long offset,
+pkg_add_from_manifest(FILE *f, char *buf, const char *origin, long offset,
 		const char *manifest_digest, const char *local_arch, sqlite3 *sqlite,
 		struct pkg_manifest_parser **parser, struct pkg **p)
 {
@@ -373,7 +376,7 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 	struct pkg *pkg;
 	const char *local_origin, *pkg_arch;
 
-	if (fseek(f, offset, SEEK_SET) == -1) {
+	if (buf == NULL && fseek(f, offset, SEEK_SET) == -1) {
 		pkg_emit_errno("fseek", "invalid manifest offset");
 		return (EPKG_FATAL);
 	}
@@ -389,7 +392,11 @@ pkg_add_from_manifest(FILE *f, const char *origin, long offset,
 	pkg = *p;
 
 	pkg_manifest_parser_new(parser);
-	rc = pkg_parse_manifest_file_r(pkg, f, *parser);
+	if (buf == NULL) {
+		rc = pkg_parse_manifest_file_ev(pkg, f, *parser);
+	} else {
+		rc = pkg_parse_manifest_ev(pkg, buf, offset, *parser);
+	}
 	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
@@ -458,10 +465,11 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
 			*item, *tmp_item;
 	const char *myarch;
-	struct pkg_manifest_key *keys = NULL;
 	struct pkg_manifest_parser *parser = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
+	char *map = MAP_FAILED;
+	size_t len = 0;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
 	if ((rc = pkgdb_repo_open(name, false, &sqlite, false)) != EPKG_OK) {
@@ -497,8 +505,8 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	if (fmanifest == NULL)
 		goto cleanup;
 	*mtime = local_t;
-
-	pkg_manifest_keys_new(&keys);
+	fseek(fmanifest, 0, SEEK_END);
+	len = ftell(fmanifest);
 
 	pkg_debug(1, "Pkgrepo, reading new packagesite.yaml for '%s'", name);
 	/* load the while digests */
@@ -522,14 +530,24 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
+		processed++;
 		HASH_FIND_STR(ldel, __DECONST(char *, origin), item);
 		if (item == NULL) {
 			added++;
 			pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
 		} else {
 			if (strcmp(digest, item->digest) == 0) {
+				free(item->origin);
+				free(item->digest);
 				HASH_DEL(ldel, item);
+				free(item);
+				item = NULL;
 			} else {
+				free(item->origin);
+				free(item->digest);
+				HASH_DEL(ldel, item);
+				free(item);
+				item = NULL;
 				pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
 				updated++;
 			}
@@ -554,10 +572,21 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 
 	pkg_debug(1, "Pkgrepo, pushing new entries for '%s'", name);
 	pkg = NULL;
+
+	if (len > 0 && len < SSIZE_MAX) {
+		map = mmap(NULL, len, PROT_READ, MAP_SHARED, fileno(fmanifest), 0);
+		fclose(fmanifest);
+	}
+
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
-			rc = pkg_add_from_manifest(fmanifest, item->origin,
-			        item->offset, item->digest, myarch, sqlite, &parser, &pkg);
+			if (map != MAP_FAILED) {
+				rc = pkg_add_from_manifest(NULL, map + item->offset, item->origin,
+				    len - item->offset, item->digest, myarch, sqlite, &parser, &pkg);
+			} else {
+				rc = pkg_add_from_manifest(fmanifest, NULL, item->origin,
+				    item->offset, item->digest, myarch, sqlite, &parser, &pkg);
+			}
 		}
 		free(item->origin);
 		free(item->digest);
@@ -574,11 +603,12 @@ cleanup:
 		pkgdb_it_free(it);
 	if (pkgdb_repo_close(sqlite, rc == EPKG_OK) != EPKG_OK)
 		rc = EPKG_FATAL;
-	if (fmanifest)
+	if (map == MAP_FAILED && fmanifest)
 		fclose(fmanifest);
 	if (fdigests)
 		fclose(fdigests);
-	pkg_manifest_keys_free(keys);
+	if (map != MAP_FAILED)
+		munmap(map, len);
 
 	return (rc);
 }
@@ -597,6 +627,9 @@ pkg_update(struct pkg_repo *repo, bool force)
 
 	sqlite3_initialize();
 
+	if (!pkg_repo_enabled(repo))
+		return (EPKG_OK);
+
 	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
 		pkg_emit_error("Cant get dbdir config entry");
 		return (EPKG_FATAL);
@@ -614,7 +647,7 @@ pkg_update(struct pkg_repo *repo, bool force)
 		}
 
 		if (get_pragma(sqlite, "SELECT count(name) FROM sqlite_master "
-		    "WHERE type='table' AND name='repodata';", &res) != EPKG_OK) {
+		    "WHERE type='table' AND name='repodata';", &res, false) != EPKG_OK) {
 			pkg_emit_error("Unable to query repository");
 			sqlite3_close(sqlite);
 			return (EPKG_FATAL);
@@ -634,12 +667,13 @@ pkg_update(struct pkg_repo *repo, bool force)
 		req = sqlite3_mprintf("select count(key) from repodata "
 		    "WHERE key = \"packagesite\" and value = '%q'", pkg_repo_url(repo));
 
-		if (get_pragma(sqlite, req, &res) != EPKG_OK) {
-			sqlite3_free(req);
-			pkg_emit_error("Unable to query repository");
-			sqlite3_close(sqlite);
-			return (EPKG_FATAL);
-		}
+		res = 0;
+		/*
+		 * Ignore error here:
+		 * if an error occure it means the database is unusable
+		 * therefor it is better to rebuild it from scratch
+		 */
+		get_pragma(sqlite, req, &res, true);
 		sqlite3_free(req);
 		if (res != 1) {
 			t = 0;

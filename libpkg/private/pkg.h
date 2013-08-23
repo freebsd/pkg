@@ -99,6 +99,11 @@
 #define HASH_ADD_YAMLT(head,type,add)                                    \
 	HASH_ADD(hh,head,type,sizeof(yaml_node_type_t),add)
 
+#define HASH_FIND_YAMLEVT(head,type,out)                                   \
+	HASH_FIND(hh,head,type,sizeof(yaml_event_type_t),out)
+#define HASH_ADD_YAMLEVT(head,type,add)                                    \
+	HASH_ADD(hh,head,type,sizeof(yaml_event_type_t),add)
+
 extern int eventpipe;
 
 struct pkg {
@@ -374,7 +379,7 @@ int pkg_set_mtree(struct pkg *, const char *mtree);
 
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);
-int get_pragma(sqlite3 *, const char *sql, int64_t *res);
+int get_pragma(sqlite3 *, const char *sql, int64_t *res, bool silence);
 int get_sql_string(sqlite3 *, const char *sql, char **res);
 
 int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2007-2013, Troy D. Hanson   http://uthash.sourceforge.net
+Copyright (c) 2007-2013, Troy D. Hanson   http://troydhanson.github.com/uthash/
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -70,6 +70,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define NO_DECLTYPE
 #define LDECLTYPE(x) char*
 #endif
+#elif defined(__ICCARM__)
+#define NO_DECLTYPE
+#define LDECLTYPE(x) char*
 #else                      /* GNU, Sun and other compilers */
 #define LDECLTYPE(x) __typeof(x)
 #endif
@@ -405,13 +408,22 @@ do {                                                                            
 #undef LL_DELETE
 #define LL_DELETE LL_DELETE_VS2008
 #undef LL_DELETE2
-#define LL_DELETE2_VS2008
+#define LL_DELETE2 LL_DELETE2_VS2008
 #undef LL_APPEND2
 #define LL_APPEND2 LL_APPEND2_VS2008
 #undef LL_CONCAT /* no LL_CONCAT_VS2008 */
 #undef DL_CONCAT /* no DL_CONCAT_VS2008 */
 #endif
 /* end VS2008 replacements */
+
+#define LL_COUNT(head,el,counter)                                                              \
+    LL_COUNT2(head,el,counter,next)                                                            \
+
+#define LL_COUNT2(head,el,counter,next)                                                        \
+{                                                                                              \
+    counter = 0;                                                                               \
+    LL_FOREACH2(head,el,next){ ++counter; }                                                    \
+}
 
 #define LL_FOREACH(head,el)                                                                    \
     LL_FOREACH2(head,el,next)
@@ -560,6 +572,14 @@ do {                                                                            
   }                                                                                            \
 } while (0) 
 
+#define DL_COUNT(head,el,counter)                                                              \
+    DL_COUNT2(head,el,counter,next)                                                            \
+
+#define DL_COUNT2(head,el,counter,next)                                                        \
+{                                                                                              \
+    counter = 0;                                                                               \
+    DL_FOREACH2(head,el,next){ ++counter; }                                                    \
+}
 
 #define DL_FOREACH(head,el)                                                                    \
     DL_FOREACH2(head,el,next)
@@ -655,6 +675,15 @@ do {                                                                            
      if ((del) == (head)) (head)=(del)->next;                                                  \
   }                                                                                            \
 } while (0) 
+
+#define CDL_COUNT(head,el,counter)                                                             \
+    CDL_COUNT2(head,el,counter,next)                                                           \
+
+#define CDL_COUNT2(head, el, counter,next)                                                     \
+{                                                                                              \
+    counter = 0;                                                                               \
+    CDL_FOREACH2(head,el,next){ ++counter; }                                                   \
+}
 
 #define CDL_FOREACH(head,el)                                                                   \
     CDL_FOREACH2(head,el,next)

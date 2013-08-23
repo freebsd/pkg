@@ -306,7 +306,7 @@ List all files and their known checksums for a package:
 .Dl $ pkg query '%Fp %Fs' perl
 .Pp
 List all files for all packages:
-.Dl $ pkg query '%o: %F'
+.Dl $ pkg query '%o: %Fp'
 .Pp
 List all packages with no reverse dependencies:
 .Dl $ pkg query -e '%#r = 0' %o
