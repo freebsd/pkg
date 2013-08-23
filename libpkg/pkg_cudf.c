@@ -135,14 +135,18 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 int
 pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb *db)
 {
-	struct pkg *pkg, *tmp;
+	struct pkg *pkg;
+	struct pkg_job_universe_item *it, *itmp, *icur;
 
 	if (fprintf(f, "preamble: \n\n") < 0)
 		return (EPKG_FATAL);
 
-	HASH_ITER(hh, j->universe, pkg, tmp) {
-		if (cudf_emit_pkg(pkg, f, db) != EPKG_OK)
-			return (EPKG_FATAL);
+	HASH_ITER(hh, j->universe, it, itmp) {
+		LL_FOREACH(it, icur) {
+			pkg = icur->pkg;
+			if (cudf_emit_pkg(pkg, f, db) != EPKG_OK)
+				return (EPKG_FATAL);
+		}
 	}
 
 	if (fprintf(f, "request: \n") < 0)

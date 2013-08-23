@@ -42,8 +42,9 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-static int get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root);
+static int find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root);
 static struct pkg *get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
+static struct pkg *get_remote_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force);
 static bool new_pkg_version(struct pkg_jobs *j);
@@ -156,6 +157,146 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg, bool a
 		HASH_ADD_KEYPTR(hh, j->request_add, origin, strlen(origin), req);
 	else
 		HASH_ADD_KEYPTR(hh, j->request_delete, origin, strlen(origin), req);
+}
+
+/**
+ * Check whether a package is in the universe already or add it
+ * @return item or NULL
+ */
+static int
+pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
+{
+	struct pkg_job_universe_item *item, *cur, *tmp;
+	const char *origin, *digest, *digest_cur;
+
+	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+	HASH_FIND_STR(j->universe, __DECONST(char *, origin), item);
+	if (item == NULL) {
+		/* Insert new origin */
+		item = calloc(1, sizeof (struct pkg_job_universe_item));
+
+		if (item == NULL) {
+			pkg_emit_errno("pkg_jobs_handle_universe", "calloc: struct pkg_job_universe_item");
+			return (EPKG_FATAL);
+		}
+		item->pkg = pkg;
+		HASH_ADD_KEYPTR(hh, j->universe, __DECONST(char *, origin), strlen(origin), item);
+	}
+
+	/* Search for the same package added */
+	LL_FOREACH(item, cur) {
+		pkg_get(cur->pkg, PKG_DIGEST, &digest_cur);
+		if (strcmp (digest, digest_cur) == 0) {
+			/* Free new package */
+			pkg_free(pkg);
+			return (EPKG_OK);
+		}
+		tmp = cur;
+	}
+
+	item = calloc(1, sizeof (struct pkg_job_universe_item));
+	if (item == NULL) {
+		pkg_emit_errno("pkg_jobs_pkg_insert_universe", "calloc: struct pkg_job_universe_item");
+		return (EPKG_FATAL);
+	}
+
+	item->pkg = pkg;
+	tmp->next = item;
+
+	return (EPKG_OK);
+}
+
+static int
+pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
+{
+	struct pkg_dep *d = NULL;
+	struct pkg_conflict *c = NULL;
+	struct pkg *npkg;
+
+	/* Go through all depends */
+	while (pkg_deps(pkg, &d) == EPKG_OK) {
+		if (pkg->type == PKG_INSTALLED) {
+			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (npkg == NULL) {
+				/*
+				 * We have a package installed, but its dependencies are not,
+				 * try to search a remote dependency
+				 */
+				npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+				if (npkg == NULL) {
+					/* Cannot continue */
+					pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+					return (EPKG_FATAL);
+				}
+			}
+		}
+		else {
+			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (npkg == NULL) {
+				npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+				if (npkg == NULL) {
+					/* Cannot continue */
+					pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+					return (EPKG_FATAL);
+				}
+			}
+		}
+		if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
+	/* Go through all rdeps */
+	d = NULL;
+	while (pkg_rdeps(pkg, &d) == EPKG_OK) {
+		if (pkg->type == PKG_INSTALLED) {
+			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (npkg == NULL) {
+				/*
+				 * We have a package installed, but its dependencies are not,
+				 * try to search a remote dependency
+				 */
+				npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+				if (npkg == NULL) {
+					/* Cannot continue */
+					pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+					return (EPKG_FATAL);
+				}
+			}
+		}
+		else {
+			/* Do not care about remote rdeps */
+			continue;
+		}
+
+		if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
+	/* Examine conflicts */
+	while (pkg_conflicts(pkg, &c) == EPKG_OK) {
+		if (pkg->type == PKG_INSTALLED) {
+			/* We assume that we cannot have conflicts installed */
+			npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+			if (npkg == NULL) {
+				continue;
+			}
+		}
+		else {
+			/* Check both local and remote conflicts */
+			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
+				return (EPKG_FATAL);
+			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (npkg == NULL) {
+				continue;
+			}
+		}
+
+		if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
 }
 
 
@@ -282,8 +423,10 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 			pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
 			HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
 			pkg_jobs_add_req(j, origin, pkg, false);
-			if (recursive)
+			if (recursive) {
 				populate_local_rdeps(j, pkg);
+				pkg_jobs_add_universe(j, pkg);
+			}
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
@@ -389,7 +532,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		pkg_jobs_add_req(j, origin, pkg, true);
 		/* Do not test we ignore what doesn't exists remotely */
-		get_remote_pkg(j, origin, MATCH_EXACT, false);
+		find_remote_pkg(j, origin, MATCH_EXACT, false);
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
@@ -508,7 +651,7 @@ populate_rdeps(struct pkg_jobs *j, struct pkg *p)
 		HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
 		if (pkg != NULL)
 			continue;
-		if (get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), MATCH_EXACT, true) != EPKG_OK) {
+		if (find_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), MATCH_EXACT, true) != EPKG_OK) {
 			pkg_emit_error("Missing reverse dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
 			return (EPKG_FATAL);
 		}
@@ -530,7 +673,7 @@ populate_deps(struct pkg_jobs *j, struct pkg *p)
 		HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
 		if (pkg != NULL)
 			continue;
-		if (get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), MATCH_EXACT, false) != EPKG_OK) {
+		if (find_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), MATCH_EXACT, false) != EPKG_OK) {
 			pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
 			return (EPKG_FATAL);
 		}
@@ -565,7 +708,7 @@ new_pkg_version(struct pkg_jobs *j)
 		goto end;
 	}
 
-	if (get_remote_pkg(j, origin, MATCH_EXACT, false) == EPKG_OK && HASH_COUNT(j->bulk) == 1) {
+	if (find_remote_pkg(j, origin, MATCH_EXACT, false) == EPKG_OK && HASH_COUNT(j->bulk) == 1) {
 		ret = true;
 		goto end;
 	}
@@ -582,7 +725,7 @@ end:
 }
 
 static int
-get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
+find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 {
 	struct pkg *p = NULL;
 	struct pkg *p1;
@@ -684,6 +827,29 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 	}
 
 	if ((it = pkgdb_query(j->db, origin, MATCH_EXACT)) == NULL)
+		return (NULL);
+
+	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
+		pkg = NULL;
+
+	pkgdb_it_free(it);
+
+	return (pkg);
+}
+
+static struct pkg *
+get_remote_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
+{
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it;
+
+	if (flag == 0) {
+		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
+				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|
+				PKG_LOAD_CONFLICTS;
+	}
+
+	if ((it = pkgdb_rquery(j->db, origin, MATCH_EXACT, j->reponame)) == NULL)
 		return (NULL);
 
 	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
@@ -903,17 +1069,17 @@ jobs_solve_install(struct pkg_jobs *j)
 				d = NULL;
 				pkg_get(pkg, PKG_ORIGIN, &origin);
 				pkg_jobs_add_req(j, origin, pkg, false);
-				if (get_remote_pkg(j, origin, MATCH_EXACT, true) == EPKG_FATAL)
+				if (find_remote_pkg(j, origin, MATCH_EXACT, true) == EPKG_FATAL)
 					pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
 
 				while (pkg_rdeps(pkg, &d) == EPKG_OK) {
-					if (get_remote_pkg(j, pkg_dep_origin(d), MATCH_EXACT, false) == EPKG_FATAL)
+					if (find_remote_pkg(j, pkg_dep_origin(d), MATCH_EXACT, false) == EPKG_FATAL)
 						pkg_emit_error("No packages matching '%s', has been found in the repositories", pkg_dep_origin(d));
 				}
 			}
 			pkgdb_it_free(it);
 		} else {
-			if (get_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
+			if (find_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
 				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 		}
 	}
@@ -983,13 +1149,13 @@ jobs_solve_fetch(struct pkg_jobs *j)
 			pkg_get(pkg, PKG_ORIGIN, &origin);
 			pkg_jobs_add_req(j, origin, pkg, false);
 			/* Do not test we ignore what doesn't exists remotely */
-			get_remote_pkg(j, origin, MATCH_EXACT, false);
+			find_remote_pkg(j, origin, MATCH_EXACT, false);
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
 	} else {
 		LL_FOREACH(j->patterns, jp) {
-			if (get_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
+			if (find_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
 				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 		}
 	}

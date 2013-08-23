@@ -199,8 +199,14 @@ struct pkg_job_request {
 	UT_hash_handle hh;
 };
 
+struct pkg_job_universe_item {
+	struct pkg *pkg;
+	UT_hash_handle hh;
+	struct pkg_job_universe_item *next;
+};
+
 struct pkg_jobs {
-	struct pkg *universe;
+	struct pkg_job_universe_item *universe;
 	struct pkg	*jobs;
 	struct pkg 	*bulk;
 	struct pkg	*seen;
