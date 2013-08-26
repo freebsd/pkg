@@ -201,5 +201,8 @@ cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 
+	if (!yes && newpkgversion)
+		newpkgversion = false;
+
 	return (retcode);
 }

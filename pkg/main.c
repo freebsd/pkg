@@ -57,6 +57,8 @@ static void usage(const char *);
 static void usage_help(void);
 static int exec_help(int, char **);
 bool quiet = false;
+static char **cmdargv;
+bool newpkgversion = false;
 
 static struct commands {
 	const char * const name;
@@ -517,6 +519,8 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage(NULL);
 
+	cmdargv = argv;
+
 #ifndef NO_LIBJAIL
 	while ((ch = getopt(argc, argv, "dj:c:C:lNvq")) != -1) {
 #else
@@ -705,6 +709,9 @@ main(int argc, char **argv)
 
 	if (alias != NULL)
 		argv_free(&newargc, &newargv);
+
+	if (ret == EX_OK && newpkgversion)
+		execvp(getprogname(), cmdargv);
 
 	return (ret);
 }

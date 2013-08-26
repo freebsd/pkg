@@ -31,6 +31,7 @@ extern bool quiet;
 extern int nbactions;
 int nbactions;
 extern int nbdone;
+extern bool newpkgversion;
 int nbdone;
 
 /* pkg add */

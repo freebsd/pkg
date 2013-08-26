@@ -284,9 +284,9 @@ event_callback(void *data, struct pkg_event *ev)
 		fprintf(stderr, "Local package database nonexistent!\n");
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
+		newpkgversion = true;
 		printf("New version of pkg detected; it needs to be "
-		    "installed first.\nAfter this upgrade it is recommended "
-		    "that you do a full upgrade using: 'pkg upgrade'\n\n");
+		    "installed first.\n");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg = ev->e_file_mismatch.pkg;
