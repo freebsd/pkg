@@ -43,6 +43,7 @@
 #ifndef NO_LIBJAIL
 #include <jail.h>
 #endif
+#include <str2argv.h>
 
 #include <pkg.h>
 
@@ -504,6 +505,11 @@ main(int argc, char **argv)
 	bool activation_test = false;
 	struct plugcmd *c;
 	const char *conffile = NULL;
+	struct pkg_config_kv *alias = NULL;
+	const char *alias_value, *errmsg;
+	char **newargv;
+	int newargc;
+	char *oldcmd, *newcmd;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -623,9 +629,30 @@ main(int argc, char **argv)
 	if (activation_test)
 		do_activation_test(argc);
 
+	newargv = argv;
+	newargc = argc;
 	len = strlen(argv[0]);
-	for (i = 0; i < cmd_len; i++) {
-		if (strncmp(argv[0], cmd[i].name, len) == 0) {
+	alias = NULL;
+	while (pkg_config_kvlist(PKG_CONFIG_ALIAS, &alias) == EPKG_OK) {
+		if (strcmp(argv[0], pkg_config_kv_get(alias, PKG_CONFIG_KV_KEY)) == 0) {
+			if ((alias_value = pkg_config_kv_get(alias, PKG_CONFIG_KV_VALUE)) == NULL)
+				continue;
+			argv++;
+			argc--;
+			oldcmd = argv2str(argc, argv);
+			asprintf(&newcmd, "%s %s", alias_value, oldcmd);
+			free(oldcmd);
+			if (str2argv(newcmd, &newargc, &newargv, &errmsg) != 0)
+				errx(EX_CONFIG, "Invalid alias: %s", errmsg);
+			free(newcmd);
+
+			break;
+		}
+	}
+
+	len = strlen(newargv[0]);
+	for (i = 2; i < cmd_len; i++) {
+		if (strncmp(newargv[0], cmd[i].name, len) == 0) {
 			/* if we have the exact cmd */
 			if (len == strlen(cmd[i].name)) {
 				command = &cmd[i];
@@ -648,9 +675,9 @@ main(int argc, char **argv)
 		ret = EPKG_FATAL;
 		if (plugins_enabled) {
 			STAILQ_FOREACH(c, &plugins, next) {
-				if (strcmp(c->name, argv[0]) == 0) {
+				if (strcmp(c->name, newargv[0]) == 0) {
 					plugin_found = true;
-					ret = c->exec(argc, argv);
+					ret = c->exec(newargc, newargv);
 					break;
 				}
 			}
@@ -664,17 +691,20 @@ main(int argc, char **argv)
 
 	if (ambiguous <= 1) {
 		assert(command->exec != NULL);
-		ret = command->exec(argc, argv);
+		ret = command->exec(newargc, newargv);
 	} else {
-		warnx("'%s' is not a valid command.\n", argv[0]);
+		warnx("'%s' is not a valid command.\n", newargv[0]);
 
 		fprintf(stderr, "See 'pkg help' for more information on the commands.\n\n");
-		fprintf(stderr, "Command '%s' could be one of the following:\n", argv[0]);
+		fprintf(stderr, "Command '%s' could be one of the following:\n", newargv[0]);
 
 		for (i = 0; i < cmd_len; i++)
-			if (strncmp(argv[0], cmd[i].name, len) == 0)
+			if (strncmp(newargv[0], cmd[i].name, len) == 0)
 				fprintf(stderr, "\t%s\n",cmd[i].name);
 	}
+
+	if (alias != NULL)
+		argv_free(&newargc, &newargv);
 
 	return (ret);
 }

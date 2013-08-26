@@ -56,8 +56,11 @@ DEBUG_FLAGS+=	-pg
 .endif
 
 CFLAGS+=	-I../libpkg \
-		-I${.CURDIR}/../external/uthash
+		-I${.CURDIR}/../external/uthash \
+		-I${.CURDIR}/../external/str2argv
 LDADD+=		-L../libpkg \
+		-L../external/str2argv \
+		-lstr2argv \
 		-lpkg \
 		-larchive \
 		-lutil \

@@ -287,6 +287,12 @@ static struct config_entry c[] = {
 		"0",
 		"Level for debug messages",
 	},
+	[PKG_CONFIG_ALIAS] = {
+		PKG_CONFIG_KVLIST,
+		"ALIAS",
+		NULL,
+		"Command aliases",
+	},
 };
 
 static bool parsed = false;
