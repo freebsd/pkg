@@ -9,7 +9,6 @@ PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
 #PORTSDIR	    : /usr/ports
 #PUBKEY		    : /etc/ssl/pkg.conf
 #HANDLE_RC_SCRIPTS  : NO
-#PKG_MULTIREPOS	    : NO
 #ASSUME_ALWAYS_YES  : NO
 #SYSLOG		    : YES
 #SHLIBS		    : NO
@@ -19,10 +18,3 @@ PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
 #PKG_ENABLE_PLUGINS : YES
 #PLUGINS	    : [commands/mystat]
 #REPO_AUTOUPDATE    : YES
-
-# Repository definitions
-#repos:
-#  default : http://example.org/pkgng/
-#  repo1 : http://somewhere.org/pkgng/repo1/
-#  repo2 : http://somewhere.org/pkgng/repo2/
-
