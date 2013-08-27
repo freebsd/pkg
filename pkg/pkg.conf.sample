@@ -18,3 +18,6 @@ PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
 #PKG_ENABLE_PLUGINS : YES
 #PLUGINS	    : [commands/mystat]
 #REPO_AUTOUPDATE    : YES
+#ALIAS              :
+#  leaf: query -e "%a == 0" "%n-%v"
+#
