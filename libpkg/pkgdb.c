@@ -71,7 +71,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	19
+#define DB_SCHEMA_MINOR	20
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -483,15 +483,20 @@ pkgdb_init(sqlite3 *sdb)
 	");"
 	"CREATE TABLE mtree ("
 		"id INTEGER PRIMARY KEY,"
-		"content TEXT UNIQUE"
+		"content TEXT NOT NULL UNIQUE"
 	");"
-	"CREATE TABLE scripts ("
+	"CREATE TABLE package_script ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
-		"script TEXT,"
 		"type INTEGER,"
+		"script_id INTEGER REFERENCES script(script_id)"
+                        " ON DELETE RESTRICT ON UPDATE CASCADE,"
 		"PRIMARY KEY (package_id, type)"
 	");"
+        "CREATE TABLE script ("
+                "script_id INTEGER PRIMARY KEY,"
+                "script TEXT NOT NULL UNIQUE"
+        ");"
 	"CREATE TABLE options ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
