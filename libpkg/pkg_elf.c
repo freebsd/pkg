@@ -264,6 +264,10 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			ret = EPKG_END; /* Some error occurred, ignore this file */
 			goto cleanup;
 		}
+		if (data->d_buf == NULL) {
+			ret = EPKG_END; /* No osname available */
+			goto cleanup;
+		}
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
 		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0 &&
 		    strncasecmp(osname, "dragonfly", sizeof("dragonfly")) != 0) {
