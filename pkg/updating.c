@@ -109,7 +109,7 @@ exec_updating(int argc, char **argv)
 			port = malloc(sizeof(struct installed_ports));
 			port->origin = strdup(*argv);
 			SLIST_INSERT_HEAD(&origins, port, next);
-			(void)*argv++;
+			argv++;
 		}
 	}
 

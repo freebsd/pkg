@@ -53,6 +53,7 @@ static const cliopt search_label[] = {
 };
 
 static const cliopt modifiers[] = {
+	{ "annotations",          'A'  },
 	{ "arch",                 'a'  },
 	{ "categories",           'C'  },
 	{ "comment",              'c'  },
@@ -71,6 +72,7 @@ static const cliopt modifiers[] = {
 	{ "shared-libs-provided", 'b'  },
 	{ "size",                 's'  },
 	{ "url",                  'u'  },
+	{ "version",              'v'  },
 	{ "www",                  'w'  },
 	{ NULL,                   '\0' },
 };	
@@ -138,6 +140,9 @@ modifier_opt(const char *optionarg)
 
 	/* output modifiers */
 	switch(match_optarg(modifiers, optionarg)) {
+	case 'A':
+		opt = INFO_ANNOTATIONS;
+		break;
 	case 'a':
 		opt = INFO_ARCH;
 		break;
@@ -213,7 +218,7 @@ usage_search(void)
 
 	fprintf(stderr, "usage: pkg search [-egix] [-r repo] [-S search] "
 	    "[-L label] [-Q mod]... <pkg-name>\n");
-	fprintf(stderr, "       pkg search [-cDdefgiopqx] [-r repo] "
+	fprintf(stderr, "       pkg search [-cDdefgiopqRx] [-r repo] "
 	    "<pattern>\n\n");
 	n = fprintf(stderr, "       Search and Label options:");
 	for (i = 0; search_label[i].option != NULL; i++) {
@@ -252,7 +257,7 @@ exec_search(int argc, char **argv)
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
-	while ((ch = getopt(argc, argv, "cDdefgiL:opqQ:r:S:sUx")) != -1) {
+	while ((ch = getopt(argc, argv, "cDdefgiL:opqQ:r:RS:sUx")) != -1) {
 		switch (ch) {
 		case 'c':	/* Same as -S comment */
 			search = search_label_opt("comment");
@@ -292,6 +297,9 @@ exec_search(int argc, char **argv)
 			break;
 		case 'r':
 			reponame = optarg;
+			break;
+		case 'R':
+			opt = INFO_RAW;
 			break;
 		case 'S':
 			search = search_label_opt(optarg);
@@ -376,7 +384,7 @@ exec_search(int argc, char **argv)
 		return (EX_IOERR);
 	}
 
-	flags = info_flags(opt);
+	flags = info_flags(opt, true);
 	while ((ret = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
 		print_info(pkg, opt);
 		atleastone = true;

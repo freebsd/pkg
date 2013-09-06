@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd May 18, 2013
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -25,10 +25,10 @@
 .Nm
 .Op Fl a
 .Op Fl A Op Ar 01
-.Op Fl o Ar <oldorigin>:<neworigin>
+.Op Fl o Ar oldorigin:neworigin
 .Op Fl y
 .Op Fl gix
-.Ar <pkg-name>
+.Ar pkg-name
 .Sh DESCRIPTION
 .Nm
 is used to modify information concerning installed packages.
@@ -38,7 +38,7 @@ should always be used with caution.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
-.It Fl A Op 01
+.It Fl A Ar 01
 Set automatic flag for the package: 0 is not automatic, 1 is automatic.
 This affects the operation of
 .Xr pkg-autoremove 8 .
@@ -54,7 +54,7 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case insensitive.
-.It Fl o Op <oldorigin>:<neworigin>
+.It Fl o Ar oldorigin:neworigin
 Change the port origin of a given dependency from
 .Ar oldorigin
 to
@@ -91,22 +91,35 @@ This involes moving the origin from
 .Sy lang/perl5.12
 to
 .Sy lang/perl5.14 :
-.Dl # pkg set -o lang/perl5.12:lang/perl5.14
+.Dl % pkg set -o lang/perl5.12:lang/perl5.14
+.Dl % pkg install -Rf lang/perl5.14
 .Pp
 Upgrade ruby from 1.8 to 1.9.
 This involes moving the origin from
 .Sy lang/ruby18
 to
 .Sy lang/ruby19 :
-.Dl # pkg set -o lang/ruby18:lang/ruby19
+.Dl % pkg set -o lang/ruby18:lang/ruby19
+.Dl % pkg install -Rf lang/ruby19
 .Pp
 Move the origin libglut to freeglut, and then reinstall everything depending on glut to use the new shared library:
-.Dl # pkg set -o graphics/libglut:graphics/freeglut
-.Dl # pkg install -Rf graphics/freeglut
+.Dl % pkg set -o graphics/libglut:graphics/freeglut
+.Dl % pkg install -Rf graphics/freeglut
+.Pp
+Change a package from automatic to non-automatic, which will prevent
+.Ic autoremove
+from removing it:
+.Dl % pkg set -A 0 perl-5.14
+.Pp
+Change a package from non-automatic to automatic, which will make
+.Ic autoremove
+allow it be removed once nothing depends on it:
+.Dl % pkg set -A 1 perl-5.14
 .Sh SEE ALSO
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,

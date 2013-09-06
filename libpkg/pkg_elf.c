@@ -81,22 +81,13 @@ filter_system_shlibs(const char *name, char *path, size_t pathlen)
 	return (EPKG_OK);
 } 
 
-/* Callback functions to process the shlib data */
-
-/* ARGSUSED */
-static int
-do_nothing(__unused void *actdata, __unused struct pkg *pkg,
-	   __unused const char *fpath, __unused const char *name,
-	   __unused bool is_shlib)
-{
-	return (EPKG_OK);
-}
-
 /* ARGSUSED */
 static int
 add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		  const char *name, bool is_shlib)
 {
+	const char *pkgname, *pkgversion;
+
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
 		pkg_addshlib_required(pkg, name);
@@ -109,8 +100,10 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		if (is_shlib)
 			return (EPKG_OK);
 
+		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 		warnx("(%s-%s) %s - shared library %s not found",
-		      pkg_name(pkg), pkg_version(pkg), fpath, name);
+		      pkgname, pkgversion, fpath, name);
+
 		return (EPKG_FATAL);
 	}
 }
@@ -124,14 +117,11 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	struct pkgdb_it *it = NULL;
 	struct pkg *d;
 	const char *deporigin, *depname, *depversion;
+	const char *pkgname, *pkgversion;
 	bool deplocked;
 	char pathbuf[MAXPATHLEN];
-	bool found;
-	bool shlibs = false;
 
 	assert(db != NULL);
-
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 
 	switch(filter_system_shlibs(name, pathbuf, sizeof(pathbuf))) {
 	case EPKG_OK:		/* A non-system library */
@@ -144,13 +134,13 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 		if (is_shlib)
 			return (EPKG_OK);
 
+		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 		warnx("(%s-%s) %s - shared library %s not found",
-		      pkg_name(pkg), pkg_version(pkg), fpath, name);
+		      pkgname, pkgversion, fpath, name);
 		return (EPKG_FATAL);
 	}
 
-	if (shlibs)
-		pkg_addshlib_required(pkg, name);
+	pkg_addshlib_required(pkg, name);
 
 	if ((it = pkgdb_query_which(db, pathbuf, false)) == NULL)
 		return (EPKG_OK);
@@ -162,16 +152,10 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 			   PKG_VERSION, &depversion,
 			   PKG_LOCKED,  &deplocked);
 
-		dep = NULL;
-		found = false;
-		while (pkg_deps(pkg, &dep) == EPKG_OK) {
-			if (strcmp(pkg_dep_origin(dep), deporigin) == 0) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			pkg_emit_error("adding forgotten depends (%s): %s-%s",
+		dep = pkg_dep_lookup(pkg, deporigin);
+
+		if (dep == NULL) {
+			pkg_debug(1, "Autodeps: adding unlisted depends (%s): %s-%s",
 			    pathbuf, depname, depversion);
 			pkg_adddep(pkg, depname, deporigin, depversion,
 			    deplocked);
@@ -181,50 +165,6 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 
 	pkgdb_it_free(it);
 	return (EPKG_OK);
-}
-
-static void
-warn_about_name_format(struct pkg *pkg, const char *fpath, const char *shlib)
-{
-	bool		wrong = false;
-	unsigned	len;
-
-	/* Shlib names in NEEDED records in the Dynamic section of an
-           ELF object are expected to look like libfoo.so.N where the
-           ABI version N is an integer or libfoo.so without ABI
-           version at all.  Well, actually, this should probably only
-           apply to shlibs which are publicly available.  shlibs for
-           the private use of some package can have whatever naming
-           convention they want.  So this is a bit too strict. */
-
-	len = strlen(shlib);
-	if (len < 9)		/* libx.so.0 */
-		wrong = true;
-
-	if (!wrong && strncmp(shlib, "lib", 3) != 0)
-		wrong = true;
-
-	if (!wrong) {
-		const char *s;
-
-		s = shlib + len;
-		if (strncmp(s - 3, ".so", 3) != 0) {
-			while (s > shlib + 3 && isdigit(*(s-1)))
-				s--;
-			if (strncmp(s - 4, ".so.", 4) != 0)
-				wrong = true;
-		}
-	}
-
-	if (wrong) {
-		const char	*name;
-		const char	*version;
-
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
-
-		warnx("(%s-%s) %s links with incorrectly named "
-		      "shared library %s", name, version, fpath, shlib);
-	}
 }
 
 static int
@@ -249,19 +189,15 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	const char *osname;
 	const char *shlib;
 
-	bool shlibs = false;
-	bool autodeps = false;
 	bool developer = false;
 	bool is_shlib = false;
 
-	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
 
 	int fd;
 
 	if (lstat(fpath, &sb) != 0)
-		pkg_emit_errno("fstat() failed for %s", fpath);
+		pkg_emit_errno("fstat() failed for", fpath);
 	/* ignore empty files and non regular files */
 	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
 		return (EPKG_END); /* Empty file or sym-link: no results */
@@ -278,17 +214,13 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	}
 
 	if (elf_kind(e) != ELF_K_ELF) {
-		close(fd);
-		return (EPKG_END); /* Not an elf file: no results */
+		/* Not an elf file: no results */
+		ret = EPKG_END;
+		goto cleanup;
 	}
 
 	if (developer)
 		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
-
-	if (!autodeps && !shlibs) {
-	   ret = EPKG_OK;
-	   goto cleanup;
-	}
 
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
 		ret = EPKG_FATAL;
@@ -328,7 +260,14 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	}
 
 	if (note != NULL) {
-		data = elf_getdata(note, NULL);
+		if ((data = elf_getdata(note, NULL)) == NULL) {
+			ret = EPKG_END; /* Some error occurred, ignore this file */
+			goto cleanup;
+		}
+		if (data->d_buf == NULL) {
+			ret = EPKG_END; /* No osname available */
+			goto cleanup;
+		}
 		osname = (const char *) data->d_buf + sizeof(Elf_Note);
 		if (strncasecmp(osname, "freebsd", sizeof("freebsd")) != 0 &&
 		    strncasecmp(osname, "dragonfly", sizeof("dragonfly")) != 0) {
@@ -342,7 +281,10 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 		}
 	}
 
-	data = elf_getdata(dynamic, NULL);
+	if ((data = elf_getdata(dynamic, NULL)) == NULL) {
+		ret = EPKG_END; /* Some error occurred, ignore this file */
+		goto cleanup;
+	}
 
 	/* First, scan through the data from the .dynamic section to
 	   find any RPATH or RUNPATH settings.  These are colon
@@ -372,8 +314,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			   *provided* by the package. Record this if
 			   appropriate */
 
-			if (shlibs)
-				pkg_addshlib_provided(pkg, basename(fpath));
+			pkg_addshlib_provided(pkg, basename(fpath));
 		}
 
 		if (dyn->d_tag != DT_RPATH && dyn->d_tag != DT_RUNPATH)
@@ -398,14 +339,6 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 			continue;
 
 		shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
-
-		/* When running in DEVELOPER_MODE check that shlib
-		   names conform to the correct pattern.  Only issue a
-		   warning on mismatch -- shlibs may belong to a
-		   different package. */
-
-		if (developer)
-			warn_about_name_format(pkg, fpath, shlib);
 
 		action(actdata, pkg, fpath, shlib, is_shlib);
 	}
@@ -446,35 +379,26 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
 	const char *fpath;
-	bool shlibs = false;
 	bool autodeps = false;
 	bool developer = false;
 	int (*action)(void *, struct pkg *, const char *, const char *, bool);
 
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
 	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
 	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
-
-	if (!autodeps && !shlibs && !developer)
-		return (EPKG_OK);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
 
 	if (autodeps)
 		action = test_depends;
-	else if (shlibs)
-		action = add_shlibs_to_pkg;
 	else
-		action = do_nothing;
+		action = add_shlibs_to_pkg;
 
-	if (autodeps || shlibs) {
-		shlib_list_init();
+	shlib_list_init();
 
-		ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
-		if (ret != EPKG_OK)
-			goto cleanup;
-	}
+	ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
+	if (ret != EPKG_OK)
+		goto cleanup;
 
 	/* Assume no architecture dependence, for contradiction */
 	if (developer)
@@ -484,6 +408,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		fpath = pkg_file_path(file);
+
 		ret = analyse_elf(pkg, fpath, action, db);
 		if (developer) {
 			if (ret != EPKG_OK && ret != EPKG_END)
@@ -495,24 +420,18 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 	ret = EPKG_OK;
 
 cleanup:
-	if (autodeps || shlibs)
-		shlib_list_free();
+	shlib_list_free();
 
 	return (ret);
 }
 
 int
-pkg_register_shlibs(struct pkg *pkg)
+pkg_register_shlibs(struct pkg *pkg, const char *root)
 {
 	struct pkg_file        *file = NULL;
-	bool			shlibs;
-
-	pkg_config_bool(PKG_CONFIG_SHLIBS, &shlibs);
+	char fpath[MAXPATHLEN];
 
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
-
-	if (!shlibs)
-		return (EPKG_OK);
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
@@ -523,15 +442,20 @@ pkg_register_shlibs(struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	while(pkg_files(pkg, &file) == EPKG_OK)
-		analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+	while(pkg_files(pkg, &file) == EPKG_OK) {
+		if (root != NULL) {
+			snprintf(fpath, MAXPATHLEN, "%s%s", root, pkg_file_path(file));
+			analyse_elf(pkg, fpath, add_shlibs_to_pkg, NULL);
+		} else
+			analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);
+	}
 
 	shlib_list_free();
 	return (EPKG_OK);
 }
 
 static const char *
-elf_corres_to_string(struct _elf_corres* m, int e)
+elf_corres_to_string(const struct _elf_corres* m, int e)
 {
 	int i = 0;
 
@@ -557,7 +481,7 @@ pkg_get_myarch(char *dest, size_t sz)
 	uint32_t version = 0;
 	int ret = EPKG_OK;
 	int i;
-	const char *abi, *endian_corres_str, *wordsize_corres_str;
+	const char *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -596,18 +520,23 @@ pkg_get_myarch(char *dest, size_t sz)
 
 	if (scn == NULL) {
 		ret = EPKG_FATAL;
-		pkg_emit_error("fail to get the note section");
+		pkg_emit_error("failed to get the note section");
 		goto cleanup;
 	}
 
 	data = elf_getdata(scn, NULL);
 	src = data->d_buf;
-	while (1) {
+	while ((uintptr_t)src < ((uintptr_t)data->d_buf + data->d_size)) {
 		memcpy(&note, src, sizeof(Elf_Note));
 		src += sizeof(Elf_Note);
 		if (note.n_type == NT_VERSION)
 			break;
 		src += note.n_namesz + note.n_descsz;
+	}
+	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
+		ret = EPKG_FATAL;
+		pkg_emit_error("failed to find the version elf note");
+		goto cleanup;
 	}
 	osname = src;
 	src += roundup2(note.n_namesz, 4);
@@ -637,10 +566,28 @@ pkg_get_myarch(char *dest, size_t sz)
 		endian_corres_str = elf_corres_to_string(endian_corres,
 		    (int)elfhdr.e_ident[EI_DATA]);
 
+		/* FreeBSD doesn't support the hard-float ABI yet */
+		fpu = "softfp";
+		if ((elfhdr.e_flags & 0xFF000000) != 0) {
+			/* This is an EABI file, the conformance level is set */
+			abi = "eabi";
+		} else if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_NONE) {
+			/*
+			 * EABI executables all have this field set to
+			 * ELFOSABI_NONE, therefore it must be an oabi file.
+			 */
+			abi = "oabi";
+                } else {
+			/*
+			 * We may have failed to positively detect the ABI,
+			 * set the ABI to unknown. If we end up here one of
+			 * the above cases should be fixed for the binary.
+			 */
+			pkg_emit_error("unknown ARM ABI");
+			goto cleanup;
+		}
 		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
-		    endian_corres_str,
-		    (elfhdr.e_flags & EF_ARM_NEW_ABI) > 0 ? "eabi" : "oabi",
-		    (elfhdr.e_flags & EF_ARM_VFP_FLOAT) > 0 ? "softfp" : "vfp");
+		    endian_corres_str, abi, fpu);
 		break;
 	case EM_MIPS:
 		/*

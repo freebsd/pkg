@@ -28,13 +28,13 @@
 .Fl a
 .Nm
 .Op Fl giqxy
-.Ar <pkg-name>
+.Ar pkg-name
 .Nm "pkg unlock"
 .Op Fl qy
 .Fl a
 .Nm "pkg unlock"
 .Op Fl giqxy
-.Ar <pkg-name>
+.Ar pkg-name
 .Sh DESCRIPTION
 .Nm
 is used to lock packages against reinstallation,
@@ -74,7 +74,7 @@ The following options are supported by
 Lock or unlock all installed packages.
 .It Fl g
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a shell glob pattern.
 .It Fl i
 Make the default or the regular expression
@@ -85,7 +85,7 @@ matching case insensitive.
 Operate quietly: do not output anything other than confirmatory questions.
 .It Fl x
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
@@ -106,8 +106,10 @@ for further description.
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
+.Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,
@@ -132,5 +134,4 @@ See
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,
-.Xr pkg-which 8 ,
-.Xr pkg.conf 5
+.Xr pkg-which 8

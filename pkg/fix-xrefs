@@ -14,11 +14,21 @@ MAIN:
     my @xrefs;
     my $see_also;
 
-    @xrefs = map { (my $x = $_) =~ s/^(\S+)\.(\d)/.Xr $1 $2/; $x } @ARGV;
+    @xrefs =
+      map { ".Xr $_->[0] $_->[1]" }
+      sort {
+             ( $a->[1] <=> $b->[1] )
+          || ( ( $b->[0] eq 'pkg' ) <=> ( $a->[0] eq 'pkg' ) )
+          || ( $a->[0] cmp $b->[0] )
+      }
+      map {
+        [m/^(\S+)\.(\d)$/]
+      } @ARGV;
 
     eval {
-        for my $man (@ARGV)
-        {
+        for my $man (@ARGV) {
+            my ($match) = ( $man =~ m/^(\S+)\./ );
+
             open READ,  "<$man";
             open WRITE, ">$man.new";
 
@@ -28,7 +38,8 @@ MAIN:
                 if (/^\.Sh SEE ALSO/) {
                     $see_also = 1;
                     print WRITE $_;
-                    print WRITE join( " ,\n", grep { !/$man/ } @xrefs ), "\n";
+                    print WRITE join( " ,\n", grep { !m/$match / } @xrefs ),
+                      "\n";
                     next;
                 }
                 if ( $see_also && /^\.Xr/ ) {
@@ -39,7 +50,7 @@ MAIN:
             close READ;
             close WRITE;
 
-	    rename "$man.new", $man;
+            rename "$man.new", $man;
         }
     };
     given ($@) {

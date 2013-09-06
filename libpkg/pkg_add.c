@@ -149,7 +149,7 @@ cleanup:
 }
 
 int
-pkg_add(struct pkgdb *db, const char *path, unsigned flags)
+pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_key *keys)
 {
 	const char	*arch;
 	const char	*myarch;
@@ -162,6 +162,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	struct pkg      *pkg_inst = NULL;
 	bool		 extract = true;
 	bool		 handle_rc = false;
+	bool		 disable_mtree;
 	char		 dpath[MAXPATHLEN + 1];
 	const char	*basedir;
 	const char	*ext;
@@ -177,7 +178,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * current archive_entry to the first non-meta file.
 	 * If there is no non-meta files, EPKG_END is returned.
 	 */
-	ret = pkg_open2(&pkg, &a, &ae, path);
+	ret = pkg_open2(&pkg, &a, &ae, path, keys, 0);
 	if (ret == EPKG_END)
 		extract = false;
 	else if (ret != EPKG_OK) {
@@ -222,11 +223,13 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 			pkg_emit_already_installed(pkg_inst);
 			retcode = EPKG_INSTALLED;
 			pkg_free(pkg_inst);
+			pkg_inst = NULL;
 			goto cleanup;
 		}
 		else {
 			pkg_emit_notice("package %s is already installed, forced install", name);
 			pkg_free(pkg_inst);
+			pkg_inst = NULL;
 		}
 	} else if (ret != EPKG_END) {
 		retcode = ret;
@@ -254,7 +257,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 
 			if ((flags & PKG_ADD_UPGRADE) == 0 &&
 			    access(dpath, F_OK) == 0) {
-				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC);
+				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys);
 				if (ret != EPKG_OK) {
 					retcode = EPKG_FATAL;
 					goto cleanup;
@@ -274,9 +277,19 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	if (retcode != EPKG_OK)
 		goto cleanup;
 
-	pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
-	if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
-		goto cleanup_reg;
+	/* MTREE replicates much of the standard functionality
+	 * inplicit in the way pkg works.  It has to remain available
+	 * in the ports for compatibility with the old pkg_tools, but
+	 * ultimately, MTREE should be made redundant.  Use this for
+	 * experimantal purposes and to develop MTREE-free versions of
+	 * packages. */
+
+	pkg_config_bool(PKG_CONFIG_DISABLE_MTREE, &disable_mtree);
+	if (!disable_mtree) {
+		pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
+		if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
+			goto cleanup_reg;
+	}
 
 	/*
 	 * Execute pre-install scripts
@@ -301,7 +314,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 	 * Execute post install scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		if (flags & PKG_ADD_USE_UPGRADE_SCRIPTS)
+		if ((flags & PKG_ADD_USE_UPGRADE_SCRIPTS) == PKG_ADD_USE_UPGRADE_SCRIPTS)
 			pkg_script_run(pkg, PKG_SCRIPT_POST_UPGRADE);
 		else
 			pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
@@ -328,7 +341,9 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags)
 		archive_read_free(a);
 
 	pkg_free(pkg);
-	pkg_free(pkg_inst);
+
+	if (pkg_inst != NULL)
+		pkg_free(pkg_inst);
 
 	return (retcode);
 }

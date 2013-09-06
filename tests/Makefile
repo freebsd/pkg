@@ -3,7 +3,5 @@ SUBDIR=	lib \
 
 .include <bsd.subdir.mk>
 
-run:
-.for dir in ${SUBDIR}
-	cd ${.CURDIR}/${dir} && ${MAKE} run
-.endfor
+run: all
+	atf-run | atf-report

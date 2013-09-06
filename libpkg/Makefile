@@ -8,6 +8,8 @@ LIBDIR=		${PREFIX}/lib
 INCLUDEDIR=	${PREFIX}/include
 SHLIB_MAJOR=	1
 
+MANDIR=		${PREFIX}/man/man
+
 PC=		pkg.pc
 PKGH=		pkg.h
 SRCS=		${PC} \
@@ -28,6 +30,7 @@ SRCS=		${PC} \
 		pkg_jobs.c \
 		pkg_manifest.c \
 		pkg_ports.c \
+		pkg_printf.c \
 		pkg_repo.c \
 		pkg_status.c \
 		pkg_version.c \
@@ -35,6 +38,7 @@ SRCS=		${PC} \
 		pkgdb_repo.c \
 		rcscripts.c \
 		rsa.c \
+		ssh.c \
 		scripts.c \
 		update.c \
 		utils.c \
@@ -42,9 +46,12 @@ SRCS=		${PC} \
 		pkg_old.c \
 		pkg.pc
 
+MAN=		pkg_printf.3 \
+		pkg-repository.5
+
 CLEANFILES=	${PC} ${PKGH}
 
-NEWVERS=	../newvers.sh
+NEWVERS=	${.CURDIR}/../newvers.sh
 
 PKGVERSION!=	sh ${NEWVERS} pkg
 PORTVERSION!=	sh ${NEWVERS} port
@@ -71,13 +78,14 @@ DEFAULT_MIRROR_TYPE?=	1
 
 CFLAGS+=	-DDEFAULT_MIRROR_TYPE=${DEFAULT_MIRROR_TYPE}
 CFLAGS+=	-std=c99
-CFLAGS+=	-I${.CURDIR} \
+CFLAGS+=	-I. \
+		-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
 		-I${.CURDIR}/../external/uthash
 
 .if !exists(/usr/include/bsdyml.h)
 CFLAGS+=	-DBUNDLED_YAML -I ${.CURDIR}/../external/libyaml/include
-LDADD+=		-L${.OBJDIR}/../external/libyaml -lyaml
+LDADD+=		-L../external/libyaml -lyaml
 .else
 LDADD+=		-lbsdyml
 .endif
@@ -87,11 +95,11 @@ CFLAGS+=	-I${.CURDIR}/../external/libelf \
 		-DBUNDLED_LIBELF
 .endif
 
-LDADD+=		-L${.OBJDIR}/../external/sqlite \
-		-L${.OBJDIR}/../external/libyaml
+LDADD+=		-L../external/sqlite \
+		-L../external/libyaml
 
 .if defined(WITH_BUNDLED_LIBELF)
-LDADD+=		-L${.OBJDIR}/../external/libelf
+LDADD+=		-L../external/libelf
 .endif
 
 LDADD+=		-lsqlite3 \
@@ -109,9 +117,12 @@ LDADD+=		-ledit
 CFLAGS+=	-DPREFIX=\"${PREFIX}\"
 
 .if defined(DEBUG_FLAGS)
-DEBUG_FLAGS+=  -g -O0
+.if ${DEBUG_FLAGS} == 1
+DEBUG_FLAGS=	-ggdb -O0
+.else
+DEBUG_FLAGS+=	-ggdb -O0
 .endif
-STRIP=
+.endif
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg
 .endif

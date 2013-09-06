@@ -1,0 +1,8 @@
+Content-Type: application/X-atf-atffile; version="1"
+
+prop: test-suite = frontend
+
+tp: pkg.sh
+tp: version.sh
+tp: search.sh
+tp: annotate.sh

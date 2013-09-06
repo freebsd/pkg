@@ -51,7 +51,8 @@ struct deletion_list {
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
 #define CKSUM_MISMATCH	(1U<<2)
-#define ALL		(1U<<3)
+#define SIZE_MISMATCH	(1U<<3)
+#define ALL		(1U<<4)
 
 STAILQ_HEAD(dl_head, deletion_list);
 
@@ -165,6 +166,9 @@ display_dellist(struct dl_head *dl, const char *cachedir)
 		case ALL:
 			printf("Removing all\n");
 			break;
+		case SIZE_MISMATCH:
+			printf("Size mismatch\n");
+			break;
 		default:	/* not reached */
 			break;
 		}
@@ -209,7 +213,7 @@ usage_clean(void)
 }
 
 int
-exec_clean(__unused int argc, __unused char **argv)
+exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
@@ -227,6 +231,7 @@ exec_clean(__unused int argc, __unused char **argv)
 	int		 retcode;
 	int		 ret;
 	int		 ch;
+	struct pkg_manifest_key *keys = NULL;
 
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
@@ -286,6 +291,7 @@ exec_clean(__unused int argc, __unused char **argv)
 
 	/* Build the list of out-of-date or obsolete packages */
 
+	pkg_manifest_keys_new(&keys);
 	while ((ent = fts_read(fts)) != NULL) {
 		const char *origin, *pkgrepopath;
 
@@ -296,7 +302,7 @@ exec_clean(__unused int argc, __unused char **argv)
 		if (repopath[0] == '/')
 			repopath++;
 
-		if (pkg_open(&pkg, ent->fts_path) != EPKG_OK) {
+		if (pkg_open(&pkg, ent->fts_path, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
 			if (!quiet)
 				warnx("skipping %s", ent->fts_path);
 			continue;
@@ -348,10 +354,14 @@ exec_clean(__unused int argc, __unused char **argv)
 		} else {
 			char local_cksum[SHA256_DIGEST_LENGTH * 2 + 1];
 			const char *cksum;
+			int64_t size;
 
-			pkg_get(p, PKG_CKSUM, &cksum);
+			pkg_get(p, PKG_CKSUM, &cksum, PKG_PKGSIZE, &size);
 
-			if (hash_file(ent->fts_path, local_cksum) == EPKG_OK) {
+			if (ent->fts_statp->st_size != size) {
+				ret = add_to_dellist(&dl, SIZE_MISMATCH,
+				                  ent->fts_path, origin, NULL, NULL);
+			} else if (hash_file(ent->fts_path, local_cksum) == EPKG_OK) {
 
 				if (strcmp(cksum, local_cksum) != 0) {
 					ret = add_to_dellist(&dl, CKSUM_MISMATCH, ent->fts_path,
@@ -388,6 +398,7 @@ exec_clean(__unused int argc, __unused char **argv)
 		retcode = EX_OK;
 
 cleanup:
+	pkg_manifest_keys_free(keys);
 	free_dellist(&dl);
 
 	pkg_free(pkg);

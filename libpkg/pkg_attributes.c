@@ -139,6 +139,14 @@ pkg_file_mode(struct pkg_file const * const f)
 	return (f->perm);
 }
 
+bool
+pkg_file_keep(struct pkg_file const * const f)
+{
+	assert(f != NULL);
+
+	return (f->keep);
+}
+
 /*
  * Dir
  */
@@ -187,6 +195,14 @@ pkg_dir_mode(struct pkg_dir const * const d)
 	assert(d != NULL);
 
 	return (d->perm);
+}
+
+bool
+pkg_dir_keep(struct pkg_dir const * const d)
+{
+	assert(d != NULL);
+
+	return (d->keep);
 }
 
 bool
@@ -413,4 +429,44 @@ pkg_shlib_name(struct pkg_shlib const * const sl)
 	assert(sl != NULL);
 
 	return (sbuf_get(sl->name));
+}
+
+/*
+ * Annotations
+ */
+
+int
+pkg_annotation_new(struct pkg_note **an)
+{
+	if ((*an = calloc(1, sizeof(struct pkg_note))) == NULL)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
+void
+pkg_annotation_free(struct pkg_note *an)
+{
+	if (an == NULL)
+		return;
+
+	sbuf_free(an->tag);
+	sbuf_free(an->value);
+	free(an);
+}
+
+const char *
+pkg_annotation_tag(struct pkg_note const * const an)
+{
+	assert(an != NULL);
+
+	return (sbuf_get(an->tag));
+}
+
+const char *
+pkg_annotation_value(struct pkg_note const * const an)
+{
+	assert(an != NULL);
+
+	return (sbuf_get(an->value));
 }

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -58,15 +58,68 @@
 #define PKG_DIRECTORIES -11
 #define PKG_SHLIBS_REQUIRED -12
 #define PKG_SHLIBS_PROVIDED -13
+#define PKG_ANNOTATIONS -14
+#define PKG_INFOS -15		/* Deprecated field: treat as an annotation for backwards compatibility */
 
 static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_size_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+static int pkg_infos_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_licenselogic_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int pkg_set_deps_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
 static int pkg_set_files_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
 static int pkg_set_dirs_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
 static int parse_sequence(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 static int parse_mapping(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+static int parse_seq(struct pkg *, struct pkg_manifest_parser *, int);
+static int parse_map(struct pkg *, struct pkg_manifest_parser *, int);
+static int pkg_set_licenselogic_from_scalar(struct pkg *, struct pkg_manifest_parser *, int);
+static int pkg_set_size_from_scalar(struct pkg *, struct pkg_manifest_parser *, int);
+static int pkg_set_from_scalar(struct pkg *, struct pkg_manifest_parser *, int);
+
+#define EV_SCALAR  YAML_SCALAR_EVENT
+#define EV_MAP     YAML_MAPPING_START_EVENT
+#define EV_SEQ     YAML_SEQUENCE_START_EVENT
+#define EV_NONE    YAML_NO_EVENT
+
+static struct mkey {
+	const char *key;
+	int type;
+	yaml_event_type_t valid_type;
+	int (*parse_data)(struct pkg *, struct pkg_manifest_parser *, int type);
+} mkeys[] = {
+	{ "annotations",     PKG_ANNOTATIONS,     EV_MAP,    parse_map},
+	{ "arch",            PKG_ARCH,            EV_SCALAR, pkg_set_from_scalar},
+	{ "categories",      PKG_CATEGORIES,      EV_SEQ,    parse_seq},
+	{ "comment",         PKG_COMMENT,         EV_SCALAR, pkg_set_from_scalar},
+	{ "deps",            PKG_DEPS,            EV_MAP,    parse_map},
+	{ "desc",            PKG_DESC,            EV_SCALAR, pkg_set_from_scalar},
+	{ "directories",     PKG_DIRECTORIES,     EV_MAP,    parse_map},
+	{ "dirs",            PKG_DIRS,            EV_SEQ,    parse_seq},
+	{ "files",           PKG_FILES,           EV_MAP,    parse_map},
+	{ "flatsize",        PKG_FLATSIZE,        EV_SCALAR, pkg_set_size_from_scalar},
+	{ "groups",          PKG_GROUPS,          EV_SEQ,    parse_seq},
+	{ "groups",          PKG_GROUPS,          EV_MAP,    parse_map},
+	{ "infos",           PKG_INFOS,           EV_SCALAR, pkg_set_from_scalar},
+	{ "licenselogic",    -1,                  EV_SCALAR, pkg_set_licenselogic_from_scalar},
+	{ "licenses",        PKG_LICENSES,        EV_SEQ,    parse_seq},
+	{ "maintainer",      PKG_MAINTAINER,      EV_SCALAR, pkg_set_from_scalar},
+	{ "message",         PKG_MESSAGE,         EV_SCALAR, pkg_set_from_scalar},
+	{ "name",            PKG_NAME,            EV_SCALAR, pkg_set_from_scalar},
+	{ "options",         PKG_OPTIONS,         EV_MAP,    parse_map},
+	{ "origin",          PKG_ORIGIN,          EV_SCALAR, pkg_set_from_scalar},
+	{ "path",            PKG_REPOPATH,        EV_SCALAR, pkg_set_from_scalar},
+	{ "pkgsize",         PKG_PKGSIZE,         EV_SCALAR, pkg_set_size_from_scalar},
+	{ "prefix",          PKG_PREFIX,          EV_SCALAR, pkg_set_from_scalar},
+	{ "scripts",         PKG_SCRIPTS,         EV_MAP,    parse_map},
+	{ "shlibs_provided", PKG_SHLIBS_PROVIDED, EV_SEQ,    parse_seq},
+	{ "shlibs_required", PKG_SHLIBS_REQUIRED, EV_SEQ,    parse_seq},
+	{ "sum",             PKG_CKSUM,           EV_SCALAR, pkg_set_from_scalar},
+	{ "users",           PKG_USERS,           EV_SEQ,    parse_seq},
+	{ "users",           PKG_USERS,           EV_MAP,    parse_map},
+	{ "version",         PKG_VERSION,         EV_SCALAR, pkg_set_from_scalar},
+	{ "www",             PKG_WWW,             EV_SCALAR, pkg_set_from_scalar},
+	{ NULL,              -99,                 EV_NONE,   NULL}
+};
 
 /*
  * Keep sorted
@@ -77,11 +130,10 @@ static struct manifest_key {
 	yaml_node_type_t valid_type;
 	int (*parse_data)(struct pkg *, yaml_node_t *, yaml_document_t *, int);
 } manifest_keys[] = {
+	{ "annotations", PKG_ANNOTATIONS, YAML_MAPPING_NODE, parse_mapping},
 	{ "arch", PKG_ARCH, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "comment", PKG_COMMENT, YAML_SCALAR_NODE, pkg_set_from_node},
-	/* compatibility with old format */
-	/* compatibility with old format */
 	{ "deps", PKG_DEPS, YAML_MAPPING_NODE, parse_mapping},
 	{ "desc", PKG_DESC, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "directories", PKG_DIRECTORIES, YAML_MAPPING_NODE, parse_mapping},
@@ -90,7 +142,7 @@ static struct manifest_key {
 	{ "flatsize", PKG_FLATSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
 	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping},
 	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "infos", PKG_INFOS, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "infos", PKG_INFOS, YAML_SCALAR_NODE, pkg_infos_from_node}, /* Deprecated: treat as an annotation */
 	{ "licenselogic", -1, YAML_SCALAR_NODE, pkg_set_licenselogic_from_node},
 	{ "licenses", PKG_LICENSES, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "maintainer", PKG_MAINTAINER, YAML_SCALAR_NODE, pkg_set_from_node},
@@ -99,9 +151,10 @@ static struct manifest_key {
 	{ "options", PKG_OPTIONS, YAML_MAPPING_NODE, parse_mapping},
 	{ "origin", PKG_ORIGIN, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "path", PKG_REPOPATH, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "pkgsize", PKG_NEW_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
+	{ "pkgsize", PKG_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
 	{ "prefix", PKG_PREFIX, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ "scripts", PKG_SCRIPTS, YAML_MAPPING_NODE, parse_mapping},
+	{ "shlibs", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence}, /* Backwards compat with 1.0.x packages */
 	{ "shlibs_provided", PKG_SHLIBS_PROVIDED, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "shlibs_required", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence},
 	{ "sum", PKG_CKSUM, YAML_SCALAR_NODE, pkg_set_from_node},
@@ -111,6 +164,141 @@ static struct manifest_key {
 	{ "www", PKG_WWW, YAML_SCALAR_NODE, pkg_set_from_node},
 	{ NULL, -99, -99, NULL}
 };
+
+struct dataparser {
+	yaml_node_type_t type;
+	int (*parse_data)(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+	UT_hash_handle hh;
+};
+
+struct pkg_manifest_key {
+	const char *key;
+	int type;
+	struct dataparser *parser;
+	UT_hash_handle hh;
+};
+
+struct dparser {
+	yaml_event_type_t type;
+	int (*parse_data)(struct pkg *, struct pkg_manifest_parser *, int);
+	UT_hash_handle hh;
+};
+
+struct pmk {
+	const char *key;
+	int type;
+	struct dparser *parser;
+	UT_hash_handle hh;
+};
+
+struct pkg_manifest_parser {
+	yaml_parser_t parser;
+	yaml_event_t event;
+	struct sbuf *buf;
+	struct pmk *keys;
+};
+
+int
+pkg_manifest_parser_new(struct pkg_manifest_parser **p)
+{
+	struct pmk *k;
+	struct dparser *dp;
+	int i;
+
+	if (*p != NULL) {
+		yaml_parser_delete(&(*p)->parser);
+		yaml_parser_initialize(&(*p)->parser);
+		return (EPKG_OK);
+	}
+	*p = calloc(1, sizeof(struct pkg_manifest_parser));
+	if (*p == NULL)
+		return (EPKG_FATAL);
+
+	yaml_parser_initialize(&(*p)->parser);
+	(*p)->buf = sbuf_new_auto();
+
+	for (i = 0; mkeys[i].key != NULL; i++) {
+		HASH_FIND_STR((*p)->keys, __DECONST(char *, mkeys[i].key), k);
+		if (k == NULL) {
+			k = calloc(1, sizeof(struct pmk));
+			k->key = mkeys[i].key;
+			k->type = mkeys[i].type;
+			HASH_ADD_KEYPTR(hh, (*p)->keys, __DECONST(char *, k->key), strlen(k->key), k);
+		}
+		HASH_FIND_YAMLEVT(k->parser, &mkeys[i].valid_type, dp);
+		if (dp != NULL)
+			continue;
+		dp = calloc(1, sizeof(struct dparser));
+		dp->type = mkeys[i].valid_type;
+		dp->parse_data = mkeys[i].parse_data;
+		HASH_ADD_YAMLEVT(k->parser, type, dp);
+	}
+
+	return (EPKG_OK);
+}
+
+static void
+mk_free(struct pmk *key)
+{
+	HASH_FREE(key->parser, dparser, free);
+	free(key);
+}
+
+void
+pkg_manifest_parser_free(struct pkg_manifest_parser *p)
+{
+	if (p == NULL)
+		return;
+
+	yaml_parser_delete(&p->parser);
+	HASH_FREE(p->keys, pmk, mk_free);
+}
+
+int
+pkg_manifest_keys_new(struct pkg_manifest_key **key)
+{
+	int i;
+	struct pkg_manifest_key *k;
+	struct dataparser *dp;
+
+	if (*key != NULL)
+		return (EPKG_OK);
+
+	for (i = 0; manifest_keys[i].key != NULL; i++) {
+		HASH_FIND_STR(*key, __DECONST(char *, manifest_keys[i].key), k);
+		if (k == NULL) {
+			k = calloc(1, sizeof(struct pkg_manifest_key));
+			k->key = manifest_keys[i].key;
+			k->type = manifest_keys[i].type;
+			HASH_ADD_KEYPTR(hh, *key, __DECONST(char *, k->key), strlen(k->key), k);
+		}
+		HASH_FIND_YAMLT(k->parser, &manifest_keys[i].valid_type, dp);
+		if (dp != NULL)
+			continue;
+		dp = calloc(1, sizeof(struct dataparser));
+		dp->type = manifest_keys[i].valid_type;
+		dp->parse_data = manifest_keys[i].parse_data;
+		HASH_ADD_YAMLT(k->parser, type, dp);
+	}
+
+	return (EPKG_OK);
+}
+
+static void
+pmk_free(struct pkg_manifest_key *key) {
+	HASH_FREE(key->parser, dataparser, free);
+
+	free(key);
+}
+
+void
+pkg_manifest_keys_free(struct pkg_manifest_key *key)
+{
+	if (key == NULL)
+		return;
+
+	HASH_FREE(key, pkg_manifest_key, pmk_free);
+}
 
 static int
 is_valid_yaml_scalar(yaml_node_t *val)
@@ -179,19 +367,338 @@ urldecode(const char *src, struct sbuf **dest)
 	return (EPKG_OK);
 }
 
+static int
+script_type_str(const char *str)
+{
+	if (strcmp(str, "pre-install") == 0)
+		return (PKG_SCRIPT_PRE_INSTALL);
+	if (strcmp(str, "install") == 0)
+		return (PKG_SCRIPT_INSTALL);
+	if (strcmp(str, "post-install") == 0)
+		return (PKG_SCRIPT_POST_INSTALL);
+	if (strcmp(str, "pre-upgrade") == 0)
+		return (PKG_SCRIPT_PRE_UPGRADE);
+	if (strcmp(str, "upgrade") == 0)
+		return (PKG_SCRIPT_UPGRADE);
+	if (strcmp(str, "post-upgrade") == 0)
+		return (PKG_SCRIPT_POST_UPGRADE);
+	if (strcmp(str, "pre-deinstall") == 0)
+		return (PKG_SCRIPT_PRE_DEINSTALL);
+	if (strcmp(str, "deinstall") == 0)
+		return (PKG_SCRIPT_DEINSTALL);
+	if (strcmp(str, "post-deinstall") == 0)
+		return (PKG_SCRIPT_POST_DEINSTALL);
+	return (PKG_SCRIPT_UNKNOWN);
+}
+
+static int
+pkg_set_from_scalar(struct pkg *pkg, struct pkg_manifest_parser *p, int attr)
+{
+	/* strip the scalar */
+	while (p->event.data.scalar.length > 0 &&
+	    p->event.data.scalar.value[p->event.data.scalar.length - 1] == '\n') {
+	    p->event.data.scalar.value[p->event.data.scalar.length - 1] = '\0';
+	    p->event.data.scalar.length--;
+	}
+
+	return (urldecode(p->event.data.scalar.value, &pkg->fields[attr]));
+}
+
+static int
+pkg_set_size_from_scalar(struct pkg *pkg, struct pkg_manifest_parser *p, int attr)
+{
+	int64_t size;
+	const char *errstr = NULL;
+
+	size = strtonum(p->event.data.scalar.value, 0, INT64_MAX, &errstr);
+	if (errstr) {
+		pkg_emit_error("Unable to convert %s to int64: %s",
+		    p->event.data.scalar.value, errstr);
+		return (EPKG_FATAL);
+	}
+
+	return (pkg_set(pkg, attr, size));
+}
+
+static int
+pkg_set_licenselogic_from_scalar(struct pkg *pkg, struct pkg_manifest_parser *p, __unused int attr)
+{
+	if (!strcmp(p->event.data.scalar.value, "single"))
+		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t) LICENSE_SINGLE);
+	else if (!strcmp(p->event.data.scalar.value, "or") ||
+	    !strcmp(p->event.data.scalar.value, "dual"))
+		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_OR);
+	else if (!strcmp(p->event.data.scalar.value, "and") ||
+	    !strcmp(p->event.data.scalar.value, "multi"))
+		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_AND);
+	else {
+		pkg_emit_error("Unknown license logic: %s",
+		    p->event.data.scalar.value);
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+parse_seq(struct pkg * pkg, struct pkg_manifest_parser * p, int attr)
+{
+	for (;;) {
+		if (!yaml_parser_parse(&p->parser, &p->event)) {
+			pkg_emit_error("Invalid manifest format");
+			return (EPKG_FATAL);
+		}
+
+		if (p->event.type == YAML_SEQUENCE_END_EVENT)
+			break;
+
+		switch (attr) {
+		case PKG_CATEGORIES:
+			if (p->event.type != YAML_SCALAR_EVENT)
+				pkg_emit_error("Skipping malformed category");
+			else
+				pkg_addcategory(pkg, p->event.data.scalar.value);
+			break;
+		case PKG_LICENSES:
+			if (p->event.type != YAML_SCALAR_EVENT)
+				pkg_emit_error("Skipping malformed license");
+			else
+				pkg_addlicense(pkg, p->event.data.scalar.value);
+			break;
+		case PKG_USERS:
+			if (p->event.type == YAML_SCALAR_EVENT)
+				pkg_adduser(pkg, p->event.data.scalar.value);
+			else if (p->event.type == YAML_MAPPING_START_EVENT)
+				parse_map(pkg, p, attr);
+			else
+				pkg_emit_error("Skipping malformed users");
+			break;
+		case PKG_GROUPS:
+			if (p->event.type == YAML_SCALAR_EVENT)
+				pkg_addgroup(pkg, p->event.data.scalar.value);
+			else if (p->event.type == YAML_MAPPING_START_EVENT)
+				parse_map(pkg, p, attr);
+			else
+				pkg_emit_error("Skipping malformed groups");
+			break;
+		case PKG_DIRS:
+			if (p->event.type == YAML_SCALAR_EVENT)
+				pkg_adddir(pkg, p->event.data.scalar.value, 1, false);
+			else if (p->event.type == YAML_MAPPING_START_EVENT)
+				parse_map(pkg, p, attr);
+			else
+				pkg_emit_error("Skipping malformed dirs");
+			break;
+		case PKG_SHLIBS_REQUIRED:
+			if (p->event.type != YAML_SCALAR_EVENT)
+				pkg_emit_error("Skipping malformed required shared library");
+			else
+				pkg_addshlib_required(pkg, p->event.data.scalar.value);
+			break;
+		case PKG_SHLIBS_PROVIDED:
+			if (p->event.type != YAML_SCALAR_EVENT)
+				pkg_emit_error("Skipping malformed provided shared library");
+			else
+				pkg_addshlib_provided(pkg, p->event.data.scalar.value);
+			break;
+		}
+	}
+	return (EPKG_OK);
+}
+
+static void
+parse_dep(struct pkg *pkg, struct pkg_manifest_parser *p)
+{
+	int state = 0;
+	char *orig = NULL, *vers = NULL;
+
+	sbuf_clear(p->buf);
+	sbuf_cat(p->buf, p->event.data.scalar.value);
+	sbuf_finish(p->buf);
+
+	for (;;) {
+		if (!yaml_parser_parse(&p->parser, &p->event)) {
+			pkg_emit_error("Invalid manifest format");
+			break;
+		}
+
+		if (p->event.type == YAML_MAPPING_START_EVENT)
+			continue;
+
+		if (p->event.type == YAML_MAPPING_END_EVENT)
+			break;
+
+		if (p->event.type != YAML_SCALAR_EVENT) {
+			pkg_emit_error("Invalid manifest format");
+			break;
+		}
+
+		if (state == 0) {
+			if (strcmp(p->event.data.scalar.value, "origin") == 0)
+				state = 1;
+			else if (strcmp(p->event.data.scalar.value, "version") == 0)
+				state = 2;
+			continue;
+		}
+
+		if (state == 1) {
+			orig = strdup(p->event.data.scalar.value);
+			state = 0;
+			continue;
+		}
+
+		if (state == 2) {
+			vers = strdup(p->event.data.scalar.value);
+			state = 0;
+			continue;
+		}
+	}
+
+	if (orig != NULL && vers != NULL)
+		pkg_adddep(pkg, sbuf_data(p->buf), orig, vers, false);
+	else
+		pkg_emit_error("Skipping malformed dependency %s", sbuf_data(p->buf));
+
+	free(vers);
+	free(orig);
+
+	return;
+}
+
+static void
+parse_script(struct pkg *pkg, struct pkg_manifest_parser *p)
+{
+	pkg_script script_type;
+
+	script_type = script_type_str(p->event.data.scalar.value);
+
+	if (!yaml_parser_parse(&p->parser, &p->event)) {
+		pkg_emit_error("Invalid manifest format");
+		return;
+	}
+
+	if (p->event.type != YAML_SCALAR_EVENT) {
+		pkg_emit_error("Invalid manifest format");
+		return;
+	}
+
+	urldecode(p->event.data.scalar.value, &p->buf);;
+	pkg_addscript(pkg, sbuf_data(p->buf), script_type);
+}
+
+static void
+parse_file(struct pkg *pkg, struct pkg_manifest_parser *p)
+{
+	urldecode(p->event.data.scalar.value, &p->buf);
+
+	if (!yaml_parser_parse(&p->parser, &p->event)) {
+		pkg_emit_error("Invalid manifest format");
+		return;
+	}
+
+	if (p->event.type == YAML_SCALAR_EVENT) {
+		pkg_addfile(pkg, sbuf_data(p->buf), p->event.data.scalar.value, false);
+		return;
+	}
+
+	if (p->event.type == YAML_MAPPING_START_EVENT) {
+		/* TODO */
+	}
+}
+
+static void
+parse_option(struct pkg *pkg, struct pkg_manifest_parser *p)
+{
+	sbuf_clear(p->buf);
+	sbuf_cat(p->buf, p->event.data.scalar.value);
+	sbuf_finish(p->buf);
+
+	if (!yaml_parser_parse(&p->parser, &p->event)) {
+		pkg_emit_error("Invalid manifest format");
+		return;
+	}
+
+	if (p->event.type != YAML_SCALAR_EVENT) {
+		pkg_emit_error("Invalid manifest format");
+		return;
+	}
+
+	pkg_addoption(pkg, sbuf_data(p->buf), p->event.data.scalar.value);
+}
+
+static void
+parse_directory(struct pkg *pkg, struct pkg_manifest_parser *p)
+{
+	urldecode(p->event.data.scalar.value, &p->buf);
+
+	if (!yaml_parser_parse(&p->parser, &p->event)) {
+		pkg_emit_error("Invalid manifest format");
+		return;
+	}
+
+	if (p->event.type == YAML_SCALAR_EVENT) {
+		pkg_adddir(pkg, sbuf_data(p->buf), p->event.data.scalar.value[0] == 'y', false);
+		return;
+	}
+
+	if (p->event.type == YAML_MAPPING_START_EVENT) {
+		/* TODO */
+	}
+}
+
+static int
+parse_map(struct pkg *pkg, struct pkg_manifest_parser *p, int attr)
+{
+	for (;;) {
+		if (!yaml_parser_parse(&p->parser, &p->event)) {
+			pkg_emit_error("Invalid manifest format");
+			break;
+		}
+
+		if (p->event.type == YAML_MAPPING_END_EVENT)
+			break;
+
+		if (p->event.type != YAML_SCALAR_EVENT)
+			continue;
+
+		switch (attr) {
+		case PKG_DEPS:
+			parse_dep(pkg, p);
+			break;
+		case PKG_SCRIPTS:
+			parse_script(pkg, p);
+			break;
+		case PKG_FILES:
+			parse_file(pkg, p);
+			break;
+		case PKG_OPTIONS:
+			parse_option(pkg, p);
+			break;
+		case PKG_DIRECTORIES:
+			parse_directory(pkg, p);
+			break;
+		default:
+			break;
+		}
+	}
+
+	return (EPKG_OK);
+}
+
 int
-pkg_load_manifest_file(struct pkg *pkg, const char *fpath)
+pkg_load_manifest_file(struct pkg *pkg, const char *fpath, struct pkg_manifest_key *keys)
 {
 	FILE *f;
 	int ret;
 
+	pkg_debug(1, "Loading manifest from '%s'", fpath);
 	f = fopen(fpath, "r");
 	if (f == NULL) {
 		pkg_emit_errno("open", fpath);
 		return (EPKG_FATAL);
 	}
 
-	ret = pkg_parse_manifest_file(pkg, f);
+	ret = pkg_parse_manifest_file(pkg, f, keys);
 	fclose(f);
 
 	return (ret);
@@ -212,6 +719,21 @@ pkg_set_from_node(struct pkg *pkg, yaml_node_t *val,
 	ret = urldecode(val->data.scalar.value, &pkg->fields[attr]);
 
 	return (ret);
+}
+
+static int
+pkg_infos_from_node(struct pkg *pkg, yaml_node_t *val,
+    __unused yaml_document_t *doc, __unused int attr)
+{
+	while (val->data.scalar.length > 0 &&
+	    val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
+		val->data.scalar.value[val->data.scalar.length - 1] = '\0';
+		val->data.scalar.length--;
+	}
+
+	pkg_addannotation(pkg, "_INFOS_", val->data.scalar.value);
+
+	return (EPKG_OK);
 }
 
 static int
@@ -256,6 +778,7 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
 	yaml_node_item_t *item;
 	yaml_node_t *val;
 
+	pkg_debug(3, "%s", "Manifest: parsing sequence");
 	item = node->data.sequence.items.start;
 	while (item < node->data.sequence.items.top) {
 		val = yaml_document_get_node(doc, *item);
@@ -315,30 +838,6 @@ parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
 }
 
 static int
-script_type_str(const char *str)
-{
-	if (strcmp(str, "pre-install") == 0)
-		return (PKG_SCRIPT_PRE_INSTALL);
-	if (strcmp(str, "install") == 0)
-		return (PKG_SCRIPT_INSTALL);
-	if (strcmp(str, "post-install") == 0)
-		return (PKG_SCRIPT_POST_INSTALL);
-	if (strcmp(str, "pre-upgrade") == 0)
-		return (PKG_SCRIPT_PRE_UPGRADE);
-	if (strcmp(str, "upgrade") == 0)
-		return (PKG_SCRIPT_UPGRADE);
-	if (strcmp(str, "post-upgrade") == 0)
-		return (PKG_SCRIPT_POST_UPGRADE);
-	if (strcmp(str, "pre-deinstall") == 0)
-		return (PKG_SCRIPT_PRE_DEINSTALL);
-	if (strcmp(str, "deinstall") == 0)
-		return (PKG_SCRIPT_DEINSTALL);
-	if (strcmp(str, "post-deinstall") == 0)
-		return (PKG_SCRIPT_POST_DEINSTALL);
-	return (PKG_SCRIPT_UNKNOWN);
-}
-
-static int
 parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr)
 {
 	struct sbuf *tmp = NULL;
@@ -349,6 +848,7 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 
 	pair = item->data.mapping.pairs.start;
 
+	pkg_debug(3, "%s", "Manifest: parsing mapping");
 	while (pair < item->data.mapping.pairs.top) {
 		key = yaml_document_get_node(doc, pair->key);
 		val = yaml_document_get_node(doc, pair->value);
@@ -443,6 +943,14 @@ parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr
 			urldecode(val->data.scalar.value, &tmp);
 			pkg_addscript(pkg, sbuf_get(tmp), script_type);
 			break;
+		case PKG_ANNOTATIONS:
+			if (val->type != YAML_SCALAR_NODE)
+				pkg_emit_error("Skipping malformed annotation %s",
+				    key->data.scalar.value);
+			else
+				pkg_addannotation(pkg, key->data.scalar.value,
+				    val->data.scalar.value);
+			break;
 		}
 
 		++pair;
@@ -506,7 +1014,7 @@ pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item,
 	}
 
 	if (key != NULL)
-		pkg_addfile_attr(pkg, key->data.scalar.value, sum, uname, gname,
+		pkg_addfile_attr(pkg, filename, sum, uname, gname,
 		    perm, false);
 
 	return (EPKG_OK);
@@ -618,22 +1126,13 @@ pkg_set_deps_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
 }
 
 static int
-manifest_key_cmp(const void *pkey, const void *pmanifest_key)
-{
-	const struct manifest_key *mkey =
-			(const struct manifest_key*)pmanifest_key;
-	const char *key = (const char *)pkey;
-
-	return strcasecmp(key, mkey->key);
-}
-
-static int
-parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
+parse_root_node(struct pkg *pkg, struct pkg_manifest_key *keys,  yaml_node_t *node, yaml_document_t *doc) {
 	yaml_node_pair_t *pair;
 	yaml_node_t *key;
 	yaml_node_t *val;
 	int retcode = EPKG_OK;
-	struct manifest_key *selected_key;
+	struct pkg_manifest_key *selected_key;
+	struct dataparser *dp;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
@@ -656,12 +1155,14 @@ parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
 			continue;
 		}
 
-		selected_key = bsearch(key->data.scalar.value, manifest_keys,
-				sizeof(manifest_keys) / sizeof(manifest_keys[0]) - 1,
-				sizeof(manifest_keys[0]), manifest_key_cmp);
-		if (selected_key != NULL && val->type == selected_key->valid_type) {
-			retcode = selected_key->parse_data(pkg, val, doc,
-					selected_key->type);
+		pkg_debug(2, "Manifest: found key: '%s'", key->data.scalar.value);
+
+		HASH_FIND_STR(keys, key->data.scalar.value, selected_key);
+		if (selected_key != NULL) {
+			HASH_FIND_YAMLT(selected_key->parser, &val->type, dp);
+			if (dp != NULL) {
+				dp->parse_data(pkg, val, doc, selected_key->type);
+			}
 		}
 		++pair;
 	}
@@ -669,70 +1170,207 @@ parse_root_node(struct pkg *pkg, yaml_node_t *node, yaml_document_t *doc) {
 	return (retcode);
 }
 
-int
-pkg_parse_manifest(struct pkg *pkg, char *buf)
+static int
+scan_manifest(struct pkg *pkg, struct pkg_manifest_parser *p)
 {
-	yaml_parser_t parser;
+	int level = 0;
+	int rc = EPKG_OK;
+	struct pmk *selected_key;
+	struct dparser *dp;
+
+	pkg_debug(2, "%s", "Start scanning the manifest");
+
+	for (;;) {
+		if (!yaml_parser_parse(&p->parser, &p->event)) {
+			pkg_emit_error("Invalid manifest format");
+			rc = EPKG_FATAL;
+			break;
+		}
+		pkg_debug(3, "YAML event: %d\n", p->event.type);
+		if (p->event.type == YAML_STREAM_END_EVENT ||
+		    p->event.type == YAML_DOCUMENT_END_EVENT)
+			break;
+
+		if (level == 0 &&
+		    (p->event.type == YAML_STREAM_START_EVENT ||
+		     p->event.type == YAML_DOCUMENT_START_EVENT))
+			continue;
+
+		if (level == 0 && p->event.type == YAML_MAPPING_START_EVENT) {
+			level++;
+			continue;
+		}
+
+		if (level == 0 && p->event.type == YAML_MAPPING_START_EVENT) {
+			pkg_emit_error("Invalid manifest format: la");
+			rc = EPKG_FATAL;
+			break;
+		}
+
+		if (level == 1 ) {
+			if (p->event.type == YAML_MAPPING_END_EVENT) {
+				level--;
+				continue;
+			}
+
+			if (p->event.type != YAML_SCALAR_EVENT) {
+				pkg_emit_error("Invalid manifest format");
+				rc = EPKG_FATAL;
+				break;
+			}
+
+			HASH_FIND_STR(p->keys, p->event.data.scalar.value, selected_key);
+			if (selected_key != NULL) {
+				pkg_debug(2, "Found keyword '%s'",  p->event.data.scalar.value);
+				if (!yaml_parser_parse(&p->parser, &p->event)) {
+					pkg_emit_error("Inavlid manifest format");
+					rc = EPKG_FATAL;
+					break;
+				}
+
+				HASH_FIND_YAMLEVT(selected_key->parser, &p->event.type, dp);
+				if (dp != NULL) {
+					dp->parse_data(pkg, p , selected_key->type);
+				} else {
+					pkg_emit_error("No parser associated with '%s'",  p->event.data.scalar.value);
+					rc = EPKG_FATAL;
+					break;
+				}
+			} else {
+				pkg_emit_error("Unknown keyword: '%s'", p->event.data.scalar.value);
+				rc = EPKG_FATAL;
+				break;
+			}
+		}
+	}
+
+	return (rc);
+}
+
+static int
+parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, yaml_parser_t *parser)
+{
 	yaml_document_t doc;
 	yaml_node_t *node;
 	int retcode = EPKG_FATAL;
+
+	yaml_parser_load(parser, &doc);
+	node = yaml_document_get_root_node(&doc);
+	if (node != NULL) {
+		if (node->type != YAML_MAPPING_NODE) {
+			pkg_emit_error("Invalid manifest format in package");
+		} else {
+			retcode = parse_root_node(pkg, keys, node, &doc);
+		}
+	} else {
+		pkg_emit_error("Invalid manifest format: %s", parser->problem);
+	}
+
+	yaml_document_delete(&doc);
+
+	return (retcode);
+}
+
+static int
+archive_reader(void * data, unsigned char *buf, size_t size, size_t *r)
+{
+	struct archive *a = (struct archive *)data;
+
+	*r = archive_read_data(a, buf, size);
+
+	return (1);
+}
+
+int
+pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manifest_key *keys)
+{
+	yaml_parser_t parser;
+	int rc;
+
+	assert(pkg != NULL);
+
+	pkg_debug(2, "%s", "Parsing manifest from archive");
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input(&parser, archive_reader, a);
+
+	rc = parse_manifest(pkg, keys, &parser);
+
+	yaml_parser_delete(&parser);
+
+	return (rc);
+}
+
+int
+pkg_parse_manifest_ev(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_parser *p)
+{
+	int rc;
+
+	assert(pkg != NULL);
+	assert(buf != NULL);
+	assert(p != NULL);
+
+	yaml_parser_set_input_string(&p->parser, buf, len);
+
+	rc = scan_manifest(pkg, p);
+
+	return (rc);
+}
+
+int
+pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *keys)
+{
+	yaml_parser_t parser;
+	int rc;
 
 	assert(pkg != NULL);
 	assert(buf != NULL);
 
+	pkg_debug(2, "%s", "Parsing manifest from buffer");
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_string(&parser, buf, strlen(buf));
-	yaml_parser_load(&parser, &doc);
 
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid manifest format");
-		} else {
-			parse_root_node(pkg, node, &doc);
-			retcode = pkg_is_valid(pkg);
-		}
-	} else {
-		pkg_emit_error("Invalid manifest format");
-	}
+	rc = parse_manifest(pkg, keys, &parser);
 
-	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
 
-	return retcode;
+	return (rc);
 }
 
 int
-pkg_parse_manifest_file(struct pkg *pkg, FILE *f)
+pkg_parse_manifest_file_ev(struct pkg *pkg, FILE *f, struct pkg_manifest_parser *p)
+{
+	int rc;
+
+	assert(pkg != NULL);
+	assert(f != NULL);
+	assert(p != NULL);
+
+	pkg_debug(2, "%s", "Parsing manifest from file (event type)");
+	yaml_parser_set_input_file(&p->parser, f);
+
+	rc = scan_manifest(pkg, p);
+
+	return (rc);
+}
+
+int
+pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *keys)
 {
 	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
-	int retcode = EPKG_FATAL;
+	int rc;
 
 	assert(pkg != NULL);
 	assert(f != NULL);
 
+	pkg_debug(2, "%s", "Parsing manifest from file");
 	yaml_parser_initialize(&parser);
 	yaml_parser_set_input_file(&parser, f);
-	yaml_parser_load(&parser, &doc);
 
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid manifest format");
-		} else {
-			parse_root_node(pkg, node, &doc);
-			retcode = pkg_is_valid(pkg);
-		}
-	} else {
-		pkg_emit_error("Invalid manifest format");
-	}
+	rc = parse_manifest(pkg, keys, &parser);
 
-	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
 
-	return retcode;
+	return (rc);
 }
 
 struct pkg_yaml_emitter_data {
@@ -846,20 +1484,21 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 }
 
 static int
-emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
+emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 {
 	yaml_document_t doc;
 	char tmpbuf[BUFSIZ];
-	struct pkg_dep *dep = NULL;
-	struct pkg_option *option = NULL;
-	struct pkg_file *file = NULL;
-	struct pkg_dir *dir = NULL;
-	struct pkg_category *category = NULL;
-	struct pkg_license *license = NULL;
-	struct pkg_user *user = NULL;
-	struct pkg_group *group = NULL;
-	struct pkg_shlib *shlib = NULL;
-	struct sbuf *tmpsbuf = NULL;
+	struct pkg_dep		*dep      = NULL;
+	struct pkg_option	*option   = NULL;
+	struct pkg_file		*file     = NULL;
+	struct pkg_dir		*dir      = NULL;
+	struct pkg_category	*category = NULL;
+	struct pkg_license	*license  = NULL;
+	struct pkg_user		*user     = NULL;
+	struct pkg_group	*group    = NULL;
+	struct pkg_shlib	*shlib    = NULL;
+	struct pkg_note		*note     = NULL;
+	struct sbuf		*tmpsbuf  = NULL;
 	int rc = EPKG_OK;
 	int mapping;
 	int seq = -1;
@@ -868,12 +1507,13 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 	int i;
 /*	int users = -1;
 	int groups = -1;*/
-	const char *comment, *desc, *infos, *message, *name, *pkgarch;
+	const char *comment, *desc, *message, *name, *pkgarch;
 	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
 	const char *repopath, *pkgsum;
 	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize, pkgsize;
+	yaml_mapping_style_t manifest_mapping = YAML_FLOW_MAPPING_STYLE;
 
 #define manifest_append_map(id, map, key, block) do {			\
 	int scalar_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
@@ -881,17 +1521,20 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 	yaml_document_append_mapping_pair(&doc, map, scalar_obj, id);	\
 } while (0)
 
+	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
+		manifest_mapping = YAML_BLOCK_MAPPING_STYLE;
+
 	yaml_document_initialize(&doc, NULL, NULL, NULL, 0, 1);
 	mapping = yaml_document_add_mapping(&doc, NULL,
-	    YAML_BLOCK_MAPPING_STYLE);
+	    manifest_mapping);
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
 	    PKG_COMMENT, &comment, PKG_ARCH, &pkgarch, PKG_WWW, &www,
 	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
-	    PKG_VERSION, &version, PKG_INFOS, &infos, PKG_REPOPATH, &repopath,
-	    PKG_CKSUM, &pkgsum, PKG_NEW_PKGSIZE, &pkgsize);
+	    PKG_VERSION, &version, PKG_REPOPATH, &repopath,
+	    PKG_CKSUM, &pkgsum, PKG_PKGSIZE, &pkgsize);
 	manifest_append_kv(mapping, "name", name, PLAIN);
 	manifest_append_kv(mapping, "version", version, PLAIN);
 	manifest_append_kv(mapping, "origin", pkgorigin, PLAIN);
@@ -974,30 +1617,39 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 		manifest_append_kv(map, pkg_option_opt(option),
 		    pkg_option_value(option), PLAIN);
 	}
+	map = -1;
+	while (pkg_annotations(pkg, &note) == EPKG_OK) {
+		if (map == -1)
+			manifest_append_map(map, mapping, "annotations", FLOW);
+		manifest_append_kv(map, pkg_annotation_tag(note),
+		    pkg_annotation_value(note), PLAIN);
+	}
 
-	if (!compact) {
+	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		map = -1;
-		while (pkg_files(pkg, &file) == EPKG_OK) {
-			const char *pkg_sum = pkg_file_cksum(file);
+		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {
+			while (pkg_files(pkg, &file) == EPKG_OK) {
+				const char *pkg_sum = pkg_file_cksum(file);
 
-			if (pkg_sum == NULL || pkg_sum[0] == '\0')
-				pkg_sum = "-";
+				if (pkg_sum == NULL || pkg_sum[0] == '\0')
+					pkg_sum = "-";
 
-			if (map == -1)
-				manifest_append_map(map, mapping, "files", BLOCK);
-			urlencode(pkg_file_path(file), &tmpsbuf);
-			manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
-		}
+				if (map == -1)
+					manifest_append_map(map, mapping, "files", BLOCK);
+				urlencode(pkg_file_path(file), &tmpsbuf);
+				manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
+			}
 
-		seq = -1;
-		map = -1;
-		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-			const char *try_str;
-			if (map == -1)
-				manifest_append_map(map, mapping, "directories", BLOCK);
-			urlencode(pkg_dir_path(dir), &tmpsbuf);
-			try_str = pkg_dir_try(dir) ? "y" : "n";
-			manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
+			seq = -1;
+			map = -1;
+			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+				const char *try_str;
+				if (map == -1)
+					manifest_append_map(map, mapping, "directories", BLOCK);
+				urlencode(pkg_dir_path(dir), &tmpsbuf);
+				try_str = pkg_dir_try(dir) ? "y" : "n";
+				manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
+			}
 		}
 
 		map = -1;
@@ -1042,11 +1694,6 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, bool compact)
 			    LITERAL);
 		}
 	}
-	if (infos != NULL && *infos != '\0') {
-		urlencode(infos, &tmpsbuf);
-		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf),
-		    LITERAL);
-	}
 
 	if (message != NULL && *message != '\0') {
 		urlencode(message, &tmpsbuf);
@@ -1073,8 +1720,14 @@ pkg_emit_manifest_digest(const unsigned char *digest, size_t len, char *hexdiges
 	hexdigest[len * 2] = '\0';
 }
 
-int
-pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact, char **pdigest)
+/*
+ * This routine is able to output to either a (FILE *) or a (struct sbuf *). It
+ * exist only to avoid code duplication and should not be called except from
+ * pkg_emit_manifest_file() and pkg_emit_manifest_sbuf().
+ */
+static int
+pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
+	    char **pdigest, bool out_is_a_sbuf)
 {
 	yaml_emitter_t emitter;
 	struct pkg_yaml_emitter_data emitter_data;
@@ -1092,46 +1745,19 @@ pkg_emit_manifest_file(struct pkg *pkg, FILE *f, bool compact, char **pdigest)
 
 	yaml_emitter_initialize(&emitter);
 	yaml_emitter_set_unicode(&emitter, 1);
-	emitter_data.data.file = f;
-	yaml_emitter_set_output(&emitter, yaml_write_file, &emitter_data);
+	yaml_emitter_set_width(&emitter, -1);
 
-	rc = emit_manifest(pkg, &emitter, compact);
-
-	if (emitter_data.sign_ctx != NULL) {
-		SHA256_Final(digest, emitter_data.sign_ctx);
-		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
-		free(emitter_data.sign_ctx);
+	if (out_is_a_sbuf) { /* out is (struct sbuf *) */
+		emitter_data.data.sbuf = out;
+		yaml_emitter_set_output(&emitter, yaml_write_buf, &emitter_data);
+	} else { /* out is (FILE *) */
+		emitter_data.data.file = out;
+		yaml_emitter_set_output(&emitter, yaml_write_file, &emitter_data);
 	}
-	yaml_emitter_delete(&emitter);
 
-	return (rc);
-}
-
-int
-pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, bool compact, char **pdigest)
-{
-	yaml_emitter_t emitter;
-	struct pkg_yaml_emitter_data emitter_data;
-	unsigned char digest[SHA256_DIGEST_LENGTH];
-	int rc;
+	rc = emit_manifest(pkg, &emitter, flags);
 
 	if (pdigest != NULL) {
-		*pdigest = malloc(sizeof(digest) * 2 + 1);
-		emitter_data.sign_ctx = malloc(sizeof(SHA256_CTX));
-		SHA256_Init(emitter_data.sign_ctx);
-	}
-	else {
-		emitter_data.sign_ctx = NULL;
-	}
-
-	yaml_emitter_initialize(&emitter);
-	yaml_emitter_set_unicode(&emitter, 1);
-	emitter_data.data.sbuf = b;
-	yaml_emitter_set_output(&emitter, yaml_write_buf, &emitter_data);
-
-	rc = emit_manifest(pkg, &emitter, compact);
-
-	if (emitter_data.sign_ctx != NULL) {
 		SHA256_Final(digest, emitter_data.sign_ctx);
 		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
 		free(emitter_data.sign_ctx);
@@ -1143,12 +1769,26 @@ pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, bool compact, char **pdi
 }
 
 int
-pkg_emit_manifest(struct pkg *pkg, char **dest, bool compact, char **pdigest)
+pkg_emit_manifest_file(struct pkg *pkg, FILE *f, short flags, char **pdigest)
+{
+
+	return (pkg_emit_manifest_generic(pkg, f, flags, pdigest, false));
+}
+
+int
+pkg_emit_manifest_sbuf(struct pkg *pkg, struct sbuf *b, short flags, char **pdigest)
+{
+
+	return (pkg_emit_manifest_generic(pkg, b, flags, pdigest, true));
+}
+
+int
+pkg_emit_manifest(struct pkg *pkg, char **dest, short flags, char **pdigest)
 {
 	struct sbuf *b = sbuf_new_auto();
 	int rc;
 
-	rc = pkg_emit_manifest_sbuf(pkg, b, compact, pdigest);
+	rc = pkg_emit_manifest_sbuf(pkg, b, flags, pdigest);
 
 	if (rc != EPKG_OK) {
 		sbuf_delete(b);

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 9, 2013
+.Dd June 30, 2013
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -25,7 +25,7 @@
 .Nm
 .Op Fl r Ar reponame
 .Op Fl dgiqUxy
-.Ar <pkg-name>
+.Ar pkg-name
 .Op ...
 .Nm
 .Op Fl r Ar reponame
@@ -56,7 +56,7 @@ Fetch all packages.
 Fetch the package and its dependencies as well.
 .It Fl g
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a shell glob pattern.
 .It Fl i
 Make the standard or regular expression
@@ -64,10 +64,6 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case insensitive.
-.It Fl L
-Backwards compatbility flag for
-.Fl U .
-This is planned to be removed.
 .It Fl q
 Quiet mode.
 Show less output.
@@ -85,7 +81,7 @@ Skip updating the repository catalogues with
 Use the local cache only.
 .It Fl x
 Treat
-.Ar <pkg-name>
+.Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax
 of
 .Xr re_format 7 .
@@ -94,20 +90,23 @@ Assume yes when asked for confirmation before fetching packages.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
-.Nm .
+.Nm :
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PKG_DBDIR
+.El
+.Pp
 See
 .Xr pkg.conf 5
-for further description.
-.Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It PKG_DBDIR
-.El
+for additional environment variables that control behaviour.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
 .Sh SEE ALSO
+.Xr fetch 3 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,

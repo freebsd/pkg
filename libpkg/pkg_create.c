@@ -53,13 +53,14 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	bool		 developer;
 	struct stat	 st;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	int64_t		 flatsize = 0;
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
 		return (EPKG_FATAL);
 	}
 	/*
-	 * if the checksum is not provided in the manifest recompute it
+	 * Get / compute size / checksum if not provided in the manifest
 	 */
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *pkg_path = pkg_file_path(file);
@@ -70,8 +71,14 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		else
 			strlcpy(fpath, pkg_path, sizeof(fpath));
 
-		if ((pkg_sum == NULL || pkg_sum[0] == '\0') &&
-		    lstat(fpath, &st) == 0 && !S_ISLNK(st.st_mode)) {
+		if (lstat(fpath, &st) != 0 || S_ISLNK(st.st_mode))
+			continue;
+
+		if (file->size == 0)
+			file->size = (int64_t)st.st_size;
+		flatsize += file->size;
+
+		if (pkg_sum == NULL || pkg_sum[0] == '\0') {
 			if (pkg->type == PKG_OLD_FILE) {
 				if (md5_file(fpath, sha256) != EPKG_OK)
 					return (EPKG_FATAL);
@@ -82,11 +89,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			strlcpy(file->sum, sha256, sizeof(file->sum));
 		}
 	}
+	pkg_set(pkg, PKG_FLATSIZE, flatsize);
 
-	/*
-	 * Register shared libraries used by the package if SHLIBS
-	 * enabled in conf.  Deletes shlib info if not.
-	 */
 	if (pkg->type == PKG_OLD_FILE) {
 		const char *desc, *display, *comment;
 		char oldcomment[BUFSIZ];
@@ -101,11 +105,21 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		snprintf(oldcomment, sizeof(oldcomment), "%s\n", comment);
 		packing_append_buffer(pkg_archive, oldcomment, "+COMMENT", strlen(oldcomment));
 	} else {
-		pkg_register_shlibs(pkg);
+		/*
+		 * Register shared libraries used by the package if
+		 * SHLIBS enabled in conf.  Deletes shlib info if not.
+		 */
+		struct sbuf *b = sbuf_new_auto();
 
-		pkg_emit_manifest(pkg, &m, false, NULL);
-		packing_append_buffer(pkg_archive, m, "+MANIFEST", strlen(m));
-		free(m);
+		pkg_register_shlibs(pkg, root);
+
+		pkg_emit_manifest_sbuf(pkg, b, PKG_MANIFEST_EMIT_COMPACT, NULL);
+		packing_append_buffer(pkg_archive, sbuf_data(b), "+COMPACT_MANIFEST", sbuf_len(b));
+		sbuf_clear(b);
+		pkg_emit_manifest_sbuf(pkg, b, 0, NULL);
+		sbuf_finish(b);
+		packing_append_buffer(pkg_archive, sbuf_data(b), "+MANIFEST", sbuf_len(b));
+		sbuf_delete(b);
 	}
 
 	pkg_get(pkg, PKG_MTREE, &mtree);
@@ -217,6 +231,9 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	regmatch_t	 pmatch[2];
 	size_t		 size;
 	char		*www = NULL;
+	struct pkg_manifest_key *keys = NULL;
+
+	pkg_debug(1, "Creating package from stage directory: '%s'", rootdir);
 
 	/* Load the manifest from the metadata directory */
 	if (snprintf(path, sizeof(path), "%s/+MANIFEST", md_dir) == -1)
@@ -226,9 +243,9 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
-		goto cleanup;
 
-	if ((ret = pkg_load_manifest_file(pkg, path)) != EPKG_OK) {
+	pkg_manifest_keys_new(&keys);
+	if ((ret = pkg_load_manifest_file(pkg, path, keys)) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -239,8 +256,10 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	if (buf == NULL) {
 		if (snprintf(path, sizeof(path), "%s/+DESC", md_dir) == -1)
 			goto cleanup;
-		if (access(path, F_OK) == 0)
+		if (access(path, F_OK) == 0) {
+			pkg_debug(1, "Taking description from: '%s'", path);
 			pkg_set_from_file(pkg, PKG_DESC, path, false);
+		}
 	}
 
 	/* if no message try to get it from a file */
@@ -249,8 +268,10 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		ret = snprintf(path, sizeof(path), "%s/+DISPLAY", md_dir);
 		if (ret == -1)
 			goto cleanup;
-		if (access(path, F_OK) == 0)
+		if (access(path, F_OK) == 0) {
+			pkg_debug(1, "Taking message from: '%s'", path);
 			pkg_set_from_file(pkg, PKG_MESSAGE, path, false);
+		}
 	}
 
 	/* if no arch autodetermine it */
@@ -266,8 +287,10 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		ret = snprintf(path, sizeof(path), "%s/+MTREE_DIRS", md_dir);
 		if (ret == -1)
 			goto cleanup;
-		if (access(path, F_OK) == 0)
+		if (access(path, F_OK) == 0) {
+			pkg_debug(1, "Taking mtree definition from: '%s'", path);
 			pkg_set_from_file(pkg, PKG_MTREE, path, false);
+		}
 	}
 
 	for (i = 0; scripts[i] != NULL; i++) {
@@ -330,6 +353,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 cleanup:
 	free(pkg);
 	free(manifest);
+	pkg_manifest_keys_free(keys);
 	if (ret == EPKG_OK)
 		ret = packing_finish(pkg_archive);
 	return ret;

@@ -153,10 +153,11 @@ exec_delete(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	if ((pkg_jobs_find(jobs, "ports-mgmt/pkg", NULL) == EPKG_OK)
+	if (((pkg_jobs_find(jobs, "ports-mgmt/pkg", NULL) == EPKG_OK) ||
+	    (pkg_jobs_find(jobs, "ports-mgmt/pkg-devel", NULL) == EPKG_OK))
 	     && !force) {
 		warnx("You are about to delete 'ports-mgmt/pkg' which is really "
-		    "dangerous, you can't do that without specifying -f");
+		    "dangerous. You can't do that without specifying -f");
 		goto cleanup;
 	}
 
@@ -176,11 +177,13 @@ exec_delete(int argc, char **argv)
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
 		    "Deinstallation has been requested for the following %d packages:\n\n", nbactions);
+		if (dry_run) {
+			retcode = EX_OK;
+			goto cleanup;
+		}
 		if (!yes && !dry_run)
 			yes = query_yesno(
 		            "\nProceed with deinstalling packages [y/N]: ");
-		if (dry_run)
-			yes = false;
 	}
 	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;

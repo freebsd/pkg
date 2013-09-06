@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd June 11, 2013
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ Activation status check mode.
 Prevent
 .Nm
 from automatically creating or initializing the sqlite database in
-.Fa /var/db/pkg/local.sqlite
+.Pa /var/db/pkg/local.sqlite
 if it does not already exist.
 .Pp
 Prevent
@@ -91,6 +91,43 @@ The exit status should be a reliable indication of whether a system
 is configured to use
 .Nm
 as its package management system or not.
+.Pp
+Example usage:
+.Bd -literal -offset indent
+  if pkg -N >/dev/null 2>&1; then
+    # pkgng-specifics
+  else
+    # pkg_install-specifics
+  fi
+.Ed
+.Pp
+The
+.Fl N
+flag was first released in the
+.Pa /usr/sbin/pkg
+bootstrapper
+in FreeBSD 8.4,
+but was missing from FreeBSD 9.1.
+It was not released in
+.Nm
+until 1.0.13.
+Because of this, it may not be enough to just call
+.Nm Fl N ,
+as the bootstrapper may be invoked, or an error returned
+from
+.Nm .
+The following script is the safest way to detect if
+.Nm
+is installed and activated:
+.Bd -literal -offset indent
+  if TMPDIR=/dev/null ASSUME_ALWAYS_YES=1 \\
+       PACKAGESITE=file:///nonexistent \\
+       pkg info pkg >/dev/null 2>&1; then
+    # pkgng-specifics
+  else
+    # pkg_install-specifics
+  fi
+.Ed
 .It Fl j Ao jail name or id Ac
 .Nm
 will execute in the given
@@ -121,7 +158,7 @@ will use the specified file as a configuration file
 The following commands are supported by
 .Nm :
 .Bl -tag -width indent
-.It Ic help Ar <command>
+.It Ic help Ar command
 Display usage information of the specified command.
 .It Ic add
 Install a package from either a local source or a remote one.
@@ -130,6 +167,8 @@ When installing from remote source you need to specify the
 protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
+.It Ic annotate
+Add, modify or delete tag-value style annotations on packages.
 .It Ic audit
 Audits installed packages against known vulnerabilities.
 .It Ic autoremove
@@ -158,6 +197,10 @@ If a package is found in more than one remote repository,
 then installation happens from the first one.
 Downloading a package is tried from each package repository in turn,
 until the package is successfully fetched.
+.It Ic lock
+Prevent modification or deletion of a package.
+.It Ic plugins
+List the available plugins.
 .It Ic query
 Query information about installed packages.
 .It Ic register
@@ -178,6 +221,8 @@ Extreme care should be taken when using this command.
 Displays which packages link to a specific shared library.
 .It Ic stats
 Display package database statistics.
+.It Ic unlock
+Unlocks packages, allowing them to be modified or deleted
 .It Ic update
 Update the available remote repositories as listed in
 .Xr pkg.conf 5 .
@@ -202,9 +247,70 @@ is in
 See
 .Xr pkg.conf 5 .
 .\" ---------------------------------------------------------------------------
+.Sh EXAMPLES
+Search for a package:
+.Dl $ pkg search perl
+.Pp
+Install a package:
+.Dl Installing must specify a unique origin or version otherwise it will try installing all matches.
+.Pp
+.Dl % pkg install perl-5.14
+.Pp
+List installed packages:
+.Dl $ pkg info
+.Pp
+Upgrade from remote repository:
+.Dl % pkg upgrade
+.Pp
+Change the origin for an installed package:
+.Dl % pkg set -o lang/perl5.12:lang/perl5.14
+.Dl % pkg install -Rf lang/perl5.14
+.Pp
+List non-automatic packages:
+.Dl $ pkg query -e '%a = 0' %o
+.Pp
+List automatic packages:
+.Dl $ pkg query -e '%a = 1' %o
+.Pp
+Delete an installed package:
+.Dl % pkg delete perl-5.14
+.Pp
+Remove unneeded dependencies:
+.Dl % pkg autoremove
+.Pp
+Change a package from automatic to non-automatic, which will prevent
+.Ic autoremove
+from removing it:
+.Dl % pkg set -A 0 perl-5.14
+.Pp
+Change a package from non-automatic to automatic, which will make
+.Ic autoremove
+allow it be removed once nothing depends on it:
+.Dl % pkg set -A 1 perl-5.14
+.Pp
+Create package file from an installed package:
+.Dl % pkg create -o /usr/ports/packages/All perl-5.14
+.Pp
+Determine which package installed a file:
+.Dl $ pkg which /usr/local/bin/perl
+.Pp
+Audit installed packages for security advisories:
+.Dl $ pkg audit
+.Pp
+Check installed packages for checksum mismatches:
+.Dl # pkg check -s -a
+.Pp
+Check for missing dependencies:
+.Dl # pkg check -d -a
+.\" ---------------------------------------------------------------------------
 .Sh SEE ALSO
+.Xr SBUF 9 ,
+.Xr elf 3 ,
+.Xr fetch 3 ,
+.Xr libarchive 3 ,
 .Xr pkg.conf 5 ,
 .Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,
@@ -230,7 +336,11 @@ See
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,
-.Xr pkg-which 8
+.Xr pkg-which 8 ,
+.Xr pthread 3
+.Pp
+To build your own package set for one or multiple servers see
+.Em ports-mgmt/poudriere
 .\" ---------------------------------------------------------------------------
 .Sh HISTORY
 The
@@ -241,15 +351,22 @@ command first appeared in
 .Sh AUTHORS AND CONTRIBUTORS
 .An Baptiste Daroussin Aq bapt@FreeBSD.org
 .An Julien Laffaye Aq jlaffaye@FreeBSD.org
-.An Philippe Pepiot Aq phil@philpep.org
-.An Will Andrews Aq will@FreeBSD.org
-.An Marin Atanasov Nikolov Aq dnaeon@gmail.com
-.An Bryan Drewery Aq bdrewery@FreeBSD.org
-.An Matthew Seaman Aq matthew@FreeBSD.org
+.An Philippe Pepiot <phil@philpep.org>
+.An Will Andrews <will@FreeBSD.org>
+.An Marin Atanasov Nikolov <dnaeon@gmail.com>
+.An Yuri Pankov <yuri.pankov@gmail.com>
+.An Alberto Villa <avilla@FreeBSD.org>
+.An Brad Davis <brd@FreeBSD.org>
+.An Matthew Seaman <matthew@FreeBSD.org>
+.An Bryan Drewery <bryan@shatow.net>
+.An Eitan Adler <eadler@FreeBSD.org>
+.An Romain Tarti\`ere <romain@FreeBSD.org>
+.An Vsevolod Stakhov <vsevolod@FreeBSD.org>
+.An Alexandre Perrin <alexandre.perrin@netoxygen.ch>
 .\" ---------------------------------------------------------------------------
 .Sh BUGS
 See the issue tracker at
-.Em https://github.com/pkgng/pkgng/issues
+.Em https://github.com/freebsd/pkg/issues
 .Pp
 Please direct questions and issues to the
 .An pkg@FreeBSD.org

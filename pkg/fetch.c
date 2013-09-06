@@ -55,7 +55,7 @@ exec_fetch(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkg_jobs	*jobs = NULL;
-	const char	__unused *reponame = NULL;
+	const char	*reponame = NULL;
 	int		 ch;
 	int		 retcode = EX_SOFTWARE;
 	bool		 auto_update;
@@ -68,7 +68,7 @@ exec_fetch(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 
-	while ((ch = getopt(argc, argv, "adgiLqr:Uuxy")) != -1) {
+	while ((ch = getopt(argc, argv, "adgiqr:Uuxy")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -82,9 +82,6 @@ exec_fetch(int argc, char **argv)
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
 			break;
-		case 'L':
-			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
-			/* FALLTHROUGH */
 		case 'U':
 			auto_update = false;
 			break;
@@ -156,6 +153,9 @@ exec_fetch(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db) != EPKG_OK)
+		goto cleanup;
+
+	if (reponame != NULL && pkg_jobs_set_repository(jobs, reponame) != EPKG_OK)
 		goto cleanup;
 
 	pkg_jobs_set_flags(jobs, f);

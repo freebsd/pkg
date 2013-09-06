@@ -1,12 +1,19 @@
 
 SUBDIR=	external \
 	libpkg \
-	pkg
+	pkg \
+	scripts
 
-NEWVERS=	newvers.sh
+NEWVERS=	${.CURDIR}/newvers.sh
 
 .if !defined(NOSTATIC)
 SUBDIR+=	pkg-static
+.endif
+
+ATF_INSTALLED!=	which atf-version 2>&1 || echo
+
+.if !empty(ATF_INSTALLED)
+SUBDIR+=	tests
 .endif
 
 PKGVERSION!=    sh ${NEWVERS} pkg
@@ -34,7 +41,7 @@ TARBALL_BASENAME=	pkg-${PKGVERSION}
 TARBALL_EXT=		tar.xz
 TARBALL_FILE=		${TARBALL_BASENAME}.${TARBALL_EXT}
 
-.PHONY: release do-release set-tag make-tarball regression-test \
+.PHONY: release set-tag make-tarball regression-test \
 	 ${_snapshot}
 
 all:	Doxyfile
@@ -42,19 +49,18 @@ all:	Doxyfile
 clean:
 	rm -f ${CLEANFILES}
 
-regression-test: clean all
-	@${ECHO} "==> Regression Test"
-
-do-release: regression-test
+release: regression-test set-tag make-tarball
 	@${ECHO} "==> Create New Release (${PKGVERSION})"
 
-release: do-release set-tag make-tarball
+regression-test: clean all
+	@${ECHO} "==> Regression Test"
+	@${MAKE} -C tests run
 
 set-tag:
 	@if [ -n "$$( git status -uno -s )" ] ; then \
 	    git commit -uno -m "New Release ${PKGVERSION}" ${VERSIONED_FILES} ; \
 	fi
-	@if git tag -l | grep -F ${PKGVERSION} ; then \
+	@if git tag -l | grep "^${PKGVERSION}$$" ; then \
 	    ${ECHO} "---> Error: tag ${PKGVERSION} already exists" ; \
 	    ${ECHO} "---> Either delete the tag (git tag -d ${PKGVERSION})" ; \
 	    ${ECHO} "---> (but only if you haven't pushed yet) or edit" ; \
@@ -72,6 +78,6 @@ make-tarball:
 	    -o ${TARBALL_FILE} ${PKGVERSION}
 
 Doxyfile: Doxyfile.in ${NEWVERS} ${_snapshot}
-	sed -e 's,%%PKGVERSION%%,${PKGVERSION},' ${.TARGET:S,$,.in,} > ${.TARGET}
+	sed -e 's,%%PKGVERSION%%,${PKGVERSION},' ${.CURDIR}/${.TARGET:S,$,.in,} > ${.TARGET}
 
 .include <bsd.subdir.mk>

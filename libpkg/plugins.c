@@ -283,6 +283,7 @@ pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64
 		if (errstr != NULL) {
 			pkg_emit_error("Unable to convert %s to int64: %s",
 			    val, errstr);
+			free(conf);
 			return (EPKG_FATAL);
 		}
 	} else {
@@ -579,7 +580,7 @@ pkg_plugin_parse(struct pkg_plugin *p)
 	return (EPKG_OK);
 }
 
-int
+void
 pkg_plugins_shutdown(void)
 {
 	struct pkg_plugin *p = NULL;
@@ -600,5 +601,5 @@ pkg_plugins_shutdown(void)
 	 */
 	pkg_plugin_free();
 
-	return (EPKG_OK);
+	return;
 }

@@ -41,9 +41,16 @@ struct pkgdb {
 
 struct pkgdb_it {
 	struct pkgdb	*db;
+	sqlite3	*sqlite;
 	sqlite3_stmt	*stmt;
-	int		 type;
+	short	type;
+	short	flags;
+	short	finished;
 };
+
+#define PKGDB_IT_FLAG_CYCLED (0x1)
+#define PKGDB_IT_FLAG_ONCE (0x1 << 1)
+#define PKGDB_IT_FLAG_AUTO (0x1 << 2)
 
 
 /**
@@ -56,13 +63,7 @@ int pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_commit(sqlite3 *sqlite, const char *savepoint);
 int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 
-struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type);
-
-struct pkgdb_it *pkgdb_query_delete(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, int recursive);
-struct pkgdb_it *pkgdb_query_autoremove(struct pkgdb *db);
-struct pkgdb_it *pkgdb_query_upgrades(struct pkgdb *db, const char *reponame, bool all, bool pkgversiontest);
-struct pkgdb_it *pkgdb_query_installs(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, bool force, bool recursive, bool pkgversiontest);
-struct pkgdb_it *pkgdb_query_fetch(struct pkgdb *db, match_t type, int nbpkgs, char **pkgs, const char *reponame, unsigned flags);
+struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short flags);
 
 int pkgdb_obtain_lock(struct pkgdb *db);
 int pkgdb_release_lock(struct pkgdb *db);
@@ -76,14 +77,14 @@ void pkgshell_open(const char **r);
  * @param sqlite destination db pointer
  * @return EPKG_OK if succeed
  */
-int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite);
+int pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite, bool legacy);
 
 /**
  * Init repository for pkgdb_repo* functions
  * @param sqlite sqlite object
  * @return EPKG_OK if succeed
  */
-int pkgdb_repo_init(sqlite3 *sqlite);
+int pkgdb_repo_init(sqlite3 *sqlite, bool legacy);
 
 /**
  * Close repodb and commit/rollback transaction started
@@ -112,14 +113,14 @@ int pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum);
  * inserted one, EPKG_FATAL if error occurred
  */
 int pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, const char *manifest_digest, bool forced);
+		sqlite3 *sqlite, const char *manifest_digest, bool forced, bool legacy);
 
 /**
  * Remove specified pkg from repo
- * @param pkg package to remove
+ * @param origin the origin of package to remove
  * @return EPKG_OK if succeeded
  */
-int pkgdb_repo_remove_package(struct pkg *pkg);
+int pkgdb_repo_remove_package(const char *origin);
 
 /**
  * Upgrade repo db version if required

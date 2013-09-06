@@ -1,23 +1,20 @@
-PROG=	test
-SRCS=	test.c		\
-	manifest.c	\
-	pkg.c
+TESTS=	test pkg_printf_test pkg_validation
 
-CFLAGS+=-I.			\
-	-I/usr/local/include	\
-	-I../libpkg
-LDADD+=	-L/usr/local/lib	\
-	-latf-c			\
-	-L../libpkg		\
-	-lpkg
-NO_MAN=	true
+SRCS=		tests.h
+test_SRCS=	manifest.c	\
+		pkg.c
 
-TESTS=	manifest \
-	pkg
+pkg_printf_test_SRCS=	pkg_printf.c
 
-run: ${PROG}
-.for test in ${TESTS}
-	@env LD_LIBRARY_PATH=${.CURDIR}/../../libpkg ./${PROG} ${test}
-.endfor
+CFLAGS+=	-DTESTING -I../../libpkg
+LDADD+=		-Wl,-rpath ${.CURDIR}/../../libpkg \
+		-L../../libpkg	\
+		-lsbuf \
+		-lpkg
 
-.include <bsd.prog.mk>
+CLEANFILES+=	pkg_printf.c
+
+pkg_printf.c:	${.CURDIR}/../../libpkg/pkg_printf.c
+	ln -sf ${.OODATE} ${.TARGET}
+
+.include "../bsd.tests.mk"

@@ -34,13 +34,14 @@
 #include <uthash.h>
 
 #include <openssl/pem.h>
+#include <openssl/rsa.h>
 #include <openssl/sha.h>
 #include <openssl/md5.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 
 #define ERROR_SQLITE(db) \
-	pkg_emit_error("sqlite: %s (%s:%d)", sqlite3_errmsg(db), __FILE__, __LINE__)
+	pkg_emit_error("sqlite: %s", sqlite3_errmsg(db), __FILE__, __LINE__)
 
 #define HASH_FIND_INO(head,ino,out)                                          \
 	HASH_FIND(hh,head,ino,sizeof(ino_t),out)
@@ -63,6 +64,13 @@ struct dns_srvinfo {
 	struct dns_srvinfo *next;
 };
 
+struct rsa_key {
+	pem_password_cb *pw_cb;
+	char *path;
+	RSA *key;
+};
+
+
 void sbuf_init(struct sbuf **);
 int sbuf_set(struct sbuf **, const char *);
 char * sbuf_get(struct sbuf *);
@@ -76,12 +84,14 @@ int is_dir(const char *);
 int is_conf_file(const char *path, char *newpath, size_t len);
 
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
+int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
 
-int rsa_sign(char *path, pem_password_cb *password_cb, char *rsa_key_path,
-		 unsigned char **sigret, unsigned int *siglen);
+int rsa_new(struct rsa_key **, pem_password_cb *, char *path);
+void rsa_free(struct rsa_key *);
+int rsa_sign(char *path, struct rsa_key *rsa, unsigned char **sigret, unsigned int *siglen);
 int rsa_verify(const char *path, const char *key,
-		unsigned char *sig, unsigned int sig_len);
+		unsigned char *sig, unsigned int sig_len, int fd);
 
 bool is_hardlink(struct hardlinks *hl, struct stat *st);
 
@@ -89,5 +99,6 @@ struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);
 
 int set_nameserver(const char *nsname);
+
 
 #endif

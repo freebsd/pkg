@@ -29,13 +29,15 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <ctype.h>
+#include <dirent.h>
 #include <dlfcn.h>
-#include <fcntl.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
+#include <sysexits.h>
 
 #ifdef BUNDLED_YAML
 #include <yaml.h>
@@ -48,17 +50,19 @@
 #include "private/event.h"
 
 #define ABI_VAR_STRING "${ABI}"
+#define REPO_NAME_PREFIX "repo-"
 
-pthread_mutex_t mirror_mtx;
 int eventpipe = -1;
 
 struct config_entry {
 	uint8_t type;
 	const char *key;
 	const char *def;
+	const char *desc;
 };
 
 static char myabi[BUFSIZ];
+static struct pkg_repo *repos = NULL;
 static struct pkg_config *config = NULL;
 static struct pkg_config *config_by_key = NULL;
 
@@ -71,16 +75,19 @@ static struct config_entry c[] = {
 #else
 		NULL,
 #endif
+		"Repository URL",
 	},
 	[PKG_CONFIG_DBDIR] = {
 		PKG_CONFIG_STRING,
 		"PKG_DBDIR",
 		"/var/db/pkg",
+		"Where the package databases are stored",
 	},
 	[PKG_CONFIG_CACHEDIR] = {
 		PKG_CONFIG_STRING,
 		"PKG_CACHEDIR",
 		"/var/cache/pkg",
+		"Directory containing cache of downloaded packages",
 	},
 	[PKG_CONFIG_PORTSDIR] = {
 		PKG_CONFIG_STRING,
@@ -90,61 +97,61 @@ static struct config_entry c[] = {
 #else
 		"/usr/ports",
 #endif
+		"Location of the ports collection",
 	},
 	[PKG_CONFIG_REPOKEY] = {
 		PKG_CONFIG_STRING,
 		"PUBKEY",
 		NULL,
-	},
-	[PKG_CONFIG_MULTIREPOS] = {
-		PKG_CONFIG_BOOL,
-		"PKG_MULTIREPOS",
-		NULL,
+		"Public key for authenticating packages from the chosen repository",
 	},
 	[PKG_CONFIG_HANDLE_RC_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
 		"HANDLE_RC_SCRIPTS",
 		NULL,
+		"Automatically handle restarting services",
 	},
 	[PKG_CONFIG_ASSUME_ALWAYS_YES] = {
 		PKG_CONFIG_BOOL,
 		"ASSUME_ALWAYS_YES",
 		NULL,
+		"Answer 'yes' to all pkg(8) questions",
 	},
-	[PKG_CONFIG_REPOS] = {
-		PKG_CONFIG_KVLIST,
-		"REPOS",
-		NULL,
+	[PKG_CONFIG_REPOS_DIR] = {
+		PKG_CONFIG_STRING,
+		"REPOS_DIR",
+		PREFIX"/etc/pkg/repos/",
+		"Location of the repository configuration files"
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
 		PKG_CONFIG_STRING,
 		"PLIST_KEYWORDS_DIR",
 		NULL,
+		"Directory containing definitions of plist keywords",
 	},
 	[PKG_CONFIG_SYSLOG] = {
 		PKG_CONFIG_BOOL,
 		"SYSLOG",
 		"YES",
-	},
-	[PKG_CONFIG_SHLIBS] = {
-		PKG_CONFIG_BOOL,
-		"SHLIBS",
-		"NO",
+		"Log pkg(8) operations via syslog(3)",
 	},
 	[PKG_CONFIG_AUTODEPS] = {
 		PKG_CONFIG_BOOL,
 		"AUTODEPS",
-		"NO",
+		"YES",
+		"Automatically append dependencies to fulfil dynamic linking requrements of binaries",
 	},
 	[PKG_CONFIG_ABI] = {
 		PKG_CONFIG_STRING,
 		"ABI",
 		myabi,
+		"Override the automatically detected ABI",
 	},
 	[PKG_CONFIG_DEVELOPER_MODE] = {
 		PKG_CONFIG_BOOL,
 		"DEVELOPER_MODE",
 		"NO",
+		"Add extra strict, pedantic warnings as an aid to package maintainers",
 	},
 	[PKG_CONFIG_PORTAUDIT_SITE] = {
 		PKG_CONFIG_STRING,
@@ -154,6 +161,17 @@ static struct config_entry c[] = {
 #else
 		"http://portaudit.FreeBSD.org/auditfile.tbz",
 #endif
+		"URL giving location of the audit database",
+	},
+	[PKG_CONFIG_VULNXML_SITE] = {
+		PKG_CONFIG_STRING,
+		"VULNXML_SITE",
+#ifdef DEFAULT_VULNXML_URL
+		DEFAULT_VULNXML_URL,
+#else
+		"http://www.vuxml.org/freebsd/vuln.xml.bz2",
+#endif
+		"URL giving location of the vulnxml database",
 	},
 	[PKG_CONFIG_MIRRORS] = {
 		PKG_CONFIG_STRING,
@@ -165,72 +183,116 @@ static struct config_entry c[] = {
 #else
 		NULL,
 #endif
+		"How to locate alternate mirror sites of a repository (one of: 'SRV', 'HTTP')",
 	},
 	[PKG_CONFIG_FETCH_RETRY] = {
 		PKG_CONFIG_INTEGER,
 		"FETCH_RETRY",
 		"3",
+		"How many times to retry fetching files",
 	},
 	[PKG_CONFIG_PLUGINS_DIR] = {
 		PKG_CONFIG_STRING,
 		"PKG_PLUGINS_DIR",
 		PREFIX"/lib/pkg/",
+		"Directory which pkg(8) will load plugins from",
 	},
 	[PKG_CONFIG_ENABLE_PLUGINS] = {
 		PKG_CONFIG_BOOL,
 		"PKG_ENABLE_PLUGINS",
 		"YES",
+		"Activate plugin support",
 	},
 	[PKG_CONFIG_PLUGINS] = {
 		PKG_CONFIG_LIST,
 		"PLUGINS",
 		NULL,
+		"List of plugins that pkg(8) should load",
 	},
 	[PKG_CONFIG_DEBUG_SCRIPTS] = {
 		PKG_CONFIG_BOOL,
 		"DEBUG_SCRIPTS",
 		"NO",
+		"Run shell scripts in verbose mode to facilitate debugging",
 	},
 	[PKG_CONFIG_PLUGINS_CONF_DIR] = {
 		PKG_CONFIG_STRING,
 		"PLUGINS_CONF_DIR",
 		PREFIX"/etc/pkg/",
+		"Directory containing plugin configuration data",
 	},
 	[PKG_CONFIG_PERMISSIVE] = {
 		PKG_CONFIG_BOOL,
 		"PERMISSIVE",
 		"NO",
+		"Permit package installation despite presence of conflicting packages",
 	},
 	[PKG_CONFIG_REPO_AUTOUPDATE] = {
 		PKG_CONFIG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
-	},
-	[PKG_CONFIG_HTTP_PROXY] = {
-		PKG_CONFIG_STRING,
-		"HTTP_PROXY",
-		NULL,
-	},
-	[PKG_CONFIG_FTP_PROXY] = {
-		PKG_CONFIG_STRING,
-		"FTP_PROXY",
-		NULL,
+		"Automatically update repository catalogues prior to package updates",
 	},
 	[PKG_CONFIG_NAMESERVER] = {
 		PKG_CONFIG_STRING,
 		"NAMESERVER",
 		NULL,
+		"Use this nameserver when looking up addresses",
 	},
 	[PKG_CONFIG_EVENT_PIPE] = {
 		PKG_CONFIG_STRING,
 		"EVENT_PIPE",
 		NULL,
+		"Send all events to the specified fifo or Unix socket",
 	},
 	[PKG_CONFIG_FETCH_TIMEOUT] = {
 		PKG_CONFIG_INTEGER,
 		"FETCH_TIMEOUT",
 		"30",
-	}
+		NULL,
+	},
+	[PKG_CONFIG_UNSET_TIMESTAMP] = {
+		PKG_CONFIG_BOOL,
+		"UNSET_TIMESTAMP",
+		"NO",
+		NULL,
+	},
+	[PKG_CONFIG_SSH_RESTRICT_DIR] = {
+		PKG_CONFIG_STRING,
+		"SSH_RESTRICT_DIR",
+		NULL,
+		"Directory the ssh subsystem will be restricted to",
+	},
+	[PKG_CONFIG_ENV] = {
+		PKG_CONFIG_KVLIST,
+		"PKG_ENV",
+		NULL,
+		"Environment variables pkg will use",
+	},
+	[PKG_CONFIG_DISABLE_MTREE] = {
+		PKG_CONFIG_BOOL,
+		"DISABLE_MTREE",
+		"NO",
+		"Experimental: disable MTREE processing on pkg installation",
+	},
+	[PKG_CONFIG_SSH_ARGS] = {
+		PKG_CONFIG_STRING,
+		"PKG_SSH_ARGS",
+		NULL,
+		"Extras arguments to pass to ssh(1)",
+	},
+	[PKG_CONFIG_DEBUG_LEVEL] = {
+		PKG_CONFIG_INTEGER,
+		"DEBUG_LEVEL",
+		"0",
+		"Level for debug messages",
+	},
+	[PKG_CONFIG_ALIAS] = {
+		PKG_CONFIG_KVLIST,
+		"ALIAS",
+		NULL,
+		"Command aliases",
+	},
 };
 
 static bool parsed = false;
@@ -440,41 +502,83 @@ pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *con
 	sbuf_delete(b);
 }
 
+static char *
+subst_packagesite_str(const char *oldstr)
+{
+	const char *myarch;
+	struct sbuf *newval;
+	const char *variable_string;
+	char *res;
+
+	variable_string = strstr(oldstr, ABI_VAR_STRING);
+	if (variable_string == NULL)
+		return strdup(oldstr);
+
+	newval = sbuf_new_auto();
+	sbuf_bcat(newval, oldstr, variable_string - oldstr);
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+	sbuf_cat(newval, myarch);
+	sbuf_cat(newval, variable_string + strlen(ABI_VAR_STRING));
+	sbuf_finish(newval);
+
+	res = strdup(sbuf_data(newval));
+	sbuf_free(newval);
+
+	return res;
+}
+
 /**
  * @brief Substitute PACKAGESITE variables
  */
 static void
 subst_packagesite(void)
 {
-	const char *variable_string;
 	const char *oldval;
-	const char *myarch;
-	struct sbuf *newval;
+	char *newval;
+
 	struct pkg_config *conf;
 	pkg_config_key k = PKG_CONFIG_REPO;
 
 	HASH_FIND_INT(config, &k, conf);
-	oldval = conf->string;
 
-	if (oldval == NULL || (variable_string = strstr(oldval, ABI_VAR_STRING)) == NULL)
+	if (conf == NULL)
 		return;
 
-	newval = sbuf_new_auto();
-	sbuf_bcat(newval, oldval, variable_string - oldval);
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
-	sbuf_cat(newval, myarch);
-	sbuf_cat(newval, variable_string + strlen(ABI_VAR_STRING));
-	sbuf_finish(newval);
+	oldval = conf->string;
 
-	free(conf->string);
-	conf->string = strdup(sbuf_data(newval));
-	sbuf_free(newval);
+	if (oldval == NULL || strstr(oldval, ABI_VAR_STRING) == NULL)
+		return;
+
+	newval = subst_packagesite_str(oldval);
+	if (newval != NULL) {
+		free(conf->string);
+		conf->string = newval;
+	}
 }
 
 int
 pkg_initialized(void)
 {
 	return (parsed);
+}
+
+int
+pkg_config_desc(pkg_config_key key, const char **desc)
+{
+	struct pkg_config *conf;
+
+	if (parsed != true) {
+		pkg_emit_error("pkg_init() must be called before pkg_config_desc()");
+		return (EPKG_FATAL);
+	}
+
+	HASH_FIND_INT(config, &key, conf);
+	if (conf == NULL)
+		*desc = NULL;
+	else
+		*desc = conf->desc;
+
+	return (EPKG_OK);
 }
 
 int
@@ -612,17 +716,201 @@ disable_plugins_if_static(void)
 
 	HASH_FIND_INT(config, &k, conf);
 
+	if (conf == NULL)
+		return;
+
 	if (!conf->boolean)
 		return;
 
 	dlh = dlopen(0, 0);
-	dlclose(dlh);
 
-	/* if dlh is 0 then we are in static binary */
-	if (dlh == 0)
+	/* if dlh is NULL then we are in static binary */
+	if (dlh == NULL)
 		conf->boolean = false;
+	else
+		dlclose(dlh);
 
 	return;
+}
+
+static void
+add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
+{
+	yaml_node_pair_t *pair;
+	yaml_char_t *url = NULL, *pubkey = NULL, *enable = NULL, *mirror_type = NULL;
+	struct pkg_repo *r;
+
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
+		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
+
+		if (key->data.scalar.length <= 0) {
+			++pair;
+			continue;
+		}
+
+		if (val->type != YAML_SCALAR_NODE) {
+			++pair;
+			continue;
+		}
+
+		if (strcasecmp(key->data.scalar.value, "url") == 0)
+			url = val->data.scalar.value;
+		else if (strcasecmp(key->data.scalar.value, "pubkey") == 0)
+			pubkey = val->data.scalar.value;
+		else if (strcasecmp(key->data.scalar.value, "enabled") == 0)
+			enable = val->data.scalar.value;
+		else if (strcasecmp(key->data.scalar.value, "mirror_type") == 0)
+			mirror_type = val->data.scalar.value;
+
+		++pair;
+		continue;
+	}
+
+	if (url == NULL)
+		return;
+
+	r = calloc(1, sizeof(struct pkg_repo));
+	asprintf(&r->name, REPO_NAME_PREFIX"%s", repo->data.scalar.value);
+	r->url = subst_packagesite_str(url);
+	if (pubkey != NULL)
+		r->pubkey = strdup(pubkey);
+
+	r->enable = true;
+	if (enable != NULL &&
+	    (strcasecmp(enable, "off") == 0 ||
+	     strcasecmp(enable, "no") == 0 ||
+	     strcasecmp(enable, "false") == 0 ||
+	     enable[0] == '0')) {
+		r->enable = false;
+	}
+
+	r->mirror_type = NOMIRROR;
+	if (mirror_type != NULL) {
+		if (strcasecmp(mirror_type, "srv") == 0)
+			r->mirror_type = SRV;
+		else if (strcasecmp(mirror_type, "http") == 0)
+			r->mirror_type = HTTP;
+	}
+
+	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
+}
+
+static void
+parse_repo_file(yaml_document_t *doc, yaml_node_t *node)
+{
+	yaml_node_pair_t *pair;
+	struct pkg_repo *r;
+
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
+		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
+
+		if (key->data.scalar.length <= 0) {
+			++pair;
+			continue;
+		}
+
+		if (val->type != YAML_MAPPING_NODE) {
+			++pair;
+			continue;
+		}
+		r = pkg_repo_find_ident((char *)key->data.scalar.value);
+		if (r != NULL) {
+			pkg_emit_error("a repository named '%s' is already configured, skipping...");
+			++pair;
+			continue;
+		}
+
+		add_repo(doc, key, val);
+		++pair;
+	}
+}
+
+static void
+load_repo_file(const char *repofile)
+{
+	yaml_parser_t parser;
+	yaml_document_t doc;
+	yaml_node_t *node;
+	FILE *fp;
+
+	fp = fopen(repofile, "r");
+	if (fp == NULL) {
+		pkg_emit_errno("fopen", repofile);
+		return;
+	}
+
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input_file(&parser, fp);
+	yaml_parser_load(&parser, &doc);
+
+	node = yaml_document_get_root_node(&doc);
+	if (node == NULL || node->type != YAML_MAPPING_NODE)
+		pkg_emit_error("Invalid repository format for %s", repofile);
+	else
+		parse_repo_file(&doc, node);
+
+	yaml_document_delete(&doc);
+	yaml_parser_delete(&parser);
+}
+
+static void
+load_repo_files(const char *repodir)
+{
+	struct dirent *ent;
+	DIR *d;
+	char *p;
+	size_t n;
+	char path[MAXPATHLEN];
+
+	if ((d = opendir(repodir)) == NULL)
+		return;
+
+	while ((ent = readdir(d))) {
+		if ((n = strlen(ent->d_name)) <= 5)
+			continue;
+		p = &ent->d_name[n - 5];
+		if (strcmp(p, ".conf") == 0) {
+			snprintf(path, MAXPATHLEN, "%s/%s", repodir, ent->d_name);
+			load_repo_file(path);
+		}
+	}
+	closedir(d);
+}
+
+static void
+load_repositories(void)
+{
+	struct pkg_repo *r;
+	const char *url, *pub, *repodir, *mirror_type;
+
+	pkg_config_string(PKG_CONFIG_REPO, &url);
+	pkg_config_string(PKG_CONFIG_REPOKEY, &pub);
+	pkg_config_string(PKG_CONFIG_MIRRORS, &mirror_type);
+
+	if (url != NULL) {
+		r = calloc(1, sizeof(struct pkg_repo));
+		r->name = strdup(REPO_NAME_PREFIX"packagesite");
+		r->url = subst_packagesite_str(url);
+		if (pub != NULL)
+			r->pubkey = strdup(pub);
+		r->mirror_type = NOMIRROR;
+		if (mirror_type != NULL) {
+			if (strcasecmp(mirror_type, "srv") == 0)
+				r->mirror_type = SRV;
+			else if (strcasecmp(mirror_type, "http") == 0)
+				r->mirror_type = HTTP;
+		}
+		r->enable = true;
+		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
+	}
+
+	pkg_config_string(PKG_CONFIG_REPOS_DIR, &repodir);
+	if (repodir != NULL)
+		load_repo_files(repodir);
 }
 
 int
@@ -636,7 +924,7 @@ pkg_init(const char *path)
 	const char *val = NULL;
 	const char *buf, *walk, *value, *key;
 	const char *errstr = NULL;
-	const char *proxy = NULL;
+	const char *evkey = NULL;
 	const char *nsname = NULL;
 	const char *evpipe = NULL;
 	struct pkg_config *conf;
@@ -649,13 +937,12 @@ pkg_init(const char *path)
 		return (EPKG_FATAL);
 	}
 
-	pthread_mutex_init(&mirror_mtx, NULL);
-
 	for (i = 0; i < c_size; i++) {
 		conf = malloc(sizeof(struct pkg_config));
 		conf->id = i;
 		conf->key = c[i].key;
 		conf->type = c[i].type;
+		conf->desc = c[i].desc;
 		conf->fromenv = false;
 		val = getenv(c[i].key);
 
@@ -679,6 +966,7 @@ pkg_init(const char *path)
 			if (errstr != NULL) {
 				pkg_emit_error("Unable to convert %s to int64: %s",
 				    val, errstr);
+				free(conf);
 				return (EPKG_FATAL);
 			}
 			break;
@@ -704,7 +992,6 @@ pkg_init(const char *path)
 			else
 				conf->fromenv = false;
 			if (val != NULL) {
-				printf("%s\n", val);
 				walk = buf = val;
 				while ((buf = strchr(buf, ',')) != NULL) {
 					key = walk;
@@ -783,30 +1070,32 @@ pkg_init(const char *path)
 		}
 		/* no configuration present */
 		parsed = true;
-		return (EPKG_OK);
 	}
 
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_file(&parser, fp);
-	yaml_parser_load(&parser, &doc);
+	if (!parsed) {
+		yaml_parser_initialize(&parser);
+		yaml_parser_set_input_file(&parser, fp);
+		yaml_parser_load(&parser, &doc);
 
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
+		node = yaml_document_get_root_node(&doc);
+		if (node != NULL) {
+			if (node->type != YAML_MAPPING_NODE) {
+				pkg_emit_error("Invalid configuration format, ignoring the configuration file");
+			} else {
+				pkg_config_parse(&doc, node, config_by_key);
+			}
 		} else {
-			pkg_config_parse(&doc, node, config_by_key);
+			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
 		}
-	} else {
-		pkg_emit_error("Invalid configuration format, ignoring the configuration file");
-	}
 
-	yaml_document_delete(&doc);
-	yaml_parser_delete(&parser);
+		yaml_document_delete(&doc);
+		yaml_parser_delete(&parser);
+	}
 
 	disable_plugins_if_static();
 
 	parsed = true;
+	pkg_debug(1, "%s", "pkg initialized");
 
 	subst_packagesite();
 
@@ -815,13 +1104,17 @@ pkg_init(const char *path)
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
 
-	/* set the environement variable for libfetch for proxies if any */
-	pkg_config_string(PKG_CONFIG_HTTP_PROXY, &proxy);
-	if (proxy != NULL)
-		setenv("HTTP_PROXY", proxy, 1);
-	pkg_config_string(PKG_CONFIG_FTP_PROXY, &proxy);
-	if (proxy != NULL)
-		setenv("FTP_PROXY", proxy, 1);
+	kv = NULL;
+	while (pkg_config_kvlist(PKG_CONFIG_ENV, &kv) == EPKG_OK) {
+		evkey = pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY);
+		if (evkey != NULL && evkey[0] != '\0')
+			setenv(evkey, pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE), 1);
+	}
+
+	/* load the repositories */
+	load_repositories();
+
+	setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 
 	/* bypass resolv.conf with specified NAMESERVER if any */
 	pkg_config_string(PKG_CONFIG_NAMESERVER, &nsname);
@@ -829,6 +1122,19 @@ pkg_init(const char *path)
 		set_nameserver(nsname);
 
 	return (EPKG_OK);
+}
+
+struct pkg_config *
+pkg_config_lookup(const char *name)
+{
+	struct pkg_config *conf;
+
+	if (name == NULL)
+		return (NULL);
+
+	HASH_FIND(hhkey, config_by_key, __DECONST(char *, name), strlen(name), conf);
+
+	return (conf);
 }
 
 static void
@@ -889,19 +1195,119 @@ pkg_configs(struct pkg_config **conf)
 	HASH_NEXT(config, (*conf));
 }
 
-int
+static void
+pkg_repo_free(struct pkg_repo *r)
+{
+	free(r->url);
+	free(r->name);
+	free(r->pubkey);
+	if (r->ssh != NULL) {
+		fprintf(r->ssh, "quit\n");
+		pclose(r->ssh);
+	}
+	free(r);
+}
+
+void
 pkg_shutdown(void)
 {
 	if (!parsed) {
 		pkg_emit_error("pkg_shutdown() must be called after pkg_init()");
-		return (EPKG_FATAL);
+		_exit(EX_SOFTWARE);
+		/* NOTREACHED */
 	}
 
 	HASH_FREE(config, pkg_config, pkg_config_free);
+	HASH_FREE(repos, pkg_repo, pkg_repo_free);
 
 	config_by_key = NULL;
 
 	parsed = false;
 
-	return (EPKG_OK);
+	return;
+}
+
+int
+pkg_repos_count(void)
+{
+	return (HASH_COUNT(repos));
+}
+
+int
+pkg_repos(struct pkg_repo **r)
+{
+	HASH_NEXT(repos, (*r));
+}
+
+const char *
+pkg_repo_url(struct pkg_repo *r)
+{
+	return (r->url);
+}
+
+/* The repo identifier from pkg.conf(5): without the 'repo-' prefix */
+const char *
+pkg_repo_ident(struct pkg_repo *r)
+{
+	return (r->name + strlen(REPO_NAME_PREFIX));
+}
+
+/* Ditto: The repo identifier from pkg.conf(5): without the 'repo-' prefix */
+const char *
+pkg_repo_ident_from_name(const char *repo_name)
+{
+	return (repo_name + strlen(REPO_NAME_PREFIX));
+}
+
+/* The basename of the sqlite DB file and the database name */
+const char *
+pkg_repo_name(struct pkg_repo *r)
+{
+	return (r->name);
+}
+
+const char *
+pkg_repo_key(struct pkg_repo *r)
+{
+	return (r->pubkey);
+}
+
+bool
+pkg_repo_enabled(struct pkg_repo *r)
+{
+	return (r->enable);
+}
+
+mirror_t
+pkg_repo_mirror_type(struct pkg_repo *r)
+{
+	return (r->mirror_type);
+}
+
+/* Locate the repo by the identifying tag from pkg.conf(5) */
+struct pkg_repo *
+pkg_repo_find_ident(const char *repoident)
+{
+	struct pkg_repo *r;
+	char *name;
+
+	asprintf(&name, REPO_NAME_PREFIX"%s", repoident);
+	if (name == NULL)
+		return (NULL);	/* Out of memory */
+
+	r = pkg_repo_find_name(name);
+	free(name);
+
+	return (r);
+}
+
+
+/* Locate the repo by the file basename / database name */
+struct pkg_repo *
+pkg_repo_find_name(const char *reponame)
+{
+	struct pkg_repo *r;
+
+	HASH_FIND_STR(repos, __DECONST(char *, reponame), r);
+	return (r);
 }

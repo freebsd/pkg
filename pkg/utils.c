@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -31,109 +31,136 @@
 #include <sys/stat.h>
 
 #include <err.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <libutil.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <paths.h>
 #include <pkg.h>
 
 #include "pkgcli.h"
 
 bool
-query_yesno(const char *msg, ...)
+query_tty_yesno(const char *msg, ...)
 {
-	int c;
-	bool r = false;
-	va_list ap;
+	int	 c;
+	bool	 r = false;
+	va_list	 ap;
+	int	 tty_fd;
+	FILE	*tty;
+	int	 tty_flags = O_RDWR;
+
+#ifndef __DragonFly__
+	tty_flags |= O_TTY_INIT;
+#endif
+	tty_fd = open(_PATH_TTY, tty_flags);
+	if (tty_fd == -1)
+		return (r);		/* No ctty -- return the
+					 * default answer */
+
+	tty = fdopen(tty_fd, "r+");
 
 	va_start(ap, msg);
-	vprintf(msg, ap);
+	pkg_vfprintf(tty, msg, ap);
+	va_end(ap);
+
+	c = getc(tty);
+	if (c == 'y' || c == 'Y')
+		r = true;
+	else if (c == '\n' || c == EOF) {
+		r = false;
+		goto cleanup;
+	}
+
+	while ((c = getc(tty)) != '\n' && c != EOF)
+		continue;
+
+cleanup:
+	fclose(tty);
+
+	return (r);
+}
+
+bool
+query_yesno(const char *msg, ...)
+{
+	int	 c;
+	bool	 r = false;
+	va_list	 ap;
+
+	va_start(ap, msg);
+	pkg_vprintf(msg, ap);
 	va_end(ap);
 
 	c = getchar();
 	if (c == 'y' || c == 'Y')
 		r = true;
 	else if (c == '\n' || c == EOF)
-		return false;
+		return (false);
 
 	while ((c = getchar()) != '\n' && c != EOF)
 		continue;
 
-	return r;
+	return (r);
 }
 
+/* unlike realpath(3), this routine does not expand symbolic links */
 char *
-absolutepath(const char *src, char *dest, size_t dest_len) {
-	char * res;
-	size_t res_len, res_size, len;
-	char pwd[MAXPATHLEN];
-	const char *ptr = src;
-	const char *next;
-	const char *slash;
+absolutepath(const char *src, char *dest, size_t dest_size) {
+	size_t dest_len, src_len, cur_len;
+	const char *cur, *next;
 
-	len = strlen(src);
-
-	if (len != 0 && src[0] != '/') {
-		if (getcwd(pwd, sizeof(pwd)) == NULL)
-			return NULL;
-
-		res_len = strlen(pwd);
-		res_size = res_len + 1 + len + 1;
-		res = malloc(res_size);
-		strlcpy(res, pwd, res_size);
-	} else {
-		res_size = (len > 0 ? len : 1) + 1;
-		res = malloc(res_size);
-		res_len = 0;
+	src_len = strlen(src);
+	bzero(dest, dest_size);
+	if (src_len != 0 && src[0] != '/') {
+		/* relative path, we use cwd */
+		if (getcwd(dest, dest_size) == NULL)
+			return (NULL);
 	}
+	dest_len = strlen(dest);
 
-	next = src;
-	for (ptr = src; next != NULL ; ptr = next + 1) {
-		next = strchr(ptr, '/');
-
+	for (cur = next = src; next != NULL; cur = next + 1) {
+		next = strchr(cur, '/');
 		if (next != NULL)
-			len = next - ptr;
+			cur_len = next - cur;
 		else
-			len = strlen(ptr);
+			cur_len = strlen(cur);
 
-		switch (len) {
-		case 2:
-			if (ptr[0] == '.' && ptr[1] == '.') {
-				slash = strrchr(res, '/');
-				if (slash != NULL) {
-					res_len = slash - res;
-					res[res_len] = '\0';
-				}
-				continue;
+		/* check for special cases "", "." and ".." */
+		if (cur_len == 0)
+			continue;
+		else if (cur_len == 1 && cur[0] == '.')
+			continue;
+		else if (cur_len == 2 && cur[0] == '.' && cur[1] == '.') {
+			const char *slash = strrchr(dest, '/');
+			if (slash != NULL) {
+				dest_len = slash - dest;
+				dest[dest_len] = '\0';
 			}
-			break;
-		case 1:
-			if (ptr[0] == '.')
-				continue;
-
-			break;
-		case 0:
 			continue;
 		}
-		res[res_len++] = '/';
-		strlcpy(res + res_len, ptr, res_size);
-		res_len += len;
-		res[res_len] = '\0';
+
+		if (dest_len + 1 + cur_len >= dest_size)
+			return (NULL);
+		dest[dest_len++] = '/';
+		(void)memcpy(dest + dest_len, cur, cur_len);
+		dest_len += cur_len;
+		dest[dest_len] = '\0';
 	}
 
-	if (res_len == 0)
-		strlcpy(res, "/", res_size);
+	if (dest_len == 0) {
+		if (strlcpy(dest, "/", dest_size) >= dest_size)
+			return (NULL);
+	}
 
-	strlcpy(dest, res, dest_len);
-	free(res);
-
-	return &dest[0];
+	return (dest);
 }
 
 /* what the pkg needs to load in order to display the requested info */
 int
-info_flags(unsigned int opt)
+info_flags(unsigned int opt, bool remote)
 {
 	int flags = PKG_LOAD_BASIC;
 
@@ -147,6 +174,8 @@ info_flags(unsigned int opt)
 		flags |= PKG_LOAD_SHLIBS_REQUIRED;
 	if (opt & INFO_SHLIBS_PROVIDED)
 		flags |= PKG_LOAD_SHLIBS_PROVIDED;
+	if (opt & INFO_ANNOTATIONS)
+		flags |= PKG_LOAD_ANNOTATIONS;
 	if (opt & INFO_DEPS)
 		flags |= PKG_LOAD_DEPS;
 	if (opt & INFO_RDEPS)
@@ -164,12 +193,16 @@ info_flags(unsigned int opt)
 			 PKG_LOAD_LICENSES        |
 			 PKG_LOAD_OPTIONS         |
 			 PKG_LOAD_SHLIBS_REQUIRED |
-			 PKG_LOAD_DEPS            |
-			 PKG_LOAD_FILES           |
-			 PKG_LOAD_DIRS            |
-			 PKG_LOAD_USERS           |
-			 PKG_LOAD_GROUPS          |
-			 PKG_LOAD_SCRIPTS;
+			 PKG_LOAD_SHLIBS_PROVIDED |
+			 PKG_LOAD_ANNOTATIONS     |
+			 PKG_LOAD_DEPS;
+		if (!remote) {
+			flags |= PKG_LOAD_FILES  |
+				PKG_LOAD_DIRS    |
+				PKG_LOAD_USERS   |
+				PKG_LOAD_GROUPS  |
+				PKG_LOAD_SCRIPTS;
+		}
 	}
 
 	return flags;
@@ -178,58 +211,26 @@ info_flags(unsigned int opt)
 void
 print_info(struct pkg * const pkg, unsigned int options)
 {
-	struct pkg_category *cat    = NULL;
-	struct pkg_dep	    *dep    = NULL;
-	struct pkg_dir	    *dir    = NULL;
-	struct pkg_file	    *file   = NULL;
-	struct pkg_group    *group  = NULL;
-	struct pkg_license  *lic    = NULL;
-	struct pkg_option   *option = NULL;
-	struct pkg_shlib    *shlib  = NULL;
-	struct pkg_user	    *user   = NULL;
-	bool multirepos_enabled = false;
 	bool print_tag = false;
 	bool show_locks = false;
 	char size[7];
-	const char *name, *version, *prefix, *origin, *reponame, *repourl;
-	const char *maintainer, *www, *comment, *desc, *message, *arch;
-	const char *repopath;
-	const char *tab;
+	const char *repourl;
 	unsigned opt;
-	int64_t flatsize, newflatsize, newpkgsize;
-	lic_t licenselogic;
-	bool locked;
+	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
 	int info_num;		/* Number of different data items to print */
 
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
-
 	pkg_get(pkg,
-		PKG_NAME,          &name,
-		PKG_VERSION,       &version,
-		PKG_PREFIX,        &prefix,
-		PKG_ORIGIN,        &origin,
-		PKG_REPONAME,      &reponame,
 		PKG_REPOURL,       &repourl,
-		PKG_MAINTAINER,    &maintainer,
-		PKG_WWW,           &www,
-		PKG_COMMENT,       &comment,
-		PKG_DESC,          &desc,
 		PKG_FLATSIZE,      &flatsize,
-		PKG_NEW_FLATSIZE,  &newflatsize,
-		PKG_NEW_PKGSIZE,   &newpkgsize,
-		PKG_LICENSE_LOGIC, &licenselogic,
-		PKG_MESSAGE,       &message,
-		PKG_ARCH,	   &arch,
-		PKG_REPOPATH,	   &repopath,
-		PKG_LOCKED,	   &locked);
+		PKG_OLD_FLATSIZE,  &oldflatsize,
+		PKG_PKGSIZE,       &pkgsize);
 
-	if (!multirepos_enabled)
-		pkg_config_string(PKG_CONFIG_REPO, &repourl);
-
-	if (options & INFO_RAW) { /* Not for remote packages */
+	if (options & INFO_RAW) {
 		if (pkg_type(pkg) != PKG_REMOTE)
-			pkg_emit_manifest_file(pkg, stdout, false, NULL);
+			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_PRETTY, NULL);
+		else
+			pkg_emit_manifest_file(pkg, stdout, PKG_MANIFEST_EMIT_COMPACT|PKG_MANIFEST_EMIT_PRETTY, NULL);
 		return;
 	}
 
@@ -245,15 +246,12 @@ print_info(struct pkg * const pkg, unsigned int options)
 		   function */
 
 		if (options & INFO_TAG_NAMEVER)
-			cout = printf("%s-%s", name, version);
+			cout = pkg_printf("%n-%v", pkg, pkg);
 		else if (options & INFO_TAG_ORIGIN)
-			cout = printf("%s", origin);
+			cout = pkg_printf("%o", pkg);
 		else if (options & INFO_TAG_NAME)
-			cout = printf("%s", name);
+			cout = pkg_printf("%n", pkg);
 	}
-
-	/* Don't display a tab if quiet, retains compatibility. */
-	tab = quiet ? "" : "\t";
 
 	/* If we printed a tag, and there are no other items to print,
 	   then just return now. If there's only one single-line item
@@ -301,29 +299,29 @@ print_info(struct pkg * const pkg, unsigned int options)
 		case INFO_NAME:
 			if (print_tag)
 				printf("%-15s: ", "Name");
-			printf("%s\n", name);
+			pkg_printf("%n\n", pkg);
 			break;
 		case INFO_VERSION:
 			if (print_tag)
 				printf("%-15s: ", "Version");
-			printf("%s\n", version);
+			pkg_printf("%v\n", pkg);
 			break;
 		case INFO_ORIGIN:
 			if (print_tag)
 				printf("%-15s: ", "Origin");
-			printf("%s\n", origin);
+			pkg_printf("%o\n", pkg);
 			break;
 		case INFO_PREFIX:
 			if (print_tag)
 				printf("%-15s: ", "Prefix");
-			printf("%s\n", prefix);
+			pkg_printf("%p\n", pkg);
 			break;
 		case INFO_REPOSITORY:
 			if (pkg_type(pkg) == PKG_REMOTE &&
 			    repourl != NULL && repourl[0] != '\0') {
 				if (print_tag)
 					printf("%-15s: ", "Repository");
-				printf("%s [%s]\n", reponame, repourl);
+				pkg_printf("%N [%S]\n", pkg, repourl);
 			} else if (!print_tag)
 				printf("\n");
 			break;
@@ -331,11 +329,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_CATEGORIES) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Categories");
-				if (pkg_categories(pkg, &cat) == EPKG_OK)
-					printf("%s", pkg_category_name(cat));
-				while (pkg_categories(pkg, &cat) == EPKG_OK)
-					printf(" %s", pkg_category_name(cat));
-				printf("\n");
+				pkg_printf("%C%{%Cn%| %}\n", pkg);
 			} else if (!print_tag)
 				printf("\n");
 			break;
@@ -343,78 +337,74 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_LICENSES) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Licenses");
-				if (pkg_licenses(pkg, &lic) == EPKG_OK)
-					printf("%s", pkg_license_name(lic));
-				while (pkg_licenses(pkg, &lic) == EPKG_OK) {
-					if (licenselogic != 1)
-						printf(" %c", licenselogic);
-					printf(" %s", pkg_license_name(lic));
-				}
-				printf("\n");				
+				pkg_printf("%L%{%Ln%| %l %}\n", pkg);
 			} else if (!print_tag)
 				printf("\n");
 			break;
 		case INFO_MAINTAINER:
 			if (print_tag)
 				printf("%-15s: ", "Maintainer");
-			printf("%s\n", maintainer);
+			pkg_printf("%m\n", pkg);
 			break;
 		case INFO_WWW:	
 			if (print_tag)
 				printf("%-15s: ", "WWW");
-			printf("%s\n", www);
+			pkg_printf("%w\n", pkg);
 			break;
 		case INFO_COMMENT:
 			if (print_tag)
 				printf("%-15s: ", "Comment");
-			printf("%s\n", comment);
+			pkg_printf("%c\n", pkg);
 			break;
 		case INFO_OPTIONS:
 			if (pkg_list_count(pkg, PKG_OPTIONS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Options");
-				while (pkg_options(pkg, &option) == EPKG_OK)
-					printf("%s%-15s: %s\n",
-					       tab,
-					       pkg_option_opt(option),
-					       pkg_option_value(option));
+				if (quiet) 
+					pkg_printf("%O%{%-15On: %Ov\n%|%}", pkg);
+				else
+					pkg_printf("%O%{\t%-15On: %Ov\n%|%}", pkg);
 			}
 			break;
 		case INFO_SHLIBS_REQUIRED:
 			if (pkg_list_count(pkg, PKG_SHLIBS_REQUIRED) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Shared Libs required");
-				while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK)
-					printf("%s%s\n", tab, pkg_shlib_name(shlib));
+				if (quiet)
+					pkg_printf("%B%{%Bn\n%|%}", pkg);
+				else
+					pkg_printf("%B%{\t%Bn\n%|%}", pkg);
 			}
 			break;
 		case INFO_SHLIBS_PROVIDED:
 			if (pkg_list_count(pkg, PKG_SHLIBS_PROVIDED) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Shared Libs provided");
-				while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
-					printf("%s%s\n", tab, pkg_shlib_name(shlib));
+				if (quiet)
+					pkg_printf("%b%{%bn\n%|%}", pkg);
+				else
+					pkg_printf("%b%{\t%bn\n%|%}", pkg);
+			}
+			break;
+		case INFO_ANNOTATIONS:
+			if (pkg_list_count(pkg, PKG_ANNOTATIONS) > 0) {
+				if (print_tag)
+					printf("%-15s:\n", "Annotations");
+				if (quiet)
+					pkg_printf("%A%{%-15An: %Av\n%|%}", pkg);
+				else
+					pkg_printf("%A%{\t%-15An: %Av\n%|%}", pkg);					
 			}
 			break;
 		case INFO_FLATSIZE:
-			if (pkg_type(pkg) == PKG_INSTALLED ||
-			    pkg_type(pkg) == PKG_FILE)
-				humanize_number(size, sizeof(size),
-						flatsize,"B",
-						HN_AUTOSCALE, 0);
-			else
-				humanize_number(size, sizeof(size),
-						newflatsize,"B",
-						HN_AUTOSCALE, 0);
-
 			if (print_tag)
 				printf("%-15s: ", "Flat size");
-			printf("%s\n", size);
+			pkg_printf("%#sB\n", pkg);
 			break;
 		case INFO_PKGSIZE: /* Remote pkgs only */
 			if (pkg_type(pkg) == PKG_REMOTE) {
 				humanize_number(size, sizeof(size),
-						newpkgsize,"B",
+						pkgsize,"B",
 						HN_AUTOSCALE, 0);
 				if (print_tag)
 					printf("%-15s: ", "Pkg size");
@@ -425,27 +415,28 @@ print_info(struct pkg * const pkg, unsigned int options)
 		case INFO_DESCR:
 			if (print_tag)
 				printf("%-15s:\n", "Description");
-			printf("%s\n", desc);
+			pkg_printf("%e\n", pkg);
 			break;
 		case INFO_MESSAGE:
-			if (message) {
-				if (print_tag)
-					printf("%-15s:\n", "Message");
-				printf("%s\n", message);
-			}
+			if (print_tag)
+				printf("%-15s:\n", "Message");
+			if (pkg_has_message(pkg))
+				pkg_printf("%M\n", pkg);
 			break;
 		case INFO_DEPS:
 			if (pkg_list_count(pkg, PKG_DEPS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Depends on");
-				while (pkg_deps(pkg, &dep) == EPKG_OK) {
-					printf("%s%s-%s",
-					       tab,
-					       pkg_dep_name(dep),
-					       pkg_dep_version(dep));
-					if (show_locks && pkg_dep_is_locked(dep))
-						printf(" (*)");
-					printf("\n");
+				if (quiet) {
+					if (show_locks) 
+						pkg_printf("%d%{%dn-%dv%#dk\n%|%}", pkg);
+					else
+						pkg_printf("%d%{%dn-%dv\n%|%}", pkg);
+				} else {
+					if (show_locks)
+						pkg_printf("%d%{\t%dn-%dv%#dk\n%|%}", pkg);
+					else
+						pkg_printf("%d%{\t%dn-%dv\n%|%}", pkg);
 				}
 			}
 			break;
@@ -453,14 +444,16 @@ print_info(struct pkg * const pkg, unsigned int options)
 			if (pkg_list_count(pkg, PKG_RDEPS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Required by");
-				while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
-					printf("%s%s-%s",
-					       tab,
-					       pkg_dep_name(dep),
-					       pkg_dep_version(dep));
-					if (show_locks && pkg_dep_is_locked(dep))
-						printf(" (*)");
-					printf("\n");
+				if (quiet) {
+					if (show_locks) 
+						pkg_printf("%r%{%rn-%rv%#rk\n%|%}", pkg);
+					else
+						pkg_printf("%r%{%rn-%rv\n%|%}", pkg);
+				} else {
+					if (show_locks)
+						pkg_printf("%r%{\t%rn-%rv%#rk\n%|%}", pkg);
+					else
+						pkg_printf("%r%{\t%rn-%rv\n%|%}", pkg);
 				}
 			}
 			break;
@@ -469,10 +462,10 @@ print_info(struct pkg * const pkg, unsigned int options)
 			    pkg_list_count(pkg, PKG_FILES) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Files");
-				while (pkg_files(pkg, &file) == EPKG_OK)
-					printf("%s%s\n",
-					       tab,
-					       pkg_file_path(file));
+				if (quiet)
+					pkg_printf("%F%{%Fn\n%|%}", pkg);
+				else
+					pkg_printf("%F%{\t%Fn\n%|%}", pkg);
 			}
 			break;
 		case INFO_DIRS:	/* Installed pkgs only */
@@ -480,10 +473,10 @@ print_info(struct pkg * const pkg, unsigned int options)
 			    pkg_list_count(pkg, PKG_DIRS) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Directories");
-				while (pkg_dirs(pkg, &dir) == EPKG_OK)
-					printf("%s%s\n",
-					       tab,
-					       pkg_dir_path(dir));
+				if (quiet)
+					pkg_printf("%D%{%Dn\n%|%}", pkg);
+				else
+					pkg_printf("%D%{\t%Dn\n%|%}", pkg);
 			}
 			break;
 		case INFO_USERS: /* Installed pkgs only */
@@ -491,11 +484,7 @@ print_info(struct pkg * const pkg, unsigned int options)
 			    pkg_list_count(pkg, PKG_USERS) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Users");
-				if (pkg_users(pkg, &user) == EPKG_OK)
-					printf("%s", pkg_user_name(user));
-				while (pkg_users(pkg, &user) == EPKG_OK)
-					printf(" %s", pkg_user_name(user));
-				printf("\n");
+				pkg_printf("%U%{%Un%| %}\n", pkg);
 			}
 			break;
 		case INFO_GROUPS: /* Installed pkgs only */
@@ -503,17 +492,13 @@ print_info(struct pkg * const pkg, unsigned int options)
 			    pkg_list_count(pkg, PKG_GROUPS) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Groups");
-				if (pkg_groups(pkg, &group) == EPKG_OK)
-					printf("%s", pkg_group_name(group));
-				while (pkg_groups(pkg, &group) == EPKG_OK)
-					printf(" %s", pkg_group_name(group));
-				printf("\n");
+				pkg_printf("%G%{%Gn%| %}\n", pkg);
 			}
 			break;
 		case INFO_ARCH:
 			if (print_tag)
 				printf("%-15s: ", "Architecture");
-			printf("%s\n", arch);
+			pkg_printf("%q\n", pkg);
 			break;
 		case INFO_REPOURL:
 			if (pkg_type(pkg) == PKG_REMOTE &&
@@ -521,16 +506,16 @@ print_info(struct pkg * const pkg, unsigned int options)
 				if (print_tag)
 					printf("%-15s: ", "Pkg URL");
 				if (repourl[strlen(repourl) -1] == '/')
-					printf("%s%s\n", repourl, repopath);
+					pkg_printf("%S%R\n", repourl, pkg);
 				else
-					printf("%s/%s\n", repourl, repopath);
+					pkg_printf("%S/%R\n", repourl, pkg);
 			} else if (!print_tag)
 				printf("\n");
 			break;
 		case INFO_LOCKED:
 			if (print_tag)
 				printf("%-15s: ", "Locked");
-			printf("%s\n", locked ? "yes" : "no");
+			pkg_printf("%?k\n", pkg);
 			break;
 		}
 	}
@@ -542,10 +527,9 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	struct pkg *pkg = NULL;
 	char path[MAXPATHLEN];
 	struct stat st;
-	const char *name, *version, *newversion, *pkgrepopath, *cachedir;
+	const char *oldversion, *cachedir, *why;
 	int64_t dlsize, oldsize, newsize;
-	int64_t flatsize, newflatsize, pkgsize;
-	bool locked;
+	int64_t flatsize, oldflatsize, pkgsize;
 	char size[7];
 	va_list ap;
 	pkg_jobs_t type;
@@ -557,35 +541,33 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	va_end(ap);
 
 	dlsize = oldsize = newsize = 0;
-	flatsize = newflatsize = pkgsize = 0;
-	name = version = newversion = NULL;
+	flatsize = oldflatsize = pkgsize = 0;
+	oldversion = NULL;
 	
 	pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir);
 
 	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		pkg_get(pkg, PKG_NEWVERSION, &newversion, PKG_NAME, &name,
-		    PKG_VERSION, &version, PKG_FLATSIZE, &flatsize,
-		    PKG_NEW_FLATSIZE, &newflatsize, PKG_NEW_PKGSIZE, &pkgsize,
-		    PKG_REPOPATH, &pkgrepopath, PKG_LOCKED, &locked);
+		pkg_get(pkg, PKG_OLD_VERSION, &oldversion,
+		    PKG_FLATSIZE, &flatsize, PKG_OLD_FLATSIZE, &oldflatsize,
+		    PKG_PKGSIZE, &pkgsize, PKG_REASON, &why);
 
-		if (locked) {
-			printf("\tPackage %s-%s is locked ",
-			       name, version);
+		if (pkg_is_locked(pkg)) {
+			pkg_printf("\tPackage %n-%v is locked ", pkg, pkg);
 			switch (type) {
 			case PKG_JOBS_INSTALL:
 			case PKG_JOBS_UPGRADE:
 				/* If it's a new install, then it
 				 * cannot have been locked yet. */
-				if (newversion != NULL) {
-					switch(pkg_version_cmp(version, newversion)) {
-					case -1:
-						printf("and may not be upgraded to version %s\n", newversion);
+				if (oldversion != NULL) {
+					switch(pkg_version_change(pkg)) {
+					case PKG_UPGRADE:
+						pkg_printf("and may not be upgraded to version %v\n", pkg);
 						break;
-					case 0:
+					case PKG_REINSTALL:
 						printf("and may not be reinstalled\n");
 						break;
-					case 1:
-						printf("and may not be downgraded to version %s\n", newversion);
+					case PKG_DOWNGRADE:
+						pkg_printf("and may not be downgraded to version %v\n", pkg);
 						break;
 					}
 					continue;
@@ -606,41 +588,60 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		switch (type) {
 		case PKG_JOBS_INSTALL:
 		case PKG_JOBS_UPGRADE:
-			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
+			pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, pkg);
+
 			if (stat(path, &st) == -1 || pkgsize != st.st_size)
-				/* file looks corrupted (wrong size), assume a checksum mismatch will
-				   occur later and the file will be fetched from remote again */
+				/* file looks corrupted (wrong size),
+				   assume a checksum mismatch will
+				   occur later and the file will be
+				   fetched from remote again */
+
 				dlsize += pkgsize;
 
-			if (newversion != NULL) {
-				switch (pkg_version_cmp(version, newversion)) {
-				case 1:
-					printf("\tDowngrading %s: %s -> %s\n", name, version, newversion);
+			if (oldversion != NULL) {
+				switch (pkg_version_change(pkg)) {
+				case PKG_DOWNGRADE:
+					pkg_printf("\tDowngrading %n: %V -> %v", pkg, pkg, pkg);
+					if (pkg_repos_count() > 1)
+						pkg_printf(" [%N]", pkg);
+					printf("\n");
 					break;
-				case 0:
-					printf("\tReinstalling %s-%s\n", name, version);
+				case PKG_REINSTALL:
+					pkg_printf("\tReinstalling %n-%v", pkg, pkg);
+					if (pkg_repos_count() > 1)
+						pkg_printf(" [%N]", pkg);
+					if (why != NULL)
+						printf(" (%s)", why);
+					printf("\n");
 					break;
-				case -1:
-					printf("\tUpgrading %s: %s -> %s\n", name, version, newversion);
+				case PKG_UPGRADE:
+					pkg_printf("\tUpgrading %n: %V -> %v", pkg, pkg, pkg);
+					if (pkg_repos_count() > 1)
+						pkg_printf(" [%N]", pkg);
+					printf("\n");
 					break;
 				}
-				oldsize += flatsize;
-				newsize += newflatsize;
+				oldsize += oldflatsize;
+				newsize += flatsize;
 			} else {
 				newsize += flatsize;
-				printf("\tInstalling %s: %s\n", name, version);
+
+				pkg_printf("\tInstalling %n: %v", pkg, pkg);
+				if (pkg_repos_count() > 1)
+					pkg_printf(" [%N]", pkg);
+				printf("\n");
 			}
 			break;
 		case PKG_JOBS_DEINSTALL:
 		case PKG_JOBS_AUTOREMOVE:
-			oldsize += flatsize;
-			newsize += newflatsize;
+			oldsize += oldflatsize;
+			newsize += flatsize;
 			
-			printf("\t%s-%s\n", name, version);
+			pkg_printf("\t%n-%v\n", pkg, pkg);
 			break;
 		case PKG_JOBS_FETCH:
 			dlsize += pkgsize;
-			snprintf(path, MAXPATHLEN, "%s/%s", cachedir, pkgrepopath);
+			pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, pkg);
 			if (stat(path, &st) != -1)
 				oldsize = st.st_size;
 			else
@@ -649,7 +650,8 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 			humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
 
-			printf("\t%s-%s (%" PRId64 "%% of %s)\n", name, newversion, 100 - (100 * oldsize)/pkgsize, size);
+			pkg_printf("\t%n-%v ", pkg, pkg);
+			printf("(%" PRId64 "%% of %s)\n", 100 - (100 * oldsize)/pkgsize, size);
 			break;
 		}
 	}

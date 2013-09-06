@@ -48,8 +48,7 @@
 #endif
 #include "private/utils.h"
 
-#define PKG_NUM_FIELDS 18
-#define PKG_NUM_SCRIPTS 8
+#define PKG_NUM_SCRIPTS 9
 
 #if ARCHIVE_VERSION_NUMBER < 3000002
 #define archive_read_free(a) archive_read_finish(a)
@@ -95,29 +94,39 @@
 			return (EPKG_OK);     \
 	} while (0)
 
-extern pthread_mutex_t mirror_mtx;
+#define HASH_FIND_YAMLT(head,type,out)                                   \
+	HASH_FIND(hh,head,type,sizeof(yaml_node_type_t),out)
+#define HASH_ADD_YAMLT(head,type,add)                                    \
+	HASH_ADD(hh,head,type,sizeof(yaml_node_type_t),add)
+
+#define HASH_FIND_YAMLEVT(head,type,out)                                   \
+	HASH_FIND(hh,head,type,sizeof(yaml_event_type_t),out)
+#define HASH_ADD_YAMLEVT(head,type,add)                                    \
+	HASH_ADD(hh,head,type,sizeof(yaml_event_type_t),add)
+
 extern int eventpipe;
 
 struct pkg {
 	struct sbuf	*fields[PKG_NUM_FIELDS];
+	bool		 direct;
 	bool		 automatic;
 	bool		 locked;
 	int64_t		 flatsize;
-	int64_t		 new_flatsize;
-	int64_t		 new_pkgsize;
+	int64_t		 old_flatsize;
+	int64_t		 pkgsize;
 	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
-	struct pkg_license *licenses;
-	struct pkg_category *categories;
-	struct pkg_dep *deps;
-	struct pkg_dep *rdeps;
-	struct pkg_file *files;
-	struct pkg_dir *dirs;
-	struct pkg_option *options;
-	struct pkg_user *users;
-	struct pkg_group *groups;
-	struct pkg_shlib *shlibs_required;
-	struct pkg_shlib *shlibs_provided;
-	struct pkg_abstract *abstract_metadata;
+	struct pkg_license	*licenses;
+	struct pkg_category	*categories;
+	struct pkg_dep		*deps;
+	struct pkg_dep		*rdeps;
+	struct pkg_file		*files;
+	struct pkg_dir		*dirs;
+	struct pkg_option	*options;
+	struct pkg_user		*users;
+	struct pkg_group	*groups;
+	struct pkg_shlib	*shlibs_required;
+	struct pkg_shlib	*shlibs_provided;
+	struct pkg_note		*annotations;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -148,6 +157,7 @@ struct pkg_category {
 
 struct pkg_file {
 	char		 path[MAXPATHLEN +1];
+	int64_t		 size;
 	char		 sum[SHA256_DIGEST_LENGTH * 2 +1];
 	char		 uname[MAXLOGNAME +1];
 	char		 gname[MAXLOGNAME +1];
@@ -174,6 +184,8 @@ struct pkg_option {
 
 struct pkg_jobs {
 	struct pkg	*jobs;
+	struct pkg 	*bulk;
+	struct pkg	*seen;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
@@ -183,20 +195,10 @@ struct pkg_jobs {
 };
 
 struct job_pattern {
-	char		**pattern;
-	int		nb;
+	char		*pattern;
 	match_t		match;
 	struct job_pattern *next;
 };
-
-/*struct pkg_jobs_node {
-	struct pkg	*pkg;
-	size_t		 nrefs;
-	struct pkg_jobs_node	**parents;
-	size_t		 parents_len;
-	size_t		 parents_cap;
-	LIST_ENTRY(pkg_jobs_node) entries;
-}; */
 
 struct pkg_user {
 	char		 name[MAXLOGNAME+1];
@@ -220,6 +222,7 @@ struct pkg_config {
 	pkg_config_t type;
 	const char *key;
 	const void *def;
+	const char *desc;
 	bool fromenv;
 	union {
 		char *string;
@@ -243,10 +246,29 @@ struct pkg_config_value {
 	UT_hash_handle hh;
 };
 
-struct pkg_abstract {
-	struct sbuf	*key;
+struct pkg_note {
+	struct sbuf	*tag;
 	struct sbuf	*value;
 	UT_hash_handle	 hh;
+};
+
+struct http_mirror {
+	struct url *url;
+	struct http_mirror *next;
+};
+
+struct pkg_repo {
+	char *name;
+	char *url;
+	char *pubkey;
+	mirror_t mirror_type;
+	union {
+		struct dns_srvinfo *srv;
+		struct http_mirror *http;
+	};
+	FILE *ssh;
+	bool enable;
+	UT_hash_handle hh;
 };
 
 /* sql helpers */
@@ -281,7 +303,7 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_UPGRADE (1<<1)
 #define PKG_DELETE_NOSCRIPT (1<<2)
 
-int pkg_fetch_file_to_fd(const char *url, int dest, time_t *t);
+int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t);
 int pkg_repo_fetch(struct pkg *pkg);
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
@@ -292,7 +314,7 @@ int pkg_add_user_group(struct pkg *pkg);
 int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
-	      const char *path);
+	      const char *path, struct pkg_manifest_key *keys, int flags);
 
 void pkg_list_free(struct pkg *, pkg_list);
 
@@ -325,6 +347,9 @@ int pkg_jobs_resolv(struct pkg_jobs *jobs);
 int pkg_shlib_new(struct pkg_shlib **);
 void pkg_shlib_free(struct pkg_shlib *);
 
+int pkg_annotation_new(struct pkg_note **);
+void pkg_annotation_free(struct pkg_note *);
+
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format);
@@ -352,12 +377,9 @@ struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db,
 
 int pkg_set_mtree(struct pkg *, const char *mtree);
 
-/* pkg repo related */
-int pkg_check_repo_version(struct pkgdb *db, const char *database);
-
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);
-int get_pragma(sqlite3 *, const char *sql, int64_t *res);
+int get_pragma(sqlite3 *, const char *sql, int64_t *res, bool silence);
 int get_sql_string(sqlite3 *, const char *sql, char **res);
 
 int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
@@ -373,17 +395,20 @@ int pkgdb_load_user(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg);
 
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
-int pkg_register_shlibs(struct pkg *pkg);
+int pkg_register_shlibs(struct pkg *pkg, const char *root);
 
 void pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key);
 
-int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, bool, char **);
+int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
+int pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manifest_key *keys);
 
 #endif

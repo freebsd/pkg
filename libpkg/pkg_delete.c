@@ -44,7 +44,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	struct pkg_dep	*rdep = NULL;
 	int		 ret;
 	bool		 handle_rc = false;
-	bool		 locked;
 	const char	*origin;
 
 	assert(pkg != NULL);
@@ -76,8 +75,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 		pkg_emit_deinstall_begin(pkg);
 
 	/* If the package is locked */
-	pkg_get(pkg, PKG_LOCKED, &locked);
-	if (locked) {
+	if (pkg_is_locked(pkg)) {
 		pkg_emit_locked(pkg);
 		return (EPKG_LOCKED);
 	}

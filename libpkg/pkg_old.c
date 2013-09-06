@@ -94,9 +94,9 @@ pkg_old_load_from_path(struct pkg *pkg, const char *path)
 			pkg_addscript_file(pkg, fpath);
 	}
 
-	pkg_set(pkg, PKG_ARCH, pkg_get_myarch(myarch, BUFSIZ));
-	pkg_set(pkg, PKG_MAINTAINER, "unknown");
 	pkg_get_myarch(myarch, BUFSIZ);
+	pkg_set(pkg, PKG_ARCH, myarch);
+	pkg_set(pkg, PKG_MAINTAINER, "unknown");
 	pkg_get(pkg, PKG_DESC, &desc);
 	regcomp(&preg, "^WWW:[[:space:]]*(.*)$", REG_EXTENDED|REG_ICASE|REG_NEWLINE);
 	if (regexec(&preg, desc, 2, pmatch, 0) == 0) {
@@ -122,21 +122,15 @@ pkg_old_emit_content(struct pkg *pkg, char **dest)
 	struct pkg_dir *dir = NULL;
 	struct pkg_option *option = NULL;
 
-	const char *name;
-	const char *pkgorigin, *prefix, *version;
 	char option_type = 0;
 
-	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
-	    PKG_PREFIX, &prefix, PKG_VERSION, &version);
-
-	sbuf_printf(content,
+	pkg_sbuf_printf(content,
 	    "@comment PKG_FORMAT_REVISION:1.1\n"
-	    "@name %s-%s\n"
-	    "@comment ORIGIN:%s\n"
-	    "@cwd %s\n"
+	    "@name %n-%v\n"
+	    "@comment ORIGIN:%o\n"
+	    "@cwd %p\n"
 	    /* hack because we can recreate the prefix split or origin */
-	    "@cwd /\n",
-	    name, version, pkgorigin, prefix);
+	    "@cwd /\n", pkg, pkg, pkg, pkg);
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		sbuf_printf(content,

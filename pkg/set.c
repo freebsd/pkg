@@ -58,8 +58,6 @@ exec_set(int argc, char **argv)
 	int64_t newautomatic = -1;
 	bool automatic = false;
 	const char *errstr;
-	const char *name;
-	const char *version;
 	char *neworigin = NULL;
 	char *oldorigin = NULL;
 	unsigned int loads = PKG_LOAD_BASIC;
@@ -165,14 +163,13 @@ exec_set(int argc, char **argv)
 			pkgdb_close(db);
 			return (EX_SOFTWARE);*/
 		}
-		if (pkg != NULL)
-			pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
+
 		if (!yes) {
 			if (pkg != NULL)
-				yes = query_yesno("Change origin from %s to %s for %s-%s? [y/N]: ",
-				    oldorigin, neworigin, name, version);
+				yes = query_yesno("Change origin from %S to %S for %n-%v? [y/N]: ",
+				    oldorigin, neworigin, pkg, pkg);
 			else
-				yes = query_yesno("Change origin from %s to %s for all dependencies? "
+				yes = query_yesno("Change origin from %S to %S for all dependencies? "
 				    "[y/N]: ", oldorigin, neworigin);
 		}
 		if (pkg != NULL && yes) {
@@ -197,11 +194,10 @@ exec_set(int argc, char **argv)
 				if (automatic == newautomatic)
 					continue;
 				if (!yes) {
-					pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 					if (newautomatic)
-						yes = query_yesno("Mark %s-%s as automatically installed? [y/N]: ", name, version);
+						yes = query_yesno("Mark %n-%v as automatically installed? [y/N]: ", pkg, pkg);
 					else
-						yes = query_yesno("Mark %s-%s as not automatically installed? [y/N]: ", name, version);
+						yes = query_yesno("Mark %n-%v as not automatically installed? [y/N]: ", pkg, pkg);
 				}
 				if (yes)
 					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, newautomatic);

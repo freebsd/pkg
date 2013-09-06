@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 22, 2013
+.Dd Jun 2, 2013
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -86,8 +86,6 @@ Maintainer of the matched package
 Comment of the matched package
 .It Cm \&%e
 Description of the matched package
-.It Cm \&%i
-Additional information about the package
 .It Cm \&%w
 Home page of the matched package
 .It Cm \&%l
@@ -106,7 +104,7 @@ Returns 1 if the matched package is locked against modification or deletion, 0 o
 message contain in the matched package
 .It Cm \&%t
 Timestamp that the package was installed
-.It Cm \&%? Ns Op drCFODLUGBb
+.It Cm \&%? Ns Op drCFODLUGBbA
 Returns 0 if the list is empty and 1 if the list has information to display
 .Bl -tag -width indent
 .It Cm d
@@ -131,9 +129,11 @@ for groups
 for required shared libraries
 .It Cm b
 for provided shared libraries
+.It Cm A
+for annotations
 .El
-.It Cm \&%# Ns Op drCFODLUGBb
-Returns the number of element in the list
+.It Cm \&%# Ns Op drCFODLUGBbA
+Returns the number of elements in the list
 .Bl -tag -width indent
 .It Cm d
 for dependencies
@@ -159,6 +159,8 @@ for shared
 for required shared libraries
 .It Cm b
 for provided shared libraries
+.It Cm A
+for annotations
 .El
 .El
 .Ss Multiline patterns:
@@ -205,6 +207,13 @@ Expands to the list of groups needed by the matched package.
 Expands to the list of shared libraries used by programs from the matched package.
 .It Cm \&%b
 Expands to the list of shared libraries provided by the matched package.
+.It Cm \&%A Ns Op tv
+Expands to the list of annotations for the matched package,
+where
+.Cm t
+stands for the annotation tag, and
+.Cm v
+stands for the annotation value.
 .El
 .Sh EVALUATION FORMAT
 Packages can be selected by using expressions comparing
@@ -247,7 +256,7 @@ Message of the package (type string)
 Timestamp that the package was installed (type integer)
 .It Cm \&%i
 Additionnal information about the package (type string)
-.It Cm \&%# Ns Op drCFODLUGBb
+.It Cm \&%# Ns Op drCFODLUGBbA
 Number of elements in the list of information (type integer).
 See
 .Cm %?
@@ -275,16 +284,43 @@ for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
 .El
-.Sh EXIT STATUS
-.Nm
-exits 0 on success, and >0 if an error occurs.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
+.Sh EXIT STATUS
+.Ex -std
+.Sh EXAMPLES
+List all installed packages by name-version:
+.Dl $ pkg query %n-%v
+.Pp
+List all dependencies for a package by origin:
+.Dl $ pkg query %do subversion
+.Pp
+List all dependencies by package name-version:
+.Dl $ pkg query %dn-%dv subversion
+.Pp
+List all reverse dependencies for a package:
+.Dl $ pkg query %ro perl
+.Pp
+List all files and their known checksums for a package:
+.Dl $ pkg query '%Fp %Fs' perl
+.Pp
+List all files for all packages:
+.Dl $ pkg query '%o: %Fp'
+.Pp
+List all packages with no reverse dependencies:
+.Dl $ pkg query -e '%#r = 0' %o
+.Pp
+List non-automatic packages:
+.Dl $ pkg query -e '%a = 0' %o
+.Pp
+List automatic packages:
+.Dl $ pkg query -e '%a = 1' %o
 .Sh SEE ALSO
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,

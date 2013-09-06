@@ -48,7 +48,7 @@ exec_upgrade(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	const char __unused *reponame = NULL;
+	const char *reponame = NULL;
 	int retcode;
 	int updcode;
 	int ch;
@@ -62,7 +62,7 @@ exec_upgrade(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
 
-	while ((ch = getopt(argc, argv, "fLnqFr:Uy")) != -1) {
+	while ((ch = getopt(argc, argv, "fInqFr:Uy")) != -1) {
 		switch (ch) {
 		case 'f':
 			f |= PKG_FLAG_FORCE;
@@ -70,9 +70,6 @@ exec_upgrade(int argc, char **argv)
 		case 'I':
 			f |= PKG_FLAG_NOSCRIPT;
 			break;
-		case 'L':
-			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
-			/* FALLTHROUGH */
 		case 'U':
 			auto_update = false;
 			break;
@@ -106,7 +103,7 @@ exec_upgrade(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (dry_run)
+	if (dry_run && !auto_update)
 		retcode = pkgdb_access(PKGDB_MODE_READ,
 				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
 	else
@@ -114,6 +111,11 @@ exec_upgrade(int argc, char **argv)
 				       PKGDB_MODE_WRITE |
 				       PKGDB_MODE_CREATE,
 				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+	if (retcode == EPKG_ENOACCESS && dry_run) {
+		auto_update = false;
+		retcode = pkgdb_access(PKGDB_MODE_READ,
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+	}
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to upgrade packages");
@@ -124,7 +126,7 @@ exec_upgrade(int argc, char **argv)
 		retcode = EX_SOFTWARE;
 	
 	/* first update the remote repositories if needed */
-	if (!dry_run && auto_update && 
+	if (auto_update &&
 	    (updcode = pkgcli_update(false)) != EPKG_OK)
 		return (updcode);
 
@@ -132,6 +134,9 @@ exec_upgrade(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK)
+		goto cleanup;
+
+	if (reponame != NULL && pkg_jobs_set_repository(jobs, reponame) != EPKG_OK)
 		goto cleanup;
 
 	pkg_jobs_set_flags(jobs, f);
@@ -148,7 +153,7 @@ exec_upgrade(int argc, char **argv)
 
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
-		    "Uprgades have been requested for the following %d "
+		    "Upgrades have been requested for the following %d "
 		    "packages:\n\n", nbactions);
 
 		if (!yes && !dry_run)
@@ -171,6 +176,9 @@ exec_upgrade(int argc, char **argv)
 	cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
+
+	if (!yes && newpkgversion)
+		newpkgversion = false;
 
 	return (retcode);
 }

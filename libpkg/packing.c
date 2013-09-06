@@ -34,6 +34,8 @@
 #include <fcntl.h>
 #include <fts.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <limits.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -77,6 +79,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 		snprintf(archive_path, sizeof(archive_path), "%s.%s", path,
 		    ext);
 
+		pkg_debug(1, "Packing to file '%s'", archive_path);
 		if (archive_write_open_filename(
 		    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
 			pkg_emit_errno("archive_write_open_filename",
@@ -87,6 +90,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format)
 			return EPKG_FATAL;
 		}
 	} else { /* pass mode directly write to the disk */
+		pkg_debug(1, "Packing to directory '%s' (pass mode)", path);
 		(*pack)->awrite = archive_write_disk_new();
 		archive_write_disk_set_options((*pack)->awrite,
 		    EXTRACT_ARCHIVE_FLAGS);
@@ -143,18 +147,17 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
     const char *newpath, const char *uname, const char *gname, mode_t perm)
 {
 	int fd;
-	int len;
-	char buf[BUFSIZ];
+	char *map;
 	int retcode = EPKG_OK;
 	int ret;
 	struct stat st;
 	struct archive_entry *entry, *sparse_entry;
-	/* ugly hack for python and emacs */
-	/*char *p;*/
-	/*bool unset_timestamp = true;*/
+	bool unset_timestamp;
 
 	entry = archive_entry_new();
 	archive_entry_copy_sourcepath(entry, filepath);
+
+	pkg_debug(2, "Packing file '%s'", filepath);
 
 	if (lstat(filepath, &st) != 0) {
 		pkg_emit_errno("lstat", filepath);
@@ -187,23 +190,14 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	if (perm != 0)
 		archive_entry_set_perm(entry, perm);
 
-	/* XXX ugly hack for python and emacs */
-/*	p = strrchr(filepath, '.');
-
-	if (p != NULL && (strcmp(p, ".pyc") == 0 ||
-	    strcmp(p, ".py") == 0 ||
-	    strcmp(p, ".pyo") == 0 ||
-	    strcmp(p, ".elc") == 0 ||
-	    strcmp(p, ".el") == 0
-	    ))
-		unset_timestamp = false;
+	pkg_config_bool(PKG_CONFIG_UNSET_TIMESTAMP, &unset_timestamp);
 
 	if (unset_timestamp) {
 		archive_entry_unset_atime(entry);
 		archive_entry_unset_ctime(entry);
 		archive_entry_unset_mtime(entry);
 		archive_entry_unset_birthtime(entry);
-	}*/
+	}
 
 	archive_entry_linkify(pack->resolver, &entry, &sparse_entry);
 
@@ -218,11 +212,40 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
+		if (st.st_size > SSIZE_MAX) {
+			char buf[BUFSIZ];
+			int len;
 
-		while ((len = read(fd, buf, sizeof(buf))) > 0)
-			archive_write_data(pack->awrite, buf, len);
+			while ((len = read(fd, buf, sizeof(buf))) > 0)
+				if (archive_write_data(pack->awrite, buf, len) == -1) {
+					pkg_emit_errno("archive_write_data", "archive write error");
+					retcode = EPKG_FATAL;
+					break;
+				}
 
-		close(fd);
+			if (len == -1) {
+				pkg_emit_errno("read", "file read error");
+				retcode = EPKG_FATAL;
+			}
+			close(fd);
+		}
+		else {
+			if ((map = mmap(NULL, st.st_size, PROT_READ,
+					MAP_SHARED, fd, 0)) != MAP_FAILED) {
+				close(fd);
+				if (archive_write_data(pack->awrite, map, st.st_size) == -1) {
+					pkg_emit_errno("archive_write_data", "archive write error");
+					retcode = EPKG_FATAL;
+				}
+				munmap(map, st.st_size);
+			}
+			else {
+				close(fd);
+				pkg_emit_errno("open", filepath);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+		}
 	}
 
 	cleanup:

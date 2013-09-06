@@ -51,7 +51,6 @@ exec_which(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	char pathabs[MAXPATHLEN + 1];
 	int ret = EPKG_OK, retcode = EX_OK;
-	const char *name, *version, *origin;
 	int ch;
 	bool orig = false;
 	bool glob = false;
@@ -67,6 +66,9 @@ exec_which(int argc, char **argv)
 		case 'o':
 			orig = true;
 			break;
+		default:
+			usage_which();
+			return (EX_USAGE);
 		}
 	}
 
@@ -85,22 +87,23 @@ exec_which(int argc, char **argv)
 
 	if (!glob)
 		absolutepath(argv[0], pathabs, sizeof(pathabs));
-	else
-		strlcpy(pathabs, argv[0], sizeof(pathabs));
+	else {
+		if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs))
+			return (EX_USAGE);
+	}
 
 	if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL)
 		return (EX_IOERR);
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version, PKG_ORIGIN, &origin);
 		if (quiet && orig)
-			printf("%s\n", origin);
+			pkg_printf("%o\n", pkg);
 		else if (quiet && !orig)
-			printf("%s-%s\n", name, version);
+			pkg_printf("%n-%v\n", pkg, pkg);
 		else if (!quiet && orig)
-			printf("%s was installed by package %s\n", pathabs, origin);
+			pkg_printf("%S was installed by package %o\n", pathabs, pkg);
 		else if (!quiet && !orig)
-			printf("%s was installed by package %s-%s\n", pathabs, name, version);
+			pkg_printf("%S was installed by package %n-%v\n", pathabs, pkg, pkg);
 		if (!glob)
 			break;
 	}

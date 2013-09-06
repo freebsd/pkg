@@ -24,11 +24,11 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl qog
-.Ar <file>
+.Ar file
 .Sh DESCRIPTION
 .Nm
 is used for displaying the package that installed
-.Ar <file>
+.Ar file
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -49,7 +49,7 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It PKG_DBDIR
+.It Ev PKG_DBDIR
 .El
 .Sh FILES
 See
@@ -58,6 +58,7 @@ See
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,

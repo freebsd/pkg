@@ -60,12 +60,13 @@
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 4
+#define REPO_SCHEMA_MINOR 5
 
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
 typedef enum _sql_prstmt_index {
 	PKG = 0,
+	PKG2001,
 	DEPS,
 	CAT1,
 	CAT2,
@@ -74,9 +75,10 @@ typedef enum _sql_prstmt_index {
 	OPTS,
 	SHLIB1,
 	SHLIB_REQD,
+	SHLIB2001,
 	SHLIB_PROV,
-	ABSTRACT1,
-	ABSTRACT2,
+	ANNOTATE1,
+	ANNOTATE2,
 	EXISTS,
 	VERSION,
 	DELETE,
@@ -92,6 +94,15 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		")"
 		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
 		"TTTTTTTTTIIITTT",
+	},
+	[PKG2001] = {
+		NULL,
+		"INSERT INTO packages ("
+		"origin, name, version, comment, desc, arch, maintainer, www, "
+		"prefix, pkgsize, flatsize, licenselogic, cksum, path"
+		")"
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+		"TTTTTTTTTIIITT",
 	},
 	[DEPS] = {
 		NULL,
@@ -138,6 +149,12 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
 	},
+	[SHLIB2001] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
+		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
+		"IT",
+	},
 	[SHLIB_PROV] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_shlibs_provided(package_id, shlib_id) "
@@ -149,18 +166,18 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"SELECT count(*) FROM packages WHERE cksum=?1",
 		"T",
 	},
-	[ABSTRACT1] = {
+	[ANNOTATE1] = {
 		NULL,
-		"INSERT OR IGNORE INTO abstract(abstract) "
+		"INSERT OR IGNORE INTO annotation(annotation) "
 		"VALUES (?1)",
 		"T",
 	},
-	[ABSTRACT2] = {
+	[ANNOTATE2] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO pkg_abstract(package_id, key_id, value_id) "
+		"INSERT OR ROLLBACK INTO pkg_annotation(package_id, tag_id, value_id) "
 		"VALUES (?1,"
-		" (SELECT abstract_id FROM abstract WHERE abstract=?2),"
-		" (SELECT abstract_id FROM abstract WHERE abstract=?3))",
+		" (SELECT annotation_id FROM annotation WHERE annotation=?2),"
+		" (SELECT annotation_id FROM annotation WHERE annotation=?3))",
 		"ITT",
 	},
 	[VERSION] = {
@@ -175,6 +192,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	}
 	/* PRSTMT_LAST */
 };
+
 
 static void
 file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
@@ -231,21 +249,25 @@ get_repo_user_version(sqlite3 *sqlite, const char *database, int *reposcver)
 }
 
 static int
-initialize_prepared_statements(sqlite3 *sqlite)
+initialize_prepared_statements(sqlite3 *sqlite, bool legacy)
 {
 	sql_prstmt_index i, last;
 	int ret;
 
 	last = PRSTMT_LAST;
 
-	for (i = 0; i < last; i++)
-	{
+	for (i = 0; i < last; i++) {
+		if (legacy && (i == PKG || i == SHLIB_REQD || (i > SHLIB2001 && i < EXISTS)))
+			continue;
+		if (!legacy && (i == PKG2001 || i == SHLIB2001))
+			continue;
 		ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
 		if (ret != SQLITE_OK) {
 			ERROR_SQLITE(sqlite);
 			return (EPKG_FATAL);
 		}
 	}
+
 	return (EPKG_OK);
 }
 
@@ -303,7 +325,7 @@ finalize_prepared_statements(void)
 }
 
 int
-pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
+pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite, bool legacy)
 {
 	bool incremental = false;
 	bool db_not_open;
@@ -332,6 +354,8 @@ pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
 		retcode = get_repo_user_version(*sqlite, "main", &reposcver);
 		if (retcode != EPKG_OK)
 			return (EPKG_FATAL);
+		if (legacy)
+			break;
 		if (force || reposcver != REPO_SCHEMA_VERSION) {
 			if (reposcver != REPO_SCHEMA_VERSION)
 				pkg_emit_error("re-creating repo to upgrade schema version "
@@ -344,40 +368,22 @@ pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
 		}
 	}
 
+	sqlite3_create_function(*sqlite, "file_exists", 2, SQLITE_ANY, NULL,
+	    file_exists, NULL, NULL);
+
 	if (!incremental) {
-		retcode = sql_exec(*sqlite, initsql, REPO_SCHEMA_VERSION);
+		retcode = sql_exec(*sqlite, legacy ? initsql_legacy : initsql, REPO_SCHEMA_VERSION);
 		if (retcode != EPKG_OK)
 			return (retcode);
-	}
-
-	/* remove anything that is no longer in the repository. */
-	if (incremental) {
-		const char *obsolete[] = {
-				"packages WHERE NOT FILE_EXISTS(path, cksum)",
-				"categories WHERE id NOT IN "
-				"(SELECT category_id FROM pkg_categories)",
-				"licenses WHERE id NOT IN "
-				"(SELECT license_id FROM pkg_licenses)",
-				"shlibs WHERE id NOT IN "
-				"(SELECT shlib_id FROM pkg_shlibs_required)"
-				"AND id NOT IN "
-				"(SELECT shlib_id FROM pkg_shlibs_provided)"
-		};
-		size_t num_objs = sizeof(obsolete) / sizeof(*obsolete);
-		for (size_t obj = 0; obj < num_objs; obj++)
-			sql_exec(*sqlite, "DELETE FROM %s;", obsolete[obj]);
 	}
 
 	return (EPKG_OK);
 }
 
 int
-pkgdb_repo_init(sqlite3 *sqlite)
+pkgdb_repo_init(sqlite3 *sqlite, bool legacy)
 {
 	int retcode = EPKG_OK;
-
-	sqlite3_create_function(sqlite, "file_exists", 2, SQLITE_ANY, NULL,
-	    file_exists, NULL, NULL);
 
 	retcode = sql_exec(sqlite, "PRAGMA synchronous=off");
 	if (retcode != EPKG_OK)
@@ -391,7 +397,7 @@ pkgdb_repo_init(sqlite3 *sqlite)
 	if (retcode != EPKG_OK)
 		return (retcode);
 
-	retcode = initialize_prepared_statements(sqlite);
+	retcode = initialize_prepared_statements(sqlite, legacy);
 	if (retcode != EPKG_OK)
 		return (retcode);
 
@@ -406,6 +412,9 @@ int
 pkgdb_repo_close(sqlite3 *sqlite, bool commit)
 {
 	int retcode = EPKG_OK;
+
+	if (sqlite == NULL)
+		return (retcode);
 
 	if (commit) {
 		if (pkgdb_transaction_commit(sqlite, NULL) != SQLITE_OK)
@@ -475,19 +484,20 @@ pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum)
 
 int
 pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, const char *manifest_digest, bool forced)
+		sqlite3 *sqlite, const char *manifest_digest, bool forced, bool legacy)
 {
 	const char *name, *version, *origin, *comment, *desc;
 	const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
-	int64_t flatsize, pkgsize;
-	lic_t licenselogic;
-	int ret;
-	struct pkg_dep *dep = NULL;
-	struct pkg_category *category = NULL;
-	struct pkg_license *license = NULL;
-	struct pkg_option *option = NULL;
-	struct pkg_shlib *shlib = NULL;
-	int64_t package_id;
+	int64_t			 flatsize, pkgsize;
+	lic_t			 licenselogic;
+	int			 ret;
+	struct pkg_dep		*dep      = NULL;
+	struct pkg_category	*category = NULL;
+	struct pkg_license	*license  = NULL;
+	struct pkg_option	*option   = NULL;
+	struct pkg_shlib	*shlib    = NULL;
+	struct pkg_note		*note     = NULL;
+	int64_t			 package_id;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
 			    PKG_VERSION, &version, PKG_COMMENT, &comment,
@@ -495,10 +505,12 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 			    PKG_MAINTAINER, &maintainer, PKG_WWW, &www,
 			    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
 			    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
-			    PKG_NEW_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
+			    PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
+
+	/* setup the legacy version */
 
 try_again:
-	if ((ret = run_prepared_statement(PKG, origin, name, version,
+	if ((ret = run_prepared_statement(legacy ? PKG2001 : PKG, origin, name, version,
 			comment, desc, arch, maintainer, www, prefix,
 			pkgsize, flatsize, (int64_t)licenselogic, sum,
 			rpath, manifest_digest)) != SQLITE_DONE) {
@@ -580,13 +592,16 @@ try_again:
 
 		ret = run_prepared_statement(SHLIB1, shlib_name);
 		if (ret == SQLITE_DONE)
-			ret = run_prepared_statement(SHLIB_REQD, package_id,
+			ret = run_prepared_statement(legacy ? SHLIB2001 : SHLIB_REQD, package_id,
 					shlib_name);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite);
 			return (EPKG_FATAL);
 		}
 	}
+
+	if (legacy)
+		return (EPKG_OK);
 
 	shlib = NULL;
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
@@ -602,16 +617,29 @@ try_again:
 		}
 	}
 
+	note = NULL;
+	while (pkg_annotations(pkg, &note) == EPKG_OK) {
+		const char *note_tag = pkg_annotation_tag(note);
+		const char *note_val = pkg_annotation_value(note);
+
+		ret = run_prepared_statement(ANNOTATE1, note_tag);
+		if (ret == SQLITE_DONE)
+			ret = run_prepared_statement(ANNOTATE1, note_val);
+		if (ret == SQLITE_DONE)
+			ret = run_prepared_statement(ANNOTATE2, package_id,
+				  note_tag, note_val);
+		if (ret != SQLITE_DONE) {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+	}
+
 	return (EPKG_OK);
 }
 
 int
-pkgdb_repo_remove_package(struct pkg *pkg)
+pkgdb_repo_remove_package(const char *origin)
 {
-	const char *origin;
-
-	pkg_get(pkg, PKG_ORIGIN, &origin);
-
 	if (run_prepared_statement(DELETE, origin) != SQLITE_DONE)
 		return (EPKG_FATAL); /* sqlite error */
 
@@ -881,9 +909,12 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 {
 	sqlite3_stmt *stmt = NULL;
 	int ret;
-	struct pkgdb_it *it;
+	static struct pkgdb repodb;
 	const char query_sql[] = ""
-		"SELECT origin, manifestdigest "
+		"SELECT id, origin, name, version, comment, "
+		"prefix, desc, arch, maintainer, www, "
+		"licenselogic, flatsize, pkgsize, "
+		"cksum, path AS repopath, manifestdigest "
 		"FROM packages "
 		"ORDER BY origin;";
 
@@ -893,15 +924,8 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 		ERROR_SQLITE(sqlite);
 		return (NULL);
 	}
+	repodb.sqlite = sqlite;
+	repodb.type = PKGDB_REMOTE;
 
-	if ((it = malloc(sizeof(struct pkgdb_it))) == NULL) {
-		pkg_emit_errno("malloc", "pkgdb_repo_origins");
-		sqlite3_finalize(stmt);
-		return (NULL);
-	}
-
-	it->db = NULL;
-	it->stmt = stmt;
-	it->type = PKG_REMOTE;
-	return (it);
+	return pkgdb_it_new(&repodb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
 }

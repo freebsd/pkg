@@ -50,8 +50,8 @@ usage_info(void)
 {
 	fprintf(stderr, "usage: pkg info <pkg-name>\n");
 	fprintf(stderr, "       pkg info -a\n");
-	fprintf(stderr, "       pkg info [-bBDdefgiIklOqRrsx] <pkg-name>\n");
-	fprintf(stderr, "       pkg info [-bBDdfIlqRrs] -F <pkg-file>\n\n");
+	fprintf(stderr, "       pkg info [-AbBDdefgiIklOqRrsx] <pkg-name>\n");
+	fprintf(stderr, "       pkg info [-AbBDdfIlqRrs] -F <pkg-file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help info'.\n");
 }
 
@@ -79,14 +79,19 @@ exec_info(int argc, char **argv)
 	int i, j;
 	int sign = 0;
 	int sign2 = 0;
+	int open_flags = 0;
 	bool pkg_exists = false;
 	bool origin_search = false;
+	struct pkg_manifest_key *keys = NULL;
 
 	/* TODO: exclusive opts ? */
-	while ((ch = getopt(argc, argv, "aDegixEIdrklbBsqopOfF:R")) != -1) {
+	while ((ch = getopt(argc, argv, "aADegixEIdrklbBsqopOfF:R")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
+			break;
+		case 'A':
+			opt |= INFO_ANNOTATIONS;
 			break;
 		case 'O':
 			origin_search = true;  /* only for ports compat */
@@ -191,9 +196,15 @@ exec_info(int argc, char **argv)
 		quiet = false;
 
 	if (file != NULL) {
-		if (pkg_open(&pkg, file) != EPKG_OK) {
+		pkg_manifest_keys_new(&keys);
+		if ((opt & (INFO_RAW | INFO_FILES |
+				INFO_DIRS)) == 0)
+			open_flags = PKG_OPEN_MANIFEST_COMPACT;
+
+		if (pkg_open(&pkg, file, keys, open_flags) != EPKG_OK) {
 			return (1);
 		}
+		pkg_manifest_keys_free(keys);
 		print_info(pkg, opt);
 		pkg_free(pkg);
 		return (0);
@@ -205,6 +216,8 @@ exec_info(int argc, char **argv)
 		return (EX_NOPERM);
 	} else if (ret == EPKG_ENODB) {
 		if (match == MATCH_ALL)
+			return (EX_OK);
+		if (origin_search)
 			return (EX_OK);
 		if (!quiet)
 			warnx("No packages installed");
@@ -321,7 +334,7 @@ exec_info(int argc, char **argv)
 
 		/* end of compatibility hacks */
 
-		query_flags = info_flags(opt);
+		query_flags = info_flags(opt, false);
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 			gotone = true;
 			const char *version;

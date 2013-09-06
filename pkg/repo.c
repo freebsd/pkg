@@ -37,7 +37,7 @@
 void
 usage_repo(void)
 {
-	fprintf(stderr, "usage: pkg repo [-fq] <repo-path> <rsa-key>\n\n");
+	fprintf(stderr, "usage: pkg repo [-flq] <repo-path> <rsa-key>\n\n");
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
@@ -89,15 +89,18 @@ exec_repo(int argc, char **argv)
 	int pos = 0;
 	int ch;
 	char *rsa_key;
-	bool force = false;
+	bool force = false, filelist = false;
 
-	while ((ch = getopt(argc, argv, "fq")) != -1) {
+	while ((ch = getopt(argc, argv, "flq")) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
 			break;
 		case 'f':
 			force = true;
+			break;
+		case 'l':
+			filelist = true;
 			break;
 		default:
 			usage_repo();
@@ -114,9 +117,9 @@ exec_repo(int argc, char **argv)
 
 	if (!quiet) {
 		printf("Generating repository catalog in %s:  ", argv[0]);
-		ret = pkg_create_repo(argv[0], force, progress, &pos);
+		ret = pkg_create_repo(argv[0], force, filelist, progress, &pos);
 	} else
-		ret = pkg_create_repo(argv[0], force, NULL, NULL);
+		ret = pkg_create_repo(argv[0], force, filelist, NULL, NULL);
 
 	if (ret != EPKG_OK) {
 		printf("cannot create repository catalogue\n");
@@ -127,7 +130,7 @@ exec_repo(int argc, char **argv)
 	}
 	
 	rsa_key = (argc == 2) ? argv[1] : NULL;
-	pkg_finish_repo(argv[0], password_cb, rsa_key);
+	pkg_finish_repo(argv[0], password_cb, rsa_key, filelist);
 
 	return (EX_OK);
 }

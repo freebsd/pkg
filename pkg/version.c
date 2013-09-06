@@ -4,6 +4,7 @@
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -29,7 +30,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/queue.h>
 #include <sys/sbuf.h>
 #include <sys/utsname.h>
 
@@ -45,13 +45,14 @@
 #include <fnmatch.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <uthash.h>
 
 #include "pkgcli.h"
 
 struct index_entry {
 	char *origin;
 	char *version;
-	SLIST_ENTRY(index_entry) next;
+	UT_hash_handle hh;
 };
 
 void
@@ -69,10 +70,10 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 {
 	bool to_print = true;
 	char key;
-	const char *version, *name, *origin;
+	const char *version;
 	char *namever = NULL;
 
-	pkg_get(pkg, PKG_VERSION, &version, PKG_NAME, &name, PKG_ORIGIN, &origin);
+	pkg_get(pkg, PKG_VERSION, &version);
 	if (ver == NULL) {
 		if (source == NULL)
 			key = '!';
@@ -105,11 +106,13 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 	if (!to_print)
 		return;
 
-	asprintf(&namever, "%s-%s", name, version);
+
 	if (opt & VERSION_ORIGIN)
-		printf("%-34s %c", origin, key);
+		pkg_asprintf(&namever, "%-34o", pkg);
 	else
-		printf("%-34s %c", namever, key);
+		pkg_asprintf(&namever, "%n-%v", pkg, pkg);
+
+	printf("%-34s %c", namever, key);
 	free(namever);
 
 	if (opt & VERSION_VERBOSE) {
@@ -124,7 +127,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 			printf("   succeeds %s (%s has %s)", source, source, ver);
 			break;
 		case '?':
-			printf("   orphaned: %s", origin);
+			pkg_printf("   orphaned: %o", pkg);
 			break;
 		case '!':
 			printf("   Comparison failed");
@@ -142,7 +145,7 @@ exec_version(int argc, char **argv)
 	int ch;
 	FILE *indexfile;
 	char indexpath[MAXPATHLEN + 1];
-	SLIST_HEAD(, index_entry) indexhead;
+	struct index_entry *indexhead = NULL;
 	struct utsname u;
 	int rel_major_ver;
 	int retval;
@@ -151,7 +154,7 @@ exec_version(int argc, char **argv)
 	ssize_t linelen;
 	char *buf;
 	char *version;
-	struct index_entry *entry;
+	struct index_entry *entry, *tmp;
 	struct pkgdb *db = NULL;
 	struct pkg *pkg = NULL, *pkg_remote = NULL;
 	struct pkgdb_it *it = NULL, *it_remote = NULL;
@@ -169,8 +172,6 @@ exec_version(int argc, char **argv)
 	char *pattern=NULL;
 	struct stat sb;
 	char portsdirmakefile[MAXPATHLEN];
-
-	SLIST_INIT(&indexhead);
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
@@ -236,6 +237,9 @@ exec_version(int argc, char **argv)
 		case 'T':
 			opt |= VERSION_TESTPATTERN;
 			break;
+		default:
+			usage_version();
+			return (EX_USAGE);
 		}
 	}
 	argc -= optind;
@@ -366,7 +370,7 @@ exec_version(int argc, char **argv)
 				entry = malloc(sizeof(struct index_entry));
 				entry->version = strdup(version);
 				entry->origin = strdup(buf);
-				SLIST_INSERT_HEAD(&indexhead, entry, next);
+				HASH_ADD_KEYPTR(hh, indexhead, entry->origin, strlen(entry->origin), entry);
 			}
 			free(line);
 			fclose(indexfile);
@@ -380,12 +384,9 @@ exec_version(int argc, char **argv)
 				continue;
 
 			if (opt & VERSION_SOURCE_INDEX) {
-				SLIST_FOREACH(entry, &indexhead, next) {
-					if (!strcmp(entry->origin, origin)) {
-						print_version(pkg, "index", entry->version, limchar, opt);
-						break;
-					}
-				}
+				HASH_FIND_STR(indexhead, __DECONST(char *, origin), entry);
+				if (entry != NULL)
+					print_version(pkg, "index", entry->version, limchar, opt);
 			} else if (opt & VERSION_SOURCE_PORTS) {
 				cmd = sbuf_new_auto();
 				sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null", portsdir, origin);
@@ -412,6 +413,8 @@ exec_version(int argc, char **argv)
 				if (pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC) == EPKG_OK) {
 					pkg_get(pkg_remote, PKG_VERSION, &version_remote);
 					print_version(pkg, "remote", version_remote, limchar, opt);
+				} else {
+					print_version(pkg, "remote", NULL, limchar, opt);
 				}
 				pkgdb_it_free(it_remote);
 			}
@@ -419,11 +422,10 @@ exec_version(int argc, char **argv)
 	}
 	
 cleanup:
-	while (!SLIST_EMPTY(&indexhead)) {
-		entry = SLIST_FIRST(&indexhead);
-		SLIST_REMOVE_HEAD(&indexhead, next);
-		free(entry->version);
+	HASH_ITER(hh, indexhead, entry, tmp) {
+		HASH_DEL(indexhead, entry);
 		free(entry->origin);
+		free(entry->version);
 		free(entry);
 	}
 

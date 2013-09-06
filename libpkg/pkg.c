@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -53,12 +54,13 @@ static struct _fields {
 	[PKG_MAINTAINER] = {"maintainer", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_WWW] = {"www", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
 	[PKG_PREFIX] = {"prefix", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_INFOS] = {"information", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 1},
 	[PKG_REPOPATH] = {"repopath", PKG_REMOTE, 0},
 	[PKG_CKSUM] = {"checksum", PKG_REMOTE, 0},
-	[PKG_NEWVERSION] = {"newversion", PKG_REMOTE, 1},
+	[PKG_OLD_VERSION] = {"oldversion", PKG_REMOTE, 1},
 	[PKG_REPONAME] = {"reponame", PKG_REMOTE, 1},
 	[PKG_REPOURL] = {"repourl", PKG_REMOTE, 1},
+	[PKG_DIGEST] = {"manifestdigest", PKG_REMOTE, 1},
+	[PKG_REASON] = {"reason", PKG_REMOTE, 1}
 };
 
 int
@@ -71,6 +73,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 
 	(*pkg)->automatic = false;
 	(*pkg)->locked = false;
+	(*pkg)->direct = false;
 	(*pkg)->type = type;
 	(*pkg)->licenselogic = LICENSE_SINGLE;
 
@@ -92,8 +95,8 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 		sbuf_reset(pkg->scripts[i]);
 
 	pkg->flatsize = 0;
-	pkg->new_flatsize = 0;
-	pkg->new_pkgsize = 0;
+	pkg->old_flatsize = 0;
+	pkg->pkgsize = 0;
 	pkg->time = 0;
 	pkg->flags = 0;
 	pkg->automatic = false;
@@ -111,6 +114,7 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	pkg_list_free(pkg, PKG_ANNOTATIONS);
 
 	pkg->rowid = 0;
 	pkg->type = type;
@@ -139,12 +143,13 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
+	pkg_list_free(pkg, PKG_ANNOTATIONS);
 
 	free(pkg);
 }
 
 pkg_t
-pkg_type(struct pkg const * const pkg)
+pkg_type(const struct pkg * restrict pkg)
 {
 	assert(pkg != NULL);
 
@@ -152,7 +157,7 @@ pkg_type(struct pkg const * const pkg)
 }
 
 int
-pkg_is_valid(struct pkg *pkg)
+pkg_is_valid(const struct pkg * restrict pkg)
 {
 	int i;
 
@@ -165,8 +170,8 @@ pkg_is_valid(struct pkg *pkg)
 	for (i = 0; i < PKG_NUM_FIELDS; i++) {
 		if ((fields[i].type & pkg->type) == 0 ||
 		    fields[i].optional ||
-		    pkg->fields[i] != NULL ||
-		    sbuf_len(pkg->fields[i]) > 0)
+		    (pkg->fields[i] != NULL &&
+		    sbuf_len(pkg->fields[i]) > 0))
 			continue;
 		pkg_emit_error("package field incomplete: %s",
 		    fields[i].human_desc);
@@ -177,7 +182,7 @@ pkg_is_valid(struct pkg *pkg)
 }
 
 static int
-pkg_vget(struct pkg const *const pkg, va_list ap)
+pkg_vget(const struct pkg * restrict pkg, va_list ap)
 {
 	int attr;
 
@@ -192,11 +197,11 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 		case PKG_FLATSIZE:
 			*va_arg(ap, int64_t *) = pkg->flatsize;
 			break;
-		case PKG_NEW_FLATSIZE:
-			*va_arg(ap, int64_t *) = pkg->new_flatsize;
+		case PKG_OLD_FLATSIZE:
+			*va_arg(ap, int64_t *) = pkg->old_flatsize;
 			break;
-		case PKG_NEW_PKGSIZE:
-			*va_arg(ap, int64_t *) = pkg->new_pkgsize;
+		case PKG_PKGSIZE:
+			*va_arg(ap, int64_t *) = pkg->pkgsize;
 			break;
 		case PKG_LICENSE_LOGIC:
 			*va_arg(ap, lic_t *) = pkg->licenselogic;
@@ -223,7 +228,7 @@ pkg_vget(struct pkg const *const pkg, va_list ap)
 }
 
 int
-pkg_get2(struct pkg const *const pkg, ...)
+pkg_get2(const struct pkg * restrict pkg, ...)
 {
 	int ret = EPKG_OK;
 	va_list ap;
@@ -237,58 +242,32 @@ pkg_get2(struct pkg const *const pkg, ...)
 	return (ret);
 }
 
-const char *
-pkg_name(struct pkg const *const pkg)
-{
-	assert(pkg != NULL);
-
-	if (pkg->fields[PKG_NAME] != NULL)
-		return (sbuf_get(pkg->fields[PKG_NAME]));
-	else
-		return (NULL);
-}
-
-const char *
-pkg_version(struct pkg const *const pkg)
-{
-	assert(pkg != NULL);
-
-	if (pkg->fields[PKG_VERSION] != NULL)
-		return (sbuf_get(pkg->fields[PKG_VERSION]));
-	else
-		return (NULL);
-}
-
 static void
 pkg_set_repourl(struct pkg *pkg, const char *str)
 {
-	struct pkg_config_kv *rkv = NULL;
+	struct pkg_repo *r;
 
-	while (pkg_config_kvlist(PKG_CONFIG_REPOS, &rkv) == EPKG_OK) {
-		const char *key = pkg_config_kv_get(rkv, PKG_CONFIG_KV_KEY);
-		const char *val = pkg_config_kv_get(rkv, PKG_CONFIG_KV_VALUE);
-		if (strcmp(str, key) == 0)
-			pkg_set(pkg, PKG_REPOURL, val);
-	}
+	r = pkg_repo_find_ident(str);
+	if (r != NULL)
+		pkg_set(pkg, PKG_REPOURL, pkg_repo_url(r));
 }
 
 static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
-	bool multirepos_enabled = false;
 	int attr;
-
-	pkg_config_bool(PKG_CONFIG_MULTIREPOS, &multirepos_enabled);
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr < PKG_NUM_FIELDS) {
 			struct sbuf **sbuf;
 			const char *str = va_arg(ap, const char *);
 
-			sbuf = &pkg->fields[attr];
+			if (str == NULL) {
+				pkg->fields[attr] = NULL;
+				continue;
+			}
 
-			if (str == NULL)
-				str = "";
+			sbuf = &pkg->fields[attr];
 
 			if (attr == PKG_MTREE && !STARTS_WITH(str, "#mtree")) {
 				sbuf_set(sbuf, "#mtree\n");
@@ -297,7 +276,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 				continue;
 			}
 
-			if (attr == PKG_REPONAME && multirepos_enabled)
+			if (attr == PKG_REPOURL)
 				pkg_set_repourl(pkg, str);
 
 			sbuf_set(sbuf, str);
@@ -316,11 +295,11 @@ pkg_vset(struct pkg *pkg, va_list ap)
 		case PKG_FLATSIZE:
 			pkg->flatsize = va_arg(ap, int64_t);
 			break;
-		case PKG_NEW_FLATSIZE:
-			pkg->new_flatsize = va_arg(ap, int64_t);
+		case PKG_OLD_FLATSIZE:
+			pkg->old_flatsize = va_arg(ap, int64_t);
 			break;
-		case PKG_NEW_PKGSIZE:
-			pkg->new_pkgsize = va_arg(ap, int64_t);
+		case PKG_PKGSIZE:
+			pkg->pkgsize = va_arg(ap, int64_t);
 			break;
 		case PKG_TIME:
 			pkg->time = va_arg(ap, int64_t);
@@ -383,7 +362,7 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 }
 
 int
-pkg_licenses(struct pkg *pkg, struct pkg_license **l)
+pkg_licenses(const struct pkg *pkg, struct pkg_license **l)
 {
 	assert(pkg != NULL);
 
@@ -391,7 +370,7 @@ pkg_licenses(struct pkg *pkg, struct pkg_license **l)
 }
 
 int
-pkg_users(struct pkg *pkg, struct pkg_user **u)
+pkg_users(const struct pkg *pkg, struct pkg_user **u)
 {
 	assert(pkg != NULL);
 
@@ -399,7 +378,7 @@ pkg_users(struct pkg *pkg, struct pkg_user **u)
 }
 
 int
-pkg_groups(struct pkg *pkg, struct pkg_group **g)
+pkg_groups(const struct pkg *pkg, struct pkg_group **g)
 {
 	assert(pkg != NULL);
 
@@ -407,15 +386,28 @@ pkg_groups(struct pkg *pkg, struct pkg_group **g)
 }
 
 int
-pkg_deps(struct pkg *pkg, struct pkg_dep **d)
+pkg_deps(const struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
 
 	HASH_NEXT(pkg->deps, (*d));
 }
 
+struct pkg_dep *
+pkg_dep_lookup(const struct pkg *pkg, const char *origin)
+{
+	struct pkg_dep *d = NULL;
+
+	assert(pkg != NULL);
+	assert(origin != NULL);
+
+	HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
+
+	return (d);
+}
+
 int
-pkg_rdeps(struct pkg *pkg, struct pkg_dep **d)
+pkg_rdeps(const struct pkg *pkg, struct pkg_dep **d)
 {
 	assert(pkg != NULL);
 
@@ -423,7 +415,7 @@ pkg_rdeps(struct pkg *pkg, struct pkg_dep **d)
 }
 
 int
-pkg_files(struct pkg *pkg, struct pkg_file **f)
+pkg_files(const struct pkg *pkg, struct pkg_file **f)
 {
 	assert(pkg != NULL);
 
@@ -431,7 +423,7 @@ pkg_files(struct pkg *pkg, struct pkg_file **f)
 }
 
 int
-pkg_categories(struct pkg *pkg, struct pkg_category **c)
+pkg_categories(const struct pkg *pkg, struct pkg_category **c)
 {
 	assert(pkg != NULL);
 
@@ -439,7 +431,7 @@ pkg_categories(struct pkg *pkg, struct pkg_category **c)
 }
 
 int
-pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
+pkg_dirs(const struct pkg *pkg, struct pkg_dir **d)
 {
 	assert(pkg != NULL);
 
@@ -447,7 +439,7 @@ pkg_dirs(struct pkg *pkg, struct pkg_dir **d)
 }
 
 int
-pkg_options(struct pkg *pkg, struct pkg_option **o)
+pkg_options(const struct pkg *pkg, struct pkg_option **o)
 {
 	assert(pkg != NULL);
 
@@ -455,7 +447,7 @@ pkg_options(struct pkg *pkg, struct pkg_option **o)
 }
 
 int
-pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **s)
+pkg_shlibs_required(const struct pkg *pkg, struct pkg_shlib **s)
 {
 	assert(pkg != NULL);
 
@@ -463,11 +455,19 @@ pkg_shlibs_required(struct pkg *pkg, struct pkg_shlib **s)
 }
 
 int
-pkg_shlibs_provided(struct pkg *pkg, struct pkg_shlib **s)
+pkg_shlibs_provided(const struct pkg *pkg, struct pkg_shlib **s)
 {
 	assert(pkg != NULL);
 
 	HASH_NEXT(pkg->shlibs_provided, (*s));
+}
+
+int
+pkg_annotations(const struct pkg *pkg, struct pkg_note **an)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->annotations, (*an));
 }
 
 int
@@ -486,7 +486,7 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND_STR(pkg->files, __DECONST(char *, name), l);
+	HASH_FIND_STR(pkg->licenses, __DECONST(char *, name), l);
 	if (l != NULL) {
 		pkg_emit_error("duplicate license listing: %s, ignoring", name);
 		return (EPKG_OK);
@@ -579,6 +579,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(origin != NULL && origin[0] != '\0');
 	assert(version != NULL && version[0] != '\0');
 
+	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s, version: %s", origin, name, version);
 	HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
 	if (d != NULL) {
 		pkg_get(pkg, PKG_NAME, &n1, PKG_VERSION, &v1);
@@ -610,6 +611,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	assert(origin != NULL && origin[0] != '\0');
 	assert(version != NULL && version[0] != '\0');
 
+	pkg_debug(3, "Pkg: add a new reverse dependency origin: %s, name: %s, version: %s", origin, name, version);
 	pkg_dep_new(&d);
 
 	sbuf_set(&d->origin, origin);
@@ -636,6 +638,8 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
+
+	pkg_debug(3, "Pkg: add new file '%s'", path);
 
 	if (check_duplicates) {
 		HASH_FIND_STR(pkg->files, __DECONST(char *, path), f);
@@ -703,6 +707,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
+	pkg_debug(3, "Pkg: add new directory '%s'", path);
 	if (check_duplicates) {
 		HASH_FIND_STR(pkg->dirs, __DECONST(char *, path), d);
 		if (d != NULL) {
@@ -754,6 +759,8 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 	assert(pkg != NULL);
 	assert(path != NULL);
 
+	pkg_debug(1, "Adding script from: '%s'", path);
+
 	if ((ret = file_to_buffer(path, &data, &sz)) != EPKG_OK)
 		return (ret);
 
@@ -790,10 +797,12 @@ pkg_addscript_file(struct pkg *pkg, const char *path)
 		type = PKG_SCRIPT_UPGRADE;
 	} else {
 		pkg_emit_error("unknown script '%s'", filename);
-		return EPKG_FATAL;
+		ret = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	ret = pkg_addscript(pkg, data, type);
+cleanup:
 	free(data);
 	return (ret);
 }
@@ -890,7 +899,70 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 }
 
 int
-pkg_list_count(struct pkg *pkg, pkg_list list)
+pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
+{
+	struct pkg_note *an = NULL;
+
+	assert(pkg != NULL);
+	assert(tag != NULL);
+	assert(value != NULL);
+
+	/* Tags are unique per-package */
+
+	HASH_FIND_STR(pkg->annotations, __DECONST(char *, tag), an);
+	if (an != NULL) {
+		pkg_emit_error("duplicate annotation tag: %s value: %s,"
+			       " ignoring", tag, value);
+		return (EPKG_OK);
+	}
+	an = NULL;
+	pkg_annotation_new(&an);
+
+	sbuf_set(&an->tag, tag);
+	sbuf_set(&an->value, value);
+
+	HASH_ADD_KEYPTR(hh, pkg->annotations,
+	    __DECONST(char *, pkg_annotation_tag(an)),
+	    strlen(pkg_annotation_tag(an)), an);
+
+	return (EPKG_OK);
+}
+
+struct pkg_note *
+pkg_annotation_lookup(const struct pkg *pkg, const char *tag)
+{
+	struct pkg_note *an = NULL;
+
+	assert(pkg != NULL);
+	assert(tag != NULL);
+
+	HASH_FIND_STR(pkg->annotations, __DECONST(char *, tag), an);
+
+	return (an);
+}
+
+int
+pkg_delannotation(struct pkg *pkg, const char *tag)
+{
+	struct pkg_note *an = NULL;
+
+	assert(pkg != NULL);
+	assert(tag != NULL);
+
+	HASH_FIND_STR(pkg->annotations, __DECONST(char *, tag), an);
+	if (an != NULL) {
+		HASH_DEL(pkg->annotations, an);
+		pkg_annotation_free(an);
+		return (EPKG_OK);
+	} else {
+		pkg_emit_error("deleting annotation tagged \'%s\' -- "
+			       "not found", tag);
+		return (EPKG_WARN);
+	}
+}
+
+int
+pkg_list_count(const struct pkg *pkg, pkg_list list)
 {
 	switch (list) {
 	case PKG_DEPS:
@@ -915,6 +987,8 @@ pkg_list_count(struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->shlibs_required));
 	case PKG_SHLIBS_PROVIDED:
 		return (HASH_COUNT(pkg->shlibs_provided));
+	case PKG_ANNOTATIONS:
+		return (HASH_COUNT(pkg->annotations));
 	}
 	
 	return (0);
@@ -967,17 +1041,21 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		HASH_FREE(pkg->shlibs_provided, pkg_shlib, pkg_shlib_free);
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
+	case PKG_ANNOTATIONS:
+		HASH_FREE(pkg->annotations, pkg_note, pkg_annotation_free);
+		pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
+		break;
 	}
 }
 
 int
-pkg_open(struct pkg **pkg_p, const char *path)
+pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, int flags)
 {
 	struct archive *a;
 	struct archive_entry *ae;
 	int ret;
 
-	ret = pkg_open2(pkg_p, &a, &ae, path);
+	ret = pkg_open2(pkg_p, &a, &ae, path, keys, flags);
 
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
@@ -988,17 +1066,19 @@ pkg_open(struct pkg **pkg_p, const char *path)
 }
 
 int
-pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, const char *path)
+pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
+		const char *path, struct pkg_manifest_key *keys, int flags)
 {
 	struct pkg *pkg;
 	pkg_error_t retcode = EPKG_OK;
 	int ret;
-	int64_t size;
-	struct sbuf *manifest;
 	const char *fpath;
-	char buf[BUFSIZ];
+	bool manifest = false;
+	const void *buf;
+	size_t size;
+	off_t offset = 0;
 	struct sbuf **sbuf;
-	int i;
+	int i, r;
 
 	struct {
 		const char *name;
@@ -1010,15 +1090,13 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 
 	assert(path != NULL && path[0] != '\0');
 
-	manifest = sbuf_new_auto();
-
 	*a = archive_read_new();
 	archive_read_support_filter_all(*a);
 	archive_read_support_format_tar(*a);
 
 	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK) {
 		pkg_emit_error("archive_read_open_filename(%s): %s", path,
-					   archive_error_string(*a));
+				   archive_error_string(*a));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1038,33 +1116,52 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 		if (fpath[0] != '+')
 			break;
 
-		if (strcmp(fpath, "+MANIFEST") == 0) {
-			size = archive_entry_size(*ae);
-			if (size <=0) {
-				retcode = EPKG_FATAL;
-				pkg_emit_error("%s is not a valid package: empty +MANIFEST found", path);
-				goto cleanup;
-			}
+		if (!manifest &&
+			(flags & PKG_OPEN_MANIFEST_COMPACT) &&
+			strcmp(fpath, "+COMPACT_MANIFEST") == 0) {
+			manifest = true;
 
-			while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0) {
-				sbuf_bcat(manifest, buf, size);
-			}
-
-			sbuf_finish(manifest);
-
-			ret = pkg_parse_manifest(pkg, sbuf_get(manifest));
+			ret = pkg_parse_manifest_archive(pkg, *a, keys);
 			if (ret != EPKG_OK) {
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
+			/* Do not read anything more */
+			break;
+		}
+		if (!manifest && strcmp(fpath, "+MANIFEST") == 0) {
+			manifest = true;
+
+			ret = pkg_parse_manifest_archive(pkg, *a, keys);
+			if (ret != EPKG_OK) {
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
+			if (flags & PKG_OPEN_MANIFEST_ONLY)
+				break;
 		}
 
 		for (i = 0; files[i].name != NULL; i++) {
 			if (strcmp(fpath, files[i].name) == 0) {
 				sbuf = &pkg->fields[files[i].attr];
 				sbuf_init(sbuf);
-				while ((size = archive_read_data(*a, buf, sizeof(buf))) > 0) {
-					sbuf_bcat(*sbuf, buf, size);
+				offset = 0;
+				for (;;) {
+					if ((r = archive_read_data_block(*a, &buf,
+							&size, &offset)) == 0) {
+						sbuf_bcat(*sbuf, buf, size);
+					}
+					else {
+						if (r == ARCHIVE_FATAL) {
+							retcode = EPKG_FATAL;
+							pkg_emit_error("%s is not a valid package: "
+									"%s is corrupted: %s", path, fpath,
+									archive_error_string(*a));
+							goto cleanup;
+						}
+						else if (r == ARCHIVE_EOF)
+							break;
+					}
 				}
 				sbuf_finish(*sbuf);
 			}
@@ -1080,14 +1177,12 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae, con
 	if (ret == ARCHIVE_EOF)
 		retcode = EPKG_END;
 
-	if (sbuf_len(manifest) == 0) {
+	if (!manifest) {
 		retcode = EPKG_FATAL;
-		pkg_emit_error("%s is not a valid package: no +MANIFEST found", path);
+		pkg_emit_error("%s is not a valid package: no manifest found", path);
 	}
 
 	cleanup:
-	sbuf_delete(manifest);
-
 	if (retcode != EPKG_OK && retcode != EPKG_END) {
 		if (*a != NULL)
 			archive_read_free(*a);
@@ -1128,13 +1223,14 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	return (packing_finish(pack));
 }
 
-void
+int
 pkg_test_filesum(struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
 	const char *path;
 	const char *sum;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	int rc = EPKG_OK;
 
 	assert(pkg != NULL);
 
@@ -1143,13 +1239,17 @@ pkg_test_filesum(struct pkg *pkg)
 		sum = pkg_file_cksum(f);
 		if (*sum != '\0') {
 			sha256_file(path, sha256);
-			if (strcmp(sha256, sum) != 0)
+			if (strcmp(sha256, sum) != 0) {
 				pkg_emit_file_mismatch(pkg, f, sum);
+				rc = EPKG_FATAL;
+			}
 		}
 	}
+
+	return (rc);
 }
 
-void
+int
 pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 {
 	struct pkg_file *f = NULL;
@@ -1161,6 +1261,7 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 	bool regular = false;
 	const char *sum;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	int rc = EPKG_OK;
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		path = pkg_file_path(f);
@@ -1170,8 +1271,12 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 			if (S_ISLNK(st.st_mode)) {
 				regular = false;
 				*sha256 = '\0';
-			} else
-				sha256_file(path, sha256);
+			} else {
+				if (sha256_file(path, sha256) != EPKG_OK) {
+					rc = EPKG_FATAL;
+					break;
+				}
+			}
 
 			/* special case for hardlinks */
 			if (st.st_nlink > 1)
@@ -1187,6 +1292,8 @@ pkg_recompute(struct pkgdb *db, struct pkg *pkg)
 	pkg_get(pkg, PKG_FLATSIZE, &oldflatsize);
 	if (flatsize != oldflatsize)
 		pkgdb_set(db, pkg, PKG_SET_FLATSIZE, flatsize);
+
+	return (rc);
 }
 
 int
@@ -1214,6 +1321,27 @@ pkg_is_installed(struct pkgdb *db, const char *origin)
 	pkg_free(pkg);
 
 	return (ret);
+}
+
+bool
+pkg_has_message(struct pkg *p)
+{
+	const char *msg;
+
+	pkg_get(p, PKG_MESSAGE, &msg);
+
+	if (msg != NULL)
+		return (true);
+
+	return (false);
+}
+
+bool
+pkg_is_locked(const struct pkg * restrict p)
+{
+	assert(p != NULL);
+
+	return (p->locked);
 }
 
 bool

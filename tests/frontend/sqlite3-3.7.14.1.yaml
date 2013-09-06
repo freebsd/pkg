@@ -1,0 +1,57 @@
+---
+name: sqlite3
+version: 3.7.14.1
+origin: databases/sqlite3
+comment: An SQL database engine in a C library
+arch: freebsd:9:x86:64
+www: http://www.sqlite.org/
+maintainer: pavelivolkov@gmail.com
+prefix: /usr/local
+licenselogic: single
+licenses:
+- public
+flatsize: 2590316
+desc: |-
+  SQLite is an SQL database engine in a C library. Programs that link the SQLite
+  library can have SQL database access without running a separate RDBMS process.
+  The distribution comes with a standalone command-line access program (sqlite)
+  that can be used to administer an SQLite database and which serves as an
+  example of how to use the SQLite library.
+
+  WWW: http://www.sqlite.org/
+deps:
+  pkgconf: {origin: devel/pkgconf, version: 0.9.1_2}
+categories:
+- databases
+shlibs_required:
+- libsqlite3.so.8
+shlibs_provided:
+- libsqlite3.so.8
+options: {FTS3: off, ICU: off, RTREE: off, RAMTABLE: off, UPD_DEL_LIMIT: off, URI: off,
+  SOUNDEX: off, METADATA: off, STAT3: off, DIRECT_READ: off, MEMMAN: on, SECURE_DELETE: on,
+  UNLOCK_NOTIFY: on, THREADSAFE: on, EXTENSION: on}
+files:
+  /usr/local/bin/sqlite3: 238570ccb8b0ffa613c298750056f1a8fa81fe8201caabdf57fdac44ba57da3c
+  /usr/local/include/sqlite3.h: 3b515035ac6ff5d9ec6d53b249d99453b89f81b1efbfa843c957682332cdcd71
+  /usr/local/include/sqlite3ext.h: b8d4e35c2c64c707be673bd74737405d97e503db32f825ca43a5ccafcbbc0d20
+  /usr/local/lib/libsqlite3.a: 7a6386b56cf663de3f9ce2ce297059710d992636f5e2c372c149b8880c56588d
+  /usr/local/lib/libsqlite3.la: 27668c83d6d646ae01036ea668be6059fe09f0d5840f6ed2bec942e507bac126
+  /usr/local/lib/libsqlite3.so: '-'
+  /usr/local/lib/libsqlite3.so.8: 04bb5c89c4ec51a0c9827318ede58c95d25868524ef5727fe56f625f9e1ba608
+  /usr/local/libdata/pkgconfig/sqlite3.pc: ec35e89649260a8c8e30db62b489dde27314279984a067d2b23a004f8181861e
+  /usr/local/man/man1/sqlite3.1.gz: 2e1a5fa7d5402d0569070b1e8880aa1a535ba21023dc39211ecbad0433d076b6
+  /usr/local/share/licenses/sqlite3-3.7.14.1/LICENSE: 8402e9d907c9f12647832648c5941d3be53e33f9832bf0bf1a30b8e88cfa7513
+  /usr/local/share/licenses/sqlite3-3.7.14.1/catalog.mk: 667044d924e0b32e14f9aea7f15dc8cee28def7e4c446aa088b4edef656c4217
+  /usr/local/share/licenses/sqlite3-3.7.14.1/public: b4321e78d0be51d4397b0647c9ab18cf0805fd438660aee7b5c052811f755f78
+directories:
+  /usr/local/share/licenses/sqlite3-3.7.14.1/: n
+  /usr/local/share/licenses/: y
+scripts:
+  post-install: |
+    /sbin/ldconfig -m /usr/local/lib
+    cd /usr/local
+  pre-deinstall: |
+    /sbin/ldconfig -R
+    cd /usr/local
+  post-deinstall: |
+    cd /usr/local

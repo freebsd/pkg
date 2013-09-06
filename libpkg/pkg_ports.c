@@ -32,6 +32,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <regex.h>
+#define _WITH_GETLINE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -57,9 +58,9 @@ struct keyword {
 };
 
 struct plist {
-	char *last_file;
+	char last_file[MAXPATHLEN];
 	const char *stage;
-	const char *prefix;
+	char prefix[MAXPATHLEN];
 	struct sbuf *pre_install_buf;
 	struct sbuf *post_install_buf;
 	struct sbuf *pre_deinstall_buf;
@@ -67,8 +68,8 @@ struct plist {
 	struct sbuf *pre_upgrade_buf;
 	struct sbuf *post_upgrade_buf;
 	struct pkg *pkg;
-	const char *uname;
-	const char *gname;
+	char *uname;
+	char *gname;
 	const char *slash;
 	char *pkgdep;
 	bool ignore_next;
@@ -156,10 +157,12 @@ setprefix(struct plist *p, char *line, struct file_attr *a)
 	char *pkgprefix;
 
 	/* if no arguments then set default prefix */
-	if (line[0] == '\0')
-		pkg_get(p->pkg, PKG_PREFIX, &p->prefix);
+	if (line[0] == '\0') {
+		pkg_get(p->pkg, PKG_PREFIX, &pkgprefix);
+		strlcpy(p->prefix, pkgprefix, sizeof(p->prefix));
+	}
 	else
-		p->prefix = line;
+		strlcpy(p->prefix, line, sizeof(p->prefix));
 
 	pkg_get(p->pkg, PKG_PREFIX, &pkgprefix);
 	if (pkgprefix == NULL || *pkgprefix == '\0')
@@ -199,8 +202,12 @@ name_key(struct plist *p, char *line, struct file_attr *a)
 static int
 pkgdep(struct plist *p, char *line, struct file_attr *a)
 {
-	if (*line != '\0')
-		p->pkgdep = line;
+	if (*line != '\0') {
+		if (p->pkgdep != NULL) {
+			free(p->pkgdep);
+		}
+		p->pkgdep = strdup(line);
+	}
 	free(a);
 	return (EPKG_OK);
 }
@@ -235,7 +242,7 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 	}
 
 	if (lstat(testpath, &st) == -1) {
-		pkg_emit_errno("lstat", path);
+		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
@@ -303,7 +310,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 	}
 
 	if (lstat(testpath, &st) == -1) {
-		pkg_emit_errno("lstat", path);
+		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
 		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
@@ -367,10 +374,16 @@ setmod(struct plist *p, char *line, struct file_attr *a)
 static int
 setowner(struct plist *p, char *line, struct file_attr *a)
 {
-	if (line[0] == '\0')
+	if (line[0] == '\0') {
+		if (p->uname != NULL)
+			free(p->uname);
 		p->uname = NULL;
-	else
-		p->uname = line;
+	}
+	else {
+		if (p->uname != NULL)
+			free(p->uname);
+		p->uname = strdup(line);
+	}
 
 	free_file_attr(a);
 
@@ -383,7 +396,7 @@ setgroup(struct plist *p, char *line, struct file_attr *a)
 	if (line[0] == '\0')
 		p->gname = NULL;
 	else
-		p->gname = line;
+		p->gname = strdup(line);
 
 	free_file_attr(a);
 
@@ -398,10 +411,13 @@ comment_key(struct plist *p, char *line, struct file_attr *a)
 	if (strncmp(line, "DEPORIGIN:", 10) == 0) {
 		line += 10;
 		name = p->pkgdep;
-		version = strrchr(name, '-');
-		version[0] = '\0';
-		version++;
-		pkg_adddep(p->pkg, name, line, version, false);
+		if (name != NULL) {
+			version = strrchr(name, '-');
+			version[0] = '\0';
+			version++;
+			pkg_adddep(p->pkg, name, line, version, false);
+			free(p->pkgdep);
+		}
 		p->pkgdep = NULL;
 	} else if (strncmp(line, "ORIGIN:", 7) == 0) {
 		line += 7;
@@ -541,6 +557,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 					if (!strcmp(path, "/dev/null"))
 						continue;
 					dirrmtry(p, path, a);
+					a = NULL;
 				}
 			} else {
 				regcomp(&preg, "[[:space:]](/[[:graph:]/]+)",
@@ -552,6 +569,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 					if (!strcmp(path, "/dev/null"))
 						continue;
 					dirrmtry(p, path, a);
+					a = NULL;
 				}
 			}
 			regfree(&preg);
@@ -561,6 +579,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 		exec_append(p->post_install_buf, "%s\n", cmd);
 	}
 	free_file_attr(a);
+	free(cmd);
 
 	return (EPKG_OK);
 }
@@ -955,18 +974,20 @@ flush_script_buffer(struct sbuf *buf, struct pkg *p, int type)
 }
 
 int
-ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
+ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 {
-	char *plist_buf, *walk, *buf, *token;
+	char *buf, *line = NULL, *tmpprefix;
 	int ret = EPKG_OK;
-	off_t sz = 0;
 	struct plist pplist;
+	FILE *plist_f;
+	size_t linecap = 0;
+	ssize_t linelen;
 
 	assert(pkg != NULL);
 	assert(plist != NULL);
 
-	pplist.last_file = NULL;
-	pplist.prefix = NULL;
+	pplist.last_file[0] = '\0';
+	pplist.prefix[0] = '\0';
 	pplist.stage = stage;
 	pplist.pre_install_buf = sbuf_new_auto();
 	pplist.post_install_buf = sbuf_new_auto();
@@ -985,31 +1006,39 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 	pplist.keywords = NULL;
 	pplist.post_pattern_to_free = NULL;
 	pplist.post_patterns = NULL;
+	pplist.pkgdep = NULL;
 
 	populate_keywords(&pplist);
 
 	buf = NULL;
 
-	if ((ret = file_to_buffer(plist, &plist_buf, &sz)) != EPKG_OK)
-		return (ret);
+	if ((plist_f = fopen(plist, "r")) == NULL) {
+		pkg_emit_errno("Unable to open plist file: %s", plist);
+		return (EPKG_FATAL);
+	}
 
-	pkg_get(pkg, PKG_PREFIX, &pplist.prefix);
-	if (pplist.prefix != NULL)
+	pkg_get(pkg, PKG_PREFIX, &tmpprefix);
+	if (tmpprefix) {
+		strlcpy(pplist.prefix, tmpprefix, sizeof(pplist.prefix));
 		pplist.slash = pplist.prefix[strlen(pplist.prefix) - 1] == '/' ? "" : "/";
+	}
 
-	walk = plist_buf;
+	while ((linelen = getline(&line, &linecap, plist_f)) > 0) {
+		if (line[linelen - 1] == '\n')
+			line[linelen - 1] = '\0';
 
-	while ((token = strsep(&walk, "\n")) != NULL) {
 		if (pplist.ignore_next) {
 			pplist.ignore_next = false;
 			continue;
 		}
 
-		if (token[0] == '\0')
+		if (line[0] == '\0')
 			continue;
 
-		if (token[0] == '@') {
-			char *keyword = token;
+		pkg_debug(1, "Parsing plist line: '%s'", line);
+
+		if (line[0] == '@') {
+			char *keyword = line;
 
 			keyword++; /* skip the @ */
 			buf = keyword;
@@ -1023,18 +1052,20 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 			/* trim write spaces */
 			while (isspace(buf[0]))
 				buf++;
+			pkg_debug(1, "Parsing plist, found keyword: '%s", keyword);
+
 			switch (parse_keywords(&pplist, keyword, buf)) {
 			case EPKG_UNKNOWN:
 				pkg_emit_error("unknown keyword %s, ignoring %s",
-				    keyword, token);
+				    keyword, line);
 				break;
 			case EPKG_FATAL:
 				ret = EPKG_FATAL;
 				break;
 			}
 		} else {
-			buf = token;
-			pplist.last_file = buf;
+			buf = line;
+			strlcpy(pplist.last_file, buf, sizeof(pplist.last_file));
 
 			/* remove spaces at the begining and at the end */
 			while (isspace(buf[0]))
@@ -1044,6 +1075,8 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 				ret = EPKG_FATAL;
 		}
 	}
+
+	free(line);
 
 	pkg_set(pkg, PKG_FLATSIZE, pplist.flatsize);
 
@@ -1062,12 +1095,19 @@ ports_parse_plist(struct pkg *pkg, char *plist, const char *stage)
 
 	HASH_FREE(pplist.hardlinks, hardlinks, free);
 
-	free(plist_buf);
 	HASH_FREE(pplist.keywords, keyword, keyword_free);
 
+	if (pplist.pkgdep != NULL)
+		free(pplist.pkgdep);
+	if (pplist.uname != NULL)
+		free(pplist.uname);
+	if (pplist.gname != NULL)
+		free(pplist.gname);
 	free(pplist.post_pattern_to_free);
 	if (pplist.post_patterns != NULL)
 		sl_free(pplist.post_patterns, 0);
+
+	fclose(plist_f);
 
 	return (ret);
 }

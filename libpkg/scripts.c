@@ -49,7 +49,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 	size_t i, j;
 	int error, pstat;
 	pid_t pid;
-	const char *name, *prefix, *version, *script_cmd_p;
+	const char *prefix, *script_cmd_p;
 	const char *argv[4];
 	char **ep;
 	int ret = EPKG_OK;
@@ -75,7 +75,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 		{"POST-DEINSTALL", PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_POST_DEINSTALL},
 	};
 
-	pkg_get(pkg, PKG_PREFIX, &prefix, PKG_NAME, &name, PKG_VERSION, &version);
+	pkg_get(pkg, PKG_PREFIX, &prefix);
 
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 		if (map[i].a == type)
@@ -93,8 +93,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 			pkg_config_bool(PKG_CONFIG_DEBUG_SCRIPTS, &debug);
 			if (debug)
 				sbuf_printf(script_cmd, "set -x\n");
-			sbuf_printf(script_cmd, "set -- %s-%s",
-			    name, version);
+			pkg_sbuf_printf(script_cmd, "set -- %n-%v", pkg, pkg);
 
 			if (j == map[i].b) {
 				/* add arg **/
@@ -117,6 +116,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 				argmax -= strlen(*ep) + 1 + sizeof(*ep);
 			argmax -= 1 + sizeof(*ep);
 
+			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", sbuf_get(script_cmd));
 			if (sbuf_len(script_cmd) > argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;

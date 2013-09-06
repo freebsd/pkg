@@ -56,7 +56,7 @@ exec_install(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct pkg_jobs *jobs = NULL;
-	const char __unused *reponame = NULL;
+	const char *reponame = NULL;
 	int retcode;
 	int updcode = EPKG_OK;
 	int ch;
@@ -70,7 +70,7 @@ exec_install(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
-	while ((ch = getopt(argc, argv, "AfgIiLFnqRr:Uxy")) != -1) {
+	while ((ch = getopt(argc, argv, "AfgIiFnqRr:Uxy")) != -1) {
 		switch (ch) {
 		case 'A':
 			f |= PKG_FLAG_AUTOMATIC;
@@ -90,9 +90,6 @@ exec_install(int argc, char **argv)
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
 			break;
-		case 'L':
-			warnx("!!! The -L flag is deprecated and will be removed. Please use -U now.");
-			/* FALLTHROUGH */
 		case 'U':
 			auto_update = false;
 			break;
@@ -128,7 +125,7 @@ exec_install(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (dry_run)
+	if (dry_run && !auto_update)
 		retcode = pkgdb_access(PKGDB_MODE_READ,
 				       PKGDB_DB_LOCAL   |
 				       PKGDB_DB_REPO);
@@ -138,7 +135,14 @@ exec_install(int argc, char **argv)
 				       PKGDB_MODE_CREATE,
 				       PKGDB_DB_LOCAL   |
 				       PKGDB_DB_REPO);
-	
+
+
+	if (retcode == EPKG_ENOACCESS && dry_run) {
+		auto_update = false;
+		retcode = pkgdb_access(PKGDB_MODE_READ,
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+	}
+
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to install packages");
 		return (EX_NOPERM);
@@ -155,6 +159,9 @@ exec_install(int argc, char **argv)
 		return (EX_IOERR);
 
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
+		goto cleanup;
+
+	if (reponame != NULL && pkg_jobs_set_repository(jobs, reponame) != EPKG_OK)
 		goto cleanup;
 
 	pkg_jobs_set_flags(jobs, f);
@@ -193,6 +200,9 @@ exec_install(int argc, char **argv)
 cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
+
+	if (!yes && newpkgversion)
+		newpkgversion = false;
 
 	return (retcode);
 }

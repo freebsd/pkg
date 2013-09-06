@@ -225,8 +225,11 @@ scan_dirs_for_shlibs(struct shlib_list **shlib_list, int numdirs,
 			int		 ret;
 			const char	*vers;
 
-			/* Only regular files and sym-links */
-			if (dp->d_type != DT_REG && dp->d_type != DT_LNK)
+			/* Only regular files and sym-links. On some
+			   filesystems d_type is not set, on these the d_type
+			   field will be DT_UNKNOWN. */
+			if (dp->d_type != DT_REG && dp->d_type != DT_LNK &&
+			    dp->d_type != DT_UNKNOWN)
 				continue;
 
 			len = strlen(dp->d_name);

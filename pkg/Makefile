@@ -1,10 +1,12 @@
 PROG?=		pkg
 SRCS=		add.c \
+		annotate.c \
 		audit.c \
 		autoremove.c \
 		backup.c \
 		check.c \
 		clean.c \
+		config.c \
 		convert.c \
 		create.c \
 		delete.c \
@@ -31,7 +33,8 @@ SRCS=		add.c \
 		which.c \
 		fetch.c \
 		shell.c \
-		stats.c
+		stats.c \
+		ssh.c
 
 PREFIX?=	/usr/local
 BINDIR=		${PREFIX}/sbin
@@ -43,14 +46,22 @@ CFLAGS+=	-DGITHASH="\" ${GITHASH}\""
 .endif
 
 .if defined(DEBUG_FLAGS)
-DEBUG_FLAGS+=	-g -O0
+.if ${DEBUG_FLAGS} == 1
+DEBUG_FLAGS=	-ggdb -O0
+.else
+DEBUG_FLAGS+=	-ggdb -O0
+.endif
 .endif
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg
 .endif
 
-CFLAGS+=	-I${.CURDIR}/../libpkg
-LDADD+=		-L${.OBJDIR}/../libpkg \
+CFLAGS+=	-I../libpkg \
+		-I${.CURDIR}/../external/uthash \
+		-I${.CURDIR}/../external/str2argv
+LDADD+=		-L../libpkg \
+		-L../external/str2argv \
+		-lstr2argv \
 		-lpkg \
 		-larchive \
 		-lutil \
@@ -63,6 +74,7 @@ LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lz \
 		-lbz2 \
 		-llzma \
+		-lbsdxml \
 		${LDADD_STATIC}
 
 .if !exists(/usr/include/jail.h)
@@ -78,6 +90,7 @@ LDFLAGS+=	-Wl,-rpath=/usr/lib:${PREFIX}/lib
 WARNS?=		6
 MAN=	pkg.8 \
 	pkg-add.8 \
+	pkg-annotate.8 \
 	pkg-audit.8 \
 	pkg-autoremove.8 \
 	pkg-backup.8 \

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 22, 2013
+.Dd July 11, 2013
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
@@ -25,14 +25,11 @@
 .Nm
 .Op Fl Bdsr
 .Op Fl vyn
-.Op Fl a | gix Ar <pattern>
+.Op Fl a | gix Ar pattern
 .Sh DESCRIPTION
 .Nm
 .Fl B
-is used to reanalyse SHLIBS of installed packages.
-See
-.Xr pkg.conf 5
-for more information on SHLIBS.
+is used to reanalyse shared libraries of installed packages.
 .Pp
 .Nm
 .Fl d
@@ -65,11 +62,11 @@ matching against
 case insensitive.
 .It Fl g
 Treat
-.Ar <pattern>
+.Ar pattern
 as a shell glob pattern.
 .It Fl x
 Treat
-.Ar <pattern>
+.Ar pattern
 as a regular expression.
 This uses the "modern" or "extended" syntax described in
 .Xr re_format 7
@@ -81,7 +78,7 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It PKG_DBDIR
+.It Ev PKG_DBDIR
 .El
 .Sh FILES
 See
@@ -90,6 +87,7 @@ See
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
 .Xr pkg-backup 8 ,
