@@ -466,6 +466,136 @@ elf_corres_to_string(const struct _elf_corres* m, int e)
 	return ("unknown");
 }
 
+static const char *
+aeabi_parse_arm_attributes(void *data, size_t length)
+{
+	uint32_t sect_len;
+	uint8_t *section = data;
+
+#define	MOVE(len) do {		\
+	assert(length >= (len)); \
+	section += (len);	\
+	length -= (len);	\
+} while (0)
+
+	if (length == 0 || *section != 'A')
+		return (NULL);
+	MOVE(1);
+
+	/* Read the section length */
+	if (length < sizeof(sect_len))
+		return (NULL);
+	memcpy(&sect_len, section, sizeof(sect_len));
+
+	/*
+	 * The section length should be no longer than the section it is within
+	 */
+	if (sect_len > length)
+		return (NULL);
+
+	MOVE(sizeof(sect_len));
+
+	/* Skip the vendor name */
+	while (length != 0) {
+		if (*section == '\0')
+			break;
+		MOVE(1);
+	}
+	if (length == 0)
+		return (NULL);
+	MOVE(1);
+
+	while (length != 0) {
+		uint32_t tag_length;
+
+		switch(*section) {
+		case 1: /* Tag_File */
+			MOVE(1);
+			if (length < sizeof(tag_length))
+				return (NULL);
+			memcpy(&tag_length, section, sizeof(tag_length));
+			break;
+		case 2: /* Tag_Section */
+		case 3: /* Tag_Symbol */
+		default:
+			return (NULL);
+		}
+		/* At least space for the tag and size */
+		if (tag_length <= 5)
+			return (NULL);
+		tag_length--;
+		/* Check the tag fits */
+		if (tag_length > length)
+			return (NULL);
+
+#define	MOVE_TAG(len) do {		\
+	assert(tag_length >= (len));	\
+	MOVE(len);			\
+	tag_length -= (len);		\
+} while(0)
+
+		MOVE(sizeof(tag_length));
+		tag_length -= sizeof(tag_length);
+
+		while (tag_length != 0) {
+			uint8_t tag;
+
+			assert(tag_length >= length);
+
+			tag = *section;
+			MOVE_TAG(1);
+
+			/*
+			 * These tag values come from:
+			 * 
+			 * Addenda to, and Errata in, the ABI for the
+			 * ARM Architecture. Release 2.08, section 2.3.
+			 */
+			if (tag == 6) { /* == Tag_CPU_arch */
+				uint8_t val;
+
+				val = *section;
+				/*
+				 * We don't support values that require
+				 * more than one byte.
+				 */
+				if (val & (1 << 7))
+					return (NULL);
+
+				/* We have an ARMv4 or ARMv5 */
+				if (val <= 5)
+					return ("arm");
+				else /* We have an ARMv6+ */
+					return ("armv6");
+			} else if (tag == 4 || tag == 5 || tag == 32 ||
+			    tag == 65 || tag == 67) {
+				while (*section != '\0' && length != 0)
+					MOVE_TAG(1);
+				if (tag_length == 0)
+					return (NULL);
+				/* Skip the last byte */
+				MOVE_TAG(1);
+			} else if ((tag >= 7 && tag <= 31) || tag == 34 ||
+			    tag == 36 || tag == 38 || tag == 42 || tag == 44 ||
+			    tag == 64 || tag == 66 || tag == 68 || tag == 70) { 
+				/* Skip the uleb128 data */
+				while (*section & (1 << 7) && length != 0)
+					MOVE_TAG(1);
+				if (tag_length == 0)
+					return (NULL);
+				/* Skip the last byte */
+				MOVE_TAG(1);
+			} else
+				return (NULL);
+#undef MOVE_TAG
+		}
+
+		break;
+	}
+	return (NULL);
+#undef MOVE
+}
+
 int
 pkg_get_myarch(char *dest, size_t sz)
 {
@@ -481,7 +611,7 @@ pkg_get_myarch(char *dest, size_t sz)
 	uint32_t version = 0;
 	int ret = EPKG_OK;
 	int i;
-	const char *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
+	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -551,15 +681,13 @@ pkg_get_myarch(char *dest, size_t sz)
 	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
 	    (int)elfhdr.e_ident[EI_CLASS]);
 
+	arch = elf_corres_to_string(mach_corres, (int) elfhdr.e_machine);
 #if defined(__DragonFly__)
-	snprintf(dest, sz, "%s:%d.%d:%s:%s",
-	    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2,
+	snprintf(dest, sz, "%s:%d.%d",
+	    osname, version / 100000, (((version / 100 % 1000)+1)/2)*2);
 #else
-	snprintf(dest, sz, "%s:%d:%s:%s",
-	    osname, version / 100000,
+	snprintf(dest, sz, "%s:%d", osname, version / 100000);
 #endif
-	    elf_corres_to_string(mach_corres, (int) elfhdr.e_machine),
-	    wordsize_corres_str);
 
 	switch (elfhdr.e_machine) {
 	case EM_ARM:
@@ -569,8 +697,57 @@ pkg_get_myarch(char *dest, size_t sz)
 		/* FreeBSD doesn't support the hard-float ABI yet */
 		fpu = "softfp";
 		if ((elfhdr.e_flags & 0xFF000000) != 0) {
+			const char *sh_name = NULL;
+			size_t shstrndx;
+
 			/* This is an EABI file, the conformance level is set */
 			abi = "eabi";
+
+			/* Find which TARGET_ARCH we are building for. */
+			elf_getshdrstrndx(elf, &shstrndx);
+			while ((scn = elf_nextscn(elf, scn)) != NULL) {
+				sh_name = NULL;
+				if (gelf_getshdr(scn, &shdr) != &shdr) {
+					scn = NULL;
+					break;
+				}
+
+				sh_name = elf_strptr(elf, shstrndx,
+				    shdr.sh_name);
+				if (sh_name == NULL)
+					continue;
+				if (strcmp(".ARM.attributes", sh_name) == 0)
+					break;
+			}
+			if (scn != NULL && sh_name != NULL) {
+				data = elf_getdata(scn, NULL);
+				/*
+				 * Prior to FreeBSD 10.0 libelf would return
+				 * NULL from elf_getdata on the .ARM.attributes
+				 * section. As this was the first release to
+				 * get armv6 support assume a NULL value means
+				 * arm.
+				 *
+				 * This assumption can be removed when 9.x
+				 * is unsupported.
+				 */
+				if (data != NULL) {
+					arch = aeabi_parse_arm_attributes(
+					    data->d_buf, data->d_size);
+					if (arch == NULL) {
+						ret = EPKG_FATAL;
+						pkg_emit_error(
+						    "unknown ARM ARCH");
+						goto cleanup;
+					}
+				}
+			} else {
+				ret = EPKG_FATAL;
+				pkg_emit_error("Unable to find the "
+				    ".ARM.attributes section");
+				goto cleanup;
+			}
+
 		} else if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_NONE) {
 			/*
 			 * EABI executables all have this field set to
@@ -583,10 +760,12 @@ pkg_get_myarch(char *dest, size_t sz)
 			 * set the ABI to unknown. If we end up here one of
 			 * the above cases should be fixed for the binary.
 			 */
+			ret = EPKG_FATAL;
 			pkg_emit_error("unknown ARM ABI");
 			goto cleanup;
 		}
-		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s",
+		snprintf(dest + strlen(dest), sz - strlen(dest),
+		    ":%s:%s:%s:%s:%s", arch, wordsize_corres_str,
 		    endian_corres_str, abi, fpu);
 		break;
 	case EM_MIPS:
@@ -615,10 +794,12 @@ pkg_get_myarch(char *dest, size_t sz)
 		endian_corres_str = elf_corres_to_string(endian_corres,
 		    (int)elfhdr.e_ident[EI_DATA]);
 
-		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
-		    endian_corres_str, abi);
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s:%s:%s",
+		    arch, wordsize_corres_str, endian_corres_str, abi);
 		break;
 	default:
+		snprintf(dest + strlen(dest), sz - strlen(dest), ":%s:%s",
+		    arch, wordsize_corres_str);
 		break;
 	}
 
