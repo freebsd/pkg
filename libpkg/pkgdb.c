@@ -3003,7 +3003,7 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql,
 {
 	sqlite3_stmt	*stmt;
 	const char	*dbname;
-	bool		 first = true;
+	int		 dbcount = 0;
 	int		 ret;
 
 	assert(s != NULL);
@@ -3021,11 +3021,10 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql,
 		    (strcmp(dbname, "temp") == 0))
 			continue;
 
-		if (!first) {
+		dbcount++;
+
+		if (dbcount > 1)
 			sbuf_cat(sql, compound);
-		} else {
-			first = false;
-		}
 
 		/* replace any occurences of the dbname in the resulting SQL */
 		sbuf_printf(sql, multireposql, dbname);
@@ -3033,7 +3032,11 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql,
 
 	sqlite3_finalize(stmt);
 
-	return (EPKG_OK);
+	/* The generated SQL statement will not be syntactically
+	 * correct unless there is at least one other attached DB than
+	 * main or temp */
+
+	return (dbcount > 0 ? EPKG_OK : EPKG_FATAL);
 }
 
 static void
