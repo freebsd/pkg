@@ -882,10 +882,10 @@ load_repo_files(const char *repodir)
 }
 
 static void
-load_repositories(void)
+load_repositories(const char *repodir)
 {
 	struct pkg_repo *r;
-	const char *url, *pub, *repodir, *mirror_type;
+	const char *url, *pub, *mirror_type;
 
 	pkg_config_string(PKG_CONFIG_REPO, &url);
 	pkg_config_string(PKG_CONFIG_REPOKEY, &pub);
@@ -908,13 +908,14 @@ load_repositories(void)
 		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 	}
 
-	pkg_config_string(PKG_CONFIG_REPOS_DIR, &repodir);
+	if (repodir == NULL)
+		pkg_config_string(PKG_CONFIG_REPOS_DIR, &repodir);
 	if (repodir != NULL)
 		load_repo_files(repodir);
 }
 
 int
-pkg_init(const char *path)
+pkg_init(const char *path, const char *reposdir)
 {
 	FILE *fp;
 	yaml_parser_t parser;
@@ -1112,7 +1113,7 @@ pkg_init(const char *path)
 	}
 
 	/* load the repositories */
-	load_repositories();
+	load_repositories(reposdir);
 
 	setenv("HTTP_USER_AGENT", "pkg/"PKGVERSION, 1);
 

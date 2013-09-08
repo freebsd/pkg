@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd June 11, 2013
+.Dd September 8, 2013
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -32,6 +32,7 @@
 .Op Fl N
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
 .Op Fl C Ao configuration file Ac
+.Op Fl R Ao repository configuration directory Ac
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
@@ -152,6 +153,12 @@ Environment
 .It Fl C Ao configuration file Ac
 .Nm
 will use the specified file as a configuration file
+.It Fl R Ao repository configuration directory Ac
+.Nm
+will search the directory for per-repository configuration files.
+This overrides any value of
+.Ev REPOS_DIR
+specified in the main configuration file.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh COMMANDS

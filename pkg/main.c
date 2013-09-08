@@ -53,7 +53,7 @@
 #define GITHASH ""
 #endif
 
-static void usage(const char *);
+static void usage(const char *, const char *);
 static void usage_help(void);
 static int exec_help(int, char **);
 bool quiet = false;
@@ -126,15 +126,15 @@ show_command_names(void)
 }
 
 static void
-usage(const char *conffile)
+usage(const char *conffile, const char *reposdir)
 {
 	struct plugcmd *c;
 	bool plugins_enabled = false;
 
 #ifndef NO_LIBJAIL
- 	fprintf(stderr, "usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] <command> [<args>]\n\n");
+ 	fprintf(stderr, "usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
 #else
-	fprintf(stderr, "usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] <command> [<args>]\n\n");
+	fprintf(stderr, "usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
 #endif
 	fprintf(stderr, "Global options supported:\n");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
@@ -143,6 +143,7 @@ usage(const char *conffile)
 #endif
 	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
 	fprintf(stderr, "\t%-15s%s\n", "-C", "Use the specified configuration file");
+	fprintf(stderr, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
 	fprintf(stderr, "\t%-15s%s\n", "-l", "List available command and exit");
 	fprintf(stderr, "\t%-15s%s\n", "-v", "Display pkg(1) version");
 	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(1) is activated and avoid auto-activation");
@@ -151,7 +152,7 @@ usage(const char *conffile)
 	for (unsigned int i = 0; i < cmd_len; i++)
 		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
-	if (!pkg_initialized() && pkg_init(conffile) != EPKG_OK)
+	if (!pkg_initialized() && pkg_init(conffile, reposdir) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
@@ -175,7 +176,7 @@ usage(const char *conffile)
 static void
 usage_help(void)
 {
-	usage(NULL);
+	usage(NULL, NULL);
 }
 
 static int
@@ -507,6 +508,7 @@ main(int argc, char **argv)
 	bool activation_test = false;
 	struct plugcmd *c;
 	const char *conffile = NULL;
+	const char *reposdir = NULL;
 	struct pkg_config_kv *alias = NULL;
 	const char *alias_value, *errmsg;
 	char **newargv;
@@ -517,14 +519,14 @@ main(int argc, char **argv)
 	setvbuf(stdout, NULL, _IONBF, 0);
 
 	if (argc < 2)
-		usage(NULL);
+		usage(NULL, NULL);
 
 	cmdargv = argv;
 
 #ifndef NO_LIBJAIL
-	while ((ch = getopt(argc, argv, "dj:c:C:lNvq")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvq")) != -1) {
 #else
-	while ((ch = getopt(argc, argv, "d:c:C:lNvq")) != -1) {
+	while ((ch = getopt(argc, argv, "d:c:C:R:lNvq")) != -1) {
 #endif
 		switch (ch) {
 		case 'd':
@@ -535,6 +537,9 @@ main(int argc, char **argv)
 			break;
 		case 'C':
 			conffile = optarg;
+			break;
+		case 'R':
+			reposdir = optarg;
 			break;
 #ifndef NO_LIBJAIL
 		case 'j':
@@ -565,7 +570,7 @@ main(int argc, char **argv)
 		exit(EX_OK);
 	}
 	if (argc == 0 && version == 0 && !activation_test)
-		usage(conffile);
+		usage(conffile, reposdir);
 
 	umask(022);
 	pkg_event_register(&event_callback, &debug);
@@ -576,7 +581,7 @@ main(int argc, char **argv)
 
 	if (jail_str != NULL && chroot_path != NULL) {
 		fprintf(stderr, "-j and -c cannot be used at the same time!\n");
-		usage(conffile);
+		usage(conffile, reposdir);
 	}
 
 	if (chroot_path != NULL)
@@ -598,7 +603,7 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "chdir() failed");
 #endif
 
-	if (pkg_init(conffile) != EPKG_OK)
+	if (pkg_init(conffile, reposdir) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
 	if (atexit(&pkg_shutdown) != 0)
@@ -688,7 +693,7 @@ main(int argc, char **argv)
 		}
 
 		if (!plugin_found)
-			usage(conffile);
+			usage(conffile, reposdir);
 
 		return (ret);
 	}
