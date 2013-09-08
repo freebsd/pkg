@@ -682,9 +682,10 @@ pkgdb_remote_init(struct pkgdb *db, const char *repo)
 static int
 pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 {
-	int		 ret;
-	char		 remotepath[MAXPATHLEN + 1];
+	int		  ret;
+	char		  remotepath[MAXPATHLEN + 1];
 	struct pkg_repo	 *r = NULL;
+	int		  repocount = 0;
 
 	while (pkg_repos(&r) == EPKG_OK) {
 		if (!pkg_repo_enabled(r))
@@ -727,10 +728,11 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			}
 			break;
 		default:
+			repocount++;
 			break;
 		}
 	}
-	return (EPKG_OK);
+	return (repocount > 0 ? EPKG_OK : EPKG_FATAL);
 }
 
 static int
