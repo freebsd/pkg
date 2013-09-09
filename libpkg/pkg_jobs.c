@@ -47,6 +47,7 @@ static struct pkg *get_local_pkg(struct pkg_jobs *j, const char *origin, unsigne
 static struct pkg *get_remote_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force);
+static bool pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive);
 static bool new_pkg_version(struct pkg_jobs *j);
 static int order_pool(struct pkg_jobs *j, bool force);
 
@@ -211,10 +212,11 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 {
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
-	struct pkg *npkg;
+	struct pkg *npkg, *rpkg;
 
 	/* Go through all depends */
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
+		rpkg = NULL;
 		if (pkg->type == PKG_INSTALLED) {
 			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (npkg == NULL) {
@@ -227,6 +229,16 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 					/* Cannot continue */
 					pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
 					return (EPKG_FATAL);
+				}
+			}
+			else if (j->type == PKG_JOBS_UPGRADE) {
+				/* For upgrade jobs we need to ensure that we do not have a newer version */
+				rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+				if (rpkg != NULL) {
+					if (!pkg_need_upgrade(rpkg, npkg, j->flags & PKG_FLAG_RECURSIVE)) {
+						pkg_free(rpkg);
+						rpkg = NULL;
+					}
 				}
 			}
 		}
@@ -242,6 +254,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 			}
 		}
 		if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
+			return (EPKG_FATAL);
+		if (rpkg != NULL && pkg_jobs_handle_pkg_universe(j, rpkg) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
@@ -861,20 +875,139 @@ get_remote_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 }
 
 static bool
+pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
+{
+	int ret, ret1, ret2;
+	const char *lversion, *rversion;
+	struct pkg_option *lo = NULL, *ro = NULL;
+	struct pkg_dep *ld = NULL, *rd = NULL;
+	struct pkg_shlib *ls = NULL, *rs = NULL;
+	struct pkg_conflict *lc = NULL, *rc = NULL;
+	struct pkg_provide *lpr = NULL, *rpr = NULL;
+
+	/* Do not upgrade locked packages */
+	if (pkg_is_locked(lp))
+		return (false);
+
+	pkg_get(lp, PKG_VERSION, &lversion);
+	pkg_get(rp, PKG_VERSION, &rversion);
+
+	ret = pkg_version_cmp(lversion, rversion);
+	if (ret == 0 && recursive)
+		return (true);
+	else if (ret > 0)
+		return (true);
+	else
+		return (false);
+
+
+	/* compare options */
+	for (;;) {
+		ret1 = pkg_options(rp, &ro);
+		ret2 = pkg_options(lp, &lo);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "options changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_option_opt(lo), pkg_option_opt(ro)) != 0 ||
+					strcmp(pkg_option_value(lo), pkg_option_value(ro)) != 0) {
+				pkg_set(rp, PKG_REASON, "options changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* What about the direct deps */
+	for (;;) {
+		ret1 = pkg_deps(rp, &rd);
+		ret2 = pkg_deps(lp, &ld);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "direct dependency changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_dep_get(rd, PKG_DEP_NAME),
+					pkg_dep_get(ld, PKG_DEP_NAME)) != 0) {
+				pkg_set(rp, PKG_REASON, "direct dependency changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* Conflicts */
+	for (;;) {
+		ret1 = pkg_conflicts(rp, &rc);
+		ret2 = pkg_conflicts(lp, &lc);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "direct conflict changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_conflict_origin(rc),
+					pkg_conflict_origin(lc)) != 0) {
+				pkg_set(rp, PKG_REASON, "direct conflict changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* Provides */
+	for (;;) {
+		ret1 = pkg_provides(rp, &rpr);
+		ret2 = pkg_provides(lp, &lpr);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "provides changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_provide_name(rpr),
+					pkg_provide_name(lpr)) != 0) {
+				pkg_set(rp, PKG_REASON, "provides changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* Finish by the shlibs */
+	for (;;) {
+		ret1 = pkg_shlibs_required(rp, &rs);
+		ret2 = pkg_shlibs_required(lp, &ls);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "needed shared library changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_shlib_name(rs),
+					pkg_shlib_name(ls)) != 0) {
+				pkg_set(rp, PKG_REASON, "needed shared library changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	return (false);
+}
+
+static bool
 newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
 	char *origin, *newversion, *oldversion, *reponame;
 	struct pkg_note *an;
 	int64_t oldsize;
 	struct pkg *lp;
-	struct pkg_option *lo = NULL, *ro = NULL;
-	struct pkg_dep *ld = NULL, *rd = NULL;
-	struct pkg_shlib *ls = NULL, *rs = NULL;
-	struct pkg_conflict *lc = NULL, *rc = NULL;
-	struct pkg_provide *lpr = NULL, *rpr = NULL;
 	bool automatic;
-	int	ret1, ret2;
-	pkg_change_t cmp;
+	int ret;
 
 	pkg_get(rp, PKG_ORIGIN, &origin,
 	    PKG_REPONAME, &reponame);
@@ -886,15 +1019,11 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		return (true);
 	}
 
-	if (pkg_is_locked(lp)) {
-		pkg_free(lp);
-		return (false);
-	}
-
 	pkg_get(lp, PKG_AUTOMATIC, &automatic,
 	    PKG_VERSION, &oldversion,
 	    PKG_FLATSIZE, &oldsize);
 
+	/* Add repo name to the annotation */
 	an = pkg_annotation_lookup(lp, "repository");
 	if (an != NULL)  {
 		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
@@ -916,131 +1045,10 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		return (true);
 	}
 
-	/* compare versions */
-	cmp = pkg_version_change(rp);
+	ret = pkg_need_upgrade(rp, lp, j->flags & PKG_FLAG_RECURSIVE);
+	pkg_free(lp);
 
-	if (cmp == PKG_UPGRADE) {
-		pkg_free(lp);
-		return (true);
-	}
-
-	if (cmp == PKG_REINSTALL && (j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
-		pkg_free(lp);
-		return (true);
-	}
-
-	if (cmp == PKG_DOWNGRADE) {
-		pkg_free(lp);
-		return (false);
-	}
-
-	/* compare options */
-	for (;;) {
-		ret1 = pkg_options(rp, &ro);
-		ret2 = pkg_options(lp, &lo);
-		if (ret1 != ret2) {
-			pkg_free(lp);
-			pkg_set(rp, PKG_REASON, "options changed");
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_option_opt(lo), pkg_option_opt(ro)) != 0 ||
-				strcmp(pkg_option_value(lo), pkg_option_value(ro)) != 0) {
-				pkg_free(lp);
-				pkg_set(rp, PKG_REASON, "options changed");
-				return (true);
-			}
-		}
-		else
-			break;
-	}
-
-
-	/* What about the direct deps */
-	for (;;) {
-		ret1 = pkg_deps(rp, &rd);
-		ret2 = pkg_deps(lp, &ld);
-		if (ret1 != ret2) {
-			pkg_free(lp);
-			pkg_set(rp, PKG_REASON, "direct dependency changed");
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_dep_get(rd, PKG_DEP_NAME),
-			    pkg_dep_get(ld, PKG_DEP_NAME)) != 0) {
-				pkg_free(lp);
-				pkg_set(rp, PKG_REASON, "direct dependency changed");
-				return (true);
-			}
-		}
-		else
-			break;
-	}
-
-	/* Conflicts */
-	for (;;) {
-		ret1 = pkg_conflicts(rp, &rc);
-		ret2 = pkg_conflicts(lp, &lc);
-		if (ret1 != ret2) {
-			pkg_free(lp);
-			pkg_set(rp, PKG_REASON, "direct conflict changed");
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_conflict_origin(rc),
-					pkg_conflict_origin(lc)) != 0) {
-				pkg_free(lp);
-				pkg_set(rp, PKG_REASON, "direct conflict changed");
-				return (true);
-			}
-		}
-		else
-			break;
-	}
-
-	/* Provides */
-	for (;;) {
-		ret1 = pkg_provides(rp, &rpr);
-		ret2 = pkg_provides(lp, &lpr);
-		if (ret1 != ret2) {
-			pkg_free(lp);
-			pkg_set(rp, PKG_REASON, "provides changed");
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_provide_name(rpr),
-					pkg_provide_name(lpr)) != 0) {
-				pkg_free(lp);
-				pkg_set(rp, PKG_REASON, "provides changed");
-				return (true);
-			}
-		}
-		else
-			break;
-	}
-
-	/* Finish by the shlibs */
-	for (;;) {
-		ret1 = pkg_shlibs_required(rp, &rs);
-		ret2 = pkg_shlibs_required(lp, &ls);
-		if (ret1 != ret2) {
-			pkg_free(lp);
-			pkg_set(rp, PKG_REASON, "needed shared library changed");
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_shlib_name(rs),
-			    pkg_shlib_name(ls)) != 0) {
-				pkg_free(lp);
-				pkg_set(rp, PKG_REASON, "needed shared library changed");
-				return (true);
-			}
-		}
-		else
-			break;
-	}
-
-	return (false);
+	return (ret);
 }
 
 static int
