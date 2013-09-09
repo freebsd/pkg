@@ -31,9 +31,11 @@
 #include <sys/jail.h>
 #include <sys/stat.h>
 #include <sys/queue.h>
+#include <sys/sbuf.h>
 
 #include <assert.h>
 #include <err.h>
+#include <histedit.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +45,6 @@
 #ifndef NO_LIBJAIL
 #include <jail.h>
 #endif
-#include <str2argv.h>
 
 #include <pkg.h>
 
@@ -510,10 +511,12 @@ main(int argc, char **argv)
 	const char *conffile = NULL;
 	const char *reposdir = NULL;
 	struct pkg_config_kv *alias = NULL;
-	const char *alias_value, *errmsg;
+	const char *alias_value;
 	char **newargv;
 	int newargc;
-	char *oldcmd, *newcmd;
+	Tokenizer *t = NULL;
+	struct sbuf *newcmd;
+	int j;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -648,13 +651,19 @@ main(int argc, char **argv)
 				continue;
 			argv++;
 			argc--;
-			oldcmd = argv2str(argc, argv);
-			asprintf(&newcmd, "%s %s", alias_value, oldcmd);
-			free(oldcmd);
-			if (str2argv(newcmd, &newargc, &newargv, &errmsg) != 0)
-				errx(EX_CONFIG, "Invalid alias: %s", errmsg);
-			free(newcmd);
-
+			newcmd = sbuf_new_auto();
+			sbuf_cat(newcmd, alias_value);
+			for (j = 0; j < argc; j++) {
+				if (strspn(argv[j], " \t\n") > 0)
+					sbuf_printf(newcmd, " \"%s\" ", argv[j]);
+				else
+					sbuf_printf(newcmd, " %s ", argv[j]);
+			}
+			sbuf_done(newcmd);
+			t = tok_init(NULL);
+			if (tok_str(t, sbuf_data(newcmd), &newargc, (const char ***)&newargv) != 0)
+				errx(EX_CONFIG, "Invalid alias: %s", alias_value);
+			sbuf_delete(newcmd);
 			break;
 		}
 	}
@@ -713,7 +722,7 @@ main(int argc, char **argv)
 	}
 
 	if (alias != NULL)
-		argv_free(&newargc, &newargv);
+		tok_end(t);
 
 	if (ret == EX_OK && newpkgversion)
 		execvp(getprogname(), cmdargv);

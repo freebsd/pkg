@@ -1,4 +1,4 @@
-SUBDIR=	sqlite str2argv
+SUBDIR=	sqlite
 
 .if !exists(/usr/include/bsdyml.h)
 SUBDIR+= libyaml
