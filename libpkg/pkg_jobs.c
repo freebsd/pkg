@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -93,6 +94,8 @@ void
 pkg_jobs_free(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req, *tmp;
+	struct pkg_job_universe_item *un, *untmp;
+
 
 	if (j == NULL)
 		return;
@@ -107,6 +110,11 @@ pkg_jobs_free(struct pkg_jobs *j)
 	HASH_ITER(hh, j->request_delete, req, tmp) {
 		HASH_DEL(j->request_delete, req);
 		free(req);
+	}
+	HASH_ITER(hh, j->universe, un, untmp) {
+		HASH_DEL(j->universe, un);
+		pkg_free(un->pkg);
+		free(un);
 	}
 	HASH_FREE(j->jobs, pkg, pkg_free);
 	LL_FREE(j->patterns, job_pattern, free);
@@ -313,6 +321,94 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 	return (EPKG_OK);
 }
 
+struct pkg_conflict_chain {
+	struct pkg_job_request *req;
+	struct pkg_conflict_chain *next;
+};
+
+static int
+conflict_chain_cmp_cb(struct pkg_conflict_chain *a, struct pkg_conflict_chain *b)
+{
+	const char *vera, *verb;
+
+	pkg_get(a->req->pkg, PKG_VERSION, &vera);
+	pkg_get(b->req->pkg, PKG_VERSION, &verb);
+
+	/* Inverse sort to get the maximum version as the first element */
+	return (pkg_version_cmp(verb, vera));
+}
+
+static int
+resolve_request_conflicts_chain(struct pkg *req, struct pkg_conflict_chain *chain)
+{
+	struct pkg_conflict_chain *elt, *selected = NULL;
+	const char *name, *origin, *slash_pos;
+
+	pkg_get(req, PKG_NAME, &name);
+	/*
+	 * First of all prefer pure origins, where the last element of
+	 * an origin is pkg name
+	 */
+	LL_FOREACH(chain, elt) {
+		pkg_get(elt->req->pkg, PKG_ORIGIN, &origin);
+		slash_pos = strrchr(origin, '/');
+		if (slash_pos != NULL) {
+			if (strcmp(slash_pos + 1, name) == 0) {
+				selected = elt;
+				break;
+			}
+		}
+	}
+
+	if (selected == NULL) {
+		/* XXX: add manual selection here */
+		/* Sort list by version of package */
+		LL_SORT(chain, conflict_chain_cmp_cb);
+		selected = chain;
+	}
+
+	/* Disable conflicts from a request */
+	LL_FOREACH(chain, elt) {
+		if (elt != selected)
+			elt->req->skip = true;
+	}
+
+	return (EPKG_OK);
+}
+
+static int
+resolve_request_conflicts(struct pkg_jobs *j)
+{
+	struct pkg_job_request *req, *rtmp, *found;
+	struct pkg_conflict *c, *ctmp;
+	struct pkg_conflict_chain *chain, *elt;
+
+	HASH_ITER(hh, j->request_add, req, rtmp) {
+		chain = NULL;
+		HASH_ITER(hh, req->pkg->conflicts, c, ctmp) {
+			HASH_FIND_STR(j->request_add, pkg_conflict_origin(c), found);
+			if (found && !found->skip) {
+				elt = calloc(1, sizeof(struct pkg_conflict_chain));
+				if (elt == NULL) {
+					pkg_emit_errno("resolve_request_conflicts", "calloc: struct pkg_conflict_chain");
+					return (EPKG_FATAL);
+				}
+				elt->req = found;
+				LL_PREPEND(chain, elt);
+			}
+			if (chain != NULL) {
+				/* We need to handle conflict chain here */
+				if (resolve_request_conflicts_chain (req->pkg, chain) != EPKG_OK) {
+					LL_FREE(chain, pkg_conflict_chain, free);
+					return (EPKG_FATAL);
+				}
+				LL_FREE(chain, pkg_conflict_chain, free);
+			}
+		}
+	}
+
+	return (EPKG_OK);
+}
 
 static int
 populate_local_rdeps(struct pkg_jobs *j, struct pkg *p)
@@ -1090,6 +1186,11 @@ jobs_solve_install(struct pkg_jobs *j)
 			if (find_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
 				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 		}
+	}
+
+	if (resolve_request_conflicts(j) != EPKG_OK) {
+		pkg_emit_error("Cannot resolve conflicts in a request");
+		return (EPKG_FATAL);
 	}
 
 	if (HASH_COUNT(j->bulk) == 0)
