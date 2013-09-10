@@ -734,11 +734,10 @@ disable_plugins_if_static(void)
 }
 
 static void
-add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
+add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_repo *r)
 {
 	yaml_node_pair_t *pair;
 	yaml_char_t *url = NULL, *pubkey = NULL, *enable = NULL, *mirror_type = NULL;
-	struct pkg_repo *r;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
@@ -768,16 +767,26 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 		continue;
 	}
 
-	if (url == NULL)
+	if (r == NULL && url == NULL)
 		return;
 
-	r = calloc(1, sizeof(struct pkg_repo));
-	asprintf(&r->name, REPO_NAME_PREFIX"%s", repo->data.scalar.value);
-	r->url = subst_packagesite_str(url);
-	if (pubkey != NULL)
-		r->pubkey = strdup(pubkey);
+	if (r == NULL) {
+		r = calloc(1, sizeof(struct pkg_repo));
+		r->enable = true;
+		r->mirror_type = NOMIRROR;
+		asprintf(&r->name, REPO_NAME_PREFIX"%s", repo->data.scalar.value);
+		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
+	}
 
-	r->enable = true;
+	if (url != NULL) {
+		free(r->url);
+		r->url = subst_packagesite_str(url);
+	}
+	if (pubkey != NULL) {
+		free(r->pubkey);
+		r->pubkey = strdup(pubkey);
+	}
+
 	if (enable != NULL &&
 	    (strcasecmp(enable, "off") == 0 ||
 	     strcasecmp(enable, "no") == 0 ||
@@ -786,15 +795,12 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node)
 		r->enable = false;
 	}
 
-	r->mirror_type = NOMIRROR;
 	if (mirror_type != NULL) {
 		if (strcasecmp(mirror_type, "srv") == 0)
 			r->mirror_type = SRV;
 		else if (strcasecmp(mirror_type, "http") == 0)
 			r->mirror_type = HTTP;
 	}
-
-	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 }
 
 static void
@@ -818,13 +824,10 @@ parse_repo_file(yaml_document_t *doc, yaml_node_t *node)
 			continue;
 		}
 		r = pkg_repo_find_ident((char *)key->data.scalar.value);
-		if (r != NULL) {
-			pkg_emit_error("a repository named '%s' is already configured, skipping...");
-			++pair;
-			continue;
-		}
+		if (r != NULL)
+			pkg_debug(1, "PkgConfig: %s, overwritting repository %s", key->data.scalar.value);
 
-		add_repo(doc, key, val);
+		add_repo(doc, key, val, r);
 		++pair;
 	}
 }
