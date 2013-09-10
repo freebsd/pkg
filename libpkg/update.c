@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <errno.h>
 #include <limits.h>
 
@@ -46,6 +47,27 @@
 #include "private/repodb.h"
 
 //#define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM)
+
+struct sig_cert {
+	char name[MAXPATHLEN];
+	unsigned char *sig;
+	int siglen;
+	unsigned char *cert;
+	int certlen;
+	UT_hash_handle hh;
+	bool trusted;
+};
+
+typedef enum {
+	HASH_UNKNOWN,
+	HASH_SHA256,
+} hash_t;
+
+struct fingerprint {
+	hash_t type;
+	char hash[BUFSIZ];
+	UT_hash_handle hh;
+};
 
 /* Add indexes to the repo */
 static int
@@ -106,13 +128,144 @@ repo_fetch_remote_tmp(struct pkg_repo *repo, const char *filename, const char *e
 	return (fd);
 }
 
+static bool
+has_ext(const char *path, const char *ext)
+{
+	size_t n, l;
+	const char *p = NULL;
+
+	n = strlen(path);
+	l = strlen(ext);
+	p = &path[n - l];
+
+	if (strcmp(p, ext) == 0)
+		return (true);
+
+	return (false);
+}
+
+static struct fingerprint *
+parse_fingerprint(yaml_document_t *doc, yaml_node_t *node)
+{
+	yaml_node_pair_t *pair;
+	yaml_char_t *function = NULL, *fp = NULL;
+	hash_t fct = HASH_UNKNOWN;
+	struct fingerprint *f = NULL;
+
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
+		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
+
+		if (key->data.scalar.length <= 0) {
+			++pair;
+			continue;
+		}
+
+		if (val->type != YAML_SCALAR_NODE) {
+			++pair;
+			continue;
+		}
+
+		if (strcasecmp(key->data.scalar.value, "function") == 0)
+			function = val->data.scalar.value;
+		else if (strcasecmp(key->data.scalar.value, "fingerprint") == 0)
+			fp = val->data.scalar.value;
+
+		++pair;
+		continue;
+	}
+
+	if (fp == NULL || function == NULL)
+		return (NULL);
+
+	if (strcasecmp(function, "sha256") == 0)
+		fct = HASH_SHA256;
+
+	if (fct == HASH_UNKNOWN) {
+		pkg_emit_error("Unsupported hashing function: %s", function);
+		return (NULL);
+	}
+
+	f = calloc(1, sizeof(struct fingerprint));
+	f->type = fct;
+	strlcpy(f->hash, fp, sizeof(f->hash));
+
+	return (f);
+}
+
+static struct fingerprint *
+load_fingerprint(const char *dir, const char *filename)
+{
+	yaml_parser_t parser;
+	yaml_document_t doc;
+	yaml_node_t *node;
+	FILE *fp;
+	char path[MAXPATHLEN];
+	struct fingerprint *f = NULL;
+
+	snprintf(path, MAXPATHLEN, "%s/%s", dir, filename);
+
+	if ((fp = fopen(path, "r")) == NULL)
+		return (NULL);
+
+	yaml_parser_initialize(&parser);
+	yaml_parser_set_input_file(&parser, fp);
+	yaml_parser_load(&parser, &doc);
+
+	node = yaml_document_get_root_node(&doc);
+	if (node == NULL || node->type != YAML_MAPPING_NODE)
+		goto out;
+
+	f = parse_fingerprint(&doc, node);
+
+out:
+	yaml_document_delete(&doc);
+	yaml_parser_delete(&parser);
+	fclose(fp);
+
+	return (f);
+}
+
+static struct fingerprint *
+load_fingerprints(const char *path)
+{
+	DIR *d;
+	struct dirent *ent;
+	struct fingerprint *f = NULL;
+	struct fingerprint *finger = NULL;
+
+	if ((d = opendir(path)) == NULL)
+		return (NULL);
+
+	while ((ent = readdir(d))) {
+		finger = load_fingerprint(path, ent->d_name);
+		if (finger != NULL)
+			HASH_ADD_STR(f, hash, finger);
+	}
+
+	closedir(d);
+
+	return (f);
+}
+
 static int
-repo_archive_extract_file(int fd, const char *file, const char *dest, const char *repokey, int dest_fd)
+repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg_repo *repo, int dest_fd)
 {
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
+	struct sig_cert *sc = NULL;
+	struct sig_cert *s = NULL;
+	struct fingerprint *trusted = NULL;
+	struct fingerprint *revoked = NULL;
+	struct fingerprint *f = NULL;
 	unsigned char *sig = NULL;
 	int siglen = 0, ret, rc = EPKG_OK;
+	char key[MAXPATHLEN], path[MAXPATHLEN];
+	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
+	int nbgood = 0;
+
+	pkg_debug(1, "PkgRepo: extracting repo %", pkg_repo_name(repo));
 
 	a = archive_read_new();
 	archive_read_support_filter_all(a);
@@ -147,36 +300,143 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, const char
 				(void)lseek(dest_fd, 0, SEEK_SET);
 			}
 		}
-		if (strcmp(archive_entry_pathname(ae), "signature") == 0) {
+		if (pkg_repo_signature_type(repo) == SIG_PUBKEY &&
+		    strcmp(archive_entry_pathname(ae), "signature") == 0) {
 			siglen = archive_entry_size(ae);
 			sig = malloc(siglen);
 			archive_read_data(a, sig, siglen);
 		}
+
+		if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
+			if (has_ext(archive_entry_pathname(ae), ".sig")) {
+				snprintf(key, MAXPATHLEN, "%.*s",
+				    (int) strlen(archive_entry_pathname(ae)) - 4,
+				    archive_entry_pathname(ae));
+				HASH_FIND_STR(sc, key, s);
+				if (s == NULL) {
+					s = calloc(1, sizeof(struct sig_cert));
+					strlcpy(s->name, key, MAXPATHLEN);
+					HASH_ADD_STR(sc, name, s);
+				}
+				s->siglen = archive_entry_size(ae);
+				s->sig = malloc(s->siglen);
+				archive_read_data(a, s->sig, s->siglen);
+			}
+			if (has_ext(archive_entry_pathname(ae), ".cert")) {
+				snprintf(key, MAXPATHLEN, "%.*s",
+				    (int) strlen(archive_entry_pathname(ae)) - 5,
+				    archive_entry_pathname(ae));
+				HASH_FIND_STR(sc, key, s);
+				if (s == NULL) {
+					s = calloc(1, sizeof(struct sig_cert));
+					strlcpy(s->name, key, MAXPATHLEN);
+					HASH_ADD_STR(sc, name, s);
+				}
+				s->certlen = archive_entry_size(ae);
+				s->cert = malloc(s->certlen);
+				archive_read_data(a, s->cert, s->certlen);
+			}
+		}
 	}
 
-	if (repokey != NULL) {
-		if (sig != NULL) {
-			ret = rsa_verify(dest, repokey,
-					sig, siglen - 1, dest_fd);
-			if (ret != EPKG_OK) {
-				pkg_emit_error("Invalid signature, "
-						"removing repository.");
+	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		if (sig == NULL) {
+			pkg_emit_error("No signature found in the repository.  "
+					"Can not validate against %s key.", pkg_repo_key(repo));
+			rc = EPKG_FATAL;
+			if (dest != NULL)
+				unlink(dest);
+			goto cleanup;
+		}
+		ret = rsa_verify(dest, pkg_repo_key(repo),
+		    sig, siglen - 1, dest_fd);
+		if (ret != EPKG_OK) {
+			pkg_emit_error("Invalid signature, "
+					"removing repository.");
+			if (dest != NULL)
+				unlink(dest);
+			free(sig);
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+		free(sig);
+	} else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
+		if (HASH_COUNT(sc) == 0) {
+			pkg_emit_error("No signature found");
+			rc = EPKG_FATAL;
+			if (dest != NULL)
+				unlink(dest);
+			goto cleanup;
+		}
+
+		/* load fingerprints */
+		snprintf(path, MAXPATHLEN, "%s/trusted", pkg_repo_fingerprints(repo));
+
+		trusted = load_fingerprints(path);
+		revoked = load_fingerprints(path);
+
+		if (HASH_COUNT(trusted) == 0) {
+			pkg_emit_error("No trusted certificates");
+			rc = EPKG_FATAL;
+			if (dest != NULL)
+				unlink(dest);
+			goto cleanup;
+		}
+
+		for (s = sc; s != NULL; s = s->hh.next) {
+			if (s->sig == NULL || s->cert == NULL) {
+				pkg_emit_error("Number of signatures and certificates "
+				    "mismatch");
+				rc = EPKG_FATAL;
 				if (dest != NULL)
 					unlink(dest);
-				free(sig);
-				rc = EPKG_FATAL;
 				goto cleanup;
 			}
-			free(sig);
-		} else {
-			pkg_emit_error("No signature found in the repository.  "
-					"Can not validate against %s key.", repokey);
+			s->trusted = false;
+			sha256_buf(s->cert, s->certlen, hash);
+			HASH_FIND_STR(revoked, hash, f);
+			if (f != NULL) {
+				pkg_emit_error("At least one of the certificate has been "
+				    "revoked");
+				rc = EPKG_FATAL;
+				if (dest != NULL)
+					unlink(dest);
+				goto cleanup;
+			}
+
+			HASH_FIND_STR(trusted, hash, f);
+			if (f != NULL) {
+				nbgood++;
+				s->trusted = true;
+			}
+		}
+
+		if (nbgood == 0) {
+			pkg_emit_error("No trusted certificate found");
+			rc = EPKG_FATAL;
+			if (dest != NULL)
+				unlink(dest);
+			goto cleanup;
+		}
+
+		nbgood = 0;
+
+		for (s = sc; s != NULL; s = s->hh.next) {
+			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen - 1, dest_fd);
+			if (ret == EPKG_OK && s->trusted)
+				nbgood++;
+		}
+
+		if (nbgood != 0) {
+			pkg_emit_error("No trusted certificated has been used "
+			    "to sign the repository");
 			rc = EPKG_FATAL;
 			if (dest != NULL)
 				unlink(dest);
 			goto cleanup;
 		}
 	}
+
 cleanup:
 	if (a != NULL)
 		archive_read_free(a);
@@ -214,7 +474,7 @@ repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		goto cleanup;
 	}
 	(void)unlink(tmp);
-	if (repo_archive_extract_file(fd, archive_file, NULL, repo->pubkey, dest_fd) != EPKG_OK) {
+	if (repo_archive_extract_file(fd, archive_file, NULL, repo, dest_fd) != EPKG_OK) {
 		*rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -299,7 +559,7 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 		goto cleanup;
 	}
 
-	if ((rc = repo_archive_extract_file(fd, repo_db_file, repofile_unchecked, repo->pubkey, -1)) != EPKG_OK) {
+	if ((rc = repo_archive_extract_file(fd, repo_db_file, repofile_unchecked, repo, -1)) != EPKG_OK) {
 		goto cleanup;
 	}
 
@@ -635,6 +895,7 @@ pkg_update(struct pkg_repo *repo, bool force)
 		return (EPKG_FATAL);
 	}
 
+	pkg_debug(1, "PkgRepo: verifying update for %s", pkg_repo_name(repo));
 	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
 
 	if (stat(repofile, &st) != -1)
