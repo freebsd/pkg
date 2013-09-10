@@ -118,9 +118,9 @@ static struct config_entry c[] = {
 		"Answer 'yes' to all pkg(8) questions",
 	},
 	[PKG_CONFIG_REPOS_DIR] = {
-		PKG_CONFIG_STRING,
+		PKG_CONFIG_LIST,
 		"REPOS_DIR",
-		PREFIX"/etc/pkg/repos/",
+		"/etc/pkg/,"PREFIX"/etc/pkg/repos/",
 		"Location of the repository configuration files"
 	},
 	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
@@ -869,6 +869,7 @@ load_repo_files(const char *repodir)
 	if ((d = opendir(repodir)) == NULL)
 		return;
 
+	pkg_debug(1, "PkgConfig: loading repositories in %s", repodir);
 	while ((ent = readdir(d))) {
 		if ((n = strlen(ent->d_name)) <= 5)
 			continue;
@@ -885,6 +886,7 @@ static void
 load_repositories(const char *repodir)
 {
 	struct pkg_repo *r;
+	struct pkg_config_value *v;
 	const char *url, *pub, *mirror_type;
 
 	pkg_config_string(PKG_CONFIG_REPO, &url);
@@ -908,10 +910,14 @@ load_repositories(const char *repodir)
 		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 	}
 
-	if (repodir == NULL)
-		pkg_config_string(PKG_CONFIG_REPOS_DIR, &repodir);
-	if (repodir != NULL)
+	if (repodir != NULL) {
 		load_repo_files(repodir);
+		return;
+	}
+
+	v = NULL;
+	while (pkg_config_list(PKG_CONFIG_REPOS_DIR, &v) == EPKG_OK)
+		load_repo_files(pkg_config_value(v));
 }
 
 int
