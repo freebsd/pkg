@@ -846,7 +846,7 @@ parse_repo_file(yaml_document_t *doc, yaml_node_t *node)
 		}
 		r = pkg_repo_find_ident((char *)key->data.scalar.value);
 		if (r != NULL)
-			pkg_debug(1, "PkgConfig: overwritting repository %s", key->data.scalar.value);
+			pkg_debug(1, "PkgConfig: overwriting repository %s", key->data.scalar.value);
 
 		add_repo(doc, key, val, r);
 		++pair;
