@@ -897,6 +897,7 @@ load_repositories(const char *repodir)
 	pkg_config_string(PKG_CONFIG_MIRRORS, &mirror_type);
 
 	if (url != NULL) {
+		pkg_emit_error("PACKAGESITE in pkg.conf is deprecated, please create a repository configuration file");
 		r = calloc(1, sizeof(struct pkg_repo));
 		r->name = strdup(REPO_NAME_PREFIX"packagesite");
 		r->url = subst_packagesite_str(url);
