@@ -407,32 +407,50 @@ show_plugin_info(void)
 static void
 show_repository_info(void)
 {
-	const char	*buf;
+	const char	*mirror, *sig;
 	struct pkg_repo	*repo = NULL;
 
 	printf("\nRepositories:\n");
 	while (pkg_repos(&repo) == EPKG_OK) {
 		switch (pkg_repo_mirror_type(repo)) {
 		case SRV:
-			buf = "SRV";
+			mirror = "SRV";
 			break;
 		case HTTP:
-			buf = "HTTP";
+			mirror = "HTTP";
 			break;
 		case NOMIRROR:
-			buf = "NONE";
+			mirror = "NONE";
 			break;
 		default:
-			buf = "-unknown-";
+			mirror = "-unknown-";
 			break;
 		}
-		printf("  %s:\n%16s: %s\n%16s: %s\n%16s: %s\n%16s: %s\n",
+		switch (pkg_repo_signature_type(repo)) {
+		case SIG_PUBKEY:
+			sig = "PUBKEY";
+			break;
+		case SIG_FINGERPRINT:
+			sig = "FINGERPRINTS";
+			break;
+		case SIG_NONE:
+			sig = "NONE";
+			break;
+		default:
+			sig = "-unknown-";
+			break;
+		}
+
+		printf("  %s:\n%16s: %s\n%16s: %s\n%16s: %s\n%16s: %s\n%16s: %s\n%16s: %s\n",
 		    pkg_repo_ident(repo),
                     "url", pkg_repo_url(repo),
-		    "key", pkg_repo_key(repo) == NULL ?
-		       "" : pkg_repo_key(repo),
+		    "signature", sig,
+		    "pubkey", pkg_repo_key(repo) == NULL ?
+		        "" : pkg_repo_key(repo),
+		    "fingerprints", pkg_repo_fingerprints(repo) == NULL ?
+		        "" : pkg_repo_fingerprints(repo),
 		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no",
-		    "mirror_type", buf);
+		    "mirror_type", mirror);
 	}
 }
 

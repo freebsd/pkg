@@ -738,6 +738,7 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_
 {
 	yaml_node_pair_t *pair;
 	yaml_char_t *url = NULL, *pubkey = NULL, *enable = NULL, *mirror_type = NULL;
+	yaml_char_t *signature_type = NULL, *fingerprints = NULL;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
@@ -762,6 +763,10 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_
 			enable = val->data.scalar.value;
 		else if (strcasecmp(key->data.scalar.value, "mirror_type") == 0)
 			mirror_type = val->data.scalar.value;
+		else if (strcasecmp(key->data.scalar.value, "signature") == 0)
+			signature_type = val->data.scalar.value;
+		else if (strcasecmp(key->data.scalar.value, "fingerprints") == 0)
+			fingerprints = val->data.scalar.value;
 
 		++pair;
 		continue;
@@ -774,6 +779,7 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_
 		r = calloc(1, sizeof(struct pkg_repo));
 		r->enable = true;
 		r->mirror_type = NOMIRROR;
+		r->signature_type = SIG_NONE;
 		asprintf(&r->name, REPO_NAME_PREFIX"%s", repo->data.scalar.value);
 		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 	}
@@ -782,9 +788,24 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_
 		free(r->url);
 		r->url = subst_packagesite_str(url);
 	}
+
+	if (signature_type != NULL) {
+		if (strcasecmp(signature_type, "pubkey") == 0)
+			r->signature_type = SIG_PUBKEY;
+		else if (strcasecmp(signature_type, "fingerprints") == 0)
+			r->signature_type = SIG_FINGERPRINT;
+		else
+			r->signature_type = SIG_NONE;
+	}
+
 	if (pubkey != NULL) {
 		free(r->pubkey);
 		r->pubkey = strdup(pubkey);
+	}
+
+	if (fingerprints != NULL) {
+		free(r->fingerprints);
+		r->fingerprints = strdup(fingerprints);
 	}
 
 	if (enable != NULL &&
@@ -1281,6 +1302,18 @@ const char *
 pkg_repo_key(struct pkg_repo *r)
 {
 	return (r->pubkey);
+}
+
+const char *
+pkg_repo_fingerprints(struct pkg_repo *r)
+{
+	return (r->fingerprints);
+}
+
+signature_t
+pkg_repo_signature_type(struct pkg_repo *r)
+{
+	return (r->signature_type);
 }
 
 bool

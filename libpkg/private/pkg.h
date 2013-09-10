@@ -266,6 +266,8 @@ struct pkg_repo {
 		struct dns_srvinfo *srv;
 		struct http_mirror *http;
 	};
+	signature_t signature_type;
+	char *fingerprints;
 	FILE *ssh;
 	bool enable;
 	UT_hash_handle hh;
