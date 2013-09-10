@@ -430,7 +430,6 @@ populate_local_rdeps(struct pkg_jobs *j, struct pkg *p)
 		}
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
-		pkg_jobs_add_req(j, origin, pkg, false);
 		populate_local_rdeps(j, pkg);
 	}
 
@@ -640,7 +639,6 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
-		pkg_jobs_add_req(j, origin, pkg, true);
 		/* Do not test we ignore what doesn't exists remotely */
 		find_remote_pkg(j, origin, MATCH_EXACT, false);
 		pkg = NULL;
@@ -906,6 +904,7 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 
 		rc = EPKG_OK;
 		p->direct = root;
+		pkg_jobs_add_req(j, origin, p, true);
 		HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), p);
 		if (populate_deps(j, p) == EPKG_FATAL) {
 			rc = EPKG_FATAL;
@@ -1172,7 +1171,6 @@ jobs_solve_install(struct pkg_jobs *j)
 			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 				d = NULL;
 				pkg_get(pkg, PKG_ORIGIN, &origin);
-				pkg_jobs_add_req(j, origin, pkg, false);
 				if (find_remote_pkg(j, origin, MATCH_EXACT, true) == EPKG_FATAL)
 					pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
 
@@ -1256,7 +1254,6 @@ jobs_solve_fetch(struct pkg_jobs *j)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
-			pkg_jobs_add_req(j, origin, pkg, false);
 			/* Do not test we ignore what doesn't exists remotely */
 			find_remote_pkg(j, origin, MATCH_EXACT, false);
 			pkg = NULL;
