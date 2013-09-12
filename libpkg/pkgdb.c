@@ -3340,7 +3340,7 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	sbuf_finish(sql);
 
 	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
-	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), sbuf_size(sql), &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		sbuf_delete(sql);
