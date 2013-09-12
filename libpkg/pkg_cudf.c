@@ -160,6 +160,8 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	if (fprintf(f, "%s: ", op) < 0)
 		return (EPKG_FATAL);
 	HASH_ITER(hh, j->request_add, req, tmp) {
+		if (req->skip)
+			continue;
 		pkg_get(req->pkg, PKG_ORIGIN, &origin);
 		if (fprintf(f, "%s%c", origin,
 				(req->hh.next == NULL) ?
@@ -171,6 +173,8 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	if (fprintf(f, "remove: ") < 0)
 		return (EPKG_FATAL);
 	HASH_ITER(hh, j->request_delete, req, tmp) {
+		if (req->skip)
+			continue;
 		pkg_get(req->pkg, PKG_ORIGIN, &origin);
 		if (fprintf(f, "%s%c", origin,
 				(req->hh.next == NULL) ?
@@ -260,26 +264,74 @@ cudf_dup_origin(const char *in)
 	return (out);
 }
 
+struct pkg_cudf_entry {
+	char *origin;
+	bool was_installed;
+	bool installed;
+	char *version;
+};
+
+static int
+pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
+{
+	struct pkg_job_universe_item *it, *cur, *selected = NULL;
+	const char *origin;
+	int ver;
+
+	HASH_FIND(hh, j->universe, entry->origin, strlen(entry->origin), it);
+	if (it == NULL) {
+		pkg_emit_error("package %s is found in CUDF output but not in the universe", entry->origin);
+		return (EPKG_FATAL);
+	}
+
+	/*
+	 * Now we need to select an appropriate version. We assume that
+	 * the order of packages in list is the same as was passed to the
+	 * cudf solver.
+	 */
+	ver = strtoul(entry->version, NULL, 10);
+
+	LL_FOREACH(it, cur) {
+		if (--ver == 0) {
+			selected = cur;
+			break;
+		}
+	}
+
+	if (selected == NULL) {
+		pkg_emit_error("package %s is found in CUDF output but the universe has no such version", entry->origin);
+		return (EPKG_FATAL);
+	}
+
+	pkg_get(selected->pkg, PKG_ORIGIN, &origin);
+	/* XXX: handle forced versions here including reinstall */
+	if (entry->installed && selected->pkg->type != PKG_INSTALLED)
+		HASH_ADD_KEYPTR(hh, j->jobs_add, origin, strlen(origin), selected->pkg);
+	else if (!entry->installed && selected->pkg->type == PKG_INSTALLED)
+		HASH_ADD_KEYPTR(hh, j->jobs_delete, origin, strlen(origin), selected->pkg);
+
+	return (EPKG_OK);
+}
+
 int
-pkg_jobs_cudf_parse_output(struct pkg_jobs __unused *j, FILE *f)
+pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 {
 	char *line = NULL, *param, *value;
 	size_t linecap = 0;
 	ssize_t linelen;
-	struct {
-		char *origin;
-		bool was_installed;
-		bool installed;
-		char *version;
-	} cur_pkg = { NULL, false, false, NULL };
+	struct pkg_cudf_entry cur_pkg;
+
+	memset(&cur_pkg, 0, sizeof(cur_pkg));
 
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
 		value = line;
 		param = strsep(&value, ": \t");
 		if (strcmp(param, "package") == 0) {
 			if (cur_pkg.origin != NULL) {
-				/* XXX: Add pkg */
-
+				if (!pkg_jobs_cudf_add_package(j, &cur_pkg))  {
+					free(line);
+					return (EPKG_FATAL);
+				}
 			}
 			cur_pkg.origin = cudf_dup_origin(value);
 			cur_pkg.was_installed = false;
@@ -312,7 +364,10 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs __unused *j, FILE *f)
 	}
 
 	if (cur_pkg.origin != NULL) {
-		/* XXX: add pkg */
+		if (!pkg_jobs_cudf_add_package(j, &cur_pkg))  {
+			free(line);
+			return (EPKG_FATAL);
+		}
 	}
 
 	if (line != NULL)
