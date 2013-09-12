@@ -41,51 +41,104 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-static int
-cudf_emit_pkg(struct pkg *pkg, FILE *f, struct pkgdb *db)
+/*
+ * CUDF does not support packages with '_' in theirs names, therefore
+ * use this ugly function to replace '_' to '@'
+ */
+static inline int
+cudf_print_package_name(FILE *f, const char *name)
 {
-	const char *origin, *version;
+	const char *p, *c;
+	int r = 0;
+
+	p = c = name;
+	while (*p) {
+		if (*p == '_') {
+			r += fprintf(f, "%.*s", p - c, c);
+			fputc('@', f);
+			r ++;
+			c = p + 1;
+		}
+		p ++;
+	}
+	if (p > c) {
+		r += fprintf(f, "%.*s", p - c, c);
+	}
+
+	return r;
+}
+
+static inline int
+cudf_print_element(FILE *f, const char *line, bool has_next, int *column)
+{
+	int ret = 0;
+	if (*column > 80) {
+		*column = 0;
+		ret += fprintf(f, "\n ");
+	}
+
+	ret += cudf_print_package_name(f, line);
+
+	if (has_next)
+		ret += fprintf(f, ", ");
+	else
+		ret += fprintf(f, "\n");
+
+	if (ret > 0)
+		*column += ret;
+
+	return (ret);
+}
+
+static int
+cudf_emit_pkg(struct pkg *pkg, int version, FILE *f, struct pkgdb *db)
+{
+	const char *origin;
 	struct pkg_dep *dep, *dtmp;
 	struct pkg_provide *prov, *ptmp;
 	struct pkg_conflict *conflict, *ctmp;
+	int column = 0;
 
-	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_VERSION, &version);
-
-	if (fprintf(f, "package: %s\nversion: %s\n", origin, version) < 0)
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	if (fprintf(f, "package: ") < 0)
 		return (EPKG_FATAL);
 
-	/* Iterate all dependencies */
+	if (cudf_print_package_name(f, origin) < 0)
+		return (EPKG_FATAL);
+
+	if (fprintf(f, "\nversion: %d\n", version) < 0)
+		return (EPKG_FATAL);
+
 	if (HASH_COUNT(pkg->deps) > 0) {
 		if (fprintf(f, "depends: ") < 0)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->deps, dep, dtmp) {
-			if (fprintf(f, "%s%c", pkg_dep_get(dep, PKG_DEP_ORIGIN),
-					(dep->hh.next == NULL) ?
-							'\n' : ',') < 0) {
+			if (cudf_print_element(f, pkg_dep_get(dep, PKG_DEP_ORIGIN),
+					(dep->hh.next != NULL), &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		}
 	}
 
+	column = 0;
 	if (HASH_COUNT(pkg->provides) > 0) {
 		if (fprintf(f, "provides: ") < 0)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->provides, prov, ptmp) {
-			if (fprintf(f, "%s%c", pkg_provide_name(prov),
-					(prov->hh.next == NULL) ?
-							'\n' : ',') < 0) {
+			if (cudf_print_element(f, pkg_provide_name(prov),
+					(prov->hh.next != NULL), &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		}
 	}
 
+	column = 0;
 	if (HASH_COUNT(pkg->conflicts) > 0) {
 		if (fprintf(f, "conflicts: ") < 0)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
-			if (fprintf(f, "%s%c", pkg_conflict_origin(conflict),
-					(conflict->hh.next == NULL) ?
-							'\n' : ',') < 0) {
+			if (cudf_print_element(f, pkg_conflict_origin(conflict),
+					(conflict->hh.next != NULL), &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		}
@@ -132,19 +185,33 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	return (EPKG_OK);
 }
 
+static int
+pkg_cudf_version_cmp(struct pkg_job_universe_item *a, struct pkg_job_universe_item *b)
+{
+	const char *vera, *verb;
+
+	pkg_get(a->pkg, PKG_VERSION, &vera);
+	pkg_get(b->pkg, PKG_VERSION, &verb);
+
+	return (pkg_version_cmp(vera, verb));
+}
+
 int
 pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb *db)
 {
 	struct pkg *pkg;
 	struct pkg_job_universe_item *it, *itmp, *icur;
+	int version;
 
 	if (fprintf(f, "preamble: \n\n") < 0)
 		return (EPKG_FATAL);
 
 	HASH_ITER(hh, j->universe, it, itmp) {
+		LL_SORT(it, pkg_cudf_version_cmp);
+		version = 1;
 		LL_FOREACH(it, icur) {
 			pkg = icur->pkg;
-			if (cudf_emit_pkg(pkg, f, db) != EPKG_OK)
+			if (cudf_emit_pkg(pkg, version++, f, db) != EPKG_OK)
 				return (EPKG_FATAL);
 		}
 	}
@@ -168,6 +235,31 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb 
 	return (EPKG_OK);
 }
 
+/*
+ * Perform backward conversion of an origin replacing '@' to '_'
+ */
+static char *
+cudf_dup_origin(const char *in)
+{
+	size_t len = strlen(in);
+	char *out, *d;
+	const char *s;
+
+	out = malloc(len + 1);
+	if (out == NULL)
+		return (NULL);
+
+	s = in;
+	d = out;
+	while (*s) {
+		*d++ = (*s == '@') ? '_' : *s;
+		s++;
+	}
+
+	*d = '\0';
+	return (out);
+}
+
 int
 pkg_jobs_cudf_parse_output(struct pkg_jobs __unused *j, FILE *f)
 {
@@ -189,7 +281,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs __unused *j, FILE *f)
 				/* XXX: Add pkg */
 
 			}
-			cur_pkg.origin = strdup(value);
+			cur_pkg.origin = cudf_dup_origin(value);
 			cur_pkg.was_installed = false;
 			cur_pkg.installed = false;
 			cur_pkg.version = NULL;
