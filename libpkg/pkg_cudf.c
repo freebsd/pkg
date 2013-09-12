@@ -60,7 +60,7 @@ cudf_emit_pkg(struct pkg *pkg, FILE *f, struct pkgdb *db)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->deps, dep, dtmp) {
 			if (fprintf(f, "%s%c", pkg_dep_get(dep, PKG_DEP_ORIGIN),
-					(dep->hh.hh_next == NULL) ?
+					(dep->hh.next == NULL) ?
 							'\n' : ',') < 0) {
 				return (EPKG_FATAL);
 			}
@@ -72,7 +72,7 @@ cudf_emit_pkg(struct pkg *pkg, FILE *f, struct pkgdb *db)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->provides, prov, ptmp) {
 			if (fprintf(f, "%s%c", pkg_provide_name(prov),
-					(prov->hh.hh_next == NULL) ?
+					(prov->hh.next == NULL) ?
 							'\n' : ',') < 0) {
 				return (EPKG_FATAL);
 			}
@@ -84,7 +84,7 @@ cudf_emit_pkg(struct pkg *pkg, FILE *f, struct pkgdb *db)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
 			if (fprintf(f, "%s%c", pkg_conflict_origin(conflict),
-					(conflict->hh.hh_next == NULL) ?
+					(conflict->hh.next == NULL) ?
 							'\n' : ',') < 0) {
 				return (EPKG_FATAL);
 			}
@@ -109,7 +109,7 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	HASH_ITER(hh, j->request_add, req, tmp) {
 		pkg_get(req->pkg, PKG_ORIGIN, &origin);
 		if (fprintf(f, "%s%c", origin,
-				(req->hh.hh_next == NULL) ?
+				(req->hh.next == NULL) ?
 						'\n' : ',') < 0) {
 			return (EPKG_FATAL);
 		}
@@ -120,7 +120,7 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	HASH_ITER(hh, j->request_delete, req, tmp) {
 		pkg_get(req->pkg, PKG_ORIGIN, &origin);
 		if (fprintf(f, "%s%c", origin,
-				(req->hh.hh_next == NULL) ?
+				(req->hh.next == NULL) ?
 						'\n' : ',') < 0) {
 			return (EPKG_FATAL);
 		}
