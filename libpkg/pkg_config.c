@@ -284,7 +284,7 @@ static struct config_entry c[] = {
 	[PKG_CONFIG_CUDF_SOLVER] = {
 		PKG_CONFIG_BOOL,
 		"CUDF_SOLVER",
-		"0",
+		"NO",
 		"Experimental: tells pkg to use an external CUDF solver",
 	},
 };

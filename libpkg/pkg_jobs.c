@@ -93,7 +93,7 @@ void
 pkg_jobs_free(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req, *tmp;
-	struct pkg_job_universe_item *un, *untmp;
+	struct pkg_job_universe_item *un, *untmp, *cur;
 
 
 	if (j == NULL)
@@ -112,7 +112,9 @@ pkg_jobs_free(struct pkg_jobs *j)
 	}
 	HASH_ITER(hh, j->universe, un, untmp) {
 		HASH_DEL(j->universe, un);
-		pkg_free(un->pkg);
+		LL_FOREACH(un, cur) {
+			pkg_free(cur->pkg);
+		}
 		free(un);
 	}
 	HASH_FREE(j->jobs, pkg, pkg_free);
@@ -190,16 +192,17 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 		item->pkg = pkg;
 		HASH_ADD_KEYPTR(hh, j->universe, __DECONST(char *, origin), strlen(origin), item);
 	}
-
-	/* Search for the same package added */
-	LL_FOREACH(item, cur) {
-		pkg_get(cur->pkg, PKG_DIGEST, &digest_cur);
-		if (strcmp (digest, digest_cur) == 0) {
-			/* Free new package */
-			pkg_free(pkg);
-			return (EPKG_OK);
+	else {
+		/* Search for the same package added */
+		LL_FOREACH(item, cur) {
+			pkg_get(cur->pkg, PKG_DIGEST, &digest_cur);
+			if (strcmp (digest, digest_cur) == 0) {
+				/* Free new package */
+				pkg_free(pkg);
+				return (EPKG_OK);
+			}
+			tmp = cur;
 		}
-		tmp = cur;
 	}
 
 	item = calloc(1, sizeof (struct pkg_job_universe_item));
@@ -220,6 +223,10 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
 	struct pkg *npkg, *rpkg;
+
+	/* Add the requested package itself */
+	if (pkg_jobs_handle_pkg_universe(j, pkg) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	/* Go through all depends */
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
@@ -918,7 +925,8 @@ jobs_solve_fetch(struct pkg_jobs *j)
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
-	bool dry_run = false;
+	bool dry_run = false, cudf = false;
+	int ret;
 
 	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		dry_run = true;
@@ -929,18 +937,30 @@ pkg_jobs_solve(struct pkg_jobs *j)
 
 	switch (j->type) {
 	case PKG_JOBS_AUTOREMOVE:
-		return (jobs_solve_autoremove(j));
+		ret =jobs_solve_autoremove(j);
+		break;
 	case PKG_JOBS_DEINSTALL:
-		return (jobs_solve_deinstall(j));
+		ret = jobs_solve_deinstall(j);
+		break;
 	case PKG_JOBS_UPGRADE:
-		return (jobs_solve_upgrade(j));
+		ret = jobs_solve_upgrade(j);
+		break;
 	case PKG_JOBS_INSTALL:
-		return (jobs_solve_install(j));
+		ret = jobs_solve_install(j);
+		break;
 	case PKG_JOBS_FETCH:
-		return (jobs_solve_fetch(j));
+		ret = jobs_solve_fetch(j);
+		break;
 	default:
 		return (EPKG_FATAL);
 	}
+
+	if (ret == EPKG_OK) {
+		if (pkg_config_bool(PKG_CONFIG_CUDF_SOLVER, &cudf) == EPKG_OK && cudf) {
+			ret = pkg_jobs_cudf_emit_file(j, j->type, stderr, j->db);
+		}
+	}
+	return (ret);
 }
 
 int
