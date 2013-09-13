@@ -62,6 +62,7 @@ struct pkg_solve_rule {
 };
 
 struct pkg_solve_problem {
+	unsigned int rules_count;
 	struct pkg_solve_rule *rules;
 	struct pkg_solve_variable *variables;
 };
@@ -428,6 +429,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			}
 
 			LL_PREPEND(problem->rules, rule);
+			problem->rules_count ++;
 		}
 
 		/* Go through all conflicts */
@@ -464,6 +466,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 				LL_PREPEND(rule->items, it);
 
 				LL_PREPEND(problem->rules, rule);
+				problem->rules_count ++;
 			}
 		}
 
@@ -496,6 +499,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					LL_PREPEND(rule->items, it);
 
 					LL_PREPEND(problem->rules, rule);
+					problem->rules_count ++;
 				}
 			}
 		}
@@ -553,6 +557,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		/* Requests are unary rules */
 		LL_PREPEND(rule->items, it);
 		LL_PREPEND(problem->rules, rule);
+		problem->rules_count ++;
 	}
 	HASH_ITER(hh, j->request_delete, jreq, jtmp) {
 		rule = NULL;
@@ -577,6 +582,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		/* Requests are unary rules */
 		LL_PREPEND(rule->items, it);
 		LL_PREPEND(problem->rules, rule);
+		problem->rules_count ++;
 	}
 
 	/* Parse universe */
@@ -622,4 +628,44 @@ err:
 	if (rule != NULL)
 		pkg_solve_rule_free(rule);
 	return (NULL);
+}
+
+struct pkg_solve_ordered_variable {
+	struct pkg_solve_variable *var;
+	int order;
+	UT_hash_handle hh;
+};
+
+int
+pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
+{
+	struct pkg_solve_ordered_variable *ordered_variables = NULL, *nord;
+	struct pkg_solve_variable *var, *vtmp;
+	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *it;
+	int cur_ord = 1;
+
+	/* Order variables */
+	HASH_ITER(hd, problem->variables, var, vtmp) {
+		nord = calloc(1, sizeof(struct pkg_solve_ordered_variable));
+		nord->order = cur_ord ++;
+		nord->var = var;
+		HASH_ADD_PTR(ordered_variables, var, nord);
+	}
+
+	fprintf(f, "p cnf %d %d\n", HASH_CNT(hd, problem->variables), problem->rules_count);
+
+	LL_FOREACH(problem->rules, rule) {
+		LL_FOREACH(rule->items, it) {
+			HASH_FIND_PTR(ordered_variables, it->var, nord);
+			if (nord != NULL) {
+				fprintf(f, "%s%d ", (it->inverse ? "-" : ""), nord->order);
+			}
+		}
+		fprintf(f, "0\n");
+	}
+
+	HASH_FREE(ordered_variables, pkg_solve_ordered_variable, free);
+
+	return (EPKG_OK);
 }

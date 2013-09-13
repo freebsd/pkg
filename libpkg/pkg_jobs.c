@@ -927,6 +927,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 {
 	bool dry_run = false, cudf = false;
 	int ret;
+	struct pkg_solve_problem *problem;
 
 	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		dry_run = true;
@@ -958,6 +959,10 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	if (ret == EPKG_OK) {
 		if (pkg_config_bool(PKG_CONFIG_CUDF_SOLVER, &cudf) == EPKG_OK && cudf) {
 			ret = pkg_jobs_cudf_emit_file(j, j->type, stderr, j->db);
+		}
+		problem = pkg_solve_jobs_to_sat(j);
+		if (problem != NULL) {
+			pkg_solve_dimacs_export(problem, stderr);
 		}
 	}
 	return (ret);
