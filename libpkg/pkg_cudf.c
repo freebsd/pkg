@@ -35,6 +35,7 @@
 #include <string.h>
 #define _WITH_GETLINE
 #include <stdio.h>
+#include <ctype.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -156,6 +157,7 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 {
 	struct pkg_job_request *req, *tmp;
 	const char *origin;
+	int column = 0;
 
 	if (fprintf(f, "%s: ", op) < 0)
 		return (EPKG_FATAL);
@@ -163,22 +165,23 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 		if (req->skip)
 			continue;
 		pkg_get(req->pkg, PKG_ORIGIN, &origin);
-		if (fprintf(f, "%s%c", origin,
-				(req->hh.next == NULL) ?
-						'\n' : ',') < 0) {
+		if (cudf_print_element(f, origin,
+				(req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
 		}
 	}
+	if (fputc('\n', f) < 0)
+		return (EPKG_FATAL);
 
+	column = 0;
 	if (fprintf(f, "remove: ") < 0)
 		return (EPKG_FATAL);
 	HASH_ITER(hh, j->request_delete, req, tmp) {
 		if (req->skip)
 			continue;
 		pkg_get(req->pkg, PKG_ORIGIN, &origin);
-		if (fprintf(f, "%s%c", origin,
-				(req->hh.next == NULL) ?
-						'\n' : ',') < 0) {
+		if (cudf_print_element(f, origin,
+				(req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
 		}
 	}
@@ -243,7 +246,7 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb 
  * Perform backward conversion of an origin replacing '@' to '_'
  */
 static char *
-cudf_dup_origin(const char *in)
+cudf_strdup(const char *in)
 {
 	size_t len = strlen(in);
 	char *out, *d;
@@ -255,8 +258,11 @@ cudf_dup_origin(const char *in)
 
 	s = in;
 	d = out;
+	while (isspace(*s))
+		s++;
 	while (*s) {
-		*d++ = (*s == '@') ? '_' : *s;
+		if (!isspace(*s))
+			*d++ = (*s == '@') ? '_' : *s;
 		s++;
 	}
 
@@ -324,8 +330,12 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 	memset(&cur_pkg, 0, sizeof(cur_pkg));
 
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		/* Split line, cut spaces */
+		param = strsep(&line, ": \t");
 		value = line;
-		param = strsep(&value, ": \t");
+		while(line != NULL)
+			value = strsep(&line, " \t");
+
 		if (strcmp(param, "package") == 0) {
 			if (cur_pkg.origin != NULL) {
 				if (!pkg_jobs_cudf_add_package(j, &cur_pkg))  {
@@ -333,7 +343,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 					return (EPKG_FATAL);
 				}
 			}
-			cur_pkg.origin = cudf_dup_origin(value);
+			cur_pkg.origin = cudf_strdup(value);
 			cur_pkg.was_installed = false;
 			cur_pkg.installed = false;
 			cur_pkg.version = NULL;
@@ -343,14 +353,14 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 				free(line);
 				return (EPKG_FATAL);
 			}
-			cur_pkg.version = strdup(value);
+			cur_pkg.version = cudf_strdup(value);
 		}
 		else if (strcmp(param, "installed") == 0) {
 			if (cur_pkg.origin == NULL) {
 				free(line);
 				return (EPKG_FATAL);
 			}
-			if (strcmp(value, "true"))
+			if (strncmp(value, "true", 4) == 0)
 				cur_pkg.installed = true;
 		}
 		else if (strcmp(param, "was-installed") == 0) {
@@ -358,7 +368,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 				free(line);
 				return (EPKG_FATAL);
 			}
-			if (strcmp(value, "true"))
+			if (strncmp(value, "true", 4) == 0)
 				cur_pkg.was_installed = true;
 		}
 	}
