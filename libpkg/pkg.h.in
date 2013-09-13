@@ -354,6 +354,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_DISABLE_MTREE,
 	PKG_CONFIG_DEBUG_LEVEL,
 	PKG_CONFIG_CUDF_SOLVER,
+	PKG_CONFIG_SAT_SOLVER,
 } pkg_config_key;
 
 typedef enum {

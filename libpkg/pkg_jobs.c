@@ -925,9 +925,11 @@ jobs_solve_fetch(struct pkg_jobs *j)
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
-	bool dry_run = false, cudf = false;
+	bool dry_run = false;
 	int ret;
 	struct pkg_solve_problem *problem;
+	const char *solver;
+	FILE *spipe;
 
 	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		dry_run = true;
@@ -957,12 +959,31 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	}
 
 	if (ret == EPKG_OK) {
-		if (pkg_config_bool(PKG_CONFIG_CUDF_SOLVER, &cudf) == EPKG_OK && cudf) {
-			ret = pkg_jobs_cudf_emit_file(j, j->type, stderr, j->db);
+		if (pkg_config_string(PKG_CONFIG_CUDF_SOLVER, &solver) == EPKG_OK
+				&& solver != NULL) {
+			/* XXX: whether can we use r+ on all supported platforms ? */
+			spipe = popen(solver, "r+");
+			ret = pkg_jobs_cudf_emit_file(j, j->type, spipe, j->db);
+			if (ret == EPKG_OK) {
+				ret = pkg_jobs_cudf_parse_output(j, spipe);
+			}
+			pclose(spipe);
 		}
-		problem = pkg_solve_jobs_to_sat(j);
-		if (problem != NULL) {
-			pkg_solve_dimacs_export(problem, stderr);
+		else {
+			problem = pkg_solve_jobs_to_sat(j);
+			if (problem != NULL) {
+				if (pkg_config_string(PKG_CONFIG_SAT_SOLVER, &solver) == EPKG_OK
+						&& solver != NULL) {
+					/* XXX: whether can we use r+ on all supported platforms ? */
+					spipe = popen(solver, "r+");
+					ret = pkg_solve_dimacs_export(problem, spipe);;
+					if (ret == EPKG_OK) {
+						/* XXX: add sat solver output parser */
+					}
+					pclose(spipe);
+				}
+
+			}
 		}
 	}
 	return (ret);
