@@ -158,6 +158,7 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	struct pkg_job_request *req, *tmp;
 	const char *origin;
 	int column = 0;
+	bool printed = false;
 
 	if (fprintf(f, "%s: ", op) < 0)
 		return (EPKG_FATAL);
@@ -169,11 +170,15 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 				(req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
 		}
+		printed = true;
 	}
-	if (fputc('\n', f) < 0)
-		return (EPKG_FATAL);
+
+	if (!printed)
+		if (fputc('\n', f) < 0)
+			return (EPKG_FATAL);
 
 	column = 0;
+	printed = false;
 	if (fprintf(f, "remove: ") < 0)
 		return (EPKG_FATAL);
 	HASH_ITER(hh, j->request_delete, req, tmp) {
@@ -184,10 +189,12 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 				(req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
 		}
+		printed = true;
 	}
 
-	if (fputc('\n', f) < 0)
-		return (EPKG_FATAL);
+	if (!printed)
+		if (fputc('\n', f) < 0)
+			return (EPKG_FATAL);
 
 	return (EPKG_OK);
 }

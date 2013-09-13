@@ -157,7 +157,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg, bool a
 {
 	struct pkg_job_request *req;
 
-	req = malloc(sizeof (struct pkg_job_request));
+	req = calloc(1, sizeof (struct pkg_job_request));
 	if (req == NULL) {
 		pkg_emit_errno("malloc", "struct pkg_job_request");
 		return;
