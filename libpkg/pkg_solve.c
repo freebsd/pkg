@@ -64,7 +64,8 @@ struct pkg_solve_rule {
 struct pkg_solve_problem {
 	unsigned int rules_count;
 	struct pkg_solve_rule *rules;
-	struct pkg_solve_variable *variables;
+	struct pkg_solve_variable *variables_by_origin;
+	struct pkg_solve_variable *variables_by_digest;
 };
 
 /*
@@ -340,8 +341,8 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 	LL_FOREACH_SAFE(problem->rules, r, rtmp) {
 		pkg_solve_rule_free(r);
 	}
-	HASH_ITER(hd, problem->variables, v, vtmp) {
-		HASH_DELETE(hd, problem->variables, v);
+	HASH_ITER(hd, problem->variables_by_digest, v, vtmp) {
+		HASH_DELETE(hd, problem->variables_by_digest, v);
 		free(v);
 	}
 }
@@ -361,8 +362,8 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 	nvar = pkg_solve_variable_new(unit->pkg);
 	if (nvar == NULL)
 		return (EPKG_FATAL);
-	HASH_ADD_KEYPTR(ho, problem->variables, nvar->origin, strlen(nvar->origin), nvar);
-	HASH_ADD_KEYPTR(hd, problem->variables, nvar->digest, strlen(nvar->digest), nvar);
+	HASH_ADD_KEYPTR(ho, problem->variables_by_origin, nvar->origin, strlen(nvar->origin), nvar);
+	HASH_ADD_KEYPTR(hd, problem->variables_by_digest, nvar->digest, strlen(nvar->digest), nvar);
 	unit = unit->next;
 	tvar = nvar;
 	while (unit != NULL) {
@@ -371,7 +372,7 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 		tvar = tvar->next;
 		if (tvar == NULL)
 			return (EPKG_FATAL);
-		HASH_ADD_KEYPTR(hd, problem->variables, tvar->digest, strlen(tvar->digest), tvar);
+		HASH_ADD_KEYPTR(hd, problem->variables_by_digest, tvar->digest, strlen(tvar->digest), tvar);
 		unit = unit->next;
 	}
 
@@ -402,7 +403,8 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			var = NULL;
 
 			origin = pkg_dep_get(dep, PKG_DEP_ORIGIN);
-			HASH_FIND(ho, problem->variables, __DECONST(char *, origin), strlen(origin), var);
+			HASH_FIND(ho, problem->variables_by_origin,
+					__DECONST(char *, origin), strlen(origin), var);
 			if (var == NULL) {
 				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
 					goto err;
@@ -439,7 +441,8 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			var = NULL;
 
 			origin = pkg_conflict_origin(conflict);
-			HASH_FIND(ho, problem->variables, __DECONST(char *, origin), strlen(origin), var);
+			HASH_FIND(ho, problem->variables_by_origin,
+					__DECONST(char *, origin), strlen(origin), var);
 			if (var == NULL) {
 				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
 					goto err;
@@ -544,8 +547,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		if (var == NULL)
 			goto err;
 
-		HASH_ADD_KEYPTR(hd, problem->variables, var->digest, strlen(var->digest), var);
-		HASH_ADD_KEYPTR(ho, problem->variables, var->origin, strlen(var->origin), var);
+		HASH_ADD_KEYPTR(hd, problem->variables_by_digest, var->digest, strlen(var->digest), var);
+		HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
 		it = pkg_solve_item_new(var);
 		if (it == NULL)
 			goto err;
@@ -568,8 +571,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		if (var == NULL)
 			goto err;
 
-		HASH_ADD_KEYPTR(hd, problem->variables, var->digest, strlen(var->digest), var);
-		HASH_ADD_KEYPTR(ho, problem->variables, var->origin, strlen(var->origin), var);
+		HASH_ADD_KEYPTR(hd, problem->variables_by_digest, var->digest, strlen(var->digest), var);
+		HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
 		it = pkg_solve_item_new(var);
 		if (it == NULL)
 			goto err;
@@ -594,18 +597,20 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		/* Add corresponding variables */
 		LL_FOREACH(un, ucur) {
 			pkg_get(ucur->pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
-			HASH_FIND(hd, problem->variables, digest, strlen(digest), var);
+			HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), var);
 			if (var == NULL) {
 				/* Add new variable */
 				var = pkg_solve_variable_new(ucur->pkg);
 				if (var == NULL)
 					goto err;
-				HASH_ADD_KEYPTR(hd, problem->variables, var->digest, strlen(var->digest), var);
+				HASH_ADD_KEYPTR(hd, problem->variables_by_digest,
+						var->digest, strlen(var->digest), var);
 
 				/* Check origin */
-				HASH_FIND(ho, problem->variables, origin, strlen(origin), tvar);
+				HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), tvar);
 				if (tvar == NULL) {
-					HASH_ADD_KEYPTR(ho, problem->variables, var->origin, strlen(var->origin), var);
+					HASH_ADD_KEYPTR(ho, problem->variables_by_origin,
+							var->origin, strlen(var->origin), var);
 				}
 				else {
 					/* Insert a variable to a chain */
@@ -613,7 +618,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 				}
 			}
 		}
-		HASH_FIND(ho, problem->variables, origin, strlen(origin), var);
+		HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 		/* Now `var' contains a variables chain related to this origin */
 		if (pkg_solve_add_pkg_rule(j, problem, var, true) == EPKG_FATAL)
 			goto err;
@@ -646,14 +651,15 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 	int cur_ord = 1;
 
 	/* Order variables */
-	HASH_ITER(hd, problem->variables, var, vtmp) {
+	HASH_ITER(hd, problem->variables_by_digest, var, vtmp) {
 		nord = calloc(1, sizeof(struct pkg_solve_ordered_variable));
 		nord->order = cur_ord ++;
 		nord->var = var;
 		HASH_ADD_PTR(ordered_variables, var, nord);
 	}
 
-	fprintf(f, "p cnf %d %d\n", HASH_CNT(hd, problem->variables), problem->rules_count);
+	fprintf(f, "p cnf %d %d\n", HASH_CNT(hd, problem->variables_by_digest),
+			problem->rules_count);
 
 	LL_FOREACH(problem->rules, rule) {
 		LL_FOREACH(rule->items, it) {
