@@ -663,7 +663,7 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 
 	LL_FOREACH(problem->rules, rule) {
 		LL_FOREACH(rule->items, it) {
-			HASH_FIND_PTR(ordered_variables, it->var, nord);
+			HASH_FIND_PTR(ordered_variables, &it->var, nord);
 			if (nord != NULL) {
 				fprintf(f, "%s%d ", (it->inverse ? "-" : ""), nord->order);
 			}
