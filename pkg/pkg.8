@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd September 8, 2013
+.Dd September 14, 2013
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ is installed and activated:
 .Bd -literal -offset indent
   if TMPDIR=/dev/null ASSUME_ALWAYS_YES=1 \\
        PACKAGESITE=file:///nonexistent \\
-       pkg info pkg >/dev/null 2>&1; then
+       pkg info -x 'pkg(-devel)?$' >/dev/null 2>&1; then
     # pkgng-specifics
   else
     # pkg_install-specifics
