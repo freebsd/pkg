@@ -92,7 +92,7 @@ cudf_print_element(FILE *f, const char *line, bool has_next, int *column)
 }
 
 static int
-cudf_emit_pkg(struct pkg *pkg, int version, FILE *f, struct pkgdb *db)
+cudf_emit_pkg(struct pkg *pkg, int version, FILE *f)
 {
 	const char *origin;
 	struct pkg_dep *dep, *dtmp;
@@ -145,7 +145,7 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f, struct pkgdb *db)
 		}
 	}
 
-	if (fprintf(f, "installed: %s\n\n", pkg_is_installed(db, origin) ?
+	if (fprintf(f, "installed: %s\n\n", pkg->type == PKG_INSTALLED ?
 			"true" : "false") < 0)
 		return (EPKG_FATAL);
 
@@ -211,7 +211,7 @@ pkg_cudf_version_cmp(struct pkg_job_universe_item *a, struct pkg_job_universe_it
 }
 
 int
-pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb *db)
+pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 {
 	struct pkg *pkg;
 	struct pkg_job_universe_item *it, *itmp, *icur;
@@ -225,7 +225,7 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f, struct pkgdb 
 		version = 1;
 		LL_FOREACH(it, icur) {
 			pkg = icur->pkg;
-			if (cudf_emit_pkg(pkg, version++, f, db) != EPKG_OK)
+			if (cudf_emit_pkg(pkg, version++, f) != EPKG_OK)
 				return (EPKG_FATAL);
 		}
 	}

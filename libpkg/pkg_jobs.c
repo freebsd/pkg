@@ -979,7 +979,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 				&& solver != NULL) {
 			/* XXX: whether can we use r+ on all supported platforms ? */
 			spipe = popen(solver, "r+");
-			ret = pkg_jobs_cudf_emit_file(j, j->type, spipe, j->db);
+			ret = pkg_jobs_cudf_emit_file(j, j->type, spipe);
 			if (ret == EPKG_OK) {
 				ret = pkg_jobs_cudf_parse_output(j, spipe);
 			}

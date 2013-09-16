@@ -1158,7 +1158,7 @@ int pkg_jobs_apply(struct pkg_jobs *jobs);
  * Emit CUDF spec to a file for a specified jobs request
  * @return error code
  */
-int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *, struct pkgdb *);
+int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *);
 
 /**
  * Parse the output of an external CUDF solver
