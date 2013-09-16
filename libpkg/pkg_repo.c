@@ -736,7 +736,8 @@ read_pkg_file(void *data)
 		if (strcmp(fts_name, repo_db_archive) == 0 ||
 			strcmp(fts_name, repo_packagesite_archive) == 0 ||
 			strcmp(fts_name, repo_filesite_archive) == 0 ||
-			strcmp(fts_name, repo_digests_archive) == 0)
+			strcmp(fts_name, repo_digests_archive) == 0 ||
+			strcmp(fts_name, repo_conflicts_archive) == 0)
 			continue;
 		*ext = '.';
 
