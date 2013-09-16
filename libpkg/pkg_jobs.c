@@ -178,8 +178,24 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 {
 	struct pkg_job_universe_item *item, *cur, *tmp;
 	const char *origin, *digest, *digest_cur;
+	char *new_digest;
+	int rc;
+	struct sbuf *sb;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+	if (digest == NULL) {
+		/* We need to calculate digest of this package */
+		sb = sbuf_new_auto();
+		rc = pkg_emit_manifest_sbuf(pkg, sb, PKG_MANIFEST_EMIT_COMPACT, &new_digest);
+		if (rc == EPKG_OK) {
+			pkg_set(pkg, PKG_DIGEST, new_digest);
+			pkg_get(pkg, PKG_DIGEST, &digest);
+			free(new_digest);
+		}
+		else {
+			return (rc);
+		}
+	}
 	HASH_FIND_STR(j->universe, __DECONST(char *, origin), item);
 	if (item == NULL) {
 		/* Insert new origin */
