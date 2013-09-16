@@ -30,6 +30,7 @@
 
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/types.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -37,6 +38,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -943,10 +945,11 @@ int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
 	bool dry_run = false;
-	int ret;
+	int ret, pstatus;
 	struct pkg_solve_problem *problem;
 	const char *solver;
-	FILE *spipe;
+	FILE *spipe[2];
+	pid_t pchild;
 
 	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		dry_run = true;
@@ -978,27 +981,34 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	if (ret == EPKG_OK) {
 		if (pkg_config_string(PKG_CONFIG_CUDF_SOLVER, &solver) == EPKG_OK
 				&& solver != NULL) {
-			/* XXX: whether can we use r+ on all supported platforms ? */
-			spipe = popen(solver, "r+");
-			ret = pkg_jobs_cudf_emit_file(j, j->type, spipe);
-			if (ret == EPKG_OK) {
-				fflush(spipe);
-				ret = pkg_jobs_cudf_parse_output(j, spipe);
+			pchild = process_spawn_pipe(spipe, solver);
+			if (pchild == -1) {
+				return (EPKG_FATAL);
 			}
-			pclose(spipe);
+			ret = pkg_jobs_cudf_emit_file(j, j->type, spipe[1]);
+			if (ret == EPKG_OK) {
+				ret = pkg_jobs_cudf_parse_output(j, spipe[0]);
+			}
+			waitpid(pchild, &pstatus, WNOHANG);
+			fclose(spipe[0]);
+			fclose(spipe[1]);
 		}
 		else {
 			problem = pkg_solve_jobs_to_sat(j);
 			if (problem != NULL) {
 				if (pkg_config_string(PKG_CONFIG_SAT_SOLVER, &solver) == EPKG_OK
 						&& solver != NULL) {
-					/* XXX: whether can we use r+ on all supported platforms ? */
-					spipe = popen(solver, "r+");
-					ret = pkg_solve_dimacs_export(problem, spipe);;
+					pchild = process_spawn_pipe(spipe, solver);
+					if (pchild == -1)
+						return (EPKG_FATAL);
+
+					ret = pkg_solve_dimacs_export(problem, spipe[1]);
 					if (ret == EPKG_OK) {
 						/* XXX: add sat solver output parser */
 					}
-					pclose(spipe);
+					waitpid(pchild, &pstatus, WNOHANG);
+					fclose(spipe[0]);
+					fclose(spipe[1]);
 				}
 			}
 			else {

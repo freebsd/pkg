@@ -101,5 +101,6 @@ struct dns_srvinfo *
 
 int set_nameserver(const char *nsname);
 
+pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
 #endif

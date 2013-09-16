@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +36,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <paths.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -444,4 +446,67 @@ is_hardlink(struct hardlinks *hl, struct stat *st)
 	HASH_ADD_INO(hl, inode, h);
 
 	return (true);
+}
+
+/* Spawn a process from pfunc, returning it's pid. The fds array passed will
+ * be filled with two descriptors: fds[0] will read from the child process,
+ * and fds[1] will write to it.
+ * Similarly, the child process will receive a reading/writing fd set (in
+ * that same order) as arguments.
+*/
+extern char **environ;
+pid_t
+process_spawn_pipe(FILE *inout[2], const char *command)
+{
+	pid_t pid;
+	int pipes[4];
+	char *argv[4];
+
+	/* Parent read/child write pipe */
+	if (pipe(&pipes[0]) == -1)
+		return (-1);
+
+	/* Child read/parent write pipe */
+	if (pipe(&pipes[2]) == -1) {
+		close(pipes[0]);
+		close(pipes[1]);
+		return (-1);
+	}
+
+	argv[0] = __DECONST(char *, "sh");
+	argv[1] = __DECONST(char *, "-c");
+	argv[2] = __DECONST(char *, command);
+	argv[3] = NULL;
+
+	pid = fork();
+	if (pid > 0) {
+		/* Parent process */
+		inout[0] = fdopen(pipes[0], "r");
+		inout[1] = fdopen(pipes[3], "w");
+
+		close(pipes[1]);
+		close(pipes[2]);
+
+		return (pid);
+
+	} else if (pid == 0) {
+		close(pipes[0]);
+		close(pipes[3]);
+
+		if (pipes[1] != STDOUT_FILENO) {
+			dup2(pipes[1], STDOUT_FILENO);
+			close(pipes[1]);
+		}
+		if (pipes[2] != STDIN_FILENO) {
+			dup2(pipes[2], STDIN_FILENO);
+			close(pipes[2]);
+		}
+		closefrom(STDERR_FILENO + 1);
+
+		execve(_PATH_BSHELL, argv, environ);
+
+		exit(127);
+	}
+
+	return (-1); /* ? */
 }
