@@ -551,6 +551,9 @@ pkg_create_repo(char *path, bool force, bool filelist,
 			continue;
 		}
 
+		if (progress != NULL)
+			progress(r->pkg, data);
+
 		/* do not add if package if already in repodb
 		   (possibly at a different pkg_path) */
 
@@ -563,9 +566,6 @@ pkg_create_repo(char *path, bool force, bool filelist,
 			free(r);
 			continue;
 		}
-
-		if (progress != NULL)
-			progress(r->pkg, data);
 
 		manifest_pos = ftell(psyml);
 		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
