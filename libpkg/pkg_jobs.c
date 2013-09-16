@@ -311,10 +311,10 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 		}
 		else {
 			/* Check both local and remote conflicts */
-			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
 			if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
 				return (EPKG_FATAL);
-			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
 			if (npkg == NULL) {
 				continue;
 			}
