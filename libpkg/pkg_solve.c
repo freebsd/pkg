@@ -675,3 +675,23 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 
 	return (EPKG_OK);
 }
+
+int
+pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j)
+{
+	struct pkg_solve_variable *var, *vtmp;
+	const char *origin;
+
+	HASH_ITER(hd, problem->variables_by_digest, var, vtmp) {
+		if (!var->resolved)
+			return (EPKG_FATAL);
+
+		pkg_get(var->pkg, PKG_ORIGIN, &origin);
+		if (var->to_install && var->pkg->type != PKG_INSTALLED)
+			HASH_ADD_KEYPTR(hh, j->jobs_add, origin, strlen(origin), var->pkg);
+		else if (!var->to_install && var->pkg->type == PKG_INSTALLED)
+			HASH_ADD_KEYPTR(hh, j->jobs_delete, origin, strlen(origin), var->pkg);
+	}
+
+	return (EPKG_OK);
+}
