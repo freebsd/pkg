@@ -982,6 +982,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			spipe = popen(solver, "r+");
 			ret = pkg_jobs_cudf_emit_file(j, j->type, spipe);
 			if (ret == EPKG_OK) {
+				fflush(spipe);
 				ret = pkg_jobs_cudf_parse_output(j, spipe);
 			}
 			pclose(spipe);
