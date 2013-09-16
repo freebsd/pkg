@@ -176,7 +176,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg, bool a
 static int
 pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 {
-	struct pkg_job_universe_item *item, *cur, *tmp;
+	struct pkg_job_universe_item *item, *cur, *tmp = NULL;
 	const char *origin, *digest, *digest_cur;
 	char *new_digest;
 	int rc;
@@ -228,7 +228,8 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 	}
 
 	item->pkg = pkg;
-	tmp->next = item;
+	if (tmp != NULL)
+		tmp->next = item;
 
 	return (EPKG_OK);
 }
