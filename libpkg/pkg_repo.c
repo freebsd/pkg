@@ -547,6 +547,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		}
 
 		if (r->retcode != EPKG_OK) {
+			free(r);
 			continue;
 		}
 
@@ -558,6 +559,8 @@ pkg_create_repo(char *path, bool force, bool filelist,
 			goto cleanup;
 		}
 		else if (retcode == EPKG_OK) {
+			pkg_free(r->pkg);
+			free(r);
 			continue;
 		}
 
@@ -586,6 +589,8 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		retcode = pkgdb_repo_add_package(r->pkg, r->path, sqlite,
 				manifest_digest, false, true);
 		if (retcode == EPKG_END) {
+			pkg_free(r->pkg);
+			free(r);
 			continue;
 		}
 		else if (retcode != EPKG_OK) {
