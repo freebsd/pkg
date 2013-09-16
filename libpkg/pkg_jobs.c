@@ -983,6 +983,13 @@ pkg_jobs_solve(struct pkg_jobs *j)
 					pclose(spipe);
 				}
 			}
+			else {
+				if (!pkg_solve_sat_problem (problem)) {
+					pkg_emit_error("cannot solve job using SAT solver");
+					ret = EPKG_FATAL;
+					j->solved = false;
+				}
+			}
 		}
 	}
 	return (ret);
