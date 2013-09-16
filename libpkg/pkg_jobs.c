@@ -982,16 +982,17 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		if (pkg_config_string(PKG_CONFIG_CUDF_SOLVER, &solver) == EPKG_OK
 				&& solver != NULL) {
 			pchild = process_spawn_pipe(spipe, solver);
-			if (pchild == -1) {
+			if (pchild == -1)
 				return (EPKG_FATAL);
-			}
+
 			ret = pkg_jobs_cudf_emit_file(j, j->type, spipe[1]);
-			if (ret == EPKG_OK) {
-				ret = pkg_jobs_cudf_parse_output(j, spipe[0]);
-			}
-			waitpid(pchild, &pstatus, WNOHANG);
-			fclose(spipe[0]);
 			fclose(spipe[1]);
+
+			if (ret == EPKG_OK)
+				ret = pkg_jobs_cudf_parse_output(j, spipe[0]);
+
+			fclose(spipe[0]);
+			waitpid(pchild, &pstatus, WNOHANG);
 		}
 		else {
 			problem = pkg_solve_jobs_to_sat(j);
@@ -1003,12 +1004,14 @@ pkg_jobs_solve(struct pkg_jobs *j)
 						return (EPKG_FATAL);
 
 					ret = pkg_solve_dimacs_export(problem, spipe[1]);
+					fclose(spipe[1]);
+
 					if (ret == EPKG_OK) {
 						/* XXX: add sat solver output parser */
 					}
-					waitpid(pchild, &pstatus, WNOHANG);
+
 					fclose(spipe[0]);
-					fclose(spipe[1]);
+					waitpid(pchild, &pstatus, WNOHANG);
 				}
 			}
 			else {
