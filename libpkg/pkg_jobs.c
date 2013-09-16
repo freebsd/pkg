@@ -982,7 +982,6 @@ pkg_jobs_solve(struct pkg_jobs *j)
 					}
 					pclose(spipe);
 				}
-
 			}
 		}
 	}
@@ -1059,6 +1058,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg_queue = NULL;
 	struct pkg_manifest_key *keys = NULL;
+	struct pkg_job_request *req, *rtmp;
 	char path[MAXPATHLEN + 1];
 	const char *cachedir = NULL;
 	int flags = 0;
@@ -1084,11 +1084,16 @@ pkg_jobs_install(struct pkg_jobs *j)
 	/* Install */
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+	HASH_ITER(hh, j->request_add, req, rtmp) {
 		const char *pkgorigin, *oldversion, *origin;
 		struct pkg_note *an;
 		bool automatic;
 		flags = 0;
+
+		if (req->skip)
+			continue;
+
+		p = req->pkg;
 
 		pkg_get(p, PKG_ORIGIN, &pkgorigin,
 		    PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
@@ -1227,6 +1232,7 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 	struct pkg *p = NULL;
 	int retcode;
 	int flags = 0;
+	struct pkg_job_request *req, *rtmp;
 
 	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		return (EPKG_OK); /* Do nothing */
@@ -1237,7 +1243,11 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_DELETE_NOSCRIPT;
 
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+	HASH_ITER(hh, j->request_add, req, rtmp) {
+		if (req->skip)
+			continue;
+
+		p = req->pkg;
 		retcode = pkg_delete(p, j->db, flags);
 
 		if (retcode != EPKG_OK)
@@ -1260,7 +1270,9 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
-		rc = pkg_jobs_install(j);
+		rc = pkg_jobs_deinstall(j);
+		if (rc == EPKG_OK)
+			rc = pkg_jobs_install(j);
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_INSTALL, j, j->db);
 		break;
 	case PKG_JOBS_DEINSTALL:
