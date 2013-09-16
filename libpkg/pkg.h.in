@@ -279,9 +279,9 @@ typedef enum {
 } mirror_t;
 
 typedef enum {
+	SIG_NONE = 0,
 	SIG_PUBKEY,
-	SIG_FINGERPRINT,
-	SIG_NONE
+	SIG_FINGERPRINT
 } signature_t;
 
 /**
