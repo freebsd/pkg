@@ -557,8 +557,11 @@ pkg_emit_upgrade_finished(struct pkg *p)
 		pkg_get(p, PKG_NAME, &name, PKG_OLD_VERSION, &version,
 		    PKG_VERSION, &newversion);
 		action = pkg_version_change(p);
-		syslog(LOG_NOTICE, "%s %s: %s -> %s ",
-		    name, actions[action], version, newversion);
+		syslog(LOG_NOTICE, "%s %s: %s %s %s ",
+		    name, actions[action],
+		    version != NULL ? version : newversion,
+		    version != NULL ? "->" : "",
+		    version != NULL ? newversion : "");
 	}
 
 	pkg_emit_event(&ev);
