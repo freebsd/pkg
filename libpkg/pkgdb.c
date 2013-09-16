@@ -2138,10 +2138,10 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR REPLACE INTO packages( "
 			"origin, name, version, comment, desc, message, arch, "
 			"maintainer, www, prefix, flatsize, automatic, "
-			"licenselogic, mtree_id, time) "
+			"licenselogic, mtree_id, time, manifestdigest) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, "
-		"?13, (SELECT id FROM mtree WHERE content = ?14), NOW())",
-		"TTTTTTTTTTIIIT",
+		"?13, (SELECT id FROM mtree WHERE content = ?14), NOW(), ?14)",
+		"TTTTTTTTTTIIITT",
 	},
 	[DEPS_UPDATE] = {
 		NULL,
@@ -2411,6 +2411,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	const char		*mtree, *origin, *name, *version, *name2;
 	const char		*version2, *comment, *desc, *message;
 	const char		*arch, *maintainer, *www, *prefix;
+	const char		*digest;
 
 	bool			 automatic;
 	lic_t			 licenselogic;
@@ -2446,7 +2447,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		PKG_FLATSIZE,	&flatsize,
 		PKG_AUTOMATIC,	&automatic,
 		PKG_LICENSE_LOGIC, &licenselogic,
-		PKG_NAME,	&name);
+		PKG_NAME,	&name,
+		PKG_DIGEST,	&digest);
 
 	/*
 	 * Insert mtree record
@@ -2462,7 +2464,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 	ret = run_prstmt(PKG, origin, name, version, comment, desc, message,
 	    arch, maintainer, www, prefix, flatsize, (int64_t)automatic,
-	    (int64_t)licenselogic, mtree);
+	    (int64_t)licenselogic, mtree, digest);
 	if (ret != SQLITE_DONE) {
 		ERROR_SQLITE(s);
 		goto cleanup;
