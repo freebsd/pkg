@@ -270,7 +270,6 @@ pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
 	sqlite3_stmt	*stmt = NULL;
 	const char	*origin;
 	struct pkg_file	*f;
-	struct pkg_dir	*d;
 	int64_t	package_id;
 	int	r;
 
@@ -321,11 +320,14 @@ pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
 		}
 		sqlite3_reset(stmt);
 	}
+#if 0
+	struct pkg_dir	*d;
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
 		sqlite3_bind_text(stmt, 1, d->path, -1, SQLITE_STATIC);
 		sqlite3_bind_int64(stmt, 2, package_id);
 		r = sqlite3_step(stmt);
 		if (r == SQLITE_CONSTRAINT) {
+			fprintf(stderr, "conflict on dir: %s\n", d->path);
 			pkg_repo_insert_conflict(d->path, pkg, sqlite, conflicts);
 		}
 		else if (r != SQLITE_DONE) {
@@ -335,6 +337,7 @@ pkg_repo_check_conflicts(struct pkg *pkg, sqlite3 *sqlite,
 		}
 		sqlite3_reset(stmt);
 	}
+#endif
 	sqlite3_finalize(stmt);
 }
 
