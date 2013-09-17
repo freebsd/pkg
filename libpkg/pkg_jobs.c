@@ -119,7 +119,6 @@ pkg_jobs_free(struct pkg_jobs *j)
 		}
 		free(un);
 	}
-	HASH_FREE(j->jobs, pkg, pkg_free);
 	LL_FREE(j->patterns, job_pattern, free);
 
 	free(j);
@@ -152,6 +151,22 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	}
 
 	return (EPKG_OK);
+}
+
+int
+pkg_jobs_add_iter(struct pkg_jobs *jobs, struct pkg **pkg)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(jobs->jobs_add, (*pkg));
+}
+
+int
+pkg_jobs_delete_iter(struct pkg_jobs *jobs, struct pkg **pkg)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(jobs->jobs_delete, (*pkg));
 }
 
 static void
@@ -1031,9 +1046,12 @@ pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **p)
 {
 	struct pkg *pkg;
 
-	HASH_FIND_STR(j->jobs, __DECONST(char *, origin), pkg);
-	if (pkg == NULL)
-		return (EPKG_FATAL);
+	HASH_FIND_STR(j->jobs_add, __DECONST(char *, origin), pkg);
+	if (pkg == NULL) {
+		HASH_FIND_STR(j->jobs_add, __DECONST(char *, origin), pkg);
+		if (pkg == NULL)
+			return (EPKG_FATAL);
+	}
 
 	if (p != NULL)
 		*p = pkg;
@@ -1046,21 +1064,13 @@ pkg_jobs_count(struct pkg_jobs *j)
 {
 	assert(j != NULL);
 
-	return (HASH_COUNT(j->jobs));
+	return (HASH_COUNT(j->jobs_add) + HASH_COUNT(j->jobs_delete));
 }
 
 pkg_jobs_t
 pkg_jobs_type(struct pkg_jobs *j)
 {
 	return (j->type);
-}
-
-int
-pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
-{
-	assert(j != NULL);
-
-	HASH_NEXT(j->jobs, (*pkg));
 }
 
 static int
@@ -1089,14 +1099,13 @@ pkg_jobs_keep_files_to_del(struct pkg *p1, struct pkg *p2)
 static int
 pkg_jobs_install(struct pkg_jobs *j)
 {
-	struct pkg *p = NULL;
+	struct pkg *p = NULL, *ptmp;
 	struct pkg *pkg = NULL;
 	struct pkg *newpkg = NULL;
 	struct pkg *pkg_temp = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg_queue = NULL;
 	struct pkg_manifest_key *keys = NULL;
-	struct pkg_job_request *req, *rtmp;
 	char path[MAXPATHLEN + 1];
 	const char *cachedir = NULL;
 	int flags = 0;
@@ -1122,16 +1131,11 @@ pkg_jobs_install(struct pkg_jobs *j)
 	/* Install */
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
-	HASH_ITER(hh, j->request_add, req, rtmp) {
+	HASH_ITER(hh, j->jobs_add, p, ptmp) {
 		const char *pkgorigin, *oldversion, *origin;
 		struct pkg_note *an;
 		bool automatic;
 		flags = 0;
-
-		if (req->skip)
-			continue;
-
-		p = req->pkg;
 
 		pkg_get(p, PKG_ORIGIN, &pkgorigin,
 		    PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
@@ -1267,10 +1271,9 @@ pkg_jobs_install(struct pkg_jobs *j)
 static int
 pkg_jobs_deinstall(struct pkg_jobs *j)
 {
-	struct pkg *p = NULL;
+	struct pkg *p = NULL, *ptmp;
 	int retcode;
 	int flags = 0;
-	struct pkg_job_request *req, *rtmp;
 
 	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		return (EPKG_OK); /* Do nothing */
@@ -1281,11 +1284,8 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_DELETE_NOSCRIPT;
 
-	HASH_ITER(hh, j->request_add, req, rtmp) {
-		if (req->skip)
-			continue;
+	HASH_ITER(hh, j->jobs_delete, p, ptmp) {
 
-		p = req->pkg;
 		retcode = pkg_delete(p, j->db, flags);
 
 		if (retcode != EPKG_OK)
@@ -1344,7 +1344,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 static int
 pkg_jobs_fetch(struct pkg_jobs *j)
 {
-	struct pkg *p = NULL;
+	struct pkg *p = NULL, *ptmp;
 	struct pkg *pkg = NULL;
 	struct statfs fs;
 	struct stat st;
@@ -1360,7 +1360,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 
 	/* check for available size to fetch */
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+	HASH_ITER(hh, j->jobs_add, p, ptmp) {
 		int64_t pkgsize;
 		pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
 		snprintf(cachedpath, MAXPATHLEN, "%s/%s", cachedir, repopath);
@@ -1396,7 +1396,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 	/* Fetch */
 	p = NULL;
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+	HASH_ITER(hh, j->jobs_add, p, ptmp) {
 		if (pkg_repo_fetch(p) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
@@ -1406,7 +1406,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	pkg_emit_integritycheck_begin();
 
 	pkg_manifest_keys_new(&keys);
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+	HASH_ITER(hh, j->jobs_add, p, ptmp) {
 		const char *pkgrepopath;
 
 		pkg_get(p, PKG_REPOPATH, &pkgrepopath);

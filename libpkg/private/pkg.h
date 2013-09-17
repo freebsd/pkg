@@ -209,9 +209,6 @@ struct pkg_job_universe_item {
 
 struct pkg_jobs {
 	struct pkg_job_universe_item *universe;
-	struct pkg	*jobs;
-	struct pkg 	*bulk;
-	struct pkg	*seen;
 	struct pkg_job_request	*request_add;
 	struct pkg_job_request	*request_delete;
 	struct pkg *jobs_add;

@@ -1146,7 +1146,8 @@ int pkg_jobs_count(struct pkg_jobs *jobs);
  * @param pkg Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
+int pkg_jobs_add_iter(struct pkg_jobs *jobs, struct pkg **pkg);
+int pkg_jobs_delete_iter(struct pkg_jobs *jobs, struct pkg **pkg);
 
 /**
  * Apply the jobs in the queue (fetch and install).
