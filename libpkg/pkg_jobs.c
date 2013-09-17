@@ -194,12 +194,13 @@ static int
 pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 {
 	struct pkg_job_universe_item *item, *cur, *tmp = NULL;
-	const char *origin, *digest, *digest_cur;
+	const char *origin, *digest, *digest_cur, *version, *name;
 	char *new_digest;
 	int rc;
 	struct sbuf *sb;
 
-	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest,
+			PKG_VERSION, &version, PKG_NAME, &name);
 	if (digest == NULL) {
 		/* We need to calculate digest of this package */
 		sb = sbuf_new_auto();
@@ -244,6 +245,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
+	pkg_debug(2, "universe: add new pkg: %s, (%s-%s)", origin, name, version);
 	item->pkg = pkg;
 	if (tmp != NULL)
 		tmp->next = item;

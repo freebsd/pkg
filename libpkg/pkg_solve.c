@@ -355,8 +355,10 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 
 	HASH_FIND_STR(j->universe, __DECONST(char *, origin), unit);
 	/* If there is no package in universe, refuse continue */
-	if (unit == NULL)
+	if (unit == NULL) {
+		pkg_emit_error("package %s is not found in universe", origin);
 		return (EPKG_FATAL);
+	}
 	/* Need to add a variable */
 	nvar = pkg_solve_variable_new(unit->pkg);
 	if (nvar == NULL)
