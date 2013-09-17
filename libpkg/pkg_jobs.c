@@ -1028,13 +1028,21 @@ pkg_jobs_solve(struct pkg_jobs *j)
 					fclose(spipe[0]);
 					waitpid(pchild, &pstatus, WNOHANG);
 				}
+				else {
+					if (!pkg_solve_sat_problem(problem)) {
+						pkg_emit_error("cannot solve job using SAT solver");
+						ret = EPKG_FATAL;
+						j->solved = false;
+					}
+					else {
+						ret = pkg_solve_sat_to_jobs(problem, j);
+					}
+				}
 			}
 			else {
-				if (!pkg_solve_sat_problem (problem)) {
-					pkg_emit_error("cannot solve job using SAT solver");
-					ret = EPKG_FATAL;
-					j->solved = false;
-				}
+				pkg_emit_error("cannot convert job to SAT problem");
+				ret = EPKG_FATAL;
+				j->solved = false;
 			}
 		}
 	}
