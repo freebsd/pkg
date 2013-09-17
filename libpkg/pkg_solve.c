@@ -122,8 +122,9 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
 		solved_vars = 0;
 		LL_FOREACH(rules, cur) {
 
+			total = resolved = 0;
 			LL_FOREACH(cur->items, it) {
-				if (it->var->resolved && PKG_SOLVE_CHECK_ITEM(it))
+				if (it->var->resolved && !PKG_SOLVE_CHECK_ITEM(it))
 					resolved++;
 				else
 					unresolved = it;
@@ -136,6 +137,7 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
 					unresolved->var->resolved = true;
 					unresolved->var->to_install = !unresolved->inverse;
 					solved_vars ++;
+					pkg_debug(2, "propagate %s to %d", unresolved->var->origin, unresolved->var->to_install);
 				}
 				/* Now check for a conflict */
 				ret = false;
@@ -145,7 +147,7 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
 				}
 				/* A conflict found */
 				if (!ret)
-					return false;
+					return (false);
 			}
 		}
 	} while (solved_vars > 0);
@@ -155,25 +157,21 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
 
 
 /**
- * Propagate rules explicitly
+ * Propagate pure clauses
  */
 static bool
-pkg_solve_propagate_explicit(struct pkg_solve_rule *rules)
+pkg_solve_propagate_pure(struct pkg_solve_rule *rules)
 {
 	struct pkg_solve_rule *cur;
 	struct pkg_solve_item *it;
 
 	LL_FOREACH(rules, cur) {
-
 		it = cur->items;
 		/* Unary rules */
 		if (!it->var->resolved && it->next == NULL) {
 			it->var->to_install = !it->inverse;
 			it->var->resolved = true;
-			return (true);
 		}
-
-		return (pkg_solve_propagate_units(rules));
 	}
 
 	return (false);
@@ -246,7 +244,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
 
 	/* Initially propagate explicit rules */
-	while (pkg_solve_propagate_explicit(problem->rules));
+	pkg_solve_propagate_pure(problem->rules);
 
 	/* Now try to assign default values */
 	pkg_solve_propagate_default(problem->rules);
@@ -258,6 +256,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		 * 3) analyse and learn
 		 * 4) undo an assignment
 		 */
+		pkg_solve_propagate_units(problem->rules);
 	}
 
 	return (true);
