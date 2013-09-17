@@ -456,6 +456,11 @@ pkg_parse_conflicts_file(FILE *f, sqlite3 *sqlite)
 	char *linebuf = NULL, *p, **deps;
 	const char *origin, *pdep;
 	int ndep, i;
+	const char conflicts_clean_sql[] = ""
+			"DELETE FROM pkg_conflicts;";
+
+	pkg_debug(4, "pkg_parse_conflicts_file: running '%s'", conflicts_clean_sql);
+	(void)sql_exec(sqlite, conflicts_clean_sql);
 
 	while ((linelen = getline(&linebuf, &linecap, f)) > 0) {
 		p = linebuf;
