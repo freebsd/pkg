@@ -219,7 +219,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 
 	HASH_FIND_STR(j->seen, digest, seen);
 	if (seen != NULL)
-		return (EPKG_OK);
+		return (EPKG_END);
 
 	seen = calloc(1, sizeof(struct pkg_job_seen));
 	seen->digest = digest;
@@ -271,13 +271,18 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
 	struct pkg *npkg, *rpkg;
+	int ret;
 
 	/* Add the requested package itself */
-	if (pkg_jobs_handle_pkg_universe(j, pkg) != EPKG_OK)
+	ret = pkg_jobs_handle_pkg_universe(j, pkg);
+
+	if (ret == EPKG_END)
+		return (EPKG_OK);
+	else if (ret == EPKG_OK && !recursive)
+		return (EPKG_OK);
+	else if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (!recursive)
-		return (EPKG_OK);
 
 	/* Go through all depends */
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
