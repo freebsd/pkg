@@ -272,6 +272,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 	struct pkg_conflict *c = NULL;
 	struct pkg *npkg, *rpkg;
 	int ret;
+	struct pkg_job_universe_item *unit;
 
 	/* Add the requested package itself */
 	ret = pkg_jobs_handle_pkg_universe(j, pkg);
@@ -286,6 +287,11 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 
 	/* Go through all depends */
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
+		/* XXX: this assumption can be applied only for the current plain dependencies */
+		HASH_FIND_STR(j->universe, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), unit);
+		if (unit != NULL)
+			continue;
+
 		rpkg = NULL;
 		if (pkg->type == PKG_INSTALLED) {
 			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
@@ -332,6 +338,11 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 	/* Go through all rdeps */
 	d = NULL;
 	while (pkg_rdeps(pkg, &d) == EPKG_OK) {
+		/* XXX: this assumption can be applied only for the current plain dependencies */
+		HASH_FIND_STR(j->universe, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), unit);
+		if (unit != NULL)
+			continue;
+
 		if (pkg->type == PKG_INSTALLED) {
 			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (npkg == NULL) {
@@ -358,6 +369,11 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 
 	/* Examine conflicts */
 	while (pkg_conflicts(pkg, &c) == EPKG_OK) {
+		/* XXX: this assumption can be applied only for the current plain dependencies */
+		HASH_FIND_STR(j->universe, __DECONST(char *, pkg_conflict_origin(c)), unit);
+		if (unit != NULL)
+			continue;
+
 		if (pkg->type == PKG_INSTALLED) {
 			/* We assume that we cannot have conflicts installed */
 			npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
