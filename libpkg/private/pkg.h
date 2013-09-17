@@ -201,6 +201,12 @@ struct pkg_job_request {
 	UT_hash_handle hh;
 };
 
+struct pkg_job_seen {
+	struct pkg *pkg;
+	const char *digest;
+	UT_hash_handle hh;
+};
+
 struct pkg_job_universe_item {
 	struct pkg *pkg;
 	UT_hash_handle hh;
@@ -213,6 +219,7 @@ struct pkg_jobs {
 	struct pkg_job_request	*request_delete;
 	struct pkg *jobs_add;
 	struct pkg *jobs_delete;
+	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;

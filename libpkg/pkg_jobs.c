@@ -119,6 +119,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 		}
 		free(un);
 	}
+	HASH_FREE(j->seen, pkg_job_seen, free);
 	LL_FREE(j->patterns, job_pattern, free);
 
 	free(j);
@@ -198,6 +199,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 	char *new_digest;
 	int rc;
 	struct sbuf *sb;
+	struct pkg_job_seen *seen;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest,
 			PKG_VERSION, &version, PKG_NAME, &name);
@@ -214,6 +216,16 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 			return (rc);
 		}
 	}
+
+	HASH_FIND_STR(j->seen, digest, seen);
+	if (seen != NULL)
+		return (EPKG_OK);
+
+	seen = calloc(1, sizeof(struct pkg_job_seen));
+	seen->digest = digest;
+	seen->pkg = pkg;
+	HASH_ADD_KEYPTR(hh, j->seen, seen->digest, strlen(seen->digest), seen);
+
 	HASH_FIND_STR(j->universe, __DECONST(char *, origin), item);
 	if (item == NULL) {
 		/* Insert new origin */
@@ -254,7 +266,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 }
 
 static int
-pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
+pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 {
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
@@ -263,6 +275,9 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 	/* Add the requested package itself */
 	if (pkg_jobs_handle_pkg_universe(j, pkg) != EPKG_OK)
 		return (EPKG_FATAL);
+
+	if (!recursive)
+		return (EPKG_OK);
 
 	/* Go through all depends */
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
@@ -303,9 +318,9 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 				}
 			}
 		}
-		if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
+		if (pkg_jobs_add_universe(j, npkg, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
-		if (rpkg != NULL && pkg_jobs_handle_pkg_universe(j, rpkg) != EPKG_OK)
+		if (rpkg != NULL && pkg_jobs_add_universe(j, rpkg, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
@@ -332,7 +347,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 			continue;
 		}
 
-		if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
+		if (pkg_jobs_add_universe(j, npkg, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
@@ -348,7 +363,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 		else {
 			/* Check both local and remote conflicts */
 			npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
-			if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
+			if (pkg_jobs_add_universe(j, npkg, recursive) != EPKG_OK)
 				return (EPKG_FATAL);
 			npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
 			if (npkg == NULL) {
@@ -356,7 +371,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg)
 			}
 		}
 
-		if (pkg_jobs_handle_pkg_universe(j, npkg) != EPKG_OK)
+		if (pkg_jobs_add_universe(j, npkg, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
@@ -473,9 +488,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 			pkg_get(pkg, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
 			pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
 			pkg_jobs_add_req(j, origin, pkg, false);
-			if (recursive) {
-				pkg_jobs_add_universe(j, pkg);
-			}
+			pkg_jobs_add_universe(j, pkg, recursive);
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
@@ -499,7 +512,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		pkg_jobs_add_req(j, origin, pkg, false);
-		pkg_jobs_add_universe(j, pkg);
+		pkg_jobs_add_universe(j, pkg, false);
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
@@ -646,7 +659,7 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 		p->direct = root;
 		/* Add a package to request chain and populate universe */
 		pkg_jobs_add_req(j, origin, p, true);
-		rc = pkg_jobs_add_universe (j, p);
+		rc = pkg_jobs_add_universe(j, p, true);
 
 		p = NULL;
 	}
