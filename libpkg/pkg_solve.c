@@ -256,7 +256,10 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		 * 3) analyse and learn
 		 * 4) undo an assignment
 		 */
-		pkg_solve_propagate_units(problem->rules);
+		if (!pkg_solve_propagate_units(problem->rules)) {
+			pkg_emit_error("unimplemented: cannot solve SAT problem as units propagation has fallen");
+			return (false);
+		}
 	}
 
 	return (true);
