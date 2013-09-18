@@ -1069,6 +1069,7 @@ int
 pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 {
 	int		 ret;
+	int		 tries;
 	sqlite3_stmt	*stmt;
 
 
@@ -1091,7 +1092,12 @@ pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 	}
 
 	if (ret == SQLITE_OK)
-		ret = sqlite3_step(stmt);
+		for (tries = 0; tries < NTRIES; tries++) {
+			ret = sqlite3_step(stmt);
+			if (ret != SQLITE_BUSY)
+				break;
+	    		sqlite3_sleep(250);
+		}
 
 	sqlite3_finalize(stmt);
 
