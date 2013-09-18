@@ -242,9 +242,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 
 	basedir = dirname(path);
 	if ((ext = strrchr(path, '.')) == NULL) {
-		pkg_emit_error("%s has no extension", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
+		ext = "";
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
