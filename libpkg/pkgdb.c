@@ -3087,6 +3087,7 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
+	int		 tries;
 
 	assert(s != NULL && sql != NULL);
 
@@ -3097,7 +3098,12 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 		return (EPKG_OK);
 	}
 
-	ret = sqlite3_step(stmt);
+	for (tries = 0; tries < NTRIES; tries++) {
+		ret = sqlite3_step(stmt);
+		if (ret != SQLITE_BUSY)
+			break;
+		sqlite3_sleep(250);
+	}
 
 	if (ret == SQLITE_ROW)
 		*res = sqlite3_column_int64(stmt, 0);
