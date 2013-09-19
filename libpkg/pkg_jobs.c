@@ -1058,7 +1058,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 					fclose(spipe[1]);
 
 					if (ret == EPKG_OK) {
-						/* XXX: add sat solver output parser */
+						ret = pkg_solve_parse_sat_output(spipe[0], problem, j);
 					}
 
 					fclose(spipe[0]);
