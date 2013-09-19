@@ -87,6 +87,8 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		  const char *name, bool is_shlib)
 {
 	const char *pkgname, *pkgversion;
+	struct pkg_file *file = NULL;
+	const char *filepath;
 
 	switch(filter_system_shlibs(name, NULL, 0)) {
 	case EPKG_OK:		/* A non-system library */
@@ -99,6 +101,14 @@ add_shlibs_to_pkg(__unused void *actdata, struct pkg *pkg, const char *fpath,
 		   shared library. */
 		if (is_shlib)
 			return (EPKG_OK);
+
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			filepath = pkg_file_path(file);
+			if (strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
+				pkg_addshlib_required(pkg, name);
+				return (EPKG_OK);
+			}
+		}
 
 		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 		warnx("(%s-%s) %s - shared library %s not found",
@@ -374,11 +384,11 @@ analyse_fpath(struct pkg *pkg, const char *fpath)
 }
 
 int
-pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
+pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
-	const char *fpath;
+	char fpath[MAXPATHLEN];
 	bool autodeps = false;
 	bool developer = false;
 	int (*action)(void *, struct pkg *, const char *, const char *, bool);
@@ -407,7 +417,10 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg)
 				PKG_CONTAINS_H_OR_LA);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		fpath = pkg_file_path(file);
+		if (stage != NULL)
+			snprintf(fpath, MAXPATHLEN, "%s/%s", stage, pkg_file_path(file));
+		else
+			strlcpy(fpath, pkg_file_path(file), MAXPATHLEN);
 
 		ret = analyse_elf(pkg, fpath, action, db);
 		if (developer) {

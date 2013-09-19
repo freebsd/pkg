@@ -285,7 +285,7 @@ exec_register(int argc, char **argv)
 	 */
 
 	if (!testing_mode)
-		pkg_analyse_files(db, pkg);
+		pkg_analyse_files(db, pkg, input_path);
 
 	pkg_get(pkg, PKG_ARCH, &arch);
 	if (arch == NULL) {

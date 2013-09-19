@@ -2692,7 +2692,7 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = pkg_analyse_files(db, pkg)) == EPKG_OK) {
+	if ((ret = pkg_analyse_files(db, pkg, NULL)) == EPKG_OK) {
 		if (!db->prstmt_initialized &&
 		    prstmt_initialize(db) != EPKG_OK)
 			return (EPKG_FATAL);
