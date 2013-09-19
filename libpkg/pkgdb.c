@@ -1096,7 +1096,7 @@ pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 			ret = sqlite3_step(stmt);
 			if (ret != SQLITE_BUSY)
 				break;
-	    		sqlite3_sleep(250);
+			sqlite3_sleep(250);
 		}
 
 	sqlite3_finalize(stmt);
