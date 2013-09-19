@@ -718,7 +718,7 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 	char *line = NULL, *var_str, *begin;
 	size_t linecap = 0;
 	ssize_t linelen;
-	bool got_sat = false;
+	bool got_sat = false, done = false;
 
 	/* Order variables */
 	HASH_ITER(hd, problem->variables_by_digest, var, vtmp) {
@@ -729,7 +729,7 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 	}
 
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
-		if (strncmp (line, "SAT", 3) == 0) {
+		if (strncmp(line, "SAT", 3) == 0) {
 			got_sat = true;
 		}
 		else if (got_sat) {
@@ -741,8 +741,31 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 					continue;
 				cur_ord = 0;
 				cur_ord = abs(strtol(var_str, NULL, 10));
-				if (cur_ord == 0)
+				if (cur_ord == 0) {
+					done = true;
 					break;
+				}
+
+				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
+				if (nord != NULL) {
+					nord->var->resolved = true;
+					nord->var->to_install = (*var_str != '-');
+				}
+			} while (begin != NULL);
+		}
+		else if (strncmp(line, "v ", 2) == 0) {
+			begin = line + 2;
+			do {
+				var_str = strsep(&begin, " \t");
+				/* Skip unexpected lines */
+				if (var_str == NULL || (!isdigit(*var_str) && *var_str != '-'))
+					continue;
+				cur_ord = 0;
+				cur_ord = abs(strtol(var_str, NULL, 10));
+				if (cur_ord == 0) {
+					done = true;
+					break;
+				}
 
 				HASH_FIND_INT(ordered_variables, &cur_ord, nord);
 				if (nord != NULL) {
@@ -752,14 +775,18 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 			} while (begin != NULL);
 		}
 		else {
-			pkg_emit_error("got invalid line from SAT solver: %s", line);
-			ret = EPKG_FATAL;
-			goto end;
+			/* Slightly ignore anything from solver */
+			continue;
 		}
 	}
 
-	ret = pkg_solve_sat_to_jobs(problem, j);
-end:
+	if (done)
+		ret = pkg_solve_sat_to_jobs(problem, j);
+	else {
+		pkg_emit_error("cannot parse sat solver output");
+		ret = EPKG_FATAL;
+	}
+
 	HASH_FREE(ordered_variables, pkg_solve_ordered_variable, free);
 	if (line != NULL)
 		free(line);
