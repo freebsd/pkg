@@ -329,7 +329,7 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 int
 pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 {
-	char *line = NULL, *param, *value;
+	char *line = NULL, *begin, *param, *value;
 	size_t linecap = 0;
 	ssize_t linelen;
 	struct pkg_cudf_entry cur_pkg;
@@ -338,10 +338,11 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
 		/* Split line, cut spaces */
-		param = strsep(&line, ": \t");
-		value = line;
-		while(line != NULL)
-			value = strsep(&line, " \t");
+		begin = line;
+		param = strsep(&begin, ": \t");
+		value = begin;
+		while(begin != NULL)
+			value = strsep(&begin, " \t");
 
 		if (strcmp(param, "package") == 0) {
 			if (cur_pkg.origin != NULL) {
