@@ -284,7 +284,6 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 	else if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
-
 	/* Go through all depends */
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
@@ -697,7 +696,7 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 	struct pkgdb_it *it;
 
 	if (flag == 0) {
-		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
+		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_RDEPS|PKG_LOAD_OPTIONS|
 				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|
 				PKG_LOAD_CONFLICTS;
 	}
