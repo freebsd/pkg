@@ -1192,6 +1192,12 @@ int pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f);
 int pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j);
 
 /**
+ * Parse SAT solver output and convert it to jobs
+ * @return error code
+ */
+int pkg_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pkg_jobs *j);
+
+/**
  * Free a SAT problem structure
  */
 void pkg_solve_problem_free(struct pkg_solve_problem *problem);
