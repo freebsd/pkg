@@ -194,8 +194,12 @@ pkg_solve_check_conflicts(struct pkg_solve_rule *rules)
 		it = cur->items;
 		next = it->next;
 		if (next != NULL && next->next == NULL) {
-			if (it->var->resolved ^ next->var->resolved) {
-				if (!(PKG_SOLVE_CHECK_ITEM(it) && PKG_SOLVE_CHECK_ITEM(next)))
+			if (it->var->resolved && !next->var->resolved) {
+				if (!PKG_SOLVE_CHECK_ITEM(it))
+					return (false);
+			}
+			else if (!it->var->resolved && next->var->resolved) {
+				if (!PKG_SOLVE_CHECK_ITEM(next))
 					return (false);
 			}
 		}
@@ -222,13 +226,17 @@ pkg_solve_propagate_default(struct pkg_solve_rule *rules)
 			if (!it->var->resolved) {
 				if (it->var->pkg->type == PKG_INSTALLED) {
 					it->var->to_install = true;
-					if (pkg_solve_check_conflicts(rules))
+					if (pkg_solve_check_conflicts(rules)) {
+						pkg_debug(2, "assume %s to %d", it->var->origin, it->var->to_install);
 						it->var->resolved = true;
+					}
 				}
 				else {
 					it->var->to_install = false;
-					if (pkg_solve_check_conflicts(rules))
+					if (pkg_solve_check_conflicts(rules)) {
+						pkg_debug(2, "assume %s to %d", it->var->origin, it->var->to_install);
 						it->var->resolved = true;
+					}
 				}
 			}
 		}
@@ -249,9 +257,6 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	/* Initially propagate explicit rules */
 	pkg_solve_propagate_pure(problem->rules);
 
-	/* Now try to assign default values */
-	pkg_solve_propagate_default(problem->rules);
-
 	while (!pkg_solve_check_rules(problem->rules)) {
 		/* TODO:
 		 * 1) assign a free variable
@@ -263,6 +268,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			pkg_emit_error("unimplemented: cannot solve SAT problem as units propagation has fallen");
 			return (false);
 		}
+		pkg_solve_propagate_default(problem->rules);
 	}
 
 	return (true);
