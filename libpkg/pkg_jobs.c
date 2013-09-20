@@ -798,6 +798,9 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	return (false);
 }
 
+#define	NO_PKGS_MATCHING_STR \
+	"No packages matching '%s' available in the repositories"
+
 static int
 jobs_solve_install(struct pkg_jobs *j)
 {
@@ -814,29 +817,49 @@ jobs_solve_install(struct pkg_jobs *j)
 			goto order;
 		}
 
+	ret = EPKG_OK;
 	LL_FOREACH(j->patterns, jp) {
 		if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
-			if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
+			it = pkgdb_query(j->db, jp->pattern, jp->match);
+			if (it == NULL)
 				return (EPKG_FATAL);
 
 			pkg = NULL;
-			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
+			while (pkgdb_it_next(it, &pkg,
+			    PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 				d = NULL;
 				pkg_get(pkg, PKG_ORIGIN, &origin);
-				if (get_remote_pkg(j, origin, MATCH_EXACT, true) == EPKG_FATAL)
-					pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
+				if (get_remote_pkg(j, origin, MATCH_EXACT,
+				    true) != EPKG_OK) {
+					ret = EPKG_FATAL;
+					pkg_emit_error(NO_PKGS_MATCHING_STR,
+					    origin);
+				}
 
 				while (pkg_rdeps(pkg, &d) == EPKG_OK) {
-					if (get_remote_pkg(j, pkg_dep_origin(d), MATCH_EXACT, false) == EPKG_FATAL)
-						pkg_emit_error("No packages matching '%s', has been found in the repositories", pkg_dep_origin(d));
+					const char *dep_origin;
+					dep_origin = pkg_dep_origin(d);
+
+					if (get_remote_pkg(j, dep_origin,
+					    MATCH_EXACT, false) == EPKG_OK)
+						continue;
+					ret = EPKG_FATAL;
+					pkg_emit_error(NO_PKGS_MATCHING_STR,
+					    dep_origin);
 				}
 			}
 			pkgdb_it_free(it);
 		} else {
-			if (get_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
-				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
+			if (get_remote_pkg(j, jp->pattern, jp->match,
+			    true) == EPKG_FATAL) {
+				ret = EPKG_FATAL;
+				pkg_emit_error(NO_PKGS_MATCHING_STR,
+				    jp->pattern);
+			}
 		}
 	}
+	if (ret != EPKG_OK)
+		return (ret);
 
 	if (HASH_COUNT(j->bulk) == 0)
 		return (EPKG_OK);
