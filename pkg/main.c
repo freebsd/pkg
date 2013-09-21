@@ -687,7 +687,7 @@ main(int argc, char **argv)
 	}
 
 	len = strlen(newargv[0]);
-	for (i = 2; i < cmd_len; i++) {
+	for (i = 0; i < cmd_len; i++) {
 		if (strncmp(newargv[0], cmd[i].name, len) == 0) {
 			/* if we have the exact cmd */
 			if (len == strlen(cmd[i].name)) {
