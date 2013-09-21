@@ -237,16 +237,29 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	}
 
 	/*
-	 * Check for dependencies
+	 * Check for dependencies by searching the same directory as
+	 * the package archive we're reading.  Of course, if we're
+	 * reading from a file descriptor or a unix domain socket or
+	 * somesuch, there's no valid directory to search.
 	 */
 
-	basedir = dirname(path);
-	if ((ext = strrchr(path, '.')) == NULL) {
-		ext = "";
+	if (pkg_type(pkg) == PKG_FILE) {
+		basedir = dirname(path);
+		if ((ext = strrchr(path, '.')) == NULL) {
+			pkg_emit_error("%s has no extension", path);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+	} else {
+		basedir = NULL;
+		ext = NULL;
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_origin(dep)) == EPKG_OK)
+			continue;
+
+		if (basedir != NULL) {
 			const char *dep_name = pkg_dep_name(dep);
 			const char *dep_ver = pkg_dep_version(dep);
 
@@ -260,11 +273,11 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
-			} else {
-				retcode = EPKG_FATAL;
-				pkg_emit_missing_dep(pkg, dep);
-				goto cleanup;
 			}
+		} else {
+			retcode = EPKG_FATAL;
+			pkg_emit_missing_dep(pkg, dep);
+			goto cleanup;
 		}
 	}
 

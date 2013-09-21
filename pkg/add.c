@@ -124,8 +124,15 @@ exec_add(int argc, char **argv)
 			file = path;
 		} else {
 			file = argv[i];
-			if (access(file, F_OK) != 0) {
-				warn("%s",file);
+
+			/* Special case: treat a filename of "-" as
+			   meaning 'read from stdin.'  It doesn't make
+			   sense to have a filename of "-" more than
+			   once per command line, but we aren't
+			   testing for that at the moment */
+
+			if (strcmp(file, "-") != 0 && access(file, F_OK) != 0) {
+				warn("%s", file);
 				if (errno == ENOENT)
 					warnx("Did you mean 'pkg install %s'?", file);
 				sbuf_cat(failedpkgs, argv[i]);

@@ -178,18 +178,23 @@ typedef enum {
 	 */
 	PKG_FILE = (1U << 0),
 	/**
+         * The pkg refers to data read from a non-regular file
+         * (device, pipeline, unix dmain socket etc.)
+	 */
+	PKG_STREAM = (1U << 1),
+	/**
 	 * The pkg refers to a package available on the remote repository.
 	 * @todo Document which attributes are available.
 	 */
-	PKG_REMOTE = (1U << 1),
+	PKG_REMOTE = (1U << 2),
 	/**
 	 * The pkg refers to a localy installed package.
 	 */
-	PKG_INSTALLED = (1U << 2),
+	PKG_INSTALLED = (1U << 3),
 	/**
 	 * The pkg refers to a local file old archive.
 	 */
-	PKG_OLD_FILE = (1U << 3),
+	PKG_OLD_FILE = (1U << 4),
 } pkg_t;
 
 /**

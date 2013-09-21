@@ -30,6 +30,8 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -1069,16 +1071,18 @@ int
 pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		const char *path, struct pkg_manifest_key *keys, int flags)
 {
-	struct pkg *pkg;
-	pkg_error_t retcode = EPKG_OK;
-	int ret;
-	const char *fpath;
-	bool manifest = false;
-	const void *buf;
-	size_t size;
-	off_t offset = 0;
-	struct sbuf **sbuf;
-	int i, r;
+	struct pkg	 *pkg;
+	pkg_error_t	  retcode = EPKG_OK;
+	int		  ret;
+	const char	 *fpath;
+	bool		  manifest = false;
+	const void	 *buf;
+	size_t		  size;
+	off_t		  offset = 0;
+	struct sbuf	**sbuf;
+	int		  i, r, fd = -1;
+	bool		  read_from_stdin = 0;
+	struct stat	  sb;
 
 	struct {
 		const char *name;
@@ -1094,9 +1098,51 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	archive_read_support_filter_all(*a);
 	archive_read_support_format_tar(*a);
 
-	if (archive_read_open_filename(*a, path, 4096) != ARCHIVE_OK) {
-		pkg_emit_error("archive_read_open_filename(%s): %s", path,
-				   archive_error_string(*a));
+	/* archive_read_open_filename() treats a path of NULL as
+	 * meaning "read from stdin," but we want this behaviour if
+	 * path is exactly "-". In the unlikely event of wanting to
+	 * read an on-disk file called "-", just say "./-" or some
+	 * other leading path. */
+
+	read_from_stdin = (strncmp(path, "-", 2) == 0);
+
+	if (read_from_stdin) {
+		fd = STDIN_FILENO;
+	} else {
+		fd = open(path, O_RDONLY);
+		if (fd == -1) {
+			pkg_emit_error("open(%s) failed: %s", path,
+				       strerror(errno));
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+	}
+
+	if (fstat(fd, &sb) == -1) {
+		pkg_emit_error("fstat() %s: %s", path, strerror(errno));
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	/* Is this a file type we can't read a package from?  S_ISLNK
+	   shouldn't happen -- we should be resolving sym-links during
+	   the call to open() -- so assume S_ISLNK means something
+	   went wrong. S_ISBLK shouldn't happen on modern FreeBSD, so
+	   we'll ignore it.  S_ISCHR would result from opening
+	   /dev/stdin or /dev/fd/0 which should be fine.  Ditto
+	   S_ISFIFO.  Not sure about S_ISSOCK or S_ISWHT (?) */
+
+	if (S_ISDIR(sb.st_mode) || S_ISLNK(sb.st_mode)) {
+		pkg_emit_error("can't read %s -- is a directory or broken link",
+			       path);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	ret = archive_read_open_fd(*a, fd, 4096);
+	if (ret != ARCHIVE_OK) {
+		pkg_emit_error("archive_read_open_fd() %s: %s", path,
+			       archive_error_string(*a));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1109,7 +1155,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		pkg_reset(*pkg_p, PKG_FILE);
 
 	pkg = *pkg_p;
-	pkg->type = PKG_FILE;
+
+	if (S_ISREG(sb.st_mode) && !read_from_stdin) 
+		pkg->type = PKG_FILE;
+	else
+		pkg->type = PKG_STREAM;
 
 	while ((ret = archive_read_next_header(*a, ae)) == ARCHIVE_OK) {
 		fpath = archive_entry_pathname(*ae);
@@ -1174,8 +1224,11 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		retcode = EPKG_FATAL;
 	}
 
-	if (ret == ARCHIVE_EOF)
+	if (ret == ARCHIVE_EOF) {
+		if (!read_from_stdin) 
+			close(fd);
 		retcode = EPKG_END;
+	}
 
 	if (!manifest) {
 		retcode = EPKG_FATAL;
@@ -1188,6 +1241,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 			archive_read_free(*a);
 		*a = NULL;
 		*ae = NULL;
+		if (!read_from_stdin && fd >= 0) 
+			close(fd);
 	}
 
 	return (retcode);
