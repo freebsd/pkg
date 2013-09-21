@@ -2196,13 +2196,12 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[SCRIPT1] = {
 		NULL,
-		"INSERT OR IGNORE INTO script (script) "
-		"VALUES (?1)",
+		"INSERT OR IGNORE INTO script(script) VALUES (?1)",
 		"T",
 	},
 	[SCRIPT2] = {
 		NULL,
-		"INSERT INTO pkg_script (script_id, package_id, type) "
+		"INSERT INTO pkg_script(script_id, package_id, type) "
 		"VALUES ((SELECT script_id FROM script WHERE script = ?1), "
 		"?2, ?3)",
 		"TII",
@@ -2957,6 +2956,8 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_required)"
 			"AND id NOT IN "
 			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_provided)",
+		"script WHERE script_id NOT IN "
+		        "(SELECT DISTINCT script_id FROM pkg_script)",
 	};
 	size_t		 num_deletions = 
 		sizeof(deletions) / sizeof(*deletions);
