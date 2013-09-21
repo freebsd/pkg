@@ -420,6 +420,7 @@ static struct db_upgrades {
         "INSERT INTO pkg_script(package_id,type,script_id)"
                 " SELECT package_id, type, script_id FROM"
                 " script s JOIN scripts ss ON (s.script = ss.script);"
+	"CREATE INDEX pkg_script_package_id ON pkg_script(package_id);"
         "DROP TABLE scripts;"
 	"CREATE VIEW scripts AS SELECT package_id, script, type"
                 " FROM pkg_script ps JOIN script s"

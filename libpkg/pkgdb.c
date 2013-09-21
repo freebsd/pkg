@@ -86,6 +86,8 @@ static int sqlcmd_init(sqlite3 *db, __unused const char **err,
 static int prstmt_initialize(struct pkgdb *db);
 /* static int run_prstmt(sql_prstmt_index s, ...); */
 static void prstmt_finalize(struct pkgdb *db);
+static int pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+
 
 extern int sqlite3_shell(int, char**);
 
@@ -609,7 +611,7 @@ pkgdb_init(sqlite3 *sdb)
 	/* Mark the end of the array */
 
 	"CREATE INDEX deporigini on deps(origin);"
-	"CREATE INDEX scripts_package_id ON scripts (package_id);"
+	"CREATE INDEX pkg_script_package_id ON pkg_script(package_id);"
 	"CREATE INDEX options_package_id ON options (package_id);"
 	"CREATE INDEX deps_package_id ON deps (package_id);"
 	"CREATE INDEX files_package_id ON files (package_id);"
@@ -2375,7 +2377,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	bool			 automatic;
 	lic_t			 licenselogic;
 	int64_t			 flatsize;
-	int64_t			 i;
 
 	assert(db != NULL);
 
@@ -2605,18 +2606,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert scripts
 	 */
 
-	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
-		if (pkg_script_get(pkg, i) == NULL)
-			continue;
-		if (run_prstmt(SCRIPT1, pkg_script_get(pkg, i))
-		    != SQLITE_DONE
-		    ||
-		    run_prstmt(SCRIPT2, pkg_script_get(pkg, i),
-		    i, package_id) != SQLITE_DONE) {
-			ERROR_SQLITE(s);
-			goto cleanup;
-		}
-	}
+	if (pkgdb_insert_scripts(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
 
 	/*
 	 * Insert options
@@ -2650,6 +2641,29 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 
 	return (retcode);
 }
+
+static int
+pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	const char	*script;
+	int64_t		 i;
+
+	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
+		script = pkg_script_get(pkg, i);
+
+		if (script == NULL)
+			continue;
+		if (run_prstmt(SCRIPT1, script) != SQLITE_DONE
+		    ||
+		    run_prstmt(SCRIPT2, script, package_id, i) != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
 
 int
 pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s)
