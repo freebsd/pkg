@@ -485,7 +485,7 @@ pkgdb_init(sqlite3 *sdb)
 		"id INTEGER PRIMARY KEY,"
 		"content TEXT NOT NULL UNIQUE"
 	");"
-	"CREATE TABLE package_script ("
+	"CREATE TABLE pkg_script ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
 		"type INTEGER,"
@@ -1994,7 +1994,7 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 	int		 ret;
 	const char	 sql[] = ""
 		"SELECT script, type "
-		"FROM scripts "
+		"FROM pkg_script JOIN script USING(script_id) "
 		"WHERE package_id = ?1";
 
 	assert(db != NULL && pkg != NULL);
@@ -2085,7 +2085,8 @@ typedef enum _sql_prstmt_index {
 	USERS2,
 	GROUPS1,
 	GROUPS2,
-	SCRIPTS,
+	SCRIPT1,
+	SCRIPT2,
 	OPTIONS,
 	SHLIBS1,
 	SHLIBS_REQD,
@@ -2193,10 +2194,17 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2))",
 		"IT",
 	},
-	[SCRIPTS] = {
+	[SCRIPT1] = {
 		NULL,
-		"INSERT INTO scripts (script, type, package_id) "
-		"VALUES (?1, ?2, ?3)",
+		"INSERT OR IGNORE INTO script (script) "
+		"VALUES (?1)",
+		"T",
+	},
+	[SCRIPT2] = {
+		NULL,
+		"INSERT INTO pkg_script (script_id, package_id, type) "
+		"VALUES ((SELECT script_id FROM script WHERE script = ?1), "
+		"?2, ?3)",
 		"TII",
 	},
 	[OPTIONS] = {
@@ -2588,8 +2596,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(GROUPS2, package_id, pkg_group_name(group))
-		    != SQLITE_DONE)
-		{
+		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -2602,8 +2609,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
 		if (pkg_script_get(pkg, i) == NULL)
 			continue;
-
-		if (run_prstmt(SCRIPTS, pkg_script_get(pkg, i),
+		if (run_prstmt(SCRIPT1, pkg_script_get(pkg, i))
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(SCRIPT2, pkg_script_get(pkg, i),
 		    i, package_id) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
