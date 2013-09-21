@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 25, 2013
+.Dd September 22, 2013
 .Dt PKG-ADD 8
 .Os
 .Sh NAME
@@ -36,6 +36,34 @@ When installing from a remote source you need to specify
 the protocol to use when fetching the package.
 .Pp
 Currently supported protocols are FTP, HTTP and HTTPS.
+.Pp
+Otherwise,
+.Nm
+will read the file named on the command line.
+.Pp
+If this is a regular file, and the package to be installed has
+unmet dependencies,
+.Nm
+will search the directory containing
+.Ar pkg-name
+for suitable pkg archive files to fulfil those dependencies.
+If
+.Ar pkg-name
+is literally
+.Pa -
+then it will read the package data from stdin.
+.Nm
+will automatically detect and unpack most common compression formats
+based on the content of the data stream it reads, ignoring any
+extension the filename may have.
+.Pp
+If this involves reading from a pipe (including
+.Pa stdin ) ,
+fifo, socket or some other non-regular form of input stream then
+.Nm
+will immediately emit an error if
+.Ar pkg-name
+has unmet dependencies.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
