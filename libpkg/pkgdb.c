@@ -530,7 +530,7 @@ pkgdb_init(sqlite3 *sdb)
 			"ON DELETE CASCADE ON UPDATE CASCADE,"
 		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
 			"ON DELETE RESTRICT ON UPDATE CASCADE,"
-		"default TEXT NOT NULL,"
+		"default_value TEXT NOT NULL,"
 		"PRIMARY KEY(package_id, option_id)"
 	");"
 	"CREATE TABLE deps ("
