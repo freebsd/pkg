@@ -439,7 +439,7 @@ static struct db_upgrades {
                         " AND type = old.type;"
         "END;"
         "CREATE TRIGGER scripts_insert"
-                " INSTEAD OR INSERT ON scripts "
+                " INSTEAD OF INSERT ON scripts "
         "FOR EACH ROW BEGIN"
                 " INSERT OR IGNORE INTO script(script)"
                 " VALUES(new.script);"
