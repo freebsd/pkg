@@ -323,7 +323,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		goto cleanup;
 	}
 
-	if (pkg_files(pkg, &file) != EPKG_OK &&
+	/* XXX: autoplist support doesn't work right with meta-ports */
+	if (0 && pkg_files(pkg, &file) != EPKG_OK &&
 	    pkg_dirs(pkg, &dir) != EPKG_OK) {
 		/* Now traverse the file directories, adding to the archive */
 		packing_append_tree(pkg_archive, md_dir, NULL);
