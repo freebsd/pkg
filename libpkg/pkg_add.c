@@ -100,7 +100,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 	return (retcode);
 }
 
-static int
+int
 do_extract_mtree(char *mtree, const char *prefix)
 {
 	struct archive *a = NULL;
