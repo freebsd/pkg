@@ -1194,6 +1194,18 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	struct pkg_dir *dir = NULL;
 	char spath[MAXPATHLEN + 1];
 	char dpath[MAXPATHLEN + 1];
+	bool disable_mtree;
+	const char *prefix;
+	char *mtree;
+
+	pkg_config_bool(PKG_CONFIG_DISABLE_MTREE, &disable_mtree);
+	if (!disable_mtree) {
+		pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
+		do_extract_mtree(mtree, prefix);
+	}
+
+	/* Execute pre-install scripts */
+	pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL);
 
 	if (packing_init(&pack, dest, 0) != EPKG_OK) {
 		/* TODO */
@@ -1212,6 +1224,8 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 		packing_append_file(pack, spath, dpath);
 	}
 
+	/* Execute post-install scripts */
+	pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL);
 
 	return (packing_finish(pack));
 }
