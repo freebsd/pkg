@@ -91,6 +91,8 @@
  * O  pkg          List of options
  * On pkg_option   Option name (key)
  * Ov pkg_option   Option value
+ * Od pkg_option   Option default value (if known)
+ * OD pkg_option   Option description
  *
  * P
  * Q
@@ -449,6 +451,24 @@ static const struct pkg_printf_fmt	fmt[] = {
 		false,
 		PP_PKG|PP_O,
 		&format_option_value,
+	},
+	[PP_PKG_OPTION_DEFAULT] =
+	{
+		'O',
+		'd',
+		false,
+		false,
+		PP_PKG|PP_O,
+		&format_option_default,
+	},
+	[PP_PKG_OPTION_DESCRIPTION] =
+	{
+		'O',
+		'D',
+		false,
+		false,
+		PP_PKG|PP_O,
+		&format_option_description,
 	},
 	[PP_PKG_OPTIONS] =
 	{
@@ -1328,6 +1348,28 @@ format_option_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	const struct pkg_option	*option = data;
 
 	return (string_val(sbuf, pkg_option_value(option), p));
+}
+
+/*
+ * %Od -- Option default value.
+ */
+struct sbuf *
+format_option_default(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg_option	*option = data;
+
+	return (string_val(sbuf, pkg_option_default_value(option), p));
+}
+
+/*
+ * %OD -- Option description
+ */
+struct sbuf *
+format_option_description(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg_option	*option = data;
+
+	return (string_val(sbuf, pkg_option_description(option), p));
 }
 
 /*
