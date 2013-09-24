@@ -853,6 +853,48 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 }
 
 int
+pkg_addoption_default(struct pkg *pkg, const char *key,
+		      const char *default_value)
+{
+	struct pkg_option *o = NULL;
+
+	assert(pkg != NULL);
+	assert(key != NULL && key[0] != '\0');
+	assert(default_value != NULL && default_value[0] != '\0');
+
+	HASH_FIND_STR(pkg->options, __DECONST(char *, key), o);
+	if (o == NULL) {
+		pkg_emit_error("default value for unknown option: %s, ignoring",
+			       key);
+		return (EPKG_OK);
+	}
+
+	sbuf_set(&o->default_value, default_value);
+}
+
+int
+pkg_addoption_description(struct pkg *pkg, const char *key,
+			  const char *description)
+{
+	struct pkg_option *o = NULL;
+
+	assert(pkg != NULL);
+	assert(key != NULL && key[0] != '\0');
+	assert(description != NULL && description[0] != '\0');
+
+	HASH_FIND_STR(pkg->options, __DECONST(char *, key), o);
+	if (o == NULL) {
+		pkg_emit_error("description for unknown option: %s, ignoring",
+			       key);
+		return (EPKG_OK);
+	}
+
+	sbuf_set(&o->description, description);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_addshlib_required(struct pkg *pkg, const char *name)
 {
 	struct pkg_shlib *s = NULL;

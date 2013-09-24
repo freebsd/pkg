@@ -785,6 +785,20 @@ int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
 int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
 
 /**
+ * Add a default value to an already exsting struct pkg_option
+ * @return An error code.
+ */
+int pkg_addoption_default(struct pkg *pkg, const char *key,
+			  const char *default_value);
+
+/**
+ * Add a description to an already exsting struct pkg_option
+ * @return An error code.
+ */
+int pkg_addoption_description(struct pkg *pkg, const char *key,
+			      const char *description);
+
+/**
  * Add a shared library used by this package
  * @return An error code.
  */
