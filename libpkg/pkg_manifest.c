@@ -41,21 +41,23 @@
 #include "private/pkg.h"
 #include "private/utils.h"
 
-#define PKG_UNKNOWN -1
-#define PKG_DEPS -2
-#define PKG_FILES -3
-#define PKG_DIRS -4
-#define PKG_SCRIPTS -5
-#define PKG_CATEGORIES -6
-#define PKG_LICENSES -7
-#define PKG_OPTIONS -8
-#define PKG_USERS -9
-#define PKG_GROUPS -10
-#define PKG_DIRECTORIES -11
-#define PKG_SHLIBS_REQUIRED -12
-#define PKG_SHLIBS_PROVIDED -13
-#define PKG_ANNOTATIONS -14
-#define PKG_INFOS -15		/* Deprecated field: treat as an annotation for backwards compatibility */
+#define PKG_UNKNOWN		-1
+#define PKG_DEPS		-2
+#define PKG_FILES		-3
+#define PKG_DIRS		-4
+#define PKG_SCRIPTS		-5
+#define PKG_CATEGORIES		-6
+#define PKG_LICENSES		-7
+#define PKG_OPTIONS		-8
+#define PKG_OPTION_DEFAULTS	-9
+#define PKG_OPTION_DESCRIPTIONS	-10
+#define PKG_USERS		-11
+#define PKG_GROUPS		-12
+#define PKG_DIRECTORIES		-13
+#define PKG_SHLIBS_REQUIRED	-14
+#define PKG_SHLIBS_PROVIDED	-15
+#define PKG_ANNOTATIONS		-16
+#define PKG_INFOS		-17	/* Deprecated field: treat as an annotation for backwards compatibility */
 
 static int pkg_string(struct pkg *, ucl_object_t *, int);
 static int pkg_object(struct pkg *, ucl_object_t *, int);
@@ -93,6 +95,8 @@ static struct manifest_key {
 	{ "message",          PKG_MESSAGE,          UCL_STRING, pkg_string},
 	{ "name",             PKG_NAME,             UCL_STRING, pkg_string},
 	{ "options",          PKG_OPTIONS,          UCL_STRING, pkg_object},
+	{ "option_defaults",  PKG_OPTION_DEFAULTS,  UCL_STRING, pkg_object},
+	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_STRING, pkg_object},
 	{ "origin",           PKG_ORIGIN,           UCL_STRING, pkg_string},
 	{ "path",             PKG_REPOPATH,         UCL_STRING, pkg_string},
 	{ "pkgsize",          PKG_PKGSIZE,          UCL_INT,    pkg_int},
@@ -430,6 +434,22 @@ pkg_object(struct pkg *pkg, ucl_object_t *obj, int attr)
 				    sub->key);
 			else
 				pkg_addoption(pkg, sub->key, sub->value.sv);
+			break;
+		case PKG_OPTION_DEFAULTS:
+			if (sub->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed option default %s",
+				    sub->key);
+			else
+				pkg_addoption_default(pkg, sub->key,
+				    sub->value.sv);
+			break;
+		case PKG_OPTION_DESCRIPTIONS:
+			if (sub->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed option description %s",
+				    sub->key);
+			else
+				pkg_addoption_description(pkg, sub->key,
+				    sub->value.sv);
 			break;
 		case PKG_SCRIPTS:
 			if (sub->type != UCL_STRING)
