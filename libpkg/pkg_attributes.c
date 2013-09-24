@@ -382,6 +382,8 @@ pkg_option_free(struct pkg_option *option)
 
 	sbuf_free(option->key);
 	sbuf_free(option->value);
+	sbuf_free(option->default_value);
+	sbuf_free(option->description);
 	free(option);
 }
 
@@ -399,6 +401,22 @@ pkg_option_value(struct pkg_option const * const option)
 	assert(option != NULL);
 
 	return (sbuf_get(option->value));
+}
+
+const char *
+pkg_option_default_value(struct pkg_option const * const option)
+{
+	assert(option != NULL);
+
+	return (sbuf_get(option->default_value));
+}
+
+const char *
+pkg_option_description(struct pkg_option const * const option)
+{
+	assert(option != NULL);
+
+	return (sbuf_get(option->description));
 }
 
 /*
