@@ -897,6 +897,8 @@ const char *pkg_script_get(struct pkg const * const, pkg_script);
 /* pkg_option */
 const char *pkg_option_opt(struct pkg_option const * const);
 const char *pkg_option_value(struct pkg_option const * const);
+const char *pkg_option_default_value(struct pkg_option const * const);
+const char *pkg_option_description(struct pkg_option const * const);
 
 /* pkg_shlib */
 const char *pkg_shlib_name(struct pkg_shlib const * const);
