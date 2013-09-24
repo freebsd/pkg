@@ -712,7 +712,6 @@ pkgdb_init(sqlite3 *sdb)
                 " WHERE script_id NOT IN"
                          " (SELECT DISTINCT script_id FROM pkg_script);"
 	"END;"
-
 	"CREATE VIEW options AS "
 		"SELECT package_id, option, value "
 		"FROM pkg_option JOIN option USING(option_id);"
@@ -2101,7 +2100,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 	char		 sql[BUFSIZ];
 	const char	*basesql = ""
 		"SELECT option, value "
-		"FROM %Q.options "
+		"FROM %Q.option JOIN %Q.pkg_option USING(option_id) "
 		"WHERE package_id = ?1 ORDER BY option DESC";
 
 	assert(db != NULL && pkg != NULL);
@@ -2155,7 +2154,8 @@ typedef enum _sql_prstmt_index {
 	GROUPS2,
 	SCRIPT1,
 	SCRIPT2,
-	OPTIONS,
+	OPTION1,
+	OPTION2,
 	SHLIBS1,
 	SHLIBS_REQD,
 	SHLIBS_PROV,
@@ -2274,12 +2274,19 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"?2, ?3)",
 		"TII",
 	},
-	[OPTIONS] = {
+	[OPTION1] = {
 		NULL,
-		"INSERT INTO options (option, value, package_id) "
-		"VALUES (?1, ?2, ?3)",
-		"TTI",
+		"INSERT OR IGNORE INTO option (option) "
+		"VALUES (?1)",
+		"T",
 	},
+	[OPTION2] = {
+		NULL,
+		"INSERT INTO pkg_option(package_id, option_id, value) "
+		"VALUES (?1, "
+			"SELECT option_id FROM option WHERE option = ?2"
+			"?3)",
+		"ITT",
 	[SHLIBS1] = {
 		NULL,
 		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
@@ -2680,8 +2687,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (run_prstmt(OPTIONS, pkg_option_opt(option),
-		    pkg_option_value(option), package_id) != SQLITE_DONE) {
+		if (run_prstmt(OPTION1, pkg_option_opt(option)) != SQLITE_DONE
+		    ||
+		    run_prstmt(OPTION2, package_id, pkg_option_opt(option),
+			       pkg_option_value(option)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
