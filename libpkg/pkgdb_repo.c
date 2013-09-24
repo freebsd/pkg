@@ -72,7 +72,8 @@ typedef enum _sql_prstmt_index {
 	CAT2,
 	LIC1,
 	LIC2,
-	OPTS,
+	OPT1,
+	OPT2,
 	SHLIB1,
 	SHLIB_REQD,
 	SHLIB2001,
@@ -132,10 +133,16 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2))",
 		"IT",
 	},
-	[OPTS] = {
+	[OPT1] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO options (option, value, package_id) "
-		"VALUES (?1, ?2, ?3)",
+		"INSERT OR IGNORE INTO option(option) "
+		"VALUES (?1)",
+		"T",
+	},
+	[OPT2] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_option (option_id, value, package_id) "
+		"VALUES (( SELECT option_id FROM option WHERE option = ?1), ?2, ?3)",
 		"TTI",
 	},
 	[SHLIB1] = {
@@ -577,10 +584,11 @@ try_again:
 	}
 	option = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (run_prepared_statement(OPTS,
-				pkg_option_opt(option),
-				pkg_option_value(option),
-				package_id) != SQLITE_DONE) {
+		ret = run_prepared_statement(OPT1, pkg_option_opt(option));
+		if (ret == SQLITE_DONE)
+		    ret = run_prepared_statement(OPT2, pkg_option_opt(option),
+				pkg_option_value(option), package_id);
+		if(ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite);
 			return (EPKG_FATAL);
 		}
