@@ -2111,9 +2111,9 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame);
+		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
 	} else {
-		sqlite3_snprintf(sizeof(sql), sql, basesql, "main");
+		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
 	}
 
 	return (load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
@@ -2287,6 +2287,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 			"SELECT option_id FROM option WHERE option = ?2"
 			"?3)",
 		"ITT",
+	},
 	[SHLIBS1] = {
 		NULL,
 		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
