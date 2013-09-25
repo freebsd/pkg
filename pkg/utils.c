@@ -160,7 +160,7 @@ absolutepath(const char *src, char *dest, size_t dest_size) {
 
 /* what the pkg needs to load in order to display the requested info */
 int
-info_flags(unsigned int opt, bool remote)
+info_flags(uint64_t opt, bool remote)
 {
 	int flags = PKG_LOAD_BASIC;
 
@@ -209,7 +209,7 @@ info_flags(unsigned int opt, bool remote)
 }
 
 void
-print_info(struct pkg * const pkg, unsigned int options)
+print_info(struct pkg * const pkg, uint64_t options)
 {
 	bool print_tag = false;
 	bool show_locks = false;

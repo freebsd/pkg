@@ -180,46 +180,48 @@ void usage_config(void);
 /* utils */
 
 /* These are the fields of the Full output, in order */
-#define INFO_NAME		(1<<0)
-#define INFO_VERSION		(1<<1)
-#define INFO_ORIGIN		(1<<2)
-#define INFO_PREFIX		(1<<3)
-#define INFO_REPOSITORY		(1<<4)
-#define INFO_CATEGORIES		(1<<5)
-#define INFO_LICENSES		(1<<6)
-#define INFO_MAINTAINER		(1<<7)
-#define INFO_WWW		(1<<8)
-#define INFO_COMMENT		(1<<9)
-#define INFO_OPTIONS		(1<<10)
-#define INFO_SHLIBS_REQUIRED	(1<<11)
-#define INFO_SHLIBS_PROVIDED	(1<<12)
-#define INFO_ANNOTATIONS	(1<<13)
-#define INFO_FLATSIZE		(1<<14)
-#define INFO_PKGSIZE		(1<<15)
-#define INFO_DESCR		(1<<16)
+#define INFO_NAME		(1L<<0)
+#define INFO_VERSION		(1L<<1)
+#define INFO_ORIGIN		(1L<<2)
+#define INFO_PREFIX		(1L<<3)
+#define INFO_REPOSITORY		(1L<<4)
+#define INFO_CATEGORIES		(1L<<5)
+#define INFO_LICENSES		(1L<<6)
+#define INFO_MAINTAINER		(1L<<7)
+#define INFO_WWW		(1L<<8)
+#define INFO_COMMENT		(1L<<9)
+#define INFO_OPTIONS		(1L<<10)
+#define INFO_SHLIBS_REQUIRED	(1L<<11)
+#define INFO_SHLIBS_PROVIDED	(1L<<12)
+#define INFO_ANNOTATIONS	(1L<<13)
+#define INFO_FLATSIZE		(1L<<14)
+#define INFO_PKGSIZE		(1L<<15)
+#define INFO_DESCR		(1L<<16)
 
 /* Other fields not part of the Full output */
-#define INFO_MESSAGE		(1<<17)
-#define INFO_DEPS		(1<<18)
-#define INFO_RDEPS		(1<<19)
-#define INFO_FILES		(1<<20)
-#define INFO_DIRS		(1<<21)
-#define INFO_USERS		(1<<22)
-#define INFO_GROUPS		(1<<23)
-#define INFO_ARCH		(1<<24)
-#define INFO_REPOURL		(1<<25)
-#define INFO_LOCKED		(1<<26)
+#define INFO_MESSAGE		(1L<<17)
+#define INFO_DEPS		(1L<<18)
+#define INFO_RDEPS		(1L<<19)
+#define INFO_FILES		(1L<<20)
+#define INFO_DIRS		(1L<<21)
+#define INFO_USERS		(1L<<22)
+#define INFO_GROUPS		(1L<<23)
+#define INFO_ARCH		(1L<<24)
+#define INFO_REPOURL		(1L<<25)
+#define INFO_LOCKED		(1L<<26)
+#define INFO_OPTION_DEFAULTS    (1L<<27)
+#define INFO_OPTION_DESCRIPTIONS (1L<<28)
 
 #define INFO_LASTFIELD	INFO_LOCKED
 #define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
 
 /* Identifying tags */
-#define INFO_TAG_NAME		(1<<28)
-#define INFO_TAG_ORIGIN		(1<<29)
-#define INFO_TAG_NAMEVER	(1<<30)
+#define INFO_TAG_NAME		(1L<<60)
+#define INFO_TAG_ORIGIN		(1L<<61)
+#define INFO_TAG_NAMEVER	(1L<<62)
 
 /* Output YAML format */
-#define INFO_RAW	(1<<31)
+#define INFO_RAW	(-1L<<63)
 
 /* Everything in the 'full' package output */
 #define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_ORIGIN|INFO_PREFIX| \
@@ -237,8 +239,8 @@ void usage_config(void);
 
 bool query_yesno(const char *msg, ...);
 bool query_tty_yesno(const char *msg, ...);
-int info_flags(unsigned int opt, bool remote);
-void print_info(struct pkg * const pkg, unsigned int opt);
+int info_flags(uint64_t opt, bool remote);
+void print_info(struct pkg * const pkg, uint64_t opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
 void print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 struct sbuf *exec_buf(const char *cmd);

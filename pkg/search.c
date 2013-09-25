@@ -244,7 +244,7 @@ exec_search(int argc, char **argv)
 	const char *reponame = NULL;
 	int ret = EPKG_OK, ch;
 	int flags;
-	unsigned int opt = 0;
+	uint64_t opt = 0;
 	match_t match = MATCH_REGEX;
 	pkgdb_field search = FIELD_NONE;
 	pkgdb_field label = FIELD_NONE;

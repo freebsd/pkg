@@ -67,7 +67,7 @@ exec_info(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	int query_flags;
 	struct pkg *pkg = NULL;
-	unsigned int opt = INFO_TAG_NAMEVER;
+	uint64_t opt opt = INFO_TAG_NAMEVER;
 	match_t match = MATCH_GLOB;
 	char *pkgname;
 	char *pkgversion = NULL, *pkgversion2 = NULL;
