@@ -830,24 +830,31 @@ pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type)
 int
 pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 {
-	struct pkg_option *o = NULL;
+	struct pkg_option	*o = NULL;
 
 	assert(pkg != NULL);
 	assert(key != NULL && key[0] != '\0');
 	assert(value != NULL && value[0] != '\0');
 
+	/* There might be a default or description for the option
+	   already, so we only count it as a duplicate if the value
+	   field is already set. Which implies there could be a
+	   default value or description for an option but no actual
+	   value. */
+
 	HASH_FIND_STR(pkg->options, __DECONST(char *, key), o);
-	if (o != NULL) {
+	if (o == NULL) {
+		pkg_option_new(&o);
+		sbuf_set(&o->key, key);
+	} else if ( o->value != NULL) {
 		pkg_emit_error("duplicate options listing: %s, ignoring", key);
 		return (EPKG_OK);
 	}
-	pkg_option_new(&o);
 
-	sbuf_set(&o->key, key);
 	sbuf_set(&o->value, value);
-
-	HASH_ADD_KEYPTR(hh, pkg->options, __DECONST(char *, pkg_option_opt(o)),
-	    strlen(pkg_option_opt(o)), o);
+	HASH_ADD_KEYPTR(hh, pkg->options,
+			__DECONST(char *, pkg_option_opt(o)),
+			strlen(pkg_option_opt(o)), o);
 
 	return (EPKG_OK);
 }
@@ -862,14 +869,27 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	assert(key != NULL && key[0] != '\0');
 	assert(default_value != NULL && default_value[0] != '\0');
 
+	/* There might be a value or description for the option
+	   already, so we only count it as a duplicate if the
+	   default_value field is already set. Which implies there
+	   could be a default value or description for an option but
+	   no actual value. */
+
 	HASH_FIND_STR(pkg->options, __DECONST(char *, key), o);
 	if (o == NULL) {
-		pkg_emit_error("default value for unknown option: %s, ignoring",
-			       key);
+		pkg_option_new(&o);
+		sbuf_set(&o->key, key);
+	} else if ( o->default_value != NULL) {
+		pkg_emit_error("duplicate default value for option: %s, ignoring", key);
 		return (EPKG_OK);
 	}
 
 	sbuf_set(&o->default_value, default_value);
+	HASH_ADD_KEYPTR(hh, pkg->options,
+			__DECONST(char *, pkg_option_default_value(o)),
+			strlen(pkg_option_default_value(o)), o);
+
+	return (EPKG_OK);
 }
 
 int
@@ -882,14 +902,24 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	assert(key != NULL && key[0] != '\0');
 	assert(description != NULL && description[0] != '\0');
 
+	/* There might be a value or default for the option already,
+	   so we only count it as a duplicate if the description field
+	   is already set. Which implies there could be a default
+	   value or description for an option but no actual value. */
+
 	HASH_FIND_STR(pkg->options, __DECONST(char *, key), o);
 	if (o == NULL) {
-		pkg_emit_error("description for unknown option: %s, ignoring",
-			       key);
+		pkg_option_new(&o);
+		sbuf_set(&o->key, key);
+	} else if ( o->description != NULL) {
+		pkg_emit_error("duplicate description for option: %s, ignoring", key);
 		return (EPKG_OK);
 	}
 
 	sbuf_set(&o->description, description);
+	HASH_ADD_KEYPTR(hh, pkg->options,
+			__DECONST(char *, pkg_option_description(o)),
+			strlen(pkg_option_description(o)), o);
 
 	return (EPKG_OK);
 }
