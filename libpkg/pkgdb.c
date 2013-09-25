@@ -2093,15 +2093,48 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 	return (EPKG_OK);
 }
 
+
 int
 pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 {
 	const char	*reponame;
 	char		 sql[BUFSIZ];
-	const char	*basesql = ""
-		"SELECT option, value "
-		"FROM %Q.option JOIN %Q.pkg_option USING(option_id) "
-		"WHERE package_id = ?1 ORDER BY option DESC";
+	int		 i;
+
+	struct optionsql {
+		const char	 *sql;
+		int		(*pkg_addtagval)(struct pkg *pkg,
+						  const char *tag,
+						  const char *val);
+		int		  nargs;
+	}			  optionsql[] = {
+		{
+			"SELECT option, value "
+			"FROM %Q.option JOIN %Q.pkg_option USING(option_id) "
+			"WHERE package_id = ?1",
+			pkg_addoption,
+			2,
+		},
+		{
+			"SELECT option, default_value "
+			"FROM %Q.option JOIN %Q.pkg_option_default USING(option_id) "
+			"WHERE package_id = ?1",
+			pkg_addoption_default,
+			2,
+		},
+		{
+			"SELECT option, description "
+			"FROM %Q.option JOIN %Q.pkg_option_desc USING(option_id) "
+			"JOIN %Q.option_desc USING(option_desc_id)",
+			pkg_addoption_description,
+			3,
+		}
+	};
+	const char		 *opt_sql;
+	int			(*pkg_addtagval)(struct pkg *pkg,
+						 const char *tag,
+						 const char *val);
+	int			  nargs, ret;
 
 	assert(db != NULL && pkg != NULL);
 
@@ -2111,13 +2144,39 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame, reponame);
 	} else {
-		sqlite3_snprintf(sizeof(sql), sql, basesql, "main", "main");
+		reponame = "main";
 	}
 
-	return (load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
-		    pkg_addoption, PKG_OPTIONS));
+	for (i = 0; i < sizeof(optionsql)/sizeof(struct optionsql); i++) {
+		opt_sql       = optionsql[i].sql;
+		pkg_addtagval = optionsql[i].pkg_addtagval;
+		nargs         = optionsql[i].nargs;
+
+		switch(nargs) {
+		case 1:
+			sqlite3_snprintf(sizeof(sql), sql, opt_sql, reponame);
+			break;
+		case 2:
+			sqlite3_snprintf(sizeof(sql), sql, opt_sql, reponame,
+					 reponame);
+			break;
+		case 3:
+			sqlite3_snprintf(sizeof(sql), sql, opt_sql, reponame,
+					 reponame, reponame);
+			break;
+		default:
+			/* Nothing needs 4 or more, yet... */
+			return (EPKG_FATAL);
+			break;
+		}
+
+		ret = load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
+				   pkg_addtagval, PKG_OPTIONS);
+		if (ret != EPKG_OK)
+			break;
+	}
+	return (ret);
 }
 
 int

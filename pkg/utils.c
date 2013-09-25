@@ -168,7 +168,7 @@ info_flags(uint64_t opt, bool remote)
 		flags |= PKG_LOAD_CATEGORIES;
 	if (opt & INFO_LICENSES)
 		flags |= PKG_LOAD_LICENSES;
-	if (opt & INFO_OPTIONS)
+	if (opt & INFO_OPTIONS|INFO_OPTION_DEFAULTS|INFO_OPTION_DESCRIPTIONS)
 		flags |= PKG_LOAD_OPTIONS;
 	if (opt & INFO_SHLIBS_REQUIRED)
 		flags |= PKG_LOAD_SHLIBS_REQUIRED;
