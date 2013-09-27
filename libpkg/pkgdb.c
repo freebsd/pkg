@@ -2148,7 +2148,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 		reponame = "main";
 	}
 
-	for (i = 0; i < sizeof(optionsql)/sizeof(struct optionsql); i++) {
+	for (i = 0; i < (int) (sizeof(optionsql)/sizeof(struct optionsql)); i++) {
 		opt_sql       = optionsql[i].sql;
 		pkg_addtagval = optionsql[i].pkg_addtagval;
 		nargs         = optionsql[i].nargs;
