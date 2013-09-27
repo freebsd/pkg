@@ -48,7 +48,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
 	{ 'F', "ps",		1, PKG_LOAD_FILES },
-	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
+	{ 'O', "kvdD",		1, PKG_LOAD_OPTIONS },
 	{ 'D', "",		1, PKG_LOAD_DIRS },
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
 	{ 'U', "",		1, PKG_LOAD_USERS },
@@ -250,6 +250,10 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					pkg_sbuf_printf(dest, "%On", data);
 				else if (qstr[0] == 'v')
 					pkg_sbuf_printf(dest, "%Ov", data);
+				else if (qstr[0] == 'd') /* default value */
+					pkg_sbuf_printf(dest, "%Od", data);
+				else if (qstr[0] == 'D') /* description */
+					pkg_sbuf_printf(dest, "%OD", data);
 				break;
 			case 'D':
 				pkg_sbuf_printf(dest, "%Dn", data);
@@ -515,7 +519,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 							sbuf_printf(sqlcond, "(SELECT %s FROM %sfiles AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'O':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %soptions AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %soption JOIN %spkg_option USING(option_id) AS d WHERE d.package_id=p.id)", sqlop, dbstr, dbstr);
 							break;
 						case 'D':
 							if (for_remote)

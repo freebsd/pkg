@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd Jun 2, 2013
+.Dd September 28, 2013
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -191,12 +191,18 @@ stands for path, and
 for sum.
 .It Cm \&%D
 Expands to the list of directories of the matched package.
-.It Cm \&%O Ns Op kv
+.It Cm \&%O Ns Op kvdD
 Expands to the list of options of the matched package, where
 .Cm k
-stands for option key, and
+stands for option key,
 .Cm v
-for option value.
+for option value,
+.Cm d
+for option default value and
+.Cm D
+for option description.
+Option default values and descriptions are optional metadata and may
+beblank for certain packages.
 .It Cm \&%L
 Expands to the list of license(s) for the matched package.
 .It Cm \&%U
