@@ -958,6 +958,10 @@ pkgdb_access(unsigned mode, unsigned database)
 		struct pkg_repo	*r = NULL;
 
 		while (pkg_repos(&r) == EPKG_OK) {
+			/* Ignore any repos marked as inactive */
+			if (!pkg_repo_enabled(r))
+				continue;
+
 			retval = database_access(mode, dbdir, pkg_repo_name(r));
 			if (retval != EPKG_OK)
 				return (retval);
@@ -3409,8 +3413,8 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 			return (NULL);
 		}
 	} else {
-		if (pkg_repos_count() == 0) {
-			pkg_emit_error("No repositories configured");
+		if (pkg_repos_count(true) == 0) {
+			pkg_emit_error("No active repositories configured");
 			sbuf_delete(sql);
 			return (NULL);
 		}

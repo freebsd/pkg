@@ -1260,9 +1260,27 @@ pkg_shutdown(void)
 }
 
 int
-pkg_repos_count(void)
+pkg_repos_count(bool activated_only)
 {
-	return (HASH_COUNT(repos));
+	int	count;
+
+	if (!activated_only) {
+		struct pkg_repo *r = NULL;
+
+		count = 0;
+
+		while(1) {
+			HASH_NEXT(repos, r);
+			if (r == NULL)
+				break;
+
+			if (r->enable)
+				count++;
+		}
+	} else
+		count = HASH_COUNT(repos);
+
+	return (count);
 }
 
 int
