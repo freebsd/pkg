@@ -2111,21 +2111,21 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 		{
 			"SELECT option, value "
 			"FROM %Q.option JOIN %Q.pkg_option USING(option_id) "
-			"WHERE package_id = ?1",
+			"WHERE package_id = ?1 ORDER BY option",
 			pkg_addoption,
 			2,
 		},
 		{
 			"SELECT option, default_value "
 			"FROM %Q.option JOIN %Q.pkg_option_default USING(option_id) "
-			"WHERE package_id = ?1",
+			"WHERE package_id = ?1 ORDER BY option",
 			pkg_addoption_default,
 			2,
 		},
 		{
 			"SELECT option, description "
 			"FROM %Q.option JOIN %Q.pkg_option_desc USING(option_id) "
-			"JOIN %Q.option_desc USING(option_desc_id)",
+			"JOIN %Q.option_desc USING(option_desc_id) ORDER BY option",
 			pkg_addoption_description,
 			3,
 		}
@@ -2343,7 +2343,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		NULL,
 		"INSERT INTO pkg_option(package_id, option_id, value) "
 		"VALUES (?1, "
-			"SELECT option_id FROM option WHERE option = ?2"
+			"(SELECT option_id FROM option WHERE option = ?2),"
 			"?3)",
 		"ITT",
 	},
