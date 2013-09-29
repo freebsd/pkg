@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd June 8, 2013
+.Dd September 29, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -73,7 +73,7 @@ if they are enabled in
 .Pa /etc/rc.conf .
 By default this option is disabled.
 .It Cm PACKAGESITE: string
-Specifies the remote location to use
+Specifies the URL of the remote location to use
 when fetching the database file and packages.
 This supports using
 .Sy ${ABI}
@@ -88,9 +88,33 @@ or
 or
 .Dv NONE
 can be used.
-By default
-.Dv SRV
-is used.
+For a
+.Cm MIRROR_TYPE
+of
+.Dv NONE ,
+any of the URL schemes supported by
+.Xr libfetch 3
+can be used, including:
+.Dv http:// ,
+.Dv https:// ,
+.Dv ftp:// ,
+or
+.Dv file://
+plus
+.Dv ssh:// .
+Where
+.Sy MIRROR_TYPE
+is
+.Dv SRV ,
+you should use a
+.Dv pkg+http://
+or
+.Dv pkg+https://
+(etc.) URL scheme.
+Using
+.Dv http://
+URLS implies that the hostname part is a simple hostname according to RFC 2616,
+and is deprecated.
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 The default value
