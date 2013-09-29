@@ -186,32 +186,35 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 	return (EPKG_FATAL);
 }
 
+#define URL_SCHEME_PREFIX	"pkg+"
+
 int
 pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t)
 {
-	FILE *remote = NULL;
-	struct url *u;
-	struct url_stat st;
-	off_t done = 0;
-	off_t r;
+	FILE		*remote = NULL;
+	struct url	*u = NULL;
+	struct url_stat	 st;
+	off_t		 done = 0;
+	off_t		 r;
 
-	int64_t max_retry, retry;
-	int64_t fetch_timeout;
-	int tmout;
-	time_t begin_dl;
-	time_t now;
-	time_t last = 0;
-	char buf[10240];
-	char *doc = NULL;
-	char docpath[MAXPATHLEN];
-	int retcode = EPKG_OK;
-	char zone[MAXHOSTNAMELEN + 13];
-	struct dns_srvinfo *srv_current = NULL;
-	struct http_mirror *http_current = NULL;
-	off_t sz = 0;
-	int kq = -1, flags = 0;
-	struct kevent e, ev;
-	struct timespec ts;
+	int64_t		 max_retry, retry;
+	int64_t		 fetch_timeout;
+	int		 tmout;
+	time_t		 begin_dl;
+	time_t		 now;
+	time_t		 last = 0;
+	char		 buf[10240];
+	char		*doc = NULL;
+	char		 docpath[MAXPATHLEN];
+	int		 retcode = EPKG_OK;
+	char		 zone[MAXHOSTNAMELEN + 13];
+	struct dns_srvinfo	*srv_current = NULL;
+	struct http_mirror	*http_current = NULL;
+	off_t		 sz = 0;
+	int		 kq = -1, flags = 0;
+	struct kevent	 e, ev;
+	struct timespec	 ts;
+	bool		 pkg_url_scheme = false;
 
 	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
 		max_retry = 3;
@@ -222,6 +225,34 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	fetchTimeout = (int) fetch_timeout;
 
 	retry = max_retry;
+
+	/* A URL of the form http://host.example.com/ where
+	 * host.example.com does not resolve as a simple A record is
+	 * not valid according to RFC 2616 Section 3.2.2.  Our usage
+	 * with SRV records is incorrect.  However it is encoded into
+	 * /usr/sbin/pkg in various releases so we can't just drop it.
+         *
+         * Instead, introduce new pkg+http://, pkg+https://,
+	 * pkg+ssh://, pkg+ftp://, pkg+file:// to support the
+	 * SRV-style server discovery, and also to allow eg. Firefox
+	 * to run pkg-related stuff given a pkg+foo:// URL.
+	 *
+	 * Warn if using plain http://, https:// etc with SRV
+	 */
+
+	if (strncmp(URL_SCHEME_PREFIX, url, strlen(URL_SCHEME_PREFIX)) == 0) {
+		if (repo->mirror_type != SRV) {
+			pkg_emit_error("packagesite URL error for %s -- "
+				       URL_SCHEME_PREFIX
+				       ":// implies SRV mirror type", url);
+
+			/* Too early for there to be anything to cleanup */
+			return(EPKG_FATAL);
+		}
+
+		url += strlen(URL_SCHEME_PREFIX);
+		pkg_url_scheme = true;
+	}
 
 	u = fetchParseURL(url);
 	if (t != NULL)
@@ -261,6 +292,12 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			if (repo != NULL && repo->mirror_type == SRV &&
 			    (strncmp(u->scheme, "http", 4) == 0
 			     || strcmp(u->scheme, "ftp") == 0)) {
+
+				if (!pkg_url_scheme)
+					pkg_emit_notice(
+     "Warning: use of %s:// URL scheme with SRV records is deprecated: "
+     "switch to pkg+%s://", u->scheme, u->scheme);
+
 				snprintf(zone, sizeof(zone),
 				    "_%s._tcp.%s", u->scheme, u->host);
 				if (repo->srv == NULL)
@@ -385,7 +422,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	cleanup:
 
-	if (strcmp(u->scheme, "ssh") != 0) {
+	if (u != NULL && strcmp(u->scheme, "ssh") != 0) {
 		if (remote != NULL)
 			fclose(remote);
 	} else {
