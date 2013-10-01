@@ -104,7 +104,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
 		if (match == MATCH_ALL) {
-			printf("Loading package list...\n");
+			printf("Loading the package list...\n");
 			if ((it = pkgdb_query(db, NULL, match)) == NULL)
 				goto cleanup;
 			match = !MATCH_ALL;
