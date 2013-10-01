@@ -768,7 +768,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 					/* if this is a multiline flag */
 					if (q_flags[i].multiline == 1) {
 						if (*multiline != 0 && *multiline != q_flags[i].flag) {
-							fprintf(stderr, "Invalid query: you cannot query '%%%c' and '%%%c' at the same time\n",
+							fprintf(stderr, "Invalid query: '%%%c' and '%%%c' cannot be queried at the same time\n",
 									*multiline, q_flags[i].flag);
 							return (EPKG_FATAL);
 						} else {

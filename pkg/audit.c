@@ -941,10 +941,10 @@ exec_audit(int argc, char **argv)
 	if (ret == EPKG_ENODB) 
 		return (EX_OK);
 	else if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to read package database");
+		warnx("Insufficient privileges to read the package database");
 		return (EX_NOPERM);
 	} else if (ret != EPKG_OK) {
-		warnx("Error accessing package database");
+		warnx("Error accessing the package database");
 		return (EX_IOERR);
 	}
 
@@ -953,7 +953,7 @@ exec_audit(int argc, char **argv)
 
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 	{
-		warnx("cannot query local database");
+		warnx("Error accessing the package database");
 		ret = EX_IOERR;
 		goto cleanup;
 	}
@@ -982,7 +982,7 @@ exec_audit(int argc, char **argv)
 		ret = EX_OK;
 
 	if (!quiet)
-		printf("%u problem(s) in your installed packages found.\n", vuln);
+		printf("%u problem(s) in the installed packages found.\n", vuln);
 
 cleanup:
 	pkgdb_it_free(it);

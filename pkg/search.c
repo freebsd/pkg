@@ -91,8 +91,8 @@ match_optarg(const cliopt *optlist, const char *opt)
 		if (strncmp(opt, optlist[i].option, optlen) != 0)
 			continue;
 		if (matched > 0) {
-			warnx("\"%s\" is ambiguous: did you mean "
-			      "\"%s\" or \"%s\"?", opt,
+			warnx("\"%s\" is ambiguous. Was "
+			      "\"%s\" or \"%s\" meant?", opt,
 			      optlist[matched].option, optlist[i].option);
 			key = '\0';
 			break;
