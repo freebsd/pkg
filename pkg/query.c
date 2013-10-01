@@ -727,7 +727,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 	j = 0; /* shut up scanbuild */
 
 	if (strchr(qstr, '%') == NULL) {
-		fprintf(stderr, "Invalid query: query should contains format string\n");
+		fprintf(stderr, "Invalid query: query should contain a format string\n");
 		return (EPKG_FATAL);
 	}
 
@@ -902,7 +902,7 @@ exec_query(int argc, char **argv)
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to query package database");
+		warnx("Insufficient privileges to query the package database");
 		return (EX_NOPERM);
 	} else if (ret == EPKG_ENODB) {
 		if (!quiet)

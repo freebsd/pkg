@@ -144,7 +144,7 @@ exec_install(int argc, char **argv)
 	}
 
 	if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to install packages");
+		warnx("Insufficient privileges to install packages");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK)
 		return (EX_IOERR);

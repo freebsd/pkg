@@ -153,7 +153,7 @@ exec_register(int argc, char **argv)
 				       PKGDB_MODE_CREATE,
 				       PKGDB_DB_LOCAL);
 		if (retcode == EPKG_ENOACCESS) {
-			warnx("Insufficient privilege to register packages");
+			warnx("Insufficient privileges to register packages");
 			return (EX_NOPERM);
 		} else if (retcode != EPKG_OK)
 			return (EX_IOERR);
@@ -186,7 +186,7 @@ exec_register(int argc, char **argv)
 
 
 	if (mfile == NULL && mdir == NULL) {
-		warnx("one of either -m or -M flags is required");
+		warnx("One of either -m or -M flags is required");
 		usage_register();
 		return (EX_USAGE);
 	}

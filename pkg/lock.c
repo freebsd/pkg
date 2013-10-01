@@ -168,10 +168,10 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to modify package database");
+		warnx("Insufficient privileges to modify the package database");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK) {
-		warnx("Error accessing package database");
+		warnx("Error accessing the package database");
 		return (EX_SOFTWARE);
 	}
 
