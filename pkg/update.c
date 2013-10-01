@@ -113,7 +113,7 @@ exec_update(int argc, char **argv)
 	ret = pkgdb_access(PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
 			   PKGDB_DB_REPO);
 	if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to update repository "
+		warnx("Insufficient privileges to update the repository "
 		      "catalogue");
 		return (EX_NOPERM);
 	} else if (ret != EPKG_OK)
