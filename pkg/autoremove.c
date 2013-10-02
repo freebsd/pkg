@@ -39,7 +39,7 @@
 void
 usage_autoremove(void)
 {
-	fprintf(stderr, "usage: pkg autoremove [-ynq]\n\n");
+	fprintf(stderr, "Usage: pkg autoremove [-ynq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help autoremove'.\n");
 }
 

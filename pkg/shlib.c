@@ -41,7 +41,7 @@
 void
 usage_shlib(void)
 {
-	fprintf(stderr, "usage: pkg shlib [P|R] <library>\n\n");
+	fprintf(stderr, "Usage: pkg shlib [P|R] <library>\n\n");
 	fprintf(stderr, "<library> should be a filename without leading path.\n");
 	fprintf(stderr, "For more information see 'pkg help shlib'.\n");
 }

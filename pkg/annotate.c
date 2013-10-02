@@ -51,7 +51,7 @@ void
 usage_annotate(void)
 {
 	fprintf(stderr,
-            "usage: pkg annotate [-giqxy] [-A|M] <pkg-name> <tag> [<value>]\n");
+            "Usage: pkg annotate [-giqxy] [-A|M] <pkg-name> <tag> [<value>]\n");
 	fprintf(stderr,
             "       pkg annotate [-giqxy] -D <pkg-name> <tag>\n");
 	fprintf(stderr,

@@ -39,7 +39,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage: pkg upgrade [-fInFqUy] [-r reponame]\n\n");
+	fprintf(stderr, "Usage: pkg upgrade [-fInFqUy] [-r reponame]\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 

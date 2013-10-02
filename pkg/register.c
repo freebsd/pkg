@@ -67,7 +67,7 @@ static const char * const scripts[] = {
 void
 usage_register(void)
 {
-	fprintf(stderr, "usage: pkg register [-Oldt] [-i <input-path>]"
+	fprintf(stderr, "Usage: pkg register [-Oldt] [-i <input-path>]"
 	                " [-f <plist-file>] -m <metadatadir>\n");
 	fprintf(stderr, "       pkg register [-Oldt] [-i <input_path>]"
 		        " -M <manifest>\n\n");

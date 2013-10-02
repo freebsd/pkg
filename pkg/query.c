@@ -806,7 +806,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 void
 usage_query(void)
 {
-	fprintf(stderr, "usage: pkg query <query-format> <pkg-name>\n");
+	fprintf(stderr, "Usage: pkg query <query-format> <pkg-name>\n");
 	fprintf(stderr, "       pkg query [-a] <query-format>\n");
 	fprintf(stderr, "       pkg query -F <pkg-name> <query-format>\n");
 	fprintf(stderr, "       pkg query -e <evaluation> <query-format>\n");

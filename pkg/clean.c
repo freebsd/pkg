@@ -208,7 +208,7 @@ delete_dellist(struct dl_head *dl)
 void
 usage_clean(void)
 {
-	fprintf(stderr, "usage: pkg clean [-anqy]\n\n");
+	fprintf(stderr, "Usage: pkg clean [-anqy]\n\n");
 	fprintf(stderr, "For more information see 'pkg help clean'.\n");
 }
 

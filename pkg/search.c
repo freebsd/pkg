@@ -216,7 +216,7 @@ usage_search(void)
 {
 	int i, n;
 
-	fprintf(stderr, "usage: pkg search [-egix] [-r repo] [-S search] "
+	fprintf(stderr, "Usage: pkg search [-egix] [-r repo] [-S search] "
 	    "[-L label] [-Q mod]... <pkg-name>\n");
 	fprintf(stderr, "       pkg search [-cDdefgiopqRx] [-r repo] "
 	    "<pattern>\n\n");

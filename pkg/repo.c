@@ -37,7 +37,7 @@
 void
 usage_repo(void)
 {
-	fprintf(stderr, "usage: pkg repo [-flq] <repo-path> <rsa-key>\n\n");
+	fprintf(stderr, "Usage: pkg repo [-flq] <repo-path> <rsa-key>\n\n");
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
