@@ -48,7 +48,7 @@ static bool yes = false;	/* Assume yes answer to questions */
 void
 usage_lock(void)
 {
-	fprintf(stderr, "usage: pkg lock [-giqxy] <pkg-name>\n");
+	fprintf(stderr, "Usage: pkg lock [-giqxy] <pkg-name>\n");
 	fprintf(stderr, "       pkg lock [-qy] -a\n");
 	fprintf(stderr, "       pkg unlock [-giqxy] <pkg-name>\n");
 	fprintf(stderr, "       pkg unlock [-qy] -a\n");

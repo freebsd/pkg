@@ -78,7 +78,7 @@ pkgcli_update(bool force) {
 void
 usage_update(void)
 {
-	fprintf(stderr, "usage: pkg update [-fq]\n\n");
+	fprintf(stderr, "Usage: pkg update [-fq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help update'.\n");
 }
 

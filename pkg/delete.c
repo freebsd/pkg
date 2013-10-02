@@ -41,7 +41,7 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "usage: pkg delete [-DfginqRxy] <pkg-name> ...\n");
+	fprintf(stderr, "Usage: pkg delete [-DfginqRxy] <pkg-name> ...\n");
 	fprintf(stderr, "       pkg delete [-Dnqy] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }

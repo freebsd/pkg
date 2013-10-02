@@ -48,7 +48,7 @@ enum sign {
 void
 usage_info(void)
 {
-	fprintf(stderr, "usage: pkg info <pkg-name>\n");
+	fprintf(stderr, "Usage: pkg info <pkg-name>\n");
 	fprintf(stderr, "       pkg info -a\n");
 	fprintf(stderr, "       pkg info [-AbBDdefgiIklOqRrsx] <pkg-name>\n");
 	fprintf(stderr, "       pkg info [-AbBDdfIlqRrs] -F <pkg-file>\n\n");

@@ -70,7 +70,7 @@ static struct query_flags accepted_rquery_flags[] = {
 void
 usage_rquery(void)
 {
-	fprintf(stderr, "usage: pkg rquery [-r reponame] <query-format> <pkg-name>\n");
+	fprintf(stderr, "Usage: pkg rquery [-r reponame] <query-format> <pkg-name>\n");
 	fprintf(stderr, "       pkg rquery [-a] [-r reponame] <query-format>\n");
 	fprintf(stderr, "       pkg rquery -e <evaluation> [-r reponame] <query-format>\n");
 	fprintf(stderr, "       pkg rquery [-gix] [-r reponame] <query-format> <pattern> <...>\n\n");

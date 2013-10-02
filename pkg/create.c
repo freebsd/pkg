@@ -54,7 +54,7 @@ STAILQ_HEAD(pkg_head, pkg_entry);
 void
 usage_create(void)
 {
-	fprintf(stderr, "usage: pkg create [-On] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-On] [-f format] [-o outdir] "
 		"[-p plist] [-r rootdir] -m manifestdir\n");
 	fprintf(stderr, "       pkg create [-Ognx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
