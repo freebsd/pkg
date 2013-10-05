@@ -141,14 +141,6 @@ cleanup:
 }
 
 int
-packing_append_file(struct packing *pack, const char *filepath,
-    const char *newpath)
-{
-	return (packing_append_file_attr(pack, filepath, newpath,
-	    NULL, NULL, 0));
-}
-
-int
 packing_append_file_attr(struct packing *pack, const char *filepath,
     const char *newpath, const char *uname, const char *gname, mode_t perm)
 {
@@ -302,8 +294,8 @@ packing_append_tree(struct packing *pack, const char *treepath,
 			 /* +1 = skip trailing slash */
 			 sbuf_cat(sb, fts_e->fts_path + treelen + 1);
 			 sbuf_finish(sb);
-			 packing_append_file(pack, fts_e->fts_name,
-			    sbuf_get(sb));
+			 packing_append_file_attr(pack, fts_e->fts_name,
+			    sbuf_get(sb), NULL, NULL, 0);
 			 break;
 		case FTS_DC:
 		case FTS_DNR:

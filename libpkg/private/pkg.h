@@ -355,8 +355,6 @@ void pkg_annotation_free(struct pkg_note *);
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format);
-int packing_append_file(struct packing *pack, const char *filepath,
-			const char *newpath);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
 			     const char *newpath, const char *uname,
 			     const char *gname, mode_t perm);
