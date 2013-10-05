@@ -1277,13 +1277,15 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		snprintf(spath, sizeof(spath), "%s%s", src, pkg_dir_path(dir));
 		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_dir_path(dir));
-		packing_append_file(pack, spath, dpath);
+		packing_append_file_attr(pack, spath, dpath,
+		    dir->uname, dir->gname, dir->perm);
 	}
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		snprintf(spath, sizeof(spath), "%s%s", src, pkg_file_path(file));
 		snprintf(dpath, sizeof(dpath), "%s%s", dest, pkg_file_path(file));
-		packing_append_file(pack, spath, dpath);
+		packing_append_file_attr(pack, spath, dpath,
+		    file->uname, file->gname, file->perm);
 	}
 
 	/* Execute post-install scripts */
