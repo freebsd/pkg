@@ -771,6 +771,7 @@ is_vulnerable(struct audit_entry_sorted *a, struct pkg *pkg)
 					res = true;
 					if (quiet) {
 						printf("%s-%s\n", pkgname, pkgversion);
+						return res; /* avoid reporting the same pkg multiple times */
 					} else {
 						printf("%s-%s is vulnerable:\n", pkgname, pkgversion);
 						printf("%s\n", e->desc);
