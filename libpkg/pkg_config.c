@@ -1116,8 +1116,6 @@ pkg_init(const char *path, const char *reposdir)
 			} else {
 				pkg_config_parse(&doc, node, config_by_key);
 			}
-		} else {
-			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
 		}
 
 		yaml_document_delete(&doc);

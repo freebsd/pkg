@@ -567,8 +567,6 @@ pkg_plugin_parse(struct pkg_plugin *p)
 		} else {
 			pkg_config_parse(&doc, node, p->conf_by_key);
 		}
-	} else {
-		pkg_emit_error("Invalid configuration format, ignoring the configuration file");
 	}
 
 	yaml_document_delete(&doc);
