@@ -62,8 +62,11 @@ int
 event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL;
+	struct pkg_dep *dep = NULL;
+	const char *message;
 	int *debug = data;
 	(void) debug;
+	const char *name, *version, *newversion;
 	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
 

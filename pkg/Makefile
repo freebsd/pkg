@@ -26,6 +26,7 @@ SRCS=		add.c \
 		search.c \
 		set.c \
 		shlib.c \
+		term.c \
 		updating.c \
 		utils.c \
 		version.c \
