@@ -68,7 +68,7 @@ exec_info(int argc, char **argv)
 	int query_flags;
 	struct pkg *pkg = NULL;
 	unsigned int opt = INFO_TAG_NAMEVER;
-	match_t match = MATCH_EXACT;
+	match_t match = MATCH_GLOB;
 	char *pkgname;
 	char *pkgversion = NULL, *pkgversion2 = NULL;
 	const char *file = NULL;
