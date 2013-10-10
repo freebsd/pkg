@@ -39,7 +39,7 @@ Note that a current ports tree (or any local copy of the ports tree) is not
 required for operation.
 .Pp
 The URL that is used to fetch the database can be overridden via the VULNXML_SITE
-config variable or by PORTAUDIR_SITE if you still use the compact audit file.
+config variable or by PORTAUDIT_SITE if you still use the compact audit file.
 See
 .Xr pkg.conf 5
 for more information.
@@ -62,7 +62,7 @@ Prints only the requested information without
 displaying many hints.
 .It Fl c
 Use the prepared audit file instead of vunlxml.
-Database is fetched according to PORTAUDIR_SITE config variable.
+Database is fetched according to PORTAUDIT_SITE config variable.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
