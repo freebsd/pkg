@@ -128,7 +128,7 @@ static size_t audit_entry_first_byte_idx[256];
 void
 usage_audit(void)
 {
-	fprintf(stderr, "Usage: pkg audit [-Fqx] <pattern>\n\n");
+	fprintf(stderr, "Usage: pkg audit [-Fqc] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
@@ -845,7 +845,7 @@ exec_audit(int argc, char **argv)
 	char audit_file[MAXPATHLEN + 1];
 	unsigned int vuln = 0;
 	bool fetch = false;
-	bool xml = false;
+	bool xml = true;
 	int ch;
 	int ret = EX_OK, res;
 	const char *portaudit_site = NULL;
@@ -855,13 +855,13 @@ exec_audit(int argc, char **argv)
 		return (EX_CONFIG);
 	}
 
-	while ((ch = getopt(argc, argv, "qxF")) != -1) {
+	while ((ch = getopt(argc, argv, "qcF")) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
 			break;
-		case 'x':
-			xml = true;
+		case 'c':
+			xml = false;
 			break;
 		case 'F':
 			fetch = true;
