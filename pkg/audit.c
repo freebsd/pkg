@@ -43,7 +43,7 @@
 #include <sysexits.h>
 #include <utlist.h>
 
-#include <bsdxml.h>
+#include <expat.h>
 
 #include <pkg.h>
 #include "pkgcli.h"

@@ -56,8 +56,10 @@ DEBUG_FLAGS+=	-pg
 .endif
 
 CFLAGS+=	-I../libpkg \
-		-I${.CURDIR}/../external/uthash
+		-I${.CURDIR}/../external/uthash \
+		-I${.CURDIR}/../external/expat/lib
 LDADD+=		-L../libpkg \
+		-L../external/expat \
 		-ledit \
 		-lpkg \
 		-larchive \
@@ -71,7 +73,7 @@ LDADD+=		-L../libpkg \
 		-lz \
 		-lbz2 \
 		-llzma \
-		-lbsdxml \
+		-lexpat \
 		${LDADD_STATIC}
 
 .if !exists(/usr/include/jail.h)
