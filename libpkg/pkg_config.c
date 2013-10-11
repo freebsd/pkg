@@ -39,6 +39,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <yaml.h>
+#include <ucl.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -1100,6 +1101,18 @@ pkg_init(const char *path, const char *reposdir)
 	}
 
 	if (!parsed) {
+		struct ucl_parser *p = ucl_parser_new(0);
+		UT_string *err = NULL;
+
+		ucl_parser_add_file(p, path, &err);
+		if (err != NULL) {
+			printf("%s\n", utstring_body(err));
+			exit(1);
+		}
+
+		printf("%s\n", ucl_object_emit(ucl_parser_get_object(p, &err), UCL_EMIT_CONFIG));
+		exit (0);
+
 		yaml_parser_initialize(&parser);
 		yaml_parser_set_input_file(&parser, fp);
 		yaml_parser_load(&parser, &doc);
