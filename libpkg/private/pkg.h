@@ -41,11 +41,7 @@
 #include <uthash.h>
 #include <utlist.h>
 
-#ifdef BUNDLED_YAML
 #include <yaml.h>
-#else
-#include <bsdyml.h>
-#endif
 #include "private/utils.h"
 
 #define PKG_NUM_SCRIPTS 9
