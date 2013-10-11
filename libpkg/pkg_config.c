@@ -345,49 +345,6 @@ connect_evpipe(const char *evpipe) {
 }
 
 static void
-parse_config_sequence(yaml_document_t *doc, yaml_node_t *seq, struct pkg_config *conf)
-{
-	yaml_node_item_t *item = seq->data.sequence.items.start;
-	yaml_node_t *val;
-	struct pkg_config_value *v;
-
-	while (item < seq->data.sequence.items.top) {
-		val = yaml_document_get_node(doc, *item);
-		if (val->type != YAML_SCALAR_NODE) {
-			++item;
-			continue;
-		}
-		v = malloc(sizeof(struct pkg_config_value));
-		v->value = strdup(val->data.scalar.value);
-		HASH_ADD_STR(conf->list, value, v);
-		++item;
-	}
-}
-
-static void
-parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, struct pkg_config *conf)
-{
-	yaml_node_pair_t *subpair = map->data.mapping.pairs.start;
-	yaml_node_t *subkey, *subval;
-	struct pkg_config_kv *kv;
-
-	while (subpair < map->data.mapping.pairs.top) {
-		subkey = yaml_document_get_node(doc, subpair->key);
-		subval = yaml_document_get_node(doc, subpair->value);
-		if (subkey->type != YAML_SCALAR_NODE ||
-		    subval->type != YAML_SCALAR_NODE) {
-			++subpair;
-			continue;
-		}
-		kv = malloc(sizeof(struct pkg_config_kv));
-		kv->key = strdup(subkey->data.scalar.value);
-		kv->value = strdup(subval->data.scalar.value);
-		HASH_ADD_STR(conf->kvlist, value, kv);
-		++subpair;
-	}
-}
-
-static void
 obj_walk_array(ucl_object_t *obj, struct pkg_config *conf)
 {
 	struct pkg_config_value *v;
@@ -420,7 +377,7 @@ obj_walk_object(ucl_object_t *obj, struct pkg_config *conf)
 	}
 }
 
-static void
+void
 pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 {
 	ucl_object_t *sub, *tmp;
@@ -488,117 +445,6 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 		} else {
 			pkg_debug(1, "PkgConfig: No config entry matching %s", sub->key);
 		}
-	}
-	sbuf_delete(b);
-}
-
-void
-pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key)
-{
-	struct pkg_config *conf;
-	yaml_node_pair_t *pair;
-	const char *errstr = NULL;
-	int64_t newint;
-	struct sbuf *b = sbuf_new_auto();
-
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
-		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
-
-		if (key->data.scalar.length <= 0) {
-			/*
-			 * ignoring silently empty keys can be empty lines or user mistakes
-			 */
-			++pair;
-			continue;
-		}
-
-		if (val->type == YAML_NO_NODE ||
-		    (val->type == YAML_SCALAR_NODE &&
-		     val->data.scalar.length <= 0)) {
-			/*
-			 * silently skip on purpose to allow user to leave
-			 * empty lines for examples without complaining
-			 */
-			++pair;
-			continue;
-		}
-		sbuf_clear(b);
-		for (size_t i = 0; i < strlen(key->data.scalar.value); ++i)
-			sbuf_putc(b, toupper(key->data.scalar.value[i]));
-
-		sbuf_finish(b);
-		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), (size_t)sbuf_len(b), conf);
-		if (conf != NULL) {
-			switch (conf->type) {
-			case PKG_CONFIG_STRING:
-				if (val->type != YAML_SCALAR_NODE) {
-					pkg_emit_error("Expecting a string for key %s,"
-					    " ignoring...", key->data.scalar.value);
-				}
-				/* ignore if already set from env */
-				if (!conf->fromenv) {
-					free(conf->string);
-					conf->string = strdup(val->data.scalar.value);
-				}
-				break;
-			case PKG_CONFIG_INTEGER:
-				if (val->type != YAML_SCALAR_NODE) {
-					pkg_emit_error("Expecting an integer for key %s,"
-					    " ignoring...", key->data.scalar.value);
-				}
-				/* ignore if already set from env */
-				if (!conf->fromenv) {
-					newint = strtonum(val->data.scalar.value, 0, INT64_MAX, &errstr);
-					if (errstr != NULL) {
-						pkg_emit_error("Expecting an integer for key %s"
-						    " ignoring...", key->data.scalar.value);
-					}
-					conf->integer = newint;
-				}
-				break;
-			case PKG_CONFIG_BOOL:
-				if (val->type != YAML_SCALAR_NODE) {
-					pkg_emit_error("Expecting an integer for key %s,"
-					    " ignoring...", key->data.scalar.value);
-				}
-				/* ignore if already set from env */
-				if (!conf->fromenv) {
-					if (val->data.scalar.value != NULL && (
-					    strcmp(val->data.scalar.value, "1") == 0 ||
-					    strcasecmp(val->data.scalar.value, "yes") == 0 ||
-					    strcasecmp(val->data.scalar.value, "true") == 0 ||
-					    strcasecmp(val->data.scalar.value, "on") == 0)) {
-						conf->boolean = true;
-					} else {
-						conf->boolean = false;
-					}
-				}
-				break;
-			case PKG_CONFIG_KVLIST:
-				if (val->type != YAML_MAPPING_NODE) {
-					pkg_emit_error("Expecting a key/value list for key %s,"
-					    " ignoring...", key->data.scalar.value);
-				}
-				parse_config_mapping(doc, val, conf);
-				break;
-			case PKG_CONFIG_LIST:
-				if (!conf->fromenv) {
-					if (val->type != YAML_SEQUENCE_NODE) {
-						pkg_emit_error("Expecting a string list for key %s,"
-						    " ignoring...", key->data.scalar.value);
-					}
-					parse_config_sequence(doc, val, conf);
-				}
-				break;
-			}
-		}
-		/*
-		 * unknown values are just silently ignored, because we don't
-		 * care about them
-		 */
-		++pair;
 	}
 	sbuf_delete(b);
 }
@@ -1215,6 +1061,9 @@ parsed:
 	disable_plugins_if_static();
 
 	parsed = true;
+	ucl_obj_free(obj);
+	ucl_parser_free(p);
+
 	pkg_debug(1, "%s", "pkg initialized");
 
 	subst_packagesite();

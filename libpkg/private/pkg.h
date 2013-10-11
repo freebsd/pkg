@@ -40,6 +40,7 @@
 #include <stdbool.h>
 #include <uthash.h>
 #include <utlist.h>
+#include <ucl.h>
 
 #include <yaml.h>
 #include "private/utils.h"
@@ -401,7 +402,7 @@ int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 int pkg_register_shlibs(struct pkg *pkg, const char *root);
 
-void pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key);
+void pkg_object_walk(ucl_object_t *o, struct pkg_config *conf_by_key);
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
