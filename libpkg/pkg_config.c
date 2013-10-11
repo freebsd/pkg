@@ -433,7 +433,7 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 			sbuf_putc(b, toupper(sub->key[i]));
 		sbuf_finish(b);
 
-		pkg_debug(1, "Config: In config file %s of type: %d", sub->key, sub->type);
+		pkg_debug(1, "PkgConfig: In config file %s of type: %d", sub->key, sub->type);
 		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), (size_t)sbuf_len(b), conf);
 		if (conf != NULL) {
 			switch (conf->type) {
@@ -486,7 +486,7 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 				break;
 			}
 		} else {
-			pkg_debug(1, "Config: No config entry matching %s", sub->key);
+			pkg_debug(1, "PkgConfig: No config entry matching %s", sub->key);
 		}
 	}
 	sbuf_delete(b);
