@@ -5,7 +5,8 @@ NO_SHARED?=	yes
 NO_MAN=		yes
 NOMAN=		yes
 LDADD_STATIC=	-L../external/sqlite \
-		-L../external/libyaml
+		-L../external/libyaml \
+		-L../external/libucl
 
 .if defined(WITH_BUNDLED_LIBELF)
 LDADD_STATIC+=	-L../external/libelf
@@ -23,7 +24,8 @@ LDADD_STATIC+=	-lsqlite3 \
 		-lz \
 		-lbz2 \
 		-llzma \
-		-lyaml
+		-lyaml \
+		-lucl
 
 .if exists(/usr/include/edit/readline/readline.h)
 LDADD_STATIC+=	-ledit \

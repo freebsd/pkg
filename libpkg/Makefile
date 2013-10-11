@@ -81,7 +81,8 @@ CFLAGS+=	-std=c99
 CFLAGS+=	-I. \
 		-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
-		-I${.CURDIR}/../external/uthash
+		-I${.CURDIR}/../external/uthash \
+		-I${.CURDIR}/../external/libucl/include
 
 CFLAGS+=	-I ${.CURDIR}/../external/libyaml/include
 LDADD+=		-L../external/libyaml -lyaml
@@ -92,7 +93,8 @@ CFLAGS+=	-I${.CURDIR}/../external/libelf \
 .endif
 
 LDADD+=		-L../external/sqlite \
-		-L../external/libyaml
+		-L../external/libyaml \
+		-L../external/libucl
 
 .if defined(WITH_BUNDLED_LIBELF)
 LDADD+=		-L../external/libelf
@@ -104,7 +106,8 @@ LDADD+=		-lsqlite3 \
 		-lfetch \
 		-lelf \
 		-lutil \
-		-lpthread
+		-lpthread \
+		-lucl
 
 .if exists(/usr/include/edit/readline/readline.h)
 LDADD+=		-ledit
