@@ -1,4 +1,4 @@
-SUBDIR=	sqlite libyaml expat
+SUBDIR=	sqlite libyaml expat libucl
 
 .if defined(WITH_BUNDLED_LIBELF)
 SUBDIR+= libelf
