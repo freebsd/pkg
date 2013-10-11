@@ -387,6 +387,111 @@ parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, struct pkg_config *
 	}
 }
 
+static void
+obj_walk_array(ucl_object_t *obj, struct pkg_config *conf)
+{
+	struct pkg_config_value *v;
+	ucl_object_t *sub;
+	
+	sub =  obj->value.ov;
+	while (sub != NULL) {
+		if (sub->type != UCL_STRING)
+			continue;
+		v = malloc(sizeof(struct pkg_config_value));
+		v->value = strdup(ucl_obj_tostring(sub));
+		sub = sub->next;
+		HASH_ADD_STR(conf->list, value, v);
+	}
+}
+
+static void
+obj_walk_object(ucl_object_t *obj, struct pkg_config *conf)
+{
+	struct pkg_config_kv *kv;
+	ucl_object_t *sub, *tmp;
+
+	HASH_ITER(hh, obj->value.ov, sub, tmp) {
+		if (sub->type != UCL_STRING)
+			continue;
+		kv = malloc(sizeof(struct pkg_config_kv));
+		kv->key = strdup(sub->key);
+		kv->value = strdup(ucl_obj_tostring(sub));
+		HASH_ADD_STR(conf->kvlist, value, kv);
+	}
+}
+
+static void
+pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
+{
+	ucl_object_t *sub, *tmp;
+	struct sbuf *b = sbuf_new_auto();
+	struct pkg_config *conf;
+
+	HASH_ITER(hh, obj, sub, tmp) {
+		sbuf_clear(b);
+		for (size_t i = 0; i < strlen(sub->key); i++)
+			sbuf_putc(b, toupper(sub->key[i]));
+		sbuf_finish(b);
+
+		pkg_debug(1, "Config: In config file %s of type: %d", sub->key, sub->type);
+		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), (size_t)sbuf_len(b), conf);
+		if (conf != NULL) {
+			switch (conf->type) {
+			case PKG_CONFIG_STRING:
+				if (sub->type != UCL_STRING) {
+					pkg_emit_error("Expecting a string for key %s,"
+					    " ignoring...", sub->key);
+					continue;
+				}
+				if (!conf->fromenv) {
+					free(conf->string);
+					conf->string = strdup(ucl_obj_tostring(sub));
+				}
+				break;
+			case PKG_CONFIG_INTEGER:
+				if (sub->type != UCL_INT) {
+					pkg_emit_error("Expecting an integer for key %s,"
+					    " ignoring...", sub->key);
+					continue;
+				}
+				if (!conf->fromenv)
+					conf->integer = ucl_obj_toint(sub);
+				break;
+			case PKG_CONFIG_BOOL:
+				if (sub->type != UCL_BOOLEAN) {
+					pkg_emit_error("Expecting a boolean for key %s,"
+					    " ignoring...", sub->key);
+					continue;
+				}
+				if (!conf->fromenv)
+					conf->boolean = ucl_obj_toboolean(sub);
+				break;
+			case PKG_CONFIG_LIST:
+				if (sub->type != UCL_ARRAY) {
+					pkg_emit_error("Expecting a list for key %s,"
+					    " ignoring...", sub->key);
+					continue;
+				}
+				if (!conf->fromenv)
+					obj_walk_array(sub, conf);
+				break;
+			case PKG_CONFIG_KVLIST:
+				if (sub->type != UCL_OBJECT) {
+					pkg_emit_error("Expecting a mapping for key %s,"
+					    " ignoring...", sub->key);
+					continue;
+				}
+				if (!conf->fromenv)
+					obj_walk_object(sub, conf);
+				break;
+			}
+		} else {
+			pkg_debug(1, "Config: No config entry matching %s", sub->key);
+		}
+	}
+	sbuf_delete(b);
+}
+
 void
 pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key)
 {
@@ -944,10 +1049,8 @@ load_repositories(const char *repodir)
 int
 pkg_init(const char *path, const char *reposdir)
 {
-	FILE *fp;
-	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
+	struct ucl_parser *p = NULL;
+	UT_string *err = NULL;
 	size_t i;
 	const char *val = NULL;
 	const char *buf, *walk, *value, *key;
@@ -958,6 +1061,7 @@ pkg_init(const char *path, const char *reposdir)
 	struct pkg_config *conf;
 	struct pkg_config_value *v;
 	struct pkg_config_kv *kv;
+	ucl_object_t *obj = NULL;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -1091,45 +1195,23 @@ pkg_init(const char *path, const char *reposdir)
 	if (path == NULL)
 		path = PREFIX"/etc/pkg.conf";
 
-	if ((fp = fopen(path, "r")) == NULL) {
-		if (errno != ENOENT) {
-			pkg_emit_errno("fopen", path);
-			return (EPKG_FATAL);
-		}
-		/* no configuration present */
-		parsed = true;
+	p = ucl_parser_new(0);
+
+	if (!ucl_parser_add_file(p, path, &err)) {
+		if (errno == ENOENT)
+			goto parsed;
+		pkg_emit_error("%s\n", utstring_body(err));
+		utstring_free(err);
+		err = NULL;
+
+		return (EPKG_FATAL);
 	}
 
-	if (!parsed) {
-		struct ucl_parser *p = ucl_parser_new(0);
-		UT_string *err = NULL;
+	obj = ucl_parser_get_object(p, &err);
+	if (obj->type == UCL_OBJECT)
+		pkg_object_walk(obj->value.ov, config_by_key);
 
-		ucl_parser_add_file(p, path, &err);
-		if (err != NULL) {
-			printf("%s\n", utstring_body(err));
-			exit(1);
-		}
-
-		printf("%s\n", ucl_object_emit(ucl_parser_get_object(p, &err), UCL_EMIT_CONFIG));
-		exit (0);
-
-		yaml_parser_initialize(&parser);
-		yaml_parser_set_input_file(&parser, fp);
-		yaml_parser_load(&parser, &doc);
-
-		node = yaml_document_get_root_node(&doc);
-		if (node != NULL) {
-			if (node->type != YAML_MAPPING_NODE) {
-				pkg_emit_error("Invalid configuration format, ignoring the configuration file");
-			} else {
-				pkg_config_parse(&doc, node, config_by_key);
-			}
-		}
-
-		yaml_document_delete(&doc);
-		yaml_parser_delete(&parser);
-	}
-
+parsed:
 	disable_plugins_if_static();
 
 	parsed = true;
