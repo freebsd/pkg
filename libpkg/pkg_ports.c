@@ -39,11 +39,7 @@
 #include <string.h>
 #include <stringlist.h>
 #include <unistd.h>
-#ifdef BUNDLED_YAML
 #include <yaml.h>
-#else
-#include <bsdyml.h>
-#endif
 #include <uthash.h>
 
 #include "pkg.h"

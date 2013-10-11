@@ -83,12 +83,8 @@ CFLAGS+=	-I. \
 		-I${.CURDIR}/../external/sqlite \
 		-I${.CURDIR}/../external/uthash
 
-.if !exists(/usr/include/bsdyml.h)
-CFLAGS+=	-DBUNDLED_YAML -I ${.CURDIR}/../external/libyaml/include
+CFLAGS+=	-I ${.CURDIR}/../external/libyaml/include
 LDADD+=		-L../external/libyaml -lyaml
-.else
-LDADD+=		-lbsdyml
-.endif
 
 .if defined(WITH_BUNDLED_LIBELF)
 CFLAGS+=	-I${.CURDIR}/../external/libelf \
