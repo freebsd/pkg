@@ -32,6 +32,7 @@
 #include <sys/sbuf.h>
 #include <sys/param.h>
 #include <uthash.h>
+#include <ucl.h>
 
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -102,6 +103,7 @@ struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);
 
 int set_nameserver(const char *nsname);
+ucl_object_t *yaml_to_ucl(const char *file);
 
 
 #endif

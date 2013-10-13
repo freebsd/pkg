@@ -35,6 +35,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <yaml.h>
+#include <ucl.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -451,4 +453,126 @@ is_hardlink(struct hardlinks *hl, struct stat *st)
 	HASH_ADD_INO(hl, inode, h);
 
 	return (true);
+}
+
+static int
+ucl_write(void *data, unsigned char *buffer, size_t size)
+{
+	struct ucl_parser **p = (struct ucl_parser **)data;
+	UT_string *err;
+
+	ucl_parser_add_chunk(*p, buffer, size, &err);
+
+	return (1);
+}
+
+ucl_object_t *
+yaml_to_ucl(const char *file) {
+	yaml_parser_t parser;
+	yaml_emitter_t emitter;
+	yaml_event_t event;
+	ucl_object_t *obj = NULL;
+	struct ucl_parser *p;
+	FILE *fp;
+	UT_string *err;
+
+	memset(&parser, 0, sizeof(parser));
+	memset(&emitter, 0, sizeof(emitter));
+	memset(&event, 0, sizeof(event));
+
+	yaml_parser_initialize(&parser);
+	yaml_emitter_initialize(&emitter);
+
+	fp = fopen(file, "r");
+	if (fp == NULL) {
+		pkg_emit_errno("fopen", file);
+		return (NULL);
+	}
+
+	p = ucl_parser_new(0);
+
+	yaml_parser_set_input_file(&parser, fp);
+	yaml_emitter_set_output(&emitter, ucl_write, &p);
+	yaml_emitter_set_canonical(&emitter, 0);
+	yaml_emitter_set_unicode(&emitter, 1);
+	yaml_emitter_set_width(&emitter, -1);
+
+	for (;;) {
+		if (!yaml_parser_parse(&parser, &event)) {
+			switch (parser.error) {
+			case YAML_MEMORY_ERROR:
+				pkg_emit_error("Memory error: Not enough memory for parsing");
+				break;
+			case YAML_READER_ERROR:
+				if (parser.problem_value != -1)
+					pkg_emit_error("Reader error: %s: #%X at %d", parser.problem,
+					    parser.problem_value, parser.problem_offset);
+				else
+					pkg_emit_error("Reader error: %s at %d", parser.problem,
+					    parser.problem_offset);
+				break;
+			case YAML_SCANNER_ERROR:
+				if (parser.context)
+					pkg_emit_error("Scanner error: %s at line %d, column %d\n",
+					    "%s at line %d, column %d", parser.context,
+					    parser.context_mark.line+1, parser.context_mark.column+1,
+					    parser.problem, parser.problem_mark.line+1,
+					    parser.problem_mark.column+1);
+				else
+					pkg_emit_error("Scanner error: %s at line %d, column %d\n",
+					    parser.problem, parser.problem_mark.line+1,
+					    parser.problem_mark.column+1);
+				break;
+			case YAML_PARSER_ERROR:
+				if (parser.context)
+					pkg_emit_error("Parser error: %s at line %d, column %d\n",
+					    "%s at line %d, column %d", parser.context,
+					    parser.context_mark.line+1, parser.context_mark.column+1,
+					    parser.problem, parser.problem_mark.line+1,
+					    parser.problem_mark.column+1);
+				else
+					pkg_emit_error("Parser error: %s at line %d, column %d",
+					    parser.problem, parser.problem_mark.line+1,
+					    parser.problem_mark.column+1);
+				break;
+			default:
+				pkg_emit_error("Unkown error");
+				break;
+			}
+			break;
+		}
+
+		if (event.type == YAML_STREAM_END_EVENT) {
+			obj = ucl_parser_get_object(p, &err);
+			printf("%s\n", ucl_object_emit(obj, UCL_EMIT_JSON));
+			break;
+		}
+
+		if (event.type == YAML_MAPPING_START_EVENT)
+			event.data.mapping_start.style = YAML_FLOW_MAPPING_STYLE;
+
+		if (!yaml_emitter_emit(&emitter, &event)) {
+			switch (emitter.error) {
+			case YAML_MEMORY_ERROR:
+				pkg_emit_error("Memory error: Not enough memory for emitting");
+				break;
+			case YAML_WRITER_ERROR:
+				pkg_emit_error("Writer error: %s", emitter.problem);
+				break;
+			case YAML_EMITTER_ERROR:
+				pkg_emit_error("Emitter error: %s", emitter.problem);
+				break;
+			default:
+				pkg_emit_error("Unkown error");
+				break;
+			}
+			break;
+		}
+	}
+
+	yaml_parser_delete(&parser);
+	yaml_emitter_delete(&emitter);
+	fclose(fp);
+
+	return (obj);
 }
