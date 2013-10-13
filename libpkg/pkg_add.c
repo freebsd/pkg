@@ -316,8 +316,8 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * Extract the files on disk.
 	 */
 	if (extract && (retcode = do_extract(a, ae)) != EPKG_OK) {
-		/* If the add failed, clean up */
-		pkg_delete_files(pkg, 1);
+		/* If the add failed, clean up (silently) */
+		pkg_delete_files(pkg, 2);
 		pkg_delete_dirs(db, pkg, 1);
 		goto cleanup_reg;
 	}

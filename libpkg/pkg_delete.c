@@ -107,7 +107,8 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 		}
 	}
 
-	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE)) != EPKG_OK)
+	if ((ret = pkg_delete_files(pkg, flags & PKG_DELETE_FORCE ? 1 : 0))
+            != EPKG_OK)
 		return (ret);
 
 	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
@@ -129,7 +130,11 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 }
 
 int
-pkg_delete_files(struct pkg *pkg, bool force)
+pkg_delete_files(struct pkg *pkg, unsigned force)
+	/* force: 0 ... be careful and vocal about it. 
+	 *        1 ... remove files without bothering about checksums.
+	 *        2 ... like 1, but remain silent if removal fails.
+	 */
 {
 	struct pkg_file	*file = NULL;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
@@ -156,7 +161,8 @@ pkg_delete_files(struct pkg *pkg, bool force)
 		}
 
 		if (unlink(path) == -1) {
-			pkg_emit_errno("unlink", path);
+			if (force < 2)
+				pkg_emit_errno("unlink", path);
 			continue;
 		}
 	}
