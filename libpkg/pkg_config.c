@@ -38,7 +38,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
-#include <yaml.h>
 #include <ucl.h>
 
 #include "pkg.h"
@@ -678,53 +677,76 @@ disable_plugins_if_static(void)
 }
 
 static void
-add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_repo *r)
+add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 {
-	yaml_node_pair_t *pair;
-	yaml_char_t *url = NULL, *pubkey = NULL, *enable = NULL, *mirror_type = NULL;
-	yaml_char_t *signature_type = NULL, *fingerprints = NULL;
+	ucl_object_t *sub, *tmp;
+	bool enable = true;
+	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
+	const char *signature = NULL, *fingerprints = NULL;
 
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
-		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
-
-		if (key->data.scalar.length <= 0) {
-			++pair;
-			continue;
+	HASH_ITER(hh, obj, sub, tmp) {
+		if (strcasecmp(sub->key, "url") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    sub->key, rname);
+				return;
+			}
+			url = ucl_obj_tostring(sub);
+		} else if (strcasecmp(sub->key, "pubkey") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    sub->key, rname);
+				return;
+			}
+			pubkey = ucl_obj_tostring(sub);
+		} else if (strcasecmp(sub->key, "enabled") == 0) {
+			if (sub->type != UCL_BOOLEAN) {
+				pkg_emit_error("Expecting a boolean for the "
+				    "'%s' key of the '%s' repo",
+				    sub->key, rname);
+				return;
+			}
+			enable = ucl_obj_toboolean(sub);
+		} else if (strcasecmp(sub->key, "mirror_type") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    sub->key, rname);
+				return;
+			}
+			mirror_type = ucl_obj_tostring(sub);
+		} else if (strcasecmp(sub->key, "signature") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    sub->key, rname);
+				return;
+			}
+			signature = ucl_obj_tostring(sub);
+		} else if (strcasecmp(sub->key, "fingerprints") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    sub->key, rname);
+				return;
+			}
+			fingerprints = ucl_obj_tostring(sub);
 		}
-
-		if (val->type != YAML_SCALAR_NODE) {
-			++pair;
-			continue;
-		}
-
-		if (strcasecmp(key->data.scalar.value, "url") == 0)
-			url = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "pubkey") == 0)
-			pubkey = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "enabled") == 0)
-			enable = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "mirror_type") == 0)
-			mirror_type = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "signature") == 0)
-			signature_type = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "fingerprints") == 0)
-			fingerprints = val->data.scalar.value;
-
-		++pair;
-		continue;
 	}
 
-	if (r == NULL && url == NULL)
+	if (r == NULL && url == NULL) {
+		pkg_debug(1, "No repo and no url for %s", rname);
 		return;
+	}
 
 	if (r == NULL) {
 		r = calloc(1, sizeof(struct pkg_repo));
 		r->enable = true;
 		r->mirror_type = NOMIRROR;
 		r->signature_type = SIG_NONE;
-		asprintf(&r->name, REPO_NAME_PREFIX"%s", repo->data.scalar.value);
+		asprintf(&r->name, REPO_NAME_PREFIX"%s", rname);
 		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 	}
 
@@ -733,13 +755,19 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_
 		r->url = subst_packagesite_str(url);
 	}
 
-	if (signature_type != NULL) {
-		if (strcasecmp(signature_type, "pubkey") == 0)
+	if (signature != NULL) {
+		if (strcasecmp(signature, "pubkey") == 0)
 			r->signature_type = SIG_PUBKEY;
-		else if (strcasecmp(signature_type, "fingerprints") == 0)
+		else if (strcasecmp(signature, "fingerprints") == 0)
 			r->signature_type = SIG_FINGERPRINT;
 		else
 			r->signature_type = SIG_NONE;
+	}
+
+
+	if (fingerprints != NULL) {
+		free(r->fingerprints);
+		r->fingerprints = strdup(fingerprints);
 	}
 
 	if (pubkey != NULL) {
@@ -747,18 +775,7 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_
 		r->pubkey = strdup(pubkey);
 	}
 
-	if (fingerprints != NULL) {
-		free(r->fingerprints);
-		r->fingerprints = strdup(fingerprints);
-	}
-
-	if (enable != NULL &&
-	    (strcasecmp(enable, "off") == 0 ||
-	     strcasecmp(enable, "no") == 0 ||
-	     strcasecmp(enable, "false") == 0 ||
-	     enable[0] == '0')) {
-		r->enable = false;
-	}
+	r->enable = enable;
 
 	if (mirror_type != NULL) {
 		if (strcasecmp(mirror_type, "srv") == 0)
@@ -769,60 +786,69 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_
 }
 
 static void
-parse_repo_file(yaml_document_t *doc, yaml_node_t *node)
+walk_repo_obj(ucl_object_t *obj)
 {
-	yaml_node_pair_t *pair;
+	ucl_object_t *sub, *tmp;
 	struct pkg_repo *r;
 
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
-		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
-
-		if (key->data.scalar.length <= 0) {
-			++pair;
-			continue;
-		}
-
-		if (val->type != YAML_MAPPING_NODE) {
-			++pair;
-			continue;
-		}
-		r = pkg_repo_find_ident((char *)key->data.scalar.value);
+	HASH_ITER(hh, obj, sub, tmp) {
+		r = pkg_repo_find_ident(sub->key);
 		if (r != NULL)
-			pkg_debug(1, "PkgConfig: overwriting repository %s", key->data.scalar.value);
-
-		add_repo(doc, key, val, r);
-		++pair;
+			pkg_debug(1, "PkgConfig: overwriting repository %s", sub->key);
+		add_repo(sub->value.ov, r, sub->key);
 	}
 }
 
 static void
 load_repo_file(const char *repofile)
 {
-	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
-	FILE *fp;
+	struct ucl_parser *p;
+	ucl_object_t *obj = NULL;
+	ucl_object_t *sub, *tmp;
+	UT_string *err;
+	bool fallback = false;
 
-	fp = fopen(repofile, "r");
-	if (fp == NULL) {
-		pkg_emit_errno("fopen", repofile);
-		return;
+	p = ucl_parser_new(0);
+
+	if (!ucl_parser_add_file(p, repofile, &err)) {
+		if (errno == ENOENT) {
+			ucl_parser_free(p);
+			return;
+		}
+		fallback = true;
 	}
 
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_file(&parser, fp);
-	yaml_parser_load(&parser, &doc);
+	if (!fallback) {
+		obj = ucl_parser_get_object(p, &err);
+		if (obj->type == UCL_OBJECT) {
+			HASH_ITER(hh, obj->value.ov, sub, tmp) {
+				if (sub->type != UCL_OBJECT)
+					fallback = true;
+				if (fallback)
+					break;
+			}
+		} else {
+			fallback = true;
+		}
+	}
 
-	node = yaml_document_get_root_node(&doc);
-	if (node == NULL || node->type != YAML_MAPPING_NODE)
-		pkg_emit_error("Invalid repository format for %s", repofile);
-	else
-		parse_repo_file(&doc, node);
+	if (fallback) {
+		if (obj != NULL)
+			ucl_obj_free(obj);
+		obj = yaml_to_ucl(repofile);
+		if (obj == NULL)
+			return;
+	}
 
-	yaml_document_delete(&doc);
-	yaml_parser_delete(&parser);
+	if (fallback) {
+		pkg_emit_error("%s\n", ucl_object_emit(obj, UCL_EMIT_YAML));
+	}
+
+	if (obj->type == UCL_OBJECT)
+		walk_repo_obj(obj->value.ov);
+
+	ucl_parser_free(p);
+	ucl_obj_free(obj);
 }
 
 static void
@@ -1082,7 +1108,7 @@ pkg_init(const char *path, const char *reposdir)
 		    "====== BEGIN pkg.conf ======\n"
 		    "%s"
 		    "\n====== END pkg.conf ======\n",
-		    ucl_object_emit(obj, UCL_EMIT_CONFIG));
+		    ucl_object_emit(obj, UCL_EMIT_YAML));
 	}
 
 	if (obj->type == UCL_OBJECT)
