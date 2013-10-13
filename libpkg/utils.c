@@ -544,7 +544,6 @@ yaml_to_ucl(const char *file) {
 
 		if (event.type == YAML_STREAM_END_EVENT) {
 			obj = ucl_parser_get_object(p, &err);
-			printf("%s\n", ucl_object_emit(obj, UCL_EMIT_JSON));
 			break;
 		}
 
