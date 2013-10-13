@@ -66,7 +66,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 				pkg_emit_error("archive_read_extract(): %s",
 				    archive_error_string(a));
 				retcode = EPKG_FATAL;
-				break;
+				goto cleanup;
 			}
 		}
 
@@ -86,7 +86,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 				pkg_emit_error("archive_read_extract(): %s",
 				    archive_error_string(a));
 				retcode = EPKG_FATAL;
-				break;
+				goto cleanup;
 			}
 		}
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
@@ -97,6 +97,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		retcode = EPKG_FATAL;
 	}
 
+cleanup:
 	return (retcode);
 }
 
