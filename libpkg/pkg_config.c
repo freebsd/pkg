@@ -892,8 +892,11 @@ load_repositories(const char *repodir)
 		r = calloc(1, sizeof(struct pkg_repo));
 		r->name = strdup(REPO_NAME_PREFIX"packagesite");
 		r->url = subst_packagesite_str(url);
-		if (pub != NULL)
+		r->signature_type = SIG_NONE;
+		if (pub != NULL) {
 			r->pubkey = strdup(pub);
+			r->signature_type = SIG_PUBKEY;
+		}
 		r->mirror_type = NOMIRROR;
 		if (mirror_type != NULL) {
 			if (strcasecmp(mirror_type, "srv") == 0)
