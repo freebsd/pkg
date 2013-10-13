@@ -294,6 +294,7 @@ static bool parsed = false;
 static size_t c_size = sizeof(c) / sizeof(struct config_entry);
 
 static void pkg_config_kv_free(struct pkg_config_kv *);
+static struct pkg_repo *pkg_repo_new(const char *name, const char *url);
 
 static void
 connect_evpipe(const char *evpipe) {
@@ -741,16 +742,10 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 		return;
 	}
 
-	if (r == NULL) {
-		r = calloc(1, sizeof(struct pkg_repo));
-		r->enable = true;
-		r->mirror_type = NOMIRROR;
-		r->signature_type = SIG_NONE;
-		asprintf(&r->name, REPO_NAME_PREFIX"%s", rname);
-		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
-	}
+	if (r == NULL)
+		r = pkg_repo_new(rname, url);
 
-	if (url != NULL) {
+	if (r == NULL && url != NULL) {
 		free(r->url);
 		r->url = subst_packagesite_str(url);
 	}
@@ -889,23 +884,17 @@ load_repositories(const char *repodir)
 
 	if (url != NULL) {
 		pkg_emit_error("PACKAGESITE in pkg.conf is deprecated, please create a repository configuration file");
-		r = calloc(1, sizeof(struct pkg_repo));
-		r->name = strdup(REPO_NAME_PREFIX"packagesite");
-		r->url = subst_packagesite_str(url);
-		r->signature_type = SIG_NONE;
+		r = pkg_repo_new("packagesite", url);
 		if (pub != NULL) {
 			r->pubkey = strdup(pub);
 			r->signature_type = SIG_PUBKEY;
 		}
-		r->mirror_type = NOMIRROR;
 		if (mirror_type != NULL) {
 			if (strcasecmp(mirror_type, "srv") == 0)
 				r->mirror_type = SRV;
 			else if (strcasecmp(mirror_type, "http") == 0)
 				r->mirror_type = HTTP;
 		}
-		r->enable = true;
-		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 	}
 
 	if (repodir != NULL) {
@@ -1224,6 +1213,22 @@ int
 pkg_configs(struct pkg_config **conf)
 {
 	HASH_NEXT(config, (*conf));
+}
+
+static struct pkg_repo *
+pkg_repo_new(const char *name, const char *url)
+{
+	struct pkg_repo *r;
+
+	r = calloc(1, sizeof(struct pkg_repo));
+	r->url = subst_packagesite_str(url);
+	r->signature_type = SIG_NONE;
+	r->mirror_type = NOMIRROR;
+	r->enable = true;
+	asprintf(&r->name, REPO_NAME_PREFIX"%s", name);
+	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
+
+	return (r);
 }
 
 static void
