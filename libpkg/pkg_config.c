@@ -777,6 +777,8 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 			r->mirror_type = SRV;
 		else if (strcasecmp(mirror_type, "http") == 0)
 			r->mirror_type = HTTP;
+		else
+			r->mirror_type = NOMIRROR;
 	}
 }
 
