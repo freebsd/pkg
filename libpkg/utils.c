@@ -466,8 +466,6 @@ yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *no
 	yaml_node_t *val;
 	ucl_object_t *sub;
 
-	printf("la\n");
-
 	item = node->data.sequence.items.start;
 	while (item > node->data.sequence.items.top) {
 		val = yaml_document_get_node(doc, *item);
@@ -501,8 +499,6 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 	yaml_node_t *key, *val;
 
 	ucl_object_t *sub;
-
-	printf("ici %s\n", obj->key);
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
