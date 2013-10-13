@@ -37,6 +37,8 @@
 #include <string.h>
 #include <yaml.h>
 #include <ucl.h>
+#include <uthash.h>
+#include <utlist.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -455,33 +457,93 @@ is_hardlink(struct hardlinks *hl, struct stat *st)
 	return (true);
 }
 
-static int
-ucl_write(void *data, unsigned char *buffer, size_t size)
+static void yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node);
+
+static void
+yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
 {
-	struct ucl_parser **p = (struct ucl_parser **)data;
-	UT_string *err;
+	yaml_node_item_t *item;
+	yaml_node_t *val;
+	ucl_object_t *sub;
 
-	ucl_parser_add_chunk(*p, buffer, size, &err);
+	printf("la\n");
 
-	return (1);
+	item = node->data.sequence.items.start;
+	while (item > node->data.sequence.items.top) {
+		val = yaml_document_get_node(doc, *item);
+		sub = ucl_object_new();
+		switch (val->type) {
+		case YAML_MAPPING_NODE:
+			sub->type = UCL_OBJECT;
+			yaml_mapping_to_object(sub, doc, val);
+			break;
+		case YAML_SEQUENCE_NODE:
+			sub->type = UCL_ARRAY;
+			yaml_sequence_to_object(sub, doc, val);
+			break;
+		case YAML_SCALAR_NODE:
+			sub->type = UCL_STRING;
+			sub->value.sv = strdup(val->data.scalar.value);
+			break;
+		case YAML_NO_NODE:
+			/* Should not happen */
+			break;
+		}
+		LL_PREPEND(obj->value.ov, sub);
+		++item;
+	}
+}
+
+static void
+yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
+{
+	yaml_node_pair_t *pair;
+	yaml_node_t *key, *val;
+
+	ucl_object_t *sub;
+
+	printf("ici %s\n", obj->key);
+
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		key = yaml_document_get_node(doc, pair->key);
+		val = yaml_document_get_node(doc, pair->value);
+
+		sub = ucl_object_new();
+		sub->key = strdup(key->data.scalar.value);
+		switch (val->type) {
+		case YAML_MAPPING_NODE:
+			sub->type = UCL_OBJECT;
+			yaml_mapping_to_object(sub, doc, val);
+			break;
+		case YAML_SEQUENCE_NODE:
+			sub->type = UCL_ARRAY;
+			yaml_sequence_to_object(sub, doc, val);
+			break;
+		case YAML_SCALAR_NODE:
+			sub->type = UCL_STRING;
+			sub->value.sv = strdup(val->data.scalar.value);
+			break;
+		case YAML_NO_NODE:
+			/* Should not happen */
+			break;
+		}
+		HASH_ADD_KEYPTR(hh, obj->value.ov, sub->key, strlen(sub->key), sub);
+		++pair;
+	}
 }
 
 ucl_object_t *
 yaml_to_ucl(const char *file) {
 	yaml_parser_t parser;
-	yaml_emitter_t emitter;
-	yaml_event_t event;
+	yaml_document_t doc;
+	yaml_node_t *node;
 	ucl_object_t *obj = NULL;
-	struct ucl_parser *p;
 	FILE *fp;
-	UT_string *err;
 
 	memset(&parser, 0, sizeof(parser));
-	memset(&emitter, 0, sizeof(emitter));
-	memset(&event, 0, sizeof(event));
 
 	yaml_parser_initialize(&parser);
-	yaml_emitter_initialize(&emitter);
 
 	fp = fopen(file, "r");
 	if (fp == NULL) {
@@ -489,88 +551,29 @@ yaml_to_ucl(const char *file) {
 		return (NULL);
 	}
 
-	p = ucl_parser_new(0);
-
 	yaml_parser_set_input_file(&parser, fp);
-	yaml_emitter_set_output(&emitter, ucl_write, &p);
-	yaml_emitter_set_canonical(&emitter, 0);
-	yaml_emitter_set_unicode(&emitter, 1);
-	yaml_emitter_set_width(&emitter, -1);
+	yaml_parser_load(&parser, &doc);
 
-	for (;;) {
-		if (!yaml_parser_parse(&parser, &event)) {
-			switch (parser.error) {
-			case YAML_MEMORY_ERROR:
-				pkg_emit_error("Memory error: Not enough memory for parsing");
-				break;
-			case YAML_READER_ERROR:
-				if (parser.problem_value != -1)
-					pkg_emit_error("Reader error: %s: #%X at %d", parser.problem,
-					    parser.problem_value, parser.problem_offset);
-				else
-					pkg_emit_error("Reader error: %s at %d", parser.problem,
-					    parser.problem_offset);
-				break;
-			case YAML_SCANNER_ERROR:
-				if (parser.context)
-					pkg_emit_error("Scanner error: %s at line %d, column %d\n",
-					    "%s at line %d, column %d", parser.context,
-					    parser.context_mark.line+1, parser.context_mark.column+1,
-					    parser.problem, parser.problem_mark.line+1,
-					    parser.problem_mark.column+1);
-				else
-					pkg_emit_error("Scanner error: %s at line %d, column %d\n",
-					    parser.problem, parser.problem_mark.line+1,
-					    parser.problem_mark.column+1);
-				break;
-			case YAML_PARSER_ERROR:
-				if (parser.context)
-					pkg_emit_error("Parser error: %s at line %d, column %d\n",
-					    "%s at line %d, column %d", parser.context,
-					    parser.context_mark.line+1, parser.context_mark.column+1,
-					    parser.problem, parser.problem_mark.line+1,
-					    parser.problem_mark.column+1);
-				else
-					pkg_emit_error("Parser error: %s at line %d, column %d",
-					    parser.problem, parser.problem_mark.line+1,
-					    parser.problem_mark.column+1);
-				break;
-			default:
-				pkg_emit_error("Unkown error");
-				break;
-			}
+	node = yaml_document_get_root_node(&doc);
+	if (node != NULL) {
+		obj = ucl_object_new();
+		obj->type = UCL_OBJECT;
+		switch (node->type) {
+		case YAML_MAPPING_NODE:
+			yaml_mapping_to_object(obj, &doc, node);
 			break;
-		}
-
-		if (event.type == YAML_STREAM_END_EVENT) {
-			obj = ucl_parser_get_object(p, &err);
+		case YAML_SEQUENCE_NODE:
+			yaml_sequence_to_object(obj, &doc, node);
 			break;
-		}
-
-		if (event.type == YAML_MAPPING_START_EVENT)
-			event.data.mapping_start.style = YAML_FLOW_MAPPING_STYLE;
-
-		if (!yaml_emitter_emit(&emitter, &event)) {
-			switch (emitter.error) {
-			case YAML_MEMORY_ERROR:
-				pkg_emit_error("Memory error: Not enough memory for emitting");
-				break;
-			case YAML_WRITER_ERROR:
-				pkg_emit_error("Writer error: %s", emitter.problem);
-				break;
-			case YAML_EMITTER_ERROR:
-				pkg_emit_error("Emitter error: %s", emitter.problem);
-				break;
-			default:
-				pkg_emit_error("Unkown error");
-				break;
-			}
+		case YAML_SCALAR_NODE:
+		case YAML_NO_NODE:
 			break;
 		}
 	}
 
+	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
-	yaml_emitter_delete(&emitter);
+
 	fclose(fp);
 
 	return (obj);
