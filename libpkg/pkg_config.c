@@ -390,7 +390,6 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 			sbuf_putc(b, toupper(sub->key[i]));
 		sbuf_finish(b);
 
-		pkg_debug(1, "PkgConfig: In config file %s of type: %d", sub->key, sub->type);
 		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), (size_t)sbuf_len(b), conf);
 		if (conf != NULL) {
 			switch (conf->type) {
@@ -442,8 +441,6 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 					obj_walk_object(sub, conf);
 				break;
 			}
-		} else {
-			pkg_debug(1, "PkgConfig: No config entry matching %s", sub->key);
 		}
 	}
 	sbuf_delete(b);
@@ -908,6 +905,8 @@ pkg_init(const char *path, const char *reposdir)
 	struct pkg_config_value *v;
 	struct pkg_config_kv *kv;
 	ucl_object_t *obj = NULL;
+	ucl_object_t *sub, *tmp;
+	bool fallback = false;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -1046,14 +1045,43 @@ pkg_init(const char *path, const char *reposdir)
 	if (!ucl_parser_add_file(p, path, &err)) {
 		if (errno == ENOENT)
 			goto parsed;
-		pkg_emit_error("%s\n", utstring_body(err));
-		utstring_free(err);
-		err = NULL;
-
-		return (EPKG_FATAL);
+		fallback = true;
 	}
 
-	obj = ucl_parser_get_object(p, &err);
+	if (!fallback) {
+		/* Validate the first level of the configuration */
+		obj = ucl_parser_get_object(p, &err);
+		if (obj->type == UCL_OBJECT) {
+			HASH_ITER(hh, obj->value.ov, sub, tmp) {
+				if (strcasecmp(sub->key, "REPOS_DIR") == 0 &&
+				    sub->type != UCL_ARRAY)
+					fallback = true;
+				else if (strcasecmp(sub->key, "PKG_ENV") == 0 &&
+				    sub->type != UCL_OBJECT)
+					fallback = true;
+				else if (strcasecmp(sub->key, "ALIAS") == 0 &&
+				    sub->type != UCL_OBJECT)
+					fallback = true;
+			}
+		} else {
+			fallback = true;
+		}
+	}
+
+	if (fallback) {
+		if (obj != NULL)
+			ucl_obj_free(obj);
+		obj = yaml_to_ucl(path);
+		if (obj == NULL)
+			return (EPKG_FATAL);
+	}
+
+	if (fallback) {
+		pkg_emit_error("Your pkg.conf file is in deprecated format you"
+		    "should convert it to the following format:\n%s",
+		    ucl_object_emit(obj, UCL_EMIT_CONFIG));
+	}
+
 	if (obj->type == UCL_OBJECT)
 		pkg_object_walk(obj->value.ov, config_by_key);
 
