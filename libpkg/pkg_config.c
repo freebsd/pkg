@@ -1088,8 +1088,8 @@ pkg_init(const char *path, const char *reposdir)
 				else if (strcasecmp(sub->key, "ALIAS") == 0 &&
 				    sub->type != UCL_OBJECT)
 					fallback = true;
-			if (fallback)
-				break;
+				if (fallback)
+					break;
 			}
 		} else {
 			fallback = true;
