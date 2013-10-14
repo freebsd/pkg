@@ -1068,6 +1068,7 @@ pkg_init(const char *path, const char *reposdir)
 
 	p = ucl_parser_new(0);
 
+	errno = 0;
 	if (!ucl_parser_add_file(p, path, &err)) {
 		if (errno == ENOENT)
 			goto parsed;
