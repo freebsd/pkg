@@ -295,7 +295,7 @@ ucl_obj_get_key (ucl_object_t *obj, const char *key)
 	}
 
 	keylen = strlen (key);
-	HASH_FIND(hh, obj->value.ov, key, keylen, ret);
+	HASH_FIND(hh, obj->value.ov, __DECONST(char *, key), keylen, ret);
 
 	return ret;
 }
