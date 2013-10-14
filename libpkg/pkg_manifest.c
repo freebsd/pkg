@@ -1370,41 +1370,6 @@ pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *keys)
 	return (rc);
 }
 
-struct pkg_yaml_emitter_data {
-	SHA256_CTX *sign_ctx;
-	union {
-		struct sbuf *sbuf;
-		FILE *file;
-		char *dest;
-	} data;
-};
-
-static int
-yaml_write_buf(void *data, unsigned char *buffer, size_t size)
-{
-	struct pkg_yaml_emitter_data *dest = (struct pkg_yaml_emitter_data *)data;
-
-	sbuf_bcat(dest->data.sbuf, buffer, size);
-	if (dest->sign_ctx != NULL)
-		SHA256_Update(dest->sign_ctx, buffer, size);
-
-	return (1);
-}
-
-static int
-yaml_write_file(void *data, unsigned char *buffer, size_t size)
-{
-	struct pkg_yaml_emitter_data *dest = (struct pkg_yaml_emitter_data *)data;
-
-	if (fwrite(buffer, size, 1, dest->data.file) != 1)
-		return -1;
-
-	if (dest->sign_ctx != NULL)
-		SHA256_Update(dest->sign_ctx, buffer, size);
-
-	return (1);
-}
-
 static void
 manifest_append_seqval(yaml_document_t *doc, int parent, int *seq,
     const char *title, const char *value)
@@ -1759,7 +1724,6 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	    char **pdigest, bool out_is_a_sbuf)
 {
 	char *output;
-	struct pkg_yaml_emitter_data emitter_data;
 	unsigned char digest[SHA256_DIGEST_LENGTH];
 	SHA256_CTX *sign_ctx = NULL;
 	int rc;
@@ -1768,9 +1732,6 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 		*pdigest = malloc(sizeof(digest) * 2 + 1);
 		sign_ctx = malloc(sizeof(SHA256_CTX));
 		SHA256_Init(sign_ctx);
-	}
-	else {
-		emitter_data.sign_ctx = NULL;
 	}
 
 	rc = emit_manifest(pkg, &output, flags);
@@ -1784,7 +1745,7 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	}
 
 	if (pdigest != NULL) {
-		SHA256_Final(digest, emitter_data.sign_ctx);
+		SHA256_Final(digest, sign_ctx);
 		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
 		free(sign_ctx);
 	}
