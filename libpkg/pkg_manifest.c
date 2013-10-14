@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <yaml.h>
+#include <ucl.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -1480,10 +1481,8 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 }
 
 static int
-emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
+emit_manifest(struct pkg *pkg, char **out, short flags)
 {
-	yaml_document_t doc;
-	char tmpbuf[BUFSIZ];
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_file		*file     = NULL;
@@ -1495,34 +1494,63 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 	struct pkg_shlib	*shlib    = NULL;
 	struct pkg_note		*note     = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
-	int rc = EPKG_OK;
-	int mapping;
-	int seq = -1;
-	int map = -1;
-	int depkv;
 	int i;
-/*	int users = -1;
-	int groups = -1;*/
 	const char *comment, *desc, *message, *name, *pkgarch;
 	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
 	const char *repopath, *pkgsum;
 	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize, pkgsize;
-	yaml_mapping_style_t manifest_mapping = YAML_FLOW_MAPPING_STYLE;
+	ucl_object_t *obj, *sub, *map, *seq, *submap;
 
-#define manifest_append_map(id, map, key, block) do {			\
-	int scalar_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
-	id = yaml_document_add_mapping(&doc, NULL, YAML_##block##_MAPPING_STYLE); \
-	yaml_document_append_mapping_pair(&doc, map, scalar_obj, id);	\
+#define obj_append_kv(o, k, v) do {        \
+	sub = ucl_object_new();                     \
+	sub->key = strdup(k);                  \
+	sub->type = UCL_STRING;                  \
+	sub->value.sv = strdup(v);           \
+	HASH_ADD_KEYPTR(hh, o->value.ov, sub->key, strlen(sub->key), sub); \
 } while (0)
 
-	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
-		manifest_mapping = YAML_BLOCK_MAPPING_STYLE;
+#define obj_append_boolean(o, k, v) do {       \
+	sub = ucl_object_new();                     \
+	sub->key = strdup(k);                  \
+	sub->type = UCL_BOOLEAN;                     \
+	sub->value.iv = v;                   \
+	HASH_ADD_KEYPTR(hh, o->value.ov, sub->key, strlen(sub->key), sub); \
+} while (0);
 
-	yaml_document_initialize(&doc, NULL, NULL, NULL, 0, 1);
-	mapping = yaml_document_add_mapping(&doc, NULL,
-	    manifest_mapping);
+#define obj_append_int(o, k, v) do {       \
+	sub = ucl_object_new();                     \
+	sub->key = strdup(k);                  \
+	sub->type = UCL_INT;                     \
+	sub->value.iv = v;                   \
+	HASH_ADD_KEYPTR(hh, o->value.ov, sub->key, strlen(sub->key), sub); \
+} while (0);
+
+#define obj_append_map(o, k, m) do {              \
+	m = ucl_object_new();                     \
+	m->key = strdup(k);                  \
+	m->type = UCL_OBJECT;                  \
+	HASH_ADD_KEYPTR(hh, o->value.ov, m->key, strlen(m->key), m); \
+} while (0);
+
+#define obj_append_seq(o, k, s) do {              \
+	s = ucl_object_new();                     \
+	s->key = strdup(k);                  \
+	s->type = UCL_ARRAY;                  \
+	HASH_ADD_KEYPTR(hh, o->value.ov, s->key, strlen(s->key), s); \
+} while (0);
+
+#define seq_append_val(o, v) do {             \
+	sub = ucl_object_new();                      \
+	sub->type = UCL_STRING;                   \
+	sub->value.sv = strdup(v);            \
+	LL_PREPEND(o->value.ov, sub);             \
+} while (0);
+
+
+	obj = ucl_object_new();
+	obj->type = UCL_OBJECT;
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
 	    PKG_COMMENT, &comment, PKG_ARCH, &pkgarch, PKG_WWW, &www,
@@ -1531,127 +1559,134 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
 	    PKG_VERSION, &version, PKG_REPOPATH, &repopath,
 	    PKG_CKSUM, &pkgsum, PKG_PKGSIZE, &pkgsize);
-	manifest_append_kv(mapping, "name", name, PLAIN);
-	manifest_append_kv(mapping, "version", version, PLAIN);
-	manifest_append_kv(mapping, "origin", pkgorigin, PLAIN);
-	manifest_append_kv(mapping, "comment", comment, PLAIN);
-	manifest_append_kv(mapping, "arch", pkgarch, PLAIN);
-	manifest_append_kv(mapping, "www", www, PLAIN);
-	manifest_append_kv(mapping, "maintainer", pkgmaintainer, PLAIN);
-	manifest_append_kv(mapping, "prefix", prefix, PLAIN);
+
+	obj_append_kv(obj, "name", name);
+	obj_append_kv(obj, "version", version);
+	obj_append_kv(obj, "origin", pkgorigin);
+	obj_append_kv(obj, "comment", comment);
+	obj_append_kv(obj, "arch", pkgarch);
+	obj_append_kv(obj, "maintainer", pkgmaintainer);
+	obj_append_kv(obj, "prefix", prefix);
 	if (repopath != NULL)
-		manifest_append_kv(mapping, "path", repopath, PLAIN);
+		obj_append_kv(obj, "path", repopath);
 	if (pkgsum != NULL)
-		manifest_append_kv(mapping, "sum", pkgsum, PLAIN);
+		obj_append_kv(obj, "sum", pkgsum);
 
 	switch (licenselogic) {
 	case LICENSE_SINGLE:
-		manifest_append_kv(mapping, "licenselogic", "single", PLAIN);
+		obj_append_kv(obj, "licenselogic", "single");
 		break;
 	case LICENSE_AND:
-		manifest_append_kv(mapping, "licenselogic", "and", PLAIN);
+		obj_append_kv(obj, "licenselogic", "and");
 		break;
 	case LICENSE_OR:
-		manifest_append_kv(mapping, "licenselogic", "or", PLAIN);
+		obj_append_kv(obj, "licenselogic", "or");
 		break;
 	}
 
-	seq = -1;
-	while (pkg_licenses(pkg, &license) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "licenses",
-		    pkg_license_name(license));
-
-	snprintf(tmpbuf, BUFSIZ, "%" PRId64, flatsize);
-	manifest_append_kv(mapping, "flatsize", tmpbuf, PLAIN);
-	if (pkgsize > 0) {
-		snprintf(tmpbuf, BUFSIZ, "%" PRId64, pkgsize);
-	manifest_append_kv(mapping, "pkgsize", tmpbuf, PLAIN);
+	seq = NULL;
+	while (pkg_licenses(pkg, &license) == EPKG_OK) {
+		if (seq == NULL)
+			obj_append_seq(obj, "licenses", seq);
+		seq_append_val(seq, pkg_license_name(license));
 	}
+
+	obj_append_int(obj, "flatsize", flatsize);
+	if (pkgsize > 0)
+		obj_append_int(obj, "pkgsize", pkgsize);
+
 	urlencode(desc, &tmpsbuf);
-	manifest_append_kv(mapping, "desc", sbuf_get(tmpsbuf), LITERAL);
+	obj_append_kv(obj, "desc", sbuf_get(tmpsbuf));
 
-	map = -1;
+	map = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (map == -1)
-			manifest_append_map(map, mapping, "deps", BLOCK);
-
-		manifest_append_map(depkv, map, pkg_dep_name(dep), FLOW);
-		manifest_append_kv(depkv, "origin", pkg_dep_origin(dep), PLAIN);
-		manifest_append_kv(depkv, "version", pkg_dep_version(dep),
-		    PLAIN);
+		if (map == NULL)
+			obj_append_map(obj, "deps", map);
+		obj_append_map(map, pkg_dep_name(dep), submap);
+		obj_append_kv(submap, "origin", pkg_dep_origin(dep));
+		obj_append_kv(submap, "version", pkg_dep_version(dep));
 	}
 
-	seq = -1;
-	while (pkg_categories(pkg, &category) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "categories",
-		    pkg_category_name(category));
+	seq = NULL;
+	while (pkg_categories(pkg, &category) == EPKG_OK) {
+		if (seq == NULL)
+			obj_append_seq(obj, "categories", seq);
+		seq_append_val(seq, pkg_category_name(category));
+	}
 
-	seq = -1;
-	while (pkg_users(pkg, &user) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "users",
-		    pkg_user_name(user));
+	seq = NULL;
+	while (pkg_users(pkg, &user) == EPKG_OK) {
+		if (seq == NULL)
+			obj_append_seq(obj, "users", seq);
+		seq_append_val(seq, pkg_user_name(user));
+	}
 
-	seq = -1;
-	while (pkg_groups(pkg, &group) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "groups",
-		    pkg_group_name(group));
+	seq = NULL;
+	while (pkg_groups(pkg, &group) == EPKG_OK) {
+		if (seq == NULL)
+			obj_append_seq(obj, "groups", seq);
+		seq_append_val(seq, pkg_group_name(group));
+	}
 
-	seq = -1;
-	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "shlibs_required",
-		    pkg_shlib_name(shlib));
+	seq = NULL;
+	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+		if (seq == NULL)
+			obj_append_seq(obj, "shlibs_required", seq);
+		seq_append_val(seq, pkg_shlib_name(shlib));
+	}
 
-	seq = -1;
-	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
-		manifest_append_seqval(&doc, mapping, &seq, "shlibs_provided",
-		    pkg_shlib_name(shlib));
+	seq = NULL;
+	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
+		if (seq == NULL)
+			obj_append_seq(obj, "shlibs_provided", seq);
+		seq_append_val(seq, pkg_shlib_name(shlib));
+	}
 
-	map = -1;
+	map = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (map == -1)
-			manifest_append_map(map, mapping, "options", FLOW);
-		manifest_append_kv(map, pkg_option_opt(option),
-		    pkg_option_value(option), PLAIN);
+		if (map == NULL)
+			obj_append_map(obj, "options", map);
+		obj_append_kv(map, pkg_option_opt(option),
+		    pkg_option_value(option));
 	}
-	map = -1;
+
+	map = NULL;
 	while (pkg_annotations(pkg, &note) == EPKG_OK) {
-		if (map == -1)
-			manifest_append_map(map, mapping, "annotations", FLOW);
-		manifest_append_kv(map, pkg_annotation_tag(note),
-		    pkg_annotation_value(note), PLAIN);
+		if (map == NULL)
+			obj_append_map(obj, "annotations", map);
+		obj_append_kv(map, pkg_annotation_tag(note),
+		    pkg_annotation_value(note));
 	}
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
-		map = -1;
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {
+			map = NULL;
 			while (pkg_files(pkg, &file) == EPKG_OK) {
 				const char *pkg_sum = pkg_file_cksum(file);
 
 				if (pkg_sum == NULL || pkg_sum[0] == '\0')
 					pkg_sum = "-";
 
-				if (map == -1)
-					manifest_append_map(map, mapping, "files", BLOCK);
+				if (map == NULL)
+					obj_append_map(obj, "files", map);
 				urlencode(pkg_file_path(file), &tmpsbuf);
-				manifest_append_kv(map, sbuf_get(tmpsbuf), pkg_sum, PLAIN);
+				obj_append_kv(map, sbuf_get(tmpsbuf), pkg_sum);
 			}
 
-			seq = -1;
-			map = -1;
+			seq = NULL;
+			map = NULL;
 			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-				const char *try_str;
-				if (map == -1)
-					manifest_append_map(map, mapping, "directories", BLOCK);
+				if (map == NULL)
+					obj_append_map(obj, "directories", map);
 				urlencode(pkg_dir_path(dir), &tmpsbuf);
-				try_str = pkg_dir_try(dir) ? "y" : "n";
-				manifest_append_kv(map, sbuf_get(tmpsbuf), try_str, PLAIN);
+				obj_append_boolean(map, sbuf_get(tmpsbuf), pkg_dir_try(dir));
 			}
 		}
 
-		map = -1;
+		map = NULL;
 		for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
-			if (map == -1)
-				manifest_append_map(map, mapping, "scripts", BLOCK);
+			if (map == NULL)
+				obj_append_map(obj, "scripts", map);
 
 			if (pkg_script_get(pkg, i) == NULL)
 				continue;
@@ -1686,23 +1721,18 @@ emit_manifest(struct pkg *pkg, yaml_emitter_t *emitter, short flags)
 				break;
 			}
 			urlencode(pkg_script_get(pkg, i), &tmpsbuf);
-			manifest_append_kv(map, script_types, sbuf_get(tmpsbuf),
-			    LITERAL);
+			obj_append_kv(map, script_types, sbuf_get(tmpsbuf));
 		}
 	}
 
 	if (message != NULL && *message != '\0') {
 		urlencode(message, &tmpsbuf);
-		manifest_append_kv(mapping, "message", sbuf_get(tmpsbuf),
-		    LITERAL);
+		obj_append_kv(obj, "message", sbuf_get(tmpsbuf));
 	}
 
-	if (!yaml_emitter_dump(emitter, &doc))
-		rc = EPKG_FATAL;
+	*out = ucl_object_emit(obj, UCL_EMIT_YAML);
 
-	sbuf_free(tmpsbuf);
-
-	return (rc);
+	return (EPKG_OK);
 }
 
 static void
@@ -1725,41 +1755,38 @@ static int
 pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	    char **pdigest, bool out_is_a_sbuf)
 {
-	yaml_emitter_t emitter;
+	char *output;
 	struct pkg_yaml_emitter_data emitter_data;
 	unsigned char digest[SHA256_DIGEST_LENGTH];
+	SHA256_CTX *sign_ctx = NULL;
 	int rc;
 
 	if (pdigest != NULL) {
 		*pdigest = malloc(sizeof(digest) * 2 + 1);
-		emitter_data.sign_ctx = malloc(sizeof(SHA256_CTX));
-		SHA256_Init(emitter_data.sign_ctx);
+		sign_ctx = malloc(sizeof(SHA256_CTX));
+		SHA256_Init(sign_ctx);
 	}
 	else {
 		emitter_data.sign_ctx = NULL;
 	}
 
-	yaml_emitter_initialize(&emitter);
-	yaml_emitter_set_unicode(&emitter, 1);
-	yaml_emitter_set_width(&emitter, -1);
+	rc = emit_manifest(pkg, &output, flags);
 
-	if (out_is_a_sbuf) { /* out is (struct sbuf *) */
-		emitter_data.data.sbuf = out;
-		yaml_emitter_set_output(&emitter, yaml_write_buf, &emitter_data);
-	} else { /* out is (FILE *) */
-		emitter_data.data.file = out;
-		yaml_emitter_set_output(&emitter, yaml_write_file, &emitter_data);
+	if (out_is_a_sbuf) {
+		if (sign_ctx != NULL)
+			SHA256_Update(sign_ctx, output, strlen(output));
+		sbuf_cat(out, output);
+	} else {
+		fprintf(out, "%s", output);
 	}
-
-	rc = emit_manifest(pkg, &emitter, flags);
 
 	if (pdigest != NULL) {
 		SHA256_Final(digest, emitter_data.sign_ctx);
 		pkg_emit_manifest_digest(digest, sizeof(digest), *pdigest);
-		free(emitter_data.sign_ctx);
+		free(sign_ctx);
 	}
 
-	yaml_emitter_delete(&emitter);
+	free (output);
 
 	return (rc);
 }
