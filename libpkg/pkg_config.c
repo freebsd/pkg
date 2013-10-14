@@ -838,7 +838,14 @@ load_repo_file(const char *repofile)
 	}
 
 	if (fallback) {
-		pkg_emit_error("%s\n", ucl_object_emit(obj, UCL_EMIT_YAML));
+		pkg_emit_error("%s file is in deprecated format you "
+		    "should convert it to the following format:\n"
+		    "====== BEGIN %s ======\n"
+		    "%s"
+		    "\n====== END %s ======\n",
+		    repofile, repofile,
+		    ucl_object_emit(obj, UCL_EMIT_YAML),
+		    repofile);
 	}
 
 	if (obj->type == UCL_OBJECT)
