@@ -829,8 +829,10 @@ load_repo_file(const char *repofile)
 	}
 
 	if (fallback) {
-		if (obj != NULL)
+		if (obj != NULL) {
 			ucl_obj_free(obj);
+			ucl_parser_free(p);
+		}
 		obj = yaml_to_ucl(repofile, NULL, 0);
 		if (obj == NULL)
 			return;
@@ -850,7 +852,6 @@ load_repo_file(const char *repofile)
 	if (obj->type == UCL_OBJECT)
 		walk_repo_obj(obj->value.ov);
 
-	ucl_parser_free(p);
 	ucl_obj_free(obj);
 }
 
