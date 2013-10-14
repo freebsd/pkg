@@ -628,18 +628,13 @@ pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
 }
 
 static int
-pkg_add_from_manifest(FILE *f, char *buf, const char *origin, long offset,
+pkg_add_from_manifest(char *buf, const char *origin, long offset,
 		const char *manifest_digest, const char *local_arch, sqlite3 *sqlite,
-		struct pkg_manifest_parser **parser, struct pkg **p)
+		struct pkg_manifest_key **keys, struct pkg **p)
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
 	const char *local_origin, *pkg_arch;
-
-	if (buf == NULL && fseek(f, offset, SEEK_SET) == -1) {
-		pkg_emit_errno("fseek", "invalid manifest offset");
-		return (EPKG_FATAL);
-	}
 
 	if (*p == NULL) {
 		rc = pkg_new(p, PKG_REMOTE);
@@ -651,12 +646,8 @@ pkg_add_from_manifest(FILE *f, char *buf, const char *origin, long offset,
 
 	pkg = *p;
 
-	pkg_manifest_parser_new(parser);
-	if (buf == NULL) {
-		rc = pkg_parse_manifest_file_ev(pkg, f, *parser);
-	} else {
-		rc = pkg_parse_manifest_ev(pkg, buf, offset, *parser);
-	}
+	pkg_manifest_keys_new(keys);
+	rc = pkg_parse_manifest(pkg, buf, offset, *keys);
 	if (rc != EPKG_OK) {
 		goto cleanup;
 	}
@@ -725,7 +716,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
 			*item, *tmp_item;
 	const char *myarch;
-	struct pkg_manifest_parser *parser = NULL;
+	struct pkg_manifest_key *keys = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
 	char *map = MAP_FAILED;
@@ -836,24 +827,22 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	if (len > 0 && len < SSIZE_MAX) {
 		map = mmap(NULL, len, PROT_READ, MAP_SHARED, fileno(fmanifest), 0);
 		fclose(fmanifest);
+	} else {
+		pkg_emit_error("File too large");
+		return (EPKG_FATAL);
 	}
 
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
-			if (map != MAP_FAILED) {
-				rc = pkg_add_from_manifest(NULL, map + item->offset, item->origin,
-				    len - item->offset, item->digest, myarch, sqlite, &parser, &pkg);
-			} else {
-				rc = pkg_add_from_manifest(fmanifest, NULL, item->origin,
-				    item->offset, item->digest, myarch, sqlite, &parser, &pkg);
-			}
+			rc = pkg_add_from_manifest(map + item->offset, item->origin,
+			    len - item->offset, item->digest, myarch, sqlite, &keys, &pkg);
 		}
 		free(item->origin);
 		free(item->digest);
 		HASH_DEL(ladd, item);
 		free(item);
 	}
-	pkg_manifest_parser_free(parser);
+	pkg_manifest_keys_free(keys);
 	pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:

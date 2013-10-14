@@ -530,7 +530,7 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 }
 
 ucl_object_t *
-yaml_to_ucl(const char *file) {
+yaml_to_ucl(const char *file, const char *buffer, size_t len) {
 	yaml_parser_t parser;
 	yaml_document_t doc;
 	yaml_node_t *node;
@@ -541,13 +541,17 @@ yaml_to_ucl(const char *file) {
 
 	yaml_parser_initialize(&parser);
 
-	fp = fopen(file, "r");
-	if (fp == NULL) {
-		pkg_emit_errno("fopen", file);
-		return (NULL);
+	if (file != NULL) {
+		fp = fopen(file, "r");
+		if (fp == NULL) {
+			pkg_emit_errno("fopen", file);
+			return (NULL);
+		}
+		yaml_parser_set_input_file(&parser, fp);
+	} else {
+		yaml_parser_set_input_string(&parser, buffer, len);
 	}
 
-	yaml_parser_set_input_file(&parser, fp);
 	yaml_parser_load(&parser, &doc);
 
 	node = yaml_document_get_root_node(&doc);
@@ -570,7 +574,8 @@ yaml_to_ucl(const char *file) {
 	yaml_document_delete(&doc);
 	yaml_parser_delete(&parser);
 
-	fclose(fp);
+	if (file != NULL)
+		fclose(fp);
 
 	return (obj);
 }

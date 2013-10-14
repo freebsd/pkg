@@ -91,6 +91,11 @@
 			return (EPKG_OK);     \
 	} while (0)
 
+#define HASH_FIND_UCLT(head,type,out)                            \
+	HASH_FIND(hh, head, type, sizeof(enum ucl_type), out)
+#define HASH_ADD_UCLT(head,type,add)                             \
+	HASH_ADD(hh, head, type, sizeof(enum ucl_type), add)
+
 #define HASH_FIND_YAMLT(head,type,out)                                   \
 	HASH_FIND(hh,head,type,sizeof(yaml_node_type_t),out)
 #define HASH_ADD_YAMLT(head,type,add)                                    \
@@ -406,7 +411,6 @@ void pkg_object_walk(ucl_object_t *o, struct pkg_config *conf_by_key);
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
-int pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manifest_key *keys);
 
 int do_extract_mtree(char *mtree, const char *prefix);
 #endif

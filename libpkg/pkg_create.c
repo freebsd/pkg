@@ -245,7 +245,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	}
 
 	pkg_manifest_keys_new(&keys);
-	if ((ret = pkg_load_manifest_file(pkg, path, keys)) != EPKG_OK) {
+	if ((ret = pkg_parse_manifest_file(pkg, path, keys)) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}

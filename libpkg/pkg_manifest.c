@@ -58,15 +58,13 @@
 #define PKG_ANNOTATIONS -14
 #define PKG_INFOS -15		/* Deprecated field: treat as an annotation for backwards compatibility */
 
-static int pkg_set_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
-static int pkg_set_size_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
-static int pkg_infos_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
-static int pkg_set_licenselogic_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, int);
-static int pkg_set_deps_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
-static int pkg_set_files_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
-static int pkg_set_dirs_from_node(struct pkg *, yaml_node_t *, yaml_document_t *, const char *);
-static int parse_sequence(struct pkg *, yaml_node_t *, yaml_document_t *, int);
-static int parse_mapping(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+static int pkg_string(struct pkg *, ucl_object_t *, int);
+static int pkg_object(struct pkg *, ucl_object_t *, int);
+static int pkg_array(struct pkg *, ucl_object_t *, int);
+static int pkg_int(struct pkg *, ucl_object_t *, int);
+static int pkg_set_deps_from_object(struct pkg *, ucl_object_t *);
+static int pkg_set_files_from_object(struct pkg *, ucl_object_t *);
+static int pkg_set_dirs_from_object(struct pkg *, ucl_object_t *);
 static int parse_seq(struct pkg *, struct pkg_manifest_parser *, int);
 static int parse_map(struct pkg *, struct pkg_manifest_parser *, int);
 static int pkg_set_licenselogic_from_scalar(struct pkg *, struct pkg_manifest_parser *, int);
@@ -124,47 +122,47 @@ static struct mkey {
 static struct manifest_key {
 	const char *key;
 	int type;
-	yaml_node_type_t valid_type;
-	int (*parse_data)(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+	enum ucl_type valid_type;
+	int (*parse_data)(struct pkg *, ucl_object_t *, int);
 } manifest_keys[] = {
-	{ "annotations", PKG_ANNOTATIONS, YAML_MAPPING_NODE, parse_mapping},
-	{ "arch", PKG_ARCH, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "categories", PKG_CATEGORIES, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "comment", PKG_COMMENT, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "deps", PKG_DEPS, YAML_MAPPING_NODE, parse_mapping},
-	{ "desc", PKG_DESC, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "directories", PKG_DIRECTORIES, YAML_MAPPING_NODE, parse_mapping},
-	{ "dirs", PKG_DIRS, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "files", PKG_FILES, YAML_MAPPING_NODE, parse_mapping},
-	{ "flatsize", PKG_FLATSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
-	{ "groups", PKG_GROUPS, YAML_MAPPING_NODE, parse_mapping},
-	{ "groups", PKG_GROUPS, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "infos", PKG_INFOS, YAML_SCALAR_NODE, pkg_infos_from_node}, /* Deprecated: treat as an annotation */
-	{ "licenselogic", -1, YAML_SCALAR_NODE, pkg_set_licenselogic_from_node},
-	{ "licenses", PKG_LICENSES, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "maintainer", PKG_MAINTAINER, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "message", PKG_MESSAGE, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "name", PKG_NAME, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "options", PKG_OPTIONS, YAML_MAPPING_NODE, parse_mapping},
-	{ "origin", PKG_ORIGIN, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "path", PKG_REPOPATH, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "pkgsize", PKG_PKGSIZE, YAML_SCALAR_NODE, pkg_set_size_from_node},
-	{ "prefix", PKG_PREFIX, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "scripts", PKG_SCRIPTS, YAML_MAPPING_NODE, parse_mapping},
-	{ "shlibs", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence}, /* Backwards compat with 1.0.x packages */
-	{ "shlibs_provided", PKG_SHLIBS_PROVIDED, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "shlibs_required", PKG_SHLIBS_REQUIRED, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "sum", PKG_CKSUM, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "users", PKG_USERS, YAML_MAPPING_NODE, parse_mapping},
-	{ "users", PKG_USERS, YAML_SEQUENCE_NODE, parse_sequence},
-	{ "version", PKG_VERSION, YAML_SCALAR_NODE, pkg_set_from_node},
-	{ "www", PKG_WWW, YAML_SCALAR_NODE, pkg_set_from_node},
+	{ "annotations",      PKG_ANNOTATIONS,      UCL_OBJECT, pkg_object},
+	{ "arch",             PKG_ARCH,             UCL_STRING, pkg_string},
+	{ "categories",       PKG_CATEGORIES,       UCL_ARRAY,  pkg_array},
+	{ "comment",          PKG_COMMENT,          UCL_STRING, pkg_string},
+	{ "deps",             PKG_DEPS,             UCL_OBJECT, pkg_object},
+	{ "desc",             PKG_DESC,             UCL_STRING, pkg_string},
+	{ "directories",      PKG_DIRECTORIES,      UCL_OBJECT, pkg_object},
+	{ "dirs",             PKG_DIRS,             UCL_ARRAY,  pkg_array},
+	{ "files",            PKG_FILES,            UCL_OBJECT, pkg_object},
+	{ "flatsize",         PKG_FLATSIZE,         UCL_INT,    pkg_int},
+	{ "groups",           PKG_GROUPS,           UCL_OBJECT, pkg_object},
+	{ "groups",           PKG_GROUPS,           UCL_ARRAY,  pkg_array},
+	{ "infos",            PKG_INFOS,            UCL_STRING, pkg_string}, /* Deprecated: treat as an annotation */
+	{ "licenselogic",     PKG_LICENSE_LOGIC,    UCL_STRING, pkg_string},
+	{ "licenses",         PKG_LICENSES,         UCL_ARRAY,  pkg_array},
+	{ "maintainer",       PKG_MAINTAINER,       UCL_STRING, pkg_string},
+	{ "message",          PKG_MESSAGE,          UCL_STRING, pkg_string},
+	{ "name",             PKG_NAME,             UCL_STRING, pkg_string},
+	{ "options",          PKG_OPTIONS,          UCL_STRING, pkg_object},
+	{ "origin",           PKG_ORIGIN,           UCL_STRING, pkg_string},
+	{ "path",             PKG_REPOPATH,         UCL_STRING, pkg_string},
+	{ "pkgsize",          PKG_PKGSIZE,          UCL_INT,    pkg_int},
+	{ "prefix",           PKG_PREFIX,           UCL_STRING, pkg_string},
+	{ "scripts",          PKG_SCRIPTS,          UCL_OBJECT, pkg_object},
+	{ "shlibs",           PKG_SHLIBS_REQUIRED,  UCL_ARRAY,  pkg_array}, /* Backwards compat with 1.0.x packages */
+	{ "shlibs_provided",  PKG_SHLIBS_PROVIDED,  UCL_ARRAY,  pkg_array},
+	{ "shlibs_required",  PKG_SHLIBS_REQUIRED,  UCL_ARRAY,  pkg_array},
+	{ "sum",              PKG_CKSUM,            UCL_STRING, pkg_string},
+	{ "users",            PKG_USERS,            UCL_OBJECT, pkg_object},
+	{ "users",            PKG_USERS,            UCL_ARRAY,  pkg_array},
+	{ "version",          PKG_VERSION,          UCL_STRING, pkg_string},
+	{ "www",              PKG_WWW,              UCL_STRING, pkg_string},
 	{ NULL, -99, -99, NULL}
 };
 
 struct dataparser {
-	yaml_node_type_t type;
-	int (*parse_data)(struct pkg *, yaml_node_t *, yaml_document_t *, int);
+	enum ucl_type type;
+	int (*parse_data)(struct pkg *, ucl_object_t *, int);
 	UT_hash_handle hh;
 };
 
@@ -269,13 +267,13 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 			k->type = manifest_keys[i].type;
 			HASH_ADD_KEYPTR(hh, *key, __DECONST(char *, k->key), strlen(k->key), k);
 		}
-		HASH_FIND_YAMLT(k->parser, &manifest_keys[i].valid_type, dp);
+		HASH_FIND_UCLT(k->parser, &manifest_keys[i].valid_type, dp);
 		if (dp != NULL)
 			continue;
 		dp = calloc(1, sizeof(struct dataparser));
 		dp->type = manifest_keys[i].valid_type;
 		dp->parse_data = manifest_keys[i].parse_data;
-		HASH_ADD_YAMLT(k->parser, type, dp);
+		HASH_ADD_UCLT(k->parser, type, dp);
 	}
 
 	return (EPKG_OK);
@@ -682,489 +680,309 @@ parse_map(struct pkg *pkg, struct pkg_manifest_parser *p, int attr)
 	return (EPKG_OK);
 }
 
-int
-pkg_load_manifest_file(struct pkg *pkg, const char *fpath, struct pkg_manifest_key *keys)
-{
-	FILE *f;
-	int ret;
-
-	pkg_debug(1, "Loading manifest from '%s'", fpath);
-	f = fopen(fpath, "r");
-	if (f == NULL) {
-		pkg_emit_errno("open", fpath);
-		return (EPKG_FATAL);
-	}
-
-	ret = pkg_parse_manifest_file(pkg, f, keys);
-	fclose(f);
-
-	return (ret);
-}
-
 static int
-pkg_set_from_node(struct pkg *pkg, yaml_node_t *val,
-    __unused yaml_document_t *doc, int attr)
+pkg_string(struct pkg *pkg, ucl_object_t *obj, int attr)
 {
 	int ret = EPKG_OK;
 
-	while (val->data.scalar.length > 0 &&
-	    val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
-		val->data.scalar.value[val->data.scalar.length - 1] = '\0';
-		val->data.scalar.length--;
+	switch (attr)
+	{
+	case PKG_INFOS:
+		pkg_addannotation(pkg, "_INFOS_", obj->value.sv);
+		break;
+	case PKG_LICENSE_LOGIC:
+		if (!strcmp(obj->value.sv, "single"))
+			pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t) LICENSE_SINGLE);
+		else if (!strcmp(obj->value.sv, "or") ||
+		         !strcmp(obj->value.sv, "dual"))
+			pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_OR);
+		else if (!strcmp(obj->value.sv, "and") ||
+		         !strcmp(obj->value.sv, "multi"))
+			pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_AND);
+		else {
+			pkg_emit_error("Unknown license logic: %s",
+			    obj->value.sv);
+			ret = EPKG_FATAL;
+		}
+		break;
+	default:
+		ret = urldecode(obj->value.sv, &pkg->fields[attr]);
+		break;
 	}
-
-	ret = urldecode(val->data.scalar.value, &pkg->fields[attr]);
 
 	return (ret);
 }
 
 static int
-pkg_infos_from_node(struct pkg *pkg, yaml_node_t *val,
-    __unused yaml_document_t *doc, __unused int attr)
+pkg_int(struct pkg *pkg, ucl_object_t *obj, int attr)
 {
-	while (val->data.scalar.length > 0 &&
-	    val->data.scalar.value[val->data.scalar.length - 1] == '\n') {
-		val->data.scalar.value[val->data.scalar.length - 1] = '\0';
-		val->data.scalar.length--;
-	}
-
-	pkg_addannotation(pkg, "_INFOS_", val->data.scalar.value);
-
-	return (EPKG_OK);
+	return (pkg_set(pkg, attr, obj->value.iv));
 }
 
 static int
-pkg_set_size_from_node(struct pkg *pkg, yaml_node_t *val,
-    __unused yaml_document_t *doc, int attr)
+pkg_array(struct pkg *pkg, ucl_object_t *obj, int attr)
 {
-	int64_t size;
-	const char *errstr = NULL;
-	size = strtonum(val->data.scalar.value, 0, INT64_MAX, &errstr);
-	if (errstr) {
-		pkg_emit_error("Unable to convert %s to int64: %s",
-					   val->data.scalar.value, errstr);
-		return (EPKG_FATAL);
-	}
+	ucl_object_t *sub;
 
-	return (pkg_set(pkg, attr, size));
-}
-static int
-pkg_set_licenselogic_from_node(struct pkg *pkg, yaml_node_t *val,
-    __unused yaml_document_t *doc, __unused int attr)
-{
-	if (!strcmp(val->data.scalar.value, "single"))
-		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t) LICENSE_SINGLE);
-	else if (!strcmp(val->data.scalar.value, "or") ||
-	    !strcmp(val->data.scalar.value, "dual"))
-		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_OR);
-	else if (!strcmp(val->data.scalar.value, "and") ||
-	    !strcmp(val->data.scalar.value, "multi"))
-		pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t)LICENSE_AND);
-	else {
-		pkg_emit_error("Unknown license logic: %s",
-		    val->data.scalar.value);
-		return (EPKG_FATAL);
-	}
-	return (EPKG_OK);
-}
-
-static int
-parse_sequence(struct pkg * pkg, yaml_node_t *node, yaml_document_t *doc,
-    int attr)
-{
-	yaml_node_item_t *item;
-	yaml_node_t *val;
-
-	pkg_debug(3, "%s", "Manifest: parsing sequence");
-	item = node->data.sequence.items.start;
-	while (item < node->data.sequence.items.top) {
-		val = yaml_document_get_node(doc, *item);
+	sub = obj->value.ov;
+	pkg_debug(3, "%s", "Manifest: parsing array");
+	while (sub) {
 		switch (attr) {
 		case PKG_CATEGORIES:
-			if (!is_valid_yaml_scalar(val))
+			if (sub->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed category");
 			else
-				pkg_addcategory(pkg, val->data.scalar.value);
+				pkg_addcategory(pkg, sub->value.sv);
 			break;
 		case PKG_LICENSES:
-			if (!is_valid_yaml_scalar(val))
+			if (sub->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed license");
 			else
-				pkg_addlicense(pkg, val->data.scalar.value);
+				pkg_addlicense(pkg, sub->value.sv);
 			break;
 		case PKG_USERS:
-			if (is_valid_yaml_scalar(val))
-				pkg_adduser(pkg, val->data.scalar.value);
-			else if (val->type == YAML_MAPPING_NODE)
-				parse_mapping(pkg, val, doc, attr);
+			if (sub->type == UCL_STRING)
+				pkg_adduser(pkg, sub->value.sv);
+			else if (sub->type == UCL_OBJECT)
+				pkg_object(pkg, sub, attr);
 			else
 				pkg_emit_error("Skipping malformed license");
 			break;
 		case PKG_GROUPS:
-			if (is_valid_yaml_scalar(val))
-				pkg_addgroup(pkg, val->data.scalar.value);
-			else if (val->type == YAML_MAPPING_NODE)
-				parse_mapping(pkg, val, doc, attr);
+			if (sub->type == UCL_STRING)
+				pkg_addgroup(pkg, sub->value.sv);
+			else if (sub->type == UCL_OBJECT)
+				pkg_object(pkg, sub, attr);
 			else
 				pkg_emit_error("Skipping malformed license");
 			break;
 		case PKG_DIRS:
-			if (is_valid_yaml_scalar(val))
-				pkg_adddir(pkg, val->data.scalar.value, 1, false);
-			else if (val->type == YAML_MAPPING_NODE)
-				parse_mapping(pkg, val, doc, attr);
+			if (sub->type == UCL_STRING)
+				pkg_adddir(pkg, sub->value.sv, 1, false);
+			else if (sub->type == UCL_OBJECT)
+				pkg_object(pkg, sub, attr);
 			else
 				pkg_emit_error("Skipping malformed dirs");
 			break;
 		case PKG_SHLIBS_REQUIRED:
-			if (!is_valid_yaml_scalar(val))
+			if (sub->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed required shared library");
 			else
-				pkg_addshlib_required(pkg, val->data.scalar.value);
+				pkg_addshlib_required(pkg, sub->value.sv);
 			break;
 		case PKG_SHLIBS_PROVIDED:
-			if (!is_valid_yaml_scalar(val))
+			if (sub->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed provided shared library");
 			else
-				pkg_addshlib_provided(pkg, val->data.scalar.value);
+				pkg_addshlib_provided(pkg, sub->value.sv);
 			break;
 		}
-		++item;
+		sub = sub->next;
 	}
+
 	return (EPKG_OK);
 }
 
 static int
-parse_mapping(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc, int attr)
+pkg_object(struct pkg *pkg, ucl_object_t *obj, int attr)
 {
 	struct sbuf *tmp = NULL;
-	yaml_node_pair_t *pair;
-	yaml_node_t *key;
-	yaml_node_t *val;
+	ucl_object_t *sub, *otmp;
 	pkg_script script_type;
 
-	pair = item->data.mapping.pairs.start;
-
-	pkg_debug(3, "%s", "Manifest: parsing mapping");
-	while (pair < item->data.mapping.pairs.top) {
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
-
-		if (key->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping empty dependency name");
-			++pair;
-			continue;
-		}
-
+	pkg_debug(3, "%s", "Manifest: parsing object");
+	HASH_ITER(hh, obj->value.ov, sub, otmp) {
 		switch (attr) {
 		case PKG_DEPS:
-			if (val->type != YAML_MAPPING_NODE)
+			if (sub->type != UCL_OBJECT)
 				pkg_emit_error("Skipping malformed dependency %s",
-				    key->data.scalar.value);
+				    sub->key);
 			else
-				pkg_set_deps_from_node(pkg, val, doc,
-				    key->data.scalar.value);
+				pkg_set_deps_from_object(pkg, sub);
 			break;
 		case PKG_DIRS:
-			if (val->type != YAML_MAPPING_NODE)
+			if (sub->type != UCL_OBJECT)
 				pkg_emit_error("Skipping malformed dirs %s",
-				    key->data.scalar.value);
+				    sub->key);
 			else
-				pkg_set_dirs_from_node(pkg, val, doc,
-				    key->data.scalar.value);
+				pkg_set_dirs_from_object(pkg, sub);
 			break;
 		case PKG_USERS:
-			if (is_valid_yaml_scalar(val))
-				pkg_adduid(pkg, key->data.scalar.value,
-				    val->data.scalar.value);
+			if (sub->type == UCL_STRING)
+				pkg_adduid(pkg, sub->key, sub->value.sv);
 			else
 				pkg_emit_error("Skipping malformed users %s",
-						key->data.scalar.value);
+				    sub->key);
 			break;
 		case PKG_GROUPS:
-			if (is_valid_yaml_scalar(val))
-				pkg_addgid(pkg, key->data.scalar.value,
-				    val->data.scalar.value);
+			if (sub->type == UCL_STRING)
+				pkg_addgid(pkg, sub->key, sub->value.sv);
 			else
 				pkg_emit_error("Skipping malformed groups %s",
-						key->data.scalar.value);
+				    sub->key);
 			break;
 		case PKG_DIRECTORIES:
-			if (is_valid_yaml_scalar(val)) {
-				urldecode(key->data.scalar.value, &tmp);
-				if (val->data.scalar.value[0] == 'y')
+			if (sub->type == UCL_BOOLEAN) {
+				urldecode(sub->key, &tmp);
+				pkg_adddir(pkg, sbuf_get(tmp), sub->value.iv, false);
+			} else if (sub->type == UCL_OBJECT) {
+				pkg_set_dirs_from_object(pkg, sub);
+			} else if (sub->type == UCL_STRING) {
+				urldecode(sub->key, &tmp);
+				if (sub->value.sv[0] == 'y')
 					pkg_adddir(pkg, sbuf_get(tmp), 1, false);
 				else
 					pkg_adddir(pkg, sbuf_get(tmp), 0, false);
-			} else if (val->type == YAML_MAPPING_NODE) {
-				pkg_set_dirs_from_node(pkg, val, doc,
-				    key->data.scalar.value);
 			} else {
 				pkg_emit_error("Skipping malformed directories %s",
-				    key->data.scalar.value);
+				    sub->key);
 			}
 			break;
 		case PKG_FILES:
-			if (is_valid_yaml_scalar(val)) {
+			if (sub->type == UCL_STRING) {
 				const char *pkg_sum = NULL;
-				if (val->data.scalar.length == 64)
-					pkg_sum = val->data.scalar.value;
-				urldecode(key->data.scalar.value, &tmp);
+				if (strlen(sub->value.sv) == 64)
+					pkg_sum = sub->value.sv;
+				urldecode(sub->key, &tmp);
 				pkg_addfile(pkg, sbuf_get(tmp), pkg_sum, false);
-			} else if (val->type == YAML_MAPPING_NODE)
-				pkg_set_files_from_node(pkg, val, doc,
-				    key->data.scalar.value);
+			} else if (sub->type == UCL_OBJECT)
+				pkg_set_files_from_object(pkg, sub);
 			else
 				pkg_emit_error("Skipping malformed files %s",
-				    key->data.scalar.value);
+				    sub->key);
 			break;
 		case PKG_OPTIONS:
-			if (val->type != YAML_SCALAR_NODE)
+			if (sub->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed option %s",
-				    key->data.scalar.value);
+				    sub->key);
 			else
-				pkg_addoption(pkg, key->data.scalar.value,
-				    val->data.scalar.value);
+				pkg_addoption(pkg, sub->key, sub->value.sv);
 			break;
 		case PKG_SCRIPTS:
-			if (val->type != YAML_SCALAR_NODE)
+			if (sub->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed scripts %s",
-				    key->data.scalar.value);
-			script_type = script_type_str(key->data.scalar.value);
-			if (script_type == PKG_SCRIPT_UNKNOWN) {
-				pkg_emit_error("Skipping unknown script "
-				    "type: %s", key->data.scalar.value);
-				break;
-			}
+				    sub->key);
+			else {
+				script_type = script_type_str(sub->key);
+				if (script_type == PKG_SCRIPT_UNKNOWN) {
+					pkg_emit_error("Skipping unknown script "
+					    "type: %s", sub->key);
+					break;
+				}
 
-			urldecode(val->data.scalar.value, &tmp);
-			pkg_addscript(pkg, sbuf_get(tmp), script_type);
+				urldecode(sub->value.sv, &tmp);
+				pkg_addscript(pkg, sbuf_get(tmp), script_type);
+			}
 			break;
 		case PKG_ANNOTATIONS:
-			if (val->type != YAML_SCALAR_NODE)
+			if (sub->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed annotation %s",
-				    key->data.scalar.value);
+				    sub->key);
 			else
-				pkg_addannotation(pkg, key->data.scalar.value,
-				    val->data.scalar.value);
+				pkg_addannotation(pkg, sub->key, sub->value.sv);
 			break;
 		}
-
-		++pair;
 	}
 
 	sbuf_free(tmp);
+
 	return (EPKG_OK);
 }
 
 static int
-pkg_set_files_from_node(struct pkg *pkg, yaml_node_t *item,
-    yaml_document_t *doc, const char *filename)
+pkg_set_files_from_object(struct pkg *pkg, ucl_object_t *obj)
 {
-	yaml_node_pair_t *pair = NULL;
-	yaml_node_t *key = NULL;
-	yaml_node_t *val = NULL;
+	ucl_object_t *sub, *tmp;
 	const char *sum = NULL;
 	const char *uname = NULL;
 	const char *gname = NULL;
 	void *set = NULL;
 	mode_t perm = 0;
 
-	pair = item->data.mapping.pairs.start;
-	while (pair < item->data.mapping.pairs.top) {
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
-		if (key->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed file entry for %s",
-			    filename);
-			++pair;
-			continue;
-		}
-
-		if (val->type != YAML_SCALAR_NODE ||
-		    val->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed file entry for %s",
-			    filename);
-			++pair;
-			continue;
-		}
-
-		if (!strcasecmp(key->data.scalar.value, "uname"))
-			uname = val->data.scalar.value;
-		else if (!strcasecmp(key->data.scalar.value, "gname"))
-			gname = val->data.scalar.value;
-		else if (!strcasecmp(key->data.scalar.value, "sum") &&
-		    val->data.scalar.length == 64)
-			sum = val->data.scalar.value;
-		else if (!strcasecmp(key->data.scalar.value, "perm")) {
-			if ((set = setmode(val->data.scalar.value)) == NULL)
+	HASH_ITER(hh, obj->value.ov, sub, tmp) {
+		if (!strcasecmp(sub->key, "uname") && sub->type == UCL_STRING)
+			uname = sub->value.sv;
+		else if (!strcasecmp(sub->key, "gname") && sub->type == UCL_STRING)
+			gname = sub->value.sv;
+		else if (!strcasecmp(sub->key, "sum") && sub->type == UCL_STRING &&
+		    strlen(sub->value.sv) == 64)
+			sum = sub->value.sv;
+		else if (!strcasecmp(sub->key, "perm") && sub->type == UCL_STRING) {
+			if ((set = setmode(sub->value.sv)) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
-				    val->data.scalar.value);
+				    sub->value.sv);
 			else
 				perm = getmode(set, 0);
 		} else {
 			pkg_emit_error("Skipping unknown key for file(%s): %s",
-			    filename, key->data.scalar.value);
+			    obj->key, sub->value.sv);
 		}
-
-		++pair;
 	}
 
-	if (key != NULL)
-		pkg_addfile_attr(pkg, filename, sum, uname, gname,
-		    perm, false);
+	pkg_addfile_attr(pkg, obj->key, sum, uname, gname, perm, false);
 
 	return (EPKG_OK);
 }
 
 static int
-pkg_set_dirs_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
-    const char *dirname)
+pkg_set_dirs_from_object(struct pkg *pkg, ucl_object_t *obj)
 {
-	yaml_node_pair_t *pair;
-	yaml_node_t *key;
-	yaml_node_t *val;
+	ucl_object_t *sub, *tmp;
 	const char *uname = NULL;
 	const char *gname = NULL;
 	void *set;
 	mode_t perm = 0;
 	bool try = false;
 
-	pair = item->data.mapping.pairs.start;
-	while (pair < item->data.mapping.pairs.top) {
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
-		if (key->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed file entry for %s",
-			    dirname);
-			++pair;
-			continue;
-		}
-
-		if (val->type != YAML_SCALAR_NODE ||
-		    val->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping malformed file entry for %s",
-			    dirname);
-			++pair;
-			continue;
-		}
-
-		if (!strcasecmp(key->data.scalar.value, "uname"))
-			uname = val->data.scalar.value;
-		else if (!strcasecmp(key->data.scalar.value, "gname"))
-			gname = val->data.scalar.value;
-		else if (!strcasecmp(key->data.scalar.value, "perm")) {
-			if ((set = setmode(val->data.scalar.value)) == NULL)
+	HASH_ITER(hh, obj->value.ov, sub, tmp) {
+		if (!strcasecmp(sub->key, "uname") && sub->type == UCL_STRING)
+			uname = sub->value.sv;
+		else if (!strcasecmp(sub->key, "gname") && sub->type == UCL_STRING)
+			gname = sub->value.sv;
+		else if (!strcasecmp(sub->key, "perm") && sub->type == UCL_STRING) {
+			if ((set = setmode(sub->value.sv)) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
-				    val->data.scalar.value);
+				    sub->value.sv);
 			else
 				perm = getmode(set, 0);
-		} else if (!strcasecmp(key->data.scalar.value, "try")) {
-			if (val->data.scalar.value[0] == 'n')
-				try = false;
-			else if (val->data.scalar.value[0] == 'y')
-				try = true;
-			else
-				pkg_emit_error("Wrong value for try: %s, "
-				    "expected 'y' or 'n'",
-				    val->data.scalar.value);
+		} else if (!strcasecmp(sub->key, "try") && sub->type == UCL_BOOLEAN) {
+				try = sub->value.iv;
 		} else {
 			pkg_emit_error("Skipping unknown key for dir(%s): %s",
-			    dirname, key->data.scalar.value);
+			    obj->key, sub->key);
 		}
-
-		++pair;
 	}
 
-	pkg_adddir_attr(pkg, dirname, uname, gname, perm, try, false);
+	pkg_adddir_attr(pkg, obj->key, uname, gname, perm, try, false);
 
 	return (EPKG_OK);
 }
 
 static int
-pkg_set_deps_from_node(struct pkg *pkg, yaml_node_t *item, yaml_document_t *doc,
-    const char *depname)
+pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 {
-	yaml_node_pair_t *pair;
-	yaml_node_t *key;
-	yaml_node_t *val;
+	ucl_object_t *sub, *tmp;
 	const char *origin = NULL;
 	const char *version = NULL;
 
-	pair = item->data.mapping.pairs.start;
-	while (pair < item->data.mapping.pairs.top) {
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
-
-		if (key->data.scalar.length <= 0 ||
-		    val->type != YAML_SCALAR_NODE ||
-		    val->data.scalar.length <= 0) {
+	pkg_debug(2, "Found %s", obj->key);
+	HASH_ITER(hh, obj->value.ov, sub, tmp) {
+		if (sub->type != UCL_STRING) {
 			pkg_emit_error("Skipping malformed dependency entry "
-			    "for %s", depname);
-			++pair;
+			    "for %s", obj->key);
 			continue;
 		}
-
-		if (!strcasecmp(key->data.scalar.value, "origin"))
-			origin = val->data.scalar.value;
-
-		if (!strcasecmp(key->data.scalar.value, "version"))
-			version = val->data.scalar.value;
-
-		++pair;
+		if (strcasecmp(sub->key, "origin") == 0)
+			origin = sub->value.sv;
+		if (strcasecmp(sub->key, "version") == 0)
+			version = sub->value.sv;
 	}
-
 	if (origin != NULL && version != NULL)
-		pkg_adddep(pkg, depname, origin, version, false);
+		pkg_adddep(pkg, obj->key, origin, version, false);
 	else
-		pkg_emit_error("Skipping malformed dependency %s", depname);
+		pkg_emit_error("Skipping malformed dependency %s", obj->key);
 
 	return (EPKG_OK);
-}
-
-static int
-parse_root_node(struct pkg *pkg, struct pkg_manifest_key *keys,  yaml_node_t *node, yaml_document_t *doc) {
-	yaml_node_pair_t *pair;
-	yaml_node_t *key;
-	yaml_node_t *val;
-	int retcode = EPKG_OK;
-	struct pkg_manifest_key *selected_key;
-	struct dataparser *dp;
-
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		if (retcode == EPKG_FATAL)
-			break;
-
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
-		if (key->data.scalar.length <= 0) {
-			pkg_emit_error("Skipping empty key");
-			++pair;
-			continue;
-		}
-
-		if (val->type == YAML_NO_NODE ||
-		    (val->type == YAML_SCALAR_NODE &&
-		     val->data.scalar.length <= 0)) {
-			/* silently skip on purpose */
-			++pair;
-			continue;
-		}
-
-		pkg_debug(2, "Manifest: found key: '%s'", key->data.scalar.value);
-
-		HASH_FIND_STR(keys, key->data.scalar.value, selected_key);
-		if (selected_key != NULL) {
-			HASH_FIND_YAMLT(selected_key->parser, &val->type, dp);
-			if (dp != NULL) {
-				dp->parse_data(pkg, val, doc, selected_key->type);
-			}
-		}
-		++pair;
-	}
-
-	return (retcode);
 }
 
 static int
@@ -1245,27 +1063,24 @@ scan_manifest(struct pkg *pkg, struct pkg_manifest_parser *p)
 }
 
 static int
-parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, yaml_parser_t *parser)
+parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj)
 {
-	yaml_document_t doc;
-	yaml_node_t *node;
-	int retcode = EPKG_FATAL;
+	ucl_object_t *sub, *tmp;
+	struct pkg_manifest_key *selected_key;
+	struct dataparser *dp;
 
-	yaml_parser_load(parser, &doc);
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid manifest format in package");
-		} else {
-			retcode = parse_root_node(pkg, keys, node, &doc);
+	HASH_ITER(hh, obj->value.ov, sub, tmp) {
+		pkg_debug(2, "Manifest: found key: '%s'", sub->key);
+		HASH_FIND_STR(keys, sub->key, selected_key);
+		if (selected_key != NULL) {
+			HASH_FIND_UCLT(selected_key->parser, &sub->type, dp);
+			if (dp != NULL) {
+				dp->parse_data(pkg, sub, selected_key->type);
+			}
 		}
-	} else {
-		pkg_emit_error("Invalid manifest format: %s", parser->problem);
 	}
 
-	yaml_document_delete(&doc);
-
-	return (retcode);
+	return (EPKG_OK);
 }
 
 static int
@@ -1276,25 +1091,6 @@ archive_reader(void * data, unsigned char *buf, size_t size, size_t *r)
 	*r = archive_read_data(a, buf, size);
 
 	return (1);
-}
-
-int
-pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manifest_key *keys)
-{
-	yaml_parser_t parser;
-	int rc;
-
-	assert(pkg != NULL);
-
-	pkg_debug(2, "%s", "Parsing manifest from archive");
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input(&parser, archive_reader, a);
-
-	rc = parse_manifest(pkg, keys, &parser);
-
-	yaml_parser_delete(&parser);
-
-	return (rc);
 }
 
 int
@@ -1314,21 +1110,60 @@ pkg_parse_manifest_ev(struct pkg *pkg, char *buf, size_t len, struct pkg_manifes
 }
 
 int
-pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *keys)
+pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len __unused, struct pkg_manifest_key *keys)
 {
-	yaml_parser_t parser;
+	struct ucl_parser *p = NULL;
+	ucl_object_t *obj = NULL;
+	ucl_object_t *sub, *tmp;
 	int rc;
+	UT_string *error = NULL;
+	struct pkg_manifest_key *sk;
+	struct dataparser *dp;
+	bool fallback = false;
 
 	assert(pkg != NULL);
 	assert(buf != NULL);
 
 	pkg_debug(2, "%s", "Parsing manifest from buffer");
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_string(&parser, buf, strlen(buf));
 
-	rc = parse_manifest(pkg, keys, &parser);
+	p = ucl_parser_new(0);
+	if (!ucl_parser_add_chunk(p, buf, len, &error))
+		fallback = true;
 
-	yaml_parser_delete(&parser);
+	if (!fallback) {
+		obj = ucl_parser_get_object(p, &error);
+		if (obj != NULL) {
+			HASH_ITER(hh, obj->value.ov, sub, tmp) {
+				HASH_FIND_STR(keys, sub->key, sk);
+				if (sk != NULL) {
+					HASH_FIND_UCLT(sk->parser, &sub->type, dp);
+					if (dp == NULL) {
+						fallback = true;
+						break;
+					}
+				}
+			}
+		} else {
+			fallback = true;
+		}
+	}
+
+	if (fallback) {
+		pkg_debug(2, "Falling back on yaml");
+		ucl_parser_free(p);
+		p = NULL;
+		if (obj != NULL)
+			ucl_obj_free(obj);
+		obj = yaml_to_ucl(NULL, buf, len);
+		if (obj == NULL)
+			return (EPKG_FATAL);
+	}
+
+	rc = parse_manifest(pkg, keys, obj);
+
+	ucl_obj_free(obj);
+	if (p != NULL)
+		ucl_parser_free(p);
 
 	return (rc);
 }
@@ -1351,21 +1186,65 @@ pkg_parse_manifest_file_ev(struct pkg *pkg, FILE *f, struct pkg_manifest_parser 
 }
 
 int
-pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *keys)
+pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_key *keys)
 {
-	yaml_parser_t parser;
+	struct ucl_parser *p = NULL;
+	ucl_object_t *obj = NULL;
+	UT_string *error = NULL;
+	ucl_object_t *sub, *tmp;
 	int rc;
+	bool fallback = false;
+	struct pkg_manifest_key *sk;
+	struct dataparser *dp;
 
 	assert(pkg != NULL);
-	assert(f != NULL);
+	assert(file != NULL);
 
-	pkg_debug(2, "%s", "Parsing manifest from file");
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_file(&parser, f);
+	pkg_debug(1, "Parsing manifest from '%s'", file);
 
-	rc = parse_manifest(pkg, keys, &parser);
+	errno = 0;
+	p = ucl_parser_new(0);
+	if (ucl_parser_add_file(p, file, &error)) {
+		if (errno == ENOENT) {
+			ucl_parser_free(p);
+			return (EPKG_FATAL);
+		}
+		fallback = true;
+	}
 
-	yaml_parser_delete(&parser);
+	if (!fallback) {
+		obj = ucl_parser_get_object(p, &error);
+		if (obj != NULL) {
+			HASH_ITER(hh, obj->value.ov, sub, tmp) {
+				HASH_FIND_STR(keys, sub->key, sk);
+				if (sk != NULL) {
+					HASH_FIND_UCLT(sk->parser, &sub->type, dp);
+					if (dp == NULL) {
+						fallback = true;
+						break;
+					}
+				}
+			}
+
+		} else {
+			fallback = true;
+		}
+	}
+
+	if (fallback) {
+		pkg_debug(2, "Falling back on yaml");
+		ucl_parser_free(p);
+		if (obj != NULL)
+			ucl_obj_free(obj);
+		obj = yaml_to_ucl(file, NULL, 0);
+		if (obj == NULL)
+			return (EPKG_FATAL);
+	}
+
+	rc = parse_manifest(pkg, keys, obj);
+
+	ucl_parser_free(p);
+	ucl_obj_free(obj);
 
 	return (rc);
 }
@@ -1699,7 +1578,7 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 			SHA256_Update(sign_ctx, output, strlen(output));
 		sbuf_cat(out, output);
 	} else {
-		fprintf(out, "%s", output);
+		fprintf(out, "%s\n", output);
 	}
 
 	if (pdigest != NULL) {

@@ -1169,9 +1169,14 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		if (!manifest &&
 			(flags & PKG_OPEN_MANIFEST_COMPACT) &&
 			strcmp(fpath, "+COMPACT_MANIFEST") == 0) {
+			unsigned char *buffer;
 			manifest = true;
 
-			ret = pkg_parse_manifest_archive(pkg, *a, keys);
+			size_t len = archive_entry_size(*ae);
+			buffer = malloc(len);
+			archive_read_data(*a, buffer, archive_entry_size(*ae));
+			ret = pkg_parse_manifest(pkg, buffer, len, keys);
+			free(buffer);
 			if (ret != EPKG_OK) {
 				retcode = EPKG_FATAL;
 				goto cleanup;
@@ -1181,8 +1186,13 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		}
 		if (!manifest && strcmp(fpath, "+MANIFEST") == 0) {
 			manifest = true;
+			unsigned char *buffer;
 
-			ret = pkg_parse_manifest_archive(pkg, *a, keys);
+			size_t len = archive_entry_size(*ae);
+			buffer = malloc(len);
+			archive_read_data(*a, buffer, archive_entry_size(*ae));
+			ret = pkg_parse_manifest(pkg, buffer, len, keys);
+			free(buffer);
 			if (ret != EPKG_OK) {
 				retcode = EPKG_FATAL;
 				goto cleanup;

@@ -103,7 +103,7 @@ struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);
 
 int set_nameserver(const char *nsname);
-ucl_object_t *yaml_to_ucl(const char *file);
+ucl_object_t *yaml_to_ucl(const char *file, const char *buffer, size_t len);
 
 
 #endif

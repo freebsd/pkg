@@ -831,7 +831,7 @@ load_repo_file(const char *repofile)
 	if (fallback) {
 		if (obj != NULL)
 			ucl_obj_free(obj);
-		obj = yaml_to_ucl(repofile);
+		obj = yaml_to_ucl(repofile, NULL, 0);
 		if (obj == NULL)
 			return;
 	}
@@ -1100,7 +1100,7 @@ pkg_init(const char *path, const char *reposdir)
 	if (fallback) {
 		if (obj != NULL)
 			ucl_obj_free(obj);
-		obj = yaml_to_ucl(path);
+		obj = yaml_to_ucl(path, NULL, 0);
 		if (obj == NULL)
 			return (EPKG_FATAL);
 	}

@@ -206,14 +206,14 @@ exec_register(int argc, char **argv)
 	pkg_manifest_keys_new(&keys);
 
 	if (mfile != NULL) {
-		ret = pkg_load_manifest_file(pkg, mfile, keys);
+		ret = pkg_parse_manifest_file(pkg, mfile, keys);
 		pkg_manifest_keys_free(keys);
 		if (ret != EPKG_OK) 
 			return (EX_IOERR);
 
 	} else {
 		snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
-		ret = pkg_load_manifest_file(pkg, fpath, keys);
+		ret = pkg_parse_manifest_file(pkg, fpath, keys);
 		pkg_manifest_keys_free(keys);
 		if (ret != EPKG_OK)
 			return (EX_IOERR);
