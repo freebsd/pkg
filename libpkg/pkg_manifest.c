@@ -944,7 +944,7 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 				/* For now append y/n to stay compatible with libyaml version 
 				 * obj_append_boolean(map, sbuf_get(tmpsbuf), pkg_dir_try(dir));
 				 */
-				obj_append_kv(map, subg_get(tempsbuf), pkg_dir_try(dir) ? "y" : "n");
+				obj_append_kv(map, sbuf_get(tmpsbuf), pkg_dir_try(dir) ? "y" : "n");
 			}
 		}
 
