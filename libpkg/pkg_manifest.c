@@ -941,7 +941,10 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 				if (map == NULL)
 					obj_append_map(obj, "directories", map);
 				urlencode(pkg_dir_path(dir), &tmpsbuf);
-				obj_append_boolean(map, sbuf_get(tmpsbuf), pkg_dir_try(dir));
+				/* For now append y/n to stay compatible with libyaml version 
+				 * obj_append_boolean(map, sbuf_get(tmpsbuf), pkg_dir_try(dir));
+				 */
+				obj_append_kv(map, subg_get(tempsbuf), pkg_dir_try(dir) ? "y" : "n");
 			}
 		}
 
