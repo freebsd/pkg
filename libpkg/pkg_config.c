@@ -31,7 +31,6 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <dlfcn.h>
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
