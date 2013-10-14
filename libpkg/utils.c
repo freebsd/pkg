@@ -467,7 +467,7 @@ yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *no
 	ucl_object_t *sub;
 
 	item = node->data.sequence.items.start;
-	while (item > node->data.sequence.items.top) {
+	while (item < node->data.sequence.items.top) {
 		val = yaml_document_get_node(doc, *item);
 		sub = ucl_object_new();
 		switch (val->type) {
