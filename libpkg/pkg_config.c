@@ -1099,7 +1099,7 @@ pkg_init(const char *path, const char *reposdir)
 	}
 
 	if (fallback) {
-		pkg_emit_error("Your pkg.conf file is in deprecated format you"
+		pkg_emit_error("Your pkg.conf file is in deprecated format you "
 		    "should convert it to the following format:\n"
 		    "====== BEGIN pkg.conf ======\n"
 		    "%s"
