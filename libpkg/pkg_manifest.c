@@ -1370,104 +1370,6 @@ pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *keys)
 	return (rc);
 }
 
-static void
-manifest_append_seqval(yaml_document_t *doc, int parent, int *seq,
-    const char *title, const char *value)
-{
-	int scalar;
-
-	if (*seq == -1) {
-		*seq = yaml_document_add_sequence(doc, NULL,
-		    YAML_BLOCK_SEQUENCE_STYLE);
-		scalar = yaml_document_add_scalar(doc, NULL,
-		    __DECONST(yaml_char_t *, title), strlen(title),
-		    YAML_PLAIN_SCALAR_STYLE);
-		yaml_document_append_mapping_pair(doc, parent, scalar, *seq);
-	}
-	scalar = yaml_document_add_scalar(doc, NULL,
-	    __DECONST(yaml_char_t *, value), strlen(value),
-	    YAML_PLAIN_SCALAR_STYLE);
-	yaml_document_append_sequence_item(doc, *seq, scalar);
-}
-
-#define	YAML_ADD_SCALAR(doc, name, style)				       \
-	yaml_document_add_scalar(doc, NULL, __DECONST(yaml_char_t *, name),    \
-	    strlen(name), YAML_##style##_SCALAR_STYLE)
-
-#define manifest_append_kv(map, key, val, style) do {			\
-	int key_obj = YAML_ADD_SCALAR(&doc, key, PLAIN);		\
-	int val_obj = YAML_ADD_SCALAR(&doc, val, style);		\
-	yaml_document_append_mapping_pair(&doc, map, key_obj, val_obj);	\
-} while (0)
-
-
-int
-pkg_emit_filelist(struct pkg *pkg, FILE *f)
-{
-	yaml_emitter_t emitter;
-	yaml_document_t doc;
-
-	struct pkg_file *file = NULL;
-
-	const char *name, *origin, *version;
-
-	int mapping;
-	int seq;
-	struct sbuf *b = NULL;
-	int rc = EPKG_OK;
-
-	yaml_emitter_initialize(&emitter);
-	yaml_emitter_set_unicode(&emitter, 1);
-	yaml_emitter_set_output_file(&emitter, f);
-	yaml_document_initialize(&doc, NULL, NULL, NULL, 0, 1);
-	mapping = yaml_document_add_mapping(&doc, NULL,
-	    YAML_BLOCK_MAPPING_STYLE);
-
-	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin, PKG_VERSION, &version);
-	manifest_append_kv(mapping, "origin", origin, PLAIN);
-	manifest_append_kv(mapping, "name", name, PLAIN);
-	manifest_append_kv(mapping, "version", version, PLAIN);
-
-	seq = -1;
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		urlencode(pkg_file_path(file), &b);
-		manifest_append_seqval(&doc, mapping, &seq, "files", sbuf_data(b));
-	}
-
-	if (!yaml_emitter_dump(&emitter, &doc))
-		rc = EPKG_FATAL;
-
-	if (b != NULL)
-		sbuf_delete(b);
-
-	yaml_emitter_delete(&emitter);
-
-	return (rc);
-}
-
-static int
-emit_manifest(struct pkg *pkg, char **out, short flags)
-{
-	struct pkg_dep		*dep      = NULL;
-	struct pkg_option	*option   = NULL;
-	struct pkg_file		*file     = NULL;
-	struct pkg_dir		*dir      = NULL;
-	struct pkg_category	*category = NULL;
-	struct pkg_license	*license  = NULL;
-	struct pkg_user		*user     = NULL;
-	struct pkg_group	*group    = NULL;
-	struct pkg_shlib	*shlib    = NULL;
-	struct pkg_note		*note     = NULL;
-	struct sbuf		*tmpsbuf  = NULL;
-	int i;
-	const char *comment, *desc, *message, *name, *pkgarch;
-	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
-	const char *repopath, *pkgsum;
-	const char *script_types = NULL;
-	lic_t licenselogic;
-	int64_t flatsize, pkgsize;
-	ucl_object_t *obj, *sub, *map, *seq, *submap;
-
 #define obj_append_kv(o, k, v) do {        \
 	sub = ucl_object_new();                     \
 	sub->key = strdup(k);                  \
@@ -1513,6 +1415,62 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	LL_PREPEND(o->value.ov, sub);             \
 } while (0);
 
+int
+pkg_emit_filelist(struct pkg *pkg, FILE *f)
+{
+	ucl_object_t *obj, *sub, *seq;
+	struct pkg_file *file = NULL;
+	char *output;
+	const char *name, *origin, *version;
+	struct sbuf *b = NULL;
+
+	obj = ucl_object_new();
+
+	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin, PKG_VERSION, &version);
+	obj_append_kv(obj, "origin", origin);
+	obj_append_kv(obj, "name", name);
+	obj_append_kv(obj, "version", version);
+
+	seq = NULL;
+	while (pkg_files(pkg, &file) == EPKG_OK) {
+		if (seq == NULL)
+			obj_append_seq(obj, "files", seq);
+		urlencode(pkg_file_path(file), &b);
+		seq_append_val(seq, sbuf_data(b));
+	}
+
+	output = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
+	fprintf(f, "%s", output);
+	free(output);
+
+	if (b != NULL)
+		sbuf_delete(b);
+
+	return (EPKG_OK);
+}
+
+static int
+emit_manifest(struct pkg *pkg, char **out, short flags)
+{
+	struct pkg_dep		*dep      = NULL;
+	struct pkg_option	*option   = NULL;
+	struct pkg_file		*file     = NULL;
+	struct pkg_dir		*dir      = NULL;
+	struct pkg_category	*category = NULL;
+	struct pkg_license	*license  = NULL;
+	struct pkg_user		*user     = NULL;
+	struct pkg_group	*group    = NULL;
+	struct pkg_shlib	*shlib    = NULL;
+	struct pkg_note		*note     = NULL;
+	struct sbuf		*tmpsbuf  = NULL;
+	int i;
+	const char *comment, *desc, *message, *name, *pkgarch;
+	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
+	const char *repopath, *pkgsum;
+	const char *script_types = NULL;
+	lic_t licenselogic;
+	int64_t flatsize, pkgsize;
+	ucl_object_t *obj, *sub, *map, *seq, *submap;
 
 	obj = ucl_object_new();
 	obj->type = UCL_OBJECT;
