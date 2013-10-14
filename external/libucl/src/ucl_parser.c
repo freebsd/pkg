@@ -443,7 +443,7 @@ set_obj:
  */
 static bool
 ucl_lex_json_string (struct ucl_parser *parser,
-		struct ucl_chunk *chunk, UT_string **err)
+		struct ucl_chunk *chunk, bool *need_unescape, UT_string **err)
 {
 	const unsigned char *p = chunk->pos;
 	unsigned char c;
@@ -494,6 +494,7 @@ ucl_lex_json_string (struct ucl_parser *parser,
 				ucl_set_err (chunk, UCL_ESYNTAX, "invalid escape character", err);
 				return false;
 			}
+			*need_unescape = true;
 			continue;
 		}
 		else if (c == '"') {
@@ -520,7 +521,7 @@ ucl_parse_key (struct ucl_parser *parser,
 		struct ucl_chunk *chunk, UT_string **err)
 {
 	const unsigned char *p, *c = NULL, *end;
-	bool got_quote = false, got_eq = false, got_semicolon = false;
+	bool got_quote = false, got_eq = false, got_semicolon = false, need_unescape = false;
 	ucl_object_t *nobj, *tobj, *container;
 
 	p = chunk->pos;
@@ -550,6 +551,12 @@ ucl_parse_key (struct ucl_parser *parser,
 				ucl_chunk_skipc (chunk, *p);
 				p ++;
 			}
+			else if (ucl_lex_is_comment (p[0], p[1])) {
+				if (!ucl_skip_comments (parser, err)) {
+					return false;
+				}
+				p = chunk->pos;
+			}
 			else {
 				/* Invalid identifier */
 				ucl_set_err (chunk, UCL_ESYNTAX, "key must begin with a letter", err);
@@ -574,7 +581,7 @@ ucl_parse_key (struct ucl_parser *parser,
 			}
 			else {
 				/* We need to parse json like quoted string */
-				if (!ucl_lex_json_string (parser, chunk, err)) {
+				if (!ucl_lex_json_string (parser, chunk, &need_unescape, err)) {
 					return false;
 				}
 				end = chunk->pos - 1;
@@ -649,7 +656,7 @@ ucl_parse_key (struct ucl_parser *parser,
 		ucl_strlcpy (nobj->key, c, end - c + 1);
 	}
 
-	if (got_quote) {
+	if (need_unescape) {
 		ucl_unescape_json_string (nobj->key);
 	}
 
@@ -657,8 +664,8 @@ ucl_parse_key (struct ucl_parser *parser,
 	HASH_FIND_STR (container, nobj->key, tobj);
 	if (tobj != NULL) {
 		/* Just insert a new object as the next element */
-		LL_PREPEND (tobj, nobj);
 		HASH_DELETE (hh, container, tobj);
+		LL_PREPEND (tobj, nobj);
 	}
 
 	HASH_ADD_KEYPTR (hh, container, nobj->key, strlen (nobj->key), nobj);
@@ -769,6 +776,7 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 	ucl_object_t *obj = NULL;
 	unsigned int stripped_spaces;
 	int str_len;
+	bool need_unescape = false;
 
 	p = chunk->pos;
 
@@ -790,12 +798,14 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 		case '"':
 			ucl_chunk_skipc (chunk, *p);
 			p ++;
-			if (!ucl_lex_json_string (parser, chunk, err)) {
+			if (!ucl_lex_json_string (parser, chunk, &need_unescape, err)) {
 				return false;
 			}
 			obj->value.sv = malloc (chunk->pos - c - 1);
 			ucl_strlcpy (obj->value.sv, c + 1, chunk->pos - c - 1);
-			ucl_unescape_json_string (obj->value.sv);
+			if (need_unescape) {
+				ucl_unescape_json_string (obj->value.sv);
+			}
 			obj->type = UCL_STRING;
 			parser->state = UCL_STATE_AFTER_VALUE;
 			p = chunk->pos;
@@ -832,9 +842,9 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 			break;
 		default:
 			/* Skip any spaces and comments */
-			if (ucl_test_character (*p, UCL_CHARACTER_WHITESPACE) ||
+			if (ucl_test_character (*p, UCL_CHARACTER_WHITESPACE_UNSAFE) ||
 					ucl_lex_is_comment (p[0], p[1])) {
-				while (p < chunk->end && ucl_test_character (*p, UCL_CHARACTER_WHITESPACE)) {
+				while (p < chunk->end && ucl_test_character (*p, UCL_CHARACTER_WHITESPACE_UNSAFE)) {
 					ucl_chunk_skipc (chunk, *p);
 					p ++;
 				}
@@ -1029,6 +1039,7 @@ ucl_parse_macro_value (struct ucl_parser *parser,
 		unsigned char const **macro_start, size_t *macro_len, UT_string **err)
 {
 	const unsigned char *p, *c;
+	bool need_unescape = false;
 
 	p = chunk->pos;
 
@@ -1038,7 +1049,7 @@ ucl_parse_macro_value (struct ucl_parser *parser,
 		c = p;
 		ucl_chunk_skipc (chunk, *p);
 		p ++;
-		if (!ucl_lex_json_string (parser, chunk, err)) {
+		if (!ucl_lex_json_string (parser, chunk, &need_unescape, err)) {
 			return false;
 		}
 

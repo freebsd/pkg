@@ -167,6 +167,7 @@ ucl_unescape_json_string (char *str)
 			*t++ = *h++;
 		}
 	}
+	*t = '\0';
 }
 
 ucl_object_t*
@@ -195,6 +196,8 @@ ucl_parser_free (struct ucl_parser *parser)
 		free (stack);
 	}
 	HASH_ITER (hh, parser->macroes, macro, mtmp) {
+		free (macro->name);
+		HASH_DEL (parser->macroes, macro);
 		UCL_FREE (sizeof (struct ucl_macro), macro);
 	}
 	LL_FOREACH_SAFE (parser->chunks, chunk, ctmp) {
