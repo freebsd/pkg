@@ -1730,7 +1730,10 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 		obj_append_kv(obj, "message", sbuf_get(tmpsbuf));
 	}
 
-	*out = ucl_object_emit(obj, UCL_EMIT_YAML);
+	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
+		*out = ucl_object_emit(obj, UCL_EMIT_YAML);
+	else
+		*out = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
 
 	return (EPKG_OK);
 }
