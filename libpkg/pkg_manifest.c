@@ -122,12 +122,6 @@ struct pkg_manifest_key {
 	UT_hash_handle hh;
 };
 
-struct dparser {
-	yaml_event_type_t type;
-	int (*parse_data)(struct pkg *, struct pkg_manifest_parser *, int);
-	UT_hash_handle hh;
-};
-
 int
 pkg_manifest_keys_new(struct pkg_manifest_key **key)
 {
