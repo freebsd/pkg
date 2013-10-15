@@ -145,35 +145,27 @@ has_ext(const char *path, const char *ext)
 }
 
 static struct fingerprint *
-parse_fingerprint(yaml_document_t *doc, yaml_node_t *node)
+parse_fingerprint(ucl_object_t *obj)
 {
-	yaml_node_pair_t *pair;
-	yaml_char_t *function = NULL, *fp = NULL;
+	ucl_object_t *sub, *tmp;
+	const char *function = NULL, *fp = NULL;
 	hash_t fct = HASH_UNKNOWN;
 	struct fingerprint *f = NULL;
 
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
-		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
 
-		if (key->data.scalar.length <= 0) {
-			++pair;
+	HASH_ITER(hh, obj, sub, tmp) {
+		if (sub->type != UCL_STRING)
+			continue;
+
+		if (strcasecmp(sub->key, "function") == 0) {
+			function = sub->value.sv;
 			continue;
 		}
 
-		if (val->type != YAML_SCALAR_NODE) {
-			++pair;
+		if (strcasecmp(sub->key, "fingerprint") == 0) {
+			fp = sub->value.sv;
 			continue;
 		}
-
-		if (strcasecmp(key->data.scalar.value, "function") == 0)
-			function = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "fingerprint") == 0)
-			fp = val->data.scalar.value;
-
-		++pair;
-		continue;
 	}
 
 	if (fp == NULL || function == NULL)
@@ -197,32 +189,30 @@ parse_fingerprint(yaml_document_t *doc, yaml_node_t *node)
 static struct fingerprint *
 load_fingerprint(const char *dir, const char *filename)
 {
-	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
-	FILE *fp;
+	ucl_object_t *obj = NULL;
+	struct ucl_parser *p = NULL;
 	char path[MAXPATHLEN];
 	struct fingerprint *f = NULL;
+	UT_string *error = NULL;
 
 	snprintf(path, MAXPATHLEN, "%s/%s", dir, filename);
 
-	if ((fp = fopen(path, "r")) == NULL)
+	p = ucl_parser_new(0);
+
+	if (!ucl_parser_add_file(p, path, &error)) {
+		pkg_emit_error("%s", utstring_body(error));
+		utstring_free(error);
+		ucl_parser_free(p);
 		return (NULL);
+	}
 
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_file(&parser, fp);
-	yaml_parser_load(&parser, &doc);
+	obj = ucl_parser_get_object(p, &error);
 
-	node = yaml_document_get_root_node(&doc);
-	if (node == NULL || node->type != YAML_MAPPING_NODE)
-		goto out;
+	if (obj->type == UCL_OBJECT)
+		f = parse_fingerprint(obj->value.ov);
 
-	f = parse_fingerprint(&doc, node);
-
-out:
-	yaml_document_delete(&doc);
-	yaml_parser_delete(&parser);
-	fclose(fp);
+	ucl_obj_free(obj);
+	ucl_parser_free(p);
 
 	return (f);
 }
