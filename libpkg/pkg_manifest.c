@@ -34,7 +34,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <yaml.h>
 #include <ucl.h>
 
 #include "pkg.h"

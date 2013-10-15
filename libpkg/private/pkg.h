@@ -42,7 +42,6 @@
 #include <utlist.h>
 #include <ucl.h>
 
-#include <yaml.h>
 #include "private/utils.h"
 
 #define PKG_NUM_SCRIPTS 9
