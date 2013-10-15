@@ -471,7 +471,9 @@ pkg_set_files_from_object(struct pkg *pkg, ucl_object_t *obj)
 	const char *gname = NULL;
 	void *set = NULL;
 	mode_t perm = 0;
+	struct sbuf *fname = NULL;
 
+	urldecode(obj->key, &fname);
 	HASH_ITER(hh, obj->value.ov, sub, tmp) {
 		if (!strcasecmp(sub->key, "uname") && sub->type == UCL_STRING)
 			uname = sub->value.sv;
@@ -488,11 +490,12 @@ pkg_set_files_from_object(struct pkg *pkg, ucl_object_t *obj)
 				perm = getmode(set, 0);
 		} else {
 			pkg_emit_error("Skipping unknown key for file(%s): %s",
-			    obj->key, sub->value.sv);
+			    sbuf_data(fname), sub->value.sv);
 		}
 	}
 
-	pkg_addfile_attr(pkg, obj->key, sum, uname, gname, perm, false);
+	pkg_addfile_attr(pkg, sbuf_data(fname), sum, uname, gname, perm, false);
+	sbuf_delete(fname);
 
 	return (EPKG_OK);
 }
@@ -506,7 +509,9 @@ pkg_set_dirs_from_object(struct pkg *pkg, ucl_object_t *obj)
 	void *set;
 	mode_t perm = 0;
 	bool try = false;
+	struct sbuf *dirname = NULL;
 
+	urldecode(obj->key, &dirname);
 	HASH_ITER(hh, obj->value.ov, sub, tmp) {
 		if (!strcasecmp(sub->key, "uname") && sub->type == UCL_STRING)
 			uname = sub->value.sv;
@@ -522,11 +527,12 @@ pkg_set_dirs_from_object(struct pkg *pkg, ucl_object_t *obj)
 				try = sub->value.iv;
 		} else {
 			pkg_emit_error("Skipping unknown key for dir(%s): %s",
-			    obj->key, sub->key);
+			    sbuf_data(dirname), sub->key);
 		}
 	}
 
-	pkg_adddir_attr(pkg, obj->key, uname, gname, perm, try, false);
+	pkg_adddir_attr(pkg, sbuf_data(dirname), uname, gname, perm, try, false);
+	sbuf_delete(dirname);
 
 	return (EPKG_OK);
 }
