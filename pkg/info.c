@@ -196,6 +196,8 @@ exec_info(int argc, char **argv)
 		quiet = false;
 
 	if (file != NULL) {
+		if (opt == INFO_TAG_NAMEVER)
+			opt |= INFO_FULL;
 		pkg_manifest_keys_new(&keys);
 		if ((opt & (INFO_RAW | INFO_FILES |
 				INFO_DIRS)) == 0)
@@ -333,6 +335,16 @@ exec_info(int argc, char **argv)
 			gotone = true;
 
 		/* end of compatibility hacks */
+
+		/*
+		 * only show full version in case of match glob with a single argument specified
+		 * which does not contains any glob pattern
+		 */
+		if (argc == 1 && 
+		    match == MATCH_GLOB &&
+		    strcspn(pkgname, "*[]{}()") == strlen(pkgname) &&
+		    opt == INFO_TAG_NAMEVER)
+			opt |= INFO_FULL;
 
 		query_flags = info_flags(opt, false);
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
