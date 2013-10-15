@@ -2,7 +2,6 @@ LIB=	yaml
 INTERNALLIB=
 .PATH: ${.CURDIR}/src
 SRCS=	api.c      \
-	dumper.c   \
 	loader.c   \
 	parser.c   \
 	reader.c   \
