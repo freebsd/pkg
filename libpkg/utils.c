@@ -487,7 +487,7 @@ yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *no
 			/* Should not happen */
 			break;
 		}
-		LL_PREPEND(obj->value.ov, sub);
+		DL_APPEND(obj->value.ov, sub);
 		++item;
 	}
 }
