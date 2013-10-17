@@ -37,7 +37,7 @@
 void
 usage_repo(void)
 {
-	fprintf(stderr, "Usage: pkg repo [-flq] <repo-path> <rsa-key>\n\n");
+	fprintf(stderr, "Usage: pkg repo [-flq] <repo-path> [<rsa-key>|signing_command: <the command>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
@@ -88,7 +88,6 @@ exec_repo(int argc, char **argv)
 	int ret;
 	int pos = 0;
 	int ch;
-	char *rsa_key;
 	bool force = false, filelist = false;
 
 	while ((ch = getopt(argc, argv, "flq")) != -1) {
@@ -110,7 +109,12 @@ exec_repo(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc < 1 || argc > 2) {
+	if (argc < 1) {
+		usage_repo();
+		return (EX_USAGE);
+	}
+
+	if (argc > 2 && strcmp(argv[1], "signing_command:") != 0) {
 		usage_repo();
 		return (EX_USAGE);
 	}
@@ -129,8 +133,7 @@ exec_repo(int argc, char **argv)
 			printf("\bdone!\n");
 	}
 	
-	rsa_key = (argc == 2) ? argv[1] : NULL;
-	pkg_finish_repo(argv[0], password_cb, rsa_key, filelist);
+	pkg_finish_repo(argv[0], password_cb, argv + 1, argc - 1, filelist);
 
 	return (EX_OK);
 }
