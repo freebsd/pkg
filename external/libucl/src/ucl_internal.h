@@ -37,6 +37,7 @@
 
 #include "utlist.h"
 #include "ucl.h"
+
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
 #endif
@@ -72,7 +73,10 @@ enum ucl_character_type {
 	UCL_CHARACTER_VALUE_END = 1 << 4,
 	UCL_CHARACTER_VALUE_STR = 1 << 5,
 	UCL_CHARACTER_VALUE_DIGIT = 1 << 6,
-	UCL_CHARACTER_VALUE_DIGIT_START = 1 << 7
+	UCL_CHARACTER_VALUE_DIGIT_START = 1 << 7,
+	UCL_CHARACTER_ESCAPE = 1 << 8,
+	UCL_CHARACTER_KEY_SEP = 1 << 9,
+	UCL_CHARACTER_JSON_UNSAFE = 1 << 10
 };
 
 struct ucl_macro {

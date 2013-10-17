@@ -30,6 +30,13 @@
  * The implementation of rcl parser
  */
 
+struct ucl_parser_saved_state {
+	unsigned int line;
+	unsigned int column;
+	size_t remain;
+	const unsigned char *pos;
+};
+
 /**
  * Move up to len characters
  * @param parser
@@ -37,19 +44,43 @@
  * @param len
  * @return new position in chunk
  */
-static inline void
-ucl_chunk_skipc (struct ucl_chunk *chunk, unsigned char c)
-{
-	if (c == '\n') {
-		chunk->line ++;
-		chunk->column = 0;
-	}
-	else {
-		chunk->column ++;
-	}
+#define ucl_chunk_skipc(chunk, p)    do{					\
+    if (*(p) == '\n') {										\
+        (chunk)->line ++;									\
+        (chunk)->column = 0;								\
+    }														\
+    else (chunk)->column ++;								\
+    (p++);													\
+    (chunk)->pos ++;										\
+    (chunk)->remain --;										\
+    } while (0)
 
-	chunk->pos ++;
-	chunk->remain --;
+/**
+ * Save parser state
+ * @param chunk
+ * @param s
+ */
+static inline void
+ucl_chunk_save_state (struct ucl_chunk *chunk, struct ucl_parser_saved_state *s)
+{
+	s->column = chunk->column;
+	s->pos = chunk->pos;
+	s->line = chunk->line;
+	s->remain = chunk->remain;
+}
+
+/**
+ * Restore parser state
+ * @param chunk
+ * @param s
+ */
+static inline void
+ucl_chunk_restore_state (struct ucl_chunk *chunk, struct ucl_parser_saved_state *s)
+{
+	chunk->column = s->column;
+	chunk->pos = s->pos;
+	chunk->line = s->line;
+	chunk->remain = s->remain;
 }
 
 static inline void
@@ -57,12 +88,6 @@ ucl_set_err (struct ucl_chunk *chunk, int code, const char *str, UT_string **err
 {
 	ucl_create_err (err, "error on line %d at column %d: '%s', character: '%c'",
 			chunk->line, chunk->column, str, *chunk->pos);
-}
-
-static inline bool
-ucl_test_character (unsigned char c, int type_flags)
-{
-	return (ucl_chartable[c] & type_flags) != 0;
 }
 
 static bool
@@ -80,38 +105,38 @@ start:
 				parser->state != UCL_STATE_MCOMMENT) {
 			while (p < chunk->end) {
 				if (*p == '\n') {
-					ucl_chunk_skipc (chunk, *++p);
+					ucl_chunk_skipc (chunk, p);
 					goto start;
 				}
-				ucl_chunk_skipc (chunk, *++p);
+				ucl_chunk_skipc (chunk, p);
 			}
 		}
 	}
 	else if (*p == '/' && chunk->remain >= 2) {
 		if (p[1] == '*') {
-			ucl_chunk_skipc (chunk, *++p);
+			ucl_chunk_skipc (chunk, p);
 			comments_nested ++;
-			ucl_chunk_skipc (chunk, *++p);
+			ucl_chunk_skipc (chunk, p);
 
 			while (p < chunk->end) {
 				if (*p == '*') {
-					ucl_chunk_skipc (chunk, *++p);
+					ucl_chunk_skipc (chunk, p);
 					if (*p == '/') {
 						comments_nested --;
 						if (comments_nested == 0) {
-							ucl_chunk_skipc (chunk, *++p);
+							ucl_chunk_skipc (chunk, p);
 							goto start;
 						}
 					}
-					ucl_chunk_skipc (chunk, *++p);
+					ucl_chunk_skipc (chunk, p);
 				}
 				else if (p[0] == '/' && chunk->remain >= 2 && p[1] == '*') {
 					comments_nested ++;
-					ucl_chunk_skipc (chunk, *++p);
-					ucl_chunk_skipc (chunk, *++p);
+					ucl_chunk_skipc (chunk, p);
+					ucl_chunk_skipc (chunk, p);
 					continue;
 				}
-				ucl_chunk_skipc (chunk, *++p);
+				ucl_chunk_skipc (chunk, p);
 			}
 			if (comments_nested != 0) {
 				ucl_set_err (chunk, UCL_ENESTED, "comments nesting is invalid", err);
@@ -224,29 +249,33 @@ ucl_lex_number (struct ucl_parser *parser,
 	bool got_dot = false, got_exp = false, need_double = false, is_date = false;
 	double dv;
 	int64_t lv;
+	struct ucl_parser_saved_state s;
+
+	ucl_chunk_save_state (chunk, &s);
 
 	if (*p == '-') {
-		ucl_chunk_skipc (chunk, *p);
-		p ++;
+		ucl_chunk_skipc (chunk, p);
 	}
 	while (p < chunk->end) {
 		if (isdigit (*p)) {
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 		}
 		else {
 			if (p == c) {
 				/* Empty digits sequence, not a number */
+				ucl_chunk_restore_state (chunk, &s);
 				return false;
 			}
 			else if (*p == '.') {
 				if (got_dot) {
 					/* Double dots, not a number */
+					ucl_chunk_restore_state (chunk, &s);
 					return false;
 				}
 				else {
 					got_dot = true;
 					need_double = true;
+					ucl_chunk_skipc (chunk, p);
 				}
 			}
 			else if (*p == 'e' || *p == 'E') {
@@ -257,14 +286,19 @@ ucl_lex_number (struct ucl_parser *parser,
 				else {
 					got_exp = true;
 					need_double = true;
-					ucl_chunk_skipc (chunk, *p);
-					p ++;
+					ucl_chunk_skipc (chunk, p);
 					if (p >= chunk->end) {
+						ucl_chunk_restore_state (chunk, &s);
 						return false;
 					}
-					if (!isdigit (*p) && *p != '+' && *p == '-') {
+					if (!isdigit (*p) && *p != '+' && *p != '-') {
 						/* Wrong exponent sign */
+						ucl_set_err (chunk, UCL_ESYNTAX, "wrong character after exponent", err);
+						ucl_chunk_restore_state (chunk, &s);
 						return false;
+					}
+					else {
+						ucl_chunk_skipc (chunk, p);
 					}
 				}
 			}
@@ -286,6 +320,7 @@ ucl_lex_number (struct ucl_parser *parser,
 		ucl_set_err (chunk, UCL_ESYNTAX, "numeric value is out of range", err);
 		parser->prev_state = parser->state;
 		parser->state = UCL_STATE_ERROR;
+		ucl_chunk_restore_state (chunk, &s);
 		return false;
 	}
 
@@ -319,9 +354,8 @@ ucl_lex_number (struct ucl_parser *parser,
 					else {
 						dv *= ucl_lex_num_multiplier (*p, false);
 					}
-					ucl_chunk_skipc (chunk, *p);
-					ucl_chunk_skipc (chunk, *p);
-					p += 2;
+					ucl_chunk_skipc (chunk, p);
+					ucl_chunk_skipc (chunk, p);
 					goto set_obj;
 				}
 				else if (p[1] == 'b' || p[1] == 'B') {
@@ -331,9 +365,8 @@ ucl_lex_number (struct ucl_parser *parser,
 						lv = dv;
 					}
 					lv *= ucl_lex_num_multiplier (*p, true);
-					ucl_chunk_skipc (chunk, *p);
-					ucl_chunk_skipc (chunk, *p);
-					p += 2;
+					ucl_chunk_skipc (chunk, p);
+					ucl_chunk_skipc (chunk, p);
 					goto set_obj;
 				}
 				else if (ucl_lex_is_atom_end (p[1])) {
@@ -343,8 +376,7 @@ ucl_lex_number (struct ucl_parser *parser,
 					else {
 						lv *= ucl_lex_num_multiplier (*p, false);
 					}
-					ucl_chunk_skipc (chunk, *p);
-					p ++;
+					ucl_chunk_skipc (chunk, p);
 					goto set_obj;
 				}
 				else if (chunk->end - p >= 3) {
@@ -358,10 +390,9 @@ ucl_lex_number (struct ucl_parser *parser,
 						}
 						is_date = true;
 						dv *= 60.;
-						ucl_chunk_skipc (chunk, *p);
-						ucl_chunk_skipc (chunk, *p);
-						ucl_chunk_skipc (chunk, *p);
-						p += 3;
+						ucl_chunk_skipc (chunk, p);
+						ucl_chunk_skipc (chunk, p);
+						ucl_chunk_skipc (chunk, p);
 						goto set_obj;
 					}
 				}
@@ -373,19 +404,18 @@ ucl_lex_number (struct ucl_parser *parser,
 				else {
 					lv *= ucl_lex_num_multiplier (*p, false);
 				}
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 				goto set_obj;
 			}
 			break;
 		case 'S':
 		case 's':
-			if (p == chunk->end - 1 || ucl_lex_is_atom_end (*++p)) {
+			if (p == chunk->end - 1 || ucl_lex_is_atom_end (p[1])) {
 				if (!need_double) {
 					need_double = true;
 					dv = lv;
 				}
-				ucl_chunk_skipc (chunk, *p);
+				ucl_chunk_skipc (chunk, p);
 				is_date = true;
 				goto set_obj;
 			}
@@ -405,8 +435,7 @@ ucl_lex_number (struct ucl_parser *parser,
 				}
 				is_date = true;
 				dv *= ucl_lex_time_multiplier (*p);
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 				goto set_obj;
 			}
 			break;
@@ -462,33 +491,30 @@ ucl_lex_json_string (struct ucl_parser *parser,
 			return false;
 		}
 		if (c == '\\') {
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 			c = *p;
 			if (p >= chunk->end) {
 				ucl_set_err (chunk, UCL_ESYNTAX, "unfinished escape character", err);
 				return false;
 			}
-			if (*p == 'u') {
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
-				for (i = 0; i < 4 && p < chunk->end; i ++) {
-					if (!isxdigit (*p)) {
-						ucl_set_err (chunk, UCL_ESYNTAX, "invalid utf escape", err);
+			else if (ucl_test_character (c, UCL_CHARACTER_ESCAPE)) {
+				if (c == 'u') {
+					ucl_chunk_skipc (chunk, p);
+					for (i = 0; i < 4 && p < chunk->end; i ++) {
+						if (!isxdigit (*p)) {
+							ucl_set_err (chunk, UCL_ESYNTAX, "invalid utf escape", err);
+							return false;
+						}
+						ucl_chunk_skipc (chunk, p);
+					}
+					if (p >= chunk->end) {
+						ucl_set_err (chunk, UCL_ESYNTAX, "unfinished escape character", err);
 						return false;
 					}
-					ucl_chunk_skipc (chunk, *p);
-					p ++;
 				}
-				if (p >= chunk->end) {
-					ucl_set_err (chunk, UCL_ESYNTAX, "unfinished escape character", err);
-					return false;
+				else {
+					ucl_chunk_skipc (chunk, p);
 				}
-			}
-			else if (c == '"' || c == '\\' || c == '/' || c == 'b' ||
-					c == 'f' || c == 'n' || c == 'r' || c == 't') {
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
 			}
 			else {
 				ucl_set_err (chunk, UCL_ESYNTAX, "invalid escape character", err);
@@ -498,12 +524,10 @@ ucl_lex_json_string (struct ucl_parser *parser,
 			continue;
 		}
 		else if (c == '"') {
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 			return true;
 		}
-		ucl_chunk_skipc (chunk, *p);
-		p ++;
+		ucl_chunk_skipc (chunk, p);
 	}
 
 	return false;
@@ -523,12 +547,13 @@ ucl_parse_key (struct ucl_parser *parser,
 	const unsigned char *p, *c = NULL, *end;
 	bool got_quote = false, got_eq = false, got_semicolon = false, need_unescape = false;
 	ucl_object_t *nobj, *tobj, *container;
+	size_t keylen;
 
 	p = chunk->pos;
 
 	if (*p == '.') {
 		/* It is macro actually */
-		ucl_chunk_skipc (chunk, *p);
+		ucl_chunk_skipc (chunk, p);
 		parser->prev_state = parser->state;
 		parser->state = UCL_STATE_MACRO_NAME;
 		return true;
@@ -547,15 +572,13 @@ ucl_parse_key (struct ucl_parser *parser,
 			else if (ucl_test_character (*p, UCL_CHARACTER_KEY_START)) {
 				/* The first symbol */
 				c = p;
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 			}
 			else if (*p == '"') {
 				/* JSON style key */
 				c = p + 1;
 				got_quote = true;
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 			}
 			else {
 				/* Invalid identifier */
@@ -567,10 +590,9 @@ ucl_parse_key (struct ucl_parser *parser,
 			/* Parse the body of a key */
 			if (!got_quote) {
 				if (ucl_test_character (*p, UCL_CHARACTER_KEY)) {
-					ucl_chunk_skipc (chunk, *p);
-					p ++;
+					ucl_chunk_skipc (chunk, p);
 				}
-				else if (*p == ' ' || *p == '\t' || *p == ':' || *p == '=') {
+				else if (ucl_test_character (*p, UCL_CHARACTER_KEY_SEP)) {
 					end = p;
 					break;
 				}
@@ -599,13 +621,11 @@ ucl_parse_key (struct ucl_parser *parser,
 	/* We are now at the end of the key, need to parse the rest */
 	while (p < chunk->end) {
 		if (ucl_test_character (*p, UCL_CHARACTER_WHITESPACE)) {
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 		}
 		else if (*p == '=') {
 			if (!got_eq && !got_semicolon) {
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 				got_eq = true;
 			}
 			else {
@@ -615,8 +635,7 @@ ucl_parse_key (struct ucl_parser *parser,
 		}
 		else if (*p == ':') {
 			if (!got_eq && !got_semicolon) {
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 				got_semicolon = true;
 			}
 			else {
@@ -644,16 +663,17 @@ ucl_parse_key (struct ucl_parser *parser,
 
 	/* Create a new object */
 	nobj = ucl_object_new ();
-	nobj->key = malloc (end - c + 1);
+	keylen = end - c;
+	nobj->key = malloc (keylen + 1);
 	if (nobj->key == NULL) {
 		ucl_set_err (chunk, 0, "cannot allocate memory for a key", err);
 		return false;
 	}
 	if (parser->flags & UCL_FLAG_KEY_LOWERCASE) {
-		ucl_strlcpy_tolower (nobj->key, c, end - c + 1);
+		ucl_strlcpy_tolower (nobj->key, c, keylen + 1);
 	}
 	else {
-		ucl_strlcpy_unsafe (nobj->key, c, end - c + 1);
+		ucl_strlcpy_unsafe (nobj->key, c, keylen + 1);
 	}
 
 	if (need_unescape) {
@@ -661,14 +681,15 @@ ucl_parse_key (struct ucl_parser *parser,
 	}
 
 	container = parser->stack->obj->value.ov;
-	HASH_FIND_STR (container, nobj->key, tobj);
-	if (tobj != NULL) {
-		/* Just insert a new object as the next element */
-		HASH_DELETE (hh, container, tobj);
-		LL_PREPEND (tobj, nobj);
+	HASH_FIND (hh, container, nobj->key, keylen, tobj);
+	if (tobj == NULL) {
+		DL_APPEND (tobj, nobj);
+		HASH_ADD_KEYPTR (hh, container, nobj->key, keylen, nobj);
+	}
+	else {
+		DL_APPEND (tobj, nobj);
 	}
 
-	HASH_ADD_KEYPTR (hh, container, nobj->key, strlen (nobj->key), nobj);
 	parser->stack->obj->value.ov = container;
 
 	parser->cur_obj = nobj;
@@ -707,8 +728,7 @@ ucl_parse_string_value (struct ucl_parser *parser,
 			braces[UCL_BRACE_FIGURE][1] ++;
 			if (braces[UCL_BRACE_FIGURE][1] == braces[UCL_BRACE_FIGURE][0]) {
 				/* This is not a termination symbol, continue */
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 				continue;
 			}
 		}
@@ -720,8 +740,7 @@ ucl_parse_string_value (struct ucl_parser *parser,
 			braces[UCL_BRACE_SQUARE][1] ++;
 			if (braces[UCL_BRACE_SQUARE][1] == braces[UCL_BRACE_SQUARE][0]) {
 				/* This is not a termination symbol, continue */
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 				continue;
 			}
 		}
@@ -729,8 +748,7 @@ ucl_parse_string_value (struct ucl_parser *parser,
 		if (ucl_lex_is_atom_end (*p) || ucl_lex_is_comment (p[0], p[1])) {
 			break;
 		}
-		ucl_chunk_skipc (chunk, *p);
-		p ++;
+		ucl_chunk_skipc (chunk, p);
 	}
 
 	if (p >= chunk->end) {
@@ -739,6 +757,54 @@ ucl_parse_string_value (struct ucl_parser *parser,
 	}
 
 	return true;
+}
+
+/**
+ * Parse multiline string ending with \n{term}\n
+ * @param parser
+ * @param chunk
+ * @param term
+ * @param term_len
+ * @param err
+ * @return size of multiline string or 0 in case of error
+ */
+static int
+ucl_parse_multiline_string (struct ucl_parser *parser,
+		struct ucl_chunk *chunk, const unsigned char *term,
+		int term_len, unsigned char const **beg, UT_string **err)
+{
+	const unsigned char *p, *c;
+	bool newline = false;
+	int len = 0;
+
+	p = chunk->pos;
+
+	c = p;
+
+	while (p < chunk->end) {
+		if (newline) {
+			if (chunk->end - p < term_len) {
+				return 0;
+			}
+			else if (memcmp (p, term, term_len) == 0 && (p[term_len] == '\n' || p[term_len] == '\r')) {
+				len = p - c;
+				chunk->remain -= term_len;
+				chunk->pos = p + term_len;
+				chunk->column = term_len;
+				*beg = c;
+				break;
+			}
+		}
+		if (*p == '\n') {
+			newline = true;
+		}
+		else {
+			newline = false;
+		}
+		ucl_chunk_skipc (chunk, p);
+	}
+
+	return len;
 }
 
 /**
@@ -807,7 +873,7 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 {
 	const unsigned char *p, *c;
 	struct ucl_stack *st;
-	ucl_object_t *obj = NULL;
+	ucl_object_t *obj = NULL, *t;
 	unsigned int stripped_spaces;
 	int str_len;
 	bool need_unescape = false;
@@ -819,8 +885,10 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 			if (parser->stack->obj->type == UCL_ARRAY) {
 				/* Object must be allocated */
 				obj = ucl_object_new ();
+				t = parser->stack->obj->value.ov;
+				DL_APPEND (t, obj);
 				parser->cur_obj = obj;
-				LL_PREPEND (parser->stack->obj->value.ov, parser->cur_obj);
+				parser->stack->obj->value.ov = t;
 			}
 			else {
 				/* Object has been already allocated */
@@ -830,8 +898,7 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 		c = p;
 		switch (*p) {
 		case '"':
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 			if (!ucl_lex_json_string (parser, chunk, &need_unescape, err)) {
 				return false;
 			}
@@ -855,8 +922,7 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 			LL_PREPEND (parser->stack, st);
 			parser->cur_obj = obj;
 
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 			return true;
 			break;
 		case '[':
@@ -870,17 +936,49 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 			LL_PREPEND (parser->stack, st);
 			parser->cur_obj = obj;
 
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 			return true;
 			break;
+		case '<':
+			/* We have something like multiline value, which must be <<[A-Z]+\n */
+			if (chunk->end - p > 3) {
+				if (memcmp (p, "<<", 2) == 0) {
+					p += 2;
+					/* We allow only uppercase characters in multiline definitions */
+					while (p < chunk->end && *p >= 'A' && *p <= 'Z') {
+						p ++;
+					}
+					if (*p =='\n') {
+						/* Set chunk positions and start multiline parsing */
+						c += 2;
+						chunk->remain -= p - c;
+						chunk->pos = p + 1;
+						chunk->column = 0;
+						chunk->line ++;
+						if ((str_len = ucl_parse_multiline_string (parser, chunk, c,
+								p - c, &c, err)) == 0) {
+							ucl_set_err (chunk, UCL_ESYNTAX, "unterminated multiline value", err);
+							return false;
+						}
+						obj->value.sv = malloc (str_len);
+						if (obj->value.sv == NULL) {
+							ucl_set_err (chunk, 0, "cannot allocate memory for a string", err);
+							return false;
+						}
+						ucl_strlcpy_unsafe (obj->value.sv, c, str_len);
+						obj->type = UCL_STRING;
+						parser->state = UCL_STATE_AFTER_VALUE;
+						return true;
+					}
+				}
+			}
+			/* Fallback to ordinary strings */
 		default:
 			/* Skip any spaces and comments */
 			if (ucl_test_character (*p, UCL_CHARACTER_WHITESPACE_UNSAFE) ||
 					ucl_lex_is_comment (p[0], p[1])) {
 				while (p < chunk->end && ucl_test_character (*p, UCL_CHARACTER_WHITESPACE_UNSAFE)) {
-					ucl_chunk_skipc (chunk, *p);
-					p ++;
+					ucl_chunk_skipc (chunk, p);
 				}
 				if (!ucl_skip_comments (parser, err)) {
 					return false;
@@ -972,16 +1070,15 @@ static bool
 ucl_parse_after_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string **err)
 {
 	const unsigned char *p;
-	bool got_sep = false, got_comma = false, got_semicolon = false;
+	bool got_sep = false;
 	struct ucl_stack *st;
 
 	p = chunk->pos;
 
 	while (p < chunk->end) {
-		if (*p == ' ' || *p == '\t') {
+		if (ucl_test_character (*p, UCL_CHARACTER_WHITESPACE)) {
 			/* Skip whitespaces */
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 		}
 		else if (ucl_lex_is_comment (p[0], p[1])) {
 			/* Skip comment */
@@ -992,60 +1089,39 @@ ucl_parse_after_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_st
 			got_sep = true;
 			p = chunk->pos;
 		}
-		else if (*p == ',') {
-			/* Got a separator */
-			got_sep = true;
-			if (got_comma || got_semicolon) {
-				ucl_set_err (chunk, UCL_ESYNTAX, "unexpected comma detected", err);
-				return false;
-			}
-			got_comma = true;
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
-		}
-		else if (*p == ';') {
-			/* Got a separator */
-			got_sep = true;
-			if (got_comma || got_semicolon) {
-				ucl_set_err (chunk, UCL_ESYNTAX, "unexpected semicolon detected", err);
-				return false;
-			}
-			got_semicolon = true;
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
-		}
-		else if (*p == '\n') {
-			got_sep = true;
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
-		}
-		else if (*p == '}' || *p == ']') {
-			if (parser->stack == NULL) {
-				ucl_set_err (chunk, UCL_ESYNTAX, "unexpected } detected", err);
-				return false;
-			}
-			if ((*p == '}' && parser->stack->obj->type == UCL_OBJECT) ||
-					(*p == ']' && parser->stack->obj->type == UCL_ARRAY)) {
-				/* Pop object from a stack */
+		else if (ucl_test_character (*p, UCL_CHARACTER_VALUE_END)) {
+			if (*p == '}' || *p == ']') {
+				if (parser->stack == NULL) {
+					ucl_set_err (chunk, UCL_ESYNTAX, "unexpected } detected", err);
+					return false;
+				}
+				if ((*p == '}' && parser->stack->obj->type == UCL_OBJECT) ||
+						(*p == ']' && parser->stack->obj->type == UCL_ARRAY)) {
+					/* Pop object from a stack */
 
-				st = parser->stack;
-				parser->stack = st->next;
-				UCL_FREE (sizeof (struct ucl_stack), st);
+					st = parser->stack;
+					parser->stack = st->next;
+					UCL_FREE (sizeof (struct ucl_stack), st);
+				}
+				else {
+					ucl_set_err (chunk, UCL_ESYNTAX, "unexpected terminating symbol detected", err);
+					return false;
+				}
+
+				if (parser->stack == NULL) {
+					/* Ignore everything after a top object */
+					return true;
+				}
+				else {
+					ucl_chunk_skipc (chunk, p);
+				}
+				got_sep = true;
 			}
 			else {
-				ucl_set_err (chunk, UCL_ESYNTAX, "unexpected terminating symbol detected", err);
-				return false;
+				/* Got a separator */
+				got_sep = true;
+				ucl_chunk_skipc (chunk, p);
 			}
-
-			if (parser->stack == NULL) {
-				/* Ignore everything after a top object */
-				return true;
-			}
-			else {
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
-			}
-			got_sep = true;
 		}
 		else {
 			/* Anything else */
@@ -1081,8 +1157,7 @@ ucl_parse_macro_value (struct ucl_parser *parser,
 	case '"':
 		/* We have macro value encoded in quotes */
 		c = p;
-		ucl_chunk_skipc (chunk, *p);
-		p ++;
+		ucl_chunk_skipc (chunk, p);
 		if (!ucl_lex_json_string (parser, chunk, &need_unescape, err)) {
 			return false;
 		}
@@ -1093,13 +1168,11 @@ ucl_parse_macro_value (struct ucl_parser *parser,
 		break;
 	case '{':
 		/* We got a multiline macro body */
-		ucl_chunk_skipc (chunk, *p);
-		p ++;
+		ucl_chunk_skipc (chunk, p);
 		/* Skip spaces at the beginning */
 		while (p < chunk->end) {
 			if (ucl_test_character (*p, UCL_CHARACTER_WHITESPACE_UNSAFE)) {
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 			}
 			else {
 				break;
@@ -1110,13 +1183,11 @@ ucl_parse_macro_value (struct ucl_parser *parser,
 			if (*p == '}') {
 				break;
 			}
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 		}
 		*macro_start = c;
 		*macro_len = p - c;
-		ucl_chunk_skipc (chunk, *p);
-		p ++;
+		ucl_chunk_skipc (chunk, p);
 		break;
 	default:
 		/* Macro is not enclosed in quotes or braces */
@@ -1125,8 +1196,7 @@ ucl_parse_macro_value (struct ucl_parser *parser,
 			if (ucl_lex_is_atom_end (*p)) {
 				break;
 			}
-			ucl_chunk_skipc (chunk, *p);
-			p ++;
+			ucl_chunk_skipc (chunk, p);
 		}
 		*macro_start = c;
 		*macro_len = p - c;
@@ -1139,8 +1209,7 @@ ucl_parse_macro_value (struct ucl_parser *parser,
 		if (!ucl_test_character (*p, UCL_CHARACTER_WHITESPACE_UNSAFE) && *p != ';') {
 			break;
 		}
-		ucl_chunk_skipc (chunk, *p);
-		p ++;
+		ucl_chunk_skipc (chunk, p);
 	}
 	return true;
 }
@@ -1183,15 +1252,13 @@ ucl_state_machine (struct ucl_parser *parser, UT_string **err)
 				if (*p == '[') {
 					parser->state = UCL_STATE_VALUE;
 					obj->type = UCL_ARRAY;
-					ucl_chunk_skipc (chunk, *p);
-					p ++;
+					ucl_chunk_skipc (chunk, p);
 				}
 				else {
 					parser->state = UCL_STATE_KEY;
 					obj->type = UCL_OBJECT;
 					if (*p == '{') {
-						ucl_chunk_skipc (chunk, *p);
-						p ++;
+						ucl_chunk_skipc (chunk, p);
 					}
 				};
 				parser->cur_obj = obj;
@@ -1204,8 +1271,7 @@ ucl_state_machine (struct ucl_parser *parser, UT_string **err)
 		case UCL_STATE_KEY:
 			/* Skip any spaces */
 			while (p < chunk->end && ucl_test_character (*p, UCL_CHARACTER_WHITESPACE_UNSAFE)) {
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 			}
 			if (*p == '}') {
 				/* We have the end of an object */
@@ -1258,8 +1324,7 @@ ucl_state_machine (struct ucl_parser *parser, UT_string **err)
 			break;
 		case UCL_STATE_MACRO_NAME:
 			if (!ucl_test_character (*p, UCL_CHARACTER_WHITESPACE_UNSAFE)) {
-				ucl_chunk_skipc (chunk, *p);
-				p ++;
+				ucl_chunk_skipc (chunk, p);
 			}
 			else if (p - c > 0) {
 				/* We got macro name */
@@ -1281,8 +1346,7 @@ ucl_state_machine (struct ucl_parser *parser, UT_string **err)
 						}
 						break;
 					}
-					ucl_chunk_skipc (chunk, *p);
-					p ++;
+					ucl_chunk_skipc (chunk, p);
 				}
 				parser->state = UCL_STATE_MACRO;
 			}
