@@ -911,9 +911,6 @@ load_repositories(const char *repodir)
 		return;
 	}
 
-	if (access("/etc/pkg/repos", F_OK) == 0)
-		load_repo_files("/etc/pkg/repos");
-
 	v = NULL;
 	while (pkg_config_list(PKG_CONFIG_REPOS_DIR, &v) == EPKG_OK)
 		load_repo_files(pkg_config_value(v));
