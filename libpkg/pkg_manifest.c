@@ -693,6 +693,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 	if (fallback) {
 		pkg_debug(2, "Falling back on yaml");
 		ucl_parser_free(p);
+		p = NULL;
 		if (obj != NULL)
 			ucl_obj_free(obj);
 		obj = yaml_to_ucl(file, NULL, 0);
@@ -702,7 +703,8 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 
 	rc = parse_manifest(pkg, keys, obj);
 
-	ucl_parser_free(p);
+	if (p != NULL)
+		ucl_parser_free(p);
 	ucl_obj_free(obj);
 
 	return (rc);
