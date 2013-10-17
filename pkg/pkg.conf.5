@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd September 29, 2013
+.Dd October 17, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -213,6 +213,8 @@ To use multiple repositories, specify the primary repository as shown above.
 Further repositores can be configured using repository files.
 .Pp
 Repository files reside in
+.Pa /etc/pkg/repos/
+and
 .Pa /usr/local/etc/pkg/repos/ .
 .Pp
 Filenames are arbitrary, but should end in
