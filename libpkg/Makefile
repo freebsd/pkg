@@ -255,3 +255,11 @@ DEBUG_FLAGS+=	-pg
 	sed -e "s,__PREFIX__,${PREFIX},g" \
 	    -e "s,__VERSION__,${PKGVERSION},g" \
 	    ${.IMPSRC} > ${.TARGET}
+
+# Workaround 8.3/8.4 bug
+OSVERSION!=    /sbin/sysctl -n kern.osreldate
+
+.if ${OSVERSION} < 901000
+.c.o:
+	${CC} ${STATIC_CFLAGS} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+.endif
