@@ -101,6 +101,7 @@ typedef struct ucl_object_s {
 	enum ucl_type type;				/**< real type				*/
 	int ref;								/**< reference count		*/
 	struct ucl_object_s *next;		/**< array handle			*/
+	struct ucl_object_s *prev;		/**< array handle			*/
 	UT_hash_handle hh;						/**< hash handle			*/
 } ucl_object_t;
 
@@ -295,7 +296,7 @@ ucl_obj_get_key (ucl_object_t *obj, const char *key)
 	}
 
 	keylen = strlen (key);
-	HASH_FIND(hh, obj->value.ov, __DECONST(char *, key), keylen, ret);
+	HASH_FIND(hh, obj->value.ov, key, keylen, ret);
 
 	return ret;
 }
