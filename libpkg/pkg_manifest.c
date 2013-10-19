@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -76,40 +77,40 @@ static struct manifest_key {
 	enum ucl_type valid_type;
 	int (*parse_data)(struct pkg *, ucl_object_t *, int);
 } manifest_keys[] = {
-	{ "annotations",      PKG_ANNOTATIONS,      UCL_OBJECT, pkg_object},
-	{ "arch",             PKG_ARCH,             UCL_STRING, pkg_string},
-	{ "categories",       PKG_CATEGORIES,       UCL_ARRAY,  pkg_array},
-	{ "comment",          PKG_COMMENT,          UCL_STRING, pkg_string},
-	{ "deps",             PKG_DEPS,             UCL_OBJECT, pkg_object},
-	{ "desc",             PKG_DESC,             UCL_STRING, pkg_string},
-	{ "directories",      PKG_DIRECTORIES,      UCL_OBJECT, pkg_object},
-	{ "dirs",             PKG_DIRS,             UCL_ARRAY,  pkg_array},
-	{ "files",            PKG_FILES,            UCL_OBJECT, pkg_object},
-	{ "flatsize",         PKG_FLATSIZE,         UCL_INT,    pkg_int},
-	{ "groups",           PKG_GROUPS,           UCL_OBJECT, pkg_object},
-	{ "groups",           PKG_GROUPS,           UCL_ARRAY,  pkg_array},
-	{ "infos",            PKG_INFOS,            UCL_STRING, pkg_string}, /* Deprecated: treat as an annotation */
-	{ "licenselogic",     PKG_LICENSE_LOGIC,    UCL_STRING, pkg_string},
-	{ "licenses",         PKG_LICENSES,         UCL_ARRAY,  pkg_array},
-	{ "maintainer",       PKG_MAINTAINER,       UCL_STRING, pkg_string},
-	{ "message",          PKG_MESSAGE,          UCL_STRING, pkg_string},
-	{ "name",             PKG_NAME,             UCL_STRING, pkg_string},
-	{ "options",          PKG_OPTIONS,          UCL_STRING, pkg_object},
-	{ "option_defaults",  PKG_OPTION_DEFAULTS,  UCL_STRING, pkg_object},
+	{ "annotations",         PKG_ANNOTATIONS,         UCL_OBJECT, pkg_object},
+	{ "arch",                PKG_ARCH,                UCL_STRING, pkg_string},
+	{ "categories",          PKG_CATEGORIES,          UCL_ARRAY,  pkg_array},
+	{ "comment",             PKG_COMMENT,             UCL_STRING, pkg_string},
+	{ "deps",                PKG_DEPS,                UCL_OBJECT, pkg_object},
+	{ "desc",                PKG_DESC,                UCL_STRING, pkg_string},
+	{ "directories",         PKG_DIRECTORIES,         UCL_OBJECT, pkg_object},
+	{ "dirs",                PKG_DIRS,                UCL_ARRAY,  pkg_array},
+	{ "files",               PKG_FILES,               UCL_OBJECT, pkg_object},
+	{ "flatsize",            PKG_FLATSIZE,            UCL_INT,    pkg_int},
+	{ "groups",              PKG_GROUPS,              UCL_OBJECT, pkg_object},
+	{ "groups",              PKG_GROUPS,              UCL_ARRAY,  pkg_array},
+	{ "infos",               PKG_INFOS,               UCL_STRING, pkg_string}, /* Deprecated: treat as an annotation */
+	{ "licenselogic",        PKG_LICENSE_LOGIC,       UCL_STRING, pkg_string},
+	{ "licenses",            PKG_LICENSES,            UCL_ARRAY,  pkg_array},
+	{ "maintainer",          PKG_MAINTAINER,          UCL_STRING, pkg_string},
+	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_string},
+	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
+	{ "options",             PKG_OPTIONS,             UCL_STRING, pkg_object},
+	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_STRING, pkg_object},
 	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_STRING, pkg_object},
-	{ "origin",           PKG_ORIGIN,           UCL_STRING, pkg_string},
-	{ "path",             PKG_REPOPATH,         UCL_STRING, pkg_string},
-	{ "pkgsize",          PKG_PKGSIZE,          UCL_INT,    pkg_int},
-	{ "prefix",           PKG_PREFIX,           UCL_STRING, pkg_string},
-	{ "scripts",          PKG_SCRIPTS,          UCL_OBJECT, pkg_object},
-	{ "shlibs",           PKG_SHLIBS_REQUIRED,  UCL_ARRAY,  pkg_array}, /* Backwards compat with 1.0.x packages */
-	{ "shlibs_provided",  PKG_SHLIBS_PROVIDED,  UCL_ARRAY,  pkg_array},
-	{ "shlibs_required",  PKG_SHLIBS_REQUIRED,  UCL_ARRAY,  pkg_array},
-	{ "sum",              PKG_CKSUM,            UCL_STRING, pkg_string},
-	{ "users",            PKG_USERS,            UCL_OBJECT, pkg_object},
-	{ "users",            PKG_USERS,            UCL_ARRAY,  pkg_array},
-	{ "version",          PKG_VERSION,          UCL_STRING, pkg_string},
-	{ "www",              PKG_WWW,              UCL_STRING, pkg_string},
+	{ "origin",              PKG_ORIGIN,              UCL_STRING, pkg_string},
+	{ "path",                PKG_REPOPATH,            UCL_STRING, pkg_string},
+	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
+	{ "prefix",              PKG_PREFIX,              UCL_STRING, pkg_string},
+	{ "scripts",             PKG_SCRIPTS,             UCL_OBJECT, pkg_object},
+	{ "shlibs",              PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array}, /* Backwards compat with 1.0.x packages */
+	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,     UCL_ARRAY,  pkg_array},
+	{ "shlibs_required",     PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array},
+	{ "sum",                 PKG_CKSUM,               UCL_STRING, pkg_string},
+	{ "users",               PKG_USERS,               UCL_OBJECT, pkg_object},
+	{ "users",               PKG_USERS,               UCL_ARRAY,  pkg_array},
+	{ "version",             PKG_VERSION,             UCL_STRING, pkg_string},
+	{ "www",                 PKG_WWW,                 UCL_STRING, pkg_string},
 	{ NULL, -99, -99, NULL}
 };
 
