@@ -115,9 +115,9 @@ if [ "${periodic_update}" = "yes" ]; then
 
     # security/460.pkg-checksum <=> security/460.chkportsum
     echo "daily_status_security_pkg_checksum_enable=\"$daily_status_security_chkportsum_enable\""
-    case "$daily_status_chkportsum_enable" in
+    case "$daily_status_security_chkportsum_enable" in
 	[Yy][Ee][Ss])
-	    echo "daily_status_chkportsum_enable=\"NO\""
+	    echo "daily_status_security_chkportsum_enable=\"NO\""
 	    ;;
     esac
 
