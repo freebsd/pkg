@@ -839,8 +839,8 @@ load_repo_file(const char *repofile)
 	}
 
 	if (fallback) {
-		pkg_emit_error("%s file is in deprecated format you "
-		    "should convert it to the following format:\n"
+		pkg_emit_error("%s file is using a deprecated format. "
+		    "Please replace it with the following:\n"
 		    "====== BEGIN %s ======\n"
 		    "%s"
 		    "\n====== END %s ======\n",
@@ -892,7 +892,8 @@ load_repositories(const char *repodir)
 	pkg_config_string(PKG_CONFIG_MIRRORS, &mirror_type);
 
 	if (url != NULL) {
-		pkg_emit_error("PACKAGESITE in pkg.conf is deprecated, please create a repository configuration file");
+		pkg_emit_error("PACKAGESITE in pkg.conf is deprecated. "
+		    "Please create a repository configuration file");
 		r = pkg_repo_new("packagesite", url);
 		if (pub != NULL) {
 			r->pubkey = strdup(pub);
