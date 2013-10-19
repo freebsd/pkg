@@ -1,6 +1,7 @@
 #!/bin/sh
 
 : "${PORTSDIR:=/usr/ports}"
+: "${PKG_DBDIR:=/var/db/pkg}"
 
 if [ -f ${PORTSDIR}/Mk/bsd.pkgng.mk ]; then
 	FORCE_POST=$(make _POSTMKINCLUDED=1 UID=$(id -u) -f ${PORTSDIR}/Mk/bsd.pkgng.mk -V _FORCE_POST_PATTERNS)
@@ -10,5 +11,13 @@ fi
 
 FORCE_PORT=$FORCE_POST __PREFIX__/sbin/pkg convert
 
-# Delete the portupgrade pkgdb to avoid discrepencies. It will be auto recreated.
-rm -f /var/db/pkg/pkgdb.db > /dev/null 2>&1
+# Delete the portupgrade pkgdb to avoid discrepencies. It will be auto
+# recreated.
+
+rm -f ${PKG_DBDIR}/pkgdb.db > /dev/null 2>&1
+
+# Build the shlibs_{provided,required} tables in the pkg database
+
+__PREFIX__/sbin/pkg check -Ba
+
+
