@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
