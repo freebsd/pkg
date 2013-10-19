@@ -2,12 +2,12 @@
 
 PREFIX?=	/usr/local
 
-SCRIPTS_DAILY=	400.status-pkg.in \
-		411.pkg-backup.in \
+SCRIPTS_DAILY=	411.pkg-backup.in \
 		490.status-pkg-changes.in
+SCRIPTS_WEEKLY=	400.status-pkg.in
 SCRIPTS_SECURITY=	410.pkg-audit.in \
 			460.pkg-checksum.in
-SCRIPTS=	${SCRIPTS_DAILY:R} ${SCRIPTS_SECURITY:R}
+SCRIPTS=	${SCRIPTS_DAILY:R} ${SCRIPTS_WEEKLY:R} ${SCRIPTS_SECURITY:R}
 CLEANFILES=	${SCRIPTS}
 
 .in:
@@ -17,13 +17,12 @@ CLEANFILES=	${SCRIPTS}
 all: ${SCRIPTS}
 
 install: all
-	install -d ${DESTDIR}${PREFIX}/etc/periodic/security
-	install -d ${DESTDIR}${PREFIX}/etc/periodic/daily
-.for periodic in ${SCRIPTS_DAILY:R}
-	install -m 555 ${periodic} ${DESTDIR}${PREFIX}/etc/periodic/daily
-.endfor
-.for periodic in ${SCRIPTS_SECURITY:R}
-	install -m 555 ${periodic} ${DESTDIR}${PREFIX}/etc/periodic/security
+.for period in daily weekly security
+
+	install -d ${DESTDIR}${PREFIX}/etc/periodic/${period}
+.  for periodic in ${SCRIPTS_${period:tu}:R}
+	install -m 555 ${periodic} ${DESTDIR}${PREFIX}/etc/periodic/${period}
+.  endfor
 .endfor
 
 .include <bsd.prog.mk>
