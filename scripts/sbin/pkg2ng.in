@@ -77,7 +77,7 @@ if [ "${periodic_update}" = "yes" ]; then
     # the ports tree or the ports INDEX if they exist in preference to
     # the pkg repository catalogue.
 
-    if [ ${pkg_version} = 'pkg_version' ]; then
+    if [ "$pkg_version" = 'pkg_version' ]; then
 	echo "pkg_version='__PREFIX__/sbin/pkg version'"
     fi
 
