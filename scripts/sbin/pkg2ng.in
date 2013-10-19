@@ -73,6 +73,9 @@ if [ "${periodic_update}" = "yes" ]; then
 
     exec >> ${TMPFILE}
 
+    echo
+    echo "### Added by $(basename $0) on $(date +%Y-%m-%d)"
+
     # weekly_status_pkg_enable -- use 'pkg version'.  This will use
     # the ports tree or the ports INDEX if they exist in preference to
     # the pkg repository catalogue.
@@ -120,6 +123,8 @@ if [ "${periodic_update}" = "yes" ]; then
 	    echo "daily_status_security_chkportsum_enable=\"NO\""
 	    ;;
     esac
+
+    echo "### End of additions by $(basename $0)"
 
     cp -p $periodic_conf ${periodic_conf}.bak
     cp -p $TMPFILE $periodic_conf
