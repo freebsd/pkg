@@ -493,7 +493,7 @@ cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cer
 			sbuf_bcat(buf, line, linelen);
 	}
 
-	if (pclose(fp) != EX_OK) {
+	if (pclose(fp) != 0) {
 		ret = EPKG_FATAL;
 		goto done;
 	}
