@@ -39,6 +39,7 @@
 #include <ucl.h>
 #include <uthash.h>
 #include <utlist.h>
+#include <ctype.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -492,6 +493,65 @@ yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *no
 	}
 }
 
+static bool
+maybe_boolean(ucl_object_t *obj, yaml_node_t *node)
+{
+	const char *p = node->data.scalar.value;
+	bool ret = false;
+	bool val = false;
+
+	if (node->data.scalar.length == 5) {
+		if (tolower(p[0]) == 'f' && strncasecmp(p, "false", 5) == 0) {
+			ret = true;
+			val = false;
+		}
+	} else if (node->data.scalar.length == 4) {
+		if (tolower(p[0]) == 't' && strncasecmp(p, "true", 4) == 0) {
+			ret = true;
+			val = true;
+		}
+	} else if (node->data.scalar.length == 3) {
+		if (tolower(p[0]) == 'y' && strncasecmp(p, "yes", 3) == 0) {
+			ret = true;
+			val = true;
+		} else if (tolower(p[0]) == 'o' && strncasecmp(p, "off", 3) == 0) {
+			ret = true;
+			val = false;
+		}
+	} else if (node->data.scalar.length == 2) {
+		if (tolower(p[0]) == 'n' && strncasecmp(p, "no", 2) == 0) {
+			ret = true;
+			val = false;
+		} else if (tolower(p[0]) == 'o' && strncasecmp(p, "on", 2) == 0) {
+			ret = true;
+			val = true;
+		}
+	}
+
+	if (ret) {
+		obj->type = UCL_BOOLEAN;
+		obj->value.iv = val;
+	}
+
+	return (ret);
+}
+
+static bool
+maybe_integer(ucl_object_t *obj, yaml_node_t *node)
+{
+	int64_t val;
+	const char *errstr;
+
+	val = strtonum(node->data.scalar.value, 0, INT64_MAX, &errstr);
+	if (errstr)
+		return (false);
+	
+	obj->type = UCL_INT;
+	obj->value.iv = val;
+
+	return (true);
+}
+
 static void
 yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
 {
@@ -517,6 +577,10 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 			yaml_sequence_to_object(sub, doc, val);
 			break;
 		case YAML_SCALAR_NODE:
+			if (maybe_boolean(sub, val))
+				break;
+			if (maybe_integer(sub, val))
+				break;
 			sub->type = UCL_STRING;
 			sub->value.sv = strdup(val->data.scalar.value);
 			break;
