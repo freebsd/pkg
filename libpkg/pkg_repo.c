@@ -527,7 +527,7 @@ pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa, 
 		}
 
 		free(sigret);
-	} else if (argc > 1) {
+	} else if (argc >= 1) {
 		if (cmd_sign(path, argv, argc, &sig, &pub) != EPKG_OK) {
 			packing_finish(pack);
 			unlink(path);
