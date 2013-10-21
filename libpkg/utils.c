@@ -582,6 +582,8 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 			if (maybe_integer(sub, val))
 				break;
 			sub->type = UCL_STRING;
+			while (val->data.scalar.value[strlen(val->data.scalar.value) - 1] == '\n')
+				val->data.scalar.value[strlen(val->data.scalar.value) -1 ] = '\0';
 			sub->value.sv = strdup(val->data.scalar.value);
 			break;
 		case YAML_NO_NODE:
