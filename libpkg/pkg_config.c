@@ -682,7 +682,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	ucl_object_t *sub, *tmp;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
-	const char *signature = NULL, *fingerprints = NULL;
+	const char *signature_type = NULL, *fingerprints = NULL;
 
 	HASH_ITER(hh, obj, sub, tmp) {
 		if (strcasecmp(sub->key, "url") == 0) {
@@ -724,7 +724,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    sub->key, rname);
 				return;
 			}
-			signature = ucl_obj_tostring(sub);
+			signature_type = ucl_obj_tostring(sub);
 		} else if (strcasecmp(sub->key, "fingerprints") == 0) {
 			if (sub->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -749,10 +749,10 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 		r->url = subst_packagesite_str(url);
 	}
 
-	if (signature != NULL) {
-		if (strcasecmp(signature, "pubkey") == 0)
+	if (signature_type != NULL) {
+		if (strcasecmp(signature_type, "pubkey") == 0)
 			r->signature_type = SIG_PUBKEY;
-		else if (strcasecmp(signature, "fingerprints") == 0)
+		else if (strcasecmp(signature_type, "fingerprints") == 0)
 			r->signature_type = SIG_FINGERPRINT;
 		else
 			r->signature_type = SIG_NONE;
