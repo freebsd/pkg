@@ -256,52 +256,52 @@ show_config_info(int version)
 		switch (pkg_config_type(conf)) {
 		case PKG_CONFIG_STRING:
 			pkg_config_string(pkg_config_id(conf), &buf);
-			cout = printf("%24s: %s", configname,
+			cout = printf("%-24s: %s", configname,
 			    buf == NULL ? "" : buf);
 
 			if (version > 2) {
 				pkg_config_desc(pkg_config_id(conf), &buf);
 				if (buf != NULL) {
 					cout = (cout >= 48 ? 1 : 48 - cout);
-					printf("%*s(%s)", cout, "", buf);
+					printf("%*s/* %s */", cout, "", buf);
 				}
 			}
 			printf("\n");
 			break;
 		case PKG_CONFIG_BOOL:
 			pkg_config_bool(pkg_config_id(conf), &b);
-			cout = printf("%24s: %s", configname, b ? "yes": "no");
+			cout = printf("%-24s: %s", configname, b ? "yes": "no");
 
 			if (version > 2) {
 				pkg_config_desc(pkg_config_id(conf), &buf);
 				if (buf != NULL) {
 					cout = (cout >= 48 ? 1 : 48 - cout);
-					printf("%*s(%s)", cout, "", buf);
+					printf("%*s/* %s */", cout, "", buf);
 				}
 			}
 			printf("\n");
 			break;
 		case PKG_CONFIG_INTEGER:
 			pkg_config_int64(pkg_config_id(conf), &integer);
-			cout = printf("%24s: %"PRId64, configname, integer);
+			cout = printf("%-24s: %"PRId64, configname, integer);
 
 			if (version > 2) {
 				pkg_config_desc(pkg_config_id(conf), &buf);
 				if (buf != NULL) {
 					cout = (cout >= 48 ? 1 : 48 - cout);
-					printf("%*s(%s)", cout, "", buf);
+					printf("%*s/* %s */", cout, "", buf);
 				}
 			}
 			printf("\n");
 			break;
 		case PKG_CONFIG_KVLIST:
-			cout = printf("%24s:", configname);
+			cout = printf("%-24s: {", configname);
 
 			if (version > 2) {
 				pkg_config_desc(pkg_config_id(conf), &buf);
 				if (buf != NULL) {
 					cout = (cout >= 48 ? 1 : 48 - cout);
-					printf("%*s(%s)", cout, "", buf);
+					printf("%*s/* %s */", cout, "", buf);
 				}
 			}
 			printf("\n");
@@ -309,19 +309,20 @@ show_config_info(int version)
 			kv = NULL;
 			while (pkg_config_kvlist(pkg_config_id(conf), &kv)
 			       == EPKG_OK) {
-				printf("\t- %16s: %s\n",
+				printf("  %s: %s,\n",
 				    pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
 				    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
 			}
+			printf("}\n");
 			break;
 		case PKG_CONFIG_LIST:
-			cout = printf("%24s:", configname);
+			cout = printf("%-24s: [", configname);
 
 			if (version > 2) {
 				pkg_config_desc(pkg_config_id(conf), &buf);
 				if (buf != NULL) {
 					cout = (cout >= 48 ? 1 : 48 - cout);
-					printf("%*s(%s)", cout, "", buf);
+					printf("%*s/* %s */", cout, "", buf);
 				}
 			}
 			printf("\n");
@@ -329,8 +330,9 @@ show_config_info(int version)
 			list = NULL;
 			while (pkg_config_list(pkg_config_id(conf), &list)
 			       == EPKG_OK) {
-				printf("\t- %16s\n", pkg_config_value(list));
+				printf("  %-s,\n", pkg_config_value(list));
 			}
+			printf("]\n");
 			break;
 		}
 	}
@@ -441,7 +443,8 @@ show_repository_info(void)
 			break;
 		}
 
-		printf("  %s:\n%16s: %s\n%16s: %s\n%16s: %s\n%16s: %s\n%16s: %s\n%16s: %s\n",
+		printf("  %s: { \n    %-16s: %s,\n    %-16s: %s,\n    %-16s: %s,\n"
+		    "    %-16s: %s,\n    %-16s: %s,\n    %-16s: %s\n  } \n",
 		    pkg_repo_ident(repo),
                     "url", pkg_repo_url(repo),
 		    "signature", sig,
