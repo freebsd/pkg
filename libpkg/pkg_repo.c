@@ -438,7 +438,7 @@ cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cer
 {
 	FILE *fp;
 	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	struct sbuf *cmd;
+	struct sbuf *cmd = NULL;
 	struct sbuf *buf = NULL;
 	char *line = NULL;
 	size_t linecap = 0;
@@ -491,6 +491,10 @@ cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cer
 
 	sbuf_finish(*sig);
 	sbuf_finish(*cert);
+
+	if (cmd)
+		sbuf_delete(cmd);
+	pclose(fp);
 
 	return (EPKG_OK);
 }
