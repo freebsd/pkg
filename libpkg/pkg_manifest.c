@@ -564,10 +564,19 @@ pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 	ucl_object_t *sub, *tmp;
 	const char *origin = NULL;
 	const char *version = NULL;
+	int64_t vint = 0;
+	char vinteger[BUFSIZ];
 
 	pkg_debug(2, "Found %s", obj->key);
 	HASH_ITER(hh, obj->value.ov, sub, tmp) {
 		if (sub->type != UCL_STRING) {
+			/* accept version to be an integer */
+			if (sub->type == UCL_INT && strcasecmp(sub->key, "version") == 0) {
+				vint = sub->value.iv;
+				snprintf(vinteger, sizeof(vinteger), "%"PRId64, vint);
+				continue;
+			}
+
 			pkg_emit_error("Skipping malformed dependency entry "
 			    "for %s", obj->key);
 			continue;
@@ -577,8 +586,8 @@ pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 		if (strcasecmp(sub->key, "version") == 0)
 			version = sub->value.sv;
 	}
-	if (origin != NULL && version != NULL)
-		pkg_adddep(pkg, obj->key, origin, version, false);
+	if (origin != NULL && (version != NULL || vint > 0))
+		pkg_adddep(pkg, obj->key, origin, vint > 0 ? vinteger : version, false);
 	else
 		pkg_emit_error("Skipping malformed dependency %s", obj->key);
 
