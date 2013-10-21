@@ -86,7 +86,7 @@ exec_config(int argc, char **argv)
 	case PKG_CONFIG_KVLIST:
 		kv = NULL;
 		while (pkg_config_kvlist(pkg_config_id(conf), &kv) == EPKG_OK) {
-			printf("%s: %s", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
+			printf("%s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
 			    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
 		}
 		break;
