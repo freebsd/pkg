@@ -83,8 +83,9 @@ CERT
 public key data here
 END
 .Ed
-An example script that uses SSH public/private key for signing the repository
-can be found in the EXAMPLES section.
+An external command can be useful to create a signing server to keep the
+private key separate from the repository.
+An example of this can be found in the EXAMPLES section.
 .Pp
 Signing the catalogue is strongly recommended.
 .Sh OPTIONS
@@ -141,34 +142,36 @@ See
 .Xr pkg-version 8 ,
 .Xr pkg-which 8
 .Sh EXAMPLES
-Create a repository and sign it with an RSA key.
-The
-.Pa repo.pub
-would be shared with all clients and its local path configured via the
+Create an RSA key pair that would be shared on all client servers
+and its path configured via the
 .Xr pkg.conf 5
 .Sy PUBKEY
-setting.
-.Pp
+setting:
 .Bd -literal -offset indent
 % openssl genrsa -out repo.key 2048
 % chmod 0400 repo.key
 % openssl rsa -in repo.key -out repo.pub -pubout
-% pkg repo /usr/ports/packages repo.key
 .Ed
 .Pp
-Create a repository and sign it with an SSH key
+Create a repository and sign it with a local RSA key:
+.Pp
+.Dl pkg repo /usr/ports/packages repo.key
+.Pp
+Create a repository and sign it with an external command:
 .Bd -literal -offset indent
+# On signing server:
 cat > sign_with_ssh_key.sh << EOF
 #!/bin/sh
 read -t 2 sum
 [ -z "$sum" ] && exit 1
-sig=$(echo $sum | /usr/bin/openssl dgst -sign id_rsa -sha256 -binary)
+sig=$(echo $sum | /usr/bin/openssl dgst -sign repo.key -sha256 -binary)
 echo SIGNATURE
 echo $sig
 echo CERT
-cat id_rsa.pub
+cat repo.pub
 echo END
 EOF
 
-% pkg repo /usr/ports/packages signing_command: ./sign_with_ssh_key.sh
+# On package server:
+% pkg repo /usr/ports/packages signing_command: ssh signing-server sign_with_ssh_key.sh
 .Ed
