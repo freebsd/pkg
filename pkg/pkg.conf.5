@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd October 17, 2013
+.Dd October 21, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -233,8 +233,50 @@ PACKAGESITE for this repository only.
 The repository will be used only if this option is enabled. (default: YES)
 .It Cm MIRROR_TYPE: string
 MIRROR_TYPE for this repository only. (default: NONE)
+.It Cm SIGNATURE_TYPE: string
+Specifies what type of signature this repository uses.
+Can be either
+.Dv NONE ,
+.Dv PUBKEY or
+.Dv FINGERPRINTS .
+When
+.Sy SIGNATURE_TYPE
+is
+.Dv NONE ,
+then no signature checking will be done on the repository.
+When
+.Sy SIGNATURE_TYPE
+is
+.Dv PUBKEY ,
+then the
+.Sy PUBKEY
+option will be used for signature verification.
+When
+.Sy SIGNATURE_TYPE
+is
+.Dv FINGERPRINTS ,
+then the
+.Sy FINGERPRINTS
+option will be used for signature verification.
+(default: NONE)
 .It Cm PUBKEY: string
 PUBKEY for this repository only. (default: NONE)
+.It Cm FINGERPRINTS: string
+This should be set to a path containing known signatures for the repository.
+I.e., if
+.Sy FINGERPRINTS
+is set to
+.Pa /usr/local/etc/pkg/fingerprints/myrepo ,
+then the directories
+.Pa /usr/local/etc/pkg/fingerprints/myrepo/trusted
+and
+.Pa /usr/local/etc/pkg/fingerprints/myrepo/revoked
+should exist with known good and bad fingerprints, respectively.
+Files in those directories should be in the format:
+.Bd -literal -offset indent
+function: sha256
+fingerprint: hex_representation_of_the_fingerprint
+.Ed
 .El
 .El
 .Pp
