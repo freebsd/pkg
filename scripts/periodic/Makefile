@@ -16,11 +16,14 @@ CLEANFILES=	${SCRIPTS}
 
 all: ${SCRIPTS}
 
+# tell bmake we use the old :L :U modifiers
+.MAKE.FreeBSD_UL= yes
+
 install: all
 .for period in daily weekly security
 
 	install -d ${DESTDIR}${PREFIX}/etc/periodic/${period}
-.  for periodic in ${SCRIPTS_${period:tu}:R}
+.  for periodic in ${SCRIPTS_${period:U}:R}
 	install -m 555 ${periodic} ${DESTDIR}${PREFIX}/etc/periodic/${period}
 .  endfor
 .endfor
