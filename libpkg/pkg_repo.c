@@ -40,6 +40,7 @@
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <stdbool.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include "pkg.h"
@@ -443,7 +444,7 @@ cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cer
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
-	int i;
+	int i, ret = EPKG_OK;
 
 	if (sha256_file(path, sha256) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -459,11 +460,16 @@ cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cer
 	sbuf_done(cmd);
 
 	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
-		sbuf_delete(cmd);
-		return (EPKG_FATAL);
+		ret = EPKG_FATAL;
+		goto done;
 	}
 
 	fprintf(fp, "%s\n", sha256);
+
+	if (pclose(fp) != EX_OK) {
+		ret = EPKG_FATAL;
+		goto done;
+	}
 
 	if (*sig == NULL)
 		*sig = sbuf_new_auto();
@@ -491,12 +497,11 @@ cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cer
 
 	sbuf_finish(*sig);
 	sbuf_finish(*cert);
-
+done:
 	if (cmd)
 		sbuf_delete(cmd);
-	pclose(fp);
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 static int
