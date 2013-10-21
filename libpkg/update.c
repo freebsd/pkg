@@ -523,101 +523,6 @@ pkg_register_repo(struct pkg_repo *repo, sqlite3 *sqlite)
 }
 
 static int
-pkg_update_full(const char *repofile, struct pkg_repo *repo, time_t *mtime)
-{
-	char repofile_unchecked[MAXPATHLEN];
-	int fd = -1, rc = EPKG_FATAL;
-	sqlite3 *sqlite = NULL;
-	char *req = NULL;
-	char *bad_abis = NULL;
-	const char *myarch;
-
-	snprintf(repofile_unchecked, sizeof(repofile_unchecked),
-			"%s.unchecked", repofile);
-
-	/* If the repo.sqlite file exists, test that we can write to
-		   it.  If it doesn't exist, assume we can create it */
-
-	if (eaccess(repofile, F_OK) == 0 && eaccess(repofile, W_OK) == -1) {
-		pkg_emit_error("Insufficient privilege to update %s\n",
-				repofile);
-		rc = EPKG_ENOACCESS;
-		goto cleanup;
-	}
-
-	if ((fd = repo_fetch_remote_tmp(repo, repo_db_archive, "txz", mtime, &rc)) == -1) {
-		goto cleanup;
-	}
-
-	if ((rc = repo_archive_extract_file(fd, repo_db_file, repofile_unchecked, repo, -1)) != EPKG_OK) {
-		goto cleanup;
-	}
-
-	/* check if the repository is for valid architecture */
-	if (access(repofile_unchecked, R_OK|W_OK) == -1) {
-		pkg_emit_error("Archive file does not have repo.sqlite file");
-		rc = EPKG_FATAL;
-		goto cleanup;
-	}
-	if (sqlite3_open(repofile_unchecked, &sqlite) != SQLITE_OK) {
-		unlink(repofile_unchecked);
-		pkg_emit_error("Corrupted repository");
-		rc = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
-
-	req = sqlite3_mprintf("select group_concat(arch, ', ') from "
-			"(select distinct arch from packages "
-			"where arch not GLOB '%q')", myarch);
-
-	if (get_sql_string(sqlite, req, &bad_abis) != EPKG_OK) {
-		sqlite3_free(req);
-		pkg_emit_error("Unable to query repository");
-		rc = EPKG_FATAL;
-		sqlite3_close(sqlite);
-		goto cleanup;
-	}
-
-	if (bad_abis != NULL) {
-		pkg_emit_error("At least one of the packages provided by "
-				"the repository is not compatible with your ABI:\n"
-				"    Your ABI: %s\n"
-				"    Incompatible ABIs found: %s",
-				myarch, bad_abis);
-		rc = EPKG_FATAL;
-		sqlite3_close(sqlite);
-		goto cleanup;
-	}
-
-	/* register the packagesite */
-	if (pkg_register_repo(repo, sqlite) != EPKG_OK) {
-		sqlite3_close(sqlite);
-		goto cleanup;
-	}
-
-	sqlite3_close(sqlite);
-	sqlite3_shutdown();
-
-	if (rename(repofile_unchecked, repofile) != 0) {
-		pkg_emit_errno("rename", "");
-		rc = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if ((rc = remote_add_indexes(pkg_repo_ident(repo))) != EPKG_OK)
-		goto cleanup;
-	rc = EPKG_OK;
-
-	cleanup:
-	if (fd != -1)
-		(void)close(fd);
-
-	return (rc);
-}
-
-static int
 pkg_add_from_manifest(char *buf, const char *origin, long offset,
 		const char *manifest_digest, const char *local_arch, sqlite3 *sqlite,
 		struct pkg_manifest_key **keys, struct pkg **p)
@@ -928,11 +833,8 @@ pkg_update(struct pkg_repo *repo, bool force)
 
 	res = pkg_update_incremental(repofile, repo, &t);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {
-		pkg_emit_notice("No digest falling back on legacy catalog format");
-
-		/* Still try to do full upgrade */
-		if ((res = pkg_update_full(repofile, repo, &t)) != EPKG_OK)
-			goto cleanup;
+		pkg_emit_notice("Unable to find catalogs");
+		goto cleanup;
 	}
 
 	res = EPKG_OK;

@@ -138,36 +138,6 @@ pkg_repo_fetch(struct pkg *pkg)
 	return (retcode);
 }
 
-static void
-pack_extract(const char *pack, const char *dbname, const char *dbpath)
-{
-	struct archive *a = NULL;
-	struct archive_entry *ae = NULL;
-
-	if (access(pack, F_OK) != 0)
-		return;
-
-	a = archive_read_new();
-	archive_read_support_filter_all(a);
-	archive_read_support_format_tar(a);
-	if (archive_read_open_filename(a, pack, 4096) != ARCHIVE_OK) {
-		/* if we can't unpack it it won't be useful for us */
-		unlink(pack);
-		archive_read_free(a);
-		return;
-	}
-
-	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		if (strcmp(archive_entry_pathname(ae), dbname) == 0) {
-			archive_entry_set_pathname(ae, dbpath);
-			archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
-			break;
-		}
-	}
-
-	archive_read_free(a);
-}
-
 struct digest_list_entry {
 	char *origin;
 	char *digest;
@@ -183,7 +153,7 @@ digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry 
 }
 
 int
-pkg_create_repo(char *path, bool force, bool filelist,
+pkg_create_repo(char *path, bool filelist,
 		void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
@@ -192,14 +162,11 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	size_t len;
 	pthread_t *tids = NULL;
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
-	sqlite3 *sqlite = NULL;
 
-	char *errmsg = NULL;
 	int retcode = EPKG_OK;
 
 	char *repopath[2];
 	char repodb[MAXPATHLEN + 1];
-	char repopack[MAXPATHLEN + 1];
 	char *manifest_digest;
 	FILE *psyml, *fsyml, *mandigests;
 
@@ -240,17 +207,6 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
-
-	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_db_file);
-	snprintf(repopack, sizeof(repopack), "%s/repo.txz", path);
-
-	pack_extract(repopack, repo_db_file, repodb);
-
-	if ((retcode = pkgdb_repo_open(repodb, force, &sqlite, true)) != EPKG_OK)
-		goto cleanup;
-
-	if ((retcode = pkgdb_repo_init(sqlite, true)) != EPKG_OK)
-		goto cleanup;
 
 	thd_data.root_path = path;
 	thd_data.max_results = num_workers;
@@ -299,33 +255,10 @@ pkg_create_repo(char *path, bool force, bool filelist,
 			continue;
 		}
 
-		/* do not add if package if already in repodb
-		   (possibly at a different pkg_path) */
-
-		retcode = pkgdb_repo_cksum_exists(sqlite, r->cksum);
-		if (retcode == EPKG_FATAL) {
-			goto cleanup;
-		}
-		else if (retcode == EPKG_OK) {
-			pkg_free(r->pkg);
-			free(r);
-			continue;
-		}
-
 		/* EPKG_END returned */
 
 		if (progress != NULL)
 			progress(r->pkg, data);
-		retcode = pkgdb_repo_add_package(r->pkg, r->path, sqlite,
-				manifest_digest, false, true);
-		if (retcode == EPKG_END) {
-			pkg_free(r->pkg);
-			free(r);
-			continue;
-		}
-		else if (retcode != EPKG_OK) {
-			goto cleanup;
-		}
 
 		manifest_pos = ftell(psyml);
 		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
@@ -352,14 +285,9 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	/* Now sort all digests */
 	LL_SORT(dlist, digest_sort_compare_func);
 cleanup:
-	if (pkgdb_repo_close(sqlite, retcode == EPKG_OK) != EPKG_OK) {
-		retcode = EPKG_FATAL;
-	}
 	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
-		if (retcode == EPKG_OK) {
-			fprintf(mandigests, "%s:%s:%ld:%ld\n", cur_dig->origin,
-				cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos);
-		}
+		fprintf(mandigests, "%s:%s:%ld:%ld\n", cur_dig->origin,
+		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos);
 		free(cur_dig->digest);
 		free(cur_dig->origin);
 		free(cur_dig);
@@ -389,14 +317,6 @@ cleanup:
 
 	if (mandigests != NULL)
 		fclose(mandigests);
-
-	if (sqlite != NULL)
-		sqlite3_close(sqlite);
-
-	if (errmsg != NULL)
-		sqlite3_free(errmsg);
-
-	sqlite3_shutdown();
 
 	return (retcode);
 }
@@ -637,8 +557,10 @@ pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa, 
 
 	packing_finish(pack);
 	unlink(path);
-	sbuf_delete(sig);
-	sbuf_delete(pub);
+	if (sig != NULL)
+		sbuf_delete(sig);
+	if (pub != NULL)
+		sbuf_delete(pub);
 
 	return (EPKG_OK);
 }
@@ -672,13 +594,6 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char **argv, int argc,
 	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_packagesite_file);
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_packagesite_archive);
 	if (pack_db(repo_packagesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_db_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_db_archive);
-	if (pack_db(repo_db_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
