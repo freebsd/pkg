@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 15, 2013
+.Dd October 21, 2013
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -24,7 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl flq
-.Ao Ar repo-path Ac Op Ar rsa-key
+.Ao Ar repo-path Ac Op Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
 .Sh DESCRIPTION
 .Nm
 is used for creating a catalogue of the available
@@ -58,7 +58,32 @@ This is a significant time savings for large package repositories.
 Optionally you may sign the repository catalogue by specifying the
 path to an RSA private key as the
 .Ar rsa-key
-argument.
+argument or an external command.
+.Pp
+If
+.Ar rsa-key
+is used, the SHA256 of the repository is signed using the provided key.
+The signature is added into the repository catalogue.
+The client side should use
+.Sy PUBKEY
+in its
+.Pa pkg.conf
+to specify the path to the public key for the given
+.Ar rsa-key .
+.Pp
+If an external command is provided, it is passed the SHA256 of the repository
+catalogue on its stdin.
+It should output the following format:
+.Bd -literal -offset indent
+SIGNATURE
+signature data here
+CERT
+public key data here
+END
+.Ed
+An example script that uses SSH public/private key for signing the repository
+can be found in the EXAMPLES section.
+.Pp
 Signing the catalogue is strongly recommended.
 .Sh OPTIONS
 The following options are supported by
@@ -114,3 +139,24 @@ See
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,
 .Xr pkg-which 8
+.Sh EXAMPLES
+Create a repository and sign it with an RSA key
+.Pp
+.Dl % pkg repo /usr/ports/packages repo_signing_key.key
+.Pp
+Create a repository and sign it with an SSH key
+.Bd -literal -offset indent
+cat > sign_with_ssh_key.sh << EOF
+#!/bin/sh
+read -t 2 sum
+[ -z "$sum" ] && exit 1
+sig=$(echo $sum | /usr/bin/openssl dgst -sign id_rsa -sha256 -binary)
+echo SIGNATURE
+echo $sig
+echo CERT
+cat id_rsa.pub
+echo END
+EOF
+
+% pkg repo /usr/ports/packages signing_command: ./sign_with_ssh_key.sh
+.Ed
