@@ -517,7 +517,6 @@ pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa, 
 	if (rsa != NULL) {
 		if (rsa_sign(path, rsa, &sigret, &siglen) != EPKG_OK) {
 			packing_finish(pack);
-			packing_finish(pack);
 			return (EPKG_FATAL);
 		}
 
