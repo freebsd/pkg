@@ -141,9 +141,20 @@ See
 .Xr pkg-version 8 ,
 .Xr pkg-which 8
 .Sh EXAMPLES
-Create a repository and sign it with an RSA key
+Create a repository and sign it with an RSA key.
+The
+.Pa repo.pub
+would be shared with all clients and its local path configured via the
+.Xr pkg.conf 5
+.Sy PUBKEY
+setting.
 .Pp
-.Dl % pkg repo /usr/ports/packages repo_signing_key.key
+.Bd -literal -offset indent
+% openssl genrsa -out repo.key 2048
+% chmod 0400 repo.key
+% openssl rsa -in repo.key -out repo.pub -pubout
+% pkg repo /usr/ports/packages repo.key
+.Ed
 .Pp
 Create a repository and sign it with an SSH key
 .Bd -literal -offset indent
