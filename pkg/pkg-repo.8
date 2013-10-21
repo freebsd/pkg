@@ -23,7 +23,7 @@
 .Nd creates a package repository catalogue
 .Sh SYNOPSIS
 .Nm
-.Op Fl flq
+.Op Fl lq
 .Op Fl o Ar output-dir
 .Ao Ar repo-path Ac Op Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
 .Sh DESCRIPTION
@@ -52,9 +52,6 @@ will search the filesystem beneath
 to find all the packages it contains.
 Symbolic links are ignored, and only the most recent package for each
 origin is included in the catalogue.
-If a catalogue already exists, it will be updated incrementally with
-any changes to the package collection.
-This is a significant time savings for large package repositories.
 .Pp
 The repository will be created in the package directory unless the
 .Fl o Ar output-dir
@@ -96,9 +93,6 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl q
 Force quiet output
-.It Fl f
-Force a full rebuild of the package catalogue, discarding any previous
-content
 .It Fl l
 Generate list of all files in repo as filesite.txz archive.
 .It Fl o Ar output-dir
