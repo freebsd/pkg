@@ -110,6 +110,7 @@ static struct manifest_key {
 	{ "users",               PKG_USERS,               UCL_OBJECT, pkg_object},
 	{ "users",               PKG_USERS,               UCL_ARRAY,  pkg_array},
 	{ "version",             PKG_VERSION,             UCL_STRING, pkg_string},
+	{ "version",             PKG_VERSION,             UCL_INT,    pkg_int},
 	{ "www",                 PKG_WWW,                 UCL_STRING, pkg_string},
 	{ NULL, -99, -99, NULL}
 };
@@ -294,6 +295,11 @@ pkg_string(struct pkg *pkg, ucl_object_t *obj, int attr)
 static int
 pkg_int(struct pkg *pkg, ucl_object_t *obj, int attr)
 {
+	char vint[BUFSIZ];
+	if (attr == PKG_VERSION) {
+		snprintf(vint, sizeof(vint), "%"PRId64, obj->value.iv);
+		pkg_set(pkg, attr, vint);
+	}
 	return (pkg_set(pkg, attr, obj->value.iv));
 }
 

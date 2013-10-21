@@ -745,8 +745,6 @@ cleanup:
 		pkg_free(pkg);
 	if (it != NULL)
 		pkgdb_it_free(it);
-	if (pkgdb_repo_close(sqlite, rc == EPKG_OK) != EPKG_OK)
-		rc = EPKG_FATAL;
 	if (map == MAP_FAILED && fmanifest)
 		fclose(fmanifest);
 	if (fdigests)
