@@ -204,7 +204,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin, PKG_NAME, &name);
 
-	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH &&
+	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
 	    strncmp(arch, myarch, strlen(myarch)) != 0) {
 		pkg_emit_error("wrong architecture: %s instead of %s",
 		    arch, myarch);
