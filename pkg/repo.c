@@ -130,7 +130,9 @@ exec_repo(int argc, char **argv)
 			printf("\bdone!\n");
 	}
 	
-	pkg_finish_repo(argv[0], password_cb, argv + 1, argc - 1, filelist);
+	if (pkg_finish_repo(argv[0], password_cb, argv + 1, argc - 1,
+	    filelist) != EPKG_OK)
+		return (EX_DATAERR);
 
 	return (EX_OK);
 }
