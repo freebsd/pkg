@@ -24,6 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl flq
+.Op Fl o Ar output-dir
 .Ao Ar repo-path Ac Op Ao Ar rsa-key Ac | signing_command: Ao Ar the command Ac
 .Sh DESCRIPTION
 .Nm
@@ -54,6 +55,10 @@ origin is included in the catalogue.
 If a catalogue already exists, it will be updated incrementally with
 any changes to the package collection.
 This is a significant time savings for large package repositories.
+.Pp
+The repository will be created in the package directory unless the
+.Fl o Ar output-dir
+is specified, in which case it will be created there.
 .Pp
 Optionally you may sign the repository catalogue by specifying the
 path to an RSA private key as the
@@ -96,6 +101,8 @@ Force a full rebuild of the package catalogue, discarding any previous
 content
 .It Fl l
 Generate list of all files in repo as filesite.txz archive.
+.It Fl o Ar output-dir
+Create the repository in the specified directory instead of the package directory.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

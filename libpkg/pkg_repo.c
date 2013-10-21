@@ -153,7 +153,7 @@ digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry 
 }
 
 int
-pkg_create_repo(char *path, bool filelist,
+pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
@@ -177,6 +177,11 @@ pkg_create_repo(char *path, bool filelist,
 		return (EPKG_FATAL);
 	}
 
+	if (!is_dir(output_dir)) {
+		pkg_emit_error("%s is not a directory", output_dir);
+		return (EPKG_FATAL);
+	}
+
 	repopath[0] = path;
 	repopath[1] = NULL;
 
@@ -190,19 +195,22 @@ pkg_create_repo(char *path, bool filelist,
 		goto cleanup;
 	}
 
-	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_packagesite_file);
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+	    repo_packagesite_file);
 	if ((psyml = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 	if (filelist) {
-		snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_filesite_file);
+		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+		    repo_filesite_file);
 		if ((fsyml = fopen(repodb, "w")) == NULL) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 	}
-	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_digests_file);
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+	    repo_digests_file);
 	if ((mandigests = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
@@ -568,7 +576,8 @@ pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa, 
 }
 
 int
-pkg_finish_repo(char *path, pem_password_cb *password_cb, char **argv, int argc, bool filelist)
+pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
+    char **argv, int argc, bool filelist)
 {
 	char repo_path[MAXPATHLEN + 1];
 	char repo_archive[MAXPATHLEN + 1];
@@ -576,9 +585,9 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char **argv, int argc,
 	struct stat st;
 	int ret = EPKG_OK;
 	
-	if (!is_dir(path)) {
-	    pkg_emit_error("%s is not a directory", path);
-	    return (EPKG_FATAL);
+	if (!is_dir(output_dir)) {
+		pkg_emit_error("%s is not a directory", output_dir);
+		return (EPKG_FATAL);
 	}
 
 	if (argc == 1) {
@@ -593,31 +602,38 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char **argv, int argc,
 		argv++;
 	}
 
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_packagesite_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_packagesite_archive);
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+	    repo_packagesite_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+	    repo_packagesite_archive);
 	if (pack_db(repo_packagesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (filelist) {
-		snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_filesite_file);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_filesite_archive);
+		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+		    repo_filesite_file);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
+		    output_dir, repo_filesite_archive);
 		if (pack_db(repo_filesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
 	}
 
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_digests_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_digests_archive);
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+	    repo_digests_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+	    repo_digests_archive);
 	if (pack_db(repo_digests_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	/* Now we need to set the equal mtime for all archives in the repo */
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_db_archive);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+	    output_dir, repo_db_archive);
 	if (stat(repo_archive, &st) == 0) {
 		struct timeval ftimes[2] = {
 			{
@@ -629,12 +645,15 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char **argv, int argc,
 			.tv_usec = 0
 			}
 		};
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_packagesite_archive);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+		    output_dir, repo_packagesite_archive);
 		utimes(repo_archive, ftimes);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_digests_archive);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+		    output_dir, repo_digests_archive);
 		utimes(repo_archive, ftimes);
 		if (filelist) {
-			snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_filesite_archive);
+			snprintf(repo_archive, sizeof(repo_archive),
+			    "%s/%s.txz", output_dir, repo_filesite_archive);
 			utimes(repo_archive, ftimes);
 		}
 	}
