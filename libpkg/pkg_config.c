@@ -717,7 +717,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				return;
 			}
 			mirror_type = ucl_obj_tostring(sub);
-		} else if (strcasecmp(sub->key, "signature") == 0) {
+		} else if (strcasecmp(sub->key, "signature_type") == 0) {
 			if (sub->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",

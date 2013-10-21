@@ -447,7 +447,7 @@ show_repository_info(void)
 		    "    %-16s: %s,\n    %-16s: %s,\n    %-16s: %s\n  } \n",
 		    pkg_repo_ident(repo),
                     "url", pkg_repo_url(repo),
-		    "signature", sig,
+		    "signature_type", sig,
 		    "pubkey", pkg_repo_key(repo) == NULL ?
 		        "" : pkg_repo_key(repo),
 		    "fingerprints", pkg_repo_fingerprints(repo) == NULL ?
