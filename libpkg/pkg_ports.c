@@ -648,7 +648,7 @@ parse_actions(ucl_object_t *o, struct plist *p,
 
 	while (cur) {
 		for (i = 0; list_actions[i].name != NULL; i++) {
-			if (!strcasecmp(cur->key, list_actions[i].name)) {
+			if (!strcasecmp(ucl_obj_tostring(cur), list_actions[i].name)) {
 				list_actions[i].perform(p, line, a);
 				break;
 			}
