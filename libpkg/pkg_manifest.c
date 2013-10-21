@@ -851,6 +851,7 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	obj_append_kv(obj, "arch", pkgarch);
 	obj_append_kv(obj, "maintainer", pkgmaintainer);
 	obj_append_kv(obj, "prefix", prefix);
+	obj_append_kv(obj, "www", www);
 	if (repopath != NULL)
 		obj_append_kv(obj, "path", repopath);
 	if (pkgsum != NULL)
