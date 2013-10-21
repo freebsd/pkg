@@ -492,8 +492,6 @@ cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cer
 	sbuf_finish(*sig);
 	sbuf_finish(*cert);
 
-	printf("%s\n", sbuf_data(*cert));
-	
 	return (EPKG_OK);
 }
 
