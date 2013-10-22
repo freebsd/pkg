@@ -515,6 +515,7 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 {
 	yaml_node_pair_t *pair;
 	yaml_node_t *key, *val;
+	int flag = 0;
 
 	ucl_object_t *sub;
 
@@ -531,8 +532,11 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 			sub = yaml_sequence_to_object(NULL, doc, val);
 			break;
 		case YAML_SCALAR_NODE:
+			flag = UCL_STRING_TRIM;
+			if (strcmp(key->data.scalar.value, "version") != 0)
+				flag |= UCL_STRING_PARSE;
 			sub = ucl_object_fromstring_common (val->data.scalar.value,
-			    val->data.scalar.length, UCL_STRING_TRIM|UCL_STRING_PARSE);
+			    val->data.scalar.length, flag);
 			break;
 		case YAML_NO_NODE:
 			/* Should not happen */
