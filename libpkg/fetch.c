@@ -409,7 +409,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	}
 
 	if (done < sz) {
-		pkg_emit_error("An error occured while fetching package");
+		pkg_emit_error("An error occurred while fetching package");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
