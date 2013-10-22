@@ -365,9 +365,6 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		snprintf(path, MAXPATHLEN, "%s/trusted", pkg_repo_fingerprints(repo));
 		trusted = load_fingerprints(path);
 
-		snprintf(path, MAXPATHLEN, "%s/revoked", pkg_repo_fingerprints(repo));
-		revoked = load_fingerprints(path);
-
 		if (HASH_COUNT(trusted) == 0) {
 			pkg_emit_error("No trusted certificates");
 			rc = EPKG_FATAL;
@@ -375,6 +372,9 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 				unlink(dest);
 			goto cleanup;
 		}
+
+		snprintf(path, MAXPATHLEN, "%s/revoked", pkg_repo_fingerprints(repo));
+		revoked = load_fingerprints(path);
 
 		for (s = sc; s != NULL; s = s->hh.next) {
 			if (s->sig == NULL || s->cert == NULL) {
