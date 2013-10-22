@@ -163,26 +163,37 @@ See
 .Xr pkg-version 8 ,
 .Xr pkg-which 8
 .Sh EXAMPLES
-Create an RSA key pair.
-It's public key would be shared on all client servers
-and its path configured via the
-.Xr pkg.conf 5
-.Sy PUBKEY
-setting:
+Create an RSA key pair:
 .Bd -literal -offset indent
 % openssl genrsa -out repo.key 2048
 % chmod 0400 repo.key
 % openssl rsa -in repo.key -out repo.pub -pubout
 .Ed
 .Pp
-Create a repository and sign it with a local RSA key:
+Create a repository and sign it with a local RSA key.
+The public key would be shared on all client servers with
+.Sy SIGNATURE_TYPE
+set to
+.Dv PUBKEY
+and its path set via
+.Sy PUBKEY
+setting in the
+.Xr pkg.conf 5 :
 .Pp
 .Dl pkg repo /usr/ports/packages repo.key
 .Pp
-Create a repository and sign it with an external command:
+Create a repository and sign it with an external command.
+The client should set, via
+.Xr pkg.conf 5 ,
+.Sy SIGNATURE_TYPE
+to
+.Dv FINGERPRINTS
+and
+.Sy FINGERPRINTS
+to a path containing a file with the SHA256 of the public key:
 .Bd -literal -offset indent
 # On signing server:
-cat > sign_with_ssh_key.sh << EOF
+% cat > sign_with_ssh_key.sh << EOF
 #!/bin/sh
 read -t 2 sum
 [ -z "$sum" ] && exit 1
@@ -196,4 +207,12 @@ EOF
 
 # On package server:
 % pkg repo /usr/ports/packages signing_command: ssh signing-server sign_with_ssh_key.sh
+# Generate fingerprint for sharing with clients
+% sh -c '( echo "function: sha256"; echo "fingerprint: $(sha256 -q repo.pub)"; ) > fingerprint'
+# The 'fingerprint' file should be distributed to all clients.
+
+# On clients with FINGERPRINTS: /usr/local/etc/pkg/fingerprints/myrepo:
+$ mkdir -p /usr/local/etc/pkg/fingerprints/myrepo/trusted
+# Add 'fingerprint' into /usr/local/etc/pkg/fingerprints/myrepo/trusted
+
 .Ed
