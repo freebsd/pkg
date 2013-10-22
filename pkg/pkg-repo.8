@@ -197,9 +197,8 @@ to a path containing a file with the SHA256 of the public key:
 #!/bin/sh
 read -t 2 sum
 [ -z "$sum" ] && exit 1
-sig=$(echo $sum | /usr/bin/openssl dgst -sign repo.key -sha256 -binary)
 echo SIGNATURE
-echo $sig
+echo $sum | /usr/bin/openssl dgst -sign repo.key -sha256 -binary
 echo CERT
 cat repo.pub
 echo END
