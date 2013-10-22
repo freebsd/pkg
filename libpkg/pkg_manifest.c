@@ -95,6 +95,7 @@ static struct manifest_key {
 	{ "maintainer",          PKG_MAINTAINER,          UCL_STRING, pkg_string},
 	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
+	{ "name",                PKG_NAME,                UCL_INT, pkg_int},
 	{ "options",             PKG_OPTIONS,             UCL_STRING, pkg_object},
 	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_STRING, pkg_object},
 	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_STRING, pkg_object},
@@ -297,7 +298,7 @@ static int
 pkg_int(struct pkg *pkg, ucl_object_t *obj, int attr)
 {
 	char vint[BUFSIZ];
-	if (attr == PKG_VERSION) {
+	if (attr == PKG_VERSION || attr == PKG_NAME) {
 		snprintf(vint, sizeof(vint), "%"PRId64, ucl_object_toint(obj));
 		return (pkg_set(pkg, attr, vint));
 	}
