@@ -555,7 +555,7 @@ pkg_add_from_manifest(char *buf, const char *origin, long offset,
 		goto cleanup;
 	}
 
-	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, manifest_digest, true, false);
+	rc = pkgdb_repo_add_package(pkg, NULL, sqlite, manifest_digest, true);
 
 cleanup:
 	return (rc);
@@ -606,12 +606,13 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	size_t len = 0;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
-	if ((rc = pkgdb_repo_open(name, false, &sqlite, false)) != EPKG_OK) {
+	if ((rc = pkgdb_repo_open(name, false, &sqlite)) != EPKG_OK) {
 		return (EPKG_FATAL);
 	}
 
-	if ((rc = pkgdb_repo_init(sqlite, false)) != EPKG_OK)
+	if ((rc = pkgdb_repo_init(sqlite)) != EPKG_OK) {
 		goto cleanup;
+	}
 
 	if ((rc = pkg_register_repo(repo, sqlite)) != EPKG_OK)
 		goto cleanup;
