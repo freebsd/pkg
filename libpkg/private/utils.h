@@ -98,6 +98,7 @@ int rsa_verify_cert(const char *path, unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);
 
 bool is_hardlink(struct hardlinks *hl, struct stat *st);
+bool is_valid_abi(const char *arch, bool emit_error);
 
 struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);

@@ -35,10 +35,10 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
-#include <fnmatch.h>
 
 #include "pkg.h"
 #include "private/event.h"
+#include "private/utils.h"
 #include "private/pkg.h"
 
 static int
@@ -153,7 +153,6 @@ int
 pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_key *keys)
 {
 	const char	*arch;
-	const char	*myarch;
 	const char	*origin;
 	const char	*name;
 	struct archive	*a;
@@ -201,13 +200,9 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * Check the architecture
 	 */
 
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin, PKG_NAME, &name);
 
-	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
-	    strncmp(arch, myarch, strlen(myarch)) != 0) {
-		pkg_emit_error("wrong architecture: %s instead of %s",
-		    arch, myarch);
+	if (!is_valid_abi(arch, true)) {
 		if ((flags & PKG_ADD_FORCE) == 0) {
 			retcode = EPKG_FATAL;
 			goto cleanup;

@@ -40,6 +40,7 @@
 #include <uthash.h>
 #include <utlist.h>
 #include <ctype.h>
+#include <fnmatch.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -454,6 +455,23 @@ is_hardlink(struct hardlinks *hl, struct stat *st)
 	h = malloc(sizeof(struct hardlinks));
 	h->inode = st->st_ino;
 	HASH_ADD_INO(hl, inode, h);
+
+	return (true);
+}
+
+bool
+is_valid_abi(const char *arch, bool emit_error) {
+	const char *myarch;
+
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+
+	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
+	    strncmp(arch, myarch, strlen(myarch)) != 0) {
+		if (emit_error)
+			pkg_emit_error("wrong architecture: %s instead of %s",
+			    arch, myarch);
+		return (false);
+	}
 
 	return (true);
 }

@@ -525,7 +525,7 @@ pkg_register_repo(struct pkg_repo *repo, sqlite3 *sqlite)
 
 static int
 pkg_add_from_manifest(char *buf, const char *origin, long offset,
-		const char *manifest_digest, const char *local_arch, sqlite3 *sqlite,
+		const char *manifest_digest, sqlite3 *sqlite,
 		struct pkg_manifest_key **keys, struct pkg **p)
 {
 	int rc = EPKG_OK;
@@ -560,9 +560,8 @@ pkg_add_from_manifest(char *buf, const char *origin, long offset,
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
-	if (pkg_arch == NULL || strcmp(pkg_arch, local_arch) != 0) {
-		pkg_emit_error("package %s is built for %s arch, and local arch is %s",
-				origin, pkg_arch ? pkg_arch : "NULL", local_arch);
+
+	if (pkg_arch == NULL || !is_valid_abi(pkg_arch, true)) {
 		rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -611,7 +610,6 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	time_t local_t = *mtime;
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
 			*item, *tmp_item;
-	const char *myarch;
 	struct pkg_manifest_key *keys = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
@@ -715,8 +713,6 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		free(item);
 	}
 
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
-
 	pkg_debug(1, "Pkgrepo, pushing new entries for '%s'", name);
 	pkg = NULL;
 
@@ -731,7 +727,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkg_add_from_manifest(map + item->offset, item->origin,
-			    len - item->offset, item->digest, myarch, sqlite, &keys, &pkg);
+			    len - item->offset, item->digest, sqlite, &keys, &pkg);
 		}
 		free(item->origin);
 		free(item->digest);
