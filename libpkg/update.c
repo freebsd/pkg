@@ -407,7 +407,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		}
 
 		if (nbgood != 0) {
-			pkg_emit_error("No trusted certificated has been used "
+			pkg_emit_error("No trusted certificate has been used "
 			    "to sign the repository");
 			rc = EPKG_FATAL;
 			goto cleanup;
