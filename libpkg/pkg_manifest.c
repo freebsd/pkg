@@ -602,8 +602,9 @@ pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 	}
 	if (origin != NULL && (version != NULL || vint > 0))
 		pkg_adddep(pkg, ucl_object_key(obj), origin, vint > 0 ? vinteger : version, false);
-	else
+	else {
 		pkg_emit_error("Skipping malformed dependency %s", ucl_object_key(obj));
+	}
 
 	return (EPKG_OK);
 }
@@ -654,7 +655,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 		obj = ucl_parser_get_object(p, &error);
 		if (obj != NULL) {
 			HASH_ITER(hh, obj->value.ov, sub, tmp) {
-				HASH_FIND_STR(keys, __DECONST(char *, ucl_object_key(obj)), sk);
+				HASH_FIND_STR(keys, __DECONST(char *, ucl_object_key(sub)), sk);
 				if (sk != NULL) {
 					HASH_FIND_UCLT(sk->parser, &sub->type, dp);
 					if (dp == NULL) {
