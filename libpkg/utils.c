@@ -476,10 +476,10 @@ is_valid_abi(const char *arch, bool emit_error) {
 	return (true);
 }
 
-static void yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node);
+static ucl_object_t *yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node);
 
-static void
-yaml_sequence_to_object(ucl_object_t **obj, yaml_document_t *doc, yaml_node_t *node)
+static ucl_object_t *
+yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
 {
 	yaml_node_item_t *item;
 	yaml_node_t *val;
@@ -490,12 +490,10 @@ yaml_sequence_to_object(ucl_object_t **obj, yaml_document_t *doc, yaml_node_t *n
 		val = yaml_document_get_node(doc, *item);
 		switch (val->type) {
 		case YAML_MAPPING_NODE:
-			sub = ucl_object_new();
-			yaml_mapping_to_object(sub, doc, val);
+			sub = yaml_mapping_to_object(NULL, doc, val);
 			break;
 		case YAML_SEQUENCE_NODE:
-			sub = NULL;
-			yaml_sequence_to_object(&sub, doc, val);
+			sub = yaml_sequence_to_object(NULL, doc, val);
 			break;
 		case YAML_SCALAR_NODE:
 			sub = ucl_object_fromstring_common (val->data.scalar.value,
@@ -505,12 +503,14 @@ yaml_sequence_to_object(ucl_object_t **obj, yaml_document_t *doc, yaml_node_t *n
 			/* Should not happen */
 			break;
 		}
-		*obj = ucl_array_append(*obj, sub);
+		obj = ucl_array_append(obj, sub);
 		++item;
 	}
+
+	return (obj);
 }
 
-static void
+static ucl_object_t *
 yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
 {
 	yaml_node_pair_t *pair;
@@ -525,12 +525,10 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 
 		switch (val->type) {
 		case YAML_MAPPING_NODE:
-			sub = ucl_object_new();
-			yaml_mapping_to_object(sub, doc, val);
+			sub = yaml_mapping_to_object(NULL, doc, val);
 			break;
 		case YAML_SEQUENCE_NODE:
-			sub = NULL;
-			yaml_sequence_to_object(&sub, doc, val);
+			sub = yaml_sequence_to_object(NULL, doc, val);
 			break;
 		case YAML_SCALAR_NODE:
 			sub = ucl_object_fromstring_common (val->data.scalar.value,
@@ -540,9 +538,11 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 			/* Should not happen */
 			break;
 		}
-		ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length, true);
+		obj = ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length, true);
 		++pair;
 	}
+
+	return (obj);
 }
 
 ucl_object_t *
@@ -574,12 +574,10 @@ yaml_to_ucl(const char *file, const char *buffer, size_t len) {
 	if (node != NULL) {
 		switch (node->type) {
 		case YAML_MAPPING_NODE:
-			obj = ucl_object_new();
-			yaml_mapping_to_object(obj, &doc, node);
+			obj = yaml_mapping_to_object(NULL, &doc, node);
 			break;
 		case YAML_SEQUENCE_NODE:
-			obj = NULL;
-			yaml_sequence_to_object(&obj, &doc, node);
+			obj = yaml_sequence_to_object(NULL, &doc, node);
 			break;
 		case YAML_SCALAR_NODE:
 		case YAML_NO_NODE:
