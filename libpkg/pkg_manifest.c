@@ -764,16 +764,16 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 	struct sbuf *b = NULL;
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &origin, PKG_VERSION, &version);
-	obj = ucl_object_insert_key(obj, ucl_object_fromstring(origin), "origin", 6);
-	ucl_object_insert_key(obj, ucl_object_fromstring(name), "name", 4);
-	ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7);
+	obj = ucl_object_insert_key(obj, ucl_object_fromstring(origin), "origin", 6, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(name), "name", 4, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7, false);
 
 	seq = NULL;
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		urlencode(pkg_file_path(file), &b);
 		seq = ucl_array_append(seq, ucl_object_fromlstring(sbuf_data(b), sbuf_len(b)));
 	}
-	ucl_object_insert_key(obj, seq, "files", 5);
+	ucl_object_insert_key(obj, seq, "files", 5, false);
 
 	output = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
 	fprintf(f, "%s", output);
@@ -818,90 +818,90 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	    PKG_VERSION, &version, PKG_REPOPATH, &repopath,
 	    PKG_CKSUM, &pkgsum, PKG_PKGSIZE, &pkgsize);
 
-	obj = ucl_object_insert_key(obj, ucl_object_fromstring(name), "name", 4);
-	ucl_object_insert_key(obj, ucl_object_fromstring(pkgorigin), "origin", 6);
-	ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7);
-	ucl_object_insert_key(obj, ucl_object_fromstring(comment), "comment", 7);
-	ucl_object_insert_key(obj, ucl_object_fromstring(pkgarch), "arch", 4);
-	ucl_object_insert_key(obj, ucl_object_fromstring(pkgmaintainer), "maintainer", 10);
-	ucl_object_insert_key(obj, ucl_object_fromstring(prefix), "prefix", 6);
-	ucl_object_insert_key(obj, ucl_object_fromstring(www), "www", 3);
-	ucl_object_insert_key(obj, ucl_object_fromstring(repopath), "path", 4);
-	ucl_object_insert_key(obj, ucl_object_fromstring(pkgsum), "sum", 3);
+	obj = ucl_object_insert_key(obj, ucl_object_fromstring(name), "name", 4, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(pkgorigin), "origin", 6, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(comment), "comment", 7, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(pkgarch), "arch", 4, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(pkgmaintainer), "maintainer", 10, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(prefix), "prefix", 6, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(www), "www", 3, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(repopath), "path", 4, false);
+	ucl_object_insert_key(obj, ucl_object_fromstring(pkgsum), "sum", 3, false);
 
 	switch (licenselogic) {
 	case LICENSE_SINGLE:
-		ucl_object_insert_key(obj, ucl_object_fromlstring("single", 6), "licenselogic", 12);
+		ucl_object_insert_key(obj, ucl_object_fromlstring("single", 6), "licenselogic", 12, false);
 		break;
 	case LICENSE_AND:
-		ucl_object_insert_key(obj, ucl_object_fromlstring("and", 3), "licenselogic", 12);
+		ucl_object_insert_key(obj, ucl_object_fromlstring("and", 3), "licenselogic", 12, false);
 		break;
 	case LICENSE_OR:
-		ucl_object_insert_key(obj, ucl_object_fromlstring("or", 2), "licenselogic", 12);
+		ucl_object_insert_key(obj, ucl_object_fromlstring("or", 2), "licenselogic", 12, false);
 		break;
 	}
 
 	seq = NULL;
 	while (pkg_licenses(pkg, &license) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_license_name(license)));
-	ucl_object_insert_key(obj, seq, "licenses", 8);
+	ucl_object_insert_key(obj, seq, "licenses", 8, false);
 
-	ucl_object_insert_key(obj, ucl_object_fromint(flatsize), "flatsize", 8);
+	ucl_object_insert_key(obj, ucl_object_fromint(flatsize), "flatsize", 8, false);
 	if (pkgsize > 0)
-		ucl_object_insert_key(obj, ucl_object_fromint(pkgsize), "pkgsize", 7);
+		ucl_object_insert_key(obj, ucl_object_fromint(pkgsize), "pkgsize", 7, false);
 
 	urlencode(desc, &tmpsbuf);
-	ucl_object_insert_key(obj, ucl_object_fromlstring(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf)), "desc", 4);
+	ucl_object_insert_key(obj, ucl_object_fromlstring(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf)), "desc", 4, false);
 
 	map = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		submap = NULL;
-		submap = ucl_object_insert_key(submap, ucl_object_fromstring(pkg_dep_origin(dep)), "origin", 6);
-		ucl_object_insert_key(submap, ucl_object_fromstring(pkg_dep_version(dep)), "version", 7);
-		map = ucl_object_insert_key(map, submap, pkg_dep_name(dep), 0);
+		submap = ucl_object_insert_key(submap, ucl_object_fromstring(pkg_dep_origin(dep)), "origin", 6, false);
+		ucl_object_insert_key(submap, ucl_object_fromstring(pkg_dep_version(dep)), "version", 7, false);
+		map = ucl_object_insert_key(map, submap, pkg_dep_name(dep), 0, false);
 	}
-	ucl_object_insert_key(obj, map, "deps", 4);
+	ucl_object_insert_key(obj, map, "deps", 4, false);
 
 	seq = NULL;
 	while (pkg_categories(pkg, &category) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_category_name(category)));
-	ucl_object_insert_key(obj, seq, "categories", 10);
+	ucl_object_insert_key(obj, seq, "categories", 10, false);
 
 	seq = NULL;
 	while (pkg_users(pkg, &user) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_user_name(user)));
-	ucl_object_insert_key(obj, seq, "users", 5);
+	ucl_object_insert_key(obj, seq, "users", 5, false);
 
 	seq = NULL;
 	while (pkg_groups(pkg, &group) == EPKG_OK) 
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_group_name(group)));
-	ucl_object_insert_key(obj, seq, "groups", 6);
+	ucl_object_insert_key(obj, seq, "groups", 6, false);
 
 	seq = NULL;
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_shlib_name(shlib)));
-	ucl_object_insert_key(obj, seq, "shlibs_required", 15);
+	ucl_object_insert_key(obj, seq, "shlibs_required", 15, false);
 
 	seq = NULL;
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_shlib_name(shlib)));
-	ucl_object_insert_key(obj, seq, "shlibs_provided", 15);
+	ucl_object_insert_key(obj, seq, "shlibs_provided", 15, false);
 
 	map = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		map = ucl_object_insert_key(map,
 		    ucl_object_fromstring(pkg_option_value(option)),
-		    pkg_option_opt(option), 0);
+		    pkg_option_opt(option), 0, false);
 	}
-	ucl_object_insert_key(obj, map, "options", 7);
+	ucl_object_insert_key(obj, map, "options", 7, false);
 
 	map = NULL;
 	while (pkg_annotations(pkg, &note) == EPKG_OK) {
 		map = ucl_object_insert_key(map,
 		    ucl_object_fromstring(pkg_annotation_value(note)),
-		    pkg_annotation_tag(note), 0);
+		    pkg_annotation_tag(note), 0, false);
 	}
-	ucl_object_insert_key(obj, map, "annotations", 11);
+	ucl_object_insert_key(obj, map, "annotations", 11, false);
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {
@@ -915,9 +915,9 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 				urlencode(pkg_file_path(file), &tmpsbuf);
 				map = ucl_object_insert_key(map,
 				    ucl_object_fromstring(pkg_sum),
-				    strdup(sbuf_data(tmpsbuf)), sbuf_len(tmpsbuf));
+				    sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), true);
 			}
-			ucl_object_insert_key(obj, map, "files", 5);
+			ucl_object_insert_key(obj, map, "files", 5, false);
 
 			map = NULL;
 			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
@@ -927,9 +927,9 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 				 */
 				map = ucl_object_insert_key(map,
 				    ucl_object_fromstring(pkg_dir_try(dir) ? "y" : "n"),
-				    strdup(sbuf_data(tmpsbuf)), sbuf_len(tmpsbuf));
+				    sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), true);
 			}
-			ucl_object_insert_key(obj, map, "directories", 11);
+			ucl_object_insert_key(obj, map, "directories", 11, false);
 		}
 
 		map = NULL;
@@ -969,16 +969,16 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 			urlencode(pkg_script_get(pkg, i), &tmpsbuf);
 			map = ucl_object_insert_key(map,
 			    ucl_object_fromlstring(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf)),
-			    script_types, 0);
+			    script_types, 0, true);
 		}
-		ucl_object_insert_key(obj, map, "scripts", 7);
+		ucl_object_insert_key(obj, map, "scripts", 7, false);
 	}
 
 	if (message != NULL && *message != '\0') {
 		urlencode(message, &tmpsbuf);
 		ucl_object_insert_key(obj,
 		    ucl_object_fromlstring(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf)),
-		    "message", 7);
+		    "message", 7, false);
 	}
 
 	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
