@@ -540,7 +540,7 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 			/* Should not happen */
 			break;
 		}
-		ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length);
+		ucl_object_insert_key(obj, sub, strdup(key->data.scalar.value), key->data.scalar.length);
 		++pair;
 	}
 }
