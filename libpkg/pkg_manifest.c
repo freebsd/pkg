@@ -299,7 +299,7 @@ pkg_int(struct pkg *pkg, ucl_object_t *obj, int attr)
 	char vint[BUFSIZ];
 	if (attr == PKG_VERSION) {
 		snprintf(vint, sizeof(vint), "%"PRId64, ucl_object_toint(obj));
-		pkg_set(pkg, attr, vint);
+		return (pkg_set(pkg, attr, vint));
 	}
 	return (pkg_set(pkg, attr, ucl_object_toint(obj)));
 }

@@ -40,6 +40,15 @@ typedef union {
 	unsigned char buf[1024];
 } query_t;
 
+static int
+srv_cmp(const void *a, const void *b)
+{
+	struct dns_srvinfo *srva = (struct dns_srvinfo *)a;
+	struct dns_srvinfo *srvb = (struct dns_srvinfo *)b;
+
+	return (srva->priority > srvb->priority);
+}
+
 struct dns_srvinfo *
 dns_getsrvinfo(const char *zone)
 {
@@ -128,6 +137,8 @@ dns_getsrvinfo(const char *zone)
 
 	for (i = 0; i < n - 1; i++)
 		res[i]->next = res[i + 1];
+
+	/* Sort against priority then weight */
 
 	first = res[0];
 	free(res);
