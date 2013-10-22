@@ -23,6 +23,7 @@
 
 #include "ucl.h"
 #include "ucl_internal.h"
+#include "ucl_chartable.h"
 
 #ifdef HAVE_OPENSSL
 #include <openssl/err.h>
@@ -39,30 +40,30 @@
 
 
 static void
-ucl_obj_free_internal (ucl_object_t *obj, bool allow_rec)
+ucl_object_free_internal (ucl_object_t *obj, bool allow_rec)
 {
 	ucl_object_t *sub, *tmp;
 
 	while (obj != NULL) {
-		if (obj->key != NULL) {
-			free (obj->key);
+		if (obj->trash_stack[UCL_TRASH_KEY] != NULL) {
+			UCL_FREE (obj->hh.keylen, obj->trash_stack[UCL_TRASH_KEY]);
+		}
+		if (obj->trash_stack[UCL_TRASH_VALUE] != NULL) {
+			UCL_FREE (obj->len, obj->trash_stack[UCL_TRASH_VALUE]);
 		}
 
-		if (obj->type == UCL_STRING) {
-			free (obj->value.sv);
-		}
-		else if (obj->type == UCL_ARRAY) {
+		if (obj->type == UCL_ARRAY) {
 			sub = obj->value.ov;
 			while (sub != NULL) {
 				tmp = sub->next;
-				ucl_obj_free_internal (sub, false);
+				ucl_object_free_internal (sub, false);
 				sub = tmp;
 			}
 		}
 		else if (obj->type == UCL_OBJECT) {
 			HASH_ITER (hh, obj->value.ov, sub, tmp) {
 				HASH_DELETE (hh, obj->value.ov, sub);
-				ucl_obj_free_internal (sub, true);
+				ucl_object_free_internal (sub, true);
 			}
 		}
 		tmp = obj->next;
@@ -78,18 +79,18 @@ ucl_obj_free_internal (ucl_object_t *obj, bool allow_rec)
 void
 ucl_obj_free (ucl_object_t *obj)
 {
-	ucl_obj_free_internal (obj, true);
+	ucl_object_free_internal (obj, true);
 }
 
-void
-ucl_unescape_json_string (char *str)
+size_t
+ucl_unescape_json_string (char *str, size_t len)
 {
 	char *t = str, *h = str;
 	int i, uval;
 
 	/* t is target (tortoise), h is source (hare) */
 
-	while (*h != '\0') {
+	while (len) {
 		if (*h == '\\') {
 			h ++;
 			switch (*h) {
@@ -130,6 +131,7 @@ ucl_unescape_json_string (char *str)
 					}
 				}
 				h += 3;
+				len -= 3;
 				/* Encode */
 				if(uval < 0x80) {
 					t[0] = (char)uval;
@@ -162,19 +164,65 @@ ucl_unescape_json_string (char *str)
 				break;
 			}
 			h ++;
+			len --;
 		}
 		else {
 			*t++ = *h++;
 		}
+		len --;
 	}
 	*t = '\0';
+
+	return (t - str);
+}
+
+char *
+ucl_copy_key_trash (ucl_object_t *obj)
+{
+	if (obj->trash_stack[UCL_TRASH_KEY] == NULL && obj->hh.key != NULL) {
+		obj->trash_stack[UCL_TRASH_KEY] = malloc (obj->hh.keylen + 1);
+		if (obj->trash_stack[UCL_TRASH_KEY] != NULL) {
+			memcpy (obj->trash_stack[UCL_TRASH_KEY], obj->hh.key, obj->hh.keylen);
+			obj->trash_stack[UCL_TRASH_KEY][obj->hh.keylen] = '\0';
+		}
+	}
+
+	return obj->trash_stack[UCL_TRASH_KEY];
+}
+
+char *
+ucl_copy_value_trash (ucl_object_t *obj)
+{
+	UT_string *emitted;
+	if (obj->trash_stack[UCL_TRASH_VALUE] == NULL) {
+		if (obj->type == UCL_STRING) {
+			/* Special case for strings */
+			obj->trash_stack[UCL_TRASH_VALUE] = malloc (obj->len + 1);
+			if (obj->trash_stack[UCL_TRASH_VALUE] != NULL) {
+				memcpy (obj->trash_stack[UCL_TRASH_VALUE], obj->value.sv, obj->len);
+				obj->trash_stack[UCL_TRASH_VALUE][obj->len] = '\0';
+			}
+		}
+		else {
+			/* Just emit value in json notation */
+			utstring_new (emitted);
+
+			if (emitted != NULL) {
+				ucl_elt_write_json (obj, emitted, 0, 0, true);
+				obj->trash_stack[UCL_TRASH_VALUE] = emitted->d;
+				obj->len = emitted->i;
+				free (emitted);
+			}
+		}
+	}
+	return obj->trash_stack[UCL_TRASH_VALUE];
 }
 
 ucl_object_t*
 ucl_parser_get_object (struct ucl_parser *parser, UT_string **err)
 {
 	if (parser->state != UCL_STATE_INIT && parser->state != UCL_STATE_ERROR) {
-		return ucl_obj_ref (parser->top_obj);
+		return ucl_object_ref (parser->top_obj);
 	}
 
 	return NULL;
@@ -189,7 +237,7 @@ ucl_parser_free (struct ucl_parser *parser)
 	struct ucl_pubkey *key, *ktmp;
 
 	if (parser->top_obj != NULL) {
-		ucl_obj_unref (parser->top_obj);
+		ucl_object_unref (parser->top_obj);
 	}
 
 	LL_FOREACH_SAFE (parser->stack, stack, stmp) {
@@ -672,5 +720,108 @@ ucl_strlcpy_tolower (char *dst, const char *src, size_t siz)
 		*d = '\0';
 	}
 
-	return (s - src - 1);    /* count does not include NUL */
+	return (s - src);    /* count does not include NUL */
+}
+
+ucl_object_t *
+ucl_object_fromstring_common (const char *str, size_t len, enum ucl_string_flags flags)
+{
+	ucl_object_t *obj;
+	const char *start, *end, *p;
+	char *dst, *d;
+	size_t escaped_len;
+
+	if (str == NULL) {
+		return NULL;
+	}
+
+	obj = ucl_object_new ();
+	if (obj) {
+		if (len == 0) {
+			len = strlen (str);
+		}
+		if (flags & UCL_STRING_TRIM) {
+			/* Skip leading spaces */
+			for (start = str; (size_t)(start - str) < len; start ++) {
+				if (!ucl_test_character (*start, UCL_CHARACTER_WHITESPACE_UNSAFE)) {
+					break;
+				}
+			}
+			/* Skip trailing spaces */
+			for (end = str + len - 1; end > start; end --) {
+				if (!ucl_test_character (*end, UCL_CHARACTER_WHITESPACE_UNSAFE)) {
+					break;
+				}
+			}
+			end ++;
+		}
+		else {
+			start = str;
+			end = str + len;
+		}
+
+		obj->type = UCL_STRING;
+		if (flags & UCL_STRING_ESCAPE) {
+			for (p = start, escaped_len = 0; p < end; p ++, escaped_len ++) {
+				if (ucl_test_character (*p, UCL_CHARACTER_JSON_UNSAFE)) {
+					escaped_len ++;
+				}
+			}
+			dst = malloc (escaped_len + 1);
+			if (dst != NULL) {
+				for (p = start, d = dst; p < end; p ++, d ++) {
+					if (ucl_test_character (*p, UCL_CHARACTER_JSON_UNSAFE)) {
+						switch (*p) {
+						case '\n':
+							*d++ = '\\';
+							*d = 'n';
+							break;
+						case '\r':
+							*d++ = '\\';
+							*d = 'r';
+							break;
+						case '\b':
+							*d++ = '\\';
+							*d = 'b';
+							break;
+						case '\t':
+							*d++ = '\\';
+							*d = 't';
+							break;
+						case '\f':
+							*d++ = '\\';
+							*d = 'f';
+							break;
+						case '\\':
+							*d++ = '\\';
+							*d = '\\';
+							break;
+						case '"':
+							*d++ = '\\';
+							*d = '"';
+							break;
+						}
+					}
+					else {
+						*d = *p;
+					}
+				}
+				*d = '\0';
+				obj->value.sv = dst;
+				obj->trash_stack[UCL_TRASH_VALUE] = dst;
+				obj->len = escaped_len;
+			}
+		}
+		else {
+			dst = malloc (end - start + 1);
+			if (dst != NULL) {
+				ucl_strlcpy_unsafe (dst, start, end - start + 1);
+				obj->value.sv = dst;
+				obj->trash_stack[UCL_TRASH_VALUE] = dst;
+				obj->len = end - start;
+			}
+		}
+	}
+
+	return obj;
 }

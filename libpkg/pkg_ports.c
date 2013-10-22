@@ -662,26 +662,28 @@ parse_actions(ucl_object_t *o, struct plist *p,
 static void
 parse_attributes(ucl_object_t *o, struct file_attr **a) {
 	ucl_object_t *sub, *tmp;
+	const char *key;
 
 	if (*a == NULL)
 		*a = calloc(1, sizeof(struct file_attr));
 
 	HASH_ITER(hh, o, sub, tmp) {
-		if (!strcasecmp(sub->key, "owner") && sub->type == UCL_STRING) {
+		key = ucl_object_key(sub);
+		if (!strcasecmp(key, "owner") && sub->type == UCL_STRING) {
 			free((*a)->owner);
-			(*a)->owner = strdup(sub->value.sv);
+			(*a)->owner = strdup(ucl_object_tostring(sub));
 			continue;
 		}
-		if (!strcasecmp(sub->key, "group") && sub->type == UCL_STRING) {
+		if (!strcasecmp(key, "group") && sub->type == UCL_STRING) {
 			free((*a)->group);
-			(*a)->group = strdup(sub->value.sv);
+			(*a)->group = strdup(ucl_object_tostring(sub));
 			continue;
 		}
-		if (!strcasecmp(sub->key, "mode")) {
+		if (!strcasecmp(key, "mode")) {
 			if (sub->type == UCL_STRING) {
 				void *set;
-				if ((set = setmode(sub->value.sv)) == NULL)
-					pkg_emit_error("Bad format for the mode attribute: %s", sub->value.sv);
+				if ((set = setmode(ucl_object_tostring(sub))) == NULL)
+					pkg_emit_error("Bad format for the mode attribute: %s", ucl_object_tostring(sub));
 				else
 					(*a)->mode = getmode(set, 0);
 				free(set);
@@ -698,54 +700,56 @@ parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, str
 {
 	ucl_object_t *sub, *tmp, *actions;
 	char *cmd;
+	const char *key;
 
 	HASH_ITER(hh, obj, sub, tmp) {
-		if (!strcasecmp(sub->key, "actions") && sub->type == UCL_ARRAY) {
+		key = ucl_object_key(sub);
+		if (!strcasecmp(key, "actions") && sub->type == UCL_ARRAY) {
 			actions = sub->value.ov;
 			continue;
 		}
 
-		if (!strcasecmp(sub->key, "attributes") && sub->type == UCL_OBJECT) {
+		if (!strcasecmp(key, "attributes") && sub->type == UCL_OBJECT) {
 			parse_attributes(sub->value.ov, &attr);
 			continue;
 		}
 
-		if (!strcasecmp(sub->key, "pre-install") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, sub->value.sv, p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "pre-install") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
 			sbuf_cat(p->pre_install_buf, cmd);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(sub->key, "post-install") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, sub->value.sv, p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "post-install") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
 			sbuf_cat(p->post_install_buf, cmd);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(sub->key, "pre-deinstall") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, sub->value.sv, p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "pre-deinstall") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
 			sbuf_cat(p->pre_deinstall_buf, cmd);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(sub->key, "post-deinstall") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, sub->value.sv, p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "post-deinstall") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(sub->key, "pre-upgrade") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, sub->value.sv, p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "pre-upgrade") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
 			sbuf_cat(p->pre_upgrade_buf, cmd);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(sub->key, "post-upgrade") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, sub->value.sv, p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "post-upgrade") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
 			sbuf_cat(p->post_upgrade_buf, cmd);
 			free(cmd);
 			continue;

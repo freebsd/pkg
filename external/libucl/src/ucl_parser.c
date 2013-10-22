@@ -233,6 +233,41 @@ ucl_lex_is_comment (const unsigned char c1, const unsigned char c2)
 	return false;
 }
 
+static inline size_t
+ucl_copy_or_store_ptr (struct ucl_parser *parser,
+		const unsigned char *src, unsigned char **dst,
+		const char **dst_const, size_t in_len,
+		bool need_unescape, bool need_lowercase, UT_string **err)
+{
+	size_t ret = 0;
+
+	if (need_unescape || need_lowercase || !(parser->flags & UCL_FLAG_ZEROCOPY)) {
+		/* Copy string */
+		*dst = UCL_ALLOC (in_len + 1);
+		if (*dst == NULL) {
+			ucl_set_err (parser->chunks, 0, "cannot allocate memory for a string", err);
+			return false;
+		}
+		if (need_lowercase) {
+			ret = ucl_strlcpy_tolower (*dst, src, in_len + 1);
+		}
+		else {
+			ret = ucl_strlcpy_unsafe (*dst, src, in_len + 1);
+		}
+
+		if (need_unescape) {
+			ret = ucl_unescape_json_string (*dst, ret);
+		}
+		*dst_const = *dst;
+	}
+	else {
+		*dst_const = src;
+		ret = in_len;
+	}
+
+	return ret;
+}
+
 /**
  * Parse possible number
  * @param parser
@@ -490,7 +525,7 @@ ucl_lex_json_string (struct ucl_parser *parser,
 			}
 			return false;
 		}
-		if (c == '\\') {
+		else if (c == '\\') {
 			ucl_chunk_skipc (chunk, p);
 			c = *p;
 			if (p >= chunk->end) {
@@ -530,6 +565,7 @@ ucl_lex_json_string (struct ucl_parser *parser,
 		ucl_chunk_skipc (chunk, p);
 	}
 
+	ucl_set_err (chunk, UCL_ESYNTAX, "no quote at the end of json string", err);
 	return false;
 }
 
@@ -545,6 +581,7 @@ ucl_parse_key (struct ucl_parser *parser,
 		struct ucl_chunk *chunk, UT_string **err)
 {
 	const unsigned char *p, *c = NULL, *end;
+	const char *key;
 	bool got_quote = false, got_eq = false, got_semicolon = false, need_unescape = false;
 	ucl_object_t *nobj, *tobj, *container;
 	size_t keylen;
@@ -663,28 +700,17 @@ ucl_parse_key (struct ucl_parser *parser,
 
 	/* Create a new object */
 	nobj = ucl_object_new ();
-	keylen = end - c;
-	nobj->key = malloc (keylen + 1);
-	if (nobj->key == NULL) {
-		ucl_set_err (chunk, 0, "cannot allocate memory for a key", err);
+	keylen = ucl_copy_or_store_ptr (parser, c, &nobj->trash_stack[UCL_TRASH_KEY],
+			&key, end - c, need_unescape, parser->flags & UCL_FLAG_KEY_LOWERCASE, err);
+	if (keylen == 0) {
 		return false;
-	}
-	if (parser->flags & UCL_FLAG_KEY_LOWERCASE) {
-		ucl_strlcpy_tolower (nobj->key, c, keylen + 1);
-	}
-	else {
-		ucl_strlcpy_unsafe (nobj->key, c, keylen + 1);
-	}
-
-	if (need_unescape) {
-		ucl_unescape_json_string (nobj->key);
 	}
 
 	container = parser->stack->obj->value.ov;
-	HASH_FIND (hh, container, nobj->key, keylen, tobj);
+	HASH_FIND (hh, container, key, keylen, tobj);
 	if (tobj == NULL) {
 		DL_APPEND (tobj, nobj);
-		HASH_ADD_KEYPTR (hh, container, nobj->key, keylen, nobj);
+		HASH_ADD_KEYPTR (hh, container, key, keylen, nobj);
 	}
 	else {
 		DL_APPEND (tobj, nobj);
@@ -902,12 +928,13 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 			if (!ucl_lex_json_string (parser, chunk, &need_unescape, err)) {
 				return false;
 			}
-			obj->value.sv = malloc (chunk->pos - c - 1);
-			ucl_strlcpy_unsafe (obj->value.sv, c + 1, chunk->pos - c - 1);
-			if (need_unescape) {
-				ucl_unescape_json_string (obj->value.sv);
-			}
+			str_len = chunk->pos - c - 2;
 			obj->type = UCL_STRING;
+			if ((str_len = ucl_copy_or_store_ptr (parser, c + 1, &obj->trash_stack[UCL_TRASH_VALUE],
+					&obj->value.sv, str_len, need_unescape, false, err)) == 0) {
+				return false;
+			}
+			obj->len = str_len;
 			parser->state = UCL_STATE_AFTER_VALUE;
 			p = chunk->pos;
 			return true;
@@ -960,13 +987,12 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 							ucl_set_err (chunk, UCL_ESYNTAX, "unterminated multiline value", err);
 							return false;
 						}
-						obj->value.sv = malloc (str_len);
-						if (obj->value.sv == NULL) {
-							ucl_set_err (chunk, 0, "cannot allocate memory for a string", err);
+						obj->type = UCL_STRING;
+						if ((str_len = ucl_copy_or_store_ptr (parser, c, &obj->trash_stack[UCL_TRASH_VALUE],
+							&obj->value.sv, str_len - 1, false, false, err)) == 0) {
 							return false;
 						}
-						ucl_strlcpy_unsafe (obj->value.sv, c, str_len);
-						obj->type = UCL_STRING;
+						obj->len = str_len;
 						parser->state = UCL_STATE_AFTER_VALUE;
 						return true;
 					}
@@ -1002,18 +1028,17 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 								UCL_CHARACTER_WHITESPACE)) {
 							stripped_spaces ++;
 						}
-						str_len = chunk->pos - c + 1 - stripped_spaces;
+						str_len = chunk->pos - c - stripped_spaces;
 						if (str_len <= 0) {
 							ucl_set_err (chunk, 0, "string value must not be empty", err);
 							return false;
 						}
-						obj->value.sv = malloc (str_len);
-						if (obj->value.sv == NULL) {
-							ucl_set_err (chunk, 0, "cannot allocate memory for a string", err);
+						obj->type = UCL_STRING;
+						if ((str_len = ucl_copy_or_store_ptr (parser, c, &obj->trash_stack[UCL_TRASH_VALUE],
+								&obj->value.sv, str_len, false, false, err)) == 0) {
 							return false;
 						}
-						ucl_strlcpy_unsafe (obj->value.sv, c, str_len);
-						obj->type = UCL_STRING;
+						obj->len = str_len;
 					}
 					parser->state = UCL_STATE_AFTER_VALUE;
 					return true;
@@ -1035,18 +1060,17 @@ ucl_parse_value (struct ucl_parser *parser, struct ucl_chunk *chunk, UT_string *
 							UCL_CHARACTER_WHITESPACE)) {
 						stripped_spaces ++;
 					}
-					str_len = chunk->pos - c + 1 - stripped_spaces;
+					str_len = chunk->pos - c - stripped_spaces;
 					if (str_len <= 0) {
 						ucl_set_err (chunk, 0, "string value must not be empty", err);
 						return false;
 					}
-					obj->value.sv = malloc (str_len);
-					if (obj->value.sv == NULL) {
-						ucl_set_err (chunk, 0, "cannot allocate memory for a string", err);
+					obj->type = UCL_STRING;
+					if ((str_len = ucl_copy_or_store_ptr (parser, c, &obj->trash_stack[UCL_TRASH_VALUE],
+							&obj->value.sv, str_len, false, false, err)) == 0) {
 						return false;
 					}
-					ucl_strlcpy_unsafe (obj->value.sv, c, str_len);
-					obj->type = UCL_STRING;
+					obj->len = str_len;
 				}
 				parser->state = UCL_STATE_AFTER_VALUE;
 				return true;
@@ -1366,6 +1390,8 @@ ucl_state_machine (struct ucl_parser *parser, UT_string **err)
 			break;
 		default:
 			/* TODO: add all states */
+			ucl_set_err (chunk, UCL_EMACRO, "internal error: parser is in an unknown state", err);
+			parser->state = UCL_STATE_ERROR;
 			return false;
 		}
 	}

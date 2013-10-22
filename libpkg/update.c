@@ -151,19 +151,21 @@ parse_fingerprint(ucl_object_t *obj)
 	const char *function = NULL, *fp = NULL;
 	hash_t fct = HASH_UNKNOWN;
 	struct fingerprint *f = NULL;
+	const char *key;
 
 
 	HASH_ITER(hh, obj, sub, tmp) {
+		key = ucl_object_key(sub);
 		if (sub->type != UCL_STRING)
 			continue;
 
-		if (strcasecmp(sub->key, "function") == 0) {
-			function = sub->value.sv;
+		if (strcasecmp(key, "function") == 0) {
+			function = ucl_object_tostring(sub);
 			continue;
 		}
 
-		if (strcasecmp(sub->key, "fingerprint") == 0) {
-			fp = sub->value.sv;
+		if (strcasecmp(key, "fingerprint") == 0) {
+			fp = ucl_object_tostring(sub);
 			continue;
 		}
 	}
@@ -738,7 +740,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:
-	if (pkg != NULL)
+/*	if (pkg != NULL)
 		pkg_free(pkg);
 	if (it != NULL)
 		pkgdb_it_free(it);
@@ -748,7 +750,7 @@ cleanup:
 		fclose(fdigests);
 	if (map != MAP_FAILED)
 		munmap(map, len);
-
+*/
 	return (rc);
 }
 
