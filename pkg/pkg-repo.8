@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 21, 2013
+.Dd October 22, 2013
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -67,13 +67,17 @@ If
 is used, the SHA256 of the repository is signed using the provided key.
 The signature is added into the repository catalogue.
 The client side should use
+.Sy SIGNATURE_TYPE
+set to
+.Dv PUBKEY
+and
 .Sy PUBKEY
-in its
-.Pa pkg.conf
-to specify the path to the public key for the given
-.Ar rsa-key .
+set to a local path of the public key in its
+.Pa pkg.conf .
 .Pp
-If an external command is provided, it is passed the SHA256 of the repository
+An external command can be useful to create a signing server to keep the
+private key separate from the repository.
+The external command is passed the SHA256 of the repository
 catalogue on its stdin.
 It should output the following format:
 .Bd -literal -offset indent
@@ -83,9 +87,26 @@ CERT
 public key data here
 END
 .Ed
-An external command can be useful to create a signing server to keep the
-private key separate from the repository.
-An example of this can be found in the EXAMPLES section.
+.Pp
+When using an external command, the client's
+.Pa pkg.conf
+must have
+.Sy SIGNATURE_TYPE
+set to
+.Dv FINGERPRINTS
+and
+.Sy FINGERPRINTS
+set to a directory having a
+.Pa trusted/myrepo
+containing a fingerprint style representation of the public key:
+.Bd -literal -offset indent
+function: sha256
+fingerprint: sha256_representation_of_the_public_key
+.Ed
+.Pp
+See EXAMPLES section and
+.Xr pkg.conf 5
+for more information.
 .Pp
 Signing the catalogue is strongly recommended.
 .Sh OPTIONS
@@ -142,7 +163,8 @@ See
 .Xr pkg-version 8 ,
 .Xr pkg-which 8
 .Sh EXAMPLES
-Create an RSA key pair. It's public key would be shared on all client servers
+Create an RSA key pair.
+It's public key would be shared on all client servers
 and its path configured via the
 .Xr pkg.conf 5
 .Sy PUBKEY

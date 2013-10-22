@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd October 21, 2013
+.Dd October 22, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -275,7 +275,7 @@ should exist with known good and bad fingerprints, respectively.
 Files in those directories should be in the format:
 .Bd -literal -offset indent
 function: sha256
-fingerprint: hex_representation_of_the_fingerprint
+fingerprint: sha256_representation_of_the_public_key
 .Ed
 .El
 .El
