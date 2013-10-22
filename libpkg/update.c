@@ -336,8 +336,6 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 			pkg_emit_error("No signature found in the repository.  "
 					"Can not validate against %s key.", pkg_repo_key(repo));
 			rc = EPKG_FATAL;
-			if (dest != NULL)
-				unlink(dest);
 			goto cleanup;
 		}
 		ret = rsa_verify(dest, pkg_repo_key(repo),
@@ -345,8 +343,6 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
 					"removing repository.");
-			if (dest != NULL)
-				unlink(dest);
 			free(sig);
 			rc = EPKG_FATAL;
 			goto cleanup;
@@ -356,8 +352,6 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		if (HASH_COUNT(sc) == 0) {
 			pkg_emit_error("No signature found");
 			rc = EPKG_FATAL;
-			if (dest != NULL)
-				unlink(dest);
 			goto cleanup;
 		}
 
@@ -368,8 +362,6 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		if (HASH_COUNT(trusted) == 0) {
 			pkg_emit_error("No trusted certificates");
 			rc = EPKG_FATAL;
-			if (dest != NULL)
-				unlink(dest);
 			goto cleanup;
 		}
 
@@ -381,8 +373,6 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 				pkg_emit_error("Number of signatures and certificates "
 				    "mismatch");
 				rc = EPKG_FATAL;
-				if (dest != NULL)
-					unlink(dest);
 				goto cleanup;
 			}
 			s->trusted = false;
@@ -392,8 +382,6 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 				pkg_emit_error("At least one of the certificate has been "
 				    "revoked");
 				rc = EPKG_FATAL;
-				if (dest != NULL)
-					unlink(dest);
 				goto cleanup;
 			}
 
@@ -407,8 +395,6 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		if (nbgood == 0) {
 			pkg_emit_error("No trusted certificate found");
 			rc = EPKG_FATAL;
-			if (dest != NULL)
-				unlink(dest);
 			goto cleanup;
 		}
 
@@ -424,13 +410,14 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 			pkg_emit_error("No trusted certificated has been used "
 			    "to sign the repository");
 			rc = EPKG_FATAL;
-			if (dest != NULL)
-				unlink(dest);
 			goto cleanup;
 		}
 	}
 
 cleanup:
+	if (rc != EPKG_OK && dest != NULL)
+		unlink(dest);
+
 	if (a != NULL)
 		archive_read_free(a);
 
