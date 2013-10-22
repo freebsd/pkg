@@ -354,7 +354,7 @@ obj_walk_array(ucl_object_t *obj, struct pkg_config *conf)
 		if (sub->type != UCL_STRING)
 			continue;
 		v = malloc(sizeof(struct pkg_config_value));
-		v->value = strdup(ucl_obj_tostring(sub));
+		v->value = strdup(ucl_object_tostring(sub));
 		sub = sub->next;
 		HASH_ADD_STR(conf->list, value, v);
 	}
@@ -371,7 +371,7 @@ obj_walk_object(ucl_object_t *obj, struct pkg_config *conf)
 			continue;
 		kv = malloc(sizeof(struct pkg_config_kv));
 		kv->key = strdup(ucl_object_key(sub));
-		kv->value = strdup(ucl_obj_tostring(sub));
+		kv->value = strdup(ucl_object_tostring(sub));
 		HASH_ADD_STR(conf->kvlist, value, kv);
 	}
 }
@@ -402,7 +402,7 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 				}
 				if (!conf->fromenv) {
 					free(conf->string);
-					conf->string = strdup(ucl_obj_tostring(sub));
+					conf->string = strdup(ucl_object_tostring(sub));
 				}
 				break;
 			case PKG_CONFIG_INTEGER:
@@ -412,7 +412,7 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 					continue;
 				}
 				if (!conf->fromenv)
-					conf->integer = ucl_obj_toint(sub);
+					conf->integer = ucl_object_toint(sub);
 				break;
 			case PKG_CONFIG_BOOL:
 				if (sub->type != UCL_BOOLEAN) {
@@ -421,7 +421,7 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 					continue;
 				}
 				if (!conf->fromenv)
-					conf->boolean = ucl_obj_toboolean(sub);
+					conf->boolean = ucl_object_toboolean(sub);
 				break;
 			case PKG_CONFIG_LIST:
 				if (sub->type != UCL_ARRAY) {
@@ -696,7 +696,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    key, rname);
 				return;
 			}
-			url = ucl_obj_tostring(sub);
+			url = ucl_object_tostring(sub);
 		} else if (strcasecmp(key, "pubkey") == 0) {
 			if (sub->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -704,7 +704,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    key, rname);
 				return;
 			}
-			pubkey = ucl_obj_tostring(sub);
+			pubkey = ucl_object_tostring(sub);
 		} else if (strcasecmp(key, "enabled") == 0) {
 			if (sub->type != UCL_BOOLEAN) {
 				pkg_emit_error("Expecting a boolean for the "
@@ -712,7 +712,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    key, rname);
 				return;
 			}
-			enable = ucl_obj_toboolean(sub);
+			enable = ucl_object_toboolean(sub);
 		} else if (strcasecmp(key, "mirror_type") == 0) {
 			if (sub->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -720,7 +720,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    key, rname);
 				return;
 			}
-			mirror_type = ucl_obj_tostring(sub);
+			mirror_type = ucl_object_tostring(sub);
 		} else if (strcasecmp(key, "signature_type") == 0) {
 			if (sub->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -728,7 +728,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    key, rname);
 				return;
 			}
-			signature_type = ucl_obj_tostring(sub);
+			signature_type = ucl_object_tostring(sub);
 		} else if (strcasecmp(key, "fingerprints") == 0) {
 			if (sub->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -736,7 +736,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    key, rname);
 				return;
 			}
-			fingerprints = ucl_obj_tostring(sub);
+			fingerprints = ucl_object_tostring(sub);
 		}
 	}
 
@@ -836,7 +836,7 @@ load_repo_file(const char *repofile)
 
 	if (fallback) {
 		if (obj != NULL) {
-			ucl_obj_free(obj);
+			ucl_object_free(obj);
 			ucl_parser_free(p);
 		}
 		obj = yaml_to_ucl(repofile, NULL, 0);
@@ -858,7 +858,7 @@ load_repo_file(const char *repofile)
 	if (obj->type == UCL_OBJECT)
 		walk_repo_obj(obj->value.ov);
 
-	ucl_obj_free(obj);
+	ucl_object_free(obj);
 }
 
 static void
@@ -1106,7 +1106,7 @@ pkg_init(const char *path, const char *reposdir)
 
 	if (fallback) {
 		if (obj != NULL)
-			ucl_obj_free(obj);
+			ucl_object_free(obj);
 		obj = yaml_to_ucl(path, NULL, 0);
 		if (obj == NULL)
 			return (EPKG_FATAL);
@@ -1128,7 +1128,7 @@ parsed:
 	disable_plugins_if_static();
 
 	parsed = true;
-	ucl_obj_free(obj);
+	ucl_object_free(obj);
 	ucl_parser_free(p);
 
 	pkg_debug(1, "%s", "pkg initialized");

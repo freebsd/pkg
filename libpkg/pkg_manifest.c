@@ -673,7 +673,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 		ucl_parser_free(p);
 		p = NULL;
 		if (obj != NULL)
-			ucl_obj_free(obj);
+			ucl_object_free(obj);
 		obj = yaml_to_ucl(NULL, buf, len);
 		if (obj == NULL)
 			return (EPKG_FATAL);
@@ -681,7 +681,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 
 	rc = parse_manifest(pkg, keys, obj);
 
-	ucl_obj_free(obj);
+	ucl_object_free(obj);
 	if (p != NULL)
 		ucl_parser_free(p);
 
@@ -739,7 +739,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 		ucl_parser_free(p);
 		p = NULL;
 		if (obj != NULL)
-			ucl_obj_free(obj);
+			ucl_object_free(obj);
 		obj = yaml_to_ucl(file, NULL, 0);
 		if (obj == NULL)
 			return (EPKG_FATAL);
@@ -749,7 +749,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 
 	if (p != NULL)
 		ucl_parser_free(p);
-	ucl_obj_free(obj);
+	ucl_object_free(obj);
 
 	return (rc);
 }

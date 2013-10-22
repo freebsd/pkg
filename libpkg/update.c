@@ -213,7 +213,7 @@ load_fingerprint(const char *dir, const char *filename)
 	if (obj->type == UCL_OBJECT)
 		f = parse_fingerprint(obj->value.ov);
 
-	ucl_obj_free(obj);
+	ucl_object_free(obj);
 	ucl_parser_free(p);
 
 	return (f);

@@ -567,7 +567,7 @@ pkg_plugin_parse(struct pkg_plugin *p)
 		pkg_object_walk(obj->value.ov, p->conf_by_key);
 
 	p->parsed = true;
-	ucl_obj_free(obj);
+	ucl_object_free(obj);
 	ucl_parser_free(pr);
 
 	return (EPKG_OK);
