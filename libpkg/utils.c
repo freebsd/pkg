@@ -497,7 +497,7 @@ yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *no
 			break;
 		case YAML_SCALAR_NODE:
 			sub = ucl_object_fromstring_common (val->data.scalar.value,
-			    val->data.scalar.length, UCL_STRING_TRIM|UCL_STRING_PARSE_INT|UCL_STRING_PARSE_BOOLEAN);
+			    val->data.scalar.length, UCL_STRING_TRIM|UCL_STRING_PARSE_BOOLEAN);
 			break;
 		case YAML_NO_NODE:
 			/* Should not happen */
@@ -533,7 +533,7 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 		case YAML_SCALAR_NODE:
 			sub = ucl_object_fromstring_common (val->data.scalar.value,
 			    val->data.scalar.length,
-			    UCL_STRING_TRIM|UCL_STRING_PARSE_INT|UCL_STRING_PARSE_BOOLEAN);
+			    UCL_STRING_TRIM|UCL_STRING_PARSE_BOOLEAN);
 			break;
 		case YAML_NO_NODE:
 			/* Should not happen */
