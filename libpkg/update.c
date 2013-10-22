@@ -247,7 +247,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
 	struct sig_cert *sc = NULL;
-	struct sig_cert *s = NULL;
+	struct sig_cert *s = NULL, *stmp = NULL;
 	struct fingerprint *trusted = NULL;
 	struct fingerprint *revoked = NULL;
 	struct fingerprint *f = NULL;
@@ -368,7 +368,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		snprintf(path, MAXPATHLEN, "%s/revoked", pkg_repo_fingerprints(repo));
 		revoked = load_fingerprints(path);
 
-		for (s = sc; s != NULL; s = s->hh.next) {
+		HASH_ITER(hh, sc, s, stmp) {
 			if (s->sig == NULL || s->cert == NULL) {
 				pkg_emit_error("Number of signatures and certificates "
 				    "mismatch");
@@ -400,7 +400,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 
 		nbgood = 0;
 
-		for (s = sc; s != NULL; s = s->hh.next) {
+		HASH_ITER(hh, sc, s, stmp) {
 			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen - 1, dest_fd);
 			if (ret == EPKG_OK && s->trusted)
 				nbgood++;
