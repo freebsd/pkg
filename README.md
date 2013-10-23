@@ -311,7 +311,7 @@ pkgng is also able to work with multiple remote repositories. In the previous se
 we are using only a single remote repository, which is defined by the _PACKAGESITE_ option.
 
 In order to be able to work with multiple remote repositories and instead of changing
-_PACKAGESITE_ each time, you can tell *pkg(1)* to work in multi-repos mode as well.
+_PACKAGESITE_ each time, you can tell *pkg(8)* to work in multi-repos mode as well.
 
 To do this, simply enable multi-repos in *pkg.conf(5)* like this:
 

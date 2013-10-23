@@ -39,12 +39,12 @@
 #include <stringlist.h>
 #include <openssl/pem.h>
 
-/* The expected name of the pkg(1) binary executable. */
+/* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
 #define PKG_EXEC_NAME	"pkg"
 #endif
 
-/* The expected name of the pkg-static(1) binary */
+/* The expected name of the pkg-static(8) binary */
 #ifndef PKG_STATIC_NAME
 #define PKG_STATIC_NAME	"pkg-static"
 #endif
@@ -85,11 +85,11 @@ struct pkg_manifest_key;
 struct pkg_manifest_parser;
 
 /**
- * The system-wide pkg(1) status: ie. is it a) installed or otherwise
+ * The system-wide pkg(8) status: ie. is it a) installed or otherwise
  * available on the sysem, b) database (local.sqlite) initialised and
  * c) has at least one package installed (which should be pkg
  * itself). PKG_STATUS_UNINSTALLED logically cannot be returned by
- * pkg(1) itself, but it can be useful for the pkg bootstrapper
+ * pkg(8) itself, but it can be useful for the pkg bootstrapper
  * /usr/bin/pkg or for applications that link against libpkg.so
  */
 

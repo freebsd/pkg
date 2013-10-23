@@ -140,14 +140,14 @@ usage(const char *conffile, const char *reposdir)
 	fprintf(stderr, "Global options supported:\n");
 	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
 #ifndef NO_LIBJAIL
-	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(1) inside a jail(8)");
+	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
 #endif
-	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
+	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
 	fprintf(stderr, "\t%-15s%s\n", "-C", "Use the specified configuration file");
 	fprintf(stderr, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
 	fprintf(stderr, "\t%-15s%s\n", "-l", "List available commands and exit");
-	fprintf(stderr, "\t%-15s%s\n", "-v", "Display pkg(1) version");
-	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(1) is activated and avoid auto-activation");
+	fprintf(stderr, "\t%-15s%s\n", "-v", "Display pkg(8) version");
+	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
 	fprintf(stderr, "Commands supported:\n");
 
 	for (unsigned int i = 0; i < cmd_len; i++)
@@ -481,10 +481,10 @@ do_activation_test(int argc)
 {
 	int	count;
 
-	/* Test to see if pkg(1) has been activated.  Exit with an
+	/* Test to see if pkg(8) has been activated.  Exit with an
 	   error code if not.  Can be combined with -c and -j to test
 	   if pkg is activated in chroot or jail. If there are no
-	   other arguments, and pkg(1) has been activated, show how
+	   other arguments, and pkg(8) has been activated, show how
 	   many packages have been installed. */
 
 	switch (pkg_status(&count)) {
