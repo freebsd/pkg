@@ -388,7 +388,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		nbgood = 0;
 
 		HASH_ITER(hh, sc, s, stmp) {
-			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen - 1, dest_fd);
+			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen, dest_fd);
 			if (ret == EPKG_OK && s->trusted)
 				nbgood++;
 		}
