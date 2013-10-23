@@ -174,6 +174,7 @@ dns_getsrvinfo(const char *zone)
 		res[n]->weight = weight;
 		res[n]->port = port;
 		res[n]->next = NULL;
+		res[n]->finalweight = 0;
 		strlcpy(res[n]->host, host, MAXHOSTNAMELEN);
 
 		p += len;
