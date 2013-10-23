@@ -88,7 +88,7 @@ _load_rsa_public_key_buf(unsigned char *cert, int certlen)
 	char errbuf[1024];
 
 	bp = BIO_new_mem_buf((void *)cert, certlen);
-	if (!PEM_read_bio_RSAPublicKey(bp, &rsa, NULL, NULL)) {
+	if (!PEM_read_bio_RSA_PUBKEY(bp, &rsa, NULL, NULL)) {
 		pkg_emit_error("error reading public key: %s",
 		    ERR_error_string(ERR_get_error(), errbuf));
 		BIO_free(bp);
