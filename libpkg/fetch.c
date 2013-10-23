@@ -323,6 +323,12 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			u->port = http_current->url->port;
 		}
 
+		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s",
+		    u->scheme,
+		    u->user,
+		    u->user[0] != '\0' ? "@" : "",
+		    u->host,
+		    u->doc);
 		remote = fetchXGet(u, &st, "i");
 		if (remote == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
