@@ -69,28 +69,6 @@ struct fingerprint {
 	UT_hash_handle hh;
 };
 
-/* Add indexes to the repo */
-static int
-remote_add_indexes(const char *repo)
-{
-	struct pkgdb *db = NULL;
-	int ret = EPKG_FATAL;
-
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
-		goto cleanup;
-
-	/* Initialize the remote remote */
-	if (pkgdb_remote_init(db, repo) != EPKG_OK)
-		goto cleanup;
-
-	ret = EPKG_OK;
-
-	cleanup:
-	if (db)
-		pkgdb_close(db);
-	return (ret);
-}
-
 /* Return opened file descriptor */
 static int
 repo_fetch_remote_tmp(struct pkg_repo *repo, const char *filename, const char *extension, time_t *t, int *rc)
