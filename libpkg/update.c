@@ -231,6 +231,9 @@ load_fingerprints(const char *path)
 		return (NULL);
 
 	while ((ent = readdir(d))) {
+		if (strcmp(ent->d_name, ".") == 0 ||
+		    strcmp(ent->d_name, "..") == 0)
+			continue;
 		finger = load_fingerprint(path, ent->d_name);
 		if (finger != NULL)
 			HASH_ADD_STR(f, hash, finger);
