@@ -143,5 +143,3 @@ NOMAN=		yes
 	sed -e "s,__PREFIX__,${PREFIX},g" \
 	    -e "s,__VERSION__,${PKGVERSION},g" \
 	    ${.IMPSRC} > ${.TARGET}
-
-CFLAGS+=	-Wno-unused-function

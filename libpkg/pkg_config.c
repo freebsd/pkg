@@ -807,12 +807,11 @@ load_repo_file(const char *repofile)
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
 	ucl_object_t *sub, *tmp;
-	UT_string *err;
 	bool fallback = false;
 
 	p = ucl_parser_new(0);
 
-	if (!ucl_parser_add_file(p, repofile, &err)) {
+	if (!ucl_parser_add_file(p, repofile)) {
 		if (errno == ENOENT) {
 			ucl_parser_free(p);
 			return;
@@ -821,7 +820,7 @@ load_repo_file(const char *repofile)
 	}
 
 	if (!fallback) {
-		obj = ucl_parser_get_object(p, &err);
+		obj = ucl_parser_get_object(p);
 		if (obj->type == UCL_OBJECT) {
 			HASH_ITER(hh, obj->value.ov, sub, tmp) {
 				if (sub->type != UCL_OBJECT)
@@ -925,7 +924,6 @@ int
 pkg_init(const char *path, const char *reposdir)
 {
 	struct ucl_parser *p = NULL;
-	UT_string *err = NULL;
 	size_t i;
 	const char *val = NULL;
 	const char *buf, *walk, *value, *key;
@@ -1075,7 +1073,7 @@ pkg_init(const char *path, const char *reposdir)
 	p = ucl_parser_new(0);
 
 	errno = 0;
-	if (!ucl_parser_add_file(p, path, &err)) {
+	if (!ucl_parser_add_file(p, path)) {
 		if (errno == ENOENT)
 			goto parsed;
 		fallback = true;
@@ -1083,7 +1081,7 @@ pkg_init(const char *path, const char *reposdir)
 
 	if (!fallback) {
 		/* Validate the first level of the configuration */
-		obj = ucl_parser_get_object(p, &err);
+		obj = ucl_parser_get_object(p);
 		if (obj->type == UCL_OBJECT) {
 			HASH_ITER(hh, obj->value.ov, sub, tmp) {
 				key = ucl_object_key(sub);

@@ -195,20 +195,18 @@ load_fingerprint(const char *dir, const char *filename)
 	struct ucl_parser *p = NULL;
 	char path[MAXPATHLEN];
 	struct fingerprint *f = NULL;
-	UT_string *error = NULL;
 
 	snprintf(path, MAXPATHLEN, "%s/%s", dir, filename);
 
 	p = ucl_parser_new(0);
 
-	if (!ucl_parser_add_file(p, path, &error)) {
-		pkg_emit_error("%s", utstring_body(error));
-		utstring_free(error);
+	if (!ucl_parser_add_file(p, path)) {
+		pkg_emit_error("%s", ucl_parser_get_error(p));
 		ucl_parser_free(p);
 		return (NULL);
 	}
 
-	obj = ucl_parser_get_object(p, &error);
+	obj = ucl_parser_get_object(p);
 
 	if (obj->type == UCL_OBJECT)
 		f = parse_fingerprint(obj->value.ov);

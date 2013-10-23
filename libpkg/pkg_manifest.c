@@ -638,7 +638,6 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 	ucl_object_t *obj = NULL;
 	ucl_object_t *sub, *tmp;
 	int rc;
-	UT_string *error = NULL;
 	struct pkg_manifest_key *sk;
 	struct dataparser *dp;
 	bool fallback = false;
@@ -649,11 +648,11 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 	pkg_debug(2, "%s", "Parsing manifest from buffer");
 
 	p = ucl_parser_new(0);
-	if (!ucl_parser_add_chunk(p, buf, len, &error))
+	if (!ucl_parser_add_chunk(p, buf, len))
 		fallback = true;
 
 	if (!fallback) {
-		obj = ucl_parser_get_object(p, &error);
+		obj = ucl_parser_get_object(p);
 		if (obj != NULL) {
 			HASH_ITER(hh, obj->value.ov, sub, tmp) {
 				HASH_FIND_STR(keys, __DECONST(char *, ucl_object_key(sub)), sk);
@@ -695,7 +694,6 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 {
 	struct ucl_parser *p = NULL;
 	ucl_object_t *obj = NULL;
-	UT_string *error = NULL;
 	ucl_object_t *sub, *tmp;
 	int rc;
 	bool fallback = false;
@@ -709,7 +707,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 
 	errno = 0;
 	p = ucl_parser_new(0);
-	if (ucl_parser_add_file(p, file, &error)) {
+	if (ucl_parser_add_file(p, file)) {
 		if (errno == ENOENT) {
 			ucl_parser_free(p);
 			return (EPKG_FATAL);
@@ -718,7 +716,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 	}
 
 	if (!fallback) {
-		obj = ucl_parser_get_object(p, &error);
+		obj = ucl_parser_get_object(p);
 		if (obj != NULL) {
 			HASH_ITER(hh, obj->value.ov, sub, tmp) {
 				HASH_FIND_STR(keys, ucl_object_key(sub), sk);

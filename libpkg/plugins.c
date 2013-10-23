@@ -539,7 +539,6 @@ pkg_plugin_parse(struct pkg_plugin *p)
 	const char *plugname;
 	struct ucl_parser *pr;
 	ucl_object_t *obj;
-	UT_string *err;
 
 	pr = ucl_parser_new(0);
 
@@ -548,21 +547,19 @@ pkg_plugin_parse(struct pkg_plugin *p)
 
 	snprintf(confpath, sizeof(confpath), "%s/%s.conf", path, plugname);
 
-	if (!ucl_parser_add_file(pr, confpath, &err)) {
+	if (!ucl_parser_add_file(pr, confpath)) {
 		if (errno == ENOENT) {
 			ucl_parser_free(pr);
 			p->parsed = true;
 			return (EPKG_OK);
 		}
-		pkg_emit_error("%s\n", utstring_body(err));
-		utstring_free(err);
-		err = NULL;
+		pkg_emit_error("%s\n", ucl_parser_get_error(pr));
 		ucl_parser_free(pr);
 
 		return (EPKG_FATAL);
 	}
 
-	obj = ucl_parser_get_object(pr, &err);
+	obj = ucl_parser_get_object(pr);
 	if (obj->type == UCL_OBJECT)
 		pkg_object_walk(obj->value.ov, p->conf_by_key);
 
