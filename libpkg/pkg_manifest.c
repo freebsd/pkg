@@ -140,12 +140,12 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 		return (EPKG_OK);
 
 	for (i = 0; manifest_keys[i].key != NULL; i++) {
-		HASH_FIND_STR(*key, __DECONST(char *, manifest_keys[i].key), k);
+		HASH_FIND_STR(*key, manifest_keys[i].key, k);
 		if (k == NULL) {
 			k = calloc(1, sizeof(struct pkg_manifest_key));
 			k->key = manifest_keys[i].key;
 			k->type = manifest_keys[i].type;
-			HASH_ADD_KEYPTR(hh, *key, __DECONST(char *, k->key), strlen(k->key), k);
+			HASH_ADD_KEYPTR(hh, *key, k->key, strlen(k->key), k);
 		}
 		HASH_FIND_UCLT(k->parser, &manifest_keys[i].valid_type, dp);
 		if (dp != NULL)
@@ -619,7 +619,7 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 
 	HASH_ITER(hh, obj->value.ov, sub, tmp) {
 		pkg_debug(2, "Manifest: found key: '%s'", ucl_object_key(sub));
-		HASH_FIND_STR(keys, __DECONST(char *, ucl_object_key(sub)), selected_key);
+		HASH_FIND_STR(keys, ucl_object_key(sub), selected_key);
 		if (selected_key != NULL) {
 			HASH_FIND_UCLT(selected_key->parser, &sub->type, dp);
 			if (dp != NULL) {
@@ -655,7 +655,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 		obj = ucl_parser_get_object(p);
 		if (obj != NULL) {
 			HASH_ITER(hh, obj->value.ov, sub, tmp) {
-				HASH_FIND_STR(keys, __DECONST(char *, ucl_object_key(sub)), sk);
+				HASH_FIND_STR(keys, ucl_object_key(sub), sk);
 				if (sk != NULL) {
 					HASH_FIND_UCLT(sk->parser, &sub->type, dp);
 					if (dp == NULL) {

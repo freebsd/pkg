@@ -140,10 +140,10 @@ populate_local_rdeps(struct pkg_jobs *j, struct pkg *p)
 	char *origin;
 
 	while (pkg_rdeps(p, &d) == EPKG_OK) {
-		HASH_FIND_STR(j->bulk, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
+		HASH_FIND_STR(j->bulk, pkg_dep_get(d, PKG_DEP_ORIGIN), pkg);
 		if (pkg != NULL)
 			continue;
-		HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
+		HASH_FIND_STR(j->seen, pkg_dep_get(d, PKG_DEP_ORIGIN), pkg);
 		if (pkg != NULL)
 			continue;
 		if ((pkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), PKG_LOAD_BASIC|PKG_LOAD_RDEPS)) == NULL) {
@@ -165,7 +165,7 @@ remove_from_rdeps(struct pkg_jobs *j, const char *origin)
 	struct pkg_dep *d;
 
 	HASH_ITER(hh, j->bulk, pkg, tmp) {
-		HASH_FIND_STR(pkg->rdeps, __DECONST(char *, origin), d);
+		HASH_FIND_STR(pkg->rdeps, origin, d);
 		if (d != NULL) {
 			HASH_DEL(pkg->rdeps, d);
 			pkg_dep_free(d);
@@ -264,7 +264,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	HASH_ITER(hh, j->bulk, pkg, tmp) {
 		d = NULL;
 		HASH_ITER(hh, pkg->rdeps, d, dtmp) {
-			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
+			HASH_FIND_STR(j->seen, pkg_dep_get(d, PKG_DEP_ORIGIN), p);
 			if (p != NULL) {
 				HASH_DEL(pkg->rdeps, d);
 				pkg_dep_free(d);
@@ -366,7 +366,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	HASH_ITER(hh, j->bulk, pkg, tmp) {
 		d = NULL;
 		HASH_ITER(hh, pkg->deps, d, dtmp) {
-			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
+			HASH_FIND_STR(j->seen, pkg_dep_get(d, PKG_DEP_ORIGIN), p);
 			if (p != NULL) {
 				HASH_DEL(pkg->deps, d);
 				pkg_dep_free(d);
@@ -398,7 +398,7 @@ remove_from_deps(struct pkg_jobs *j, const char *origin)
 	struct pkg_dep *d;
 
 	HASH_ITER(hh, j->bulk, pkg, tmp) {
-		HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
+		HASH_FIND_STR(pkg->deps, origin, d);
 		if (d != NULL) {
 			HASH_DEL(pkg->deps, d);
 			pkg_dep_free(d);
@@ -470,10 +470,10 @@ populate_rdeps(struct pkg_jobs *j, struct pkg *p)
 	struct pkg_dep *d = NULL;
 
 	while (pkg_rdeps(p, &d) == EPKG_OK) {
-		HASH_FIND_STR(j->bulk, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
+		HASH_FIND_STR(j->bulk, pkg_dep_get(d, PKG_DEP_ORIGIN), pkg);
 		if (pkg != NULL)
 			continue;
-		HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
+		HASH_FIND_STR(j->seen, pkg_dep_get(d, PKG_DEP_ORIGIN), pkg);
 		if (pkg != NULL)
 			continue;
 		if (get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), MATCH_EXACT, true) != EPKG_OK) {
@@ -492,10 +492,10 @@ populate_deps(struct pkg_jobs *j, struct pkg *p)
 	struct pkg_dep *d = NULL;
 
 	while (pkg_deps(p, &d) == EPKG_OK) {
-		HASH_FIND_STR(j->bulk, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
+		HASH_FIND_STR(j->bulk, pkg_dep_get(d, PKG_DEP_ORIGIN), pkg);
 		if (pkg != NULL)
 			continue;
-		HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
+		HASH_FIND_STR(j->seen, pkg_dep_get(d, PKG_DEP_ORIGIN), pkg);
 		if (pkg != NULL)
 			continue;
 		if (get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), MATCH_EXACT, false) != EPKG_OK) {
@@ -539,7 +539,7 @@ new_pkg_version(struct pkg_jobs *j)
 	}
 
 	/* Remove from seen in case it was explicitly requested. */
-	HASH_FIND_STR(j->seen, __DECONST(char *, origin), p);
+	HASH_FIND_STR(j->seen, origin, p);
 	if (p != NULL)
 		HASH_DEL(j->seen, p);
 
@@ -868,7 +868,7 @@ jobs_solve_install(struct pkg_jobs *j)
 	HASH_ITER(hh, j->bulk, pkg, tmp) {
 		d = NULL;
 		HASH_ITER(hh, pkg->deps, d, dtmp) {
-			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
+			HASH_FIND_STR(j->seen, pkg_dep_get(d, PKG_DEP_ORIGIN), p);
 			if (p != NULL) {
 				HASH_DEL(pkg->deps, d);
 				pkg_dep_free(d);
@@ -981,7 +981,7 @@ pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **p)
 {
 	struct pkg *pkg;
 
-	HASH_FIND_STR(j->jobs, __DECONST(char *, origin), pkg);
+	HASH_FIND_STR(j->jobs, origin, pkg);
 	if (pkg == NULL)
 		return (EPKG_FATAL);
 

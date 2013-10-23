@@ -653,7 +653,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			goto cleanup;
 		}
 		processed++;
-		HASH_FIND_STR(ldel, __DECONST(char *, origin), item);
+		HASH_FIND_STR(ldel, origin, item);
 		if (item == NULL) {
 			added++;
 			pkg_update_increment_item_new(&ladd, origin, digest, num_offset);

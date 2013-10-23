@@ -1063,7 +1063,7 @@ pkg_init(const char *path, const char *reposdir)
 		}
 
 		HASH_ADD_INT(config, id, conf);
-		HASH_ADD_KEYPTR(hhkey, config_by_key, __DECONST(char *, conf->key),
+		HASH_ADD_KEYPTR(hhkey, config_by_key, conf->key,
 		    strlen(conf->key), conf);
 	}
 
@@ -1166,7 +1166,7 @@ pkg_config_lookup(const char *name)
 	if (name == NULL)
 		return (NULL);
 
-	HASH_FIND(hhkey, config_by_key, __DECONST(char *, name), strlen(name), conf);
+	HASH_FIND(hhkey, config_by_key, name, strlen(name), conf);
 
 	return (conf);
 }
@@ -1388,6 +1388,6 @@ pkg_repo_find_name(const char *reponame)
 {
 	struct pkg_repo *r;
 
-	HASH_FIND_STR(repos, __DECONST(char *, reponame), r);
+	HASH_FIND_STR(repos, reponame, r);
 	return (r);
 }

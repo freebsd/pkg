@@ -384,7 +384,7 @@ exec_version(int argc, char **argv)
 				continue;
 
 			if (opt & VERSION_SOURCE_INDEX) {
-				HASH_FIND_STR(indexhead, __DECONST(char *, origin), entry);
+				HASH_FIND_STR(indexhead, origin, entry);
 				if (entry != NULL)
 					print_version(pkg, "index", entry->version, limchar, opt);
 			} else if (opt & VERSION_SOURCE_PORTS) {
