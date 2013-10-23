@@ -142,9 +142,10 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 	RSA *rsa = NULL;
 	int ret;
 
-	if (fd != -1)
+	if (fd != -1) {
+		(void)lseek(fd, 0, SEEK_SET);
 		sha256_fd(fd, sha256);
-	else
+	} else
 		sha256_file(path, sha256);
 
 	SSL_load_error_strings();
