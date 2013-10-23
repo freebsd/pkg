@@ -41,7 +41,7 @@ typedef union {
 } query_t;
 
 static int
-srv_cmp_priority(const void *a, const void *b)
+srv_priority_cmp(const void *a, const void *b)
 {
 	struct dns_srvinfo *da = *(struct dns_srvinfo **)a;
 	struct dns_srvinfo *db = *(struct dns_srvinfo **)b;
@@ -181,7 +181,7 @@ dns_getsrvinfo(const char *zone)
 	}
 
 	/* order by priority */
-	qsort(res, n, sizeof(res[0]), srv_cmp_priority);
+	qsort(res, n, sizeof(res[0]), srv_priority_cmp);
 
 	priority = 0;
 	f = 0;
