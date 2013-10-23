@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 22, 2013
+.Dd October 23, 2013
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -198,7 +198,8 @@ to a path containing a file with the SHA256 of the public key:
 read -t 2 sum
 [ -z "$sum" ] && exit 1
 echo SIGNATURE
-echo $sum | /usr/bin/openssl dgst -sign repo.key -sha256 -binary
+echo -n $sum | /usr/bin/openssl dgst -sign repo.key -sha256 -binary
+echo
 echo CERT
 cat repo.pub
 echo END
