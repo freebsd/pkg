@@ -41,7 +41,7 @@
 void
 usage_set(void)
 {
-	fprintf(stderr, "usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-gix] <pkg-name>\n\n");
+	fprintf(stderr, "Usage: pkg set [-a] [-A [01]] [-o <oldorigin>:<neworigin>] [-y] [-gix] <pkg-name>\n\n");
 	fprintf(stderr, "For more information see 'pkg help set'. \n");
 }
 
@@ -138,7 +138,7 @@ exec_set(int argc, char **argv)
 			warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to modify package database");
+		warnx("Insufficient privileges to modify the package database");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK) {
 		warnx("Error accessing package database");

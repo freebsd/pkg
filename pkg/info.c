@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -48,7 +49,7 @@ enum sign {
 void
 usage_info(void)
 {
-	fprintf(stderr, "usage: pkg info <pkg-name>\n");
+	fprintf(stderr, "Usage: pkg info <pkg-name>\n");
 	fprintf(stderr, "       pkg info -a\n");
 	fprintf(stderr, "       pkg info [-AbBDdefgiIklOqRrsx] <pkg-name>\n");
 	fprintf(stderr, "       pkg info [-AbBDdfIlqRrs] -F <pkg-file>\n\n");
@@ -67,8 +68,8 @@ exec_info(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	int query_flags;
 	struct pkg *pkg = NULL;
-	unsigned int opt = INFO_TAG_NAMEVER;
-	match_t match = MATCH_EXACT;
+	uint64_t opt = INFO_TAG_NAMEVER;
+	match_t match = MATCH_GLOB;
 	char *pkgname;
 	char *pkgversion = NULL, *pkgversion2 = NULL;
 	const char *file = NULL;
@@ -162,7 +163,7 @@ exec_info(int argc, char **argv)
 		}
 	}
 
-	if (argc == 1)
+	if (argc == 1 || (argc == 2 && quiet))
 		match = MATCH_ALL;
 
 	argc -= optind;
@@ -196,6 +197,8 @@ exec_info(int argc, char **argv)
 		quiet = false;
 
 	if (file != NULL) {
+		if (opt == INFO_TAG_NAMEVER)
+			opt |= INFO_FULL;
 		pkg_manifest_keys_new(&keys);
 		if ((opt & (INFO_RAW | INFO_FILES |
 				INFO_DIRS)) == 0)
@@ -212,7 +215,7 @@ exec_info(int argc, char **argv)
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to query package database");
+		warnx("Insufficient privileges to query the package database");
 		return (EX_NOPERM);
 	} else if (ret == EPKG_ENODB) {
 		if (match == MATCH_ALL)
@@ -333,6 +336,16 @@ exec_info(int argc, char **argv)
 			gotone = true;
 
 		/* end of compatibility hacks */
+
+		/*
+		 * only show full version in case of match glob with a single argument specified
+		 * which does not contains any glob pattern
+		 */
+		if (argc == 1 && 
+		    match == MATCH_GLOB &&
+		    strcspn(pkgname, "*[]{}()") == strlen(pkgname) &&
+		    opt == INFO_TAG_NAMEVER)
+			opt |= INFO_FULL;
 
 		query_flags = info_flags(opt, false);
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {

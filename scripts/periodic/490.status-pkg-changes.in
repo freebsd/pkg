@@ -8,6 +8,18 @@ if [ -r /etc/defaults/periodic.conf ]; then
 	source_periodic_confs
 fi
 
+# On 9.x or lower, 490.status-pkg-changes exists in the base system,
+# but using the old pkg_tools commands.  Unfortunately it uses the
+# same configuration variables, so allow the setting of 
+# $daily_status_pkgng_changes_enable to turn on this script without
+# enabling the pkg_tools equivalent
+
+case "$daily_status_pkgng_changes_enable" in
+        [Yy][Ee][Ss])
+	daily_status_pkg_changes_enable="$daily_status_pkgng_changes_enable"
+	;;
+esac
+
 case "$daily_status_pkg_changes_enable" in
 	[Yy][Ee][Ss])
 	pkgcmd=__PREFIX__/sbin/pkg

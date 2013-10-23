@@ -51,7 +51,7 @@ void
 usage_annotate(void)
 {
 	fprintf(stderr,
-            "usage: pkg annotate [-giqxy] [-A|M] <pkg-name> <tag> [<value>]\n");
+            "Usage: pkg annotate [-giqxy] [-A|M] <pkg-name> <tag> [<value>]\n");
 	fprintf(stderr,
             "       pkg annotate [-giqxy] -D <pkg-name> <tag>\n");
 	fprintf(stderr,
@@ -82,7 +82,7 @@ do_add(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 				pkg_get(pkg, PKG_NAME, &pkgname,
 					PKG_VERSION, &pkgversion);
 			
-				warnx("%s-%s: Can't add annotation tagged: "
+				warnx("%s-%s: Cannot add annotation tagged: "
 				      "%s -- already exists", pkgname,
 				      pkgversion, tag);
 			}
@@ -140,7 +140,7 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 				pkg_get(pkg, PKG_NAME, &pkgname,
 					PKG_VERSION, &pkgversion);
 
-				warnx("%s-%s: Can't delete annotation "
+				warnx("%s-%s: Cannot delete annotation "
 				     "tagged: %s -- because there is none",
 				     pkgname, pkgversion, tag);
 			}
@@ -273,11 +273,11 @@ exec_annotate(int argc, char **argv)
 		exitcode = EX_OK;
 		goto cleanup;
 	} else if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to modify package database");
+		warnx("Insufficient privileges to modify the package database");
 		exitcode = EX_NOPERM;
 		goto cleanup;
 	} else if (retcode != EPKG_OK) {
-		warnx("Error accessing package database");
+		warnx("Error accessing the package database");
 		exitcode = EX_SOFTWARE;
 		goto cleanup;
 	}

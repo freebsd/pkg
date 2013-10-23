@@ -48,7 +48,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
 	{ 'F', "ps",		1, PKG_LOAD_FILES },
-	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
+	{ 'O', "kvdD",		1, PKG_LOAD_OPTIONS },
 	{ 'D', "",		1, PKG_LOAD_DIRS },
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
 	{ 'U', "",		1, PKG_LOAD_USERS },
@@ -250,6 +250,10 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					pkg_sbuf_printf(dest, "%On", data);
 				else if (qstr[0] == 'v')
 					pkg_sbuf_printf(dest, "%Ov", data);
+				else if (qstr[0] == 'd') /* default value */
+					pkg_sbuf_printf(dest, "%Od", data);
+				else if (qstr[0] == 'D') /* description */
+					pkg_sbuf_printf(dest, "%OD", data);
 				break;
 			case 'D':
 				pkg_sbuf_printf(dest, "%Dn", data);
@@ -515,7 +519,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 							sbuf_printf(sqlcond, "(SELECT %s FROM %sfiles AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'O':
-							sbuf_printf(sqlcond, "(SELECT %s FROM %soptions AS d WHERE d.package_id=p.id)", sqlop, dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %soption JOIN %spkg_option USING(option_id) AS d WHERE d.package_id=p.id)", sqlop, dbstr, dbstr);
 							break;
 						case 'D':
 							if (for_remote)
@@ -727,7 +731,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 	j = 0; /* shut up scanbuild */
 
 	if (strchr(qstr, '%') == NULL) {
-		fprintf(stderr, "Invalid query: query should contains format string\n");
+		fprintf(stderr, "Invalid query: query should contain a format string\n");
 		return (EPKG_FATAL);
 	}
 
@@ -768,7 +772,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 					/* if this is a multiline flag */
 					if (q_flags[i].multiline == 1) {
 						if (*multiline != 0 && *multiline != q_flags[i].flag) {
-							fprintf(stderr, "Invalid query: you cannot query '%%%c' and '%%%c' at the same time\n",
+							fprintf(stderr, "Invalid query: '%%%c' and '%%%c' cannot be queried at the same time\n",
 									*multiline, q_flags[i].flag);
 							return (EPKG_FATAL);
 						} else {
@@ -806,7 +810,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 void
 usage_query(void)
 {
-	fprintf(stderr, "usage: pkg query <query-format> <pkg-name>\n");
+	fprintf(stderr, "Usage: pkg query <query-format> <pkg-name>\n");
 	fprintf(stderr, "       pkg query [-a] <query-format>\n");
 	fprintf(stderr, "       pkg query -F <pkg-name> <query-format>\n");
 	fprintf(stderr, "       pkg query -e <evaluation> <query-format>\n");
@@ -902,7 +906,7 @@ exec_query(int argc, char **argv)
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to query package database");
+		warnx("Insufficient privileges to query the package database");
 		return (EX_NOPERM);
 	} else if (ret == EPKG_ENODB) {
 		if (!quiet)

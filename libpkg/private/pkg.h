@@ -40,12 +40,8 @@
 #include <stdbool.h>
 #include <uthash.h>
 #include <utlist.h>
+#include <ucl.h>
 
-#ifdef BUNDLED_YAML
-#include <yaml.h>
-#else
-#include <bsdyml.h>
-#endif
 #include "private/utils.h"
 
 #define PKG_NUM_SCRIPTS 9
@@ -93,6 +89,11 @@
 		else                          \
 			return (EPKG_OK);     \
 	} while (0)
+
+#define HASH_FIND_UCLT(head,type,out)                            \
+	HASH_FIND(hh, head, type, sizeof(enum ucl_type), out)
+#define HASH_ADD_UCLT(head,type,add)                             \
+	HASH_ADD(hh, head, type, sizeof(enum ucl_type), add)
 
 #define HASH_FIND_YAMLT(head,type,out)                                   \
 	HASH_FIND(hh,head,type,sizeof(yaml_node_type_t),out)
@@ -179,6 +180,8 @@ struct pkg_dir {
 struct pkg_option {
 	struct sbuf	*key;
 	struct sbuf	*value;
+	struct sbuf	*default_value;
+	struct sbuf	*description;
 	UT_hash_handle	hh;
 };
 
@@ -365,7 +368,7 @@ int packing_append_tree(struct packing *pack, const char *treepath,
 int packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
 
-int pkg_delete_files(struct pkg *pkg, bool force);
+int pkg_delete_files(struct pkg *pkg, unsigned force);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, bool force);
 
 int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
@@ -405,11 +408,10 @@ int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 int pkg_register_shlibs(struct pkg *pkg, const char *root);
 
-void pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key);
+void pkg_object_walk(ucl_object_t *o, struct pkg_config *conf_by_key);
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
-int pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manifest_key *keys);
 
 int do_extract_mtree(char *mtree, const char *prefix);
 #endif

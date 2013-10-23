@@ -31,19 +31,13 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <dlfcn.h>
-#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
-
-#ifdef BUNDLED_YAML
-#include <yaml.h>
-#else
-#include <bsdyml.h>
-#endif
+#include <ucl.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -299,6 +293,7 @@ static bool parsed = false;
 static size_t c_size = sizeof(c) / sizeof(struct config_entry);
 
 static void pkg_config_kv_free(struct pkg_config_kv *);
+static struct pkg_repo *pkg_repo_new(const char *name, const char *url);
 
 static void
 connect_evpipe(const char *evpipe) {
@@ -349,155 +344,105 @@ connect_evpipe(const char *evpipe) {
 }
 
 static void
-parse_config_sequence(yaml_document_t *doc, yaml_node_t *seq, struct pkg_config *conf)
+obj_walk_array(ucl_object_t *obj, struct pkg_config *conf)
 {
-	yaml_node_item_t *item = seq->data.sequence.items.start;
-	yaml_node_t *val;
 	struct pkg_config_value *v;
-
-	while (item < seq->data.sequence.items.top) {
-		val = yaml_document_get_node(doc, *item);
-		if (val->type != YAML_SCALAR_NODE) {
-			++item;
+	ucl_object_t *sub;
+	
+	sub =  obj->value.ov;
+	while (sub != NULL) {
+		if (sub->type != UCL_STRING)
 			continue;
-		}
 		v = malloc(sizeof(struct pkg_config_value));
-		v->value = strdup(val->data.scalar.value);
+		v->value = strdup(ucl_object_tostring(sub));
+		sub = sub->next;
 		HASH_ADD_STR(conf->list, value, v);
-		++item;
 	}
 }
 
 static void
-parse_config_mapping(yaml_document_t *doc, yaml_node_t *map, struct pkg_config *conf)
+obj_walk_object(ucl_object_t *obj, struct pkg_config *conf)
 {
-	yaml_node_pair_t *subpair = map->data.mapping.pairs.start;
-	yaml_node_t *subkey, *subval;
 	struct pkg_config_kv *kv;
+	ucl_object_t *sub, *tmp;
 
-	while (subpair < map->data.mapping.pairs.top) {
-		subkey = yaml_document_get_node(doc, subpair->key);
-		subval = yaml_document_get_node(doc, subpair->value);
-		if (subkey->type != YAML_SCALAR_NODE ||
-		    subval->type != YAML_SCALAR_NODE) {
-			++subpair;
+	HASH_ITER(hh, obj->value.ov, sub, tmp) {
+		if (sub->type != UCL_STRING)
 			continue;
-		}
 		kv = malloc(sizeof(struct pkg_config_kv));
-		kv->key = strdup(subkey->data.scalar.value);
-		kv->value = strdup(subval->data.scalar.value);
+		kv->key = strdup(ucl_object_key(sub));
+		kv->value = strdup(ucl_object_tostring(sub));
 		HASH_ADD_STR(conf->kvlist, value, kv);
-		++subpair;
 	}
 }
 
 void
-pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key)
+pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 {
-	struct pkg_config *conf;
-	yaml_node_pair_t *pair;
-	const char *errstr = NULL;
-	int64_t newint;
+	ucl_object_t *sub, *tmp;
 	struct sbuf *b = sbuf_new_auto();
+	struct pkg_config *conf;
+	const char *key;
 
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
-		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
-
-		if (key->data.scalar.length <= 0) {
-			/*
-			 * ignoring silently empty keys can be empty lines or user mistakes
-			 */
-			++pair;
-			continue;
-		}
-
-		if (val->type == YAML_NO_NODE ||
-		    (val->type == YAML_SCALAR_NODE &&
-		     val->data.scalar.length <= 0)) {
-			/*
-			 * silently skip on purpose to allow user to leave
-			 * empty lines for examples without complaining
-			 */
-			++pair;
-			continue;
-		}
+	HASH_ITER(hh, obj, sub, tmp) {
 		sbuf_clear(b);
-		for (size_t i = 0; i < strlen(key->data.scalar.value); ++i)
-			sbuf_putc(b, toupper(key->data.scalar.value[i]));
-
+		key = ucl_object_key(sub);
+		for (size_t i = 0; i < strlen(key); i++)
+			sbuf_putc(b, toupper(key[i]));
 		sbuf_finish(b);
+
 		HASH_FIND(hhkey, conf_by_key, sbuf_data(b), (size_t)sbuf_len(b), conf);
 		if (conf != NULL) {
 			switch (conf->type) {
 			case PKG_CONFIG_STRING:
-				if (val->type != YAML_SCALAR_NODE) {
+				if (sub->type != UCL_STRING) {
 					pkg_emit_error("Expecting a string for key %s,"
-					    " ignoring...", key->data.scalar.value);
+					    " ignoring...", key);
+					continue;
 				}
-				/* ignore if already set from env */
 				if (!conf->fromenv) {
 					free(conf->string);
-					conf->string = strdup(val->data.scalar.value);
+					conf->string = strdup(ucl_object_tostring(sub));
 				}
 				break;
 			case PKG_CONFIG_INTEGER:
-				if (val->type != YAML_SCALAR_NODE) {
+				if (sub->type != UCL_INT) {
 					pkg_emit_error("Expecting an integer for key %s,"
-					    " ignoring...", key->data.scalar.value);
+					    " ignoring...", key);
+					continue;
 				}
-				/* ignore if already set from env */
-				if (!conf->fromenv) {
-					newint = strtonum(val->data.scalar.value, 0, INT64_MAX, &errstr);
-					if (errstr != NULL) {
-						pkg_emit_error("Expecting an integer for key %s"
-						    " ignoring...", key->data.scalar.value);
-					}
-					conf->integer = newint;
-				}
+				if (!conf->fromenv)
+					conf->integer = ucl_object_toint(sub);
 				break;
 			case PKG_CONFIG_BOOL:
-				if (val->type != YAML_SCALAR_NODE) {
-					pkg_emit_error("Expecting an integer for key %s,"
-					    " ignoring...", key->data.scalar.value);
+				if (sub->type != UCL_BOOLEAN) {
+					pkg_emit_error("Expecting a boolean for key %s,"
+					    " ignoring...", key);
+					continue;
 				}
-				/* ignore if already set from env */
-				if (!conf->fromenv) {
-					if (val->data.scalar.value != NULL && (
-					    strcmp(val->data.scalar.value, "1") == 0 ||
-					    strcasecmp(val->data.scalar.value, "yes") == 0 ||
-					    strcasecmp(val->data.scalar.value, "true") == 0 ||
-					    strcasecmp(val->data.scalar.value, "on") == 0)) {
-						conf->boolean = true;
-					} else {
-						conf->boolean = false;
-					}
-				}
-				break;
-			case PKG_CONFIG_KVLIST:
-				if (val->type != YAML_MAPPING_NODE) {
-					pkg_emit_error("Expecting a key/value list for key %s,"
-					    " ignoring...", key->data.scalar.value);
-				}
-				parse_config_mapping(doc, val, conf);
+				if (!conf->fromenv)
+					conf->boolean = ucl_object_toboolean(sub);
 				break;
 			case PKG_CONFIG_LIST:
-				if (!conf->fromenv) {
-					if (val->type != YAML_SEQUENCE_NODE) {
-						pkg_emit_error("Expecting a string list for key %s,"
-						    " ignoring...", key->data.scalar.value);
-					}
-					parse_config_sequence(doc, val, conf);
+				if (sub->type != UCL_ARRAY) {
+					pkg_emit_error("Expecting a list for key %s,"
+					    " ignoring...", key);
+					continue;
 				}
+				if (!conf->fromenv)
+					obj_walk_array(sub, conf);
+				break;
+			case PKG_CONFIG_KVLIST:
+				if (sub->type != UCL_OBJECT) {
+					pkg_emit_error("Expecting a mapping for key %s,"
+					    " ignoring...", key);
+					continue;
+				}
+				if (!conf->fromenv)
+					obj_walk_object(sub, conf);
 				break;
 			}
 		}
-		/*
-		 * unknown values are just silently ignored, because we don't
-		 * care about them
-		 */
-		++pair;
 	}
 	sbuf_delete(b);
 }
@@ -734,57 +679,76 @@ disable_plugins_if_static(void)
 }
 
 static void
-add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_repo *r)
+add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 {
-	yaml_node_pair_t *pair;
-	yaml_char_t *url = NULL, *pubkey = NULL, *enable = NULL, *mirror_type = NULL;
-	yaml_char_t *signature_type = NULL, *fingerprints = NULL;
+	ucl_object_t *sub, *tmp;
+	bool enable = true;
+	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
+	const char *signature_type = NULL, *fingerprints = NULL;
+	const char *key;
 
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
-		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
-
-		if (key->data.scalar.length <= 0) {
-			++pair;
-			continue;
+	HASH_ITER(hh, obj, sub, tmp) {
+		key = ucl_object_key(sub);
+		if (strcasecmp(key, "url") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    key, rname);
+				return;
+			}
+			url = ucl_object_tostring(sub);
+		} else if (strcasecmp(key, "pubkey") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    key, rname);
+				return;
+			}
+			pubkey = ucl_object_tostring(sub);
+		} else if (strcasecmp(key, "enabled") == 0) {
+			if (sub->type != UCL_BOOLEAN) {
+				pkg_emit_error("Expecting a boolean for the "
+				    "'%s' key of the '%s' repo",
+				    key, rname);
+				return;
+			}
+			enable = ucl_object_toboolean(sub);
+		} else if (strcasecmp(key, "mirror_type") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    key, rname);
+				return;
+			}
+			mirror_type = ucl_object_tostring(sub);
+		} else if (strcasecmp(key, "signature_type") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    key, rname);
+				return;
+			}
+			signature_type = ucl_object_tostring(sub);
+		} else if (strcasecmp(key, "fingerprints") == 0) {
+			if (sub->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+				    "'%s' key of the '%s' repo",
+				    key, rname);
+				return;
+			}
+			fingerprints = ucl_object_tostring(sub);
 		}
-
-		if (val->type != YAML_SCALAR_NODE) {
-			++pair;
-			continue;
-		}
-
-		if (strcasecmp(key->data.scalar.value, "url") == 0)
-			url = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "pubkey") == 0)
-			pubkey = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "enabled") == 0)
-			enable = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "mirror_type") == 0)
-			mirror_type = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "signature") == 0)
-			signature_type = val->data.scalar.value;
-		else if (strcasecmp(key->data.scalar.value, "fingerprints") == 0)
-			fingerprints = val->data.scalar.value;
-
-		++pair;
-		continue;
 	}
 
-	if (r == NULL && url == NULL)
+	if (r == NULL && url == NULL) {
+		pkg_debug(1, "No repo and no url for %s", rname);
 		return;
-
-	if (r == NULL) {
-		r = calloc(1, sizeof(struct pkg_repo));
-		r->enable = true;
-		r->mirror_type = NOMIRROR;
-		r->signature_type = SIG_NONE;
-		asprintf(&r->name, REPO_NAME_PREFIX"%s", repo->data.scalar.value);
-		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 	}
 
-	if (url != NULL) {
+	if (r == NULL)
+		r = pkg_repo_new(rname, url);
+
+	if (r == NULL && url != NULL) {
 		free(r->url);
 		r->url = subst_packagesite_str(url);
 	}
@@ -798,87 +762,102 @@ add_repo(yaml_document_t *doc, yaml_node_t *repo, yaml_node_t *node, struct pkg_
 			r->signature_type = SIG_NONE;
 	}
 
-	if (pubkey != NULL) {
-		free(r->pubkey);
-		r->pubkey = strdup(pubkey);
-	}
 
 	if (fingerprints != NULL) {
 		free(r->fingerprints);
 		r->fingerprints = strdup(fingerprints);
 	}
 
-	if (enable != NULL &&
-	    (strcasecmp(enable, "off") == 0 ||
-	     strcasecmp(enable, "no") == 0 ||
-	     strcasecmp(enable, "false") == 0 ||
-	     enable[0] == '0')) {
-		r->enable = false;
+	if (pubkey != NULL) {
+		free(r->pubkey);
+		r->pubkey = strdup(pubkey);
 	}
+
+	r->enable = enable;
 
 	if (mirror_type != NULL) {
 		if (strcasecmp(mirror_type, "srv") == 0)
 			r->mirror_type = SRV;
 		else if (strcasecmp(mirror_type, "http") == 0)
 			r->mirror_type = HTTP;
+		else
+			r->mirror_type = NOMIRROR;
 	}
 }
 
 static void
-parse_repo_file(yaml_document_t *doc, yaml_node_t *node)
+walk_repo_obj(ucl_object_t *obj)
 {
-	yaml_node_pair_t *pair;
+	ucl_object_t *sub, *tmp;
 	struct pkg_repo *r;
+	const char *key;
 
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		yaml_node_t *key = yaml_document_get_node(doc, pair->key);
-		yaml_node_t *val = yaml_document_get_node(doc, pair->value);
-
-		if (key->data.scalar.length <= 0) {
-			++pair;
-			continue;
-		}
-
-		if (val->type != YAML_MAPPING_NODE) {
-			++pair;
-			continue;
-		}
-		r = pkg_repo_find_ident((char *)key->data.scalar.value);
+	HASH_ITER(hh, obj, sub, tmp) {
+		key = ucl_object_key(sub);
+		r = pkg_repo_find_ident(key);
 		if (r != NULL)
-			pkg_debug(1, "PkgConfig: overwriting repository %s", key->data.scalar.value);
-
-		add_repo(doc, key, val, r);
-		++pair;
+			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
+		add_repo(sub->value.ov, r, key);
 	}
 }
 
 static void
 load_repo_file(const char *repofile)
 {
-	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
-	FILE *fp;
+	struct ucl_parser *p;
+	ucl_object_t *obj = NULL;
+	ucl_object_t *sub, *tmp;
+	bool fallback = false;
 
-	fp = fopen(repofile, "r");
-	if (fp == NULL) {
-		pkg_emit_errno("fopen", repofile);
-		return;
+	p = ucl_parser_new(0);
+
+	if (!ucl_parser_add_file(p, repofile)) {
+		if (errno == ENOENT) {
+			ucl_parser_free(p);
+			return;
+		}
+		fallback = true;
 	}
 
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_file(&parser, fp);
-	yaml_parser_load(&parser, &doc);
+	if (!fallback) {
+		obj = ucl_parser_get_object(p);
+		if (obj->type == UCL_OBJECT) {
+			HASH_ITER(hh, obj->value.ov, sub, tmp) {
+				if (sub->type != UCL_OBJECT)
+					fallback = true;
+				if (fallback)
+					break;
+			}
+		} else {
+			fallback = true;
+		}
+	}
 
-	node = yaml_document_get_root_node(&doc);
-	if (node == NULL || node->type != YAML_MAPPING_NODE)
-		pkg_emit_error("Invalid repository format for %s", repofile);
-	else
-		parse_repo_file(&doc, node);
+	if (fallback) {
+		if (obj != NULL) {
+			ucl_object_free(obj);
+			ucl_parser_free(p);
+		}
+		obj = yaml_to_ucl(repofile, NULL, 0);
+		if (obj == NULL)
+			return;
+	}
 
-	yaml_document_delete(&doc);
-	yaml_parser_delete(&parser);
+	if (fallback) {
+		pkg_emit_error("%s file is using a deprecated format. "
+		    "Please replace it with the following:\n"
+		    "====== BEGIN %s ======\n"
+		    "%s"
+		    "\n====== END %s ======\n",
+		    repofile, repofile,
+		    ucl_object_emit(obj, UCL_EMIT_YAML),
+		    repofile);
+	}
+
+	if (obj->type == UCL_OBJECT)
+		walk_repo_obj(obj->value.ov);
+
+	ucl_object_free(obj);
 }
 
 static void
@@ -918,21 +897,17 @@ load_repositories(const char *repodir)
 	pkg_config_string(PKG_CONFIG_MIRRORS, &mirror_type);
 
 	if (url != NULL) {
-		pkg_emit_error("PACKAGESITE in pkg.conf is deprecated, please create a repository configuration file");
-		r = calloc(1, sizeof(struct pkg_repo));
-		r->name = strdup(REPO_NAME_PREFIX"packagesite");
-		r->url = subst_packagesite_str(url);
-		if (pub != NULL)
+		r = pkg_repo_new("packagesite", url);
+		if (pub != NULL) {
 			r->pubkey = strdup(pub);
-		r->mirror_type = NOMIRROR;
+			r->signature_type = SIG_PUBKEY;
+		}
 		if (mirror_type != NULL) {
 			if (strcasecmp(mirror_type, "srv") == 0)
 				r->mirror_type = SRV;
 			else if (strcasecmp(mirror_type, "http") == 0)
 				r->mirror_type = HTTP;
 		}
-		r->enable = true;
-		HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 	}
 
 	if (repodir != NULL) {
@@ -948,10 +923,7 @@ load_repositories(const char *repodir)
 int
 pkg_init(const char *path, const char *reposdir)
 {
-	FILE *fp;
-	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
+	struct ucl_parser *p = NULL;
 	size_t i;
 	const char *val = NULL;
 	const char *buf, *walk, *value, *key;
@@ -962,6 +934,9 @@ pkg_init(const char *path, const char *reposdir)
 	struct pkg_config *conf;
 	struct pkg_config_value *v;
 	struct pkg_config_kv *kv;
+	ucl_object_t *obj = NULL;
+	ucl_object_t *sub, *tmp;
+	bool fallback = false;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -1095,38 +1070,65 @@ pkg_init(const char *path, const char *reposdir)
 	if (path == NULL)
 		path = PREFIX"/etc/pkg.conf";
 
-	if ((fp = fopen(path, "r")) == NULL) {
-		if (errno != ENOENT) {
-			pkg_emit_errno("fopen", path);
-			return (EPKG_FATAL);
-		}
-		/* no configuration present */
-		parsed = true;
+	p = ucl_parser_new(0);
+
+	errno = 0;
+	if (!ucl_parser_add_file(p, path)) {
+		if (errno == ENOENT)
+			goto parsed;
+		fallback = true;
 	}
 
-	if (!parsed) {
-		yaml_parser_initialize(&parser);
-		yaml_parser_set_input_file(&parser, fp);
-		yaml_parser_load(&parser, &doc);
-
-		node = yaml_document_get_root_node(&doc);
-		if (node != NULL) {
-			if (node->type != YAML_MAPPING_NODE) {
-				pkg_emit_error("Invalid configuration format, ignoring the configuration file");
-			} else {
-				pkg_config_parse(&doc, node, config_by_key);
+	if (!fallback) {
+		/* Validate the first level of the configuration */
+		obj = ucl_parser_get_object(p);
+		if (obj->type == UCL_OBJECT) {
+			HASH_ITER(hh, obj->value.ov, sub, tmp) {
+				key = ucl_object_key(sub);
+				if (strcasecmp(key, "REPOS_DIR") == 0 &&
+				    sub->type != UCL_ARRAY)
+					fallback = true;
+				else if (strcasecmp(key, "PKG_ENV") == 0 &&
+				    sub->type != UCL_OBJECT)
+					fallback = true;
+				else if (strcasecmp(key, "ALIAS") == 0 &&
+				    sub->type != UCL_OBJECT)
+					fallback = true;
+				if (fallback)
+					break;
 			}
 		} else {
-			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
+			fallback = true;
 		}
-
-		yaml_document_delete(&doc);
-		yaml_parser_delete(&parser);
 	}
 
+	if (fallback) {
+		if (obj != NULL)
+			ucl_object_free(obj);
+		obj = yaml_to_ucl(path, NULL, 0);
+		if (obj == NULL)
+			return (EPKG_FATAL);
+	}
+
+	if (fallback) {
+		pkg_emit_error("Your pkg.conf file is in deprecated format you "
+		    "should convert it to the following format:\n"
+		    "====== BEGIN pkg.conf ======\n"
+		    "%s"
+		    "\n====== END pkg.conf ======\n",
+		    ucl_object_emit(obj, UCL_EMIT_YAML));
+	}
+
+	if (obj->type == UCL_OBJECT)
+		pkg_object_walk(obj->value.ov, config_by_key);
+
+parsed:
 	disable_plugins_if_static();
 
 	parsed = true;
+	ucl_object_free(obj);
+	ucl_parser_free(p);
+
 	pkg_debug(1, "%s", "pkg initialized");
 
 	subst_packagesite();
@@ -1225,6 +1227,22 @@ int
 pkg_configs(struct pkg_config **conf)
 {
 	HASH_NEXT(config, (*conf));
+}
+
+static struct pkg_repo *
+pkg_repo_new(const char *name, const char *url)
+{
+	struct pkg_repo *r;
+
+	r = calloc(1, sizeof(struct pkg_repo));
+	r->url = subst_packagesite_str(url);
+	r->signature_type = SIG_NONE;
+	r->mirror_type = NOMIRROR;
+	r->enable = true;
+	asprintf(&r->name, REPO_NAME_PREFIX"%s", name);
+	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
+
+	return (r);
 }
 
 static void

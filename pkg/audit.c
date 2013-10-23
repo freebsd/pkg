@@ -43,7 +43,7 @@
 #include <sysexits.h>
 #include <utlist.h>
 
-#include <bsdxml.h>
+#include <expat.h>
 
 #include <pkg.h>
 #include "pkgcli.h"
@@ -128,7 +128,7 @@ static size_t audit_entry_first_byte_idx[256];
 void
 usage_audit(void)
 {
-	fprintf(stderr, "usage: pkg audit [-Fqx] <pattern>\n\n");
+	fprintf(stderr, "Usage: pkg audit [-Fqc] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help audit'.\n");
 }
 
@@ -470,16 +470,6 @@ vulnxml_end_element(void *data, const char *element)
 }
 
 static void
-vulnxml_dup_str(char **dest, const char *src, int length)
-{
-	char *new;
-	new = malloc(length + 1);
-	memcpy(new, src, length);
-	new[length] = '\0';
-	*dest = new;
-}
-
-static void
 vulnxml_handle_data(void *data, const char *content, int length)
 {
 	struct vulnxml_userdata *ud = (struct vulnxml_userdata *)data;
@@ -496,10 +486,10 @@ vulnxml_handle_data(void *data, const char *content, int length)
 		/* On these states we do not need any data */
 		break;
 	case VULNXML_PARSE_TOPIC:
-		vulnxml_dup_str(&ud->cur_entry->desc, content, length);
+		ud->cur_entry->desc = strndup(content, length);
 		break;
 	case VULNXML_PARSE_PACKAGE_NAME:
-		vulnxml_dup_str(&ud->cur_entry->pkgname, content, length);
+		ud->cur_entry->pkgname = strndup(content, length);
 		break;
 	case VULNXML_PARSE_RANGE_GT:
 		range_type = GT;
@@ -522,7 +512,7 @@ vulnxml_handle_data(void *data, const char *content, int length)
 			if (entry == NULL)
 				break;
 			cve = malloc(sizeof(struct audit_cve));
-			vulnxml_dup_str(&cve->cvename, content, length);
+			cve->cvename = strndup(content, length);
 			LL_PREPEND(entry->cve, cve);
 		}
 		break;
@@ -531,11 +521,11 @@ vulnxml_handle_data(void *data, const char *content, int length)
 	if (range_type > 0) {
 		vers = ud->cur_entry->versions;
 		if (ud->range_num == 1) {
-			vulnxml_dup_str(&vers->v1.version, content, length);
+			vers->v1.version = strndup(content, length);
 			vers->v1.type = range_type;
 		}
 		else if (ud->range_num == 2) {
-			vulnxml_dup_str(&vers->v2.version, content, length);
+			vers->v2.version = strndup(content, length);
 			vers->v2.type = range_type;
 		}
 	}
@@ -845,7 +835,7 @@ exec_audit(int argc, char **argv)
 	char audit_file[MAXPATHLEN + 1];
 	unsigned int vuln = 0;
 	bool fetch = false;
-	bool xml = false;
+	bool xml = true;
 	int ch;
 	int ret = EX_OK, res;
 	const char *portaudit_site = NULL;
@@ -855,13 +845,13 @@ exec_audit(int argc, char **argv)
 		return (EX_CONFIG);
 	}
 
-	while ((ch = getopt(argc, argv, "qxF")) != -1) {
+	while ((ch = getopt(argc, argv, "qcF")) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
 			break;
-		case 'x':
-			xml = true;
+		case 'c':
+			xml = false;
 			break;
 		case 'F':
 			fetch = true;
@@ -942,10 +932,10 @@ exec_audit(int argc, char **argv)
 	if (ret == EPKG_ENODB) 
 		return (EX_OK);
 	else if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to read package database");
+		warnx("Insufficient privileges to read the package database");
 		return (EX_NOPERM);
 	} else if (ret != EPKG_OK) {
-		warnx("Error accessing package database");
+		warnx("Error accessing the package database");
 		return (EX_IOERR);
 	}
 
@@ -954,7 +944,7 @@ exec_audit(int argc, char **argv)
 
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 	{
-		warnx("cannot query local database");
+		warnx("Error accessing the package database");
 		ret = EX_IOERR;
 		goto cleanup;
 	}
@@ -983,7 +973,7 @@ exec_audit(int argc, char **argv)
 		ret = EX_OK;
 
 	if (!quiet)
-		printf("%u problem(s) in your installed packages found.\n", vuln);
+		printf("%u problem(s) in the installed packages found.\n", vuln);
 
 cleanup:
 	pkgdb_it_free(it);

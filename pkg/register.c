@@ -67,7 +67,7 @@ static const char * const scripts[] = {
 void
 usage_register(void)
 {
-	fprintf(stderr, "usage: pkg register [-Oldt] [-i <input-path>]"
+	fprintf(stderr, "Usage: pkg register [-Oldt] [-i <input-path>]"
 	                " [-f <plist-file>] -m <metadatadir>\n");
 	fprintf(stderr, "       pkg register [-Oldt] [-i <input_path>]"
 		        " -M <manifest>\n\n");
@@ -153,7 +153,7 @@ exec_register(int argc, char **argv)
 				       PKGDB_MODE_CREATE,
 				       PKGDB_DB_LOCAL);
 		if (retcode == EPKG_ENOACCESS) {
-			warnx("Insufficient privilege to register packages");
+			warnx("Insufficient privileges to register packages");
 			return (EX_NOPERM);
 		} else if (retcode != EPKG_OK)
 			return (EX_IOERR);
@@ -186,7 +186,7 @@ exec_register(int argc, char **argv)
 
 
 	if (mfile == NULL && mdir == NULL) {
-		warnx("one of either -m or -M flags is required");
+		warnx("One of either -m or -M flags is required");
 		usage_register();
 		return (EX_USAGE);
 	}
@@ -206,14 +206,14 @@ exec_register(int argc, char **argv)
 	pkg_manifest_keys_new(&keys);
 
 	if (mfile != NULL) {
-		ret = pkg_load_manifest_file(pkg, mfile, keys);
+		ret = pkg_parse_manifest_file(pkg, mfile, keys);
 		pkg_manifest_keys_free(keys);
 		if (ret != EPKG_OK) 
 			return (EX_IOERR);
 
 	} else {
 		snprintf(fpath, sizeof(fpath), "%s/+MANIFEST", mdir);
-		ret = pkg_load_manifest_file(pkg, fpath, keys);
+		ret = pkg_parse_manifest_file(pkg, fpath, keys);
 		pkg_manifest_keys_free(keys);
 		if (ret != EPKG_OK)
 			return (EX_IOERR);

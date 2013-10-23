@@ -44,7 +44,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "usage: pkg fetch [-r reponame] [-dgiqUxy] <pkg-name> <...>\n");
+	fprintf(stderr, "Usage: pkg fetch [-r reponame] [-dgiqUxy] <pkg-name> <...>\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -a\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -u\n\n");
 	fprintf(stderr, "For more information see 'pkg help fetch'.\n");
@@ -130,7 +130,7 @@ exec_fetch(int argc, char **argv)
 	retcode = pkgdb_access(mode, PKGDB_DB_REPO);
 
 	if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to access repo catalogue");
+		warnx("Insufficient privileges to access repo catalogue");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK)
 		return (EX_IOERR);
@@ -139,7 +139,7 @@ exec_fetch(int argc, char **argv)
 		retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 
 		if (retcode == EPKG_ENOACCESS) {
-			warnx("Insufficient privilege to access package DB");
+			warnx("Insufficient privileges to access the package database");
 			return (EX_NOPERM);
 		} else if (retcode != EPKG_OK)
 			return (EX_IOERR);

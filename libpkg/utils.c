@@ -35,6 +35,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <yaml.h>
+#include <ucl.h>
+#include <uthash.h>
+#include <utlist.h>
+#include <ctype.h>
+#include <fnmatch.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -349,7 +355,7 @@ sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	return (ret);
 }
 
-int
+void
 sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
 	unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -361,8 +367,6 @@ sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	SHA256_Update(&sha256, buf, len);
 	SHA256_Final(hash, &sha256);
 	sha256_hash(hash, out);
-
-	return (EPKG_OK);
 }
 
 int
@@ -451,4 +455,140 @@ is_hardlink(struct hardlinks *hl, struct stat *st)
 	HASH_ADD_INO(hl, inode, h);
 
 	return (true);
+}
+
+bool
+is_valid_abi(const char *arch, bool emit_error) {
+	const char *myarch;
+
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+
+	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
+	    strncmp(arch, myarch, strlen(myarch)) != 0) {
+		if (emit_error)
+			pkg_emit_error("wrong architecture: %s instead of %s",
+			    arch, myarch);
+		return (false);
+	}
+
+	return (true);
+}
+
+static ucl_object_t *yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node);
+
+static ucl_object_t *
+yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
+{
+	yaml_node_item_t *item;
+	yaml_node_t *val;
+	ucl_object_t *sub;
+
+	item = node->data.sequence.items.start;
+	while (item < node->data.sequence.items.top) {
+		val = yaml_document_get_node(doc, *item);
+		switch (val->type) {
+		case YAML_MAPPING_NODE:
+			sub = yaml_mapping_to_object(NULL, doc, val);
+			break;
+		case YAML_SEQUENCE_NODE:
+			sub = yaml_sequence_to_object(NULL, doc, val);
+			break;
+		case YAML_SCALAR_NODE:
+			sub = ucl_object_fromstring_common (val->data.scalar.value,
+			    val->data.scalar.length, UCL_STRING_TRIM|UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_INT);
+			break;
+		case YAML_NO_NODE:
+			/* Should not happen */
+			break;
+		}
+		obj = ucl_array_append(obj, sub);
+		++item;
+	}
+
+	return (obj);
+}
+
+static ucl_object_t *
+yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
+{
+	yaml_node_pair_t *pair;
+	yaml_node_t *key, *val;
+
+	ucl_object_t *sub;
+
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		key = yaml_document_get_node(doc, pair->key);
+		val = yaml_document_get_node(doc, pair->value);
+
+		switch (val->type) {
+		case YAML_MAPPING_NODE:
+			sub = yaml_mapping_to_object(NULL, doc, val);
+			break;
+		case YAML_SEQUENCE_NODE:
+			sub = yaml_sequence_to_object(NULL, doc, val);
+			break;
+		case YAML_SCALAR_NODE:
+			sub = ucl_object_fromstring_common (val->data.scalar.value,
+			    val->data.scalar.length,
+			    UCL_STRING_TRIM|UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_INT);
+			break;
+		case YAML_NO_NODE:
+			/* Should not happen */
+			break;
+		}
+		obj = ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length, true);
+		++pair;
+	}
+
+	return (obj);
+}
+
+ucl_object_t *
+yaml_to_ucl(const char *file, const char *buffer, size_t len) {
+	yaml_parser_t parser;
+	yaml_document_t doc;
+	yaml_node_t *node;
+	ucl_object_t *obj = NULL;
+	FILE *fp;
+
+	memset(&parser, 0, sizeof(parser));
+
+	yaml_parser_initialize(&parser);
+
+	if (file != NULL) {
+		fp = fopen(file, "r");
+		if (fp == NULL) {
+			pkg_emit_errno("fopen", file);
+			return (NULL);
+		}
+		yaml_parser_set_input_file(&parser, fp);
+	} else {
+		yaml_parser_set_input_string(&parser, buffer, len);
+	}
+
+	yaml_parser_load(&parser, &doc);
+
+	node = yaml_document_get_root_node(&doc);
+	if (node != NULL) {
+		switch (node->type) {
+		case YAML_MAPPING_NODE:
+			obj = yaml_mapping_to_object(NULL, &doc, node);
+			break;
+		case YAML_SEQUENCE_NODE:
+			obj = yaml_sequence_to_object(NULL, &doc, node);
+			break;
+		case YAML_SCALAR_NODE:
+		case YAML_NO_NODE:
+			break;
+		}
+	}
+
+	yaml_document_delete(&doc);
+	yaml_parser_delete(&parser);
+
+	if (file != NULL)
+		fclose(fp);
+
+	return (obj);
 }

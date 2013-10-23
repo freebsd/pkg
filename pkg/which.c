@@ -39,7 +39,7 @@
 void
 usage_which(void)
 {
-	fprintf(stderr, "usage: pkg which [-qgo] <file>\n\n");
+	fprintf(stderr, "Usage: pkg which [-qgo] <file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help which'.\n");
 }
 

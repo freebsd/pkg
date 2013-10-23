@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 18, 2013
+.Dd October  10, 2013
 .Dt PKG-AUDIT 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd Audits installed packages against known vulnerabilities.
 .Sh SYNOPSIS
 .Nm
-.Op Fl Fqx
+.Op Fl Fqc
 .Ar pkg-name
 .Sh DESCRIPTION
 .Nm
@@ -38,8 +38,8 @@ to check if security advisories for any installed packages exist.
 Note that a current ports tree (or any local copy of the ports tree) is not
 required for operation.
 .Pp
-The URL that is used to fetch the database can be overridden via the PORTAUDIT_SITE
-config variable or by VULNXML_SITE if you use xml directly.
+The URL that is used to fetch the database can be overridden via the VULNXML_SITE
+config variable or by PORTAUDIT_SITE if you still use the compact audit file.
 See
 .Xr pkg.conf 5
 for more information.
@@ -60,9 +60,9 @@ Fetch the database before checking.
 Be ``quiet''.
 Prints only the requested information without
 displaying many hints.
-.It Fl x
-Use vulnxml directly instead of parsing prepared audit file.
-Database is fetched according to VULNXML_SITE config variable.
+.It Fl c
+Use the prepared audit file instead of vunlxml.
+Database is fetched according to PORTAUDIT_SITE config variable.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

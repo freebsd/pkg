@@ -39,6 +39,7 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
+#include <ucl.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -536,47 +537,36 @@ pkg_plugin_parse(struct pkg_plugin *p)
 	char confpath[MAXPATHLEN];
 	const char *path;
 	const char *plugname;
-	FILE *fp;
+	struct ucl_parser *pr;
+	ucl_object_t *obj;
 
-	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
+	pr = ucl_parser_new(0);
 
 	pkg_config_string(PKG_CONFIG_PLUGINS_CONF_DIR, &path);
 	plugname = pkg_plugin_get(p, PKG_PLUGIN_NAME);
 
 	snprintf(confpath, sizeof(confpath), "%s/%s.conf", path, plugname);
 
-	if ((fp = fopen(confpath, "r")) == NULL) {
-		if (errno != ENOENT) {
-			pkg_emit_errno("fopen", confpath);
-			return (EPKG_FATAL);
+	if (!ucl_parser_add_file(pr, confpath)) {
+		if (errno == ENOENT) {
+			ucl_parser_free(pr);
+			p->parsed = true;
+			return (EPKG_OK);
 		}
-		p->parsed = true;
-		return (EPKG_OK);
+		pkg_emit_error("%s\n", ucl_parser_get_error(pr));
+		ucl_parser_free(pr);
+
+		return (EPKG_FATAL);
 	}
 
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_file(&parser, fp);
-	yaml_parser_load(&parser, &doc);
-
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
-		} else {
-			pkg_config_parse(&doc, node, p->conf_by_key);
-		}
-	} else {
-		pkg_emit_error("Invalid configuration format, ignoring the configuration file");
-	}
-
-	yaml_document_delete(&doc);
-	yaml_parser_delete(&parser);
-
-	fclose(fp);
+	obj = ucl_parser_get_object(pr);
+	if (obj->type == UCL_OBJECT)
+		pkg_object_walk(obj->value.ov, p->conf_by_key);
 
 	p->parsed = true;
+	ucl_object_free(obj);
+	ucl_parser_free(pr);
+
 	return (EPKG_OK);
 }
 

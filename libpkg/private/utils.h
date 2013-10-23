@@ -32,6 +32,7 @@
 #include <sys/sbuf.h>
 #include <sys/param.h>
 #include <uthash.h>
+#include <ucl.h>
 
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
@@ -60,6 +61,7 @@ struct dns_srvinfo {
 	unsigned int priority;
 	unsigned int weight;
 	unsigned int port;
+	unsigned int finalweight;
 	char host[MAXHOSTNAMELEN];
 	struct dns_srvinfo *next;
 };
@@ -83,7 +85,7 @@ int format_exec_cmd(char **, const char *, const char *, const char *, char *);
 int is_dir(const char *);
 int is_conf_file(const char *path, char *newpath, size_t len);
 
-int sha256_buf(char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
+void sha256_buf(char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
@@ -97,11 +99,13 @@ int rsa_verify_cert(const char *path, unsigned char *cert,
     int certlen, unsigned char *sig, int sig_len, int fd);
 
 bool is_hardlink(struct hardlinks *hl, struct stat *st);
+bool is_valid_abi(const char *arch, bool emit_error);
 
 struct dns_srvinfo *
 	dns_getsrvinfo(const char *zone);
 
 int set_nameserver(const char *nsname);
+ucl_object_t *yaml_to_ucl(const char *file, const char *buffer, size_t len);
 
 
 #endif

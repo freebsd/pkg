@@ -88,7 +88,7 @@ _load_rsa_public_key_buf(unsigned char *cert, int certlen)
 	char errbuf[1024];
 
 	bp = BIO_new_mem_buf((void *)cert, certlen);
-	if (!PEM_read_bio_RSAPublicKey(bp, &rsa, NULL, NULL)) {
+	if (!PEM_read_bio_RSA_PUBKEY(bp, &rsa, NULL, NULL)) {
 		pkg_emit_error("error reading public key: %s",
 		    ERR_error_string(ERR_get_error(), errbuf));
 		BIO_free(bp);
@@ -142,9 +142,10 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 	RSA *rsa = NULL;
 	int ret;
 
-	if (fd != -1)
+	if (fd != -1) {
+		(void)lseek(fd, 0, SEEK_SET);
 		sha256_fd(fd, sha256);
-	else
+	} else
 		sha256_file(path, sha256);
 
 	SSL_load_error_strings();
@@ -155,7 +156,7 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 	if (rsa == NULL)
 		return(EPKG_FATAL);
 
-	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), sig, sig_len, rsa);
+	ret = RSA_verify(NID_sha256, sha256, sizeof(sha256), sig, sig_len, rsa);
 	if (ret == 0) {
 		pkg_emit_error("%s: %s", key,
 		    ERR_error_string(ERR_get_error(), errbuf));

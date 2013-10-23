@@ -598,6 +598,14 @@ Option name [string]
 .It Cm %Ov
 Option value [string]
 .Vt struct pkg_option *
+.It Cm %Od
+Option default value [string] (if known: will produce an empty string
+if not.)
+.Vt struct pkg_option *
+.It Cm %OD
+Option description [string] (if known: will produce an empty string
+if not.)
+.Vt struct pkg_option *
 .It Cm \^%R
 Repository path - the path relative to the repository root that
 package may be downloaded from [string].

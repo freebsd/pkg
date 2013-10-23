@@ -158,7 +158,7 @@ display_dellist(struct dl_head *dl, const char *cachedir)
 			       "(unknown)");
 			break;
 		case REMOVED:
-			printf("Removed from repository\n");
+			printf("Removed from the repository\n");
 			break;
 		case CKSUM_MISMATCH:
 			printf("Checksum mismatch\n");
@@ -208,7 +208,7 @@ delete_dellist(struct dl_head *dl)
 void
 usage_clean(void)
 {
-	fprintf(stderr, "usage: pkg clean [-anqy]\n\n");
+	fprintf(stderr, "Usage: pkg clean [-anqy]\n\n");
 	fprintf(stderr, "For more information see 'pkg help clean'.\n");
 }
 
@@ -268,13 +268,13 @@ exec_clean(int argc, char **argv)
 	retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
 
 	if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to clean old packages");
+		warnx("Insufficient privileges to clean old packages");
 		return (EX_NOPERM);
 	} else if (retcode == EPKG_ENODB) {
 		warnx("No package database installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (retcode != EPKG_OK) {
-		warnx("Error accessing package database");
+		warnx("Error accessing the package database");
 		return (EX_SOFTWARE);
 	}
 
@@ -391,7 +391,7 @@ exec_clean(int argc, char **argv)
 	if (!dry_run) {
 		if (!yes)
 			yes = query_yesno(
-				"\nProceed with cleaning cache [y/N]: ");
+				"\nProceed with cleaning the cache [y/N]: ");
 		if (yes)
 			retcode = delete_dellist(&dl);
 	} else

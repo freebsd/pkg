@@ -39,7 +39,7 @@
 void
 usage_autoremove(void)
 {
-	fprintf(stderr, "usage: pkg autoremove [-ynq]\n\n");
+	fprintf(stderr, "Usage: pkg autoremove [-ynq]\n\n");
 	fprintf(stderr, "For more information see 'pkg help autoremove'.\n");
 }
 
@@ -88,13 +88,13 @@ exec_autoremove(__unused int argc, __unused char **argv)
 				       PKGDB_DB_LOCAL);
 
 	if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to autoremove packages");
+		warnx("Insufficient privileges to autoremove packages");
 		return (EX_NOPERM);
 	} else if (retcode == EPKG_ENODB) {
 		warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (retcode != EPKG_OK) {
-		warnx("Error accessing package database");
+		warnx("Error accessing the package database");
 		return (EX_SOFTWARE);
 	}
 

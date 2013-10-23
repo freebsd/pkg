@@ -48,7 +48,7 @@ static bool yes = false;	/* Assume yes answer to questions */
 void
 usage_lock(void)
 {
-	fprintf(stderr, "usage: pkg lock [-giqxy] <pkg-name>\n");
+	fprintf(stderr, "Usage: pkg lock [-giqxy] <pkg-name>\n");
 	fprintf(stderr, "       pkg lock [-qy] -a\n");
 	fprintf(stderr, "       pkg unlock [-giqxy] <pkg-name>\n");
 	fprintf(stderr, "       pkg unlock [-qy] -a\n");
@@ -168,10 +168,10 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 			warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to modify package database");
+		warnx("Insufficient privileges to modify the package database");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK) {
-		warnx("Error accessing package database");
+		warnx("Error accessing the package database");
 		return (EX_SOFTWARE);
 	}
 

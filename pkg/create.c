@@ -54,7 +54,7 @@ STAILQ_HEAD(pkg_head, pkg_entry);
 void
 usage_create(void)
 {
-	fprintf(stderr, "usage: pkg create [-On] [-f format] [-o outdir] "
+	fprintf(stderr, "Usage: pkg create [-On] [-f format] [-o outdir] "
 		"[-p plist] [-r rootdir] -m manifestdir\n");
 	fprintf(stderr, "       pkg create [-Ognx] [-f format] [-o outdir] "
 		"[-r rootdir] pkg-name ...\n");
@@ -104,7 +104,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
 		if (match == MATCH_ALL) {
-			printf("Loading package list...\n");
+			printf("Loading the package list...\n");
 			if ((it = pkgdb_query(db, NULL, match)) == NULL)
 				goto cleanup;
 			match = !MATCH_ALL;

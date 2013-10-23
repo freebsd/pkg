@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 31, 2013
+.Dd September 28, 2013
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -166,12 +166,18 @@ for the package origin, and
 for the package version.
 .It Cm \&%C
 Expands to the list of categories the matched package belongs to.
-.It Cm \&%O Ns Op kv
+.It Cm \&%O Ns Op kvdD
 Expands to the list of options of the matched package, where
 .Cm k
-stands for option key, and
+stands for option key
 .Cm v
-for option value.
+for option value,
+.Cm d
+for option default value, and
+.Cm D
+for option description.
+Option default values and descriptions are optional metadata and may
+be blank for certain packages or repositories.
 .It Cm \&%L
 Expands to the list of license(s) for the matched package.
 .It Cm \&%B

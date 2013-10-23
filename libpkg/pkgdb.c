@@ -71,7 +71,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	20
+#define DB_SCHEMA_MINOR	21
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -499,12 +499,39 @@ pkgdb_init(sqlite3 *sdb)
                 "script_id INTEGER PRIMARY KEY,"
                 "script TEXT NOT NULL UNIQUE"
         ");"
-	"CREATE TABLE options ("
-		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
-			" ON UPDATE CASCADE,"
-		"option TEXT,"
-		"value TEXT,"
-		"PRIMARY KEY (package_id,option)"
+	"CREATE TABLE option ("
+		"option_id INTEGER PRIMARY KEY,"
+		"option TEXT NOT NULL UNIQUE"
+	");"
+	"CREATE TABLE option_desc ("
+		"option_desc_id INTEGER PRIMARY KEY,"
+		"option_desc TEXT NOT NULL UNIQUE"
+	");"
+	"CREATE TABLE pkg_option ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"value TEXT NOT NULL,"
+		"PRIMARY KEY(package_id, option_id)"
+	");"
+	"CREATE TABLE pkg_option_desc ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"option_desc_id INTEGER NOT NULL "
+			"REFERENCES option_desc(option_desc_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"PRIMARY KEY(package_id, option_id)"
+	");"
+	"CREATE TABLE pkg_option_default ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"default_value TEXT NOT NULL,"
+		"PRIMARY KEY(package_id, option_id)"
 	");"
 	"CREATE TABLE deps ("
 		"origin TEXT NOT NULL,"
@@ -684,6 +711,40 @@ pkgdb_init(sqlite3 *sdb)
                 " DELETE FROM script"
                 " WHERE script_id NOT IN"
                          " (SELECT DISTINCT script_id FROM pkg_script);"
+	"END;"
+	"CREATE VIEW options AS "
+		"SELECT package_id, option, value "
+		"FROM pkg_option JOIN option USING(option_id);"
+	"CREATE TRIGGER options_update "
+		"INSTEAD OF UPDATE ON options "
+	"FOR EACH ROW BEGIN "
+		"UPDATE pkg_option "
+		"SET value = new.value "
+		"WHERE package_id = old.package_id AND "
+			"option_id = ( SELECT option_id FROM option "
+				      "WHERE option = old.option );"
+	"END;"
+	"CREATE TRIGGER options_insert "
+		"INSTEAD OF INSERT ON options "
+	"FOR EACH ROW BEGIN "
+		"INSERT OR IGNORE INTO option(option) "
+		"VALUES(new.option);"
+		"INSERT INTO pkg_option(package_id, option_id, value) "
+		"VALUES (new.package_id, "
+			"(SELECT option_id FROM option "
+			"WHERE option = new.option), "
+			"new.value);"
+	"END;"
+	"CREATE TRIGGER options_delete "
+		"INSTEAD OF DELETE ON options "
+	"FOR EACH ROW BEGIN "
+		"DELETE FROM pkg_option "
+		"WHERE package_id = old.package_id AND "
+			"option_id = ( SELECT option_id FROM option "
+					"WHERE option = old.option );"
+		"DELETE FROM option "
+		"WHERE option_id NOT IN "
+			"( SELECT DISTINCT option_id FROM pkg_option );"
 	"END;"
 
 	"PRAGMA user_version = %d;"
@@ -2032,15 +2093,48 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 	return (EPKG_OK);
 }
 
+
 int
 pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 {
 	const char	*reponame;
 	char		 sql[BUFSIZ];
-	const char	*basesql = ""
-		"SELECT option, value "
-		"FROM %Q.options "
-		"WHERE package_id = ?1 ORDER BY option DESC";
+	int		 i;
+
+	struct optionsql {
+		const char	 *sql;
+		int		(*pkg_addtagval)(struct pkg *pkg,
+						  const char *tag,
+						  const char *val);
+		int		  nargs;
+	}			  optionsql[] = {
+		{
+			"SELECT option, value "
+			"FROM %Q.option JOIN %Q.pkg_option USING(option_id) "
+			"WHERE package_id = ?1 ORDER BY option",
+			pkg_addoption,
+			2,
+		},
+		{
+			"SELECT option, default_value "
+			"FROM %Q.option JOIN %Q.pkg_option_default USING(option_id) "
+			"WHERE package_id = ?1 ORDER BY option",
+			pkg_addoption_default,
+			2,
+		},
+		{
+			"SELECT option, description "
+			"FROM %Q.option JOIN %Q.pkg_option_desc USING(option_id) "
+			"JOIN %Q.option_desc USING(option_desc_id) ORDER BY option",
+			pkg_addoption_description,
+			3,
+		}
+	};
+	const char		 *opt_sql;
+	int			(*pkg_addtagval)(struct pkg *pkg,
+						 const char *tag,
+						 const char *val);
+	int			  nargs, ret;
 
 	assert(db != NULL && pkg != NULL);
 
@@ -2050,13 +2144,39 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame);
 	} else {
-		sqlite3_snprintf(sizeof(sql), sql, basesql, "main");
+		reponame = "main";
 	}
 
-	return (load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
-		    pkg_addoption, PKG_OPTIONS));
+	for (i = 0; i < (int) (sizeof(optionsql)/sizeof(struct optionsql)); i++) {
+		opt_sql       = optionsql[i].sql;
+		pkg_addtagval = optionsql[i].pkg_addtagval;
+		nargs         = optionsql[i].nargs;
+
+		switch(nargs) {
+		case 1:
+			sqlite3_snprintf(sizeof(sql), sql, opt_sql, reponame);
+			break;
+		case 2:
+			sqlite3_snprintf(sizeof(sql), sql, opt_sql, reponame,
+					 reponame);
+			break;
+		case 3:
+			sqlite3_snprintf(sizeof(sql), sql, opt_sql, reponame,
+					 reponame, reponame);
+			break;
+		default:
+			/* Nothing needs 4 or more, yet... */
+			return (EPKG_FATAL);
+			break;
+		}
+
+		ret = load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
+				   pkg_addtagval, PKG_OPTIONS);
+		if (ret != EPKG_OK)
+			break;
+	}
+	return (ret);
 }
 
 int
@@ -2093,7 +2213,8 @@ typedef enum _sql_prstmt_index {
 	GROUPS2,
 	SCRIPT1,
 	SCRIPT2,
-	OPTIONS,
+	OPTION1,
+	OPTION2,
 	SHLIBS1,
 	SHLIBS_REQD,
 	SHLIBS_PROV,
@@ -2212,11 +2333,19 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"?2, ?3)",
 		"TII",
 	},
-	[OPTIONS] = {
+	[OPTION1] = {
 		NULL,
-		"INSERT INTO options (option, value, package_id) "
-		"VALUES (?1, ?2, ?3)",
-		"TTI",
+		"INSERT OR IGNORE INTO option (option) "
+		"VALUES (?1)",
+		"T",
+	},
+	[OPTION2] = {
+		NULL,
+		"INSERT INTO pkg_option(package_id, option_id, value) "
+		"VALUES (?1, "
+			"(SELECT option_id FROM option WHERE option = ?2),"
+			"?3)",
+		"ITT",
 	},
 	[SHLIBS1] = {
 		NULL,
@@ -2618,8 +2747,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (run_prstmt(OPTIONS, pkg_option_opt(option),
-		    pkg_option_value(option), package_id) != SQLITE_DONE) {
+		if (run_prstmt(OPTION1, pkg_option_opt(option)) != SQLITE_DONE
+		    ||
+		    run_prstmt(OPTION2, package_id, pkg_option_opt(option),
+			       pkg_option_value(option)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}

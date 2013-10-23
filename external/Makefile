@@ -1,8 +1,4 @@
-SUBDIR=	sqlite
-
-.if !exists(/usr/include/bsdyml.h)
-SUBDIR+= libyaml
-.endif
+SUBDIR=	sqlite libyaml expat libucl
 
 .if defined(WITH_BUNDLED_LIBELF)
 SUBDIR+= libelf

@@ -1,6 +1,33 @@
 #!/bin/sh
 
 : "${PORTSDIR:=/usr/ports}"
+: "${PKG_DBDIR:=/var/db/pkg}"
+
+periodic_conf='/etc/periodic.conf'
+periodic_defaults='/etc/defaults/periodic.conf'
+
+args=$(getopt p $*)
+
+while getopts p arg; do
+    case ${arg} in
+	p)
+	    periodic_update="yes"
+	    ;;
+	?)
+	    cat <<EOF
+$(basename $0): Usage
+    $(basename $0) [-p]
+
+Options:
+    -p   Update /etc/periodic.conf to disable scripts depending on
+         pkg_tools and modify weekly_status_pkg_enable to use pkg(8)
+
+EOF
+	    exit 1
+	    ;;
+    esac
+done
+shift $(( ${OPTIND} -1 ))
 
 if [ -f ${PORTSDIR}/Mk/bsd.pkgng.mk ]; then
 	FORCE_POST=$(make _POSTMKINCLUDED=1 UID=$(id -u) -f ${PORTSDIR}/Mk/bsd.pkgng.mk -V _FORCE_POST_PATTERNS)
@@ -10,5 +37,96 @@ fi
 
 FORCE_PORT=$FORCE_POST __PREFIX__/sbin/pkg convert
 
-# Delete the portupgrade pkgdb to avoid discrepencies. It will be auto recreated.
-rm -f /var/db/pkg/pkgdb.db > /dev/null 2>&1
+# Delete the portupgrade pkgdb to avoid discrepencies. It will be auto
+# recreated.
+
+rm -f ${PKG_DBDIR}/pkgdb.db > /dev/null 2>&1
+
+# Build the shlibs_{provided,required} tables in the pkg database
+
+__PREFIX__/sbin/pkg check -Ba
+
+# Fix up /etc/periodic.conf if requested.  Pull in the current
+# periodic settings, and update /etc/periodic.conf to disable any
+# active periodic scripts that depend on pkg_tools(8). Make a 1-to-1
+# correspondance between existing pkg_tools periodic jobs, and pkgng
+# periodic jobs, and enable the equivalent set.
+#
+# Update the 'pkg_version' variable used by weekly_status_pkg_enable
+# if it still references pkg_version(1)
+
+if [ "${periodic_update}" = "yes" ]; then
+    if [ -r $period_defaults ]; then
+	. $periodic_defaults
+	source_periodic_confs
+    fi
+
+    TMPFILE=$(mktemp -t $(basename $0)) || exit 1
+    cleanup() {
+	rm -f $TMPFILE
+    }
+    trap cleanup EXIT HUP INT KILL
+
+    if [ -f $periodic_conf ]; then
+	cp -p $periodic_conf $TMPFILE
+    fi
+
+    exec >> ${TMPFILE}
+
+    echo
+    echo "### Added by $(basename $0) on $(date +%Y-%m-%d)"
+
+    # weekly_status_pkg_enable -- use 'pkg version'.  This will use
+    # the ports tree or the ports INDEX if they exist in preference to
+    # the pkg repository catalogue.
+
+    if [ "$pkg_version" = 'pkg_version' ]; then
+	echo "pkg_version='__PREFIX__/sbin/pkg version'"
+    fi
+
+    # weekly/400.status-pkg
+    echo "weekly_status_pkgng_enable=\"$weekly_status_pkg_enable\""
+    case "$weekly_status_pkg_enable" in
+	[Yy][Ee][Ss])
+	    echo "weekly_status_pkg_enable=\"NO\""
+	    ;;
+    esac
+
+    # daily/411.pkg-backup <=> daily/220.backup-pkgdb
+    echo "daily_backup_pkgng_enable=\"$daily_backup_pkgdb_enable\""
+    case "$daily_backup_pkgdb_enable" in
+	[Yy][Ee][Ss])
+	    echo "daily_backup_pkgdb_enable=\"NO\"" \
+	    ;;
+    esac
+
+    # daily/490.status-pkg-changes
+    echo "daily_status_pkgng_changes_enable=\"$daily_status_pkg_changes_enable\""
+    case "$daily_status_pkg_changes_enable" in
+	[Yy][Ee][Ss])
+	    echo "daily_status_pkg_changes_enable=\"NO\"" \
+	    ;;
+    esac
+
+    # security/410.pkg-audit <=> security/410.portaudit
+    echo "daily_status_security_pkgaudit_enable=\"${daily_status_security_portaudit_enable:-YES}\""
+    case "${daily_status_security_portaudit_enable:-YES}" in
+	[Yy][Ee][Ss])
+	    echo "daily_status_security_portaudit_enable=\"NO\""
+	    ;;
+    esac
+
+    # security/460.pkg-checksum <=> security/460.chkportsum
+    echo "daily_status_security_pkg_checksum_enable=\"$daily_status_security_chkportsum_enable\""
+    case "$daily_status_security_chkportsum_enable" in
+	[Yy][Ee][Ss])
+	    echo "daily_status_security_chkportsum_enable=\"NO\""
+	    ;;
+    esac
+
+    echo "### End of additions by $(basename $0)"
+
+    cp -p $periodic_conf ${periodic_conf}.bak
+    cp -p $TMPFILE $periodic_conf
+fi
+

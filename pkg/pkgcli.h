@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -180,46 +181,48 @@ void usage_config(void);
 /* utils */
 
 /* These are the fields of the Full output, in order */
-#define INFO_NAME		(1<<0)
-#define INFO_VERSION		(1<<1)
-#define INFO_ORIGIN		(1<<2)
-#define INFO_PREFIX		(1<<3)
-#define INFO_REPOSITORY		(1<<4)
-#define INFO_CATEGORIES		(1<<5)
-#define INFO_LICENSES		(1<<6)
-#define INFO_MAINTAINER		(1<<7)
-#define INFO_WWW		(1<<8)
-#define INFO_COMMENT		(1<<9)
-#define INFO_OPTIONS		(1<<10)
-#define INFO_SHLIBS_REQUIRED	(1<<11)
-#define INFO_SHLIBS_PROVIDED	(1<<12)
-#define INFO_ANNOTATIONS	(1<<13)
-#define INFO_FLATSIZE		(1<<14)
-#define INFO_PKGSIZE		(1<<15)
-#define INFO_DESCR		(1<<16)
+#define INFO_NAME		(1LL<<0)
+#define INFO_VERSION		(1LL<<1)
+#define INFO_ORIGIN		(1LL<<2)
+#define INFO_PREFIX		(1LL<<3)
+#define INFO_REPOSITORY		(1LL<<4)
+#define INFO_CATEGORIES		(1LL<<5)
+#define INFO_LICENSES		(1LL<<6)
+#define INFO_MAINTAINER		(1LL<<7)
+#define INFO_WWW		(1LL<<8)
+#define INFO_COMMENT		(1LL<<9)
+#define INFO_OPTIONS		(1LL<<10)
+#define INFO_SHLIBS_REQUIRED	(1LL<<11)
+#define INFO_SHLIBS_PROVIDED	(1LL<<12)
+#define INFO_ANNOTATIONS	(1LL<<13)
+#define INFO_FLATSIZE		(1LL<<14)
+#define INFO_PKGSIZE		(1LL<<15)
+#define INFO_DESCR		(1LL<<16)
 
 /* Other fields not part of the Full output */
-#define INFO_MESSAGE		(1<<17)
-#define INFO_DEPS		(1<<18)
-#define INFO_RDEPS		(1<<19)
-#define INFO_FILES		(1<<20)
-#define INFO_DIRS		(1<<21)
-#define INFO_USERS		(1<<22)
-#define INFO_GROUPS		(1<<23)
-#define INFO_ARCH		(1<<24)
-#define INFO_REPOURL		(1<<25)
-#define INFO_LOCKED		(1<<26)
+#define INFO_MESSAGE		(1LL<<17)
+#define INFO_DEPS		(1LL<<18)
+#define INFO_RDEPS		(1LL<<19)
+#define INFO_FILES		(1LL<<20)
+#define INFO_DIRS		(1LL<<21)
+#define INFO_USERS		(1LL<<22)
+#define INFO_GROUPS		(1LL<<23)
+#define INFO_ARCH		(1LL<<24)
+#define INFO_REPOURL		(1LL<<25)
+#define INFO_LOCKED		(1LL<<26)
+#define INFO_OPTION_DEFAULTS    (1LL<<27)
+#define INFO_OPTION_DESCRIPTIONS (1LL<<28)
 
 #define INFO_LASTFIELD	INFO_LOCKED
 #define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
 
 /* Identifying tags */
-#define INFO_TAG_NAME		(1<<28)
-#define INFO_TAG_ORIGIN		(1<<29)
-#define INFO_TAG_NAMEVER	(1<<30)
+#define INFO_TAG_NAME		(1LL<<60)
+#define INFO_TAG_ORIGIN		(1LL<<61)
+#define INFO_TAG_NAMEVER	(1LL<<62)
 
 /* Output YAML format */
-#define INFO_RAW	(1<<31)
+#define INFO_RAW	(-1LL<<63)
 
 /* Everything in the 'full' package output */
 #define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_ORIGIN|INFO_PREFIX| \
@@ -237,8 +240,8 @@ void usage_config(void);
 
 bool query_yesno(const char *msg, ...);
 bool query_tty_yesno(const char *msg, ...);
-int info_flags(unsigned int opt, bool remote);
-void print_info(struct pkg * const pkg, unsigned int opt);
+int info_flags(uint64_t opt, bool remote);
+void print_info(struct pkg * const pkg, uint64_t opt);
 char *absolutepath(const char *src, char *dest, size_t dest_len);
 void print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 struct sbuf *exec_buf(const char *cmd);

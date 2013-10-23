@@ -91,8 +91,8 @@ match_optarg(const cliopt *optlist, const char *opt)
 		if (strncmp(opt, optlist[i].option, optlen) != 0)
 			continue;
 		if (matched > 0) {
-			warnx("\"%s\" is ambiguous: did you mean "
-			      "\"%s\" or \"%s\"?", opt,
+			warnx("\"%s\" is ambiguous. Was "
+			      "\"%s\" or \"%s\" meant?", opt,
 			      optlist[matched].option, optlist[i].option);
 			key = '\0';
 			break;
@@ -216,7 +216,7 @@ usage_search(void)
 {
 	int i, n;
 
-	fprintf(stderr, "usage: pkg search [-egix] [-r repo] [-S search] "
+	fprintf(stderr, "Usage: pkg search [-egix] [-r repo] [-S search] "
 	    "[-L label] [-Q mod]... <pkg-name>\n");
 	fprintf(stderr, "       pkg search [-cDdefgiopqRx] [-r repo] "
 	    "<pattern>\n\n");
@@ -244,7 +244,7 @@ exec_search(int argc, char **argv)
 	const char *reponame = NULL;
 	int ret = EPKG_OK, ch;
 	int flags;
-	unsigned int opt = 0;
+	uint64_t opt = 0;
 	match_t match = MATCH_REGEX;
 	pkgdb_field search = FIELD_NONE;
 	pkgdb_field label = FIELD_NONE;
@@ -363,7 +363,7 @@ exec_search(int argc, char **argv)
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
 	if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to query package database");
+		warnx("Insufficient privileges to query the package database");
 		return (EX_NOPERM);
 	} else if (ret != EPKG_OK)
 		return (EX_IOERR);

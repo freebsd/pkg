@@ -60,22 +60,21 @@
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 5
+#define REPO_SCHEMA_MINOR 6
 
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
 typedef enum _sql_prstmt_index {
 	PKG = 0,
-	PKG2001,
 	DEPS,
 	CAT1,
 	CAT2,
 	LIC1,
 	LIC2,
-	OPTS,
+	OPT1,
+	OPT2,
 	SHLIB1,
 	SHLIB_REQD,
-	SHLIB2001,
 	SHLIB_PROV,
 	ANNOTATE1,
 	ANNOTATE2,
@@ -94,15 +93,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		")"
 		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
 		"TTTTTTTTTIIITTT",
-	},
-	[PKG2001] = {
-		NULL,
-		"INSERT INTO packages ("
-		"origin, name, version, comment, desc, arch, maintainer, www, "
-		"prefix, pkgsize, flatsize, licenselogic, cksum, path"
-		")"
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
-		"TTTTTTTTTIIITT",
 	},
 	[DEPS] = {
 		NULL,
@@ -132,10 +122,16 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2))",
 		"IT",
 	},
-	[OPTS] = {
+	[OPT1] = {
 		NULL,
-		"INSERT OR ROLLBACK INTO options (option, value, package_id) "
-		"VALUES (?1, ?2, ?3)",
+		"INSERT OR IGNORE INTO option(option) "
+		"VALUES (?1)",
+		"T",
+	},
+	[OPT2] = {
+		NULL,
+		"INSERT OR ROLLBACK INTO pkg_option (option_id, value, package_id) "
+		"VALUES (( SELECT option_id FROM option WHERE option = ?1), ?2, ?3)",
 		"TTI",
 	},
 	[SHLIB1] = {
@@ -146,12 +142,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[SHLIB_REQD] = {
 		NULL,
 		"INSERT OR ROLLBACK INTO pkg_shlibs_required(package_id, shlib_id) "
-		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
-		"IT",
-	},
-	[SHLIB2001] = {
-		NULL,
-		"INSERT OR ROLLBACK INTO pkg_shlibs(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 		"IT",
 	},
@@ -249,7 +239,7 @@ get_repo_user_version(sqlite3 *sqlite, const char *database, int *reposcver)
 }
 
 static int
-initialize_prepared_statements(sqlite3 *sqlite, bool legacy)
+initialize_prepared_statements(sqlite3 *sqlite)
 {
 	sql_prstmt_index i, last;
 	int ret;
@@ -257,10 +247,6 @@ initialize_prepared_statements(sqlite3 *sqlite, bool legacy)
 	last = PRSTMT_LAST;
 
 	for (i = 0; i < last; i++) {
-		if (legacy && (i == PKG || i == SHLIB_REQD || (i > SHLIB2001 && i < EXISTS)))
-			continue;
-		if (!legacy && (i == PKG2001 || i == SHLIB2001))
-			continue;
 		ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
 		if (ret != SQLITE_OK) {
 			ERROR_SQLITE(sqlite);
@@ -325,7 +311,7 @@ finalize_prepared_statements(void)
 }
 
 int
-pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite, bool legacy)
+pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite)
 {
 	bool incremental = false;
 	bool db_not_open;
@@ -354,8 +340,6 @@ pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite, bool legacy)
 		retcode = get_repo_user_version(*sqlite, "main", &reposcver);
 		if (retcode != EPKG_OK)
 			return (EPKG_FATAL);
-		if (legacy)
-			break;
 		if (force || reposcver != REPO_SCHEMA_VERSION) {
 			if (reposcver != REPO_SCHEMA_VERSION)
 				pkg_emit_error("re-creating repo to upgrade schema version "
@@ -372,7 +356,7 @@ pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite, bool legacy)
 	    file_exists, NULL, NULL);
 
 	if (!incremental) {
-		retcode = sql_exec(*sqlite, legacy ? initsql_legacy : initsql, REPO_SCHEMA_VERSION);
+		retcode = sql_exec(*sqlite, initsql, REPO_SCHEMA_VERSION);
 		if (retcode != EPKG_OK)
 			return (retcode);
 	}
@@ -381,7 +365,7 @@ pkgdb_repo_open(const char *repodb, bool force, sqlite3 **sqlite, bool legacy)
 }
 
 int
-pkgdb_repo_init(sqlite3 *sqlite, bool legacy)
+pkgdb_repo_init(sqlite3 *sqlite)
 {
 	int retcode = EPKG_OK;
 
@@ -397,7 +381,7 @@ pkgdb_repo_init(sqlite3 *sqlite, bool legacy)
 	if (retcode != EPKG_OK)
 		return (retcode);
 
-	retcode = initialize_prepared_statements(sqlite, legacy);
+	retcode = initialize_prepared_statements(sqlite);
 	if (retcode != EPKG_OK)
 		return (retcode);
 
@@ -484,7 +468,7 @@ pkgdb_repo_cksum_exists(sqlite3 *sqlite, const char *cksum)
 
 int
 pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
-		sqlite3 *sqlite, const char *manifest_digest, bool forced, bool legacy)
+		sqlite3 *sqlite, const char *manifest_digest, bool forced)
 {
 	const char *name, *version, *origin, *comment, *desc;
 	const char *arch, *maintainer, *www, *prefix, *sum, *rpath;
@@ -507,10 +491,8 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 			    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
 			    PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
 
-	/* setup the legacy version */
-
 try_again:
-	if ((ret = run_prepared_statement(legacy ? PKG2001 : PKG, origin, name, version,
+	if ((ret = run_prepared_statement(PKG, origin, name, version,
 			comment, desc, arch, maintainer, www, prefix,
 			pkgsize, flatsize, (int64_t)licenselogic, sum,
 			rpath, manifest_digest)) != SQLITE_DONE) {
@@ -577,10 +559,11 @@ try_again:
 	}
 	option = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (run_prepared_statement(OPTS,
-				pkg_option_opt(option),
-				pkg_option_value(option),
-				package_id) != SQLITE_DONE) {
+		ret = run_prepared_statement(OPT1, pkg_option_opt(option));
+		if (ret == SQLITE_DONE)
+		    ret = run_prepared_statement(OPT2, pkg_option_opt(option),
+				pkg_option_value(option), package_id);
+		if(ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite);
 			return (EPKG_FATAL);
 		}
@@ -592,16 +575,13 @@ try_again:
 
 		ret = run_prepared_statement(SHLIB1, shlib_name);
 		if (ret == SQLITE_DONE)
-			ret = run_prepared_statement(legacy ? SHLIB2001 : SHLIB_REQD, package_id,
+			ret = run_prepared_statement(SHLIB_REQD, package_id,
 					shlib_name);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite);
 			return (EPKG_FATAL);
 		}
 	}
-
-	if (legacy)
-		return (EPKG_OK);
 
 	shlib = NULL;
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK) {
@@ -795,6 +775,8 @@ upgrade_repo_schema(struct pkgdb *db, const char *database, int current_version)
 	for (version = current_version;
 	     version < REPO_SCHEMA_VERSION;
 	     version = next_version)  {
+		pkg_debug(1, "Upgrading remote database from %d to %d",
+		    version, next_version);
 		ret = apply_repo_change(db, database, repo_upgrades,
 					"upgrade", version, &next_version);
 		if (ret != EPKG_OK)
@@ -813,6 +795,8 @@ downgrade_repo_schema(struct pkgdb *db, const char *database, int current_versio
 	for (version = current_version;
 	     version > REPO_SCHEMA_VERSION;
 	     version = next_version)  {
+		pkg_debug(1, "Upgrading remote database from %d to %d",
+		    version, next_version);
 		ret = apply_repo_change(db, database, repo_downgrades,
 					"downgrade", version, &next_version);
 		if (ret != EPKG_OK)

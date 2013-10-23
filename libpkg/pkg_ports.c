@@ -39,14 +39,10 @@
 #include <string.h>
 #include <stringlist.h>
 #include <unistd.h>
-#ifdef BUNDLED_YAML
-#include <yaml.h>
-#else
-#include <bsdyml.h>
-#endif
 #include <uthash.h>
 
 #include "pkg.h"
+#include "private/utils.h"
 #include "private/event.h"
 #include "private/pkg.h"
 
@@ -642,195 +638,126 @@ keyword_free(struct keyword *k)
 }
 
 static int
-parse_actions(yaml_document_t *doc, yaml_node_t *node, struct plist *p,
+parse_actions(ucl_object_t *o, struct plist *p,
     char *line, struct file_attr *a)
 {
-	yaml_node_item_t *item;
-	yaml_node_t *val;
+	ucl_object_t *cur;
+
+	cur = o;
 	int i;
 
-	if (node->type != YAML_SEQUENCE_NODE) {
-		pkg_emit_error("Malformed actions, skipping");
-		return EPKG_FATAL;
-	}
-
-	item = node->data.sequence.items.start;
-	while (item < node->data.sequence.items.top) {
-		val = yaml_document_get_node(doc, *item);
-		if (val->type != YAML_SCALAR_NODE) {
-			pkg_emit_error("Skipping malformed action");
-			++item;
-			continue;
-		}
-
+	while (cur) {
 		for (i = 0; list_actions[i].name != NULL; i++) {
-			if (!strcasecmp(val->data.scalar.value,
-			    list_actions[i].name)) {
+			if (!strcasecmp(ucl_object_tostring(cur), list_actions[i].name)) {
 				list_actions[i].perform(p, line, a);
 				break;
 			}
 		}
-		++item;
+		cur = cur->next;
 	}
 
 	return (EPKG_OK);
 }
 
 static void
-parse_attributes(yaml_document_t *doc, yaml_node_t *node, struct file_attr **a) {
-	yaml_node_pair_t *pair;
-	yaml_node_t *key, *val;
+parse_attributes(ucl_object_t *o, struct file_attr **a) {
+	ucl_object_t *sub, *tmp;
+	const char *key;
 
 	if (*a == NULL)
 		*a = calloc(1, sizeof(struct file_attr));
 
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
-		if (key->data.scalar.length <= 0) {
-			++pair;
+	HASH_ITER(hh, o, sub, tmp) {
+		key = ucl_object_key(sub);
+		if (!strcasecmp(key, "owner") && sub->type == UCL_STRING) {
+			free((*a)->owner);
+			(*a)->owner = strdup(ucl_object_tostring(sub));
 			continue;
 		}
-
-		if (!strcasecmp(key->data.scalar.value, "owner")) {
-			if (val->type == YAML_SCALAR_NODE) {
-				if ((*a)->owner == NULL)
-					(*a)->owner = strdup(val->data.scalar.value);
-			} else {
-				pkg_emit_error("Expecting a scalar for the owner attribute, ignored");
-			}
-			++pair;
+		if (!strcasecmp(key, "group") && sub->type == UCL_STRING) {
+			free((*a)->group);
+			(*a)->group = strdup(ucl_object_tostring(sub));
 			continue;
 		}
-		if (!strcasecmp(key->data.scalar.value, "group")) {
-			if (val->type == YAML_SCALAR_NODE) {
-				if ((*a)->group == NULL)
-					(*a)->group = strdup(val->data.scalar.value);
+		if (!strcasecmp(key, "mode")) {
+			if (sub->type == UCL_STRING) {
+				void *set;
+				if ((set = setmode(ucl_object_tostring(sub))) == NULL)
+					pkg_emit_error("Bad format for the mode attribute: %s", ucl_object_tostring(sub));
+				else
+					(*a)->mode = getmode(set, 0);
+				free(set);
 			} else {
-				pkg_emit_error("Expecting a scalar for the group attribute, ignored");
+				pkg_emit_error("Expecting a string for the mode attribute, ignored");
 			}
 		}
-		if (!strcasecmp(key->data.scalar.value, "mode")) {
-			if (val->type == YAML_SCALAR_NODE) {
-				if ((*a)->mode == 0) {
-					void *set;
-					if ((set = setmode(val->data.scalar.value)) == NULL)
-						pkg_emit_error("Bad format for the mode attribute: %s", val->data.scalar.value);
-					else
-						(*a)->mode = getmode(set, 0);
-					free(set);
-				}
-			} else {
-				pkg_emit_error("Expecting a scalar for the mode attribute, ignored");
-			}
-		}
-		++pair;
-		continue;
 	}
 }
 
 
 static int
-parse_and_apply_keyword_file(yaml_document_t *doc, yaml_node_t *node,
-    struct plist *p, char *line, struct file_attr *attr)
+parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
-	yaml_node_pair_t *pair;
-	yaml_node_t *key, *val;
-	yaml_node_t *actions = NULL;
+	ucl_object_t *sub, *tmp, *actions;
 	char *cmd;
+	const char *key;
 
-	pair = node->data.mapping.pairs.start;
-	while (pair < node->data.mapping.pairs.top) {
-		key = yaml_document_get_node(doc, pair->key);
-		val = yaml_document_get_node(doc, pair->value);
-		if (key->data.scalar.length <= 0) {
-			++pair; /* ignore silently */
+	HASH_ITER(hh, obj, sub, tmp) {
+		key = ucl_object_key(sub);
+		if (!strcasecmp(key, "actions") && sub->type == UCL_ARRAY) {
+			actions = sub->value.ov;
 			continue;
 		}
 
-		if (!strcasecmp(key->data.scalar.value, "actions")) {
-			actions = val;
-			++pair;
+		if (!strcasecmp(key, "attributes") && sub->type == UCL_OBJECT) {
+			parse_attributes(sub->value.ov, &attr);
 			continue;
 		}
 
-		if (!strcasecmp(key->data.scalar.value, "attributes")) {
-			parse_attributes(doc, val, &attr);
-			++pair;
+		if (!strcasecmp(key, "pre-install") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+			sbuf_cat(p->pre_install_buf, cmd);
+			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key->data.scalar.value, "pre-install")) {
-			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value,
-				    p->prefix, p->last_file, line);
-				sbuf_cat(p->pre_install_buf, cmd);
-				free(cmd);
-			}
-			++pair;
+		if (!strcasecmp(key, "post-install") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+			sbuf_cat(p->post_install_buf, cmd);
+			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key->data.scalar.value, "post-install")) {
-			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value,
-				    p->prefix, p->last_file, line);
-				sbuf_cat(p->post_install_buf, cmd);
-				free(cmd);
-			}
-			++pair;
+		if (!strcasecmp(key, "pre-deinstall") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+			sbuf_cat(p->pre_deinstall_buf, cmd);
+			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key->data.scalar.value, "pre-deinstall")) {
-			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value,
-				    p->prefix, p->last_file, line);
-				sbuf_cat(p->pre_deinstall_buf, cmd);
-				free(cmd);
-			}
-			++pair;
+		if (!strcasecmp(key, "post-deinstall") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key->data.scalar.value, "post-deinstall")) {
-			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value,
-				    p->prefix, p->last_file, line);
-				sbuf_cat(p->post_deinstall_buf, cmd);
-				free(cmd);
-			}
-			++pair;
+		if (!strcasecmp(key, "pre-upgrade") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+			sbuf_cat(p->pre_upgrade_buf, cmd);
+			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key->data.scalar.value, "pre-upgrade")) {
-			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value,
-				    p->prefix, p->last_file, line);
-				sbuf_cat(p->pre_upgrade_buf, cmd);
-				free(cmd);
-			}
-			++pair;
+		if (!strcasecmp(key, "post-upgrade") && sub->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+			sbuf_cat(p->post_upgrade_buf, cmd);
+			free(cmd);
 			continue;
 		}
-
-		if (!strcasecmp(key->data.scalar.value, "post-upgrade")) {
-			if (val->data.scalar.length != 0) {
-				format_exec_cmd(&cmd, val->data.scalar.value,
-				    p->prefix, p->last_file, line);
-				sbuf_cat(p->post_upgrade_buf, cmd);
-				free(cmd);
-			}
-			++pair;
-			continue;
-		}
-		++pair;
 	}
 
 	if (actions != NULL)
-		parse_actions(doc, actions, p, line, attr);
+		parse_actions(actions, p, line, attr);
 
 	return (EPKG_OK);
 }
@@ -840,11 +767,8 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 {
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
-	FILE *fp;
 	int ret = EPKG_UNKNOWN;
-	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
+	ucl_object_t *o;
 
 	pkg_config_string(PKG_CONFIG_PLIST_KEYWORDS_DIR, &keyword_dir);
 	if (keyword_dir == NULL) {
@@ -856,28 +780,10 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		    "%s/%s.yaml", keyword_dir, keyword);
 	}
 
-	if ((fp = fopen(keyfile_path, "r")) == NULL)
+	if ((o = yaml_to_ucl(keyfile_path, NULL, 0)) == NULL)
 		return (EPKG_UNKNOWN);
 
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_file(&parser, fp);
-	yaml_parser_load(&parser, &doc);
-
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid keyword file format: %s",
-			    keyfile_path);
-		} else {
-			ret = parse_and_apply_keyword_file(&doc, node, plist,
-			    line, attr);
-		}
-	} else {
-		pkg_emit_error("Invalid keyword file format: %s", keyfile_path);
-	}
-
-	yaml_document_delete(&doc);
-	yaml_parser_delete(&parser);
+	ret = parse_and_apply_keyword_file(o->value.ov, plist, line, attr);
 
 	return (ret);
 }

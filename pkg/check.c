@@ -181,7 +181,7 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 	if (yes) {
 		if (pkgdb_access(PKGDB_MODE_WRITE, PKGDB_DB_LOCAL) ==
 		    EPKG_ENOACCESS) {
-			warnx("Insufficient privilege to modify package "
+			warnx("Insufficient privileges to modify the package "
 			      "database");
 			free(pkgs);
 			pkg_jobs_free(jobs);
@@ -236,7 +236,7 @@ check_summary(struct pkgdb *db, struct deps_head *dh)
 void
 usage_check(void)
 {
-	fprintf(stderr, "usage: pkg check [-Bdsr] [-vy] [-a | -gix <pattern>]\n\n");
+	fprintf(stderr, "Usage: pkg check [-Bdsr] [-vy] [-a | -gix <pattern>]\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -329,10 +329,10 @@ exec_check(int argc, char **argv)
 		warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to access package database");
+		warnx("Insufficient privileges to access the package database");
 		return (EX_NOPERM);
 	} else if (ret != EPKG_OK) {
-		warnx("Error accessing package database");
+		warnx("Error accessing the package database");
 		return (EX_SOFTWARE);
 	}
 
@@ -383,7 +383,7 @@ exec_check(int argc, char **argv)
 
 		if (dcheck && nbpkgs > 0 && !noinstall) {
 			printf("\n>>> Missing package dependencies were detected.\n");
-			printf(">>> Found %d issue(s) in total with your package database.\n\n", nbpkgs);
+			printf(">>> Found %d issue(s) in the package database.\n\n", nbpkgs);
 
 			ret = fix_deps(db, &dh, nbpkgs, yes);
 			if (ret == EPKG_OK)

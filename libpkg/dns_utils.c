@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,63 @@ typedef union {
 	unsigned char buf[1024];
 } query_t;
 
+static int
+srv_priority_cmp(const void *a, const void *b)
+{
+	struct dns_srvinfo *da, *db;
+	
+	da = *(struct dns_srvinfo **)__DECONST(void *,a);
+	db = *(struct dns_srvinfo **)__DECONST(void *,b);
+
+	return ((da->priority > db->priority) - (da->priority < db->priority));
+}
+
+static int
+srv_final_cmp(const void *a, const void *b)
+{
+	struct dns_srvinfo *da, *db;
+	int res;
+	
+	da = *(struct dns_srvinfo **)__DECONST(void *,a);
+	db = *(struct dns_srvinfo **)__DECONST(void *,b);
+
+	res = ((da->priority > db->priority) - (da->priority < db->priority));
+	if (res == 0)
+		res = ((db->finalweight > da->finalweight) - (db->finalweight < da->finalweight));
+
+	return (res);
+}
+
+static void
+compute_weight(struct dns_srvinfo **d, int first, int last)
+{
+	int i, j;
+	int totalweight = 0;
+	int *chosen = malloc(sizeof(int) * (last - first + 1));
+
+	for (i = 0; i <= last; i++)
+		totalweight += d[i]->weight;
+
+	if (totalweight == 0)
+		return;
+
+	for (i = 0; i <= last; i++) {
+		for (;;) {
+			chosen[i] = random() % (d[i]->weight * 100 / totalweight);
+			for (j = 0; j < i; j++) {
+				if (chosen[i] == chosen[j])
+					break;
+			}
+			if (j == i) {
+				d[i]->finalweight = chosen[i];
+				break;
+			}
+		}
+	}
+
+	free(chosen);
+}
+
 struct dns_srvinfo *
 dns_getsrvinfo(const char *zone)
 {
@@ -49,6 +106,7 @@ dns_getsrvinfo(const char *zone)
 	struct dns_srvinfo **res, *first;
 	unsigned char *end, *p;
 	unsigned int type, class, ttl, priority, weight, port;
+	int f, l;
 
 	if ((len = res_query(zone, C_IN, T_SRV, q.buf, sizeof(q.buf))) == -1 ||
 	    len < (int)sizeof(HEADER))
@@ -120,14 +178,35 @@ dns_getsrvinfo(const char *zone)
 		res[n]->weight = weight;
 		res[n]->port = port;
 		res[n]->next = NULL;
+		res[n]->finalweight = 0;
 		strlcpy(res[n]->host, host, MAXHOSTNAMELEN);
 
 		p += len;
 		n++;
 	}
 
+	/* order by priority */
+	qsort(res, n, sizeof(res[0]), srv_priority_cmp);
+
+	priority = 0;
+	f = 0;
+	l = 0;
+	for (i = 0; i < n; i++) {
+		if (res[i]->priority != priority) {
+			if (f != l)
+				compute_weight(res, f, l);
+			f = i;
+			priority = res[i]->priority;
+		}
+		l = i;
+	}
+
+	qsort(res, n, sizeof(res[0]), srv_final_cmp);
+
 	for (i = 0; i < n - 1; i++)
 		res[i]->next = res[i + 1];
+
+	/* Sort against priority then weight */
 
 	first = res[0];
 	free(res);

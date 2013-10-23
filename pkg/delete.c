@@ -41,7 +41,7 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "usage: pkg delete [-DfginqRxy] <pkg-name> ...\n");
+	fprintf(stderr, "Usage: pkg delete [-DfginqRxy] <pkg-name> ...\n");
 	fprintf(stderr, "       pkg delete [-Dnqy] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
@@ -121,10 +121,10 @@ exec_delete(int argc, char **argv)
 		warnx("No packages installed.  Nothing to do!");
 		return (EX_OK);
 	} else if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to delete packages");
+		warnx("Insufficient privileges to delete packages");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK) {
-		warnx("Error accessing package database");
+		warnx("Error accessing the package database");
 		return (EX_SOFTWARE);
 	}
 
@@ -156,8 +156,8 @@ exec_delete(int argc, char **argv)
 	if (((pkg_jobs_find(jobs, "ports-mgmt/pkg", NULL) == EPKG_OK) ||
 	    (pkg_jobs_find(jobs, "ports-mgmt/pkg-devel", NULL) == EPKG_OK))
 	     && !force) {
-		warnx("You are about to delete 'ports-mgmt/pkg' which is really "
-		    "dangerous. You can't do that without specifying -f");
+		warnx("Deleting 'ports-mgmt/pkg' is really dangerous. "
+		"If that is really required, -f must be specified");
 		goto cleanup;
 	}
 
