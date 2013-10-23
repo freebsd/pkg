@@ -387,8 +387,8 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 			sha256_buf(s->cert, s->certlen, hash);
 			HASH_FIND_STR(revoked, hash, f);
 			if (f != NULL) {
-				pkg_emit_error("At least one of the certificate has been "
-				    "revoked");
+				pkg_emit_error("At least one of the "
+				    " certificates has been revoked");
 				rc = EPKG_FATAL;
 				goto cleanup;
 			}
