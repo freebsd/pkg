@@ -500,8 +500,6 @@ cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cer
 
 	if (sbuf_data(*sig)[sbuf_len(*sig) -1 ] == '\n')
 		sbuf_setpos(*sig, sbuf_len(*sig) -1);
-	if (sbuf_data(*cert)[sbuf_len(*cert) -1 ] == '\n')
-		sbuf_setpos(*cert, sbuf_len(*cert) -1);
 
 	sbuf_finish(*sig);
 	sbuf_finish(*cert);
