@@ -355,7 +355,7 @@ sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	return (ret);
 }
 
-int
+void
 sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
 	unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -367,8 +367,6 @@ sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	SHA256_Update(&sha256, buf, len);
 	SHA256_Final(hash, &sha256);
 	sha256_hash(hash, out);
-
-	return (EPKG_OK);
 }
 
 int

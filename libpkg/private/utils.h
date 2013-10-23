@@ -84,7 +84,7 @@ int format_exec_cmd(char **, const char *, const char *, const char *, char *);
 int is_dir(const char *);
 int is_conf_file(const char *path, char *newpath, size_t len);
 
-int sha256_buf(char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
+void sha256_buf(char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
