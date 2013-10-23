@@ -40,6 +40,15 @@ typedef union {
 	unsigned char buf[1024];
 } query_t;
 
+static int
+srv_cmp_priotity(const void *a, const void *b)
+{
+	struct dns_srvinfo *da = *(struct dns_srvinfo **)a;
+	struct dns_srvinfo *db = *(struct dns_srvinfo **)b;
+
+	return ((da->priority > db->priority) - (da->priority < db->priority));
+}
+
 struct dns_srvinfo *
 dns_getsrvinfo(const char *zone)
 {
@@ -48,7 +57,7 @@ dns_getsrvinfo(const char *zone)
 	int len, qdcount, ancount, n, i;
 	struct dns_srvinfo **res, *first;
 	unsigned char *end, *p;
-	unsigned int type, class, ttl, priority, weight, port;
+	unsigned int type, class, ttl, priority, weight, port, totalweight;
 
 	if ((len = res_query(zone, C_IN, T_SRV, q.buf, sizeof(q.buf))) == -1 ||
 	    len < (int)sizeof(HEADER))
@@ -74,6 +83,7 @@ dns_getsrvinfo(const char *zone)
 	n = 0;
 	while (ancount > 0 && p < end) {
 		ancount--;
+		totalweight = 0;
 		len = dn_expand(q.buf, end, p, host, MAXHOSTNAMELEN);
 		if (len < 0) {
 			for (i = 0; i < n; i++)
@@ -122,9 +132,20 @@ dns_getsrvinfo(const char *zone)
 		res[n]->next = NULL;
 		strlcpy(res[n]->host, host, MAXHOSTNAMELEN);
 
+		for (i = 0; i < n -1; i++) {
+			if (res[i]->priority == priority) {
+				if (totalweight == 0)
+					totalweight = res[i]->totalweight + weight;
+				res[i]->totalweight = totalweight;
+			}
+		}
+
 		p += len;
 		n++;
 	}
+
+	/* order by priority */
+	qsort(res, n, sizeof(res[0]), srv_cmp_priotity);
 
 	for (i = 0; i < n - 1; i++)
 		res[i]->next = res[i + 1];

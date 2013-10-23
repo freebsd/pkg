@@ -61,6 +61,7 @@ struct dns_srvinfo {
 	unsigned int priority;
 	unsigned int weight;
 	unsigned int port;
+	unsigned int totalweight;
 	char host[MAXHOSTNAMELEN];
 	struct dns_srvinfo *next;
 };
