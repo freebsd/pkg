@@ -739,7 +739,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	pkg_emit_incremental_update(updated, removed, added, processed);
 
 cleanup:
-/*	if (pkg != NULL)
+	if (pkg != NULL)
 		pkg_free(pkg);
 	if (it != NULL)
 		pkgdb_it_free(it);
@@ -749,7 +749,9 @@ cleanup:
 		fclose(fdigests);
 	if (map != MAP_FAILED)
 		munmap(map, len);
-*/
+
+	pkgdb_repo_close(sqlite, rc == EPKG_OK);
+
 	return (rc);
 }
 
