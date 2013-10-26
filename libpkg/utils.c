@@ -481,7 +481,7 @@ yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *no
 {
 	yaml_node_item_t *item;
 	yaml_node_t *val;
-	ucl_object_t *sub;
+	ucl_object_t *sub = NULL;
 
 	item = node->data.sequence.items.start;
 	while (item < node->data.sequence.items.top) {
@@ -514,7 +514,7 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 	yaml_node_pair_t *pair;
 	yaml_node_t *key, *val;
 
-	ucl_object_t *sub;
+	ucl_object_t *sub = NULL;
 
 	pair = node->data.mapping.pairs.start;
 	while (pair < node->data.mapping.pairs.top) {
@@ -550,7 +550,7 @@ yaml_to_ucl(const char *file, const char *buffer, size_t len) {
 	yaml_document_t doc;
 	yaml_node_t *node;
 	ucl_object_t *obj = NULL;
-	FILE *fp;
+	FILE *fp = NULL;
 
 	memset(&parser, 0, sizeof(parser));
 
