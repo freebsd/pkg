@@ -698,7 +698,7 @@ parse_attributes(ucl_object_t *o, struct file_attr **a) {
 static int
 parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
-	ucl_object_t *sub, *tmp, *actions;
+	ucl_object_t *sub, *tmp, *actions = NULL;
 	char *cmd;
 	const char *key;
 
