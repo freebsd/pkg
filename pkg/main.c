@@ -662,6 +662,11 @@ main(int argc, char **argv)
 	if (activation_test)
 		do_activation_test(argc);
 
+	if (argc == 1 && strcmp(argv[0], "bootstrap") == 0) {
+		printf("pkg already bootstrapped\n");
+		exit(EXIT_SUCCESS);
+	}
+
 	newargv = argv;
 	newargc = argc;
 	len = strlen(argv[0]);
