@@ -95,7 +95,7 @@ static struct manifest_key {
 	{ "maintainer",          PKG_MAINTAINER,          UCL_STRING, pkg_string},
 	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
-	{ "name",                PKG_NAME,                UCL_INT, pkg_int},
+	{ "name",                PKG_NAME,                UCL_INT,    pkg_string},
 	{ "options",             PKG_OPTIONS,             UCL_STRING, pkg_object},
 	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_STRING, pkg_object},
 	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_STRING, pkg_object},
@@ -111,7 +111,7 @@ static struct manifest_key {
 	{ "users",               PKG_USERS,               UCL_OBJECT, pkg_object},
 	{ "users",               PKG_USERS,               UCL_ARRAY,  pkg_array},
 	{ "version",             PKG_VERSION,             UCL_STRING, pkg_string},
-	{ "version",             PKG_VERSION,             UCL_INT,    pkg_int},
+	{ "version",             PKG_VERSION,             UCL_INT,    pkg_string},
 	{ "www",                 PKG_WWW,                 UCL_STRING, pkg_string},
 	{ NULL, -99, -99, NULL}
 };
@@ -265,7 +265,7 @@ pkg_string(struct pkg *pkg, ucl_object_t *obj, int attr)
 {
 	int ret = EPKG_OK;
 	const char *str;
-	str = ucl_object_tostring(obj);
+	str = ucl_object_tostring_forced(obj);
 
 	switch (attr)
 	{
@@ -297,11 +297,6 @@ pkg_string(struct pkg *pkg, ucl_object_t *obj, int attr)
 static int
 pkg_int(struct pkg *pkg, ucl_object_t *obj, int attr)
 {
-	char vint[BUFSIZ];
-	if (attr == PKG_VERSION || attr == PKG_NAME) {
-		snprintf(vint, sizeof(vint), "%"PRId64, ucl_object_toint(obj));
-		return (pkg_set(pkg, attr, vint));
-	}
 	return (pkg_set(pkg, attr, ucl_object_toint(obj)));
 }
 
