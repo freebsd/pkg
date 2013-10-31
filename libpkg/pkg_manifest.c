@@ -932,7 +932,6 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 				map = ucl_object_insert_key(map,
 				    ucl_object_fromstring(pkg_sum),
 				    sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), true);
-				printf("%s\n", sbuf_data(tmpsbuf));
 			}
 			obj = ucl_object_insert_key(top, map, "files", 5, false);
 
