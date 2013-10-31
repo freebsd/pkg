@@ -347,15 +347,14 @@ static void
 obj_walk_array(ucl_object_t *obj, struct pkg_config *conf)
 {
 	struct pkg_config_value *v;
-	ucl_object_t *sub;
+	ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
 	
-	sub =  obj->value.ov;
-	while (sub != NULL) {
-		if (sub->type != UCL_STRING)
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		if (cur->type != UCL_STRING)
 			continue;
 		v = malloc(sizeof(struct pkg_config_value));
-		v->value = strdup(ucl_object_tostring(sub));
-		sub = sub->next;
+		v->value = strdup(ucl_object_tostring(cur));
 		HASH_ADD_STR(conf->list, value, v);
 	}
 }
@@ -364,14 +363,15 @@ static void
 obj_walk_object(ucl_object_t *obj, struct pkg_config *conf)
 {
 	struct pkg_config_kv *kv;
-	ucl_object_t *sub, *tmp;
+	ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
 
-	HASH_ITER(hh, obj->value.ov, sub, tmp) {
-		if (sub->type != UCL_STRING)
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		if (cur->type != UCL_STRING)
 			continue;
 		kv = malloc(sizeof(struct pkg_config_kv));
-		kv->key = strdup(ucl_object_key(sub));
-		kv->value = strdup(ucl_object_tostring(sub));
+		kv->key = strdup(ucl_object_key(cur));
+		kv->value = strdup(ucl_object_tostring(cur));
 		HASH_ADD_STR(conf->kvlist, value, kv);
 	}
 }
@@ -379,14 +379,15 @@ obj_walk_object(ucl_object_t *obj, struct pkg_config *conf)
 void
 pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 {
-	ucl_object_t *sub, *tmp;
+	ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
 	struct sbuf *b = sbuf_new_auto();
 	struct pkg_config *conf;
 	const char *key;
 
-	HASH_ITER(hh, obj, sub, tmp) {
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		sbuf_clear(b);
-		key = ucl_object_key(sub);
+		key = ucl_object_key(cur);
 		for (size_t i = 0; i < strlen(key); i++)
 			sbuf_putc(b, toupper(key[i]));
 		sbuf_finish(b);
@@ -395,51 +396,51 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 		if (conf != NULL) {
 			switch (conf->type) {
 			case PKG_CONFIG_STRING:
-				if (sub->type != UCL_STRING) {
+				if (cur->type != UCL_STRING) {
 					pkg_emit_error("Expecting a string for key %s,"
 					    " ignoring...", key);
 					continue;
 				}
 				if (!conf->fromenv) {
 					free(conf->string);
-					conf->string = strdup(ucl_object_tostring(sub));
+					conf->string = strdup(ucl_object_tostring(cur));
 				}
 				break;
 			case PKG_CONFIG_INTEGER:
-				if (sub->type != UCL_INT) {
+				if (cur->type != UCL_INT) {
 					pkg_emit_error("Expecting an integer for key %s,"
 					    " ignoring...", key);
 					continue;
 				}
 				if (!conf->fromenv)
-					conf->integer = ucl_object_toint(sub);
+					conf->integer = ucl_object_toint(cur);
 				break;
 			case PKG_CONFIG_BOOL:
-				if (sub->type != UCL_BOOLEAN) {
+				if (cur->type != UCL_BOOLEAN) {
 					pkg_emit_error("Expecting a boolean for key %s,"
 					    " ignoring...", key);
 					continue;
 				}
 				if (!conf->fromenv)
-					conf->boolean = ucl_object_toboolean(sub);
+					conf->boolean = ucl_object_toboolean(cur);
 				break;
 			case PKG_CONFIG_LIST:
-				if (sub->type != UCL_ARRAY) {
+				if (cur->type != UCL_ARRAY) {
 					pkg_emit_error("Expecting a list for key %s,"
 					    " ignoring...", key);
 					continue;
 				}
 				if (!conf->fromenv)
-					obj_walk_array(sub, conf);
+					obj_walk_array(cur, conf);
 				break;
 			case PKG_CONFIG_KVLIST:
-				if (sub->type != UCL_OBJECT) {
+				if (cur->type != UCL_OBJECT) {
 					pkg_emit_error("Expecting a mapping for key %s,"
 					    " ignoring...", key);
 					continue;
 				}
 				if (!conf->fromenv)
-					obj_walk_object(sub, conf);
+					obj_walk_object(cur, conf);
 				break;
 			}
 		}
@@ -681,62 +682,63 @@ disable_plugins_if_static(void)
 static void
 add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 {
-	ucl_object_t *sub, *tmp;
+	ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *key;
 
-	HASH_ITER(hh, obj, sub, tmp) {
-		key = ucl_object_key(sub);
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
 		if (strcasecmp(key, "url") == 0) {
-			if (sub->type != UCL_STRING) {
+			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
 				    key, rname);
 				return;
 			}
-			url = ucl_object_tostring(sub);
+			url = ucl_object_tostring(cur);
 		} else if (strcasecmp(key, "pubkey") == 0) {
-			if (sub->type != UCL_STRING) {
+			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
 				    key, rname);
 				return;
 			}
-			pubkey = ucl_object_tostring(sub);
+			pubkey = ucl_object_tostring(cur);
 		} else if (strcasecmp(key, "enabled") == 0) {
-			if (sub->type != UCL_BOOLEAN) {
+			if (cur->type != UCL_BOOLEAN) {
 				pkg_emit_error("Expecting a boolean for the "
 				    "'%s' key of the '%s' repo",
 				    key, rname);
 				return;
 			}
-			enable = ucl_object_toboolean(sub);
+			enable = ucl_object_toboolean(cur);
 		} else if (strcasecmp(key, "mirror_type") == 0) {
-			if (sub->type != UCL_STRING) {
+			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
 				    key, rname);
 				return;
 			}
-			mirror_type = ucl_object_tostring(sub);
+			mirror_type = ucl_object_tostring(cur);
 		} else if (strcasecmp(key, "signature_type") == 0) {
-			if (sub->type != UCL_STRING) {
+			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
 				    key, rname);
 				return;
 			}
-			signature_type = ucl_object_tostring(sub);
+			signature_type = ucl_object_tostring(cur);
 		} else if (strcasecmp(key, "fingerprints") == 0) {
-			if (sub->type != UCL_STRING) {
+			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
 				    key, rname);
 				return;
 			}
-			fingerprints = ucl_object_tostring(sub);
+			fingerprints = ucl_object_tostring(cur);
 		}
 	}
 
@@ -788,16 +790,17 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 static void
 walk_repo_obj(ucl_object_t *obj)
 {
-	ucl_object_t *sub, *tmp;
+	ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
 	struct pkg_repo *r;
 	const char *key;
 
-	HASH_ITER(hh, obj, sub, tmp) {
-		key = ucl_object_key(sub);
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
 		r = pkg_repo_find_ident(key);
 		if (r != NULL)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
-		add_repo(sub->value.ov, r, key);
+		add_repo(cur, r, key);
 	}
 }
 
@@ -805,8 +808,8 @@ static void
 load_repo_file(const char *repofile)
 {
 	struct ucl_parser *p;
-	ucl_object_t *obj = NULL;
-	ucl_object_t *sub, *tmp;
+	ucl_object_t *obj = NULL, *cur;
+	ucl_object_iter_t it = NULL;
 	bool fallback = false;
 
 	p = ucl_parser_new(0);
@@ -822,8 +825,8 @@ load_repo_file(const char *repofile)
 	if (!fallback) {
 		obj = ucl_parser_get_object(p);
 		if (obj->type == UCL_OBJECT) {
-			HASH_ITER(hh, obj->value.ov, sub, tmp) {
-				if (sub->type != UCL_OBJECT)
+			while ((cur = ucl_iterate_object(obj, &it, true))) {
+				if (cur->type != UCL_OBJECT)
 					fallback = true;
 				if (fallback)
 					break;
@@ -855,7 +858,7 @@ load_repo_file(const char *repofile)
 	}
 
 	if (obj->type == UCL_OBJECT)
-		walk_repo_obj(obj->value.ov);
+		walk_repo_obj(obj);
 
 	ucl_object_free(obj);
 }
@@ -934,8 +937,8 @@ pkg_init(const char *path, const char *reposdir)
 	struct pkg_config *conf;
 	struct pkg_config_value *v;
 	struct pkg_config_kv *kv;
-	ucl_object_t *obj = NULL;
-	ucl_object_t *sub, *tmp;
+	ucl_object_t *obj = NULL, *cur;
+	ucl_object_iter_t it = NULL;
 	bool fallback = false;
 
 	pkg_get_myarch(myabi, BUFSIZ);
@@ -1083,16 +1086,16 @@ pkg_init(const char *path, const char *reposdir)
 		/* Validate the first level of the configuration */
 		obj = ucl_parser_get_object(p);
 		if (obj->type == UCL_OBJECT) {
-			HASH_ITER(hh, obj->value.ov, sub, tmp) {
-				key = ucl_object_key(sub);
+			while ((cur = ucl_iterate_object(obj, &it, true))) {
+				key = ucl_object_key(cur);
 				if (strcasecmp(key, "REPOS_DIR") == 0 &&
-				    sub->type != UCL_ARRAY)
+				    cur->type != UCL_ARRAY)
 					fallback = true;
 				else if (strcasecmp(key, "PKG_ENV") == 0 &&
-				    sub->type != UCL_OBJECT)
+				    cur->type != UCL_OBJECT)
 					fallback = true;
 				else if (strcasecmp(key, "ALIAS") == 0 &&
-				    sub->type != UCL_OBJECT)
+				    cur->type != UCL_OBJECT)
 					fallback = true;
 				if (fallback)
 					break;
@@ -1120,7 +1123,7 @@ pkg_init(const char *path, const char *reposdir)
 	}
 
 	if (obj->type == UCL_OBJECT)
-		pkg_object_walk(obj->value.ov, config_by_key);
+		pkg_object_walk(obj, config_by_key);
 
 parsed:
 	disable_plugins_if_static();

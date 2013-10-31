@@ -642,18 +642,16 @@ parse_actions(ucl_object_t *o, struct plist *p,
     char *line, struct file_attr *a)
 {
 	ucl_object_t *cur;
-
-	cur = o;
+	ucl_object_iter_t it = NULL;
 	int i;
 
-	while (cur) {
+	while ((cur = ucl_iterate_object(o, &it, true))) {
 		for (i = 0; list_actions[i].name != NULL; i++) {
 			if (!strcasecmp(ucl_object_tostring(cur), list_actions[i].name)) {
 				list_actions[i].perform(p, line, a);
 				break;
 			}
 		}
-		cur = cur->next;
 	}
 
 	return (EPKG_OK);
@@ -661,29 +659,30 @@ parse_actions(ucl_object_t *o, struct plist *p,
 
 static void
 parse_attributes(ucl_object_t *o, struct file_attr **a) {
-	ucl_object_t *sub, *tmp;
+	ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
 	const char *key;
 
 	if (*a == NULL)
 		*a = calloc(1, sizeof(struct file_attr));
 
-	HASH_ITER(hh, o, sub, tmp) {
-		key = ucl_object_key(sub);
-		if (!strcasecmp(key, "owner") && sub->type == UCL_STRING) {
+	while ((cur = ucl_iterate_object(o, &it, true))) {
+		key = ucl_object_key(cur);
+		if (!strcasecmp(key, "owner") && cur->type == UCL_STRING) {
 			free((*a)->owner);
-			(*a)->owner = strdup(ucl_object_tostring(sub));
+			(*a)->owner = strdup(ucl_object_tostring(cur));
 			continue;
 		}
-		if (!strcasecmp(key, "group") && sub->type == UCL_STRING) {
+		if (!strcasecmp(key, "group") && cur->type == UCL_STRING) {
 			free((*a)->group);
-			(*a)->group = strdup(ucl_object_tostring(sub));
+			(*a)->group = strdup(ucl_object_tostring(cur));
 			continue;
 		}
 		if (!strcasecmp(key, "mode")) {
-			if (sub->type == UCL_STRING) {
+			if (cur->type == UCL_STRING) {
 				void *set;
-				if ((set = setmode(ucl_object_tostring(sub))) == NULL)
-					pkg_emit_error("Bad format for the mode attribute: %s", ucl_object_tostring(sub));
+				if ((set = setmode(ucl_object_tostring(cur))) == NULL)
+					pkg_emit_error("Bad format for the mode attribute: %s", ucl_object_tostring(cur));
 				else
 					(*a)->mode = getmode(set, 0);
 				free(set);
@@ -698,58 +697,59 @@ parse_attributes(ucl_object_t *o, struct file_attr **a) {
 static int
 parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
-	ucl_object_t *sub, *tmp, *actions = NULL;
+	ucl_object_t *cur, *actions = NULL;
+	ucl_object_iter_t it = NULL;
 	char *cmd;
 	const char *key;
 
-	HASH_ITER(hh, obj, sub, tmp) {
-		key = ucl_object_key(sub);
-		if (!strcasecmp(key, "actions") && sub->type == UCL_ARRAY) {
-			actions = sub->value.ov;
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
+		if (!strcasecmp(key, "actions") && cur->type == UCL_ARRAY) {
+			actions = cur;
 			continue;
 		}
 
-		if (!strcasecmp(key, "attributes") && sub->type == UCL_OBJECT) {
-			parse_attributes(sub->value.ov, &attr);
+		if (!strcasecmp(key, "attributes") && cur->type == UCL_OBJECT) {
+			parse_attributes(cur, &attr);
 			continue;
 		}
 
-		if (!strcasecmp(key, "pre-install") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "pre-install") && cur->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
 			sbuf_cat(p->pre_install_buf, cmd);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key, "post-install") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "post-install") && cur->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
 			sbuf_cat(p->post_install_buf, cmd);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key, "pre-deinstall") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "pre-deinstall") && cur->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
 			sbuf_cat(p->pre_deinstall_buf, cmd);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key, "post-deinstall") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "post-deinstall") && cur->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key, "pre-upgrade") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "pre-upgrade") && cur->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
 			sbuf_cat(p->pre_upgrade_buf, cmd);
 			free(cmd);
 			continue;
 		}
 
-		if (!strcasecmp(key, "post-upgrade") && sub->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(sub), p->prefix, p->last_file, line);
+		if (!strcasecmp(key, "post-upgrade") && cur->type == UCL_STRING) {
+			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
 			sbuf_cat(p->post_upgrade_buf, cmd);
 			free(cmd);
 			continue;
@@ -783,7 +783,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	if ((o = yaml_to_ucl(keyfile_path, NULL, 0)) == NULL)
 		return (EPKG_UNKNOWN);
 
-	ret = parse_and_apply_keyword_file(o->value.ov, plist, line, attr);
+	ret = parse_and_apply_keyword_file(o, plist, line, attr);
 
 	return (ret);
 }

@@ -125,25 +125,25 @@ has_ext(const char *path, const char *ext)
 static struct fingerprint *
 parse_fingerprint(ucl_object_t *obj)
 {
-	ucl_object_t *sub, *tmp;
+	ucl_object_t *cur;
+	ucl_object_iter_t it;
 	const char *function = NULL, *fp = NULL;
 	hash_t fct = HASH_UNKNOWN;
 	struct fingerprint *f = NULL;
 	const char *key;
 
-
-	HASH_ITER(hh, obj, sub, tmp) {
-		key = ucl_object_key(sub);
-		if (sub->type != UCL_STRING)
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
+		if (cur->type != UCL_STRING)
 			continue;
 
 		if (strcasecmp(key, "function") == 0) {
-			function = ucl_object_tostring(sub);
+			function = ucl_object_tostring(cur);
 			continue;
 		}
 
 		if (strcasecmp(key, "fingerprint") == 0) {
-			fp = ucl_object_tostring(sub);
+			fp = ucl_object_tostring(cur);
 			continue;
 		}
 	}
@@ -187,7 +187,7 @@ load_fingerprint(const char *dir, const char *filename)
 	obj = ucl_parser_get_object(p);
 
 	if (obj->type == UCL_OBJECT)
-		f = parse_fingerprint(obj->value.ov);
+		f = parse_fingerprint(obj);
 
 	ucl_object_free(obj);
 	ucl_parser_free(p);

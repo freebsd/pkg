@@ -1349,9 +1349,8 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
 		    pkgrepopath);
-		if (pkg_open(&pkg, path, keys, 0) != EPKG_OK) {
+		if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
 			return (EPKG_FATAL);
-		}
 
 		if (pkgdb_integrity_append(j->db, pkg) != EPKG_OK)
 			ret = EPKG_FATAL;

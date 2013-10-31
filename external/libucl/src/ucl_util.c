@@ -43,6 +43,7 @@ static void
 ucl_object_free_internal (ucl_object_t *obj, bool allow_rec)
 {
 	ucl_object_t *sub, *tmp;
+	ucl_hash_iter_t it = NULL;
 
 	while (obj != NULL) {
 		if (obj->trash_stack[UCL_TRASH_KEY] != NULL) {
@@ -53,7 +54,7 @@ ucl_object_free_internal (ucl_object_t *obj, bool allow_rec)
 		}
 
 		if (obj->type == UCL_ARRAY) {
-			sub = obj->value.ov;
+			sub = obj->value.av;
 			while (sub != NULL) {
 				tmp = sub->next;
 				ucl_object_free_internal (sub, false);
@@ -61,10 +62,7 @@ ucl_object_free_internal (ucl_object_t *obj, bool allow_rec)
 			}
 		}
 		else if (obj->type == UCL_OBJECT) {
-			HASH_ITER (hh, obj->value.ov, sub, tmp) {
-				HASH_DELETE (hh, obj->value.ov, sub);
-				ucl_object_free_internal (sub, true);
-			}
+			ucl_hash_destroy (obj->value.ov, (ucl_hash_free_func *)ucl_obj_free);
 		}
 		tmp = obj->next;
 		UCL_FREE (sizeof (ucl_object_t), obj);
@@ -179,13 +177,13 @@ ucl_unescape_json_string (char *str, size_t len)
 char *
 ucl_copy_key_trash (ucl_object_t *obj)
 {
-	if (obj->trash_stack[UCL_TRASH_KEY] == NULL && obj->hh.key != NULL) {
-		obj->trash_stack[UCL_TRASH_KEY] = malloc (obj->hh.keylen + 1);
+	if (obj->trash_stack[UCL_TRASH_KEY] == NULL && obj->key != NULL) {
+		obj->trash_stack[UCL_TRASH_KEY] = malloc (obj->keylen + 1);
 		if (obj->trash_stack[UCL_TRASH_KEY] != NULL) {
-			memcpy (obj->trash_stack[UCL_TRASH_KEY], obj->hh.key, obj->hh.keylen);
-			obj->trash_stack[UCL_TRASH_KEY][obj->hh.keylen] = '\0';
+			memcpy (obj->trash_stack[UCL_TRASH_KEY], obj->key, obj->keylen);
+			obj->trash_stack[UCL_TRASH_KEY][obj->keylen] = '\0';
 		}
-		obj->hh.key = obj->trash_stack[UCL_TRASH_KEY];
+		obj->key = obj->trash_stack[UCL_TRASH_KEY];
 		obj->flags |= UCL_OBJECT_ALLOCATED_KEY;
 	}
 
@@ -534,7 +532,7 @@ ucl_include_url (const unsigned char *data, size_t len,
 #if (defined(HAVE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x10000000L)
 		/* We need to check signature first */
 		snprintf (urlbuf, sizeof (urlbuf), "%.*s.sig", (int)len, data);
-		if (!ucl_fetch_file (urlbuf, &sigbuf, &siglen, err)) {
+		if (!ucl_fetch_file (urlbuf, &sigbuf, &siglen, &parser->err)) {
 			return false;
 		}
 		if (!ucl_sig_check (buf, buflen, sigbuf, siglen, parser)) {
@@ -596,11 +594,11 @@ ucl_include_file (const unsigned char *data, size_t len,
 #if (defined(HAVE_OPENSSL) && OPENSSL_VERSION_NUMBER >= 0x10000000L)
 		/* We need to check signature first */
 		snprintf (filebuf, sizeof (filebuf), "%s.sig", realbuf);
-		if (!ucl_fetch_file (filebuf, &sigbuf, &siglen, err)) {
+		if (!ucl_fetch_file (filebuf, &sigbuf, &siglen, &parser->err)) {
 			return false;
 		}
 		if (!ucl_sig_check (buf, buflen, sigbuf, siglen, parser)) {
-			ucl_create_err (err, "cannot verify file %s: %s",
+			ucl_create_err (&parser->err, "cannot verify file %s: %s",
 							filebuf,
 							ERR_error_string (ERR_get_error (), NULL));
 			munmap (sigbuf, siglen);
@@ -870,6 +868,11 @@ ucl_object_insert_key (ucl_object_t *top, ucl_object_t *elt,
 		top = ucl_object_new ();
 		top->type = UCL_OBJECT;
 	}
+
+	if (top->value.ov == NULL) {
+		top->value.ov = ucl_hash_create ();
+	}
+
 	if (keylen == 0) {
 		keylen = strlen (key);
 	}
@@ -881,11 +884,15 @@ ucl_object_insert_key (ucl_object_t *top, ucl_object_t *elt,
 		}
 	}
 
-	HASH_FIND (hh, top->value.ov, key, keylen, found);
+	elt->key = key;
+	elt->keylen = keylen;
+
+	found = ucl_hash_search_obj (top->value.ov, elt);
 
 	if (!found) {
-		HASH_ADD_KEYPTR (hh, top->value.ov, key, keylen, elt);
+		top->value.ov = ucl_hash_insert_object (top->value.ov, elt);
 	}
+
 	DL_APPEND (found, elt);
 
 	if (copy_key) {
@@ -893,4 +900,84 @@ ucl_object_insert_key (ucl_object_t *top, ucl_object_t *elt,
 	}
 
 	return top;
+}
+
+ucl_object_t *
+ucl_obj_get_keyl (ucl_object_t *obj, const char *key, size_t klen)
+{
+	ucl_object_t *ret, srch;
+
+	if (obj == NULL || obj->type != UCL_OBJECT || key == NULL) {
+		return NULL;
+	}
+
+	srch.key = key;
+	srch.keylen = klen;
+	ret = ucl_hash_search_obj (obj->value.ov, &srch);
+
+	return ret;
+}
+
+ucl_object_t *
+ucl_obj_get_key (ucl_object_t *obj, const char *key)
+{
+	size_t klen;
+	ucl_object_t *ret, srch;
+
+	if (obj == NULL || obj->type != UCL_OBJECT || key == NULL) {
+		return NULL;
+	}
+
+	klen = strlen (key);
+	srch.key = key;
+	srch.keylen = klen;
+	ret = ucl_hash_search_obj (obj->value.ov, &srch);
+
+	return ret;
+}
+
+ucl_object_t*
+ucl_iterate_object (ucl_object_t *obj, ucl_object_iter_t *iter, bool expand_values)
+{
+	ucl_object_t *elt;
+
+	if (expand_values) {
+		switch (obj->type) {
+		case UCL_OBJECT:
+			return (ucl_object_t*)ucl_hash_iterate (obj->value.ov, iter);
+			break;
+		case UCL_ARRAY:
+			elt = *iter;
+			if (elt == NULL) {
+				elt = obj->value.av;
+				if (elt == NULL) {
+					return NULL;
+				}
+			}
+			else if (elt == obj->value.av) {
+				return NULL;
+			}
+			*iter = elt->next ? elt->next : obj->value.av;
+			return elt;
+		default:
+			/* Go to linear iteration */
+			break;
+		}
+	}
+	/* Treat everything as a linear list */
+	elt = *iter;
+	if (elt == NULL) {
+		elt = obj;
+		if (elt == NULL) {
+			return NULL;
+		}
+	}
+	else if (elt == obj) {
+		return NULL;
+	}
+	*iter = elt->next ? elt->next : obj;
+	return elt;
+
+	/* Not reached */
+	return NULL;
 }

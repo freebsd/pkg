@@ -561,7 +561,7 @@ pkg_plugin_parse(struct pkg_plugin *p)
 
 	obj = ucl_parser_get_object(pr);
 	if (obj->type == UCL_OBJECT)
-		pkg_object_walk(obj->value.ov, p->conf_by_key);
+		pkg_object_walk(obj, p->conf_by_key);
 
 	p->parsed = true;
 	ucl_object_free(obj);
