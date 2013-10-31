@@ -182,6 +182,11 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	if (uname != NULL && uname[0] != '\0') {
 		if (pack->pass) {
 			struct passwd* pw = getpwnam(uname);
+			if (pw == NULL) {
+				pkg_emit_error("Unknown user: '%s'", uname);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
 			archive_entry_set_uid(entry, pw->pw_uid);
 		}
 		archive_entry_set_uname(entry, uname);
@@ -190,6 +195,11 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	if (gname != NULL && gname[0] != '\0') {
 		if (pack->pass) {
 			struct group *gr = (getgrnam(gname));
+			if (gr == NULL) {
+				pkg_emit_error("Unknown group: '%s'", gname);
+				retcode = EPKG_FATAL;
+				goto cleanup;
+			}
 			archive_entry_set_gid(entry, gr->gr_gid);
 		}
 		archive_entry_set_gname(entry, gname);
