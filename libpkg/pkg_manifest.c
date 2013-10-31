@@ -1004,11 +1004,11 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	}
 
 	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
-		*out = ucl_object_emit(obj, UCL_EMIT_YAML);
+		*out = ucl_object_emit(top, UCL_EMIT_YAML);
 	else
-		*out = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
+		*out = ucl_object_emit(top, UCL_EMIT_JSON_COMPACT);
 
-	ucl_object_free(obj);
+	ucl_object_free(top);
 
 	return (EPKG_OK);
 }
