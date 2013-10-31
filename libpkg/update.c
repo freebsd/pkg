@@ -697,7 +697,10 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		map = mmap(NULL, len, PROT_READ, MAP_SHARED, fileno(fmanifest), 0);
 		fclose(fmanifest);
 	} else {
-		pkg_emit_error("File too large");
+		if (len == 0)
+			pkg_emit_error("Empty catalog");
+		else
+			pkg_emit_error("Catalog too large");
 		return (EPKG_FATAL);
 	}
 
