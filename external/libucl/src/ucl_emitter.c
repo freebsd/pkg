@@ -168,18 +168,19 @@ ucl_elt_obj_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bo
 			utstring_append_len (buf, ": ", 2);
 		}
 		ucl_obj_write_json (cur, buf, tabs + 1, false, compact);
-		if (ucl_hash_iter_has_next (it)) {
-			if (compact) {
-				utstring_append_c (buf, ',');
-			}
-			else {
-				utstring_append_len (buf, ",\n", 2);
-			}
+		if (compact) {
+			utstring_append_c (buf, ',');
 		}
-		else if (!compact) {
-			utstring_append_c (buf, '\n');
+		else {
+			utstring_append_len (buf, ",\n", 2);
 		}
 	}
+	buf->i--;
+	if (!compact) {
+		buf->i--;
+		utstring_append_c(buf, '\n');
+	}
+
 	ucl_add_tabs (buf, tabs, compact);
 	utstring_append_c (buf, '}');
 }
