@@ -675,15 +675,13 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 
 	if (fallback) {
 		pkg_debug(2, "Falling back on yaml");
+		ucl_parser_free(p);
 		p = NULL;
 		if (obj != NULL)
 			ucl_object_free(obj);
 		obj = yaml_to_ucl(NULL, buf, len);
-		if (obj == NULL) {
-			printf("%s\n", buf);
-			ucl_parser_free(p);
+		if (obj == NULL)
 			return (EPKG_FATAL);
-		}
 	}
 
 	rc = parse_manifest(pkg, keys, obj);
