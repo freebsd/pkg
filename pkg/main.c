@@ -47,6 +47,7 @@
 #endif
 
 #include <pkg.h>
+#include <uthash.h>
 
 #include "pkgcli.h"
 
@@ -113,7 +114,15 @@ struct plugcmd {
 	STAILQ_ENTRY(plugcmd) next;
 };
 
-typedef int (register_cmd)(const char **name, const char **desc, int (**exec)(int argc, char **argv));
+struct plugcmd0 {
+	const char *cmd;
+	int (*exec)(int argc, char **argv);
+	UT_hash_handle hh;
+};
+
+typedef int (register_cmd)(int idx, const char **name, const char **desc, int (**exec)(int argc, char **argv));
+typedef int (nb_cmd)(void);
+typedef int (register_cmd_argv0)(int idx, const char **name, int (**exec)(int argc, char **argv));
 
 static void
 show_command_names(void)
@@ -529,6 +538,7 @@ main(int argc, char **argv)
 	bool show_commands = false;
 	bool activation_test = false;
 	struct plugcmd *c;
+	struct plugcmd0 *argv0 = NULL, *c0;
 	const char *conffile = NULL;
 	const char *reposdir = NULL;
 	struct pkg_config_kv *alias = NULL;
@@ -537,15 +547,16 @@ main(int argc, char **argv)
 	int newargc;
 	Tokenizer *t = NULL;
 	struct sbuf *newcmd;
-	int j;
+	int j, cmdargc;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
 
+	cmdargv = argv;
+	cmdargc = argc;
+
 	if (argc < 2)
 		usage(NULL, NULL);
-
-	cmdargv = argv;
 
 #ifndef NO_LIBJAIL
 	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvq")) != -1) {
@@ -593,6 +604,7 @@ main(int argc, char **argv)
 		show_command_names();
 		exit(EX_OK);
 	}
+
 	if (argc == 0 && version == 0 && !activation_test)
 		usage(conffile, reposdir);
 
@@ -647,11 +659,28 @@ main(int argc, char **argv)
 
 		/* load commands plugins */
 		while (pkg_plugins(&p) != EPKG_END) {
+			int n;
+
+			nb_cmd *ncmd = pkg_plugin_func(p, "pkg_register_cmd_count");
 			register_cmd *reg = pkg_plugin_func(p, "pkg_register_cmd");
-			if (reg != NULL) {
-				c = malloc(sizeof(struct plugcmd));
-				reg(&c->name, &c->desc, &c->exec);
-				STAILQ_INSERT_TAIL(&plugins, c, next);
+			if (reg != NULL && ncmd != NULL) {
+				n = ncmd();
+				for (j = 0; j < n ; j++) {
+					c = malloc(sizeof(struct plugcmd));
+					reg(j, &c->name, &c->desc, &c->exec);
+					STAILQ_INSERT_TAIL(&plugins, c, next);
+				}
+			}
+
+			ncmd = pkg_plugin_func(p, "pkg_register_cmd_argv0_count");
+			register_cmd_argv0 *reg0 = pkg_plugin_func(p, "pkg_register_cmd_argv0");
+			if (reg0 != NULL && ncmd != NULL) {
+				n = ncmd();
+				for (j = 0; j < n ; j++) {
+					c0 = malloc(sizeof(struct plugcmd0));
+					reg0(j, &c0->cmd, &c0->exec);
+					HASH_ADD_KEYPTR(hh, argv0, c0->cmd, strlen(c0->cmd), c0);
+				}
 			}
 		}
 	}
@@ -666,6 +695,11 @@ main(int argc, char **argv)
 		printf("pkg already bootstrapped\n");
 		exit(EXIT_SUCCESS);
 	}
+
+	printf("%s\n", getprogname());
+	HASH_FIND_STR(argv0, getprogname(), c0);
+	if (c0 != NULL)
+		return (c0->exec(argc, argv));
 
 	newargv = argv;
 	newargc = argc;
