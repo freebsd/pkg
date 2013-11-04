@@ -696,10 +696,9 @@ main(int argc, char **argv)
 		exit(EXIT_SUCCESS);
 	}
 
-	printf("%s\n", getprogname());
 	HASH_FIND_STR(argv0, getprogname(), c0);
 	if (c0 != NULL)
-		return (c0->exec(argc, argv));
+		return (c0->exec(cmdargc, cmdargv));
 
 	newargv = argv;
 	newargc = argc;
