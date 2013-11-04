@@ -1162,6 +1162,9 @@ pkgdb_close(struct pkgdb *db)
 			pkgdb_detach_remotes(db->sqlite);
 		}
 
+		if (!sqlite3_db_readonly(db->sqlite, "main"))
+			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW, NULL, db);
+
 		sqlite3_close(db->sqlite);
 	}
 
