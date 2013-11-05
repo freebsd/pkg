@@ -6,10 +6,6 @@ SUBDIR=	external \
 
 NEWVERS=	${.CURDIR}/newvers.sh
 
-.if !defined(NOSTATIC)
-SUBDIR+=	pkg-static
-.endif
-
 ATF_INSTALLED!=	which atf-version 2>&1 || echo
 
 .if !empty(ATF_INSTALLED)

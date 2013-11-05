@@ -12,8 +12,8 @@
 tags
 TAGS
 pkg/pkg
+pkg/pkg-static
 pkg2legacy
-pkg-static/pkg-static
 tests/test
 tests/lib/test
 tests/lib/pkg_printf.c
