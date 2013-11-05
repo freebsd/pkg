@@ -105,6 +105,8 @@ LDADD_STATIC+=	-ledit \
 		-lncursesw
 .endif
 
+DPADD_STATIC=	${.OBJDIR}/../libpkg/libpkg.a
+
 WARNS?=		6
 MAN=	pkg.8 \
 	pkg-add.8 \
@@ -161,3 +163,8 @@ realinstall: ${PROGNAME}-static-install
 ${PROGNAME}-static-install:
 	${INSTALL} ${STRIP} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
 		${_INSTALLFLAGS} ${PROG}-static ${DESTDIR}${BINDIR}/${PROGNAME}-static
+
+afterdepend:
+.if defined(DPADD_STATIC) && !empty(DPADD_STATIC)
+	grep -q "^${PROGNAME}-static:" ${DEPENDFILE} || echo ${PROGNAME}-static: ${DPADD_STATIC} >> ${DEPENDFILE}
+.endif
