@@ -164,7 +164,10 @@ ${PROGNAME}-static-install:
 	${INSTALL} ${STRIP} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
 		${_INSTALLFLAGS} ${PROG}-static ${DESTDIR}${BINDIR}/${PROGNAME}-static
 
-afterdepend:
+depend: staticdepend
+.ORDER: ${DEPENDFILE} staticdepend
+
+staticdepend:
 .if defined(DPADD_STATIC) && !empty(DPADD_STATIC)
-	grep -q "^${PROGNAME}-static:" ${DEPENDFILE} || echo ${PROGNAME}-static: ${DPADD_STATIC} >> ${DEPENDFILE}
+	echo ${PROGNAME}-static: ${DPADD_STATIC} >> ${DEPENDFILE}
 .endif

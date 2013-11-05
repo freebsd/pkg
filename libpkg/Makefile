@@ -149,7 +149,10 @@ NOMAN=		yes
 	    ${.IMPSRC} > ${.TARGET}
 
 
-afterdepend:
+depend: staticdepend
+.ORDER: ${DEPENDFILE} staticdepend
+
+staticdepend:
 .if defined(DPADD) && !empty(DPADD)
-	grep -q "^lib${LIB}.a:" ${DEPENDFILE} || echo lib${LIB}.a: ${DPADD} >> ${DEPENDFILE}
+	echo lib${LIB}.a: ${DPADD} >> ${DEPENDFILE}
 .endif
