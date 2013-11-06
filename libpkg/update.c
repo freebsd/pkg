@@ -552,12 +552,13 @@ struct pkg_increment_task_item {
 	char *origin;
 	char *digest;
 	long offset;
+	long length;
 	UT_hash_handle hh;
 };
 
 static void
 pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char *origin,
-		const char *digest, long offset)
+		const char *digest, long offset, long length)
 {
 	struct pkg_increment_task_item *item;
 
@@ -567,6 +568,7 @@ pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char 
 		digest = "";
 	item->digest = strdup(digest);
 	item->offset = offset;
+	item->length = length;
 
 	HASH_ADD_KEYPTR(hh, *head, item->origin, strlen(item->origin), item);
 }
@@ -578,11 +580,11 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	sqlite3 *sqlite = NULL;
 	struct pkg *pkg = NULL;
 	int rc = EPKG_FATAL;
-	const char *origin, *digest, *offset;
+	const char *origin, *digest, *offset, *length, *files_offset;
 	struct pkgdb_it *it = NULL;
 	char *linebuf = NULL, *p;
 	int updated = 0, removed = 0, added = 0, processed = 0;
-	long num_offset;
+	long num_offset, num_length;
 	time_t local_t = *mtime;
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
 			*item, *tmp_item;
@@ -612,7 +614,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
-		pkg_update_increment_item_new(&ldel, origin, digest, 4);
+		pkg_update_increment_item_new(&ldel, origin, digest, 4, 0);
 	}
 
 	fdigests = repo_fetch_remote_extract_tmp(repo,
@@ -637,6 +639,8 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		origin = strsep(&p, ":");
 		digest = strsep(&p, ":");
 		offset = strsep(&p, ":");
+		files_offset = strsep(&p, ":");
+		length = strsep(&p, ":");
 
 		if (origin == NULL || digest == NULL ||
 				offset == NULL) {
@@ -652,11 +656,23 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
+		if (length != NULL) {
+			errno = 0;
+			num_length = (long)strtoul(length, NULL, 10);
+			if (errno != 0) {
+				pkg_emit_errno("strtoul", "digest format error");
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
+		}
+		else {
+			num_length = 0;
+		}
 		processed++;
 		HASH_FIND_STR(ldel, origin, item);
 		if (item == NULL) {
 			added++;
-			pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
+			pkg_update_increment_item_new(&ladd, origin, digest, num_offset, num_length);
 		} else {
 			if (strcmp(digest, item->digest) == 0) {
 				free(item->origin);
@@ -670,7 +686,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 				HASH_DEL(ldel, item);
 				free(item);
 				item = NULL;
-				pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
+				pkg_update_increment_item_new(&ladd, origin, digest, num_offset, num_length);
 				updated++;
 			}
 		}
@@ -706,8 +722,15 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
-			rc = pkg_add_from_manifest(map + item->offset, item->origin,
-			    len - item->offset, item->digest, sqlite, &keys, &pkg);
+			if (item->length != 0) {
+				rc = pkg_add_from_manifest(map + item->offset, item->origin,
+						item->length, item->digest,
+						sqlite, &keys, &pkg);
+			}
+			else {
+				rc = pkg_add_from_manifest(map + item->offset, item->origin,
+						len - item->offset, item->digest, sqlite, &keys, &pkg);
+			}
 		}
 		free(item->origin);
 		free(item->digest);

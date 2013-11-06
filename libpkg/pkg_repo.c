@@ -144,6 +144,7 @@ struct digest_list_entry {
 	char *digest;
 	long manifest_pos;
 	long files_pos;
+	long manifest_length;
 	struct digest_list_entry *next;
 };
 
@@ -240,7 +241,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		struct pkg_result *r;
 		const char *origin;
 
-		long manifest_pos, files_pos;
+		long manifest_pos, files_pos, manifest_length;
 
 		pthread_mutex_lock(&thd_data.results_m);
 		while ((r = thd_data.results) == NULL) {
@@ -271,6 +272,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 		manifest_pos = ftell(psyml);
 		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
+		manifest_length = ftell(psyml) - manifest_pos;
 		if (filelist) {
 			files_pos = ftell(fsyml);
 			pkg_emit_filelist(r->pkg, fsyml);
@@ -285,6 +287,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		cur_dig->digest = manifest_digest;
 		cur_dig->manifest_pos = manifest_pos;
 		cur_dig->files_pos = files_pos;
+		cur_dig->manifest_length = manifest_length;
 		LL_PREPEND(dlist, cur_dig);
 
 		pkg_free(r->pkg);
@@ -295,8 +298,9 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	LL_SORT(dlist, digest_sort_compare_func);
 cleanup:
 	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
-		fprintf(mandigests, "%s:%s:%ld:%ld\n", cur_dig->origin,
-		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos);
+		fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
+		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
+		    cur_dig->manifest_length);
 		free(cur_dig->digest);
 		free(cur_dig->origin);
 		free(cur_dig);
