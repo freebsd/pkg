@@ -38,8 +38,8 @@
 # should not be done routinely:
 
 : ${PKG_MAJOR_VERSION:="1"}
-: ${PKG_MINOR_VERSION="1"}
-: ${PKG_PATCH_LEVEL="90"}
+: ${PKG_MINOR_VERSION="2"}
+: ${PKG_PATCH_LEVEL="0.b1"}
 
 : ${PORTREVISION:=}
 : ${PORTEPOCH:=}
