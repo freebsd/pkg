@@ -1139,9 +1139,18 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 		}
 	}
 
-	if (type == PKGDB_REMOTE)
-		if ((ret = pkgdb_open_multirepos(dbdir, db)) != EPKG_OK)
-			return (ret);
+	if (type == PKGDB_REMOTE) {
+		if (pkg_repos_count(true) > 0) {
+			if ((ret = pkgdb_open_multirepos(dbdir, db)) != EPKG_OK)
+				return (ret);
+		} else {
+			if (*db_p == NULL)
+				pkgdb_close(db);
+			pkg_emit_error("No activated remote repositories configured");
+			return (EPKG_FATAL);
+		}
+
+	}
 
 	*db_p = db;
 	return (EPKG_OK);
