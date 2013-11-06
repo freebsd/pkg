@@ -150,24 +150,24 @@ fix-xrefs:
 
 .include <bsd.prog.mk>
 
-${PROG}: ${PROGNAME}-static
+${PROG}: ${PROG}-static
 
 LDFLAGS_STATIC:=	-static ${LDFLAGS}
 LDFLAGS+=	-Wl,-rpath=/usr/lib:${PREFIX}/lib
 
-${PROGNAME}-static: ${OBJS}
+${PROG}-static: ${OBJS}
 	${CC} -static ${CFLAGS} ${LDFLAGS_STATIC} -o ${.TARGET} ${OBJS} ${LDADD} ${LDADD_STATIC}
 
-realinstall: ${PROGNAME}-static-install
+realinstall: ${PROG}-static-install
 
-${PROGNAME}-static-install:
+${PROG}-static-install:
 	${INSTALL} ${STRIP} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
-		${_INSTALLFLAGS} ${PROG}-static ${DESTDIR}${BINDIR}/${PROGNAME}-static
+		${_INSTALLFLAGS} ${PROG}-static ${DESTDIR}${BINDIR}/${PROG}-static
 
 depend: staticdepend
 .ORDER: ${DEPENDFILE} staticdepend
 
 staticdepend:
 .if defined(DPADD_STATIC) && !empty(DPADD_STATIC)
-	echo ${PROGNAME}-static: ${DPADD_STATIC} >> ${DEPENDFILE}
+	echo ${PROG}-static: ${DPADD_STATIC} >> ${DEPENDFILE}
 .endif
