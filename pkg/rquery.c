@@ -71,11 +71,23 @@ static struct query_flags accepted_rquery_flags[] = {
 void
 usage_rquery(void)
 {
-	fprintf(stderr, "Usage: pkg rquery [-r reponame] <query-format> <pkg-name>\n");
-	fprintf(stderr, "       pkg rquery [-a] [-r reponame] <query-format>\n");
+	fprintf(stderr, "Usage: pkg rquery [-r reponame] [-I|<query-format>] <pkg-name>\n");
+	fprintf(stderr, "       pkg rquery [-a] [-r reponame] [-I|<query-format>]\n");
 	fprintf(stderr, "       pkg rquery -e <evaluation> [-r reponame] <query-format>\n");
-	fprintf(stderr, "       pkg rquery [-gix] [-r reponame] <query-format> <pattern> <...>\n\n");
+	fprintf(stderr, "       pkg rquery [-gix] [-r reponame] [-I|<query-format>] <pattern> <...>\n\n");
 	fprintf(stderr, "For more information see 'pkg help rquery.'\n");
+}
+
+static void
+print_index(struct pkg *pkg)
+{
+	struct pkg_category *cat = NULL;
+
+	pkg_printf("%n-%v|/usr/ports/%o|%p|%c|/usr/ports/%o/pkg-descr|%m|",
+	    pkg, pkg, pkg, pkg, pkg, pkg, pkg);
+	while (pkg_categories(pkg, &cat) == EPKG_OK)
+		pkg_printf("%Cn ", cat);
+	printf("\n");
 }
 
 int
@@ -99,16 +111,20 @@ exec_rquery(int argc, char **argv)
 	bool auto_update;
 	bool onematched = false;
 	bool old_quiet;
+	bool index_output = true;
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
-	while ((ch = getopt(argc, argv, "agixe:r:U")) != -1) {
+	while ((ch = getopt(argc, argv, "agiIxe:r:U")) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
 			break;
 		case 'g':
 			match = MATCH_GLOB;
+			break;
+		case 'I':
+			index_output = true;
 			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
@@ -135,20 +151,25 @@ exec_rquery(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0) {
+	if (argc == 0 && !index_output) {
 		usage_rquery();
 		return (EX_USAGE);
 	}
 
 	/* Default to all packages if no pkg provided */
-	if (argc == 1 && pkgname == NULL && condition == NULL && match == MATCH_EXACT) {
-		match = MATCH_ALL;
-	} else if ((argc == 1) ^ (match == MATCH_ALL) && condition == NULL) {
-		usage_rquery();
-		return (EX_USAGE);
+	if (!index_output) {
+		if (argc == 1 && condition == NULL && match == MATCH_EXACT) {
+			match = MATCH_ALL;
+		} else if ((argc == 1) ^ (match == MATCH_ALL ) && condition == NULL) {
+			usage_rquery();
+			return (EX_USAGE);
+		}
+	} else {
+		if (argc == 0)
+			match = MATCH_ALL;
 	}
 
-	if (analyse_query_string(argv[0], accepted_rquery_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK)
+	if (!index_output && analyse_query_string(argv[0], accepted_rquery_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK)
 		return (EX_USAGE);
 
 	if (condition != NULL) {
@@ -176,6 +197,9 @@ exec_rquery(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
+	if (index_output)
+		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES;
+
 	if (match == MATCH_ALL || match == MATCH_CONDITION) {
 		const char *condition_sql = NULL;
 		if (match == MATCH_CONDITION && sqlcond)
@@ -183,15 +207,19 @@ exec_rquery(int argc, char **argv)
 		if ((it = pkgdb_rquery(db, condition_sql, match, reponame)) == NULL)
 			return (EX_IOERR);
 
-		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK)
-			print_query(pkg, argv[0],  multiline);
+		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
+			if (index_output)
+				print_index(pkg);
+			else
+				print_query(pkg, argv[0],  multiline);
+		}
 
 		if (ret != EPKG_END)
 			retcode = EX_SOFTWARE;
 
 		pkgdb_it_free(it);
 	} else {
-		for (i = 1; i < argc; i++) {
+		for (i = (index_output ? 0 : 1); i < argc; i++) {
 			pkgname = argv[i];
 
 			if ((it = pkgdb_rquery(db, pkgname, match, reponame)) == NULL)
@@ -199,7 +227,10 @@ exec_rquery(int argc, char **argv)
 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 				onematched = true;
-				print_query(pkg, argv[0], multiline);
+				if (index_output)
+					print_index(pkg);
+				else
+					print_query(pkg, argv[0], multiline);
 			}
 
 			if (ret != EPKG_END) {
