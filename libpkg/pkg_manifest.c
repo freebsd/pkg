@@ -981,7 +981,8 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 			}
 			urlencode(pkg_script_get(pkg, i), &tmpsbuf);
 			map = ucl_object_insert_key(map,
-			    ucl_object_fromlstring(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf)),
+			    ucl_object_fromstring_common(sbuf_data(tmpsbuf),
+			        sbuf_len(tmpsbuf), UCL_STRING_TRIM),
 			    script_types, 0, true);
 		}
 		obj = ucl_object_insert_key(top, map, "scripts", 7, false);
@@ -991,7 +992,7 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	if (message != NULL && *message != '\0') {
 		urlencode(message, &tmpsbuf);
 		obj = ucl_object_insert_key(top,
-		    ucl_object_fromlstring(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf)),
+		    ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
 		    "message", 7, false);
 	}
 
