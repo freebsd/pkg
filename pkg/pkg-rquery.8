@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd September 28, 2013
+.Dd November 7, 2013
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -25,15 +25,16 @@
 .Nm
 .Ao query-format Ac Ao pkg-name Ac
 .Nm
-.Op Fl a
+.Op Fl aU
 .Op Fl r Ar reponame
 .Ao query-format Ac
 .Nm
+.Op Fl U
 .Fl e Ao evaluation-condition Ac
 .Op Fl r Ar reponame
 .Ao query-format Ac
 .Nm
-.Op Fl gix
+.Op Fl giUx
 .Op Fl r Ar reponame
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
@@ -65,6 +66,10 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case insensitive.
+.It Fl U
+Skip updating the repository catalogues with
+.Xr pkg-update 8 .
+Use the locally cached copies only.
 .It Fl x
 Treat
 .Ao pattern Ac
