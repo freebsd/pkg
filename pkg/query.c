@@ -501,7 +501,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 				case '#': /* FALLTHROUGH */
 				case '?':
 					str++;
-					const char *dbstr = for_remote ? "%1$s." : "";
+					const char *dbstr = for_remote ? "'%1$s'." : "";
 					const char *sqlop = (str[0] == '#' ? "COUNT(*)" : "COUNT(*) > 0");
 					switch (str[0]) {
 						case 'd':
