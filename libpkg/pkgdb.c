@@ -639,7 +639,6 @@ pkgdb_init(sqlite3 *sdb)
 
 	"CREATE INDEX deporigini on deps(origin);"
 	"CREATE INDEX pkg_script_package_id ON pkg_script(package_id);"
-	"CREATE INDEX options_package_id ON options (package_id);"
 	"CREATE INDEX deps_package_id ON deps (package_id);"
 	"CREATE INDEX files_package_id ON files (package_id);"
 	"CREATE INDEX pkg_directories_package_id ON pkg_directories (package_id);"
