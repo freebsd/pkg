@@ -195,16 +195,17 @@ load_fingerprint(const char *dir, const char *filename)
 	return (f);
 }
 
-static struct fingerprint *
-load_fingerprints(const char *path)
+static int
+load_fingerprints(const char *path, struct fingerprint **f)
 {
 	DIR *d;
 	struct dirent *ent;
-	struct fingerprint *f = NULL;
 	struct fingerprint *finger = NULL;
 
+	*f = NULL;
+
 	if ((d = opendir(path)) == NULL)
-		return (NULL);
+		return (-1);
 
 	while ((ent = readdir(d))) {
 		if (strcmp(ent->d_name, ".") == 0 ||
@@ -212,12 +213,12 @@ load_fingerprints(const char *path)
 			continue;
 		finger = load_fingerprint(path, ent->d_name);
 		if (finger != NULL)
-			HASH_ADD_STR(f, hash, finger);
+			HASH_ADD_STR(*f, hash, finger);
 	}
 
 	closedir(d);
 
-	return (f);
+	return (0);
 }
 
 static int
@@ -336,7 +337,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 
 		/* load fingerprints */
 		snprintf(path, MAXPATHLEN, "%s/trusted", pkg_repo_fingerprints(repo));
-		if ((trusted = load_fingerprints(path)) == NULL) {
+		if ((load_fingerprints(path, &trusted)) == -1) {
 			pkg_emit_error("Error loading trusted certificates");
 			rc = EPKG_FATAL;
 			goto cleanup;
@@ -349,7 +350,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		}
 
 		snprintf(path, MAXPATHLEN, "%s/revoked", pkg_repo_fingerprints(repo));
-		if ((revoked = load_fingerprints(path)) == NULL) {
+		if ((load_fingerprints(path, &revoked)) == -1) {
 			pkg_emit_error("Error loading revoked certificates");
 			rc = EPKG_FATAL;
 			goto cleanup;
