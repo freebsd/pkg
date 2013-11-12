@@ -126,7 +126,7 @@ static struct fingerprint *
 parse_fingerprint(ucl_object_t *obj)
 {
 	ucl_object_t *cur;
-	ucl_object_iter_t it;
+	ucl_object_iter_t it = NULL;
 	const char *function = NULL, *fp = NULL;
 	hash_t fct = HASH_UNKNOWN;
 	struct fingerprint *f = NULL;
