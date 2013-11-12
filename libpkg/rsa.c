@@ -120,7 +120,7 @@ rsa_verify_cert(const char *path, unsigned char *key, int keylen,
 	if (rsa == NULL)
 		return (EPKG_FATAL);
 
-	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), sig, siglen, rsa);
+	ret = RSA_verify(NID_sha256, sha256, sizeof(sha256), sig, siglen, rsa);
 	if (ret == 0) {
 		pkg_emit_error("%s: %s", key,
 		    ERR_error_string(ERR_get_error(), errbuf));
