@@ -294,9 +294,9 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 				s->sig = malloc(s->siglen);
 				archive_read_data(a, s->sig, s->siglen);
 			}
-			if (has_ext(archive_entry_pathname(ae), ".cert")) {
+			if (has_ext(archive_entry_pathname(ae), ".pub")) {
 				snprintf(key, MAXPATHLEN, "%.*s",
-				    (int) strlen(archive_entry_pathname(ae)) - 5,
+				    (int) strlen(archive_entry_pathname(ae)) - 4,
 				    archive_entry_pathname(ae));
 				HASH_FIND_STR(sc, key, s);
 				if (s == NULL) {
