@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 23, 2013
+.Dd November 12, 2013
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -193,7 +193,7 @@ and
 to a path containing a file with the SHA256 of the public key:
 .Bd -literal -offset indent
 # On signing server:
-% cat > sign_with_ssh_key.sh << EOF
+% cat > sign.sh << EOF
 #!/bin/sh
 read -t 2 sum
 [ -z "$sum" ] && exit 1
@@ -206,7 +206,7 @@ echo END
 EOF
 
 # On package server:
-% pkg repo /usr/ports/packages signing_command: ssh signing-server sign_with_ssh_key.sh
+% pkg repo /usr/ports/packages signing_command: ssh signing-server sign.sh
 # Generate fingerprint for sharing with clients
 % sh -c '( echo "function: sha256"; echo "fingerprint: $(sha256 -q repo.pub)"; ) > fingerprint'
 # The 'fingerprint' file should be distributed to all clients.
