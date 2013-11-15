@@ -96,7 +96,7 @@ static struct manifest_key {
 	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_INT,    pkg_string},
-	{ "options",             PKG_OPTIONS,             UCL_STRING, pkg_object},
+	{ "options",             PKG_OPTIONS,             UCL_OBJECT, pkg_object},
 	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_STRING, pkg_object},
 	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_STRING, pkg_object},
 	{ "origin",              PKG_ORIGIN,              UCL_STRING, pkg_string},
@@ -434,11 +434,11 @@ pkg_object(struct pkg *pkg, ucl_object_t *obj, int attr)
 				   key);
 			break;
 		case PKG_OPTIONS:
-			if (cur->type != UCL_STRING)
+			if (cur->type == UCL_STRING || cur->type == UCL_BOOLEAN)
+				pkg_addoption(pkg, key, ucl_object_tostring_forced(cur));
+			else
 				pkg_emit_error("Skipping malformed option %s",
 				    key);
-			else
-				pkg_addoption(pkg, key, ucl_object_tostring(cur));
 			break;
 		case PKG_OPTION_DEFAULTS:
 			if (cur->type != UCL_STRING)
@@ -622,6 +622,7 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 		if (selected_key != NULL) {
 			HASH_FIND_UCLT(selected_key->parser, &cur->type, dp);
 			if (dp != NULL) {
+				pkg_debug(2, "Manifest: key is valid");
 				dp->parse_data(pkg, cur, selected_key->type);
 			}
 		}
@@ -898,6 +899,7 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	pkg_debug(1, "Emitting options");
 	map = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
+		pkg_debug(2, "Emiting option: %s", pkg_option_value(option));
 		map = ucl_object_insert_key(map,
 		    ucl_object_fromstring(pkg_option_value(option)),
 		    pkg_option_opt(option), 0, false);

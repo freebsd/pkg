@@ -2182,6 +2182,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 			break;
 		}
 
+		pkg_debug(1, "Pkgdb> adding option");
 		ret = load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
 				   pkg_addtagval, PKG_OPTIONS);
 		if (ret != EPKG_OK)

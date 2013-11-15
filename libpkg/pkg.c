@@ -842,6 +842,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	   default value or description for an option but no actual
 	   value. */
 
+	pkg_debug(2,"Pkg> adding options: %s = %s", key, value);
 	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
 		pkg_option_new(&o);
