@@ -341,7 +341,7 @@ exec_info(int argc, char **argv)
 		 * only show full version in case of match glob with a single argument specified
 		 * which does not contains any glob pattern
 		 */
-		if (argc == 1 && !origin_search &&
+		if (argc == 1 && !origin_search && !quiet &&
 		    match == MATCH_GLOB &&
 		    strcspn(pkgname, "*[]{}()") == strlen(pkgname) &&
 		    opt == INFO_TAG_NAMEVER)
