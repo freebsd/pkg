@@ -103,6 +103,7 @@ rsa_verify_cert(const char *path, unsigned char *key, int keylen,
     unsigned char *sig, int siglen, int fd)
 {
 	char sha256[SHA256_DIGEST_LENGTH *2 +1];
+	char hash[SHA256_DIGEST_LENGTH];
 	char errbuf[1024];
 	RSA *rsa = NULL;
 	int ret;
@@ -116,11 +117,12 @@ rsa_verify_cert(const char *path, unsigned char *key, int keylen,
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
+	sha256_buf_bin(sha256, strlen(sha256), hash);
+
 	rsa = _load_rsa_public_key_buf(key, keylen);
 	if (rsa == NULL)
 		return (EPKG_FATAL);
-
-	ret = RSA_verify(NID_sha256, sha256, sizeof(sha256), sig, siglen, rsa);
+	ret = RSA_verify(NID_sha256, hash, sizeof(hash), sig, siglen, rsa);
 	if (ret == 0) {
 		pkg_emit_error("%s: %s", key,
 		    ERR_error_string(ERR_get_error(), errbuf));

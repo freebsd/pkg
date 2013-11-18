@@ -359,14 +359,19 @@ void
 sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
 	unsigned char hash[SHA256_DIGEST_LENGTH];
-	SHA256_CTX sha256;
-
+	sha256_buf_bin(buf, len, hash);
 	out[0] = '\0';
+	sha256_hash(hash, out);
+}
+
+void
+sha256_buf_bin(char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
+{
+	SHA256_CTX sha256;
 
 	SHA256_Init(&sha256);
 	SHA256_Update(&sha256, buf, len);
 	SHA256_Final(hash, &sha256);
-	sha256_hash(hash, out);
 }
 
 int
