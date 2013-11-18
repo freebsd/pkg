@@ -29,7 +29,6 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <sysexits.h>
-#include <libutil.h>
 
 #include <pkg.h>
 

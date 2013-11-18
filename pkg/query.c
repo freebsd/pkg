@@ -33,7 +33,6 @@
 #include <ctype.h>
 #include <err.h>
 #include <inttypes.h>
-#include <libutil.h>
 #include <pkg.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <libutil.h>
 
 #include <pkg.h>
 
