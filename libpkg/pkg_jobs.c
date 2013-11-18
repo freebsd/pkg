@@ -345,7 +345,8 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkg_dep *d, *dtmp;
 	int ret;
 
-	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
+	if ((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
+	    (j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
 			pkg_emit_newpkgversion();
 			goto order;
@@ -811,7 +812,8 @@ jobs_solve_install(struct pkg_jobs *j)
 	const char *origin;
 	int ret;
 
-	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
+	if ((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
+	    (j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
 			pkg_emit_newpkgversion();
 			goto order;
