@@ -598,3 +598,29 @@ yaml_to_ucl(const char *file, const char *buffer, size_t len) {
 
 	return (obj);
 }
+
+void
+set_nonblocking(int fd)
+{
+	int flags;
+
+	if ((flags = fcntl(fd, F_GETFL)) == -1)
+		return;
+	if (!(flags & O_NONBLOCK)) {
+		flags |= O_NONBLOCK;
+		fcntl(fd, F_SETFL, flags);
+	}
+}
+
+void
+set_blocking(int fd)
+{
+	int flags;
+
+	if ((flags = fcntl(fd, F_GETFL)) == -1)
+		return;
+	if (flags & O_NONBLOCK) {
+		flags &= ~O_NONBLOCK;
+		fcntl(fd, F_SETFL, flags);
+	}
+}
