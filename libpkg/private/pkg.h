@@ -272,6 +272,20 @@ struct pkg_repo {
 	signature_t signature_type;
 	char *fingerprints;
 	FILE *ssh;
+
+	struct {
+		int in;
+		int out;
+		pid_t pid;
+		struct {
+			char *buf;
+			size_t size;
+			size_t pos;
+			size_t len;
+		} cache;
+	} sshio;
+	size_t fetched;
+	size_t tofetch;
 	bool enable;
 	UT_hash_handle hh;
 };
