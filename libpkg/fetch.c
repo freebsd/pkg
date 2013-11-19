@@ -163,7 +163,7 @@ ssh_read(void *data, char *buf, int len)
 		 * the cached data into the supplied buffer before trying to
 		 * read from the socket again.
 		 */
-		total = (repo->sshio.cache.len < (size_t)len) ? repo->sshio.cache.len : len;
+		total = (repo->sshio.cache.len < (size_t)len) ? repo->sshio.cache.len : (size_t)len;
 		memcpy(buf, repo->sshio.cache.buf, total);
 
 		repo->sshio.cache.len -= total;
