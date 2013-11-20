@@ -733,6 +733,7 @@ hash_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	size_t r = 0;
 	SHA256_CTX sha256;
+	int i;
 
 	if ((fp = fopen(path, "rb")) == NULL) {
 		warn("fopen(%s)", path);
@@ -755,7 +756,7 @@ hash_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 
 	SHA256_Final(hash, &sha256);
 
-	for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
 		sprintf(out + (i * 2), "%02x", hash[i]);
 
 	out[SHA256_DIGEST_LENGTH * 2] = '\0';
