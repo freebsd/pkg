@@ -132,6 +132,7 @@ usage(const char *conffile, const char *reposdir)
 {
 	struct plugcmd *c;
 	bool plugins_enabled = false;
+	unsigned int i;
 
 #ifndef NO_LIBJAIL
  	fprintf(stderr, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
@@ -151,7 +152,7 @@ usage(const char *conffile, const char *reposdir)
 	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
 	fprintf(stderr, "Commands supported:\n");
 
-	for (unsigned int i = 0; i < cmd_len; i++)
+	for (i = 0; i < cmd_len; i++)
 		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
 	if (!pkg_initialized() && pkg_init(conffile, reposdir) != EPKG_OK)
@@ -187,13 +188,14 @@ exec_help(int argc, char **argv)
 	char *manpage;
 	bool plugins_enabled = false;
 	struct plugcmd *c;
+	unsigned int i;
 
 	if ((argc != 2) || (strcmp("help", argv[1]) == 0)) {
 		usage_help();
 		return(EX_USAGE);
 	}
 
-	for (unsigned int i = 0; i < cmd_len; i++) {
+	for (i = 0; i < cmd_len; i++) {
 		if (strcmp(cmd[i].name, argv[1]) == 0) {
 			if (asprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name) == -1)
 				errx(EX_SOFTWARE, "cannot allocate memory");
