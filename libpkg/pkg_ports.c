@@ -716,41 +716,42 @@ parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, str
 
 		if (!strcasecmp(key, "pre-install") && cur->type == UCL_STRING) {
 			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_cat(p->pre_install_buf, cmd);
+			sbuf_printf(p->pre_install_buf, "%s\n", cmd);
 			free(cmd);
 			continue;
 		}
 
 		if (!strcasecmp(key, "post-install") && cur->type == UCL_STRING) {
 			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_cat(p->post_install_buf, cmd);
+			sbuf_printf(p->post_install_buf, "%s\n", cmd);
 			free(cmd);
 			continue;
 		}
 
 		if (!strcasecmp(key, "pre-deinstall") && cur->type == UCL_STRING) {
 			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_cat(p->pre_deinstall_buf, cmd);
+			sbuf_printf(p->pre_deinstall_buf, "%s\n",cmd);
 			free(cmd);
 			continue;
 		}
 
 		if (!strcasecmp(key, "post-deinstall") && cur->type == UCL_STRING) {
 			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
+			sbuf_printf(p->post_deinstall_buf, "%s\n",cmd);
 			free(cmd);
 			continue;
 		}
 
 		if (!strcasecmp(key, "pre-upgrade") && cur->type == UCL_STRING) {
 			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_cat(p->pre_upgrade_buf, cmd);
+			sbuf_printf(p->pre_upgrade_buf, "%s\n",cmd);
 			free(cmd);
 			continue;
 		}
 
 		if (!strcasecmp(key, "post-upgrade") && cur->type == UCL_STRING) {
 			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_cat(p->post_upgrade_buf, cmd);
+			sbuf_printf(p->post_upgrade_buf,"%s\n", cmd);
 			free(cmd);
 			continue;
 		}
