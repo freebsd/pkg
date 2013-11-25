@@ -58,6 +58,9 @@ DEBUG_FLAGS+=	-pg
 CFLAGS+=	-I../libpkg \
 		-I${.CURDIR}/../external/uthash \
 		-I${.CURDIR}/../external/expat/lib
+.if !exists(/usr/lib/libelf.so)
+LDADD_STATIC+=		-L../external/libelf
+.endif
 LDADD+=		-L../libpkg \
 		-L../external/expat \
 		-ledit \
