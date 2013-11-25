@@ -1,6 +1,6 @@
 SUBDIR=	sqlite libyaml expat libucl
 
-.if defined(WITH_BUNDLED_LIBELF)
+.if !exists(/usr/lib/libelf.so)
 SUBDIR+= libelf
 .endif
 
