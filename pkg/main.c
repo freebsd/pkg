@@ -464,9 +464,9 @@ static void
 show_version_info(int version)
 {
 	if (version > 1)
-		printf("%24s: ", "Version");
+		printf("%-24s: ", "Version");
 
-	printf(PKGVERSION""GITHASH"\n");
+	printf(PKG_PORTVERSION""GITHASH"\n");
 
 	if (version == 1)
 		exit(EX_OK);
