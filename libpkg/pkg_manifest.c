@@ -808,7 +808,7 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize, pkgsize;
-	ucl_object_t *obj = NULL, *map, *seq, *submap;
+	ucl_object_t *obj, *map, *seq, *submap;
 	ucl_object_t *top = NULL;
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
