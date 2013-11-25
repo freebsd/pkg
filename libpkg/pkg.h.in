@@ -1235,7 +1235,7 @@ pkg_change_t pkg_version_change(const struct pkg * restrict);
  * Fetch a file.
  * @return An error code.
  */
-int pkg_fetch_file(struct pkg_repo *repo, const char *url, const char *dest, time_t t);
+int pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, const char *, const char *);
