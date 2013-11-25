@@ -540,13 +540,12 @@ main(int argc, char **argv)
 	int newargc;
 	Tokenizer *t = NULL;
 	struct sbuf *newcmd;
-	int j, cmdargc;
+	int j;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
 
 	cmdargv = argv;
-	cmdargc = argc;
 
 	if (argc < 2)
 		usage(NULL, NULL);
