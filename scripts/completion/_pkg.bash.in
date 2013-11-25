@@ -440,8 +440,8 @@ _pkg () {
 
         backup) 
 	    COMPREPLY=(
-		'(-r)-d[Dumps the local package database]'
-		'(-d)-r[Restrore the local package database]'
+		'(-d)-d[Dumps the local package database]'
+		'(-r)-r[Restore the local package database]'
 	    )
 	    return 0 
 	    ;;
@@ -487,8 +487,8 @@ _pkg () {
 
         delete|remove) 
 	    COMPREPLY=(
-		'(-y)-n[Assume yes when asked for confirmation]'
-		'(-n)-y[Assume no (dry run) for confirmations]'
+		'(-y)-y[Assume yes when asked for confirmation]'
+		'(-n)-n[Assume no (dry run) for confirmations]'
 		'-f[Forces packages to be removed]'
 		'(-g -x -X)-a[Process all packages]'
 		'(-x -X -a)-g[Process packages that matches glob]'
@@ -540,8 +540,8 @@ _pkg () {
 
         install) 
 	    COMPREPLY=(
-		'(-y)-n[Assume yes when asked for confirmation]'
-		'(-n)-y[Assume no (dry run) for confirmations]'
+		'(-y)-y[Assume yes when asked for confirmation]'
+		'(-n)-n[Assume no (dry run) for confirmations]'
 		'-f[Force reinstallation if needed]'
 		'-R[Reinstall every package depending on matching expressions]'
 		'-L[Do not try to update the repository metadata]'
@@ -601,8 +601,8 @@ _pkg () {
 
         set) 
 	    COMPREPLY=(
-		'(-o)-A[Mark as automatic or not]'
-		'(-A)-o[Change the origin]'
+		'(-A)-A[Mark as automatic or not]'
+		'(-o)-o[Change the origin]'
 		'-y[Assume yes when asked for confirmation]'
 		'(-g -x -X)-a[Process all packages]'
 		'(-x -X -a)-g[Process packages that matches glob]'
@@ -622,8 +622,8 @@ _pkg () {
         stats) 
 	    COMPREPLY=(
 		'-q[Be quiet]'
-		'(-l)-r[Display stats only for the local package database]'
-		'(-r)-l[Display stats only for the remote package database(s)]' 
+		'(-l)-l[Display stats only for the local package database]'
+		'(-r)-r[Display stats only for the remote package database(s)]' 
 	    )
 	    return 0 ;;
 
@@ -644,8 +644,8 @@ _pkg () {
 
         upgrade) 
 	    COMPREPLY=(
-		'(-y)-n[Assume no (dry run) for confirmations]' 
-		'(-n)-y[Assume yes when asked for confirmation]' 
+		'(-n)-n[Assume no (dry run) for confirmations]' 
+		'(-y)-y[Assume yes when asked for confirmation]' 
 		'-f[Upgrade/Reinstall everything]' 
 		'-L[Do not try to update the repository metadata]'
 	    )
@@ -660,8 +660,8 @@ _pkg () {
 		'-o[Display package origin, instead of package name]'
 		'-q[Be quiet]'
 		'-v[Be verbose]'
-		'(-L)-l[Display only the packages for given status flag]'
-		'(-l)-L[Display only the packages without given status flag]'
+		'(-l)-l[Display only the packages for given status flag]'
+		'(-L)-L[Display only the packages without given status flag]'
 	    )
 	    return 0 
 	    ;;
