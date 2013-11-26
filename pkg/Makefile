@@ -58,9 +58,6 @@ DEBUG_FLAGS+=	-pg
 CFLAGS+=	-I../libpkg \
 		-I${.CURDIR}/../external/uthash \
 		-I${.CURDIR}/../external/expat/lib
-.if !exists(/usr/lib/libelf.so)
-LDADD_STATIC+=		-L../external/libelf
-.endif
 LDADD+=		-L../libpkg \
 		-L../external/expat \
 		-ledit \
@@ -81,6 +78,10 @@ LDADD+=		-L../libpkg \
 LDADD_STATIC=	-L../external/sqlite \
 		-L../external/libyaml \
 		-L../external/libucl
+
+.if !exists(/usr/lib/libelf.so)
+LDADD_STATIC+=		-L../external/libelf
+.endif
 
 LDADD_STATIC+=	-lsqlite3 \
 		-larchive \
