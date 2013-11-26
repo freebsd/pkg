@@ -40,8 +40,8 @@ BINDIR=		${PREFIX}/sbin
 MANDIR=		${PREFIX}/man/man
 
 .if exists(${.CURDIR}/../.git) && exists(/usr/local/bin/git)
-GITHASH!=	cd ${.CURDIR} && git rev-parse HEAD
-CFLAGS+=	-DGITHASH="\" ${GITHASH}\""
+GITHASH!=	cd ${.CURDIR} && git rev-parse --short HEAD
+CFLAGS+=	-DGITHASH="\"${GITHASH}\""
 .endif
 
 .if defined(DEBUG_FLAGS)
