@@ -1005,6 +1005,8 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 
 	ucl_object_free(top);
 
+	(void) obj; /* workaround a warning spotted by gcc 4.7 */
+
 	return (EPKG_OK);
 }
 
