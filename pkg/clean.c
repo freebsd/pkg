@@ -321,6 +321,10 @@ exec_clean(int argc, char **argv)
 		if (all) {
 			ret = add_to_dellist(&dl, ALL, ent->fts_path,
 					     origin, NULL, NULL);
+			/*
+			 * FIXME: `ret' is not checked, what should be done if
+			 * add_to_dellist() fails ?
+			 */
 			pkgdb_it_free(it);
 			continue;
 		}
@@ -329,6 +333,7 @@ exec_clean(int argc, char **argv)
 		if (ret == EPKG_FATAL) {
 			if (!quiet)
 				warnx("skipping %s", ent->fts_path);
+			pkgdb_it_free(it);
 			continue;
 		}
 
@@ -336,6 +341,11 @@ exec_clean(int argc, char **argv)
 			/* No matching package found in repo */
 			ret = add_to_dellist(&dl, REMOVED, ent->fts_path,
 					     origin, NULL, NULL);
+			/*
+			 * FIXME: `ret' is not checked, what should be done if
+			 * add_to_dellist() fails ?
+			 */
+			pkgdb_it_free(it);
 			continue;
 		}
 
@@ -372,6 +382,7 @@ exec_clean(int argc, char **argv)
 
 		if (ret != EPKG_OK && ret != EPKG_END) {
 			retcode = EX_OSERR; /* out of memory */
+			pkgdb_it_free(it);
 			goto cleanup;
 		}
 
