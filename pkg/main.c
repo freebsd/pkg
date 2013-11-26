@@ -442,17 +442,23 @@ show_repository_info(void)
 			break;
 		}
 
-		printf("  %s: { \n    %-16s: %s,\n    %-16s: %s,\n    %-16s: %s,\n"
-		    "    %-16s: %s,\n    %-16s: %s,\n    %-16s: %s\n  } \n",
+		printf("  %s: { \n    %-16s: %s,\n    %-16s: %s",
 		    pkg_repo_ident(repo),
                     "url", pkg_repo_url(repo),
-		    "signature_type", sig,
-		    "pubkey", pkg_repo_key(repo) == NULL ?
-		        "" : pkg_repo_key(repo),
-		    "fingerprints", pkg_repo_fingerprints(repo) == NULL ?
-		        "" : pkg_repo_fingerprints(repo),
-		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no",
-		    "mirror_type", mirror);
+		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no");
+		if (pkg_repo_mirror_type(repo) != NOMIRROR)
+			printf(",\n    %-16s: %s",
+			    "mirror_type", mirror);
+		if (pkg_repo_signature_type(repo) != SIG_NONE)
+			printf(",\n    %-16s: %s",
+			    "signature_type", sig);
+		if (pkg_repo_fingerprints(repo) != NULL)
+			printf(",\n    %-16s: %s",
+			    "fingerprints", pkg_repo_fingerprints(repo));
+		if (pkg_repo_key(repo) != NULL)
+			printf(",\n    %-16s: %s",
+			    "pubkey", pkg_repo_key(repo));
+		printf("\n  }\n");
 	}
 }
 
