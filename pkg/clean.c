@@ -61,20 +61,21 @@ add_to_dellist(struct dl_head *dl,  unsigned reason, const char *path,
 	       const char *origin, const char *newname, const char *newversion)
 {
 	struct deletion_list	*dl_entry;
-	size_t			 alloc_len;
+	size_t			 pathlen, originlen, newnamelen, newversionlen;
 	size_t			 offset;
+	char *s;
 
 	assert(path != NULL);
 	assert(origin != NULL);
 
-	alloc_len = sizeof(struct deletion_list) + strlen(path) +
-		strlen(origin) + 2;
-	if (newname != NULL)
-		alloc_len += strlen(newname) + 1;
-	if (newversion != NULL)
-		alloc_len += strlen(newversion) + 1;
+	pathlen       = strlen(path);
+	originlen     = strlen(origin);
+	newnamelen    = (newname == NULL    ? 0 : strlen(newname));
+	newversionlen = (newversion == NULL ? 0 : strlen(newversion));
 
-	dl_entry = calloc(1, alloc_len);
+	dl_entry = calloc(1, sizeof(struct deletion_list) +
+	    pathlen + 1 + originlen + 1 + newnamelen + 1 +
+	    newversionlen + 1);
 	if (dl_entry == NULL) {
 		warn("adding deletion list entry");
 		return (EPKG_FATAL);
@@ -82,33 +83,27 @@ add_to_dellist(struct dl_head *dl,  unsigned reason, const char *path,
 
 	dl_entry->reason = reason;
 
-	offset = 0;
+	s = dl_entry->data;
 
-	alloc_len = strlen(path) + 1;
-	strlcpy(&(dl_entry->data[offset]), path, alloc_len);
-	dl_entry->path = &(dl_entry->data[offset]);
-	offset = alloc_len;
+	(void)memcpy(s, path, pathlen + 1);
+	dl_entry->path = s;
+	s += pathlen + 1;
 
-	alloc_len = strlen(origin) + 1;
-	strlcpy(&(dl_entry->data[offset]), origin, alloc_len);
-	dl_entry->origin = &(dl_entry->data[offset]);
-	offset += alloc_len;
+	(void)memcpy(s, origin, originlen + 1);
+	dl_entry->origin = s;
+	s += originlen + 1;
 
 	if (newname != NULL) {
-		alloc_len = strlen(newname) + 1;
-		strlcpy(&(dl_entry->data[offset]), newname, alloc_len);
-		dl_entry->newname = &(dl_entry->data[offset]);
-		offset += alloc_len;
-	} else
-		dl_entry->newname = NULL;
-
+		(void)memcpy(s, newname, newnamelen + 1);
+		dl_entry->newname = s;
+		s += newnamelen + 1;
+	}
 	if (newversion != NULL) {
-		alloc_len = strlen(newversion) + 1;
-		strlcpy(&(dl_entry->data[offset]), newversion, alloc_len);
-		dl_entry->newversion = &(dl_entry->data[offset]);
-		offset += alloc_len;
-	} else
-		dl_entry->newversion = NULL;
+		(void)memcpy(s, newversion, newversionlen + 1);
+		dl_entry->newversion = s;
+		s += newversionlen + 1;
+		/* s is never read again but that's OK to keep it in "sync" */
+	}
 
 	STAILQ_INSERT_TAIL(dl, dl_entry, next);
 
