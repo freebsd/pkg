@@ -685,7 +685,6 @@ main(int argc, char **argv)
 
 	newargv = argv;
 	newargc = argc;
-	len = strlen(argv[0]);
 	alias = NULL;
 	while (pkg_config_kvlist(PKG_CONFIG_ALIAS, &alias) == EPKG_OK) {
 		if (strcmp(argv[0], pkg_config_kv_get(alias, PKG_CONFIG_KV_KEY)) == 0) {
