@@ -422,6 +422,7 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 					    " ignoring...", key);
 					continue;
 				}
+
 				if (!conf->fromenv)
 					conf->boolean = ucl_object_toboolean(cur);
 				break;
@@ -683,7 +684,7 @@ disable_plugins_if_static(void)
 static void
 add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 {
-	ucl_object_t *cur;
+	ucl_object_t *cur, *tmp = NULL;
 	ucl_object_iter_t it = NULL;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
@@ -709,13 +710,23 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 			}
 			pubkey = ucl_object_tostring(cur);
 		} else if (strcasecmp(key, "enabled") == 0) {
-			if (cur->type != UCL_BOOLEAN) {
+			if (cur->type == UCL_STRING)
+				tmp = ucl_object_fromstring_common(ucl_object_tostring(cur),
+				    strlen(ucl_object_tostring(cur)), UCL_STRING_PARSE_BOOLEAN);
+			if (cur->type != UCL_BOOLEAN && (tmp != NULL && tmp->type != UCL_BOOLEAN)) {
 				pkg_emit_error("Expecting a boolean for the "
 				    "'%s' key of the '%s' repo",
 				    key, rname);
+				if (tmp != NULL)
+					ucl_object_free(tmp);
 				return;
 			}
-			enable = ucl_object_toboolean(cur);
+			if (tmp != NULL)
+				pkg_emit_error("Warning: expecting a boolean for the '%s' key of the '%s' repo, "
+				    " the value has been correctly converted, please consider fixing", key, rname);
+			enable = ucl_object_toboolean(tmp != NULL ? tmp : cur);
+			if (tmp != NULL)
+				ucl_object_free(tmp);
 		} else if (strcasecmp(key, "mirror_type") == 0) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
