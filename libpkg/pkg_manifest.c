@@ -510,8 +510,9 @@ pkg_set_files_from_object(struct pkg *pkg, ucl_object_t *obj)
 		else if (!strcasecmp(key, "sum") && cur->type == UCL_STRING &&
 		    strlen(ucl_object_tostring(cur)) == 64)
 			sum = ucl_object_tostring(cur);
-		else if (!strcasecmp(key, "perm") && cur->type == UCL_STRING) {
-			if ((set = setmode(ucl_object_tostring(cur))) == NULL)
+		else if (!strcasecmp(key, "perm") &&
+		    (cur->type == UCL_STRING || cur->type == UCL_INT)) {
+			if ((set = setmode(ucl_object_tostring_forced(cur))) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
 				    ucl_object_tostring(cur));
 			else
@@ -548,8 +549,9 @@ pkg_set_dirs_from_object(struct pkg *pkg, ucl_object_t *obj)
 			uname = ucl_object_tostring(cur);
 		else if (!strcasecmp(key, "gname") && cur->type == UCL_STRING)
 			gname = ucl_object_tostring(cur);
-		else if (!strcasecmp(key, "perm") && cur->type == UCL_STRING) {
-			if ((set = setmode(ucl_object_tostring(cur))) == NULL)
+		else if (!strcasecmp(key, "perm") &&
+		    (cur->type == UCL_STRING || cur->type == UCL_INT)) {
+			if ((set = setmode(ucl_object_tostring_forced(cur))) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
 				    ucl_object_tostring(cur));
 			else
