@@ -697,7 +697,8 @@ main(int argc, char **argv)
 			}
 			sbuf_done(newcmd);
 			t = tok_init(NULL);
-			if (tok_str(t, sbuf_data(newcmd), &newargc, (const char ***)&newargv) != 0)
+			/* XXX: __DECONST() workaround gcc's -Werror=cast-qual. */
+			if (tok_str(t, sbuf_data(newcmd), &newargc, __DECONST(const char ***, &newargv)) != 0)
 				errx(EX_CONFIG, "Invalid alias: %s", alias_value);
 			sbuf_delete(newcmd);
 			break;

@@ -1005,7 +1005,8 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 
 	ucl_object_free(top);
 
-	(void) obj; /* workaround a warning spotted by gcc 4.7 */
+	/* FIXME: avoid gcc to complain about -Werror=unused-but-set-variable */
+	(void)obj;
 
 	return (EPKG_OK);
 }
