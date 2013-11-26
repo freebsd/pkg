@@ -110,7 +110,7 @@ exec_rquery(int argc, char **argv)
 	bool auto_update;
 	bool onematched = false;
 	bool old_quiet;
-	bool index_output = true;
+	bool index_output = false;
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
