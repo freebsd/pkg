@@ -1295,25 +1295,22 @@ pkg_shutdown(void)
 }
 
 int
-pkg_repos_count(bool activated_only)
+pkg_repos_total_count(void)
 {
-	int	count;
 
-	if (!activated_only) {
-		struct pkg_repo *r = NULL;
+	return (HASH_COUNT(repos));
+}
 
-		count = 0;
+int
+pkg_repos_activated_count(void)
+{
+	struct pkg_repo *r = NULL;
+	int count = 0;
 
-		while(1) {
-			HASH_NEXT(repos, r);
-			if (r == NULL)
-				break;
-
-			if (r->enable)
-				count++;
-		}
-	} else
-		count = HASH_COUNT(repos);
+	for (r = repos; r != NULL; r = r->hh.next) {
+		if (r->enable)
+			count++;
+	}
 
 	return (count);
 }

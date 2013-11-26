@@ -1139,7 +1139,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	}
 
 	if (type == PKGDB_REMOTE) {
-		if (pkg_repos_count(true) > 0) {
+		if (pkg_repos_activated_count() > 0) {
 			if ((ret = pkgdb_open_multirepos(dbdir, db)) != EPKG_OK)
 				return (ret);
 		} else {
@@ -3556,7 +3556,7 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 			return (NULL);
 		}
 	} else {
-		if (pkg_repos_count(true) == 0) {
+		if (pkg_repos_activated_count() == 0) {
 			pkg_emit_error("No active repositories configured");
 			sbuf_delete(sql);
 			return (NULL);

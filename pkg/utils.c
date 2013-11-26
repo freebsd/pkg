@@ -602,13 +602,13 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				switch (pkg_version_change(pkg)) {
 				case PKG_DOWNGRADE:
 					pkg_printf("\tDowngrading %n: %V -> %v", pkg, pkg, pkg);
-					if (pkg_repos_count(false) > 1)
+					if (pkg_repos_total_count() > 1)
 						pkg_printf(" [%N]", pkg);
 					printf("\n");
 					break;
 				case PKG_REINSTALL:
 					pkg_printf("\tReinstalling %n-%v", pkg, pkg);
-					if (pkg_repos_count(false) > 1)
+					if (pkg_repos_total_count() > 1)
 						pkg_printf(" [%N]", pkg);
 					if (why != NULL)
 						printf(" (%s)", why);
@@ -616,7 +616,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 					break;
 				case PKG_UPGRADE:
 					pkg_printf("\tUpgrading %n: %V -> %v", pkg, pkg, pkg);
-					if (pkg_repos_count(false) > 1)
+					if (pkg_repos_total_count() > 1)
 						pkg_printf(" [%N]", pkg);
 					printf("\n");
 					break;
@@ -627,7 +627,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				newsize += flatsize;
 
 				pkg_printf("\tInstalling %n: %v", pkg, pkg);
-				if (pkg_repos_count(false) > 1)
+				if (pkg_repos_total_count() > 1)
 					pkg_printf(" [%N]", pkg);
 				printf("\n");
 			}
