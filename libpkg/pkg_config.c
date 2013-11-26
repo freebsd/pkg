@@ -384,11 +384,12 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 	struct sbuf *b = sbuf_new_auto();
 	struct pkg_config *conf;
 	const char *key;
+	size_t i;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		sbuf_clear(b);
 		key = ucl_object_key(cur);
-		for (size_t i = 0; i < strlen(key); i++)
+		for (i = 0; i < strlen(key); i++)
 			sbuf_putc(b, toupper(key[i]));
 		sbuf_finish(b);
 
