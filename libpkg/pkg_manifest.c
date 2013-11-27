@@ -605,10 +605,8 @@ pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 		}
 		if (origin != NULL && (version != NULL || vint > 0))
 			pkg_adddep(pkg, ucl_object_key(obj), origin, vint > 0 ? vinteger : version, false);
-		else {
+		else
 			pkg_emit_error("Skipping malformed dependency %s", ucl_object_key(obj));
-			printf("%s\n", ucl_object_emit(obj, UCL_EMIT_YAML));
-		}
 	}
 
 	return (EPKG_OK);
