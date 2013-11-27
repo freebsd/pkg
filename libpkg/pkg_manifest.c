@@ -96,9 +96,9 @@ static struct manifest_key {
 	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_INT,    pkg_string},
-	{ "options",             PKG_OPTIONS,             UCL_STRING, pkg_object},
-	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_STRING, pkg_object},
-	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_STRING, pkg_object},
+	{ "options",             PKG_OPTIONS,             UCL_OBJECT, pkg_object},
+	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_OBJECT, pkg_object},
+	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_OBJECT, pkg_object},
 	{ "origin",              PKG_ORIGIN,              UCL_STRING, pkg_string},
 	{ "path",                PKG_REPOPATH,            UCL_STRING, pkg_string},
 	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
@@ -434,11 +434,11 @@ pkg_object(struct pkg *pkg, ucl_object_t *obj, int attr)
 				   key);
 			break;
 		case PKG_OPTIONS:
-			if (cur->type != UCL_STRING)
+			if (cur->type != UCL_STRING && cur->type != UCL_BOOLEAN)
 				pkg_emit_error("Skipping malformed option %s",
 				    key);
 			else
-				pkg_addoption(pkg, key, ucl_object_tostring(cur));
+				pkg_addoption(pkg, key, ucl_object_tostring_forced(cur));
 			break;
 		case PKG_OPTION_DEFAULTS:
 			if (cur->type != UCL_STRING)
