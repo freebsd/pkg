@@ -1049,8 +1049,6 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	if (sign_ctx != NULL)
 		SHA256_Update(sign_ctx, output, strlen(output));
 
-	printf("%s\n", output);
-
 	if (out_is_a_sbuf)
 		sbuf_cat(out, output);
 	else
