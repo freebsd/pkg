@@ -573,8 +573,8 @@ pkg_set_dirs_from_object(struct pkg *pkg, ucl_object_t *obj)
 static int
 pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 {
-	ucl_object_t *cur;
-	ucl_object_iter_t it = NULL;
+	ucl_object_t *cur, *self;
+	ucl_object_iter_t it = NULL, it2;
 	const char *origin = NULL;
 	const char *version = NULL;
 	const char *key;
@@ -582,29 +582,32 @@ pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 	char vinteger[BUFSIZ];
 
 	pkg_debug(2, "Found %s", ucl_object_key(obj));
-	while ((cur = ucl_iterate_object(obj, &it, true))) {
-		key = ucl_object_key(cur);
-		if (cur->type != UCL_STRING) {
-			/* accept version to be an integer */
-			if (cur->type == UCL_INT && strcasecmp(key, "version") == 0) {
-				vint = ucl_object_toint(cur);
-				snprintf(vinteger, sizeof(vinteger), "%"PRId64, vint);
+	while ((self = ucl_iterate_object(obj, &it, false))) {
+		it2 = NULL;
+		while ((cur = ucl_iterate_object(self, &it2, true))) {
+			key = ucl_object_key(cur);
+			if (cur->type != UCL_STRING) {
+				/* accept version to be an integer */
+				if (cur->type == UCL_INT && strcasecmp(key, "version") == 0) {
+					vint = ucl_object_toint(cur);
+					snprintf(vinteger, sizeof(vinteger), "%"PRId64, vint);
+					continue;
+				}
+
+				pkg_emit_error("Skipping malformed dependency entry "
+						"for %s", ucl_object_key(self));
 				continue;
 			}
-
-			pkg_emit_error("Skipping malformed dependency entry "
-			    "for %s", ucl_object_key(obj));
-			continue;
+			if (strcasecmp(key, "origin") == 0)
+				origin = ucl_object_tostring(cur);
+			if (strcasecmp(key, "version") == 0)
+				version = ucl_object_tostring(cur);
 		}
-		if (strcasecmp(key, "origin") == 0)
-			origin = ucl_object_tostring(cur);
-		if (strcasecmp(key, "version") == 0)
-			version = ucl_object_tostring(cur);
-	}
-	if (origin != NULL && (version != NULL || vint > 0))
-		pkg_adddep(pkg, ucl_object_key(obj), origin, vint > 0 ? vinteger : version, false);
-	else {
-		pkg_emit_error("Skipping malformed dependency %s", ucl_object_key(obj));
+		if (origin != NULL && (version != NULL || vint > 0))
+			pkg_adddep(pkg, ucl_object_key(self), origin, vint > 0 ? vinteger : version, false);
+		else {
+			pkg_emit_error("Skipping malformed dependency %s", ucl_object_key(self));
+		}
 	}
 
 	return (EPKG_OK);
