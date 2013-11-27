@@ -247,8 +247,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 		struct column_mapping *column;
 		switch (sqlite3_column_type(stmt, icol)) {
 		case SQLITE_TEXT:
-			column = bsearch(colname, columns,
-					sizeof(columns) / sizeof(columns[0]) - 1,
+			column = bsearch(colname, columns, NELEM(columns) - 1,
 					sizeof(columns[0]), compare_column_func);
 			if (column == NULL)
 				pkg_emit_error("Unknown column %s",
@@ -259,8 +258,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 						icol));
 			break;
 		case SQLITE_INTEGER:
-			column = bsearch(colname, columns,
-					sizeof(columns) / sizeof(columns[0]) - 1,
+			column = bsearch(colname, columns, NELEM(columns) - 1,
 					sizeof(columns[0]), compare_column_func);
 			if (column == NULL)
 				pkg_emit_error("Unknown column %s",
@@ -2110,7 +2108,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 {
 	const char	*reponame;
 	char		 sql[BUFSIZ];
-	int		 i;
+	unsigned int	 i;
 
 	struct optionsql {
 		const char	 *sql;
@@ -2159,7 +2157,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 		reponame = "main";
 	}
 
-	for (i = 0; i < (int) (sizeof(optionsql)/sizeof(struct optionsql)); i++) {
+	for (i = 0; i < NELEM(optionsql); i++) {
 		opt_sql       = optionsql[i].sql;
 		pkg_addtagval = optionsql[i].pkg_addtagval;
 		nargs         = optionsql[i].nargs;
@@ -3095,6 +3093,7 @@ int
 pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 {
 	sqlite3_stmt	*stmt_del;
+	unsigned int	 obj;
 	int		 ret;
 	const char	 sql[] = ""
 		"DELETE FROM packages WHERE origin = ?1;";
@@ -3120,8 +3119,6 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 		"script WHERE script_id NOT IN "
 		        "(SELECT DISTINCT script_id FROM pkg_script)",
 	};
-	size_t		 num_deletions = 
-		sizeof(deletions) / sizeof(*deletions);
 
 	assert(db != NULL);
 	assert(origin != NULL);
@@ -3143,7 +3140,7 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 		return (EPKG_FATAL);
 	}
 
-	for (size_t obj = 0;obj < num_deletions; obj++) {
+	for (obj = 0 ;obj < NELEM(deletions); obj++) {
 		ret = sql_exec(db->sqlite, "DELETE FROM %s;", deletions[obj]);
 		if (ret != EPKG_OK)
 			return (EPKG_FATAL);

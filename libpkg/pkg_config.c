@@ -290,7 +290,7 @@ static struct config_entry c[] = {
 };
 
 static bool parsed = false;
-static size_t c_size = sizeof(c) / sizeof(struct config_entry);
+static size_t c_size = NELEM(c);
 
 static void		 pkg_config_kv_free(struct pkg_config_kv *);
 static struct pkg_repo	*pkg_repo_new(const char *name, const char *url);
