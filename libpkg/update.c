@@ -697,7 +697,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	rc = EPKG_OK;
 
 	pkg_debug(1, "Pkgrepo, removing old entries for '%s'", name);
-	removed = HASH_COUNT(ldel) - updated;
+	removed = HASH_COUNT(ldel);
 	HASH_ITER(hh, ldel, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkgdb_repo_remove_package(item->origin);
