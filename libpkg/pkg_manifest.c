@@ -378,7 +378,7 @@ pkg_object(struct pkg *pkg, ucl_object_t *obj, int attr)
 		key = ucl_object_key(cur);
 		switch (attr) {
 		case PKG_DEPS:
-			if (cur->type != UCL_OBJECT)
+			if (cur->type != UCL_OBJECT && cur->type != UCL_ARRAY)
 				pkg_emit_error("Skipping malformed dependency %s",
 				    key);
 			else
@@ -582,7 +582,7 @@ pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 	char vinteger[BUFSIZ];
 
 	pkg_debug(2, "Found %s", ucl_object_key(obj));
-	while ((self = ucl_iterate_object(obj, &it, false))) {
+	while ((self = ucl_iterate_object(obj, &it, (obj->type == UCL_ARRAY)))) {
 		it2 = NULL;
 		while ((cur = ucl_iterate_object(self, &it2, true))) {
 			key = ucl_object_key(cur);
@@ -595,7 +595,7 @@ pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 				}
 
 				pkg_emit_error("Skipping malformed dependency entry "
-						"for %s", ucl_object_key(self));
+						"for %s", ucl_object_key(obj));
 				continue;
 			}
 			if (strcasecmp(key, "origin") == 0)
@@ -604,9 +604,10 @@ pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 				version = ucl_object_tostring(cur);
 		}
 		if (origin != NULL && (version != NULL || vint > 0))
-			pkg_adddep(pkg, ucl_object_key(self), origin, vint > 0 ? vinteger : version, false);
+			pkg_adddep(pkg, ucl_object_key(obj), origin, vint > 0 ? vinteger : version, false);
 		else {
-			pkg_emit_error("Skipping malformed dependency %s", ucl_object_key(self));
+			pkg_emit_error("Skipping malformed dependency %s", ucl_object_key(obj));
+			printf("%s\n", ucl_object_emit(obj, UCL_EMIT_YAML));
 		}
 	}
 
