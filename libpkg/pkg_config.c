@@ -693,6 +693,9 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
+
 		if (strcasecmp(key, "url") == 0) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
