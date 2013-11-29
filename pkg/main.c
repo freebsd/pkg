@@ -766,8 +766,10 @@ main(int argc, char **argv)
 	if (alias != NULL)
 		tok_end(t);
 
-	if (ret == EX_OK && newpkgversion)
-		execvp(getprogname(), cmdargv);
+	if (ret == EX_OK && newpkgversion) {
+		if (jail_str == NULL && chroot_path == NULL)
+			execvp(getprogname(), cmdargv);
+	}
 
 	return (ret);
 }
