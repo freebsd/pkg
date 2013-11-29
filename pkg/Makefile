@@ -46,6 +46,7 @@ CFLAGS+=	-DGITHASH="\"${GITHASH}\""
 
 .if defined(PKG_PORTSDIR)
 CFLAGS+=	-DPORTSDIR=\"${PKG_PORTSDIR}\"
+MANFILTER=	sed -e "s|/usr/ports|${PKG_PORTSDIR}|g"
 .endif
 
 .if defined(DEBUG_FLAGS)
