@@ -129,8 +129,6 @@ DEBUG_FLAGS+=	-ggdb -O0
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg
 .endif
-NO_MAN=		yes
-NOMAN=		yes
 
 .include <bsd.lib.mk>
 
