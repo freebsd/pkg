@@ -103,7 +103,8 @@ enum ucl_type {
 	UCL_STRING,    //!< UCL_STRING
 	UCL_BOOLEAN,   //!< UCL_BOOLEAN
 	UCL_TIME,      //!< UCL_TIME
-	UCL_USERDATA   //!< UCL_USERDATA
+	UCL_USERDATA,  //!< UCL_USERDATA
+	UCL_NULL       //!< UCL_NULL
 };
 
 /**
@@ -135,8 +136,9 @@ enum ucl_string_flags {
 	UCL_STRING_PARSE_DOUBLE = 0x10,    /**< UCL_STRING_PARSE_DOUBLE parse passed string and detect integer or float number */
 	UCL_STRING_PARSE_NUMBER =  UCL_STRING_PARSE_INT|UCL_STRING_PARSE_DOUBLE ,  /**<
 									UCL_STRING_PARSE_NUMBER parse passed string and detect number */
-	UCL_STRING_PARSE =  UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_NUMBER   /**<
+	UCL_STRING_PARSE =  UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_NUMBER,   /**<
 									UCL_STRING_PARSE parse passed string (and detect booleans and numbers) */
+	UCL_STRING_PARSE_BYTES = 0x20  /**< Treat numbers as bytes */
 };
 
 /**
@@ -199,6 +201,26 @@ ucl_object_new (void)
 	if (new != NULL) {
 		memset (new, 0, sizeof (ucl_object_t));
 		new->ref = 1;
+		new->type = UCL_NULL;
+	}
+	return new;
+}
+
+/**
+ * Create new object with type specified
+ * @param type type of a new object
+ * @return new object
+ */
+static inline ucl_object_t* ucl_object_typed_new (unsigned int type) UCL_WARN_UNUSED_RESULT;
+static inline ucl_object_t *
+ucl_object_typed_new (unsigned int type)
+{
+	ucl_object_t *new;
+	new = malloc (sizeof (ucl_object_t));
+	if (new != NULL) {
+		memset (new, 0, sizeof (ucl_object_t));
+		new->ref = 1;
+		new->type = (type <= UCL_NULL ? type : UCL_NULL);
 	}
 	return new;
 }
@@ -658,6 +680,15 @@ struct ucl_parser* ucl_parser_new (int flags);
  */
 void ucl_parser_register_macro (struct ucl_parser *parser, const char *macro,
 		ucl_macro_handler handler, void* ud);
+
+/**
+ * Register new parser variable
+ * @param parser parser object
+ * @param var variable name
+ * @param value variable value
+ */
+void ucl_parser_register_variable (struct ucl_parser *parser, const char *var,
+		const char *value);
 
 /**
  * Load new chunk to a parser

@@ -119,6 +119,14 @@ struct ucl_pubkey {
 };
 #endif
 
+struct ucl_variable {
+	char *var;
+	char *value;
+	size_t var_len;
+	size_t value_len;
+	struct ucl_variable *next;
+};
+
 struct ucl_parser {
 	enum ucl_parser_state state;
 	enum ucl_parser_state prev_state;
@@ -130,6 +138,7 @@ struct ucl_parser {
 	struct ucl_stack *stack;
 	struct ucl_chunk *chunks;
 	struct ucl_pubkey *keys;
+	struct ucl_variable *variables;
 	UT_string *err;
 };
 
@@ -250,7 +259,7 @@ ucl_maybe_parse_boolean (ucl_object_t *obj, const unsigned char *start, size_t l
  * @return 0 if string is numeric and error code (EINVAL or ERANGE) in case of conversion error
  */
 int ucl_maybe_parse_number (ucl_object_t *obj,
-		const char *start, const char *end, const char **pos, bool allow_double);
+		const char *start, const char *end, const char **pos, bool allow_double, bool number_bytes);
 
 
 static inline ucl_object_t *
