@@ -80,9 +80,12 @@ usage_rquery(void)
 static void
 print_index(struct pkg *pkg)
 {
+#ifndef PORTSDIR
+#define PORTSDIR "/usr/ports"
+#endif
 	struct pkg_category *cat = NULL;
 
-	pkg_printf("%n-%v|/usr/ports/%o|%p|%c|/usr/ports/%o/pkg-descr|%m|",
+	pkg_printf("%n-%v|" PORTSDIR "/%o|%p|%c|" PORTSDIR "/%o/pkg-descr|%m|",
 	    pkg, pkg, pkg, pkg, pkg, pkg, pkg);
 	while (pkg_categories(pkg, &cat) == EPKG_OK)
 		pkg_printf("%Cn ", cat);

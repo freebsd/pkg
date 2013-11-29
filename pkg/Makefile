@@ -44,6 +44,10 @@ GITHASH!=	cd ${.CURDIR} && git rev-parse --short HEAD
 CFLAGS+=	-DGITHASH="\"${GITHASH}\""
 .endif
 
+.if defined(PKG_PORTSDIR)
+CFLAGS+=	-DPORTSDIR=\"${PKG_PORTSDIR}\"
+.endif
+
 .if defined(DEBUG_FLAGS)
 .if ${DEBUG_FLAGS} == 1
 DEBUG_FLAGS=	-ggdb -O0
