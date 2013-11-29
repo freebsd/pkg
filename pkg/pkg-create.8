@@ -254,28 +254,29 @@ Mimics the
 entry but for directories.
 .El
 .Sh PLIST FORMAT
-The following describe the plist format:
+The following describes the plist format:
 .Pp
-The plist is a sequential list of lines which can be prepend by keywords.
+The plist is a sequential list of lines which can have keywords prepended.
 A keyword starts with an
 .Sq @ .
-A line not starting by a keyword is a considered as a path to a file. If starting by a
+Lines not starting with a keyword are considered as paths to a file.
+If started with a
 .Sq /
-then is it considered as an absolute patch otherwise the file is considered as relative
-to
+then it is considered an absolute path.
+Otherwise the file is considered as relative to
 .Ev PREFIX .
 .Pp
-Keywords are defined in the following format:
+Keyword lines are formed as follows:
 .Ar @keyword
 .Ar line
 .Pp
-Default available keywords are the following:
+Available keywords are the following:
+.Pp
 .Bl -tag -width indent -compact
 .It Cm @cwd Op Ar directory
 Set the internal directory pointer to point to
 .Ar directory .
 All subsequent filenames will be assumed relative to this directory.
-first prefix value.
 .It Cm @exec Ar command Pq deprecated
 Execute
 .Ar command
@@ -302,15 +303,12 @@ in the example case
 .It Cm "\&%B"
 Expand to the
 .Dq basename
-of the fully qualified filename, that
-is the current directory prefix, plus the last filespec, minus
-the trailing filename.
+of the fully qualified filename, that is the current directory prefix,
+plus the last filespec, minus the trailing filename.
 In the example case, that would be
 .Pa /usr/local/bin .
 .It Cm "%f"
-Expand to the
-filename
-part of the fully qualified name, or
+Expand to the filename part of the fully qualified name, or
 the converse of
 .Cm \&%B ,
 being in the example case,
@@ -327,9 +325,8 @@ sequences is the same as for
 This command is not executed during the package add, as
 .Cm @exec
 is, but rather when the package is deleted.
-This is useful
-for deleting links and other ancillary files that were created
-as a result of adding the package, but not directly known to
+This is useful for deleting links and other ancillary files that were
+created as a result of adding the package, but not directly known to
 the package's table of contents (and hence not automatically
 removable).
 .It Cm @mode Ar mode
@@ -351,24 +348,23 @@ Set default group ownership for all subsequently files to
 Use without an arg to set back to default (wheel)
 group ownership.
 .It Cm @comment Ar string
-The line will be ignore when packing
+The line will be ignored when packing
 .It Cm @dirrm Ar name
 Declare directory
 .Pa name
 to be deleted at deinstall time.
-By default, directories created by a
-package installation are not deleted when the package is deinstalled;
-this provides an explicit directory cleanup method.
-This directive
-should appear at the end of the package list.
-If the directory is not empty at the time it is being removed a warning will be
-printed
+By default, directories created by a package installation are not
+deleted when the package is deinstalled.
+This provides an explicit directory cleanup method.
+These directives should appear at the end of the package list.
+If the directory is not empty a warning will be printed, and the
+directory will not be removed.
 .It Cm @dirrmtry Ar name
 Declare directory
 .Pa name
-Same as
-.Cm @dirrm
-but does not issue a warning is the directory cannot be removed.
+to be removed, as for
+.Cm @dirrm ,
+but does not issue a warning if the directory cannot be removed.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
