@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd November 29, 2013
+.Dd December 2, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -293,11 +293,11 @@ file.
 Repository configuration file:
 .Bd -literal -offset indent
 FreeBSD: {
-    url: "pkg+http://pkg.freebsd.org/${ABI}/latest,
+    url: "pkg+http://pkg.freebsd.org/${ABI}/latest",
     enabled: true,
     signature_type: "fingerprints",
     fingerprints: "/usr/share/keys/pkg",
-    mirror_type: "srv
+    mirror_type: "srv"
 }
 .Ed
 Example for pkg.conf
