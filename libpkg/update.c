@@ -587,6 +587,8 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	int updated = 0, removed = 0, added = 0, processed = 0;
 	long num_offset, num_length;
 	time_t local_t = *mtime;
+	time_t digest_t;
+	time_t packagesite_t;
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
 			*item, *tmp_item;
 	struct pkg_manifest_key *keys = NULL;
@@ -623,13 +625,15 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			&rc, repo_digests_file);
 	if (fdigests == NULL)
 		goto cleanup;
+	digest_t = local_t;
 	local_t = *mtime;
 	fmanifest = repo_fetch_remote_extract_tmp(repo,
 			repo_packagesite_archive, "txz", &local_t,
 			&rc, repo_packagesite_file);
 	if (fmanifest == NULL)
 		goto cleanup;
-	*mtime = local_t;
+	packagesite_t = digest_t;
+	*mtime = packagesite_t > digest_t ? packagesite_t : digest_t;
 	fseek(fmanifest, 0, SEEK_END);
 	len = ftell(fmanifest);
 
