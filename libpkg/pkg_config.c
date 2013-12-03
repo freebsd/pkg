@@ -838,6 +838,7 @@ load_repo_file(const char *repofile)
 	p = ucl_parser_new(0);
 
 	if (!ucl_parser_add_file(p, repofile)) {
+		printf("%s\n", ucl_parser_get_error(p));
 		if (errno == ENOENT) {
 			ucl_parser_free(p);
 			return;
