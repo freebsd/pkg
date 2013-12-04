@@ -265,7 +265,7 @@ static int
 start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 {
 	char *line = NULL;
-	ssize_t linecap = 0;
+	size_t linecap = 0;
 	size_t linelen;
 	struct sbuf *cmd = NULL;
 	const char *errstr;
