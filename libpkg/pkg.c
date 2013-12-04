@@ -1242,7 +1242,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		if (!manifest &&
 			(flags & PKG_OPEN_MANIFEST_COMPACT) &&
 			strcmp(fpath, "+COMPACT_MANIFEST") == 0) {
-			unsigned char *buffer;
+			char *buffer;
 			manifest = true;
 
 			size_t len = archive_entry_size(*ae);
@@ -1259,7 +1259,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		}
 		if (!manifest && strcmp(fpath, "+MANIFEST") == 0) {
 			manifest = true;
-			unsigned char *buffer;
+			char *buffer;
 
 			size_t len = archive_entry_size(*ae);
 			buffer = malloc(len);
