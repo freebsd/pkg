@@ -26,6 +26,68 @@ YAMLSRCS=	${.CURDIR}/../external/libyaml/src/api.c \
 		${.CURDIR}/../external/libyaml/src/parser.c \
 		${.CURDIR}/../external/libyaml/src/reader.c \
 		${.CURDIR}/../external/libyaml/src/scanner.c
+ELFSRCS+=	${.CURDIR}/../external/libelf/elf.c \
+		${.CURDIR}/../external/libelf/elf_begin.c \
+		${.CURDIR}/../external/libelf/elf_cntl.c \
+		${.CURDIR}/../external/libelf/elf_end.c \
+		${.CURDIR}/../external/libelf/elf_errmsg.c \
+		${.CURDIR}/../external/libelf/elf_errno.c \
+		${.CURDIR}/../external/libelf/elf_data.c \
+		${.CURDIR}/../external/libelf/elf_fill.c \
+		${.CURDIR}/../external/libelf/elf_flag.c \
+		${.CURDIR}/../external/libelf/elf_getarhdr.c \
+		${.CURDIR}/../external/libelf/elf_getarsym.c \
+		${.CURDIR}/../external/libelf/elf_getbase.c \
+		${.CURDIR}/../external/libelf/elf_getident.c \
+		${.CURDIR}/../external/libelf/elf_hash.c \
+		${.CURDIR}/../external/libelf/elf_kind.c \
+		${.CURDIR}/../external/libelf/elf_memory.c \
+		${.CURDIR}/../external/libelf/elf_next.c \
+		${.CURDIR}/../external/libelf/elf_open.c \
+		${.CURDIR}/../external/libelf/elf_rand.c \
+		${.CURDIR}/../external/libelf/elf_rawfile.c \
+		${.CURDIR}/../external/libelf/elf_phnum.c \
+		${.CURDIR}/../external/libelf/elf_shnum.c \
+		${.CURDIR}/../external/libelf/elf_shstrndx.c \
+		${.CURDIR}/../external/libelf/elf_scn.c \
+		${.CURDIR}/../external/libelf/elf_strptr.c \
+		${.CURDIR}/../external/libelf/elf_update.c \
+		${.CURDIR}/../external/libelf/elf_version.c \
+		${.CURDIR}/../external/libelf/gelf_cap.c \
+		${.CURDIR}/../external/libelf/gelf_checksum.c \
+		${.CURDIR}/../external/libelf/gelf_dyn.c \
+		${.CURDIR}/../external/libelf/gelf_ehdr.c \
+		${.CURDIR}/../external/libelf/gelf_getclass.c \
+		${.CURDIR}/../external/libelf/gelf_fsize.c \
+		${.CURDIR}/../external/libelf/gelf_move.c \
+		${.CURDIR}/../external/libelf/gelf_phdr.c \
+		${.CURDIR}/../external/libelf/gelf_rel.c \
+		${.CURDIR}/../external/libelf/gelf_rela.c \
+		${.CURDIR}/../external/libelf/gelf_shdr.c \
+		${.CURDIR}/../external/libelf/gelf_sym.c \
+		${.CURDIR}/../external/libelf/gelf_syminfo.c \
+		${.CURDIR}/../external/libelf/gelf_symshndx.c \
+		${.CURDIR}/../external/libelf/gelf_xlate.c \
+		${.CURDIR}/../external/libelf/libelf_align.c \
+		${.CURDIR}/../external/libelf/libelf_allocate.c \
+		${.CURDIR}/../external/libelf/libelf_ar.c \
+		${.CURDIR}/../external/libelf/libelf_ar_util.c \
+		${.CURDIR}/../external/libelf/libelf_checksum.c \
+		${.CURDIR}/../external/libelf/libelf_data.c \
+		${.CURDIR}/../external/libelf/libelf_ehdr.c \
+		${.CURDIR}/../external/libelf/libelf_extended.c \
+		${.CURDIR}/../external/libelf/libelf_memory.c \
+		${.CURDIR}/../external/libelf/libelf_open.c \
+		${.CURDIR}/../external/libelf/libelf_phdr.c \
+		${.CURDIR}/../external/libelf/libelf_shdr.c \
+		${.CURDIR}/../external/libelf/libelf_xlate.c \
+		${GENSRCS}
+GENSRCS=	libelf_fsize.c libelf_msize.c libelf_convert.c
+CLEANFILES=	${GENSRCS}
+
+libelf_convert.c:	${.CURDIR}/../external/libelf/elf_types.m4 ${.CURDIR}/../external/libelf/libelf_convert.m4
+libelf_fsize.c:		${.CURDIR}/../external/libelf/elf_types.m4 ${.CURDIR}/../external/libelf/libelf_fsize.m4
+libelf_msize.c:		${.CURDIR}/../external/libelf/elf_types.m4 ${.CURDIR}/../external/libelf/libelf_ms
 
 PC=		pkg.pc
 PKGH=		pkg.h
@@ -172,11 +234,13 @@ LIBPKGCFLAGS+=	-DDEFAULT_MIRROR_TYPE=${DEFAULT_MIRROR_TYPE} \
 		-I${.CURDIR}/../external/uthash \
 		-I${.CURDIR}/../external/libucl/include \
 		-I${.CURDIR}/../external/libyaml/include \
-		-DPREFIX=\"${PREFIX}\"
-
+		-DPREFIX=\"${PREFIX}\" \
+		-Wno-pointer-sign
 .if !exists(/usr/lib/libelf.so)
 LIBPKGCFLAGS+=	-I${.CURDIR}/../external/libelf \
 		-DBUNDLED_LIBELF
+ELFCFLAGS+=	-I${.CURDIR}/../external/libelf
+SRCS+=		${ELFSRCS}
 .endif
 
 .if defined(PKG_PORTSDIR)
@@ -204,6 +268,11 @@ CFLAGS.${c}+=	${YAMLCFLAGS}
 .for c in ${LIBPKGSRCS}
 CFLAGS.${c}+=	${LIBPKGCFLAGS}
 .endfor
+
+.for c in ${ELFSRCS}
+CFLAGS.${c}+=	${ELFCFLAGS}
+.endfor
+
 
 .if ${.TARGETS} == "depend"
 CFLAGS+=	${UCLCFLAGS}  ${EXPATCFLAGS} ${SQLITECFLAGS} ${YAMLCFLAGS} ${LIBPKGCFLAGS}
@@ -243,7 +312,7 @@ DEBUG_FLAGS+=	-pg
 
 .include <bsd.lib.mk>
 
-.SUFFIXES: .pc.in .pc .h.in .h
+.SUFFIXES: .pc.in .pc .h.in .h .m4 .c
 
 .PHONY:	${_snapshot}
 
@@ -256,3 +325,6 @@ DEBUG_FLAGS+=	-pg
 	sed -e "s,__PREFIX__,${PREFIX},g" \
 	    -e "s,__VERSION__,${PKGVERSION},g" \
 	    ${.IMPSRC} > ${.TARGET}
+
+.m4.c:
+	(cd ${.CURDIR}/../external/libelf ; m4 -D SRCDIR=${.CURDIR}/../external/libelf ${.IMPSRC}) > ${.TARGET}
