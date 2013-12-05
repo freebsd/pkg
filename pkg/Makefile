@@ -63,10 +63,9 @@ DEBUG_FLAGS+=	-pg
 CFLAGS+=	-I../libpkg \
 		-I${.CURDIR}/../external/uthash \
 		-I${.CURDIR}/../external/expat/lib
-LDADD+=		-L../libpkg \
-		-L../external/expat \
-		-ledit \
+LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lpkg \
+		-ledit \
 		-larchive \
 		-lutil \
 		-lpthread \
@@ -77,31 +76,22 @@ LDADD+=		-L../libpkg \
 		-lmd \
 		-lz \
 		-lbz2 \
-		-llzma \
-		-lexpat
+		-llzma
 
-LDADD_STATIC=	-L../external/sqlite \
-		-L../external/libyaml \
-		-L../external/libucl
-
-.if !exists(/usr/lib/libelf.so)
-LDADD_STATIC+=		-L../external/libelf
+.if exists(/usr/lib/libelf.so)
+LDADD_STATIC+=	-lelf
 .endif
 
-LDADD_STATIC+=	-lsqlite3 \
-		-larchive \
+LDADD_STATIC+=	-larchive \
 		-lsbuf \
 		-lfetch \
 		-lpthread \
-		-lelf \
 		-lssl \
 		-lcrypto \
 		-lmd \
 		-lz \
 		-lbz2 \
-		-llzma \
-		-lyaml \
-		-lucl
+		-llzma
 
 .if !exists(/usr/include/jail.h)
 CFLAGS+=	-DNO_LIBJAIL
