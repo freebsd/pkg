@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd November 7, 2013
+.Dd December 5, 2013
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -106,6 +106,8 @@ Comment of the matched package
 Description of the matched package
 .It Cm \&%w
 Home page of the matched package
+.It Cm \&%q
+Architecture of the matched package
 .It Cm \&%l
 license logic of the matched package - nothing for single, & for AND, and | for OR
 .It Cm \&%s Ns Op bh
@@ -224,6 +226,8 @@ WWW address of the package (type string)
 Flatsize of the package (type integer)
 .It Cm \&%a
 Automatic status of the package (type integer)
+.It Cm \&%q
+Architecture of the package (type string)
 .It Cm \&%M
 Message of the package (type string)
 .It Cm \&%# Ns Op drCOLBbA
