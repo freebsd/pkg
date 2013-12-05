@@ -50,10 +50,6 @@
 
 #include "pkgcli.h"
 
-#ifndef GITHASH
-#define GITHASH ""
-#endif
-
 static void usage(const char *, const char *);
 static void usage_help(void);
 static int exec_help(int, char **);
@@ -446,17 +442,23 @@ show_repository_info(void)
 			break;
 		}
 
-		printf("  %s: { \n    %-16s: %s,\n    %-16s: %s,\n    %-16s: %s,\n"
-		    "    %-16s: %s,\n    %-16s: %s,\n    %-16s: %s\n  } \n",
+		printf("  %s: { \n    %-16s: \"%s\",\n    %-16s: %s",
 		    pkg_repo_ident(repo),
                     "url", pkg_repo_url(repo),
-		    "signature_type", sig,
-		    "pubkey", pkg_repo_key(repo) == NULL ?
-		        "" : pkg_repo_key(repo),
-		    "fingerprints", pkg_repo_fingerprints(repo) == NULL ?
-		        "" : pkg_repo_fingerprints(repo),
-		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no",
-		    "mirror_type", mirror);
+		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no");
+		if (pkg_repo_mirror_type(repo) != NOMIRROR)
+			printf(",\n    %-16s: \"%s\"",
+			    "mirror_type", mirror);
+		if (pkg_repo_signature_type(repo) != SIG_NONE)
+			printf(",\n    %-16s: \"%s\"",
+			    "signature_type", sig);
+		if (pkg_repo_fingerprints(repo) != NULL)
+			printf(",\n    %-16s: \"%s\"",
+			    "fingerprints", pkg_repo_fingerprints(repo));
+		if (pkg_repo_key(repo) != NULL)
+			printf(",\n    %-16s: \"%s\"",
+			    "pubkey", pkg_repo_key(repo));
+		printf("\n  }\n");
 	}
 }
 
@@ -464,9 +466,13 @@ static void
 show_version_info(int version)
 {
 	if (version > 1)
-		printf("%24s: ", "Version");
+		printf("%-24s: ", "Version");
 
-	printf(PKGVERSION""GITHASH"\n");
+#ifndef GITHASH
+	printf(PKG_PORTVERSION"\n");
+#else
+	printf(PKG_PORTVERSION"-"GITHASH"\n");
+#endif
 
 	if (version == 1)
 		exit(EX_OK);
@@ -540,13 +546,12 @@ main(int argc, char **argv)
 	int newargc;
 	Tokenizer *t = NULL;
 	struct sbuf *newcmd;
-	int j, cmdargc;
+	int j;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
 
 	cmdargv = argv;
-	cmdargc = argc;
 
 	if (argc < 2)
 		usage(NULL, NULL);
@@ -680,7 +685,6 @@ main(int argc, char **argv)
 
 	newargv = argv;
 	newargc = argc;
-	len = strlen(argv[0]);
 	alias = NULL;
 	while (pkg_config_kvlist(PKG_CONFIG_ALIAS, &alias) == EPKG_OK) {
 		if (strcmp(argv[0], pkg_config_kv_get(alias, PKG_CONFIG_KV_KEY)) == 0) {
@@ -698,7 +702,8 @@ main(int argc, char **argv)
 			}
 			sbuf_done(newcmd);
 			t = tok_init(NULL);
-			if (tok_str(t, sbuf_data(newcmd), &newargc, (const char ***)&newargv) != 0)
+			/* XXX: __DECONST() workaround gcc's -Werror=cast-qual. */
+			if (tok_str(t, sbuf_data(newcmd), &newargc, __DECONST(const char ***, &newargv)) != 0)
 				errx(EX_CONFIG, "Invalid alias: %s", alias_value);
 			sbuf_delete(newcmd);
 			break;
@@ -761,8 +766,10 @@ main(int argc, char **argv)
 	if (alias != NULL)
 		tok_end(t);
 
-	if (ret == EX_OK && newpkgversion)
-		execvp(getprogname(), cmdargv);
+	if (ret == EX_OK && newpkgversion) {
+		if (jail_str == NULL && chroot_path == NULL)
+			execvp(getprogname(), cmdargv);
+	}
 
 	return (ret);
 }

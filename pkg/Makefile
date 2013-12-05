@@ -40,8 +40,13 @@ BINDIR=		${PREFIX}/sbin
 MANDIR=		${PREFIX}/man/man
 
 .if exists(${.CURDIR}/../.git) && exists(/usr/local/bin/git)
-GITHASH!=	cd ${.CURDIR} && git rev-parse HEAD
-CFLAGS+=	-DGITHASH="\" ${GITHASH}\""
+GITHASH!=	cd ${.CURDIR} && git rev-parse --short HEAD
+CFLAGS+=	-DGITHASH="\"${GITHASH}\""
+.endif
+
+.if defined(PKG_PORTSDIR)
+CFLAGS+=	-DPORTSDIR=\"${PKG_PORTSDIR}\"
+MANFILTER=	sed -e "s|/usr/ports|${PKG_PORTSDIR}|g"
 .endif
 
 .if defined(DEBUG_FLAGS)
@@ -79,6 +84,10 @@ LDADD_STATIC=	-L../external/sqlite \
 		-L../external/libyaml \
 		-L../external/libucl
 
+.if !exists(/usr/lib/libelf.so)
+LDADD_STATIC+=		-L../external/libelf
+.endif
+
 LDADD_STATIC+=	-lsqlite3 \
 		-larchive \
 		-lsbuf \
@@ -115,6 +124,7 @@ MAN=	pkg.8 \
 	pkg-autoremove.8 \
 	pkg-backup.8 \
 	pkg-check.8 \
+	pkg-config.8 \
 	pkg-convert.8 \
 	pkg-clean.8 \
 	pkg-create.8 \

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd September 10, 2013
+.Dd November 29, 2013
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -157,12 +157,15 @@ commonly found in
 .Pa pkg-plist
 files in the ports tree.
 Metadata from the
-.Ar plist
+G.Ar plist
 file, if specified, will take precedence over any equivalents from
 the
 .Ar manifestdir .
 Only has any effect when used with
 .Ar manifestdir .
+See
+.Sx "PLIST FORMAT"
+for details
 .It Fl r Ar rootdir
 .Ar rootdir
 specifies the top-level directory to be treated as the root of the
@@ -250,6 +253,119 @@ Mimics the
 .Cm file
 entry but for directories.
 .El
+.Sh PLIST FORMAT
+The following describes the plist format:
+.Pp
+The plist is a sequential list of lines which can have keywords prepended.
+A keyword starts with an
+.Sq @ .
+Lines not starting with a keyword are considered as paths to a file.
+If started with a
+.Sq /
+then it is considered an absolute path.
+Otherwise the file is considered as relative to
+.Ev PREFIX .
+.Pp
+Keyword lines are formed as follows:
+.Ar @keyword
+.Ar line
+.Pp
+Available keywords are the following:
+.Pp
+.Bl -tag -width indent -compact
+.It Cm @cwd Op Ar directory
+Set the internal directory pointer to point to
+.Ar directory .
+All subsequent filenames will be assumed relative to this directory.
+.It Cm @exec Ar command Pq deprecated
+Execute
+.Ar command
+as part of the unpacking process.
+If
+.Ar command
+contains any of the following sequences somewhere in it, they will
+be expanded inline.
+For the following examples, assume that
+.Cm @cwd
+is set to
+.Pa /usr/local
+and the last extracted file was
+.Pa bin/emacs .
+.Bl -tag -width indent -compact
+.It Cm "%F"
+Expands to the last filename extracted (as specified), in the example case
+.Pa bin/emacs
+.It Cm "\&%D"
+Expand to the current directory prefix, as set with
+.Cm @cwd ,
+in the example case
+.Pa /usr/local .
+.It Cm "\&%B"
+Expand to the
+.Dq basename
+of the fully qualified filename, that is the current directory prefix,
+plus the last filespec, minus the trailing filename.
+In the example case, that would be
+.Pa /usr/local/bin .
+.It Cm "%f"
+Expand to the filename part of the fully qualified name, or
+the converse of
+.Cm \&%B ,
+being in the example case,
+.Pa emacs .
+.El
+.It Cm @unexec Ar command Pq deprecated
+Execute
+.Ar command
+as part of the deinstallation process.
+Expansion of special
+.Cm %
+sequences is the same as for
+.Cm @exec .
+This command is not executed during the package add, as
+.Cm @exec
+is, but rather when the package is deleted.
+This is useful for deleting links and other ancillary files that were
+created as a result of adding the package, but not directly known to
+the package's table of contents (and hence not automatically
+removable).
+.It Cm @mode Ar mode
+Set default permission for all subsequently extracted files to
+.Ar mode .
+Format is the same as that used by the
+.Cm chmod
+command.
+Use without an arg to set back to default (mode of the file while being packed)
+permissions.
+.It Cm @owner Ar user
+Set default ownership for all subsequently files to
+.Ar user .
+Use without an arg to set back to default (root)
+ownership.
+.It Cm @group Ar group
+Set default group ownership for all subsequently files to
+.Ar group .
+Use without an arg to set back to default (wheel)
+group ownership.
+.It Cm @comment Ar string
+The line will be ignored when packing
+.It Cm @dirrm Ar name
+Declare directory
+.Pa name
+to be deleted at deinstall time.
+By default, directories created by a package installation are not
+deleted when the package is deinstalled.
+This provides an explicit directory cleanup method.
+These directives should appear at the end of the package list.
+If the directory is not empty a warning will be printed, and the
+directory will not be removed.
+.It Cm @dirrmtry Ar name
+Declare directory
+.Pa name
+to be removed, as for
+.Cm @dirrm ,
+but does not issue a warning if the directory cannot be removed.
+.El
 .\" ---------------------------------------------------------------------------
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
@@ -284,6 +400,7 @@ Create package file for pkg:
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
 .Xr pkg-convert 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,

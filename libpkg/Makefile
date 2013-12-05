@@ -47,6 +47,7 @@ SRCS=		${PC} \
 		pkg.pc
 
 MAN=		pkg_printf.3 \
+		pkg_repos.3 \
 		pkg-repository.5
 
 CLEANFILES=	${PC} ${PKGH}
@@ -85,7 +86,7 @@ CFLAGS+=	-I. \
 		-I${.CURDIR}/../external/libucl/include \
 		-I${.CURDIR}/../external/libyaml/include
 
-.if defined(WITH_BUNDLED_LIBELF)
+.if !exists(/usr/lib/libelf.so)
 CFLAGS+=	-I${.CURDIR}/../external/libelf \
 		-DBUNDLED_LIBELF
 .endif
@@ -94,7 +95,7 @@ LDADD+=		-L../external/sqlite \
 		-L../external/libyaml \
 		-L../external/libucl
 
-.if defined(WITH_BUNDLED_LIBELF)
+.if !exists(/usr/lib/libelf.so)
 LDADD+=		-L../external/libelf
 DPADD+=		${.OBJDIR}/external/libelf/libelf.a
 .endif
@@ -119,6 +120,10 @@ LDADD+=		-ledit
 
 CFLAGS+=	-DPREFIX=\"${PREFIX}\"
 
+.if defined(PKG_PORTSDIR)
+CFLAGS+=	-DPORTSDIR=\"${PKG_PORTSDIR}\"
+.endif
+
 .if defined(DEBUG_FLAGS)
 .if ${DEBUG_FLAGS} == 1
 DEBUG_FLAGS=	-ggdb -O0
@@ -129,8 +134,6 @@ DEBUG_FLAGS+=	-ggdb -O0
 .if defined(PROFILE_BUILD)
 DEBUG_FLAGS+=	-pg
 .endif
-NO_MAN=		yes
-NOMAN=		yes
 
 .include <bsd.lib.mk>
 

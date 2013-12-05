@@ -97,8 +97,8 @@ static struct manifest_key {
 	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_INT,    pkg_string},
 	{ "options",             PKG_OPTIONS,             UCL_OBJECT, pkg_object},
-	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_STRING, pkg_object},
-	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_STRING, pkg_object},
+	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_OBJECT, pkg_object},
+	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_OBJECT, pkg_object},
 	{ "origin",              PKG_ORIGIN,              UCL_STRING, pkg_string},
 	{ "path",                PKG_REPOPATH,            UCL_STRING, pkg_string},
 	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
@@ -376,9 +376,11 @@ pkg_object(struct pkg *pkg, ucl_object_t *obj, int attr)
 	pkg_debug(3, "%s", "Manifest: parsing object");
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
 		switch (attr) {
 		case PKG_DEPS:
-			if (cur->type != UCL_OBJECT)
+			if (cur->type != UCL_OBJECT && cur->type != UCL_ARRAY)
 				pkg_emit_error("Skipping malformed dependency %s",
 				    key);
 			else
@@ -434,11 +436,11 @@ pkg_object(struct pkg *pkg, ucl_object_t *obj, int attr)
 				   key);
 			break;
 		case PKG_OPTIONS:
-			if (cur->type == UCL_STRING || cur->type == UCL_BOOLEAN)
-				pkg_addoption(pkg, key, ucl_object_tostring_forced(cur));
-			else
+			if (cur->type != UCL_STRING && cur->type != UCL_BOOLEAN)
 				pkg_emit_error("Skipping malformed option %s",
 				    key);
+			else
+				pkg_addoption(pkg, key, ucl_object_tostring_forced(cur));
 			break;
 		case PKG_OPTION_DEFAULTS:
 			if (cur->type != UCL_STRING)
@@ -498,11 +500,16 @@ pkg_set_files_from_object(struct pkg *pkg, ucl_object_t *obj)
 	void *set = NULL;
 	mode_t perm = 0;
 	struct sbuf *fname = NULL;
-	const char *key;
+	const char *key, *okey;
 
-	urldecode(ucl_object_key(obj), &fname);
+	okey = ucl_object_key(obj);
+	if (okey == NULL)
+		return (EPKG_FATAL);
+	urldecode(okey, &fname);
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
 		if (!strcasecmp(key, "uname") && cur->type == UCL_STRING)
 			uname = ucl_object_tostring(cur);
 		else if (!strcasecmp(key, "gname") && cur->type == UCL_STRING)
@@ -510,8 +517,9 @@ pkg_set_files_from_object(struct pkg *pkg, ucl_object_t *obj)
 		else if (!strcasecmp(key, "sum") && cur->type == UCL_STRING &&
 		    strlen(ucl_object_tostring(cur)) == 64)
 			sum = ucl_object_tostring(cur);
-		else if (!strcasecmp(key, "perm") && cur->type == UCL_STRING) {
-			if ((set = setmode(ucl_object_tostring(cur))) == NULL)
+		else if (!strcasecmp(key, "perm") &&
+		    (cur->type == UCL_STRING || cur->type == UCL_INT)) {
+			if ((set = setmode(ucl_object_tostring_forced(cur))) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
 				    ucl_object_tostring(cur));
 			else
@@ -539,17 +547,23 @@ pkg_set_dirs_from_object(struct pkg *pkg, ucl_object_t *obj)
 	mode_t perm = 0;
 	bool try = false;
 	struct sbuf *dirname = NULL;
-	const char *key;
+	const char *key, *okey;
 
-	urldecode(ucl_object_key(obj), &dirname);
+	okey = ucl_object_key(obj);
+	if (okey == NULL)
+		return (EPKG_FATAL);
+	urldecode(okey, &dirname);
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
 		if (!strcasecmp(key, "uname") && cur->type == UCL_STRING)
 			uname = ucl_object_tostring(cur);
 		else if (!strcasecmp(key, "gname") && cur->type == UCL_STRING)
 			gname = ucl_object_tostring(cur);
-		else if (!strcasecmp(key, "perm") && cur->type == UCL_STRING) {
-			if ((set = setmode(ucl_object_tostring(cur))) == NULL)
+		else if (!strcasecmp(key, "perm") &&
+		    (cur->type == UCL_STRING || cur->type == UCL_INT)) {
+			if ((set = setmode(ucl_object_tostring_forced(cur))) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
 				    ucl_object_tostring(cur));
 			else
@@ -571,38 +585,42 @@ pkg_set_dirs_from_object(struct pkg *pkg, ucl_object_t *obj)
 static int
 pkg_set_deps_from_object(struct pkg *pkg, ucl_object_t *obj)
 {
-	ucl_object_t *cur;
-	ucl_object_iter_t it = NULL;
+	ucl_object_t *cur, *self;
+	ucl_object_iter_t it = NULL, it2;
 	const char *origin = NULL;
 	const char *version = NULL;
-	const char *key;
-	int64_t vint = 0;
-	char vinteger[BUFSIZ];
+	const char *key, *okey;
 
-	pkg_debug(2, "Found %s", ucl_object_key(obj));
-	while ((cur = ucl_iterate_object(obj, &it, true))) {
-		key = ucl_object_key(cur);
-		if (cur->type != UCL_STRING) {
-			/* accept version to be an integer */
-			if (cur->type == UCL_INT && strcasecmp(key, "version") == 0) {
-				vint = ucl_object_toint(cur);
-				snprintf(vinteger, sizeof(vinteger), "%"PRId64, vint);
+	okey = ucl_object_key(obj);
+	if (okey == NULL)
+		return (EPKG_FATAL);
+	pkg_debug(2, "Found %s", okey);
+	while ((self = ucl_iterate_object(obj, &it, (obj->type == UCL_ARRAY)))) {
+		it2 = NULL;
+		while ((cur = ucl_iterate_object(self, &it2, true))) {
+			key = ucl_object_key(cur);
+			if (key == NULL)
+				continue;
+			if (cur->type != UCL_STRING) {
+				/* accept version to be an integer */
+				if (cur->type == UCL_INT && strcasecmp(key, "version") == 0) {
+					version = ucl_object_tostring_forced(cur);
+					continue;
+				}
+
+				pkg_emit_error("Skipping malformed dependency entry "
+						"for %s", okey);
 				continue;
 			}
-
-			pkg_emit_error("Skipping malformed dependency entry "
-			    "for %s", ucl_object_key(obj));
-			continue;
+			if (strcasecmp(key, "origin") == 0)
+				origin = ucl_object_tostring(cur);
+			if (strcasecmp(key, "version") == 0)
+				version = ucl_object_tostring(cur);
 		}
-		if (strcasecmp(key, "origin") == 0)
-			origin = ucl_object_tostring(cur);
-		if (strcasecmp(key, "version") == 0)
-			version = ucl_object_tostring(cur);
-	}
-	if (origin != NULL && (version != NULL || vint > 0))
-		pkg_adddep(pkg, ucl_object_key(obj), origin, vint > 0 ? vinteger : version, false);
-	else {
-		pkg_emit_error("Skipping malformed dependency %s", ucl_object_key(obj));
+		if (origin != NULL && version != NULL)
+			pkg_adddep(pkg, okey, origin, version, false);
+		else
+			pkg_emit_error("Skipping malformed dependency %s", okey);
 	}
 
 	return (EPKG_OK);
@@ -615,10 +633,14 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 	ucl_object_iter_t it = NULL;
 	struct pkg_manifest_key *selected_key;
 	struct dataparser *dp;
+	const char *key;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
-		pkg_debug(2, "Manifest: found key: '%s'", ucl_object_key(cur));
-		HASH_FIND_STR(keys, ucl_object_key(cur), selected_key);
+		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
+		pkg_debug(2, "Manifest: found key: '%s'", key);
+		HASH_FIND_STR(keys, key, selected_key);
 		if (selected_key != NULL) {
 			HASH_FIND_UCLT(selected_key->parser, &cur->type, dp);
 			if (dp != NULL) {
@@ -641,6 +663,7 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 	struct pkg_manifest_key *sk;
 	struct dataparser *dp;
 	bool fallback = false;
+	const char *key;
 
 	assert(pkg != NULL);
 	assert(buf != NULL);
@@ -655,7 +678,10 @@ pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_k
 		obj = ucl_parser_get_object(p);
 		if (obj != NULL) {
 			while ((cur = ucl_iterate_object(obj, &it, true))) {
-				HASH_FIND_STR(keys, ucl_object_key(cur), sk);
+				key = ucl_object_key(cur);
+				if (key == NULL)
+					continue;
+				HASH_FIND_STR(keys, key, sk);
 				if (sk != NULL) {
 					HASH_FIND_UCLT(sk->parser, &cur->type, dp);
 					if (dp == NULL) {
@@ -699,6 +725,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 	bool fallback = false;
 	struct pkg_manifest_key *sk;
 	struct dataparser *dp;
+	const char *key;
 
 	assert(pkg != NULL);
 	assert(file != NULL);
@@ -719,7 +746,10 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 		obj = ucl_parser_get_object(p);
 		if (obj != NULL) {
 			while ((cur = ucl_iterate_object(obj, &it, true))) {
-				HASH_FIND_STR(keys, ucl_object_key(cur), sk);
+				key = ucl_object_key(cur);
+				if (key == NULL)
+					continue;
+				HASH_FIND_STR(keys, key, sk);
 				if (sk != NULL) {
 					HASH_FIND_UCLT(sk->parser, &cur->type, dp);
 					if (dp == NULL) {
@@ -808,7 +838,7 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize, pkgsize;
-	ucl_object_t *obj = NULL, *map, *seq, *submap;
+	ucl_object_t *obj, *map, *seq, *submap;
 	ucl_object_t *top = NULL;
 
 	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
@@ -1005,6 +1035,9 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 
 	ucl_object_free(top);
 
+	/* FIXME: avoid gcc to complain about -Werror=unused-but-set-variable */
+	(void)obj;
+
 	return (EPKG_OK);
 }
 
@@ -1041,13 +1074,13 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 
 	rc = emit_manifest(pkg, &output, flags);
 
-	if (out_is_a_sbuf) {
-		if (sign_ctx != NULL)
-			SHA256_Update(sign_ctx, output, strlen(output));
+	if (sign_ctx != NULL)
+		SHA256_Update(sign_ctx, output, strlen(output));
+
+	if (out_is_a_sbuf)
 		sbuf_cat(out, output);
-	} else {
+	else
 		fprintf(out, "%s\n", output);
-	}
 
 	if (pdigest != NULL) {
 		SHA256_Final(digest, sign_ctx);

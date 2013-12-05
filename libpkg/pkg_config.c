@@ -290,10 +290,10 @@ static struct config_entry c[] = {
 };
 
 static bool parsed = false;
-static size_t c_size = sizeof(c) / sizeof(struct config_entry);
+static size_t c_size = NELEM(c);
 
-static void pkg_config_kv_free(struct pkg_config_kv *);
-static struct pkg_repo *pkg_repo_new(const char *name, const char *url);
+static void		 pkg_config_kv_free(struct pkg_config_kv *);
+static struct pkg_repo	*pkg_repo_new(const char *name, const char *url);
 
 static void
 connect_evpipe(const char *evpipe) {
@@ -365,12 +365,16 @@ obj_walk_object(ucl_object_t *obj, struct pkg_config *conf)
 	struct pkg_config_kv *kv;
 	ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
+	const char *key;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		if (cur->type != UCL_STRING)
 			continue;
 		kv = malloc(sizeof(struct pkg_config_kv));
-		kv->key = strdup(ucl_object_key(cur));
+		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
+		kv->key = strdup(key);
 		kv->value = strdup(ucl_object_tostring(cur));
 		HASH_ADD_STR(conf->kvlist, value, kv);
 	}
@@ -384,11 +388,14 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 	struct sbuf *b = sbuf_new_auto();
 	struct pkg_config *conf;
 	const char *key;
+	size_t i;
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		sbuf_clear(b);
 		key = ucl_object_key(cur);
-		for (size_t i = 0; i < strlen(key); i++)
+		if (key == NULL)
+			continue;
+		for (i = 0; i < strlen(key); i++)
 			sbuf_putc(b, toupper(key[i]));
 		sbuf_finish(b);
 
@@ -421,6 +428,7 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 					    " ignoring...", key);
 					continue;
 				}
+
 				if (!conf->fromenv)
 					conf->boolean = ucl_object_toboolean(cur);
 				break;
@@ -682,7 +690,7 @@ disable_plugins_if_static(void)
 static void
 add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 {
-	ucl_object_t *cur;
+	ucl_object_t *cur, *tmp = NULL;
 	ucl_object_iter_t it = NULL;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
@@ -691,6 +699,9 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
+
 		if (strcasecmp(key, "url") == 0) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -708,13 +719,23 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 			}
 			pubkey = ucl_object_tostring(cur);
 		} else if (strcasecmp(key, "enabled") == 0) {
-			if (cur->type != UCL_BOOLEAN) {
+			if (cur->type == UCL_STRING)
+				tmp = ucl_object_fromstring_common(ucl_object_tostring(cur),
+				    strlen(ucl_object_tostring(cur)), UCL_STRING_PARSE_BOOLEAN);
+			if (cur->type != UCL_BOOLEAN && (tmp != NULL && tmp->type != UCL_BOOLEAN)) {
 				pkg_emit_error("Expecting a boolean for the "
 				    "'%s' key of the '%s' repo",
 				    key, rname);
+				if (tmp != NULL)
+					ucl_object_free(tmp);
 				return;
 			}
-			enable = ucl_object_toboolean(cur);
+			if (tmp != NULL)
+				pkg_emit_error("Warning: expecting a boolean for the '%s' key of the '%s' repo, "
+				    " the value has been correctly converted, please consider fixing", key, rname);
+			enable = ucl_object_toboolean(tmp != NULL ? tmp : cur);
+			if (tmp != NULL)
+				ucl_object_free(tmp);
 		} else if (strcasecmp(key, "mirror_type") == 0) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -797,6 +818,8 @@ walk_repo_obj(ucl_object_t *obj)
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
 		r = pkg_repo_find_ident(key);
 		if (r != NULL)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
@@ -815,6 +838,7 @@ load_repo_file(const char *repofile)
 	p = ucl_parser_new(0);
 
 	if (!ucl_parser_add_file(p, repofile)) {
+		printf("%s\n", ucl_parser_get_error(p));
 		if (errno == ENOENT) {
 			ucl_parser_free(p);
 			return;
@@ -1090,6 +1114,8 @@ pkg_init(const char *path, const char *reposdir)
 		if (obj->type == UCL_OBJECT) {
 			while ((cur = ucl_iterate_object(obj, &it, true))) {
 				key = ucl_object_key(cur);
+				if (key == NULL)
+					continue;
 				if (strcasecmp(key, "REPOS_DIR") == 0 &&
 				    cur->type != UCL_ARRAY)
 					fallback = true;
@@ -1283,25 +1309,22 @@ pkg_shutdown(void)
 }
 
 int
-pkg_repos_count(bool activated_only)
+pkg_repos_total_count(void)
 {
-	int	count;
 
-	if (!activated_only) {
-		struct pkg_repo *r = NULL;
+	return (HASH_COUNT(repos));
+}
 
-		count = 0;
+int
+pkg_repos_activated_count(void)
+{
+	struct pkg_repo *r = NULL;
+	int count = 0;
 
-		while(1) {
-			HASH_NEXT(repos, r);
-			if (r == NULL)
-				break;
-
-			if (r->enable)
-				count++;
-		}
-	} else
-		count = HASH_COUNT(repos);
+	for (r = repos; r != NULL; r = r->hh.next) {
+		if (r->enable)
+			count++;
+	}
 
 	return (count);
 }

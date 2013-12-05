@@ -39,7 +39,7 @@ _load_rsa_private_key(struct rsa_key *rsa)
 {
 	FILE *fp;
 
-	if ((fp = fopen(rsa->path, "r")) == 0)
+	if ((fp = fopen(rsa->path, "r")) == NULL)
 		return (EPKG_FATAL);
 
 	if ((rsa->key = RSA_new()) == NULL) {
@@ -64,7 +64,7 @@ _load_rsa_public_key(const char *rsa_key_path)
 	RSA *rsa = NULL;
 	char errbuf[1024];
 
-	if ((fp = fopen(rsa_key_path, "rb")) == 0) {
+	if ((fp = fopen(rsa_key_path, "rb")) == NULL) {
 		pkg_emit_errno("fopen", rsa_key_path);
 		return (NULL);
 	}

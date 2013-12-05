@@ -82,13 +82,17 @@ gethttpmirrors(struct pkg_repo *repo, const char *url) {
 }
 
 int
-pkg_fetch_file(struct pkg_repo *repo, const char *url, const char *dest, time_t t)
+pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t)
 {
 	int fd = -1;
 	int retcode = EPKG_FATAL;
+	mode_t mask;
 
-	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0644)) == -1) {
-		pkg_emit_errno("open", dest);
+	mask = umask(022);
+	fd = mkstemp(dest);
+	umask(mask);
+	if (fd == -1) {
+		pkg_emit_errno("mkstemp", dest);
 		return(EPKG_FATAL);
 	}
 
@@ -386,7 +390,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	int64_t		 max_retry, retry;
 	int64_t		 fetch_timeout;
 	time_t		 begin_dl;
-	time_t		 now;
 	time_t		 last = 0;
 	char		 buf[10240];
 	char		*doc = NULL;
@@ -529,10 +532,14 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		sz = st.size;
 	}
 
-	now = begin_dl = time(NULL);
-	repo->tofetch = sz;
-	repo->fetched = 0;
+	begin_dl = time(NULL);
+	if (repo != NULL) {
+		repo->tofetch = sz;
+		repo->fetched = 0;
+	}
 	while (done < sz) {
+		time_t	now;
+
 		if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
 			break;
 
@@ -550,7 +557,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			last = now;
 		}
 	}
-	repo->tofetch = 0;
+	if (repo != NULL)
+		repo->tofetch = 0;
 
 	if (done < sz) {
 		pkg_emit_error("An error occurred while fetching package");
@@ -567,7 +575,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	cleanup:
 
 	if (u != NULL) {
-		if (remote != NULL && remote != repo->ssh)
+		if (remote != NULL &&  repo != NULL && remote != repo->ssh)
 			fclose(remote);
 	}
 

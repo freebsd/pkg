@@ -581,12 +581,14 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	sqlite3 *sqlite = NULL;
 	struct pkg *pkg = NULL;
 	int rc = EPKG_FATAL;
-	const char *origin, *digest, *offset, *length, *files_offset;
+	const char *origin, *digest, *offset, *length;
 	struct pkgdb_it *it = NULL;
 	char *linebuf = NULL, *p;
 	int updated = 0, removed = 0, added = 0, processed = 0;
 	long num_offset, num_length;
 	time_t local_t = *mtime;
+	time_t digest_t;
+	time_t packagesite_t;
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
 			*item, *tmp_item;
 	struct pkg_manifest_key *keys = NULL;
@@ -623,13 +625,15 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			&rc, repo_digests_file);
 	if (fdigests == NULL)
 		goto cleanup;
+	digest_t = local_t;
 	local_t = *mtime;
 	fmanifest = repo_fetch_remote_extract_tmp(repo,
 			repo_packagesite_archive, "txz", &local_t,
 			&rc, repo_packagesite_file);
 	if (fmanifest == NULL)
 		goto cleanup;
-	*mtime = local_t;
+	packagesite_t = digest_t;
+	*mtime = packagesite_t > digest_t ? packagesite_t : digest_t;
 	fseek(fmanifest, 0, SEEK_END);
 	len = ftell(fmanifest);
 
@@ -640,7 +644,8 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		origin = strsep(&p, ":");
 		digest = strsep(&p, ":");
 		offset = strsep(&p, ":");
-		files_offset = strsep(&p, ":");
+		/* files offset */
+		strsep(&p, ":");
 		length = strsep(&p, ":");
 
 		if (origin == NULL || digest == NULL ||
@@ -696,7 +701,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	rc = EPKG_OK;
 
 	pkg_debug(1, "Pkgrepo, removing old entries for '%s'", name);
-	removed = HASH_COUNT(ldel) - updated;
+	removed = HASH_COUNT(ldel);
 	HASH_ITER(hh, ldel, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkgdb_repo_remove_package(item->origin);

@@ -130,6 +130,8 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	const char *pkgname, *pkgversion;
 	bool deplocked;
 	char pathbuf[MAXPATHLEN];
+	struct pkg_file *file = NULL;
+	const char *filepath;
 
 	assert(db != NULL);
 
@@ -144,6 +146,13 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 		if (is_shlib)
 			return (EPKG_OK);
 
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			filepath = pkg_file_path(file);
+			if (strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
+				pkg_addshlib_required(pkg, name);
+				return (EPKG_OK);
+			}
+		}
 		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 		warnx("(%s-%s) %s - shared library %s not found",
 		      pkgname, pkgversion, fpath, name);

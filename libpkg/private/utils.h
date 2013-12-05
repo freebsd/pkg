@@ -49,6 +49,10 @@
 #define HASH_ADD_INO(head,ino,add)                                          \
 	HASH_ADD(hh,head,ino,sizeof(ino_t),add)
 
+#ifndef NELEM
+#define	NELEM(array)	(sizeof(array) / sizeof((array)[0]))
+#endif
+
 struct hardlinks {
 	ino_t inode;
 	UT_hash_handle hh;

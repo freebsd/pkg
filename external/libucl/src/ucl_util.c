@@ -224,7 +224,7 @@ ucl_copy_value_trash (ucl_object_t *obj)
 ucl_object_t*
 ucl_parser_get_object (struct ucl_parser *parser)
 {
-	if (parser->state != UCL_STATE_INIT && parser->state != UCL_STATE_ERROR) {
+	if (parser->state != UCL_STATE_ERROR) {
 		return ucl_object_ref (parser->top_obj);
 	}
 
@@ -238,6 +238,7 @@ ucl_parser_free (struct ucl_parser *parser)
 	struct ucl_macro *macro, *mtmp;
 	struct ucl_chunk *chunk, *ctmp;
 	struct ucl_pubkey *key, *ktmp;
+	struct ucl_variable *var, *vtmp;
 
 	if (parser->top_obj != NULL) {
 		ucl_object_unref (parser->top_obj);
@@ -256,6 +257,11 @@ ucl_parser_free (struct ucl_parser *parser)
 	}
 	LL_FOREACH_SAFE (parser->keys, key, ktmp) {
 		UCL_FREE (sizeof (struct ucl_pubkey), key);
+	}
+	LL_FOREACH_SAFE (parser->variables, var, vtmp) {
+		free (var->value);
+		free (var->var);
+		UCL_FREE (sizeof (struct ucl_variable), var);
 	}
 
 	if (parser->err != NULL) {
@@ -282,7 +288,7 @@ ucl_pubkey_add (struct ucl_parser *parser, const unsigned char *key, size_t len)
 	return false;
 #else
 # if (OPENSSL_VERSION_NUMBER < 0x10000000L)
-	ucl_create_err (err, "cannot check signatures, openssl version is unsupported");
+	ucl_create_err (&parser->err, "cannot check signatures, openssl version is unsupported");
 	return EXIT_FAILURE;
 # else
 	struct ucl_pubkey *nkey;
@@ -316,7 +322,7 @@ ucl_curl_write_callback (void* contents, size_t size, size_t nmemb, void* ud)
 	struct ucl_curl_cbdata *cbdata = ud;
 	size_t realsize = size * nmemb;
 
-	cbdata->buf = g_realloc (cbdata->buf, cbdata->buflen + realsize + 1);
+	cbdata->buf = realloc (cbdata->buf, cbdata->buflen + realsize + 1);
 	if (cbdata->buf == NULL) {
 		return 0;
 	}
@@ -404,8 +410,8 @@ ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen, UT
 		ucl_create_err (err, "error fetching URL %s: %s",
 				url, curl_easy_strerror (r));
 		curl_easy_cleanup (curl);
-		if (buf != NULL) {
-			free (buf);
+		if (cbdata.buf) {
+			free (cbdata.buf);
 		}
 		return false;
 	}
@@ -438,19 +444,26 @@ ucl_fetch_file (const unsigned char *filename, unsigned char **buf, size_t *bufl
 				filename, strerror (errno));
 		return false;
 	}
-	if ((fd = open (filename, O_RDONLY)) == -1) {
-		ucl_create_err (err, "cannot open file %s: %s",
-				filename, strerror (errno));
-		return false;
+	if (st.st_size == 0) {
+		/* Do not map empty files */
+		*buf = "";
+		*buflen = 0;
 	}
-	if ((*buf = mmap (NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0)) == MAP_FAILED) {
+	else {
+		if ((fd = open (filename, O_RDONLY)) == -1) {
+			ucl_create_err (err, "cannot open file %s: %s",
+					filename, strerror (errno));
+			return false;
+		}
+		if ((*buf = mmap (NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0)) == MAP_FAILED) {
+			close (fd);
+			ucl_create_err (err, "cannot mmap file %s: %s",
+					filename, strerror (errno));
+			return false;
+		}
+		*buflen = st.st_size;
 		close (fd);
-		ucl_create_err (err, "cannot mmap file %s: %s",
-				filename, strerror (errno));
-		return false;
 	}
-	*buflen = st.st_size;
-	close (fd);
 
 	return true;
 }
@@ -542,10 +555,14 @@ ucl_include_url (const unsigned char *data, size_t len,
 			ucl_create_err (&parser->err, "cannot verify url %s: %s",
 							urlbuf,
 							ERR_error_string (ERR_get_error (), NULL));
-			munmap (sigbuf, siglen);
+			if (siglen > 0) {
+				munmap (sigbuf, siglen);
+			}
 			return false;
 		}
-		munmap (sigbuf, siglen);
+		if (siglen > 0) {
+			munmap (sigbuf, siglen);
+		}
 #endif
 	}
 
@@ -606,10 +623,14 @@ ucl_include_file (const unsigned char *data, size_t len,
 			ucl_create_err (&parser->err, "cannot verify file %s: %s",
 							filebuf,
 							ERR_error_string (ERR_get_error (), NULL));
-			munmap (sigbuf, siglen);
+			if (siglen > 0) {
+				munmap (sigbuf, siglen);
+			}
 			return false;
 		}
-		munmap (sigbuf, siglen);
+		if (siglen > 0) {
+			munmap (sigbuf, siglen);
+		}
 #endif
 	}
 
@@ -622,7 +643,9 @@ ucl_include_file (const unsigned char *data, size_t len,
 			UCL_FREE (sizeof (struct ucl_chunk), chunk);
 		}
 	}
-	munmap (buf, buflen);
+	if (buflen > 0) {
+		munmap (buf, buflen);
+	}
 
 	return res;
 }
@@ -682,7 +705,9 @@ ucl_parser_add_file (struct ucl_parser *parser, const char *filename)
 
 	ret = ucl_parser_add_chunk (parser, buf, len);
 
-	munmap (buf, len);
+	if (len > 0) {
+		munmap (buf, len);
+	}
 
 	return ret;
 }
@@ -845,12 +870,14 @@ ucl_object_fromstring_common (const char *str, size_t len, enum ucl_string_flags
 			if (flags & UCL_STRING_PARSE_BOOLEAN) {
 				if (!ucl_maybe_parse_boolean (obj, dst, obj->len) && (flags & UCL_STRING_PARSE_NUMBER)) {
 					ucl_maybe_parse_number (obj, dst, dst + obj->len, &pos,
-							flags & UCL_STRING_PARSE_DOUBLE);
+							flags & UCL_STRING_PARSE_DOUBLE,
+							flags & UCL_STRING_PARSE_BYTES);
 				}
 			}
 			else {
 				ucl_maybe_parse_number (obj, dst, dst + obj->len, &pos,
-						flags & UCL_STRING_PARSE_DOUBLE);
+						flags & UCL_STRING_PARSE_DOUBLE,
+						flags & UCL_STRING_PARSE_BYTES);
 			}
 		}
 	}
@@ -873,6 +900,17 @@ ucl_object_insert_key_common (ucl_object_t *top, ucl_object_t *elt,
 	if (top == NULL) {
 		top = ucl_object_new ();
 		top->type = UCL_OBJECT;
+	}
+
+	if (top->type != UCL_OBJECT) {
+		/* It is possible to convert NULL type to an object */
+		if (top->type == UCL_NULL) {
+			top->type = UCL_OBJECT;
+		}
+		else {
+			/* Refuse converting of other object types */
+			return top;
+		}
 	}
 
 	if (top->value.ov == NULL) {

@@ -150,9 +150,9 @@ fetch_and_extract(const char *src, const char *dest, bool xml)
 		tmpdir = "/tmp";
 	strlcpy(tmp, tmpdir, sizeof(tmp));
 	if (xml)
-		strlcat(tmp, "/vuln.xml.bz2", sizeof(tmp));
+		strlcat(tmp, "/vuln.xml.bz2.XXXX", sizeof(tmp));
 	else
-		strlcat(tmp, "/auditfile.tbz", sizeof(tmp));
+		strlcat(tmp, "/auditfile.tbz.XXXX", sizeof(tmp));
 
 	if (stat(dest, &st) != -1) {
 		t = st.st_mtime;

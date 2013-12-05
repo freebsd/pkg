@@ -96,6 +96,7 @@ struct ucl_macro {
 struct ucl_stack {
 	ucl_object_t *obj;
 	struct ucl_stack *next;
+	int level;
 };
 
 struct ucl_chunk {
@@ -119,6 +120,14 @@ struct ucl_pubkey {
 };
 #endif
 
+struct ucl_variable {
+	char *var;
+	char *value;
+	size_t var_len;
+	size_t value_len;
+	struct ucl_variable *next;
+};
+
 struct ucl_parser {
 	enum ucl_parser_state state;
 	enum ucl_parser_state prev_state;
@@ -130,6 +139,7 @@ struct ucl_parser {
 	struct ucl_stack *stack;
 	struct ucl_chunk *chunks;
 	struct ucl_pubkey *keys;
+	struct ucl_variable *variables;
 	UT_string *err;
 };
 
@@ -200,33 +210,33 @@ ucl_maybe_parse_boolean (ucl_object_t *obj, const unsigned char *start, size_t l
 	bool ret = false, val = false;
 
 	if (len == 5) {
-		if (tolower (p[0]) == 'f' && strncasecmp (p, "false", 5) == 0) {
+		if ((p[0] == 'f' || p[0] == 'F') && strncasecmp (p, "false", 5) == 0) {
 			ret = true;
 			val = false;
 		}
 	}
 	else if (len == 4) {
-		if (tolower (p[0]) == 't' && strncasecmp (p, "true", 4) == 0) {
+		if ((p[0] == 't' || p[0] == 'T') && strncasecmp (p, "true", 4) == 0) {
 			ret = true;
 			val = true;
 		}
 	}
 	else if (len == 3) {
-		if (tolower (p[0]) == 'y' && strncasecmp (p, "yes", 3) == 0) {
+		if ((p[0] == 'y' || p[0] == 'Y') && strncasecmp (p, "yes", 3) == 0) {
 			ret = true;
 			val = true;
 		}
-		if (tolower (p[0]) == 'o' && strncasecmp (p, "off", 3) == 0) {
+		else if ((p[0] == 'o' || p[0] == 'O') && strncasecmp (p, "off", 3) == 0) {
 			ret = true;
 			val = false;
 		}
 	}
 	else if (len == 2) {
-		if (tolower (p[0]) == 'n' && strncasecmp (p, "no", 2) == 0) {
+		if ((p[0] == 'n' || p[0] == 'N') && strncasecmp (p, "no", 2) == 0) {
 			ret = true;
 			val = false;
 		}
-		else if (tolower (p[0]) == 'o' && strncasecmp (p, "on", 2) == 0) {
+		else if ((p[0] == 'o' || p[0] == 'O') && strncasecmp (p, "on", 2) == 0) {
 			ret = true;
 			val = true;
 		}
@@ -250,7 +260,7 @@ ucl_maybe_parse_boolean (ucl_object_t *obj, const unsigned char *start, size_t l
  * @return 0 if string is numeric and error code (EINVAL or ERANGE) in case of conversion error
  */
 int ucl_maybe_parse_number (ucl_object_t *obj,
-		const char *start, const char *end, const char **pos, bool allow_double);
+		const char *start, const char *end, const char **pos, bool allow_double, bool number_bytes);
 
 
 static inline ucl_object_t *

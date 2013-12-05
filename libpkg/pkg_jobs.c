@@ -541,8 +541,7 @@ new_pkg_version(struct pkg_jobs *j)
 
 	/* Remove from seen in case it was explicitly requested. */
 	HASH_FIND_STR(j->seen, origin, p);
-	if (p != NULL)
-		HASH_DEL(j->seen, p);
+	HASH_DEL(j->seen, p);
 
 end:
 	j->flags = old_flags;

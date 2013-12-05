@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd October 22, 2013
+.Dd December 2, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -34,9 +34,9 @@ The default location of this file is
 Lines in the file beginning with a "#" are comments
 and are ignored.
 .Pp
-The file is in YAML format.
-For more information on the syntax of YAML,
-please visit the official YAML website - http://www.yaml.org/.
+The file is in UCL format.
+For more information on the syntax of UCL,
+please visit the official UCL website - http://github.com/vstakhov/libucl.
 .Pp
 The following types of options are recognized -
 boolean, string and list options.
@@ -77,7 +77,7 @@ Specifies the URL of the remote location to use
 when fetching the database file and packages.
 This supports using
 .Sy ${ABI}
-to create a dynamic URL based on the ABI being used.
+to create a dynamic URL based on the ABI being used. (deprecated)
 .It Cm MIRROR_TYPE: string
 Specifies which mirror type to use for
 .Sy PACKAGESITE .
@@ -114,7 +114,7 @@ or
 Using
 .Dv http://
 URLS implies that the hostname part is a simple hostname according to RFC 2616,
-and is deprecated.
+and is deprecated. (deprecated)
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 The default value
@@ -222,7 +222,7 @@ Filenames are arbitrary, but should end in
 For example
 .Pa /usr/local/etc/pkg/repos/myrepo.conf .
 .Pp
-A repository file is in YAML format and has the following form (see
+A repository file is in UCL format and has the following form (see
 above for the description of most options):
 .Bl -tag -width ".Cm myrepo:"
 .It Cm myrepo:
@@ -260,7 +260,7 @@ then the
 option will be used for signature verification.
 (default: NONE)
 .It Cm PUBKEY: string
-PUBKEY for this repository only. (default: NONE)
+PUBKEY for this repository only. (default: NONE) (deprecated)
 .It Cm FINGERPRINTS: string
 This should be set to a path containing known signatures for the repository.
 I.e., if
@@ -284,12 +284,44 @@ Note that
 .Fa myrepo
 could be any string.
 However no two repositories may share the same name.
-.Pp
 It is possible to specify more than one repository per file.
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the
 configuration file always overrides the value of an option set in the
 file.
+.Sh EXAMPLES
+Repository configuration file:
+.Bd -literal -offset indent
+FreeBSD: {
+    url: "pkg+http://pkg.freebsd.org/${ABI}/latest",
+    enabled: true,
+    signature_type: "fingerprints",
+    fingerprints: "/usr/share/keys/pkg",
+    mirror_type: "srv"
+}
+.Ed
+Example for pkg.conf
+.Bd -literal -offset indent
+pkg_dbdir: "/var/db/pkg"
+pkg_cachedir: "/var/cache/pkg"
+portsdir: "/usr/ports"
+handle_rc_cripts: false
+assume_always_yes: false
+repos_dir: [
+     "/etc/pkg",
+     "/usr/local/etc/pkg/repos",
+]
+syslog: true
+autodeps: true
+developer_mode: false
+pkg_env: {
+    http_proxy: "http://myproxy:3128",
+}
+alias: {
+    origin: "info -qo",
+    nonauto: "query -e '%a == 0' '%n-%v'"
+}
+.Ed
 .Sh SEE ALSO
 .Xr fetch 3 ,
 .Xr pkg 8 ,
@@ -300,6 +332,7 @@ file.
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
 .Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,

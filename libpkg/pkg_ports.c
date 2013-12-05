@@ -668,6 +668,8 @@ parse_attributes(ucl_object_t *o, struct file_attr **a) {
 
 	while ((cur = ucl_iterate_object(o, &it, true))) {
 		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
 		if (!strcasecmp(key, "owner") && cur->type == UCL_STRING) {
 			free((*a)->owner);
 			(*a)->owner = strdup(ucl_object_tostring(cur));
@@ -704,6 +706,8 @@ parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, str
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
+		if (key == NULL)
+			continue;
 		if (!strcasecmp(key, "actions") && cur->type == UCL_ARRAY) {
 			actions = cur;
 			continue;

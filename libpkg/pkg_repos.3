@@ -1,0 +1,124 @@
+.Dd November 29, 2013
+.Dt PKG_REPOS 3
+.Os
+.Sh NAME
+.Nm pkg_repos , pkg_repos_total_count , pkg_repos_activated_count
+.Nm pkg_repo_url , pkg_repo_ident , pkg_repo_name , pkg_repo_ident_from_name
+.Nm pkg_repo_key , pkg_repo_fingerprints
+.Nm pkg_repo_signature_type , pkg_repo_mirror_type , pkg_repo_enabled
+.Nm pkg_repo_find_ident , pkg_repo_find_name
+.Nd manipulate repositories
+.Sh LIBRARY
+.Lb libpkg
+.Sh SYNOPSIS
+.In pkg.h
+.Ft int
+.Fn pkg_repos "struct pkg_repo **r"
+.Ft int
+.Fn pkg_repos_total_count "void"
+.Ft int
+.Fn pkg_repos_activated_count "void"
+.Ft const char *
+.Fn pkg_repos_url "struct pkg_repo *"
+.Ft const char *
+.Fn pkg_repo_ident "struct pkg_repo *"
+.Ft const char *
+.Fn pkg_repo_name "struct pkg_repo *"
+.Ft const char *
+.Fn pkg_repo_ident_from_name "const char *"
+.Ft const char *
+.Fn pkg_repo_key "struct pkg_repo *"
+.Ft const char *
+.Fn pkg_repo_fingerprints "struct pkg_repo *"
+.Ft signature_t
+.Fn pkg_repo_signature_type "struct pkg_repo *"
+.Ft bool
+.Fn pkg_repo_enabled "struct pkg_repo *"
+.Ft mirror_t
+.Fn pkg_repo_mirror_type "struct pkg_repo *"
+.Ft struct pkg_repo *
+.Fn pkg_repo_find_ident "const char *ident";
+.Ft struct pkg_repo *
+.Fn pkg_repo_find_name "const char *name";
+.Sh DESCRIPTION
+.Fn pkg_repos
+Takes the address of a pointer to the repository. The pointer should be
+initialized to NULL before being passed to the function, on each iteration
+the r will point to the next repository. Returns EPKG_FATAL if an error
+occured, otherwise return EPKG_OK until the last repository is found in that
+case EPKG_END is returned.
+.Pp
+.Fn pkg_repos_total_count
+returns the total number of defined repositories.
+.Pp
+.Fn pkg_repos_activated_count
+returns the total number of
+.Qq enabled
+repositories.
+.Pp
+.Fn pkg_repo_url
+takes a pointer to a repository as argument and returns the
+.Qq url
+defined for this repository.
+.Pp
+.Fn pkg_repo_ident
+takes a pointer to a repository as argument and returns the internal
+identification string of the repository.
+.Pp
+.Fn pkg_repo_name
+takes a pointer to a repository as argument and returns the
+.Qq name
+of the repository.
+.Pp
+.Fn pkg_repo_key
+takes a pointer to a repository as argument and returns the path to
+the public key. If the repository is not signed by a public key, NULL
+will be returned.
+.Pp
+.Fn pkg_repo_fingerprints
+takes a pointer to a repository as argument and returns the path to
+the fingerprints. If the repository is not signed using the
+.Qq FINGERPRINT
+method, NULL will be returned.
+.Pp
+.Fn pkg_repo_signature_type
+Take a pointer to a repository as argument and return the type of
+signature it uses.
+.Bl -tag -width SIG_FINGERPRINT
+.It Cm SIG_NONE
+The repository isn't signed
+.It Cm SIG_PUBKEY
+The repository is signed using the PUBKEY method
+.It Cm SIG_FINGERPRINT
+The repository is signed using the FINGERPRINT method
+.El
+.Pp
+.Fn pkg_repo_enabled
+takes a pointer to a repository as argument and returns
+.Cm true
+if the repository is
+.Qq enabled .
+Otherwise, return
+.Cm false .
+.Pp
+.Fn pkg_repo_mirror_type
+takes a pointer to a repository as argument and returns the type of
+mirroring it uses.
+.Bl -tag -width NOMIRROR
+.It Cm SRV
+The repository is using SRV record query to get the mirrors.
+.It Cm HTTP
+The repository is using the HTTP query method to get the mirrors.
+.It Cm NOMIRROR
+The repository does not have any mirror.
+.El
+.Pp
+.Fn pkg_repo_find_ident
+Take an internal indentification string as argument and return a pointer to
+a reprository. If no repository matches, NULL is returned.
+.Pp
+.Fn pkg_repo_find_name
+Take a repository
+.Qq name
+as argument and return a pointer to a reprository. If no repository matches,
+NULL is returned.
