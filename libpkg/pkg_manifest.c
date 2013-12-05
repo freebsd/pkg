@@ -884,7 +884,9 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 		obj = ucl_object_insert_key(top, ucl_object_fromint(pkgsize), "pkgsize", 7, false);
 
 	urlencode(desc, &tmpsbuf);
-	obj = ucl_object_insert_key(top, ucl_object_fromlstring(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf)), "desc", 4, false);
+	obj = ucl_object_insert_key(top,
+	    ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
+	    "desc", 4, false);
 
 	pkg_debug(1, "Emitting deps");
 	map = NULL;
