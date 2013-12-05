@@ -269,6 +269,11 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
+			} else {
+				pkg_emit_error("Missing dependency matching '%s'",
+				    pkg_dep_get(dep, PKG_DEP_ORIGIN));
+				retcode = EPKG_FATAL;
+				goto cleanup;
 			}
 		} else {
 			retcode = EPKG_FATAL;
