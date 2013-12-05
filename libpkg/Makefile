@@ -162,7 +162,8 @@ SQLITECFLAGS+=	-DSQLITE_OMIT_AUTOVACUUM \
 YAMLCFLAGS=	-I${.CURDIR}/../external/libyaml/include \
 		-I${.CURDIR}/../external/libyaml \
 		-DHAVE_CONFIG_H \
-		-Wno-strict-aliasing
+		-Wno-strict-aliasing \
+		-Wno-unused
 LIBPKGCFLAGS+=	-DDEFAULT_MIRROR_TYPE=${DEFAULT_MIRROR_TYPE} \
 		-std=gnu99 \
 		-I. \
