@@ -2,7 +2,8 @@
 
 LIB=		pkg
 INCS=		pkg.h
-WARNS=		6
+# That's cheating real warnings are set later
+WARNS=		0
 PREFIX?=	/usr/local
 LIBDIR=		${PREFIX}/lib
 INCLUDEDIR=	${PREFIX}/include
@@ -10,9 +11,25 @@ SHLIB_MAJOR=	1
 
 MANDIR=		${PREFIX}/man/man
 
+EXPATSRCS=	${.CURDIR}/../external/expat/lib/xmlparse.c \
+		${.CURDIR}/../external/expat/lib/xmlrole.c \
+		${.CURDIR}/../external/expat/lib/xmltok.c
+UCLSRCS=	${.CURDIR}/../external/libucl/src/ucl_emitter.c \
+		${.CURDIR}/../external/libucl/src/ucl_hash.c \
+		${.CURDIR}/../external/libucl/src/ucl_parser.c \
+		${.CURDIR}/../external/libucl/src/ucl_util.c \
+		${.CURDIR}/../external/libucl/src/xxhash.c
+SQLITESRCS=	${.CURDIR}/../external/sqlite/sqlite3.c \
+		${.CURDIR}/../external/sqlite/shell.c
+YAMLSRCS=	${.CURDIR}/../external/libyaml/src/api.c \
+		${.CURDIR}/../external/libyaml/src/loader.c \
+		${.CURDIR}/../external/libyaml/src/parser.c \
+		${.CURDIR}/../external/libyaml/src/reader.c \
+		${.CURDIR}/../external/libyaml/src/scanner.c
+
 PC=		pkg.pc
 PKGH=		pkg.h
-SRCS=		${PC} \
+LIBPKGSRCS=	${PC} \
 		${PKGH} \
 		backup.c \
 		dns_utils.c \
@@ -77,51 +94,139 @@ realinstall: ${PC}
 #
 DEFAULT_MIRROR_TYPE?=	1
 
-CFLAGS+=	-DDEFAULT_MIRROR_TYPE=${DEFAULT_MIRROR_TYPE}
-CFLAGS+=	-std=c99
-CFLAGS+=	-I. \
+CCV!=	${CC} --version
+.if ${CCV:M*clang*}
+USING_CLANG=	yes
+.endif
+
+EXPATCFLAGS=	-I${.CURDIR}/../external/expat/ \
+		-DHAVE_EXPAT_CONFIG_H
+
+.if defined(USING_CLANG)
+EXPATCFLAGS+=	-Wno-enum-conversion
+.endif
+
+UCLCFLAGS=	-I${.CURDIR}/../external/libucl/include \
+		-I${.CURDIR}/../external/libucl/src \
+		-I${.CURDIR}/../external/libucl/uthash \
+		-Wno-pointer-sign \
+		-Wno-strict-aliasing \
+		-Wno-unused-function
+
+OSNAME!=	uname -s
+.if ${OSNAME} == FreeBSD
+SQLITECFLAGS+=	-DHAVE_POSIX_FALLOCATE=1
+.endif
+SQLITECFLAGS+=	-DSTDC_HEADERS=1 \
+		-DHAVE_SYS_TYPES_H=1 \
+		-DHAVE_SYS_STAT_H=1 \
+		-DHAVE_STDLIB_H=1 \
+		-DHAVE_STRING_H=1 \
+		-DHAVE_MEMORY_H=1 \
+		-DHAVE_STRINGS_H=1 \
+		-DHAVE_INTTYPES_H=1 \
+		-DHAVE_STDINT_H=1 \
+		-DHAVE_UNISTD_H=1 \
+		-DHAVE_DLFCN_H=1 \
+		-DHAVE_USLEEP=1 \
+		-DHAVE_LOCALTIME_R=1 \
+		-DHAVE_GMTIME_R=1 \
+		-DHAVE_DECL_STRERROR_R=1 \
+		-DHAVE_STRERROR_R=1 \
+		-Wno-unused-variable \
+		-Wno-unused-function \
+		-Wno-strict-aliasing
+# http://www.sqlite.org/compile.html
+SQLITECFLAGS+=	-DSQLITE_OMIT_AUTOVACUUM \
+		-DSQLITE_OMIT_BLOB_LITERAL \
+		-DSQLITE_OMIT_DECLTYPE \
+		-DSQLITE_OMIT_EXPLAIN \
+		-DSQLITE_OMIT_DEPRECATED \
+		-DSQLITE_OMIT_LOAD_EXTENSION \
+		-DSQLITE_OMIT_PROGRESS_CALLBACK \
+		-DSQLITE_OMIT_TCL_VARIABLE \
+		-DSQLITE_OMIT_UTF16 \
+		-DSQLITE_OMIT_CAT \
+		-DSQLITE_OMIT_CHECK \
+		-DSQLITE_OMIT_AUTOINIT \
+		-DSQLITE_OMIT_COMPILEOPTION_DIAGS \
+		-DSQLITE_OMIT_INTEGRITY_CHECK \
+		-DSQLITE_OMIT_BUILTIN_TEST \
+		-DSQLITE_OMIT_SHARED_CACHE \
+		-DSQLITE_ENABLE_UNLOCK_NOTIFY=1 \
+		-DUSE_PREAD \
+		-DSQLITE_THREADSAFE=1 \
+		-DSQLITE_TEMP_STORE=3 \
+		-Dmain=sqlite3_shell \
+		-DNDEBUG
+YAMLCFLAGS=	-I${.CURDIR}/../external/libyaml/include \
+		-I${.CURDIR}/../external/libyaml \
+		-DHAVE_CONFIG_H \
+		-Wno-strict-aliasing
+LIBPKGCFLAGS+=	-DDEFAULT_MIRROR_TYPE=${DEFAULT_MIRROR_TYPE} \
+		-std=gnu99 \
+		-I. \
 		-I${.CURDIR} \
 		-I${.CURDIR}/../external/sqlite \
 		-I${.CURDIR}/../external/uthash \
 		-I${.CURDIR}/../external/libucl/include \
-		-I${.CURDIR}/../external/libyaml/include
+		-I${.CURDIR}/../external/libyaml/include \
+		-DPREFIX=\"${PREFIX}\"
 
 .if !exists(/usr/lib/libelf.so)
-CFLAGS+=	-I${.CURDIR}/../external/libelf \
+LIBPKGCFLAGS+=	-I${.CURDIR}/../external/libelf \
 		-DBUNDLED_LIBELF
 .endif
+
+.if defined(PKG_PORTSDIR)
+LIBPKGCFLAGS+=	-DPORTSDIR=\"${PKG_PORTSDIR}\"
+.endif
+
+SRCS+=	${UCLSRCS} ${EXPATSRCS} ${SQLITESRCS} ${YAMLSRCS} ${LIBPKGSRCS}
+
+.for c in ${UCLSRCS}
+CFLAGS.${c}+=	${UCLCFLAGS}
+.endfor
+
+.for c in ${EXPATSRCS}  
+CFLAGS.${c}+=	${EXPATCFLAGS}
+.endfor
+
+.for c in ${SQLITESRCS}
+CFLAGS.${c}+=	${SQLITECFLAGS}
+.endfor
+
+.for c in ${YAMLSRCS}
+CFLAGS.${c}+=	${YAMLCFLAGS}
+.endfor
+
+.for c in ${LIBPKGSRCS}
+CFLAGS.${c}+=	${LIBPKGCFLAGS}
+.endfor
+
+.if ${.TARGETS} == "depend"
+CFLAGS+=	${UCLCFLAGS}  ${EXPATCFLAGS} ${SQLITECFLAGS} ${YAMLCFLAGS} ${LIBPKGCFLAGS}
+.endif
+
+CFLAGS+=	-Wall -Werror
+CFLAGS+=	${CFLAGS.${.IMPSRC}}
 
 LDADD+=		-L../external/sqlite \
 		-L../external/libyaml \
 		-L../external/libucl
 
-.if !exists(/usr/lib/libelf.so)
-LDADD+=		-L../external/libelf
-DPADD+=		${.OBJDIR}/external/libelf/libelf.a
+.if exists(/usr/lib/libelf.so)
+LDADD+=		-lelf
 .endif
 
-LDADD+=		-lsqlite3 \
-		-larchive \
+LDADD+=		-larchive \
 		-lsbuf \
 		-lfetch \
-		-lelf \
 		-lutil \
-		-lpthread \
-		-lucl \
-		-lyaml
-
-DPADD+=		${.OBJDIR}/../external/sqlite/libsqlite3.a \
-		${.OBJDIR}/../external/libyaml/libyaml.a \
-		${.OBJDIR}/../external/libucl/libucl.a
+		-lpthread
 
 .if exists(/usr/include/edit/readline/readline.h)
 LDADD+=		-ledit
-.endif
-
-CFLAGS+=	-DPREFIX=\"${PREFIX}\"
-
-.if defined(PKG_PORTSDIR)
-CFLAGS+=	-DPORTSDIR=\"${PKG_PORTSDIR}\"
 .endif
 
 .if defined(DEBUG_FLAGS)
@@ -150,12 +255,3 @@ DEBUG_FLAGS+=	-pg
 	sed -e "s,__PREFIX__,${PREFIX},g" \
 	    -e "s,__VERSION__,${PKGVERSION},g" \
 	    ${.IMPSRC} > ${.TARGET}
-
-
-depend: staticdepend
-.ORDER: ${DEPENDFILE} staticdepend
-
-staticdepend:
-.if defined(DPADD) && !empty(DPADD)
-	echo lib${LIB}.a: ${DPADD} >> ${DEPENDFILE}
-.endif

@@ -1,6 +1,5 @@
 
-SUBDIR=	external \
-	libpkg \
+SUBDIR=	libpkg \
 	pkg \
 	scripts
 
