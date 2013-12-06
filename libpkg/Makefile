@@ -87,7 +87,7 @@ CLEANFILES=	${GENSRCS}
 
 libelf_convert.c:	${.CURDIR}/../external/libelf/elf_types.m4 ${.CURDIR}/../external/libelf/libelf_convert.m4
 libelf_fsize.c:		${.CURDIR}/../external/libelf/elf_types.m4 ${.CURDIR}/../external/libelf/libelf_fsize.m4
-libelf_msize.c:		${.CURDIR}/../external/libelf/elf_types.m4 ${.CURDIR}/../external/libelf/libelf_ms
+libelf_msize.c:		${.CURDIR}/../external/libelf/elf_types.m4 ${.CURDIR}/../external/libelf/libelf_msize.m4
 
 PC=		pkg.pc
 PKGH=		pkg.h
