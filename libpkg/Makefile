@@ -332,7 +332,7 @@ DEBUG_FLAGS+=	-pg
 # Workaround 8.3/8.4 bug
 OSVERSION!=    /sbin/sysctl -n kern.osreldate
 
-.if ${OSVERSION} < 901000
+.if ${OSNAME} == FreeBSD && ${OSVERSION} < 901000
 .c.o:
 	${CC} ${STATIC_CFLAGS} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 .endif
