@@ -803,7 +803,8 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 		urlencode(pkg_file_path(file), &b);
 		seq = ucl_array_append(seq, ucl_object_fromlstring(sbuf_data(b), sbuf_len(b)));
 	}
-	obj = ucl_object_insert_key(obj, seq, "files", 5, false);
+	if (seq != NULL)
+		obj = ucl_object_insert_key(obj, seq, "files", 5, false);
 
 	output = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
 	fprintf(f, "%s", output);
