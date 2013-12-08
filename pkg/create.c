@@ -135,7 +135,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		STAILQ_REMOVE_HEAD(&head, next);
 
 		if (!overwrite) {
-			pkg_snprintf(pkgpath, MAXPATHLEN, "%S/%n-%v.%S",
+			pkg_snprintf(pkgpath, sizeof(pkgpath), "%S/%n-%v.%S",
 			    outdir, e->pkg, e->pkg, format);
 			if (access(pkgpath, F_OK) == 0) {
 				pkg_printf("%n-%v already packaged, skipping...\n",

@@ -197,7 +197,7 @@ file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 		return;
 	}
 
-	snprintf(fpath, MAXPATHLEN, "%s/%s", path, sqlite3_value_text(argv[0]));
+	snprintf(fpath, sizeof(fpath), "%s/%s", path, sqlite3_value_text(argv[0]));
 
 	if (access(fpath, R_OK) == 0) {
 		sha256_file(fpath, cksum);

@@ -905,7 +905,7 @@ load_repo_files(const char *repodir)
 			continue;
 		p = &ent->d_name[n - 5];
 		if (strcmp(p, ".conf") == 0) {
-			snprintf(path, MAXPATHLEN, "%s/%s", repodir, ent->d_name);
+			snprintf(path, sizeof(path), "%s/%s", repodir, ent->d_name);
 			load_repo_file(path);
 		}
 	}
