@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd December 2, 2013
+.Dd December 15, 2013
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -207,6 +207,24 @@ data.
 This option exists to facilitate developing
 .Cm +MTREE
 free package sets.
+.It Cm ALIAS: key/value list
+Define local aliases for various
+.Xr pkg 8
+standard command lines.
+Whenever the
+.Em key
+text occurs as a separate
+.Sq action
+word in a command line of the form
+.Nm pkg Em key ... ,
+substitute the
+.Em value
+text verbatim.
+The replacement can consist of any sequence of text, which should form
+a syntactically correct
+.Xr pkg 8
+command line when substituted in and followed by any remaining tokens from
+the original command line.
 .El
 .Sh MULTIPLE REPOSITORIES
 To use multiple repositories, specify the primary repository as shown above.
