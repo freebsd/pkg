@@ -38,7 +38,7 @@
 #include "pkgcli.h"
 
 static off_t fetched = 0;
-static char url[MAXPATHLEN+1];
+static char url[MAXPATHLEN];
 struct sbuf *messages = NULL;
 
 static void

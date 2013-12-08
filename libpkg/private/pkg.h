@@ -157,20 +157,20 @@ struct pkg_category {
 };
 
 struct pkg_file {
-	char		 path[MAXPATHLEN +1];
+	char		 path[MAXPATHLEN];
 	int64_t		 size;
-	char		 sum[SHA256_DIGEST_LENGTH * 2 +1];
-	char		 uname[MAXLOGNAME +1];
-	char		 gname[MAXLOGNAME +1];
+	char		 sum[SHA256_DIGEST_LENGTH * 2 + 1];
+	char		 uname[MAXLOGNAME];
+	char		 gname[MAXLOGNAME];
 	bool		 keep;
 	mode_t		 perm;
 	UT_hash_handle	 hh;
 };
 
 struct pkg_dir {
-	char		 path[MAXPATHLEN +1];
-	char		 uname[MAXLOGNAME +1];
-	char		 gname[MAXLOGNAME +1];
+	char		 path[MAXPATHLEN];
+	char		 uname[MAXLOGNAME];
+	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	bool		 keep;
 	bool		 try;
@@ -204,13 +204,13 @@ struct job_pattern {
 };
 
 struct pkg_user {
-	char		 name[MAXLOGNAME+1];
+	char		 name[MAXLOGNAME];
 	char		 uidstr[8192];/* taken from pw_util.c */
 	UT_hash_handle	hh;
 };
 
 struct pkg_group {
-	char		 name[MAXLOGNAME+1];
+	char		 name[MAXLOGNAME];
 	char		 gidstr[8192]; /* taken from gw_util.c */
 	UT_hash_handle	hh;
 };

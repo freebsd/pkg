@@ -1337,8 +1337,8 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	struct packing *pack;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
-	char spath[MAXPATHLEN + 1];
-	char dpath[MAXPATHLEN + 1];
+	char spath[MAXPATHLEN];
+	char dpath[MAXPATHLEN];
 	bool disable_mtree;
 	const char *prefix;
 	char *mtree;

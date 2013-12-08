@@ -54,8 +54,8 @@
 int
 pkg_repo_fetch(struct pkg *pkg)
 {
-	char dest[MAXPATHLEN + 1];
-	char url[MAXPATHLEN + 1];
+	char dest[MAXPATHLEN];
+	char url[MAXPATHLEN];
 	int fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	char *path = NULL;
@@ -168,7 +168,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	int retcode = EPKG_OK;
 
 	char *repopath[2];
-	char repodb[MAXPATHLEN + 1];
+	char repodb[MAXPATHLEN];
 	char *manifest_digest;
 	FILE *psyml, *fsyml, *mandigests;
 
@@ -342,9 +342,9 @@ read_pkg_file(void *data)
 	struct pkg_manifest_key *keys = NULL;
 
 	FTSENT *fts_ent = NULL;
-	char fts_accpath[MAXPATHLEN + 1];
-	char fts_path[MAXPATHLEN + 1];
-	char fts_name[MAXPATHLEN + 1];
+	char fts_accpath[MAXPATHLEN];
+	char fts_path[MAXPATHLEN];
+	char fts_name[MAXPATHLEN];
 	off_t st_size;
 	int fts_info, flags;
 
@@ -586,8 +586,8 @@ int
 pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
     char **argv, int argc, bool filelist)
 {
-	char repo_path[MAXPATHLEN + 1];
-	char repo_archive[MAXPATHLEN + 1];
+	char repo_path[MAXPATHLEN];
+	char repo_archive[MAXPATHLEN];
 	struct rsa_key *rsa = NULL;
 	struct stat st;
 	int ret = EPKG_OK;
