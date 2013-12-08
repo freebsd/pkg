@@ -54,7 +54,7 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 
 	pkg_get(pkg, PKG_PREFIX, &prefix);
 
-	snprintf(rc_d_path, PATH_MAX, "%s/etc/rc.d/", prefix);
+	snprintf(rc_d_path, sizeof(rc_d_path), "%s/etc/rc.d/", prefix);
 	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {

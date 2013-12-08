@@ -588,7 +588,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		switch (type) {
 		case PKG_JOBS_INSTALL:
 		case PKG_JOBS_UPGRADE:
-			pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, pkg);
+			pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, pkg);
 
 			if (stat(path, &st) == -1 || pkgsize != st.st_size)
 				/* file looks corrupted (wrong size),
@@ -641,7 +641,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 			break;
 		case PKG_JOBS_FETCH:
 			dlsize += pkgsize;
-			pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, pkg);
+			pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, pkg);
 			if (stat(path, &st) != -1)
 				oldsize = st.st_size;
 			else

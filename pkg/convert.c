@@ -90,29 +90,29 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 		pkg_to_old(pkg);
 		pkg_old_emit_content(pkg, &content);
 
-		snprintf(path, MAXPATHLEN, "%s/%s-%s", pkg_add_dbdir, name, version);
+		snprintf(path, sizeof(path), "%s/%s-%s", pkg_add_dbdir, name, version);
 		mkdir(path, 0755);
 
-		snprintf(path, MAXPATHLEN, "%s/%s-%s/+CONTENTS", pkg_add_dbdir, name, version);
+		snprintf(path, sizeof(path), "%s/%s-%s/+CONTENTS", pkg_add_dbdir, name, version);
 		fp = fopen(path, "w");
 		fputs(content, fp);
 		fclose(fp);
 
 		pkg_get(pkg, PKG_DESC, &buf);
-		snprintf(path, MAXPATHLEN, "%s/%s-%s/+DESC", pkg_add_dbdir, name, version);
+		snprintf(path, sizeof(path), "%s/%s-%s/+DESC", pkg_add_dbdir, name, version);
 		fp = fopen(path, "w");
 		fputs(buf, fp);
 		fclose(fp);
 
 		pkg_get(pkg, PKG_COMMENT, &buf);
-		snprintf(path, MAXPATHLEN, "%s/%s-%s/+COMMENT", pkg_add_dbdir, name, version);
+		snprintf(path, sizeof(path), "%s/%s-%s/+COMMENT", pkg_add_dbdir, name, version);
 		fp = fopen(path, "w");
 		fprintf(fp, "%s\n", buf);
 		fclose(fp);
 
 		pkg_get(pkg, PKG_MESSAGE, &buf);
 		if (buf != NULL && buf[0] != '\0') {
-			snprintf(path, MAXPATHLEN, "%s/%s-%s/+DISPLAY", pkg_add_dbdir, name, version);
+			snprintf(path, sizeof(path), "%s/%s-%s/+DISPLAY", pkg_add_dbdir, name, version);
 			fp = fopen(path, "w");
 			fputs(buf, fp);
 			fclose(fp);
@@ -120,7 +120,7 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 
 		pkg_get(pkg, PKG_MTREE, &buf);
 		if (buf != NULL && buf[0] != '\0') {
-			snprintf(path, MAXPATHLEN, "%s/%s-%s/+MTREE_DIRS", pkg_add_dbdir, name, version);
+			snprintf(path, sizeof(path), "%s/%s-%s/+MTREE_DIRS", pkg_add_dbdir, name, version);
 			fp = fopen(path, "w");
 			fputs(buf, fp);
 			fclose(fp);
@@ -157,7 +157,7 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 		}
 		if (sbuf_len(install_script) > 0) {
 			sbuf_finish(install_script);
-			snprintf(path, MAXPATHLEN, "%s/%s-%s/+INSTALL", pkg_add_dbdir, name, version);
+			snprintf(path, sizeof(path), "%s/%s-%s/+INSTALL", pkg_add_dbdir, name, version);
 			fp = fopen(path, "w");
 			fputs(sbuf_data(install_script), fp);
 			fclose(fp);
@@ -194,13 +194,13 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 		}
 		if (sbuf_len(deinstall_script) > 0) {
 			sbuf_finish(deinstall_script);
-			snprintf(path, MAXPATHLEN, "%s/%s-%s/+DEINSTALL", pkg_add_dbdir, name, version);
+			snprintf(path, sizeof(path), "%s/%s-%s/+DEINSTALL", pkg_add_dbdir, name, version);
 			fp = fopen(path, "w");
 			fputs(sbuf_data(deinstall_script), fp);
 			fclose(fp);
 		}
 
-		snprintf(path, MAXPATHLEN, "%s/%s-%s/+REQUIRED_BY", pkg_add_dbdir, name, version);
+		snprintf(path, sizeof(path), "%s/%s-%s/+REQUIRED_BY", pkg_add_dbdir, name, version);
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 			if (rq == NULL)
 				rq = fopen(path, "w");
@@ -249,7 +249,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 			} else
 				pkg_reset(p, PKG_OLD_FILE);
 			printf("Converting %s...\n", dp->d_name);
-			snprintf(path, MAXPATHLEN, "%s/%s", pkg_add_dbdir, dp->d_name);
+			snprintf(path, sizeof(path), "%s/%s", pkg_add_dbdir, dp->d_name);
 			if (pkg_old_load_from_path(p, path) != EPKG_OK) {
 				fprintf(stderr, "Skipping invalid package: %s\n", path);
 				continue;

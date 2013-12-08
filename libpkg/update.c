@@ -79,13 +79,13 @@ repo_fetch_remote_tmp(struct pkg_repo *repo, const char *filename, const char *e
 	mode_t mask;
 	const char *tmpdir;
 
-	snprintf(url, MAXPATHLEN, "%s/%s.%s", pkg_repo_url(repo), filename, extension);
+	snprintf(url, sizeof(url), "%s/%s.%s", pkg_repo_url(repo), filename, extension);
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
 	mkdirs(tmpdir);
-	snprintf(tmp, MAXPATHLEN, "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
+	snprintf(tmp, sizeof(tmp), "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
 
 	mask = umask(022);
 	fd = mkstemp(tmp);
@@ -174,7 +174,7 @@ load_fingerprint(const char *dir, const char *filename)
 	char path[MAXPATHLEN];
 	struct fingerprint *f = NULL;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dir, filename);
+	snprintf(path, sizeof(path), "%s/%s", dir, filename);
 
 	p = ucl_parser_new(0);
 
@@ -281,13 +281,13 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 
 		if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 			if (has_ext(archive_entry_pathname(ae), ".sig")) {
-				snprintf(key, MAXPATHLEN, "%.*s",
+				snprintf(key, sizeof(key), "%.*s",
 				    (int) strlen(archive_entry_pathname(ae)) - 4,
 				    archive_entry_pathname(ae));
 				HASH_FIND_STR(sc, key, s);
 				if (s == NULL) {
 					s = calloc(1, sizeof(struct sig_cert));
-					strlcpy(s->name, key, MAXPATHLEN);
+					strlcpy(s->name, key, sizeof(s->name));
 					HASH_ADD_STR(sc, name, s);
 				}
 				s->siglen = archive_entry_size(ae);
@@ -295,13 +295,13 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 				archive_read_data(a, s->sig, s->siglen);
 			}
 			if (has_ext(archive_entry_pathname(ae), ".pub")) {
-				snprintf(key, MAXPATHLEN, "%.*s",
+				snprintf(key, sizeof(key), "%.*s",
 				    (int) strlen(archive_entry_pathname(ae)) - 4,
 				    archive_entry_pathname(ae));
 				HASH_FIND_STR(sc, key, s);
 				if (s == NULL) {
 					s = calloc(1, sizeof(struct sig_cert));
-					strlcpy(s->name, key, MAXPATHLEN);
+					strlcpy(s->name, key, sizeof(s->name));
 					HASH_ADD_STR(sc, name, s);
 				}
 				s->certlen = archive_entry_size(ae);
@@ -336,7 +336,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		}
 
 		/* load fingerprints */
-		snprintf(path, MAXPATHLEN, "%s/trusted", pkg_repo_fingerprints(repo));
+		snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
 		if ((load_fingerprints(path, &trusted)) != EPKG_OK) {
 			pkg_emit_error("Error loading trusted certificates");
 			rc = EPKG_FATAL;
@@ -349,7 +349,7 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 			goto cleanup;
 		}
 
-		snprintf(path, MAXPATHLEN, "%s/revoked", pkg_repo_fingerprints(repo));
+		snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
 		if ((load_fingerprints(path, &revoked)) != EPKG_OK) {
 			pkg_emit_error("Error loading revoked certificates");
 			rc = EPKG_FATAL;
@@ -430,7 +430,7 @@ repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
-	snprintf(tmp, MAXPATHLEN, "%s/%s.XXXXXX", tmpdir, archive_file);
+	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, archive_file);
 
 	mask = umask(022);
 	dest_fd = mkstemp(tmp);

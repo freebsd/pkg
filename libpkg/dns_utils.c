@@ -122,7 +122,7 @@ dns_getsrvinfo(const char *zone)
 
 	while(qdcount > 0 && p < end) {
 		qdcount--;
-		if((len = dn_expand(q.buf, end, p, host, MAXHOSTNAMELEN)) < 0)
+		if((len = dn_expand(q.buf, end, p, host, sizeof(host))) < 0)
 			return (NULL);
 		p += len + NS_QFIXEDSZ;
 	}
@@ -134,7 +134,7 @@ dns_getsrvinfo(const char *zone)
 	n = 0;
 	while (ancount > 0 && p < end) {
 		ancount--;
-		len = dn_expand(q.buf, end, p, host, MAXHOSTNAMELEN);
+		len = dn_expand(q.buf, end, p, host, sizeof(host));
 		if (len < 0) {
 			for (i = 0; i < n; i++)
 				free(res[i]);
@@ -158,7 +158,7 @@ dns_getsrvinfo(const char *zone)
 		NS_GET16(weight, p);
 		NS_GET16(port, p);
 
-		len = dn_expand(q.buf, end, p, host, MAXHOSTNAMELEN);
+		len = dn_expand(q.buf, end, p, host, sizeof(host));
 		if (len < 0) {
 			for (i = 0; i < n; i++)
 				free(res[i]);
@@ -181,7 +181,7 @@ dns_getsrvinfo(const char *zone)
 		res[n]->port = port;
 		res[n]->next = NULL;
 		res[n]->finalweight = 0;
-		strlcpy(res[n]->host, host, MAXHOSTNAMELEN);
+		strlcpy(res[n]->host, host, sizeof(res[n]->host));
 
 		p += len;
 		n++;
