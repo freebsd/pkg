@@ -46,7 +46,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 {
 	int	retcode = EPKG_OK;
 	int	ret = 0;
-	char	path[MAXPATHLEN + 1];
+	char	path[MAXPATHLEN];
 	struct stat st;
 
 	do {
@@ -163,7 +163,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	bool		 extract = true;
 	bool		 handle_rc = false;
 	bool		 disable_mtree;
-	char		 dpath[MAXPATHLEN + 1];
+	char		 dpath[MAXPATHLEN];
 	const char	*basedir;
 	const char	*ext;
 	char		*mtree;

@@ -64,7 +64,7 @@ exec_add(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct sbuf *failedpkgs = NULL;
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	char *file;
 	int retcode;
 	int ch;
