@@ -141,7 +141,7 @@ int
 exec_shlib(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
-	char		 libname[MAXPATHLEN + 1];
+	char		 libname[MAXPATHLEN];
 	int		 retcode = EPKG_OK;
 	int		 ch;
 	bool		 provides_only = false;

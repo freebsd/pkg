@@ -783,7 +783,7 @@ static int
 pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 {
 	int		  ret;
-	char		  remotepath[MAXPATHLEN + 1];
+	char		  remotepath[MAXPATHLEN];
 	struct pkg_repo	 *r = NULL;
 	int		  repocount = 0;
 
@@ -898,7 +898,7 @@ file_mode_insecure(const char *path, bool install_as_user)
 static int
 database_access(unsigned mode, const char* dbdir, const char *dbname)
 {
-	char		 dbpath[MAXPATHLEN + 1];
+	char		 dbpath[MAXPATHLEN];
 	int		 retval;
 	bool		 database_exists;
 	bool		 install_as_user;
@@ -1034,7 +1034,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	struct pkgdb	*db = NULL;
 	struct statfs	 stfs;
 	bool		 reopen = false;
-	char		 localpath[MAXPATHLEN + 1];
+	char		 localpath[MAXPATHLEN];
 	const char	*dbdir = NULL;
 	bool		 create = false;
 	bool		 createdir = false;
@@ -3952,7 +3952,7 @@ pkgdb_cmd(int argc, char **argv)
 void
 pkgshell_open(const char **reponame)
 {
-	char		 localpath[MAXPATHLEN + 1];
+	char		 localpath[MAXPATHLEN];
 	const char	*dbdir;
 
 	sqlite3_auto_extension((void(*)(void))sqlcmd_init);

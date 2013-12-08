@@ -100,7 +100,7 @@ sbuf_free(struct sbuf *buf)
 int
 mkdirs(const char *_path)
 {
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	char *p;
 
 	strlcpy(path, _path, sizeof(path));
@@ -183,7 +183,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
     const char *plist_file, char *line)
 {
 	struct sbuf *buf = sbuf_new_auto();
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	char *cp;
 
 	while (in[0] != '\0') {

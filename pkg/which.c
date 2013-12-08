@@ -49,7 +49,7 @@ exec_which(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
-	char pathabs[MAXPATHLEN + 1];
+	char pathabs[MAXPATHLEN];
 	int ret = EPKG_OK, retcode = EX_SOFTWARE;
 	int ch;
 	bool orig = false;
