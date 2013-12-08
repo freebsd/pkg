@@ -1048,7 +1048,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg_queue = NULL;
 	struct pkg_manifest_key *keys = NULL;
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	const char *cachedir = NULL;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
@@ -1287,7 +1287,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct statfs fs;
 	struct stat st;
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	int64_t dlsize = 0;
 	const char *cachedir = NULL;
 	const char *repopath = NULL;

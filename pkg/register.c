@@ -88,7 +88,7 @@ exec_register(int argc, char **argv)
 	char		*arch = NULL;
 	char		 myarch[BUFSIZ];
 	char		*www  = NULL;
-	char		 fpath[MAXPATHLEN + 1];
+	char		 fpath[MAXPATHLEN];
 
 	const char	*plist      = NULL;
 	const char	*mdir       = NULL;

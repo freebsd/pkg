@@ -832,7 +832,7 @@ exec_audit(int argc, char **argv)
 	const char *db_dir;
 	char *name;
 	char *version;
-	char audit_file[MAXPATHLEN + 1];
+	char audit_file[MAXPATHLEN];
 	unsigned int vuln = 0;
 	bool fetch = false;
 	bool xml = true;

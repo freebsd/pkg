@@ -45,7 +45,7 @@ int
 pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 {
 	struct pkg_file *file = NULL;
-	char rc_d_path[PATH_MAX + 1];
+	char rc_d_path[PATH_MAX];
 	const char *rcfile;
 	const char *rc;
 	size_t len = 0;

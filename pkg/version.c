@@ -144,7 +144,7 @@ exec_version(int argc, char **argv)
 	unsigned int opt = 0;
 	int ch;
 	FILE *indexfile;
-	char indexpath[MAXPATHLEN + 1];
+	char indexpath[MAXPATHLEN];
 	struct index_entry *indexhead = NULL;
 	struct utsname u;
 	int rel_major_ver;
