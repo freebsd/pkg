@@ -697,6 +697,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *key;
 
+	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
 		if (key == NULL)
@@ -809,7 +810,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 }
 
 static void
-walk_repo_obj(ucl_object_t *obj)
+walk_repo_obj(ucl_object_t *obj, const char *file)
 {
 	ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
@@ -820,10 +821,15 @@ walk_repo_obj(ucl_object_t *obj)
 		key = ucl_object_key(cur);
 		if (key == NULL)
 			continue;
+		pkg_debug(1, "PkgConfig: parsing key '%s'", key);
 		r = pkg_repo_find_ident(key);
 		if (r != NULL)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
-		add_repo(cur, r, key);
+		if (cur->type == UCL_OBJECT)
+			add_repo(cur, r, key);
+		else
+			pkg_emit_error("Ignoring bad configuration entry in %s: %s",
+			    file, ucl_object_emit(cur, UCL_EMIT_YAML));
 	}
 }
 
@@ -831,14 +837,15 @@ static void
 load_repo_file(const char *repofile)
 {
 	struct ucl_parser *p;
-	ucl_object_t *obj = NULL, *cur;
-	ucl_object_iter_t it = NULL;
+	ucl_object_t *obj = NULL;
 	bool fallback = false;
 
 	p = ucl_parser_new(0);
 
+	pkg_debug(1, "PKgConfig: loading %s", repofile);
 	if (!ucl_parser_add_file(p, repofile)) {
-		printf("%s\n", ucl_parser_get_error(p));
+		pkg_emit_error("Error parsing: %s: %s", repofile,
+		    ucl_parser_get_error(p));
 		if (errno == ENOENT) {
 			ucl_parser_free(p);
 			return;
@@ -846,25 +853,7 @@ load_repo_file(const char *repofile)
 		fallback = true;
 	}
 
-	if (!fallback) {
-		obj = ucl_parser_get_object(p);
-		if (obj->type == UCL_OBJECT) {
-			while ((cur = ucl_iterate_object(obj, &it, true))) {
-				if (cur->type != UCL_OBJECT)
-					fallback = true;
-				if (fallback)
-					break;
-			}
-		} else {
-			fallback = true;
-		}
-	}
-
 	if (fallback) {
-		if (obj != NULL) {
-			ucl_object_free(obj);
-			ucl_parser_free(p);
-		}
 		obj = yaml_to_ucl(repofile, NULL, 0);
 		if (obj == NULL)
 			return;
@@ -881,8 +870,10 @@ load_repo_file(const char *repofile)
 		    repofile);
 	}
 
+	obj = ucl_parser_get_object(p);
+
 	if (obj->type == UCL_OBJECT)
-		walk_repo_obj(obj);
+		walk_repo_obj(obj, repofile);
 
 	ucl_object_free(obj);
 }
@@ -905,7 +896,10 @@ load_repo_files(const char *repodir)
 			continue;
 		p = &ent->d_name[n - 5];
 		if (strcmp(p, ".conf") == 0) {
-			snprintf(path, sizeof(path), "%s/%s", repodir, ent->d_name);
+			snprintf(path, sizeof(path), "%s%s%s",
+			    repodir,
+			    repodir[strlen(repodir) - 1] == '/' ? "" : "/",
+			    ent->d_name);
 			load_repo_file(path);
 		}
 	}
