@@ -210,6 +210,7 @@ fetch_and_extract(const char *src, const char *dest, bool xml)
 #if ARCHIVE_VERSION_NUMBER < 3000002
 		archive_read_finish(a);
 #else
+		archive_read_close(a);
 		archive_read_free(a);
 #endif
 	if (fd >= 0)

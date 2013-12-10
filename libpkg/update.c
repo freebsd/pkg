@@ -406,8 +406,10 @@ cleanup:
 	if (rc != EPKG_OK && dest != NULL)
 		unlink(dest);
 
-	if (a != NULL)
+	if (a != NULL) {
+		archive_read_close(a);
 		archive_read_free(a);
+	}
 
 	return rc;
 }
