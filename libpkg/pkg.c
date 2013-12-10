@@ -1155,7 +1155,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	struct sbuf	**sbuf;
 	int		  i, r;
 	bool		  read_from_stdin = 0;
-	struct stat	  sb;
 
 	struct {
 		const char *name;
@@ -1195,11 +1194,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		pkg_reset(*pkg_p, PKG_FILE);
 
 	pkg = *pkg_p;
-
-	if (S_ISREG(sb.st_mode) && !read_from_stdin) 
-		pkg->type = PKG_FILE;
-	else
-		pkg->type = PKG_STREAM;
 
 	while ((ret = archive_read_next_header(*a, ae)) == ARCHIVE_OK) {
 		fpath = archive_entry_pathname(*ae);
