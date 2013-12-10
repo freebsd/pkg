@@ -1134,6 +1134,7 @@ pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, in
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
 
+	archive_read_close(a);
 	archive_read_free(a);
 
 	return (EPKG_OK);
@@ -1152,7 +1153,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	size_t		  size;
 	off_t		  offset = 0;
 	struct sbuf	**sbuf;
-	int		  i, r, fd = -1;
+	int		  i, r;
 	bool		  read_from_stdin = 0;
 	struct stat	  sb;
 
@@ -1178,43 +1179,10 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 	read_from_stdin = (strncmp(path, "-", 2) == 0);
 
-	if (read_from_stdin) {
-		fd = STDIN_FILENO;
-	} else {
-		fd = open(path, O_RDONLY);
-		if (fd == -1) {
-			pkg_emit_error("open(%s) failed: %s", path,
-				       strerror(errno));
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-	}
-
-	if (fstat(fd, &sb) == -1) {
-		pkg_emit_error("fstat() %s: %s", path, strerror(errno));
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	/* Is this a file type we can't read a package from?  S_ISLNK
-	   shouldn't happen -- we should be resolving sym-links during
-	   the call to open() -- so assume S_ISLNK means something
-	   went wrong. S_ISBLK shouldn't happen on modern FreeBSD, so
-	   we'll ignore it.  S_ISCHR would result from opening
-	   /dev/stdin or /dev/fd/0 which should be fine.  Ditto
-	   S_ISFIFO.  Not sure about S_ISSOCK or S_ISWHT (?) */
-
-	if (S_ISDIR(sb.st_mode) || S_ISLNK(sb.st_mode)) {
-		pkg_emit_error("can't read %s -- is a directory or broken link",
-			       path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	ret = archive_read_open_fd(*a, fd, 4096);
-	if (ret != ARCHIVE_OK) {
-		pkg_emit_error("archive_read_open_fd() %s: %s", path,
-			       archive_error_string(*a));
+	if (archive_read_open_filename(*a,
+	    read_from_stdin ? NULL : path, 4096) != ARCHIVE_OK) {
+		pkg_emit_error("archive_read_open_filename(%s): %s", path,
+		    archive_error_string(*a));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1306,11 +1274,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		retcode = EPKG_FATAL;
 	}
 
-	if (ret == ARCHIVE_EOF) {
-		if (!read_from_stdin) 
-			close(fd);
+	if (ret == ARCHIVE_EOF)
 		retcode = EPKG_END;
-	}
 
 	if (!manifest) {
 		retcode = EPKG_FATAL;
@@ -1319,12 +1284,12 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 	cleanup:
 	if (retcode != EPKG_OK && retcode != EPKG_END) {
-		if (*a != NULL)
+		if (*a != NULL) {
+			archive_read_close(*a);
 			archive_read_free(*a);
+		}
 		*a = NULL;
 		*ae = NULL;
-		if (!read_from_stdin && fd >= 0) 
-			close(fd);
 	}
 
 	return (retcode);

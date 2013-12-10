@@ -349,8 +349,10 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 		pkg_emit_install_finished(pkg);
 
 	cleanup:
-	if (a != NULL)
+	if (a != NULL) {
+		archive_read_close(a);
 		archive_read_free(a);
+	}
 
 	pkg_free(pkg);
 
