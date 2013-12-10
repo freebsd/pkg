@@ -47,8 +47,6 @@
 #define PKG_NUM_SCRIPTS 9
 
 #if ARCHIVE_VERSION_NUMBER < 3000002
-#define archive_read_free(a) archive_read_finish(a)
-#define archive_write_free(a) archive_write_finish(a)
 #define archive_write_add_filter_xz(a) archive_write_set_compression_xz(a)
 #define archive_write_add_filter_bzip2(a) archive_write_set_compression_bzip2(a)
 #define archive_write_add_filter_gzip(a) archive_write_set_compression_gzip(a)
