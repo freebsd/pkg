@@ -55,7 +55,6 @@ sbuf_json_escape(struct sbuf *buf, const char *str)
 static void
 pipeevent(struct pkg_event *ev)
 {
-	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
 	struct sbuf *msg, *buf;
 	const char *message;
@@ -225,7 +224,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_required.pkg,
 		    ev->e_required.pkg,
 		    ev->e_required.force == 1 ? "true": "false");
-		while (pkg_rdeps(pkg, &dep) == EPKG_OK)
+		while (pkg_rdeps(ev->e_required.pkg, &dep) == EPKG_OK)
 			sbuf_printf(msg, "{ \"pkgname\": \"%s\", "
 			    "\"pkgversion\": \"%s\" }, ",
 			    pkg_dep_name(dep),
