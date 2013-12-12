@@ -206,9 +206,10 @@ fetch_and_extract(const char *src, const char *dest, bool xml)
 
 	cleanup:
 	unlink(tmp);
-	if (a != NULL)
+	if (a != NULL) {
 		archive_read_close(a);
 		archive_read_free(a);
+	}
 	if (fd >= 0)
 		close(fd);
 
