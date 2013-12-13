@@ -41,7 +41,7 @@ static char *
 sbuf_json_escape(struct sbuf *buf, const char *str)
 {
 	sbuf_clear(buf);
-	while (*str != '\0') {
+	while (str != NULL && *str != '\0') {
 		if (*str == '"' || *str == '\\')
 			sbuf_putc(buf, '\\');
 		sbuf_putc(buf, *str);
