@@ -293,7 +293,7 @@ static bool parsed = false;
 static size_t c_size = sizeof(c) / sizeof(struct config_entry);
 
 static void		 pkg_config_kv_free(struct pkg_config_kv *);
-static void pkg_config_free(struct pkg_config *conf);
+static void		 pkg_config_value_free(struct pkg_config_value *);
 static struct pkg_repo	*pkg_repo_new(const char *name, const char *url);
 
 static void
@@ -440,7 +440,7 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 					continue;
 				}
 				if (!conf->fromenv) {
-					pkg_config_free(conf);
+					HASH_FREE(conf->list, pkg_config_value, pkg_config_value_free);
 					conf->list = NULL;
 					obj_walk_array(cur, conf);
 				}
@@ -452,7 +452,7 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 					continue;
 				}
 				if (!conf->fromenv) {
-					pkg_config_free(conf);
+					HASH_FREE(conf->kvlist, pkg_config_kv, pkg_config_kv_free);
 					conf->kvlist = NULL;
 					obj_walk_object(cur, conf);
 				}
