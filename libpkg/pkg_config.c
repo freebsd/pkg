@@ -1186,6 +1186,9 @@ pkg_config_kv_free(struct pkg_config_kv *k)
 static void
 pkg_config_value_free(struct pkg_config_value *v)
 {
+	if (v == NULL)
+		return;
+
 	free(v->value);
 	free(v);
 }
