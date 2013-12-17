@@ -488,35 +488,6 @@ subst_packagesite_str(const char *oldstr)
 	return res;
 }
 
-/**
- * @brief Substitute PACKAGESITE variables
- */
-static void
-subst_packagesite(void)
-{
-	const char *oldval;
-	char *newval;
-
-	struct pkg_config *conf;
-	pkg_config_key k = PKG_CONFIG_REPO;
-
-	HASH_FIND_INT(config, &k, conf);
-
-	if (conf == NULL)
-		return;
-
-	oldval = conf->string;
-
-	if (oldval == NULL || strstr(oldval, ABI_VAR_STRING) == NULL)
-		return;
-
-	newval = subst_packagesite_str(oldval);
-	if (newval != NULL) {
-		free(conf->string);
-		conf->string = newval;
-	}
-}
-
 int
 pkg_initialized(void)
 {
@@ -779,11 +750,6 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	if (r == NULL)
 		r = pkg_repo_new(rname, url);
 
-	if (r == NULL && url != NULL) {
-		free(r->url);
-		r->url = subst_packagesite_str(url);
-	}
-
 	if (signature_type != NULL) {
 		if (strcasecmp(signature_type, "pubkey") == 0)
 			r->signature_type = SIG_PUBKEY;
@@ -846,8 +812,12 @@ load_repo_file(const char *repofile)
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
 	bool fallback = false;
+	const char *myarch;
 
 	p = ucl_parser_new(0);
+
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+	ucl_parser_register_variable (p, "ABI", myarch);
 
 	pkg_debug(1, "PKgConfig: loading %s", repofile);
 	if (!ucl_parser_add_file(p, repofile)) {
@@ -986,7 +956,8 @@ pkg_init(const char *path, const char *reposdir)
 		switch (c[i].type) {
 		case PKG_CONFIG_STRING:
 			if (val != NULL) {
-				conf->string = strdup(val);
+				if (strcmp(c[i].key, "PACKAGESITE") == 0)
+					conf->string = subst_packagesite_str(val);
 				conf->fromenv = true;
 			}
 			else if (c[i].def != NULL)
@@ -1162,8 +1133,6 @@ parsed:
 	ucl_parser_free(p);
 
 	pkg_debug(1, "%s", "pkg initialized");
-
-	subst_packagesite();
 
 	/* Start the event pipe */
 	pkg_config_string(PKG_CONFIG_EVENT_PIPE, &evpipe);
