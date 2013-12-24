@@ -732,7 +732,7 @@ apply_repo_change(struct pkgdb *db, const char *database,
 
 	/* begin transaction */
 	if (ret == EPKG_OK)
-		ret = pkgdb_transaction_begin(db->sqlite, NULL);
+		ret = pkgdb_transaction_begin(db->sqlite, "SCHEMA");
 
 	/* apply change */
 	if (ret == EPKG_OK) {
@@ -752,9 +752,9 @@ apply_repo_change(struct pkgdb *db, const char *database,
 
 	/* commit or rollback */
 	if (ret == EPKG_OK)
-		ret = pkgdb_transaction_commit(db->sqlite, NULL);
+		ret = pkgdb_transaction_commit(db->sqlite, "SCHEMA");
 	else
-		pkgdb_transaction_rollback(db->sqlite, NULL);
+		pkgdb_transaction_rollback(db->sqlite, "SCHEMA");
 
 	if (ret == EPKG_OK) {
 		pkg_emit_notice("Repo \"%s\" %s schema %d to %d: %s",
