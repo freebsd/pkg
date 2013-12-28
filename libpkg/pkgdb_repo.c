@@ -373,10 +373,6 @@ pkgdb_repo_init(sqlite3 *sqlite)
 	if (retcode != EPKG_OK)
 		return (retcode);
 
-	retcode = sql_exec(sqlite, "PRAGMA journal_mode=memory");
-	if (retcode != EPKG_OK)
-		return (retcode);
-
 	retcode = sql_exec(sqlite, "PRAGMA foreign_keys=on");
 	if (retcode != EPKG_OK)
 		return (retcode);
