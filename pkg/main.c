@@ -50,7 +50,7 @@
 
 #include "pkgcli.h"
 
-static void usage(const char *, const char *);
+static void usage(const char *, const char *, FILE *);
 static void usage_help(void);
 static int exec_help(int, char **);
 bool quiet = false;
@@ -124,32 +124,32 @@ show_command_names(void)
 }
 
 static void
-usage(const char *conffile, const char *reposdir)
+usage(const char *conffile, const char *reposdir, FILE *out)
 {
 	struct plugcmd *c;
 	bool plugins_enabled = false;
 	unsigned int i;
 
 #ifndef NO_LIBJAIL
- 	fprintf(stderr, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
+ 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
 #else
-	fprintf(stderr, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
+	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
 #endif
-	fprintf(stderr, "Global options supported:\n");
-	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
+	fprintf(out, "Global options supported:\n");
+	fprintf(out, "\t%-15s%s\n", "-d", "Increment debug level");
 #ifndef NO_LIBJAIL
-	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
+	fprintf(out, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
 #endif
-	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
-	fprintf(stderr, "\t%-15s%s\n", "-C", "Use the specified configuration file");
-	fprintf(stderr, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
-	fprintf(stderr, "\t%-15s%s\n", "-l", "List available commands and exit");
-	fprintf(stderr, "\t%-15s%s\n", "-v", "Display pkg(8) version");
-	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
-	fprintf(stderr, "Commands supported:\n");
+	fprintf(out, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
+	fprintf(out, "\t%-15s%s\n", "-C", "Use the specified configuration file");
+	fprintf(out, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
+	fprintf(out, "\t%-15s%s\n", "-l", "List available commands and exit");
+	fprintf(out, "\t%-15s%s\n", "-v", "Display pkg(8) version");
+	fprintf(out, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
+	fprintf(out, "Commands supported:\n");
 
 	for (i = 0; i < cmd_len; i++)
-		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
+		fprintf(out, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
 
 	if (!pkg_initialized() && pkg_init(conffile, reposdir) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
@@ -160,13 +160,13 @@ usage(const char *conffile, const char *reposdir)
 		if (pkg_plugins_init() != EPKG_OK)
 			errx(EX_SOFTWARE, "Plugins cannot be loaded");
 
-		printf("\nCommands provided by plugins:\n");
+		fprintf(out, "\nCommands provided by plugins:\n");
 
 		STAILQ_FOREACH(c, &plugins, next)
-			fprintf(stderr, "\t%-15s%s\n", c->name, c->desc);
+			fprintf(out, "\t%-15s%s\n", c->name, c->desc);
 	}
 
-	fprintf(stderr, "\nFor more information on the different commands"
+	fprintf(out, "\nFor more information on the different commands"
 			" see 'pkg help <command>'.\n");
 
 	exit(EX_USAGE);
@@ -175,7 +175,7 @@ usage(const char *conffile, const char *reposdir)
 static void
 usage_help(void)
 {
-	usage(NULL, NULL);
+	usage(NULL, NULL, stdout);
 }
 
 static int
@@ -554,7 +554,7 @@ main(int argc, char **argv)
 	cmdargv = argv;
 
 	if (argc < 2)
-		usage(NULL, NULL);
+		usage(NULL, NULL, stderr);
 
 #ifndef NO_LIBJAIL
 	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvq")) != -1) {
@@ -604,7 +604,7 @@ main(int argc, char **argv)
 	}
 
 	if (argc == 0 && version == 0 && !activation_test)
-		usage(conffile, reposdir);
+		usage(conffile, reposdir, stderr);
 
 	umask(022);
 	pkg_event_register(&event_callback, &debug);
@@ -615,7 +615,7 @@ main(int argc, char **argv)
 
 	if (jail_str != NULL && chroot_path != NULL) {
 		fprintf(stderr, "-j and -c cannot be used at the same time!\n");
-		usage(conffile, reposdir);
+		usage(conffile, reposdir, stderr);
 	}
 
 	if (chroot_path != NULL)
@@ -744,7 +744,7 @@ main(int argc, char **argv)
 		}
 
 		if (!plugin_found)
-			usage(conffile, reposdir);
+			usage(conffile, reposdir, stderr);
 
 		return (ret);
 	}
