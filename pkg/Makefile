@@ -99,11 +99,6 @@ CFLAGS+=	-DNO_LIBJAIL
 LDADD+=		-ljail
 .endif
 
-.if exists(/usr/include/edit/readline/readline.h)
-LDADD_STATIC+=	-ledit \
-		-lncursesw
-.endif
-
 DPADD_STATIC=	${.OBJDIR}/../libpkg/libpkg.a
 
 WARNS?=		6
