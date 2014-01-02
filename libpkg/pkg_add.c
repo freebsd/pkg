@@ -270,8 +270,10 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 					goto cleanup;
 				}
 			} else {
-				pkg_emit_error("Missing dependency matching '%s'",
-				    pkg_dep_get(dep, PKG_DEP_ORIGIN));
+				pkg_emit_error("Missing dependency matching "
+				    "Origin: '%s' Version: '%s'",
+				    pkg_dep_get(dep, PKG_DEP_ORIGIN),
+				    pkg_dep_get(dep, PKG_DEP_VERSION));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
