@@ -32,7 +32,7 @@
 
 struct pkg_result {
 	struct pkg *pkg;
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	char cksum[SHA256_DIGEST_LENGTH * 2 + 1];
 	off_t size;
 	int retcode; /* to pass errors */

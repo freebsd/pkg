@@ -2,13 +2,10 @@ LIB=	yaml
 INTERNALLIB=
 .PATH: ${.CURDIR}/src
 SRCS=	api.c      \
-	dumper.c   \
-	emitter.c  \
 	loader.c   \
 	parser.c   \
 	reader.c   \
-	scanner.c  \
-	writer.c
+	scanner.c
 
 CFLAGS+=	-fPIC \
 		-I${.CURDIR}/include \

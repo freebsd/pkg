@@ -1,7 +1,6 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
- * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -36,7 +35,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <paths.h>
+#include <yaml.h>
+#include <ucl.h>
+#include <uthash.h>
+#include <utlist.h>
+#include <ctype.h>
+#include <fnmatch.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -105,7 +109,7 @@ sbuf_size(struct sbuf *buf)
 int
 mkdirs(const char *_path)
 {
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	char *p;
 
 	strlcpy(path, _path, sizeof(path));
@@ -188,7 +192,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
     const char *plist_file, char *line)
 {
 	struct sbuf *buf = sbuf_new_auto();
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	char *cp;
 
 	while (in[0] != '\0') {
@@ -360,6 +364,25 @@ sha256_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	return (ret);
 }
 
+void
+sha256_buf(char *buf, size_t len, char out[SHA256_DIGEST_LENGTH * 2 + 1])
+{
+	unsigned char hash[SHA256_DIGEST_LENGTH];
+	sha256_buf_bin(buf, len, hash);
+	out[0] = '\0';
+	sha256_hash(hash, out);
+}
+
+void
+sha256_buf_bin(char *buf, size_t len, char hash[SHA256_DIGEST_LENGTH])
+{
+	SHA256_CTX sha256;
+
+	SHA256_Init(&sha256);
+	SHA256_Update(&sha256, buf, len);
+	SHA256_Final(hash, &sha256);
+}
+
 int
 sha256_fd(int fd, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 {
@@ -448,65 +471,165 @@ is_hardlink(struct hardlinks *hl, struct stat *st)
 	return (true);
 }
 
-/* Spawn a process from pfunc, returning it's pid. The fds array passed will
- * be filled with two descriptors: fds[0] will read from the child process,
- * and fds[1] will write to it.
- * Similarly, the child process will receive a reading/writing fd set (in
- * that same order) as arguments.
-*/
-extern char **environ;
-pid_t
-process_spawn_pipe(FILE *inout[2], const char *command)
+bool
+is_valid_abi(const char *arch, bool emit_error) {
+	const char *myarch;
+
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+
+	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
+	    strncmp(arch, myarch, strlen(myarch)) != 0) {
+		if (emit_error)
+			pkg_emit_error("wrong architecture: %s instead of %s",
+			    arch, myarch);
+		return (false);
+	}
+
+	return (true);
+}
+
+static ucl_object_t *yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node);
+
+static ucl_object_t *
+yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
 {
-	pid_t pid;
-	int pipes[4];
-	char *argv[4];
+	yaml_node_item_t *item;
+	yaml_node_t *val;
+	ucl_object_t *sub = NULL;
 
-	/* Parent read/child write pipe */
-	if (pipe(&pipes[0]) == -1)
-		return (-1);
-
-	/* Child read/parent write pipe */
-	if (pipe(&pipes[2]) == -1) {
-		close(pipes[0]);
-		close(pipes[1]);
-		return (-1);
+	item = node->data.sequence.items.start;
+	while (item < node->data.sequence.items.top) {
+		val = yaml_document_get_node(doc, *item);
+		switch (val->type) {
+		case YAML_MAPPING_NODE:
+			sub = yaml_mapping_to_object(NULL, doc, val);
+			break;
+		case YAML_SEQUENCE_NODE:
+			sub = yaml_sequence_to_object(NULL, doc, val);
+			break;
+		case YAML_SCALAR_NODE:
+			sub = ucl_object_fromstring_common (val->data.scalar.value,
+			    val->data.scalar.length, UCL_STRING_TRIM|UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_INT);
+			break;
+		case YAML_NO_NODE:
+			/* Should not happen */
+			break;
+		}
+		obj = ucl_array_append(obj, sub);
+		++item;
 	}
 
-	argv[0] = __DECONST(char *, "sh");
-	argv[1] = __DECONST(char *, "-c");
-	argv[2] = __DECONST(char *, command);
-	argv[3] = NULL;
+	return (obj);
+}
 
-	pid = fork();
-	if (pid > 0) {
-		/* Parent process */
-		inout[0] = fdopen(pipes[0], "r");
-		inout[1] = fdopen(pipes[3], "w");
+static ucl_object_t *
+yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *node)
+{
+	yaml_node_pair_t *pair;
+	yaml_node_t *key, *val;
 
-		close(pipes[1]);
-		close(pipes[2]);
+	ucl_object_t *sub = NULL;
 
-		return (pid);
+	pair = node->data.mapping.pairs.start;
+	while (pair < node->data.mapping.pairs.top) {
+		key = yaml_document_get_node(doc, pair->key);
+		val = yaml_document_get_node(doc, pair->value);
 
-	} else if (pid == 0) {
-		close(pipes[0]);
-		close(pipes[3]);
-
-		if (pipes[1] != STDOUT_FILENO) {
-			dup2(pipes[1], STDOUT_FILENO);
-			close(pipes[1]);
+		switch (val->type) {
+		case YAML_MAPPING_NODE:
+			sub = yaml_mapping_to_object(NULL, doc, val);
+			break;
+		case YAML_SEQUENCE_NODE:
+			sub = yaml_sequence_to_object(NULL, doc, val);
+			break;
+		case YAML_SCALAR_NODE:
+			sub = ucl_object_fromstring_common (val->data.scalar.value,
+			    val->data.scalar.length,
+			    UCL_STRING_TRIM|UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_INT);
+			break;
+		case YAML_NO_NODE:
+			/* Should not happen */
+			break;
 		}
-		if (pipes[2] != STDIN_FILENO) {
-			dup2(pipes[2], STDIN_FILENO);
-			close(pipes[2]);
-		}
-		closefrom(STDERR_FILENO + 1);
-
-		execve(_PATH_BSHELL, argv, environ);
-
-		exit(127);
+		if (sub != NULL)
+			obj = ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length, true);
+		++pair;
 	}
 
-	return (-1); /* ? */
+	return (obj);
+}
+
+ucl_object_t *
+yaml_to_ucl(const char *file, const char *buffer, size_t len) {
+	yaml_parser_t parser;
+	yaml_document_t doc;
+	yaml_node_t *node;
+	ucl_object_t *obj = NULL;
+	FILE *fp = NULL;
+
+	memset(&parser, 0, sizeof(parser));
+
+	yaml_parser_initialize(&parser);
+
+	if (file != NULL) {
+		fp = fopen(file, "r");
+		if (fp == NULL) {
+			pkg_emit_errno("fopen", file);
+			return (NULL);
+		}
+		yaml_parser_set_input_file(&parser, fp);
+	} else {
+		yaml_parser_set_input_string(&parser, buffer, len);
+	}
+
+	yaml_parser_load(&parser, &doc);
+
+	node = yaml_document_get_root_node(&doc);
+	if (node != NULL) {
+		switch (node->type) {
+		case YAML_MAPPING_NODE:
+			obj = yaml_mapping_to_object(NULL, &doc, node);
+			break;
+		case YAML_SEQUENCE_NODE:
+			obj = yaml_sequence_to_object(NULL, &doc, node);
+			break;
+		case YAML_SCALAR_NODE:
+		case YAML_NO_NODE:
+			break;
+		}
+	}
+
+	yaml_document_delete(&doc);
+	yaml_parser_delete(&parser);
+
+	if (file != NULL)
+		fclose(fp);
+
+	return (obj);
+}
+
+void
+set_nonblocking(int fd)
+{
+	int flags;
+
+	if ((flags = fcntl(fd, F_GETFL)) == -1)
+		return;
+	if (!(flags & O_NONBLOCK)) {
+		flags |= O_NONBLOCK;
+		fcntl(fd, F_SETFL, flags);
+	}
+}
+
+void
+set_blocking(int fd)
+{
+	int flags;
+
+	if ((flags = fcntl(fd, F_GETFL)) == -1)
+		return;
+	if (flags & O_NONBLOCK) {
+		flags &= ~O_NONBLOCK;
+		fcntl(fd, F_SETFL, flags);
+	}
 }

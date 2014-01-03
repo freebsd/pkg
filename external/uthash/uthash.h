@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2003-2013, Troy D. Hanson     http://uthash.sourceforge.net
+Copyright (c) 2003-2013, Troy D. Hanson     http://troydhanson.github.com/uthash/
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -135,6 +135,7 @@ do {                                                                            
 #define HASH_BLOOM_FREE(tbl) 
 #define HASH_BLOOM_ADD(tbl,hashv) 
 #define HASH_BLOOM_TEST(tbl,hashv) (1)
+#define HASH_BLOOM_BYTELEN 0
 #endif
 
 #define HASH_MAKE_TABLE(hh,head)                                                 \
@@ -173,7 +174,7 @@ do {                                                                            
 do {                                                                             \
  unsigned _ha_bkt;                                                               \
  (add)->hh.next = NULL;                                                          \
- (add)->hh.key = (char*)keyptr;                                                  \
+ (add)->hh.key = (const char*)keyptr;                                                  \
  (add)->hh.keylen = (unsigned)keylen_in;                                                   \
  if (!(head)) {                                                                  \
     head = (add);                                                                \
@@ -415,7 +416,7 @@ do {                                                                            
 #define HASH_JEN(key,keylen,num_bkts,hashv,bkt)                                  \
 do {                                                                             \
   unsigned _hj_i,_hj_j,_hj_k;                                                    \
-  unsigned char *_hj_key=(unsigned char*)(key);                                  \
+  unsigned const char *_hj_key=(unsigned const char*)(key);                                  \
   hashv = 0xfeedbeef;                                                            \
   _hj_i = _hj_j = 0x9e3779b9;                                                    \
   _hj_k = (unsigned)keylen;                                                      \
@@ -466,7 +467,7 @@ do {                                                                            
 #endif
 #define HASH_SFH(key,keylen,num_bkts,hashv,bkt)                                  \
 do {                                                                             \
-  unsigned char *_sfh_key=(unsigned char*)(key);                                 \
+  unsigned const char *_sfh_key=(unsigned const char*)(key);                                 \
   uint32_t _sfh_tmp, _sfh_len = keylen;                                          \
                                                                                  \
   int _sfh_rem = _sfh_len & 3;                                                   \
@@ -581,6 +582,7 @@ do {                                                                   \
     _mur_k1 = MUR_ROTL32(_mur_k1,15);                                  \
     _mur_k1 *= _mur_c2;                                                \
     _mur_h1 ^= _mur_k1;                                                \
+    case 0: break;	                                                   \
   }                                                                    \
   _mur_h1 ^= (keylen);                                                 \
   MUR_FMIX(_mur_h1);                                                   \
@@ -750,18 +752,22 @@ do {                                                                            
                       _hs_qsize--;                                               \
                   } else if ( (_hs_qsize == 0) || !(_hs_q) ) {                   \
                       _hs_e = _hs_p;                                             \
-                      _hs_p = (UT_hash_handle*)((_hs_p->next) ?                  \
-                              ((void*)((char*)(_hs_p->next) +                    \
-                              (head)->hh.tbl->hho)) : NULL);                     \
+                      if (_hs_p){                                                \
+                        _hs_p = (UT_hash_handle*)((_hs_p->next) ?                \
+                                ((void*)((char*)(_hs_p->next) +                  \
+                                (head)->hh.tbl->hho)) : NULL);                   \
+                       }                                                         \
                       _hs_psize--;                                               \
                   } else if ((                                                   \
                       cmpfcn(DECLTYPE(head)(ELMT_FROM_HH((head)->hh.tbl,_hs_p)), \
                              DECLTYPE(head)(ELMT_FROM_HH((head)->hh.tbl,_hs_q))) \
                              ) <= 0) {                                           \
                       _hs_e = _hs_p;                                             \
-                      _hs_p = (UT_hash_handle*)((_hs_p->next) ?                  \
-                              ((void*)((char*)(_hs_p->next) +                    \
-                              (head)->hh.tbl->hho)) : NULL);                     \
+                      if (_hs_p){                                                \
+                        _hs_p = (UT_hash_handle*)((_hs_p->next) ?                \
+                               ((void*)((char*)(_hs_p->next) +                   \
+                               (head)->hh.tbl->hho)) : NULL);                    \
+                       }                                                         \
                       _hs_psize--;                                               \
                   } else {                                                       \
                       _hs_e = _hs_q;                                             \
@@ -776,13 +782,17 @@ do {                                                                            
                   } else {                                                       \
                       _hs_list = _hs_e;                                          \
                   }                                                              \
+                  if (_hs_e) {                                                   \
                   _hs_e->prev = ((_hs_tail) ?                                    \
                      ELMT_FROM_HH((head)->hh.tbl,_hs_tail) : NULL);              \
+                  }                                                              \
                   _hs_tail = _hs_e;                                              \
               }                                                                  \
               _hs_p = _hs_q;                                                     \
           }                                                                      \
-          _hs_tail->next = NULL;                                                 \
+          if (_hs_tail){                                                         \
+            _hs_tail->next = NULL;                                               \
+          }                                                                      \
           if ( _hs_nmerges <= 1 ) {                                              \
               _hs_looping=0;                                                     \
               (head)->hh.tbl->tail = _hs_tail;                                   \
@@ -847,6 +857,12 @@ do {                                                                            
     (head)=NULL;                                                                 \
   }                                                                              \
 } while(0)
+
+#define HASH_OVERHEAD(hh,head)                                                   \
+ (size_t)((((head)->hh.tbl->num_items   * sizeof(UT_hash_handle))   +            \
+           ((head)->hh.tbl->num_buckets * sizeof(UT_hash_bucket))   +            \
+            (sizeof(UT_hash_table))                                 +            \
+            (HASH_BLOOM_BYTELEN)))
 
 #ifdef NO_DECLTYPE
 #define HASH_ITER(hh,head,el,tmp)                                                \
@@ -925,7 +941,7 @@ typedef struct UT_hash_handle {
    void *next;                       /* next element in app order      */
    struct UT_hash_handle *hh_prev;   /* previous hh in bucket order    */
    struct UT_hash_handle *hh_next;   /* next hh in bucket order        */
-   void *key;                        /* ptr to enclosing struct's key  */
+   const void *key;                  /* ptr to enclosing struct's key  */
    unsigned keylen;                  /* enclosing struct's key len     */
    unsigned hashv;                   /* result of hash-fcn(key)        */
 } UT_hash_handle;

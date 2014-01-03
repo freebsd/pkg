@@ -2,7 +2,6 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,78 +39,6 @@ static const char repo_digests_file[] = "digests";
 static const char repo_digests_archive[] = "digests";
 static const char repo_conflicts_file[] = "conflicts";
 static const char repo_conflicts_archive[] = "conflicts";
-
-static const char initsql_legacy[] = ""
-	"CREATE TABLE packages ("
-		"id INTEGER PRIMARY KEY,"
-		"origin TEXT UNIQUE,"
-		"name TEXT NOT NULL,"
-		"version TEXT NOT NULL,"
-		"comment TEXT NOT NULL,"
-		"desc TEXT NOT NULL,"
-		"osversion TEXT,"
-		"arch TEXT NOT NULL,"
-		"maintainer TEXT NOT NULL,"
-		"www TEXT,"
-		"prefix TEXT NOT NULL,"
-		"pkgsize INTEGER NOT NULL,"
-		"flatsize INTEGER NOT NULL,"
-		"licenselogic INTEGER NOT NULL,"
-		"cksum TEXT NOT NULL,"
-		/* relative path to the package in the repository */
-		"path TEXT NOT NULL,"
-		"pkg_format_version INTEGER"
-	");"
-	"CREATE TABLE deps ("
-		"origin TEXT,"
-		"name TEXT,"
-		"version TEXT,"
-		"package_id INTEGER REFERENCES packages(id)"
-		" ON DELETE CASCADE ON UPDATE CASCADE,"
-		"UNIQUE(package_id, origin)"
-	");"
-	"CREATE TABLE categories ("
-		"id INTEGER PRIMARY KEY, "
-		"name TEXT NOT NULL UNIQUE "
-	");"
-		"CREATE TABLE pkg_categories ("
-		"package_id INTEGER REFERENCES packages(id)"
-		" ON DELETE CASCADE ON UPDATE CASCADE,"
-		"category_id INTEGER REFERENCES categories(id)"
-		" ON DELETE RESTRICT ON UPDATE RESTRICT,"
-		"UNIQUE(package_id, category_id)"
-	");"
-	"CREATE TABLE licenses ("
-		"id INTEGER PRIMARY KEY,"
-		"name TEXT NOT NULL UNIQUE"
-	");"
-	"CREATE TABLE pkg_licenses ("
-		"package_id INTEGER REFERENCES packages(id)"
-		" ON DELETE CASCADE ON UPDATE CASCADE,"
-		"license_id INTEGER REFERENCES licenses(id)"
-		" ON DELETE RESTRICT ON UPDATE RESTRICT,"
-		"UNIQUE(package_id, license_id)"
-	");"
-	"CREATE TABLE options ("
-		"package_id INTEGER REFERENCES packages(id)"
-		" ON DELETE CASCADE ON UPDATE CASCADE,"
-		"option TEXT,"
-		"value TEXT,"
-		"UNIQUE (package_id, option)"
-	");"
-	"CREATE TABLE shlibs ("
-		"id INTEGER PRIMARY KEY,"
-		"name TEXT NOT NULL UNIQUE "
-	");"
-	"CREATE TABLE pkg_shlibs ("
-		"package_id INTEGER REFERENCES packages(id)"
-		" ON DELETE CASCADE ON UPDATE CASCADE,"
-		"shlib_id INTEGER REFERENCES shlibs(id)"
-		" ON DELETE RESTRICT ON UPDATE RESTRICT,"
-		"UNIQUE(package_id, shlib_id)"
-	");"
-	"PRAGMA user_version=2001;"
-	;
 
 static const char initsql[] = ""
 	"CREATE TABLE packages ("
@@ -165,12 +92,39 @@ static const char initsql[] = ""
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, license_id)"
 	");"
-	"CREATE TABLE options ("
-	    "package_id INTEGER REFERENCES packages(id)"
-	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
-	    "option TEXT,"
-	    "value TEXT,"
-	    "UNIQUE (package_id, option)"
+	"CREATE TABLE option ("
+		"option_id INTEGER PRIMARY KEY,"
+		"option TEXT NOT NULL UNIQUE"
+	");"
+	"CREATE TABLE option_desc ("
+		"option_desc_id INTEGER PRIMARY KEY,"
+		"option_desc TEXT NOT NULL UNIQUE"
+	");"
+	"CREATE TABLE pkg_option ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"value TEXT NOT NULL,"
+		"PRIMARY KEY(package_id, option_id)"
+	");"
+	"CREATE TABLE pkg_option_desc ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"option_desc_id INTEGER NOT NULL "
+			"REFERENCES option_desc(option_desc_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"PRIMARY KEY(package_id, option_id)"
+	");"
+	"CREATE TABLE pkg_option_default ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"default_value TEXT NOT NULL,"
+		"PRIMARY KEY(package_id, option_id)"
 	");"
 	"CREATE TABLE shlibs ("
 	    "id INTEGER PRIMARY KEY,"
@@ -301,6 +255,51 @@ static const struct repo_changes repo_upgrades[] = {
 	},
 	{2005,
 	 2006,
+	 "Add capability to track option descriptions and defaults",
+	 "CREATE TABLE %Q.option ("
+		"option_id INTEGER PRIMARY KEY,"
+		"option TEXT NOT NULL UNIQUE"
+	 ");"
+	 "CREATE TABLE %Q.option_desc ("
+		"option_desc_id INTEGER PRIMARY KEY,"
+		"option_desc TEXT NOT NULL UNIQUE"
+	 ");"
+	 "CREATE TABLE %Q.pkg_option ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"value TEXT NOT NULL,"
+		"PRIMARY KEY(package_id, option_id)"
+	 ");"
+	 "CREATE TABLE %Q.pkg_option_desc ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"option_desc_id INTEGER NOT NULL "
+			"REFERENCES option_desc(option_desc_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"PRIMARY KEY(package_id, option_id)"
+	 ");"
+	 "CREATE TABLE %Q.pkg_option_default ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"default_value TEXT NOT NULL,"
+		"PRIMARY KEY(package_id, option_id)"
+	 ");"
+	 "INSERT INTO %Q.option (option) "
+		"SELECT DISTINCT option FROM %Q.options;"
+	 "INSERT INTO %Q.pkg_option(package_id, option_id, value) "
+		"SELECT package_id, option_id, value "
+		"FROM %Q.options oo JOIN %Q.option o "
+			"ON (oo.option = o.option);"
+	 "DROP TABLE %Q.options;",
+	},
+	{2006,
+	 2007,
 	 "Add conflicts and provides",
 	"CREATE TABLE %Q.pkg_conflicts ("
 	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
@@ -328,12 +327,31 @@ static const struct repo_changes repo_upgrades[] = {
 /* How to downgrade a newer repo to match what the current system
    expects */
 static const struct repo_changes repo_downgrades[] = {
-	{2006,
-	 2005,
+	{2007,
+	 2006,
 	 "Revert conflicts and provides creation",
 	 "DROP TABLE %Q.pkg_provides;"
 	 "DROP TABLE %Q.provides;"
 	 "DROP TABLE %Q.conflicts;"
+	},
+	{2006,
+	 2005,
+	 "Revert addition of extra options related data",
+	 "CREATE TABLE %Q.options ("
+		"package_id INTEGER REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option TEXT,"
+		"value TEXT,"
+		"PRIMARY KEY(package_id,option)"
+	 ");"
+	 "INSERT INTO %Q.options (package_id, option, value) "
+		 "SELECT package_id, option, value "
+		"FROM %Q.pkg_option JOIN %Q.option USING(option_id);"
+	 "DROP TABLE pkg_option;"
+	 "DROP TABLE pkg_option_default;"
+	 "DROP TABLE option;"
+	 "DROP TABLE pkg_option_desc;"
+	 "DROP TABLE option_desc;",
 	},
 	{2005,
 	 2004,

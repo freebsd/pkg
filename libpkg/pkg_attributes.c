@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -382,6 +383,8 @@ pkg_option_free(struct pkg_option *option)
 
 	sbuf_free(option->key);
 	sbuf_free(option->value);
+	sbuf_free(option->default_value);
+	sbuf_free(option->description);
 	free(option);
 }
 
@@ -399,6 +402,22 @@ pkg_option_value(struct pkg_option const * const option)
 	assert(option != NULL);
 
 	return (sbuf_get(option->value));
+}
+
+const char *
+pkg_option_default_value(struct pkg_option const * const option)
+{
+	assert(option != NULL);
+
+	return (sbuf_get(option->default_value));
+}
+
+const char *
+pkg_option_description(struct pkg_option const * const option)
+{
+	assert(option != NULL);
+
+	return (sbuf_get(option->description));
 }
 
 /*

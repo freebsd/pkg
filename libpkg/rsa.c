@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -39,7 +39,7 @@ _load_rsa_private_key(struct rsa_key *rsa)
 {
 	FILE *fp;
 
-	if ((fp = fopen(rsa->path, "r")) == 0)
+	if ((fp = fopen(rsa->path, "r")) == NULL)
 		return (EPKG_FATAL);
 
 	if ((rsa->key = RSA_new()) == NULL) {
@@ -64,7 +64,7 @@ _load_rsa_public_key(const char *rsa_key_path)
 	RSA *rsa = NULL;
 	char errbuf[1024];
 
-	if ((fp = fopen(rsa_key_path, "rb")) == 0) {
+	if ((fp = fopen(rsa_key_path, "rb")) == NULL) {
 		pkg_emit_errno("fopen", rsa_key_path);
 		return (NULL);
 	}
@@ -80,6 +80,61 @@ _load_rsa_public_key(const char *rsa_key_path)
 	return (rsa);
 }
 
+static RSA *
+_load_rsa_public_key_buf(unsigned char *cert, int certlen)
+{
+	RSA *rsa = NULL;
+	BIO *bp;
+	char errbuf[1024];
+
+	bp = BIO_new_mem_buf((void *)cert, certlen);
+	if (!PEM_read_bio_RSA_PUBKEY(bp, &rsa, NULL, NULL)) {
+		pkg_emit_error("error reading public key: %s",
+		    ERR_error_string(ERR_get_error(), errbuf));
+		BIO_free(bp);
+		return (NULL);
+	}
+	BIO_free(bp);
+	return (rsa);
+}
+
+int
+rsa_verify_cert(const char *path, unsigned char *key, int keylen,
+    unsigned char *sig, int siglen, int fd)
+{
+	char sha256[SHA256_DIGEST_LENGTH *2 +1];
+	char hash[SHA256_DIGEST_LENGTH];
+	char errbuf[1024];
+	RSA *rsa = NULL;
+	int ret;
+
+	if (fd != -1)
+		sha256_fd(fd, sha256);
+	else
+		sha256_file(path, sha256);
+
+	SSL_load_error_strings();
+	OpenSSL_add_all_algorithms();
+	OpenSSL_add_all_ciphers();
+
+	sha256_buf_bin(sha256, strlen(sha256), hash);
+
+	rsa = _load_rsa_public_key_buf(key, keylen);
+	if (rsa == NULL)
+		return (EPKG_FATAL);
+	ret = RSA_verify(NID_sha256, hash, sizeof(hash), sig, siglen, rsa);
+	if (ret == 0) {
+		pkg_emit_error("%s: %s", key,
+		    ERR_error_string(ERR_get_error(), errbuf));
+		return (EPKG_FATAL);
+	}
+
+	RSA_free(rsa);
+	ERR_free_strings();
+
+	return (EPKG_OK);
+}
+
 int
 rsa_verify(const char *path, const char *key, unsigned char *sig,
     unsigned int sig_len, int fd)
@@ -89,9 +144,10 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 	RSA *rsa = NULL;
 	int ret;
 
-	if (fd != -1)
+	if (fd != -1) {
+		(void)lseek(fd, 0, SEEK_SET);
 		sha256_fd(fd, sha256);
-	else
+	} else
 		sha256_file(path, sha256);
 
 	SSL_load_error_strings();

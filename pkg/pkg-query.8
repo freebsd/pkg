@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd Jun 2, 2013
+.Dd December 5, 2013
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -98,6 +98,8 @@ is in bytes, and
 is in human readable format.
 .It Cm \&%a
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
+.It Cm \&%q
+Architecture of the matched package
 .It Cm \&%k
 Returns 1 if the matched package is locked against modification or deletion, 0 otherwise
 .It Cm \&%M
@@ -191,12 +193,18 @@ stands for path, and
 for sum.
 .It Cm \&%D
 Expands to the list of directories of the matched package.
-.It Cm \&%O Ns Op kv
+.It Cm \&%O Ns Op kvdD
 Expands to the list of options of the matched package, where
 .Cm k
-stands for option key, and
+stands for option key,
 .Cm v
-for option value.
+for option value,
+.Cm d
+for option default value and
+.Cm D
+for option description.
+Option default values and descriptions are optional metadata and may
+beblank for certain packages.
 .It Cm \&%L
 Expands to the list of license(s) for the matched package.
 .It Cm \&%U
@@ -248,6 +256,8 @@ WWW address of the package (type string)
 Flatsize of the package (type integer)
 .It Cm \&%a
 Automatic status of the package (type integer)
+.It Cm \&%q
+Architecture of the package (type string)
 .It Cm \&%k
 Locking status of the package (type integer)
 .It Cm \&%M
@@ -306,7 +316,7 @@ List all files and their known checksums for a package:
 .Dl $ pkg query '%Fp %Fs' perl
 .Pp
 List all files for all packages:
-.Dl $ pkg query '%o: %F'
+.Dl $ pkg query '%o: %Fp'
 .Pp
 List all packages with no reverse dependencies:
 .Dl $ pkg query -e '%#r = 0' %o
@@ -326,6 +336,7 @@ List automatic packages:
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
 .Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,

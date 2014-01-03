@@ -105,6 +105,8 @@ typedef enum _fmt_code_t {
 	PP_PKG_REPO_IDENT,
 	PP_PKG_OPTION_NAME,
 	PP_PKG_OPTION_VALUE,
+	PP_PKG_OPTION_DEFAULT,
+	PP_PKG_OPTION_DESCRIPTION,
 	PP_PKG_OPTIONS,
 	PP_PKG_REPO_PATH,
 	PP_PKG_CHAR_STRING,
@@ -191,6 +193,8 @@ _static struct sbuf *format_repo_ident(struct sbuf *, const void *, struct perce
 _static struct sbuf *format_options(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_option_name(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_option_value(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_option_default(struct sbuf *, const void *, struct percent_esc *);
+_static struct sbuf *format_option_description(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_repo_path(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_char_string(struct sbuf *, const void *, struct percent_esc *);
 _static struct sbuf *format_users(struct sbuf *, const void *, struct percent_esc *);

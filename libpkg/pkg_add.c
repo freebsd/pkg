@@ -35,10 +35,10 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
-#include <fnmatch.h>
 
 #include "pkg.h"
 #include "private/event.h"
+#include "private/utils.h"
 #include "private/pkg.h"
 
 static int
@@ -46,7 +46,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 {
 	int	retcode = EPKG_OK;
 	int	ret = 0;
-	char	path[MAXPATHLEN + 1];
+	char	path[MAXPATHLEN];
 	struct stat st;
 
 	do {
@@ -66,7 +66,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 				pkg_emit_error("archive_read_extract(): %s",
 				    archive_error_string(a));
 				retcode = EPKG_FATAL;
-				break;
+				goto cleanup;
 			}
 		}
 
@@ -86,7 +86,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 				pkg_emit_error("archive_read_extract(): %s",
 				    archive_error_string(a));
 				retcode = EPKG_FATAL;
-				break;
+				goto cleanup;
 			}
 		}
 	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
@@ -97,10 +97,11 @@ do_extract(struct archive *a, struct archive_entry *ae)
 		retcode = EPKG_FATAL;
 	}
 
+cleanup:
 	return (retcode);
 }
 
-static int
+int
 do_extract_mtree(char *mtree, const char *prefix)
 {
 	struct archive *a = NULL;
@@ -152,7 +153,6 @@ int
 pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_key *keys)
 {
 	const char	*arch;
-	const char	*myarch;
 	const char	*origin;
 	const char	*name;
 	struct archive	*a;
@@ -163,7 +163,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	bool		 extract = true;
 	bool		 handle_rc = false;
 	bool		 disable_mtree;
-	char		 dpath[MAXPATHLEN + 1];
+	char		 dpath[MAXPATHLEN];
 	const char	*basedir;
 	const char	*ext;
 	char		*mtree;
@@ -200,13 +200,9 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * Check the architecture
 	 */
 
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
 	pkg_get(pkg, PKG_ARCH, &arch, PKG_ORIGIN, &origin, PKG_NAME, &name);
 
-	if (fnmatch(myarch, arch, FNM_CASEFOLD) == FNM_NOMATCH &&
-	    strncmp(arch, myarch, strlen(myarch)) != 0) {
-		pkg_emit_error("wrong architecture: %s instead of %s",
-		    arch, myarch);
+	if (!is_valid_abi(arch, true)) {
 		if ((flags & PKG_ADD_FORCE) == 0) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
@@ -237,18 +233,29 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	}
 
 	/*
-	 * Check for dependencies
+	 * Check for dependencies by searching the same directory as
+	 * the package archive we're reading.  Of course, if we're
+	 * reading from a file descriptor or a unix domain socket or
+	 * somesuch, there's no valid directory to search.
 	 */
 
-	basedir = dirname(path);
-	if ((ext = strrchr(path, '.')) == NULL) {
-		pkg_emit_error("%s has no extension", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
+	if (pkg_type(pkg) == PKG_FILE) {
+		basedir = dirname(path);
+		if ((ext = strrchr(path, '.')) == NULL) {
+			pkg_emit_error("%s has no extension", path);
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+	} else {
+		basedir = NULL;
+		ext = NULL;
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (pkg_is_installed(db, pkg_dep_origin(dep)) != EPKG_OK) {
+		if (pkg_is_installed(db, pkg_dep_origin(dep)) == EPKG_OK)
+			continue;
+
+		if (basedir != NULL) {
 			const char *dep_name = pkg_dep_name(dep);
 			const char *dep_ver = pkg_dep_version(dep);
 
@@ -263,10 +270,17 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 					goto cleanup;
 				}
 			} else {
+				pkg_emit_error("Missing dependency matching "
+				    "Origin: '%s' Version: '%s'",
+				    pkg_dep_get(dep, PKG_DEP_ORIGIN),
+				    pkg_dep_get(dep, PKG_DEP_VERSION));
 				retcode = EPKG_FATAL;
-				pkg_emit_missing_dep(pkg, dep);
 				goto cleanup;
 			}
+		} else {
+			retcode = EPKG_FATAL;
+			pkg_emit_missing_dep(pkg, dep);
+			goto cleanup;
 		}
 	}
 
@@ -304,8 +318,8 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * Extract the files on disk.
 	 */
 	if (extract && (retcode = do_extract(a, ae)) != EPKG_OK) {
-		/* If the add failed, clean up */
-		pkg_delete_files(pkg, 1);
+		/* If the add failed, clean up (silently) */
+		pkg_delete_files(pkg, 2);
 		pkg_delete_dirs(db, pkg, 1);
 		goto cleanup_reg;
 	}
@@ -337,8 +351,10 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 		pkg_emit_install_finished(pkg);
 
 	cleanup:
-	if (a != NULL)
+	if (a != NULL) {
+		archive_read_close(a);
 		archive_read_free(a);
+	}
 
 	pkg_free(pkg);
 

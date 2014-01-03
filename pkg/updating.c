@@ -44,7 +44,8 @@ struct installed_ports {
 void
 usage_updating(void)
 {
-	fprintf(stderr, "usage: pkg updating [-d YYYYMMDD] [-f file] [portname ...]\n");
+	fprintf(stderr, "Usage: pkg updating [-d YYYYMMDD] [-f file] [portname ...]\n");
+	fprintf(stderr, "For more information see 'pkg help updating'.\n");
 
 }
 

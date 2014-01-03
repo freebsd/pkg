@@ -41,7 +41,7 @@ static char *
 sbuf_json_escape(struct sbuf *buf, const char *str)
 {
 	sbuf_clear(buf);
-	while (*str != '\0') {
+	while (str != NULL && *str != '\0') {
 		if (*str == '"' || *str == '\\')
 			sbuf_putc(buf, '\\');
 		sbuf_putc(buf, *str);
@@ -55,7 +55,6 @@ sbuf_json_escape(struct sbuf *buf, const char *str)
 static void
 pipeevent(struct pkg_event *ev)
 {
-	struct pkg *pkg = NULL;
 	struct pkg_dep *dep = NULL;
 	struct sbuf *msg, *buf;
 	const char *message;
@@ -225,7 +224,7 @@ pipeevent(struct pkg_event *ev)
 		    ev->e_required.pkg,
 		    ev->e_required.pkg,
 		    ev->e_required.force == 1 ? "true": "false");
-		while (pkg_rdeps(pkg, &dep) == EPKG_OK)
+		while (pkg_rdeps(ev->e_required.pkg, &dep) == EPKG_OK)
 			sbuf_printf(msg, "{ \"pkgname\": \"%s\", "
 			    "\"pkgversion\": \"%s\" }, ",
 			    pkg_dep_name(dep),
@@ -557,8 +556,11 @@ pkg_emit_upgrade_finished(struct pkg *p)
 		pkg_get(p, PKG_NAME, &name, PKG_OLD_VERSION, &version,
 		    PKG_VERSION, &newversion);
 		action = pkg_version_change(p);
-		syslog(LOG_NOTICE, "%s %s: %s -> %s ",
-		    name, actions[action], version, newversion);
+		syslog(LOG_NOTICE, "%s %s: %s %s %s ",
+		    name, actions[action],
+		    version != NULL ? version : newversion,
+		    version != NULL ? "->" : "",
+		    version != NULL ? newversion : "");
 	}
 
 	pkg_emit_event(&ev);

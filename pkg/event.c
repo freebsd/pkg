@@ -38,16 +38,24 @@
 #include "pkgcli.h"
 
 static off_t fetched = 0;
-static char url[MAXPATHLEN+1];
+static char url[MAXPATHLEN];
 struct sbuf *messages = NULL;
 
 static void
-print_and_set_term_title(struct sbuf *msg)
+print_status_end(struct sbuf *msg)
 {
 	sbuf_finish(msg);
 	printf("%s", sbuf_data(msg));
 	/*printf("\033]0; %s\007", sbuf_data(msg));*/
 	sbuf_delete(msg);
+}
+
+static void
+print_status_begin(struct sbuf *msg)
+{
+
+	if (nbactions > 0)
+		sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
 }
 
 int
@@ -112,13 +120,12 @@ event_callback(void *data, struct pkg_event *ev)
 				break;
 			}
 
-			if (nbactions > 0)
-				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
+			print_status_begin(msg);
 
 			pkg = ev->e_install_begin.pkg;
 			pkg_sbuf_printf(msg, "Installing %n-%v...", pkg, pkg);
 
-			print_and_set_term_title(msg);
+			print_status_end(msg);
 		}
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
@@ -177,13 +184,12 @@ event_callback(void *data, struct pkg_event *ev)
 				break;
 			}
 
-			if (nbactions > 0)
-				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
+			print_status_begin(msg);
 
 			pkg = ev->e_install_begin.pkg;
 			pkg_sbuf_printf(msg, "Deleting %n-%v...", pkg, pkg);
 
-			print_and_set_term_title(msg);
+			print_status_end(msg);
 		}
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
@@ -206,8 +212,8 @@ event_callback(void *data, struct pkg_event *ev)
 				break;
 			}
 
-			if (nbactions > 0)
-				sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
+			print_status_begin(msg);
+
 			switch (pkg_version_change(pkg)) {
 			case PKG_DOWNGRADE:
 				pkg_sbuf_printf(msg,
@@ -224,13 +230,19 @@ event_callback(void *data, struct pkg_event *ev)
 						pkg, pkg, pkg);
 				break;
 			}
-			print_and_set_term_title(msg);
+			print_status_end(msg);
 		}
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		if (quiet)
 			break;
 		printf(" done\n");
+		if (pkg_has_message(ev->e_upgrade_finished.pkg)) {
+			if (messages == NULL)
+				messages = sbuf_new_auto();
+			pkg_sbuf_printf(messages, "%M\n",
+			    ev->e_upgrade_finished.pkg);
+		}
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;
@@ -272,9 +284,9 @@ event_callback(void *data, struct pkg_event *ev)
 		fprintf(stderr, "Local package database nonexistent!\n");
 		break;
 	case PKG_EVENT_NEWPKGVERSION:
+		newpkgversion = true;
 		printf("New version of pkg detected; it needs to be "
-		    "installed first.\nAfter this upgrade it is recommended "
-		    "that you do a full upgrade using: 'pkg upgrade'\n\n");
+		    "installed first.\n");
 		break;
 	case PKG_EVENT_FILE_MISMATCH:
 		pkg = ev->e_file_mismatch.pkg;

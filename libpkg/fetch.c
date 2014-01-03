@@ -26,19 +26,19 @@
  */
 
 #include <sys/param.h>
-#include <sys/stat.h>
-#include <sys/event.h>
-#include <sys/time.h>
+#include <sys/wait.h>
+#include <sys/socket.h>
 
 #include <ctype.h>
 #include <fcntl.h>
+#include <errno.h>
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <fetch.h>
-#include <pthread.h>
+#include <paths.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -82,13 +82,17 @@ gethttpmirrors(struct pkg_repo *repo, const char *url) {
 }
 
 int
-pkg_fetch_file(struct pkg_repo *repo, const char *url, const char *dest, time_t t)
+pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t)
 {
 	int fd = -1;
 	int retcode = EPKG_FATAL;
+	mode_t mask;
 
-	if ((fd = open(dest, O_WRONLY|O_CREAT|O_TRUNC|O_EXCL, 0644)) == -1) {
-		pkg_emit_errno("open", dest);
+	mask = umask(022);
+	fd = mkstemp(dest);
+	umask(mask);
+	if (fd == -1) {
+		pkg_emit_errno("mkstemp", dest);
 		return(EPKG_FATAL);
 	}
 
@@ -118,44 +122,235 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, const char *dest, time_t 
 }
 
 static int
+ssh_cache_data(struct pkg_repo *repo, char *src, size_t nbytes)
+{
+	char *tmp;
+
+	if (repo->sshio.cache.size < nbytes) {
+		tmp = realloc(repo->sshio.cache.buf, nbytes);
+		if (tmp == NULL)
+			return (-1);
+
+		repo->sshio.cache.buf = tmp;
+		repo->sshio.cache.size = nbytes;
+	}
+	memcpy(repo->sshio.cache.buf, src, nbytes);
+	repo->sshio.cache.len = nbytes;
+	repo->sshio.cache.pos = 0;
+
+	return (0);
+}
+
+static int
+ssh_read(void *data, char *buf, int len)
+{
+	struct pkg_repo *repo = (struct pkg_repo *) data;
+	struct timeval now, timeout, delta;
+	fd_set readfds;
+	ssize_t rlen, total;
+	char *start;
+
+	pkg_debug(2, "ssh: start reading");
+
+	if (fetchTimeout > 0) {
+		gettimeofday(&timeout, NULL);
+		timeout.tv_sec += fetchTimeout;
+	}
+
+	total = 0;
+	start = buf;
+
+	if (repo->sshio.cache.len > 0) {
+		/*
+		 * The last invocation of fetch_read was interrupted by a
+		 * signal after some data had been read from the socket. Copy
+		 * the cached data into the supplied buffer before trying to
+		 * read from the socket again.
+		 */
+		total = (repo->sshio.cache.len < (size_t)len) ? repo->sshio.cache.len : (size_t)len;
+		memcpy(buf, repo->sshio.cache.buf, total);
+
+		repo->sshio.cache.len -= total;
+		repo->sshio.cache.pos += total;
+		len -= total;
+		buf += total;
+	}
+
+
+	while (len > 0) {
+		if (repo->tofetch > 0 && repo->tofetch == repo->fetched)
+			break;
+
+		rlen = read(repo->sshio.in, buf, len);
+		if (rlen == 0) {
+			break;
+		} else if (rlen > 0) {
+			len -= rlen;
+			buf += rlen;
+			if (repo->tofetch > 0)
+				repo->fetched += rlen;
+			total += rlen;
+			continue;
+		} else if (rlen == -1) {
+			if (errno == EINTR)
+				ssh_cache_data(repo, start, total);
+			if (errno != EAGAIN) {
+				pkg_emit_errno("timeout", "ssh");
+				return (-1);
+			}
+			if (errno == EAGAIN && total > 0) {
+				break;
+			}
+		}
+
+		FD_ZERO(&readfds);
+		while (!FD_ISSET(repo->sshio.in, &readfds)) {
+			FD_SET(repo->sshio.in, &readfds);
+			if (fetchTimeout > 0) {
+				gettimeofday(&now, NULL);
+				if (!timercmp(&timeout, &now, >)) {
+					errno = ETIMEDOUT;
+					return (-1);
+				}
+				timersub(&timeout, &now, &delta);
+			}
+			errno = 0;
+			if (select(repo->sshio.in + 1, &readfds, NULL, NULL,
+			    fetchTimeout > 0 ? &delta : NULL) < 0) {
+				if (errno == EINTR) {
+					/* Save anything that was read. */
+					ssh_cache_data(repo, start, total);
+					continue;
+				}
+				return (-1);
+			}
+		}
+	}
+
+	pkg_debug(2, "ssh: have read %d bytes", total);
+	return (total);
+}
+
+static int
+ssh_write(void *data, const char *buf, int l)
+{
+	struct pkg_repo *repo = (struct pkg_repo *)data;
+
+	return (write(repo->sshio.out, buf, l));
+}
+
+static int
+ssh_close(void *data)
+{
+	struct pkg_repo *repo = (struct pkg_repo *)data;
+	int pstat;
+
+	free(repo->sshio.cache.buf);
+
+	write(repo->sshio.out, "quit\n", 5);
+
+	while (waitpid(repo->sshio.pid, &pstat, 0) == -1) {
+		if (errno != EINTR)
+			return (EPKG_FATAL);
+	}
+
+	repo->ssh = NULL;
+	repo->tofetch = 0;
+	repo->fetched = 0;
+
+	return (WEXITSTATUS(pstat));
+}
+
+static int
 start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 {
 	char *line = NULL;
-	ssize_t linecap = 0;
+	size_t linecap = 0;
 	size_t linelen;
 	struct sbuf *cmd = NULL;
 	const char *errstr;
+	const char *ssh_args;
+	int sshin[2];
+	int sshout[2];
+	const char *argv[4];
+
+	pkg_config_string(PKG_CONFIG_SSH_ARGS, &ssh_args);
 
 	if (repo->ssh == NULL) {
-		cmd = sbuf_new_auto();
-		sbuf_cat(cmd, "/usr/bin/ssh -e none -T ");
-		if (u->port > 0)
-			sbuf_printf(cmd, "-P %d ", u->port);
-		if (u->user[0] != '\0')
-			sbuf_printf(cmd, "%s@", u->user);
-		sbuf_cat(cmd, u->host);
-		sbuf_printf(cmd, " pkg ssh");
-		sbuf_finish(cmd);
-		if ((repo->ssh = popen(sbuf_data(cmd), "r+")) == NULL) {
-			pkg_emit_errno("popen", "ssh");
-			sbuf_delete(cmd);
+		/* Use socket pair because pipe have blocking issues */
+		if (socketpair(AF_UNIX, SOCK_STREAM, 0, sshin) <0 ||
+		    socketpair(AF_UNIX, SOCK_STREAM, 0, sshout) < 0)
+			return(EPKG_FATAL);
+
+		set_nonblocking(sshout[0]);
+		set_nonblocking(sshout[1]);
+		set_nonblocking(sshin[0]);
+		set_nonblocking(sshin[1]);
+
+		repo->sshio.pid = vfork();
+		if (repo->sshio.pid == -1) {
+			pkg_emit_errno("Cannot fork", "start_ssh");
 			return (EPKG_FATAL);
 		}
-		sbuf_delete(cmd);
+
+		if (repo->sshio.pid == 0) {
+			if (dup2(sshin[0], STDIN_FILENO) < 0 ||
+			    close(sshin[1]) < 0 ||
+			    close(sshout[0]) < 0 ||
+			    dup2(sshout[1], STDOUT_FILENO) < 0) {
+				pkg_emit_errno("Cannot prepare pipes", "start_ssh");
+				return (EPKG_FATAL);
+			}
+
+			cmd = sbuf_new_auto();
+			sbuf_cat(cmd, "/usr/bin/ssh -e none -T ");
+			if (ssh_args != NULL)
+				sbuf_printf(cmd, "%s ", ssh_args);
+			if (u->port > 0)
+				sbuf_printf(cmd, "-P %d ", u->port);
+			if (u->user[0] != '\0')
+				sbuf_printf(cmd, "%s@", u->user);
+			sbuf_cat(cmd, u->host);
+			sbuf_printf(cmd, " pkg ssh");
+			sbuf_finish(cmd);
+			pkg_debug(1, "Fetch: running '%s'", sbuf_data(cmd));
+			argv[0] = _PATH_BSHELL;
+			argv[1] = "-c";
+			argv[2] = sbuf_data(cmd);
+			argv[3] = NULL;
+
+			if (sshin[0] != STDIN_FILENO)
+				close(sshin[0]);
+			if (sshout[1] != STDOUT_FILENO)
+				close(sshout[1]);
+			execvp(argv[0], __DECONST(char **, argv));
+			/* NOT REACHED */
+		}
+
+		if (close(sshout[1]) < 0 || close(sshin[0]) < 0) {
+			pkg_emit_errno("Failed to close pipes", "start_ssh");
+			return (EPKG_FATAL);
+		}
+
+		repo->sshio.in = sshout[0];
+		repo->sshio.out = sshin[1];
+		set_nonblocking(repo->sshio.in);
+
+		repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
 
 		if (getline(&line, &linecap, repo->ssh) > 0) {
 			if (strncmp(line, "ok:", 3) != 0) {
-				pclose(repo->ssh);
+				fclose(repo->ssh);
 				free(line);
 				return (EPKG_FATAL);
 			}
 		} else {
-			pclose(repo->ssh);
+			fclose(repo->ssh);
 			return (EPKG_FATAL);
 		}
 	}
-
 	fprintf(repo->ssh, "get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
+	repo->tofetch = 0;
 	if ((linelen = getline(&line, &linecap, repo->ssh)) > 0) {
 		if (line[linelen -1 ] == '\n')
 			line[linelen -1 ] = '\0';
@@ -174,36 +369,37 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 			free(line);
 			return (EPKG_OK);
 		}
+
 	}
+
 	free(line);
 	return (EPKG_FATAL);
 }
 
+#define URL_SCHEME_PREFIX	"pkg+"
+
 int
 pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t)
 {
-	FILE *remote = NULL;
-	struct url *u;
-	struct url_stat st;
-	off_t done = 0;
-	off_t r;
+	FILE		*remote = NULL;
+	struct url	*u = NULL;
+	struct url_stat	 st;
+	off_t		 done = 0;
+	off_t		 r;
 
-	int64_t max_retry, retry;
-	int64_t fetch_timeout;
-	time_t begin_dl;
-	time_t now;
-	time_t last = 0;
-	char buf[10240];
-	char *doc = NULL;
-	char docpath[MAXPATHLEN];
-	int retcode = EPKG_OK;
-	char zone[MAXHOSTNAMELEN + 13];
-	struct dns_srvinfo *srv_current = NULL;
-	struct http_mirror *http_current = NULL;
-	off_t sz = 0;
-	int kq = -1, flags = 0;
-	struct kevent e, ev;
-	struct timespec ts;
+	int64_t		 max_retry, retry;
+	int64_t		 fetch_timeout;
+	time_t		 begin_dl;
+	time_t		 last = 0;
+	char		 buf[10240];
+	char		*doc = NULL;
+	char		 docpath[MAXPATHLEN];
+	int		 retcode = EPKG_OK;
+	char		 zone[MAXHOSTNAMELEN + 13];
+	struct dns_srvinfo	*srv_current = NULL;
+	struct http_mirror	*http_current = NULL;
+	off_t		 sz = 0;
+	bool		 pkg_url_scheme = false;
 
 	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
 		max_retry = 3;
@@ -215,6 +411,34 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	retry = max_retry;
 
+	/* A URL of the form http://host.example.com/ where
+	 * host.example.com does not resolve as a simple A record is
+	 * not valid according to RFC 2616 Section 3.2.2.  Our usage
+	 * with SRV records is incorrect.  However it is encoded into
+	 * /usr/sbin/pkg in various releases so we can't just drop it.
+         *
+         * Instead, introduce new pkg+http://, pkg+https://,
+	 * pkg+ssh://, pkg+ftp://, pkg+file:// to support the
+	 * SRV-style server discovery, and also to allow eg. Firefox
+	 * to run pkg-related stuff given a pkg+foo:// URL.
+	 *
+	 * Warn if using plain http://, https:// etc with SRV
+	 */
+
+	if (strncmp(URL_SCHEME_PREFIX, url, strlen(URL_SCHEME_PREFIX)) == 0) {
+		if (repo->mirror_type != SRV) {
+			pkg_emit_error("packagesite URL error for %s -- "
+				       URL_SCHEME_PREFIX
+				       ":// implies SRV mirror type", url);
+
+			/* Too early for there to be anything to cleanup */
+			return(EPKG_FATAL);
+		}
+
+		url += strlen(URL_SCHEME_PREFIX);
+		pkg_url_scheme = true;
+	}
+
 	u = fetchParseURL(url);
 	if (t != NULL)
 		u->ims_time = *t;
@@ -223,28 +447,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 		if ((retcode = start_ssh(repo, u, &sz)) != EPKG_OK)
 			goto cleanup;
 		remote = repo->ssh;
-		kq = kqueue();
-		if (kq == -1) {
-			pkg_emit_errno("kqueue", "ssh");
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-		EV_SET(&e, fileno(repo->ssh), EVFILT_READ, EV_ADD, 0, 0, 0);
-		if (kevent(kq, &e, 1, NULL, 0, NULL) == -1) {
-			pkg_emit_errno("kevent", "ssh");
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-		if ((flags = fcntl(fileno(repo->ssh), F_GETFL)) == -1) {
-			pkg_emit_errno("fcntl", "set ssh non-blocking");
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-		if (fcntl(fileno(repo->ssh), F_SETFL, flags | O_NONBLOCK) == -1) {
-			pkg_emit_errno("fcntl", "set ssh non-blocking");
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
 	}
 
 	doc = u->doc;
@@ -253,6 +455,12 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			if (repo != NULL && repo->mirror_type == SRV &&
 			    (strncmp(u->scheme, "http", 4) == 0
 			     || strcmp(u->scheme, "ftp") == 0)) {
+
+				if (!pkg_url_scheme)
+					pkg_emit_notice(
+     "Warning: use of %s:// URL scheme with SRV records is deprecated: "
+     "switch to pkg+%s://", u->scheme, u->scheme);
+
 				snprintf(zone, sizeof(zone),
 				    "_%s._tcp.%s", u->scheme, u->host);
 				if (repo->srv == NULL)
@@ -268,16 +476,24 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			}
 		}
 
-		if (repo != NULL && repo->mirror_type == SRV && repo->srv != NULL)
+		if (repo != NULL && repo->mirror_type == SRV && repo->srv != NULL) {
 			strlcpy(u->host, srv_current->host, sizeof(u->host));
+			u->port = srv_current->port;
+		}
 		else if (repo != NULL && repo->mirror_type == HTTP && repo->http != NULL) {
 			strlcpy(u->scheme, http_current->url->scheme, sizeof(u->scheme));
 			strlcpy(u->host, http_current->url->host, sizeof(u->host));
-			snprintf(docpath, MAXPATHLEN, "%s%s", http_current->url->doc, doc);
+			snprintf(docpath, sizeof(docpath), "%s%s", http_current->url->doc, doc);
 			u->doc = docpath;
 			u->port = http_current->url->port;
 		}
 
+		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s",
+		    u->scheme,
+		    u->user,
+		    u->user[0] != '\0' ? "@" : "",
+		    u->host,
+		    u->doc);
 		remote = fetchXGet(u, &st, "i");
 		if (remote == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
@@ -304,6 +520,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			}
 		}
 	}
+
 	if (strcmp(u->scheme, "ssh") != 0) {
 		if (t != NULL && st.mtime != 0) {
 			if (st.mtime < *t) {
@@ -316,26 +533,15 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	}
 
 	begin_dl = time(NULL);
+	if (repo != NULL) {
+		repo->tofetch = sz;
+		repo->fetched = 0;
+	}
 	while (done < sz) {
-		if (kq == - 1) {
-			if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
-				break;
-		} else {
-			ts.tv_sec = fetch_timeout;
-			ts.tv_nsec = 0;
-			if (kevent(kq, &e, 1, &ev, 1, &ts) == -1) {
-				pkg_emit_errno("kevent", "ssh");
-				retcode = EPKG_FATAL;
-				goto cleanup;
-			}
-			if (ev.data == 0)
-				break;
-			size_t size = (size_t)ev.data;
-			if (size > sizeof(buf))
-				size = sizeof(buf);
-			if ((r = fread(buf, 1, size, remote)) < 1)
-				break;
-		}
+		time_t	now;
+
+		if ((r = fread(buf, 1, sizeof(buf), remote)) < 1)
+			break;
 
 		if (write(dest, buf, r) != r) {
 			pkg_emit_errno("write", "");
@@ -351,9 +557,11 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			last = now;
 		}
 	}
+	if (repo != NULL)
+		repo->tofetch = 0;
 
 	if (done < sz) {
-		pkg_emit_error("An error occured while fetching package");
+		pkg_emit_error("An error occurred while fetching package");
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -366,25 +574,10 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 
 	cleanup:
 
-	if (strcmp(u->scheme, "ssh") != 0) {
-		if (remote != NULL)
+	if (u != NULL) {
+		if (remote != NULL &&  repo != NULL && remote != repo->ssh)
 			fclose(remote);
-	} else {
-		EV_SET(&e, fileno(repo->ssh), EVFILT_READ, EV_DELETE, 0, 0, 0);
-		kevent(kq, &e, 1, NULL, 0, NULL);
-		flags &= ~O_NONBLOCK;
-		if (fcntl(fileno(repo->ssh), F_SETFL, flags) == -1)
-			flags = -1;
-
-		/* if something went wrong close the ssh connection */
-		if (flags == -1) {
-			pclose(repo->ssh);
-			repo->ssh = NULL;
-		}
 	}
-
-	if (kq != -1)
-		close(kq);
 
 	/* restore original doc */
 	u->doc = doc;

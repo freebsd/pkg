@@ -33,7 +33,6 @@
 #include <ctype.h>
 #include <err.h>
 #include <inttypes.h>
-#include <libutil.h>
 #include <pkg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,7 +47,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
 	{ 'F', "ps",		1, PKG_LOAD_FILES },
-	{ 'O', "kv",		1, PKG_LOAD_OPTIONS },
+	{ 'O', "kvdD",		1, PKG_LOAD_OPTIONS },
 	{ 'D', "",		1, PKG_LOAD_DIRS },
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
 	{ 'U', "",		1, PKG_LOAD_USERS },
@@ -68,6 +67,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'e', "",		0, PKG_LOAD_BASIC },
 	{ 'w', "",		0, PKG_LOAD_BASIC },
 	{ 'l', "",		0, PKG_LOAD_BASIC },
+	{ 'q', "",		0, PKG_LOAD_BASIC },
 	{ 'a', "",		0, PKG_LOAD_BASIC },
 	{ 'k', "",		0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
@@ -213,6 +213,9 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					break;
 				}
 				break;
+			case 'q':
+				pkg_sbuf_printf(dest, "%q", pkg);
+				break;
 			case 'l':
 				pkg_sbuf_printf(dest, "%l", pkg);
 				break;
@@ -250,6 +253,10 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					pkg_sbuf_printf(dest, "%On", data);
 				else if (qstr[0] == 'v')
 					pkg_sbuf_printf(dest, "%Ov", data);
+				else if (qstr[0] == 'd') /* default value */
+					pkg_sbuf_printf(dest, "%Od", data);
+				else if (qstr[0] == 'D') /* description */
+					pkg_sbuf_printf(dest, "%OD", data);
 				break;
 			case 'D':
 				pkg_sbuf_printf(dest, "%Dn", data);
@@ -472,6 +479,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 					sbuf_cat(sqlcond, "automatic");
 					state = OPERATOR_INT;
 					break;
+				case 'q':
+					sbuf_cat(sqlcond, "arch");
+					state = OPERATOR_STRING;
+					break;
 				case 'k':
 					if (for_remote)
 						goto bad_option;
@@ -494,53 +505,55 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 					sbuf_cat(sqlcond, "desc");
 					state = OPERATOR_STRING;
 					break;
-				case '#':
+				case '#': /* FALLTHROUGH */
+				case '?':
 					str++;
-					const char *dbstr = for_remote ? "%1$s." : "";
+					const char *dbstr = for_remote ? "'%1$s'." : "";
+					const char *sqlop = (str[0] == '#' ? "COUNT(*)" : "COUNT(*) > 0");
 					switch (str[0]) {
 						case 'd':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sdeps AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %sdeps AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'r':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sdeps AS d WHERE d.origin=p.origin)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %sdeps AS d WHERE d.origin=p.origin)", sqlop, dbstr);
 							break;
 						case 'C':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_categories AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_categories AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'F':
 							if (for_remote)
 								goto bad_option;
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %sfiles AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %sfiles AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'O':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %soptions AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %soption JOIN %spkg_option USING(option_id) AS d WHERE d.package_id=p.id)", sqlop, dbstr, dbstr);
 							break;
 						case 'D':
 							if (for_remote)
 								goto bad_option;
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_directories AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_directories AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'L':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_licenses AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_licenses AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'U':
 							if (for_remote)
 								goto bad_option;
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_users AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_users AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'G':
 							if (for_remote)
 								goto bad_option;
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_groups AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_groups AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'B':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs_required AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_shlibs_required AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'b':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_shlibs_provided AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_shlibs_provided AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						case 'A':
-							sbuf_printf(sqlcond, "(SELECT COUNT(*) FROM %spkg_annotation AS d WHERE d.package_id=p.id)", dbstr);
+							sbuf_printf(sqlcond, "(SELECT %s FROM %spkg_annotation AS d WHERE d.package_id=p.id)", sqlop, dbstr);
 							break;
 						default:
 							goto bad_option;
@@ -725,7 +738,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 	j = 0; /* shut up scanbuild */
 
 	if (strchr(qstr, '%') == NULL) {
-		fprintf(stderr, "Invalid query: query should contains format string\n");
+		fprintf(stderr, "Invalid query: query should contain a format string\n");
 		return (EPKG_FATAL);
 	}
 
@@ -766,7 +779,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 					/* if this is a multiline flag */
 					if (q_flags[i].multiline == 1) {
 						if (*multiline != 0 && *multiline != q_flags[i].flag) {
-							fprintf(stderr, "Invalid query: you cannot query '%%%c' and '%%%c' at the same time\n",
+							fprintf(stderr, "Invalid query: '%%%c' and '%%%c' cannot be queried at the same time\n",
 									*multiline, q_flags[i].flag);
 							return (EPKG_FATAL);
 						} else {
@@ -804,7 +817,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 void
 usage_query(void)
 {
-	fprintf(stderr, "usage: pkg query <query-format> <pkg-name>\n");
+	fprintf(stderr, "Usage: pkg query <query-format> <pkg-name>\n");
 	fprintf(stderr, "       pkg query [-a] <query-format>\n");
 	fprintf(stderr, "       pkg query -F <pkg-name> <query-format>\n");
 	fprintf(stderr, "       pkg query -e <evaluation> <query-format>\n");
@@ -900,7 +913,7 @@ exec_query(int argc, char **argv)
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	if (ret == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to query package database");
+		warnx("Insufficient privileges to query the package database");
 		return (EX_NOPERM);
 	} else if (ret == EPKG_ENODB) {
 		if (!quiet)

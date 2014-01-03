@@ -1,15 +1,13 @@
-# System-wide configuration file for pkg(1)
+# System-wide configuration file for pkg(8)
 # For more information on the file format and
 # options please refer to the pkg.conf(5) man page
 
 # Configuration options
-PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
 #PKG_DBDIR	    : /var/db/pkg
 #PKG_CACHEDIR	    : /var/cache/pkg
 #PORTSDIR	    : /usr/ports
 #PUBKEY		    : /etc/ssl/pkg.conf
 #HANDLE_RC_SCRIPTS  : NO
-#PKG_MULTIREPOS	    : NO
 #ASSUME_ALWAYS_YES  : NO
 #SYSLOG		    : YES
 #SHLIBS		    : NO
@@ -19,10 +17,21 @@ PACKAGESITE	    : http://pkg.freebsd.org/${ABI}/latest
 #PKG_ENABLE_PLUGINS : YES
 #PLUGINS	    : [commands/mystat]
 #REPO_AUTOUPDATE    : YES
-
-# Repository definitions
-#repos:
-#  default : http://example.org/pkgng/
-#  repo1 : http://somewhere.org/pkgng/repo1/
-#  repo2 : http://somewhere.org/pkgng/repo2/
-
+ALIAS              : {
+  all-depends: query %dn-%dv,
+  annotations: info -A,
+  build-depends: info -qd,
+  download: fetch,
+  iinfo: info -i -g -x,
+  isearch: search -i -g -x,
+  leaf: query -e "%a == 0" "%n-%v",
+  leaf: query -e "%a == 0" "%n-%v",
+  list: info -ql,
+  origin: info -qo,
+  provided-depends: info -qb,
+  raw: info -R,
+  required-depends: info -qr,
+  shared-depends: info -qB,
+  show: info -f -k,
+  size: info -sq,
+  }

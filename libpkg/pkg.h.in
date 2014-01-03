@@ -39,12 +39,12 @@
 #include <stringlist.h>
 #include <openssl/pem.h>
 
-/* The expected name of the pkg(1) binary executable. */
+/* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
 #define PKG_EXEC_NAME	"pkg"
 #endif
 
-/* The expected name of the pkg-static(1) binary */
+/* The expected name of the pkg-static(8) binary */
 #ifndef PKG_STATIC_NAME
 #define PKG_STATIC_NAME	"pkg-static"
 #endif
@@ -88,11 +88,11 @@ struct pkg_manifest_key;
 struct pkg_manifest_parser;
 
 /**
- * The system-wide pkg(1) status: ie. is it a) installed or otherwise
+ * The system-wide pkg(8) status: ie. is it a) installed or otherwise
  * available on the sysem, b) database (local.sqlite) initialised and
  * c) has at least one package installed (which should be pkg
  * itself). PKG_STATUS_UNINSTALLED logically cannot be returned by
- * pkg(1) itself, but it can be useful for the pkg bootstrapper
+ * pkg(8) itself, but it can be useful for the pkg bootstrapper
  * /usr/bin/pkg or for applications that link against libpkg.so
  */
 
@@ -181,18 +181,23 @@ typedef enum {
 	 */
 	PKG_FILE = (1U << 0),
 	/**
+         * The pkg refers to data read from a non-regular file
+         * (device, pipeline, unix dmain socket etc.)
+	 */
+	PKG_STREAM = (1U << 1),
+	/**
 	 * The pkg refers to a package available on the remote repository.
 	 * @todo Document which attributes are available.
 	 */
-	PKG_REMOTE = (1U << 1),
+	PKG_REMOTE = (1U << 2),
 	/**
 	 * The pkg refers to a localy installed package.
 	 */
-	PKG_INSTALLED = (1U << 2),
+	PKG_INSTALLED = (1U << 3),
 	/**
 	 * The pkg refers to a local file old archive.
 	 */
-	PKG_OLD_FILE = (1U << 3),
+	PKG_OLD_FILE = (1U << 4),
 } pkg_t;
 
 /**
@@ -283,6 +288,12 @@ typedef enum {
 	NOMIRROR,
 } mirror_t;
 
+typedef enum {
+	SIG_NONE = 0,
+	SIG_PUBKEY,
+	SIG_FINGERPRINT
+} signature_t;
+
 /**
  * Determine the type of a pkg_script.
  */
@@ -350,6 +361,7 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_FETCH_TIMEOUT,
 	PKG_CONFIG_UNSET_TIMESTAMP,
 	PKG_CONFIG_SSH_RESTRICT_DIR,
+	PKG_CONFIG_SSH_ARGS,
 	PKG_CONFIG_ENV,
 	PKG_CONFIG_DISABLE_MTREE,
 	PKG_CONFIG_DEBUG_LEVEL,
@@ -404,6 +416,7 @@ typedef enum _pkg_plugin_hook_t {
 	PKG_PLUGIN_HOOK_POST_UPGRADE,
 	PKG_PLUGIN_HOOK_PRE_AUTOREMOVE,
 	PKG_PLUGIN_HOOK_POST_AUTOREMOVE,
+	PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW,
 } pkg_plugin_hook_t;
 
 /**
@@ -651,7 +664,7 @@ struct pkg_note *pkg_annotation_lookup(const struct pkg *p, const char *tag);
 #define PKG_CONTAINS_STATIC_LIBS	(1U << 25)
 #define PKG_CONTAINS_H_OR_LA		(1U << 26)
 
-int pkg_analyse_files(struct pkgdb *, struct pkg *);
+int pkg_analyse_files(struct pkgdb *, struct pkg *, const char *);
 
 /**
  * Suggest if a package could be marked architecture independent or
@@ -833,11 +846,8 @@ int pkg_delannotation(struct pkg *pkg, const char *tag);
  * @param buf An NULL-terminated buffer containing the manifest data.
  * @return An error code.
  */
-int pkg_parse_manifest(struct pkg *pkg, char *buf, struct pkg_manifest_key *key);
-int pkg_parse_manifest_ev(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_parser *p);
-int pkg_parse_manifest_file(struct pkg *pkg, FILE *f, struct pkg_manifest_key *key);
-int pkg_parse_manifest_file_ev(struct pkg *pkg, FILE *f, struct pkg_manifest_parser *p);
-int pkg_load_manifest_file(struct pkg *pkg, const char *fpath, struct pkg_manifest_key *key);
+int pkg_parse_manifest(struct pkg *pkg, char *buf, size_t len, struct pkg_manifest_key *key);
+int pkg_parse_manifest_file(struct pkg *pkg, const char *, struct pkg_manifest_key *key);
 int pkg_manifest_keys_new(struct pkg_manifest_key **k);
 void pkg_manifest_keys_free(struct pkg_manifest_key *k);
 int pkg_manifest_parser_new(struct pkg_manifest_parser **p);
@@ -845,6 +855,7 @@ void pkg_manifest_parser_free(struct pkg_manifest_parser *p);
 
 #define PKG_MANIFEST_EMIT_COMPACT 0x1
 #define PKG_MANIFEST_EMIT_NOFILES (0x1 << 1)
+#define PKG_MANIFEST_EMIT_PRETTY (0x1 << 2)
 
 /**
  * Emit a manifest according to the attributes of pkg.
@@ -905,6 +916,8 @@ const char *pkg_script_get(struct pkg const * const, pkg_script);
 /* pkg_option */
 const char *pkg_option_opt(struct pkg_option const * const);
 const char *pkg_option_value(struct pkg_option const * const);
+const char *pkg_option_default_value(struct pkg_option const * const);
+const char *pkg_option_description(struct pkg_option const * const);
 
 /* pkg_shlib */
 const char *pkg_shlib_name(struct pkg_shlib const * const);
@@ -946,14 +959,17 @@ int pkg_is_installed(struct pkgdb *db, const char *origin);
 /**
  * Create a repository database.
  * @param path The path where the repository live.
+ * @param output_dir The path where the package repository should be created.
  * @param force If true, rebuild the repository catalogue from scratch
  * @param filesite If true, create a list of all files in repo
  * @param callback A function which is called at every step of the process.
  * @param data A pointer which is passed to the callback.
  * @param sum An 65 long char array to receive the sha256 sum
  */
-int pkg_create_repo(char *path, bool force, bool filelist, void (*callback)(struct pkg *, void *), void *);
-int pkg_finish_repo(char *path, pem_password_cb *cb, char *rsa_key_path, bool filelist);
+int pkg_create_repo(char *path, const char *output_dir, bool filelist,
+    void (*callback)(struct pkg *, void *), void *);
+int pkg_finish_repo(const char *output_dir, pem_password_cb *cb, char **argv,
+    int argc, bool filelist);
 
 /**
  * Test if the EUID has sufficient privilege to carry out some
@@ -1296,7 +1312,7 @@ pkg_change_t pkg_version_change(const struct pkg * restrict);
  * Fetch a file.
  * @return An error code.
  */
-int pkg_fetch_file(struct pkg_repo *repo, const char *url, const char *dest, time_t t);
+int pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, const char *, const char *);
@@ -1460,7 +1476,7 @@ typedef int(*pkg_event_cb)(void *, struct pkg_event *);
 
 void pkg_event_register(pkg_event_cb cb, void *data);
 
-int pkg_init(const char *);
+int pkg_init(const char *, const char *);
 int pkg_initialized(void);
 void pkg_shutdown(void);
 
@@ -1478,13 +1494,16 @@ int pkg_to_old(struct pkg *pkg);
 int pkg_register_old(struct pkg *pkg);
 int pkg_sshserve(void);
 
-int pkg_repos_count(void);
+int pkg_repos_total_count(void);
+int pkg_repos_activated_count(void);
 int pkg_repos(struct pkg_repo **);
 const char *pkg_repo_url(struct pkg_repo *r);
 const char *pkg_repo_ident(struct pkg_repo *r);
 const char *pkg_repo_name(struct pkg_repo *r);
 const char * pkg_repo_ident_from_name(const char *repo_name);
 const char *pkg_repo_key(struct pkg_repo *r);
+const char *pkg_repo_fingerprints(struct pkg_repo *r);
+signature_t pkg_repo_signature_type(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
 struct pkg_repo *pkg_repo_find_ident(const char *ident);

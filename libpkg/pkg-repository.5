@@ -15,7 +15,7 @@
 .\"     @(#)pkg-repository.5
 .\" $FreeBSD$
 .\"
-.Dd July 14, 2013
+.Dd September 30, 2013
 .Dt PKG-REPOSITORY 5
 .Os
 .Sh NAME
@@ -38,7 +38,7 @@ a combination of operating system, CPU architecture, OS version, word
 size, and for certain processors endianness or similar attributes.
 .Pp
 The package collections are typically made available to users for
-download via a web- or FTP server although various other means of access
+download via a web or FTP server although various other means of access
 may be employed.
 Encoding the
 .Sy ABI
@@ -57,7 +57,7 @@ given a common URL by several mechanisms.
 .Sh FILESYSTEM ORGANIZATION
 Only very minimal constraints on repository layout are prescribed by
 .Nm pkg .
-The followin constraints are all that must be met:
+The following constraints are all that must be met:
 .Bl -bullet
 .It
 A repository may contain several package collections with parallel
@@ -146,15 +146,6 @@ The repository may optionally contain sub-directories corresponding to
 the package origins within the
 .Os
 ports tree.
-.It Pa $REPOSITORY_ROOT/accessibility/
-.It Pa $REPOSITORY_ROOT/archivers/
-.It Pa ...
-.It Pa $REPOSITORY_ROOT/x11-toolkits/
-These are populated by per-package symbolic links to the actual
-package content stored within
-.Pa $REPOSITORY_ROOT/All/
-according to the package origin within the FreeBSD ports collection.
-Package symbolic links contain the package name and version.
 .El
 .Pp
 Each of the packages listed in the repository catalogue must have a

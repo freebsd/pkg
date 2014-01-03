@@ -39,6 +39,7 @@
 #include <string.h>
 #include <assert.h>
 #include <unistd.h>
+#include <ucl.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -178,7 +179,7 @@ pkg_plugin_conf_add_string(struct pkg_plugin *p, int id, const char *key, const 
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -200,7 +201,7 @@ pkg_plugin_conf_add_string(struct pkg_plugin *p, int id, const char *key, const 
 	}
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -218,7 +219,7 @@ pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool boo
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -246,7 +247,7 @@ pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool boo
 	}
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -265,7 +266,7 @@ pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -291,7 +292,7 @@ pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64
 	}
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -308,7 +309,7 @@ pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key)
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -321,7 +322,7 @@ pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key)
 	conf->kvlist = NULL;
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -338,7 +339,7 @@ pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key)
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -351,7 +352,7 @@ pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key)
 	conf->list = NULL;
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -393,7 +394,7 @@ pkg_plugins_init(void)
 		/*
 		 * Load the plugin
 		 */
-		snprintf(pluginfile, MAXPATHLEN, "%s/%s.so", plugdir,
+		snprintf(pluginfile, sizeof(pluginfile), "%s/%s.so", plugdir,
 		    pkg_config_value(v));
 		p = calloc(1, sizeof(struct pkg_plugin));
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
@@ -536,47 +537,36 @@ pkg_plugin_parse(struct pkg_plugin *p)
 	char confpath[MAXPATHLEN];
 	const char *path;
 	const char *plugname;
-	FILE *fp;
+	struct ucl_parser *pr;
+	ucl_object_t *obj;
 
-	yaml_parser_t parser;
-	yaml_document_t doc;
-	yaml_node_t *node;
+	pr = ucl_parser_new(0);
 
 	pkg_config_string(PKG_CONFIG_PLUGINS_CONF_DIR, &path);
 	plugname = pkg_plugin_get(p, PKG_PLUGIN_NAME);
 
 	snprintf(confpath, sizeof(confpath), "%s/%s.conf", path, plugname);
 
-	if ((fp = fopen(confpath, "r")) == NULL) {
-		if (errno != ENOENT) {
-			pkg_emit_errno("fopen", confpath);
-			return (EPKG_FATAL);
+	if (!ucl_parser_add_file(pr, confpath)) {
+		if (errno == ENOENT) {
+			ucl_parser_free(pr);
+			p->parsed = true;
+			return (EPKG_OK);
 		}
-		p->parsed = true;
-		return (EPKG_OK);
+		pkg_emit_error("%s\n", ucl_parser_get_error(pr));
+		ucl_parser_free(pr);
+
+		return (EPKG_FATAL);
 	}
 
-	yaml_parser_initialize(&parser);
-	yaml_parser_set_input_file(&parser, fp);
-	yaml_parser_load(&parser, &doc);
-
-	node = yaml_document_get_root_node(&doc);
-	if (node != NULL) {
-		if (node->type != YAML_MAPPING_NODE) {
-			pkg_emit_error("Invalid configuration format, ignoring the configuration file");
-		} else {
-			pkg_config_parse(&doc, node, p->conf_by_key);
-		}
-	} else {
-		pkg_emit_error("Invalid configuration format, ignoring the configuration file");
-	}
-
-	yaml_document_delete(&doc);
-	yaml_parser_delete(&parser);
-
-	fclose(fp);
+	obj = ucl_parser_get_object(pr);
+	if (obj->type == UCL_OBJECT)
+		pkg_object_walk(obj, p->conf_by_key);
 
 	p->parsed = true;
+	ucl_object_free(obj);
+	ucl_parser_free(pr);
+
 	return (EPKG_OK);
 }
 

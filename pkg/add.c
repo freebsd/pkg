@@ -54,7 +54,7 @@ is_url(const char * const pattern)
 void
 usage_add(void)
 {
-	fprintf(stderr, "usage: pkg add [-IAfq] <pkg-name> ...\n");
+	fprintf(stderr, "Usage: pkg add [-IAfq] <pkg-name> ...\n");
 	fprintf(stderr, "       pkg add [-IAfq] <protocol>://<path>/<pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help add'.\n");
 }
@@ -64,7 +64,7 @@ exec_add(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct sbuf *failedpkgs = NULL;
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	char *file;
 	int retcode;
 	int ch;
@@ -105,7 +105,7 @@ exec_add(int argc, char **argv)
 			       PKGDB_MODE_CREATE,
 			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to add packages");
+		warnx("Insufficient privileges to add packages");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK)
 		return (EX_IOERR);
@@ -117,17 +117,25 @@ exec_add(int argc, char **argv)
 	pkg_manifest_keys_new(&keys);
 	for (i = 0; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
-			snprintf(path, sizeof(path), "./%s", basename(argv[i]));
+			snprintf(path, sizeof(path), "%s/%s.XXXXX",
+			    getenv("TMPDIR") != NULL ? getenv("TMPDIR") : "/tmp", basename(argv[i]));
 			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0)) != EPKG_OK)
 				break;
 
 			file = path;
 		} else {
 			file = argv[i];
-			if (access(file, F_OK) != 0) {
-				warn("%s",file);
+
+			/* Special case: treat a filename of "-" as
+			   meaning 'read from stdin.'  It doesn't make
+			   sense to have a filename of "-" more than
+			   once per command line, but we aren't
+			   testing for that at the moment */
+
+			if (strcmp(file, "-") != 0 && access(file, F_OK) != 0) {
+				warn("%s", file);
 				if (errno == ENOENT)
-					warnx("Did you mean 'pkg install %s'?", file);
+					warnx("Was 'pkg install %s' meant?", file);
 				sbuf_cat(failedpkgs, argv[i]);
 				if (i != argc - 1)
 					sbuf_printf(failedpkgs, ", ");
@@ -143,6 +151,9 @@ exec_add(int argc, char **argv)
 				sbuf_printf(failedpkgs, ", ");
 			failedpkgcount++;
 		}
+
+		if (is_url(argv[i]) == EPKG_OK)
+			unlink(file);
 
 	}
 	pkg_manifest_keys_free(keys);

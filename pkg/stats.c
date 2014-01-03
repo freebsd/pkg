@@ -37,7 +37,7 @@
 void
 usage_stats(void)
 {
-	fprintf(stderr, "usage: pkg stats [-qlrb]\n\n");
+	fprintf(stderr, "Usage: pkg stats [-qlrb]\n\n");
 	fprintf(stderr, "For more information see 'pkg help stats'.\n");
 }
 
@@ -95,7 +95,7 @@ exec_stats(__unused int argc, __unused char **argv)
 		}
 	}
 
-	if (opt & STATS_REMOTE && pkg_repos_count() > 0) {
+	if (opt & STATS_REMOTE && pkg_repos_total_count() > 0) {
 		printf("Remote package database(s):\n");
 		printf("\tNumber of repositories: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_REPOS));
 		printf("\tPackages available: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_COUNT));

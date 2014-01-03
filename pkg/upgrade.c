@@ -30,7 +30,6 @@
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <libutil.h>
 
 #include <pkg.h>
 
@@ -39,7 +38,7 @@
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "usage: pkg upgrade [-fInFqUy] [-r reponame]\n\n");
+	fprintf(stderr, "Usage: pkg upgrade [-fInFqUy] [-r reponame]\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -103,7 +102,7 @@ exec_upgrade(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (dry_run)
+	if (dry_run && !auto_update)
 		retcode = pkgdb_access(PKGDB_MODE_READ,
 				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
 	else
@@ -111,6 +110,11 @@ exec_upgrade(int argc, char **argv)
 				       PKGDB_MODE_WRITE |
 				       PKGDB_MODE_CREATE,
 				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+	if (retcode == EPKG_ENOACCESS && dry_run) {
+		auto_update = false;
+		retcode = pkgdb_access(PKGDB_MODE_READ,
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+	}
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to upgrade packages");
@@ -121,7 +125,7 @@ exec_upgrade(int argc, char **argv)
 		retcode = EX_SOFTWARE;
 	
 	/* first update the remote repositories if needed */
-	if (!dry_run && auto_update && 
+	if (auto_update &&
 	    (updcode = pkgcli_update(false)) != EPKG_OK)
 		return (updcode);
 
@@ -171,6 +175,9 @@ exec_upgrade(int argc, char **argv)
 	cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
+
+	if (!yes && newpkgversion)
+		newpkgversion = false;
 
 	return (retcode);
 }

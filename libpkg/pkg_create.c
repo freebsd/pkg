@@ -44,7 +44,7 @@ static int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
     struct packing *pkg_archive)
 {
-	char		 fpath[MAXPATHLEN + 1];
+	char		 fpath[MAXPATHLEN];
 	struct pkg_file	*file = NULL;
 	struct pkg_dir	*dir = NULL;
 	char		*m;
@@ -245,7 +245,7 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 	}
 
 	pkg_manifest_keys_new(&keys);
-	if ((ret = pkg_load_manifest_file(pkg, path, keys)) != EPKG_OK) {
+	if ((ret = pkg_parse_manifest_file(pkg, path, keys)) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -339,7 +339,8 @@ pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
 		goto cleanup;
 	}
 
-	if (pkg_files(pkg, &file) != EPKG_OK &&
+	/* XXX: autoplist support doesn't work right with meta-ports */
+	if (0 && pkg_files(pkg, &file) != EPKG_OK &&
 	    pkg_dirs(pkg, &dir) != EPKG_OK) {
 		/* Now traverse the file directories, adding to the archive */
 		packing_append_tree(pkg_archive, md_dir, NULL);

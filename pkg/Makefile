@@ -40,8 +40,13 @@ BINDIR=		${PREFIX}/sbin
 MANDIR=		${PREFIX}/man/man
 
 .if exists(${.CURDIR}/../.git) && exists(/usr/local/bin/git)
-GITHASH!=	cd ${.CURDIR} && git rev-parse HEAD
-CFLAGS+=	-DGITHASH="\" ${GITHASH}\""
+GITHASH!=	cd ${.CURDIR} && git rev-parse --short HEAD
+CFLAGS+=	-DGITHASH="\"${GITHASH}\""
+.endif
+
+.if defined(PKG_PORTSDIR)
+CFLAGS+=	-DPORTSDIR=\"${PKG_PORTSDIR}\"
+MANFILTER=	sed -e "s|/usr/ports|${PKG_PORTSDIR}|g"
 .endif
 
 .if defined(DEBUG_FLAGS)
@@ -56,9 +61,11 @@ DEBUG_FLAGS+=	-pg
 .endif
 
 CFLAGS+=	-I../libpkg \
-		-I${.CURDIR}/../external/uthash
-LDADD+=		-L../libpkg \
+		-I${.CURDIR}/../external/uthash \
+		-I${.CURDIR}/../external/expat/lib
+LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lpkg \
+		-ledit \
 		-larchive \
 		-lutil \
 		-lpthread \
@@ -69,9 +76,22 @@ LDADD+=		-L../libpkg \
 		-lmd \
 		-lz \
 		-lbz2 \
-		-llzma \
-		-lbsdxml \
-		${LDADD_STATIC}
+		-llzma
+
+.if exists(/usr/lib/libelf.so)
+LDADD_STATIC+=	-lelf
+.endif
+
+LDADD_STATIC+=	-larchive \
+		-lsbuf \
+		-lfetch \
+		-lpthread \
+		-lssl \
+		-lcrypto \
+		-lmd \
+		-lz \
+		-lbz2 \
+		-llzma
 
 .if !exists(/usr/include/jail.h)
 CFLAGS+=	-DNO_LIBJAIL
@@ -79,9 +99,7 @@ CFLAGS+=	-DNO_LIBJAIL
 LDADD+=		-ljail
 .endif
 
-.if !defined(STATIC_PKGNG)
-LDFLAGS+=	-Wl,-rpath=/usr/lib:${PREFIX}/lib
-.endif
+DPADD_STATIC=	${.OBJDIR}/../libpkg/libpkg.a
 
 WARNS?=		6
 MAN=	pkg.8 \
@@ -91,6 +109,7 @@ MAN=	pkg.8 \
 	pkg-autoremove.8 \
 	pkg-backup.8 \
 	pkg-check.8 \
+	pkg-config.8 \
 	pkg-convert.8 \
 	pkg-clean.8 \
 	pkg-create.8 \
@@ -125,3 +144,25 @@ fix-xrefs:
 	@./fix-xrefs ${MAN}
 
 .include <bsd.prog.mk>
+
+${PROG}: ${PROG}-static
+
+LDFLAGS_STATIC:=	-static ${LDFLAGS}
+LDFLAGS+=	-Wl,-rpath=/usr/lib:${PREFIX}/lib
+
+${PROG}-static: ${OBJS}
+	${CC} -static ${CFLAGS} ${LDFLAGS_STATIC} -o ${.TARGET} ${OBJS} ${LDADD} ${LDADD_STATIC}
+
+realinstall: ${PROG}-static-install
+
+${PROG}-static-install:
+	${INSTALL} ${STRIP} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \
+		${_INSTALLFLAGS} ${PROG}-static ${DESTDIR}${BINDIR}/${PROG}-static
+
+depend: staticdepend
+.ORDER: ${DEPENDFILE} staticdepend
+
+staticdepend:
+.if defined(DPADD_STATIC) && !empty(DPADD_STATIC)
+	echo ${PROG}-static: ${DPADD_STATIC} >> ${DEPENDFILE}
+.endif

@@ -41,19 +41,13 @@
 #include <stdbool.h>
 #include <uthash.h>
 #include <utlist.h>
+#include <ucl.h>
 
-#ifdef BUNDLED_YAML
-#include <yaml.h>
-#else
-#include <bsdyml.h>
-#endif
 #include "private/utils.h"
 
 #define PKG_NUM_SCRIPTS 9
 
 #if ARCHIVE_VERSION_NUMBER < 3000002
-#define archive_read_free(a) archive_read_finish(a)
-#define archive_write_free(a) archive_write_finish(a)
 #define archive_write_add_filter_xz(a) archive_write_set_compression_xz(a)
 #define archive_write_add_filter_bzip2(a) archive_write_set_compression_bzip2(a)
 #define archive_write_add_filter_gzip(a) archive_write_set_compression_gzip(a)
@@ -94,6 +88,11 @@
 		else                          \
 			return (EPKG_OK);     \
 	} while (0)
+
+#define HASH_FIND_UCLT(head,type,out)                            \
+	HASH_FIND(hh, head, type, sizeof(enum ucl_type), out)
+#define HASH_ADD_UCLT(head,type,add)                             \
+	HASH_ADD(hh, head, type, sizeof(enum ucl_type), add)
 
 #define HASH_FIND_YAMLT(head,type,out)                                   \
 	HASH_FIND(hh,head,type,sizeof(yaml_node_type_t),out)
@@ -169,20 +168,20 @@ struct pkg_category {
 };
 
 struct pkg_file {
-	char		 path[MAXPATHLEN +1];
+	char		 path[MAXPATHLEN];
 	int64_t		 size;
-	char		 sum[SHA256_DIGEST_LENGTH * 2 +1];
-	char		 uname[MAXLOGNAME +1];
-	char		 gname[MAXLOGNAME +1];
+	char		 sum[SHA256_DIGEST_LENGTH * 2 + 1];
+	char		 uname[MAXLOGNAME];
+	char		 gname[MAXLOGNAME];
 	bool		 keep;
 	mode_t		 perm;
 	UT_hash_handle	 hh;
 };
 
 struct pkg_dir {
-	char		 path[MAXPATHLEN +1];
-	char		 uname[MAXLOGNAME +1];
-	char		 gname[MAXLOGNAME +1];
+	char		 path[MAXPATHLEN];
+	char		 uname[MAXLOGNAME];
+	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	bool		 keep;
 	bool		 try;
@@ -192,6 +191,8 @@ struct pkg_dir {
 struct pkg_option {
 	struct sbuf	*key;
 	struct sbuf	*value;
+	struct sbuf	*default_value;
+	struct sbuf	*description;
 	UT_hash_handle	hh;
 };
 
@@ -235,13 +236,13 @@ struct job_pattern {
 };
 
 struct pkg_user {
-	char		 name[MAXLOGNAME+1];
+	char		 name[MAXLOGNAME];
 	char		 uidstr[8192];/* taken from pw_util.c */
 	UT_hash_handle	hh;
 };
 
 struct pkg_group {
-	char		 name[MAXLOGNAME+1];
+	char		 name[MAXLOGNAME];
 	char		 gidstr[8192]; /* taken from gw_util.c */
 	UT_hash_handle	hh;
 };
@@ -300,7 +301,23 @@ struct pkg_repo {
 		struct dns_srvinfo *srv;
 		struct http_mirror *http;
 	};
+	signature_t signature_type;
+	char *fingerprints;
 	FILE *ssh;
+
+	struct {
+		int in;
+		int out;
+		pid_t pid;
+		struct {
+			char *buf;
+			size_t size;
+			size_t pos;
+			size_t len;
+		} cache;
+	} sshio;
+	size_t fetched;
+	size_t tofetch;
 	bool enable;
 	UT_hash_handle hh;
 };
@@ -393,8 +410,6 @@ void pkg_annotation_free(struct pkg_note *);
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format);
-int packing_append_file(struct packing *pack, const char *filepath,
-			const char *newpath);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
 			     const char *newpath, const char *uname,
 			     const char *gname, mode_t perm);
@@ -405,7 +420,7 @@ int packing_append_tree(struct packing *pack, const char *treepath,
 int packing_finish(struct packing *pack);
 pkg_formats packing_format_from_string(const char *str);
 
-int pkg_delete_files(struct pkg *pkg, bool force);
+int pkg_delete_files(struct pkg *pkg, unsigned force);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, bool force);
 
 int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
@@ -419,7 +434,7 @@ int pkg_set_mtree(struct pkg *, const char *mtree);
 
 /* pkgdb commands */
 int sql_exec(sqlite3 *, const char *, ...);
-int get_pragma(sqlite3 *, const char *sql, int64_t *res);
+int get_pragma(sqlite3 *, const char *sql, int64_t *res, bool silence);
 int get_sql_string(sqlite3 *, const char *sql, char **res);
 
 int pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg);
@@ -448,10 +463,10 @@ int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 int pkg_register_shlibs(struct pkg *pkg, const char *root);
 
-void pkg_config_parse(yaml_document_t *doc, yaml_node_t *node, struct pkg_config *conf_by_key);
+void pkg_object_walk(ucl_object_t *o, struct pkg_config *conf_by_key);
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
-int pkg_parse_manifest_archive(struct pkg *pkg, struct archive *a, struct pkg_manifest_key *keys);
 
+int do_extract_mtree(char *mtree, const char *prefix);
 #endif

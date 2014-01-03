@@ -41,7 +41,7 @@
 void
 usage_shlib(void)
 {
-	fprintf(stderr, "usage: pkg shlib [P|R] <library>\n\n");
+	fprintf(stderr, "Usage: pkg shlib [-P|R] <library>\n\n");
 	fprintf(stderr, "<library> should be a filename without leading path.\n");
 	fprintf(stderr, "For more information see 'pkg help shlib'.\n");
 }
@@ -141,7 +141,7 @@ int
 exec_shlib(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
-	char		 libname[MAXPATHLEN + 1];
+	char		 libname[MAXPATHLEN];
 	int		 retcode = EPKG_OK;
 	int		 ch;
 	bool		 provides_only = false;
@@ -175,10 +175,10 @@ exec_shlib(int argc, char **argv)
 
 	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
 
-	if (retcode == EPKG_OK && !provides_only)
+	if (retcode == EPKG_OK && !requires_only)
 		retcode = pkgs_providing_lib(db, libname);
 
-	if (retcode == EPKG_OK && !requires_only)
+	if (retcode == EPKG_OK && !provides_only)
 		retcode = pkgs_requiring_lib(db, libname);
 
 	if (retcode != EPKG_OK)

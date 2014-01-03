@@ -37,7 +37,10 @@
 #include <libgen.h>
 #include <sqlite3.h>
 #include <string.h>
+#define _WITH_GETLINE
+#include <stdio.h>
 #include <stdbool.h>
+#include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -52,8 +55,8 @@
 int
 pkg_repo_fetch(struct pkg *pkg)
 {
-	char dest[MAXPATHLEN + 1];
-	char url[MAXPATHLEN + 1];
+	char dest[MAXPATHLEN];
+	char url[MAXPATHLEN];
 	int fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	char *path = NULL;
@@ -172,6 +175,7 @@ struct digest_list_entry {
 	char *digest;
 	long manifest_pos;
 	long files_pos;
+	long manifest_length;
 	struct digest_list_entry *next;
 };
 
@@ -404,7 +408,7 @@ out:
 }
 
 int
-pkg_create_repo(char *path, bool force, bool filelist,
+pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
@@ -413,34 +417,26 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	size_t len;
 	pthread_t *tids = NULL;
 	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
-	sqlite3 *sqlite = NULL, *conflictsdb = NULL;
+	sqlite3 *sqlite = NULL;
 
 	char *errmsg = NULL;
 	int retcode = EPKG_OK;
 
 	char *repopath[2];
-	char repodb[MAXPATHLEN + 1];
-	char repopack[MAXPATHLEN + 1];
+	char repodb[MAXPATHLEN];
+	char repopack[MAXPATHLEN];
 	char *manifest_digest;
-	FILE *psyml, *fsyml, *mandigests, *fconflicts;
-
-	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
-	struct pkg_conflict *c, *ctmp;
-
-	const char conflicts_create_sql[] = ""
-			"CREATE TABLE packages("
-			    "id INTEGER PRIMARY KEY,"
-			    "origin NOT NULL);"
-			"CREATE TABLE files("
-			    "file TEXT UNIQUE,"
-			    "package_id INTEGER REFERENCES packages(id));"
-			    "";
-
+	FILE *psyml, *fsyml, *mandigests;
 
 	psyml = fsyml = mandigests = NULL;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
+		return (EPKG_FATAL);
+	}
+
+	if (!is_dir(output_dir)) {
+		pkg_emit_error("%s is not a directory", output_dir);
 		return (EPKG_FATAL);
 	}
 
@@ -457,31 +453,34 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		goto cleanup;
 	}
 
-	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_packagesite_file);
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+	    repo_packagesite_file);
 	if ((psyml = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 	if (filelist) {
-		snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_filesite_file);
+		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+		    repo_filesite_file);
 		if ((fsyml = fopen(repodb, "w")) == NULL) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
 	}
-	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_digests_file);
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
+	    repo_digests_file);
 	if ((mandigests = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
-	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_conflicts_file);
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir, repo_conflicts_file);
 	if ((fconflicts = fopen(repodb, "w")) == NULL) {
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
 
-	snprintf(repodb, sizeof(repodb), "%s/%s", path, repo_db_file);
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir, repo_db_file);
 	snprintf(repopack, sizeof(repopack), "%s/repo.txz", path);
 
 	pack_extract(repopack, repo_db_file, repodb);
@@ -492,7 +491,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 	if ((retcode = pkgdb_repo_init(sqlite, true)) != EPKG_OK)
 		goto cleanup;
 
-	snprintf(repodb, sizeof(repodb), "%s/conflicts.sqlite", path);
+	snprintf(repodb, sizeof(repodb), "%s/conflicts.sqlite", output_dir);
 	/* Unlink conflicts to ensure that it is clean */
 	if (unlink(repodb) == -1 && errno != ENOENT) {
 		retcode = EPKG_FATAL;
@@ -530,7 +529,7 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		struct pkg_result *r;
 		const char *origin;
 
-		long manifest_pos, files_pos;
+		long manifest_pos, files_pos, manifest_length;
 
 		pthread_mutex_lock(&thd_data.results_m);
 		while ((r = thd_data.results) == NULL) {
@@ -554,9 +553,6 @@ pkg_create_repo(char *path, bool force, bool filelist,
 			continue;
 		}
 
-		if (progress != NULL)
-			progress(r->pkg, data);
-
 		/* do not add if package if already in repodb
 		   (possibly at a different pkg_path) */
 
@@ -565,17 +561,18 @@ pkg_create_repo(char *path, bool force, bool filelist,
 			goto cleanup;
 		}
 		else if (retcode == EPKG_OK) {
-			pkg_free(r->pkg);
-			free(r);
 			continue;
 		}
 
+		if (progress != NULL)
+			progress(r->pkg, data);
+
 		manifest_pos = ftell(psyml);
 		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
+		manifest_length = ftell(psyml) - manifest_pos;
 		if (filelist) {
 			files_pos = ftell(fsyml);
 			pkg_emit_filelist(r->pkg, fsyml);
-			pkg_repo_check_conflicts(r->pkg, conflictsdb, &conflicts);
 		} else {
 			files_pos = 0;
 		}
@@ -587,13 +584,12 @@ pkg_create_repo(char *path, bool force, bool filelist,
 		cur_dig->digest = manifest_digest;
 		cur_dig->manifest_pos = manifest_pos;
 		cur_dig->files_pos = files_pos;
+		cur_dig->manifest_length = manifest_length;
 		LL_PREPEND(dlist, cur_dig);
 
 		retcode = pkgdb_repo_add_package(r->pkg, r->path, sqlite,
 				manifest_digest, false, true);
 		if (retcode == EPKG_END) {
-			pkg_free(r->pkg);
-			free(r);
 			continue;
 		}
 		else if (retcode != EPKG_OK) {
@@ -622,10 +618,9 @@ cleanup:
 		free(curcb);
 	}
 	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
-		if (retcode == EPKG_OK) {
-			fprintf(mandigests, "%s:%s:%ld:%ld\n", cur_dig->origin,
-				cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos);
-		}
+		fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
+		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
+		    cur_dig->manifest_length);
 		free(cur_dig->digest);
 		free(cur_dig->origin);
 		free(cur_dig);
@@ -662,9 +657,6 @@ cleanup:
 	if (sqlite != NULL)
 		sqlite3_close(sqlite);
 
-	if (conflictsdb != NULL)
-		sqlite3_close(conflictsdb);
-
 	if (errmsg != NULL)
 		sqlite3_free(errmsg);
 
@@ -684,9 +676,9 @@ read_pkg_file(void *data)
 	struct pkg_manifest_key *keys = NULL;
 
 	FTSENT *fts_ent = NULL;
-	char fts_accpath[MAXPATHLEN + 1];
-	char fts_path[MAXPATHLEN + 1];
-	char fts_name[MAXPATHLEN + 1];
+	char fts_accpath[MAXPATHLEN];
+	char fts_path[MAXPATHLEN];
+	char fts_name[MAXPATHLEN];
 	off_t st_size;
 	int fts_info, flags;
 
@@ -790,11 +782,84 @@ read_pkg_file(void *data)
 }
 
 static int
-pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa)
+cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cert)
+{
+	FILE *fp;
+	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
+	struct sbuf *cmd = NULL;
+	struct sbuf *buf = NULL;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	int i, ret = EPKG_OK;
+
+	if (sha256_file(path, sha256) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	cmd = sbuf_new_auto();
+
+	for (i = 0; i < argc; i++) {
+		if (strspn(argv[i], " \t\n") > 0)
+			sbuf_printf(cmd, " \"%s\" ", argv[i]);
+		else
+			sbuf_printf(cmd, " %s ", argv[i]);
+	}
+	sbuf_done(cmd);
+
+	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
+		ret = EPKG_FATAL;
+		goto done;
+	}
+
+	fprintf(fp, "%s\n", sha256);
+
+	if (*sig == NULL)
+		*sig = sbuf_new_auto();
+	if (*cert == NULL)
+		*cert = sbuf_new_auto();
+
+	while ((linelen = getline(&line, &linecap, fp)) > 0 ) {
+		if (strcmp(line, "SIGNATURE\n") == 0) {
+			buf = *sig;
+			continue;
+		} else if (strcmp(line, "CERT\n") == 0) {
+			buf = *cert;
+			continue;
+		} else if (strcmp(line, "END\n") == 0) {
+			break;
+		}
+		if (buf != NULL)
+			sbuf_bcat(buf, line, linelen);
+	}
+
+	if (pclose(fp) != 0) {
+		ret = EPKG_FATAL;
+		goto done;
+	}
+
+	if (sbuf_data(*sig)[sbuf_len(*sig) -1 ] == '\n')
+		sbuf_setpos(*sig, sbuf_len(*sig) -1);
+
+	sbuf_finish(*sig);
+	sbuf_finish(*cert);
+done:
+	if (cmd)
+		sbuf_delete(cmd);
+
+	return (ret);
+}
+
+static int
+pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa, char **argv, int argc)
 {
 	struct packing *pack;
 	unsigned char *sigret = NULL;
 	unsigned int siglen = 0;
+	char fname[MAXPATHLEN];
+	struct sbuf *sig, *pub;
+
+	sig = NULL;
+	pub = NULL;
 
 	if (packing_init(&pack, archive, TXZ) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -802,81 +867,123 @@ pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa)
 	if (rsa != NULL) {
 		if (rsa_sign(path, rsa, &sigret, &siglen) != EPKG_OK) {
 			packing_finish(pack);
+			unlink(path);
 			return (EPKG_FATAL);
 		}
 
 		if (packing_append_buffer(pack, sigret, "signature", siglen + 1) != EPKG_OK) {
 			free(sigret);
 			free(pack);
+			unlink(path);
 			return (EPKG_FATAL);
 		}
 
 		free(sigret);
+	} else if (argc >= 1) {
+		if (cmd_sign(path, argv, argc, &sig, &pub) != EPKG_OK) {
+			packing_finish(pack);
+			unlink(path);
+			return (EPKG_FATAL);
+		}
+
+		snprintf(fname, sizeof(fname), "%s.sig", name);
+		if (packing_append_buffer(pack, sbuf_data(sig), fname, sbuf_len(sig)) != EPKG_OK) {
+			packing_finish(pack);
+			sbuf_delete(sig);
+			sbuf_delete(pub);
+			unlink(path);
+			return (EPKG_FATAL);
+		}
+
+		snprintf(fname, sizeof(fname), "%s.pub", name);
+		if (packing_append_buffer(pack, sbuf_data(pub), fname, sbuf_len(pub)) != EPKG_OK) {
+			packing_finish(pack);
+			unlink(path);
+			sbuf_delete(sig);
+			sbuf_delete(pub);
+			return (EPKG_FATAL);
+		}
+
 	}
 	packing_append_file_attr(pack, path, name, "root", "wheel", 0644);
 
-	unlink(path);
 	packing_finish(pack);
+	unlink(path);
+	if (sig != NULL)
+		sbuf_delete(sig);
+	if (pub != NULL)
+		sbuf_delete(pub);
 
 	return (EPKG_OK);
 }
 
 int
-pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bool filelist)
+pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
+    char **argv, int argc, bool filelist)
 {
-	char repo_path[MAXPATHLEN + 1];
-	char repo_archive[MAXPATHLEN + 1];
+	char repo_path[MAXPATHLEN];
+	char repo_archive[MAXPATHLEN];
 	struct rsa_key *rsa = NULL;
 	struct stat st;
 	int ret = EPKG_OK;
 	
-	if (!is_dir(path)) {
-	    pkg_emit_error("%s is not a directory", path);
-	    return (EPKG_FATAL);
+	if (!is_dir(output_dir)) {
+		pkg_emit_error("%s is not a directory", output_dir);
+		return (EPKG_FATAL);
 	}
 
-	if (rsa_key_path != NULL)
-		rsa_new(&rsa, password_cb, rsa_key_path);
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_packagesite_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_packagesite_archive);
-	if (pack_db(repo_packagesite_file, repo_archive, repo_path, rsa) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
+	if (argc == 1) {
+		rsa_new(&rsa, password_cb, argv[0]);
 	}
 
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_db_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_db_archive);
-	if (pack_db(repo_db_file, repo_archive, repo_path, rsa) != EPKG_OK) {
+	if (argc > 1 && strcmp(argv[0], "signing_command:") != 0)
+		return (EPKG_FATAL);
+
+	if (argc > 1) {
+		argc--;
+		argv++;
+	}
+
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+	    repo_packagesite_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+	    repo_packagesite_archive);
+	if (pack_db(repo_packagesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	if (filelist) {
-		snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_filesite_file);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_filesite_archive);
-		if (pack_db(repo_filesite_file, repo_archive, repo_path, rsa) != EPKG_OK) {
+		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+		    repo_filesite_file);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
+		    output_dir, repo_filesite_archive);
+		if (pack_db(repo_filesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
 	}
 
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_digests_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_digests_archive);
-	if (pack_db(repo_digests_file, repo_archive, repo_path, rsa) != EPKG_OK) {
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
+	    repo_digests_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+	    repo_digests_archive);
+	if (pack_db(repo_digests_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", path, repo_conflicts_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", path, repo_conflicts_archive);
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir, 
+		repo_conflicts_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+		repo_conflicts_archive);
 	if (pack_db(repo_conflicts_file, repo_archive, repo_path, rsa) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
 
 	/* Now we need to set the equal mtime for all archives in the repo */
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_db_archive);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+	    output_dir, repo_db_archive);
 	if (stat(repo_archive, &st) == 0) {
 		struct timeval ftimes[2] = {
 			{
@@ -888,12 +995,15 @@ pkg_finish_repo(char *path, pem_password_cb *password_cb, char *rsa_key_path, bo
 			.tv_usec = 0
 			}
 		};
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_packagesite_archive);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+		    output_dir, repo_packagesite_archive);
 		utimes(repo_archive, ftimes);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_digests_archive);
+		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
+		    output_dir, repo_digests_archive);
 		utimes(repo_archive, ftimes);
 		if (filelist) {
-			snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz", path, repo_filesite_archive);
+			snprintf(repo_archive, sizeof(repo_archive),
+			    "%s/%s.txz", output_dir, repo_filesite_archive);
 			utimes(repo_archive, ftimes);
 		}
 	}

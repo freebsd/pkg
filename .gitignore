@@ -10,9 +10,10 @@
 *.gz
 *.pc
 tags
+TAGS
 pkg/pkg
+pkg/pkg-static
 pkg2legacy
-pkg-static/pkg-static
 tests/test
 tests/lib/test
 tests/lib/pkg_printf.c
@@ -30,3 +31,4 @@ scripts/periodic/460.pkg-checksum
 scripts/periodic/490.status-pkg-changes
 scripts/sbin/pkg2ng
 *.sw*
+

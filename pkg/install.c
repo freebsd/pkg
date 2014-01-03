@@ -37,7 +37,6 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <libutil.h>
 
 #include <pkg.h>
 
@@ -47,7 +46,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "usage: pkg install [-AfgIinFqRUxy] [-r reponame] <pkg-name> ...\n\n");
+	    "Usage: pkg install [-AfgIinFqRUxy] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -125,7 +124,7 @@ exec_install(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (dry_run)
+	if (dry_run && !auto_update)
 		retcode = pkgdb_access(PKGDB_MODE_READ,
 				       PKGDB_DB_LOCAL   |
 				       PKGDB_DB_REPO);
@@ -135,9 +134,16 @@ exec_install(int argc, char **argv)
 				       PKGDB_MODE_CREATE,
 				       PKGDB_DB_LOCAL   |
 				       PKGDB_DB_REPO);
-	
+
+
+	if (retcode == EPKG_ENOACCESS && dry_run) {
+		auto_update = false;
+		retcode = pkgdb_access(PKGDB_MODE_READ,
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+	}
+
 	if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privilege to install packages");
+		warnx("Insufficient privileges to install packages");
 		return (EX_NOPERM);
 	} else if (retcode != EPKG_OK)
 		return (EX_IOERR);
@@ -193,6 +199,9 @@ exec_install(int argc, char **argv)
 cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
+
+	if (!yes && newpkgversion)
+		newpkgversion = false;
 
 	return (retcode);
 }

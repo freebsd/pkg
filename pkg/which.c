@@ -39,7 +39,7 @@
 void
 usage_which(void)
 {
-	fprintf(stderr, "usage: pkg which [-qgo] <file>\n\n");
+	fprintf(stderr, "Usage: pkg which [-qgo] <file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help which'.\n");
 }
 
@@ -49,8 +49,8 @@ exec_which(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
-	char pathabs[MAXPATHLEN + 1];
-	int ret = EPKG_OK, retcode = EX_OK;
+	char pathabs[MAXPATHLEN];
+	int ret = EPKG_OK, retcode = EX_SOFTWARE;
 	int ch;
 	bool orig = false;
 	bool glob = false;
@@ -87,13 +87,16 @@ exec_which(int argc, char **argv)
 
 	if (!glob)
 		absolutepath(argv[0], pathabs, sizeof(pathabs));
-	else
-		strlcpy(pathabs, argv[0], sizeof(pathabs));
+	else {
+		if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs))
+			return (EX_USAGE);
+	}
 
 	if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL)
 		return (EX_IOERR);
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+		retcode = EX_OK;
 		if (quiet && orig)
 			pkg_printf("%o\n", pkg);
 		else if (quiet && !orig)
@@ -102,19 +105,11 @@ exec_which(int argc, char **argv)
 			pkg_printf("%S was installed by package %o\n", pathabs, pkg);
 		else if (!quiet && !orig)
 			pkg_printf("%S was installed by package %n-%v\n", pathabs, pkg, pkg);
-		if (!glob)
-			break;
 	}
 
-	if (ret != EPKG_END) {
-		retcode = EX_SOFTWARE;
-	}
-	else if (!glob) {
-		if (!quiet)
-			printf("%s was not found in the database\n", pathabs);
-		retcode = EX_DATAERR;
-	}
-		
+	if (retcode != EX_OK && !quiet)
+		printf("%s was not found in the database\n", pathabs);
+
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 

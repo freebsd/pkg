@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd June 11, 2013
+.Dd September 14, 2013
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -32,6 +32,7 @@
 .Op Fl N
 .Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
 .Op Fl C Ao configuration file Ac
+.Op Fl R Ao repository configuration directory Ac
 .Ao command Ac Ao Ar flags Ac
 .\" ---------------------------------------------------------------------------
 .Sh DESCRIPTION
@@ -122,7 +123,7 @@ is installed and activated:
 .Bd -literal -offset indent
   if TMPDIR=/dev/null ASSUME_ALWAYS_YES=1 \\
        PACKAGESITE=file:///nonexistent \\
-       pkg info pkg >/dev/null 2>&1; then
+       pkg info -x 'pkg(-devel)?$' >/dev/null 2>&1; then
     # pkgng-specifics
   else
     # pkg_install-specifics
@@ -152,6 +153,12 @@ Environment
 .It Fl C Ao configuration file Ac
 .Nm
 will use the specified file as a configuration file
+.It Fl R Ao repository configuration directory Ac
+.Nm
+will search the directory for per-repository configuration files.
+This overrides any value of
+.Ev REPOS_DIR
+specified in the main configuration file.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh COMMANDS
@@ -316,6 +323,7 @@ Check for missing dependencies:
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
 .Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
@@ -362,7 +370,7 @@ command first appeared in
 .An Eitan Adler <eadler@FreeBSD.org>
 .An Romain Tarti\`ere <romain@FreeBSD.org>
 .An Vsevolod Stakhov <vsevolod@FreeBSD.org>
-.An Alexandre Perrin <alexandre.perrin@netoxygen.ch>
+.An Alexandre Perrin <alex@kaworu.ch>
 .\" ---------------------------------------------------------------------------
 .Sh BUGS
 See the issue tracker at

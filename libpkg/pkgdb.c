@@ -7,7 +7,6 @@
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Gerald Pfeifer <gerald@pfeifer.com>
- * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -72,7 +71,7 @@
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	20
+#define DB_SCHEMA_MINOR	21
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -87,6 +86,8 @@ static int sqlcmd_init(sqlite3 *db, __unused const char **err,
 static int prstmt_initialize(struct pkgdb *db);
 /* static int run_prstmt(sql_prstmt_index s, ...); */
 static void prstmt_finalize(struct pkgdb *db);
+static int pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+
 
 extern int sqlite3_shell(int, char**);
 
@@ -246,8 +247,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 		struct column_mapping *column;
 		switch (sqlite3_column_type(stmt, icol)) {
 		case SQLITE_TEXT:
-			column = bsearch(colname, columns,
-					sizeof(columns) / sizeof(columns[0]) - 1,
+			column = bsearch(colname, columns, NELEM(columns) - 1,
 					sizeof(columns[0]), compare_column_func);
 			if (column == NULL)
 				pkg_emit_error("Unknown column %s",
@@ -258,8 +258,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 						icol));
 			break;
 		case SQLITE_INTEGER:
-			column = bsearch(colname, columns,
-					sizeof(columns) / sizeof(columns[0]) - 1,
+			column = bsearch(colname, columns, NELEM(columns) - 1,
 					sizeof(columns[0]), compare_column_func);
 			if (column == NULL)
 				pkg_emit_error("Unknown column %s",
@@ -368,7 +367,7 @@ pkgdb_upgrade(struct pkgdb *db)
 
 	assert(db != NULL);
 
-	ret = get_pragma(db->sqlite, "PRAGMA user_version;", &db_version);
+	ret = get_pragma(db->sqlite, "PRAGMA user_version;", &db_version, false);
 	if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
@@ -484,21 +483,53 @@ pkgdb_init(sqlite3 *sdb)
 	");"
 	"CREATE TABLE mtree ("
 		"id INTEGER PRIMARY KEY,"
-		"content TEXT UNIQUE"
+		"content TEXT NOT NULL UNIQUE"
 	");"
-	"CREATE TABLE scripts ("
+	"CREATE TABLE pkg_script ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE,"
-		"script TEXT,"
 		"type INTEGER,"
+		"script_id INTEGER REFERENCES script(script_id)"
+                        " ON DELETE RESTRICT ON UPDATE CASCADE,"
 		"PRIMARY KEY (package_id, type)"
 	");"
-	"CREATE TABLE options ("
-		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
-			" ON UPDATE CASCADE,"
-		"option TEXT,"
-		"value TEXT,"
-		"PRIMARY KEY (package_id,option)"
+        "CREATE TABLE script ("
+                "script_id INTEGER PRIMARY KEY,"
+                "script TEXT NOT NULL UNIQUE"
+        ");"
+	"CREATE TABLE option ("
+		"option_id INTEGER PRIMARY KEY,"
+		"option TEXT NOT NULL UNIQUE"
+	");"
+	"CREATE TABLE option_desc ("
+		"option_desc_id INTEGER PRIMARY KEY,"
+		"option_desc TEXT NOT NULL UNIQUE"
+	");"
+	"CREATE TABLE pkg_option ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"value TEXT NOT NULL,"
+		"PRIMARY KEY(package_id, option_id)"
+	");"
+	"CREATE TABLE pkg_option_desc ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"option_desc_id INTEGER NOT NULL "
+			"REFERENCES option_desc(option_desc_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"PRIMARY KEY(package_id, option_id)"
+	");"
+	"CREATE TABLE pkg_option_default ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id) "
+			"ON DELETE CASCADE ON UPDATE CASCADE,"
+		"option_id INTEGER NOT NULL REFERENCES option(option_id) "
+			"ON DELETE RESTRICT ON UPDATE CASCADE,"
+		"default_value TEXT NOT NULL,"
+		"PRIMARY KEY(package_id, option_id)"
 	");"
 	"CREATE TABLE deps ("
 		"origin TEXT NOT NULL,"
@@ -622,8 +653,7 @@ pkgdb_init(sqlite3 *sdb)
 	/* Mark the end of the array */
 
 	"CREATE INDEX deporigini on deps(origin);"
-	"CREATE INDEX scripts_package_id ON scripts (package_id);"
-	"CREATE INDEX options_package_id ON options (package_id);"
+	"CREATE INDEX pkg_script_package_id ON pkg_script(package_id);"
 	"CREATE INDEX deps_package_id ON deps (package_id);"
 	"CREATE INDEX files_package_id ON files (package_id);"
 	"CREATE INDEX pkg_directories_package_id ON pkg_directories (package_id);"
@@ -664,6 +694,75 @@ pkgdb_init(sqlite3 *sdb)
 		"AND package_id = old.package_id; "
 	"END;"
 
+	"CREATE VIEW scripts AS SELECT package_id, script, type"
+                " FROM pkg_script ps JOIN script s"
+                " ON (ps.script_id = s.script_id);"
+        "CREATE TRIGGER scripts_update"
+                " INSTEAD OF UPDATE ON scripts "
+        "FOR EACH ROW BEGIN"
+                " INSERT OR IGNORE INTO script(script)"
+                " VALUES(new.script);"
+	        " UPDATE pkg_script"
+                " SET package_id = new.package_id,"
+                        " type = new.type,"
+	                " script_id = ( SELECT script_id"
+	                " FROM script WHERE script = new.script )"
+                " WHERE package_id = old.package_id"
+                        " AND type = old.type;"
+        "END;"
+        "CREATE TRIGGER scripts_insert"
+                " INSTEAD OF INSERT ON scripts "
+        "FOR EACH ROW BEGIN"
+                " INSERT OR IGNORE INTO script(script)"
+                " VALUES(new.script);"
+	        " INSERT INTO pkg_script(package_id, type, script_id) "
+	        " SELECT new.package_id, new.type, s.script_id"
+                " FROM script s WHERE new.script = s.script;"
+	"END;"
+	"CREATE TRIGGER scripts_delete"
+	        " INSTEAD OF DELETE ON scripts "
+        "FOR EACH ROW BEGIN"
+                " DELETE FROM pkg_script"
+                " WHERE package_id = old.package_id"
+                " AND type = old.type;"
+                " DELETE FROM script"
+                " WHERE script_id NOT IN"
+                         " (SELECT DISTINCT script_id FROM pkg_script);"
+	"END;"
+	"CREATE VIEW options AS "
+		"SELECT package_id, option, value "
+		"FROM pkg_option JOIN option USING(option_id);"
+	"CREATE TRIGGER options_update "
+		"INSTEAD OF UPDATE ON options "
+	"FOR EACH ROW BEGIN "
+		"UPDATE pkg_option "
+		"SET value = new.value "
+		"WHERE package_id = old.package_id AND "
+			"option_id = ( SELECT option_id FROM option "
+				      "WHERE option = old.option );"
+	"END;"
+	"CREATE TRIGGER options_insert "
+		"INSTEAD OF INSERT ON options "
+	"FOR EACH ROW BEGIN "
+		"INSERT OR IGNORE INTO option(option) "
+		"VALUES(new.option);"
+		"INSERT INTO pkg_option(package_id, option_id, value) "
+		"VALUES (new.package_id, "
+			"(SELECT option_id FROM option "
+			"WHERE option = new.option), "
+			"new.value);"
+	"END;"
+	"CREATE TRIGGER options_delete "
+		"INSTEAD OF DELETE ON options "
+	"FOR EACH ROW BEGIN "
+		"DELETE FROM pkg_option "
+		"WHERE package_id = old.package_id AND "
+			"option_id = ( SELECT option_id FROM option "
+					"WHERE option = old.option );"
+		"DELETE FROM option "
+		"WHERE option_id NOT IN "
+			"( SELECT DISTINCT option_id FROM pkg_option );"
+	"END;"
 
 	"PRAGMA user_version = %d;"
 	"COMMIT;"
@@ -706,9 +805,10 @@ pkgdb_remote_init(struct pkgdb *db, const char *repo)
 static int
 pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 {
-	int		 ret;
-	char		 remotepath[MAXPATHLEN + 1];
+	int		  ret;
+	char		  remotepath[MAXPATHLEN];
 	struct pkg_repo	 *r = NULL;
+	int		  repocount = 0;
 
 	while (pkg_repos(&r) == EPKG_OK) {
 		if (!pkg_repo_enabled(r))
@@ -751,10 +851,11 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 			}
 			break;
 		default:
+			repocount++;
 			break;
 		}
 	}
-	return (EPKG_OK);
+	return (repocount > 0 ? EPKG_OK : EPKG_FATAL);
 }
 
 static int
@@ -820,7 +921,7 @@ file_mode_insecure(const char *path, bool install_as_user)
 static int
 database_access(unsigned mode, const char* dbdir, const char *dbname)
 {
-	char		 dbpath[MAXPATHLEN + 1];
+	char		 dbpath[MAXPATHLEN];
 	int		 retval;
 	bool		 database_exists;
 	bool		 install_as_user;
@@ -938,6 +1039,10 @@ pkgdb_access(unsigned mode, unsigned database)
 		struct pkg_repo	*r = NULL;
 
 		while (pkg_repos(&r) == EPKG_OK) {
+			/* Ignore any repos marked as inactive */
+			if (!pkg_repo_enabled(r))
+				continue;
+
 			retval = database_access(mode, dbdir, pkg_repo_name(r));
 			if (retval != EPKG_OK)
 				return (retval);
@@ -952,7 +1057,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	struct pkgdb	*db = NULL;
 	struct statfs	 stfs;
 	bool		 reopen = false;
-	char		 localpath[MAXPATHLEN + 1];
+	char		 localpath[MAXPATHLEN];
 	const char	*dbdir = NULL;
 	bool		 create = false;
 	bool		 createdir = false;
@@ -1054,9 +1159,18 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 		}
 	}
 
-	if (type == PKGDB_REMOTE)
-		if ((ret = pkgdb_open_multirepos(dbdir, db)) != EPKG_OK)
-			return (ret);
+	if (type == PKGDB_REMOTE) {
+		if (pkg_repos_activated_count() > 0) {
+			if ((ret = pkgdb_open_multirepos(dbdir, db)) != EPKG_OK)
+				return (ret);
+		} else {
+			if (*db_p == NULL)
+				pkgdb_close(db);
+			pkg_emit_error("No activated remote repositories configured");
+			return (EPKG_FATAL);
+		}
+
+	}
 
 	*db_p = db;
 	return (EPKG_OK);
@@ -1077,6 +1191,9 @@ pkgdb_close(struct pkgdb *db)
 			pkgdb_detach_remotes(db->sqlite);
 		}
 
+		if (!sqlite3_db_readonly(db->sqlite, "main"))
+			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW, NULL, db);
+
 		sqlite3_close(db->sqlite);
 	}
 
@@ -1091,6 +1208,7 @@ int
 pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 {
 	int		 ret;
+	int		 tries;
 	sqlite3_stmt	*stmt;
 
 
@@ -1113,7 +1231,12 @@ pkgdb_transaction_begin(sqlite3 *sqlite, const char *savepoint)
 	}
 
 	if (ret == SQLITE_OK)
-		ret = sqlite3_step(stmt);
+		for (tries = 0; tries < NTRIES; tries++) {
+			ret = sqlite3_step(stmt);
+			if (ret != SQLITE_BUSY)
+				break;
+			sqlite3_sleep(250);
+		}
 
 	sqlite3_finalize(stmt);
 
@@ -1369,7 +1492,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 				comp = " WHERE origin = ?1";
 		} else {
 			if (checkorigin == NULL)
-				comp = " WHERE name = ?1 COLLATE NOCASE"
+				comp = " WHERE name = ?1 COLLATE NOCASE "
 					"OR name || \"-\" || version = ?1"
 					"COLLATE NOCASE";
 			else
@@ -1972,7 +2095,7 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 	int		 ret;
 	const char	 sql[] = ""
 		"SELECT script, type "
-		"FROM scripts "
+		"FROM pkg_script JOIN script USING(script_id) "
 		"WHERE package_id = ?1";
 
 	assert(db != NULL && pkg != NULL);
@@ -2004,15 +2127,48 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 	return (EPKG_OK);
 }
 
+
 int
 pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 {
 	const char	*reponame;
 	char		 sql[BUFSIZ];
-	const char	*basesql = ""
-		"SELECT option, value "
-		"FROM %Q.options "
-		"WHERE package_id = ?1 ORDER BY option DESC";
+	unsigned int	 i;
+
+	struct optionsql {
+		const char	 *sql;
+		int		(*pkg_addtagval)(struct pkg *pkg,
+						  const char *tag,
+						  const char *val);
+		int		  nargs;
+	}			  optionsql[] = {
+		{
+			"SELECT option, value "
+			"FROM %Q.option JOIN %Q.pkg_option USING(option_id) "
+			"WHERE package_id = ?1 ORDER BY option",
+			pkg_addoption,
+			2,
+		},
+		{
+			"SELECT option, default_value "
+			"FROM %Q.option JOIN %Q.pkg_option_default USING(option_id) "
+			"WHERE package_id = ?1 ORDER BY option",
+			pkg_addoption_default,
+			2,
+		},
+		{
+			"SELECT option, description "
+			"FROM %Q.option JOIN %Q.pkg_option_desc USING(option_id) "
+			"JOIN %Q.option_desc USING(option_desc_id) ORDER BY option",
+			pkg_addoption_description,
+			3,
+		}
+	};
+	const char		 *opt_sql;
+	int			(*pkg_addtagval)(struct pkg *pkg,
+						 const char *tag,
+						 const char *val);
+	int			  nargs, ret;
 
 	assert(db != NULL && pkg != NULL);
 
@@ -2022,13 +2178,40 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 	if (pkg->type == PKG_REMOTE) {
 		assert(db->type == PKGDB_REMOTE);
 		pkg_get(pkg, PKG_REPONAME, &reponame);
-		sqlite3_snprintf(sizeof(sql), sql, basesql, reponame);
 	} else {
-		sqlite3_snprintf(sizeof(sql), sql, basesql, "main");
+		reponame = "main";
 	}
 
-	return (load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
-		    pkg_addoption, PKG_OPTIONS));
+	for (i = 0; i < NELEM(optionsql); i++) {
+		opt_sql       = optionsql[i].sql;
+		pkg_addtagval = optionsql[i].pkg_addtagval;
+		nargs         = optionsql[i].nargs;
+
+		switch(nargs) {
+		case 1:
+			sqlite3_snprintf(sizeof(sql), sql, opt_sql, reponame);
+			break;
+		case 2:
+			sqlite3_snprintf(sizeof(sql), sql, opt_sql, reponame,
+					 reponame);
+			break;
+		case 3:
+			sqlite3_snprintf(sizeof(sql), sql, opt_sql, reponame,
+					 reponame, reponame);
+			break;
+		default:
+			/* Nothing needs 4 or more, yet... */
+			return (EPKG_FATAL);
+			break;
+		}
+
+		pkg_debug(1, "Pkgdb> adding option");
+		ret = load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
+				   pkg_addtagval, PKG_OPTIONS);
+		if (ret != EPKG_OK)
+			break;
+	}
+	return (ret);
 }
 
 int
@@ -2111,8 +2294,10 @@ typedef enum _sql_prstmt_index {
 	USERS2,
 	GROUPS1,
 	GROUPS2,
-	SCRIPTS,
-	OPTIONS,
+	SCRIPT1,
+	SCRIPT2,
+	OPTION1,
+	OPTION2,
 	SHLIBS1,
 	SHLIBS_REQD,
 	SHLIBS_PROV,
@@ -2222,17 +2407,31 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2))",
 		"IT",
 	},
-	[SCRIPTS] = {
+	[SCRIPT1] = {
 		NULL,
-		"INSERT INTO scripts (script, type, package_id) "
-		"VALUES (?1, ?2, ?3)",
+		"INSERT OR IGNORE INTO script(script) VALUES (?1)",
+		"T",
+	},
+	[SCRIPT2] = {
+		NULL,
+		"INSERT INTO pkg_script(script_id, package_id, type) "
+		"VALUES ((SELECT script_id FROM script WHERE script = ?1), "
+		"?2, ?3)",
 		"TII",
 	},
-	[OPTIONS] = {
+	[OPTION1] = {
 		NULL,
-		"INSERT INTO options (option, value, package_id) "
-		"VALUES (?1, ?2, ?3)",
-		"TTI",
+		"INSERT OR IGNORE INTO option (option) "
+		"VALUES (?1)",
+		"T",
+	},
+	[OPTION2] = {
+		NULL,
+		"INSERT INTO pkg_option(package_id, option_id, value) "
+		"VALUES (?1, "
+			"(SELECT option_id FROM option WHERE option = ?2),"
+			"?3)",
+		"ITT",
 	},
 	[SHLIBS1] = {
 		NULL,
@@ -2637,8 +2836,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(GROUPS2, package_id, pkg_group_name(group))
-		    != SQLITE_DONE)
-		{
+		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -2648,24 +2846,18 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert scripts
 	 */
 
-	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
-		if (pkg_script_get(pkg, i) == NULL)
-			continue;
-
-		if (run_prstmt(SCRIPTS, pkg_script_get(pkg, i),
-		    i, package_id) != SQLITE_DONE) {
-			ERROR_SQLITE(s);
-			goto cleanup;
-		}
-	}
+	if (pkgdb_insert_scripts(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
 
 	/*
 	 * Insert options
 	 */
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (run_prstmt(OPTIONS, pkg_option_opt(option),
-		    pkg_option_value(option), package_id) != SQLITE_DONE) {
+		if (run_prstmt(OPTION1, pkg_option_opt(option)) != SQLITE_DONE
+		    ||
+		    run_prstmt(OPTION2, package_id, pkg_option_opt(option),
+			       pkg_option_value(option)) != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;
 		}
@@ -2709,6 +2901,28 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	return (retcode);
 }
 
+static int
+pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	const char	*script;
+	int64_t		 i;
+
+	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
+		script = pkg_script_get(pkg, i);
+
+		if (script == NULL)
+			continue;
+		if (run_prstmt(SCRIPT1, script) != SQLITE_DONE
+		    ||
+		    run_prstmt(SCRIPT2, script, package_id, i) != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
 int
 pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
@@ -2738,25 +2952,6 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(SHLIBS_PROV, package_id, pkg_shlib_name(shlib))
-		    != SQLITE_DONE) {
-			ERROR_SQLITE(s);
-			return (EPKG_FATAL);
-		}
-	}
-
-	return (EPKG_OK);
-}
-
-int
-pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
-{
-	struct pkg_provide	*provide = NULL;
-
-	while (pkg_provides(pkg, &provide) == EPKG_OK) {
-		if (run_prstmt(PROVIDE, pkg_provide_name(provide))
-		    != SQLITE_DONE
-		    ||
-		    run_prstmt(PKG_PROVIDE, package_id, pkg_provide_name(provide))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			return (EPKG_FATAL);
@@ -2817,7 +3012,7 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = pkg_analyse_files(db, pkg)) == EPKG_OK) {
+	if ((ret = pkg_analyse_files(db, pkg, NULL)) == EPKG_OK) {
 		if (!db->prstmt_initialized &&
 		    prstmt_initialize(db) != EPKG_OK)
 			return (EPKG_FATAL);
@@ -3011,6 +3206,7 @@ int
 pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 {
 	sqlite3_stmt	*stmt_del;
+	unsigned int	 obj;
 	int		 ret;
 	const char	 sql[] = ""
 		"DELETE FROM packages WHERE origin = ?1;";
@@ -3033,9 +3229,9 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_required)"
 			"AND id NOT IN "
 			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_provided)",
+		"script WHERE script_id NOT IN "
+		        "(SELECT DISTINCT script_id FROM pkg_script)",
 	};
-	size_t		 num_deletions = 
-		sizeof(deletions) / sizeof(*deletions);
 
 	assert(db != NULL);
 	assert(origin != NULL);
@@ -3057,7 +3253,7 @@ pkgdb_unregister_pkg(struct pkgdb *db, const char *origin)
 		return (EPKG_FATAL);
 	}
 
-	for (size_t obj = 0;obj < num_deletions; obj++) {
+	for (obj = 0 ;obj < NELEM(deletions); obj++) {
 		ret = sql_exec(db->sqlite, "DELETE FROM %s;", deletions[obj]);
 		if (ret != EPKG_OK)
 			return (EPKG_FATAL);
@@ -3086,6 +3282,7 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 		sql_to_exec = sql;
 	}
 
+	pkg_debug(4, "Pkgdb: executing '%s'", sql_to_exec);
 	if (sqlite3_exec(s, sql_to_exec, NULL, NULL, &errmsg) != SQLITE_OK) {
 		ERROR_SQLITE(s);
 		sqlite3_free(errmsg);
@@ -3135,7 +3332,7 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql,
 {
 	sqlite3_stmt	*stmt;
 	const char	*dbname;
-	bool		 first = true;
+	int		 dbcount = 0;
 	int		 ret;
 
 	assert(s != NULL);
@@ -3153,11 +3350,10 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql,
 		    (strcmp(dbname, "temp") == 0))
 			continue;
 
-		if (!first) {
+		dbcount++;
+
+		if (dbcount > 1)
 			sbuf_cat(sql, compound);
-		} else {
-			first = false;
-		}
 
 		/* replace any occurences of the dbname in the resulting SQL */
 		sbuf_printf(sql, multireposql, dbname);
@@ -3165,7 +3361,11 @@ sql_on_all_attached_db(sqlite3 *s, struct sbuf *sql, const char *multireposql,
 
 	sqlite3_finalize(stmt);
 
-	return (EPKG_OK);
+	/* The generated SQL statement will not be syntactically
+	 * correct unless there is at least one other attached DB than
+	 * main or temp */
+
+	return (dbcount > 0 ? EPKG_OK : EPKG_FATAL);
 }
 
 static void
@@ -3204,20 +3404,27 @@ pkgdb_detach_remotes(sqlite3 *s)
 }
 
 int
-get_pragma(sqlite3 *s, const char *sql, int64_t *res)
+get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
+	int		 tries;
 
 	assert(s != NULL && sql != NULL);
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql);
 	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(s);
+		if (!silence)
+			ERROR_SQLITE(s);
 		return (EPKG_OK);
 	}
 
-	ret = sqlite3_step(stmt);
+	for (tries = 0; tries < NTRIES; tries++) {
+		ret = sqlite3_step(stmt);
+		if (ret != SQLITE_BUSY)
+			break;
+		sqlite3_sleep(250);
+	}
 
 	if (ret == SQLITE_ROW)
 		*res = sqlite3_column_int64(stmt, 0);
@@ -3225,7 +3432,8 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res)
 	sqlite3_finalize(stmt);
 
 	if (ret != SQLITE_ROW) {
-		ERROR_SQLITE(s);
+		if (!silence)
+			ERROR_SQLITE(s);
 		return (EPKG_FATAL);
 	}
 
@@ -3276,12 +3484,12 @@ pkgdb_compact(struct pkgdb *db)
 
 	assert(db != NULL);
 
-	ret = get_pragma(db->sqlite, "PRAGMA page_count;", &page_count);
+	ret = get_pragma(db->sqlite, "PRAGMA page_count;", &page_count, false);
 	if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
 	ret = get_pragma(db->sqlite, "PRAGMA freelist_count;",
-			 &freelist_count);
+			 &freelist_count, false);
 	if (ret != EPKG_OK)
 		return (EPKG_FATAL);
 
@@ -3512,8 +3720,8 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 			return (NULL);
 		}
 	} else {
-		if (pkg_repos_count() == 0) {
-			pkg_emit_error("No repositories configured");
+		if (pkg_repos_activated_count() == 0) {
+			pkg_emit_error("No active repositories configured");
 			sbuf_delete(sql);
 			return (NULL);
 		}
@@ -3911,7 +4119,7 @@ pkgdb_cmd(int argc, char **argv)
 void
 pkgshell_open(const char **reponame)
 {
-	char		 localpath[MAXPATHLEN + 1];
+	char		 localpath[MAXPATHLEN];
 	const char	*dbdir;
 
 	sqlite3_auto_extension((void(*)(void))sqlcmd_init);

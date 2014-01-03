@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 31, 2013
+.Dd December 5, 2013
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -25,20 +25,27 @@
 .Nm
 .Ao query-format Ac Ao pkg-name Ac
 .Nm
-.Op Fl a
+.Op Fl aU
 .Op Fl r Ar reponame
 .Ao query-format Ac
 .Nm
+.Op Fl U
 .Fl e Ao evaluation-condition Ac
 .Op Fl r Ar reponame
 .Ao query-format Ac
 .Nm
-.Op Fl gix
+.Op Fl giUx
 .Op Fl r Ar reponame
 .Ao query-format Ac Ao pattern Ac Ao ... Ac
 .Sh DESCRIPTION
 .Nm
 is used for displaying information about remote packages.
+.Pp
+Package repository catalogues will be automatically updated whenever
+.Xr pkg-update 8
+is run, unless disabled by the
+.Fl U
+flag.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -65,6 +72,10 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case insensitive.
+.It Fl U
+Skip updating the repository catalogues with
+.Xr pkg-update 8 .
+Use the locally cached copies only.
 .It Fl x
 Treat
 .Ao pattern Ac
@@ -95,6 +106,8 @@ Comment of the matched package
 Description of the matched package
 .It Cm \&%w
 Home page of the matched package
+.It Cm \&%q
+Architecture of the matched package
 .It Cm \&%l
 license logic of the matched package - nothing for single, & for AND, and | for OR
 .It Cm \&%s Ns Op bh
@@ -166,12 +179,18 @@ for the package origin, and
 for the package version.
 .It Cm \&%C
 Expands to the list of categories the matched package belongs to.
-.It Cm \&%O Ns Op kv
+.It Cm \&%O Ns Op kvdD
 Expands to the list of options of the matched package, where
 .Cm k
-stands for option key, and
+stands for option key
 .Cm v
-for option value.
+for option value,
+.Cm d
+for option default value, and
+.Cm D
+for option description.
+Option default values and descriptions are optional metadata and may
+be blank for certain packages or repositories.
 .It Cm \&%L
 Expands to the list of license(s) for the matched package.
 .It Cm \&%B
@@ -207,6 +226,8 @@ WWW address of the package (type string)
 Flatsize of the package (type integer)
 .It Cm \&%a
 Automatic status of the package (type integer)
+.It Cm \&%q
+Architecture of the package (type string)
 .It Cm \&%M
 Message of the package (type string)
 .It Cm \&%# Ns Op drCOLBbA
@@ -250,6 +271,7 @@ See
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
 .Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
