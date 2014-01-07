@@ -55,7 +55,7 @@ cudf_print_package_name(FILE *f, const char *name)
 	p = c = name;
 	while (*p) {
 		if (*p == '_') {
-			r += fprintf(f, "%.*s", p - c, c);
+			r += fprintf(f, "%.*s", (int)(p - c), c);
 			fputc('@', f);
 			r ++;
 			c = p + 1;
@@ -63,7 +63,7 @@ cudf_print_package_name(FILE *f, const char *name)
 		p ++;
 	}
 	if (p > c) {
-		r += fprintf(f, "%.*s", p - c, c);
+		r += fprintf(f, "%.*s", (int)(p - c), c);
 	}
 
 	return r;
