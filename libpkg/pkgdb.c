@@ -2615,7 +2615,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	bool			 automatic;
 	lic_t			 licenselogic;
 	int64_t			 flatsize;
-	int64_t			 i;
 
 	assert(db != NULL);
 
