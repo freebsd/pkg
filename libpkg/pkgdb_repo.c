@@ -60,8 +60,9 @@
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 6
+#define REPO_SCHEMA_MINOR 7
 
+/* REPO_SCHEMA_VERSION=2007 */
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
 typedef enum _sql_prstmt_index {

@@ -536,7 +536,7 @@ static struct db_upgrades {
 			"( SELECT DISTINCT option_id FROM pkg_option );"
 	"END;"
 	},
-	{21,
+	{22,
 	"CREATE TABLE pkg_conflicts ("
 	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
 	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
