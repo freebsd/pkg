@@ -729,7 +729,7 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 	ret = pkg_version_cmp(lversion, rversion);
 	if (ret == 0 && recursive)
 		return (true);
-	else if (ret > 0)
+	else if (ret < 0)
 		return (true);
 	else
 		return (false);
