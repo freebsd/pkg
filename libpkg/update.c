@@ -576,7 +576,7 @@ pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char 
 	HASH_ADD_KEYPTR(hh, *head, item->origin, strlen(item->origin), item);
 }
 
-static void
+static void __unused
 pkg_parse_conflicts_file(FILE *f, sqlite3 *sqlite)
 {
 	size_t linecap = 0;
@@ -676,7 +676,6 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	fconflicts = repo_fetch_remote_extract_tmp(repo,
 			repo_conflicts_archive, "txz", &local_t,
 			&rc, repo_conflicts_file);
-	*mtime = local_t;
 	fseek(fmanifest, 0, SEEK_END);
 	len = ftell(fmanifest);
 
