@@ -258,7 +258,8 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	pkg_debug(2, "universe: add new pkg: %s, (%s-%s)", origin, name, version);
+	pkg_debug(2, "universe: add new %s pkg: %s, (%s-%s)",
+			(pkg->type == PKG_INSTALLED ? "local" : "remote"), origin, name, version);
 	item->pkg = pkg;
 	if (tmp != NULL)
 		tmp->next = item;
@@ -293,39 +294,26 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 			continue;
 
 		rpkg = NULL;
-		if (pkg->type == PKG_INSTALLED) {
-			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
-			if (npkg == NULL) {
-				/*
-				 * We have a package installed, but its dependencies are not,
-				 * try to search a remote dependency
-				 */
-				npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
-				if (npkg == NULL) {
-					/* Cannot continue */
-					pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
-					return (EPKG_FATAL);
-				}
-			}
-			else if (j->type == PKG_JOBS_UPGRADE) {
-				/* For upgrade jobs we need to ensure that we do not have a newer version */
-				rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
-				if (rpkg != NULL) {
-					if (!pkg_need_upgrade(rpkg, npkg, j->flags & PKG_FLAG_RECURSIVE)) {
-						pkg_free(rpkg);
-						rpkg = NULL;
-					}
-				}
-			}
-		}
-		else {
+		npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+		if (npkg == NULL) {
+			/*
+			 * We have a package installed, but its dependencies are not,
+			 * try to search a remote dependency
+			 */
 			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (npkg == NULL) {
-				npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
-				if (npkg == NULL) {
-					/* Cannot continue */
-					pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
-					return (EPKG_FATAL);
+				/* Cannot continue */
+				pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+				return (EPKG_FATAL);
+			}
+		}
+		else if (j->type == PKG_JOBS_UPGRADE) {
+			/* For upgrade jobs we need to ensure that we do not have a newer version */
+			rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (rpkg != NULL) {
+				if (!pkg_need_upgrade(rpkg, npkg, j->flags & PKG_FLAG_RECURSIVE)) {
+					pkg_free(rpkg);
+					rpkg = NULL;
 				}
 			}
 		}
@@ -343,26 +331,19 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 		if (unit != NULL)
 			continue;
 
-		if (pkg->type == PKG_INSTALLED) {
-			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+		npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+		if (npkg == NULL) {
+			/*
+			 * We have a package installed, but its dependencies are not,
+			 * try to search a remote dependency
+			 */
+			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (npkg == NULL) {
-				/*
-				 * We have a package installed, but its dependencies are not,
-				 * try to search a remote dependency
-				 */
-				npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
-				if (npkg == NULL) {
-					/* Cannot continue */
-					pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
-					return (EPKG_FATAL);
-				}
+				/* Cannot continue */
+				pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+				return (EPKG_FATAL);
 			}
 		}
-		else {
-			/* Do not care about remote rdeps */
-			continue;
-		}
-
 		if (pkg_jobs_add_universe(j, npkg, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
@@ -374,22 +355,13 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, bool recursive)
 		if (unit != NULL)
 			continue;
 
-		if (pkg->type == PKG_INSTALLED) {
-			/* We assume that we cannot have conflicts installed */
-			npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
-			if (npkg == NULL) {
-				continue;
-			}
-		}
-		else {
-			/* Check both local and remote conflicts */
-			npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
-			if (pkg_jobs_add_universe(j, npkg, recursive) != EPKG_OK)
-				return (EPKG_FATAL);
-			npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
-			if (npkg == NULL) {
-				continue;
-			}
+		/* Check both local and remote conflicts */
+		npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+		if (pkg_jobs_add_universe(j, npkg, recursive) != EPKG_OK)
+			return (EPKG_FATAL);
+		npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
+		if (npkg == NULL) {
+			continue;
 		}
 
 		if (pkg_jobs_add_universe(j, npkg, recursive) != EPKG_OK)
