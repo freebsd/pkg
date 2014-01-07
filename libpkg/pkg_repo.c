@@ -256,7 +256,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	char *manifest_digest;
 	FILE *psyml, *fsyml, *mandigests, *fconflicts;
 
-	psyml = fsyml = mandigests = NULL;
+	psyml = fsyml = mandigests = fconflicts = NULL;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
