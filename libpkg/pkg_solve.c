@@ -402,7 +402,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 	struct pkg_conflict *conflict, *ctmp;
 	struct pkg *pkg;
 	struct pkg_solve_rule *rule;
-	struct pkg_solve_item *it;
+	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *tvar, *cur_var;
 
 	const char *origin;
