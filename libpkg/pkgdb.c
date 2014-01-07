@@ -2961,6 +2961,25 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 }
 
 int
+pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	struct pkg_provide	*provide = NULL;
+
+	while (pkg_provides(pkg, &provide) == EPKG_OK) {
+		if (run_prstmt(PROVIDE, pkg_provide_name(provide))
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(PKG_PROVIDE, package_id, pkg_provide_name(provide))
+		    != SQLITE_DONE) {
+			ERROR_SQLITE(s);
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
 pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
 	struct pkg_note	*note = NULL;
