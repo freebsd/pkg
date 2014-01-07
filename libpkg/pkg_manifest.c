@@ -970,7 +970,7 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 		    ucl_object_fromstring(pkg_option_value(option)),
 		    pkg_option_opt(option), 0, false);
 	}
-	map = -1;
+	map = NULL;
 	while (pkg_annotations(pkg, &note) == EPKG_OK) {
 		map = ucl_object_insert_key(map,
 		    ucl_object_fromstring(pkg_annotation_value(note)),
