@@ -82,7 +82,7 @@ static struct manifest_key {
 	{ "arch",                PKG_ARCH,                UCL_STRING, pkg_string},
 	{ "categories",          PKG_CATEGORIES,          UCL_ARRAY,  pkg_array},
 	{ "comment",             PKG_COMMENT,             UCL_STRING, pkg_string},
-	{ "conflicts", PKG_CONFLICTS, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "conflicts",           PKG_CONFLICTS,           UCL_ARRAY,  pkg_array},
 	{ "deps",                PKG_DEPS,                UCL_OBJECT, pkg_object},
 	{ "desc",                PKG_DESC,                UCL_STRING, pkg_string},
 	{ "directories",         PKG_DIRECTORIES,         UCL_OBJECT, pkg_object},
@@ -105,7 +105,7 @@ static struct manifest_key {
 	{ "path",                PKG_REPOPATH,            UCL_STRING, pkg_string},
 	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
 	{ "prefix",              PKG_PREFIX,              UCL_STRING, pkg_string},
-	{ "provides", PKG_PROVIDES, YAML_SEQUENCE_NODE, parse_sequence},
+	{ "provides",            PKG_PROVIDES,            UCL_ARRAY,  pkg_array},
 	{ "scripts",             PKG_SCRIPTS,             UCL_OBJECT, pkg_object},
 	{ "shlibs",              PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array}, /* Backwards compat with 1.0.x packages */
 	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,     UCL_ARRAY,  pkg_array},
@@ -846,6 +846,8 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	struct pkg_group	*group    = NULL;
 	struct pkg_shlib	*shlib    = NULL;
 	struct pkg_note		*note     = NULL;
+	struct pkg_conflict	*conflict = NULL;
+	struct pkg_provide	*provide  = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
 	int i;
 	const char *comment, *desc, *message, *name, *pkgarch;
