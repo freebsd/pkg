@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2012-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  *
@@ -809,8 +810,8 @@ cleanup:
 	return (rc);
 }
 
-int
-pkg_update(struct pkg_repo *repo, bool force)
+static int
+update_binary_pkgs(struct pkg_repo *repo, bool force)
 {
 	char repofile[MAXPATHLEN];
 
@@ -908,3 +909,13 @@ cleanup:
 
 	return (res);
 }
+
+int
+pkg_update(struct pkg_repo *repo, bool force)
+{
+	switch (repo->type) {
+	case REPO_BINARY_PKGS:
+		return (update_binary_pkgs(repo, force));
+		break;
+	}
+};
