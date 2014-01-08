@@ -1253,6 +1253,7 @@ pkg_repo_new(const char *name, const char *url)
 	struct pkg_repo *r;
 
 	r = calloc(1, sizeof(struct pkg_repo));
+	r->type = REPO_BINARY_PKGS;
 	r->url = subst_packagesite_str(url);
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;

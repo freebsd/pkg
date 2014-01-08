@@ -293,6 +293,7 @@ struct http_mirror {
 };
 
 struct pkg_repo {
+	repo_t type;
 	char *name;
 	char *url;
 	char *pubkey;
