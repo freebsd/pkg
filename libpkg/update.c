@@ -810,8 +810,8 @@ cleanup:
 	return (rc);
 }
 
-static int
-update_binary_pkgs(struct pkg_repo *repo, bool force)
+int
+repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 {
 	char repofile[MAXPATHLEN];
 
@@ -913,9 +913,5 @@ cleanup:
 int
 pkg_update(struct pkg_repo *repo, bool force)
 {
-	switch (repo->type) {
-	case REPO_BINARY_PKGS:
-		return (update_binary_pkgs(repo, force));
-		break;
-	}
-};
+	return (repo->update(repo, force));
+}

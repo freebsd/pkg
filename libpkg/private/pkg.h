@@ -319,6 +319,9 @@ struct pkg_repo {
 	} sshio;
 	size_t fetched;
 	size_t tofetch;
+
+	int (*update)(struct pkg_repo *, bool);
+
 	bool enable;
 	UT_hash_handle hh;
 };
@@ -470,4 +473,7 @@ int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
 
 int do_extract_mtree(char *mtree, const char *prefix);
+
+int repo_update_binary_pkgs(struct pkg_repo *repo, bool force);
+
 #endif
