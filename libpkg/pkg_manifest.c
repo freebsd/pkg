@@ -290,7 +290,10 @@ pkg_string(struct pkg *pkg, ucl_object_t *obj, int attr)
 		}
 		break;
 	default:
-		ret = urldecode(str, &pkg->fields[attr]);
+		if (attr == PKG_DESC)
+			ret = urldecode(str, &pkg->fields[attr]);
+		else
+			ret = pkg_set(pkg, attr, str);
 		break;
 	}
 
