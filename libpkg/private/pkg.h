@@ -476,4 +476,7 @@ int do_extract_mtree(char *mtree, const char *prefix);
 
 int repo_update_binary_pkgs(struct pkg_repo *repo, bool force);
 
+bool ucl_object_emit_sbuf(ucl_object_t *obj, enum ucl_emitter emit_type, struct sbuf **buf);
+bool ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *);
+
 #endif

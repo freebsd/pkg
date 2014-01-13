@@ -807,7 +807,6 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 {
 	ucl_object_t *obj = NULL, *seq;
 	struct pkg_file *file = NULL;
-	char *output;
 	const char *name, *origin, *version;
 	struct sbuf *b = NULL;
 
@@ -824,9 +823,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 	if (seq != NULL)
 		obj = ucl_object_insert_key(obj, seq, "files", 5, false);
 
-	output = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
-	fprintf(f, "%s", output);
-	free(output);
+	ucl_object_emit_file(obj, UCL_EMIT_JSON_COMPACT, f);
 
 	if (b != NULL)
 		sbuf_delete(b);
@@ -837,7 +834,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 }
 
 static int
-emit_manifest(struct pkg *pkg, char **out, short flags)
+emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 {
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
@@ -1065,9 +1062,9 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	}
 
 	if ((flags & PKG_MANIFEST_EMIT_PRETTY) == PKG_MANIFEST_EMIT_PRETTY)
-		*out = ucl_object_emit(top, UCL_EMIT_YAML);
+		ucl_object_emit_sbuf(top, UCL_EMIT_YAML, out);
 	else
-		*out = ucl_object_emit(top, UCL_EMIT_JSON_COMPACT);
+		ucl_object_emit_sbuf(top, UCL_EMIT_JSON_COMPACT, out);
 
 	ucl_object_free(top);
 
@@ -1097,7 +1094,7 @@ static int
 pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 	    char **pdigest, bool out_is_a_sbuf)
 {
-	char *output;
+	struct sbuf *output = NULL;
 	unsigned char digest[SHA256_DIGEST_LENGTH];
 	SHA256_CTX *sign_ctx = NULL;
 	int rc;
@@ -1108,15 +1105,16 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 		SHA256_Init(sign_ctx);
 	}
 
+	if (out_is_a_sbuf)
+		output = out;
+
 	rc = emit_manifest(pkg, &output, flags);
 
 	if (sign_ctx != NULL)
-		SHA256_Update(sign_ctx, output, strlen(output));
+		SHA256_Update(sign_ctx, sbuf_data(output), sbuf_len(output));
 
-	if (out_is_a_sbuf)
-		sbuf_cat(out, output);
-	else
-		fprintf(out, "%s\n", output);
+	if (!out_is_a_sbuf)
+		fprintf(out, "%s\n", sbuf_data(output));
 
 	if (pdigest != NULL) {
 		SHA256_Final(digest, sign_ctx);
@@ -1124,7 +1122,8 @@ pkg_emit_manifest_generic(struct pkg *pkg, void *out, short flags,
 		free(sign_ctx);
 	}
 
-	free (output);
+	if (!out_is_a_sbuf)
+		sbuf_free(output);
 
 	return (rc);
 }

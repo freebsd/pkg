@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
@@ -43,6 +43,8 @@
 #include <ctype.h>
 #include <fnmatch.h>
 #include <paths.h>
+#include <float.h>
+#include <math.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -699,3 +701,147 @@ process_spawn_pipe(FILE *inout[2], const char *command)
 	return (-1); /* ? */
 }
 
+static int
+ucl_file_append_character(unsigned char c, size_t len, void *data)
+{
+	size_t i;
+	FILE *out = data;
+
+	for (i = 0; i < len; i++)
+		fprintf(out, "%c", c);
+
+	return (0);
+}
+
+static int
+ucl_file_append_len(const unsigned char *str, size_t len, void *data)
+{
+	FILE *out = data;
+
+	fprintf(out, "%.*s", (int)len, str);
+
+	return (0);
+}
+
+static int
+ucl_file_append_int(int64_t val, void *data)
+{
+	FILE *out = data;
+
+	fprintf(out, "%"PRId64, val);
+
+	return (0);
+}
+
+static int
+ucl_file_append_double(double val, void *data)
+{
+	FILE *out = data;
+	const double delta = 0.0000001;
+
+	if (val == (double)(int)val) {
+		fprintf(out, "%.1lf", val);
+	} else if (fabs(val - (double)(int)val) < delta) {
+		fprintf(out, "%.*lg", DBL_DIG, val);
+	} else {
+		fprintf(out, "%lf", val);
+	}
+
+	return (0);
+}
+
+static int
+ucl_sbuf_append_character(unsigned char c, size_t len, void *data)
+{
+	struct sbuf *buf = data;
+	size_t i;
+
+	for (i = 0; i < len; i++)
+		sbuf_putc(buf, c);
+
+	return (0);
+}
+
+static int
+ucl_sbuf_append_len(const unsigned char *str, size_t len, void *data)
+{
+	struct sbuf *buf = data;
+
+	sbuf_bcat(buf, str, len);
+
+	return (0);
+}
+
+static int
+ucl_sbuf_append_int(int64_t val, void *data)
+{
+	struct sbuf *buf = data;
+
+	sbuf_printf(buf, "%"PRId64, val);
+
+	return (0);
+}
+
+static int
+ucl_sbuf_append_double(double val, void *data)
+{
+	struct sbuf *buf = data;
+	const double delta = 0.0000001;
+
+	if (val == (double)(int)val) {
+		sbuf_printf(buf, "%.1lf", val);
+	} else if (fabs(val - (double)(int)val) < delta) {
+		sbuf_printf(buf, "%.*lg", DBL_DIG, val);
+	} else {
+		sbuf_printf(buf, "%lf", val);
+	}
+
+	return (0);
+}
+
+bool
+ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *out)
+{
+	struct ucl_emitter_functions func = {
+		.ucl_emitter_append_character = ucl_file_append_character,
+		.ucl_emitter_append_len = ucl_file_append_len,
+		.ucl_emitter_append_int = ucl_file_append_int,
+		.ucl_emitter_append_double = ucl_file_append_double
+	};
+
+	func.ud = out;
+
+	if (obj = NULL)
+		return (false);
+
+	func.ud = NULL;
+
+	return (ucl_object_emit_full(obj, emit_type, &func));
+
+
+}
+
+bool
+ucl_object_emit_sbuf(ucl_object_t *obj, enum ucl_emitter emit_type,
+                     struct sbuf **buf)
+{
+	bool ret = false;
+	struct ucl_emitter_functions func = {
+		.ucl_emitter_append_character = ucl_sbuf_append_character,
+		.ucl_emitter_append_len = ucl_sbuf_append_len,
+		.ucl_emitter_append_int = ucl_sbuf_append_int,
+		.ucl_emitter_append_double = ucl_sbuf_append_double
+	};
+
+	if (*buf == NULL)
+		*buf = sbuf_new_auto();
+	else
+		sbuf_clear(*buf);
+
+	func.ud = *buf;
+
+	ret = ucl_object_emit_full(obj, emit_type, &func);
+	sbuf_done(*buf);
+
+	return (ret);
+}
