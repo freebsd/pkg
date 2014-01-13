@@ -346,7 +346,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 
 		if (strcmp(param, "package") == 0) {
 			if (cur_pkg.origin != NULL) {
-				if (!pkg_jobs_cudf_add_package(j, &cur_pkg))  {
+				if (pkg_jobs_cudf_add_package(j, &cur_pkg) != EPKG_OK)  {
 					free(line);
 					return (EPKG_FATAL);
 				}
@@ -358,6 +358,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 		}
 		else if (strcmp(param, "version") == 0) {
 			if (cur_pkg.origin == NULL) {
+				pkg_emit_error("version line has no corresponding origin in CUDF output");
 				free(line);
 				return (EPKG_FATAL);
 			}
@@ -365,6 +366,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 		}
 		else if (strcmp(param, "installed") == 0) {
 			if (cur_pkg.origin == NULL) {
+				pkg_emit_error("installed line has no corresponding origin in CUDF output");
 				free(line);
 				return (EPKG_FATAL);
 			}
@@ -373,6 +375,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 		}
 		else if (strcmp(param, "was-installed") == 0) {
 			if (cur_pkg.origin == NULL) {
+				pkg_emit_error("was-installed line has no corresponding origin in CUDF output");
 				free(line);
 				return (EPKG_FATAL);
 			}
@@ -382,7 +385,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 	}
 
 	if (cur_pkg.origin != NULL) {
-		if (!pkg_jobs_cudf_add_package(j, &cur_pkg))  {
+		if (pkg_jobs_cudf_add_package(j, &cur_pkg) != EPKG_OK)  {
 			free(line);
 			return (EPKG_FATAL);
 		}
