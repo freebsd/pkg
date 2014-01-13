@@ -841,7 +841,7 @@ ucl_object_emit_sbuf(ucl_object_t *obj, enum ucl_emitter emit_type,
 	func.ud = *buf;
 
 	ret = ucl_object_emit_full(obj, emit_type, &func);
-	sbuf_done(*buf);
+	sbuf_finish(*buf);
 
 	return (ret);
 }
