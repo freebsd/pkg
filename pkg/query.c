@@ -67,6 +67,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'e', "",		0, PKG_LOAD_BASIC },
 	{ 'w', "",		0, PKG_LOAD_BASIC },
 	{ 'l', "",		0, PKG_LOAD_BASIC },
+	{ 'q', "",		0, PKG_LOAD_BASIC },
 	{ 'a', "",		0, PKG_LOAD_BASIC },
 	{ 'k', "",		0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
@@ -211,6 +212,9 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					pkg_sbuf_printf(dest, "%#A", pkg);
 					break;
 				}
+				break;
+			case 'q':
+				pkg_sbuf_printf(dest, "%q", pkg);
 				break;
 			case 'l':
 				pkg_sbuf_printf(dest, "%l", pkg);
@@ -474,6 +478,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 						goto bad_option;
 					sbuf_cat(sqlcond, "automatic");
 					state = OPERATOR_INT;
+					break;
+				case 'q':
+					sbuf_cat(sqlcond, "arch");
+					state = OPERATOR_STRING;
 					break;
 				case 'k':
 					if (for_remote)

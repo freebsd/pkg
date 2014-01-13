@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -47,8 +48,6 @@
 #define PKG_NUM_SCRIPTS 9
 
 #if ARCHIVE_VERSION_NUMBER < 3000002
-#define archive_read_free(a) archive_read_finish(a)
-#define archive_write_free(a) archive_write_finish(a)
 #define archive_write_add_filter_xz(a) archive_write_set_compression_xz(a)
 #define archive_write_add_filter_bzip2(a) archive_write_set_compression_bzip2(a)
 #define archive_write_add_filter_gzip(a) archive_write_set_compression_gzip(a)
@@ -128,6 +127,8 @@ struct pkg {
 	struct pkg_shlib	*shlibs_required;
 	struct pkg_shlib	*shlibs_provided;
 	struct pkg_note		*annotations;
+	struct pkg_conflict *conflicts;
+	struct pkg_provide	*provides;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -145,6 +146,16 @@ struct pkg_dep {
 	UT_hash_handle	 hh;
 };
 
+struct pkg_conflict {
+	struct sbuf		*origin;
+	UT_hash_handle	hh;
+};
+
+struct pkg_provide {
+	struct sbuf		*provide;
+	UT_hash_handle	hh;
+};
+
 struct pkg_license {
 	/* should be enough to match a license name */
 	char name[64];
@@ -157,20 +168,20 @@ struct pkg_category {
 };
 
 struct pkg_file {
-	char		 path[MAXPATHLEN +1];
+	char		 path[MAXPATHLEN];
 	int64_t		 size;
-	char		 sum[SHA256_DIGEST_LENGTH * 2 +1];
-	char		 uname[MAXLOGNAME +1];
-	char		 gname[MAXLOGNAME +1];
+	char		 sum[SHA256_DIGEST_LENGTH * 2 + 1];
+	char		 uname[MAXLOGNAME];
+	char		 gname[MAXLOGNAME];
 	bool		 keep;
 	mode_t		 perm;
 	UT_hash_handle	 hh;
 };
 
 struct pkg_dir {
-	char		 path[MAXPATHLEN +1];
-	char		 uname[MAXLOGNAME +1];
-	char		 gname[MAXLOGNAME +1];
+	char		 path[MAXPATHLEN];
+	char		 uname[MAXLOGNAME];
+	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	bool		 keep;
 	bool		 try;
@@ -185,10 +196,31 @@ struct pkg_option {
 	UT_hash_handle	hh;
 };
 
+struct pkg_job_request {
+	struct pkg *pkg;
+	bool skip;
+	UT_hash_handle hh;
+};
+
+struct pkg_job_seen {
+	struct pkg *pkg;
+	const char *digest;
+	UT_hash_handle hh;
+};
+
+struct pkg_job_universe_item {
+	struct pkg *pkg;
+	UT_hash_handle hh;
+	struct pkg_job_universe_item *next;
+};
+
 struct pkg_jobs {
-	struct pkg	*jobs;
-	struct pkg 	*bulk;
-	struct pkg	*seen;
+	struct pkg_job_universe_item *universe;
+	struct pkg_job_request	*request_add;
+	struct pkg_job_request	*request_delete;
+	struct pkg *jobs_add;
+	struct pkg *jobs_delete;
+	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
@@ -204,13 +236,13 @@ struct job_pattern {
 };
 
 struct pkg_user {
-	char		 name[MAXLOGNAME+1];
+	char		 name[MAXLOGNAME];
 	char		 uidstr[8192];/* taken from pw_util.c */
 	UT_hash_handle	hh;
 };
 
 struct pkg_group {
-	char		 name[MAXLOGNAME+1];
+	char		 name[MAXLOGNAME];
 	char		 gidstr[8192]; /* taken from gw_util.c */
 	UT_hash_handle	hh;
 };
@@ -366,6 +398,12 @@ int pkg_jobs_resolv(struct pkg_jobs *jobs);
 int pkg_shlib_new(struct pkg_shlib **);
 void pkg_shlib_free(struct pkg_shlib *);
 
+int pkg_conflict_new(struct pkg_conflict **);
+void pkg_conflict_free(struct pkg_conflict *);
+
+int pkg_provide_new(struct pkg_provide **);
+void pkg_provide_free(struct pkg_provide *);
+
 int pkg_annotation_new(struct pkg_note **);
 void pkg_annotation_free(struct pkg_note *);
 
@@ -413,10 +451,13 @@ int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_provides(struct pkgdb *db, struct pkg *pkg);
 
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 

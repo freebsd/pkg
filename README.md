@@ -196,7 +196,7 @@ repositories, updating remote package repositories and installing from them, etc
 
 The first thing to start with is to get pkgng installed on your machine.
 
-You can grap a development snapshot of pkgng from the [pkgng Github repository][1]
+You can grab a development snapshot of pkgng from the [pkgng Github repository][1]
 
 To get the latest version of pkgng from the Git repo, just clone it:
 

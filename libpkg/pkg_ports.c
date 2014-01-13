@@ -490,7 +490,7 @@ meta_exec(struct plist *p, char *line, struct file_attr *a, bool unexec)
 {
 	char *cmd, *buf, *tmp;
 	char comment[2];
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	regmatch_t pmatch[2];
 	int ret;
 

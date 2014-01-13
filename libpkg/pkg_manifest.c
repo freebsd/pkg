@@ -1,7 +1,6 @@
 /*-
  * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -58,7 +57,9 @@
 #define PKG_SHLIBS_REQUIRED	-14
 #define PKG_SHLIBS_PROVIDED	-15
 #define PKG_ANNOTATIONS		-16
-#define PKG_INFOS		-17	/* Deprecated field: treat as an annotation for backwards compatibility */
+#define PKG_INFOS		-17	
+#define PKG_CONFLICTS -18
+#define PKG_PROVIDES -19 /* Deprecated field: treat as an annotation for backwards compatibility */
 
 static int pkg_string(struct pkg *, ucl_object_t *, int);
 static int pkg_object(struct pkg *, ucl_object_t *, int);
@@ -81,6 +82,7 @@ static struct manifest_key {
 	{ "arch",                PKG_ARCH,                UCL_STRING, pkg_string},
 	{ "categories",          PKG_CATEGORIES,          UCL_ARRAY,  pkg_array},
 	{ "comment",             PKG_COMMENT,             UCL_STRING, pkg_string},
+	{ "conflicts",           PKG_CONFLICTS,           UCL_ARRAY,  pkg_array},
 	{ "deps",                PKG_DEPS,                UCL_OBJECT, pkg_object},
 	{ "desc",                PKG_DESC,                UCL_STRING, pkg_string},
 	{ "directories",         PKG_DIRECTORIES,         UCL_OBJECT, pkg_object},
@@ -103,6 +105,7 @@ static struct manifest_key {
 	{ "path",                PKG_REPOPATH,            UCL_STRING, pkg_string},
 	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
 	{ "prefix",              PKG_PREFIX,              UCL_STRING, pkg_string},
+	{ "provides",            PKG_PROVIDES,            UCL_ARRAY,  pkg_array},
 	{ "scripts",             PKG_SCRIPTS,             UCL_OBJECT, pkg_object},
 	{ "shlibs",              PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array}, /* Backwards compat with 1.0.x packages */
 	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,     UCL_ARRAY,  pkg_array},
@@ -356,6 +359,18 @@ pkg_array(struct pkg *pkg, ucl_object_t *obj, int attr)
 				pkg_emit_error("Skipping malformed provided shared library");
 			else
 				pkg_addshlib_provided(pkg, ucl_object_tostring(cur));
+			break;
+		case PKG_CONFLICTS:
+			if (cur->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed conflict name");
+			else
+				pkg_addconflict(pkg, ucl_object_tostring(cur));
+			break;
+		case PKG_PROVIDES:
+			if (cur->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed provide name");
+			else
+				pkg_addprovide(pkg, ucl_object_tostring(cur));
 			break;
 		}
 	}
@@ -803,7 +818,8 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 		urlencode(pkg_file_path(file), &b);
 		seq = ucl_array_append(seq, ucl_object_fromlstring(sbuf_data(b), sbuf_len(b)));
 	}
-	obj = ucl_object_insert_key(obj, seq, "files", 5, false);
+	if (seq != NULL)
+		obj = ucl_object_insert_key(obj, seq, "files", 5, false);
 
 	output = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
 	fprintf(f, "%s", output);
@@ -830,6 +846,8 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 	struct pkg_group	*group    = NULL;
 	struct pkg_shlib	*shlib    = NULL;
 	struct pkg_note		*note     = NULL;
+	struct pkg_conflict	*conflict = NULL;
+	struct pkg_provide	*provide  = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
 	int i;
 	const char *comment, *desc, *message, *name, *pkgarch;
@@ -884,7 +902,9 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 		obj = ucl_object_insert_key(top, ucl_object_fromint(pkgsize), "pkgsize", 7, false);
 
 	urlencode(desc, &tmpsbuf);
-	obj = ucl_object_insert_key(top, ucl_object_fromlstring(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf)), "desc", 4, false);
+	obj = ucl_object_insert_key(top,
+	    ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
+	    "desc", 4, false);
 
 	pkg_debug(1, "Emitting deps");
 	map = NULL;
@@ -926,6 +946,22 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_shlib_name(shlib)));
 	obj = ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);
 
+	pkg_debug(1, "Emitting conflicts");
+	map = NULL;
+	while (pkg_conflicts(pkg, &conflict) == EPKG_OK)
+		map = ucl_object_insert_key(map,
+		    ucl_object_fromstring(pkg_option_value(option)),
+		    pkg_conflict_origin(conflict), 0, false);
+	obj = ucl_object_insert_key(top, map, "conflicts", 9, false);
+
+	pkg_debug(1, "Emitting provides");
+	map = NULL;
+	while (pkg_provides(pkg, &provide) == EPKG_OK)
+		map = ucl_object_insert_key(map,
+		    ucl_object_fromstring(pkg_option_value(option)),
+		    pkg_provide_name(provide), 0, false);
+	obj = ucl_object_insert_key(top, map, "provides", 8, false);
+
 	pkg_debug(1, "Emitting options");
 	map = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
@@ -934,9 +970,6 @@ emit_manifest(struct pkg *pkg, char **out, short flags)
 		    ucl_object_fromstring(pkg_option_value(option)),
 		    pkg_option_opt(option), 0, false);
 	}
-	obj = ucl_object_insert_key(top, map, "options", 7, false);
-
-	pkg_debug(1, "Emitting annotations");
 	map = NULL;
 	while (pkg_annotations(pkg, &note) == EPKG_OK) {
 		map = ucl_object_insert_key(map,

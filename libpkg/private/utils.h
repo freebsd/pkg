@@ -82,6 +82,7 @@ int sbuf_set(struct sbuf **, const char *);
 char * sbuf_get(struct sbuf *);
 void sbuf_reset(struct sbuf *);
 void sbuf_free(struct sbuf *);
+ssize_t sbuf_size(struct sbuf *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
@@ -114,5 +115,6 @@ ucl_object_t *yaml_to_ucl(const char *file, const char *buffer, size_t len);
 void set_blocking(int fd);
 void set_nonblocking(int fd);
 
+pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
 #endif

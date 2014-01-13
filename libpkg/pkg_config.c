@@ -31,6 +31,7 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <dlfcn.h>
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -287,12 +288,25 @@ static struct config_entry c[] = {
 		NULL,
 		"Command aliases",
 	},
+	[PKG_CONFIG_CUDF_SOLVER] = {
+		PKG_CONFIG_STRING,
+		"CUDF_SOLVER",
+		NULL,
+		"Experimental: tells pkg to use an external CUDF solver",
+	},
+	[PKG_CONFIG_SAT_SOLVER] = {
+		PKG_CONFIG_STRING,
+		"SAT_SOLVER",
+		NULL,
+		"Experimental: tells pkg to use an external SAT solver",
+	},
 };
 
 static bool parsed = false;
 static size_t c_size = NELEM(c);
 
 static void		 pkg_config_kv_free(struct pkg_config_kv *);
+static void		 pkg_config_value_free(struct pkg_config_value *);
 static struct pkg_repo	*pkg_repo_new(const char *name, const char *url);
 
 static void
@@ -438,8 +452,11 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 					    " ignoring...", key);
 					continue;
 				}
-				if (!conf->fromenv)
+				if (!conf->fromenv) {
+					HASH_FREE(conf->list, pkg_config_value, pkg_config_value_free);
+					conf->list = NULL;
 					obj_walk_array(cur, conf);
+				}
 				break;
 			case PKG_CONFIG_KVLIST:
 				if (cur->type != UCL_OBJECT) {
@@ -447,8 +464,11 @@ pkg_object_walk(ucl_object_t *obj, struct pkg_config *conf_by_key)
 					    " ignoring...", key);
 					continue;
 				}
-				if (!conf->fromenv)
+				if (!conf->fromenv) {
+					HASH_FREE(conf->kvlist, pkg_config_kv, pkg_config_kv_free);
+					conf->kvlist = NULL;
 					obj_walk_object(cur, conf);
+				}
 				break;
 			}
 		}
@@ -479,35 +499,6 @@ subst_packagesite_str(const char *oldstr)
 	sbuf_free(newval);
 
 	return res;
-}
-
-/**
- * @brief Substitute PACKAGESITE variables
- */
-static void
-subst_packagesite(void)
-{
-	const char *oldval;
-	char *newval;
-
-	struct pkg_config *conf;
-	pkg_config_key k = PKG_CONFIG_REPO;
-
-	HASH_FIND_INT(config, &k, conf);
-
-	if (conf == NULL)
-		return;
-
-	oldval = conf->string;
-
-	if (oldval == NULL || strstr(oldval, ABI_VAR_STRING) == NULL)
-		return;
-
-	newval = subst_packagesite_str(oldval);
-	if (newval != NULL) {
-		free(conf->string);
-		conf->string = newval;
-	}
 }
 
 int
@@ -697,6 +688,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *key;
 
+	pkg_debug(1, "PkgConfig: parsing repository object %s", rname);
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
 		if (key == NULL)
@@ -771,11 +763,6 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 	if (r == NULL)
 		r = pkg_repo_new(rname, url);
 
-	if (r == NULL && url != NULL) {
-		free(r->url);
-		r->url = subst_packagesite_str(url);
-	}
-
 	if (signature_type != NULL) {
 		if (strcasecmp(signature_type, "pubkey") == 0)
 			r->signature_type = SIG_PUBKEY;
@@ -809,7 +796,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 }
 
 static void
-walk_repo_obj(ucl_object_t *obj)
+walk_repo_obj(ucl_object_t *obj, const char *file)
 {
 	ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
@@ -820,10 +807,15 @@ walk_repo_obj(ucl_object_t *obj)
 		key = ucl_object_key(cur);
 		if (key == NULL)
 			continue;
+		pkg_debug(1, "PkgConfig: parsing key '%s'", key);
 		r = pkg_repo_find_ident(key);
 		if (r != NULL)
 			pkg_debug(1, "PkgConfig: overwriting repository %s", key);
-		add_repo(cur, r, key);
+		if (cur->type == UCL_OBJECT)
+			add_repo(cur, r, key);
+		else
+			pkg_emit_error("Ignoring bad configuration entry in %s: %s",
+			    file, ucl_object_emit(cur, UCL_EMIT_YAML));
 	}
 }
 
@@ -831,14 +823,19 @@ static void
 load_repo_file(const char *repofile)
 {
 	struct ucl_parser *p;
-	ucl_object_t *obj = NULL, *cur;
-	ucl_object_iter_t it = NULL;
+	ucl_object_t *obj = NULL;
 	bool fallback = false;
+	const char *myarch;
 
 	p = ucl_parser_new(0);
 
+	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+	ucl_parser_register_variable (p, "ABI", myarch);
+
+	pkg_debug(1, "PKgConfig: loading %s", repofile);
 	if (!ucl_parser_add_file(p, repofile)) {
-		printf("%s\n", ucl_parser_get_error(p));
+		pkg_emit_error("Error parsing: %s: %s", repofile,
+		    ucl_parser_get_error(p));
 		if (errno == ENOENT) {
 			ucl_parser_free(p);
 			return;
@@ -846,25 +843,7 @@ load_repo_file(const char *repofile)
 		fallback = true;
 	}
 
-	if (!fallback) {
-		obj = ucl_parser_get_object(p);
-		if (obj->type == UCL_OBJECT) {
-			while ((cur = ucl_iterate_object(obj, &it, true))) {
-				if (cur->type != UCL_OBJECT)
-					fallback = true;
-				if (fallback)
-					break;
-			}
-		} else {
-			fallback = true;
-		}
-	}
-
 	if (fallback) {
-		if (obj != NULL) {
-			ucl_object_free(obj);
-			ucl_parser_free(p);
-		}
 		obj = yaml_to_ucl(repofile, NULL, 0);
 		if (obj == NULL)
 			return;
@@ -881,8 +860,10 @@ load_repo_file(const char *repofile)
 		    repofile);
 	}
 
+	obj = ucl_parser_get_object(p);
+
 	if (obj->type == UCL_OBJECT)
-		walk_repo_obj(obj);
+		walk_repo_obj(obj, repofile);
 
 	ucl_object_free(obj);
 }
@@ -905,7 +886,10 @@ load_repo_files(const char *repodir)
 			continue;
 		p = &ent->d_name[n - 5];
 		if (strcmp(p, ".conf") == 0) {
-			snprintf(path, MAXPATHLEN, "%s/%s", repodir, ent->d_name);
+			snprintf(path, sizeof(path), "%s%s%s",
+			    repodir,
+			    repodir[strlen(repodir) - 1] == '/' ? "" : "/",
+			    ent->d_name);
 			load_repo_file(path);
 		}
 	}
@@ -949,6 +933,7 @@ load_repositories(const char *repodir)
 		load_repo_files(pkg_config_value(v));
 }
 
+
 int
 pkg_init(const char *path, const char *reposdir)
 {
@@ -985,7 +970,8 @@ pkg_init(const char *path, const char *reposdir)
 		switch (c[i].type) {
 		case PKG_CONFIG_STRING:
 			if (val != NULL) {
-				conf->string = strdup(val);
+				if (strcmp(c[i].key, "PACKAGESITE") == 0)
+					conf->string = subst_packagesite_str(val);
 				conf->fromenv = true;
 			}
 			else if (c[i].def != NULL)
@@ -1162,8 +1148,6 @@ parsed:
 
 	pkg_debug(1, "%s", "pkg initialized");
 
-	subst_packagesite();
-
 	/* Start the event pipe */
 	pkg_config_string(PKG_CONFIG_EVENT_PIPE, &evpipe);
 	if (evpipe != NULL)
@@ -1216,6 +1200,9 @@ pkg_config_kv_free(struct pkg_config_kv *k)
 static void
 pkg_config_value_free(struct pkg_config_value *v)
 {
+	if (v == NULL)
+		return;
+
 	free(v->value);
 	free(v);
 }

@@ -50,7 +50,15 @@
 
 #include "pkgcli.h"
 
-static void usage(const char *, const char *);
+/* Used to define why do we show usage message to a user */
+enum pkg_usage_reason {
+	PKG_USAGE_ERROR,
+	PKG_USAGE_UNKNOWN_COMMAND,
+	PKG_USAGE_INVALID_ARGUMENTS,
+	PKG_USAGE_HELP
+};
+
+static void usage(const char *, const char *, FILE *, enum pkg_usage_reason, ...);
 static void usage_help(void);
 static int exec_help(int, char **);
 bool quiet = false;
@@ -124,58 +132,78 @@ show_command_names(void)
 }
 
 static void
-usage(const char *conffile, const char *reposdir)
+usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reason reason, ...)
 {
 	struct plugcmd *c;
 	bool plugins_enabled = false;
 	unsigned int i;
+	const char *arg;
+	va_list vp;
 
-#ifndef NO_LIBJAIL
- 	fprintf(stderr, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
-#else
-	fprintf(stderr, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
-#endif
-	fprintf(stderr, "Global options supported:\n");
-	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
-#ifndef NO_LIBJAIL
-	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
-#endif
-	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
-	fprintf(stderr, "\t%-15s%s\n", "-C", "Use the specified configuration file");
-	fprintf(stderr, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
-	fprintf(stderr, "\t%-15s%s\n", "-l", "List available commands and exit");
-	fprintf(stderr, "\t%-15s%s\n", "-v", "Display pkg(8) version");
-	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
-	fprintf(stderr, "Commands supported:\n");
-
-	for (i = 0; i < cmd_len; i++)
-		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
-
-	if (!pkg_initialized() && pkg_init(conffile, reposdir) != EPKG_OK)
-		errx(EX_SOFTWARE, "Cannot parse configuration file!");
-
-	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
-
-	if (plugins_enabled) {
-		if (pkg_plugins_init() != EPKG_OK)
-			errx(EX_SOFTWARE, "Plugins cannot be loaded");
-
-		printf("\nCommands provided by plugins:\n");
-
-		STAILQ_FOREACH(c, &plugins, next)
-			fprintf(stderr, "\t%-15s%s\n", c->name, c->desc);
+	if (reason == PKG_USAGE_UNKNOWN_COMMAND) {
+		va_start(vp, reason);
+		arg = va_arg(vp, const char *);
+		va_end(vp);
+		fprintf(out, "pkg: unknown command: %s\n", arg);
+		goto out;
+	}
+	else if (reason == PKG_USAGE_INVALID_ARGUMENTS) {
+		va_start(vp, reason);
+		arg = va_arg(vp, const char *);
+		va_end(vp);
+		fprintf(out, "pkg: %s\n", arg);
 	}
 
-	fprintf(stderr, "\nFor more information on the different commands"
-			" see 'pkg help <command>'.\n");
+#ifndef NO_LIBJAIL
+ 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
+#else
+	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
+#endif
+	if (reason == PKG_USAGE_HELP) {
+		fprintf(out, "Global options supported:\n");
+		fprintf(out, "\t%-15s%s\n", "-d", "Increment debug level");
+#ifndef NO_LIBJAIL
+		fprintf(out, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
+#endif
+		fprintf(out, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
+		fprintf(out, "\t%-15s%s\n", "-C", "Use the specified configuration file");
+		fprintf(out, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
+		fprintf(out, "\t%-15s%s\n", "-l", "List available commands and exit");
+		fprintf(out, "\t%-15s%s\n", "-v", "Display pkg(8) version");
+		fprintf(out, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
+		fprintf(out, "Commands supported:\n");
 
+		for (i = 0; i < cmd_len; i++)
+			fprintf(out, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
+
+		if (!pkg_initialized() && pkg_init(conffile, reposdir) != EPKG_OK)
+			errx(EX_SOFTWARE, "Cannot parse configuration file!");
+
+		pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
+
+		if (plugins_enabled) {
+			if (pkg_plugins_init() != EPKG_OK)
+				errx(EX_SOFTWARE, "Plugins cannot be loaded");
+
+			fprintf(out, "\nCommands provided by plugins:\n");
+
+			STAILQ_FOREACH(c, &plugins, next)
+			fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+		}
+		fprintf(out, "\nFor more information on the different commands"
+					" see 'pkg help <command>'.\n");
+		exit(EXIT_SUCCESS);
+	}
+
+out:
+	fprintf(out, "\nFor more information on available commands and options see 'pkg help'.\n");
 	exit(EX_USAGE);
 }
 
 static void
 usage_help(void)
 {
-	usage(NULL, NULL);
+	usage(NULL, NULL, stdout, PKG_USAGE_HELP);
 }
 
 static int
@@ -554,7 +582,7 @@ main(int argc, char **argv)
 	cmdargv = argv;
 
 	if (argc < 2)
-		usage(NULL, NULL);
+		usage(NULL, NULL, stderr, PKG_USAGE_INVALID_ARGUMENTS, "not enough arguments");
 
 #ifndef NO_LIBJAIL
 	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvq")) != -1) {
@@ -604,7 +632,7 @@ main(int argc, char **argv)
 	}
 
 	if (argc == 0 && version == 0 && !activation_test)
-		usage(conffile, reposdir);
+		usage(conffile, reposdir, stderr, PKG_USAGE_INVALID_ARGUMENTS, "no commands specified");
 
 	umask(022);
 	pkg_event_register(&event_callback, &debug);
@@ -614,8 +642,8 @@ main(int argc, char **argv)
 	optind = 1;
 
 	if (jail_str != NULL && chroot_path != NULL) {
-		fprintf(stderr, "-j and -c cannot be used at the same time!\n");
-		usage(conffile, reposdir);
+		usage(conffile, reposdir, stderr, PKG_USAGE_INVALID_ARGUMENTS,
+				"-j and -c cannot be used at the same time!\n");
 	}
 
 	if (chroot_path != NULL)
@@ -744,7 +772,7 @@ main(int argc, char **argv)
 		}
 
 		if (!plugin_found)
-			usage(conffile, reposdir);
+			usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, newargv[0]);
 
 		return (ret);
 	}
@@ -753,14 +781,7 @@ main(int argc, char **argv)
 		assert(command->exec != NULL);
 		ret = command->exec(newargc, newargv);
 	} else {
-		warnx("'%s' is not a valid command.\n", newargv[0]);
-
-		fprintf(stderr, "See 'pkg help' for more information on the commands.\n\n");
-		fprintf(stderr, "Command '%s' could be one of the following:\n", newargv[0]);
-
-		for (i = 0; i < cmd_len; i++)
-			if (strncmp(newargv[0], cmd[i].name, len) == 0)
-				fprintf(stderr, "\t%s\n",cmd[i].name);
+		usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, newargv[0]);
 	}
 
 	if (alias != NULL)

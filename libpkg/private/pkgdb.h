@@ -137,4 +137,15 @@ int pkgdb_repo_check_version(struct pkgdb *db, const char *database);
  */
 struct pkgdb_it *pkgdb_repo_origins(sqlite3 *sqlite);
 
+/**
+ * Register a conflicts list in a repo
+ * @param origin the origin of a package
+ * @param conflicts a list of conflicts origins
+ * @param conflicts_num number of conflicts for this package
+ * @param sqlite database
+ * @return error code
+ */
+int pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
+		int conflicts_num, sqlite3 *sqlite);
+
 #endif

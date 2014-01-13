@@ -44,7 +44,7 @@ static int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
     struct packing *pkg_archive)
 {
-	char		 fpath[MAXPATHLEN + 1];
+	char		 fpath[MAXPATHLEN];
 	struct pkg_file	*file = NULL;
 	struct pkg_dir	*dir = NULL;
 	char		*m;

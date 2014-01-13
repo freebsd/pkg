@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -535,6 +536,26 @@ static struct db_upgrades {
 			"( SELECT DISTINCT option_id FROM pkg_option );"
 	"END;"
 	},
+	{22,
+	"CREATE TABLE pkg_conflicts ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "conflict_id INTEGER NOT NULL,"
+	    "UNIQUE(package_id, conflict_id)"
+	");"
+	"CREATE TABLE provides("
+	"    id INTEGER PRIMARY KEY,"
+	"    provide TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_provides ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "provide_id INTEGER NOT NULL REFERENCES provides(id)"
+	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+	    "UNIQUE(package_id, provide_id)"
+	");"
+	},
+
 
 	/* Mark the end of the array */
 	{ -1, NULL }

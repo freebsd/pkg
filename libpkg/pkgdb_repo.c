@@ -60,8 +60,9 @@
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 6
+#define REPO_SCHEMA_MINOR 7
 
+/* REPO_SCHEMA_VERSION=2007 */
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
 typedef enum _sql_prstmt_index {
@@ -197,7 +198,7 @@ file_exists(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 		return;
 	}
 
-	snprintf(fpath, MAXPATHLEN, "%s/%s", path, sqlite3_value_text(argv[0]));
+	snprintf(fpath, sizeof(fpath), "%s/%s", path, sqlite3_value_text(argv[0]));
 
 	if (access(fpath, R_OK) == 0) {
 		sha256_file(fpath, cksum);
@@ -370,10 +371,6 @@ pkgdb_repo_init(sqlite3 *sqlite)
 	int retcode = EPKG_OK;
 
 	retcode = sql_exec(sqlite, "PRAGMA synchronous=off");
-	if (retcode != EPKG_OK)
-		return (retcode);
-
-	retcode = sql_exec(sqlite, "PRAGMA journal_mode=memory");
 	if (retcode != EPKG_OK)
 		return (retcode);
 
@@ -732,7 +729,7 @@ apply_repo_change(struct pkgdb *db, const char *database,
 
 	/* begin transaction */
 	if (ret == EPKG_OK)
-		ret = pkgdb_transaction_begin(db->sqlite, NULL);
+		ret = pkgdb_transaction_begin(db->sqlite, "SCHEMA");
 
 	/* apply change */
 	if (ret == EPKG_OK) {
@@ -752,9 +749,9 @@ apply_repo_change(struct pkgdb *db, const char *database,
 
 	/* commit or rollback */
 	if (ret == EPKG_OK)
-		ret = pkgdb_transaction_commit(db->sqlite, NULL);
+		ret = pkgdb_transaction_commit(db->sqlite, "SCHEMA");
 	else
-		pkgdb_transaction_rollback(db->sqlite, NULL);
+		pkgdb_transaction_rollback(db->sqlite, "SCHEMA");
 
 	if (ret == EPKG_OK) {
 		pkg_emit_notice("Repo \"%s\" %s schema %d to %d: %s",
@@ -775,7 +772,7 @@ upgrade_repo_schema(struct pkgdb *db, const char *database, int current_version)
 	for (version = current_version;
 	     version < REPO_SCHEMA_VERSION;
 	     version = next_version)  {
-		pkg_debug(1, "Upgrading remote database from %d to %d",
+		pkg_debug(1, "Upgrading repo database schema from %d to %d",
 		    version, next_version);
 		ret = apply_repo_change(db, database, repo_upgrades,
 					"upgrade", version, &next_version);
@@ -795,7 +792,7 @@ downgrade_repo_schema(struct pkgdb *db, const char *database, int current_versio
 	for (version = current_version;
 	     version > REPO_SCHEMA_VERSION;
 	     version = next_version)  {
-		pkg_debug(1, "Upgrading remote database from %d to %d",
+		pkg_debug(1, "Downgrading repo database schema from %d to %d",
 		    version, next_version);
 		ret = apply_repo_change(db, database, repo_downgrades,
 					"downgrade", version, &next_version);
@@ -912,4 +909,95 @@ pkgdb_repo_origins(sqlite3 *sqlite)
 	repodb.type = PKGDB_REMOTE;
 
 	return pkgdb_it_new(&repodb, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE);
+}
+
+int
+pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
+		int conflicts_num, sqlite3 *sqlite)
+{
+	const char clean_conflicts_sql[] = ""
+			"DELETE FROM pkg_conflicts "
+			"WHERE package_id = ?1;";
+	const char select_id_sql[] = ""
+			"SELECT id FROM packages "
+			"WHERE origin = ?1;";
+	const char insert_conflict_sql[] = ""
+			"INSERT INTO pkg_conflicts "
+			"(package_id, conflict_id) "
+			"VALUES (?1, ?2);";
+	sqlite3_stmt *stmt = NULL;
+	int ret, i;
+	int64_t origin_id, conflict_id;
+
+	pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", select_id_sql);
+	if (sqlite3_prepare_v2(sqlite, select_id_sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_text(stmt, 1, origin, -1, SQLITE_TRANSIENT);
+	ret = sqlite3_step(stmt);
+
+	if (ret == SQLITE_ROW) {
+		origin_id = sqlite3_column_int64(stmt, 0);
+	}
+	else {
+		ERROR_SQLITE(sqlite);
+		return (EPKG_FATAL);
+	}
+	sqlite3_finalize(stmt);
+
+	pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", clean_conflicts_sql);
+	if (sqlite3_prepare_v2(sqlite, clean_conflicts_sql, -1, &stmt, NULL) != SQLITE_OK) {
+		ERROR_SQLITE(sqlite);
+		return (EPKG_FATAL);
+	}
+
+	sqlite3_bind_int64(stmt, 1, origin_id);
+	/* Ignore cleanup result */
+	(void)sqlite3_step(stmt);
+
+	sqlite3_finalize(stmt);
+
+	for (i = 0; i < conflicts_num; i ++) {
+		/* Select a conflict */
+		pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", select_id_sql);
+		if (sqlite3_prepare_v2(sqlite, select_id_sql, -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_bind_text(stmt, 1, conflicts[i], -1, SQLITE_TRANSIENT);
+		ret = sqlite3_step(stmt);
+
+		if (ret == SQLITE_ROW) {
+			conflict_id = sqlite3_column_int64(stmt, 0);
+		}
+		else {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_finalize(stmt);
+
+		/* Insert a pair */
+		pkg_debug(4, "pkgdb_repo_register_conflicts: running '%s'", insert_conflict_sql);
+		if (sqlite3_prepare_v2(sqlite, insert_conflict_sql, -1, &stmt, NULL) != SQLITE_OK) {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_bind_int64(stmt, 1, origin_id);
+		sqlite3_bind_int64(stmt, 2, conflict_id);
+		ret = sqlite3_step(stmt);
+
+		if (ret != SQLITE_DONE) {
+			ERROR_SQLITE(sqlite);
+			return (EPKG_FATAL);
+		}
+
+		sqlite3_finalize(stmt);
+	}
+
+	return (EPKG_OK);
 }

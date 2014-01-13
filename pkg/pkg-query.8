@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd September 28, 2013
+.Dd December 5, 2013
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -98,6 +98,8 @@ is in bytes, and
 is in human readable format.
 .It Cm \&%a
 Returns 1 if the matched package is an orphan package and can be pkg-autoremove(1)'d, 0 otherwise
+.It Cm \&%q
+Architecture of the matched package
 .It Cm \&%k
 Returns 1 if the matched package is locked against modification or deletion, 0 otherwise
 .It Cm \&%M
@@ -254,6 +256,8 @@ WWW address of the package (type string)
 Flatsize of the package (type integer)
 .It Cm \&%a
 Automatic status of the package (type integer)
+.It Cm \&%q
+Architecture of the package (type string)
 .It Cm \&%k
 Locking status of the package (type integer)
 .It Cm \&%M

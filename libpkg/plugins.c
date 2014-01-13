@@ -394,7 +394,7 @@ pkg_plugins_init(void)
 		/*
 		 * Load the plugin
 		 */
-		snprintf(pluginfile, MAXPATHLEN, "%s/%s.so", plugdir,
+		snprintf(pluginfile, sizeof(pluginfile), "%s/%s.so", plugdir,
 		    pkg_config_value(v));
 		p = calloc(1, sizeof(struct pkg_plugin));
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
