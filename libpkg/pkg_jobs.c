@@ -370,7 +370,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 		}
 		if (pkg_jobs_add_universe(j, npkg, priority + 1, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
-		if (rpkg != NULL && pkg_jobs_add_universe(j, priority + 1, rpkg, recursive) != EPKG_OK)
+		if (rpkg != NULL && pkg_jobs_add_universe(j, rpkg, priority + 1, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
