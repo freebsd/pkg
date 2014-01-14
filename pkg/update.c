@@ -56,6 +56,10 @@ pkgcli_update(bool force) {
 	if (!quiet)
 		printf("Updating repository catalogue\n");
 
+	if(pkg_repos_count() == 0) {
+		fprintf(stderr, "No valid repository found.");
+	}
+
 	while (pkg_repos(&r) == EPKG_OK) {
 		if (!pkg_repo_enabled(r))
 			continue;
