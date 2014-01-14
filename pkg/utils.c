@@ -625,7 +625,7 @@ print_jobs_summary_pkg(struct pkg *pkg, pkg_jobs_t type, int64_t *oldsize,
 		*oldsize += oldflatsize;
 		*newsize += flatsize;
 
-		pkg_printf("\t%n-%v\n", pkg, pkg);
+		pkg_printf("\tRemoving %n-%v\n", pkg, pkg);
 		break;
 	case PKG_JOBS_FETCH:
 		*dlsize += pkgsize;
