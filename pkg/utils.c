@@ -647,10 +647,11 @@ print_jobs_summary_pkg(struct pkg *pkg, pkg_jobs_t type, int64_t *oldsize,
 void
 print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
-	struct pkg *pkg = NULL;
+	struct pkg *pkg;
+	void *iter = NULL;
 	char size[7];
 	va_list ap;
-	pkg_jobs_t type;
+	pkg_jobs_t type, inv_type;
 	int64_t dlsize, oldsize, newsize;
 
 	dlsize = oldsize = newsize = 0;
@@ -660,15 +661,24 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	vprintf(msg, ap);
 	va_end(ap);
 
-	while (pkg_jobs_add_iter(jobs, &pkg) == EPKG_OK) {
+	switch (type) {
+	case PKG_JOBS_INSTALL:
+	case PKG_JOBS_UPGRADE:
+		inv_type = PKG_JOBS_DEINSTALL;
+		break;
+	default:
+		inv_type = PKG_JOBS_INSTALL;
+		break;
+	}
+
+	while ((pkg = pkg_jobs_add_iter(jobs, &iter))) {
 		print_jobs_summary_pkg(pkg, type, &oldsize, &newsize, &dlsize);
 	}
 
-	pkg = NULL;
-	while (pkg_jobs_delete_iter(jobs, &pkg) == EPKG_OK) {
-		print_jobs_summary_pkg(pkg, type, &oldsize, &newsize, &dlsize);
+	iter = NULL;
+	while ((pkg = pkg_jobs_delete_iter(jobs, &iter))) {
+		print_jobs_summary_pkg(pkg, inv_type, &oldsize, &newsize, &dlsize);
 	}
-
 
 	if (oldsize > newsize) {
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);

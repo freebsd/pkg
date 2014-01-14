@@ -277,6 +277,21 @@ cudf_strdup(const char *in)
 	return (out);
 }
 
+static void
+pkg_jobs_cudf_insert_res_job (struct pkg_solved **target, struct pkg_job_universe_item *it)
+{
+	struct pkg_solved *res;
+
+	res = calloc(1, sizeof(struct pkg_solved));
+	if (res == NULL) {
+		pkg_emit_errno("calloc", "pkg_solved");
+		return;
+	}
+	res->priority = it->priority;
+	res->pkg = it->pkg;
+	DL_APPEND(*target, res);
+}
+
 struct pkg_cudf_entry {
 	char *origin;
 	bool was_installed;
@@ -318,10 +333,14 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 
 	pkg_get(selected->pkg, PKG_ORIGIN, &origin);
 	/* XXX: handle forced versions here including reinstall */
-	if (entry->installed && selected->pkg->type != PKG_INSTALLED)
-		HASH_ADD_KEYPTR(hh, j->jobs_add, origin, strlen(origin), selected->pkg);
-	else if (!entry->installed && selected->pkg->type == PKG_INSTALLED)
-		HASH_ADD_KEYPTR(hh, j->jobs_delete, origin, strlen(origin), selected->pkg);
+	if (entry->installed && selected->pkg->type != PKG_INSTALLED) {
+		pkg_jobs_cudf_insert_res_job (&j->jobs_add, selected);
+		j->count ++;
+	}
+	else if (!entry->installed && selected->pkg->type == PKG_INSTALLED) {
+		pkg_jobs_cudf_insert_res_job (&j->jobs_delete, selected);
+		j->count ++;
+	}
 
 	return (EPKG_OK);
 }

@@ -45,6 +45,7 @@
 struct pkg_solve_variable {
 	struct pkg *pkg;
 	bool to_install;
+	int priority;
 	const char *digest;
 	const char *origin;
 	bool resolved;
@@ -140,7 +141,8 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
 					unresolved->var->resolved = true;
 					unresolved->var->to_install = !unresolved->inverse;
 					solved_vars ++;
-					pkg_debug(2, "propagate %s to %d", unresolved->var->origin, unresolved->var->to_install);
+					pkg_debug(2, "propagate %s(%d) to %d",
+							unresolved->var->origin, unresolved->var->priority, unresolved->var->to_install);
 				}
 				/* Now check for a conflict */
 				ret = false;
@@ -227,14 +229,16 @@ pkg_solve_propagate_default(struct pkg_solve_rule *rules)
 				if (it->var->pkg->type == PKG_INSTALLED) {
 					it->var->to_install = true;
 					if (pkg_solve_check_conflicts(rules)) {
-						pkg_debug(2, "assume %s to %d", it->var->origin, it->var->to_install);
+						pkg_debug(2, "assume %s(%d) to %d",
+								it->var->origin, it->var->priority, it->var->to_install);
 						it->var->resolved = true;
 					}
 				}
 				else {
 					it->var->to_install = false;
 					if (pkg_solve_check_conflicts(rules)) {
-						pkg_debug(2, "assume %s to %d", it->var->origin, it->var->to_install);
+						pkg_debug(2, "assume %s(%d) to %d",
+								it->var->origin, it->var->priority, it->var->to_install);
 						it->var->resolved = true;
 					}
 				}
@@ -311,7 +315,7 @@ pkg_solve_rule_new(void)
 }
 
 static struct pkg_solve_variable *
-pkg_solve_variable_new(struct pkg *pkg)
+pkg_solve_variable_new(struct pkg *pkg, int priority)
 {
 	struct pkg_solve_variable *result;
 	const char *digest, *origin;
@@ -324,6 +328,7 @@ pkg_solve_variable_new(struct pkg *pkg)
 	}
 
 	result->pkg = pkg;
+	result->priority = priority;
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
 	/* XXX: Is it safe to save a ptr here ? */
 	result->digest = digest;
@@ -372,7 +377,7 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 		return (EPKG_FATAL);
 	}
 	/* Need to add a variable */
-	nvar = pkg_solve_variable_new(unit->pkg);
+	nvar = pkg_solve_variable_new(unit->pkg, unit->priority);
 	if (nvar == NULL)
 		return (EPKG_FATAL);
 	HASH_ADD_KEYPTR(ho, problem->variables_by_origin, nvar->origin, strlen(nvar->origin), nvar);
@@ -381,7 +386,7 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 	tvar = nvar;
 	while (unit != NULL) {
 		/* Add all alternatives as independent variables */
-		tvar->next = pkg_solve_variable_new(unit->pkg);
+		tvar->next = pkg_solve_variable_new(unit->pkg, unit->priority);
 		tvar = tvar->next;
 		if (tvar == NULL)
 			return (EPKG_FATAL);
@@ -556,7 +561,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		it = NULL;
 		var = NULL;
 
-		var = pkg_solve_variable_new(jreq->pkg);
+		var = pkg_solve_variable_new(jreq->pkg, jreq->priority);
 		if (var == NULL)
 			goto err;
 
@@ -580,7 +585,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		it = NULL;
 		var = NULL;
 
-		var = pkg_solve_variable_new(jreq->pkg);
+		var = pkg_solve_variable_new(jreq->pkg, jreq->priority);
 		if (var == NULL)
 			goto err;
 
@@ -613,7 +618,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), var);
 			if (var == NULL) {
 				/* Add new variable */
-				var = pkg_solve_variable_new(ucur->pkg);
+				var = pkg_solve_variable_new(ucur->pkg, ucur->priority);
 				if (var == NULL)
 					goto err;
 				HASH_ADD_KEYPTR(hd, problem->variables_by_digest,
@@ -689,6 +694,21 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 	return (EPKG_OK);
 }
 
+static void
+pkg_solve_insert_res_job (struct pkg_solved **target, struct pkg_solve_variable *var)
+{
+	struct pkg_solved *res;
+
+	res = calloc(1, sizeof(struct pkg_solved));
+	if (res == NULL) {
+		pkg_emit_errno("calloc", "pkg_solved");
+		return;
+	}
+	res->priority = var->priority;
+	res->pkg = var->pkg;
+	DL_APPEND(*target, res);
+}
+
 int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j)
 {
@@ -700,10 +720,14 @@ pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j)
 			return (EPKG_FATAL);
 
 		pkg_get(var->pkg, PKG_ORIGIN, &origin);
-		if (var->to_install && var->pkg->type != PKG_INSTALLED)
-			HASH_ADD_KEYPTR(hh, j->jobs_add, origin, strlen(origin), var->pkg);
-		else if (!var->to_install && var->pkg->type == PKG_INSTALLED)
-			HASH_ADD_KEYPTR(hh, j->jobs_delete, origin, strlen(origin), var->pkg);
+		if (var->to_install && var->pkg->type != PKG_INSTALLED) {
+			pkg_solve_insert_res_job(&j->jobs_add, var);
+			j->count ++;
+		}
+		else if (!var->to_install && var->pkg->type == PKG_INSTALLED) {
+			pkg_solve_insert_res_job(&j->jobs_delete, var);
+			j->count ++;
+		}
 	}
 
 	return (EPKG_OK);

@@ -198,8 +198,15 @@ struct pkg_option {
 
 struct pkg_job_request {
 	struct pkg *pkg;
+	int priority;
 	bool skip;
 	UT_hash_handle hh;
+};
+
+struct pkg_solved {
+	struct pkg *pkg;
+	int priority;
+	struct pkg_solved *prev, *next;
 };
 
 struct pkg_job_seen {
@@ -211,6 +218,7 @@ struct pkg_job_seen {
 struct pkg_job_universe_item {
 	struct pkg *pkg;
 	UT_hash_handle hh;
+	int priority;
 	struct pkg_job_universe_item *next;
 };
 
@@ -218,13 +226,14 @@ struct pkg_jobs {
 	struct pkg_job_universe_item *universe;
 	struct pkg_job_request	*request_add;
 	struct pkg_job_request	*request_delete;
-	struct pkg *jobs_add;
-	struct pkg *jobs_delete;
+	struct pkg_solved *jobs_add;
+	struct pkg_solved *jobs_delete;
 	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
 	bool		 solved;
+	int count;
 	const char *	 reponame;
 	struct job_pattern *patterns;
 };

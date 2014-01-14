@@ -152,14 +152,6 @@ exec_delete(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	if (((pkg_jobs_find(jobs, "ports-mgmt/pkg", NULL) == EPKG_OK) ||
-	    (pkg_jobs_find(jobs, "ports-mgmt/pkg-devel", NULL) == EPKG_OK))
-	     && !force) {
-		warnx("Deleting 'ports-mgmt/pkg' is really dangerous. "
-		"If that is really required, -f must be specified");
-		goto cleanup;
-	}
-
 	/* check if we have something to deinstall */
 	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
 		if (argc == 0) {
