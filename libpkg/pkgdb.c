@@ -2325,7 +2325,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 			"maintainer, www, prefix, flatsize, automatic, "
 			"licenselogic, mtree_id, time, manifestdigest) "
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, "
-		"?13, (SELECT id FROM mtree WHERE content = ?14), NOW(), ?14)",
+		"?13, (SELECT id FROM mtree WHERE content = ?14), NOW(), ?15)",
 		"TTTTTTTTTTIIITT",
 	},
 	[DEPS_UPDATE] = {
