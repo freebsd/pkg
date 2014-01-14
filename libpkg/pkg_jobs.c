@@ -255,8 +255,10 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 			pkg_set(pkg, PKG_DIGEST, new_digest);
 			pkg_get(pkg, PKG_DIGEST, &digest);
 			free(new_digest);
+			sbuf_delete(sb);
 		}
 		else {
+			sbuf_delete(sb);
 			return (rc);
 		}
 	}
