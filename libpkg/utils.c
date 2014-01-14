@@ -811,7 +811,7 @@ ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *out)
 
 	func.ud = out;
 
-	if (obj = NULL)
+	if (obj == NULL)
 		return (false);
 
 	func.ud = NULL;
