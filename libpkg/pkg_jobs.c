@@ -539,9 +539,9 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 				pkg_get(pkg, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
 				pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
 				pkg_jobs_add_req(j, origin, pkg, false, 0);
-				/* TODO: use repository priority here */
-				pkg_jobs_add_universe(j, pkg, 0, recursive);
 			}
+			/* TODO: use repository priority here */
+			pkg_jobs_add_universe(j, pkg, 0, recursive);
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
@@ -570,9 +570,9 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 		else {
 			pkg_get(pkg, PKG_ORIGIN, &origin);
 			pkg_jobs_add_req(j, origin, pkg, false, 0);
-			/* TODO: use repository priority here */
-			pkg_jobs_add_universe(j, pkg, 0, false);
 		}
+		/* TODO: use repository priority here */
+		pkg_jobs_add_universe(j, pkg, 0, false);
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
@@ -599,14 +599,17 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		// Check if the pkg is locked
+		/* TODO: use repository priority here */
+		pkg_jobs_add_universe(j, pkg, 0, true);
 		if(pkg_is_locked(pkg)) {
+			/* If a package is locked, then we keep local version */
 			pkg_emit_locked(pkg);
 		}
-
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-		/* Do not test we ignore what doesn't exists remotely */
-		find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
+		else {
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			/* Do not test we ignore what doesn't exists remotely */
+			find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
+		}
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
@@ -979,21 +982,23 @@ jobs_solve_install(struct pkg_jobs *j)
 
 			pkg = NULL;
 			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
-				// Check if the pkg is locked
-				if (pkg_is_locked(pkg)) {
-					pkg_emit_locked(pkg);
-					pkgdb_it_free(it);
-					return (EPKG_LOCKED);
-				}
+				pkg_jobs_add_universe(j, pkg, 0, true);
 
-				pkg_get(pkg, PKG_ORIGIN, &origin);
-				/* TODO: use repository priority here */
-				if (find_remote_pkg(j, origin, MATCH_EXACT, true, 0) == EPKG_FATAL)
-					pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
+				if (pkg_is_locked(pkg)) {
+					/* Keep locked packages to the local version */
+					pkg_emit_locked(pkg);
+				}
+				else {
+					pkg_get(pkg, PKG_ORIGIN, &origin);
+					/* TODO: use repository priority here */
+					if (find_remote_pkg(j, origin, MATCH_EXACT, true, 0) == EPKG_FATAL)
+						pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
+				}
+				pkg = NULL;
 			}
+
 			pkgdb_it_free(it);
 		} else {
-			// Check if the pkg is locked before trying to install it
 			if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 				return (EPKG_FATAL);
 			pkg = NULL;
@@ -1003,6 +1008,7 @@ jobs_solve_install(struct pkg_jobs *j)
 					pkgdb_it_free(it);
 					return (EPKG_LOCKED);
 				}
+				pkg_jobs_add_universe(j, pkg, 0, true);
 			}
 			pkgdb_it_free(it);
 			/* TODO: use repository priority here */
@@ -1040,16 +1046,14 @@ jobs_solve_fetch(struct pkg_jobs *j)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			// Check if the pkg is locked
 			if(pkg_is_locked(pkg)) {
 				pkg_emit_locked(pkg);
-				pkgdb_it_free(it);
-				return(EPKG_LOCKED);
 			}
-
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			/* Do not test we ignore what doesn't exists remotely */
-			find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
+			else {
+				pkg_get(pkg, PKG_ORIGIN, &origin);
+				/* Do not test we ignore what doesn't exists remotely */
+				find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
+			}
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
