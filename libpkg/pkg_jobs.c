@@ -176,7 +176,7 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
     	else {																\
     		s = *iter;														\
     	}																	\
-    	res = s->pkg;														\
+    	res = s->pkg[0];													\
     	*iter = s->next ? s->next : jobs->jobs_##type;						\
     	return (res);														\
     }
@@ -1198,22 +1198,166 @@ pkg_jobs_keep_files_to_del(struct pkg *p1, struct pkg *p2)
 }
 
 static int
+pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_rc,
+		const char *cachedir, struct pkg_manifest_key *keys)
+{
+	struct pkg *p = ps->pkg[0];
+	struct pkg *newpkg = NULL;
+	const char *pkgorigin, *oldversion;
+	struct pkg_note *an;
+	char path[MAXPATHLEN];
+	bool automatic;
+	int flags = 0;
+	int retcode = EPKG_FATAL;
+
+	pkg_get(p, PKG_ORIGIN, &pkgorigin,
+			PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
+	an = pkg_annotation_lookup(p, "repository");
+
+	/* XXX: remove this legacy */
+#if 0
+	struct pkg *pkg_temp = NULL;
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it = NULL;
+	int lflags = PKG_LOAD_BASIC | PKG_LOAD_FILES | PKG_LOAD_SCRIPTS |
+	    PKG_LOAD_DIRS;
+
+	if (oldversion != NULL) {
+		pkg = NULL;
+		it = pkgdb_query(j->db, pkgorigin, MATCH_EXACT);
+		if (it != NULL) {
+			if (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
+				if (pkg_is_locked(pkg)) {
+					pkg_emit_locked(pkg);
+					pkgdb_it_free(it);
+					retcode = EPKG_LOCKED;
+					pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+					goto cleanup; /* Bail out */
+				}
+
+				LL_APPEND(pkg_queue, pkg);
+				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
+					pkg_script_run(pkg,
+							PKG_SCRIPT_PRE_DEINSTALL);
+				pkg_get(pkg, PKG_ORIGIN, &origin);
+				/*
+				 * stop the different related services
+				 * if the user wants that and the
+				 * service is running
+				 */
+				if (handle_rc)
+					pkg_start_stop_rc_scripts(pkg,
+							PKG_RC_STOP);
+				pkgdb_unregister_pkg(j->db, origin);
+				pkg = NULL;
+			}
+			pkgdb_it_free(it);
+		}
+	}
+
+	it = pkgdb_integrity_conflict_local(j->db, pkgorigin);
+
+	if (it != NULL) {
+		pkg = NULL;
+		while (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
+
+			if (pkg_is_locked(pkg)) {
+				pkg_emit_locked(pkg);
+				pkgdb_it_free(it);
+				retcode = EPKG_LOCKED;
+				pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+				goto cleanup; /* Bail out */
+			}
+
+			LL_APPEND(pkg_queue, pkg);
+			if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
+				pkg_script_run(pkg,
+						PKG_SCRIPT_PRE_DEINSTALL);
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			/*
+			 * stop the different related services if the
+			 * user wants that and the service is running
+			 */
+			if (handle_rc)
+				pkg_start_stop_rc_scripts(pkg,
+						PKG_RC_STOP);
+			pkgdb_unregister_pkg(j->db, origin);
+			pkg = NULL;
+		}
+		pkgdb_it_free(it);
+	}
+
+	LL_FOREACH(pkg_queue, pkg) {
+		pkg_jobs_keep_files_to_del(pkg, newpkg);
+	}
+
+	LL_FOREACH_SAFE(pkg_queue, pkg, pkg_temp) {
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		if (strcmp(pkgorigin, origin) == 0) {
+			LL_DELETE(pkg_queue, pkg);
+			pkg_delete_files(pkg, 1);
+			if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
+				pkg_script_run(pkg,
+						PKG_SCRIPT_POST_DEINSTALL);
+			pkg_delete_dirs(j->db, pkg, 0);
+			pkg_free(pkg);
+			break;
+		}
+	}
+#endif
+	pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, p);
+
+	if (pkg_open(&newpkg, path, keys, 0) != EPKG_OK) {
+		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+		goto cleanup;
+	}
+
+	if (oldversion != NULL) {
+		pkg_emit_upgrade_begin(p);
+	} else {
+		pkg_emit_install_begin(newpkg);
+	}
+
+	if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
+		flags |= PKG_ADD_FORCE;
+	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
+		flags |= PKG_ADD_NOSCRIPT;
+	flags |= PKG_ADD_UPGRADE;
+	if (automatic)
+		flags |= PKG_ADD_AUTOMATIC;
+
+	if ((retcode = pkg_add(j->db, path, flags, keys)) != EPKG_OK) {
+		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+		goto cleanup;
+	}
+
+	if (an != NULL) {
+		pkgdb_add_annotation(j->db, p, "repository", pkg_annotation_value(an));
+	}
+
+	if (oldversion != NULL)
+		pkg_emit_upgrade_finished(newpkg);
+	else
+		pkg_emit_install_finished(newpkg);
+
+	retcode = EPKG_OK;
+
+cleanup:
+	if (newpkg != NULL)
+		pkg_free(newpkg);
+
+	return (retcode);
+}
+
+static int
 pkg_jobs_install(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	struct pkg_solved *ps;
-	struct pkg *pkg = NULL;
-	struct pkg *newpkg = NULL;
-	struct pkg *pkg_temp = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg_queue = NULL;
 	struct pkg_manifest_key *keys = NULL;
-	char path[MAXPATHLEN];
 	const char *cachedir = NULL;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
-	int lflags = PKG_LOAD_BASIC | PKG_LOAD_FILES | PKG_LOAD_SCRIPTS |
-	    PKG_LOAD_DIRS;
 	bool handle_rc = false;
 
 	/* Fetch */
@@ -1235,145 +1379,19 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 	/* Delete conflicts initially */
 	DL_FOREACH(j->jobs_delete, ps) {
-		p = ps->pkg;
+		p = ps->pkg[0];
 		retcode = pkg_delete(p, j->db, flags);
-
 		if (retcode != EPKG_OK)
-			return (retcode);
+			goto cleanup;
 	}
 	DL_FOREACH(j->jobs_add, ps) {
-		p = ps->pkg;
-		const char *pkgorigin, *oldversion, *origin;
-		struct pkg_note *an;
-		bool automatic;
-		flags = 0;
-
-		pkg_get(p, PKG_ORIGIN, &pkgorigin,
-		    PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
-		an = pkg_annotation_lookup(p, "repository");
-
-		if (oldversion != NULL) {
-			pkg = NULL;
-			it = pkgdb_query(j->db, pkgorigin, MATCH_EXACT);
-			if (it != NULL) {
-				if (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
-					if (pkg_is_locked(pkg)) {
-						pkg_emit_locked(pkg);
-						pkgdb_it_free(it);
-						retcode = EPKG_LOCKED;
-						pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
-						goto cleanup; /* Bail out */
-					}
-
-					LL_APPEND(pkg_queue, pkg);
-					if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-						pkg_script_run(pkg,
-						    PKG_SCRIPT_PRE_DEINSTALL);
-					pkg_get(pkg, PKG_ORIGIN, &origin);
-					/*
-					 * stop the different related services
-					 * if the user wants that and the
-					 * service is running
-					 */
-					if (handle_rc)
-						pkg_start_stop_rc_scripts(pkg,
-						    PKG_RC_STOP);
-					pkgdb_unregister_pkg(j->db, origin);
-					pkg = NULL;
-				}
-				pkgdb_it_free(it);
-			}
-		}
-
-		it = pkgdb_integrity_conflict_local(j->db, pkgorigin);
-
-		if (it != NULL) {
-			pkg = NULL;
-			while (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
-
-				if (pkg_is_locked(pkg)) {
-					pkg_emit_locked(pkg);
-					pkgdb_it_free(it);
-					retcode = EPKG_LOCKED;
-					pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
-					goto cleanup; /* Bail out */
-				}
-
-				LL_APPEND(pkg_queue, pkg);
-				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-					pkg_script_run(pkg,
-					    PKG_SCRIPT_PRE_DEINSTALL);
-				pkg_get(pkg, PKG_ORIGIN, &origin);
-				/*
-				 * stop the different related services if the
-				 * user wants that and the service is running
-				 */
-				if (handle_rc)
-					pkg_start_stop_rc_scripts(pkg,
-					    PKG_RC_STOP);
-				pkgdb_unregister_pkg(j->db, origin);
-				pkg = NULL;
-			}
-			pkgdb_it_free(it);
-		}
-		pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, p);
-
-		pkg_open(&newpkg, path, keys, 0);
-		if (oldversion != NULL) {
-			pkg_emit_upgrade_begin(p);
-		} else {
-			pkg_emit_install_begin(newpkg);
-		}
-		LL_FOREACH(pkg_queue, pkg)
-			pkg_jobs_keep_files_to_del(pkg, newpkg);
-
-		LL_FOREACH_SAFE(pkg_queue, pkg, pkg_temp) {
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			if (strcmp(pkgorigin, origin) == 0) {
-				LL_DELETE(pkg_queue, pkg);
-				pkg_delete_files(pkg, 1);
-				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-					pkg_script_run(pkg,
-					    PKG_SCRIPT_POST_DEINSTALL);
-				pkg_delete_dirs(j->db, pkg, 0);
-				pkg_free(pkg);
-				break;
-			}
-		}
-
-		if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
-			flags |= PKG_ADD_FORCE;
-		if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
-			flags |= PKG_ADD_NOSCRIPT;
-		flags |= PKG_ADD_UPGRADE;
-		if (automatic)
-			flags |= PKG_ADD_AUTOMATIC;
-
-		if (pkg_add(j->db, path, flags, keys) != EPKG_OK) {
-			pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+		retcode = pkg_jobs_handle_install(ps, j, handle_rc, cachedir, keys);
+		if (retcode != EPKG_OK)
 			goto cleanup;
-		}
-
-		if (an != NULL) {
-			pkgdb_add_annotation(j->db, p, "repository", pkg_annotation_value(an));
-		}
-
-		if (oldversion != NULL)
-			pkg_emit_upgrade_finished(newpkg);
-		else
-			pkg_emit_install_finished(newpkg);
-
-		if (pkg_queue == NULL) {
-			pkgdb_transaction_commit(j->db->sqlite, "upgrade");
-			pkgdb_transaction_begin(j->db->sqlite, "upgrade");
-		}
 	}
 
-	retcode = EPKG_OK;
-
-	cleanup:
+cleanup:
 	pkgdb_transaction_commit(j->db->sqlite, "upgrade");
-	pkg_free(newpkg);
 	pkg_manifest_keys_free(keys);
 
 	return (retcode);
@@ -1398,7 +1416,7 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 		flags |= PKG_DELETE_NOSCRIPT;
 
 	DL_FOREACH(j->jobs_delete, ps) {
-		p = ps->pkg;
+		p = ps->pkg[0];
 		pkg_get(p, PKG_NAME, &name);
 		if ((strcmp(name, "pkg") == 0 ||
 			 strcmp(name, "pkg-devel") == 0) && flags != PKG_DELETE_FORCE) {
@@ -1481,7 +1499,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 	/* check for available size to fetch */
 	DL_FOREACH(j->jobs_add, ps) {
-		p = ps->pkg;
+		p = ps->pkg[0];
 		int64_t pkgsize;
 		pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
 		snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir, repopath);
@@ -1517,7 +1535,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 	/* Fetch */
 	DL_FOREACH(j->jobs_add, ps) {
-		p = ps->pkg;
+		p = ps->pkg[0];
 		if (pkg_repo_fetch(p) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
@@ -1527,7 +1545,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 	pkg_manifest_keys_new(&keys);
 	DL_FOREACH(j->jobs_add, ps) {
-		p = ps->pkg;
+		p = ps->pkg[0];
 		const char *pkgrepopath;
 
 		pkg_get(p, PKG_REPOPATH, &pkgrepopath);

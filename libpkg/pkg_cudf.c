@@ -288,7 +288,7 @@ pkg_jobs_cudf_insert_res_job (struct pkg_solved **target, struct pkg_job_univers
 		return;
 	}
 	res->priority = it->priority;
-	res->pkg = it->pkg;
+	res->pkg[0] = it->pkg;
 	DL_APPEND(*target, res);
 }
 

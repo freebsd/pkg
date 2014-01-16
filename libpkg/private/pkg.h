@@ -204,7 +204,7 @@ struct pkg_job_request {
 };
 
 struct pkg_solved {
-	struct pkg *pkg;
+	struct pkg *pkg[2];
 	int priority;
 	struct pkg_solved *prev, *next;
 };

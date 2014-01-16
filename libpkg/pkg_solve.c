@@ -698,7 +698,7 @@ static void
 pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		struct pkg_solve_problem *problem, struct pkg_jobs *j)
 {
-	struct pkg_solved *res;
+	struct pkg_solved *res, *res_a, *res_d;
 	struct pkg_solve_variable *cur_var, *del_var = NULL, *add_var = NULL;
 	int seen_add = 0, seen_del = 0;
 
@@ -724,18 +724,32 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		}
 		if (seen_add == 0 && seen_del != 0) {
 			res->priority = del_var->priority;
-			res->pkg = del_var->pkg;
+			res->pkg[0] = del_var->pkg;
 			DL_APPEND(j->jobs_delete, res);
 		}
 		else if (seen_del == 0 && seen_add != 0) {
 			res->priority = add_var->priority;
-			res->pkg = add_var->pkg;
+			res->pkg[0] = add_var->pkg;
 			DL_APPEND(j->jobs_add, res);
 		}
 		else {
-			res->priority = del_var->priority;
-			res->pkg = del_var->pkg;
+			res->priority = MAX(del_var->priority, add_var->priority);
+			res->pkg[0] = add_var->pkg;
+			res->pkg[1] = del_var->pkg;
 			DL_APPEND(j->jobs_upgrade, res);
+			/* Need some more tasks */
+			res_a = calloc(1, sizeof(struct pkg_solved));
+			res_d = calloc(1, sizeof(struct pkg_solved));
+			if (res_a == NULL || res_d == NULL) {
+				pkg_emit_errno("calloc", "pkg_solved");
+				return;
+			}
+			res_a->priority = add_var->priority;
+			res_a->pkg[0] = add_var->pkg;
+			DL_APPEND(j->jobs_add, res);
+			res_d->priority = del_var->priority;
+			res_d->pkg[0] = del_var->pkg;
+			DL_APPEND(j->jobs_delete, res);
 		}
 		j->count ++;
 	}
