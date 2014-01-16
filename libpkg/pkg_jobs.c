@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -123,6 +123,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	LL_FREE(j->patterns, job_pattern, free);
 	LL_FREE(j->jobs_add, pkg_solved, free);
 	LL_FREE(j->jobs_delete, pkg_solved, free);
+	LL_FREE(j->jobs_upgrade, pkg_solved, free);
 
 	free(j);
 }
@@ -156,61 +157,35 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	return (EPKG_OK);
 }
 
-struct pkg *
-pkg_jobs_add_iter(struct pkg_jobs *jobs, void **iter)
-{
-	struct pkg_solved *s;
-	struct pkg *res;
-	assert(iter != NULL);
+#define MAKE_JOBS_ITER_FUNC(type)											\
+    struct pkg *															\
+    pkg_jobs_##type##_iter(struct pkg_jobs *jobs, void **iter)				\
+    {																		\
+    	struct pkg_solved *s;												\
+    	struct pkg *res;													\
+    	assert(iter != NULL);												\
+    	if (jobs->jobs_##type == NULL) {									\
+    		return (NULL);													\
+    	}																	\
+    	if (*iter == NULL) {												\
+    		s = jobs->jobs_##type;											\
+    	}																	\
+    	else if (*iter == jobs->jobs_##type) {								\
+    		return (NULL);													\
+    	}																	\
+    	else {																\
+    		s = *iter;														\
+    	}																	\
+    	res = s->pkg;														\
+    	*iter = s->next ? s->next : jobs->jobs_##type;						\
+    	return (res);														\
+    }
 
-	if (jobs->jobs_add == NULL) {
-		return NULL;
-	}
+MAKE_JOBS_ITER_FUNC(add)
+MAKE_JOBS_ITER_FUNC(delete)
+MAKE_JOBS_ITER_FUNC(upgrade)
 
-	if (*iter == NULL) {
-		s = jobs->jobs_add;
-	}
-	else if (*iter == jobs->jobs_add) {
-		return (NULL);
-	}
-	else {
-		s = *iter;
-	}
-
-	res = s->pkg;
-
-	*iter = s->next ? s->next : jobs->jobs_add;
-
-	return (res);
-}
-
-struct pkg *
-pkg_jobs_delete_iter(struct pkg_jobs *jobs, void **iter)
-{
-	struct pkg_solved *s;
-	struct pkg *res;
-	assert(iter != NULL);
-
-	if (jobs->jobs_delete == NULL) {
-		return NULL;
-	}
-
-	if (*iter == NULL) {
-		s = jobs->jobs_delete;
-	}
-	else if (*iter == jobs->jobs_delete) {
-		return (NULL);
-	}
-	else {
-		s = *iter;
-	}
-
-	res = s->pkg;
-
-	*iter = s->next ? s->next : jobs->jobs_delete;
-
-	return (res);
-}
+#undef MAKE_JOBS_ITER_FUNC
 
 static void
 pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg, bool add, int priority)
@@ -1176,6 +1151,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	/* Resort priorities */
 	if (j->solved) {
 		DL_SORT(j->jobs_add, jobs_sort_priority_inc);
+		DL_SORT(j->jobs_upgrade, jobs_sort_priority_inc);
 		DL_SORT(j->jobs_delete, jobs_sort_priority_dec);
 	}
 

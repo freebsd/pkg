@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -677,6 +678,10 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 
 	iter = NULL;
 	while ((pkg = pkg_jobs_delete_iter(jobs, &iter))) {
+		print_jobs_summary_pkg(pkg, inv_type, &oldsize, &newsize, &dlsize);
+	}
+	iter = NULL;
+	while ((pkg = pkg_jobs_upgrade_iter(jobs, &iter))) {
 		print_jobs_summary_pkg(pkg, inv_type, &oldsize, &newsize, &dlsize);
 	}
 

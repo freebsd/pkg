@@ -695,18 +695,54 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 }
 
 static void
-pkg_solve_insert_res_job (struct pkg_solved **target, struct pkg_solve_variable *var)
+pkg_solve_insert_res_job (struct pkg_solve_variable *var,
+		struct pkg_solve_problem *problem, struct pkg_jobs *j)
 {
 	struct pkg_solved *res;
+	struct pkg_solve_variable *cur_var, *del_var = NULL, *add_var = NULL;
+	int seen_add = 0, seen_del = 0;
 
-	res = calloc(1, sizeof(struct pkg_solved));
-	if (res == NULL) {
-		pkg_emit_errno("calloc", "pkg_solved");
+	LL_FOREACH(var, cur_var) {
+		if (cur_var->to_install && cur_var->pkg->type != PKG_INSTALLED) {
+			add_var = cur_var;
+			seen_add ++;
+		}
+		else if (!var->to_install && var->pkg->type == PKG_INSTALLED) {
+			del_var = cur_var;
+			seen_del ++;
+		}
+	}
+	if (seen_add > 1 || seen_del > 1) {
+		pkg_emit_error("internal solver error: more than two packages to install from the same origin");
 		return;
 	}
-	res->priority = var->priority;
-	res->pkg = var->pkg;
-	DL_APPEND(*target, res);
+	else if (seen_add != 0 || seen_del != 0) {
+		res = calloc(1, sizeof(struct pkg_solved));
+		if (res == NULL) {
+			pkg_emit_errno("calloc", "pkg_solved");
+			return;
+		}
+		if (seen_add == 0 && seen_del != 0) {
+			res->priority = del_var->priority;
+			res->pkg = del_var->pkg;
+			DL_APPEND(j->jobs_delete, res);
+		}
+		else if (seen_del == 0 && seen_add != 0) {
+			res->priority = add_var->priority;
+			res->pkg = add_var->pkg;
+			DL_APPEND(j->jobs_add, res);
+		}
+		else {
+			res->priority = del_var->priority;
+			res->pkg = del_var->pkg;
+			DL_APPEND(j->jobs_upgrade, res);
+		}
+		j->count ++;
+	}
+	else {
+		pkg_debug(2, "solver: ignoring package %s(%s) as its state has not been changed",
+				var->origin, var->digest);
+	}
 }
 
 int
@@ -715,19 +751,12 @@ pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j)
 	struct pkg_solve_variable *var, *vtmp;
 	const char *origin;
 
-	HASH_ITER(hd, problem->variables_by_digest, var, vtmp) {
+	HASH_ITER(hd, problem->variables_by_origin, var, vtmp) {
 		if (!var->resolved)
 			return (EPKG_FATAL);
 
 		pkg_get(var->pkg, PKG_ORIGIN, &origin);
-		if (var->to_install && var->pkg->type != PKG_INSTALLED) {
-			pkg_solve_insert_res_job(&j->jobs_add, var);
-			j->count ++;
-		}
-		else if (!var->to_install && var->pkg->type == PKG_INSTALLED) {
-			pkg_solve_insert_res_job(&j->jobs_delete, var);
-			j->count ++;
-		}
+		pkg_solve_insert_res_job(var, problem, j);
 	}
 
 	return (EPKG_OK);

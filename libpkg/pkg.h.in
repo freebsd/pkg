@@ -1182,6 +1182,7 @@ int pkg_jobs_count(struct pkg_jobs *jobs);
  */
 struct pkg * pkg_jobs_add_iter(struct pkg_jobs *jobs, void **iter);
 struct pkg * pkg_jobs_delete_iter(struct pkg_jobs *jobs, void **iter);
+struct pkg * pkg_jobs_upgrade_iter(struct pkg_jobs *jobs, void **iter);
 
 /**
  * Apply the jobs in the queue (fetch and install).
