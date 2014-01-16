@@ -1383,10 +1383,6 @@ pkg_jobs_install(struct pkg_jobs *j)
 	int retcode = EPKG_FATAL;
 	bool handle_rc = false;
 
-	/* Fetch */
-	if (pkg_jobs_fetch(j) != EPKG_OK)
-		return (EPKG_FATAL);
-
 	if (j->flags & PKG_FLAG_SKIP_INSTALL)
 		return (EPKG_OK);
 
@@ -1468,7 +1464,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
-		rc = pkg_jobs_deinstall(j);
+		rc = pkg_jobs_fetch(j);
 		if (rc == EPKG_OK)
 			rc = pkg_jobs_install(j);
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_INSTALL, j, j->db);
