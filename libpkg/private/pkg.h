@@ -439,8 +439,14 @@ int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, bool force);
 
 int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 
-int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p);
-int pkgdb_integrity_check(struct pkgdb *db);
+int pkg_conflicts_request_resolve(struct pkg_jobs *j);
+int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
+int pkg_conflicts_integrity_check(struct pkg_jobs *j);
+
+typedef void (*conflict_func_cb)(const char *, const char *, void *);
+int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
+		conflict_func_cb cb, void *cbdata);
+int pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata);
 struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db,
 						const char *origin);
 

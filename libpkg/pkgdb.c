@@ -3774,13 +3774,14 @@ pkgdb_search(struct pkgdb *db, const char *pattern, match_t match,
 }
 
 int
-pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
+pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
+		conflict_func_cb cb, void *cbdata)
 {
 	int		 ret = EPKG_OK;
 	sqlite3_stmt	*stmt = NULL;
 	sqlite3_stmt	*stmt_conflicts = NULL;
 	struct pkg_file	*file = NULL;
-
+	const char *porigin;
 
 	const char	 sql[] = ""
 		"INSERT INTO integritycheck (name, origin, version, path)"
@@ -3804,6 +3805,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 		return (EPKG_FATAL);
 	}
 
+	pkg_get(p, PKG_ORIGIN, &porigin);
 
 	while (pkg_files(p, &file) == EPKG_OK) {
 		const char	*name, *origin, *version;
@@ -3831,17 +3833,14 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 			    -1, SQLITE_STATIC);
 			cur = conflicts_list;
 			while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
-				if (cur == NULL) {
-					cur = calloc(1, sizeof (struct pkg_event_conflict));
-					conflicts_list = cur;
-				}
-				else {
-					cur->next = calloc(1, sizeof (struct pkg_event_conflict));
-					cur = cur->next;
-				}
+				cur = calloc(1, sizeof (struct pkg_event_conflict));
 				cur->name = strdup(sqlite3_column_text(stmt_conflicts, 0));
 				cur->origin = strdup(sqlite3_column_text(stmt_conflicts, 1));
 				cur->version = strdup(sqlite3_column_text(stmt_conflicts, 2));
+				LL_PREPEND(conflicts_list, cur);
+
+				if (cb != NULL)
+					cb (porigin, cur->origin, cbdata);
 			}
 			sqlite3_finalize(stmt_conflicts);
 			pkg_emit_integritycheck_conflict(name, version, origin, pkg_path, conflicts_list);
@@ -3854,7 +3853,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 				free(conflicts_list);
 				conflicts_list = cur;
 			}
-			ret = EPKG_FATAL;
+			ret = EPKG_CONFLICT;
 		}
 		sqlite3_reset(stmt);
 	}
@@ -3864,21 +3863,22 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p)
 }
 
 int
-pkgdb_integrity_check(struct pkgdb *db)
+pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 {
 	int		 ret, retcode = EPKG_OK;
 	sqlite3_stmt	*stmt;
 	sqlite3_stmt	*stmt_conflicts;
 	struct sbuf	*conflictmsg = NULL;
+	struct sbuf *origin;
 
 	assert (db != NULL);
 
 	const char	 sql_local_conflict[] = ""
-		"SELECT p.name, p.version FROM packages AS p, files AS f "
+		"SELECT p.name, p.version, p.origin FROM packages AS p, files AS f "
 		"WHERE p.id = f.package_id AND f.path = ?1;";
 
 	const char	 sql_conflicts[] = ""
-		"SELECT name, version FROM integritycheck WHERE path = ?1;";
+		"SELECT name, version, origin FROM integritycheck WHERE path = ?1;";
 
 	if (sqlite3_prepare_v2(db->sqlite,
 		"SELECT path, COUNT(path) FROM ("
@@ -3893,16 +3893,19 @@ pkgdb_integrity_check(struct pkgdb *db)
 	}
 
 	conflictmsg = sbuf_new_auto();
+	origin = sbuf_new_auto();
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		sbuf_clear(conflictmsg);
+		sbuf_clear(origin);
 
-			pkg_debug(4, "Pkgdb: running '%s'", sql_local_conflict);
+		pkg_debug(4, "Pkgdb: running '%s'", sql_local_conflict);
 		ret = sqlite3_prepare_v2(db->sqlite, sql_local_conflict, -1,
 		    &stmt_conflicts, NULL);
 		if (ret != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite);
 			sqlite3_finalize(stmt);
+			sbuf_delete(origin);
 			sbuf_delete(conflictmsg);
 			return (EPKG_FATAL);
 		}
@@ -3917,7 +3920,7 @@ pkgdb_integrity_check(struct pkgdb *db)
 		    sqlite3_column_text(stmt_conflicts, 0),
 		    sqlite3_column_text(stmt_conflicts, 1),
 		    sqlite3_column_text(stmt, 0));
-
+		sbuf_cpy(origin, sqlite3_column_text(stmt_conflicts, 2));
 		sqlite3_finalize(stmt_conflicts);
 
 		pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
@@ -3927,8 +3930,11 @@ pkgdb_integrity_check(struct pkgdb *db)
 			ERROR_SQLITE(db->sqlite);
 			sqlite3_finalize(stmt);
 			sbuf_delete(conflictmsg);
+			sbuf_delete(origin);
 			return (EPKG_FATAL);
 		}
+
+		sbuf_finish(origin);
 
 		sqlite3_bind_text(stmt_conflicts, 1,
 		    sqlite3_column_text(stmt, 0), -1, SQLITE_STATIC);
@@ -3937,15 +3943,20 @@ pkgdb_integrity_check(struct pkgdb *db)
 			sbuf_printf(conflictmsg, "\t- %s-%s\n",
 			    sqlite3_column_text(stmt_conflicts, 0),
 			    sqlite3_column_text(stmt_conflicts, 1));
+			if (cb != NULL)
+				cb (sbuf_data(origin), sqlite3_column_text(stmt_conflicts, 2), cbdata);
 		}
-		sqlite3_finalize(stmt_conflicts);
+
 		sbuf_finish(conflictmsg);
-		pkg_emit_error("%s", sbuf_get(conflictmsg));
-		retcode = EPKG_FATAL;
+		sqlite3_finalize(stmt_conflicts);
+
+		//pkg_emit_error("%s", sbuf_get(conflictmsg));
+		retcode = EPKG_CONFLICT;
 	}
 
 	sqlite3_finalize(stmt);
 	sbuf_delete(conflictmsg);
+	sbuf_delete(origin);
 
 /*	sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck");*/
 

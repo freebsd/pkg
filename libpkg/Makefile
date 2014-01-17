@@ -102,6 +102,7 @@ LIBPKGSRCS=	${PC} \
 		pkg_add.c \
 		pkg_attributes.c \
 		pkg_config.c \
+		pkg_conflicts.c \
 		pkg_create.c \
 		pkg_cudf.c \
 		pkg_delete.c \

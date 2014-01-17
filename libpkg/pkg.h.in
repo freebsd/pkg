@@ -481,6 +481,10 @@ typedef enum {
 	 * $PKGDB_DIR/local.sqlite or any of the repo database bits
 	 */
 	EPKG_INSECURE,
+	/**
+	 * A conflict between packages found
+	 */
+	EPKG_CONFLICT
 } pkg_error_t;
 
 /**

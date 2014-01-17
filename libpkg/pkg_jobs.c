@@ -52,6 +52,7 @@ static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force);
 static bool pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive);
 static bool new_pkg_version(struct pkg_jobs *j);
+static int pkg_jobs_check_conflicts(struct pkg_jobs *j);
 
 int
 pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
@@ -394,95 +395,6 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 
 		if (pkg_jobs_add_universe(j, npkg, priority, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-struct pkg_conflict_chain {
-	struct pkg_job_request *req;
-	struct pkg_conflict_chain *next;
-};
-
-static int
-conflict_chain_cmp_cb(struct pkg_conflict_chain *a, struct pkg_conflict_chain *b)
-{
-	const char *vera, *verb;
-
-	pkg_get(a->req->pkg, PKG_VERSION, &vera);
-	pkg_get(b->req->pkg, PKG_VERSION, &verb);
-
-	/* Inverse sort to get the maximum version as the first element */
-	return (pkg_version_cmp(verb, vera));
-}
-
-static int
-resolve_request_conflicts_chain(struct pkg *req, struct pkg_conflict_chain *chain)
-{
-	struct pkg_conflict_chain *elt, *selected = NULL;
-	const char *name, *origin, *slash_pos;
-
-	pkg_get(req, PKG_NAME, &name);
-	/*
-	 * First of all prefer pure origins, where the last element of
-	 * an origin is pkg name
-	 */
-	LL_FOREACH(chain, elt) {
-		pkg_get(elt->req->pkg, PKG_ORIGIN, &origin);
-		slash_pos = strrchr(origin, '/');
-		if (slash_pos != NULL) {
-			if (strcmp(slash_pos + 1, name) == 0) {
-				selected = elt;
-				break;
-			}
-		}
-	}
-
-	if (selected == NULL) {
-		/* XXX: add manual selection here */
-		/* Sort list by version of package */
-		LL_SORT(chain, conflict_chain_cmp_cb);
-		selected = chain;
-	}
-
-	/* Disable conflicts from a request */
-	LL_FOREACH(chain, elt) {
-		if (elt != selected)
-			elt->req->skip = true;
-	}
-
-	return (EPKG_OK);
-}
-
-static int
-resolve_request_conflicts(struct pkg_jobs *j)
-{
-	struct pkg_job_request *req, *rtmp, *found;
-	struct pkg_conflict *c, *ctmp;
-	struct pkg_conflict_chain *chain, *elt;
-
-	HASH_ITER(hh, j->request_add, req, rtmp) {
-		chain = NULL;
-		HASH_ITER(hh, req->pkg->conflicts, c, ctmp) {
-			HASH_FIND_STR(j->request_add, pkg_conflict_origin(c), found);
-			if (found && !found->skip) {
-				elt = calloc(1, sizeof(struct pkg_conflict_chain));
-				if (elt == NULL) {
-					pkg_emit_errno("resolve_request_conflicts", "calloc: struct pkg_conflict_chain");
-					return (EPKG_FATAL);
-				}
-				elt->req = found;
-				LL_PREPEND(chain, elt);
-			}
-			if (chain != NULL) {
-				/* We need to handle conflict chain here */
-				if (resolve_request_conflicts_chain (req->pkg, chain) != EPKG_OK) {
-					LL_FREE(chain, pkg_conflict_chain, free);
-					return (EPKG_FATAL);
-				}
-				LL_FREE(chain, pkg_conflict_chain, free);
-			}
-		}
 	}
 
 	return (EPKG_OK);
@@ -1038,7 +950,7 @@ jobs_solve_install(struct pkg_jobs *j)
 		}
 	}
 
-	if (resolve_request_conflicts(j) != EPKG_OK) {
+	if (pkg_conflicts_request_resolve(j) != EPKG_OK) {
 		pkg_emit_error("Cannot resolve conflicts in a request");
 		return (EPKG_FATAL);
 	}
@@ -1465,8 +1377,20 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	case PKG_JOBS_INSTALL:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
 		rc = pkg_jobs_fetch(j);
-		if (rc == EPKG_OK)
-			rc = pkg_jobs_install(j);
+		if (rc == EPKG_OK) {
+			rc = pkg_jobs_check_conflicts(j);
+			if (rc == EPKG_OK) {
+				rc = pkg_jobs_install(j);
+			}
+			else if (rc == EPKG_CONFLICT) {
+				j->solved = false;
+				rc = pkg_jobs_solve(j);
+				if (rc == EPKG_OK) {
+					/* XXX: is it safe to do this recursion */
+					return (pkg_jobs_apply(j));
+				}
+			}
+		}
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_INSTALL, j, j->db);
 		break;
 	case PKG_JOBS_DEINSTALL:
@@ -1502,16 +1426,12 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	struct pkg_solved *ps;
-	struct pkg *pkg = NULL;
 	struct statfs fs;
 	struct stat st;
-	char path[MAXPATHLEN];
 	int64_t dlsize = 0;
 	const char *cachedir = NULL;
 	const char *repopath = NULL;
 	char cachedpath[MAXPATHLEN];
-	int ret = EPKG_OK;
-	struct pkg_manifest_key *keys = NULL;
 	
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -1559,7 +1479,23 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 			return (EPKG_FATAL);
 	}
 
-	/* integrity checking */
+	return (EPKG_OK);
+}
+
+static int
+pkg_jobs_check_conflicts(struct pkg_jobs *j)
+{
+	struct pkg *p = NULL;
+	struct pkg_solved *ps;
+	struct pkg_manifest_key *keys = NULL;
+	struct pkg *pkg = NULL;
+	const char *cachedir = NULL;
+	char path[MAXPATHLEN];
+	int ret = EPKG_OK, res;
+
+	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
+		return (EPKG_FATAL);
+
 	pkg_emit_integritycheck_begin();
 
 	pkg_manifest_keys_new(&keys);
@@ -1569,21 +1505,26 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 
 		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
-		    pkgrepopath);
+				pkgrepopath);
 		if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
 			return (EPKG_FATAL);
 
-		if (pkgdb_integrity_append(j->db, pkg) != EPKG_OK)
-			ret = EPKG_FATAL;
+		if ((res = pkg_conflicts_append_pkg(pkg, j)) != EPKG_OK) {
+			ret = res;
+			if (ret == EPKG_FATAL)
+				break;
+		}
 	}
 	pkg_manifest_keys_free(keys);
 
 	pkg_free(pkg);
 
-	if (pkgdb_integrity_check(j->db) != EPKG_OK || ret != EPKG_OK)
-		return (EPKG_FATAL);
+	if (ret != EPKG_FATAL) {
+		if ((ret = pkg_conflicts_integrity_check(j)) != EPKG_OK)
+			return (ret);
+	}
 
 	pkg_emit_integritycheck_finished();
 
-	return (EPKG_OK);
+	return (ret);
 }
