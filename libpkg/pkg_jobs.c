@@ -67,7 +67,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 
 	(*j)->db = db;
 	(*j)->type = t;
-	(*j)->solved = false;
+	(*j)->solved = 0;
 	(*j)->flags = PKG_FLAG_NONE;
 
 	return (EPKG_OK);
@@ -902,51 +902,54 @@ jobs_solve_install(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	const char *origin;
 
-	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
+	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST) {
 		if (new_pkg_version(j)) {
 			pkg_emit_newpkgversion();
 			goto order;
 		}
+	}
 
-	LL_FOREACH(j->patterns, jp) {
-		if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
-			if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
-				return (EPKG_FATAL);
+	if (j->solved == 0) {
+		LL_FOREACH(j->patterns, jp) {
+			if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
+				if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
+					return (EPKG_FATAL);
 
-			pkg = NULL;
-			while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
-				pkg_jobs_add_universe(j, pkg, 0, true);
-
-				if (pkg_is_locked(pkg)) {
-					/* Keep locked packages to the local version */
-					pkg_emit_locked(pkg);
-				}
-				else {
-					pkg_get(pkg, PKG_ORIGIN, &origin);
-					/* TODO: use repository priority here */
-					if (find_remote_pkg(j, origin, MATCH_EXACT, true, 0) == EPKG_FATAL)
-						pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
-				}
 				pkg = NULL;
-			}
+				while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
+					pkg_jobs_add_universe(j, pkg, 0, true);
 
-			pkgdb_it_free(it);
-		} else {
-			if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
-				return (EPKG_FATAL);
-			pkg = NULL;
-			if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-				if (pkg_is_locked(pkg)) {
-					pkg_emit_locked(pkg);
-					pkgdb_it_free(it);
-					return (EPKG_LOCKED);
+					if (pkg_is_locked(pkg)) {
+						/* Keep locked packages to the local version */
+						pkg_emit_locked(pkg);
+					}
+					else {
+						pkg_get(pkg, PKG_ORIGIN, &origin);
+						/* TODO: use repository priority here */
+						if (find_remote_pkg(j, origin, MATCH_EXACT, true, 0) == EPKG_FATAL)
+							pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
+					}
+					pkg = NULL;
 				}
-				pkg_jobs_add_universe(j, pkg, 0, true);
+
+				pkgdb_it_free(it);
+			} else {
+				if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
+					return (EPKG_FATAL);
+				pkg = NULL;
+				if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+					if (pkg_is_locked(pkg)) {
+						pkg_emit_locked(pkg);
+						pkgdb_it_free(it);
+						return (EPKG_LOCKED);
+					}
+					pkg_jobs_add_universe(j, pkg, 0, true);
+				}
+				pkgdb_it_free(it);
+				/* TODO: use repository priority here */
+				if (find_remote_pkg(j, jp->pattern, jp->match, true, 0) == EPKG_FATAL)
+					pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 			}
-			pkgdb_it_free(it);
-			/* TODO: use repository priority here */
-			if (find_remote_pkg(j, jp->pattern, jp->match, true, 0) == EPKG_FATAL)
-				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 		}
 	}
 
@@ -957,7 +960,7 @@ jobs_solve_install(struct pkg_jobs *j)
 
 order:
 
-	j->solved = true;
+	j->solved ++;
 
 	return (EPKG_OK);
 }
@@ -998,7 +1001,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		}
 	}
 
-	j->solved = true;
+	j->solved ++;
 
 	return (EPKG_OK);
 }
@@ -1091,7 +1094,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 					if (!pkg_solve_sat_problem(problem)) {
 						pkg_emit_error("cannot solve job using SAT solver");
 						ret = EPKG_FATAL;
-						j->solved = false;
+						j->solved = 0;
 					}
 					else {
 						ret = pkg_solve_sat_to_jobs(problem, j);
@@ -1101,7 +1104,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			else {
 				pkg_emit_error("cannot convert job to SAT problem");
 				ret = EPKG_FATAL;
-				j->solved = false;
+				j->solved = 0;
 			}
 		}
 	}
@@ -1149,97 +1152,6 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 			PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
 	an = pkg_annotation_lookup(p, "repository");
 
-	/* XXX: remove this legacy */
-#if 0
-	struct pkg *pkg_temp = NULL;
-	struct pkg *pkg = NULL;
-	struct pkgdb_it *it = NULL;
-	int lflags = PKG_LOAD_BASIC | PKG_LOAD_FILES | PKG_LOAD_SCRIPTS |
-	    PKG_LOAD_DIRS;
-
-	if (oldversion != NULL) {
-		pkg = NULL;
-		it = pkgdb_query(j->db, pkgorigin, MATCH_EXACT);
-		if (it != NULL) {
-			if (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
-				if (pkg_is_locked(pkg)) {
-					pkg_emit_locked(pkg);
-					pkgdb_it_free(it);
-					retcode = EPKG_LOCKED;
-					pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
-					goto cleanup; /* Bail out */
-				}
-
-				LL_APPEND(pkg_queue, pkg);
-				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-					pkg_script_run(pkg,
-							PKG_SCRIPT_PRE_DEINSTALL);
-				pkg_get(pkg, PKG_ORIGIN, &origin);
-				/*
-				 * stop the different related services
-				 * if the user wants that and the
-				 * service is running
-				 */
-				if (handle_rc)
-					pkg_start_stop_rc_scripts(pkg,
-							PKG_RC_STOP);
-				pkgdb_unregister_pkg(j->db, origin);
-				pkg = NULL;
-			}
-			pkgdb_it_free(it);
-		}
-	}
-
-	it = pkgdb_integrity_conflict_local(j->db, pkgorigin);
-
-	if (it != NULL) {
-		pkg = NULL;
-		while (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
-
-			if (pkg_is_locked(pkg)) {
-				pkg_emit_locked(pkg);
-				pkgdb_it_free(it);
-				retcode = EPKG_LOCKED;
-				pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
-				goto cleanup; /* Bail out */
-			}
-
-			LL_APPEND(pkg_queue, pkg);
-			if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-				pkg_script_run(pkg,
-						PKG_SCRIPT_PRE_DEINSTALL);
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			/*
-			 * stop the different related services if the
-			 * user wants that and the service is running
-			 */
-			if (handle_rc)
-				pkg_start_stop_rc_scripts(pkg,
-						PKG_RC_STOP);
-			pkgdb_unregister_pkg(j->db, origin);
-			pkg = NULL;
-		}
-		pkgdb_it_free(it);
-	}
-
-	LL_FOREACH(pkg_queue, pkg) {
-		pkg_jobs_keep_files_to_del(pkg, newpkg);
-	}
-
-	LL_FOREACH_SAFE(pkg_queue, pkg, pkg_temp) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-		if (strcmp(pkgorigin, origin) == 0) {
-			LL_DELETE(pkg_queue, pkg);
-			pkg_delete_files(pkg, 1);
-			if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-				pkg_script_run(pkg,
-						PKG_SCRIPT_POST_DEINSTALL);
-			pkg_delete_dirs(j->db, pkg, 0);
-			pkg_free(pkg);
-			break;
-		}
-	}
-#endif
 	pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, p);
 
 	if (pkg_open(&newpkg, path, keys, 0) != EPKG_OK) {
@@ -1375,19 +1287,31 @@ pkg_jobs_apply(struct pkg_jobs *j)
 
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
 		rc = pkg_jobs_fetch(j);
 		if (rc == EPKG_OK) {
-			rc = pkg_jobs_check_conflicts(j);
+			/* Check local conflicts in the first run */
+			if (j->solved > 1) {
+				rc = EPKG_OK;
+			}
+			else {
+				rc = pkg_jobs_check_conflicts(j);
+			}
 			if (rc == EPKG_OK) {
+				pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
 				rc = pkg_jobs_install(j);
 			}
 			else if (rc == EPKG_CONFLICT) {
-				j->solved = false;
+				/* Cleanup results */
+				LL_FREE(j->jobs_add, pkg_solved, free);
+				LL_FREE(j->jobs_delete, pkg_solved, free);
+				LL_FREE(j->jobs_upgrade, pkg_solved, free);
+				j->jobs_add = j->jobs_delete = j->jobs_upgrade = NULL;
+
 				rc = pkg_jobs_solve(j);
 				if (rc == EPKG_OK) {
-					/* XXX: is it safe to do this recursion */
-					return (pkg_jobs_apply(j));
+					pkg_emit_notice("The conflicts with the existing packages have been found.\n"
+							"We need to run one more solver iteration to resolve them");
+					return (EPKG_CONFLICT);
 				}
 			}
 		}

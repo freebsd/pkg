@@ -127,7 +127,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 void
 pkg_conflicts_register(struct pkg *p1, struct pkg *p2)
 {
-	struct pkg_conflict *c1, *c2;
+	struct pkg_conflict *c1, *c2, *test;
 	const char *o1, *o2;
 
 	pkg_get(p1, PKG_ORIGIN, &o1);
@@ -136,11 +136,19 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2)
 	pkg_conflict_new(&c1);
 	pkg_conflict_new(&c2);
 	if (c1 != NULL && c2 != NULL) {
-		sbuf_set(&c1->origin, o2);
-		sbuf_set(&c2->origin, o1);
-		pkg_debug(2, "registering conflict between %s and %s", o1, o2);
-		HASH_ADD_KEYPTR(hh, p1->conflicts, pkg_conflict_origin(c1), sbuf_size(c1->origin), c1);
-		HASH_ADD_KEYPTR(hh, p2->conflicts, pkg_conflict_origin(c2), sbuf_size(c2->origin), c2);
+		HASH_FIND_STR(p1->conflicts, o2, test);
+		if (test == NULL) {
+			sbuf_set(&c1->origin, o2);
+			HASH_ADD_KEYPTR(hh, p1->conflicts, pkg_conflict_origin(c1), sbuf_size(c1->origin), c1);
+			pkg_debug(2, "registering conflict between %s and %s", o1, o2);
+		}
+
+		HASH_FIND_STR(p2->conflicts, o1, test);
+		if (test == NULL) {
+			sbuf_set(&c2->origin, o1);
+			HASH_ADD_KEYPTR(hh, p2->conflicts, pkg_conflict_origin(c2), sbuf_size(c2->origin), c2);
+			pkg_debug(2, "registering conflict between %s and %s", o2, o1);
+		}
 	}
 }
 

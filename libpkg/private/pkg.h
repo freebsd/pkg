@@ -233,7 +233,7 @@ struct pkg_jobs {
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
-	bool		 solved;
+	int		 solved;
 	int count;
 	const char *	 reponame;
 	struct job_pattern *patterns;

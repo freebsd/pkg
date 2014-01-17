@@ -3958,7 +3958,7 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 	sbuf_delete(conflictmsg);
 	sbuf_delete(origin);
 
-/*	sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck");*/
+	/* sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck"); */
 
 	return (retcode);
 }
