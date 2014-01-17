@@ -652,7 +652,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	void *iter = NULL;
 	char size[7];
 	va_list ap;
-	pkg_jobs_t type, inv_type;
+	pkg_jobs_t type, inv_type = PKG_JOBS_DEINSTALL;
 	int64_t dlsize, oldsize, newsize;
 
 	dlsize = oldsize = newsize = 0;
@@ -661,16 +661,6 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	va_start(ap, msg);
 	vprintf(msg, ap);
 	va_end(ap);
-
-	switch (type) {
-	case PKG_JOBS_INSTALL:
-	case PKG_JOBS_UPGRADE:
-		inv_type = PKG_JOBS_DEINSTALL;
-		break;
-	default:
-		inv_type = PKG_JOBS_INSTALL;
-		break;
-	}
 
 	while ((pkg = pkg_jobs_add_iter(jobs, &iter))) {
 		print_jobs_summary_pkg(pkg, type, &oldsize, &newsize, &dlsize);
