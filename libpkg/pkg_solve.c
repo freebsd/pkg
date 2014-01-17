@@ -557,6 +557,9 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 
 	/* Add requests */
 	HASH_ITER(hh, j->request_add, jreq, jtmp) {
+		if (jreq->skip)
+			continue;
+
 		rule = NULL;
 		it = NULL;
 		var = NULL;
@@ -581,6 +584,9 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		problem->rules_count ++;
 	}
 	HASH_ITER(hh, j->request_delete, jreq, jtmp) {
+		if (jreq->skip)
+			continue;
+
 		rule = NULL;
 		it = NULL;
 		var = NULL;

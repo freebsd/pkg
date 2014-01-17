@@ -45,11 +45,15 @@ pkg_conflicts_chain_cmp_cb(struct pkg_conflict_chain *a, struct pkg_conflict_cha
 {
 	const char *vera, *verb;
 
+	if (a->req->skip || b->req->skip) {
+		return (a->req->skip - b->req->skip);
+	}
+
 	pkg_get(a->req->pkg, PKG_VERSION, &vera);
 	pkg_get(b->req->pkg, PKG_VERSION, &verb);
 
 	/* Inverse sort to get the maximum version as the first element */
-	return (pkg_version_cmp(verb, vera));
+	return (pkg_version_cmp(vera, verb));
 }
 
 static int
@@ -81,6 +85,8 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, struct pkg_conflict_chain *
 		selected = chain;
 	}
 
+	pkg_get(selected->req->pkg, PKG_ORIGIN, &origin);
+	pkg_debug(2, "select %s in the chain of conflicts for %s", origin, name);
 	/* Disable conflicts from a request */
 	LL_FOREACH(chain, elt) {
 		if (elt != selected)
@@ -90,34 +96,48 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, struct pkg_conflict_chain *
 	return (EPKG_OK);
 }
 
+static void
+pkg_conflicts_request_add_chain(struct pkg_conflict_chain **chain, struct pkg_job_request *req)
+{
+	struct pkg_conflict_chain *elt;
+
+	elt = calloc(1, sizeof(struct pkg_conflict_chain));
+	if (elt == NULL) {
+		pkg_emit_errno("resolve_request_conflicts", "calloc: struct pkg_conflict_chain");
+	}
+	elt->req = req;
+	LL_PREPEND(*chain, elt);
+}
+
 int
 pkg_conflicts_request_resolve(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req, *rtmp, *found;
 	struct pkg_conflict *c, *ctmp;
-	struct pkg_conflict_chain *chain, *elt;
+	struct pkg_conflict_chain *chain;
+	const char *origin;
 
 	HASH_ITER(hh, j->request_add, req, rtmp) {
 		chain = NULL;
+		if (req->skip)
+			continue;
+
 		HASH_ITER(hh, req->pkg->conflicts, c, ctmp) {
 			HASH_FIND_STR(j->request_add, pkg_conflict_origin(c), found);
 			if (found && !found->skip) {
-				elt = calloc(1, sizeof(struct pkg_conflict_chain));
-				if (elt == NULL) {
-					pkg_emit_errno("resolve_request_conflicts", "calloc: struct pkg_conflict_chain");
-					return (EPKG_FATAL);
-				}
-				elt->req = found;
-				LL_PREPEND(chain, elt);
+				pkg_conflicts_request_add_chain(&chain, found);
 			}
-			if (chain != NULL) {
-				/* We need to handle conflict chain here */
-				if (pkg_conflicts_request_resolve_chain(req->pkg, chain) != EPKG_OK) {
-					LL_FREE(chain, pkg_conflict_chain, free);
-					return (EPKG_FATAL);
-				}
+		}
+		if (chain != NULL) {
+			pkg_get(req->pkg, PKG_ORIGIN, &origin);
+			/* Add package itself */
+			pkg_conflicts_request_add_chain(&chain, req);
+
+			if (pkg_conflicts_request_resolve_chain(req->pkg, chain) != EPKG_OK) {
 				LL_FREE(chain, pkg_conflict_chain, free);
+				return (EPKG_FATAL);
 			}
+			LL_FREE(chain, pkg_conflict_chain, free);
 		}
 	}
 

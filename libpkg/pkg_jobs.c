@@ -547,48 +547,6 @@ end:
 }
 
 static int
-pkg_jobs_register_remote_conflicts(struct pkg_jobs *j, const char *origin, struct pkg *rp, int priority)
-{
-	struct pkg *lp;
-	struct pkgdb_it *it = NULL;
-	const char *lorigin;
-	int lflags = PKG_LOAD_BASIC | PKG_LOAD_FILES | PKG_LOAD_SCRIPTS |
-		    PKG_LOAD_DIRS;
-	struct pkg_conflict *c1, *c2;
-
-	it = pkgdb_integrity_conflict_local(j->db, origin);
-
-	if (it != NULL) {
-		lp = NULL;
-		while (pkgdb_it_next(it, &lp, lflags) == EPKG_OK) {
-			pkg_get(lp, PKG_ORIGIN, &lorigin);
-			pkg_jobs_add_universe(j, lp, priority, true);
-			/* Register conflicts */
-			pkg_conflict_new(&c1);
-			pkg_conflict_new(&c2);
-			if (c1 != NULL && c2 != NULL) {
-				sbuf_set(&c1->origin, lorigin);
-				sbuf_set(&c2->origin, origin);
-				pkg_debug(2, "registering conflict between remote %s and local %s", origin, lorigin);
-				HASH_ADD_KEYPTR(hh, rp->conflicts, lorigin, strlen(lorigin), c1);
-				HASH_ADD_KEYPTR(hh, lp->conflicts, origin, strlen(origin), c2);
-			}
-
-			/* Special case for locked packages */
-			if (pkg_is_locked(lp)) {
-				pkg_emit_locked(lp);
-				pkgdb_it_free(it);
-				return (EPKG_LOCKED);
-			}
-			lp = NULL;
-		}
-		pkgdb_it_free(it);
-	}
-
-	return (EPKG_OK);
-}
-
-static int
 find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, int priority)
 {
 	struct pkg *p = NULL;
@@ -656,10 +614,8 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, i
 		rc = EPKG_OK;
 		p->direct = root;
 		/* Add a package to request chain and populate universe */
-		if (pkg_jobs_register_remote_conflicts(j, origin, p, priority) == EPKG_OK) {
-			/* Do not request packages with a conflict with locked installed packages */
-			pkg_jobs_add_req(j, origin, p, true, priority);
-		}
+
+		pkg_jobs_add_req(j, origin, p, true, priority);
 		rc = pkg_jobs_add_universe(j, p, priority, true);
 
 
@@ -1444,8 +1400,8 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	pkg_free(pkg);
 
 	if (ret != EPKG_FATAL) {
-		if ((ret = pkg_conflicts_integrity_check(j)) != EPKG_OK)
-			return (ret);
+		if ((res = pkg_conflicts_integrity_check(j)) != EPKG_OK)
+			return (res);
 	}
 
 	pkg_emit_integritycheck_finished();
