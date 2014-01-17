@@ -1262,6 +1262,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				LL_FREE(j->jobs_delete, pkg_solved, free);
 				LL_FREE(j->jobs_upgrade, pkg_solved, free);
 				j->jobs_add = j->jobs_delete = j->jobs_upgrade = NULL;
+				j->count = 0;
 
 				rc = pkg_jobs_solve(j);
 				if (rc == EPKG_OK) {
