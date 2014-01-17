@@ -134,7 +134,9 @@ event_callback(void *data, struct pkg_event *ev)
 		if (pkg_has_message(ev->e_install_finished.pkg)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "%M\n",
+			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
+			    ev->e_install_finished.pkg,
+			    ev->e_install_finished.pkg,
 			    ev->e_install_finished.pkg);
 		}
 		break;
@@ -241,7 +243,9 @@ event_callback(void *data, struct pkg_event *ev)
 		if (pkg_has_message(ev->e_upgrade_finished.pkg)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
-			pkg_sbuf_printf(messages, "%M\n",
+			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
+			    ev->e_install_finished.pkg,
+			    ev->e_install_finished.pkg,
 			    ev->e_upgrade_finished.pkg);
 		}
 		break;
