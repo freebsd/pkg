@@ -63,7 +63,6 @@ event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL;
 	int *debug = data;
-	(void) debug;
 	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
 
@@ -150,6 +149,8 @@ event_callback(void *data, struct pkg_event *ev)
 		printf(" done\n");
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
+		if (*debug == 0)
+			break;
 		printf("\nConflict found on path %s between %s-%s(%s) and ",
 		    ev->e_integrity_conflict.pkg_path,
 		    ev->e_integrity_conflict.pkg_name,
