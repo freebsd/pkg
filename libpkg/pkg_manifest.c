@@ -657,12 +657,12 @@ parse_manifest(struct pkg *pkg, struct pkg_manifest_key *keys, ucl_object_t *obj
 		key = ucl_object_key(cur);
 		if (key == NULL)
 			continue;
-		pkg_debug(2, "Manifest: found key: '%s'", key);
+		pkg_debug(3, "Manifest: found key: '%s'", key);
 		HASH_FIND_STR(keys, key, selected_key);
 		if (selected_key != NULL) {
 			HASH_FIND_UCLT(selected_key->parser, &cur->type, dp);
 			if (dp != NULL) {
-				pkg_debug(2, "Manifest: key is valid");
+				pkg_debug(3, "Manifest: key is valid");
 				dp->parse_data(pkg, cur, selected_key->type);
 			}
 		}
