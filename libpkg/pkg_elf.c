@@ -127,6 +127,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	struct pkgdb_it *it = NULL;
 	struct pkg *d;
 	const char *deporigin, *depname, *depversion;
+	const char *origin;
 	const char *pkgname, *pkgversion;
 	bool deplocked;
 	char pathbuf[MAXPATHLEN];
@@ -171,9 +172,9 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 			   PKG_VERSION, &depversion,
 			   PKG_LOCKED,  &deplocked);
 
-		dep = pkg_dep_lookup(pkg, deporigin);
+		pkg_get(pkg, PKG_ORIGIN, &origin);
 
-		if (dep == NULL) {
+		if (dep == NULL && strcmp(origin, deporigin) != 0) {
 			pkg_debug(1, "Autodeps: adding unlisted depends (%s): %s-%s",
 			    pathbuf, depname, depversion);
 			pkg_adddep(pkg, depname, deporigin, depversion,
