@@ -972,6 +972,8 @@ pkg_init(const char *path, const char *reposdir)
 			if (val != NULL) {
 				if (strcmp(c[i].key, "PACKAGESITE") == 0)
 					conf->string = subst_packagesite_str(val);
+				else
+					conf->string = strdup(val);
 				conf->fromenv = true;
 			}
 			else if (c[i].def != NULL)
