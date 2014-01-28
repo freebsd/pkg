@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
@@ -240,7 +240,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 	if (pkg_type(pkg) == PKG_INSTALLED && (options & INFO_LOCKED) != 0)
 		show_locks = true;
 
-	if (!quiet || options == INFO_TAG_NAMEVER) {
+	if (!quiet) {
 		/* Print a tag-line identifying the package -- either
 		   NAMEVER, ORIGIN or NAME (in that order of
 		   preference).  This may be the only output from this
