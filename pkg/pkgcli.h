@@ -183,35 +183,36 @@ void usage_config(void);
 /* These are the fields of the Full output, in order */
 #define INFO_NAME		(1LL<<0)
 #define INFO_VERSION		(1LL<<1)
-#define INFO_ORIGIN		(1LL<<2)
-#define INFO_ARCH		(1LL<<3)
-#define INFO_PREFIX		(1LL<<4)
-#define INFO_REPOSITORY		(1LL<<5)
-#define INFO_CATEGORIES		(1LL<<6)
-#define INFO_LICENSES		(1LL<<7)
-#define INFO_MAINTAINER		(1LL<<8)
-#define INFO_WWW		(1LL<<9)
-#define INFO_COMMENT		(1LL<<10)
-#define INFO_OPTIONS		(1LL<<11)
-#define INFO_SHLIBS_REQUIRED	(1LL<<12)
-#define INFO_SHLIBS_PROVIDED	(1LL<<13)
-#define INFO_ANNOTATIONS	(1LL<<14)
-#define INFO_FLATSIZE		(1LL<<15)
-#define INFO_PKGSIZE		(1LL<<16)
-#define INFO_DESCR		(1LL<<17)
+#define INFO_INSTALLED		(1LL<<2)
+#define INFO_ORIGIN		(1LL<<3)
+#define INFO_ARCH		(1LL<<4)
+#define INFO_PREFIX		(1LL<<5)
+#define INFO_REPOSITORY		(1LL<<6)
+#define INFO_CATEGORIES		(1LL<<7)
+#define INFO_LICENSES		(1LL<<8)
+#define INFO_MAINTAINER		(1LL<<9)
+#define INFO_WWW		(1LL<<10)
+#define INFO_COMMENT		(1LL<<11)
+#define INFO_OPTIONS		(1LL<<12)
+#define INFO_SHLIBS_REQUIRED	(1LL<<13)
+#define INFO_SHLIBS_PROVIDED	(1LL<<14)
+#define INFO_ANNOTATIONS	(1LL<<15)
+#define INFO_FLATSIZE		(1LL<<16)
+#define INFO_PKGSIZE		(1LL<<17)
+#define INFO_DESCR		(1LL<<18)
 
 /* Other fields not part of the Full output */
-#define INFO_MESSAGE		(1LL<<18)
-#define INFO_DEPS		(1LL<<19)
-#define INFO_RDEPS		(1LL<<20)
-#define INFO_FILES		(1LL<<21)
-#define INFO_DIRS		(1LL<<22)
-#define INFO_USERS		(1LL<<23)
-#define INFO_GROUPS		(1LL<<24)
-#define INFO_REPOURL		(1LL<<25)
-#define INFO_LOCKED		(1LL<<26)
-#define INFO_OPTION_DEFAULTS    (1LL<<27)
-#define INFO_OPTION_DESCRIPTIONS (1LL<<28)
+#define INFO_MESSAGE		(1LL<<19)
+#define INFO_DEPS		(1LL<<20)
+#define INFO_RDEPS		(1LL<<21)
+#define INFO_FILES		(1LL<<22)
+#define INFO_DIRS		(1LL<<23)
+#define INFO_USERS		(1LL<<24)
+#define INFO_GROUPS		(1LL<<25)
+#define INFO_REPOURL		(1LL<<26)
+#define INFO_LOCKED		(1LL<<27)
+#define INFO_OPTION_DEFAULTS    (1LL<<28)
+#define INFO_OPTION_DESCRIPTIONS (1LL<<29)
 
 #define INFO_LASTFIELD	INFO_LOCKED
 #define INFO_ALL	(((INFO_LASTFIELD) << 1) - 1)
@@ -225,12 +226,13 @@ void usage_config(void);
 #define INFO_RAW	(-1LL<<63)
 
 /* Everything in the 'full' package output */
-#define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_ORIGIN|INFO_ARCH|INFO_PREFIX| \
-			 INFO_REPOSITORY|INFO_CATEGORIES|INFO_LICENSES|	 \
-			 INFO_MAINTAINER|INFO_WWW|INFO_COMMENT|		 \
-			 INFO_OPTIONS|INFO_SHLIBS_REQUIRED|		 \
-			 INFO_SHLIBS_PROVIDED|INFO_ANNOTATIONS|		 \
-			 INFO_FLATSIZE|INFO_PKGSIZE|INFO_DESCR)
+#define INFO_FULL	(INFO_NAME|INFO_VERSION|INFO_INSTALLED|INFO_ORIGIN| \
+			 INFO_ARCH|INFO_PREFIX|INFO_REPOSITORY|		 \
+			 INFO_CATEGORIES|INFO_LICENSES|INFO_MAINTAINER|	 \
+			 INFO_WWW|INFO_COMMENT|INFO_OPTIONS|		 \
+			 INFO_SHLIBS_REQUIRED|INFO_SHLIBS_PROVIDED|	 \
+			 INFO_ANNOTATIONS|INFO_FLATSIZE|INFO_PKGSIZE|	 \
+			 INFO_DESCR)
 
 /* Everything that can take more than one line to print */
 #define INFO_MULTILINE	(INFO_OPTIONS|INFO_SHLIBS_REQUIRED|	       \
