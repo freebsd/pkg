@@ -84,27 +84,27 @@ _pkg() {
 			;;
 		(autoremove)
 			_arguments -s \
-				'(-y)-n[Assume yes when asked for confirmation]' \
-				'(-n)-y[Assume no (dry run) for confirmations]' \
+				'(-n)-y[Assume yes when asked for confirmation]' \
+				'(-y)-n[Assume no (dry run) when asked for confirmation]' \
 				&& return 0
 			;;
 		(backup)
 			_arguments -s \
 				'(-r)-d[Dumps the local package database]:destination:_files' \
-				'(-d)-r[Restrore the local package database]:destination:_files' \
+				'(-d)-r[Restore the local package database]:destination:_files' \
 				&& return 0
 			;;
 		(check)
 			_arguments -s \
-				'-B[reanalyse SHLIBS of installed packages]' \
+				'-B[reanalyze the shared libraries]' \
 				'-d[check for and install missing dependencies]' \
 				'-r[recompute sizes and checksums of installed]' \
 				'-s[find invalid checksums]' \
 				'-v[Be verbose]' \
 				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
 				&& return 0
 			;;
 		(clean)
@@ -122,21 +122,21 @@ _pkg() {
 				'-f[format]:format:((tar tgz tbz txz))' \
 				'-o[Ouput directory]:outdir:_files -/' \
 				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
 				'*:Package:_pkg_installed' \
 				&& return 0
 			;;
 		(delete|remove)
 			_arguments -s \
-				'(-y)-n[Assume yes when asked for confirmation]' \
-				'(-n)-y[Assume no (dry run) for confirmations]' \
-				'-f[Forces packages to be removed]' \
+				'(-n)-y[Assume yes when asked for confirmation]' \
+				'(-y)-n[Assume no (dry run) when asked for confirmation]' \
+				'-f[Force the package(s) to be removed]' \
 				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
 				'*:Package:_pkg_installed' \
 				&& return 0
 			;;
@@ -146,9 +146,9 @@ _pkg() {
 				'-L[Do not try to update the repository metadata]' \
 				'-q[Be quiet]' \
 				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
 				'*:Available packages:_pkg_available' \
 				&& return 0
 			;;
@@ -169,40 +169,40 @@ _pkg() {
 				'(-e -d -r -l -o -p -f)-D[Displays message]' \
 				'-q[Be quiet]' \
 				'(-g -x -X -F)-a[Process all packages]' \
-				'(-x -X -a -F)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X -a -F)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x -a -F)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-x -X -a -F)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X -a -F)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x -a -F)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
 				'(-g -x -X -a)-F[Process the specified package]:package:_files -g "*.t?z"' \
 				'*:Package:_pkg_installed' \
 				&& return 0
 			;;
 		(install)
 			_arguments -s \
-				'(-y)-n[Assume yes when asked for confirmation]' \
-				'(-n)-y[Assume no (dry run) for confirmations]' \
+				'(-n)-y[Assume yes when asked for confirmation]' \
+				'(-y)-n[Assume no (dry run) when asked for confirmation]' \
 				'-f[Force reinstallation if needed]' \
 				'-R[Reinstall every package depending on matching expressions]' \
 				'-L[Do not try to update the repository metadata]' \
-				'(-x -X)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-x -X)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
 				'*:Available packages:_pkg_available' \
 				&& return 0
 			;;
 		(query)
 			_arguments -s \
 				'(-g -x -X -F -e)-a[Process all packages]' \
-				'(-x -X -a -F -e)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X -a -F -e)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x -a -F -e)-X[Process packages that matches extended regex]:extended regex pattern:' \
-				'(-g -x -X -a -F)-e[Process packages that matches the evaluation]:evaluation:' \
+				'(-x -X -a -F -e)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X -a -F -e)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x -a -F -e)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
+				'(-g -x -X -a -F)-e[Process packages that match the evaluation]:evaluation:' \
 				'(-g -x -X -a -e)-F[Process the specified package]:package:_files -g "*.t?z"' \
 				':Ouput format:' \
 				&& return 0
 			;;
 		(register)
 			_arguments -s \
-				'-l[registered as a legacy format]' \
+				'-l[register as a legacy format]' \
 				'-d[mark the package as an automatic dependency]' \
 				'-f[packing list file]:packing list file:_files' \
 				'-m[metadata directory]:metadatadir:_files -/' \
@@ -219,18 +219,18 @@ _pkg() {
 		(rquery)
 			_arguments -s \
 				'(-g -x -X -e)-a[Process all packages]' \
-				'(-x -X -a -e)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X -a -e)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x -a -e)-X[Process packages that matches extended regex]:extended regex pattern:' \
-				'(-g -x -X -a)-e[Process packages that matches the evaluation]:evaluation:' \
+				'(-x -X -a -e)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X -a -e)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x -a -e)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
+				'(-g -x -X -a)-e[Process packages that match the evaluation]:evaluation:' \
 				':Ouput format:' \
 				&& return 0
 			;;
 		(search)
 			_arguments -s \
-				'(-x -X)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-x -X)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
 				'*:Available packages:_pkg_available_name' \
 				&& return 0
 			;;
@@ -240,9 +240,9 @@ _pkg() {
 				'(-A)-o[Change the origin]:oldorigin\:neworigin:' \
 				'-y[Assume yes when asked for confirmation]' \
 				'(-g -x -X)-a[Process all packages]' \
-				'(-x -X -a)-g[Process packages that matches glob]:glob pattern:' \
-				'(-g -X -a)-x[Process packages that matches regex]:regex pattern:' \
-				'(-g -x -a)-X[Process packages that matches extended regex]:extended regex pattern:' \
+				'(-x -X -a)-g[Process packages that match the glob pattern]:glob pattern:' \
+				'(-g -X -a)-x[Process packages that match the regex pattern]:regex pattern:' \
+				'(-g -x -a)-X[Process packages that match the extended regex pattern]:extended regex pattern:' \
 				'*:Package:_pkg_installed'
 			return 0
 			;;
@@ -265,7 +265,7 @@ _pkg() {
 			;;
 		(update)
 			_arguments -s \
-				'-f[Force updating]' \
+				'-f[Force update]' \
 				'-q[Be quiet]' \
 				&& return 0
 			;;
@@ -278,7 +278,7 @@ _pkg() {
 			;;
 		(upgrade)
 			_arguments -s \
-				'(-y)-n[Assume no (dry run) for confirmations]' \
+				'(-y)-n[Assume no (dry run) when asked for confirmation]' \
 				'(-n)-y[Assume yes when asked for confirmation]' \
 				'-f[Upgrade/Reinstall everything]' \
 				'-L[Do not try to update the repository metadata]' \
@@ -293,8 +293,8 @@ _pkg() {
 				'-o[Display package origin, instead of package name]' \
 				'-q[Be quiet]' \
 				'-v[Be verbose]' \
-				'(-L)-l[Display only the packages for given status flag]:flag:((\< = \>))' \
-				'(-l)-L[Display only the packages without given status flag]:flag:((\< = \>))' \
+				'(-L)-l[Display only the packages with a given status flag]:flag:((\< = \>))' \
+				'(-l)-L[Display only the packages without a given status flag]:flag:((\< = \>))' \
 				&& return 0
 			;;
 		(which)

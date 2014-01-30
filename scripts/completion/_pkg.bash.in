@@ -265,9 +265,9 @@ _pkgng_set () {
            '(-A)-o[Change the origin]'
            '-y[Assume yes when asked for confirmation]'
            '(-g -x -X)-a[Process all packages]'
-           '(-x -X -a)-g[Process packages that matches glob]'
-           '(-g -X -a)-x[Process packages that matches regex]'
-           '(-g -x -a)-X[Process packages that matches extended regex]')
+           '(-x -X -a)-g[Process packages that match the glob pattern]'
+           '(-g -X -a)-x[Process packages that match the regex pattern]'
+           '(-g -x -a)-X[Process packages that match the extended regex pattern]')
 
     small_info="Modifies information about packages in the local database"
     large_info=""
@@ -441,22 +441,22 @@ _pkg () {
         backup) 
 	    COMPREPLY=(
 		'(-r)-d[Dumps the local package database]'
-		'(-d)-r[Restrore the local package database]'
+		'(-d)-r[Restore the local package database]'
 	    )
 	    return 0 
 	    ;;
 
         check) 
 	    COMPREPLY=(
-		'-B[reanalyse SHLIBS of installed packages]' 
+		'-B[reanalyse the shared libraries]' 
 		'-d[check for and install missing dependencies]' 
 		'-r[recompute sizes and checksums of installed]' 
 		'-s[find invalid checksums]' 
 		'-v[Be verbose]' 
 		'(-g -x -X)-a[Process all packages]' 
-		'(-x -X -a)-g[Process packages that matches glob]'
-		'(-g -X -a)-x[Process packages that matches regex]'
-		'(-g -x -a)-X[Process packages that matches extended regex]'
+		'(-x -X -a)-g[Process packages that match the glob pattern]'
+		'(-g -X -a)-x[Process packages that match the regex pattern]'
+		'(-g -x -a)-X[Process packages that match the extended regex pattern]'
 	    )
 	    return 0 
 	    ;;
@@ -477,9 +477,9 @@ _pkg () {
 		'-f[format]'
 		'-o[Ouput directory] -/'
 		'(-g -x -X)-a[Process all packages]'
-		'(-x -X -a)-g[Process packages that matches glob]'
-		'(-g -X -a)-x[Process packages that matches regex]'
-		'(-g -x -a)-X[Process packages that matches extended regex]'
+		'(-x -X -a)-g[Process packages that match the glob pattern]'
+		'(-g -X -a)-x[Process packages that match the regex pattern]'
+		'(-g -x -a)-X[Process packages that match the extended regex pattern]'
 		'*:Package:_pkg_installed'
 	    )
 	    return 0 
@@ -488,12 +488,12 @@ _pkg () {
         delete|remove) 
 	    COMPREPLY=(
 		'(-y)-n[Assume yes when asked for confirmation]'
-		'(-n)-y[Assume no (dry run) for confirmations]'
-		'-f[Forces packages to be removed]'
+		'(-n)-y[Assume no (dry run) when asked for confirmation]'
+		'-f[Force the package(s) to be removed]'
 		'(-g -x -X)-a[Process all packages]'
-		'(-x -X -a)-g[Process packages that matches glob]'
-		'(-g -X -a)-x[Process packages that matches regex]'
-		'(-g -x -a)-X[Process packages that matches extended regex]'
+		'(-x -X -a)-g[Process packages that match the glob pattern]'
+		'(-g -X -a)-x[Process packages that match the regex pattern]'
+		'(-g -x -a)-X[Process packages that match the extended regex pattern]'
 		'*:Package:_pkg_installed'
 	    )
 	    return 0 
@@ -505,9 +505,9 @@ _pkg () {
 		'-L[Do not try to update the repository metadata]'
 		'-q[Be quiet]'
 		'(-g -x -X)-a[Process all packages]'
-		'(-x -X -a)-g[Process packages that matches glob]'
-		'(-g -X -a)-x[Process packages that matches regex]' 
-		'(-g -x -a)-X[Process packages that matches extended regex]'
+		'(-x -X -a)-g[Process packages that match the glob pattern]'
+		'(-g -X -a)-x[Process packages that match the regex pattern]' 
+		'(-g -x -a)-X[Process packages that match the extended regex pattern]'
 		'*:Available packages:_pkg_available'
 	    )
 	    return 0 
@@ -529,9 +529,9 @@ _pkg () {
 		'(-e -d -r -l -o -p -f)-D[Displays message]'
 		'-q[Be quiet]'
 		'(-g -x -X -F)-a[Process all packages]'
-		'(-x -X -a -F)-g[Process packages that matches glob]'
-		'(-g -X -a -F)-x[Process packages that matches regex]'
-		'(-g -x -a -F)-X[Process packages that matches extended regex]'
+		'(-x -X -a -F)-g[Process packages that match the glob pattern]'
+		'(-g -X -a -F)-x[Process packages that match the regex pattern]'
+		'(-g -x -a -F)-X[Process packages that match the extended regex pattern]'
 		'(-g -x -X -a)-F[Process the specified package]'
 		'*:Package:_pkg_installed'
 	    )
@@ -541,13 +541,13 @@ _pkg () {
         install) 
 	    COMPREPLY=(
 		'(-y)-n[Assume yes when asked for confirmation]'
-		'(-n)-y[Assume no (dry run) for confirmations]'
+		'(-n)-y[Assume no (dry run) when asked for confirmation]'
 		'-f[Force reinstallation if needed]'
 		'-R[Reinstall every package depending on matching expressions]'
 		'-L[Do not try to update the repository metadata]'
-		'(-x -X)-g[Process packages that matches glob]'
-		'(-g -X)-x[Process packages that matches regex]'
-		'(-g -x)-X[Process packages that matches extended regex]'
+		'(-x -X)-g[Process packages that match the glob pattern]'
+		'(-g -X)-x[Process packages that match the regex pattern]'
+		'(-g -x)-X[Process packages that match the extended regex pattern]'
 		'*:Available packages:_pkg_available'
 	    )
 	    return 0 
@@ -556,10 +556,10 @@ _pkg () {
         query) 
 	    COMPREPLY=(
 		'(-g -x -X -F -e)-a[Process all packages]'
-		'(-x -X -a -F -e)-g[Process packages that matches glob]'
-		'(-g -X -a -F -e)-x[Process packages that matches regex]'
-		'(-g -x -a -F -e)-X[Process packages that matches extended regex]'
-		'(-g -x -X -a -F)-e[Process packages that matches the evaluation]'
+		'(-x -X -a -F -e)-g[Process packages that match the glob pattern]'
+		'(-g -X -a -F -e)-x[Process packages that match the regex pattern]'
+		'(-g -x -a -F -e)-X[Process packages that match the extended regex pattern]'
+		'(-g -x -X -a -F)-e[Process packages that match the evaluation]'
 		'(-g -x -X -a -e)-F[Process the specified package]'
 		':Ouput format:'
 	    )
@@ -568,7 +568,7 @@ _pkg () {
 
         register) 
 	    COMPREPLY=(
-		'-l[registered as a legacy format]'
+		'-l[register as a legacy format]'
 		'-d[mark the package as an automatic dependency]'
 		'-f[packing list file]'
 		'-m[metadata directory]'
@@ -584,18 +584,18 @@ _pkg () {
         rquery) 
 	    COMPREPLY=(
 		'(-g -x -X -e)-a[Process all packages]'
-		'(-x -X -a -e)-g[Process packages that matches glob]'
-		'(-g -X -a -e)-x[Process packages that matches regex]'
-		'(-g -x -a -e)-X[Process packages that matches extended regex]'
-		'(-g -x -X -a)-e[Process packages that matches the evaluation]'
+		'(-x -X -a -e)-g[Process packages that match the glob pattern]'
+		'(-g -X -a -e)-x[Process packages that match the regex pattern]'
+		'(-g -x -a -e)-X[Process packages that match the extended regex pattern]'
+		'(-g -x -X -a)-e[Process packages that match the evaluation]'
 	    )
 	    return 0 ;;
 
         search) 
 	    COMPREPLY=(
-		'(-x -X)-g[Process packages that matches glob]'
-		'(-g -X)-x[Process packages that matches regex]'
-		'(-g -x)-X[Process packages that matches extended regex]'
+		'(-x -X)-g[Process packages that match the glob pattern]'
+		'(-g -X)-x[Process packages that match the regex pattern]'
+		'(-g -x)-X[Process packages that match the extended regex pattern]'
 	    )
 	    return 0 ;;
 
@@ -605,9 +605,9 @@ _pkg () {
 		'(-A)-o[Change the origin]'
 		'-y[Assume yes when asked for confirmation]'
 		'(-g -x -X)-a[Process all packages]'
-		'(-x -X -a)-g[Process packages that matches glob]'
-		'(-g -X -a)-x[Process packages that matches regex]'
-		'(-g -x -a)-X[Process packages that matches extended regex]'
+		'(-x -X -a)-g[Process packages that match the glob pattern]'
+		'(-g -X -a)-x[Process packages that match the regex pattern]'
+		'(-g -x -a)-X[Process packages that match the extended regex pattern]'
 	    )
 	    return 0 ;;
 
@@ -629,7 +629,7 @@ _pkg () {
 
         update) 
 	    COMPREPLY=(
-		'-f[Force updating]'
+		'-f[Force update]'
 		'-q[Be quiet]'
 	    )
 	    return 0 ;;
@@ -644,7 +644,7 @@ _pkg () {
 
         upgrade) 
 	    COMPREPLY=(
-		'(-y)-n[Assume no (dry run) for confirmations]' 
+		'(-y)-n[Assume no (dry run) when asked for confirmation]' 
 		'(-n)-y[Assume yes when asked for confirmation]' 
 		'-f[Upgrade/Reinstall everything]' 
 		'-L[Do not try to update the repository metadata]'
