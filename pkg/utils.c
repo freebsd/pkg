@@ -302,6 +302,11 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("%-15s: ", "Name");
 			pkg_printf("%n\n", pkg);
 			break;
+		case INFO_INSTALLED:
+			if (print_tag)
+				printf("%-15s: ", "Installed on");
+			pkg_printf("%t%{%+%}\n", pkg);
+			break;
 		case INFO_VERSION:
 			if (print_tag)
 				printf("%-15s: ", "Version");
