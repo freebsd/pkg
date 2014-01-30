@@ -743,7 +743,7 @@ static const struct pkg_printf_fmt	fmt[] = {
 	{
 		't',
 		'\0',
-		false,
+		true,
 		true,
 		PP_ALL,
 		&format_install_tstamp,
