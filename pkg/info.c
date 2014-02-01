@@ -83,6 +83,7 @@ exec_info(int argc, char **argv)
 	int open_flags = 0;
 	bool pkg_exists = false;
 	bool origin_search = false;
+	bool e_flag = false;
 	struct pkg_manifest_key *keys = NULL;
 
 	/* TODO: exclusive opts ? */
@@ -138,7 +139,7 @@ exec_info(int argc, char **argv)
 			opt |= INFO_FLATSIZE;
 			break;
 		case 'E': /* ports compatibility */
-			/* Ignored */
+			e_flag = true;
 			break;
 		case 'q':
 			quiet = true;
@@ -342,7 +343,7 @@ exec_info(int argc, char **argv)
 		 * only show full version in case of match glob with a single argument specified
 		 * which does not contains any glob pattern
 		 */
-		if (argc == 1 && !origin_search && !quiet &&
+		if (argc == 1 && !origin_search && !quiet && !e_flag &&
 		    match == MATCH_GLOB &&
 		    strcspn(pkgname, "*[]{}()") == strlen(pkgname) &&
 		    opt == INFO_TAG_NAMEVER)
