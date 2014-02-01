@@ -320,6 +320,10 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
+		if (pkg_is_locked(pkg)) {
+			pkg_emit_locked(pkg);
+			continue;
+		}
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
 		pkg = NULL;
