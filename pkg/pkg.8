@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd September 14, 2013
+.Dd February 1, 2014
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -109,10 +109,7 @@ flag was first released in the
 bootstrapper
 in FreeBSD 8.4,
 but was missing from FreeBSD 9.1.
-It was not released in
-.Nm
-until 1.0.13.
-Because of this, it may not be enough to just call
+It may not be enough to just call
 .Nm Fl N ,
 as the bootstrapper may be invoked, or an error returned
 from
@@ -344,8 +341,7 @@ Check for missing dependencies:
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,
-.Xr pkg-which 8 ,
-.Xr pthread 3
+.Xr pkg-which 8
 .Pp
 To build your own package set for one or multiple servers see
 .Em ports-mgmt/poudriere

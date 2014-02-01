@@ -172,6 +172,7 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 			   PKG_VERSION, &depversion,
 			   PKG_LOCKED,  &deplocked);
 
+		dep = pkg_dep_lookup(pkg, deporigin);
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 
 		if (dep == NULL && strcmp(origin, deporigin) != 0) {
