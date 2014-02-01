@@ -446,7 +446,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *origin;
 
-	if ((it = pkgdb_query(j->db, " WHERE automatic=1 AND locked=0 ", MATCH_CONDITION)) == NULL)
+	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
