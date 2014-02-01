@@ -55,17 +55,26 @@ case "${daily_status_security_pkgaudit_enable:-YES}" in
 		echo 'pkg-audit is enabled but pkg is not used'
 		rc=2
 	else
+		case "${daily_status_security_pkgaudit_quiet:-YES}" in
+		    [Yy][Ee][Ss])
+			q='-q'
+			;;
+		    *)
+			q=
+			;;
+		esac
+
 		then=`stat -f '%m' "${auditfile}" 2> /dev/null` || rc=3
 		now=`date +%s` || rc=3
 		# Add 10 minutes of padding since the check is in seconds.
 		if [ $rc -ne 0 -o \
 			$(( 86400 \* "${daily_status_security_pkgaudit_expiry:-2}" )) \
 			-le $(( ${now} - ${then} + 600 )) ]; then
-			${pkgcmd} audit -F || { rc=$?; [ $rc -lt 3 ] && rc=3; }
+			${pkgcmd} audit -F $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
 		else
 			echo -n 'Database fetched: '
 			date -r "${then}" || rc=3
-			${pkgcmd} audit || { rc=$?; [ $rc -lt 3 ] && rc=3; }
+			${pkgcmd} audit $q || { rc=$?; [ $rc -lt 3 ] && rc=3; }
 		fi
 	fi
 	;;
