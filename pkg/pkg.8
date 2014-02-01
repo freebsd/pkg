@@ -179,6 +179,21 @@ Audits installed packages against known vulnerabilities.
 Delete packages which were automatically installed as dependencies and are not required any more.
 .It Ic backup
 Dump the local package database to a file specified on the command-line.
+.It Ic bootstrap
+This is for compatibility with the
+.Xr pkg 7
+bootstrapper.
+If
+.Nm
+is already installed, nothing is done.
+.Pp
+If invoked with the
+.Fl f
+flag an attempt will be made to reinstall
+.Nm
+from remote repository.
+This is not supported on FreeBSD 8.3 as it did not have
+.Xr pkg 7 .
 .It Ic check
 Sanity checks installed packages.
 .It Ic clean
