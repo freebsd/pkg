@@ -238,6 +238,7 @@ LIBPKGCFLAGS+=	-DDEFAULT_MIRROR_TYPE=${DEFAULT_MIRROR_TYPE} \
 		-I${.CURDIR}/../external/libucl/include \
 		-I${.CURDIR}/../external/libyaml/include \
 		-DPREFIX=\"${PREFIX}\" \
+		-DOSMAJOR=${OSMAJOR} \
 		-Wno-pointer-sign
 .if !exists(/usr/lib/libelf.so)
 LIBPKGCFLAGS+=	-I${.CURDIR}/../external/libelf \
@@ -333,7 +334,8 @@ DEBUG_FLAGS+=	-pg
 	(cd ${.CURDIR}/../external/libelf ; m4 -D SRCDIR=${.CURDIR}/../external/libelf ${.IMPSRC}) > ${.TARGET}
 
 # Workaround 8.3/8.4 bug
-OSVERSION!=    /sbin/sysctl -n kern.osreldate
+OSVERSION!=	/sbin/sysctl -n kern.osreldate
+OSMAJOR=	${OSVERSION:C/([0-9]*)[0-9]{5}/\1/}
 
 .if ${OSNAME} == FreeBSD && ${OSVERSION} < 901000
 .c.o:

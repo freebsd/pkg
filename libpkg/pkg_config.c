@@ -27,6 +27,7 @@
 
 #include <assert.h>
 #include <sys/socket.h>
+#include <sys/utsname.h>
 #include <sys/un.h>
 #include <ctype.h>
 #include <dirent.h>
@@ -34,6 +35,8 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <osreldate.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,6 +49,15 @@
 
 #define ABI_VAR_STRING "${ABI}"
 #define REPO_NAME_PREFIX "repo-"
+
+#if defined(OSMAJOR)
+/* Oh ye gods of ANSI C, why is this so flipping arcane? */
+#define STRINGIFY(X)	TEXT(X)
+#define TEXT(X)		#X
+#define INDEXFILE	"INDEX-" STRINGIFY(OSMAJOR)
+#else
+#define INDEXFILE	INDEX
+#endif
 
 int eventpipe = -1;
 
@@ -93,6 +105,18 @@ static struct config_entry c[] = {
 		"/usr/ports",
 #endif
 		"Location of the ports collection",
+	},
+	[PKG_CONFIG_INDEXDIR] = {
+		PKG_CONFIG_STRING,
+		"INDEXDIR",
+		NULL,		/* Default to PORTSDIR unless defined */
+		"Location of the ports INDEX",
+	},
+	[PKG_CONFIG_INDEXFILE] = {
+		PKG_CONFIG_STRING,
+		"INDEXFILE"
+		INDEXFILE,
+		"Filename of the ports INDEX",
 	},
 	[PKG_CONFIG_REPOKEY] = {
 		PKG_CONFIG_STRING,
@@ -931,6 +955,30 @@ load_repositories(const char *repodir)
 	v = NULL;
 	while (pkg_config_list(PKG_CONFIG_REPOS_DIR, &v) == EPKG_OK)
 		load_repo_files(pkg_config_value(v));
+}
+
+bool
+pkg_compiled_for_same_os_major(void)
+{
+#ifdef OSMAJOR
+	struct utsname	u;
+	int		osmajor;
+
+	/* Are we running the same OS major version as the one we were
+	 * compiled under? */
+
+	if (uname(&u) != 0) {
+		pkg_emit_error("Cannot determine OS version number");
+		return (true);	/* Can't tell, so assume yes  */
+	}
+
+	osmajor = (int) strtol(u.release, NULL, 10);
+
+	return (osmajor == OSMAJOR);
+
+#else
+	return (true);		/* Can't tell, so assume yes  */
+#endif
 }
 
 

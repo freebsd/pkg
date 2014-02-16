@@ -340,6 +340,8 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_DBDIR,
 	PKG_CONFIG_CACHEDIR,
 	PKG_CONFIG_PORTSDIR,
+	PKG_CONFIG_INDEXDIR,
+	PKG_CONFIG_INDEXFILE,
 	PKG_CONFIG_REPOKEY,
 	PKG_CONFIG_HANDLE_RC_SCRIPTS,
 	PKG_CONFIG_ASSUME_ALWAYS_YES,
@@ -1499,6 +1501,7 @@ typedef int(*pkg_event_cb)(void *, struct pkg_event *);
 
 void pkg_event_register(pkg_event_cb cb, void *data);
 
+bool pkg_compled_for_same_os_major(void);
 int pkg_init(const char *, const char *);
 int pkg_initialized(void);
 void pkg_shutdown(void);
