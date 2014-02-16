@@ -665,6 +665,10 @@ main(int argc, char **argv)
 			errx(EX_SOFTWARE, "chdir() failed");
 #endif
 
+	if (!pkg_compiled_for_same_os_major())
+		warnx("Major version upgrade detected.  Running \"pkg_static "
+		      "install -f pkg\" recommended");
+
 	if (pkg_init(conffile, reposdir) != EPKG_OK)
 		errx(EX_SOFTWARE, "Cannot parse configuration file!");
 
