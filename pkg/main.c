@@ -155,9 +155,9 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 	}
 
 #ifndef NO_LIBJAIL
- 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
+ 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
 #else
-	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
+	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
 #endif
 	if (reason == PKG_USAGE_HELP) {
 		fprintf(out, "Global options supported:\n");
@@ -171,6 +171,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 		fprintf(out, "\t%-15s%s\n", "-l", "List available commands and exit");
 		fprintf(out, "\t%-15s%s\n", "-v", "Display pkg(8) version");
 		fprintf(out, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
+		fprintf(out, "\t%-15s%s\n\n", "-o", "Override configuration option from the command line");
 		fprintf(out, "Commands supported:\n");
 
 		for (i = 0; i < cmd_len; i++)
@@ -545,6 +546,18 @@ do_activation_test(int argc)
 	return;
 }
 
+static void
+export_arg_option (char *arg)
+{
+	char *eqp;
+
+	if ((eqp = strchr(arg, '=')) != NULL) {
+		*eqp = '\0';
+		setenv(arg, eqp + 1, 0);
+		*eqp = '=';
+	}
+}
+
 int
 main(int argc, char **argv)
 {
@@ -585,9 +598,9 @@ main(int argc, char **argv)
 		usage(NULL, NULL, stderr, PKG_USAGE_INVALID_ARGUMENTS, "not enough arguments");
 
 #ifndef NO_LIBJAIL
-	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvq")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvqo:")) != -1) {
 #else
-	while ((ch = getopt(argc, argv, "d:c:C:R:lNvq")) != -1) {
+	while ((ch = getopt(argc, argv, "d:c:C:R:lNvqo:")) != -1) {
 #endif
 		switch (ch) {
 		case 'd':
@@ -615,6 +628,9 @@ main(int argc, char **argv)
 			break;
 		case 'v':
 			version++;
+			break;
+		case 'o':
+			export_arg_option (optarg);
 			break;
 		default:
 			break;
