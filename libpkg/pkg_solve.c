@@ -713,13 +713,14 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			add_var = cur_var;
 			seen_add ++;
 		}
-		else if (!var->to_install && var->pkg->type == PKG_INSTALLED) {
+		else if (!cur_var->to_install && cur_var->pkg->type == PKG_INSTALLED) {
 			del_var = cur_var;
 			seen_del ++;
 		}
 	}
 	if (seen_add > 1 || seen_del > 1) {
-		pkg_emit_error("internal solver error: more than two packages to install from the same origin");
+		pkg_emit_error("internal solver error: more than two packages to install(%d) "
+				"or delete(%d) from the same origin: %s", seen_add, seen_del, var->origin);
 		return;
 	}
 	else if (seen_add != 0 || seen_del != 0) {
@@ -752,10 +753,10 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			}
 			res_a->priority = add_var->priority;
 			res_a->pkg[0] = add_var->pkg;
-			DL_APPEND(j->jobs_add, res);
+			DL_APPEND(j->jobs_add, res_a);
 			res_d->priority = del_var->priority;
 			res_d->pkg[0] = del_var->pkg;
-			DL_APPEND(j->jobs_delete, res);
+			DL_APPEND(j->jobs_delete, res_d);
 		}
 		j->count ++;
 	}
