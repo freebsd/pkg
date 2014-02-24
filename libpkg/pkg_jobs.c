@@ -318,7 +318,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	/* Go through all depends */
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
-		HASH_FIND_STR(j->universe, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), unit);
+		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
 		if (unit != NULL)
 			continue;
 
@@ -356,7 +356,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	d = NULL;
 	while (pkg_rdeps(pkg, &d) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
-		HASH_FIND_STR(j->universe, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), unit);
+		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
 		if (unit != NULL)
 			continue;
 
@@ -380,7 +380,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	/* Examine conflicts */
 	while (pkg_conflicts(pkg, &c) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
-		HASH_FIND_STR(j->universe, __DECONST(char *, pkg_conflict_origin(c)), unit);
+		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), unit);
 		if (unit != NULL)
 			continue;
 

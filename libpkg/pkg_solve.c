@@ -51,7 +51,7 @@ struct pkg_solve_variable {
 	bool resolved;
 	UT_hash_handle hd;
 	UT_hash_handle ho;
-	struct pkg_solve_variable *next;
+	struct pkg_solve_variable *next, *prev;
 };
 
 struct pkg_solve_item {
@@ -141,8 +141,9 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
 					unresolved->var->resolved = true;
 					unresolved->var->to_install = !unresolved->inverse;
 					solved_vars ++;
-					pkg_debug(2, "propagate %s(%d) to %d",
-							unresolved->var->origin, unresolved->var->priority, unresolved->var->to_install);
+					pkg_debug(2, "propagate %s-%s(%d) to %d",
+							unresolved->var->origin, unresolved->var->digest,
+							unresolved->var->priority, unresolved->var->to_install);
 				}
 				/* Now check for a conflict */
 				ret = false;
@@ -229,16 +230,18 @@ pkg_solve_propagate_default(struct pkg_solve_rule *rules)
 				if (it->var->pkg->type == PKG_INSTALLED) {
 					it->var->to_install = true;
 					if (pkg_solve_check_conflicts(rules)) {
-						pkg_debug(2, "assume %s(%d) to %d",
-								it->var->origin, it->var->priority, it->var->to_install);
+						pkg_debug(2, "assume %s-%s(%d) to %d",
+								it->var->origin, it->var->digest,
+								it->var->priority, it->var->to_install);
 						it->var->resolved = true;
 					}
 				}
 				else {
 					it->var->to_install = false;
 					if (pkg_solve_check_conflicts(rules)) {
-						pkg_debug(2, "assume %s(%d) to %d",
-								it->var->origin, it->var->priority, it->var->to_install);
+						pkg_debug(2, "assume %s-%s(%d) to %d",
+								it->var->origin, it->var->digest,
+								it->var->priority, it->var->to_install);
 						it->var->resolved = true;
 					}
 				}
@@ -333,6 +336,7 @@ pkg_solve_variable_new(struct pkg *pkg, int priority)
 	/* XXX: Is it safe to save a ptr here ? */
 	result->digest = digest;
 	result->origin = origin;
+	result->prev = result;
 
 	return (result);
 }
@@ -368,9 +372,10 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 		struct pkg_solve_problem *problem, const char *origin, struct pkg_solve_variable **var)
 {
 	struct pkg_job_universe_item *unit;
-	struct pkg_solve_variable *nvar, *tvar;
+	struct pkg_solve_variable *nvar, *tvar = NULL, *found;
+	const char *digest;
 
-	HASH_FIND_STR(j->universe, __DECONST(char *, origin), unit);
+	HASH_FIND_STR(j->universe, origin, unit);
 	/* If there is no package in universe, refuse continue */
 	if (unit == NULL) {
 		pkg_emit_error("package %s is not found in universe", origin);
@@ -380,17 +385,26 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 	nvar = pkg_solve_variable_new(unit->pkg, unit->priority);
 	if (nvar == NULL)
 		return (EPKG_FATAL);
-	HASH_ADD_KEYPTR(ho, problem->variables_by_origin, nvar->origin, strlen(nvar->origin), nvar);
+
 	HASH_ADD_KEYPTR(hd, problem->variables_by_digest, nvar->digest, strlen(nvar->digest), nvar);
+	HASH_ADD_KEYPTR(ho, problem->variables_by_origin, nvar->origin, strlen(nvar->origin), nvar);
+	pkg_debug(4, "solver: add variable from universe with origin %s", nvar->origin);
+
 	unit = unit->next;
-	tvar = nvar;
 	while (unit != NULL) {
-		/* Add all alternatives as independent variables */
-		tvar->next = pkg_solve_variable_new(unit->pkg, unit->priority);
-		tvar = tvar->next;
-		if (tvar == NULL)
-			return (EPKG_FATAL);
-		HASH_ADD_KEYPTR(hd, problem->variables_by_digest, tvar->digest, strlen(tvar->digest), tvar);
+		pkg_get(unit->pkg, PKG_DIGEST, &digest);
+		HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), found);
+		if (found == NULL) {
+			/* Add all alternatives as independent variables */
+			tvar = pkg_solve_variable_new(unit->pkg, unit->priority);
+			if (tvar == NULL)
+				return (EPKG_FATAL);
+			DL_APPEND(nvar, tvar);
+			HASH_ADD_KEYPTR(hd, problem->variables_by_digest, tvar->digest,
+					strlen(tvar->digest), tvar);
+			pkg_debug (4, "solver: add another variable with origin %s and digest %s",
+					tvar->origin, tvar->digest);
+		}
 		unit = unit->next;
 	}
 
@@ -421,8 +435,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			var = NULL;
 
 			origin = pkg_dep_get(dep, PKG_DEP_ORIGIN);
-			HASH_FIND(ho, problem->variables_by_origin,
-					__DECONST(char *, origin), strlen(origin), var);
+			HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 			if (var == NULL) {
 				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
 					goto err;
@@ -459,8 +472,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			var = NULL;
 
 			origin = pkg_conflict_origin(conflict);
-			HASH_FIND(ho, problem->variables_by_origin,
-					__DECONST(char *, origin), strlen(origin), var);
+			HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 			if (var == NULL) {
 				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
 					goto err;
@@ -569,7 +581,14 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 
 		HASH_ADD_KEYPTR(hd, problem->variables_by_digest, var->digest, strlen(var->digest), var);
-		HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
+		HASH_FIND(ho, problem->variables_by_origin, var->origin, strlen(var->origin), tvar);
+		if (tvar == NULL) {
+			pkg_debug(4, "solver: add variable from install request with origin %s", var->origin);
+			HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
+		}
+		else {
+			DL_APPEND(tvar, var);
+		}
 		it = pkg_solve_item_new(var);
 		if (it == NULL)
 			goto err;
@@ -596,7 +615,14 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 
 		HASH_ADD_KEYPTR(hd, problem->variables_by_digest, var->digest, strlen(var->digest), var);
-		HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
+		HASH_FIND(ho, problem->variables_by_origin, var->origin, strlen(var->origin), tvar);
+		if (tvar == NULL) {
+			pkg_debug(4, "solver: add variable from delete request with origin %s", var->origin);
+			HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
+		}
+		else {
+			DL_APPEND(tvar, var);
+		}
 		it = pkg_solve_item_new(var);
 		if (it == NULL)
 			goto err;
@@ -633,12 +659,13 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 				/* Check origin */
 				HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), tvar);
 				if (tvar == NULL) {
+					pkg_debug(4, "solver: add variable from universe with origin %s", var->origin);
 					HASH_ADD_KEYPTR(ho, problem->variables_by_origin,
 							var->origin, strlen(var->origin), var);
 				}
 				else {
 					/* Insert a variable to a chain */
-					tvar->next = var;
+					DL_APPEND(tvar, var);
 				}
 			}
 		}
@@ -733,17 +760,23 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			res->priority = del_var->priority;
 			res->pkg[0] = del_var->pkg;
 			DL_APPEND(j->jobs_delete, res);
+			pkg_debug(3, "pkg_solve: schedule deletion of %s(%s)",
+					del_var->origin, del_var->digest);
 		}
 		else if (seen_del == 0 && seen_add != 0) {
 			res->priority = add_var->priority;
 			res->pkg[0] = add_var->pkg;
 			DL_APPEND(j->jobs_add, res);
+			pkg_debug(3, "pkg_solve: schedule installation of %s(%s)",
+					add_var->origin, add_var->digest);
 		}
 		else {
 			res->priority = MAX(del_var->priority, add_var->priority);
 			res->pkg[0] = add_var->pkg;
 			res->pkg[1] = del_var->pkg;
 			DL_APPEND(j->jobs_upgrade, res);
+			pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
+					del_var->origin, del_var->digest, add_var->digest);
 			/* Need some more tasks */
 			res_a = calloc(1, sizeof(struct pkg_solved));
 			res_d = calloc(1, sizeof(struct pkg_solved));
@@ -751,10 +784,11 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				pkg_emit_errno("calloc", "pkg_solved");
 				return;
 			}
-			res_a->priority = add_var->priority;
+			/* Priority for individual tasks are the same as for the upgrade task */
+			res_a->priority = res->priority;
 			res_a->pkg[0] = add_var->pkg;
 			DL_APPEND(j->jobs_add, res_a);
-			res_d->priority = del_var->priority;
+			res_d->priority = res->priority;
 			res_d->pkg[0] = del_var->pkg;
 			DL_APPEND(j->jobs_delete, res_d);
 		}
@@ -770,13 +804,12 @@ int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j)
 {
 	struct pkg_solve_variable *var, *vtmp;
-	const char *origin;
 
-	HASH_ITER(hd, problem->variables_by_origin, var, vtmp) {
+	HASH_ITER(ho, problem->variables_by_origin, var, vtmp) {
 		if (!var->resolved)
 			return (EPKG_FATAL);
 
-		pkg_get(var->pkg, PKG_ORIGIN, &origin);
+		pkg_debug(4, "solver: check variable with origin %s", var->origin);
 		pkg_solve_insert_res_job(var, problem, j);
 	}
 
