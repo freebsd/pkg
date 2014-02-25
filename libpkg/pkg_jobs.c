@@ -260,7 +260,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 		item->pkg = pkg;
 		item->priority = priority;
 		HASH_ADD_KEYPTR(hh, j->universe, __DECONST(char *, origin), strlen(origin), item);
-		j->count++;
+		j->total++;
 		return (EPKG_OK);
 	}
 	else {
@@ -295,7 +295,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 	if (tmp != NULL)
 		tmp->next = item;
 
-	j->count++;
+	j->total++;
 
 	return (EPKG_OK);
 }
@@ -1087,6 +1087,14 @@ pkg_jobs_count(struct pkg_jobs *j)
 	return (j->count);
 }
 
+int
+pkg_jobs_total(struct pkg_jobs *j)
+{
+	assert(j != NULL);
+
+	return (j->total);
+}
+
 pkg_jobs_t
 pkg_jobs_type(struct pkg_jobs *j)
 {
@@ -1096,23 +1104,25 @@ pkg_jobs_type(struct pkg_jobs *j)
 }
 
 static int
-pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_rc,
+pkg_jobs_handle_install(struct pkg *new, struct pkg *old, struct pkg_jobs *j, bool handle_rc,
 		const char *cachedir, struct pkg_manifest_key *keys)
 {
-	struct pkg *p = ps->pkg[0];
 	struct pkg *newpkg = NULL;
-	const char *pkgorigin, *oldversion;
+	const char *pkgorigin, *oldversion = NULL;
 	struct pkg_note *an;
 	char path[MAXPATHLEN];
 	bool automatic;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
-	pkg_get(p, PKG_ORIGIN, &pkgorigin,
-			PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
-	an = pkg_annotation_lookup(p, "repository");
+	pkg_get(new, PKG_ORIGIN, &pkgorigin,
+				PKG_AUTOMATIC, &automatic);
+	if (old != NULL)
+		pkg_get(old, PKG_VERSION, &oldversion);
 
-	pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, p);
+	an = pkg_annotation_lookup(new, "repository");
+
+	pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, new);
 
 	if (pkg_open(&newpkg, path, keys, 0) != EPKG_OK) {
 		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
@@ -1120,7 +1130,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	}
 
 	if (oldversion != NULL) {
-		pkg_emit_upgrade_begin(p);
+		pkg_emit_upgrade_begin(old);
 	} else {
 		pkg_emit_install_begin(newpkg);
 	}
@@ -1139,7 +1149,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	}
 
 	if (an != NULL) {
-		pkgdb_add_annotation(j->db, p, "repository", pkg_annotation_value(an));
+		pkgdb_add_annotation(j->db, new, "repository", pkg_annotation_value(an));
 	}
 
 	if (oldversion != NULL)
@@ -1188,7 +1198,14 @@ pkg_jobs_install(struct pkg_jobs *j)
 			goto cleanup;
 	}
 	DL_FOREACH(j->jobs_add, ps) {
-		retcode = pkg_jobs_handle_install(ps, j, handle_rc, cachedir, keys);
+		retcode = pkg_jobs_handle_install(ps->pkg[0], NULL,
+				j, handle_rc, cachedir, keys);
+		if (retcode != EPKG_OK)
+			goto cleanup;
+	}
+	DL_FOREACH(j->jobs_upgrade, ps) {
+		retcode = pkg_jobs_handle_install(ps->pkg[0], ps->pkg[1],
+				j, handle_rc, cachedir, keys);
 		if (retcode != EPKG_OK)
 			goto cleanup;
 	}
@@ -1267,6 +1284,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				LL_FREE(j->jobs_upgrade, pkg_solved, free);
 				j->jobs_add = j->jobs_delete = j->jobs_upgrade = NULL;
 				j->count = 0;
+				j->total = 0;
 
 				rc = pkg_jobs_solve(j);
 				if (rc == EPKG_OK) {

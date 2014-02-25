@@ -677,7 +677,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	}
 	iter = NULL;
 	while ((pkg = pkg_jobs_upgrade_iter(jobs, &iter))) {
-		print_jobs_summary_pkg(pkg, inv_type, &oldsize, &newsize, &dlsize);
+		print_jobs_summary_pkg(pkg, type, &oldsize, &newsize, &dlsize);
 	}
 
 	if (oldsize > newsize) {

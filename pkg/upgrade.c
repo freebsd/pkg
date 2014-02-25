@@ -153,7 +153,7 @@ exec_upgrade(int argc, char **argv)
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
 		    "Upgrades have been requested for the following %d "
-		    "packages:\n\n", nbactions);
+		    "packages (%d packages in the universe):\n\n", nbactions, pkg_jobs_total(jobs));
 
 		if (!yes && !dry_run)
 			yes = query_yesno("\nProceed with upgrading "

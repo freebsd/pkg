@@ -235,6 +235,7 @@ struct pkg_jobs {
 	pkg_flags	 flags;
 	int		 solved;
 	int count;
+	int total;
 	const char *	 reponame;
 	struct job_pattern *patterns;
 };

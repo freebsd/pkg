@@ -1180,6 +1180,11 @@ pkg_jobs_t pkg_jobs_type(struct pkg_jobs *j);
 int pkg_jobs_count(struct pkg_jobs *jobs);
 
 /**
+ * Returns the number of total elements in pkg universe
+ */
+int pkg_jobs_total(struct pkg_jobs *jobs);
+
+/**
  * Iterates over the packages in the jobs queue.
  * @param iter Must be set to NULL for the first call.
  * @return A next pkg or NULL.
