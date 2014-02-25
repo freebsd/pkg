@@ -79,7 +79,7 @@ exec_add(int argc, char **argv)
 			f |= PKG_ADD_NOSCRIPT;
 			break;
 		case 'A':
-			f |= PKG_FLAG_AUTOMATIC;
+			f |= PKG_ADD_AUTOMATIC;
 			break;
 		case 'f':
 			f |= PKG_FLAG_FORCE;
