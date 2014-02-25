@@ -260,6 +260,8 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 		item->pkg = pkg;
 		item->priority = priority;
 		HASH_ADD_KEYPTR(hh, j->universe, __DECONST(char *, origin), strlen(origin), item);
+		j->count++;
+		return (EPKG_OK);
 	}
 	else {
 		/* Search for the same package added */
@@ -292,6 +294,8 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 	item->priority = priority;
 	if (tmp != NULL)
 		tmp->next = item;
+
+	j->count++;
 
 	return (EPKG_OK);
 }

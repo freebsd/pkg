@@ -42,6 +42,8 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
+struct pkg_solve_item;
+
 struct pkg_solve_variable {
 	struct pkg *pkg;
 	bool to_install;
@@ -49,12 +51,18 @@ struct pkg_solve_variable {
 	const char *digest;
 	const char *origin;
 	bool resolved;
+	struct _pkg_solve_var_rule {
+		struct pkg_solve_item *rule;
+		struct _pkg_solve_var_rule *next;
+	} *rules;
+	int nrules;
 	UT_hash_handle hd;
 	UT_hash_handle ho;
 	struct pkg_solve_variable *next, *prev;
 };
 
 struct pkg_solve_item {
+	int nitems;
 	struct pkg_solve_variable *var;
 	bool inverse;
 	struct pkg_solve_item *next;
@@ -166,17 +174,23 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
  * Propagate pure clauses
  */
 static bool
-pkg_solve_propagate_pure(struct pkg_solve_rule *rules)
+pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_rule *cur;
-	struct pkg_solve_item *it;
+	struct pkg_solve_variable *var, *tvar;
+	struct _pkg_solve_var_rule *rul;
 
-	LL_FOREACH(rules, cur) {
-		it = cur->items;
-		/* Unary rules */
-		if (!it->var->resolved && it->next == NULL) {
-			it->var->to_install = !it->inverse;
-			it->var->resolved = true;
+	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+		if (!var->resolved) {
+			LL_FOREACH(var->rules, rul) {
+				if (rul->rule->nitems == 1) {
+					var->to_install = !rul->rule->inverse;
+					var->resolved = true;
+					pkg_debug(2, "requested %s-%s(%d) to %s",
+							var->origin, var->digest,
+							var->priority, var->to_install ? "install" : "delete");
+					break;
+				}
+			}
 		}
 	}
 
@@ -262,7 +276,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
 
 	/* Initially propagate explicit rules */
-	pkg_solve_propagate_pure(problem->rules);
+	pkg_solve_propagate_pure(problem);
 
 	while (!pkg_solve_check_rules(problem->rules)) {
 		/* TODO:
@@ -357,12 +371,16 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
 	struct pkg_solve_rule *r, *rtmp;
 	struct pkg_solve_variable *v, *vtmp;
+	struct _pkg_solve_var_rule *vrule, *vrtmp;
 
 	LL_FOREACH_SAFE(problem->rules, r, rtmp) {
 		pkg_solve_rule_free(r);
 	}
 	HASH_ITER(hd, problem->variables_by_digest, v, vtmp) {
 		HASH_DELETE(hd, problem->variables_by_digest, v);
+		LL_FOREACH_SAFE(v->rules, vrule, vrtmp) {
+			free(vrule);
+		}
 		free(v);
 	}
 }
@@ -414,6 +432,35 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 }
 
 static int
+pkg_solve_add_var_rules (struct pkg_solve_variable *var,
+		struct pkg_solve_item *rule, int nrules, bool iterate_vars)
+{
+	struct _pkg_solve_var_rule *nr;
+	struct pkg_solve_variable *tvar;
+	struct pkg_solve_item *cur_rule;
+	int i;
+
+	LL_FOREACH(var, tvar) {
+		tvar->nrules += nrules;
+		cur_rule = rule;
+		for (i = 0; i < nrules; i ++) {
+			nr = calloc(1, sizeof (struct _pkg_solve_var_rule));
+			if (nr == NULL) {
+				pkg_emit_errno("calloc", "_pkg_solve_var_rule");
+				return (EPKG_FATAL);
+			}
+			nr->rule = cur_rule;
+			LL_PREPEND(tvar->rules, nr);
+			cur_rule = cur_rule->next;
+		}
+		if (!iterate_vars)
+			break;
+	}
+
+	return (EPKG_OK);
+}
+
+static int
 pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *pvar, bool conflicting)
 {
@@ -423,6 +470,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *tvar, *cur_var;
+	int cnt;
 
 	const char *origin;
 
@@ -450,16 +498,22 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 				goto err;
 
 			it->inverse = true;
+			it->nitems = rule->items ? rule->items->nitems + 1 : 0;
 			LL_PREPEND(rule->items, it);
 			/* B1 | B2 | ... */
+			cnt = 1;
 			LL_FOREACH(var, tvar) {
 				it = pkg_solve_item_new(tvar);
 				if (it == NULL)
 					goto err;
 
 				it->inverse = false;
+				it->nitems = rule->items ? rule->items->nitems + 1 : 0;
 				LL_PREPEND(rule->items, it);
+				cnt ++;
 			}
+			pkg_solve_add_var_rules (var, rule->items, cnt, true);
+			pkg_solve_add_var_rules (cur_var, rule->items, cnt, false);
 
 			LL_PREPEND(problem->rules, rule);
 			problem->rules_count ++;
@@ -489,6 +543,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					goto err;
 
 				it->inverse = true;
+				it->nitems = rule->items ? rule->items->nitems + 1 : 0;
 				LL_PREPEND(rule->items, it);
 				/* !Bx */
 				it = pkg_solve_item_new(tvar);
@@ -496,10 +551,13 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					goto err;
 
 				it->inverse = true;
+				it->nitems = rule->items ? rule->items->nitems + 1 : 0;
 				LL_PREPEND(rule->items, it);
 
 				LL_PREPEND(problem->rules, rule);
 				problem->rules_count ++;
+				pkg_solve_add_var_rules (tvar, rule->items, 2, false);
+				pkg_solve_add_var_rules (cur_var, rule->items, 2, false);
 			}
 		}
 
@@ -511,6 +569,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			 */
 			var = cur_var->next;
 			if (var != NULL) {
+				cnt = 0;
 				LL_FOREACH(var, tvar) {
 					/* Conflict rule: (!Ax | !Ay) */
 					rule = pkg_solve_rule_new();
@@ -522,6 +581,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 						goto err;
 
 					it->inverse = true;
+					it->nitems = rule->items ? rule->items->nitems + 1 : 0;
 					LL_PREPEND(rule->items, it);
 					/* !Ay */
 					it = pkg_solve_item_new(tvar);
@@ -529,11 +589,15 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 						goto err;
 
 					it->inverse = true;
+					it->nitems = rule->items ? rule->items->nitems + 1 : 0;
 					LL_PREPEND(rule->items, it);
 
 					LL_PREPEND(problem->rules, rule);
 					problem->rules_count ++;
+					cnt++;
 				}
+				pkg_solve_add_var_rules (var, rule->items, cnt, true);
+				pkg_solve_add_var_rules (cur_var, rule->items, cnt, false);
 			}
 		}
 	}
@@ -598,6 +662,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 
 		/* Requests are unary rules */
+		pkg_solve_add_var_rules (var, it, 1, false);
+		it->nitems = rule->items ? rule->items->nitems + 1 : 0;
 		LL_PREPEND(rule->items, it);
 		LL_PREPEND(problem->rules, rule);
 		problem->rules_count ++;
@@ -633,6 +699,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 
 		/* Requests are unary rules */
+		pkg_solve_add_var_rules (var, it, 1, false);
+		it->nitems = rule->items ? rule->items->nitems + 1 : 0;
 		LL_PREPEND(rule->items, it);
 		LL_PREPEND(problem->rules, rule);
 		problem->rules_count ++;
