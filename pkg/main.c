@@ -553,7 +553,13 @@ export_arg_option (char *arg)
 
 	if ((eqp = strchr(arg, '=')) != NULL) {
 		*eqp = '\0';
-		setenv(arg, eqp + 1, 0);
+
+		if (getenv (arg) != NULL)
+			warnx("option %s is defined in the environment so command line "
+					"option is ignored", arg);
+		else
+			setenv(arg, eqp + 1, 0);
+
 		*eqp = '=';
 	}
 }
