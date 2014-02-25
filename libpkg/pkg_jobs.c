@@ -248,7 +248,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 	seen->pkg = pkg;
 	HASH_ADD_KEYPTR(hh, j->seen, seen->digest, strlen(seen->digest), seen);
 
-	HASH_FIND_STR(j->universe, __DECONST(char *, origin), item);
+	HASH_FIND_STR(j->universe, origin, item);
 	if (item == NULL) {
 		/* Insert new origin */
 		item = calloc(1, sizeof (struct pkg_job_universe_item));
@@ -259,7 +259,8 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 		}
 		item->pkg = pkg;
 		item->priority = priority;
-		HASH_ADD_KEYPTR(hh, j->universe, __DECONST(char *, origin), strlen(origin), item);
+		item->prev = item;
+		HASH_ADD_KEYPTR(hh, j->universe, origin, strlen(origin), item);
 		j->total++;
 		return (EPKG_OK);
 	}
@@ -292,8 +293,8 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 			priority, name, version);
 	item->pkg = pkg;
 	item->priority = priority;
-	if (tmp != NULL)
-		tmp->next = item;
+
+	DL_APPEND(tmp, item);
 
 	j->total++;
 
@@ -479,6 +480,8 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
+			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
@@ -489,7 +492,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 		return (EPKG_FATAL);
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 		/* TODO: use repository priority here */
 		pkg_jobs_add_universe(j, pkg, 0, true);
 		if(pkg_is_locked(pkg)) {
@@ -561,7 +564,7 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, i
 	const char *buf1, *buf2;
 	bool force = false, seen = false;
 	int rc = EPKG_FATAL;
-	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	if (root && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
@@ -573,15 +576,6 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, i
 
 	if (j->type == PKG_JOBS_UPGRADE && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
-
-	if (j->type == PKG_JOBS_FETCH) {
-		if ((j->flags & PKG_FLAG_WITH_DEPS) == PKG_FLAG_WITH_DEPS)
-			flags |= PKG_LOAD_DEPS;
-		if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) == PKG_FLAG_UPGRADES_FOR_INSTALLED)
-			flags |= PKG_LOAD_DEPS;
-	} else {
-		flags |= PKG_LOAD_DEPS;
-	}
 
 	if ((it = pkgdb_rquery(j->db, pattern, m, j->reponame)) == NULL)
 		return (rc);
@@ -1119,6 +1113,8 @@ pkg_jobs_handle_install(struct pkg *new, struct pkg *old, struct pkg_jobs *j, bo
 				PKG_AUTOMATIC, &automatic);
 	if (old != NULL)
 		pkg_get(old, PKG_VERSION, &oldversion);
+	else
+		pkg_get(new, PKG_OLD_VERSION, &oldversion);
 
 	an = pkg_annotation_lookup(new, "repository");
 

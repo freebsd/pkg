@@ -219,7 +219,7 @@ struct pkg_job_universe_item {
 	struct pkg *pkg;
 	UT_hash_handle hh;
 	int priority;
-	struct pkg_job_universe_item *next;
+	struct pkg_job_universe_item *next, *prev;
 };
 
 struct pkg_jobs {
