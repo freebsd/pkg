@@ -231,6 +231,7 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 	struct pkg *p = NULL;
 	char path[MAXPATHLEN];
 	struct pkgdb *db = NULL;
+	struct stat sb;
 
 	if ((d = opendir(pkg_add_dbdir)) == NULL)
 		err(EX_NOINPUT, "%s", pkg_add_dbdir);
@@ -239,7 +240,8 @@ convert_from_old(const char *pkg_add_dbdir, bool dry_run)
 		return (EX_IOERR);
 	}
 	while ((dp = readdir(d)) != NULL) {
-		if (dp->d_type == DT_DIR) {
+		if (fstatat(dirfd(d), dp->d_name, &sb, 0) == 0 &&
+		    S_ISDIR(sb.st_mode)) {
 			if (strcmp(dp->d_name, ".") == 0 ||
 			    strcmp(dp->d_name, "..") == 0)
 				continue;
