@@ -38,7 +38,9 @@
 [ -z "$GRINGO_OPTS" ] && GRINGO_OPTS="/usr/local/share/aspcud/misc2012.lp"
 [ -z "$GRINGO" ] && GRINGO="gringo"
 
-[ -z "$CUDF2LP_OPTS" ] && CUDF2LP_OPTS=""
+TRENDY="-count(removed),-notuptodate(solution),-unsat_recommends(solution),-count(new)"
+
+[ -z "$CUDF2LP_OPTS" ] && CUDF2LP_OPTS="-c $TRENDY"
 [ -z "$CUDF2LP" ] && CUDF2LP="cudf2lp"
 
 ( $CUDF2LP $CUDF2LP_OPTS ) | ( $GRINGO $GRINGO_OPTS - ) | ( $CLASP $CLASP_OPTS ) \
