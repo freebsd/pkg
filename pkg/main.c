@@ -550,15 +550,19 @@ static void
 export_arg_option (char *arg)
 {
 	char *eqp;
+	const char *opt;
 
 	if ((eqp = strchr(arg, '=')) != NULL) {
 		*eqp = '\0';
 
-		if (getenv (arg) != NULL)
-			warnx("option %s is defined in the environment so command line "
-					"option is ignored", arg);
-		else
+		if ((opt = getenv (arg)) != NULL) {
+			warnx("option %s is defined in the environment to '%s' but command line "
+					"option redefines it", arg, opt);
+			setenv(arg, eqp + 1, 1);
+		}
+		else {
 			setenv(arg, eqp + 1, 0);
+		}
 
 		*eqp = '=';
 	}
