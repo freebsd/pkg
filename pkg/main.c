@@ -777,7 +777,6 @@ main(int argc, char **argv)
 			newargc = 0;
 			sbuf_done(newcmd);
 			args = sbuf_data(newcmd);
-			printf("%s\n", args);
 			while ((arg = strsep(&args, "\t \n")) != NULL) {
 				if (*arg == '\0')
 					continue;
@@ -786,7 +785,6 @@ main(int argc, char **argv)
 					newargv = reallocf(newargv, newargvl * sizeof(char *));
 				}
 				newargv[newargc++] = arg;
-				printf("%d - %s\n", newargc, arg);
 			}
 			newargv[newargc+1] = NULL;
 			break;
