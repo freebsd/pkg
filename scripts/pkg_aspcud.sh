@@ -32,7 +32,7 @@
 # pkg -o CUDF_SOLVER=/path/to/pkg_aspcud.sh <upgrade|install|remove>
 
 
-[ -z "$CLASP_OPTS" ] && CLASP_OPTS="--opt-heu=1 --sat-prepro --restarts=L,128 --heuristic=VSIDS --opt-hierarch=1 --local-restarts --del-max=200000,250 --save-progress=0"
+[ -z "$CLASP_OPTS" ] && CLASP_OPTS="--opt-heu=1 --sat-prepro --restarts=L,128 --heuristic=VSIDS --opt-hierarch=1 --local-restarts --del-max=200000,250 --save-progress=0 --quiet=1,1"
 [ -z "$CLASP" ] && CLASP="clasp"
 
 [ -z "$GRINGO_OPTS" ] && GRINGO_OPTS="/usr/local/share/aspcud/misc2012.lp"
