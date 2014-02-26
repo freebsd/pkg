@@ -790,7 +790,6 @@ main(int argc, char **argv)
 			break;
 		}
 	}
-	printf("%d\n", newargc);
 
 	len = strlen(newargv[0]);
 	for (i = 0; i < cmd_len; i++) {
