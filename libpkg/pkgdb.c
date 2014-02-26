@@ -4264,7 +4264,7 @@ pkgdb_reset_lock(struct pkgdb *db)
 
 static int
 pkgdb_try_lock(struct pkgdb *db, const char *lock_sql,
-		double delay, unsigned int retries)
+		double delay, unsigned int retries, pkgdb_lock_t type)
 {
 	unsigned int tries = 0;
 	struct timespec ts;
@@ -4272,8 +4272,14 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql,
 
 	while (tries <= retries) {
 		ret = sqlite3_exec(db->sqlite, lock_sql, NULL, NULL, NULL);
-		if (ret != SQLITE_OK)
+		if (ret != SQLITE_OK) {
+			if (ret == SQLITE_READONLY && type == PKGDB_LOCK_READONLY) {
+				pkg_debug(1, "want read lock but cannot write to database, "
+						"slightly ignore this error for now");
+				return (EPKG_OK);
+			}
 			return (EPKG_FATAL);
+		}
 
 		ret = EPKG_END;
 		if (sqlite3_changes(db->sqlite) == 0) {
@@ -4358,7 +4364,7 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type,
 		break;
 	}
 
-	ret = pkgdb_try_lock(db, lock_sql, delay, retries);
+	ret = pkgdb_try_lock(db, lock_sql, delay, retries, type);
 
 	return (ret);
 }
@@ -4375,7 +4381,8 @@ pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_typ
 
 	if (old_type == PKGDB_LOCK_ADVISORY && new_type == PKGDB_LOCK_EXCLUSIVE) {
 		pkg_debug(1, "want to upgrade advisory to exclusive lock");
-		ret = pkgdb_try_lock(db, advisory_exclusive_lock_sql, delay, retries);
+		ret = pkgdb_try_lock(db, advisory_exclusive_lock_sql, delay, retries,
+				new_type);
 	}
 
 	return (ret);
