@@ -65,7 +65,6 @@ CFLAGS+=	-I../libpkg \
 		-I${.CURDIR}/../external/expat/lib
 LDADD+=		-L${.OBJDIR}/../libpkg \
 		-lpkg \
-		-ledit \
 		-larchive \
 		-lutil \
 		-lpthread \

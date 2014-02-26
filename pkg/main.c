@@ -35,7 +35,6 @@
 
 #include <assert.h>
 #include <err.h>
-#include <histedit.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -593,16 +592,16 @@ main(int argc, char **argv)
 	const char *reposdir = NULL;
 	struct pkg_config_kv *alias = NULL;
 	const char *alias_value;
-	char **newargv;
-	int newargc;
-	Tokenizer *t = NULL;
-	struct sbuf *newcmd;
+	char **newargv, *arg, *args;
+	int newargc, newargvl;
+	struct sbuf *newcmd = NULL;
 	int j;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
 
 	cmdargv = argv;
+	newargvl = 0;
 
 	if (argc < 2)
 		usage(NULL, NULL, stderr, PKG_USAGE_INVALID_ARGUMENTS, "not enough arguments");
@@ -774,15 +773,26 @@ main(int argc, char **argv)
 				else
 					sbuf_printf(newcmd, " %s ", argv[j]);
 			}
+			newargv = NULL;
+			newargc = 0;
 			sbuf_done(newcmd);
-			t = tok_init(NULL);
-			/* XXX: __DECONST() workaround gcc's -Werror=cast-qual. */
-			if (tok_str(t, sbuf_data(newcmd), &newargc, __DECONST(const char ***, &newargv)) != 0)
-				errx(EX_CONFIG, "Invalid alias: %s", alias_value);
-			sbuf_delete(newcmd);
+			args = sbuf_data(newcmd);
+			printf("%s\n", args);
+			while ((arg = strsep(&args, "\t \n")) != NULL) {
+				if (*arg == '\0')
+					continue;
+				if (newargc > newargvl -2) {
+					newargvl += 1024;
+					newargv = reallocf(newargv, newargvl * sizeof(char *));
+				}
+				newargv[newargc++] = arg;
+				printf("%d - %s\n", newargc, arg);
+			}
+			newargv[newargc+1] = NULL;
 			break;
 		}
 	}
+	printf("%d\n", newargc);
 
 	len = strlen(newargv[0]);
 	for (i = 0; i < cmd_len; i++) {
@@ -830,8 +840,10 @@ main(int argc, char **argv)
 		usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, newargv[0]);
 	}
 
-	if (alias != NULL)
-		tok_end(t);
+	if (newcmd != NULL) {
+		free(newargv);
+		sbuf_delete(newcmd);
+	}
 
 	if (ret == EX_OK && newpkgversion) {
 		if (jail_str == NULL && chroot_path == NULL)

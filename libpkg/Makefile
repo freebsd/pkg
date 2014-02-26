@@ -298,10 +298,6 @@ LDADD+=		-larchive \
 		-lutil \
 		-lpthread
 
-.if exists(/usr/include/edit/readline/readline.h)
-LDADD+=		-ledit
-.endif
-
 .if defined(DEBUG_FLAGS)
 .if ${DEBUG_FLAGS} == 1
 DEBUG_FLAGS=	-ggdb -O0
