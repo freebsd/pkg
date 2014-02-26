@@ -147,12 +147,19 @@ exec_set(int argc, char **argv)
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
  
 	if (oldorigin != NULL) {
 		match = MATCH_ALL;
 		if ((it = pkgdb_query(db, oldorigin, MATCH_EXACT)) == NULL) {
-			pkgdb_close(db);
-			return (EX_IOERR);
+			retcode = EX_IOERR;
+			goto cleanup;
 		}
 
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
@@ -173,8 +180,10 @@ exec_set(int argc, char **argv)
 				    "[y/N]: ", oldorigin, neworigin);
 		}
 		if (pkg != NULL && yes) {
-			if (pkgdb_set(db, pkg, PKG_SET_ORIGIN, neworigin) != EPKG_OK)
-				return (EX_IOERR);
+			if (pkgdb_set(db, pkg, PKG_SET_ORIGIN, neworigin) != EPKG_OK) {
+				retcode = EX_IOERR;
+				goto cleanup;
+			}
 		}
 		pkgdb_it_free(it);
 	}
@@ -183,9 +192,8 @@ exec_set(int argc, char **argv)
 		bool save_yes = yes;
 
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
-			free(oldorigin);
-			pkgdb_close(db);
-			return (EX_IOERR);
+			retcode = EX_IOERR;
+			goto cleanup;
 		}
 
 		while (pkgdb_it_next(it, &pkg, loads) == EPKG_OK) {
@@ -210,8 +218,10 @@ exec_set(int argc, char **argv)
 					 * Do not query user when he has already
 					 * been queried.
 					 */
-					if (pkgdb_set(db, pkg, PKG_SET_DEPORIGIN, oldorigin, neworigin) != EPKG_OK)
-						return (EX_IOERR);
+					if (pkgdb_set(db, pkg, PKG_SET_DEPORIGIN, oldorigin, neworigin) != EPKG_OK) {
+						retcode = EX_IOERR;
+						goto cleanup;
+					}
 				}
 			}
 		}
@@ -219,9 +229,15 @@ exec_set(int argc, char **argv)
 		i++;
 	} while (i < argc);
 
-	free(oldorigin);
-	pkg_free(pkg);
+cleanup:
+	if (oldorigin)
+		free(oldorigin);
+
+	if (pkg != NULL)
+		pkg_free(pkg);
+
+	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 
-	return (EX_OK);
+	return (retcode);
 }

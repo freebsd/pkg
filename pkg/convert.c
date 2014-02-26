@@ -69,9 +69,13 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 	if (mkdir(pkg_add_dbdir, 0755) != 0 && errno != EEXIST)
 		err(EX_CANTCREAT, "%s", pkg_add_dbdir);
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkgdb_close(db);
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
 	}
 
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
@@ -218,6 +222,7 @@ convert_to_old(const char *pkg_add_dbdir, bool dry_run)
 cleanup:
 	pkg_free(pkg);
 	pkgdb_it_free(it);
+	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 
 	return (ret);

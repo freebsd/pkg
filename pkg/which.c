@@ -33,6 +33,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sysexits.h>
+#include <err.h>
 
 #include "pkgcli.h"
 
@@ -80,11 +81,6 @@ exec_which(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkgdb_close(db);
-		return (EX_IOERR);
-	}
-
 	if (!glob)
 		absolutepath(argv[0], pathabs, sizeof(pathabs));
 	else {
@@ -92,8 +88,20 @@ exec_which(int argc, char **argv)
 			return (EX_USAGE);
 	}
 
-	if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL)
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
+	}
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get a read lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
+	if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL) {
+		retcode = EX_IOERR;
+		goto cleanup;
+	}
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
 		retcode = EX_OK;
@@ -113,6 +121,9 @@ exec_which(int argc, char **argv)
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 
+cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
+
 	return (retcode);
 }

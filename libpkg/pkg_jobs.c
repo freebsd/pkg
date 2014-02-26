@@ -101,10 +101,6 @@ pkg_jobs_free(struct pkg_jobs *j)
 	if (j == NULL)
 		return;
 
-	if ((j->flags & PKG_FLAG_DRY_RUN) == 0 &&
-		j->type != PKG_JOBS_FETCH)
-		pkgdb_release_lock(j->db);
-
 	HASH_ITER(hh, j->request_add, req, tmp) {
 		HASH_DEL(j->request_add, req);
 		free(req);
@@ -976,19 +972,11 @@ jobs_sort_priority_inc(struct pkg_solved *r1, struct pkg_solved *r2)
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
-	bool dry_run = false;
 	int ret, pstatus;
 	struct pkg_solve_problem *problem;
 	const char *solver;
 	FILE *spipe[2];
 	pid_t pchild;
-
-	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
-		dry_run = true;
-
-	if (!dry_run && pkgdb_obtain_lock(j->db) != EPKG_OK)
-		return (EPKG_FATAL);
-
 
 	switch (j->type) {
 	case PKG_JOBS_AUTOREMOVE:
@@ -1183,6 +1171,12 @@ pkg_jobs_install(struct pkg_jobs *j)
 	
 	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
 
+	/* XXX: get rid of hardcoded values */
+	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
+			PKGDB_LOCK_EXCLUSIVE, 0.5, 20);
+	if (retcode != EPKG_OK)
+		goto cleanup;
+
 	p = NULL;
 	pkg_manifest_keys_new(&keys);
 	/* Install */
@@ -1210,6 +1204,7 @@ pkg_jobs_install(struct pkg_jobs *j)
 
 cleanup:
 	pkgdb_transaction_commit(j->db->sqlite, "upgrade");
+	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
 	pkg_manifest_keys_free(keys);
 
 	return (retcode);
@@ -1233,6 +1228,10 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_DELETE_NOSCRIPT;
 
+	/* XXX: get rid of hardcoded values */
+	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
+			PKGDB_LOCK_EXCLUSIVE, 0.5, 20);
+
 	DL_FOREACH(j->jobs_delete, ps) {
 		p = ps->pkg[0];
 		pkg_get(p, PKG_NAME, &name);
@@ -1244,10 +1243,11 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 		retcode = pkg_delete(p, j->db, flags);
 
 		if (retcode != EPKG_OK)
-			return (retcode);
+			goto cleanup;
 	}
-
-	return (EPKG_OK);
+cleanup:
+	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
+	return (retcode);
 }
 
 int

@@ -339,11 +339,17 @@ exec_check(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an advisory lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	i = 0;
 	do {
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
-			pkgdb_close(db);
-			return (EX_IOERR);
+			rc = EX_IOERR;
+			goto cleanup;
 		}
 
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
@@ -364,18 +370,32 @@ exec_check(int argc, char **argv)
 				}
 			}
 			if (recompute) {
-				if (verbose)
-					pkg_printf("Recomputing size and checksums: %n\n", pkg);
-				if (pkg_recompute(db, pkg) != EPKG_OK) {
-					rc = EX_DATAERR;
+				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
+						PKGDB_LOCK_EXCLUSIVE, 0.5, 20) == EPKG_OK) {
+					if (verbose)
+						pkg_printf("Recomputing size and checksums: %n\n", pkg);
+					if (pkg_recompute(db, pkg) != EPKG_OK) {
+						rc = EX_DATAERR;
+					}
+					pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+				}
+				else {
+					rc = EX_TEMPFAIL;
 				}
 			}
 			if (reanalyse_shlibs) {
-				if (verbose)
-					pkg_printf("Reanalyzing files for shlibs: %n\n", pkg);
-				if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
-					pkg_printf("Failed to reanalyse for shlibs: %n\n", pkg);
-					rc = EX_UNAVAILABLE;
+				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
+						PKGDB_LOCK_EXCLUSIVE, 0.5, 20) == EPKG_OK) {
+					if (verbose)
+						pkg_printf("Reanalyzing files for shlibs: %n\n", pkg);
+					if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
+						pkg_printf("Failed to reanalyse for shlibs: %n\n", pkg);
+						rc = EX_UNAVAILABLE;
+					}
+					pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+				}
+				else {
+					rc = EX_TEMPFAIL;
 				}
 			}
 		}
@@ -383,21 +403,32 @@ exec_check(int argc, char **argv)
 		if (dcheck && nbpkgs > 0 && !noinstall) {
 			printf("\n>>> Missing package dependencies were detected.\n");
 			printf(">>> Found %d issue(s) in the package database.\n\n", nbpkgs);
-
-			ret = fix_deps(db, &dh, nbpkgs, yes);
-			if (ret == EPKG_OK)
-				check_summary(db, &dh);
-			else if (ret == EPKG_ENODB) {
-				db = NULL;
-				return (EX_IOERR);
+			if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
+					PKGDB_LOCK_EXCLUSIVE, 0.5, 20) == EPKG_OK) {
+				ret = fix_deps(db, &dh, nbpkgs, yes);
+				if (ret == EPKG_OK)
+					check_summary(db, &dh);
+				else if (ret == EPKG_ENODB) {
+					db = NULL;
+					rc = EX_IOERR;
+				}
+				pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+				if (rc == EX_IOERR)
+					goto cleanup;
+			}
+			else {
+				rc = EX_TEMPFAIL;
+				goto cleanup;
 			}
 		}
 		pkgdb_it_free(it);
 		i++;
 	} while (i < argc);
 
+cleanup:
 	deps_free(&dh);
 	pkg_free(pkg);
+	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
 	pkgdb_close(db);
 
 	return (rc);

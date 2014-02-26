@@ -497,6 +497,17 @@ typedef enum {
 	PKG_UPGRADE,
 } pkg_change_t;
 
+/**
+ * Locking types for database:
+ * `PKGDB_LOCK_READONLY`: lock for read only queries (can be nested)
+ * `PKGDB_LOCK_ADVISORY`: write to DB inside a transaction (allows `PKGDB_LOCK_READONLY`)
+ * `PKGDB_LOCK_EXCLUSIVE`: possibly destructive operations (does not allow other locks)
+ */
+typedef enum {
+	PKGDB_LOCK_READONLY,
+	PKGDB_LOCK_ADVISORY,
+	PKGDB_LOCK_EXCLUSIVE
+} pkgdb_lock_t;
 
 #define PKG_OPEN_MANIFEST_ONLY 0x1
 #define PKG_OPEN_MANIFEST_COMPACT (0x1 << 1)
@@ -1013,6 +1024,14 @@ int pkgdb_access(unsigned mode, unsigned database);
  * @return An error code.
  */
 int pkgdb_open(struct pkgdb **db, pkgdb_t type);
+
+/**
+ * Locking functions
+ */
+int pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type, double delay, unsigned int retries);
+int pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_type,
+		double delay, unsigned int retries);
+int pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type);
 
 /**
  * Close and free the struct pkgdb.

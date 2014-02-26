@@ -101,6 +101,11 @@ exec_autoremove(__unused int argc, __unused char **argv)
 		return (EX_IOERR);
 	}
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an advisory lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
 	/* Always force packages to be removed */
 	if (pkg_jobs_new(&jobs, PKG_JOBS_AUTOREMOVE, db) != EPKG_OK) {
 		pkgdb_close(db);
@@ -139,6 +144,7 @@ exec_autoremove(__unused int argc, __unused char **argv)
 
 cleanup:
 	pkg_jobs_free(jobs);
+	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
 	pkgdb_close(db);
 
 	return (retcode);

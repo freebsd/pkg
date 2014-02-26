@@ -172,6 +172,7 @@ exec_version(int argc, char **argv)
 	char *pattern=NULL;
 	struct stat sb;
 	char portsdirmakefile[MAXPATHLEN];
+	int retcode = EXIT_SUCCESS;
 
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
@@ -325,7 +326,6 @@ exec_version(int argc, char **argv)
 		   user is forced to have a repo.sqlite */
 		if (opt & VERSION_SOURCE_REMOTE) {
 			if (auto_update) {
-				int retcode;
 
 				retcode = pkgcli_update(false);
 				if (retcode != EPKG_OK)
@@ -337,6 +337,12 @@ exec_version(int argc, char **argv)
 			if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 				return (EX_IOERR);
 
+		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+			pkgdb_close(db);
+			warnx("Cannot get a read lock on a database, it is locked by another process");
+			return (EX_TEMPFAIL);
+		}
+
 		if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
 
@@ -345,8 +351,11 @@ exec_version(int argc, char **argv)
 			rel_major_ver = (int) strtol(u.release, NULL, 10);
 			snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", portsdir, rel_major_ver);
 			indexfile = fopen(indexpath, "r");
-			if (!indexfile)
-				err(EX_SOFTWARE, "Unable to open %s!", indexpath);
+			if (!indexfile) {
+				warnx("Unable to open %s!", indexpath);
+				retcode = EX_IOERR;
+				goto cleanup;
+			}
 
 			while ((linelen = getline(&line, &linecap, indexfile)) > 0) {
 				/* line is pkgname|portdir|... */
@@ -432,7 +441,8 @@ cleanup:
 	pkg_free(pkg);
 	pkg_free(pkg_remote);
 	pkgdb_it_free(it);
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
-	return (EX_OK);
+	return (retcode);
 }

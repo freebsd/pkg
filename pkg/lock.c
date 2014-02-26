@@ -178,6 +178,12 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	if (retcode != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
 		exitcode = EX_IOERR;
 		goto cleanup;
@@ -202,8 +208,9 @@ cleanup:
 		pkg_free(pkg);
 	if (it != NULL)
 		pkgdb_it_free(it);
-	if (db != NULL)
-		pkgdb_close(db);
+
+	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+	pkgdb_close(db);
 
 	return (exitcode);
 }

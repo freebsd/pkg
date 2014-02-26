@@ -4160,37 +4160,146 @@ pkgshell_open(const char **reponame)
 	*reponame = strdup(localpath);
 }
 
-int
-pkgdb_obtain_lock(struct pkgdb *db)
+static int
+pkgdb_try_lock (struct pkgdb *db, const char *lock_sql,
+		double delay, unsigned int retries)
 {
-	int ret;
+	unsigned int tries = 0;
+	struct timespec ts;
+	int ret = EPKG_END;
 
-	assert(db != NULL);
-	assert(db->lock_count >= 0);
-	if (!db->lock_count) {
-		ret = sql_exec(db->sqlite,
-		    "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
-		/* Set lock only if we actually were able to switch locking mode */
-		if (ret == EPKG_OK)
-			++db->lock_count;
-		return (ret);
+	while (tries <= retries) {
+		ret = sqlite3_exec(db->sqlite, lock_sql, NULL, NULL, NULL);
+		if (ret != SQLITE_OK)
+			return (EPKG_FATAL);
+
+		if (sqlite3_changes(db->sqlite) == 0) {
+			if (delay > 0) {
+				ts.tv_sec = (int)delay;
+				ts.tv_nsec = (delay - (int)delay) * 1000000000.;
+				pkg_debug(1, "waiting for database lock for %d times, "
+						"next try in %.2f seconds", tries, delay);
+				(void)nanosleep(&ts, NULL);
+			}
+			else {
+				break;
+			}
+		}
+		else {
+			ret = EPKG_OK;
+			break;
+		}
+		tries ++;
 	}
-	else
-		return (EPKG_OK);
+
+	return (ret);
 }
 
 int
-pkgdb_release_lock(struct pkgdb *db)
+pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type,
+		double delay, unsigned int retries)
 {
+	int ret;
+	const char table_sql[] = ""
+			"CREATE TABLE pkg_lock "
+			"(exclusive INT(1), advisory INT(1), read INT(8));";
+	const char init_sql[] = ""
+			"INSERT INTO pkg_lock VALUES(0,0,0);";
+	const char readonly_lock_sql[] = ""
+			"UPDATE pkg_lock SET read=read+1 WHERE exclusive=0;";
+	const char advisory_lock_sql[] = ""
+			"UPDATE pkg_lock SET advisory=1 WHERE exclusive=0 AND advisory=0;";
+	const char exclusive_lock_sql[] = ""
+			"UPDATE pkg_lock SET exclusive=1 WHERE exclusive=0 AND advisory=0 AND read=0;";
+	const char *lock_sql;
+
 	assert(db != NULL);
-	assert(db->lock_count >= 0);
-	if (db->lock_count > 0)
-		db->lock_count--;
-	if (db->lock_count == 0)
-		return sql_exec(db->sqlite,
-		    "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
-	else
-		return (EPKG_OK);
+
+	ret = sqlite3_exec(db->sqlite, table_sql, NULL, NULL, NULL);
+	if (ret == SQLITE_OK) {
+		/* Need to initialize */
+		ret = sqlite3_exec(db->sqlite, init_sql, NULL, NULL, NULL);
+		if (ret != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			return (EPKG_FATAL);
+		}
+	}
+
+	switch (type) {
+	case PKGDB_LOCK_READONLY:
+		lock_sql = readonly_lock_sql;
+		pkg_debug(1, "want to get a read only lock on a database");
+		break;
+	case PKGDB_LOCK_ADVISORY:
+		lock_sql = advisory_lock_sql;
+		pkg_debug(1, "want to get an advisory lock on a database");
+		break;
+	case PKGDB_LOCK_EXCLUSIVE:
+		pkg_debug(1, "want to get an exclusive lock on a database");
+		lock_sql = exclusive_lock_sql;
+		break;
+	}
+
+	ret = pkgdb_try_lock(db, lock_sql, delay, retries);
+
+	return (ret);
+}
+
+int
+pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_type,
+		double delay, unsigned int retries)
+{
+	const char advisory_exclusive_lock_sql[] = ""
+		"UPDATE pkg_lock SET exclusive=1,advisory=1 WHERE exclusive=0 AND advisory=1 AND read=0;";
+	int ret = EPKG_FATAL;
+
+	assert(db != NULL);
+
+	if (old_type == PKGDB_LOCK_ADVISORY && new_type == PKGDB_LOCK_EXCLUSIVE) {
+		pkg_debug(1, "want to upgrade advisory to exclusive lock");
+		ret = pkgdb_try_lock(db, advisory_exclusive_lock_sql, delay, retries);
+	}
+
+	return (ret);
+}
+
+int
+pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type)
+{
+	const char readonly_unlock_sql[] = ""
+			"UPDATE pkg_lock SET read=read-1 WHERE read>0;";
+	const char advisory_unlock_sql[] = ""
+			"UPDATE pkg_lock SET advisory=0 WHERE advisory=1;";
+	const char exclusive_unlock_sql[] = ""
+			"UPDATE pkg_lock SET exclusive=0 WHERE exclusive=1;";
+	const char *unlock_sql;
+	int ret = EPKG_FATAL;
+
+	assert(db != NULL);
+
+	switch (type) {
+	case PKGDB_LOCK_READONLY:
+		unlock_sql = readonly_unlock_sql;
+		pkg_debug(1, "release a read only lock on a database");
+		break;
+	case PKGDB_LOCK_ADVISORY:
+		unlock_sql = advisory_unlock_sql;
+		pkg_debug(1, "release an advisory lock on a database");
+		break;
+	case PKGDB_LOCK_EXCLUSIVE:
+		pkg_debug(1, "release an exclusive lock on a database");
+		unlock_sql = exclusive_unlock_sql;
+		break;
+	}
+
+	ret = sqlite3_exec(db->sqlite, unlock_sql, NULL, NULL, NULL);
+	if (ret != SQLITE_OK)
+		return (EPKG_FATAL);
+
+	if (sqlite3_changes(db->sqlite) == 0)
+		return (EPKG_END);
+
+	return (EPKG_OK);
 }
 
 int64_t
