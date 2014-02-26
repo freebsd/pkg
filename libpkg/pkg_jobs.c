@@ -1126,6 +1126,7 @@ pkg_jobs_handle_install(struct pkg *new, struct pkg *old, struct pkg_jobs *j, bo
 	}
 
 	if (oldversion != NULL) {
+		pkg_set(newpkg, PKG_OLD_VERSION, oldversion);
 		pkg_emit_upgrade_begin(old);
 	} else {
 		pkg_emit_install_begin(newpkg);

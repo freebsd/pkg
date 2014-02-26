@@ -257,6 +257,20 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 		return (EPKG_FATAL);
 
 	HASH_ITER(hh, j->universe, it, itmp) {
+		/* XXX
+		 * Here are dragons:
+		 * after sorting it we actually modify the head of the list, but there is
+		 * no simple way to update a pointer in uthash, therefore universe hash
+		 * contains not a head of list but a random elt of the conflicts chain:
+		 * before:
+		 * head -> elt1 -> elt2 -> elt3
+		 * after:
+		 * elt1 -> elt3 -> head -> elt2
+		 *
+		 * But hash would still point to head whilst the real head is elt1.
+		 * So after sorting we need to rotate conflicts chain back to find the new
+		 * head.
+		 */
 		DL_SORT(it, pkg_cudf_version_cmp);
 
 		version = 1;
@@ -315,7 +329,8 @@ cudf_strdup(const char *in)
 }
 
 static void
-pkg_jobs_cudf_insert_res_job (struct pkg_solved **target, struct pkg_job_universe_item *it_new,
+pkg_jobs_cudf_insert_res_job (struct pkg_solved **target,
+		struct pkg_job_universe_item *it_new,
 		struct pkg_job_universe_item *it_old)
 {
 	struct pkg_solved *res;
@@ -345,12 +360,13 @@ static int
 pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 {
 	struct pkg_job_universe_item *it, *cur, *selected = NULL, *old = NULL, *head;
-	const char *origin;
+	const char *origin, *oldversion;
 	int ver, n;
 
 	HASH_FIND(hh, j->universe, entry->origin, strlen(entry->origin), it);
 	if (it == NULL) {
-		pkg_emit_error("package %s is found in CUDF output but not in the universe", entry->origin);
+		pkg_emit_error("package %s is found in CUDF output but not in the universe",
+				entry->origin);
 		return (EPKG_FATAL);
 	}
 
@@ -361,12 +377,12 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 	 */
 	ver = strtoul(entry->version, NULL, 10);
 
-	/* Find the old head */
+	/* Find the old head, see the comment in `pkg_jobs_cudf_emit_file` */
 	cur = it;
 	do {
 		head = cur;
 		cur = cur->prev;
-	} while (cur != it);
+	} while (cur->next != NULL);
 
 	n = 1;
 	LL_FOREACH(head, cur) {
@@ -378,17 +394,23 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 	}
 
 	if (selected == NULL) {
-		pkg_emit_error("package %s is found in CUDF output but the universe has no such version", entry->origin);
+		pkg_emit_error("package %s-%d is found in CUDF output but the "
+				"universe has no such version (only %d versions found)",
+				entry->origin, ver, n);
 		return (EPKG_FATAL);
 	}
 
 	pkg_get(selected->pkg, PKG_ORIGIN, &origin);
-	if (ver == 1) {
+	if (n == 1) {
 		if (entry->installed && selected->pkg->type != PKG_INSTALLED) {
+			pkg_debug(3, "pkg_cudf: schedule installation of %s(%d)",
+					entry->origin, ver);
 			pkg_jobs_cudf_insert_res_job (&j->jobs_add, selected, NULL);
 			j->count ++;
 		}
 		else if (!entry->installed && selected->pkg->type == PKG_INSTALLED) {
+			pkg_debug(3, "pkg_cudf: schedule removing of %s(%d)",
+					entry->origin, ver);
 			pkg_jobs_cudf_insert_res_job (&j->jobs_delete, selected, NULL);
 			j->count ++;
 		}
@@ -401,6 +423,12 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 				break;
 			}
 		}
+		pkg_debug(3, "pkg_cudf: schedule upgrade of %s(to %d)",
+				entry->origin, ver);
+		assert(old != NULL);
+		/* XXX: this is a hack due to iterators stupidity */
+		pkg_get(old->pkg, PKG_VERSION, &oldversion);
+		pkg_set(selected->pkg, PKG_OLD_VERSION, oldversion);
 		pkg_jobs_cudf_insert_res_job (&j->jobs_upgrade, selected, old);
 		j->count ++;
 	}
