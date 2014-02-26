@@ -159,27 +159,28 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 }
 
 #define MAKE_JOBS_ITER_FUNC(type)											\
-    struct pkg *															\
-    pkg_jobs_##type##_iter(struct pkg_jobs *jobs, void **iter)				\
+    bool																	\
+    pkg_jobs_##type##_iter(struct pkg_jobs *jobs, void **iter, 			\
+						struct pkg **new, struct pkg **old)				\
     {																		\
     	struct pkg_solved *s;												\
-    	struct pkg *res;													\
     	assert(iter != NULL);												\
     	if (jobs->jobs_##type == NULL) {									\
-    		return (NULL);													\
+    		return (false);													\
     	}																	\
     	if (*iter == NULL) {												\
     		s = jobs->jobs_##type;											\
     	}																	\
     	else if (*iter == jobs->jobs_##type) {								\
-    		return (NULL);													\
+    		return (false);													\
     	}																	\
     	else {																\
     		s = *iter;														\
     	}																	\
-    	res = s->pkg[0];													\
+    	*new = s->pkg[0];													\
+    	*old = s->pkg[1];													\
     	*iter = s->next ? s->next : jobs->jobs_##type;						\
-    	return (res);														\
+    	return (true);														\
     }
 
 MAKE_JOBS_ITER_FUNC(add)

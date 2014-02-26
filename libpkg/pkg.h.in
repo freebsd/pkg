@@ -1189,9 +1189,9 @@ int pkg_jobs_total(struct pkg_jobs *jobs);
  * @param iter Must be set to NULL for the first call.
  * @return A next pkg or NULL.
  */
-struct pkg * pkg_jobs_add_iter(struct pkg_jobs *jobs, void **iter);
-struct pkg * pkg_jobs_delete_iter(struct pkg_jobs *jobs, void **iter);
-struct pkg * pkg_jobs_upgrade_iter(struct pkg_jobs *jobs, void **iter);
+bool pkg_jobs_add_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
+bool pkg_jobs_delete_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
+bool pkg_jobs_upgrade_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
 
 /**
  * Apply the jobs in the queue (fetch and install).
