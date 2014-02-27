@@ -4329,7 +4329,7 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type,
 			"UPDATE pkg_lock SET advisory=1 WHERE exclusive=0 AND advisory=0;";
 	const char exclusive_lock_sql[] = ""
 			"UPDATE pkg_lock SET exclusive=1 WHERE exclusive=0 AND advisory=0 AND read=0;";
-	const char *lock_sql;
+	const char *lock_sql = NULL;
 
 	assert(db != NULL);
 
@@ -4397,7 +4397,7 @@ pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type)
 			"UPDATE pkg_lock SET advisory=0 WHERE advisory=1;";
 	const char exclusive_unlock_sql[] = ""
 			"UPDATE pkg_lock SET exclusive=0 WHERE exclusive=1;";
-	const char *unlock_sql;
+	const char *unlock_sql = NULL;
 	int ret = EPKG_FATAL;
 
 	assert(db != NULL);

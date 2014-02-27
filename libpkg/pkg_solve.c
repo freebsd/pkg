@@ -212,7 +212,7 @@ pkg_solve_check_conflicts(struct pkg_solve_variable *var, bool guess)
 {
 	struct pkg_solve_item *it;
 	struct _pkg_solve_var_rule *rul;
-	bool test;
+	bool test = false;
 
 	LL_FOREACH(var->rules, rul) {
 		test = true;
