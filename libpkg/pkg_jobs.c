@@ -505,6 +505,11 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	}
 	pkgdb_it_free(it);
 
+	if (pkg_conflicts_request_resolve(j) != EPKG_OK) {
+		pkg_emit_error("Cannot resolve conflicts in a request");
+		return (EPKG_FATAL);
+	}
+
 order:
 
 	j->solved = true;
