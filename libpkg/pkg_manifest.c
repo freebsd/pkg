@@ -752,7 +752,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 
 	errno = 0;
 	p = ucl_parser_new(0);
-	if (ucl_parser_add_file(p, file)) {
+	if (!ucl_parser_add_file(p, file)) {
 		if (errno == ENOENT) {
 			ucl_parser_free(p);
 			return (EPKG_FATAL);
