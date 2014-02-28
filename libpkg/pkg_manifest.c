@@ -871,7 +871,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	top = ucl_object_insert_key(top, ucl_object_fromstring(name), "name", 4, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(pkgorigin), "origin", 6, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(version), "version", 7, false);
-	obj = ucl_object_insert_key(top, ucl_object_fromstring(comment), "comment", 7, false);
+	obj = ucl_object_insert_key(top, ucl_object_fromstring_common(comment, 0, UCL_STRING_TRIM), "comment", 7, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(pkgarch), "arch", 4, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(pkgmaintainer), "maintainer", 10, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(prefix), "prefix", 6, false);
