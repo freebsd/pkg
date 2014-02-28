@@ -845,7 +845,8 @@ exec_audit(int argc, char **argv)
 
 cleanup:
 	pkgdb_it_free(it);
-	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+	if (db != NULL)
+		pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 	pkg_free(pkg);
 	free_audit_list(h);
