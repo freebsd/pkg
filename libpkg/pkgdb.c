@@ -4400,7 +4400,8 @@ pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type)
 	const char *unlock_sql = NULL;
 	int ret = EPKG_FATAL;
 
-	assert(db != NULL);
+	if (db == NULL)
+		return (EPKG_OK);
 
 	switch (type) {
 	case PKGDB_LOCK_READONLY:
