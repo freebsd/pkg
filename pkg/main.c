@@ -35,7 +35,6 @@
 
 #include <assert.h>
 #include <err.h>
-#include <histedit.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -155,9 +154,9 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 	}
 
 #ifndef NO_LIBJAIL
- 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
+ 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
 #else
-	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
+	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
 #endif
 	if (reason == PKG_USAGE_HELP) {
 		fprintf(out, "Global options supported:\n");
@@ -171,6 +170,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 		fprintf(out, "\t%-15s%s\n", "-l", "List available commands and exit");
 		fprintf(out, "\t%-15s%s\n", "-v", "Display pkg(8) version");
 		fprintf(out, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
+		fprintf(out, "\t%-15s%s\n\n", "-o", "Override configuration option from the command line");
 		fprintf(out, "Commands supported:\n");
 
 		for (i = 0; i < cmd_len; i++)
@@ -545,6 +545,28 @@ do_activation_test(int argc)
 	return;
 }
 
+static void
+export_arg_option (char *arg)
+{
+	char *eqp;
+	const char *opt;
+
+	if ((eqp = strchr(arg, '=')) != NULL) {
+		*eqp = '\0';
+
+		if ((opt = getenv (arg)) != NULL) {
+			warnx("option %s is defined in the environment to '%s' but command line "
+					"option redefines it", arg, opt);
+			setenv(arg, eqp + 1, 1);
+		}
+		else {
+			setenv(arg, eqp + 1, 0);
+		}
+
+		*eqp = '=';
+	}
+}
+
 int
 main(int argc, char **argv)
 {
@@ -570,24 +592,24 @@ main(int argc, char **argv)
 	const char *reposdir = NULL;
 	struct pkg_config_kv *alias = NULL;
 	const char *alias_value;
-	char **newargv;
-	int newargc;
-	Tokenizer *t = NULL;
-	struct sbuf *newcmd;
+	char **newargv, *arg, *args;
+	int newargc, newargvl;
+	struct sbuf *newcmd = NULL;
 	int j;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
 
 	cmdargv = argv;
+	newargvl = 0;
 
 	if (argc < 2)
 		usage(NULL, NULL, stderr, PKG_USAGE_INVALID_ARGUMENTS, "not enough arguments");
 
 #ifndef NO_LIBJAIL
-	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvq")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvqo:")) != -1) {
 #else
-	while ((ch = getopt(argc, argv, "d:c:C:R:lNvq")) != -1) {
+	while ((ch = getopt(argc, argv, "d:c:C:R:lNvqo:")) != -1) {
 #endif
 		switch (ch) {
 		case 'd':
@@ -615,6 +637,9 @@ main(int argc, char **argv)
 			break;
 		case 'v':
 			version++;
+			break;
+		case 'o':
+			export_arg_option (optarg);
 			break;
 		default:
 			break;
@@ -752,12 +777,20 @@ main(int argc, char **argv)
 				else
 					sbuf_printf(newcmd, " %s ", argv[j]);
 			}
+			newargv = NULL;
+			newargc = 0;
 			sbuf_done(newcmd);
-			t = tok_init(NULL);
-			/* XXX: __DECONST() workaround gcc's -Werror=cast-qual. */
-			if (tok_str(t, sbuf_data(newcmd), &newargc, __DECONST(const char ***, &newargv)) != 0)
-				errx(EX_CONFIG, "Invalid alias: %s", alias_value);
-			sbuf_delete(newcmd);
+			args = sbuf_data(newcmd);
+			while ((arg = strsep(&args, "\t \n")) != NULL) {
+				if (*arg == '\0')
+					continue;
+				if (newargc > newargvl -2) {
+					newargvl += 1024;
+					newargv = reallocf(newargv, newargvl * sizeof(char *));
+				}
+				newargv[newargc++] = arg;
+			}
+			newargv[newargc+1] = NULL;
 			break;
 		}
 	}
@@ -808,8 +841,10 @@ main(int argc, char **argv)
 		usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, newargv[0]);
 	}
 
-	if (alias != NULL)
-		tok_end(t);
+	if (newcmd != NULL) {
+		free(newargv);
+		sbuf_delete(newcmd);
+	}
 
 	if (ret == EX_OK && newpkgversion) {
 		if (jail_str == NULL && chroot_path == NULL)

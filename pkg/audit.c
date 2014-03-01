@@ -809,6 +809,12 @@ exec_audit(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get a read lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
 	{
 		warnx("Error accessing the package database");
@@ -839,6 +845,8 @@ exec_audit(int argc, char **argv)
 
 cleanup:
 	pkgdb_it_free(it);
+	if (db != NULL)
+		pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 	pkg_free(pkg);
 	free_audit_list(h);

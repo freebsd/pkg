@@ -86,6 +86,12 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
+	/* XXX: get rid of hardcoded timeouts */
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE, 0.5, 20) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
 
 	switch (fmt) {
 	case TXZ:
@@ -154,6 +160,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	}
 
 cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 
 	return (retcode);

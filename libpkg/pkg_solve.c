@@ -42,6 +42,8 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
+struct pkg_solve_item;
+
 struct pkg_solve_variable {
 	struct pkg *pkg;
 	bool to_install;
@@ -49,12 +51,19 @@ struct pkg_solve_variable {
 	const char *digest;
 	const char *origin;
 	bool resolved;
+	struct _pkg_solve_var_rule {
+		struct pkg_solve_item *rule;
+		struct _pkg_solve_var_rule *next;
+	} *rules;
+	int nrules;
 	UT_hash_handle hd;
 	UT_hash_handle ho;
-	struct pkg_solve_variable *next;
+	struct pkg_solve_variable *next, *prev;
 };
 
 struct pkg_solve_item {
+	int nitems;
+	int nresolved;
 	struct pkg_solve_variable *var;
 	bool inverse;
 	struct pkg_solve_item *next;
@@ -86,27 +95,33 @@ struct pkg_solve_problem {
  * @return true or false
  */
 static bool
-pkg_solve_check_rules(struct pkg_solve_rule *rules)
+pkg_solve_check_rules(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_rule *cur;
-	struct pkg_solve_item *it;
-	bool ret;
+	struct pkg_solve_variable *var, *tvar;
 
-	LL_FOREACH(rules, cur) {
-
-		ret = false;
-		LL_FOREACH(cur->items, it) {
-			if (it->var->resolved) {
-				if (PKG_SOLVE_CHECK_ITEM(it))
-					ret = true;
-			}
+	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+		if (!var->resolved) {
+			pkg_debug(2, "solver: var %s-%s is not still resolved",
+					var->origin, var->digest);
+			return false;
 		}
-		if (!ret)
-			return (false);
-
 	}
 
 	return (true);
+}
+
+/**
+ * Updates rules related to a single variable
+ * @param var
+ */
+static void
+pkg_solve_update_var_resolved (struct pkg_solve_variable *var)
+{
+	struct _pkg_solve_var_rule *rul;
+
+	LL_FOREACH(var->rules, rul) {
+		rul->rule->nresolved ++;
+	}
 }
 
 /**
@@ -115,44 +130,48 @@ pkg_solve_check_rules(struct pkg_solve_rule *rules)
  * @return true if there are units propagated
  */
 static bool
-pkg_solve_propagate_units(struct pkg_solve_rule *rules)
+pkg_solve_propagate_units(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_rule *cur;
 	struct pkg_solve_item *it, *unresolved = NULL;
-	int resolved = 0, total = 0, solved_vars;
+	int solved_vars;
+	struct _pkg_solve_var_rule *rul;
+	struct pkg_solve_variable *var, *tvar;
 	bool ret;
 
 	do {
 		solved_vars = 0;
-		LL_FOREACH(rules, cur) {
-
-			total = resolved = 0;
-			LL_FOREACH(cur->items, it) {
-				if (it->var->resolved && !PKG_SOLVE_CHECK_ITEM(it))
-					resolved++;
-				else
-					unresolved = it;
-				total ++;
-			}
-			/* It is a unit */
-			if (total == resolved + 1 && unresolved != NULL) {
-				if (!unresolved->var->resolved) {
-					/* Propagate unit */
-					unresolved->var->resolved = true;
-					unresolved->var->to_install = !unresolved->inverse;
-					solved_vars ++;
-					pkg_debug(2, "propagate %s(%d) to %d",
-							unresolved->var->origin, unresolved->var->priority, unresolved->var->to_install);
+		HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+check_again:
+			LL_FOREACH(var->rules, rul) {
+				unresolved = rul->rule;
+				if (unresolved->nresolved == unresolved->nitems - 1) {
+					/* Check for unit */
+					ret = false;
+					LL_FOREACH(unresolved, it) {
+						if (it->var->resolved) {
+							if (PKG_SOLVE_CHECK_ITEM(it))
+								ret = true;
+						}
+					}
+					if (!ret) {
+						/* This is a unit */
+						LL_FOREACH(unresolved, it) {
+							if (!it->var->resolved) {
+								it->var->to_install = (!it->inverse);
+								it->var->resolved = true;
+								pkg_solve_update_var_resolved(it->var);
+								pkg_debug(2, "propagate %s-%s(%d) to %s",
+										it->var->origin, it->var->digest,
+										it->var->priority,
+										it->var->to_install ? "install" : "delete");
+								break;
+							}
+						}
+						solved_vars ++;
+						/* We want to try propagating all clauses for a single variable */
+						goto check_again;
+					}
 				}
-				/* Now check for a conflict */
-				ret = false;
-				LL_FOREACH(cur->items, it) {
-					if (PKG_SOLVE_CHECK_ITEM(it))
-						ret = true;
-				}
-				/* A conflict found */
-				if (!ret)
-					return (false);
 			}
 		}
 	} while (solved_vars > 0);
@@ -165,50 +184,55 @@ pkg_solve_propagate_units(struct pkg_solve_rule *rules)
  * Propagate pure clauses
  */
 static bool
-pkg_solve_propagate_pure(struct pkg_solve_rule *rules)
+pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_rule *cur;
+	struct pkg_solve_variable *var, *tvar;
+	struct _pkg_solve_var_rule *rul;
 	struct pkg_solve_item *it;
 
-	LL_FOREACH(rules, cur) {
-		it = cur->items;
-		/* Unary rules */
-		if (!it->var->resolved && it->next == NULL) {
-			it->var->to_install = !it->inverse;
-			it->var->resolved = true;
-		}
-	}
-
-	return (false);
-}
-
-static bool
-pkg_solve_check_conflicts(struct pkg_solve_rule *rules)
-{
-	struct pkg_solve_rule *cur;
-	struct pkg_solve_item *it, *next;
-
-	/*
-	 * Conflicts are presented as:
-	 * (!A | !B), so check for them
-	 */
-	LL_FOREACH(rules, cur) {
-		it = cur->items;
-		next = it->next;
-		if (next != NULL && next->next == NULL) {
-			if (it->var->resolved && !next->var->resolved) {
-				if (!PKG_SOLVE_CHECK_ITEM(it))
-					return (false);
-			}
-			else if (!it->var->resolved && next->var->resolved) {
-				if (!PKG_SOLVE_CHECK_ITEM(next))
-					return (false);
+	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+		LL_FOREACH(var->rules, rul) {
+			it = rul->rule;
+			if (it->nitems == 1 && it->nresolved == 0) {
+				it->var->to_install = (!it->inverse);
+				it->var->resolved = true;
+				pkg_debug(2, "requested %s-%s(%d) to %s",
+						it->var->origin, it->var->digest,
+						it->var->priority, it->var->to_install ? "install" : "delete");
+				pkg_solve_update_var_resolved(it->var);
 			}
 		}
 	}
 
 	return (true);
 }
+
+static bool
+pkg_solve_check_conflicts(struct pkg_solve_variable *var, bool guess)
+{
+	struct pkg_solve_item *it;
+	struct _pkg_solve_var_rule *rul;
+	bool test = false;
+
+	LL_FOREACH(var->rules, rul) {
+		test = true;
+		LL_FOREACH(rul->rule, it) {
+			if (it->var->resolved) {
+				test |= it->var->to_install ^ it->inverse;
+			}
+			else if (it->var == var) {
+				test |= guess;
+			}
+		}
+		if (!test) {
+			/* We have a conflict */
+			break;
+		}
+	}
+
+	return (test);
+}
+
 
 /**
  * Use the default propagation policy:
@@ -217,34 +241,32 @@ pkg_solve_check_conflicts(struct pkg_solve_rule *rules)
  *
  * This must be called after the explicit propagation
  */
-static void
-pkg_solve_propagate_default(struct pkg_solve_rule *rules)
+static int
+pkg_solve_propagate_default(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_rule *cur;
-	struct pkg_solve_item *it;
+	struct pkg_solve_variable *var, *tvar;
+	bool guess;
 
-	LL_FOREACH(rules, cur) {
-		LL_FOREACH(cur->items, it) {
-			if (!it->var->resolved) {
-				if (it->var->pkg->type == PKG_INSTALLED) {
-					it->var->to_install = true;
-					if (pkg_solve_check_conflicts(rules)) {
-						pkg_debug(2, "assume %s(%d) to %d",
-								it->var->origin, it->var->priority, it->var->to_install);
-						it->var->resolved = true;
-					}
-				}
-				else {
-					it->var->to_install = false;
-					if (pkg_solve_check_conflicts(rules)) {
-						pkg_debug(2, "assume %s(%d) to %d",
-								it->var->origin, it->var->priority, it->var->to_install);
-						it->var->resolved = true;
-					}
+	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+		if (!var->resolved) {
+			/* Guess true for installed packages and false otherwise */
+			guess = (var->pkg->type == PKG_INSTALLED);
+			if (!pkg_solve_check_conflicts (var, guess)) {
+				guess = !guess;
+				if (!pkg_solve_check_conflicts (var, guess)) {
+					return (EPKG_FATAL);
 				}
 			}
+			var->to_install = guess;
+			var->resolved = true;
+			pkg_debug(2, "decided %s-%s(%d) to %s",
+					var->origin, var->digest,
+					var->priority, var->to_install ? "install" : "delete");
+			pkg_solve_update_var_resolved(var);
 		}
 	}
+
+	return (EPKG_OK);
 }
 
 /**
@@ -259,20 +281,23 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
 
 	/* Initially propagate explicit rules */
-	pkg_solve_propagate_pure(problem->rules);
+	pkg_solve_propagate_pure(problem);
 
-	while (!pkg_solve_check_rules(problem->rules)) {
+	while (!pkg_solve_check_rules(problem)) {
 		/* TODO:
 		 * 1) assign a free variable
 		 * 2) check for contradictions
 		 * 3) analyse and learn
 		 * 4) undo an assignment
 		 */
-		if (!pkg_solve_propagate_units(problem->rules)) {
+		if (!pkg_solve_propagate_units(problem)) {
 			pkg_emit_error("unimplemented: cannot solve SAT problem as units propagation has fallen");
 			return (false);
 		}
-		pkg_solve_propagate_default(problem->rules);
+		if (pkg_solve_propagate_default(problem) == EPKG_FATAL) {
+			pkg_emit_error("unimplemented: cannot solve SAT problem as direct conflict has been found");
+			return (false);
+		}
 	}
 
 	return (true);
@@ -295,6 +320,7 @@ pkg_solve_item_new(struct pkg_solve_variable *var)
 	}
 
 	result->var = var;
+	result->inverse = false;
 
 	return (result);
 }
@@ -333,6 +359,7 @@ pkg_solve_variable_new(struct pkg *pkg, int priority)
 	/* XXX: Is it safe to save a ptr here ? */
 	result->digest = digest;
 	result->origin = origin;
+	result->prev = result;
 
 	return (result);
 }
@@ -353,12 +380,16 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
 	struct pkg_solve_rule *r, *rtmp;
 	struct pkg_solve_variable *v, *vtmp;
+	struct _pkg_solve_var_rule *vrule, *vrtmp;
 
 	LL_FOREACH_SAFE(problem->rules, r, rtmp) {
 		pkg_solve_rule_free(r);
 	}
 	HASH_ITER(hd, problem->variables_by_digest, v, vtmp) {
 		HASH_DELETE(hd, problem->variables_by_digest, v);
+		LL_FOREACH_SAFE(v->rules, vrule, vrtmp) {
+			free(vrule);
+		}
 		free(v);
 	}
 }
@@ -368,9 +399,10 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 		struct pkg_solve_problem *problem, const char *origin, struct pkg_solve_variable **var)
 {
 	struct pkg_job_universe_item *unit;
-	struct pkg_solve_variable *nvar, *tvar;
+	struct pkg_solve_variable *nvar, *tvar = NULL, *found;
+	const char *digest;
 
-	HASH_FIND_STR(j->universe, __DECONST(char *, origin), unit);
+	HASH_FIND_STR(j->universe, origin, unit);
 	/* If there is no package in universe, refuse continue */
 	if (unit == NULL) {
 		pkg_emit_error("package %s is not found in universe", origin);
@@ -380,17 +412,26 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 	nvar = pkg_solve_variable_new(unit->pkg, unit->priority);
 	if (nvar == NULL)
 		return (EPKG_FATAL);
-	HASH_ADD_KEYPTR(ho, problem->variables_by_origin, nvar->origin, strlen(nvar->origin), nvar);
+
 	HASH_ADD_KEYPTR(hd, problem->variables_by_digest, nvar->digest, strlen(nvar->digest), nvar);
+	HASH_ADD_KEYPTR(ho, problem->variables_by_origin, nvar->origin, strlen(nvar->origin), nvar);
+	pkg_debug(4, "solver: add variable from universe with origin %s", nvar->origin);
+
 	unit = unit->next;
-	tvar = nvar;
 	while (unit != NULL) {
-		/* Add all alternatives as independent variables */
-		tvar->next = pkg_solve_variable_new(unit->pkg, unit->priority);
-		tvar = tvar->next;
-		if (tvar == NULL)
-			return (EPKG_FATAL);
-		HASH_ADD_KEYPTR(hd, problem->variables_by_digest, tvar->digest, strlen(tvar->digest), tvar);
+		pkg_get(unit->pkg, PKG_DIGEST, &digest);
+		HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), found);
+		if (found == NULL) {
+			/* Add all alternatives as independent variables */
+			tvar = pkg_solve_variable_new(unit->pkg, unit->priority);
+			if (tvar == NULL)
+				return (EPKG_FATAL);
+			DL_APPEND(nvar, tvar);
+			HASH_ADD_KEYPTR(hd, problem->variables_by_digest, tvar->digest,
+					strlen(tvar->digest), tvar);
+			pkg_debug (4, "solver: add another variable with origin %s and digest %s",
+					tvar->origin, tvar->digest);
+		}
 		unit = unit->next;
 	}
 
@@ -398,6 +439,36 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 
 	return (EPKG_OK);
 }
+
+static int
+pkg_solve_add_var_rules (struct pkg_solve_variable *var,
+		struct pkg_solve_item *rule, int nrules, bool iterate_vars)
+{
+	struct _pkg_solve_var_rule *head = NULL;
+	struct pkg_solve_variable *tvar;
+
+	LL_FOREACH(var, tvar) {
+		pkg_debug(4, "solver: add %d-ary clause to variable %s-%s: %d",
+				nrules, tvar->origin, tvar->digest, rule->inverse);
+		tvar->nrules += nrules;
+		head = calloc(1, sizeof (struct _pkg_solve_var_rule));
+		if (head == NULL) {
+			pkg_emit_errno("calloc", "_pkg_solve_var_rule");
+			return (EPKG_FATAL);
+		}
+		head->rule = rule;
+		LL_PREPEND(tvar->rules, head);
+		if (!iterate_vars)
+			break;
+	}
+
+	return (EPKG_OK);
+}
+
+#define RULE_ITEM_PREPEND(rule, item) do {									\
+	(item)->nitems = (rule)->items ? (rule)->items->nitems + 1 : 1;			\
+	LL_PREPEND((rule)->items, (item));										\
+} while (0)
 
 static int
 pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
@@ -409,6 +480,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *tvar, *cur_var;
+	int cnt;
 
 	const char *origin;
 
@@ -421,8 +493,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			var = NULL;
 
 			origin = pkg_dep_get(dep, PKG_DEP_ORIGIN);
-			HASH_FIND(ho, problem->variables_by_origin,
-					__DECONST(char *, origin), strlen(origin), var);
+			HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 			if (var == NULL) {
 				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
 					goto err;
@@ -437,16 +508,20 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 				goto err;
 
 			it->inverse = true;
-			LL_PREPEND(rule->items, it);
+			RULE_ITEM_PREPEND(rule, it);
 			/* B1 | B2 | ... */
+			cnt = 1;
 			LL_FOREACH(var, tvar) {
 				it = pkg_solve_item_new(tvar);
 				if (it == NULL)
 					goto err;
 
 				it->inverse = false;
-				LL_PREPEND(rule->items, it);
+				RULE_ITEM_PREPEND(rule, it);
+				cnt ++;
 			}
+			pkg_solve_add_var_rules (var, rule->items, cnt, true);
+			pkg_solve_add_var_rules (cur_var, rule->items, cnt, false);
 
 			LL_PREPEND(problem->rules, rule);
 			problem->rules_count ++;
@@ -459,8 +534,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			var = NULL;
 
 			origin = pkg_conflict_origin(conflict);
-			HASH_FIND(ho, problem->variables_by_origin,
-					__DECONST(char *, origin), strlen(origin), var);
+			HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 			if (var == NULL) {
 				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
 					goto err;
@@ -477,17 +551,19 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					goto err;
 
 				it->inverse = true;
-				LL_PREPEND(rule->items, it);
+				RULE_ITEM_PREPEND(rule, it);
 				/* !Bx */
 				it = pkg_solve_item_new(tvar);
 				if (it == NULL)
 					goto err;
 
 				it->inverse = true;
-				LL_PREPEND(rule->items, it);
+				RULE_ITEM_PREPEND(rule, it);
 
 				LL_PREPEND(problem->rules, rule);
 				problem->rules_count ++;
+				pkg_solve_add_var_rules (tvar, rule->items, 2, false);
+				pkg_solve_add_var_rules (cur_var, rule->items, 2, false);
 			}
 		}
 
@@ -510,17 +586,20 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 						goto err;
 
 					it->inverse = true;
-					LL_PREPEND(rule->items, it);
+					RULE_ITEM_PREPEND(rule, it);
 					/* !Ay */
 					it = pkg_solve_item_new(tvar);
 					if (it == NULL)
 						goto err;
 
 					it->inverse = true;
-					LL_PREPEND(rule->items, it);
+					RULE_ITEM_PREPEND(rule, it);
 
 					LL_PREPEND(problem->rules, rule);
 					problem->rules_count ++;
+
+					pkg_solve_add_var_rules (tvar, rule->items, 2, true);
+					pkg_solve_add_var_rules (cur_var, rule->items, 2, false);
 				}
 			}
 		}
@@ -568,8 +647,16 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		if (var == NULL)
 			goto err;
 
+		pkg_debug(4, "solver: add variable from install request with origin %s-%s",
+						var->origin, var->digest);
 		HASH_ADD_KEYPTR(hd, problem->variables_by_digest, var->digest, strlen(var->digest), var);
-		HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
+		HASH_FIND(ho, problem->variables_by_origin, var->origin, strlen(var->origin), tvar);
+		if (tvar == NULL) {
+			HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
+		}
+		else {
+			DL_APPEND(tvar, var);
+		}
 		it = pkg_solve_item_new(var);
 		if (it == NULL)
 			goto err;
@@ -579,7 +666,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 
 		/* Requests are unary rules */
-		LL_PREPEND(rule->items, it);
+		RULE_ITEM_PREPEND(rule, it);
+		pkg_solve_add_var_rules (var, it, 1, false);
 		LL_PREPEND(problem->rules, rule);
 		problem->rules_count ++;
 	}
@@ -595,8 +683,16 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		if (var == NULL)
 			goto err;
 
+		pkg_debug(4, "solver: add variable from delete request with origin %s-%s",
+				var->origin, var->digest);
 		HASH_ADD_KEYPTR(hd, problem->variables_by_digest, var->digest, strlen(var->digest), var);
-		HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
+		HASH_FIND(ho, problem->variables_by_origin, var->origin, strlen(var->origin), tvar);
+		if (tvar == NULL) {
+			HASH_ADD_KEYPTR(ho, problem->variables_by_origin, var->origin, strlen(var->origin), var);
+		}
+		else {
+			DL_APPEND(tvar, var);
+		}
 		it = pkg_solve_item_new(var);
 		if (it == NULL)
 			goto err;
@@ -607,8 +703,9 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			goto err;
 
 		/* Requests are unary rules */
-		LL_PREPEND(rule->items, it);
+		RULE_ITEM_PREPEND(rule, it);
 		LL_PREPEND(problem->rules, rule);
+		pkg_solve_add_var_rules (var, it, 1, false);
 		problem->rules_count ++;
 	}
 
@@ -633,12 +730,13 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 				/* Check origin */
 				HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), tvar);
 				if (tvar == NULL) {
+					pkg_debug(4, "solver: add variable from universe with origin %s", var->origin);
 					HASH_ADD_KEYPTR(ho, problem->variables_by_origin,
 							var->origin, strlen(var->origin), var);
 				}
 				else {
 					/* Insert a variable to a chain */
-					tvar->next = var;
+					DL_APPEND(tvar, var);
 				}
 			}
 		}
@@ -704,7 +802,7 @@ static void
 pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		struct pkg_solve_problem *problem, struct pkg_jobs *j)
 {
-	struct pkg_solved *res, *res_a, *res_d;
+	struct pkg_solved *res;
 	struct pkg_solve_variable *cur_var, *del_var = NULL, *add_var = NULL;
 	int seen_add = 0, seen_del = 0;
 
@@ -713,13 +811,14 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			add_var = cur_var;
 			seen_add ++;
 		}
-		else if (!var->to_install && var->pkg->type == PKG_INSTALLED) {
+		else if (!cur_var->to_install && cur_var->pkg->type == PKG_INSTALLED) {
 			del_var = cur_var;
 			seen_del ++;
 		}
 	}
 	if (seen_add > 1 || seen_del > 1) {
-		pkg_emit_error("internal solver error: more than two packages to install from the same origin");
+		pkg_emit_error("internal solver error: more than two packages to install(%d) "
+				"or delete(%d) from the same origin: %s", seen_add, seen_del, var->origin);
 		return;
 	}
 	else if (seen_add != 0 || seen_del != 0) {
@@ -732,17 +831,24 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			res->priority = del_var->priority;
 			res->pkg[0] = del_var->pkg;
 			DL_APPEND(j->jobs_delete, res);
+			pkg_debug(3, "pkg_solve: schedule deletion of %s(%s)",
+					del_var->origin, del_var->digest);
 		}
 		else if (seen_del == 0 && seen_add != 0) {
 			res->priority = add_var->priority;
 			res->pkg[0] = add_var->pkg;
 			DL_APPEND(j->jobs_add, res);
+			pkg_debug(3, "pkg_solve: schedule installation of %s(%s)",
+					add_var->origin, add_var->digest);
 		}
 		else {
 			res->priority = MAX(del_var->priority, add_var->priority);
 			res->pkg[0] = add_var->pkg;
 			res->pkg[1] = del_var->pkg;
 			DL_APPEND(j->jobs_upgrade, res);
+			pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
+					del_var->origin, del_var->digest, add_var->digest);
+#if 0
 			/* Need some more tasks */
 			res_a = calloc(1, sizeof(struct pkg_solved));
 			res_d = calloc(1, sizeof(struct pkg_solved));
@@ -750,12 +856,14 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				pkg_emit_errno("calloc", "pkg_solved");
 				return;
 			}
-			res_a->priority = add_var->priority;
+			/* Priority for individual tasks are the same as for the upgrade task */
+			res_a->priority = res->priority;
 			res_a->pkg[0] = add_var->pkg;
-			DL_APPEND(j->jobs_add, res);
-			res_d->priority = del_var->priority;
+			DL_APPEND(j->jobs_add, res_a);
+			res_d->priority = res->priority;
 			res_d->pkg[0] = del_var->pkg;
-			DL_APPEND(j->jobs_delete, res);
+			DL_APPEND(j->jobs_delete, res_d);
+#endif
 		}
 		j->count ++;
 	}
@@ -769,13 +877,12 @@ int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j)
 {
 	struct pkg_solve_variable *var, *vtmp;
-	const char *origin;
 
-	HASH_ITER(hd, problem->variables_by_origin, var, vtmp) {
+	HASH_ITER(ho, problem->variables_by_origin, var, vtmp) {
 		if (!var->resolved)
 			return (EPKG_FATAL);
 
-		pkg_get(var->pkg, PKG_ORIGIN, &origin);
+		pkg_debug(4, "solver: check variable with origin %s", var->origin);
 		pkg_solve_insert_res_job(var, problem, j);
 	}
 

@@ -219,7 +219,7 @@ struct pkg_job_universe_item {
 	struct pkg *pkg;
 	UT_hash_handle hh;
 	int priority;
-	struct pkg_job_universe_item *next;
+	struct pkg_job_universe_item *next, *prev;
 };
 
 struct pkg_jobs {
@@ -235,6 +235,7 @@ struct pkg_jobs {
 	pkg_flags	 flags;
 	int		 solved;
 	int count;
+	int total;
 	const char *	 reponame;
 	struct job_pattern *patterns;
 };

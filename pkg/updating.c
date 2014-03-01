@@ -69,6 +69,7 @@ exec_updating(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	const char *origin;
 	FILE *fd;
+	int retcode = EXIT_SUCCESS;
 
 	while ((ch = getopt(argc, argv, "d:f:")) != -1) {
 		switch (ch) {
@@ -94,10 +95,18 @@ exec_updating(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get a read lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	SLIST_INIT(&origins);
 	if (argc == 0) {
-		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL)
+		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
+			retcode = EX_UNAVAILABLE;
 			goto cleanup;
+		}
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			port = malloc(sizeof(struct installed_ports));
@@ -117,15 +126,17 @@ exec_updating(int argc, char **argv)
 	if (updatingfile == NULL) {
 		const char *portsdir;
 		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK) {
-			warnx("Cannot get portsdir config entry!");
-			return (1);
+			retcode = EX_CONFIG;
+			goto cleanup;
 		}
 		asprintf(&updatingfile, "%s/UPDATING", portsdir);
 	}
 
 	fd = fopen(updatingfile, "r");
-	if (fd == NULL)
-		errx(EX_UNAVAILABLE, "Unable to open: %s", updatingfile);
+	if (fd == NULL) {
+		warnx("Unable to open: %s", updatingfile);
+		goto cleanup;
+	}
 
 	while ((linelen = getline(&line, &linecap, fd)) > 0) {
 		if (strspn(line, "0123456789:") == 9) {
@@ -156,10 +167,12 @@ exec_updating(int argc, char **argv)
 		}
 	}
 	fclose(fd);
+
 cleanup:
 	pkgdb_it_free(it);
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 	pkg_free(pkg);
 
-	return (EXIT_SUCCESS);
+	return (retcode);
 }

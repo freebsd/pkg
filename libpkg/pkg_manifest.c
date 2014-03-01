@@ -752,7 +752,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file, struct pkg_manifest_k
 
 	errno = 0;
 	p = ucl_parser_new(0);
-	if (ucl_parser_add_file(p, file)) {
+	if (!ucl_parser_add_file(p, file)) {
 		if (errno == ENOENT) {
 			ucl_parser_free(p);
 			return (EPKG_FATAL);
@@ -867,11 +867,11 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	    PKG_VERSION, &version, PKG_REPOPATH, &repopath,
 	    PKG_CKSUM, &pkgsum, PKG_PKGSIZE, &pkgsize);
 
-	pkg_debug(1, "Emitting basic metadata");
+	pkg_debug(4, "Emitting basic metadata");
 	top = ucl_object_insert_key(top, ucl_object_fromstring(name), "name", 4, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(pkgorigin), "origin", 6, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(version), "version", 7, false);
-	obj = ucl_object_insert_key(top, ucl_object_fromstring(comment), "comment", 7, false);
+	obj = ucl_object_insert_key(top, ucl_object_fromstring_common(comment, 0, UCL_STRING_TRIM), "comment", 7, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(pkgarch), "arch", 4, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(pkgmaintainer), "maintainer", 10, false);
 	obj = ucl_object_insert_key(top, ucl_object_fromstring(prefix), "prefix", 6, false);
@@ -891,7 +891,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		break;
 	}
 
-	pkg_debug(1, "Emitting licenses");
+	pkg_debug(4, "Emitting licenses");
 	seq = NULL;
 	while (pkg_licenses(pkg, &license) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_license_name(license)));
@@ -906,7 +906,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	    ucl_object_fromstring_common(sbuf_data(tmpsbuf), sbuf_len(tmpsbuf), UCL_STRING_TRIM),
 	    "desc", 4, false);
 
-	pkg_debug(1, "Emitting deps");
+	pkg_debug(4, "Emitting deps");
 	map = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		submap = NULL;
@@ -916,37 +916,37 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	}
 	obj = ucl_object_insert_key(top, map, "deps", 4, false);
 
-	pkg_debug(1, "Emitting categories");
+	pkg_debug(4, "Emitting categories");
 	seq = NULL;
 	while (pkg_categories(pkg, &category) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_category_name(category)));
 	obj = ucl_object_insert_key(top, seq, "categories", 10, false);
 
-	pkg_debug(1, "Emitting users");
+	pkg_debug(4, "Emitting users");
 	seq = NULL;
 	while (pkg_users(pkg, &user) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_user_name(user)));
 	obj = ucl_object_insert_key(top, seq, "users", 5, false);
 
-	pkg_debug(1, "Emitting groups");
+	pkg_debug(4, "Emitting groups");
 	seq = NULL;
 	while (pkg_groups(pkg, &group) == EPKG_OK) 
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_group_name(group)));
 	obj = ucl_object_insert_key(top, seq, "groups", 6, false);
 
-	pkg_debug(1, "Emitting required");
+	pkg_debug(4, "Emitting required");
 	seq = NULL;
 	while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_shlib_name(shlib)));
 	obj = ucl_object_insert_key(top, seq, "shlibs_required", 15, false);
 
-	pkg_debug(1, "Emitting shlibs_provided");
+	pkg_debug(4, "Emitting shlibs_provided");
 	seq = NULL;
 	while (pkg_shlibs_provided(pkg, &shlib) == EPKG_OK)
 		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_shlib_name(shlib)));
 	obj = ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);
 
-	pkg_debug(1, "Emitting conflicts");
+	pkg_debug(4, "Emitting conflicts");
 	map = NULL;
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK)
 		map = ucl_object_insert_key(map,
@@ -954,7 +954,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		    pkg_conflict_origin(conflict), 0, false);
 	obj = ucl_object_insert_key(top, map, "conflicts", 9, false);
 
-	pkg_debug(1, "Emitting provides");
+	pkg_debug(4, "Emitting provides");
 	map = NULL;
 	while (pkg_provides(pkg, &provide) == EPKG_OK)
 		map = ucl_object_insert_key(map,
@@ -962,7 +962,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		    pkg_provide_name(provide), 0, false);
 	obj = ucl_object_insert_key(top, map, "provides", 8, false);
 
-	pkg_debug(1, "Emitting options");
+	pkg_debug(4, "Emitting options");
 	map = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		pkg_debug(2, "Emiting option: %s", pkg_option_value(option));
@@ -980,7 +980,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {
-			pkg_debug(1, "Emitting files");
+			pkg_debug(4, "Emitting files");
 			map = NULL;
 			while (pkg_files(pkg, &file) == EPKG_OK) {
 				const char *pkg_sum = pkg_file_cksum(file);
@@ -995,7 +995,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 			}
 			obj = ucl_object_insert_key(top, map, "files", 5, false);
 
-			pkg_debug(1, "Emitting directories");
+			pkg_debug(4, "Emitting directories");
 			map = NULL;
 			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 				urlencode(pkg_dir_path(dir), &tmpsbuf);
@@ -1009,7 +1009,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 			obj = ucl_object_insert_key(top, map, "directories", 11, false);
 		}
 
-		pkg_debug(1, "Emitting scripts");
+		pkg_debug(4, "Emitting scripts");
 		map = NULL;
 		for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
 			if (pkg_script_get(pkg, i) == NULL)
@@ -1053,7 +1053,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		obj = ucl_object_insert_key(top, map, "scripts", 7, false);
 	}
 
-	pkg_debug(1, "Emitting message");
+	pkg_debug(4, "Emitting message");
 	if (message != NULL && *message != '\0') {
 		urlencode(message, &tmpsbuf);
 		obj = ucl_object_insert_key(top,

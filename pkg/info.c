@@ -234,6 +234,12 @@ exec_info(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get a read lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	i = 0;
 	do {
 		gotone = false;
@@ -327,7 +333,7 @@ exec_info(int argc, char **argv)
 		}
 
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-			return (EX_IOERR);
+			goto cleanup;
 		}
 
 		/* this is place for compatibility hacks */
@@ -423,7 +429,11 @@ exec_info(int argc, char **argv)
 		i++;
 	} while (i < argc);
 
-	pkg_free(pkg);
+cleanup:
+	if (pkg != NULL)
+		pkg_free(pkg);
+
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
 	return (retcode);

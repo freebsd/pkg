@@ -132,6 +132,12 @@ exec_upgrade(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an advisory lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK)
 		goto cleanup;
 
@@ -153,7 +159,7 @@ exec_upgrade(int argc, char **argv)
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
 		    "Upgrades have been requested for the following %d "
-		    "packages:\n\n", nbactions);
+		    "packages (%d packages in the universe):\n\n", nbactions, pkg_jobs_total(jobs));
 
 		if (!yes && !dry_run)
 			yes = query_yesno("\nProceed with upgrading "
@@ -172,8 +178,9 @@ exec_upgrade(int argc, char **argv)
 
 	retcode = EXIT_SUCCESS;
 
-	cleanup:
+cleanup:
 	pkg_jobs_free(jobs);
+	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
 	pkgdb_close(db);
 
 	if (!yes && newpkgversion)

@@ -499,6 +499,17 @@ typedef enum {
 	PKG_UPGRADE,
 } pkg_change_t;
 
+/**
+ * Locking types for database:
+ * `PKGDB_LOCK_READONLY`: lock for read only queries (can be nested)
+ * `PKGDB_LOCK_ADVISORY`: write to DB inside a transaction (allows `PKGDB_LOCK_READONLY`)
+ * `PKGDB_LOCK_EXCLUSIVE`: possibly destructive operations (does not allow other locks)
+ */
+typedef enum {
+	PKGDB_LOCK_READONLY,
+	PKGDB_LOCK_ADVISORY,
+	PKGDB_LOCK_EXCLUSIVE
+} pkgdb_lock_t;
 
 #define PKG_OPEN_MANIFEST_ONLY 0x1
 #define PKG_OPEN_MANIFEST_COMPACT (0x1 << 1)
@@ -1017,6 +1028,14 @@ int pkgdb_access(unsigned mode, unsigned database);
 int pkgdb_open(struct pkgdb **db, pkgdb_t type);
 
 /**
+ * Locking functions
+ */
+int pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type, double delay, unsigned int retries);
+int pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_type,
+		double delay, unsigned int retries);
+int pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type);
+
+/**
  * Close and free the struct pkgdb.
  */
 void pkgdb_close(struct pkgdb *db);
@@ -1182,13 +1201,18 @@ pkg_jobs_t pkg_jobs_type(struct pkg_jobs *j);
 int pkg_jobs_count(struct pkg_jobs *jobs);
 
 /**
+ * Returns the number of total elements in pkg universe
+ */
+int pkg_jobs_total(struct pkg_jobs *jobs);
+
+/**
  * Iterates over the packages in the jobs queue.
  * @param iter Must be set to NULL for the first call.
  * @return A next pkg or NULL.
  */
-struct pkg * pkg_jobs_add_iter(struct pkg_jobs *jobs, void **iter);
-struct pkg * pkg_jobs_delete_iter(struct pkg_jobs *jobs, void **iter);
-struct pkg * pkg_jobs_upgrade_iter(struct pkg_jobs *jobs, void **iter);
+bool pkg_jobs_add_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
+bool pkg_jobs_delete_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
+bool pkg_jobs_upgrade_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
 
 /**
  * Apply the jobs in the queue (fetch and install).

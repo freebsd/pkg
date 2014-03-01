@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 1, 2014
+.Dd February 26, 2014
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -67,6 +67,11 @@ option takes precedence over
 but
 .Fl l
 will override any other command line arguments.
+.It Fl o Ao option=value Ac
+Set configuration option for
+.Nm
+from the command line. Options that are set from the environment are
+redefined. It is permitted to specify this option multiple times. 
 .It Fl N
 Activation status check mode.
 Prevent

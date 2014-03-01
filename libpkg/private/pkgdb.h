@@ -65,9 +65,6 @@ int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 
 struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short flags);
 
-int pkgdb_obtain_lock(struct pkgdb *db);
-int pkgdb_release_lock(struct pkgdb *db);
-
 void pkgshell_open(const char **r);
 
 /**

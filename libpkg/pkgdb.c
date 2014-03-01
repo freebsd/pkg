@@ -44,6 +44,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <sqlite3.h>
 
@@ -2205,7 +2206,7 @@ pkgdb_load_options(struct pkgdb *db, struct pkg *pkg)
 			break;
 		}
 
-		pkg_debug(1, "Pkgdb> adding option");
+		pkg_debug(4, "Pkgdb> adding option");
 		ret = load_tag_val(db->sqlite, pkg, sql, PKG_LOAD_OPTIONS,
 				   pkg_addtagval, PKG_OPTIONS);
 		if (ret != EPKG_OK)
@@ -4160,37 +4161,271 @@ pkgshell_open(const char **reponame)
 	*reponame = strdup(localpath);
 }
 
-int
-pkgdb_obtain_lock(struct pkgdb *db)
+static int
+pkgdb_write_lock_pid(struct pkgdb *db)
 {
+	const char lock_pid_sql[] = ""
+			"INSERT INTO pkg_lock_pid VALUES (?1);";
+	sqlite3_stmt	*stmt = NULL;
 	int ret;
 
-	assert(db != NULL);
-	assert(db->lock_count >= 0);
-	if (!db->lock_count) {
-		ret = sql_exec(db->sqlite,
-		    "PRAGMA main.locking_mode=EXCLUSIVE;BEGIN IMMEDIATE;COMMIT;");
-		/* Set lock only if we actually were able to switch locking mode */
-		if (ret == EPKG_OK)
-			++db->lock_count;
-		return (ret);
+	ret = sqlite3_prepare_v2(db->sqlite, lock_pid_sql, -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
 	}
-	else
+	sqlite3_bind_int64(stmt, 1, (int64_t)getpid());
+
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		ERROR_SQLITE(db->sqlite);
+		sqlite3_finalize(stmt);
+		return (EPKG_FATAL);
+	}
+	sqlite3_finalize(stmt);
+
+	return (EPKG_OK);
+}
+
+static int
+pkgdb_remove_lock_pid(struct pkgdb *db, int64_t pid)
+{
+	const char lock_pid_sql[] = ""
+			"DELETE FROM pkg_lock_pid WHERE pid = ?1;";
+	sqlite3_stmt	*stmt = NULL;
+	int ret;
+
+	ret = sqlite3_prepare_v2(db->sqlite, lock_pid_sql, -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+	sqlite3_bind_int64(stmt, 1, pid);
+
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		ERROR_SQLITE(db->sqlite);
+		sqlite3_finalize(stmt);
+		return (EPKG_FATAL);
+	}
+	sqlite3_finalize(stmt);
+
+	return (EPKG_OK);
+}
+
+static int
+pkgdb_check_lock_pid(struct pkgdb *db)
+{
+	sqlite3_stmt	*stmt = NULL;
+	int ret, found = 0;
+	int64_t pid, lpid;
+
+	ret = sqlite3_prepare_v2(db->sqlite, "SELECT pid FROM pkg_lock_pid;", -1,
+			&stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	lpid = getpid();
+
+	while (sqlite3_step(stmt) != SQLITE_DONE) {
+		pid = sqlite3_column_int64(stmt, 0);
+		if (pid != lpid && kill((pid_t)pid, 0) == -1) {
+			pkg_debug(1, "found stale pid %lld in lock database", pid);
+			if (pkgdb_remove_lock_pid(db, pid) != EPKG_OK){
+				sqlite3_finalize(stmt);
+				return (EPKG_FATAL);
+			}
+		}
+		else {
+			found ++;
+		}
+	}
+
+	if (found == 0)
+		return (EPKG_END);
+
+	return (EPKG_OK);
+}
+
+static int
+pkgdb_reset_lock(struct pkgdb *db)
+{
+	const char init_sql[] = ""
+		"UPDATE pkg_lock SET exclusive=0, advisory=0, read=0;";
+	int ret;
+
+	ret = sqlite3_exec(db->sqlite, init_sql, NULL, NULL, NULL);
+
+	if (ret == SQLITE_OK)
 		return (EPKG_OK);
+
+	return (EPKG_FATAL);
+}
+
+static int
+pkgdb_try_lock(struct pkgdb *db, const char *lock_sql,
+		double delay, unsigned int retries, pkgdb_lock_t type)
+{
+	unsigned int tries = 0;
+	struct timespec ts;
+	int ret = EPKG_END;
+
+	while (tries <= retries) {
+		ret = sqlite3_exec(db->sqlite, lock_sql, NULL, NULL, NULL);
+		if (ret != SQLITE_OK) {
+			if (ret == SQLITE_READONLY && type == PKGDB_LOCK_READONLY) {
+				pkg_debug(1, "want read lock but cannot write to database, "
+						"slightly ignore this error for now");
+				return (EPKG_OK);
+			}
+			return (EPKG_FATAL);
+		}
+
+		ret = EPKG_END;
+		if (sqlite3_changes(db->sqlite) == 0) {
+			if (pkgdb_check_lock_pid(db) == EPKG_END) {
+				/* No live processes found, so we can safely reset lock */
+				pkg_debug(1, "no concurrent processes found, cleanup the lock");
+				pkgdb_reset_lock(db);
+				continue;
+			}
+			else if (delay > 0) {
+				ts.tv_sec = (int)delay;
+				ts.tv_nsec = (delay - (int)delay) * 1000000000.;
+				pkg_debug(1, "waiting for database lock for %d times, "
+						"next try in %.2f seconds", tries, delay);
+				(void)nanosleep(&ts, NULL);
+			}
+			else {
+				break;
+			}
+		}
+		else {
+			ret = pkgdb_write_lock_pid(db);
+			break;
+		}
+		tries ++;
+	}
+
+	return (ret);
 }
 
 int
-pkgdb_release_lock(struct pkgdb *db)
+pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type,
+		double delay, unsigned int retries)
 {
+	int ret;
+	const char table_sql[] = ""
+			"CREATE TABLE pkg_lock "
+			"(exclusive INTEGER(1), advisory INTEGER(1), read INTEGER(8));";
+	const char pid_sql[] = ""
+			"CREATE TABLE IF NOT EXISTS pkg_lock_pid "
+			"(pid INTEGER PRIMARY KEY);";
+	const char init_sql[] = ""
+			"INSERT INTO pkg_lock VALUES(0,0,0);";
+	const char readonly_lock_sql[] = ""
+			"UPDATE pkg_lock SET read=read+1 WHERE exclusive=0;";
+	const char advisory_lock_sql[] = ""
+			"UPDATE pkg_lock SET advisory=1 WHERE exclusive=0 AND advisory=0;";
+	const char exclusive_lock_sql[] = ""
+			"UPDATE pkg_lock SET exclusive=1 WHERE exclusive=0 AND advisory=0 AND read=0;";
+	const char *lock_sql = NULL;
+
 	assert(db != NULL);
-	assert(db->lock_count >= 0);
-	if (db->lock_count > 0)
-		db->lock_count--;
-	if (db->lock_count == 0)
-		return sql_exec(db->sqlite,
-		    "PRAGMA main.locking_mode=NORMAL;BEGIN IMMEDIATE;COMMIT;");
-	else
+
+	ret = sqlite3_exec(db->sqlite, table_sql, NULL, NULL, NULL);
+	if (ret == SQLITE_OK) {
+		/* Need to initialize */
+		ret = sqlite3_exec(db->sqlite, init_sql, NULL, NULL, NULL);
+		if (ret != SQLITE_OK) {
+			ERROR_SQLITE(db->sqlite);
+			return (EPKG_FATAL);
+		}
+	}
+
+	ret = sqlite3_exec(db->sqlite, pid_sql, NULL, NULL, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		return (EPKG_FATAL);
+	}
+
+	switch (type) {
+	case PKGDB_LOCK_READONLY:
+		lock_sql = readonly_lock_sql;
+		pkg_debug(1, "want to get a read only lock on a database");
+		break;
+	case PKGDB_LOCK_ADVISORY:
+		lock_sql = advisory_lock_sql;
+		pkg_debug(1, "want to get an advisory lock on a database");
+		break;
+	case PKGDB_LOCK_EXCLUSIVE:
+		pkg_debug(1, "want to get an exclusive lock on a database");
+		lock_sql = exclusive_lock_sql;
+		break;
+	}
+
+	ret = pkgdb_try_lock(db, lock_sql, delay, retries, type);
+
+	return (ret);
+}
+
+int
+pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_type,
+		double delay, unsigned int retries)
+{
+	const char advisory_exclusive_lock_sql[] = ""
+		"UPDATE pkg_lock SET exclusive=1,advisory=1 WHERE exclusive=0 AND advisory=1 AND read=0;";
+	int ret = EPKG_FATAL;
+
+	assert(db != NULL);
+
+	if (old_type == PKGDB_LOCK_ADVISORY && new_type == PKGDB_LOCK_EXCLUSIVE) {
+		pkg_debug(1, "want to upgrade advisory to exclusive lock");
+		ret = pkgdb_try_lock(db, advisory_exclusive_lock_sql, delay, retries,
+				new_type);
+	}
+
+	return (ret);
+}
+
+int
+pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type)
+{
+	const char readonly_unlock_sql[] = ""
+			"UPDATE pkg_lock SET read=read-1 WHERE read>0;";
+	const char advisory_unlock_sql[] = ""
+			"UPDATE pkg_lock SET advisory=0 WHERE advisory=1;";
+	const char exclusive_unlock_sql[] = ""
+			"UPDATE pkg_lock SET exclusive=0 WHERE exclusive=1;";
+	const char *unlock_sql = NULL;
+	int ret = EPKG_FATAL;
+
+	if (db == NULL)
 		return (EPKG_OK);
+
+	switch (type) {
+	case PKGDB_LOCK_READONLY:
+		unlock_sql = readonly_unlock_sql;
+		pkg_debug(1, "release a read only lock on a database");
+		break;
+	case PKGDB_LOCK_ADVISORY:
+		unlock_sql = advisory_unlock_sql;
+		pkg_debug(1, "release an advisory lock on a database");
+		break;
+	case PKGDB_LOCK_EXCLUSIVE:
+		pkg_debug(1, "release an exclusive lock on a database");
+		unlock_sql = exclusive_unlock_sql;
+		break;
+	}
+
+	ret = sqlite3_exec(db->sqlite, unlock_sql, NULL, NULL, NULL);
+	if (ret != SQLITE_OK)
+		return (EPKG_FATAL);
+
+	if (sqlite3_changes(db->sqlite) == 0)
+		return (EPKG_END);
+
+	return pkgdb_remove_lock_pid(db, (int64_t)getpid());
 }
 
 int64_t

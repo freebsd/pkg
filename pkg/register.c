@@ -162,7 +162,7 @@ exec_register(int argc, char **argv)
 	}
 
 	/*
-         * Ideally, the +MANIFEST should be all that is necessary,
+	 * Ideally, the +MANIFEST should be all that is necessary,
 	 * since it can contain all of the meta-data supplied by the
 	 * other files mentioned below.  These are here for backwards
 	 * compatibility with the way the ports tree works with
@@ -273,12 +273,19 @@ exec_register(int argc, char **argv)
 	}
 
 
-	if (!old && pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		return (EX_IOERR);
+	if (!old) {
+		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+			return (EX_IOERR);
+
+		if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE, 0, 0) != EPKG_OK) {
+			pkgdb_close(db);
+			warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+			return (EX_TEMPFAIL);
+		}
 	}
 
 	/*
-         * testing_mode allows updating the local package database
+	 * testing_mode allows updating the local package database
 	 * without any check that the files etc. listed in the meta
 	 * data actually exist on the system.  Inappropriate use of
 	 * testing_mode can really screw things up.
@@ -316,8 +323,10 @@ exec_register(int argc, char **argv)
 	if (!legacy && pkg_has_message(pkg))
 		pkg_printf("%M\n", pkg);
 
-	if (!old)
+	if (!old) {
+		pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 		pkgdb_close(db);
+	}
 
 	pkg_free(pkg);
 

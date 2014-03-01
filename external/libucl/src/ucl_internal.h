@@ -159,6 +159,8 @@ size_t ucl_unescape_json_string (char *str, size_t len);
  */
 bool ucl_include_handler (const unsigned char *data, size_t len, void* ud);
 
+bool ucl_try_include_handler (const unsigned char *data, size_t len, void* ud);
+
 /**
  * Handle includes macro
  * @param data include data
@@ -280,5 +282,11 @@ ucl_hash_insert_object (ucl_hash_t *hashlin, ucl_object_t *obj)
 	return hashlin;
 }
 
+/**
+ * Emit a single object to string
+ * @param obj
+ * @return
+ */
+unsigned char * ucl_object_emit_single_json (ucl_object_t *obj);
 
 #endif /* UCL_INTERNAL_H_ */

@@ -79,7 +79,7 @@ exec_add(int argc, char **argv)
 			f |= PKG_ADD_NOSCRIPT;
 			break;
 		case 'A':
-			f |= PKG_FLAG_AUTOMATIC;
+			f |= PKG_ADD_AUTOMATIC;
 			break;
 		case 'f':
 			f |= PKG_FLAG_FORCE;
@@ -112,6 +112,12 @@ exec_add(int argc, char **argv)
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
 
 	failedpkgs = sbuf_new_auto();
 	pkg_manifest_keys_new(&keys);
@@ -157,7 +163,7 @@ exec_add(int argc, char **argv)
 
 	}
 	pkg_manifest_keys_free(keys);
-
+	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 	
 	if(failedpkgcount > 0) {
