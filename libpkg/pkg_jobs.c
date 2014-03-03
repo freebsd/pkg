@@ -1441,6 +1441,23 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 #undef PKG_JOBS_FETCH_CALCULATE
 #undef PKG_JOBS_DO_FETCH
 
+#define PKG_JOBS_CHECK_CONFLICTS_LIST(list) do {						\
+	DL_FOREACH((list), ps) {											\
+		p = ps->pkg[0];													\
+		const char *pkgrepopath;										\
+		pkg_get(p, PKG_REPOPATH, &pkgrepopath);							\
+		snprintf(path, sizeof(path), "%s/%s", cachedir,					\
+				pkgrepopath);											\
+		if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)					\
+			return (EPKG_FATAL);										\
+		if ((res = pkg_conflicts_append_pkg(pkg, j)) != EPKG_OK) {		\
+			ret = res;													\
+			if (ret == EPKG_FATAL)										\
+				break;													\
+		}																\
+	}																	\
+} while(0)
+
 static int
 pkg_jobs_check_conflicts(struct pkg_jobs *j)
 {
@@ -1458,22 +1475,8 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	pkg_emit_integritycheck_begin();
 
 	pkg_manifest_keys_new(&keys);
-	DL_FOREACH(j->jobs_add, ps) {
-		p = ps->pkg[0];
-		const char *pkgrepopath;
-
-		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
-		snprintf(path, sizeof(path), "%s/%s", cachedir,
-				pkgrepopath);
-		if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
-			return (EPKG_FATAL);
-
-		if ((res = pkg_conflicts_append_pkg(pkg, j)) != EPKG_OK) {
-			ret = res;
-			if (ret == EPKG_FATAL)
-				break;
-		}
-	}
+	PKG_JOBS_CHECK_CONFLICTS_LIST(j->jobs_add);
+	PKG_JOBS_CHECK_CONFLICTS_LIST(j->jobs_upgrade);
 	pkg_manifest_keys_free(keys);
 
 	pkg_free(pkg);
