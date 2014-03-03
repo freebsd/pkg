@@ -1455,10 +1455,12 @@ struct pkg_event {
 			struct pkg *pkg;
 		} e_deinstall_finished;
 		struct {
-			struct pkg *pkg;
+			struct pkg *new;
+			struct pkg *old;
 		} e_upgrade_begin;
 		struct {
-			struct pkg *pkg;
+			struct pkg *new;
+			struct pkg *old;
 		} e_upgrade_finished;
 		struct {
 			struct pkg *pkg;

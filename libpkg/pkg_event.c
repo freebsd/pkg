@@ -187,23 +187,23 @@ pipeevent(struct pkg_event *ev)
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_BEGIN\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
-		    "\"pkgversion\": \"%V\" ,"
+		    "\"pkgversion\": \"%v\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
-		    ev->e_upgrade_begin.pkg,
-		    ev->e_upgrade_begin.pkg,
-		    ev->e_upgrade_begin.pkg);
+		    ev->e_upgrade_begin.old,
+		    ev->e_upgrade_begin.old,
+		    ev->e_upgrade_begin.new);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
-		    "\"pkgversion\": \"%V\" ,"
+		    "\"pkgversion\": \"%v\" ,"
 		    "\"pkgnewversion\": \"%v\""
 		    "}}",
-		    ev->e_upgrade_begin.pkg,
-		    ev->e_upgrade_begin.pkg,
-		    ev->e_upgrade_begin.pkg);
+		    ev->e_upgrade_begin.old,
+		    ev->e_upgrade_begin.old,
+		    ev->e_upgrade_begin.new);
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg_sbuf_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
@@ -524,25 +524,27 @@ pkg_emit_deinstall_finished(struct pkg *p)
 }
 
 void
-pkg_emit_upgrade_begin(struct pkg *p)
+pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old)
 {
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_UPGRADE_BEGIN;
-	ev.e_upgrade_begin.pkg = p;
+	ev.e_upgrade_begin.new = new;
+	ev.e_upgrade_begin.old = old;
 
 	pkg_emit_event(&ev);
 }
 
 void
-pkg_emit_upgrade_finished(struct pkg *p)
+pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old)
 {
 	struct pkg_event ev;
 	bool syslog_enabled = false;
-	char *name, *version, *newversion;
+	char *name, *oldversion, *version;
 
 	ev.type = PKG_EVENT_UPGRADE_FINISHED;
-	ev.e_upgrade_finished.pkg = p;
+	ev.e_upgrade_finished.new = new;
+	ev.e_upgrade_finished.old = old;
 
 	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
 	if (syslog_enabled) {
@@ -553,14 +555,14 @@ pkg_emit_upgrade_finished(struct pkg *p)
 		};
 		pkg_change_t action;
 
-		pkg_get(p, PKG_NAME, &name, PKG_OLD_VERSION, &version,
-		    PKG_VERSION, &newversion);
-		action = pkg_version_change(p);
+		pkg_get(new, PKG_NAME, &name, PKG_VERSION, &version);
+		pkg_get(old, PKG_VERSION, &oldversion);
+		action = pkg_version_change_between(new, old);
 		syslog(LOG_NOTICE, "%s %s: %s %s %s ",
 		    name, actions[action],
-		    version != NULL ? version : newversion,
-		    version != NULL ? "->" : "",
-		    version != NULL ? newversion : "");
+		    oldversion != NULL ? oldversion : version,
+		    oldversion != NULL ? "->" : "",
+		    oldversion != NULL ? version : "");
 	}
 
 	pkg_emit_event(&ev);

@@ -1125,7 +1125,7 @@ pkg_jobs_handle_install(struct pkg *new, struct pkg *old, struct pkg_jobs *j, bo
 
 	if (oldversion != NULL) {
 		pkg_set(newpkg, PKG_OLD_VERSION, oldversion);
-		pkg_emit_upgrade_begin(old);
+		pkg_emit_upgrade_begin(new, old);
 	} else {
 		pkg_emit_install_begin(newpkg);
 	}
@@ -1138,6 +1138,12 @@ pkg_jobs_handle_install(struct pkg *new, struct pkg *old, struct pkg_jobs *j, bo
 	if (automatic)
 		flags |= PKG_ADD_AUTOMATIC;
 
+	if (old != NULL) {
+		if ((retcode = pkg_delete(old, j->db, PKG_DELETE_UPGRADE)) != EPKG_OK) {
+			pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+			goto cleanup;
+		}
+	}
 	if ((retcode = pkg_add(j->db, path, flags, keys)) != EPKG_OK) {
 		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
 		goto cleanup;
@@ -1148,7 +1154,7 @@ pkg_jobs_handle_install(struct pkg *new, struct pkg *old, struct pkg_jobs *j, bo
 	}
 
 	if (oldversion != NULL)
-		pkg_emit_upgrade_finished(newpkg);
+		pkg_emit_upgrade_finished(new, old);
 	else
 		pkg_emit_install_finished(newpkg);
 

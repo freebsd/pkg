@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -69,9 +70,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if ((ret = pkgdb_load_mtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
-	if (flags & PKG_DELETE_UPGRADE)
-		pkg_emit_upgrade_begin(pkg);
-	else
+	if (flags & PKG_DELETE_UPGRADE == 0)
 		pkg_emit_deinstall_begin(pkg);
 
 	/* If the package is locked */

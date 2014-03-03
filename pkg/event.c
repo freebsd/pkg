@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -61,7 +62,7 @@ print_status_begin(struct sbuf *msg)
 int
 event_callback(void *data, struct pkg_event *ev)
 {
-	struct pkg *pkg = NULL;
+	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
 	int *debug = data;
 	const char *filename;
 	struct pkg_event_conflict *cur_conflict;
@@ -206,7 +207,8 @@ event_callback(void *data, struct pkg_event *ev)
 		else {
 			struct sbuf	*msg;
 
-			pkg = ev->e_upgrade_begin.pkg;
+			pkg_new = ev->e_upgrade_begin.new;
+			pkg_old = ev->e_upgrade_begin.old;
 			nbdone++;
 
 			msg = sbuf_new_auto();
@@ -217,20 +219,20 @@ event_callback(void *data, struct pkg_event *ev)
 
 			print_status_begin(msg);
 
-			switch (pkg_version_change(pkg)) {
+			switch (pkg_version_change_between(pkg_new, pkg_old)) {
 			case PKG_DOWNGRADE:
 				pkg_sbuf_printf(msg,
-				    "Downgrading %n from %V to %v...",
-				    pkg, pkg, pkg);
+				    "Downgrading %n from %v to %v...",
+				    pkg_new, pkg_new, pkg_old);
 				break;
 			case PKG_REINSTALL:
 				pkg_sbuf_printf(msg, "Reinstalling %n-%V...",
-				    pkg, pkg);
+				    pkg_old, pkg_old);
 				break;
 			case PKG_UPGRADE:
 				pkg_sbuf_printf(msg,
 				    "Upgrading %n from %V to %v...",
-						pkg, pkg, pkg);
+						pkg_old, pkg_old, pkg_new);
 				break;
 			}
 			print_status_end(msg);
@@ -240,13 +242,12 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		printf(" done\n");
-		if (pkg_has_message(ev->e_upgrade_finished.pkg)) {
+		pkg_new = ev->e_upgrade_begin.new;
+		if (pkg_has_message(pkg_new)) {
 			if (messages == NULL)
 				messages = sbuf_new_auto();
 			pkg_sbuf_printf(messages, "Message for %n-%v:\n %M\n",
-			    ev->e_install_finished.pkg,
-			    ev->e_install_finished.pkg,
-			    ev->e_upgrade_finished.pkg);
+				pkg_new, pkg_new, pkg_new);
 		}
 		break;
 	case PKG_EVENT_LOCKED:

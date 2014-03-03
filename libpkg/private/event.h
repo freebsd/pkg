@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -37,8 +38,8 @@ void pkg_emit_install_begin(struct pkg *p);
 void pkg_emit_install_finished(struct pkg *p);
 void pkg_emit_deinstall_begin(struct pkg *p);
 void pkg_emit_deinstall_finished(struct pkg *p);
-void pkg_emit_upgrade_begin(struct pkg *p);
-void pkg_emit_upgrade_finished(struct pkg *p);
+void pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old);
+void pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old);
 void pkg_emit_missing_dep(struct pkg *p, struct pkg_dep *d);
 void pkg_emit_locked(struct pkg *p);
 void pkg_emit_required(struct pkg *p, int force);
