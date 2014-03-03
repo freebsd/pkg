@@ -186,9 +186,33 @@ MAKE_JOBS_ITER_FUNC(upgrade)
 #undef MAKE_JOBS_ITER_FUNC
 
 static void
-pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg, bool add, int priority)
+pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg,
+		bool add, int priority)
 {
-	struct pkg_job_request *req;
+	struct pkg_job_request *req, *test, **head;
+	bool replace = false;
+
+	if (add)
+		head = &j->request_add;
+	else
+		head = &j->request_delete;
+
+	HASH_FIND(hh, *head, origin, strlen(origin), test);
+
+	if (test != NULL) {
+		if (test->priority < priority)
+			replace = true;
+
+		pkg_debug(1, "the request already has package with origin %s, we want "
+				"to %s it by priority (%s) vs (%s)", origin,
+				replace ? "replace" : "keep",
+				test->priority, priority);
+		if (replace) {
+			test->pkg = pkg;
+			test->priority = priority;
+		}
+		return;
+	}
 
 	req = calloc(1, sizeof (struct pkg_job_request));
 	if (req == NULL) {
@@ -198,10 +222,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg, bool a
 	req->pkg = pkg;
 	req->priority = priority;
 
-	if (add)
-		HASH_ADD_KEYPTR(hh, j->request_add, origin, strlen(origin), req);
-	else
-		HASH_ADD_KEYPTR(hh, j->request_delete, origin, strlen(origin), req);
+	HASH_ADD_KEYPTR(hh, *head, origin, strlen(origin), req);
 }
 
 /**

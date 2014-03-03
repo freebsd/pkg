@@ -51,13 +51,13 @@ exec_upgrade(int argc, char **argv)
 	int retcode;
 	int updcode;
 	int ch;
-	bool yes;
+	bool yes, yes_arg;
 	bool dry_run = false;
 	bool auto_update;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
-	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes_arg);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
 
@@ -149,34 +149,38 @@ exec_upgrade(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
-		if (!quiet)
-			printf("Nothing to do\n");
-		retcode = EXIT_SUCCESS;
-		goto cleanup;
+	while ((nbactions = pkg_jobs_count(jobs)) > 0) {
+		/* print a summary before applying the jobs */
+		yes = yes_arg;
+		if (!quiet || dry_run) {
+			print_jobs_summary(jobs,
+				"Upgrades have been requested for the following %d "
+				"packages (%d packages in the universe):\n\n", nbactions, pkg_jobs_total(jobs));
+
+			if (!yes && !dry_run)
+				yes = query_yesno("\nProceed with upgrading "
+						"packages [y/N]: ");
+			if (dry_run)
+				yes = false;
+		}
+
+		if (yes) {
+			retcode = pkg_jobs_apply(jobs);
+			if (retcode == EPKG_CONFLICT) {
+				continue;
+			}
+			else if (retcode != EPKG_OK)
+				goto cleanup;
+		}
+
+		if (messages != NULL) {
+			sbuf_finish(messages);
+			printf("%s", sbuf_data(messages));
+		}
+		break;
 	}
 
-	if (!quiet || dry_run) {
-		print_jobs_summary(jobs,
-		    "Upgrades have been requested for the following %d "
-		    "packages (%d packages in the universe):\n\n", nbactions, pkg_jobs_total(jobs));
-
-		if (!yes && !dry_run)
-			yes = query_yesno("\nProceed with upgrading "
-			          "packages [y/N]: ");
-		if (dry_run)
-			yes = false;
-	}
-
-	if (yes && pkg_jobs_apply(jobs) != EPKG_OK)
-		goto cleanup;
-
-	if (messages != NULL) {
-		sbuf_finish(messages);
-		printf("%s", sbuf_data(messages));
-	}
-
-	retcode = EXIT_SUCCESS;
+	retcode = EX_OK;
 
 cleanup:
 	pkg_jobs_free(jobs);
