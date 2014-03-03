@@ -4165,7 +4165,7 @@ static int
 pkgdb_write_lock_pid(struct pkgdb *db)
 {
 	const char lock_pid_sql[] = ""
-			"INSERT INTO pkg_lock_pid VALUES (?1);";
+			"INSERT OR REPLACE INTO pkg_lock_pid VALUES (?1);";
 	sqlite3_stmt	*stmt = NULL;
 	int ret;
 
