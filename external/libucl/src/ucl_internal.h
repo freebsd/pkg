@@ -25,7 +25,9 @@
 #define UCL_INTERNAL_H_
 
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/mman.h>
+#endif
 #include <sys/stat.h>
 #include <sys/param.h>
 
@@ -159,6 +161,8 @@ size_t ucl_unescape_json_string (char *str, size_t len);
  */
 bool ucl_include_handler (const unsigned char *data, size_t len, void* ud);
 
+bool ucl_try_include_handler (const unsigned char *data, size_t len, void* ud);
+
 /**
  * Handle includes macro
  * @param data include data
@@ -173,9 +177,6 @@ size_t ucl_strlcpy (char *dst, const char *src, size_t siz);
 size_t ucl_strlcpy_unsafe (char *dst, const char *src, size_t siz);
 size_t ucl_strlcpy_tolower (char *dst, const char *src, size_t siz);
 
-
-void ucl_elt_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs,
-		bool start_tabs, bool compact);
 
 #ifdef __GNUC__
 static inline void
@@ -283,5 +284,11 @@ ucl_hash_insert_object (ucl_hash_t *hashlin, ucl_object_t *obj)
 	return hashlin;
 }
 
+/**
+ * Emit a single object to string
+ * @param obj
+ * @return
+ */
+unsigned char * ucl_object_emit_single_json (ucl_object_t *obj);
 
 #endif /* UCL_INTERNAL_H_ */
