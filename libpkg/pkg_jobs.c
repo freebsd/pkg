@@ -543,6 +543,8 @@ new_pkg_version(struct pkg_jobs *j)
 		goto end;
 	}
 
+	pkg_jobs_add_universe(j, p, INT_MAX, true);
+
 	/* Use maximum priority for pkg */
 	if (find_remote_pkg(j, origin, MATCH_EXACT, false, INT_MAX) == EPKG_OK) {
 		ret = true;
@@ -597,8 +599,10 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, i
 			pkg_get(p, PKG_VERSION, &buf2);
 			p->direct = root;
 			/* We have a more recent package */
-			if (pkg_version_cmp(buf1, buf2) >= 0)
+			if (pkg_version_cmp(buf1, buf2) >= 0) {
+				pkg_jobs_add_universe(j, p, priority, true);
 				continue;
+			}
 		}
 
 		if (j->type != PKG_JOBS_FETCH) {
