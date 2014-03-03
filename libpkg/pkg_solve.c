@@ -191,15 +191,25 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 	struct pkg_solve_item *it;
 
 	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
-		LL_FOREACH(var->rules, rul) {
-			it = rul->rule;
-			if (it->nitems == 1 && it->nresolved == 0) {
-				it->var->to_install = (!it->inverse);
-				it->var->resolved = true;
-				pkg_debug(2, "requested %s-%s(%d) to %s",
-						it->var->origin, it->var->digest,
-						it->var->priority, it->var->to_install ? "install" : "delete");
-				pkg_solve_update_var_resolved(it->var);
+		if (var->nrules == 0) {
+			/* This variable is independent and should not change its state */
+			var->to_install = (var->pkg->type == PKG_INSTALLED);
+			var->resolved = true;
+			pkg_debug(2, "leave %s-%s(%d) to %s",
+					var->origin, var->digest,
+					var->priority, var->to_install ? "install" : "delete");
+		}
+		else {
+			LL_FOREACH(var->rules, rul) {
+				it = rul->rule;
+				if (it->nitems == 1 && it->nresolved == 0) {
+					it->var->to_install = (!it->inverse);
+					it->var->resolved = true;
+					pkg_debug(2, "requested %s-%s(%d) to %s",
+							it->var->origin, it->var->digest,
+							it->var->priority, it->var->to_install ? "install" : "delete");
+					pkg_solve_update_var_resolved(it->var);
+				}
 			}
 		}
 	}
