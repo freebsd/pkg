@@ -4165,7 +4165,7 @@ static int
 pkgdb_write_lock_pid(struct pkgdb *db)
 {
 	const char lock_pid_sql[] = ""
-			"INSERT OR REPLACE INTO pkg_lock_pid VALUES (?1);";
+			"INSERT INTO pkg_lock_pid VALUES (?1);";
 	sqlite3_stmt	*stmt = NULL;
 	int ret;
 
@@ -4264,7 +4264,8 @@ pkgdb_reset_lock(struct pkgdb *db)
 
 static int
 pkgdb_try_lock(struct pkgdb *db, const char *lock_sql,
-		double delay, unsigned int retries, pkgdb_lock_t type)
+		double delay, unsigned int retries, pkgdb_lock_t type,
+		bool upgrade)
 {
 	unsigned int tries = 0;
 	struct timespec ts;
@@ -4300,8 +4301,12 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql,
 				break;
 			}
 		}
-		else {
+		else if (!upgrade) {
 			ret = pkgdb_write_lock_pid(db);
+			break;
+		}
+		else {
+			ret = EPKG_OK;
 			break;
 		}
 		tries ++;
@@ -4364,7 +4369,7 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type,
 		break;
 	}
 
-	ret = pkgdb_try_lock(db, lock_sql, delay, retries, type);
+	ret = pkgdb_try_lock(db, lock_sql, delay, retries, type, false);
 
 	return (ret);
 }
@@ -4382,7 +4387,7 @@ pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_typ
 	if (old_type == PKGDB_LOCK_ADVISORY && new_type == PKGDB_LOCK_EXCLUSIVE) {
 		pkg_debug(1, "want to upgrade advisory to exclusive lock");
 		ret = pkgdb_try_lock(db, advisory_exclusive_lock_sql, delay, retries,
-				new_type);
+				new_type, true);
 	}
 
 	return (ret);
