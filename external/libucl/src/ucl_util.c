@@ -35,6 +35,75 @@
 #include <openssl/evp.h>
 #endif
 
+#ifdef _WIN32
+#include <windows.h>
+
+#define PROT_READ       1
+#define PROT_WRITE      2
+#define PROT_READWRITE  3
+#define MAP_SHARED      1
+#define MAP_PRIVATE     2
+#define MAP_FAILED      ((void *) -1)
+
+static void *mmap(char *addr, size_t length, int prot, int access, int fd, off_t offset)
+{
+	void *map = NULL;
+	HANDLE handle = INVALID_HANDLE_VALUE;
+
+	switch (prot) {
+	default:
+	case PROT_READ:
+		{
+			handle = CreateFileMapping((HANDLE) _get_osfhandle(fd), 0, PAGE_READONLY, 0, length, 0);
+			if (!handle) break;
+			map = (void *) MapViewOfFile(handle, FILE_MAP_READ, 0, 0, length);
+			CloseHandle(handle);
+			break;
+		}
+	case PROT_WRITE:
+		{
+			handle = CreateFileMapping((HANDLE) _get_osfhandle(fd), 0, PAGE_READWRITE, 0, length, 0);
+			if (!handle) break;
+			map = (void *) MapViewOfFile(handle, FILE_MAP_WRITE, 0, 0, length);
+			CloseHandle(handle);
+			break;
+		}
+	case PROT_READWRITE:
+		{
+			handle = CreateFileMapping((HANDLE) _get_osfhandle(fd), 0, PAGE_READWRITE, 0, length, 0);
+			if (!handle) break;
+			map = (void *) MapViewOfFile(handle, FILE_MAP_ALL_ACCESS, 0, 0, length);
+			CloseHandle(handle);
+			break;
+		}
+	}
+	if (map == (void *) NULL) {
+		return (void *) MAP_FAILED;
+	}
+	return (void *) ((char *) map + offset);
+}
+
+static int munmap(void *map,size_t length)
+{
+	if (!UnmapViewOfFile(map)) {
+		return(-1);
+	}
+	return(0);
+}
+
+static char* realpath(const char *path, char *resolved_path) {
+    char *p;
+    char tmp[MAX_PATH + 1];
+    strncpy(tmp, path, sizeof(tmp)-1);
+    p = tmp;
+    while(*p) {
+        if (*p == '/') *p = '\\';
+        p++;
+    }
+    return _fullpath(resolved_path, tmp, MAX_PATH);
+}
+#endif
+
 /**
  * @file rcl_util.c
  * Utilities for rcl parsing
@@ -78,7 +147,7 @@ ucl_object_free_internal (ucl_object_t *obj, bool allow_rec)
 }
 
 void
-ucl_obj_free (ucl_object_t *obj)
+ucl_object_free (ucl_object_t *obj)
 {
 	ucl_object_free_internal (obj, true);
 }
@@ -161,7 +230,7 @@ ucl_unescape_json_string (char *str, size_t len)
 				}
 				break;
 			default:
-				*t++ = '?';
+				*t++ = *h;
 				break;
 			}
 			h ++;
@@ -177,7 +246,7 @@ ucl_unescape_json_string (char *str, size_t len)
 	return (t - str);
 }
 
-char *
+UCL_EXTERN char *
 ucl_copy_key_trash (ucl_object_t *obj)
 {
 	if (obj->trash_stack[UCL_TRASH_KEY] == NULL && obj->key != NULL) {
@@ -193,10 +262,9 @@ ucl_copy_key_trash (ucl_object_t *obj)
 	return obj->trash_stack[UCL_TRASH_KEY];
 }
 
-char *
+UCL_EXTERN char *
 ucl_copy_value_trash (ucl_object_t *obj)
 {
-	UT_string *emitted;
 	if (obj->trash_stack[UCL_TRASH_VALUE] == NULL) {
 		if (obj->type == UCL_STRING) {
 			/* Special case for strings */
@@ -209,31 +277,25 @@ ucl_copy_value_trash (ucl_object_t *obj)
 		}
 		else {
 			/* Just emit value in json notation */
-			utstring_new (emitted);
-
-			if (emitted != NULL) {
-				ucl_elt_write_json (obj, emitted, 0, 0, true);
-				obj->trash_stack[UCL_TRASH_VALUE] = emitted->d;
-				obj->len = emitted->i;
-				free (emitted);
-			}
+			obj->trash_stack[UCL_TRASH_VALUE] = ucl_object_emit_single_json (obj);
+			obj->len = strlen (obj->trash_stack[UCL_TRASH_VALUE]);
 		}
 		obj->flags |= UCL_OBJECT_ALLOCATED_VALUE;
 	}
 	return obj->trash_stack[UCL_TRASH_VALUE];
 }
 
-ucl_object_t*
+UCL_EXTERN ucl_object_t*
 ucl_parser_get_object (struct ucl_parser *parser)
 {
-	if (parser->state != UCL_STATE_ERROR) {
+	if (parser->state != UCL_STATE_ERROR && parser->top_obj != NULL) {
 		return ucl_object_ref (parser->top_obj);
 	}
 
 	return NULL;
 }
 
-void
+UCL_EXTERN void
 ucl_parser_free (struct ucl_parser *parser)
 {
 	struct ucl_stack *stack, *stmp;
@@ -273,7 +335,7 @@ ucl_parser_free (struct ucl_parser *parser)
 	UCL_FREE (sizeof (struct ucl_parser), parser);
 }
 
-const char *
+UCL_EXTERN const char *
 ucl_parser_get_error(struct ucl_parser *parser)
 {
 	if (parser->err == NULL)
@@ -282,7 +344,7 @@ ucl_parser_get_error(struct ucl_parser *parser)
 	return utstring_body(parser->err);
 }
 
-bool
+UCL_EXTERN bool
 ucl_pubkey_add (struct ucl_parser *parser, const unsigned char *key, size_t len)
 {
 #ifndef HAVE_OPENSSL
@@ -346,7 +408,8 @@ ucl_curl_write_callback (void* contents, size_t size, size_t nmemb, void* ud)
  * @return
  */
 static bool
-ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen, UT_string **err)
+ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen,
+		UT_string **err, bool must_exist)
 {
 
 #ifdef HAVE_FETCH_H
@@ -361,8 +424,10 @@ ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen, UT
 		return false;
 	}
 	if ((in = fetchXGet (fetch_url, &us, "")) == NULL) {
-		ucl_create_err (err, "cannot fetch URL %s: %s",
+		if (!must_exist) {
+			ucl_create_err (err, "cannot fetch URL %s: %s",
 				url, strerror (errno));
+		}
 		fetchFreeURL (fetch_url);
 		return false;
 	}
@@ -409,8 +474,10 @@ ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen, UT
 	curl_easy_setopt (curl, CURLOPT_WRITEDATA, &cbdata);
 
 	if ((r = curl_easy_perform (curl)) != CURLE_OK) {
-		ucl_create_err (err, "error fetching URL %s: %s",
+		if (!must_exist) {
+			ucl_create_err (err, "error fetching URL %s: %s",
 				url, curl_easy_strerror (r));
+		}
 		curl_easy_cleanup (curl);
 		if (cbdata.buf) {
 			free (cbdata.buf);
@@ -436,14 +503,17 @@ ucl_fetch_url (const unsigned char *url, unsigned char **buf, size_t *buflen, UT
  * @return
  */
 static bool
-ucl_fetch_file (const unsigned char *filename, unsigned char **buf, size_t *buflen, UT_string **err)
+ucl_fetch_file (const unsigned char *filename, unsigned char **buf, size_t *buflen,
+		UT_string **err, bool must_exist)
 {
 	int fd;
 	struct stat st;
 
 	if (stat (filename, &st) == -1 || !S_ISREG (st.st_mode)) {
-		ucl_create_err (err, "cannot stat file %s: %s",
-				filename, strerror (errno));
+		if (must_exist) {
+			ucl_create_err (err, "cannot stat file %s: %s",
+					filename, strerror (errno));
+		}
 		return false;
 	}
 	if (st.st_size == 0) {
@@ -529,7 +599,7 @@ ucl_sig_check (const unsigned char *data, size_t datalen,
  */
 static bool
 ucl_include_url (const unsigned char *data, size_t len,
-		struct ucl_parser *parser, bool check_signature)
+		struct ucl_parser *parser, bool check_signature, bool must_exist)
 {
 
 	bool res;
@@ -541,8 +611,8 @@ ucl_include_url (const unsigned char *data, size_t len,
 
 	snprintf (urlbuf, sizeof (urlbuf), "%.*s", (int)len, data);
 
-	if (!ucl_fetch_url (urlbuf, &buf, &buflen, &parser->err)) {
-		return false;
+	if (!ucl_fetch_url (urlbuf, &buf, &buflen, &parser->err, must_exist)) {
+		return (!must_exist || false);
 	}
 
 	if (check_signature) {
@@ -551,7 +621,7 @@ ucl_include_url (const unsigned char *data, size_t len,
 		size_t siglen = 0;
 		/* We need to check signature first */
 		snprintf (urlbuf, sizeof (urlbuf), "%.*s.sig", (int)len, data);
-		if (!ucl_fetch_file (urlbuf, &sigbuf, &siglen, &parser->err)) {
+		if (!ucl_fetch_url (urlbuf, &sigbuf, &siglen, &parser->err, true)) {
 			return false;
 		}
 		if (!ucl_sig_check (buf, buflen, sigbuf, siglen, parser)) {
@@ -598,7 +668,7 @@ ucl_include_url (const unsigned char *data, size_t len,
  */
 static bool
 ucl_include_file (const unsigned char *data, size_t len,
-		struct ucl_parser *parser, bool check_signature)
+		struct ucl_parser *parser, bool check_signature, bool must_exist)
 {
 	bool res;
 	struct ucl_chunk *chunk;
@@ -609,14 +679,17 @@ ucl_include_file (const unsigned char *data, size_t len,
 
 	snprintf (filebuf, sizeof (filebuf), "%.*s", (int)len, data);
 	if (realpath (filebuf, realbuf) == NULL) {
+		if (!must_exist) {
+			return true;
+		}
 		ucl_create_err (&parser->err, "cannot open file %s: %s",
 									filebuf,
 									strerror (errno));
 		return false;
 	}
 
-	if (!ucl_fetch_file (realbuf, &buf, &buflen, &parser->err)) {
-		return false;
+	if (!ucl_fetch_file (realbuf, &buf, &buflen, &parser->err, must_exist)) {
+		return (!must_exist || false);
 	}
 
 	if (check_signature) {
@@ -625,7 +698,7 @@ ucl_include_file (const unsigned char *data, size_t len,
 		size_t siglen = 0;
 		/* We need to check signature first */
 		snprintf (filebuf, sizeof (filebuf), "%s.sig", realbuf);
-		if (!ucl_fetch_file (filebuf, &sigbuf, &siglen, &parser->err)) {
+		if (!ucl_fetch_file (filebuf, &sigbuf, &siglen, &parser->err, true)) {
 			return false;
 		}
 		if (!ucl_sig_check (buf, buflen, sigbuf, siglen, parser)) {
@@ -675,17 +748,17 @@ ucl_include_file (const unsigned char *data, size_t len,
  * @param err error ptr
  * @return
  */
-bool
+UCL_EXTERN bool
 ucl_include_handler (const unsigned char *data, size_t len, void* ud)
 {
 	struct ucl_parser *parser = ud;
 
 	if (*data == '/' || *data == '.') {
 		/* Try to load a file */
-		return ucl_include_file (data, len, parser, false);
+		return ucl_include_file (data, len, parser, false, true);
 	}
 
-	return ucl_include_url (data, len, parser, false);
+	return ucl_include_url (data, len, parser, false, true);
 }
 
 /**
@@ -696,20 +769,34 @@ ucl_include_handler (const unsigned char *data, size_t len, void* ud)
  * @param err error ptr
  * @return
  */
-bool
+UCL_EXTERN bool
 ucl_includes_handler (const unsigned char *data, size_t len, void* ud)
 {
 	struct ucl_parser *parser = ud;
 
 	if (*data == '/' || *data == '.') {
 		/* Try to load a file */
-		return ucl_include_file (data, len, parser, true);
+		return ucl_include_file (data, len, parser, true, true);
 	}
 
-	return ucl_include_url (data, len, parser, true);
+	return ucl_include_url (data, len, parser, true, true);
 }
 
-bool
+
+UCL_EXTERN bool
+ucl_try_include_handler (const unsigned char *data, size_t len, void* ud)
+{
+	struct ucl_parser *parser = ud;
+
+	if (*data == '/' || *data == '.') {
+		/* Try to load a file */
+		return ucl_include_file (data, len, parser, false, false);
+	}
+
+	return ucl_include_url (data, len, parser, false, false);
+}
+
+UCL_EXTERN bool
 ucl_parser_set_filevars (struct ucl_parser *parser, const char *filename, bool need_expand)
 {
 	char realbuf[PATH_MAX], *curdir;
@@ -739,7 +826,7 @@ ucl_parser_set_filevars (struct ucl_parser *parser, const char *filename, bool n
 	return true;
 }
 
-bool
+UCL_EXTERN bool
 ucl_parser_add_file (struct ucl_parser *parser, const char *filename)
 {
 	unsigned char *buf;
@@ -754,7 +841,7 @@ ucl_parser_add_file (struct ucl_parser *parser, const char *filename)
 		return false;
 	}
 
-	if (!ucl_fetch_file (realbuf, &buf, &len, &parser->err)) {
+	if (!ucl_fetch_file (realbuf, &buf, &len, &parser->err, true)) {
 		return false;
 	}
 
@@ -943,7 +1030,7 @@ ucl_object_fromstring_common (const char *str, size_t len, enum ucl_string_flags
 
 static ucl_object_t *
 ucl_object_insert_key_common (ucl_object_t *top, ucl_object_t *elt,
-		const char *key, size_t keylen, bool copy_key, bool merge)
+		const char *key, size_t keylen, bool copy_key, bool merge, bool replace)
 {
 	ucl_object_t *found, *cur;
 	ucl_object_iter_t it = NULL;
@@ -997,30 +1084,39 @@ ucl_object_insert_key_common (ucl_object_t *top, ucl_object_t *elt,
 		top->value.ov = ucl_hash_insert_object (top->value.ov, elt);
 		DL_APPEND (found, elt);
 	}
-	else if (!merge) {
-		DL_APPEND (found, elt);
-	}
 	else {
-		if (found->type != UCL_OBJECT && elt->type == UCL_OBJECT) {
-			/* Insert old elt to new one */
-			elt = ucl_object_insert_key_common (elt, found, found->key, found->keylen, copy_key, false);
+		if (replace) {
 			ucl_hash_delete (top->value.ov, found);
+			ucl_object_unref (found);
 			top->value.ov = ucl_hash_insert_object (top->value.ov, elt);
+			found = NULL;
+			DL_APPEND (found, elt);
 		}
-		else if (found->type == UCL_OBJECT && elt->type != UCL_OBJECT) {
-			/* Insert new to old */
-			found = ucl_object_insert_key_common (found, elt, elt->key, elt->keylen, copy_key, false);
-		}
-		else if (found->type == UCL_OBJECT && elt->type == UCL_OBJECT) {
-			/* Mix two hashes */
-			while ((cur = ucl_iterate_object (elt, &it, true)) != NULL) {
-				ucl_object_ref (cur);
-				found = ucl_object_insert_key_common (found, cur, cur->key, cur->keylen, copy_key, false);
+		else if (merge) {
+			if (found->type != UCL_OBJECT && elt->type == UCL_OBJECT) {
+				/* Insert old elt to new one */
+				elt = ucl_object_insert_key_common (elt, found, found->key, found->keylen, copy_key, false, false);
+				ucl_hash_delete (top->value.ov, found);
+				top->value.ov = ucl_hash_insert_object (top->value.ov, elt);
 			}
-			ucl_object_unref (elt);
+			else if (found->type == UCL_OBJECT && elt->type != UCL_OBJECT) {
+				/* Insert new to old */
+				found = ucl_object_insert_key_common (found, elt, elt->key, elt->keylen, copy_key, false, false);
+			}
+			else if (found->type == UCL_OBJECT && elt->type == UCL_OBJECT) {
+				/* Mix two hashes */
+				while ((cur = ucl_iterate_object (elt, &it, true)) != NULL) {
+					ucl_object_ref (cur);
+					found = ucl_object_insert_key_common (found, cur, cur->key, cur->keylen, copy_key, false, false);
+				}
+				ucl_object_unref (elt);
+			}
+			else {
+				/* Just make a list of scalars */
+				DL_APPEND (found, elt);
+			}
 		}
 		else {
-			/* Just make a list of scalars */
 			DL_APPEND (found, elt);
 		}
 	}
@@ -1028,22 +1124,52 @@ ucl_object_insert_key_common (ucl_object_t *top, ucl_object_t *elt,
 	return top;
 }
 
+bool
+ucl_object_delete_keyl(ucl_object_t *top, const char *key, size_t keylen)
+{
+	ucl_object_t *found;
+
+	found = ucl_object_find_keyl(top, key, keylen);
+
+	if (found == NULL)
+		return false;
+
+	ucl_hash_delete(top->value.ov, found);
+	ucl_object_unref (found);
+	top->len --;
+
+	return true;
+}
+
+bool
+ucl_object_delete_key(ucl_object_t *top, const char *key)
+{
+	return ucl_object_delete_keyl(top, key, 0);
+}
+
 ucl_object_t *
 ucl_object_insert_key (ucl_object_t *top, ucl_object_t *elt,
 		const char *key, size_t keylen, bool copy_key)
 {
-	return ucl_object_insert_key_common (top, elt, key, keylen, copy_key, false);
+	return ucl_object_insert_key_common (top, elt, key, keylen, copy_key, false, false);
 }
 
 ucl_object_t *
 ucl_object_insert_key_merged (ucl_object_t *top, ucl_object_t *elt,
 		const char *key, size_t keylen, bool copy_key)
 {
-	return ucl_object_insert_key_common (top, elt, key, keylen, copy_key, true);
+	return ucl_object_insert_key_common (top, elt, key, keylen, copy_key, true, false);
 }
 
 ucl_object_t *
-ucl_obj_get_keyl (ucl_object_t *obj, const char *key, size_t klen)
+ucl_object_replace_key (ucl_object_t *top, ucl_object_t *elt,
+		const char *key, size_t keylen, bool copy_key)
+{
+	return ucl_object_insert_key_common (top, elt, key, keylen, copy_key, false, true);
+}
+
+ucl_object_t *
+ucl_object_find_keyl (ucl_object_t *obj, const char *key, size_t klen)
 {
 	ucl_object_t *ret, srch;
 
@@ -1059,7 +1185,7 @@ ucl_obj_get_keyl (ucl_object_t *obj, const char *key, size_t klen)
 }
 
 ucl_object_t *
-ucl_obj_get_key (ucl_object_t *obj, const char *key)
+ucl_object_find_key (ucl_object_t *obj, const char *key)
 {
 	size_t klen;
 	ucl_object_t *ret, srch;
