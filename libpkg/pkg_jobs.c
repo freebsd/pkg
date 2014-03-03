@@ -533,7 +533,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 
 order:
 
-	j->solved = true;
+	j->solved ++;
 
 	return (EPKG_OK);
 }
