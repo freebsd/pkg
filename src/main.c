@@ -496,11 +496,7 @@ show_version_info(int version)
 	if (version > 1)
 		printf("%-24s: ", "Version");
 
-#ifndef GITHASH
-	printf(PKG_PORTVERSION"\n");
-#else
-	printf(PKG_PORTVERSION"-"GITHASH"\n");
-#endif
+	printf(PKG_PORTVERSION""GITHASH"\n");
 
 	if (version == 1)
 		exit(EX_OK);

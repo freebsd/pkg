@@ -46,15 +46,15 @@
 ######################################################################
 
 _pkg_installed () {
-    __PREFIX__/sbin/pkg query "%n-%v"
+    @prefix@/sbin/pkg query "%n-%v"
 }
 
 _pkg_available_name () {
-    __PREFIX__/sbin/pkg rquery "%n"
+    @prefix@/sbin/pkg rquery "%n"
 }
 
 _pkg_available () {
-    __PREFIX__/sbin/pkg rquery "%n-%v"
+    @prefix@/sbin/pkg rquery "%n-%v"
 }
 
 ######################################################################

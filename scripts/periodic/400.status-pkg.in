@@ -7,7 +7,7 @@ if [ -r /etc/defaults/periodic.conf ]; then
     . /etc/defaults/periodic.conf
     source_periodic_confs
 fi
-pkgcmd=__PREFIX__/sbin/pkg
+pkgcmd=@prefix@/sbin/pkg
 
 # On 9.x or lower, 400.status-pkg exists in the base system, but using
 # the old pkg_tools commands.  Unfortunately it uses the same

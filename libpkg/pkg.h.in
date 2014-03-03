@@ -49,12 +49,12 @@
 #define PKG_STATIC_NAME	"pkg-static"
 #endif
 
-#define PKGVERSION "%%PKGVERSION%%"
+#define PKGVERSION "@VERSION@"
 
 /* PORTVERSION equivalent for proper pkg-static->ports-mgmt/pkg
  * version comparison in pkgdb_query_newpkgversion() */
 
-#define PKG_PORTVERSION "%%PORTVERSION%%"
+#define PKG_PORTVERSION "@VERSION@"
 
 struct pkg;
 struct pkg_dep;

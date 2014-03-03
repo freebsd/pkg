@@ -25,9 +25,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/endian.h>
 #include <sys/types.h>
-#ifndef BUNDLED_LIBELF
+#ifdef HAVE_LIBELF
 #include <sys/elf_common.h>
 #endif
 #include <sys/stat.h>
@@ -40,7 +44,7 @@
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
-#ifndef BUNDLED_LIBELF
+#ifdef HAVE_LIBELF
 #include <link.h>
 #endif
 #include <paths.h>
