@@ -80,10 +80,12 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	}
 
 	/* If there are dependencies */
-	if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
-		pkg_emit_required(pkg, flags & PKG_DELETE_FORCE);
-		if ((flags & PKG_DELETE_FORCE) == 0)
-			return (EPKG_REQUIRED);
+	if (flags & PKG_DELETE_UPGRADE == 0) {
+		if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
+			pkg_emit_required(pkg, flags & PKG_DELETE_FORCE);
+			if ((flags & PKG_DELETE_FORCE) == 0)
+				return (EPKG_REQUIRED);
+		}
 	}
 
 	/*
