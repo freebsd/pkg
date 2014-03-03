@@ -554,7 +554,7 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 			/* If it's a new install, then it
 			 * cannot have been locked yet. */
 			if (oldversion != NULL) {
-				switch(pkg_version_change(new_pkg)) {
+				switch(pkg_version_change_between(new_pkg, old_pkg)) {
 				case PKG_UPGRADE:
 					pkg_printf("and may not be upgraded to version %v\n", new_pkg);
 					break;
@@ -594,7 +594,7 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 			*dlsize += pkgsize;
 
 		if (old_pkg != NULL) {
-			switch (pkg_version_change(new_pkg)) {
+			switch (pkg_version_change_between(new_pkg, old_pkg)) {
 			case PKG_DOWNGRADE:
 				pkg_printf("\tDowngrading %n: %v -> %v", new_pkg, old_pkg, new_pkg);
 				if (pkg_repos_total_count() > 1)
