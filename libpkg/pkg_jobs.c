@@ -605,7 +605,7 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, i
 			if (!newer_than_local_pkg(j, p, force)) {
 				if (root)
 					pkg_emit_already_installed(p);
-				rc = EPKG_OK;
+				rc = EPKG_FATAL;
 				p = NULL;
 				continue;
 			}
