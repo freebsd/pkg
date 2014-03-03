@@ -1269,15 +1269,28 @@ int
 pkg_jobs_apply(struct pkg_jobs *j)
 {
 	int rc;
+	pkg_plugin_hook_t pre, post;
 
 	if (!j->solved) {
 		pkg_emit_error("The jobs hasn't been solved");
 		return (EPKG_FATAL);
 	}
 
+	if (j->type == PKG_JOBS_INSTALL) {
+		pre = PKG_PLUGIN_HOOK_PRE_INSTALL;
+		post = PKG_PLUGIN_HOOK_POST_INSTALL;
+	}
+	else {
+		pre = PKG_PLUGIN_HOOK_PRE_UPGRADE;
+		post = PKG_PLUGIN_HOOK_POST_UPGRADE;
+	}
+
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
+	case PKG_JOBS_UPGRADE:
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_FETCH, j, j->db);
 		rc = pkg_jobs_fetch(j);
+		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
 		if (rc == EPKG_OK) {
 			/* Check local conflicts in the first run */
 			if (j->solved > 1) {
@@ -1287,7 +1300,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				rc = pkg_jobs_check_conflicts(j);
 			}
 			if (rc == EPKG_OK) {
-				pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
+				pkg_plugins_hook_run(pre, j, j->db);
 				rc = pkg_jobs_install(j);
 			}
 			else if (rc == EPKG_CONFLICT) {
@@ -1307,7 +1320,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				}
 			}
 		}
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_INSTALL, j, j->db);
+		pkg_plugins_hook_run(post, j, j->db);
 		break;
 	case PKG_JOBS_DEINSTALL:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_DEINSTALL, j, j->db);
@@ -1319,11 +1332,6 @@ pkg_jobs_apply(struct pkg_jobs *j)
 		rc = pkg_jobs_fetch(j);
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
 		break;
-	case PKG_JOBS_UPGRADE:
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_UPGRADE, j, j->db);
-		rc = pkg_jobs_install(j);
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_UPGRADE, j, j->db);
-		break;
 	case PKG_JOBS_AUTOREMOVE:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_AUTOREMOVE, j, j->db);
 		rc = pkg_jobs_deinstall(j);
@@ -1332,10 +1340,32 @@ pkg_jobs_apply(struct pkg_jobs *j)
 	default:
 		rc = EPKG_FATAL;
 		pkg_emit_error("bad jobs argument");
+		break;
 	}
 
 	return (rc);
 }
+
+#define PKG_JOBS_FETCH_CALCULATE(list) do {										\
+	DL_FOREACH((list), ps) {														\
+		p = ps->pkg[0];																\
+		int64_t pkgsize;															\
+		pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);					\
+		snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir, repopath);		\
+		if (stat(cachedpath, &st) == -1)											\
+			dlsize += pkgsize;														\
+		else																		\
+			dlsize += pkgsize - st.st_size;											\
+	}																				\
+} while(0)
+
+#define PKG_JOBS_DO_FETCH(list) do {												\
+	DL_FOREACH((list), ps) {														\
+		p = ps->pkg[0];																\
+		if (pkg_repo_fetch(p) != EPKG_OK)											\
+			return (EPKG_FATAL);													\
+	}																				\
+} while(0)
 
 static int
 pkg_jobs_fetch(struct pkg_jobs *j)
@@ -1353,16 +1383,8 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 
 	/* check for available size to fetch */
-	DL_FOREACH(j->jobs_add, ps) {
-		p = ps->pkg[0];
-		int64_t pkgsize;
-		pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
-		snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir, repopath);
-		if (stat(cachedpath, &st) == -1)
-			dlsize += pkgsize;
-		else
-			dlsize += pkgsize - st.st_size;
-	}
+	PKG_JOBS_FETCH_CALCULATE(j->jobs_add);
+	PKG_JOBS_FETCH_CALCULATE(j->jobs_upgrade);
 
 	while (statfs(cachedir, &fs) == -1) {
 		if (errno == ENOENT) {
@@ -1389,14 +1411,14 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_OK); /* don't download anything */
 
 	/* Fetch */
-	DL_FOREACH(j->jobs_add, ps) {
-		p = ps->pkg[0];
-		if (pkg_repo_fetch(p) != EPKG_OK)
-			return (EPKG_FATAL);
-	}
+	PKG_JOBS_DO_FETCH(j->jobs_add);
+	PKG_JOBS_DO_FETCH(j->jobs_upgrade);
 
 	return (EPKG_OK);
 }
+
+#undef PKG_JOBS_FETCH_CALCULATE
+#undef PKG_JOBS_DO_FETCH
 
 static int
 pkg_jobs_check_conflicts(struct pkg_jobs *j)
