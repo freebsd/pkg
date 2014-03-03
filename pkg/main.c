@@ -35,7 +35,6 @@
 
 #include <assert.h>
 #include <err.h>
-#include <histedit.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,11 +49,15 @@
 
 #include "pkgcli.h"
 
-#ifndef GITHASH
-#define GITHASH ""
-#endif
+/* Used to define why do we show usage message to a user */
+enum pkg_usage_reason {
+	PKG_USAGE_ERROR,
+	PKG_USAGE_UNKNOWN_COMMAND,
+	PKG_USAGE_INVALID_ARGUMENTS,
+	PKG_USAGE_HELP
+};
 
-static void usage(const char *, const char *);
+static void usage(const char *, const char *, FILE *, enum pkg_usage_reason, ...);
 static void usage_help(void);
 static int exec_help(int, char **);
 bool quiet = false;
@@ -113,7 +116,8 @@ struct plugcmd {
 	STAILQ_ENTRY(plugcmd) next;
 };
 
-typedef int (register_cmd)(const char **name, const char **desc, int (**exec)(int argc, char **argv));
+typedef int (register_cmd)(int idx, const char **name, const char **desc, int (**exec)(int argc, char **argv));
+typedef int (nb_cmd)(void);
 
 static void
 show_command_names(void)
@@ -127,57 +131,79 @@ show_command_names(void)
 }
 
 static void
-usage(const char *conffile, const char *reposdir)
+usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reason reason, ...)
 {
 	struct plugcmd *c;
 	bool plugins_enabled = false;
+	unsigned int i;
+	const char *arg;
+	va_list vp;
 
-#ifndef NO_LIBJAIL
- 	fprintf(stderr, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
-#else
-	fprintf(stderr, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] <command> [<args>]\n\n");
-#endif
-	fprintf(stderr, "Global options supported:\n");
-	fprintf(stderr, "\t%-15s%s\n", "-d", "Increment debug level");
-#ifndef NO_LIBJAIL
-	fprintf(stderr, "\t%-15s%s\n", "-j", "Execute pkg(1) inside a jail(8)");
-#endif
-	fprintf(stderr, "\t%-15s%s\n", "-c", "Execute pkg(1) inside a chroot(8)");
-	fprintf(stderr, "\t%-15s%s\n", "-C", "Use the specified configuration file");
-	fprintf(stderr, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
-	fprintf(stderr, "\t%-15s%s\n", "-l", "List available commands and exit");
-	fprintf(stderr, "\t%-15s%s\n", "-v", "Display pkg(1) version");
-	fprintf(stderr, "\t%-15s%s\n\n", "-N", "Test if pkg(1) is activated and avoid auto-activation");
-	fprintf(stderr, "Commands supported:\n");
-
-	for (unsigned int i = 0; i < cmd_len; i++)
-		fprintf(stderr, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
-
-	if (!pkg_initialized() && pkg_init(conffile, reposdir) != EPKG_OK)
-		errx(EX_SOFTWARE, "Cannot parse configuration file!");
-
-	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
-
-	if (plugins_enabled) {
-		if (pkg_plugins_init() != EPKG_OK)
-			errx(EX_SOFTWARE, "Plugins cannot be loaded");
-
-		printf("\nCommands provided by plugins:\n");
-
-		STAILQ_FOREACH(c, &plugins, next)
-			fprintf(stderr, "\t%-15s%s\n", c->name, c->desc);
+	if (reason == PKG_USAGE_UNKNOWN_COMMAND) {
+		va_start(vp, reason);
+		arg = va_arg(vp, const char *);
+		va_end(vp);
+		fprintf(out, "pkg: unknown command: %s\n", arg);
+		goto out;
+	}
+	else if (reason == PKG_USAGE_INVALID_ARGUMENTS) {
+		va_start(vp, reason);
+		arg = va_arg(vp, const char *);
+		va_end(vp);
+		fprintf(out, "pkg: %s\n", arg);
 	}
 
-	fprintf(stderr, "\nFor more information on the different commands"
-			" see 'pkg help <command>'.\n");
+#ifndef NO_LIBJAIL
+ 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
+#else
+	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
+#endif
+	if (reason == PKG_USAGE_HELP) {
+		fprintf(out, "Global options supported:\n");
+		fprintf(out, "\t%-15s%s\n", "-d", "Increment debug level");
+#ifndef NO_LIBJAIL
+		fprintf(out, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
+#endif
+		fprintf(out, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
+		fprintf(out, "\t%-15s%s\n", "-C", "Use the specified configuration file");
+		fprintf(out, "\t%-15s%s\n", "-R", "Directory to search for individual repository configurations");
+		fprintf(out, "\t%-15s%s\n", "-l", "List available commands and exit");
+		fprintf(out, "\t%-15s%s\n", "-v", "Display pkg(8) version");
+		fprintf(out, "\t%-15s%s\n\n", "-N", "Test if pkg(8) is activated and avoid auto-activation");
+		fprintf(out, "\t%-15s%s\n\n", "-o", "Override configuration option from the command line");
+		fprintf(out, "Commands supported:\n");
 
+		for (i = 0; i < cmd_len; i++)
+			fprintf(out, "\t%-15s%s\n", cmd[i].name, cmd[i].desc);
+
+		if (!pkg_initialized() && pkg_init(conffile, reposdir) != EPKG_OK)
+			errx(EX_SOFTWARE, "Cannot parse configuration file!");
+
+		pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plugins_enabled);
+
+		if (plugins_enabled) {
+			if (pkg_plugins_init() != EPKG_OK)
+				errx(EX_SOFTWARE, "Plugins cannot be loaded");
+
+			fprintf(out, "\nCommands provided by plugins:\n");
+
+			STAILQ_FOREACH(c, &plugins, next)
+			fprintf(out, "\t%-15s%s\n", c->name, c->desc);
+		}
+		fprintf(out, "\nFor more information on the different commands"
+					" see 'pkg help <command>'.\n");
+		exit(EXIT_SUCCESS);
+	}
+
+out:
+	fprintf(out, "\nFor more information on available commands and options see 'pkg help'.\n");
 	exit(EX_USAGE);
 }
 
 static void
 usage_help(void)
 {
-	usage(NULL, NULL);
+	usage(NULL, NULL, stdout, PKG_USAGE_HELP);
 }
 
 static int
@@ -186,13 +212,14 @@ exec_help(int argc, char **argv)
 	char *manpage;
 	bool plugins_enabled = false;
 	struct plugcmd *c;
+	unsigned int i;
 
 	if ((argc != 2) || (strcmp("help", argv[1]) == 0)) {
 		usage_help();
 		return(EX_USAGE);
 	}
 
-	for (unsigned int i = 0; i < cmd_len; i++) {
+	for (i = 0; i < cmd_len; i++) {
 		if (strcmp(cmd[i].name, argv[1]) == 0) {
 			if (asprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name) == -1)
 				errx(EX_SOFTWARE, "cannot allocate memory");
@@ -443,17 +470,23 @@ show_repository_info(void)
 			break;
 		}
 
-		printf("  %s: { \n    %-16s: %s,\n    %-16s: %s,\n    %-16s: %s,\n"
-		    "    %-16s: %s,\n    %-16s: %s,\n    %-16s: %s\n  } \n",
+		printf("  %s: { \n    %-16s: \"%s\",\n    %-16s: %s",
 		    pkg_repo_ident(repo),
                     "url", pkg_repo_url(repo),
-		    "signature_type", sig,
-		    "pubkey", pkg_repo_key(repo) == NULL ?
-		        "" : pkg_repo_key(repo),
-		    "fingerprints", pkg_repo_fingerprints(repo) == NULL ?
-		        "" : pkg_repo_fingerprints(repo),
-		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no",
-		    "mirror_type", mirror);
+		    "enabled", pkg_repo_enabled(repo) ? "yes" : "no");
+		if (pkg_repo_mirror_type(repo) != NOMIRROR)
+			printf(",\n    %-16s: \"%s\"",
+			    "mirror_type", mirror);
+		if (pkg_repo_signature_type(repo) != SIG_NONE)
+			printf(",\n    %-16s: \"%s\"",
+			    "signature_type", sig);
+		if (pkg_repo_fingerprints(repo) != NULL)
+			printf(",\n    %-16s: \"%s\"",
+			    "fingerprints", pkg_repo_fingerprints(repo));
+		if (pkg_repo_key(repo) != NULL)
+			printf(",\n    %-16s: \"%s\"",
+			    "pubkey", pkg_repo_key(repo));
+		printf("\n  }\n");
 	}
 }
 
@@ -461,9 +494,13 @@ static void
 show_version_info(int version)
 {
 	if (version > 1)
-		printf("%24s: ", "Version");
+		printf("%-24s: ", "Version");
 
-	printf(PKGVERSION""GITHASH"\n");
+#ifndef GITHASH
+	printf(PKG_PORTVERSION"\n");
+#else
+	printf(PKG_PORTVERSION"-"GITHASH"\n");
+#endif
 
 	if (version == 1)
 		exit(EX_OK);
@@ -481,10 +518,10 @@ do_activation_test(int argc)
 {
 	int	count;
 
-	/* Test to see if pkg(1) has been activated.  Exit with an
+	/* Test to see if pkg(8) has been activated.  Exit with an
 	   error code if not.  Can be combined with -c and -j to test
 	   if pkg is activated in chroot or jail. If there are no
-	   other arguments, and pkg(1) has been activated, show how
+	   other arguments, and pkg(8) has been activated, show how
 	   many packages have been installed. */
 
 	switch (pkg_status(&count)) {
@@ -506,6 +543,28 @@ do_activation_test(int argc)
 		break;
 	}
 	return;
+}
+
+static void
+export_arg_option (char *arg)
+{
+	char *eqp;
+	const char *opt;
+
+	if ((eqp = strchr(arg, '=')) != NULL) {
+		*eqp = '\0';
+
+		if ((opt = getenv (arg)) != NULL) {
+			warnx("option %s is defined in the environment to '%s' but command line "
+					"option redefines it", arg, opt);
+			setenv(arg, eqp + 1, 1);
+		}
+		else {
+			setenv(arg, eqp + 1, 0);
+		}
+
+		*eqp = '=';
+	}
 }
 
 int
@@ -533,24 +592,24 @@ main(int argc, char **argv)
 	const char *reposdir = NULL;
 	struct pkg_config_kv *alias = NULL;
 	const char *alias_value;
-	char **newargv;
-	int newargc;
-	Tokenizer *t = NULL;
-	struct sbuf *newcmd;
+	char **newargv, *arg, *args;
+	int newargc, newargvl;
+	struct sbuf *newcmd = NULL;
 	int j;
 
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
 
-	if (argc < 2)
-		usage(NULL, NULL);
-
 	cmdargv = argv;
+	newargvl = 0;
+
+	if (argc < 2)
+		usage(NULL, NULL, stderr, PKG_USAGE_INVALID_ARGUMENTS, "not enough arguments");
 
 #ifndef NO_LIBJAIL
-	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvq")) != -1) {
+	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvqo:")) != -1) {
 #else
-	while ((ch = getopt(argc, argv, "d:c:C:R:lNvq")) != -1) {
+	while ((ch = getopt(argc, argv, "d:c:C:R:lNvqo:")) != -1) {
 #endif
 		switch (ch) {
 		case 'd':
@@ -579,6 +638,9 @@ main(int argc, char **argv)
 		case 'v':
 			version++;
 			break;
+		case 'o':
+			export_arg_option (optarg);
+			break;
 		default:
 			break;
 		}
@@ -593,8 +655,9 @@ main(int argc, char **argv)
 		show_command_names();
 		exit(EX_OK);
 	}
+
 	if (argc == 0 && version == 0 && !activation_test)
-		usage(conffile, reposdir);
+		usage(conffile, reposdir, stderr, PKG_USAGE_INVALID_ARGUMENTS, "no commands specified");
 
 	umask(022);
 	pkg_event_register(&event_callback, &debug);
@@ -604,8 +667,8 @@ main(int argc, char **argv)
 	optind = 1;
 
 	if (jail_str != NULL && chroot_path != NULL) {
-		fprintf(stderr, "-j and -c cannot be used at the same time!\n");
-		usage(conffile, reposdir);
+		usage(conffile, reposdir, stderr, PKG_USAGE_INVALID_ARGUMENTS,
+				"-j and -c cannot be used at the same time!\n");
 	}
 
 	if (chroot_path != NULL)
@@ -647,11 +710,17 @@ main(int argc, char **argv)
 
 		/* load commands plugins */
 		while (pkg_plugins(&p) != EPKG_END) {
+			int n;
+
+			nb_cmd *ncmd = pkg_plugin_func(p, "pkg_register_cmd_count");
 			register_cmd *reg = pkg_plugin_func(p, "pkg_register_cmd");
-			if (reg != NULL) {
-				c = malloc(sizeof(struct plugcmd));
-				reg(&c->name, &c->desc, &c->exec);
-				STAILQ_INSERT_TAIL(&plugins, c, next);
+			if (reg != NULL && ncmd != NULL) {
+				n = ncmd();
+				for (j = 0; j < n ; j++) {
+					c = malloc(sizeof(struct plugcmd));
+					reg(j, &c->name, &c->desc, &c->exec);
+					STAILQ_INSERT_TAIL(&plugins, c, next);
+				}
 			}
 		}
 	}
@@ -662,9 +731,33 @@ main(int argc, char **argv)
 	if (activation_test)
 		do_activation_test(argc);
 
+	if (argc >= 1 && strcmp(argv[0], "bootstrap") == 0) {
+		if (argc == 1) {
+			printf("pkg(8) already installed, use -f to force.\n");
+			exit(EXIT_SUCCESS);
+		} else if (argc == 2 && strcmp(argv[1], "-f") == 0) {
+			if (access("/usr/sbin/pkg", R_OK) == 0) {
+				/* Only 10.0+ supported 'bootstrap -f' */
+#if __FreeBSD_version < 1000502
+				printf("Execute these steps to rebootstrap"
+				     " pkg(8):\n");
+				printf("# pkg delete -f pkg\n");
+				printf("# /usr/sbin/pkg -v\n");
+				exit(EXIT_SUCCESS);
+#endif
+				printf("pkg(8) is already installed. Forcing "
+				    "reinstallation through pkg(7).\n");
+				execl("/usr/sbin/pkg", "pkg", "bootstrap",
+				    "-f", NULL);
+				/* NOTREACHED */
+			} else
+				errx(EXIT_FAILURE, "pkg(7) bootstrapper not"
+				    " found at /usr/sbin/pkg.");
+		}
+	}
+
 	newargv = argv;
 	newargc = argc;
-	len = strlen(argv[0]);
 	alias = NULL;
 	while (pkg_config_kvlist(PKG_CONFIG_ALIAS, &alias) == EPKG_OK) {
 		if (strcmp(argv[0], pkg_config_kv_get(alias, PKG_CONFIG_KV_KEY)) == 0) {
@@ -680,11 +773,20 @@ main(int argc, char **argv)
 				else
 					sbuf_printf(newcmd, " %s ", argv[j]);
 			}
+			newargv = NULL;
+			newargc = 0;
 			sbuf_done(newcmd);
-			t = tok_init(NULL);
-			if (tok_str(t, sbuf_data(newcmd), &newargc, (const char ***)&newargv) != 0)
-				errx(EX_CONFIG, "Invalid alias: %s", alias_value);
-			sbuf_delete(newcmd);
+			args = sbuf_data(newcmd);
+			while ((arg = strsep(&args, "\t \n")) != NULL) {
+				if (*arg == '\0')
+					continue;
+				if (newargc > newargvl -2) {
+					newargvl += 1024;
+					newargv = reallocf(newargv, newargvl * sizeof(char *));
+				}
+				newargv[newargc++] = arg;
+			}
+			newargv[newargc+1] = NULL;
 			break;
 		}
 	}
@@ -723,7 +825,7 @@ main(int argc, char **argv)
 		}
 
 		if (!plugin_found)
-			usage(conffile, reposdir);
+			usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, newargv[0]);
 
 		return (ret);
 	}
@@ -732,21 +834,18 @@ main(int argc, char **argv)
 		assert(command->exec != NULL);
 		ret = command->exec(newargc, newargv);
 	} else {
-		warnx("'%s' is not a valid command.\n", newargv[0]);
-
-		fprintf(stderr, "See 'pkg help' for more information on the commands.\n\n");
-		fprintf(stderr, "Command '%s' could be one of the following:\n", newargv[0]);
-
-		for (i = 0; i < cmd_len; i++)
-			if (strncmp(newargv[0], cmd[i].name, len) == 0)
-				fprintf(stderr, "\t%s\n",cmd[i].name);
+		usage(conffile, reposdir, stderr, PKG_USAGE_UNKNOWN_COMMAND, newargv[0]);
 	}
 
-	if (alias != NULL)
-		tok_end(t);
+	if (newcmd != NULL) {
+		free(newargv);
+		sbuf_delete(newcmd);
+	}
 
-	if (ret == EX_OK && newpkgversion)
-		execvp(getprogname(), cmdargv);
+	if (ret == EX_OK && newpkgversion) {
+		if (jail_str == NULL && chroot_path == NULL)
+			execvp(getprogname(), cmdargv);
+	}
 
 	return (ret);
 }

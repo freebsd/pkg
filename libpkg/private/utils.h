@@ -49,6 +49,10 @@
 #define HASH_ADD_INO(head,ino,add)                                          \
 	HASH_ADD(hh,head,ino,sizeof(ino_t),add)
 
+#ifndef NELEM
+#define	NELEM(array)	(sizeof(array) / sizeof((array)[0]))
+#endif
+
 struct hardlinks {
 	ino_t inode;
 	UT_hash_handle hh;
@@ -78,6 +82,7 @@ int sbuf_set(struct sbuf **, const char *);
 char * sbuf_get(struct sbuf *);
 void sbuf_reset(struct sbuf *);
 void sbuf_free(struct sbuf *);
+ssize_t sbuf_size(struct sbuf *);
 
 int mkdirs(const char *path);
 int file_to_buffer(const char *, char **, off_t *);
@@ -86,6 +91,7 @@ int is_dir(const char *);
 int is_conf_file(const char *path, char *newpath, size_t len);
 
 void sha256_buf(char *, size_t len, char[SHA256_DIGEST_LENGTH * 2 +1]);
+void sha256_buf_bin(char *, size_t len, char[SHA256_DIGEST_LENGTH]);
 int sha256_file(const char *, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int sha256_fd(int fd, char[SHA256_DIGEST_LENGTH * 2 +1]);
 int md5_file(const char *, char[MD5_DIGEST_LENGTH * 2 +1]);
@@ -106,6 +112,9 @@ struct dns_srvinfo *
 
 int set_nameserver(const char *nsname);
 ucl_object_t *yaml_to_ucl(const char *file, const char *buffer, size_t len);
+void set_blocking(int fd);
+void set_nonblocking(int fd);
 
+pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
 #endif

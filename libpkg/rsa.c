@@ -39,7 +39,7 @@ _load_rsa_private_key(struct rsa_key *rsa)
 {
 	FILE *fp;
 
-	if ((fp = fopen(rsa->path, "r")) == 0)
+	if ((fp = fopen(rsa->path, "r")) == NULL)
 		return (EPKG_FATAL);
 
 	if ((rsa->key = RSA_new()) == NULL) {
@@ -64,7 +64,7 @@ _load_rsa_public_key(const char *rsa_key_path)
 	RSA *rsa = NULL;
 	char errbuf[1024];
 
-	if ((fp = fopen(rsa_key_path, "rb")) == 0) {
+	if ((fp = fopen(rsa_key_path, "rb")) == NULL) {
 		pkg_emit_errno("fopen", rsa_key_path);
 		return (NULL);
 	}
@@ -103,6 +103,7 @@ rsa_verify_cert(const char *path, unsigned char *key, int keylen,
     unsigned char *sig, int siglen, int fd)
 {
 	char sha256[SHA256_DIGEST_LENGTH *2 +1];
+	char hash[SHA256_DIGEST_LENGTH];
 	char errbuf[1024];
 	RSA *rsa = NULL;
 	int ret;
@@ -116,11 +117,12 @@ rsa_verify_cert(const char *path, unsigned char *key, int keylen,
 	OpenSSL_add_all_algorithms();
 	OpenSSL_add_all_ciphers();
 
+	sha256_buf_bin(sha256, strlen(sha256), hash);
+
 	rsa = _load_rsa_public_key_buf(key, keylen);
 	if (rsa == NULL)
 		return (EPKG_FATAL);
-
-	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), sig, siglen, rsa);
+	ret = RSA_verify(NID_sha256, hash, sizeof(hash), sig, siglen, rsa);
 	if (ret == 0) {
 		pkg_emit_error("%s: %s", key,
 		    ERR_error_string(ERR_get_error(), errbuf));
@@ -156,7 +158,7 @@ rsa_verify(const char *path, const char *key, unsigned char *sig,
 	if (rsa == NULL)
 		return(EPKG_FATAL);
 
-	ret = RSA_verify(NID_sha256, sha256, sizeof(sha256), sig, sig_len, rsa);
+	ret = RSA_verify(NID_sha1, sha256, sizeof(sha256), sig, sig_len, rsa);
 	if (ret == 0) {
 		pkg_emit_error("%s: %s", key,
 		    ERR_error_string(ERR_get_error(), errbuf));

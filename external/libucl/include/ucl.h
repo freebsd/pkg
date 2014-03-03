@@ -21,8 +21,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RCL_H_
-#define RCL_H_
+#ifndef UCL_H_
+#define UCL_H_
 
 #include <string.h>
 #include <stddef.h>
@@ -32,38 +32,30 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#include "uthash.h"
-#include "utlist.h"
+/**
+ * @mainpage
+ * This is a reference manual for UCL API. You may find the description of UCL format by following this
+ * [github repository](https://github.com/vstakhov/libucl).
+ *
+ * This manual has several main sections:
+ *  - @ref structures
+ *  - @ref utils
+ *  - @ref parser
+ *  - @ref emitter
+ */
 
 /**
- * @file rcl.h
- * RCL is an rspamd configuration language, which is a form of
+ * @file ucl.h
+ * @brief UCL parsing and emitting functions
+ *
+ * UCL is universal configuration language, which is a form of
  * JSON with less strict rules that make it more comfortable for
  * using as a configuration language
  */
-
-/**
- * XXX: Poorly named API functions, need to replace them with the appropriate
- * named function. All API functions *must* use naming ucl_object_*. Usage of
- * ucl_obj* should be avoided.
- */
-#define ucl_object_todouble_safe ucl_obj_todouble_safe
-#define ucl_object_todouble ucl_obj_todouble
-#define ucl_object_tostring ucl_obj_tostring
-#define ucl_object_tostring_safe ucl_obj_tostring_safe
-#define ucl_object_tolstring ucl_obj_tolstring
-#define ucl_object_tolstring_safe ucl_obj_tolstring_safe
-#define ucl_object_toint ucl_obj_toint
-#define ucl_object_toint_safe ucl_obj_toint_safe
-#define ucl_object_toboolean ucl_obj_toboolean
-#define ucl_object_toboolean_safe ucl_obj_toboolean_safe
-#define ucl_object_find_key ucl_obj_get_key
-#define ucl_object_find_keyl ucl_obj_get_keyl
-#define ucl_object_unref ucl_obj_unref
-#define ucl_object_ref ucl_obj_ref
-#define ucl_object_free ucl_obj_free
-
-/**
+#ifdef  __cplusplus
+extern "C" {
+#endif
+/*
  * Memory allocation utilities
  * UCL_ALLOC(size) - allocate memory for UCL
  * UCL_FREE(size, ptr) - free memory of specified size at ptr
@@ -76,59 +68,133 @@
 #define UCL_FREE(size, ptr) free(ptr)
 #endif
 
-enum ucl_error {
-	UCL_EOK = 0,   //!< UCL_EOK
-	UCL_ESYNTAX,   //!< UCL_ESYNTAX
-	UCL_EIO,       //!< UCL_EIO
-	UCL_ESTATE,    //!< UCL_ESTATE
-	UCL_ENESTED,   //!< UCL_ENESTED
-	UCL_EMACRO,    //!< UCL_EMACRO
-	UCL_ERECURSION,//!< UCL_ERECURSION
-	UCL_EINTERNAL, //!< UCL_EINTERNAL
-	UCL_ESSL       //!< UCL_ESSL
-};
+#if    __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4)
+#define UCL_WARN_UNUSED_RESULT               \
+  __attribute__((warn_unused_result))
+#else
+#define UCL_WARN_UNUSED_RESULT
+#endif
 
-enum ucl_type {
-	UCL_OBJECT = 0,
-	UCL_ARRAY,
-	UCL_INT,
-	UCL_FLOAT,
-	UCL_STRING,
-	UCL_BOOLEAN,
-	UCL_TIME,
-	UCL_USERDATA
-};
+/**
+ * @defgroup structures Structures and types
+ * UCL defines several enumeration types used for error reporting or specifying flags and attributes.
+ *
+ * @{
+ */
 
-enum ucl_emitter {
-	UCL_EMIT_JSON = 0,
-	UCL_EMIT_JSON_COMPACT,
-	UCL_EMIT_CONFIG,
-	UCL_EMIT_YAML
-};
+/**
+ * The common error codes returned by ucl parser
+ */
+typedef enum ucl_error {
+	UCL_EOK = 0, /**< No error */
+	UCL_ESYNTAX, /**< Syntax error occurred during parsing */
+	UCL_EIO, /**< IO error occurred during parsing */
+	UCL_ESTATE, /**< Invalid state machine state */
+	UCL_ENESTED, /**< Input has too many recursion levels */
+	UCL_EMACRO, /**< Error processing a macro */
+	UCL_EINTERNAL, /**< Internal unclassified error */
+	UCL_ESSL /**< SSL error */
+} ucl_error_t;
 
-enum ucl_flags {
-	UCL_FLAG_KEY_LOWERCASE = 0x1,
-	UCL_FLAG_ZEROCOPY = 0x2
-};
+/**
+ * #ucl_object_t may have one of specified types, some types are compatible with each other and some are not.
+ * For example, you can always convert #UCL_TIME to #UCL_FLOAT. Also you can convert #UCL_FLOAT to #UCL_INTEGER
+ * by loosing floating point. Every object may be converted to a string by #ucl_object_tostring_forced() function.
+ *
+ */
+typedef enum ucl_type {
+	UCL_OBJECT = 0, /**< UCL object - key/value pairs */
+	UCL_ARRAY, /**< UCL array */
+	UCL_INT, /**< Integer number */
+	UCL_FLOAT, /**< Floating point number */
+	UCL_STRING, /**< Null terminated string */
+	UCL_BOOLEAN, /**< Boolean value */
+	UCL_TIME, /**< Time value (floating point number of seconds) */
+	UCL_USERDATA, /**< Opaque userdata pointer (may be used in macros) */
+	UCL_NULL /**< Null value */
+} ucl_type_t;
 
+/**
+ * You can use one of these types to serialise #ucl_object_t by using ucl_object_emit().
+ */
+typedef enum ucl_emitter {
+	UCL_EMIT_JSON = 0, /**< Emit fine formatted JSON */
+	UCL_EMIT_JSON_COMPACT, /**< Emit compacted JSON */
+	UCL_EMIT_CONFIG, /**< Emit human readable config format */
+	UCL_EMIT_YAML /**< Emit embedded YAML format */
+} ucl_emitter_t;
+
+/**
+ * These flags defines parser behaviour. If you specify #UCL_PARSER_ZEROCOPY you must ensure
+ * that the input memory is not freed if an object is in use. Moreover, if you want to use
+ * zero-terminated keys and string values then you should not use zero-copy mode, as in this case
+ * UCL still has to perform copying implicitly.
+ */
+typedef enum ucl_parser_flags {
+	UCL_PARSER_KEY_LOWERCASE = 0x1, /**< Convert all keys to lower case */
+	UCL_PARSER_ZEROCOPY = 0x2 /**< Parse input in zero-copy mode if possible */
+} ucl_parser_flags_t;
+
+/**
+ * String conversion flags, that are used in #ucl_object_fromstring_common function.
+ */
+typedef enum ucl_string_flags {
+	UCL_STRING_ESCAPE = 0x1,  /**< Perform JSON escape */
+	UCL_STRING_TRIM = 0x2,    /**< Trim leading and trailing whitespaces */
+	UCL_STRING_PARSE_BOOLEAN = 0x4,    /**< Parse passed string and detect boolean */
+	UCL_STRING_PARSE_INT = 0x8,    /**< Parse passed string and detect integer number */
+	UCL_STRING_PARSE_DOUBLE = 0x10,    /**< Parse passed string and detect integer or float number */
+	UCL_STRING_PARSE_NUMBER =  UCL_STRING_PARSE_INT|UCL_STRING_PARSE_DOUBLE ,  /**<
+									Parse passed string and detect number */
+	UCL_STRING_PARSE =  UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_NUMBER,   /**<
+									Parse passed string (and detect booleans and numbers) */
+	UCL_STRING_PARSE_BYTES = 0x20  /**< Treat numbers as bytes */
+} ucl_string_flags_t;
+
+/**
+ * Basic flags for an object
+ */
+typedef enum ucl_object_flags {
+	UCL_OBJECT_ALLOCATED_KEY = 1, /**< An object has key allocated internally */
+	UCL_OBJECT_ALLOCATED_VALUE = 2, /**< An object has a string value allocated internally */
+	UCL_OBJECT_NEED_KEY_ESCAPE = 4 /**< The key of an object need to be escaped on output */
+} ucl_object_flags_t;
+
+/**
+ * UCL object structure. Please mention that the most of fields should not be touched by
+ * UCL users. In future, this structure may be converted to private one.
+ */
 typedef struct ucl_object_s {
+	/**
+	 * Variant value type
+	 */
 	union {
-		int64_t iv;							/**< int value of an object */
-		const char *sv;					/**< string value of an object */
-		double dv;							/**< double value of an object */
-		struct ucl_object_s *ov;			/**< array or hash 			*/
-		void* ud;							/**< opaque user data		*/
+		int64_t iv;							/**< Int value of an object */
+		const char *sv;					/**< String value of an object */
+		double dv;							/**< Double value of an object */
+		struct ucl_object_s *av;			/**< Array					*/
+		void *ov;							/**< Object					*/
+		void* ud;							/**< Opaque user data		*/
 	} value;
-	enum ucl_type type;						/**< real type				*/
-	int ref;								/**< reference count		*/
-	size_t len;								/**< size of an object		*/
-	struct ucl_object_s *next;				/**< array handle			*/
-	struct ucl_object_s *prev;				/**< array handle			*/
-	unsigned char* trash_stack[2];			/**< pointer to allocated chunks */
-	UT_hash_handle hh;						/**< hash handle			*/
+	const char *key;						/**< Key of an object		*/
+	struct ucl_object_s *next;				/**< Array handle			*/
+	struct ucl_object_s *prev;				/**< Array handle			*/
+	unsigned char* trash_stack[2];			/**< Pointer to allocated chunks */
+	unsigned keylen;						/**< Lenght of a key		*/
+	unsigned len;							/**< Size of an object		*/
+	enum ucl_type type;						/**< Real type				*/
+	uint16_t ref;							/**< Reference count		*/
+	uint16_t flags;							/**< Object flags			*/
 } ucl_object_t;
 
+/** @} */
 
+/**
+ * @defgroup utils Utility functions
+ * A number of utility functions simplify handling of UCL objects
+ *
+ * @{
+ */
 /**
  * Copy and return a key of an object, returned key is zero-terminated
  * @param obj CL object
@@ -147,6 +213,7 @@ char* ucl_copy_value_trash (ucl_object_t *obj);
  * Creates a new object
  * @return new object
  */
+static inline ucl_object_t* ucl_object_new (void) UCL_WARN_UNUSED_RESULT;
 static inline ucl_object_t *
 ucl_object_new (void)
 {
@@ -155,24 +222,29 @@ ucl_object_new (void)
 	if (new != NULL) {
 		memset (new, 0, sizeof (ucl_object_t));
 		new->ref = 1;
+		new->type = UCL_NULL;
 	}
 	return new;
 }
 
 /**
- * String conversion flags
+ * Create new object with type specified
+ * @param type type of a new object
+ * @return new object
  */
-enum ucl_string_flags {
-	UCL_STRING_ESCAPE = 0x1,  /**< UCL_STRING_ESCAPE perform JSON escape */
-	UCL_STRING_TRIM = 0x2,    /**< UCL_STRING_TRIM trim leading and trailing whitespaces */
-	UCL_STRING_PARSE_BOOLEAN = 0x4,    /**< UCL_STRING_PARSE_BOOLEAN parse passed string and detect boolean */
-	UCL_STRING_PARSE_INT = 0x8,    /**< UCL_STRING_PARSE_INT parse passed string and detect integer number */
-	UCL_STRING_PARSE_DOUBLE = 0x10,    /**< UCL_STRING_PARSE_DOUBLE parse passed string and detect integer or float number */
-	UCL_STRING_PARSE_NUMBER =  UCL_STRING_PARSE_INT|UCL_STRING_PARSE_DOUBLE ,  /**<
-									UCL_STRING_PARSE_NUMBER parse passed string and detect number */
-	UCL_STRING_PARSE =  UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_NUMBER   /**<
-									UCL_STRING_PARSE parse passed string (and detect booleans and numbers) */
-};
+static inline ucl_object_t* ucl_object_typed_new (unsigned int type) UCL_WARN_UNUSED_RESULT;
+static inline ucl_object_t *
+ucl_object_typed_new (unsigned int type)
+{
+	ucl_object_t *new;
+	new = malloc (sizeof (ucl_object_t));
+	if (new != NULL) {
+		memset (new, 0, sizeof (ucl_object_t));
+		new->ref = 1;
+		new->type = (type <= UCL_NULL ? type : UCL_NULL);
+	}
+	return new;
+}
 
 /**
  * Convert any string to an ucl object making the specified transformations
@@ -181,7 +253,8 @@ enum ucl_string_flags {
  * @param flags conversion flags
  * @return new object
  */
-ucl_object_t * ucl_object_fromstring_common (const char *str, size_t len, enum ucl_string_flags flags);
+ucl_object_t * ucl_object_fromstring_common (const char *str, size_t len,
+		enum ucl_string_flags flags) UCL_WARN_UNUSED_RESULT;
 
 /**
  * Create a UCL object from the specified string
@@ -272,59 +345,209 @@ ucl_object_frombool (bool bv)
  * @param copy_key make an internal copy of key
  * @return new value of top object
  */
-static inline ucl_object_t *
-ucl_object_insert_key (ucl_object_t *top, ucl_object_t *elt,
-		const char *key, size_t keylen, bool copy_key)
-{
-	ucl_object_t *found;
+ucl_object_t* ucl_object_insert_key (ucl_object_t *top, ucl_object_t *elt,
+		const char *key, size_t keylen, bool copy_key) UCL_WARN_UNUSED_RESULT;
 
-	if (elt == NULL || key == NULL) {
+/**
+ * Replace a object 'elt' to the hash 'top' and associate it with key 'key', old object will be unrefed,
+ * if no object has been found this function works like ucl_object_insert_key()
+ * @param top destination object (will be created automatically if top is NULL)
+ * @param elt element to insert (must NOT be NULL)
+ * @param key key to associate with this object (either const or preallocated)
+ * @param keylen length of the key (or 0 for NULL terminated keys)
+ * @param copy_key make an internal copy of key
+ * @return new value of top object
+ */
+ucl_object_t* ucl_object_replace_key (ucl_object_t *top, ucl_object_t *elt,
+		const char *key, size_t keylen, bool copy_key) UCL_WARN_UNUSED_RESULT;
+
+/**
+ * Insert a object 'elt' to the hash 'top' and associate it with key 'key', if the specified key exist,
+ * try to merge its content
+ * @param top destination object (will be created automatically if top is NULL)
+ * @param elt element to insert (must NOT be NULL)
+ * @param key key to associate with this object (either const or preallocated)
+ * @param keylen length of the key (or 0 for NULL terminated keys)
+ * @param copy_key make an internal copy of key
+ * @return new value of top object
+ */
+ucl_object_t* ucl_object_insert_key_merged (ucl_object_t *top, ucl_object_t *elt,
+		const char *key, size_t keylen, bool copy_key) UCL_WARN_UNUSED_RESULT;
+
+/**
+ * Append an element to the front of array object
+ * @param top destination object (will be created automatically if top is NULL)
+ * @param elt element to append (must NOT be NULL)
+ * @return new value of top object
+ */
+static inline ucl_object_t * ucl_array_append (ucl_object_t *top,
+		ucl_object_t *elt) UCL_WARN_UNUSED_RESULT;
+static inline ucl_object_t *
+ucl_array_append (ucl_object_t *top, ucl_object_t *elt)
+{
+	ucl_object_t *head;
+
+	if (elt == NULL) {
 		return NULL;
 	}
 
 	if (top == NULL) {
-		top = ucl_object_new ();
-		top->type = UCL_OBJECT;
+		top = ucl_object_typed_new (UCL_ARRAY);
+		top->value.av = elt;
+		elt->next = NULL;
+		elt->prev = elt;
+		top->len = 1;
 	}
-	if (keylen == 0) {
-		keylen = strlen (key);
-	}
-
-	HASH_FIND (hh, top->value.ov, key, keylen, found);
-
-	if (!found) {
-		HASH_ADD_KEYPTR (hh, top->value.ov, key, keylen, elt);
-	}
-	DL_APPEND (found, elt);
-
-	if (copy_key) {
-		ucl_copy_key_trash (elt);
+	else {
+		head = top->value.av;
+		if (head == NULL) {
+			top->value.av = elt;
+			elt->prev = elt;
+		}
+		else {
+			elt->prev = head->prev;
+			head->prev->next = elt;
+			head->prev = elt;
+		}
+		elt->next = NULL;
+		top->len ++;
 	}
 
 	return top;
 }
 
 /**
- * Append an element to the array object
+ * Append an element to the start of array object
  * @param top destination object (will be created automatically if top is NULL)
- * @param eltelement to append (must NOT be NULL)
+ * @param elt element to append (must NOT be NULL)
  * @return new value of top object
  */
+static inline ucl_object_t * ucl_array_prepend (ucl_object_t *top,
+		ucl_object_t *elt) UCL_WARN_UNUSED_RESULT;
 static inline ucl_object_t *
-ucl_array_append (ucl_object_t *top, ucl_object_t *elt)
+ucl_array_prepend (ucl_object_t *top, ucl_object_t *elt)
 {
+	ucl_object_t *head;
+
 	if (elt == NULL) {
 		return NULL;
 	}
 
 	if (top == NULL) {
-		top = ucl_object_new ();
-		top->type = UCL_ARRAY;
+		top = ucl_object_typed_new (UCL_ARRAY);
+		top->value.av = elt;
+		elt->next = NULL;
+		elt->prev = elt;
+		top->len = 1;
+	}
+	else {
+		head = top->value.av;
+		if (head == NULL) {
+			top->value.av = elt;
+			elt->prev = elt;
+		}
+		else {
+			elt->prev = head->prev;
+			head->prev = elt;
+		}
+		elt->next = head;
+		top->value.av = elt;
+		top->len ++;
 	}
 
-	DL_APPEND (top->value.ov, elt);
-
 	return top;
+}
+
+/**
+ * Removes an element `elt` from the array `top`. Caller must unref the returned object when it is not
+ * needed.
+ * @param top array ucl object
+ * @param elt element to remove
+ * @return removed element or NULL if `top` is NULL or not an array
+ */
+static inline ucl_object_t *
+ucl_array_delete (ucl_object_t *top, ucl_object_t *elt)
+{
+	ucl_object_t *head;
+
+	if (top == NULL || top->type != UCL_ARRAY || top->value.av == NULL) {
+		return NULL;
+	}
+	head = top->value.av;
+
+	if (elt->prev == elt) {
+		top->value.av = NULL;
+	}
+	else if (elt == head) {
+		elt->next->prev = elt->prev;
+		top->value.av = elt->next;
+	}
+	else {
+		elt->prev->next = elt->next;
+		if (elt->next) {
+			elt->next->prev = elt->prev;
+		}
+		else {
+			head->prev = elt->prev;
+		}
+	}
+	elt->next = NULL;
+	elt->prev = elt;
+	top->len --;
+
+	return elt;
+}
+
+/**
+ * Returns the first element of the array `top`
+ * @param top array ucl object
+ * @return element or NULL if `top` is NULL or not an array
+ */
+static inline ucl_object_t *
+ucl_array_head (ucl_object_t *top)
+{
+	if (top == NULL || top->type != UCL_ARRAY || top->value.av == NULL) {
+		return NULL;
+	}
+	return top->value.av;
+}
+
+/**
+ * Returns the last element of the array `top`
+ * @param top array ucl object
+ * @return element or NULL if `top` is NULL or not an array
+ */
+static inline ucl_object_t *
+ucl_array_tail (ucl_object_t *top)
+{
+	if (top == NULL || top->type != UCL_ARRAY || top->value.av == NULL) {
+		return NULL;
+	}
+	return top->value.av->prev;
+}
+
+/**
+ * Removes the last element from the array `top`. Caller must unref the returned object when it is not
+ * needed.
+ * @param top array ucl object
+ * @return removed element or NULL if `top` is NULL or not an array
+ */
+static inline ucl_object_t *
+ucl_array_pop_last (ucl_object_t *top)
+{
+	return ucl_array_delete (top, ucl_array_tail (top));
+}
+
+/**
+ * Removes the first element from the array `top`. Caller must unref the returned object when it is not
+ * needed.
+ * @param top array ucl object
+ * @return removed element or NULL if `top` is NULL or not an array
+ */
+static inline ucl_object_t *
+ucl_array_pop_first (ucl_object_t *top)
+{
+	return ucl_array_delete (top, ucl_array_head (top));
 }
 
 /**
@@ -333,10 +556,24 @@ ucl_array_append (ucl_object_t *top, ucl_object_t *elt)
  * @param elt new element
  * @return new head if applicable
  */
+static inline ucl_object_t * ucl_elt_append (ucl_object_t *head,
+		ucl_object_t *elt) UCL_WARN_UNUSED_RESULT;
 static inline ucl_object_t *
 ucl_elt_append (ucl_object_t *head, ucl_object_t *elt)
 {
-	DL_APPEND (head, elt);
+
+	if (head == NULL) {
+		elt->next = NULL;
+		elt->prev = elt;
+		head = elt;
+	}
+	else {
+		elt->prev = head->prev;
+		head->prev->next = elt;
+		head->prev = elt;
+		elt->next = NULL;
+	}
+
 	return head;
 }
 
@@ -347,7 +584,7 @@ ucl_elt_append (ucl_object_t *head, ucl_object_t *elt)
  * @return true if conversion was successful
  */
 static inline bool
-ucl_obj_todouble_safe (ucl_object_t *obj, double *target)
+ucl_object_todouble_safe (ucl_object_t *obj, double *target)
 {
 	if (obj == NULL) {
 		return false;
@@ -373,7 +610,7 @@ ucl_obj_todouble_safe (ucl_object_t *obj, double *target)
  * @return double value
  */
 static inline double
-ucl_obj_todouble (ucl_object_t *obj)
+ucl_object_todouble (ucl_object_t *obj)
 {
 	double result = 0.;
 
@@ -388,7 +625,7 @@ ucl_obj_todouble (ucl_object_t *obj)
  * @return true if conversion was successful
  */
 static inline bool
-ucl_obj_toint_safe (ucl_object_t *obj, int64_t *target)
+ucl_object_toint_safe (ucl_object_t *obj, int64_t *target)
 {
 	if (obj == NULL) {
 		return false;
@@ -414,7 +651,7 @@ ucl_obj_toint_safe (ucl_object_t *obj, int64_t *target)
  * @return int value
  */
 static inline int64_t
-ucl_obj_toint (ucl_object_t *obj)
+ucl_object_toint (ucl_object_t *obj)
 {
 	int64_t result = 0;
 
@@ -429,7 +666,7 @@ ucl_obj_toint (ucl_object_t *obj)
  * @return true if conversion was successful
  */
 static inline bool
-ucl_obj_toboolean_safe (ucl_object_t *obj, bool *target)
+ucl_object_toboolean_safe (ucl_object_t *obj, bool *target)
 {
 	if (obj == NULL) {
 		return false;
@@ -451,7 +688,7 @@ ucl_obj_toboolean_safe (ucl_object_t *obj, bool *target)
  * @return boolean value
  */
 static inline bool
-ucl_obj_toboolean (ucl_object_t *obj)
+ucl_object_toboolean (ucl_object_t *obj)
 {
 	bool result = false;
 
@@ -466,7 +703,7 @@ ucl_obj_toboolean (ucl_object_t *obj)
  * @return true if conversion was successful
  */
 static inline bool
-ucl_obj_tostring_safe (ucl_object_t *obj, const char **target)
+ucl_object_tostring_safe (ucl_object_t *obj, const char **target)
 {
 	if (obj == NULL) {
 		return false;
@@ -489,7 +726,7 @@ ucl_obj_tostring_safe (ucl_object_t *obj, const char **target)
  * @return string value
  */
 static inline const char *
-ucl_obj_tostring (ucl_object_t *obj)
+ucl_object_tostring (ucl_object_t *obj)
 {
 	const char *result = NULL;
 
@@ -503,21 +740,21 @@ ucl_obj_tostring (ucl_object_t *obj)
  * @return string value
  */
 static inline const char *
-ucl_obj_tostring_forced (ucl_object_t *obj)
+ucl_object_tostring_forced (ucl_object_t *obj)
 {
 	return ucl_copy_value_trash (obj);
 }
 
 /**
- * Return string as char * and len, string may be not zero terminated, more efficient that tostring as it
- * allows zero-copy
+ * Return string as char * and len, string may be not zero terminated, more efficient that \ref ucl_obj_tostring as it
+ * allows zero-copy (if #UCL_PARSER_ZEROCOPY has been used during parsing)
  * @param obj CL object
  * @param target target string variable, no need to free value
  * @param tlen target length
  * @return true if conversion was successful
  */
 static inline bool
-ucl_obj_tolstring_safe (ucl_object_t *obj, const char **target, size_t *tlen)
+ucl_object_tolstring_safe (ucl_object_t *obj, const char **target, size_t *tlen)
 {
 	if (obj == NULL) {
 		return false;
@@ -540,7 +777,7 @@ ucl_obj_tolstring_safe (ucl_object_t *obj, const char **target, size_t *tlen)
  * @return string value
  */
 static inline const char *
-ucl_obj_tolstring (ucl_object_t *obj, size_t *tlen)
+ucl_object_tolstring (ucl_object_t *obj, size_t *tlen)
 {
 	const char *result = NULL;
 
@@ -554,21 +791,7 @@ ucl_obj_tolstring (ucl_object_t *obj, size_t *tlen)
  * @param key key to search
  * @return object matched the specified key or NULL if key is not found
  */
-static inline ucl_object_t *
-ucl_obj_get_key (ucl_object_t *obj, const char *key)
-{
-	size_t keylen;
-	ucl_object_t *ret;
-
-	if (obj == NULL || obj->type != UCL_OBJECT || key == NULL) {
-		return NULL;
-	}
-
-	keylen = strlen (key);
-	HASH_FIND (hh, obj->value.ov, key, keylen, ret);
-
-	return ret;
-}
+ucl_object_t * ucl_object_find_key (ucl_object_t *obj, const char *key);
 
 /**
  * Return object identified by a fixed size key in the specified object
@@ -577,19 +800,7 @@ ucl_obj_get_key (ucl_object_t *obj, const char *key)
  * @param klen length of a key
  * @return object matched the specified key or NULL if key is not found
  */
-static inline ucl_object_t *
-ucl_obj_get_keyl (ucl_object_t *obj, const char *key, size_t klen)
-{
-	ucl_object_t *ret;
-
-	if (obj == NULL || obj->type != UCL_OBJECT || key == NULL) {
-		return NULL;
-	}
-
-	HASH_FIND (hh, obj->value.ov, key, klen, ret);
-
-	return ret;
-}
+ucl_object_t *ucl_object_find_keyl (ucl_object_t *obj, const char *key, size_t klen);
 
 /**
  * Returns a key of an object as a NULL terminated string
@@ -611,9 +822,59 @@ ucl_object_key (ucl_object_t *obj)
 static inline const char *
 ucl_object_keyl (ucl_object_t *obj, size_t *len)
 {
-	*len = obj->hh.keylen;
-	return obj->hh.key;
+	*len = obj->keylen;
+	return obj->key;
 }
+
+/**
+ * Free ucl object
+ * @param obj ucl object to free
+ */
+void ucl_object_free (ucl_object_t *obj);
+
+/**
+ * Increase reference count for an object
+ * @param obj object to ref
+ */
+static inline ucl_object_t *
+ucl_object_ref (ucl_object_t *obj) {
+	obj->ref ++;
+	return obj;
+}
+
+/**
+ * Decrease reference count for an object
+ * @param obj object to unref
+ */
+static inline void
+ucl_object_unref (ucl_object_t *obj) {
+	if (obj != NULL && --obj->ref <= 0) {
+		ucl_object_free (obj);
+	}
+}
+/**
+ * Opaque iterator object
+ */
+typedef void* ucl_object_iter_t;
+
+/**
+ * Get next key from an object
+ * @param obj object to iterate
+ * @param iter opaque iterator, must be set to NULL on the first call:
+ * ucl_object_iter_t it = NULL;
+ * while ((cur = ucl_iterate_object (obj, &it)) != NULL) ...
+ * @return the next object or NULL
+ */
+ucl_object_t* ucl_iterate_object (ucl_object_t *obj, ucl_object_iter_t *iter, bool expand_values);
+/** @} */
+
+
+/**
+ * @defgroup parser Parsing functions
+ * These functions are used to parse UCL objects
+ *
+ * @{
+ */
 
 /**
  * Macro handler for a parser
@@ -644,6 +905,15 @@ struct ucl_parser* ucl_parser_new (int flags);
  */
 void ucl_parser_register_macro (struct ucl_parser *parser, const char *macro,
 		ucl_macro_handler handler, void* ud);
+
+/**
+ * Register new parser variable
+ * @param parser parser object
+ * @param var variable name
+ * @param value variable value
+ */
+void ucl_parser_register_variable (struct ucl_parser *parser, const char *var,
+		const char *value);
 
 /**
  * Load new chunk to a parser
@@ -678,46 +948,10 @@ ucl_object_t* ucl_parser_get_object (struct ucl_parser *parser);
  */
 const char *ucl_parser_get_error(struct ucl_parser *parser);
 /**
- * Free cl parser object
+ * Free ucl parser object
  * @param parser parser object
  */
 void ucl_parser_free (struct ucl_parser *parser);
-
-/**
- * Free cl object
- * @param obj cl object to free
- */
-void ucl_obj_free (ucl_object_t *obj);
-
-/**
- * Icrease reference count for an object
- * @param obj object to ref
- */
-static inline ucl_object_t *
-ucl_obj_ref (ucl_object_t *obj) {
-	obj->ref ++;
-	return obj;
-}
-
-/**
- * Decrease reference count for an object
- * @param obj object to unref
- */
-static inline void
-ucl_obj_unref (ucl_object_t *obj) {
-	if (--obj->ref <= 0) {
-		ucl_obj_free (obj);
-	}
-}
-
-/**
- * Emit object to a string
- * @param obj object
- * @param emit_type if type is UCL_EMIT_JSON then emit json, if type is
- * UCL_EMIT_CONFIG then emit config like object
- * @return dump of an object (must be freed after using) or NULL in case of error
- */
-unsigned char *ucl_object_emit (ucl_object_t *obj, enum ucl_emitter emit_type);
 
 /**
  * Add new public key to parser for signatures check
@@ -729,4 +963,83 @@ unsigned char *ucl_object_emit (ucl_object_t *obj, enum ucl_emitter emit_type);
  */
 bool ucl_pubkey_add (struct ucl_parser *parser, const unsigned char *key, size_t len);
 
-#endif /* RCL_H_ */
+/**
+ * Set FILENAME and CURDIR variables in parser
+ * @param parser parser object
+ * @param filename filename to set or NULL to set FILENAME to "undef" and CURDIR to getcwd()
+ * @param need_expand perform realpath() if this variable is true and filename is not NULL
+ * @return true if variables has been set
+ */
+bool ucl_parser_set_filevars (struct ucl_parser *parser, const char *filename,
+		bool need_expand);
+
+/** @} */
+
+/**
+ * @defgroup emitter Emitting functions
+ * These functions are used to serialise UCL objects to some string representation.
+ *
+ * @{
+ */
+
+/**
+ * Structure using for emitter callbacks
+ */
+struct ucl_emitter_functions {
+	/** Append a single character */
+	int (*ucl_emitter_append_character) (unsigned char c, size_t nchars, void *ud);
+	/** Append a string of a specified length */
+	int (*ucl_emitter_append_len) (unsigned const char *str, size_t len, void *ud);
+	/** Append a 64 bit integer */
+	int (*ucl_emitter_append_int) (int64_t elt, void *ud);
+	/** Append floating point element */
+	int (*ucl_emitter_append_double) (double elt, void *ud);
+	/** Opaque userdata pointer */
+	void *ud;
+};
+
+/**
+ * Emit object to a string
+ * @param obj object
+ * @param emit_type if type is #UCL_EMIT_JSON then emit json, if type is
+ * #UCL_EMIT_CONFIG then emit config like object
+ * @return dump of an object (must be freed after using) or NULL in case of error
+ */
+unsigned char *ucl_object_emit (ucl_object_t *obj, enum ucl_emitter emit_type);
+
+/**
+ * Emit object to a string
+ * @param obj object
+ * @param emit_type if type is #UCL_EMIT_JSON then emit json, if type is
+ * #UCL_EMIT_CONFIG then emit config like object
+ * @return dump of an object (must be freed after using) or NULL in case of error
+ */
+bool ucl_object_emit_full (ucl_object_t *obj, enum ucl_emitter emit_type,
+		struct ucl_emitter_functions *emitter);
+/** @} */
+
+#ifdef  __cplusplus
+}
+#endif
+/*
+ * XXX: Poorly named API functions, need to replace them with the appropriate
+ * named function. All API functions *must* use naming ucl_object_*. Usage of
+ * ucl_obj* should be avoided.
+ */
+#define ucl_obj_todouble_safe ucl_object_todouble_safe
+#define ucl_obj_todouble ucl_object_todouble
+#define ucl_obj_tostring ucl_object_tostring
+#define ucl_obj_tostring_safe ucl_object_tostring_safe
+#define ucl_obj_tolstring ucl_object_tolstring
+#define ucl_obj_tolstring_safe ucl_object_tolstring_safe
+#define ucl_obj_toint ucl_object_toint
+#define ucl_obj_toint_safe ucl_object_toint_safe
+#define ucl_obj_toboolean ucl_object_toboolean
+#define ucl_obj_toboolean_safe ucl_object_toboolean_safe
+#define ucl_obj_get_key ucl_object_find_key
+#define ucl_obj_get_keyl ucl_object_find_keyl
+#define ucl_obj_unref ucl_object_unref
+#define ucl_obj_ref ucl_object_ref
+#define ucl_obj_free ucl_object_free
+
+#endif /* UCL_H_ */

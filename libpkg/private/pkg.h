@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -47,8 +48,6 @@
 #define PKG_NUM_SCRIPTS 9
 
 #if ARCHIVE_VERSION_NUMBER < 3000002
-#define archive_read_free(a) archive_read_finish(a)
-#define archive_write_free(a) archive_write_finish(a)
 #define archive_write_add_filter_xz(a) archive_write_set_compression_xz(a)
 #define archive_write_add_filter_bzip2(a) archive_write_set_compression_bzip2(a)
 #define archive_write_add_filter_gzip(a) archive_write_set_compression_gzip(a)
@@ -128,6 +127,8 @@ struct pkg {
 	struct pkg_shlib	*shlibs_required;
 	struct pkg_shlib	*shlibs_provided;
 	struct pkg_note		*annotations;
+	struct pkg_conflict *conflicts;
+	struct pkg_provide	*provides;
 	unsigned       	 flags;
 	int64_t		 rowid;
 	int64_t		 time;
@@ -145,6 +146,16 @@ struct pkg_dep {
 	UT_hash_handle	 hh;
 };
 
+struct pkg_conflict {
+	struct sbuf		*origin;
+	UT_hash_handle	hh;
+};
+
+struct pkg_provide {
+	struct sbuf		*provide;
+	UT_hash_handle	hh;
+};
+
 struct pkg_license {
 	/* should be enough to match a license name */
 	char name[64];
@@ -157,20 +168,20 @@ struct pkg_category {
 };
 
 struct pkg_file {
-	char		 path[MAXPATHLEN +1];
+	char		 path[MAXPATHLEN];
 	int64_t		 size;
-	char		 sum[SHA256_DIGEST_LENGTH * 2 +1];
-	char		 uname[MAXLOGNAME +1];
-	char		 gname[MAXLOGNAME +1];
+	char		 sum[SHA256_DIGEST_LENGTH * 2 + 1];
+	char		 uname[MAXLOGNAME];
+	char		 gname[MAXLOGNAME];
 	bool		 keep;
 	mode_t		 perm;
 	UT_hash_handle	 hh;
 };
 
 struct pkg_dir {
-	char		 path[MAXPATHLEN +1];
-	char		 uname[MAXLOGNAME +1];
-	char		 gname[MAXLOGNAME +1];
+	char		 path[MAXPATHLEN];
+	char		 uname[MAXLOGNAME];
+	char		 gname[MAXLOGNAME];
 	mode_t		 perm;
 	bool		 keep;
 	bool		 try;
@@ -185,14 +196,46 @@ struct pkg_option {
 	UT_hash_handle	hh;
 };
 
+struct pkg_job_request {
+	struct pkg *pkg;
+	int priority;
+	bool skip;
+	UT_hash_handle hh;
+};
+
+struct pkg_solved {
+	struct pkg *pkg[2];
+	int priority;
+	struct pkg_solved *prev, *next;
+};
+
+struct pkg_job_seen {
+	struct pkg *pkg;
+	const char *digest;
+	UT_hash_handle hh;
+};
+
+struct pkg_job_universe_item {
+	struct pkg *pkg;
+	UT_hash_handle hh;
+	int priority;
+	struct pkg_job_universe_item *next, *prev;
+};
+
 struct pkg_jobs {
-	struct pkg	*jobs;
-	struct pkg 	*bulk;
-	struct pkg	*seen;
+	struct pkg_job_universe_item *universe;
+	struct pkg_job_request	*request_add;
+	struct pkg_job_request	*request_delete;
+	struct pkg_solved *jobs_add;
+	struct pkg_solved *jobs_delete;
+	struct pkg_solved *jobs_upgrade;
+	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
-	bool		 solved;
+	int		 solved;
+	int count;
+	int total;
 	const char *	 reponame;
 	struct job_pattern *patterns;
 };
@@ -204,13 +247,13 @@ struct job_pattern {
 };
 
 struct pkg_user {
-	char		 name[MAXLOGNAME+1];
+	char		 name[MAXLOGNAME];
 	char		 uidstr[8192];/* taken from pw_util.c */
 	UT_hash_handle	hh;
 };
 
 struct pkg_group {
-	char		 name[MAXLOGNAME+1];
+	char		 name[MAXLOGNAME];
 	char		 gidstr[8192]; /* taken from gw_util.c */
 	UT_hash_handle	hh;
 };
@@ -261,6 +304,7 @@ struct http_mirror {
 };
 
 struct pkg_repo {
+	repo_t type;
 	char *name;
 	char *url;
 	char *pubkey;
@@ -272,6 +316,23 @@ struct pkg_repo {
 	signature_t signature_type;
 	char *fingerprints;
 	FILE *ssh;
+
+	struct {
+		int in;
+		int out;
+		pid_t pid;
+		struct {
+			char *buf;
+			size_t size;
+			size_t pos;
+			size_t len;
+		} cache;
+	} sshio;
+	size_t fetched;
+	size_t tofetch;
+
+	int (*update)(struct pkg_repo *, bool);
+
 	bool enable;
 	UT_hash_handle hh;
 };
@@ -352,6 +413,12 @@ int pkg_jobs_resolv(struct pkg_jobs *jobs);
 int pkg_shlib_new(struct pkg_shlib **);
 void pkg_shlib_free(struct pkg_shlib *);
 
+int pkg_conflict_new(struct pkg_conflict **);
+void pkg_conflict_free(struct pkg_conflict *);
+
+int pkg_provide_new(struct pkg_provide **);
+void pkg_provide_free(struct pkg_provide *);
+
 int pkg_annotation_new(struct pkg_note **);
 void pkg_annotation_free(struct pkg_note *);
 
@@ -373,8 +440,14 @@ int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, bool force);
 
 int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 
-int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p);
-int pkgdb_integrity_check(struct pkgdb *db);
+int pkg_conflicts_request_resolve(struct pkg_jobs *j);
+int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
+int pkg_conflicts_integrity_check(struct pkg_jobs *j);
+
+typedef void (*conflict_func_cb)(const char *, const char *, void *);
+int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
+		conflict_func_cb cb, void *cbdata);
+int pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata);
 struct pkgdb_it *pkgdb_integrity_conflict_local(struct pkgdb *db,
 						const char *origin);
 
@@ -399,10 +472,13 @@ int pkgdb_load_group(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_required(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_shlib_provided(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_load_annotations(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_conflicts(struct pkgdb *db, struct pkg *pkg);
+int pkgdb_load_provides(struct pkgdb *db, struct pkg *pkg);
 
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
@@ -414,4 +490,10 @@ int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);
 
 int do_extract_mtree(char *mtree, const char *prefix);
+
+int repo_update_binary_pkgs(struct pkg_repo *repo, bool force);
+
+bool ucl_object_emit_sbuf(ucl_object_t *obj, enum ucl_emitter emit_type, struct sbuf **buf);
+bool ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *);
+
 #endif

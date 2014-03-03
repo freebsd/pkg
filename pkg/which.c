@@ -33,6 +33,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sysexits.h>
+#include <err.h>
 
 #include "pkgcli.h"
 
@@ -49,8 +50,8 @@ exec_which(int argc, char **argv)
 	struct pkgdb *db = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
-	char pathabs[MAXPATHLEN + 1];
-	int ret = EPKG_OK, retcode = EX_OK;
+	char pathabs[MAXPATHLEN];
+	int ret = EPKG_OK, retcode = EX_SOFTWARE;
 	int ch;
 	bool orig = false;
 	bool glob = false;
@@ -80,11 +81,6 @@ exec_which(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
-		pkgdb_close(db);
-		return (EX_IOERR);
-	}
-
 	if (!glob)
 		absolutepath(argv[0], pathabs, sizeof(pathabs));
 	else {
@@ -92,10 +88,23 @@ exec_which(int argc, char **argv)
 			return (EX_USAGE);
 	}
 
-	if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL)
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		return (EX_IOERR);
+	}
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get a read lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
+	if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL) {
+		retcode = EX_IOERR;
+		goto cleanup;
+	}
 
 	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+		retcode = EX_OK;
 		if (quiet && orig)
 			pkg_printf("%o\n", pkg);
 		else if (quiet && !orig)
@@ -104,22 +113,17 @@ exec_which(int argc, char **argv)
 			pkg_printf("%S was installed by package %o\n", pathabs, pkg);
 		else if (!quiet && !orig)
 			pkg_printf("%S was installed by package %n-%v\n", pathabs, pkg, pkg);
-		if (!glob)
-			break;
 	}
 
-	if (ret != EPKG_END) {
-		retcode = EX_SOFTWARE;
-	}
-	else if (!glob) {
-		if (!quiet)
-			printf("%s was not found in the database\n", pathabs);
-		retcode = EX_DATAERR;
-	}
-		
+	if (retcode != EX_OK && !quiet)
+		printf("%s was not found in the database\n", pathabs);
+
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 
+cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
+
 	return (retcode);
 }

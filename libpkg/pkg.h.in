@@ -39,12 +39,12 @@
 #include <stringlist.h>
 #include <openssl/pem.h>
 
-/* The expected name of the pkg(1) binary executable. */
+/* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
 #define PKG_EXEC_NAME	"pkg"
 #endif
 
-/* The expected name of the pkg-static(1) binary */
+/* The expected name of the pkg-static(8) binary */
 #ifndef PKG_STATIC_NAME
 #define PKG_STATIC_NAME	"pkg-static"
 #endif
@@ -58,6 +58,7 @@
 
 struct pkg;
 struct pkg_dep;
+struct pkg_conflict;
 struct pkg_file;
 struct pkg_dir;
 struct pkg_category;
@@ -67,11 +68,13 @@ struct pkg_user;
 struct pkg_group;
 struct pkg_shlib;
 struct pkg_note;
+struct pkg_provide;
 
 struct pkgdb;
 struct pkgdb_it;
 
 struct pkg_jobs;
+struct pkg_solve_problem;
 
 struct pkg_repo;
 
@@ -85,11 +88,11 @@ struct pkg_manifest_key;
 struct pkg_manifest_parser;
 
 /**
- * The system-wide pkg(1) status: ie. is it a) installed or otherwise
+ * The system-wide pkg(8) status: ie. is it a) installed or otherwise
  * available on the sysem, b) database (local.sqlite) initialised and
  * c) has at least one package installed (which should be pkg
  * itself). PKG_STATUS_UNINSTALLED logically cannot be returned by
- * pkg(1) itself, but it can be useful for the pkg bootstrapper
+ * pkg(8) itself, but it can be useful for the pkg bootstrapper
  * /usr/bin/pkg or for applications that link against libpkg.so
  */
 
@@ -275,7 +278,13 @@ typedef enum {
 	PKG_SHLIBS_REQUIRED,
 	PKG_SHLIBS_PROVIDED,
 	PKG_ANNOTATIONS,
+	PKG_CONFLICTS,
+	PKG_PROVIDES
 } pkg_list;
+
+typedef enum {
+	REPO_BINARY_PKGS,
+} repo_t;
 
 typedef enum {
 	SRV,
@@ -361,6 +370,8 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_DISABLE_MTREE,
 	PKG_CONFIG_DEBUG_LEVEL,
 	PKG_CONFIG_ALIAS,
+	PKG_CONFIG_CUDF_SOLVER,
+	PKG_CONFIG_SAT_SOLVER,
 } pkg_config_key;
 
 typedef enum {
@@ -410,6 +421,7 @@ typedef enum _pkg_plugin_hook_t {
 	PKG_PLUGIN_HOOK_POST_UPGRADE,
 	PKG_PLUGIN_HOOK_PRE_AUTOREMOVE,
 	PKG_PLUGIN_HOOK_POST_AUTOREMOVE,
+	PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW,
 } pkg_plugin_hook_t;
 
 /**
@@ -469,6 +481,10 @@ typedef enum {
 	 * $PKGDB_DIR/local.sqlite or any of the repo database bits
 	 */
 	EPKG_INSECURE,
+	/**
+	 * A conflict between packages found
+	 */
+	EPKG_CONFLICT
 } pkg_error_t;
 
 /**
@@ -481,6 +497,17 @@ typedef enum {
 	PKG_UPGRADE,
 } pkg_change_t;
 
+/**
+ * Locking types for database:
+ * `PKGDB_LOCK_READONLY`: lock for read only queries (can be nested)
+ * `PKGDB_LOCK_ADVISORY`: write to DB inside a transaction (allows `PKGDB_LOCK_READONLY`)
+ * `PKGDB_LOCK_EXCLUSIVE`: possibly destructive operations (does not allow other locks)
+ */
+typedef enum {
+	PKGDB_LOCK_READONLY,
+	PKGDB_LOCK_ADVISORY,
+	PKGDB_LOCK_EXCLUSIVE
+} pkgdb_lock_t;
 
 #define PKG_OPEN_MANIFEST_ONLY 0x1
 #define PKG_OPEN_MANIFEST_COMPACT (0x1 << 1)
@@ -619,6 +646,20 @@ int pkg_shlibs_required(const struct pkg *pkg, struct pkg_shlib **shlib);
  * @return An error code
  */
 int pkg_shlibs_provided(const struct pkg *pkg, struct pkg_shlib **shlib);
+
+/**
+ * Iterates over the conflicts registered in the package.
+ * @param conflict must be set to NULL for the first call.
+ * @return An error code
+ */
+int pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **conflict);
+
+/**
+ * Iterates over the provides registered in the package.
+ * @param provide must be set to NULL for the first call.
+ * @return An error code
+ */
+int pkg_provides(const struct pkg *pkg, struct pkg_provide **provide);
 
 /**
  * Iterates over the annotations associated with the package.
@@ -785,18 +826,18 @@ int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
 int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
 
 /**
- * Add a default value to an already exsting struct pkg_option
- * @return An error code.
+ * Add a default value to an already existing struct pkg_option
+ * @return An error code
  */
 int pkg_addoption_default(struct pkg *pkg, const char *key,
-			  const char *default_value);
+                          const char *default_value);
 
 /**
  * Add a description to an already exsting struct pkg_option
  * @return An error code.
  */
 int pkg_addoption_description(struct pkg *pkg, const char *key,
-			      const char *description);
+                              const char *description);
 
 /**
  * Add a shared library used by this package
@@ -809,6 +850,18 @@ int pkg_addshlib_required(struct pkg *pkg, const char *name);
  * @return An error code.
  */
 int pkg_addshlib_provided(struct pkg *pkg, const char *name);
+
+/**
+ * Add a conflict registered with this package
+ * @return An error code.
+ */
+int pkg_addconflict(struct pkg *pkg, const char *name);
+
+/**
+ * Add a provide registered with this package
+ * @return An error code.
+ */
+int pkg_addprovide(struct pkg *pkg, const char *name);
 
 /**
  * Add annotation key+value pair
@@ -903,6 +956,12 @@ const char *pkg_option_description(struct pkg_option const * const);
 /* pkg_shlib */
 const char *pkg_shlib_name(struct pkg_shlib const * const);
 
+/* pkg_conflict */
+const char *pkg_conflict_origin(const struct pkg_conflict *);
+
+/* pkg_provide */
+const char *pkg_provide_name(const struct pkg_provide *);
+
 /* pkg_note */
 const char *pkg_annotation_tag(struct pkg_note const * const);
 const char *pkg_annotation_value(struct pkg_note const * const);
@@ -967,6 +1026,14 @@ int pkgdb_access(unsigned mode, unsigned database);
 int pkgdb_open(struct pkgdb **db, pkgdb_t type);
 
 /**
+ * Locking functions
+ */
+int pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type, double delay, unsigned int retries);
+int pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_type,
+		double delay, unsigned int retries);
+int pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type);
+
+/**
  * Close and free the struct pkgdb.
  */
 void pkgdb_close(struct pkgdb *db);
@@ -1028,6 +1095,9 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path, bool glo
 struct pkgdb_it * pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib);
 struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib);
 
+struct pkgdb_it * pkgdb_query_provide(struct pkgdb *db, 
+    const char *provide, const char *repo);
+
 /**
  * Add/Modify/Delete an annotation for a package
  * @param key -- tag for the annotation
@@ -1056,6 +1126,8 @@ int pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg,
 #define PKG_LOAD_SHLIBS_REQUIRED	(1U << 11)
 #define PKG_LOAD_SHLIBS_PROVIDED	(1U << 12)
 #define PKG_LOAD_ANNOTATIONS		(1U << 13)
+#define PKG_LOAD_CONFLICTS		(1U << 14)
+#define PKG_LOAD_PROVIDES		(1U << 15)
 /* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**
@@ -1117,7 +1189,6 @@ void pkg_jobs_free(struct pkg_jobs *jobs);
  */
 int pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc);
 int pkg_jobs_solve(struct pkg_jobs *j);
-int pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **pkg);
 int pkg_jobs_set_repository(struct pkg_jobs *j, const char *name);
 void pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags f);
 pkg_jobs_t pkg_jobs_type(struct pkg_jobs *j);
@@ -1128,17 +1199,71 @@ pkg_jobs_t pkg_jobs_type(struct pkg_jobs *j);
 int pkg_jobs_count(struct pkg_jobs *jobs);
 
 /**
- * Iterates over the packages in the jobs queue.
- * @param pkg Must be set to NULL for the first call.
- * @return An error code.
+ * Returns the number of total elements in pkg universe
  */
-int pkg_jobs(struct pkg_jobs *jobs, struct pkg **pkg);
+int pkg_jobs_total(struct pkg_jobs *jobs);
+
+/**
+ * Iterates over the packages in the jobs queue.
+ * @param iter Must be set to NULL for the first call.
+ * @return A next pkg or NULL.
+ */
+bool pkg_jobs_add_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
+bool pkg_jobs_delete_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
+bool pkg_jobs_upgrade_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
 
 /**
  * Apply the jobs in the queue (fetch and install).
  * @return An error code.
  */
 int pkg_jobs_apply(struct pkg_jobs *jobs);
+
+/**
+ * Emit CUDF spec to a file for a specified jobs request
+ * @return error code
+ */
+int pkg_jobs_cudf_emit_file(struct pkg_jobs *, pkg_jobs_t , FILE *);
+
+/**
+ * Parse the output of an external CUDF solver
+ * @return error code
+ */
+int pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f);
+
+/**
+ * Solve a SAT problem
+ * @return true if a problem is solvable
+ */
+bool pkg_solve_sat_problem(struct pkg_solve_problem *problem);
+
+/**
+ * Convert package jobs to a SAT problem
+ * @return SAT problem or NULL if failed
+ */
+struct pkg_solve_problem * pkg_solve_jobs_to_sat(struct pkg_jobs *j);
+
+/**
+ * Export sat problem to the DIMACS format
+ * @return error code
+ */
+int pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f);
+
+/**
+ * Move solved problem to the jobs structure
+ * @return error code
+ */
+int pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem, struct pkg_jobs *j);
+
+/**
+ * Parse SAT solver output and convert it to jobs
+ * @return error code
+ */
+int pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pkg_jobs *j);
+
+/**
+ * Free a SAT problem structure
+ */
+void pkg_solve_problem_free(struct pkg_solve_problem *problem);
 
 /**
  * Archive formats options.
@@ -1234,7 +1359,7 @@ pkg_change_t pkg_version_change(const struct pkg * restrict);
  * Fetch a file.
  * @return An error code.
  */
-int pkg_fetch_file(struct pkg_repo *repo, const char *url, const char *dest, time_t t);
+int pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t);
 
 /* glue to deal with ports */
 int ports_parse_plist(struct pkg *, const char *, const char *);
@@ -1416,7 +1541,8 @@ int pkg_to_old(struct pkg *pkg);
 int pkg_register_old(struct pkg *pkg);
 int pkg_sshserve(void);
 
-int pkg_repos_count(bool);
+int pkg_repos_total_count(void);
+int pkg_repos_activated_count(void);
 int pkg_repos(struct pkg_repo **);
 const char *pkg_repo_url(struct pkg_repo *r);
 const char *pkg_repo_ident(struct pkg_repo *r);

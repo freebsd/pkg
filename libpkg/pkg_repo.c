@@ -42,6 +42,7 @@
 #include <stdbool.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -54,8 +55,8 @@
 int
 pkg_repo_fetch(struct pkg *pkg)
 {
-	char dest[MAXPATHLEN + 1];
-	char url[MAXPATHLEN + 1];
+	char dest[MAXPATHLEN];
+	char url[MAXPATHLEN];
 	int fetched = 0;
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	char *path = NULL;
@@ -144,7 +145,14 @@ struct digest_list_entry {
 	char *digest;
 	long manifest_pos;
 	long files_pos;
+	long manifest_length;
 	struct digest_list_entry *next;
+};
+
+struct pkg_conflict_bulk {
+	struct pkg_conflict *conflicts;
+	char *file;
+	UT_hash_handle hh;
 };
 
 static int
@@ -153,12 +161,89 @@ digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry 
 	return strcmp(d1->origin, d2->origin);
 }
 
+static void
+pkg_repo_new_conflict(const char *origin, struct pkg_conflict_bulk *bulk)
+{
+	struct pkg_conflict *new;
+
+	pkg_conflict_new(&new);
+	sbuf_set(&new->origin, origin);
+
+	HASH_ADD_KEYPTR(hh, bulk->conflicts,
+			__DECONST(char *, pkg_conflict_origin(new)),
+			sbuf_size(new->origin), new);
+}
+
+static void
+pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
+{
+	struct pkg_conflict_bulk	*pkg_bulk = NULL, *cur, *tmp, *s;
+	struct pkg_conflict	*c1, *c1tmp, *c2, *c2tmp, *ctmp;
+	bool new;
+
+	/*
+	 * Here we reorder bulk hash from hash by file
+	 * to hash indexed by a package, so we iterate over the
+	 * original hash and create a new hash indexed by package name
+	 */
+
+	HASH_ITER (hh, bulk, cur, tmp) {
+		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
+			HASH_FIND_STR(pkg_bulk, sbuf_get(c1->origin), s);
+			if (s == NULL) {
+				/* New entry required */
+				s = malloc(sizeof(struct pkg_conflict_bulk));
+				if (s == NULL) {
+					pkg_emit_errno("malloc", "struct pkg_conflict_bulk");
+					goto out;
+				}
+				memset(s, 0, sizeof(struct pkg_conflict_bulk));
+				s->file = sbuf_get(c1->origin);
+				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
+			}
+			/* Now add all new entries from this file to this conflict structure */
+			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
+				new = true;
+				if (strcmp(sbuf_get(c1->origin), sbuf_get(c2->origin)) == 0)
+					continue;
+
+				HASH_FIND_STR(s->conflicts, sbuf_get(c2->origin), ctmp);
+				if (ctmp == NULL)
+					pkg_repo_new_conflict(sbuf_get(c2->origin), s);
+			}
+		}
+	}
+
+	HASH_ITER (hh, pkg_bulk, cur, tmp) {
+		fprintf(out, "%s:", cur->file);
+		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
+			if (c1->hh.next != NULL)
+				fprintf(out, "%s,", sbuf_get(c1->origin));
+			else
+				fprintf(out, "%s\n", sbuf_get(c1->origin));
+		}
+	}
+out:
+	HASH_ITER (hh, pkg_bulk, cur, tmp) {
+		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
+			HASH_DEL(cur->conflicts, c1);
+			sbuf_free(c1->origin);
+			free(c1);
+		}
+		HASH_DEL(pkg_bulk, cur);
+		free(cur);
+	}
+	return;
+}
+
 int
 pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		void (progress)(struct pkg *pkg, void *data), void *data)
 {
 	FTS *fts = NULL;
 	struct thd_data thd_data;
+	struct pkg_conflict *c, *ctmp;
+	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
 	int num_workers;
 	size_t len;
 	pthread_t *tids = NULL;
@@ -167,11 +252,11 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 	int retcode = EPKG_OK;
 
 	char *repopath[2];
-	char repodb[MAXPATHLEN + 1];
+	char repodb[MAXPATHLEN];
 	char *manifest_digest;
-	FILE *psyml, *fsyml, *mandigests;
+	FILE *psyml, *fsyml, *mandigests, *fconflicts;
 
-	psyml = fsyml = mandigests = NULL;
+	psyml = fsyml = mandigests = fconflicts = NULL;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -217,6 +302,12 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		goto cleanup;
 	}
 
+	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir, repo_conflicts_file);
+	if ((fconflicts = fopen(repodb, "w")) == NULL) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+
 	thd_data.root_path = path;
 	thd_data.max_results = num_workers;
 	thd_data.num_results = 0;
@@ -240,7 +331,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		struct pkg_result *r;
 		const char *origin;
 
-		long manifest_pos, files_pos;
+		long manifest_pos, files_pos, manifest_length;
 
 		pthread_mutex_lock(&thd_data.results_m);
 		while ((r = thd_data.results) == NULL) {
@@ -271,6 +362,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 		manifest_pos = ftell(psyml);
 		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
+		manifest_length = ftell(psyml) - manifest_pos;
 		if (filelist) {
 			files_pos = ftell(fsyml);
 			pkg_emit_filelist(r->pkg, fsyml);
@@ -285,6 +377,7 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 		cur_dig->digest = manifest_digest;
 		cur_dig->manifest_pos = manifest_pos;
 		cur_dig->files_pos = files_pos;
+		cur_dig->manifest_length = manifest_length;
 		LL_PREPEND(dlist, cur_dig);
 
 		pkg_free(r->pkg);
@@ -293,10 +386,22 @@ pkg_create_repo(char *path, const char *output_dir, bool filelist,
 
 	/* Now sort all digests */
 	LL_SORT(dlist, digest_sort_compare_func);
+
+	pkg_repo_write_conflicts(conflicts, fconflicts);
 cleanup:
+	HASH_ITER (hh, conflicts, curcb, tmpcb) {
+		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
+			sbuf_free(c->origin);
+			HASH_DEL(curcb->conflicts, c);
+			free(c);
+		}
+		HASH_DEL(conflicts, curcb);
+		free(curcb);
+	}
 	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
-		fprintf(mandigests, "%s:%s:%ld:%ld\n", cur_dig->origin,
-		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos);
+		fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
+		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
+		    cur_dig->manifest_length);
 		free(cur_dig->digest);
 		free(cur_dig->origin);
 		free(cur_dig);
@@ -324,6 +429,9 @@ cleanup:
 	if (psyml != NULL)
 		fclose(psyml);
 
+	if (fconflicts != NULL)
+		fclose(fconflicts);
+
 	if (mandigests != NULL)
 		fclose(mandigests);
 
@@ -338,9 +446,9 @@ read_pkg_file(void *data)
 	struct pkg_manifest_key *keys = NULL;
 
 	FTSENT *fts_ent = NULL;
-	char fts_accpath[MAXPATHLEN + 1];
-	char fts_path[MAXPATHLEN + 1];
-	char fts_name[MAXPATHLEN + 1];
+	char fts_accpath[MAXPATHLEN];
+	char fts_path[MAXPATHLEN];
+	char fts_name[MAXPATHLEN];
 	off_t st_size;
 	int fts_info, flags;
 
@@ -393,7 +501,8 @@ read_pkg_file(void *data)
 		if (strcmp(fts_name, repo_db_archive) == 0 ||
 			strcmp(fts_name, repo_packagesite_archive) == 0 ||
 			strcmp(fts_name, repo_filesite_archive) == 0 ||
-			strcmp(fts_name, repo_digests_archive) == 0)
+			strcmp(fts_name, repo_digests_archive) == 0 ||
+			strcmp(fts_name, repo_conflicts_archive) == 0)
 			continue;
 		*ext = '.';
 
@@ -500,8 +609,6 @@ cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cer
 
 	if (sbuf_data(*sig)[sbuf_len(*sig) -1 ] == '\n')
 		sbuf_setpos(*sig, sbuf_len(*sig) -1);
-	if (sbuf_data(*cert)[sbuf_len(*cert) -1 ] == '\n')
-		sbuf_setpos(*cert, sbuf_len(*cert) -1);
 
 	sbuf_finish(*sig);
 	sbuf_finish(*cert);
@@ -584,8 +691,8 @@ int
 pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
     char **argv, int argc, bool filelist)
 {
-	char repo_path[MAXPATHLEN + 1];
-	char repo_archive[MAXPATHLEN + 1];
+	char repo_path[MAXPATHLEN];
+	char repo_archive[MAXPATHLEN];
 	struct rsa_key *rsa = NULL;
 	struct stat st;
 	int ret = EPKG_OK;
@@ -632,6 +739,14 @@ pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
 	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
 	    repo_digests_archive);
 	if (pack_db(repo_digests_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
+		ret = EPKG_FATAL;
+		goto cleanup;
+	}
+	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir, 
+		repo_conflicts_file);
+	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
+		repo_conflicts_archive);
+	if (pack_db(repo_conflicts_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}

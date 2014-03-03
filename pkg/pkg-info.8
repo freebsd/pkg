@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 1, 2013
+.Dd February 1, 2014
 .Dt PKG-INFO 8
 .Os
 .Sh NAME
@@ -46,8 +46,9 @@ Display any annotations added to the package.
 .It Fl f
 Display full information about the packages matching
 .Ar pkg-name .
+This is the default.
 .It Fl R
-Display the full yaml (raw) about the packages matching
+Display the full manifest (raw) about the packages matching
 .Ar pkg-name .
 .It Fl e
 If
@@ -114,8 +115,8 @@ origin.
 Added only for Ports compatibility.
 .Pp
 .It Fl E
-Currently not implemented.
-Added only for Ports compatibility.
+Hides the full package output and only shows the package name.
+This option is deprecated and exists only for Ports compatibility.
 .It Fl o
 Display
 .Ar pkg-name
@@ -149,6 +150,7 @@ See
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
 .Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,

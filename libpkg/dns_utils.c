@@ -43,10 +43,10 @@ typedef union {
 static int
 srv_priority_cmp(const void *a, const void *b)
 {
-	struct dns_srvinfo *da, *db;
+	const struct dns_srvinfo *da, *db;
 	
-	da = *(struct dns_srvinfo **)__DECONST(void *,a);
-	db = *(struct dns_srvinfo **)__DECONST(void *,b);
+	da = *(struct dns_srvinfo * const *)a;
+	db = *(struct dns_srvinfo * const *)b;
 
 	return ((da->priority > db->priority) - (da->priority < db->priority));
 }
@@ -54,11 +54,11 @@ srv_priority_cmp(const void *a, const void *b)
 static int
 srv_final_cmp(const void *a, const void *b)
 {
-	struct dns_srvinfo *da, *db;
+	const struct dns_srvinfo *da, *db;
 	int res;
 	
-	da = *(struct dns_srvinfo **)__DECONST(void *,a);
-	db = *(struct dns_srvinfo **)__DECONST(void *,b);
+	da = *(struct dns_srvinfo * const *)a;
+	db = *(struct dns_srvinfo * const *)b;
 
 	res = ((da->priority > db->priority) - (da->priority < db->priority));
 	if (res == 0)
@@ -72,13 +72,15 @@ compute_weight(struct dns_srvinfo **d, int first, int last)
 {
 	int i, j;
 	int totalweight = 0;
-	int *chosen = malloc(sizeof(int) * (last - first + 1));
+	int *chosen;
 
 	for (i = 0; i <= last; i++)
 		totalweight += d[i]->weight;
 
 	if (totalweight == 0)
 		return;
+
+	chosen = malloc(sizeof(int) * (last - first + 1));
 
 	for (i = 0; i <= last; i++) {
 		for (;;) {
@@ -120,7 +122,7 @@ dns_getsrvinfo(const char *zone)
 
 	while(qdcount > 0 && p < end) {
 		qdcount--;
-		if((len = dn_expand(q.buf, end, p, host, MAXHOSTNAMELEN)) < 0)
+		if((len = dn_expand(q.buf, end, p, host, sizeof(host))) < 0)
 			return (NULL);
 		p += len + NS_QFIXEDSZ;
 	}
@@ -132,7 +134,7 @@ dns_getsrvinfo(const char *zone)
 	n = 0;
 	while (ancount > 0 && p < end) {
 		ancount--;
-		len = dn_expand(q.buf, end, p, host, MAXHOSTNAMELEN);
+		len = dn_expand(q.buf, end, p, host, sizeof(host));
 		if (len < 0) {
 			for (i = 0; i < n; i++)
 				free(res[i]);
@@ -156,7 +158,7 @@ dns_getsrvinfo(const char *zone)
 		NS_GET16(weight, p);
 		NS_GET16(port, p);
 
-		len = dn_expand(q.buf, end, p, host, MAXHOSTNAMELEN);
+		len = dn_expand(q.buf, end, p, host, sizeof(host));
 		if (len < 0) {
 			for (i = 0; i < n; i++)
 				free(res[i]);
@@ -179,7 +181,7 @@ dns_getsrvinfo(const char *zone)
 		res[n]->port = port;
 		res[n]->next = NULL;
 		res[n]->finalweight = 0;
-		strlcpy(res[n]->host, host, MAXHOSTNAMELEN);
+		strlcpy(res[n]->host, host, sizeof(res[n]->host));
 
 		p += len;
 		n++;

@@ -1,14 +1,9 @@
 
-SUBDIR=	external \
-	libpkg \
+SUBDIR=	libpkg \
 	pkg \
 	scripts
 
 NEWVERS=	${.CURDIR}/newvers.sh
-
-.if !defined(NOSTATIC)
-SUBDIR+=	pkg-static
-.endif
 
 ATF_INSTALLED!=	which atf-version 2>&1 || echo
 

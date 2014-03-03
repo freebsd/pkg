@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2012-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  *
@@ -79,13 +80,13 @@ repo_fetch_remote_tmp(struct pkg_repo *repo, const char *filename, const char *e
 	mode_t mask;
 	const char *tmpdir;
 
-	snprintf(url, MAXPATHLEN, "%s/%s.%s", pkg_repo_url(repo), filename, extension);
+	snprintf(url, sizeof(url), "%s/%s.%s", pkg_repo_url(repo), filename, extension);
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
 	mkdirs(tmpdir);
-	snprintf(tmp, MAXPATHLEN, "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
+	snprintf(tmp, sizeof(tmp), "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
 
 	mask = umask(022);
 	fd = mkstemp(tmp);
@@ -125,25 +126,25 @@ has_ext(const char *path, const char *ext)
 static struct fingerprint *
 parse_fingerprint(ucl_object_t *obj)
 {
-	ucl_object_t *sub, *tmp;
+	ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
 	const char *function = NULL, *fp = NULL;
 	hash_t fct = HASH_UNKNOWN;
 	struct fingerprint *f = NULL;
 	const char *key;
 
-
-	HASH_ITER(hh, obj, sub, tmp) {
-		key = ucl_object_key(sub);
-		if (sub->type != UCL_STRING)
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
+		if (cur->type != UCL_STRING)
 			continue;
 
 		if (strcasecmp(key, "function") == 0) {
-			function = ucl_object_tostring(sub);
+			function = ucl_object_tostring(cur);
 			continue;
 		}
 
 		if (strcasecmp(key, "fingerprint") == 0) {
-			fp = ucl_object_tostring(sub);
+			fp = ucl_object_tostring(cur);
 			continue;
 		}
 	}
@@ -174,7 +175,7 @@ load_fingerprint(const char *dir, const char *filename)
 	char path[MAXPATHLEN];
 	struct fingerprint *f = NULL;
 
-	snprintf(path, MAXPATHLEN, "%s/%s", dir, filename);
+	snprintf(path, sizeof(path), "%s/%s", dir, filename);
 
 	p = ucl_parser_new(0);
 
@@ -187,7 +188,7 @@ load_fingerprint(const char *dir, const char *filename)
 	obj = ucl_parser_get_object(p);
 
 	if (obj->type == UCL_OBJECT)
-		f = parse_fingerprint(obj->value.ov);
+		f = parse_fingerprint(obj);
 
 	ucl_object_free(obj);
 	ucl_parser_free(p);
@@ -195,16 +196,17 @@ load_fingerprint(const char *dir, const char *filename)
 	return (f);
 }
 
-static struct fingerprint *
-load_fingerprints(const char *path)
+static int
+load_fingerprints(const char *path, struct fingerprint **f)
 {
 	DIR *d;
 	struct dirent *ent;
-	struct fingerprint *f = NULL;
 	struct fingerprint *finger = NULL;
 
+	*f = NULL;
+
 	if ((d = opendir(path)) == NULL)
-		return (NULL);
+		return (EPKG_FATAL);
 
 	while ((ent = readdir(d))) {
 		if (strcmp(ent->d_name, ".") == 0 ||
@@ -212,12 +214,12 @@ load_fingerprints(const char *path)
 			continue;
 		finger = load_fingerprint(path, ent->d_name);
 		if (finger != NULL)
-			HASH_ADD_STR(f, hash, finger);
+			HASH_ADD_STR(*f, hash, finger);
 	}
 
 	closedir(d);
 
-	return (f);
+	return (EPKG_OK);
 }
 
 static int
@@ -280,27 +282,27 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 
 		if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 			if (has_ext(archive_entry_pathname(ae), ".sig")) {
-				snprintf(key, MAXPATHLEN, "%.*s",
+				snprintf(key, sizeof(key), "%.*s",
 				    (int) strlen(archive_entry_pathname(ae)) - 4,
 				    archive_entry_pathname(ae));
 				HASH_FIND_STR(sc, key, s);
 				if (s == NULL) {
 					s = calloc(1, sizeof(struct sig_cert));
-					strlcpy(s->name, key, MAXPATHLEN);
+					strlcpy(s->name, key, sizeof(s->name));
 					HASH_ADD_STR(sc, name, s);
 				}
 				s->siglen = archive_entry_size(ae);
 				s->sig = malloc(s->siglen);
 				archive_read_data(a, s->sig, s->siglen);
 			}
-			if (has_ext(archive_entry_pathname(ae), ".cert")) {
-				snprintf(key, MAXPATHLEN, "%.*s",
-				    (int) strlen(archive_entry_pathname(ae)) - 5,
+			if (has_ext(archive_entry_pathname(ae), ".pub")) {
+				snprintf(key, sizeof(key), "%.*s",
+				    (int) strlen(archive_entry_pathname(ae)) - 4,
 				    archive_entry_pathname(ae));
 				HASH_FIND_STR(sc, key, s);
 				if (s == NULL) {
 					s = calloc(1, sizeof(struct sig_cert));
-					strlcpy(s->name, key, MAXPATHLEN);
+					strlcpy(s->name, key, sizeof(s->name));
 					HASH_ADD_STR(sc, name, s);
 				}
 				s->certlen = archive_entry_size(ae);
@@ -335,8 +337,8 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		}
 
 		/* load fingerprints */
-		snprintf(path, MAXPATHLEN, "%s/trusted", pkg_repo_fingerprints(repo));
-		if ((trusted = load_fingerprints(path)) == NULL) {
+		snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
+		if ((load_fingerprints(path, &trusted)) != EPKG_OK) {
 			pkg_emit_error("Error loading trusted certificates");
 			rc = EPKG_FATAL;
 			goto cleanup;
@@ -348,8 +350,8 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 			goto cleanup;
 		}
 
-		snprintf(path, MAXPATHLEN, "%s/revoked", pkg_repo_fingerprints(repo));
-		if ((revoked = load_fingerprints(path)) == NULL) {
+		snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
+		if ((load_fingerprints(path, &revoked)) != EPKG_OK) {
 			pkg_emit_error("Error loading revoked certificates");
 			rc = EPKG_FATAL;
 			goto cleanup;
@@ -388,12 +390,12 @@ repo_archive_extract_file(int fd, const char *file, const char *dest, struct pkg
 		nbgood = 0;
 
 		HASH_ITER(hh, sc, s, stmp) {
-			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen - 1, dest_fd);
+			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen, dest_fd);
 			if (ret == EPKG_OK && s->trusted)
 				nbgood++;
 		}
 
-		if (nbgood != 0) {
+		if (nbgood == 0) {
 			pkg_emit_error("No trusted certificate has been used "
 			    "to sign the repository");
 			rc = EPKG_FATAL;
@@ -405,8 +407,10 @@ cleanup:
 	if (rc != EPKG_OK && dest != NULL)
 		unlink(dest);
 
-	if (a != NULL)
+	if (a != NULL) {
+		archive_read_close(a);
 		archive_read_free(a);
+	}
 
 	return rc;
 }
@@ -429,7 +433,7 @@ repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
-	snprintf(tmp, MAXPATHLEN, "%s/%s.XXXXXX", tmpdir, archive_file);
+	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, archive_file);
 
 	mask = umask(022);
 	dest_fd = mkstemp(tmp);
@@ -552,12 +556,13 @@ struct pkg_increment_task_item {
 	char *origin;
 	char *digest;
 	long offset;
+	long length;
 	UT_hash_handle hh;
 };
 
 static void
 pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char *origin,
-		const char *digest, long offset)
+		const char *digest, long offset, long length)
 {
 	struct pkg_increment_task_item *item;
 
@@ -567,23 +572,63 @@ pkg_update_increment_item_new(struct pkg_increment_task_item **head, const char 
 		digest = "";
 	item->digest = strdup(digest);
 	item->offset = offset;
+	item->length = length;
 
 	HASH_ADD_KEYPTR(hh, *head, item->origin, strlen(item->origin), item);
+}
+
+static void __unused
+pkg_parse_conflicts_file(FILE *f, sqlite3 *sqlite)
+{
+	size_t linecap = 0;
+	ssize_t linelen;
+	char *linebuf = NULL, *p, **deps;
+	const char *origin, *pdep;
+	int ndep, i;
+	const char conflicts_clean_sql[] = ""
+			"DELETE FROM pkg_conflicts;";
+
+	pkg_debug(4, "pkg_parse_conflicts_file: running '%s'", conflicts_clean_sql);
+	(void)sql_exec(sqlite, conflicts_clean_sql);
+
+	while ((linelen = getline(&linebuf, &linecap, f)) > 0) {
+		p = linebuf;
+		origin = strsep(&p, ":");
+		/* Check dependencies number */
+		pdep = p;
+		ndep = 1;
+		while (*pdep != '\0') {
+			if (*pdep == ',')
+				ndep ++;
+			pdep ++;
+		}
+		deps = malloc(sizeof(char *) * ndep);
+		for (i = 0; i < ndep; i ++) {
+			deps[i] = strsep(&p, ",\n");
+		}
+		pkgdb_repo_register_conflicts(origin, deps, ndep, sqlite);
+		free(deps);
+	}
+
+	if (linebuf != NULL)
+		free(linebuf);
 }
 
 static int
 pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 {
-	FILE *fmanifest = NULL, *fdigests = NULL;
+	FILE *fmanifest = NULL, *fdigests = NULL, *fconflicts = NULL;
 	sqlite3 *sqlite = NULL;
 	struct pkg *pkg = NULL;
 	int rc = EPKG_FATAL;
-	const char *origin, *digest, *offset;
+	const char *origin, *digest, *offset, *length;
 	struct pkgdb_it *it = NULL;
 	char *linebuf = NULL, *p;
 	int updated = 0, removed = 0, added = 0, processed = 0;
-	long num_offset;
+	long num_offset, num_length;
 	time_t local_t = *mtime;
+	time_t digest_t;
+	time_t packagesite_t;
 	struct pkg_increment_task_item *ldel = NULL, *ladd = NULL,
 			*item, *tmp_item;
 	struct pkg_manifest_key *keys = NULL;
@@ -612,7 +657,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
-		pkg_update_increment_item_new(&ldel, origin, digest, 4);
+		pkg_update_increment_item_new(&ldel, origin, digest, 4, 0);
 	}
 
 	fdigests = repo_fetch_remote_extract_tmp(repo,
@@ -620,13 +665,18 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			&rc, repo_digests_file);
 	if (fdigests == NULL)
 		goto cleanup;
+	digest_t = local_t;
 	local_t = *mtime;
 	fmanifest = repo_fetch_remote_extract_tmp(repo,
 			repo_packagesite_archive, "txz", &local_t,
 			&rc, repo_packagesite_file);
 	if (fmanifest == NULL)
 		goto cleanup;
-	*mtime = local_t;
+	packagesite_t = digest_t;
+	*mtime = packagesite_t > digest_t ? packagesite_t : digest_t;
+	fconflicts = repo_fetch_remote_extract_tmp(repo,
+			repo_conflicts_archive, "txz", &local_t,
+			&rc, repo_conflicts_file);
 	fseek(fmanifest, 0, SEEK_END);
 	len = ftell(fmanifest);
 
@@ -637,6 +687,9 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		origin = strsep(&p, ":");
 		digest = strsep(&p, ":");
 		offset = strsep(&p, ":");
+		/* files offset */
+		strsep(&p, ":");
+		length = strsep(&p, ":");
 
 		if (origin == NULL || digest == NULL ||
 				offset == NULL) {
@@ -652,11 +705,23 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
+		if (length != NULL) {
+			errno = 0;
+			num_length = (long)strtoul(length, NULL, 10);
+			if (errno != 0) {
+				pkg_emit_errno("strtoul", "digest format error");
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
+		}
+		else {
+			num_length = 0;
+		}
 		processed++;
-		HASH_FIND_STR(ldel, __DECONST(char *, origin), item);
+		HASH_FIND_STR(ldel, origin, item);
 		if (item == NULL) {
 			added++;
-			pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
+			pkg_update_increment_item_new(&ladd, origin, digest, num_offset, num_length);
 		} else {
 			if (strcmp(digest, item->digest) == 0) {
 				free(item->origin);
@@ -670,7 +735,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 				HASH_DEL(ldel, item);
 				free(item);
 				item = NULL;
-				pkg_update_increment_item_new(&ladd, origin, digest, num_offset);
+				pkg_update_increment_item_new(&ladd, origin, digest, num_offset, num_length);
 				updated++;
 			}
 		}
@@ -679,7 +744,7 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 	rc = EPKG_OK;
 
 	pkg_debug(1, "Pkgrepo, removing old entries for '%s'", name);
-	removed = HASH_COUNT(ldel) - updated;
+	removed = HASH_COUNT(ldel);
 	HASH_ITER(hh, ldel, item, tmp_item) {
 		if (rc == EPKG_OK) {
 			rc = pkgdb_repo_remove_package(item->origin);
@@ -697,14 +762,24 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		map = mmap(NULL, len, PROT_READ, MAP_SHARED, fileno(fmanifest), 0);
 		fclose(fmanifest);
 	} else {
-		pkg_emit_error("File too large");
+		if (len == 0)
+			pkg_emit_error("Empty catalog");
+		else
+			pkg_emit_error("Catalog too large");
 		return (EPKG_FATAL);
 	}
 
 	HASH_ITER(hh, ladd, item, tmp_item) {
 		if (rc == EPKG_OK) {
-			rc = pkg_add_from_manifest(map + item->offset, item->origin,
-			    len - item->offset, item->digest, sqlite, &keys, &pkg);
+			if (item->length != 0) {
+				rc = pkg_add_from_manifest(map + item->offset, item->origin,
+						item->length, item->digest,
+						sqlite, &keys, &pkg);
+			}
+			else {
+				rc = pkg_add_from_manifest(map + item->offset, item->origin,
+						len - item->offset, item->digest, sqlite, &keys, &pkg);
+			}
 		}
 		free(item->origin);
 		free(item->digest);
@@ -723,8 +798,12 @@ cleanup:
 		fclose(fmanifest);
 	if (fdigests)
 		fclose(fdigests);
+	if (fconflicts)
+		fclose(fconflicts);
 	if (map != MAP_FAILED)
 		munmap(map, len);
+	if (linebuf != NULL)
+		free(linebuf);
 
 	pkgdb_repo_close(sqlite, rc == EPKG_OK);
 
@@ -732,7 +811,7 @@ cleanup:
 }
 
 int
-pkg_update(struct pkg_repo *repo, bool force)
+repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 {
 	char repofile[MAXPATHLEN];
 
@@ -829,4 +908,10 @@ cleanup:
 	}
 
 	return (res);
+}
+
+int
+pkg_update(struct pkg_repo *repo, bool force)
+{
+	return (repo->update(repo, force));
 }

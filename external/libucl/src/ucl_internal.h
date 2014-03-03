@@ -37,7 +37,10 @@
 
 #include "utlist.h"
 #include "utstring.h"
+#include "uthash.h"
 #include "ucl.h"
+#include "ucl_hash.h"
+#include "xxhash.h"
 
 #ifdef HAVE_OPENSSL
 #include <openssl/evp.h>
@@ -79,7 +82,8 @@ enum ucl_character_type {
 	UCL_CHARACTER_VALUE_DIGIT_START = 1 << 7,
 	UCL_CHARACTER_ESCAPE = 1 << 8,
 	UCL_CHARACTER_KEY_SEP = 1 << 9,
-	UCL_CHARACTER_JSON_UNSAFE = 1 << 10
+	UCL_CHARACTER_JSON_UNSAFE = 1 << 10,
+	UCL_CHARACTER_UCL_UNSAFE = 1 << 11
 };
 
 struct ucl_macro {
@@ -92,6 +96,7 @@ struct ucl_macro {
 struct ucl_stack {
 	ucl_object_t *obj;
 	struct ucl_stack *next;
+	int level;
 };
 
 struct ucl_chunk {
@@ -115,6 +120,14 @@ struct ucl_pubkey {
 };
 #endif
 
+struct ucl_variable {
+	char *var;
+	char *value;
+	size_t var_len;
+	size_t value_len;
+	struct ucl_variable *next;
+};
+
 struct ucl_parser {
 	enum ucl_parser_state state;
 	enum ucl_parser_state prev_state;
@@ -126,6 +139,7 @@ struct ucl_parser {
 	struct ucl_stack *stack;
 	struct ucl_chunk *chunks;
 	struct ucl_pubkey *keys;
+	struct ucl_variable *variables;
 	UT_string *err;
 };
 
@@ -145,6 +159,8 @@ size_t ucl_unescape_json_string (char *str, size_t len);
  */
 bool ucl_include_handler (const unsigned char *data, size_t len, void* ud);
 
+bool ucl_try_include_handler (const unsigned char *data, size_t len, void* ud);
+
 /**
  * Handle includes macro
  * @param data include data
@@ -159,9 +175,6 @@ size_t ucl_strlcpy (char *dst, const char *src, size_t siz);
 size_t ucl_strlcpy_unsafe (char *dst, const char *src, size_t siz);
 size_t ucl_strlcpy_tolower (char *dst, const char *src, size_t siz);
 
-
-void ucl_elt_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs,
-		bool start_tabs, bool compact);
 
 #ifdef __GNUC__
 static inline void
@@ -196,33 +209,33 @@ ucl_maybe_parse_boolean (ucl_object_t *obj, const unsigned char *start, size_t l
 	bool ret = false, val = false;
 
 	if (len == 5) {
-		if (tolower (p[0]) == 'f' && strncasecmp (p, "false", 5) == 0) {
+		if ((p[0] == 'f' || p[0] == 'F') && strncasecmp (p, "false", 5) == 0) {
 			ret = true;
 			val = false;
 		}
 	}
 	else if (len == 4) {
-		if (tolower (p[0]) == 't' && strncasecmp (p, "true", 4) == 0) {
+		if ((p[0] == 't' || p[0] == 'T') && strncasecmp (p, "true", 4) == 0) {
 			ret = true;
 			val = true;
 		}
 	}
 	else if (len == 3) {
-		if (tolower (p[0]) == 'y' && strncasecmp (p, "yes", 3) == 0) {
+		if ((p[0] == 'y' || p[0] == 'Y') && strncasecmp (p, "yes", 3) == 0) {
 			ret = true;
 			val = true;
 		}
-		if (tolower (p[0]) == 'o' && strncasecmp (p, "off", 3) == 0) {
+		else if ((p[0] == 'o' || p[0] == 'O') && strncasecmp (p, "off", 3) == 0) {
 			ret = true;
 			val = false;
 		}
 	}
 	else if (len == 2) {
-		if (tolower (p[0]) == 'n' && strncasecmp (p, "no", 2) == 0) {
+		if ((p[0] == 'n' || p[0] == 'N') && strncasecmp (p, "no", 2) == 0) {
 			ret = true;
 			val = false;
 		}
-		else if (tolower (p[0]) == 'o' && strncasecmp (p, "on", 2) == 0) {
+		else if ((p[0] == 'o' || p[0] == 'O') && strncasecmp (p, "on", 2) == 0) {
 			ret = true;
 			val = true;
 		}
@@ -246,6 +259,34 @@ ucl_maybe_parse_boolean (ucl_object_t *obj, const unsigned char *start, size_t l
  * @return 0 if string is numeric and error code (EINVAL or ERANGE) in case of conversion error
  */
 int ucl_maybe_parse_number (ucl_object_t *obj,
-		const char *start, const char *end, const char **pos, bool allow_double);
+		const char *start, const char *end, const char **pos, bool allow_double, bool number_bytes);
+
+
+static inline ucl_object_t *
+ucl_hash_search_obj (ucl_hash_t* hashlin, ucl_object_t *obj)
+{
+	return (ucl_object_t *)ucl_hash_search (hashlin, obj->key, obj->keylen);
+}
+
+static inline ucl_hash_t *
+ucl_hash_insert_object (ucl_hash_t *hashlin, ucl_object_t *obj) UCL_WARN_UNUSED_RESULT;
+
+static inline ucl_hash_t *
+ucl_hash_insert_object (ucl_hash_t *hashlin, ucl_object_t *obj)
+{
+	if (hashlin == NULL) {
+		hashlin = ucl_hash_create ();
+	}
+	ucl_hash_insert (hashlin, obj, obj->key, obj->keylen);
+
+	return hashlin;
+}
+
+/**
+ * Emit a single object to string
+ * @param obj
+ * @return
+ */
+unsigned char * ucl_object_emit_single_json (ucl_object_t *obj);
 
 #endif /* UCL_INTERNAL_H_ */

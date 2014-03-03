@@ -86,6 +86,12 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		pkgdb_close(db);
 		return (EX_IOERR);
 	}
+	/* XXX: get rid of hardcoded timeouts */
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE, 0.5, 20) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
 
 	switch (fmt) {
 	case TXZ:
@@ -135,7 +141,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 		STAILQ_REMOVE_HEAD(&head, next);
 
 		if (!overwrite) {
-			pkg_snprintf(pkgpath, MAXPATHLEN, "%S/%n-%v.%S",
+			pkg_snprintf(pkgpath, sizeof(pkgpath), "%S/%n-%v.%S",
 			    outdir, e->pkg, e->pkg, format);
 			if (access(pkgpath, F_OK) == 0) {
 				pkg_printf("%n-%v already packaged, skipping...\n",
@@ -154,6 +160,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	}
 
 cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 
 	return (retcode);

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd October 22, 2013
+.Dd November 12, 2013
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -104,7 +104,9 @@ function: sha256
 fingerprint: sha256_representation_of_the_public_key
 .Ed
 .Pp
-See EXAMPLES section and
+See the
+.Sx EXAMPLES
+section and
 .Xr pkg.conf 5
 for more information.
 .Pp
@@ -142,6 +144,7 @@ See
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
 .Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
@@ -193,19 +196,20 @@ and
 to a path containing a file with the SHA256 of the public key:
 .Bd -literal -offset indent
 # On signing server:
-% cat > sign_with_ssh_key.sh << EOF
+% cat > sign.sh << EOF
 #!/bin/sh
 read -t 2 sum
 [ -z "$sum" ] && exit 1
 echo SIGNATURE
-echo $sum | /usr/bin/openssl dgst -sign repo.key -sha256 -binary
+echo -n $sum | /usr/bin/openssl dgst -sign repo.key -sha256 -binary
+echo
 echo CERT
 cat repo.pub
 echo END
 EOF
 
 # On package server:
-% pkg repo /usr/ports/packages signing_command: ssh signing-server sign_with_ssh_key.sh
+% pkg repo /usr/ports/packages signing_command: ssh signing-server sign.sh
 # Generate fingerprint for sharing with clients
 % sh -c '( echo "function: sha256"; echo "fingerprint: $(sha256 -q repo.pub)"; ) > fingerprint'
 # The 'fingerprint' file should be distributed to all clients.

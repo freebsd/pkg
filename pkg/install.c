@@ -37,7 +37,6 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <libutil.h>
 
 #include <pkg.h>
 
@@ -60,15 +59,16 @@ exec_install(int argc, char **argv)
 	int retcode;
 	int updcode = EPKG_OK;
 	int ch;
-	bool yes;
+	bool yes, yes_arg;
 	bool auto_update;
 	match_t match = MATCH_EXACT;
 	bool dry_run = false;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
-	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes_arg);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
+	yes = yes_arg;
 
 	while ((ch = getopt(argc, argv, "AfgIiFnqRr:Uxy")) != -1) {
 		switch (ch) {
@@ -110,7 +110,7 @@ exec_install(int argc, char **argv)
 			match = MATCH_REGEX;
 			break;
 		case 'y':
-			yes = true;
+			yes_arg = true;
 			break;
 		default:
 			usage_install();
@@ -158,6 +158,12 @@ exec_install(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an advisory lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		goto cleanup;
 
@@ -172,12 +178,13 @@ exec_install(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	if ((nbactions = pkg_jobs_count(jobs)) > 0) {
+	while ((nbactions = pkg_jobs_count(jobs)) > 0) {
 		/* print a summary before applying the jobs */
+		yes = yes_arg;
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
-			    "The following %d packages will be installed:\n\n",
-			    nbactions);
+			    "The following %d packages will be installed (of %d in the universe):\n\n",
+			    nbactions, pkg_jobs_total(jobs));
 
 			if (!yes && !dry_run)
 				yes = query_yesno(
@@ -186,18 +193,26 @@ exec_install(int argc, char **argv)
 				yes = false;
 		}
 
-		if (yes && pkg_jobs_apply(jobs) != EPKG_OK)
-			goto cleanup;
+		if (yes) {
+			retcode = pkg_jobs_apply(jobs);
+			if (retcode == EPKG_CONFLICT) {
+				continue;
+			}
+			else if (retcode != EPKG_OK)
+				goto cleanup;
+		}
 
 		if (messages != NULL) {
 			sbuf_finish(messages);
 			printf("%s", sbuf_data(messages));
 		}
+		break;
 	}
 
 	retcode = EX_OK;
 
 cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 

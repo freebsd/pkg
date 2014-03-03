@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd September 14, 2013
+.Dd February 26, 2014
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -67,6 +67,11 @@ option takes precedence over
 but
 .Fl l
 will override any other command line arguments.
+.It Fl o Ao option=value Ac
+Set configuration option for
+.Nm
+from the command line. Options that are set from the environment are
+redefined. It is permitted to specify this option multiple times. 
 .It Fl N
 Activation status check mode.
 Prevent
@@ -109,10 +114,7 @@ flag was first released in the
 bootstrapper
 in FreeBSD 8.4,
 but was missing from FreeBSD 9.1.
-It was not released in
-.Nm
-until 1.0.13.
-Because of this, it may not be enough to just call
+It may not be enough to just call
 .Nm Fl N ,
 as the bootstrapper may be invoked, or an error returned
 from
@@ -182,6 +184,21 @@ Audits installed packages against known vulnerabilities.
 Delete packages which were automatically installed as dependencies and are not required any more.
 .It Ic backup
 Dump the local package database to a file specified on the command-line.
+.It Ic bootstrap
+This is for compatibility with the
+.Xr pkg 7
+bootstrapper.
+If
+.Nm
+is already installed, nothing is done.
+.Pp
+If invoked with the
+.Fl f
+flag an attempt will be made to reinstall
+.Nm
+from remote repository.
+This is not supported on FreeBSD 8.3 as it did not have
+.Xr pkg 7 .
 .It Ic check
 Sanity checks installed packages.
 .It Ic clean
@@ -323,6 +340,7 @@ Check for missing dependencies:
 .Xr pkg-backup 8 ,
 .Xr pkg-check 8 ,
 .Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
 .Xr pkg-convert 8 ,
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
@@ -343,8 +361,7 @@ Check for missing dependencies:
 .Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,
-.Xr pkg-which 8 ,
-.Xr pthread 3
+.Xr pkg-which 8
 .Pp
 To build your own package set for one or multiple servers see
 .Em ports-mgmt/poudriere
@@ -369,7 +386,7 @@ command first appeared in
 .An Eitan Adler <eadler@FreeBSD.org>
 .An Romain Tarti\`ere <romain@FreeBSD.org>
 .An Vsevolod Stakhov <vsevolod@FreeBSD.org>
-.An Alexandre Perrin <alexandre.perrin@netoxygen.ch>
+.An Alexandre Perrin <alex@kaworu.ch>
 .\" ---------------------------------------------------------------------------
 .Sh BUGS
 See the issue tracker at

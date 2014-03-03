@@ -2,7 +2,8 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -301,6 +302,11 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("%-15s: ", "Name");
 			pkg_printf("%n\n", pkg);
 			break;
+		case INFO_INSTALLED:
+			if (print_tag)
+				printf("%-15s: ", "Installed on");
+			pkg_printf("%t%{%+%}\n", pkg);
+			break;
 		case INFO_VERSION:
 			if (print_tag)
 				printf("%-15s: ", "Version");
@@ -521,139 +527,158 @@ print_info(struct pkg * const pkg, uint64_t options)
 	}
 }
 
+static void
+print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
+		pkg_jobs_t type, int64_t *oldsize,
+		int64_t *newsize, int64_t *dlsize)
+{
+	const char *oldversion, *cachedir, *why;
+	char path[MAXPATHLEN];
+	struct stat st;
+	int64_t flatsize, oldflatsize, pkgsize;
+	char size[7];
+
+	flatsize = oldflatsize = pkgsize = 0;
+	oldversion = NULL;
+
+	pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir);
+	pkg_get(new_pkg, PKG_FLATSIZE, &flatsize, PKG_PKGSIZE, &pkgsize, PKG_REASON, &why);
+	if (old_pkg != NULL)
+		pkg_get(old_pkg, PKG_VERSION, &oldversion, PKG_FLATSIZE, &oldflatsize);
+
+	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
+		pkg_printf("\tPackage %n-%v is locked ", old_pkg, old_pkg);
+		switch (type) {
+		case PKG_JOBS_INSTALL:
+		case PKG_JOBS_UPGRADE:
+			/* If it's a new install, then it
+			 * cannot have been locked yet. */
+			if (oldversion != NULL) {
+				switch(pkg_version_change(new_pkg)) {
+				case PKG_UPGRADE:
+					pkg_printf("and may not be upgraded to version %v\n", new_pkg);
+					break;
+				case PKG_REINSTALL:
+					printf("and may not be reinstalled\n");
+					break;
+				case PKG_DOWNGRADE:
+					pkg_printf("and may not be downgraded to version %v\n", new_pkg);
+					break;
+				}
+				return;
+			}
+			break;
+		case PKG_JOBS_DEINSTALL:
+		case PKG_JOBS_AUTOREMOVE:
+			printf("and may not be deinstalled\n");
+			return;
+			break;
+		case PKG_JOBS_FETCH:
+			printf("but a new package can still be fetched\n");
+			break;
+		}
+
+	}
+
+	switch (type) {
+	case PKG_JOBS_INSTALL:
+	case PKG_JOBS_UPGRADE:
+		pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, new_pkg);
+
+		if (stat(path, &st) == -1 || pkgsize != st.st_size)
+			/* file looks corrupted (wrong size),
+					   assume a checksum mismatch will
+					   occur later and the file will be
+					   fetched from remote again */
+
+			*dlsize += pkgsize;
+
+		if (old_pkg != NULL) {
+			switch (pkg_version_change(new_pkg)) {
+			case PKG_DOWNGRADE:
+				pkg_printf("\tDowngrading %n: %v -> %v", new_pkg, old_pkg, new_pkg);
+				if (pkg_repos_total_count() > 1)
+					pkg_printf(" [%N]", new_pkg);
+				printf("\n");
+				break;
+			case PKG_REINSTALL:
+				pkg_printf("\tReinstalling %n-%v", new_pkg, new_pkg);
+				if (pkg_repos_total_count() > 1)
+					pkg_printf(" [%N]", new_pkg);
+				if (why != NULL)
+					printf(" (%s)", why);
+				printf("\n");
+				break;
+			case PKG_UPGRADE:
+				pkg_printf("\tUpgrading %n: %v -> %v", new_pkg, old_pkg, new_pkg);
+				if (pkg_repos_total_count() > 1)
+					pkg_printf(" [%N]", new_pkg);
+				printf("\n");
+				break;
+			}
+			*oldsize += oldflatsize;
+			*newsize += flatsize;
+		} else {
+			*newsize += flatsize;
+
+			pkg_printf("\tInstalling %n: %v", new_pkg, new_pkg);
+			if (pkg_repos_total_count() > 1)
+				pkg_printf(" [%N]", new_pkg);
+			printf("\n");
+		}
+		break;
+	case PKG_JOBS_DEINSTALL:
+	case PKG_JOBS_AUTOREMOVE:
+		*oldsize += oldflatsize;
+		*newsize += flatsize;
+
+		pkg_printf("\tRemoving %n-%v\n", new_pkg, new_pkg);
+		break;
+	case PKG_JOBS_FETCH:
+		*dlsize += pkgsize;
+		pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, new_pkg);
+		if (stat(path, &st) != -1)
+			*oldsize = st.st_size;
+		else
+			*oldsize = 0;
+		*dlsize -= *oldsize;
+
+		humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
+
+		pkg_printf("\t%n-%v ", new_pkg, new_pkg);
+		printf("(%" PRId64 "%% of %s)\n", 100 - (100 * (*oldsize))/pkgsize, size);
+		break;
+	}
+}
+
 void
 print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
-	struct pkg *pkg = NULL;
-	char path[MAXPATHLEN];
-	struct stat st;
-	const char *oldversion, *cachedir, *why;
-	int64_t dlsize, oldsize, newsize;
-	int64_t flatsize, oldflatsize, pkgsize;
+	struct pkg *new_pkg, *old_pkg;
+	void *iter = NULL;
 	char size[7];
 	va_list ap;
-	pkg_jobs_t type;
+	pkg_jobs_t type, inv_type = PKG_JOBS_DEINSTALL;
+	int64_t dlsize, oldsize, newsize;
 
+	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
 
 	va_start(ap, msg);
 	vprintf(msg, ap);
 	va_end(ap);
 
-	dlsize = oldsize = newsize = 0;
-	flatsize = oldflatsize = pkgsize = 0;
-	oldversion = NULL;
-	
-	pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir);
+	while (pkg_jobs_add_iter(jobs, &iter, &new_pkg, &old_pkg)) {
+		print_jobs_summary_pkg(new_pkg, old_pkg, type, &oldsize, &newsize, &dlsize);
+	}
 
-	while (pkg_jobs(jobs, &pkg) == EPKG_OK) {
-		pkg_get(pkg, PKG_OLD_VERSION, &oldversion,
-		    PKG_FLATSIZE, &flatsize, PKG_OLD_FLATSIZE, &oldflatsize,
-		    PKG_PKGSIZE, &pkgsize, PKG_REASON, &why);
-
-		if (pkg_is_locked(pkg)) {
-			pkg_printf("\tPackage %n-%v is locked ", pkg, pkg);
-			switch (type) {
-			case PKG_JOBS_INSTALL:
-			case PKG_JOBS_UPGRADE:
-				/* If it's a new install, then it
-				 * cannot have been locked yet. */
-				if (oldversion != NULL) {
-					switch(pkg_version_change(pkg)) {
-					case PKG_UPGRADE:
-						pkg_printf("and may not be upgraded to version %v\n", pkg);
-						break;
-					case PKG_REINSTALL:
-						printf("and may not be reinstalled\n");
-						break;
-					case PKG_DOWNGRADE:
-						pkg_printf("and may not be downgraded to version %v\n", pkg);
-						break;
-					}
-					continue;
-				} 
-				break;
-			case PKG_JOBS_DEINSTALL:
-			case PKG_JOBS_AUTOREMOVE:
-				printf("and may not be deinstalled\n");
-				continue;
-				break;
-			case PKG_JOBS_FETCH:
-				printf("but a new package can still be fetched\n");
-				break;
-			}
-
-		}
-
-		switch (type) {
-		case PKG_JOBS_INSTALL:
-		case PKG_JOBS_UPGRADE:
-			pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, pkg);
-
-			if (stat(path, &st) == -1 || pkgsize != st.st_size)
-				/* file looks corrupted (wrong size),
-				   assume a checksum mismatch will
-				   occur later and the file will be
-				   fetched from remote again */
-
-				dlsize += pkgsize;
-
-			if (oldversion != NULL) {
-				switch (pkg_version_change(pkg)) {
-				case PKG_DOWNGRADE:
-					pkg_printf("\tDowngrading %n: %V -> %v", pkg, pkg, pkg);
-					if (pkg_repos_count(false) > 1)
-						pkg_printf(" [%N]", pkg);
-					printf("\n");
-					break;
-				case PKG_REINSTALL:
-					pkg_printf("\tReinstalling %n-%v", pkg, pkg);
-					if (pkg_repos_count(false) > 1)
-						pkg_printf(" [%N]", pkg);
-					if (why != NULL)
-						printf(" (%s)", why);
-					printf("\n");
-					break;
-				case PKG_UPGRADE:
-					pkg_printf("\tUpgrading %n: %V -> %v", pkg, pkg, pkg);
-					if (pkg_repos_count(false) > 1)
-						pkg_printf(" [%N]", pkg);
-					printf("\n");
-					break;
-				}
-				oldsize += oldflatsize;
-				newsize += flatsize;
-			} else {
-				newsize += flatsize;
-
-				pkg_printf("\tInstalling %n: %v", pkg, pkg);
-				if (pkg_repos_count(false) > 1)
-					pkg_printf(" [%N]", pkg);
-				printf("\n");
-			}
-			break;
-		case PKG_JOBS_DEINSTALL:
-		case PKG_JOBS_AUTOREMOVE:
-			oldsize += oldflatsize;
-			newsize += flatsize;
-			
-			pkg_printf("\t%n-%v\n", pkg, pkg);
-			break;
-		case PKG_JOBS_FETCH:
-			dlsize += pkgsize;
-			pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, pkg);
-			if (stat(path, &st) != -1)
-				oldsize = st.st_size;
-			else
-				oldsize = 0;
-			dlsize -= oldsize;
-
-			humanize_number(size, sizeof(size), pkgsize, "B", HN_AUTOSCALE, 0);
-
-			pkg_printf("\t%n-%v ", pkg, pkg);
-			printf("(%" PRId64 "%% of %s)\n", 100 - (100 * oldsize)/pkgsize, size);
-			break;
-		}
+	iter = NULL;
+	while (pkg_jobs_delete_iter(jobs, &iter, &new_pkg, &old_pkg)) {
+		print_jobs_summary_pkg(new_pkg, old_pkg, inv_type, &oldsize, &newsize, &dlsize);
+	}
+	iter = NULL;
+	while (pkg_jobs_upgrade_iter(jobs, &iter, &new_pkg, &old_pkg)) {
+		print_jobs_summary_pkg(new_pkg, old_pkg, type, &oldsize, &newsize, &dlsize);
 	}
 
 	if (oldsize > newsize) {
@@ -733,6 +758,7 @@ hash_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 	unsigned char hash[SHA256_DIGEST_LENGTH];
 	size_t r = 0;
 	SHA256_CTX sha256;
+	int i;
 
 	if ((fp = fopen(path, "rb")) == NULL) {
 		warn("fopen(%s)", path);
@@ -755,7 +781,7 @@ hash_file(const char *path, char out[SHA256_DIGEST_LENGTH * 2 + 1])
 
 	SHA256_Final(hash, &sha256);
 
-	for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+	for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
 		sprintf(out + (i * 2), "%02x", hash[i]);
 
 	out[SHA256_DIGEST_LENGTH * 2] = '\0';

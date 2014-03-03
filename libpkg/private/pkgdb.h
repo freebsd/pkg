@@ -65,9 +65,6 @@ int pkgdb_transaction_rollback(sqlite3 *sqlite, const char *savepoint);
 
 struct pkgdb_it *pkgdb_it_new(struct pkgdb *db, sqlite3_stmt *s, int type, short flags);
 
-int pkgdb_obtain_lock(struct pkgdb *db);
-int pkgdb_release_lock(struct pkgdb *db);
-
 void pkgshell_open(const char **r);
 
 /**
@@ -136,5 +133,16 @@ int pkgdb_repo_check_version(struct pkgdb *db, const char *database);
  * @return new iterator
  */
 struct pkgdb_it *pkgdb_repo_origins(sqlite3 *sqlite);
+
+/**
+ * Register a conflicts list in a repo
+ * @param origin the origin of a package
+ * @param conflicts a list of conflicts origins
+ * @param conflicts_num number of conflicts for this package
+ * @param sqlite database
+ * @return error code
+ */
+int pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
+		int conflicts_num, sqlite3 *sqlite);
 
 #endif

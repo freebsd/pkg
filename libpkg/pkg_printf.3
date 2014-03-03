@@ -30,7 +30,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 9, 2013
+.Dd November 29, 2013
 .Dt PKG_PRINTF 3
 .Os
 .Sh NAME
@@ -128,14 +128,14 @@ which return the number of characters that would have been printed if the
 .Fa size
 were unlimited
 (again, not including the final
-.Ql \e0 ) 
+.Ql \e0 )
 and the two functions
 .Fn pkg_sbuf_printf
 and
 .Fn pkg_sbuf_vprintf
 which return the given sbuf pointer, or
 .Dv NULL
-in the case of errors. 
+in the case of errors.
 .Pp
 The
 .Fn pkg_asprintf
@@ -194,7 +194,7 @@ the following appear in sequence:
 .It
 Zero or more of the following flags:
 .Bl -tag -width ".So \  Sc (space)"
-.It Cm ?
+.It Cm \&?
 The value should be converted to the
 .Dq first alternate form .
 .Pp
@@ -356,18 +356,18 @@ for array valued conversions
 .Cm ( A, B , C , D , F , G , L , O , U , d ,
 and
 .Cm r )
-or the timestamp value conversion 
+or the timestamp value conversion
 .Cm ( t ) .
 Which conversion characters are permissible in the row format is
 context dependent.
-See the 
+See the
 .Sx FORMAT CODES
 section for details.
 .El
 .Ss SCALE FACTORS
 Humanized number conversions scale the number to lie within
 the range 1 \- 1000 (power of ten conversions using the
-.Cm ?
+.Cm \&?
 format modifier) or 1 \- 1024 (power of two conversions using the
 .Cm #
 format modifier) and append a scale factor as follows:
@@ -395,7 +395,6 @@ The IEE/IEC (and now also SI) power of two suffixes are:
 .It Li Pi Ta No pebi   Ta 1,125,899,906,842,624
 .It Li Ei Ta No exbi   Ta 1,152,921,504,606,846,976
 .El
-.Pp
 .Ss FORMAT CODES
 Format codes will format the output classified as the type shown in
 square brackets.
@@ -583,7 +582,7 @@ Licence name [string]
 .It Cm %M
 Package message [string]
 .Vt struct pkg *
-.It Cm %N
+.It Cm \&%N
 Repository identity [string]
 .Vt struct pkg *
 .It Cm \^%O
@@ -639,7 +638,7 @@ string (general information about the user), the user's home directory
 and the user's login shell; equivalent to one line from
 .Fa /etc/master.passwd
 as described in
-.Xr passwd 5 . 
+.Xr passwd 5 .
 .It Cm \^%V
 Old version [string].
 Valid only during operations when one version of a package is being
@@ -753,30 +752,27 @@ In no case does a non-existent or small field width cause truncation of
 a numeric field;
 if the result of a conversion is wider than the field width, the field
 is expanded to contain the conversion result.
-.Pp
 .Ss ARRAY VALUES
 Effective format modifiers:
 .Bl -tag -width ".So \  Sc" -offset indent
-.It Cm ?
+.It Cm \&?
 1st Alternate Form: 0 if the array is empty, 1 if it has any number
 of elements within it
 .It Cm #
 2nd Alternate Form: The number of elements in the array
 .El
-.Pp
 .Ss STRING VALUES
 Effective format modifiers:
 .Bl -tag -width ".So \  Sc" -offset indent
 .It Cm \-
 Left align
 .El
-.Pp
 .Ss INTEGER VALUES
 Effective format modifiers:
 .Bl -tag -width ".So \  Sc" -offset indent
 .It Cm \-
 Left align
-.It Cm ?
+.It Cm \&?
 1st Alternate Form: humanized number (decimal)
 .It Cm #
 2nd Alternate Form: humanized number (binary)
@@ -789,7 +785,6 @@ Explicit + or \- sign
 .It Sq Cm '
 Thousands separator
 .El
-.Pp
 .Ss BOOLEAN VALUES
 The two possible values
 .Sq true
@@ -797,7 +792,6 @@ or
 .Sq false
 may be output in one of three different styles: plain; or alternate
 forms 1 and 2 specified using format modifiers.
-.Pp
 .Bl -column "FALSE" "Plain (%a)" "Alt 1 (%?a)" "Alt 2 (%#a)" -offset indent
 .It Sy "Value" Ta Sy "Plain (%a)" Ta Sy "Alt 1 (%?a)" Ta Sy "Alt 2 (%#a)"
 .It Li FALSE Ta No false Ta no  Ta \^
@@ -808,14 +802,13 @@ The second alternate form produces no output for
 .Pp
 Effective format modifiers:
 .Bl -tag -width ".Cm #" -offset indent
-.It Cm ?
+.It Cm \&?
 1st Alternate Form
 .It Cm #
 2nd Alternate Form
 .It Cm \-
 Left align
 .El
-.Pp
 .Ss FILE MODE VALUES
 The file mode is a bitmap representing setid, user, group and other
 permissions.
@@ -832,7 +825,7 @@ The first alternate form is similar but adds a leading zero:
 Whilst the second alternate form produces a string in the style of
 .Xr strmode 3 :
 .Bd -literal -offset indent
--rwsr-xr-x 
+-rwsr-xr-x
 .Ed
 .Pp
 Note: there is always a space at the end of the
@@ -848,12 +841,11 @@ Left align
 Additionally, when the value is printed as an integer (ie. plain
 or alternate form 1), these additional modifiers take effect:
 .Bl -tag -width ".So \  Sc" -offset indent
-.It Cm ?
+.It Cm \&?
 1st Alternate Form: add leading zero to octal integer
 .It Cm 0
 Zero pad
 .El
-.Pp
 .Ss LICENSE LOGIC VALUES
 License-logic  is a three-valued type: one of
 .Sq SINGLE ,
@@ -865,24 +857,22 @@ single license, or when there are several applicable licenses, whether
 these should be treated as alternatives or applied in agregate.
 There are three different output styles: plain; or alternate forms 1
 and 2 specified using format modifiers.
-.Pp
 .Bl -column "SINGLE" "Plain (%l)" "Alt 1 (%?l)" "Alt 2 (%#l)" -offset indent
-.It Sy "Logic" Ta Sy "Plain (%l)" Ta Sy "Alt 1 (%?l)" Ta Sy "Alt 2 (%#l)" 
+.It Sy "Logic" Ta Sy "Plain (%l)" Ta Sy "Alt 1 (%?l)" Ta Sy "Alt 2 (%#l)"
 .It Li SINGLE Ta No single Ta \^ Ta ==
 .It Li OR     Ta No or     Ta |  Ta ||
-.It Li AND    Ta No and    Ta &  Ta && 
+.It Li AND    Ta No and    Ta &  Ta &&
 .El
 .Pp
 Effective format modifiers:
 .Bl -tag -width ".Cm #" -offset indent
-.It Cm ?
+.It Cm \&?
 1st Alternate Form
 .It Cm #
 2nd Alternate Form
 .It Cm \-
 Left align
 .El
-.Pp
 .Ss DATE-TIME VALUES
 When used outside of a
 .Dq row format
@@ -895,7 +885,7 @@ and
 which will be used to format the timestamp.
 Otherwise the timestamp is printed as an integer value of the
 number of seconds since the Epoch (00:00:00 UTC, 1 January 1970; see
-.Xr time 3).  
+.Xr time 3).
 .Pp
 Effective format modifiers:
 .Bl -tag -width ".Cm \-" -offset indent
@@ -905,13 +895,13 @@ Left align
 .Pp
 Additionally, when the value is printed as an integer (ie. without
 .Xr strftime 3
-format codes enclosed in 
+format codes enclosed in
 .Cm %{
 and
 .Cm %} ,
 the following format modifiers are also effective:
 .Bl -tag -width ".So \  Sc" -offset indent
-.It Cm ?
+.It Cm \&?
 1st Alternate Form: humanized number (decimal)
 .It Cm #
 2nd Alternate Form: humanized number (binary)
@@ -924,7 +914,6 @@ Explicit + or \- sign
 .It Sq Cm '
 Thousands separator
 .El
-.Pp
 .Sh EXAMPLES
 To print the package installation timestamp in the form
 .Dq Li "Sunday, July 3, 10:02" ,

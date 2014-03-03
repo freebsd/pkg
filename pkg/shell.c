@@ -42,6 +42,7 @@ usage_shell(void)
 int
 exec_shell(int argc, char **argv)
 {
+	/* XXX: need exclusive lock here */
 	pkgdb_cmd(argc, argv);
 	return (EX_OK);
 }

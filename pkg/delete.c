@@ -32,7 +32,6 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#include <libutil.h>
 
 #include <pkg.h>
 
@@ -131,6 +130,13 @@ exec_delete(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an advisory lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
+
 	if (pkg_jobs_new(&jobs, PKG_JOBS_DEINSTALL, db) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EX_IOERR);
@@ -153,14 +159,6 @@ exec_delete(int argc, char **argv)
 	if (pkg_jobs_solve(jobs) != EPKG_OK)
 		goto cleanup;
 
-	if (((pkg_jobs_find(jobs, "ports-mgmt/pkg", NULL) == EPKG_OK) ||
-	    (pkg_jobs_find(jobs, "ports-mgmt/pkg-devel", NULL) == EPKG_OK))
-	     && !force) {
-		warnx("Deleting 'ports-mgmt/pkg' is really dangerous. "
-		"If that is really required, -f must be specified");
-		goto cleanup;
-	}
-
 	/* check if we have something to deinstall */
 	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
 		if (argc == 0) {
@@ -176,7 +174,9 @@ exec_delete(int argc, char **argv)
 
 	if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
-		    "Deinstallation has been requested for the following %d packages:\n\n", nbactions);
+		    "Deinstallation has been requested for the following %d packages "
+		    "(of %d packages in the universe):\n\n", nbactions,
+		    pkg_jobs_total(jobs));
 		if (dry_run) {
 			retcode = EX_OK;
 			goto cleanup;
@@ -193,6 +193,7 @@ exec_delete(int argc, char **argv)
 	retcode = EX_OK;
 
 cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 

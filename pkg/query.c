@@ -33,7 +33,6 @@
 #include <ctype.h>
 #include <err.h>
 #include <inttypes.h>
-#include <libutil.h>
 #include <pkg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,6 +67,7 @@ static struct query_flags accepted_query_flags[] = {
 	{ 'e', "",		0, PKG_LOAD_BASIC },
 	{ 'w', "",		0, PKG_LOAD_BASIC },
 	{ 'l', "",		0, PKG_LOAD_BASIC },
+	{ 'q', "",		0, PKG_LOAD_BASIC },
 	{ 'a', "",		0, PKG_LOAD_BASIC },
 	{ 'k', "",		0, PKG_LOAD_BASIC },
 	{ 'M', "",		0, PKG_LOAD_BASIC },
@@ -212,6 +212,9 @@ format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
 					pkg_sbuf_printf(dest, "%#A", pkg);
 					break;
 				}
+				break;
+			case 'q':
+				pkg_sbuf_printf(dest, "%q", pkg);
 				break;
 			case 'l':
 				pkg_sbuf_printf(dest, "%l", pkg);
@@ -476,6 +479,10 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 					sbuf_cat(sqlcond, "automatic");
 					state = OPERATOR_INT;
 					break;
+				case 'q':
+					sbuf_cat(sqlcond, "arch");
+					state = OPERATOR_STRING;
+					break;
 				case 'k':
 					if (for_remote)
 						goto bad_option;
@@ -501,7 +508,7 @@ format_sql_condition(const char *str, struct sbuf *sqlcond, bool for_remote)
 				case '#': /* FALLTHROUGH */
 				case '?':
 					str++;
-					const char *dbstr = for_remote ? "%1$s." : "";
+					const char *dbstr = for_remote ? "'%1$s'." : "";
 					const char *sqlop = (str[0] == '#' ? "COUNT(*)" : "COUNT(*) > 0");
 					switch (str[0]) {
 						case 'd':
@@ -875,12 +882,14 @@ exec_query(int argc, char **argv)
 	/* Default to all packages if no pkg provided */
 	if (argc == 1 && pkgname == NULL && condition == NULL && match == MATCH_EXACT) {
 		match = MATCH_ALL;
-	} else if ((argc == 1) ^ (match == MATCH_ALL) && pkgname == NULL && condition == NULL) {
+	} else if (((argc == 1) ^ (match == MATCH_ALL)) && pkgname == NULL
+			&& condition == NULL) {
 		usage_query();
 		return (EX_USAGE);
 	}
 
-	if (analyse_query_string(argv[0], accepted_query_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK)
+	if (analyse_query_string(argv[0], accepted_query_flags, q_flags_len,
+			&query_flags, &multiline) != EPKG_OK)
 		return (EX_USAGE);
 
 	if (pkgname != NULL) {
@@ -919,6 +928,12 @@ exec_query(int argc, char **argv)
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an read lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	if (match == MATCH_ALL || match == MATCH_CONDITION) {
 		const char *condition_sql = NULL;
 		if (match == MATCH_CONDITION && sqlcond)
@@ -938,8 +953,10 @@ exec_query(int argc, char **argv)
 		for (i = 1; i < argc; i++) {
 			pkgname = argv[i];
 
-			if ((it = pkgdb_query(db, pkgname, match)) == NULL)
-				return (EX_IOERR);
+			if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
+				retcode = EX_IOERR;
+				goto cleanup;
+			}
 
 			while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
 				nprinted++;
@@ -960,7 +977,11 @@ exec_query(int argc, char **argv)
 		}
 	}
 
-	pkg_free(pkg);
+cleanup:
+	if (pkg != NULL)
+		pkg_free(pkg);
+
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
 	return (retcode);

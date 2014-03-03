@@ -37,6 +37,8 @@ static const char repo_filesite_file[] = "filesite.yaml";
 static const char repo_filesite_archive[] = "filesite";
 static const char repo_digests_file[] = "digests";
 static const char repo_digests_archive[] = "digests";
+static const char repo_conflicts_file[] = "conflicts";
+static const char repo_conflicts_archive[] = "conflicts";
 
 static const char initsql[] = ""
 	"CREATE TABLE packages ("
@@ -154,6 +156,23 @@ static const char initsql[] = ""
 	    "value_id INTEGER NOT NULL REFERENCES annotation(annotation_id)"
 	    " ON DELETE CASCADE ON UPDATE RESTRICT,"
 	    "UNIQUE (package_id, tag_id)"
+	");"
+	"CREATE TABLE pkg_conflicts ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "conflict_id INTEGER NOT NULL,"
+	    "UNIQUE(package_id, conflict_id)"
+	");"
+	"CREATE TABLE provides("
+	"    id INTEGER PRIMARY KEY,"
+	"    provide TEXT NOT NULL"
+	");"
+	"CREATE TABLE pkg_provides ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "provide_id INTEGER NOT NULL REFERENCES provides(id)"
+	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+	    "UNIQUE(package_id, provide_id)"
 	");"
 	"PRAGMA user_version=%d;"
 	;
@@ -279,7 +298,27 @@ static const struct repo_changes repo_upgrades[] = {
 			"ON (oo.option = o.option);"
 	 "DROP TABLE %Q.options;",
 	},
-
+	{2006,
+	 2007,
+	 "Add conflicts and provides",
+	"CREATE TABLE %Q.pkg_conflicts ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "conflict_id INTEGER NOT NULL,"
+	    "UNIQUE(package_id, conflict_id)"
+	");"
+	"CREATE TABLE %Q.provides("
+	"    id INTEGER PRIMARY KEY,"
+	"    provide TEXT NOT NULL"
+	");"
+	"CREATE TABLE %Q.pkg_provides ("
+	    "package_id INTEGER NOT NULL REFERENCES packages(id)"
+	    "  ON DELETE CASCADE ON UPDATE CASCADE,"
+	    "provide_id INTEGER NOT NULL REFERENCES provides(id)"
+	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
+	    "UNIQUE(package_id, provide_id)"
+	");"
+	},
 	/* Mark the end of the array */
 	{ -1, -1, NULL, NULL, }
 
@@ -288,6 +327,13 @@ static const struct repo_changes repo_upgrades[] = {
 /* How to downgrade a newer repo to match what the current system
    expects */
 static const struct repo_changes repo_downgrades[] = {
+	{2007,
+	 2006,
+	 "Revert conflicts and provides creation",
+	 "DROP TABLE %Q.pkg_provides;"
+	 "DROP TABLE %Q.provides;"
+	 "DROP TABLE %Q.conflicts;"
+	},
 	{2006,
 	 2005,
 	 "Revert addition of extra options related data",
@@ -327,8 +373,8 @@ static const struct repo_changes repo_downgrades[] = {
 	        " SELECT annotation_id, annotation FROM %Q.annotation;"
 	 "INSERT INTO %Q.pkg_abstract (package_id,key_id,value_id)"
 	        " SELECT package_id,tag_id,value_id FROM %Q.pkg_annotation;"
-	 "DROP TABLE pkg_annotation;"
-	 "DROP TABLE annotation;"
+	 "DROP TABLE %Q.pkg_annotation;"
+	 "DROP TABLE %Q.annotation;"
 	},
 	{2004,
 	 2003,

@@ -29,15 +29,37 @@
 
 /**
  * @file rcl_emitter.c
- * Serialise RCL object to the RCL format
+ * Serialise UCL object to various of output formats
  */
 
 
-static void ucl_obj_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool start_tabs, bool compact);
-static void ucl_elt_write_rcl (ucl_object_t *obj, UT_string *buf, unsigned int tabs,
-		bool start_tabs, bool is_top, bool expand_array);
-static void ucl_elt_write_yaml (ucl_object_t *obj, UT_string *buf, unsigned int tabs,
-		bool start_tabs, bool compact, bool expand_array);
+static void ucl_obj_write_json (ucl_object_t *obj,
+		struct ucl_emitter_functions *func,
+		unsigned int tabs,
+		bool start_tabs,
+		bool compact);
+static void ucl_elt_write_json (ucl_object_t *obj,
+		struct ucl_emitter_functions *func,
+		unsigned int tabs,
+		bool start_tabs,
+		bool compact);
+static void ucl_elt_write_config (ucl_object_t *obj,
+		struct ucl_emitter_functions *func,
+		unsigned int tabs,
+		bool start_tabs,
+		bool is_top,
+		bool expand_array);
+static void ucl_elt_write_yaml (ucl_object_t *obj,
+		struct ucl_emitter_functions *func,
+		unsigned int tabs,
+		bool start_tabs,
+		bool compact,
+		bool expand_array);
+static void ucl_elt_array_write_yaml (ucl_object_t *obj,
+		struct ucl_emitter_functions *func,
+		unsigned int tabs,
+		bool start_tabs,
+		bool is_top);
 
 /**
  * Add tabulation to the output buffer
@@ -45,21 +67,10 @@ static void ucl_elt_write_yaml (ucl_object_t *obj, UT_string *buf, unsigned int 
  * @param tabs number of tabs to add
  */
 static inline void
-ucl_add_tabs (UT_string *buf, unsigned int tabs, bool compact)
+ucl_add_tabs (struct ucl_emitter_functions *func, unsigned int tabs, bool compact)
 {
-	char *p;
-	unsigned int i;
-
 	if (!compact) {
-		while (buf->n - buf->i <= tabs * 4) {
-			utstring_reserve (buf, buf->n * 2);
-		}
-		p = &buf->d[buf->i];
-		for (i = 0; i < tabs; i ++) {
-			memset (&p[i * 4], ' ', 4);
-		}
-		buf->i += i * 4;
-		buf->d[buf->i] = '\0';
+		func->ucl_emitter_append_character (' ', tabs * 4, func->ud);
 	}
 }
 
@@ -69,38 +80,39 @@ ucl_add_tabs (UT_string *buf, unsigned int tabs, bool compact)
  * @param buf target buffer
  */
 static void
-ucl_elt_string_write_json (const char *str, size_t size, UT_string *buf)
+ucl_elt_string_write_json (const char *str, size_t size,
+		struct ucl_emitter_functions *func)
 {
 	const char *p = str, *c = str;
 	size_t len = 0;
 
-	utstring_append_c (buf, '"');
+	func->ucl_emitter_append_character ('"', 1, func->ud);
 	while (size) {
 		if (ucl_test_character (*p, UCL_CHARACTER_JSON_UNSAFE)) {
 			if (len > 0) {
-				utstring_append_len (buf, c, len);
+				func->ucl_emitter_append_len (c, len, func->ud);
 			}
 			switch (*p) {
 			case '\n':
-				utstring_append_len (buf, "\\n", 2);
+				func->ucl_emitter_append_len ("\\n", 2, func->ud);
 				break;
 			case '\r':
-				utstring_append_len (buf, "\\r", 2);
+				func->ucl_emitter_append_len ("\\r", 2, func->ud);
 				break;
 			case '\b':
-				utstring_append_len (buf, "\\b", 2);
+				func->ucl_emitter_append_len ("\\b", 2, func->ud);
 				break;
 			case '\t':
-				utstring_append_len (buf, "\\t", 2);
+				func->ucl_emitter_append_len ("\\t", 2, func->ud);
 				break;
 			case '\f':
-				utstring_append_len (buf, "\\f", 2);
+				func->ucl_emitter_append_len ("\\f", 2, func->ud);
 				break;
 			case '\\':
-				utstring_append_len (buf, "\\\\", 2);
+				func->ucl_emitter_append_len ("\\\\", 2, func->ud);
 				break;
 			case '"':
-				utstring_append_len (buf, "\\\"", 2);
+				func->ucl_emitter_append_len ("\\\"", 2, func->ud);
 				break;
 			}
 			len = 0;
@@ -113,24 +125,9 @@ ucl_elt_string_write_json (const char *str, size_t size, UT_string *buf)
 		size --;
 	}
 	if (len > 0) {
-		utstring_append_len (buf, c, len);
+		func->ucl_emitter_append_len (c, len, func->ud);
 	}
-	utstring_append_c (buf, '"');
-}
-
-static inline void
-ucl_print_float (UT_string *buf, double val)
-{
-	if (val == (double)(int)val) {
-		utstring_printf (buf, "%.1lf", val);
-	}
-	else if (fabs (val - (double)(int)val) < 0.0000001) {
-		/* Write at maximum precision */
-		utstring_printf (buf, "%.*lg", DBL_DIG, val);
-	}
-	else {
-		utstring_printf (buf, "%lf", val);
-	}
+	func->ucl_emitter_append_character ('"', 1, func->ud);
 }
 
 /**
@@ -139,48 +136,50 @@ ucl_print_float (UT_string *buf, double val)
  * @param buf target buffer
  */
 static void
-ucl_elt_obj_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool start_tabs, bool compact)
+ucl_elt_obj_write_json (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool compact)
 {
-	ucl_object_t *cur, *tmp;
+	ucl_object_t *cur;
+	ucl_hash_iter_t it = NULL;
 
 	if (start_tabs) {
-		ucl_add_tabs (buf, tabs, compact);
+		ucl_add_tabs (func, tabs, compact);
 	}
 	if (compact) {
-		utstring_append_c (buf, '{');
+		func->ucl_emitter_append_character ('{', 1, func->ud);
 	}
 	else {
-		utstring_append_len (buf, "{\n", 2);
+		func->ucl_emitter_append_len ("{\n", 2, func->ud);
 	}
-	HASH_ITER (hh, obj, cur, tmp) {
-		ucl_add_tabs (buf, tabs + 1, compact);
-		if (cur->hh.keylen > 0) {
-			ucl_elt_string_write_json (cur->hh.key, cur->hh.keylen, buf);
+	while ((cur = ucl_hash_iterate (obj->value.ov, &it))) {
+		ucl_add_tabs (func, tabs + 1, compact);
+		if (cur->keylen > 0) {
+			ucl_elt_string_write_json (cur->key, cur->keylen, func);
 		}
 		else {
-			utstring_append_len (buf, "null", 4);
+			func->ucl_emitter_append_len ("null", 4, func->ud);
 		}
 		if (compact) {
-			utstring_append_c (buf, ':');
+			func->ucl_emitter_append_character (':', 1, func->ud);
 		}
 		else {
-			utstring_append_len (buf, ": ", 2);
+			func->ucl_emitter_append_len (": ", 2, func->ud);
 		}
-		ucl_obj_write_json (cur, buf, tabs + 1, false, compact);
-		if (cur->hh.next != NULL) {
+		ucl_obj_write_json (cur, func, tabs + 1, false, compact);
+		if (ucl_hash_iter_has_next (it)) {
 			if (compact) {
-				utstring_append_c (buf, ',');
+				func->ucl_emitter_append_character (',', 1, func->ud);
 			}
 			else {
-				utstring_append_len (buf, ",\n", 2);
+				func->ucl_emitter_append_len (",\n", 2, func->ud);
 			}
 		}
 		else if (!compact) {
-			utstring_append_c (buf, '\n');
+			func->ucl_emitter_append_character ('\n', 1, func->ud);
 		}
 	}
-	ucl_add_tabs (buf, tabs, compact);
-	utstring_append_c (buf, '}');
+	ucl_add_tabs (func, tabs, compact);
+	func->ucl_emitter_append_character ('}', 1, func->ud);
 }
 
 /**
@@ -189,36 +188,37 @@ ucl_elt_obj_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bo
  * @param buf target buffer
  */
 static void
-ucl_elt_array_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool start_tabs, bool compact)
+ucl_elt_array_write_json (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool compact)
 {
 	ucl_object_t *cur = obj;
 
 	if (start_tabs) {
-		ucl_add_tabs (buf, tabs, compact);
+		ucl_add_tabs (func, tabs, compact);
 	}
 	if (compact) {
-		utstring_append_c (buf, '[');
+		func->ucl_emitter_append_character ('[', 1, func->ud);
 	}
 	else {
-		utstring_append_len (buf, "[\n", 2);
+		func->ucl_emitter_append_len ("[\n", 2, func->ud);
 	}
 	while (cur) {
-		ucl_elt_write_json (cur, buf, tabs + 1, true, compact);
+		ucl_elt_write_json (cur, func, tabs + 1, true, compact);
 		if (cur->next != NULL) {
 			if (compact) {
-				utstring_append_c (buf, ',');
+				func->ucl_emitter_append_character (',', 1, func->ud);
 			}
 			else {
-				utstring_append_len (buf, ",\n", 2);
+				func->ucl_emitter_append_len (",\n", 2, func->ud);
 			}
 		}
 		else if (!compact) {
-			utstring_append_c (buf, '\n');
+			func->ucl_emitter_append_character ('\n', 1, func->ud);
 		}
 		cur = cur->next;
 	}
-	ucl_add_tabs (buf, tabs, compact);
-	utstring_append_c (buf, ']');
+	ucl_add_tabs (func, tabs, compact);
+	func->ucl_emitter_append_character (']', 1, func->ud);
 }
 
 /**
@@ -226,40 +226,55 @@ ucl_elt_array_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, 
  * @param obj object
  * @param buf buffer
  */
-void
-ucl_elt_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool start_tabs, bool compact)
+static void
+ucl_elt_write_json (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool compact)
 {
+	bool flag;
+
 	switch (obj->type) {
 	case UCL_INT:
 		if (start_tabs) {
-			ucl_add_tabs (buf, tabs, compact);
+			ucl_add_tabs (func, tabs, compact);
 		}
-		utstring_printf (buf, "%jd", (intmax_t)ucl_object_toint (obj));
+		func->ucl_emitter_append_int (ucl_object_toint (obj), func->ud);
 		break;
 	case UCL_FLOAT:
 	case UCL_TIME:
 		if (start_tabs) {
-			ucl_add_tabs (buf, tabs, compact);
+			ucl_add_tabs (func, tabs, compact);
 		}
-		ucl_print_float (buf, ucl_object_todouble (obj));
+		func->ucl_emitter_append_double (ucl_object_todouble (obj), func->ud);
 		break;
 	case UCL_BOOLEAN:
 		if (start_tabs) {
-			ucl_add_tabs (buf, tabs, compact);
+			ucl_add_tabs (func, tabs, compact);
 		}
-		utstring_printf (buf, "%s", ucl_object_toboolean (obj) ? "true" : "false");
+		flag = ucl_object_toboolean (obj);
+		if (flag) {
+			func->ucl_emitter_append_len ("true", 4, func->ud);
+		}
+		else {
+			func->ucl_emitter_append_len ("false", 5, func->ud);
+		}
 		break;
 	case UCL_STRING:
 		if (start_tabs) {
-			ucl_add_tabs (buf, tabs, compact);
+			ucl_add_tabs (func, tabs, compact);
 		}
-		ucl_elt_string_write_json (obj->value.sv, obj->len, buf);
+		ucl_elt_string_write_json (obj->value.sv, obj->len, func);
+		break;
+	case UCL_NULL:
+		if (start_tabs) {
+			ucl_add_tabs (func, tabs, compact);
+		}
+		func->ucl_emitter_append_len ("null", 4, func->ud);
 		break;
 	case UCL_OBJECT:
-		ucl_elt_obj_write_json (obj->value.ov, buf, tabs, start_tabs, compact);
+		ucl_elt_obj_write_json (obj, func, tabs, start_tabs, compact);
 		break;
 	case UCL_ARRAY:
-		ucl_elt_array_write_json (obj->value.ov, buf, tabs, start_tabs, compact);
+		ucl_elt_array_write_json (obj->value.av, func, tabs, start_tabs, compact);
 		break;
 	case UCL_USERDATA:
 		break;
@@ -272,7 +287,8 @@ ucl_elt_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool s
  * @param buf target buffer
  */
 static void
-ucl_obj_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool start_tabs, bool compact)
+ucl_obj_write_json (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool compact)
 {
 	ucl_object_t *cur;
 	bool is_array = (obj->next != NULL);
@@ -280,31 +296,31 @@ ucl_obj_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool s
 	if (is_array) {
 		/* This is an array actually */
 		if (start_tabs) {
-			ucl_add_tabs (buf, tabs, compact);
+			ucl_add_tabs (func, tabs, compact);
 		}
 
 		if (compact) {
-			utstring_append_c (buf, '[');
+			func->ucl_emitter_append_character ('[', 1, func->ud);
 		}
 		else {
-			utstring_append_len (buf, "[\n", 2);
+			func->ucl_emitter_append_len ("[\n", 2, func->ud);
 		}
 		cur = obj;
 		while (cur != NULL) {
-			ucl_elt_write_json (cur, buf, tabs + 1, true, compact);
+			ucl_elt_write_json (cur, func, tabs + 1, true, compact);
 			if (cur->next) {
-				utstring_append_c (buf, ',');
+				func->ucl_emitter_append_character (',', 1, func->ud);
 			}
 			if (!compact) {
-				utstring_append_c (buf, '\n');
+				func->ucl_emitter_append_character ('\n', 1, func->ud);
 			}
 			cur = cur->next;
 		}
-		ucl_add_tabs (buf, tabs, compact);
-		utstring_append_c (buf, ']');
+		ucl_add_tabs (func, tabs, compact);
+		func->ucl_emitter_append_character (']', 1, func->ud);
 	}
 	else {
-		ucl_elt_write_json (obj, buf, tabs, start_tabs, compact);
+		ucl_elt_write_json (obj, func, tabs, start_tabs, compact);
 	}
 
 }
@@ -314,17 +330,10 @@ ucl_obj_write_json (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool s
  * @param obj object
  * @return json output (should be freed after using)
  */
-static UT_string *
-ucl_object_emit_json (ucl_object_t *obj, bool compact)
+static void
+ucl_object_emit_json (ucl_object_t *obj, bool compact, struct ucl_emitter_functions *func)
 {
-	UT_string *buf;
-
-	/* Allocate large enough buffer */
-	utstring_new (buf);
-
-	ucl_obj_write_json (obj, buf, 0, false, compact);
-
-	return buf;
+	ucl_obj_write_json (obj, func, 0, false, compact);
 }
 
 /**
@@ -333,178 +342,49 @@ ucl_object_emit_json (ucl_object_t *obj, bool compact)
  * @param buf target buffer
  */
 static void
-ucl_elt_obj_write_rcl (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool start_tabs, bool is_top)
+ucl_elt_obj_write_config (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool is_top)
 {
-	ucl_object_t *cur, *tmp;
+	ucl_object_t *cur, *cur_obj;
+	ucl_hash_iter_t it = NULL;
 
 	if (start_tabs) {
-		ucl_add_tabs (buf, tabs, is_top);
+		ucl_add_tabs (func, tabs, is_top);
 	}
 	if (!is_top) {
-		utstring_append_len (buf, "{\n", 2);
+		func->ucl_emitter_append_len ("{\n", 2, func->ud);
 	}
 
-	HASH_ITER (hh, obj, cur, tmp) {
-		ucl_add_tabs (buf, tabs + 1, is_top);
-		utstring_append_len (buf, cur->hh.key, cur->hh.keylen);
-		if (cur->type != UCL_OBJECT && cur->type != UCL_ARRAY) {
-			utstring_append_len (buf, " = ", 3);
-		}
-		else {
-			utstring_append_c (buf, ' ');
-		}
-		ucl_elt_write_rcl (cur, buf, is_top ? tabs : tabs + 1, false, false, true);
-		if (cur->type != UCL_OBJECT && cur->type != UCL_ARRAY) {
-			utstring_append_len (buf, ";\n", 2);
-		}
-		else {
-			utstring_append_c (buf, '\n');
-		}
-	}
-
-	ucl_add_tabs (buf, tabs, is_top);
-	if (!is_top) {
-		utstring_append_c (buf, '}');
-	}
-}
-
-/**
- * Write a single array to the buffer
- * @param obj array to write
- * @param buf target buffer
- */
-static void
-ucl_elt_array_write_rcl (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool start_tabs, bool is_top)
-{
-	ucl_object_t *cur = obj;
-
-	if (start_tabs) {
-		ucl_add_tabs (buf, tabs, false);
-	}
-
-	utstring_append_len (buf, "[\n", 2);
-	while (cur) {
-		ucl_elt_write_rcl (cur, buf, tabs + 1, true, false, false);
-		utstring_append_len (buf, ",\n", 2);
-		cur = cur->next;
-	}
-	ucl_add_tabs (buf, tabs, false);
-	utstring_append_c (buf, ']');
-}
-
-/**
- * Emit a single element
- * @param obj object
- * @param buf buffer
- */
-static void
-ucl_elt_write_rcl (ucl_object_t *obj, UT_string *buf, unsigned int tabs,
-		bool start_tabs, bool is_top, bool expand_array)
-{
-	if (expand_array && obj->next != NULL) {
-		ucl_elt_array_write_rcl (obj, buf, tabs, start_tabs, is_top);
-	}
-	else {
-		switch (obj->type) {
-		case UCL_INT:
-			if (start_tabs) {
-				ucl_add_tabs (buf, tabs, false);
-			}
-			utstring_printf (buf, "%jd", (intmax_t)ucl_object_toint (obj));
-			break;
-		case UCL_FLOAT:
-		case UCL_TIME:
-			if (start_tabs) {
-				ucl_add_tabs (buf, tabs, false);
-			}
-			ucl_print_float (buf, ucl_object_todouble (obj));
-			break;
-		case UCL_BOOLEAN:
-			if (start_tabs) {
-				ucl_add_tabs (buf, tabs, false);
-			}
-			utstring_printf (buf, "%s", ucl_object_toboolean (obj) ? "true" : "false");
-			break;
-		case UCL_STRING:
-			if (start_tabs) {
-				ucl_add_tabs (buf, tabs, false);
-			}
-			ucl_elt_string_write_json (obj->value.sv, obj->len, buf);
-			break;
-		case UCL_OBJECT:
-			ucl_elt_obj_write_rcl (obj->value.ov, buf, tabs, start_tabs, is_top);
-			break;
-		case UCL_ARRAY:
-			ucl_elt_array_write_rcl (obj->value.ov, buf, tabs, start_tabs, is_top);
-			break;
-		case UCL_USERDATA:
-			break;
-		}
-	}
-}
-
-/**
- * Emit an object to rcl
- * @param obj object
- * @return rcl output (should be freed after using)
- */
-static UT_string *
-ucl_object_emit_rcl (ucl_object_t *obj)
-{
-	UT_string *buf;
-
-	/* Allocate large enough buffer */
-	utstring_new (buf);
-
-	ucl_elt_write_rcl (obj, buf, 0, false, true, true);
-
-	return buf;
-}
-
-
-/**
- * Write a single object to the buffer
- * @param obj object to write
- * @param buf target buffer
- */
-static void
-ucl_elt_obj_write_yaml (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool start_tabs, bool is_top)
-{
-	ucl_object_t *cur, *tmp;
-
-	if (start_tabs) {
-		ucl_add_tabs (buf, tabs, is_top);
-	}
-	if (!is_top) {
-		utstring_append_len (buf, ": {\n", 4);
-	}
-
-	HASH_ITER (hh, obj, cur, tmp) {
-		ucl_add_tabs (buf, tabs + 1, is_top);
-		utstring_append_len (buf, cur->hh.key, cur->hh.keylen);
-		if (cur->type != UCL_OBJECT && cur->type != UCL_ARRAY) {
-			utstring_append_len (buf, " : ", 3);
-		}
-		else {
-			utstring_append_c (buf, ' ');
-		}
-		ucl_elt_write_yaml (cur, buf, is_top ? tabs : tabs + 1, false, false, true);
-		if (cur->type != UCL_OBJECT && cur->type != UCL_ARRAY) {
-			if (!is_top) {
-				utstring_append_len (buf, ",\n", 2);
+	while ((cur = ucl_hash_iterate (obj->value.ov, &it))) {
+		LL_FOREACH (cur, cur_obj) {
+			ucl_add_tabs (func, tabs + 1, is_top);
+			if (cur_obj->flags & UCL_OBJECT_NEED_KEY_ESCAPE) {
+				ucl_elt_string_write_json (cur_obj->key, cur_obj->keylen, func);
 			}
 			else {
-				utstring_append_c (buf, '\n');
+				func->ucl_emitter_append_len (cur_obj->key, cur_obj->keylen, func->ud);
 			}
-		}
-		else {
-			utstring_append_c (buf, '\n');
+			if (cur_obj->type != UCL_OBJECT && cur_obj->type != UCL_ARRAY) {
+				func->ucl_emitter_append_len (" = ", 3, func->ud);
+			}
+			else {
+				func->ucl_emitter_append_character (' ', 1, func->ud);
+			}
+			ucl_elt_write_config (cur_obj, func,
+					is_top ? tabs : tabs + 1,
+					false, false, false);
+			if (cur_obj->type != UCL_OBJECT && cur_obj->type != UCL_ARRAY) {
+				func->ucl_emitter_append_len (";\n", 2, func->ud);
+			}
+			else {
+				func->ucl_emitter_append_character ('\n', 1, func->ud);
+			}
 		}
 	}
 
-	ucl_add_tabs (buf, tabs, is_top);
+	ucl_add_tabs (func, tabs, is_top);
 	if (!is_top) {
-		utstring_append_c (buf, '}');
+		func->ucl_emitter_append_character ('}', 1, func->ud);
 	}
 }
 
@@ -514,22 +394,23 @@ ucl_elt_obj_write_yaml (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bo
  * @param buf target buffer
  */
 static void
-ucl_elt_array_write_yaml (ucl_object_t *obj, UT_string *buf, unsigned int tabs, bool start_tabs, bool is_top)
+ucl_elt_array_write_config (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool is_top)
 {
 	ucl_object_t *cur = obj;
 
 	if (start_tabs) {
-		ucl_add_tabs (buf, tabs, false);
+		ucl_add_tabs (func, tabs, false);
 	}
 
-	utstring_append_len (buf, ": [\n", 4);
+	func->ucl_emitter_append_len ("[\n", 2, func->ud);
 	while (cur) {
-		ucl_elt_write_yaml (cur, buf, tabs + 1, true, false, false);
-		utstring_append_len (buf, ",\n", 2);
+		ucl_elt_write_config (cur, func, tabs + 1, true, false, false);
+		func->ucl_emitter_append_len (",\n", 2, func->ud);
 		cur = cur->next;
 	}
-	ucl_add_tabs (buf, tabs, false);
-	utstring_append_c (buf, ']');
+	ucl_add_tabs (func, tabs, false);
+	func->ucl_emitter_append_character (']', 1, func->ud);
 }
 
 /**
@@ -538,44 +419,58 @@ ucl_elt_array_write_yaml (ucl_object_t *obj, UT_string *buf, unsigned int tabs, 
  * @param buf buffer
  */
 static void
-ucl_elt_write_yaml (ucl_object_t *obj, UT_string *buf, unsigned int tabs,
-		bool start_tabs, bool is_top, bool expand_array)
+ucl_elt_write_config (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool is_top, bool expand_array)
 {
+	bool flag;
+
 	if (expand_array && obj->next != NULL) {
-		ucl_elt_array_write_yaml (obj, buf, tabs, start_tabs, is_top);
-		}
+		ucl_elt_array_write_config (obj, func, tabs, start_tabs, is_top);
+	}
 	else {
 		switch (obj->type) {
 		case UCL_INT:
 			if (start_tabs) {
-				ucl_add_tabs (buf, tabs, false);
+				ucl_add_tabs (func, tabs, false);
 			}
-			utstring_printf (buf, "%jd", (intmax_t)ucl_object_toint (obj));
+			func->ucl_emitter_append_int (ucl_object_toint (obj), func->ud);
 			break;
 		case UCL_FLOAT:
 		case UCL_TIME:
 			if (start_tabs) {
-				ucl_add_tabs (buf, tabs, false);
+				ucl_add_tabs (func, tabs, false);
 			}
-			ucl_print_float (buf, ucl_object_todouble (obj));
+			func->ucl_emitter_append_double (ucl_object_todouble (obj), func->ud);
 			break;
 		case UCL_BOOLEAN:
 			if (start_tabs) {
-				ucl_add_tabs (buf, tabs, false);
+				ucl_add_tabs (func, tabs, false);
 			}
-			utstring_printf (buf, "%s", ucl_object_toboolean (obj) ? "true" : "false");
+			flag = ucl_object_toboolean (obj);
+			if (flag) {
+				func->ucl_emitter_append_len ("true", 4, func->ud);
+			}
+			else {
+				func->ucl_emitter_append_len ("false", 5, func->ud);
+			}
 			break;
 		case UCL_STRING:
 			if (start_tabs) {
-				ucl_add_tabs (buf, tabs, false);
+				ucl_add_tabs (func, tabs, false);
 			}
-			ucl_elt_string_write_json (obj->value.sv, obj->len, buf);
+			ucl_elt_string_write_json (obj->value.sv, obj->len, func);
+			break;
+		case UCL_NULL:
+			if (start_tabs) {
+				ucl_add_tabs (func, tabs, false);
+			}
+			func->ucl_emitter_append_len ("null", 4, func->ud);
 			break;
 		case UCL_OBJECT:
-			ucl_elt_obj_write_yaml (obj->value.ov, buf, tabs, start_tabs, is_top);
+			ucl_elt_obj_write_config (obj, func, tabs, start_tabs, is_top);
 			break;
 		case UCL_ARRAY:
-			ucl_elt_array_write_yaml (obj->value.ov, buf, tabs, start_tabs, is_top);
+			ucl_elt_array_write_config (obj->value.av, func, tabs, start_tabs, is_top);
 			break;
 		case UCL_USERDATA:
 			break;
@@ -588,39 +483,344 @@ ucl_elt_write_yaml (ucl_object_t *obj, UT_string *buf, unsigned int tabs,
  * @param obj object
  * @return rcl output (should be freed after using)
  */
-static UT_string *
-ucl_object_emit_yaml (ucl_object_t *obj)
+static void
+ucl_object_emit_config (ucl_object_t *obj, struct ucl_emitter_functions *func)
 {
-	UT_string *buf;
-
-	/* Allocate large enough buffer */
-	utstring_new (buf);
-
-	ucl_elt_write_yaml (obj, buf, 0, false, true, true);
-
-	return buf;
+	ucl_elt_write_config (obj, func, 0, false, true, true);
 }
+
+
+static void
+ucl_obj_write_yaml (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs)
+{
+	bool is_array = (obj->next != NULL);
+
+	if (is_array) {
+		ucl_elt_array_write_yaml (obj, func, tabs, start_tabs, false);
+	}
+	else {
+		ucl_elt_write_yaml (obj, func, tabs, start_tabs, false, true);
+	}
+}
+
+/**
+ * Write a single object to the buffer
+ * @param obj object to write
+ * @param buf target buffer
+ */
+static void
+ucl_elt_obj_write_yaml (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool is_top)
+{
+	ucl_object_t *cur;
+	ucl_hash_iter_t it = NULL;
+
+	if (start_tabs) {
+		ucl_add_tabs (func, tabs, is_top);
+	}
+	if (!is_top) {
+		func->ucl_emitter_append_len ("{\n", 2, func->ud);
+	}
+
+	while ((cur = ucl_hash_iterate (obj->value.ov, &it))) {
+		ucl_add_tabs (func, tabs + 1, is_top);
+		if (cur->keylen > 0) {
+			ucl_elt_string_write_json (cur->key, cur->keylen, func);
+		}
+		else {
+			func->ucl_emitter_append_len ("null", 4, func->ud);
+		}
+		func->ucl_emitter_append_len (": ", 2, func->ud);
+		ucl_obj_write_yaml (cur, func, is_top ? tabs : tabs + 1, false);
+		if (ucl_hash_iter_has_next(it)) {
+			if (!is_top) {
+				func->ucl_emitter_append_len (",\n", 2, func->ud);
+			}
+			else {
+				func->ucl_emitter_append_character ('\n', 1, func->ud);
+			}
+		}
+		else {
+			func->ucl_emitter_append_character ('\n', 1, func->ud);
+		}
+	}
+
+	ucl_add_tabs (func, tabs, is_top);
+	if (!is_top) {
+		func->ucl_emitter_append_character ('}', 1, func->ud);
+	}
+}
+
+/**
+ * Write a single array to the buffer
+ * @param obj array to write
+ * @param buf target buffer
+ */
+static void
+ucl_elt_array_write_yaml (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool is_top)
+{
+	ucl_object_t *cur = obj;
+
+	if (start_tabs) {
+		ucl_add_tabs (func, tabs, false);
+	}
+
+	func->ucl_emitter_append_len ("[\n", 2, func->ud);
+	while (cur) {
+		ucl_elt_write_yaml (cur, func, tabs + 1, true, false, false);
+		func->ucl_emitter_append_len (",\n", 2, func->ud);
+		cur = cur->next;
+	}
+	ucl_add_tabs (func, tabs, false);
+	func->ucl_emitter_append_character (']', 1, func->ud);
+}
+
+/**
+ * Emit a single element
+ * @param obj object
+ * @param buf buffer
+ */
+static void
+ucl_elt_write_yaml (ucl_object_t *obj, struct ucl_emitter_functions *func,
+		unsigned int tabs, bool start_tabs, bool is_top, bool expand_array)
+{
+	bool flag;
+
+	if (expand_array && obj->next != NULL ) {
+		ucl_elt_array_write_yaml (obj, func, tabs, start_tabs, is_top);
+	}
+	else {
+		switch (obj->type) {
+		case UCL_INT:
+			if (start_tabs) {
+				ucl_add_tabs (func, tabs, false);
+			}
+			func->ucl_emitter_append_int (ucl_object_toint (obj), func->ud);
+			break;
+		case UCL_FLOAT:
+		case UCL_TIME:
+			if (start_tabs) {
+				ucl_add_tabs (func, tabs, false);
+			}
+			func->ucl_emitter_append_double (ucl_object_todouble (obj), func->ud);
+			break;
+		case UCL_BOOLEAN:
+			if (start_tabs) {
+				ucl_add_tabs (func, tabs, false);
+			}
+			flag = ucl_object_toboolean (obj);
+			if (flag) {
+				func->ucl_emitter_append_len ("true", 4, func->ud);
+			}
+			else {
+				func->ucl_emitter_append_len ("false", 5, func->ud);
+			}
+			break;
+		case UCL_STRING:
+			if (start_tabs) {
+				ucl_add_tabs (func, tabs, false);
+			}
+			ucl_elt_string_write_json (obj->value.sv, obj->len, func);
+			break;
+		case UCL_NULL:
+			if (start_tabs) {
+				ucl_add_tabs (func, tabs, false);
+			}
+			func->ucl_emitter_append_len ("null", 4, func->ud);
+			break;
+		case UCL_OBJECT:
+			ucl_elt_obj_write_yaml (obj, func, tabs, start_tabs, is_top);
+			break;
+		case UCL_ARRAY:
+			ucl_elt_array_write_yaml (obj->value.av, func, tabs, start_tabs, is_top);
+			break;
+		case UCL_USERDATA:
+			break;
+		}
+	}
+}
+
+/**
+ * Emit an object to rcl
+ * @param obj object
+ * @return rcl output (should be freed after using)
+ */
+static void
+ucl_object_emit_yaml (ucl_object_t *obj, struct ucl_emitter_functions *func)
+{
+	ucl_elt_write_yaml (obj, func, 0, false, true, true);
+}
+
+/*
+ * Generic utstring output
+ */
+static int
+ucl_utstring_append_character (unsigned char c, size_t len, void *ud)
+{
+	UT_string *buf = ud;
+
+	if (len == 1) {
+		utstring_append_c (buf, c);
+	}
+	else {
+		utstring_reserve (buf, len);
+		memset (&buf->d[buf->i], c, len);
+		buf->i += len;
+		buf->d[buf->i] = '\0';
+	}
+
+	return 0;
+}
+
+static int
+ucl_utstring_append_len (const unsigned char *str, size_t len, void *ud)
+{
+	UT_string *buf = ud;
+
+	utstring_append_len (buf, str, len);
+
+	return 0;
+}
+
+static int
+ucl_utstring_append_int (int64_t val, void *ud)
+{
+	UT_string *buf = ud;
+
+	utstring_printf (buf, "%jd", (intmax_t)val);
+	return 0;
+}
+
+static int
+ucl_utstring_append_double (double val, void *ud)
+{
+	UT_string *buf = ud;
+	const double delta = 0.0000001;
+
+	if (val == (double)(int)val) {
+		utstring_printf (buf, "%.1lf", val);
+	}
+	else if (fabs (val - (double)(int)val) < delta) {
+		/* Write at maximum precision */
+		utstring_printf (buf, "%.*lg", DBL_DIG, val);
+	}
+	else {
+		utstring_printf (buf, "%lf", val);
+	}
+
+	return 0;
+}
+
 
 unsigned char *
 ucl_object_emit (ucl_object_t *obj, enum ucl_emitter emit_type)
 {
 	UT_string *buf = NULL;
 	unsigned char *res = NULL;
+	struct ucl_emitter_functions func = {
+		.ucl_emitter_append_character = ucl_utstring_append_character,
+		.ucl_emitter_append_len = ucl_utstring_append_len,
+		.ucl_emitter_append_int = ucl_utstring_append_int,
+		.ucl_emitter_append_double = ucl_utstring_append_double
+	};
 
-	if (emit_type == UCL_EMIT_JSON) {
-		buf = ucl_object_emit_json (obj, false);
+	if (obj == NULL) {
+		return NULL;
 	}
-	else if (emit_type == UCL_EMIT_JSON_COMPACT) {
-		buf = ucl_object_emit_json (obj, true);
-	}
-	else if (emit_type == UCL_EMIT_YAML) {
-		buf = ucl_object_emit_yaml (obj);
-	}
-	else {
-		buf = ucl_object_emit_rcl (obj);
-	}
+
+	utstring_new (buf);
+	func.ud = buf;
 
 	if (buf != NULL) {
+		if (emit_type == UCL_EMIT_JSON) {
+			ucl_object_emit_json (obj, false, &func);
+		}
+		else if (emit_type == UCL_EMIT_JSON_COMPACT) {
+			ucl_object_emit_json (obj, true, &func);
+		}
+		else if (emit_type == UCL_EMIT_YAML) {
+			ucl_object_emit_yaml (obj, &func);
+		}
+		else {
+			ucl_object_emit_config (obj, &func);
+		}
+
+		res = utstring_body (buf);
+		free (buf);
+	}
+
+	return res;
+}
+
+bool
+ucl_object_emit_full (ucl_object_t *obj, enum ucl_emitter emit_type,
+		struct ucl_emitter_functions *emitter)
+{
+	if (emit_type == UCL_EMIT_JSON) {
+		ucl_object_emit_json (obj, false, emitter);
+	}
+	else if (emit_type == UCL_EMIT_JSON_COMPACT) {
+		ucl_object_emit_json (obj, true, emitter);
+	}
+	else if (emit_type == UCL_EMIT_YAML) {
+		ucl_object_emit_yaml (obj, emitter);
+	}
+	else {
+		ucl_object_emit_config (obj, emitter);
+	}
+
+	/* XXX: need some error checks here */
+	return true;
+}
+
+
+unsigned char *
+ucl_object_emit_single_json (ucl_object_t *obj)
+{
+	UT_string *buf = NULL;
+	unsigned char *res = NULL;
+
+	if (obj == NULL) {
+		return NULL;
+	}
+
+	utstring_new (buf);
+
+	if (buf != NULL) {
+		switch (obj->type) {
+		case UCL_OBJECT:
+			ucl_utstring_append_len ("object", 6, buf);
+			break;
+		case UCL_ARRAY:
+			ucl_utstring_append_len ("array", 5, buf);
+			break;
+		case UCL_INT:
+			ucl_utstring_append_int (obj->value.iv, buf);
+			break;
+		case UCL_FLOAT:
+		case UCL_TIME:
+			ucl_utstring_append_double (obj->value.dv, buf);
+			break;
+		case UCL_NULL:
+			ucl_utstring_append_len ("null", 4, buf);
+			break;
+		case UCL_BOOLEAN:
+			if (obj->value.iv) {
+				ucl_utstring_append_len ("true", 4, buf);
+			}
+			else {
+				ucl_utstring_append_len ("false", 5, buf);
+			}
+			break;
+		case UCL_STRING:
+			ucl_utstring_append_len (obj->value.sv, obj->len, buf);
+			break;
+		case UCL_USERDATA:
+			ucl_utstring_append_len ("userdata", 8, buf);
+			break;
+		}
 		res = utstring_body (buf);
 		free (buf);
 	}

@@ -280,8 +280,13 @@ exec_clean(int argc, char **argv)
 
 	retcode = EX_SOFTWARE;
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		goto cleanup;
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+		return (EX_IOERR);
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get a read lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
 	}
 
 	if ((fts = fts_open(paths, FTS_PHYSICAL, NULL)) == NULL) {
@@ -321,6 +326,10 @@ exec_clean(int argc, char **argv)
 		if (all) {
 			ret = add_to_dellist(&dl, ALL, ent->fts_path,
 					     origin, NULL, NULL);
+			/*
+			 * FIXME: `ret' is not checked, what should be done if
+			 * add_to_dellist() fails ?
+			 */
 			pkgdb_it_free(it);
 			continue;
 		}
@@ -329,6 +338,7 @@ exec_clean(int argc, char **argv)
 		if (ret == EPKG_FATAL) {
 			if (!quiet)
 				warnx("skipping %s", ent->fts_path);
+			pkgdb_it_free(it);
 			continue;
 		}
 
@@ -336,6 +346,11 @@ exec_clean(int argc, char **argv)
 			/* No matching package found in repo */
 			ret = add_to_dellist(&dl, REMOVED, ent->fts_path,
 					     origin, NULL, NULL);
+			/*
+			 * FIXME: `ret' is not checked, what should be done if
+			 * add_to_dellist() fails ?
+			 */
+			pkgdb_it_free(it);
 			continue;
 		}
 
@@ -372,6 +387,7 @@ exec_clean(int argc, char **argv)
 
 		if (ret != EPKG_OK && ret != EPKG_END) {
 			retcode = EX_OSERR; /* out of memory */
+			pkgdb_it_free(it);
 			goto cleanup;
 		}
 
@@ -405,8 +421,9 @@ cleanup:
 	pkg_free(p);
 	if (fts != NULL)
 		fts_close(fts);
-	if (db != NULL)
-		pkgdb_close(db);
+
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+	pkgdb_close(db);
 
 	return (retcode);
 }

@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -83,6 +83,7 @@ exec_info(int argc, char **argv)
 	int open_flags = 0;
 	bool pkg_exists = false;
 	bool origin_search = false;
+	bool e_flag = false;
 	struct pkg_manifest_key *keys = NULL;
 
 	/* TODO: exclusive opts ? */
@@ -138,7 +139,8 @@ exec_info(int argc, char **argv)
 			opt |= INFO_FLATSIZE;
 			break;
 		case 'E': /* ports compatibility */
-			/* FALLSTHROUGH */
+			e_flag = true;
+			break;
 		case 'q':
 			quiet = true;
 			break;
@@ -231,6 +233,12 @@ exec_info(int argc, char **argv)
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EX_IOERR);
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get a read lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
 
 	i = 0;
 	do {
@@ -325,7 +333,7 @@ exec_info(int argc, char **argv)
 		}
 
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
-			return (EX_IOERR);
+			goto cleanup;
 		}
 
 		/* this is place for compatibility hacks */
@@ -341,7 +349,7 @@ exec_info(int argc, char **argv)
 		 * only show full version in case of match glob with a single argument specified
 		 * which does not contains any glob pattern
 		 */
-		if (argc == 1 && 
+		if (argc == 1 && !origin_search && !quiet && !e_flag &&
 		    match == MATCH_GLOB &&
 		    strcspn(pkgname, "*[]{}()") == strlen(pkgname) &&
 		    opt == INFO_TAG_NAMEVER)
@@ -421,7 +429,11 @@ exec_info(int argc, char **argv)
 		i++;
 	} while (i < argc);
 
-	pkg_free(pkg);
+cleanup:
+	if (pkg != NULL)
+		pkg_free(pkg);
+
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
 	return (retcode);

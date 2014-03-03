@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +30,7 @@
 
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/types.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -36,18 +38,21 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-static int get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root);
+static int find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, int priority);
 static struct pkg *get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
+static struct pkg *get_remote_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force);
+static bool pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive);
 static bool new_pkg_version(struct pkg_jobs *j);
-static int order_pool(struct pkg_jobs *j, bool force);
+static int pkg_jobs_check_conflicts(struct pkg_jobs *j);
 
 int
 pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
@@ -62,7 +67,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 
 	(*j)->db = db;
 	(*j)->type = t;
-	(*j)->solved = false;
+	(*j)->solved = 0;
 	(*j)->flags = PKG_FLAG_NONE;
 
 	return (EPKG_OK);
@@ -90,15 +95,32 @@ pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
+	struct pkg_job_request *req, *tmp;
+	struct pkg_job_universe_item *un, *untmp, *cur;
+
 	if (j == NULL)
 		return;
 
-	if ((j->flags & PKG_FLAG_DRY_RUN) == 0 &&
-		j->type != PKG_JOBS_FETCH)
-		pkgdb_release_lock(j->db);
-
-	HASH_FREE(j->jobs, pkg, pkg_free);
+	HASH_ITER(hh, j->request_add, req, tmp) {
+		HASH_DEL(j->request_add, req);
+		free(req);
+	}
+	HASH_ITER(hh, j->request_delete, req, tmp) {
+		HASH_DEL(j->request_delete, req);
+		free(req);
+	}
+	HASH_ITER(hh, j->universe, un, untmp) {
+		HASH_DEL(j->universe, un);
+		LL_FOREACH(un, cur) {
+			pkg_free(cur->pkg);
+		}
+		free(un);
+	}
+	HASH_FREE(j->seen, pkg_job_seen, free);
 	LL_FREE(j->patterns, job_pattern, free);
+	LL_FREE(j->jobs_add, pkg_solved, free);
+	LL_FREE(j->jobs_delete, pkg_solved, free);
+	LL_FREE(j->jobs_upgrade, pkg_solved, free);
 
 	free(j);
 }
@@ -132,114 +154,262 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	return (EPKG_OK);
 }
 
-static int
-populate_local_rdeps(struct pkg_jobs *j, struct pkg *p)
-{
-	struct pkg *pkg;
-	struct pkg_dep *d = NULL;
-	char *origin;
+#define MAKE_JOBS_ITER_FUNC(type)											\
+    bool																	\
+    pkg_jobs_##type##_iter(struct pkg_jobs *jobs, void **iter, 			\
+						struct pkg **new, struct pkg **old)				\
+    {																		\
+    	struct pkg_solved *s;												\
+    	assert(iter != NULL);												\
+    	if (jobs->jobs_##type == NULL) {									\
+    		return (false);													\
+    	}																	\
+    	if (*iter == NULL) {												\
+    		s = jobs->jobs_##type;											\
+    	}																	\
+    	else if (*iter == jobs->jobs_##type) {								\
+    		return (false);													\
+    	}																	\
+    	else {																\
+    		s = *iter;														\
+    	}																	\
+    	*new = s->pkg[0];													\
+    	*old = s->pkg[1];													\
+    	*iter = s->next ? s->next : jobs->jobs_##type;						\
+    	return (true);														\
+    }
 
-	while (pkg_rdeps(p, &d) == EPKG_OK) {
-		HASH_FIND_STR(j->bulk, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
-		if (pkg != NULL)
-			continue;
-		HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
-		if (pkg != NULL)
-			continue;
-		if ((pkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), PKG_LOAD_BASIC|PKG_LOAD_RDEPS)) == NULL) {
-			pkg_emit_error("Missing reverse dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
-			return (EPKG_FATAL);
-		}
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-		HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
-		populate_local_rdeps(j, pkg);
-	}
+MAKE_JOBS_ITER_FUNC(add)
+MAKE_JOBS_ITER_FUNC(delete)
+MAKE_JOBS_ITER_FUNC(upgrade)
 
-	return (EPKG_OK);
-}
+#undef MAKE_JOBS_ITER_FUNC
 
 static void
-remove_from_rdeps(struct pkg_jobs *j, const char *origin)
+pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg, bool add, int priority)
 {
-	struct pkg *pkg, *tmp;
-	struct pkg_dep *d;
+	struct pkg_job_request *req;
 
-	HASH_ITER(hh, j->bulk, pkg, tmp) {
-		HASH_FIND_STR(pkg->rdeps, __DECONST(char *, origin), d);
-		if (d != NULL) {
-			HASH_DEL(pkg->rdeps, d);
-			pkg_dep_free(d);
+	req = calloc(1, sizeof (struct pkg_job_request));
+	if (req == NULL) {
+		pkg_emit_errno("malloc", "struct pkg_job_request");
+		return;
+	}
+	req->pkg = pkg;
+	req->priority = priority;
+
+	if (add)
+		HASH_ADD_KEYPTR(hh, j->request_add, origin, strlen(origin), req);
+	else
+		HASH_ADD_KEYPTR(hh, j->request_delete, origin, strlen(origin), req);
+}
+
+/**
+ * Check whether a package is in the universe already or add it
+ * @return item or NULL
+ */
+static int
+pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
+{
+	struct pkg_job_universe_item *item, *cur, *tmp = NULL;
+	const char *origin, *digest, *digest_cur, *version, *name;
+	char *new_digest;
+	int rc;
+	struct sbuf *sb;
+	struct pkg_job_seen *seen;
+
+	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest,
+			PKG_VERSION, &version, PKG_NAME, &name);
+	if (digest == NULL) {
+		/* We need to calculate digest of this package */
+		sb = sbuf_new_auto();
+		rc = pkg_emit_manifest_sbuf(pkg, sb, PKG_MANIFEST_EMIT_COMPACT, &new_digest);
+		if (rc == EPKG_OK) {
+			pkg_set(pkg, PKG_DIGEST, new_digest);
+			pkg_get(pkg, PKG_DIGEST, &digest);
+			free(new_digest);
+			sbuf_delete(sb);
+		}
+		else {
+			sbuf_delete(sb);
+			return (rc);
 		}
 	}
+
+	HASH_FIND_STR(j->seen, digest, seen);
+	if (seen != NULL)
+		return (EPKG_END);
+
+	seen = calloc(1, sizeof(struct pkg_job_seen));
+	seen->digest = digest;
+	seen->pkg = pkg;
+	HASH_ADD_KEYPTR(hh, j->seen, seen->digest, strlen(seen->digest), seen);
+
+	HASH_FIND_STR(j->universe, origin, item);
+	if (item == NULL) {
+		/* Insert new origin */
+		item = calloc(1, sizeof (struct pkg_job_universe_item));
+
+		if (item == NULL) {
+			pkg_emit_errno("pkg_jobs_handle_universe", "calloc: struct pkg_job_universe_item");
+			return (EPKG_FATAL);
+		}
+		item->pkg = pkg;
+		item->priority = priority;
+		item->prev = item;
+		HASH_ADD_KEYPTR(hh, j->universe, origin, strlen(origin), item);
+		j->total++;
+		return (EPKG_OK);
+	}
+	else {
+		/* Search for the same package added */
+		LL_FOREACH(item, cur) {
+			pkg_get(cur->pkg, PKG_DIGEST, &digest_cur);
+			if (strcmp (digest, digest_cur) == 0) {
+				/* Adjust priority */
+				if (priority > cur->priority) {
+					pkg_debug(2, "universe: update priority of %s: %d -> %d",
+								origin, cur->priority, priority);
+					cur->priority = priority;
+				}
+				pkg_free(pkg);
+				return (EPKG_OK);
+			}
+			tmp = cur;
+		}
+	}
+
+	item = calloc(1, sizeof (struct pkg_job_universe_item));
+	if (item == NULL) {
+		pkg_emit_errno("pkg_jobs_pkg_insert_universe", "calloc: struct pkg_job_universe_item");
+		return (EPKG_FATAL);
+	}
+
+	pkg_debug(2, "universe: add new %s pkg: %s(%d), (%s-%s)",
+			(pkg->type == PKG_INSTALLED ? "local" : "remote"), origin,
+			priority, name, version);
+	item->pkg = pkg;
+	item->priority = priority;
+
+	DL_APPEND(tmp, item);
+
+	j->total++;
+
+	return (EPKG_OK);
 }
 
 static int
-reverse_order_pool(struct pkg_jobs *j, bool force)
+pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool recursive)
 {
-	struct pkg *pkg, *tmp;
-	struct pkg_dep *d, *dtmp;
-	char *origin;
-	unsigned int nb;
-	struct sbuf *errb;
+	struct pkg_dep *d = NULL;
+	struct pkg_conflict *c = NULL;
+	struct pkg *npkg, *rpkg;
+	int ret;
+	struct pkg_job_universe_item *unit;
 
-	nb = HASH_COUNT(j->bulk);
-	HASH_ITER(hh, j->bulk, pkg, tmp) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-		if (HASH_COUNT(pkg->rdeps) == 0) {
-			HASH_DEL(j->bulk, pkg);
-			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
-			remove_from_rdeps(j, origin);
+	/* Add the requested package itself */
+	ret = pkg_jobs_handle_pkg_universe(j, pkg, priority);
+
+	if (ret == EPKG_END)
+		return (EPKG_OK);
+	else if (ret == EPKG_OK && !recursive)
+		return (EPKG_OK);
+	else if (ret != EPKG_OK)
+		return (EPKG_FATAL);
+
+	/* Go through all depends */
+	while (pkg_deps(pkg, &d) == EPKG_OK) {
+		/* XXX: this assumption can be applied only for the current plain dependencies */
+		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
+		if (unit != NULL)
+			continue;
+
+		rpkg = NULL;
+		npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+		if (npkg == NULL) {
+			/*
+			 * We have a package installed, but its dependencies are not,
+			 * try to search a remote dependency
+			 */
+			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (npkg == NULL) {
+				/* Cannot continue */
+				pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+				return (EPKG_FATAL);
+			}
 		}
+		else if (j->type == PKG_JOBS_UPGRADE) {
+			/* For upgrade jobs we need to ensure that we do not have a newer version */
+			rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (rpkg != NULL) {
+				if (!pkg_need_upgrade(rpkg, npkg, j->flags & PKG_FLAG_RECURSIVE)) {
+					pkg_free(rpkg);
+					rpkg = NULL;
+				}
+			}
+		}
+		if (pkg_jobs_add_universe(j, npkg, priority + 1, recursive) != EPKG_OK)
+			return (EPKG_FATAL);
+		if (rpkg != NULL && pkg_jobs_add_universe(j, rpkg, priority + 1, recursive) != EPKG_OK)
+			return (EPKG_FATAL);
 	}
 
-	if (nb == HASH_COUNT(j->bulk)) {
-		errb = sbuf_new_auto();
-		HASH_ITER(hh, j->bulk, pkg, tmp) {
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			sbuf_printf(errb, "%s: ", origin);
-			HASH_ITER(hh, pkg->rdeps, d, dtmp) {
-				if (d->hh.next != NULL)
-					sbuf_printf(errb, "%s, ", pkg_dep_get(d, PKG_DEP_ORIGIN));
-				else
-					sbuf_printf(errb, "%s\n", pkg_dep_get(d, PKG_DEP_ORIGIN));
-			}
-			if (force) {
-				HASH_DEL(j->bulk, pkg);
-				HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
-				remove_from_rdeps(j, origin);
-			}
+	/* Go through all rdeps */
+	d = NULL;
+	while (pkg_rdeps(pkg, &d) == EPKG_OK) {
+		/* XXX: this assumption can be applied only for the current plain dependencies */
+		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
+		if (unit != NULL)
+			continue;
 
+		npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+		if (npkg == NULL) {
+			/*
+			 * We have a package installed, but its dependencies are not,
+			 * try to search a remote dependency
+			 */
+			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (npkg == NULL) {
+				/* Cannot continue */
+				pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+				return (EPKG_FATAL);
+			}
 		}
-		sbuf_finish(errb);
-		if (!force) {
-			pkg_emit_error("Error while trying to delete packages, "
-					"dependencies that are still required:\n%s", sbuf_data(errb));
-			sbuf_delete(errb);
+		if (pkg_jobs_add_universe(j, npkg, priority - 1, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
+	}
+
+	/* Examine conflicts */
+	while (pkg_conflicts(pkg, &c) == EPKG_OK) {
+		/* XXX: this assumption can be applied only for the current plain dependencies */
+		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), unit);
+		if (unit != NULL)
+			continue;
+
+		/* Check both local and remote conflicts */
+		npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+		if (pkg_jobs_add_universe(j, npkg, priority, recursive) != EPKG_OK)
+			return (EPKG_FATAL);
+		npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
+		if (npkg == NULL) {
+			continue;
 		}
-		else {
-			pkg_emit_notice("You are trying to delete package(s) which has "
-							"dependencies that are still required:\n%s"
-							"... delete these packages anyway in forced mode",
-							sbuf_data(errb));
-			sbuf_delete(errb);
-			return (EPKG_END);
-		}
+
+		if (pkg_jobs_add_universe(j, npkg, priority, recursive) != EPKG_OK)
+			return (EPKG_FATAL);
 	}
 
 	return (EPKG_OK);
 }
+
 static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
 	struct job_pattern *jp = NULL;
 	struct pkg *pkg = NULL;
-	struct pkg *tmp, *p;
-	struct pkg_dep *d, *dtmp;
 	struct pkgdb_it *it;
 	int64_t oldsize;
 	char *origin;
-	int ret;
 	bool recursive = false;
 
 	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
@@ -250,63 +420,25 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
-			pkg_get(pkg, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
-			pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
-			HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
-			if (recursive)
-				populate_local_rdeps(j, pkg);
+			// Check if the pkg is locked
+			if(pkg_is_locked(pkg)) {
+				pkg_emit_locked(pkg);
+			}
+			else {
+				pkg_get(pkg, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
+				pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
+				pkg_jobs_add_req(j, origin, pkg, false, 0);
+			}
+			/* TODO: use repository priority here */
+			pkg_jobs_add_universe(j, pkg, 0, recursive);
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
 	}
 
-	/* remove everything seen from deps */
-	HASH_ITER(hh, j->bulk, pkg, tmp) {
-		d = NULL;
-		HASH_ITER(hh, pkg->rdeps, d, dtmp) {
-			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
-			if (p != NULL) {
-				HASH_DEL(pkg->rdeps, d);
-				pkg_dep_free(d);
-			}
-		}
-	}
-	HASH_FREE(j->seen, pkg, pkg_free);
-
-	while (HASH_COUNT(j->bulk) > 0) {
-		if ((ret = reverse_order_pool(j, (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE))
-				!= EPKG_OK) {
-			if (ret == EPKG_END)
-				break;
-			else
-				return (EPKG_FATAL);
-		}
-	}
-
 	j->solved = true;
 
 	return( EPKG_OK);
-}
-
-static bool
-recursive_autoremove(struct pkg_jobs *j)
-{
-	struct pkg *pkg1, *tmp1;
-	int64_t oldsize;
-	char *origin;
-
-	HASH_ITER(hh, j->bulk, pkg1, tmp1) {
-		if (HASH_COUNT(pkg1->rdeps) == 0) {
-			HASH_DEL(j->bulk, pkg1);
-			pkg_get(pkg1, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
-			pkg_set(pkg1, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
-			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg1);
-			remove_from_rdeps(j, origin);
-			return (true);
-		}
-	}
-
-	return (false);
 }
 
 static int
@@ -320,15 +452,19 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-		HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), pkg);
+		// Check if the pkg is locked
+		if(pkg_is_locked(pkg)) {
+			pkg_emit_locked(pkg);
+		}
+		else {
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			pkg_jobs_add_req(j, origin, pkg, false, 0);
+		}
+		/* TODO: use repository priority here */
+		pkg_jobs_add_universe(j, pkg, 0, false);
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
-
-	while (recursive_autoremove(j));
-
-	HASH_FREE(j->bulk, pkg, pkg_free);
 
 	j->solved = true;
 
@@ -339,11 +475,10 @@ static int
 jobs_solve_upgrade(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
-	struct pkg *p, *tmp;
 	struct pkgdb_it *it;
 	char *origin;
-	struct pkg_dep *d, *dtmp;
-	int ret;
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
+			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
 		if (new_pkg_version(j)) {
@@ -354,155 +489,30 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
 		return (EPKG_FATAL);
 
-	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-		/* Do not test we ignore what doesn't exists remotely */
-		get_remote_pkg(j, origin, MATCH_EXACT, false);
+	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+		/* TODO: use repository priority here */
+		pkg_jobs_add_universe(j, pkg, 0, true);
+		if(pkg_is_locked(pkg)) {
+			/* If a package is locked, then we keep local version */
+			pkg_emit_locked(pkg);
+		}
+		else {
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			/* Do not test we ignore what doesn't exists remotely */
+			find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
+		}
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
 
-	/* remove everything seen from deps */
-	HASH_ITER(hh, j->bulk, pkg, tmp) {
-		d = NULL;
-		HASH_ITER(hh, pkg->deps, d, dtmp) {
-			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
-			if (p != NULL) {
-				HASH_DEL(pkg->deps, d);
-				pkg_dep_free(d);
-			}
-		}
+	if (pkg_conflicts_request_resolve(j) != EPKG_OK) {
+		pkg_emit_error("Cannot resolve conflicts in a request");
+		return (EPKG_FATAL);
 	}
-order:
-	HASH_FREE(j->seen, pkg, pkg_free);
 
-	/* now order the pool */
-	while (HASH_COUNT(j->bulk) > 0) {
-		/* XXX: see comment at jobs_solve_install */
-		ret = order_pool(j, false);
-		if (ret == EPKG_FATAL)
-			return (EPKG_FATAL);
-		else if (ret == EPKG_END)
-			break;
-	}
+order:
 
 	j->solved = true;
-
-	return (EPKG_OK);
-}
-
-static void
-remove_from_deps(struct pkg_jobs *j, const char *origin)
-{
-	struct pkg *pkg, *tmp;
-	struct pkg_dep *d;
-
-	HASH_ITER(hh, j->bulk, pkg, tmp) {
-		HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
-		if (d != NULL) {
-			HASH_DEL(pkg->deps, d);
-			pkg_dep_free(d);
-		}
-	}
-}
-
-static int
-order_pool(struct pkg_jobs *j, bool force)
-{
-	struct pkg *pkg, *tmp;
-	char *origin;
-	unsigned int nb;
-	struct sbuf *errb;
-	struct pkg_dep *d, *dtmp;
-
-	nb = HASH_COUNT(j->bulk);
-	HASH_ITER(hh, j->bulk, pkg, tmp) {
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-		if (HASH_COUNT(pkg->deps) == 0) {
-			HASH_DEL(j->bulk, pkg);
-			HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
-			remove_from_deps(j, origin);
-		}
-	}
-
-	if (nb == HASH_COUNT(j->bulk)) {
-		errb = sbuf_new_auto();
-		HASH_ITER(hh, j->bulk, pkg, tmp) {
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			sbuf_printf(errb, "%s: ", origin);
-			HASH_ITER(hh, pkg->deps, d, dtmp) {
-				if (d->hh.next != NULL)
-					sbuf_printf(errb, "%s, ", pkg_dep_get(d, PKG_DEP_ORIGIN));
-				else
-					sbuf_printf(errb, "%s\n", pkg_dep_get(d, PKG_DEP_ORIGIN));
-			}
-			if (force) {
-				HASH_DEL(j->bulk, pkg);
-				HASH_ADD_KEYPTR(hh, j->jobs, origin, strlen(origin), pkg);
-				remove_from_rdeps(j, origin);
-			}
-
-		}
-		sbuf_finish(errb);
-		if (force) {
-			pkg_emit_notice("Warning while trying to install/upgrade packages, "
-					"as there are unresolved dependencies, "
-					"but installation is forced:\n%s",
-					sbuf_data(errb));
-			sbuf_delete(errb);
-			return (EPKG_END);
-		}
-		else {
-			pkg_emit_error("Error while trying to install/upgrade packages, "
-					"as there are unresolved dependencies:\n%s", sbuf_data(errb));
-			sbuf_delete(errb);
-			return (EPKG_FATAL);
-		}
-	}
-
-	return (EPKG_OK);
-}
-
-static int
-populate_rdeps(struct pkg_jobs *j, struct pkg *p)
-{
-	struct pkg *pkg;
-	struct pkg_dep *d = NULL;
-
-	while (pkg_rdeps(p, &d) == EPKG_OK) {
-		HASH_FIND_STR(j->bulk, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
-		if (pkg != NULL)
-			continue;
-		HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
-		if (pkg != NULL)
-			continue;
-		if (get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), MATCH_EXACT, true) != EPKG_OK) {
-			pkg_emit_error("Missing reverse dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
-			return (EPKG_FATAL);
-		}
-	}
-
-	return (EPKG_OK);
-}
-
-static int
-populate_deps(struct pkg_jobs *j, struct pkg *p)
-{
-	struct pkg *pkg;
-	struct pkg_dep *d = NULL;
-
-	while (pkg_deps(p, &d) == EPKG_OK) {
-		HASH_FIND_STR(j->bulk, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
-		if (pkg != NULL)
-			continue;
-		HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), pkg);
-		if (pkg != NULL)
-			continue;
-		if (get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), MATCH_EXACT, false) != EPKG_OK) {
-			pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
-			return (EPKG_FATAL);
-		}
-	}
 
 	return (EPKG_OK);
 }
@@ -533,15 +543,11 @@ new_pkg_version(struct pkg_jobs *j)
 		goto end;
 	}
 
-	if (get_remote_pkg(j, origin, MATCH_EXACT, false) == EPKG_OK && HASH_COUNT(j->bulk) == 1) {
+	/* Use maximum priority for pkg */
+	if (find_remote_pkg(j, origin, MATCH_EXACT, false, INT_MAX) == EPKG_OK) {
 		ret = true;
 		goto end;
 	}
-
-	/* Remove from seen in case it was explicitly requested. */
-	HASH_FIND_STR(j->seen, __DECONST(char *, origin), p);
-	if (p != NULL)
-		HASH_DEL(j->seen, p);
 
 end:
 	j->flags = old_flags;
@@ -550,16 +556,18 @@ end:
 }
 
 static int
-get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
+find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, int priority)
 {
 	struct pkg *p = NULL;
 	struct pkg *p1;
 	struct pkgdb_it *it;
+	struct pkg_job_universe_item *jit;
 	char *origin;
 	const char *buf1, *buf2;
 	bool force = false, seen = false;
 	int rc = EPKG_FATAL;
-	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS;
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
+			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	if (root && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
@@ -571,24 +579,16 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 	if (j->type == PKG_JOBS_UPGRADE && (j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
 		force = true;
 
-	if (j->type == PKG_JOBS_FETCH) {
-		if ((j->flags & PKG_FLAG_WITH_DEPS) == PKG_FLAG_WITH_DEPS)
-			flags |= PKG_LOAD_DEPS;
-		if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) == PKG_FLAG_UPGRADES_FOR_INSTALLED)
-			flags |= PKG_LOAD_DEPS;
-	} else {
-		flags |= PKG_LOAD_DEPS;
-	}
-
 	if ((it = pkgdb_rquery(j->db, pattern, m, j->reponame)) == NULL)
 		return (rc);
 
 	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		seen = false;
+		p1 = NULL;
 		pkg_get(p, PKG_ORIGIN, &origin);
-		HASH_FIND_STR(j->bulk, origin, p1);
-		if (p1 == NULL) {
-			HASH_FIND_STR(j->seen, origin, p1);
+		HASH_FIND_STR(j->universe, origin, jit);
+		if (jit != NULL) {
+			p1 = jit->pkg;
 			seen = true;
 		}
 
@@ -596,15 +596,9 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 			pkg_get(p1, PKG_VERSION, &buf1);
 			pkg_get(p, PKG_VERSION, &buf2);
 			p->direct = root;
-			if (seen) {
-				if (pkg_version_cmp(buf1, buf2) >= 0)
-					continue;
-			} else {
-				if (pkg_version_cmp(buf1, buf2) == 1)
-					continue;
-				HASH_DEL(j->bulk, p1);
-				pkg_free(p1);
-			}
+			/* We have a more recent package */
+			if (pkg_version_cmp(buf1, buf2) >= 0)
+				continue;
 		}
 
 		if (j->type != PKG_JOBS_FETCH) {
@@ -612,7 +606,6 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 				if (root)
 					pkg_emit_already_installed(p);
 				rc = EPKG_OK;
-				HASH_ADD_KEYPTR(hh, j->seen, origin, strlen(origin), p);
 				p = NULL;
 				continue;
 			}
@@ -620,16 +613,12 @@ get_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root)
 
 		rc = EPKG_OK;
 		p->direct = root;
-		HASH_ADD_KEYPTR(hh, j->bulk, origin, strlen(origin), p);
-		if (populate_deps(j, p) == EPKG_FATAL) {
-			rc = EPKG_FATAL;
-			break;
-		}
+		/* Add a package to request chain and populate universe */
 
-		if (populate_rdeps(j, p) == EPKG_FATAL) {
-			rc = EPKG_FATAL;
-			break;
-		}
+		pkg_jobs_add_req(j, origin, p, true, priority);
+		rc = pkg_jobs_add_universe(j, p, priority, true);
+
+
 		p = NULL;
 	}
 
@@ -645,7 +634,9 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 	struct pkgdb_it *it;
 
 	if (flag == 0) {
-		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS;
+		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_RDEPS|PKG_LOAD_OPTIONS|
+				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|
+				PKG_LOAD_CONFLICTS;
 	}
 
 	if ((it = pkgdb_query(j->db, origin, MATCH_EXACT)) == NULL)
@@ -659,6 +650,154 @@ get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
 	return (pkg);
 }
 
+static struct pkg *
+get_remote_pkg(struct pkg_jobs *j, const char *origin, unsigned flag)
+{
+	struct pkg *pkg = NULL;
+	struct pkgdb_it *it;
+
+	if (flag == 0) {
+		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
+				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|
+				PKG_LOAD_CONFLICTS;
+	}
+
+	if ((it = pkgdb_rquery(j->db, origin, MATCH_EXACT, j->reponame)) == NULL)
+		return (NULL);
+
+	if (pkgdb_it_next(it, &pkg, flag) != EPKG_OK)
+		pkg = NULL;
+
+	pkgdb_it_free(it);
+
+	return (pkg);
+}
+
+static bool
+pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
+{
+	int ret, ret1, ret2;
+	const char *lversion, *rversion;
+	struct pkg_option *lo = NULL, *ro = NULL;
+	struct pkg_dep *ld = NULL, *rd = NULL;
+	struct pkg_shlib *ls = NULL, *rs = NULL;
+	struct pkg_conflict *lc = NULL, *rc = NULL;
+	struct pkg_provide *lpr = NULL, *rpr = NULL;
+
+	/* Do not upgrade locked packages */
+	if (pkg_is_locked(lp))
+		return (false);
+
+	pkg_get(lp, PKG_VERSION, &lversion);
+	pkg_get(rp, PKG_VERSION, &rversion);
+
+	ret = pkg_version_cmp(lversion, rversion);
+	if (ret == 0 && recursive)
+		return (true);
+	else if (ret < 0)
+		return (true);
+	else
+		return (false);
+
+
+	/* compare options */
+	for (;;) {
+		ret1 = pkg_options(rp, &ro);
+		ret2 = pkg_options(lp, &lo);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "options changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_option_opt(lo), pkg_option_opt(ro)) != 0 ||
+					strcmp(pkg_option_value(lo), pkg_option_value(ro)) != 0) {
+				pkg_set(rp, PKG_REASON, "options changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* What about the direct deps */
+	for (;;) {
+		ret1 = pkg_deps(rp, &rd);
+		ret2 = pkg_deps(lp, &ld);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "direct dependency changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_dep_get(rd, PKG_DEP_NAME),
+					pkg_dep_get(ld, PKG_DEP_NAME)) != 0) {
+				pkg_set(rp, PKG_REASON, "direct dependency changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* Conflicts */
+	for (;;) {
+		ret1 = pkg_conflicts(rp, &rc);
+		ret2 = pkg_conflicts(lp, &lc);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "direct conflict changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_conflict_origin(rc),
+					pkg_conflict_origin(lc)) != 0) {
+				pkg_set(rp, PKG_REASON, "direct conflict changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* Provides */
+	for (;;) {
+		ret1 = pkg_provides(rp, &rpr);
+		ret2 = pkg_provides(lp, &lpr);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "provides changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_provide_name(rpr),
+					pkg_provide_name(lpr)) != 0) {
+				pkg_set(rp, PKG_REASON, "provides changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	/* Finish by the shlibs */
+	for (;;) {
+		ret1 = pkg_shlibs_required(rp, &rs);
+		ret2 = pkg_shlibs_required(lp, &ls);
+		if (ret1 != ret2) {
+			pkg_set(rp, PKG_REASON, "needed shared library changed");
+			return (true);
+		}
+		if (ret1 == EPKG_OK) {
+			if (strcmp(pkg_shlib_name(rs),
+					pkg_shlib_name(ls)) != 0) {
+				pkg_set(rp, PKG_REASON, "needed shared library changed");
+				return (true);
+			}
+		}
+		else
+			break;
+	}
+
+	return (false);
+}
+
 static bool
 newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
@@ -666,12 +805,8 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	struct pkg_note *an;
 	int64_t oldsize;
 	struct pkg *lp;
-	struct pkg_option *lo = NULL, *ro = NULL;
-	struct pkg_dep *ld = NULL, *rd = NULL;
-	struct pkg_shlib *ls = NULL, *rs = NULL;
 	bool automatic;
-	int	ret1, ret2;
-	pkg_change_t cmp;
+	int ret;
 
 	pkg_get(rp, PKG_ORIGIN, &origin,
 	    PKG_REPONAME, &reponame);
@@ -683,15 +818,11 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		return (true);
 	}
 
-	if (pkg_is_locked(lp)) {
-		pkg_free(lp);
-		return (false);
-	}
-
 	pkg_get(lp, PKG_AUTOMATIC, &automatic,
 	    PKG_VERSION, &oldversion,
 	    PKG_FLATSIZE, &oldsize);
 
+	/* Add repo name to the annotation */
 	an = pkg_annotation_lookup(lp, "repository");
 	if (an != NULL)  {
 		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
@@ -713,195 +844,79 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		return (true);
 	}
 
-	/* compare versions */
-	cmp = pkg_version_change(rp);
+	ret = pkg_need_upgrade(rp, lp, j->flags & PKG_FLAG_RECURSIVE);
+	pkg_free(lp);
 
-	if (cmp == PKG_UPGRADE) {
-		pkg_free(lp);
-		return (true);
-	}
-
-	if (cmp == PKG_REINSTALL && (j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
-		pkg_free(lp);
-		return (true);
-	}
-
-	if (cmp == PKG_DOWNGRADE) {
-		pkg_free(lp);
-		return (false);
-	}
-
-	/* compare options */
-	for (;;) {
-		ret1 = pkg_options(rp, &ro);
-		ret2 = pkg_options(lp, &lo);
-		if (ret1 != ret2) {
-			pkg_free(lp);
-			pkg_set(rp, PKG_REASON, "options changed");
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_option_opt(lo), pkg_option_opt(ro)) != 0 ||
-				strcmp(pkg_option_value(lo), pkg_option_value(ro)) != 0) {
-				pkg_free(lp);
-				pkg_set(rp, PKG_REASON, "options changed");
-				return (true);
-			}
-		}
-		else
-			break;
-	}
-
-
-	/* What about the direct deps */
-	for (;;) {
-		ret1 = pkg_deps(rp, &rd);
-		ret2 = pkg_deps(lp, &ld);
-		if (ret1 != ret2) {
-			pkg_free(lp);
-			pkg_set(rp, PKG_REASON, "direct dependency changed");
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_dep_get(rd, PKG_DEP_NAME),
-			    pkg_dep_get(ld, PKG_DEP_NAME)) != 0) {
-				pkg_free(lp);
-				pkg_set(rp, PKG_REASON, "direct dependency changed");
-				return (true);
-			}
-		}
-		else
-			break;
-	}
-
-	/* Finish by the shlibs */
-	for (;;) {
-		ret1 = pkg_shlibs_required(rp, &rs);
-		ret2 = pkg_shlibs_required(lp, &ls);
-		if (ret1 != ret2) {
-			pkg_free(lp);
-			pkg_set(rp, PKG_REASON, "needed shared library changed");
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (strcmp(pkg_shlib_name(rs),
-			    pkg_shlib_name(ls)) != 0) {
-				pkg_free(lp);
-				pkg_set(rp, PKG_REASON, "needed shared library changed");
-				return (true);
-			}
-		}
-		else
-			break;
-	}
-
-	return (false);
+	return (ret);
 }
-
-#define	NO_PKGS_MATCHING_STR \
-	"No packages matching '%s' available in the repositories"
 
 static int
 jobs_solve_install(struct pkg_jobs *j)
 {
 	struct job_pattern *jp = NULL;
-	struct pkg *pkg, *tmp, *p;
-	struct pkg_dep *d, *dtmp;
+	struct pkg *pkg;
 	struct pkgdb_it *it;
 	const char *origin;
-	int ret;
 
-	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST)
+	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST) {
 		if (new_pkg_version(j)) {
 			pkg_emit_newpkgversion();
 			goto order;
 		}
+	}
 
-	ret = EPKG_OK;
-	LL_FOREACH(j->patterns, jp) {
-		if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
-			it = pkgdb_query(j->db, jp->pattern, jp->match);
-			if (it == NULL)
-				return (EPKG_FATAL);
+	if (j->solved == 0) {
+		LL_FOREACH(j->patterns, jp) {
+			if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
+				if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
+					return (EPKG_FATAL);
 
-			pkg = NULL;
-			while (pkgdb_it_next(it, &pkg,
-			    PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
-				d = NULL;
-				pkg_get(pkg, PKG_ORIGIN, &origin);
-				if (get_remote_pkg(j, origin, MATCH_EXACT,
-				    true) != EPKG_OK) {
-					ret = EPKG_FATAL;
-					pkg_emit_error(NO_PKGS_MATCHING_STR,
-					    origin);
+				pkg = NULL;
+				while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
+					pkg_jobs_add_universe(j, pkg, 0, true);
+
+					if (pkg_is_locked(pkg)) {
+						/* Keep locked packages to the local version */
+						pkg_emit_locked(pkg);
+					}
+					else {
+						pkg_get(pkg, PKG_ORIGIN, &origin);
+						/* TODO: use repository priority here */
+						if (find_remote_pkg(j, origin, MATCH_EXACT, true, 0) == EPKG_FATAL)
+							pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
+					}
+					pkg = NULL;
 				}
 
-				while (pkg_rdeps(pkg, &d) == EPKG_OK) {
-					const char *dep_origin;
-					dep_origin = pkg_dep_origin(d);
-
-					if (get_remote_pkg(j, dep_origin,
-					    MATCH_EXACT, false) == EPKG_OK)
-						continue;
-					ret = EPKG_FATAL;
-					pkg_emit_error(NO_PKGS_MATCHING_STR,
-					    dep_origin);
+				pkgdb_it_free(it);
+			} else {
+				if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
+					return (EPKG_FATAL);
+				pkg = NULL;
+				if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+					if (pkg_is_locked(pkg)) {
+						pkg_emit_locked(pkg);
+						pkgdb_it_free(it);
+						return (EPKG_LOCKED);
+					}
+					pkg_jobs_add_universe(j, pkg, 0, true);
 				}
-			}
-			pkgdb_it_free(it);
-		} else {
-			if (get_remote_pkg(j, jp->pattern, jp->match,
-			    true) == EPKG_FATAL) {
-				ret = EPKG_FATAL;
-				pkg_emit_error(NO_PKGS_MATCHING_STR,
-				    jp->pattern);
+				pkgdb_it_free(it);
+				/* TODO: use repository priority here */
+				if (find_remote_pkg(j, jp->pattern, jp->match, true, 0) == EPKG_FATAL)
+					pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 			}
 		}
 	}
-	if (ret != EPKG_OK)
-		return (ret);
 
-	if (HASH_COUNT(j->bulk) == 0)
-		return (EPKG_OK);
-
-	/* remove everything seen from deps */
-	HASH_ITER(hh, j->bulk, pkg, tmp) {
-		d = NULL;
-		HASH_ITER(hh, pkg->deps, d, dtmp) {
-			HASH_FIND_STR(j->seen, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)), p);
-			if (p != NULL) {
-				HASH_DEL(pkg->deps, d);
-				pkg_dep_free(d);
-			}
-		}
-		if (pkg->direct) {
-			if ((j->flags & PKG_FLAG_AUTOMATIC) == PKG_FLAG_AUTOMATIC)
-				pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
-			else
-				pkg_set(pkg, PKG_AUTOMATIC, (int64_t)false);
-		}
+	if (pkg_conflicts_request_resolve(j) != EPKG_OK) {
+		pkg_emit_error("Cannot resolve conflicts in a request");
+		return (EPKG_FATAL);
 	}
 
 order:
-	HASH_FREE(j->seen, pkg, pkg_free);
 
-	/* now order the pool */
-	while (HASH_COUNT(j->bulk) > 0) {
-		/*
-		 * XXX: create specific flag that allows to install or upgrade
-		 * a package even if it misses some dependencies, PKG_FORCE
-		 * should not logically apply to this situation, as it is
-		 * designed only for reinstalling packages, but not for
-		 * installing packages with missing dependencies...
-		 */
-		ret = order_pool(j, false);
-		if (ret == EPKG_FATAL)
-			return (EPKG_FATAL);
-		else if (ret == EPKG_END)
-			break;
-	}
-
-	j->solved = true;
+	j->solved ++;
 
 	return (EPKG_OK);
 }
@@ -923,72 +938,133 @@ jobs_solve_fetch(struct pkg_jobs *j)
 			return (EPKG_FATAL);
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			/* Do not test we ignore what doesn't exists remotely */
-			get_remote_pkg(j, origin, MATCH_EXACT, false);
+			if(pkg_is_locked(pkg)) {
+				pkg_emit_locked(pkg);
+			}
+			else {
+				pkg_get(pkg, PKG_ORIGIN, &origin);
+				/* Do not test we ignore what doesn't exists remotely */
+				find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
+			}
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
 	} else {
 		LL_FOREACH(j->patterns, jp) {
-			if (get_remote_pkg(j, jp->pattern, jp->match, true) == EPKG_FATAL)
+			/* TODO: use repository priority here */
+			if (find_remote_pkg(j, jp->pattern, jp->match, true, 0) == EPKG_FATAL)
 				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 		}
 	}
 
-	HASH_FREE(j->seen, pkg, pkg_free);
-	/* No need to order we are just fetching */
-	j->jobs = j->bulk;
-
-	j->solved = true;
+	j->solved ++;
 
 	return (EPKG_OK);
+}
+
+static int
+jobs_sort_priority_dec(struct pkg_solved *r1, struct pkg_solved *r2)
+{
+	return (r1->priority - r2->priority);
+}
+
+static int
+jobs_sort_priority_inc(struct pkg_solved *r1, struct pkg_solved *r2)
+{
+	return (r2->priority - r1->priority);
 }
 
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
-	bool dry_run = false;
-
-	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
-		dry_run = true;
-
-	if (j->type == PKG_JOBS_FETCH)
-		dry_run = true;
-
-	if (!dry_run && pkgdb_obtain_lock(j->db) != EPKG_OK)
-		return (EPKG_FATAL);
-
+	int ret, pstatus;
+	struct pkg_solve_problem *problem;
+	const char *solver;
+	FILE *spipe[2];
+	pid_t pchild;
 
 	switch (j->type) {
 	case PKG_JOBS_AUTOREMOVE:
-		return (jobs_solve_autoremove(j));
+		ret =jobs_solve_autoremove(j);
+		break;
 	case PKG_JOBS_DEINSTALL:
-		return (jobs_solve_deinstall(j));
+		ret = jobs_solve_deinstall(j);
+		break;
 	case PKG_JOBS_UPGRADE:
-		return (jobs_solve_upgrade(j));
+		ret = jobs_solve_upgrade(j);
+		break;
 	case PKG_JOBS_INSTALL:
-		return (jobs_solve_install(j));
+		ret = jobs_solve_install(j);
+		break;
 	case PKG_JOBS_FETCH:
-		return (jobs_solve_fetch(j));
+		ret = jobs_solve_fetch(j);
+		break;
 	default:
 		return (EPKG_FATAL);
 	}
-}
 
-int
-pkg_jobs_find(struct pkg_jobs *j, const char *origin, struct pkg **p)
-{
-	struct pkg *pkg;
+	if (ret == EPKG_OK) {
+		if (pkg_config_string(PKG_CONFIG_CUDF_SOLVER, &solver) == EPKG_OK
+				&& solver != NULL) {
+			pchild = process_spawn_pipe(spipe, solver);
+			if (pchild == -1)
+				return (EPKG_FATAL);
 
-	HASH_FIND_STR(j->jobs, __DECONST(char *, origin), pkg);
-	if (pkg == NULL)
-		return (EPKG_FATAL);
+			ret = pkg_jobs_cudf_emit_file(j, j->type, spipe[1]);
+			fclose(spipe[1]);
 
-	if (p != NULL)
-		*p = pkg;
+			if (ret == EPKG_OK)
+				ret = pkg_jobs_cudf_parse_output(j, spipe[0]);
 
-	return (EPKG_OK);
+			fclose(spipe[0]);
+			waitpid(pchild, &pstatus, WNOHANG);
+		}
+		else {
+			problem = pkg_solve_jobs_to_sat(j);
+			if (problem != NULL) {
+				if (pkg_config_string(PKG_CONFIG_SAT_SOLVER, &solver) == EPKG_OK
+						&& solver != NULL) {
+					pchild = process_spawn_pipe(spipe, solver);
+					if (pchild == -1)
+						return (EPKG_FATAL);
+
+					ret = pkg_solve_dimacs_export(problem, spipe[1]);
+					fclose(spipe[1]);
+
+					if (ret == EPKG_OK) {
+						ret = pkg_solve_parse_sat_output(spipe[0], problem, j);
+					}
+
+					fclose(spipe[0]);
+					waitpid(pchild, &pstatus, WNOHANG);
+				}
+				else {
+					if (!pkg_solve_sat_problem(problem)) {
+						pkg_emit_error("cannot solve job using SAT solver");
+						ret = EPKG_FATAL;
+						j->solved = 0;
+					}
+					else {
+						ret = pkg_solve_sat_to_jobs(problem, j);
+					}
+				}
+			}
+			else {
+				pkg_emit_error("cannot convert job to SAT problem");
+				ret = EPKG_FATAL;
+				j->solved = 0;
+			}
+		}
+	}
+
+	/* Resort priorities */
+	if (j->solved) {
+		DL_SORT(j->jobs_add, jobs_sort_priority_inc);
+		DL_SORT(j->jobs_upgrade, jobs_sort_priority_inc);
+		DL_SORT(j->jobs_delete, jobs_sort_priority_dec);
+	}
+
+	return (ret);
 }
 
 int
@@ -996,67 +1072,101 @@ pkg_jobs_count(struct pkg_jobs *j)
 {
 	assert(j != NULL);
 
-	return (HASH_COUNT(j->jobs));
+	return (j->count);
+}
+
+int
+pkg_jobs_total(struct pkg_jobs *j)
+{
+	assert(j != NULL);
+
+	return (j->total);
 }
 
 pkg_jobs_t
 pkg_jobs_type(struct pkg_jobs *j)
 {
+	assert(j != NULL);
+
 	return (j->type);
 }
 
-int
-pkg_jobs(struct pkg_jobs *j, struct pkg **pkg)
-{
-	assert(j != NULL);
-
-	HASH_NEXT(j->jobs, (*pkg));
-}
-
 static int
-pkg_jobs_keep_files_to_del(struct pkg *p1, struct pkg *p2)
+pkg_jobs_handle_install(struct pkg *new, struct pkg *old, struct pkg_jobs *j, bool handle_rc,
+		const char *cachedir, struct pkg_manifest_key *keys)
 {
-	struct pkg_file *f = NULL;
-	struct pkg_dir *d = NULL;
+	struct pkg *newpkg = NULL;
+	const char *pkgorigin, *oldversion = NULL;
+	struct pkg_note *an;
+	char path[MAXPATHLEN];
+	bool automatic;
+	int flags = 0;
+	int retcode = EPKG_FATAL;
 
-	while (pkg_files(p1, &f) == EPKG_OK) {
-		if (f->keep)
-			continue;
+	pkg_get(new, PKG_ORIGIN, &pkgorigin,
+				PKG_AUTOMATIC, &automatic);
+	if (old != NULL)
+		pkg_get(old, PKG_VERSION, &oldversion);
+	else
+		pkg_get(new, PKG_OLD_VERSION, &oldversion);
 
-		f->keep = pkg_has_file(p2, pkg_file_path(f));
+	an = pkg_annotation_lookup(new, "repository");
+
+	pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, new);
+
+	if (pkg_open(&newpkg, path, keys, 0) != EPKG_OK) {
+		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+		goto cleanup;
 	}
 
-	while (pkg_dirs(p1, &d) == EPKG_OK) {
-		if (d->keep)
-			continue;
-
-		d->keep = pkg_has_dir(p2, pkg_dir_path(d));
+	if (oldversion != NULL) {
+		pkg_set(newpkg, PKG_OLD_VERSION, oldversion);
+		pkg_emit_upgrade_begin(old);
+	} else {
+		pkg_emit_install_begin(newpkg);
 	}
 
-	return (EPKG_OK);
+	if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
+		flags |= PKG_ADD_FORCE;
+	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
+		flags |= PKG_ADD_NOSCRIPT;
+	flags |= PKG_ADD_UPGRADE;
+	if (automatic)
+		flags |= PKG_ADD_AUTOMATIC;
+
+	if ((retcode = pkg_add(j->db, path, flags, keys)) != EPKG_OK) {
+		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+		goto cleanup;
+	}
+
+	if (an != NULL) {
+		pkgdb_add_annotation(j->db, new, "repository", pkg_annotation_value(an));
+	}
+
+	if (oldversion != NULL)
+		pkg_emit_upgrade_finished(newpkg);
+	else
+		pkg_emit_install_finished(newpkg);
+
+	retcode = EPKG_OK;
+
+cleanup:
+	if (newpkg != NULL)
+		pkg_free(newpkg);
+
+	return (retcode);
 }
 
 static int
 pkg_jobs_install(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
-	struct pkg *pkg = NULL;
-	struct pkg *newpkg = NULL;
-	struct pkg *pkg_temp = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg_queue = NULL;
+	struct pkg_solved *ps;
 	struct pkg_manifest_key *keys = NULL;
-	char path[MAXPATHLEN + 1];
 	const char *cachedir = NULL;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
-	int lflags = PKG_LOAD_BASIC | PKG_LOAD_FILES | PKG_LOAD_SCRIPTS |
-	    PKG_LOAD_DIRS;
 	bool handle_rc = false;
-
-	/* Fetch */
-	if (pkg_jobs_fetch(j) != EPKG_OK)
-		return (EPKG_FATAL);
 
 	if (j->flags & PKG_FLAG_SKIP_INSTALL)
 		return (EPKG_OK);
@@ -1066,143 +1176,40 @@ pkg_jobs_install(struct pkg_jobs *j)
 	
 	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
 
+	/* XXX: get rid of hardcoded values */
+	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
+			PKGDB_LOCK_EXCLUSIVE, 0.5, 20);
+	if (retcode != EPKG_OK)
+		goto cleanup;
+
 	p = NULL;
 	pkg_manifest_keys_new(&keys);
 	/* Install */
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
-	while (pkg_jobs(j, &p) == EPKG_OK) {
-		const char *pkgorigin, *oldversion, *origin;
-		struct pkg_note *an;
-		bool automatic;
-		flags = 0;
-
-		pkg_get(p, PKG_ORIGIN, &pkgorigin,
-		    PKG_OLD_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
-		an = pkg_annotation_lookup(p, "repository");
-
-		if (oldversion != NULL) {
-			pkg = NULL;
-			it = pkgdb_query(j->db, pkgorigin, MATCH_EXACT);
-			if (it != NULL) {
-				if (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
-					if (pkg_is_locked(pkg)) {
-						pkg_emit_locked(pkg);
-						pkgdb_it_free(it);
-						retcode = EPKG_LOCKED;
-						pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
-						goto cleanup; /* Bail out */
-					}
-
-					LL_APPEND(pkg_queue, pkg);
-					if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-						pkg_script_run(pkg,
-						    PKG_SCRIPT_PRE_DEINSTALL);
-					pkg_get(pkg, PKG_ORIGIN, &origin);
-					/*
-					 * stop the different related services
-					 * if the user wants that and the
-					 * service is running
-					 */
-					if (handle_rc)
-						pkg_start_stop_rc_scripts(pkg,
-						    PKG_RC_STOP);
-					pkgdb_unregister_pkg(j->db, origin);
-					pkg = NULL;
-				}
-				pkgdb_it_free(it);
-			}
-		}
-
-		it = pkgdb_integrity_conflict_local(j->db, pkgorigin);
-
-		if (it != NULL) {
-			pkg = NULL;
-			while (pkgdb_it_next(it, &pkg, lflags) == EPKG_OK) {
-
-				if (pkg_is_locked(pkg)) {
-					pkg_emit_locked(pkg);
-					pkgdb_it_free(it);
-					retcode = EPKG_LOCKED;
-					pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
-					goto cleanup; /* Bail out */
-				}
-
-				LL_APPEND(pkg_queue, pkg);
-				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-					pkg_script_run(pkg,
-					    PKG_SCRIPT_PRE_DEINSTALL);
-				pkg_get(pkg, PKG_ORIGIN, &origin);
-				/*
-				 * stop the different related services if the
-				 * user wants that and the service is running
-				 */
-				if (handle_rc)
-					pkg_start_stop_rc_scripts(pkg,
-					    PKG_RC_STOP);
-				pkgdb_unregister_pkg(j->db, origin);
-				pkg = NULL;
-			}
-			pkgdb_it_free(it);
-		}
-		pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, p);
-
-		pkg_open(&newpkg, path, keys, 0);
-		if (oldversion != NULL) {
-			pkg_emit_upgrade_begin(p);
-		} else {
-			pkg_emit_install_begin(newpkg);
-		}
-		LL_FOREACH(pkg_queue, pkg)
-			pkg_jobs_keep_files_to_del(pkg, newpkg);
-
-		LL_FOREACH_SAFE(pkg_queue, pkg, pkg_temp) {
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			if (strcmp(pkgorigin, origin) == 0) {
-				LL_DELETE(pkg_queue, pkg);
-				pkg_delete_files(pkg, 1);
-				if ((j->flags & PKG_FLAG_NOSCRIPT) == 0)
-					pkg_script_run(pkg,
-					    PKG_SCRIPT_POST_DEINSTALL);
-				pkg_delete_dirs(j->db, pkg, 0);
-				pkg_free(pkg);
-				break;
-			}
-		}
-
-		if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
-			flags |= PKG_ADD_FORCE;
-		if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
-			flags |= PKG_ADD_NOSCRIPT;
-		flags |= PKG_ADD_UPGRADE;
-		if (automatic)
-			flags |= PKG_ADD_AUTOMATIC;
-
-		if (pkg_add(j->db, path, flags, keys) != EPKG_OK) {
-			pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
+	/* Delete conflicts initially */
+	DL_FOREACH(j->jobs_delete, ps) {
+		p = ps->pkg[0];
+		retcode = pkg_delete(p, j->db, flags);
+		if (retcode != EPKG_OK)
 			goto cleanup;
-		}
-
-		if (an != NULL) {
-			pkgdb_add_annotation(j->db, p, "repository", pkg_annotation_value(an));
-		}
-
-		if (oldversion != NULL)
-			pkg_emit_upgrade_finished(newpkg);
-		else
-			pkg_emit_install_finished(newpkg);
-
-		if (pkg_queue == NULL) {
-			pkgdb_transaction_commit(j->db->sqlite, "upgrade");
-			pkgdb_transaction_begin(j->db->sqlite, "upgrade");
-		}
+	}
+	DL_FOREACH(j->jobs_add, ps) {
+		retcode = pkg_jobs_handle_install(ps->pkg[0], NULL,
+				j, handle_rc, cachedir, keys);
+		if (retcode != EPKG_OK)
+			goto cleanup;
+	}
+	DL_FOREACH(j->jobs_upgrade, ps) {
+		retcode = pkg_jobs_handle_install(ps->pkg[0], ps->pkg[1],
+				j, handle_rc, cachedir, keys);
+		if (retcode != EPKG_OK)
+			goto cleanup;
 	}
 
-	retcode = EPKG_OK;
-
-	cleanup:
+cleanup:
 	pkgdb_transaction_commit(j->db->sqlite, "upgrade");
-	pkg_free(newpkg);
+	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
 	pkg_manifest_keys_free(keys);
 
 	return (retcode);
@@ -1212,6 +1219,8 @@ static int
 pkg_jobs_deinstall(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
+	struct pkg_solved *ps;
+	const char *name;
 	int retcode;
 	int flags = 0;
 
@@ -1224,14 +1233,26 @@ pkg_jobs_deinstall(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_DELETE_NOSCRIPT;
 
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+	/* XXX: get rid of hardcoded values */
+	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
+			PKGDB_LOCK_EXCLUSIVE, 0.5, 20);
+
+	DL_FOREACH(j->jobs_delete, ps) {
+		p = ps->pkg[0];
+		pkg_get(p, PKG_NAME, &name);
+		if ((strcmp(name, "pkg") == 0 ||
+			 strcmp(name, "pkg-devel") == 0) && flags != PKG_DELETE_FORCE) {
+			pkg_emit_error("Cannot delete pkg itself without force flag");
+			continue;
+		}
 		retcode = pkg_delete(p, j->db, flags);
 
 		if (retcode != EPKG_OK)
-			return (retcode);
+			goto cleanup;
 	}
-
-	return (EPKG_OK);
+cleanup:
+	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
+	return (retcode);
 }
 
 int
@@ -1246,8 +1267,36 @@ pkg_jobs_apply(struct pkg_jobs *j)
 
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
-		rc = pkg_jobs_install(j);
+		rc = pkg_jobs_fetch(j);
+		if (rc == EPKG_OK) {
+			/* Check local conflicts in the first run */
+			if (j->solved > 1) {
+				rc = EPKG_OK;
+			}
+			else {
+				rc = pkg_jobs_check_conflicts(j);
+			}
+			if (rc == EPKG_OK) {
+				pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_INSTALL, j, j->db);
+				rc = pkg_jobs_install(j);
+			}
+			else if (rc == EPKG_CONFLICT) {
+				/* Cleanup results */
+				LL_FREE(j->jobs_add, pkg_solved, free);
+				LL_FREE(j->jobs_delete, pkg_solved, free);
+				LL_FREE(j->jobs_upgrade, pkg_solved, free);
+				j->jobs_add = j->jobs_delete = j->jobs_upgrade = NULL;
+				j->count = 0;
+				j->total = 0;
+
+				rc = pkg_jobs_solve(j);
+				if (rc == EPKG_OK) {
+					pkg_emit_notice("The conflicts with the existing packages have been found.\n"
+							"We need to run one more solver iteration to resolve them");
+					return (EPKG_CONFLICT);
+				}
+			}
+		}
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_INSTALL, j, j->db);
 		break;
 	case PKG_JOBS_DEINSTALL:
@@ -1282,25 +1331,23 @@ static int
 pkg_jobs_fetch(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
-	struct pkg *pkg = NULL;
+	struct pkg_solved *ps;
 	struct statfs fs;
 	struct stat st;
-	char path[MAXPATHLEN + 1];
 	int64_t dlsize = 0;
 	const char *cachedir = NULL;
 	const char *repopath = NULL;
 	char cachedpath[MAXPATHLEN];
-	int ret = EPKG_OK;
-	struct pkg_manifest_key *keys = NULL;
 	
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	/* check for available size to fetch */
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+	DL_FOREACH(j->jobs_add, ps) {
+		p = ps->pkg[0];
 		int64_t pkgsize;
 		pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);
-		snprintf(cachedpath, MAXPATHLEN, "%s/%s", cachedir, repopath);
+		snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir, repopath);
 		if (stat(cachedpath, &st) == -1)
 			dlsize += pkgsize;
 		else
@@ -1332,38 +1379,58 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_OK); /* don't download anything */
 
 	/* Fetch */
-	p = NULL;
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+	DL_FOREACH(j->jobs_add, ps) {
+		p = ps->pkg[0];
 		if (pkg_repo_fetch(p) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
-	p = NULL;
-	/* integrity checking */
+	return (EPKG_OK);
+}
+
+static int
+pkg_jobs_check_conflicts(struct pkg_jobs *j)
+{
+	struct pkg *p = NULL;
+	struct pkg_solved *ps;
+	struct pkg_manifest_key *keys = NULL;
+	struct pkg *pkg = NULL;
+	const char *cachedir = NULL;
+	char path[MAXPATHLEN];
+	int ret = EPKG_OK, res;
+
+	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
+		return (EPKG_FATAL);
+
 	pkg_emit_integritycheck_begin();
 
 	pkg_manifest_keys_new(&keys);
-	while (pkg_jobs(j, &p) == EPKG_OK) {
+	DL_FOREACH(j->jobs_add, ps) {
+		p = ps->pkg[0];
 		const char *pkgrepopath;
 
 		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 		snprintf(path, sizeof(path), "%s/%s", cachedir,
-		    pkgrepopath);
-		if (pkg_open(&pkg, path, keys, 0) != EPKG_OK) {
+				pkgrepopath);
+		if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
 			return (EPKG_FATAL);
-		}
 
-		if (pkgdb_integrity_append(j->db, pkg) != EPKG_OK)
-			ret = EPKG_FATAL;
+		if ((res = pkg_conflicts_append_pkg(pkg, j)) != EPKG_OK) {
+			ret = res;
+			if (ret == EPKG_FATAL)
+				break;
+		}
 	}
 	pkg_manifest_keys_free(keys);
 
 	pkg_free(pkg);
 
-	if (pkgdb_integrity_check(j->db) != EPKG_OK || ret != EPKG_OK)
-		return (EPKG_FATAL);
+	if (ret != EPKG_FATAL) {
+		if ((res = pkg_conflicts_integrity_check(j)) != EPKG_OK)
+			return (res);
+	}
 
 	pkg_emit_integritycheck_finished();
 
-	return (EPKG_OK);
+	return (ret);
 }

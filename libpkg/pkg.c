@@ -61,7 +61,7 @@ static struct _fields {
 	[PKG_OLD_VERSION] = {"oldversion", PKG_REMOTE, 1},
 	[PKG_REPONAME] = {"reponame", PKG_REMOTE, 1},
 	[PKG_REPOURL] = {"repourl", PKG_REMOTE, 1},
-	[PKG_DIGEST] = {"manifestdigest", PKG_REMOTE, 1},
+	[PKG_DIGEST] = {"manifestdigest", PKG_REMOTE|PKG_INSTALLED, 1},
 	[PKG_REASON] = {"reason", PKG_REMOTE, 1}
 };
 
@@ -403,7 +403,7 @@ pkg_dep_lookup(const struct pkg *pkg, const char *origin)
 	assert(pkg != NULL);
 	assert(origin != NULL);
 
-	HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
+	HASH_FIND_STR(pkg->deps, origin, d);
 
 	return (d);
 }
@@ -465,6 +465,22 @@ pkg_shlibs_provided(const struct pkg *pkg, struct pkg_shlib **s)
 }
 
 int
+pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **c)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->conflicts, (*c));
+}
+
+int
+pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
+{
+	assert(pkg != NULL);
+
+	HASH_NEXT(pkg->provides, (*c));
+}
+
+int
 pkg_annotations(const struct pkg *pkg, struct pkg_note **an)
 {
 	assert(pkg != NULL);
@@ -488,7 +504,7 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND_STR(pkg->licenses, __DECONST(char *, name), l);
+	HASH_FIND_STR(pkg->licenses, name, l);
 	if (l != NULL) {
 		pkg_emit_error("duplicate license listing: %s, ignoring", name);
 		return (EPKG_OK);
@@ -511,7 +527,7 @@ pkg_adduid(struct pkg *pkg, const char *name, const char *uidstr)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->users, __DECONST(char *, name), u);
+	HASH_FIND_STR(pkg->users, name, u);
 	if (u != NULL) {
 		pkg_emit_error("duplicate user listing: %s, ignoring", name);
 		return (EPKG_OK);
@@ -545,7 +561,7 @@ pkg_addgid(struct pkg *pkg, const char *name, const char *gidstr)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->groups, __DECONST(char *, name), g);
+	HASH_FIND_STR(pkg->groups, name, g);
 	if (g != NULL) {
 		pkg_emit_error("duplicate group listing: %s, ignoring", name);
 		return (EPKG_OK);
@@ -582,7 +598,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	assert(version != NULL && version[0] != '\0');
 
 	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s, version: %s", origin, name, version);
-	HASH_FIND_STR(pkg->deps, __DECONST(char *, origin), d);
+	HASH_FIND_STR(pkg->deps, origin, d);
 	if (d != NULL) {
 		pkg_get(pkg, PKG_NAME, &n1, PKG_VERSION, &v1);
 		pkg_emit_error("%s-%s: duplicate dependency listing: %s-%s, ignoring",
@@ -597,7 +613,7 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	sbuf_set(&d->version, version);
 	d->locked = locked;
 
-	HASH_ADD_KEYPTR(hh, pkg->deps, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)),
+	HASH_ADD_KEYPTR(hh, pkg->deps, pkg_dep_get(d, PKG_DEP_ORIGIN),
 	    strlen(pkg_dep_get(d, PKG_DEP_ORIGIN)), d);
 
 	return (EPKG_OK);
@@ -621,7 +637,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	sbuf_set(&d->version, version);
 	d->locked = locked;
 
-	HASH_ADD_KEYPTR(hh, pkg->rdeps, __DECONST(char *, pkg_dep_get(d, PKG_DEP_ORIGIN)),
+	HASH_ADD_KEYPTR(hh, pkg->rdeps, pkg_dep_get(d, PKG_DEP_ORIGIN),
 	    strlen(pkg_dep_get(d, PKG_DEP_ORIGIN)), d);
 
 	return (EPKG_OK);
@@ -644,7 +660,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 	pkg_debug(3, "Pkg: add new file '%s'", path);
 
 	if (check_duplicates) {
-		HASH_FIND_STR(pkg->files, __DECONST(char *, path), f);
+		HASH_FIND_STR(pkg->files, path, f);
 		if (f != NULL) {
 			pkg_emit_error("duplicate file listing: %s, ignoring", pkg_file_path(f));
 			return (EPKG_OK);
@@ -679,7 +695,7 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->categories, __DECONST(char *, name), c);
+	HASH_FIND_STR(pkg->categories, name, c);
 	if (c != NULL) {
 		pkg_emit_error("duplicate category listing: %s, ignoring", name);
 		return (EPKG_OK);
@@ -689,7 +705,7 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 
 	sbuf_set(&c->name, name);
 
-	HASH_ADD_KEYPTR(hh, pkg->categories, __DECONST(char *, pkg_category_name(c)),
+	HASH_ADD_KEYPTR(hh, pkg->categories, pkg_category_name(c),
 	    strlen(pkg_category_name(c)), c);
 
 	return (EPKG_OK);
@@ -711,7 +727,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname, const char
 
 	pkg_debug(3, "Pkg: add new directory '%s'", path);
 	if (check_duplicates) {
-		HASH_FIND_STR(pkg->dirs, __DECONST(char *, path), d);
+		HASH_FIND_STR(pkg->dirs, path, d);
 		if (d != NULL) {
 			pkg_emit_error("duplicate directory listing: %s, ignoring", path);
 			return (EPKG_OK);
@@ -842,7 +858,8 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	   default value or description for an option but no actual
 	   value. */
 
-	HASH_FIND_STR(pkg->options, __DECONST(char *, key), o);
+	pkg_debug(2,"Pkg> adding options: %s = %s", key, value);
+	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
 		pkg_option_new(&o);
 		sbuf_set(&o->key, key);
@@ -853,7 +870,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 
 	sbuf_set(&o->value, value);
 	HASH_ADD_KEYPTR(hh, pkg->options,
-			__DECONST(char *, pkg_option_opt(o)),
+			pkg_option_opt(o),
 			strlen(pkg_option_opt(o)), o);
 
 	return (EPKG_OK);
@@ -875,7 +892,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 	   could be a default value or description for an option but
 	   no actual value. */
 
-	HASH_FIND_STR(pkg->options, __DECONST(char *, key), o);
+	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
 		pkg_option_new(&o);
 		sbuf_set(&o->key, key);
@@ -886,7 +903,7 @@ pkg_addoption_default(struct pkg *pkg, const char *key,
 
 	sbuf_set(&o->default_value, default_value);
 	HASH_ADD_KEYPTR(hh, pkg->options,
-			__DECONST(char *, pkg_option_default_value(o)),
+			pkg_option_default_value(o),
 			strlen(pkg_option_default_value(o)), o);
 
 	return (EPKG_OK);
@@ -907,7 +924,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	   is already set. Which implies there could be a default
 	   value or description for an option but no actual value. */
 
-	HASH_FIND_STR(pkg->options, __DECONST(char *, key), o);
+	HASH_FIND_STR(pkg->options, key, o);
 	if (o == NULL) {
 		pkg_option_new(&o);
 		sbuf_set(&o->key, key);
@@ -918,7 +935,7 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 
 	sbuf_set(&o->description, description);
 	HASH_ADD_KEYPTR(hh, pkg->options,
-			__DECONST(char *, pkg_option_description(o)),
+			pkg_option_description(o),
 			strlen(pkg_option_description(o)), o);
 
 	return (EPKG_OK);
@@ -932,7 +949,7 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->shlibs_required, __DECONST(char *, name), s);
+	HASH_FIND_STR(pkg->shlibs_required, name, s);
 	/* silently ignore duplicates in case of shlibs */
 	if (s != NULL)
 		return (EPKG_OK);
@@ -942,7 +959,7 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 	sbuf_set(&s->name, name);
 
 	HASH_ADD_KEYPTR(hh, pkg->shlibs_required,
-	    __DECONST(char *, pkg_shlib_name(s)),
+	    pkg_shlib_name(s),
 	    strlen(pkg_shlib_name(s)), s);
 
 	return (EPKG_OK);
@@ -956,7 +973,7 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->shlibs_provided, __DECONST(char *, name), s);
+	HASH_FIND_STR(pkg->shlibs_provided, name, s);
 	/* silently ignore duplicates in case of shlibs */
 	if (s != NULL)
 		return (EPKG_OK);
@@ -966,8 +983,57 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 	sbuf_set(&s->name, name);
 
 	HASH_ADD_KEYPTR(hh, pkg->shlibs_provided,
-	    __DECONST(char *, pkg_shlib_name(s)),
+	    pkg_shlib_name(s),
 	    strlen(pkg_shlib_name(s)), s);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addconflict(struct pkg *pkg, const char *name)
+{
+	struct pkg_conflict *c = NULL;
+	const char *origin;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	HASH_FIND_STR(pkg->conflicts, __DECONST(char *, name), c);
+	/* silently ignore duplicates in case of conflicts */
+	if (c != NULL)
+		return (EPKG_OK);
+
+	pkg_conflict_new(&c);
+	sbuf_set(&c->origin, name);
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", origin, name);
+
+	HASH_ADD_KEYPTR(hh, pkg->conflicts,
+	    __DECONST(char *, pkg_conflict_origin(c)),
+	    sbuf_size(c->origin), c);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addprovide(struct pkg *pkg, const char *name)
+{
+	struct pkg_provide *p = NULL;
+
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	HASH_FIND_STR(pkg->provides, __DECONST(char *, name), p);
+	/* silently ignore duplicates in case of conflicts */
+	if (p != NULL)
+		return (EPKG_OK);
+
+	pkg_provide_new(&p);
+	sbuf_set(&p->provide, name);
+
+	HASH_ADD_KEYPTR(hh, pkg->provides,
+	    __DECONST(char *, pkg_provide_name(p)),
+	    sbuf_size(p->provide), p);
 
 	return (EPKG_OK);
 }
@@ -983,7 +1049,7 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 
 	/* Tags are unique per-package */
 
-	HASH_FIND_STR(pkg->annotations, __DECONST(char *, tag), an);
+	HASH_FIND_STR(pkg->annotations, tag, an);
 	if (an != NULL) {
 		pkg_emit_error("duplicate annotation tag: %s value: %s,"
 			       " ignoring", tag, value);
@@ -996,7 +1062,7 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 	sbuf_set(&an->value, value);
 
 	HASH_ADD_KEYPTR(hh, pkg->annotations,
-	    __DECONST(char *, pkg_annotation_tag(an)),
+	    pkg_annotation_tag(an),
 	    strlen(pkg_annotation_tag(an)), an);
 
 	return (EPKG_OK);
@@ -1010,7 +1076,7 @@ pkg_annotation_lookup(const struct pkg *pkg, const char *tag)
 	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	HASH_FIND_STR(pkg->annotations, __DECONST(char *, tag), an);
+	HASH_FIND_STR(pkg->annotations, tag, an);
 
 	return (an);
 }
@@ -1023,7 +1089,7 @@ pkg_delannotation(struct pkg *pkg, const char *tag)
 	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	HASH_FIND_STR(pkg->annotations, __DECONST(char *, tag), an);
+	HASH_FIND_STR(pkg->annotations, tag, an);
 	if (an != NULL) {
 		HASH_DEL(pkg->annotations, an);
 		pkg_annotation_free(an);
@@ -1063,6 +1129,10 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->shlibs_provided));
 	case PKG_ANNOTATIONS:
 		return (HASH_COUNT(pkg->annotations));
+	case PKG_CONFLICTS:
+		return (HASH_COUNT(pkg->conflicts));
+	case PKG_PROVIDES:
+		return (HASH_COUNT(pkg->provides));
 	}
 	
 	return (0);
@@ -1119,6 +1189,14 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		HASH_FREE(pkg->annotations, pkg_note, pkg_annotation_free);
 		pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
 		break;
+	case PKG_CONFLICTS:
+		HASH_FREE(pkg->conflicts, pkg_conflict, pkg_conflict_free);
+		pkg->flags &= ~PKG_LOAD_CONFLICTS;
+		break;
+	case PKG_PROVIDES:
+		HASH_FREE(pkg->provides, pkg_provide, pkg_provide_free);
+		pkg->flags &= ~PKG_LOAD_PROVIDES;
+		break;
 	}
 }
 
@@ -1134,6 +1212,7 @@ pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, in
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
 
+	archive_read_close(a);
 	archive_read_free(a);
 
 	return (EPKG_OK);
@@ -1152,9 +1231,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	size_t		  size;
 	off_t		  offset = 0;
 	struct sbuf	**sbuf;
-	int		  i, r, fd = -1;
+	int		  i, r;
 	bool		  read_from_stdin = 0;
-	struct stat	  sb;
 
 	struct {
 		const char *name;
@@ -1178,43 +1256,10 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 	read_from_stdin = (strncmp(path, "-", 2) == 0);
 
-	if (read_from_stdin) {
-		fd = STDIN_FILENO;
-	} else {
-		fd = open(path, O_RDONLY);
-		if (fd == -1) {
-			pkg_emit_error("open(%s) failed: %s", path,
-				       strerror(errno));
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
-	}
-
-	if (fstat(fd, &sb) == -1) {
-		pkg_emit_error("fstat() %s: %s", path, strerror(errno));
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	/* Is this a file type we can't read a package from?  S_ISLNK
-	   shouldn't happen -- we should be resolving sym-links during
-	   the call to open() -- so assume S_ISLNK means something
-	   went wrong. S_ISBLK shouldn't happen on modern FreeBSD, so
-	   we'll ignore it.  S_ISCHR would result from opening
-	   /dev/stdin or /dev/fd/0 which should be fine.  Ditto
-	   S_ISFIFO.  Not sure about S_ISSOCK or S_ISWHT (?) */
-
-	if (S_ISDIR(sb.st_mode) || S_ISLNK(sb.st_mode)) {
-		pkg_emit_error("can't read %s -- is a directory or broken link",
-			       path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	ret = archive_read_open_fd(*a, fd, 4096);
-	if (ret != ARCHIVE_OK) {
-		pkg_emit_error("archive_read_open_fd() %s: %s", path,
-			       archive_error_string(*a));
+	if (archive_read_open_filename(*a,
+	    read_from_stdin ? NULL : path, 4096) != ARCHIVE_OK) {
+		pkg_emit_error("archive_read_open_filename(%s): %s", path,
+		    archive_error_string(*a));
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -1228,11 +1273,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 	pkg = *pkg_p;
 
-	if (S_ISREG(sb.st_mode) && !read_from_stdin) 
-		pkg->type = PKG_FILE;
-	else
-		pkg->type = PKG_STREAM;
-
 	while ((ret = archive_read_next_header(*a, ae)) == ARCHIVE_OK) {
 		fpath = archive_entry_pathname(*ae);
 		if (fpath[0] != '+')
@@ -1241,7 +1281,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		if (!manifest &&
 			(flags & PKG_OPEN_MANIFEST_COMPACT) &&
 			strcmp(fpath, "+COMPACT_MANIFEST") == 0) {
-			unsigned char *buffer;
+			char *buffer;
 			manifest = true;
 
 			size_t len = archive_entry_size(*ae);
@@ -1258,7 +1298,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		}
 		if (!manifest && strcmp(fpath, "+MANIFEST") == 0) {
 			manifest = true;
-			unsigned char *buffer;
+			char *buffer;
 
 			size_t len = archive_entry_size(*ae);
 			buffer = malloc(len);
@@ -1306,11 +1346,8 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		retcode = EPKG_FATAL;
 	}
 
-	if (ret == ARCHIVE_EOF) {
-		if (!read_from_stdin) 
-			close(fd);
+	if (ret == ARCHIVE_EOF)
 		retcode = EPKG_END;
-	}
 
 	if (!manifest) {
 		retcode = EPKG_FATAL;
@@ -1319,12 +1356,12 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 	cleanup:
 	if (retcode != EPKG_OK && retcode != EPKG_END) {
-		if (*a != NULL)
+		if (*a != NULL) {
+			archive_read_close(*a);
 			archive_read_free(*a);
+		}
 		*a = NULL;
 		*ae = NULL;
-		if (!read_from_stdin && fd >= 0) 
-			close(fd);
 	}
 
 	return (retcode);
@@ -1336,8 +1373,8 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	struct packing *pack;
 	struct pkg_file *file = NULL;
 	struct pkg_dir *dir = NULL;
-	char spath[MAXPATHLEN + 1];
-	char dpath[MAXPATHLEN + 1];
+	char spath[MAXPATHLEN];
+	char dpath[MAXPATHLEN];
 	bool disable_mtree;
 	const char *prefix;
 	char *mtree;
@@ -1502,7 +1539,7 @@ pkg_has_file(struct pkg *p, const char *path)
 {
 	struct pkg_file *f;
 
-	HASH_FIND_STR(p->files, __DECONST(char *, path), f);
+	HASH_FIND_STR(p->files, path, f);
 
 	return (f != NULL ? true : false);
 }
@@ -1512,7 +1549,7 @@ pkg_has_dir(struct pkg *p, const char *path)
 {
 	struct pkg_dir *d;
 
-	HASH_FIND_STR(p->dirs, __DECONST(char *, path), d);
+	HASH_FIND_STR(p->dirs, path, d);
 
 	return (d != NULL ? true : false);
 }

@@ -165,7 +165,7 @@ refresh_progress_meter(void)
 
 	/* filename */
 	buf[0] = '\0';
-	file_len = win_size - 45;
+	file_len = win_size - 35;
 	if (file_len > 0) {
 		len = snprintf(buf, file_len + 1, "\r%s", file);
 		if (len < 0)
@@ -191,14 +191,9 @@ refresh_progress_meter(void)
 	    cur_pos);
 	strlcat(buf, " ", win_size);
 
-	/* bandwidth usage */
-	format_rate(buf + strlen(buf), win_size - strlen(buf),
-	    (off_t)bytes_per_second);
-	strlcat(buf, "/s ", win_size);
-
 	/* instantaneous rate */
 	format_rate(buf + strlen(buf), win_size - strlen(buf),
-	    delta_pos);
+	    cur_speed);
 	strlcat(buf, "/s ", win_size);
 
 	/* ETA */

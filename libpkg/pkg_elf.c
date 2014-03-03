@@ -127,9 +127,12 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 	struct pkgdb_it *it = NULL;
 	struct pkg *d;
 	const char *deporigin, *depname, *depversion;
+	const char *origin;
 	const char *pkgname, *pkgversion;
 	bool deplocked;
 	char pathbuf[MAXPATHLEN];
+	struct pkg_file *file = NULL;
+	const char *filepath;
 
 	assert(db != NULL);
 
@@ -144,6 +147,13 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 		if (is_shlib)
 			return (EPKG_OK);
 
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			filepath = pkg_file_path(file);
+			if (strcmp(&filepath[strlen(filepath) - strlen(name)], name) == 0) {
+				pkg_addshlib_required(pkg, name);
+				return (EPKG_OK);
+			}
+		}
 		pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
 		warnx("(%s-%s) %s - shared library %s not found",
 		      pkgname, pkgversion, fpath, name);
@@ -163,8 +173,9 @@ test_depends(void *actdata, struct pkg *pkg, const char *fpath,
 			   PKG_LOCKED,  &deplocked);
 
 		dep = pkg_dep_lookup(pkg, deporigin);
+		pkg_get(pkg, PKG_ORIGIN, &origin);
 
-		if (dep == NULL) {
+		if (dep == NULL && strcmp(origin, deporigin) != 0) {
 			pkg_debug(1, "Autodeps: adding unlisted depends (%s): %s-%s",
 			    pathbuf, depname, depversion);
 			pkg_adddep(pkg, depname, deporigin, depversion,
@@ -418,9 +429,9 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (stage != NULL)
-			snprintf(fpath, MAXPATHLEN, "%s/%s", stage, pkg_file_path(file));
+			snprintf(fpath, sizeof(fpath), "%s/%s", stage, pkg_file_path(file));
 		else
-			strlcpy(fpath, pkg_file_path(file), MAXPATHLEN);
+			strlcpy(fpath, pkg_file_path(file), sizeof(fpath));
 
 		ret = analyse_elf(pkg, fpath, action, db);
 		if (developer) {
@@ -457,7 +468,7 @@ pkg_register_shlibs(struct pkg *pkg, const char *root)
 
 	while(pkg_files(pkg, &file) == EPKG_OK) {
 		if (root != NULL) {
-			snprintf(fpath, MAXPATHLEN, "%s%s", root, pkg_file_path(file));
+			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_file_path(file));
 			analyse_elf(pkg, fpath, add_shlibs_to_pkg, NULL);
 		} else
 			analyse_elf(pkg, pkg_file_path(file), add_shlibs_to_pkg, NULL);

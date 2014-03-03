@@ -46,7 +46,7 @@ do_extract(struct archive *a, struct archive_entry *ae)
 {
 	int	retcode = EPKG_OK;
 	int	ret = 0;
-	char	path[MAXPATHLEN + 1];
+	char	path[MAXPATHLEN];
 	struct stat st;
 
 	do {
@@ -163,7 +163,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	bool		 extract = true;
 	bool		 handle_rc = false;
 	bool		 disable_mtree;
-	char		 dpath[MAXPATHLEN + 1];
+	char		 dpath[MAXPATHLEN];
 	const char	*basedir;
 	const char	*ext;
 	char		*mtree;
@@ -269,6 +269,13 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
+			} else {
+				pkg_emit_error("Missing dependency matching "
+				    "Origin: '%s' Version: '%s'",
+				    pkg_dep_get(dep, PKG_DEP_ORIGIN),
+				    pkg_dep_get(dep, PKG_DEP_VERSION));
+				retcode = EPKG_FATAL;
+				goto cleanup;
 			}
 		} else {
 			retcode = EPKG_FATAL;
@@ -344,8 +351,10 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 		pkg_emit_install_finished(pkg);
 
 	cleanup:
-	if (a != NULL)
+	if (a != NULL) {
+		archive_read_close(a);
 		archive_read_free(a);
+	}
 
 	pkg_free(pkg);
 

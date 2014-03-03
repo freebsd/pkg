@@ -32,7 +32,7 @@ shift $(( ${OPTIND} -1 ))
 if [ -f ${PORTSDIR}/Mk/bsd.pkgng.mk ]; then
 	FORCE_POST=$(make _POSTMKINCLUDED=1 UID=$(id -u) -f ${PORTSDIR}/Mk/bsd.pkgng.mk -V _FORCE_POST_PATTERNS)
 else
-	FORCE_POST="rmdir kldxref mkfontscale mkfontdir fc-cache fonts.dir fonts.scale gtk-update-icon-cache gio-querymodules gtk-query-immodules ldconfig load-octave-pkg update-desktop-database update-mime-database gdk-pixbuf-query-loaders catalog.ports glib-compile-schemas"
+	FORCE_POST="rmdir kldxref mkfontscale mkfontdir fc-cache fonts.dir fonts.scale gtk-update-icon-cache gio-querymodules gtk-query-immodules ldconfig load-octave-pkg update-desktop-database update-mime-database gdk-pixbuf-query-loaders catalog.ports glib-compile-schemas ccache-update-links"
 fi
 
 FORCE_PORT=$FORCE_POST __PREFIX__/sbin/pkg convert
@@ -44,7 +44,9 @@ rm -f ${PKG_DBDIR}/pkgdb.db > /dev/null 2>&1
 
 # Build the shlibs_{provided,required} tables in the pkg database
 
+echo -n "Analysing shared libraries, this will take a while... "
 __PREFIX__/sbin/pkg check -Ba
+echo "done"
 
 # Fix up /etc/periodic.conf if requested.  Pull in the current
 # periodic settings, and update /etc/periodic.conf to disable any

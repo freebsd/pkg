@@ -179,7 +179,7 @@ pkg_plugin_conf_add_string(struct pkg_plugin *p, int id, const char *key, const 
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -201,7 +201,7 @@ pkg_plugin_conf_add_string(struct pkg_plugin *p, int id, const char *key, const 
 	}
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -219,7 +219,7 @@ pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool boo
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -247,7 +247,7 @@ pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool boo
 	}
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -266,7 +266,7 @@ pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -292,7 +292,7 @@ pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64
 	}
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -309,7 +309,7 @@ pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key)
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -322,7 +322,7 @@ pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key)
 	conf->kvlist = NULL;
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -339,7 +339,7 @@ pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key)
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND(hhkey, p->conf_by_key, __DECONST(char *, key), strlen(key), conf);
+	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
 	if (conf != NULL) {
 		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
 		return (EPKG_FATAL);
@@ -352,7 +352,7 @@ pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key)
 	conf->list = NULL;
 
 	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, __DECONST(char *, conf->key),
+	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
 	    strlen(conf->key), conf);
 
 	return (EPKG_OK);
@@ -394,7 +394,7 @@ pkg_plugins_init(void)
 		/*
 		 * Load the plugin
 		 */
-		snprintf(pluginfile, MAXPATHLEN, "%s/%s.so", plugdir,
+		snprintf(pluginfile, sizeof(pluginfile), "%s/%s.so", plugdir,
 		    pkg_config_value(v));
 		p = calloc(1, sizeof(struct pkg_plugin));
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
@@ -561,7 +561,7 @@ pkg_plugin_parse(struct pkg_plugin *p)
 
 	obj = ucl_parser_get_object(pr);
 	if (obj->type == UCL_OBJECT)
-		pkg_object_walk(obj->value.ov, p->conf_by_key);
+		pkg_object_walk(obj, p->conf_by_key);
 
 	p->parsed = true;
 	ucl_object_free(obj);

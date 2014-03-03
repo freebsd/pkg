@@ -64,7 +64,7 @@ exec_add(int argc, char **argv)
 {
 	struct pkgdb *db = NULL;
 	struct sbuf *failedpkgs = NULL;
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 	char *file;
 	int retcode;
 	int ch;
@@ -79,7 +79,7 @@ exec_add(int argc, char **argv)
 			f |= PKG_ADD_NOSCRIPT;
 			break;
 		case 'A':
-			f |= PKG_FLAG_AUTOMATIC;
+			f |= PKG_ADD_AUTOMATIC;
 			break;
 		case 'f':
 			f |= PKG_FLAG_FORCE;
@@ -113,11 +113,18 @@ exec_add(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	failedpkgs = sbuf_new_auto();
 	pkg_manifest_keys_new(&keys);
 	for (i = 0; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
-			snprintf(path, sizeof(path), "./%s", basename(argv[i]));
+			snprintf(path, sizeof(path), "%s/%s.XXXXX",
+			    getenv("TMPDIR") != NULL ? getenv("TMPDIR") : "/tmp", basename(argv[i]));
 			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0)) != EPKG_OK)
 				break;
 
@@ -151,9 +158,12 @@ exec_add(int argc, char **argv)
 			failedpkgcount++;
 		}
 
+		if (is_url(argv[i]) == EPKG_OK)
+			unlink(file);
+
 	}
 	pkg_manifest_keys_free(keys);
-
+	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
 	
 	if(failedpkgcount > 0) {
