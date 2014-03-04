@@ -540,7 +540,6 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 				pkg_emit_locked(pkg);
 			}
 			else if (pkg_jobs_test_automatic(j, pkg, 0)) {
-				pkg_get(pkg, PKG_ORIGIN, &origin);
 				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
 						origin);
 				pkg_jobs_add_req(j, origin, pkg, false, 0);
@@ -549,6 +548,15 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			pkg_jobs_add_universe(j, pkg, 0, true);
 		}
 		else {
+			if(pkg_is_locked(unit->pkg)) {
+				pkg_emit_locked(unit->pkg);
+			}
+			else if (pkg_jobs_test_automatic(j, unit->pkg, 0)) {
+				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
+						origin);
+				pkg_jobs_add_req(j, origin, unit->pkg, false, 0);
+			}
+
 			pkg_free(pkg);
 		}
 		pkg = NULL;
