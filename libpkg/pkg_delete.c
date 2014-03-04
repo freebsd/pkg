@@ -50,17 +50,6 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	assert(pkg != NULL);
 	assert(db != NULL);
 
-	/*
-	 * Do not trust the existing entries as it may have changed if we
-	 * delete packages in batch.
-	 */
-	pkg_list_free(pkg, PKG_RDEPS);
-
-	/*
-	 * Ensure that we have all the informations we need
-	 */
-	if ((ret = pkgdb_load_rdeps(db, pkg)) != EPKG_OK)
-		return (ret);
 	if ((ret = pkgdb_load_files(db, pkg)) != EPKG_OK)
 		return (ret);
 	if ((ret = pkgdb_load_dirs(db, pkg)) != EPKG_OK)

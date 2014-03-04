@@ -1295,11 +1295,9 @@ pkg_jobs_execute(struct pkg_jobs *j)
 				pkg_emit_error("Cannot delete pkg itself without force flag");
 				continue;
 			}
-			pkg_emit_deinstall_begin(p);
 			retcode = pkg_delete(p, j->db, flags);
 			if (retcode != EPKG_OK)
 				goto cleanup;
-			pkg_emit_deinstall_finished(p);
 			break;
 		case PKG_SOLVED_INSTALL:
 			retcode = pkg_jobs_handle_install(ps->pkg[0], NULL,
