@@ -369,5 +369,5 @@ external/libelf/libelf_msize.c:
 	@echo "    M4    " $@;
 	@m4 -D SRCDIR=external/libelf $(top_srcdir)/external/libelf/elf_types.m4 $(top_srcdir)/external/libelf/libelf_msize.m4 > $@
 
-regression-test: @HAVE_TEST@
+regression-test:
 	@echo "ATF/KYUA has change our testing framework is not compatible for now"

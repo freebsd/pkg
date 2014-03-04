@@ -40,10 +40,6 @@ AC_CHECK_HEADER([gelf.h], [
     LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
 ])
 
-AC_CHECK_HEADER([atf-c.h], [
-	HAVE_TEST="check"
-])
-
 AC_SUBST([LIBELF_LIB])
 AC_SUBST([LIBELF_BUNDLED])
 AC_SUBST([LIBELF_INCLUDE])

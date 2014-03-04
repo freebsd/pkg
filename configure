@@ -11557,15 +11557,6 @@ fi
 
 
 
-ac_fn_c_check_header_mongrel "$LINENO" "atf-c.h" "ac_cv_header_atf_c_h" "$ac_includes_default"
-if test "x$ac_cv_header_atf_c_h" = xyes; then :
-
-	HAVE_TEST="check"
-
-fi
-
-
-
 
 
 
