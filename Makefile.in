@@ -83,6 +83,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 sbin_PROGRAMS = pkg$(EXEEXT) pkg-static$(EXEEXT)
+check_PROGRAMS = tests/pkg_printf$(EXEEXT) \
+	tests/pkg_validation$(EXEEXT)
 subdir = .
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/configure $(am__configure_deps) \
@@ -334,6 +336,23 @@ pkg_static_DEPENDENCIES = $(am__DEPENDENCIES_1)
 pkg_static_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(pkg_static_CFLAGS) \
 	$(CFLAGS) $(pkg_static_LDFLAGS) $(LDFLAGS) -o $@
+am_tests_pkg_printf_OBJECTS =  \
+	libpkg/tests_pkg_printf-pkg_printf.$(OBJEXT) \
+	tests/lib/tests_pkg_printf-pkg_printf_test.$(OBJEXT)
+tests_pkg_printf_OBJECTS = $(am_tests_pkg_printf_OBJECTS)
+tests_pkg_printf_DEPENDENCIES = libpkg.la
+tests_pkg_printf_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(tests_pkg_printf_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
+	-o $@
+am_tests_pkg_validation_OBJECTS =  \
+	tests/lib/tests_pkg_validation-pkg_validation.$(OBJEXT)
+tests_pkg_validation_OBJECTS = $(am_tests_pkg_validation_OBJECTS)
+tests_pkg_validation_DEPENDENCIES = libpkg.la
+tests_pkg_validation_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
+	$(tests_pkg_validation_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 SCRIPTS = $(dist_sbin_SCRIPTS)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -372,11 +391,13 @@ am__v_CCLD_1 =
 SOURCES = $(libelf_la_SOURCES) $(libexpat_la_SOURCES) \
 	$(libpkg_la_SOURCES) $(libsqlite_la_SOURCES) \
 	$(libucl_la_SOURCES) $(libyaml_la_SOURCES) $(pkg_SOURCES) \
-	$(pkg_static_SOURCES)
+	$(pkg_static_SOURCES) $(tests_pkg_printf_SOURCES) \
+	$(tests_pkg_validation_SOURCES)
 DIST_SOURCES = $(libelf_la_SOURCES) $(libexpat_la_SOURCES) \
 	$(libpkg_la_SOURCES) $(libsqlite_la_SOURCES) \
 	$(libucl_la_SOURCES) $(libyaml_la_SOURCES) $(pkg_SOURCES) \
-	$(pkg_static_SOURCES)
+	$(pkg_static_SOURCES) $(tests_pkg_printf_SOURCES) \
+	$(tests_pkg_validation_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -907,6 +928,16 @@ pkg_static_CFLAGS = $(pkg_CFLAGS)
 pkg_static_SOURCES = $(pkg_SOURCES)
 pkg_static_LDADD = $(pkg_LDADD) -llzma -lbz2 -lz
 pkg_static_LDFLAGS = -all-static
+tests_pkg_printf_SOURCES = libpkg/pkg_printf.c \
+				tests/lib/pkg_printf_test.c
+
+tests_pkg_printf_CFLAGS = -I$(top_srcdir)/libpkg -DTESTING
+tests_pkg_printf_LDADD = libpkg.la -latf-c
+tests_pkg_printf_LDLAGS = -Wl,-rpath=\$$ORIGIN/../.libs
+tests_pkg_validation_SOURCES = tests/lib/pkg_validation.c
+tests_pkg_validation_CFLAGS = -I$(top_srcdir)/libpkg -DTESTING
+tests_pkg_validation_LDADD = libpkg.la -latf-c
+tests_pkg_validation_LDLAGS = -Wl,-rpath=\$$ORIGIN/../.libs
 all: pkg_config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -1363,6 +1394,15 @@ external/libyaml/src/libyaml_la-scanner.lo:  \
 
 libyaml.la: $(libyaml_la_OBJECTS) $(libyaml_la_DEPENDENCIES) $(EXTRA_libyaml_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libyaml_la_LINK)  $(libyaml_la_OBJECTS) $(libyaml_la_LIBADD) $(LIBS)
+
+clean-checkPROGRAMS:
+	@list='$(check_PROGRAMS)'; test -n "$$list" || exit 0; \
+	echo " rm -f" $$list; \
+	rm -f $$list || exit $$?; \
+	test -n "$(EXEEXT)" || exit 0; \
+	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
+	echo " rm -f" $$list; \
+	rm -f $$list
 install-sbinPROGRAMS: $(sbin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	@list='$(sbin_PROGRAMS)'; test -n "$(sbindir)" || list=; \
@@ -1566,6 +1606,29 @@ src/pkg_static-which.$(OBJEXT): src/$(am__dirstamp) \
 pkg-static$(EXEEXT): $(pkg_static_OBJECTS) $(pkg_static_DEPENDENCIES) $(EXTRA_pkg_static_DEPENDENCIES) 
 	@rm -f pkg-static$(EXEEXT)
 	$(AM_V_CCLD)$(pkg_static_LINK) $(pkg_static_OBJECTS) $(pkg_static_LDADD) $(LIBS)
+libpkg/tests_pkg_printf-pkg_printf.$(OBJEXT): libpkg/$(am__dirstamp) \
+	libpkg/$(DEPDIR)/$(am__dirstamp)
+tests/lib/$(am__dirstamp):
+	@$(MKDIR_P) tests/lib
+	@: > tests/lib/$(am__dirstamp)
+tests/lib/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) tests/lib/$(DEPDIR)
+	@: > tests/lib/$(DEPDIR)/$(am__dirstamp)
+tests/lib/tests_pkg_printf-pkg_printf_test.$(OBJEXT):  \
+	tests/lib/$(am__dirstamp) tests/lib/$(DEPDIR)/$(am__dirstamp)
+tests/$(am__dirstamp):
+	@$(MKDIR_P) tests
+	@: > tests/$(am__dirstamp)
+
+tests/pkg_printf$(EXEEXT): $(tests_pkg_printf_OBJECTS) $(tests_pkg_printf_DEPENDENCIES) $(EXTRA_tests_pkg_printf_DEPENDENCIES) tests/$(am__dirstamp)
+	@rm -f tests/pkg_printf$(EXEEXT)
+	$(AM_V_CCLD)$(tests_pkg_printf_LINK) $(tests_pkg_printf_OBJECTS) $(tests_pkg_printf_LDADD) $(LIBS)
+tests/lib/tests_pkg_validation-pkg_validation.$(OBJEXT):  \
+	tests/lib/$(am__dirstamp) tests/lib/$(DEPDIR)/$(am__dirstamp)
+
+tests/pkg_validation$(EXEEXT): $(tests_pkg_validation_OBJECTS) $(tests_pkg_validation_DEPENDENCIES) $(EXTRA_tests_pkg_validation_DEPENDENCIES) tests/$(am__dirstamp)
+	@rm -f tests/pkg_validation$(EXEEXT)
+	$(AM_V_CCLD)$(tests_pkg_validation_LINK) $(tests_pkg_validation_OBJECTS) $(tests_pkg_validation_LDADD) $(LIBS)
 install-dist_sbinSCRIPTS: $(dist_sbin_SCRIPTS)
 	@$(NORMAL_INSTALL)
 	@list='$(dist_sbin_SCRIPTS)'; test -n "$(sbindir)" || list=; \
@@ -1617,6 +1680,7 @@ mostlyclean-compile:
 	-rm -f libpkg/*.$(OBJEXT)
 	-rm -f libpkg/*.lo
 	-rm -f src/*.$(OBJEXT)
+	-rm -f tests/lib/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
@@ -1727,6 +1791,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@libpkg/$(DEPDIR)/libpkg_la-ssh.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libpkg/$(DEPDIR)/libpkg_la-update.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@libpkg/$(DEPDIR)/libpkg_la-utils.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@libpkg/$(DEPDIR)/tests_pkg_printf-pkg_printf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pkg-add.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pkg-annotate.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pkg-audit.Po@am__quote@
@@ -1797,6 +1862,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pkg_static-utils.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pkg_static-version.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/$(DEPDIR)/pkg_static-which.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/lib/$(DEPDIR)/tests_pkg_printf-pkg_printf_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@tests/lib/$(DEPDIR)/tests_pkg_validation-pkg_validation.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
@@ -3544,6 +3611,48 @@ src/pkg_static-which.obj: src/which.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(pkg_static_CFLAGS) $(CFLAGS) -c -o src/pkg_static-which.obj `if test -f 'src/which.c'; then $(CYGPATH_W) 'src/which.c'; else $(CYGPATH_W) '$(srcdir)/src/which.c'; fi`
 
+libpkg/tests_pkg_printf-pkg_printf.o: libpkg/pkg_printf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_printf_CFLAGS) $(CFLAGS) -MT libpkg/tests_pkg_printf-pkg_printf.o -MD -MP -MF libpkg/$(DEPDIR)/tests_pkg_printf-pkg_printf.Tpo -c -o libpkg/tests_pkg_printf-pkg_printf.o `test -f 'libpkg/pkg_printf.c' || echo '$(srcdir)/'`libpkg/pkg_printf.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) libpkg/$(DEPDIR)/tests_pkg_printf-pkg_printf.Tpo libpkg/$(DEPDIR)/tests_pkg_printf-pkg_printf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='libpkg/pkg_printf.c' object='libpkg/tests_pkg_printf-pkg_printf.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_printf_CFLAGS) $(CFLAGS) -c -o libpkg/tests_pkg_printf-pkg_printf.o `test -f 'libpkg/pkg_printf.c' || echo '$(srcdir)/'`libpkg/pkg_printf.c
+
+libpkg/tests_pkg_printf-pkg_printf.obj: libpkg/pkg_printf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_printf_CFLAGS) $(CFLAGS) -MT libpkg/tests_pkg_printf-pkg_printf.obj -MD -MP -MF libpkg/$(DEPDIR)/tests_pkg_printf-pkg_printf.Tpo -c -o libpkg/tests_pkg_printf-pkg_printf.obj `if test -f 'libpkg/pkg_printf.c'; then $(CYGPATH_W) 'libpkg/pkg_printf.c'; else $(CYGPATH_W) '$(srcdir)/libpkg/pkg_printf.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) libpkg/$(DEPDIR)/tests_pkg_printf-pkg_printf.Tpo libpkg/$(DEPDIR)/tests_pkg_printf-pkg_printf.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='libpkg/pkg_printf.c' object='libpkg/tests_pkg_printf-pkg_printf.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_printf_CFLAGS) $(CFLAGS) -c -o libpkg/tests_pkg_printf-pkg_printf.obj `if test -f 'libpkg/pkg_printf.c'; then $(CYGPATH_W) 'libpkg/pkg_printf.c'; else $(CYGPATH_W) '$(srcdir)/libpkg/pkg_printf.c'; fi`
+
+tests/lib/tests_pkg_printf-pkg_printf_test.o: tests/lib/pkg_printf_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_printf_CFLAGS) $(CFLAGS) -MT tests/lib/tests_pkg_printf-pkg_printf_test.o -MD -MP -MF tests/lib/$(DEPDIR)/tests_pkg_printf-pkg_printf_test.Tpo -c -o tests/lib/tests_pkg_printf-pkg_printf_test.o `test -f 'tests/lib/pkg_printf_test.c' || echo '$(srcdir)/'`tests/lib/pkg_printf_test.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tests/lib/$(DEPDIR)/tests_pkg_printf-pkg_printf_test.Tpo tests/lib/$(DEPDIR)/tests_pkg_printf-pkg_printf_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests/lib/pkg_printf_test.c' object='tests/lib/tests_pkg_printf-pkg_printf_test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_printf_CFLAGS) $(CFLAGS) -c -o tests/lib/tests_pkg_printf-pkg_printf_test.o `test -f 'tests/lib/pkg_printf_test.c' || echo '$(srcdir)/'`tests/lib/pkg_printf_test.c
+
+tests/lib/tests_pkg_printf-pkg_printf_test.obj: tests/lib/pkg_printf_test.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_printf_CFLAGS) $(CFLAGS) -MT tests/lib/tests_pkg_printf-pkg_printf_test.obj -MD -MP -MF tests/lib/$(DEPDIR)/tests_pkg_printf-pkg_printf_test.Tpo -c -o tests/lib/tests_pkg_printf-pkg_printf_test.obj `if test -f 'tests/lib/pkg_printf_test.c'; then $(CYGPATH_W) 'tests/lib/pkg_printf_test.c'; else $(CYGPATH_W) '$(srcdir)/tests/lib/pkg_printf_test.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tests/lib/$(DEPDIR)/tests_pkg_printf-pkg_printf_test.Tpo tests/lib/$(DEPDIR)/tests_pkg_printf-pkg_printf_test.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests/lib/pkg_printf_test.c' object='tests/lib/tests_pkg_printf-pkg_printf_test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_printf_CFLAGS) $(CFLAGS) -c -o tests/lib/tests_pkg_printf-pkg_printf_test.obj `if test -f 'tests/lib/pkg_printf_test.c'; then $(CYGPATH_W) 'tests/lib/pkg_printf_test.c'; else $(CYGPATH_W) '$(srcdir)/tests/lib/pkg_printf_test.c'; fi`
+
+tests/lib/tests_pkg_validation-pkg_validation.o: tests/lib/pkg_validation.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_validation_CFLAGS) $(CFLAGS) -MT tests/lib/tests_pkg_validation-pkg_validation.o -MD -MP -MF tests/lib/$(DEPDIR)/tests_pkg_validation-pkg_validation.Tpo -c -o tests/lib/tests_pkg_validation-pkg_validation.o `test -f 'tests/lib/pkg_validation.c' || echo '$(srcdir)/'`tests/lib/pkg_validation.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tests/lib/$(DEPDIR)/tests_pkg_validation-pkg_validation.Tpo tests/lib/$(DEPDIR)/tests_pkg_validation-pkg_validation.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests/lib/pkg_validation.c' object='tests/lib/tests_pkg_validation-pkg_validation.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_validation_CFLAGS) $(CFLAGS) -c -o tests/lib/tests_pkg_validation-pkg_validation.o `test -f 'tests/lib/pkg_validation.c' || echo '$(srcdir)/'`tests/lib/pkg_validation.c
+
+tests/lib/tests_pkg_validation-pkg_validation.obj: tests/lib/pkg_validation.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_validation_CFLAGS) $(CFLAGS) -MT tests/lib/tests_pkg_validation-pkg_validation.obj -MD -MP -MF tests/lib/$(DEPDIR)/tests_pkg_validation-pkg_validation.Tpo -c -o tests/lib/tests_pkg_validation-pkg_validation.obj `if test -f 'tests/lib/pkg_validation.c'; then $(CYGPATH_W) 'tests/lib/pkg_validation.c'; else $(CYGPATH_W) '$(srcdir)/tests/lib/pkg_validation.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) tests/lib/$(DEPDIR)/tests_pkg_validation-pkg_validation.Tpo tests/lib/$(DEPDIR)/tests_pkg_validation-pkg_validation.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='tests/lib/pkg_validation.c' object='tests/lib/tests_pkg_validation-pkg_validation.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(tests_pkg_validation_CFLAGS) $(CFLAGS) -c -o tests/lib/tests_pkg_validation-pkg_validation.obj `if test -f 'tests/lib/pkg_validation.c'; then $(CYGPATH_W) 'tests/lib/pkg_validation.c'; else $(CYGPATH_W) '$(srcdir)/tests/lib/pkg_validation.c'; fi`
+
 mostlyclean-libtool:
 	-rm -f *.lo
 
@@ -3555,6 +3664,7 @@ clean-libtool:
 	-rm -rf external/libyaml/src/.libs external/libyaml/src/_libs
 	-rm -rf external/sqlite/.libs external/sqlite/_libs
 	-rm -rf libpkg/.libs libpkg/_libs
+	-rm -rf tests/.libs tests/_libs
 
 distclean-libtool:
 	-rm -f libtool config.lt
@@ -4056,6 +4166,7 @@ distcleancheck: distclean
 	       $(distcleancheck_listfiles) ; \
 	       exit 1; } >&2
 check-am: all-am
+	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 check: check-am
 all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA) \
 		$(HEADERS) pkg_config.h
@@ -4104,18 +4215,22 @@ distclean-generic:
 	-rm -f libpkg/$(am__dirstamp)
 	-rm -f src/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/$(am__dirstamp)
+	-rm -f tests/$(am__dirstamp)
+	-rm -f tests/lib/$(DEPDIR)/$(am__dirstamp)
+	-rm -f tests/lib/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
-	clean-noinstLTLIBRARIES clean-sbinPROGRAMS mostlyclean-am
+clean-am: clean-checkPROGRAMS clean-generic clean-libLTLIBRARIES \
+	clean-libtool clean-noinstLTLIBRARIES clean-sbinPROGRAMS \
+	mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf external/expat/lib/$(DEPDIR) external/libelf/$(DEPDIR) external/libucl/src/$(DEPDIR) external/libyaml/src/$(DEPDIR) external/sqlite/$(DEPDIR) libpkg/$(DEPDIR) src/$(DEPDIR)
+	-rm -rf external/expat/lib/$(DEPDIR) external/libelf/$(DEPDIR) external/libucl/src/$(DEPDIR) external/libyaml/src/$(DEPDIR) external/sqlite/$(DEPDIR) libpkg/$(DEPDIR) src/$(DEPDIR) tests/lib/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-tags
@@ -4166,7 +4281,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf external/expat/lib/$(DEPDIR) external/libelf/$(DEPDIR) external/libucl/src/$(DEPDIR) external/libyaml/src/$(DEPDIR) external/sqlite/$(DEPDIR) libpkg/$(DEPDIR) src/$(DEPDIR)
+	-rm -rf external/expat/lib/$(DEPDIR) external/libelf/$(DEPDIR) external/libucl/src/$(DEPDIR) external/libyaml/src/$(DEPDIR) external/sqlite/$(DEPDIR) libpkg/$(DEPDIR) src/$(DEPDIR) tests/lib/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -4191,30 +4306,30 @@ uninstall-am: uninstall-dist_bashcompDATA uninstall-dist_pdailyDATA \
 
 uninstall-man: uninstall-man3 uninstall-man5 uninstall-man8
 
-.MAKE: all install-am install-strip
+.MAKE: all check-am install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--refresh check check-am clean \
-	clean-cscope clean-generic clean-libLTLIBRARIES clean-libtool \
-	clean-noinstLTLIBRARIES clean-sbinPROGRAMS cscope \
-	cscopelist-am ctags ctags-am dist dist-all dist-bzip2 \
-	dist-gzip dist-lzip dist-shar dist-tarZ dist-xz dist-zip \
-	distcheck distclean distclean-compile distclean-generic \
-	distclean-hdr distclean-libtool distclean-tags distcleancheck \
-	distdir distuninstallcheck dvi dvi-am html html-am info \
-	info-am install install-am install-data install-data-am \
-	install-dist_bashcompDATA install-dist_pdailyDATA \
-	install-dist_psecurityDATA install-dist_pweeklyDATA \
-	install-dist_sbinSCRIPTS install-dist_sysconfDATA \
-	install-dist_zshcompDATA install-dvi install-dvi-am \
-	install-exec install-exec-am install-html install-html-am \
-	install-includeHEADERS install-info install-info-am \
-	install-libLTLIBRARIES install-man install-man3 install-man5 \
-	install-man8 install-pdf install-pdf-am install-ps \
-	install-ps-am install-sbinPROGRAMS install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am \
+	clean-checkPROGRAMS clean-cscope clean-generic \
+	clean-libLTLIBRARIES clean-libtool clean-noinstLTLIBRARIES \
+	clean-sbinPROGRAMS cscope cscopelist-am ctags ctags-am dist \
+	dist-all dist-bzip2 dist-gzip dist-lzip dist-shar dist-tarZ \
+	dist-xz dist-zip distcheck distclean distclean-compile \
+	distclean-generic distclean-hdr distclean-libtool \
+	distclean-tags distcleancheck distdir distuninstallcheck dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-dist_bashcompDATA \
+	install-dist_pdailyDATA install-dist_psecurityDATA \
+	install-dist_pweeklyDATA install-dist_sbinSCRIPTS \
+	install-dist_sysconfDATA install-dist_zshcompDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-includeHEADERS install-info \
+	install-info-am install-libLTLIBRARIES install-man \
+	install-man3 install-man5 install-man8 install-pdf \
+	install-pdf-am install-ps install-ps-am install-sbinPROGRAMS \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags tags-am uninstall uninstall-am \
 	uninstall-dist_bashcompDATA uninstall-dist_pdailyDATA \
 	uninstall-dist_psecurityDATA uninstall-dist_pweeklyDATA \
 	uninstall-dist_sbinSCRIPTS uninstall-dist_sysconfDATA \
@@ -4234,6 +4349,9 @@ external/libelf/libelf_fsize.c:
 external/libelf/libelf_msize.c:
 	@echo "    M4    " $@;
 	@m4 -D SRCDIR=external/libelf $(top_srcdir)/external/libelf/elf_types.m4 $(top_srcdir)/external/libelf/libelf_msize.m4 > $@
+
+regression-test:check
+	@echo "ATF/KYUA has change our testing framework is not compatible for now"
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

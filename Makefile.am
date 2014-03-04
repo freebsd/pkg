@@ -124,6 +124,8 @@ dist_zshcomp_DATA=	scripts/completion/_pkg.zsh
 
 include_HEADERS=	libpkg/pkg.h
 
+check_PROGRAMS=	tests/pkg_printf tests/pkg_validation
+
 libelf_la_SOURCES=	external/libelf/elf.c \
 			external/libelf/elf_begin.c \
 			external/libelf/elf_cntl.c \
@@ -345,6 +347,16 @@ pkg_static_SOURCES=	$(pkg_SOURCES)
 pkg_static_LDADD=	$(pkg_LDADD) -llzma -lbz2 -lz
 pkg_static_LDFLAGS=	-all-static
 
+tests_pkg_printf_SOURCES=	libpkg/pkg_printf.c \
+				tests/lib/pkg_printf_test.c
+tests_pkg_printf_CFLAGS=	-I$(top_srcdir)/libpkg -DTESTING
+tests_pkg_printf_LDADD=		libpkg.la -latf-c
+tests_pkg_printf_LDLAGS=	-Wl,-rpath=\$$ORIGIN/../.libs
+tests_pkg_validation_SOURCES=	tests/lib/pkg_validation.c
+tests_pkg_validation_CFLAGS=	-I$(top_srcdir)/libpkg -DTESTING
+tests_pkg_validation_LDADD=		libpkg.la -latf-c
+tests_pkg_validation_LDLAGS=	-Wl,-rpath=\$$ORIGIN/../.libs
+
 external/libelf/libelf_convert.c:
 	@echo "    M4    " $@;
 	@m4 -D SRCDIR=external/libelf $(top_srcdir)/external/libelf/elf_types.m4 $(top_srcdir)/external/libelf/libelf_convert.m4 > $@
@@ -357,3 +369,5 @@ external/libelf/libelf_msize.c:
 	@echo "    M4    " $@;
 	@m4 -D SRCDIR=external/libelf $(top_srcdir)/external/libelf/elf_types.m4 $(top_srcdir)/external/libelf/libelf_msize.m4 > $@
 
+regression-test:check
+	@echo "ATF/KYUA has change our testing framework is not compatible for now"
