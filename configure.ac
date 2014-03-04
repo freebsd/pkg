@@ -7,9 +7,9 @@ m4_define([pkg_version], [maj_ver.med_ver.min_ver])
 AC_INIT([pkg],[pkg_version],[https://github.com/freebsd/pkg],[pkg])
 AC_CONFIG_SRCDIR([configure.ac])
 AM_INIT_AUTOMAKE([1.11 foreign -Wno-portability no-dist-gzip dist-xz])
-AM_SILENT_RULES([yes])
+#AM_SILENT_RULES([yes])
 
-AC_PROG_CC_C99()
+AC_PROG_CC_C99
 LT_INIT()
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -36,8 +36,8 @@ AC_CHECK_HEADER([gelf.h], [
 		LIBELF_LIB="-lelf"
 	])
 ], [
-    LIBELF_LIB="libelf.la"
-    LIBELF_BUNDLED="libelf.la"
+    LIBELF_LIB="\$(top_srcdir)/external/libelf.la"
+    LIBELF_BUNDLED="\$(top_srcdir)/external/libelf.la"
     LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
 ])
 
@@ -46,18 +46,22 @@ AC_SUBST([LIBELF_BUNDLED])
 AC_SUBST([LIBELF_INCLUDE])
 AC_SUBST([HAVE_TEST])
 
-AC_CONFIG_FILES(Makefile)
+AC_CONFIG_FILES(Makefile \
+		src/Makefile \
+		external/Makefile \
+		scripts/Makefile \
+		tests/Makefile \
+		libpkg/Makefile
+		libpkg/pkg.h \
+		libpkg/pkg.pc
+		scripts/periodic/400.status-pkg
+		scripts/periodic/410.pkg-audit
+		scripts/periodic/411.pkg-backup
+		scripts/periodic/460.pkg-checksum
+		scripts/periodic/490.status-pkg-changes
+		scripts/sbin/pkg2ng
+		scripts/completion/_pkg.bash
+		scripts/completion/_pkg.zsh)
 AC_CONFIG_HEADERS(pkg_config.h)
 
-AC_OUTPUT([
-	   libpkg/pkg.h
-	   libpkg/pkg.pc
-	   scripts/periodic/400.status-pkg
-	   scripts/periodic/410.pkg-audit
-	   scripts/periodic/411.pkg-backup
-	   scripts/periodic/460.pkg-checksum
-	   scripts/periodic/490.status-pkg-changes
-	   scripts/sbin/pkg2ng
-	   scripts/completion/_pkg.bash
-	   scripts/completion/_pkg.zsh
-])
+AC_OUTPUT
