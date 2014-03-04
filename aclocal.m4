@@ -1,6 +1,5 @@
 # generated automatically by aclocal 1.14 -*- Autoconf -*-
 
-
 # Copyright (C) 1996-2013 Free Software Foundation, Inc.
 
 # This file is free software; the Free Software Foundation
