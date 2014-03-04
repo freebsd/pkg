@@ -3834,10 +3834,13 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
 			    -1, SQLITE_STATIC);
 			cur = conflicts_list;
 			while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
+
 				cur = calloc(1, sizeof (struct pkg_event_conflict));
 				cur->name = strdup(sqlite3_column_text(stmt_conflicts, 0));
 				cur->origin = strdup(sqlite3_column_text(stmt_conflicts, 1));
 				cur->version = strdup(sqlite3_column_text(stmt_conflicts, 2));
+				pkg_debug(3, "found conflict between %s and %s on path %s",
+						porigin, cur->origin, pkg_path);
 				LL_PREPEND(conflicts_list, cur);
 
 				if (cb != NULL)

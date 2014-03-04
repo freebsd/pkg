@@ -509,6 +509,13 @@ typedef enum {
 	PKGDB_LOCK_EXCLUSIVE
 } pkgdb_lock_t;
 
+typedef enum {
+	PKG_SOLVED_INSTALL,
+	PKG_SOLVED_DELETE,
+	PKG_SOLVED_UPGRADE,
+	PKG_SOLVED_FETCH
+} pkg_solved_t;
+
 #define PKG_OPEN_MANIFEST_ONLY 0x1
 #define PKG_OPEN_MANIFEST_COMPACT (0x1 << 1)
 
@@ -1208,9 +1215,8 @@ int pkg_jobs_total(struct pkg_jobs *jobs);
  * @param iter Must be set to NULL for the first call.
  * @return A next pkg or NULL.
  */
-bool pkg_jobs_add_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
-bool pkg_jobs_delete_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
-bool pkg_jobs_upgrade_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, struct pkg **o);
+bool pkg_jobs_iter(struct pkg_jobs *jobs, void **iter, struct pkg **n, 
+	struct pkg **o, int *type);
 
 /**
  * Apply the jobs in the queue (fetch and install).

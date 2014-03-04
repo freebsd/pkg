@@ -331,7 +331,8 @@ cudf_strdup(const char *in)
 static void
 pkg_jobs_cudf_insert_res_job (struct pkg_solved **target,
 		struct pkg_job_universe_item *it_new,
-		struct pkg_job_universe_item *it_old)
+		struct pkg_job_universe_item *it_old,
+		int type)
 {
 	struct pkg_solved *res;
 
@@ -342,6 +343,7 @@ pkg_jobs_cudf_insert_res_job (struct pkg_solved **target,
 	}
 	res->priority = it_new->priority;
 	res->pkg[0] = it_new->pkg;
+	res->type = type;
 	if (it_old != NULL) {
 		res->pkg[1] = it_old->pkg;
 		res->priority = MAX(it_old->priority, res->priority);
@@ -405,13 +407,13 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 		if (entry->installed && selected->pkg->type != PKG_INSTALLED) {
 			pkg_debug(3, "pkg_cudf: schedule installation of %s(%d)",
 					entry->origin, ver);
-			pkg_jobs_cudf_insert_res_job (&j->jobs_add, selected, NULL);
+			pkg_jobs_cudf_insert_res_job (&j->jobs, selected, NULL, PKG_SOLVED_INSTALL);
 			j->count ++;
 		}
 		else if (!entry->installed && selected->pkg->type == PKG_INSTALLED) {
 			pkg_debug(3, "pkg_cudf: schedule removing of %s(%d)",
 					entry->origin, ver);
-			pkg_jobs_cudf_insert_res_job (&j->jobs_delete, selected, NULL);
+			pkg_jobs_cudf_insert_res_job (&j->jobs, selected, NULL, PKG_SOLVED_DELETE);
 			j->count ++;
 		}
 	}
@@ -429,7 +431,7 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 		/* XXX: this is a hack due to iterators stupidity */
 		pkg_get(old->pkg, PKG_VERSION, &oldversion);
 		pkg_set(selected->pkg, PKG_OLD_VERSION, oldversion);
-		pkg_jobs_cudf_insert_res_job (&j->jobs_upgrade, selected, old);
+		pkg_jobs_cudf_insert_res_job (&j->jobs, selected, old, PKG_SOLVED_UPGRADE);
 		j->count ++;
 	}
 

@@ -206,6 +206,7 @@ struct pkg_job_request {
 struct pkg_solved {
 	struct pkg *pkg[2];
 	int priority;
+	pkg_solved_t type;
 	struct pkg_solved *prev, *next;
 };
 
@@ -226,9 +227,7 @@ struct pkg_jobs {
 	struct pkg_job_universe_item *universe;
 	struct pkg_job_request	*request_add;
 	struct pkg_job_request	*request_delete;
-	struct pkg_solved *jobs_add;
-	struct pkg_solved *jobs_delete;
-	struct pkg_solved *jobs_upgrade;
+	struct pkg_solved *jobs;
 	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;

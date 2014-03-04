@@ -118,9 +118,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	}
 	HASH_FREE(j->seen, pkg_job_seen, free);
 	LL_FREE(j->patterns, job_pattern, free);
-	LL_FREE(j->jobs_add, pkg_solved, free);
-	LL_FREE(j->jobs_delete, pkg_solved, free);
-	LL_FREE(j->jobs_upgrade, pkg_solved, free);
+	LL_FREE(j->jobs, pkg_solved, free);
 
 	free(j);
 }
@@ -154,36 +152,31 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	return (EPKG_OK);
 }
 
-#define MAKE_JOBS_ITER_FUNC(type)											\
-    bool																	\
-    pkg_jobs_##type##_iter(struct pkg_jobs *jobs, void **iter, 			\
-						struct pkg **new, struct pkg **old)				\
-    {																		\
-    	struct pkg_solved *s;												\
-    	assert(iter != NULL);												\
-    	if (jobs->jobs_##type == NULL) {									\
-    		return (false);													\
-    	}																	\
-    	if (*iter == NULL) {												\
-    		s = jobs->jobs_##type;											\
-    	}																	\
-    	else if (*iter == jobs->jobs_##type) {								\
-    		return (false);													\
-    	}																	\
-    	else {																\
-    		s = *iter;														\
-    	}																	\
-    	*new = s->pkg[0];													\
-    	*old = s->pkg[1];													\
-    	*iter = s->next ? s->next : jobs->jobs_##type;						\
-    	return (true);														\
-    }
-
-MAKE_JOBS_ITER_FUNC(add)
-MAKE_JOBS_ITER_FUNC(delete)
-MAKE_JOBS_ITER_FUNC(upgrade)
-
-#undef MAKE_JOBS_ITER_FUNC
+bool
+pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
+				struct pkg **new, struct pkg **old,
+				int *type)
+{
+	struct pkg_solved *s;
+	assert(iter != NULL);
+	if (jobs->jobs == NULL) {
+		return (false);
+	}
+	if (*iter == NULL) {
+		s = jobs->jobs;
+	}
+	else if (*iter == jobs->jobs) {
+		return (false);
+	}
+	else {
+		s = *iter;
+	}
+	*new = s->pkg[0];
+	*old = s->pkg[1];
+	*type = s->type;
+	*iter = s->next ? s->next : jobs->jobs;
+	return (true);
+}
 
 static void
 pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg,
@@ -988,14 +981,17 @@ jobs_solve_fetch(struct pkg_jobs *j)
 }
 
 static int
-jobs_sort_priority_dec(struct pkg_solved *r1, struct pkg_solved *r2)
+pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
 {
-	return (r1->priority - r2->priority);
-}
-
-static int
-jobs_sort_priority_inc(struct pkg_solved *r1, struct pkg_solved *r2)
-{
+	if (r1->type == PKG_SOLVED_DELETE && r2->type != PKG_SOLVED_DELETE) {
+		return 1;
+	}
+	else if (r1->type != PKG_SOLVED_DELETE && r2->type == PKG_SOLVED_DELETE) {
+		return -1;
+	}
+	else if (r1->type == PKG_SOLVED_DELETE && r2->type == PKG_SOLVED_DELETE) {
+		return (r1->priority - r2->priority);
+	}
 	return (r2->priority - r1->priority);
 }
 
@@ -1083,11 +1079,8 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	}
 
 	/* Resort priorities */
-	if (j->solved) {
-		DL_SORT(j->jobs_add, jobs_sort_priority_inc);
-		DL_SORT(j->jobs_upgrade, jobs_sort_priority_inc);
-		DL_SORT(j->jobs_delete, jobs_sort_priority_dec);
-	}
+	if (j->solved)
+		DL_SORT(j->jobs, pkg_jobs_sort_priority);
 
 	return (ret);
 }
@@ -1189,12 +1182,12 @@ cleanup:
 }
 
 static int
-pkg_jobs_install(struct pkg_jobs *j)
+pkg_jobs_execute(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	struct pkg_solved *ps;
 	struct pkg_manifest_key *keys = NULL;
-	const char *cachedir = NULL;
+	const char *cachedir = NULL, *name;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 	bool handle_rc = false;
@@ -1219,23 +1212,34 @@ pkg_jobs_install(struct pkg_jobs *j)
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
 	/* Delete conflicts initially */
-	DL_FOREACH(j->jobs_delete, ps) {
-		p = ps->pkg[0];
-		retcode = pkg_delete(p, j->db, flags);
-		if (retcode != EPKG_OK)
-			goto cleanup;
-	}
-	DL_FOREACH(j->jobs_add, ps) {
-		retcode = pkg_jobs_handle_install(ps->pkg[0], NULL,
-				j, handle_rc, cachedir, keys);
-		if (retcode != EPKG_OK)
-			goto cleanup;
-	}
-	DL_FOREACH(j->jobs_upgrade, ps) {
-		retcode = pkg_jobs_handle_install(ps->pkg[0], ps->pkg[1],
-				j, handle_rc, cachedir, keys);
-		if (retcode != EPKG_OK)
-			goto cleanup;
+	DL_FOREACH(j->jobs, ps) {
+		switch (ps->type) {
+		case PKG_SOLVED_DELETE:
+			p = ps->pkg[0];
+			pkg_get(p, PKG_NAME, &name);
+			if ((strcmp(name, "pkg") == 0 ||
+				strcmp(name, "pkg-devel") == 0) && flags != PKG_DELETE_FORCE) {
+				pkg_emit_error("Cannot delete pkg itself without force flag");
+				continue;
+			}
+			retcode = pkg_delete(p, j->db, flags);
+			if (retcode != EPKG_OK)
+				goto cleanup;
+			break;
+		case PKG_SOLVED_INSTALL:
+			retcode = pkg_jobs_handle_install(ps->pkg[0], NULL,
+					j, handle_rc, cachedir, keys);
+			if (retcode != EPKG_OK)
+				goto cleanup;
+			break;
+		case PKG_SOLVED_UPGRADE:
+			retcode = pkg_jobs_handle_install(ps->pkg[0], ps->pkg[1],
+					j, handle_rc, cachedir, keys);
+			if (retcode != EPKG_OK)
+				goto cleanup;
+			break;
+		}
+
 	}
 
 cleanup:
@@ -1243,46 +1247,6 @@ cleanup:
 	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
 	pkg_manifest_keys_free(keys);
 
-	return (retcode);
-}
-
-static int
-pkg_jobs_deinstall(struct pkg_jobs *j)
-{
-	struct pkg *p = NULL;
-	struct pkg_solved *ps;
-	const char *name;
-	int retcode;
-	int flags = 0;
-
-	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
-		return (EPKG_OK); /* Do nothing */
-
-	if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
-		flags = PKG_DELETE_FORCE;
-
-	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
-		flags |= PKG_DELETE_NOSCRIPT;
-
-	/* XXX: get rid of hardcoded values */
-	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
-			PKGDB_LOCK_EXCLUSIVE, 0.5, 20);
-
-	DL_FOREACH(j->jobs_delete, ps) {
-		p = ps->pkg[0];
-		pkg_get(p, PKG_NAME, &name);
-		if ((strcmp(name, "pkg") == 0 ||
-			 strcmp(name, "pkg-devel") == 0) && flags != PKG_DELETE_FORCE) {
-			pkg_emit_error("Cannot delete pkg itself without force flag");
-			continue;
-		}
-		retcode = pkg_delete(p, j->db, flags);
-
-		if (retcode != EPKG_OK)
-			goto cleanup;
-	}
-cleanup:
-	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
 	return (retcode);
 }
 
@@ -1301,14 +1265,24 @@ pkg_jobs_apply(struct pkg_jobs *j)
 		pre = PKG_PLUGIN_HOOK_PRE_INSTALL;
 		post = PKG_PLUGIN_HOOK_POST_INSTALL;
 	}
-	else {
+	else if (j->type == PKG_JOBS_UPGRADE) {
 		pre = PKG_PLUGIN_HOOK_PRE_UPGRADE;
 		post = PKG_PLUGIN_HOOK_POST_UPGRADE;
+	}
+	else if (j->type == PKG_JOBS_AUTOREMOVE){
+		pre = PKG_PLUGIN_HOOK_PRE_AUTOREMOVE;
+		post = PKG_PLUGIN_HOOK_POST_AUTOREMOVE;
+	}
+	else {
+		pre = PKG_PLUGIN_HOOK_PRE_DEINSTALL;
+		post = PKG_PLUGIN_HOOK_POST_DEINSTALL;
 	}
 
 	switch (j->type) {
 	case PKG_JOBS_INSTALL:
 	case PKG_JOBS_UPGRADE:
+	case PKG_JOBS_DEINSTALL:
+	case PKG_JOBS_AUTOREMOVE:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_FETCH, j, j->db);
 		rc = pkg_jobs_fetch(j);
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
@@ -1322,14 +1296,12 @@ pkg_jobs_apply(struct pkg_jobs *j)
 			}
 			if (rc == EPKG_OK) {
 				pkg_plugins_hook_run(pre, j, j->db);
-				rc = pkg_jobs_install(j);
+				rc = pkg_jobs_execute(j);
 			}
 			else if (rc == EPKG_CONFLICT) {
 				/* Cleanup results */
-				LL_FREE(j->jobs_add, pkg_solved, free);
-				LL_FREE(j->jobs_delete, pkg_solved, free);
-				LL_FREE(j->jobs_upgrade, pkg_solved, free);
-				j->jobs_add = j->jobs_delete = j->jobs_upgrade = NULL;
+				LL_FREE(j->jobs, pkg_solved, free);
+				j->jobs = NULL;
 				j->count = 0;
 				j->total = 0;
 
@@ -1343,20 +1315,10 @@ pkg_jobs_apply(struct pkg_jobs *j)
 		}
 		pkg_plugins_hook_run(post, j, j->db);
 		break;
-	case PKG_JOBS_DEINSTALL:
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_DEINSTALL, j, j->db);
-		rc = pkg_jobs_deinstall(j);
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_DEINSTALL, j, j->db);
-		break;
 	case PKG_JOBS_FETCH:
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_FETCH, j, j->db);
 		rc = pkg_jobs_fetch(j);
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
-		break;
-	case PKG_JOBS_AUTOREMOVE:
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PRE_AUTOREMOVE, j, j->db);
-		rc = pkg_jobs_deinstall(j);
-		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_AUTOREMOVE, j, j->db);
 		break;
 	default:
 		rc = EPKG_FATAL;
@@ -1369,22 +1331,26 @@ pkg_jobs_apply(struct pkg_jobs *j)
 
 #define PKG_JOBS_FETCH_CALCULATE(list) do {										\
 	DL_FOREACH((list), ps) {														\
-		p = ps->pkg[0];																\
-		int64_t pkgsize;															\
-		pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);					\
-		snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir, repopath);		\
-		if (stat(cachedpath, &st) == -1)											\
-			dlsize += pkgsize;														\
-		else																		\
-			dlsize += pkgsize - st.st_size;											\
+		if (ps->type != PKG_SOLVED_DELETE) {										\
+			p = ps->pkg[0];															\
+			int64_t pkgsize;														\
+			pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);				\
+			snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir, repopath);	\
+			if (stat(cachedpath, &st) == -1)										\
+				dlsize += pkgsize;													\
+			else																	\
+				dlsize += pkgsize - st.st_size;										\
+		}																			\
 	}																				\
 } while(0)
 
 #define PKG_JOBS_DO_FETCH(list) do {												\
 	DL_FOREACH((list), ps) {														\
-		p = ps->pkg[0];																\
-		if (pkg_repo_fetch(p) != EPKG_OK)											\
-			return (EPKG_FATAL);													\
+		if (ps->type != PKG_SOLVED_DELETE) {										\
+			p = ps->pkg[0];															\
+			if (pkg_repo_fetch(p) != EPKG_OK)										\
+				return (EPKG_FATAL);												\
+		}																			\
 	}																				\
 } while(0)
 
@@ -1404,8 +1370,10 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 
 	/* check for available size to fetch */
-	PKG_JOBS_FETCH_CALCULATE(j->jobs_add);
-	PKG_JOBS_FETCH_CALCULATE(j->jobs_upgrade);
+	PKG_JOBS_FETCH_CALCULATE(j->jobs);
+
+	if (dlsize == 0)
+		return (EPKG_OK);
 
 	while (statfs(cachedir, &fs) == -1) {
 		if (errno == ENOENT) {
@@ -1432,31 +1400,13 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_OK); /* don't download anything */
 
 	/* Fetch */
-	PKG_JOBS_DO_FETCH(j->jobs_add);
-	PKG_JOBS_DO_FETCH(j->jobs_upgrade);
+	PKG_JOBS_DO_FETCH(j->jobs);
 
 	return (EPKG_OK);
 }
 
 #undef PKG_JOBS_FETCH_CALCULATE
 #undef PKG_JOBS_DO_FETCH
-
-#define PKG_JOBS_CHECK_CONFLICTS_LIST(list) do {						\
-	DL_FOREACH((list), ps) {											\
-		p = ps->pkg[0];													\
-		const char *pkgrepopath;										\
-		pkg_get(p, PKG_REPOPATH, &pkgrepopath);							\
-		snprintf(path, sizeof(path), "%s/%s", cachedir,					\
-				pkgrepopath);											\
-		if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)					\
-			return (EPKG_FATAL);										\
-		if ((res = pkg_conflicts_append_pkg(pkg, j)) != EPKG_OK) {		\
-			ret = res;													\
-			if (ret == EPKG_FATAL)										\
-				break;													\
-		}																\
-	}																	\
-} while(0)
 
 static int
 pkg_jobs_check_conflicts(struct pkg_jobs *j)
@@ -1475,8 +1425,25 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	pkg_emit_integritycheck_begin();
 
 	pkg_manifest_keys_new(&keys);
-	PKG_JOBS_CHECK_CONFLICTS_LIST(j->jobs_add);
-	PKG_JOBS_CHECK_CONFLICTS_LIST(j->jobs_upgrade);
+	DL_FOREACH(j->jobs, ps) {
+		if (ps->type == PKG_SOLVED_DELETE) {
+			continue;
+		}
+		else {
+			p = ps->pkg[0];
+			const char *pkgrepopath;
+			pkg_get(p, PKG_REPOPATH, &pkgrepopath);
+			snprintf(path, sizeof(path), "%s/%s", cachedir,
+				pkgrepopath);
+			if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
+				return (EPKG_FATAL);
+		}
+		if ((res = pkg_conflicts_append_pkg(pkg, j)) != EPKG_OK) {
+			ret = res;
+			if (ret == EPKG_FATAL)
+				break;
+		}
+	}
 	pkg_manifest_keys_free(keys);
 
 	pkg_free(pkg);

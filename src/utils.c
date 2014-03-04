@@ -529,7 +529,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 
 static void
 print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
-		pkg_jobs_t type, int64_t *oldsize,
+		pkg_solved_t type, int64_t *oldsize,
 		int64_t *newsize, int64_t *dlsize)
 {
 	const char *oldversion, *cachedir, *why;
@@ -549,8 +549,8 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
 		pkg_printf("\tPackage %n-%v is locked ", old_pkg, old_pkg);
 		switch (type) {
-		case PKG_JOBS_INSTALL:
-		case PKG_JOBS_UPGRADE:
+		case PKG_SOLVED_INSTALL:
+		case PKG_SOLVED_UPGRADE:
 			/* If it's a new install, then it
 			 * cannot have been locked yet. */
 			if (oldversion != NULL) {
@@ -568,12 +568,11 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 				return;
 			}
 			break;
-		case PKG_JOBS_DEINSTALL:
-		case PKG_JOBS_AUTOREMOVE:
+		case PKG_SOLVED_DELETE:
 			printf("and may not be deinstalled\n");
 			return;
 			break;
-		case PKG_JOBS_FETCH:
+		case PKG_SOLVED_FETCH:
 			printf("but a new package can still be fetched\n");
 			break;
 		}
@@ -581,8 +580,8 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 	}
 
 	switch (type) {
-	case PKG_JOBS_INSTALL:
-	case PKG_JOBS_UPGRADE:
+	case PKG_SOLVED_INSTALL:
+	case PKG_SOLVED_UPGRADE:
 		pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, new_pkg);
 
 		if (stat(path, &st) == -1 || pkgsize != st.st_size)
@@ -627,14 +626,13 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 			printf("\n");
 		}
 		break;
-	case PKG_JOBS_DEINSTALL:
-	case PKG_JOBS_AUTOREMOVE:
+	case PKG_SOLVED_DELETE:
 		*oldsize += oldflatsize;
 		*newsize += flatsize;
 
 		pkg_printf("\tRemoving %n-%v\n", new_pkg, new_pkg);
 		break;
-	case PKG_JOBS_FETCH:
+	case PKG_SOLVED_FETCH:
 		*dlsize += pkgsize;
 		pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, new_pkg);
 		if (stat(path, &st) != -1)
@@ -658,7 +656,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	void *iter = NULL;
 	char size[7];
 	va_list ap;
-	pkg_jobs_t type, inv_type = PKG_JOBS_DEINSTALL;
+	int type;
 	int64_t dlsize, oldsize, newsize;
 
 	dlsize = oldsize = newsize = 0;
@@ -668,61 +666,20 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	vprintf(msg, ap);
 	va_end(ap);
 
-	while (pkg_jobs_add_iter(jobs, &iter, &new_pkg, &old_pkg)) {
-		print_jobs_summary_pkg(new_pkg, old_pkg, type, &oldsize, &newsize, &dlsize);
-	}
-
-	iter = NULL;
-	while (pkg_jobs_delete_iter(jobs, &iter, &new_pkg, &old_pkg)) {
-		print_jobs_summary_pkg(new_pkg, old_pkg, inv_type, &oldsize, &newsize, &dlsize);
-	}
-	iter = NULL;
-	while (pkg_jobs_upgrade_iter(jobs, &iter, &new_pkg, &old_pkg)) {
+	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {
 		print_jobs_summary_pkg(new_pkg, old_pkg, type, &oldsize, &newsize, &dlsize);
 	}
 
 	if (oldsize > newsize) {
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-
-		switch (type) {
-		case PKG_JOBS_INSTALL:
-			printf("\nThe installation will free %s\n", size);
-			break;
-		case PKG_JOBS_UPGRADE:
-			printf("\nThe upgrade will free %s\n", size);
-			break;
-		case PKG_JOBS_DEINSTALL:
-		case PKG_JOBS_AUTOREMOVE:
-			printf("\nThe deinstallation will free %s\n", size);
-			break;
-		case PKG_JOBS_FETCH:
-			/* nothing to report here */
-			break;
-		}
+		printf("\nThe operation will free %s\n", size);
 	} else if (newsize > oldsize) {
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-
-		switch (type) {
-		case PKG_JOBS_INSTALL:
-			printf("\nThe installation will require %s more space\n", size);
-			break;
-		case PKG_JOBS_UPGRADE:
-			printf("\nThe upgrade will require %s more space\n", size);
-			break;
-		case PKG_JOBS_DEINSTALL:
-		case PKG_JOBS_AUTOREMOVE:
-			printf("\nThe deinstallation will free %s\n", size);
-			break;
-		case PKG_JOBS_FETCH:
-			/* nothing to report here */
-			break;
-		}
+		printf("\nThe process will require %s more space\n", size);
 	}
 
-	if ((type == PKG_JOBS_INSTALL) || (type == PKG_JOBS_FETCH) || (type == PKG_JOBS_UPGRADE)) {
-		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-		printf("\n%s to be downloaded\n", size);
-	}
+	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+	printf("\n%s to be downloaded\n", size);
 }
 
 struct sbuf *

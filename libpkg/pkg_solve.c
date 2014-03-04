@@ -840,14 +840,16 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		if (seen_add == 0 && seen_del != 0) {
 			res->priority = del_var->priority;
 			res->pkg[0] = del_var->pkg;
-			DL_APPEND(j->jobs_delete, res);
+			res->type = PKG_SOLVED_DELETE;
+			DL_APPEND(j->jobs, res);
 			pkg_debug(3, "pkg_solve: schedule deletion of %s(%s)",
 					del_var->origin, del_var->digest);
 		}
 		else if (seen_del == 0 && seen_add != 0) {
 			res->priority = add_var->priority;
 			res->pkg[0] = add_var->pkg;
-			DL_APPEND(j->jobs_add, res);
+			res->type = PKG_SOLVED_INSTALL;
+			DL_APPEND(j->jobs, res);
 			pkg_debug(3, "pkg_solve: schedule installation of %s(%s)",
 					add_var->origin, add_var->digest);
 		}
@@ -855,25 +857,10 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			res->priority = MAX(del_var->priority, add_var->priority);
 			res->pkg[0] = add_var->pkg;
 			res->pkg[1] = del_var->pkg;
-			DL_APPEND(j->jobs_upgrade, res);
+			res->type = PKG_SOLVED_UPGRADE;
+			DL_APPEND(j->jobs, res);
 			pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
 					del_var->origin, del_var->digest, add_var->digest);
-#if 0
-			/* Need some more tasks */
-			res_a = calloc(1, sizeof(struct pkg_solved));
-			res_d = calloc(1, sizeof(struct pkg_solved));
-			if (res_a == NULL || res_d == NULL) {
-				pkg_emit_errno("calloc", "pkg_solved");
-				return;
-			}
-			/* Priority for individual tasks are the same as for the upgrade task */
-			res_a->priority = res->priority;
-			res_a->pkg[0] = add_var->pkg;
-			DL_APPEND(j->jobs_add, res_a);
-			res_d->priority = res->priority;
-			res_d->pkg[0] = del_var->pkg;
-			DL_APPEND(j->jobs_delete, res_d);
-#endif
 		}
 		j->count ++;
 	}
