@@ -636,6 +636,7 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIB@&t@OBJS
+HAVE_TEST
 LIBELF_INCLUDE
 LIBELF_BUNDLED
 LIBELF_LIB
@@ -11557,6 +11558,16 @@ else
     LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
 
 fi
+
+
+
+ac_fn_c_check_header_mongrel "$LINENO" "atf-ccc.h" "ac_cv_header_atf_ccc_h" "$ac_includes_default"
+if test "x$ac_cv_header_atf_ccc_h" = xyes; then :
+  
+	HAVE_TEST="check"
+
+fi
+
 
 
 

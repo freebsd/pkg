@@ -40,9 +40,14 @@ AC_CHECK_HEADER([gelf.h], [
     LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
 ])
 
+AC_CHECK_HEADER([atf-ccc.h], [
+	HAVE_TEST="check"
+])
+
 AC_SUBST([LIBELF_LIB])
 AC_SUBST([LIBELF_BUNDLED])
 AC_SUBST([LIBELF_INCLUDE])
+AC_SUBST([HAVE_TEST])
 
 AC_CONFIG_FILES(Makefile)
 AC_CONFIG_HEADERS(pkg_config.h)
