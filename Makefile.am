@@ -1,4 +1,5 @@
 AUTOMAKE_OPTIONS=	subdir-objects
+ACLOCAL_AMFLAGS=	-I m4
 CLEANFILES=		external/libelf/libelf_fsize.c \
 			external/libelf/libelf_msize.c \
 			external/libelf/libelf_convert.c

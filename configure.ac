@@ -11,6 +11,7 @@ AM_SILENT_RULES([yes])
 
 AC_PROG_CC_C99()
 LT_INIT()
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_MSG_CHECKING([for git head])
 if test -d "${GIT_DIR:-${ac_top_srcdir:-./}/.git}" ; then
