@@ -488,7 +488,6 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	struct job_pattern *jp = NULL;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
-	int64_t oldsize;
 	char *origin;
 	bool recursive = false;
 
@@ -506,8 +505,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 				pkg_emit_locked(pkg);
 			}
 			else {
-				pkg_get(pkg, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
-				pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
+				pkg_get(pkg, PKG_ORIGIN, &origin);
 				pkg_jobs_add_req(j, origin, pkg, false, 0);
 			}
 			/* TODO: use repository priority here */
@@ -528,7 +526,6 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
-	int64_t oldsize;
 	struct pkg_job_universe_item *unit;
 
 	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
@@ -543,8 +540,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 				pkg_emit_locked(pkg);
 			}
 			else if (pkg_jobs_test_automatic(j, pkg, 0)) {
-				pkg_get(pkg, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
-				pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
+				pkg_get(pkg, PKG_ORIGIN, &origin);
 				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
 						origin);
 				pkg_jobs_add_req(j, origin, pkg, false, 0);

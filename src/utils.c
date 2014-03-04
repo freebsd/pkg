@@ -676,8 +676,10 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		printf("\nThe process will require %s more space\n", size);
 	}
 
-	humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-	printf("\n%s to be downloaded\n", size);
+	if (dlsize > 0) {
+		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
+		printf("\n%s to be downloaded\n", size);
+	}
 }
 
 struct sbuf *
