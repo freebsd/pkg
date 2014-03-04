@@ -438,6 +438,46 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	return (EPKG_OK);
 }
 
+/**
+ * Test whether package specified is automatic with all its rdeps
+ * @param j
+ * @param p
+ * @return
+ */
+static bool
+pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p, int priority)
+{
+	struct pkg_dep *d = NULL;
+	struct pkg_job_universe_item *unit;
+	struct pkg *npkg;
+	bool ret = true;
+
+	while (pkg_rdeps(p, &d) == EPKG_OK && ret) {
+		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
+		if (unit != NULL) {
+			if (!unit->pkg->automatic) {
+				return (false);
+			}
+			npkg = unit->pkg;
+		}
+		else {
+			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			if (npkg == NULL)
+				return (false);
+			if (!npkg->automatic) {
+				pkg_free(npkg);
+				return (false);
+			}
+			if (pkg_jobs_add_universe(j, npkg, priority - 1, false) != EPKG_OK)
+				return (false);
+		}
+
+		ret = pkg_jobs_test_automatic(j, npkg, priority - 1);
+	}
+
+	return (ret);
+}
+
 static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
@@ -457,6 +497,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 			// Check if the pkg is locked
+			pkg_get(pkg, PKG_ORIGIN, &origin);
 			if(pkg_is_locked(pkg)) {
 				pkg_emit_locked(pkg);
 			}
@@ -483,21 +524,33 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
+	int64_t oldsize;
+	struct pkg_job_universe_item *unit;
 
 	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 		// Check if the pkg is locked
-		if(pkg_is_locked(pkg)) {
-			pkg_emit_locked(pkg);
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		HASH_FIND_STR(j->universe, origin, unit);
+		if (unit == NULL) {
+			if(pkg_is_locked(pkg)) {
+				pkg_emit_locked(pkg);
+			}
+			else if (pkg_jobs_test_automatic(j, pkg, 0)) {
+				pkg_get(pkg, PKG_ORIGIN, &origin, PKG_FLATSIZE, &oldsize);
+				pkg_set(pkg, PKG_OLD_FLATSIZE, oldsize, PKG_FLATSIZE, (int64_t)0);
+				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
+						origin);
+				pkg_jobs_add_req(j, origin, pkg, false, 0);
+			}
+			/* TODO: use repository priority here */
+			pkg_jobs_add_universe(j, pkg, 0, true);
 		}
 		else {
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			pkg_jobs_add_req(j, origin, pkg, false, 0);
+			pkg_free(pkg);
 		}
-		/* TODO: use repository priority here */
-		pkg_jobs_add_universe(j, pkg, 0, false);
 		pkg = NULL;
 	}
 	pkgdb_it_free(it);
