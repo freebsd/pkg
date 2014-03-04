@@ -66,7 +66,8 @@ dist_man_MANS= pkg-add.8 \
 			pkg.8 \
 			pkg.conf.5
 			
-pkg_LDADD=		libpkg.la libexpat.la \
+pkg_LDADD=	$(top_builddir)/libpkg/libpkg.la \
+			$(top_builddir)/external/libexpat.la \
 			-ljail
 pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/uthash \

@@ -36,8 +36,8 @@ AC_CHECK_HEADER([gelf.h], [
 		LIBELF_LIB="-lelf"
 	])
 ], [
-    LIBELF_LIB="\$(top_srcdir)/external/libelf.la"
-    LIBELF_BUNDLED="\$(top_srcdir)/external/libelf.la"
+    LIBELF_LIB="\$(top_builddir)/external/libelf.la"
+    LIBELF_BUNDLED="\$(top_builddir)/external/libelf.la"
     LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
 ])
 

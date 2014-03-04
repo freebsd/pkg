@@ -39,9 +39,9 @@ libpkg_la_CFLAGS=	-I$(top_srcdir)/libpkg \
 			-I$(top_srcdir)/external/libyaml/include \
 			-DPREFIX=\"$(prefix)\" \
 			-Wno-pointer-sign
-libpkg_la_LIBADD=	$(top_srcdir)/external/libucl.la \
-			$(top_srcdir)/external/libsqlite.la \
-			$(top_srcdir)/external/libyaml.la \
+libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
+			$(top_builddir)/external/libsqlite.la \
+			$(top_builddir)/external/libyaml.la \
 			@LIBELF_LIB@ \
 			-larchive \
 			-lsbuf \
@@ -64,6 +64,6 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/thd_repo.h \
 			private/utils.h
 
-dist_man_MANS=		libpkg/pkg-repository.5 \
-			libpkg/pkg_printf.3 \
-			libpkg/pkg_repos.3 
+dist_man_MANS=		pkg-repository.5 \
+			pkg_printf.3 \
+			pkg_repos.3 
