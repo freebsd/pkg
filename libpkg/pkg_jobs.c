@@ -1494,7 +1494,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	const char *cachedir = NULL;
 	char path[MAXPATHLEN];
-	int ret = EPKG_OK, res;
+	int ret = EPKG_OK, res, added = 0;
 
 	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
 		return (EPKG_FATAL);
@@ -1520,12 +1520,15 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			if (ret == EPKG_FATAL)
 				break;
 		}
+		else {
+			added ++;
+		}
 	}
 	pkg_manifest_keys_free(keys);
 
 	pkg_free(pkg);
 
-	if (ret != EPKG_FATAL) {
+	if (added > 0 && ret != EPKG_FATAL) {
 		if ((res = pkg_conflicts_integrity_check(j)) != EPKG_OK)
 			return (res);
 	}
