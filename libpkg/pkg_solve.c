@@ -415,7 +415,7 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 	HASH_FIND_STR(j->universe, origin, unit);
 	/* If there is no package in universe, refuse continue */
 	if (unit == NULL) {
-		pkg_emit_error("package %s is not found in universe", origin);
+		pkg_debug(2, "package %s is not found in universe", origin);
 		return (EPKG_FATAL);
 	}
 	/* Need to add a variable */
@@ -506,7 +506,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 			if (var == NULL) {
 				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
-					goto err;
+					continue;
 			}
 			/* Dependency rule: (!A | B) */
 			rule = pkg_solve_rule_new();
@@ -547,7 +547,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			HASH_FIND(ho, problem->variables_by_origin, origin, strlen(origin), var);
 			if (var == NULL) {
 				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
-					goto err;
+					continue;
 			}
 			/* Add conflict rule from each of the alternative */
 			LL_FOREACH(var, tvar) {
