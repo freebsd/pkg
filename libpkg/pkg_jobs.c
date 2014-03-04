@@ -218,6 +218,41 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg,
 	HASH_ADD_KEYPTR(hh, *head, origin, strlen(origin), req);
 }
 
+static void
+pkg_jobs_update_universe_priority(struct pkg_jobs *j,
+		struct pkg_job_universe_item *item, int priority)
+{
+	const char *origin;
+	struct pkg_dep *d = NULL;
+	struct pkg_conflict *c = NULL;
+	struct pkg_job_universe_item *found;
+
+	pkg_get(item->pkg, PKG_ORIGIN, &origin);
+
+	pkg_debug(2, "universe: update priority of %s: %d -> %d",
+					origin, item->priority, priority);
+	item->priority = priority;
+
+	while (pkg_deps(item->pkg, &d) == EPKG_OK) {
+		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
+		if (found != NULL && found->priority < priority + 1)
+			pkg_jobs_update_universe_priority (j, found, priority + 1);
+	}
+
+	d = NULL;
+	while (pkg_rdeps(item->pkg, &d) == EPKG_OK) {
+		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
+		if (found != NULL && found->priority > priority - 1)
+			pkg_jobs_update_universe_priority (j, found, priority - 1);
+	}
+
+	while (pkg_conflicts(item->pkg, &c) == EPKG_OK) {
+		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
+		if (found != NULL && found->priority < priority)
+			pkg_jobs_update_universe_priority (j, found, priority);
+	}
+}
+
 /**
  * Check whether a package is in the universe already or add it
  * @return item or NULL
@@ -226,7 +261,7 @@ static int
 pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 {
 	struct pkg_job_universe_item *item, *cur, *tmp = NULL;
-	const char *origin, *digest, *digest_cur, *version, *name;
+	const char *origin, *digest, *version, *name;
 	char *new_digest;
 	int rc;
 	struct sbuf *sb;
@@ -251,47 +286,18 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 	}
 
 	HASH_FIND_STR(j->seen, digest, seen);
-	if (seen != NULL)
+	if (seen != NULL) {
+		cur = seen->un;
+		if (priority > cur->priority) {
+
+			cur->priority = priority;
+		}
 		return (EPKG_END);
-
-	seen = calloc(1, sizeof(struct pkg_job_seen));
-	seen->digest = digest;
-	seen->pkg = pkg;
-	HASH_ADD_KEYPTR(hh, j->seen, seen->digest, strlen(seen->digest), seen);
-
-	HASH_FIND_STR(j->universe, origin, item);
-	if (item == NULL) {
-		/* Insert new origin */
-		item = calloc(1, sizeof (struct pkg_job_universe_item));
-
-		if (item == NULL) {
-			pkg_emit_errno("pkg_jobs_handle_universe", "calloc: struct pkg_job_universe_item");
-			return (EPKG_FATAL);
-		}
-		item->pkg = pkg;
-		item->priority = priority;
-		item->prev = item;
-		HASH_ADD_KEYPTR(hh, j->universe, origin, strlen(origin), item);
-		j->total++;
-		return (EPKG_OK);
 	}
-	else {
-		/* Search for the same package added */
-		LL_FOREACH(item, cur) {
-			pkg_get(cur->pkg, PKG_DIGEST, &digest_cur);
-			if (strcmp (digest, digest_cur) == 0) {
-				/* Adjust priority */
-				if (priority > cur->priority) {
-					pkg_debug(2, "universe: update priority of %s: %d -> %d",
-								origin, cur->priority, priority);
-					cur->priority = priority;
-				}
-				pkg_free(pkg);
-				return (EPKG_OK);
-			}
-			tmp = cur;
-		}
-	}
+
+	pkg_debug(2, "universe: add new %s pkg: %s(%d), (%s-%s)",
+				(pkg->type == PKG_INSTALLED ? "local" : "remote"), origin,
+				priority, name, version);
 
 	item = calloc(1, sizeof (struct pkg_job_universe_item));
 	if (item == NULL) {
@@ -299,13 +305,20 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 		return (EPKG_FATAL);
 	}
 
-	pkg_debug(2, "universe: add new %s pkg: %s(%d), (%s-%s)",
-			(pkg->type == PKG_INSTALLED ? "local" : "remote"), origin,
-			priority, name, version);
 	item->pkg = pkg;
 	item->priority = priority;
 
+	HASH_FIND_STR(j->universe, origin, tmp);
+	if (tmp == NULL) {
+		HASH_ADD_KEYPTR(hh, j->universe, origin, strlen(origin), item);
+	}
+
 	DL_APPEND(tmp, item);
+
+	seen = calloc(1, sizeof(struct pkg_job_seen));
+	seen->digest = digest;
+	seen->un = item;
+	HASH_ADD_KEYPTR(hh, j->seen, seen->digest, strlen(seen->digest), seen);
 
 	j->total++;
 
@@ -335,8 +348,11 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
 		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
-		if (unit != NULL)
+		if (unit != NULL) {
+			if (unit->priority < priority + 1)
+				pkg_jobs_update_universe_priority(j, unit, priority + 1);
 			continue;
+		}
 
 		rpkg = NULL;
 		npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
@@ -373,8 +389,11 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	while (pkg_rdeps(pkg, &d) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
 		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
-		if (unit != NULL)
+		if (unit != NULL) {
+			if (unit->priority > priority - 1)
+				pkg_jobs_update_universe_priority(j, unit, priority - 1);
 			continue;
+		}
 
 		npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 		if (npkg == NULL) {
@@ -397,8 +416,11 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	while (pkg_conflicts(pkg, &c) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
 		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), unit);
-		if (unit != NULL)
+		if (unit != NULL) {
+			if (unit->priority < priority)
+				pkg_jobs_update_universe_priority(j, unit, priority);
 			continue;
+		}
 
 		/* Check both local and remote conflicts */
 		npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);

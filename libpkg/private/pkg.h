@@ -210,17 +210,17 @@ struct pkg_solved {
 	struct pkg_solved *prev, *next;
 };
 
-struct pkg_job_seen {
-	struct pkg *pkg;
-	const char *digest;
-	UT_hash_handle hh;
-};
-
 struct pkg_job_universe_item {
 	struct pkg *pkg;
 	UT_hash_handle hh;
 	int priority;
 	struct pkg_job_universe_item *next, *prev;
+};
+
+struct pkg_job_seen {
+	struct pkg_job_universe_item *un;
+	const char *digest;
+	UT_hash_handle hh;
 };
 
 struct pkg_jobs {
