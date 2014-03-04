@@ -463,6 +463,8 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p, int priority)
 				return (false);
 			}
 			npkg = unit->pkg;
+			if (unit->priority > priority - 1)
+				unit->priority = priority - 1;
 		}
 		else {
 			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
@@ -545,16 +547,16 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 				pkg_jobs_add_req(j, origin, pkg, false, 0);
 			}
 			/* TODO: use repository priority here */
-			pkg_jobs_add_universe(j, pkg, 0, true);
+			pkg_jobs_add_universe(j, pkg, 0, false);
 		}
 		else {
 			if(pkg_is_locked(unit->pkg)) {
 				pkg_emit_locked(unit->pkg);
 			}
-			else if (pkg_jobs_test_automatic(j, unit->pkg, 0)) {
+			else if (pkg_jobs_test_automatic(j, unit->pkg, unit->priority)) {
 				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
 						origin);
-				pkg_jobs_add_req(j, origin, unit->pkg, false, 0);
+				pkg_jobs_add_req(j, origin, unit->pkg, false, unit->priority);
 			}
 
 			pkg_free(pkg);
@@ -1064,6 +1066,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 static int
 pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
 {
+	/* Always execute delete requests before install or upgrade */
 	if (r1->type == PKG_SOLVED_DELETE && r2->type != PKG_SOLVED_DELETE) {
 		return 1;
 	}
@@ -1071,8 +1074,10 @@ pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
 		return -1;
 	}
 	else if (r1->type == PKG_SOLVED_DELETE && r2->type == PKG_SOLVED_DELETE) {
+		/* Inverse deletion priority */
 		return (r1->priority - r2->priority);
 	}
+
 	return (r2->priority - r1->priority);
 }
 
