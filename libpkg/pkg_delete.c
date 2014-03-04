@@ -70,7 +70,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if ((ret = pkgdb_load_mtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
-	if (flags & PKG_DELETE_UPGRADE == 0)
+	if ((flags & PKG_DELETE_UPGRADE) == 0)
 		pkg_emit_deinstall_begin(pkg);
 
 	/* If the package is locked */
@@ -80,7 +80,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	}
 
 	/* If there are dependencies */
-	if (flags & PKG_DELETE_UPGRADE == 0) {
+	if ((flags & PKG_DELETE_UPGRADE) == 0) {
 		if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
 			pkg_emit_required(pkg, flags & PKG_DELETE_FORCE);
 			if ((flags & PKG_DELETE_FORCE) == 0)
