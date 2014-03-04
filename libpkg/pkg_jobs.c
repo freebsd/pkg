@@ -378,10 +378,14 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 				}
 			}
 		}
+		pkg_set(npkg, PKG_AUTOMATIC, (int64_t)true);
 		if (pkg_jobs_add_universe(j, npkg, priority + 1, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
-		if (rpkg != NULL && pkg_jobs_add_universe(j, rpkg, priority + 1, recursive) != EPKG_OK)
-			return (EPKG_FATAL);
+		if (rpkg != NULL) {
+			if (pkg_jobs_add_universe(j, rpkg, priority + 1, recursive) != EPKG_OK)
+				return (EPKG_FATAL);
+			pkg_set(rpkg, PKG_AUTOMATIC, (int64_t)true);
+		}
 	}
 
 	/* Go through all rdeps */
@@ -906,10 +910,8 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	lp = get_local_pkg(j, origin, 0);
 
 	/* obviously yes because local doesn't exists */
-	if (lp == NULL) {
-		pkg_set(rp, PKG_AUTOMATIC, (int64_t)true);
+	if (lp == NULL)
 		return (true);
-	}
 
 	pkg_get(lp, PKG_AUTOMATIC, &automatic,
 	    PKG_VERSION, &oldversion,

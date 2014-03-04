@@ -589,7 +589,6 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 					   assume a checksum mismatch will
 					   occur later and the file will be
 					   fetched from remote again */
-
 			*dlsize += pkgsize;
 
 		if (old_pkg != NULL) {
@@ -627,8 +626,7 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 		}
 		break;
 	case PKG_SOLVED_DELETE:
-		*oldsize += oldflatsize;
-		*newsize += flatsize;
+		*oldsize += flatsize;
 
 		pkg_printf("\tRemoving %n-%v\n", new_pkg, new_pkg);
 		break;
