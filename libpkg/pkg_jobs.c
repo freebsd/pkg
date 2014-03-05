@@ -1341,6 +1341,11 @@ pkg_jobs_execute(struct pkg_jobs *j)
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
+		case PKG_SOLVED_FETCH:
+			retcode = EPKG_FATAL;
+			pkg_emit_error("internal error: bad job type");
+			goto cleanup;
+			break;
 		}
 
 	}
