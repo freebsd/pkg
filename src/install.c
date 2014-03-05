@@ -59,6 +59,7 @@ exec_install(int argc, char **argv)
 	int retcode;
 	int updcode = EPKG_OK;
 	int ch;
+	int lock_type = PKGDB_LOCK_ADVISORY;
 	bool yes, yes_arg;
 	bool auto_update;
 	match_t match = MATCH_EXACT;
@@ -86,6 +87,7 @@ exec_install(int argc, char **argv)
 			break;
 		case 'F':
 			f |= PKG_FLAG_SKIP_INSTALL;
+			lock_type = PKGDB_LOCK_READONLY;
 			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
@@ -95,6 +97,7 @@ exec_install(int argc, char **argv)
 			break;
 		case 'n':
 			f |= PKG_FLAG_DRY_RUN;
+			lock_type = PKGDB_LOCK_READONLY;
 			dry_run = true;
 			break;
 		case 'q':
@@ -158,7 +161,7 @@ exec_install(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+	if (pkgdb_obtain_lock(db, lock_type, 0, 0) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
 		return (EX_TEMPFAIL);
@@ -212,7 +215,7 @@ exec_install(int argc, char **argv)
 	retcode = EX_OK;
 
 cleanup:
-	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
+	pkgdb_release_lock(db, lock_type);
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
 
