@@ -57,6 +57,8 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 
 EXTRA_LTLIBRARIES=	libelf.la
 
+noinst_LTLIBRARIES=	libucl.la libucl_static.la libsqlite.la libyaml.la libexpat.la @LIBELF_BUNDLED@
+
 libelf_la_SOURCES=	libelf/elf.c \
 			libelf/elf_begin.c \
 			libelf/elf_cntl.c \
@@ -116,8 +118,6 @@ libelf_la_SOURCES=	libelf/elf.c \
 			libelf/libelf_msize.c \
 			libelf/libelf_convert.c
 libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
-			
-noinst_LTLIBRARIES=	libucl.la libsqlite.la libyaml.la libexpat.la @LIBELF_BUNDLED@
 
 libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
 			libucl/src/ucl_hash.c \
@@ -128,6 +128,9 @@ libucl_la_CFLAGS=	-I$(top_srcdir)/external//libucl/uthash \
 			-I$(top_srcdir)/external/libucl/include  \
 			-I$(top_srcdir)/external//libucl/src \
 			-Wno-unused-parameter -Wno-pointer-sign
+libucl_static_la_SOURCES=	$(libucl_la_SOURCES)
+libucl_static_la_CFLAGS=	$(libucl_la_CFLAGS)
+libucl_static_la_LDFLAGS=	-all-static
 libexpat_la_SOURCES=	expat/lib/xmlparse.c \
 			expat/lib/xmlrole.c \
 			expat/lib/xmltok.c

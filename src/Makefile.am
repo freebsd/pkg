@@ -75,7 +75,8 @@ pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 			-DGITHASH=\"$(GIT_HEAD)\"
 pkg_static_CFLAGS=	$(pkg_CFLAGS)
 pkg_static_SOURCES=	$(pkg_SOURCES)
-pkg_static_LDADD=	$(pkg_LDADD)
+pkg_static_LDADD=	$(top_builddir)/external/libucl_static.la \
+			$(pkg_LDADD)
 pkg_static_LDFLAGS=	-all-static -static-libtool-libs
 sbin_PROGRAMS=		pkg pkg-static
 
