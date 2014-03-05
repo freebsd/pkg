@@ -1194,7 +1194,6 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	FILE *spipe[2];
 	pid_t pchild;
 
-	pkg_debug(1, "hui");
 	switch (j->type) {
 	case PKG_JOBS_AUTOREMOVE:
 		ret =jobs_solve_autoremove(j);
