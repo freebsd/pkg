@@ -998,24 +998,36 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 			goto order;
 		}
 
-	if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
-		return (EPKG_FATAL);
+	if (j->solved == 0) {
+		if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
+			return (EPKG_FATAL);
 
-	while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-		/* TODO: use repository priority here */
-		pkg_jobs_add_universe(j, pkg, 0, true);
-		if(pkg_is_locked(pkg)) {
-			/* If a package is locked, then we keep local version */
-			pkg_emit_locked(pkg);
+		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+			/* TODO: use repository priority here */
+			pkg_jobs_add_universe(j, pkg, 0, true);
+			if(pkg_is_locked(pkg)) {
+				/* If a package is locked, then we keep local version */
+				pkg_emit_locked(pkg);
+			}
+			else {
+				pkg_get(pkg, PKG_ORIGIN, &origin);
+				/* Do not test we ignore what doesn't exists remotely */
+				find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
+			}
+			pkg = NULL;
 		}
-		else {
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			/* Do not test we ignore what doesn't exists remotely */
-			find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
-		}
-		pkg = NULL;
+		pkgdb_it_free(it);
 	}
-	pkgdb_it_free(it);
+	else {
+		/*
+		 * If we have tried to solve request, then we just want to re-add all
+		 * request packages to the universe to find out any potential conflicts
+		 */
+		struct pkg_job_request *req, *rtmp;
+		HASH_ITER(hh, j->request_add, req, rtmp) {
+			pkg_jobs_add_universe(j, req->pkg, req->priority, true);
+		}
+	}
 
 	if (pkg_conflicts_request_resolve(j) != EPKG_OK) {
 		pkg_emit_error("Cannot resolve conflicts in a request");
