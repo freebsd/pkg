@@ -442,6 +442,7 @@ int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 int pkg_conflicts_request_resolve(struct pkg_jobs *j);
 int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
 int pkg_conflicts_integrity_check(struct pkg_jobs *j);
+void pkg_conflicts_register(struct pkg *p1, struct pkg *p2);
 
 typedef void (*conflict_func_cb)(const char *, const char *, void *);
 int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,

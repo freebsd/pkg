@@ -969,6 +969,65 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 }
 
 static int
+pkg_conflicts_add_missing(struct pkg_jobs *j, const char *origin, int priority)
+{
+	struct pkg *npkg;
+	npkg = get_local_pkg(j, origin, 0);
+	if (npkg == NULL) {
+		npkg = get_remote_pkg(j, origin, 0);
+	}
+	if (npkg == NULL) {
+		pkg_emit_error("cannot register conflict with non-existing origin %s",
+				origin);
+		return (EPKG_FATAL);
+	}
+
+	return pkg_jobs_add_universe(j, npkg, priority, true);
+}
+
+static void
+pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
+{
+	struct pkg_jobs *j = (struct pkg_jobs *)ud;
+	struct pkg_job_universe_item *u1, *u2;
+
+
+	HASH_FIND_STR(j->universe, o1, u1);
+	HASH_FIND_STR(j->universe, o2, u2);
+
+	if (u1 == NULL && u2 == NULL) {
+		pkg_emit_error("cannot register conflict with non-existing origins %s and %s",
+				o1, o2);
+		return;
+	}
+	else if (u1 == NULL) {
+		if (pkg_conflicts_add_missing(j, o1, u2->priority) != EPKG_OK)
+			return;
+		HASH_FIND_STR(j->universe, o1, u1);
+	}
+	else if (u2 == NULL) {
+		if (pkg_conflicts_add_missing(j, o2, u1->priority) != EPKG_OK)
+			return;
+		HASH_FIND_STR(j->universe, o2, u2);
+	}
+
+	pkg_conflicts_register(u1->pkg, u2->pkg);
+}
+
+int
+pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j)
+{
+	/* Now we can get conflicts only from pkgdb */
+	return (pkgdb_integrity_append(j->db, p, pkg_conflicts_add_from_pkgdb, j));
+}
+
+int
+pkg_conflicts_integrity_check(struct pkg_jobs *j)
+{
+	return (pkgdb_integrity_check(j->db, pkg_conflicts_add_from_pkgdb, j));
+}
+
+static int
 jobs_solve_install(struct pkg_jobs *j)
 {
 	struct job_pattern *jp = NULL;
@@ -990,7 +1049,8 @@ jobs_solve_install(struct pkg_jobs *j)
 					return (EPKG_FATAL);
 
 				pkg = NULL;
-				while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
+				while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS)
+						== EPKG_OK) {
 					pkg_jobs_add_universe(j, pkg, 0, true);
 
 					if (pkg_is_locked(pkg)) {
@@ -1000,8 +1060,10 @@ jobs_solve_install(struct pkg_jobs *j)
 					else {
 						pkg_get(pkg, PKG_ORIGIN, &origin);
 						/* TODO: use repository priority here */
-						if (find_remote_pkg(j, origin, MATCH_EXACT, true, 0) == EPKG_FATAL)
-							pkg_emit_error("No packages matching '%s', has been found in the repositories", origin);
+						if (find_remote_pkg(j, origin, MATCH_EXACT, true, 0)
+								== EPKG_FATAL)
+							pkg_emit_error("No packages matching '%s', has been found in "
+									"the repositories", origin);
 					}
 					pkg = NULL;
 				}
@@ -1022,8 +1084,19 @@ jobs_solve_install(struct pkg_jobs *j)
 				pkgdb_it_free(it);
 				/* TODO: use repository priority here */
 				if (find_remote_pkg(j, jp->pattern, jp->match, true, 0) == EPKG_FATAL)
-					pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
+					pkg_emit_error("No packages matching '%s' has been found in "
+							"the repositories", jp->pattern);
 			}
+		}
+	}
+	else {
+		/*
+		 * If we have tried to solve request, then we just want to re-add all
+		 * request packages to the universe to find out any potential conflicts
+		 */
+		struct pkg_job_request *req, *rtmp;
+		HASH_ITER(hh, j->request_add, req, rtmp) {
+			pkg_jobs_add_universe(j, req->pkg, req->priority, true);
 		}
 	}
 
@@ -1107,6 +1180,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	FILE *spipe[2];
 	pid_t pchild;
 
+	pkg_debug(1, "hui");
 	switch (j->type) {
 	case PKG_JOBS_AUTOREMOVE:
 		ret =jobs_solve_autoremove(j);
@@ -1411,7 +1485,6 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				LL_FREE(j->jobs, pkg_solved, free);
 				j->jobs = NULL;
 				j->count = 0;
-				j->total = 0;
 
 				rc = pkg_jobs_solve(j);
 				if (rc == EPKG_OK) {

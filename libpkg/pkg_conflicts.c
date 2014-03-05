@@ -171,34 +171,3 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2)
 		}
 	}
 }
-
-
-static void
-pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
-{
-	struct pkg_jobs *j = (struct pkg_jobs *)ud;
-	struct pkg_job_universe_item *u1, *u2;
-
-	HASH_FIND_STR(j->universe, o1, u1);
-	HASH_FIND_STR(j->universe, o2, u2);
-
-	if (u1 == NULL || u2 == NULL) {
-		pkg_emit_error("conflicts: cannot register a conflict between non-existing packages");
-		return;
-	}
-
-	pkg_conflicts_register(u1->pkg, u2->pkg);
-}
-
-int
-pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j)
-{
-	/* Now we can get conflicts only from pkgdb */
-	return (pkgdb_integrity_append(j->db, p, pkg_conflicts_add_from_pkgdb, j));
-}
-
-int
-pkg_conflicts_integrity_check(struct pkg_jobs *j)
-{
-	return (pkgdb_integrity_check(j->db, pkg_conflicts_add_from_pkgdb, j));
-}
