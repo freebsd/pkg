@@ -13,6 +13,26 @@ AC_PROG_CC_C99
 LT_INIT()
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_C_CONST
+AC_TYPE_SIZE_T
+AC_CHECK_FUNCS(memmove bcopy)
+
+AC_CHECK_HEADERS_ONCE([fcntl.h unistd.h])
+AC_TYPE_OFF_T
+AC_FUNC_MMAP
+
+if test "$ac_cv_func_mmap_fixed_mapped" = "yes"; then
+    FILEMAP=unixfilemap
+else
+    FILEMAP=readfilemap
+fi
+AC_SUBST(FILEMAP)
+AC_CHECK_HEADERS_ONCE([machine/endian.h])
+AC_CHECK_HEADERS_ONCE([endian.h])
+AC_CHECK_HEADERS_ONCE([fcntl.h])
+AC_CHECK_HEADERS_ONCE([dlfcn.h])
+AC_CHECK_HEADERS_ONCE([memory.h])
+
 AC_DEFUN([AC_PROG_GIT], [AC_CHECK_PROG(GITBIN,git,yes)])
 AC_PROG_GIT
 if test x"${GITBIN}" == x"yes" ; then
@@ -33,6 +53,16 @@ AC_MSG_RESULT([$GIT_HEAD])
 AC_SUBST([GIT_HEAD])
 AC_DEFINE_UNQUOTED([GIT_HEAD], $GIT_HEAD)
 AC_DEFINE([PKG_API], [api_ver])
+
+
+AC_SEARCH_LIBS([archive_read_open], [archive], [], [
+  AC_MSG_ERROR([unable to find the archive_read() function])
+])
+AC_CHECK_HEADERS([archive.h],
+	[pkg_found_archive_headers=yes; break;])
+AS_IF([test "x$pkg_found_archive_headers" != "xyes"],
+	[AC_MSG_ERROR([Unable to find the libarchive headers])])
+
 AC_CHECK_HEADER([gelf.h], [
 	AC_DEFINE(HAVE_GELF_H, 1, [Define to 1 if you have the <gelf.h> header file.])
 	AC_CHECK_LIB(elf, gelf_getehdr, [
@@ -41,7 +71,7 @@ AC_CHECK_HEADER([gelf.h], [
 	])
 ], [
     LIBELF_LIB="\$(top_builddir)/external/libelf.la"
-    LIBELF_BUNDLED="\$(top_builddir)/external/libelf.la"
+    LIBELF_BUNDLED="libelf.la"
     LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
 ])
 

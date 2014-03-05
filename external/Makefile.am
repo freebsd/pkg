@@ -38,6 +38,7 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 			libelf/elfdefinitions.h \
 			libelf/gelf.h \
 			libelf/libelf.h \
+			libelf/native-elf-format.h \
 			libucl/include/ucl.h \
 			libucl/src/xxhash.h \
 			libucl/src/ucl_internal.h \
@@ -114,6 +115,7 @@ libelf_la_SOURCES=	libelf/elf.c \
 			libelf/libelf_fsize.c \
 			libelf/libelf_msize.c \
 			libelf/libelf_convert.c
+libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
 			
 noinst_LTLIBRARIES=	libucl.la libsqlite.la libyaml.la libexpat.la @LIBELF_BUNDLED@
 
@@ -186,7 +188,9 @@ libsqlite_la_CFLAGS=	-DHAVE_POSIX_FALLOCATE=1 \
 
 CLEANFILES=	libelf/libelf_fsize.c \
 			libelf/libelf_msize.c \
-			libelf/libelf_convert.c
+			libelf/libelf_convert.c \
+			libelf/native-elf-format.h
+BUILT_SOURCES = libelf/native-elf-format.h
 
 libelf/libelf_convert.c:
 	@echo "    M4    " $@;
@@ -199,3 +203,5 @@ libelf/libelf_fsize.c:
 libelf/libelf_msize.c:
 	@echo "    M4    " $@;
 	@m4 -D SRCDIR=libelf libelf/elf_types.m4 libelf/libelf_msize.m4 > $@
+libelf/native-elf-format.h:
+	libelf/native-elf-format > libelf/native-elf-format.h
