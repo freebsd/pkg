@@ -76,7 +76,7 @@ pkg_CFLAGS=		-I$(top_srcdir)/libpkg \
 pkg_static_CFLAGS=	$(pkg_CFLAGS)
 pkg_static_SOURCES=	$(pkg_SOURCES)
 pkg_static_LDADD=	$(pkg_LDADD)
-pkg_static_LDFLAGS=	-all-static
+pkg_static_LDFLAGS=	-all-static -static-libtool-libs
 sbin_PROGRAMS=		pkg pkg-static
 
 dist_sysconf_DATA=	pkg.conf.sample
