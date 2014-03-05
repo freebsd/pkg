@@ -183,12 +183,12 @@ exec_install(int argc, char **argv)
 		yes = yes_arg;
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
-			    "The following %d packages will be installed (of %d in the universe):\n\n",
+			    "The following %d packages will be affected (of %d in the universe):\n\n",
 			    nbactions, pkg_jobs_total(jobs));
 
 			if (!yes && !dry_run)
 				yes = query_yesno(
-				    "\nProceed with installing packages [y/N]: ");
+				    "\nProceed with this action [y/N]: ");
 			if (dry_run)
 				yes = false;
 		}
