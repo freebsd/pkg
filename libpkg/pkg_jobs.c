@@ -1646,8 +1646,10 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	pkg_free(pkg);
 
 	if (added > 0 && ret != EPKG_FATAL) {
-		if ((res = pkg_conflicts_integrity_check(j)) != EPKG_OK)
+		if ((res = pkg_conflicts_integrity_check(j)) != EPKG_OK) {
+			pkg_emit_integritycheck_finished();
 			return (res);
+		}
 	}
 
 	pkg_emit_integritycheck_finished();
