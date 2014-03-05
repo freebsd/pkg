@@ -13,14 +13,18 @@ AC_PROG_CC_C99
 LT_INIT()
 AC_CONFIG_MACRO_DIR([m4])
 
-AC_MSG_CHECKING([for git head])
-if test -d "${GIT_DIR:-${ac_top_srcdir:-./}/.git}" ; then
-	GIT_HEAD=`git rev-parse --short HEAD`
-	if test -n "`git diff-index -m --name-only HEAD`" ; then
-		GIT_HEAD=${GIT_HEAD}-dirty
-	fi
-	if test -n "${GIT_HEAD}" ; then
-		GIT_HEAD="-${GIT_HEAD}"
+AC_DEFUN([AC_PROG_GIT], [AC_CHECK_PROG(GITBIN,git,yes)])
+AC_PROG_GIT
+if test x"${GITBIN}" == x"yes" ; then
+	AC_MSG_CHECKING([for git head])
+	if test -d "${GIT_DIR:-${ac_top_srcdir:-./}/.git}" ; then
+		GIT_HEAD=`git rev-parse --short HEAD`
+		if test -n "`git diff-index -m --name-only HEAD`" ; then
+			GIT_HEAD=${GIT_HEAD}-dirty
+		fi
+		if test -n "${GIT_HEAD}" ; then
+			GIT_HEAD="-${GIT_HEAD}"
+		fi
 	fi
 fi
 AH_TEMPLATE(GIT_HEAD, "Git revision")
