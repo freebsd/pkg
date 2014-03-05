@@ -148,27 +148,29 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		return (EPKG_ENODB);
 	}
 
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an advisory lock on a database, it is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK) {
-		free(pkgs);
-		return (EPKG_FATAL);
+		goto cleanup;
 	}
 
 	pkg_jobs_set_flags(jobs, f);
 
 	if (pkg_jobs_add(jobs, MATCH_EXACT, pkgs, nbpkgs) == EPKG_FATAL) {
-		pkg_jobs_free(jobs);
-		return (EPKG_FATAL);
+		goto cleanup;
 	}
 
 	if (pkg_jobs_solve(jobs) != EPKG_OK) {
-		pkg_jobs_free(jobs);
-		return (EPKG_FATAL);
+		goto cleanup;
 	}
 
 	if (pkg_jobs_count(jobs) == 0) {
 		printf("\nUnable to find packages for installation.\n\n");
-		pkg_jobs_free(jobs);
-		return (EPKG_FATAL);
+		goto cleanup;
 	}
 
 	/* print a summary before applying the jobs */
@@ -182,16 +184,20 @@ fix_deps(struct pkgdb *db, struct deps_head *dh, int nbpkgs, bool yes)
 		    EPKG_ENOACCESS) {
 			warnx("Insufficient privileges to modify the package "
 			      "database");
-			free(pkgs);
-			pkg_jobs_free(jobs);
-			return (EPKG_ENOACCESS);
+
+			goto cleanup;
 		}
 
 		pkg_jobs_apply(jobs);
 	}
 
-	free(pkgs);
-	pkg_jobs_free(jobs);
+cleanup:
+	if (pkgs != NULL)
+		free(pkgs);
+	if (jobs != NULL)
+		pkg_jobs_free(jobs);
+	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
+	pkgdb_close(db);
 
 	return (EPKG_OK);
 }
