@@ -72,6 +72,11 @@ AC_CHECK_HEADER([archive.h],
 AS_IF([test "x$pkg_found_archive_headers" != "xyes"],
 	[AC_MSG_ERROR([Unable to find the libarchive headers])])
 
+AC_SEARCH_LIBS([jail_getid], [jail], [
+	AC_DEFINE(HAVE_LIBJAIL, 1, [Define to 1 if you have the 'jail' library (-ljail).])
+	LIBJAIL_LIB="-ljail"
+	], [])
+
 AC_CHECK_HEADER([gelf.h], [
 	AC_DEFINE(HAVE_GELF_H, 1, [Define to 1 if you have the <gelf.h> header file.])
 	AC_CHECK_LIB(elf, gelf_getehdr, [
@@ -87,6 +92,7 @@ AC_CHECK_HEADER([gelf.h], [
 AC_SUBST([LIBELF_LIB])
 AC_SUBST([LIBELF_BUNDLED])
 AC_SUBST([LIBELF_INCLUDE])
+AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([HAVE_TEST])
 
 AC_CONFIG_FILES(Makefile \

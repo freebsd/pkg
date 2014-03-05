@@ -28,7 +28,7 @@
  */
 
 #include <sys/param.h>
-#include <sys/jail.h>
+
 #include <sys/stat.h>
 #include <sys/queue.h>
 #include <sys/sbuf.h>
@@ -41,8 +41,9 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
-#ifndef NO_LIBJAIL
+#ifdef HAVE_LIBJAIL
 #include <jail.h>
+#include <sys/jail.h>
 #endif
 
 #include <pkg.h>
@@ -153,7 +154,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 		fprintf(out, "pkg: %s\n", arg);
 	}
 
-#ifndef NO_LIBJAIL
+#ifdef HAVE_LIBJAIL
  	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-j <jail name or id>|-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
 #else
 	fprintf(out, "Usage: pkg [-v] [-d] [-l] [-N] [-c <chroot path>] [-C <configuration file>] [-R <repo config dir>] [-o var=value] <command> [<args>]\n\n");
@@ -161,7 +162,7 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 	if (reason == PKG_USAGE_HELP) {
 		fprintf(out, "Global options supported:\n");
 		fprintf(out, "\t%-15s%s\n", "-d", "Increment debug level");
-#ifndef NO_LIBJAIL
+#ifdef HAVE_LIBJAIL
 		fprintf(out, "\t%-15s%s\n", "-j", "Execute pkg(8) inside a jail(8)");
 #endif
 		fprintf(out, "\t%-15s%s\n", "-c", "Execute pkg(8) inside a chroot(8)");
@@ -570,7 +571,7 @@ main(int argc, char **argv)
 	struct commands *command = NULL;
 	unsigned int ambiguous = 0;
 	const char *chroot_path = NULL;
-#ifndef NO_LIBJAIL
+#ifdef HAVE_LIBJAIL
 	int jid;
 #endif
 	const char *jail_str = NULL;
@@ -602,7 +603,7 @@ main(int argc, char **argv)
 	if (argc < 2)
 		usage(NULL, NULL, stderr, PKG_USAGE_INVALID_ARGUMENTS, "not enough arguments");
 
-#ifndef NO_LIBJAIL
+#ifdef HAVE_LIBJAIL
 	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvqo:")) != -1) {
 #else
 	while ((ch = getopt(argc, argv, "d:c:C:R:lNvqo:")) != -1) {
@@ -620,7 +621,7 @@ main(int argc, char **argv)
 		case 'R':
 			reposdir = optarg;
 			break;
-#ifndef NO_LIBJAIL
+#ifdef HAVE_LIBJAIL
 		case 'j':
 			jail_str = optarg;
 			break;
@@ -671,7 +672,7 @@ main(int argc, char **argv)
 		if (chroot(chroot_path) == -1)
 			errx(EX_SOFTWARE, "chroot failed!");
 
-#ifndef NO_LIBJAIL
+#ifdef HAVE_LIBJAIL
 	if (jail_str != NULL) {
 		jid = jail_getid(jail_str);
 		if (jid < 0)
