@@ -3,9 +3,6 @@
 /* "Git revision" */
 #undef GIT_HEAD
 
-/* Define to 1 if you have the <archive.h> header file. */
-#undef HAVE_ARCHIVE_H
-
 /* Define to 1 if you have the `bcopy' function. */
 #undef HAVE_BCOPY
 

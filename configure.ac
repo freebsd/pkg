@@ -55,10 +55,19 @@ AC_DEFINE_UNQUOTED([GIT_HEAD], $GIT_HEAD)
 AC_DEFINE([PKG_API], [api_ver])
 
 
+AC_SEARCH_LIBS([lzma_version_string], [lzma], [], [
+  AC_MSG_ERROR([unable to find the liblzma])
+])
+AC_SEARCH_LIBS([BZ2_bzReadOpen], [bz2], [], [
+  AC_MSG_ERROR([unable to find the libbz2])
+])
+AC_SEARCH_LIBS([zlibVersion], [z], [], [
+  AC_MSG_ERROR([unable to find the zlib])
+])
 AC_SEARCH_LIBS([archive_read_open], [archive], [], [
   AC_MSG_ERROR([unable to find the archive_read() function])
 ])
-AC_CHECK_HEADERS([archive.h],
+AC_CHECK_HEADER([archive.h],
 	[pkg_found_archive_headers=yes; break;])
 AS_IF([test "x$pkg_found_archive_headers" != "xyes"],
 	[AC_MSG_ERROR([Unable to find the libarchive headers])])
