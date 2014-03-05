@@ -1172,10 +1172,10 @@ pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
 {
 	/* Always execute delete requests before install or upgrade */
 	if (r1->type == PKG_SOLVED_DELETE && r2->type != PKG_SOLVED_DELETE) {
-		return 1;
+		return -1;
 	}
 	else if (r1->type != PKG_SOLVED_DELETE && r2->type == PKG_SOLVED_DELETE) {
-		return -1;
+		return 1;
 	}
 	else if (r1->type == PKG_SOLVED_DELETE && r2->type == PKG_SOLVED_DELETE) {
 		/* Inverse deletion priority */
