@@ -197,7 +197,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg,
 			replace = true;
 
 		pkg_debug(1, "the request already has package with origin %s, we want "
-				"to %s it by priority (%s) vs (%s)", origin,
+				"to %s it by priority (%d) vs (%d)", origin,
 				replace ? "replace" : "keep",
 				test->priority, priority);
 		if (replace) {
@@ -463,11 +463,14 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p, int priority)
 				return (false);
 			}
 			npkg = unit->pkg;
-			if (unit->priority > priority - 1)
+			if (unit->priority > priority - 1) {
+				pkg_jobs_update_universe_priority(j, unit, priority - 1);
 				unit->priority = priority - 1;
+			}
 		}
 		else {
-			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
+			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN),
+					PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
 			if (npkg == NULL)
 				return (false);
 			if (!npkg->automatic) {
@@ -529,6 +532,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *origin;
 	struct pkg_job_universe_item *unit;
+	struct pkg_job_request *req, *rtmp;
 
 	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
 		return (EPKG_FATAL);
@@ -562,6 +566,19 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			pkg_free(pkg);
 		}
 		pkg = NULL;
+	}
+	/* XXX:
+	 * We update priorities in the universe according to the real
+	 * dependencies graph, however, priorities in the request are not
+	 * updated. So we cycle through the request and set the priorities
+	 * equal to priorities in the universe.
+	 */
+	HASH_ITER(hh, j->request_delete, req, rtmp) {
+		pkg_get(req->pkg, PKG_ORIGIN, &origin);
+		HASH_FIND_STR(j->universe, origin, unit);
+		if (unit != NULL) {
+			req->priority = unit->priority;
+		}
 	}
 	pkgdb_it_free(it);
 
