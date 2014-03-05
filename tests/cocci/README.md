@@ -21,7 +21,7 @@ Usage
 =====
 From the pkg's source root (use _libpkg_ or _src_ as `$DIR`):
 
-	% spatch -I. -I /usr/include -I /usr/local/include -I libpkg -I src \
+	% spatch -I . -I /usr/include -I /usr/local/include -I libpkg -I src \
 		-I external/expat/lib -I external/libyaml/include \
 		-I external/libucl/include -I external/uthash \
 		-I external/sqlite -I external/libelf \
