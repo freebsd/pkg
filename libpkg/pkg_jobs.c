@@ -225,7 +225,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 	const char *origin;
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
-	struct pkg_job_universe_item *found;
+	struct pkg_job_universe_item *found, *cur;
 
 	pkg_get(item->pkg, PKG_ORIGIN, &origin);
 
@@ -235,21 +235,33 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 
 	while (pkg_deps(item->pkg, &d) == EPKG_OK) {
 		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
-		if (found != NULL && found->priority < priority + 1)
-			pkg_jobs_update_universe_priority (j, found, priority + 1);
+		if (found != NULL) {
+			LL_FOREACH(found, cur) {
+				if (cur->priority < priority + 1)
+					pkg_jobs_update_universe_priority(j, cur, priority + 1);
+			}
+		}
 	}
 
 	d = NULL;
 	while (pkg_rdeps(item->pkg, &d) == EPKG_OK) {
 		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
-		if (found != NULL && found->priority > priority - 1)
-			pkg_jobs_update_universe_priority (j, found, priority - 1);
+		if (found != NULL) {
+			LL_FOREACH(found, cur) {
+				if (cur->priority > priority - 1)
+					pkg_jobs_update_universe_priority(j, cur, priority - 1);
+			}
+		}
 	}
 
 	while (pkg_conflicts(item->pkg, &c) == EPKG_OK) {
 		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
-		if (found != NULL && found->priority < priority)
-			pkg_jobs_update_universe_priority (j, found, priority);
+		if (found != NULL) {
+			LL_FOREACH(found, cur) {
+				if(cur->priority < priority)
+					pkg_jobs_update_universe_priority(j, cur, priority);
+			}
+		}
 	}
 }
 
@@ -288,10 +300,9 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 	HASH_FIND_STR(j->seen, digest, seen);
 	if (seen != NULL) {
 		cur = seen->un;
-		if (priority > cur->priority) {
+		if (priority > cur->priority)
+			pkg_jobs_update_universe_priority(j, cur, priority);
 
-			cur->priority = priority;
-		}
 		return (EPKG_END);
 	}
 
@@ -828,10 +839,17 @@ static int
 pkg_conflicts_add_missing(struct pkg_jobs *j, const char *origin, int priority)
 {
 	struct pkg *npkg;
+
+
 	npkg = get_local_pkg(j, origin, 0);
 	if (npkg == NULL) {
 		npkg = get_remote_pkg(j, origin, 0);
+		pkg_debug(2, "conflicts: add missing remote origin %s(%d)", origin);
 	}
+	else {
+		pkg_debug(2, "conflicts: add missing local origin %s(%d)", origin);
+	}
+
 	if (npkg == NULL) {
 		pkg_emit_error("cannot register conflict with non-existing origin %s",
 				origin);
@@ -845,7 +863,7 @@ static void
 pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
 {
 	struct pkg_jobs *j = (struct pkg_jobs *)ud;
-	struct pkg_job_universe_item *u1, *u2;
+	struct pkg_job_universe_item *u1, *u2, *cur1, *cur2;
 
 
 	HASH_FIND_STR(j->universe, o1, u1);
@@ -867,11 +885,21 @@ pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
 		HASH_FIND_STR(j->universe, o2, u2);
 	}
 
-	pkg_conflicts_register(u1->pkg, u2->pkg);
-	if (u1->priority > u2->priority)
-		pkg_jobs_update_universe_priority(j, u2, u1->priority);
-	else if (u2->priority > u1->priority)
-		pkg_jobs_update_universe_priority(j, u1, u2->priority);
+	/*
+	 * Here we have some unit but we do not know, where is a conflict, e.g.
+	 * if we have several units U1 and U2 with the same origin O that are in
+	 * the conflict with some origin O' provided by U1' and U2'. So we can
+	 * register the conflicts between all units in the chain.
+	 */
+	LL_FOREACH(u1, cur1) {
+		LL_FOREACH(u2, cur2) {
+			pkg_conflicts_register(cur1->pkg, cur2->pkg);
+			if (cur1->priority > cur2->priority)
+				pkg_jobs_update_universe_priority(j, cur2, cur1->priority);
+			else if (cur2->priority > cur1->priority)
+				pkg_jobs_update_universe_priority(j, cur1, cur2->priority);
+		}
+	}
 }
 
 int
