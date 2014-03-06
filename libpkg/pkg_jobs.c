@@ -1427,7 +1427,14 @@ pkg_jobs_execute(struct pkg_jobs *j)
 				pkg_emit_error("Cannot delete pkg itself without force flag");
 				continue;
 			}
-			retcode = pkg_delete(p, j->db, flags);
+			/*
+			 * Assume that in upgrade we can remove packages with rdeps as
+			 * in further they will be upgraded correctly.
+			 */
+			if (j->type == PKG_JOBS_UPGRADE)
+				retcode = pkg_delete(p, j->db, flags | PKG_DELETE_CONFLICT);
+			else
+				retcode = pkg_delete(p, j->db, flags);
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
