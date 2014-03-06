@@ -875,6 +875,7 @@ pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
 {
 	struct pkg_jobs *j = (struct pkg_jobs *)ud;
 	struct pkg_job_universe_item *u1, *u2, *cur1, *cur2;
+	struct pkg_conflict *c;
 
 
 	HASH_FIND_STR(j->universe, o1, u1);
@@ -895,7 +896,14 @@ pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
 			return;
 		HASH_FIND_STR(j->universe, o2, u2);
 	}
+	else {
+		/* Maybe we have registered this conflict already */
+		HASH_FIND(hh, u1->pkg->conflicts, o2, strlen(o2), c);
+		if (c != NULL)
+			return;
+	}
 
+	j->conflicts_registered ++;
 	/*
 	 * Here we have some unit but we do not know, where is a conflict, e.g.
 	 * if we have several units U1 and U2 with the same origin O that are in
@@ -1515,6 +1523,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 {
 	int rc;
 	pkg_plugin_hook_t pre, post;
+	bool has_conflicts = false;
 
 	if (!j->solved) {
 		pkg_emit_error("The jobs hasn't been solved");
@@ -1548,28 +1557,35 @@ pkg_jobs_apply(struct pkg_jobs *j)
 		pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
 		if (rc == EPKG_OK) {
 			/* Check local conflicts in the first run */
-			if (j->solved > 1) {
-				rc = EPKG_OK;
-			}
-			else {
-				rc = pkg_jobs_check_conflicts(j);
-			}
-			if (rc == EPKG_OK) {
-				pkg_plugins_hook_run(pre, j, j->db);
-				rc = pkg_jobs_execute(j);
-			}
-			else if (rc == EPKG_CONFLICT) {
-				/* Cleanup results */
-				LL_FREE(j->jobs, pkg_solved, free);
-				j->jobs = NULL;
-				j->count = 0;
+			if (j->solved == 1) {
+				do {
+					j->conflicts_registered = 0;
+					rc = pkg_jobs_check_conflicts(j);
+					if (rc == EPKG_CONFLICT) {
+						/* Cleanup results */
+						LL_FREE(j->jobs, pkg_solved, free);
+						j->jobs = NULL;
+						j->count = 0;
+						has_conflicts = true;
+						rc = pkg_jobs_solve(j);
+					}
+					else if (rc == EPKG_OK && !has_conflicts) {
+						pkg_plugins_hook_run(pre, j, j->db);
+						rc = pkg_jobs_execute(j);
+						break;
+					}
+				} while (j->conflicts_registered > 0);
 
-				rc = pkg_jobs_solve(j);
-				if (rc == EPKG_OK) {
+				if (has_conflicts) {
 					pkg_emit_notice("The conflicts with the existing packages have been found.\n"
 							"We need to run one more solver iteration to resolve them");
 					return (EPKG_CONFLICT);
 				}
+			}
+			else {
+				/* Not the first run, conflicts are resolved already */
+				pkg_plugins_hook_run(pre, j, j->db);
+				rc = pkg_jobs_execute(j);
 			}
 		}
 		pkg_plugins_hook_run(post, j, j->db);
@@ -1707,6 +1723,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	pkg_free(pkg);
 
 	if (added > 0) {
+		pkg_debug(1, "check integrity for %d items added", added);
 		if ((res = pkg_conflicts_integrity_check(j)) != EPKG_OK) {
 			pkg_emit_integritycheck_finished();
 			return (res);

@@ -3808,6 +3808,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
 
 	pkg_get(p, PKG_ORIGIN, &porigin);
 
+	pkg_debug(4, "Pkgdb: test conflicts for %s", porigin);
 	while (pkg_files(p, &file) == EPKG_OK) {
 		const char	*name, *origin, *version;
 		const char	*pkg_path = pkg_file_path(file);
