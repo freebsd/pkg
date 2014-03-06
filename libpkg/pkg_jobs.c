@@ -868,6 +868,10 @@ pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
 	}
 
 	pkg_conflicts_register(u1->pkg, u2->pkg);
+	if (u1->priority > u2->priority)
+		pkg_jobs_update_universe_priority(j, u2, u1->priority);
+	else if (u2->priority > u1->priority)
+		pkg_jobs_update_universe_priority(j, u1, u2->priority);
 }
 
 int
