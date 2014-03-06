@@ -320,15 +320,7 @@ struct pkg_repo {
 		int in;
 		int out;
 		pid_t pid;
-		struct {
-			char *buf;
-			size_t size;
-			size_t pos;
-			size_t len;
-		} cache;
 	} sshio;
-	size_t fetched;
-	size_t tofetch;
 
 	int (*update)(struct pkg_repo *, bool);
 
