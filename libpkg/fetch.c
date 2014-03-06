@@ -28,6 +28,7 @@
 #include <sys/param.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -177,11 +178,74 @@ ssh_read(void *data, char *buf, int len)
 }
 
 static int
+ssh_writev(int fd, struct iovec *iov, int iovcnt)
+{
+	struct timeval now, timeout, delta;
+	struct pollfd pfd;
+	ssize_t wlen, total;
+	int deltams;
+
+	memset(&pfd, 0, sizeof pfd);
+
+	if (fetchTimeout) {
+		pfd.fd = fd;
+		pfd.events = POLLOUT | POLLERR;
+		gettimeofday(&timeout, NULL);
+		timeout.tv_sec += fetchTimeout;
+	}
+
+	total = 0;
+	while (iovcnt > 0) {
+		while (fetchTimeout && pfd.revents == 0) {
+			gettimeofday(&now, NULL);
+			if (!timercmp(&timeout, &now, >)) {
+				errno = ETIMEDOUT;
+				return (-1);
+			}
+			timersub(&timeout, &now, &delta);
+			deltams = delta.tv_sec * 1000 +
+				delta.tv_usec / 1000;
+			errno = 0;
+			pfd.revents = 0;
+			if (poll(&pfd, 1, deltams) < 0) {
+				return (-1);
+			}
+		}
+		errno = 0;
+		wlen = writev(fd, iov, iovcnt);
+		if (wlen == 0) {
+			errno = EPIPE;
+			return (-1);
+		}
+		if (wlen < 0) {
+			return (-1);
+		}
+		total += wlen;
+
+		while (iovcnt > 0 && wlen >= (ssize_t)iov->iov_len) {
+			wlen -= iov->iov_len;
+			iov++;
+			iovcnt--;
+		}
+
+		if (iovcnt > 0) {
+			iov->iov_len -= wlen;
+			iov->iov_base = __DECONST(char *, iov->iov_base) + wlen;
+		}
+	}
+	return (total);
+}
+
+static int
 ssh_write(void *data, const char *buf, int l)
 {
 	struct pkg_repo *repo = (struct pkg_repo *)data;
+	struct iovec iov;
 
-	return (write(repo->sshio.out, buf, l));
+	iov.iov_base = __DECONST(char *, buf);
+	iov.iov_len = l;
+
+	return (ssh_writev(repo->sshio.out, &iov, 1));
 }
 
 static int
@@ -276,6 +340,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		repo->sshio.in = sshout[0];
 		repo->sshio.out = sshin[1];
 		set_nonblocking(repo->sshio.in);
+		set_nonblocking(repo->sshio.out);
 
 		repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
 
