@@ -890,6 +890,8 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
+	struct pkg_job_request *req, *rtmp;
+	struct pkg_job_universe_item *unit;
 	bool recursive = false;
 
 	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
@@ -914,6 +916,19 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
+	}
+	/* XXX:
+	 * We update priorities in the universe according to the real
+	 * dependencies graph, however, priorities in the request are not
+	 * updated. So we cycle through the request and set the priorities
+	 * equal to priorities in the universe.
+	 */
+	HASH_ITER(hh, j->request_delete, req, rtmp) {
+		pkg_get(req->pkg, PKG_ORIGIN, &origin);
+		HASH_FIND_STR(j->universe, origin, unit);
+		if (unit != NULL) {
+			req->priority = unit->priority;
+		}
 	}
 
 	j->solved = true;
