@@ -123,44 +123,45 @@ libelf_la_SOURCES=	libelf/elf.c \
 			libelf/libelf_convert.c
 libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
 
+ucl_common_cflags=	-I$(top_srcdir)/external//libucl/uthash \
+			-I$(top_srcdir)/external/libucl/include  \
+			-I$(top_srcdir)/external//libucl/src \
+			-Wno-unused-parameter -Wno-pointer-sign
 libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
 			libucl/src/ucl_hash.c \
 			libucl/src/ucl_parser.c \
 			libucl/src/ucl_util.c \
 			libucl/src/xxhash.c
-libucl_la_CFLAGS=	-I$(top_srcdir)/external//libucl/uthash \
-			-I$(top_srcdir)/external/libucl/include  \
-			-I$(top_srcdir)/external//libucl/src \
-			-Wno-unused-parameter -Wno-pointer-sign
+libucl_la_CFLAGS=	$(ucl_common_cflags) -shared
 libucl_static_la_SOURCES=	$(libucl_la_SOURCES)
-libucl_static_la_CFLAGS=	$(libucl_la_CFLAGS)
+libucl_static_la_CFLAGS=	$(ucl_common_cflags) -static
 libucl_static_la_LDFLAGS=	-all-static
 
+expat_common_cflags=	-I$(top_srcdir)/external/expat \
+			-DHAVE_EXPAT_CONFIG_H
 libexpat_la_SOURCES=	expat/lib/xmlparse.c \
 			expat/lib/xmlrole.c \
 			expat/lib/xmltok.c
-libexpat_la_CFLAGS=	-I$(top_srcdir)/external/expat \
-			-DHAVE_EXPAT_CONFIG_H
+libexpat_la_CFLAGS=	$(expat_common_cflags) -shared
 libexpat_static_la_SOURCES=	$(libexpat_la_SOURCES)
-libexpat_static_la_CFLAGS=	$(libexpat_la_CFLAGS)
+libexpat_static_la_CFLAGS=	$(expat_common_cflags) -static
 libexpat_static_la_LDFLAGS=	-all-static
-			
+
+yaml_common_cflags=	-I$(top_srcdir)/external/libyaml/include \
+			-I$(top_srcdir)/external/libyaml \
+			-Wno-strict-aliasing \
+			-Wno-unused		
 libyaml_la_SOURCES=	libyaml/src/api.c \
 			libyaml/src/loader.c \
 			libyaml/src/parser.c \
 			libyaml/src/reader.c \
 			libyaml/src/scanner.c
-libyaml_la_CFLAGS=	-I$(top_srcdir)/external/libyaml/include \
-			-I$(top_srcdir)/external/libyaml \
-			-Wno-strict-aliasing \
-			-Wno-unused
+libyaml_la_CFLAGS=	$(yaml_common_cflags) -shared
 libyaml_static_la_SOURCES=	$(libyaml_la_SOURCES)
-libyaml_static_la_CFLAGS= $(libyaml_la_CFLAGS)
+libyaml_static_la_CFLAGS= $(yaml_common_cflags) -static
 libyaml_static_la_LDFLAGS=	-all-static
 
-libsqlite_la_SOURCES=	sqlite/sqlite3.c \
-			sqlite/shell.c
-libsqlite_la_CFLAGS=	-DHAVE_POSIX_FALLOCATE=1 \
+sqlite_common_cflags=	-DHAVE_POSIX_FALLOCATE=1 \
 			-DHAVE_SYS_TYPES_H=1 \
 			-DHAVE_SYS_STAT_H=1 \
 			-DHAVE_STDLIB_H=1 \
@@ -201,8 +202,11 @@ libsqlite_la_CFLAGS=	-DHAVE_POSIX_FALLOCATE=1 \
 			-DSQLITE_TEMP_STORE=3 \
 			-Dmain=sqlite3_shell \
 			-DNDEBUG
+libsqlite_la_SOURCES=	sqlite/sqlite3.c \
+			sqlite/shell.c
+libsqlite_la_CFLAGS=	$(sqlite_common_cflags) -shared
 libsqlite_static_la_SOURCES=	$(libsqlite_la_SOURCES)
-libsqlite_static_la_CFLAGS=	$(libsqlite_la_CFLAGS)
+libsqlite_static_la_CFLAGS=	$(sqlite_common_cflags) -static
 libsqlite_static_la_LDFLAGS=	-all-static
 
 CLEANFILES=	libelf/libelf_fsize.c \

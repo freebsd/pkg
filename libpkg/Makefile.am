@@ -1,3 +1,11 @@
+pkg_common_cflags=	-I$(top_srcdir)/libpkg \
+			@LIBELF_INCLUDE@ \
+			-I$(top_srcdir)/external/libucl/include \
+			-I$(top_srcdir)/external/uthash \
+			-I$(top_srcdir)/external/sqlite \
+			-I$(top_srcdir)/external/libyaml/include \
+			-DPREFIX=\"$(prefix)\" \
+			-Wno-pointer-sign
 libpkg_la_SOURCES=	pkg.c \
 			backup.c \
 			dns_utils.c \
@@ -31,14 +39,7 @@ libpkg_la_SOURCES=	pkg.c \
 			utils.c \
 			plugins.c \
 			pkg_old.c
-libpkg_la_CFLAGS=	-I$(top_srcdir)/libpkg \
-			@LIBELF_INCLUDE@ \
-			-I$(top_srcdir)/external/libucl/include \
-			-I$(top_srcdir)/external/uthash \
-			-I$(top_srcdir)/external/sqlite \
-			-I$(top_srcdir)/external/libyaml/include \
-			-DPREFIX=\"$(prefix)\" \
-			-Wno-pointer-sign
+libpkg_la_CFLAGS=	$(pkg_common_cflags) -shared
 libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
 			$(top_builddir)/external/libyaml.la \
@@ -57,7 +58,7 @@ lib_LTLIBRARIES=	libpkg.la
 include_HEADERS=	pkg.h
 
 libpkg_static_la_SOURCES=	$(libpkg_la_SOURCES)
-libpkg_static_la_CFLAGS=	$(libpkg_la_CFLAGS)
+libpkg_static_la_CFLAGS=	$(pkg_common_cflags) -static
 libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libsqlite_static.la \
 			$(top_builddir)/external/libyaml_static.la \
