@@ -56,6 +56,24 @@ libpkg_la_LDFLAGS=	-version-info 1 -pthread
 lib_LTLIBRARIES=	libpkg.la
 include_HEADERS=	pkg.h
 
+libpkg_static_la_SOURCES=	$(libpkg_la_SOURCES)
+libpkg_static_la_CFLAGS=	$(libpkg_la_CFLAGS)
+libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
+			$(top_builddir)/external/libsqlite_static.la \
+			$(top_builddir)/external/libyaml_static.la \
+			@LIBELF_LIB@ \
+			-larchive \
+			-lsbuf \
+			-lfetch \
+			-lutil \
+			-lssl \
+			-lcrypto \
+			-lbz2 \
+			-lz \
+			-llzma
+libpkg_static_la_LDFLAGS=	-all-static
+noinst_LTLIBRARIES=	libpkg_static.la
+
 noinst_HEADERS=		private/db_upgrades.h \
 			private/elf_tables.h \
 			private/event.h \

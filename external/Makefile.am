@@ -57,7 +57,11 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 
 EXTRA_LTLIBRARIES=	libelf.la
 
-noinst_LTLIBRARIES=	libucl.la libucl_static.la libsqlite.la libyaml.la libexpat.la @LIBELF_BUNDLED@
+noinst_LTLIBRARIES=	libucl.la libucl_static.la \
+					libsqlite.la libsqlite_static.la \
+					libyaml.la libyaml_static.la \
+					libexpat.la libexpat_static.la \
+					@LIBELF_BUNDLED@
 
 libelf_la_SOURCES=	libelf/elf.c \
 			libelf/elf_begin.c \
@@ -131,11 +135,16 @@ libucl_la_CFLAGS=	-I$(top_srcdir)/external//libucl/uthash \
 libucl_static_la_SOURCES=	$(libucl_la_SOURCES)
 libucl_static_la_CFLAGS=	$(libucl_la_CFLAGS)
 libucl_static_la_LDFLAGS=	-all-static
+
 libexpat_la_SOURCES=	expat/lib/xmlparse.c \
 			expat/lib/xmlrole.c \
 			expat/lib/xmltok.c
 libexpat_la_CFLAGS=	-I$(top_srcdir)/external/expat \
 			-DHAVE_EXPAT_CONFIG_H
+libexpat_static_la_SOURCES=	$(libexpat_la_SOURCES)
+libexpat_static_la_CFLAGS=	$(libexpat_la_CFLAGS)
+libexpat_static_la_LDFLAGS=	-all-static
+			
 libyaml_la_SOURCES=	libyaml/src/api.c \
 			libyaml/src/loader.c \
 			libyaml/src/parser.c \
@@ -145,6 +154,10 @@ libyaml_la_CFLAGS=	-I$(top_srcdir)/external/libyaml/include \
 			-I$(top_srcdir)/external/libyaml \
 			-Wno-strict-aliasing \
 			-Wno-unused
+libyaml_static_la_SOURCES=	$(libyaml_la_SOURCES)
+libyaml_static_la_CFLAGS= $(libyaml_la_CFLAGS)
+libyaml_static_la_LDFLAGS=	-all-static
+
 libsqlite_la_SOURCES=	sqlite/sqlite3.c \
 			sqlite/shell.c
 libsqlite_la_CFLAGS=	-DHAVE_POSIX_FALLOCATE=1 \
@@ -188,6 +201,9 @@ libsqlite_la_CFLAGS=	-DHAVE_POSIX_FALLOCATE=1 \
 			-DSQLITE_TEMP_STORE=3 \
 			-Dmain=sqlite3_shell \
 			-DNDEBUG
+libsqlite_static_la_SOURCES=	$(libsqlite_la_SOURCES)
+libsqlite_static_la_CFLAGS=	$(libsqlite_la_CFLAGS)
+libsqlite_static_la_LDFLAGS=	-all-static
 
 CLEANFILES=	libelf/libelf_fsize.c \
 			libelf/libelf_msize.c \
