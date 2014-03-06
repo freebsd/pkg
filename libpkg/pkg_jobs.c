@@ -218,6 +218,8 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg,
 	HASH_ADD_KEYPTR(hh, *head, origin, strlen(origin), req);
 }
 
+#define PRIORITY_SAME_SIGN(a, b) (((a) >= 0) ^ ((b) < 0))
+
 static void
 pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 		struct pkg_job_universe_item *item, int priority)
@@ -225,45 +227,54 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 	const char *origin;
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
-	struct pkg_job_universe_item *found, *cur;
+	struct pkg_job_universe_item *found, *cur, *it;
 
 	pkg_get(item->pkg, PKG_ORIGIN, &origin);
 
-	pkg_debug(2, "universe: update priority of %s: %d -> %d",
+	LL_FOREACH(item, it) {
+		if (PRIORITY_SAME_SIGN(priority, it->priority)) {
+			pkg_debug(2, "universe: update priority of %s: %d -> %d",
 					origin, item->priority, priority);
-	item->priority = priority;
+			it->priority = priority;
 
-	while (pkg_deps(item->pkg, &d) == EPKG_OK) {
-		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
-		if (found != NULL) {
-			LL_FOREACH(found, cur) {
-				if (cur->priority < priority + 1)
-					pkg_jobs_update_universe_priority(j, cur, priority + 1);
+			while (pkg_deps(it->pkg, &d) == EPKG_OK) {
+				HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
+				if (found != NULL) {
+					LL_FOREACH(found, cur) {
+						if (PRIORITY_SAME_SIGN(priority, cur->priority) &&
+								cur->priority < priority + 1)
+							pkg_jobs_update_universe_priority(j, cur, priority + 1);
+					}
+				}
 			}
-		}
-	}
 
-	d = NULL;
-	while (pkg_rdeps(item->pkg, &d) == EPKG_OK) {
-		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
-		if (found != NULL) {
-			LL_FOREACH(found, cur) {
-				if (cur->priority > priority - 1)
-					pkg_jobs_update_universe_priority(j, cur, priority - 1);
+			d = NULL;
+			while (pkg_rdeps(it->pkg, &d) == EPKG_OK) {
+				HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
+				if (found != NULL) {
+					LL_FOREACH(found, cur) {
+						if (PRIORITY_SAME_SIGN(priority, cur->priority) &&
+								cur->priority > priority - 1)
+							pkg_jobs_update_universe_priority(j, cur, priority - 1);
+					}
+				}
 			}
-		}
-	}
 
-	while (pkg_conflicts(item->pkg, &c) == EPKG_OK) {
-		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
-		if (found != NULL) {
-			LL_FOREACH(found, cur) {
-				if(cur->priority < priority)
-					pkg_jobs_update_universe_priority(j, cur, priority);
+			while (pkg_conflicts(it->pkg, &c) == EPKG_OK) {
+				HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
+				if (found != NULL) {
+					LL_FOREACH(found, cur) {
+						if (PRIORITY_SAME_SIGN(priority, cur->priority) &&
+								cur->priority < priority)
+							pkg_jobs_update_universe_priority(j, cur, priority);
+					}
+				}
 			}
 		}
 	}
 }
+
+#undef PRIORITY_SAME_SIGN
 
 /**
  * Check whether a package is in the universe already or add it
@@ -1686,20 +1697,16 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
 				return (EPKG_FATAL);
 		}
-		if ((res = pkg_conflicts_append_pkg(pkg, j)) != EPKG_OK) {
+		if ((res = pkg_conflicts_append_pkg(pkg, j)) != EPKG_OK)
 			ret = res;
-			if (ret == EPKG_FATAL)
-				break;
-		}
-		else {
+		else
 			added ++;
-		}
 	}
 	pkg_manifest_keys_free(keys);
 
 	pkg_free(pkg);
 
-	if (added > 0 && ret != EPKG_FATAL) {
+	if (added > 0) {
 		if ((res = pkg_conflicts_integrity_check(j)) != EPKG_OK) {
 			pkg_emit_integritycheck_finished();
 			return (res);

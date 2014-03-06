@@ -3884,13 +3884,17 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 	const char	 sql_conflicts[] = ""
 		"SELECT name, version, origin FROM integritycheck WHERE path = ?1;";
 
-	if (sqlite3_prepare_v2(db->sqlite,
+	const char sql_integrity_prepare[] = ""
 		"SELECT path, COUNT(path) FROM ("
 		"SELECT path FROM integritycheck UNION ALL "
 		"SELECT path FROM files, main.packages AS p "
 		"WHERE p.id = package_id AND p.origin NOT IN "
 		"(SELECT origin FROM integritycheck)"
-		") GROUP BY path HAVING (COUNT(path) > 1 );",
+		") GROUP BY path HAVING (COUNT(path) > 1 );";
+
+	pkg_debug(4, "Pkgdb: running '%s'", sql_integrity_prepare);
+	if (sqlite3_prepare_v2(db->sqlite,
+		sql_integrity_prepare,
 		-1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
@@ -3980,7 +3984,7 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin)
 		    "p.prefix "
 		"FROM packages AS p, files AS f, integritycheck AS i "
 		"WHERE p.id = f.package_id AND f.path = i.path "
-		"AND i.origin = ?1";
+		"AND i.origin = ?1 AND i.origin != p.origin";
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
 	ret = sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL);
