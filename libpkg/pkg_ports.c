@@ -37,7 +37,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <stringlist.h>
 #include <unistd.h>
 #include <uthash.h>
 
@@ -72,8 +71,12 @@ struct plist {
 	int64_t flatsize;
 	struct hardlinks *hardlinks;
 	mode_t perm;
-	char *post_pattern_to_free;
-	StringList *post_patterns;
+	struct {
+		char *buf;
+		char **patterns;
+		size_t len;
+		size_t cap;
+	} post_patterns;
 	struct keyword *keywords;
 };
 
@@ -458,12 +461,15 @@ parse_post(struct plist *p)
 	if ((env = getenv("FORCE_POST")) == NULL)
 		return;
 
-	p->post_patterns = sl_init();
-	p->post_pattern_to_free = strdup(env);
-	while ((token = strsep(&p->post_pattern_to_free, " \t")) != NULL) {
+	p->post_patterns.buf = strdup(env);
+	while ((token = strsep(&p->post_patterns.buf, " \t")) != NULL) {
 		if (token[0] == '\0')
 			continue;
-		sl_add(p->post_patterns, token);
+		if (p->post_patterns.len >= p->post_patterns.cap) {
+			p->post_patterns.cap += 10;
+			p->post_patterns.patterns = reallocf(p->post_patterns.patterns, p->post_patterns.cap * sizeof (char *));
+		}
+		p->post_patterns.patterns[p->post_patterns.len++] = token;
 	}
 }
 
@@ -472,14 +478,14 @@ should_be_post(char *cmd, struct plist *p)
 {
 	size_t i;
 
-	if (p->post_patterns == NULL)
+	if (p->post_patterns.patterns == NULL)
 		parse_post(p);
 
-	if (p->post_patterns == NULL)
+	if (p->post_patterns.patterns == NULL)
 		return (false);
 
-	for (i = 0; i < p->post_patterns->sl_cur; i++)
-		if (strstr(cmd, p->post_patterns->sl_str[i]))
+	for (i = 0; i < p->post_patterns.len ; i++)
+		if (strstr(cmd, p->post_patterns.patterns[i]))
 			return (true);
 
 	return (false);
@@ -915,8 +921,10 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 	pplist.hardlinks = NULL;
 	pplist.flatsize = 0;
 	pplist.keywords = NULL;
-	pplist.post_pattern_to_free = NULL;
-	pplist.post_patterns = NULL;
+	pplist.post_patterns.buf = NULL;
+	pplist.post_patterns.patterns = NULL;
+	pplist.post_patterns.cap = 0;
+	pplist.post_patterns.len = 0;
 	pplist.pkgdep = NULL;
 
 	populate_keywords(&pplist);
@@ -1014,9 +1022,8 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 		free(pplist.uname);
 	if (pplist.gname != NULL)
 		free(pplist.gname);
-	free(pplist.post_pattern_to_free);
-	if (pplist.post_patterns != NULL)
-		sl_free(pplist.post_patterns, 0);
+	free(pplist.post_patterns.buf);
+	free(pplist.post_patterns.patterns);
 
 	fclose(plist_f);
 
