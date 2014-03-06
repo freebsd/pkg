@@ -84,14 +84,29 @@ AC_CHECK_HEADER([gelf.h], [
 		LIBELF_LIB="-lelf"
 	])
 ], [
-    LIBELF_LIB="\$(top_builddir)/external/libelf.la"
-    LIBELF_BUNDLED="libelf.la"
-    LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
+	LIBELF_LIB="\$(top_builddir)/external/libelf.la"
+	LIBELF_BUNDLED="libelf.la"
+	LIBELF_INCLUDE="-I\$(top_srcdir)/external/libelf"
+])
+
+AC_CHECK_HEADER([sys/sbuf.h], [
+	AC_DEFINE(HAVE_SYS_SBUF_H, 1, [Define to 1 if you have the <sys/sbuf.h> header file.])
+	AC_CHECK_LIB(sbuf, sbuf_new, [
+		AC_DEFINE(HAVE_LIBSBUF, 1, [Define to 1 if you have the 'sbuf' library (-lsbuf).])
+		LIBSBUF_LIB="-lsbuf"
+	])
+], [
+	LIBSBUF_LIB="\$(top_builddir)/external/libsbuf.la"
+	LIBSBUF_BUNDLED="libsbuf.la"
+	LIBSBUF_INCLUDE="-I\$(top_srcdir)/external/libsbuf"
 ])
 
 AC_SUBST([LIBELF_LIB])
 AC_SUBST([LIBELF_BUNDLED])
 AC_SUBST([LIBELF_INCLUDE])
+AC_SUBST([LIBSBUF_LIB])
+AC_SUBST([LIBSBUF_BUNDLED])
+AC_SUBST([LIBSBUF_INCLUDE])
 AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([HAVE_TEST])
 

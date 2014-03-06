@@ -1,5 +1,6 @@
 pkg_common_cflags=	-I$(top_srcdir)/libpkg \
 			@LIBELF_INCLUDE@ \
+			@LIBSBUF_INCLUDE@ \
 			-I$(top_srcdir)/external/libucl/include \
 			-I$(top_srcdir)/external/uthash \
 			-I$(top_srcdir)/external/sqlite \
@@ -44,6 +45,7 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			$(top_builddir)/external/libsqlite.la \
 			$(top_builddir)/external/libyaml.la \
 			@LIBELF_LIB@ \
+			@LIBSBUF_LIB@ \
 			-larchive \
 			-lsbuf \
 			-lfetch \
@@ -63,6 +65,7 @@ libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libsqlite_static.la \
 			$(top_builddir)/external/libyaml_static.la \
 			@LIBELF_LIB@ \
+			@LIBSBUF_LIB@ \
 			-larchive \
 			-lsbuf \
 			-lfetch \

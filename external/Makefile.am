@@ -39,6 +39,7 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 			libelf/gelf.h \
 			libelf/libelf.h \
 			libelf/native-elf-format.h \
+			libsbuf/sys/sbuf.h \
 			libucl/include/ucl.h \
 			libucl/src/xxhash.h \
 			libucl/src/ucl_internal.h \
@@ -55,13 +56,14 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 			uthash/uthash.h \
 			uthash/utlist.h
 
-EXTRA_LTLIBRARIES=	libelf.la
+EXTRA_LTLIBRARIES=	libelf.la libsbuf.la
 
 noinst_LTLIBRARIES=	libucl.la libucl_static.la \
 					libsqlite.la libsqlite_static.la \
 					libyaml.la libyaml_static.la \
 					libexpat.la libexpat_static.la \
-					@LIBELF_BUNDLED@
+					@LIBELF_BUNDLED@ \
+					@LIBSBUF_BUNDLED@
 
 libelf_la_SOURCES=	libelf/elf.c \
 			libelf/elf_begin.c \
@@ -122,6 +124,9 @@ libelf_la_SOURCES=	libelf/elf.c \
 			libelf/libelf_msize.c \
 			libelf/libelf_convert.c
 libelf_la_CFLAGS=	-I$(top_srcdir)/external/libelf
+
+libsbuf_la_SOURCES=	libsbuf/subr_sbuf.c
+libsbuf_la_CFLAGS=	-I$(top_srcdir)/external/libsbuf
 
 ucl_common_cflags=	-I$(top_srcdir)/external//libucl/uthash \
 			-I$(top_srcdir)/external/libucl/include  \
