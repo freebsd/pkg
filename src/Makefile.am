@@ -1,3 +1,6 @@
+noinst_HEADERS=	pkgcli.h \
+				progressmeter.h
+
 pkg_SOURCES=		add.c \
 			annotate.c \
 			audit.c \
