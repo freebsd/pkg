@@ -853,7 +853,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 					add_var->origin, add_var->digest);
 		}
 		else {
-			res->priority = MAX(del_var->priority, add_var->priority);
+			res->priority = MIN(del_var->priority, add_var->priority);
 			res->pkg[0] = add_var->pkg;
 			res->pkg[1] = del_var->pkg;
 			res->type = PKG_SOLVED_UPGRADE;

@@ -218,7 +218,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg,
 	HASH_ADD_KEYPTR(hh, *head, origin, strlen(origin), req);
 }
 
-#define PRIORITY_SAME_SIGN(a, b) (((a) >= 0) ^ ((b) < 0))
+#define PRIORITY_CAN_UPDATE(a, b) (((a) >= 0) || ((b) < 0))
 
 static void
 pkg_jobs_update_universe_priority(struct pkg_jobs *j,
@@ -232,7 +232,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 	pkg_get(item->pkg, PKG_ORIGIN, &origin);
 
 	LL_FOREACH(item, it) {
-		if (PRIORITY_SAME_SIGN(priority, it->priority)) {
+		if (PRIORITY_CAN_UPDATE(priority, it->priority)) {
 			pkg_debug(2, "universe: update priority of %s: %d -> %d",
 					origin, item->priority, priority);
 			it->priority = priority;
@@ -241,7 +241,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 				HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
 				if (found != NULL) {
 					LL_FOREACH(found, cur) {
-						if (PRIORITY_SAME_SIGN(priority, cur->priority) &&
+						if (PRIORITY_CAN_UPDATE(priority, cur->priority) &&
 								cur->priority < priority + 1)
 							pkg_jobs_update_universe_priority(j, cur, priority + 1);
 					}
@@ -253,7 +253,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 				HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
 				if (found != NULL) {
 					LL_FOREACH(found, cur) {
-						if (PRIORITY_SAME_SIGN(priority, cur->priority) &&
+						if (PRIORITY_CAN_UPDATE(priority, cur->priority) &&
 								cur->priority > priority - 1)
 							pkg_jobs_update_universe_priority(j, cur, priority - 1);
 					}
@@ -264,7 +264,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 				HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
 				if (found != NULL) {
 					LL_FOREACH(found, cur) {
-						if (PRIORITY_SAME_SIGN(priority, cur->priority) &&
+						if (PRIORITY_CAN_UPDATE(priority, cur->priority) &&
 								cur->priority < priority)
 							pkg_jobs_update_universe_priority(j, cur, priority);
 					}
@@ -274,7 +274,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 	}
 }
 
-#undef PRIORITY_SAME_SIGN
+#undef PRIORITY_CAN_UPDATE
 
 /**
  * Check whether a package is in the universe already or add it
@@ -934,6 +934,41 @@ pkg_conflicts_integrity_check(struct pkg_jobs *j)
 	return (pkgdb_integrity_check(j->db, pkg_conflicts_add_from_pkgdb, j));
 }
 
+static void
+pkg_jobs_update_request_priorities(struct pkg_jobs *j)
+{
+	struct pkg_job_request *req, *rtmp;
+	struct pkg_job_universe_item *unit, *cur;
+	const char *origin;
+
+	/*
+	 * We update priorities in the universe according to the real
+	 * dependencies graph, however, priorities in the request are not
+	 * updated. So we cycle through the request and set the priorities
+	 * equal to priorities in the universe.
+	 */
+	HASH_ITER(hh, j->request_delete, req, rtmp) {
+		pkg_get(req->pkg, PKG_ORIGIN, &origin);
+		HASH_FIND_STR(j->universe, origin, unit);
+		if (unit != NULL) {
+			LL_FOREACH(unit, cur) {
+				if (cur->pkg == req->pkg)
+					req->priority = cur->priority;
+			}
+		}
+	}
+	HASH_ITER(hh, j->request_add, req, rtmp) {
+		pkg_get(req->pkg, PKG_ORIGIN, &origin);
+		HASH_FIND_STR(j->universe, origin, unit);
+		if (unit != NULL) {
+			LL_FOREACH(unit, cur) {
+				if (cur->pkg == req->pkg)
+					req->priority = cur->priority;
+			}
+		}
+	}
+}
+
 static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
@@ -941,8 +976,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
-	struct pkg_job_request *req, *rtmp;
-	struct pkg_job_universe_item *unit;
+
 	bool recursive = false;
 
 	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
@@ -968,19 +1002,8 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		}
 		pkgdb_it_free(it);
 	}
-	/* XXX:
-	 * We update priorities in the universe according to the real
-	 * dependencies graph, however, priorities in the request are not
-	 * updated. So we cycle through the request and set the priorities
-	 * equal to priorities in the universe.
-	 */
-	HASH_ITER(hh, j->request_delete, req, rtmp) {
-		pkg_get(req->pkg, PKG_ORIGIN, &origin);
-		HASH_FIND_STR(j->universe, origin, unit);
-		if (unit != NULL) {
-			req->priority = unit->priority;
-		}
-	}
+
+	pkg_jobs_update_request_priorities(j);
 
 	j->solved = true;
 
@@ -994,7 +1017,6 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkgdb_it *it;
 	char *origin;
 	struct pkg_job_universe_item *unit;
-	struct pkg_job_request *req, *rtmp;
 
 	if ((it = pkgdb_query(j->db, " WHERE automatic=1 ", MATCH_CONDITION)) == NULL)
 		return (EPKG_FATAL);
@@ -1029,21 +1051,9 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 		}
 		pkg = NULL;
 	}
-	/* XXX:
-	 * We update priorities in the universe according to the real
-	 * dependencies graph, however, priorities in the request are not
-	 * updated. So we cycle through the request and set the priorities
-	 * equal to priorities in the universe.
-	 */
-	HASH_ITER(hh, j->request_delete, req, rtmp) {
-		pkg_get(req->pkg, PKG_ORIGIN, &origin);
-		HASH_FIND_STR(j->universe, origin, unit);
-		if (unit != NULL) {
-			req->priority = unit->priority;
-		}
-	}
 	pkgdb_it_free(it);
 
+	pkg_jobs_update_request_priorities(j);
 	j->solved = true;
 
 	return (EPKG_OK);
@@ -1099,6 +1109,8 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 		pkg_emit_error("Cannot resolve conflicts in a request");
 		return (EPKG_FATAL);
 	}
+
+	pkg_jobs_update_request_priorities(j);
 
 order:
 
@@ -1184,6 +1196,8 @@ jobs_solve_install(struct pkg_jobs *j)
 		pkg_emit_error("Cannot resolve conflicts in a request");
 		return (EPKG_FATAL);
 	}
+
+	pkg_jobs_update_request_priorities(j);
 
 order:
 
