@@ -38,7 +38,6 @@
 #include <errno.h>
 #include <regex.h>
 #include <grp.h>
-#include <libutil.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>

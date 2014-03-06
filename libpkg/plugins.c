@@ -34,7 +34,6 @@
 #include <fts.h>
 #include <fcntl.h>
 #include <dlfcn.h>
-#include <libutil.h>
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>

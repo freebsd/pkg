@@ -29,7 +29,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <libutil.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #define _WITH_GETLINE
