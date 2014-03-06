@@ -52,7 +52,7 @@ exec_upgrade(int argc, char **argv)
 	int updcode;
 	int ch;
 	int lock_type = PKGDB_LOCK_ADVISORY;
-	bool yes, yes_arg;
+	bool yes = true, yes_arg = false;
 	bool dry_run = false;
 	bool auto_update;
 	nbactions = nbdone = 0;
@@ -89,7 +89,7 @@ exec_upgrade(int argc, char **argv)
 			reponame = optarg;
 			break;
 		case 'y':
-			yes = true;
+			yes_arg = true;
 			break;
 		default:
 			usage_upgrade();
@@ -157,18 +157,18 @@ exec_upgrade(int argc, char **argv)
 		yes = yes_arg;
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
-				"Upgrades have been requested for the following %d "
-				"packages (%d packages in the universe):\n\n", nbactions, pkg_jobs_total(jobs));
+				"The following %d packages will be affected (of %d in the universe):\n\n",
+				nbactions, pkg_jobs_total(jobs));
 
 			if (!yes && !dry_run)
-				yes = query_yesno("\nProceed with upgrading "
-						"packages [y/N]: ");
+				yes = query_yesno("\nProceed with this action [y/N]: ");
 			if (dry_run)
 				yes = false;
 		}
 
 		if (yes) {
 			retcode = pkg_jobs_apply(jobs);
+			nbdone = 1;
 			if (retcode == EPKG_CONFLICT) {
 				continue;
 			}
@@ -182,6 +182,9 @@ exec_upgrade(int argc, char **argv)
 		}
 		break;
 	}
+
+	if (nbdone == 0 && yes)
+		printf("Your packages are up to date\n");
 
 	retcode = EX_OK;
 
