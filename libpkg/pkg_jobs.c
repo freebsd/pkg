@@ -45,7 +45,8 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 
-static int find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, int priority);
+static int find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m,
+		bool root, int priority, bool recursive);
 static struct pkg *get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
 static struct pkg *get_remote_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
@@ -562,7 +563,7 @@ new_pkg_version(struct pkg_jobs *j)
 	pkg_jobs_add_universe(j, p, INT_MAX, true);
 
 	/* Use maximum priority for pkg */
-	if (find_remote_pkg(j, origin, MATCH_EXACT, false, INT_MAX) == EPKG_OK) {
+	if (find_remote_pkg(j, origin, MATCH_EXACT, false, INT_MAX, true) == EPKG_OK) {
 		ret = true;
 		goto end;
 	}
@@ -574,7 +575,8 @@ end:
 }
 
 static int
-find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, int priority)
+find_remote_pkg(struct pkg_jobs *j, const char *pattern,
+		match_t m, bool root, int priority, bool recursive)
 {
 	struct pkg *p = NULL;
 	struct pkg *p1;
@@ -637,7 +639,7 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, i
 		/* Add a package to request chain and populate universe */
 
 		pkg_jobs_add_req(j, origin, p, true, priority);
-		rc = pkg_jobs_add_universe(j, p, priority, true);
+		rc = pkg_jobs_add_universe(j, p, priority, recursive);
 
 
 		p = NULL;
@@ -1111,7 +1113,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 			else {
 				pkg_get(pkg, PKG_ORIGIN, &origin);
 				/* Do not test we ignore what doesn't exists remotely */
-				find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
+				find_remote_pkg(j, origin, MATCH_EXACT, false, 0, true);
 			}
 			pkg = NULL;
 		}
@@ -1149,6 +1151,8 @@ jobs_solve_install(struct pkg_jobs *j)
 	struct pkg *pkg;
 	struct pkgdb_it *it;
 	const char *origin;
+	int flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
+			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST) {
 		if (new_pkg_version(j)) {
@@ -1159,49 +1163,29 @@ jobs_solve_install(struct pkg_jobs *j)
 
 	if (j->solved == 0) {
 		LL_FOREACH(j->patterns, jp) {
-			if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE) {
-				if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
-					return (EPKG_FATAL);
+			if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
+				return (EPKG_FATAL);
 
-				pkg = NULL;
-				while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS)
-						== EPKG_OK) {
-					pkg_jobs_add_universe(j, pkg, 0, true);
+			pkg = NULL;
+			while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
+				pkg_jobs_add_universe(j, pkg, 0, j->flags & PKG_FLAG_RECURSIVE);
 
-					if (pkg_is_locked(pkg)) {
-						/* Keep locked packages to the local version */
-						pkg_emit_locked(pkg);
-					}
-					else {
-						pkg_get(pkg, PKG_ORIGIN, &origin);
-						/* TODO: use repository priority here */
-						if (find_remote_pkg(j, origin, MATCH_EXACT, true, 0)
-								== EPKG_FATAL)
-							pkg_emit_error("No packages matching '%s', has been found in "
-									"the repositories", origin);
-					}
-					pkg = NULL;
+				if (pkg_is_locked(pkg)) {
+					/* Keep locked packages to the local version */
+					pkg_emit_locked(pkg);
 				}
-
-				pkgdb_it_free(it);
-			} else {
-				if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
-					return (EPKG_FATAL);
-				pkg = NULL;
-				if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-					if (pkg_is_locked(pkg)) {
-						pkg_emit_locked(pkg);
-						pkgdb_it_free(it);
-						return (EPKG_LOCKED);
-					}
-					pkg_jobs_add_universe(j, pkg, 0, true);
+				else {
+					pkg_get(pkg, PKG_ORIGIN, &origin);
+					/* TODO: use repository priority here */
+					if (find_remote_pkg(j, origin, MATCH_EXACT, true, 0,
+							j->flags & PKG_FLAG_RECURSIVE) == EPKG_FATAL)
+						pkg_emit_error("No packages matching '%s', has been found in "
+								"the repositories", origin);
 				}
-				pkgdb_it_free(it);
-				/* TODO: use repository priority here */
-				if (find_remote_pkg(j, jp->pattern, jp->match, true, 0) == EPKG_FATAL)
-					pkg_emit_error("No packages matching '%s' has been found in "
-							"the repositories", jp->pattern);
+				pkg = NULL;
 			}
+
+			pkgdb_it_free(it);
 		}
 	}
 	else {
@@ -1252,7 +1236,8 @@ jobs_solve_fetch(struct pkg_jobs *j)
 			else {
 				pkg_get(pkg, PKG_ORIGIN, &origin);
 				/* Do not test we ignore what doesn't exists remotely */
-				find_remote_pkg(j, origin, MATCH_EXACT, false, 0);
+				find_remote_pkg(j, origin, MATCH_EXACT, false, 0,
+						j->flags & PKG_FLAG_RECURSIVE);
 			}
 			pkg = NULL;
 		}
@@ -1260,7 +1245,8 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	} else {
 		LL_FOREACH(j->patterns, jp) {
 			/* TODO: use repository priority here */
-			if (find_remote_pkg(j, jp->pattern, jp->match, true, 0) == EPKG_FATAL)
+			if (find_remote_pkg(j, jp->pattern, jp->match, true, 0,
+					j->flags & PKG_FLAG_RECURSIVE) == EPKG_FATAL)
 				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
 		}
 	}
