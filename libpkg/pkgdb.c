@@ -3886,12 +3886,11 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 		"SELECT name, version, origin FROM integritycheck WHERE path = ?1;";
 
 	const char sql_integrity_prepare[] = ""
-		"SELECT path, COUNT(path) FROM ("
-		"SELECT path FROM integritycheck UNION ALL "
-		"SELECT path FROM files, main.packages AS p "
-		"WHERE p.id = package_id AND p.origin NOT IN "
-		"(SELECT origin FROM integritycheck)"
-		") GROUP BY path HAVING (COUNT(path) > 1 );";
+		"SELECT f.path FROM files as f, integritycheck as i "
+		"LEFT JOIN packages as p ON "
+		"p.id = f.package_id "
+		"WHERE f.path = i.path AND "
+		"p.origin != i.origin GROUP BY f.path";
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql_integrity_prepare);
 	if (sqlite3_prepare_v2(db->sqlite,
