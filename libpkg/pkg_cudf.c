@@ -159,7 +159,9 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	}
 
 	column = 0;
-	if (HASH_COUNT(pkg->conflicts) > 0 || conflicts_chain->next != NULL) {
+	if (HASH_COUNT(pkg->conflicts) > 0 ||
+			(conflicts_chain->next != NULL &&
+			conflicts_chain->next->priority != INT_MIN)) {
 		if (fprintf(f, "conflicts: ") < 0)
 			return (EPKG_FATAL);
 		HASH_ITER(hh, pkg->conflicts, conflict, ctmp) {
@@ -170,7 +172,7 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		}
 		ver = 1;
 		LL_FOREACH(conflicts_chain, u) {
-			if (u->pkg != pkg) {
+			if (u->pkg != pkg && u->priority != INT_MIN) {
 				if (cudf_print_conflict(f, origin, ver,
 						(u->next != NULL && u->next->pkg != pkg), &column) < 0) {
 					return (EPKG_FATAL);
@@ -238,11 +240,22 @@ static int
 pkg_cudf_version_cmp(struct pkg_job_universe_item *a, struct pkg_job_universe_item *b)
 {
 	const char *vera, *verb;
+	int ret;
 
 	pkg_get(a->pkg, PKG_VERSION, &vera);
 	pkg_get(b->pkg, PKG_VERSION, &verb);
 
-	return (pkg_version_cmp(vera, verb));
+	ret = pkg_version_cmp(vera, verb);
+	if (ret == 0) {
+		/* Ignore remote packages whose versions are equal to ours */
+		if (a->pkg->type != PKG_INSTALLED)
+			a->priority = INT_MIN;
+		else if (b->pkg->type != PKG_INSTALLED)
+			b->priority = INT_MIN;
+	}
+
+
+	return (ret);
 }
 
 int
@@ -274,9 +287,12 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 
 		version = 1;
 		LL_FOREACH(it, icur) {
-			pkg = icur->pkg;
-			if (cudf_emit_pkg(pkg, version++, f, it) != EPKG_OK)
-				return (EPKG_FATAL);
+			if (icur->priority != INT_MIN) {
+				pkg = icur->pkg;
+
+				if (cudf_emit_pkg(pkg, version ++, f, it) != EPKG_OK)
+					return (EPKG_FATAL);
+			}
 		}
 	}
 
