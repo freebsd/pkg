@@ -615,6 +615,8 @@ static struct keyact {
 	/* old pkg compat */
 	{ "name", name_key },
 	{ "pkgdep", pkgdep },
+	{ "mtree", comment_key },
+	{ "stopdaemon", comment_key },
 	{ NULL, NULL },
 };
 
