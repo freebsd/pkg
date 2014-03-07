@@ -46,6 +46,7 @@ struct pkg_solve_item;
 struct pkg_solve_variable {
 	struct pkg *pkg;
 	bool to_install;
+	bool guess;
 	int priority;
 	const char *digest;
 	const char *origin;
@@ -217,75 +218,38 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 	return (true);
 }
 
-static bool
-pkg_solve_check_conflicts(struct pkg_solve_variable *var, bool guess, bool *skip)
-{
-	struct pkg_solve_item *it;
-	struct _pkg_solve_var_rule *rul;
-	bool test = false;
-
-	LL_FOREACH(var->rules, rul) {
-		test = false;
-		*skip = false;
-		LL_FOREACH(rul->rule, it) {
-			if (it->var->resolved) {
-				test |= it->var->to_install ^ it->inverse;
-			}
-			else if (it->var == var) {
-				test |= guess ^ it->inverse;
-			}
-			else {
-				*skip = true;
-				break;
-			}
-		}
-		if (*skip)
-			continue;
-		if (!test) {
-			/* We have a conflict */
-			break;
-		}
-	}
-
-	return (test);
-}
-
-
 /**
- * Use the default propagation policy:
- * - do not deinstall packages that are not in conflict
- * - do not install additional new packages
- *
- * This must be called after the explicit propagation
+ * Test intermediate SAT guess
+ * @param problem
+ * @return true if guess is accepted
  */
-static int
-pkg_solve_propagate_default(struct pkg_solve_problem *problem)
+bool
+pkg_solve_test_guess(struct pkg_solve_problem *problem)
 {
+	bool test = false;
 	struct pkg_solve_variable *var, *tvar;
-	bool guess, skip;
-	int ret = EPKG_FATAL;
+	struct _pkg_solve_var_rule *rul;
+	struct pkg_solve_item *it, *cur;
 
 	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
-		if (!var->resolved) {
-			/* Guess true for installed packages and false otherwise */
-			guess = (var->pkg->type == PKG_INSTALLED) ? true : false;
-			if (!pkg_solve_check_conflicts (var, guess, &skip)) {
-				guess = !guess;
-				if (skip || !pkg_solve_check_conflicts (var, guess, &skip)) {
-					continue;
+		LL_FOREACH(var->rules, rul) {
+			it = rul->rule;
+			if (true) {
+				/* Check guess */
+				test = false;
+				LL_FOREACH(it, cur) {
+					if (cur->var->resolved)
+						test |= cur->var->to_install ^ cur->inverse;
+					else
+						test |= cur->var->guess ^ cur->inverse;
 				}
+				if (!test)
+					return (false);
 			}
-			var->to_install = guess;
-			var->resolved = true;
-			pkg_debug(2, "decided %s-%s(%d) to %s",
-					var->origin, var->digest,
-					var->priority, var->to_install ? "install" : "delete");
-			pkg_solve_update_var_resolved(var);
-			ret = EPKG_OK;
 		}
 	}
 
-	return (ret);
+	return (true);
 }
 
 /**
@@ -298,25 +262,48 @@ pkg_solve_propagate_default(struct pkg_solve_problem *problem)
 bool
 pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
-	int propagated;
+	int propagated, iters = 0;
+	bool guessed = false;
+	struct pkg_solve_variable *var, *tvar;
+
 	/* Initially propagate explicit rules */
 	pkg_solve_propagate_pure(problem);
+	if (!pkg_solve_propagate_units(problem, &propagated)) {
+		pkg_emit_error("SAT: conflicting request, cannot solve");
+		return (false);
+	}
 
-	while (!pkg_solve_check_rules(problem)) {
-		/* TODO:
-		 * 1) assign a free variable
-		 * 2) check for contradictions
-		 * 3) analyse and learn
-		 * 4) undo an assignment
-		 */
-		propagated = 0;
-		if (!pkg_solve_propagate_units(problem, &propagated)) {
-			pkg_emit_error("unimplemented: cannot solve SAT problem as units propagation has failed");
-			return (false);
+	/* Set initial guess */
+	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+		if (!var->resolved) {
+			/* Guess true for installed packages and false otherwise */
+			var->guess = (var->pkg->type == PKG_INSTALLED) ? true : false;
 		}
-		if (pkg_solve_propagate_default(problem) == EPKG_FATAL && propagated == 0) {
-			pkg_emit_error("unimplemented: cannot solve SAT problem as it is conflicting");
-			return (false);
+	}
+
+	while (!guessed) {
+		HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+			if (pkg_solve_test_guess(problem)) {
+				guessed = true;
+				break;
+			}
+			else {
+				tvar->guess = !tvar->guess;
+				if (pkg_solve_test_guess(problem)) {
+					guessed = true;
+					break;
+				}
+			}
+		}
+		iters ++;
+	}
+
+	pkg_debug(1, "solved SAT problem in %d guesses", iters);
+
+	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+		if (!var->resolved) {
+			var->to_install = var->guess;
+			var->resolved = true;
 		}
 	}
 
