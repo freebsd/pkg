@@ -841,25 +841,25 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			res->pkg[0] = del_var->pkg;
 			res->type = PKG_SOLVED_DELETE;
 			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule deletion of %s(%s)",
-					del_var->origin, del_var->digest);
+			pkg_debug(3, "pkg_solve: schedule deletion of %s(%d) %s",
+					del_var->origin, res->priority, del_var->digest);
 		}
 		else if (seen_del == 0 && seen_add != 0) {
 			res->priority = add_var->priority;
 			res->pkg[0] = add_var->pkg;
 			res->type = PKG_SOLVED_INSTALL;
 			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule installation of %s(%s)",
-					add_var->origin, add_var->digest);
+			pkg_debug(3, "pkg_solve: schedule installation of %s(%d) %s",
+					add_var->origin, res->priority, add_var->digest);
 		}
 		else {
-			res->priority = MIN(del_var->priority, add_var->priority);
+			res->priority = MAX(del_var->priority, add_var->priority);
 			res->pkg[0] = add_var->pkg;
 			res->pkg[1] = del_var->pkg;
 			res->type = PKG_SOLVED_UPGRADE;
 			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
-					del_var->origin, del_var->digest, add_var->digest);
+			pkg_debug(3, "pkg_solve: schedule upgrade of %s(%d) from %s to %s",
+					del_var->origin, res->priority, del_var->digest, add_var->digest);
 		}
 		j->count ++;
 	}
