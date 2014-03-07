@@ -293,7 +293,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
  */
 static int
 pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
-		int priority, struct pkg_job_universe_item **found)
+		int *priority, struct pkg_job_universe_item **found)
 {
 	struct pkg_job_universe_item *item, *cur, *tmp = NULL;
 	const char *origin, *digest, *version, *name;
@@ -324,16 +324,18 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 	HASH_FIND_STR(j->seen, digest, seen);
 	if (seen != NULL) {
 		cur = seen->un;
-		if (priority > cur->priority)
-			pkg_jobs_update_universe_priority(j, cur, priority, "found in seen",
+		if (*priority > cur->priority)
+			pkg_jobs_update_universe_priority(j, cur, *priority, "found in seen",
 					false);
+		else if (*priority < cur->priority)
+			*priority = cur->priority;
 		*found = seen->un;
 		return (EPKG_END);
 	}
 
 	pkg_debug(2, "universe: add new %s pkg: %s(%d), (%s-%s)",
 				(pkg->type == PKG_INSTALLED ? "local" : "remote"), origin,
-				priority, name, version);
+				*priority, name, version);
 
 	item = calloc(1, sizeof (struct pkg_job_universe_item));
 	if (item == NULL) {
@@ -342,11 +344,18 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 	}
 
 	item->pkg = pkg;
-	item->priority = priority;
+	item->priority = *priority;
 
 	HASH_FIND_STR(j->universe, origin, tmp);
 	if (tmp == NULL) {
 		HASH_ADD_KEYPTR(hh, j->universe, origin, strlen(origin), item);
+	}
+	else {
+		if (tmp->priority > *priority)
+			*priority = tmp->priority;
+		else if (tmp->priority < *priority)
+			pkg_jobs_update_universe_priority(j, tmp, *priority, "same origin",
+					false);
 	}
 
 	DL_APPEND(tmp, item);
@@ -375,7 +384,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	int maxpri;
 
 	/* Add the requested package itself */
-	ret = pkg_jobs_handle_pkg_universe(j, pkg, priority, &local);
+	ret = pkg_jobs_handle_pkg_universe(j, pkg, &priority, &local);
 
 	if (ret == EPKG_END)
 		return (EPKG_OK);
@@ -633,29 +642,28 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		pkg_get(p, PKG_ORIGIN, &origin);
 		HASH_FIND_STR(j->universe, origin, jit);
 		if (jit != NULL) {
-			p1 = jit->pkg;
-			seen = true;
-		}
-
-		if (p1 != NULL) {
-			pkg_get(p1, PKG_VERSION, &buf1);
-			pkg_get(p, PKG_VERSION, &buf2);
 			p->direct = root;
 			/* We have a more recent package */
-			if (!pkg_need_upgrade(p, p1, false)) {
+			if (!pkg_need_upgrade(p, jit->pkg, false)) {
 				if (root)
 					pkg_emit_already_installed(p);
 				rc = EPKG_INSTALLED;
 				continue;
 			}
+			if (jit->priority > priority)
+				priority = jit->priority;
+			else
+				pkg_jobs_update_universe_priority(j, jit, priority,
+						"remote found", false);
 		}
-
-		if (j->type != PKG_JOBS_FETCH) {
-			if (!newer_than_local_pkg(j, p, force)) {
-				if (root)
-					pkg_emit_already_installed(p);
-				rc = EPKG_INSTALLED;
-				continue;
+		else {
+			if (j->type != PKG_JOBS_FETCH) {
+				if (!newer_than_local_pkg(j, p, force)) {
+					if (root)
+						pkg_emit_already_installed(p);
+					rc = EPKG_INSTALLED;
+					continue;
+				}
 			}
 		}
 
@@ -1299,18 +1307,6 @@ jobs_solve_fetch(struct pkg_jobs *j)
 static int
 pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
 {
-	/* Always execute delete requests before install or upgrade */
-	if (r1->type == PKG_SOLVED_DELETE && r2->type != PKG_SOLVED_DELETE) {
-		return -1;
-	}
-	else if (r1->type != PKG_SOLVED_DELETE && r2->type == PKG_SOLVED_DELETE) {
-		return 1;
-	}
-	else if (r1->type == PKG_SOLVED_DELETE && r2->type == PKG_SOLVED_DELETE) {
-		/* Inverse deletion priority */
-		return (r1->priority - r2->priority);
-	}
-
 	return (r2->priority - r1->priority);
 }
 
@@ -1429,16 +1425,19 @@ pkg_jobs_type(struct pkg_jobs *j)
 }
 
 static int
-pkg_jobs_handle_install(struct pkg *new, struct pkg *old, struct pkg_jobs *j, bool handle_rc,
+pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_rc,
 		const char *cachedir, struct pkg_manifest_key *keys)
 {
-	struct pkg *newpkg = NULL;
+	struct pkg *newpkg = NULL, *new, *old;
 	const char *pkgorigin, *oldversion = NULL;
 	struct pkg_note *an;
 	char path[MAXPATHLEN];
 	bool automatic;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
+
+	old = ps->pkg[1];
+	new = ps->pkg[0];
 
 	pkg_get(new, PKG_ORIGIN, &pkgorigin,
 				PKG_AUTOMATIC, &automatic);
@@ -1471,7 +1470,7 @@ pkg_jobs_handle_install(struct pkg *new, struct pkg *old, struct pkg_jobs *j, bo
 	if (automatic)
 		flags |= PKG_ADD_AUTOMATIC;
 
-	if (old != NULL) {
+	if (old != NULL && !ps->already_deleted) {
 		if ((retcode = pkg_delete(old, j->db, PKG_DELETE_UPGRADE)) != EPKG_OK) {
 			pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
 			goto cleanup;
@@ -1534,6 +1533,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	DL_FOREACH(j->jobs, ps) {
 		switch (ps->type) {
 		case PKG_SOLVED_DELETE:
+		case PKG_SOLVED_UPGRADE_REMOVE:
 			p = ps->pkg[0];
 			pkg_get(p, PKG_NAME, &name);
 			if ((strcmp(name, "pkg") == 0 ||
@@ -1553,13 +1553,13 @@ pkg_jobs_execute(struct pkg_jobs *j)
 				goto cleanup;
 			break;
 		case PKG_SOLVED_INSTALL:
-			retcode = pkg_jobs_handle_install(ps->pkg[0], NULL,
+			retcode = pkg_jobs_handle_install(ps,
 					j, handle_rc, cachedir, keys);
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
 		case PKG_SOLVED_UPGRADE:
-			retcode = pkg_jobs_handle_install(ps->pkg[0], ps->pkg[1],
+			retcode = pkg_jobs_handle_install(ps,
 					j, handle_rc, cachedir, keys);
 			if (retcode != EPKG_OK)
 				goto cleanup;
@@ -1669,7 +1669,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 
 #define PKG_JOBS_FETCH_CALCULATE(list) do {										\
 	DL_FOREACH((list), ps) {														\
-		if (ps->type != PKG_SOLVED_DELETE) {										\
+		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {\
 			p = ps->pkg[0];															\
 			int64_t pkgsize;														\
 			pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);				\
@@ -1684,7 +1684,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 
 #define PKG_JOBS_DO_FETCH(list) do {												\
 	DL_FOREACH((list), ps) {														\
-		if (ps->type != PKG_SOLVED_DELETE) {										\
+		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {\
 			p = ps->pkg[0];															\
 			if (pkg_repo_fetch(p) != EPKG_OK)										\
 				return (EPKG_FATAL);												\
@@ -1764,7 +1764,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 
 	pkg_manifest_keys_new(&keys);
 	DL_FOREACH(j->jobs, ps) {
-		if (ps->type == PKG_SOLVED_DELETE) {
+		if (ps->type == PKG_SOLVED_DELETE || ps->type == PKG_SOLVED_UPGRADE_REMOVE) {
 			continue;
 		}
 		else {

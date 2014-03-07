@@ -207,6 +207,7 @@ struct pkg_solved {
 	struct pkg *pkg[2];
 	int priority;
 	pkg_solved_t type;
+	bool already_deleted;
 	struct pkg_solved *prev, *next;
 };
 

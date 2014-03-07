@@ -569,6 +569,7 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 			}
 			break;
 		case PKG_SOLVED_DELETE:
+		case PKG_SOLVED_UPGRADE_REMOVE:
 			printf("and may not be deinstalled\n");
 			return;
 			break;
@@ -629,6 +630,9 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 		*oldsize += flatsize;
 
 		pkg_printf("\tRemoving %n-%v\n", new_pkg, new_pkg);
+		break;
+	case PKG_SOLVED_UPGRADE_REMOVE:
+		pkg_printf("\tRemoving old version of %n-%v\n", new_pkg, new_pkg);
 		break;
 	case PKG_SOLVED_FETCH:
 		*dlsize += pkgsize;

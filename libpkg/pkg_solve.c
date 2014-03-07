@@ -234,7 +234,7 @@ pkg_solve_test_guess(struct pkg_solve_problem *problem)
 	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
 		LL_FOREACH(var->rules, rul) {
 			it = rul->rule;
-			if (true) {
+			if (it->nitems != it->nresolved) {
 				/* Check guess */
 				test = false;
 				LL_FOREACH(it, cur) {
@@ -288,7 +288,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 				break;
 			}
 			else {
-				tvar->guess = !tvar->guess;
+				var->guess = !var->guess;
 				if (pkg_solve_test_guess(problem)) {
 					guessed = true;
 					break;
@@ -449,14 +449,15 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 
 static int
 pkg_solve_add_var_rules (struct pkg_solve_variable *var,
-		struct pkg_solve_item *rule, int nrules, bool iterate_vars)
+		struct pkg_solve_item *rule, int nrules, bool iterate_vars,
+		const char *desc)
 {
 	struct _pkg_solve_var_rule *head = NULL;
 	struct pkg_solve_variable *tvar;
 
 	LL_FOREACH(var, tvar) {
-		pkg_debug(4, "solver: add %d-ary clause to variable %s-%s: %d",
-				nrules, tvar->origin, tvar->digest, rule->inverse);
+		pkg_debug(4, "solver: add %d-ary %s clause to variable %s-%s: %d",
+				nrules, desc, tvar->origin, tvar->digest, rule->inverse);
 		tvar->nrules += nrules;
 		head = calloc(1, sizeof (struct _pkg_solve_var_rule));
 		if (head == NULL) {
@@ -527,8 +528,8 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 				RULE_ITEM_PREPEND(rule, it);
 				cnt ++;
 			}
-			pkg_solve_add_var_rules (var, rule->items, cnt, true);
-			pkg_solve_add_var_rules (cur_var, rule->items, cnt, false);
+			pkg_solve_add_var_rules (var, rule->items, cnt, true, "dependency");
+			pkg_solve_add_var_rules (cur_var, rule->items, cnt, false, "dependency");
 
 			LL_PREPEND(problem->rules, rule);
 			problem->rules_count ++;
@@ -551,7 +552,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 				HASH_FIND_STR(tvar->pkg->conflicts, origin, cfound);
 				if (cfound == NULL) {
 					/* Skip non-mutual conflicts */
-					//continue;
+					continue;
 				}
 				/* Conflict rule: (!A | !Bx) */
 				rule = pkg_solve_rule_new();
@@ -574,8 +575,8 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 
 				LL_PREPEND(problem->rules, rule);
 				problem->rules_count ++;
-				pkg_solve_add_var_rules (tvar, rule->items, 2, false);
-				pkg_solve_add_var_rules (cur_var, rule->items, 2, false);
+				pkg_solve_add_var_rules (tvar, rule->items, 2, false, "conflict");
+				pkg_solve_add_var_rules (cur_var, rule->items, 2, false, "conflict");
 			}
 		}
 
@@ -610,8 +611,8 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					LL_PREPEND(problem->rules, rule);
 					problem->rules_count ++;
 
-					pkg_solve_add_var_rules (tvar, rule->items, 2, true);
-					pkg_solve_add_var_rules (cur_var, rule->items, 2, false);
+					pkg_solve_add_var_rules (tvar, rule->items, 2, false, "chain conflict");
+					pkg_solve_add_var_rules (cur_var, rule->items, 2, false, "chain conflict");
 				}
 			}
 		}
@@ -679,7 +680,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 
 		/* Requests are unary rules */
 		RULE_ITEM_PREPEND(rule, it);
-		pkg_solve_add_var_rules (var, it, 1, false);
+		pkg_solve_add_var_rules (var, it, 1, false, "unary add");
 		LL_PREPEND(problem->rules, rule);
 		problem->rules_count ++;
 	}
@@ -717,7 +718,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		/* Requests are unary rules */
 		RULE_ITEM_PREPEND(rule, it);
 		LL_PREPEND(problem->rules, rule);
-		pkg_solve_add_var_rules (var, it, 1, false);
+		pkg_solve_add_var_rules (var, it, 1, false, "unary del");
 		problem->rules_count ++;
 	}
 
@@ -814,7 +815,7 @@ static void
 pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		struct pkg_solve_problem *problem, struct pkg_jobs *j)
 {
-	struct pkg_solved *res;
+	struct pkg_solved *res, *dres;
 	struct pkg_solve_variable *cur_var, *del_var = NULL, *add_var = NULL;
 	int seen_add = 0, seen_del = 0;
 
@@ -856,12 +857,27 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 					add_var->origin, res->priority, add_var->digest);
 		}
 		else {
-			res->priority = MAX(del_var->priority, add_var->priority);
+			assert(del_var->priority >= add_var->priority);
+			if (del_var->priority > add_var->priority) {
+				dres = calloc(1, sizeof(struct pkg_solved));
+				if (dres == NULL) {
+					pkg_emit_errno("calloc", "pkg_solved");
+					return;
+				}
+				dres->priority = del_var->priority;
+				dres->pkg[0] = del_var->pkg;
+				dres->pkg[1] = add_var->pkg;
+				dres->type = PKG_SOLVED_UPGRADE_REMOVE;
+				DL_APPEND(j->jobs, dres);
+				res->already_deleted = true;
+			}
+			res->priority = add_var->priority;
 			res->pkg[0] = add_var->pkg;
 			res->pkg[1] = del_var->pkg;
 			res->type = PKG_SOLVED_UPGRADE;
 			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule upgrade of %s(%d->%d) from %s to %s",
+			pkg_debug(3, "pkg_solve: schedule upgrade(%s) of %s(%d->%d) from %s to %s",
+					res->already_deleted ? "delayed" : "immediate",
 					del_var->origin, del_var->priority,
 					add_var->priority, del_var->digest, add_var->digest);
 		}
