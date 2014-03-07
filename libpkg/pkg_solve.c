@@ -129,7 +129,7 @@ pkg_solve_update_var_resolved (struct pkg_solve_variable *var)
  * @return true if there are units propagated
  */
 static bool
-pkg_solve_propagate_units(struct pkg_solve_problem *problem)
+pkg_solve_propagate_units(struct pkg_solve_problem *problem, int *propagated)
 {
 	struct pkg_solve_item *it, *unresolved = NULL;
 	int solved_vars;
@@ -167,6 +167,7 @@ check_again:
 							}
 						}
 						solved_vars ++;
+						(*propagated) ++;
 						/* We want to try propagating all clauses for a single variable */
 						goto check_again;
 					}
@@ -217,22 +218,29 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 }
 
 static bool
-pkg_solve_check_conflicts(struct pkg_solve_variable *var, bool guess)
+pkg_solve_check_conflicts(struct pkg_solve_variable *var, bool guess, bool *skip)
 {
 	struct pkg_solve_item *it;
 	struct _pkg_solve_var_rule *rul;
 	bool test = false;
 
 	LL_FOREACH(var->rules, rul) {
-		test = true;
+		test = false;
+		*skip = false;
 		LL_FOREACH(rul->rule, it) {
 			if (it->var->resolved) {
 				test |= it->var->to_install ^ it->inverse;
 			}
 			else if (it->var == var) {
-				test |= guess;
+				test |= guess ^ it->inverse;
+			}
+			else {
+				*skip = true;
+				break;
 			}
 		}
+		if (*skip)
+			continue;
 		if (!test) {
 			/* We have a conflict */
 			break;
@@ -254,16 +262,17 @@ static int
 pkg_solve_propagate_default(struct pkg_solve_problem *problem)
 {
 	struct pkg_solve_variable *var, *tvar;
-	bool guess;
+	bool guess, skip;
+	int ret = EPKG_FATAL;
 
 	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
 		if (!var->resolved) {
 			/* Guess true for installed packages and false otherwise */
-			guess = (var->pkg->type == PKG_INSTALLED);
-			if (!pkg_solve_check_conflicts (var, guess)) {
+			guess = (var->pkg->type == PKG_INSTALLED) ? true : false;
+			if (!pkg_solve_check_conflicts (var, guess, &skip)) {
 				guess = !guess;
-				if (!pkg_solve_check_conflicts (var, guess)) {
-					return (EPKG_FATAL);
+				if (skip || !pkg_solve_check_conflicts (var, guess, &skip)) {
+					continue;
 				}
 			}
 			var->to_install = guess;
@@ -272,10 +281,11 @@ pkg_solve_propagate_default(struct pkg_solve_problem *problem)
 					var->origin, var->digest,
 					var->priority, var->to_install ? "install" : "delete");
 			pkg_solve_update_var_resolved(var);
+			ret = EPKG_OK;
 		}
 	}
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 /**
@@ -288,7 +298,7 @@ pkg_solve_propagate_default(struct pkg_solve_problem *problem)
 bool
 pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
-
+	int propagated;
 	/* Initially propagate explicit rules */
 	pkg_solve_propagate_pure(problem);
 
@@ -299,12 +309,13 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		 * 3) analyse and learn
 		 * 4) undo an assignment
 		 */
-		if (!pkg_solve_propagate_units(problem)) {
-			pkg_emit_error("unimplemented: cannot solve SAT problem as units propagation has fallen");
+		propagated = 0;
+		if (!pkg_solve_propagate_units(problem, &propagated)) {
+			pkg_emit_error("unimplemented: cannot solve SAT problem as units propagation has failed");
 			return (false);
 		}
-		if (pkg_solve_propagate_default(problem) == EPKG_FATAL) {
-			pkg_emit_error("unimplemented: cannot solve SAT problem as direct conflict has been found");
+		if (pkg_solve_propagate_default(problem) == EPKG_FATAL && propagated == 0) {
+			pkg_emit_error("unimplemented: cannot solve SAT problem as it is conflicting");
 			return (false);
 		}
 	}
@@ -484,7 +495,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *pvar, bool conflicting)
 {
 	struct pkg_dep *dep, *dtmp;
-	struct pkg_conflict *conflict, *ctmp;
+	struct pkg_conflict *conflict, *ctmp, *cfound;
 	struct pkg *pkg;
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
@@ -550,6 +561,11 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			}
 			/* Add conflict rule from each of the alternative */
 			LL_FOREACH(var, tvar) {
+				HASH_FIND_STR(tvar->pkg->conflicts, origin, cfound);
+				if (cfound == NULL) {
+					/* Skip non-mutual conflicts */
+					//continue;
+				}
 				/* Conflict rule: (!A | !Bx) */
 				rule = pkg_solve_rule_new();
 				if (rule == NULL)
@@ -858,8 +874,9 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			res->pkg[1] = del_var->pkg;
 			res->type = PKG_SOLVED_UPGRADE;
 			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule upgrade of %s(%d) from %s to %s",
-					del_var->origin, res->priority, del_var->digest, add_var->digest);
+			pkg_debug(3, "pkg_solve: schedule upgrade of %s(%d->%d) from %s to %s",
+					del_var->origin, del_var->priority,
+					add_var->priority, del_var->digest, add_var->digest);
 		}
 		j->count ++;
 	}
