@@ -223,51 +223,61 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg,
 
 static void
 pkg_jobs_update_universe_priority(struct pkg_jobs *j,
-		struct pkg_job_universe_item *item, int priority)
+		struct pkg_job_universe_item *item, int priority,
+		const char *why, bool local_only)
 {
-	const char *origin;
+	const char *origin, *digest;
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
 	struct pkg_job_universe_item *found, *cur, *it;
-
-	pkg_get(item->pkg, PKG_ORIGIN, &origin);
+	const char *is_local;
+	int maxpri;
 
 	LL_FOREACH(item, it) {
-		if (PRIORITY_CAN_UPDATE(priority, it->priority)) {
-			pkg_debug(2, "universe: update priority of %s: %d -> %d",
-					origin, item->priority, priority);
+
+		pkg_get(it->pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+		if (!local_only || it->pkg->type == PKG_INSTALLED) {
+			is_local = it->pkg->type == PKG_INSTALLED ? "local" : "remote";
+			pkg_debug(2, "universe: update %s priority(%s) of %s(%s): %d -> %d",
+					is_local, why, origin, digest, it->priority, priority);
 			it->priority = priority;
 
 			while (pkg_deps(it->pkg, &d) == EPKG_OK) {
 				HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
 				if (found != NULL) {
 					LL_FOREACH(found, cur) {
-						if (PRIORITY_CAN_UPDATE(priority, cur->priority) &&
-								cur->priority < priority + 1)
-							pkg_jobs_update_universe_priority(j, cur, priority + 1);
+						if (cur->priority < priority + 1)
+							pkg_jobs_update_universe_priority(j, cur,
+									priority + 1, "dep", local_only);
 					}
 				}
 			}
 
 			d = NULL;
+			maxpri = priority;
 			while (pkg_rdeps(it->pkg, &d) == EPKG_OK) {
 				HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
 				if (found != NULL) {
 					LL_FOREACH(found, cur) {
-						if (PRIORITY_CAN_UPDATE(priority, cur->priority) &&
-								cur->priority > priority - 1)
-							pkg_jobs_update_universe_priority(j, cur, priority - 1);
+						if (cur->priority >= maxpri) {
+							maxpri = cur->priority + 1;
+						}
 					}
 				}
+			}
+			if (maxpri != priority) {
+				pkg_jobs_update_universe_priority(j, it,
+					maxpri, "rdep", local_only);
+				return;
 			}
 
 			while (pkg_conflicts(it->pkg, &c) == EPKG_OK) {
 				HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
 				if (found != NULL) {
 					LL_FOREACH(found, cur) {
-						if (PRIORITY_CAN_UPDATE(priority, cur->priority) &&
-								cur->priority < priority)
-							pkg_jobs_update_universe_priority(j, cur, priority);
+						if (cur->priority < priority)
+							pkg_jobs_update_universe_priority(j, cur, priority,
+									"conflict", local_only);
 					}
 				}
 			}
@@ -282,7 +292,8 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
  * @return item or NULL
  */
 static int
-pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
+pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
+		int priority, struct pkg_job_universe_item **found)
 {
 	struct pkg_job_universe_item *item, *cur, *tmp = NULL;
 	const char *origin, *digest, *version, *name;
@@ -305,6 +316,7 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 		}
 		else {
 			sbuf_delete(sb);
+			*found = NULL;
 			return (rc);
 		}
 	}
@@ -313,8 +325,9 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 	if (seen != NULL) {
 		cur = seen->un;
 		if (priority > cur->priority)
-			pkg_jobs_update_universe_priority(j, cur, priority);
-
+			pkg_jobs_update_universe_priority(j, cur, priority, "found in seen",
+					false);
+		*found = seen->un;
 		return (EPKG_END);
 	}
 
@@ -345,6 +358,8 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg, int priority)
 
 	j->total++;
 
+	*found = item;
+
 	return (EPKG_OK);
 }
 
@@ -355,11 +370,12 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	struct pkg_conflict *c = NULL;
 	struct pkg *npkg, *rpkg;
 	int ret;
-	struct pkg_job_universe_item *unit;
+	struct pkg_job_universe_item *unit, *local;
 	const char *origin;
+	int maxpri;
 
 	/* Add the requested package itself */
-	ret = pkg_jobs_handle_pkg_universe(j, pkg, priority);
+	ret = pkg_jobs_handle_pkg_universe(j, pkg, priority, &local);
 
 	if (ret == EPKG_END)
 		return (EPKG_OK);
@@ -394,7 +410,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
 		if (unit != NULL) {
 			if (unit->priority < priority + 1)
-				pkg_jobs_update_universe_priority(j, unit, priority + 1);
+				pkg_jobs_update_universe_priority(j, unit, priority + 1,
+						"dep from universe", false);
 			continue;
 		}
 
@@ -435,12 +452,13 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 
 	/* Go through all rdeps */
 	d = NULL;
+	maxpri = priority;
 	while (pkg_rdeps(pkg, &d) == EPKG_OK) {
 		/* XXX: this assumption can be applied only for the current plain dependencies */
 		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
 		if (unit != NULL) {
-			if (unit->priority > priority - 1)
-				pkg_jobs_update_universe_priority(j, unit, priority - 1);
+			if (unit->priority >= maxpri)
+				maxpri = unit->priority + 1;
 			continue;
 		}
 
@@ -457,8 +475,13 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 				return (EPKG_FATAL);
 			}
 		}
-		if (pkg_jobs_add_universe(j, npkg, priority - 1, recursive) != EPKG_OK)
+		if (pkg_jobs_add_universe(j, npkg, maxpri - 1, recursive) != EPKG_OK)
 			return (EPKG_FATAL);
+	}
+	if (priority != maxpri) {
+		/* Need to update due to rdeps order */
+		pkg_jobs_update_universe_priority(j, local, maxpri,
+							"rdep from universe", false);
 	}
 
 	/* Examine conflicts */
@@ -467,7 +490,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), unit);
 		if (unit != NULL) {
 			if (unit->priority < priority)
-				pkg_jobs_update_universe_priority(j, unit, priority);
+				pkg_jobs_update_universe_priority(j, unit, priority,
+						"conflict from universe", false);
 			continue;
 		}
 
@@ -509,7 +533,8 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p, int priority)
 			}
 			npkg = unit->pkg;
 			if (unit->priority > priority - 1) {
-				pkg_jobs_update_universe_priority(j, unit, priority - 1);
+				pkg_jobs_update_universe_priority(j, unit, priority - 1,
+						"automatic test", false);
 				unit->priority = priority - 1;
 			}
 		}
@@ -896,6 +921,25 @@ pkg_conflicts_add_missing(struct pkg_jobs *j, const char *origin, int priority)
 }
 
 static void
+pkg_conflicts_register_universe(struct pkg_jobs *j,
+		struct pkg_job_universe_item *u1,
+		struct pkg_job_universe_item *u2)
+{
+	pkg_conflicts_register(u1->pkg, u2->pkg);
+
+	if (u1->pkg->type == PKG_INSTALLED) {
+		/*
+		 * If the remote package has more priority, then we basically
+		 * want to update local (u1) priority just to ensure that it won't
+		 * be installed before we start
+		 */
+		if (u2->priority + 1 > u1->priority)
+			pkg_jobs_update_universe_priority(j, u1, u2->priority + 1,
+					"registering conflict(u2)", true);
+	}
+}
+
+static void
 pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
 {
 	struct pkg_jobs *j = (struct pkg_jobs *)ud;
@@ -937,11 +981,10 @@ pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
 	 */
 	LL_FOREACH(u1, cur1) {
 		LL_FOREACH(u2, cur2) {
-			pkg_conflicts_register(cur1->pkg, cur2->pkg);
-			if (cur1->priority > cur2->priority)
-				pkg_jobs_update_universe_priority(j, cur2, cur1->priority);
-			else if (cur2->priority > cur1->priority)
-				pkg_jobs_update_universe_priority(j, cur1, cur2->priority);
+			if ((cur1->pkg->type == PKG_INSTALLED && cur2->pkg->type == PKG_REMOTE) ||
+				(u1->pkg->type == PKG_REMOTE && cur2->pkg->type == PKG_REMOTE)) {
+				pkg_conflicts_register_universe(j, cur1, cur2);
+			}
 		}
 	}
 }
