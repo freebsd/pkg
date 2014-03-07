@@ -391,7 +391,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		rpkg = get_remote_pkg(j, origin, 0);
 		if (rpkg != NULL) {
-			if (!pkg_need_upgrade(rpkg, pkg, j->flags)) {
+			if (!pkg_need_upgrade(rpkg, pkg, false)) {
 				pkg_free(rpkg);
 				rpkg = NULL;
 			}
@@ -434,7 +434,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 			/* For upgrade jobs we need to ensure that we do not have a newer version */
 			rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (rpkg != NULL) {
-				if (!pkg_need_upgrade(rpkg, npkg, j->flags)) {
+				if (!pkg_need_upgrade(rpkg, npkg, false)) {
 					pkg_free(rpkg);
 					rpkg = NULL;
 				}
@@ -890,7 +890,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		return (true);
 	}
 
-	ret = pkg_need_upgrade(rp, lp, j->flags);
+	ret = pkg_need_upgrade(rp, lp, false);
 	pkg_free(lp);
 
 	return (ret);
