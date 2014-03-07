@@ -55,6 +55,7 @@ exec_upgrade(int argc, char **argv)
 	bool yes = true, yes_arg = false;
 	bool dry_run = false;
 	bool auto_update;
+	int done = 0;
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
@@ -168,7 +169,7 @@ exec_upgrade(int argc, char **argv)
 
 		if (yes) {
 			retcode = pkg_jobs_apply(jobs);
-			nbdone = 1;
+			done = 1;
 			if (retcode == EPKG_CONFLICT) {
 				continue;
 			}
@@ -183,7 +184,7 @@ exec_upgrade(int argc, char **argv)
 		break;
 	}
 
-	if (nbdone == 0 && yes)
+	if (done == 0 && yes)
 		printf("Your packages are up to date\n");
 
 	retcode = EX_OK;
