@@ -355,6 +355,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 	struct pkg *npkg, *rpkg;
 	int ret;
 	struct pkg_job_universe_item *unit;
+	const char *origin;
 
 	/* Add the requested package itself */
 	ret = pkg_jobs_handle_pkg_universe(j, pkg, priority);
@@ -365,6 +366,26 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 		return (EPKG_OK);
 	else if (ret != EPKG_OK)
 		return (EPKG_FATAL);
+
+	if (pkg->type == PKG_INSTALLED &&
+			(j->type == PKG_JOBS_UPGRADE ||
+			j->type == PKG_JOBS_INSTALL)) {
+		/* Check if remote has newer version */
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+		rpkg = get_remote_pkg(j, origin, 0);
+		if (rpkg != NULL) {
+			if (!pkg_need_upgrade(rpkg, pkg, j->flags)) {
+				pkg_free(rpkg);
+				rpkg = NULL;
+			}
+			else {
+				if (pkg_jobs_add_universe(j, rpkg, priority, recursive) != EPKG_OK)
+					return (EPKG_FATAL);
+			}
+		}
+
+		rpkg = NULL;
+	}
 
 	/* Go through all depends */
 	while (pkg_deps(pkg, &d) == EPKG_OK) {
@@ -390,11 +411,12 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 				return (EPKG_FATAL);
 			}
 		}
-		else if (j->type == PKG_JOBS_UPGRADE) {
+		else if (j->type == PKG_JOBS_UPGRADE ||
+				j->type == PKG_JOBS_INSTALL) {
 			/* For upgrade jobs we need to ensure that we do not have a newer version */
 			rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (rpkg != NULL) {
-				if (!pkg_need_upgrade(rpkg, npkg, j->flags & PKG_FLAG_RECURSIVE)) {
+				if (!pkg_need_upgrade(rpkg, npkg, j->flags)) {
 					pkg_free(rpkg);
 					rpkg = NULL;
 				}
@@ -593,8 +615,10 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, i
 			pkg_get(p, PKG_VERSION, &buf2);
 			p->direct = root;
 			/* We have a more recent package */
-			if (pkg_version_cmp(buf1, buf2) >= 0) {
-				pkg_jobs_add_universe(j, p, priority, true);
+			if (!pkg_need_upgrade(p, p1, false)) {
+				if (root)
+					pkg_emit_already_installed(p);
+				rc = EPKG_INSTALLED;
 				continue;
 			}
 		}
@@ -603,8 +627,7 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m, bool root, i
 			if (!newer_than_local_pkg(j, p, force)) {
 				if (root)
 					pkg_emit_already_installed(p);
-				rc = EPKG_FATAL;
-				p = NULL;
+				rc = EPKG_INSTALLED;
 				continue;
 			}
 		}
@@ -840,7 +863,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 		return (true);
 	}
 
-	ret = pkg_need_upgrade(rp, lp, j->flags & PKG_FLAG_RECURSIVE);
+	ret = pkg_need_upgrade(rp, lp, j->flags);
 	pkg_free(lp);
 
 	return (ret);
