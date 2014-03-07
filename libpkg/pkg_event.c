@@ -163,7 +163,8 @@ pipeevent(struct pkg_event *ev)
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
 		sbuf_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
-		    "\"data\": {}}");
+		    "\"data\": {\"conflicting\": %d}}",
+		    ev->e_integrity_finished.conflicting);
 		break;
 	case PKG_EVENT_DEINSTALL_BEGIN:
 		pkg_sbuf_printf(msg, "{ \"type\": \"INFO_DEINSTALL_BEGIN\", "
@@ -470,10 +471,11 @@ pkg_emit_integritycheck_begin(void)
 }
 
 void
-pkg_emit_integritycheck_finished(void)
+pkg_emit_integritycheck_finished(int conflicting)
 {
 	struct pkg_event ev;
 	ev.type = PKG_EVENT_INTEGRITYCHECK_FINISHED;
+	ev.e_integrity_finished.conflicting = conflicting;
 
 	pkg_emit_event(&ev);
 }

@@ -1762,12 +1762,12 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	if (added > 0) {
 		pkg_debug(1, "check integrity for %d items added", added);
 		if ((res = pkg_conflicts_integrity_check(j)) != EPKG_OK) {
-			pkg_emit_integritycheck_finished();
+			pkg_emit_integritycheck_finished(j->conflicts_registered);
 			return (res);
 		}
 	}
 
-	pkg_emit_integritycheck_finished();
+	pkg_emit_integritycheck_finished(j->conflicts_registered);
 
 	return (ret);
 }

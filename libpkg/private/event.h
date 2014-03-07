@@ -44,7 +44,7 @@ void pkg_emit_missing_dep(struct pkg *p, struct pkg_dep *d);
 void pkg_emit_locked(struct pkg *p);
 void pkg_emit_required(struct pkg *p, int force);
 void pkg_emit_integritycheck_begin(void);
-void pkg_emit_integritycheck_finished(void);
+void pkg_emit_integritycheck_finished(int);
 void pkg_emit_integritycheck_conflict(const char *name, const char *version,
 		const char *origin, const char *path, struct pkg_event_conflict *conflicts);
 void pkg_emit_noremotedb(const char *);

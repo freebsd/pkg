@@ -1512,6 +1512,9 @@ struct pkg_event {
 			struct pkg_event_conflict *conflicts;
 		} e_integrity_conflict;
 		struct {
+			int conflicting;
+		} e_integrity_finished;
+		struct {
 			int updated;
 			int removed;
 			int added;

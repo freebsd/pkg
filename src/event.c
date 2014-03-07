@@ -149,7 +149,7 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
 		if (quiet)
 			break;
-		printf(" done\n");
+		printf(" done (%d conflicting)\n", ev->e_integrity_finished.conflicting);
 		break;
 	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
 		if (*debug == 0)
@@ -270,7 +270,8 @@ event_callback(void *data, struct pkg_event *ev)
 		if (quiet)
 			break;
 		pkg = ev->e_already_installed.pkg;
-		pkg_printf("%n-%v already installed\n", pkg, pkg);
+		pkg_printf("the most recent version of %n-%v is already installed\n",
+				pkg, pkg);
 		break;
 	case PKG_EVENT_NOT_FOUND:
 		printf("Package '%s' was not found in "
