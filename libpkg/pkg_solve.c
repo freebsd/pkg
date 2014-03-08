@@ -870,6 +870,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				dres->type = PKG_SOLVED_UPGRADE_REMOVE;
 				DL_APPEND(j->jobs, dres);
 				res->already_deleted = true;
+				j->count ++;
 			}
 			res->priority = add_var->priority;
 			res->pkg[0] = add_var->pkg;
