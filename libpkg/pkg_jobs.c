@@ -925,11 +925,33 @@ pkg_conflicts_add_missing(struct pkg_jobs *j, const char *origin, int priority)
 	return pkg_jobs_add_universe(j, npkg, priority, true);
 }
 
+/*
+ * Recursive helper to set priorities for all dependencies
+ */
+static void
+pkg_conflict_dependency_inc_priority(struct pkg_jobs *j,
+		struct pkg_job_universe_item *un,
+		int priority)
+{
+	struct pkg_dep *d = NULL;
+	struct pkg_job_universe_item *found, *cur;
+
+	un->priority = priority;
+	while (pkg_deps(un->pkg, &d) == EPKG_OK) {
+		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
+		LL_FOREACH(found, cur) {
+			if (cur->priority < priority + 1)
+				pkg_conflict_dependency_inc_priority(j, cur, priority + 1);
+		}
+	}
+}
+
 static void
 pkg_conflicts_register_universe(struct pkg_jobs *j,
 		struct pkg_job_universe_item *u1,
 		struct pkg_job_universe_item *u2, bool local_only)
 {
+
 	pkg_conflicts_register(u1->pkg, u2->pkg);
 
 	/*
@@ -937,12 +959,13 @@ pkg_conflicts_register_universe(struct pkg_jobs *j,
 	 * want to update local (u1) priority just to ensure that it won't
 	 * be installed before we start
 	 */
-	if (u2->priority + 1 > u1->priority)
-		pkg_jobs_update_universe_priority(j, u1, u2->priority + 1,
-				"registering conflict(u2)", local_only);
-	else if (u1->priority + 1 > u2->priority)
-		pkg_jobs_update_universe_priority(j, u2, u1->priority + 1,
-				"registering conflict(u2)", local_only);
+	if (u1->priority <= u2->priority) {
+		/*
+		 * We take care here merely about direct deps, as everything else
+		 * is in order at this moment
+		 */
+		pkg_conflict_dependency_inc_priority(j, u1, u2->priority + 1);
+	}
 }
 
 static void
