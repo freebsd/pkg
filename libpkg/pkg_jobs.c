@@ -172,15 +172,15 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 	else {
 		s = *iter;
 	}
-	*new = s->pkg[0];
-	*old = s->pkg[1];
+	*new = s->items[0]->pkg;
+	*old = s->items[1]->pkg;
 	*type = s->type;
 	*iter = s->next ? s->next : jobs->jobs;
 	return (true);
 }
 
 static void
-pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg,
+pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg_job_universe_item *item,
 		bool add, int priority)
 {
 	struct pkg_job_request *req, *test, **head;
@@ -193,28 +193,15 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg *pkg,
 
 	HASH_FIND(hh, *head, origin, strlen(origin), test);
 
-	if (test != NULL) {
-		if (test->priority < priority)
-			replace = true;
-
-		pkg_debug(1, "the request already has package with origin %s, we want "
-				"to %s it by priority (%d) vs (%d)", origin,
-				replace ? "replace" : "keep",
-				test->priority, priority);
-		if (replace) {
-			test->pkg = pkg;
-			test->priority = priority;
-		}
+	if (test != NULL)
 		return;
-	}
 
 	req = calloc(1, sizeof (struct pkg_job_request));
 	if (req == NULL) {
 		pkg_emit_errno("malloc", "struct pkg_job_request");
 		return;
 	}
-	req->pkg = pkg;
-	req->priority = priority;
+	req->item = item;
 
 	HASH_ADD_KEYPTR(hh, *head, origin, strlen(origin), req);
 }
@@ -329,7 +316,9 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 					false);
 		else if (*priority < cur->priority)
 			*priority = cur->priority;
-		*found = seen->un;
+		if (found != NULL)
+			*found = seen->un;
+
 		return (EPKG_END);
 	}
 
@@ -367,24 +356,26 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 
 	j->total++;
 
-	*found = item;
+	if (found != NULL)
+		*found = item;
 
 	return (EPKG_OK);
 }
 
 static int
-pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool recursive)
+pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority,
+		bool recursive, struct pkg_job_universe_item **result)
 {
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
 	struct pkg *npkg, *rpkg;
 	int ret;
-	struct pkg_job_universe_item *unit, *local;
+	struct pkg_job_universe_item *unit;
 	const char *origin;
 	int maxpri;
 
 	/* Add the requested package itself */
-	ret = pkg_jobs_handle_pkg_universe(j, pkg, &priority, &local);
+	ret = pkg_jobs_handle_pkg_universe(j, pkg, &priority, result);
 
 	if (ret == EPKG_END)
 		return (EPKG_OK);
@@ -405,7 +396,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 				rpkg = NULL;
 			}
 			else {
-				if (pkg_jobs_add_universe(j, rpkg, priority, recursive) != EPKG_OK)
+				if (pkg_jobs_add_universe(j, rpkg, priority, recursive, NULL) != EPKG_OK)
 					return (EPKG_FATAL);
 			}
 		}
@@ -450,10 +441,10 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 			}
 		}
 		pkg_set(npkg, PKG_AUTOMATIC, (int64_t)true);
-		if (pkg_jobs_add_universe(j, npkg, priority + 1, recursive) != EPKG_OK)
+		if (pkg_jobs_add_universe(j, npkg, priority + 1, recursive, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 		if (rpkg != NULL) {
-			if (pkg_jobs_add_universe(j, rpkg, priority + 1, recursive) != EPKG_OK)
+			if (pkg_jobs_add_universe(j, rpkg, priority + 1, recursive, NULL) != EPKG_OK)
 				return (EPKG_FATAL);
 			pkg_set(rpkg, PKG_AUTOMATIC, (int64_t)true);
 		}
@@ -484,13 +475,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 				return (EPKG_FATAL);
 			}
 		}
-		if (pkg_jobs_add_universe(j, npkg, maxpri - 1, recursive) != EPKG_OK)
+		if (pkg_jobs_add_universe(j, npkg, maxpri - 1, recursive, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
-	}
-	if (priority != maxpri) {
-		/* Need to update due to rdeps order */
-		pkg_jobs_update_universe_priority(j, local, maxpri,
-							"rdep from universe", false);
 	}
 
 	/* Examine conflicts */
@@ -506,14 +492,14 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg, int priority, bool re
 
 		/* Check both local and remote conflicts */
 		npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
-		if (pkg_jobs_add_universe(j, npkg, priority, recursive) != EPKG_OK)
+		if (pkg_jobs_add_universe(j, npkg, priority, recursive, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 		npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
 		if (npkg == NULL) {
 			continue;
 		}
 
-		if (pkg_jobs_add_universe(j, npkg, priority, recursive) != EPKG_OK)
+		if (pkg_jobs_add_universe(j, npkg, priority, recursive, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
@@ -556,7 +542,7 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p, int priority)
 				pkg_free(npkg);
 				return (false);
 			}
-			if (pkg_jobs_add_universe(j, npkg, priority - 1, false) != EPKG_OK)
+			if (pkg_jobs_add_universe(j, npkg, priority - 1, false, NULL) != EPKG_OK)
 				return (false);
 		}
 
@@ -594,7 +580,7 @@ new_pkg_version(struct pkg_jobs *j)
 		goto end;
 	}
 
-	pkg_jobs_add_universe(j, p, INT_MAX, true);
+	pkg_jobs_add_universe(j, p, INT_MAX, true, NULL);
 
 	/* Use maximum priority for pkg */
 	if (find_remote_pkg(j, origin, MATCH_EXACT, false, INT_MAX, true) == EPKG_OK) {
@@ -670,10 +656,8 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		rc = EPKG_OK;
 		p->direct = root;
 		/* Add a package to request chain and populate universe */
-
-		pkg_jobs_add_req(j, origin, p, true, priority);
-		rc = pkg_jobs_add_universe(j, p, priority, recursive);
-
+		rc = pkg_jobs_add_universe(j, p, priority, recursive, &jit);
+		pkg_jobs_add_req(j, origin, jit, true, priority);
 
 		p = NULL;
 	}
@@ -922,7 +906,7 @@ pkg_conflicts_add_missing(struct pkg_jobs *j, const char *origin, int priority)
 		return (EPKG_FATAL);
 	}
 
-	return pkg_jobs_add_universe(j, npkg, priority, true);
+	return pkg_jobs_add_universe(j, npkg, priority, true, NULL);
 }
 
 /*
@@ -1085,41 +1069,6 @@ pkg_conflicts_integrity_check(struct pkg_jobs *j)
 	return (pkgdb_integrity_check(j->db, pkg_conflicts_add_from_pkgdb_local, j));
 }
 
-static void
-pkg_jobs_update_request_priorities(struct pkg_jobs *j)
-{
-	struct pkg_job_request *req, *rtmp;
-	struct pkg_job_universe_item *unit, *cur;
-	const char *origin;
-
-	/*
-	 * We update priorities in the universe according to the real
-	 * dependencies graph, however, priorities in the request are not
-	 * updated. So we cycle through the request and set the priorities
-	 * equal to priorities in the universe.
-	 */
-	HASH_ITER(hh, j->request_delete, req, rtmp) {
-		pkg_get(req->pkg, PKG_ORIGIN, &origin);
-		HASH_FIND_STR(j->universe, origin, unit);
-		if (unit != NULL) {
-			LL_FOREACH(unit, cur) {
-				if (cur->pkg == req->pkg)
-					req->priority = cur->priority;
-			}
-		}
-	}
-	HASH_ITER(hh, j->request_add, req, rtmp) {
-		pkg_get(req->pkg, PKG_ORIGIN, &origin);
-		HASH_FIND_STR(j->universe, origin, unit);
-		if (unit != NULL) {
-			LL_FOREACH(unit, cur) {
-				if (cur->pkg == req->pkg)
-					req->priority = cur->priority;
-			}
-		}
-	}
-}
-
 static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
@@ -1127,6 +1076,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
+	struct pkg_job_universe_item *unit;
 
 	bool recursive = false;
 
@@ -1140,21 +1090,20 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 			// Check if the pkg is locked
 			pkg_get(pkg, PKG_ORIGIN, &origin);
+			pkg_jobs_add_universe(j, pkg, 0, recursive, &unit);
 			if(pkg_is_locked(pkg)) {
 				pkg_emit_locked(pkg);
 			}
 			else {
 				pkg_get(pkg, PKG_ORIGIN, &origin);
-				pkg_jobs_add_req(j, origin, pkg, false, 0);
+				pkg_jobs_add_req(j, origin, unit, false, 0);
 			}
 			/* TODO: use repository priority here */
-			pkg_jobs_add_universe(j, pkg, 0, recursive);
+
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
 	}
-
-	pkg_jobs_update_request_priorities(j);
 
 	j->solved = true;
 
@@ -1177,16 +1126,15 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 		HASH_FIND_STR(j->universe, origin, unit);
 		if (unit == NULL) {
+			pkg_jobs_add_universe(j, pkg, 0, false, &unit);
 			if(pkg_is_locked(pkg)) {
 				pkg_emit_locked(pkg);
 			}
 			else if (pkg_jobs_test_automatic(j, pkg, 0)) {
 				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
 						origin);
-				pkg_jobs_add_req(j, origin, pkg, false, 0);
+				pkg_jobs_add_req(j, origin, unit, false, 0);
 			}
-			/* TODO: use repository priority here */
-			pkg_jobs_add_universe(j, pkg, 0, false);
 		}
 		else {
 			if(pkg_is_locked(unit->pkg)) {
@@ -1195,7 +1143,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			else if (pkg_jobs_test_automatic(j, unit->pkg, unit->priority)) {
 				pkg_debug(2, "removing %s as it has no non-automatic reverse depends",
 						origin);
-				pkg_jobs_add_req(j, origin, unit->pkg, false, unit->priority);
+				pkg_jobs_add_req(j, origin, unit, false, unit->priority);
 			}
 
 			pkg_free(pkg);
@@ -1204,7 +1152,6 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	}
 	pkgdb_it_free(it);
 
-	pkg_jobs_update_request_priorities(j);
 	j->solved = true;
 
 	return (EPKG_OK);
@@ -1231,7 +1178,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 			/* TODO: use repository priority here */
-			pkg_jobs_add_universe(j, pkg, 0, true);
+			pkg_jobs_add_universe(j, pkg, 0, true, NULL);
 			if(pkg_is_locked(pkg)) {
 				/* If a package is locked, then we keep local version */
 				pkg_emit_locked(pkg);
@@ -1252,7 +1199,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 		 */
 		struct pkg_job_request *req, *rtmp;
 		HASH_ITER(hh, j->request_add, req, rtmp) {
-			pkg_jobs_add_universe(j, req->pkg, req->priority, true);
+			pkg_jobs_add_universe(j, req->item->pkg, req->item->priority, true, NULL);
 		}
 	}
 
@@ -1260,8 +1207,6 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 		pkg_emit_error("Cannot resolve conflicts in a request");
 		return (EPKG_FATAL);
 	}
-
-	pkg_jobs_update_request_priorities(j);
 
 order:
 
@@ -1294,7 +1239,7 @@ jobs_solve_install(struct pkg_jobs *j)
 
 			pkg = NULL;
 			while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-				pkg_jobs_add_universe(j, pkg, 0, j->flags & PKG_FLAG_RECURSIVE);
+				pkg_jobs_add_universe(j, pkg, 0, j->flags & PKG_FLAG_RECURSIVE, NULL);
 
 				if (pkg_is_locked(pkg)) {
 					/* Keep locked packages to the local version */
@@ -1321,7 +1266,7 @@ jobs_solve_install(struct pkg_jobs *j)
 		 */
 		struct pkg_job_request *req, *rtmp;
 		HASH_ITER(hh, j->request_add, req, rtmp) {
-			pkg_jobs_add_universe(j, req->pkg, req->priority, true);
+			pkg_jobs_add_universe(j, req->item->pkg, req->item->priority, true, NULL);
 		}
 	}
 
@@ -1329,8 +1274,6 @@ jobs_solve_install(struct pkg_jobs *j)
 		pkg_emit_error("Cannot resolve conflicts in a request");
 		return (EPKG_FATAL);
 	}
-
-	pkg_jobs_update_request_priorities(j);
 
 order:
 
@@ -1385,7 +1328,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 static int
 pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
 {
-	return (r2->priority - r1->priority);
+	return (r2->items[0]->priority - r1->items[0]->priority);
 }
 
 int
@@ -1514,8 +1457,8 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
-	old = ps->pkg[1];
-	new = ps->pkg[0];
+	old = ps->items[1]->pkg;
+	new = ps->items[0]->pkg;
 
 	pkg_get(new, PKG_ORIGIN, &pkgorigin,
 				PKG_AUTOMATIC, &automatic);
@@ -1612,7 +1555,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		switch (ps->type) {
 		case PKG_SOLVED_DELETE:
 		case PKG_SOLVED_UPGRADE_REMOVE:
-			p = ps->pkg[0];
+			p = ps->items[0]->pkg;
 			pkg_get(p, PKG_NAME, &name);
 			if ((strcmp(name, "pkg") == 0 ||
 				strcmp(name, "pkg-devel") == 0) && flags != PKG_DELETE_FORCE) {
@@ -1748,7 +1691,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 #define PKG_JOBS_FETCH_CALCULATE(list) do {										\
 	DL_FOREACH((list), ps) {														\
 		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {\
-			p = ps->pkg[0];															\
+			p = ps->items[0]->pkg;													\
 			int64_t pkgsize;														\
 			pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);				\
 			snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir, repopath);	\
@@ -1763,7 +1706,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 #define PKG_JOBS_DO_FETCH(list) do {												\
 	DL_FOREACH((list), ps) {														\
 		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {\
-			p = ps->pkg[0];															\
+			p = ps->items[0]->pkg;													\
 			if (pkg_repo_fetch(p) != EPKG_OK)										\
 				return (EPKG_FATAL);												\
 		}																			\
@@ -1846,7 +1789,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			continue;
 		}
 		else {
-			p = ps->pkg[0];
+			p = ps->items[0]->pkg;
 			const char *pkgrepopath;
 			pkg_get(p, PKG_REPOPATH, &pkgrepopath);
 			snprintf(path, sizeof(path), "%s/%s", cachedir,

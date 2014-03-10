@@ -196,26 +196,24 @@ struct pkg_option {
 	UT_hash_handle	hh;
 };
 
-struct pkg_job_request {
-	struct pkg *pkg;
-	int priority;
-	bool skip;
-	UT_hash_handle hh;
-};
-
-struct pkg_solved {
-	struct pkg *pkg[2];
-	int priority;
-	pkg_solved_t type;
-	bool already_deleted;
-	struct pkg_solved *prev, *next;
-};
-
 struct pkg_job_universe_item {
 	struct pkg *pkg;
 	UT_hash_handle hh;
 	int priority;
 	struct pkg_job_universe_item *next, *prev;
+};
+
+struct pkg_job_request {
+	struct pkg_job_universe_item *item;
+	bool skip;
+	UT_hash_handle hh;
+};
+
+struct pkg_solved {
+	struct pkg_job_universe_item *items[2];
+	pkg_solved_t type;
+	bool already_deleted;
+	struct pkg_solved *prev, *next;
 };
 
 struct pkg_job_seen {

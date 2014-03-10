@@ -44,7 +44,7 @@
 struct pkg_solve_item;
 
 struct pkg_solve_variable {
-	struct pkg *pkg;
+	struct pkg_job_universe_item *unit;
 	bool to_install;
 	bool guess;
 	int priority;
@@ -194,7 +194,7 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
 		if (var->nrules == 0) {
 			/* This variable is independent and should not change its state */
-			var->to_install = (var->pkg->type == PKG_INSTALLED);
+			var->to_install = (var->unit->pkg->type == PKG_INSTALLED);
 			var->resolved = true;
 			pkg_debug(2, "leave %s-%s(%d) to %s",
 					var->origin, var->digest,
@@ -277,7 +277,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
 		if (!var->resolved) {
 			/* Guess true for installed packages and false otherwise */
-			var->guess = (var->pkg->type == PKG_INSTALLED) ? true : false;
+			var->guess = (var->unit->pkg->type == PKG_INSTALLED) ? true : false;
 		}
 	}
 
@@ -348,7 +348,7 @@ pkg_solve_rule_new(void)
 }
 
 static struct pkg_solve_variable *
-pkg_solve_variable_new(struct pkg *pkg, int priority)
+pkg_solve_variable_new(struct pkg_job_universe_item *item)
 {
 	struct pkg_solve_variable *result;
 	const char *digest, *origin;
@@ -360,9 +360,8 @@ pkg_solve_variable_new(struct pkg *pkg, int priority)
 		return (NULL);
 	}
 
-	result->pkg = pkg;
-	result->priority = priority;
-	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+	result->unit = item;
+	pkg_get(item->pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
 	/* XXX: Is it safe to save a ptr here ? */
 	result->digest = digest;
 	result->origin = origin;
@@ -416,7 +415,7 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 		return (EPKG_FATAL);
 	}
 	/* Need to add a variable */
-	nvar = pkg_solve_variable_new(unit->pkg, unit->priority);
+	nvar = pkg_solve_variable_new(unit);
 	if (nvar == NULL)
 		return (EPKG_FATAL);
 
@@ -430,7 +429,7 @@ pkg_solve_add_universe_variable(struct pkg_jobs *j,
 		HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), found);
 		if (found == NULL) {
 			/* Add all alternatives as independent variables */
-			tvar = pkg_solve_variable_new(unit->pkg, unit->priority);
+			tvar = pkg_solve_variable_new(unit);
 			if (tvar == NULL)
 				return (EPKG_FATAL);
 			DL_APPEND(nvar, tvar);
@@ -494,7 +493,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 
 	/* Go through all deps in all variables*/
 	LL_FOREACH(pvar, cur_var) {
-		pkg = cur_var->pkg;
+		pkg = cur_var->unit->pkg;
 		HASH_ITER(hh, pkg->deps, dep, dtmp) {
 			rule = NULL;
 			it = NULL;
@@ -551,7 +550,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			pkg_get(pkg, PKG_ORIGIN, &origin);
 			/* Add conflict rule from each of the alternative */
 			LL_FOREACH(var, tvar) {
-				HASH_FIND_STR(tvar->pkg->conflicts, origin, cfound);
+				HASH_FIND_STR(tvar->unit->pkg->conflicts, origin, cfound);
 				if (cfound == NULL) {
 					/* Skip non-mutual conflicts */
 					continue;
@@ -660,7 +659,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		it = NULL;
 		var = NULL;
 
-		var = pkg_solve_variable_new(jreq->pkg, jreq->priority);
+		var = pkg_solve_variable_new(jreq->item);
 		if (var == NULL)
 			goto err;
 
@@ -696,7 +695,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		it = NULL;
 		var = NULL;
 
-		var = pkg_solve_variable_new(jreq->pkg, jreq->priority);
+		var = pkg_solve_variable_new(jreq->item);
 		if (var == NULL)
 			goto err;
 
@@ -738,7 +737,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			HASH_FIND(hd, problem->variables_by_digest, digest, strlen(digest), var);
 			if (var == NULL) {
 				/* Add new variable */
-				var = pkg_solve_variable_new(ucur->pkg, ucur->priority);
+				var = pkg_solve_variable_new(ucur);
 				if (var == NULL)
 					goto err;
 				HASH_ADD_KEYPTR(hd, problem->variables_by_digest,
@@ -824,11 +823,11 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 	int seen_add = 0, seen_del = 0;
 
 	LL_FOREACH(var, cur_var) {
-		if (cur_var->to_install && cur_var->pkg->type != PKG_INSTALLED) {
+		if (cur_var->to_install && cur_var->unit->pkg->type != PKG_INSTALLED) {
 			add_var = cur_var;
 			seen_add ++;
 		}
-		else if (!cur_var->to_install && cur_var->pkg->type == PKG_INSTALLED) {
+		else if (!cur_var->to_install && cur_var->unit->pkg->type == PKG_INSTALLED) {
 			del_var = cur_var;
 			seen_del ++;
 		}
@@ -845,46 +844,26 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 			return;
 		}
 		if (seen_add == 0 && seen_del != 0) {
-			res->priority = del_var->priority;
-			res->pkg[0] = del_var->pkg;
+			res->items[0] = del_var->unit;
 			res->type = PKG_SOLVED_DELETE;
 			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule deletion of %s(%d) %s",
-					del_var->origin, res->priority, del_var->digest);
+			pkg_debug(3, "pkg_solve: schedule deletion of %s %s",
+					del_var->origin, del_var->digest);
 		}
 		else if (seen_del == 0 && seen_add != 0) {
-			res->priority = add_var->priority;
-			res->pkg[0] = add_var->pkg;
+			res->items[0] = add_var->unit;
 			res->type = PKG_SOLVED_INSTALL;
 			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule installation of %s(%d) %s",
-					add_var->origin, res->priority, add_var->digest);
+			pkg_debug(3, "pkg_solve: schedule installation of %s %s",
+					add_var->origin, add_var->digest);
 		}
 		else {
-			assert(del_var->priority >= add_var->priority);
-			if (del_var->priority > add_var->priority) {
-				dres = calloc(1, sizeof(struct pkg_solved));
-				if (dres == NULL) {
-					pkg_emit_errno("calloc", "pkg_solved");
-					return;
-				}
-				dres->priority = del_var->priority;
-				dres->pkg[0] = del_var->pkg;
-				dres->pkg[1] = add_var->pkg;
-				dres->type = PKG_SOLVED_UPGRADE_REMOVE;
-				DL_APPEND(j->jobs, dres);
-				res->already_deleted = true;
-				j->count ++;
-			}
-			res->priority = add_var->priority;
-			res->pkg[0] = add_var->pkg;
-			res->pkg[1] = del_var->pkg;
+			res->items[0] = add_var->unit;
+			res->items[1] = del_var->unit;
 			res->type = PKG_SOLVED_UPGRADE;
 			DL_APPEND(j->jobs, res);
-			pkg_debug(3, "pkg_solve: schedule upgrade(%s) of %s(%d->%d) from %s to %s",
-					res->already_deleted ? "delayed" : "immediate",
-					del_var->origin, del_var->priority,
-					add_var->priority, del_var->digest, add_var->digest);
+			pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
+					del_var->origin, del_var->digest, add_var->digest);
 		}
 		j->count ++;
 	}

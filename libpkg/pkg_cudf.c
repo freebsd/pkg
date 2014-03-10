@@ -202,7 +202,7 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	HASH_ITER(hh, j->request_add, req, tmp) {
 		if (req->skip)
 			continue;
-		pkg_get(req->pkg, PKG_ORIGIN, &origin);
+		pkg_get(req->item->pkg, PKG_ORIGIN, &origin);
 		if (cudf_print_element(f, origin,
 				(req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
@@ -221,7 +221,7 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	HASH_ITER(hh, j->request_delete, req, tmp) {
 		if (req->skip)
 			continue;
-		pkg_get(req->pkg, PKG_ORIGIN, &origin);
+		pkg_get(req->item->pkg, PKG_ORIGIN, &origin);
 		if (cudf_print_element(f, origin,
 				(req->hh.next != NULL), &column) < 0) {
 			return (EPKG_FATAL);
@@ -356,13 +356,12 @@ pkg_jobs_cudf_insert_res_job (struct pkg_solved **target,
 		pkg_emit_errno("calloc", "pkg_solved");
 		return;
 	}
-	res->priority = it_new->priority;
-	res->pkg[0] = it_new->pkg;
+
+	res->items[0] = it_new;
 	res->type = type;
-	if (it_old != NULL) {
-		res->pkg[1] = it_old->pkg;
-		res->priority = MAX(it_old->priority, res->priority);
-	}
+	if (it_old != NULL)
+		res->items[1] = it_old;
+
 	DL_APPEND(*target, res);
 }
 

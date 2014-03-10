@@ -49,8 +49,8 @@ pkg_conflicts_chain_cmp_cb(struct pkg_conflict_chain *a, struct pkg_conflict_cha
 		return (a->req->skip - b->req->skip);
 	}
 
-	pkg_get(a->req->pkg, PKG_VERSION, &vera);
-	pkg_get(b->req->pkg, PKG_VERSION, &verb);
+	pkg_get(a->req->item->pkg, PKG_VERSION, &vera);
+	pkg_get(b->req->item->pkg, PKG_VERSION, &verb);
 
 	/* Inverse sort to get the maximum version as the first element */
 	return (pkg_version_cmp(vera, verb));
@@ -68,7 +68,7 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, struct pkg_conflict_chain *
 	 * an origin is pkg name
 	 */
 	LL_FOREACH(chain, elt) {
-		pkg_get(elt->req->pkg, PKG_ORIGIN, &origin);
+		pkg_get(elt->req->item->pkg, PKG_ORIGIN, &origin);
 		slash_pos = strrchr(origin, '/');
 		if (slash_pos != NULL) {
 			if (strcmp(slash_pos + 1, name) == 0) {
@@ -85,7 +85,7 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, struct pkg_conflict_chain *
 		selected = chain;
 	}
 
-	pkg_get(selected->req->pkg, PKG_ORIGIN, &origin);
+	pkg_get(selected->req->item->pkg, PKG_ORIGIN, &origin);
 	pkg_debug(2, "select %s in the chain of conflicts for %s", origin, name);
 	/* Disable conflicts from a request */
 	LL_FOREACH(chain, elt) {
@@ -122,18 +122,18 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 		if (req->skip)
 			continue;
 
-		HASH_ITER(hh, req->pkg->conflicts, c, ctmp) {
+		HASH_ITER(hh, req->item->pkg->conflicts, c, ctmp) {
 			HASH_FIND_STR(j->request_add, pkg_conflict_origin(c), found);
 			if (found && !found->skip) {
 				pkg_conflicts_request_add_chain(&chain, found);
 			}
 		}
 		if (chain != NULL) {
-			pkg_get(req->pkg, PKG_ORIGIN, &origin);
+			pkg_get(req->item->pkg, PKG_ORIGIN, &origin);
 			/* Add package itself */
 			pkg_conflicts_request_add_chain(&chain, req);
 
-			if (pkg_conflicts_request_resolve_chain(req->pkg, chain) != EPKG_OK) {
+			if (pkg_conflicts_request_resolve_chain(req->item->pkg, chain) != EPKG_OK) {
 				LL_FREE(chain, pkg_conflict_chain, free);
 				return (EPKG_FATAL);
 			}
