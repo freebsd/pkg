@@ -1506,6 +1506,8 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	pkg_get(new, PKG_ORIGIN, &pkgorigin);
 	if (old != NULL)
 		pkg_get(old, PKG_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
+	else if (!new->direct)
+		automatic = true;
 
 	an = pkg_annotation_lookup(new, "repository");
 
@@ -1528,7 +1530,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_ADD_NOSCRIPT;
 	flags |= PKG_ADD_UPGRADE;
-	if (automatic || !new->direct)
+	if (automatic)
 		flags |= PKG_ADD_AUTOMATIC;
 
 	if (old != NULL && !ps->already_deleted) {
