@@ -142,6 +142,34 @@ pkg_solve_propagate_units(struct pkg_solve_problem *problem, int *propagated)
 		solved_vars = 0;
 		HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
 check_again:
+			/* Check for direct conflicts */
+			LL_FOREACH(var->rules, rul) {
+				unresolved = rul->rule;
+				if (unresolved->nresolved == unresolved->nitems) {
+					/* Check for direct conflict */
+					ret = false;
+					LL_FOREACH(unresolved, it) {
+						if (it->var->resolved) {
+							if (PKG_SOLVE_CHECK_ITEM(it))
+								ret = true;
+						}
+					}
+					if (!ret) {
+						struct sbuf *err_msg = sbuf_new_auto();
+						sbuf_printf(err_msg, "cannot resolve conflict between ");
+						LL_FOREACH(unresolved, it) {
+							sbuf_printf(err_msg, "%s %s(want %s), ",
+									it->var->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
+											it->var->origin,
+											it->var->to_install ? "install" : "remove");
+						}
+						sbuf_finish(err_msg);
+						pkg_emit_error("%splease resolve it manually", sbuf_data(err_msg));
+						sbuf_delete(err_msg);
+						return (false);
+					}
+				}
+			}
 			LL_FOREACH(var->rules, rul) {
 				unresolved = rul->rule;
 				if (unresolved->nresolved == unresolved->nitems - 1) {
