@@ -294,7 +294,9 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	bool guessed = false;
 	struct pkg_solve_variable *var, *tvar;
 
-	assert(problem->rules_count > 0);
+	/* Obvious case */
+	if (problem->rules_count == 0)
+		return (true);
 
 	/* Initially propagate explicit rules */
 	pkg_solve_propagate_pure(problem);

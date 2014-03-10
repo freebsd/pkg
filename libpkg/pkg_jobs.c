@@ -1303,8 +1303,7 @@ jobs_solve_install(struct pkg_jobs *j)
 				else {
 					pkg_get(pkg, PKG_ORIGIN, &origin);
 					/* TODO: use repository priority here */
-					if (find_remote_pkg(j, origin, MATCH_EXACT, true,
-							j->flags & PKG_FLAG_RECURSIVE) == EPKG_FATAL)
+					if (find_remote_pkg(j, origin, MATCH_EXACT, true, true) == EPKG_FATAL)
 						pkg_emit_error("No packages matching '%s', has been found in "
 								"the repositories", origin);
 				}
