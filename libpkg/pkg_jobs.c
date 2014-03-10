@@ -1497,17 +1497,16 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	const char *pkgorigin, *oldversion = NULL;
 	struct pkg_note *an;
 	char path[MAXPATHLEN];
-	bool automatic;
+	bool automatic = false;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
 	old = ps->items[1] ? ps->items[1]->pkg : NULL;
 	new = ps->items[0]->pkg;
 
-	pkg_get(new, PKG_ORIGIN, &pkgorigin,
-				PKG_AUTOMATIC, &automatic);
+	pkg_get(new, PKG_ORIGIN, &pkgorigin);
 	if (old != NULL)
-		pkg_get(old, PKG_VERSION, &oldversion);
+		pkg_get(old, PKG_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
 
 	an = pkg_annotation_lookup(new, "repository");
 
