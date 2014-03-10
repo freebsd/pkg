@@ -173,7 +173,7 @@ pkg_jobs_iter(struct pkg_jobs *jobs, void **iter,
 		s = *iter;
 	}
 	*new = s->items[0]->pkg;
-	*old = s->items[1]->pkg;
+	*old = s->items[1] ? s->items[1]->pkg : NULL;
 	*type = s->type;
 	*iter = s->next ? s->next : jobs->jobs;
 	return (true);
