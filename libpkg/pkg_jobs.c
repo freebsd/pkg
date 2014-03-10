@@ -1480,7 +1480,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
-	old = ps->items[1]->pkg;
+	old = ps->items[1] ? ps->items[1]->pkg : NULL;
 	new = ps->items[0]->pkg;
 
 	pkg_get(new, PKG_ORIGIN, &pkgorigin,
