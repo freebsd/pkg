@@ -680,7 +680,7 @@ new_pkg_version(struct pkg_jobs *j)
 	pkg_jobs_add_universe(j, p, true, NULL);
 
 	/* Use maximum priority for pkg */
-	if (find_remote_pkg(j, origin, MATCH_EXACT, false, true) == EPKG_OK) {
+	if (find_remote_pkg(j, origin, MATCH_EXACT, true, true) == EPKG_OK) {
 		ret = true;
 		goto end;
 	}
@@ -725,7 +725,6 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		pkg_get(p, PKG_ORIGIN, &origin);
 		HASH_FIND_STR(j->universe, origin, jit);
 		if (jit != NULL) {
-			p->direct = root;
 			/* We have a more recent package */
 			if (!pkg_need_upgrade(p, jit->pkg, false)) {
 				if (root)
@@ -1529,7 +1528,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_ADD_NOSCRIPT;
 	flags |= PKG_ADD_UPGRADE;
-	if (automatic)
+	if (automatic || !new->direct)
 		flags |= PKG_ADD_AUTOMATIC;
 
 	if (old != NULL && !ps->already_deleted) {
