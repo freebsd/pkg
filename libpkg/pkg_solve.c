@@ -547,6 +547,8 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 				if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
 					continue;
 			}
+			/* Return the origin to the package's origin and not conflict */
+			pkg_get(pkg, PKG_ORIGIN, &origin);
 			/* Add conflict rule from each of the alternative */
 			LL_FOREACH(var, tvar) {
 				HASH_FIND_STR(tvar->pkg->conflicts, origin, cfound);
@@ -575,8 +577,10 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 
 				LL_PREPEND(problem->rules, rule);
 				problem->rules_count ++;
-				pkg_solve_add_var_rules (tvar, rule->items, 2, false, "conflict");
-				pkg_solve_add_var_rules (cur_var, rule->items, 2, false, "conflict");
+				pkg_solve_add_var_rules (tvar, rule->items, 2, false,
+						"explicit conflict");
+				pkg_solve_add_var_rules (cur_var, rule->items, 2, false,
+						"explicit conflict");
 			}
 		}
 
