@@ -945,6 +945,7 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	if (lp == NULL)
 		return (true);
 
+	pkg_jobs_add_universe(j, lp, true, NULL);
 	pkg_get(lp, PKG_AUTOMATIC, &automatic,
 	    PKG_VERSION, &oldversion,
 	    PKG_FLATSIZE, &oldsize);
@@ -966,13 +967,10 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	    PKG_OLD_FLATSIZE, oldsize,
 	    PKG_AUTOMATIC, (int64_t)automatic);
 
-	if (force) {
-		pkg_free(lp);
+	if (force)
 		return (true);
-	}
 
 	ret = pkg_need_upgrade(rp, lp, false);
-	pkg_free(lp);
 
 	return (ret);
 }
@@ -1293,13 +1291,11 @@ jobs_solve_install(struct pkg_jobs *j)
 
 	if (j->solved == 0) {
 		LL_FOREACH(j->patterns, jp) {
-			if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
+			if ((it = pkgdb_rquery(j->db, jp->pattern, jp->match, j->reponame)) == NULL)
 				return (EPKG_FATAL);
 
 			pkg = NULL;
 			while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-				pkg_jobs_add_universe(j, pkg, j->flags & PKG_FLAG_RECURSIVE, NULL);
-
 				if (pkg_is_locked(pkg)) {
 					/* Keep locked packages to the local version */
 					pkg_emit_locked(pkg);
@@ -1513,8 +1509,6 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 				PKG_AUTOMATIC, &automatic);
 	if (old != NULL)
 		pkg_get(old, PKG_VERSION, &oldversion);
-	else
-		pkg_get(new, PKG_OLD_VERSION, &oldversion);
 
 	an = pkg_annotation_lookup(new, "repository");
 
