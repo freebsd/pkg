@@ -206,12 +206,17 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg_job_universe
 	HASH_ADD_KEYPTR(hh, *head, origin, strlen(origin), req);
 }
 
-#define PRIORITY_CAN_UPDATE(a, b) (((a) >= 0) || ((b) < 0))
+enum pkg_priority_update_type {
+	PKG_PRIORITY_UPDATE_REQUEST,
+	PKG_PRIORITY_UPDATE_UNIVERSE,
+	PKG_PRIORITY_UPDATE_CONFLICT,
+	PKG_PRIORITY_UPDATE_DELETE
+};
 
 static void
 pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 		struct pkg_job_universe_item *item, int priority,
-		const char *why, bool local_only)
+		enum pkg_priority_update_type type)
 {
 	const char *origin, *digest;
 	struct pkg_dep *d = NULL;
@@ -220,56 +225,152 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 	const char *is_local;
 	int maxpri;
 
+	int (*deps_func)(const struct pkg *pkg, struct pkg_dep **d);
+	int (*rdeps_func)(const struct pkg *pkg, struct pkg_dep **d);
+
 	LL_FOREACH(item, it) {
 
 		pkg_get(it->pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
-		if (!local_only || it->pkg->type == PKG_INSTALLED) {
-			is_local = it->pkg->type == PKG_INSTALLED ? "local" : "remote";
-			pkg_debug(2, "universe: update %s priority(%s) of %s(%s): %d -> %d",
-					is_local, why, origin, digest, it->priority, priority);
-			it->priority = priority;
+		if (it->pkg->type == PKG_REMOTE && type == PKG_PRIORITY_UPDATE_CONFLICT) {
+			/*
+			 * We do not update priority of a remote part of conflict, as we know
+			 * that remote packages should not contain conflicts (they should be
+			 * resolved in request prior to calling of this function)
+			 */
+			continue;
+		}
+		is_local = it->pkg->type == PKG_INSTALLED ? "local" : "remote";
+		pkg_debug(2, "universe: update %s priority of %s(%s): %d -> %d",
+				is_local, origin, digest, it->priority, priority);
+		it->priority = priority;
 
-			while (pkg_deps(it->pkg, &d) == EPKG_OK) {
-				HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
-				if (found != NULL) {
-					LL_FOREACH(found, cur) {
-						if (cur->priority < priority + 1)
-							pkg_jobs_update_universe_priority(j, cur,
-									priority + 1, "dep", false);
+		if (type == PKG_PRIORITY_UPDATE_DELETE) {
+			/*
+			 * For delete requests we inverse deps and rdeps logic
+			 */
+			deps_func = pkg_rdeps;
+			rdeps_func = pkg_deps;
+		}
+		else {
+			deps_func = pkg_deps;
+			rdeps_func = pkg_rdeps;
+		}
+
+		while (deps_func(it->pkg, &d) == EPKG_OK) {
+			HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
+			if (found != NULL) {
+				LL_FOREACH(found, cur) {
+					if (cur->priority < priority + 1)
+						pkg_jobs_update_universe_priority(j, cur,
+								priority + 1, type);
+				}
+			}
+		}
+
+		d = NULL;
+		maxpri = priority;
+		while (rdeps_func(it->pkg, &d) == EPKG_OK) {
+			HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
+			if (found != NULL) {
+				LL_FOREACH(found, cur) {
+					if (cur->priority >= maxpri) {
+						maxpri = cur->priority + 1;
 					}
 				}
 			}
-
-			d = NULL;
-			maxpri = priority;
-			while (pkg_rdeps(it->pkg, &d) == EPKG_OK) {
-				HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), found);
-				if (found != NULL) {
-					LL_FOREACH(found, cur) {
-						if (cur->priority >= maxpri) {
-							maxpri = cur->priority + 1;
-						}
-					}
-				}
-			}
-			if (maxpri != priority) {
-				pkg_jobs_update_universe_priority(j, it,
-					maxpri, "rdep", false);
-				return;
-			}
-
+		}
+		if (maxpri != priority) {
+			pkg_jobs_update_universe_priority(j, it,
+					maxpri, type);
+			return;
+		}
+		if (it->pkg->type == PKG_REMOTE) {
 			while (pkg_conflicts(it->pkg, &c) == EPKG_OK) {
 				HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
 				if (found != NULL) {
 					LL_FOREACH(found, cur) {
-						if (cur->priority < priority)
-							pkg_jobs_update_universe_priority(j, cur, priority,
-									"conflict", false);
+						if (cur->pkg->type == PKG_INSTALLED) {
+							/*
+							 * Move delete requests to be done before installing
+							 */
+							if (cur->priority <= it->priority)
+								pkg_jobs_update_universe_priority(j, cur,
+									it->priority + 1, PKG_PRIORITY_UPDATE_CONFLICT);
+						}
 					}
 				}
 			}
 		}
 	}
+}
+
+static void
+pkg_jobs_update_conflict_priority(struct pkg_jobs *j, struct pkg_solved *req)
+{
+	struct pkg_conflict *c, *ctmp;
+	struct pkg *lp = req->items[0]->pkg;
+	struct pkg_job_universe_item *found, *cur, *rit = NULL;
+
+	while (pkg_conflicts(lp, &c) == EPKG_OK) {
+		rit = NULL;
+		HASH_FIND_STR(j->universe, pkg_conflict_origin(c), found);
+		assert(found != NULL);
+
+		LL_FOREACH(found, cur) {
+			if (cur->pkg->type == PKG_REMOTE) {
+				rit = cur;
+				break;
+			}
+		}
+
+		assert(rit != NULL);
+		if (rit->priority >= req->items[0]->priority) {
+			pkg_jobs_update_universe_priority(j, req->items[0],
+					rit->priority + 1, PKG_PRIORITY_UPDATE_CONFLICT);
+		}
+	}
+}
+
+static void
+pkg_jobs_set_request_priority(struct pkg_jobs *j, struct pkg_solved *req)
+{
+	if (req->type == PKG_SOLVED_UPGRADE && req->items[0]->pkg->conflicts != NULL) {
+		/*
+		 * We have an upgrade request that has some conflicting packages, therefore
+		 * update priorities of local packages and try to update priorities of remote ones
+		 */
+		pkg_jobs_update_conflict_priority(j, req);
+	}
+	else if (req->type == PKG_SOLVED_DELETE) {
+		if (req->items[0]->priority == 0)
+			pkg_jobs_update_universe_priority(j, req->items[0], 0,
+					PKG_PRIORITY_UPDATE_DELETE);
+	}
+	else {
+		if (req->items[0]->priority == 0)
+			pkg_jobs_update_universe_priority(j, req->items[0], 0,
+					PKG_PRIORITY_UPDATE_REQUEST);
+	}
+}
+
+static int
+pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
+{
+	return (r2->items[0]->priority - r1->items[0]->priority);
+}
+
+static void
+pkg_jobs_set_priorities(struct pkg_jobs *j)
+{
+	struct pkg_solved *req;
+
+	LL_FOREACH(j->jobs, req) {
+		if (req->items[0]->priority == 0) {
+			pkg_jobs_set_request_priority(j, req);
+		}
+	}
+
+	DL_SORT(j->jobs, pkg_jobs_sort_priority);
 }
 
 #undef PRIORITY_CAN_UPDATE
@@ -1257,12 +1358,6 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
-static int
-pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
-{
-	return (r2->items[0]->priority - r1->items[0]->priority);
-}
-
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
@@ -1345,10 +1440,6 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			}
 		}
 	}
-
-	/* Resort priorities */
-	if (j->solved)
-		DL_SORT(j->jobs, pkg_jobs_sort_priority);
 
 	return (ret);
 }
@@ -1482,7 +1573,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	/* Install */
 	pkgdb_transaction_begin(j->db->sqlite, "upgrade");
 
-	/* Delete conflicts initially */
+	pkg_jobs_set_priorities(j);
+
 	DL_FOREACH(j->jobs, ps) {
 		switch (ps->type) {
 		case PKG_SOLVED_DELETE:
@@ -1593,6 +1685,9 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				} while (j->conflicts_registered > 0);
 
 				if (has_conflicts) {
+					if (j->conflicts_registered == 0)
+						pkg_jobs_set_priorities(j);
+
 					pkg_emit_notice("The conflicts with the existing packages have been found.\n"
 							"We need to run one more solver iteration to resolve them");
 					return (EPKG_CONFLICT);
