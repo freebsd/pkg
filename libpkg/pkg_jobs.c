@@ -248,7 +248,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 					LL_FOREACH(found, cur) {
 						if (cur->priority < priority + 1)
 							pkg_jobs_update_universe_priority(j, cur,
-									priority + 1, "dep", local_only);
+									priority + 1, "dep", false);
 					}
 				}
 			}
@@ -267,7 +267,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 			}
 			if (maxpri != priority) {
 				pkg_jobs_update_universe_priority(j, it,
-					maxpri, "rdep", local_only);
+					maxpri, "rdep", false);
 				return;
 			}
 
@@ -277,7 +277,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 					LL_FOREACH(found, cur) {
 						if (cur->priority < priority)
 							pkg_jobs_update_universe_priority(j, cur, priority,
-									"conflict", local_only);
+									"conflict", false);
 					}
 				}
 			}
@@ -928,29 +928,30 @@ pkg_conflicts_add_missing(struct pkg_jobs *j, const char *origin, int priority)
 static void
 pkg_conflicts_register_universe(struct pkg_jobs *j,
 		struct pkg_job_universe_item *u1,
-		struct pkg_job_universe_item *u2)
+		struct pkg_job_universe_item *u2, bool local_only)
 {
 	pkg_conflicts_register(u1->pkg, u2->pkg);
 
-	if (u1->pkg->type == PKG_INSTALLED) {
-		/*
-		 * If the remote package has more priority, then we basically
-		 * want to update local (u1) priority just to ensure that it won't
-		 * be installed before we start
-		 */
-		if (u2->priority + 1 > u1->priority)
-			pkg_jobs_update_universe_priority(j, u1, u2->priority + 1,
-					"registering conflict(u2)", true);
-	}
+	/*
+	 * If the remote package has more priority, then we basically
+	 * want to update local (u1) priority just to ensure that it won't
+	 * be installed before we start
+	 */
+	if (u2->priority + 1 > u1->priority)
+		pkg_jobs_update_universe_priority(j, u1, u2->priority + 1,
+				"registering conflict(u2)", local_only);
+	else if (u1->priority + 1 > u2->priority)
+		pkg_jobs_update_universe_priority(j, u2, u1->priority + 1,
+				"registering conflict(u2)", local_only);
 }
 
 static void
-pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
+pkg_conflicts_add_from_pkgdb_local(const char *o1, const char *o2, void *ud)
 {
 	struct pkg_jobs *j = (struct pkg_jobs *)ud;
 	struct pkg_job_universe_item *u1, *u2, *cur1, *cur2;
 	struct pkg_conflict *c;
-
+	const char *dig1, *dig2;
 
 	HASH_FIND_STR(j->universe, o1, u1);
 	HASH_FIND_STR(j->universe, o2, u2);
@@ -977,7 +978,6 @@ pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
 			return;
 	}
 
-	j->conflicts_registered ++;
 	/*
 	 * Here we have some unit but we do not know, where is a conflict, e.g.
 	 * if we have several units U1 and U2 with the same origin O that are in
@@ -987,8 +987,63 @@ pkg_conflicts_add_from_pkgdb(const char *o1, const char *o2, void *ud)
 	LL_FOREACH(u1, cur1) {
 		LL_FOREACH(u2, cur2) {
 			if ((cur1->pkg->type == PKG_INSTALLED && cur2->pkg->type == PKG_REMOTE) ||
-				(u1->pkg->type == PKG_REMOTE && cur2->pkg->type == PKG_REMOTE)) {
-				pkg_conflicts_register_universe(j, cur1, cur2);
+				(cur2->pkg->type == PKG_INSTALLED && cur1->pkg->type == PKG_REMOTE)) {
+				pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
+				pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
+				pkg_conflicts_register_universe(j, cur1, cur2, true);
+				pkg_debug(2, "register conflict between local %s(%s) <-> remote %s(%s)",
+						o1, dig1, o2, dig2);
+				j->conflicts_registered ++;
+			}
+		}
+	}
+}
+
+static void
+pkg_conflicts_add_from_pkgdb_remote(const char *o1, const char *o2, void *ud)
+{
+	struct pkg_jobs *j = (struct pkg_jobs *)ud;
+	struct pkg_job_universe_item *u1, *u2, *cur1, *cur2;
+	struct pkg_conflict *c;
+	const char *dig1, *dig2;
+
+	HASH_FIND_STR(j->universe, o1, u1);
+	HASH_FIND_STR(j->universe, o2, u2);
+
+	/*
+	 * In case of remote conflict we need to register it only between remote
+	 * packets
+	 */
+
+	if (u1 == NULL || u2 == NULL) {
+		pkg_emit_error("cannot register remote conflict with non-existing origins %s and %s",
+				o1, o2);
+		return;
+	}
+	else {
+		/* Maybe we have registered this conflict already */
+		HASH_FIND(hh, u1->pkg->conflicts, o2, strlen(o2), c);
+		if (c != NULL)
+			return;
+	}
+
+	LL_FOREACH(u1, cur1) {
+		if (cur1->pkg->type == PKG_REMOTE) {
+			HASH_FIND(hh, cur1->pkg->conflicts, o2, strlen(o2), c);
+			if (c == NULL) {
+				LL_FOREACH(u2, cur2) {
+					HASH_FIND(hh, cur2->pkg->conflicts, o1, strlen(o1), c);
+					if (c == NULL && cur2->pkg->type == PKG_REMOTE) {
+						/* No need to update priorities */
+						pkg_conflicts_register(cur1->pkg, cur2->pkg);
+						j->conflicts_registered ++;
+						pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
+						pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
+						pkg_debug(2, "register conflict between remote %s(%s) <-> %s(%s)",
+								o1, dig1, o2, dig2);
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -998,13 +1053,13 @@ int
 pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j)
 {
 	/* Now we can get conflicts only from pkgdb */
-	return (pkgdb_integrity_append(j->db, p, pkg_conflicts_add_from_pkgdb, j));
+	return (pkgdb_integrity_append(j->db, p, pkg_conflicts_add_from_pkgdb_remote, j));
 }
 
 int
 pkg_conflicts_integrity_check(struct pkg_jobs *j)
 {
-	return (pkgdb_integrity_check(j->db, pkg_conflicts_add_from_pkgdb, j));
+	return (pkgdb_integrity_check(j->db, pkg_conflicts_add_from_pkgdb_local, j));
 }
 
 static void
