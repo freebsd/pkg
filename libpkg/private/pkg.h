@@ -241,6 +241,7 @@ struct pkg_jobs {
 
 struct job_pattern {
 	char		*pattern;
+	char		*path;
 	match_t		match;
 	bool		is_file;
 	UT_hash_handle hh;

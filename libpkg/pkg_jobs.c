@@ -98,6 +98,8 @@ pkg_jobs_pattern_free(struct job_pattern *jp)
 {
 	if (jp->pattern != NULL)
 		free(jp->pattern);
+	if (jp->path != NULL)
+		free(jp->path);
 
 	free(jp);
 }
@@ -139,6 +141,9 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 	const char *dot_pos;
 	char *pkg_path;
 
+	assert(jp != NULL);
+	assert(pattern != NULL);
+
 	dot_pos = strrchr(pattern, '.');
 	if (dot_pos != NULL) {
 		/*
@@ -150,8 +155,14 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 			strcmp(dot_pos, "tgz") == 0 ||
 			strcmp(dot_pos, "tar") == 0) {
 			if ((pkg_path = realpath(pattern, pkg_path)) != NULL) {
+				/* Dot pos is one character after the dot */
+				int len = dot_pos - pattern;
+
 				jp->is_file = true;
-				jp->pattern = pkg_path;
+				jp->path = pkg_path;
+				jp->pattern = malloc(len);
+				strlcpy(jp->pattern, pattern, len);
+
 				return (true);
 			}
 		}
