@@ -611,6 +611,8 @@ static struct keyact {
 	{ "pkgdep", pkgdep },
 	{ "mtree", comment_key },
 	{ "stopdaemon", comment_key },
+	{ "display", comment_key },
+	{ "conflicts", comment_key },
 	{ NULL, NULL },
 };
 
