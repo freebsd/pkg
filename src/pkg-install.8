@@ -15,12 +15,12 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd June 30, 2013
+.Dd March 11, 2014
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
 .Nm "pkg install"
-.Nd installs packages from remote package repositories
+.Nd installs packages from remote package repositories or local archives
 .Sh SYNOPSIS
 .Nm
 .Op Fl AfgIinFqRUxy
@@ -28,7 +28,7 @@
 .Ar pkg-origin ...
 .Sh DESCRIPTION
 .Nm
-is used for installation of packages from a package repository.
+is used for installation of packages from a package repository or local archives.
 Multiple package names can be specified on the command line, either
 explicitly or by matching against package names in the repository
 catalogues using shell globbing or regular expressions.
