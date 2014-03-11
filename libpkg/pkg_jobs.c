@@ -93,6 +93,15 @@ pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 	return (EPKG_OK);
 }
 
+static void
+pkg_jobs_pattern_free(struct job_pattern *jp)
+{
+	if (jp->pattern != NULL)
+		free(jp->pattern);
+
+	free(jp);
+}
+
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
@@ -118,10 +127,37 @@ pkg_jobs_free(struct pkg_jobs *j)
 		free(un);
 	}
 	HASH_FREE(j->seen, pkg_job_seen, free);
-	LL_FREE(j->patterns, job_pattern, free);
+	HASH_FREE(j->patterns, job_pattern, pkg_jobs_pattern_free);
 	LL_FREE(j->jobs, pkg_solved, free);
 
 	free(j);
+}
+
+static bool
+pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
+{
+	const char *dot_pos;
+	char *pkg_path;
+
+	dot_pos = strrchr(pattern, '.');
+	if (dot_pos != NULL) {
+		/*
+		 * Compare suffix with .txz or .tbz
+		 */
+		dot_pos ++;
+		if (strcmp(dot_pos, "txz") == 0 ||
+			strcmp(dot_pos, "tbz") == 0 ||
+			strcmp(dot_pos, "tgz") == 0 ||
+			strcmp(dot_pos, "tar") == 0) {
+			if ((pkg_path = realpath(pattern, pkg_path)) != NULL) {
+				jp->is_file = true;
+				jp->pattern = pkg_path;
+				return (true);
+			}
+		}
+	}
+
+	return (false);
 }
 
 int
@@ -137,17 +173,19 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	}
 
 	for (i = 0; i < argc; i++) {
-		jp = malloc(sizeof(struct job_pattern));
-		jp->pattern = argv[i];
-		jp->match = match;
-		LL_APPEND(j->patterns, jp);
+		jp = calloc(1, sizeof(struct job_pattern));
+		if (!pkg_jobs_maybe_match_file(jp, argv[i])) {
+			jp->pattern = strdup(argv[i]);
+			jp->match = match;
+		}
+		HASH_ADD_KEYPTR(hh, j->patterns, jp->pattern, strlen(jp->pattern), jp);
 	}
 
 	if (argc == 0 && match == MATCH_ALL) {
-		jp = malloc(sizeof(struct job_pattern));
+		jp = calloc(1, sizeof(struct job_pattern));
 		jp->pattern = NULL;
 		jp->match = match;
-		LL_APPEND(j->patterns, jp);
+		HASH_ADD_KEYPTR(hh, j->patterns, "all", 3, jp);
 	}
 
 	return (EPKG_OK);
@@ -1128,7 +1166,7 @@ pkg_conflicts_integrity_check(struct pkg_jobs *j)
 static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
-	struct job_pattern *jp = NULL;
+	struct job_pattern *jp, *jtmp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
@@ -1139,7 +1177,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_RECURSIVE) == PKG_FLAG_RECURSIVE)
 		recursive = true;
 
-	LL_FOREACH(j->patterns, jp) {
+	HASH_ITER(hh, j->patterns, jp, jtmp) {
 		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 			return (EPKG_FATAL);
 
@@ -1274,7 +1312,7 @@ order:
 static int
 jobs_solve_install(struct pkg_jobs *j)
 {
-	struct job_pattern *jp = NULL;
+	struct job_pattern *jp, *jtmp;
 	struct pkg *pkg;
 	struct pkgdb_it *it;
 	const char *origin;
@@ -1289,7 +1327,7 @@ jobs_solve_install(struct pkg_jobs *j)
 	}
 
 	if (j->solved == 0) {
-		LL_FOREACH(j->patterns, jp) {
+		HASH_ITER(hh, j->patterns, jp, jtmp) {
 			if ((it = pkgdb_rquery(j->db, jp->pattern, jp->match, j->reponame)) == NULL)
 				return (EPKG_FATAL);
 
@@ -1338,7 +1376,7 @@ order:
 static int
 jobs_solve_fetch(struct pkg_jobs *j)
 {
-	struct job_pattern *jp = NULL;
+	struct job_pattern *jp, *jtmp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
@@ -1365,7 +1403,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		}
 		pkgdb_it_free(it);
 	} else {
-		LL_FOREACH(j->patterns, jp) {
+		HASH_ITER(hh, j->patterns, jp, jtmp) {
 			/* TODO: use repository priority here */
 			if (find_remote_pkg(j, jp->pattern, jp->match, true,
 					j->flags & PKG_FLAG_RECURSIVE) == EPKG_FATAL)
