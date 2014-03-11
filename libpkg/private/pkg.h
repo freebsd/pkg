@@ -198,8 +198,9 @@ struct pkg_option {
 
 struct pkg_job_universe_item {
 	struct pkg *pkg;
-	UT_hash_handle hh;
+	struct job_pattern *jp;
 	int priority;
+	UT_hash_handle hh;
 	struct pkg_job_universe_item *next, *prev;
 };
 
