@@ -1343,6 +1343,9 @@ pkg_repo_ident(struct pkg_repo *r)
 const char *
 pkg_repo_ident_from_name(const char *repo_name)
 {
+	if (repo_name == NULL)
+		return "local";
+
 	return (repo_name + strlen(REPO_NAME_PREFIX));
 }
 
