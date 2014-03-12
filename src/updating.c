@@ -24,10 +24,19 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capability.h>
+#endif
+
 #include <sys/queue.h>
 
 #define _WITH_GETLINE
 #include <err.h>
+#include <errno.h>
 #include <pkg.h>
 #include <stdio.h>
 #include <string.h>
@@ -70,6 +79,9 @@ exec_updating(int argc, char **argv)
 	const char *origin;
 	FILE *fd;
 	int retcode = EXIT_SUCCESS;
+#ifdef HAVE_CAPSICUM
+	cap_rights_t rights;
+#endif
 
 	while ((ch = getopt(argc, argv, "d:f:")) != -1) {
 		switch (ch) {
@@ -101,6 +113,34 @@ exec_updating(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
+	if (updatingfile == NULL) {
+		const char *portsdir;
+		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK) {
+			retcode = EX_CONFIG;
+			goto cleanup;
+		}
+		asprintf(&updatingfile, "%s/UPDATING", portsdir);
+	}
+
+	fd = fopen(updatingfile, "r");
+	if (fd == NULL) {
+		warnx("Unable to open: %s", updatingfile);
+		goto cleanup;
+	}
+
+#ifdef HAVE_CAPSICUM
+	cap_rights_init(&rights, CAP_READ);
+	if (cap_rights_limit(fileno(fd), &rights) < 0 && errno != ENOSYS ) {
+		warn("cap_rights_limit() failed");
+		return (EX_SOFTWARE);
+	}
+
+	if (cap_enter() < 0 && errno != ENOSYS) {
+		warn("cap_enter() failed");
+		return (EX_SOFTWARE);
+	}
+#endif
+
 	SLIST_INIT(&origins);
 	if (argc == 0) {
 		if ((it = pkgdb_query(db, NULL, MATCH_ALL)) == NULL) {
@@ -121,21 +161,6 @@ exec_updating(int argc, char **argv)
 			SLIST_INSERT_HEAD(&origins, port, next);
 			argv++;
 		}
-	}
-
-	if (updatingfile == NULL) {
-		const char *portsdir;
-		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK) {
-			retcode = EX_CONFIG;
-			goto cleanup;
-		}
-		asprintf(&updatingfile, "%s/UPDATING", portsdir);
-	}
-
-	fd = fopen(updatingfile, "r");
-	if (fd == NULL) {
-		warnx("Unable to open: %s", updatingfile);
-		goto cleanup;
 	}
 
 	while ((linelen = getline(&line, &linecap, fd)) > 0) {
