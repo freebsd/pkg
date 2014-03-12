@@ -38,6 +38,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <pkg.h>
 #include <stdbool.h>
 #include <stdio.h>
