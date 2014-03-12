@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
@@ -28,7 +28,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capability.h>
+#endif
+
 #include <err.h>
+#include <errno.h>
 #include <pkg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -73,7 +82,7 @@ exec_info(int argc, char **argv)
 	char *pkgname;
 	char *pkgversion = NULL, *pkgversion2 = NULL;
 	const char *file = NULL;
-	int ch;
+	int ch, fd;
 	int ret = EPKG_OK;
 	int retcode = 0;
 	bool gotone = false;
@@ -85,6 +94,9 @@ exec_info(int argc, char **argv)
 	bool origin_search = false;
 	bool e_flag = false;
 	struct pkg_manifest_key *keys = NULL;
+#ifdef HAVE_CAPSICUM
+	cap_rights_t rights;
+#endif
 
 	/* TODO: exclusive opts ? */
 	while ((ch = getopt(argc, argv, "aADegixEIdrklbBsqopOfF:R")) != -1) {
@@ -199,6 +211,23 @@ exec_info(int argc, char **argv)
 		quiet = false;
 
 	if (file != NULL) {
+		if ((fd = open(file, O_RDONLY)) == -1) {
+			warn("Unable to open %s", file);
+			return (EX_IOERR);
+		}
+
+#ifdef HAVE_CAPSICUM
+		cap_rights_init(&rights, CAP_READ, CAP_FSTAT);
+		if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
+			warn("cap_rights_limit() failed");
+			return (EX_SOFTWARE);
+		}
+
+		if (cap_enter() < 0 && errno != ENOSYS) {
+			warn("cap_enter() failed");
+			return (EX_SOFTWARE);
+		}
+#endif
 		if (opt == INFO_TAG_NAMEVER)
 			opt |= INFO_FULL;
 		pkg_manifest_keys_new(&keys);
@@ -206,13 +235,15 @@ exec_info(int argc, char **argv)
 				INFO_DIRS)) == 0)
 			open_flags = PKG_OPEN_MANIFEST_COMPACT;
 
-		if (pkg_open(&pkg, file, keys, open_flags) != EPKG_OK) {
+		if (pkg_open_fd(&pkg, fd, keys, open_flags) != EPKG_OK) {
+			close(fd);
 			return (1);
 		}
 		pkg_manifest_keys_free(keys);
 		print_info(pkg, opt);
+		close(fd);
 		pkg_free(pkg);
-		return (0);
+		return (EX_OK);
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
@@ -240,6 +271,12 @@ exec_info(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
+#ifdef HAVE_CAPSICUM
+		if (cap_enter() < 0 && errno != ENOSYS) {
+			warn("cap_enter() failed");
+			return (EX_SOFTWARE);
+		}
+#endif
 	i = 0;
 	do {
 		gotone = false;
