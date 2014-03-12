@@ -74,12 +74,12 @@ exec_ssh(int argc, char **argv __unused)
 
 #ifdef HAVE_CAPSICUM
 	cap_rights_init(&rights, CAP_READ, CAP_FSTATAT, CAP_FCNTL);
-	if (cap_rights_limit(fd, &rights) < 0) {
+	if (cap_rights_limit(fd, &rights) < 0 && errno != ENOSYS ) {
 		warn("cap_rights_limit() failed");
 		return (EX_SOFTWARE);
 	}
 
-	if (cap_enter() < 0) {
+	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		return (EX_SOFTWARE);
 	}
