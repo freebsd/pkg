@@ -817,7 +817,8 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 }
 
 static int
-pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
+pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
+		bool *got_local)
 {
 	int rc = EPKG_FATAL;
 	struct pkg *pkg = NULL;
@@ -834,8 +835,9 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 		else {
 			pkg->type = PKG_FILE;
 			rc = pkg_jobs_process_remote_pkg(j, pkg, true,
-					j->flags & PKG_FLAG_FORCE, true, &unit);
+					j->flags & PKG_FLAG_FORCE, false, &unit);
 			unit->jp = jp;
+			*got_local = true;
 		}
 		pkg_manifest_keys_free(keys);
 	}
@@ -1356,7 +1358,9 @@ jobs_solve_install(struct pkg_jobs *j)
 	struct job_pattern *jp, *jtmp;
 	struct pkg *pkg;
 	struct pkgdb_it *it;
+	struct pkg_job_request *req, *rtmp;
 	const char *origin;
+	bool got_local;
 	int flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
@@ -1369,8 +1373,17 @@ jobs_solve_install(struct pkg_jobs *j)
 
 	if (j->solved == 0) {
 		HASH_ITER(hh, j->patterns, jp, jtmp) {
-			if (pkg_jobs_find_remote_pattern(j, jp) != EPKG_OK)
+			if (pkg_jobs_find_remote_pattern(j, jp, &got_local) != EPKG_OK)
 				return (EPKG_FATAL);
+		}
+		if (got_local) {
+			/*
+			 * Need to iterate request one more time to recurse depends
+			 */
+			HASH_FREE(j->seen, pkg_job_seen, free);
+			HASH_ITER(hh, j->request_add, req, rtmp) {
+				pkg_jobs_add_universe(j, req->item->pkg, true, NULL);
+			}
 		}
 	}
 	else {
@@ -1378,7 +1391,6 @@ jobs_solve_install(struct pkg_jobs *j)
 		 * If we have tried to solve request, then we just want to re-add all
 		 * request packages to the universe to find out any potential conflicts
 		 */
-		struct pkg_job_request *req, *rtmp;
 		HASH_ITER(hh, j->request_add, req, rtmp) {
 			pkg_jobs_add_universe(j, req->item->pkg, true, NULL);
 		}
