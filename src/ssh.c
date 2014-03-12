@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <err.h>
+#include <errno.h>
 
 #include <pkg.h>
 
