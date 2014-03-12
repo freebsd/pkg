@@ -101,6 +101,14 @@ AC_CHECK_HEADER([sys/sbuf.h], [
 	LIBSBUF_INCLUDE="-I\$(top_srcdir)/external/libsbuf"
 ])
 
+AC_CHECK_HEADER([sys/capability.h], [
+        AC_CHECK_LIB(c, cap_sandboxed, [
+                AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
+        ])
+
+])
+
+
 AC_SUBST([LIBELF_LIB])
 AC_SUBST([LIBELF_BUNDLED])
 AC_SUBST([LIBELF_INCLUDE])

@@ -1552,7 +1552,7 @@ int pkg_old_emit_content(struct pkg *pkg, char **dest);
 int pkg_from_old(struct pkg *pkg);
 int pkg_to_old(struct pkg *pkg);
 int pkg_register_old(struct pkg *pkg);
-int pkg_sshserve(void);
+int pkg_sshserve(int fd);
 
 int pkg_repos_total_count(void);
 int pkg_repos_activated_count(void);

@@ -24,8 +24,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capability.h>
+#endif
+
 #include <sysexits.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <err.h>
 
 #include <pkg.h>
 
@@ -41,12 +51,41 @@ usage_ssh(void)
 int
 exec_ssh(int argc, char **argv __unused)
 {
+	int fd = AT_FDCWD;
+	const char *restricted = NULL;
+
+#ifdef HAVE_CAPSICUM
+	cap_rights_t rights;
+#endif
+
 	if (argc > 1) {
 		usage_ssh();
 		return (EX_USAGE);
 	}
 
-	if (pkg_sshserve() != EPKG_OK)
+	pkg_config_string(PKG_CONFIG_SSH_RESTRICT_DIR, &restricted);
+	if (restricted == NULL)
+		restricted = "/";
+
+	if ((fd = open(restricted, O_DIRECTORY|O_RDONLY)) < 0) {
+		warn("Imposssible to open the restricted directory");
+		return (EX_SOFTWARE);
+	}
+
+#ifdef HAVE_CAPSICUM
+	cap_rights_init(&rights, CAP_READ, CAP_FSTATAT, CAP_FCNTL);
+	if (cap_rights_limit(fd, &rights) < 0) {
+		warn("cap_rights_limit() failed");
+		return (EX_SOFTWARE);
+	}
+
+	if (cap_enter() < 0) {
+		warn("cap_enter() failed");
+		return (EX_SOFTWARE);
+	}
+
+#endif
+	if (pkg_sshserve(fd) != EPKG_OK)
 		return (EX_SOFTWARE);
 
 	return (EX_OK);
