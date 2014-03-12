@@ -1207,7 +1207,25 @@ pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, in
 	struct archive_entry *ae;
 	int ret;
 
-	ret = pkg_open2(pkg_p, &a, &ae, path, keys, flags);
+	ret = pkg_open2(pkg_p, &a, &ae, path, keys, flags, -1);
+
+	if (ret != EPKG_OK && ret != EPKG_END)
+		return (EPKG_FATAL);
+
+	archive_read_close(a);
+	archive_read_free(a);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_open_fd(struct pkg **pkg_p, int fd, struct pkg_manifest_key *keys, int flags)
+{
+	struct archive *a;
+	struct archive_entry *ae;
+	int ret;
+
+	ret = pkg_open2(pkg_p, &a, &ae, NULL, keys, flags, fd);
 
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
@@ -1220,7 +1238,7 @@ pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, in
 
 int
 pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
-		const char *path, struct pkg_manifest_key *keys, int flags)
+		const char *path, struct pkg_manifest_key *keys, int flags, int fd)
 {
 	struct pkg	 *pkg;
 	pkg_error_t	  retcode = EPKG_OK;
@@ -1242,8 +1260,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		{ NULL, 0 }
 	};
 
-	assert(path != NULL && path[0] != '\0');
-
 	*a = archive_read_new();
 	archive_read_support_filter_all(*a);
 	archive_read_support_format_tar(*a);
@@ -1254,14 +1270,23 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	 * read an on-disk file called "-", just say "./-" or some
 	 * other leading path. */
 
-	read_from_stdin = (strncmp(path, "-", 2) == 0);
+	if (fd == -1) {
+		read_from_stdin = (strncmp(path, "-", 2) == 0);
 
-	if (archive_read_open_filename(*a,
-	    read_from_stdin ? NULL : path, 4096) != ARCHIVE_OK) {
-		pkg_emit_error("archive_read_open_filename(%s): %s", path,
-		    archive_error_string(*a));
-		retcode = EPKG_FATAL;
-		goto cleanup;
+		if (archive_read_open_filename(*a,
+		    read_from_stdin ? NULL : path, 4096) != ARCHIVE_OK) {
+			pkg_emit_error("archive_read_open_filename(%s): %s", path,
+			    archive_error_string(*a));
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+	} else {
+		if (archive_read_open_fd(*a, fd, 4096) != ARCHIVE_OK) {
+			pkg_emit_error("archive_read_open_fd: %s",
+			    archive_error_string(*a));
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 	if (*pkg_p == NULL) {

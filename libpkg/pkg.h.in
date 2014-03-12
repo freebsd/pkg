@@ -558,6 +558,7 @@ int pkg_is_valid(const struct pkg * restrict);
  * @param flags open flags
  */
 int pkg_open(struct pkg **p, const char *path, struct pkg_manifest_key *keys, int flags);
+int pkg_open_fd(struct pkg **p, int fd, struct pkg_manifest_key *keys, int flags);
 
 /**
  * @return the type of the package.
