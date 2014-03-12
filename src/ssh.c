@@ -69,7 +69,7 @@ exec_ssh(int argc, char **argv __unused)
 		restricted = "/";
 
 	if ((fd = open(restricted, O_DIRECTORY|O_RDONLY)) < 0) {
-		warn("Imposssible to open the restricted directory");
+		warn("Impossible to open the restricted directory");
 		return (EX_SOFTWARE);
 	}
 
