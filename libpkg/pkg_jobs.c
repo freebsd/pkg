@@ -107,7 +107,7 @@ void
 pkg_jobs_free(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req, *tmp;
-	struct pkg_job_universe_item *un, *untmp, *cur;
+	struct pkg_job_universe_item *un, *untmp, *cur, *curtmp;
 
 	if (j == NULL)
 		return;
@@ -122,10 +122,10 @@ pkg_jobs_free(struct pkg_jobs *j)
 	}
 	HASH_ITER(hh, j->universe, un, untmp) {
 		HASH_DEL(j->universe, un);
-		LL_FOREACH(un, cur) {
+		LL_FOREACH_SAFE(un, cur, curtmp) {
 			pkg_free(cur->pkg);
+			free(cur);
 		}
-		free(un);
 	}
 	HASH_FREE(j->seen, pkg_job_seen, free);
 	HASH_FREE(j->patterns, job_pattern, pkg_jobs_pattern_free);
@@ -1040,7 +1040,6 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	if (an != NULL)  {
 		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
 		    pkg_annotation_value(an)) != 0)  {
-			pkg_free(lp);
 			return (false);
 		} else {
 			pkg_addannotation(rp, "repository", pkg_annotation_value(an));
