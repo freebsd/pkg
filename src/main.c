@@ -95,7 +95,7 @@ static struct commands {
 	{ "rquery", "Queries information in repository catalogues", exec_rquery, usage_rquery},
 	{ "search", "Performs a search of package repository catalogues", exec_search, usage_search},
 	{ "set", "Modifies information about packages in the local database", exec_set, usage_set},
-	{ "ssh", "ssh packages to be used via ssh", exec_ssh, usage_ssh},
+	{ "ssh", "Package server (to be used via ssh)", exec_ssh, usage_ssh},
 	{ "shell", "Opens a debug shell", exec_shell, usage_shell},
 	{ "shlib", "Displays which packages link against a specific shared library", exec_shlib, usage_shlib},
 	{ "stats", "Displays package database statistics", exec_stats, usage_stats},

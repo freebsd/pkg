@@ -5,7 +5,7 @@
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
-.\" 8. Redistributions of source code must retain the above copyright
+.\" 1. Redistributions of source code must retain the above copyright
 .\"    notice, this list of conditions and the following disclaimer.
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
@@ -15,69 +15,42 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
-.Dt PKG-UPDATING 8
+.Dd March 12, 2014
+.Dt PKG-SSH 8
 .Os
 .Sh NAME
-.Nm "pkg updating"
-.Nd displays UPDATING entries of software packages
+.Nm "pkg ssh"
+.Nd package server
 .Sh SYNOPSIS
 .Nm
-.Op Fl d Ar date
-.Op Fl f Ar file
-.Op Ar pkg-name ...
-.Nm
 .Sh DESCRIPTION
-The
 .Nm
-command scans the installed ports and show all UPDATING entries that affect one
-of the installed ports.
-Alternativly a list of pkg-names could be passed.
+provides a minimal package server and it's most commonly used with the SSH
+transport protocol.
+.Pp
+This command is not meant to be used by the user.
+.Xr pkg 8
+will do start the server automatically through
+.Xr ssh 1
+when the ssh:// scheme is specified in the repository configuration.
 .Sh OPTIONS
-The following options are supported by
-.Nm :
-.Bl -tag -width F1
-.It Ar pkg-name ...
-UPDATING entries for the named packages are displayed.
-.It Fl d Ar date
-Only entries newer than
-.Ar date
-are shown.
-Use a YYYYMMDD date format.
-.It Fl f Ar file
-Defines a alternative location of the UPDATING
-.Ar file .
-.El
+.Nm
+supports no options.
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
-.Nm :
-.Bl -tag -width F1
-.It Ev PORTSDIR
-Location of the ports tree.
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev SSH_RESTRICT_DIR
 .El
 .Sh FILES
 See
 .Xr pkg.conf 5 .
-.Sh EXAMPLES
-Shows all entries of all installed ports:
-.Dl % pkg updating
-.Pp
-Shows all entries of all installed ports since 2012-01-01:
-.Dl % pkg updating -d 20120101
-.Pp
-Shows all entries for all apache and mysql ports:
-.Dl % pkg updating apache mysql
-.Pp
-Shows all apache entries since 2012-01-01:
-.Dl % pkg updating -d 20120101 apache
-.Pp
-Defines that the UPDATING file is in /tmp and shows all entries of all
-installed ports:
-.Dl % pkg updating -f /tmp/UPDATING
 .Sh SEE ALSO
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
-.Xr pkg-add 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -100,9 +73,9 @@ installed ports:
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
-.Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
 .Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,
 .Xr pkg-which 8
