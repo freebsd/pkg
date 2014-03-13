@@ -154,7 +154,7 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 			strcmp(dot_pos, "tbz") == 0 ||
 			strcmp(dot_pos, "tgz") == 0 ||
 			strcmp(dot_pos, "tar") == 0) {
-			if ((pkg_path = realpath(pattern, pkg_path)) != NULL) {
+			if ((pkg_path = realpath(pattern, NULL)) != NULL) {
 				/* Dot pos is one character after the dot */
 				int len = dot_pos - pattern;
 
