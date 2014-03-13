@@ -158,7 +158,7 @@ exec_install(int argc, char **argv)
 	if (auto_update && (updcode = pkgcli_update(false)) != EPKG_OK)
 		return (updcode);
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_MAYBE_REMOTE) != EPKG_OK)
 		return (EX_IOERR);
 
 	if (pkgdb_obtain_lock(db, lock_type, 0, 0) != EPKG_OK) {

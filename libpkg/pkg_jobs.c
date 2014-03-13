@@ -59,7 +59,6 @@ int
 pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 {
 	assert(db != NULL);
-	assert(t != PKG_JOBS_INSTALL || db->type == PKGDB_REMOTE);
 
 	if ((*j = calloc(1, sizeof(struct pkg_jobs))) == NULL) {
 		pkg_emit_errno("calloc", "pkg_jobs");

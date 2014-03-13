@@ -120,7 +120,8 @@ typedef enum {
 
 typedef enum {
 	PKGDB_DEFAULT = 0,
-	PKGDB_REMOTE
+	PKGDB_REMOTE,
+	PKGDB_MAYBE_REMOTE
 } pkgdb_t;
 
 /**
