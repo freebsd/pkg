@@ -752,7 +752,7 @@ pkg_init(const char *path, const char *reposdir)
 			continue;
 		}
 
-		ncfg = ucl_object_insert_key(ncfg, cur, key, strlen(key), false);
+		ncfg = ucl_object_insert_key(ncfg, ucl_object_ref(cur), key, strlen(key), false);
 	}
 
 	if (ncfg != NULL) {
@@ -855,7 +855,7 @@ parsed:
 	disable_plugins_if_static();
 
 	parsed = true;
-//	ucl_object_unref(obj);
+	ucl_object_unref(obj);
 	ucl_parser_free(p);
 
 	pkg_debug(1, "%s", "pkg initialized");
