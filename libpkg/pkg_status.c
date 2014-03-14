@@ -43,8 +43,8 @@ static bool is_exec_at_localbase(const char *progname);
 pkg_status_t
 pkg_status(int *count)
 {
+	pkg_object	*o;
 	const char	*progname;
-	const char	*dbdir;
 	char		 dbpath[MAXPATHLEN];
 	int		 numpkgs = 0;
 	sqlite3		*db = NULL;
@@ -69,10 +69,8 @@ pkg_status(int *count)
 	/* Does the local.sqlite pkg database exist, and can we open
 	   it for reading? */
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
-		return (PKG_STATUS_NODB);
-
-	snprintf(dbpath, sizeof(dbpath), "%s/local.sqlite", dbdir);
+	o = pkg_config_get("PKG_DBDIR");
+	snprintf(dbpath, sizeof(dbpath), "%s/local.sqlite", pkg_object_string(o));
 
 	if (eaccess(dbpath, R_OK) == -1)
 		return (PKG_STATUS_NODB);

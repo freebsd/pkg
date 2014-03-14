@@ -91,7 +91,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	 * stop the different related services if the users do want that
 	 * and that the service is running
 	 */
-	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 	if (handle_rc)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 

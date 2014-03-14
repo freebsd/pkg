@@ -244,7 +244,7 @@ meta_dirrm(struct plist *p, char *line, struct file_attr *a, bool try)
 		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 		if (developer) {
 			pkg_emit_developer_mode("Plist error: @dirrm %s", line);
 			ret = EPKG_FATAL;
@@ -312,7 +312,7 @@ file(struct plist *p, char *line, struct file_attr *a)
 		pkg_emit_errno("lstat", testpath);
 		if (p->stage != NULL)
 			ret = EPKG_FATAL;
-		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 		if (developer) {
 			pkg_emit_developer_mode("Plist error, missing file: %s", line);
 			ret = EPKG_FATAL;
@@ -785,9 +785,9 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	int ret = EPKG_UNKNOWN;
 	ucl_object_t *o;
 
-	pkg_config_string(PKG_CONFIG_PLIST_KEYWORDS_DIR, &keyword_dir);
+	keyword_dir = pkg_object_string(pkg_config_get("PLIST_KEYWORDS_DIR"));
 	if (keyword_dir == NULL) {
-		pkg_config_string(PKG_CONFIG_PORTSDIR, &keyword_dir);
+		keyword_dir = pkg_object_string(pkg_config_get("PORTSDIR"));
 		snprintf(keyfile_path, sizeof(keyfile_path),
 		    "%s/Keywords/%s.yaml", keyword_dir, keyword);
 	} else {

@@ -118,7 +118,7 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 	int exitcode = EX_OK;
 	int ch;
 
-	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
 	while ((ch = getopt(argc, argv, "agiqxy")) != -1) {
 		switch (ch) {

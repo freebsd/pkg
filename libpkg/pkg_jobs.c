@@ -1481,8 +1481,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	}
 
 	if (ret == EPKG_OK) {
-		if (pkg_config_string(PKG_CONFIG_CUDF_SOLVER, &solver) == EPKG_OK
-				&& solver != NULL) {
+		if ((solver = pkg_object_string(pkg_config_get("CUDF_SOLVER"))) != NULL) {
 			pchild = process_spawn_pipe(spipe, solver);
 			if (pchild == -1)
 				return (EPKG_FATAL);
@@ -1499,8 +1498,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		else {
 			problem = pkg_solve_jobs_to_sat(j);
 			if (problem != NULL) {
-				if (pkg_config_string(PKG_CONFIG_SAT_SOLVER, &solver) == EPKG_OK
-						&& solver != NULL) {
+				if ((solver = pkg_object_string(pkg_config_get("SAT_SOLVER"))) != NULL) {
 					pchild = process_spawn_pipe(spipe, solver);
 					if (pchild == -1)
 						return (EPKG_FATAL);
@@ -1652,10 +1650,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	if (j->flags & PKG_FLAG_SKIP_INSTALL)
 		return (EPKG_OK);
 
-	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
-		return (EPKG_FATAL);
-	
-	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 
 	/* XXX: get rid of hardcoded values */
 	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
@@ -1851,8 +1847,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	const char *repopath = NULL;
 	char cachedpath[MAXPATHLEN];
 	
-	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
-		return (EPKG_FATAL);
+	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
 	/* check for available size to fetch */
 	PKG_JOBS_FETCH_CALCULATE(j->jobs);
@@ -1903,8 +1898,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	char path[MAXPATHLEN];
 	int ret = EPKG_OK, res, added = 0;
 
-	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
-		return (EPKG_FATAL);
+	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
 	pkg_emit_integritycheck_begin();
 

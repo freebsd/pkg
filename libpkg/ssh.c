@@ -59,7 +59,7 @@ pkg_sshserve(int fd)
 	char fpath[MAXPATHLEN];
 	const char *restricted = NULL;
 
-	pkg_config_string(PKG_CONFIG_SSH_RESTRICT_DIR, &restricted);
+	restricted = pkg_object_string(pkg_config_get("SSH_RESTRICT_DIR"));
 
 	printf("ok: pkg "PKGVERSION"\n");
 	for (;;) {

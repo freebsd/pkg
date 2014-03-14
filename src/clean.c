@@ -233,7 +233,7 @@ exec_clean(int argc, char **argv)
 	int		 ch;
 	struct pkg_manifest_key *keys = NULL;
 
-	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
 	while ((ch = getopt(argc, argv, "anqy")) != -1) {
 		switch (ch) {
@@ -257,10 +257,7 @@ exec_clean(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK) {
-		warnx("Cannot get cachedir config entry");
-		return 1;
-	}
+	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
 	paths[0] = __DECONST(char*, cachedir);
 	paths[1] = NULL;

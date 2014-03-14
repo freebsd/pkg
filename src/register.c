@@ -109,7 +109,7 @@ exec_register(int argc, char **argv)
 	int		 ret     = EPKG_OK;
 	int		 retcode = EX_OK;
 
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EX_OSERR, "malloc");

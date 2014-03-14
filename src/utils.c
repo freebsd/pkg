@@ -541,7 +541,7 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 	flatsize = oldflatsize = pkgsize = 0;
 	oldversion = NULL;
 
-	pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir);
+	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 	pkg_get(new_pkg, PKG_FLATSIZE, &flatsize, PKG_PKGSIZE, &pkgsize, PKG_REASON, &why);
 	if (old_pkg != NULL)
 		pkg_get(old_pkg, PKG_VERSION, &oldversion, PKG_FLATSIZE, &oldflatsize);

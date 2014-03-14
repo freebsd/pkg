@@ -726,10 +726,7 @@ exec_audit(int argc, char **argv)
 	int ret = EX_OK, res;
 	const char *portaudit_site = NULL;
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &db_dir) != EPKG_OK) {
-		warnx("PKG_DBIR is missing");
-		return (EX_CONFIG);
-	}
+	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
 	while ((ch = getopt(argc, argv, "qF")) != -1) {
 		switch (ch) {
@@ -750,10 +747,7 @@ exec_audit(int argc, char **argv)
 	snprintf(audit_file, sizeof(audit_file), "%s/vuln.xml", db_dir);
 
 	if (fetch == true) {
-		if (pkg_config_string(PKG_CONFIG_VULNXML_SITE, &portaudit_site) != EPKG_OK) {
-			warnx("VULNXML_SITE is missing");
-			return (EX_CONFIG);
-		}
+		portaudit_site = pkg_object_string(pkg_config_get("VULNXML_SITE"));
 		if (fetch_and_extract(portaudit_site, audit_file) != EPKG_OK) {
 			return (EX_IOERR);
 		}

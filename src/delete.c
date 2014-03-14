@@ -60,7 +60,7 @@ exec_delete(int argc, char **argv)
 	pkg_flags f = PKG_FLAG_NONE;
 	int i;
 
-	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
 	while ((ch = getopt(argc, argv, "aDfginqRxy")) != -1) {
 		switch (ch) {

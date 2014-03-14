@@ -116,7 +116,7 @@ exec_rquery(int argc, char **argv)
 	bool old_quiet;
 	bool index_output = false;
 
-	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
+	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
 	while ((ch = getopt(argc, argv, "agiIxe:r:U")) != -1) {
 		switch (ch) {

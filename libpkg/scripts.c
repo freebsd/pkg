@@ -90,7 +90,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type)
 		if (j == map[i].a || j == map[i].b) {
 			sbuf_reset(script_cmd);
 			setenv("PKG_PREFIX", prefix, 1);
-			pkg_config_bool(PKG_CONFIG_DEBUG_SCRIPTS, &debug);
+			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
 				sbuf_printf(script_cmd, "set -x\n");
 			pkg_sbuf_printf(script_cmd, "set -- %n-%v", pkg, pkg);

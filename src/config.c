@@ -45,9 +45,8 @@ usage_config(void)
 int
 exec_config(int argc, char **argv)
 {
-	struct pkg_config *conf;
-	struct pkg_config_value *list;
-	struct pkg_config_kv *kv;
+	pkg_object *conf, *o;
+	pkg_iter it = NULL;
 	const char *buf;
 	char *key;
 	int64_t integer;
@@ -63,37 +62,36 @@ exec_config(int argc, char **argv)
 	for (i = 0; key[i] != '\0'; i++)
 		key[i] = toupper(key[i]);
 
-	conf = pkg_config_lookup(key);
+	conf = pkg_config_get(key);
 	if (conf == NULL) {
 		warnx("No such configuration options: %s", key);
 		return (EX_SOFTWARE);
 	}
 
-	switch (pkg_config_type(conf)) {
-	case PKG_CONFIG_STRING:
-		pkg_config_string(pkg_config_id(conf), &buf);
+	switch (pkg_object_type(conf)) {
+	case PKG_STRING:
+		buf = pkg_object_string(conf);
 		printf("%s\n", buf == NULL ? "" : buf);
 		break;
-	case PKG_CONFIG_BOOL:
-		pkg_config_bool(pkg_config_id(conf), &b);
+	case PKG_BOOL:
+		b = pkg_object_bool(conf);
 		printf("%s\n", b ? "yes" : "no");
 		break;
-	case PKG_CONFIG_INTEGER:
-		pkg_config_int64(pkg_config_id(conf), &integer);
+	case PKG_INT:
+		integer = pkg_object_int(conf);
 		printf("%"PRId64"\n", integer);
 		break;
-	case PKG_CONFIG_KVLIST:
-		kv = NULL;
-		while (pkg_config_kvlist(pkg_config_id(conf), &kv) == EPKG_OK) {
-			printf("%s: %s\n", pkg_config_kv_get(kv, PKG_CONFIG_KV_KEY),
-			    pkg_config_kv_get(kv, PKG_CONFIG_KV_VALUE));
+	case PKG_OBJECT:
+		while ((o = pkg_object_iterate(conf, it))) {
+			printf("%s: %s\n", pkg_object_key(o), pkg_object_string(o));
 		}
 		break;
-	case PKG_CONFIG_LIST:
-		list = NULL;
-		while (pkg_config_list(pkg_config_id(conf), &list) == EPKG_OK) {
-			printf("%s\n", pkg_config_value(list));
+	case PKG_ARRAY:
+		while ((o = pkg_object_iterate(conf, it))) {
+			printf("%s\n", pkg_object_string(o));
 		}
+		break;
+	default:
 		break;
 	}
 

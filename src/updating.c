@@ -114,8 +114,8 @@ exec_updating(int argc, char **argv)
 	}
 
 	if (updatingfile == NULL) {
-		const char *portsdir;
-		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK) {
+		const char *portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
+		if (portsdir == NULL) {
 			retcode = EX_CONFIG;
 			goto cleanup;
 		}

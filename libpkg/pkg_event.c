@@ -452,7 +452,7 @@ pkg_emit_install_finished(struct pkg *p)
 	ev.type = PKG_EVENT_INSTALL_FINISHED;
 	ev.e_install_finished.pkg = p;
 
-	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
+	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
 		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
 		syslog(LOG_NOTICE, "%s-%s installed", name, version);
@@ -516,7 +516,7 @@ pkg_emit_deinstall_finished(struct pkg *p)
 	ev.type = PKG_EVENT_DEINSTALL_FINISHED;
 	ev.e_deinstall_finished.pkg = p;
 
-	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
+	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
 		pkg_get(p, PKG_NAME, &name, PKG_VERSION, &version);
 		syslog(LOG_NOTICE, "%s-%s deinstalled", name, version);
@@ -548,7 +548,7 @@ pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old)
 	ev.e_upgrade_finished.new = new;
 	ev.e_upgrade_finished.old = old;
 
-	pkg_config_bool(PKG_CONFIG_SYSLOG, &syslog_enabled);
+	syslog_enabled = pkg_object_bool(pkg_config_get("SYSLOG"));
 	if (syslog_enabled) {
 		const char *actions[] = {
 			[PKG_DOWNGRADE] = "downgraded",
@@ -726,7 +726,7 @@ pkg_debug(int level, const char *fmt, ...)
 	va_list ap;
 	int64_t expectlevel;
 
-	pkg_config_int64(PKG_CONFIG_DEBUG_LEVEL, &expectlevel);
+	expectlevel = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
 
 	if (expectlevel < level)
 		return;

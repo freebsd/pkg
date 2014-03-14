@@ -64,7 +64,7 @@ exec_set(int argc, char **argv)
 	unsigned int sets = 0;
 	int retcode;
 
-	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
 	while ((ch = getopt(argc, argv, "A:agio:xy")) != -1) {
 		switch (ch) {

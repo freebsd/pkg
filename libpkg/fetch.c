@@ -279,7 +279,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 	int sshout[2];
 	const char *argv[4];
 
-	pkg_config_string(PKG_CONFIG_SSH_ARGS, &ssh_args);
+	ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
 
 	if (repo->ssh == NULL) {
 		/* Use socket pair because pipe have blocking issues */
@@ -406,11 +406,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	off_t		 sz = 0;
 	bool		 pkg_url_scheme = false;
 
-	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
-		max_retry = 3;
-
-	if (pkg_config_int64(PKG_CONFIG_FETCH_TIMEOUT, &fetch_timeout) == EPKG_FATAL)
-		fetch_timeout = 30;
+	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
+	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
 
 	fetchTimeout = (int) fetch_timeout;
 

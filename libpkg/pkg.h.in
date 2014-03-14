@@ -78,14 +78,13 @@ struct pkg_solve_problem;
 
 struct pkg_repo;
 
-struct pkg_config;
-struct pkg_config_kv;
-struct pkg_config_value;
-
 struct pkg_plugin;
 
 struct pkg_manifest_key;
 struct pkg_manifest_parser;
+
+typedef struct ucl_object_s pkg_object;
+typedef void * pkg_iter;
 
 /**
  * The system-wide pkg(8) status: ie. is it a) installed or otherwise
@@ -375,11 +374,6 @@ typedef enum _pkg_config_key {
 	PKG_CONFIG_SAT_SOLVER,
 } pkg_config_key;
 
-typedef enum {
-	PKG_CONFIG_KV_KEY,
-	PKG_CONFIG_KV_VALUE
-} pkg_config_kv_t;
-
 typedef enum _pkg_stats_t {
 	PKG_STATS_LOCAL_COUNT = 0,
 	PKG_STATS_LOCAL_SIZE,
@@ -390,12 +384,13 @@ typedef enum _pkg_stats_t {
 } pkg_stats_t;
 
 typedef enum {
-	PKG_CONFIG_STRING=0,
-	PKG_CONFIG_BOOL,
-	PKG_CONFIG_KVLIST,
-	PKG_CONFIG_INTEGER,
-	PKG_CONFIG_LIST
-} pkg_config_t;
+	PKG_STRING = 0,
+	PKG_BOOL,
+	PKG_INT,
+	PKG_ARRAY,
+	PKG_OBJECT,
+	PKG_NULL
+} pkg_object_t;
 
 /**
  * Keys for accessing pkg plugin data
@@ -1316,18 +1311,12 @@ int pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str);
 const char *pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key);
 void *pkg_plugin_func(struct pkg_plugin *p, const char *func);
 
-int pkg_plugin_conf_add_string(struct pkg_plugin *p, int id, const char *key, const char *def);
-int pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool val);
-int pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64_t integer);
-int pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key);
-int pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key);
-
-int pkg_plugin_conf_string(struct pkg_plugin *p, int key, const char **value);
-int pkg_plugin_conf_bool(struct pkg_plugin *p, int key, bool *value);
-int pkg_plugin_conf_kvlist(struct pkg_plugin *p, int key, struct pkg_config_kv **kv);
-int pkg_plugin_conf_list(struct pkg_plugin *p, int key, struct pkg_config_value **v);
-int pkg_plugin_conf_integer(struct pkg_plugin *p, int key, int64_t *value);
-int pkg_plugin_confs(struct pkg_plugin *p, struct pkg_config **conf);
+int pkg_plugin_conf_add_string(struct pkg_plugin *p, const char *key, const char *def);
+int pkg_plugin_conf_add_bool(struct pkg_plugin *p, const char *key, bool val);
+int pkg_plugin_conf_add_integer(struct pkg_plugin *p, const char *key, int64_t integer);
+int pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, const char *key);
+int pkg_plugin_conf_add_list(struct pkg_plugin *p, const char *key);
+pkg_object *pkg_plugin_conf(struct pkg_plugin *p);
 
 int pkg_plugin_parse(struct pkg_plugin *p);
 void pkg_plugin_errno(struct pkg_plugin *p, const char *func, const char *arg);
@@ -1344,19 +1333,18 @@ int pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_p
 /**
  * Get the value of a configuration key
  */
-int pkg_config_desc(pkg_config_key key, const char **value);
-int pkg_config_string(pkg_config_key key, const char **value);
-int pkg_config_bool(pkg_config_key key, bool *value);
-int pkg_config_kvlist(pkg_config_key key, struct pkg_config_kv **kv);
-int pkg_config_list(pkg_config_key key, struct pkg_config_value **v);
-const char *pkg_config_kv_get(struct pkg_config_kv *kv, pkg_config_kv_t type);
-const char *pkg_config_value(struct pkg_config_value *v);
-int pkg_config_int64(pkg_config_key key, int64_t *value);
-int pkg_configs(struct pkg_config **c);
-int pkg_config_id(struct pkg_config *c);
-int pkg_config_type(struct pkg_config *c);
-const char *pkg_config_name(struct pkg_config *c);
-struct pkg_config *pkg_config_lookup(const char *name);
+
+pkg_object *pkg_conf(void);
+pkg_object *pkg_config_get(const char *);
+pkg_object_t pkg_object_type(pkg_object *);
+int64_t pkg_object_int(pkg_object *o);
+bool pkg_object_bool(pkg_object *o);
+const char *pkg_object_string(pkg_object *o);
+void pkg_object_free(pkg_object *o);
+const char *pkg_object_key(pkg_object *);
+pkg_object *pkg_object_iterate(pkg_object *, pkg_iter *);
+const char *pkg_object_dump(pkg_object *o);
+const char *pkg_config_dump(void);
 
 /**
  * @todo Document

@@ -64,7 +64,7 @@ exec_ssh(int argc, char **argv __unused)
 		return (EX_USAGE);
 	}
 
-	pkg_config_string(PKG_CONFIG_SSH_RESTRICT_DIR, &restricted);
+	restricted = pkg_object_string(pkg_config_get("SSH_RESTRICT_DIR"));
 	if (restricted == NULL)
 		restricted = "/";
 

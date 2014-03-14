@@ -983,6 +983,7 @@ database_access(unsigned mode, const char* dbdir, const char *dbname)
 int
 pkgdb_access(unsigned mode, unsigned database)
 {
+	pkg_object	*o;
 	const char	*dbdir;
 	int		 retval = EPKG_OK;
 
@@ -1006,9 +1007,8 @@ pkgdb_access(unsigned mode, unsigned database)
 	 * EPKG_OK: We can go ahead
 	 */
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
-		return (EPKG_FATAL); /* Config borked */
-
+	o = pkg_config_get("ABI");
+	dbdir = pkg_object_string(o);
 	if ((mode & ~(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE))
 	    != 0)
 		return (EPKG_FATAL); /* EINVAL */
@@ -1059,7 +1059,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	struct statfs	 stfs;
 	bool		 reopen = false;
 	char		 localpath[MAXPATHLEN];
-	const char	*dbdir = NULL;
+	const char	*dbdir;
 	bool		 create = false;
 	bool		 createdir = false;
 	int		 ret;
@@ -1072,9 +1072,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			return (EPKG_OK);
 	}
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
-		return (EPKG_FATAL);
-
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	if (!reopen && (db = calloc(1, sizeof(struct pkgdb))) == NULL) {
 		pkg_emit_errno("malloc", "pkgdb");
 		return EPKG_FATAL;
@@ -2739,9 +2737,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		}
 		pkg_get(pkg2, PKG_NAME, &name2, PKG_VERSION, &version2);
 		if (!forced) {
-			pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &devmode);
+			devmode = pkg_object_bool(pkg_config_get("DEVELOPER_MORE"));
 			if (!devmode)
-				pkg_config_bool(PKG_CONFIG_PERMISSIVE, &permissive);
+				permissive = pkg_object_bool(pkg_config_get("PERMISSIVE"));
 			pkg_emit_error("%s-%s conflicts with %s-%s"
 					" (installs files into the same place). "
 					" Problematic file: %s%s",
@@ -4169,8 +4167,7 @@ pkgshell_open(const char **reponame)
 
 	sqlite3_auto_extension((void(*)(void))sqlcmd_init);
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
-		return;
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 	*reponame = strdup(localpath);

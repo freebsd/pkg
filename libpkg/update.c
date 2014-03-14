@@ -827,11 +827,7 @@ repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 	if (!pkg_repo_enabled(repo))
 		return (EPKG_OK);
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
-		pkg_emit_error("Cant get dbdir config entry");
-		return (EPKG_FATAL);
-	}
-
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	pkg_debug(1, "PkgRepo: verifying update for %s", pkg_repo_name(repo));
 	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
 

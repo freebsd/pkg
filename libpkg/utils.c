@@ -479,7 +479,7 @@ bool
 is_valid_abi(const char *arch, bool emit_error) {
 	const char *myarch;
 
-	pkg_config_string(PKG_CONFIG_ABI, &myarch);
+	myarch = pkg_object_string(pkg_config_get("ABI"));
 
 	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
 	    strncmp(arch, myarch, strlen(myarch)) != 0) {

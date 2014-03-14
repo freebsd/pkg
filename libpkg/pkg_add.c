@@ -298,7 +298,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * experimantal purposes and to develop MTREE-free versions of
 	 * packages. */
 
-	pkg_config_bool(PKG_CONFIG_DISABLE_MTREE, &disable_mtree);
+	disable_mtree = pkg_object_bool(pkg_config_get("DISABLE_MTREE"));
 	if (!disable_mtree) {
 		pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
 		if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
@@ -339,7 +339,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * and that the service is running
 	 */
 
-	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 	if (handle_rc)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
 

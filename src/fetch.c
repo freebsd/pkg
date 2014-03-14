@@ -64,8 +64,8 @@ exec_fetch(int argc, char **argv)
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE;
 
-	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
-	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
+	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
 	while ((ch = getopt(argc, argv, "adgiqr:Uuxy")) != -1) {
 		switch (ch) {

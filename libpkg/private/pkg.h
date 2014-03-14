@@ -265,35 +265,6 @@ struct pkg_shlib {
 	UT_hash_handle	hh;
 };
 
-struct pkg_config {
-	int id;
-	pkg_config_t type;
-	const char *key;
-	const void *def;
-	const char *desc;
-	bool fromenv;
-	union {
-		char *string;
-		uint64_t integer;
-		bool boolean;
-		struct pkg_config_kv *kvlist;
-		struct pkg_config_value *list;
-	};
-	UT_hash_handle hh;
-	UT_hash_handle hhkey;
-};
-
-struct pkg_config_kv {
-	char *key;
-	char *value;
-	UT_hash_handle hh;
-};
-
-struct pkg_config_value {
-	char *value;
-	UT_hash_handle hh;
-};
-
 struct pkg_note {
 	struct sbuf	*tag;
 	struct sbuf	*value;
@@ -479,8 +450,6 @@ int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 int pkg_register_shlibs(struct pkg *pkg, const char *root);
-
-void pkg_object_walk(ucl_object_t *o, struct pkg_config *conf_by_key);
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);

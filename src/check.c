@@ -265,7 +265,7 @@ exec_check(int argc, char **argv)
 	int i;
 	int verbose = 0;
 
-	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
+	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 
 	struct deps_head dh = STAILQ_HEAD_INITIALIZER(dh);
 

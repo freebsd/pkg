@@ -255,7 +255,7 @@ exec_search(int argc, char **argv)
 	bool auto_update;
 	bool old_quiet;
 
-	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
+	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
 	while ((ch = getopt(argc, argv, "cDdefgiL:opqQ:r:RS:sUx")) != -1) {
 		switch (ch) {

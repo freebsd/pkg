@@ -1400,12 +1400,12 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	struct pkg_dir *dir = NULL;
 	char spath[MAXPATHLEN];
 	char dpath[MAXPATHLEN];
-	bool disable_mtree;
 	const char *prefix;
 	char *mtree;
+	pkg_object *o;
 
-	pkg_config_bool(PKG_CONFIG_DISABLE_MTREE, &disable_mtree);
-	if (!disable_mtree) {
+	o = pkg_config_get("DISABLE_MTREE");
+	if (o && !pkg_object_bool(o)) {
 		pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
 		do_extract_mtree(mtree, prefix);
 	}

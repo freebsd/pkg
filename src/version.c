@@ -174,7 +174,7 @@ exec_version(int argc, char **argv)
 	char portsdirmakefile[MAXPATHLEN];
 	int retcode = EXIT_SUCCESS;
 
-	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
+	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
 	while ((ch = getopt(argc, argv, "hIPRUoqvl:L:ix:g:e:O:r:tT")) != -1) {
 		switch (ch) {
@@ -302,7 +302,8 @@ exec_version(int argc, char **argv)
 		return (retval);
 		
 	} else {
-		if (pkg_config_string(PKG_CONFIG_PORTSDIR, &portsdir) != EPKG_OK)
+		portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
+		if (portsdir == NULL)
 			err(1, "Cannot get portsdir config entry!");
 
 		snprintf(portsdirmakefile, sizeof(portsdirmakefile),

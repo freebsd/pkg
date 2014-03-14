@@ -59,9 +59,8 @@ exec_upgrade(int argc, char **argv)
 	nbactions = nbdone = 0;
 	pkg_flags f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 
-	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes_arg);
-	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
-
+	yes_arg = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
+	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
 	while ((ch = getopt(argc, argv, "fInqFr:Uy")) != -1) {
 		switch (ch) {
