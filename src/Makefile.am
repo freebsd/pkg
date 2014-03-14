@@ -37,8 +37,7 @@ pkg_SOURCES=		add.c \
 			version.c \
 			which.c
 			
-dist_man_MANS= pkg-add.8 \
-			pkg-annotate.8 \
+dist_man_MANS= pkg-annotate.8 \
 			pkg-audit.8 \
 			pkg-autoremove.8 \
 			pkg-backup.8 \
@@ -85,3 +84,7 @@ pkg_static_LDFLAGS=	-all-static -static-libtool-libs -pthread
 sbin_PROGRAMS=		pkg pkg-static
 
 dist_sysconf_DATA=	pkg.conf.sample
+
+install-data-hook:
+	$(LN_S) -s $(DESTDIR)$(man8dir)/pkg-install.8 \
+	$(DESTDIR)$(man8dir)/pkg-add.8

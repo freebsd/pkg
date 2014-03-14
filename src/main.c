@@ -71,7 +71,7 @@ static struct commands {
 	int (*exec)(int argc, char **argv);
 	void (* const usage)(void);
 } cmd[] = {
-	{ "add", "Registers a package and installs it on the system", exec_add, usage_add},
+	{ "add", "Compatibility alias for install", exec_install, usage_install},
 	{ "annotate", "Add, modify or delete tag-value style annotations on packages", exec_annotate, usage_annotate},
 	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
@@ -85,7 +85,7 @@ static struct commands {
 	{ "fetch", "Fetches packages from a remote repository", exec_fetch, usage_fetch},
 	{ "help", "Displays help information", exec_help, usage_help},
 	{ "info", "Displays information about installed packages", exec_info, usage_info},
-	{ "install", "Installs packages from remote package repositories", exec_install, usage_install},
+	{ "install", "Installs packages from remote package repositories and local archives", exec_install, usage_install},
 	{ "lock", "Locks package against modifications or deletion", exec_lock, usage_lock},
 	{ "plugins", "Manages plugins and displays information about plugins", exec_plugins, usage_plugins},
 	{ "query", "Queries information about installed packages", exec_query, usage_query},
