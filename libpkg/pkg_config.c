@@ -565,7 +565,6 @@ load_repo_files(const char *repodir)
 static void
 load_repositories(const char *repodir)
 {
-	struct pkg_repo *r;
 	pkg_object *reposlist, *cur;
 	pkg_iter it = NULL;
 
@@ -587,17 +586,12 @@ pkg_init(const char *path, const char *reposdir)
 	size_t i;
 	const char *val = NULL;
 	const char *buf, *walk, *value, *key, *k;
-	const char *errstr = NULL;
 	const char *evkey = NULL;
 	const char *nsname = NULL;
 	const char *evpipe = NULL;
-	struct pkg_config *conf;
-	struct pkg_config_value *v;
-	struct pkg_config_kv *kv;
 	ucl_object_t *obj = NULL, *cur, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
 	struct sbuf *ukey = NULL;
-	bool fallback = false;
 
 	pkg_get_myarch(myabi, BUFSIZ);
 	if (parsed != false) {
@@ -652,7 +646,7 @@ pkg_init(const char *path, const char *reposdir)
 				}
 				o = ucl_object_insert_key(o,
 				    ucl_object_fromstring_common(value + 1, strlen(value + 1), UCL_STRING_TRIM),
-			        k, value - k, false);
+			        key, value - key, false);
 			}
 			config = ucl_object_insert_key(config, obj,
 			    c[i].key, strlen(c[i].key), false);
@@ -809,7 +803,6 @@ pkg_init(const char *path, const char *reposdir)
 		ucl_object_unref(ncfg);
 	}
 
-parsed:
 	disable_plugins_if_static();
 
 	parsed = true;
