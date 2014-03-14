@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * 
@@ -783,7 +783,7 @@ pkg_init(const char *path, const char *reposdir)
 				buf++;
 				walk = buf;
 			}
-			obj = ucl_array_append(obj,
+			o = ucl_array_append(o,
 			    ucl_object_fromstring_common(walk, strlen(walk), UCL_STRING_TRIM));
 			break;
 		default:

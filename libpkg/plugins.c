@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
- * Copyright (c) 2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -166,51 +166,74 @@ pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key)
 }
 
 int
-pkg_plugin_conf_add_string(struct pkg_plugin *p, const char *key, const char *def)
+pkg_plugin_conf_add(struct pkg_plugin *p, pkg_object_t type, const char *key,
+    const char *def)
 {
-	p->conf = ucl_object_insert_key(p->conf,
-	    ucl_object_fromstring_common(def, 0, 0),
-	    key, strlen(key), false);
+	ucl_object_t *o = NULL;
+	const char *walk, *buf, *value, *k;
 
-	return (EPKG_OK);
-}
+	switch (type) {
+	case PKG_STRING:
+		o = ucl_object_fromstring_common(def, 0, UCL_STRING_TRIM);
+		break;
+	case PKG_BOOL:
+		o = ucl_object_fromstring_common(def, 0, UCL_STRING_PARSE_BOOLEAN);
+		if (o->type != UCL_BOOLEAN) {
+			ucl_object_unref(o);
+			return (EPKG_FATAL);
+		}
+		break;
+	case PKG_INT:
+		o = ucl_object_fromstring_common(def, 0, UCL_STRING_PARSE_INT);
+		if (o->type != UCL_INT) {
+			ucl_object_unref(o);
+			return (EPKG_FATAL);
+		}
+		break;
+	case PKG_OBJECT:
+		walk = buf = def;
+		while ((buf = strchr(buf, ',')) != NULL) {
+			k = walk;
+			value = walk;
+			while (*value != ',') {
+				if (*value == '=')
+					break;
+				value++;
+			}
+			o = ucl_object_insert_key(o,
+			    ucl_object_fromstring_common(value + 1, buf - value - 1, UCL_STRING_TRIM),
+			    k, value - k, false);
+			buf++;
+			walk = buf;
+		}
+		key = walk;
+		value = walk;
+		while (*value != '\0') {
+			if (*value == '=')
+				break;
+			value++;
+		}
+		o = ucl_object_insert_key(o,
+		    ucl_object_fromstring_common(value + 1, strlen(value + 1), UCL_STRING_TRIM),
+		    k, value - k, false);
+		break;
+	case PKG_ARRAY:
+		walk = buf = def;
+		while ((buf = strchr(buf, ',')) != NULL) {
+			o = ucl_array_append(o,
+					ucl_object_fromstring_common(walk, buf - walk, UCL_STRING_TRIM));
+			buf++;
+			walk = buf;
+		}
+		o = ucl_array_append(o,
+				ucl_object_fromstring_common(walk, strlen(walk), UCL_STRING_TRIM));
+		break;
+	default:
+		break;
+	}
 
-int
-pkg_plugin_conf_add_bool(struct pkg_plugin *p, const char *key, bool boolean)
-{
-	p->conf = ucl_object_insert_key(p->conf,
-	    ucl_object_frombool(boolean),
-	    key, strlen(key), false);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_add_int(struct pkg_plugin *p, const char *key, int64_t integer)
-{
-	p->conf = ucl_object_insert_key(p->conf,
-	    ucl_object_fromint(integer),
-	    key, strlen(key), false);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_add_object(struct pkg_plugin *p, const char *key)
-{
-	p->conf = ucl_object_insert_key(p->conf, 
-	    ucl_object_typed_new(UCL_OBJECT),
-	    key, strlen(key), false);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_add_array(struct pkg_plugin *p, const char *key)
-{
-	p->conf = ucl_object_insert_key(p->conf,
-	    ucl_object_typed_new(UCL_ARRAY),
-	    key, strlen(key), false);
+	if (o != NULL)
+		p->conf = ucl_object_replace_key(p->conf, o, key, strlen(key), false);
 
 	return (EPKG_OK);
 }
