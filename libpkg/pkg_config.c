@@ -61,7 +61,7 @@ static struct pkg_repo *repos = NULL;
 ucl_object_t *config = NULL;
 
 static struct config_entry c[] = {
-	[PKG_CONFIG_REPO] = {
+	{
 		PKG_STRING,
 		"PACKAGESITE",
 #ifdef DEFAULT_PACKAGESITE
@@ -71,19 +71,19 @@ static struct config_entry c[] = {
 #endif
 		"Repository URL",
 	},
-	[PKG_CONFIG_DBDIR] = {
+	{
 		PKG_STRING,
 		"PKG_DBDIR",
 		"/var/db/pkg",
 		"Where the package databases are stored",
 	},
-	[PKG_CONFIG_CACHEDIR] = {
+	{
 		PKG_STRING,
 		"PKG_CACHEDIR",
 		"/var/cache/pkg",
 		"Directory containing cache of downloaded packages",
 	},
-	[PKG_CONFIG_PORTSDIR] = {
+	{
 		PKG_STRING,
 		"PORTSDIR",
 #ifdef PORTSDIR
@@ -93,61 +93,61 @@ static struct config_entry c[] = {
 #endif
 		"Location of the ports collection",
 	},
-	[PKG_CONFIG_REPOKEY] = {
+	{
 		PKG_STRING,
 		"PUBKEY",
 		NULL,
 		"Public key for authenticating packages from the chosen repository",
 	},
-	[PKG_CONFIG_HANDLE_RC_SCRIPTS] = {
+	{
 		PKG_BOOL,
 		"HANDLE_RC_SCRIPTS",
 		"NO",
 		"Automatically handle restarting services",
 	},
-	[PKG_CONFIG_ASSUME_ALWAYS_YES] = {
+	{
 		PKG_BOOL,
 		"ASSUME_ALWAYS_YES",
 		"NO",
 		"Answer 'yes' to all pkg(8) questions",
 	},
-	[PKG_CONFIG_REPOS_DIR] = {
+	{
 		PKG_ARRAY,
 		"REPOS_DIR",
 		"/etc/pkg/,"PREFIX"/etc/pkg/repos/",
 		"Location of the repository configuration files"
 	},
-	[PKG_CONFIG_PLIST_KEYWORDS_DIR] = {
+	{
 		PKG_STRING,
 		"PLIST_KEYWORDS_DIR",
 		NULL,
 		"Directory containing definitions of plist keywords",
 	},
-	[PKG_CONFIG_SYSLOG] = {
+	{
 		PKG_BOOL,
 		"SYSLOG",
 		"YES",
 		"Log pkg(8) operations via syslog(3)",
 	},
-	[PKG_CONFIG_AUTODEPS] = {
+	{
 		PKG_BOOL,
 		"AUTODEPS",
 		"YES",
 		"Automatically append dependencies to fulfil dynamic linking requrements of binaries",
 	},
-	[PKG_CONFIG_ABI] = {
+	{
 		PKG_STRING,
 		"ABI",
 		myabi,
 		"Override the automatically detected ABI",
 	},
-	[PKG_CONFIG_DEVELOPER_MODE] = {
+	{
 		PKG_BOOL,
 		"DEVELOPER_MODE",
 		"NO",
 		"Add extra strict, pedantic warnings as an aid to package maintainers",
 	},
-	[PKG_CONFIG_PORTAUDIT_SITE] = {
+	{
 		PKG_STRING,
 		"PORTAUDIT_SITE",
 #ifdef DEFAULT_AUDIT_URL
@@ -157,7 +157,7 @@ static struct config_entry c[] = {
 #endif
 		"URL giving location of the audit database",
 	},
-	[PKG_CONFIG_VULNXML_SITE] = {
+	{
 		PKG_STRING,
 		"VULNXML_SITE",
 #ifdef DEFAULT_VULNXML_URL
@@ -167,7 +167,7 @@ static struct config_entry c[] = {
 #endif
 		"URL giving location of the vulnxml database",
 	},
-	[PKG_CONFIG_MIRRORS] = {
+	{
 		PKG_STRING,
 		"MIRROR_TYPE",
 #if DEFAULT_MIRROR_TYPE == 1
@@ -179,121 +179,121 @@ static struct config_entry c[] = {
 #endif
 		"How to locate alternate mirror sites of a repository (one of: 'SRV', 'HTTP')",
 	},
-	[PKG_CONFIG_FETCH_RETRY] = {
+	{
 		PKG_INT,
 		"FETCH_RETRY",
 		"3",
 		"How many times to retry fetching files",
 	},
-	[PKG_CONFIG_PLUGINS_DIR] = {
+	{
 		PKG_STRING,
 		"PKG_PLUGINS_DIR",
 		PREFIX"/lib/pkg/",
 		"Directory which pkg(8) will load plugins from",
 	},
-	[PKG_CONFIG_ENABLE_PLUGINS] = {
+	{
 		PKG_BOOL,
 		"PKG_ENABLE_PLUGINS",
 		"YES",
 		"Activate plugin support",
 	},
-	[PKG_CONFIG_PLUGINS] = {
+	{
 		PKG_ARRAY,
 		"PLUGINS",
 		NULL,
 		"List of plugins that pkg(8) should load",
 	},
-	[PKG_CONFIG_DEBUG_SCRIPTS] = {
+	{
 		PKG_BOOL,
 		"DEBUG_SCRIPTS",
 		"NO",
 		"Run shell scripts in verbose mode to facilitate debugging",
 	},
-	[PKG_CONFIG_PLUGINS_CONF_DIR] = {
+	{
 		PKG_STRING,
 		"PLUGINS_CONF_DIR",
 		PREFIX"/etc/pkg/",
 		"Directory containing plugin configuration data",
 	},
-	[PKG_CONFIG_PERMISSIVE] = {
+	{
 		PKG_BOOL,
 		"PERMISSIVE",
 		"NO",
 		"Permit package installation despite presence of conflicting packages",
 	},
-	[PKG_CONFIG_REPO_AUTOUPDATE] = {
+	{
 		PKG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
 		"Automatically update repository catalogues prior to package updates",
 	},
-	[PKG_CONFIG_NAMESERVER] = {
+	{
 		PKG_STRING,
 		"NAMESERVER",
 		NULL,
 		"Use this nameserver when looking up addresses",
 	},
-	[PKG_CONFIG_EVENT_PIPE] = {
+	{
 		PKG_STRING,
 		"EVENT_PIPE",
 		NULL,
 		"Send all events to the specified fifo or Unix socket",
 	},
-	[PKG_CONFIG_FETCH_TIMEOUT] = {
+	{
 		PKG_INT,
 		"FETCH_TIMEOUT",
 		"30",
 		NULL,
 	},
-	[PKG_CONFIG_UNSET_TIMESTAMP] = {
+	{
 		PKG_BOOL,
 		"UNSET_TIMESTAMP",
 		"NO",
 		NULL,
 	},
-	[PKG_CONFIG_SSH_RESTRICT_DIR] = {
+	{
 		PKG_STRING,
 		"SSH_RESTRICT_DIR",
 		NULL,
 		"Directory the ssh subsystem will be restricted to",
 	},
-	[PKG_CONFIG_ENV] = {
+	{
 		PKG_OBJECT,
 		"PKG_ENV",
 		NULL,
 		"Environment variables pkg will use",
 	},
-	[PKG_CONFIG_DISABLE_MTREE] = {
+	{
 		PKG_BOOL,
 		"DISABLE_MTREE",
 		"NO",
 		"Experimental: disable MTREE processing on pkg installation",
 	},
-	[PKG_CONFIG_SSH_ARGS] = {
+	{
 		PKG_STRING,
 		"PKG_SSH_ARGS",
 		NULL,
 		"Extras arguments to pass to ssh(1)",
 	},
-	[PKG_CONFIG_DEBUG_LEVEL] = {
+	{
 		PKG_INT,
 		"DEBUG_LEVEL",
 		"0",
 		"Level for debug messages",
 	},
-	[PKG_CONFIG_ALIAS] = {
+	{
 		PKG_OBJECT,
 		"ALIAS",
 		NULL,
 		"Command aliases",
 	},
-	[PKG_CONFIG_CUDF_SOLVER] = {
+	{
 		PKG_STRING,
 		"CUDF_SOLVER",
 		NULL,
 		"Experimental: tells pkg to use an external CUDF solver",
 	},
-	[PKG_CONFIG_SAT_SOLVER] = {
+	{
 		PKG_STRING,
 		"SAT_SOLVER",
 		NULL,
