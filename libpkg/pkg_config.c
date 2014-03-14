@@ -44,7 +44,6 @@
 #include "private/pkg.h"
 #include "private/event.h"
 
-#define ABI_VAR_STRING "${ABI}"
 #define REPO_NAME_PREFIX "repo-"
 
 int eventpipe = -1;
@@ -61,16 +60,6 @@ static struct pkg_repo *repos = NULL;
 ucl_object_t *config = NULL;
 
 static struct config_entry c[] = {
-	{
-		PKG_STRING,
-		"PACKAGESITE",
-#ifdef DEFAULT_PACKAGESITE
-		DEFAULT_PACKAGESITE,
-#else
-		NULL,
-#endif
-		"Repository URL",
-	},
 	{
 		PKG_STRING,
 		"PKG_DBDIR",
@@ -92,12 +81,6 @@ static struct config_entry c[] = {
 		"/usr/ports",
 #endif
 		"Location of the ports collection",
-	},
-	{
-		PKG_STRING,
-		"PUBKEY",
-		NULL,
-		"Public key for authenticating packages from the chosen repository",
 	},
 	{
 		PKG_BOOL,
@@ -166,18 +149,6 @@ static struct config_entry c[] = {
 		"http://www.vuxml.org/freebsd/vuln.xml.bz2",
 #endif
 		"URL giving location of the vulnxml database",
-	},
-	{
-		PKG_STRING,
-		"MIRROR_TYPE",
-#if DEFAULT_MIRROR_TYPE == 1
-		"SRV",
-#elif DEFAULT_MIRROR_TYPE == 2
-		"HTTP",
-#else
-		NULL,
-#endif
-		"How to locate alternate mirror sites of a repository (one of: 'SRV', 'HTTP')",
 	},
 	{
 		PKG_INT,
@@ -886,32 +857,6 @@ parsed:
 	return (EPKG_OK);
 }
 
-static char *
-subst_packagesite_str(const char *oldstr)
-{
-	const char *myarch;
-	struct sbuf *newval;
-	const char *variable_string;
-	ucl_object_t *o;
-	char *res;
-
-	variable_string = strstr(oldstr, ABI_VAR_STRING);
-	if (variable_string == NULL)
-		return strdup(oldstr);
-
-	newval = sbuf_new_auto();
-	sbuf_bcat(newval, oldstr, variable_string - oldstr);
-	o = ucl_object_find_key(config, "ABI");
-	sbuf_cat(newval, ucl_object_tostring_forced(o));
-	sbuf_cat(newval, variable_string + strlen(ABI_VAR_STRING));
-	sbuf_finish(newval);
-
-	res = strdup(sbuf_data(newval));
-	sbuf_free(newval);
-
-	return res;
-}
-
 static struct pkg_repo *
 pkg_repo_new(const char *name, const char *url)
 {
@@ -920,7 +865,7 @@ pkg_repo_new(const char *name, const char *url)
 	r = calloc(1, sizeof(struct pkg_repo));
 	r->type = REPO_BINARY_PKGS;
 	r->update = repo_update_binary_pkgs;
-	r->url = subst_packagesite_str(url);
+	r->url = strdup(url);
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;
 	r->enable = true;

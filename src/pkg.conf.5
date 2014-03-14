@@ -78,43 +78,6 @@ when fetching the database file and packages.
 This supports using
 .Sy ${ABI}
 to create a dynamic URL based on the ABI being used. (deprecated)
-.It Cm MIRROR_TYPE: string
-Specifies which mirror type to use for
-.Sy PACKAGESITE .
-Either
-.Dv HTTP
-or
-.Dv SRV
-or
-.Dv NONE
-can be used.
-For a
-.Cm MIRROR_TYPE
-of
-.Dv NONE ,
-any of the URL schemes supported by
-.Xr libfetch 3
-can be used, including:
-.Dv http:// ,
-.Dv https:// ,
-.Dv ftp:// ,
-or
-.Dv file://
-plus
-.Dv ssh:// .
-Where
-.Sy MIRROR_TYPE
-is
-.Dv SRV ,
-you should use a
-.Dv pkg+http://
-or
-.Dv pkg+https://
-(etc.) URL scheme.
-Using
-.Dv http://
-URLS implies that the hostname part is a simple hostname according to RFC 2616,
-and is deprecated. (deprecated)
 .It Cm PKG_CACHEDIR: string
 Specifies the cache directory for packages.
 The default value
@@ -246,11 +209,45 @@ above for the description of most options):
 .It Cm myrepo:
 .Bl -tag -width ".Cm MIRROR_TYPE: string"
 .It Cm URL: string
-PACKAGESITE for this repository only.
+URL for this repository only.
 .It Cm ENABLED: boolean
 The repository will be used only if this option is enabled. (default: YES)
 .It Cm MIRROR_TYPE: string
-MIRROR_TYPE for this repository only. (default: NONE)
+MIRROR_TYPE for this repository only. (default: NONE).
+Either
+.Dv HTTP
+or
+.Dv SRV
+or
+.Dv NONE
+can be used.
+For a
+.Cm MIRROR_TYPE
+of
+.Dv NONE ,
+any of the URL schemes supported by
+.Xr libfetch 3
+can be used, including:
+.Dv http:// ,
+.Dv https:// ,
+.Dv ftp:// ,
+or
+.Dv file://
+plus
+.Dv ssh:// .
+Where
+.Sy MIRROR_TYPE
+is
+.Dv SRV ,
+you should use a
+.Dv pkg+http://
+or
+.Dv pkg+https://
+(etc.) URL scheme.
+Using
+.Dv http://
+URLS implies that the hostname part is a simple hostname according to RFC 2616,
+and is deprecated.
 .It Cm SIGNATURE_TYPE: string
 Specifies what type of signature this repository uses.
 Can be either
