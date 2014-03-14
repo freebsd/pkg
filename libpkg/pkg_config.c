@@ -45,6 +45,12 @@
 #include "private/event.h"
 
 #define REPO_NAME_PREFIX "repo-"
+#ifndef PORTSDIR
+#define PORTSDIR "/usr/ports"
+#endif
+#ifndef DEFAULT_VULNXML_URL
+#define DEFAULT_VULNXML_URL "http://www.vuxml.org/freebsd/vuln.xml.bz2",
+#endif
 
 int eventpipe = -1;
 
@@ -75,11 +81,7 @@ static struct config_entry c[] = {
 	{
 		PKG_STRING,
 		"PORTSDIR",
-#ifdef PORTSDIR
-		PORTSDIR,
-#else
 		"/usr/ports",
-#endif
 		"Location of the ports collection",
 	},
 	{
@@ -132,22 +134,8 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_STRING,
-		"PORTAUDIT_SITE",
-#ifdef DEFAULT_AUDIT_URL
-		DEFAULT_AUDIT_URL,
-#else
-		"http://portaudit.FreeBSD.org/auditfile.tbz",
-#endif
-		"URL giving location of the audit database",
-	},
-	{
-		PKG_STRING,
 		"VULNXML_SITE",
-#ifdef DEFAULT_VULNXML_URL
 		DEFAULT_VULNXML_URL,
-#else
-		"http://www.vuxml.org/freebsd/vuln.xml.bz2",
-#endif
 		"URL giving location of the vulnxml database",
 	},
 	{
