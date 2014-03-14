@@ -233,7 +233,6 @@ int
 pkg_plugins_init(void)
 {
 	struct pkg_plugin *p = NULL;
-	struct pkg_config_value *v = NULL;
 	char pluginfile[MAXPATHLEN];
 	ucl_object_t *obj, *cur;
 	ucl_object_iter_t it = NULL;
