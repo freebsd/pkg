@@ -86,5 +86,5 @@ sbin_PROGRAMS=		pkg pkg-static
 dist_sysconf_DATA=	pkg.conf.sample
 
 install-data-hook:
-	$(LN_S) -s $(DESTDIR)$(man8dir)/pkg-install.8 \
+	$(LN_S) -f $(DESTDIR)$(man8dir)/pkg-install.8 \
 	$(DESTDIR)$(man8dir)/pkg-add.8
