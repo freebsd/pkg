@@ -24,6 +24,7 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_event.c \
 			pkg_jobs.c \
 			pkg_manifest.c \
+			pkg_object.c \
 			pkg_ports.c \
 			pkg_printf.c \
 			pkg_repo.c \
@@ -91,4 +92,4 @@ noinst_HEADERS=		private/db_upgrades.h \
 
 dist_man_MANS=		pkg-repository.5 \
 			pkg_printf.3 \
-			pkg_repos.3 
+			pkg_repos.3

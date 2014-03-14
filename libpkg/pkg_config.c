@@ -371,17 +371,6 @@ pkg_config_dump(void)
 	return (pkg_object_dump(config));
 }
 
-const char *
-pkg_object_dump(pkg_object *o)
-{
-	return (ucl_object_emit(o, UCL_EMIT_CONFIG));
-}
-
-pkg_object *
-pkg_object_iter(pkg_object *o, pkg_iter *it) {
-	return (ucl_iterate_object(o, it, true));
-}
-
 static void
 disable_plugins_if_static(void)
 {
@@ -895,78 +884,6 @@ parsed:
 		set_nameserver(ucl_object_tostring_forced(o));
 
 	return (EPKG_OK);
-}
-
-void
-pkg_object_free(pkg_object *o)
-{
-	ucl_object_unref(o);
-}
-
-const char *
-pkg_object_key(pkg_object *o)
-{
-	return (ucl_object_key(o));
-}
-
-pkg_object *
-pkg_object_iterate(pkg_object *o, pkg_iter *it)
-{
-	return (ucl_iterate_object(o, it, true));
-}
-
-pkg_object *
-pkg_conf(void)
-{
-	return (config);
-}
-
-pkg_object_t
-pkg_object_type(pkg_object *o)
-{
-	switch (o->type) {
-	case UCL_OBJECT:
-		return (PKG_OBJECT);
-	case UCL_BOOLEAN:
-		return (PKG_BOOL);
-	case UCL_STRING:
-		return (PKG_STRING);
-	case UCL_INT:
-		return (PKG_INT);
-	case UCL_ARRAY:
-		return (PKG_ARRAY);
-	default:
-		return (PKG_NULL);
-	};
-
-}
-
-bool
-pkg_object_bool(pkg_object *o)
-{
-	assert(o->type == UCL_BOOLEAN);
-
-	return (ucl_object_toboolean(o));
-}
-
-const char *
-pkg_object_string(pkg_object *o)
-{
-	const char *ret;
-
-	ret = ucl_object_tostring_forced(o);
-
-	if (ret && *ret == '\0')
-		return (NULL);
-	return (ret);
-}
-
-int64_t
-pkg_object_int(pkg_object *o)
-{
-	assert(o->type == UCL_INT);
-
-	return (ucl_object_toint(o));
 }
 
 static char *
