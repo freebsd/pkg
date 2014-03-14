@@ -686,9 +686,8 @@ pkg_init(const char *path, const char *reposdir)
 	errno = 0;
 	obj = NULL;
 	if (!ucl_parser_add_file(p, path)) {
-		if (errno == ENOENT)
-			goto parsed;
-		pkg_emit_error("%s", ucl_parser_get_error(p));
+		if (errno != ENOENT)
+			pkg_emit_error("%s", ucl_parser_get_error(p));
 	} else {
 		obj = ucl_parser_get_object(p);
 
