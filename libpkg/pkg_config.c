@@ -49,7 +49,7 @@
 #define PORTSDIR "/usr/ports"
 #endif
 #ifndef DEFAULT_VULNXML_URL
-#define DEFAULT_VULNXML_URL "http://www.vuxml.org/freebsd/vuln.xml.bz2",
+#define DEFAULT_VULNXML_URL "http://www.vuxml.org/freebsd/vuln.xml.bz2"
 #endif
 
 int eventpipe = -1;
