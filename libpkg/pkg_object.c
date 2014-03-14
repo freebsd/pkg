@@ -34,11 +34,6 @@ pkg_object_dump(pkg_object *o)
 	return (ucl_object_emit(o, UCL_EMIT_CONFIG));
 }
 
-pkg_object *
-pkg_object_iter(pkg_object *o, pkg_iter *it) {
-	return (ucl_iterate_object(o, it, true));
-}
-
 void
 pkg_object_free(pkg_object *o)
 {

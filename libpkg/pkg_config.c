@@ -616,7 +616,7 @@ load_repositories(const char *repodir)
 	}
 
 	reposlist = pkg_config_get( "REPOS_DIR");
-	while ((cur = pkg_object_iter(reposlist, &it)))
+	while ((cur = pkg_object_iterate(reposlist, &it)))
 		load_repo_files(pkg_object_string(cur));
 }
 
