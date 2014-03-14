@@ -3543,6 +3543,13 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	assert(db != NULL);
 	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
 
+	/*
+	 * If we have no remote repos loaded, we just return nothing instead of failing
+	 * an assert deep inside pkgdb_get_reponame
+	 */
+	if (db->type != PKGDB_REMOTE)
+		return (NULL);
+
 	reponame = pkgdb_get_reponame(db, repo);
 
 	sql = sbuf_new_auto();
