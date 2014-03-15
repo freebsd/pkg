@@ -73,7 +73,7 @@ exec_add(int argc, char **argv)
 	pkg_flags f = PKG_FLAG_NONE;
 	struct pkg_manifest_key *keys = NULL;
 
-	while ((ch = getopt(argc, argv, "IAfq")) != -1) {
+	while ((ch = getopt(argc, argv, "IAflq")) != -1) {
 		switch (ch) {
 		case 'I':
 			f |= PKG_ADD_NOSCRIPT;
@@ -83,6 +83,9 @@ exec_add(int argc, char **argv)
 			break;
 		case 'f':
 			f |= PKG_FLAG_FORCE;
+			break;
+		case 'l':
+			/* Forward compat with 1.3. */
 			break;
 		case 'q':
 			quiet = true;

@@ -69,7 +69,7 @@ exec_install(int argc, char **argv)
 	pkg_config_bool(PKG_CONFIG_ASSUME_ALWAYS_YES, &yes);
 	pkg_config_bool(PKG_CONFIG_REPO_AUTOUPDATE, &auto_update);
 
-	while ((ch = getopt(argc, argv, "AfgIiFnqRr:Uxy")) != -1) {
+	while ((ch = getopt(argc, argv, "AfgIilFnqRr:Uxy")) != -1) {
 		switch (ch) {
 		case 'A':
 			f |= PKG_FLAG_AUTOMATIC;
@@ -88,6 +88,9 @@ exec_install(int argc, char **argv)
 			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
+			break;
+		case 'l':
+			/* Forward compat with 1.3. */
 			break;
 		case 'U':
 			auto_update = false;
