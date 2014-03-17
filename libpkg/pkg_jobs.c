@@ -166,6 +166,14 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 			}
 		}
 	}
+	else if (strcmp(pattern, "-") == 0) {
+		/*
+		 * Read package from stdin
+		 */
+		jp->is_file = true;
+		jp->path = strdup(pattern);
+		jp->pattern = strdup(pattern);
+	}
 
 	return (false);
 }

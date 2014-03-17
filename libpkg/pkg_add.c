@@ -239,7 +239,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * somesuch, there's no valid directory to search.
 	 */
 
-	if (pkg_type(pkg) == PKG_FILE) {
+	if (strncmp(path, "-", 2) != 0) {
 		basedir = dirname(path);
 		if ((ext = strrchr(path, '.')) == NULL) {
 			pkg_emit_error("%s has no extension", path);
