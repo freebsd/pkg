@@ -1,6 +1,10 @@
 AUTOMAKE_OPTIONS=	subdir-objects
 
-dist_check_SCRIPTS=	libelf/native-elf-format
+dist_check_SCRIPTS=	libelf/native-elf-format \
+			libelf/elf_types.m4 \
+			libelf/libelf_convert.m4 \
+			libelf/libelf_fsize.m4 \
+			libelf/libelf_msize.m4
 noinst_HEADERS= expat/amiga/expat_68k.h \
 		expat/amiga/expat_base.h \
 		expat/amiga/include/inline4/expat.h \
@@ -206,11 +210,14 @@ CLEANFILES=	libelf/libelf_fsize.c \
 			libelf/libelf_msize.c \
 			libelf/libelf_convert.c \
 			libelf/native-elf-format.h
-BUILT_SOURCES = libelf/native-elf-format.h
+BUILT_SOURCES = libelf/native-elf-format.h \
+		libelf/libelf_convert.c \
+		libelf/libelf_fsize.c \
+		libelf/libelf_msize.c
 
 libelf/libelf_convert.c:
 	@echo "    M4    " $@;
-	@m4 -D SRCDIR=$(srcdir)/libelf $(srcdir)/libelf/elf_types.m4 $(srcdir)libelf/libelf_convert.m4 > $@
+	@m4 -D SRCDIR=$(srcdir)/libelf $(srcdir)/libelf/elf_types.m4 $(srcdir)/libelf/libelf_convert.m4 > $@
 
 libelf/libelf_fsize.c:
 	@echo "    M4    " $@;
