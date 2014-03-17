@@ -169,22 +169,7 @@ libyaml_static_la_SOURCES=	$(libyaml_la_SOURCES)
 libyaml_static_la_CFLAGS= $(yaml_common_cflags) -static
 libyaml_static_la_LDFLAGS=	-all-static
 
-sqlite_common_cflags=	-DHAVE_POSIX_FALLOCATE=1 \
-			-DHAVE_SYS_TYPES_H=1 \
-			-DHAVE_SYS_STAT_H=1 \
-			-DHAVE_STDLIB_H=1 \
-			-DHAVE_STRING_H=1 \
-			-DHAVE_MEMORY_H=1 \
-			-DHAVE_STRINGS_H=1 \
-			-DHAVE_INTTYPES_H=1 \
-			-DHAVE_STDINT_H=1 \
-			-DHAVE_UNISTD_H=1 \
-			-DHAVE_DLFCN_H=1 \
-			-DHAVE_USLEEP=1 \
-			-DHAVE_LOCALTIME_R=1 \
-			-DHAVE_GMTIME_R=1 \
-			-DHAVE_DECL_STRERROR_R=1 \
-			-DHAVE_STRERROR_R=1 \
+sqlite_common_cflags=	-DHAVE_SQLITE_CONFIG_H \
 			-Wno-unused-variable \
 			-Wno-unused-function \
 			-Wno-strict-aliasing \
