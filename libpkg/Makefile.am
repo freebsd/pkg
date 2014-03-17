@@ -48,14 +48,10 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			@LIBELF_LIB@ \
 			@LIBSBUF_LIB@ \
 			-larchive \
-			-lsbuf \
 			-lfetch \
 			-lutil \
-			-lssl \
-			-lcrypto \
-			-lbz2 \
-			-lz \
-			-llzma
+			-lcrypto
+
 libpkg_la_LDFLAGS=	-version-info 2 -pthread
 lib_LTLIBRARIES=	libpkg.la libpkg_static.la
 include_HEADERS=	pkg.h
@@ -64,18 +60,8 @@ libpkg_static_la_SOURCES=	$(libpkg_la_SOURCES)
 libpkg_static_la_CFLAGS=	$(pkg_common_cflags) -static
 libpkg_static_la_LIBADD=	$(top_builddir)/external/libucl_static.la \
 			$(top_builddir)/external/libsqlite_static.la \
-			$(top_builddir)/external/libyaml_static.la \
-			@LIBELF_LIB@ \
-			@LIBSBUF_LIB@ \
-			-larchive \
-			-lsbuf \
-			-lfetch \
-			-lutil \
-			-lssl \
-			-lcrypto \
-			-lbz2 \
-			-lz \
-			-llzma
+			$(top_builddir)/external/libyaml_static.la
+
 libpkg_static_la_LDFLAGS=	-all-static
 
 noinst_HEADERS=		private/db_upgrades.h \

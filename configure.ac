@@ -82,6 +82,7 @@ AC_SEARCH_LIBS([zlibVersion], [z], [], [
 AC_SEARCH_LIBS([archive_read_open], [archive], [], [
   AC_MSG_ERROR([unable to find the archive_read() function])
 ])
+
 AC_CHECK_HEADER([archive.h],
 	[pkg_found_archive_headers=yes])
 AS_IF([test "x$pkg_found_archive_headers" != "xyes"],
