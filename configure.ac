@@ -102,6 +102,11 @@ AC_CHECK_HEADER([sys/sbuf.h], [
 	LIBSBUF_INCLUDE="-I\$(top_srcdir)/external/libsbuf"
 ])
 
+AC_CHECK_HEADER([atf-c.h], [
+	 BUILD_TESTS="tests"
+	 AC_CONFIG_FILES(tests/Makefile)
+ ])
+
 AC_CHECK_HEADER([sys/capability.h], [
         AC_CHECK_LIB(c, cap_sandboxed, [
                 AC_DEFINE(HAVE_CAPSICUM, 1, [Define 1 if you have 'capsicum'.])
@@ -118,12 +123,12 @@ AC_SUBST([LIBSBUF_BUNDLED])
 AC_SUBST([LIBSBUF_INCLUDE])
 AC_SUBST([LIBJAIL_LIB])
 AC_SUBST([HAVE_TEST])
+AC_SUBST([BUILD_TESTS])
 
 AC_CONFIG_FILES(Makefile \
 		src/Makefile \
 		external/Makefile \
 		scripts/Makefile \
-		tests/Makefile \
 		libpkg/Makefile
 		libpkg/pkg.h \
 		libpkg/pkg.pc
