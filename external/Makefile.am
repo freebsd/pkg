@@ -1,60 +1,62 @@
 AUTOMAKE_OPTIONS=	subdir-objects
 
+dist_check_SCRIPTS=	libelf/native-elf-format
 noinst_HEADERS= expat/amiga/expat_68k.h \
-			expat/amiga/expat_base.h \
-			expat/amiga/include/inline4/expat.h \
-			expat/amiga/include/interfaces/expat.h \
-			expat/amiga/include/libraries/expat.h \
-			expat/amiga/include/proto/expat.h \
-			expat/expat_config.h \
-			expat/lib/amigaconfig.h \
-			expat/lib/ascii.h \
-			expat/lib/asciitab.h \
-			expat/lib/expat.h \
-			expat/lib/expat_external.h \
-			expat/lib/iasciitab.h \
-			expat/lib/internal.h \
-			expat/lib/latin1tab.h \
-			expat/lib/macconfig.h \
-			expat/lib/nametab.h \
-			expat/lib/utf8tab.h \
-			expat/lib/winconfig.h \
-			expat/lib/xmlrole.h \
-			expat/lib/xmltok.h \
-			expat/lib/xmltok_impl.h \
-			expat/tests/chardata.h \
-			expat/tests/minicheck.h \
-			expat/vms/expat_config.h \
-			expat/xmlwf/codepage.h \
-			expat/xmlwf/filemap.h \
-			expat/xmlwf/xmlfile.h \
-			expat/xmlwf/xmlmime.h \
-			expat/xmlwf/xmltchar.h \
-			expat/xmlwf/xmlurl.h \
-			libelf/_elftc.h \
-			libelf/_libelf.h \
-			libelf/_libelf_ar.h \
-			libelf/_libelf_config.h \
-			libelf/elfdefinitions.h \
-			libelf/gelf.h \
-			libelf/libelf.h \
-			libelf/native-elf-format.h \
-			libsbuf/sys/sbuf.h \
-			libucl/include/ucl.h \
-			libucl/src/xxhash.h \
-			libucl/src/ucl_internal.h \
-			libucl/src/ucl_hash.h \
-			libucl/src/ucl_chartable.h \
-			libucl/uthash/uthash.h \
-			libucl/uthash/utlist.h \
-			libucl/uthash/utstring.h \
-			libyaml/config.h \
-			libyaml/include/yaml.h \
-			libyaml/src/yaml_private.h \
-			libyaml/win32/config.h \
-			sqlite/sqlite3.h \
-			uthash/uthash.h \
-			uthash/utlist.h
+		expat/amiga/expat_base.h \
+		expat/amiga/include/inline4/expat.h \
+		expat/amiga/include/interfaces/expat.h \
+		expat/amiga/include/libraries/expat.h \
+		expat/amiga/include/proto/expat.h \
+		expat/expat_config.h \
+		expat/lib/amigaconfig.h \
+		expat/lib/ascii.h \
+		expat/lib/asciitab.h \
+		expat/lib/expat.h \
+		expat/lib/expat_external.h \
+		expat/lib/iasciitab.h \
+		expat/lib/internal.h \
+		expat/lib/latin1tab.h \
+		expat/lib/macconfig.h \
+		expat/lib/nametab.h \
+		expat/lib/utf8tab.h \
+		expat/lib/winconfig.h \
+		expat/lib/xmlrole.h \
+		expat/lib/xmltok.h \
+		expat/lib/xmltok_impl.h \
+		expat/tests/chardata.h \
+		expat/tests/minicheck.h \
+		expat/vms/expat_config.h \
+		expat/xmlwf/codepage.h \
+		expat/xmlwf/filemap.h \
+		expat/xmlwf/xmlfile.h \
+		expat/xmlwf/xmlmime.h \
+		expat/xmlwf/xmltchar.h \
+		expat/xmlwf/xmlurl.h \
+		expat/lib/xmltok_impl.c \
+		expat/lib/xmltok_ns.c \
+		libelf/_elftc.h \
+		libelf/_libelf.h \
+		libelf/_libelf_ar.h \
+		libelf/_libelf_config.h \
+		libelf/elfdefinitions.h \
+		libelf/gelf.h \
+		libelf/libelf.h \
+		libsbuf/sys/sbuf.h \
+		libucl/include/ucl.h \
+		libucl/src/xxhash.h \
+		libucl/src/ucl_internal.h \
+		libucl/src/ucl_hash.h \
+		libucl/src/ucl_chartable.h \
+		libucl/uthash/uthash.h \
+		libucl/uthash/utlist.h \
+		libucl/uthash/utstring.h \
+		libyaml/config.h \
+		libyaml/include/yaml.h \
+		libyaml/src/yaml_private.h \
+		libyaml/win32/config.h \
+		sqlite/sqlite3.h \
+		uthash/uthash.h \
+		uthash/utlist.h
 
 EXTRA_LTLIBRARIES=	libelf.la libsbuf.la
 
@@ -143,6 +145,7 @@ libucl_static_la_CFLAGS=	$(ucl_common_cflags) -static
 libucl_static_la_LDFLAGS=	-all-static
 
 expat_common_cflags=	-I$(top_srcdir)/external/expat \
+			-I$(top_srcdir)/external/expat/lib \
 			-DHAVE_EXPAT_CONFIG_H
 libexpat_la_SOURCES=	expat/lib/xmlparse.c \
 			expat/lib/xmlrole.c \
@@ -222,14 +225,14 @@ BUILT_SOURCES = libelf/native-elf-format.h
 
 libelf/libelf_convert.c:
 	@echo "    M4    " $@;
-	@m4 -D SRCDIR=libelf libelf/elf_types.m4 libelf/libelf_convert.m4 > $@
+	@m4 -D SRCDIR=$(srcdir)/libelf $(srcdir)/libelf/elf_types.m4 $(srcdir)libelf/libelf_convert.m4 > $@
 
 libelf/libelf_fsize.c:
 	@echo "    M4    " $@;
-	@m4 -D SRCDIR=libelf libelf/elf_types.m4 libelf/libelf_fsize.m4 > $@
+	@m4 -D SRCDIR=$(srcdir)/libelf $(srcdir)/libelf/elf_types.m4 $(srcdir)/libelf/libelf_fsize.m4 > $@
 
 libelf/libelf_msize.c:
 	@echo "    M4    " $@;
-	@m4 -D SRCDIR=libelf libelf/elf_types.m4 libelf/libelf_msize.m4 > $@
+	@m4 -D SRCDIR=$(srcdir)/libelf $(srcdir)/libelf/elf_types.m4 $(srcdir)/libelf/libelf_msize.m4 > $@
 libelf/native-elf-format.h:
-	libelf/native-elf-format > libelf/native-elf-format.h
+	$(srcdir)/libelf/native-elf-format > libelf/native-elf-format.h
