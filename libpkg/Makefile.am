@@ -56,7 +56,7 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			-lbz2 \
 			-lz \
 			-llzma
-libpkg_la_LDFLAGS=	-version-info 1 -pthread
+libpkg_la_LDFLAGS=	-version-info 2 -pthread
 lib_LTLIBRARIES=	libpkg.la
 include_HEADERS=	pkg.h
 
