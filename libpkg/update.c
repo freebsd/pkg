@@ -674,9 +674,9 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		goto cleanup;
 	packagesite_t = digest_t;
 	*mtime = packagesite_t > digest_t ? packagesite_t : digest_t;
-	fconflicts = repo_fetch_remote_extract_tmp(repo,
+	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
 			repo_conflicts_archive, "txz", &local_t,
-			&rc, repo_conflicts_file);
+			&rc, repo_conflicts_file);*/
 	fseek(fmanifest, 0, SEEK_END);
 	len = ftell(fmanifest);
 
@@ -798,8 +798,8 @@ cleanup:
 		fclose(fmanifest);
 	if (fdigests)
 		fclose(fdigests);
-	if (fconflicts)
-		fclose(fconflicts);
+	/* if (fconflicts)
+		fclose(fconflicts);*/
 	if (map != MAP_FAILED)
 		munmap(map, len);
 	if (linebuf != NULL)
