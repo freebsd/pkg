@@ -49,6 +49,9 @@ pkg_object_key(pkg_object *o)
 pkg_object *
 pkg_object_iterate(pkg_object *o, pkg_iter *it)
 {
+	if (o == NULL)
+		return (NULL);
+
 	return (ucl_iterate_object(o, it, true));
 }
 
