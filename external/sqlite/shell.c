@@ -3682,12 +3682,6 @@ int main(int argc, char **argv){
       warnInmemoryDb = 0; }
 #endif
   }
-  /**** Begin pkgng patch losely based on fossil patch ****/
-  {
-    extern void pkgshell_open(const char **);
-    pkgshell_open(&data.zDbFilename);
-  }
-  /**** End of pkgng patch ***/
   data.out = stdout;
 
   /* Go ahead and open the database file if it already exists.  If the
