@@ -297,7 +297,7 @@ connect_evpipe(const char *evpipe) {
 		sock.sun_family = AF_UNIX;
 		if (strlcpy(sock.sun_path, evpipe, sizeof(sock.sun_path)) >=
 		    sizeof(sock.sun_path)) {
-			pkg_emit_error("Sockey path too long: %s", evpipe);
+			pkg_emit_error("Socket path too long: %s", evpipe);
 			close(eventpipe);
 			eventpipe = -1;
 			return;
