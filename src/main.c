@@ -267,62 +267,15 @@ exec_help(int argc, char **argv)
 static void
 show_plugin_info(void)
 {
-	pkg_object		*conf, *cur, *obj;
-	pkg_iter		it, it2;
+	pkg_object		*conf;
 	struct pkg_plugin	*p = NULL;
-	const char		*configname;
-	const char		*buf;
-	int64_t			 integer;
-	bool			 b;
 
 	while (pkg_plugins(&p) == EPKG_OK) {
 		conf = pkg_plugin_conf(p);
 		printf("Configuration for plugin: %s\n",
 		    pkg_plugin_get(p, PKG_PLUGIN_NAME));
 
-		it = NULL;
-		while ((cur = pkg_object_iterate(conf, &it))) {
-			configname = pkg_object_key(cur);
-
-			switch (pkg_object_type(cur)) {
-			case PKG_STRING:
-				buf = pkg_object_string(cur);
-				if (buf == NULL)
-					printf("\t%16s:\n", configname);
-				else
-					printf("\t%16s: %s\n", configname, buf);
-				break;
-			case PKG_BOOL:
-				b = pkg_object_bool(cur);
-				printf("\t%16s: %s\n", configname,
-			            b ? "yes": "no");
-				break;
-			case PKG_INT:
-				integer = pkg_object_int(cur);
-				printf("\t%16s: %"PRId64"\n", configname,
-                                    integer);
-				break;
-			case PKG_OBJECT:
-				printf("\t%16s:\n", configname);
-				it2 = NULL;
-				while ((obj = pkg_object_iterate(cur, &it2))) {
-					printf("\t\t- %8s: %s\n",
-					    pkg_object_key(obj),
-					    pkg_object_string(obj));
-				}
-				break;
-			case PKG_ARRAY:
-				printf("\t%16s:\n", configname);
-				it2 = NULL;
-				while ((obj = pkg_object_iterate(cur, &it2))) {
-					printf("\t\t- %8s\n",
-					    pkg_object_string(obj));
-				}
-				break;
-			case PKG_NULL:
-				break;
-			}
-		}
+		printf("%s\n", pkg_object_dump(conf));
 	}
 }
 
