@@ -411,7 +411,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		obj = pkg_annotations(pkg);
 		it = NULL;
 		while ((o = pkg_object_iterate(obj, &it))) {
-			format_str(pkg, output, qstr, obj);
+			format_str(pkg, output, qstr, o);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
