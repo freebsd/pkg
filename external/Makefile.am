@@ -59,7 +59,8 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libyaml/win32/config.h \
 		sqlite/sqlite3.h \
 		uthash/uthash.h \
-		uthash/utlist.h
+		uthash/utlist.h \
+		config.h
 
 EXTRA_LTLIBRARIES=	libelf.la libsbuf.la
 
