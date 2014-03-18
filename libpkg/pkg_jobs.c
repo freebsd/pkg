@@ -1027,7 +1027,7 @@ static bool
 newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
 	char *origin, *newversion, *oldversion, *reponame;
-	struct pkg_note *an;
+	ucl_object_t *an;
 	int64_t oldsize;
 	struct pkg *lp;
 	bool automatic;
@@ -1050,10 +1050,10 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	an = pkg_annotation_lookup(lp, "repository");
 	if (an != NULL)  {
 		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
-		    pkg_annotation_value(an)) != 0)  {
+		    ucl_object_tostring(an)) != 0)  {
 			return (false);
 		} else {
-			pkg_addannotation(rp, "repository", pkg_annotation_value(an));
+			pkg_addannotation(rp, "repository", ucl_object_tostring(an));
 		}
 	}
 
@@ -1573,7 +1573,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 {
 	struct pkg *new, *old;
 	const char *pkgorigin, *oldversion = NULL;
-	struct pkg_note *an;
+	ucl_object_t *an;
 	char path[MAXPATHLEN], *target;
 	bool automatic = false;
 	int flags = 0;
@@ -1629,7 +1629,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	}
 
 	if (an != NULL) {
-		pkgdb_add_annotation(j->db, new, "repository", pkg_annotation_value(an));
+		pkgdb_add_annotation(j->db, new, "repository", ucl_object_tostring(an));
 	}
 
 	if (oldversion != NULL)

@@ -45,6 +45,8 @@
 
 #include "private/utils.h"
 
+#define UCL_COUNT(obj) ((obj)?((obj)->len):0)
+
 #define PKG_NUM_SCRIPTS 9
 
 #if ARCHIVE_VERSION_NUMBER < 3000002
@@ -126,7 +128,7 @@ struct pkg {
 	struct pkg_group	*groups;
 	struct pkg_shlib	*shlibs_required;
 	struct pkg_shlib	*shlibs_provided;
-	struct pkg_note		*annotations;
+	ucl_object_t		*annotations;
 	struct pkg_conflict *conflicts;
 	struct pkg_provide	*provides;
 	unsigned       	 flags;
@@ -265,12 +267,6 @@ struct pkg_shlib {
 	UT_hash_handle	hh;
 };
 
-struct pkg_note {
-	struct sbuf	*tag;
-	struct sbuf	*value;
-	UT_hash_handle	 hh;
-};
-
 struct http_mirror {
 	struct url *url;
 	struct http_mirror *next;
@@ -384,9 +380,6 @@ void pkg_conflict_free(struct pkg_conflict *);
 
 int pkg_provide_new(struct pkg_provide **);
 void pkg_provide_free(struct pkg_provide *);
-
-int pkg_annotation_new(struct pkg_note **);
-void pkg_annotation_free(struct pkg_note *);
 
 struct packing;
 

@@ -632,9 +632,8 @@ int pkg_provides(const struct pkg *pkg, struct pkg_provide **provide);
  * @param note must be set to NULL for the first call.
  * @return An error code
  */
-int pkg_annotations(const struct pkg *pkg, struct pkg_note **note);
-
-struct pkg_note *pkg_annotation_lookup(const struct pkg *p, const char *tag);
+pkg_object *pkg_annotation_lookup(const struct pkg *p, const char *tag);
+pkg_object *pkg_annotations(const struct pkg *p);
 
 /**
  * Iterate over all of the files within the package pkg, ensuring the
@@ -927,10 +926,6 @@ const char *pkg_conflict_origin(const struct pkg_conflict *);
 
 /* pkg_provide */
 const char *pkg_provide_name(const struct pkg_provide *);
-
-/* pkg_note */
-const char *pkg_annotation_tag(struct pkg_note const * const);
-const char *pkg_annotation_value(struct pkg_note const * const);
 
 /**
  * @param db A pointer to a struct pkgdb object

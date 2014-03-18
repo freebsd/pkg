@@ -481,14 +481,6 @@ pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
 }
 
 int
-pkg_annotations(const struct pkg *pkg, struct pkg_note **an)
-{
-	assert(pkg != NULL);
-
-	HASH_NEXT(pkg->annotations, (*an));
-}
-
-int
 pkg_addlicense(struct pkg *pkg, const char *name)
 {
 	struct pkg_license *l = NULL;
@@ -1041,7 +1033,7 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 int
 pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 {
-	struct pkg_note *an = NULL;
+	ucl_object_t *an;
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
@@ -1049,54 +1041,52 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 
 	/* Tags are unique per-package */
 
-	HASH_FIND_STR(pkg->annotations, tag, an);
+	an = ucl_object_find_key(pkg->annotations, tag);
 	if (an != NULL) {
 		pkg_emit_error("duplicate annotation tag: %s value: %s,"
-			       " ignoring", tag, value);
+	           " ignoring", tag, value);
 		return (EPKG_OK);
 	}
 	an = NULL;
-	pkg_annotation_new(&an);
-
-	sbuf_set(&an->tag, tag);
-	sbuf_set(&an->value, value);
-
-	HASH_ADD_KEYPTR(hh, pkg->annotations,
-	    pkg_annotation_tag(an),
-	    strlen(pkg_annotation_tag(an)), an);
+	an = ucl_object_fromstring(value);
+	pkg->annotations = ucl_object_insert_key(pkg->annotations,
+	    an, tag, strlen(tag), false);
 
 	return (EPKG_OK);
 }
 
-struct pkg_note *
+pkg_object *
+pkg_annotations(const struct pkg *pkg)
+{
+	assert(pkg != NULL);
+
+	return (pkg->annotations);
+}
+
+pkg_object *
 pkg_annotation_lookup(const struct pkg *pkg, const char *tag)
 {
-	struct pkg_note *an = NULL;
-
 	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	HASH_FIND_STR(pkg->annotations, tag, an);
-
-	return (an);
+	return (ucl_object_find_key(pkg->annotations, tag));
 }
 
 int
 pkg_delannotation(struct pkg *pkg, const char *tag)
 {
-	struct pkg_note *an = NULL;
+	ucl_object_t *an;
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	HASH_FIND_STR(pkg->annotations, tag, an);
+	an = ucl_object_pop_key(pkg->annotations, tag);
 	if (an != NULL) {
-		HASH_DEL(pkg->annotations, an);
-		pkg_annotation_free(an);
+		ucl_object_unref(an);
 		return (EPKG_OK);
 	} else {
 		pkg_emit_error("deleting annotation tagged \'%s\' -- "
-			       "not found", tag);
+	           "not found", tag);
 		return (EPKG_WARN);
 	}
 }
@@ -1128,7 +1118,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_SHLIBS_PROVIDED:
 		return (HASH_COUNT(pkg->shlibs_provided));
 	case PKG_ANNOTATIONS:
-		return (HASH_COUNT(pkg->annotations));
+		return (UCL_COUNT(pkg->annotations));
 	case PKG_CONFLICTS:
 		return (HASH_COUNT(pkg->conflicts));
 	case PKG_PROVIDES:
@@ -1186,7 +1176,10 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	case PKG_ANNOTATIONS:
-		HASH_FREE(pkg->annotations, pkg_note, pkg_annotation_free);
+		if (pkg->annotations != NULL) {
+			ucl_object_unref(pkg->annotations);
+			pkg->annotations = NULL;
+		}
 		pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
 		break;
 	case PKG_CONFLICTS:

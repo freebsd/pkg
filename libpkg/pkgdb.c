@@ -2982,18 +2982,19 @@ pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	struct pkg_note	*note = NULL;
+	pkg_object	*note;
+	pkg_iter	 it = NULL;
 
-	while (pkg_annotations(pkg, &note) == EPKG_OK) {
-		if (run_prstmt(ANNOTATE1, pkg_annotation_tag(note))
+	while ((note = pkg_object_iterate(pkg->annotations, &it))) {
+		if (run_prstmt(ANNOTATE1, pkg_object_key(note))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(ANNOTATE1, pkg_annotation_value(note))
+		    run_prstmt(ANNOTATE1, pkg_object_string(note))
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(ANNOTATE2, package_id,
-			pkg_annotation_tag(note),
-			pkg_annotation_value(note))
+			pkg_object_key(note),
+			pkg_object_string(note))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			return (EPKG_FATAL);

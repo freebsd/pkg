@@ -970,13 +970,10 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		    ucl_object_fromstring(pkg_option_value(option)),
 		    pkg_option_opt(option), 0, false);
 	}
-	map = NULL;
-	while (pkg_annotations(pkg, &note) == EPKG_OK) {
-		map = ucl_object_insert_key(map,
-		    ucl_object_fromstring(pkg_annotation_value(note)),
-		    pkg_annotation_tag(note), 0, false);
-	}
-	obj = ucl_object_insert_key(top, map, "annotations", 11, false);
+
+	if (pkg->annotations != NULL)
+		obj = ucl_object_insert_key(top,
+		    ucl_object_ref(map), "annotations", 11, false);
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {

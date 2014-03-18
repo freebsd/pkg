@@ -337,7 +337,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_user		*user   = NULL;
 	struct pkg_group	*group  = NULL;
 	struct pkg_shlib	*shlib  = NULL;
-	struct pkg_note		*note   = NULL;
+	pkg_object		*obj, *o;
+	pkg_iter		 it;
 
 	switch (multiline) {
 	case 'd':
@@ -407,8 +408,10 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'A':
-		while (pkg_annotations(pkg, &note) == EPKG_OK) {
-			format_str(pkg, output, qstr, note);
+		obj = pkg_annotations(pkg);
+		it = NULL;
+		while ((o = pkg_object_iterate(obj, &it))) {
+			format_str(pkg, output, qstr, obj);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
