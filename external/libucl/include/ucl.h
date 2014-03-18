@@ -551,6 +551,27 @@ UCL_EXTERN ucl_object_t* ucl_object_ref (ucl_object_t *obj);
  * @param obj object to unref
  */
 UCL_EXTERN void ucl_object_unref (ucl_object_t *obj);
+
+/**
+ * Compare objects `o1` and `o2`
+ * @param o1 the first object
+ * @param o2 the second object
+ * @return values >0, 0 and <0 if `o1` is more than, equal and less than `o2`.
+ * The order of comparison:
+ * 1) Type of objects
+ * 2) Size of objects
+ * 3) Content of objects
+ */
+UCL_EXTERN int ucl_object_compare (ucl_object_t *o1, ucl_object_t *o2);
+
+/**
+ * Sort UCL array using `cmp` compare function
+ * @param ar
+ * @param cmp
+ */
+UCL_EXTERN void ucl_object_array_sort (ucl_object_t *ar,
+		int (*cmp)(ucl_object_t *o1, ucl_object_t *o2));
+
 /**
  * Opaque iterator object
  */
@@ -726,6 +747,47 @@ UCL_EXTERN unsigned char *ucl_object_emit (ucl_object_t *obj, enum ucl_emitter e
  */
 UCL_EXTERN bool ucl_object_emit_full (ucl_object_t *obj, enum ucl_emitter emit_type,
 		struct ucl_emitter_functions *emitter);
+/** @} */
+
+/**
+ * @defgroup schema Schema functions
+ * These functions are used to validate UCL objects using json schema format
+ *
+ * @{
+ */
+
+/**
+ * Used to define UCL schema error
+ */
+enum ucl_schema_error_code {
+	UCL_SCHEMA_OK = 0,          /**< no error */
+	UCL_SCHEMA_TYPE_MISMATCH,   /**< type of object is incorrect */
+	UCL_SCHEMA_INVALID_SCHEMA,  /**< schema is invalid */
+	UCL_SCHEMA_MISSING_PROPERTY,/**< one or more missing properties */
+	UCL_SCHEMA_CONSTRAINT,      /**< constraint found */
+	UCL_SCHEMA_UNKNOWN          /**< generic error */
+};
+
+/**
+ * Generic ucl schema error
+ */
+struct ucl_schema_error {
+	enum ucl_schema_error_code code;	/**< error code */
+	char msg[128];						/**< error message */
+	ucl_object_t *obj;					/**< object where error occured */
+};
+
+/**
+ * Validate object `obj` using schema object `schema`.
+ * @param schema schema object
+ * @param obj object to validate
+ * @param err error pointer, if this parameter is not NULL and error has been
+ * occured, then `err` is filled with the exact error definition.
+ * @return true if `obj` is valid using `schema`
+ */
+UCL_EXTERN bool ucl_object_validate (ucl_object_t *schema,
+		ucl_object_t *obj, struct ucl_schema_error *err);
+
 /** @} */
 
 #ifdef  __cplusplus

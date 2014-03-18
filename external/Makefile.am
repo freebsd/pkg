@@ -54,7 +54,6 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libucl/uthash/uthash.h \
 		libucl/uthash/utlist.h \
 		libucl/uthash/utstring.h \
-		libyaml/config.h \
 		libyaml/include/yaml.h \
 		libyaml/src/yaml_private.h \
 		libyaml/win32/config.h \

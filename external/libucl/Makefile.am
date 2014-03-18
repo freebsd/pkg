@@ -1,0 +1,3 @@
+ACLOCAL_AMFLAGS = -I m4
+EXTRA_DIST = uthash $(TESTS)
+SUBDIRS = src tests
