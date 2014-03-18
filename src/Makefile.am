@@ -91,7 +91,8 @@ pkg_static_LDADD=	$(top_builddir)/libpkg/libpkg_static.la \
 			-llzma \
 			-lssl \
 			-lcrypto \
-			-lmd
+			-lmd \
+			-lm
 pkg_static_LDFLAGS=	-all-static -pthread
 sbin_PROGRAMS=		pkg pkg-static
 

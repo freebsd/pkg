@@ -50,6 +50,14 @@ dnl Example of default-disabled feature
 AC_ARG_ENABLE([urls], AS_HELP_STRING([--enable-urls], [Enable URLs fetch (requires libfetch or libcurl)]))
 AC_ARG_ENABLE([signatures], AS_HELP_STRING([--enable-signatures], 
 	[Enable signatures check (requires openssl)]))
+AC_ARG_ENABLE([utils],
+	[--enable-utils Build and install utils],
+	[case "${enableval}" in
+  		yes) utils=true ;;
+  		no)  utils=false ;;
+  		*) AC_MSG_ERROR([bad value ${enableval} for --enable-utils]) ;;
+	esac],[utils=false])
+AM_CONDITIONAL([UTILS], [test x$utils = xtrue])
 
 AS_IF([test "x$enable_signatures" = "xyes"], [
 	AC_SEARCH_LIBS([EVP_MD_CTX_create], [crypto], [
@@ -58,13 +66,25 @@ AS_IF([test "x$enable_signatures" = "xyes"], [
 		LIBS_EXTRA="${LIBS_EXTRA} -lcrypto"
 		], [AC_MSG_ERROR([unable to find the EVP_MD_CTX_create() function])])
 ])
-AC_SEARCH_LIBS([clock_gettime], [rt], [], [AC_MSG_ERROR([unable to find clock_gettime() function])])
-	
+
+AC_SEARCH_LIBS([clock_gettime], [rt], [], [
+	AC_CHECK_HEADER([mach/mach_time.h], [
+		AC_DEFINE(HAVE_MACH_MACH_TIME_H, 1, [Define to 1 on Darwin])
+	], [AC_MSG_ERROR([unable to find clock_gettime or mach_absolute_time])])
+])
+AC_SEARCH_LIBS([remainder], [m], [], [AC_MSG_ERROR([unable to find remainder() function])])
+
+AC_CHECK_HEADER([regex.h], [
+	AC_DEFINE(HAVE_REGEX_H, 1, [Define to 1 if you have the <regex.h> header file.])
+	], 
+	[AC_MSG_ERROR([unable to find the regex.h header])],
+	[#include <sys/types.h>])
+
 AS_IF([test "x$enable_urls" = "xyes"], [	
 	AC_CHECK_HEADER([fetch.h], [
 		AC_DEFINE(HAVE_FETCH_H, 1, [Define to 1 if you have the <fetch.h> header file.])
 		AC_CHECK_LIB(fetch, fetchXGet, [
-			AC_DEFINE(HAVE_LIBFETCH, 1, [Define to 1 if you have the 'fetch' library (-fetch).])
+			AC_DEFINE(HAVE_LIBFETCH, 1, [Define to 1 if you have the 'fetch' library (-lfetch).])
 			LIBFETCH_LIBS="-lfetch"
 			have_libfetch="yes"
 			LIBS_EXTRA="${LIBS_EXTRA} -lfetch"
@@ -89,9 +109,12 @@ AS_IF([test "x$enable_urls" = "xyes"], [
 	AC_SUBST(CURL_CFLAGS)
 ])
 
+AC_SUBST(LIBS_EXTRA)
+
 AC_CONFIG_FILES(Makefile \
 	src/Makefile \
 	tests/Makefile \
+	utils/Makefile \
 	libucl.pc)
 AC_CONFIG_FILES([stamp-h], [echo timestamp > stamp-h])
 AC_OUTPUT

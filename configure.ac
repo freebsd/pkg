@@ -41,6 +41,33 @@ AC_CHECK_HEADERS_ONCE([memory.h])
 AC_CHECK_HEADERS_ONCE([inttypes.h])
 AC_CHECK_HEADERS_ONCE([unistd.h])
 AC_CHECK_HEADERS_ONCE([dlfcn.h])
+AC_CHECK_HEADERS_ONCE([fcntl.h])
+
+AC_CHECK_HEADERS_ONCE([sys/types.h])
+AC_CHECK_HEADERS_ONCE([sys/stat.h])
+AC_CHECK_HEADERS_ONCE([sys/param.h])
+AC_CHECK_HEADERS_ONCE([sys/mman.h])
+AC_CHECK_HEADERS_ONCE([stdlib.h])
+AC_CHECK_HEADERS_ONCE([stddef.h])
+AC_CHECK_HEADERS_ONCE([stdarg.h])
+AC_CHECK_HEADERS_ONCE([stdbool.h])
+AC_CHECK_HEADERS_ONCE([stdint.h])
+AC_CHECK_HEADERS_ONCE([string.h])
+AC_CHECK_HEADERS_ONCE([unistd.h])
+AC_CHECK_HEADERS_ONCE([ctype.h])
+AC_CHECK_HEADERS_ONCE([errno.h])
+AC_CHECK_HEADERS_ONCE([limits.h])
+AC_CHECK_HEADERS_ONCE([libgen.h])
+AC_CHECK_HEADERS_ONCE([stdio.h])
+AC_CHECK_HEADERS_ONCE([float.h])
+AC_CHECK_HEADERS_ONCE([math.h])
+
+AC_CHECK_HEADER([regex.h], [
+	AC_DEFINE(HAVE_REGEX_H, 1, [Define to 1 if you have the <regex.h> header file.])
+	],
+	[AC_MSG_ERROR([unable to find the regex.h header])],
+	[#include <sys/types.h>])
+
 
 AC_CHECK_FUNCS_ONCE([posix_fallocate])
 AC_CHECK_FUNCS_ONCE([usleep])
@@ -127,26 +154,6 @@ AC_CHECK_HEADER([sys/capability.h], [
         ])
 
 ])
-
-AC_CHECK_HEADERS_ONCE([fcntl.h])
-AC_CHECK_HEADERS_ONCE([sys/types.h])
-AC_CHECK_HEADERS_ONCE([sys/stat.h])
-AC_CHECK_HEADERS_ONCE([sys/param.h])
-AC_CHECK_HEADERS_ONCE([sys/mman.h])
-AC_CHECK_HEADERS_ONCE([stdlib.h])
-AC_CHECK_HEADERS_ONCE([stddef.h])
-AC_CHECK_HEADERS_ONCE([stdarg.h])
-AC_CHECK_HEADERS_ONCE([stdbool.h])
-AC_CHECK_HEADERS_ONCE([stdint.h])
-AC_CHECK_HEADERS_ONCE([string.h])
-AC_CHECK_HEADERS_ONCE([unistd.h])
-AC_CHECK_HEADERS_ONCE([ctype.h])
-AC_CHECK_HEADERS_ONCE([errno.h])
-AC_CHECK_HEADERS_ONCE([limits.h])
-AC_CHECK_HEADERS_ONCE([libgen.h])
-AC_CHECK_HEADERS_ONCE([stdio.h])
-AC_CHECK_HEADERS_ONCE([float.h])
-AC_CHECK_HEADERS_ONCE([math.h])
 
 
 AC_SUBST([LIBELF_LIB])

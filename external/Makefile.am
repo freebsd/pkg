@@ -141,6 +141,7 @@ ucl_common_cflags=	-I$(top_srcdir)/external//libucl/uthash \
 libucl_la_SOURCES=	libucl/src/ucl_emitter.c \
 			libucl/src/ucl_hash.c \
 			libucl/src/ucl_parser.c \
+			libucl/src/ucl_schema.c \
 			libucl/src/ucl_util.c \
 			libucl/src/xxhash.c
 libucl_la_CFLAGS=	$(ucl_common_cflags) -shared

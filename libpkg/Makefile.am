@@ -50,7 +50,8 @@ libpkg_la_LIBADD=	$(top_builddir)/external/libucl.la \
 			-larchive \
 			-lfetch \
 			-lutil \
-			-lcrypto
+			-lcrypto \
+			-lm
 
 libpkg_la_LDFLAGS=	-version-info 2 -pthread
 lib_LTLIBRARIES=	libpkg.la libpkg_static.la
