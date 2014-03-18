@@ -67,7 +67,6 @@ struct pkg_license;
 struct pkg_user;
 struct pkg_group;
 struct pkg_shlib;
-struct pkg_note;
 struct pkg_provide;
 
 struct pkgdb;
