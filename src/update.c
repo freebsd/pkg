@@ -45,7 +45,7 @@
  */
 int
 pkgcli_update(bool force) {
-	int retcode = EPKG_FATAL;
+	int retcode = EPKG_FATAL, update_count = 0;
 	struct pkg_repo *r = NULL;
 
 	/* Only auto update if the user has write access. */
@@ -74,7 +74,11 @@ pkgcli_update(bool force) {
 		}
 		if (retcode != EPKG_OK)
 			break;
+		update_count ++;
 	}
+
+	if (!quiet && update_count == 0)
+		printf("No repositories are enabled\n");
 
 	return (retcode);
 }
