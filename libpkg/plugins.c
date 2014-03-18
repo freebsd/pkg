@@ -352,7 +352,9 @@ pkg_plugin_parse(struct pkg_plugin *p)
 			continue;
 		}
 
-		ucl_object_delete_key(p->conf, key);
+		o = ucl_object_pop_key(p->conf, key);
+		if (o != NULL)
+			ucl_object_unref(o);
 		p->conf = ucl_object_insert_key(p->conf, cur, key, strlen(key), false);
 	}
 
