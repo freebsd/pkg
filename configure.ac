@@ -118,8 +118,7 @@ AC_CHECK_HEADER([sys/sbuf.h], [
 ])
 
 AC_CHECK_HEADER([atf-c.h], [
-	 BUILD_TESTS="tests"
-	 AC_CONFIG_FILES(tests/Makefile)
+	 TESTS="\$(test_program)"
  ])
 
 AC_CHECK_HEADER([sys/capability.h], [
@@ -137,13 +136,13 @@ AC_SUBST([LIBSBUF_LIB])
 AC_SUBST([LIBSBUF_BUNDLED])
 AC_SUBST([LIBSBUF_INCLUDE])
 AC_SUBST([LIBJAIL_LIB])
-AC_SUBST([HAVE_TEST])
-AC_SUBST([BUILD_TESTS])
+AC_SUBST([TESTS])
 
 AC_CONFIG_FILES(Makefile \
 		src/Makefile \
 		external/Makefile \
 		scripts/Makefile \
+		tests/Makefile \
 		libpkg/Makefile
 		libpkg/pkg.h \
 		libpkg/pkg.pc

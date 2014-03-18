@@ -10,4 +10,4 @@ EXTRA_DIST=	docs
 dist-hook:
 	rm -rf `find $(distdir)/external -type d -name .deps`
 
-SUBDIRS = external libpkg src @BUILD_TESTS@ scripts
+SUBDIRS = external libpkg src tests scripts

@@ -9,7 +9,9 @@ pkg_validation_CFLAGS=	-I$(top_srcdir)/libpkg -DTESTING
 pkg_validation_LDADD=	$(top_builddir)/libpkg/libpkg.la -latf-c
 pkg_validation_LDFLAGS=	-Wl,-rpath=\$$ORIGIN/../.libs
 
-check_PROGRAMS=	pkg_printf pkg_validation
+tests_programs=	pkg_printf pkg_validation
+EXTRA_PROGRAMS=	$(tests_programs)
+check_PROGRAMS=	@TESTS@
 
 regression-test:
 	@echo "ATF/KYUA has change our testing framework is not compatible for now"
