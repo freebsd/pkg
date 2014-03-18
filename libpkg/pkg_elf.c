@@ -409,7 +409,7 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	int (*action)(void *, struct pkg *, const char *, const char *, bool);
 
 	autodeps = pkg_object_bool(pkg_config_get("AUTODEPS"));
-	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MORE"));
+	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
