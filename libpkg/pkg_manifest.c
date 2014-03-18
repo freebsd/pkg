@@ -970,6 +970,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		    ucl_object_fromstring(pkg_option_value(option)),
 		    pkg_option_opt(option), 0, false);
 	}
+	obj = ucl_object_insert_key(top, map, "options", 7, false);
 
 	if (pkg->annotations != NULL)
 		obj = ucl_object_insert_key(top,
