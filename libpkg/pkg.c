@@ -1047,10 +1047,9 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 	           " ignoring", tag, value);
 		return (EPKG_OK);
 	}
-	an = NULL;
-	an = ucl_object_fromstring(value);
+	an = ucl_object_fromstring_common(value, strlen(value), 0);
 	pkg->annotations = ucl_object_insert_key(pkg->annotations,
-	    an, tag, strlen(tag), false);
+	    an, tag, strlen(tag), true);
 
 	return (EPKG_OK);
 }
