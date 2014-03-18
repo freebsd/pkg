@@ -855,7 +855,7 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_annotation_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	pkg_object	*o = data;
+	pkg_object	*o = (pkg_object *)data;
 
 	return (string_val(sbuf, pkg_object_key(o), p));
 }
@@ -866,7 +866,7 @@ format_annotation_name(struct sbuf *sbuf, const void *data, struct percent_esc *
 struct sbuf *
 format_annotation_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	pkg_object	*o = data;
+	pkg_object	*o = (pkg_object *)data;
 
 	return (string_val(sbuf, pkg_object_string(o), p));
 }
