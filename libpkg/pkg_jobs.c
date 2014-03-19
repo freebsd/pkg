@@ -1682,6 +1682,12 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	if (j->flags & PKG_FLAG_SKIP_INSTALL)
 		return (EPKG_OK);
 
+	if ((j->flags & PKG_FLAG_FORCE) == PKG_FLAG_FORCE)
+		flags |= PKG_DELETE_FORCE;
+
+	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
+		flags |= PKG_DELETE_NOSCRIPT;
+
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 
@@ -1705,7 +1711,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 			p = ps->items[0]->pkg;
 			pkg_get(p, PKG_NAME, &name);
 			if ((strcmp(name, "pkg") == 0 ||
-				strcmp(name, "pkg-devel") == 0) && flags != PKG_DELETE_FORCE) {
+			    strcmp(name, "pkg-devel") == 0) &&
+			    (flags & PKG_DELETE_FORCE) == 0) {
 				pkg_emit_error("Cannot delete pkg itself without force flag");
 				continue;
 			}
