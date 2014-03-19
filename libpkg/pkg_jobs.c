@@ -772,7 +772,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	HASH_FIND_STR(j->universe, origin, jit);
 	if (jit != NULL) {
 		/* We have a more recent package */
-		if (!pkg_need_upgrade(p, jit->pkg, false)) {
+		if (!force && !pkg_need_upgrade(p, jit->pkg, false)) {
 			/*
 			 * We can have package from another repo in the
 			 * universe, but if it is older than this one we just
