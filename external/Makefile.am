@@ -51,6 +51,7 @@ noinst_HEADERS= expat/amiga/expat_68k.h \
 		libucl/src/ucl_internal.h \
 		libucl/src/ucl_hash.h \
 		libucl/src/ucl_chartable.h \
+		libucl/src/tree.h \
 		libucl/uthash/uthash.h \
 		libucl/uthash/utlist.h \
 		libucl/uthash/utstring.h \
