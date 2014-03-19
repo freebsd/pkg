@@ -756,19 +756,43 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 {
 	struct pkg *p1;
 	struct pkg_job_universe_item *jit;
+	struct pkg_job_seen *seen;
 	int rc = EPKG_FATAL;
-	char *origin;
+	const char *origin, *digest;
 
 	p1 = NULL;
-	pkg_get(p, PKG_ORIGIN, &origin);
+	pkg_get(p, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+	HASH_FIND_STR(j->seen, digest, seen);
+	if (seen != NULL) {
+		/* We have already added exactly the same package to the universe */
+		pkg_debug(3, "already seen package %s-%s in the universe, do not add it again",
+				origin, digest);
+		return (EPKG_OK);
+	}
 	HASH_FIND_STR(j->universe, origin, jit);
 	if (jit != NULL) {
 		/* We have a more recent package */
 		if (!pkg_need_upgrade(p, jit->pkg, false)) {
-			if (root)
-				pkg_emit_already_installed(p);
-			return (EPKG_INSTALLED);
+			/*
+			 * We can have package from another repo in the
+			 * universe, but if it is older than this one we just
+			 * do not add it.
+			 */
+			if (jit->pkg->type == PKG_INSTALLED) {
+				if (root)
+					pkg_emit_already_installed(p);
+				return (EPKG_INSTALLED);
+			}
+			else {
+				pkg_debug(3, "already added newer package %s to the universe, do not add it again",
+								origin);
+				return (EPKG_OK);
+			}
 		}
+		/*
+		 * XXX: what happens if we have multirepo enabled and we add
+		 * two packages from different repos?
+		 */
 	}
 	else {
 		if (j->type != PKG_JOBS_FETCH) {
