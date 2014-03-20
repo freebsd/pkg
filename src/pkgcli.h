@@ -35,6 +35,10 @@ extern int nbdone;
 extern bool newpkgversion;
 int nbdone;
 
+/* pkg add */
+int exec_add(int, char **);
+void usage_add(void);
+
 /* pkg annotate */
 int exec_annotate(int, char **);
 void usage_annotate(void);

@@ -71,7 +71,7 @@ static struct commands {
 	int (*exec)(int argc, char **argv);
 	void (* const usage)(void);
 } cmd[] = {
-	{ "add", "Compatibility alias for install", exec_install, usage_install},
+	{ "add", "Compatibility interface to install a package", exec_add, usage_add},
 	{ "annotate", "Add, modify or delete tag-value style annotations on packages", exec_annotate, usage_annotate},
 	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},

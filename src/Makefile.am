@@ -1,6 +1,7 @@
 noinst_HEADERS=	pkgcli.h progressmeter.h
 
-pkg_SOURCES=		annotate.c \
+pkg_SOURCES=		add.c \
+			annotate.c \
 			audit.c \
 			autoremove.c \
 			backup.c \
