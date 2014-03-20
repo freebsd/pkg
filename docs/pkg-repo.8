@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd November 12, 2013
+.Dd March 30, 2014
 .Dt PKG-REPO 8
 .Os
 .Sh NAME
@@ -72,8 +72,7 @@ set to
 .Dv PUBKEY
 and
 .Sy PUBKEY
-set to a local path of the public key in its
-.Pa pkg.conf .
+set to a local path of the public key in its repository configuration file.
 .Pp
 An external command can be useful to create a signing server to keep the
 private key separate from the repository.
@@ -121,15 +120,6 @@ Force quiet output
 Generate list of all files in repo as filesite.txz archive.
 .It Fl o Ar output-dir
 Create the repository in the specified directory instead of the package directory.
-.El
-.Sh ENVIRONMENT
-The following environment variables affect the execution of
-.Nm .
-See
-.Xr pkg.conf 5
-for further description.
-.Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It Ev PUBKEY
 .El
 .Sh FILES
 See
@@ -184,14 +174,12 @@ set to
 .Dv PUBKEY
 and its path set via
 .Sy PUBKEY
-setting in the
-.Xr pkg.conf 5 :
+setting in the repository configuration file :
 .Pp
 .Dl pkg repo /usr/ports/packages repo.key
 .Pp
 Create a repository and sign it with an external command.
-The client should set, via
-.Xr pkg.conf 5 ,
+The client should set, via the repository configuration file,
 .Sy SIGNATURE_TYPE
 to
 .Dv FINGERPRINTS
