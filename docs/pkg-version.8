@@ -1,0 +1,224 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\" $FreeBSD$
+.\"
+.Dd February 25, 2013
+.Dt PKG-VERSION 8
+.Os
+.Sh NAME
+.Nm "pkg version"
+.Nd summarize installed versions of packages
+.Sh SYNOPSIS
+.Nm
+.Op Fl IPR
+.Op Fl hoqvU
+.Op Fl l Ar limchar
+.Op Fl L Ar limchar
+.Op Fl egix Ar pattern
+.Op Fl r Ar reponame
+.Op Fl O Ar origin
+.Op Ar index
+.Nm
+.Fl t Ar version1 Ar version2
+.Nm
+.Fl T Ar pkgname Ar pattern
+.Sh DESCRIPTION
+.Nm
+is used for generating a report of packages installed by
+.Xr pkg 8 .
+.Pp
+By default, if a ports tree exists it is used to compare versions.
+If it does not exist, the remote repository catalogue is used.
+These defaults can be overridden by specifying one of
+.Fl P ,
+.Fl R
+or
+.Fl I .
+.Pp
+When comparing package versions the package name and a comparison character are printed:
+.Bl -tag -width indent
+.It Li =
+The installed version of the package is current.
+.It Li \&<
+The installed version of the package is older than the current version.
+.It Li \&>
+The installed version of the package is newer than the current version.
+This situation can arise with an out-of-date index file, or when
+testing new ports.
+.It Li \&?
+The installed package does not appear in the index.
+This could be due to an out of date index or a package taken from a PR
+that has not yet been committed.
+.It Li \&!
+The installed package exists in the index but for some reason,
+.Nm
+was unable to compare the version number of the installed package
+with the corresponding entry in the index.
+.El
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl h
+Displays usage information
+.It Fl I
+Use INDEX file for determining if a package is out of date.
+.It Fl P
+Use ports for determining if a package is out of date.
+This is the default if a ports tree exists.
+The tree used can be overridden by PORTSDIR, see
+.Xr pkg 5
+for more information.
+.It Fl R
+Use repository catalogue for determining if a package is out of date.
+This is the default if no ports tree exists.
+.It Fl U
+Suppress the automatic update of the local copy of the repository catalogue
+from remote.
+This only has any effect in combination with the
+.Fl R
+option.
+.It Fl r Ar reponame
+Use the given
+.Ar reponame
+for comparison when using
+.Fl R
+.It Fl o
+Display package origin, instead of package name.
+.It Fl q
+Be quiet.
+Less output will be produced.
+.It Fl v
+Be verbose.
+.It Fl l Ar limchar
+Display only the packages which status flag matches the one specified by
+.Ar limchar
+.It Fl L Ar limchar
+Does the opposite of
+.Fl l
+flag.
+Displays the packages which status flag does not match the one
+specified by
+.Ar limchar
+.It Fl i
+Make the exact
+.Fl ( e )
+or regular expression
+.Fl ( x )
+matching against
+.Ar pattern
+case insensitive.
+.It Fl x Ar pattern
+Only display the packages that match the regular expression.
+Uses the "modern" or "extended" syntax of
+.Xr re_format 7 .
+.It Fl g Ar pattern
+Only display the packages that match the glob expression.
+.It Fl e Ar string
+Only display the packages that exactly match the string.
+.It Fl O Ar origin
+Display only the packages which origin matches
+.Ar origin
+.It Fl t Ar version1 Ar version2
+Test a pair of version number strings and exit.
+The output consists of one of the single characters
+.Li =
+(equal),
+.Li \&<
+(right-hand number greater), or
+.Li \&>
+(left-hand number greater) on standard output.
+This flag is mostly useful for scripts or for testing.
+.It Fl T Ar pkgname Ar pattern
+Compare
+.Ar pkgname
+against shell glob
+.Ar pattern
+and set exit code accordingly.
+.Fl T
+can also be used in `filter mode':
+When one of the arguments is `-', standard input is used, and lines
+with matching package names/patterns are echoed to standard output.
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PKG_DBDIR
+.It Ev PORTSDIR
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh EXAMPLES
+The following is a typical invocation of the
+.Nm
+command, which checks the installed packages against the local ports
+index file:
+.Pp
+.Dl % pkg version -v
+.Pp
+The command below generates a report against the versions in the repository catalogue:
+.Pp
+.Dl % pkg update
+.Dl % pkg version -vR
+.Pp
+The following lists packages needing upgrade, compared to the repository catalogue:
+.Pp
+.Dl % pkg update
+.Dl % pkg version -vRL=
+.Pp
+The following command compares two package version strings:
+.Pp
+.Dl % pkg version -t 1.5 1.5.1
+.Sh SEE ALSO
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-repository 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-convert 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-which 8

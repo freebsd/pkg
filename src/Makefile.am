@@ -1,5 +1,4 @@
-noinst_HEADERS=	pkgcli.h \
-				progressmeter.h
+noinst_HEADERS=	pkgcli.h progressmeter.h
 
 pkg_SOURCES=		annotate.c \
 			audit.c \
@@ -96,14 +95,3 @@ pkg_static_LDFLAGS=	-all-static -pthread
 sbin_PROGRAMS=		pkg pkg-static
 
 dist_sysconf_DATA=	pkg.conf.sample
-
-install-data-hook:
-	$(LN_S) -f pkg-install.8 \
-	$(DESTDIR)$(man8dir)/pkg-add.8
-	$(LN_S) -f pkg-delete.8 \
-	$(DESTDIR)$(man8dir)/pkg-remove.8
-	$(LN_S) -f pkg-lock.8 \
-	$(DESTDIR)$(man8dir)/pkg-unlock.8
-	$(LN_S) -f pkg.8 \
-	$(DESTDIR)$(man8dir)/pkg-static.8
-

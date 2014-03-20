@@ -169,6 +169,7 @@ AC_CONFIG_FILES(Makefile \
 		src/Makefile \
 		external/Makefile \
 		scripts/Makefile \
+		docs/Makefile \
 		tests/Makefile \
 		libpkg/Makefile
 		libpkg/pkg.h \

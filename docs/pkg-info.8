@@ -1,0 +1,177 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\" $FreeBSD$
+.\"
+.Dd February 1, 2014
+.Dt PKG-INFO 8
+.Os
+.Sh NAME
+.Nm "pkg info"
+.Nd displays information for packages
+.Sh SYNOPSIS
+.Nm
+.Ar pkg-name
+.Nm
+.Fl a
+.Nm
+.Op Fl AbBDdefgiIklOqRrsx
+.Ar pkg-name
+.Nm
+.Op Fl AbBDdfIlqRrs
+.Fl F Ar pkg-file
+.Sh DESCRIPTION
+.Nm
+is used for displaying information for packages.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl a
+Display all installed packages.
+.It Fl A
+Display any annotations added to the package.
+.It Fl f
+Display full information about the packages matching
+.Ar pkg-name .
+This is the default.
+.It Fl R
+Display the full manifest (raw) about the packages matching
+.Ar pkg-name .
+.It Fl e
+If
+.Ar pkg-name
+is installed and registered in the database, return 0, otherwise return 1.
+Useful for checking whether the package is installed.
+.It Fl D
+Show the pkg-message for matching packages.
+.It Fl g
+Treat
+.Ar pkg-name
+as a shell glob pattern.
+.It Fl i
+Make the default or the regular expression
+.Fl ( x )
+.Ar pkg-name
+matching case insensitive.
+.It Fl x
+Treat
+.Ar pkg-name
+as a regular expression according to the "modern" or "extended" syntax
+of
+.Xr re_format 7 .
+.It Fl d
+Display the list of packages on which
+.Ar pkg-name
+depends.
+.It Fl r
+Display the list of packages which require
+.Ar pkg-name .
+.It Fl k
+Show the locking status for
+.Ar pkg-name .
+When used in combination with
+.Fl d
+or
+.Fl r ,
+indicate which packages, dependencies or requirements are locked
+by '(*)'.
+Locking status is only meaningful for installed packages; all locking
+statuses will show as unlocked when information about a
+.Ar pkg-file
+is queried.
+.It Fl l
+Display all files installed by
+.Ar pkg-name .
+.It Fl b
+Display all shared libraries provided by
+.Ar pkg-name .
+.It Fl B
+Display all shared libraries used by
+.Ar pkg-name .
+.It Fl s
+Display the total size of files installed by
+.Ar pkg-name
+.It Fl q
+Be
+.Dq quiet .
+Prints only the requested information without displaying many hints.
+.It Fl O
+Search is done by the
+.Ar pkg-name
+origin.
+Added only for Ports compatibility.
+.Pp
+.It Fl E
+Hides the full package output and only shows the package name.
+This option is deprecated and exists only for Ports compatibility.
+.It Fl o
+Display
+.Ar pkg-name
+origin.
+.It Fl p
+Display the installation prefix for each package matching
+.Ar pkg-name .
+.It Fl F Ar pkg-file
+Displays information from the package archive
+.Ar pkg-file .
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PKG_DBDIR
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-repository 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-convert 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
