@@ -35,9 +35,9 @@ dist_man_MANS=	pkg-add.8 \
 		pkg_repos.3
 
 EXTRA_DIST=	fix-xrefs
-.PHONY: fix-xrefs
+.PHONY: run-fix-xrefs
 
-fix-xrefs:
+run-fix-xrefs:
 	@$(srcdir)/fix-xrefs ${dist_man_MANS}
 
 install-data-hook:
