@@ -1,8 +1,7 @@
 noinst_HEADERS=	pkgcli.h \
 				progressmeter.h
 
-pkg_SOURCES=		add.c \
-			annotate.c \
+pkg_SOURCES=		annotate.c \
 			audit.c \
 			autoremove.c \
 			backup.c \
@@ -37,7 +36,7 @@ pkg_SOURCES=		add.c \
 			version.c \
 			which.c
 			
-dist_man_MANS= pkg-annotate.8 \
+dist_man_MANS=		pkg-annotate.8 \
 			pkg-audit.8 \
 			pkg-autoremove.8 \
 			pkg-backup.8 \
