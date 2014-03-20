@@ -75,7 +75,3 @@ noinst_HEADERS=		private/db_upgrades.h \
 			private/repodb.h \
 			private/thd_repo.h \
 			private/utils.h
-
-dist_man_MANS=		pkg-repository.5 \
-			pkg_printf.3 \
-			pkg_repos.3
