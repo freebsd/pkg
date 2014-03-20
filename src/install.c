@@ -72,12 +72,14 @@ exec_install(int argc, char **argv)
 	yes_arg = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
+	yes = yes_arg;
+
 	if (strcmp(argv[0], "add") == 0) {
 		auto_update = false;
 		local_only = true;
+		yes_arg = true;
+		quiet = true;
 	}
-
-	yes = yes_arg;
 
 	while ((ch = getopt(argc, argv, "AfgIiFnqRr:Uxyl")) != -1) {
 		switch (ch) {
