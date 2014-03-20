@@ -457,6 +457,30 @@ pkg_jobs_set_priorities(struct pkg_jobs *j)
 
 #undef PRIORITY_CAN_UPDATE
 
+/*
+ * Calculate manifest for packages that lack it
+ */
+static int
+pkg_jobs_digest_manifest(struct pkg *pkg)
+{
+	char *new_digest;
+	int rc;
+	struct sbuf *sb;
+
+	/* We need to calculate digest of this package */
+	sb = sbuf_new_auto();
+	rc = pkg_emit_manifest_sbuf(pkg, sb, PKG_MANIFEST_EMIT_COMPACT, &new_digest);
+
+	if (rc == EPKG_OK) {
+		pkg_set(pkg, PKG_DIGEST, new_digest);
+		free(new_digest);
+	}
+
+	sbuf_delete(sb);
+
+	return (rc);
+}
+
 /**
  * Check whether a package is in the universe already or add it
  * @return item or NULL
@@ -467,28 +491,17 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 {
 	struct pkg_job_universe_item *item, *cur, *tmp = NULL;
 	const char *origin, *digest, *version, *name;
-	char *new_digest;
 	int rc;
-	struct sbuf *sb;
 	struct pkg_job_seen *seen;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest,
 			PKG_VERSION, &version, PKG_NAME, &name);
 	if (digest == NULL) {
-		/* We need to calculate digest of this package */
-		sb = sbuf_new_auto();
-		rc = pkg_emit_manifest_sbuf(pkg, sb, PKG_MANIFEST_EMIT_COMPACT, &new_digest);
-		if (rc == EPKG_OK) {
-			pkg_set(pkg, PKG_DIGEST, new_digest);
-			pkg_get(pkg, PKG_DIGEST, &digest);
-			free(new_digest);
-			sbuf_delete(sb);
-		}
-		else {
-			sbuf_delete(sb);
+		if (pkg_jobs_digest_manifest(pkg) != EPKG_OK) {
 			*found = NULL;
-			return (rc);
+			return (EPKG_FATAL);
 		}
+		pkg_get(pkg, PKG_DIGEST, &digest);
 	}
 
 	HASH_FIND_STR(j->seen, digest, seen);
@@ -762,6 +775,13 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 
 	p1 = NULL;
 	pkg_get(p, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
+
+	if (digest == NULL) {
+		if (pkg_jobs_digest_manifest(p) != EPKG_OK) {
+			return (EPKG_FATAL);
+		}
+		pkg_get(p, PKG_DIGEST, &digest);
+	}
 	HASH_FIND_STR(j->seen, digest, seen);
 	if (seen != NULL) {
 		/* We have already added exactly the same package to the universe */
