@@ -1715,7 +1715,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
 			PKGDB_LOCK_EXCLUSIVE, 0.5, 20);
 	if (retcode != EPKG_OK)
-		goto cleanup;
+		return (retcode);
 
 	p = NULL;
 	pkg_manifest_keys_new(&keys);
