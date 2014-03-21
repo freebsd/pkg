@@ -274,8 +274,10 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 				    "Origin: '%s' Version: '%s'",
 				    pkg_dep_get(dep, PKG_DEP_ORIGIN),
 				    pkg_dep_get(dep, PKG_DEP_VERSION));
-				retcode = EPKG_FATAL;
-				goto cleanup;
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0) {
+					retcode = EPKG_FATAL;
+					goto cleanup;
+				}
 			}
 		} else {
 			retcode = EPKG_FATAL;

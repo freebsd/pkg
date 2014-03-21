@@ -46,7 +46,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "Usage: pkg install [-AfgIinFqRUxy] [-r reponame] <pkg-name> ...\n\n");
+	    "Usage: pkg install [-AfgIinFMqRUxy] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -81,7 +81,7 @@ exec_install(int argc, char **argv)
 		quiet = true;
 	}
 
-	while ((ch = getopt(argc, argv, "AfgIiFnqRr:Uxyl")) != -1) {
+	while ((ch = getopt(argc, argv, "AfgIiFMnqRr:Uxyl")) != -1) {
 		switch (ch) {
 		case 'A':
 			f |= PKG_FLAG_AUTOMATIC;
@@ -104,6 +104,9 @@ exec_install(int argc, char **argv)
 			break;
 		case 'U':
 			auto_update = false;
+			break;
+		case 'M':
+			f |= PKG_FLAG_FORCE_MISSING;
 			break;
 		case 'n':
 			f |= PKG_FLAG_DRY_RUN;

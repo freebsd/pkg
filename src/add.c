@@ -54,8 +54,8 @@ is_url(const char * const pattern)
 void
 usage_add(void)
 {
-	fprintf(stderr, "Usage: pkg add [-IAfq] <pkg-name> ...\n");
-	fprintf(stderr, "       pkg add [-IAfq] <protocol>://<path>/<pkg-name> ...\n\n");
+	fprintf(stderr, "Usage: pkg add [-IAfqM] <pkg-name> ...\n");
+	fprintf(stderr, "       pkg add [-IAfqM] <protocol>://<path>/<pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help add'.\n");
 }
 
@@ -73,7 +73,7 @@ exec_add(int argc, char **argv)
 	pkg_flags f = PKG_FLAG_NONE;
 	struct pkg_manifest_key *keys = NULL;
 
-	while ((ch = getopt(argc, argv, "IAfq")) != -1) {
+	while ((ch = getopt(argc, argv, "IAfqM")) != -1) {
 		switch (ch) {
 		case 'I':
 			f |= PKG_ADD_NOSCRIPT;
@@ -83,6 +83,9 @@ exec_add(int argc, char **argv)
 			break;
 		case 'f':
 			f |= PKG_FLAG_FORCE;
+			break;
+		case 'M':
+			f |= PKG_ADD_FORCE_MISSING;
 			break;
 		case 'q':
 			quiet = true;
