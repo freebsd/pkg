@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd September 22, 2013
+.Dd March 21, 2014
 .Dt PKG-ADD 8
 .Os
 .Sh NAME
@@ -23,10 +23,10 @@
 .Nd Registers a package and installs it on the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl IAfq
+.Op Fl IAfMq
 .Ar pkg-name ...
 .Nm
-.Op Fl IAfq
+.Op Fl IAfMq
 .Ar <protocol>://<path>/<pkg-name> ...
 .Sh DESCRIPTION
 .Nm
@@ -78,6 +78,8 @@ For more information please refer to
 .Xr pkg-autoremove 8
 .It Fl f
 Force the reinstallation of the package if already installed.
+.It Fl M
+Force the installation of the package with missing dependencies.
 .It Fl q
 Force quiet output.
 .El
