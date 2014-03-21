@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 11, 2014
+.Dd March 21, 2014
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -23,7 +23,7 @@
 .Nd installs packages from remote package repositories or local archives
 .Sh SYNOPSIS
 .Nm
-.Op Fl AfgIinFqRUxy
+.Op Fl AfgIiMnFqRUxy
 .Op Fl r Ar reponame
 .Ar pkg-origin ...
 .Sh DESCRIPTION
@@ -122,6 +122,8 @@ Make the standard or the regular expression
 matching against
 .Ar pkg-name
 case insensitive.
+.It Fl M
+Force the installation of the package with missing dependencies.
 .It Fl n
 Dry-run mode.
 The list of changes to packages is always printed, but

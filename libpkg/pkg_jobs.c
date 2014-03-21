@@ -608,6 +608,9 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			if (npkg == NULL) {
 				/* Cannot continue */
 				pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+				if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING) {
+					continue;
+				}
 				return (EPKG_FATAL);
 			}
 		}
@@ -650,6 +653,9 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			if (npkg == NULL) {
 				/* Cannot continue */
 				pkg_emit_error("Missing dependency matching '%s'", pkg_dep_get(d, PKG_DEP_ORIGIN));
+				if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING) {
+					continue;
+				}
 				return (EPKG_FATAL);
 			}
 		}
@@ -1657,6 +1663,8 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 		flags |= PKG_ADD_FORCE;
 	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_ADD_NOSCRIPT;
+	if ((j->flags & PKG_FLAG_FORCE_MISSING) == PKG_FLAG_FORCE_MISSING)
+		flags |= PKG_ADD_FORCE_MISSING;
 	flags |= PKG_ADD_UPGRADE;
 	if (automatic)
 		flags |= PKG_ADD_AUTOMATIC;
