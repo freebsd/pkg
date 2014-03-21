@@ -272,12 +272,6 @@ exec_info(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
-#ifdef HAVE_CAPSICUM
-		if (cap_enter() < 0 && errno != ENOSYS) {
-			warn("cap_enter() failed");
-			return (EX_SOFTWARE);
-		}
-#endif
 	i = 0;
 	do {
 		gotone = false;
