@@ -4242,15 +4242,17 @@ pkgdb_check_lock_pid(struct pkgdb *db)
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		pid = sqlite3_column_int64(stmt, 0);
-		if (pid != lpid && kill((pid_t)pid, 0) == -1) {
-			pkg_debug(1, "found stale pid %lld in lock database", pid);
-			if (pkgdb_remove_lock_pid(db, pid) != EPKG_OK){
-				sqlite3_finalize(stmt);
-				return (EPKG_FATAL);
+		if (pid != lpid) {
+			if (kill((pid_t)pid, 0) == -1) {
+				pkg_debug(1, "found stale pid %lld in lock database", pid);
+				if (pkgdb_remove_lock_pid(db, pid) != EPKG_OK){
+					sqlite3_finalize(stmt);
+					return (EPKG_FATAL);
+				}
 			}
-		}
-		else {
-			found ++;
+			else {
+				found ++;
+			}
 		}
 	}
 
