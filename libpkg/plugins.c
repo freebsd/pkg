@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
- * Copyright (c) 2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -34,7 +34,6 @@
 #include <fts.h>
 #include <fcntl.h>
 #include <dlfcn.h>
-#include <libutil.h>
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
@@ -58,8 +57,7 @@ struct pkg_plugin {
 	void *lh;						/* library handle */
 	bool parsed;
 	struct plugin_hook *hooks;
-	struct pkg_config *conf;
-	struct pkg_config *conf_by_key;
+	pkg_object *conf;
 	struct pkg_plugin *next;
 };
 
@@ -168,192 +166,74 @@ pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key)
 }
 
 int
-pkg_plugin_conf_add_string(struct pkg_plugin *p, int id, const char *key, const char *def)
+pkg_plugin_conf_add(struct pkg_plugin *p, pkg_object_t type, const char *key,
+    const char *def)
 {
-	struct pkg_config *conf;
-	char *val;
+	ucl_object_t *o = NULL;
+	const char *walk, *buf, *value, *k;
 
-	HASH_FIND_INT(p->conf, &id, conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same id is already registred");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
-		return (EPKG_FATAL);
-	}
-
-	conf = malloc(sizeof(struct pkg_config));
-	conf->id = id;
-	conf->key = key;
-	conf->type = PKG_CONFIG_STRING;
-	conf->fromenv = false;
-	val = getenv(key);
-	if (val != NULL) {
-		conf->string = strdup(val);
-		conf->fromenv = true;
-	} else if (def != NULL) {
-		conf->string = strdup(def);
-	} else {
-		conf->string = NULL;
-	}
-
-	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
-	    strlen(conf->key), conf);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_add_bool(struct pkg_plugin *p, int id, const char *key, bool boolean)
-{
-	struct pkg_config *conf;
-	char *val;
-
-	HASH_FIND_INT(p->conf, &id, conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same id is already registred");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
-		return (EPKG_FATAL);
-	}
-
-	conf = malloc(sizeof(struct pkg_config));
-	conf->id = id;
-	conf->key = key;
-	conf->type = PKG_CONFIG_BOOL;
-	conf->fromenv = false;
-	val = getenv(key);
-	if (val != NULL) {
-		conf->fromenv = true;
-		if (val != NULL && (
-		    strcmp(val, "1") == 0 ||
-		    strcasecmp(val, "yes") == 0 ||
-		    strcasecmp(val, "true") == 0 ||
-		    strcasecmp(val, "on") == 0)) {
-			conf->boolean = true;
-		} else {
-			conf->boolean = false;
-		}
-	} else {
-		conf->boolean = boolean;
-	}
-
-	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
-	    strlen(conf->key), conf);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_add_integer(struct pkg_plugin *p, int id, const char *key, int64_t integer)
-{
-	struct pkg_config *conf;
-	const char *errstr;
-	char *val;
-
-	HASH_FIND_INT(p->conf, &id, conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same id is already registred");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
-		return (EPKG_FATAL);
-	}
-
-	conf = malloc(sizeof(struct pkg_config));
-	conf->id = id;
-	conf->key = key;
-	conf->type = PKG_CONFIG_STRING;
-	conf->fromenv = false;
-	val = getenv(key);
-	if (val != NULL) {
-		conf->fromenv = true;
-		conf->integer = strtonum(val, 0, INT64_MAX, &errstr);
-		if (errstr != NULL) {
-			pkg_emit_error("Unable to convert %s to int64: %s",
-			    val, errstr);
-			free(conf);
+	switch (type) {
+	case PKG_STRING:
+		o = ucl_object_fromstring_common(def, 0, UCL_STRING_TRIM);
+		break;
+	case PKG_BOOL:
+		o = ucl_object_fromstring_common(def, 0, UCL_STRING_PARSE_BOOLEAN);
+		if (o->type != UCL_BOOLEAN) {
+			ucl_object_unref(o);
 			return (EPKG_FATAL);
 		}
-	} else {
-		conf->integer = integer;
+		break;
+	case PKG_INT:
+		o = ucl_object_fromstring_common(def, 0, UCL_STRING_PARSE_INT);
+		if (o->type != UCL_INT) {
+			ucl_object_unref(o);
+			return (EPKG_FATAL);
+		}
+		break;
+	case PKG_OBJECT:
+		walk = buf = def;
+		while ((buf = strchr(buf, ',')) != NULL) {
+			k = walk;
+			value = walk;
+			while (*value != ',') {
+				if (*value == '=')
+					break;
+				value++;
+			}
+			o = ucl_object_insert_key(o,
+			    ucl_object_fromstring_common(value + 1, buf - value - 1, UCL_STRING_TRIM),
+			    k, value - k, false);
+			buf++;
+			walk = buf;
+		}
+		key = walk;
+		value = walk;
+		while (*value != '\0') {
+			if (*value == '=')
+				break;
+			value++;
+		}
+		o = ucl_object_insert_key(o,
+		    ucl_object_fromstring_common(value + 1, strlen(value + 1), UCL_STRING_TRIM),
+		    k, value - k, false);
+		break;
+	case PKG_ARRAY:
+		walk = buf = def;
+		while ((buf = strchr(buf, ',')) != NULL) {
+			o = ucl_array_append(o,
+					ucl_object_fromstring_common(walk, buf - walk, UCL_STRING_TRIM));
+			buf++;
+			walk = buf;
+		}
+		o = ucl_array_append(o,
+				ucl_object_fromstring_common(walk, strlen(walk), UCL_STRING_TRIM));
+		break;
+	default:
+		break;
 	}
 
-	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
-	    strlen(conf->key), conf);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_add_kvlist(struct pkg_plugin *p, int id, const char *key)
-{
-	struct pkg_config *conf;
-
-	HASH_FIND_INT(p->conf, &id, conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same id is already registred");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
-		return (EPKG_FATAL);
-	}
-
-	conf = malloc(sizeof(struct pkg_config));
-	conf->id = id;
-	conf->key = key;
-	conf->type = PKG_CONFIG_KVLIST;
-	conf->kvlist = NULL;
-
-	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
-	    strlen(conf->key), conf);
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_add_list(struct pkg_plugin *p, int id, const char *key)
-{
-	struct pkg_config *conf;
-
-	HASH_FIND_INT(p->conf, &id, conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same id is already registred");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND(hhkey, p->conf_by_key, key, strlen(key), conf);
-	if (conf != NULL) {
-		pkg_emit_error("A configuration with the same key(%s) is already registred", key);
-		return (EPKG_FATAL);
-	}
-
-	conf = malloc(sizeof(struct pkg_config));
-	conf->id = id;
-	conf->key = key;
-	conf->type = PKG_CONFIG_LIST;
-	conf->list = NULL;
-
-	HASH_ADD_INT(p->conf, id, conf);
-	HASH_ADD_KEYPTR(hhkey, p->conf_by_key, conf->key,
-	    strlen(conf->key), conf);
+	if (o != NULL)
+		p->conf = ucl_object_replace_key(p->conf, o, key, strlen(key), false);
 
 	return (EPKG_OK);
 }
@@ -376,38 +256,43 @@ int
 pkg_plugins_init(void)
 {
 	struct pkg_plugin *p = NULL;
-	struct pkg_config_value *v = NULL;
 	char pluginfile[MAXPATHLEN];
+	ucl_object_t *obj, *cur;
+	ucl_object_iter_t it = NULL;
 	const char *plugdir;
 	bool plug_enabled = false;
 	int (*init_func)(struct pkg_plugin *);
 
-	pkg_config_bool(PKG_CONFIG_ENABLE_PLUGINS, &plug_enabled);
+	plug_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 	if (!plug_enabled)
 		return (EPKG_OK);
 	/*
 	 * Discover available plugins
 	 */
-	pkg_config_string(PKG_CONFIG_PLUGINS_DIR, &plugdir);
+	plugdir = pkg_object_string(pkg_config_get("PKG_PLUGINS_DIR"));
 
-	while (pkg_config_list(PKG_CONFIG_PLUGINS, &v) == EPKG_OK) {
+	obj = pkg_config_get("PLUGINS");
+	while ((cur = ucl_iterate_object(obj, &it, false))) {
 		/*
 		 * Load the plugin
 		 */
+		if (cur->type != UCL_STRING)
+			continue;
+
 		snprintf(pluginfile, sizeof(pluginfile), "%s/%s.so", plugdir,
-		    pkg_config_value(v));
+		    pkg_object_string(cur));
 		p = calloc(1, sizeof(struct pkg_plugin));
 		if ((p->lh = dlopen(pluginfile, RTLD_LAZY)) == NULL) {
 			pkg_emit_error("Loading of plugin '%s' failed: %s",
-			    pkg_config_value(v), dlerror());
+			    pkg_object_string(cur), dlerror());
 			free(p);
 			return (EPKG_FATAL);
 		}
 		if ((init_func = dlsym(p->lh, "pkg_plugin_init")) == NULL) {
 			pkg_emit_error("Cannot load init function for plugin '%s'",
-			     pkg_config_value(v));
+			     pkg_object_string(cur));
 			pkg_emit_error("Plugin '%s' will not be loaded: %s",
-			      pkg_config_value(v), dlerror());
+			      pkg_object_string(cur), dlerror());
 			dlclose(p->lh);
 			free(p);
 			return (EPKG_FATAL);
@@ -425,124 +310,19 @@ pkg_plugins_init(void)
 }
 
 int
-pkg_plugin_conf_string(struct pkg_plugin *p, int key, const char **val)
-{
-	struct pkg_config *conf;
-
-	if (p->parsed != true) {
-		pkg_emit_error("configuration file not parsed");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(p->conf, &key, conf);
-	if (conf == NULL)
-		*val = NULL;
-	else
-		*val = conf->string;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_integer(struct pkg_plugin *p, int key, int64_t *val)
-{
-	struct pkg_config *conf;
-
-	if (p->parsed != true) {
-		pkg_emit_error("configuration file not parsed");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(p->conf, &key, conf);
-	if (conf == NULL)
-		return (EPKG_FATAL);
-
-	*val = conf->integer;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_bool(struct pkg_plugin *p, int key, bool *val)
-{
-	struct pkg_config *conf;
-
-	if (p->parsed != true) {
-		pkg_emit_error("configuration file not parsed");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(p->conf, &key, conf);
-	if (conf == NULL)
-		return (EPKG_FATAL);
-
-	*val = conf->boolean;
-
-	return (EPKG_OK);
-}
-
-int
-pkg_plugin_conf_kvlist(struct pkg_plugin *p, int key, struct pkg_config_kv **kv)
-{
-	struct pkg_config *conf;
-
-	if (p->parsed != true) {
-		pkg_emit_error("configuration file not parsed");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(p->conf, &key, conf);
-	if (conf == NULL)
-		return (EPKG_FATAL);
-
-	if (conf->type != PKG_CONFIG_KVLIST) {
-		pkg_emit_error("this config entry is not a \"key: value\" list");
-		return (EPKG_FATAL);
-	}
-
-	HASH_NEXT(conf->kvlist, (*kv));
-}
-
-int
-pkg_plugin_conf_list(struct pkg_plugin *p, int key, struct pkg_config_value **v)
-{
-	struct pkg_config *conf;
-
-	if (p->parsed != true) {
-		pkg_emit_error("configuration file not parsed");
-		return (EPKG_FATAL);
-	}
-
-	HASH_FIND_INT(p->conf, &key, conf);
-	if (conf == NULL)
-		return (EPKG_FATAL);
-
-	if (conf->type != PKG_CONFIG_LIST) {
-		pkg_emit_error("this config entry is not a list");
-		return (EPKG_FATAL);
-	}
-
-	HASH_NEXT(conf->list, (*v));
-}
-
-int
-pkg_plugin_confs(struct pkg_plugin *p, struct pkg_config **conf)
-{
-	HASH_NEXT(p->conf, (*conf));
-}
-
-int
 pkg_plugin_parse(struct pkg_plugin *p)
 {
 	char confpath[MAXPATHLEN];
 	const char *path;
 	const char *plugname;
 	struct ucl_parser *pr;
-	ucl_object_t *obj;
+	ucl_object_t *obj, *cur, *o;
+	ucl_object_iter_t it = NULL;
+	const char *key;
 
 	pr = ucl_parser_new(0);
 
-	pkg_config_string(PKG_CONFIG_PLUGINS_CONF_DIR, &path);
+	path = pkg_object_string(pkg_config_get("PLUGINS_CONF_DIR"));
 	plugname = pkg_plugin_get(p, PKG_PLUGIN_NAME);
 
 	snprintf(confpath, sizeof(confpath), "%s/%s.conf", path, plugname);
@@ -560,8 +340,23 @@ pkg_plugin_parse(struct pkg_plugin *p)
 	}
 
 	obj = ucl_parser_get_object(pr);
-	if (obj->type == UCL_OBJECT)
-		pkg_object_walk(obj, p->conf_by_key);
+
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
+		o = ucl_object_find_key(p->conf, key);
+		if (o == NULL)
+			continue;
+
+		if (o->type != cur->type) {
+			pkg_emit_error("Malformed key %s, ignoring", key);
+			continue;
+		}
+
+		o = ucl_object_pop_key(p->conf, key);
+		if (o != NULL)
+			ucl_object_unref(o);
+		p->conf = ucl_object_insert_key(p->conf, cur, key, strlen(key), false);
+	}
 
 	p->parsed = true;
 	ucl_object_free(obj);
@@ -592,4 +387,10 @@ pkg_plugins_shutdown(void)
 	pkg_plugin_free();
 
 	return;
+}
+
+pkg_object *
+pkg_plugin_conf(struct pkg_plugin *p)
+{
+	return (p->conf);
 }

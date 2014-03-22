@@ -237,7 +237,7 @@ pkg_register_old(struct pkg *pkg)
 	pkg_get(pkg, PKG_NAME, &name, PKG_VERSION, &version);
 	pkg_old_emit_content(pkg, &content);
 
-	pkg_config_string(PKG_CONFIG_DBDIR, &pkgdbdir);
+	pkgdbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	snprintf(path, sizeof(path), "%s/%s-%s", pkgdbdir, name, version);
 	mkdir(path, 0755);
 

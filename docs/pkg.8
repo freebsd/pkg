@@ -1,0 +1,401 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\" $FreeBSD$
+.\"
+.Dd February 26, 2014
+.Dt PKG 8
+.Os
+.\" ---------------------------------------------------------------------------
+.Sh NAME
+.Nm pkg ,
+.Nm pkg-static
+.Nd a utility for manipulating packages
+.\" ---------------------------------------------------------------------------
+.Sh SYNOPSIS
+.Nm
+.Op Fl v
+.Op Fl d
+.Op Fl l
+.Op Fl N
+.Op Fl j Ao jail name or id Ac | Fl c Ao chroot path Ac
+.Op Fl C Ao configuration file Ac
+.Op Fl R Ao repository configuration directory Ac
+.Ao command Ac Ao Ar flags Ac
+.\" ---------------------------------------------------------------------------
+.Sh DESCRIPTION
+provides an interface for manipulating packages - registering,
+adding, removing and upgrading of packages.
+.Nm pkg-static
+is a statically linked variant of
+.Nm
+typically only used for the initial installation of
+.Nm .
+There are some differences in functionality.
+See
+.Xr pkg.conf 5
+for details.
+.\" ---------------------------------------------------------------------------
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width indent
+.It Fl v
+Displays the current version of
+.Nm
+.It Fl d
+Show debug information
+.It Fl l
+List all the available command names, and exit without performing any
+other action.
+The
+.Fl v
+option takes precedence over
+.Fl l
+but
+.Fl l
+will override any other command line arguments.
+.It Fl o Ao option=value Ac
+Set configuration option for
+.Nm
+from the command line. Options that are set from the environment are
+redefined. It is permitted to specify this option multiple times. 
+.It Fl N
+Activation status check mode.
+Prevent
+.Nm
+from automatically creating or initializing the sqlite database in
+.Pa /var/db/pkg/local.sqlite
+if it does not already exist.
+.Pp
+Prevent
+.Nm
+from performing any actions if no packages are currently installed, on
+the basis that a correctly initialised system using
+.Nm
+will always have at least the
+.Nm
+package itself registered.
+.Pp
+If used without any other arguments,
+.Nm Fl N
+will run the sanity tests and if successful print out a short message
+showing how many packages are currently installed.
+The exit status should be a reliable indication of whether a system
+is configured to use
+.Nm
+as its package management system or not.
+.Pp
+Example usage:
+.Bd -literal -offset indent
+  if pkg -N >/dev/null 2>&1; then
+    # pkgng-specifics
+  else
+    # pkg_install-specifics
+  fi
+.Ed
+.Pp
+The
+.Fl N
+flag was first released in the
+.Pa /usr/sbin/pkg
+bootstrapper
+in FreeBSD 8.4,
+but was missing from FreeBSD 9.1.
+It may not be enough to just call
+.Nm Fl N ,
+as the bootstrapper may be invoked, or an error returned
+from
+.Nm .
+The following script is the safest way to detect if
+.Nm
+is installed and activated:
+.Bd -literal -offset indent
+  if TMPDIR=/dev/null ASSUME_ALWAYS_YES=1 \\
+       PACKAGESITE=file:///nonexistent \\
+       pkg info -x 'pkg(-devel)?$' >/dev/null 2>&1; then
+    # pkgng-specifics
+  else
+    # pkg_install-specifics
+  fi
+.Ed
+.It Fl j Ao jail name or id Ac
+.Nm
+will execute in the given
+.Ao jail name or id Ac ,
+where
+.Em name
+matches
+.Dq Cm jls Ar name
+and
+.Em id
+matches
+.Dq Cm jls Ar jid .
+See
+.Xr jail 8
+and
+.Xr jls 8 .
+.It Fl c Ao chroot path Ac
+.Nm
+will chroot in the
+.Ao chroot path Ac
+Environment
+.It Fl C Ao configuration file Ac
+.Nm
+will use the specified file as a configuration file
+.It Fl R Ao repository configuration directory Ac
+.Nm
+will search the directory for per-repository configuration files.
+This overrides any value of
+.Ev REPOS_DIR
+specified in the main configuration file.
+.El
+.\" ---------------------------------------------------------------------------
+.Sh COMMANDS
+The following commands are supported by
+.Nm :
+.Bl -tag -width indent
+.It Ic help Ar command
+Display usage information of the specified command.
+.It Ic add
+Install a package from either a local source or a remote one.
+.Pp
+When installing from remote source you need to specify the
+protocol to use when fetching the package.
+.Pp
+Currently supported protocols are FTP, HTTP and HTTPS.
+.It Ic annotate
+Add, modify or delete tag-value style annotations on packages.
+.It Ic audit
+Audits installed packages against known vulnerabilities.
+.It Ic autoremove
+Delete packages which were automatically installed as dependencies and are not required any more.
+.It Ic backup
+Dump the local package database to a file specified on the command-line.
+.It Ic bootstrap
+This is for compatibility with the
+.Xr pkg 7
+bootstrapper.
+If
+.Nm
+is already installed, nothing is done.
+.Pp
+If invoked with the
+.Fl f
+flag an attempt will be made to reinstall
+.Nm
+from remote repository.
+This is not supported on FreeBSD 8.3 as it did not have
+.Xr pkg 7 .
+.It Ic check
+Sanity checks installed packages.
+.It Ic clean
+Cleans the local cache of fetched remote packages.
+.It Ic convert
+Convert to and from the old
+.Xr pkg_add 1
+format.
+.It Ic create
+Create a package
+.It Ic delete
+Delete a package from the database and the system.
+.It Ic fetch
+Fetches packages from a remote repository.
+.It Ic info
+Display information about installed packages.
+.It Ic install
+Install a package from a remote package repository.
+If a package is found in more than one remote repository,
+then installation happens from the first one.
+Downloading a package is tried from each package repository in turn,
+until the package is successfully fetched.
+.It Ic lock
+Prevent modification or deletion of a package.
+.It Ic plugins
+List the available plugins.
+.It Ic query
+Query information about installed packages.
+.It Ic register
+Register a package in the database.
+.It Ic repo
+Create a local package repository for remote usage.
+.It Ic rquery
+Query information for remote repositories.
+.It Ic search
+Search for the given pattern in the remote package
+repositories.
+.It Ic set
+Modify information in the installed database.
+.It Ic shell
+Fires up a sqlite shell to the local or remote database.
+Extreme care should be taken when using this command.
+.It Ic shlib
+Displays which packages link to a specific shared library.
+.It Ic stats
+Display package database statistics.
+.It Ic unlock
+Unlocks packages, allowing them to be modified or deleted
+.It Ic update
+Update the available remote repositories as listed in
+.Xr pkg.conf 5 .
+.It Ic updating
+Displays UPDATING entries of installed packages.
+.It Ic upgrade
+Upgrade a package to a newer version.
+.It Ic version
+Summarize installed versions of packages.
+.It Ic which
+Query the database for package(s) that installed a specific
+file.
+.El
+.\" ---------------------------------------------------------------------------
+.Sh ENVIRONMENT
+The list of environment variables that affect the execution of
+.Nm
+is in
+.Xr pkg.conf 5 .
+.\" ---------------------------------------------------------------------------
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.\" ---------------------------------------------------------------------------
+.Sh EXAMPLES
+Search for a package:
+.Dl $ pkg search perl
+.Pp
+Install a package:
+.Dl Installing must specify a unique origin or version otherwise it will try installing all matches.
+.Pp
+.Dl % pkg install perl-5.14
+.Pp
+List installed packages:
+.Dl $ pkg info
+.Pp
+Upgrade from remote repository:
+.Dl % pkg upgrade
+.Pp
+Change the origin for an installed package:
+.Dl % pkg set -o lang/perl5.12:lang/perl5.14
+.Dl % pkg install -Rf lang/perl5.14
+.Pp
+List non-automatic packages:
+.Dl $ pkg query -e '%a = 0' %o
+.Pp
+List automatic packages:
+.Dl $ pkg query -e '%a = 1' %o
+.Pp
+Delete an installed package:
+.Dl % pkg delete perl-5.14
+.Pp
+Remove unneeded dependencies:
+.Dl % pkg autoremove
+.Pp
+Change a package from automatic to non-automatic, which will prevent
+.Ic autoremove
+from removing it:
+.Dl % pkg set -A 0 perl-5.14
+.Pp
+Change a package from non-automatic to automatic, which will make
+.Ic autoremove
+allow it be removed once nothing depends on it:
+.Dl % pkg set -A 1 perl-5.14
+.Pp
+Create package file from an installed package:
+.Dl % pkg create -o /usr/ports/packages/All perl-5.14
+.Pp
+Determine which package installed a file:
+.Dl $ pkg which /usr/local/bin/perl
+.Pp
+Audit installed packages for security advisories:
+.Dl $ pkg audit
+.Pp
+Check installed packages for checksum mismatches:
+.Dl # pkg check -s -a
+.Pp
+Check for missing dependencies:
+.Dl # pkg check -d -a
+.\" ---------------------------------------------------------------------------
+.Sh SEE ALSO
+.Xr SBUF 9 ,
+.Xr elf 3 ,
+.Xr fetch 3 ,
+.Xr libarchive 3 ,
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-repository 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-convert 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
+.Pp
+To build your own package set for one or multiple servers see
+.Em ports-mgmt/poudriere
+.\" ---------------------------------------------------------------------------
+.Sh HISTORY
+The
+.Nm
+command first appeared in
+.Fx 9.1 .
+.\" ---------------------------------------------------------------------------
+.Sh AUTHORS AND CONTRIBUTORS
+.An Baptiste Daroussin Aq bapt@FreeBSD.org
+.An Julien Laffaye Aq jlaffaye@FreeBSD.org
+.An Philippe Pepiot <phil@philpep.org>
+.An Will Andrews <will@FreeBSD.org>
+.An Marin Atanasov Nikolov <dnaeon@gmail.com>
+.An Yuri Pankov <yuri.pankov@gmail.com>
+.An Alberto Villa <avilla@FreeBSD.org>
+.An Brad Davis <brd@FreeBSD.org>
+.An Matthew Seaman <matthew@FreeBSD.org>
+.An Bryan Drewery <bryan@shatow.net>
+.An Eitan Adler <eadler@FreeBSD.org>
+.An Romain Tarti\`ere <romain@FreeBSD.org>
+.An Vsevolod Stakhov <vsevolod@FreeBSD.org>
+.An Alexandre Perrin <alex@kaworu.ch>
+.\" ---------------------------------------------------------------------------
+.Sh BUGS
+See the issue tracker at
+.Em https://github.com/freebsd/pkg/issues
+.Pp
+Please direct questions and issues to the
+.An pkg@FreeBSD.org
+mailing list.

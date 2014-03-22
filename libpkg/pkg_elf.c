@@ -25,9 +25,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
 #include <sys/endian.h>
 #include <sys/types.h>
-#ifndef BUNDLED_LIBELF
+#ifdef HAVE_LIBELF
 #include <sys/elf_common.h>
 #endif
 #include <sys/stat.h>
@@ -40,7 +44,7 @@
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
-#ifndef BUNDLED_LIBELF
+#ifdef HAVE_LIBELF
 #include <link.h>
 #endif
 #include <paths.h>
@@ -213,7 +217,7 @@ analyse_elf(struct pkg *pkg, const char *fpath,
 	bool developer = false;
 	bool is_shlib = false;
 
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	int fd;
 
@@ -404,8 +408,8 @@ pkg_analyse_files(struct pkgdb *db, struct pkg *pkg, const char *stage)
 	bool developer = false;
 	int (*action)(void *, struct pkg *, const char *, const char *, bool);
 
-	pkg_config_bool(PKG_CONFIG_AUTODEPS, &autodeps);
-	pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+	autodeps = pkg_object_bool(pkg_config_get("AUTODEPS"));
+	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);

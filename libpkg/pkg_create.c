@@ -137,7 +137,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
 		    file->uname, file->gname, file->perm);
-		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 		if (developer && ret != EPKG_OK)
 			return (ret);
 	}
@@ -151,7 +151,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
 		    dir->uname, dir->gname, dir->perm);
-		pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &developer);
+		developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 		if (developer && ret != EPKG_OK)
 			return (ret);
 	}

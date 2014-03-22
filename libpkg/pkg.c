@@ -481,14 +481,6 @@ pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
 }
 
 int
-pkg_annotations(const struct pkg *pkg, struct pkg_note **an)
-{
-	assert(pkg != NULL);
-
-	HASH_NEXT(pkg->annotations, (*an));
-}
-
-int
 pkg_addlicense(struct pkg *pkg, const char *name)
 {
 	struct pkg_license *l = NULL;
@@ -1041,7 +1033,7 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 int
 pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 {
-	struct pkg_note *an = NULL;
+	ucl_object_t *an;
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
@@ -1049,54 +1041,51 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 
 	/* Tags are unique per-package */
 
-	HASH_FIND_STR(pkg->annotations, tag, an);
+	an = ucl_object_find_key(pkg->annotations, tag);
 	if (an != NULL) {
 		pkg_emit_error("duplicate annotation tag: %s value: %s,"
-			       " ignoring", tag, value);
+	           " ignoring", tag, value);
 		return (EPKG_OK);
 	}
-	an = NULL;
-	pkg_annotation_new(&an);
-
-	sbuf_set(&an->tag, tag);
-	sbuf_set(&an->value, value);
-
-	HASH_ADD_KEYPTR(hh, pkg->annotations,
-	    pkg_annotation_tag(an),
-	    strlen(pkg_annotation_tag(an)), an);
+	an = ucl_object_fromstring_common(value, strlen(value), 0);
+	pkg->annotations = ucl_object_insert_key(pkg->annotations,
+	    an, tag, strlen(tag), true);
 
 	return (EPKG_OK);
 }
 
-struct pkg_note *
+pkg_object *
+pkg_annotations(const struct pkg *pkg)
+{
+	assert(pkg != NULL);
+
+	return (pkg->annotations);
+}
+
+pkg_object *
 pkg_annotation_lookup(const struct pkg *pkg, const char *tag)
 {
-	struct pkg_note *an = NULL;
-
 	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	HASH_FIND_STR(pkg->annotations, tag, an);
-
-	return (an);
+	return (ucl_object_find_key(pkg->annotations, tag));
 }
 
 int
 pkg_delannotation(struct pkg *pkg, const char *tag)
 {
-	struct pkg_note *an = NULL;
+	ucl_object_t *an;
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	HASH_FIND_STR(pkg->annotations, tag, an);
+	an = ucl_object_pop_key(pkg->annotations, tag);
 	if (an != NULL) {
-		HASH_DEL(pkg->annotations, an);
-		pkg_annotation_free(an);
+		ucl_object_unref(an);
 		return (EPKG_OK);
 	} else {
 		pkg_emit_error("deleting annotation tagged \'%s\' -- "
-			       "not found", tag);
+	           "not found", tag);
 		return (EPKG_WARN);
 	}
 }
@@ -1128,7 +1117,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_SHLIBS_PROVIDED:
 		return (HASH_COUNT(pkg->shlibs_provided));
 	case PKG_ANNOTATIONS:
-		return (HASH_COUNT(pkg->annotations));
+		return (UCL_COUNT(pkg->annotations));
 	case PKG_CONFLICTS:
 		return (HASH_COUNT(pkg->conflicts));
 	case PKG_PROVIDES:
@@ -1186,7 +1175,10 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	case PKG_ANNOTATIONS:
-		HASH_FREE(pkg->annotations, pkg_note, pkg_annotation_free);
+		if (pkg->annotations != NULL) {
+			ucl_object_unref(pkg->annotations);
+			pkg->annotations = NULL;
+		}
 		pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
 		break;
 	case PKG_CONFLICTS:
@@ -1207,7 +1199,25 @@ pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, in
 	struct archive_entry *ae;
 	int ret;
 
-	ret = pkg_open2(pkg_p, &a, &ae, path, keys, flags);
+	ret = pkg_open2(pkg_p, &a, &ae, path, keys, flags, -1);
+
+	if (ret != EPKG_OK && ret != EPKG_END)
+		return (EPKG_FATAL);
+
+	archive_read_close(a);
+	archive_read_free(a);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_open_fd(struct pkg **pkg_p, int fd, struct pkg_manifest_key *keys, int flags)
+{
+	struct archive *a;
+	struct archive_entry *ae;
+	int ret;
+
+	ret = pkg_open2(pkg_p, &a, &ae, NULL, keys, flags, fd);
 
 	if (ret != EPKG_OK && ret != EPKG_END)
 		return (EPKG_FATAL);
@@ -1220,7 +1230,7 @@ pkg_open(struct pkg **pkg_p, const char *path, struct pkg_manifest_key *keys, in
 
 int
 pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
-		const char *path, struct pkg_manifest_key *keys, int flags)
+		const char *path, struct pkg_manifest_key *keys, int flags, int fd)
 {
 	struct pkg	 *pkg;
 	pkg_error_t	  retcode = EPKG_OK;
@@ -1242,8 +1252,6 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 		{ NULL, 0 }
 	};
 
-	assert(path != NULL && path[0] != '\0');
-
 	*a = archive_read_new();
 	archive_read_support_filter_all(*a);
 	archive_read_support_format_tar(*a);
@@ -1254,14 +1262,23 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	 * read an on-disk file called "-", just say "./-" or some
 	 * other leading path. */
 
-	read_from_stdin = (strncmp(path, "-", 2) == 0);
+	if (fd == -1) {
+		read_from_stdin = (strncmp(path, "-", 2) == 0);
 
-	if (archive_read_open_filename(*a,
-	    read_from_stdin ? NULL : path, 4096) != ARCHIVE_OK) {
-		pkg_emit_error("archive_read_open_filename(%s): %s", path,
-		    archive_error_string(*a));
-		retcode = EPKG_FATAL;
-		goto cleanup;
+		if (archive_read_open_filename(*a,
+		    read_from_stdin ? NULL : path, 4096) != ARCHIVE_OK) {
+			pkg_emit_error("archive_read_open_filename(%s): %s", path,
+			    archive_error_string(*a));
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
+	} else {
+		if (archive_read_open_fd(*a, fd, 4096) != ARCHIVE_OK) {
+			pkg_emit_error("archive_read_open_fd: %s",
+			    archive_error_string(*a));
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
 
 	if (*pkg_p == NULL) {
@@ -1375,12 +1392,12 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	struct pkg_dir *dir = NULL;
 	char spath[MAXPATHLEN];
 	char dpath[MAXPATHLEN];
-	bool disable_mtree;
 	const char *prefix;
 	char *mtree;
+	pkg_object *o;
 
-	pkg_config_bool(PKG_CONFIG_DISABLE_MTREE, &disable_mtree);
-	if (!disable_mtree) {
+	o = pkg_config_get("DISABLE_MTREE");
+	if (o && !pkg_object_bool(o)) {
 		pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
 		do_extract_mtree(mtree, prefix);
 	}

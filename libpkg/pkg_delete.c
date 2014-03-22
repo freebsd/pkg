@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -48,18 +49,17 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 
 	assert(pkg != NULL);
 	assert(db != NULL);
-
 	/*
 	 * Do not trust the existing entries as it may have changed if we
 	 * delete packages in batch.
 	 */
 	pkg_list_free(pkg, PKG_RDEPS);
-
 	/*
 	 * Ensure that we have all the informations we need
 	 */
 	if ((ret = pkgdb_load_rdeps(db, pkg)) != EPKG_OK)
 		return (ret);
+
 	if ((ret = pkgdb_load_files(db, pkg)) != EPKG_OK)
 		return (ret);
 	if ((ret = pkgdb_load_dirs(db, pkg)) != EPKG_OK)
@@ -69,9 +69,7 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	if ((ret = pkgdb_load_mtree(db, pkg)) != EPKG_OK)
 		return (ret);
 
-	if (flags & PKG_DELETE_UPGRADE)
-		pkg_emit_upgrade_begin(pkg);
-	else
+	if ((flags & PKG_DELETE_UPGRADE) == 0)
 		pkg_emit_deinstall_begin(pkg);
 
 	/* If the package is locked */
@@ -81,17 +79,19 @@ pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags)
 	}
 
 	/* If there are dependencies */
-	if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
-		pkg_emit_required(pkg, flags & PKG_DELETE_FORCE);
-		if ((flags & PKG_DELETE_FORCE) == 0)
-			return (EPKG_REQUIRED);
+	if ((flags & (PKG_DELETE_UPGRADE|PKG_DELETE_CONFLICT)) == 0) {
+		if (pkg_rdeps(pkg, &rdep) == EPKG_OK) {
+			pkg_emit_required(pkg, flags & PKG_DELETE_FORCE);
+			if ((flags & PKG_DELETE_FORCE) == 0)
+				return (EPKG_REQUIRED);
+		}
 	}
 
 	/*
 	 * stop the different related services if the users do want that
 	 * and that the service is running
 	 */
-	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 	if (handle_rc)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 

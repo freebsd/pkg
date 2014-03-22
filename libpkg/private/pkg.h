@@ -45,6 +45,8 @@
 
 #include "private/utils.h"
 
+#define UCL_COUNT(obj) ((obj)?((obj)->len):0)
+
 #define PKG_NUM_SCRIPTS 9
 
 #if ARCHIVE_VERSION_NUMBER < 3000002
@@ -126,7 +128,7 @@ struct pkg {
 	struct pkg_group	*groups;
 	struct pkg_shlib	*shlibs_required;
 	struct pkg_shlib	*shlibs_provided;
-	struct pkg_note		*annotations;
+	ucl_object_t		*annotations;
 	struct pkg_conflict *conflicts;
 	struct pkg_provide	*provides;
 	unsigned       	 flags;
@@ -196,39 +198,38 @@ struct pkg_option {
 	UT_hash_handle	hh;
 };
 
-struct pkg_job_request {
+struct pkg_job_universe_item {
 	struct pkg *pkg;
+	struct job_pattern *jp;
 	int priority;
+	UT_hash_handle hh;
+	struct pkg_job_universe_item *next, *prev;
+};
+
+struct pkg_job_request {
+	struct pkg_job_universe_item *item;
 	bool skip;
 	UT_hash_handle hh;
 };
 
 struct pkg_solved {
-	struct pkg *pkg[2];
-	int priority;
+	struct pkg_job_universe_item *items[2];
+	pkg_solved_t type;
+	bool already_deleted;
 	struct pkg_solved *prev, *next;
 };
 
 struct pkg_job_seen {
-	struct pkg *pkg;
+	struct pkg_job_universe_item *un;
 	const char *digest;
 	UT_hash_handle hh;
-};
-
-struct pkg_job_universe_item {
-	struct pkg *pkg;
-	UT_hash_handle hh;
-	int priority;
-	struct pkg_job_universe_item *next, *prev;
 };
 
 struct pkg_jobs {
 	struct pkg_job_universe_item *universe;
 	struct pkg_job_request	*request_add;
 	struct pkg_job_request	*request_delete;
-	struct pkg_solved *jobs_add;
-	struct pkg_solved *jobs_delete;
-	struct pkg_solved *jobs_upgrade;
+	struct pkg_solved *jobs;
 	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
@@ -236,14 +237,17 @@ struct pkg_jobs {
 	int		 solved;
 	int count;
 	int total;
+	int conflicts_registered;
 	const char *	 reponame;
 	struct job_pattern *patterns;
 };
 
 struct job_pattern {
 	char		*pattern;
+	char		*path;
 	match_t		match;
-	struct job_pattern *next;
+	bool		is_file;
+	UT_hash_handle hh;
 };
 
 struct pkg_user {
@@ -261,41 +265,6 @@ struct pkg_group {
 struct pkg_shlib {
 	struct sbuf	*name;
 	UT_hash_handle	hh;
-};
-
-struct pkg_config {
-	int id;
-	pkg_config_t type;
-	const char *key;
-	const void *def;
-	const char *desc;
-	bool fromenv;
-	union {
-		char *string;
-		uint64_t integer;
-		bool boolean;
-		struct pkg_config_kv *kvlist;
-		struct pkg_config_value *list;
-	};
-	UT_hash_handle hh;
-	UT_hash_handle hhkey;
-};
-
-struct pkg_config_kv {
-	char *key;
-	char *value;
-	UT_hash_handle hh;
-};
-
-struct pkg_config_value {
-	char *value;
-	UT_hash_handle hh;
-};
-
-struct pkg_note {
-	struct sbuf	*tag;
-	struct sbuf	*value;
-	UT_hash_handle	 hh;
 };
 
 struct http_mirror {
@@ -321,15 +290,7 @@ struct pkg_repo {
 		int in;
 		int out;
 		pid_t pid;
-		struct {
-			char *buf;
-			size_t size;
-			size_t pos;
-			size_t len;
-		} cache;
 	} sshio;
-	size_t fetched;
-	size_t tofetch;
 
 	int (*update)(struct pkg_repo *, bool);
 
@@ -368,6 +329,7 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_FORCE (1<<0)
 #define PKG_DELETE_UPGRADE (1<<1)
 #define PKG_DELETE_NOSCRIPT (1<<2)
+#define PKG_DELETE_CONFLICT (1<<3)
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t);
 int pkg_repo_fetch(struct pkg *pkg);
@@ -380,7 +342,7 @@ int pkg_add_user_group(struct pkg *pkg);
 int pkg_delete_user_group(struct pkgdb *db, struct pkg *pkg);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
-	      const char *path, struct pkg_manifest_key *keys, int flags);
+	      const char *path, struct pkg_manifest_key *keys, int flags, int fd);
 
 void pkg_list_free(struct pkg *, pkg_list);
 
@@ -419,9 +381,6 @@ void pkg_conflict_free(struct pkg_conflict *);
 int pkg_provide_new(struct pkg_provide **);
 void pkg_provide_free(struct pkg_provide *);
 
-int pkg_annotation_new(struct pkg_note **);
-void pkg_annotation_free(struct pkg_note *);
-
 struct packing;
 
 int packing_init(struct packing **pack, const char *path, pkg_formats format);
@@ -443,6 +402,7 @@ int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 int pkg_conflicts_request_resolve(struct pkg_jobs *j);
 int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
 int pkg_conflicts_integrity_check(struct pkg_jobs *j);
+void pkg_conflicts_register(struct pkg *p1, struct pkg *p2);
 
 typedef void (*conflict_func_cb)(const char *, const char *, void *);
 int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
@@ -483,8 +443,6 @@ int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_register_finale(struct pkgdb *db, int retcode);
 
 int pkg_register_shlibs(struct pkg *pkg, const char *root);
-
-void pkg_object_walk(ucl_object_t *o, struct pkg_config *conf_by_key);
 
 int pkg_emit_manifest_sbuf(struct pkg*, struct sbuf *, short, char **);
 int pkg_emit_filelist(struct pkg *, FILE *);

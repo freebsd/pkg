@@ -28,6 +28,7 @@
 #include <sys/param.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <sys/uio.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -39,6 +40,7 @@
 #include <unistd.h>
 #include <fetch.h>
 #include <paths.h>
+#include <poll.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -122,33 +124,13 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t)
 }
 
 static int
-ssh_cache_data(struct pkg_repo *repo, char *src, size_t nbytes)
-{
-	char *tmp;
-
-	if (repo->sshio.cache.size < nbytes) {
-		tmp = realloc(repo->sshio.cache.buf, nbytes);
-		if (tmp == NULL)
-			return (-1);
-
-		repo->sshio.cache.buf = tmp;
-		repo->sshio.cache.size = nbytes;
-	}
-	memcpy(repo->sshio.cache.buf, src, nbytes);
-	repo->sshio.cache.len = nbytes;
-	repo->sshio.cache.pos = 0;
-
-	return (0);
-}
-
-static int
 ssh_read(void *data, char *buf, int len)
 {
 	struct pkg_repo *repo = (struct pkg_repo *) data;
 	struct timeval now, timeout, delta;
-	fd_set readfds;
-	ssize_t rlen, total;
-	char *start;
+	struct pollfd pfd;
+	ssize_t rlen;
+	int deltams;
 
 	pkg_debug(2, "ssh: start reading");
 
@@ -157,77 +139,100 @@ ssh_read(void *data, char *buf, int len)
 		timeout.tv_sec += fetchTimeout;
 	}
 
-	total = 0;
-	start = buf;
+	deltams = INFTIM;
+	memset(&pfd, 0, sizeof pfd);
+	pfd.fd = repo->sshio.in;
+	pfd.events = POLLIN | POLLERR;
 
-	if (repo->sshio.cache.len > 0) {
-		/*
-		 * The last invocation of fetch_read was interrupted by a
-		 * signal after some data had been read from the socket. Copy
-		 * the cached data into the supplied buffer before trying to
-		 * read from the socket again.
-		 */
-		total = (repo->sshio.cache.len < (size_t)len) ? repo->sshio.cache.len : (size_t)len;
-		memcpy(buf, repo->sshio.cache.buf, total);
-
-		repo->sshio.cache.len -= total;
-		repo->sshio.cache.pos += total;
-		len -= total;
-		buf += total;
-	}
-
-
-	while (len > 0) {
-		if (repo->tofetch > 0 && repo->tofetch == repo->fetched)
+	for (;;) {
+		rlen = read(pfd.fd, buf, len);
+		if (rlen > 0) {
 			break;
-
-		rlen = read(repo->sshio.in, buf, len);
-		if (rlen == 0) {
-			break;
-		} else if (rlen > 0) {
-			len -= rlen;
-			buf += rlen;
-			if (repo->tofetch > 0)
-				repo->fetched += rlen;
-			total += rlen;
-			continue;
 		} else if (rlen == -1) {
 			if (errno == EINTR)
-				ssh_cache_data(repo, start, total);
+				break;
 			if (errno != EAGAIN) {
 				pkg_emit_errno("timeout", "ssh");
 				return (-1);
 			}
-			if (errno == EAGAIN && total > 0) {
+			if (errno == EAGAIN) {
 				break;
 			}
 		}
 
-		FD_ZERO(&readfds);
-		while (!FD_ISSET(repo->sshio.in, &readfds)) {
-			FD_SET(repo->sshio.in, &readfds);
-			if (fetchTimeout > 0) {
-				gettimeofday(&now, NULL);
-				if (!timercmp(&timeout, &now, >)) {
-					errno = ETIMEDOUT;
-					return (-1);
-				}
-				timersub(&timeout, &now, &delta);
-			}
-			errno = 0;
-			if (select(repo->sshio.in + 1, &readfds, NULL, NULL,
-			    fetchTimeout > 0 ? &delta : NULL) < 0) {
-				if (errno == EINTR) {
-					/* Save anything that was read. */
-					ssh_cache_data(repo, start, total);
-					continue;
-				}
+		if (fetchTimeout > 0) {
+			gettimeofday(&now, NULL);
+			if (!timercmp(&timeout, &now, >)) {
+				errno = ETIMEDOUT;
 				return (-1);
 			}
+			timersub(&timeout, &now, &delta);
+			deltams = delta.tv_sec * 1000 +
+				delta.tv_usec / 1000;
 		}
 	}
 
-	pkg_debug(2, "ssh: have read %d bytes", total);
+	pkg_debug(2, "ssh: have read %d bytes", rlen);
+
+	return (rlen);
+}
+
+static int
+ssh_writev(int fd, struct iovec *iov, int iovcnt)
+{
+	struct timeval now, timeout, delta;
+	struct pollfd pfd;
+	ssize_t wlen, total;
+	int deltams;
+
+	memset(&pfd, 0, sizeof pfd);
+
+	if (fetchTimeout) {
+		pfd.fd = fd;
+		pfd.events = POLLOUT | POLLERR;
+		gettimeofday(&timeout, NULL);
+		timeout.tv_sec += fetchTimeout;
+	}
+
+	total = 0;
+	while (iovcnt > 0) {
+		while (fetchTimeout && pfd.revents == 0) {
+			gettimeofday(&now, NULL);
+			if (!timercmp(&timeout, &now, >)) {
+				errno = ETIMEDOUT;
+				return (-1);
+			}
+			timersub(&timeout, &now, &delta);
+			deltams = delta.tv_sec * 1000 +
+				delta.tv_usec / 1000;
+			errno = 0;
+			pfd.revents = 0;
+			if (poll(&pfd, 1, deltams) < 0) {
+				return (-1);
+			}
+		}
+		errno = 0;
+		wlen = writev(fd, iov, iovcnt);
+		if (wlen == 0) {
+			errno = EPIPE;
+			return (-1);
+		}
+		if (wlen < 0) {
+			return (-1);
+		}
+		total += wlen;
+
+		while (iovcnt > 0 && wlen >= (ssize_t)iov->iov_len) {
+			wlen -= iov->iov_len;
+			iov++;
+			iovcnt--;
+		}
+
+		if (iovcnt > 0) {
+			iov->iov_len -= wlen;
+			iov->iov_base = __DECONST(char *, iov->iov_base) + wlen;
+		}
+	}
 	return (total);
 }
 
@@ -235,8 +240,12 @@ static int
 ssh_write(void *data, const char *buf, int l)
 {
 	struct pkg_repo *repo = (struct pkg_repo *)data;
+	struct iovec iov;
 
-	return (write(repo->sshio.out, buf, l));
+	iov.iov_base = __DECONST(char *, buf);
+	iov.iov_len = l;
+
+	return (ssh_writev(repo->sshio.out, &iov, 1));
 }
 
 static int
@@ -244,8 +253,6 @@ ssh_close(void *data)
 {
 	struct pkg_repo *repo = (struct pkg_repo *)data;
 	int pstat;
-
-	free(repo->sshio.cache.buf);
 
 	write(repo->sshio.out, "quit\n", 5);
 
@@ -255,8 +262,6 @@ ssh_close(void *data)
 	}
 
 	repo->ssh = NULL;
-	repo->tofetch = 0;
-	repo->fetched = 0;
 
 	return (WEXITSTATUS(pstat));
 }
@@ -274,7 +279,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 	int sshout[2];
 	const char *argv[4];
 
-	pkg_config_string(PKG_CONFIG_SSH_ARGS, &ssh_args);
+	ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
 
 	if (repo->ssh == NULL) {
 		/* Use socket pair because pipe have blocking issues */
@@ -335,6 +340,7 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		repo->sshio.in = sshout[0];
 		repo->sshio.out = sshin[1];
 		set_nonblocking(repo->sshio.in);
+		set_nonblocking(repo->sshio.out);
 
 		repo->ssh = funopen(repo, ssh_read, ssh_write, NULL, ssh_close);
 
@@ -350,7 +356,6 @@ start_ssh(struct pkg_repo *repo, struct url *u, off_t *sz)
 		}
 	}
 	fprintf(repo->ssh, "get %s %" PRIdMAX "\n", u->doc, (intmax_t)u->ims_time);
-	repo->tofetch = 0;
 	if ((linelen = getline(&line, &linecap, repo->ssh)) > 0) {
 		if (line[linelen -1 ] == '\n')
 			line[linelen -1 ] = '\0';
@@ -401,11 +406,8 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	off_t		 sz = 0;
 	bool		 pkg_url_scheme = false;
 
-	if (pkg_config_int64(PKG_CONFIG_FETCH_RETRY, &max_retry) == EPKG_FATAL)
-		max_retry = 3;
-
-	if (pkg_config_int64(PKG_CONFIG_FETCH_TIMEOUT, &fetch_timeout) == EPKG_FATAL)
-		fetch_timeout = 30;
+	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
+	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
 
 	fetchTimeout = (int) fetch_timeout;
 
@@ -533,10 +535,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 	}
 
 	begin_dl = time(NULL);
-	if (repo != NULL) {
-		repo->tofetch = sz;
-		repo->fetched = 0;
-	}
 	while (done < sz) {
 		time_t	now;
 
@@ -557,8 +555,6 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t
 			last = now;
 		}
 	}
-	if (repo != NULL)
-		repo->tofetch = 0;
 
 	if (done < sz) {
 		pkg_emit_error("An error occurred while fetching package");

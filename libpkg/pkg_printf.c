@@ -39,6 +39,7 @@
 
 #include "pkg.h"
 #include <private/pkg_printf.h>
+#include <private/pkg.h>
 
 /*
  * Format codes
@@ -828,13 +829,14 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_ANNOTATIONS), p));
 	else {
-		struct pkg_note	*note = NULL;
+		pkg_object	*note;
+		pkg_iter	it = NULL;
 		int		 count;
 
 		set_list_defaults(p, "%An: %Av\n", "");
 
 		count = 1;
-		while (pkg_annotations(pkg, &note) == EPKG_OK) {
+		while ((note = pkg_object_iterate(pkg->annotations, &it))) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     note, count, PP_A);
@@ -853,9 +855,9 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_annotation_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_note	*note = data;
+	pkg_object	*o = (pkg_object *)data;
 
-	return (string_val(sbuf, pkg_annotation_tag(note), p));
+	return (string_val(sbuf, pkg_object_key(o), p));
 }
 
 /*
@@ -864,9 +866,9 @@ format_annotation_name(struct sbuf *sbuf, const void *data, struct percent_esc *
 struct sbuf *
 format_annotation_value(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_note	*note = data;
+	pkg_object	*o = (pkg_object *)data;
 
-	return (string_val(sbuf, pkg_annotation_value(note), p));
+	return (string_val(sbuf, pkg_object_string(o), p));
 }
 
 /*

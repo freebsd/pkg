@@ -212,7 +212,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	if (perm != 0)
 		archive_entry_set_perm(entry, perm);
 
-	pkg_config_bool(PKG_CONFIG_UNSET_TIMESTAMP, &unset_timestamp);
+	unset_timestamp = pkg_object_bool(pkg_config_get("UNSET_TIMESTAMP"));
 
 	if (unset_timestamp) {
 		archive_entry_unset_atime(entry);

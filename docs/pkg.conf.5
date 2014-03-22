@@ -1,0 +1,375 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.1
+.\" $FreeBSD$
+.\"
+.Dd December 15, 2013
+.Dt PKG.CONF 5
+.Os
+.Sh NAME
+.Nm "pkg.conf"
+.Nd System-wide configuration file for
+.Xr pkg 1
+.Sh DESCRIPTION
+.Nm
+is the system-wide configuration file used by the
+.Xr pkg 1
+tools.
+.Pp
+The default location of this file is
+.Pa /usr/local/etc/pkg.conf
+.Pp
+Lines in the file beginning with a "#" are comments
+and are ignored.
+.Pp
+The file is in UCL format.
+For more information on the syntax of UCL,
+please visit the official UCL website - http://github.com/vstakhov/libucl.
+.Pp
+The following types of options are recognized -
+boolean, string and list options.
+.Pp
+A boolean option is marked as enabled if one of the following values is
+specified in the configuration file -
+.Dv YES, TRUE
+and
+.Dv ON.
+.Sh OPTIONS
+The following options can be defined in
+.Nm :
+.Bl -tag -width ".Cm ASSUME_ALWAYS_YES(boolean)"
+.It Cm ASSUME_ALWAYS_YES: boolean
+When this option is enabled
+.Xr pkg 1
+will automatically assume "yes" to all questions
+which require user confirmation before doing anything, as if it
+the
+.Fl y
+flag was specified.
+By default this option is disabled.
+.It Cm PUBKEY: string
+Specifies the location to the public RSA key used for signing the
+repository database.
+The default value for this file is
+.Pa /etc/ssl/pkg.conf
+.It Cm HANDLE_RC_SCRIPTS: boolean
+This option when enabled
+will automatically perform start/stop of services during package
+installation and deinstallation.
+Services are started on installation only
+if they are enabled in
+.Pa /etc/rc.conf .
+By default this option is disabled.
+.It Cm PACKAGESITE: string
+Specifies the URL of the remote location to use
+when fetching the database file and packages.
+This supports using
+.Sy ${ABI}
+to create a dynamic URL based on the ABI being used. (deprecated)
+.It Cm PKG_CACHEDIR: string
+Specifies the cache directory for packages.
+The default value
+for this option is
+.Pa /var/cache/pkg
+.It Cm PKG_DBDIR: string
+Specifies the directory to use for storing the package
+database files.
+The default value for this option is
+.Pa /var/db/pkg
+.It Cm PLIST_KEYWORDS_DIR: string
+< To be added >
+.It Cm PORTSDIR: string
+Specifies the location to the Ports directory.
+The default value
+for this option is
+.Pa /usr/ports
+.It Cm SYSLOG: boolean
+This option is enabled by default, log all the
+installation/deinstallation/upgrade operation via syslog(3)
+.It Cm AUTODEPS: boolean
+Analyse the elf to add dependencies (shared libraries) that may have been
+forgotten by the maintainer.
+default: off
+.It Cm ABI: string
+the abi of the package you want to install, by default the /bin/sh abi is used
+.It Cm DEVELOPER_MODE: boolean
+Makes certain errors immediately fatal.
+Adds various warnings and
+suggestions to the output of
+.Xr pkg 1
+as an aide to port maintainers, including indicating when the port
+might be marked as architecture independent.
+default: off
+.It Cm PERMISSIVE: boolean
+Ignore conflicts while registering a package, note that the files conflicting
+will not be marked as owned by the new package. (default: NO)
+.It Cm PORTAUDIT_SITE: string
+Specifies the remote location to use
+when fetching the portaudit database.
+See
+.Xr pkg-audit 8
+for more information.
+.It Cm DEBUG_SCRIPTS: boolean
+Activate debug mode for scripts (aka set -x)
+.It Cm REPO_AUTOUPDATE: boolean
+When true, automatically check for and download updates to
+.Pa /var/db/pkg/repo.sqlite
+when running one of:
+.Nm pkg upgrade ,
+.Nm pkg fetch ,
+.Nm pkg install
+or
+.Nm pkg version -R .
+(default: YES)
+.It Cm PKG_ENV: Key/Value list
+This tells
+.Xr pkg 8
+to set key/values passed in the environment.
+Therefore underlying libraries
+like
+.Xr fetch 3
+can be configured (e.g., setting
+.Ev FTP_PROXY
+and
+.Ev HTTP_PROXY ) .
+(default: empty)
+.It Cm NAMESERVER: string
+Bypass name resolution forcing a nameserver
+.It Cm EVENT_PIPE: string
+Send all events to the specified fifo or Unix socket, events will be formatted
+in JSON.
+.It Cm SSH_RESTRICT_DIR: string
+Directory where the ssh subsystem will be restricted to
+.It Cm DISABLE_MTREE: boolean
+For experimental purposes only.
+Not for use on production systems.
+All this option does is prevent processing of
+.Cm +MTREE
+data when installing a package.
+.Cm +MTREE
+files are a legacy feature of the ports tree, which provide functionality
+necessary for
+.Xr pkg-install 8
+as it cannot handle creating arbitrary directory heirarcies otherwise.
+.Xr pkg 8
+can create such directory structures natively, but currently still uses the
+.Cm +MTREE
+data.
+This option exists to facilitate developing
+.Cm +MTREE
+free package sets.
+.It Cm ALIAS: key/value list
+Define local aliases for various
+.Xr pkg 8
+standard command lines.
+Whenever the
+.Em key
+text occurs as a separate
+.Sq action
+word in a command line of the form
+.Nm pkg Em key ... ,
+substitute the
+.Em value
+text verbatim.
+The replacement can consist of any sequence of text, which should form
+a syntactically correct
+.Xr pkg 8
+command line when substituted in and followed by any remaining tokens from
+the original command line.
+.El
+.Sh MULTIPLE REPOSITORIES
+To use multiple repositories, specify the primary repository as shown above.
+Further repositores can be configured using repository files.
+.Pp
+Repository files reside in
+.Pa /etc/pkg/
+and
+.Pa /usr/local/etc/pkg/repos/ .
+.Pp
+Filenames are arbitrary, but should end in
+.Sq .conf
+For example
+.Pa /usr/local/etc/pkg/repos/myrepo.conf .
+.Pp
+A repository file is in UCL format and has the following form (see
+above for the description of most options):
+.Bl -tag -width ".Cm myrepo:"
+.It Cm myrepo:
+.Bl -tag -width ".Cm MIRROR_TYPE: string"
+.It Cm URL: string
+URL for this repository only.
+.It Cm ENABLED: boolean
+The repository will be used only if this option is enabled. (default: YES)
+.It Cm MIRROR_TYPE: string
+MIRROR_TYPE for this repository only. (default: NONE).
+Either
+.Dv HTTP
+or
+.Dv SRV
+or
+.Dv NONE
+can be used.
+For a
+.Cm MIRROR_TYPE
+of
+.Dv NONE ,
+any of the URL schemes supported by
+.Xr libfetch 3
+can be used, including:
+.Dv http:// ,
+.Dv https:// ,
+.Dv ftp:// ,
+or
+.Dv file://
+plus
+.Dv ssh:// .
+Where
+.Sy MIRROR_TYPE
+is
+.Dv SRV ,
+you should use a
+.Dv pkg+http://
+or
+.Dv pkg+https://
+(etc.) URL scheme.
+Using
+.Dv http://
+URLS implies that the hostname part is a simple hostname according to RFC 2616,
+and is deprecated.
+.It Cm SIGNATURE_TYPE: string
+Specifies what type of signature this repository uses.
+Can be either
+.Dv NONE ,
+.Dv PUBKEY or
+.Dv FINGERPRINTS .
+When
+.Sy SIGNATURE_TYPE
+is
+.Dv NONE ,
+then no signature checking will be done on the repository.
+When
+.Sy SIGNATURE_TYPE
+is
+.Dv PUBKEY ,
+then the
+.Sy PUBKEY
+option will be used for signature verification.
+When
+.Sy SIGNATURE_TYPE
+is
+.Dv FINGERPRINTS ,
+then the
+.Sy FINGERPRINTS
+option will be used for signature verification.
+(default: NONE)
+.It Cm PUBKEY: string
+PUBKEY for this repository only. (default: NONE) (deprecated)
+.It Cm FINGERPRINTS: string
+This should be set to a path containing known signatures for the repository.
+I.e., if
+.Sy FINGERPRINTS
+is set to
+.Pa /usr/local/etc/pkg/fingerprints/myrepo ,
+then the directories
+.Pa /usr/local/etc/pkg/fingerprints/myrepo/trusted
+and
+.Pa /usr/local/etc/pkg/fingerprints/myrepo/revoked
+should exist with known good and bad fingerprints, respectively.
+Files in those directories should be in the format:
+.Bd -literal -offset indent
+function: sha256
+fingerprint: sha256_representation_of_the_public_key
+.Ed
+.El
+.El
+.Pp
+Note that
+.Fa myrepo
+could be any string.
+However no two repositories may share the same name.
+It is possible to specify more than one repository per file.
+.Sh ENVIRONMENT
+An environment variable with the same name as the option in the
+configuration file always overrides the value of an option set in the
+file.
+.Sh EXAMPLES
+Repository configuration file:
+.Bd -literal -offset indent
+FreeBSD: {
+    url: "pkg+http://pkg.freebsd.org/${ABI}/latest",
+    enabled: true,
+    signature_type: "fingerprints",
+    fingerprints: "/usr/share/keys/pkg",
+    mirror_type: "srv"
+}
+.Ed
+Example for pkg.conf
+.Bd -literal -offset indent
+pkg_dbdir: "/var/db/pkg"
+pkg_cachedir: "/var/cache/pkg"
+portsdir: "/usr/ports"
+handle_rc_scripts: false
+assume_always_yes: false
+repos_dir: [
+     "/etc/pkg",
+     "/usr/local/etc/pkg/repos",
+]
+syslog: true
+autodeps: true
+developer_mode: false
+pkg_env: {
+    http_proxy: "http://myproxy:3128",
+}
+alias: {
+    origin: "info -qo",
+    nonauto: "query -e '%a == 0' '%n-%v'"
+}
+.Ed
+.Sh SEE ALSO
+.Xr fetch 3 ,
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-repository 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-convert 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8

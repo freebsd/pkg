@@ -68,8 +68,7 @@ pkg_repo_fetch(struct pkg *pkg)
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
-	if (pkg_config_string(PKG_CONFIG_CACHEDIR, &cachedir) != EPKG_OK)
-		return (EPKG_FATAL);
+	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
 	pkg_get(pkg, PKG_REPONAME, &reponame,
 	    PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);

@@ -983,6 +983,7 @@ database_access(unsigned mode, const char* dbdir, const char *dbname)
 int
 pkgdb_access(unsigned mode, unsigned database)
 {
+	pkg_object	*o;
 	const char	*dbdir;
 	int		 retval = EPKG_OK;
 
@@ -1006,9 +1007,8 @@ pkgdb_access(unsigned mode, unsigned database)
 	 * EPKG_OK: We can go ahead
 	 */
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
-		return (EPKG_FATAL); /* Config borked */
-
+	o = pkg_config_get("PKG_DBDIR");
+	dbdir = pkg_object_string(o);
 	if ((mode & ~(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE))
 	    != 0)
 		return (EPKG_FATAL); /* EINVAL */
@@ -1059,7 +1059,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	struct statfs	 stfs;
 	bool		 reopen = false;
 	char		 localpath[MAXPATHLEN];
-	const char	*dbdir = NULL;
+	const char	*dbdir;
 	bool		 create = false;
 	bool		 createdir = false;
 	int		 ret;
@@ -1072,9 +1072,7 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 			return (EPKG_OK);
 	}
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
-		return (EPKG_FATAL);
-
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	if (!reopen && (db = calloc(1, sizeof(struct pkgdb))) == NULL) {
 		pkg_emit_errno("malloc", "pkgdb");
 		return EPKG_FATAL;
@@ -1160,11 +1158,12 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 		}
 	}
 
-	if (type == PKGDB_REMOTE) {
+	if (type == PKGDB_REMOTE || type == PKGDB_MAYBE_REMOTE) {
 		if (pkg_repos_activated_count() > 0) {
+			db->type = PKGDB_REMOTE;
 			if ((ret = pkgdb_open_multirepos(dbdir, db)) != EPKG_OK)
 				return (ret);
-		} else {
+		} else if (type == PKGDB_REMOTE) {
 			if (*db_p == NULL)
 				pkgdb_close(db);
 			pkg_emit_error("No activated remote repositories configured");
@@ -2738,9 +2737,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		}
 		pkg_get(pkg2, PKG_NAME, &name2, PKG_VERSION, &version2);
 		if (!forced) {
-			pkg_config_bool(PKG_CONFIG_DEVELOPER_MODE, &devmode);
+			devmode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 			if (!devmode)
-				pkg_config_bool(PKG_CONFIG_PERMISSIVE, &permissive);
+				permissive = pkg_object_bool(pkg_config_get("PERMISSIVE"));
 			pkg_emit_error("%s-%s conflicts with %s-%s"
 					" (installs files into the same place). "
 					" Problematic file: %s%s",
@@ -2983,18 +2982,19 @@ pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	struct pkg_note	*note = NULL;
+	pkg_object	*note;
+	pkg_iter	 it = NULL;
 
-	while (pkg_annotations(pkg, &note) == EPKG_OK) {
-		if (run_prstmt(ANNOTATE1, pkg_annotation_tag(note))
+	while ((note = pkg_object_iterate(pkg->annotations, &it))) {
+		if (run_prstmt(ANNOTATE1, pkg_object_key(note))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(ANNOTATE1, pkg_annotation_value(note))
+		    run_prstmt(ANNOTATE1, pkg_object_string(note))
 		    != SQLITE_DONE
 		    ||
 		    run_prstmt(ANNOTATE2, package_id,
-			pkg_annotation_tag(note),
-			pkg_annotation_value(note))
+			pkg_object_key(note),
+			pkg_object_string(note))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			return (EPKG_FATAL);
@@ -3542,6 +3542,13 @@ pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
 	assert(db != NULL);
 	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
 
+	/*
+	 * If we have no remote repos loaded, we just return nothing instead of failing
+	 * an assert deep inside pkgdb_get_reponame
+	 */
+	if (db->type != PKGDB_REMOTE)
+		return (NULL);
+
 	reponame = pkgdb_get_reponame(db, repo);
 
 	sql = sbuf_new_auto();
@@ -3808,6 +3815,7 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
 
 	pkg_get(p, PKG_ORIGIN, &porigin);
 
+	pkg_debug(4, "Pkgdb: test conflicts for %s", porigin);
 	while (pkg_files(p, &file) == EPKG_OK) {
 		const char	*name, *origin, *version;
 		const char	*pkg_path = pkg_file_path(file);
@@ -3834,10 +3842,13 @@ pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
 			    -1, SQLITE_STATIC);
 			cur = conflicts_list;
 			while (sqlite3_step(stmt_conflicts) != SQLITE_DONE) {
+
 				cur = calloc(1, sizeof (struct pkg_event_conflict));
 				cur->name = strdup(sqlite3_column_text(stmt_conflicts, 0));
 				cur->origin = strdup(sqlite3_column_text(stmt_conflicts, 1));
 				cur->version = strdup(sqlite3_column_text(stmt_conflicts, 2));
+				pkg_debug(3, "found conflict between %s and %s on path %s",
+						porigin, cur->origin, pkg_path);
 				LL_PREPEND(conflicts_list, cur);
 
 				if (cb != NULL)
@@ -3881,13 +3892,16 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 	const char	 sql_conflicts[] = ""
 		"SELECT name, version, origin FROM integritycheck WHERE path = ?1;";
 
+	const char sql_integrity_prepare[] = ""
+		"SELECT f.path FROM files as f, integritycheck as i "
+		"LEFT JOIN packages as p ON "
+		"p.id = f.package_id "
+		"WHERE f.path = i.path AND "
+		"p.origin != i.origin GROUP BY f.path";
+
+	pkg_debug(4, "Pkgdb: running '%s'", sql_integrity_prepare);
 	if (sqlite3_prepare_v2(db->sqlite,
-		"SELECT path, COUNT(path) FROM ("
-		"SELECT path FROM integritycheck UNION ALL "
-		"SELECT path FROM files, main.packages AS p "
-		"WHERE p.id = package_id AND p.origin NOT IN "
-		"(SELECT origin FROM integritycheck)"
-		") GROUP BY path HAVING (COUNT(path) > 1 );",
+		sql_integrity_prepare,
 		-1, &stmt, NULL) != SQLITE_OK) {
 		ERROR_SQLITE(db->sqlite);
 		return (EPKG_FATAL);
@@ -3959,7 +3973,7 @@ pkgdb_integrity_check(struct pkgdb *db, conflict_func_cb cb, void *cbdata)
 	sbuf_delete(conflictmsg);
 	sbuf_delete(origin);
 
-	/* sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck"); */
+	sql_exec(db->sqlite, "DROP TABLE IF EXISTS integritycheck");
 
 	return (retcode);
 }
@@ -3977,7 +3991,7 @@ pkgdb_integrity_conflict_local(struct pkgdb *db, const char *origin)
 		    "p.prefix "
 		"FROM packages AS p, files AS f, integritycheck AS i "
 		"WHERE p.id = f.package_id AND f.path = i.path "
-		"AND i.origin = ?1";
+		"AND i.origin = ?1 AND i.origin != p.origin";
 
 	pkg_debug(4, "Pkgdb: running '%s'", sql_conflicts);
 	ret = sqlite3_prepare_v2(db->sqlite, sql_conflicts, -1, &stmt, NULL);
@@ -4154,8 +4168,7 @@ pkgshell_open(const char **reponame)
 
 	sqlite3_auto_extension((void(*)(void))sqlcmd_init);
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK)
-		return;
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", dbdir);
 	*reponame = strdup(localpath);
@@ -4229,15 +4242,17 @@ pkgdb_check_lock_pid(struct pkgdb *db)
 
 	while (sqlite3_step(stmt) != SQLITE_DONE) {
 		pid = sqlite3_column_int64(stmt, 0);
-		if (pid != lpid && kill((pid_t)pid, 0) == -1) {
-			pkg_debug(1, "found stale pid %lld in lock database", pid);
-			if (pkgdb_remove_lock_pid(db, pid) != EPKG_OK){
-				sqlite3_finalize(stmt);
-				return (EPKG_FATAL);
+		if (pid != lpid) {
+			if (kill((pid_t)pid, 0) == -1) {
+				pkg_debug(1, "found stale pid %lld in lock database", pid);
+				if (pkgdb_remove_lock_pid(db, pid) != EPKG_OK){
+					sqlite3_finalize(stmt);
+					return (EPKG_FATAL);
+				}
 			}
-		}
-		else {
-			found ++;
+			else {
+				found ++;
+			}
 		}
 	}
 
@@ -4264,7 +4279,8 @@ pkgdb_reset_lock(struct pkgdb *db)
 
 static int
 pkgdb_try_lock(struct pkgdb *db, const char *lock_sql,
-		double delay, unsigned int retries, pkgdb_lock_t type)
+		double delay, unsigned int retries, pkgdb_lock_t type,
+		bool upgrade)
 {
 	unsigned int tries = 0;
 	struct timespec ts;
@@ -4300,8 +4316,12 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql,
 				break;
 			}
 		}
-		else {
+		else if (!upgrade) {
 			ret = pkgdb_write_lock_pid(db);
+			break;
+		}
+		else {
+			ret = EPKG_OK;
 			break;
 		}
 		tries ++;
@@ -4364,7 +4384,7 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type,
 		break;
 	}
 
-	ret = pkgdb_try_lock(db, lock_sql, delay, retries, type);
+	ret = pkgdb_try_lock(db, lock_sql, delay, retries, type, false);
 
 	return (ret);
 }
@@ -4382,7 +4402,7 @@ pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_typ
 	if (old_type == PKGDB_LOCK_ADVISORY && new_type == PKGDB_LOCK_EXCLUSIVE) {
 		pkg_debug(1, "want to upgrade advisory to exclusive lock");
 		ret = pkgdb_try_lock(db, advisory_exclusive_lock_sql, delay, retries,
-				new_type);
+				new_type, true);
 	}
 
 	return (ret);

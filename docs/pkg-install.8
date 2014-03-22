@@ -1,0 +1,211 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and
+.\" maintenance of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\" $FreeBSD$
+.\"
+.Dd March 21, 2014
+.Dt PKG-INSTALL 8
+.Os
+.Sh NAME
+.Nm "pkg install"
+.Nd installs packages from remote package repositories or local archives
+.Sh SYNOPSIS
+.Nm
+.Op Fl AfgIiMnFqRUxy
+.Op Fl r Ar reponame
+.Ar pkg-origin ...
+.Sh DESCRIPTION
+.Nm
+is used for installation of packages from a package repository or local archives.
+Multiple package names can be specified on the command line, either
+explicitly or by matching against package names in the repository
+catalogues using shell globbing or regular expressions.
+.Pp
+.Nm
+first updates any out-of-date repository catalogues, unless
+.Cm REPO_AUTOUPDATE
+has been set to
+.Sy NO
+in
+.Pa pkg.conf .
+.Pp
+It then creates a work-list of all the package installations to do.
+Any already installed and up-to-date packages will be dropped from the
+list unless the
+.Fl f
+(force) option is supplied, in which case those packages will be
+reinstalled.
+.Pp
+The dependencies of packages in the list are examined and any missing
+packages are added to the list for installation.
+Such implicitly added packages are flagged as candidates for
+autoremoval.
+See
+.Xr pkg-autoremove 8
+for details.
+.Pp
+Autoremoval flags are sticky, and will persist over reinstallation or
+upgrade of the packages concerned, even if subsequently the packages
+are named explicitly on a command line.
+See
+.Xr pkg-query 8
+for finding the autoremoval status of a package, and
+.Xr pkg-set 8
+for modifying it.
+.Pp
+Any already installed but out of date packages, either named on the
+command line or from the sum of all their dependencies are added to
+the work list as upgrade jobs.
+The work list is sorted into dependency order and
+.Nm
+will present it to the user for approval before proceeding, unless
+overridden by the
+.Fl y
+option or the
+.Cm ASSUME_ALWAYS_YES
+setting in
+.Pa pkg.conf .
+.Pp
+Packages are fetched from the repositories into the local package
+cache if they are not already present, or if the checksum of the
+cached package file differs from the one in the repository.
+Packages may be downloaded from any of the repositories mentioned
+in
+.Xr pkg.conf 5
+or in the files in
+.Pa /usr/local/etc/pkg/repo .
+See
+.Xr pkg-repository 5
+for details.
+.Pp
+Package repository catalogues will be automatically updated whenever
+.Xr pkg-update 8
+is run, unless disabled by the
+.Fl U
+flag.
+Updating repository catalogues is highly recommended before doing any
+package installation with
+.Nm .
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width F1
+.It Fl A
+Mark the installed packages as orphan.
+Will be automatically removed if no other packages depend on them.
+For more information please refer to
+.Xr pkg-autoremove 8
+.It Fl f
+Force the reinstallation of the package if already installed.
+.It Fl g
+Treat the package names as shell glob patterns.
+.It Fl I
+If any installation scripts (pre-install or post-install) exist for a given
+package, do not execute them.
+When a package is updated, deinstallation
+scripts (pre-deinstall or post-deinstall) are not run either.
+.It Fl i
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
+.It Fl M
+Force the installation of the package with missing dependencies.
+.It Fl n
+Dry-run mode.
+The list of changes to packages is always printed, but
+no changes are actually made.
+.It Fl F
+Do not perform actual installation of packages, merely fetch packages
+that should be upgraded and detect possible conflicts.
+.It Fl q
+Force quiet output, except when
+.Fl n
+is used, where
+.Nm
+will always show packages to be installed, upgraded or deleted.
+.It Fl R
+When used with
+.Fl f ,
+reinstalls any packages that require the given package.
+.It Fl r Ar reponame
+In multi-repo mode, override the
+.Fa pkg.conf
+ordering and only attempt to download packages from the named
+repository.
+.It Fl U
+Skip updating the repository catalogues with
+.Xr pkg-update 8 .
+Use the locally cached copies only.
+.It Fl x
+Treat the package names as regular expressions according to the
+"modern" or "extended" syntax of
+.Xr re_format 7 .
+.It Fl y
+Assume yes when asked for confirmation before package installation.
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev ASSUME_ALWAYS_YES
+.It Ev HANDLE_RC_SCRIPTS
+.It Ev PACKAGESITE
+.It Ev PKG_CACHEDIR
+.It Ev PKG_DBDIR
+.It Ev REPO_AUTOUPDATE
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg_printf 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-repository 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-backup 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-convert 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8

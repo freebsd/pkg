@@ -674,9 +674,9 @@ pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 		goto cleanup;
 	packagesite_t = digest_t;
 	*mtime = packagesite_t > digest_t ? packagesite_t : digest_t;
-	fconflicts = repo_fetch_remote_extract_tmp(repo,
+	/*fconflicts = repo_fetch_remote_extract_tmp(repo,
 			repo_conflicts_archive, "txz", &local_t,
-			&rc, repo_conflicts_file);
+			&rc, repo_conflicts_file);*/
 	fseek(fmanifest, 0, SEEK_END);
 	len = ftell(fmanifest);
 
@@ -798,8 +798,8 @@ cleanup:
 		fclose(fmanifest);
 	if (fdigests)
 		fclose(fdigests);
-	if (fconflicts)
-		fclose(fconflicts);
+	/* if (fconflicts)
+		fclose(fconflicts);*/
 	if (map != MAP_FAILED)
 		munmap(map, len);
 	if (linebuf != NULL)
@@ -827,11 +827,7 @@ repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 	if (!pkg_repo_enabled(repo))
 		return (EPKG_OK);
 
-	if (pkg_config_string(PKG_CONFIG_DBDIR, &dbdir) != EPKG_OK) {
-		pkg_emit_error("Cant get dbdir config entry");
-		return (EPKG_FATAL);
-	}
-
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	pkg_debug(1, "PkgRepo: verifying update for %s", pkg_repo_name(repo));
 	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
 

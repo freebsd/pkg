@@ -62,7 +62,7 @@
 #define PKG_PROVIDES -19 /* Deprecated field: treat as an annotation for backwards compatibility */
 
 static int pkg_string(struct pkg *, ucl_object_t *, int);
-static int pkg_object(struct pkg *, ucl_object_t *, int);
+static int pkg_obj(struct pkg *, ucl_object_t *, int);
 static int pkg_array(struct pkg *, ucl_object_t *, int);
 static int pkg_int(struct pkg *, ucl_object_t *, int);
 static int pkg_set_deps_from_object(struct pkg *, ucl_object_t *);
@@ -78,18 +78,18 @@ static struct manifest_key {
 	enum ucl_type valid_type;
 	int (*parse_data)(struct pkg *, ucl_object_t *, int);
 } manifest_keys[] = {
-	{ "annotations",         PKG_ANNOTATIONS,         UCL_OBJECT, pkg_object},
+	{ "annotations",         PKG_ANNOTATIONS,         UCL_OBJECT, pkg_obj},
 	{ "arch",                PKG_ARCH,                UCL_STRING, pkg_string},
 	{ "categories",          PKG_CATEGORIES,          UCL_ARRAY,  pkg_array},
 	{ "comment",             PKG_COMMENT,             UCL_STRING, pkg_string},
 	{ "conflicts",           PKG_CONFLICTS,           UCL_ARRAY,  pkg_array},
-	{ "deps",                PKG_DEPS,                UCL_OBJECT, pkg_object},
+	{ "deps",                PKG_DEPS,                UCL_OBJECT, pkg_obj},
 	{ "desc",                PKG_DESC,                UCL_STRING, pkg_string},
-	{ "directories",         PKG_DIRECTORIES,         UCL_OBJECT, pkg_object},
+	{ "directories",         PKG_DIRECTORIES,         UCL_OBJECT, pkg_obj},
 	{ "dirs",                PKG_DIRS,                UCL_ARRAY,  pkg_array},
-	{ "files",               PKG_FILES,               UCL_OBJECT, pkg_object},
+	{ "files",               PKG_FILES,               UCL_OBJECT, pkg_obj},
 	{ "flatsize",            PKG_FLATSIZE,            UCL_INT,    pkg_int},
-	{ "groups",              PKG_GROUPS,              UCL_OBJECT, pkg_object},
+	{ "groups",              PKG_GROUPS,              UCL_OBJECT, pkg_obj},
 	{ "groups",              PKG_GROUPS,              UCL_ARRAY,  pkg_array},
 	{ "infos",               PKG_INFOS,               UCL_STRING, pkg_string}, /* Deprecated: treat as an annotation */
 	{ "licenselogic",        PKG_LICENSE_LOGIC,       UCL_STRING, pkg_string},
@@ -98,20 +98,20 @@ static struct manifest_key {
 	{ "message",             PKG_MESSAGE,             UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_STRING, pkg_string},
 	{ "name",                PKG_NAME,                UCL_INT,    pkg_string},
-	{ "options",             PKG_OPTIONS,             UCL_OBJECT, pkg_object},
-	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_OBJECT, pkg_object},
-	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_OBJECT, pkg_object},
+	{ "options",             PKG_OPTIONS,             UCL_OBJECT, pkg_obj},
+	{ "option_defaults",     PKG_OPTION_DEFAULTS,     UCL_OBJECT, pkg_obj},
+	{ "option_descriptions", PKG_OPTION_DESCRIPTIONS, UCL_OBJECT, pkg_obj},
 	{ "origin",              PKG_ORIGIN,              UCL_STRING, pkg_string},
 	{ "path",                PKG_REPOPATH,            UCL_STRING, pkg_string},
 	{ "pkgsize",             PKG_PKGSIZE,             UCL_INT,    pkg_int},
 	{ "prefix",              PKG_PREFIX,              UCL_STRING, pkg_string},
 	{ "provides",            PKG_PROVIDES,            UCL_ARRAY,  pkg_array},
-	{ "scripts",             PKG_SCRIPTS,             UCL_OBJECT, pkg_object},
+	{ "scripts",             PKG_SCRIPTS,             UCL_OBJECT, pkg_obj},
 	{ "shlibs",              PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array}, /* Backwards compat with 1.0.x packages */
 	{ "shlibs_provided",     PKG_SHLIBS_PROVIDED,     UCL_ARRAY,  pkg_array},
 	{ "shlibs_required",     PKG_SHLIBS_REQUIRED,     UCL_ARRAY,  pkg_array},
 	{ "sum",                 PKG_CKSUM,               UCL_STRING, pkg_string},
-	{ "users",               PKG_USERS,               UCL_OBJECT, pkg_object},
+	{ "users",               PKG_USERS,               UCL_OBJECT, pkg_obj},
 	{ "users",               PKG_USERS,               UCL_ARRAY,  pkg_array},
 	{ "version",             PKG_VERSION,             UCL_STRING, pkg_string},
 	{ "version",             PKG_VERSION,             UCL_INT,    pkg_string},
@@ -331,7 +331,7 @@ pkg_array(struct pkg *pkg, ucl_object_t *obj, int attr)
 			if (cur->type == UCL_STRING)
 				pkg_adduser(pkg, ucl_object_tostring(cur));
 			else if (cur->type == UCL_OBJECT)
-				pkg_object(pkg, cur, attr);
+				pkg_obj(pkg, cur, attr);
 			else
 				pkg_emit_error("Skipping malformed license");
 			break;
@@ -339,7 +339,7 @@ pkg_array(struct pkg *pkg, ucl_object_t *obj, int attr)
 			if (cur->type == UCL_STRING)
 				pkg_addgroup(pkg, ucl_object_tostring(cur));
 			else if (cur->type == UCL_OBJECT)
-				pkg_object(pkg, cur, attr);
+				pkg_obj(pkg, cur, attr);
 			else
 				pkg_emit_error("Skipping malformed license");
 			break;
@@ -347,7 +347,7 @@ pkg_array(struct pkg *pkg, ucl_object_t *obj, int attr)
 			if (cur->type == UCL_STRING)
 				pkg_adddir(pkg, ucl_object_tostring(cur), 1, false);
 			else if (cur->type == UCL_OBJECT)
-				pkg_object(pkg, cur, attr);
+				pkg_obj(pkg, cur, attr);
 			else
 				pkg_emit_error("Skipping malformed dirs");
 			break;
@@ -382,7 +382,7 @@ pkg_array(struct pkg *pkg, ucl_object_t *obj, int attr)
 }
 
 static int
-pkg_object(struct pkg *pkg, ucl_object_t *obj, int attr)
+pkg_obj(struct pkg *pkg, ucl_object_t *obj, int attr)
 {
 	struct sbuf *tmp = NULL;
 	ucl_object_t *cur;
@@ -970,13 +970,11 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		    ucl_object_fromstring(pkg_option_value(option)),
 		    pkg_option_opt(option), 0, false);
 	}
-	map = NULL;
-	while (pkg_annotations(pkg, &note) == EPKG_OK) {
-		map = ucl_object_insert_key(map,
-		    ucl_object_fromstring(pkg_annotation_value(note)),
-		    pkg_annotation_tag(note), 0, false);
-	}
-	obj = ucl_object_insert_key(top, map, "annotations", 11, false);
+	obj = ucl_object_insert_key(top, map, "options", 7, false);
+
+	if (pkg->annotations != NULL)
+		obj = ucl_object_insert_key(top,
+		    ucl_object_ref(map), "annotations", 11, false);
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {

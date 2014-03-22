@@ -38,7 +38,6 @@
 #include <errno.h>
 #include <regex.h>
 #include <grp.h>
-#include <libutil.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -477,7 +476,8 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 	struct pkg_license	*license  = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_shlib	*shlib    = NULL;
-	struct pkg_note		*note     = NULL;
+	pkg_object		*obj;
+	pkg_iter		 it;
 	int64_t			 package_id;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_NAME, &name,
@@ -594,10 +594,10 @@ try_again:
 		}
 	}
 
-	note = NULL;
-	while (pkg_annotations(pkg, &note) == EPKG_OK) {
-		const char *note_tag = pkg_annotation_tag(note);
-		const char *note_val = pkg_annotation_value(note);
+	it = NULL;
+	while ((obj = pkg_object_iterate(pkg->annotations, &it))) {
+		const char *note_tag = pkg_object_key(obj);
+		const char *note_val = pkg_object_string(obj);
 
 		ret = run_prepared_statement(ANNOTATE1, note_tag);
 		if (ret == SQLITE_DONE)

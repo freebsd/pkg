@@ -178,7 +178,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * current archive_entry to the first non-meta file.
 	 * If there is no non-meta files, EPKG_END is returned.
 	 */
-	ret = pkg_open2(&pkg, &a, &ae, path, keys, 0);
+	ret = pkg_open2(&pkg, &a, &ae, path, keys, 0, -1);
 	if (ret == EPKG_END)
 		extract = false;
 	else if (ret != EPKG_OK) {
@@ -239,7 +239,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * somesuch, there's no valid directory to search.
 	 */
 
-	if (pkg_type(pkg) == PKG_FILE) {
+	if (strncmp(path, "-", 2) != 0) {
 		basedir = dirname(path);
 		if ((ext = strrchr(path, '.')) == NULL) {
 			pkg_emit_error("%s has no extension", path);
@@ -274,8 +274,10 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 				    "Origin: '%s' Version: '%s'",
 				    pkg_dep_get(dep, PKG_DEP_ORIGIN),
 				    pkg_dep_get(dep, PKG_DEP_VERSION));
-				retcode = EPKG_FATAL;
-				goto cleanup;
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0) {
+					retcode = EPKG_FATAL;
+					goto cleanup;
+				}
 			}
 		} else {
 			retcode = EPKG_FATAL;
@@ -298,7 +300,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * experimantal purposes and to develop MTREE-free versions of
 	 * packages. */
 
-	pkg_config_bool(PKG_CONFIG_DISABLE_MTREE, &disable_mtree);
+	disable_mtree = pkg_object_bool(pkg_config_get("DISABLE_MTREE"));
 	if (!disable_mtree) {
 		pkg_get(pkg, PKG_PREFIX, &prefix, PKG_MTREE, &mtree);
 		if ((retcode = do_extract_mtree(mtree, prefix)) != EPKG_OK)
@@ -339,7 +341,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	 * and that the service is running
 	 */
 
-	pkg_config_bool(PKG_CONFIG_HANDLE_RC_SCRIPTS, &handle_rc);
+	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 	if (handle_rc)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
 
