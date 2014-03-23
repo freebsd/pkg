@@ -147,17 +147,22 @@ int exec_shell(int, char **);
 void usage_shell(void);
 
 /* pkg version */
-#define VERSION_SOURCE_INDEX	(1<<0)
-#define VERSION_ORIGIN		(1<<1)
-#define VERSION_QUIET		(1<<2)
-#define VERSION_VERBOSE		(1<<3)
-#define VERSION_STATUS		(1<<4)
-#define VERSION_NOSTATUS	(1<<5)
-#define VERSION_WITHORIGIN	(1<<7)
-#define VERSION_TESTVERSION	(1<<8)
-#define VERSION_TESTPATTERN	(1<<9)
-#define VERSION_SOURCE_PORTS	(1<<10)
-#define VERSION_SOURCE_REMOTE	(1<<11)
+#define VERSION_SOURCE_INDEX	(1U<<0)
+#define VERSION_ORIGIN		(1U<<1)
+#define VERSION_QUIET		(1U<<2)
+#define VERSION_VERBOSE		(1U<<3)
+#define VERSION_STATUS		(1U<<4)
+#define VERSION_NOSTATUS	(1U<<5)
+#define VERSION_WITHORIGIN	(1U<<7)
+#define VERSION_TESTVERSION	(1U<<8)
+#define VERSION_TESTPATTERN	(1U<<9)
+#define VERSION_SOURCE_PORTS	(1U<<10)
+#define VERSION_SOURCE_REMOTE	(1U<<11)
+#define VERSION_INDEX_FILE_NAME (1U<<12)
+
+#define VERION_SOURCES	(VERSION_SOURCE_PORTS | \
+			 VERSION_SOURCE_INDEX | \
+			 VERSION_SOURCE_REMOTE)
 
 int exec_version(int, char **);
 void usage_version(void);
