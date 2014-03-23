@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -55,8 +56,7 @@
 #define DEFAULT_VULNXML_URL "http://www.vuxml.org/freebsd/vuln.xml.bz2"
 #endif
 
-#if defined(OSMAJOR)
-/* Oh ye gods of ANSI C, why is this so flipping arcane? */
+#ifdef	OSMAJOR
 #define STRINGIFY(X)	TEXT(X)
 #define TEXT(X)		#X
 #define INDEXFILE	"INDEX-" STRINGIFY(OSMAJOR)
@@ -620,7 +620,6 @@ pkg_compiled_for_same_os_major(void)
 	osmajor = (int) strtol(u.release, NULL, 10);
 
 	return (osmajor == OSMAJOR);
-
 #else
 	return (true);		/* Can't tell, so assume yes  */
 #endif
