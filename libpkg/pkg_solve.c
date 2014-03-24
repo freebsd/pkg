@@ -124,6 +124,26 @@ pkg_solve_update_var_resolved (struct pkg_solve_variable *var)
 	}
 }
 
+static void
+pkg_debug_print_rule (struct pkg_solve_item *rule)
+{
+	struct pkg_solve_item *it;
+	struct sbuf *sb;
+
+	sb = sbuf_new_auto();
+
+	sbuf_printf(sb, "%s", "rule: (");
+
+	LL_FOREACH(rule, it) {
+		sbuf_printf(sb, "%s%s%s", it->inverse ? "!" : "",
+				it->var->origin,
+				it->next ? " | " : ")");
+	}
+	sbuf_finish(sb);
+	pkg_debug(2, "%s", sbuf_data(sb));
+	sbuf_delete(sb);
+}
+
 /**
  * Propagate all units, must be called recursively
  * @param rules
@@ -165,6 +185,7 @@ check_again:
 						}
 						sbuf_finish(err_msg);
 						pkg_emit_error("%splease resolve it manually", sbuf_data(err_msg));
+						pkg_debug_print_rule(unresolved);
 						sbuf_delete(err_msg);
 						return (false);
 					}
@@ -271,8 +292,11 @@ pkg_solve_test_guess(struct pkg_solve_problem *problem)
 					else
 						test |= cur->var->guess ^ cur->inverse;
 				}
-				if (!test)
+				if (!test) {
+					pkg_debug(2, "solver: guess test failed at variable %s", var->origin);
+					pkg_debug_print_rule(it);
 					return (false);
+				}
 			}
 		}
 	}
