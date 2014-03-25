@@ -148,8 +148,16 @@ struct pkg_dep {
 	UT_hash_handle	 hh;
 };
 
+enum pkg_conflict_type {
+	PKG_CONFLICT_ALL = 0,
+	PKG_CONFLICT_REMOTE_LOCAL,
+	PKG_CONFLICT_REMOTE_REMOTE,
+	PKG_CONFLICT_LOCAL_LOCAL
+};
+
 struct pkg_conflict {
 	struct sbuf		*origin;
+	enum pkg_conflict_type type;
 	UT_hash_handle	hh;
 };
 
@@ -402,7 +410,8 @@ int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 int pkg_conflicts_request_resolve(struct pkg_jobs *j);
 int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
 int pkg_conflicts_integrity_check(struct pkg_jobs *j);
-void pkg_conflicts_register(struct pkg *p1, struct pkg *p2);
+void pkg_conflicts_register(struct pkg *p1, struct pkg *p2,
+		enum pkg_conflict_type type);
 
 typedef void (*conflict_func_cb)(const char *, const char *, void *);
 int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,
