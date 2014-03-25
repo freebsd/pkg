@@ -606,11 +606,25 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 			pkg_get(pkg, PKG_ORIGIN, &origin);
 			/* Add conflict rule from each of the alternative */
 			LL_FOREACH(var, tvar) {
-				HASH_FIND_STR(tvar->unit->pkg->conflicts, origin, cfound);
-				if (cfound == NULL) {
-					/* Skip non-mutual conflicts */
-					continue;
+				if (conflict->type == PKG_CONFLICT_REMOTE_LOCAL) {
+					/* Skip unappropriate packages */
+					if (pkg->type == PKG_INSTALLED) {
+						if (tvar->unit->pkg->type == PKG_INSTALLED)
+							continue;
+					}
+					else {
+						if (tvar->unit->pkg->type != PKG_INSTALLED)
+							continue;
+					}
 				}
+				else if (conflict->type == PKG_CONFLICT_REMOTE_REMOTE) {
+					if (pkg->type == PKG_INSTALLED)
+						continue;
+
+					if (tvar->unit->pkg->type == PKG_INSTALLED)
+						continue;
+				}
+
 				/* Conflict rule: (!A | !Bx) */
 				rule = pkg_solve_rule_new();
 				if (rule == NULL)

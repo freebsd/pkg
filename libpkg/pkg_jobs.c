@@ -1148,10 +1148,11 @@ pkg_conflicts_add_missing(struct pkg_jobs *j, const char *origin)
 static void
 pkg_conflicts_register_universe(struct pkg_jobs *j,
 		struct pkg_job_universe_item *u1,
-		struct pkg_job_universe_item *u2, bool local_only)
+		struct pkg_job_universe_item *u2, bool local_only,
+		enum pkg_conflict_type type)
 {
 
-	pkg_conflicts_register(u1->pkg, u2->pkg);
+	pkg_conflicts_register(u1->pkg, u2->pkg, type);
 }
 
 static void
@@ -1195,13 +1196,20 @@ pkg_conflicts_add_from_pkgdb_local(const char *o1, const char *o2, void *ud)
 	 */
 	LL_FOREACH(u1, cur1) {
 		LL_FOREACH(u2, cur2) {
-			if ((cur1->pkg->type == PKG_INSTALLED && cur2->pkg->type != PKG_INSTALLED) ||
-				(cur2->pkg->type == PKG_INSTALLED && cur1->pkg->type != PKG_INSTALLED)) {
+			if (cur1->pkg->type == PKG_INSTALLED && cur2->pkg->type != PKG_INSTALLED) {
 				pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
 				pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
-				pkg_conflicts_register_universe(j, cur1, cur2, true);
+				pkg_conflicts_register_universe(j, cur1, cur2, true, PKG_CONFLICT_REMOTE_LOCAL);
 				pkg_debug(2, "register conflict between local %s(%s) <-> remote %s(%s)",
 						o1, dig1, o2, dig2);
+				j->conflicts_registered ++;
+			}
+			else if (cur2->pkg->type == PKG_INSTALLED && cur1->pkg->type != PKG_INSTALLED) {
+				pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
+				pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
+				pkg_conflicts_register_universe(j, cur1, cur2, true, PKG_CONFLICT_REMOTE_LOCAL);
+				pkg_debug(2, "register conflict between local %s(%s) <-> remote %s(%s)",
+						o2, dig2, o1, dig1);
 				j->conflicts_registered ++;
 			}
 		}
@@ -1244,7 +1252,7 @@ pkg_conflicts_add_from_pkgdb_remote(const char *o1, const char *o2, void *ud)
 					HASH_FIND(hh, cur2->pkg->conflicts, o1, strlen(o1), c);
 					if (c == NULL && cur2->pkg->type != PKG_INSTALLED) {
 						/* No need to update priorities */
-						pkg_conflicts_register(cur1->pkg, cur2->pkg);
+						pkg_conflicts_register(cur1->pkg, cur2->pkg, PKG_CONFLICT_REMOTE_REMOTE);
 						j->conflicts_registered ++;
 						pkg_get(cur1->pkg, PKG_DIGEST, &dig1);
 						pkg_get(cur2->pkg, PKG_DIGEST, &dig2);
