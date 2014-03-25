@@ -433,11 +433,21 @@ pkg_jobs_set_request_priority(struct pkg_jobs *j, struct pkg_solved *req)
 			pkg_jobs_update_universe_priority(j, req->items[0], 0,
 					PKG_PRIORITY_UPDATE_REQUEST);
 	}
+
+	return (EPKG_OK);
 }
 
 static int
 pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
 {
+	if (r1->items[0]->priority == r2->items[0]->priority) {
+		if (r1->type == PKG_SOLVED_DELETE && r2->type != PKG_SOLVED_DELETE)
+			return (-1);
+		else if (r2->type == PKG_SOLVED_DELETE && r1->type != PKG_SOLVED_DELETE)
+			return (1);
+
+		return (0);
+	}
 	return (r2->items[0]->priority - r1->items[0]->priority);
 }
 
