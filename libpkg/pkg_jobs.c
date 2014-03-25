@@ -577,6 +577,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		else if (ret != EPKG_OK)
 			return (EPKG_FATAL);
 
+#if 0
 		if (pkg->type == PKG_INSTALLED &&
 				(j->type == PKG_JOBS_UPGRADE ||
 						j->type == PKG_JOBS_INSTALL)) {
@@ -597,6 +598,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 
 			rpkg = NULL;
 		}
+#endif
 	}
 
 	/* Go through all depends */
