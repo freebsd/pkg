@@ -135,8 +135,9 @@ pkg_debug_print_rule (struct pkg_solve_item *rule)
 	sbuf_printf(sb, "%s", "rule: (");
 
 	LL_FOREACH(rule, it) {
-		sbuf_printf(sb, "%s%s%s", it->inverse ? "!" : "",
+		sbuf_printf(sb, "%s%s%s%s", it->inverse ? "!" : "",
 				it->var->origin,
+				(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
 				it->next ? " | " : ")");
 	}
 	sbuf_finish(sb);
@@ -213,6 +214,7 @@ check_again:
 										it->var->origin, it->var->digest,
 										it->var->priority,
 										it->var->to_install ? "install" : "delete");
+								pkg_debug_print_rule(unresolved);
 								break;
 							}
 						}
