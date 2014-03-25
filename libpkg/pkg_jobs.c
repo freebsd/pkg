@@ -263,7 +263,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg_job_universe
 }
 
 enum pkg_priority_update_type {
-	PKG_PRIORITY_UPDATE_REQUEST,
+	PKG_PRIORITY_UPDATE_REQUEST = 0,
 	PKG_PRIORITY_UPDATE_UNIVERSE,
 	PKG_PRIORITY_UPDATE_CONFLICT,
 	PKG_PRIORITY_UPDATE_DELETE
@@ -287,18 +287,24 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 	LL_FOREACH(item, it) {
 
 		pkg_get(it->pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
-		if (it->pkg->type != PKG_INSTALLED && type == PKG_PRIORITY_UPDATE_CONFLICT) {
+		if ((item->next != NULL || item->prev != NULL) &&
+				it->pkg->type != PKG_INSTALLED &&
+				(type == PKG_PRIORITY_UPDATE_CONFLICT ||
+				 type == PKG_PRIORITY_UPDATE_DELETE)) {
 			/*
 			 * We do not update priority of a remote part of conflict, as we know
 			 * that remote packages should not contain conflicts (they should be
 			 * resolved in request prior to calling of this function)
 			 */
+			pkg_debug(4, "skip update priority for %s-%s", origin, digest);
 			continue;
 		}
+		if (it->priority > priority)
+			continue;
 
 		is_local = it->pkg->type == PKG_INSTALLED ? "local" : "remote";
-		pkg_debug(2, "universe: update %s priority of %s(%s): %d -> %d",
-				is_local, origin, digest, it->priority, priority);
+		pkg_debug(2, "universe: update %s priority of %s(%s): %d -> %d, reason: %d",
+				is_local, origin, digest, it->priority, priority, type);
 		it->priority = priority;
 
 		if (type == PKG_PRIORITY_UPDATE_DELETE) {
@@ -393,26 +399,30 @@ pkg_jobs_update_conflict_priority(struct pkg_jobs *j, struct pkg_solved *req)
 	}
 }
 
-static void
+static int
 pkg_jobs_set_request_priority(struct pkg_jobs *j, struct pkg_solved *req)
 {
 	struct pkg_solved *treq;
 	const char *origin;
 
-	if (req->type == PKG_SOLVED_UPGRADE && req->items[1]->pkg->conflicts != NULL) {
+	if (req->type == PKG_SOLVED_UPGRADE
+			&& req->items[1]->pkg->conflicts != NULL) {
 		/*
 		 * We have an upgrade request that has some conflicting packages, therefore
 		 * update priorities of local packages and try to update priorities of remote ones
 		 */
-		pkg_jobs_update_conflict_priority(j, req);
-		if (req->items[1]->priority > req->items[0]->priority) {
+		if (req->items[0]->priority == 0)
+			pkg_jobs_update_conflict_priority(j, req);
+
+		if (req->items[1]->priority > req->items[0]->priority &&
+				!req->already_deleted) {
 			/*
 			 * Split conflicting upgrade request into delete -> upgrade request
 			 */
 			treq = calloc(1, sizeof(struct pkg_solved));
 			if (treq == NULL) {
 				pkg_emit_errno("calloc", "pkg_solved");
-				return;
+				return (EPKG_FATAL);
 			}
 
 			treq->type = PKG_SOLVED_UPGRADE_REMOVE;
@@ -421,6 +431,7 @@ pkg_jobs_set_request_priority(struct pkg_jobs *j, struct pkg_solved *req)
 			req->already_deleted = true;
 			pkg_get(treq->items[0]->pkg, PKG_ORIGIN, &origin);
 			pkg_debug(2, "split upgrade request for %s", origin);
+			return (EPKG_CONFLICT);
 		}
 	}
 	else if (req->type == PKG_SOLVED_DELETE) {
@@ -456,10 +467,15 @@ pkg_jobs_set_priorities(struct pkg_jobs *j)
 {
 	struct pkg_solved *req;
 
+iter_again:
 	LL_FOREACH(j->jobs, req) {
-		if (req->items[0]->priority == 0) {
-			pkg_jobs_set_request_priority(j, req);
-		}
+		req->items[0]->priority = 0;
+		if (req->items[1] != NULL)
+			req->items[1]->priority = 0;
+	}
+	LL_FOREACH(j->jobs, req) {
+		if (pkg_jobs_set_request_priority(j, req) == EPKG_CONFLICT)
+			goto iter_again;
 	}
 
 	DL_SORT(j->jobs, pkg_jobs_sort_priority);
