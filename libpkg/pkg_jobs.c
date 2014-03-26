@@ -1284,6 +1284,62 @@ pkg_conflicts_integrity_check(struct pkg_jobs *j)
 	return (pkgdb_integrity_check(j->db, pkg_conflicts_add_from_pkgdb_local, j));
 }
 
+static struct pkg_job_request *
+pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item, struct pkg_jobs *j)
+{
+	struct pkg_job_request *found;
+	struct pkg_job_universe_item *dep_item;
+	struct pkg_dep *d = NULL;
+	const char *origin;
+	struct pkg *pkg = item->pkg;
+
+	pkg_get(pkg, PKG_ORIGIN, &origin);
+
+	HASH_FIND_STR(j->request_delete, origin, found);
+	if (found == NULL) {
+		while (pkg_deps(pkg, &d) == EPKG_OK) {
+			HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), dep_item);
+			if (dep_item) {
+				found = pkg_jobs_find_deinstall_request(dep_item, j);
+				if (found)
+					return (found);
+			}
+		}
+	}
+	else {
+		return (found);
+	}
+
+	return (NULL);
+}
+
+static void
+pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
+{
+	struct sbuf *reason = sbuf_new_auto();
+	struct pkg_solved *sit;
+	struct pkg_job_request *jreq;
+	struct pkg *req_pkg, *pkg;
+	const char *name, *version;
+
+	LL_FOREACH(j->jobs, sit) {
+		jreq = pkg_jobs_find_deinstall_request(sit->items[0], j);
+		if (jreq->item != sit->items[0]) {
+			req_pkg = jreq->item->pkg;
+			pkg = sit->items[0]->pkg;
+			/* Set the reason */
+			pkg_get(req_pkg, PKG_NAME, &name, PKG_VERSION, &version);
+			sbuf_printf(reason, "required by %s-%s", name, version);
+			sbuf_finish(reason);
+
+			pkg_set(pkg, PKG_REASON, sbuf_data(reason));
+			sbuf_clear(reason);
+		}
+	}
+
+	sbuf_delete(reason);
+}
+
 static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
@@ -1320,7 +1376,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		pkgdb_it_free(it);
 	}
 
-	j->solved = true;
+	j->solved = 1;
 
 	return( EPKG_OK);
 }
@@ -1602,6 +1658,9 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			}
 		}
 	}
+
+	if (j->type == PKG_JOBS_DEINSTALL && j->solved)
+		pkg_jobs_set_deinstall_reasons(j);
 
 	return (ret);
 }
