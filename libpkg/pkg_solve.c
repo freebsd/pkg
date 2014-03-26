@@ -903,7 +903,8 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		}
 		else if (seen_del == 0 && seen_add != 0) {
 			res->items[0] = add_var->unit;
-			res->type = PKG_SOLVED_INSTALL;
+			res->type = (j->type == PKG_JOBS_FETCH) ?
+					PKG_SOLVED_FETCH : PKG_SOLVED_INSTALL;
 			DL_APPEND(j->jobs, res);
 			pkg_debug(3, "pkg_solve: schedule installation of %s %s",
 					add_var->origin, add_var->digest);
