@@ -592,29 +592,6 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			return (EPKG_OK);
 		else if (ret != EPKG_OK)
 			return (EPKG_FATAL);
-
-#if 0
-		if (pkg->type == PKG_INSTALLED &&
-				(j->type == PKG_JOBS_UPGRADE ||
-						j->type == PKG_JOBS_INSTALL)) {
-			/* Check if remote has newer version */
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-			rpkg = get_remote_pkg(j, origin, 0);
-			if (rpkg != NULL) {
-				if (!pkg_need_upgrade(rpkg, pkg, false)) {
-					pkg_free(rpkg);
-					rpkg = NULL;
-				}
-				else {
-					if (pkg_jobs_add_universe(j, rpkg, recursive, false, NULL)
-							!= EPKG_OK)
-						return (EPKG_FATAL);
-				}
-			}
-
-			rpkg = NULL;
-		}
-#endif
 	}
 
 	/* Go through all depends */
