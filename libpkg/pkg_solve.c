@@ -90,27 +90,6 @@ struct pkg_solve_problem {
 	((item)->var->to_install ^ (item)->inverse)
 
 /**
- * Check whether SAT rule is TRUE
- * @param rules list of rules
- * @return true or false
- */
-static bool
-pkg_solve_check_rules(struct pkg_solve_problem *problem)
-{
-	struct pkg_solve_variable *var, *tvar;
-
-	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
-		if (!var->resolved) {
-			pkg_debug(2, "solver: var %s-%s is not still resolved",
-					var->origin, var->digest);
-			return false;
-		}
-	}
-
-	return (true);
-}
-
-/**
  * Updates rules related to a single variable
  * @param var
  */
