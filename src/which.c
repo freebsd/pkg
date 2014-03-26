@@ -58,7 +58,7 @@ exec_which(int argc, char **argv)
 	char *p, *path;
 	int ret = EPKG_OK, retcode = EX_SOFTWARE;
 	int ch;
-	int res;
+	int res, pathlen;
 	bool orig = false;
 	bool glob = false;
 	bool search = false;
@@ -91,34 +91,43 @@ exec_which(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
+	if (search) {
+		if ((p = getenv("PATH")) == NULL) {
+			printf("$PATH not set, falling back to non-search behaviour\n");
+			search = false;
+		} else {
+			pathlen = strlen(p) + 1;
+
+			path = malloc(pathlen);
+			if (path == NULL)
+				return (EX_OSERR);
+
+			strlcpy(path, p, pathlen);
+
+			if (strlen(argv[0]) >= FILENAME_MAX)
+				return (EX_USAGE);
+
+			p = NULL;
+			res = get_match(&p, path, argv[0]);
+			if (res == (EX_USAGE)) {
+				printf("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
+				search = false;
+				free(path);
+			} else if (res == (EX_OSERR)) {
+				free(path);
+				return (EX_OSERR);
+			} else {
+				absolutepath(p, pathabs, sizeof(pathabs));
+				free(p);
+			}
+		}
+	}
+
 	if (!glob && !search)
 		absolutepath(argv[0], pathabs, sizeof(pathabs));
 	else if (!search) {
 		if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs))
 			return (EX_USAGE);
-	} else {
-
-		if ((p = getenv("PATH")) == NULL)
-			return (EX_USAGE);
-		path = malloc(strlen(p)+1);
-		if (path == NULL)
-			return (EX_OSERR);
-
-		memcpy(path, p, strlen(p)+1);
-
-		if (strlen(argv[0]) >= FILENAME_MAX)
-			return (EX_USAGE);
-
-		p = NULL;
-		res = get_match(&p, path, argv[0]);
-		if (res == (EX_USAGE)) {
-			printf("%s was not found in PATH\n", argv[0]);
-			return (EX_USAGE);
-		} else if (res == (EX_OSERR)) {
-			return (EX_OSERR);
-		}
-
-		strncpy(pathabs, p, strlen(p)+1);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
@@ -167,12 +176,7 @@ is_there(char *candidate)
 {
 	struct stat fin;
 
-	/* XXX work around access(2) false positives for superuser */
-	if (access(candidate, X_OK) == 0 &&
-	    stat(candidate, &fin) == 0 &&
-	    S_ISREG(fin.st_mode) &&
-	    (getuid() != 0 ||
-	    (fin.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0)) {
+	if (access(candidate, F_OK) == 0) {
 		return (1);
 	}
 	return (0);
@@ -183,18 +187,18 @@ get_match(char **pathabs, char *path, char *filename)
 {
 	char candidate[PATH_MAX];
 	const char *d;
+	int len;
 
 	while ((d = strsep(&path, ":")) != NULL) {
-		if (*d == '\0')
-			d = ".";
 		if (snprintf(candidate, sizeof(candidate), "%s/%s", d,
 		    filename) >= (int)sizeof(candidate))
 			continue;
 		if (is_there(candidate)) {
-			*pathabs = malloc(strlen(candidate)+1);
+			len = strlen(candidate) + 1;
+			*pathabs = malloc(len);
 			if (*pathabs == NULL)
 				return (EX_OSERR);
-			strncpy(*pathabs, candidate, strlen(candidate)+1);
+			strlcpy(*pathabs, candidate, len);
 			return (EX_OK);
 		}
 	}
