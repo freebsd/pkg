@@ -1329,7 +1329,7 @@ pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
 			pkg = sit->items[0]->pkg;
 			/* Set the reason */
 			pkg_get(req_pkg, PKG_NAME, &name, PKG_VERSION, &version);
-			sbuf_printf(reason, "required by %s-%s", name, version);
+			sbuf_printf(reason, "depends on %s-%s", name, version);
 			sbuf_finish(reason);
 
 			pkg_set(pkg, PKG_REASON, sbuf_data(reason));
