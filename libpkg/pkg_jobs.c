@@ -370,7 +370,7 @@ pkg_jobs_update_universe_priority(struct pkg_jobs *j,
 static void
 pkg_jobs_update_conflict_priority(struct pkg_jobs *j, struct pkg_solved *req)
 {
-	struct pkg_conflict *c, *ctmp;
+	struct pkg_conflict *c = NULL;
 	struct pkg *lp = req->items[1]->pkg;
 	struct pkg_job_universe_item *found, *cur, *rit = NULL;
 
