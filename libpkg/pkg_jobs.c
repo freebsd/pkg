@@ -781,6 +781,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	struct pkg *p1;
 	struct pkg_job_universe_item *jit;
 	struct pkg_job_seen *seen;
+	struct pkg_job_request *jreq;
 	int rc = EPKG_FATAL;
 	const char *origin, *digest;
 
@@ -798,6 +799,10 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 		/* We have already added exactly the same package to the universe */
 		pkg_debug(3, "already seen package %s-%s in the universe, do not add it again",
 				origin, digest);
+		/* However, we may want to add it to the job request */
+		HASH_FIND_STR(j->request_add, origin, jreq);
+		if (jreq == NULL)
+			pkg_jobs_add_req(j, origin, seen->un, true);
 		return (EPKG_OK);
 	}
 	HASH_FIND_STR(j->universe, origin, jit);
