@@ -1102,14 +1102,121 @@ pkgdb_rquery_provide(struct pkgdb *db, const char *provide, const char *repo)
 	const char	*reponame = NULL;
 	int		 ret;
 	const char	 basesql[] = ""
-			"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
-			"p.message, p.arch, p.maintainer, p.www, "
-			"p.flatsize "
+			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
+			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
+			"p.licenselogic, p.flatsize, p.pkgsize, "
+			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
 			"FROM '%1$s'.packages AS p, '%1$s'.pkg_provides AS pp, "
 			"'%1$s'.provides AS pr "
 			"WHERE p.id = pp.package_id "
 			"AND pp.provide_id = pr.id "
 			"AND pr.name = ?1;";
+
+	assert(db != NULL);
+	reponame = pkgdb_get_reponame(db, repo);
+
+	sql = sbuf_new_auto();
+	/*
+	 * Working on multiple remote repositories
+	 */
+	if (reponame == NULL) {
+		/* duplicate the query via UNION for all the attached
+		 * databases */
+
+		ret = pkgdb_sql_all_attached(db->sqlite, sql,
+				basesql, " UNION ALL ");
+		if (ret != EPKG_OK) {
+			sbuf_delete(sql);
+			return (NULL);
+		}
+	} else
+		sbuf_printf(sql, basesql, reponame);
+
+	sbuf_finish(sql);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
+	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+}
+
+struct pkgdb_it *
+pkgdb_find_shlib_provide(struct pkgdb *db, const char *require, const char *repo)
+{
+	sqlite3_stmt	*stmt;
+	struct sbuf	*sql = NULL;
+	const char	*reponame = NULL;
+	int		 ret;
+	const char	 basesql[] = ""
+			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
+			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
+			"p.licenselogic, p.flatsize, p.pkgsize, "
+			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
+			"FROM '%1$s'.packages AS p INNER JOIN '%1$s'.pkg_shlibs_provided AS ps ON "
+			"p.id = ps.package_id "
+			"WHERE ps.shlib_id = (SELECT id FROM '%1$s'.shlibs WHERE name=?1);";
+
+	assert(db != NULL);
+	reponame = pkgdb_get_reponame(db, repo);
+
+	sql = sbuf_new_auto();
+	/*
+	 * Working on multiple remote repositories
+	 */
+	if (reponame == NULL) {
+		/* duplicate the query via UNION for all the attached
+		 * databases */
+
+		ret = pkgdb_sql_all_attached(db->sqlite, sql,
+				basesql, " UNION ALL ");
+		if (ret != EPKG_OK) {
+			sbuf_delete(sql);
+			return (NULL);
+		}
+	} else
+		sbuf_printf(sql, basesql, reponame);
+
+	sbuf_finish(sql);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
+	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	sqlite3_bind_text(stmt, 1, require, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+}
+
+struct pkgdb_it *
+pkgdb_find_shlib_require(struct pkgdb *db, const char *provide, const char *repo)
+{
+	sqlite3_stmt	*stmt;
+	struct sbuf	*sql = NULL;
+	const char	*reponame = NULL;
+	int		 ret;
+	const char	 basesql[] = ""
+			"SELECT p.id, p.origin, p.name, p.version, p.comment, "
+			"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
+			"p.licenselogic, p.flatsize, p.pkgsize, "
+			"p.cksum, p.manifestdigest, p.path AS repopath, '%1$s' AS dbname "
+			"FROM '%1$s'.packages AS p INNER JOIN '%1$s'.pkg_shlibs_required AS ps ON "
+			"p.id = ps.package_id "
+			"WHERE ps.shlib_id = (SELECT id FROM '%1$s'.shlibs WHERE name=?1);";
 
 	assert(db != NULL);
 	reponame = pkgdb_get_reponame(db, repo);
