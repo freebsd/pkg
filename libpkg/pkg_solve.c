@@ -579,6 +579,8 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
 	struct pkg_solve_variable *var, *tvar, *cur_var;
+	struct pkg_shlib *shlib = NULL;
+	struct pkg_job_provide *pr, *prhead;
 	int cnt;
 
 	const char *origin;
@@ -686,6 +688,69 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 						"explicit conflict");
 				pkg_solve_add_var_rules (cur_var, rule->items, 2, false,
 						"explicit conflict");
+			}
+		}
+
+		/* Check required shlibs */
+		shlib = NULL;
+		if (pkg->type != PKG_INSTALLED) {
+			while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+				rule = NULL;
+				it = NULL;
+				var = NULL;
+				HASH_FIND_STR(j->provides, pkg_shlib_name(shlib), prhead);
+				if (prhead != NULL) {
+					/* Require rule !A | P1 | P2 | P3 ... */
+					rule = pkg_solve_rule_new();
+					if (rule == NULL)
+						goto err;
+					/* !A */
+					it = pkg_solve_item_new(cur_var);
+					if (it == NULL)
+						goto err;
+
+					it->inverse = true;
+					RULE_ITEM_PREPEND(rule, it);
+					/* B1 | B2 | ... */
+					cnt = 1;
+					LL_FOREACH(prhead, pr) {
+						/* For each provide */
+						pkg_get(pr->un->pkg, PKG_ORIGIN, &origin);
+						HASH_FIND(ho, problem->variables_by_origin, origin,
+								strlen(origin), var);
+						if (var == NULL) {
+							if (pkg_solve_add_universe_variable(j, problem, origin, &var)
+									!= EPKG_OK)
+								continue;
+						}
+						/* XXX: select all its versions? */
+						LL_FOREACH(var, tvar) {
+							if (var->unit->pkg->type == PKG_INSTALLED)
+								continue;
+							it = pkg_solve_item_new(tvar);
+							if (it == NULL)
+								goto err;
+
+							it->inverse = false;
+							RULE_ITEM_PREPEND(rule, it);
+							cnt ++;
+						}
+					}
+
+					pkg_solve_add_var_rules (var, rule->items, cnt, true, "provide");
+					pkg_solve_add_var_rules (cur_var, rule->items, cnt, false, "provide");
+
+					LL_PREPEND(problem->rules, rule);
+					problem->rules_count ++;
+				}
+#if 0
+				/* XXX: not working */
+				else {
+					pkg_emit_error("solver: cannot find provide for required shlib %s",
+							pkg_shlib_name(shlib));
+					goto err;
+				}
+#endif
 			}
 		}
 

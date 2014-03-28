@@ -587,11 +587,15 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	struct pkg_dep *d = NULL;
 	struct pkg_conflict *c = NULL;
 	struct pkg *npkg, *rpkg;
-	int ret;
 	struct pkg_job_universe_item *unit;
 	struct pkg_shlib *shlib = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_provide *pr, *prhead;
+	int ret;
+	const char *origin;
+	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
+			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
+			PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	if (!deps_only) {
 		/* Add the requested package itself */
@@ -702,11 +706,15 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	/* For remote packages we should also handle shlib deps */
 	if (pkg->type != PKG_INSTALLED) {
 		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+			HASH_FIND_STR(j->provides, pkg_shlib_name(shlib), pr);
+			if (pr != NULL)
+				continue;
+			/* Not found, search in the repos */
 			it = pkgdb_find_shlib_provide(j->db, pkg_shlib_name(shlib), j->reponame);
 			if (it != NULL) {
 				npkg = NULL;
 				prhead = NULL;
-				while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
+				while (pkgdb_it_next(it, &npkg, flags) == EPKG_OK) {
 					if (pkg_jobs_add_universe(j, npkg, recursive, false, &unit) != EPKG_OK)
 						return (EPKG_FATAL);
 					pr = calloc (1, sizeof (*pr));
@@ -727,6 +735,12 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 					npkg = NULL;
 				}
 				pkgdb_it_free(it);
+				if (prhead == NULL) {
+					pkg_get(pkg, PKG_ORIGIN, &origin);
+					pkg_emit_error("cannot find packages that provide %s required for %s",
+							pkg_shlib_name(shlib), origin);
+					return (EPKG_FATAL);
+				}
 			}
 		}
 	}
