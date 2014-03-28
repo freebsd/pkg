@@ -45,7 +45,7 @@ usage_which(void)
 	fprintf(stderr, "For more information see 'pkg help which'.\n");
 }
 
-static int is_there(char *);
+static bool is_there(char *);
 int get_match(char **, char *, char *);
 
 int
@@ -194,15 +194,10 @@ exec_which(int argc, char **argv)
 }
 
 
-static int
+static bool
 is_there(char *candidate)
 {
-	struct stat fin;
-
-	if (access(candidate, F_OK) == 0) {
-		return (1);
-	}
-	return (0);
+	return (access(candidate, F_OK) == 0);
 }
 
 int
