@@ -583,7 +583,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 	struct pkg_job_provide *pr, *prhead;
 	int cnt;
 
-	const char *origin;
+	const char *origin, *digest;
 
 	/* Go through all deps in all variables*/
 	LL_FOREACH(pvar, cur_var) {
@@ -715,42 +715,45 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					cnt = 1;
 					LL_FOREACH(prhead, pr) {
 						/* For each provide */
-						pkg_get(pr->un->pkg, PKG_ORIGIN, &origin);
-						HASH_FIND(ho, problem->variables_by_origin, origin,
-								strlen(origin), var);
+						pkg_get(pr->un->pkg, PKG_DIGEST, &digest);
+						HASH_FIND(hd, problem->variables_by_digest, digest,
+								strlen(digest), var);
 						if (var == NULL) {
-							if (pkg_solve_add_universe_variable(j, problem, origin, &var)
-									!= EPKG_OK)
-								continue;
+							continue;
 						}
 						/* XXX: select all its versions? */
-						LL_FOREACH(var, tvar) {
-							if (var->unit->pkg->type == PKG_INSTALLED)
-								continue;
-							it = pkg_solve_item_new(tvar);
-							if (it == NULL)
-								goto err;
 
-							it->inverse = false;
-							RULE_ITEM_PREPEND(rule, it);
-							cnt ++;
-						}
+						it = pkg_solve_item_new(var);
+						if (it == NULL)
+							goto err;
+
+						it->inverse = false;
+						RULE_ITEM_PREPEND(rule, it);
+						cnt ++;
 					}
 
-					pkg_solve_add_var_rules (var, rule->items, cnt, true, "provide");
-					pkg_solve_add_var_rules (cur_var, rule->items, cnt, false, "provide");
+					if (cnt > 1) {
+						pkg_solve_add_var_rules (var, rule->items, cnt, true, "provide");
+						pkg_solve_add_var_rules (cur_var, rule->items, cnt, false, "provide");
 
-					LL_PREPEND(problem->rules, rule);
-					problem->rules_count ++;
+						LL_PREPEND(problem->rules, rule);
+						problem->rules_count ++;
+					}
+					else {
+						/* Missing dependencies... */
+						free(it);
+						free(rule);
+					}
 				}
-#if 0
-				/* XXX: not working */
 				else {
-					pkg_emit_error("solver: cannot find provide for required shlib %s",
+					/*
+					 * XXX:
+					 * This is terribly broken now so ignore till provides/requires
+					 * are really fixed.
+					 */
+					pkg_debug(1, "solver: cannot find provide for required shlib %s",
 							pkg_shlib_name(shlib));
-					goto err;
 				}
-#endif
 			}
 		}
 

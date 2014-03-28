@@ -591,8 +591,9 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	struct pkg_shlib *shlib = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_provide *pr, *prhead;
+	struct pkg_job_seen *seen;
 	int ret;
-	const char *origin;
+	const char *origin, *digest;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 			PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
@@ -715,6 +716,12 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				npkg = NULL;
 				prhead = NULL;
 				while (pkgdb_it_next(it, &npkg, flags) == EPKG_OK) {
+					/* Skip seen packages */
+					pkg_get(npkg, PKG_DIGEST, &digest);
+					HASH_FIND_STR(j->seen, digest, seen);
+					if (seen != NULL)
+						continue;
+
 					if (pkg_jobs_add_universe(j, npkg, recursive, false, &unit) != EPKG_OK)
 						return (EPKG_FATAL);
 					pr = calloc (1, sizeof (*pr));
@@ -737,9 +744,12 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				pkgdb_it_free(it);
 				if (prhead == NULL) {
 					pkg_get(pkg, PKG_ORIGIN, &origin);
-					pkg_emit_error("cannot find packages that provide %s required for %s",
+					pkg_debug(1, "cannot find packages that provide %s required for %s",
 							pkg_shlib_name(shlib), origin);
-					return (EPKG_FATAL);
+					/*
+					 * XXX: this is not normal but it is very common for the existing
+					 * repos, hence we just ignore this stale dependency
+					 */
 				}
 			}
 		}
