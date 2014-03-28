@@ -335,6 +335,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 				elt = malloc (sizeof (*elt));
 				if (elt == NULL) {
 					pkg_emit_errno("malloc", "_solver_tree_elt");
+					LL_FREE(solver_tree, free);
 					return (false);
 				}
 				elt->var = var;
@@ -365,6 +366,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 					if (elt == NULL || elt->prev->next == NULL) {
 						/* Cannot backtrack, UNSAT */
 						pkg_debug(1, "problem is UNSAT problem after %d guesses", iters);
+						LL_FREE(solver_tree, free);
 						return (false);
 					}
 					/* Set the current variable as free variable */
