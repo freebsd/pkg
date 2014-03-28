@@ -134,10 +134,10 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 			pkg_conflicts_request_add_chain(&chain, req);
 
 			if (pkg_conflicts_request_resolve_chain(req->item->pkg, chain) != EPKG_OK) {
-				LL_FREE(chain, pkg_conflict_chain, free);
+				LL_FREE(chain, free);
 				return (EPKG_FATAL);
 			}
-			LL_FREE(chain, pkg_conflict_chain, free);
+			LL_FREE(chain, free);
 		}
 	}
 

@@ -1131,47 +1131,47 @@ void
 pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	switch (list) {
 	case PKG_DEPS:
-		HASH_FREE(pkg->deps, pkg_dep, pkg_dep_free);
+		HASH_FREE(pkg->deps, pkg_dep_free);
 		pkg->flags &= ~PKG_LOAD_DEPS;
 		break;
 	case PKG_RDEPS:
-		HASH_FREE(pkg->rdeps, pkg_dep, pkg_dep_free);
+		HASH_FREE(pkg->rdeps, pkg_dep_free);
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_LICENSES:
-		HASH_FREE(pkg->licenses, pkg_license, pkg_license_free);
+		HASH_FREE(pkg->licenses, pkg_license_free);
 		pkg->flags &= ~PKG_LOAD_LICENSES;
 		break;
 	case PKG_OPTIONS:
-		HASH_FREE(pkg->options, pkg_option, pkg_option_free);
+		HASH_FREE(pkg->options, pkg_option_free);
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_CATEGORIES:
-		HASH_FREE(pkg->categories, pkg_category, free);
+		HASH_FREE(pkg->categories, free);
 		pkg->flags &= ~PKG_LOAD_CATEGORIES;
 		break;
 	case PKG_FILES:
-		HASH_FREE(pkg->files, pkg_file, pkg_file_free);
+		HASH_FREE(pkg->files, pkg_file_free);
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
-		HASH_FREE(pkg->dirs, pkg_dir, pkg_dir_free);
+		HASH_FREE(pkg->dirs, pkg_dir_free);
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
 	case PKG_USERS:
-		HASH_FREE(pkg->users, pkg_user, pkg_user_free);
+		HASH_FREE(pkg->users, pkg_user_free);
 		pkg->flags &= ~PKG_LOAD_USERS;
 		break;
 	case PKG_GROUPS:
-		HASH_FREE(pkg->groups, pkg_group, pkg_group_free);
+		HASH_FREE(pkg->groups, pkg_group_free);
 		pkg->flags &= ~PKG_LOAD_GROUPS;
 		break;
 	case PKG_SHLIBS_REQUIRED:
-		HASH_FREE(pkg->shlibs_required, pkg_shlib, pkg_shlib_free);
+		HASH_FREE(pkg->shlibs_required, pkg_shlib_free);
 		pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
 		break;
 	case PKG_SHLIBS_PROVIDED:
-		HASH_FREE(pkg->shlibs_provided, pkg_shlib, pkg_shlib_free);
+		HASH_FREE(pkg->shlibs_provided, pkg_shlib_free);
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
 		break;
 	case PKG_ANNOTATIONS:
@@ -1182,11 +1182,11 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
 		break;
 	case PKG_CONFLICTS:
-		HASH_FREE(pkg->conflicts, pkg_conflict, pkg_conflict_free);
+		HASH_FREE(pkg->conflicts, pkg_conflict_free);
 		pkg->flags &= ~PKG_LOAD_CONFLICTS;
 		break;
 	case PKG_PROVIDES:
-		HASH_FREE(pkg->provides, pkg_provide, pkg_provide_free);
+		HASH_FREE(pkg->provides, pkg_provide_free);
 		pkg->flags &= ~PKG_LOAD_PROVIDES;
 		break;
 	}

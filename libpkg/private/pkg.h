@@ -62,8 +62,8 @@
 		ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
-#define HASH_FREE(data, type, free_func) do {      \
-	struct type *hf1, *hf2;                    \
+#define HASH_FREE(data, free_func) do {      \
+	__typeof(data) hf1, hf2;                    \
 	HASH_ITER(hh, data, hf1, hf2) {            \
 		HASH_DEL(data, hf1);               \
 		free_func(hf1);                    \
@@ -71,8 +71,8 @@
 	data = NULL;                               \
 } while (0)
 
-#define LL_FREE(head, type, free_func) do {   \
-	struct type *l1, *l2;                 \
+#define LL_FREE(head, free_func) do {   \
+	__typeof(head) l1, l2;                 \
 	LL_FOREACH_SAFE(head, l1, l2) {       \
 		LL_DELETE(head, l1);          \
 		free_func(l1);                \

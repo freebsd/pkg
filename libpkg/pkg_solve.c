@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -254,33 +255,31 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
  * @return true if guess is accepted
  */
 bool
-pkg_solve_test_guess(struct pkg_solve_problem *problem)
+pkg_solve_test_guess(struct pkg_solve_problem *problem, struct pkg_solve_variable *var)
 {
 	bool test = false;
-	struct pkg_solve_variable *var, *tvar;
 	struct _pkg_solve_var_rule *rul;
 	struct pkg_solve_item *it, *cur;
 
-	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
-		LL_FOREACH(var->rules, rul) {
-			it = rul->rule;
-			if (it->nitems != it->nresolved) {
-				/* Check guess */
-				test = false;
-				LL_FOREACH(it, cur) {
-					if (cur->var->resolved)
-						test |= cur->var->to_install ^ cur->inverse;
-					else
-						test |= cur->var->guess ^ cur->inverse;
-				}
-				if (!test) {
-					pkg_debug(2, "solver: guess test failed at variable %s", var->origin);
-					pkg_debug_print_rule(it);
-					return (false);
-				}
+	LL_FOREACH(var->rules, rul) {
+		it = rul->rule;
+		if (it->nitems != it->nresolved) {
+			/* Check guess */
+			test = false;
+			LL_FOREACH(it, cur) {
+				if (cur->var->resolved)
+					test |= cur->var->to_install ^ cur->inverse;
+				else
+					test |= cur->var->guess ^ cur->inverse;
+			}
+			if (!test) {
+				pkg_debug(2, "solver: guess test failed at variable %s", var->origin);
+				pkg_debug_print_rule(it);
+				return (false);
 			}
 		}
 	}
+
 
 	return (true);
 }
@@ -295,9 +294,16 @@ pkg_solve_test_guess(struct pkg_solve_problem *problem)
 bool
 pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
-	int propagated, iters = 0;
+	int propagated;
 	bool guessed = false;
 	struct pkg_solve_variable *var, *tvar;
+	int64_t unresolved = 0, iters = 0;
+
+	struct _solver_tree_elt {
+		struct pkg_solve_variable *var;
+		struct _solver_tree_elt *prev, *next;
+	} *solver_tree = NULL, *elt;
+
 
 	/* Obvious case */
 	if (problem->rules_count == 0)
@@ -315,24 +321,23 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		if (!var->resolved) {
 			/* Guess true for installed packages and false otherwise */
 			var->guess = (var->unit->pkg->type == PKG_INSTALLED) ? true : false;
-		}
-	}
-
-	while (!guessed) {
-		HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
-			if (pkg_solve_test_guess(problem)) {
-				guessed = true;
-				break;
-			}
-			else {
+			unresolved ++;
+			if (!pkg_solve_test_guess(problem, var)) {
 				var->guess = !var->guess;
-				if (pkg_solve_test_guess(problem)) {
-					guessed = true;
-					break;
+				if (!pkg_solve_test_guess(problem, var)) {
+					/* Need to backtrack */
+					iters ++;
 				}
 			}
+			/* Add new element to the backtracking queue */
+			elt = malloc (sizeof (*elt));
+			if (elt == NULL) {
+				pkg_emit_errno("malloc", "_solver_tree_elt");
+				return (false);
+			}
+			elt->var = var;
+			DL_APPEND(solver_tree, elt);
 		}
-		iters ++;
 	}
 
 	pkg_debug(1, "solved SAT problem in %d guesses", iters);
@@ -343,6 +348,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 			var->resolved = true;
 		}
 	}
+
+	LL_FREE(solver_tree, free);
 
 	return (true);
 }
@@ -860,7 +867,7 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 		fprintf(f, "0\n");
 	}
 
-	HASH_FREE(ordered_variables, pkg_solve_ordered_variable, free);
+	HASH_FREE(ordered_variables, free);
 
 	return (EPKG_OK);
 }
@@ -1019,7 +1026,7 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem, struct pk
 		ret = EPKG_FATAL;
 	}
 
-	HASH_FREE(ordered_variables, pkg_solve_ordered_variable, free);
+	HASH_FREE(ordered_variables, free);
 	if (line != NULL)
 		free(line);
 	return (ret);

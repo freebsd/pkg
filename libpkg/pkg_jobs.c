@@ -127,9 +127,9 @@ pkg_jobs_free(struct pkg_jobs *j)
 			free(cur);
 		}
 	}
-	HASH_FREE(j->seen, pkg_job_seen, free);
-	HASH_FREE(j->patterns, job_pattern, pkg_jobs_pattern_free);
-	LL_FREE(j->jobs, pkg_solved, free);
+	HASH_FREE(j->seen, free);
+	HASH_FREE(j->patterns, pkg_jobs_pattern_free);
+	LL_FREE(j->jobs, free);
 
 	free(j);
 }
@@ -1916,7 +1916,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 					rc = pkg_jobs_check_conflicts(j);
 					if (rc == EPKG_CONFLICT) {
 						/* Cleanup results */
-						LL_FREE(j->jobs, pkg_solved, free);
+						LL_FREE(j->jobs, free);
 						j->jobs = NULL;
 						j->count = 0;
 						has_conflicts = true;

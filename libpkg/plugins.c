@@ -78,7 +78,7 @@ pkg_plugin_hook_free(struct pkg_plugin *p)
 {
 	assert(p != NULL);
 
-	HASH_FREE(p->hooks, plugin_hook, free);
+	HASH_FREE(p->hooks, free);
 
 	return (EPKG_OK);
 }
@@ -98,7 +98,7 @@ plug_free(struct pkg_plugin *p)
 static int
 pkg_plugin_free(void)
 {
-	LL_FREE(plugins, pkg_plugin, plug_free);
+	LL_FREE(plugins, plug_free);
 
 	return (EPKG_OK);
 }

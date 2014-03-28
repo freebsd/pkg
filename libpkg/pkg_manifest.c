@@ -164,7 +164,7 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 
 static void
 pmk_free(struct pkg_manifest_key *key) {
-	HASH_FREE(key->parser, dataparser, free);
+	HASH_FREE(key->parser, free);
 
 	free(key);
 }
@@ -175,7 +175,7 @@ pkg_manifest_keys_free(struct pkg_manifest_key *key)
 	if (key == NULL)
 		return;
 
-	HASH_FREE(key, pkg_manifest_key, pmk_free);
+	HASH_FREE(key, pmk_free);
 }
 
 static int
