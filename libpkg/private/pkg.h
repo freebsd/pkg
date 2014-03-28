@@ -233,6 +233,13 @@ struct pkg_job_seen {
 	UT_hash_handle hh;
 };
 
+struct pkg_job_provide {
+	struct pkg_job_universe_item *un;
+	const char *provide;
+	struct pkg_job_provide *next, *prev;
+	UT_hash_handle hh;
+};
+
 struct pkg_jobs {
 	struct pkg_job_universe_item *universe;
 	struct pkg_job_request	*request_add;
@@ -240,6 +247,7 @@ struct pkg_jobs {
 	struct pkg_solved *jobs;
 	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
+	struct pkg_job_provide *provides;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
 	int		 solved;

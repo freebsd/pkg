@@ -103,6 +103,16 @@ pkg_jobs_pattern_free(struct job_pattern *jp)
 	free(jp);
 }
 
+static void
+pkg_jobs_provide_free(struct pkg_job_provide *pr)
+{
+	struct pkg_job_provide *cur, *tmp;
+
+	DL_FOREACH_SAFE(pr, cur, tmp) {
+		free (cur);
+	}
+}
+
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
@@ -129,6 +139,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	}
 	HASH_FREE(j->seen, free);
 	HASH_FREE(j->patterns, pkg_jobs_pattern_free);
+	HASH_FREE(j->provides, pkg_jobs_provide_free);
 	LL_FREE(j->jobs, free);
 
 	free(j);
@@ -580,6 +591,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	struct pkg_job_universe_item *unit;
 	struct pkg_shlib *shlib = NULL;
 	struct pkgdb_it *it;
+	struct pkg_job_provide *pr, *prhead;
 
 	if (!deps_only) {
 		/* Add the requested package itself */
@@ -693,9 +705,25 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			it = pkgdb_find_shlib_provide(j->db, pkg_shlib_name(shlib), j->reponame);
 			if (it != NULL) {
 				npkg = NULL;
+				prhead = NULL;
 				while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
-					if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+					if (pkg_jobs_add_universe(j, npkg, recursive, false, &unit) != EPKG_OK)
 						return (EPKG_FATAL);
+					pr = calloc (1, sizeof (*pr));
+					if (pr == NULL) {
+						pkg_emit_errno("pkg_jobs_add_universe", "calloc: struct pkg_job_provide");
+						return (EPKG_FATAL);
+					}
+					pr->un = unit;
+					pr->provide = pkg_shlib_name(shlib);
+					if (prhead == NULL) {
+						DL_APPEND(prhead, pr);
+						HASH_ADD_KEYPTR(hh, j->provides, pr->provide,
+								strlen(pr->provide), prhead);
+					}
+					else {
+						DL_APPEND(prhead, pr);
+					}
 					npkg = NULL;
 				}
 				pkgdb_it_free(it);
