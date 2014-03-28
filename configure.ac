@@ -12,6 +12,7 @@ AM_INIT_AUTOMAKE([1.11 foreign -Wno-portability no-dist-gzip dist-xz])
 AC_PROG_CC_C99
 LT_INIT()
 AC_CONFIG_MACRO_DIR([m4])
+AX_CFLAGS_WARN_ALL
 
 AC_C_CONST
 AC_TYPE_SIZE_T

@@ -519,7 +519,7 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 		struct pkg_solve_variable *pvar, bool conflicting)
 {
 	struct pkg_dep *dep, *dtmp;
-	struct pkg_conflict *conflict, *ctmp, *cfound;
+	struct pkg_conflict *conflict, *ctmp;
 	struct pkg *pkg;
 	struct pkg_solve_rule *rule;
 	struct pkg_solve_item *it = NULL;
@@ -869,7 +869,7 @@ static void
 pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		struct pkg_solve_problem *problem, struct pkg_jobs *j)
 {
-	struct pkg_solved *res, *dres;
+	struct pkg_solved *res;
 	struct pkg_solve_variable *cur_var, *del_var = NULL, *add_var = NULL;
 	int seen_add = 0, seen_del = 0;
 

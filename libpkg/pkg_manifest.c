@@ -845,7 +845,6 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	struct pkg_user		*user     = NULL;
 	struct pkg_group	*group    = NULL;
 	struct pkg_shlib	*shlib    = NULL;
-	struct pkg_note		*note     = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_provide	*provide  = NULL;
 	struct sbuf		*tmpsbuf  = NULL;

@@ -240,7 +240,6 @@ pkg_jobs_add_req(struct pkg_jobs *j, const char *origin, struct pkg_job_universe
 		bool add)
 {
 	struct pkg_job_request *req, *test, **head;
-	bool replace = false;
 
 	if (add)
 		head = &j->request_add;
@@ -517,7 +516,6 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 {
 	struct pkg_job_universe_item *item, *cur, *tmp = NULL;
 	const char *origin, *digest, *version, *name;
-	int rc;
 	struct pkg_job_seen *seen;
 
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest,
@@ -580,7 +578,6 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	struct pkg *npkg, *rpkg;
 	int ret;
 	struct pkg_job_universe_item *unit;
-	const char *origin;
 
 	if (!deps_only) {
 		/* Add the requested package itself */
@@ -1490,13 +1487,8 @@ static int
 jobs_solve_install(struct pkg_jobs *j)
 {
 	struct job_pattern *jp, *jtmp;
-	struct pkg *pkg;
-	struct pkgdb_it *it;
 	struct pkg_job_request *req, *rtmp;
-	const char *origin;
 	bool got_local;
-	int flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
-			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
 	if ((j->flags & PKG_FLAG_PKG_VERSION_TEST) == PKG_FLAG_PKG_VERSION_TEST) {
 		if (new_pkg_version(j)) {
@@ -1706,7 +1698,6 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	bool automatic = false;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
-	struct job_pattern *jp;
 
 	old = ps->items[1] ? ps->items[1]->pkg : NULL;
 	new = ps->items[0]->pkg;
