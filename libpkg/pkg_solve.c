@@ -47,7 +47,7 @@ struct pkg_solve_item;
 struct pkg_solve_variable {
 	struct pkg_job_universe_item *unit;
 	bool to_install;
-	bool guess;
+	int guess;
 	int priority;
 	const char *digest;
 	const char *origin;
@@ -269,11 +269,17 @@ pkg_solve_test_guess(struct pkg_solve_problem *problem, struct pkg_solve_variabl
 			LL_FOREACH(it, cur) {
 				if (cur->var->resolved)
 					test |= cur->var->to_install ^ cur->inverse;
-				else
+				else if (cur->var->guess != -1)
 					test |= cur->var->guess ^ cur->inverse;
+				else {
+					/* Free variables are assumed as true */
+					test = true;
+					break;
+				}
 			}
 			if (!test) {
-				pkg_debug(2, "solver: guess test failed at variable %s", var->origin);
+				pkg_debug(2, "solver: guess test failed at variable %s, trying to %d",
+						var->origin, var->guess);
 				pkg_debug_print_rule(it);
 				return (false);
 			}
@@ -295,12 +301,13 @@ bool
 pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 {
 	int propagated;
-	bool guessed = false;
 	struct pkg_solve_variable *var, *tvar;
 	int64_t unresolved = 0, iters = 0;
+	bool rc;
 
 	struct _solver_tree_elt {
 		struct pkg_solve_variable *var;
+		int guess;
 		struct _solver_tree_elt *prev, *next;
 	} *solver_tree = NULL, *elt;
 
@@ -317,26 +324,64 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	}
 
 	/* Set initial guess */
+	elt = solver_tree;
+
+	/* DPLL Algorithm */
 	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
 		if (!var->resolved) {
-			/* Guess true for installed packages and false otherwise */
-			var->guess = (var->unit->pkg->type == PKG_INSTALLED) ? true : false;
+
+			if (elt == NULL) {
+				/* Add new element to the backtracking queue */
+				elt = malloc (sizeof (*elt));
+				if (elt == NULL) {
+					pkg_emit_errno("malloc", "_solver_tree_elt");
+					return (false);
+				}
+				elt->var = var;
+				elt->guess = -1;
+				DL_APPEND(solver_tree, elt);
+			}
+
+			if (elt->guess == -1)
+				/* Guess true for installed packages and false otherwise */
+				var->guess = (var->unit->pkg->type == PKG_INSTALLED) ? true : false;
+			else
+				/* For analyzed variables we can only inverse previous guess */
+				var->guess = !elt->guess;
+
 			unresolved ++;
 			if (!pkg_solve_test_guess(problem, var)) {
-				var->guess = !var->guess;
-				if (!pkg_solve_test_guess(problem, var)) {
+				if (elt->guess == -1) {
+					/* This is free variable, so we can assign true or false to it */
+					var->guess = !var->guess;
+					rc = pkg_solve_test_guess(problem, var);
+				}
+				else {
+					rc = false;
+				}
+				if (!rc) {
 					/* Need to backtrack */
 					iters ++;
+					if (elt == NULL || elt->prev->next == NULL) {
+						/* Cannot backtrack, UNSAT */
+						pkg_debug(1, "problem is UNSAT problem after %d guesses", iters);
+						return (false);
+					}
+					/* Set the current variable as free variable */
+					elt->guess = -1;
+					var->guess = -1;
+					/* Go to the previous level */
+					elt = elt->prev;
+					tvar = var;
+					var = elt->var;
+					continue;
 				}
 			}
-			/* Add new element to the backtracking queue */
-			elt = malloc (sizeof (*elt));
-			if (elt == NULL) {
-				pkg_emit_errno("malloc", "_solver_tree_elt");
-				return (false);
-			}
-			elt->var = var;
-			DL_APPEND(solver_tree, elt);
+
+			/* Assign the current guess */
+			elt->guess = var->guess;
+			/* Move to the next elt */
+			elt = elt->next;
 		}
 	}
 
@@ -408,6 +453,7 @@ pkg_solve_variable_new(struct pkg_job_universe_item *item)
 	pkg_get(item->pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest);
 	/* XXX: Is it safe to save a ptr here ? */
 	result->digest = digest;
+	result->guess = -1;
 	result->origin = origin;
 	result->prev = result;
 
