@@ -7,7 +7,7 @@ m4_define([pkg_version], [maj_ver.med_ver.min_ver.a5])
 AC_INIT([pkg],[pkg_version],[https://github.com/freebsd/pkg],[pkg])
 AC_CONFIG_SRCDIR([configure.ac])
 AM_INIT_AUTOMAKE([1.11 foreign -Wno-portability no-dist-gzip dist-xz])
-#AM_SILENT_RULES([yes])
+AM_SILENT_RULES([yes])
 
 AC_PROG_CC_C99
 LT_INIT()
