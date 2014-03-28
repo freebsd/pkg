@@ -1056,7 +1056,7 @@ struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path, bool glo
 struct pkgdb_it * pkgdb_query_shlib_required(struct pkgdb *db, const char *shlib);
 struct pkgdb_it * pkgdb_query_shlib_provided(struct pkgdb *db, const char *shlib);
 
-struct pkgdb_it * pkgdb_query_provide(struct pkgdb *db, 
+struct pkgdb_it * pkgdb_rquery_provide(struct pkgdb *db, 
     const char *provide, const char *repo);
 
 /**

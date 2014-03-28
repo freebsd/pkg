@@ -1001,3 +1001,149 @@ pkgdb_repo_register_conflicts(const char *origin, char **conflicts,
 
 	return (EPKG_OK);
 }
+
+const char *
+pkgdb_get_reponame(struct pkgdb *db, const char *repo)
+{
+	const char	*reponame = NULL;
+	struct pkg_repo	*r;
+
+	assert(db->type == PKGDB_REMOTE);
+
+	if (repo != NULL) {
+		if ((r = pkg_repo_find_ident(repo)) == NULL) {
+			pkg_emit_error("repository '%s' does not exist", repo);
+			return (NULL);
+		}
+		reponame = pkg_repo_name(r);
+
+		if (!pkgdb_is_attached(db->sqlite, reponame)) {
+			pkg_emit_error("repository '%s' does not exist", repo);
+			return (NULL);
+		}
+	}
+
+	return (reponame);
+}
+
+struct pkgdb_it *
+pkgdb_rquery(struct pkgdb *db, const char *pattern, match_t match,
+    const char *repo)
+{
+	sqlite3_stmt	*stmt = NULL;
+	struct sbuf	*sql = NULL;
+	const char	*reponame = NULL;
+	const char	*comp = NULL;
+	int		 ret;
+	char		 basesql[BUFSIZ] = ""
+		"SELECT id, origin, name, version, comment, "
+		"prefix, desc, arch, maintainer, www, "
+		"licenselogic, flatsize, pkgsize, "
+		"cksum, manifestdigest, path AS repopath, '%1$s' AS dbname "
+		"FROM '%1$s'.packages p";
+
+	assert(db != NULL);
+	assert(match == MATCH_ALL || (pattern != NULL && pattern[0] != '\0'));
+
+	/*
+	 * If we have no remote repos loaded, we just return nothing instead of failing
+	 * an assert deep inside pkgdb_get_reponame
+	 */
+	if (db->type != PKGDB_REMOTE)
+		return (NULL);
+
+	reponame = pkgdb_get_reponame(db, repo);
+
+	sql = sbuf_new_auto();
+	comp = pkgdb_get_pattern_query(pattern, match);
+	if (comp && comp[0])
+		strlcat(basesql, comp, sizeof(basesql));
+
+	/*
+	 * Working on multiple remote repositories
+	 */
+	if (reponame == NULL) {
+		/* duplicate the query via UNION for all the attached
+		 * databases */
+
+		ret = pkgdb_sql_all_attached(db->sqlite, sql,
+		    basesql, " UNION ALL ");
+		if (ret != EPKG_OK) {
+			sbuf_delete(sql);
+			return (NULL);
+		}
+	} else
+		sbuf_printf(sql, basesql, reponame, reponame);
+
+	sbuf_cat(sql, " ORDER BY name;");
+	sbuf_finish(sql);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
+	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), sbuf_size(sql), &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	if (match != MATCH_ALL && match != MATCH_CONDITION)
+		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+}
+
+struct pkgdb_it *
+pkgdb_rquery_provide(struct pkgdb *db, const char *provide, const char *repo)
+{
+	sqlite3_stmt	*stmt;
+	struct sbuf	*sql = NULL;
+	const char	*reponame = NULL;
+	int		 ret;
+	const char	 basesql[] = ""
+			"SELECT p.id, p.origin, p.name, p.version, p.comment, p.desc, "
+			"p.message, p.arch, p.maintainer, p.www, "
+			"p.flatsize "
+			"FROM '%1$s'.packages AS p, '%1$s'.pkg_provides AS pp, "
+			"'%1$s'.provides AS pr "
+			"WHERE p.id = pp.package_id "
+			"AND pp.provide_id = pr.id "
+			"AND pr.name = ?1;";
+
+	assert(db != NULL);
+	reponame = pkgdb_get_reponame(db, repo);
+
+	sql = sbuf_new_auto();
+	/*
+	 * Working on multiple remote repositories
+	 */
+	if (reponame == NULL) {
+		/* duplicate the query via UNION for all the attached
+		 * databases */
+
+		ret = pkgdb_sql_all_attached(db->sqlite, sql,
+				basesql, " UNION ALL ");
+		if (ret != EPKG_OK) {
+			sbuf_delete(sql);
+			return (NULL);
+		}
+	} else
+		sbuf_printf(sql, basesql, reponame);
+
+	sbuf_finish(sql);
+
+	pkg_debug(4, "Pkgdb: running '%s'", sbuf_get(sql));
+	ret = sqlite3_prepare_v2(db->sqlite, sbuf_get(sql), -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		ERROR_SQLITE(db->sqlite);
+		sbuf_delete(sql);
+		return (NULL);
+	}
+
+	sbuf_delete(sql);
+
+	sqlite3_bind_text(stmt, 1, provide, -1, SQLITE_TRANSIENT);
+
+	return (pkgdb_it_new(db, stmt, PKG_REMOTE, PKGDB_IT_FLAG_ONCE));
+}
