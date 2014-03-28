@@ -578,6 +578,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	struct pkg *npkg, *rpkg;
 	int ret;
 	struct pkg_job_universe_item *unit;
+	struct pkg_shlib *shlib = NULL;
+	struct pkgdb_it *it;
 
 	if (!deps_only) {
 		/* Add the requested package itself */
@@ -683,6 +685,22 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 
 		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
+	}
+
+	/* For remote packages we should also handle shlib deps */
+	if (pkg->type != PKG_INSTALLED) {
+		while (pkg_shlibs_required(pkg, &shlib) == EPKG_OK) {
+			it = pkgdb_find_shlib_provide(j->db, pkg_shlib_name(shlib), j->reponame);
+			if (it != NULL) {
+				npkg = NULL;
+				while (pkgdb_it_next(it, &npkg, PKG_LOAD_BASIC) == EPKG_OK) {
+					if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+						return (EPKG_FATAL);
+					npkg = NULL;
+				}
+				pkgdb_it_free(it);
+			}
+		}
 	}
 
 	return (EPKG_OK);

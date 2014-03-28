@@ -181,4 +181,23 @@ const char * pkgdb_get_pattern_query(const char *pattern, match_t match);
  */
 bool pkgdb_is_attached(sqlite3 *s, const char *name);
 
+/**
+ * Find provides for a specified require in repos
+ * @param db
+ * @param provide
+ * @param repo
+ * @return
+ */
+struct pkgdb_it *pkgdb_find_shlib_require(struct pkgdb *db,
+		const char *provide, const char *repo);
+/**
+ * Find requires for a specified provide in repos
+ * @param db
+ * @param require
+ * @param repo
+ * @return
+ */
+struct pkgdb_it *pkgdb_find_shlib_provide(struct pkgdb *db,
+		const char *require, const char *repo);
+
 #endif
