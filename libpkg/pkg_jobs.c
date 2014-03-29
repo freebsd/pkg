@@ -719,14 +719,21 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 					/* Skip seen packages */
 					pkg_get(npkg, PKG_DIGEST, &digest);
 					HASH_FIND_STR(j->seen, digest, seen);
-					if (seen != NULL)
-						continue;
+					if (seen == NULL) {
+						pkg_jobs_add_universe(j, npkg, recursive, false,
+								&unit);
 
-					if (pkg_jobs_add_universe(j, npkg, recursive, false, &unit) != EPKG_OK)
-						return (EPKG_FATAL);
+						/* Reset package to avoid freeing */
+						npkg = NULL;
+					}
+					else {
+						unit = seen->un;
+					}
+
 					pr = calloc (1, sizeof (*pr));
 					if (pr == NULL) {
-						pkg_emit_errno("pkg_jobs_add_universe", "calloc: struct pkg_job_provide");
+						pkg_emit_errno("pkg_jobs_add_universe", "calloc: "
+								"struct pkg_job_provide");
 						return (EPKG_FATAL);
 					}
 					pr->un = unit;
@@ -739,7 +746,6 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 					else {
 						DL_APPEND(prhead, pr);
 					}
-					npkg = NULL;
 				}
 				pkgdb_it_free(it);
 				if (prhead == NULL) {
