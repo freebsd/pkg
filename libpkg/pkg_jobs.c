@@ -46,7 +46,7 @@
 #include "private/pkgdb.h"
 
 static int find_remote_pkg(struct pkg_jobs *j, const char *pattern, match_t m,
-		bool root, bool recursive);
+		bool root, bool recursive, bool add_request);
 static struct pkg *get_local_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
 static struct pkg *get_remote_pkg(struct pkg_jobs *j, const char *origin, unsigned flag);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
@@ -830,7 +830,7 @@ new_pkg_version(struct pkg_jobs *j)
 	pkg_jobs_add_universe(j, p, true, false, NULL);
 
 	/* Use maximum priority for pkg */
-	if (find_remote_pkg(j, origin, MATCH_EXACT, true, true) == EPKG_OK) {
+	if (find_remote_pkg(j, origin, MATCH_EXACT, false, true, true) == EPKG_OK) {
 		ret = true;
 		goto end;
 	}
@@ -843,7 +843,9 @@ end:
 
 static int
 pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
-		bool root, bool force, bool recursive, struct pkg_job_universe_item **unit)
+		bool root, bool force, bool recursive,
+		struct pkg_job_universe_item **unit,
+		bool add_request)
 {
 	struct pkg *p1;
 	struct pkg_job_universe_item *jit;
@@ -911,7 +913,8 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 	p->direct = root;
 	/* Add a package to request chain and populate universe */
 	rc = pkg_jobs_add_universe(j, p, recursive, false, &jit);
-	pkg_jobs_add_req(j, origin, jit, true);
+	if (add_request)
+		pkg_jobs_add_req(j, origin, jit, true);
 
 	if (unit != NULL)
 		*unit = jit;
@@ -921,7 +924,7 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *p,
 
 static int
 find_remote_pkg(struct pkg_jobs *j, const char *pattern,
-		match_t m, bool root, bool recursive)
+		match_t m, bool root, bool recursive, bool add_request)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it;
@@ -945,7 +948,8 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 		return (rc);
 
 	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
-		rc = pkg_jobs_process_remote_pkg(j, p, root, force, recursive, NULL);
+		rc = pkg_jobs_process_remote_pkg(j, p, root, force, recursive,
+				NULL, add_request);
 		p = NULL;
 	}
 
@@ -964,7 +968,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 	struct pkg_job_universe_item *unit;
 
 	if (!jp->is_file) {
-		rc = find_remote_pkg(j, jp->pattern, jp->match, true, true);
+		rc = find_remote_pkg(j, jp->pattern, jp->match, true, true, true);
 	}
 	else {
 		pkg_manifest_keys_new(&keys);
@@ -973,7 +977,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 		else {
 			pkg->type = PKG_FILE;
 			rc = pkg_jobs_process_remote_pkg(j, pkg, true,
-					j->flags & PKG_FLAG_FORCE, false, &unit);
+					j->flags & PKG_FLAG_FORCE, false, &unit, true);
 			unit->jp = jp;
 			*got_local = true;
 		}
@@ -1507,6 +1511,7 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	char *origin;
+	bool automatic;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
@@ -1523,9 +1528,9 @@ jobs_solve_upgrade(struct pkg_jobs *j)
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 			/* TODO: use repository priority here */
 			pkg_jobs_add_universe(j, pkg, true, false, NULL);
-			pkg_get(pkg, PKG_ORIGIN, &origin);
+			pkg_get(pkg, PKG_ORIGIN, &origin, PKG_AUTOMATIC, &automatic);
 			/* Do not test we ignore what doesn't exists remotely */
-			find_remote_pkg(j, origin, MATCH_EXACT, false, true);
+			find_remote_pkg(j, origin, MATCH_EXACT, false, true, !automatic);
 			pkg = NULL;
 		}
 		pkgdb_it_free(it);
@@ -1627,7 +1632,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 				pkg_get(pkg, PKG_ORIGIN, &origin);
 				/* Do not test we ignore what doesn't exists remotely */
 				find_remote_pkg(j, origin, MATCH_EXACT, false,
-						j->flags & PKG_FLAG_RECURSIVE);
+						j->flags & PKG_FLAG_RECURSIVE, true);
 			}
 			pkg = NULL;
 		}
@@ -1636,8 +1641,9 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		HASH_ITER(hh, j->patterns, jp, jtmp) {
 			/* TODO: use repository priority here */
 			if (find_remote_pkg(j, jp->pattern, jp->match, true,
-					j->flags & PKG_FLAG_RECURSIVE) == EPKG_FATAL)
-				pkg_emit_error("No packages matching '%s' has been found in the repositories", jp->pattern);
+					j->flags & PKG_FLAG_RECURSIVE, true) == EPKG_FATAL)
+				pkg_emit_error("No packages matching '%s' has been found in the "
+						"repositories", jp->pattern);
 		}
 	}
 
