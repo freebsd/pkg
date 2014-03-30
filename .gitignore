@@ -4,6 +4,8 @@
 *.po
 *.Po
 *.So
+*.lo
+*.la
 *.core
 *.gmon
 *.log
