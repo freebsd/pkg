@@ -486,14 +486,13 @@ cleanup:
 
 static int
 do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
-	const char *matchorigin)
+		const char *matchorigin, const char *portsdir)
 {
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
 	struct sbuf	*cmd;
 	struct sbuf	*res;
-	const char	*portsdir;
 	const char	*origin;
 	char		*buf;
 
@@ -501,9 +500,6 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		usage_version();
 		return (EX_USAGE);
 	}
-
-	if (!have_ports(&portsdir))
-		return (EX_SOFTWARE);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
@@ -559,6 +555,7 @@ exec_version(int argc, char **argv)
 	char		 limchar = '-';
 	const char	*matchorigin = NULL;
 	const char	*reponame = NULL;
+	const char	*portsdir;
 	bool		 auto_update;
 	match_t		 match = MATCH_ALL;
 	char		*pattern = NULL;
@@ -666,17 +663,21 @@ exec_version(int argc, char **argv)
 		return (do_source_remote(opt, limchar, pattern, match,
 			    auto_update, reponame, matchorigin));
 
-	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS )
-		return (do_source_ports(opt, limchar, pattern, match,
-			    matchorigin));
+	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS ) {
+		if (!have_ports(&portsdir))
+			return (EX_SOFTWARE);
+		else
+			return (do_source_ports(opt, limchar, pattern,
+				    match, matchorigin, portsdir));
+	}
 
 	/* If none of -IPR were specified, and portsdir exists use
 	   that, otherwise fallback to remote. */
 
-	if (have_ports) {
+	if (have_ports(&portsdir)) {
 		opt |= VERSION_SOURCE_PORTS;
 		return (do_source_ports(opt, limchar, pattern, match,
-			    matchorigin));
+			    matchorigin, portsdir));
 	} else {
 		opt |= VERSION_SOURCE_REMOTE;
 		return (do_source_remote(opt, limchar, pattern, match,
