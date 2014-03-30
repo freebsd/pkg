@@ -4,9 +4,9 @@
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
- * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -59,64 +59,55 @@ void
 usage_version(void)
 {
 	fprintf(stderr, "Usage: pkg version [-IPR] [-hoqvU] [-l limchar] [-L limchar] [-egix pattern]\n");
-	fprintf(stderr, "                   [-r reponame] [-O origin] [index]\n");
-	fprintf(stderr, "       pkg version -t <version1> <version2>\n");
-	fprintf(stderr, "       pkg version -T <pkgname> <pattern>\n\n");
+	fprintf(stderr, "		    [-r reponame] [-O origin] [index]\n");
+	fprintf(stderr, "	pkg version -t <version1> <version2>\n");
+	fprintf(stderr, "	pkg version -T <pkgname> <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help version'.\n");
 }
 
 static void
-print_version(struct pkg *pkg, const char *source, const char *ver, char limchar, unsigned int opt)
+print_version(struct pkg *pkg, const char *source, const char *ver,
+	      char limchar, unsigned int opt)
 {
-	bool to_print = true;
-	char key;
-	const char *version;
-	char *namever = NULL;
+	const char	*key;
+	const char	*version;
 
 	pkg_get(pkg, PKG_VERSION, &version);
 	if (ver == NULL) {
 		if (source == NULL)
-			key = '!';
+			key = "!";
 		else
-			key = '?';
+			key = "?";
 	} else {
 		switch (pkg_version_cmp(version, ver)) {
 		case -1:
-			key = '<';
+			key = "<";
 			break;
 		case 0:
-			key = '=';
+			key = "=";
 			break;
 		case 1:
-			key = '>';
+			key = ">";
 			break;
 		default:
-			key = '!';
+			key = "!";
 			break;
 		}
 	}
 
-	if ((opt & VERSION_STATUS) && limchar != key) {
-		to_print = false;
-	}
-	if ((opt & VERSION_NOSTATUS) && limchar == key) {
-		to_print = false;
-	}
-
-	if (!to_print)
+	if ((opt & VERSION_STATUS) && limchar != *key)
 		return;
 
+	if ((opt & VERSION_NOSTATUS) && limchar == *key)
+		return;
 
 	if (opt & VERSION_ORIGIN)
-		pkg_asprintf(&namever, "%-34o", pkg);
+		pkg_printf("%-34o %S", pkg, key);
 	else
-		pkg_asprintf(&namever, "%n-%v", pkg, pkg);
-
-	printf("%-34s %c", namever, key);
-	free(namever);
+		pkg_printf("%n-%v %S", pkg, pkg, key);
 
 	if (opt & VERSION_VERBOSE) {
-		switch (key) {
+		switch (*key) {
 		case '<':
 			printf("   needs updating (%s has %s)", source, ver);
 			break;
@@ -136,43 +127,436 @@ print_version(struct pkg *pkg, const char *source, const char *ver, char limchar
 	}
 
 	printf("\n");
+	return;
+}
+
+static int
+do_testversion(unsigned int opt, int argc, char ** restrict argv)
+{
+	/* -t must be unique and takes two arguments */
+	if ( opt != VERSION_TESTVERSION || argc < 2 ) {
+		usage_version();
+		return (EX_USAGE);
+	}
+
+	switch (pkg_version_cmp(argv[0], argv[1])) {
+	case -1:
+		printf("<\n");
+		break;
+	case 0:
+		printf("=\n");
+		break;
+	case 1:
+		printf(">\n");
+		break;
+	}
+
+	return (EX_OK);
+}
+
+static int
+do_testpattern(unsigned int opt, int argc, char ** restrict argv)
+{
+	bool	 pattern_from_stdin = false;
+	bool	 pkgname_from_stdin = false;
+	char	*line = NULL;
+	size_t	 linecap = 0;
+	ssize_t	 linelen;
+	int	 retval = FNM_NOMATCH;
+
+	/* -T must be unique and takes two arguments */
+	if ( opt != VERSION_TESTPATTERN || argc < 2 ) {
+		usage_version();
+		return (EX_USAGE);
+	}
+
+	if (strncmp(argv[0], "-", 1) == 0)
+		pattern_from_stdin = true;
+
+	if (strncmp(argv[1], "-", 1) == 0)
+		pkgname_from_stdin = true;
+
+	if (pattern_from_stdin && pkgname_from_stdin) {
+		usage_version();
+		return (EX_USAGE);
+	}
+
+	if (!pattern_from_stdin && !pkgname_from_stdin)
+		return (fnmatch(argv[1], argv[0], 0));
+
+	while ((linelen = getline(&line, &linecap, stdin)) > 0) {
+		line[linelen - 1] = '\0'; /* Strip trailing newline */
+
+		if ((pattern_from_stdin && (fnmatch(argv[1], line, 0) == 0)) ||
+		    (pkgname_from_stdin && (fnmatch(line, argv[0], 0) == 0))) {
+			retval = EPKG_OK;
+			printf("%.*s\n", (int)linelen, line);
+		}
+	}
+
+	free(line);
+
+	return (retval);
+}
+
+static bool
+have_ports(const char **portsdir)
+{
+	char		 portsdirmakefile[MAXPATHLEN];
+	struct stat	 sb;
+	bool		 have_ports;
+
+	/* Look for Makefile within $PORTSDIR as indicative of
+	 * installed ports tree. */
+
+	*portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
+	if (*portsdir == NULL)
+		err(1, "Cannot get portsdir config entry!");
+
+	snprintf(portsdirmakefile, sizeof(portsdirmakefile),
+		 "%s/Makefile", *portsdir);
+
+	have_ports = (stat(portsdirmakefile, &sb) == 0 && S_ISREG(sb.st_mode));
+
+	if (!have_ports)
+		warnx("Cannot find ports tree: unable to open %s",
+		      portsdirmakefile);
+
+	return (have_ports);
+}
+
+static const char*
+indexfilename(char *filebuf, size_t filebuflen)
+{
+	const char	*indexdir;
+	const char	*indexfile;
+
+	/* Construct the canonical name of the indexfile from the
+	 * ports directory and the major version number of the OS.
+	 * Overridden by INDEXDIR and INDEXFILE if defined. (Mimics
+	 * the behaviour of ${PORTSDIR}/Makefile) */
+
+	indexdir = pkg_object_string(pkg_config_get("INDEXDIR"));
+	if (indexdir == NULL) {
+		indexdir = pkg_object_string(pkg_config_get("PORTSDIR"));
+
+		if (indexdir == NULL)
+			err(EX_SOFTWARE, "Cannot get either INDEXDIR or "
+			    "PORTSDIR config entry!");
+	}
+
+	indexfile = pkg_object_string(pkg_config_get("INDEXFILE"));
+	if (indexfile == NULL)
+		err(EX_SOFTWARE, "Cannot get INDEXFILE config entry!");
+
+	strlcpy(filebuf, indexdir, filebuflen);
+
+	if (filebuf[0] != '\0' && filebuf[strlen(filebuf) - 1] != '/')
+		strlcat(filebuf, "/", filebuflen);
+
+	strlcat(filebuf, indexfile, filebuflen);
+
+	return (filebuf);
+}
+
+static struct index_entry *
+hash_indexfile(const char *indexfilename)
+{
+	FILE			*indexfile;
+	struct index_entry	*indexhead = NULL;
+	struct index_entry	*entry;
+	char			*p, *version, *origin;
+	char			*line;
+	int			 dirs;
+	size_t			 linecap;
+
+	/* Create a hash table of all the package names and port
+	 * directories from the index file. */
+
+	indexfile = fopen(indexfilename, "r");
+	if (!indexfile)
+		err(EX_NOINPUT, "Unable to open %s!", indexfilename);
+
+	while (getline(&line, &linecap, indexfile) > 0) {
+		/* line is pkgname|portdir|... */
+
+		version = strsep(&line, "|");
+		origin = strsep(&line, "|");
+		
+		version = strrchr(version, '-');
+		version[0] = '\0';
+		version++;
+
+		for (dirs = 0, p = strchr(line, '|');
+		     p > origin && dirs < 2;
+		     p--) {
+			if ( p[-1] == '/' )
+				dirs++;
+		}
+		origin = p;
+
+		entry = malloc(sizeof(struct index_entry));
+		if (entry != NULL) {
+			entry->version = strdup(version);
+			entry->origin = strdup(origin);
+		}
+
+		if (entry == NULL || entry->version == NULL ||
+		    entry->origin == NULL)
+			err(EX_SOFTWARE, "Out of memory while reading %s",
+			    indexfilename);
+
+		HASH_ADD_KEYPTR(hh, indexhead, entry->origin,
+				strlen(entry->origin), entry);
+	}
+
+	free(line);
+	fclose(indexfile);
+
+	return (indexhead);
+}
+
+static void
+free_index(struct index_entry *indexhead)
+{
+	struct index_entry	*entry, *tmp;
+
+	HASH_ITER(hh, indexhead, entry, tmp) {
+		HASH_DEL(indexhead, entry);
+		free(entry->origin);
+		free(entry->version);
+		free(entry);
+	}
+	return;
+}
+
+static int
+do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
+		const char *indexfile, const char *matchorigin)
+{
+	char			 filebuf[MAXPATHLEN];
+	struct index_entry	*indexhead;
+	struct index_entry	*entry;
+	struct pkgdb		*db;
+	struct pkgdb_it		*it = NULL;
+	struct pkg		*pkg = NULL;
+	const char		*origin;
+
+	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_INDEX ) {
+		usage_version();
+		return (EX_USAGE);
+	}
+
+	/* If there is a remaining command line argument, take
+	   that as the name of the INDEX file to use.  Otherwise,
+	   search for INDEX-N within the ports tree */
+
+	if (indexfile == NULL) 
+		indexfile = indexfilename(filebuf, sizeof(filebuf));
+
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+		return (EX_IOERR);
+
+	indexhead = hash_indexfile(indexfile);
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		free_index(indexhead);
+		warnx("Cannot get a read lock on the database. "
+		      "It is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
+	it = pkgdb_query(db, pattern, match);
+	if (it == NULL)
+		goto cleanup;
+
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+
+		/* If -O was specified, check if this origin matches */
+
+		if ((opt & VERSION_WITHORIGIN) &&
+		    strcmp(origin, matchorigin) != 0)
+			continue;
+		
+		HASH_FIND_STR(indexhead, origin, entry);
+		if (entry != NULL)
+			print_version(pkg, "index", entry->version,
+			    limchar, opt);
+	}
+
+cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+	free_index(indexhead);
+	pkg_free(pkg);
+	pkgdb_it_free(it);
+	pkgdb_close(db);
+
+	return (EPKG_OK);
+}
+
+static int
+do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
+		 bool auto_update, const char *reponame,
+		 const char *matchorigin)
+{
+	struct pkgdb	*db = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkgdb_it	*it_remote = NULL;
+	struct pkg	*pkg = NULL;
+	struct pkg	*pkg_remote = NULL;
+	const char	*origin;
+	const char	*version_remote;
+
+	int		 retcode = EPKG_OK;
+
+	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_REMOTE ) {
+		usage_version();
+		return (EX_USAGE);
+	}
+
+	/* Only force remote mode if looking up remote, otherwise
+	   user is forced to have a repo.sqlite */
+
+	if (auto_update) {
+		retcode = pkgcli_update(false);
+		if (retcode != EPKG_OK)
+			return (retcode);
+	}
+
+	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+		return (EX_IOERR);
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get a read lock on a database. "
+		      "It is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
+	it = pkgdb_query(db, pattern, match);
+	if (it == NULL) {
+		retcode = EX_IOERR;
+		goto cleanup;
+	}
+
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+
+		/* If -O was specified, check if this origin matches */
+		if ((opt & VERSION_WITHORIGIN) &&
+		    strcmp(origin, matchorigin) != 0)
+			continue;
+
+		it_remote = pkgdb_rquery(db, origin, MATCH_EXACT, reponame);
+		if (it_remote == NULL) {
+			retcode = EX_IOERR;
+			goto cleanup;
+		}
+
+		if (pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC)
+		    == EPKG_OK) {
+			pkg_get(pkg_remote, PKG_VERSION, &version_remote);
+			print_version(pkg, "remote", version_remote, limchar,
+			    opt);
+		} else {
+			print_version(pkg, "remote", NULL, limchar, opt);
+		}
+		pkgdb_it_free(it_remote);
+	}
+
+cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+
+	pkg_free(pkg);
+	pkg_free(pkg_remote);
+	pkgdb_it_free(it);
+	pkgdb_close(db);
+
+	return (retcode);
+}
+
+static int
+do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
+	const char *matchorigin)
+{
+	struct pkgdb	*db = NULL;
+	struct pkgdb_it	*it = NULL;
+	struct pkg	*pkg = NULL;
+	struct sbuf	*cmd;
+	struct sbuf	*res;
+	const char	*portsdir;
+	const char	*origin;
+	char		*buf;
+
+	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_PORTS ) {
+		usage_version();
+		return (EX_USAGE);
+	}
+
+	if (!have_ports(&portsdir))
+		return (EX_SOFTWARE);
+
+	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+		return (EX_IOERR);
+
+	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get a read lock on a database. "
+		      "It is locked by another process");
+		return (EX_TEMPFAIL);
+	}
+
+	if ((it = pkgdb_query(db, pattern, match)) == NULL)
+			goto cleanup;
+
+	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+		pkg_get(pkg, PKG_ORIGIN, &origin);
+
+		/* If -O was specified, check if this origin matches */
+		if ((opt & VERSION_WITHORIGIN) &&
+		    strcmp(origin, matchorigin) != 0)
+			continue;
+
+		cmd = sbuf_new_auto();
+		sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null",
+			    portsdir, origin);
+		sbuf_finish(cmd);
+
+		if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
+			buf = sbuf_data(res);
+			print_version(pkg, "port", strsep(&buf, "\n"), limchar,
+			    opt);
+			sbuf_delete(res);
+		} else {
+			print_version(pkg, "port", NULL, limchar, opt);
+		}
+		sbuf_delete(cmd);
+	}
+
+cleanup:
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+
+	pkg_free(pkg);
+	pkgdb_it_free(it);
+	pkgdb_close(db);
+
+	return (EPKG_OK);
 }
 
 int
 exec_version(int argc, char **argv)
 {
-	unsigned int opt = 0;
-	int ch;
-	FILE *indexfile;
-	char indexpath[MAXPATHLEN];
-	struct index_entry *indexhead = NULL;
-	struct utsname u;
-	int rel_major_ver;
-	int retval;
-	char *line = NULL;
-	size_t linecap = 0;
-	ssize_t linelen;
-	char *buf;
-	char *version;
-	struct index_entry *entry, *tmp;
-	struct pkgdb *db = NULL;
-	struct pkg *pkg = NULL, *pkg_remote = NULL;
-	struct pkgdb_it *it = NULL, *it_remote = NULL;
-	char limchar = '-';
-	struct sbuf *cmd;
-	struct sbuf *res;
-	const char *portsdir;
-	const char *origin;
-	const char *matchorigin = NULL;
-	const char *reponame = NULL;
-	const char *version_remote = NULL;
-	bool have_ports;
-	bool auto_update;
-	match_t match = MATCH_ALL;
-	char *pattern=NULL;
-	struct stat sb;
-	char portsdirmakefile[MAXPATHLEN];
-	int retcode = EXIT_SUCCESS;
+	unsigned int	 opt = 0;
+	char		 limchar = '-';
+	const char	*origin;
+	const char	*matchorigin = NULL;
+	const char	*reponame = NULL;
+	bool		 auto_update;
+	match_t		 match = MATCH_ALL;
+	char		*pattern = NULL;
+	int		 ch;
 
 	auto_update = pkg_object_bool(pkg_config_get("REPO_AUTOUPDATE"));
 
@@ -246,204 +630,56 @@ exec_version(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (opt & VERSION_STATUS) {
-			if (limchar != '<' &&
-					limchar != '>' &&
-					limchar != '=') {
-				usage_version();
-				return (EX_USAGE);
-			}
+	/*
+	 * Allowed option combinations:
+	 *   -t ver1 ver2	 -- only
+	 *   -T pkgname pattern	 -- only
+	 *   Only one of -I -P -R can be given
+	 */
+
+	if ( (opt & VERSION_TESTVERSION) == VERSION_TESTVERSION )
+		return (do_testversion(opt, argc, argv));
+
+	if ( (opt & VERSION_TESTPATTERN) == VERSION_TESTPATTERN )
+		return (do_testpattern(opt, argc, argv));
+
+	if (opt & (VERSION_STATUS|VERSION_NOSTATUS)) {
+		if (limchar != '<' &&
+		    limchar != '>' &&
+		    limchar != '=') {
+			usage_version();
+			return (EX_USAGE);
+		}
 	}
 
-	/* -t must be unique */
-	if (((opt & VERSION_TESTVERSION) && opt != VERSION_TESTVERSION) ||
-			(opt == VERSION_TESTVERSION && argc < 2)) {
-		usage_version();
-		return (EX_USAGE);
-	
-	} else if (opt == VERSION_TESTVERSION) {
-		switch (pkg_version_cmp(argv[0], argv[1])) {
-		case -1:
-			printf("<\n");
-			break;
-		case 0:
-			printf("=\n");
-			break;
-		case 1:
-			printf(">\n");
-			break;
-		}
-	/* -T must be unique */
-	} else if (((opt & VERSION_TESTPATTERN) && opt != VERSION_TESTPATTERN) ||
-			(opt == VERSION_TESTPATTERN && argc != 2)) {
-		usage_version();
-		return (EX_USAGE);
-	
-	} else if (opt == VERSION_TESTPATTERN) {
-		if (strcmp(argv[0], "-") == 0) {
-			ch = 0; /* pattern from stdin */
-		} else if (strcmp(argv[1], "-") == 0) {
-			ch = 1; /* pkgname from stdin */
-		} else return (fnmatch(argv[1], argv[0], 0));
-		
-		retval = FNM_NOMATCH;
-		
-		while ((linelen = getline(&line, &linecap, stdin)) > 0) {
-			line[linelen - 1] = '\0'; /* Strip trailing newline */
-			if ((ch == 0 && (fnmatch(argv[1], line, 0) == 0)) ||
-				(ch == 1 && (fnmatch(line, argv[0], 0) == 0))) {
-				retval = EPKG_OK;
-				printf("%.*s\n", (int)linelen, line);
-			}
-		}
+	if ( (opt & VERSION_SOURCE_INDEX) == VERSION_SOURCE_INDEX )
+		return (do_source_index(opt, limchar, pattern, match,
+			    (argc > 0 ? argv[0] : NULL), matchorigin));
 
-		free(line);
-		
-		return (retval);
-		
+	if ( (opt & VERSION_SOURCE_REMOTE) == VERSION_SOURCE_REMOTE )
+		return (do_source_remote(opt, limchar, pattern, match,
+			    auto_update, reponame, matchorigin));
+
+	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS )
+		return (do_source_ports(opt, limchar, pattern, match,
+			    matchorigin));
+
+	/* If none of -IPR were specified, and portsdir exists use
+	   that, otherwise fallback to remote. */
+
+	if (have_ports) {
+		opt |= VERSION_SOURCE_PORTS;
+		return (do_source_ports(opt, limchar, pattern, match,
+			    matchorigin));
 	} else {
-		portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
-		if (portsdir == NULL)
-			err(1, "Cannot get portsdir config entry!");
-
-		snprintf(portsdirmakefile, sizeof(portsdirmakefile),
-		    "%s/Makefile", portsdir);
-
-		have_ports = (stat(portsdirmakefile, &sb) == 0 && S_ISREG(sb.st_mode));
-
-		/* If none of -IPR were specified, and portsdir exists use that,
-		   otherwise fallback to remote. */
-		if ((opt & (VERSION_SOURCE_PORTS|VERSION_SOURCE_REMOTE|VERSION_SOURCE_INDEX)) == 0) {
-			if (have_ports)
-				opt |= VERSION_SOURCE_PORTS;
-			else
-				opt |= VERSION_SOURCE_REMOTE;
-		}
-
-		if (!have_ports && (opt & (VERSION_SOURCE_INDEX|VERSION_SOURCE_PORTS)))
-			err(1, "Unable to open ports directory %s", portsdir);
-
-		/* Only force remote mode if looking up remote, otherwise
-		   user is forced to have a repo.sqlite */
-		if (opt & VERSION_SOURCE_REMOTE) {
-			if (auto_update) {
-
-				retcode = pkgcli_update(false);
-				if (retcode != EPKG_OK)
-					return (retcode);
-			}
-			if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
-				return (EX_IOERR);
-		} else
-			if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
-				return (EX_IOERR);
-
-		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {
-			pkgdb_close(db);
-			warnx("Cannot get a read lock on a database, it is locked by another process");
-			return (EX_TEMPFAIL);
-		}
-
-		if ((it = pkgdb_query(db, pattern, match)) == NULL)
-			goto cleanup;
-
-		if (opt & VERSION_SOURCE_INDEX) {
-			uname(&u);
-			rel_major_ver = (int) strtol(u.release, NULL, 10);
-			snprintf(indexpath, sizeof(indexpath), "%s/INDEX-%d", portsdir, rel_major_ver);
-			indexfile = fopen(indexpath, "r");
-			if (!indexfile) {
-				warnx("Unable to open %s!", indexpath);
-				retcode = EX_IOERR;
-				goto cleanup;
-			}
-
-			while ((linelen = getline(&line, &linecap, indexfile)) > 0) {
-				/* line is pkgname|portdir|... */
-				buf = strchr(line, '|');
-				buf[0] = '\0';
-				buf++;
-				version = strrchr(line, '-');
-				version[0] = '\0';
-				version++;
-				buf = strchr(buf, '|');
-				buf[0] = '\0';
-				buf--;
-				/* go backward to get the last two dirs of portsdir */
-				while (buf[0] != '/')
-					buf--;
-				buf--;
-				while (buf[0] != '/')
-					buf--;
-				buf++;
-
-				entry = malloc(sizeof(struct index_entry));
-				entry->version = strdup(version);
-				entry->origin = strdup(buf);
-				HASH_ADD_KEYPTR(hh, indexhead, entry->origin, strlen(entry->origin), entry);
-			}
-			free(line);
-			fclose(indexfile);
-		}
-
-		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			pkg_get(pkg, PKG_ORIGIN, &origin);
-
-			/* If -O was specific, check if this origin matches */
-			if ((opt & VERSION_WITHORIGIN) && strcmp(origin, matchorigin) != 0)
-				continue;
-
-			if (opt & VERSION_SOURCE_INDEX) {
-				HASH_FIND_STR(indexhead, origin, entry);
-				if (entry != NULL)
-					print_version(pkg, "index", entry->version, limchar, opt);
-			} else if (opt & VERSION_SOURCE_PORTS) {
-				cmd = sbuf_new_auto();
-				sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null", portsdir, origin);
-				sbuf_finish(cmd);
-
-				if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
-					buf = sbuf_data(res);
-					while (*buf != '\0') {
-						if (*buf == '\n') {
-							*buf = '\0';
-							break;
-						}
-						buf++;
-					}
-					print_version(pkg, "port", sbuf_data(res), limchar, opt);
-					sbuf_delete(res);
-				} else {
-					print_version(pkg, "port", NULL, limchar, opt);
-				}
-				sbuf_delete(cmd);
-			} else if (opt & VERSION_SOURCE_REMOTE) {
-				if ((it_remote = pkgdb_rquery(db, origin, MATCH_EXACT, reponame)) == NULL)
-					return (EX_IOERR);
-				if (pkgdb_it_next(it_remote, &pkg_remote, PKG_LOAD_BASIC) == EPKG_OK) {
-					pkg_get(pkg_remote, PKG_VERSION, &version_remote);
-					print_version(pkg, "remote", version_remote, limchar, opt);
-				} else {
-					print_version(pkg, "remote", NULL, limchar, opt);
-				}
-				pkgdb_it_free(it_remote);
-			}
-		}
-	}
-	
-cleanup:
-	HASH_ITER(hh, indexhead, entry, tmp) {
-		HASH_DEL(indexhead, entry);
-		free(entry->origin);
-		free(entry->version);
-		free(entry);
+		opt |= VERSION_SOURCE_REMOTE;
+		return (do_source_remote(opt, limchar, pattern, match,
+			    auto_update, reponame, matchorigin));
 	}
 
-	pkg_free(pkg);
-	pkg_free(pkg_remote);
-	pkgdb_it_free(it);
-	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-	pkgdb_close(db);
-
-	return (retcode);
+	/* NOTREACHED */
+	return (EX_SOFTWARE);
 }
+/*
+ * That's All Folks!
+ */
