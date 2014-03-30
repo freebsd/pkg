@@ -104,7 +104,7 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_STRING,
-		"INDEXFILE"
+		"INDEXFILE",
 		INDEXFILE,
 		"Filename of the ports INDEX",
 	},
