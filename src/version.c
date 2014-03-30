@@ -550,7 +550,6 @@ exec_version(int argc, char **argv)
 {
 	unsigned int	 opt = 0;
 	char		 limchar = '-';
-	const char	*origin;
 	const char	*matchorigin = NULL;
 	const char	*reponame = NULL;
 	bool		 auto_update;
