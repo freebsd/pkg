@@ -275,7 +275,7 @@ hash_indexfile(const char *indexfilename)
 
 	indexfile = fopen(indexfilename, "r");
 	if (!indexfile)
-		err(EX_NOINPUT, "Unable to open %s!", indexfilename);
+		err(EX_NOINPUT, "Unable to open %s", indexfilename);
 
 	while (getline(&line, &linecap, indexfile) > 0) {
 		/* line is pkgname|portdir|... */
