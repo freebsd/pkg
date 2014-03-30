@@ -265,10 +265,11 @@ hash_indexfile(const char *indexfilename)
 	FILE			*indexfile;
 	struct index_entry	*indexhead = NULL;
 	struct index_entry	*entry;
-	char			*p, *version, *origin;
-	char			*line;
+	char			*version, *origin;
+	char			*line = NULL, *l, *p;
+	size_t			 linecap = 0;
 	int			 dirs;
-	size_t			 linecap;
+
 
 	/* Create a hash table of all the package names and port
 	 * directories from the index file. */
@@ -280,20 +281,23 @@ hash_indexfile(const char *indexfilename)
 	while (getline(&line, &linecap, indexfile) > 0) {
 		/* line is pkgname|portdir|... */
 
-		version = strsep(&line, "|");
-		origin = strsep(&line, "|");
-		
+		l = line;
+
+		version = strsep(&l, "|");
 		version = strrchr(version, '-');
 		version[0] = '\0';
 		version++;
 
-		for (dirs = 0, p = strchr(line, '|');
-		     p > origin && dirs < 2;
-		     p--) {
-			if ( p[-1] == '/' )
+		origin = strsep(&l, "|");
+		for (dirs = 0, p = l; p > origin; p--) {
+			if ( p[-1] == '/' ) {
 				dirs++;
+				if (dirs == 2) {
+					origin = p;
+					break;
+				}
+			}
 		}
-		origin = p;
 
 		entry = malloc(sizeof(struct index_entry));
 		if (entry != NULL) {
@@ -332,17 +336,18 @@ free_index(struct index_entry *indexhead)
 
 static int
 do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
-		const char *indexfile, const char *matchorigin)
+		int argc, char ** restrict argv, const char *matchorigin)
 {
 	char			 filebuf[MAXPATHLEN];
 	struct index_entry	*indexhead;
 	struct index_entry	*entry;
-	struct pkgdb		*db;
+	struct pkgdb		*db = NULL;
 	struct pkgdb_it		*it = NULL;
 	struct pkg		*pkg = NULL;
+	const char		*indexfile;
 	const char		*origin;
 
-	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_INDEX ) {
+	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_INDEX || argc > 1 ) {
 		usage_version();
 		return (EX_USAGE);
 	}
@@ -351,8 +356,10 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 	   that as the name of the INDEX file to use.  Otherwise,
 	   search for INDEX-N within the ports tree */
 
-	if (indexfile == NULL) 
+	if (argc == 0)
 		indexfile = indexfilename(filebuf, sizeof(filebuf));
+	else
+		indexfile = argv[0];
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
@@ -653,7 +660,7 @@ exec_version(int argc, char **argv)
 
 	if ( (opt & VERSION_SOURCE_INDEX) == VERSION_SOURCE_INDEX )
 		return (do_source_index(opt, limchar, pattern, match,
-			    (argc > 0 ? argv[0] : NULL), matchorigin));
+			    argc, argv, matchorigin));
 
 	if ( (opt & VERSION_SOURCE_REMOTE) == VERSION_SOURCE_REMOTE )
 		return (do_source_remote(opt, limchar, pattern, match,
