@@ -2,16 +2,17 @@ m4_define([maj_ver], [1])
 m4_define([med_ver], [3])
 m4_define([min_ver], [0])
 m4_define([api_ver], [m4_eval(maj_ver * 1000000 + med_ver * 1000 + min_ver)])
-m4_define([pkg_version], [maj_ver.med_ver.min_ver.a4])
+m4_define([pkg_version], [maj_ver.med_ver.min_ver.a5])
 
 AC_INIT([pkg],[pkg_version],[https://github.com/freebsd/pkg],[pkg])
 AC_CONFIG_SRCDIR([configure.ac])
 AM_INIT_AUTOMAKE([1.11 foreign -Wno-portability no-dist-gzip dist-xz])
-#AM_SILENT_RULES([yes])
+AM_SILENT_RULES([yes])
 
 AC_PROG_CC_C99
 LT_INIT()
 AC_CONFIG_MACRO_DIR([m4])
+AX_CFLAGS_WARN_ALL
 
 AC_C_CONST
 AC_TYPE_SIZE_T

@@ -73,7 +73,7 @@ exec_fetch(int argc, char **argv)
 			match = MATCH_ALL;
 			break;
 		case 'd':
-			f |= PKG_FLAG_WITH_DEPS;
+			f |= PKG_FLAG_WITH_DEPS | PKG_FLAG_RECURSIVE;
 			break;
 		case 'g':
 			match = MATCH_GLOB;

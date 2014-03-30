@@ -642,7 +642,7 @@ populate_keywords(struct plist *p)
 static void
 keyword_free(struct keyword *k)
 {
-	LL_FREE(k->actions, action, free);
+	LL_FREE(k->actions, free);
 
 	free(k);
 }
@@ -1016,9 +1016,9 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 	flush_script_buffer(pplist.post_upgrade_buf, pkg,
 	    PKG_SCRIPT_POST_UPGRADE);
 
-	HASH_FREE(pplist.hardlinks, hardlinks, free);
+	HASH_FREE(pplist.hardlinks, free);
 
-	HASH_FREE(pplist.keywords, keyword, keyword_free);
+	HASH_FREE(pplist.keywords, keyword_free);
 
 	if (pplist.pkgdep != NULL)
 		free(pplist.pkgdep);

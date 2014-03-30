@@ -925,7 +925,7 @@ pkg_shutdown(void)
 	}
 
 	ucl_object_unref(config);
-	HASH_FREE(repos, pkg_repo, pkg_repo_free);
+	HASH_FREE(repos, pkg_repo_free);
 
 	parsed = false;
 

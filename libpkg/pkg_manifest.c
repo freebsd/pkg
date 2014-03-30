@@ -164,7 +164,7 @@ pkg_manifest_keys_new(struct pkg_manifest_key **key)
 
 static void
 pmk_free(struct pkg_manifest_key *key) {
-	HASH_FREE(key->parser, dataparser, free);
+	HASH_FREE(key->parser, free);
 
 	free(key);
 }
@@ -175,7 +175,7 @@ pkg_manifest_keys_free(struct pkg_manifest_key *key)
 	if (key == NULL)
 		return;
 
-	HASH_FREE(key, pkg_manifest_key, pmk_free);
+	HASH_FREE(key, pmk_free);
 }
 
 static int
@@ -845,7 +845,6 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	struct pkg_user		*user     = NULL;
 	struct pkg_group	*group    = NULL;
 	struct pkg_shlib	*shlib    = NULL;
-	struct pkg_note		*note     = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_provide	*provide  = NULL;
 	struct sbuf		*tmpsbuf  = NULL;

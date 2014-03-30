@@ -27,6 +27,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/stat.h>
 
 #include <stdio.h>
 #include <pkg.h>
@@ -40,9 +41,12 @@
 void
 usage_which(void)
 {
-	fprintf(stderr, "Usage: pkg which [-qgo] <file>\n\n");
+	fprintf(stderr, "Usage: pkg which [-qgop] <file>\n\n");
 	fprintf(stderr, "For more information see 'pkg help which'.\n");
 }
+
+static bool is_there(char *);
+int get_match(char **, char *, char *);
 
 int
 exec_which(int argc, char **argv)
@@ -51,12 +55,16 @@ exec_which(int argc, char **argv)
 	struct pkgdb_it *it = NULL;
 	struct pkg *pkg = NULL;
 	char pathabs[MAXPATHLEN];
+	char *p, *path, *match;
 	int ret = EPKG_OK, retcode = EX_SOFTWARE;
 	int ch;
+	int res, pathlen;
 	bool orig = false;
 	bool glob = false;
+	bool search = false;
+	bool search_s = false;
 
-	while ((ch = getopt(argc, argv, "qgo")) != -1) {
+	while ((ch = getopt(argc, argv, "qgop")) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
@@ -67,6 +75,9 @@ exec_which(int argc, char **argv)
 		case 'o':
 			orig = true;
 			break;
+		case 'p':
+			search_s = true;
+			break;
 		default:
 			usage_which();
 			return (EX_USAGE);
@@ -76,16 +87,9 @@ exec_which(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (argc != 1) {
+	if (argc < 1) {
 		usage_which();
 		return (EX_USAGE);
-	}
-
-	if (!glob)
-		absolutepath(argv[0], pathabs, sizeof(pathabs));
-	else {
-		if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs))
-			return (EX_USAGE);
 	}
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
@@ -98,32 +102,123 @@ exec_which(int argc, char **argv)
 		return (EX_TEMPFAIL);
 	}
 
-	if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL) {
-		retcode = EX_IOERR;
-		goto cleanup;
+	if (search_s) {
+		if ((path = getenv("PATH")) == NULL) {
+			printf("$PATH is not set, falling back to non-search behaviour\n");
+			search_s = false;
+		} else {
+			pathlen = strlen(path) + 1;
+		}
 	}
 
-	while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
-		retcode = EX_OK;
-		if (quiet && orig)
-			pkg_printf("%o\n", pkg);
-		else if (quiet && !orig)
-			pkg_printf("%n-%v\n", pkg, pkg);
-		else if (!quiet && orig)
-			pkg_printf("%S was installed by package %o\n", pathabs, pkg);
-		else if (!quiet && !orig)
-			pkg_printf("%S was installed by package %n-%v\n", pathabs, pkg, pkg);
+	while (argc >= 1) {
+		retcode = EX_SOFTWARE;
+		if (search_s) {
+			if ((argv[0][0] == '.') || (argv[0][0] == '/')) {
+				search = false;
+			} else {
+				search = true;
+
+				if (strlen(argv[0]) >= FILENAME_MAX) {
+					retcode = EX_USAGE;
+					goto cleanup;
+				}
+
+				p = malloc(pathlen);
+				if (p == NULL) {
+					retcode = EX_OSERR;
+					goto cleanup;
+				}
+				strlcpy(p, path, pathlen);
+
+				match = NULL;
+				res = get_match(&match, p, argv[0]);
+				free(p);
+
+				if (res == (EX_USAGE)) {
+					printf("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
+					search = false;
+				} else if (res == (EX_OSERR)) {
+					retcode = EX_OSERR;
+					goto cleanup;
+				} else {
+					absolutepath(match, pathabs, sizeof(pathabs));
+					free(match);
+				}
+			}
+		}
+
+		if (!glob && !search)
+			absolutepath(argv[0], pathabs, sizeof(pathabs));
+		else if (!search) {
+			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs))
+				retcode = EX_USAGE;
+				goto cleanup;
+		}
+
+
+		if ((it = pkgdb_query_which(db, pathabs, glob)) == NULL) {
+			retcode = EX_IOERR;
+			goto cleanup;
+		}
+
+		pkg = NULL;
+		while ((ret = pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC)) == EPKG_OK) {
+			retcode = EX_OK;
+			if (quiet && orig)
+				pkg_printf("%o\n", pkg);
+			else if (quiet && !orig)
+				pkg_printf("%n-%v\n", pkg, pkg);
+			else if (!quiet && orig)
+				pkg_printf("%S was installed by package %o\n", pathabs, pkg);
+			else if (!quiet && !orig)
+				pkg_printf("%S was installed by package %n-%v\n", pathabs, pkg, pkg);
+		}
+
+		if (retcode != EX_OK && !quiet)
+			printf("%s was not found in the database\n", pathabs);
+
+		pkg_free(pkg);
+		pkgdb_it_free(it);
+
+		argc--;
+		argv++;
+
 	}
 
-	if (retcode != EX_OK && !quiet)
-		printf("%s was not found in the database\n", pathabs);
-
-	pkg_free(pkg);
-	pkgdb_it_free(it);
-
-cleanup:
-	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-	pkgdb_close(db);
+	cleanup:
+		pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+		pkgdb_close(db);
 
 	return (retcode);
+}
+
+
+static bool
+is_there(char *candidate)
+{
+	return (access(candidate, F_OK) == 0);
+}
+
+int
+get_match(char **pathabs, char *path, char *filename)
+{
+	char candidate[PATH_MAX];
+	const char *d;
+	int len;
+
+	while ((d = strsep(&path, ":")) != NULL) {
+		if (snprintf(candidate, sizeof(candidate), "%s/%s", d,
+		    filename) >= (int)sizeof(candidate))
+			continue;
+		if (is_there(candidate)) {
+			len = strlen(candidate) + 1;
+			*pathabs = malloc(len);
+			if (*pathabs == NULL)
+				return (EX_OSERR);
+			strlcpy(*pathabs, candidate, len);
+			return (EX_OK);
+		}
+	}
+	return (EX_USAGE);
 }

@@ -617,7 +617,7 @@ pkg_parse_conflicts_file(FILE *f, sqlite3 *sqlite)
 static int
 pkg_update_incremental(const char *name, struct pkg_repo *repo, time_t *mtime)
 {
-	FILE *fmanifest = NULL, *fdigests = NULL, *fconflicts = NULL;
+	FILE *fmanifest = NULL, *fdigests = NULL /*, *fconflicts = NULL*/;
 	sqlite3 *sqlite = NULL;
 	struct pkg *pkg = NULL;
 	int rc = EPKG_FATAL;

@@ -629,7 +629,10 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 	case PKG_SOLVED_DELETE:
 		*oldsize += flatsize;
 
-		pkg_printf("\tRemoving %n-%v\n", new_pkg, new_pkg);
+		pkg_printf("\tRemoving %n-%v", new_pkg, new_pkg);
+		if (why != NULL)
+			printf(" (%s)", why);
+		printf("\n");
 		break;
 	case PKG_SOLVED_UPGRADE_REMOVE:
 		pkg_printf("\tRemoving old version of %n-%v\n", new_pkg, new_pkg);

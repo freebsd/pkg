@@ -62,8 +62,8 @@
 		ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
 
-#define HASH_FREE(data, type, free_func) do {      \
-	struct type *hf1, *hf2;                    \
+#define HASH_FREE(data, free_func) do {      \
+	__typeof(data) hf1, hf2;                    \
 	HASH_ITER(hh, data, hf1, hf2) {            \
 		HASH_DEL(data, hf1);               \
 		free_func(hf1);                    \
@@ -71,8 +71,8 @@
 	data = NULL;                               \
 } while (0)
 
-#define LL_FREE(head, type, free_func) do {   \
-	struct type *l1, *l2;                 \
+#define LL_FREE(head, free_func) do {   \
+	__typeof(head) l1, l2;                 \
 	LL_FOREACH_SAFE(head, l1, l2) {       \
 		LL_DELETE(head, l1);          \
 		free_func(l1);                \
@@ -148,8 +148,16 @@ struct pkg_dep {
 	UT_hash_handle	 hh;
 };
 
+enum pkg_conflict_type {
+	PKG_CONFLICT_ALL = 0,
+	PKG_CONFLICT_REMOTE_LOCAL,
+	PKG_CONFLICT_REMOTE_REMOTE,
+	PKG_CONFLICT_LOCAL_LOCAL
+};
+
 struct pkg_conflict {
 	struct sbuf		*origin;
+	enum pkg_conflict_type type;
 	UT_hash_handle	hh;
 };
 
@@ -225,6 +233,13 @@ struct pkg_job_seen {
 	UT_hash_handle hh;
 };
 
+struct pkg_job_provide {
+	struct pkg_job_universe_item *un;
+	const char *provide;
+	struct pkg_job_provide *next, *prev;
+	UT_hash_handle hh;
+};
+
 struct pkg_jobs {
 	struct pkg_job_universe_item *universe;
 	struct pkg_job_request	*request_add;
@@ -232,6 +247,7 @@ struct pkg_jobs {
 	struct pkg_solved *jobs;
 	struct pkg_job_seen *seen;
 	struct pkgdb	*db;
+	struct pkg_job_provide *provides;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
 	int		 solved;
@@ -402,7 +418,8 @@ int pkgdb_is_dir_used(struct pkgdb *db, const char *dir, int64_t *res);
 int pkg_conflicts_request_resolve(struct pkg_jobs *j);
 int pkg_conflicts_append_pkg(struct pkg *p, struct pkg_jobs *j);
 int pkg_conflicts_integrity_check(struct pkg_jobs *j);
-void pkg_conflicts_register(struct pkg *p1, struct pkg *p2);
+void pkg_conflicts_register(struct pkg *p1, struct pkg *p2,
+		enum pkg_conflict_type type);
 
 typedef void (*conflict_func_cb)(const char *, const char *, void *);
 int pkgdb_integrity_append(struct pkgdb *db, struct pkg *p,

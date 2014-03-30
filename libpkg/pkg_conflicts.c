@@ -134,10 +134,10 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 			pkg_conflicts_request_add_chain(&chain, req);
 
 			if (pkg_conflicts_request_resolve_chain(req->item->pkg, chain) != EPKG_OK) {
-				LL_FREE(chain, pkg_conflict_chain, free);
+				LL_FREE(chain, free);
 				return (EPKG_FATAL);
 			}
-			LL_FREE(chain, pkg_conflict_chain, free);
+			LL_FREE(chain, free);
 		}
 	}
 
@@ -145,7 +145,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 }
 
 void
-pkg_conflicts_register(struct pkg *p1, struct pkg *p2)
+pkg_conflicts_register(struct pkg *p1, struct pkg *p2, enum pkg_conflict_type type)
 {
 	struct pkg_conflict *c1, *c2, *test;
 	const char *o1, *o2;
@@ -156,6 +156,7 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2)
 	pkg_conflict_new(&c1);
 	pkg_conflict_new(&c2);
 	if (c1 != NULL && c2 != NULL) {
+		c1->type = c2->type = type;
 		HASH_FIND_STR(p1->conflicts, o2, test);
 		if (test == NULL) {
 			sbuf_set(&c1->origin, o2);
