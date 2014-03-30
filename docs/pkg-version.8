@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd March 30, 2014
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -48,6 +48,18 @@ These defaults can be overridden by specifying one of
 or
 .Fl I .
 .Pp
+When
+.Fl I
+is used, versions of installed packages will be compared to the
+versions listed in the file argument
+.Ar index ,
+or if that is not given explicitly, in the default ports index file
+(typically located as
+.Pa /usr/ports/INDEX-N ,
+where
+.Sy N
+is the OS major version number.)
+.Pp
 When comparing package versions the package name and a comparison character are printed:
 .Bl -tag -width indent
 .It Li =
@@ -74,8 +86,13 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl h
 Displays usage information
-.It Fl I
-Use INDEX file for determining if a package is out of date.
+.It Fl I Op Ar index
+Use
+.Pa index
+file for determining if a package is out of date.
+If no
+.Pa index
+file name is specified, uses the default index file.
 .It Fl P
 Use ports for determining if a package is out of date.
 This is the default if a ports tree exists.
@@ -161,8 +178,28 @@ See
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
+.It Ev INDEXFILE
+.It Ev INDEXDIR
 .It Ev PORTSDIR
 .El
+.Pp
+The default
+.Pa index
+file is searched for in
+.Ev INDEXDIR ,
+or if that is not set,
+.Ev PORTSDIR .
+.Ev INDEXFILE
+is the name of the 
+.Pa index
+relative to that directory.
+If
+.Ev INDEXFILE
+is not set, the default file name is
+.Pa INDEX- Sy N
+where
+.Sy N
+is the OS major version number.
 .Sh FILES
 See
 .Xr pkg.conf 5 .
