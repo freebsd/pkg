@@ -735,11 +735,12 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					cnt = 1;
 					LL_FOREACH(prhead, pr) {
 						/* For each provide */
-						pkg_get(pr->un->pkg, PKG_DIGEST, &digest);
+						pkg_get(pr->un->pkg, PKG_DIGEST, &digest, PKG_ORIGIN, &origin);
 						HASH_FIND(hd, problem->variables_by_digest, digest,
 								strlen(digest), var);
 						if (var == NULL) {
-							continue;
+							if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
+								continue;
 						}
 						/* XXX: select all its versions? */
 
