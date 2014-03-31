@@ -344,7 +344,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	int propagated;
 	struct pkg_solve_variable *var, *tvar;
 	int64_t unresolved = 0, iters = 0;
-	bool rc;
+	bool rc, backtrack;
 
 	struct _solver_tree_elt {
 		struct pkg_solve_variable *var;
@@ -368,8 +368,14 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	elt = solver_tree;
 
 	/* DPLL Algorithm */
-	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+	DL_FOREACH2(problem->variables_by_digest, var, hd.next) {
 		if (!var->resolved) {
+
+			if (backtrack) {
+				/* Shift var back */
+				var = tvar;
+				backtrack = false;
+			}
 
 			if (elt == NULL) {
 				/* Add new element to the backtracking queue */
@@ -383,6 +389,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 				elt->guess = -1;
 				DL_APPEND(solver_tree, elt);
 			}
+			assert (var == elt->var);
 
 			if (elt->guess == -1)
 				/* Guess true for installed packages and false otherwise */
@@ -416,8 +423,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 					var->guess = -1;
 					/* Go to the previous level */
 					elt = elt->prev;
-					tvar = var;
-					var = elt->var;
+					tvar = elt->var;
+					backtrack = true;
 					continue;
 				}
 			}
