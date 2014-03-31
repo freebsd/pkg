@@ -109,6 +109,11 @@ pkg_repo_fetch(struct pkg *pkg)
 	else
 		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
 
+	if (strncasecmp(packagesite, "file://", 7) == 0) {
+		pkg_set(pkg, PKG_REPOPATH, url + 7);
+		return (EPKG_OK);
+	}
+
 	retcode = pkg_fetch_file(repo, url, dest, 0);
 	fetched = 1;
 
