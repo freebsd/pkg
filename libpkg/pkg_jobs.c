@@ -1799,7 +1799,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 		target = ps->items[0]->jp->path;
 	}
 	else {
-		pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, new);
+		pkg_snprintf(path, sizeof(path), "%S/%u", cachedir, new);
 		target = path;
 	}
 
@@ -2031,8 +2031,8 @@ pkg_jobs_apply(struct pkg_jobs *j)
 			if (p->type != PKG_REMOTE)												\
 				continue;															\
 			int64_t pkgsize;														\
-			pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);				\
-			snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir, repopath);	\
+			pkg_get(p, PKG_PKGSIZE, &pkgsize);				\
+			pkg_snprintf(cachedpath, sizeof(cachedpath), "%S/%u", cachedir, p);	\
 			if (stat(cachedpath, &st) == -1)										\
 				dlsize += pkgsize;													\
 			else																	\
@@ -2062,7 +2062,6 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	struct stat st;
 	int64_t dlsize = 0;
 	const char *cachedir = NULL;
-	const char *repopath = NULL;
 	char cachedpath[MAXPATHLEN];
 	
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
@@ -2128,10 +2127,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 		else {
 			p = ps->items[0]->pkg;
 			if (p->type == PKG_REMOTE) {
-				const char *pkgrepopath;
-				pkg_get(p, PKG_REPOPATH, &pkgrepopath);
-				snprintf(path, sizeof(path), "%s/%s", cachedir,
-						pkgrepopath);
+				pkg_snprintf(path, sizeof(path), "%S/%u", cachedir, p);
 				if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
 					return (EPKG_FATAL);
 				p = pkg;
