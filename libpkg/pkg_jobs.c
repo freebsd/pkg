@@ -694,14 +694,14 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		if (unit != NULL)
 			continue;
 
-		/* Check both local and remote conflicts */
+		/* Check local and remote conflicts */
 		npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
 		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
+
 		npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
-		if (npkg == NULL) {
+		if (npkg == NULL)
 			continue;
-		}
 
 		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
@@ -713,24 +713,37 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			HASH_FIND_STR(j->provides, pkg_shlib_name(shlib), pr);
 			if (pr != NULL)
 				continue;
+
 			/* Not found, search in the repos */
 			it = pkgdb_find_shlib_provide(j->db, pkg_shlib_name(shlib), j->reponame);
 			if (it != NULL) {
 				npkg = NULL;
 				prhead = NULL;
 				while (pkgdb_it_next(it, &npkg, flags) == EPKG_OK) {
-					/* Skip seen packages */
-					pkg_get(npkg, PKG_DIGEST, &digest);
-					HASH_FIND_STR(j->seen, digest, seen);
-					if (seen == NULL) {
-						pkg_jobs_add_universe(j, npkg, recursive, false,
-								&unit);
-
-						/* Reset package to avoid freeing */
-						npkg = NULL;
+					pkg_get(npkg, PKG_DIGEST, &digest, PKG_ORIGIN, &origin);
+					/* Check for local packages */
+					HASH_FIND_STR(j->universe, origin, unit);
+					if (unit != NULL) {
+						if (pkg_need_upgrade (npkg, unit->pkg, false)) {
+							/* Remote provide is newer, so we can add it */
+							if (pkg_jobs_add_universe(j, npkg, recursive, false,
+																&unit) != EPKG_OK)
+								return (EPKG_FATAL);
+						}
 					}
-					else {
-						unit = seen->un;
+					/* Skip seen packages */
+					if (unit == NULL) {
+						HASH_FIND_STR(j->seen, digest, seen);
+						if (seen == NULL) {
+							pkg_jobs_add_universe(j, npkg, recursive, false,
+									&unit);
+
+							/* Reset package to avoid freeing */
+							npkg = NULL;
+						}
+						else {
+							unit = seen->un;
+						}
 					}
 
 					pr = calloc (1, sizeof (*pr));
