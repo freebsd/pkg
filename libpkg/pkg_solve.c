@@ -115,10 +115,19 @@ pkg_debug_print_rule (struct pkg_solve_item *rule)
 	sbuf_printf(sb, "%s", "rule: (");
 
 	LL_FOREACH(rule, it) {
-		sbuf_printf(sb, "%s%s%s%s", it->inverse ? "!" : "",
-				it->var->origin,
-				(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
-				it->next ? " | " : ")");
+		if (it->var->resolved) {
+			sbuf_printf(sb, "%s%s%s(%c)%s", it->inverse ? "!" : "",
+					it->var->origin,
+					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
+					(it->var->to_install) ? '+' : '-',
+					it->next ? " | " : ")");
+		}
+		else {
+			sbuf_printf(sb, "%s%s%s%s", it->inverse ? "!" : "",
+					it->var->origin,
+					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
+					it->next ? " | " : ")");
+		}
 	}
 	sbuf_finish(sb);
 	pkg_debug(2, "%s", sbuf_data(sb));
@@ -195,8 +204,13 @@ check_again:
 										it->var->priority,
 										it->var->to_install ? "install" : "delete");
 								pkg_debug_print_rule(unresolved);
+								resolved ++;
 								break;
 							}
+						}
+						if (resolved == 0) {
+							pkg_debug_print_rule(unresolved);
+							assert (resolved > 0);
 						}
 						solved_vars ++;
 						(*propagated) ++;
@@ -225,6 +239,7 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
 		if (var->nrules == 0) {
 			/* This variable is independent and should not change its state */
+			assert (var->rules == NULL);
 			var->to_install = (var->unit->pkg->type == PKG_INSTALLED);
 			var->resolved = true;
 			pkg_debug(2, "leave %s-%s(%d) to %s",
