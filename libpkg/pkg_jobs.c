@@ -635,9 +635,12 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				}
 				return (EPKG_FATAL);
 			}
+			/* Set automatic if no local package is found */
+			pkg_set(npkg, PKG_AUTOMATIC, (int64_t)true);
 		}
-		else if (j->type == PKG_JOBS_UPGRADE ||
-				j->type == PKG_JOBS_INSTALL) {
+		else if ((j->type == PKG_JOBS_UPGRADE ||
+				j->type == PKG_JOBS_INSTALL) &&
+				npkg->type == PKG_INSTALLED) {
 			/* For upgrade jobs we need to ensure that we do not have a newer version */
 			rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (rpkg != NULL) {
@@ -651,6 +654,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 		if (rpkg != NULL) {
+			/* Save automatic flag */
 			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
 			pkg_set(rpkg, PKG_AUTOMATIC, (int64_t)automatic);
 
