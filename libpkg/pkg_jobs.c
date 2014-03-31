@@ -626,6 +626,9 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			 * We have a package installed, but its dependencies are not,
 			 * try to search a remote dependency
 			 */
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			pkg_debug(1, "dependency %s of local package %s is not installed",
+					pkg_dep_get(d, PKG_DEP_ORIGIN), origin);
 			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (npkg == NULL) {
 				/* Cannot continue */
@@ -699,16 +702,33 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			continue;
 
 		/* Check local and remote conflicts */
-		npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
-		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-			return (EPKG_FATAL);
+		if (pkg->type == PKG_INSTALLED) {
+			/* Installed packages can conflict with remote ones */
+			npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+			if (npkg == NULL)
+				continue;
 
-		npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
-		if (npkg == NULL)
-			continue;
+			if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+				return (EPKG_FATAL);
+		}
+		else {
+			/* Remote packages can conflict with remote and local */
+			npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
+			if (npkg == NULL)
+				continue;
 
-		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-			return (EPKG_FATAL);
+			if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+				return (EPKG_FATAL);
+
+			if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
+				npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+				if (npkg == NULL)
+					continue;
+
+				if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+					return (EPKG_FATAL);
+			}
+		}
 	}
 
 	/* For remote packages we should also handle shlib deps */
@@ -721,29 +741,44 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			/* Not found, search in the repos */
 			it = pkgdb_find_shlib_provide(j->db, pkg_shlib_name(shlib), j->reponame);
 			if (it != NULL) {
-				npkg = NULL;
+				rpkg = NULL;
 				prhead = NULL;
-				while (pkgdb_it_next(it, &npkg, flags) == EPKG_OK) {
-					pkg_get(npkg, PKG_DIGEST, &digest, PKG_ORIGIN, &origin);
+				while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
+					pkg_get(rpkg, PKG_DIGEST, &digest, PKG_ORIGIN, &origin);
 					/* Check for local packages */
 					HASH_FIND_STR(j->universe, origin, unit);
 					if (unit != NULL) {
-						if (pkg_need_upgrade (npkg, unit->pkg, false)) {
+						if (pkg_need_upgrade (rpkg, unit->pkg, false)) {
 							/* Remote provide is newer, so we can add it */
-							if (pkg_jobs_add_universe(j, npkg, recursive, false,
+							if (pkg_jobs_add_universe(j, rpkg, recursive, false,
 																&unit) != EPKG_OK)
 								return (EPKG_FATAL);
+						}
+					}
+					else {
+						/* Maybe local package has just been not added */
+						npkg = get_local_pkg(j, origin, 0);
+						if (npkg != NULL) {
+							if (pkg_jobs_add_universe(j, npkg, recursive, false,
+									&unit) != EPKG_OK)
+								return (EPKG_FATAL);
+							if (pkg_need_upgrade (rpkg, npkg, false)) {
+								/* Remote provide is newer, so we can add it */
+								if (pkg_jobs_add_universe(j, rpkg, recursive, false,
+										&unit) != EPKG_OK)
+									return (EPKG_FATAL);
+							}
 						}
 					}
 					/* Skip seen packages */
 					if (unit == NULL) {
 						HASH_FIND_STR(j->seen, digest, seen);
 						if (seen == NULL) {
-							pkg_jobs_add_universe(j, npkg, recursive, false,
+							pkg_jobs_add_universe(j, rpkg, recursive, false,
 									&unit);
 
 							/* Reset package to avoid freeing */
-							npkg = NULL;
+							rpkg = NULL;
 						}
 						else {
 							unit = seen->un;
