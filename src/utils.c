@@ -332,7 +332,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("\n");
 			break;
 		case INFO_CATEGORIES:
-			if (pkg_list_count(pkg, PKG_CATEGORIES) > 0) {
+			if (pkg_object_count(pkg_categories(pkg)) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Categories");
 				pkg_printf("%C%{%Cn%| %}\n", pkg);
@@ -393,7 +393,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 			}
 			break;
 		case INFO_ANNOTATIONS:
-			if (pkg_list_count(pkg, PKG_ANNOTATIONS) > 0) {
+			if (pkg_object_count(pkg_annotations(pkg)) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Annotations");
 				if (quiet)
