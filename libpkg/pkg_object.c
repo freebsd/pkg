@@ -103,3 +103,8 @@ pkg_object_int(pkg_object *o)
 	return (ucl_object_toint(o));
 }
 
+unsigned
+pkg_object_count(pkg_object *o)
+{
+	return (UCL_COUNT(o))
+}

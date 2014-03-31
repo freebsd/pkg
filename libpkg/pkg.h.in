@@ -1291,6 +1291,7 @@ const char *pkg_object_string(pkg_object *o);
 void pkg_object_free(pkg_object *o);
 const char *pkg_object_key(pkg_object *);
 pkg_object *pkg_object_iterate(pkg_object *, pkg_iter *);
+unsigned pkg_object_count(pkg_object *);
 const char *pkg_object_dump(pkg_object *o);
 const char *pkg_config_dump(void);
 
