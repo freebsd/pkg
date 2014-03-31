@@ -160,8 +160,10 @@ check_again:
 					ret = false;
 					LL_FOREACH(unresolved, it) {
 						if (it->var->resolved) {
-							if (PKG_SOLVE_CHECK_ITEM(it))
+							if (PKG_SOLVE_CHECK_ITEM(it)) {
 								ret = true;
+								break;
+							}
 						}
 					}
 					if (!ret) {
@@ -188,12 +190,15 @@ check_again:
 					ret = false;
 					LL_FOREACH(unresolved, it) {
 						if (it->var->resolved) {
-							if (PKG_SOLVE_CHECK_ITEM(it))
+							if (PKG_SOLVE_CHECK_ITEM(it)) {
 								ret = true;
+								break;
+							}
 						}
 					}
 					if (!ret) {
 						/* This is a unit */
+						int resolved = 0;
 						LL_FOREACH(unresolved, it) {
 							if (!it->var->resolved) {
 								it->var->to_install = (!it->inverse);
