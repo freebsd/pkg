@@ -127,9 +127,11 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 			STAILQ_INSERT_TAIL(&head, e, next);
 			foundone = true;
 		}
-		if (!foundone)
+		if (!foundone) {
 			warnx("No installed package matching \"%s\" found\n",
 			    argv[i]);
+			retcode++;
+		}
 
 		pkgdb_it_free(it);
 		if (ret != EPKG_END)
