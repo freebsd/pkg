@@ -329,7 +329,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 {
 	struct sbuf		*output = sbuf_new_auto();
 	struct pkg_dep		*dep    = NULL;
-	struct pkg_category	*cat    = NULL;
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
 	struct pkg_dir		*dir    = NULL;
