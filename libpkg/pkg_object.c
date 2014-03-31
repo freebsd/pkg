@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <ucl.h>
 #include "pkg.h"
+#include "private/pkg.h"
 
 const char *
 pkg_object_dump(pkg_object *o)
@@ -106,5 +107,5 @@ pkg_object_int(pkg_object *o)
 unsigned
 pkg_object_count(pkg_object *o)
 {
-	return (o->len);
+	return (UCL_COUNT(o));
 }
