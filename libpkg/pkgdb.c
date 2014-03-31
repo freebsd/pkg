@@ -2569,12 +2569,13 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	struct pkg_file		*file = NULL;
 	struct pkg_dir		*dir = NULL;
 	struct pkg_option	*option = NULL;
-	struct pkg_category	*category = NULL;
 	struct pkg_license	*license = NULL;
 	struct pkg_user		*user = NULL;
 	struct pkg_group	*group = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkgdb_it		*it = NULL;
+	pkg_object		*obj;
+	pkg_iter		 iter;
 
 	sqlite3			*s;
 
@@ -2760,11 +2761,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert categories
 	 */
 
-	while (pkg_categories(pkg, &category) == EPKG_OK) {
-		const char	*pkg_cat = pkg_category_name(category);
-		ret = run_prstmt(CATEGORY1, pkg_cat);
+	iter = NULL;
+	while ((obj = pkg_object_iterate(pkg->categories, &iter))) {
+		ret = run_prstmt(CATEGORY1, pkg_object_string(obj));
 		if (ret == SQLITE_DONE)
-			ret = run_prstmt(CATEGORY2, package_id, pkg_cat);
+			ret = run_prstmt(CATEGORY2, package_id, pkg_object_string(obj));
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;

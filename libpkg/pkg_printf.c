@@ -930,13 +930,14 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES),
 				   p));
 	else {
-		struct pkg_category	*cat = NULL;
-		int			 count;
+		pkg_object	*cat;
+		pkg_iter	 it = NULL;
+		int		 count;
 
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
-		while (pkg_categories(pkg, &cat) == EPKG_OK) {
+		while ((cat = pkg_object_iterate(pkg->categories, &it))) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     cat, count, PP_C);
@@ -955,9 +956,9 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_category_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_category	*cat = data;
+	pkg_object	*o = (pkg_object *)data;
 
-	return (string_val(sbuf, pkg_category_name(cat), p));
+	return (string_val(sbuf, pkg_object_string(o), p));
 }
 
 /*

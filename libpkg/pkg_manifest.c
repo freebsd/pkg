@@ -840,7 +840,6 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	struct pkg_option	*option   = NULL;
 	struct pkg_file		*file     = NULL;
 	struct pkg_dir		*dir      = NULL;
-	struct pkg_category	*category = NULL;
 	struct pkg_license	*license  = NULL;
 	struct pkg_user		*user     = NULL;
 	struct pkg_group	*group    = NULL;
@@ -916,10 +915,10 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	obj = ucl_object_insert_key(top, map, "deps", 4, false);
 
 	pkg_debug(4, "Emitting categories");
-	seq = NULL;
-	while (pkg_categories(pkg, &category) == EPKG_OK)
-		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_category_name(category)));
-	obj = ucl_object_insert_key(top, seq, "categories", 10, false);
+	
+	if (pkg->categories != NULL)
+		obj = ucl_object_insert_key(top,
+		    ucl_object_ref(pkg->categories), "categories", 10, false);
 
 	pkg_debug(4, "Emitting users");
 	seq = NULL;
@@ -973,7 +972,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 
 	if (pkg->annotations != NULL)
 		obj = ucl_object_insert_key(top,
-		    ucl_object_ref(map), "annotations", 11, false);
+		    ucl_object_ref(pkg->annotations), "annotations", 11, false);
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {

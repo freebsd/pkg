@@ -425,14 +425,6 @@ pkg_files(const struct pkg *pkg, struct pkg_file **f)
 }
 
 int
-pkg_categories(const struct pkg *pkg, struct pkg_category **c)
-{
-	assert(pkg != NULL);
-
-	HASH_NEXT(pkg->categories, (*c));
-}
-
-int
 pkg_dirs(const struct pkg *pkg, struct pkg_dir **d)
 {
 	assert(pkg != NULL);
@@ -708,28 +700,26 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 int
 pkg_addcategory(struct pkg *pkg, const char *name)
 {
-	struct pkg_category *c = NULL;
+	pkg_object *o = NULL;
+	pkg_iter iter = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	HASH_FIND_STR(pkg->categories, name, c);
-	if (c != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
-			pkg_emit_error("duplicate category listing: %s, fatal (developer mode)", name);
-			return (EPKG_FATAL);
-		} else {
-			pkg_emit_error("duplicate category listing: %s, ignoring", name);
-			return (EPKG_OK);
+	while ((o = (pkg_object_iterate(pkg->categories, &iter)))) {
+		if (strcmp(pkg_object_string(o), name) == 0) {
+			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+				pkg_emit_error("duplicate category listing: %s, fatal (developer mode)", name);
+				return (EPKG_FATAL);
+			} else {
+				pkg_emit_error("duplicate category listing: %s, ignoring", name);
+				return (EPKG_OK);
+			}
 		}
 	}
 
-	pkg_category_new(&c);
-
-	sbuf_set(&c->name, name);
-
-	HASH_ADD_KEYPTR(hh, pkg->categories, pkg_category_name(c),
-	    strlen(pkg_category_name(c)), c);
+	o = ucl_object_fromstring_common(name, strlen(name), 0);
+	pkg->categories = ucl_array_append(pkg->categories, o);
 
 	return (EPKG_OK);
 }
@@ -1112,6 +1102,14 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 }
 
 pkg_object *
+pkg_categories(const struct pkg *pkg)
+{
+	assert (pkg != NULL);
+
+	return (pkg->categories);
+}
+
+pkg_object *
 pkg_annotations(const struct pkg *pkg)
 {
 	assert(pkg != NULL);
@@ -1160,7 +1158,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_OPTIONS:
 		return (HASH_COUNT(pkg->options));
 	case PKG_CATEGORIES:
-		return (HASH_COUNT(pkg->categories));
+		return (UCL_COUNT(pkg->categories));
 	case PKG_FILES:
 		return (HASH_COUNT(pkg->files));
 	case PKG_DIRS:
@@ -1204,7 +1202,10 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_CATEGORIES:
-		HASH_FREE(pkg->categories, free);
+		if (pkg->categories != NULL) {
+			ucl_object_unref(pkg->categories);
+			pkg->categories = NULL;
+		}
 		pkg->flags &= ~PKG_LOAD_CATEGORIES;
 		break;
 	case PKG_FILES:

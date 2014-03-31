@@ -354,8 +354,10 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		while (pkg_categories(pkg, &cat) == EPKG_OK) {
-			format_str(pkg, output, qstr, cat);
+		obj = pkg_categories(pkg);
+		it = NULL;
+		while ((o = pkg_object_iterate(obj, &it))) {
+			format_str(pkg, output, qstr, o);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
