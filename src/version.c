@@ -484,6 +484,47 @@ cleanup:
 	return (retcode);
 }
 
+int
+exec_buf(struct sbuf *cmd) {
+	FILE *fp;
+	char buf[BUFSIZ];
+
+	if ((fp = popen(sbuf_data(cmd), "r")) == NULL)
+		return (0);
+
+	sbuf_clear(cmd);
+	while (fgets(buf, BUFSIZ, fp) != NULL)
+		sbuf_cat(cmd, buf);
+
+	pclose(fp);
+	sbuf_finish(cmd);
+
+	return (sbuf_len(cmd));
+}
+
+static const char *
+port_version(struct sbuf *cmd, const char *portsdir, const char *origin)
+{
+	char	*output;
+	char	*version;
+
+	/* Validate the port origin -- check the SUBDIR settings
+	   in the ports and category Makefiles, then extract the
+	   version from the port itself. */
+
+	sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null",
+		    portsdir, origin);
+	sbuf_finish(cmd);
+
+	if (exec_buf(cmd) != 0) {
+		output = sbuf_data(cmd);
+		version = strsep(&output, "\n");
+	} else {
+		version = NULL;
+	}
+	return (version);
+}
+
 static int
 do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		const char *matchorigin, const char *portsdir)
@@ -492,9 +533,8 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
 	struct sbuf	*cmd;
-	struct sbuf	*res;
 	const char	*origin;
-	char		*buf;
+	const char	*version;
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_PORTS ) {
 		usage_version();
@@ -514,6 +554,8 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	if ((it = pkgdb_query(db, pattern, match)) == NULL)
 			goto cleanup;
 
+	cmd = sbuf_new_auto();
+
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ORIGIN, &origin);
 
@@ -522,21 +564,12 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		    strcmp(origin, matchorigin) != 0)
 			continue;
 
-		cmd = sbuf_new_auto();
-		sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null",
-			    portsdir, origin);
-		sbuf_finish(cmd);
-
-		if ((res = exec_buf(sbuf_data(cmd))) != NULL) {
-			buf = sbuf_data(res);
-			print_version(pkg, "port", strsep(&buf, "\n"), limchar,
-			    opt);
-			sbuf_delete(res);
-		} else {
-			print_version(pkg, "port", NULL, limchar, opt);
-		}
-		sbuf_delete(cmd);
+		version = port_version(cmd, portsdir, origin);
+		print_version(pkg, "port", version, limchar, opt);
+		sbuf_clear(cmd);
 	}
+
+	sbuf_delete(cmd);
 
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
