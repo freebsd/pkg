@@ -310,6 +310,27 @@ pkg_solve_test_guess(struct pkg_solve_problem *problem, struct pkg_solve_variabl
 	return (true);
 }
 
+/*
+ * Set initial guess based on a variable passed
+ */
+static bool
+pkg_solve_initial_guess(struct pkg_solve_variable *var)
+{
+	if (var->unit->pkg->type == PKG_INSTALLED) {
+		/* For local packages assume true if we have no upgrade */
+		if (var->unit->next == NULL && var->unit->prev == var->unit)
+			return (true);
+	}
+	else {
+		/* For remote packages we return true if they are upgrades for local ones */
+		if (var->unit->next != NULL || var->unit->prev != var->unit)
+			return (true);
+	}
+
+	/* Otherwise set initial guess to false */
+	return (false);
+}
+
 /**
  * Try to solve sat problem
  * @param rules incoming rules to solve
@@ -365,12 +386,13 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 
 			if (elt->guess == -1)
 				/* Guess true for installed packages and false otherwise */
-				var->guess = (var->unit->pkg->type == PKG_INSTALLED) ? true : false;
+				var->guess = pkg_solve_initial_guess(var);
 			else
 				/* For analyzed variables we can only inverse previous guess */
 				var->guess = !elt->guess;
 
 			unresolved ++;
+			iters ++;
 			if (!pkg_solve_test_guess(problem, var)) {
 				if (elt->guess == -1) {
 					/* This is free variable, so we can assign true or false to it */
