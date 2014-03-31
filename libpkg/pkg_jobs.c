@@ -593,6 +593,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	struct pkg_job_provide *pr, *prhead;
 	struct pkg_job_seen *seen;
 	int ret;
+	bool automatic = false;
 	const char *origin, *digest;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
@@ -646,13 +647,15 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				}
 			}
 		}
-		pkg_set(npkg, PKG_AUTOMATIC, (int64_t)true);
+
 		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 		if (rpkg != NULL) {
+			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
+			pkg_set(rpkg, PKG_AUTOMATIC, (int64_t)automatic);
+
 			if (pkg_jobs_add_universe(j, rpkg, recursive, false, NULL) != EPKG_OK)
 				return (EPKG_FATAL);
-			pkg_set(rpkg, PKG_AUTOMATIC, (int64_t)true);
 		}
 	}
 
