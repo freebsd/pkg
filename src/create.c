@@ -162,7 +162,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 	}
 
 cleanup:
-	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
 	return (retcode);
