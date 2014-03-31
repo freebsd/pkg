@@ -32,6 +32,9 @@
 const char *
 pkg_object_dump(pkg_object *o)
 {
+	if (o == NULL)
+		return ("");
+
 	return (ucl_object_emit(o, UCL_EMIT_CONFIG));
 }
 
@@ -44,6 +47,9 @@ pkg_object_free(pkg_object *o)
 const char *
 pkg_object_key(pkg_object *o)
 {
+	if (o == NULL)
+		return (NULL);
+
 	return (ucl_object_key(o));
 }
 
@@ -59,6 +65,10 @@ pkg_object_iterate(pkg_object *o, pkg_iter *it)
 pkg_object_t
 pkg_object_type(pkg_object *o)
 {
+
+	if (o == NULL)
+		return (PKG_NULL);
+
 	switch (o->type) {
 	case UCL_OBJECT:
 		return (PKG_OBJECT);
@@ -88,6 +98,9 @@ const char *
 pkg_object_string(pkg_object *o)
 {
 	const char *ret;
+
+	if (o == NULL)
+		return (NULL);
 
 	ret = ucl_object_tostring_forced(o);
 
