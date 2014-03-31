@@ -2569,7 +2569,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	struct pkg_file		*file = NULL;
 	struct pkg_dir		*dir = NULL;
 	struct pkg_option	*option = NULL;
-	struct pkg_license	*license = NULL;
 	struct pkg_user		*user = NULL;
 	struct pkg_group	*group = NULL;
 	struct pkg_conflict	*conflict = NULL;
@@ -2776,11 +2775,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 * Insert licenses
 	 */
 
-	while (pkg_licenses(pkg, &license) == EPKG_OK) {
-		if (run_prstmt(LICENSES1, pkg_license_name(license))
+	iter = NULL;
+	while ((obj = pkg_object_iterate(pkg->licenses, &iter))) {
+		if (run_prstmt(LICENSES1, pkg_object_string(obj))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(LICENSES2, package_id, pkg_license_name(license))
+		    run_prstmt(LICENSES2, package_id, pkg_object_string(obj))
 		    != SQLITE_DONE) {
 			ERROR_SQLITE(s);
 			goto cleanup;

@@ -1250,16 +1250,17 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_list_count(pkg, PKG_LICENSES),
+		return (list_count(sbuf, pkg_object_count(pkg_licenses(pkg)),
 				   p));
 	else {
-		struct pkg_license	*lic = NULL;
+		pkg_object	*lic;
+		pkg_iter	 iter = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
-		while (pkg_licenses(pkg, &lic) == EPKG_OK) {
+		while ((lic = pkg_object_iterate(pkg->licenses, &iter))) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     lic, count, PP_L);
@@ -1278,9 +1279,9 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 struct sbuf *
 format_license_name(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_license	*license = data;
+	pkg_object *o = (pkg_object *) data;
 
-	return (string_val(sbuf, pkg_license_name(license), p));
+	return (string_val(sbuf, pkg_object_string(o), p));
 }
 
 /*

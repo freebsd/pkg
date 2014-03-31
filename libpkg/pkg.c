@@ -364,14 +364,6 @@ pkg_set_from_file(struct pkg *pkg, pkg_attr attr, const char *path, bool trimcr)
 }
 
 int
-pkg_licenses(const struct pkg *pkg, struct pkg_license **l)
-{
-	assert(pkg != NULL);
-
-	HASH_NEXT(pkg->licenses, (*l));
-}
-
-int
 pkg_users(const struct pkg *pkg, struct pkg_user **u)
 {
 	assert(pkg != NULL);
@@ -475,35 +467,34 @@ pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
 int
 pkg_addlicense(struct pkg *pkg, const char *name)
 {
-	struct pkg_license *l = NULL;
+	pkg_object *o = NULL;
+	pkg_iter iter = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 	const char *pkgname;
 
-	if (pkg->licenselogic == LICENSE_SINGLE && HASH_COUNT(pkg->licenses) != 0) {
+	if (pkg->licenselogic == LICENSE_SINGLE && UCL_COUNT(pkg->licenses) != 0) {
 		pkg_get(pkg, PKG_NAME, &pkgname);
 		pkg_emit_error("%s have a single license which is already set",
 		    pkgname);
 		return (EPKG_FATAL);
 	}
 
-	HASH_FIND_STR(pkg->licenses, name, l);
-	if (l != NULL) {
-		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
-			pkg_emit_error("duplicate license listing: %s, fatal (developer mode)", name);
-			return (EPKG_FATAL);
-		} else {
-			pkg_emit_error("duplicate license listing: %s, ignoring", name);
-			return (EPKG_OK);
+	while ((o = pkg_object_iterate(pkg->licenses, &iter))) {
+		if (strcmp(pkg_object_string(o), name) == 0) {
+			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
+				pkg_emit_error("duplicate license listing: %s, fatal (developer mode)", name);
+				return (EPKG_FATAL);
+			} else {
+				pkg_emit_error("duplicate license listing: %s, ignoring", name);
+				return (EPKG_OK);
+			}
 		}
 	}
 
-	pkg_license_new(&l);
-
-	strlcpy(l->name, name, sizeof(l->name));
-
-	HASH_ADD_STR(pkg->licenses, name, l);
+	o = ucl_object_fromstring_common(name, strlen(name), 0);
+	pkg->licenses = ucl_array_append(pkg->licenses, o);
 
 	return (EPKG_OK);
 }
@@ -1102,6 +1093,14 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 }
 
 pkg_object *
+pkg_licenses(const struct pkg *pkg)
+{
+	assert (pkg != NULL);
+
+	return (pkg->licenses);
+}
+
+pkg_object *
 pkg_categories(const struct pkg *pkg)
 {
 	assert (pkg != NULL);
@@ -1154,7 +1153,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_RDEPS:
 		return (HASH_COUNT(pkg->rdeps));
 	case PKG_LICENSES:
-		return (HASH_COUNT(pkg->licenses));
+		return (UCL_COUNT(pkg->licenses));
 	case PKG_OPTIONS:
 		return (HASH_COUNT(pkg->options));
 	case PKG_CATEGORIES:
@@ -1194,7 +1193,10 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_LICENSES:
-		HASH_FREE(pkg->licenses, pkg_license_free);
+		if (pkg->licenses != NULL) {
+			ucl_object_unref(pkg->licenses);
+			pkg->licenses = NULL;
+		}
 		pkg->flags &= ~PKG_LOAD_LICENSES;
 		break;
 	case PKG_OPTIONS:

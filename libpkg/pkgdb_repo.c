@@ -472,7 +472,6 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 	lic_t			 licenselogic;
 	int			 ret;
 	struct pkg_dep		*dep      = NULL;
-	struct pkg_license	*license  = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_shlib	*shlib    = NULL;
 	pkg_object		*obj;
@@ -538,14 +537,12 @@ try_again:
 		}
 	}
 
-	license = NULL;
-	while (pkg_licenses(pkg, &license) == EPKG_OK) {
-		const char *lic_name = pkg_license_name(license);
-
-		ret = run_prepared_statement(LIC1, lic_name);
+	it = NULL;
+	while ((obj = pkg_object_iterate(pkg->licenses, &it))) {
+		ret = run_prepared_statement(LIC1, pkg_object_string(obj));
 		if (ret == SQLITE_DONE)
 			ret = run_prepared_statement(LIC2, package_id,
-					lic_name);
+			    pkg_object_string(obj));
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite);
 			return (EPKG_FATAL);

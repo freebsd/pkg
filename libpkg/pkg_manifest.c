@@ -840,7 +840,6 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	struct pkg_option	*option   = NULL;
 	struct pkg_file		*file     = NULL;
 	struct pkg_dir		*dir      = NULL;
-	struct pkg_license	*license  = NULL;
 	struct pkg_user		*user     = NULL;
 	struct pkg_group	*group    = NULL;
 	struct pkg_shlib	*shlib    = NULL;
@@ -890,10 +889,9 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	}
 
 	pkg_debug(4, "Emitting licenses");
-	seq = NULL;
-	while (pkg_licenses(pkg, &license) == EPKG_OK)
-		seq = ucl_array_append(seq, ucl_object_fromstring(pkg_license_name(license)));
-	obj = ucl_object_insert_key(top, seq, "licenses", 8, false);
+	if (pkg->categories != NULL)
+		obj = ucl_object_insert_key(top,
+		    ucl_object_ref(pkg->categories), "licenses", 8, false);
 
 	obj = ucl_object_insert_key(top, ucl_object_fromint(flatsize), "flatsize", 8, false);
 	if (pkgsize > 0)
@@ -915,7 +913,6 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	obj = ucl_object_insert_key(top, map, "deps", 4, false);
 
 	pkg_debug(4, "Emitting categories");
-	
 	if (pkg->categories != NULL)
 		obj = ucl_object_insert_key(top,
 		    ucl_object_ref(pkg->categories), "categories", 10, false);
