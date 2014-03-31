@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +28,8 @@
 
 #include <sys/stat.h>
 #include <sys/queue.h>
+/* For MIN */
+#include <sys/param.h>
 
 #include <assert.h>
 #include <err.h>
@@ -47,7 +50,7 @@ struct deletion_list {
 };
 
 struct sumlist {
-	char *sum;
+	char sum[PKG_FILE_CKSUM_CHARS + 1];
 	UT_hash_handle hh;
 };
 
@@ -118,6 +121,31 @@ delete_dellist(struct dl_head *dl)
 	return (retcode);
 }
 
+/*
+ * Extract hash from filename in format <name>-<version>-<hash>.txz
+ */
+static bool
+extract_filename_sum(const char *fname, char sum[])
+{
+	const char *dash_pos, *dot_pos;
+
+	dot_pos = strrchr(fname, '.');
+	if (dot_pos == NULL)
+		dot_pos = fname + strlen(fname);
+
+	dash_pos = strrchr(fname, '-');
+	if (dash_pos == NULL)
+		return (false);
+	else if (dot_pos < dash_pos)
+		dot_pos = fname + strlen(fname);
+
+	if (dot_pos - dash_pos != PKG_FILE_CKSUM_CHARS + 1)
+		return (false);
+
+	strlcpy(sum, dash_pos + 1, PKG_FILE_CKSUM_CHARS + 1);
+	return (true);
+}
+
 void
 usage_clean(void)
 {
@@ -136,14 +164,14 @@ exec_clean(int argc, char **argv)
 	FTSENT		*ent = NULL;
 	struct dl_head	dl = STAILQ_HEAD_INITIALIZER(dl);
 	const char	*cachedir, *sum;
-	char		*paths[2];
+	char		*paths[2], csum[PKG_FILE_CKSUM_CHARS + 1];
 	bool		 all = false;
 	bool		 dry_run = false;
 	bool		 yes, sumloaded = false;
 	int		 retcode;
 	int		 ret;
 	int		 ch;
-	size_t		 total = 0;
+	size_t		 total = 0, slen;
 	char		 size[7];
 	struct pkg_manifest_key *keys = NULL;
 
@@ -222,16 +250,20 @@ exec_clean(int argc, char **argv)
 			it = pkgdb_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
 			while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 				pkg_get(p, PKG_CKSUM, &sum);
+				slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
 				s = calloc(1, sizeof(struct sumlist));
-				s->sum = strdup(sum);
-				HASH_ADD_KEYPTR(hh, sumlist, s->sum, strlen(s->sum), s);
+				memcpy(s->sum, sum, slen);
+				s->sum[slen] = '\0';
+				HASH_ADD_STR(sumlist, sum, s);
 			}
 			pkgdb_it_free(it);
 			pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 			pkgdb_close(db);
 		}
 
-		HASH_FIND_STR(sumlist, ent->fts_name, s);
+		s = NULL;
+		if (extract_filename_sum(ent->fts_name, csum))
+			HASH_FIND_STR(sumlist, csum, s);
 		if (s == NULL) {
 			ret = add_to_dellist(&dl, ent->fts_path);
 			total += ent->fts_statp->st_size;
@@ -240,7 +272,6 @@ exec_clean(int argc, char **argv)
 	}
 	HASH_ITER(hh, sumlist, s, t) {
 		HASH_DEL(sumlist, s);
-		free(s->sum);
 		free(s);
 	}
 

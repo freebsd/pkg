@@ -1856,7 +1856,8 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	else {
 		pkg_snprintf(path, sizeof(path), "%R", new);
 		if (*path != '/')
-			pkg_snprintf(path, sizeof(path), "%S/%u", cachedir, new);
+			pkg_snprintf(path, sizeof(path), "%S/%n-%v-%z",
+					cachedir, new, new, new);
 		target = path;
 	}
 
@@ -2089,7 +2090,8 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				continue;															\
 			int64_t pkgsize;														\
 			pkg_get(p, PKG_PKGSIZE, &pkgsize);				\
-			pkg_snprintf(cachedpath, sizeof(cachedpath), "%S/%u", cachedir, p);	\
+			pkg_snprintf(cachedpath, sizeof(cachedpath), "%S/%n-%v-%z", \
+				cachedir, p, p, p);													\
 			if (stat(cachedpath, &st) == -1)										\
 				dlsize += pkgsize;													\
 			else																	\
@@ -2186,7 +2188,8 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			if (p->type == PKG_REMOTE) {
 				pkg_snprintf(path, sizeof(path), "%R", p);
 				if (*path != '/')
-					pkg_snprintf(path, sizeof(path), "%S/%u", cachedir, p);
+					pkg_snprintf(path, sizeof(path), "%S/%n-%v-%z",
+							cachedir, p, p, p);
 				if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
 					return (EPKG_FATAL);
 				p = pkg;

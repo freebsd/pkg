@@ -1638,4 +1638,22 @@ struct sbuf *pkg_sbuf_vprintf(struct sbuf * restrict sbuf,
 bool pkg_has_message(struct pkg *p);
 bool pkg_is_locked(const struct pkg * restrict p);
 
+
+/**
+ * Defines how many chars of checksum are there in a package's name
+ * We define this number as sufficient for 24k packages.
+ * To find out probability of collision it is possible to use the following
+ * python function to calculate 'birthday paradox' probability:
+ *  def bp(m, n):
+ *      power = -(n * n) / (2. * m)
+ *      return 1. - exp(power)
+ * 
+ * For our choice of 2^40 (or 10 hex characters) it is:
+ *  >>> bp(float(2 ** 40), 24500.)
+ *  0.00027292484660568217
+ * 
+ * And it is negligible probability
+ */ 
+#define PKG_FILE_CKSUM_CHARS 10
+
 #endif

@@ -155,7 +155,8 @@
  *
  * x
  * y
- * z
+ *
+ * z  pkg          short checksum
  */
 
 struct pkg_printf_fmt {
@@ -757,6 +758,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		true,
 		PP_ALL,
 		&format_checksum,
+	},
+	[PP_PKG_SHORT_CHECKSUM] =
+	{
+		'z',
+		'\0',
+		false,
+		true,
+		PP_ALL,
+		&format_short_checksum,
 	},
 	[PP_PKG_VERSION] =
 	{
@@ -1815,6 +1825,26 @@ format_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 
 	pkg_get(pkg, PKG_CKSUM, &checksum);
 	return (string_val(sbuf, checksum, p));
+}
+
+/*
+ * %z -- Package short checksum. string. Accepts field width, left align
+ */
+struct sbuf *
+format_short_checksum(struct sbuf *sbuf, const void *data, struct percent_esc *p)
+{
+	const struct pkg	*pkg = data;
+	const char		*checksum;
+	char	 csum[PKG_FILE_CKSUM_CHARS + 1];
+	int slen;
+
+	pkg_get(pkg, PKG_CKSUM, &checksum);
+
+	slen = MIN(PKG_FILE_CKSUM_CHARS, strlen(checksum));
+	memcpy(csum, checksum, slen);
+	csum[slen] = '\0';
+
+	return (string_val(sbuf, csum, p));
 }
 
 /*
