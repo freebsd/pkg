@@ -106,5 +106,5 @@ pkg_object_int(pkg_object *o)
 unsigned
 pkg_object_count(pkg_object *o)
 {
-	return (UCL_COUNT(o))
+	return (o->len);
 }
