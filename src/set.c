@@ -173,10 +173,10 @@ exec_set(int argc, char **argv)
 
 		if (!yes) {
 			if (pkg != NULL)
-				yes = query_yesno("Change origin from %S to %S for %n-%v? [y/N]: ",
+				yes = query_yesno(false, "Change origin from %S to %S for %n-%v? [y/N]: ",
 				    oldorigin, neworigin, pkg, pkg);
 			else
-				yes = query_yesno("Change origin from %S to %S for all dependencies? "
+				yes = query_yesno(false, "Change origin from %S to %S for all dependencies? "
 				    "[y/N]: ", oldorigin, neworigin);
 		}
 		if (pkg != NULL && yes) {
@@ -203,9 +203,9 @@ exec_set(int argc, char **argv)
 					continue;
 				if (!yes) {
 					if (newautomatic)
-						yes = query_yesno("Mark %n-%v as automatically installed? [y/N]: ", pkg, pkg);
+						yes = query_yesno(false, "Mark %n-%v as automatically installed? [y/N]: ", pkg, pkg);
 					else
-						yes = query_yesno("Mark %n-%v as not automatically installed? [y/N]: ", pkg, pkg);
+						yes = query_yesno(false, "Mark %n-%v as not automatically installed? [y/N]: ", pkg, pkg);
 				}
 				if (yes)
 					pkgdb_set(db, pkg, PKG_SET_AUTOMATIC, newautomatic);

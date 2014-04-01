@@ -209,7 +209,7 @@ exec_install(int argc, char **argv)
 			    nbactions, pkg_jobs_total(jobs));
 
 			if (!yes && !dry_run)
-				yes = query_yesno(
+				yes = query_yesno(false, 
 				    "\nProceed with this action [y/N]: ");
 			if (dry_run)
 				yes = false;

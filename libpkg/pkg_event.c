@@ -55,6 +55,7 @@ sbuf_json_escape(struct sbuf *buf, const char *str)
 static void
 pipeevent(struct pkg_event *ev)
 {
+	int i;
 	struct pkg_dep *dep = NULL;
 	struct sbuf *msg, *buf;
 	const char *message;
@@ -320,6 +321,32 @@ pipeevent(struct pkg_event *ev)
 			ev->e_incremental_update.added,
 			ev->e_incremental_update.processed);
 		break;
+	case PKG_EVENT_QUERY_YESNO:
+		sbuf_printf(msg, "{\"type\": \"QUERY_YESNO\", "
+		    "\"data\": {"
+			"\"msg\": \"%s\","
+			"\"default\": \"%d\""
+			"}}", ev->e_query_yesno.msg,
+			ev->e_query_yesno.deft);
+		break;
+	case PKG_EVENT_QUERY_SELECT:
+		sbuf_printf(msg, "{\"type\": \"QUERY_SELECT\", "
+		    "\"data\": {"
+			"\"msg\": \"%s\","
+			"\"ncnt\": \"%d\","
+			"\"default\": \"%d\","
+			"\"items\": ["
+			, ev->e_query_select.msg,
+			ev->e_query_select.ncnt,
+			ev->e_query_select.deft);
+		for (i = 0; i < ev->e_query_select.ncnt - 1; i++)
+		{
+			sbuf_printf(msg, "{ \"text\": \"%s\" },",
+				ev->e_query_select.items[i]);
+		}
+		sbuf_printf(msg, "{ \"text\": \"%s\" } ] }}",
+			ev->e_query_select.items[i]);
+		break;
 	default:
 		break;
 	}
@@ -336,13 +363,15 @@ pkg_event_register(pkg_event_cb cb, void *data)
 	_data = data;
 }
 
-static void
+static int
 pkg_emit_event(struct pkg_event *ev)
 {
+	int ret = 0;
 	pkg_plugins_hook_run(PKG_PLUGIN_HOOK_EVENT, ev, NULL);
 	if (_cb != NULL)
-		_cb(_data, ev);
+		ret = _cb(_data, ev);
 	pipeevent(ev);
+	return (ret);
 }
 
 void
@@ -717,6 +746,36 @@ pkg_emit_incremental_update(int updated, int removed, int added, int processed)
 	ev.e_incremental_update.processed = processed;
 
 	pkg_emit_event(&ev);
+}
+
+bool
+pkg_emit_query_yesno(bool deft, const char *msg)
+{
+	struct pkg_event ev;
+	int ret;
+
+	ev.type = PKG_EVENT_QUERY_YESNO;
+	ev.e_query_yesno.msg = msg;
+	ev.e_query_yesno.deft = deft;
+
+	ret = pkg_emit_event(&ev);
+	return (ret ? true : false);
+}
+
+int
+pkg_emit_query_select(const char *msg, const char **items, int ncnt, int deft)
+{
+	struct pkg_event ev;
+	int ret;
+
+	ev.type = PKG_EVENT_QUERY_SELECT;
+	ev.e_query_select.msg = msg;
+	ev.e_query_select.items = items;
+	ev.e_query_select.ncnt = ncnt;
+	ev.e_query_select.deft = deft;
+
+	ret = pkg_emit_event(&ev);
+	return ret;
 }
 
 void

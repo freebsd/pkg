@@ -1339,6 +1339,8 @@ typedef enum {
 	PKG_EVENT_NOTICE,
 	PKG_EVENT_DEBUG,
 	PKG_EVENT_INCREMENTAL_UPDATE,
+	PKG_EVENT_QUERY_YESNO,
+	PKG_EVENT_QUERY_SELECT,
 	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
@@ -1458,6 +1460,16 @@ struct pkg_event {
 			int level;
 			char *msg;
 		} e_debug;
+		struct {
+			const char *msg;
+			int deft;
+		} e_query_yesno;
+		struct {
+			const char *msg;
+			const char **items;
+			int ncnt;
+			int deft;
+		} e_query_select;
 	};
 };
 

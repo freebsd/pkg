@@ -68,7 +68,7 @@ do_add(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 	int		 ret = EPKG_OK;
 
 
-	if (yes || query_tty_yesno("%n-%v: Add annotation tagged: %S with "
+	if (yes || query_tty_yesno(false, "%n-%v: Add annotation tagged: %S with "
 	               "value: %S? [y/N]: ", pkg, pkg, tag, value)) {
 
 		ret = pkgdb_add_annotation(db, pkg, tag, value);
@@ -103,7 +103,7 @@ do_modify(struct pkgdb *db, struct pkg *pkg, const char *tag, const char *value)
 	int		 ret = EPKG_OK;
 
 
-	if (yes || query_tty_yesno("%n-%v: Change annotation tagged: %S to "
+	if (yes || query_tty_yesno(false, "%n-%v: Change annotation tagged: %S to "
 		         "new value: %S? [y/N]: ", pkg, pkg, tag, value)) {
 		ret = pkgdb_modify_annotation(db, pkg, tag, value);
 		if (ret == EPKG_OK || ret == EPKG_WARN) {
@@ -127,7 +127,7 @@ do_delete(struct pkgdb *db, struct pkg *pkg, const char *tag)
 	const char	*pkgname, *pkgversion;
 	int		 ret = EPKG_OK;
 
-	if (yes || query_tty_yesno("%n-%v: Delete annotation tagged: %S "
+	if (yes || query_tty_yesno(false, "%n-%v: Delete annotation tagged: %S "
 			 "[y/N]: ", pkg, pkg, tag)) {
 		ret = pkgdb_delete_annotation(db, pkg, tag);
 		if (ret == EPKG_OK) {
