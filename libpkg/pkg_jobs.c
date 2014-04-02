@@ -1635,8 +1635,11 @@ jobs_solve_install(struct pkg_jobs *j)
 
 	if (j->solved == 0) {
 		HASH_ITER(hh, j->patterns, jp, jtmp) {
-			if (pkg_jobs_find_remote_pattern(j, jp, &got_local) != EPKG_OK)
+			if (pkg_jobs_find_remote_pattern(j, jp, &got_local) != EPKG_OK) {
+				pkg_emit_error("No packages matching '%s' have been found in the "
+						"repositories", jp->pattern);
 				return (EPKG_FATAL);
+			}
 		}
 		if (got_local) {
 			/*
@@ -1703,7 +1706,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 			/* TODO: use repository priority here */
 			if (find_remote_pkg(j, jp->pattern, jp->match, true,
 					j->flags & PKG_FLAG_RECURSIVE, true) == EPKG_FATAL)
-				pkg_emit_error("No packages matching '%s' has been found in the "
+				pkg_emit_error("No packages matching '%s' have been found in the "
 						"repositories", jp->pattern);
 		}
 	}
