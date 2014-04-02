@@ -1011,6 +1011,8 @@ find_remote_pkg(struct pkg_jobs *j, const char *pattern,
 	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		rc = pkg_jobs_process_remote_pkg(j, p, root, force, recursive,
 				NULL, add_request);
+		if (rc == EPKG_FATAL)
+			break;
 		p = NULL;
 	}
 
@@ -1641,7 +1643,7 @@ jobs_solve_install(struct pkg_jobs *j)
 
 	if (j->solved == 0) {
 		HASH_ITER(hh, j->patterns, jp, jtmp) {
-			if (pkg_jobs_find_remote_pattern(j, jp, &got_local) != EPKG_OK) {
+			if (pkg_jobs_find_remote_pattern(j, jp, &got_local) == EPKG_FATAL) {
 				pkg_emit_error("No packages matching '%s' have been found in the "
 						"repositories", jp->pattern);
 				return (EPKG_FATAL);
