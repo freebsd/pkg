@@ -1098,7 +1098,7 @@ static bool
 pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 {
 	int ret, ret1, ret2;
-	const char *lversion, *rversion;
+	const char *lversion, *rversion, *larch, *rarch;
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_shlib *ls = NULL, *rs = NULL;
@@ -1109,14 +1109,20 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 	if (pkg_is_locked(lp))
 		return (false);
 
-	pkg_get(lp, PKG_VERSION, &lversion);
-	pkg_get(rp, PKG_VERSION, &rversion);
+	pkg_get(lp, PKG_VERSION, &lversion, PKG_ARCH, &larch);
+	pkg_get(rp, PKG_VERSION, &rversion, PKG_ARCH, &rarch);
 
 	ret = pkg_version_cmp(lversion, rversion);
 	if (ret > 0)
 		return (false);
 	else if (ret < 0)
 		return (true);
+
+	/* Compare archs */
+	if (strcmp (larch, rarch) != 0) {
+		pkg_set(rp, PKG_REASON, "ABI changed");
+		return (true);
+	}
 
 	/* compare options */
 	for (;;) {
