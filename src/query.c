@@ -329,15 +329,13 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 {
 	struct sbuf		*output = sbuf_new_auto();
 	struct pkg_dep		*dep    = NULL;
-	struct pkg_category	*cat    = NULL;
 	struct pkg_option	*option = NULL;
 	struct pkg_file		*file   = NULL;
 	struct pkg_dir		*dir    = NULL;
-	struct pkg_license	*lic    = NULL;
 	struct pkg_user		*user   = NULL;
 	struct pkg_group	*group  = NULL;
 	struct pkg_shlib	*shlib  = NULL;
-	pkg_object		*obj, *o;
+	pkg_object		*o;
 	pkg_iter		 it;
 
 	switch (multiline) {
@@ -354,8 +352,9 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		while (pkg_categories(pkg, &cat) == EPKG_OK) {
-			format_str(pkg, output, qstr, cat);
+		it = NULL;
+		while ((o = pkg_object_iterate(pkg_categories(pkg), &it))) {
+			format_str(pkg, output, qstr, o);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
@@ -378,8 +377,9 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'L':
-		while (pkg_licenses(pkg, &lic) == EPKG_OK) {
-			format_str(pkg, output, qstr, lic);
+		it = NULL;
+		while ((o = pkg_object_iterate(pkg_licenses(pkg), &it))) {
+			format_str(pkg, output, qstr, o);
 			printf("%s\n", sbuf_data(output));
 		}
 		break;
@@ -408,9 +408,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'A':
-		obj = pkg_annotations(pkg);
 		it = NULL;
-		while ((o = pkg_object_iterate(obj, &it))) {
+		while ((o = pkg_object_iterate(pkg_annotations(pkg), &it))) {
 			format_str(pkg, output, qstr, o);
 			printf("%s\n", sbuf_data(output));
 		}

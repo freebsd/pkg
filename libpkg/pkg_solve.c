@@ -115,10 +115,19 @@ pkg_debug_print_rule (struct pkg_solve_item *rule)
 	sbuf_printf(sb, "%s", "rule: (");
 
 	LL_FOREACH(rule, it) {
-		sbuf_printf(sb, "%s%s%s%s", it->inverse ? "!" : "",
-				it->var->origin,
-				(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
-				it->next ? " | " : ")");
+		if (it->var->resolved) {
+			sbuf_printf(sb, "%s%s%s(%c)%s", it->inverse ? "!" : "",
+					it->var->origin,
+					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
+					(it->var->to_install) ? '+' : '-',
+					it->next ? " | " : ")");
+		}
+		else {
+			sbuf_printf(sb, "%s%s%s%s", it->inverse ? "!" : "",
+					it->var->origin,
+					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
+					it->next ? " | " : ")");
+		}
 	}
 	sbuf_finish(sb);
 	pkg_debug(2, "%s", sbuf_data(sb));
@@ -151,8 +160,10 @@ check_again:
 					ret = false;
 					LL_FOREACH(unresolved, it) {
 						if (it->var->resolved) {
-							if (PKG_SOLVE_CHECK_ITEM(it))
+							if (PKG_SOLVE_CHECK_ITEM(it)) {
 								ret = true;
+								break;
+							}
 						}
 					}
 					if (!ret) {
@@ -179,12 +190,15 @@ check_again:
 					ret = false;
 					LL_FOREACH(unresolved, it) {
 						if (it->var->resolved) {
-							if (PKG_SOLVE_CHECK_ITEM(it))
+							if (PKG_SOLVE_CHECK_ITEM(it)) {
 								ret = true;
+								break;
+							}
 						}
 					}
 					if (!ret) {
 						/* This is a unit */
+						int resolved = 0;
 						LL_FOREACH(unresolved, it) {
 							if (!it->var->resolved) {
 								it->var->to_install = (!it->inverse);
@@ -195,8 +209,13 @@ check_again:
 										it->var->priority,
 										it->var->to_install ? "install" : "delete");
 								pkg_debug_print_rule(unresolved);
+								resolved ++;
 								break;
 							}
+						}
+						if (resolved == 0) {
+							pkg_debug_print_rule(unresolved);
+							assert (resolved > 0);
 						}
 						solved_vars ++;
 						(*propagated) ++;
@@ -225,6 +244,7 @@ pkg_solve_propagate_pure(struct pkg_solve_problem *problem)
 	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
 		if (var->nrules == 0) {
 			/* This variable is independent and should not change its state */
+			assert (var->rules == NULL);
 			var->to_install = (var->unit->pkg->type == PKG_INSTALLED);
 			var->resolved = true;
 			pkg_debug(2, "leave %s-%s(%d) to %s",
@@ -290,6 +310,27 @@ pkg_solve_test_guess(struct pkg_solve_problem *problem, struct pkg_solve_variabl
 	return (true);
 }
 
+/*
+ * Set initial guess based on a variable passed
+ */
+static bool
+pkg_solve_initial_guess(struct pkg_solve_variable *var)
+{
+	if (var->unit->pkg->type == PKG_INSTALLED) {
+		/* For local packages assume true if we have no upgrade */
+		if (var->unit->next == NULL && var->unit->prev == var->unit)
+			return (true);
+	}
+	else {
+		/* For remote packages we return true if they are upgrades for local ones */
+		if (var->unit->next != NULL || var->unit->prev != var->unit)
+			return (true);
+	}
+
+	/* Otherwise set initial guess to false */
+	return (false);
+}
+
 /**
  * Try to solve sat problem
  * @param rules incoming rules to solve
@@ -303,7 +344,7 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	int propagated;
 	struct pkg_solve_variable *var, *tvar;
 	int64_t unresolved = 0, iters = 0;
-	bool rc;
+	bool rc, backtrack;
 
 	struct _solver_tree_elt {
 		struct pkg_solve_variable *var;
@@ -327,8 +368,14 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	elt = solver_tree;
 
 	/* DPLL Algorithm */
-	HASH_ITER(hd, problem->variables_by_digest, var, tvar) {
+	DL_FOREACH2(problem->variables_by_digest, var, hd.next) {
 		if (!var->resolved) {
+
+			if (backtrack) {
+				/* Shift var back */
+				var = tvar;
+				backtrack = false;
+			}
 
 			if (elt == NULL) {
 				/* Add new element to the backtracking queue */
@@ -342,15 +389,17 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 				elt->guess = -1;
 				DL_APPEND(solver_tree, elt);
 			}
+			assert (var == elt->var);
 
 			if (elt->guess == -1)
 				/* Guess true for installed packages and false otherwise */
-				var->guess = (var->unit->pkg->type == PKG_INSTALLED) ? true : false;
+				var->guess = pkg_solve_initial_guess(var);
 			else
 				/* For analyzed variables we can only inverse previous guess */
 				var->guess = !elt->guess;
 
 			unresolved ++;
+			iters ++;
 			if (!pkg_solve_test_guess(problem, var)) {
 				if (elt->guess == -1) {
 					/* This is free variable, so we can assign true or false to it */
@@ -374,8 +423,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 					var->guess = -1;
 					/* Go to the previous level */
 					elt = elt->prev;
-					tvar = var;
-					var = elt->var;
+					tvar = elt->var;
+					backtrack = true;
 					continue;
 				}
 			}
@@ -715,11 +764,12 @@ pkg_solve_add_pkg_rule(struct pkg_jobs *j, struct pkg_solve_problem *problem,
 					cnt = 1;
 					LL_FOREACH(prhead, pr) {
 						/* For each provide */
-						pkg_get(pr->un->pkg, PKG_DIGEST, &digest);
+						pkg_get(pr->un->pkg, PKG_DIGEST, &digest, PKG_ORIGIN, &origin);
 						HASH_FIND(hd, problem->variables_by_digest, digest,
 								strlen(digest), var);
 						if (var == NULL) {
-							continue;
+							if (pkg_solve_add_universe_variable(j, problem, origin, &var) != EPKG_OK)
+								continue;
 						}
 						/* XXX: select all its versions? */
 

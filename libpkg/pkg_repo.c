@@ -73,7 +73,8 @@ pkg_repo_fetch(struct pkg *pkg)
 	pkg_get(pkg, PKG_REPONAME, &reponame,
 	    PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
 
-	pkg_snprintf(dest, sizeof(dest), "%S/%R", cachedir, pkg);
+	pkg_snprintf(dest, sizeof(dest), "%S/%n-%v-%z",
+			cachedir, pkg, pkg, pkg);
 
 	/* If it is already in the local cachedir, dont bother to
 	 * download it */
@@ -108,6 +109,11 @@ pkg_repo_fetch(struct pkg *pkg)
 		pkg_snprintf(url, sizeof(url), "%S%R", packagesite, pkg);
 	else
 		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
+
+	if (strncasecmp(packagesite, "file://", 7) == 0) {
+		pkg_set(pkg, PKG_REPOPATH, url + 7);
+		return (EPKG_OK);
+	}
 
 	retcode = pkg_fetch_file(repo, url, dest, 0);
 	fetched = 1;

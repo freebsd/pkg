@@ -64,7 +64,7 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_OK);
 	}
 
-	if (!yes && !query_yesno("%n-%v: lock this package? [y/N]: ",
+	if (!yes && !query_yesno(false, "%n-%v: lock this package? [y/N]: ",
 				 pkg, pkg))
 		return (EPKG_OK);
 
@@ -84,7 +84,7 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_OK);
 	}
 
-	if (!yes && !query_yesno("%n-%v: unlock this package? [y/N]: ",
+	if (!yes && !query_yesno(false, "%n-%v: unlock this package? [y/N]: ",
 				 pkg, pkg))
 		return (EPKG_OK);
 

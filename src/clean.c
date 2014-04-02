@@ -1,6 +1,7 @@
 /*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,27 +28,32 @@
 
 #include <sys/stat.h>
 #include <sys/queue.h>
+/* For MIN */
+#include <sys/param.h>
 
 #include <assert.h>
 #include <err.h>
 #include <fts.h>
+#include <libutil.h>
 #include <pkg.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <uthash.h>
 
 #include "pkgcli.h"
 
 struct deletion_list {
 	STAILQ_ENTRY(deletion_list) next;
-	unsigned	 reason;
-	const char	*path;
-	const char	*origin;
-	const char	*newname;
-	const char	*newversion;
-	char		 data[0];
+	char	*path;
 };
+
+struct sumlist {
+	char sum[PKG_FILE_CKSUM_CHARS + 1];
+	UT_hash_handle hh;
+};
+
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
 #define CKSUM_MISMATCH	(1U<<2)
@@ -57,58 +63,19 @@ struct deletion_list {
 STAILQ_HEAD(dl_head, deletion_list);
 
 static int
-add_to_dellist(struct dl_head *dl,  unsigned reason, const char *path,
-	       const char *origin, const char *newname, const char *newversion)
+add_to_dellist(struct dl_head *dl,  const char *path)
 {
 	struct deletion_list	*dl_entry;
-	size_t			 alloc_len;
-	size_t			 offset;
 
 	assert(path != NULL);
-	assert(origin != NULL);
 
-	alloc_len = sizeof(struct deletion_list) + strlen(path) +
-		strlen(origin) + 2;
-	if (newname != NULL)
-		alloc_len += strlen(newname) + 1;
-	if (newversion != NULL)
-		alloc_len += strlen(newversion) + 1;
-
-	dl_entry = calloc(1, alloc_len);
+	dl_entry = calloc(1, sizeof(struct deletion_list));
 	if (dl_entry == NULL) {
 		warn("adding deletion list entry");
 		return (EPKG_FATAL);
 	}
 
-	dl_entry->reason = reason;
-
-	offset = 0;
-
-	alloc_len = strlen(path) + 1;
-	strlcpy(&(dl_entry->data[offset]), path, alloc_len);
-	dl_entry->path = &(dl_entry->data[offset]);
-	offset = alloc_len;
-
-	alloc_len = strlen(origin) + 1;
-	strlcpy(&(dl_entry->data[offset]), origin, alloc_len);
-	dl_entry->origin = &(dl_entry->data[offset]);
-	offset += alloc_len;
-
-	if (newname != NULL) {
-		alloc_len = strlen(newname) + 1;
-		strlcpy(&(dl_entry->data[offset]), newname, alloc_len);
-		dl_entry->newname = &(dl_entry->data[offset]);
-		offset += alloc_len;
-	} else
-		dl_entry->newname = NULL;
-
-	if (newversion != NULL) {
-		alloc_len = strlen(newversion) + 1;
-		strlcpy(&(dl_entry->data[offset]), newversion, alloc_len);
-		dl_entry->newversion = &(dl_entry->data[offset]);
-		offset += alloc_len;
-	} else
-		dl_entry->newversion = NULL;
+	dl_entry->path = strdup(path);
 
 	STAILQ_INSERT_TAIL(dl, dl_entry, next);
 
@@ -123,55 +90,7 @@ free_dellist(struct dl_head *dl)
 	while (!STAILQ_EMPTY(dl)) {
 		dl_entry = STAILQ_FIRST(dl);
 		STAILQ_REMOVE_HEAD(dl, next);
-		free(dl_entry);
-	}
-}
-
-static void
-display_dellist(struct dl_head *dl, const char *cachedir)
-{
-	struct deletion_list	*dl_entry;
-	const char		*relpath;
-
-	printf("The following package files will be deleted "
-	       "from the cache directory\n%s:\n\n", cachedir);
-
-	printf("%-30s %-20s %s\n", "Package:", "Origin:", "Reason:");
-	STAILQ_FOREACH(dl_entry, dl, next) {
-		if (strlen(cachedir) + 1 < strlen(dl_entry->path)) {
-			relpath = dl_entry->path + strlen(cachedir);
-			if (relpath[0] == '/')
-				relpath++;
-		} else
-			relpath = dl_entry->path;
-
-		printf("%-30s %-20s ", relpath, dl_entry->origin);
-
-		switch (dl_entry->reason) {
-		case OUT_OF_DATE:
-			printf("Superseded by %s-%s\n",
-			    dl_entry->newname != NULL ?
-			       dl_entry->newname :
-			       "(unknown)",
-			    dl_entry->newversion != NULL ?
-			       dl_entry->newversion :
-			       "(unknown)");
-			break;
-		case REMOVED:
-			printf("Removed from the repository\n");
-			break;
-		case CKSUM_MISMATCH:
-			printf("Checksum mismatch\n");
-			break;
-		case ALL:
-			printf("Removing all\n");
-			break;
-		case SIZE_MISMATCH:
-			printf("Size mismatch\n");
-			break;
-		default:	/* not reached */
-			break;
-		}
+		free(dl_entry->path);
 	}
 }
 
@@ -181,9 +100,6 @@ delete_dellist(struct dl_head *dl)
 	struct deletion_list	*dl_entry;
 	int			retcode = EX_OK;
 	int			count = 0;
-
-	if (!quiet)
-		printf("Deleting:\n");
 
 	STAILQ_FOREACH(dl_entry, dl, next) {
 		if (!quiet)
@@ -205,6 +121,31 @@ delete_dellist(struct dl_head *dl)
 	return (retcode);
 }
 
+/*
+ * Extract hash from filename in format <name>-<version>-<hash>.txz
+ */
+static bool
+extract_filename_sum(const char *fname, char sum[])
+{
+	const char *dash_pos, *dot_pos;
+
+	dot_pos = strrchr(fname, '.');
+	if (dot_pos == NULL)
+		dot_pos = fname + strlen(fname);
+
+	dash_pos = strrchr(fname, '-');
+	if (dash_pos == NULL)
+		return (false);
+	else if (dot_pos < dash_pos)
+		dot_pos = fname + strlen(fname);
+
+	if (dot_pos - dash_pos != PKG_FILE_CKSUM_CHARS + 1)
+		return (false);
+
+	strlcpy(sum, dash_pos + 1, PKG_FILE_CKSUM_CHARS + 1);
+	return (true);
+}
+
 void
 usage_clean(void)
 {
@@ -217,20 +158,21 @@ exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
-	struct pkg	*pkg = NULL;
 	struct pkg	*p = NULL;
+	struct sumlist	*sumlist = NULL, *s, *t;
 	FTS		*fts = NULL;
 	FTSENT		*ent = NULL;
 	struct dl_head	dl = STAILQ_HEAD_INITIALIZER(dl);
-	const char	*cachedir;
-	char		*paths[2];
-	char		*repopath;
+	const char	*cachedir, *sum;
+	char		*paths[2], csum[PKG_FILE_CKSUM_CHARS + 1];
 	bool		 all = false;
 	bool		 dry_run = false;
-	bool		 yes;
+	bool		 yes, sumloaded = false;
 	int		 retcode;
 	int		 ret;
 	int		 ch;
+	size_t		 total = 0, slen;
+	char		 size[7];
 	struct pkg_manifest_key *keys = NULL;
 
 	yes = pkg_object_bool(pkg_config_get("ASSUME_ALWAYS_YES"));
@@ -295,100 +237,42 @@ exec_clean(int argc, char **argv)
 
 	pkg_manifest_keys_new(&keys);
 	while ((ent = fts_read(fts)) != NULL) {
-		const char *origin, *pkgrepopath;
-
 		if (ent->fts_info != FTS_F)
 			continue;
 
-		repopath = ent->fts_path + strlen(cachedir);
-		if (repopath[0] == '/')
-			repopath++;
-
-		if (pkg_open(&pkg, ent->fts_path, keys, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
-			if (!quiet)
-				warnx("skipping %s", ent->fts_path);
-			continue;
-		}
-
-		pkg_get(pkg, PKG_ORIGIN, &origin);
-		it = pkgdb_search(db, origin, MATCH_EXACT, FIELD_ORIGIN,
-		    FIELD_NONE, NULL);
-
-		if (it == NULL) {
-			if (!quiet)
-				warnx("skipping %s", ent->fts_path);
-			continue;
-		}
-
 		if (all) {
-			ret = add_to_dellist(&dl, ALL, ent->fts_path,
-					     origin, NULL, NULL);
-			/*
-			 * FIXME: `ret' is not checked, what should be done if
-			 * add_to_dellist() fails ?
-			 */
-			pkgdb_it_free(it);
+			ret = add_to_dellist(&dl, ent->fts_path);
+			total += ent->fts_statp->st_size;
 			continue;
 		}
 
-		ret = pkgdb_it_next(it, &p, PKG_LOAD_BASIC);
-		if (ret == EPKG_FATAL) {
-			if (!quiet)
-				warnx("skipping %s", ent->fts_path);
-			pkgdb_it_free(it);
-			continue;
-		}
-
-		if (ret == EPKG_END) {
-			/* No matching package found in repo */
-			ret = add_to_dellist(&dl, REMOVED, ent->fts_path,
-					     origin, NULL, NULL);
-			/*
-			 * FIXME: `ret' is not checked, what should be done if
-			 * add_to_dellist() fails ?
-			 */
-			pkgdb_it_free(it);
-			continue;
-		}
-
-		pkg_get(p, PKG_REPOPATH, &pkgrepopath);
-
-		if (strcmp(repopath, pkgrepopath)) {
-			const char	*newname;
-			const char	*newversion;
-
-			pkg_get(p,
-				PKG_NAME,    &newname,
-				PKG_VERSION, &newversion);
-
-			ret = add_to_dellist(&dl, OUT_OF_DATE, ent->fts_path,
-					     origin, newname, newversion);
-		} else {
-			char local_cksum[SHA256_DIGEST_LENGTH * 2 + 1];
-			const char *cksum;
-			int64_t size;
-
-			pkg_get(p, PKG_CKSUM, &cksum, PKG_PKGSIZE, &size);
-
-			if (ent->fts_statp->st_size != size) {
-				ret = add_to_dellist(&dl, SIZE_MISMATCH,
-				                  ent->fts_path, origin, NULL, NULL);
-			} else if (hash_file(ent->fts_path, local_cksum) == EPKG_OK) {
-
-				if (strcmp(cksum, local_cksum) != 0) {
-					ret = add_to_dellist(&dl, CKSUM_MISMATCH, ent->fts_path,
-							     origin, NULL, NULL);
-				}
+		if (sumlist == NULL && !sumloaded) {
+			it = pkgdb_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
+			while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+				pkg_get(p, PKG_CKSUM, &sum);
+				slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
+				s = calloc(1, sizeof(struct sumlist));
+				memcpy(s->sum, sum, slen);
+				s->sum[slen] = '\0';
+				HASH_ADD_STR(sumlist, sum, s);
 			}
-		}
-
-		if (ret != EPKG_OK && ret != EPKG_END) {
-			retcode = EX_OSERR; /* out of memory */
 			pkgdb_it_free(it);
-			goto cleanup;
+			pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+			pkgdb_close(db);
 		}
 
-		pkgdb_it_free(it);
+		s = NULL;
+		if (extract_filename_sum(ent->fts_name, csum))
+			HASH_FIND_STR(sumlist, csum, s);
+		if (s == NULL) {
+			ret = add_to_dellist(&dl, ent->fts_path);
+			total += ent->fts_statp->st_size;
+			continue;
+		}
+	}
+	HASH_ITER(hh, sumlist, s, t) {
+		HASH_DEL(sumlist, s);
+		free(s);
 	}
 
 	if (STAILQ_EMPTY(&dl)) {
@@ -398,12 +282,12 @@ exec_clean(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (dry_run || !yes || !quiet)
-		display_dellist(&dl, cachedir);
+	humanize_number(size, sizeof(size), total, "B", HN_AUTOSCALE, 0);
 
+	printf("The cleanup will free %s\n", size);
 	if (!dry_run) {
 		if (!yes)
-			yes = query_yesno(
+			yes = query_yesno(false,
 				"\nProceed with cleaning the cache [y/N]: ");
 		if (yes)
 			retcode = delete_dellist(&dl);
@@ -414,13 +298,8 @@ cleanup:
 	pkg_manifest_keys_free(keys);
 	free_dellist(&dl);
 
-	pkg_free(pkg);
-	pkg_free(p);
 	if (fts != NULL)
 		fts_close(fts);
-
-	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-	pkgdb_close(db);
 
 	return (retcode);
 }

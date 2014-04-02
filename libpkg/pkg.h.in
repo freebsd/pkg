@@ -573,19 +573,8 @@ int pkg_files(const struct pkg *, struct pkg_file **file);
  */
 int pkg_dirs(const struct pkg *pkg, struct pkg_dir **dir);
 
-/**
- * Iterates over the categories of the package.
- * @param Must be set to NULL for the first call.
- * @return An error code
- */
-int pkg_categories(const struct pkg *pkg, struct pkg_category **category);
-
-/**
- * Iterates over the licenses of the package.
- * @param Must be set to NULL for the first call.
- * @return An error code.
- */
-int pkg_licenses(const struct pkg *pkg, struct pkg_license **license);
+pkg_object *pkg_categories(const struct pkg *pkg);
+pkg_object *pkg_licenses(const struct pkg *pkg);
 
 /**
  * Iterates over the users of the package.
@@ -1305,6 +1294,7 @@ const char *pkg_object_string(pkg_object *o);
 void pkg_object_free(pkg_object *o);
 const char *pkg_object_key(pkg_object *);
 pkg_object *pkg_object_iterate(pkg_object *, pkg_iter *);
+unsigned pkg_object_count(pkg_object *);
 const char *pkg_object_dump(pkg_object *o);
 const char *pkg_config_dump(void);
 
@@ -1358,6 +1348,8 @@ typedef enum {
 	PKG_EVENT_NOTICE,
 	PKG_EVENT_DEBUG,
 	PKG_EVENT_INCREMENTAL_UPDATE,
+	PKG_EVENT_QUERY_YESNO,
+	PKG_EVENT_QUERY_SELECT,
 	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
@@ -1477,6 +1469,16 @@ struct pkg_event {
 			int level;
 			char *msg;
 		} e_debug;
+		struct {
+			const char *msg;
+			int deft;
+		} e_query_yesno;
+		struct {
+			const char *msg;
+			const char **items;
+			int ncnt;
+			int deft;
+		} e_query_select;
 	};
 };
 
@@ -1651,5 +1653,23 @@ struct sbuf *pkg_sbuf_vprintf(struct sbuf * restrict sbuf,
 
 bool pkg_has_message(struct pkg *p);
 bool pkg_is_locked(const struct pkg * restrict p);
+
+
+/**
+ * Defines how many chars of checksum are there in a package's name
+ * We define this number as sufficient for 24k packages.
+ * To find out probability of collision it is possible to use the following
+ * python function to calculate 'birthday paradox' probability:
+ *  def bp(m, n):
+ *      power = -(n * n) / (2. * m)
+ *      return 1. - exp(power)
+ * 
+ * For our choice of 2^40 (or 10 hex characters) it is:
+ *  >>> bp(float(2 ** 40), 24500.)
+ *  0.00027292484660568217
+ * 
+ * And it is negligible probability
+ */ 
+#define PKG_FILE_CKSUM_CHARS 10
 
 #endif

@@ -321,8 +321,13 @@ file(struct plist *p, char *line, struct file_attr *a)
 		buf = NULL;
 		regular = false;
 
-		if (S_ISREG(st.st_mode))
+		if (S_ISDIR(st.st_mode)) {
+			pkg_emit_error("Plist error, directory listed as a file: %s", line);
+			free_file_attr(a);
+			return (EPKG_FATAL);
+		} else if (S_ISREG(st.st_mode))
 			regular = true;
+
 
 		/* special case for hardlinks */
 		if (st.st_nlink > 1)

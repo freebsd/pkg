@@ -215,66 +215,6 @@ pkg_dir_try(struct pkg_dir const * const d)
 }
 
 /*
- * Category
- */
-
-int
-pkg_category_new(struct pkg_category **c)
-{
-	if ((*c = calloc(1, sizeof(struct pkg_category))) == NULL)
-		return (EPKG_FATAL);
-
-	return (EPKG_OK);
-}
-
-const char *
-pkg_category_name(struct pkg_category const * const c)
-{
-	assert(c != NULL);
-
-	return (sbuf_get(c->name));
-}
-
-void
-pkg_category_free(struct pkg_category *c)
-{
-
-	if (c == NULL)
-		return;
-
-	sbuf_free(c->name);
-	free(c);
-}
-
-/*
- * License
- */
-int
-pkg_license_new(struct pkg_license **l)
-{
-	if ((*l = calloc(1, sizeof(struct pkg_license))) == NULL) {
-		pkg_emit_errno("calloc", "pkg_license");
-		return (EPKG_FATAL);
-	}
-
-	return (EPKG_OK);
-}
-
-void
-pkg_license_free(struct pkg_license *l)
-{
-	free(l);
-}
-
-const char *
-pkg_license_name(struct pkg_license const * const l)
-{
-	assert(l != NULL);
-
-	return (l->name);
-}
-
-/*
  * User
  */
 

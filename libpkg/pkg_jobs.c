@@ -593,6 +593,7 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 	struct pkg_job_provide *pr, *prhead;
 	struct pkg_job_seen *seen;
 	int ret;
+	bool automatic = false;
 	const char *origin, *digest;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
@@ -625,6 +626,9 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			 * We have a package installed, but its dependencies are not,
 			 * try to search a remote dependency
 			 */
+			pkg_get(pkg, PKG_ORIGIN, &origin);
+			pkg_debug(1, "dependency %s of local package %s is not installed",
+					pkg_dep_get(d, PKG_DEP_ORIGIN), origin);
 			npkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (npkg == NULL) {
 				/* Cannot continue */
@@ -634,9 +638,12 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				}
 				return (EPKG_FATAL);
 			}
+			/* Set automatic if no local package is found */
+			pkg_set(npkg, PKG_AUTOMATIC, (int64_t)true);
 		}
-		else if (j->type == PKG_JOBS_UPGRADE ||
-				j->type == PKG_JOBS_INSTALL) {
+		else if ((j->type == PKG_JOBS_UPGRADE ||
+				j->type == PKG_JOBS_INSTALL) &&
+				npkg->type == PKG_INSTALLED) {
 			/* For upgrade jobs we need to ensure that we do not have a newer version */
 			rpkg = get_remote_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN), 0);
 			if (rpkg != NULL) {
@@ -646,13 +653,16 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 				}
 			}
 		}
-		pkg_set(npkg, PKG_AUTOMATIC, (int64_t)true);
+
 		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
 			return (EPKG_FATAL);
 		if (rpkg != NULL) {
+			/* Save automatic flag */
+			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
+			pkg_set(rpkg, PKG_AUTOMATIC, (int64_t)automatic);
+
 			if (pkg_jobs_add_universe(j, rpkg, recursive, false, NULL) != EPKG_OK)
 				return (EPKG_FATAL);
-			pkg_set(rpkg, PKG_AUTOMATIC, (int64_t)true);
 		}
 	}
 
@@ -691,17 +701,34 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 		if (unit != NULL)
 			continue;
 
-		/* Check both local and remote conflicts */
-		npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
-		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-			return (EPKG_FATAL);
-		npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
-		if (npkg == NULL) {
-			continue;
-		}
+		/* Check local and remote conflicts */
+		if (pkg->type == PKG_INSTALLED) {
+			/* Installed packages can conflict with remote ones */
+			npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+			if (npkg == NULL)
+				continue;
 
-		if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
-			return (EPKG_FATAL);
+			if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+				return (EPKG_FATAL);
+		}
+		else {
+			/* Remote packages can conflict with remote and local */
+			npkg = get_local_pkg(j, pkg_conflict_origin(c), 0);
+			if (npkg == NULL)
+				continue;
+
+			if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+				return (EPKG_FATAL);
+
+			if (c->type != PKG_CONFLICT_REMOTE_LOCAL) {
+				npkg = get_remote_pkg(j, pkg_conflict_origin(c), 0);
+				if (npkg == NULL)
+					continue;
+
+				if (pkg_jobs_add_universe(j, npkg, recursive, false, NULL) != EPKG_OK)
+					return (EPKG_FATAL);
+			}
+		}
 	}
 
 	/* For remote packages we should also handle shlib deps */
@@ -710,24 +737,52 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 			HASH_FIND_STR(j->provides, pkg_shlib_name(shlib), pr);
 			if (pr != NULL)
 				continue;
+
 			/* Not found, search in the repos */
 			it = pkgdb_find_shlib_provide(j->db, pkg_shlib_name(shlib), j->reponame);
 			if (it != NULL) {
-				npkg = NULL;
+				rpkg = NULL;
 				prhead = NULL;
-				while (pkgdb_it_next(it, &npkg, flags) == EPKG_OK) {
-					/* Skip seen packages */
-					pkg_get(npkg, PKG_DIGEST, &digest);
-					HASH_FIND_STR(j->seen, digest, seen);
-					if (seen == NULL) {
-						pkg_jobs_add_universe(j, npkg, recursive, false,
-								&unit);
-
-						/* Reset package to avoid freeing */
-						npkg = NULL;
+				while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
+					pkg_get(rpkg, PKG_DIGEST, &digest, PKG_ORIGIN, &origin);
+					/* Check for local packages */
+					HASH_FIND_STR(j->universe, origin, unit);
+					if (unit != NULL) {
+						if (pkg_need_upgrade (rpkg, unit->pkg, false)) {
+							/* Remote provide is newer, so we can add it */
+							if (pkg_jobs_add_universe(j, rpkg, recursive, false,
+																&unit) != EPKG_OK)
+								return (EPKG_FATAL);
+						}
 					}
 					else {
-						unit = seen->un;
+						/* Maybe local package has just been not added */
+						npkg = get_local_pkg(j, origin, 0);
+						if (npkg != NULL) {
+							if (pkg_jobs_add_universe(j, npkg, recursive, false,
+									&unit) != EPKG_OK)
+								return (EPKG_FATAL);
+							if (pkg_need_upgrade (rpkg, npkg, false)) {
+								/* Remote provide is newer, so we can add it */
+								if (pkg_jobs_add_universe(j, rpkg, recursive, false,
+										&unit) != EPKG_OK)
+									return (EPKG_FATAL);
+							}
+						}
+					}
+					/* Skip seen packages */
+					if (unit == NULL) {
+						HASH_FIND_STR(j->seen, digest, seen);
+						if (seen == NULL) {
+							pkg_jobs_add_universe(j, rpkg, recursive, false,
+									&unit);
+
+							/* Reset package to avoid freeing */
+							rpkg = NULL;
+						}
+						else {
+							unit = seen->un;
+						}
 					}
 
 					pr = calloc (1, sizeof (*pr));
@@ -1043,7 +1098,7 @@ static bool
 pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 {
 	int ret, ret1, ret2;
-	const char *lversion, *rversion;
+	const char *lversion, *rversion, *larch, *rarch;
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_shlib *ls = NULL, *rs = NULL;
@@ -1054,14 +1109,20 @@ pkg_need_upgrade(struct pkg *rp, struct pkg *lp, bool recursive)
 	if (pkg_is_locked(lp))
 		return (false);
 
-	pkg_get(lp, PKG_VERSION, &lversion);
-	pkg_get(rp, PKG_VERSION, &rversion);
+	pkg_get(lp, PKG_VERSION, &lversion, PKG_ARCH, &larch);
+	pkg_get(rp, PKG_VERSION, &rversion, PKG_ARCH, &rarch);
 
 	ret = pkg_version_cmp(lversion, rversion);
 	if (ret > 0)
 		return (false);
 	else if (ret < 0)
 		return (true);
+
+	/* Compare archs */
+	if (strcmp (larch, rarch) != 0) {
+		pkg_set(rp, PKG_REASON, "ABI changed");
+		return (true);
+	}
 
 	/* compare options */
 	for (;;) {
@@ -1580,8 +1641,11 @@ jobs_solve_install(struct pkg_jobs *j)
 
 	if (j->solved == 0) {
 		HASH_ITER(hh, j->patterns, jp, jtmp) {
-			if (pkg_jobs_find_remote_pattern(j, jp, &got_local) != EPKG_OK)
+			if (pkg_jobs_find_remote_pattern(j, jp, &got_local) != EPKG_OK) {
+				pkg_emit_error("No packages matching '%s' have been found in the "
+						"repositories", jp->pattern);
 				return (EPKG_FATAL);
+			}
 		}
 		if (got_local) {
 			/*
@@ -1648,7 +1712,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 			/* TODO: use repository priority here */
 			if (find_remote_pkg(j, jp->pattern, jp->match, true,
 					j->flags & PKG_FLAG_RECURSIVE, true) == EPKG_FATAL)
-				pkg_emit_error("No packages matching '%s' has been found in the "
+				pkg_emit_error("No packages matching '%s' have been found in the "
 						"repositories", jp->pattern);
 		}
 	}
@@ -1799,7 +1863,10 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 		target = ps->items[0]->jp->path;
 	}
 	else {
-		pkg_snprintf(path, sizeof(path), "%S/%R", cachedir, new);
+		pkg_snprintf(path, sizeof(path), "%R", new);
+		if (*path != '/')
+			pkg_snprintf(path, sizeof(path), "%S/%n-%v-%z",
+					cachedir, new, new, new);
 		target = path;
 	}
 
@@ -2031,8 +2098,9 @@ pkg_jobs_apply(struct pkg_jobs *j)
 			if (p->type != PKG_REMOTE)												\
 				continue;															\
 			int64_t pkgsize;														\
-			pkg_get(p, PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &repopath);				\
-			snprintf(cachedpath, sizeof(cachedpath), "%s/%s", cachedir, repopath);	\
+			pkg_get(p, PKG_PKGSIZE, &pkgsize);				\
+			pkg_snprintf(cachedpath, sizeof(cachedpath), "%S/%n-%v-%z", \
+				cachedir, p, p, p);													\
 			if (stat(cachedpath, &st) == -1)										\
 				dlsize += pkgsize;													\
 			else																	\
@@ -2062,7 +2130,6 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	struct stat st;
 	int64_t dlsize = 0;
 	const char *cachedir = NULL;
-	const char *repopath = NULL;
 	char cachedpath[MAXPATHLEN];
 	
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
@@ -2128,10 +2195,10 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 		else {
 			p = ps->items[0]->pkg;
 			if (p->type == PKG_REMOTE) {
-				const char *pkgrepopath;
-				pkg_get(p, PKG_REPOPATH, &pkgrepopath);
-				snprintf(path, sizeof(path), "%s/%s", cachedir,
-						pkgrepopath);
+				pkg_snprintf(path, sizeof(path), "%R", p);
+				if (*path != '/')
+					pkg_snprintf(path, sizeof(path), "%S/%n-%v-%z",
+							cachedir, p, p, p);
 				if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
 					return (EPKG_FATAL);
 				p = pkg;

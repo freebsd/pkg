@@ -117,8 +117,8 @@ struct pkg {
 	int64_t		 old_flatsize;
 	int64_t		 pkgsize;
 	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
-	struct pkg_license	*licenses;
-	struct pkg_category	*categories;
+	ucl_object_t		*licenses;
+	ucl_object_t		*categories;
 	struct pkg_dep		*deps;
 	struct pkg_dep		*rdeps;
 	struct pkg_file		*files;
@@ -163,17 +163,6 @@ struct pkg_conflict {
 
 struct pkg_provide {
 	struct sbuf		*provide;
-	UT_hash_handle	hh;
-};
-
-struct pkg_license {
-	/* should be enough to match a license name */
-	char name[64];
-	UT_hash_handle	hh;
-};
-
-struct pkg_category {
-	struct sbuf	*name;
 	UT_hash_handle	hh;
 };
 
@@ -370,12 +359,6 @@ void pkg_file_free(struct pkg_file *);
 
 int pkg_dir_new(struct pkg_dir **);
 void pkg_dir_free(struct pkg_dir *);
-
-int pkg_category_new(struct pkg_category **);
-void pkg_category_free(struct pkg_category *);
-
-int pkg_license_new(struct pkg_license **);
-void pkg_license_free(struct pkg_license *);
 
 int pkg_option_new(struct pkg_option **);
 void pkg_option_free(struct pkg_option *);
