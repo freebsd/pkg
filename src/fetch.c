@@ -180,7 +180,7 @@ exec_fetch(int argc, char **argv)
 		print_jobs_summary(jobs, "The following packages will be fetched:\n\n");
 
 		if (!yes)
-			yes = query_yesno("\nProceed with fetching packages [y/N]: ");
+			yes = query_yesno(false, "\nProceed with fetching packages [y/N]: ");
 	}
 	
 	if (!yes || pkg_jobs_apply(jobs) != EPKG_OK)

@@ -240,7 +240,8 @@ void usage_config(void);
 			 INFO_DESCR|INFO_MESSAGE|INFO_DEPS|INFO_RDEPS| \
 			 INFO_FILES|INFO_DIRS)
 
-bool query_yesno(const char *msg, ...);
+bool query_yesno(bool deft, const char *msg, ...);
+int query_select(const char *msg, const char **opts, int ncnt, int deft);
 bool query_tty_yesno(const char *msg, ...);
 int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkg * const pkg, uint64_t opt);

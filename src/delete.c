@@ -192,7 +192,7 @@ exec_delete(int argc, char **argv)
 			goto cleanup;
 		}
 		if (!yes && !dry_run)
-			yes = query_yesno(
+			yes = query_yesno(false,
 		            "\nProceed with deinstalling packages [y/N]: ");
 	}
 	if (!yes || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)

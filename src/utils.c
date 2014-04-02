@@ -39,6 +39,8 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <paths.h>
+#define _WITH_GETLINE
+#include <stdio.h>
 #include <pkg.h>
 
 #include "pkgcli.h"
@@ -85,10 +87,10 @@ cleanup:
 }
 
 bool
-query_yesno(const char *msg, ...)
+query_yesno(bool deft, const char *msg, ...)
 {
 	int	 c;
-	bool	 r = false;
+	bool	 r = deft;
 	va_list	 ap;
 
 	va_start(ap, msg);
@@ -98,13 +100,50 @@ query_yesno(const char *msg, ...)
 	c = getchar();
 	if (c == 'y' || c == 'Y')
 		r = true;
+	else if (c == 'n' || c == 'N')
+		r = false;
 	else if (c == '\n' || c == EOF)
-		return (false);
+		return r;
 
 	while ((c = getchar()) != '\n' && c != EOF)
 		continue;
 
 	return (r);
+}
+
+int
+query_select(const char *msg, const char **opts, int ncnt, int deft)
+{
+	int i;
+	char *str = NULL;
+	char *endpntr = NULL;
+	size_t n = 0;
+
+	printf("%s\n", msg);
+	for (i = 0; i < ncnt; i++) {
+		if (i + 1 == deft)
+		{
+			printf("*[%d] %s\n",
+				i + 1, opts[i]);
+		} else {
+			printf(" [%d] %s\n",
+				i + 1, opts[i]);
+		}
+	}
+
+	getline(&str, &n, stdin);
+	i = (int) strtoul(str, &endpntr, 10);
+
+	if (endpntr == NULL || *endpntr == '\0') {
+		i = deft;
+	} else if (*endpntr == '\n' || *endpntr == '\r') {
+		if (i > ncnt || i < 1)
+			i = deft;
+	} else
+		i = -1;
+
+	free(str);
+	return i;
 }
 
 /* unlike realpath(3), this routine does not expand symbolic links */
