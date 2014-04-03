@@ -640,6 +640,11 @@ pkg_get_myarch(char *dest, size_t sz)
 	int ret = EPKG_OK;
 	int i;
 	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
+	const char *path;
+
+	path = getenv("ABI_FILE");
+	if (path == NULL)
+		path = _PATH_BSHELL;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -647,7 +652,7 @@ pkg_get_myarch(char *dest, size_t sz)
 		return (EPKG_FATAL);
 	}
 
-	if ((fd = open(_PATH_BSHELL, O_RDONLY)) < 0) {
+	if ((fd = open(path, O_RDONLY)) < 0) {
 		pkg_emit_errno("open", _PATH_BSHELL);
 		snprintf(dest, sz, "%s", "unknown");
 		return (EPKG_FATAL);
