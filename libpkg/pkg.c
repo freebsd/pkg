@@ -1290,7 +1290,7 @@ pkg_open_fd(struct pkg **pkg_p, int fd, struct pkg_manifest_key *keys, int flags
 
 int
 pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
-		const char *path, struct pkg_manifest_key *keys, int flags, int fd)
+    const char *path, struct pkg_manifest_key *keys, int flags, int fd)
 {
 	struct pkg	 *pkg;
 	pkg_error_t	  retcode = EPKG_OK;

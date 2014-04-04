@@ -1122,7 +1122,8 @@ int pkgdb_compact(struct pkgdb *db);
  * @param path The path to the package archive file on the local disk
  * @return An error code.
  */
-int pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_key *keys);
+int pkg_add(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location);
 
 #define PKG_ADD_UPGRADE			(1U << 0)
 #define PKG_ADD_USE_UPGRADE_SCRIPTS	(1U << 1)

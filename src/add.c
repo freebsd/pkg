@@ -34,6 +34,7 @@
 #include <string.h>
 #include <sysexits.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include <pkg.h>
 
@@ -72,8 +73,20 @@ exec_add(int argc, char **argv)
 	int failedpkgcount = 0;
 	pkg_flags f = PKG_FLAG_NONE;
 	struct pkg_manifest_key *keys = NULL;
+	const char *location = NULL;
 
-	while ((ch = getopt(argc, argv, "IAfqM")) != -1) {
+	/* options descriptor */
+	struct option longopts[] = {
+		{ "no-scripts",          no_argument,            NULL,           'I' },
+		{ "automatic",           no_argument,            NULL,           'A' },
+		{ "force",               no_argument,            NULL,           'f' },
+		{ "accept-missing",      no_argument,            NULL,           'M' },
+		{ "quiet",               no_argument,            NULL,           'q' },
+		{ "relocate",            required_argument,      NULL,            1  },
+		{ NULL,                  0,                      NULL,            0  }
+	};
+
+	while ((ch = getopt_long(argc, argv, "IAfqM", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'I':
 			f |= PKG_ADD_NOSCRIPT;
@@ -89,6 +102,9 @@ exec_add(int argc, char **argv)
 			break;
 		case 'q':
 			quiet = true;
+			break;
+		case 1:
+			location = optarg;
 			break;
 		default:
 			usage_add();
@@ -154,7 +170,7 @@ exec_add(int argc, char **argv)
 
 		}
 
-		if ((retcode = pkg_add(db, file, f, keys)) != EPKG_OK) {
+		if ((retcode = pkg_add(db, file, f, keys, location)) != EPKG_OK) {
 			sbuf_cat(failedpkgs, argv[i]);
 			if (i != argc - 1)
 				sbuf_printf(failedpkgs, ", ");

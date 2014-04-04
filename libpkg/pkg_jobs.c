@@ -1895,7 +1895,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 			goto cleanup;
 		}
 	}
-	if ((retcode = pkg_add(j->db, target, flags, keys)) != EPKG_OK) {
+	if ((retcode = pkg_add(j->db, target, flags, keys, NULL)) != EPKG_OK) {
 		pkgdb_transaction_rollback(j->db->sqlite, "upgrade");
 		goto cleanup;
 	}

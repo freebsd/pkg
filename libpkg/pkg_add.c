@@ -42,15 +42,19 @@
 #include "private/pkg.h"
 
 static int
-do_extract(struct archive *a, struct archive_entry *ae)
+do_extract(struct archive *a, struct archive_entry *ae, const char *location)
 {
 	int	retcode = EPKG_OK;
 	int	ret = 0;
-	char	path[MAXPATHLEN];
+	char	path[MAXPATHLEN], pathname[MAXPATHLEN];
 	struct stat st;
 
 	do {
-		const char *pathname = archive_entry_pathname(ae);
+		snprintf(pathname, sizeof(pathname), "%s/%s",
+		    location ? location : "",
+		    archive_entry_pathname(ae)
+		);
+		archive_entry_set_pathname(ae, pathname);
 
 		ret = archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS);
 		if (ret != ARCHIVE_OK) {
@@ -150,7 +154,8 @@ cleanup:
 }
 
 int
-pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_key *keys)
+pkg_add(struct pkgdb *db, const char *path, unsigned flags,
+    struct pkg_manifest_key *keys, const char *location)
 {
 	const char	*arch;
 	const char	*origin;
@@ -264,7 +269,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 
 			if ((flags & PKG_ADD_UPGRADE) == 0 &&
 			    access(dpath, F_OK) == 0) {
-				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys);
+				ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, keys, location);
 				if (ret != EPKG_OK) {
 					retcode = EPKG_FATAL;
 					goto cleanup;
@@ -319,7 +324,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags, struct pkg_manifest_
 	/*
 	 * Extract the files on disk.
 	 */
-	if (extract && (retcode = do_extract(a, ae)) != EPKG_OK) {
+	if (extract && (retcode = do_extract(a, ae, location)) != EPKG_OK) {
 		/* If the add failed, clean up (silently) */
 		pkg_delete_files(pkg, 2);
 		pkg_delete_dirs(db, pkg, 1);
