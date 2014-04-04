@@ -28,6 +28,8 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_ports.c \
 			pkg_printf.c \
 			pkg_repo.c \
+			pkg_repo_create.c \
+			pkg_repo_update.c \
 			pkg_solve.c \
 			pkg_status.c \
 			pkg_version.c \
@@ -37,7 +39,6 @@ libpkg_la_SOURCES=	pkg.c \
 			rsa.c \
 			ssh.c \
 			scripts.c \
-			update.c \
 			utils.c \
 			plugins.c \
 			pkg_old.c

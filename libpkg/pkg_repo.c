@@ -3,6 +3,8 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ *
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +39,7 @@
 #include <libgen.h>
 #include <sqlite3.h>
 #include <string.h>
+#include <dirent.h>
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <stdbool.h>
@@ -52,8 +55,19 @@
 #include "private/repodb.h"
 #include "private/thd_repo.h"
 
+
+struct sig_cert {
+	char name[MAXPATHLEN];
+	unsigned char *sig;
+	int siglen;
+	unsigned char *cert;
+	int certlen;
+	UT_hash_handle hh;
+	bool trusted;
+};
+
 int
-pkg_repo_fetch(struct pkg *pkg)
+pkg_repo_fetch_package(struct pkg *pkg)
 {
 	char dest[MAXPATHLEN];
 	char url[MAXPATHLEN];
@@ -134,7 +148,7 @@ pkg_repo_fetch(struct pkg *pkg)
 				    "checksum mismatch, fetching from remote",
 				    name, version);
 				unlink(dest);
-				return (pkg_repo_fetch(pkg));
+				return (pkg_repo_fetch_package(pkg));
 			}
 		}
 
@@ -145,647 +159,400 @@ pkg_repo_fetch(struct pkg *pkg)
 	return (retcode);
 }
 
-struct digest_list_entry {
-	char *origin;
-	char *digest;
-	long manifest_pos;
-	long files_pos;
-	long manifest_length;
-	struct digest_list_entry *next;
-};
+static int
+pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
+		const char *filename, const char *extension, time_t *t, int *rc)
+{
+	char url[MAXPATHLEN];
+	char tmp[MAXPATHLEN];
+	int fd;
+	mode_t mask;
+	const char *tmpdir;
 
-struct pkg_conflict_bulk {
-	struct pkg_conflict *conflicts;
-	char *file;
-	UT_hash_handle hh;
-};
+	snprintf(url, sizeof(url), "%s/%s.%s", pkg_repo_url(repo), filename, extension);
+
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	mkdirs(tmpdir);
+	snprintf(tmp, sizeof(tmp), "%s/%s.%s.XXXXXX", tmpdir, filename, extension);
+
+	mask = umask(022);
+	fd = mkstemp(tmp);
+	umask(mask);
+	if (fd == -1) {
+		pkg_emit_error("Could not create temporary file %s, "
+		    "aborting update.\n", tmp);
+		*rc = EPKG_FATAL;
+		return (-1);
+	}
+	(void)unlink(tmp);
+
+	if ((*rc = pkg_fetch_file_to_fd(repo, url, fd, t)) != EPKG_OK) {
+		close(fd);
+		fd = -1;
+	}
+
+	return (fd);
+}
+
+static bool
+pkg_repo_file_has_ext(const char *path, const char *ext)
+{
+	size_t n, l;
+	const char *p = NULL;
+
+	n = strlen(path);
+	l = strlen(ext);
+	p = &path[n - l];
+
+	if (strcmp(p, ext) == 0)
+		return (true);
+
+	return (false);
+}
 
 static int
-digest_sort_compare_func(struct digest_list_entry *d1, struct digest_list_entry *d2)
+pkg_repo_archive_extract_file(int fd, const char *file,
+		const char *dest, struct pkg_repo *repo, int dest_fd)
 {
-	return strcmp(d1->origin, d2->origin);
-}
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
+	struct sig_cert *sc = NULL;
+	struct sig_cert *s = NULL, *stmp = NULL;
+	struct fingerprint *trusted = NULL;
+	struct fingerprint *revoked = NULL;
+	struct fingerprint *f = NULL;
+	unsigned char *sig = NULL;
+	int siglen = 0, ret, rc = EPKG_OK;
+	char key[MAXPATHLEN], path[MAXPATHLEN];
+	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
+	int nbgood = 0;
 
-static void
-pkg_repo_new_conflict(const char *origin, struct pkg_conflict_bulk *bulk)
-{
-	struct pkg_conflict *new;
+	pkg_debug(1, "PkgRepo: extracting repo %", pkg_repo_name(repo));
 
-	pkg_conflict_new(&new);
-	sbuf_set(&new->origin, origin);
+	a = archive_read_new();
+	archive_read_support_filter_all(a);
+	archive_read_support_format_tar(a);
 
-	HASH_ADD_KEYPTR(hh, bulk->conflicts,
-			__DECONST(char *, pkg_conflict_origin(new)),
-			sbuf_size(new->origin), new);
-}
+	/* Seek to the begin of file */
+	(void)lseek(fd, 0, SEEK_SET);
+	archive_read_open_fd(a, fd, 4096);
 
-static void
-pkg_repo_write_conflicts (struct pkg_conflict_bulk *bulk, FILE *out)
-{
-	struct pkg_conflict_bulk	*pkg_bulk = NULL, *cur, *tmp, *s;
-	struct pkg_conflict	*c1, *c1tmp, *c2, *c2tmp, *ctmp;
-	bool new;
+	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
+		if (strcmp(archive_entry_pathname(ae), file) == 0) {
+			if (dest_fd == -1) {
+				archive_entry_set_pathname(ae, dest);
+				/*
+				 * The repo should be owned by root and not writable
+				 */
+				archive_entry_set_uid(ae, 0);
+				archive_entry_set_gid(ae, 0);
+				archive_entry_set_perm(ae, 0644);
 
-	/*
-	 * Here we reorder bulk hash from hash by file
-	 * to hash indexed by a package, so we iterate over the
-	 * original hash and create a new hash indexed by package name
-	 */
-
-	HASH_ITER (hh, bulk, cur, tmp) {
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_FIND_STR(pkg_bulk, sbuf_get(c1->origin), s);
-			if (s == NULL) {
-				/* New entry required */
-				s = malloc(sizeof(struct pkg_conflict_bulk));
-				if (s == NULL) {
-					pkg_emit_errno("malloc", "struct pkg_conflict_bulk");
-					goto out;
+				if (archive_read_extract(a, ae, EXTRACT_ARCHIVE_FLAGS) != 0) {
+					pkg_emit_errno("archive_read_extract", "extract error");
+					rc = EPKG_FATAL;
+					goto cleanup;
 				}
-				memset(s, 0, sizeof(struct pkg_conflict_bulk));
-				s->file = sbuf_get(c1->origin);
-				HASH_ADD_KEYPTR(hh, pkg_bulk, s->file, strlen(s->file), s);
-			}
-			/* Now add all new entries from this file to this conflict structure */
-			HASH_ITER (hh, cur->conflicts, c2, c2tmp) {
-				new = true;
-				if (strcmp(sbuf_get(c1->origin), sbuf_get(c2->origin)) == 0)
-					continue;
-
-				HASH_FIND_STR(s->conflicts, sbuf_get(c2->origin), ctmp);
-				if (ctmp == NULL)
-					pkg_repo_new_conflict(sbuf_get(c2->origin), s);
+			} else {
+				if (archive_read_data_into_fd(a, dest_fd) != 0) {
+					pkg_emit_errno("archive_read_extract", "extract error");
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+				(void)lseek(dest_fd, 0, SEEK_SET);
 			}
 		}
-	}
+		if (pkg_repo_signature_type(repo) == SIG_PUBKEY &&
+		    strcmp(archive_entry_pathname(ae), "signature") == 0) {
+			siglen = archive_entry_size(ae);
+			sig = malloc(siglen);
+			archive_read_data(a, sig, siglen);
+		}
 
-	HASH_ITER (hh, pkg_bulk, cur, tmp) {
-		fprintf(out, "%s:", cur->file);
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			if (c1->hh.next != NULL)
-				fprintf(out, "%s,", sbuf_get(c1->origin));
-			else
-				fprintf(out, "%s\n", sbuf_get(c1->origin));
+		if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
+			if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig")) {
+				snprintf(key, sizeof(key), "%.*s",
+				    (int) strlen(archive_entry_pathname(ae)) - 4,
+				    archive_entry_pathname(ae));
+				HASH_FIND_STR(sc, key, s);
+				if (s == NULL) {
+					s = calloc(1, sizeof(struct sig_cert));
+					strlcpy(s->name, key, sizeof(s->name));
+					HASH_ADD_STR(sc, name, s);
+				}
+				s->siglen = archive_entry_size(ae);
+				s->sig = malloc(s->siglen);
+				archive_read_data(a, s->sig, s->siglen);
+			}
+			if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".pub")) {
+				snprintf(key, sizeof(key), "%.*s",
+				    (int) strlen(archive_entry_pathname(ae)) - 4,
+				    archive_entry_pathname(ae));
+				HASH_FIND_STR(sc, key, s);
+				if (s == NULL) {
+					s = calloc(1, sizeof(struct sig_cert));
+					strlcpy(s->name, key, sizeof(s->name));
+					HASH_ADD_STR(sc, name, s);
+				}
+				s->certlen = archive_entry_size(ae);
+				s->cert = malloc(s->certlen);
+				archive_read_data(a, s->cert, s->certlen);
+			}
 		}
 	}
-out:
-	HASH_ITER (hh, pkg_bulk, cur, tmp) {
-		HASH_ITER (hh, cur->conflicts, c1, c1tmp) {
-			HASH_DEL(cur->conflicts, c1);
-			sbuf_free(c1->origin);
-			free(c1);
+
+	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		if (sig == NULL) {
+			pkg_emit_error("No signature found in the repository.  "
+					"Can not validate against %s key.", pkg_repo_key(repo));
+			rc = EPKG_FATAL;
+			goto cleanup;
 		}
-		HASH_DEL(pkg_bulk, cur);
-		free(cur);
-	}
-	return;
-}
+		ret = rsa_verify(dest, pkg_repo_key(repo),
+		    sig, siglen - 1, dest_fd);
+		if (ret != EPKG_OK) {
+			pkg_emit_error("Invalid signature, "
+					"removing repository.");
+			free(sig);
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+		free(sig);
+	} else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
+		if (HASH_COUNT(sc) == 0) {
+			pkg_emit_error("No signature found");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 
-int
-pkg_create_repo(char *path, const char *output_dir, bool filelist,
-		void (progress)(struct pkg *pkg, void *data), void *data)
-{
-	FTS *fts = NULL;
-	struct thd_data thd_data;
-	struct pkg_conflict *c, *ctmp;
-	struct pkg_conflict_bulk *conflicts = NULL, *curcb, *tmpcb;
-	int num_workers;
-	size_t len;
-	pthread_t *tids = NULL;
-	struct digest_list_entry *dlist = NULL, *cur_dig, *dtmp;
+		/* load fingerprints */
+		snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
+		if ((pkg_repo_load_fingerprints(path, &trusted)) != EPKG_OK) {
+			pkg_emit_error("Error loading trusted certificates");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 
-	int retcode = EPKG_OK;
+		if (HASH_COUNT(trusted) == 0) {
+			pkg_emit_error("No trusted certificates");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 
-	char *repopath[2];
-	char repodb[MAXPATHLEN];
-	char *manifest_digest;
-	FILE *psyml, *fsyml, *mandigests, *fconflicts;
+		snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
+		if ((pkg_repo_load_fingerprints(path, &revoked)) != EPKG_OK) {
+			pkg_emit_error("Error loading revoked certificates");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 
-	psyml = fsyml = mandigests = fconflicts = NULL;
+		HASH_ITER(hh, sc, s, stmp) {
+			if (s->sig == NULL || s->cert == NULL) {
+				pkg_emit_error("Number of signatures and certificates "
+				    "mismatch");
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
+			s->trusted = false;
+			sha256_buf(s->cert, s->certlen, hash);
+			HASH_FIND_STR(revoked, hash, f);
+			if (f != NULL) {
+				pkg_emit_error("At least one of the "
+				    " certificates has been revoked");
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
 
-	if (!is_dir(path)) {
-		pkg_emit_error("%s is not a directory", path);
-		return (EPKG_FATAL);
-	}
+			HASH_FIND_STR(trusted, hash, f);
+			if (f != NULL) {
+				nbgood++;
+				s->trusted = true;
+			}
+		}
 
-	if (!is_dir(output_dir)) {
-		pkg_emit_error("%s is not a directory", output_dir);
-		return (EPKG_FATAL);
-	}
+		if (nbgood == 0) {
+			pkg_emit_error("No trusted certificate found");
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
 
-	repopath[0] = path;
-	repopath[1] = NULL;
+		nbgood = 0;
 
-	len = sizeof(num_workers);
-	if (sysctlbyname("hw.ncpu", &num_workers, &len, NULL, 0) == -1)
-		num_workers = 6;
+		HASH_ITER(hh, sc, s, stmp) {
+			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen, dest_fd);
+			if (ret == EPKG_OK && s->trusted)
+				nbgood++;
+		}
 
-	if ((fts = fts_open(repopath, FTS_PHYSICAL|FTS_NOCHDIR, NULL)) == NULL) {
-		pkg_emit_errno("fts_open", path);
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-	    repo_packagesite_file);
-	if ((psyml = fopen(repodb, "w")) == NULL) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-	if (filelist) {
-		snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-		    repo_filesite_file);
-		if ((fsyml = fopen(repodb, "w")) == NULL) {
-			retcode = EPKG_FATAL;
+		if (nbgood == 0) {
+			pkg_emit_error("No trusted certificate has been used "
+			    "to sign the repository");
+			rc = EPKG_FATAL;
 			goto cleanup;
 		}
 	}
-	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir,
-	    repo_digests_file);
-	if ((mandigests = fopen(repodb, "w")) == NULL) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
 
-	snprintf(repodb, sizeof(repodb), "%s/%s", output_dir, repo_conflicts_file);
-	if ((fconflicts = fopen(repodb, "w")) == NULL) {
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	thd_data.root_path = path;
-	thd_data.max_results = num_workers;
-	thd_data.num_results = 0;
-	thd_data.stop = false;
-	thd_data.fts = fts;
-	thd_data.read_files = filelist;
-	pthread_mutex_init(&thd_data.fts_m, NULL);
-	thd_data.results = NULL;
-	thd_data.thd_finished = 0;
-	pthread_mutex_init(&thd_data.results_m, NULL);
-	pthread_cond_init(&thd_data.has_result, NULL);
-	pthread_cond_init(&thd_data.has_room, NULL);
-
-	/* Launch workers */
-	tids = calloc(num_workers, sizeof(pthread_t));
-	for (int i = 0; i < num_workers; i++) {
-		pthread_create(&tids[i], NULL, (void *)&read_pkg_file, &thd_data);
-	}
-
-	for (;;) {
-		struct pkg_result *r;
-		const char *origin;
-
-		long manifest_pos, files_pos, manifest_length;
-
-		pthread_mutex_lock(&thd_data.results_m);
-		while ((r = thd_data.results) == NULL) {
-			if (thd_data.thd_finished == num_workers) {
-				break;
-			}
-			pthread_cond_wait(&thd_data.has_result, &thd_data.results_m);
-		}
-		if (r != NULL) {
-			LL_DELETE(thd_data.results, thd_data.results);
-			thd_data.num_results--;
-			pthread_cond_signal(&thd_data.has_room);
-		}
-		pthread_mutex_unlock(&thd_data.results_m);
-		if (r == NULL) {
-			break;
-		}
-
-		if (r->retcode != EPKG_OK) {
-			free(r);
-			continue;
-		}
-
-		/* EPKG_END returned */
-
-		if (progress != NULL)
-			progress(r->pkg, data);
-
-		manifest_pos = ftell(psyml);
-		pkg_emit_manifest_file(r->pkg, psyml, PKG_MANIFEST_EMIT_COMPACT, &manifest_digest);
-		manifest_length = ftell(psyml) - manifest_pos;
-		if (filelist) {
-			files_pos = ftell(fsyml);
-			pkg_emit_filelist(r->pkg, fsyml);
-		} else {
-			files_pos = 0;
-		}
-
-		pkg_get(r->pkg, PKG_ORIGIN, &origin);
-
-		cur_dig = malloc(sizeof (struct digest_list_entry));
-		cur_dig->origin = strdup(origin);
-		cur_dig->digest = manifest_digest;
-		cur_dig->manifest_pos = manifest_pos;
-		cur_dig->files_pos = files_pos;
-		cur_dig->manifest_length = manifest_length;
-		LL_PREPEND(dlist, cur_dig);
-
-		pkg_free(r->pkg);
-		free(r);
-	}
-
-	/* Now sort all digests */
-	LL_SORT(dlist, digest_sort_compare_func);
-
-	pkg_repo_write_conflicts(conflicts, fconflicts);
 cleanup:
-	HASH_ITER (hh, conflicts, curcb, tmpcb) {
-		HASH_ITER (hh, curcb->conflicts, c, ctmp) {
-			sbuf_free(c->origin);
-			HASH_DEL(curcb->conflicts, c);
-			free(c);
-		}
-		HASH_DEL(conflicts, curcb);
-		free(curcb);
-	}
-	LL_FOREACH_SAFE(dlist, cur_dig, dtmp) {
-		fprintf(mandigests, "%s:%s:%ld:%ld:%ld\n", cur_dig->origin,
-		    cur_dig->digest, cur_dig->manifest_pos, cur_dig->files_pos,
-		    cur_dig->manifest_length);
-		free(cur_dig->digest);
-		free(cur_dig->origin);
-		free(cur_dig);
-	}
-	if (tids != NULL) {
-		// Cancel running threads
-		if (retcode != EPKG_OK) {
-			pthread_mutex_lock(&thd_data.fts_m);
-			thd_data.stop = true;
-			pthread_mutex_unlock(&thd_data.fts_m);
-		}
-		// Join on threads to release thread IDs
-		for (int i = 0; i < num_workers; i++) {
-			pthread_join(tids[i], NULL);
-		}
-		free(tids);
+	if (rc != EPKG_OK && dest != NULL)
+		unlink(dest);
+
+	if (a != NULL) {
+		archive_read_close(a);
+		archive_read_free(a);
 	}
 
-	if (fts != NULL)
-		fts_close(fts);
-
-	if (fsyml != NULL)
-		fclose(fsyml);
-
-	if (psyml != NULL)
-		fclose(psyml);
-
-	if (fconflicts != NULL)
-		fclose(fconflicts);
-
-	if (mandigests != NULL)
-		fclose(mandigests);
-
-	return (retcode);
+	return rc;
 }
 
-void
-read_pkg_file(void *data)
+FILE *
+pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
+		const char *extension, time_t *t, int *rc, const char *archive_file)
 {
-	struct thd_data *d = (struct thd_data*) data;
-	struct pkg_result *r;
-	struct pkg_manifest_key *keys = NULL;
+	int fd, dest_fd;
+	mode_t mask;
+	FILE *res = NULL;
+	const char *tmpdir;
+	char tmp[MAXPATHLEN];
 
-	FTSENT *fts_ent = NULL;
-	char fts_accpath[MAXPATHLEN];
-	char fts_path[MAXPATHLEN];
-	char fts_name[MAXPATHLEN];
-	off_t st_size;
-	int fts_info, flags;
-
-	char *ext = NULL;
-	char *pkg_path;
-
-	pkg_manifest_keys_new(&keys);
-
-	for (;;) {
-		fts_ent = NULL;
-
-		/*
-		 * Get a file to read from.
-		 * Copy the data we need from the fts entry localy because as soon as
-		 * we unlock the fts_m mutex, we can not access it.
-		 */
-		pthread_mutex_lock(&d->fts_m);
-		if (!d->stop)
-			fts_ent = fts_read(d->fts);
-		if (fts_ent != NULL) {
-			strlcpy(fts_accpath, fts_ent->fts_accpath, sizeof(fts_accpath));
-			strlcpy(fts_path, fts_ent->fts_path, sizeof(fts_path));
-			strlcpy(fts_name, fts_ent->fts_name, sizeof(fts_name));
-			st_size = fts_ent->fts_statp->st_size;
-			fts_info = fts_ent->fts_info;
-		}
-		pthread_mutex_unlock(&d->fts_m);
-
-		// There is no more jobs, exit the main loop.
-		if (fts_ent == NULL)
-			break;
-
-		/* skip everything that is not a file */
-		if (fts_info != FTS_F)
-			continue;
-
-		ext = strrchr(fts_name, '.');
-
-		if (ext == NULL)
-			continue;
-
-		if (strcmp(ext, ".tgz") != 0 &&
-				strcmp(ext, ".tbz") != 0 &&
-				strcmp(ext, ".txz") != 0 &&
-				strcmp(ext, ".tar") != 0)
-			continue;
-
-		*ext = '\0';
-
-		if (strcmp(fts_name, repo_db_archive) == 0 ||
-			strcmp(fts_name, repo_packagesite_archive) == 0 ||
-			strcmp(fts_name, repo_filesite_archive) == 0 ||
-			strcmp(fts_name, repo_digests_archive) == 0 ||
-			strcmp(fts_name, repo_conflicts_archive) == 0)
-			continue;
-		*ext = '.';
-
-		pkg_path = fts_path;
-		pkg_path += strlen(d->root_path);
-		while (pkg_path[0] == '/')
-			pkg_path++;
-
-		r = calloc(1, sizeof(struct pkg_result));
-		strlcpy(r->path, pkg_path, sizeof(r->path));
-
-		if (d->read_files)
-			flags = PKG_OPEN_MANIFEST_ONLY;
-		else
-			flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
-
-		if (pkg_open(&r->pkg, fts_accpath, keys, flags) != EPKG_OK) {
-			r->retcode = EPKG_WARN;
-		} else {
-			sha256_file(fts_accpath, r->cksum);
-			pkg_set(r->pkg, PKG_CKSUM, r->cksum,
-			    PKG_REPOPATH, pkg_path,
-			    PKG_PKGSIZE, st_size);
-		}
-
-
-		/* Add result to the FIFO and notify */
-		pthread_mutex_lock(&d->results_m);
-		while (d->num_results >= d->max_results) {
-			pthread_cond_wait(&d->has_room, &d->results_m);
-		}
-		LL_APPEND(d->results, r);
-		d->num_results++;
-		pthread_cond_signal(&d->has_result);
-		pthread_mutex_unlock(&d->results_m);
+	fd = pkg_repo_fetch_remote_tmp(repo, filename, extension, t, rc);
+	if (fd == -1) {
+		return (NULL);
 	}
 
-	/*
-	 * This thread is about to exit.
-	 * Notify the main thread that we are done.
-	 */
-	pthread_mutex_lock(&d->results_m);
-	d->thd_finished++;
-	pthread_cond_signal(&d->has_result);
-	pthread_mutex_unlock(&d->results_m);
-	pkg_manifest_keys_free(keys);
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, archive_file);
+
+	mask = umask(022);
+	dest_fd = mkstemp(tmp);
+	umask(mask);
+	if (dest_fd == -1) {
+		pkg_emit_error("Could not create temporary file %s, "
+				"aborting update.\n", tmp);
+		*rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	(void)unlink(tmp);
+	if (pkg_repo_archive_extract_file(fd, archive_file, NULL, repo, dest_fd) != EPKG_OK) {
+		*rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	res = fdopen(dest_fd, "r");
+	if (res == NULL) {
+		pkg_emit_errno("fdopen", "digest open failed");
+		*rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	dest_fd = -1;
+	*rc = EPKG_OK;
+
+cleanup:
+	if (dest_fd != -1)
+		close(dest_fd);
+	/* Thus removing archived file as well */
+	close(fd);
+	return (res);
 }
 
-static int
-cmd_sign(char *path, char **argv, int argc, struct sbuf **sig, struct sbuf **cert)
+static struct fingerprint *
+pkg_repo_parse_fingerprint(ucl_object_t *obj)
 {
-	FILE *fp;
-	char sha256[SHA256_DIGEST_LENGTH * 2 + 1];
-	struct sbuf *cmd = NULL;
-	struct sbuf *buf = NULL;
-	char *line = NULL;
-	size_t linecap = 0;
-	ssize_t linelen;
-	int i, ret = EPKG_OK;
+	ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
+	const char *function = NULL, *fp = NULL;
+	hash_t fct = HASH_UNKNOWN;
+	struct fingerprint *f = NULL;
+	const char *key;
 
-	if (sha256_file(path, sha256) != EPKG_OK)
+	while ((cur = ucl_iterate_object(obj, &it, true))) {
+		key = ucl_object_key(cur);
+		if (cur->type != UCL_STRING)
+			continue;
+
+		if (strcasecmp(key, "function") == 0) {
+			function = ucl_object_tostring(cur);
+			continue;
+		}
+
+		if (strcasecmp(key, "fingerprint") == 0) {
+			fp = ucl_object_tostring(cur);
+			continue;
+		}
+	}
+
+	if (fp == NULL || function == NULL)
+		return (NULL);
+
+	if (strcasecmp(function, "sha256") == 0)
+		fct = HASH_SHA256;
+
+	if (fct == HASH_UNKNOWN) {
+		pkg_emit_error("Unsupported hashing function: %s", function);
+		return (NULL);
+	}
+
+	f = calloc(1, sizeof(struct fingerprint));
+	f->type = fct;
+	strlcpy(f->hash, fp, sizeof(f->hash));
+
+	return (f);
+}
+
+static struct fingerprint *
+pkg_repo_load_fingerprint(const char *dir, const char *filename)
+{
+	ucl_object_t *obj = NULL;
+	struct ucl_parser *p = NULL;
+	char path[MAXPATHLEN];
+	struct fingerprint *f = NULL;
+
+	snprintf(path, sizeof(path), "%s/%s", dir, filename);
+
+	p = ucl_parser_new(0);
+
+	if (!ucl_parser_add_file(p, path)) {
+		pkg_emit_error("%s", ucl_parser_get_error(p));
+		ucl_parser_free(p);
+		return (NULL);
+	}
+
+	obj = ucl_parser_get_object(p);
+
+	if (obj->type == UCL_OBJECT)
+		f = pkg_repo_parse_fingerprint(obj);
+
+	ucl_object_free(obj);
+	ucl_parser_free(p);
+
+	return (f);
+}
+
+int
+pkg_repo_load_fingerprints(const char *path, struct fingerprint **f)
+{
+	DIR *d;
+	struct dirent *ent;
+	struct fingerprint *finger = NULL;
+
+	*f = NULL;
+
+	if ((d = opendir(path)) == NULL)
 		return (EPKG_FATAL);
 
-	cmd = sbuf_new_auto();
-
-	for (i = 0; i < argc; i++) {
-		if (strspn(argv[i], " \t\n") > 0)
-			sbuf_printf(cmd, " \"%s\" ", argv[i]);
-		else
-			sbuf_printf(cmd, " %s ", argv[i]);
-	}
-	sbuf_done(cmd);
-
-	if ((fp = popen(sbuf_data(cmd), "r+")) == NULL) {
-		ret = EPKG_FATAL;
-		goto done;
-	}
-
-	fprintf(fp, "%s\n", sha256);
-
-	if (*sig == NULL)
-		*sig = sbuf_new_auto();
-	if (*cert == NULL)
-		*cert = sbuf_new_auto();
-
-	while ((linelen = getline(&line, &linecap, fp)) > 0 ) {
-		if (strcmp(line, "SIGNATURE\n") == 0) {
-			buf = *sig;
+	while ((ent = readdir(d))) {
+		if (strcmp(ent->d_name, ".") == 0 ||
+		    strcmp(ent->d_name, "..") == 0)
 			continue;
-		} else if (strcmp(line, "CERT\n") == 0) {
-			buf = *cert;
-			continue;
-		} else if (strcmp(line, "END\n") == 0) {
-			break;
-		}
-		if (buf != NULL)
-			sbuf_bcat(buf, line, linelen);
+		finger = pkg_repo_load_fingerprint(path, ent->d_name);
+		if (finger != NULL)
+			HASH_ADD_STR(*f, hash, finger);
 	}
 
-	if (pclose(fp) != 0) {
-		ret = EPKG_FATAL;
-		goto done;
-	}
-
-	if (sbuf_data(*sig)[sbuf_len(*sig) -1 ] == '\n')
-		sbuf_setpos(*sig, sbuf_len(*sig) -1);
-
-	sbuf_finish(*sig);
-	sbuf_finish(*cert);
-done:
-	if (cmd)
-		sbuf_delete(cmd);
-
-	return (ret);
-}
-
-static int
-pack_db(const char *name, const char *archive, char *path, struct rsa_key *rsa, char **argv, int argc)
-{
-	struct packing *pack;
-	unsigned char *sigret = NULL;
-	unsigned int siglen = 0;
-	char fname[MAXPATHLEN];
-	struct sbuf *sig, *pub;
-
-	sig = NULL;
-	pub = NULL;
-
-	if (packing_init(&pack, archive, TXZ) != EPKG_OK)
-		return (EPKG_FATAL);
-
-	if (rsa != NULL) {
-		if (rsa_sign(path, rsa, &sigret, &siglen) != EPKG_OK) {
-			packing_finish(pack);
-			unlink(path);
-			return (EPKG_FATAL);
-		}
-
-		if (packing_append_buffer(pack, sigret, "signature", siglen + 1) != EPKG_OK) {
-			free(sigret);
-			free(pack);
-			unlink(path);
-			return (EPKG_FATAL);
-		}
-
-		free(sigret);
-	} else if (argc >= 1) {
-		if (cmd_sign(path, argv, argc, &sig, &pub) != EPKG_OK) {
-			packing_finish(pack);
-			unlink(path);
-			return (EPKG_FATAL);
-		}
-
-		snprintf(fname, sizeof(fname), "%s.sig", name);
-		if (packing_append_buffer(pack, sbuf_data(sig), fname, sbuf_len(sig)) != EPKG_OK) {
-			packing_finish(pack);
-			sbuf_delete(sig);
-			sbuf_delete(pub);
-			unlink(path);
-			return (EPKG_FATAL);
-		}
-
-		snprintf(fname, sizeof(fname), "%s.pub", name);
-		if (packing_append_buffer(pack, sbuf_data(pub), fname, sbuf_len(pub)) != EPKG_OK) {
-			packing_finish(pack);
-			unlink(path);
-			sbuf_delete(sig);
-			sbuf_delete(pub);
-			return (EPKG_FATAL);
-		}
-
-	}
-	packing_append_file_attr(pack, path, name, "root", "wheel", 0644);
-
-	packing_finish(pack);
-	unlink(path);
-	if (sig != NULL)
-		sbuf_delete(sig);
-	if (pub != NULL)
-		sbuf_delete(pub);
+	closedir(d);
 
 	return (EPKG_OK);
-}
-
-int
-pkg_finish_repo(const char *output_dir, pem_password_cb *password_cb,
-    char **argv, int argc, bool filelist)
-{
-	char repo_path[MAXPATHLEN];
-	char repo_archive[MAXPATHLEN];
-	struct rsa_key *rsa = NULL;
-	struct stat st;
-	int ret = EPKG_OK;
-	
-	if (!is_dir(output_dir)) {
-		pkg_emit_error("%s is not a directory", output_dir);
-		return (EPKG_FATAL);
-	}
-
-	if (argc == 1) {
-		rsa_new(&rsa, password_cb, argv[0]);
-	}
-
-	if (argc > 1 && strcmp(argv[0], "signing_command:") != 0)
-		return (EPKG_FATAL);
-
-	if (argc > 1) {
-		argc--;
-		argv++;
-	}
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    repo_packagesite_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    repo_packagesite_archive);
-	if (pack_db(repo_packagesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	if (filelist) {
-		snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-		    repo_filesite_file);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s",
-		    output_dir, repo_filesite_archive);
-		if (pack_db(repo_filesite_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-			ret = EPKG_FATAL;
-			goto cleanup;
-		}
-	}
-
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir,
-	    repo_digests_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-	    repo_digests_archive);
-	if (pack_db(repo_digests_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-	snprintf(repo_path, sizeof(repo_path), "%s/%s", output_dir, 
-		repo_conflicts_file);
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s", output_dir,
-		repo_conflicts_archive);
-	if (pack_db(repo_conflicts_file, repo_archive, repo_path, rsa, argv, argc) != EPKG_OK) {
-		ret = EPKG_FATAL;
-		goto cleanup;
-	}
-
-	/* Now we need to set the equal mtime for all archives in the repo */
-	snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-	    output_dir, repo_db_archive);
-	if (stat(repo_archive, &st) == 0) {
-		struct timeval ftimes[2] = {
-			{
-			.tv_sec = st.st_mtime,
-			.tv_usec = 0
-			},
-			{
-			.tv_sec = st.st_mtime,
-			.tv_usec = 0
-			}
-		};
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-		    output_dir, repo_packagesite_archive);
-		utimes(repo_archive, ftimes);
-		snprintf(repo_archive, sizeof(repo_archive), "%s/%s.txz",
-		    output_dir, repo_digests_archive);
-		utimes(repo_archive, ftimes);
-		if (filelist) {
-			snprintf(repo_archive, sizeof(repo_archive),
-			    "%s/%s.txz", output_dir, repo_filesite_archive);
-			utimes(repo_archive, ftimes);
-		}
-	}
-
-cleanup:
-	if (rsa)
-		rsa_free(rsa);
-
-	return (ret);
 }

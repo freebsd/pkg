@@ -337,7 +337,22 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_CONFLICT (1<<3)
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t);
-int pkg_repo_fetch(struct pkg *pkg);
+int pkg_repo_fetch_package(struct pkg *pkg);
+FILE * pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
+		const char *extension, time_t *t, int *rc, const char *archive_file);
+
+typedef enum {
+	HASH_UNKNOWN,
+	HASH_SHA256,
+} hash_t;
+
+struct fingerprint {
+	hash_t type;
+	char hash[BUFSIZ];
+	UT_hash_handle hh;
+};
+int pkg_repo_load_fingerprints(const char *path, struct fingerprint **f);
+
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
@@ -449,7 +464,7 @@ int pkg_emit_filelist(struct pkg *, FILE *);
 
 int do_extract_mtree(char *mtree, const char *prefix);
 
-int repo_update_binary_pkgs(struct pkg_repo *repo, bool force);
+int pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force);
 
 bool ucl_object_emit_sbuf(ucl_object_t *obj, enum ucl_emitter emit_type, struct sbuf **buf);
 bool ucl_object_emit_file(ucl_object_t *obj, enum ucl_emitter emit_type, FILE *);

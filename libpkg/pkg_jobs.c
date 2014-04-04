@@ -2117,7 +2117,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 			p = ps->items[0]->pkg;													\
 			if (p->type != PKG_REMOTE)												\
 				continue;															\
-			if (pkg_repo_fetch(p) != EPKG_OK)										\
+			if (pkg_repo_fetch_package(p) != EPKG_OK)								\
 				return (EPKG_FATAL);												\
 		}																			\
 	}																				\

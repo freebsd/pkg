@@ -891,7 +891,7 @@ pkg_repo_new(const char *name, const char *url)
 
 	r = calloc(1, sizeof(struct pkg_repo));
 	r->type = REPO_BINARY_PKGS;
-	r->update = repo_update_binary_pkgs;
+	r->update = pkg_repo_update_binary_pkgs;
 	r->url = strdup(url);
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;
