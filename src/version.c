@@ -484,7 +484,7 @@ cleanup:
 	return (retcode);
 }
 
-int
+static int
 exec_buf(struct sbuf *cmd) {
 	FILE *fp;
 	char buf[BUFSIZ];
@@ -502,25 +502,77 @@ exec_buf(struct sbuf *cmd) {
 	return (sbuf_len(cmd));
 }
 
+static bool
+validate_origin(const char *portsdir, const char *origin)
+{
+	bool		exists = false;
+	struct sbuf	*makecmd;
+	char		*category, *dir, *results, *d;
+	size_t		dirlen;
+
+	/* Strip the last path component from the absolute origin of
+	 * the port -- giving the category directory.  Use make(1) to
+	 * print out the SUBDIR variable from that category, and check
+	 * that the port directory appears in the list.
+	 *
+	 * Return false if (a) the category Makefile doesn't exist (or
+	 * make(1) fails for some other reason) or (b) the port is not
+	 * listed in SUBDIR
+	 *
+	 * FFR Memoize this? Hash the port directories from SUBDIR for
+	 * fast subsequent lookups?
+	 */
+
+	asprintf(&category, "%s/%s", portsdir, origin);
+	if (category == NULL)
+		err(EX_OSERR, "validate_origin()");
+
+	dir = strrchr(category, '/');
+	dir[0] = '\0';
+	dir++;
+	dirlen = strlen(dir);
+
+	makecmd = sbuf_new_auto();
+	sbuf_printf(makecmd, "make -C %s -V SUBDIR 2>/dev/null", category);
+	
+	if (exec_buf(makecmd) <= 0)
+		goto cleanup;
+
+	results = sbuf_data(makecmd);
+	
+	while ((d = strsep(&results, " ")) != NULL) {
+		if (d[0] == dir[0] && strncmp(d, dir, dirlen) == 0) {
+			exists = true;
+			break;
+		}
+	}
+			
+cleanup:
+	free(category);
+	sbuf_delete(makecmd);
+
+	return (exists);
+}
+
 static const char *
 port_version(struct sbuf *cmd, const char *portsdir, const char *origin)
 {
 	char	*output;
-	char	*version;
+	char	*version = NULL;
 
 	/* Validate the port origin -- check the SUBDIR settings
 	   in the ports and category Makefiles, then extract the
 	   version from the port itself. */
 
-	sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null",
-		    portsdir, origin);
-	sbuf_finish(cmd);
+	if (validate_origin(portsdir, origin)) {
+		sbuf_printf(cmd, "make -C %s/%s -VPKGVERSION 2>/dev/null",
+		     portsdir, origin);
+		sbuf_finish(cmd);
 
-	if (exec_buf(cmd) != 0) {
-		output = sbuf_data(cmd);
-		version = strsep(&output, "\n");
-	} else {
-		version = NULL;
+		if (exec_buf(cmd) != 0) {
+			output = sbuf_data(cmd);
+			version = strsep(&output, "\n");
+		}
 	}
 	return (version);
 }
