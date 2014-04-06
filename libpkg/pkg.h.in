@@ -38,6 +38,7 @@
 #include <sys/sbuf.h>
 #include <stringlist.h>
 #include <openssl/pem.h>
+#include <sysexits.h>
 
 /* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
@@ -64,6 +65,12 @@
 #ifdef __DragonFly__
 #define OSMAJOR	__DragonFly__
 #endif
+
+/* Special exit status for worker processes indicating that a restart
+ * is desired -- eg. after a child has updated pkg(8) itself.  Don't
+ * clash with any of the sysexits values */
+
+#define EX_NEEDRESTART	(EX__MAX + 1)
 
 struct pkg;
 struct pkg_dep;

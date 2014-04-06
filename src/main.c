@@ -65,7 +65,6 @@ static void usage(const char *, const char *, FILE *, enum pkg_usage_reason, ...
 static void usage_help(void);
 static int exec_help(int, char **);
 bool quiet = false;
-static char **cmdargv;
 bool newpkgversion = false;
 
 static struct commands {
@@ -483,7 +482,6 @@ main(int argc, char **argv)
 	/* Set stdout unbuffered */
 	setvbuf(stdout, NULL, _IONBF, 0);
 
-	cmdargv = argv;
 	newargvl = 0;
 
 	if (argc < 2)
@@ -731,10 +729,8 @@ main(int argc, char **argv)
 		sbuf_delete(newcmd);
 	}
 
-	if (ret == EX_OK && newpkgversion) {
-		if (jail_str == NULL && chroot_path == NULL)
-			execvp(getprogname(), cmdargv);
-	}
+	if (ret == EX_OK && newpkgversion)
+		return (EX_NEEDRESTART);
 
 	return (ret);
 }
