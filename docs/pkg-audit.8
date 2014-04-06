@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd December  24, 2013
+.Dd April 6, 2014
 .Dt PKG-AUDIT 8
 .Os
 .Sh NAME
@@ -24,6 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl Fq
+.Op Fl f Ar file
 .Ar pkg-name
 .Sh DESCRIPTION
 .Nm
@@ -54,6 +55,15 @@ will audit only that package.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl f Ar file
+Use
+.Pa file
+as the local copy of the vulnerability database.
+If used in combination with
+.Fl F
+download the vulnerability database to the named
+.Pa file
+before auditing installed ports against it.
 .It Fl F
 Fetch the database before checking.
 .It Fl q

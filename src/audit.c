@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -711,30 +712,35 @@ free_audit_list(struct audit_entry *h)
 int
 exec_audit(int argc, char **argv)
 {
-	struct audit_entry *h = NULL;
-	struct audit_entry_sorted *cooked_audit_entries = NULL;
-	struct pkgdb *db = NULL;
-	struct pkgdb_it *it = NULL;
-	struct pkg *pkg = NULL;
-	const char *db_dir;
-	char *name;
-	char *version;
-	char audit_file[MAXPATHLEN];
-	unsigned int vuln = 0;
-	bool fetch = false;
-	int ch;
-	int ret = EX_OK, res;
-	const char *portaudit_site = NULL;
+	struct audit_entry		*h = NULL;
+	struct audit_entry_sorted	*cooked_audit_entries = NULL;
+	struct pkgdb			*db = NULL;
+	struct pkgdb_it			*it = NULL;
+	struct pkg			*pkg = NULL;
+	const char			*db_dir;
+	char				*name;
+	char				*version;
+	char				 audit_file_buf[MAXPATHLEN];
+	char				*audit_file = audit_file_buf;
+	unsigned int			 vuln = 0;
+	bool				 fetch = false;
+	int				 ch;
+	int				 ret = EX_OK, res;
+	const char			*portaudit_site = NULL;
 
 	db_dir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+	snprintf(audit_file_buf, sizeof(audit_file_buf), "%s/vuln.xml", db_dir);
 
-	while ((ch = getopt(argc, argv, "qF")) != -1) {
+	while ((ch = getopt(argc, argv, "qFf:")) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
 			break;
 		case 'F':
 			fetch = true;
+			break;
+		case 'f':
+			audit_file = optarg;
 			break;
 		default:
 			usage_audit();
@@ -743,8 +749,6 @@ exec_audit(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
-
-	snprintf(audit_file, sizeof(audit_file), "%s/vuln.xml", db_dir);
 
 	if (fetch == true) {
 		portaudit_site = pkg_object_string(pkg_config_get("VULNXML_SITE"));
@@ -773,9 +777,12 @@ exec_audit(int argc, char **argv)
 		res = parse_db_vulnxml(audit_file, &h);
 		if (res != EPKG_OK) {
 			if (errno == ENOENT)
-				warnx("unable to open vulnxml file, try running 'pkg audit -F' first");
+				warnx("vulnxml file %s does not exist. "
+				      "Try running 'pkg audit -F' first",
+				      audit_file);
 			else
-				warn("unable to open vulnxml file %s", audit_file);
+				warn("unable to open vulnxml file %s",
+				     audit_file);
 			ret = EX_DATAERR;
 			goto cleanup;
 		}
