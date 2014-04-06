@@ -3,6 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +33,8 @@
 #include <sys/stat.h>
 #include <sys/queue.h>
 #include <sys/sbuf.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <assert.h>
 #include <err.h>
@@ -409,6 +412,43 @@ export_arg_option (char *arg)
 	}
 }
 
+static void
+start_process_worker(void)
+{
+	int	ret = EX_OK;
+	int	status;
+	pid_t	child_pid;
+
+	/* Fork off a child process to do the actual package work.
+	 * The child may be jailed or chrooted.  If a restart is required
+	 * (eg. pkg(8) inself was upgraded) the child can exit with
+	 * 'EX_NEEDRESTART' and the same forking process will be
+	 * replayed.  This function returns control in the child
+	 * process only. */
+
+	while (1) {
+		child_pid = fork();
+
+		if (child_pid == 0)
+			return;
+		else {
+			if (child_pid == -1)
+				err(EX_OSERR, "Failed to fork worker process");
+
+			if (waitpid(child_pid, &status, WEXITED) == -1)
+				err(EX_OSERR, "Child process pid=%d", child_pid); 
+
+			ret = WEXITSTATUS(status);
+
+			if (WIFEXITED(status) && ret != EX_NEEDRESTART)
+				break;
+		}
+	}
+
+	exit(ret);
+	/* NOTREACHED */
+}
+
 int
 main(int argc, char **argv)
 {
@@ -508,6 +548,8 @@ main(int argc, char **argv)
 	/* reset getopt for the next call */
 	optreset = 1;
 	optind = 1;
+
+	start_process_worker();
 
 	if (jail_str != NULL && chroot_path != NULL) {
 		usage(conffile, reposdir, stderr, PKG_USAGE_INVALID_ARGUMENTS,
