@@ -57,9 +57,8 @@
 #define PKG_SHLIBS_REQUIRED	-14
 #define PKG_SHLIBS_PROVIDED	-15
 #define PKG_ANNOTATIONS		-16
-#define PKG_INFOS		-17	
-#define PKG_CONFLICTS -18
-#define PKG_PROVIDES -19 /* Deprecated field: treat as an annotation for backwards compatibility */
+#define PKG_CONFLICTS		-17
+#define PKG_PROVIDES		-18
 
 static int pkg_string(struct pkg *, ucl_object_t *, int);
 static int pkg_obj(struct pkg *, ucl_object_t *, int);
@@ -91,7 +90,6 @@ static struct manifest_key {
 	{ "flatsize",            PKG_FLATSIZE,            UCL_INT,    pkg_int},
 	{ "groups",              PKG_GROUPS,              UCL_OBJECT, pkg_obj},
 	{ "groups",              PKG_GROUPS,              UCL_ARRAY,  pkg_array},
-	{ "infos",               PKG_INFOS,               UCL_STRING, pkg_string}, /* Deprecated: treat as an annotation */
 	{ "licenselogic",        PKG_LICENSE_LOGIC,       UCL_STRING, pkg_string},
 	{ "licenses",            PKG_LICENSES,            UCL_ARRAY,  pkg_array},
 	{ "maintainer",          PKG_MAINTAINER,          UCL_STRING, pkg_string},
@@ -272,9 +270,6 @@ pkg_string(struct pkg *pkg, ucl_object_t *obj, int attr)
 
 	switch (attr)
 	{
-	case PKG_INFOS:
-		pkg_addannotation(pkg, "_INFOS_", str);
-		break;
 	case PKG_LICENSE_LOGIC:
 		if (!strcmp(str, "single"))
 			pkg_set(pkg, PKG_LICENSE_LOGIC, (int64_t) LICENSE_SINGLE);
