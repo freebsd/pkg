@@ -34,6 +34,8 @@ dist_man_MANS=	pkg-add.8 \
 		pkg_printf.3 \
 		pkg_repos.3
 
+mandir=	$(prefix)/man
+
 EXTRA_DIST=	fix-xrefs
 .PHONY: run-fix-xrefs
 
