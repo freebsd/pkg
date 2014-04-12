@@ -593,6 +593,10 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		return (EX_USAGE);
 	}
 
+
+	if (chdir(portsdir) != 0)
+		err(EX_SOFTWARE, "Cannot chdir to %s\n", portsdir); 
+
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EX_IOERR);
 
