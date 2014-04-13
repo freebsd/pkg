@@ -13,8 +13,8 @@
 *.pc
 tags
 TAGS
-pkg/pkg
-pkg/pkg-static
+src/pkg
+src/pkg-static
 pkg2legacy
 tests/test
 tests/lib/test
@@ -33,6 +33,31 @@ scripts/periodic/460.pkg-checksum
 scripts/periodic/490.status-pkg-changes
 scripts/sbin/pkg2ng
 *.sw*
+*.deps
+*.dirstamp
+*/.libs
+
+# Generated files:
+
+/Makefile
+/config.guess
+/config.status
+/config.sub
+/docs/Makefile
+/external/Makefile
+/external/libelf/libelf_convert.c
+/external/libelf/libelf_fsize.c
+/external/libelf/libelf_msize.c
+/external/libelf/native-elf-format.h
+/libpkg/Makefile
+/libtool
+/ltmain.sh
+/pkg_config.h
+/pkg_config.h.in
+/scripts/Makefile
+/src/Makefile
+/test-driver
+/tests/Makefile
 
 # http://www.gnu.org/software/automake
 
