@@ -547,7 +547,8 @@ main(int argc, char **argv)
 	optreset = 1;
 	optind = 1;
 
-	start_process_worker();
+	if (debug == 0)
+		start_process_worker();
 
 	if (jail_str != NULL && chroot_path != NULL) {
 		usage(conffile, reposdir, stderr, PKG_USAGE_INVALID_ARGUMENTS,
