@@ -2,6 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
+ * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -44,7 +45,8 @@
  * Fetch repository calalogues.
  */
 int
-pkgcli_update(bool force) {
+pkgcli_update(bool force, const char *reponame)
+{
 	int retcode = EPKG_FATAL, update_count = 0;
 	struct pkg_repo *r = NULL;
 
@@ -53,8 +55,13 @@ pkgcli_update(bool force) {
 	    PKGDB_DB_REPO) == EPKG_ENOACCESS)
 		return (EPKG_OK);
 
-	if (!quiet)
-		printf("Updating repository catalogue\n");
+	if (!quiet) {
+		if (reponame != NULL)
+			printf("Updating \"%s\" repository catalogue\n",
+			    reponame);
+		else
+			printf("Updating repository catalogue\n");
+	}
 
 	if (pkg_repos_total_count() == 0) {
 		fprintf(stderr, "No valid repository found.\n");
@@ -62,8 +69,14 @@ pkgcli_update(bool force) {
 	}
 
 	while (pkg_repos(&r) == EPKG_OK) {
-		if (!pkg_repo_enabled(r))
-			continue;
+		if (reponame != NULL) {
+			if (strcmp(pkg_repo_ident(r), reponame) != 0)
+				continue;
+		} else {
+			if (!pkg_repo_enabled(r))
+				continue;
+		}
+
 		retcode = pkg_update(r, force);
 		if (retcode == EPKG_UPTODATE) {
 			if (!quiet)
@@ -87,7 +100,7 @@ pkgcli_update(bool force) {
 void
 usage_update(void)
 {
-	fprintf(stderr, "Usage: pkg update [-fq]\n\n");
+	fprintf(stderr, "Usage: pkg update [-fq] [-r reponame]\n\n");
 	fprintf(stderr, "For more information see 'pkg help update'.\n");
 }
 
@@ -97,14 +110,18 @@ exec_update(int argc, char **argv)
 	int ret;
 	int ch;
 	bool force = false;
+	const char *reponame = NULL;
 
-	while ((ch = getopt(argc, argv, "fq")) != -1) {
+	while ((ch = getopt(argc, argv, "fqr:")) != -1) {
 		switch (ch) {
 		case 'q':
 			quiet = true;
 			break;
 		case 'f':
 			force = true;
+			break;
+		case 'r':
+			reponame = optarg;
 			break;
 		default:
 			usage_update();
@@ -128,7 +145,7 @@ exec_update(int argc, char **argv)
 	} else if (ret != EPKG_OK)
 		return (EX_IOERR);
 
-	ret = pkgcli_update(force);
+	ret = pkgcli_update(force, reponame);
 
 	return ((ret == EPKG_OK) ? EX_OK : EX_SOFTWARE);
 }

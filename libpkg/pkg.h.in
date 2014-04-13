@@ -992,6 +992,14 @@ int pkgdb_access(unsigned mode, unsigned database);
 int pkgdb_open(struct pkgdb **db, pkgdb_t type);
 
 /**
+ * Open the local package database and repositories, possibly
+ * overriding configured repositories and replacing with the given
+ * reponame if not NULL
+ * @return An error code
+ */
+int pkgdb_open_all(struct pkgdb **db, pkgdb_t type, const char *reponame);
+
+/**
  * Locking functions
  */
 int pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type, double delay, unsigned int retries);

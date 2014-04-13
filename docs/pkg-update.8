@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd August 12, 2013
+.Dd April 13, 2014
 .Dt PKG-UPDATE 8
 .Os
 .Sh NAME
@@ -25,6 +25,7 @@ package repositories
 .Sh SYNOPSIS
 .Nm
 .Op Fl fq
+.Op Fl r Ar reponame
 .Sh DESCRIPTION
 .Nm
 is used for updating the local copy of a repository catalogue from
@@ -74,6 +75,12 @@ Force quiet output
 .It Fl f
 Force a full download of the repository catalogue without regard to the
 respective ages of the local and remote copies of the catalogue
+.It Fl r Ar reponame
+Download the catalogue for the named repository only.
+This will update only the named repository, irrespective of the configured
+.Dq active
+status from
+.Pa repo.conf .
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of

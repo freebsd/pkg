@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd June 30, 2013
+.Dd April 13, 2014
 .Dt PKG-UPGRADE 8
 .Os
 .Sh NAME
@@ -127,6 +127,12 @@ Skip updating the repository catalogues with
 Use the local cache only.
 .Nm
 will always print out the list of packages with available updates.
+.It Fl r Ar reponame
+Install packages from only the named repository,
+irrespective of the configured
+.Dq active
+status from
+.Pa repo.conf .
 .It Fl y
 Assume yes when asked for confirmation before package installation.
 .El

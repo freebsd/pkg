@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 21, 2014
+.Dd April 13, 2014
 .Dt PKG-INSTALL 8
 .Os
 .Sh NAME
@@ -142,10 +142,11 @@ When used with
 .Fl f ,
 reinstalls any packages that require the given package.
 .It Fl r Ar reponame
-In multi-repo mode, override the
-.Fa pkg.conf
-ordering and only attempt to download packages from the named
-repository.
+Install packages from only the named repository,
+irrespective of the configured
+.Dq active
+status from
+.Pa repo.conf .
 .It Fl U
 Skip updating the repository catalogues with
 .Xr pkg-update 8 .

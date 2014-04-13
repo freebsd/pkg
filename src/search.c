@@ -371,11 +371,11 @@ exec_search(int argc, char **argv)
 	/* first update the remote repositories if needed */
 	old_quiet = quiet;
 	quiet = true;
-	if (auto_update && (ret = pkgcli_update(false)) != EPKG_OK)
+	if (auto_update && (ret = pkgcli_update(false, reponame)) != EPKG_OK)
 		return (ret);
 	quiet = old_quiet;
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
 		return (EX_IOERR);
 
 	if ((it = pkgdb_search(db, pattern, match, search, search,

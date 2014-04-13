@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd November 29, 2013
+.Dd April 13, 2014
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -24,14 +24,14 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl egix
-.Op Fl r Ar repo
+.Op Fl r Ar reponame
 .Op Fl S Ar search
 .Op Fl L Ar label
 .Op Fl Q Ar query-modifier
 .Ar pattern
 .Nm
 .Op Fl cDdefgiopqRx
-.Op Fl r Ar repo
+.Op Fl r Ar reponame
 .Ar pattern
 .Sh DESCRIPTION
 .Nm
@@ -132,13 +132,17 @@ flags.
 See the
 .Qq Sx Output Modifier Options
 section for details.
-.It Fl r Ar repo
-Select only the repository catalogue named as
-.Sy repo
-to search.
-By default all configured repository catalogues are searched.
+.It Fl r Ar reponame
+Search for packages from only the named repository,
+irrespective of the configured
+.Dq active
+status from
+.Pa repo.conf .
+By default all repository catalogues marked
+.Dq active
+are searched.
 .It Fl R
-Display the full manifest (raw) about the packages matching.
+Display the full manifest (raw) from the matching packages.
 .It Fl S Ar search
 Specify the field to search the repository catalogue on.
 If unspecified, searches on

@@ -173,10 +173,13 @@ exec_install(int argc, char **argv)
 		retcode = EX_SOFTWARE;
 
 	/* first update the remote repositories if needed */
-	if (auto_update && (updcode = pkgcli_update(false)) != EPKG_OK)
+	if (auto_update &&
+	    (updcode = pkgcli_update(false, reponame)) != EPKG_OK)
 		return (updcode);
 
-	if (pkgdb_open(&db, local_only ? PKGDB_DEFAULT : PKGDB_MAYBE_REMOTE) != EPKG_OK)
+	if (pkgdb_open_all(&db,
+	    local_only ? PKGDB_DEFAULT : PKGDB_MAYBE_REMOTE,
+	    reponame) != EPKG_OK)
 		return (EX_IOERR);
 
 	if (pkgdb_obtain_lock(db, lock_type, 0, 0) != EPKG_OK) {

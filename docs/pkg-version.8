@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd March 30, 2014
+.Dd April 13, 2014
 .Dt PKG-VERSION 8
 .Os
 .Sh NAME
@@ -109,9 +109,16 @@ This only has any effect in combination with the
 .Fl R
 option.
 .It Fl r Ar reponame
-Use the given
-.Ar reponame
-for comparison when using
+When using
+.Fl R
+compare installed package versions to packages available from the
+named repository only, irrespective of the configured
+.Dq active
+status from
+.Pa repo.conf .
+By default all repository catalogues marked
+.Dq active
+are used for version comparisons.
 .Fl R
 .It Fl o
 Display package origin, instead of package name.

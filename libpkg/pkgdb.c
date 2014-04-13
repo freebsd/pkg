@@ -779,7 +779,8 @@ pkgdb_remote_init(struct pkgdb *db, const char *repo)
 }
 
 static int
-pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
+pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db,
+		      const char *reponame)
 {
 	int		  ret;
 	char		  remotepath[MAXPATHLEN];
@@ -787,8 +788,13 @@ pkgdb_open_multirepos(const char *dbdir, struct pkgdb *db)
 	int		  repocount = 0;
 
 	while (pkg_repos(&r) == EPKG_OK) {
-		if (!pkg_repo_enabled(r))
-			continue;
+		if (reponame != NULL) {
+			if (strcmp(pkg_repo_ident(r), reponame) != 0)
+				continue;
+		} else {
+			if (!pkg_repo_enabled(r)) 
+				continue;
+		}
 
 		/* is it already attached? */
 		if (pkgdb_is_attached(db->sqlite, pkg_repo_name(r))) {
@@ -1030,6 +1036,12 @@ pkgdb_access(unsigned mode, unsigned database)
 int
 pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 {
+	return (pkgdb_open_all(db_p, type, NULL));
+}
+
+int
+pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
+{
 	struct pkgdb	*db = NULL;
 	struct statfs	 stfs;
 	bool		 reopen = false;
@@ -1134,17 +1146,17 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	}
 
 	if (type == PKGDB_REMOTE || type == PKGDB_MAYBE_REMOTE) {
-		if (pkg_repos_activated_count() > 0) {
+		if (reponame != NULL || pkg_repos_activated_count() > 0) {
 			db->type = PKGDB_REMOTE;
-			if ((ret = pkgdb_open_multirepos(dbdir, db)) != EPKG_OK)
+			ret = pkgdb_open_multirepos(dbdir, db, reponame);
+			if (ret != EPKG_OK)
 				return (ret);
 		} else if (type == PKGDB_REMOTE) {
 			if (*db_p == NULL)
 				pkgdb_close(db);
-			pkg_emit_error("No activated remote repositories configured");
+			pkg_emit_error("No active remote repositories configured");
 			return (EPKG_FATAL);
 		}
-
 	}
 
 	*db_p = db;

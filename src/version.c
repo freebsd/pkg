@@ -427,12 +427,12 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	   user is forced to have a repo.sqlite */
 
 	if (auto_update) {
-		retcode = pkgcli_update(false);
+		retcode = pkgcli_update(false, reponame);
 		if (retcode != EPKG_OK)
 			return (retcode);
 	}
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK)
+	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
 		return (EX_IOERR);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY, 0, 0) != EPKG_OK) {

@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 1, 2014
+.Dd April 13, 2014
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -57,11 +57,14 @@ Match packages using the given
 .Ar evaluation-condition.
 See EVALUATION FORMAT for details.
 .It Fl r Ar reponame
-Fetches packages from the given
-.Ar reponame
-if multiple repo support is enabled.
-See
-.Xr pkg.conf 5 .
+Query for data about packages from only the named repository,
+irrespective of the configured
+.Dq active
+status from
+.Pa repo.conf .
+By default all repository catalogues marked
+.Dq active
+are queried.
 .It Fl g
 Treat
 .Ao pattern Ac
