@@ -490,7 +490,7 @@ main(int argc, char **argv)
 #ifdef HAVE_LIBJAIL
 	while ((ch = getopt(argc, argv, "dj:c:C:R:lNvqo:")) != -1) {
 #else
-	while ((ch = getopt(argc, argv, "d:c:C:R:lNvqo:")) != -1) {
+	while ((ch = getopt(argc, argv, "dc:C:R:lNvqo:")) != -1) {
 #endif
 		switch (ch) {
 		case 'd':
