@@ -291,6 +291,9 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 		}
 	}
 
+	if (location != NULL)
+		pkg_addannotation(pkg, "relocated", location);
+
 	/* register the package before installing it in case there are
 	 * problems that could be caught here. */
 	retcode = pkgdb_register_pkg(db, pkg, flags & PKG_ADD_UPGRADE, flags & PKG_FLAG_FORCE);

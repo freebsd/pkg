@@ -332,6 +332,9 @@ exec_register(int argc, char **argv)
 
 	if (!testing_mode && input_path != NULL)
 		pkg_copy_tree(pkg, input_path, location ? location : "/");
+	
+	if (location != NULL)
+		pkg_addannotation(pkg, "relocated", location);
 
 	if (old) {
 		if (pkg_register_old(pkg) != EPKG_OK)
