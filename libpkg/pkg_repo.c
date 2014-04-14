@@ -71,6 +71,7 @@ pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
 {
 	const char *sum, *name, *version, *reponame, *repourl, *ext = NULL;
 	const char *cachedir = NULL;
+	struct stat st;
 
 	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
@@ -81,12 +82,28 @@ pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
 	if (repourl != NULL)
 		ext = strrchr(repourl, '.');
 
-	if (ext != NULL)
-		pkg_snprintf(dest, destlen, "%S/%n-%v-%z%S",
-				cachedir, pkg, pkg, pkg, ext);
-	else
+	if (ext != NULL) {
+		/*
+		 * XXX:
+		 * This code tries to skip refetching but it should be removed as soon
+		 * as we transfer to new scheme.
+		 */
 		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
 				cachedir, pkg, pkg, pkg);
+		if (stat (dest, &st) != -1)
+			return;
+
+		/*
+		 * The real naming scheme:
+		 * <cachedir>/<name>-<version>-<checksum>.txz
+		 */
+		pkg_snprintf(dest, destlen, "%S/%n-%v-%z%S",
+				cachedir, pkg, pkg, pkg, ext);
+	}
+	else {
+		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
+				cachedir, pkg, pkg, pkg);
+	}
 }
 
 int
