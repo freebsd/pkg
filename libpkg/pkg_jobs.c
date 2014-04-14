@@ -1958,7 +1958,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		case PKG_SOLVED_UPGRADE_REMOVE:
 			p = ps->items[0]->pkg;
 			pkg_get(p, PKG_NAME, &name);
-			if ((strcmp(name, "pkg") == 0 ||
+			if (ps->type == PKG_SOLVED_DELETE &&
+			    (strcmp(name, "pkg") == 0 ||
 			    strcmp(name, "pkg-devel") == 0) &&
 			    (flags & PKG_DELETE_FORCE) == 0) {
 				pkg_emit_error("Cannot delete pkg itself without force flag");
