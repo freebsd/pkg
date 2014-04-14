@@ -208,7 +208,7 @@ exec_install(int argc, char **argv)
 		yes = yes_arg;
 		if (!quiet || dry_run) {
 			print_jobs_summary(jobs,
-			    "The following %d packages will be affected (of %d in the universe):\n\n",
+			    "The following %d packages will be affected (of %d checked):\n\n",
 			    nbactions, pkg_jobs_total(jobs));
 
 			if (!yes && !dry_run)
@@ -221,6 +221,8 @@ exec_install(int argc, char **argv)
 		if (yes) {
 			retcode = pkg_jobs_apply(jobs);
 			if (retcode == EPKG_CONFLICT) {
+				printf ("The conflicts with the existing packages have been found.\n"
+						"We need to run one more solver iteration to resolve them.\n");
 				continue;
 			}
 			else if (retcode != EPKG_OK)

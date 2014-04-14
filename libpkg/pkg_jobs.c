@@ -2067,8 +2067,6 @@ pkg_jobs_apply(struct pkg_jobs *j)
 					if (j->conflicts_registered == 0)
 						pkg_jobs_set_priorities(j);
 
-					pkg_emit_notice("The conflicts with the existing packages have been found.\n"
-							"We need to run one more solver iteration to resolve them");
 					return (EPKG_CONFLICT);
 				}
 			}
