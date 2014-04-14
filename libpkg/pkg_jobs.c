@@ -532,6 +532,8 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 	pkg_get(pkg, PKG_ORIGIN, &origin, PKG_DIGEST, &digest,
 			PKG_VERSION, &version, PKG_NAME, &name);
 	if (digest == NULL) {
+		pkg_debug(3, "no digest found for package %s (%s-%s)", origin,
+				name, version);
 		if (pkg_jobs_digest_manifest(pkg) != EPKG_OK) {
 			*found = NULL;
 			return (EPKG_FATAL);
@@ -548,9 +550,9 @@ pkg_jobs_handle_pkg_universe(struct pkg_jobs *j, struct pkg *pkg,
 		return (EPKG_END);
 	}
 
-	pkg_debug(2, "universe: add new %s pkg: %s, (%s-%s)",
+	pkg_debug(2, "universe: add new %s pkg: %s, (%s-%s:%s)",
 				(pkg->type == PKG_INSTALLED ? "local" : "remote"), origin,
-				name, version);
+				name, version, digest);
 
 	item = calloc(1, sizeof (struct pkg_job_universe_item));
 	if (item == NULL) {
@@ -753,6 +755,8 @@ pkg_jobs_add_universe(struct pkg_jobs *j, struct pkg *pkg,
 							if (pkg_jobs_add_universe(j, rpkg, recursive, false,
 																&unit) != EPKG_OK)
 								return (EPKG_FATAL);
+
+							rpkg = NULL;
 						}
 					}
 					else {
@@ -1032,6 +1036,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp,
 
 	if (!jp->is_file) {
 		rc = find_remote_pkg(j, jp->pattern, jp->match, true, true, true);
+		*got_local = false;
 	}
 	else {
 		pkg_manifest_keys_new(&keys);
