@@ -659,6 +659,9 @@ set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 
 		break;
 	case PKG_SOLVED_UPGRADE_REMOVE:
+		/* Ignore split-upgrade packages for display */
+		free(it);
+		return;
 		break;
 
 	case PKG_SOLVED_FETCH:
