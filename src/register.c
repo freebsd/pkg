@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <regex.h>
+#include <getopt.h>
 
 #include "pkgcli.h"
 
@@ -95,6 +96,7 @@ exec_register(int argc, char **argv)
 	const char	*mfile      = NULL;
 	const char	*input_path = NULL;
 	const char	*desc       = NULL;
+	const char	*location   = NULL;
 
 	size_t		 size;
 
@@ -109,12 +111,28 @@ exec_register(int argc, char **argv)
 	int		 ret     = EPKG_OK;
 	int		 retcode = EX_OK;
 
+	/* options descriptor */
+	struct option longopts[] = {
+		{ "automatic",	no_argument,		NULL,	'A' },
+		{ "plist",	required_argument,	NULL,	'f' },
+		{ "root",	required_argument,	NULL,	'i' },
+		{ "legacy",	no_argument,		NULL,	'l' },
+		{ "manifest",	required_argument,	NULL,	'M' },
+		{ "metadata",	required_argument,	NULL,	'm' },
+		{ "old",	no_argument,		NULL,	'O' },
+		{ "test",	no_argument,		NULL,	't' },
+		{ "relocate",	required_argument,	NULL, 	1 },
+		{ NULL,		0,			NULL,	0},
+	};
+
 	developer = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 
 	if (pkg_new(&pkg, PKG_INSTALLED) != EPKG_OK)
 		err(EX_OSERR, "malloc");
-	while ((ch = getopt(argc, argv, "df:i:lM:m:Ot")) != -1) {
+
+	while ((ch = getopt_long(argc, argv, "Adf:i:lM:m:Ot", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'A':
 		case 'd':
 			pkg_set(pkg, PKG_AUTOMATIC, (int64_t)true);
 			break;
@@ -139,6 +157,9 @@ exec_register(int argc, char **argv)
 			break;
 		case 't':
 			testing_mode = true;
+			break;
+		case 1:
+			location = optarg;
 			break;
 		default:
 			warnx("Unrecognised option -%c\n", ch);
@@ -310,7 +331,7 @@ exec_register(int argc, char **argv)
 	}
 
 	if (!testing_mode && input_path != NULL)
-		pkg_copy_tree(pkg, input_path, "/");
+		pkg_copy_tree(pkg, input_path, location ? location : "/");
 
 	if (old) {
 		if (pkg_register_old(pkg) != EPKG_OK)
