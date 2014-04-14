@@ -66,6 +66,29 @@ struct sig_cert {
 	bool trusted;
 };
 
+void
+pkg_repo_cached_name(struct pkg *pkg, char *dest, size_t destlen)
+{
+	const char *sum, *name, *version, *reponame, *repourl, *ext = NULL;
+	const char *cachedir = NULL;
+
+	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
+
+	pkg_get(pkg, PKG_REPONAME, &reponame,
+			PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version,
+			PKG_REPOPATH, &repourl);
+
+	if (repourl != NULL)
+		ext = strrchr(repourl, '.');
+
+	if (ext != NULL)
+		pkg_snprintf(dest, destlen, "%S/%n-%v-%z%S",
+				cachedir, pkg, pkg, pkg, ext);
+	else
+		pkg_snprintf(dest, destlen, "%S/%n-%v-%z",
+				cachedir, pkg, pkg, pkg);
+}
+
 int
 pkg_repo_fetch_package(struct pkg *pkg)
 {
@@ -75,20 +98,16 @@ pkg_repo_fetch_package(struct pkg *pkg)
 	char cksum[SHA256_DIGEST_LENGTH * 2 +1];
 	char *path = NULL;
 	const char *packagesite = NULL;
-	const char *cachedir = NULL;
+
 	int retcode = EPKG_OK;
-	const char *sum, *name, *version, *reponame;
+	const char *reponame, *name, *version, *sum;
 	struct pkg_repo *repo;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
 
-	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
-
 	pkg_get(pkg, PKG_REPONAME, &reponame,
-	    PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
-
-	pkg_snprintf(dest, sizeof(dest), "%S/%n-%v-%z",
-			cachedir, pkg, pkg, pkg);
+			PKG_CKSUM, &sum, PKG_NAME, &name, PKG_VERSION, &version);
+	pkg_repo_cached_name(pkg, dest, sizeof(dest));
 
 	/* If it is already in the local cachedir, dont bother to
 	 * download it */

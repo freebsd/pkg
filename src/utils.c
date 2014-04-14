@@ -591,7 +591,7 @@ set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 		int64_t *newsize, int64_t *dlsize,
 		struct pkg_solved_display_item **disp)
 {
-	const char *oldversion, *cachedir;
+	const char *oldversion;
 	char path[MAXPATHLEN];
 	struct stat st;
 	int64_t flatsize, oldflatsize, pkgsize;
@@ -600,7 +600,6 @@ set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 	flatsize = oldflatsize = pkgsize = 0;
 	oldversion = NULL;
 
-	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 	pkg_get(new_pkg, PKG_FLATSIZE, &flatsize, PKG_PKGSIZE, &pkgsize);
 	if (old_pkg != NULL)
 		pkg_get(old_pkg, PKG_VERSION, &oldversion, PKG_FLATSIZE, &oldflatsize);
@@ -623,7 +622,7 @@ set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 	switch (type) {
 	case PKG_SOLVED_INSTALL:
 	case PKG_SOLVED_UPGRADE:
-		pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, new_pkg);
+		pkg_repo_cached_name(new_pkg, path, sizeof(path));
 
 		if (stat(path, &st) == -1 || pkgsize != st.st_size)
 			/* file looks corrupted (wrong size),
@@ -668,7 +667,7 @@ set_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 		*dlsize += pkgsize;
 		it->display_type = PKG_DISPLAY_FETCH;
 
-		pkg_snprintf(path, MAXPATHLEN, "%S/%R", cachedir, new_pkg);
+		pkg_repo_cached_name(new_pkg, path, sizeof(path));
 		if (stat(path, &st) != -1)
 			*oldsize = st.st_size;
 		else

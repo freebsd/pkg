@@ -1837,7 +1837,7 @@ pkg_jobs_type(struct pkg_jobs *j)
 
 static int
 pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_rc,
-		const char *cachedir, struct pkg_manifest_key *keys)
+		struct pkg_manifest_key *keys)
 {
 	struct pkg *new, *old;
 	const char *pkgorigin, *oldversion = NULL;
@@ -1867,8 +1867,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	else {
 		pkg_snprintf(path, sizeof(path), "%R", new);
 		if (*path != '/')
-			pkg_snprintf(path, sizeof(path), "%S/%n-%v-%z",
-					cachedir, new, new, new);
+			pkg_repo_cached_name(new, path, sizeof(path));
 		target = path;
 	}
 
@@ -1922,7 +1921,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	struct pkg *p = NULL;
 	struct pkg_solved *ps;
 	struct pkg_manifest_key *keys = NULL;
-	const char *cachedir = NULL, *name;
+	const char *name;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 	bool handle_rc = false;
@@ -1936,7 +1935,6 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_NOSCRIPT) == PKG_FLAG_NOSCRIPT)
 		flags |= PKG_DELETE_NOSCRIPT;
 
-	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 
 	/* XXX: get rid of hardcoded values */
@@ -1978,13 +1976,13 @@ pkg_jobs_execute(struct pkg_jobs *j)
 			break;
 		case PKG_SOLVED_INSTALL:
 			retcode = pkg_jobs_handle_install(ps,
-					j, handle_rc, cachedir, keys);
+					j, handle_rc, keys);
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
 		case PKG_SOLVED_UPGRADE:
 			retcode = pkg_jobs_handle_install(ps,
-					j, handle_rc, cachedir, keys);
+					j, handle_rc, keys);
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
@@ -2100,8 +2098,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				continue;															\
 			int64_t pkgsize;														\
 			pkg_get(p, PKG_PKGSIZE, &pkgsize);				\
-			pkg_snprintf(cachedpath, sizeof(cachedpath), "%S/%n-%v-%z", \
-				cachedir, p, p, p);													\
+			pkg_repo_cached_name(p, cachedpath, sizeof(cachedpath));				\
 			if (stat(cachedpath, &st) == -1)										\
 				dlsize += pkgsize;													\
 			else																	\
@@ -2180,11 +2177,8 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	struct pkg_solved *ps;
 	struct pkg_manifest_key *keys = NULL;
 	struct pkg *pkg = NULL, *p = NULL;
-	const char *cachedir = NULL;
 	char path[MAXPATHLEN];
 	int ret = EPKG_OK, res, added = 0;
-
-	cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 
 	pkg_emit_integritycheck_begin();
 
@@ -2198,8 +2192,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			if (p->type == PKG_REMOTE) {
 				pkg_snprintf(path, sizeof(path), "%R", p);
 				if (*path != '/')
-					pkg_snprintf(path, sizeof(path), "%S/%n-%v-%z",
-							cachedir, p, p, p);
+					pkg_repo_cached_name(p, path, sizeof(path));
 				if (pkg_open(&pkg, path, keys, 0) != EPKG_OK)
 					return (EPKG_FATAL);
 				p = pkg;
