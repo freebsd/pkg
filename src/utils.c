@@ -693,6 +693,17 @@ print_jobs_summary_pkg(struct pkg *new_pkg, struct pkg *old_pkg,
 	}
 }
 
+#define PRINT_JOBS_SUMMARY_TYPE(t, m) do {									\
+    printf("%s\n", (m));														\
+    iter = NULL;															\
+    while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {			\
+        if (type == (t)) {													\
+            print_jobs_summary_pkg(new_pkg, old_pkg, type, &oldsize, &newsize, &dlsize);	\
+        }																	\
+    }																		\
+    puts("\n");																\
+} while (0)
+
 void
 print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
@@ -706,25 +717,30 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	dlsize = oldsize = newsize = 0;
 	type = pkg_jobs_type(jobs);
 
-	va_start(ap, msg);
-	vprintf(msg, ap);
-	va_end(ap);
-
-	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {
-		print_jobs_summary_pkg(new_pkg, old_pkg, type, &oldsize, &newsize, &dlsize);
+	if (msg != NULL) {
+		va_start(ap, msg);
+		vprintf(msg, ap);
+		va_end(ap);
 	}
+
+	/*
+	 * Print different package jobs separately
+	 */
+	PRINT_JOBS_SUMMARY_TYPE(PKG_SOLVED_DELETE, "Installed packages to be REMOVED");
+	PRINT_JOBS_SUMMARY_TYPE(PKG_SOLVED_INSTALL, "New packages to be INSTALLED");
+	PRINT_JOBS_SUMMARY_TYPE(PKG_SOLVED_UPGRADE, "Installed packages to be UPGRADED");
 
 	if (oldsize > newsize) {
 		humanize_number(size, sizeof(size), oldsize - newsize, "B", HN_AUTOSCALE, 0);
-		printf("\nThe operation will free %s\n", size);
+		printf("The operation will free %s\n", size);
 	} else if (newsize > oldsize) {
 		humanize_number(size, sizeof(size), newsize - oldsize, "B", HN_AUTOSCALE, 0);
-		printf("\nThe process will require %s more space\n", size);
+		printf("The process will require %s more space\n", size);
 	}
 
 	if (dlsize > 0) {
 		humanize_number(size, sizeof(size), dlsize, "B", HN_AUTOSCALE, 0);
-		printf("\n%s to be downloaded\n", size);
+		printf("%s to be downloaded\n", size);
 	}
 }
 
