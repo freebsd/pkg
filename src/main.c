@@ -444,6 +444,10 @@ start_process_worker(void)
 
 			if (WIFEXITED(status) && ret != EX_NEEDRESTART)
 				break;
+			if (WIFSIGNALED(status)) {
+				/* Process got some terminating signal, hence stop the loop */
+				break;
+			}
 		}
 	}
 
