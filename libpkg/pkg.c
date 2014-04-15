@@ -1133,7 +1133,7 @@ pkg_delannotation(struct pkg *pkg, const char *tag)
 	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	an = ucl_object_pop_key(pkg->annotations, tag);
+	an = ucl_object_pop_keyl(pkg->annotations, tag, strlen(tag));
 	if (an != NULL) {
 		ucl_object_unref(an);
 		return (EPKG_OK);
