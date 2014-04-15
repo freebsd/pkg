@@ -962,9 +962,13 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	}
 	obj = ucl_object_insert_key(top, map, "options", 7, false);
 
-	if (pkg->annotations != NULL)
+	if (pkg->annotations != NULL) {
+		/* Remove internal only annotations */
+		ucl_object_delete_keyl(pkg->annotations, "repository", 10);
+		ucl_object_delete_keyl(pkg->annotations, "relocated", 9);
 		obj = ucl_object_insert_key(top,
 		    ucl_object_ref(pkg->annotations), "annotations", 11, false);
+	}
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {
