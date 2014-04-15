@@ -82,6 +82,20 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_DEVELOPER_MODE:
 		warnx("DEVELOPER_MODE: %s", ev->e_pkg_error.msg);
 		break;
+	case PKG_EVENT_UPDATE_ADD:
+		if (quiet || !isatty(fileno(stdin)))
+			break;
+		printf("\rPushing new entries %d/%d", ev->e_upd_add.done, ev->e_upd_add.total);
+		if (ev->e_upd_add.total == ev->e_upd_add.done)
+			printf("\n");
+		break;
+	case PKG_EVENT_UPDATE_REMOVE:
+		if (quiet || !isatty(fileno(stdin)))
+			break;
+		printf("\rRemoving entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
+		if (ev->e_upd_remove.total == ev->e_upd_remove.done)
+			printf("\n");
+		break;
 	case PKG_EVENT_FETCHING:
 		if (quiet || !isatty(fileno(stdin)))
 			break;

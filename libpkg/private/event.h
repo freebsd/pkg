@@ -34,6 +34,8 @@ void pkg_emit_notice(const char *fmt, ...);
 void pkg_emit_errno(const char *func, const char *arg);
 void pkg_emit_already_installed(struct pkg *p);
 void pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed);
+void pkg_emit_update_add(int total, int done);
+void pkg_emit_update_remove(int total, int done);
 void pkg_emit_install_begin(struct pkg *p);
 void pkg_emit_install_finished(struct pkg *p);
 void pkg_emit_deinstall_begin(struct pkg *p);

@@ -92,6 +92,26 @@ pipeevent(struct pkg_event *ev)
 		    "\"data\": {\"msg\": \"DEVELOPER_MODE: %s\"}}",
 		    sbuf_json_escape(buf, ev->e_pkg_error.msg));
 		break;
+	case PKG_EVENT_UPDATE_ADD:
+		sbuf_printf(msg, "{ \"type\": \"INFO_UPDATE_ADD\", "
+		    "\"data\": { "
+		    "\"fetched\": %d, "
+		    "\"total\": %d"
+		    "}}",
+		    ev->e_upd_add.done,
+		    ev->e_upd_add.total
+		    );
+		break;
+	case PKG_EVENT_UPDATE_REMOVE:
+		sbuf_printf(msg, "{ \"type\": \"INFO_UPDATE_REMOVE\", "
+		    "\"data\": { "
+		    "\"fetched\": %d, "
+		    "\"total\": %d"
+		    "}}",
+		    ev->e_upd_remove.done,
+		    ev->e_upd_remove.total
+		    );
+		break;
 	case PKG_EVENT_FETCHING:
 		sbuf_printf(msg, "{ \"type\": \"INFO_FETCH\", "
 		    "\"data\": { "
@@ -456,6 +476,31 @@ pkg_emit_fetching(const char *url, off_t total, off_t done, time_t elapsed)
 	ev.e_fetching.total = total;
 	ev.e_fetching.done = done;
 	ev.e_fetching.elapsed = elapsed;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_update_remove(int total, int done)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_UPDATE_REMOVE;
+	ev.e_upd_remove.total = total;
+	ev.e_upd_remove.done = done;
+
+	pkg_emit_event(&ev);
+}
+
+
+void
+pkg_emit_update_add(int total, int done)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_UPDATE_ADD;
+	ev.e_upd_add.total = total;
+	ev.e_upd_add.done = done;
 
 	pkg_emit_event(&ev);
 }
