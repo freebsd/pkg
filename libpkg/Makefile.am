@@ -30,6 +30,7 @@ libpkg_la_SOURCES=	pkg.c \
 			pkg_repo.c \
 			pkg_repo_create.c \
 			pkg_repo_update.c \
+			pkg_repo_meta.c \
 			pkg_solve.c \
 			pkg_status.c \
 			pkg_version.c \

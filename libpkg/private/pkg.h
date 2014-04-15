@@ -277,6 +277,25 @@ struct http_mirror {
 	struct http_mirror *next;
 };
 
+struct pkg_repo_meta {
+
+	char *maintainer;
+	char *source;
+
+	pkg_formats packing_format;
+	char *digest_format; /* TODO: should be enumeration */
+
+	char *digests;
+	char *manifests;
+	char *conflicts;
+	char *fulldb;
+
+	char *source_identifier;
+	int64_t revision;
+
+	time_t eol;
+};
+
 struct pkg_repo {
 	repo_t type;
 	char *name;
@@ -296,6 +315,8 @@ struct pkg_repo {
 		int out;
 		pid_t pid;
 	} sshio;
+
+	struct pkg_repo_meta *meta;
 
 	int (*update)(struct pkg_repo *, bool);
 
@@ -340,6 +361,10 @@ int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_
 int pkg_repo_fetch_package(struct pkg *pkg);
 FILE * pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		const char *extension, time_t *t, int *rc, const char *archive_file);
+
+struct pkg_repo_meta *pkg_repo_meta_default(void);
+int pkg_repo_meta_load(const char *file, struct pkg_repo_meta **target);
+void pkg_repo_meta_free(struct pkg_repo_meta *meta);
 
 typedef enum {
 	HASH_UNKNOWN,
