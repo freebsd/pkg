@@ -124,7 +124,7 @@ rsa_verify_cert(const char *path, unsigned char *key, int keylen,
 		return (EPKG_FATAL);
 	ret = RSA_verify(NID_sha256, hash, sizeof(hash), sig, siglen, rsa);
 	if (ret == 0) {
-		pkg_emit_error("%s: %s", key,
+		pkg_emit_error("rsa verify failed: %s",
 		    ERR_error_string(ERR_get_error(), errbuf));
 		return (EPKG_FATAL);
 	}
