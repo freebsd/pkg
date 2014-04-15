@@ -282,6 +282,12 @@ static struct config_entry c[] = {
 		NULL,
 		"Experimental: tells pkg to use an external SAT solver",
 	},
+	{
+		PKG_BOOL,
+		"RUN_SCRIPTS",
+		"YES",
+		"Run post/pre actions scripts",
+	},
 };
 
 static bool parsed = false;
