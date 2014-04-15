@@ -1361,6 +1361,8 @@ typedef enum {
 	PKG_EVENT_UPGRADE_BEGIN,
 	PKG_EVENT_UPGRADE_FINISHED,
 	PKG_EVENT_FETCHING,
+	PKG_EVENT_UPDATE_ADD,
+	PKG_EVENT_UPDATE_REMOVE,
 	PKG_EVENT_INTEGRITYCHECK_BEGIN,
 	PKG_EVENT_INTEGRITYCHECK_FINISHED,
 	PKG_EVENT_INTEGRITYCHECK_CONFLICT,
@@ -1404,6 +1406,14 @@ struct pkg_event {
 		struct {
 			char *msg;
 		} e_pkg_notice;
+		struct {
+			int total;
+			int done;
+		} e_upd_add;
+		struct {
+			int total;
+			int done;
+		} e_upd_remove;
 		struct {
 			const char *url;
 			off_t total;

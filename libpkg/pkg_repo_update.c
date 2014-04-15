@@ -217,6 +217,8 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 	ssize_t linelen;
 	char *map = MAP_FAILED;
 	size_t len = 0;
+	int hash_it = 0;
+	time_t now, last;
 
 	pkg_debug(1, "Pkgrepo, begin incremental update of '%s'", name);
 	if ((rc = pkgdb_repo_open(name, false, &sqlite)) != EPKG_OK) {
@@ -328,7 +330,14 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 
 	pkg_debug(1, "Pkgrepo, removing old entries for '%s'", name);
 	removed = HASH_COUNT(ldel);
+	hash_it = 0;
+	last = 0;
 	HASH_ITER(hh, ldel, item, tmp_item) {
+		now = time(NULL);
+		if (++hash_it == removed || now > last) {
+			pkg_emit_update_remove(removed, hash_it);
+			last = now;
+		}
 		if (rc == EPKG_OK) {
 			rc = pkgdb_repo_remove_package(item->origin);
 		}
@@ -352,7 +361,14 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		return (EPKG_FATAL);
 	}
 
+	hash_it = 0;
+	last = 0;
 	HASH_ITER(hh, ladd, item, tmp_item) {
+		now = time(NULL);
+		if (++hash_it == added || now > last) {
+			pkg_emit_update_add(added, hash_it);
+			last = now;
+		}
 		if (rc == EPKG_OK) {
 			if (item->length != 0) {
 				rc = pkg_repo_add_from_manifest(map + item->offset, item->origin,
@@ -469,7 +485,6 @@ pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 		goto cleanup;
 	}
 
-	res = EPKG_OK;
 cleanup:
 	/* Set mtime from http request if possible */
 	if (t != 0) {
