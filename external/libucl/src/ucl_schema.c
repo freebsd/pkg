@@ -42,7 +42,8 @@
 
 static bool ucl_schema_validate (ucl_object_t *schema,
 		ucl_object_t *obj, bool try_array,
-		struct ucl_schema_error *err);
+		struct ucl_schema_error *err,
+		ucl_object_t *root);
 
 static bool
 ucl_string_to_type (const char *input, ucl_type_t *res)
@@ -134,8 +135,10 @@ ucl_schema_create_error (struct ucl_schema_error *err,
 static ucl_object_t *
 ucl_schema_test_pattern (ucl_object_t *obj, const char *pattern)
 {
+	ucl_object_t *res = NULL;
+#ifdef HAVE_REGEX_H
 	regex_t reg;
-	ucl_object_t *res = NULL, *elt;
+	ucl_object_t *elt;
 	ucl_object_iter_t iter = NULL;
 
 	if (regcomp (&reg, pattern, REG_EXTENDED | REG_NOSUB) == 0) {
@@ -147,8 +150,45 @@ ucl_schema_test_pattern (ucl_object_t *obj, const char *pattern)
 		}
 		regfree (&reg);
 	}
-
+#endif
 	return res;
+}
+
+/*
+ * Check dependencies for an object
+ */
+static bool
+ucl_schema_validate_dependencies (ucl_object_t *deps,
+		ucl_object_t *obj, struct ucl_schema_error *err,
+		ucl_object_t *root)
+{
+	ucl_object_t *elt, *cur, *cur_dep;
+	ucl_object_iter_t iter = NULL, piter;
+	bool ret = true;
+
+	while (ret && (cur = ucl_iterate_object (deps, &iter, true)) != NULL) {
+		elt = ucl_object_find_key (obj, ucl_object_key (cur));
+		if (elt != NULL) {
+			/* Need to check dependencies */
+			if (cur->type == UCL_ARRAY) {
+				piter = NULL;
+				while (ret && (cur_dep = ucl_iterate_object (cur, &piter, true)) != NULL) {
+					if (ucl_object_find_key (obj, ucl_object_tostring (cur_dep)) == NULL) {
+						ucl_schema_create_error (err, UCL_SCHEMA_MISSING_DEPENDENCY, elt,
+								"dependency %s is missing for key %s",
+								ucl_object_tostring (cur_dep), ucl_object_key (cur));
+						ret = false;
+						break;
+					}
+				}
+			}
+			else if (cur->type == UCL_OBJECT) {
+				ret = ucl_schema_validate (cur, obj, true, err, root);
+			}
+		}
+	}
+
+	return ret;
 }
 
 /*
@@ -156,7 +196,8 @@ ucl_schema_test_pattern (ucl_object_t *obj, const char *pattern)
  */
 static bool
 ucl_schema_validate_object (ucl_object_t *schema,
-		ucl_object_t *obj, struct ucl_schema_error *err)
+		ucl_object_t *obj, struct ucl_schema_error *err,
+		ucl_object_t *root)
 {
 	ucl_object_t *elt, *prop, *found, *additional_schema = NULL,
 			*required = NULL, *pat, *pelt;
@@ -171,7 +212,7 @@ ucl_schema_validate_object (ucl_object_t *schema,
 			while (ret && (prop = ucl_iterate_object (elt, &piter, true)) != NULL) {
 				found = ucl_object_find_key (obj, ucl_object_key (prop));
 				if (found) {
-					ret = ucl_schema_validate (prop, found, true, err);
+					ret = ucl_schema_validate (prop, found, true, err, root);
 				}
 			}
 		}
@@ -229,9 +270,13 @@ ucl_schema_validate_object (ucl_object_t *schema,
 			while (ret && (prop = ucl_iterate_object (elt, &piter, true)) != NULL) {
 				found = ucl_schema_test_pattern (obj, ucl_object_key (prop));
 				if (found) {
-					ret = ucl_schema_validate (prop, found, true, err);
+					ret = ucl_schema_validate (prop, found, true, err, root);
 				}
 			}
+		}
+		else if (elt->type == UCL_OBJECT &&
+				strcmp (ucl_object_key (elt), "dependencies") == 0) {
+			ret = ucl_schema_validate_dependencies (elt, obj, err, root);
 		}
 	}
 
@@ -263,7 +308,7 @@ ucl_schema_validate_object (ucl_object_t *schema,
 						break;
 					}
 					else if (additional_schema != NULL) {
-						if (!ucl_schema_validate (additional_schema, elt, true, err)) {
+						if (!ucl_schema_validate (additional_schema, elt, true, err, root)) {
 							ret = false;
 							break;
 						}
@@ -364,6 +409,9 @@ ucl_schema_validate_string (ucl_object_t *schema,
 	ucl_object_iter_t iter = NULL;
 	bool ret = true;
 	int64_t constraint;
+#ifdef HAVE_REGEX_H
+	regex_t re;
+#endif
 
 	while (ret && (elt = ucl_iterate_object (schema, &iter, true)) != NULL) {
 		if (elt->type == UCL_INT &&
@@ -388,7 +436,25 @@ ucl_schema_validate_string (ucl_object_t *schema,
 				break;
 			}
 		}
-		/* XXX: pattern */
+#ifdef HAVE_REGEX_H
+		else if (elt->type == UCL_STRING &&
+				strcmp (ucl_object_key (elt), "pattern") == 0) {
+			if (regcomp (&re, ucl_object_tostring (elt),
+					REG_EXTENDED | REG_NOSUB) != 0) {
+				ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, elt,
+						"cannot compile pattern %s", ucl_object_tostring (elt));
+				ret = false;
+				break;
+			}
+			if (regexec (&re, ucl_object_tostring (obj), 0, NULL, 0) != 0) {
+				ucl_schema_create_error (err, UCL_SCHEMA_CONSTRAINT, obj,
+						"string doesn't match regexp %s",
+						ucl_object_tostring (elt));
+				ret = false;
+			}
+			regfree (&re);
+		}
+#endif
 	}
 
 	return ret;
@@ -451,7 +517,8 @@ ucl_schema_array_is_unique (ucl_object_t *obj, struct ucl_schema_error *err)
 
 static bool
 ucl_schema_validate_array (ucl_object_t *schema,
-		ucl_object_t *obj, struct ucl_schema_error *err)
+		ucl_object_t *obj, struct ucl_schema_error *err,
+		ucl_object_t *root)
 {
 	ucl_object_t *elt, *it, *found, *additional_schema = NULL,
 			*first_unvalidated = NULL;
@@ -465,7 +532,7 @@ ucl_schema_validate_array (ucl_object_t *schema,
 				found = obj->value.av;
 				while (ret && (it = ucl_iterate_object (elt, &piter, true)) != NULL) {
 					if (found) {
-						ret = ucl_schema_validate (it, found, false, err);
+						ret = ucl_schema_validate (it, found, false, err, root);
 						found = found->next;
 					}
 				}
@@ -477,7 +544,7 @@ ucl_schema_validate_array (ucl_object_t *schema,
 			else if (elt->type == UCL_OBJECT) {
 				/* Validate all items using the specified schema */
 				while (ret && (it = ucl_iterate_object (obj, &piter, true)) != NULL) {
-					ret = ucl_schema_validate (elt, it, false, err);
+					ret = ucl_schema_validate (elt, it, false, err, root);
 				}
 			}
 			else {
@@ -543,7 +610,8 @@ ucl_schema_validate_array (ucl_object_t *schema,
 				else if (additional_schema != NULL) {
 					elt = first_unvalidated;
 					while (elt) {
-						if (!ucl_schema_validate (additional_schema, elt, false, err)) {
+						if (!ucl_schema_validate (additional_schema, elt, false,
+								err, root)) {
 							ret = false;
 							break;
 						}
@@ -643,10 +711,173 @@ ucl_schema_validate_enum (ucl_object_t *en, ucl_object_t *obj,
 	return ret;
 }
 
+
+/*
+ * Check a single ref component
+ */
+static ucl_object_t *
+ucl_schema_resolve_ref_component (ucl_object_t *cur,
+		const char *refc, int len,
+		struct ucl_schema_error *err)
+{
+	ucl_object_t *res = NULL;
+	char *err_str;
+	int num, i;
+
+	if (cur->type == UCL_OBJECT) {
+		/* Find a key inside an object */
+		res = ucl_object_find_keyl (cur, refc, len);
+		if (res == NULL) {
+			ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, cur,
+					"reference %s is invalid, missing path component", refc);
+			return NULL;
+		}
+	}
+	else if (cur->type == UCL_ARRAY) {
+		/* We must figure out a number inside array */
+		num = strtoul (refc, &err_str, 10);
+		if (err_str != NULL && *err_str != '/' && *err_str != '\0') {
+			ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, cur,
+					"reference %s is invalid, invalid item number", refc);
+			return NULL;
+		}
+		res = cur->value.av;
+		i = 0;
+		while (res != NULL) {
+			if (i == num) {
+				break;
+			}
+			res = res->next;
+		}
+		if (res == NULL) {
+			ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, cur,
+					"reference %s is invalid, item number %d does not exist",
+					refc, num);
+			return NULL;
+		}
+	}
+	else {
+		ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, res,
+				"reference %s is invalid, contains primitive object in the path",
+				refc);
+		return NULL;
+	}
+
+	return res;
+}
+/*
+ * Find reference schema
+ */
+static ucl_object_t *
+ucl_schema_resolve_ref (ucl_object_t *root, const char *ref,
+		struct ucl_schema_error *err)
+{
+	const char *p, *c;
+	ucl_object_t *res = NULL;
+
+
+	if (ref[0] != '#') {
+		ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, root,
+				"reference %s is invalid, not started with #", ref);
+		return NULL;
+	}
+	if (ref[1] == '/') {
+		p = &ref[2];
+	}
+	else if (ref[1] == '\0') {
+		return root;
+	}
+	else {
+		ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, root,
+				"reference %s is invalid, not started with #/", ref);
+		return NULL;
+	}
+
+	c = p;
+	res = root;
+
+	while (*p != '\0') {
+		if (*p == '/') {
+			if (p - c == 0) {
+				ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, res,
+						"reference %s is invalid, empty path component", ref);
+				return NULL;
+			}
+			/* Now we have some url part, so we need to figure out where we are */
+			res = ucl_schema_resolve_ref_component (res, c, p - c, err);
+			if (res == NULL) {
+				return NULL;
+			}
+			c = p + 1;
+		}
+		p ++;
+	}
+
+	if (p - c != 0) {
+		res = ucl_schema_resolve_ref_component (res, c, p - c, err);
+	}
+
+	if (res == NULL || res->type != UCL_OBJECT) {
+		ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, res,
+				"reference %s is invalid, cannot find specified object",
+				ref);
+		return NULL;
+	}
+
+	return res;
+}
+
+static bool
+ucl_schema_validate_values (ucl_object_t *schema, ucl_object_t *obj,
+		struct ucl_schema_error *err)
+{
+	ucl_object_t *elt, *cur;
+	int64_t constraint, i;
+
+	elt = ucl_object_find_key (schema, "maxValues");
+	if (elt != NULL && elt->type == UCL_INT) {
+		constraint = ucl_object_toint (elt);
+		cur = obj;
+		i = 0;
+		while (cur) {
+			if (i > constraint) {
+				ucl_schema_create_error (err, UCL_SCHEMA_CONSTRAINT, obj,
+					"object has more values than defined: %ld",
+					(long int)constraint);
+				return false;
+			}
+			i ++;
+			cur = cur->next;
+		}
+	}
+	elt = ucl_object_find_key (schema, "minValues");
+	if (elt != NULL && elt->type == UCL_INT) {
+		constraint = ucl_object_toint (elt);
+		cur = obj;
+		i = 0;
+		while (cur) {
+			if (i >= constraint) {
+				break;
+			}
+			i ++;
+			cur = cur->next;
+		}
+		if (i < constraint) {
+			ucl_schema_create_error (err, UCL_SCHEMA_CONSTRAINT, obj,
+					"object has less values than defined: %ld",
+					(long int)constraint);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static bool
 ucl_schema_validate (ucl_object_t *schema,
 		ucl_object_t *obj, bool try_array,
-		struct ucl_schema_error *err)
+		struct ucl_schema_error *err,
+		ucl_object_t *root)
 {
 	ucl_object_t *elt, *cur;
 	ucl_object_iter_t iter = NULL;
@@ -656,6 +887,21 @@ ucl_schema_validate (ucl_object_t *schema,
 		ucl_schema_create_error (err, UCL_SCHEMA_INVALID_SCHEMA, schema,
 				"schema is %s instead of object", ucl_object_type_to_string (schema->type));
 		return false;
+	}
+
+	if (try_array) {
+		/*
+		 * Special case for multiple values
+		 */
+		if (!ucl_schema_validate_values (schema, obj, err)) {
+			return false;
+		}
+		LL_FOREACH (obj, cur) {
+			if (!ucl_schema_validate (schema, cur, false, err, root)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	elt = ucl_object_find_key (schema, "enum");
@@ -669,7 +915,7 @@ ucl_schema_validate (ucl_object_t *schema,
 	if (elt != NULL && elt->type == UCL_ARRAY) {
 		iter = NULL;
 		while ((cur = ucl_iterate_object (elt, &iter, true)) != NULL) {
-			ret = ucl_schema_validate (cur, obj, true, err);
+			ret = ucl_schema_validate (cur, obj, true, err, root);
 			if (!ret) {
 				return false;
 			}
@@ -680,7 +926,7 @@ ucl_schema_validate (ucl_object_t *schema,
 	if (elt != NULL && elt->type == UCL_ARRAY) {
 		iter = NULL;
 		while ((cur = ucl_iterate_object (elt, &iter, true)) != NULL) {
-			ret = ucl_schema_validate (cur, obj, true, err);
+			ret = ucl_schema_validate (cur, obj, true, err, root);
 			if (ret) {
 				break;
 			}
@@ -697,11 +943,12 @@ ucl_schema_validate (ucl_object_t *schema,
 	elt = ucl_object_find_key (schema, "oneOf");
 	if (elt != NULL && elt->type == UCL_ARRAY) {
 		iter = NULL;
+		ret = false;
 		while ((cur = ucl_iterate_object (elt, &iter, true)) != NULL) {
 			if (!ret) {
-				ret = ucl_schema_validate (cur, obj, true, err);
+				ret = ucl_schema_validate (cur, obj, true, err, root);
 			}
-			else if (ucl_schema_validate (cur, obj, true, err)) {
+			else if (ucl_schema_validate (cur, obj, true, err, root)) {
 				ret = false;
 				break;
 			}
@@ -713,7 +960,7 @@ ucl_schema_validate (ucl_object_t *schema,
 
 	elt = ucl_object_find_key (schema, "not");
 	if (elt != NULL && elt->type == UCL_OBJECT) {
-		if (ucl_schema_validate (elt, obj, true, err)) {
+		if (ucl_schema_validate (elt, obj, true, err, root)) {
 			return false;
 		}
 		else {
@@ -722,18 +969,28 @@ ucl_schema_validate (ucl_object_t *schema,
 		}
 	}
 
-	elt = ucl_object_find_key (schema, "type");
+	elt = ucl_object_find_key (schema, "$ref");
+	if (elt != NULL) {
+		cur = ucl_schema_resolve_ref (root, ucl_object_tostring (elt), err);
+		if (cur == NULL) {
+			return false;
+		}
+		if (!ucl_schema_validate (cur, obj, try_array, err, root)) {
+			return false;
+		}
+	}
 
+	elt = ucl_object_find_key (schema, "type");
 	if (!ucl_schema_type_is_allowed (elt, obj, err)) {
 		return false;
 	}
 
 	switch (obj->type) {
 	case UCL_OBJECT:
-		return ucl_schema_validate_object (schema, obj, err);
+		return ucl_schema_validate_object (schema, obj, err, root);
 		break;
 	case UCL_ARRAY:
-		return ucl_schema_validate_array (schema, obj, err);
+		return ucl_schema_validate_array (schema, obj, err, root);
 		break;
 	case UCL_INT:
 	case UCL_FLOAT:
@@ -753,5 +1010,5 @@ bool
 ucl_object_validate (ucl_object_t *schema,
 		ucl_object_t *obj, struct ucl_schema_error *err)
 {
-	return ucl_schema_validate (schema, obj, true, err);
+	return ucl_schema_validate (schema, obj, true, err, schema);
 }

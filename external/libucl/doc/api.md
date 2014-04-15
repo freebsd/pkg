@@ -1,10 +1,48 @@
-Synopsis
-========
+# API documentation
+
+**Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
+
+- [Synopsis](#synopsis)
+- [Description](#description)
+	- [Parser functions](#parser-functions)
+	- [Emitting functions](#emitting-functions)
+	- [Conversion functions](#conversion-functions)
+	- [Generation functions](#generation-functions)
+	- [Iteration functions](#iteration-functions)
+	- [Validation functions](#validation-functions)
+	- [Utility functions](#utility-functions)
+- [Parser functions](#parser-functions-1)
+	- [ucl_parser_new](#ucl_parser_new)
+	- [ucl_parser_register_macro](#ucl_parser_register_macro)
+	- [ucl_parser_register_variable](#ucl_parser_register_variable)
+	- [ucl_parser_add_chunk](#ucl_parser_add_chunk)
+	- [ucl_parser_add_string](#ucl_parser_add_string)
+	- [ucl_parser_add_file](#ucl_parser_add_file)
+	- [ucl_parser_get_object](#ucl_parser_get_object)
+	- [ucl_parser_get_error](#ucl_parser_get_error)
+	- [ucl_parser_free](#ucl_parser_free)
+	- [ucl_pubkey_add](#ucl_pubkey_add)
+	- [ucl_parser_set_filevars](#ucl_parser_set_filevars)
+	- [Parser usage example](#parser-usage-example)
+- [Emitting functions](#emitting-functions-1)
+	- [ucl_object_emit](#ucl_object_emit)
+	- [ucl_object_emit_full](#ucl_object_emit_full)
+- [Conversion functions](#conversion-functions-1)
+- [Generation functions](#generation-functions-1)
+	- [ucl_object_new](#ucl_object_new)
+	- [ucl_object_typed_new](#ucl_object_typed_new)
+	- [Primitive objects generation](#primitive-objects-generation)
+	- [ucl_object_fromstring_common](#ucl_object_fromstring_common)
+- [Iteration functions](#iteration-functions-1)
+	- [ucl_iterate_object](#ucl_iterate_object)
+- [Validation functions](#validation-functions-1)
+	- [ucl_object_validate](#ucl_object_validate)
+
+# Synopsis
 
 `#include <ucl.h>`
 
-Description
-===========
+# Description
 
 Libucl is a parser and `C` API to parse and generate `ucl` objects. Libucl consist of several groups of functions:
 
@@ -26,6 +64,9 @@ Allow creating of `ucl` objects from C types and creating of complex `ucl` objec
 
 ### Iteration functions
 Iterate over `ucl` complex objects or over a chain of values, for example when a key in an object has multiple values (that can be treated as implicit array or implicit consolidation).
+
+### Validation functions
+Validation functions are used to validate some object `obj` using json-schema compatible object `schema`. Both input and schema must be UCL objects to perform validation.
 
 ### Utility functions
 Provide basic utilities to manage `ucl` objects: creating, removing, retaining and releasing reference count and so on.
@@ -334,7 +375,7 @@ This function is used to convert a string `str` of size `len` to an UCL objects 
 
 If parsing operations fail then the resulting UCL object will be a `UCL_STRING`. A caller should always check the type of the returned object and release it after using.
 
-# Iteration function
+# Iteration functions
 
 Iteration are used to iterate over UCL compound types: arrays and objects. Moreover, iterations could be performed over the keys with multiple values (implicit arrays). To iterate over an object, an array or a key with multiple values there is a function `ucl_iterate_object`.
 
@@ -360,3 +401,39 @@ while ((obj = ucl_iterate_object (top, &it, true))) {
 	}
 }
 ~~~
+
+# Validation functions
+
+Currently, there is only one validation function called `ucl_object_validate`. It performs validation of object using the specified schema. This function is defined as following:
+
+## ucl_object_validate
+~~~C
+bool ucl_object_validate (ucl_object_t *schema,
+	ucl_object_t *obj, struct ucl_schema_error *err);
+~~~
+
+This function uses ucl object `schema`, that must be valid in terms of `json-schema` draft v4, to validate input object `obj`. If this function returns `true` then validation procedure has been succeed. Otherwise, `false` is returned and `err` is set to a specific value. If caller set `err` to NULL then this function does not set any error just returning `false`. Error is the structure defined as following:
+
+~~~C
+struct ucl_schema_error {
+	enum ucl_schema_error_code code;	/* error code */
+	char msg[128];				/* error message */
+	ucl_object_t *obj;			/* object where error occured */
+};
+~~~
+
+Caller may use `code` field to get a numeric error code:
+
+~~~C
+enum ucl_schema_error_code {
+	UCL_SCHEMA_OK = 0,          /* no error */
+	UCL_SCHEMA_TYPE_MISMATCH,   /* type of object is incorrect */
+	UCL_SCHEMA_INVALID_SCHEMA,  /* schema is invalid */
+	UCL_SCHEMA_MISSING_PROPERTY,/* missing properties */
+	UCL_SCHEMA_CONSTRAINT,      /* constraint found */
+	UCL_SCHEMA_MISSING_DEPENDENCY, /* missing dependency */
+	UCL_SCHEMA_UNKNOWN          /* generic error */
+};
+~~~
+
+`msg` is a stiring description of an error and `obj` is an object where error has been occurred. Error object is not allocated by libucl, so there is no need to free it after validation (a static object should thus be used).
