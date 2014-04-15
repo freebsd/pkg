@@ -48,10 +48,9 @@
 #include "pkgcli.h"
 
 bool
-query_tty_yesno(const char *msg, ...)
+query_tty_yesno(bool r, const char *msg, ...)
 {
 	int	 c;
-	bool	 r = false;
 	va_list	 ap;
 	int	 tty_fd;
 	FILE	*tty;
