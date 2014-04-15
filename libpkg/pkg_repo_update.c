@@ -243,6 +243,8 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		pkg_repo_update_increment_item_new(&ldel, origin, digest, 4, 0);
 	}
 
+
+
 	fdigests = pkg_repo_fetch_remote_extract_tmp(repo,
 			repo_digests_archive, "txz", &local_t,
 			&rc, repo_digests_file);
@@ -412,7 +414,7 @@ cleanup:
 int
 pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 {
-	char repofile[MAXPATHLEN];
+	char filepath[MAXPATHLEN];
 
 	const char *dbdir = NULL;
 	struct stat st;
@@ -420,6 +422,7 @@ pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 	sqlite3 *sqlite = NULL;
 	char *req = NULL;
 	int64_t res;
+	bool got_meta = false;
 
 	sqlite3_initialize();
 
@@ -428,13 +431,21 @@ pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	pkg_debug(1, "PkgRepo: verifying update for %s", pkg_repo_name(repo));
-	snprintf(repofile, sizeof(repofile), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
 
-	if (stat(repofile, &st) != -1)
+	snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
+	if (stat(filepath, &st) != -1) {
 		t = force ? 0 : st.st_mtime;
+		got_meta = true;
+	}
+
+	snprintf(filepath, sizeof(filepath), "%s/%s.sqlite", dbdir, pkg_repo_name(repo));
+	if (stat(filepath, &st) != -1) {
+		if (!got_meta && !force)
+			t = st.st_mtime;
+	}
 
 	if (t != 0) {
-		if (sqlite3_open(repofile, &sqlite) != SQLITE_OK) {
+		if (sqlite3_open(filepath, &sqlite) != SQLITE_OK) {
 			pkg_emit_error("Unable to open local database");
 			return (EPKG_FATAL);
 		}
@@ -475,11 +486,11 @@ pkg_repo_update_binary_pkgs(struct pkg_repo *repo, bool force)
 				sqlite3_close(sqlite);
 				sqlite = NULL;
 			}
-			unlink(repofile);
+			unlink(filepath);
 		}
 	}
 
-	res = pkg_repo_update_incremental(repofile, repo, &t);
+	res = pkg_repo_update_incremental(filepath, repo, &t);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {
 		pkg_emit_notice("Unable to find catalogs");
 		goto cleanup;
@@ -498,7 +509,11 @@ cleanup:
 			.tv_usec = 0
 			}
 		};
-		utimes(repofile, ftimes);
+
+		if (got_meta)
+			snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
+
+		utimes(filepath, ftimes);
 	}
 
 	return (res);

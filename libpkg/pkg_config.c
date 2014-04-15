@@ -902,6 +902,7 @@ pkg_repo_new(const char *name, const char *url)
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;
 	r->enable = true;
+	r->meta = pkg_repo_meta_default();
 	asprintf(&r->name, REPO_NAME_PREFIX"%s", name);
 	HASH_ADD_KEYPTR(hh, repos, r->name, strlen(r->name), r);
 
@@ -914,6 +915,7 @@ pkg_repo_free(struct pkg_repo *r)
 	free(r->url);
 	free(r->name);
 	free(r->pubkey);
+	free(r->meta);
 	if (r->ssh != NULL) {
 		fprintf(r->ssh, "quit\n");
 		pclose(r->ssh);

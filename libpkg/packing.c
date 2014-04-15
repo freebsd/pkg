@@ -388,3 +388,26 @@ packing_format_from_string(const char *str)
 	pkg_emit_error("unknown format %s, using txz", str);
 	return TXZ;
 }
+
+const char*
+packing_format_to_string(pkg_formats format)
+{
+	const char *res = NULL;
+
+	switch (format) {
+	case TXZ:
+		res = "txz";
+		break;
+	case TBZ:
+		res = "tbz";
+		break;
+	case TGZ:
+		res = "tgz";
+		break;
+	case TAR:
+		res = "tar";
+		break;
+	}
+
+	return (res);
+}
