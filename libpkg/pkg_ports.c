@@ -782,13 +782,11 @@ parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, str
 	return (EPKG_OK);
 }
 
-static int
-external_keyword(struct plist *plist, char *keyword, char *line, struct file_attr *attr)
+static ucl_object_t *
+external_yaml_keyword(char *keyword)
 {
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
-	int ret = EPKG_UNKNOWN;
-	ucl_object_t *o;
 
 	keyword_dir = pkg_object_string(pkg_config_get("PLIST_KEYWORDS_DIR"));
 	if (keyword_dir == NULL) {
@@ -800,8 +798,43 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		    "%s/%s.yaml", keyword_dir, keyword);
 	}
 
-	if ((o = yaml_to_ucl(keyfile_path, NULL, 0)) == NULL)
-		return (EPKG_UNKNOWN);
+	return (yaml_to_ucl(keyfile_path, NULL, 0));
+}
+
+static int
+external_keyword(struct plist *plist, char *keyword, char *line, struct file_attr *attr)
+{
+	struct ucl_parser *parser;
+	const char *keyword_dir = NULL;
+	char keyfile_path[MAXPATHLEN];
+	int ret = EPKG_UNKNOWN;
+	ucl_object_t *o;
+
+	keyword_dir = pkg_object_string(pkg_config_get("PLIST_KEYWORDS_DIR"));
+	if (keyword_dir == NULL) {
+		keyword_dir = pkg_object_string(pkg_config_get("PORTSDIR"));
+		snprintf(keyfile_path, sizeof(keyfile_path),
+		    "%s/Keywords/%s.ucl", keyword_dir, keyword);
+	} else {
+		snprintf(keyfile_path, sizeof(keyfile_path),
+		    "%s/%s.ucl", keyword_dir, keyword);
+	}
+
+	if (eaccess(keyfile_path, R_OK) != 0) {
+		if ((o = external_yaml_keyword(keyword)) == NULL)
+			return (EPKG_UNKNOWN);
+	} else {
+		parser = ucl_parser_new(0);
+		if (!ucl_parser_add_file(parser, keyfile_path)) {
+			pkg_emit_error("cannot parse keyword: %s",
+			    ucl_parser_get_error(parser));
+			ucl_parser_free(parser);
+			return (EPKG_UNKNOWN);
+		}
+
+		o = ucl_parser_get_object(parser);
+		ucl_parser_free(parser);
+	}
 
 	ret = parse_and_apply_keyword_file(o, plist, line, attr);
 
