@@ -243,18 +243,18 @@ pkg_repo_update_incremental(const char *name, struct pkg_repo *repo, time_t *mti
 		pkg_repo_update_increment_item_new(&ldel, origin, digest, 4, 0);
 	}
 
-
+	if (pkg_repo_fetch_meta(repo, NULL) == EPKG_FATAL)
+		pkg_emit_notice("repository %s has no meta file, use default settings",
+				repo->name);
 
 	fdigests = pkg_repo_fetch_remote_extract_tmp(repo,
-			repo_digests_archive, "txz", &local_t,
-			&rc, repo_digests_file);
+			repo->meta->digests, &local_t, &rc);
 	if (fdigests == NULL)
 		goto cleanup;
 	digest_t = local_t;
 	local_t = *mtime;
 	fmanifest = pkg_repo_fetch_remote_extract_tmp(repo,
-			repo_packagesite_archive, "txz", &local_t,
-			&rc, repo_packagesite_file);
+			repo->meta->manifests, &local_t, &rc);
 	if (fmanifest == NULL)
 		goto cleanup;
 	packagesite_t = digest_t;

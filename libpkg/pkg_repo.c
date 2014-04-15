@@ -203,9 +203,21 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	char tmp[MAXPATHLEN];
 	int fd;
 	mode_t mask;
-	const char *tmpdir;
+	const char *tmpdir, *dot;
 
-	snprintf(url, sizeof(url), "%s/%s.%s", pkg_repo_url(repo), filename, extension);
+	/*
+	 * XXX: here we support old naming scheme, such as filename.yaml
+	 */
+	dot = strrchr(filename, '.');
+	if (dot != NULL) {
+		snprintf(tmp, MIN(sizeof(tmp), dot - filename + 1), "%s", filename);
+		snprintf(url, sizeof(url), "%s/%s.%s", pkg_repo_url(repo), tmp,
+				extension);
+	}
+	else {
+		snprintf(url, sizeof(url), "%s/%s.%s", pkg_repo_url(repo), filename,
+				extension);
+	}
 
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
@@ -443,8 +455,7 @@ cleanup:
 }
 
 FILE *
-pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
-		const char *extension, time_t *t, int *rc, const char *archive_file)
+pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename, time_t *t, int *rc)
 {
 	int fd, dest_fd;
 	mode_t mask;
@@ -452,7 +463,8 @@ pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 	const char *tmpdir;
 	char tmp[MAXPATHLEN];
 
-	fd = pkg_repo_fetch_remote_tmp(repo, filename, extension, t, rc);
+	fd = pkg_repo_fetch_remote_tmp(repo, filename,
+			packing_format_to_string(repo->meta->packing_format), t, rc);
 	if (fd == -1) {
 		return (NULL);
 	}
@@ -460,7 +472,7 @@ pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
-	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, archive_file);
+	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, filename);
 
 	mask = umask(022);
 	dest_fd = mkstemp(tmp);
@@ -472,7 +484,7 @@ pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
 		goto cleanup;
 	}
 	(void)unlink(tmp);
-	if (pkg_repo_archive_extract_file(fd, archive_file, NULL, repo, dest_fd) != EPKG_OK) {
+	if (pkg_repo_archive_extract_file(fd, filename, NULL, repo, dest_fd) != EPKG_OK) {
 		*rc = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -492,6 +504,47 @@ cleanup:
 	/* Thus removing archived file as well */
 	close(fd);
 	return (res);
+}
+
+int
+pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
+{
+	char filepath[MAXPATHLEN];
+	struct pkg_repo_meta *nmeta;
+	const char *dbdir = NULL;
+	int fd;
+	int rc = EPKG_OK;
+
+	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
+
+	fd = pkg_repo_fetch_remote_tmp(repo, "meta", "txz", t, &rc);
+	if (fd == -1)
+		return (rc);
+
+	snprintf(filepath, sizeof(filepath), "%s/%s.meta", dbdir, pkg_repo_name(repo));
+
+	/* Remove old metafile */
+	if (unlink (filepath) == -1 && errno != ENOENT) {
+		close(fd);
+		return (EPKG_FATAL);
+	}
+
+	if ((rc = pkg_repo_archive_extract_file(fd, "meta", filepath, repo, -1)) != EPKG_OK) {
+		close (fd);
+		return (rc);
+	}
+
+	close(fd);
+
+	if ((rc = pkg_repo_meta_load(filepath, &nmeta)) != EPKG_OK)
+		return (rc);
+
+	if (repo->meta != NULL)
+		pkg_repo_meta_free(repo->meta);
+
+	repo->meta = nmeta;
+
+	return (rc);
 }
 
 static struct fingerprint *

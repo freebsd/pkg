@@ -40,7 +40,7 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 
 	/* Not use conflicts for now */
 	meta->conflicts = NULL;
-	meta->manifests = strdup("manifests");
+	meta->manifests = strdup("packagesite.yaml");
 	meta->digests = strdup("digests");
 	/* Not using fulldb */
 	meta->fulldb = NULL;

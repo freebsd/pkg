@@ -357,10 +357,12 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_NOSCRIPT (1<<2)
 #define PKG_DELETE_CONFLICT (1<<3)
 
-int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url, int dest, time_t *t);
+int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url,
+		int dest, time_t *t);
 int pkg_repo_fetch_package(struct pkg *pkg);
-FILE * pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo, const char *filename,
-		const char *extension, time_t *t, int *rc, const char *archive_file);
+FILE* pkg_repo_fetch_remote_extract_tmp(struct pkg_repo *repo,
+		const char *filename, time_t *t, int *rc);
+int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
 
 struct pkg_repo_meta *pkg_repo_meta_default(void);
 int pkg_repo_meta_load(const char *file, struct pkg_repo_meta **target);
