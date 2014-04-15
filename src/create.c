@@ -65,7 +65,7 @@ usage_create(void)
 
 static int
 pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
-    const char * const outdir, const char * const rootdir, bool overwrite)
+    const char * const outdir, bool overwrite)
 {
 	int i, ret = EPKG_OK, retcode = EPKG_OK;
 	struct pkg *pkg = NULL;
@@ -154,7 +154,7 @@ pkg_create_matches(int argc, char **argv, match_t match, pkg_formats fmt,
 			}
 		}
 		pkg_printf("Creating package for %n-%v\n", e->pkg, e->pkg);
-		if (pkg_create_installed(outdir, fmt, rootdir, e->pkg) !=
+		if (pkg_create_installed(outdir, fmt, e->pkg) !=
 		    EPKG_OK)
 			retcode++;
 		pkg_free(e->pkg);
@@ -237,6 +237,12 @@ exec_create(int argc, char **argv)
 		return (EX_USAGE);
 	}
 
+	if (manifestdir == NULL && rootdir != NULL) {
+		warnx("Do not specify a rootdir when creating a package from an installed package");
+		usage_create();
+		return (EX_USAGE);
+	}
+
 	if (outdir == NULL)
 		outdir = "./";
 
@@ -266,7 +272,7 @@ exec_create(int argc, char **argv)
 			return (EX_SOFTWARE);
 		}
 		return (pkg_create_matches(argc, argv, match, fmt, outdir,
-		    rootdir, overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
+		    overwrite) == EPKG_OK ? EX_OK : EX_SOFTWARE);
 	} else {
 		return (pkg_create_staged(outdir, fmt, rootdir, manifestdir,
 		    plist, old) == EPKG_OK ? EX_OK : EX_SOFTWARE);

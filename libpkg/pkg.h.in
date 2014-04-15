@@ -1248,8 +1248,7 @@ typedef enum pkg_formats { TAR, TGZ, TBZ, TXZ } pkg_formats;
 /**
  * Create package from an installed & registered package
  */
-int pkg_create_installed(const char *, pkg_formats, const char *,
-			 struct pkg *);
+int pkg_create_installed(const char *, pkg_formats, struct pkg *);
 
 /**
  * Create package from stage install with a metadata directory

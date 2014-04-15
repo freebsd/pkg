@@ -54,11 +54,15 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	struct stat	 st;
 	char		 sha256[SHA256_DIGEST_LENGTH * 2 + 1];
 	int64_t		 flatsize = 0;
+	ucl_object_t	*obj;
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
 		return (EPKG_FATAL);
 	}
+
+	obj = pkg_annotation_lookup(pkg, "relocated");
+
 	/*
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
@@ -66,10 +70,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		const char *pkg_path = pkg_file_path(file);
 		const char *pkg_sum = pkg_file_cksum(file);
 
-		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_path);
-		else
-			strlcpy(fpath, pkg_path, sizeof(fpath));
+		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
+		    obj ? pkg_object_string(obj) : "", pkg_path);
 
 		if (lstat(fpath, &st) != 0 || S_ISLNK(st.st_mode))
 			continue;
@@ -130,10 +132,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *pkg_path = pkg_file_path(file);
 
-		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_path);
-		else
-			strlcpy(fpath, pkg_path, sizeof(fpath));
+		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
+		    obj ? pkg_object_string(obj) : "", pkg_path);
 
 		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
 		    file->uname, file->gname, file->perm);
@@ -144,10 +144,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		const char *pkg_path = pkg_dir_path(dir);
-		if (root != NULL)
-			snprintf(fpath, sizeof(fpath), "%s%s", root, pkg_path);
-		else
-			strlcpy(fpath, pkg_dir_path(dir), sizeof(fpath));
+
+		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
+		    obj ? pkg_object_string(obj) : "", pkg_path);
 
 		ret = packing_append_file_attr(pkg_archive, fpath, pkg_path,
 		    dir->uname, dir->gname, dir->perm);
@@ -361,10 +360,10 @@ cleanup:
 }
 
 int
-pkg_create_installed(const char *outdir, pkg_formats format,
-    const char *rootdir, struct pkg *pkg)
+pkg_create_installed(const char *outdir, pkg_formats format, struct pkg *pkg)
 {
 	struct packing	*pkg_archive;
+
 	unsigned	 required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
 		PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
 		PKG_LOAD_OPTIONS | PKG_LOAD_MTREE | PKG_LOAD_LICENSES ;
@@ -377,7 +376,7 @@ pkg_create_installed(const char *outdir, pkg_formats format,
 		return (EPKG_FATAL);
 	}
 
-	pkg_create_from_dir(pkg, rootdir, pkg_archive);
+	pkg_create_from_dir(pkg, NULL, pkg_archive);
 
 	return packing_finish(pkg_archive);
 }
