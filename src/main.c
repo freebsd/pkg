@@ -437,7 +437,7 @@ start_process_worker(void)
 
 			while (waitpid(child_pid, &status, 0) == -1) {
 				if (errno != EINTR)
-					err(EX_OSERR, "Child process pid=%d", child_pid);
+					err(EX_OSERR, "Child process pid=%d", (int)child_pid);
 			}
 
 			ret = WEXITSTATUS(status);
@@ -446,7 +446,9 @@ start_process_worker(void)
 				break;
 			if (WIFSIGNALED(status)) {
 				/* Process got some terminating signal, hence stop the loop */
-				ret = EXIT_FAILURE;
+				fprintf(stderr, "Child process pid=%d terminated abnormally by signal: %d\n",
+						(int)child_pid, WTERMSIG(status));
+				ret = -(WTERMSIG(status));
 				break;
 			}
 		}
