@@ -446,6 +446,7 @@ start_process_worker(void)
 				break;
 			if (WIFSIGNALED(status)) {
 				/* Process got some terminating signal, hence stop the loop */
+				ret = EXIT_FAILURE;
 				break;
 			}
 		}
