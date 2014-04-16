@@ -763,70 +763,50 @@ parse_attributes(ucl_object_t *o, struct file_attr **a) {
 static int
 parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
-	ucl_object_t *cur, *actions = NULL;
-	ucl_object_iter_t it = NULL;
+	ucl_object_t *o;
 	char *cmd;
-	const char *key;
 
-	while ((cur = ucl_iterate_object(obj, &it, true))) {
-		key = ucl_object_key(cur);
-		if (key == NULL)
-			continue;
-		if (!strcasecmp(key, "actions") && cur->type == UCL_ARRAY) {
-			actions = cur;
-			continue;
-		}
+	if ((o = ucl_object_find_key(obj,  "attributes")))
+		parse_attributes(o, &attr);
 
-		if (!strcasecmp(key, "attributes") && cur->type == UCL_OBJECT) {
-			parse_attributes(cur, &attr);
-			continue;
-		}
-
-		if (!strcasecmp(key, "pre-install") && cur->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_printf(p->pre_install_buf, "%s\n", cmd);
-			free(cmd);
-			continue;
-		}
-
-		if (!strcasecmp(key, "post-install") && cur->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_printf(p->post_install_buf, "%s\n", cmd);
-			free(cmd);
-			continue;
-		}
-
-		if (!strcasecmp(key, "pre-deinstall") && cur->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_printf(p->pre_deinstall_buf, "%s\n",cmd);
-			free(cmd);
-			continue;
-		}
-
-		if (!strcasecmp(key, "post-deinstall") && cur->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_printf(p->post_deinstall_buf, "%s\n",cmd);
-			free(cmd);
-			continue;
-		}
-
-		if (!strcasecmp(key, "pre-upgrade") && cur->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_printf(p->pre_upgrade_buf, "%s\n",cmd);
-			free(cmd);
-			continue;
-		}
-
-		if (!strcasecmp(key, "post-upgrade") && cur->type == UCL_STRING) {
-			format_exec_cmd(&cmd, ucl_object_tostring(cur), p->prefix, p->last_file, line);
-			sbuf_printf(p->post_upgrade_buf,"%s\n", cmd);
-			free(cmd);
-			continue;
-		}
+	if ((o = ucl_object_find_key(obj, "pre-install"))) {
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		sbuf_printf(p->pre_install_buf, "%s\n", cmd);
+		free(cmd);
 	}
 
-	if (actions != NULL)
-		parse_actions(actions, p, line, attr);
+	if ((o = ucl_object_find_key(obj, "post-install"))) {
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		sbuf_printf(p->post_install_buf, "%s\n", cmd);
+		free(cmd);
+	}
+
+	if ((o = ucl_object_find_key(obj, "pre-deinstall"))) {
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		free(cmd);
+	}
+
+	if ((o = ucl_object_find_key(obj, "post-deinstall"))) {
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
+		free(cmd);
+	}
+
+	if ((o = ucl_object_find_key(obj, "pre-upgrade"))) {
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		sbuf_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		free(cmd);
+	}
+
+	if ((o = ucl_object_find_key(obj, "post-upgrade"))) {
+		format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix, p->last_file, line);
+		sbuf_printf(p->post_deinstall_buf, "%s\n", cmd);
+		free(cmd);
+	}
+
+	if ((o = ucl_object_find_key(obj,  "actions")))
+		parse_actions(o, p, line, attr);
 
 	return (EPKG_OK);
 }
