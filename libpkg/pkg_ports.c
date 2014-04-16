@@ -45,6 +45,8 @@
 #include "private/event.h"
 #include "private/pkg.h"
 
+static ucl_object_t *keyword_schema = NULL;
+
 struct keyword {
 	/* 64 is more than enough for this */
 	char keyword[64];
@@ -122,6 +124,55 @@ static struct action_cmd {
 	{ "pkgdep", pkgdep },
 	{ NULL, NULL }
 };
+
+static ucl_object_t *
+keyword_open_schema(void)
+{
+	struct ucl_parser *parser;
+	static const char keyword_schema_str[] = ""
+		"{"
+		"  type = object;"
+		"  properties {"
+		"    actions = { "
+		"      type = array; "
+		"      items = { type = string }; "
+		"      uniqueItems: true "
+		"    }; "
+		"    attributes = { "
+		"      type = object; "
+		"      properties { "
+		"        owner = { type = string }; "
+		"        group = { type = string }; "
+		"        mode = { type = string };  "
+		"        mode = { type = integer };  "
+	        "      }"
+		"    }; "
+		"    pre-install = { type = string }; "
+		"    post-install = { type = string }; "
+		"    pre-deinstall = { type = string }; "
+		"    post-deinstall = { type = string }; "
+		"    pre-upgrade = { type = string }; "
+		"    post-upgrade = { type = string }; "
+		"  }"
+		"}";
+
+	if (keyword_schema != NULL)
+		return (keyword_schema);
+
+	parser = ucl_parser_new(0);
+	if (!ucl_parser_add_chunk(parser, keyword_schema_str,
+	    sizeof(keyword_schema_str) -1)) {
+		pkg_emit_error("Cannot parse schema for keywords: %s",
+		    ucl_parser_get_error(parser));
+		ucl_parser_free(parser);
+		return (NULL);
+	}
+
+	keyword_schema = ucl_parser_get_object(parser);
+	ucl_parser_free(parser);
+
+	return (keyword_schema);
+}
 
 static void
 free_file_attr(struct file_attr *a)
@@ -710,7 +761,6 @@ parse_attributes(ucl_object_t *o, struct file_attr **a) {
 	}
 }
 
-
 static int
 parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
@@ -808,7 +858,8 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
 	int ret = EPKG_UNKNOWN;
-	ucl_object_t *o;
+	ucl_object_t *o, *schema;
+	struct ucl_schema_error err;
 
 	keyword_dir = pkg_object_string(pkg_config_get("PLIST_KEYWORDS_DIR"));
 	if (keyword_dir == NULL) {
@@ -834,6 +885,16 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 
 		o = ucl_parser_get_object(parser);
 		ucl_parser_free(parser);
+	}
+
+	schema = keyword_open_schema();
+
+	if (schema != NULL) {
+		if (!ucl_object_validate(schema, o, &err)) {
+			pkg_emit_error("Keyword definition %s cannot be validated: %s", keyfile_path, err.msg);
+			ucl_object_unref(o);
+			return (EPKG_FATAL);
+		}
 	}
 
 	ret = parse_and_apply_keyword_file(o, plist, line, attr);
