@@ -884,9 +884,9 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	}
 
 	pkg_debug(4, "Emitting licenses");
-	if (pkg->categories != NULL)
+	if (pkg->licenses != NULL)
 		top = ucl_object_insert_key(top,
-		    ucl_object_ref(pkg->categories), "licenses", 8, false);
+		    ucl_object_ref(pkg->licenses), "licenses", 8, false);
 
 	top = ucl_object_insert_key(top, ucl_object_fromint(flatsize), "flatsize", 8, false);
 	if (pkgsize > 0)
