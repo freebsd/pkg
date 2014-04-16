@@ -143,7 +143,7 @@ keyword_open_schema(void)
 		"      properties { "
 		"        owner = { type = string }; "
 		"        group = { type = string }; "
-		"        mode = { oneOf: [ { type = integer }, { type = string } ] };
+		"        mode = { oneOf: [ { type = integer }, { type = string } ] }; "
 		"      }"
 		"    }; "
 		"    pre-install = { type = string }; "
