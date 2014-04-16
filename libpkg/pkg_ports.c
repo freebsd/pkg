@@ -761,7 +761,7 @@ parse_attributes(ucl_object_t *o, struct file_attr **a) {
 }
 
 static int
-parse_and_apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
+apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
 	ucl_object_t *o;
 	char *cmd;
@@ -876,7 +876,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		}
 	}
 
-	ret = parse_and_apply_keyword_file(o, plist, line, attr);
+	ret = apply_keyword_file(o, plist, line, attr);
 
 	return (ret);
 }
