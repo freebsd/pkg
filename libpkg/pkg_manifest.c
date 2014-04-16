@@ -1058,7 +1058,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	else
 		ucl_object_emit_sbuf(top, UCL_EMIT_JSON_COMPACT, out);
 
-	ucl_object_free(top);
+	ucl_object_unref(top);
 
 	/* FIXME: avoid gcc to complain about -Werror=unused-but-set-variable */
 	(void)obj;
