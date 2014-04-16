@@ -417,7 +417,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    "'%s' key of the '%s' repo",
 				    key, rname);
 				if (tmp != NULL)
-					ucl_object_free(tmp);
+					ucl_object_unref(tmp);
 				return;
 			}
 			if (tmp != NULL)
@@ -425,7 +425,7 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 				    " the value has been correctly converted, please consider fixing", key, rname);
 			enable = ucl_object_toboolean(tmp != NULL ? tmp : cur);
 			if (tmp != NULL)
-				ucl_object_free(tmp);
+				ucl_object_unref(tmp);
 		} else if (strcasecmp(key, "mirror_type") == 0) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
@@ -561,7 +561,7 @@ load_repo_file(const char *repofile)
 	if (obj->type == UCL_OBJECT)
 		walk_repo_obj(obj, repofile);
 
-	ucl_object_free(obj);
+	ucl_object_unref(obj);
 }
 
 static void
@@ -787,7 +787,7 @@ pkg_init(const char *path, const char *reposdir)
 				pkg_emit_error("Invalid type for environment "
 				    "variable %s, got %s, while expecting an integer",
 				    key, val);
-				ucl_object_free(o);
+				ucl_object_unref(o);
 				continue;
 			}
 			break;
@@ -797,7 +797,7 @@ pkg_init(const char *path, const char *reposdir)
 				pkg_emit_error("Invalid type for environment "
 				    "variable %s, got %s, while expecting a boolean",
 				    key, val);
-				ucl_object_free(o);
+				ucl_object_unref(o);
 				continue;
 			}
 			break;

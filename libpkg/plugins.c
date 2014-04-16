@@ -359,7 +359,7 @@ pkg_plugin_parse(struct pkg_plugin *p)
 	}
 
 	p->parsed = true;
-	ucl_object_free(obj);
+	ucl_object_unref(obj);
 	ucl_parser_free(pr);
 
 	return (EPKG_OK);

@@ -614,7 +614,7 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 	if (obj->type == UCL_OBJECT)
 		f = pkg_repo_parse_fingerprint(obj);
 
-	ucl_object_free(obj);
+	ucl_object_unref(obj);
 	ucl_parser_free(p);
 
 	return (f);
