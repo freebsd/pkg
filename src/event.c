@@ -29,10 +29,18 @@
  */
 
 #include <sys/param.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capability.h>
+#endif
 
 #include <err.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sysexits.h>
 
 #include "pkg.h"
 #include "progressmeter.h"
@@ -57,6 +65,66 @@ print_status_begin(struct sbuf *msg)
 
 	if (nbactions > 0)
 		sbuf_printf(msg, "[%d/%d] ", nbdone, nbactions);
+}
+
+static int
+event_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
+{
+	pid_t pid;
+	int	status, ret;
+
+	pid = fork();
+
+	switch(pid) {
+	case -1:
+		warn("fork failed");
+		return (EPKG_FATAL);
+		break;
+	case 0:
+		break;
+	default:
+		/* Parent process */
+		while (waitpid(pid, &status, 0) == -1) {
+			if (errno != EINTR) {
+				warn("Sandboxed process pid=%d", (int)pid);
+				ret = -1;
+				break;
+			}
+		}
+
+		if (WIFEXITED(status)) {
+			ret = WEXITSTATUS(status);
+		}
+		if (WIFSIGNALED(status)) {
+			/* Process got some terminating signal, hence stop the loop */
+			fprintf(stderr, "Sandboxed process pid=%d terminated abnormally by signal: %d\n",
+					(int)pid, WTERMSIG(status));
+			ret = -1;
+		}
+		return (ret);
+	}
+
+	/* Here comes child process */
+#ifdef HAVE_CAPSICUM
+	cap_rights_init(&rights, CAP_READ|CAP_MMAP_R|CAP_SEEK|CAP_LOOKUP|CAP_FSTAT);
+	if (cap_rights_limit(fileno(fd), &rights) < 0 && errno != ENOSYS ) {
+		warn("cap_rights_limit() failed");
+		return (EPKG_FATAL);
+	}
+
+	if (cap_enter() < 0 && errno != ENOSYS) {
+		warn("cap_enter() failed");
+		return (EPKG_FATAL);
+	}
+#endif
+
+	/*
+	 * XXX: if capsicum is not enabled we basically have no idea of how to
+	 * make a sandbox
+	 */
+	ret = func(fd, ud);
+
+	_exit(ret);
 }
 
 int
@@ -354,6 +422,10 @@ event_callback(void *data, struct pkg_event *ev)
 		return query_select(ev->e_query_select.msg, ev->e_query_select.items,
 			ev->e_query_select.ncnt, ev->e_query_select.deft);
 		break;
+	case PKG_EVENT_SANDBOX_CALL:
+		return ( event_sandboxed_call(ev->e_sandbox_call.call,
+				ev->e_sandbox_call.fd,
+				ev->e_sandbox_call.userdata) );
 	default:
 		break;
 	}
