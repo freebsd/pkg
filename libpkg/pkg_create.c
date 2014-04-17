@@ -175,7 +175,7 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
 	if (mkdirs(outdir) != EPKG_OK)
 		return NULL;
 
-	if (pkg_asprintf(&pkg_path, "%s/%n-%v", outdir, pkg, pkg) == -1) {
+	if (pkg_asprintf(&pkg_path, "%S/%n-%v", outdir, pkg, pkg) == -1) {
 		pkg_emit_errno("pkg_asprintf", "");
 		return (NULL);
 	}
