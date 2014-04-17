@@ -44,6 +44,8 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	meta->digests = strdup("digests");
 	/* Not using fulldb */
 	meta->fulldb = NULL;
+
+	meta->pubkey_format = strdup("rsa");
 }
 
 void
@@ -82,6 +84,8 @@ pkg_repo_meta_open_schema_v1()
 			"source_identifier = {type = string};\n"
 			"revision = {type = integer};\n"
 			"eol = {type = integer};\n"
+			"pubkey = {type = string};\n"
+			"pubkey_type = {enum = [rsa]};\n"
 			"}\n"
 			"required = [version]\n"
 			"}";
@@ -135,6 +139,9 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	META_EXTRACT_STRING(digests);
 	META_EXTRACT_STRING(manifests);
 	META_EXTRACT_STRING(fulldb);
+
+	META_EXTRACT_STRING(pubkey);
+	META_EXTRACT_STRING(pubkey_format);
 
 	META_EXTRACT_STRING(source_identifier);
 

@@ -282,6 +282,9 @@ struct pkg_repo_meta {
 	char *source_identifier;
 	int64_t revision;
 
+	char *pubkey;
+	char *pubkey_format; /* TODO: should be enumeration */
+
 	time_t eol;
 };
 
