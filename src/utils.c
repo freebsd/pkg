@@ -256,6 +256,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 	bool show_locks = false;
 	char size[7];
 	const char *repourl;
+	const pkg_object	*o;
 	unsigned opt;
 	int64_t flatsize, oldflatsize, pkgsize;
 	int cout = 0;		/* Number of characters output */
@@ -372,7 +373,8 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("\n");
 			break;
 		case INFO_CATEGORIES:
-			if (pkg_object_count(pkg_categories(pkg)) > 0) {
+			pkg_get(pkg, PKG_CATEGORIES, &o);
+			if (pkg_object_count(o) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Categories");
 				pkg_printf("%C%{%Cn%| %}\n", pkg);
@@ -380,7 +382,8 @@ print_info(struct pkg * const pkg, uint64_t options)
 				printf("\n");
 			break;
 		case INFO_LICENSES:
-			if (pkg_object_count(pkg_licenses(pkg)) > 0) {
+			pkg_get(pkg, PKG_LICENSES, &o);
+			if (pkg_object_count(o) > 0) {
 				if (print_tag)
 					printf("%-15s: ", "Licenses");
 				pkg_printf("%L%{%Ln%| %l %}\n", pkg);
@@ -433,7 +436,8 @@ print_info(struct pkg * const pkg, uint64_t options)
 			}
 			break;
 		case INFO_ANNOTATIONS:
-			if (pkg_object_count(pkg_annotations(pkg)) > 0) {
+			pkg_get(pkg, PKG_ANNOTATIONS, &o);
+			if (pkg_object_count(o) > 0) {
 				if (print_tag)
 					printf("%-15s:\n", "Annotations");
 				if (quiet)

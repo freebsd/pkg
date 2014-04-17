@@ -112,8 +112,6 @@ struct pkg {
 	ucl_object_t	*fields;
 	bool		 direct;
 	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
-	ucl_object_t		*licenses;
-	ucl_object_t		*categories;
 	struct pkg_dep		*deps;
 	struct pkg_dep		*rdeps;
 	struct pkg_file		*files;
@@ -123,7 +121,6 @@ struct pkg {
 	struct pkg_group	*groups;
 	struct pkg_shlib	*shlibs_required;
 	struct pkg_shlib	*shlibs_provided;
-	ucl_object_t		*annotations;
 	struct pkg_conflict *conflicts;
 	struct pkg_provide	*provides;
 	unsigned       	 flags;
@@ -379,6 +376,9 @@ static struct pkg_key {
 	[PKG_LOCKED] = { "locked", UCL_BOOLEAN },
 	[PKG_ROWID] = { "rowid", UCL_INT },
 	[PKG_TIME] = { "time", UCL_INT },
+	[PKG_ANNOTATIONS] = { "annotations", UCL_OBJECT },
+	[PKG_LICENSES] = { "licenses", UCL_ARRAY },
+	[PKG_CATEGORIES] = { "catagories", UCL_ARRAY },
 };
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url,

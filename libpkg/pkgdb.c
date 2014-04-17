@@ -2615,6 +2615,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	lic_t			 licenselogic;
 	int64_t			 flatsize;
 
+	const pkg_object	*licenses, *categories;
+
 	assert(db != NULL);
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
@@ -2645,7 +2647,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 		PKG_AUTOMATIC,	&automatic,
 		PKG_LICENSE_LOGIC, &licenselogic,
 		PKG_NAME,	&name,
-		PKG_DIGEST,	&digest);
+		PKG_DIGEST,	&digest,
+		PKG_LICENSES,	&licenses,
+		PKG_CATEGORIES,	&categories);
 
 	/*
 	 * Insert mtree record
@@ -2785,7 +2789,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	iter = NULL;
-	while ((obj = pkg_object_iterate(pkg->categories, &iter))) {
+	while ((obj = pkg_object_iterate(categories, &iter))) {
 		ret = run_prstmt(CATEGORY1, pkg_object_string(obj));
 		if (ret == SQLITE_DONE)
 			ret = run_prstmt(CATEGORY2, package_id, pkg_object_string(obj));
@@ -2800,7 +2804,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	 */
 
 	iter = NULL;
-	while ((obj = pkg_object_iterate(pkg->licenses, &iter))) {
+	while ((obj = pkg_object_iterate(licenses, &iter))) {
 		if (run_prstmt(LICENSES1, pkg_object_string(obj))
 		    != SQLITE_DONE
 		    ||
@@ -2982,10 +2986,11 @@ pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	const pkg_object	*note;
+	const pkg_object	*note, *annotations;
 	pkg_iter		 it = NULL;
 
-	while ((note = pkg_object_iterate(pkg->annotations, &it))) {
+	pkg_get(pkg, PKG_ANNOTATIONS, &annotations);
+	while ((note = pkg_object_iterate(annotations, &it))) {
 		if (run_prstmt(ANNOTATE1, pkg_object_key(note))
 		    != SQLITE_DONE
 		    ||

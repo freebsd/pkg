@@ -46,8 +46,6 @@
 #define PKG_FILES		-3
 #define PKG_DIRS		-4
 #define PKG_SCRIPTS		-5
-#define PKG_CATEGORIES		-6
-#define PKG_LICENSES		-7
 #define PKG_OPTIONS		-8
 #define PKG_OPTION_DEFAULTS	-9
 #define PKG_OPTION_DESCRIPTIONS	-10
@@ -56,7 +54,6 @@
 #define PKG_DIRECTORIES		-13
 #define PKG_SHLIBS_REQUIRED	-14
 #define PKG_SHLIBS_PROVIDED	-15
-#define PKG_ANNOTATIONS		-16
 #define PKG_CONFLICTS		-17
 #define PKG_PROVIDES		-18
 
@@ -859,6 +856,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize, pkgsize;
+	ucl_object_t *annotations, *categories, *licenses;
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
 
@@ -868,7 +866,9 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
 	    PKG_VERSION, &version, PKG_REPOPATH, &repopath,
-	    PKG_CKSUM, &pkgsum, PKG_PKGSIZE, &pkgsize);
+	    PKG_CKSUM, &pkgsum, PKG_PKGSIZE, &pkgsize,
+	    PKG_ANNOTATIONS, &annotations, PKG_LICENSES, &licenses,
+	    PKG_CATEGORIES, &categories);
 
 	pkg_debug(4, "Emitting basic metadata");
 	if (name)
@@ -905,9 +905,9 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	}
 
 	pkg_debug(4, "Emitting licenses");
-	if (pkg->licenses != NULL)
+	if (licenses != NULL)
 		ucl_object_insert_key(top,
-		    ucl_object_ref(pkg->licenses), "licenses", 8, false);
+		    ucl_object_ref(licenses), "licenses", 8, false);
 
 	ucl_object_insert_key(top, ucl_object_fromint(flatsize), "flatsize", 8, false);
 	if (pkgsize > 0)
@@ -932,9 +932,9 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		ucl_object_insert_key(top, map, "deps", 4, false);
 
 	pkg_debug(4, "Emitting categories");
-	if (pkg->categories != NULL)
+	if (categories != NULL)
 		ucl_object_insert_key(top,
-		    ucl_object_ref(pkg->categories), "categories", 10, false);
+		    ucl_object_ref(categories), "categories", 10, false);
 
 	pkg_debug(4, "Emitting users");
 	seq = NULL;
@@ -1013,12 +1013,12 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	if (map)
 		ucl_object_insert_key(top, map, "options", 7, false);
 
-	if (pkg->annotations != NULL) {
+	if (annotations != NULL) {
 		/* Remove internal only annotations */
-		ucl_object_delete_keyl(pkg->annotations, "repository", 10);
-		ucl_object_delete_keyl(pkg->annotations, "relocated", 9);
+		ucl_object_delete_keyl(annotations, "repository", 10);
+		ucl_object_delete_keyl(annotations, "relocated", 9);
 		ucl_object_insert_key(top,
-		    ucl_object_ref(pkg->annotations), "annotations", 11, false);
+		    ucl_object_ref(annotations), "annotations", 11, false);
 	}
 
 	if ((flags & PKG_MANIFEST_EMIT_COMPACT) == 0) {

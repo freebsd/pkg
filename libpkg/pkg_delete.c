@@ -144,13 +144,14 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *sum = pkg_file_cksum(file);
-		const ucl_object_t *obj;
+		const ucl_object_t *obj, *an;
 
 		if (file->keep == 1)
 			continue;
 
 		path = pkg_file_path(file);
-		obj = pkg_annotation_lookup(pkg, "relocated");
+		pkg_get(pkg, PKG_ANNOTATIONS, &an);
+		obj = pkg_object_find(an, "relocated");
 		snprintf(fpath, sizeof(fpath), "%s%s",
 		    obj ? pkg_object_string(obj) : "" , path );
 
@@ -180,14 +181,15 @@ int
 pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, bool force)
 {
 	struct pkg_dir		*dir = NULL;
-	const ucl_object_t 	*obj;
+	const ucl_object_t 	*obj, *an;
 	char			 fpath[MAXPATHLEN];
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (dir->keep == 1)
 			continue;
 
-		obj = pkg_annotation_lookup(pkg, "relocated");
+		pkg_get(pkg, PKG_ANNOTATIONS, &an);
+		obj = pkg_object_find(an, "relocated");
 		snprintf(fpath, sizeof(fpath), "%s%s",
 		    obj ? pkg_object_string(obj) : "" , pkg_dir_path(dir) );
 

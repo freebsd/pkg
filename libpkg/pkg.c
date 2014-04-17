@@ -89,11 +89,12 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 
 	ucl_object_unref(pkg->fields);
 	pkg->fields = ucl_object_typed_new(UCL_OBJECT);
+	pkg->flags &= ~PKG_LOAD_CATEGORIES;
+	pkg->flags &= ~PKG_LOAD_LICENSES;
+	pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
 
 	for (i = 0; i < PKG_NUM_SCRIPTS; i++)
 		sbuf_reset(pkg->scripts[i]);
-	pkg_list_free(pkg, PKG_LICENSES);
-	pkg_list_free(pkg, PKG_CATEGORIES);
 	pkg_list_free(pkg, PKG_DEPS);
 	pkg_list_free(pkg, PKG_RDEPS);
 	pkg_list_free(pkg, PKG_FILES);
@@ -103,7 +104,6 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
-	pkg_list_free(pkg, PKG_ANNOTATIONS);
 
 	pkg->type = type;
 }
@@ -119,8 +119,6 @@ pkg_free(struct pkg *pkg)
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
 		sbuf_free(pkg->scripts[i]);
 
-	pkg_list_free(pkg, PKG_LICENSES);
-	pkg_list_free(pkg, PKG_CATEGORIES);
 	pkg_list_free(pkg, PKG_DEPS);
 	pkg_list_free(pkg, PKG_RDEPS);
 	pkg_list_free(pkg, PKG_FILES);
@@ -130,7 +128,6 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_GROUPS);
 	pkg_list_free(pkg, PKG_SHLIBS_REQUIRED);
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
-	pkg_list_free(pkg, PKG_ANNOTATIONS);
 
 	free(pkg);
 }
@@ -190,6 +187,10 @@ pkg_vget(const struct pkg * restrict pkg, va_list ap)
 			}
 			*va_arg(ap, int64_t *) = ucl_object_toint(obj);
 			break;
+		case UCL_OBJECT:
+		case UCL_ARRAY:
+			*va_arg(ap, const pkg_object **) = obj;
+			break;
 		default:
 			va_arg(ap, void *); /* ignore */
 			break;
@@ -222,7 +223,7 @@ pkg_vset(struct pkg *pkg, va_list ap)
 	char *buf = NULL;
 	const char *data;
 	const char *str;
-
+	ucl_object_t *o;
 
 	while ((attr = va_arg(ap, int)) > 0) {
 		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
@@ -271,6 +272,12 @@ pkg_vset(struct pkg *pkg, va_list ap)
 			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false))
 				return (EPKG_FATAL);
 			break;
+		case UCL_OBJECT:
+		case UCL_ARRAY:
+			o = va_arg(ap, ucl_object_t *);
+			if (!ucl_object_replace_key(pkg->fields, o,
+			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false))
+					return (EPKG_FATAL);
 		default:
 			(void) va_arg(ap, void *);
 			break;
@@ -428,14 +435,16 @@ pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
 int
 pkg_addlicense(struct pkg *pkg, const char *name)
 {
-	const pkg_object *o;
-	pkg_object *l;
+	const pkg_object *o, *licenses;
+	pkg_object *l, *lic;
 	pkg_iter iter = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	while ((o = pkg_object_iterate(pkg->licenses, &iter))) {
+	pkg_get(pkg, PKG_LICENSES, &licenses);
+
+	while ((o = pkg_object_iterate(licenses, &iter))) {
 		if (strcmp(pkg_object_string(o), name) == 0) {
 			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 				pkg_emit_error("duplicate license listing: %s, fatal (developer mode)", name);
@@ -447,10 +456,13 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 		}
 	}
 
+	pkg_get(pkg, PKG_LICENSES, &lic);
 	l = ucl_object_fromstring_common(name, strlen(name), 0);
-	if (pkg->licenses == NULL)
-		pkg->licenses = ucl_object_typed_new(UCL_ARRAY);
-	ucl_array_append(pkg->licenses, l);
+	if (lic == NULL) {
+		lic = ucl_object_typed_new(UCL_ARRAY);
+		pkg_set(pkg, PKG_LICENSES, lic);
+	}
+	ucl_array_append(lic, l);
 
 	return (EPKG_OK);
 }
@@ -647,14 +659,15 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 int
 pkg_addcategory(struct pkg *pkg, const char *name)
 {
-	const pkg_object *o;
-	pkg_object *c;
+	const pkg_object *o, *categories;
+	pkg_object *c, *cat;
 	pkg_iter iter = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	while ((o = (pkg_object_iterate(pkg->categories, &iter)))) {
+	pkg_get(pkg, PKG_CATEGORIES, &categories);
+	while ((o = (pkg_object_iterate(categories, &iter)))) {
 		if (strcmp(pkg_object_string(o), name) == 0) {
 			if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 				pkg_emit_error("duplicate category listing: %s, fatal (developer mode)", name);
@@ -666,10 +679,13 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 		}
 	}
 
+	pkg_get(pkg, PKG_CATEGORIES, &cat);
 	c = ucl_object_fromstring_common(name, strlen(name), 0);
-	if (pkg->categories == NULL)
-		pkg->categories = ucl_object_typed_new(UCL_ARRAY);
-	ucl_array_append(pkg->categories, c);
+	if (cat == NULL) {
+		cat = ucl_object_typed_new(UCL_ARRAY);
+		pkg_set(pkg, PKG_CATEGORIES, cat);
+	}
+	ucl_array_append(cat, c);
 
 	return (EPKG_OK);
 }
@@ -1024,8 +1040,8 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 int
 pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 {
-	const ucl_object_t *an;
-	ucl_object_t *o;
+	const ucl_object_t *an, *notes;
+	ucl_object_t *o, *annotations;
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
@@ -1033,7 +1049,8 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 
 	/* Tags are unique per-package */
 
-	an = ucl_object_find_key(pkg->annotations, tag);
+	pkg_get(pkg, PKG_ANNOTATIONS, &notes);
+	an = pkg_object_find(notes, tag);
 	if (an != NULL) {
 		if (pkg_object_bool(pkg_config_get("DEVELOPER_MODE"))) {
 			pkg_emit_error("duplicate annotation tag: %s value: %s,"
@@ -1046,55 +1063,26 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 		}
 	}
 	o = ucl_object_fromstring_common(value, strlen(value), 0);
-	if (pkg->annotations == NULL)
-		pkg->annotations = ucl_object_typed_new(UCL_OBJECT);
-	ucl_object_insert_key(pkg->annotations, o, tag, strlen(tag), true);
+	pkg_get(pkg, PKG_ANNOTATIONS, &annotations);
+	if (annotations == NULL) {
+		annotations = ucl_object_typed_new(UCL_OBJECT);
+		pkg_set(pkg, PKG_ANNOTATIONS, annotations);
+	}
+	ucl_object_insert_key(annotations, o, tag, strlen(tag), true);
 
 	return (EPKG_OK);
-}
-
-const pkg_object *
-pkg_licenses(const struct pkg *pkg)
-{
-	assert (pkg != NULL);
-
-	return (pkg->licenses);
-}
-
-const pkg_object *
-pkg_categories(const struct pkg *pkg)
-{
-	assert (pkg != NULL);
-
-	return (pkg->categories);
-}
-
-const pkg_object *
-pkg_annotations(const struct pkg *pkg)
-{
-	assert(pkg != NULL);
-
-	return (pkg->annotations);
-}
-
-const pkg_object *
-pkg_annotation_lookup(const struct pkg *pkg, const char *tag)
-{
-	assert(pkg != NULL);
-	assert(tag != NULL);
-
-	return (ucl_object_find_key(pkg->annotations, tag));
 }
 
 int
 pkg_delannotation(struct pkg *pkg, const char *tag)
 {
-	ucl_object_t *an;
+	ucl_object_t *an, *notes;
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
 
-	an = ucl_object_pop_keyl(pkg->annotations, tag, strlen(tag));
+	pkg_get(pkg, PKG_ANNOTATIONS, &notes);
+	an = ucl_object_pop_keyl(notes, tag, strlen(tag));
 	if (an != NULL) {
 		ucl_object_unref(an);
 		return (EPKG_OK);
@@ -1113,12 +1101,8 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->deps));
 	case PKG_RDEPS:
 		return (HASH_COUNT(pkg->rdeps));
-	case PKG_LICENSES:
-		return (UCL_COUNT(pkg->licenses));
 	case PKG_OPTIONS:
 		return (HASH_COUNT(pkg->options));
-	case PKG_CATEGORIES:
-		return (UCL_COUNT(pkg->categories));
 	case PKG_FILES:
 		return (HASH_COUNT(pkg->files));
 	case PKG_DIRS:
@@ -1131,8 +1115,6 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 		return (HASH_COUNT(pkg->shlibs_required));
 	case PKG_SHLIBS_PROVIDED:
 		return (HASH_COUNT(pkg->shlibs_provided));
-	case PKG_ANNOTATIONS:
-		return (UCL_COUNT(pkg->annotations));
 	case PKG_CONFLICTS:
 		return (HASH_COUNT(pkg->conflicts));
 	case PKG_PROVIDES:
@@ -1153,23 +1135,9 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		HASH_FREE(pkg->rdeps, pkg_dep_free);
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
-	case PKG_LICENSES:
-		if (pkg->licenses != NULL) {
-			ucl_object_unref(pkg->licenses);
-			pkg->licenses = NULL;
-		}
-		pkg->flags &= ~PKG_LOAD_LICENSES;
-		break;
 	case PKG_OPTIONS:
 		HASH_FREE(pkg->options, pkg_option_free);
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
-		break;
-	case PKG_CATEGORIES:
-		if (pkg->categories != NULL) {
-			ucl_object_unref(pkg->categories);
-			pkg->categories = NULL;
-		}
-		pkg->flags &= ~PKG_LOAD_CATEGORIES;
 		break;
 	case PKG_FILES:
 		HASH_FREE(pkg->files, pkg_file_free);
@@ -1194,13 +1162,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	case PKG_SHLIBS_PROVIDED:
 		HASH_FREE(pkg->shlibs_provided, pkg_shlib_free);
 		pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
-		break;
-	case PKG_ANNOTATIONS:
-		if (pkg->annotations != NULL) {
-			ucl_object_unref(pkg->annotations);
-			pkg->annotations = NULL;
-		}
-		pkg->flags &= ~PKG_LOAD_ANNOTATIONS;
 		break;
 	case PKG_CONFLICTS:
 		HASH_FREE(pkg->conflicts, pkg_conflict_free);

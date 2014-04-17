@@ -1236,7 +1236,7 @@ static bool
 newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
 	char *origin, *newversion, *oldversion, *reponame;
-	const ucl_object_t *an;
+	const ucl_object_t *an, *obj;
 	int64_t oldsize;
 	struct pkg *lp;
 	bool automatic;
@@ -1253,10 +1253,11 @@ newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 	pkg_jobs_add_universe(j, lp, true, false, NULL);
 	pkg_get(lp, PKG_AUTOMATIC, &automatic,
 	    PKG_VERSION, &oldversion,
-	    PKG_FLATSIZE, &oldsize);
+	    PKG_FLATSIZE, &oldsize,
+	    PKG_ANNOTATIONS, &obj);
 
 	/* Add repo name to the annotation */
-	an = pkg_annotation_lookup(lp, "repository");
+	an = pkg_object_find(obj, "repository");
 	if (an != NULL)  {
 		if (strcmp(pkg_repo_ident(pkg_repo_find_name(reponame)),
 		    ucl_object_tostring(an)) != 0)  {
@@ -1849,7 +1850,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 {
 	struct pkg *new, *old;
 	const char *pkgorigin, *oldversion = NULL;
-	const ucl_object_t *an;
+	const ucl_object_t *an, *obj;
 	char path[MAXPATHLEN], *target;
 	bool automatic = false;
 	int flags = 0;
@@ -1858,13 +1859,13 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 	old = ps->items[1] ? ps->items[1]->pkg : NULL;
 	new = ps->items[0]->pkg;
 
-	pkg_get(new, PKG_ORIGIN, &pkgorigin);
+	pkg_get(new, PKG_ORIGIN, &pkgorigin, PKG_ANNOTATIONS, &obj);
 	if (old != NULL)
 		pkg_get(old, PKG_VERSION, &oldversion, PKG_AUTOMATIC, &automatic);
 	else if (!new->direct)
 		automatic = true;
 
-	an = pkg_annotation_lookup(new, "repository");
+	an = pkg_object_find(obj, "repository");
 
 	if (ps->items[0]->jp != NULL && ps->items[0]->jp->is_file) {
 		/*

@@ -835,9 +835,11 @@ struct sbuf *
 format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
+	const pkg_object	*an;
 
+	pkg_get(pkg, PKG_ANNOTATIONS, &an);
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_list_count(pkg, PKG_ANNOTATIONS), p));
+		return (list_count(sbuf, pkg_object_count(an), p));
 	else {
 		const pkg_object	*note;
 		pkg_iter		it = NULL;
@@ -846,7 +848,7 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%An: %Av\n", "");
 
 		count = 1;
-		while ((note = pkg_object_iterate(pkg->annotations, &it))) {
+		while ((note = pkg_object_iterate(an, &it))) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     note, count, PP_A);
@@ -935,10 +937,12 @@ struct sbuf *
 format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
+	const pkg_object	*obj;
+
+	pkg_get(pkg, PKG_CATEGORIES, &obj);
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES),
-				   p));
+		return (list_count(sbuf, pkg_object_count(obj), p));
 	else {
 		const pkg_object	*cat;
 		pkg_iter		 it = NULL;
@@ -947,7 +951,7 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
-		while ((cat = pkg_object_iterate(pkg->categories, &it))) {
+		while ((cat = pkg_object_iterate(obj, &it))) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     cat, count, PP_C);
@@ -1248,10 +1252,12 @@ struct sbuf *
 format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
+	const pkg_object	*obj;
+
+	pkg_get(pkg, PKG_LICENSES, &obj);
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(sbuf, pkg_object_count(pkg_licenses(pkg)),
-				   p));
+		return (list_count(sbuf, pkg_object_count(obj), p));
 	else {
 		const pkg_object	*lic;
 		pkg_iter		 iter = NULL;
@@ -1260,7 +1266,7 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
-		while ((lic = pkg_object_iterate(pkg->licenses, &iter))) {
+		while ((lic = pkg_object_iterate(obj, &iter))) {
 			if (count > 1)
 				iterate_item(sbuf, pkg, sbuf_data(p->sep_fmt),
 					     lic, count, PP_L);

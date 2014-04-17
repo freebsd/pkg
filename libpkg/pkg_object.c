@@ -126,5 +126,8 @@ pkg_object_count(const pkg_object *o)
 const pkg_object *
 pkg_object_find(const pkg_object *o, const char *key)
 {
+	if (o == NULL)
+		return (NULL);
+
 	return (ucl_object_find_key(o, key));
 }

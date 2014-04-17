@@ -246,6 +246,9 @@ typedef enum {
 	PKG_LOCKED,
 	PKG_ROWID,
 	PKG_TIME,
+	PKG_ANNOTATIONS,
+	PKG_LICENSES,
+	PKG_CATEGORIES,
 	PKG_NUM_FIELDS, 	/* end of fields */
 } pkg_attr;
 
@@ -283,16 +286,13 @@ typedef enum {
 typedef enum {
 	PKG_DEPS = 0,
 	PKG_RDEPS,
-	PKG_LICENSES,
 	PKG_OPTIONS,
-	PKG_CATEGORIES,
 	PKG_FILES,
 	PKG_DIRS,
 	PKG_USERS,
 	PKG_GROUPS,
 	PKG_SHLIBS_REQUIRED,
 	PKG_SHLIBS_PROVIDED,
-	PKG_ANNOTATIONS,
 	PKG_CONFLICTS,
 	PKG_PROVIDES
 } pkg_list;
@@ -580,9 +580,6 @@ int pkg_files(const struct pkg *, struct pkg_file **file);
  */
 int pkg_dirs(const struct pkg *pkg, struct pkg_dir **dir);
 
-const pkg_object *pkg_categories(const struct pkg *pkg);
-const pkg_object *pkg_licenses(const struct pkg *pkg);
-
 /**
  * Iterates over the users of the package.
  * @param Must be set to NULL for the first call.
@@ -631,14 +628,6 @@ int pkg_conflicts(const struct pkg *pkg, struct pkg_conflict **conflict);
  * @return An error code
  */
 int pkg_provides(const struct pkg *pkg, struct pkg_provide **provide);
-
-/**
- * Iterates over the annotations associated with the package.
- * @param note must be set to NULL for the first call.
- * @return An error code
- */
-const pkg_object *pkg_annotation_lookup(const struct pkg *p, const char *tag);
-const pkg_object *pkg_annotations(const struct pkg *p);
 
 /**
  * Iterate over all of the files within the package pkg, ensuring the

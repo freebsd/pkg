@@ -474,7 +474,7 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_shlib	*shlib    = NULL;
-	const pkg_object	*obj;
+	const pkg_object	*obj, *licenses, *categories, *annotations;
 	pkg_iter		 it;
 	int64_t			 package_id;
 
@@ -484,7 +484,9 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 			    PKG_MAINTAINER, &maintainer, PKG_WWW, &www,
 			    PKG_PREFIX, &prefix, PKG_FLATSIZE, &flatsize,
 			    PKG_LICENSE_LOGIC, &licenselogic, PKG_CKSUM, &sum,
-			    PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath);
+			    PKG_PKGSIZE, &pkgsize, PKG_REPOPATH, &rpath,
+			    PKG_LICENSES, &licenses, PKG_CATEGORIES, &categories,
+			    PKG_ANNOTATIONS, &annotations);
 
 try_again:
 	if ((ret = run_prepared_statement(PKG, origin, name, version,
@@ -525,7 +527,7 @@ try_again:
 	}
 
 	it = NULL;
-	while ((obj = pkg_object_iterate(pkg->categories, &it))) {
+	while ((obj = pkg_object_iterate(categories, &it))) {
 		ret = run_prepared_statement(CAT1, pkg_object_string(obj));
 		if (ret == SQLITE_DONE)
 			ret = run_prepared_statement(CAT2, package_id,
@@ -538,7 +540,7 @@ try_again:
 	}
 
 	it = NULL;
-	while ((obj = pkg_object_iterate(pkg->licenses, &it))) {
+	while ((obj = pkg_object_iterate(licenses, &it))) {
 		ret = run_prepared_statement(LIC1, pkg_object_string(obj));
 		if (ret == SQLITE_DONE)
 			ret = run_prepared_statement(LIC2, package_id,
@@ -589,7 +591,7 @@ try_again:
 	}
 
 	it = NULL;
-	while ((obj = pkg_object_iterate(pkg->annotations, &it))) {
+	while ((obj = pkg_object_iterate(annotations, &it))) {
 		const char *note_tag = pkg_object_key(obj);
 		const char *note_val = pkg_object_string(obj);
 
