@@ -302,6 +302,9 @@ struct pkg_repo {
 	char *fingerprints;
 	FILE *ssh;
 
+	struct fingerprint *trusted_fp;
+	struct fingerprint *revoked_fp;
+
 	struct {
 		int in;
 		int out;
