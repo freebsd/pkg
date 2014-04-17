@@ -40,30 +40,7 @@
 #include "private/pkg.h"
 #include "private/utils.h"
 
-/*static struct _fields {
-	const char *human_desc;
-	int type;
-	int optional;
-} fields[] = {
-	[PKG_ORIGIN] = {"origin", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_NAME] = {"name", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_VERSION] = {"version", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_COMMENT] = {"comment", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_DESC] = {"description", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_MTREE] = {"mtree", PKG_FILE|PKG_INSTALLED, 1},
-	[PKG_MESSAGE] = {"message", PKG_FILE|PKG_INSTALLED, 1},
-	[PKG_ARCH] = {"architecture", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_MAINTAINER] = {"maintainer", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_WWW] = {"www", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_PREFIX] = {"prefix", PKG_FILE|PKG_REMOTE|PKG_INSTALLED, 0},
-	[PKG_REPOPATH] = {"repopath", PKG_REMOTE, 0},
-	[PKG_CKSUM] = {"checksum", PKG_REMOTE, 0},
-	[PKG_OLD_VERSION] = {"oldversion", PKG_REMOTE, 1},
-	[PKG_REPONAME] = {"reponame", PKG_REMOTE, 1},
-	[PKG_REPOURL] = {"repourl", PKG_REMOTE, 1},
-	[PKG_DIGEST] = {"manifestdigest", PKG_REMOTE|PKG_INSTALLED, 1},
-	[PKG_REASON] = {"reason", PKG_REMOTE, 1}
-};*/
+static ucl_object_t *manifest_schema = NULL;
 
 int
 pkg_new(struct pkg **pkg, pkg_t type)
@@ -140,11 +117,92 @@ pkg_type(const struct pkg * restrict pkg)
 	return (pkg->type);
 }
 
+static ucl_object_t *
+manifest_schema_open(pkg_t type __unused)
+{
+	struct ucl_parser *parser;
+	static const char manifest_schema_str[] = ""
+		"{"
+		"  type = object;"
+		"  properties {"
+		"    origin = { type = string };"
+		"    name = { type = string };"
+		"    comment = { type = string };"
+		"    desc = { type = string };"
+		"    mtree = { type = string };"
+		"    message = { type = string };"
+		"    maintainer = { type = string };"
+		"    arch = { type = string };"
+		"    www = { type = string };"
+		"    prefix = { type = string };"
+		"    digest = { type = string };"
+		"    repopath = { type = string };"
+		"    sum = { type = string };"
+		"    oldversion = { type = string };"
+		"    reponame = { type = string };"
+		"    repourl = { type = string };"
+		"    reason = { type = string };"
+		"    flatsize = { type = integer }; "
+		"    oldflatsize = { type = integer }; "
+		"    pkgsize = { type = integer }; "
+		"    locked = { type = boolean }; "
+		"    rowid = { type = integer }; "
+		"    time = { type = integer }; "
+		"    annotations = { type = object }; "
+		"    licenses = { "
+		"      type = array; "
+		"      items = { type = string }; "
+		"      uniqueItems = true ;"
+		"    };"
+		"    categories = { "
+		"      type = array; "
+		"      items = { type = string }; "
+		"      uniqueItems = true ;"
+		"    };"
+		"  }\n"
+		"  required = ["
+		"    origin,"
+		"    name,"
+		"    comment,"
+		"    desc,"
+		"    maintainer,"
+		"    arch,"
+		"    www,"
+		"    prefix,"
+		"  ]"
+		"}";
+
+	if (manifest_schema != NULL)
+		return (manifest_schema);
+
+	parser = ucl_parser_new(0);
+	if (!ucl_parser_add_chunk(parser, manifest_schema_str,
+	    sizeof(manifest_schema_str) -1)) {
+		pkg_emit_error("Cannot parse manifest schema: %s",
+		    ucl_parser_get_error(parser));
+		ucl_parser_free(parser);
+		return (NULL);
+	}
+
+	manifest_schema = ucl_parser_get_object(parser);
+	ucl_parser_free(parser);
+
+	return (manifest_schema);
+}
+
 int
 pkg_is_valid(const struct pkg * restrict pkg)
 {
-	if (pkg->type == 0) {
-		pkg_emit_error("package type undefined");
+	ucl_object_t *schema;
+	struct ucl_schema_error err;
+
+	schema = manifest_schema_open(pkg->type);
+
+	if (schema == NULL)
+		return (EPKG_FATAL);
+
+	if (!ucl_object_validate(schema, pkg->fields, &err)) {
+		pkg_emit_error("Invalid package: %s", err.msg);
 		return (EPKG_FATAL);
 	}
 
