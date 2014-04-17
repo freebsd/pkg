@@ -823,6 +823,21 @@ pkg_emit_query_select(const char *msg, const char **items, int ncnt, int deft)
 	return ret;
 }
 
+int
+pkg_emit_sandbox_call(pkg_sandbox_cb call, int fd, void *ud)
+{
+	struct pkg_event ev;
+	int ret;
+
+	ev.type = PKG_EVENT_SANDBOX_CALL;
+	ev.e_sandbox_call.call = call;
+	ev.e_sandbox_call.fd = fd;
+	ev.e_sandbox_call.userdata = ud;
+
+	ret = pkg_emit_event(&ev);
+	return ret;
+}
+
 void
 pkg_debug(int level, const char *fmt, ...)
 {

@@ -1339,6 +1339,11 @@ struct pkg_event_conflict {
 	struct pkg_event_conflict *next;
 };
 
+/*
+ * Capsicum sandbox callbacks
+ */
+typedef int (*pkg_sandbox_cb)(int fd, void *user_data);
+
 /**
  * Event type used to report progress or problems.
  */
@@ -1362,6 +1367,7 @@ typedef enum {
 	PKG_EVENT_INCREMENTAL_UPDATE,
 	PKG_EVENT_QUERY_YESNO,
 	PKG_EVENT_QUERY_SELECT,
+	PKG_EVENT_SANDBOX_CALL,
 	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
@@ -1499,6 +1505,11 @@ struct pkg_event {
 			int ncnt;
 			int deft;
 		} e_query_select;
+		struct {
+			pkg_sandbox_cb call;
+			int fd;
+			void *userdata;
+		} e_sandbox_call;
 	};
 };
 
