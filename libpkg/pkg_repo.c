@@ -260,22 +260,93 @@ pkg_repo_file_has_ext(const char *path, const char *ext)
 	return (false);
 }
 
-static int
-pkg_repo_archive_extract_file(int fd, const char *file,
-		const char *dest, struct pkg_repo *repo, int dest_fd)
+static bool
+pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fatal)
 {
-	struct archive *a = NULL;
-	struct archive_entry *ae = NULL;
-	struct sig_cert *sc = NULL;
-	struct sig_cert *s = NULL, *stmp = NULL;
 	struct fingerprint *trusted = NULL;
 	struct fingerprint *revoked = NULL;
 	struct fingerprint *f = NULL;
+	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
+	char path[MAXPATHLEN];
+	int nbgood = 0;
+	struct sig_cert *s = NULL, *stmp = NULL;
+	int rc;
+
+	if (HASH_COUNT(sc) == 0) {
+		if (fatal)
+			pkg_emit_error("No signature found");
+		return (false);
+	}
+
+	/* load fingerprints */
+	snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
+	if ((pkg_repo_load_fingerprints(path, &trusted)) != EPKG_OK) {
+		if (fatal)
+			pkg_emit_error("Error loading trusted certificates");
+
+	}
+
+	if (HASH_COUNT(trusted) == 0) {
+		if (fatal)
+			pkg_emit_error("No trusted certificates");
+		return (false);
+	}
+
+	snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
+	if ((pkg_repo_load_fingerprints(path, &revoked)) != EPKG_OK) {
+		if (fatal)
+			pkg_emit_error("Error loading revoked certificates");
+		return (false);
+	}
+
+	HASH_ITER(hh, sc, s, stmp) {
+		if (s->sig == NULL || s->cert == NULL) {
+			if (fatal)
+				pkg_emit_error("Number of signatures and certificates "
+					"mismatch");
+
+			return (false);
+		}
+		s->trusted = false;
+		sha256_buf(s->cert, s->certlen, hash);
+		HASH_FIND_STR(revoked, hash, f);
+		if (f != NULL) {
+			if (fatal)
+				pkg_emit_error("At least one of the "
+					" certificates has been revoked");
+
+			return (false);
+		}
+
+		HASH_FIND_STR(trusted, hash, f);
+		if (f != NULL) {
+			nbgood++;
+			s->trusted = true;
+		}
+	}
+
+	if (nbgood == 0) {
+		if (fatal)
+			pkg_emit_error("No trusted certificate found");
+
+		return (false);
+	}
+
+	return (true);
+}
+
+static int
+pkg_repo_archive_extract_file(int fd, const char *file,
+		const char *dest, struct pkg_repo *repo, int dest_fd, bool strict_check)
+{
+	struct archive *a = NULL;
+	struct archive_entry *ae = NULL;
+	struct sig_cert *sc = NULL, *s, *stmp;
+
 	unsigned char *sig = NULL;
 	int siglen = 0, ret, rc = EPKG_OK;
-	char key[MAXPATHLEN], path[MAXPATHLEN];
-	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
-	int nbgood = 0;
+	char key[MAXPATHLEN];
+
 
 	pkg_debug(1, "PkgRepo: extracting repo %", pkg_repo_name(repo));
 
@@ -327,11 +398,21 @@ pkg_repo_archive_extract_file(int fd, const char *file,
 				HASH_FIND_STR(sc, key, s);
 				if (s == NULL) {
 					s = calloc(1, sizeof(struct sig_cert));
+					if (s == NULL) {
+						pkg_emit_errno("pkg_repo_archive_extract_file",
+								"calloc failed for struct sig_cert");
+						return (EPKG_FATAL);
+					}
 					strlcpy(s->name, key, sizeof(s->name));
 					HASH_ADD_STR(sc, name, s);
 				}
 				s->siglen = archive_entry_size(ae);
 				s->sig = malloc(s->siglen);
+				if (s->sig == NULL) {
+					pkg_emit_errno("pkg_repo_archive_extract_file",
+							"calloc failed for signature data");
+					return (EPKG_FATAL);
+				}
 				archive_read_data(a, s->sig, s->siglen);
 			}
 			if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".pub")) {
@@ -341,11 +422,21 @@ pkg_repo_archive_extract_file(int fd, const char *file,
 				HASH_FIND_STR(sc, key, s);
 				if (s == NULL) {
 					s = calloc(1, sizeof(struct sig_cert));
+					if (s == NULL) {
+						pkg_emit_errno("pkg_repo_archive_extract_file",
+								"calloc failed for struct sig_cert");
+						return (EPKG_FATAL);
+					}
 					strlcpy(s->name, key, sizeof(s->name));
 					HASH_ADD_STR(sc, name, s);
 				}
 				s->certlen = archive_entry_size(ae);
 				s->cert = malloc(s->certlen);
+				if (s->cert == NULL) {
+					pkg_emit_errno("pkg_repo_archive_extract_file",
+							"calloc failed for signature data");
+					return (EPKG_FATAL);
+				}
 				archive_read_data(a, s->cert, s->certlen);
 			}
 		}
@@ -369,72 +460,20 @@ pkg_repo_archive_extract_file(int fd, const char *file,
 		}
 		free(sig);
 	} else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
-		if (HASH_COUNT(sc) == 0) {
-			pkg_emit_error("No signature found");
-			rc = EPKG_FATAL;
+
+		ret = pkg_repo_check_fingerprint(repo, sc, strict_check);
+
+		if (!ret && strict_check)
 			goto cleanup;
-		}
-
-		/* load fingerprints */
-		snprintf(path, sizeof(path), "%s/trusted", pkg_repo_fingerprints(repo));
-		if ((pkg_repo_load_fingerprints(path, &trusted)) != EPKG_OK) {
-			pkg_emit_error("Error loading trusted certificates");
-			rc = EPKG_FATAL;
-			goto cleanup;
-		}
-
-		if (HASH_COUNT(trusted) == 0) {
-			pkg_emit_error("No trusted certificates");
-			rc = EPKG_FATAL;
-			goto cleanup;
-		}
-
-		snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
-		if ((pkg_repo_load_fingerprints(path, &revoked)) != EPKG_OK) {
-			pkg_emit_error("Error loading revoked certificates");
-			rc = EPKG_FATAL;
-			goto cleanup;
-		}
-
-		HASH_ITER(hh, sc, s, stmp) {
-			if (s->sig == NULL || s->cert == NULL) {
-				pkg_emit_error("Number of signatures and certificates "
-				    "mismatch");
-				rc = EPKG_FATAL;
-				goto cleanup;
-			}
-			s->trusted = false;
-			sha256_buf(s->cert, s->certlen, hash);
-			HASH_FIND_STR(revoked, hash, f);
-			if (f != NULL) {
-				pkg_emit_error("At least one of the "
-				    " certificates has been revoked");
-				rc = EPKG_FATAL;
-				goto cleanup;
-			}
-
-			HASH_FIND_STR(trusted, hash, f);
-			if (f != NULL) {
-				nbgood++;
-				s->trusted = true;
-			}
-		}
-
-		if (nbgood == 0) {
-			pkg_emit_error("No trusted certificate found");
-			rc = EPKG_FATAL;
-			goto cleanup;
-		}
-
-		nbgood = 0;
 
 		HASH_ITER(hh, sc, s, stmp) {
 			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen, dest_fd);
-			if (ret == EPKG_OK && s->trusted)
-				nbgood++;
+			if (ret == EPKG_OK && s->trusted) {
+				break;
+			}
+			ret = EPKG_FATAL;
 		}
-
-		if (nbgood == 0) {
+		if (ret != EPKG_OK) {
 			pkg_emit_error("No trusted certificate has been used "
 			    "to sign the repository");
 			rc = EPKG_FATAL;
