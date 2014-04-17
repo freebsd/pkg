@@ -476,7 +476,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
-		ret = rsa_verify(dest, pkg_repo_key(repo), sc->sig, sc->siglen - 1,
+		ret = rsa_verify(dest, pkg_repo_key(repo), sc->sig, sc->siglen,
 				dest_fd);
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
