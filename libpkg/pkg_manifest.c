@@ -850,47 +850,44 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	struct pkg_provide	*provide  = NULL;
 	struct sbuf		*tmpsbuf  = NULL;
 	int i;
-	const char *comment, *desc, *message, *name, *pkgarch;
-	const char *pkgmaintainer, *pkgorigin, *prefix, *version, *www;
-	const char *repopath, *pkgsum;
+	const char *comment, *desc, *message;
 	const char *script_types = NULL;
 	lic_t licenselogic;
 	int64_t flatsize, pkgsize;
 	ucl_object_t *annotations, *categories, *licenses;
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
+	const ucl_object_t *o;
+	const char *key;
+	int recopies[] = {
+		PKG_NAME,
+		PKG_ORIGIN,
+		PKG_VERSION,
+		PKG_ARCH,
+		PKG_MAINTAINER,
+		PKG_PREFIX,
+		PKG_WWW,
+		PKG_REPOPATH,
+		PKG_CKSUM,
+		-1
+	};
 
-	pkg_get(pkg, PKG_NAME, &name, PKG_ORIGIN, &pkgorigin,
-	    PKG_COMMENT, &comment, PKG_ARCH, &pkgarch, PKG_WWW, &www,
-	    PKG_MAINTAINER, &pkgmaintainer, PKG_PREFIX, &prefix,
+	pkg_get(pkg, PKG_COMMENT, &comment,
 	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
 	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
-	    PKG_VERSION, &version, PKG_REPOPATH, &repopath,
-	    PKG_CKSUM, &pkgsum, PKG_PKGSIZE, &pkgsize,
+	    PKG_PKGSIZE, &pkgsize,
 	    PKG_ANNOTATIONS, &annotations, PKG_LICENSES, &licenses,
 	    PKG_CATEGORIES, &categories);
 
 	pkg_debug(4, "Emitting basic metadata");
-	if (name)
-		ucl_object_insert_key(top, ucl_object_fromstring(name), "name", 4, false);
-	if (pkgorigin)
-		ucl_object_insert_key(top, ucl_object_fromstring(pkgorigin), "origin", 6, false);
-	if (version)
-		ucl_object_insert_key(top, ucl_object_fromstring(version), "version", 7, false);
+	for (i = 0; recopies[i] != -1; i++) {
+		key = pkg_keys[recopies[i]].name;
+		if ((o = ucl_object_find_key(pkg->fields, key)))
+			ucl_object_insert_key(top, ucl_object_ref(o),
+			    key, strlen(key), false);
+	}
 	if (comment)
 		ucl_object_insert_key(top, ucl_object_fromstring_common(comment, 0, UCL_STRING_TRIM), "comment", 7, false);
-	if (pkgarch)
-		ucl_object_insert_key(top, ucl_object_fromstring(pkgarch), "arch", 4, false);
-	if (pkgmaintainer)
-		ucl_object_insert_key(top, ucl_object_fromstring(pkgmaintainer), "maintainer", 10, false);
-	if (prefix)
-		ucl_object_insert_key(top, ucl_object_fromstring(prefix), "prefix", 6, false);
-	if (www)
-		ucl_object_insert_key(top, ucl_object_fromstring(www), "www", 3, false);
-	if (repopath)
-		ucl_object_insert_key(top, ucl_object_fromstring(repopath), "path", 4, false);
-	if (pkgsum)
-		ucl_object_insert_key(top, ucl_object_fromstring(pkgsum), "sum", 3, false);
 
 	switch (licenselogic) {
 	case LICENSE_SINGLE:
