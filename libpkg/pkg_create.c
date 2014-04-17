@@ -165,7 +165,6 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
 {
 	char		*pkg_path = NULL;
 	struct packing	*pkg_archive = NULL;
-	const char	*pkgname, *pkgversion;
 
 	/*
 	 * Ensure that we have all the information we need
@@ -176,9 +175,8 @@ pkg_create_archive(const char *outdir, struct pkg *pkg, pkg_formats format,
 	if (mkdirs(outdir) != EPKG_OK)
 		return NULL;
 
-	pkg_get(pkg, PKG_NAME, &pkgname, PKG_VERSION, &pkgversion);
-	if (asprintf(&pkg_path, "%s/%s-%s", outdir, pkgname, pkgversion) == -1) {
-		pkg_emit_errno("asprintf", "");
+	if (pkg_asprintf(&pkg_path, "%s/%n-%v", outdir, pkg, pkg) == -1) {
+		pkg_emit_errno("pkg_asprintf", "");
 		return (NULL);
 	}
 
