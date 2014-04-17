@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 13, 2014
+.Dd April 17, 2014
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -23,14 +23,14 @@
 .Nd search package repository catalogues
 .Sh SYNOPSIS
 .Nm
-.Op Fl egix
+.Op Fl egiUx
 .Op Fl r Ar reponame
 .Op Fl S Ar search
 .Op Fl L Ar label
 .Op Fl Q Ar query-modifier
 .Ar pattern
 .Nm
-.Op Fl cDdefgiopqRx
+.Op Fl cDdefgiopqRUx
 .Op Fl r Ar reponame
 .Ar pattern
 .Sh DESCRIPTION
@@ -44,11 +44,12 @@ term, but any of the searchable fields may be displayed.
 The output may be modified to additionally show many other package
 data available from the repository catalogues.
 .Pp
-It is recommended to update the local copies of the repository
-catalogues before running
-.Nm .
-See
-.Xr pkg-update 8 .
+Package repository catalogues will be automatically updated whenever
+.Nm
+is run, unless disabled by the
+.Fl U
+flag.
+.Pp
 Package repositories are defined in the
 .Fa pkg.conf
 file or by creating repository definitions in
@@ -161,6 +162,10 @@ sections for more details.
 Display the installed size of matched packages.
 Equivalent to
 .Fl "Q size" .
+.It Fl U
+Skip updating the repository catalogues with
+.Xr pkg-update 8 .
+Use the locally cached copies only.
 .It Fl x
 Treat
 .Ar pattern
