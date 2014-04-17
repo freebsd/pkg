@@ -62,6 +62,7 @@ struct sig_cert {
 	int siglen;
 	unsigned char *cert;
 	int certlen;
+	bool cert_allocated;
 	UT_hash_handle hh;
 	bool trusted;
 };
@@ -319,6 +320,20 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 	return (true);
 }
 
+static void
+pkg_repo_signatures_free(struct sig_cert *sc)
+{
+	struct sig_cert *s, *stmp;
+
+	HASH_ITER(hh, sc, s, stmp) {
+		HASH_DELETE(hh, sc, s);
+		free(s->sig);
+		if (s->cert_allocated)
+			free(s->cert);
+		free(s);
+	}
+}
+
 static int
 pkg_repo_archive_extract_archive(int fd, const char *file,
 		const char *dest, struct pkg_repo *repo, int dest_fd,
@@ -430,6 +445,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 					rc = EPKG_FATAL;
 					goto cleanup;
 				}
+				s->cert_allocated = true;
 				archive_read_data(a, s->cert, s->certlen);
 			}
 		}
