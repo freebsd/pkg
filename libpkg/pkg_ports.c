@@ -703,10 +703,10 @@ keyword_free(struct keyword *k)
 }
 
 static int
-parse_actions(ucl_object_t *o, struct plist *p,
+parse_actions(const ucl_object_t *o, struct plist *p,
     char *line, struct file_attr *a)
 {
-	ucl_object_t *cur;
+	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	int i;
 
@@ -723,8 +723,8 @@ parse_actions(ucl_object_t *o, struct plist *p,
 }
 
 static void
-parse_attributes(ucl_object_t *o, struct file_attr **a) {
-	ucl_object_t *cur;
+parse_attributes(const ucl_object_t *o, struct file_attr **a) {
+	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	const char *key;
 
@@ -763,7 +763,7 @@ parse_attributes(ucl_object_t *o, struct file_attr **a) {
 static int
 apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_attr *attr)
 {
-	ucl_object_t *o;
+	const ucl_object_t *o;
 	char *cmd;
 
 	if ((o = ucl_object_find_key(obj,  "attributes")))

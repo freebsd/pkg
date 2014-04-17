@@ -144,7 +144,7 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		const char *sum = pkg_file_cksum(file);
-		ucl_object_t *obj;
+		const ucl_object_t *obj;
 
 		if (file->keep == 1)
 			continue;
@@ -179,9 +179,9 @@ pkg_delete_files(struct pkg *pkg, unsigned force)
 int
 pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, bool force)
 {
-	struct pkg_dir	*dir = NULL;
-	ucl_object_t *obj;
-	char		fpath[MAXPATHLEN];
+	struct pkg_dir		*dir = NULL;
+	const ucl_object_t 	*obj;
+	char			 fpath[MAXPATHLEN];
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (dir->keep == 1)

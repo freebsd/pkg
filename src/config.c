@@ -45,7 +45,7 @@ usage_config(void)
 int
 exec_config(int argc, char **argv)
 {
-	pkg_object *conf, *o;
+	const pkg_object *conf, *o;
 	pkg_iter it = NULL;
 	const char *buf;
 	char *key;

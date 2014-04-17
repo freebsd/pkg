@@ -200,7 +200,9 @@ pkg_plugin_conf_add(struct pkg_plugin *p, pkg_object_t type, const char *key,
 					break;
 				value++;
 			}
-			o = ucl_object_insert_key(o,
+			if (o == NULL)
+				o = ucl_object_typed_new(UCL_OBJECT);
+			ucl_object_insert_key(o,
 			    ucl_object_fromstring_common(value + 1, buf - value - 1, UCL_STRING_TRIM),
 			    k, value - k, false);
 			buf++;
@@ -213,19 +215,25 @@ pkg_plugin_conf_add(struct pkg_plugin *p, pkg_object_t type, const char *key,
 				break;
 			value++;
 		}
-		o = ucl_object_insert_key(o,
+		if (o == NULL)
+			o = ucl_object_typed_new(UCL_OBJECT);
+		ucl_object_insert_key(o,
 		    ucl_object_fromstring_common(value + 1, strlen(value + 1), UCL_STRING_TRIM),
 		    k, value - k, false);
 		break;
 	case PKG_ARRAY:
 		walk = buf = def;
 		while ((buf = strchr(buf, ',')) != NULL) {
-			o = ucl_array_append(o,
+			if (o == NULL)
+				o = ucl_object_typed_new(UCL_ARRAY);
+			ucl_array_append(o,
 					ucl_object_fromstring_common(walk, buf - walk, UCL_STRING_TRIM));
 			buf++;
 			walk = buf;
 		}
-		o = ucl_array_append(o,
+		if (o == NULL)
+			o = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(o,
 				ucl_object_fromstring_common(walk, strlen(walk), UCL_STRING_TRIM));
 		break;
 	default:
@@ -233,7 +241,7 @@ pkg_plugin_conf_add(struct pkg_plugin *p, pkg_object_t type, const char *key,
 	}
 
 	if (o != NULL)
-		p->conf = ucl_object_replace_key(p->conf, o, key, strlen(key), false);
+		ucl_object_replace_key(p->conf, o, key, strlen(key), false);
 
 	return (EPKG_OK);
 }
@@ -257,7 +265,7 @@ pkg_plugins_init(void)
 {
 	struct pkg_plugin *p = NULL;
 	char pluginfile[MAXPATHLEN];
-	ucl_object_t *obj, *cur;
+	const ucl_object_t *obj, *cur;
 	ucl_object_iter_t it = NULL;
 	const char *plugdir;
 	bool plug_enabled = false;
@@ -316,7 +324,8 @@ pkg_plugin_parse(struct pkg_plugin *p)
 	const char *path;
 	const char *plugname;
 	struct ucl_parser *pr;
-	ucl_object_t *obj, *cur, *o;
+	const ucl_object_t *cur, *o;
+	ucl_object_t *obj;
 	ucl_object_iter_t it = NULL;
 	const char *key;
 
@@ -352,10 +361,8 @@ pkg_plugin_parse(struct pkg_plugin *p)
 			continue;
 		}
 
-		o = ucl_object_pop_key(p->conf, key);
-		if (o != NULL)
-			ucl_object_unref(o);
-		p->conf = ucl_object_insert_key(p->conf, cur, key, strlen(key), false);
+		ucl_object_delete_key(p->conf, key);
+		ucl_object_insert_key(p->conf, ucl_object_ref(cur), key, strlen(key), false);
 	}
 
 	p->parsed = true;
@@ -389,7 +396,7 @@ pkg_plugins_shutdown(void)
 	return;
 }
 
-pkg_object *
+const pkg_object *
 pkg_plugin_conf(struct pkg_plugin *p)
 {
 	return (p->conf);

@@ -836,11 +836,13 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 	struct pkg_job_universe_item *unit;
 	struct pkg *npkg;
 	bool ret = true;
+	bool automatic;
 
 	while (pkg_rdeps(p, &d) == EPKG_OK && ret) {
 		HASH_FIND_STR(j->universe, pkg_dep_get(d, PKG_DEP_ORIGIN), unit);
 		if (unit != NULL) {
-			if (!unit->pkg->automatic) {
+			pkg_get(unit->pkg, PKG_AUTOMATIC, &automatic);
+			if (!automatic) {
 				return (false);
 			}
 			npkg = unit->pkg;
@@ -848,9 +850,10 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 		else {
 			npkg = get_local_pkg(j, pkg_dep_get(d, PKG_DEP_ORIGIN),
 					PKG_LOAD_BASIC|PKG_LOAD_RDEPS);
+			pkg_get(npkg, PKG_AUTOMATIC, &automatic);
 			if (npkg == NULL)
 				return (false);
-			if (!npkg->automatic) {
+			if (!automatic) {
 				pkg_free(npkg);
 				return (false);
 			}
@@ -1233,7 +1236,7 @@ static bool
 newer_than_local_pkg(struct pkg_jobs *j, struct pkg *rp, bool force)
 {
 	char *origin, *newversion, *oldversion, *reponame;
-	ucl_object_t *an;
+	const ucl_object_t *an;
 	int64_t oldsize;
 	struct pkg *lp;
 	bool automatic;
@@ -1846,7 +1849,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j, bool handle_r
 {
 	struct pkg *new, *old;
 	const char *pkgorigin, *oldversion = NULL;
-	ucl_object_t *an;
+	const ucl_object_t *an;
 	char path[MAXPATHLEN], *target;
 	bool automatic = false;
 	int flags = 0;

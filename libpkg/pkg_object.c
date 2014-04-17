@@ -30,7 +30,7 @@
 #include "private/pkg.h"
 
 const char *
-pkg_object_dump(pkg_object *o)
+pkg_object_dump(const pkg_object *o)
 {
 	if (o == NULL)
 		return ("");
@@ -45,7 +45,7 @@ pkg_object_free(pkg_object *o)
 }
 
 const char *
-pkg_object_key(pkg_object *o)
+pkg_object_key(const pkg_object *o)
 {
 	if (o == NULL)
 		return (NULL);
@@ -53,8 +53,8 @@ pkg_object_key(pkg_object *o)
 	return (ucl_object_key(o));
 }
 
-pkg_object *
-pkg_object_iterate(pkg_object *o, pkg_iter *it)
+const pkg_object *
+pkg_object_iterate(const pkg_object *o, pkg_iter *it)
 {
 	if (o == NULL)
 		return (NULL);
@@ -63,7 +63,7 @@ pkg_object_iterate(pkg_object *o, pkg_iter *it)
 }
 
 pkg_object_t
-pkg_object_type(pkg_object *o)
+pkg_object_type(const pkg_object *o)
 {
 
 	if (o == NULL)
@@ -87,7 +87,7 @@ pkg_object_type(pkg_object *o)
 }
 
 bool
-pkg_object_bool(pkg_object *o)
+pkg_object_bool(const pkg_object *o)
 {
 	assert(o->type == UCL_BOOLEAN);
 
@@ -95,7 +95,7 @@ pkg_object_bool(pkg_object *o)
 }
 
 const char *
-pkg_object_string(pkg_object *o)
+pkg_object_string(const pkg_object *o)
 {
 	const char *ret;
 
@@ -110,7 +110,7 @@ pkg_object_string(pkg_object *o)
 }
 
 int64_t
-pkg_object_int(pkg_object *o)
+pkg_object_int(const pkg_object *o)
 {
 	assert(o->type == UCL_INT);
 
@@ -118,7 +118,7 @@ pkg_object_int(pkg_object *o)
 }
 
 unsigned
-pkg_object_count(pkg_object *o)
+pkg_object_count(const pkg_object *o)
 {
 	return (UCL_COUNT(o));
 }

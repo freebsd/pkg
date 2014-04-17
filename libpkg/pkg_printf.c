@@ -839,9 +839,9 @@ format_annotations(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_ANNOTATIONS), p));
 	else {
-		pkg_object	*note;
-		pkg_iter	it = NULL;
-		int		 count;
+		const pkg_object	*note;
+		pkg_iter		it = NULL;
+		int			 count;
 
 		set_list_defaults(p, "%An: %Av\n", "");
 
@@ -940,9 +940,9 @@ format_categories(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		return (list_count(sbuf, pkg_list_count(pkg, PKG_CATEGORIES),
 				   p));
 	else {
-		pkg_object	*cat;
-		pkg_iter	 it = NULL;
-		int		 count;
+		const pkg_object	*cat;
+		pkg_iter		 it = NULL;
+		int			 count;
 
 		set_list_defaults(p, "%Cn", ", ");
 
@@ -1253,8 +1253,8 @@ format_licenses(struct sbuf *sbuf, const void *data, struct percent_esc *p)
 		return (list_count(sbuf, pkg_object_count(pkg_licenses(pkg)),
 				   p));
 	else {
-		pkg_object	*lic;
-		pkg_iter	 iter = NULL;
+		const pkg_object	*lic;
+		pkg_iter		 iter = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%Ln", " %l ");

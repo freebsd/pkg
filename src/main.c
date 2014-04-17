@@ -270,7 +270,7 @@ exec_help(int argc, char **argv)
 static void
 show_plugin_info(void)
 {
-	pkg_object		*conf;
+	const pkg_object	*conf;
 	struct pkg_plugin	*p = NULL;
 
 	while (pkg_plugins(&p) == EPKG_OK) {
@@ -481,7 +481,7 @@ main(int argc, char **argv)
 	struct plugcmd *c;
 	const char *conffile = NULL;
 	const char *reposdir = NULL;
-	pkg_object *alias, *cur;
+	const pkg_object *alias, *cur;
 	pkg_iter it = NULL;
 	const char *alias_value;
 	char **newargv, *arg, *args;

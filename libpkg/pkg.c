@@ -40,7 +40,7 @@
 #include "private/pkg.h"
 #include "private/utils.h"
 
-static struct _fields {
+/*static struct _fields {
 	const char *human_desc;
 	int type;
 	int optional;
@@ -63,7 +63,7 @@ static struct _fields {
 	[PKG_REPOURL] = {"repourl", PKG_REMOTE, 1},
 	[PKG_DIGEST] = {"manifestdigest", PKG_REMOTE|PKG_INSTALLED, 1},
 	[PKG_REASON] = {"reason", PKG_REMOTE, 1}
-};
+};*/
 
 int
 pkg_new(struct pkg **pkg, pkg_t type)
@@ -73,11 +73,8 @@ pkg_new(struct pkg **pkg, pkg_t type)
 		return EPKG_FATAL;
 	}
 
-	(*pkg)->automatic = false;
-	(*pkg)->locked = false;
-	(*pkg)->direct = false;
+	(*pkg)->fields = ucl_object_typed_new(UCL_OBJECT);
 	(*pkg)->type = type;
-	(*pkg)->licenselogic = LICENSE_SINGLE;
 
 	return (EPKG_OK);
 }
@@ -90,21 +87,11 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	if (pkg == NULL)
 		return;
 
-	for (i = 0; i < PKG_NUM_FIELDS; i++)
-		sbuf_reset(pkg->fields[i]);
+	ucl_object_unref(pkg->fields);
+	pkg->fields = ucl_object_typed_new(UCL_OBJECT);
 
 	for (i = 0; i < PKG_NUM_SCRIPTS; i++)
 		sbuf_reset(pkg->scripts[i]);
-
-	pkg->flatsize = 0;
-	pkg->old_flatsize = 0;
-	pkg->pkgsize = 0;
-	pkg->time = 0;
-	pkg->flags = 0;
-	pkg->automatic = false;
-	pkg->locked = false;
-	pkg->licenselogic = LICENSE_SINGLE;
-
 	pkg_list_free(pkg, PKG_LICENSES);
 	pkg_list_free(pkg, PKG_CATEGORIES);
 	pkg_list_free(pkg, PKG_DEPS);
@@ -118,7 +105,6 @@ pkg_reset(struct pkg *pkg, pkg_t type)
 	pkg_list_free(pkg, PKG_SHLIBS_PROVIDED);
 	pkg_list_free(pkg, PKG_ANNOTATIONS);
 
-	pkg->rowid = 0;
 	pkg->type = type;
 }
 
@@ -128,8 +114,7 @@ pkg_free(struct pkg *pkg)
 	if (pkg == NULL)
 		return;
 
-	for (int i = 0; i < PKG_NUM_FIELDS; i++)
-		sbuf_free(pkg->fields[i]);
+	ucl_object_unref(pkg->fields);
 
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
 		sbuf_free(pkg->scripts[i]);
@@ -161,22 +146,8 @@ pkg_type(const struct pkg * restrict pkg)
 int
 pkg_is_valid(const struct pkg * restrict pkg)
 {
-	int i;
-
 	if (pkg->type == 0) {
 		pkg_emit_error("package type undefined");
-		return (EPKG_FATAL);
-	}
-
-	/* Ensure that required fields are set. */
-	for (i = 0; i < PKG_NUM_FIELDS; i++) {
-		if ((fields[i].type & pkg->type) == 0 ||
-		    fields[i].optional ||
-		    (pkg->fields[i] != NULL &&
-		    sbuf_len(pkg->fields[i]) > 0))
-			continue;
-		pkg_emit_error("package field incomplete: %s",
-		    fields[i].human_desc);
 		return (EPKG_FATAL);
 	}
 
@@ -187,38 +158,37 @@ static int
 pkg_vget(const struct pkg * restrict pkg, va_list ap)
 {
 	int attr;
+	const ucl_object_t *obj;
 
 	while ((attr = va_arg(ap, int)) > 0) {
-		if (attr < PKG_NUM_FIELDS) {
-			const char **var = va_arg(ap, const char **);
-			*var = (pkg->fields[attr] != NULL) ?
-			    sbuf_get(pkg->fields[attr]) : NULL;
-			continue;
+
+		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
+			pkg_emit_error("Bad argument on pkg_get");
+			return (EPKG_FATAL);
 		}
-		switch (attr) {
-		case PKG_FLATSIZE:
-			*va_arg(ap, int64_t *) = pkg->flatsize;
+
+		obj = ucl_object_find_key(pkg->fields, pkg_keys[attr].name);
+		switch (pkg_keys[attr].type) {
+		case UCL_STRING:
+			if (obj == NULL) {
+				*va_arg(ap, const char **) = NULL;
+				break;
+			}
+			*va_arg(ap, const char **) = ucl_object_tostring_forced(obj);
 			break;
-		case PKG_OLD_FLATSIZE:
-			*va_arg(ap, int64_t *) = pkg->old_flatsize;
+		case UCL_BOOLEAN:
+			if (obj == NULL) {
+				*va_arg(ap, bool *) = false;
+				break;
+			}
+			*va_arg(ap, bool *) = ucl_object_toboolean(obj);
 			break;
-		case PKG_PKGSIZE:
-			*va_arg(ap, int64_t *) = pkg->pkgsize;
-			break;
-		case PKG_LICENSE_LOGIC:
-			*va_arg(ap, lic_t *) = pkg->licenselogic;
-			break;
-		case PKG_AUTOMATIC:
-			*va_arg(ap, bool *) = pkg->automatic;
-			break;
-		case PKG_LOCKED:
-			*va_arg(ap, bool *) = pkg->locked;
-			break;
-		case PKG_TIME:
-			*va_arg(ap, int64_t *) = pkg->time;
-			break;
-		case PKG_ROWID:
-			*va_arg(ap, int64_t *) = pkg->rowid;
+		case UCL_INT:
+			if (obj == NULL) {
+				*va_arg(ap, int64_t *) = 0;
+				break;
+			}
+			*va_arg(ap, int64_t *) = ucl_object_toint(obj);
 			break;
 		default:
 			va_arg(ap, void *); /* ignore */
@@ -244,73 +214,64 @@ pkg_get2(const struct pkg * restrict pkg, ...)
 	return (ret);
 }
 
-static void
-pkg_set_repourl(struct pkg *pkg, const char *str)
-{
-	struct pkg_repo *r;
-
-	r = pkg_repo_find_ident(str);
-	if (r != NULL)
-		pkg_set(pkg, PKG_REPOURL, pkg_repo_url(r));
-}
-
 static int
 pkg_vset(struct pkg *pkg, va_list ap)
 {
 	int attr;
+	struct pkg_repo *r;
+	char *buf = NULL;
+	const char *data;
+	const char *str;
+
 
 	while ((attr = va_arg(ap, int)) > 0) {
-		if (attr < PKG_NUM_FIELDS) {
-			struct sbuf **sbuf;
-			const char *str = va_arg(ap, const char *);
+		if (attr >= PKG_NUM_FIELDS || attr <= 0) {
+			pkg_emit_error("Bad argument on pkg_get");
+			return (EPKG_FATAL);
+		}
 
-			if (str == NULL) {
-				pkg->fields[attr] = NULL;
-				continue;
-			}
-
-			sbuf = &pkg->fields[attr];
+		switch (pkg_keys[attr].type) {
+		case UCL_STRING:
+			str = va_arg(ap, const char *);
+			data = str;
 
 			if (attr == PKG_MTREE && !STARTS_WITH(str, "#mtree")) {
-				sbuf_set(sbuf, "#mtree\n");
-				sbuf_cat(*sbuf, str);
-				sbuf_finish(*sbuf);
-				continue;
+				asprintf(&buf, "#mtree\n%s", str);
+				data = buf;
 			}
 
-			if (attr == PKG_REPOURL)
-				pkg_set_repourl(pkg, str);
+			if (attr == PKG_REPOURL) {
+				r = pkg_repo_find_ident(str);
+				if (r == NULL)
+					break;
+				data = pkg_repo_url(r);
+			}
 
-			sbuf_set(sbuf, str);
-			continue;
-		}
-		switch (attr) {
-		case PKG_AUTOMATIC:
-			pkg->automatic = (int)va_arg(ap, int64_t);
+			if (!ucl_object_replace_key(pkg->fields,
+			    ucl_object_fromstring_common(data, strlen(data), 0),
+			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false)) {
+				if (buf != NULL)
+					free(buf);
+				return (EPKG_FATAL);
+			}
+
+			if (buf != NULL)
+				free(buf);
+
 			break;
-		case PKG_LOCKED:
-			pkg->locked = (bool)va_arg(ap, int64_t);
+		case UCL_BOOLEAN:
+			if (!ucl_object_replace_key(pkg->fields,
+			    ucl_object_frombool((bool)va_arg(ap, int64_t)),
+			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false))
+				return (EPKG_FATAL);
 			break;
-		case PKG_LICENSE_LOGIC:
-			pkg->licenselogic = (lic_t)va_arg(ap, int64_t);
-			break;
-		case PKG_FLATSIZE:
-			pkg->flatsize = va_arg(ap, int64_t);
-			break;
-		case PKG_OLD_FLATSIZE:
-			pkg->old_flatsize = va_arg(ap, int64_t);
-			break;
-		case PKG_PKGSIZE:
-			pkg->pkgsize = va_arg(ap, int64_t);
-			break;
-		case PKG_TIME:
-			pkg->time = va_arg(ap, int64_t);
-			break;
-		case PKG_ROWID:
-			pkg->rowid = va_arg(ap, int64_t);
+		case UCL_INT:
+			if (!ucl_object_replace_key(pkg->fields,
+			    ucl_object_fromint(va_arg(ap, int64_t)),
+			    pkg_keys[attr].name, strlen(pkg_keys[attr].name), false))
+				return (EPKG_FATAL);
 			break;
 		default:
-			/* XXX emit an error? */
 			(void) va_arg(ap, void *);
 			break;
 		}
@@ -467,19 +428,12 @@ pkg_provides(const struct pkg *pkg, struct pkg_provide **c)
 int
 pkg_addlicense(struct pkg *pkg, const char *name)
 {
-	pkg_object *o = NULL;
+	const pkg_object *o;
+	pkg_object *l;
 	pkg_iter iter = NULL;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
-	const char *pkgname;
-
-	if (pkg->licenselogic == LICENSE_SINGLE && UCL_COUNT(pkg->licenses) != 0) {
-		pkg_get(pkg, PKG_NAME, &pkgname);
-		pkg_emit_error("%s have a single license which is already set",
-		    pkgname);
-		return (EPKG_FATAL);
-	}
 
 	while ((o = pkg_object_iterate(pkg->licenses, &iter))) {
 		if (strcmp(pkg_object_string(o), name) == 0) {
@@ -493,8 +447,10 @@ pkg_addlicense(struct pkg *pkg, const char *name)
 		}
 	}
 
-	o = ucl_object_fromstring_common(name, strlen(name), 0);
-	pkg->licenses = ucl_array_append(pkg->licenses, o);
+	l = ucl_object_fromstring_common(name, strlen(name), 0);
+	if (pkg->licenses == NULL)
+		pkg->licenses = ucl_object_typed_new(UCL_ARRAY);
+	ucl_array_append(pkg->licenses, l);
 
 	return (EPKG_OK);
 }
@@ -691,7 +647,8 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256, const ch
 int
 pkg_addcategory(struct pkg *pkg, const char *name)
 {
-	pkg_object *o = NULL;
+	const pkg_object *o;
+	pkg_object *c;
 	pkg_iter iter = NULL;
 
 	assert(pkg != NULL);
@@ -709,8 +666,10 @@ pkg_addcategory(struct pkg *pkg, const char *name)
 		}
 	}
 
-	o = ucl_object_fromstring_common(name, strlen(name), 0);
-	pkg->categories = ucl_array_append(pkg->categories, o);
+	c = ucl_object_fromstring_common(name, strlen(name), 0);
+	if (pkg->categories == NULL)
+		pkg->categories = ucl_object_typed_new(UCL_ARRAY);
+	ucl_array_append(pkg->categories, c);
 
 	return (EPKG_OK);
 }
@@ -1065,7 +1024,8 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 int
 pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 {
-	ucl_object_t *an;
+	const ucl_object_t *an;
+	ucl_object_t *o;
 
 	assert(pkg != NULL);
 	assert(tag != NULL);
@@ -1085,14 +1045,15 @@ pkg_addannotation(struct pkg *pkg, const char *tag, const char *value)
 			return (EPKG_OK);
 		}
 	}
-	an = ucl_object_fromstring_common(value, strlen(value), 0);
-	pkg->annotations = ucl_object_insert_key(pkg->annotations,
-	    an, tag, strlen(tag), true);
+	o = ucl_object_fromstring_common(value, strlen(value), 0);
+	if (pkg->annotations == NULL)
+		pkg->annotations = ucl_object_typed_new(UCL_OBJECT);
+	ucl_object_insert_key(pkg->annotations, o, tag, strlen(tag), true);
 
 	return (EPKG_OK);
 }
 
-pkg_object *
+const pkg_object *
 pkg_licenses(const struct pkg *pkg)
 {
 	assert (pkg != NULL);
@@ -1100,7 +1061,7 @@ pkg_licenses(const struct pkg *pkg)
 	return (pkg->licenses);
 }
 
-pkg_object *
+const pkg_object *
 pkg_categories(const struct pkg *pkg)
 {
 	assert (pkg != NULL);
@@ -1108,7 +1069,7 @@ pkg_categories(const struct pkg *pkg)
 	return (pkg->categories);
 }
 
-pkg_object *
+const pkg_object *
 pkg_annotations(const struct pkg *pkg)
 {
 	assert(pkg != NULL);
@@ -1116,7 +1077,7 @@ pkg_annotations(const struct pkg *pkg)
 	return (pkg->annotations);
 }
 
-pkg_object *
+const pkg_object *
 pkg_annotation_lookup(const struct pkg *pkg, const char *tag)
 {
 	assert(pkg != NULL);
@@ -1292,17 +1253,17 @@ int
 pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
     const char *path, struct pkg_manifest_key *keys, int flags, int fd)
 {
-	struct pkg	 *pkg;
-	pkg_error_t	  retcode = EPKG_OK;
-	int		  ret;
-	const char	 *fpath;
-	bool		  manifest = false;
-	const void	 *buf;
-	size_t		  size;
-	off_t		  offset = 0;
-	struct sbuf	**sbuf;
-	int		  i, r;
-	bool		  read_from_stdin = 0;
+	struct pkg	*pkg;
+	pkg_error_t	 retcode = EPKG_OK;
+	int		 ret;
+	const char	*fpath;
+	bool		 manifest = false;
+	const void	*buf;
+	size_t		 size;
+	off_t		 offset = 0;
+	struct sbuf	*sbuf;
+	int		 i, r;
+	bool		 read_from_stdin = 0;
 
 	struct {
 		const char *name;
@@ -1392,13 +1353,12 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 		for (i = 0; files[i].name != NULL; i++) {
 			if (strcmp(fpath, files[i].name) == 0) {
-				sbuf = &pkg->fields[files[i].attr];
-				sbuf_init(sbuf);
+				sbuf = sbuf_new_auto();
 				offset = 0;
 				for (;;) {
 					if ((r = archive_read_data_block(*a, &buf,
 							&size, &offset)) == 0) {
-						sbuf_bcat(*sbuf, buf, size);
+						sbuf_bcat(sbuf, buf, size);
 					}
 					else {
 						if (r == ARCHIVE_FATAL) {
@@ -1412,7 +1372,9 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 							break;
 					}
 				}
-				sbuf_finish(*sbuf);
+				sbuf_finish(sbuf);
+				pkg_set(pkg, PKG_MTREE, sbuf_data(sbuf));
+				sbuf_delete(sbuf);
 			}
 		}
 	}
@@ -1454,7 +1416,7 @@ pkg_copy_tree(struct pkg *pkg, const char *src, const char *dest)
 	char dpath[MAXPATHLEN];
 	const char *prefix;
 	char *mtree;
-	pkg_object *o;
+	const pkg_object *o;
 
 	o = pkg_config_get("DISABLE_MTREE");
 	if (o && !pkg_object_bool(o)) {
@@ -1606,9 +1568,13 @@ pkg_has_message(struct pkg *p)
 bool
 pkg_is_locked(const struct pkg * restrict p)
 {
+	bool ret;
+
 	assert(p != NULL);
 
-	return (p->locked);
+	pkg_get(p, PKG_LOCKED, &ret);
+
+	return (ret);
 }
 
 bool

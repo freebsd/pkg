@@ -84,7 +84,7 @@ print_index(struct pkg *pkg)
 #ifndef PORTSDIR
 #define PORTSDIR "/usr/ports"
 #endif
-	pkg_object *obj = NULL;
+	const pkg_object *obj = NULL;
 	pkg_iter iter = NULL;
 
 	pkg_printf("%n-%v|" PORTSDIR "/%o|%p|%c|" PORTSDIR "/%o/pkg-descr|%m|",

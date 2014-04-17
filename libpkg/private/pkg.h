@@ -109,13 +109,8 @@
 extern int eventpipe;
 
 struct pkg {
-	struct sbuf	*fields[PKG_NUM_FIELDS];
+	ucl_object_t	*fields;
 	bool		 direct;
-	bool		 automatic;
-	bool		 locked;
-	int64_t		 flatsize;
-	int64_t		 old_flatsize;
-	int64_t		 pkgsize;
 	struct sbuf	*scripts[PKG_NUM_SCRIPTS];
 	ucl_object_t		*licenses;
 	ucl_object_t		*categories;
@@ -132,9 +127,6 @@ struct pkg {
 	struct pkg_conflict *conflicts;
 	struct pkg_provide	*provides;
 	unsigned       	 flags;
-	int64_t		 rowid;
-	int64_t		 time;
-	lic_t		 licenselogic;
 	pkg_t		 type;
 	UT_hash_handle	 hh;
 	struct pkg	*next;
@@ -356,6 +348,38 @@ int pkg_delete(struct pkg *pkg, struct pkgdb *db, unsigned flags);
 #define PKG_DELETE_UPGRADE (1<<1)
 #define PKG_DELETE_NOSCRIPT (1<<2)
 #define PKG_DELETE_CONFLICT (1<<3)
+
+static struct pkg_key {
+	const char *name;
+	int type;
+} pkg_keys [] = {
+	[PKG_ORIGIN] = { "origin", UCL_STRING },
+	[PKG_NAME] = { "name", UCL_STRING },
+	[PKG_VERSION] = { "version", UCL_STRING },
+	[PKG_COMMENT] = { "comment", UCL_STRING },
+	[PKG_DESC] = { "desc", UCL_STRING },
+	[PKG_MTREE] = { "mtree", UCL_STRING },
+	[PKG_MESSAGE] = { "message", UCL_STRING },
+	[PKG_ARCH] = { "arch", UCL_STRING },
+	[PKG_MAINTAINER] = { "maintainer", UCL_STRING },
+	[PKG_WWW] = { "www", UCL_STRING },
+	[PKG_PREFIX] = { "prefix", UCL_STRING },
+	[PKG_REPOPATH] = { "repopath", UCL_STRING },
+	[PKG_CKSUM] = { "sum", UCL_STRING },
+	[PKG_OLD_VERSION] = { "old_version", UCL_STRING },
+	[PKG_REPONAME] = { "reponame", UCL_STRING },
+	[PKG_REPOURL] = { "repourl", UCL_STRING },
+	[PKG_DIGEST] = { "digest", UCL_STRING },
+	[PKG_REASON] = { "reason", UCL_STRING },
+	[PKG_FLATSIZE] = { "flatsize", UCL_INT },
+	[PKG_OLD_FLATSIZE] = { "old_flatsize", UCL_INT },
+	[PKG_PKGSIZE] = { "pkgsize", UCL_INT },
+	[PKG_LICENSE_LOGIC] = { "licenselogic", UCL_INT },
+	[PKG_AUTOMATIC] = { "automatic", UCL_BOOLEAN },
+	[PKG_LOCKED] = { "locked", UCL_BOOLEAN },
+	[PKG_ROWID] = { "rowid", UCL_INT },
+	[PKG_TIME] = { "time", UCL_INT },
+};
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, const char *url,
 		int dest, time_t *t);

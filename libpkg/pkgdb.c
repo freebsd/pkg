@@ -132,6 +132,7 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
+	int64_t		 rowid;
 
 	assert(db != NULL && pkg != NULL);
 
@@ -144,7 +145,8 @@ load_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 		return (EPKG_FATAL);
 	}
 
-	sqlite3_bind_int64(stmt, 1, pkg->rowid);
+	pkg_get(pkg, PKG_ROWID, &rowid);
+	sqlite3_bind_int64(stmt, 1, rowid);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddata(pkg, sqlite3_column_text(stmt, 0));
@@ -170,6 +172,7 @@ load_tag_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 {
 	sqlite3_stmt	*stmt;
 	int		 ret;
+	int64_t		 rowid;
 
 	assert(db != NULL && pkg != NULL);
 
@@ -182,7 +185,8 @@ load_tag_val(sqlite3 *db, struct pkg *pkg, const char *sql, unsigned flags,
 		return (EPKG_FATAL);
 	}
 
-	sqlite3_bind_int64(stmt, 1, pkg->rowid);
+	pkg_get(pkg, PKG_ROWID, &rowid);
+	sqlite3_bind_int64(stmt, 1, rowid);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addtagval(pkg, sqlite3_column_text(stmt, 0),
@@ -964,9 +968,9 @@ database_access(unsigned mode, const char* dbdir, const char *dbname)
 int
 pkgdb_access(unsigned mode, unsigned database)
 {
-	pkg_object	*o;
-	const char	*dbdir;
-	int		 retval = EPKG_OK;
+	const pkg_object	*o;
+	const char		*dbdir;
+	int			 retval = EPKG_OK;
 
 	/*
 	 * This will return one of:
@@ -1689,6 +1693,7 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret = EPKG_OK;
+	int64_t		 rowid;
 	char		 sql[BUFSIZ];
 	const char	*reponame = NULL;
 	const char	*mainsql = ""
@@ -1722,7 +1727,8 @@ pkgdb_load_deps(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	sqlite3_bind_int64(stmt, 1, pkg->rowid);
+	pkg_get(pkg, PKG_ROWID, &rowid);
+	sqlite3_bind_int64(stmt, 1, rowid);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddep(pkg, sqlite3_column_text(stmt, 0),
@@ -1808,6 +1814,7 @@ pkgdb_load_files(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret;
+	int64_t		 rowid;
 	const char	 sql[] = ""
 		"SELECT path, sha256 "
 		"FROM files "
@@ -1826,7 +1833,8 @@ pkgdb_load_files(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	sqlite3_bind_int64(stmt, 1, pkg->rowid);
+	pkg_get(pkg, PKG_ROWID, &rowid);
+	sqlite3_bind_int64(stmt, 1, rowid);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addfile(pkg, sqlite3_column_text(stmt, 0),
@@ -1855,6 +1863,7 @@ pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 		"ORDER by path DESC";
 	sqlite3_stmt	*stmt;
 	int		 ret;
+	int64_t		 rowid;
 
 	assert(db != NULL && pkg != NULL);
 	assert(pkg->type == PKG_INSTALLED);
@@ -1868,7 +1877,8 @@ pkgdb_load_dirs(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	sqlite3_bind_int64(stmt, 1, pkg->rowid);
+	pkg_get(pkg, PKG_ROWID, &rowid);
+	sqlite3_bind_int64(stmt, 1, rowid);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_adddir(pkg, sqlite3_column_text(stmt, 0),
@@ -2080,6 +2090,7 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret;
+	int64_t		 rowid;
 	const char	 sql[] = ""
 		"SELECT script, type "
 		"FROM pkg_script JOIN script USING(script_id) "
@@ -2097,7 +2108,8 @@ pkgdb_load_scripts(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	sqlite3_bind_int64(stmt, 1, pkg->rowid);
+	pkg_get(pkg, PKG_ROWID, &rowid);
+	sqlite3_bind_int64(stmt, 1, rowid);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
 		pkg_addscript(pkg, sqlite3_column_text(stmt, 0),
@@ -2585,7 +2597,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int complete, int forced)
 	struct pkg_group	*group = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkgdb_it		*it = NULL;
-	pkg_object		*obj;
+	const pkg_object	*obj;
 	pkg_iter		 iter;
 
 	sqlite3			*s;
@@ -2970,8 +2982,8 @@ pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	pkg_object	*note;
-	pkg_iter	 it = NULL;
+	const pkg_object	*note;
+	pkg_iter		 it = NULL;
 
 	while ((note = pkg_object_iterate(pkg->annotations, &it))) {
 		if (run_prstmt(ANNOTATE1, pkg_object_key(note))

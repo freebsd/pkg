@@ -43,14 +43,14 @@ static bool is_exec_at_localbase(const char *progname);
 pkg_status_t
 pkg_status(int *count)
 {
-	pkg_object	*o;
-	const char	*progname;
-	char		 dbpath[MAXPATHLEN];
-	int		 numpkgs = 0;
-	sqlite3		*db = NULL;
-	sqlite3_stmt	*stmt = NULL;
-	const char      *sql = "SELECT COUNT(*) FROM packages";
-	bool		 dbsuccess;
+	const pkg_object	*o;
+	const char		*progname;
+	char			 dbpath[MAXPATHLEN];
+	int			 numpkgs = 0;
+	sqlite3			*db = NULL;
+	sqlite3_stmt		*stmt = NULL;
+	const char		*sql = "SELECT COUNT(*) FROM packages";
+	bool			 dbsuccess;
 
 	/* Is this executable called pkg, or does pkg exist at
 	   $LOCALBASE/sbin/pkg.  Ditto: pkg-static. Portability:

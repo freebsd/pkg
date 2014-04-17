@@ -75,7 +75,7 @@ static struct query_flags accepted_query_flags[] = {
 };
 
 static void
-format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, void *data)
+format_str(struct pkg *pkg, struct sbuf *dest, const char *qstr, const void *data)
 {
 	bool automatic;
 	bool locked;
@@ -335,7 +335,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_user		*user   = NULL;
 	struct pkg_group	*group  = NULL;
 	struct pkg_shlib	*shlib  = NULL;
-	pkg_object		*o;
+	const pkg_object	*o;
 	pkg_iter		 it;
 
 	switch (multiline) {

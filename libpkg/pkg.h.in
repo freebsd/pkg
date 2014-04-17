@@ -238,15 +238,15 @@ typedef enum {
 	PKG_REPOURL,
 	PKG_DIGEST,
 	PKG_REASON,
-	PKG_NUM_FIELDS, 	/* end of fields */
-	PKG_FLATSIZE = 64U,
+	PKG_FLATSIZE,
 	PKG_OLD_FLATSIZE,
 	PKG_PKGSIZE,
 	PKG_LICENSE_LOGIC,
 	PKG_AUTOMATIC,
 	PKG_LOCKED,
 	PKG_ROWID,
-	PKG_TIME
+	PKG_TIME,
+	PKG_NUM_FIELDS, 	/* end of fields */
 } pkg_attr;
 
 typedef enum {
@@ -580,8 +580,8 @@ int pkg_files(const struct pkg *, struct pkg_file **file);
  */
 int pkg_dirs(const struct pkg *pkg, struct pkg_dir **dir);
 
-pkg_object *pkg_categories(const struct pkg *pkg);
-pkg_object *pkg_licenses(const struct pkg *pkg);
+const pkg_object *pkg_categories(const struct pkg *pkg);
+const pkg_object *pkg_licenses(const struct pkg *pkg);
 
 /**
  * Iterates over the users of the package.
@@ -637,8 +637,8 @@ int pkg_provides(const struct pkg *pkg, struct pkg_provide **provide);
  * @param note must be set to NULL for the first call.
  * @return An error code
  */
-pkg_object *pkg_annotation_lookup(const struct pkg *p, const char *tag);
-pkg_object *pkg_annotations(const struct pkg *p);
+const pkg_object *pkg_annotation_lookup(const struct pkg *p, const char *tag);
+const pkg_object *pkg_annotations(const struct pkg *p);
 
 /**
  * Iterate over all of the files within the package pkg, ensuring the
@@ -1282,7 +1282,7 @@ const char *pkg_plugin_get(struct pkg_plugin *p, pkg_plugin_key key);
 void *pkg_plugin_func(struct pkg_plugin *p, const char *func);
 
 int pkg_plugin_conf_add(struct pkg_plugin *p, pkg_object_t type, const char *key, const char *def);
-pkg_object *pkg_plugin_conf(struct pkg_plugin *p);
+const pkg_object *pkg_plugin_conf(struct pkg_plugin *p);
 
 int pkg_plugin_parse(struct pkg_plugin *p);
 void pkg_plugin_errno(struct pkg_plugin *p, const char *func, const char *arg);
@@ -1300,17 +1300,17 @@ int pkg_plugin_hook_register(struct pkg_plugin *p, pkg_plugin_hook_t hook, pkg_p
  * Get the value of a configuration key
  */
 
-pkg_object *pkg_conf(void);
-pkg_object *pkg_config_get(const char *);
-pkg_object_t pkg_object_type(pkg_object *);
-int64_t pkg_object_int(pkg_object *o);
-bool pkg_object_bool(pkg_object *o);
-const char *pkg_object_string(pkg_object *o);
+const pkg_object *pkg_conf(void);
+const pkg_object *pkg_config_get(const char *);
+pkg_object_t pkg_object_type(const pkg_object *);
+int64_t pkg_object_int(const pkg_object *o);
+bool pkg_object_bool(const pkg_object *o);
+const char *pkg_object_string(const pkg_object *o);
 void pkg_object_free(pkg_object *o);
-const char *pkg_object_key(pkg_object *);
-pkg_object *pkg_object_iterate(pkg_object *, pkg_iter *);
-unsigned pkg_object_count(pkg_object *);
-const char *pkg_object_dump(pkg_object *o);
+const char *pkg_object_key(const pkg_object *);
+const pkg_object *pkg_object_iterate(const pkg_object *, pkg_iter *);
+unsigned pkg_object_count(const pkg_object *);
+const char *pkg_object_dump(const pkg_object *o);
 const char *pkg_config_dump(void);
 
 /**

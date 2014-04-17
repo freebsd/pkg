@@ -550,7 +550,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 static struct fingerprint *
 pkg_repo_parse_fingerprint(ucl_object_t *obj)
 {
-	ucl_object_t *cur;
+	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	const char *function = NULL, *fp = NULL;
 	hash_t fct = HASH_UNKNOWN;

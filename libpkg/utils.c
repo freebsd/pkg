@@ -519,7 +519,9 @@ yaml_sequence_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *no
 			/* Should not happen */
 			break;
 		}
-		obj = ucl_array_append(obj, sub);
+		if (obj == NULL)
+			obj = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(obj, sub);
 		++item;
 	}
 
@@ -555,8 +557,11 @@ yaml_mapping_to_object(ucl_object_t *obj, yaml_document_t *doc, yaml_node_t *nod
 			/* Should not happen */
 			break;
 		}
-		if (sub != NULL)
-			obj = ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length, true);
+		if (sub != NULL) {
+			if (obj == NULL)
+				obj = ucl_object_typed_new(UCL_OBJECT);
+			ucl_object_insert_key(obj, sub, key->data.scalar.value, key->data.scalar.length, true);
+		}
 		++pair;
 	}
 

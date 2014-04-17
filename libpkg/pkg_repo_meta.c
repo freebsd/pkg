@@ -116,7 +116,7 @@ pkg_repo_meta_open_schema_v1()
 static int
 pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int version)
 {
-	ucl_object_t *obj;
+	const ucl_object_t *obj;
 	struct pkg_repo_meta *meta;
 
 	meta = calloc(1, sizeof(*meta));
@@ -167,7 +167,7 @@ if (meta == NULL) {
 	pkg_emit_errno("pkg_repo_meta_parse", "malloc failed for pkg_repo_meta");
 	return (EPKG_FATAL);
 }
-	ucl_object_t *obj;
+	const ucl_object_t *obj;
 
 	if ((obj = ucl_object_find_key(top, "version")) != NULL) {
 		if (obj->type == UCL_INT) {

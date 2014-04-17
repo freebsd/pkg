@@ -474,7 +474,7 @@ pkgdb_repo_add_package(struct pkg *pkg, const char *pkg_path,
 	struct pkg_dep		*dep      = NULL;
 	struct pkg_option	*option   = NULL;
 	struct pkg_shlib	*shlib    = NULL;
-	pkg_object		*obj;
+	const pkg_object	*obj;
 	pkg_iter		 it;
 	int64_t			 package_id;
 

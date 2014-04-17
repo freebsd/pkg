@@ -349,7 +349,7 @@ pkg_initialized(void)
 	return (parsed);
 }
 
-pkg_object *
+const pkg_object *
 pkg_config_get(const char *key) {
 	return (ucl_object_find_key(config, key));
 }
@@ -369,7 +369,7 @@ disable_plugins_if_static(void)
 
 	/* if dlh is NULL then we are in static binary */
 	if (dlh == NULL)
-		config = ucl_object_replace_key(config, ucl_object_frombool(false), "ENABLE_PLUGINS", 14, false);
+		ucl_object_replace_key(config, ucl_object_frombool(false), "ENABLE_PLUGINS", 14, false);
 	else
 		dlclose(dlh);
 
@@ -377,9 +377,10 @@ disable_plugins_if_static(void)
 }
 
 static void
-add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
+add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 {
-	ucl_object_t *cur, *tmp = NULL;
+	const ucl_object_t *cur;
+	ucl_object_t *tmp = NULL;
 	ucl_object_iter_t it = NULL;
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
@@ -494,9 +495,9 @@ add_repo(ucl_object_t *obj, struct pkg_repo *r, const char *rname)
 }
 
 static void
-walk_repo_obj(ucl_object_t *obj, const char *file)
+walk_repo_obj(const ucl_object_t *obj, const char *file)
 {
-	ucl_object_t *cur;
+	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	struct pkg_repo *r;
 	const char *key;
@@ -595,7 +596,7 @@ load_repo_files(const char *repodir)
 static void
 load_repositories(const char *repodir)
 {
-	pkg_object *reposlist, *cur;
+	const pkg_object *reposlist, *cur;
 	pkg_iter it = NULL;
 
 	if (repodir != NULL) {
@@ -642,7 +643,8 @@ pkg_init(const char *path, const char *reposdir)
 	const char *evkey = NULL;
 	const char *nsname = NULL;
 	const char *evpipe = NULL;
-	ucl_object_t *obj = NULL, *cur, *o, *ncfg;
+	const ucl_object_t *cur, *object;
+	ucl_object_t *obj = NULL, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
 	struct sbuf *ukey = NULL;
 
@@ -652,29 +654,29 @@ pkg_init(const char *path, const char *reposdir)
 		return (EPKG_FATAL);
 	}
 
+	config = ucl_object_typed_new(UCL_OBJECT);
+
 	for (i = 0; i < c_size; i++) {
 		switch (c[i].type) {
 		case PKG_STRING:
 			obj = ucl_object_fromstring_common(
 			    c[i].def != NULL ? c[i].def : "", 0, UCL_STRING_TRIM);
-			config = ucl_object_insert_key(config, obj,
+			ucl_object_insert_key(config, obj,
 			    c[i].key, strlen(c[i].key), false);
 			break;
 		case PKG_INT:
-			config = ucl_object_insert_key(config,
+			ucl_object_insert_key(config,
 			    ucl_object_fromstring_common(c[i].def, 0, UCL_STRING_PARSE_INT),
 			    c[i].key, strlen(c[i].key), false);
 			break;
 		case PKG_BOOL:
-			config = ucl_object_insert_key(config,
+			ucl_object_insert_key(config,
 			    ucl_object_fromstring_common(c[i].def, 0, UCL_STRING_PARSE_BOOLEAN),
 			    c[i].key, strlen(c[i].key), false);
 			break;
 		case PKG_OBJECT:
-			obj = NULL;
-			if (c[i].def == NULL) {
-				obj = ucl_object_typed_new(UCL_OBJECT);
-			} else {
+			obj = ucl_object_typed_new(UCL_OBJECT);
+			if (c[i].def != NULL) {
 				walk = buf = c[i].def;
 				while ((buf = strchr(buf, ',')) != NULL) {
 					key = walk;
@@ -684,7 +686,7 @@ pkg_init(const char *path, const char *reposdir)
 							break;
 						value++;
 					}
-					obj = ucl_object_insert_key(obj,
+					ucl_object_insert_key(obj,
 					    ucl_object_fromstring_common(value + 1, buf - value - 1, UCL_STRING_TRIM),
 					    key, value - key, false);
 					buf++;
@@ -697,29 +699,29 @@ pkg_init(const char *path, const char *reposdir)
 						break;
 					value++;
 				}
-				o = ucl_object_insert_key(o,
+				if (o == NULL)
+					o = ucl_object_typed_new(UCL_OBJECT);
+				ucl_object_insert_key(o,
 				    ucl_object_fromstring_common(value + 1, strlen(value + 1), UCL_STRING_TRIM),
-			        key, value - key, false);
+				    key, value - key, false);
 			}
-			config = ucl_object_insert_key(config, obj,
+			ucl_object_insert_key(config, obj,
 			    c[i].key, strlen(c[i].key), false);
 			break;
 		case PKG_ARRAY:
-			obj = NULL;
-			if (c[i].def == NULL) {
-				obj = ucl_object_typed_new(UCL_ARRAY);
-			} else {
+			obj = ucl_object_typed_new(UCL_ARRAY);
+			if (c[i].def != NULL) {
 				walk = buf = c[i].def;
 				while ((buf = strchr(buf, ',')) != NULL) {
-					obj = ucl_array_append(obj,
+					ucl_array_append(obj,
 					    ucl_object_fromstring_common(walk, buf - walk, UCL_STRING_TRIM));
 					buf++;
 					walk = buf;
 				}
-				obj = ucl_array_append(obj,
+				ucl_array_append(obj,
 				    ucl_object_fromstring_common(walk, strlen(walk), UCL_STRING_TRIM));
 			}
-			config = ucl_object_insert_key(config, obj,
+			ucl_object_insert_key(config, obj,
 			    c[i].key, strlen(c[i].key), false);
 			break;
 		}
@@ -747,24 +749,26 @@ pkg_init(const char *path, const char *reposdir)
 		for (i = 0; key[i] != '\0'; i++)
 			sbuf_putc(ukey, toupper(key[i]));
 		sbuf_done(ukey);
-		o = ucl_object_find_keyl(config, sbuf_data(ukey), sbuf_len(ukey));
+		object = ucl_object_find_keyl(config, sbuf_data(ukey), sbuf_len(ukey));
 		/* ignore unknown keys */
-		if (o == NULL)
+		if (object == NULL)
 			continue;
 
-		if (o->type != cur->type) {
+		if (object->type != cur->type) {
 			pkg_emit_error("Malformed key %s, ignoring", key);
 			continue;
 		}
 
-		ncfg = ucl_object_insert_key(ncfg, ucl_object_ref(cur), key, strlen(key), false);
+		if (ncfg == NULL)
+			ncfg = ucl_object_typed_new(UCL_OBJECT);
+		ucl_object_insert_key(ncfg, ucl_object_ref(cur), key, strlen(key), false);
 	}
 
 	if (ncfg != NULL) {
 		it = NULL;
 		while (( cur = ucl_iterate_object(ncfg, &it, true))) {
 			key = ucl_object_key(cur);
-			config = ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
+			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
 		}
 		ucl_object_unref(ncfg);
 	}
@@ -802,6 +806,7 @@ pkg_init(const char *path, const char *reposdir)
 			}
 			break;
 		case UCL_OBJECT:
+			o = ucl_object_typed_new(UCL_OBJECT);
 			walk = buf = val;
 			while ((buf = strchr(buf, ',')) != NULL) {
 				k = walk;
@@ -811,7 +816,7 @@ pkg_init(const char *path, const char *reposdir)
 						break;
 					value++;
 				}
-				o = ucl_object_insert_key(o,
+				ucl_object_insert_key(o,
 				    ucl_object_fromstring_common(value + 1, buf - value - 1, UCL_STRING_TRIM),
 				    k, value - k, false);
 				buf++;
@@ -824,34 +829,38 @@ pkg_init(const char *path, const char *reposdir)
 					break;
 				value++;
 			}
-			o = ucl_object_insert_key(o,
+			ucl_object_insert_key(o,
 			    ucl_object_fromstring_common(value + 1, strlen(value + 1), UCL_STRING_TRIM),
 			    k, value - k, false);
 			break;
 		case UCL_ARRAY:
+			o = ucl_object_typed_new(UCL_ARRAY);
 			walk = buf = val;
 			while ((buf = strchr(buf, ',')) != NULL) {
-				o = ucl_array_append(o,
+				ucl_array_append(o,
 				    ucl_object_fromstring_common(walk, buf - walk, UCL_STRING_TRIM));
 				buf++;
 				walk = buf;
 			}
-			o = ucl_array_append(o,
+			ucl_array_append(o,
 			    ucl_object_fromstring_common(walk, strlen(walk), UCL_STRING_TRIM));
 			break;
 		default:
 			/* ignore other types */
 			break;
 		}
-		if (o != NULL)
-			ncfg = ucl_object_insert_key(ncfg, o, key, strlen(key), true);
+		if (o != NULL) {
+			if (ncfg != NULL)
+				ncfg = ucl_object_typed_new(UCL_OBJECT);
+			ucl_object_insert_key(ncfg, o, key, strlen(key), true);
+		}
 	}
 
 	if (ncfg != NULL) {
 		it = NULL;
 		while (( cur = ucl_iterate_object(ncfg, &it, true))) {
 			key = ucl_object_key(cur);
-			config = ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
+			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), false);
 		}
 		ucl_object_unref(ncfg);
 	}
@@ -870,7 +879,7 @@ pkg_init(const char *path, const char *reposdir)
 		connect_evpipe(evpipe);
 
 	it = NULL;
-	o = ucl_object_find_key(config, "PKG_ENV");
+	object = ucl_object_find_key(config, "PKG_ENV");
 	while ((cur = ucl_iterate_object(o, &it, true))) {
 		evkey = ucl_object_key(cur);
 		if (evkey != NULL && evkey[0] != '\0')
