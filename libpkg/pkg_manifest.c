@@ -853,7 +853,7 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 	const char *comment, *desc, *message;
 	const char *script_types = NULL;
 	lic_t licenselogic;
-	int64_t flatsize, pkgsize;
+	int64_t pkgsize;
 	ucl_object_t *annotations, *categories, *licenses;
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
@@ -869,13 +869,12 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		PKG_WWW,
 		PKG_REPOPATH,
 		PKG_CKSUM,
+		PKG_FLATSIZE,
 		-1
 	};
 
-	pkg_get(pkg, PKG_COMMENT, &comment,
-	    PKG_LICENSE_LOGIC, &licenselogic, PKG_DESC, &desc,
-	    PKG_FLATSIZE, &flatsize, PKG_MESSAGE, &message,
-	    PKG_PKGSIZE, &pkgsize,
+	pkg_get(pkg, PKG_COMMENT, &comment, PKG_LICENSE_LOGIC, &licenselogic,
+	    PKG_DESC, &desc, PKG_MESSAGE, &message, PKG_PKGSIZE, &pkgsize,
 	    PKG_ANNOTATIONS, &annotations, PKG_LICENSES, &licenses,
 	    PKG_CATEGORIES, &categories);
 
@@ -906,7 +905,6 @@ emit_manifest(struct pkg *pkg, struct sbuf **out, short flags)
 		ucl_object_insert_key(top,
 		    ucl_object_ref(licenses), "licenses", 8, false);
 
-	ucl_object_insert_key(top, ucl_object_fromint(flatsize), "flatsize", 8, false);
 	if (pkgsize > 0)
 		ucl_object_insert_key(top, ucl_object_fromint(pkgsize), "pkgsize", 7, false);
 
