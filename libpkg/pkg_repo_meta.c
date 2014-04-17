@@ -51,6 +51,11 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 void
 pkg_repo_meta_free(struct pkg_repo_meta *meta)
 {
+	struct pkg_repo_meta_key *k, *ktmp;
+
+	/*
+	 * It is safe to free NULL pointer by standard
+	 */
 	if (meta != NULL) {
 		free(meta->conflicts);
 		free(meta->manifests);
@@ -60,6 +65,13 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 		free(meta->maintainer);
 		free(meta->source);
 		free(meta->source_identifier);
+		HASH_ITER(hh, meta->keys, k, ktmp) {
+			HASH_DELETE(hh, meta->keys, k);
+			free(k->name);
+			free(k->pubkey);
+			free(k->pubkey_type);
+			free(k);
+		}
 		free(meta);
 	}
 }
@@ -84,8 +96,16 @@ pkg_repo_meta_open_schema_v1()
 			"source_identifier = {type = string};\n"
 			"revision = {type = integer};\n"
 			"eol = {type = integer};\n"
-			"pubkey = {type = string};\n"
-			"pubkey_type = {enum = [rsa]};\n"
+			"cert = {"
+			"  type = object;\n"
+			"  properties {"
+			"    type = {enum = [rsa]};\n"
+			"    data = {type = string};\n"
+			"    name = {type = string};\n"
+			"  }"
+			"  required = [type, data, name];\n"
+			"};\n"
+
 			"}\n"
 			"required = [version]\n"
 			"}";
@@ -108,6 +128,27 @@ pkg_repo_meta_open_schema_v1()
 	return (repo_meta_schema_v1);
 }
 
+static struct pkg_repo_meta_key*
+pkg_repo_meta_parse_cert(const ucl_object_t *obj)
+{
+	struct pkg_repo_meta_key *key;
+
+	key = calloc(1, sizeof(*key));
+	if (key == NULL) {
+		pkg_emit_errno("pkg_repo_meta_parse", "malloc failed for pkg_repo_meta_key");
+		return (NULL);
+	}
+
+	/*
+	 * It is already validated so just use it as is
+	 */
+	key->name = strdup(ucl_object_find_key(obj, "name"));
+	key->pubkey = strdup(ucl_object_find_key(obj, "data"));
+	key->pubkey_type = strdup(ucl_object_find_key(obj, "type"));
+
+	return (key);
+}
+
 #define META_EXTRACT_STRING(field) do { 						\
 	obj = ucl_object_find_key(top, (#field)); 					\
 	if (obj != NULL && obj->type == UCL_STRING) { 				\
@@ -120,8 +161,10 @@ pkg_repo_meta_open_schema_v1()
 static int
 pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int version)
 {
-	const ucl_object_t *obj;
+	const ucl_object_t *obj, *cur;
+	ucl_object_iter_t iter = NULL;
 	struct pkg_repo_meta *meta;
+	struct pkg_repo_meta_key *cert;
 
 	meta = calloc(1, sizeof(*meta));
 	if (meta == NULL) {
@@ -140,9 +183,6 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	META_EXTRACT_STRING(manifests);
 	META_EXTRACT_STRING(fulldb);
 
-	META_EXTRACT_STRING(pubkey);
-	META_EXTRACT_STRING(pubkey_format);
-
 	META_EXTRACT_STRING(source_identifier);
 
 	obj = ucl_object_find_key(top, "eol");
@@ -158,6 +198,13 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	obj = ucl_object_find_key(top, "packing_format");
 	if (obj != NULL && obj->type == UCL_STRING) {
 		meta->packing_format = packing_format_from_string(ucl_object_tostring(obj));
+	}
+
+	obj = ucl_object_find_key(top, "cert");
+	while ((cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
+		cert = pkg_repo_meta_parse_cert(cur);
+		if (cert != NULL)
+			HASH_ADD_STR(meta->keys, name, cert);
 	}
 
 	return (EPKG_OK);

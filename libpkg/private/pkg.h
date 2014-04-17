@@ -266,6 +266,13 @@ struct http_mirror {
 	struct http_mirror *next;
 };
 
+struct pkg_repo_meta_key {
+	char *pubkey;
+	char *pubkey_type; /* TODO: should be enumeration */
+	char *name;
+	UT_hash_handle hh;
+};
+
 struct pkg_repo_meta {
 
 	char *maintainer;
@@ -282,8 +289,7 @@ struct pkg_repo_meta {
 	char *source_identifier;
 	int64_t revision;
 
-	char *pubkey;
-	char *pubkey_format; /* TODO: should be enumeration */
+	struct pkg_repo_meta_key *keys;
 
 	time_t eol;
 };
