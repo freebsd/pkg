@@ -264,13 +264,10 @@ pkg_repo_file_has_ext(const char *path, const char *ext)
 static bool
 pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fatal)
 {
-	struct fingerprint *trusted = NULL;
-	struct fingerprint *revoked = NULL;
 	struct fingerprint *f = NULL;
 	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
 	int nbgood = 0;
 	struct sig_cert *s = NULL, *stmp = NULL;
-	int rc;
 
 	if (HASH_COUNT(sc) == 0) {
 		if (fatal)
@@ -294,7 +291,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 		}
 		s->trusted = false;
 		sha256_buf(s->cert, s->certlen, hash);
-		HASH_FIND_STR(revoked, hash, f);
+		HASH_FIND_STR(repo->revoked_fp, hash, f);
 		if (f != NULL) {
 			if (fatal)
 				pkg_emit_error("At least one of the "
@@ -303,7 +300,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 			return (false);
 		}
 
-		HASH_FIND_STR(trusted, hash, f);
+		HASH_FIND_STR(repo->trusted_fp, hash, f);
 		if (f != NULL) {
 			nbgood++;
 			s->trusted = true;
@@ -312,7 +309,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 
 	if (nbgood == 0) {
 		if (fatal)
-			pkg_emit_error("No trusted certificate found");
+			pkg_emit_error("No trusted public keys found");
 
 		return (false);
 	}
@@ -341,10 +338,10 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 {
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
-	struct sig_cert *sc = NULL, *s, *stmp;
+	struct sig_cert *sc = NULL, *s;
 
 	unsigned char *sig = NULL;
-	int siglen = 0, ret, rc = EPKG_OK;
+	int siglen = 0, rc = EPKG_OK;
 	char key[MAXPATHLEN];
 
 	pkg_debug(1, "PkgRepo: extracting %s of repo %s", file, pkg_repo_name(repo));
@@ -492,7 +489,14 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
-		ret = rsa_verify(dest, pkg_repo_key(repo), sc->sig, sc->siglen,
+		/*
+		 * Here are dragons:
+		 * 1) rsa_verify is NOT rsa_verify_cert
+		 * 2) siglen must be reduced by one to support this legacy method
+		 *
+		 * by @bdrewery
+		 */
+		ret = rsa_verify(dest, pkg_repo_key(repo), sc->sig, sc->siglen - 1,
 				dest_fd);
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
@@ -503,10 +507,12 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 
-		ret = pkg_repo_check_fingerprint(repo, sc);
+		ret = pkg_repo_check_fingerprint(repo, sc, true);
 
-		if (!ret)
+		if (!ret) {
+			rc = EPKG_FATAL;
 			goto cleanup;
+		}
 
 		HASH_ITER(hh, sc, s, stmp) {
 			ret = rsa_verify_cert(dest, s->cert, s->certlen, s->sig, s->siglen,

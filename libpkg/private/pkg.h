@@ -414,7 +414,7 @@ struct fingerprint {
 	char hash[BUFSIZ];
 	UT_hash_handle hh;
 };
-int pkg_repo_load_fingerprints(const char *path, struct fingerprint **f);
+int pkg_repo_load_fingerprints(struct pkg_repo *repo);
 
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);

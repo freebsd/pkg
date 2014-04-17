@@ -44,8 +44,6 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	meta->digests = strdup("digests");
 	/* Not using fulldb */
 	meta->fulldb = NULL;
-
-	meta->pubkey_format = strdup("rsa");
 }
 
 void
@@ -142,9 +140,9 @@ pkg_repo_meta_parse_cert(const ucl_object_t *obj)
 	/*
 	 * It is already validated so just use it as is
 	 */
-	key->name = strdup(ucl_object_find_key(obj, "name"));
-	key->pubkey = strdup(ucl_object_find_key(obj, "data"));
-	key->pubkey_type = strdup(ucl_object_find_key(obj, "type"));
+	key->name = strdup(ucl_object_tostring(ucl_object_find_key(obj, "name")));
+	key->pubkey = strdup(ucl_object_tostring(ucl_object_find_key(obj, "data")));
+	key->pubkey_type = strdup(ucl_object_tostring(ucl_object_find_key(obj, "type")));
 
 	return (key);
 }
