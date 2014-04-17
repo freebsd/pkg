@@ -266,6 +266,13 @@ struct http_mirror {
 	struct http_mirror *next;
 };
 
+struct pkg_repo_meta_key {
+	char *pubkey;
+	char *pubkey_type; /* TODO: should be enumeration */
+	char *name;
+	UT_hash_handle hh;
+};
+
 struct pkg_repo_meta {
 
 	char *maintainer;
@@ -281,6 +288,8 @@ struct pkg_repo_meta {
 
 	char *source_identifier;
 	int64_t revision;
+
+	struct pkg_repo_meta_key *keys;
 
 	time_t eol;
 };
@@ -298,6 +307,9 @@ struct pkg_repo {
 	signature_t signature_type;
 	char *fingerprints;
 	FILE *ssh;
+
+	struct fingerprint *trusted_fp;
+	struct fingerprint *revoked_fp;
 
 	struct {
 		int in;
@@ -402,7 +414,7 @@ struct fingerprint {
 	char hash[BUFSIZ];
 	UT_hash_handle hh;
 };
-int pkg_repo_load_fingerprints(const char *path, struct fingerprint **f);
+int pkg_repo_load_fingerprints(struct pkg_repo *repo);
 
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
