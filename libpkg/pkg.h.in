@@ -1368,6 +1368,7 @@ typedef enum {
 	PKG_EVENT_QUERY_YESNO,
 	PKG_EVENT_QUERY_SELECT,
 	PKG_EVENT_SANDBOX_CALL,
+	PKG_EVENT_SANDBOX_GET_STRING,
 	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
@@ -1510,6 +1511,12 @@ struct pkg_event {
 			int fd;
 			void *userdata;
 		} e_sandbox_call;
+		struct {
+			pkg_sandbox_cb call;
+			void *userdata;
+			char **result;
+			int64_t *len;
+		} e_sandbox_call_str;
 	};
 };
 

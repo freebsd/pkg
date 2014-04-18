@@ -824,6 +824,22 @@ pkg_emit_query_select(const char *msg, const char **items, int ncnt, int deft)
 }
 
 int
+pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64_t *len)
+{
+	struct pkg_event ev;
+	int ret;
+
+	ev.type = PKG_EVENT_SANDBOX_GET_STRING;
+	ev.e_sandbox_call_str.call = call;
+	ev.e_sandbox_call_str.userdata = ud;
+	ev.e_sandbox_call_str.result = str;
+	ev.e_sandbox_call_str.len = len;
+
+	ret = pkg_emit_event(&ev);
+	return ret;
+}
+
+int
 pkg_emit_sandbox_call(pkg_sandbox_cb call, int fd, void *ud)
 {
 	struct pkg_event ev;
