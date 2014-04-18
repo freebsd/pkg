@@ -1444,9 +1444,12 @@ pkgdb_it_free(struct pkgdb_it *it)
 	free(it);
 }
 
-/* By default, MATCH_EXACT and MATCH_REGEX are case sensitive. */
+/* By default, MATCH_EXACT and MATCH_REGEX are case insensitive.  This
+ * is modified in pkg_init() according to the value of
+ * CASE_SENSITIVE_MATCH in pkg.conf and then possbily reset again in
+ * pkg search et al according to command line flags */
 
-static bool _case_sensitive_flag = true;
+static bool _case_sensitive_flag = false;
 
 void
 pkgdb_set_case_sensitivity(bool case_sensitive)

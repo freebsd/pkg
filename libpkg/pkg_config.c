@@ -288,6 +288,12 @@ static struct config_entry c[] = {
 		"YES",
 		"Run post/pre actions scripts",
 	},
+	{
+		PKG_BOOL,
+		"CASE_SENSITIVE_MATCHING"
+		"NO",
+		"Match package names case sensitively",
+	},
 };
 
 static bool parsed = false;
@@ -895,6 +901,11 @@ pkg_init(const char *path, const char *reposdir)
 	nsname = pkg_object_string(pkg_config_get("NAMESERVER"));
 	if (nsname != NULL)
 		set_nameserver(ucl_object_tostring_forced(o));
+
+	/* Set default case sensitivity for searching */
+	pkgdb_set_case_sensitivity(
+		pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
+		);
 
 	return (EPKG_OK);
 }
