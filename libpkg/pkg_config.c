@@ -290,7 +290,7 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_BOOL,
-		"CASE_SENSITIVE_MATCHING"
+		"CASE_SENSITIVE_MATCH"
 		"NO",
 		"Match package names case sensitively",
 	},
