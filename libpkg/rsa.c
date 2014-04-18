@@ -174,6 +174,9 @@ rsa_verify_cert(const char *path, unsigned char *key, int keylen,
 	return (ret);
 }
 
+/*
+ * XXX: this function is deprecated and should be removed in the next pkg releases
+ */
 int
 rsa_verify(const char *path, const char *key, unsigned char *sig,
     unsigned int sig_len, int fd)
