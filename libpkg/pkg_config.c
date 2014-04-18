@@ -226,13 +226,13 @@ static struct config_entry c[] = {
 		PKG_INT,
 		"FETCH_TIMEOUT",
 		"30",
-		NULL,
+		"Number of seconds before fetch(3) times out",
 	},
 	{
 		PKG_BOOL,
 		"UNSET_TIMESTAMP",
 		"NO",
-		NULL,
+		"Do not include timestamps in the package",
 	},
 	{
 		PKG_STRING,
