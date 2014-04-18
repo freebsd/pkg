@@ -46,6 +46,8 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -591,14 +593,24 @@ cleanup:
 	return (res);
 }
 
+struct pkg_repo_check_cbdata {
+	unsigned char *map;
+	size_t len;
+	const char *name;
+};
+
 int
 pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 {
 	char filepath[MAXPATHLEN];
 	struct pkg_repo_meta *nmeta;
+	struct stat st;
 	const char *dbdir = NULL;
+	unsigned char *map = NULL;
 	int fd;
-	int rc = EPKG_OK;
+	int rc = EPKG_OK, ret;
+	struct sig_cert *sc = NULL, *s, *stmp;
+	struct pkg_repo_check_cbdata cbdata;
 
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
@@ -614,13 +626,81 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		return (EPKG_FATAL);
 	}
 
-	if ((rc = pkg_repo_archive_extract_check_archive(fd, "meta", filepath, repo, -1)) != EPKG_OK) {
+	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		if ((rc = pkg_repo_archive_extract_check_archive(fd, "meta", filepath, repo, -1)) != EPKG_OK) {
+			close (fd);
+			return (rc);
+		}
+		goto load_meta;
+	}
+
+	/*
+	 * For fingerprints we cannot just load pubkeys as they could be in metafile itself
+	 * To do it, we parse meta in sandbox and for each unloaded pubkey we try to return
+	 * a corresponding key from meta file.
+	 */
+
+	if ((rc = pkg_repo_archive_extract_archive(fd, "meta", filepath, repo, -1, &sc)) != EPKG_OK) {
 		close (fd);
 		return (rc);
 	}
 
 	close(fd);
 
+	if (repo->trusted_fp == NULL) {
+		if (pkg_repo_load_fingerprints(repo) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
+	/* Map meta file for extracting pubkeys from it */
+	if (stat(filepath, &st) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot stat meta fetched");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	if ((fd = open(filepath, O_RDONLY)) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	close(fd);
+	if (map == MAP_FAILED) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot mmap meta fetched");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	cbdata.len = st.st_size;
+	cbdata.map = map;
+	HASH_ITER(hh, sc, s, stmp) {
+		if (s->siglen != 0 && s->certlen == 0) {
+			/*
+			 * We need to load this pubkey from meta
+			 */
+			cbdata.name = s->name;
+			if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_pubkey, &cbdata,
+					(char **)&s->cert, &s->certlen) != EPKG_OK) {
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
+		}
+	}
+
+	if (!pkg_repo_check_fingerprint(repo, sc, true)) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	if (ret != EPKG_OK) {
+		pkg_emit_error("No trusted certificate has been used "
+				"to sign the repository");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+load_meta:
 	if ((rc = pkg_repo_meta_load(filepath, &nmeta)) != EPKG_OK)
 		return (rc);
 
@@ -628,6 +708,13 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		pkg_repo_meta_free(repo->meta);
 
 	repo->meta = nmeta;
+
+cleanup:
+	if (map != NULL)
+		munmap(map, st.st_size);
+
+	if (sc != NULL)
+		pkg_repo_signatures_free(sc);
 
 	return (rc);
 }
