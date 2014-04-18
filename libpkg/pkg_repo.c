@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
+#include <sys/uio.h>
 
 #include <archive_entry.h>
 #include <assert.h>
@@ -607,7 +608,7 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 	ucl_object_t *top;
 	const ucl_object_t *obj, *cur, *elt;
 	ucl_object_iter_t iter = NULL;
-	struct iovec iov;
+	struct iovec iov[2];
 	int rc = EPKG_OK;
 	int64_t res_len = 0;
 	bool found = false;
@@ -756,6 +757,14 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		goto cleanup;
 	}
 
+	HASH_ITER(hh, sc, s, stmp) {
+		ret = rsa_verify_cert(filepath, s->cert, s->certlen, s->sig, s->siglen,
+				-1);
+		if (ret == EPKG_OK && s->trusted)
+			break;
+
+		ret = EPKG_FATAL;
+	}
 	if (ret != EPKG_OK) {
 		pkg_emit_error("No trusted certificate has been used "
 				"to sign the repository");
@@ -778,6 +787,9 @@ cleanup:
 
 	if (sc != NULL)
 		pkg_repo_signatures_free(sc);
+
+	if (rc != EPKG_OK)
+		unlink(filepath);
 
 	return (rc);
 }
