@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd January 14, 2014
+.Dd April 18, 2014
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -43,6 +43,12 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Match all packages from the database
+.It Fl C
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
 .It Fl e
 Match packages using the given
 .Ar evaluation-condition.
@@ -56,6 +62,10 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
 .It Fl g
 Treat
 .Ao pattern Ac
@@ -293,6 +303,7 @@ See
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
+.It Ev CASE_SENSITIVE_MATCH
 .El
 .Sh FILES
 See

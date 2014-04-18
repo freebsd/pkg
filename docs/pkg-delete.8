@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd April 18, 2014
 .Dt PKG-DELETE 8
 .Os
 .Sh NAME
@@ -23,7 +23,8 @@
 .Nd deletes packages from the database and the system
 .Sh SYNOPSIS
 .Nm
-.Op Fl DfginqRxy
+.Op Fl DfnqRy
+.Op Fl Cgix
 .Ar pkg-name ...
 .Nm
 .Op Fl Dnqy
@@ -55,6 +56,12 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Deletes all installed packages from the system and empties the database.
+.It Fl C
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
 .It Fl D
 If a deinstallation script exists for a given package, do not execute it.
 .It Fl f
@@ -67,6 +74,10 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case insensitive.
+This is the defalt, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
 .It Fl n
 Dry run mode.
 The list of packages to delete is always printed, but no packages are
@@ -96,6 +107,7 @@ for further description.
 .It Ev ASSUME_ALWAYS_YES
 .It Ev HANDLE_RC_SCRIPTS
 .It Ev PKG_DBDIR
+.It Ev CASE_SENSITIVE_MATCH
 .El
 .Sh FILES
 See

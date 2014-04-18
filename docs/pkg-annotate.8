@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 6, 2013
+.Dd April 18, 2014
 .Dt PKG-ANNOTATE 8
 .Os
 .Sh NAME
@@ -23,14 +23,16 @@
 .Nd add, modify or delete arbitrary annotations from packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl giqxy
+.Op Fl qy
 .Fl A|M
+.Op Fl Cgix
 .Ar pkg-name
 .Ar tag
 .Op Ar value
 .Nm
-.Op Fl giqxy
+.Op Fl qy
 .Fl D
+.Op Fl Cgix
 .Ar pkg-name
 .Ar tag
 .Nm
@@ -75,6 +77,12 @@ cause
 .Nm
 to exit before attempting to apply the annotation to all remaining
 matched packages.
+.It Fl C
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
 .It Fl D
 The operation is to delete an annotation.
 Only the
@@ -89,10 +97,15 @@ Treat
 .Ar pkg-name
 as a shell glob pattern.
 .It Fl i
-Make the default or the regular expression
+Make the standard or the regular expression
 .Fl ( x )
+matching against
 .Ar pkg-name
-matching case insensitive.
+case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
 .It Fl M
 The operation is to modify a previously existing annotation.
 Functionally, this behaves similarly to
@@ -119,6 +132,7 @@ for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
 .It Ev ASSUME_ALWAYS_YES
+.It Ev CASE_SENSITIVE_MATCH
 .El
 .Sh FILES
 See

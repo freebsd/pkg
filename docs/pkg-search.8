@@ -23,15 +23,17 @@
 .Nd search package repository catalogues
 .Sh SYNOPSIS
 .Nm
-.Op Fl egiUx
+.Op Fl U
 .Op Fl r Ar reponame
 .Op Fl S Ar search
 .Op Fl L Ar label
 .Op Fl Q Ar query-modifier
+.Op Fl Cegix
 .Ar pattern
 .Nm
-.Op Fl cDdefgiopqRUx
+.Op Fl cDdfopqRU
 .Op Fl r Ar reponame
+.Op Cegix
 .Ar pattern
 .Sh DESCRIPTION
 .Nm
@@ -67,6 +69,14 @@ for details.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl C
+Make the exact
+.Fl ( e )
+or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
 .It Fl c
 Search for packages with comment text matching
 .Ar pattern .
@@ -101,6 +111,10 @@ or regular expression
 matching against
 .Ar pattern
 case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
 .It Fl L Ar label
 Select which identifying label is printed for each matched package,
 unless
@@ -426,8 +440,8 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It Ev PACKAGESITE
 .It Ev PKG_DBDIR
+.It Ev CASE_SENSITIVE_MATCH
 .El
 .Sh FILES
 See

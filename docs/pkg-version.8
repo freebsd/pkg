@@ -27,7 +27,7 @@
 .Op Fl hoqvU
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
-.Op Fl egix Ar pattern
+.Op Fl Cegix Ar pattern
 .Op Fl r Ar reponame
 .Op Fl O Ar origin
 .Op Ar index
@@ -99,6 +99,12 @@ with the corresponding entry in the index.
 The following options are supported by
 .Nm :
 .Bl -tag -width F1
+.It Fl C
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
 .It Fl h
 Displays usage information
 .It Fl I Op Ar index
@@ -163,6 +169,10 @@ or regular expression
 matching against
 .Ar pattern
 case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
 .It Fl x Ar pattern
 Only display the packages that match the regular expression.
 Uses the "modern" or "extended" syntax of
@@ -202,9 +212,10 @@ See
 .Xr pkg.conf 5
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It Ev PKG_DBDIR
-.It Ev INDEXFILE
+.It Ev CASE_SENSITIVE_MATCH
 .It Ev INDEXDIR
+.It Ev INDEXFILE
+.It Ev PKG_DBDIR
 .It Ev PORTSDIR
 .El
 .Pp

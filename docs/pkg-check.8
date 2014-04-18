@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd July 11, 2013
+.Dd April 18, 2014
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
@@ -25,7 +25,7 @@
 .Nm
 .Op Fl Bdsr
 .Op Fl vyn
-.Op Fl a | gix Ar pattern
+.Op Fl a | Cgix Ar pattern
 .Sh DESCRIPTION
 .Nm
 .Fl B
@@ -54,12 +54,22 @@ Be verbose.
 Merely check for missing dependencies and do not install them.
 .It Fl a
 Process all packages.
+.It Fl C
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pattern
+case sensitive.
 .It Fl i
 Make the standard or regular expression
 .Fl ( x )
 matching against
 .Ar pattern
 case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH 
+to true in
+.Pa pkg.conf .
 .It Fl g
 Treat
 .Ar pattern
@@ -79,6 +89,7 @@ See
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
+.It Ev CASE_SENSITIVE_MATCH
 .El
 .Sh FILES
 See

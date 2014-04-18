@@ -24,7 +24,8 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl r Ar reponame
-.Op Fl dgiqUxy
+.Op Fl dqUy
+.Op Fl Cgix
 .Ar pkg-name
 .Op ...
 .Nm
@@ -58,6 +59,12 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Fetch all packages.
+.It Fl C
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
 .It Fl d
 Fetch the package and its dependencies as well.
 .It Fl g
@@ -70,6 +77,10 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
 .It Fl q
 Quiet mode.
 Show less output.
@@ -101,6 +112,7 @@ The following environment variables affect the execution of
 .Nm :
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
+.It Ev CASE_SENSITIVE_MATCH
 .El
 .Pp
 See

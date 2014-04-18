@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 25, 2013
+.Dd April 18, 2014
 .Dt PKG-LOCK 8
 .Os
 .Sh NAME
@@ -27,13 +27,15 @@
 .Op Fl qy
 .Fl a
 .Nm
-.Op Fl giqxy
+.Op Fl qy
+.Op Fl Cgix
 .Ar pkg-name
 .Nm "pkg unlock"
 .Op Fl qy
 .Fl a
 .Nm "pkg unlock"
-.Op Fl giqxy
+.Op Fl qy
+.Op Fl Cgix
 .Ar pkg-name
 .Sh DESCRIPTION
 .Nm
@@ -72,15 +74,26 @@ The following options are supported by
 .Bl -tag -width F1
 .It Fl a
 Lock or unlock all installed packages.
+.It Fl C
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
 .It Fl g
 Treat
 .Ar pkg-name
 as a shell glob pattern.
 .It Fl i
-Make the default or the regular expression
+Make the standard or the regular expression
 .Fl ( x )
+matching against
 .Ar pkg-name
-matching case insensitive.
+case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
 .It Fl q
 Operate quietly: do not output anything other than confirmatory questions.
 .It Fl x
@@ -101,6 +114,7 @@ for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
 .It Ev ASSUME_ALWAYS_YES
+.It Ev CASE_SENSITIVE_MATCH
 .El
 .Sh FILES
 See

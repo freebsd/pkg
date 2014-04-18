@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd February 1, 2014
+.Dd April 18, 2014
 .Dt PKG-INFO 8
 .Os
 .Sh NAME
@@ -27,7 +27,8 @@
 .Nm
 .Fl a
 .Nm
-.Op Fl AbBDdefgiIklOqRrsx
+.Op Fl AbBDdefIklOqRrs
+.Op Fl Cgix
 .Ar pkg-name
 .Nm
 .Op Fl AbBDdfIlqRrs
@@ -43,6 +44,12 @@ The following options are supported by
 Display all installed packages.
 .It Fl A
 Display any annotations added to the package.
+.It Fl C
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
 .It Fl f
 Display full information about the packages matching
 .Ar pkg-name .
@@ -62,10 +69,15 @@ Treat
 .Ar pkg-name
 as a shell glob pattern.
 .It Fl i
-Make the default or the regular expression
+Make the standard or the regular expression
 .Fl ( x )
+matching against
 .Ar pkg-name
-matching case insensitive.
+case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
 .It Fl x
 Treat
 .Ar pkg-name
@@ -136,6 +148,7 @@ See
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
+.It Ev CASE_SENSITIVE_MATCH
 .El
 .Sh FILES
 See
