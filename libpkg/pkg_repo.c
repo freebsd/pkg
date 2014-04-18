@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
+#include <sys/uio.h>
 
 #include <archive_entry.h>
 #include <assert.h>
@@ -46,6 +47,8 @@
 #include <sysexits.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -59,9 +62,9 @@
 struct sig_cert {
 	char name[MAXPATHLEN];
 	unsigned char *sig;
-	int siglen;
+	int64_t siglen;
 	unsigned char *cert;
-	int certlen;
+	int64_t certlen;
 	bool cert_allocated;
 	UT_hash_handle hh;
 	bool trusted;
@@ -268,6 +271,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 	char hash[SHA256_DIGEST_LENGTH * 2 + 1];
 	int nbgood = 0;
 	struct sig_cert *s = NULL, *stmp = NULL;
+	struct pkg_repo_meta_key *mk = NULL;
 
 	if (HASH_COUNT(sc) == 0) {
 		if (fatal)
@@ -282,13 +286,29 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, struct sig_cert *sc, bool fata
 	}
 
 	HASH_ITER(hh, sc, s, stmp) {
-		if (s->sig == NULL || s->cert == NULL) {
-			if (fatal)
-				pkg_emit_error("Number of signatures and certificates "
-					"mismatch");
+		if (s->sig != NULL && s->cert == NULL) {
+			/*
+			 * We may want to check meta
+			 */
+			if (repo->meta != NULL && repo->meta->keys != NULL)
+				HASH_FIND_STR(repo->meta->keys, s->name, mk);
 
+			if (mk != NULL && mk->pubkey != NULL) {
+				s->cert = mk->pubkey;
+				s->certlen = strlen(mk->pubkey);
+			}
+			else {
+				if (fatal)
+					pkg_emit_error("No key with name %s has been found", s->name);
+				return (false);
+			}
+		}
+		else if (s->sig == NULL) {
+			if (fatal)
+				pkg_emit_error("No signature with name %s has been found", s->name);
 			return (false);
 		}
+
 		s->trusted = false;
 		sha256_buf(s->cert, s->certlen, hash);
 		HASH_FIND_STR(repo->revoked_fp, hash, f);
@@ -591,14 +611,87 @@ cleanup:
 	return (res);
 }
 
+struct pkg_repo_check_cbdata {
+	unsigned char *map;
+	size_t len;
+	const char *name;
+};
+
+static int
+pkg_repo_meta_extract_pubkey(int fd, void *ud)
+{
+	struct pkg_repo_check_cbdata *cbdata = ud;
+	struct ucl_parser *parser;
+	ucl_object_t *top;
+	const ucl_object_t *obj, *cur, *elt;
+	ucl_object_iter_t iter = NULL;
+	struct iovec iov[2];
+	int rc = EPKG_OK;
+	int64_t res_len = 0;
+	bool found = false;
+
+	parser = ucl_parser_new(0);
+	if (!ucl_parser_add_chunk(parser, cbdata->map, cbdata->len)) {
+		pkg_emit_error("cannot parse repository meta from %s",
+				ucl_parser_get_error(parser));
+		ucl_parser_free(parser);
+		return (EPKG_FATAL);
+	}
+
+	top = ucl_parser_get_object(parser);
+	ucl_parser_free(parser);
+
+	/* Now search for the required key */
+	obj = ucl_object_find_key(top, "cert");
+	if (obj == NULL) {
+		pkg_emit_error("cannot find key for signature %s in meta",
+				cbdata->name);
+		rc = EPKG_FATAL;
+	}
+	else {
+		while(!found && (cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
+			elt = ucl_object_find_key(cur, "name");
+			if (elt != NULL && elt->type == UCL_STRING) {
+				if (strcmp(ucl_object_tostring(elt), cbdata->name) == 0) {
+					elt = ucl_object_find_key(cur, "data");
+					if (elt == NULL || elt->type != UCL_STRING)
+						continue;
+
+					/* +1 to include \0 at the end */
+					res_len = elt->len + 1;
+					iov[0].iov_base = &res_len;
+					iov[0].iov_len = sizeof(res_len);
+					iov[1].iov_base = (void *)ucl_object_tostring(elt);
+					iov[1].iov_len = res_len;
+					if (writev(fd, iov, 2) == -1) {
+						pkg_emit_errno("pkg_repo_meta_extract_pubkey",
+								"writev error");
+						rc = EPKG_FATAL;
+						break;
+					}
+					found = true;
+				}
+			}
+		}
+	}
+
+	ucl_object_unref(top);
+
+	return (rc);
+}
+
 int
 pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 {
 	char filepath[MAXPATHLEN];
 	struct pkg_repo_meta *nmeta;
+	struct stat st;
 	const char *dbdir = NULL;
+	unsigned char *map = NULL;
 	int fd;
-	int rc = EPKG_OK;
+	int rc = EPKG_OK, ret;
+	struct sig_cert *sc = NULL, *s, *stmp;
+	struct pkg_repo_check_cbdata cbdata;
 
 	dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 
@@ -614,13 +707,90 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		return (EPKG_FATAL);
 	}
 
-	if ((rc = pkg_repo_archive_extract_check_archive(fd, "meta", filepath, repo, -1)) != EPKG_OK) {
+	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
+		if ((rc = pkg_repo_archive_extract_check_archive(fd, "meta", filepath, repo, -1)) != EPKG_OK) {
+			close (fd);
+			return (rc);
+		}
+		goto load_meta;
+	}
+
+	/*
+	 * For fingerprints we cannot just load pubkeys as they could be in metafile itself
+	 * To do it, we parse meta in sandbox and for each unloaded pubkey we try to return
+	 * a corresponding key from meta file.
+	 */
+
+	if ((rc = pkg_repo_archive_extract_archive(fd, "meta", filepath, repo, -1, &sc)) != EPKG_OK) {
 		close (fd);
 		return (rc);
 	}
 
 	close(fd);
 
+	if (repo->trusted_fp == NULL) {
+		if (pkg_repo_load_fingerprints(repo) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
+	/* Map meta file for extracting pubkeys from it */
+	if (stat(filepath, &st) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot stat meta fetched");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	if ((fd = open(filepath, O_RDONLY)) == -1) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot open meta fetched");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	close(fd);
+	if (map == MAP_FAILED) {
+		pkg_emit_errno("pkg_repo_fetch_meta", "cannot mmap meta fetched");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	cbdata.len = st.st_size;
+	cbdata.map = map;
+	HASH_ITER(hh, sc, s, stmp) {
+		if (s->siglen != 0 && s->certlen == 0) {
+			/*
+			 * We need to load this pubkey from meta
+			 */
+			cbdata.name = s->name;
+			if (pkg_emit_sandbox_get_string(pkg_repo_meta_extract_pubkey, &cbdata,
+					(char **)&s->cert, &s->certlen) != EPKG_OK) {
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
+			s->cert_allocated = true;
+		}
+	}
+
+	if (!pkg_repo_check_fingerprint(repo, sc, true)) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+	HASH_ITER(hh, sc, s, stmp) {
+		ret = rsa_verify_cert(filepath, s->cert, s->certlen, s->sig, s->siglen,
+				-1);
+		if (ret == EPKG_OK && s->trusted)
+			break;
+
+		ret = EPKG_FATAL;
+	}
+	if (ret != EPKG_OK) {
+		pkg_emit_error("No trusted certificate has been used "
+				"to sign the repository");
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
+load_meta:
 	if ((rc = pkg_repo_meta_load(filepath, &nmeta)) != EPKG_OK)
 		return (rc);
 
@@ -628,6 +798,16 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		pkg_repo_meta_free(repo->meta);
 
 	repo->meta = nmeta;
+
+cleanup:
+	if (map != NULL)
+		munmap(map, st.st_size);
+
+	if (sc != NULL)
+		pkg_repo_signatures_free(sc);
+
+	if (rc != EPKG_OK)
+		unlink(filepath);
 
 	return (rc);
 }

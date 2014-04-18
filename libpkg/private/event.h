@@ -58,6 +58,7 @@ void pkg_emit_package_not_found(const char *);
 void pkg_emit_incremental_update(int updated, int removed, int added, int processed);
 void pkg_debug(int level, const char *fmt, ...);
 int pkg_emit_sandbox_call(pkg_sandbox_cb call, int fd, void *ud);
+int pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64_t *len);
 
 
 #endif

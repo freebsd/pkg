@@ -4186,6 +4186,13 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql,
 				/* No live processes found, so we can safely reset lock */
 				pkg_debug(1, "no concurrent processes found, cleanup the lock");
 				pkgdb_reset_lock(db);
+				if (upgrade) {
+					/*
+					 * In case of upgrade we should obtain a lock from the beginning,
+					 * hence switch upgrade to retain
+					 */
+					return pkgdb_obtain_lock(db, type, delay, retries - tries);
+				}
 				continue;
 			}
 			else if (delay > 0) {
