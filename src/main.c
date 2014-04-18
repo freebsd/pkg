@@ -4,6 +4,7 @@
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
+ * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,6 +28,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
 
 #include <sys/param.h>
 
