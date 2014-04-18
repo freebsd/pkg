@@ -749,6 +749,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 				rc = EPKG_FATAL;
 				goto cleanup;
 			}
+			s->cert_allocated = true;
 		}
 	}
 
