@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 17, 2014
+.Dd April 18, 2014
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -43,9 +43,15 @@ is used for displaying information about remote packages.
 .Pp
 Package repository catalogues will be automatically updated whenever
 .Nm
-is run, unless disabled by the
+is run by a user ID with write access to the package database,
+unless disabled by the
 .Fl U
-flag.
+flag  or setting
+.Cm REPO_AUTOUPDATE
+to
+.Sy NO
+in
+.Xr pkg.conf 5 .
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -76,9 +82,11 @@ matching against
 .Ar pkg-name
 case insensitive.
 .It Fl U
-Skip updating the repository catalogues with
-.Xr pkg-update 8 .
-Use the locally cached copies only.
+Suppress the automatic update of the local copy of the repository catalogue
+from remote.
+Automatic repository catalogue updates are only attempted when the
+effective UID of the process has write access to the package database.
+Otherwise they are silently ignored.
 .It Fl x
 Treat
 .Ao pattern Ac

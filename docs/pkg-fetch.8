@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd June 30, 2013
+.Dd April 18, 2014
 .Dt PKG-FETCH 8
 .Os
 .Sh NAME
@@ -41,11 +41,17 @@ is used to download binary packages from a remote repository.
 .Pp
 One or more packages, or patterns can be specified.
 .Pp
-Repository catalogues will be updated automatically using
-.Xr pkg-update 8 .
-This can be disabled with the
+Package repository catalogues will be automatically updated whenever
+.Nm
+is run by a user ID with write access to the package database,
+unless disabled by the
 .Fl U
-flag.
+flag or setting
+.Cm REPO_AUTOUPDATE
+to
+.Sy NO
+in
+.Xr pkg.conf 5 .
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -76,9 +82,11 @@ See
 .It Fl u
 Fetch all available updates for the currently installed packages.
 .It Fl U
-Skip updating the repository catalogues with
-.Xr pkg-update 8 .
-Use the local cache only.
+Suppress the automatic update of the local copy of the repository catalogue
+from remote. 
+Automatic repository catalogue updates are only attempted when the
+effective UID of the process has write access to the package database.
+Otherwise they are silently ignored.
 .It Fl x
 Treat
 .Ar pkg-name

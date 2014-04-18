@@ -15,7 +15,7 @@
 .\"     @(#)pkg.8
 .\" $FreeBSD$
 .\"
-.Dd April 17, 2014
+.Dd April 18, 2014
 .Dt PKG-UPGRADE 8
 .Os
 .Sh NAME
@@ -82,9 +82,10 @@ See
 .Xr pkg-repository 5
 for details.
 .Pp
-Repository catalogues will automatically be updated whenever
+Package repository catalogues will be automatically updated whenever
 .Nm
-is run, unless disabled by the
+is run by a user ID with write access to the package database,
+unless disabled by the
 .Fl U
 flag or setting
 .Cm REPO_AUTOUPDATE
@@ -122,11 +123,11 @@ Force quiet output, except when
 .Fl n
 is used, where a summary of the work list is always displayed.
 .It Fl U
-Skip updating the repository catalogues with
-.Xr pkg-update 8 .
-Use the local cache only.
-.Nm
-will always print out the list of packages with available updates.
+Suppress the automatic update of the local copy of the repository catalogue
+from remote. 
+Automatic repository catalogue updates are only attempted when the
+effective UID of the process has write access to the package database.
+Otherwise they are silently ignored.
 .It Fl r Ar reponame
 Install packages from only the named repository,
 irrespective of the configured
